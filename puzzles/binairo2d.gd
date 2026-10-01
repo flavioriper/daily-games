@@ -232,6 +232,25 @@ var fx: Node2D
 var _sign_layer: Control
 var _signs_shown: ArrayMesh
 var _signs_tw: Tween
+## Under the tiles: every coin, focus tint, sun shadow and sun ray, and
+## every face's body, each set one MultiMesh draw (_sync_under). A coin's
+## Panel and a face still move as ever -- the hops, flips, leans, spins and
+## blinks write their transforms and expressions -- but draw none of that
+## themselves (a face keeps only its hat and glasses): gl_compatibility
+## batches no polygon or mesh, so a full 10x10 was a hundred coin draws, one
+## a moon and three a sun -- about 400 calls, the Insane lag (performance
+## checkup, 2026-10-01). Bodies are grouped by mesh: a board shows a handful
+## of expressions, eye levels and glances at once, not a hundred.
+var _under: Control
+var _mm_edge: MultiMesh
+var _mm_face: MultiMesh
+var _mm_tint: MultiMesh
+var _mm_shadow: MultiMesh
+var _mm_rays: MultiMesh
+var _mm_bodies: Dictionary = {}   # ArrayMesh -> MultiMesh, the bodies shown now
+var _mm_sent: Dictionary = {}     # MultiMesh -> the buffer last handed over
+var _mm_tile := -1.0
+var _mm_sun_r := -1.0
 var _tiles: Array = []      # [r][c] -> the tile's slot: hops, nudges, presses, sags
 var _coins: Array = []      # [r][c] -> the Panel inside it that turns like a coin
 var _flips: Array = []      # [r][c] -> the coin's turn
@@ -241,6 +260,7 @@ var _warm: Array = []       # [r][c] -> 0 white to 1 given sand
 var _warm_tws: Array = []   # [r][c] -> a hint's warm-up fade
 var _styles: Array = []     # [r][c] -> its StyleBoxFlat
 var _tints: Array = []      # [r][c] -> the focus tint Panel over the tile
+var _tint_styles: Array = []  # [r][c] -> its StyleBoxFlat
 var _faces: Array = []      # [r][c] -> Face or null
 var _blend: Array = []      # [r][c] -> painted blend toward BAD_TILE
 var _blend_target: Array = []
@@ -314,11 +334,33 @@ func title() -> String: return "Binairo"
 func rules() -> String:
 	return tr("BN_RULES")
 
-## Hard drops Check (a wrong tile says so itself); Insane drops Hint and
-## Undo too. The host reads this after start(), so _level is the built one.
+## The tutorial's pages, for this board's level (ui/hud/how_to_play.gd):
+## how a tap works, the three rules, the signs, and on Hard and Insane what a
+## wrong tile costs -- and on Insane, that one sign lies.
+func tutorial_pages() -> Array:
+	const Diagram = preload("res://ui/hud/binairo_tutorial_diagram.gd")
+	var pages := []
+	for step in [
+			[Diagram.Lesson.TAP, "HTP_BN_TAP", "HTP_BN_TAP_BODY"],
+			[Diagram.Lesson.THREE, "HTP_BN_THREE", "HTP_BN_THREE_BODY"],
+			[Diagram.Lesson.HALF, "HTP_BN_HALF", "HTP_BN_HALF_BODY"],
+			[Diagram.Lesson.SIGNS, "HTP_BN_SIGNS", "HTP_BN_SIGNS_BODY"],
+			[Diagram.Lesson.HEART, "HTP_BN_HEART", "HTP_BN_HEART_BODY_INSANE" if _level >= 3 else "HTP_BN_HEART_BODY"]]:
+		if step[0] == Diagram.Lesson.HEART and max_hearts <= 0:
+			continue
+		var d := Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": tr(step[2])})
+	return pages
+
+## Hard drops Check (a wrong tile says so itself); Insane drops Hint too.
+## Insane kept no Undo until the checkup of 2026-10-01; it gives nothing
+## away -- a wrong tile is charged after its grace whatever happens -- and
+## a player wants to take back a slip. The host reads this after start(),
+## so _level is the built one.
 func capabilities() -> Array[String]:
 	if _level >= 3:
-		return []
+		return ["undo"]
 	if _level == 2:
 		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
@@ -326,6 +368,20 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# First child, so the tiles (added after) and their faces draw over it.
+	_under = Control.new()
+	_under.name = "Under"
+	_under.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mm_edge = _multimesh()
+	_mm_face = _multimesh()
+	_mm_tint = _multimesh()
+	_mm_shadow = _multimesh()
+	_mm_rays = _multimesh()
+	_under.draw.connect(func() -> void:
+		for mm in [_mm_edge, _mm_face, _mm_tint, _mm_shadow, _mm_rays] + _mm_bodies.values():
+			if mm.mesh != null:
+				_under.draw_multimesh(mm, null))
+	add_child(_under)
 	_sign_layer = Control.new()
 	_sign_layer.name = "Signs"
 	_sign_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -407,6 +463,7 @@ func _build_tiles() -> void:
 	_counted = []
 	_styles = []
 	_tints = []
+	_tint_styles = []
 	_faces = []
 	_blend = []
 	_blend_target = []
@@ -431,6 +488,7 @@ func _build_tiles() -> void:
 		var warm := []
 		var styles := []
 		var tints := []
+		var tint_styles := []
 		var faces := []
 		for c in n:
 			var sb := StyleBoxFlat.new()
@@ -447,7 +505,9 @@ func _build_tiles() -> void:
 			var coin := Panel.new()
 			coin.name = "coin"
 			coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			coin.add_theme_stylebox_override("panel", sb)
+			# The coin is drawn under the tiles (_sync_under); `sb` only keeps
+			# its colours.
+			coin.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 			tile.add_child(coin)
 			# CozyTheme.dress() hands every Panel the HUD's paper wash as it enters
 			# the tree; on a tile that small the wash reads as a blotch, and a
@@ -462,6 +522,8 @@ func _build_tiles() -> void:
 			tsb.bg_color = Pal.LINE
 			tint.add_theme_stylebox_override("panel", tsb)
 			tint.modulate.a = 0.0
+			# Drawn under the tiles too (_sync_under), off its modulate.
+			tint.visible = false
 			coin.add_child(tint)
 			tint.material = null
 			tiles.append(tile)
@@ -469,6 +531,7 @@ func _build_tiles() -> void:
 			warm.append(1.0 if state.given[r][c] else 0.0)
 			styles.append(sb)
 			tints.append(tint)
+			tint_styles.append(tsb)
 			faces.append(null)
 		_tiles.append(tiles)
 		_coins.append(coins)
@@ -480,6 +543,7 @@ func _build_tiles() -> void:
 		_counted.append(_nulls())
 		_styles.append(styles)
 		_tints.append(tints)
+		_tint_styles.append(tint_styles)
 		_faces.append(faces)
 		_blend.append(_zeros())
 		_blend_target.append(_zeros())
@@ -519,6 +583,14 @@ func _layout() -> void:
 	if _tile <= 0.0:
 		return
 	_origin = Vector2((size.x - g) * 0.5, top + (size.y - top - g) * 0.5)
+	_under.position = Vector2.ZERO
+	_under.size = size
+	if _tile != _mm_tile:
+		_mm_tile = _tile
+		_mm_edge.mesh = _coin_mesh(_tile)
+		_mm_face.mesh = _coin_mesh(_tile - TILE_EDGE)
+		_mm_tint.mesh = _mm_face.mesh
+		_under.queue_redraw()
 	for layer: Control in [_sign_layer, _heart_layer, _combo_layer]:
 		layer.position = Vector2.ZERO
 		layer.size = size
@@ -557,8 +629,10 @@ func _make_face(r: int, c: int, v: int) -> Control:
 	var face: Control
 	if v == 0:
 		face = SunFace.new()
+		face.skip_layers = ["shadow", "rays", "body"]
 	else:
 		face = MoonFace.new()
+		face.skip_layers = ["body"]
 		face.rocks = _hash(r, c) < ROCK_SHARE
 	face.name = "face"
 	_coins[r][c].add_child(face)
@@ -1444,6 +1518,7 @@ static func _now() -> float:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_sync_under()
 	var now := _now()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
@@ -1452,6 +1527,129 @@ func _process(delta: float) -> void:
 		_sign_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
+
+## A MultiMesh of 2D transforms with a colour each.
+static func _multimesh() -> MultiMesh:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_2D
+	mm.use_colors = true
+	return mm
+
+## A coin `h` tall and a tile wide, in white for the instance colour to tint:
+## the whole coin for its edge, the coin less TILE_EDGE for its face.
+func _coin_mesh(h: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(Vector2.ZERO, Vector2(_tile, h), TILE_RADIUS), Color.WHITE)
+	return b.mesh()
+
+## Copies every coin's, tint's and face's place, turn and colour into the
+## MultiMeshes under the tiles, and hands a buffer over only when it changed.
+func _sync_under() -> void:
+	if _tiles.size() != n or _tile <= 0.0:
+		return
+	var count := n * n
+	var edge := PackedFloat32Array()
+	edge.resize(count * 12)
+	var face := PackedFloat32Array()
+	face.resize(count * 12)
+	var tints := PackedFloat32Array()
+	tints.resize(count * 12)
+	# A coin holds its face and, mid-turn, the one leaving.
+	var shadow := PackedFloat32Array()
+	shadow.resize(count * 2 * 12)
+	var rays := PackedFloat32Array()
+	rays.resize(count * 2 * 12)
+	var suns := 0
+	var bodies := {}   # mesh -> [Transform2D, Color, ...]
+	var i := 0
+	for r in n:
+		for c in n:
+			var tile: Control = _tiles[r][c]
+			var coin: Control = _coins[r][c]
+			var xf := tile.get_transform() * coin.get_transform()
+			var a := tile.modulate.a * coin.modulate.a if tile.visible and coin.visible else 0.0
+			var sb: StyleBoxFlat = _styles[r][c]
+			_put(edge, i, xf, Color(sb.border_color, sb.border_color.a * a))
+			_put(face, i, xf, Color(sb.bg_color, sb.bg_color.a * a))
+			var tint: Control = _tints[r][c]
+			var tc: Color = (_tint_styles[r][c] as StyleBoxFlat).bg_color
+			_put(tints, i, xf, Color(tc, tc.a * tint.modulate.a * a))
+			i += 1
+			for f in coin.get_children():
+				if not (f is Face) or f.skip_layers.is_empty():
+					continue
+				var R := roundf(f._R_for(minf(f.size.x, f.size.y)) / Face.R_STEP) * Face.R_STEP
+				if R <= 0.0:
+					continue
+				var fxf: Transform2D = xf * f.get_transform()
+				var centre: Vector2 = f.size * 0.5
+				var tone: Color = f.modulate
+				tone.a *= a if f.visible else 0.0
+				if f is SunFace and suns < count * 2:
+					if R != _mm_sun_r:
+						_mm_sun_r = R
+						_mm_shadow.mesh = f._mesh_for("shadow", false, R, 1.0)
+						_mm_rays.mesh = f._mesh_for("rays", false, R, 1.0)
+						_under.queue_redraw()
+					_put(shadow, suns, fxf * f._layer_transform("shadow", R, centre), tone)
+					_put(rays, suns, fxf * f._layer_transform("rays", R, centre), tone)
+					suns += 1
+				var mesh: ArrayMesh = f._mesh_for("body", true, R, f._eye_level())
+				if not bodies.has(mesh):
+					bodies[mesh] = []
+				bodies[mesh].append(fxf * f._layer_transform("body", R, centre))
+				bodies[mesh].append(tone)
+	_hand(_mm_edge, edge, count)
+	_hand(_mm_face, face, count)
+	_hand(_mm_tint, tints, count)
+	_hand(_mm_shadow, shadow, count * 2, suns)
+	_hand(_mm_rays, rays, count * 2, suns)
+	# Only the bodies on show are drawn; a blink or a glance changes which.
+	for mesh in _mm_bodies.keys():
+		if not bodies.has(mesh):
+			_mm_sent.erase(_mm_bodies[mesh])
+			_mm_bodies.erase(mesh)
+			_under.queue_redraw()
+	for mesh in bodies:
+		var list: Array = bodies[mesh]
+		var buf := PackedFloat32Array()
+		buf.resize(list.size() * 6)
+		for k in list.size() / 2:
+			_put(buf, k, list[2 * k], list[2 * k + 1])
+		if not _mm_bodies.has(mesh):
+			var mm := _multimesh()
+			mm.mesh = mesh
+			_mm_bodies[mesh] = mm
+			_under.queue_redraw()
+		_hand(_mm_bodies[mesh], buf, list.size() / 2)
+
+## Instance `i` of a 2D MultiMesh buffer: the basis and origin in the
+## server's row order, then the colour.
+static func _put(buf: PackedFloat32Array, i: int, xf: Transform2D, col: Color) -> void:
+	var o := i * 12
+	buf[o] = xf.x.x
+	buf[o + 1] = xf.y.x
+	buf[o + 3] = xf.origin.x
+	buf[o + 4] = xf.x.y
+	buf[o + 5] = xf.y.y
+	buf[o + 7] = xf.origin.y
+	buf[o + 8] = col.r
+	buf[o + 9] = col.g
+	buf[o + 10] = col.b
+	buf[o + 11] = col.a
+
+## Hands `buf` to `mm` when it differs from what was handed last (never read
+## back: a buffer read can stall on the GPU).
+func _hand(mm: MultiMesh, buf: PackedFloat32Array, count: int, shown := -1) -> void:
+	if mm.instance_count != count:
+		mm.instance_count = count
+		_mm_sent.erase(mm)
+	var visible := count if shown < 0 else shown
+	if mm.visible_instance_count != visible:
+		mm.visible_instance_count = visible
+	if _mm_sent.get(mm) != buf:
+		mm.buffer = buf
+		_mm_sent[mm] = buf
 
 ## The hearts over the grid as one mesh, on a paper pill like the signs'
 ## badges so they read as the board's own and not the day card's streak: each

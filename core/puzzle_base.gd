@@ -105,8 +105,12 @@ func start(rng: RandomNumberGenerator, difficulty: int) -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	if _running and not _done:
+	if _running and not _done and not clock_held:
 		elapsed += delta
+
+## Set by the host while the tutorial card is up: reading how to play is not
+## time spent on the board.
+var clock_held := false
 
 func note_move() -> void:
 	moves += 1

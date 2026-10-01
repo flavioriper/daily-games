@@ -59,3 +59,22 @@ frame time and peak draw calls over a window with no screenshots (a
 `save_png` costs tens of ms and inflates any reading taken across one).
 `tests/_win.gd -- untangle` plays a move a frame and needs the board's
 `settle_now()` between drags (its flights and holds are on a clock).
+
+## The performance probe (2026-10-01)
+
+`tests/_probe_perf.gd` opens one board at one difficulty, idles, then plays
+right moves through the board's own `_gui_input`, and prints each window's
+frame time (mean, p95, max), the renderer's CPU share, peak draw calls,
+spikes over 25 ms and any move whose script took over 4 ms:
+
+    godot --path . --resolution 810x1440 --always-on-top \
+        --rendering-driver opengl3_angle \
+        --script res://tests/_probe_perf.gd -- <id> d=<0..3> [fill] [x=<exp>] [howto shot=<s>]
+
+`fill` plays every right move but two before the idle window (a full
+board); `x=board|host|hide:<Node>|nowash|faces|parts|undo` switches one
+thing off (or times the parts) to see what it costs; `howto shot=1.5`
+leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
+A board needs a `_moves_<id>` in the probe to play. On this Mac render CPU
+is nearly the whole frame and runs about 70 us per draw call, so draw calls
+are the lever; ms readings swing about 1.5 ms run to run.

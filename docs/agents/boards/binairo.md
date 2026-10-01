@@ -141,3 +141,29 @@ is well under 855, so nothing was baked.
   cell's latest), not only at the top; the hint's warm-up fade is tracked
   and stopped by reset and rebuild; the streak scores before `note_move`, so
   a solving tap's pluck and confetti come before the solve.
+
+### Performance checkup and the tutorial (2026-10-01)
+
+- **The lag was draw calls per tile.** gl_compatibility batches no polygon
+  and no mesh, so each coin's StyleBoxFlat was one draw call and each face
+  one (moon) or three (sun: shadow, rays, body). A near-full Insane 10x10
+  read **391 draw calls and 26 ms a frame idle** on this M1 (ANGLE), the
+  solve 412. Now every coin edge, coin face, focus tint, sun shadow and sun
+  ray is one MultiMesh draw each, and the faces' bodies are grouped by mesh
+  (a handful of expressions, eye levels and glances on show at once), all
+  in the `Under` layer, the board's first child. The coin Panels and faces
+  still own every transform the motion writes; `_sync_under` copies them
+  each frame (0.7 ms on the M1) and hands a buffer over only when it
+  changed, never reading one back. A face keeps its hat and glasses, drawn
+  by itself (`Face.skip_layers`). Measured with `tests/_probe_perf.gd`,
+  second of two runs: near-full Insane idle **147 draws, 9.5 ms**; Insane
+  idle at open 103 (was 222); Hard's solve peak 199 (was 384). The tint now
+  draws under the faces rather than over the shadow and rays -- at 12% it
+  does not read.
+- **Undo on Insane** (it had none): it gives nothing away, since a wrong
+  tile is charged after its grace whatever happens.
+- **The tutorial is five pages** (`tutorial_pages()`, the shared card's
+  pager): tap cycling, never three alike, half and half, the signs, and on
+  Hard and Insane the hearts (Insane's page says one sign lies). The top
+  bar's ? and Settings > How to play open it again; the clock holds while
+  it is up.

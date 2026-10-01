@@ -115,11 +115,25 @@ func _maybe_show_first_play_tutorial() -> void:
 	# the rules over it would hide the very thing it was opened to see.
 	if puzzle_id == "" or _completed_daily or Progress.tutorial_seen(puzzle_id):
 		return
+	_show_tutorial()
+
+## The tutorial card over the board: on a first play, and whenever the top
+## bar's ? or the settings sheet's How to play asks for it again.
+func _show_tutorial() -> void:
+	if is_instance_valid(_tutorial):
+		return
 	_tutorial = HowToPlay.new()
 	_tutorial.name = "HowToPlay"
 	_tutorial.setup(_entry, _puzzle)
-	_tutorial.completed.connect(func() -> void: _tutorial = null)
+	_hold_clock(true)
+	_tutorial.completed.connect(func() -> void:
+		_tutorial = null
+		_hold_clock(false))
 	add_child(_tutorial)
+
+func _hold_clock(on: bool) -> void:
+	if is_instance_valid(_puzzle) and "clock_held" in _puzzle:
+		_puzzle.clock_held = on
 
 func _apply_insets() -> void:
 	if not is_instance_valid(_margins):
@@ -321,7 +335,9 @@ func _open_settings() -> void:
 
 func _open_rules() -> void:
 	Analytics.track("rules_opened", {"puzzle_id": _entry.get("id", "")})
-	rules_sheet.open()
+	# The illustrated tutorial, not the bullet sheet: the same pages a first
+	# play shows (checkup, 2026-10-01).
+	_show_tutorial()
 
 ## The settings sheet has already persisted the toggle and stilled the world;
 ## the chrome re-reads it.

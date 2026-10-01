@@ -35,6 +35,7 @@ that area**, and add new history there rather than here.
 | Ads, age gate, remove-ads purchase | `docs/agents/ads-and-purchase.md` |
 | Backend, Firestore, functions, locale | `docs/agents/turns-and-backend.md` |
 | CI | `docs/agents/ci.md` |
+| The board checkup (perf, tutorial, ?, undo/reset) and where it stands | `docs/agents/checkup.md` |
 
 ## Rules that apply everywhere
 
