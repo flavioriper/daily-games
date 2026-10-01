@@ -10,12 +10,14 @@ the list" means the first row below without a date.
 Shared fixes made on the way, which every board already has: the rules
 sheet no longer rebuilds its labels on every move; the ? button; the clock
 holds while the tutorial is up; `Face._mesh_for` memoises per face.
+`Rewards.warm(text, fs)` (Balance, 2026-10-01) is there for any board to
+call: a board whose first big sticker hitches warms its words at open.
 
 | # | Board | Done | Notes |
 |---|---|---|---|
 | 1 | binairo | 2026-10-01 | MultiMesh coins and faces (391 -> 147 draws full Insane); 5-page tutorial; Undo on Insane |
 | 2 | mastermind (Code Break) | 2026-10-01 | played rows baked to one mesh each (300 -> 147 draws full Insane); 4-page tutorial; undo/reset already there |
-| 3 | balance | | fallback card's diagram is a bare grid |
+| 3 | balance | 2026-10-01 | already ~100 draws; the lag was a glyph-rasterising hitch on the first big sticker (solve 27-47 ms frame) -> shared `Rewards.warm()`; 3-6 page tutorial; Undo on Insane |
 | 4 | untangle | | |
 | 5 | shikaku | | |
 | 6 | tents | | |

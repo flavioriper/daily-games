@@ -39,6 +39,8 @@ var _clock := 0.0
 var _mesh: ArrayMesh
 var _ray_mesh: ArrayMesh
 var _font: Font
+## Words a screen will letter later, [text, size, next letter]: see warm().
+var _warm: Array = []
 ## Sunbursts drawn added to what is under them rather than laid over it: on
 ## a night sky pale gold laid over navy reads as grey haze, added it glows.
 var _rays: Control
@@ -115,6 +117,14 @@ func rain(seconds: float, kinds: Array = ["confetti", "star"], cols: Array = CON
 	_rain_kinds = kinds
 	_rain_cols = cols
 
+## Letters `text` at `fs` off screen a glyph a frame from now on, so its
+## first sticker draws from the glyph cache: an outlined letter is four
+## glyphs, each rasterised at its size the first time it is drawn, and a
+## big word drawn cold cost Balance's solve a 30-45 ms frame on the M1.
+func warm(text: String, fs: int) -> void:
+	_warm.append([text, fs, 0])
+	queue_redraw()
+
 ## A word lettered at `where`, each letter hopping in on its own, fitted to
 ## `bounds`. `rainbow` letters it in the sticker colours, else in `col`;
 ## `rays` turns a sunburst behind it. A sticker with an `id` replaces the one
@@ -123,11 +133,8 @@ func rain(seconds: float, kinds: Array = ["confetti", "star"], cols: Array = CON
 func sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "", rise := 0.0, keep := false) -> Dictionary:
 	if id != "":
 		stickers = stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
-	var room := (bounds.size.x if bounds.has_area() else self.size.x) - 40.0
+	fs = _fit(text, fs)
 	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	if w > room and w > 0.0:
-		fs = int(fs * room / w)
-		w = room
 	if bounds.has_area():
 		where.x = clampf(where.x, bounds.position.x + w * 0.5 + 20.0, bounds.end.x - w * 0.5 - 20.0)
 		where.y = clampf(where.y, bounds.position.y + fs * 0.8, bounds.end.y - fs * 0.4)
@@ -151,6 +158,14 @@ func sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true
 		"rise": 0.0 if Motion.reduce else rise}
 	stickers.append(st)
 	return st
+
+## The size `text` is lettered at: `fs`, or less if it would not fit across.
+func _fit(text: String, fs: int) -> int:
+	var room := (bounds.size.x if bounds.has_area() else self.size.x) - 40.0
+	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	if w > room and w > 0.0 and room > 0.0:
+		return int(fs * room / w)
+	return fs
 
 func has_sticker(id: String) -> bool:
 	for st: Dictionary in stickers:
@@ -321,6 +336,28 @@ func _draw_stickers() -> void:
 			draw_char(_font, o, ch, fs, Color(col, out_a))
 			x += adv
 	draw_set_transform(Vector2.ZERO)
+	_warm_one()
+
+## One glyph of the warm list (a letter's rim, rim, edge or face), drawn
+## as a sticker draws it, out of sight: a glyph a frame keeps the cost of
+## rasterising it, about a millisecond at 112 px on the M1, off any one frame.
+func _warm_one() -> void:
+	if _warm.is_empty() or size.x <= 0.0:
+		return
+	var w: Array = _warm[0]
+	var text: String = w[0]
+	var fs := _fit(text, int(w[1]))
+	var i := int(w[2])
+	var ch := text[i / 4]
+	w[2] = i + 1
+	if int(w[2]) >= text.length() * 4:
+		_warm.pop_front()
+	var o := Vector2(-fs * 4.0, -fs * 4.0)
+	if i % 4 == 3:
+		draw_char(_font, o, ch, fs, Color.WHITE)
+	else:
+		draw_char_outline(_font, o, ch, fs, int(fs * [0.34, 0.3, 0.13][i % 4]), Color.WHITE)
+	queue_redraw()
 
 # --- shapes, laid into a builder ---
 

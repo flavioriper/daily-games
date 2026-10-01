@@ -118,7 +118,8 @@ func _process(delta: float) -> bool:
 			RenderingServer.viewport_get_measured_render_time_gpu(_vp),
 			RenderingServer.viewport_get_measured_render_time_cpu(_vp)))
 		if delta * 1000.0 > 25.0:
-			print("  spike %.1f ms at t=%.2f (%s) moves=%d done=%s" % [delta * 1000.0, _t, window, _puzzle.get("moves") if _puzzle.get("moves") != null else -1, _puzzle.is_done()])
+			print("  spike %.1f ms at t=%.2f (%s) moves=%d done=%s | process %.1f render-cpu %.1f draws %d" % [delta * 1000.0, _t, window, _puzzle.get("moves") if _puzzle.get("moves") != null else -1, _puzzle.is_done(),
+				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, RenderingServer.viewport_get_measured_render_time_cpu(_vp), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))])
 		_draws[window] = maxi(_draws[window], int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 		if window == "play" and _t >= _next_move:
 			_next_move += PLAY_EVERY
@@ -206,6 +207,11 @@ func _experiment() -> void:
 			_puzzle.set_process(false)
 			for g in _puzzle._rows.size():
 				_puzzle._show_nodes(g, true)
+		"bal_warm":
+			# the solve's lettering once, early, to see whether its first
+			# draw (glyph rasterising) is the solve's hitch
+			_puzzle._rw.sticker(_puzzle.tr("BAL_W_BALANCED"), _puzzle._word_at(), 112, 0.3, true, Color.WHITE, true, "closer")
+			_puzzle._rw.sticker(_puzzle.tr("BAL_W_NO_HINTS"), _puzzle._word_at(), 46, 0.3, false, Color.WHITE, false, "nohints")
 		"nowash":
 			for c in _all(_host, func(n): return n is CanvasItem and n.material != null):
 				c.material = null
@@ -254,7 +260,7 @@ func _all(n: Node, pred: Callable) -> Array:
 	return out
 
 func _step() -> void:
-	if _moves.is_empty() or _puzzle.is_done() or bool(_puzzle.get("_busy")):
+	if _moves.is_empty() or _puzzle.is_done() or _puzzle.get("_busy") == true:
 		return
 	var m: Dictionary = _moves.pop_front()
 	if m.has("do"):
@@ -344,4 +350,25 @@ func _moves_mastermind() -> Array:
 	for s in st.length:
 		out.append({"do": func() -> void: _puzzle.pick(int(st.code[s]))})
 	out.append({"do": func() -> void: _puzzle.check()})
+	return out
+
+## Balance: each loose fruit dropped into its answer cup, in the safe order
+## (Insane's bales bounce a low side home), through the board's own hop.
+func _moves_balance() -> Array:
+	var out := []
+	var st = _puzzle.state
+	var order: Array[int] = []
+	if st.boing:
+		order = st.safe_order()
+	if order.is_empty():
+		order.assign(range(st.fruit.size()))
+	for f: int in order:
+		if not st.loose(f) or st.at[f] == st.answer[f]:
+			continue
+		out.append({"do": func() -> void:
+			if st.place(f, st.answer[f]):
+				_puzzle._hop(f, st.answer[f], 0.0)
+				_puzzle._spend()
+				_puzzle.note_move()
+				_puzzle._moving = true})
 	return out

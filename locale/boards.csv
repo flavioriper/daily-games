@@ -1679,3 +1679,28 @@ HTP_CB_HINT_DONE,"A friend of the code, for good","Um amigo do código, para sem
 HTP_CB_SHELL,The Shell Game,O Jogo dos Copinhos,El Juego de los Vasitos
 HTP_CB_SHELL_CAP,"After each row, two lids move","Depois de cada fileira, duas tampas mudam","Tras cada fila, dos tapas se mueven"
 HTP_CB_SHELL_DONE,The arc under the row shows which,O arco sob a fileira mostra quais,El arco bajo la fila muestra cuáles
+HTP_BAL_DRAG,Drag fruit onto the seesaw,Arraste frutas para a gangorra,Arrastra frutas al balancín
+HTP_BAL_DRAG_BODY,Drag a fruit from the basket into a cup on the plank. Tap a fruit on the plank to send it home. Undo takes a move back; Reset sends every loose fruit home.,Arraste uma fruta da cesta para um encaixe da tábua. Toque numa fruta na tábua para mandá-la de volta. Desfazer volta uma jogada; Reiniciar manda todas as frutas soltas para a cesta.,Arrastra una fruta de la cesta a un hueco de la tabla. Toca una fruta en la tabla para devolverla. Deshacer vuelve una jugada atrás; Reiniciar devuelve todas las frutas sueltas a la cesta.
+HTP_BAL_DRAG_CAP,Drag a fruit into a cup,Arraste uma fruta para um encaixe,Arrastra una fruta a un hueco
+HTP_BAL_HOME_CAP,Tap it and it hops home,Toque nela e ela volta,Tócala y vuelve a casa
+HTP_BAL_WEIGH,Read the level,Leia o nível,Lee el nivel
+HTP_BAL_WEIGH_BODY,"Every fruit has a secret weight. The bubble moves one tick for every unit of pull, so a fruit alone in cup 1 shows its own weight. Each cup further out pulls once more: in cup 3 it pulls three times as hard.","Cada fruta tem um peso secreto. A bolha anda um risco por unidade de força, então uma fruta sozinha no encaixe 1 mostra o próprio peso. Cada encaixe mais longe puxa uma vez mais: no encaixe 3 ela puxa três vezes mais.","Cada fruta tiene un peso secreto. La burbuja se mueve una marca por cada unidad de fuerza, así que una fruta sola en el hueco 1 muestra su propio peso. Cada hueco más lejos tira una vez más: en el hueco 3 tira tres veces más."
+HTP_BAL_WEIGH_CAP,Alone in cup 1: it reads its weight,Sozinha no encaixe 1: mostra o peso,Sola en el hueco 1: muestra su peso
+HTP_BAL_FAR_CAP,In cup 3 it pulls three times as hard,No encaixe 3 ela puxa três vezes mais,En el hueco 3 tira tres veces más
+HTP_BAL_LEVEL,Dead level,Perfeitamente nivelada,Perfectamente nivelado
+HTP_BAL_LEVEL_BODY,Put every fruit on the plank with the bubble right in the middle. Pinned fruit never move: weigh around them.,Coloque todas as frutas na tábua com a bolha bem no meio. As frutas com alfinete nunca saem do lugar: pese em volta delas.,Pon todas las frutas en la tabla con la burbuja justo en el medio. Las frutas con alfiler nunca se mueven: pesa alrededor de ellas.
+HTP_BAL_LEANS_CAP,A pinned fruit stays put,Uma fruta com alfinete não sai,Una fruta con alfiler no se mueve
+HTP_BAL_LEVEL_CAP,All on and dead level: balanced!,Todas na tábua e nivelada: equilibrou!,Todas en la tabla y nivelado: ¡equilibrado!
+HTP_BAL_HINT,Stuck? A hint,Travou? Uma dica,¿Atascado? Una pista
+HTP_BAL_HINT_BODY_ONE,The bulb puts one fruit in its own cup and pins it there in gold. You have one.,A lâmpada coloca uma fruta no encaixe certo e a prende ali com um alfinete dourado. Você tem uma.,La bombilla pone una fruta en su hueco y la sujeta ahí con un alfiler dorado. Tienes una.
+HTP_BAL_HINT_BODY_N,The bulb puts one fruit in its own cup and pins it there in gold. You have %d.,A lâmpada coloca uma fruta no encaixe certo e a prende ali com um alfinete dourado. Você tem %d.,La bombilla pone una fruta en su hueco y la sujeta ahí con un alfiler dorado. Tienes %d.
+HTP_BAL_HINT_SUN,On Hard it costs a step of the sun.,No Difícil ela custa um passo do sol.,En Difícil cuesta un paso del sol.
+HTP_BAL_HINT_CAP,The bulb pins one fruit in gold,A lâmpada prende uma fruta em dourado,La bombilla sujeta una fruta en dorado
+HTP_BAL_SUN,Before sunset,Antes do pôr do sol,Antes del atardecer
+HTP_BAL_SUN_BODY,"Every move, undo and hint sinks the sun a step, and the pill counts the moves left. When it sets you can take one more hour, once, or see the answer.","Cada jogada, desfazer e dica baixa o sol um passo, e a plaquinha conta as jogadas que restam. Quando ele se põe, você pode ganhar mais uma hora, uma vez, ou ver a resposta.","Cada jugada, deshacer y pista baja el sol un paso, y la placa cuenta las jugadas que quedan. Cuando se pone, puedes tomar una hora más, una vez, o ver la respuesta."
+HTP_BAL_SUN_CAP,Every move sinks the sun,Cada jogada baixa o sol,Cada jugada baja el sol
+HTP_BAL_DUSK_CAP,A tap home is a move too,Mandar de volta também é jogada,Devolver también es una jugada
+HTP_BAL_BALES,Springy bales,Fardos de mola,Pacas de resorte
+HTP_BAL_BALES_BODY,On Insane the bales bounce. Tip the beam past the end of the level and every loose fruit on the low side jumps back to the basket. Weigh inside the glass; an undo puts them back.,No Insano os fardos quicam. Incline a tábua além do fim do nível e toda fruta solta do lado baixo pula de volta para a cesta. Pese dentro do vidro; desfazer as traz de volta.,En Demencial las pacas rebotan. Inclina la tabla más allá del final del nivel y toda fruta suelta del lado bajo salta de vuelta a la cesta. Pesa dentro del vidrio; deshacer las devuelve.
+HTP_BAL_BALES_CAP,Inside the glass: safe,Dentro do vidro: tudo bem,Dentro del vidrio: a salvo
+HTP_BAL_BOING_CAP,Past the glass: that side bounces home,Além do vidro: aquele lado volta,Más allá del vidrio: ese lado vuelve

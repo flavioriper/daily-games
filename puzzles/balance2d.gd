@@ -303,12 +303,39 @@ func rules() -> String:
 		out += "\n\n" + tr("BAL_RULES_BOING")
 	return out
 
-## Undo and Hint (Hard has one hint); Insane has neither -- a bounce can
-## not be taken back and there is nothing to ask. Reset is the host's. No
-## Check: the beam is its own.
+## The tutorial, a page a rule (ui/hud/balance_tutorial_diagram.gd): drag
+## and send home, read the level, dead level; then the hint where the band
+## has one, the sunset on Hard and Insane, and Insane's springy bales.
+func tutorial_pages() -> Array:
+	const Diagram = preload("res://ui/hud/balance_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.DRAG, "HTP_BAL_DRAG", tr("HTP_BAL_DRAG_BODY")],
+		[Diagram.Lesson.WEIGH, "HTP_BAL_WEIGH", tr("HTP_BAL_WEIGH_BODY")],
+		[Diagram.Lesson.LEVEL, "HTP_BAL_LEVEL", tr("HTP_BAL_LEVEL_BODY")]]
+	var hints: int = HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
+	if hints > 0:
+		var body := tr("HTP_BAL_HINT_BODY_ONE") if hints == 1 else tr("HTP_BAL_HINT_BODY_N") % hints
+		if _difficulty >= 2:
+			body += " " + tr("HTP_BAL_HINT_SUN")
+		steps.append([Diagram.Lesson.HINT, "HTP_BAL_HINT", body])
+	if _difficulty >= 2:
+		steps.append([Diagram.Lesson.SUN, "HTP_BAL_SUN", tr("HTP_BAL_SUN_BODY")])
+	if _difficulty >= 3:
+		steps.append([Diagram.Lesson.BALES, "HTP_BAL_BALES", tr("HTP_BAL_BALES_BODY")])
+	var pages := []
+	for step in steps:
+		var d := Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
+## Undo and Hint (Hard has one hint); Insane has Undo only (since the
+## 2026-10-01 checkup: a bounce is kept in the move's history entry, so one
+## undo puts the bounced fruit back too, at a step of the sun like any
+## move). Reset is the host's. No Check: the beam is its own.
 func capabilities() -> Array[String]:
 	if _difficulty >= 3:
-		return []
+		return ["undo"]
 	# no bulb once the sun is down: a video hint then would be for nothing
 	if _out_card or state.out_of_sun():
 		return ["undo"]
@@ -415,6 +442,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## each one is the first thing on the screen, and the first lesson -- while
 ## the basket's fruit pop in.
 func _enter() -> void:
+	_after(Motion.ENTER_DELAY + 1.2, _warm_words)
 	for f in state.fruit.size():
 		if state.pinned[f]:
 			sim.to_cup_now(f, state.at[f])
@@ -442,6 +470,19 @@ func _enter() -> void:
 			j += 1
 	_moving = true
 	_place_faces()
+
+## The words this board letters loud, rasterised ahead (Rewards.warm), the
+## solve's first: drawn cold, "Balanced!" alone cost a 30-45 ms frame.
+func _warm_words() -> void:
+	_rw.warm(tr("BAL_W_BALANCED"), 112)
+	_rw.warm(tr("BAL_W_LEVEL"), 88)
+	if not state.hinted.has(true):
+		_rw.warm(tr("BAL_W_NO_HINTS"), 46)
+	for n in range(1, 5):
+		_rw.warm(tr(WORDS[mini(n - 1, WORDS.size() - 1)]), 50 + 6 * n)
+	_rw.warm(tr("BAL_W_SO_CLOSE"), 56)
+	if state.boing:
+		_rw.warm(tr("BAL_W_BOING"), 58)
 
 # --- layout ---
 
