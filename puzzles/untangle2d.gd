@@ -273,6 +273,9 @@ var _paw_mesh: ArrayMesh
 var _rope_mesh: Array = []                   # [r] -> that rope's own mesh
 var _rope_sig: Array = []                    # [r] -> what it was built from
 var _peg_mesh: Array = []                    # [rope] -> [cap with inlay, cap blank]
+var _peg_arrays: Array = []                  # the same, as surface arrays, for the bake
+var _rest_mesh: ArrayMesh                    # every peg at rest, shadows and caps, as one mesh
+var _rest_for: Array = []                    # what _rest_mesh was baked from
 ## The meshes the last _draw handed over, kept until the next replaces them.
 var _shown: Array = []
 var _knot_alpha := 0.0
@@ -282,6 +285,7 @@ var _wraps := {}
 ## `_braid` entry. What the crossing search and the rewards read.
 var _laid := {}
 var _cross: Array = []
+var _cross_kept := {}            # pair -> [what it was found from, its crossings]
 var _stack: Array = []
 var _look: Array = []                         # [r] -> what its mesh was drawn with
 var _patch_mesh: ArrayMesh
@@ -324,6 +328,33 @@ func rules() -> String:
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
 
+## The tutorial, a page a rule, drawn from the board's own ring, pegs and
+## ropes (ui/hud/untangle_tutorial_diagram.gd): lift a peg over the top, the
+## rope underneath wraps tighter, a short rope's reach; then the hint where
+## the band has one, the thread on Hard and Insane, and Insane's kitten.
+func tutorial_pages() -> Array:
+	const Diagram = preload("res://ui/hud/untangle_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.LIFT, "HTP_UT_LIFT", tr("HTP_UT_LIFT_BODY")],
+		[Diagram.Lesson.WRAP, "HTP_UT_WRAP", tr("HTP_UT_WRAP_BODY")],
+		[Diagram.Lesson.REACH, "HTP_UT_REACH", tr("HTP_UT_REACH_BODY")]]
+	var hints: int = State.HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
+	if hints > 0:
+		var body := tr("HTP_UT_HINT_BODY_ONE") if hints == 1 else tr("HTP_UT_HINT_BODY_N") % hints
+		if _difficulty >= 2:
+			body += " " + tr("HTP_UT_HINT_THREAD")
+		steps.append([Diagram.Lesson.HINT, "HTP_UT_HINT", body])
+	if _difficulty >= 2:
+		steps.append([Diagram.Lesson.THREAD, "HTP_UT_THREAD", tr("HTP_UT_THREAD_BODY")])
+	if _difficulty >= 3:
+		steps.append([Diagram.Lesson.CAT, "HTP_UT_CAT", tr("HTP_UT_CAT_BODY")])
+	var pages := []
+	for step in steps:
+		var d := Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
@@ -354,6 +385,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tw_px = state.tw.duplicate()
 	_wraps = {}
 	_cross = []
+	_cross_kept = {}
 	_hot_preview = []
 	_over_for = []
 	_bound_for = []
@@ -1218,10 +1250,13 @@ func _bind_all() -> void:
 			per_rope[r].append([u, br, side, dir])
 	for r in _ropes.size():
 		var rope: Rope = _ropes[r]
-		rope.clear_binds()
-		rope.route = 0.0
 		if not per_rope.has(r):
+			rope.set_binds(PackedInt32Array(), PackedVector2Array(), PackedFloat32Array(), [], 0.0)
 			continue
+		var bi := PackedInt32Array()
+		var bat := PackedVector2Array()
+		var bk := PackedFloat32Array()
+		var wg: Array = []
 		var list: Array = per_rope[r]
 		list.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 		var a := _peg_px[2 * r]
@@ -1244,13 +1279,13 @@ func _bind_all() -> void:
 			firm.append(true)
 			most = maxf(most, float(br.w))
 			var turn := (1.0 - float(br.w)) * BRAID_SPIN * (1.0 if float(_wraps[br.k].goal) > 0.0 else -1.0)
-			rope.wiggles.append({"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
+			wg.append({"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
 				"side": item[2], "w": br.w, "swing": BRAID_SIDE * _wd, "spin": turn})
 		way.append(b)
 		firm.append(false)
 		var cum := Rope.lengths(way)
 		var total: float = cum[cum.size() - 1]
-		rope.route = lerpf(a.distance_to(b), total, most)
+		var way_len := lerpf(a.distance_to(b), total, most)
 		var seg := 1
 		for i in range(1, Rope.SEGS - 1):
 			var s := total * float(i) / float(Rope.SEGS - 1)
@@ -1262,14 +1297,17 @@ func _bind_all() -> void:
 			var k := BRAID_PULL if firm[seg] else BRAID_LEG
 			if firm[seg]:
 				k *= 0.35 + 0.65 * smoothstep(0.0, 0.25, u) * smoothstep(1.0, 0.75, u)
-			rope.bind(i, at, k * most)
+			bi.append(i)
+			bat.append(at)
+			bk.append(k * most)
 		# Each braid's twist is laid only on the stretch of chain held to it
 		# (way pieces: peg, enter, leave, enter, leave ... peg), so a twist
 		# never reaches into the next braid's stretch or the legs.
 		for m in list.size():
 			var per := float(Rope.SEGS - 1) / maxf(total, 1.0)
-			rope.wiggles[m]["i0"] = cum[2 * m + 1] * per
-			rope.wiggles[m]["i1"] = cum[2 * m + 2] * per
+			wg[m]["i0"] = cum[2 * m + 1] * per
+			wg[m]["i1"] = cum[2 * m + 2] * per
+		rope.set_binds(bi, bat, bk, wg, way_len)
 
 ## A braid laid out now, spaced along its ropes when `_bind_all` has laid it.
 func _braid_laid(k: int) -> Dictionary:
@@ -1341,63 +1379,83 @@ func _keep_in(br: Dictionary) -> void:
 ## rope). [over rope, under rope, s on over, s on under, point].
 func _find_crossings() -> void:
 	_cross = []
+	var cache := {}
 	for k in _tw_px.size():
-		var n := _tw_px[k] >> 1
-		if n == 0:
+		if _tw_px[k] >> 1 == 0:
 			continue
+		# A pair is searched again only when either rope's line (its `ver`),
+		# its pegs, the tangle or its braid has changed: carrying one peg
+		# moves one rope, and the other pairs keep what they had.
 		var pr := Gen.pair_of(k, state.ropes)
-		var near: Vector2
-		var radius: float
-		if _wraps.has(k) and float(_wraps[k].w) > 0.3:
+		var key := [(_ropes[pr.x] as Rope).ver, (_ropes[pr.y] as Rope).ver, _tw_px[k],
+			_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1]]
+		if _wraps.has(k):
 			var br := _braid_laid(k)
-			near = br.c
-			radius = float(br.len) * 0.55 + _wd * 1.2
-		else:
-			var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
-			var bent := not (_ropes[pr.x] as Rope).wiggles.is_empty() or not (_ropes[pr.y] as Rope).wiggles.is_empty()
-			if bent:
-				# A rope bent round a braid of its own crosses this one
-				# somewhere else than the pegs' lines say (two to nine widths
-				# off, measured): search wide, and keep the meeting nearest
-				# where the lines cross.
-				var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
-				var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd)
-				if all.is_empty():
-					continue
-				var best: Array = all[0]
-				for h in all:
-					if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
-						best = h
-				var top := _tw_px[k] & 1
-				var reach := _wd * PATCH_HALF * 2.0
-				if top == 1:
-					_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
-				else:
-					_cross.append([pr.y, pr.x, best[1], best[0], best[2], reach])
-				continue
-			if hit == null:
-				continue
-			near = hit
-			radius = _wd * 1.8
-		var hs: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], near, radius, BRAID_SIDE * _wd if _wraps.has(k) else 2.0)
-		var t0 := _tw_px[k] & 1
-		for i in hs.size():
-			var top := t0 if i % 2 == 0 else 1 - t0
-			var h: Array = hs[i]
-			# A piece laid back reaches halfway to the pair's next crossing
-			# (in a braid, where the two have swung furthest apart), so it
-			# never ends where the other still lies over it.
+			key.append_array([float(_wraps[k].w) > 0.3, br.c, br.len])
+		var kept = _cross_kept.get(k)
+		if kept != null and kept[0] == key:
+			_cross.append_array(kept[1])
+			cache[k] = kept
+			continue
+		var from := _cross.size()
+		_pair_crossings(k, pr)
+		cache[k] = [key, _cross.slice(from)]
+	_cross_kept = cache
+
+## Pair `k`'s crossings appended to _cross.
+func _pair_crossings(k: int, pr: Vector2i) -> void:
+	var near: Vector2
+	var radius: float
+	if _wraps.has(k) and float(_wraps[k].w) > 0.3:
+		var br := _braid_laid(k)
+		near = br.c
+		radius = float(br.len) * 0.55 + _wd * 1.2
+	else:
+		var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
+		var bent := not (_ropes[pr.x] as Rope).wiggles.is_empty() or not (_ropes[pr.y] as Rope).wiggles.is_empty()
+		if bent:
+			# A rope bent round a braid of its own crosses this one
+			# somewhere else than the pegs' lines say (two to nine widths
+			# off, measured): search wide, and keep the meeting nearest
+			# where the lines cross.
+			var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
+			var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd)
+			if all.is_empty():
+				return
+			var best: Array = all[0]
+			for h in all:
+				if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
+					best = h
+			var top := _tw_px[k] & 1
 			var reach := _wd * PATCH_HALF * 2.0
-			var here: float = h[0] if top == 1 else h[1]
-			for j in [i - 1, i + 1]:
-				if j >= 0 and j < hs.size():
-					var there: float = hs[j][0] if top == 1 else hs[j][1]
-					reach = minf(reach, absf(there - here) * 0.5)
-			reach = maxf(reach, _wd * 0.55)
 			if top == 1:
-				_cross.append([pr.x, pr.y, h[0], h[1], h[2], reach])
+				_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
 			else:
-				_cross.append([pr.y, pr.x, h[1], h[0], h[2], reach])
+				_cross.append([pr.y, pr.x, best[1], best[0], best[2], reach])
+			return
+		if hit == null:
+			return
+		near = hit
+		radius = _wd * 1.8
+	var hs: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], near, radius, BRAID_SIDE * _wd if _wraps.has(k) else 2.0)
+	var t0 := _tw_px[k] & 1
+	for i in hs.size():
+		var top := t0 if i % 2 == 0 else 1 - t0
+		var h: Array = hs[i]
+		# A piece laid back reaches halfway to the pair's next crossing
+		# (in a braid, where the two have swung furthest apart), so it
+		# never ends where the other still lies over it.
+		var reach := _wd * PATCH_HALF * 2.0
+		var here: float = h[0] if top == 1 else h[1]
+		for j in [i - 1, i + 1]:
+			if j >= 0 and j < hs.size():
+				var there: float = hs[j][0] if top == 1 else hs[j][1]
+				reach = minf(reach, absf(there - here) * 0.5)
+		reach = maxf(reach, _wd * 0.55)
+		if top == 1:
+			_cross.append([pr.x, pr.y, h[0], h[1], h[2], reach])
+		else:
+			_cross.append([pr.y, pr.x, h[1], h[0], h[2], reach])
 
 ## A soft coral halo under each crossing, once few enough remain to read, so
 ## what is left to undo shows round the ropes without covering which lies on
@@ -1474,6 +1532,9 @@ func _draw_targets(b: Face.Builder, t: float) -> void:
 ## peg's centre, so a squash or a lift is a transform and not a rebuild.
 func _build_peg_meshes() -> void:
 	_peg_mesh = []
+	_peg_arrays = []
+	_rest_mesh = null
+	_rest_for = []
 	var R := _peg_r
 	for r in state.ropes:
 		var col: Array = _rope_col(r)
@@ -1491,12 +1552,17 @@ func _build_peg_meshes() -> void:
 				b.disc(Vector2(-0.1, -0.16) * R, R * 0.1, Color(col[2], 0.9))
 			pair.append(b.mesh())
 		_peg_mesh.append(pair)
+		_peg_arrays.append([pair[0].surface_get_arrays(0), pair[1].surface_get_arrays(0)])
 
 func _peg_height(p: int, t: float) -> float:
 	return _lift[p] + _arc_lift(p, t) / maxf(_peg_r, 1.0)
 
 ## Every peg, held and flying ones last so they ride over the rest: its shadow
 ## (the family's soft disc, parted from it while it is lifted) and its cap.
+## The pegs sitting still in their holes -- all of them, most of the time --
+## are one baked mesh, made again only when one starts or stops moving or
+## changes face (a peg was two draw calls of its own, eighteen pegs on
+## Insane: the board's biggest share of a frame at rest).
 func _draw_peg_meshes(t: float, shown: Array) -> void:
 	if _peg_mesh.is_empty() or _peg_px.is_empty():
 		return
@@ -1506,6 +1572,8 @@ func _draw_peg_meshes(t: float, shown: Array) -> void:
 	var soft := Scenery.shadow()
 	shown.append(soft)
 	var R := _peg_r
+	var still: Array = []
+	var moving: Array = []
 	for p in order:
 		var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
 		if Motion.reduce:
@@ -1522,6 +1590,10 @@ func _draw_peg_meshes(t: float, shown: Array) -> void:
 		var sh := t - _shake_at[p]
 		if sh >= 0.0 and sh < 0.4 and not Motion.reduce:
 			shake = sin(sh * 54.0) * (1.0 - sh / 0.4) * R * 0.22
+		var variant := 1 if _face[p] != 0 else 0
+		if up == 0.0 and sq == 1.0 and shake == 0.0 and pop == Vector2.ONE:
+			still.append_array([p, variant, c])
+			continue
 		var scale := 1.0 + (PEG_LIFT_SCALE - 1.0) * clampf(up, 0.0, 1.6)
 		var sx := scale * pop.x * (1.0 / sq if sq > 1.0 else 1.0)
 		var sy := scale * pop.y * sq
@@ -1530,11 +1602,47 @@ func _draw_peg_meshes(t: float, shown: Array) -> void:
 		var shadow_at := c + Vector2(0.1, 0.26) * R + Vector2(0.14, 0.3) * lift_px
 		var spread := 1.0 + 0.5 * clampf(up, 0.0, 1.5)
 		var alpha := (0.24 - 0.09 * clampf(up, 0.0, 1.0)) * clampf(pop.y, 0.0, 1.0)
-		draw_mesh(soft, null, Transform2D(0.0, Vector2(R * 1.02 * spread * pop.x, R * 0.66 * spread * pop.y) / Scenery.SHADOW_UNIT, 0.0, shadow_at), Color(Pal.TEXT, alpha))
-		var variant := 1 if _face[p] != 0 else 0
-		var m: ArrayMesh = _peg_mesh[p >> 1][variant]
-		draw_mesh(m, null, Transform2D(0.0, Vector2(sx, sy), 0.0, at))
-		shown.append(m)
+		moving.append([soft, Transform2D(0.0, Vector2(R * 1.02 * spread * pop.x, R * 0.66 * spread * pop.y) / Scenery.SHADOW_UNIT, 0.0, shadow_at), Color(Pal.TEXT, alpha)])
+		moving.append([_peg_mesh[p >> 1][variant], Transform2D(0.0, Vector2(sx, sy), 0.0, at), Color.WHITE])
+	if still != _rest_for:
+		_rest_for = still
+		_rest_mesh = _bake_rest(still) if not still.is_empty() else null
+	if _rest_mesh != null:
+		draw_mesh(_rest_mesh, null)
+		shown.append(_rest_mesh)
+	for d in moving:
+		draw_mesh(d[0], null, d[1], d[2])
+		shown.append(d[0])
+
+## The still pegs (`still` is [peg, variant, centre] flat) as one mesh: each
+## peg's shadow then its cap, as _draw_peg_meshes draws a peg at rest.
+func _bake_rest(still: Array) -> ArrayMesh:
+	var R := _peg_r
+	var shadow: Array = Scenery.shadow().surface_get_arrays(0)
+	var shade := Color(Pal.TEXT, 0.24)
+	var b := Face.Builder.new()
+	for i in range(0, still.size(), 3):
+		var p: int = still[i]
+		var c: Vector2 = still[i + 2]
+		_append_arrays(b, shadow, Transform2D(0.0, Vector2(R * 1.02, R * 0.66) / Scenery.SHADOW_UNIT, 0.0, c + Vector2(0.1, 0.26) * R), shade)
+		_append_arrays(b, _peg_arrays[p >> 1][int(still[i + 1])], Transform2D(0.0, c), Color.WHITE)
+	return b.mesh()
+
+## Builder.append for arrays already read off a mesh.
+static func _append_arrays(b: Face.Builder, a: Array, xf: Transform2D, tint: Color) -> void:
+	var base := b.verts.size()
+	var vs: PackedVector2Array = a[Mesh.ARRAY_VERTEX]
+	var cs: PackedColorArray = a[Mesh.ARRAY_COLOR]
+	var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	for v in vs:
+		b.verts.append(xf * v)
+	if tint == Color.WHITE:
+		b.cols.append_array(cs)
+	else:
+		for c in cs:
+			b.cols.append(c * tint)
+	for i in ix:
+		b.idx.append(base + i)
 
 ## Faces, hats and the kitten's paw print, over the caps: everything on a peg
 ## that is not the cap.

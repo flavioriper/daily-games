@@ -122,3 +122,48 @@ word, on `feat/untangle-rope`, with no concept tab.
   Generation mean/worst: Easy 2/3 ms, Medium 9/14, Hard 57/250, Insane 71/155.
 - **Open**: a lost day is not saved (reopening deals it fresh); no phone, ANGLE
   or listening pass yet.
+
+### Performance checkup and the tutorial (2026-10-01)
+
+- **Measured first** (`tests/_probe_perf.gd untangle d=3`, ANGLE, 810x1440,
+  second of two runs; the probe now carries pegs along the way home): Insane
+  idled at **130 draw calls, ~10.8 ms**, and carrying a peg ran **~16.7 ms**,
+  6.3 ms of it the board's `_rebuild` (crossing search 2.2, rope meshes 1.9,
+  knots and targets 0.9, patches 0.5). Idle script cost was ~0.1 ms: idle
+  was draw calls.
+- **Pegs at rest are one mesh** (`_rest_mesh`, `_bake_rest`): every peg
+  sitting still in its hole (no lift, flight, squash, shake or pop) has its
+  shadow and cap baked together, made again only when the set of still pegs
+  or a face changes (`_rest_for`); moving pegs still draw on their own over
+  it. Eighteen pegs were 36 draw calls on Insane.
+- **Rope meshes 2.7x cheaper** (`Rope._ribbon`, `_strands`): the vertices
+  go into local arrays sized once and are appended whole, the triangle
+  index runs are kept per (points, stops, base) (`_grid`, `_quads`).
+  Output is byte-identical to the old writer.
+- **Crossings kept per pair** (`_cross_kept`): a pair is searched again only
+  when either rope's line changed (`Rope.ver`, bumped wherever the drawn line
+  is invalidated), or its pegs, tangle or braid did. That only paid once
+  `_bind_all` stopped clearing every rope's binds on every frame a peg moved:
+  `Rope.set_binds()` takes a rope's binds, twists and route at once and
+  leaves the rope (and its `ver`) alone when they come out the same.
+- **After** (same probe): Insane idle **95 draws, ~8.4 ms**; carrying
+  **~11.9 ms** (`_rebuild` ~3.7 ms); Hard idle 95 / ~7.8, play ~10.0; Easy
+  idle 89 / ~6.7, play ~7.9. The rest of the 95 is the host (hiding the
+  board leaves 75). Still open: the hint's beam search (`Gen.way_home`) is
+  45-90 ms on this Mac on Insane and Hard, one hitch a hint press; and no
+  phone reading.
+- **Undo, Reset and Hint** were already on every band (Insane's hint is a
+  video's), and the shared ? opens the tutorial.
+- **The tutorial is three to five pages** (`tutorial_pages()`,
+  `ui/hud/untangle_tutorial_diagram.gd`): an eight-hole ring drawn with the
+  board's own wood, holes, capped pegs and `Rope` meshes (they swing, wrap
+  and lie over and under as on the board; the braid is laid by a copy of
+  `_braid`/`_bind_all` for one pair). Lift a peg over the rope it lies on
+  top of and the crossing slides off (LIFT); the same carry with the rope
+  underneath wraps it round once more, then Undo (WRAP); a short rope's
+  reach -- glowing holes, a pull too far goes tight and back (REACH); then
+  the hint where the band has one (HINT), the thread on Hard and Insane
+  (THREAD), Insane's kitten (CAT). Reduce motion shows each lesson's end.
+- **The kitten's tip was wrong**: `UT_TIP_CAT` said she bats the peg "into
+  the hole you just left"; `Gen.cat_hole` puts it in the nearest empty hole
+  its rope spans (clockwise first). The tip and the tutorial say so now.

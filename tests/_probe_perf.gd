@@ -372,3 +372,48 @@ func _moves_balance() -> Array:
 				_puzzle.note_move()
 				_puzzle._moving = true})
 	return out
+
+## Untangle: the way home, a peg at a time, carried by hand -- a press, a
+## drag in steps over the ropes (the tangle reacts under the hand, which is
+## the Insane cost to watch), a release on the hole. A step that finds the
+## board busy waits for the next.
+func _moves_untangle() -> Array:
+	var out := []
+	for k in 10:
+		out.append({"do": _ut_carry})
+	return out
+
+func _ut_carry() -> void:
+	if not _puzzle._settled(_puzzle._now()) or _puzzle._now() < _puzzle._busy_until:
+		_moves.push_front({"do": _ut_carry})
+		return
+	var t0 := Time.get_ticks_usec()
+	var step: Array = _puzzle.state.hint_step()
+	var took := (Time.get_ticks_usec() - t0) / 1000.0
+	if took > 4.0:
+		print("  hint_step %.1f ms" % took)
+	if step.is_empty():
+		return
+	var p: int = step[0]
+	var from: Vector2 = _puzzle._peg_px[p]
+	var to: Vector2 = _puzzle._hole_px(int(step[2]))
+	var seq := [{"do": func() -> void: _ut_button(from, true)}]
+	for i in range(1, 7):
+		var at := from.lerp(to, i / 6.0)
+		seq.append({"do": func() -> void: _ut_motion(at)})
+	seq.append({"do": func() -> void: _ut_button(to, false)})
+	seq.reverse()
+	for m in seq:
+		_moves.push_front(m)
+
+func _ut_button(at: Vector2, pressed: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = pressed
+	ev.position = at
+	_puzzle._gui_input(ev)
+
+func _ut_motion(at: Vector2) -> void:
+	var ev := InputEventMouseMotion.new()
+	ev.position = at
+	_puzzle._gui_input(ev)
