@@ -96,6 +96,15 @@ PADDOCK = ("cozy casual mobile puzzle game sound on a sunny garden table, "
            "music box tones, a hush of leaves, hushed, rounded, never harsh, "
            "no buzzers, no synth beeps, clean, dry, no music bed, no voice")
 
+# Hedgehogs' autumn lawn at dusk (2026-10-01): dry leaves, a soft bamboo
+# rake, felt and wooden toy taps, kalimba, a music box and a little moon bell,
+# in place of the house marimba (whose undo was a tape rewind and refuse a
+# wooden bonk).
+HARVEST = ("cozy casual mobile puzzle game sound on an autumn lawn at dusk, "
+           "soft dry leaves, felt-soft little wooden taps, warm kalimba and "
+           "music box tones, hushed, rounded, never harsh, no buzzers, no synth "
+           "beeps, clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -930,20 +939,37 @@ SETS = {
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
     "hedgehogs": {
-        "rake":     ("a short soft sweep of a rake through dry autumn leaves, cozy, very short", 0.5, -10),
-        "gust":     ("a soft airy flurry of dry leaves blown off a lawn by a light breeze, cozy", 0.8, -9),
-        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves, very short", 0.5, -10),
-        "unflag":   ("a small twig pulled out of dry leaves with a tiny rustle, very short", 0.5, -11),
-        "woke":     ("a tiny grumpy hedgehog snuffle and huff, then a soft gentle two-note downward marimba, cute, never harsh", 0.9, -9),
-        "chord":    ("two quick soft rake sweeps through dry leaves, very short", 0.5, -10),
-        "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "check":    ("a soft two-note downward kalimba, gentle, not yet", 0.6, -9),
-        "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -8),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft rustle of leaves settling back onto a lawn, gentle", 1.0, -8),
-        "solved":   ("a warm celebratory marimba run rising with a soft leaf flurry and tiny happy squeaks, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy rustle of autumn leaves settling onto grass", 1.0, -9),
+        # 2026-10-01 (polish) in HARVEST -- the old set's undo was a tape
+        # rewind and its refuse a wooden bonk; Sleepwalkers, hearts and the
+        # rewards are new.
+        "rake":     ("a short soft sweep of a little bamboo rake through a small pile of dry autumn leaves, cozy and crisp, very short", 0.5, -11, HARVEST),
+        "gust":     ("a soft airy flurry of dry autumn leaves lifting off a lawn in a light warm breeze, with a faint rising kalimba shimmer", 0.9, -10, HARVEST),
+        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves with a tiny muffled felt tap, very short", 0.5, -11, HARVEST),
+        "unflag":   ("a small twig pulled gently out of dry leaves with a tiny rustle, very short", 0.5, -13, HARVEST),
+        "woke":     ("a tiny grumpy hedgehog snuffle and a little sleepy huff, then one soft low kalimba note, cute and kind, never harsh", 0.9, -10, HARVEST),
+        "chord":    ("two quick soft little rake sweeps through dry leaves, light and tidy, very short", 0.5, -11, HARVEST),
+        "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leaf rustle, a kind 'not that one', very short", 0.5, -14, HARVEST),
+        "check":    ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient", 0.6, -12, HARVEST),
+        "check_ok": ("three soft warm kalimba notes rising, bright and happy, 'all good'", 0.7, -10, HARVEST),
+        "undo":     ("a soft little music box note sliding gently down with a felt-soft leaf rustle, a kind 'take that back', quiet, very short", 0.5, -13, HARVEST),
+        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba underneath, cozy and kind", 1.0, -9, HARVEST),
+        "reset":    ("a soft rustle of autumn leaves drifting back down onto a lawn, with a calm low music box note, gentle", 1.0, -11, HARVEST),
+        "solved":   ("a warm celebratory kalimba and music box run rising, with a soft swirl of leaves and tiny happy hedgehog squeaks, joyful and cozy", 2.0, -5, HARVEST),
+        "enter":    ("a soft airy rustle of autumn leaves settling onto grass, with one warm low kalimba note", 1.0, -12, HARVEST),
+        "bell":     ("a single small soft silver moon bell chime, round and dreamy, ringing out gently at night, music box tone, cozy and quiet", 1.0, -11, HARVEST),
+        "snuffle":  ("a tiny sleeping hedgehog shuffling under dry leaves, a soft little sleepy snuffle and two tiny pitter-patter footsteps in the leaves, cute, quiet", 0.8, -12, HARVEST),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, HARVEST),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, an autumn lawn at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, HARVEST),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, HARVEST),
+        "combo":    ("a single short soft bright kalimba pluck, one clean warm note, very short", 0.5, -9, HARVEST),
+        "confetti": ("a soft flutter of tiny paper confetti and a few dry leaves falling, with a tiny sparkling music box twinkle, light and airy", 1.0, -10, HARVEST),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -11, HARVEST),
+        "flutter":  ("a tiny butterfly fluttering up out of a pile of leaves, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -13, HARVEST),
+        "acorn":    ("a little acorn popping out of dry leaves and bouncing twice on soft grass, tiny hollow wooden boinks, playful and cute, short", 0.8, -11, HARVEST),
+        "whoosh":   ("a soft happy whoosh of a big pile of dry leaves blown away all at once, airy and bright with a small rising kalimba sparkle", 0.9, -11, HARVEST),
+        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, HARVEST),
+        "party":    ("a short cozy celebratory flourish on kalimba and music box, rising and bright, with a few soft little party blower toots and tiny happy hedgehog squeaks, warm and joyful", 2.0, -5, HARVEST),
+        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # Super Slider: painted wooden blocks slid round a walnut tray until the
     # big one walks out of a little garden gate.

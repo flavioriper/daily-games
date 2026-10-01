@@ -21,14 +21,20 @@ extends RefCounted
 
 ## Per level: the lawn, the hedgehogs, whether the proof may subtract
 ## subsets and how many rounds must need one, and the opening flood's range
-## in cells. Insane's row is provisional (CLAUDE.md, "Insane is a fourth
-## level").
+## in cells. Insane adds the sleepwalkers below.
 const BANDS := [
 	{"cols": 8, "rows": 10, "k": 12, "subsets": false, "need_sub": 0, "open": Vector2i(12, 40)},
 	{"cols": 9, "rows": 11, "k": 17, "subsets": false, "need_sub": 0, "open": Vector2i(12, 36)},
 	{"cols": 10, "rows": 11, "k": 21, "subsets": true, "need_sub": 1, "open": Vector2i(8, 30)},
 	{"cols": 10, "rows": 11, "k": 24, "subsets": true, "need_sub": 2, "open": Vector2i(6, 28)},
 ]
+
+## Sleepwalkers (Insane): every WALK_EVERY rakes the bell rings and one
+## sleeping hedgehog, not under a flag, steps to a covered pile next to it --
+## only a step after which logic still plays the lawn out from what the
+## player can see. WALK_TRIES steps are tried, in the day's own order.
+const WALK_EVERY := 3
+const WALK_TRIES := 30
 ## Deals tried before the first proved one is handed back ungraded.
 const ATTEMPTS := 400
 
@@ -186,12 +192,21 @@ static func _found(rule: String, safe: Dictionary, hogs: Dictionary) -> Dictiona
 ## Plays the whole lawn out by logic from the opening. {"ok", "rounds",
 ## "sub" (rounds that needed a subset), "cnt" (rounds that needed the count)}.
 static func prove(g: Dictionary, subsets: bool) -> Dictionary:
-	var n: int = g.n
 	var open := PackedByteArray()
-	open.resize(n)
-	var known := PackedByteArray()
-	known.resize(n)
+	open.resize(g.n)
 	flood(g, open, g.start)
+	var known := PackedByteArray()
+	known.resize(g.n)
+	return prove_from(g, subsets, open, known)
+
+## `prove` from a position part played: `open` (raked) and `known` (hedgehogs
+## the player can see are there: woken, pinned), both copied, never written.
+## Sleepwalkers asks it of every step a hedgehog might take, so a walk never
+## leaves the player a guess.
+static func prove_from(g: Dictionary, subsets: bool, open_in: PackedByteArray, known_in: PackedByteArray) -> Dictionary:
+	var n: int = g.n
+	var open := open_in.duplicate()
+	var known := known_in.duplicate()
 	var hog: PackedByteArray = g.hog
 	var safe_left := 0
 	for c in n:

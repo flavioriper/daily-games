@@ -10,6 +10,14 @@ extends RefCounted
 ## flags and woken hedgehogs match it rakes its other neighbours (a chord).
 ## Done when every bare cell is raked; flags are never needed.
 ##
+## Hard and Insane can be failed: a wake costs the board a heart (the board
+## keeps the hearts; HEARTS_BY says how many). Insane is **Sleepwalkers**:
+## every Gen.WALK_EVERY rakes the bell rings and one sleeping hedgehog not
+## under a flag steps to a covered pile beside it (`walk`). Only a step
+## after which logic still plays the lawn out from what the player can see
+## is taken, so the walks never leave a guess; the player is shown the two
+## piles that rustled and never which way it went.
+##
 ## Nothing here reads the answer to judge a flag except Check, which is
 ## paid for. A woken hedgehog and a hint's pinned flag are facts: Undo and
 ## Reset keep both.
@@ -30,19 +38,140 @@ var pin := PackedByteArray()    # 1 = a hint's flag, not the player's to lift
 ## Flags Check found wrong; cleared by any move.
 var wrong := PackedByteArray()
 var woken := 0
+var difficulty := 0
+## Sleepwalkers: the lawn as dealt (Try again and Reset put it back), the
+## seed of the walks' own order, rakes since the last bell, the last walk's
+## two cells (-1 with none) and how many walks there have been.
+var dealt_hog := PackedByteArray()
+var walk_seed := 0
+var walk_rng := RandomNumberGenerator.new()
+var bell := 0
+var last_walk := Vector2i(-1, -1)
+var walks := 0
+
+## Hints and hearts by level: Hard and Insane can be failed.
+const HINTS_BY := [3, 3, 2, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+
+static func hints_for(d: int) -> int: return HINTS_BY[clampi(d, 0, 3)]
+static func hearts_for(d: int) -> int: return HEARTS_BY[clampi(d, 0, 3)]
 ## One entry per gesture, newest last:
 ## {"raked": PackedInt32Array, "flags": [[cell, was]]}.
 var history: Array = []
 
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+	self.difficulty = difficulty
 	g = Gen.generate(rng, difficulty)
+	dealt_hog = g.hog.duplicate()
+	walk_seed = rng.randi()
 	var n: int = g.n
 	for a: PackedByteArray in [open, flag, woke, pin, wrong]:
 		a.resize(n)
 		a.fill(0)
 	woken = 0
-	history = []
+	restart()
+
+## Whether the hedgehogs sleepwalk (Insane).
+func walkers() -> bool:
+	return difficulty >= 3
+
+## The lawn back as it was dealt, at its opening: every hedgehog home, no
+## rakes, no player's flags and nobody woken (a hint's flags stay: on Hard
+## nothing moves, and Insane has none). `woken`, the day's tally, is kept.
+## Returns the cells it re-covered.
+func restart() -> PackedInt32Array:
+	var covered := PackedInt32Array()
+	if not dealt_hog.is_empty():
+		g.hog = dealt_hog.duplicate()
+		Gen.count(g)
+	var was := open.duplicate()
+	open.fill(0)
+	woke.fill(0)
+	wrong.fill(0)
+	for c in size():
+		if pin[c] == 0:
+			flag[c] = 0
 	Gen.flood(g, open, g.start)
+	for c in size():
+		if was[c] == 1 and open[c] == 0:
+			covered.append(c)
+	history = []
+	bell = 0
+	last_walk = Vector2i(-1, -1)
+	walks = 0
+	walk_rng.seed = walk_seed
+	return covered
+
+## A rake gesture done on Insane: the bell counts it, and on the
+## WALK_EVERY-th rings and one hedgehog walks. The walk (from, to), or
+## (-1, -1) with none.
+func _tick() -> Vector2i:
+	if not walkers() or is_solved():
+		return Vector2i(-1, -1)
+	bell += 1
+	if bell < Gen.WALK_EVERY:
+		return Vector2i(-1, -1)
+	bell = 0
+	return walk()
+
+## Whether a step would show its direction: a raked number next to only one
+## of the two piles would count one less (it left) or one more (it came).
+## Such steps are never taken, so every number either touches both piles
+## and stays as it was, or touches neither.
+func _tells_way(s: Vector2i) -> bool:
+	var from: PackedInt32Array = g.nb[s.x]
+	var to: PackedInt32Array = g.nb[s.y]
+	for r in from:
+		if open[r] == 1 and r != s.y and not to.has(r):
+			return true
+	for r in to:
+		if open[r] == 1 and r != s.x and not from.has(r):
+			return true
+	return false
+
+## One sleepwalker's step: from a sleeping hedgehog not under a flag to a
+## covered, unflagged, empty cell beside it, the first in the walk's own
+## shuffled order after which `Gen.prove_from` still plays the lawn out from
+## what the player can see (the raked numbers, woken hedgehogs, a hint's
+## flags). The numbers are counted again. Returns (from, to), or (-1, -1)
+## when no step keeps the lawn provable.
+func walk() -> Vector2i:
+	var hog: PackedByteArray = g.hog
+	var steps: Array[Vector2i] = []
+	for c in size():
+		if hog[c] == 0 or woke[c] == 1 or flag[c] == 1:
+			continue
+		for r: int in g.nb[c]:
+			if open[r] == 0 and hog[r] == 0 and flag[r] == 0 and woke[r] == 0:
+				steps.append(Vector2i(c, r))
+	for i in range(steps.size() - 1, 0, -1):
+		var j := walk_rng.randi_range(0, i)
+		var t := steps[i]
+		steps[i] = steps[j]
+		steps[j] = t
+	var known := PackedByteArray()
+	known.resize(size())
+	for c in size():
+		if woke[c] == 1 or pin[c] == 1:
+			known[c] = 1
+	var tried := 0
+	for s in steps:
+		if tried >= Gen.WALK_TRIES:
+			break
+		if _tells_way(s):
+			continue
+		tried += 1
+		hog[s.x] = 0
+		hog[s.y] = 1
+		Gen.count(g)
+		if Gen.prove_from(g, true, open, known).ok:
+			last_walk = s
+			walks += 1
+			return s
+		hog[s.x] = 1
+		hog[s.y] = 0
+	Gen.count(g)
+	return Vector2i(-1, -1)
 
 func cols() -> int: return int(g.get("cols", 0))
 func rows() -> int: return int(g.get("rows", 0))
@@ -109,6 +238,7 @@ func rake(c: int) -> Dictionary:
 		res.kind = "woke"
 		res.cells.append(c)
 		res.rings.append(0)
+		res["walk"] = _tick()
 		return res
 	var cells := PackedInt32Array()
 	var rings := PackedInt32Array()
@@ -117,6 +247,7 @@ func rake(c: int) -> Dictionary:
 	res.kind = "raked"
 	res.cells = cells
 	res.rings = rings
+	res["walk"] = _tick()
 	return res
 
 ## A tap on a raked number: if its flags and woken hedgehogs match it, every
@@ -134,7 +265,9 @@ func chord(c: int) -> Dictionary:
 	for r: int in g.nb[c]:
 		if open[r] == 0 and flag[r] == 0 and woke[r] == 0:
 			covered.append(r)
-	if v <= 0 or covered.is_empty():
+	# A nought with covered neighbours (a flood ran before they were bare)
+	# rakes them like any chord.
+	if v < 0 or covered.is_empty():
 		return res
 	var m := marked_around(c)
 	if m != v:
@@ -157,6 +290,7 @@ func chord(c: int) -> Dictionary:
 	res.kind = "chord"
 	res.cells = cells
 	res.rings = rings
+	res["walk"] = _tick()
 	return res
 
 ## Lays or lifts a flag on a covered cell. {"kind"}: "laid", "lifted",
@@ -195,9 +329,12 @@ func undo() -> Dictionary:
 	# since logic had proved those cells bare.
 	return {"raked": raked, "flags": flags}
 
-## Back to the opening. Woken hedgehogs and a hint's flags stay. Returns the
-## cells re-covered.
+## Back to the opening. Woken hedgehogs and a hint's flags stay; on
+## Sleepwalkers the whole night starts over (`restart`). Returns the cells
+## re-covered.
 func reset_board() -> PackedInt32Array:
+	if walkers():
+		return restart()
 	var keep := PackedByteArray()
 	keep.resize(size())
 	Gen.flood(g, keep, g.start)
