@@ -267,6 +267,52 @@ Windy Day sky in `solve_order()` and skips the hint on a band with none, and
 `_shot_planes.gd solve` cleared a banked Insane sky tap by tap through the
 board's input with both hearts kept.
 
+**The rewards** (2026-09-30, the same harness and flags, peak draw calls
+from 0.5 s on, each state run twice and the second quoted; both readings
+agreed on every state):
+
+| state | band | peak draw calls | mean ms |
+|---|---|---|---|
+| right (six launches in a row, a loop, a roll, a bird, love, confetti at 5, an undo) | Easy | 87 | 6.5 |
+| solve (tap by tap, then the party: flock, straggler, cat, gold seal) | Easy / Hard | 97 / 98 | 8.0 / 12.6 |
+| solve (the party with gold clouds and the night seal) | Insane | **103** (ANGLE: 103) | 7.9 |
+| solve under reduce motion | Insane | 85 | 4.4 |
+| restore (flawless: cat asleep, seal) | Easy / Insane | 84 / 83 | 4.7 / 5.1 |
+
+The party's peak is **103**, 752 under the 855 budget: nine flock darts
+and the straggler (one cached dart mesh a paper, three in all, under a
+transform each), the seal's mesh and words, the bubble, and on Windy Day
+eight gold clouds (two draws each for the 0.4 s the white fades under the
+gold). A bird is two meshes (body, and a wing that flaps by its transform);
+a love heart one mesh under a transform each.
+
+The numbers the rewards run on: the streak plucks `combo` from the second
+launch, the bubble from the third, confetti at 5, 10, 20 and every 10. A
+gag on one plane in four (`posmod(day + i * 5, 16) < 4` picks the kind, so
+any sixteen planes play each of the four once), one at a time. The loop is
+a circle of 0.75 cells spliced into the track its far side 0.1 short of the
+grid's edge, on the side toward the middle of the sky; the plane slows to 9
+cells a second through it (at least 0.55 s), quicker at both ends than over
+the top. The roll runs the flight 1.5x as long and turns the dart over twice
+while its head crosses the sky; on a plane with under two cells of lane it
+loops instead (an edge plane would roll past the hem). The bird pops up
+over the plane's tail, flaps after it along its trail at 6.5 cells a second
+to where the sky ends, looks both ways for 0.45 s and flutters off over
+0.6 s. Love leaves two to five hearts 0.85 cells apart along the trail,
+each popping as the tail passes and rising 0.7 cells over 1.2 s. The party
+starts 0.1 s after the last flight lands; the flock flies from 0.25 s at
+1250 px/s, a V of up to nine darts 0.06 s and 34 px a row apart, closing to
+40 % round a loop of a quarter of the card's width; the cat pops up at
+0.35 s, hops three times along the panel's foot, bats at the straggler at
+2.15 s and curls up at 2.7 s; the seal stamps at 1.1 s; Windy Day's clouds
+turn gold over 0.4 s and drift off from 0.8 s, gone by 2.0 s. `win_delay()`
+is the party's start plus 3.3 s, never under the old 2.7: **3.8-4.4 s**
+measured (Insane 3.79, Easy 3.94, Hard 4.41, the last flight on Hard being
+the longest).
+
+The suite is green (`passed=123188 failed=0`) and `tests/_win.gd -- planes`
+passes (Medium, 31 planes).
+
 ## 8. Calls for the user
 
 Decisions the build made while you were away -- each is one constant or a
@@ -291,3 +337,22 @@ few lines to change:
   with a 0.16 s bonk and a 0.55 s flutter home -- all judged on stills only.
 - The how-to-play lesson was wrong (a triangle sliding diagonally under
   "draw each plane from its head"); it now shows the tap.
+- **The rewards** (section 4), judged on stills only and all **unheard**:
+  - The loop is drawn as a ribbon: the whole plane, trail and all, goes
+    round a small circle (0.75 cells) near the edge it leaves by. On the
+    hard band's 59 px cell it is small; `LOOP_R` is one constant.
+  - A **roll on a plane with no room** (lane under two cells) becomes a
+    loop, so rolls come up a little less often than the other three.
+  - The **bird and the hearts follow the plane's own trail** from its tail,
+    not just its lane: most free planes on Easy sit at the edge with no lane
+    at all, and a gag there would have played past the hem.
+  - The cat sits on the panel's foot, a fifth of the way in from the left,
+    and the seal on its lower right corner: the sky is empty by then, so
+    neither hides anything. The flock is nine darts at most (a V of more
+    tangles in its loop), the last plane launched leading.
+  - **The countdown tip** ("Three planes left", "Two to go", "The last one")
+    is the one place the board now counts planes; the flat spec's "never
+    counts" stands for every other launch.
+  - Windy Day's restore shows the sky clear (the clouds left at the party),
+    the night seal and the cat.
+  - The party lengthens the wait before the win screen to about 4 s.

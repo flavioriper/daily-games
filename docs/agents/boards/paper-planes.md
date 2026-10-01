@@ -149,3 +149,20 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `_on_launched`, `_break_streak`, `_reset_rewards`, `_party`; the
   `completion_record` keeps `hearts` and `flawless`. Harness:
   `tests/_shot_planes.gd` (modes in its header).
+- **The polish, rewards (2026-09-30, spec section 4; numbers in section 7,
+  calls in section 8).** The hooks are filled: `_on_launched(i, gag)` (the
+  streak, the bubble, confetti, the countdown), `_break_streak`,
+  `_reset_rewards`, `_clear_gags` (undo, Reset and Try again) and `_party`.
+  **A gag shapes the flight itself**: `_flight(i, gag)` returns the flight
+  dictionary, and a loop is a circle spliced into the track (`_track` reads
+  `_fly[i]["loop"]`) with its own time warp (`_s_at`/`_tau_at`, which every
+  timing reader now goes through -- covers, the leaves' flutter, the
+  contrail, the puff -- instead of `_ease_inv` straight), so the body runs
+  round the loop like a ribbon and an undo mid-loop flies home back round
+  it; a roll is a slower flight whose dart's wings scale through -1. The
+  bird, hearts, flock, straggler, bubble and seal live on a life layer
+  (`_life_layer`, z 3) as moments drawn through transforms of cached meshes;
+  Windy Day's gold clouds are a second cloud mesh on the sky layer.
+  `PaperPlane.dart` takes `shadow := false` for darts that turn over in the
+  air. `force_gag` is the harness's switch. Harness modes `right` and
+  `solve` (any band) in `tests/_shot_planes.gd`.
