@@ -73,6 +73,8 @@ static func deal(rng: RandomNumberGenerator, band: int) -> Dictionary:
 		anchors.append([-1, hgt])
 		anchors.append([w + 1, dy + hgt])
 	var level := {"w": w, "dy": dy, "cart": b.cart, "anchors": anchors, "mats": b.mats}
+	if b.get("tea", false):
+		level.tea = true
 	# a rock in the river on the wide gaps, sometimes
 	if w >= 10 or (w >= 7 and rng.randf() < 0.55):
 		var x := w / 2 + rng.randi_range(-1, 1)
@@ -90,7 +92,7 @@ static func prove(level: Dictionary, band: int) -> Array:
 	# every full candidate that holds, cheapest first; the two cheapest are
 	# pruned (pruning is the slow part: a run a member, several passes)
 	var holds: Array = []
-	for shape in [[1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]:
+	for shape in [[1, 0], [2, 0], [0, 1], [1, 1], [2, 1], [1, 2]]:
 		for diag in 3:
 			var cand := Gen.full(level, shape[0], shape[1], diag)
 			if Gen.proves(level, cand, MARGIN):

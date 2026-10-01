@@ -28,7 +28,14 @@ extends RefCounted
 ## on; the others live in `trail` and are driven by swapping each into those
 ## fields for its step (`_swap`). The test is over when every cart is over,
 ## or any is in the river.
-## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md.
+## **Tea** (Insane's Tea Party, `level.tea`): the lead cart carries cups of
+## tea filled to the brim. The tea's surface leans in its cup as a damped
+## spring chasing the level, so a deck that tilts under the cart leans it
+## and a sudden kink (a joint where the deck bends) sloshes it past even
+## that. Past `TEA_RIM` it spills, and a spilled run never counts as over:
+## the bridge must be stiff and level, not only strong.
+## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md;
+## docs/superpowers/specs/2026-10-01-trestle-polish-design.md for the tea.
 
 const DT := 1.0 / 120.0
 const SUB := 10
@@ -49,6 +56,12 @@ const BED := -6.0
 const TIME_OUT := 30.0
 ## A convoy's carts set off this far apart (grid units), one behind another.
 const CONVOY_GAP := 2.0
+
+## The tea: how far its surface may lean against the cup's rim (radians),
+## how fast it sloshes and how soon it settles.
+const TEA_RIM := 0.03
+const TEA_HZ := 1.4
+const TEA_ZETA := 0.22
 
 enum { ROAD, WOOD, ROPE }
 ## cost a unit of length, mass a unit, stiffness (EA), tension and
@@ -102,6 +115,15 @@ var cart_angle := 0.0
 ## The carts behind the lead: [{cart, seg, from, u, pos, vel, angle}].
 var trail: Array = []
 
+## The tea's surface against its cup (radians, + toward the front), how
+## fast it is moving, the most it leaned as a share of the rim, and whether
+## it spilled.
+var tea := false
+var tea_lean := 0.0
+var tea_spin := 0.0
+var tea_peak := 0.0
+var spilled := false
+
 var t := 0.0
 var broken: Array[int] = []
 ## What happened this step, drained by the owner: {"kind": "snap"|"land"|
@@ -154,6 +176,11 @@ func setup(level: Dictionary, design: Array, carts := 1) -> void:
 	cart_pos = Vector2(CART_START, 0.0)
 	cart_vel = Vector2(CART_V, 0.0)
 	cart_angle = 0.0
+	tea = bool(level.get("tea", false))
+	tea_lean = 0.0
+	tea_spin = 0.0
+	tea_peak = 0.0
+	spilled = false
 	trail = []
 	_crossed_told = false
 	for i in range(1, carts):
@@ -201,7 +228,7 @@ func joint_at(p: Vector2i) -> int:
 	return _key.get(p, -1)
 
 func done() -> bool:
-	if t >= TIME_OUT or cart == CART_WATER:
+	if t >= TIME_OUT or cart == CART_WATER or spilled:
 		return true
 	for c in trail:
 		if int(c.cart) == CART_WATER:
@@ -209,7 +236,7 @@ func done() -> bool:
 	return crossed()
 
 func crossed() -> bool:
-	if cart != CART_OVER:
+	if cart != CART_OVER or spilled:
 		return false
 	for c in trail:
 		if int(c.cart) != CART_OVER:
@@ -300,6 +327,21 @@ func step() -> void:
 		if r > 1.0:
 			_snap(k)
 	_drive()
+	_slosh()
+
+## The lead cart's tea, one step: its surface chases the level (against the
+## cup, minus the cart's tilt) on an underdamped spring.
+func _slosh() -> void:
+	if not tea or spilled or cart == CART_OVER or cart == CART_WATER:
+		return
+	var w0 := TAU * TEA_HZ
+	var target := -cart_angle
+	tea_spin += (w0 * w0 * (target - tea_lean) - 2.0 * TEA_ZETA * w0 * tea_spin) * DT
+	tea_lean += tea_spin * DT
+	tea_peak = maxf(tea_peak, absf(tea_lean) / TEA_RIM)
+	if absf(tea_lean) > TEA_RIM:
+		spilled = true
+		events.append({"kind": "spill", "at": cart_pos, "side": signf(tea_lean)})
 
 func _lend(lent: Dictionary, state: int, seg: int, from: int, u: float, ramp: float) -> void:
 	if state != CART_ROAD:
@@ -493,7 +535,7 @@ func _land(was: Vector2) -> void:
 func run(max_time := TIME_OUT) -> bool:
 	while not done() and t < max_time:
 		step()
-		if not broken.is_empty():
+		if not broken.is_empty() or spilled:
 			return false
 	return crossed()
 

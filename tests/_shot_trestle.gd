@@ -9,6 +9,8 @@ extends SceneTree
 ## collapse and 4 the drawing board after it, the snapped members in red.
 ## Prints the draw calls and the mean frame time over the second before
 ## each shot. Solves go to a throwaway progress file, never this Mac's save.
+## A solve adds 5, the party. `out` (Hard or Insane) builds only the road
+## and presses Go until the hearts run out: 4 is the card.
 
 var _menu: Node
 var _host: Node
@@ -22,6 +24,8 @@ var _step := 0
 var _at := 0.0
 var _frames: Array = []
 var _done_at := -1.0
+var _out_mode := false
+var _spill := false
 
 func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://progress_trestle_shot.cfg"))
@@ -34,6 +38,12 @@ func _initialize() -> void:
 			_level = int(a.substr(2))
 		elif a == "fail":
 			_fail = true
+		elif a == "spill":
+			_fail = true
+			_spill = true
+		elif a == "out":
+			_fail = true
+			_out_mode = true
 		elif a == "reduce":
 			_reduce = true
 	var main: Node = load("res://world/main.tscn").instantiate()
@@ -74,13 +84,31 @@ func _process(delta: float) -> bool:
 				var lv: Dictionary = _b.state.level
 				print("level w %d dy %d cart %.1f budget %d proof %d anchors %s rock %s" % [lv.w, lv.dy, lv.cart,
 					lv.budget, lv.proof_cost, lv.anchors, lv.get("rock")])
-				for p in _b.state.proof:
-					if _fail and p.m != 0:
+				# `spill` (a Tea Party): a strong truss under the deck alone, laid
+				# past the budget -- it holds, but it bends enough to spill
+				var lay: Array = _b.state.proof
+				if _spill:
+					_b.state.free = true
+					var G = load("res://puzzles/trestle_gen.gd")
+					var S = load("res://puzzles/trestle_sim.gd")
+					for shape in [[1, 0, 1], [1, 0, 2], [1, 0, 0], [2, 0, 1], [2, 0, 2], [0, 1, 0]]:
+						var cand: Array = G.full(lv, shape[0], shape[1], shape[2])
+						var sim = S.new()
+						sim.setup(lv, cand)
+						while not sim.done():
+							sim.step()
+						if sim.spilled and sim.broken.is_empty():
+							lay = cand
+							print("spill shape %s" % [shape])
+							break
+				for p in lay:
+					if _fail and not _spill and p.m != 0:
 						continue
 					_b._mat = p.m
 					_b._lay(p.a, p.b)
 				# a member under the finger, for the ghost
 				_b._mat = 1
+				_b.state.free = false
 				_b._from = Vector2i(0, 0)
 				_b._to = Vector2i(1, 1)
 				_b._dragging = true
@@ -109,10 +137,31 @@ func _process(delta: float) -> bool:
 		4:
 			if _b.is_done() and _done_at < 0.0:
 				_done_at = _t
-			if (not _fail and _done_at >= 0.0 and _t > _done_at + 0.7) or (_fail and not _b._testing and _t > _at + 3.2):
+			if _out_mode:
+				if _b.out_of_hearts and _t > _at + 6.0:
+					_shot("4_out")
+					_b.try_again()
+					_at = _t
+					_step = 6
+				elif not _b._testing and not _b.out_of_hearts and _t > _at + 3.2:
+					_host._on_check()
+					_at = _t
+			elif (not _fail and _done_at >= 0.0 and _t > _done_at + 0.7) or (_fail and not _b._testing and _t > _at + 3.2):
 				_shot("4_end")
-				quit()
+				if _fail:
+					quit()
+				_step = 5
 			elif _t > _at + 20.0:
 				_shot("4_timeout")
+				quit()
+		6:
+			if _t > _at + 1.5:
+				_shot("5_try")
+				print("after try again: hearts %d/%d out %s design %d sketch %d tests %d modulate %s" % [_b.hearts,
+					_b.max_hearts, _b.out_of_hearts, _b.state.design.size(), _b._sketch.size(), _b._tests, _b.modulate])
+				quit()
+		5:
+			if _t > _done_at + 3.1:
+				_shot("5_party")
 				quit()
 	return false

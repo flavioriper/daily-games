@@ -161,6 +161,21 @@ FESTIVAL_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum an
                  "soft, rounded, gentle, cozy, no synth, no electronic tones, no "
                  "beeps, no music bed, no voice")
 
+# Trestle's riverside workshop (2026-10-01 polish): the first set mixed the
+# house marimba, cartoon whistles and a synth-ish tape rewind, loud beside
+# the boards re-recorded the same day, so a bridge's world is close-mic
+# foley of a wooden toy workshop by a stream -- small pine planks, hemp rope,
+# brass bolts, a wooden toy cart, real china teacups, a gentle brook -- and
+# every note a real kalimba, music box or hand bell, never synth.
+WORKSHOP = ("close-mic foley of a small cozy wooden toy workshop beside a gentle "
+            "stream, real small pine planks, hemp rope, brass bolts, a wooden "
+            "toy cart and china teacups, natural and acoustic, soft and warm, "
+            "rounded, no synth, no electronic tones, no beeps, no music, no voice")
+WORKSHOP_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+                 "recorded close in a warm quiet room, natural, soft, rounded, "
+                 "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+                 "bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1385,31 +1400,43 @@ SETS = {
         "purr":         ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # Trestle (puzzles/trestle2d.gd): a bridge built of road planks, wooden
-    # beams and rope over a river, then a little cart sent across. The
-    # building is the house marimba; the test is foley and cartoon, because
-    # a beam snapping wants to sound like wood.
+    # beams and rope over a river, then a little cart of fruit (on Insane
+    # with cups of tea) sent across; the bridge troll keeps score. All of it
+    # WORKSHOP foley and WORKSHOP_TUNE notes since the 2026-10-01 polish.
     "trestle": {
-        "enter":      ("a soft airy cascade of small wooden knocks and a river's gentle burble, a building site by a stream appearing", 1.0, -9),
-        "select":     ("a single tiny soft wooden click, choosing a tool, very short", 0.5, -12),
-        "place_road": ("a wooden plank laid down on a frame with one solid soft knock and a tiny nail tap, very short", 0.5, -7, FOLEY),
-        "place_wood": ("a light wooden beam set into place with a soft hollow knock and a small bolt click, very short", 0.5, -8, FOLEY),
-        "place_rope": ("a rope pulled taut with a soft creak and a quick knot tug, very short", 0.5, -9, FOLEY),
-        "remove":     ("a wooden beam lifted off a frame with a soft clatter, very short", 0.5, -9, FOLEY),
-        "refused":    ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":       ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":       ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":      ("a quick soft clatter of small wooden beams being gathered up and stacked", 1.0, -8, FOLEY),
-        "go":         ("a cheerful little toy train whistle toot and a small cart starting to roll, short", 1.2, -6, CARTOON),
-        "roll":       ("continuous steady soft rumble of small wooden cart wheels rolling over wooden planks, even, no bumps, no clicks", 3.0, -12, FOLEY, "loop"),
-        "creak":      ("a single long low creak of a wooden beam straining under weight, close mic", 0.8, -8, FOLEY),
-        "snap":       ("a wooden beam snapping in two with a sharp crack and a splintering crunch, close mic, short", 0.7, -4, FOLEY),
-        "snap_rope":  ("a taut rope snapping with a quick twang and a whip crack, short", 0.6, -5, FOLEY),
-        "whoa":       ("a short comic cartoon falling slide whistle going down, gentle", 0.8, -8, CARTOON),
-        "bump":       ("a small wooden cart landing with a soft thump and a wheel rattle, short", 0.5, -8, FOLEY),
-        "splash":     ("a small wooden cart falling into a river with a big cartoon splash and bubbles, short", 1.0, -5, CARTOON),
-        "fail":       ("a gentle short descending marimba phrase, a kind try again, soft and warm not sad", 1.4, -7),
-        "cross":      ("a small cart reaching the other side, two cheerful toy horn honks, short", 0.8, -6, CARTOON),
-        "solved":     ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
+        "enter":         ("a gentle brook babbling softly and a few small wooden planks set down one after another on a workbench, a calm riverside workshop opening", 1.2, -10, WORKSHOP, "warm:7000"),
+        "select":        ("a single tiny soft click of a small wooden peg, very short", 0.5, -13, WORKSHOP, "cut:0.25"),
+        "place_road":    ("one small pine plank laid flat onto a wooden frame, a single soft solid knock, very short", 0.5, -8, WORKSHOP, "cut:0.3"),
+        "place_wood":    ("one light wooden dowel set into a frame with a soft hollow knock and a tiny brass bolt click, very short", 0.5, -9, WORKSHOP, "cut:0.3"),
+        "place_rope":    ("a short piece of hemp rope pulled taut with a soft creak and a little knot tug, very short", 0.5, -10, WORKSHOP),
+        "remove":        ("a small wooden stick lifted off a frame and set aside with a soft wooden clack, very short", 0.5, -10, WORKSHOP, "cut:0.3"),
+        "refused":       ("two soft low knocks on a hollow wooden box, a gentle not quite, very short", 0.5, -11, WORKSHOP),
+        "undo":          ("a small wooden piece slid back across a wooden table with a soft brush, very short", 0.5, -11, WORKSHOP),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, WORKSHOP_TUNE, "warm:7000"),
+        "reset":         ("a handful of small wooden sticks gathered up and stacked softly into a wooden box", 1.0, -9, WORKSHOP),
+        "go":            ("a small wooden toy cart starting to roll on wooden boards with a soft rattle, and one cheerful little brass bicycle bell ring", 1.0, -8, WORKSHOP),
+        "roll":          ("continuous steady soft rumble of small wooden toy cart wheels rolling over wooden planks, even, no bumps, no clicks", 3.0, -13, WORKSHOP, "loop"),
+        "creak":         ("a single soft low creak of a small wooden beam taking weight, close mic", 0.7, -10, WORKSHOP),
+        "snap":          ("a small dry wooden stick snapping in two with a soft crack and a light splinter, close mic, short", 0.6, -6, WORKSHOP, "cut:0.45"),
+        "snap_rope":     ("a thin taut hemp string snapping with a soft twang, short", 0.5, -7, WORKSHOP, "cut:0.4"),
+        "whoa":          ("three soft descending notes on a real kalimba, a little oh no, playful and gentle", 0.8, -10, WORKSHOP_TUNE, "warm:7000"),
+        "bump":          ("a small wooden toy cart landing on wooden boards with a soft thump and a little wheel rattle, short", 0.5, -9, WORKSHOP, "cut:0.4"),
+        "splash":        ("a small wooden toy dropped into a calm stream with a round soft splash and a few bubbles, short", 1.0, -7, WORKSHOP),
+        "fail":          ("a gentle short descending phrase on a real kalimba, four soft notes, a kind try again, warm not sad", 1.3, -9, WORKSHOP_TUNE, "warm:7000"),
+        "cross":         ("a small wooden toy cart rolling off wooden boards onto soft grass and two cheerful little brass bicycle bell rings", 0.9, -8, WORKSHOP),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy", 2.0, -5, WORKSHOP_TUNE, "warm:7000"),
+        "settle":        ("a small wooden frame easing back into place with one soft gentle creak and a tiny settle, short", 0.6, -12, WORKSHOP),
+        "honk":          ("one squeeze of a small rubber bulb toy horn, a soft round honk, cute and funny, short", 0.5, -10, WORKSHOP, "cut:0.4"),
+        "clink":         ("two china teacups clinked together gently, a soft bright ceramic clink, cheers, short", 0.5, -10, WORKSHOP, "cut:0.4"),
+        "slosh":         ("tea sloshing up the side of a full china teacup, a small liquid swirl, close mic, short", 0.6, -11, WORKSHOP),
+        "spill":         ("a splash of tea spilling over the rim of china teacups onto a wooden tray with a little ceramic rattle, short", 0.8, -8, WORKSHOP),
+        "heart_lost":    ("two soft descending notes on a real kalimba, a small sigh, gentle, short", 0.7, -10, WORKSHOP_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful", 1.8, -9, WORKSHOP_TUNE, "warm:7000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, WORKSHOP_TUNE, "warm:7000"),
+        "scorecard":     ("a small wooden paddle sign flipped up with a soft wooden clack and a tiny bright music box ting, proud and funny, short", 0.8, -9, WORKSHOP_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, WORKSHOP_TUNE, "warm:7000"),
+        "quack":         ("a mother duck giving two soft friendly quacks and tiny ducklings peeping, by a calm stream, gentle", 1.2, -12, WORKSHOP),
+        "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

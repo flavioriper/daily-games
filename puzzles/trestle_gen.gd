@@ -24,8 +24,11 @@ const BANDS := [
 	{"w": [4, 5], "cart": 1.2, "slack": 1.6, "mats": [Sim.ROAD, Sim.WOOD], "dy": [0]},
 	{"w": [5, 6, 7], "cart": 1.6, "slack": 1.4, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0, 0, 1, -1]},
 	{"w": [7, 8, 9], "cart": 2.0, "slack": 1.25, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0, 1, -1]},
-	{"w": [8, 9, 10], "cart": 2.4, "slack": 1.12, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0, 1, -1, 2, -2]},
+	# Insane is the Tea Party: level banks only, since tea spills on a ramp
+	{"w": [8, 9, 10], "cart": 2.4, "slack": 1.08, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0], "tea": true},
 ]
+## The most a proof may lean the tea, as a share of the rim.
+const TEA_MARGIN := 0.85
 
 static func deck_y(w: int, dy: int, i: int) -> int:
 	if dy == 0:
@@ -132,6 +135,8 @@ static func proves(level: Dictionary, design: Array, margin := 1.0) -> bool:
 	var sim := Sim.new()
 	sim.setup(level, design)
 	if not sim.run():
+		return false
+	if sim.tea and sim.tea_peak > TEA_MARGIN:
 		return false
 	return sim.worst() <= margin
 

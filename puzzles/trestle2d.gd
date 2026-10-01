@@ -35,6 +35,18 @@ extends "res://core/puzzle_base.gd"
 ## bridge's cost stands among today's (the crowd, core/backend.gd).
 ## Spec: docs/superpowers/specs/2026-09-28-trestle-flat-design.md (and its
 ## section 9, the second pass).
+##
+## The polish (docs/superpowers/specs/2026-10-01-trestle-polish-design.md):
+## Hard and Insane have hearts on a sign, and a test once started runs to
+## its end -- a test that fails costs one; out of hearts the riders nod off,
+## dusk falls and the card comes up. Insane is the Tea Party: the cart
+## carries cups of tea filled to the brim, and a deck that sags or bends
+## under it spills them (puzzles/trestle_sim.gd, `tea`), so the bridge must
+## be stiff as well as strong. The bridge troll under the near bank holds
+## up a score card, the riders put on party hats, ducks paddle by, the cat
+## naps on the deck and the seal stamps a flawless or a tea-party solve.
+
+signal leave
 
 const Backend = preload("res://core/backend.gd")
 const Gen = preload("res://puzzles/trestle_gen.gd")
@@ -49,6 +61,10 @@ const Fruit = preload("res://ui/faces/fruit.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 const Locale = preload("res://core/locale.gd")
+const Troll = preload("res://ui/faces/troll_face.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 const PAD := 24.0
 ## The strip over the scene: the material chips and the budget.
@@ -69,7 +85,45 @@ const TAP_PX := 18.0
 const GROW_TIME := 0.16
 const FAIL_HOLD := 2.0
 const WIN_HOLD := 3.0
-const HINTS := 3
+## Hints and hearts by band: Hard and Insane can be lost.
+const HINTS_BY := [3, 3, 2, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+## The hearts' sign under the strip, and how a heart splits and comes back.
+const SIGN_H := 92.0
+const HEART_R := 30.0
+const HEART_STEP := 72.0
+const SPLIT_TIME := 0.6
+const HEART_BACK_TIME := 0.3
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.4
+const CARD_AFTER_STILL := 0.3
+## Back to building, the bridge eases from its bent shape to rest.
+const SETTLE_TIME := 0.5
+## The load tags pop in, one after another.
+const TAG_POP := 0.3
+const TAG_STEP := 0.07
+## The tea's look: how far the surface is drawn leaning at the rim, and how
+## much the sag line exaggerates the deck's dip.
+const TEA_DRAWN := 0.5
+const SAG_GAIN := 10.0
+const TEA_COL := Color("b8743c")
+const CUP := Color("fffaf0")
+const CUP_DEEP := Color("d9cbb5")
+## The party after the win, measured from the solve.
+const CARD_RISE := 1.1
+const DUCKS_AT := 0.5
+const CAT_AT := 1.3
+const CAT_HOPS := 4
+const CAT_HOP_TIME := 0.28
+const CAT_POP := 0.2
+const CURL_AT := 2.6
+const STAMP_AT := 2.9
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_TILT := -0.2
+const PARTY_END := 4.2
+const CHEERS := 8
 const TOAST_HOLD := 3.0
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
@@ -204,12 +258,60 @@ var _splash_x := 0.0
 ## The win: the wave along the bridge, and when the medal's stars stamp in.
 var _wave_at := -100.0
 var _dust_at := 0.0
+## Hearts (Hard and Insane): how many, a lost one splitting, one given back.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _split_index := -1
+var _split_at := -100.0
+var _back_index := -1
+var _back_at := -100.0
+var _heart_card: Control
+var _dusk_tw: Tween
+## The last bridge before a Try again, sketched in pencil to build from.
+var _sketch: Array = []
+## The bridge easing back to rest after a test: design key -> [p, q] in grid.
+var _settle := {}
+var _settle_at := -100.0
+var _tags_at := -100.0
+## The budget figure, rolling to the cost.
+var _money_shown := 0.0
+## The cart rolling in from off the card when the board opens.
+var _enter_at := -100.0
+## The tea: the deck as it stood when the tea leaned most this test (road
+## joints, rest and bent, in grid), where the cart was, and how far it leaned.
+var _sag: Array = []
+var _sag_cart := Vector2.ZERO
+var _sag_peak := 0.0
+var _spilled_at := -100.0
+var _sloshed := false
+## The cart honked at mid-span this test.
+var _honked := false
+## The troll under the near bank, the cat on the deck, the party's clock.
+var _troll: Control
+var _troll_hop := -100.0
+var _troll_duck := -100.0
+var _cat: Control
+var _cat_curled := false
+var _party_at := INF
+var _score_card := ""
+var _seal_mesh: ArrayMesh
+var _stamp := false
+var _flawless := false
+var _laid := 0
 
 func puzzle_id() -> String: return "trestle"
 func title() -> String: return "Trestle"
 
 func rules() -> String:
-	return tr("TR_RULES")
+	var out := tr("TR_RULES")
+	if _difficulty >= 2:
+		out += "\n\n" + tr("TR_RULES_HEARTS")
+	if _difficulty >= 3:
+		out += "\n\n" + tr("TR_RULES_TEA")
+	return out
 
 ## Undo, Hint (not on Insane, where hints_left() is 0) and Go (the Check
 ## button, relabelled); Reset is the host's.
@@ -219,10 +321,23 @@ func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
 func check_label() -> String:
-	return "TR_STOP" if _testing else "TR_GO"
+	return "TR_STOP" if _testing and not _committed() else "TR_GO"
 
 func check_icon() -> String:
-	return "reset" if _testing else "play"
+	return "reset" if _testing and not _committed() else "play"
+
+## On Hard and Insane a test, once started, runs to its end: the Go is a
+## promise, and a test that fails costs a heart. The convoy and the free
+## build after the solve stay free.
+func _committed() -> bool:
+	return max_hearts > 0 and not is_done() and not _free
+
+func _tea() -> bool:
+	return bool(state.level.get("tea", false))
+
+## Reset waits while a committed test runs, and while the riders sleep.
+func can_reset() -> bool:
+	return not out_of_hearts and not (_testing and _committed())
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -247,6 +362,13 @@ func _ready() -> void:
 		stream.loop = true
 		_roll.stream = stream
 	add_child(_roll)
+	_troll = Troll.new()
+	_troll.name = "Troll"
+	_troll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_troll.shadowless = true
+	add_child(_troll)
+	move_child(_troll, _front.get_index())
+	_troll.set_idle(true)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -278,6 +400,24 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_splash_at = -100.0
 	_wave_at = -100.0
 	_bar_shown = 0.0
+	_money_shown = 0.0
+	max_hearts = HEARTS_BY[clampi(difficulty, 0, 3)]
+	hearts = max_hearts
+	out_of_hearts = false
+	_heart_used = false
+	_lost_ever = false
+	_split_index = -1
+	_back_index = -1
+	_close_card()
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	_sketch = []
+	_settle = {}
+	_sag = []
+	_sag_peak = 0.0
+	_spilled_at = -100.0
+	_laid = 0
+	_reset_party()
 	_clear_trail()
 	if _rw != null:
 		_rw.clear()
@@ -295,9 +435,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_faces.append(face)
 	sim.setup(state.level, [])
 	_opened = _now()
+	_enter_at = _opened
 	_layout()
 	fx.cue("enter")
-	_tell("TR_TIP_START")
+	_tell("TR_TIP_TEA" if _tea() else ("TR_TIP_HEARTS" if max_hearts > 0 else "TR_TIP_START"))
 
 # --- layout ---
 
@@ -330,6 +471,8 @@ func _layout() -> void:
 	for cart in _trail_faces:
 		for f in cart:
 			Fruit.resize(f, _u * 0.62, Vector2.ZERO)
+	_troll.size = Vector2.ONE * _u * 1.4
+	_troll.pivot_offset = _troll.size * Vector2(0.5, 0.9)
 	_place_cart()
 	queue_redraw()
 	_front.queue_redraw()
@@ -359,7 +502,10 @@ func _process(delta: float) -> void:
 			_acc -= Sim.DT
 			steps += 1
 			sim.step()
+			_watch_tea()
 			_events(t)
+			if not _honked and sim.cart == Sim.CART_ROAD and sim.cart_pos.x > float(state.level.w) * 0.5:
+				_honk()
 		if steps == MAX_STEPS:
 			_acc = 0.0
 		_wheel_turn += (Sim.CART_V * delta) / (Parts.wheel_r(1.0)) if sim.cart != Sim.CART_AIR and sim.cart != Sim.CART_WATER else delta * 2.0
@@ -369,16 +515,20 @@ func _process(delta: float) -> void:
 		# the cart rolls on off the card after the win
 		sim.cart_pos.x += Sim.CART_V * delta
 		_wheel_turn += (Sim.CART_V * delta) / Parts.wheel_r(1.0)
+	elif _enter_off(t) < 0.0:
+		_wheel_turn += Sim.CART_V * 2.0 * delta / Parts.wheel_r(1.0)
 	_roll_sound(delta)
 	# the bridge bends while testing and a member grows in as it is laid;
 	# otherwise it stands still and its mesh is kept
 	for key in _grow.keys():
 		if t - float(_grow[key]) > GROW_TIME * 2.0:
 			_grow.erase(key)
-	if _testing or not _grow.is_empty() or _waving(t):
+	if _testing or not _grow.is_empty() or _waving(t) or _settling(t):
 		_frame = null
 	_step_polish(t, delta)
 	_place_cart()
+	_place_troll(t)
+	_place_cat(t)
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
 	queue_redraw()
@@ -388,7 +538,7 @@ func _roll_sound(delta: float) -> void:
 	if _roll == null or _roll.stream == null:
 		return
 	var rolling := (_testing and sim.cart in [Sim.CART_BANK_L, Sim.CART_ROAD, Sim.CART_BANK_R]) \
-		or (_solved_at >= 0.0 and _now() - _solved_at < 1.2)
+		or (_solved_at >= 0.0 and _now() - _solved_at < 1.2) or _enter_off(_now()) < -0.2
 	var want := 1.0 if rolling else 0.0
 	var now := db_to_linear(_roll.volume_db)
 	now = move_toward(now, want, delta * (5.0 if want > now else 3.0))
@@ -442,6 +592,52 @@ func _step_polish(t: float, delta: float) -> void:
 		_rw.spray(xf * (back + Vector2(-Parts.wheel_r(_u) * 0.6, Parts.wheel_r(_u))), Color("e9dcc4"), 1, 70.0, "mote", 0.8)
 	var target := clampf(float(state.cost()) / maxf(1.0, float(state.budget)), 0.0, 1.2)
 	_bar_shown = target if Motion.reduce else lerpf(_bar_shown, target, 1.0 - exp(-delta * 9.0))
+	var cost := float(state.cost())
+	_money_shown = cost if Motion.reduce or absf(cost - _money_shown) < 5.0 else lerpf(_money_shown, cost, 1.0 - exp(-delta * 10.0))
+
+## How far behind its start the cart still is as it rolls in when the board
+## opens (grid units, 0 once it is there).
+func _enter_off(t: float) -> float:
+	if Motion.reduce or _testing or is_done():
+		return 0.0
+	var k := (t - _enter_at) / 0.9
+	if k >= 1.0:
+		return 0.0
+	k = clampf(k, 0.0, 1.0)
+	return -3.5 * pow(1.0 - k, 3.0)
+
+## The bridge easing back from its bent shape after a test.
+func _settling(t: float) -> bool:
+	return not _settle.is_empty() and t - _settle_at < SETTLE_TIME
+
+## The cart's horn at mid-span, a toot and a few notes off its front.
+func _honk() -> void:
+	_honked = true
+	fx.cue("honk", randf_range(0.95, 1.08))
+	if Motion.reduce:
+		return
+	var front := _cart_xf() * Vector2(Parts.cart_width(_u, _faces.size()) * 0.5 + _u * 0.2, -_u * 0.5)
+	_rw.spray(front, Pal.SUN, 3, 260.0, "note", 0.9)
+	_troll_hop = _now()
+
+## The tea's worst moment so far this test: the deck as it stood (rest and
+## bent), and where the cart was, kept for the sag line after the test.
+func _watch_tea() -> void:
+	if not sim.tea:
+		return
+	# every few hundredths of the rim, and always the step it spills on
+	if sim.tea_peak < _sag_peak + 0.03 and not (sim.spilled and _sag_peak < 1.0):
+		return
+	_sag_peak = sim.tea_peak
+	_sag_cart = sim.cart_pos
+	_sag = []
+	for k in sim.ma.size():
+		if sim.mmat[k] != Sim.ROAD or sim.malive[k] == 0 or sim.mstub[k] == 1:
+			continue
+		_sag.append([sim.home[sim.ma[k]], sim.jp[sim.ma[k]], sim.home[sim.mb[k]], sim.jp[sim.mb[k]]])
+	if not _sloshed and sim.tea_peak > 0.7 and not sim.spilled:
+		_sloshed = true
+		fx.cue("slosh")
 
 ## A shake of `amount` grid units, adding to one already under way.
 func _kick(amount: float) -> void:
@@ -518,11 +714,28 @@ func _events(t: float) -> void:
 						_rw.ring(at, _u * 1.6, Color(1, 1, 1, 0.8), 0.08)
 					_rw.sticker(tr("TR_W_CRACK"), at + Vector2(0.0, -_u * 0.9), 76, 1.4, false, Color("ff6f61"), true, "crack", _u * 0.4)
 				_kick(SHAKE_SNAP)
+				_troll_duck = t
+				_troll.expression = Face.Expr.WORRIED
 				fx.cue("snap_rope" if int(e.mat) == Sim.ROPE else "snap", randf_range(0.9, 1.1))
 				var col: Color = [Parts.ROAD, Parts.WOOD, Parts.ROPE][int(e.mat)]
 				_rw.spray(at, col, 10, 520.0, "confetti", 0.9)
 				_rw.spray(at, Color("fff4d8"), 5, 420.0, "spark", 0.8)
 				_mood(Face.Expr.WORRIED)
+			"spill":
+				# the tea goes over the cups' rims: a brown splash off the
+				# cart, and the run is lost
+				_spilled_at = t
+				var cart := _cart_xf()
+				var side := float(e.side)
+				for i in _faces.size():
+					var cup := cart * _cup_at(i)
+					_rw.spray(cup, TEA_COL, 5, 360.0, "clod", 0.6)
+					_rw.spray(cup + Vector2(side * _u * 0.1, 0.0), Color("e9c9a0"), 3, 260.0, "spark", 0.6)
+				_rw.sticker(tr("TR_W_SPILL"), cart * Vector2(0.0, -_u * 1.5), 70, 1.6, false, Color("e9a46a"), true, "spill", _u * 0.3)
+				_kick(0.05)
+				fx.cue("spill")
+				_mood(Face.Expr.WORRIED)
+				_troll.expression = Face.Expr.PUZZLED
 			"leave":
 				_mood(Face.Expr.PUZZLED)
 				fx.cue("whoa")
@@ -532,6 +745,7 @@ func _events(t: float) -> void:
 				_mood(Face.Expr.STRAIN)
 			"splash":
 				var at := px(e.at)
+				_troll.expression = Face.Expr.PUZZLED
 				fx.cue("splash")
 				fx.ring(at, _u * 0.9, Pal.WATER_HI)
 				_rw.spray(at, Pal.WATER_HI, 14, 640.0, "spark", 1.1)
@@ -548,9 +762,11 @@ func _events(t: float) -> void:
 					_rw.sticker(tr("TR_W_ALMOST" if far > 0.6 else "TR_W_SPLASH"), Vector2(at.x, at.y - _u * 1.6), 70, 1.6,
 						true, Color.WHITE, false, "splash", _u * 0.3)
 			"bank":
-				_mood(Face.Expr.JOY)
+				if not sim.spilled:
+					_mood(Face.Expr.JOY)
 			"over":
-				_mood(Face.Expr.JOY)
+				if not sim.spilled:
+					_mood(Face.Expr.JOY)
 			"cross":
 				var up := _cart_xf() * Vector2(0.0, -_u * 0.7)
 				_rw.spray(up, Color("ff7aa2"), 6, 420.0, "heart", 1.0)
@@ -581,7 +797,12 @@ func _mood(e: int) -> void:
 ## Go: the bridge takes its weight and the cart sets off. Pressed again (Stop),
 ## back to building.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts:
+		return -1
+	if _testing and _committed():
+		# the Go was a promise: the cart is on its way
+		_tell("TR_ROLLING")
+		fx.cue("refused")
 		return -1
 	if _testing:
 		_stop()
@@ -608,6 +829,17 @@ func _start_test(carts: int) -> void:
 	_sel = Vector2i(-99, -99)
 	_pressing = false
 	_dragging = false
+	_settle = {}
+	_honked = false
+	_sloshed = false
+	_sag = []
+	_sag_peak = 0.0
+	_spilled_at = -100.0
+	_enter_at = -100.0
+	_troll.expression = Face.Expr.HAPPY
+	for f in _faces:
+		f.hat = 0.0
+		f.glasses = 0.0
 	sim.setup(state.level, state.for_sim(), carts)
 	_clear_trail()
 	for i in carts - 1:
@@ -624,6 +856,8 @@ func _start_test(carts: int) -> void:
 		_trail_faces.append(cart)
 	_mood(Face.Expr.HAPPY)
 	fx.cue("go")
+	if _tea():
+		_after(0.25, func(): fx.cue("clink"))
 	_rw.sticker(tr("TR_W_GO"), Vector2(size.x * 0.5, _scene.position.y + _u * 1.1), 80, 1.0, true, Color.WHITE, false, "go", _u * 0.3)
 	_toast = ""
 	_strip_mesh = null
@@ -637,6 +871,8 @@ func _clear_trail() -> void:
 
 func _stop() -> void:
 	_keep_peaks()
+	_hold_shape()
+	_tags_at = _now() + 0.15
 	_testing = false
 	_convoy = false
 	_fail_at = -1.0
@@ -649,6 +885,34 @@ func _stop() -> void:
 	if not _loads_told and not _peak.is_empty() and _last_broken.is_empty():
 		_loads_told = true
 		_tell("TR_LOADS")
+
+## The bridge's bent shape as the test left it, for building to ease back
+## from (`SETTLE_TIME`): each design member still standing, by its key.
+func _hold_shape() -> void:
+	_settle = {}
+	if Motion.reduce or not _testing:
+		return
+	var n := state.design.size()
+	var moved := 0.0
+	for k in sim.ma.size():
+		var o := sim.morigin[k]
+		if o < 0 or o >= n or sim.malive[k] == 0:
+			continue
+		var p := sim.jp[sim.ma[k]]
+		var q := sim.jp[sim.mb[k]]
+		var d: Dictionary = state.design[o]
+		# the sim may have built the member either way round
+		if sim.home[sim.ma[k]].distance_to(Vector2(d.a)) > 0.01:
+			var sw := p
+			p = q
+			q = sw
+		_settle[_key(d)] = [p, q]
+		moved = maxf(moved, maxf(p.distance_to(Vector2(d.a)), q.distance_to(Vector2(d.b))))
+	if moved < 0.02:
+		_settle = {}
+		return
+	_settle_at = _now()
+	fx.cue("settle", randf_range(0.95, 1.05))
 
 ## The highest load each member of the design took in the test just run,
 ## kept for building (the stress view carried back).
@@ -671,6 +935,9 @@ func _failed(t: float) -> void:
 			_last_broken[m] = true
 	fx.cue("fail")
 	_mood(Face.Expr.WORRIED)
+	var spilled := sim.spilled and sim.in_water() == 0 and sim.broken.is_empty()
+	if _committed():
+		_lose_heart(t)
 	var snapped := _last_broken.size()
 	var run := _tests
 	var convoy := _convoy
@@ -683,7 +950,12 @@ func _failed(t: float) -> void:
 		if not _testing or _run_over or run != _tests:
 			return
 		_stop()
-		if timed_out:
+		if out_of_hearts:
+			_run_out()
+			return
+		if spilled:
+			_tell("TR_TEA_SPILLED")
+		elif timed_out:
 			_tell("TR_STUCK")
 		elif snapped == 0:
 			_tell("TR_NO_ROAD")
@@ -703,6 +975,7 @@ func _crossed(t: float) -> void:
 	if not is_done():
 		_crossed_at = t
 		_keep_peaks()
+		_hats_on(_tests == 1)
 		check_solved()
 		return
 	# a crossing after the solve: the convoy, or a free build's test
@@ -733,6 +1006,10 @@ func share_glyphs() -> String:
 	var line := "🌉 " + tr("TR_SHARE") % [Locale.number(state.cost()), Locale.number(state.budget), _tests] + " " + stars
 	if _convoy_proof:
 		line += " 🚚🚚🚚"
+	if _tea():
+		line += " 🫖"
+	if _flawless:
+		line += " ✨"
 	return line
 
 ## Three for a bridge as cheap as the day's proof, two for one inside half
@@ -751,6 +1028,26 @@ func _stars() -> int:
 func _on_solved() -> void:
 	_solved_at = _now()
 	_testing = false
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _tests == 1)
+	_stamp = _flawless or _tea()
+	_seal_mesh = null
+	_party_at = _solved_at
+	_cat_curled = false
+	_score_card = _card_for(_stars())
+	_troll.expression = Face.Expr.JOY
+	_troll_hop = _solved_at
+	_after(CARD_RISE, func(): fx.cue("scorecard"))
+	if _tea():
+		_after(0.35, func():
+			fx.cue("clink")
+			for i in _faces.size():
+				var cup := _cart_xf() * _cup_at(i)
+				_rw.spray(cup, Color("ff7aa2"), 2, 200.0, "heart", 0.7))
+	if not Motion.reduce:
+		_after(DUCKS_AT, func(): fx.cue("quack"))
+	if _stamp:
+		_after(0.01 if Motion.reduce else STAMP_AT, func(): fx.cue("stamp"))
+	_after(1.9, func(): _tell("TR_CHEER_%d" % posmod(_day_hash(), CHEERS)))
 	_solved_design = state.design.duplicate(true)
 	_ask_crowd(true)
 	_strip_mesh = null
@@ -768,6 +1065,12 @@ func _on_solved() -> void:
 	elif state.hints_placed() == 0:
 		_after(1.0, func():
 			_rw.sticker(tr(WORDS[clampi(stars - 1, 0, 2)]), at + Vector2(0.0, 198.0), 52, WIN_HOLD - 1.0, false, Color.WHITE, false, "word", 0.0, true))
+	if _tea():
+		_after(1.5, func():
+			_rw.sticker(tr("TR_W_NO_SPILL"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, false, Color("f2c48a"), false, "tea", 0.0, true))
+	elif _tests == 1:
+		_after(1.5, func():
+			_rw.sticker(tr("TR_W_FIRST_TRY"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, true, Color.WHITE, false, "first", 0.0, true))
 	# the medal: a star stamped in for each one earned, a hollow one else
 	for i in 3:
 		_after(MEDAL_AT + MEDAL_STEP * i, func():
@@ -806,6 +1109,48 @@ func _on_solved() -> void:
 		var coins := clampi(int(left / 150), 3, 18)
 		var from := px(Vector2(float(state.level.w) * 0.5, 0.5))
 		_rw.spray(from, Rewards.GOLD, coins, 700.0, "coin", 1.1, 1.3, _rw.at(self, Vector2(size.x - PAD - 90.0, 50.0)))
+
+## The riders' party hats (and sunglasses for a bridge that crossed on its
+## first test), grown on one after another.
+func _hats_on(shades: bool) -> void:
+	for i in _faces.size():
+		var f = _faces[i]
+		f.hat_style = i
+		if Motion.reduce:
+			f.hat = 1.0
+			f.glasses = 1.0 if shades else 0.0
+			continue
+		var tw := f.create_tween()
+		tw.tween_interval(0.12 * i)
+		tw.tween_property(f, "hat", 1.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if shades:
+			tw.tween_property(f, "glasses", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
+
+## The troll's score card: ten for three stars, eight for two, six for a
+## bridge that only got over; a Tea Party bridge of three stars goes to
+## eleven.
+func _card_for(stars: int) -> String:
+	if stars >= 3:
+		return "11" if _tea() else "10"
+	return "8" if stars == 2 else "6"
+
+## The day's own number, so a day always says the same wisdom.
+func _day_hash() -> int:
+	return absi(hash([int(state.level.w), int(state.level.dy), state.budget]))
+
+func _reset_party() -> void:
+	_party_at = INF
+	_cat_curled = false
+	_score_card = ""
+	_stamp = false
+	_flawless = false
+	_seal_mesh = null
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+	for f in _faces:
+		f.hat = 0.0
+		f.glasses = 0.0
 
 # --- the crowd ---
 
@@ -861,7 +1206,7 @@ func flat_win() -> Dictionary:
 	return {"faces": faces, "subtitle": tr("TR_WIN") % [Locale.number(state.cost()), Locale.number(state.budget), "★".repeat(_stars())]}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD
+	return Motion.REDUCED_TIME if Motion.reduce else PARTY_END
 
 ## Where the medal's star `i` stands.
 func _medal_star(i: int) -> Vector2:
@@ -901,7 +1246,7 @@ func completion_record() -> Dictionary:
 	var rows: Array = []
 	for d in state.design:
 		rows.append([d.a.x, d.a.y, d.b.x, d.b.y, int(d.m), 1 if d.get("hint", false) else 0])
-	return {"design": rows, "tests": _tests}
+	return {"design": rows, "tests": _tests, "hearts": hearts, "flawless": _flawless}
 
 func restore_completed_board() -> void:
 	state.design = []
@@ -918,8 +1263,107 @@ func restore_completed_board() -> void:
 	_solved_design = state.design.duplicate(true)
 	_crossed_at = _now() - 100.0
 	_toast = ""
+	# the party long over: the cat asleep on the deck, the troll's card up,
+	# the riders in their hats
+	_party_at = _now() - 100.0
+	_cat_curled = false
+	_score_card = _card_for(_stars())
+	_hats_on(false)
 	_rest_over()
 	_ask_crowd(false)
+
+## The deck's middle road joint, where the cat curls up.
+func _cat_spot() -> Vector2:
+	var w := int(state.level.w)
+	var i := w / 2
+	return px(Vector2(i, Gen.deck_y(w, int(state.level.dy), i))) + Vector2(_u * 0.5, -_u * 0.08)
+
+func _place_cat(t: float) -> void:
+	var show := is_done() and not _testing and not _free and t >= _party_at + CAT_AT
+	if not show:
+		if is_instance_valid(_cat):
+			_cat.visible = false
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		move_child(_cat, _front.get_index())
+		_cat.set_idle(true)
+	_cat.visible = true
+	var side := _u * 0.95
+	if _cat.size.x != side:
+		_cat.size = Vector2(side, side)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+	var spot := _cat_spot()
+	if _cat_curled:
+		_cat.position = spot - _cat.size * Vector2(0.5, 0.8) + _shake_off()
+		return
+	var e := t - _party_at - CAT_AT
+	var start := px(Vector2(float(state.level.w) + 1.4, float(state.level.dy)))
+	var walk := CAT_POP + CAT_HOPS * CAT_HOP_TIME
+	var at := spot
+	var sc := Vector2.ONE
+	if Motion.reduce or e >= CURL_AT - CAT_AT:
+		_cat_curled = true
+		_cat.expression = Face.Expr.SLEEPY
+		_cat.scale = Vector2.ONE
+		_cat.position = spot - _cat.size * Vector2(0.5, 0.8)
+		if not Motion.reduce and _solved_at >= 0.0:
+			fx.cue("purr")
+		return
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < walk:
+		var hh := (e - CAT_POP) / CAT_HOP_TIME
+		var n := int(hh)
+		var u := hh - float(n)
+		var from := start.lerp(spot, float(n) / CAT_HOPS)
+		var to := start.lerp(spot, float(n + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * 0.4 * side)
+		var q := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - q, 1.0 + q)
+	else:
+		var u := clampf((e - walk) / 0.25, 0.0, 1.0)
+		var q := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + q, 1.0 - q)
+	_cat.position = at - _cat.size * Vector2(0.5, 0.8)
+	_cat.scale = sc
+
+## Where the troll stands: at the foot of the near bank, chest-deep among
+## the reeds, bobbing; he hops for a bridge he likes, ducks from a snap, and
+## rises for the party with his card.
+func _troll_spot() -> Vector2:
+	return px(Vector2(-0.95, Sim.WATER)) + Vector2(0.0, -_u * 0.45)
+
+func _place_troll(t: float) -> void:
+	if not is_instance_valid(_troll) or _u <= 0.0:
+		return
+	var at := _troll_spot()
+	if not Motion.reduce:
+		at.y += sin(t * 1.7) * _u * 0.04
+		var hop := t - _troll_hop
+		if hop >= 0.0 and hop < 0.45:
+			at.y += Motion.hop_lift(hop, -_u * 0.32, 0.45)
+		var duck := t - _troll_duck
+		if duck >= 0.0 and duck < 1.4:
+			at.y += sin(clampf(duck / 1.4, 0.0, 1.0) * PI) * _u * 0.45
+		if is_done() and not _testing and not _free and _score_card != "":
+			# the party: a little bounce with the card up
+			at.y += Motion.hop_lift(fmod(t - _party_at, 0.9), -_u * 0.12, 0.45)
+	_troll.position = at - _troll.size * 0.5 + _shake_off()
+	# he watches the cart while it runs, else the finger's joint, else ahead
+	var look := Vector2(0.4, -0.3)
+	if _testing:
+		look = (_cart_xf().origin - at).normalized()
+	elif _sel != NONE:
+		look = (px(Vector2(_sel)) - at).normalized()
+	_troll.look = look * 0.8
+
 
 ## The solved bridge standing with the cart over on the far bank: how a
 ## finished board rests between the post-solve runs.
@@ -938,13 +1382,130 @@ func _rest_over() -> void:
 	_strip_mesh = null
 	queue_redraw()
 
+# --- hearts ---
+
+## A failed test on Hard or Insane: one heart splits and falls off the sign.
+func _lose_heart(t: float) -> void:
+	_lost_ever = true
+	hearts = maxi(0, hearts - 1)
+	_split_index = hearts
+	_split_at = t
+	out_of_hearts = hearts <= 0
+	fx.cue("heart_lost")
+	if not out_of_hearts:
+		_after(0.7, func(): _tell("TR_HEART_LOST_ONE" if hearts == 1 else "TR_HEART_LOST_N", [] if hearts == 1 else [hearts]))
+
+## The last heart is gone: the riders and the troll nod off, dusk falls on
+## the river, and the out-of-hearts card comes up.
+func _run_out() -> void:
+	_running = false
+	_sel = NONE
+	fx.cue("out_of_hearts")
+	_mood(Face.Expr.SLEEPY)
+	_troll.expression = Face.Expr.SLEEPY
+	_tell("TR_ASLEEP")
+	_dusk_toward(DUSK)
+	get_tree().create_timer(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER).timeout.connect(_open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _open_card() -> void:
+	if not is_inside_tree() or not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["TR_OUT_BODY", "TR_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the bridge comes down into the river (a hint's members stay,
+## since hints spent stay spent), every heart back, the clock, the moves and
+## the tests from zero. The last bridge stays sketched in pencil.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_sketch = []
+	for d in state.design:
+		if not d.get("hint", false):
+			_sketch.append(d.duplicate())
+	var gone := state.reset()
+	var k := 0
+	for d in gone:
+		_after(0.04 * k, _drop.bind(d))
+		k += 1
+	hearts = max_hearts
+	out_of_hearts = false
+	_split_index = -1
+	_back_index = -1
+	_tests = 0
+	_peak = {}
+	_last_broken = {}
+	_first_key = ""
+	_sag = []
+	_settle = {}
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	_frame = null
+	_mood(Face.Expr.HAPPY)
+	_troll.expression = Face.Expr.HAPPY
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	fx.cue("reset")
+	_tell("TR_TRY_AGAIN")
+	moved.emit()
+
+## One more heart (the card's video), once a board: morning comes back and
+## the bridge stands as it was for one more test.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = _now()
+	out_of_hearts = false
+	_running = true
+	_mood(Face.Expr.HAPPY)
+	_troll.expression = Face.Expr.HAPPY
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_tell("TR_HEART_BACK")
+	moved.emit()
+
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+func _exit_tree() -> void:
+	_close_card()
+
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return state.can_undo() and not _testing and not is_done()
+	return state.can_undo() and not _testing and not is_done() and not out_of_hearts
 
 func undo() -> bool:
-	if _testing or is_done():
+	if _testing or is_done() or out_of_hearts:
 		return false
 	var u := state.undo()
 	if u.is_empty():
@@ -959,12 +1520,12 @@ func undo() -> bool:
 func hints_left() -> int:
 	if _difficulty >= 3:
 		return 0
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, HINTS_BY[clampi(_difficulty, 0, 3)] + hints_extra - hints_used)
 
 ## One member of the day's proof, laid in gold; the player's own members
 ## furthest from it come down if the budget will not stretch to it.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or hints_left() <= 0 or out_of_hearts or (_testing and _committed()):
 		return false
 	if _testing:
 		_stop()
@@ -991,6 +1552,8 @@ func hint() -> bool:
 	return true
 
 func reset_board() -> void:
+	if not can_reset():
+		return
 	if _testing:
 		_stop()
 	var gone := state.reset()
@@ -1018,7 +1581,7 @@ func _splinters(d: Dictionary) -> void:
 # --- input ---
 
 func _gui_input(event: InputEvent) -> void:
-	if state.level.is_empty():
+	if state.level.is_empty() or out_of_hearts:
 		return
 	if _done and not _free:
 		# after the solve only the strip's pills answer
@@ -1285,6 +1848,10 @@ func _lay(a: Vector2i, b: Vector2i) -> void:
 	_float("-%s" % Locale.number(state.cost() - before), (px(Vector2(a)) + pb) * 0.5 + Vector2(0.0, -_u * 0.3), Parts.PIN_DEEP)
 	_bar_hit = now
 	fx.cue(["place_road", "place_wood", "place_rope"][_mat], randf_range(0.95, 1.05))
+	_laid += 1
+	if _laid % 4 == 0:
+		# the troll nods along with the work
+		_troll_hop = now
 	_sel = b
 	_frame = null
 	_moved()
@@ -1637,6 +2204,11 @@ func _build_frame() -> ArrayMesh:
 			if sim.jfix[j] == 0:
 				Parts.joint(b, joints[j], _u)
 	else:
+		# the last bridge before a Try again, in pencil, where nothing stands now
+		for d in _sketch:
+			if state.find(d.a, d.b) >= 0:
+				continue
+			_dashed(b, px(Vector2(d.a)), px(Vector2(d.b)), _u * 0.04, Color(Pal.TEXT, 0.22), _u * 0.16)
 		var order := range(state.design.size())
 		order.sort_custom(func(i: int, j: int) -> bool: return _layer(state.design[i].m) < _layer(state.design[j].m))
 		for i in order:
@@ -1651,6 +2223,12 @@ func _build_frame() -> ArrayMesh:
 				else:
 					q = p.lerp(q, Motion.back_out(k) if not Motion.reduce else 1.0)
 			var k := _key(d)
+			var bent := _settling(t) and _settle.has(k)
+			if bent:
+				# easing back from the shape the test bent it to
+				var e := Motion.back_out(clampf((t - _settle_at) / SETTLE_TIME, 0.0, 1.0))
+				p = px(_settle[k][0]).lerp(p, e)
+				q = px(_settle[k][1]).lerp(q, e)
 			if _last_broken.has(i):
 				hb.stroke(PackedVector2Array([p, q]), _u * 0.48, Color(Parts.BAD, 0.6))
 				halos += 1
@@ -1667,7 +2245,7 @@ func _build_frame() -> ArrayMesh:
 			tint.a *= 0.8
 			Parts.member(b, p, q, int(d.m), _u, tint)
 			joints[d.a] = p
-			joints[d.b] = px(Vector2(d.b))
+			joints[d.b] = q if bent else px(Vector2(d.b))
 		for j in joints:
 			if not state.is_anchor(j):
 				Parts.joint(b, joints[j], _u)
@@ -1679,6 +2257,15 @@ func _build_frame() -> ArrayMesh:
 		Parts.anchor(b, px(Vector2(a)), _u)
 	_halo = hb.mesh() if halos > 0 else null
 	return b.mesh()
+
+## A dashed line from `p` to `q`, dashes `dash` long.
+static func _dashed(b: Face.Builder, p: Vector2, q: Vector2, width: float, col: Color, dash: float) -> void:
+	var l := p.distance_to(q)
+	var n := maxi(1, int(l / dash))
+	for k in n:
+		if k % 2 == 1:
+			continue
+		b.stroke(PackedVector2Array([p.lerp(q, float(k) / n), p.lerp(q, minf(1.0, float(k + 1) / n))]), width, col)
 
 static func _layer(m: int) -> int:
 	return [2, 1, 0][m]
@@ -1744,6 +2331,12 @@ func _draw_front() -> void:
 	# bunting over the solved deck, dropped in along the wave
 	if _crossed_at >= 0.0 and not _testing:
 		_bunting(b, t)
+	_troll_ledge(b)
+	_draw_cups(b, t)
+	_draw_sag(b)
+	_draw_ducks(b, t)
+	_draw_card(b, t)
+	_draw_hearts(b, t)
 	# the bolts a member was just laid to pop
 	for j in _pops:
 		var k := (t - float(_pops[j])) / 0.3
@@ -1770,7 +2363,17 @@ func _draw_front() -> void:
 			var tint := Color(0, 0, 0, 0) if good else Color(Parts.BAD, 0.7)
 			Parts.member(b, px(Vector2(_from)), px(Vector2(_to)), _mat, _u, tint, 0.75)
 	var tags := _load_tags() if not _testing and (not is_done() or _free or not _last_broken.is_empty()) else []
+	# each tag pops in after the test, one after another
+	for i in tags.size():
+		var k := clampf((t - _tags_at - TAG_STEP * i) / TAG_POP, 0.0, 1.0)
+		var sc := 1.0 if Motion.reduce else Motion.back_out(k)
+		var r: Rect2 = tags[i].rect
+		var c := r.get_center()
+		tags[i].rect = Rect2(c - r.size * 0.5 * sc, r.size * sc)
+		tags[i].s = sc
 	for tag in tags:
+		if float(tag.s) <= 0.05:
+			continue
 		b.fan(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), Color(Pal.SURFACE, 0.92))
 		b.stroke(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), 3.0, tag.col, true)
 	_front_mesh = b.mesh()
@@ -1779,8 +2382,15 @@ func _draw_front() -> void:
 	_draw_floats()
 	var tag_font: Font = CozyTheme.body(700)
 	for tag in tags:
-		_front.draw_string(tag_font, tag.rect.position + Vector2(10.0, tag.rect.size.y * 0.5 + tag_font.get_ascent(22) * 0.36), tag.text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.TEXT)
+		var fs := int(22 * float(tag.s))
+		if fs < 8:
+			continue
+		var tsz := tag_font.get_string_size(tag.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		var c: Vector2 = (tag.rect as Rect2).get_center()
+		_front.draw_string(tag_font, Vector2(c.x - tsz.x * 0.5, c.y + tag_font.get_ascent(fs) * 0.36), tag.text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+	_draw_card_number(t)
+	_draw_stamp(t, shown)
 	if t - _chip_at < 0.4:
 		# a chip just picked is bouncing
 		_strip_mesh = null
@@ -1826,7 +2436,14 @@ func _load_tags() -> Array:
 				clear = false
 				break
 		if clear:
-			out.append({"rect": rect, "text": text, "col": Color(col, 1.0) if col.a > 0.0 else Pal.TEXT_DIM})
+			out.append({"rect": rect, "text": text, "col": Color(col, 1.0) if col.a > 0.0 else Pal.TEXT_DIM, "s": 1.0})
+	# on a Tea Party, how far the tea leaned at its worst, over where it was
+	if not _sag.is_empty():
+		var text := tr("TR_TEA_TAG") % mini(999, int(round(_sag_peak * 100.0)))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0
+		var at := px(_sag_cart) + Vector2(0.0, -_u * 1.25)
+		out.push_front({"rect": Rect2(at - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0)), "text": text,
+			"col": Parts.BAD if _sag_peak >= 1.0 else TEA_COL, "s": 1.0})
 	return out
 
 ## The strip: a paper band, the chips, the budget bar and the proof's star.
@@ -1938,7 +2555,7 @@ func _draw_words() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.TEXT, 1.0 if there else 0.35))
 	if _free:
 		return
-	var money := "%s / %s" % [Locale.number(state.cost()), Locale.number(state.budget)]
+	var money := "%s / %s" % [Locale.number(int(round(_money_shown / 10.0)) * 10), Locale.number(state.budget)]
 	var mfs := 34
 	var msz := font.get_string_size(money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs)
 	# the figure kicks when the cost moves and shakes red when it is out
@@ -2081,7 +2698,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
-	var mid := Vector2(size.x * 0.5, STRIP_H + 30.0 + h * 0.5)
+	var mid := Vector2(size.x * 0.5, STRIP_H + 30.0 + h * 0.5 + (SIGN_H + 12.0 if max_hearts > 0 else 0.0))
 	_front.draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -2097,6 +2714,267 @@ func _tell(key: String, args: Array = []) -> void:
 	_toast_args = args
 	_toast_at = _now()
 	_front.queue_redraw()
+
+# --- the polish's drawings ---
+
+## A flat stone at the foot of the near bank with a clump of reeds before
+## it: the troll stands behind them, chest-deep.
+func _troll_ledge(b: Face.Builder) -> void:
+	var at := _troll_spot() + Vector2(0.0, _u * 0.55)
+	b.ellipse(at + Vector2(0.0, _u * 0.06), _u * 0.62, _u * 0.16, Color(Parts.STONE_DEEP, 0.9))
+	b.ellipse(at, _u * 0.58, _u * 0.13, Parts.STONE)
+	# reeds either side of him, never over his face
+	for k in 6:
+		var x := at.x + (k - 2.5) * _u * 0.24 + signf(k - 2.5) * _u * 0.12
+		var tall := _u * (0.24 + 0.1 * ((k * 5) % 3))
+		var lean := (k - 2.5) * _u * 0.04
+		b.stroke(PackedVector2Array([Vector2(x, at.y + _u * 0.05), Vector2(x + lean, at.y - tall)]), _u * 0.045, Color("6f9440"))
+		if k % 3 == 1:
+			b.ellipse(Vector2(x + lean, at.y - tall + _u * 0.05), _u * 0.035, _u * 0.09, Color("8a5a3a"))
+
+## Where rider `i`'s teacup is held, in the cart's frame.
+func _cup_at(i: int) -> Vector2:
+	return Parts.seat(_u, _faces.size(), i) + Vector2(_u * 0.17, _u * 0.2)
+
+## The Tea Party's cups, one held before each rider: the tea's surface leans
+## in its cup as the sim's tea does (drawn larger, so the rim is a visible
+## lean), steam curls off it while the cart stands, and after a spill the
+## cups are half empty.
+func _draw_cups(b: Face.Builder, t: float) -> void:
+	if not _tea() or _faces.is_empty():
+		return
+	if sim.cart == Sim.CART_WATER or (sim.cart == Sim.CART_OVER and _testing):
+		return
+	var xf := _cart_xf()
+	var bob := sin(t * 18.0) * _u * 0.015 if _testing and sim.cart != Sim.CART_AIR and not Motion.reduce else 0.0
+	var lean := 0.0
+	if _testing:
+		lean = clampf(sim.tea_lean / Sim.TEA_RIM, -1.4, 1.4) * TEA_DRAWN
+	elif not Motion.reduce:
+		lean = sin(t * 2.2) * 0.04
+	var spilt := _testing and sim.spilled
+	for i in _faces.size():
+		var c := _cup_at(i) + Vector2(0.0, bob)
+		var hw := _u * 0.12
+		var hb := _u * 0.08
+		var h := _u * 0.16
+		var top := c.y - h * 0.5
+		b.ellipse(xf * (c + Vector2(0.0, h * 0.5 + _u * 0.01)), _u * 0.15, _u * 0.03, CUP_DEEP)
+		# the handle at the back
+		b.stroke(Face.Builder.arc_points(xf * (c + Vector2(-hw - _u * 0.02, -h * 0.05)), _u * 0.05, 0.0, TAU), _u * 0.025, CUP_DEEP, true)
+		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw - 2.0, top - 1.0), xf * Vector2(c.x + hw + 2.0, top - 1.0),
+			xf * Vector2(c.x + hb + 2.0, c.y + h * 0.5 + 1.0), xf * Vector2(c.x - hb - 2.0, c.y + h * 0.5 + 1.0)]), CUP_DEEP)
+		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw, top), xf * Vector2(c.x + hw, top),
+			xf * Vector2(c.x + hb, c.y + h * 0.5), xf * Vector2(c.x - hb, c.y + h * 0.5)]), CUP)
+		# the tea: its surface through the middle of the brim, leaning
+		var ys := top + h * (0.42 if spilt else 0.14)
+		var slope := tan(lean)
+		var wl := hw * 0.9
+		var yl := maxf(top - _u * 0.03, ys + wl * slope)
+		var yr := maxf(top - _u * 0.03, ys - wl * slope)
+		var low := top + h * 0.55
+		b.polygon(PackedVector2Array([xf * Vector2(c.x - wl, yl), xf * Vector2(c.x + wl, yr),
+			xf * Vector2(c.x + hw * 0.72, low), xf * Vector2(c.x - hw * 0.72, low)]), TEA_COL)
+		b.stroke(PackedVector2Array([xf * Vector2(c.x - wl, yl), xf * Vector2(c.x + wl, yr)]), _u * 0.02, Color("d79a5e"))
+		# the cup's face over the tea's lower edge, and a gold band
+		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw * 0.95, top + h * 0.38), xf * Vector2(c.x + hw * 0.95, top + h * 0.38),
+			xf * Vector2(c.x + hb, c.y + h * 0.5), xf * Vector2(c.x - hb, c.y + h * 0.5)]), CUP)
+		b.stroke(PackedVector2Array([xf * Vector2(c.x - hw * 0.93, top + h * 0.45), xf * Vector2(c.x + hw * 0.93, top + h * 0.45)]), _u * 0.018, Pal.SUN)
+		# a drop over the low rim when the tea is near it
+		if _testing and not spilt and absf(lean) > TEA_DRAWN * 0.75:
+			var side := signf(lean)
+			b.disc(xf * Vector2(c.x - side * hw * 1.05, top + _u * 0.02), _u * 0.025, TEA_COL)
+		if not _testing and not Motion.reduce:
+			for k in 2:
+				var phase := fmod(t * 0.6 + k * 0.5 + i * 0.3, 1.0)
+				var pts := PackedVector2Array()
+				for s in 5:
+					var f := s / 4.0
+					pts.append(xf * Vector2(c.x + (k - 0.5) * _u * 0.07 + sin(f * 5.0 + t * 3.0 + k) * _u * 0.025,
+						top - _u * 0.04 - (phase * 0.15 + f * 0.12) * _u))
+				b.stroke(pts, _u * 0.02, Color(1, 1, 1, 0.45 * sin(phase * PI)), false, false)
+
+## After a Tea Party test: the deck as it stood when the tea leaned most,
+## its dip drawn `SAG_GAIN` times over, dashed in tea brown under the bridge
+## being built.
+func _draw_sag(b: Face.Builder) -> void:
+	if _sag.is_empty() or _testing or (is_done() and not _free):
+		return
+	var col := Color(Parts.BAD if _sag_peak >= 1.0 else Color("8a4fd0"), 0.85)
+	for e in _sag:
+		var h0: Vector2 = e[0]
+		var h1: Vector2 = e[2]
+		var p := px(h0 + ((e[1] as Vector2) - h0) * SAG_GAIN)
+		var q := px(h1 + ((e[3] as Vector2) - h1) * SAG_GAIN)
+		b.stroke(PackedVector2Array([p, q]), _u * 0.075, Color(1, 1, 1, 0.55))
+		_dashed(b, p, q, _u * 0.05, col, _u * 0.12)
+
+## After the solve a duck and her three ducklings paddle along the river
+## under the new bridge.
+func _draw_ducks(b: Face.Builder, t: float) -> void:
+	if Motion.reduce or _party_at == INF:
+		return
+	var e := t - _party_at - DUCKS_AT
+	if e < 0.0 or e > 12.0:
+		return
+	var water := px(Vector2(0.0, Sim.WATER)).y
+	var x := size.x + _u * 0.6 - e * _u * 0.85
+	for k in 4:
+		var s := 1.0 if k == 0 else 0.6
+		var dx := x + (0.0 if k == 0 else _u * (0.25 + 0.42 * k))
+		var at := Vector2(dx, water - _u * 0.05 * s + sin(t * 4.0 + k) * _u * 0.02)
+		var body: Color = Color("fbf6ea") if k == 0 else Color("ffd84d")
+		var deep: Color = Color("d9cbb5") if k == 0 else Color("e6b22e")
+		b.ellipse(at + Vector2(_u * 0.02, _u * 0.02) * s, _u * 0.24 * s, _u * 0.1 * s, deep)
+		b.ellipse(at, _u * 0.22 * s, _u * 0.12 * s, body)
+		b.polygon(PackedVector2Array([at + Vector2(_u * 0.16, -_u * 0.02) * s, at + Vector2(_u * 0.3, -_u * 0.12) * s,
+			at + Vector2(_u * 0.2, _u * 0.04) * s]), body)
+		var head := at + Vector2(-_u * 0.15, -_u * 0.15) * s
+		b.disc(head, _u * 0.09 * s, body)
+		b.ellipse(head + Vector2(-_u * 0.1, _u * 0.01) * s, _u * 0.06 * s, _u * 0.025 * s, Color("f29a3a"))
+		b.disc(head + Vector2(-_u * 0.03, -_u * 0.02) * s, _u * 0.018 * s, Pal.TEXT)
+		b.ellipse(at + Vector2(_u * 0.03, -_u * 0.01) * s, _u * 0.09 * s, _u * 0.05 * s, Color(deep, 0.8))
+		# the ripple trailing each
+		b.stroke(PackedVector2Array([at + Vector2(_u * 0.24, _u * 0.1) * s, at + Vector2(_u * 0.44, _u * 0.1) * s]), _u * 0.02, Color(1, 1, 1, 0.5))
+
+## The troll's score card on its stick, rising for the party and staying up
+## while the solved bridge stands.
+func _card_rect(t: float) -> Rect2:
+	if _score_card == "" or not is_done() or _testing or _free:
+		return Rect2()
+	var k := clampf((t - _party_at - CARD_RISE) / 0.4, 0.0, 1.0)
+	if k <= 0.0:
+		return Rect2()
+	var rise := 1.0 if Motion.reduce else Motion.back_out(k)
+	var hand := _troll.position + _troll.size * Vector2(0.92, 0.55)
+	var top := hand + Vector2(0.0, -_u * 1.1 * rise)
+	return Rect2(top - Vector2(_u * 0.55, _u * 0.8), Vector2(_u * 1.1, _u * 0.8))
+
+func _draw_card(b: Face.Builder, t: float) -> void:
+	var r := _card_rect(t)
+	if r.size.x <= 0.0:
+		return
+	var hand := _troll.position + _troll.size * Vector2(0.92, 0.55)
+	b.stroke(PackedVector2Array([hand, Vector2(r.get_center().x, r.end.y)]), _u * 0.06, Color("8a6a4a"))
+	b.fan(Face.Builder.round_rect(r.position + Vector2(0, 4), r.size, _u * 0.1), Color(Pal.TEXT, 0.18))
+	b.fan(Face.Builder.round_rect(r.position, r.size, _u * 0.1), Color("fffaf0"))
+	b.stroke(Face.Builder.round_rect(r.position + Vector2.ONE * 5.0, r.size - Vector2.ONE * 10.0, _u * 0.07), 3.0, Pal.SUN, true)
+	b.disc(hand, _u * 0.07, Troll.SKIN_DEEP)
+
+func _draw_card_number(t: float) -> void:
+	var r := _card_rect(t)
+	if r.size.x <= 0.0:
+		return
+	var font: Font = CozyTheme.display(700)
+	var fs := int(r.size.y * 0.7)
+	var sz := font.get_string_size(_score_card, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	var at := Vector2(r.get_center().x - sz.x * 0.5, r.get_center().y + font.get_ascent(fs) * 0.36) + _shake_off()
+	_front.draw_string(font, at, _score_card, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Parts.PIN)
+
+## The hearts on a little wooden sign hung under the strip's left end: a
+## lost one splits and falls, a heart given back pops in.
+func _draw_hearts(b: Face.Builder, t: float) -> void:
+	if max_hearts <= 0 or is_done():
+		return
+	var w := HEART_STEP * max_hearts + 22.0
+	var top := STRIP_H + 26.0
+	var x0 := PAD + 6.0
+	for sx: float in [0.2, 0.8]:
+		var x := x0 + sx * w
+		b.stroke(PackedVector2Array([Vector2(x, STRIP_H + 4.0), Vector2(x, top + 8.0)]), 4.0, Parts.ROAD_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2(x0, top + 5.0), Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2(x0, top), Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD)
+	b.stroke(PackedVector2Array([Vector2(x0 + 12.0, top + 8.0), Vector2(x0 + w - 12.0, top + 8.0)]), 5.0, Color(Parts.ROAD_TOP, 0.7))
+	for sx: float in [0.2, 0.8]:
+		b.disc(Vector2(x0 + sx * w, top + 10.0), 5.0, Parts.BOLT_DEEP)
+	var cy := top + (SIGN_H - 14.0) * 0.5 + 2.0
+	for i in max_hearts:
+		var at := Vector2(x0 + 11.0 + HEART_STEP * (i + 0.5), cy)
+		if i < hearts:
+			var rr := HEART_R
+			if i == _back_index and not Motion.reduce:
+				rr *= Motion.pop_in_scale(t - _back_at, HEART_BACK_TIME).x
+			if rr > 0.5:
+				b.polygon(_heart(at, rr, -1), Pal.FLOWER)
+				b.polygon(_heart(at, rr, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, rr)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Parts.ROAD_DEEP, 0.55))
+		var u := (t - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * 0.6 * u
+				var shift := Vector2(side * 18.0 * u, 60.0 * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+
+static func _heart_face(b: Face.Builder, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+
+## A heart about `at`, `s` to its side; `side` -1 or 1 is one half, split
+## down a zigzag (Super Slider's and Marigold's).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var u := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(u), 3.0),
+			-(13.0 * cos(u) - 5.0 * cos(2.0 * u) - 2.0 * cos(3.0 * u) - cos(4.0 * u)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+## The seal in the sky left of the medal, dropping in and settling: gold
+## for Flawless, night blue for any Tea Party solve.
+func _draw_stamp(t: float, shown: Array) -> void:
+	if not _stamp or not is_done() or _testing or _free or _party_at == INF:
+		return
+	var e := t - _party_at - (0.0 if Motion.reduce else STAMP_AT)
+	if e < 0.0:
+		return
+	var rad := size.x * 0.1
+	var tea := _tea()
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, tea)
+	shown.append(_seal_mesh)
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := _seal_at()
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_front.draw_set_transform_matrix(xf)
+	_front.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_front.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if tea:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("TR_TEA_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_front, rad, lines)
+	_front.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+func _seal_at() -> Vector2:
+	return Vector2(size.x * 0.16, _scene.position.y + _scene.size.y * 0.3)
 
 # --- for harnesses ---
 
