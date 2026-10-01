@@ -285,6 +285,23 @@ func _draw() -> void:
 	if hat > 0.0 or glasses > 0.0:
 		_draw_accessories(R, centre)
 
+## Appends the face as it is drawn now to `b`, under `xf` (this Control's
+## own space to the baker's) and tinted: for a board that bakes a still row
+## of faces into one mesh (Code Break's played rows, checkup 2026-10-01).
+## Hats and glasses are not baked; a baker waits until they are off.
+func bake_into(b: Builder, xf: Transform2D, tint := Color.WHITE) -> void:
+	var R := roundf(_R_for(minf(size.x, size.y)) / R_STEP) * R_STEP
+	if R <= 0.0:
+		return
+	var eye := _eye_level()
+	var centre := size * 0.5
+	for layer in _layers():
+		if shadowless and layer[0] == "shadow":
+			continue
+		if skip_layers.has(layer[0]):
+			continue
+		b.append(_mesh_for(layer[0], layer[1], R, eye), xf * _layer_transform(layer[0], R, centre), tint)
+
 ## The accessories over the face, in the face layer's transform: the hat on
 ## the head at _hat_place's seat, grown from its brim by `hat`; the glasses
 ## over the eyes, slid down from above and faded in by `glasses`.
@@ -635,6 +652,18 @@ class Builder:
 			var j := (i + 1) % n
 			tri(first + i, first + j, rim + j)
 			tri(first + i, rim + j, rim + i)
+
+	## Another Builder-made mesh, moved by `xf` and tinted, over what is
+	## here: how a board bakes many cached drawings into one.
+	func append(m: ArrayMesh, xf: Transform2D, tint := Color.WHITE) -> void:
+		var a := m.surface_get_arrays(0)
+		var base := verts.size()
+		for p in a[Mesh.ARRAY_VERTEX]:
+			verts.append(xf * Vector2(p.x, p.y))
+		for c: Color in a[Mesh.ARRAY_COLOR]:
+			cols.append(c * tint)
+		for i in a[Mesh.ARRAY_INDEX]:
+			idx.append(base + i)
 
 	func mesh() -> ArrayMesh:
 		var arrays := []

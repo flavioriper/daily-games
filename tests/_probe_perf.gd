@@ -87,6 +87,10 @@ func _process(delta: float) -> bool:
 		for k in 4:
 			if _moves.size() > 2:
 				_step()
+		# A board whose moves animate (Code Break's Check) fills slower than
+		# the window allows: hold the clock until it is full.
+		if _moves.size() > 2 and not _puzzle.is_done():
+			_t = minf(_t, IDLE_FROM - 0.5)
 	if _exp != "" and not _exp_done and _t >= IDLE_FROM - 0.3:
 		_exp_done = true
 		_experiment()
@@ -182,6 +186,26 @@ func _experiment() -> void:
 				l.visible = false
 		"bn_fx":
 			_puzzle.fx.visible = false
+		"cb_faces", "cb_sockets", "cb_pouches", "cb_cards", "cb_nums", "cb_marks", "cb_code", "cb_rings":
+			var arr: Array = {"cb_faces": _puzzle._face, "cb_sockets": _puzzle._socket,
+				"cb_pouches": [_puzzle._pouch], "cb_cards": [_puzzle._row_card],
+				"cb_nums": [_puzzle._row_num], "cb_marks": [_puzzle._mark],
+				"cb_code": [_puzzle._lid_seat], "cb_rings": _puzzle._ring}[_exp]
+			for row in arr:
+				for n in row:
+					if n != null:
+						n.visible = false
+		"cb_reset":
+			var baked := func() -> int:
+				return _puzzle._baked.filter(func(b): return b.visible).size()
+			print("  baked before reset ", baked.call(), " can_reset ", _puzzle.can_reset())
+			_puzzle.reset_board()
+			_puzzle._process(0.0)
+			print("  baked after reset ", baked.call(), " guesses ", _puzzle.state.guesses.size())
+		"cb_live":
+			_puzzle.set_process(false)
+			for g in _puzzle._rows.size():
+				_puzzle._show_nodes(g, true)
 		"nowash":
 			for c in _all(_host, func(n): return n is CanvasItem and n.material != null):
 				c.material = null
@@ -230,9 +254,16 @@ func _all(n: Node, pred: Callable) -> Array:
 	return out
 
 func _step() -> void:
-	if _moves.is_empty() or _puzzle.is_done():
+	if _moves.is_empty() or _puzzle.is_done() or bool(_puzzle.get("_busy")):
 		return
 	var m: Dictionary = _moves.pop_front()
+	if m.has("do"):
+		var t1 := Time.get_ticks_usec()
+		m.do.call()
+		var took1 := (Time.get_ticks_usec() - t1) / 1000.0
+		if took1 > 4.0:
+			print("  slow move %.1f ms at t=%.2f" % [took1, _t])
+		return
 	# Positions are asked for at the move, after the board has laid out.
 	var t0 := Time.get_ticks_usec()
 	_click(m.at.call() if m.at is Callable else m.at)
@@ -299,4 +330,18 @@ func _moves_binairo() -> Array:
 			out.append({"at": at})
 			if _puzzle.state.solution[r][c] == 1:
 				out.append({"at": at})
+	return out
+
+## Code Break: every row but the last a wrong guess (the code turned by one
+## friend, so it scores), then the code as it sits at that moment.
+func _moves_mastermind() -> Array:
+	var out := []
+	var st = _puzzle.state
+	for g in st.tries - 1:
+		for s in st.length:
+			out.append({"do": func() -> void: _puzzle.pick((int(st.code[s]) + 1 + g % (st.palette_size - 1)) % st.palette_size)})
+		out.append({"do": func() -> void: _puzzle.check()})
+	for s in st.length:
+		out.append({"do": func() -> void: _puzzle.pick(int(st.code[s]))})
+	out.append({"do": func() -> void: _puzzle.check()})
 	return out
