@@ -9,8 +9,10 @@ extends "res://core/puzzle_base.gd"
 ##
 ## After the reference the user asked for (the Xbox classic of pegs, a
 ## launcher and a sliding bucket), re-dressed as a garden. Out of seeds with
-## a marigold left, the garden grows back and the day goes on: a try, never
-## a loss.
+## a marigold left, the garden grows back for another try; on Hard and
+## Insane that try costs a heart, and out of hearts the day can be lost.
+## Insane is Sweethearts: the marigolds come in pairs tied by a ribbon, and a
+## marigold blooms for good only in the same shot as its sweetheart.
 ##
 ## How it is drawn. Meshes, most of them cached:
 ##   still -- the card, the dusk garden and the arbor, on a relayout only;
@@ -28,7 +30,11 @@ extends "res://core/puzzle_base.gd"
 ##   the pot, the seed and the sun's three parts are built once and moved by
 ##   transform, so an idle garden rebuilds nothing.
 ##
-## Spec: docs/superpowers/specs/2026-09-26-marigold-flat-design.md.
+## Spec: docs/superpowers/specs/2026-09-26-marigold-flat-design.md; the
+## polish (hearts, Sweethearts, the gags, the sounds):
+## docs/superpowers/specs/2026-10-01-marigold-polish-design.md.
+
+signal leave
 
 const State = preload("res://puzzles/marigold_state.gd")
 const Parts = preload("res://ui/faces/marigold_parts.gd")
@@ -38,6 +44,8 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Locale = preload("res://core/locale.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the counts take, the
@@ -92,7 +100,6 @@ const FLOAT_TIME := 1.1
 const POT_GLOW_TIME := 0.5
 const OUT_WAIT := 2.4
 const WIN_HOLD := 1.2
-const HINTS := 3
 ## A bloom rings the water RIPPLE_TIME; a picked bloom rises PICK_RISE units
 ## and turns as it fades; a bloomed marigold flies up to its pip over
 ## FLY_TIME. The sun recoils over RECOIL_TIME, the pot wobbles WOBBLE_TIME
@@ -140,6 +147,60 @@ const COUNT_FONT_BIG := 44
 const HOP_TIME := 0.4
 const KICK_TIME := 0.35
 const SEED_FLY := 0.55
+
+# --- the polish of 2026-10-01: hearts, Sweethearts and sillier rewards ---
+## The hearts hang on a little wooden sign off the arch, left of the sun, in
+## field units; a lost one splits and falls.
+const SIGN_AT := Vector2(12.0, 10.6)
+const HEART_R := 1.75
+const HEART_GAP := 0.9
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 6.0
+const SPLIT_SPREAD := 1.6
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.4
+const CARD_AFTER_STILL := 0.3
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const TIPS_HEARTS := ["MG_TIP_AIM", "MG_TIP_HEARTS", "MG_TIP_POT"]
+const TIPS_SWEET := ["MG_TIP_SWEET", "MG_TIP_SWEET_PLAN", "MG_TIP_SWEET_HEARTS"]
+## Sweethearts: a marigold left alone folds back into a bud over FOLD_TIME
+## when the shot ends; each pair's ribbon has its own colour.
+const FOLD_TIME := 0.5
+const RIBBONS := [Color("f59bbd"), Color("f7b878"), Color("9fd88c"), Color("8fc0f0"), Color("c3a6ef"), Color("f5d76e")]
+## A bud a seed brushes past without touching shivers for RUSTLE_TIME.
+const RUSTLE_TIME := 0.5
+const RUSTLE_REACH := 4.8
+## The spout follows the finger at AIM_RATE, so a jump of the finger turns it.
+const AIM_RATE := 24.0
+## The frog on the lily pad: a hop takes FROG_HOP; a croak FROG_CROAK.
+const FROG_AT := Vector2(13.4, 116.4)
+const FROG_HOP := 0.62
+const FROG_CROAK := 0.7
+## The ducks paddle across the pond over DUCK_TIME after a long shot.
+const DUCK_TIME := 8.0
+## The sun's sunglasses drop on over SHADES_DROP and stay SHADES_STAY.
+const SHADES_DROP := 0.32
+const SHADES_STAY := 5.0
+## Shots in a row that keep a marigold (a pair on Insane) are a streak.
+const STREAK_FROM := 2
+## The party after the win: the nap cat on the bank, the seal, the wisdom.
+const PARTY_AT := 0.6
+const CHEERS := 10
+const CAT_PX := 0.16
+const CAT_POP := 0.22
+const CAT_HOPS := 3
+const CAT_HOP_TIME := 0.3
+const CAT_HOP_H := 0.4
+const CAT_SETTLE := 0.25
+const CURL_AT := 1.7
+const STAMP_AT := 1.4
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.13
+const STAMP_TILT := -0.22
 
 var _state = State.new()
 var fx: Node2D
@@ -230,6 +291,55 @@ var _count_at := -100.0
 var _seed_flies: Array = []
 var _air: ArrayMesh
 
+## Hearts: Hard and Insane (State.HEARTS_BY). A garden run out of seeds, or
+## given up with Reset after a seed has flown, costs one.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _flawless := false
+var _won := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := -100.0
+var _back_index := -1
+var _back_at := -100.0
+var _dusk_tw: Tween
+var _hearts_mesh: ArrayMesh
+var _hearts_for := ""
+## Sweethearts: per bud, when it folded back (-1: not); each pair's ribbon
+## colour; the ribbons' mesh and what it was built for.
+var _fold_at := PackedFloat32Array()
+var _fold_until := -100.0
+var _ribbon := PackedInt32Array()
+var _threads: ArrayMesh
+var _threads_for := ""
+var _shot_pairs := 0
+var _apart_told := false
+## Buds a seed brushed past: when each started shivering, and the strips
+## still shivering (band -> until).
+var _rustle_at := PackedFloat32Array()
+var _rustling := {}
+## The spout's own angle, following _aim.
+var _aim_shown := PI * 0.5
+## The silly ones: the frog, the ducks, the sun's sunglasses, the streak.
+var _frog_hop_at := -100.0
+var _frog_flip := false
+var _frog_croak_at := -100.0
+var _ducks_at := -100.0
+var _shades_at := -100.0
+var _shades_until := -100.0
+var _shades: ArrayMesh
+var _streak := 0
+## The party: the nap cat, the seal.
+var _party_at := INF
+var _cat: Control
+var _cat_at := INF
+var _cat_curled := false
+var _stamp_at := INF
+var _seal_mesh: ArrayMesh
+
 var _still: ArrayMesh
 ## The closed buds in BUD_BANDS strips down the field, so a bloom rebuilds
 ## only its own strip.
@@ -265,12 +375,37 @@ var _tip_mood := Face.Expr.HAPPY
 func puzzle_id() -> String: return "marigold"
 func title() -> String: return "Marigold"
 
+## The rules, then the band's own closing: hearts (Hard), Sweethearts
+## (Insane).
 func rules() -> String:
-	return tr("MG_RULES")
+	var out := tr("MG_RULES")
+	if _state.sweethearts:
+		out += "\n\n" + tr("MG_RULES_SWEET") % max_hearts
+	elif max_hearts > 0:
+		out += "\n\n" + tr("MG_RULES_HEARTS") % max_hearts
+	return out
 
-## Hint only: nothing to take back once a seed has flown. Reset is the host's.
+func _tips() -> Array:
+	if _state.sweethearts:
+		return TIPS_SWEET
+	if max_hearts > 0:
+		return TIPS_HEARTS
+	return TIPS
+
+## Hint only: nothing to take back once a seed has flown. Reset is the
+## host's. Insane has no hint.
 func capabilities() -> Array[String]:
+	if _state.band >= 3:
+		return []
 	return ["hint"]
+
+## Reset waits while a seed is out or the sun is thinking; it costs a heart
+## on Hard and Insane once a seed has flown (reset_board).
+func can_reset() -> bool:
+	return _phase == "aim" and _think.is_empty() and not out_of_hearts
+
+func busy() -> bool:
+	return _phase in ["shot", "pick", "out"] or not _think.is_empty()
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -285,18 +420,35 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func _exit_tree() -> void:
+	_close_card()
 	if not _think.is_empty():
 		WorkerThreadPool.wait_for_task_completion(int(_think.id))
 		_think = {}
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.build(rng, difficulty)
+	_close_card()
+	_state.build(rng, difficulty, bank_step)
+	max_hearts = State.hearts_for(difficulty)
+	hearts = max_hearts
+	out_of_hearts = false
+	_heart_used = false
+	_lost_ever = false
+	_flawless = false
+	_won = false
+	_split_index = -1
+	_back_index = -1
+	_streak = 0
+	_apart_told = false
+	_reset_party()
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
 	_opened = _now()
 	_fresh(_opened)
 	_log = ""
 	_layout()
 	fx.cue("enter")
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 
 ## Everything a new try starts from.
 func _fresh(t: float) -> void:
@@ -352,6 +504,30 @@ func _fresh(t: float) -> void:
 	_heat = 0.0
 	_shake = 0.0
 	_word_tier = -1
+	_fold_at = PackedFloat32Array()
+	_fold_at.resize(n)
+	_fold_at.fill(-1.0)
+	_fold_until = -100.0
+	_rustle_at = PackedFloat32Array()
+	_rustle_at.resize(n)
+	_rustle_at.fill(-100.0)
+	_rustling = {}
+	_aim_shown = _aim
+	_threads = null
+	_threads_for = ""
+	_shot_pairs = 0
+	_shades_until = minf(_shades_until, t)
+	# each pair's ribbon colour, in the order the pairs first appear
+	_ribbon = PackedInt32Array()
+	_ribbon.resize(n)
+	_ribbon.fill(-1)
+	var k := 0
+	for i in n:
+		var j: int = _state.pair[i] if i < _state.pair.size() else -1
+		if j >= 0 and _ribbon[i] < 0:
+			_ribbon[i] = k
+			_ribbon[j] = k
+			k += 1
 
 # --- layout ---
 
@@ -390,6 +566,9 @@ func _layout() -> void:
 	_back = null
 	_hud = null
 	_pill = null
+	_threads = null
+	_hearts_mesh = null
+	_shades = null
 	queue_redraw()
 
 # --- the frame loop ---
@@ -412,10 +591,12 @@ func _process(delta: float) -> void:
 				break
 		_handle(events, t)
 		_follow_trails()
+		_brush(t)
 		if _state.balls.is_empty():
 			_end_shot(t)
-	elif not _done:
+	elif not _done and _phase != "asleep":
 		_state.step_pot(sd)
+	_aim_shown = _aim if Motion.reduce else lerp_angle(_aim_shown, _aim, 1.0 - exp(-AIM_RATE * delta))
 	_camera(t, delta)
 	_tick_rewards(t, delta)
 	if _state.pot_dir != _pot_last_dir:
@@ -443,8 +624,35 @@ func _process(delta: float) -> void:
 		_lit = null
 	if _buds_moving(t):
 		_buds = []
+	elif not _rustling.is_empty() and _buds.size() == BUD_BANDS:
+		for band: int in _rustling.keys():
+			_buds[band] = null
+			if t > float(_rustling[band]):
+				_rustling.erase(band)
+	if _cat_at < INF:
+		_place_cat(t)
 	queue_redraw()
 
+## The buds a seed brushes past without touching shiver, a strip at a time.
+func _brush(t: float) -> void:
+	if Motion.reduce:
+		return
+	var reach := RUSTLE_REACH
+	for ball: Dictionary in _state.balls:
+		var p: Vector2 = ball.p
+		var cx := int(floorf(p.x / 6.0))
+		var cy := int(floorf(p.y / 6.0))
+		for gy in range(cy - 1, cy + 2):
+			for gx in range(cx - 1, cx + 2):
+				var key := gx + gy * 64
+				if not _state.grid.has(key):
+					continue
+				for i: int in _state.grid[key]:
+					if _state.st[i] != State.UP or t - _rustle_at[i] < RUSTLE_TIME:
+						continue
+					if p.distance_squared_to(_state.pos[i]) < reach * reach:
+						_rustle_at[i] = t
+						_rustling[_band_of(i)] = t + RUSTLE_TIME
 ## The last marigold's approach and the full bloom: the clock, the view, the
 ## drumroll and the near miss, every frame.
 func _camera(t: float, delta: float) -> void:
@@ -579,7 +787,9 @@ func _follow_trails() -> void:
 	_trail = null
 
 func _lit_moving(t: float) -> bool:
-	if not _picking.is_empty():
+	if not _picking.is_empty() or t < _fold_until:
+		return true
+	if _phase == "shot" and not _order.is_empty() and not Motion.reduce:
 		return true
 	for i in _order:
 		if t - _hit_at[i] < BLOOM_TIME + 0.05:
@@ -588,8 +798,8 @@ func _lit_moving(t: float) -> bool:
 
 func _buds_moving(t: float) -> bool:
 	if Motion.reduce:
-		return false
-	return t - _grown_at < _entrance_time()
+		return t < _fold_until
+	return t - _grown_at < _entrance_time() or t < _fold_until + Motion.POP_IN
 
 func _entrance_time() -> float:
 	return Motion.ENTER_DELAY + 0.1 + 0.9 + Motion.POP_IN + 0.05
@@ -657,6 +867,8 @@ func _handle(events: Array, t: float) -> void:
 			"hit":
 				var i: int = e.i
 				_hit_at[i] = t
+				_fold_at[i] = -1.0
+				_threads = null
 				if not Motion.reduce:
 					_ripples.append({"at": _state.pos[i], "t": t, "col": Parts.colours(_state.kind[i])[1]})
 					if _state.kind[i] == State.ORANGE:
@@ -673,7 +885,11 @@ func _handle(events: Array, t: float) -> void:
 						_shot_oranges += 1
 						_mood(Face.Expr.JOY, 0.8)
 						fx.puff(at, Pal.MG_ORANGE_HI, 4)
-						if _shot_oranges >= 2 and not _state.fever:
+						if _state.sweethearts:
+							var j: int = _state.pair[i]
+							if j >= 0 and _state.shot_bloomed.has(j):
+								_sweethearts(i, j)
+						elif _shot_oranges >= 2 and not _state.fever:
 							_bunch(_shot_oranges)
 					State.PURPLE:
 						fx.cue("violet")
@@ -728,6 +944,7 @@ func _handle(events: Array, t: float) -> void:
 				_jackpot(int(e.k), at)
 			"drain":
 				fx.cue("drain", 1.0, -6.0)
+				_croak(t)
 			"unstick":
 				for i: int in e.list:
 					_pick_at[i] = t
@@ -738,6 +955,10 @@ func _handle(events: Array, t: float) -> void:
 ## The last seed is gone: pick the blooms, one after another.
 func _end_shot(t: float) -> void:
 	_pick_result = _state.end_shot(_order)
+	var folded: PackedInt32Array = _pick_result.get("folded", PackedInt32Array())
+	if not folded.is_empty():
+		_fold(folded, t)
+	_on_streak(_shot_pairs > 0 if _state.sweethearts else _shot_oranges > 0)
 	var cleared: PackedInt32Array = _pick_result.cleared
 	var step := minf(PICK_STEP, PICK_ALL / maxf(1.0, float(cleared.size())))
 	if Motion.reduce:
@@ -757,7 +978,7 @@ func _end_shot(t: float) -> void:
 	_phase = "pick"
 	_trails = []
 	_trail = null
-	_log += ("🟠" if _shot_oranges > 0 else "🔵") + ("🪴" if _shot_pot else "")
+	_log += ("🟠" if (_shot_pairs > 0 if _state.sweethearts else _shot_oranges > 0) else "🔵") + ("🪴" if _shot_pot else "")
 	if _state.oranges_left <= 0:
 		_log += "🌈"
 	var pts: int = _pick_result.points
@@ -786,20 +1007,34 @@ func _after_pick(t: float) -> void:
 		check_solved()
 		return
 	if _state.is_out():
-		_phase = "out"
-		_out_at = t
-		_tell("MG_OUT", Face.Expr.WORRIED)
-		fx.cue("out")
-		_mood(Face.Expr.WORRIED, OUT_WAIT)
+		_out_of_seeds(t)
 		return
 	_phase = "aim"
 	_shot_oranges = 0
+	_shot_pairs = 0
 	_shot_pot = false
 	_guide = null
 	if _state.seeds == 1:
 		_tell("MG_LAST", Face.Expr.WORRIED)
 	else:
 		_cycle_tip()
+
+## Out of seeds with a marigold up: the garden grows back for another try --
+## free on Easy and Medium, a heart on Hard and Insane, and out of hearts the
+## sun falls asleep.
+func _out_of_seeds(t: float) -> void:
+	_mood(Face.Expr.WORRIED, OUT_WAIT)
+	_phase = "out"
+	_out_at = t
+	if max_hearts > 0:
+		_lose_heart(t)
+		if out_of_hearts:
+			_run_out()
+			return
+		_tell("MG_OUT_HEART_ONE" if hearts == 1 else "MG_OUT_HEART", Face.Expr.WORRIED, [] if hearts == 1 else [hearts])
+		return
+	_tell("MG_OUT", Face.Expr.WORRIED)
+	fx.cue("out")
 
 ## Out of seeds: the same garden grows back, a try later.
 func _regrow(t: float) -> void:
@@ -857,6 +1092,11 @@ func _shot_word(n: int) -> void:
 		fx.cue("free", 1.0 + 0.08 * float(tier), -6.0)
 		_hop_at = _now()
 		_mood(Face.Expr.JOY, 1.0)
+		_frog_jump(tier >= 3)
+		if tier >= 2:
+			_shades_on(SHADES_STAY)
+		if tier >= 1:
+			_ducks()
 		if tier >= 2:
 			_flash_now(Color("fff4c2"), 0.2 + 0.08 * float(tier - 2))
 			_shake = maxf(_shake, 0.3 + 0.1 * float(tier))
@@ -887,6 +1127,7 @@ func _caught(at: Vector2, t: float) -> void:
 	_spray(_bits, at, GOLD, 8, 420.0, "star", _s() / 9.5)
 	_spray(_bits, at, Color("b8f0a0"), 8, 360.0, "spark", _s() / 9.5)
 	_ring(_bits, at, _s() * 7.0, Color(Pal.SUN_RAY, 0.9))
+	_frog_jump(false)
 	if not Motion.reduce:
 		_seed_flies.append({"from": _cam * at, "t": t + 0.1})
 		_hud = null
@@ -933,6 +1174,8 @@ func _full_bloom(at: Vector2) -> void:
 	_shake = maxf(_shake, 0.8)
 	_rain = maxf(_rain, PETAL_TIME - 1.0)
 	_rain_coins = false
+	_shades_on(30.0)
+	_ducks()
 	var s := _s()
 	_spray(_bits, at, GOLD, 16, 620.0, "star", s / 9.5)
 	_spray(_bits, at, Pal.MG_ORANGE_HI, 18, 520.0, "petal", s / 9.5 * 1.3)
@@ -986,7 +1229,11 @@ func _tick_rewards(t: float, delta: float) -> void:
 		if not Motion.reduce and randf() < delta * 34.0:
 			var r := randf()
 			var kind := "coin" if _rain_coins and r < 0.45 else ("star" if r < (0.6 if _rain_coins else 0.25) else "petal")
+			if _won and _state.sweethearts and r > 0.8:
+				kind = "heart"
 			var col: Color = GOLD if kind != "petal" else PETALS[randi() % PETALS.size()]
+			if kind == "heart":
+				col = ROSE
 			_air_bits.append({"pos": Vector2(randf_range(0.0, size.x), -30.0), "vel": Vector2(randf_range(-50.0, 50.0), randf_range(150.0, 280.0)),
 				"rot": randf() * TAU, "spin": randf_range(-4.0, 4.0), "t": 0.0, "life": 4.0, "kind": kind, "col": col,
 				"size": randf_range(1.0, 1.5), "float": true})
@@ -1091,6 +1338,569 @@ func _sticker(text: String, at: Vector2, px: int, life: float, rainbow := true, 
 		"adv": adv, "w": total})
 	queue_redraw()
 
+# --- Sweethearts (Insane) ---
+
+## A marigold's sweetheart bloomed in the same shot: the pair stays open.
+## Love hearts rise off both, a ring round each, and a word.
+func _sweethearts(i: int, j: int) -> void:
+	_shot_pairs += 1
+	var a := _pt(_state.pos[i])
+	var c := _pt(_state.pos[j])
+	var k := _s() / 9.5
+	for at: Vector2 in [a, c]:
+		_spray(_bits, at, ROSE, 5, 260.0, "heart", k * 1.3)
+		_ring(_bits, at, _s() * 6.0, Color(ROSE, 0.85))
+	_spray(_bits, a.lerp(c, 0.5), Color("fff0f5"), 6, 300.0, "spark", k)
+	_threads = null
+	fx.cue("pair", 1.0 + 0.06 * float(mini(_shot_pairs - 1, 6)))
+	_hop_at = _now()
+	if _state.fever:
+		return
+	if _shot_pairs >= 2:
+		_bunch(_shot_pairs)
+	else:
+		_sticker(tr("MG_PAIR"), _row_at("bunch"), 60, 1.2, false, ROSE, false, "bunch")
+
+## The shot ended with marigolds whose sweethearts stayed shut: each droops
+## and folds back into a bud, its pip empties, and the garden says so.
+func _fold(folded: PackedInt32Array, t: float) -> void:
+	var k := _s() / 9.5
+	for i in folded:
+		_fold_at[i] = t
+		_hit_at[i] = maxf(_hit_at[i], 0.0)
+		_pick_at[i] = -1.0
+		_picking.erase(i)
+		_spray(_bits, _pt(_state.pos[i]), Color("b7a9c9"), 4, 160.0, "petal", k)
+	_fold_until = t + FOLD_TIME
+	_threads = null
+	_buds = []
+	_hud = null
+	var filled := _pips_filled(t)
+	for n in folded.size():
+		_spray(_air_bits, _pip_at(filled + n), Color("c9bcd8"), 3, 140.0, "petal", 0.6)
+	fx.cue("apart")
+	_mood(Face.Expr.WORRIED, 1.2)
+	_sticker(tr("MG_APART"), _row_at("apart"), 64, 1.4, false, Color("b8a6d9"), false, "apart")
+	if not _apart_told:
+		_apart_told = true
+		_tell("MG_APART_TIP", Face.Expr.WORRIED)
+
+## The ribbons tying each pair of sweethearts, under the buds: soft while
+## both are shut, bright while one waits open in a shot, gold once both
+## bloomed; a picked pair's ribbon is gone. Cached on what it shows.
+func _draw_threads(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
+	var waiting := PackedInt32Array()
+	if _phase == "shot":
+		waiting = _state.shot_bloomed
+	var key := "%d|%d|%d|%d" % [hash(_state.st), hash(waiting), int(size.x), int(size.y)]
+	if _threads == null or _threads_for != key:
+		var b := Face.Builder.new()
+		var s := _s()
+		for i in _state.pos.size():
+			var j: int = _state.pair[i]
+			if j <= i:
+				continue
+			var si: int = _state.st[i]
+			var sj: int = _state.st[j]
+			if si == State.GONE and sj == State.GONE:
+				continue
+			var col: Color = RIBBONS[_ribbon[i] % RIBBONS.size()]
+			var width := 0.36
+			var alpha := 0.75
+			if si == State.LIT and sj == State.LIT:
+				col = GOLD
+				alpha = 0.85
+				width = 0.34
+			elif si == State.LIT or sj == State.LIT:
+				width = 0.42
+				alpha = 1.0
+			var a: Vector2 = _state.pos[i]
+			var z: Vector2 = _state.pos[j]
+			var ctrl := (a + z) * 0.5 + Vector2(0.0, 3.0 + 0.16 * a.distance_to(z))
+			var pts := PackedVector2Array()
+			for n in 25:
+				var u := float(n) / 24.0
+				pts.append(_pt(a.lerp(ctrl, u).lerp(ctrl.lerp(z, u), u)))
+			if alpha >= 1.0:
+				b.stroke(pts, s * width * 2.6, Color(col, 0.22))
+			b.stroke(pts, s * width * 1.8, Color(col.darkened(0.35), alpha * 0.35))
+			b.stroke(pts, s * width, Color(col, alpha))
+			# a collar in the ribbon's colour round each end, so a pair is
+			# told at a glance
+			for e: Vector2 in [a, z]:
+				b.disc(_pt(e), s * State.PEG_R * 1.55, Color(col.darkened(0.2), 0.9))
+				b.disc(_pt(e), s * State.PEG_R * 1.35, col)
+		_threads = b.mesh() if not b.verts.is_empty() else null
+		_threads_for = key
+	_put(_threads, xf, tint, shown)
+
+# --- the streak and the silly ones ---
+
+## Shots in a row that keep a marigold (a pair on Insane): from the second a
+## word with a note up the scale, confetti from the third.
+func _on_streak(kept: bool) -> void:
+	if not kept:
+		_streak = 0
+		return
+	_streak += 1
+	if _streak < STREAK_FROM or _state.oranges_left <= 0:
+		return
+	var n := _streak
+	get_tree().create_timer(0.45).timeout.connect(func():
+		if not is_inside_tree() or _phase == "asleep":
+			return
+		_sticker(tr("MG_STREAK") % n, _row_at("streak"), 54 + 4 * mini(n, 6), 1.3, true, Color.WHITE, n >= 4, "streak")
+		fx.cue("combo", pow(2.0, float(SCALE[mini(n - STREAK_FROM, SCALE.size() - 1)]) / 12.0))
+		if n >= 3 and not Motion.reduce:
+			fx.confetti(Vector2(size.x * 0.5, BAND + 30.0), 12 + 4 * mini(n, 6), size.x * 0.8)
+			fx.cue("confetti", 1.0, -4.0))
+
+## The frog croaks at a seed that falls past the pot.
+func _croak(t: float) -> void:
+	if t - _frog_croak_at < FROG_CROAK * 2.0 or t - _frog_hop_at < FROG_HOP:
+		return
+	_frog_croak_at = t
+	fx.cue("ribbit", randf_range(0.94, 1.08), -5.0)
+
+## The frog hops on its pad (turning a somersault when `flip`), croaking,
+## and the pad rings the water when it lands.
+func _frog_jump(flip: bool) -> void:
+	var t := _now()
+	if t - _frog_hop_at < FROG_HOP + 0.2 or Motion.reduce:
+		return
+	_frog_hop_at = t
+	_frog_flip = flip
+	_frog_croak_at = t
+	fx.cue("ribbit", 1.12 if flip else 1.0, -3.0)
+	get_tree().create_timer(FROG_HOP).timeout.connect(func():
+		if is_inside_tree():
+			_ripples.append({"at": FROG_AT + Vector2(0.0, 0.4), "t": _now(), "col": Pal.MG_SHINE})
+			fx.cue("splash", 1.0, -8.0))
+
+## The sun puts its sunglasses on for a while.
+func _shades_on(stay: float) -> void:
+	var t := _now()
+	if t >= _shades_until:
+		_shades_at = t
+		fx.cue("shades", 1.0, -4.0)
+	_shades_until = maxf(_shades_until, t + stay)
+
+## A duck and her ducklings paddle across the pond, quacking.
+func _ducks() -> void:
+	var t := _now()
+	if t - _ducks_at < DUCK_TIME or Motion.reduce:
+		return
+	_ducks_at = t
+	fx.cue("quack", 1.0, -6.0)
+
+## A field point of the frog's body (about its middle, field units) to the
+## card's pixels: squashed, turned and lifted.
+func _frog_pt(v: Vector2, mid: Vector2, sq: Vector2, turn: float) -> Vector2:
+	return _pt(mid + (v * sq * 1.3).rotated(turn))
+
+## The frog on the left lily pad: round and green, eyes on top following the
+## seed, a smile, a throat that puffs when it croaks; it hops and lands
+## squashing.
+func _draw_frog(b: Face.Builder, t: float) -> void:
+	var s := _s()
+	var e := t - _frog_hop_at
+	var lift := 0.0
+	var turn := 0.0
+	var sq := Vector2.ONE
+	if e < FROG_HOP:
+		var u := e / FROG_HOP
+		lift = sin(PI * u) * 8.0
+		turn = TAU * u * u * (3.0 - 2.0 * u) if _frog_flip else sin(PI * u) * 0.25
+		sq = Vector2(1.0 - 0.12 * sin(PI * u), 1.0 + 0.15 * sin(PI * u))
+	elif e < FROG_HOP + 0.2:
+		var u := (e - FROG_HOP) / 0.2
+		sq = Vector2(1.0 + 0.2 * sin(PI * u), 1.0 - 0.2 * sin(PI * u))
+	var mid := FROG_AT + Vector2(0.0, -1.2 - lift)
+	b.ellipse(_pt(FROG_AT + Vector2(0.0, 0.2)), s * 2.0 / (1.0 + lift * 0.1), s * 0.5 / (1.0 + lift * 0.1), Color(Pal.MG_POND_DEEP, 0.55))
+	var green := Color("79c26b")
+	var deep := Color("4f9150")
+	for sx: float in [-1.0, 1.0]:
+		b.ellipse(_frog_pt(Vector2(sx * 1.1, 0.7), mid, sq, turn), s * 0.95 * sq.x, s * 0.55 * sq.y, deep)
+	b.ellipse(_frog_pt(Vector2.ZERO, mid, sq, turn), s * 1.55 * 1.3 * sq.x, s * 1.2 * 1.3 * sq.y, green)
+	b.ellipse(_frog_pt(Vector2(0.0, 0.4), mid, sq, turn), s * 1.0 * 1.3 * sq.x, s * 0.7 * 1.3 * sq.y, Color("cfe9a8"))
+	var c := t - _frog_croak_at
+	if c < FROG_CROAK:
+		var puff := sin(PI * c / FROG_CROAK)
+		b.disc(_frog_pt(Vector2(0.0, 0.35), mid, sq, turn), s * (0.4 + 0.6 * puff) * 1.3, Color("f4c6cf"))
+	for sx: float in [-1.0, 1.0]:
+		b.disc(_frog_pt(Vector2(sx * 0.62, 1.15), mid, sq, turn), s * 0.32, deep)
+		b.disc(_frog_pt(Vector2(sx * 1.0, 0.05), mid, sq, turn), s * 0.22, Color("f4a3a0", 0.7))
+	# eyes on top, looking at the seed (or up at the sun)
+	var target := State.SUN_C
+	if not _state.balls.is_empty():
+		target = Vector2(_state.balls[0].p)
+	var look := (target - mid).normalized() * 0.14
+	var shut := fmod(t + 1.3, 4.7) < 0.13
+	for sx: float in [-1.0, 1.0]:
+		var at := _frog_pt(Vector2(sx * 0.7, -1.0), mid, sq, turn)
+		b.disc(at, s * 0.62 * 1.3, green)
+		if shut:
+			b.stroke(PackedVector2Array([at + Vector2(-0.4, 0.0) * s, at + Vector2(0.4, 0.0) * s]), s * 0.16, Pal.TEXT)
+		else:
+			b.disc(at, s * 0.44 * 1.3, Color("fffaf0"))
+			b.disc(at + look * s * 1.3 * 1.5, s * 0.24 * 1.3, Pal.TEXT)
+	var m := _frog_pt(Vector2(0.0, -0.35), mid, sq, turn)
+	b.stroke(Face.Builder.arc_points(m, s * 0.75, PI * 0.18 + turn, PI * 0.82 + turn), s * 0.14, deep, false, false)
+
+## A duck and three ducklings paddling across the pond, bobbing, each with a
+## little wake; they fade in and out at the pond's edges.
+func _draw_ducks(b: Face.Builder, t: float) -> void:
+	var e := t - _ducks_at
+	if e < 0.0 or e > DUCK_TIME:
+		return
+	var s := _s()
+	var x0 := lerpf(-6.0, State.W + 20.0, e / DUCK_TIME)
+	for k in 4:
+		var mother := k == 0
+		var x := x0 - (0.0 if mother else 5.4 + 4.0 * float(k - 1))
+		var fade := clampf(minf(x - 2.0, State.W - 2.0 - x) / 4.0, 0.0, 1.0)
+		if fade <= 0.0:
+			continue
+		var r := 2.1 if mother else 1.3
+		var body := Color("fbf3dc") if mother else Color("ffd84d")
+		var c := Vector2(x, 66.0 + float(k) * 0.6 + sin(t * 5.0 + float(k) * 1.3) * 0.16)
+		b.stroke(PackedVector2Array([_pt(c + Vector2(-r * 1.1, r * 0.5)), _pt(c + Vector2(-r * 2.8, r * 0.95))]), s * 0.16, Color(Pal.MG_SHINE, 0.45 * fade))
+		b.stroke(PackedVector2Array([_pt(c + Vector2(-r * 1.1, r * 0.55)), _pt(c + Vector2(-r * 2.6, r * 0.2))]), s * 0.16, Color(Pal.MG_SHINE, 0.3 * fade))
+		b.ellipse(_pt(c + Vector2(0.0, r * 0.55)), r * 1.3 * s, r * 0.22 * s, Color(Pal.MG_POND_DEEP, 0.45 * fade))
+		b.fan(PackedVector2Array([_pt(c + Vector2(-r * 0.9, -r * 0.1)), _pt(c + Vector2(-r * 1.55, -r * 0.6)), _pt(c + Vector2(-r * 0.6, -r * 0.4))]),
+			Color(body.darkened(0.08), fade))
+		b.ellipse(_pt(c), r * 1.2 * s, r * 0.62 * s, Color(body, fade))
+		b.ellipse(_pt(c + Vector2(-r * 0.15, -r * 0.12)), r * 0.6 * s, r * 0.3 * s, Color(body.darkened(0.1), fade))
+		var head := c + Vector2(r * 0.8, -r * 0.8)
+		b.disc(_pt(head), r * 0.5 * s, Color(body, fade))
+		b.fan(PackedVector2Array([_pt(head + Vector2(r * 0.35, -r * 0.08)), _pt(head + Vector2(r * 0.85, r * 0.06)), _pt(head + Vector2(r * 0.35, r * 0.2))]),
+			Color(Color("f2a23a"), fade))
+		b.disc(_pt(head + Vector2(r * 0.15, -r * 0.12)), r * 0.09 * s + 1.0, Color(Pal.TEXT, fade))
+
+# --- hearts ---
+
+func _lose_heart(t: float) -> void:
+	_lost_ever = true
+	hearts = maxi(0, hearts - 1)
+	_split_index = hearts
+	_split_at = t
+	out_of_hearts = hearts <= 0
+	_log += "💔"
+	_streak = 0
+	_hearts_mesh = null
+	fx.cue("heart_lost")
+
+## The hearts on a little wooden sign hung off the arch, left of the sun: a
+## lost one splits and falls, a heart given back pops in.
+func _draw_hearts(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
+	var s := _s()
+	var moving := not Motion.reduce and (t - _split_at < SPLIT_TIME or t - _back_at < HEART_BACK_TIME)
+	var key := "%d|%d|%d" % [hearts, max_hearts, int(s * 100.0)]
+	if _hearts_mesh == null or _hearts_for != key or moving:
+		var b := Face.Builder.new()
+		var step := (2.0 * HEART_R + HEART_GAP) * s
+		var w := step * float(max_hearts) + HEART_GAP * s
+		var h := (2.0 * HEART_R + 1.4) * s
+		var mid := _pt(SIGN_AT)
+		var top := mid.y - h * 0.5
+		# two strings up to the arch, then the plank
+		for sx: float in [-0.36, 0.36]:
+			var x := mid.x + sx * w
+			b.stroke(PackedVector2Array([Vector2(x, _origin().y - s * 0.6), Vector2(x, top + s * 0.4)]), s * 0.16, Pal.MG_ARBOR_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(mid.x - w * 0.5, top + s * 0.35), Vector2(w, h), s * 1.0), Pal.MG_ARBOR_DEEP.darkened(0.2))
+		b.fan(Face.Builder.round_rect(Vector2(mid.x - w * 0.5, top), Vector2(w, h), s * 1.0), Pal.MG_ARBOR)
+		b.stroke(PackedVector2Array([Vector2(mid.x - w * 0.42, top + s * 0.45), Vector2(mid.x + w * 0.42, top + s * 0.45)]), s * 0.22,
+			Color(Pal.MG_ARBOR_HI, 0.7))
+		for sx: float in [-0.36, 0.36]:
+			b.disc(Vector2(mid.x + sx * w, top + s * 0.5), s * 0.28, Pal.MG_ARBOR_DEEP)
+		var x0 := mid.x - w * 0.5 + HEART_GAP * s + HEART_R * s
+		var r := HEART_R * s
+		for i in max_hearts:
+			var at := Vector2(x0 + step * float(i), mid.y + s * 0.2)
+			if i < hearts:
+				var rr := r
+				if i == _back_index and not Motion.reduce:
+					rr *= Motion.pop_in_scale(t - _back_at, HEART_BACK_TIME).x
+				if rr > 0.5:
+					b.polygon(_heart(at, rr, -1), Pal.FLOWER)
+					b.polygon(_heart(at, rr, 1), Pal.FLOWER_DEEP)
+					_heart_face(b, at, rr)
+				continue
+			b.polygon(_heart(at, r, 0), Color(Pal.MG_ARBOR_DEEP, 0.55))
+			var u := (t - _split_at) / SPLIT_TIME
+			if i == _split_index and u < 1.0 and not Motion.reduce:
+				var fade := 1.0 - u * u
+				for side in [-1, 1]:
+					var turn: float = side * SPLIT_TURN * u
+					var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u) * s
+					var pts := _heart(Vector2.ZERO, r, side)
+					for k in pts.size():
+						pts[k] = at + shift + pts[k].rotated(turn)
+					b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+		_hearts_mesh = b.mesh()
+		_hearts_for = key
+	_put(_hearts_mesh, xf, tint, shown)
+
+static func _heart_face(b: Face.Builder, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+
+## A heart about `at`, `s` to its side; `side` -1 or 1 is one half, split
+## down a zigzag (Super Slider's).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var u := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(u), 3.0),
+			-(13.0 * cos(u) - 5.0 * cos(2.0 * u) - 2.0 * cos(3.0 * u) - cos(4.0 * u)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+## The last heart is gone: the sun nods off, dusk falls on the pond, and the
+## out-of-hearts card comes up.
+func _run_out() -> void:
+	_phase = "asleep"
+	_streak = 0
+	_aiming = false
+	_shades_until = _now()
+	fx.cue("out_of_hearts")
+	_mood(Face.Expr.SLEEPY, 1.0e6)
+	_say(tr("MG_ASLEEP"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	get_tree().create_timer(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER).timeout.connect(_open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _open_card() -> void:
+	if not is_inside_tree() or not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["MG_OUT_BODY", "MG_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the garden as dealt, every heart back, the clock and the
+## moves from zero. Hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_state.restart()
+	hearts = max_hearts
+	out_of_hearts = false
+	_split_index = -1
+	_back_index = -1
+	_hearts_mesh = null
+	_streak = 0
+	var t := _now()
+	_fresh(t)
+	_log += "·"
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	_mood(Face.Expr.HAPPY, 0.0)
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	fx.cue("reset")
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	moved.emit()
+
+## One more heart (the card's video), once a day: morning comes back and the
+## garden grows back for one more try.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	var t := _now()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = t
+	out_of_hearts = false
+	_hearts_mesh = null
+	_running = true
+	_state.regrow()
+	_fresh(t)
+	_log += "·"
+	_mood(Face.Expr.HAPPY, 0.0)
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_say(tr("MG_HEART_BACK"), Face.Expr.HAPPY)
+	moved.emit()
+
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the party ---
+
+func _reset_party() -> void:
+	_party_at = INF
+	_cat_at = INF
+	_cat_curled = false
+	_stamp_at = INF
+	_seal_mesh = null
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+
+## The day's own number, so a day always says the same wisdom.
+func _day_hash() -> int:
+	return absi(hash([_state.pos.size(), _state.kind0]))
+
+## After the win: the frog turns a somersault, the ducks paddle by in a
+## shower of confetti, the nap cat hops onto the right lily pad and curls
+## up, a bit of garden wisdom, and the seal when the solve earned one
+## (flawless, or any Sweethearts garden).
+func _party() -> void:
+	var t := _now()
+	_party_at = t + (0.0 if Motion.reduce else PARTY_AT)
+	_cat_at = _party_at
+	if _flawless or _state.sweethearts:
+		_stamp_at = t if Motion.reduce else _party_at + STAMP_AT
+		_seal_mesh = null
+		get_tree().create_timer(maxf(0.01, _stamp_at - t)).timeout.connect(func():
+			if is_inside_tree():
+				fx.cue("stamp"))
+	get_tree().create_timer(PARTY_AT + 0.9).timeout.connect(func():
+		if is_inside_tree():
+			_say(tr("MG_CHEER_%d" % posmod(_day_hash(), CHEERS)), Face.Expr.JOY))
+	if Motion.reduce:
+		return
+	get_tree().create_timer(PARTY_AT).timeout.connect(func():
+		if not is_inside_tree():
+			return
+		fx.cue("party")
+		fx.confetti(Vector2(size.x * 0.5, BAND + 20.0), 30, size.x * 0.9)
+		_frog_jump(true)
+		_ducks())
+
+func _cat_px() -> float:
+	return size.x * CAT_PX
+
+## Where the cat curls up: on the right lily pad.
+func _cat_spot() -> Vector2:
+	return _pt(Vector2(87.0, 111.6))
+
+func _cat_start() -> Vector2:
+	return _pt(Vector2(State.W + 4.0, 111.6))
+
+func _place_cat(t: float) -> void:
+	if t < _cat_at or _s() <= 0.0:
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.z_index = 3
+		_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		_cat.set_idle(true)
+		_cat_curled = false
+	var px := _cat_px()
+	if _cat.size.x != px:
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+	if _cat_curled:
+		_cat.position = _cat_spot() - _cat.size * Vector2(0.5, 0.8)
+		return
+	var e := t - _cat_at
+	var spot := _cat_spot()
+	var start := _cat_start()
+	var at := spot
+	var sc := Vector2.ONE
+	var walk := CAT_POP + CAT_HOPS * CAT_HOP_TIME
+	if Motion.reduce or e >= CURL_AT:
+		_cat_curled = true
+		_cat.expression = Face.Expr.SLEEPY
+		_cat.scale = Vector2.ONE
+		_cat.position = spot - _cat.size * Vector2(0.5, 0.8)
+		if not Motion.reduce and e < CURL_AT + 1.0:
+			fx.cue("purr")
+		return
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < walk:
+		var hh := (e - CAT_POP) / CAT_HOP_TIME
+		var n := int(hh)
+		var u := hh - float(n)
+		var from := start.lerp(spot, float(n) / CAT_HOPS)
+		var to := start.lerp(spot, float(n + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * CAT_HOP_H * px)
+		var q := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - q, 1.0 + q)
+	elif e < walk + CAT_SETTLE:
+		var u := (e - walk) / CAT_SETTLE
+		var q := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + q, 1.0 - q)
+	_cat.position = at - _cat.size * Vector2(0.5, 0.8)
+	_cat.scale = sc
+
+## The seal over the middle of the pond, dropping in and settling, its words
+## over it: Flawless; on Sweethearts "Insane" over Flawless or Sweethearts,
+## on the night seal.
+func _draw_stamp(t: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R
+	var insane: bool = _state.sweethearts
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := t - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var centre := _pt(Vector2(54.0, 90.0))
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	draw_set_transform_matrix(xf)
+	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("MG_SWEET_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(self, rad, lines)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
 # --- the drawing ---
 
 func _draw() -> void:
@@ -1119,6 +1929,8 @@ func _draw() -> void:
 	if not Motion.reduce:
 		_live_back = _build_live_back(t)
 		_put(_live_back, xf, tint, shown)
+	if _state.sweethearts:
+		_draw_threads(t, xf, tint, shown)
 	if _buds.size() != BUD_BANDS:
 		_buds = []
 		for k in BUD_BANDS:
@@ -1162,6 +1974,8 @@ func _draw() -> void:
 		_draw_pot_worths(hud, seen)
 		draw_set_transform(Vector2.ZERO)
 	_draw_hud(t, hud, tint, shown)
+	if max_hearts > 0:
+		_draw_hearts(t, hud, tint, shown)
 	if not Motion.reduce:
 		_live = _build_live(t)
 		_put(_live, xf, tint, shown)
@@ -1172,6 +1986,8 @@ func _draw() -> void:
 	_put(_air, hud, tint, shown)
 	_draw_count(t, hud, seen)
 	_draw_stickers(hud, seen)
+	if t >= _stamp_at:
+		_draw_stamp(t, shown)
 	_draw_toast(t, shown)
 	_shown = shown
 
@@ -1456,9 +2272,17 @@ func _build_buds(t: float, band: int) -> ArrayMesh:
 		if _state.st[i] != State.UP or _band_of(i) != band:
 			continue
 		var sc := _grow(i, t)
+		# a marigold folding back comes up as a bud once its bloom has shut
+		var f := _fold_at[i]
+		if f >= 0.0 and not Motion.reduce:
+			sc *= Motion.pop_in_scale(t - f - FOLD_TIME * 0.7).x if t - f > FOLD_TIME * 0.7 else 0.0
 		if sc <= 0.01:
 			continue
-		Parts.bud(b, _pt(_state.pos[i]), r, _state.kind[i], sc)
+		var at := _pt(_state.pos[i])
+		var e := t - _rustle_at[i]
+		if e < RUSTLE_TIME and not Motion.reduce:
+			at.x += sin(e * 42.0) * exp(-e * 7.0) * 0.32 * s
+		Parts.bud(b, at, r, _state.kind[i], sc)
 	return b.mesh() if not b.verts.is_empty() else null
 
 func _grow(i: int, t: float) -> float:
@@ -1482,6 +2306,15 @@ func _build_lit(t: float) -> ArrayMesh:
 		var sc := 1.0
 		var lift := 0.0
 		var spin := 0.0
+		var f := _fold_at[i]
+		if f >= 0.0:
+			# Sweethearts: a lonely bloom droops and shuts
+			var u := clampf((t - f) / FOLD_TIME, 0.0, 1.0)
+			if u >= 1.0 or Motion.reduce:
+				continue
+			var shut := 1.0 - u * u
+			Parts.bloom(b, _pt(_state.pos[i]) + Vector2(0.0, s * 0.8 * u), r, _state.kind[i], shut, 1.0 - 0.15 * u, 1.0, -0.5 * u)
+			continue
 		if pick >= 0.0:
 			var e := t - pick
 			if e >= PICK_TIME or (Motion.reduce and e >= 0.0):
@@ -1495,6 +2328,9 @@ func _build_lit(t: float) -> ArrayMesh:
 		elif _state.st[i] != State.LIT:
 			continue
 		var open := 1.0 if Motion.reduce else Motion.back_out(clampf((t - hit) / BLOOM_TIME, 0.0, 1.0))
+		# open blooms breathe while the seed is still out
+		if pick < 0.0 and _phase == "shot" and not Motion.reduce:
+			sc *= 1.0 + 0.05 * sin((t - hit) * 6.0 + float(i))
 		Parts.bloom(b, _pt(_state.pos[i]) - Vector2(0.0, lift), r, _state.kind[i], open, sc, alpha, spin)
 	return b.mesh() if not b.verts.is_empty() else null
 
@@ -1567,12 +2403,12 @@ func _draw_sun(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		_spout = b.mesh()
 		_spout_for = lk
 	var expr := _expr if t < _expr_until else (Face.Expr.WORRIED if _state.seeds <= 1 and _phase == "aim" and not _done else Face.Expr.HAPPY)
-	if _solved_at >= 0.0:
+	if _won:
 		expr = Face.Expr.JOY
 	var eye := 1.0
 	if not Motion.reduce and t >= _blink_at and t <= _blink_at + Face.BLINK_TIME:
 		eye = absf(cos(PI * (t - _blink_at) / Face.BLINK_TIME))
-	var look := State.aim_dir(_aim) * 0.07 if _phase == "aim" else Vector2(0.0, 0.06)
+	var look := State.aim_dir(_aim_shown) * 0.07 if _phase == "aim" else Vector2(0.0, 0.06)
 	var key := "%d|%d|%d|%d" % [expr, int(eye * 6.0), int(look.x * 100.0), int(look.y * 100.0)]
 	if _body == null or _body_for != key:
 		var b := Face.Builder.new()
@@ -1590,10 +2426,34 @@ func _draw_sun(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		var h := t - _hop_at
 		if h < HOP_TIME:
 			bob.y -= sin(PI * h / HOP_TIME) * s * 1.3
-	var back := -State.aim_dir(_aim) * q * s
+	var back := -State.aim_dir(_aim_shown) * q * s
 	_put(_rays, xf * Transform2D(spin, Vector2.ONE * (1.0 + 0.1 * q), 0.0, c + bob), tint, shown)
-	_put(_spout, xf * Transform2D(State.aim_dir(_aim).angle(), c + bob + back * 1.2), tint, shown)
-	_put(_body, xf * Transform2D(0.0, Vector2(1.0 + 0.12 * q, 1.0 - 0.1 * q), 0.0, c + bob + back * 0.5), tint, shown)
+	_put(_spout, xf * Transform2D(State.aim_dir(_aim_shown).angle(), c + bob + back * 1.2), tint, shown)
+	var body := xf * Transform2D(0.0, Vector2(1.0 + 0.12 * q, 1.0 - 0.1 * q), 0.0, c + bob + back * 0.5)
+	_put(_body, body, tint, shown)
+	# the sunglasses, dropped on after a loud shot and through a full bloom
+	var on := t - _shades_at
+	if on >= 0.0 and (t < _shades_until or _state.fever or _won):
+		if _shades == null:
+			var b := Face.Builder.new()
+			_draw_shades(b, R)
+			_shades = b.mesh()
+		var drop := 0.0 if Motion.reduce or on >= SHADES_DROP else -R * 2.4 * pow(1.0 - on / SHADES_DROP, 2.0)
+		var tilt := 0.0 if Motion.reduce or on >= SHADES_DROP + 0.3 else sin(on * 18.0) * 0.12 * exp(-on * 6.0)
+		_put(_shades, body * Transform2D(tilt, Vector2(0.0, drop)), tint, shown)
+
+## The sun's sunglasses about its middle: two dark round lenses on a gold
+## bridge, each with a shine.
+static func _draw_shades(b: Face.Builder, R: float) -> void:
+	var y := -0.02 * R
+	b.stroke(PackedVector2Array([Vector2(-0.98, y - 0.12) * R, Vector2(-0.6, y - 0.18) * R]), 0.09 * R, Color("3a2f44"))
+	b.stroke(PackedVector2Array([Vector2(0.98, y - 0.12) * R, Vector2(0.6, y - 0.18) * R]), 0.09 * R, Color("3a2f44"))
+	b.stroke(PackedVector2Array([Vector2(-0.16, y - 0.12) * R, Vector2(0.0, y - 0.18) * R, Vector2(0.16, y - 0.12) * R]), 0.1 * R, Color("3a2f44"))
+	for sx: float in [-1.0, 1.0]:
+		var c := Vector2(sx * 0.4, y) * R
+		b.ellipse(c, 0.36 * R, 0.27 * R, Color("3a2f44"))
+		b.ellipse(c + Vector2(0.0, 0.02 * R), 0.3 * R, 0.21 * R, Color("5a4a6e"))
+		b.stroke(PackedVector2Array([c + Vector2(-0.18, -0.02) * R, c + Vector2(-0.04, -0.14) * R]), 0.06 * R, Color(1.0, 1.0, 1.0, 0.55))
 
 ## The band over the field: the seeds left in a wooden trough, the score
 ## rolling up, the multiplier on a tag, and a groove of marigold pips that
@@ -1765,6 +2625,8 @@ func _build_live_back(t: float) -> ArrayMesh:
 		var at := _lantern_at(k) + Vector2(0.0, 1.5)
 		var f := 0.5 + 0.3 * sin(t * 6.3 + float(k) * 2.0) + 0.2 * sin(t * 10.7 + float(k))
 		b.disc(_pt(at), s * (2.3 + 0.35 * f), Color(Pal.SUN_RAY, 0.12 + 0.1 * f))
+	_draw_ducks(b, t)
+	_draw_frog(b, t)
 	for r: Dictionary in _ripples:
 		var u := clampf((t - float(r.t)) / RIPPLE_TIME, 0.0, 1.0)
 		var rad := State.PEG_R * s * (1.1 + 2.4 * Motion.back_out(u) * 0.8 + 0.4 * u)
@@ -1783,6 +2645,16 @@ func _build_live(t: float) -> ArrayMesh:
 			var a := sin(PI * e / GLINT_TIME)
 			var at := _pt(_state.pos[_glint_i] + Vector2(-0.7, -0.8) * State.PEG_R)
 			_twinkle(b, at, s * 1.5 * a, Color(1.0, 1.0, 0.95, 0.95 * a), e * 2.0)
+	# Sweethearts: a marigold open in this shot whose sweetheart is still shut
+	# beats a little heart over it, waiting
+	if _state.sweethearts and _phase == "shot":
+		for i in _state.shot_bloomed:
+			if _state.kind[i] != State.ORANGE or _state.st[_state.pair[i]] != State.UP:
+				continue
+			var beat := 1.0 + 0.18 * absf(sin((t - _hit_at[i]) * 7.0))
+			var at := _pt(_state.pos[i]) - Vector2(0.0, s * 3.1)
+			b.polygon(_heart(at, s * 0.9 * beat, 0), Color(ROSE.darkened(0.25), 0.95))
+			b.polygon(_heart(at, s * 0.75 * beat, 0), ROSE)
 	var in_air := 0
 	var filled := _pips_filled(t)
 	var g := _pip_geom()
@@ -1957,6 +2829,12 @@ func _draw_bits(b: Face.Builder, bits: Array) -> void:
 				b.ellipse(at, 12.0 * sz * maxf(0.15, face), 12.0 * sz, Color(GOLD.darkened(0.25), col.a))
 				b.ellipse(at, 9.5 * sz * maxf(0.12, face), 9.5 * sz, col)
 				b.ellipse(at + Vector2(-3.0 * sz * face, -3.0 * sz), 2.5 * sz * face, 2.5 * sz, Color(1, 1, 1, 0.6 * col.a))
+			"heart":
+				var hs := 9.0 * sz * (0.8 + 0.2 * a)
+				var pts := _heart(Vector2.ZERO, hs, 0)
+				for k in pts.size():
+					pts[k] = at + pts[k].rotated(sin(bit.t * 5.0 + rot) * 0.3)
+				b.polygon(pts, col)
 			"ring":
 				var k := clampf(bit.t / life, 0.0, 1.0)
 				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
@@ -2125,6 +3003,8 @@ func _shoot() -> void:
 	_phase = "shot"
 	_order = PackedInt32Array()
 	_shot_oranges = 0
+	_shot_pairs = 0
+	_word_tier = -1
 	_shot_pot = false
 	_acc = 0.0
 	_super = false
@@ -2162,12 +3042,12 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, State.hints_for(_state.band) + hints_extra - hints_used)
 
 ## The sun finds the best line it can from here -- every angle played out on
 ## a copy of the garden -- turns to it, and shows the long guide.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or _phase != "aim" or _state.seeds <= 0 or not _think.is_empty():
+	if is_done() or _state.band >= 3 or hints_left() <= 0 or _phase != "aim" or _state.seeds <= 0 or not _think.is_empty():
 		return false
 	# a third of a second on this Mac, so off the frame: the sun spins while
 	# it looks, and the aim turns when it has found the line
@@ -2182,39 +3062,63 @@ func hint() -> bool:
 	queue_redraw()
 	return true
 
+## Reset grows the garden back. On Hard and Insane, once a seed of this try
+## has flown, giving the garden up costs a heart, as running out would.
 func reset_board() -> void:
+	if out_of_hearts or _phase == "asleep" or _phase in ["shot", "pick", "out"]:
+		return
 	if not _think.is_empty():
 		WorkerThreadPool.wait_for_task_completion(int(_think.id))
 		_think = {}
+	var t := _now()
+	if max_hearts > 0 and _state.shots > 0:
+		_lose_heart(t)
+		if out_of_hearts:
+			_run_out()
+			return
 	_state.balls = []
 	_state.regrow()
-	_fresh(_now())
+	_fresh(t)
 	_log += "·"
 	moves = 0
 	_running = true
 	fx.cue("reset")
-	_say(tr("MG_TRY") % [_state.tries], Face.Expr.HAPPY)
+	if max_hearts > 0 and _split_at == t:
+		_tell("MG_RESET_HEART_ONE" if hearts == 1 else "MG_RESET_HEART", Face.Expr.WORRIED, [] if hearts == 1 else [hearts])
+	else:
+		_say(tr("MG_TRY") % [_state.tries], Face.Expr.HAPPY)
 
 func is_solved() -> bool:
 	return _state.is_solved()
 
 ## The day's shots, never its garden: a marigold shot, a plain one, a seed in
-## the pot, a new try, and the rainbow at the end.
+## the pot, a lost heart, a new try, and the rainbow at the end; then the
+## seal the solve earned.
 func share_glyphs() -> String:
-	return _log
+	var out := _log
+	if _state.sweethearts and is_solved():
+		out += " 💞 " + tr("MG_SWEET_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless and is_solved():
+		out += " 🏅 " + tr("BN_FLAWLESS")
+	return out
 
 # --- the win ---
 
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("MG_WIN") % [Locale.number(_state.score), _state.shots]}
 
+## The win screen waits for the party: the cat on her pad and the seal.
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return maxf(WIN_HOLD, PARTY_AT + STAMP_AT + STAMP_DROP * 2.0 + 0.5)
 
 func _on_solved() -> void:
 	_solved_at = _now()
+	_won = true
+	# Flawless: no hint, and no heart lost on Hard and Insane, or the first
+	# try on Easy and Medium.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _state.tries == 1)
 	_mood(Face.Expr.JOY, 100.0)
 	fx.cue("solved")
 	if not Motion.reduce:
@@ -2231,9 +3135,11 @@ func _on_solved() -> void:
 		_spray(_air_bits, _pt(State.SUN_C), GOLD, 14, 640.0, "star", 1.1)
 		_ring(_air_bits, _pt(State.SUN_C), 220.0, Color(GOLD, 0.9))
 	_say(tr("MG_WIN") % [Locale.number(_state.score), _state.shots], Face.Expr.JOY)
+	_party()
 
 func completion_record() -> Dictionary:
-	return {"score": _state.score, "shots": _state.shots, "tries": _state.tries, "log": _log}
+	return {"score": _state.score, "shots": _state.shots, "tries": _state.tries, "log": _log,
+		"hearts": hearts, "flawless": _flawless}
 
 ## A reopened daily that was already solved: every marigold picked, the
 ## rainbow up, the score as it was. Never check_solved(): `solved` must not
@@ -2247,13 +3153,26 @@ func restore_completed_board() -> void:
 	_state.score = int(completed_record.get("score", 0))
 	_state.shots = int(completed_record.get("shots", 0))
 	_log = String(completed_record.get("log", ""))
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	_flawless = bool(completed_record.get("flawless", false))
+	# the clocks are pushed back; _won, not the clock's sign, says it is won
+	# (Super Slider's restore bug: under 100 s after launch they go negative)
 	var t := _now()
 	_fever_at = t - 100.0
 	_opened = t - 100.0
 	_grown_at = t - 100.0
 	_solved_at = t - 100.0
+	_won = true
 	_phase = "won"
+	# the tag shows x10 already: no step-up cheer for a garden long done
+	_mult_shown = _state.mult()
+	_pill = null
+	_cat_at = t - 100.0
+	_cat_curled = false
+	if _flawless or _state.sweethearts:
+		_stamp_at = t - 100.0
 	_layout()
+	_place_cat(t)
 	_say(tr("MG_DONE"), Face.Expr.JOY)
 
 func _now() -> float:
