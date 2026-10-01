@@ -51,7 +51,7 @@ func _initialize() -> void:
 	quit()
 
 ## Insane, Sweethearts: every banked garden replayed from the shipped file
-## with its proof (it must bloom every pair), then the hint's greedy aim
+## with its proof, the pot slid a random while before each shot (it must bloom every pair), then the hint's greedy aim
 ## played on a few of them with the band's seeds and two tries -- a feel for
 ## how near impossible it is.
 func _insane() -> void:
@@ -64,7 +64,11 @@ func _insane() -> void:
 		if not st.from_bank(boards[k]):
 			bad += 1
 			continue
+		# the pot left anywhere before each shot, as a player leaves it
+		var jr := RandomNumberGenerator.new()
+		jr.seed = 77 + k
 		for a in st.proof:
+			st.step_pot(jr.randf_range(0.5, 6.0))
 			st.fire(float(a))
 			var n := 0
 			while not st.balls.is_empty() and n < 240 * 40:

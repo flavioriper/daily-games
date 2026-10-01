@@ -7,6 +7,9 @@ exactly and halve the file; the proof's angles are doubles and keep all of
 theirs. tests/_probe_marigold.gd replays every entry from the file.
 
     python3 tools/merge_marigold_sweethearts.py part0.json part1.json ...
+
+The parts are the miner's own output, or its `filter` mode's (the first
+bank's 240 gardens filtered for the pot anywhere: 181 kept).
 """
 import json
 import pathlib
@@ -33,7 +36,7 @@ def main() -> None:
     boards = boards[:KEEP]
     doc = {"version": 1,
            "note": "Marigold Insane, Sweethearts: tools/mine_marigold_sweethearts.gd. Every pair blooms together "
-                   "from the opening in `proof`'s six shots; `openers` counts the 65 fan angles whose first shot "
+                   "from the opening in `proof`'s six shots, with the pot anywhere before each shot; `openers` counts the 65 fan angles whose first shot "
                    "blooms a pair.",
            "boards": boards}
     OUT.write_text(json.dumps(doc, separators=(",", ":")))

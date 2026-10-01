@@ -53,8 +53,8 @@ back into a bud when the shot ends.**
   `APART` 22 units, often across the garden). A shot that opens one end and
   misses the other gives nothing but bluebells, and those are gone. No
   hints, two hearts. Measured on the probe: a bot that knows the physics
-  exactly (the hint's 65-angle search, every shot) clears about half the
-  gardens in two tries; a person aims with a 30-unit guide.
+  exactly (the hint's 65-angle search, every shot) cleared 3 of the 6
+  gardens it played in two tries (on the first bank, before the pot filter); a person aims with a 30-unit guide.
 - **Fair, always**: the gardens are mined. `tools/mine_marigold_sweethearts.gd`
   deals an Insane garden with every bud a bluebell (the clover kept), then
   plays six shots from the opening: each sweeps 97 angles, takes one of the
@@ -62,12 +62,16 @@ back into a bud when the shot ends.**
   farthest apart, then the next two). So **every pair can be bloomed
   together from the opening**, and `proof`'s six shots bloom them all. Each
   entry is read back through `State.from_bank` and replayed before it is
-  kept; `tests/_probe_marigold.gd` replays all 160 from the shipped file
-  (`bad=0`). `tools/merge_marigold_sweethearts.py` keeps the 160 gardens
-  with the fewest `openers` (opening shots that bloom any pair, 4 to 17 of
-  65). The proof plays only from the opening and only with the pot where
-  the miner had it; after a lonely shot the garden has changed, which is
-  the point.
+  kept -- as mined, and six more times with the pot slid a random 0.5 to
+  6 s before every shot, since the pot moves while a player aims and a seed
+  off its rim can climb back into the buds (the review found 28 of the
+  first 160 failing that; the miner's `filter` mode kept 181 of the 240
+  mined). `tests/_probe_marigold.gd` replays all 160 from the shipped file
+  with the pot jittered. `tools/merge_marigold_sweethearts.py` keeps the
+  160 gardens with the fewest `openers` (opening shots that bloom any
+  pair). The proof plays only from the opening and is checked at seven pot
+  timings, not all of them; after a lonely shot the garden has changed,
+  which is the point.
 - **Never mirrored**: a shot is chaotic, and a mirrored garden's float
   rounding (and the crown nudge's and clover's `i % 2`) lost every proof.
   Positions ship at nine significant digits, exact for the phone's float32;
@@ -161,6 +165,13 @@ as it does on `main` before this branch: it has no way to aim a seed.
   sun not joyful (`_solved_at` pushed negative; Super Slider's and
   Sunbeam's bug). `_won` says it now. A restored day also cheered "Points
   x10!" as it opened (the tag stepped from x1); it starts at x10 now.
+- **Review findings, fixed**: the bank's proofs held only for the miner's
+  pot (above); a pair hit within one frame's batch of steps was cheered
+  twice (the board now asks its own event order, `_order`); a marigold a
+  stuck seed had cleared reopened before folding (it now just pops back as
+  a bud); Hard and Insane cycled Easy's tips after the first shot; the
+  clock ran while the sun slept; a streak word could show after the try
+  had run out.
 - **The shot word** was never reset between shots (`_word_tier` only on a
   new try), so after one long shot the words never came again that try.
 
@@ -174,7 +185,7 @@ as it does on `main` before this branch: it has no way to aim a seed.
   only way to lose in this genre. Three hearts against a garden the hint
   clears in ~6 shots of 10 can still be lost by a player, rarely.
 - **Reset costs a heart** on Hard and Insane once a seed has flown.
-- **The proof is from the opening only** and assumes the pot where the
-  miner had it (a caught seed changes the count, not the blooms).
+- **The proof is from the opening only**, checked with the pot at seven
+  timings before each shot.
 - The look (ribbons, frog, ducks, sunglasses, cat on the lily pad) was
   judged on stills. Sounds unheard.

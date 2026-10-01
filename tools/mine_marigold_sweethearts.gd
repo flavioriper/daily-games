@@ -13,7 +13,14 @@ extends SceneTree
 ## the buds to a thousandth lost the proof), read back through
 ## State.from_bank and replayed; one that does not solve is dropped.
 ##
+## The pot slides the whole time a player aims, and a seed off its rim can
+## climb back into the buds, so a kept garden's proof must also solve with
+## the pot left anywhere before each shot: JITTER_TRIES replays, the pot
+## stepped a random 0.5 to 6 s before every shot (the review of 2026-10-01
+## found 28 of the first 160 failing that).
+##
 ##     godot --headless --script res://tools/mine_marigold_sweethearts.gd -- <first seed> <count> <out.json>
+##     godot --headless --script res://tools/mine_marigold_sweethearts.gd -- filter <in.json> <out.json>
 
 const State = preload("res://puzzles/marigold_state.gd")
 const SHOTS := 6
@@ -21,9 +28,14 @@ const PAIRS_A_SHOT := 2
 ## Sweethearts stand at least this far apart, in field units.
 const APART := 22.0
 const FAN := 96
+const JITTER_TRIES := 6
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
+	if args.size() == 3 and args[0] == "filter":
+		_filter(String(args[1]), String(args[2]))
+		quit()
+		return
 	var first := int(args[0]) if args.size() > 0 else 1
 	var count := int(args[1]) if args.size() > 1 else 10
 	var out_path := String(args[2]) if args.size() > 2 else "/tmp/marigold_sweethearts.json"
@@ -126,13 +138,38 @@ func _tie(st, plain: Array) -> Array:
 		left.remove_at(bi)
 	return out
 
+## Keeps the entries of a mined file whose proofs survive the pot anywhere.
+func _filter(from: String, to: String) -> void:
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(from))
+	var kept: Array = []
+	for d: Dictionary in doc.boards:
+		if _replays(d):
+			kept.append(d)
+	var f := FileAccess.open(to, FileAccess.WRITE)
+	f.store_string(JSON.stringify({"boards": kept}, "", false, true))
+	f.close()
+	print("filter %s: kept %d of %d" % [from, kept.size(), doc.boards.size()])
+
 ## The entry as it ships: read back and played with its proof, it must
-## bloom every pair.
+## bloom every pair -- as mined, and with the pot left anywhere before each
+## shot, JITTER_TRIES times.
 func _replays(d: Dictionary) -> bool:
+	if not _replay(d, -1):
+		return false
+	for k in JITTER_TRIES:
+		if not _replay(d, k):
+			return false
+	return true
+
+func _replay(d: Dictionary, jitter: int) -> bool:
 	var st = State.new()
 	if not st.from_bank(d):
 		return false
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242 + jitter * 977
 	for a in st.proof:
+		if jitter >= 0:
+			st.step_pot(rng.randf_range(0.5, 6.0))
 		st.fire(float(a))
 		var guard := 0
 		while not st.balls.is_empty() and guard < 240 * 40:

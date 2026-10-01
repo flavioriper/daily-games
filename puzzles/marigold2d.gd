@@ -887,7 +887,9 @@ func _handle(events: Array, t: float) -> void:
 						fx.puff(at, Pal.MG_ORANGE_HI, 4)
 						if _state.sweethearts:
 							var j: int = _state.pair[i]
-							if j >= 0 and _state.shot_bloomed.has(j):
+							# the board's own event order, not the state's: a frame's
+							# batch of steps can hold both hits already
+							if j >= 0 and _order.has(j):
 								_sweethearts(i, j)
 						elif _shot_oranges >= 2 and not _state.fever:
 							_bunch(_shot_oranges)
@@ -1366,7 +1368,9 @@ func _sweethearts(i: int, j: int) -> void:
 func _fold(folded: PackedInt32Array, t: float) -> void:
 	var k := _s() / 9.5
 	for i in folded:
-		_fold_at[i] = t
+		# one the stuck seed cleared has faded already: no bloom to shut,
+		# the bud just pops back
+		_fold_at[i] = t - FOLD_TIME * 0.7 if _pick_at[i] >= 0.0 else t
 		_hit_at[i] = maxf(_hit_at[i], 0.0)
 		_pick_at[i] = -1.0
 		_picking.erase(i)
@@ -1447,7 +1451,7 @@ func _on_streak(kept: bool) -> void:
 		return
 	var n := _streak
 	get_tree().create_timer(0.45).timeout.connect(func():
-		if not is_inside_tree() or _phase == "asleep":
+		if not is_inside_tree() or _phase in ["asleep", "out"] or _streak != n:
 			return
 		_sticker(tr("MG_STREAK") % n, _row_at("streak"), 54 + 4 * mini(n, 6), 1.3, true, Color.WHITE, n >= 4, "streak")
 		fx.cue("combo", pow(2.0, float(SCALE[mini(n - STREAK_FROM, SCALE.size() - 1)]) / 12.0))
@@ -1675,6 +1679,7 @@ static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
 ## out-of-hearts card comes up.
 func _run_out() -> void:
 	_phase = "asleep"
+	_running = false
 	_streak = 0
 	_aiming = false
 	_shades_until = _now()
@@ -3033,8 +3038,9 @@ func _tell(key: String, mood: int, args: Array = []) -> void:
 var _tip_idx := 0
 
 func _cycle_tip() -> void:
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
