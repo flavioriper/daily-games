@@ -225,6 +225,9 @@ const BUNTING_COLOURS := [Pal.FLOWER, Pal.SUN, Pal.LEAF, Pal.MOON_DEEP, Pal.TENT
 const SWEEP_PITCH := 0.04
 const SWEEP_PITCH_MAX := 1.6
 
+## The parts of the ground baked while they stand still (see _rest_parts).
+enum RestPart { CAIRN, TREE_SHADOW, TENT_SHADOW, LAMP }
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 const TIPS := [
@@ -320,6 +323,37 @@ var _shade: Dictionary = {}
 var _meadow: ArrayMesh
 var _ground: ArrayMesh
 var _ground_dirty := true
+## The checkup (2026-10-01): a full Insane meadow carries some seventy
+## cairns, and rebuilding every one of them with every shadow cost ~28 ms a
+## frame for as long as anything on the ground moved -- every tap, every
+## sweep. Now each part that stands still on a square (a cairn, a tree's or
+## a tent's shadow, a lit tent's pool) is made once a square (`_rest_parts`,
+## Vector3i(kind, x, y) -> ArrayMesh) and every one at rest is baked into
+## `_still` with native copies (Face.FlatBuilder over `_flat_cache`), made
+## again only when that set changes (`_still_key`). `_ground` keeps only
+## what moves; `_under` is the shade and the blush, which lie under the
+## cairns; `_sinking` the cairns the win takes into the turf, each its
+## standing mesh under a transform.
+## The checkup (2026-10-01): every tree, tent and chip drew itself, a
+## canvas command a layer and one more for a chip's numeral -- about a
+## hundred of a full Insane meadow's 182 draw calls. The faces still move as
+## ever (pops, hops, sways, blinks and expressions are theirs) but draw only
+## their hats and glasses: `_cast`, under them, draws every body in one
+## MultiMesh per mesh on show (a meadow shows a handful of expressions and
+## eye levels at once, not sixty) and every numeral in one run of glyphs.
+## `_sync_cast` copies their transforms in every frame, since the trees
+## always sway, and hands a buffer over only when it changed.
+var _cast: Control
+var _cast_mm: Dictionary = {}     # ArrayMesh -> MultiMesh, the meshes on show
+var _cast_order: Array = []       # the meshes on show, in drawing order
+var _cast_sent: Dictionary = {}   # MultiMesh -> the buffer last handed over
+var _numerals: Array = []         # [Transform2D, baseline, text, px, colour]
+var _rest_parts: Dictionary = {}
+var _flat_cache: Dictionary = {}
+var _still: ArrayMesh
+var _still_key := 0
+var _under: ArrayMesh
+var _sinking: Array = []          # [[mesh, xf, tint]]
 ## The meshes the last _draw handed over that the next may let go of: a
 ## canvas command holds a mesh by RID, and a frame rendered before the queued
 ## redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
@@ -362,6 +396,34 @@ func _tips() -> Array:
 		out = ["TN_TIP_OAK", "TN_TIP_HIDDEN"] + out
 	return out
 
+## The tutorial (board checkup, 2026-10-01), four to six pages, each a small
+## meadow the board itself plays (ui/hud/tents_tutorial_diagram.gd): beside
+## a tree, never touching, the line counts and the sweep, the hint, then
+## hearts on Hard and Insane and the old oaks on Insane. Loaded, not
+## preloaded: the page's meadow extends this script.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/tents_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.PITCH, "HTP_TN_PITCH", tr("HTP_TN_PITCH_BODY")],
+		[Diagram.Lesson.TOUCH, "HTP_TN_TOUCH", tr("HTP_TN_TOUCH_BODY")],
+		[Diagram.Lesson.LINES, "HTP_TN_LINES", tr("HTP_TN_LINES_BODY")],
+		[Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_TN_HINT_BODY_ONE") if hints == 1 else tr("HTP_TN_HINT_BODY_N") % hints]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("TN_RULES_HEARTS_1") if max_hearts == 1 else tr("TN_RULES_HEARTS_N") % max_hearts])
+	if state.has_oaks():
+		steps.append([Diagram.Lesson.OAK, "HTP_TN_OAK", tr("TN_RULES_OAK")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
+## Undo, Hint and Check on every band; Reset is the host's.
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
@@ -375,6 +437,9 @@ func _ready() -> void:
 	_life_layer = _layer("Life", 1, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_combo_layer = _layer("Combo", 2, _draw_combo)
+	# Before the slots, so the bodies draw where the faces stand and their
+	# hats over them.
+	_cast = _layer("Cast", 0, _draw_cast)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -457,6 +522,7 @@ func _build_pieces() -> void:
 		var tree: ConiferFace = OakFace.new() if state.oaks.has(cell) else ConiferFace.new()
 		# The shadow is the board's, on the ground (see _build_ground).
 		tree.casts = false
+		tree.skip_layers = ["body"]
 		# Nothing until the meadow is up; _enter pops each one in.
 		tree.scale = Vector2.ZERO
 		_stand(tree, "tree_%d_%d" % [cell.x, cell.y])
@@ -470,6 +536,7 @@ func _chip(number: int, node_name: String) -> CountChip:
 	var chip := CountChip.new()
 	chip.name = node_name
 	chip.number = number
+	chip.skip_layers = ["card", "numeral"]
 	chip.scale = Vector2.ZERO
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(chip)
@@ -495,6 +562,7 @@ func _tent_node(cell: Vector2i) -> TentFace:
 		return _tents[cell]
 	var tent := TentFace.new()
 	tent.casts = false
+	tent.skip_layers = ["ground", "body"]
 	tent.visible = false
 	tent.scale = Vector2.ZERO
 	_stand(tent, "tent_%d_%d" % [cell.x, cell.y])
@@ -595,6 +663,7 @@ func _layout() -> void:
 	for cell in _tents:
 		_seat(_tents[cell], cell_to_local(cell.y, cell.x), _cell * TENT_SIZE, Vector2(0.5, FOOT))
 	_meadow = _build_meadow()
+	_forget_rest()
 	_refresh_faces()
 	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
 		layer.queue_redraw()
@@ -676,8 +745,18 @@ func _draw() -> void:
 	if _ground_dirty or now < _anim_until:
 		var out := _build_ground(now)
 		_ground = out.mesh
+		_under = out.under
+		_sinking = out.sinking
 		busy = busy or out.busy
 		_ground_dirty = false
+	if _under != null:
+		draw_mesh(_under, null)
+		shown.append(_under)
+	if _still != null:
+		draw_mesh(_still, null)
+		shown.append(_still)
+	for part in _sinking:
+		draw_mesh(part[0], null, part[1], part[2])
 	if _ground != null:
 		draw_mesh(_ground, null)
 		shown.append(_ground)
@@ -726,13 +805,17 @@ func _flower(b, at: Vector2, r: float) -> void:
 		b.disc(at + Vector2(cos(a), sin(a)) * r, r * 0.75, Pal.FLOWER)
 	b.disc(at, r * 0.6, Pal.FLOWER_EYE)
 
-## Everything on the ground that is not a character, in one mesh: the shade
-## under the finger, the blush of a pointed-at cell, the shadow under every
-## tree and tent, and the cairns arriving, standing and leaving. Returns the
-## mesh and whether any of it is still moving.
+## Everything on the ground that is not a character: the shade under the
+## finger and the blush of a pointed-at cell (`under`), the shadow under every
+## tree and tent, and the cairns arriving, standing and leaving. What stands
+## still goes into `_still` (see `_rest_parts`); the rest is `mesh`, and the
+## cairns sinking on the win are `sinking`. Returns those and whether any of
+## it is still moving.
 func _build_ground(now: float) -> Dictionary:
+	var u := Face.Builder.new()
 	var b := Face.Builder.new()
 	var busy := false
+	var rest: Array = []
 	# The shade: popping in wide under a pressed or swept cell, shrinking
 	# away once the gesture has let it go.
 	var gone: Array = []
@@ -749,7 +832,7 @@ func _build_ground(now: float) -> Dictionary:
 				gone.append(cell)
 				continue
 			busy = true
-		_cell_wash(b, cell, grown, Color(Pal.TEXT, SHADE_ALPHA))
+		_cell_wash(u, cell, grown, Color(Pal.TEXT, SHADE_ALPHA))
 	for cell in gone:
 		_shade.erase(cell)
 	# The blush: toward the family's rose and back, read off flash_level.
@@ -762,24 +845,35 @@ func _build_ground(now: float) -> Dictionary:
 		busy = true
 		var level := Motion.flash_level(e)
 		if level > 0.0:
-			_cell_wash(b, cell, 1.0, Color(Pal.BAD_TILE, BLUSH_ALPHA * level))
+			_cell_wash(u, cell, 1.0, Color(Pal.BAD_TILE, BLUSH_ALPHA * level))
 	for cell in gone:
 		_blush.erase(cell)
 	# The shadows, anchored at the slot and read off the piece's own height,
-	# so one arrives with its pop and stays put when the piece hops.
+	# so one arrives with its pop and stays put when the piece hops. A piece
+	# at its full height casts its standing shadow.
 	for cell in _trees:
-		_shadow(b, _trees[cell], cell, TREE_SIZE, TREE_SHADOW_AT, TREE_SHADOW_RX, TREE_SHADOW_RY)
+		var seen := clampf(_trees[cell].scale.y, 0.0, 1.0)
+		if seen >= 1.0:
+			rest.append(_rest_part(RestPart.TREE_SHADOW, cell))
+		else:
+			_shadow(b, cell, TREE_SIZE, TREE_SHADOW_AT, TREE_SHADOW_RX, TREE_SHADOW_RY, seen)
 	for cell in _tents:
 		var tent: TentFace = _tents[cell]
-		if tent.visible:
-			_shadow(b, tent, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY)
-			# A lamp-lit tent throws its warm pool before the win does it for
-			# every tent.
-			if _solved_at < 0.0 and tent.expression == Face.Expr.JOY and state.mark_at(cell) == State.TENT:
-				var seat := _cell * TENT_SIZE
-				var seen := clampf(tent.scale.y, 0.0, 1.0)
-				Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + GLOW_AT * seat,
-					GLOW_RX * seat * seen, GLOW_RY * seat * seen, Color(Pal.SUN, GLOW_ALPHA * 0.8 * seen))
+		if not tent.visible:
+			continue
+		var seen := clampf(tent.scale.y, 0.0, 1.0)
+		# A lamp-lit tent throws its warm pool before the win does it for
+		# every tent.
+		var lit: bool = _solved_at < 0.0 and tent.expression == Face.Expr.JOY \
+			and state.mark_at(cell) == State.TENT
+		if seen >= 1.0:
+			rest.append(_rest_part(RestPart.TENT_SHADOW, cell))
+			if lit:
+				rest.append(_rest_part(RestPart.LAMP, cell))
+		else:
+			_shadow(b, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY, seen)
+			if lit:
+				_lamp(b, cell, seen)
 	# Cairns on their way out, cap first, drawn from the shape the state has
 	# forgotten.
 	var still: Array = []
@@ -793,6 +887,7 @@ func _build_ground(now: float) -> Dictionary:
 	_cairn_out = still
 	# The cairns that are here: stacking, standing, or sinking into the turf
 	# on the win.
+	var sinking: Array = []
 	gone = []
 	for cell in state.marks:
 		if int(state.marks[cell]) != State.GRASS:
@@ -805,20 +900,77 @@ func _build_ground(now: float) -> Dictionary:
 			else:
 				gone.append(cell)
 				since = INF
-		var sunk := 0.0
 		if _solved_at >= 0.0:
-			sunk = _cleared(cell, now)
+			var sunk := _cleared(cell, now)
 			if sunk >= 1.0:
 				continue
 			busy = true
-		_cairn(b, cell, since, -1.0, sunk)
+			sinking.append([_rest_part(RestPart.CAIRN, cell), _sink_xf(cell, sunk),
+				Color(1.0, 1.0, 1.0, 1.0 - sunk)])
+		elif since < INF:
+			_cairn(b, cell, since, -1.0, 0.0)
+		else:
+			rest.append(_rest_part(RestPart.CAIRN, cell))
 	for cell in gone:
 		_cairn_in.erase(cell)
 	if _solved_at >= 0.0:
 		busy = _build_camp(b, now) or busy
-	if b.verts.is_empty():
-		return {"mesh": null, "busy": busy}
-	return {"mesh": b.mesh(), "busy": busy}
+	_bake_still(rest)
+	return {"mesh": null if b.verts.is_empty() else b.mesh(),
+		"under": null if u.verts.is_empty() else u.mesh(),
+		"sinking": sinking, "busy": busy}
+
+## The still parts as one mesh, baked again only when the set changes.
+func _bake_still(parts: Array) -> void:
+	var ids := PackedInt64Array()
+	ids.resize(parts.size())
+	for i in parts.size():
+		ids[i] = parts[i].get_instance_id()
+	var key := hash(ids)
+	if key == _still_key:
+		return
+	_still_key = key
+	var fb := Face.FlatBuilder.new(_flat_cache)
+	for m: ArrayMesh in parts:
+		fb.append(m, Transform2D.IDENTITY)
+	_still = fb.mesh()
+
+## One part of the ground as it stands on `cell`, made the first time it is
+## asked for and kept until the layout changes.
+func _rest_part(kind: int, cell: Vector2i) -> ArrayMesh:
+	var key := Vector3i(kind, cell.x, cell.y)
+	var m: ArrayMesh = _rest_parts.get(key)
+	if m != null:
+		return m
+	var b := Face.Builder.new()
+	match kind:
+		RestPart.CAIRN:
+			_cairn(b, cell, INF, -1.0, 0.0)
+		RestPart.TREE_SHADOW:
+			_shadow(b, cell, TREE_SIZE, TREE_SHADOW_AT, TREE_SHADOW_RX, TREE_SHADOW_RY, 1.0)
+		RestPart.TENT_SHADOW:
+			_shadow(b, cell, TENT_SIZE, TENT_SHADOW_AT, TENT_SHADOW_RX, TENT_SHADOW_RY, 1.0)
+		RestPart.LAMP:
+			_lamp(b, cell, 1.0)
+	m = b.mesh()
+	_rest_parts[key] = m
+	return m
+
+## The parts of the ground a layout made, forgotten when the cell changes.
+func _forget_rest() -> void:
+	_rest_parts = {}
+	_flat_cache = {}
+	_still_key = 0
+	_still = null
+	_ground_dirty = true
+
+## The standing cairn on `cell` as the win has taken it `sunk` into the turf:
+## pressed toward its foot in its own frame (see _cairn).
+func _sink_xf(cell: Vector2i, sunk: float) -> Transform2D:
+	var xf := _cairn_xf(cell)
+	var foot := Vector2(0.0, 0.4) * _cell * CAIRN_SIZE
+	var press := Transform2D(0.0, Vector2(1.0, 1.0 - sunk), 0.0, foot) * Transform2D(0.0, -foot)
+	return xf * press * xf.affine_inverse()
 
 ## A rounded wash over `cell`, `grown` of its size about its centre.
 func _cell_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
@@ -828,15 +980,20 @@ func _cell_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
 	b.fan(Face.Builder.round_rect(cell_to_local(cell.y, cell.x) - Vector2.ONE * span * 0.5,
 		Vector2.ONE * span, SHADE_RADIUS * grown), colour)
 
-## The family's soft disc under `face` on `cell`, scaled by how much of the
-## face is there.
-func _shadow(b, face: Control, cell: Vector2i, share: float, at: Vector2, rx: float, ry: float) -> void:
-	var seen := clampf(face.scale.y, 0.0, 1.0)
+## The family's soft disc under the face on `cell`, scaled by how much of
+## the face is there (`seen`, its height).
+func _shadow(b, cell: Vector2i, share: float, at: Vector2, rx: float, ry: float, seen: float) -> void:
 	if seen <= 0.0:
 		return
 	var seat := _cell * share
 	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + at * seat,
 		rx * seat * seen, ry * seat * seen, Color(Pal.TEXT, SHADOW_ALPHA * seen))
+
+## A lamp-lit tent's warm pool, grown with the tent.
+func _lamp(b, cell: Vector2i, seen: float) -> void:
+	var seat := _cell * TENT_SIZE
+	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + GLOW_AT * seat,
+		GLOW_RX * seat * seen, GLOW_RY * seat * seen, Color(Pal.SUN, GLOW_ALPHA * 0.8 * seen))
 
 ## A cairn: the mark the puzzle is actually solved with, so it is a thing on
 ## the ground and not a shade of grass. Three tiers of stones -- the two at
@@ -847,11 +1004,8 @@ func _shadow(b, face: Control, cell: Vector2i, share: float, at: Vector2, rx: fl
 ## stays), and `sunk` how far into the turf the win has taken it, 0 to 1.
 func _cairn(b, cell: Vector2i, since: float, leaving: float, sunk: float) -> void:
 	var s := _cell * CAIRN_SIZE
-	var h := _hash(cell)
 	var h2 := _hash2(cell)
-	var grown := 1.0 + (h2 - 0.5) * 2.0 * CAIRN_JITTER
-	var xf := Transform2D((h - 0.5) * 2.0 * CAIRN_TILT, Vector2(grown, grown), 0.0,
-		cell_to_local(cell.y, cell.x))
+	var xf := _cairn_xf(cell)
 	var shift := (h2 - 0.5) * 2.0 * CAIRN_SHIFT
 	var flat := 1.0 - sunk
 	var alpha := 1.0 - sunk
@@ -888,6 +1042,12 @@ func _cairn(b, cell: Vector2i, since: float, leaving: float, sunk: float) -> voi
 				# The glint grows with the cap it sits on, not about itself.
 				_ellipse(b, xf, cap, cap + Vector2(-0.03, -0.04) * s, 0.06 * s, 0.04 * s,
 					Color(1.0, 1.0, 1.0, 0.3 * alpha), sc, lift, flat, foot)
+
+## The cairn's own frame on `cell`: leaned and sized by its square.
+func _cairn_xf(cell: Vector2i) -> Transform2D:
+	var grown := 1.0 + (_hash2(cell) - 0.5) * 2.0 * CAIRN_JITTER
+	return Transform2D((_hash(cell) - 0.5) * 2.0 * CAIRN_TILT, Vector2(grown, grown), 0.0,
+		cell_to_local(cell.y, cell.x))
 
 ## One stone of the cairn: grown `sc` about its own centre, pressed `flat`
 ## toward the cairn's `foot`, put through the cairn's transform and raised
@@ -2340,6 +2500,7 @@ func _busy_for(seconds: float) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_sync_cast()
 	var now := _now()
 	if now < _anim_until:
 		queue_redraw()
@@ -2353,6 +2514,111 @@ func _process(delta: float) -> void:
 			or (now >= _bunting_at and now - _bunting_at < BUNTING_TIME + 0.1):
 		_fly(delta)
 		_life_layer.queue_redraw()
+
+# --- the cast: every face's body in a few MultiMesh draws ---
+
+## Copies every chip's, tree's and tent's place, turn, look and tint into the
+## cast's MultiMeshes (see `_cast`).
+func _sync_cast() -> void:
+	if _cell <= 0.0 or _cast == null:
+		return
+	var groups: Dictionary = {}   # mesh -> [Transform2D, Color, ...]
+	var order: Array = []
+	var nums: Array = []
+	for chip in _chips_col + _chips_row:
+		if _cast_face(chip, null, groups, order):
+			var n: Array = chip.numeral()
+			if not n.is_empty():
+				nums.append([chip.get_transform()] + n)
+	for cell in _trees:
+		var tree: Control = _trees[cell]
+		_cast_face(tree, _slots[tree], groups, order)
+	for cell in _tents:
+		var tent: Control = _tents[cell]
+		_cast_face(tent, _slots[tent], groups, order)
+	for mesh in _cast_mm.keys():
+		if not groups.has(mesh):
+			_cast_sent.erase(_cast_mm[mesh])
+			_cast_mm.erase(mesh)
+	for mesh: ArrayMesh in order:
+		var list: Array = groups[mesh]
+		var count := list.size() / 2
+		var buf := PackedFloat32Array()
+		buf.resize(count * 12)
+		for k in count:
+			_put(buf, k, list[2 * k], list[2 * k + 1])
+		var mm: MultiMesh = _cast_mm.get(mesh)
+		if mm == null:
+			mm = MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_2D
+			mm.use_colors = true
+			mm.mesh = mesh
+			_cast_mm[mesh] = mm
+		if mm.instance_count != count:
+			mm.instance_count = count
+			_cast_sent.erase(mm)
+		if _cast_sent.get(mm) != buf:
+			mm.buffer = buf
+			_cast_sent[mm] = buf
+	if order != _cast_order or nums != _numerals:
+		_cast_order = order
+		_numerals = nums
+		_cast.queue_redraw()
+
+## Puts the layers of `f` the cast draws (its `skip_layers`) into `groups`,
+## under its slot's transform when it stands in one. Returns whether the face
+## is on show at all.
+func _cast_face(f: Face, slot: Control, groups: Dictionary, order: Array) -> bool:
+	if not f.visible or (slot != null and not slot.visible):
+		return false
+	var xf := f.get_transform()
+	var tone := f.modulate * f.self_modulate
+	if slot != null:
+		xf = slot.get_transform() * xf
+		tone *= slot.modulate
+	if is_zero_approx(xf.determinant()) or tone.a <= 0.0:
+		return false
+	var R := roundf(f._R_for(minf(f.size.x, f.size.y)) / Face.R_STEP) * Face.R_STEP
+	if R <= 0.0:
+		return false
+	var eye := f._eye_level()
+	var centre := f.size * 0.5
+	for layer in f._layers():
+		if not f.skip_layers.has(layer[0]):
+			continue
+		var mesh: ArrayMesh = f._mesh_for(layer[0], layer[1], R, eye)
+		if not groups.has(mesh):
+			groups[mesh] = []
+			order.append(mesh)
+		groups[mesh].append(xf * f._layer_transform(layer[0], R, centre))
+		groups[mesh].append(tone)
+	return true
+
+## Instance `i` of a 2D MultiMesh buffer: the basis and origin in the
+## server's row order, then the colour (Binairo's).
+static func _put(buf: PackedFloat32Array, i: int, xf: Transform2D, col: Color) -> void:
+	var o := i * 12
+	buf[o] = xf.x.x
+	buf[o + 1] = xf.y.x
+	buf[o + 3] = xf.origin.x
+	buf[o + 4] = xf.x.y
+	buf[o + 5] = xf.y.y
+	buf[o + 7] = xf.origin.y
+	buf[o + 8] = col.r
+	buf[o + 9] = col.g
+	buf[o + 10] = col.b
+	buf[o + 11] = col.a
+
+func _draw_cast() -> void:
+	for mesh in _cast_order:
+		var mm: MultiMesh = _cast_mm.get(mesh)
+		if mm != null:
+			_cast.draw_multimesh(mm, null)
+	var font: Font = CozyTheme.display(700)
+	for n in _numerals:
+		_cast.draw_set_transform_matrix(n[0])
+		_cast.draw_string(font, n[1], n[2], HORIZONTAL_ALIGNMENT_LEFT, -1.0, n[3], n[4])
+	_cast.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## Something on the ground changed: rebuild it on the next draw.
 func _redraw() -> void:
