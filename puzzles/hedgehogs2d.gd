@@ -31,7 +31,9 @@ extends "res://core/puzzle_base.gd"
 ## in slots of their own (docs/art/flat-motion.md rule 2). The pile and the
 ## flag are ui/faces/leaf_pile.gd, which the tray and the menu card draw too.
 ##
-## Spec: docs/superpowers/specs/2026-09-26-hedgehogs-flat-design.md, section 7.
+## Spec: docs/superpowers/specs/2026-09-26-hedgehogs-flat-design.md, section 7;
+## the polish (hearts, Sleepwalkers, rewards, the party, the HARVEST sound):
+## docs/superpowers/specs/2026-10-01-hedgehogs-polish-design.md.
 ## Ported from the canvas mock at docs/brainstorm/concepts.html#hedgehogs, the
 ## reference for every measure.
 
@@ -45,6 +47,12 @@ const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Rings = preload("res://puzzles/rings2d.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Cat = preload("res://ui/faces/caterpillar.gd")
+
+## The out-of-hearts card's Back: the host takes the player back to camp.
+signal leave
 
 # --- the lawn ---
 ## The card's inset round the lawn, and the tally strip over it.
@@ -113,7 +121,6 @@ const LONG_PRESS := 0.4
 ## the win screen waits this long after the wave.
 const WIN_LEAD := 0.3
 const WIN_WAIT := 2.2
-const HINTS := 3
 ## A flood bigger than this sounds a gust rather than a rake.
 const GUST_CELLS := 6
 ## The toast: Knight's and Rings' measure for measure.
@@ -125,6 +132,87 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 40.0
 const TIP_CYCLE := 8.0
 const TIPS := ["HH_TIP_RAKE", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD", "HH_TIP_WOKE"]
+const TIPS_HEARTS := ["HH_TIP_RAKE", "HH_TIP_HEARTS", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD"]
+const TIPS_WALK := ["HH_TIP_WALK", "HH_TIP_RUSTLE", "HH_TIP_TUCK", "HH_TIP_BELL", "HH_TIP_HEARTS"]
+
+# --- the press ---
+## A pile under a finger sinks into the lawn over PRESS_IN and springs back
+## on the release.
+const PRESS_DIP := Vector2(1.07, 0.84)
+const PRESS_IN := 0.08
+const RELEASE_TIME := 0.26
+
+# --- Sleepwalkers ---
+## The bell rings this long after the rake that struck it (the gust is
+## under way), and the two piles snuffle over WALK_TIME; input waits for
+## WALK_HOLD of it.
+const WALK_LEAD := 0.5
+const WALK_TIME := 0.95
+const WALK_HOLD := 0.5
+## The moon and its three dots on the tally strip.
+const MOON_R := 17.0
+const PIP_R := 7.0
+const PIP_GAP := 18.0
+const BELL_TIME := 0.6
+## A walk's paw prints on both piles, as a fraction of a cell.
+const PAW := 0.085
+
+# --- hearts (Knight's measures) ---
+const HEART_ROW := 64.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.2
+const CARD_AFTER_STILL := 0.3
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const AGO := -1.0e9
+
+# --- the rewards ---
+## The streak: safe rakes in a row (not a hint's); the bubble from the third.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## The gags, one safe rake in three off the day's hash, one at a time.
+enum Gag { NONE = -1, ACORN, LOVE, BUTTERFLY }
+const GAG_SPAN := 9
+const GAG_ODDS := 3
+const GAG_STEP := 5
+const ACORN_TIME := 1.1
+const LOVE_HEARTS := 3
+const LOVE_TIME := 1.2
+const LOVE_RISE := 0.9
+const LOVE_R := 0.13
+const FLY_TIME := 1.7
+## A rake whose flood is this big says Whoosh.
+const BIG_GUST := 20
+
+# --- the party ---
+const PARTY_AT := 0.4
+const PARTY_TIME := 3.0
+const CHEERS := 12
+const CAT_PX := 0.17
+const CAT_AT := 0.9
+const CAT_POP := 0.22
+const CAT_HOPS := 3
+const CAT_HOP_TIME := 0.32
+const CAT_HOP_H := 0.45
+const CAT_SETTLE := 0.25
+const CURL_AT := 2.7
+const STAMP_AT := 1.6
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
 
 var _state = State.new()
 var fx: Node2D
@@ -200,13 +288,94 @@ var _toast_at := -100.0
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
 
+## The numbers as shown: the state's, copied when nothing is waiting to be
+## told (a walk's new counts appear with its rustle, not with the rake that
+## rang the bell), and when each last changed.
+var _num_view := PackedInt32Array()
+var _num_at := PackedFloat64Array()
+## Per cell: when a walk snuffled it, when a finger let it go.
+var _walk_at := PackedFloat64Array()
+var _release_at := PackedFloat64Array()
+var _press_at := -100.0
+## The last walk's two cells, paw-printed alike; the moon's lit dots as
+## shown, and when the bell last rang.
+var _paws := Vector2i(-1, -1)
+var _bell_view := 0
+var _bell_at := AGO
+var _bell_mesh: ArrayMesh
+var _bell_key: Array = []
+var _walk_told := false
+
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _flawless := false
+var _asleep := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := AGO
+var _back_index := -1
+var _back_at := AGO
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+var _was_busy := false
+
+## -2 picks off the day; a Gag forces one (the harness).
+var force_gag := -2
+var _streak := 0
+var _streak_gen := 0
+var _rakes_n := 0
+var _gag_until := 0.0
+var _gag_gen := 0
+var _combo_n := 0
+var _combo_at := -INF
+var _combo_pos := Vector2.ZERO
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_shown: ArrayMesh
+var _combo_key: Array = []
+var _life_layer: Control
+var _life_shown: Array = []
+var _love: Array = []     # [{"at", "t", "phase"}]
+var _acorns: Array = []   # [{"at", "t", "side"}]
+var _flies: Array = []    # [{"at", "t", "side"}]
+var _love_mesh: ArrayMesh
+var _seal_mesh: ArrayMesh
+var _party_at := INF
+var _stamp_at := INF
+var _cat: Control
+var _cat_at := INF
+var _cat_curled := false
+
 func puzzle_id() -> String: return "hedgehogs"
 func title() -> String: return "Hedgehogs"
 
+## The rules, then the band's own closing: nothing is lost (Easy, Medium),
+## hearts (Hard), or Sleepwalkers (Insane).
 func rules() -> String:
-	return tr("HH_RULES")
+	var out := tr("HH_RULES")
+	if _state.walkers():
+		out += "\n\n" + tr("HH_RULES_WALKERS") % max_hearts
+	elif max_hearts > 0:
+		out += "\n\n" + tr("HH_RULES_HEARTS") % max_hearts
+	else:
+		out += "\n\n" + tr("HH_RULES_SAFE")
+	return out
 
+func _tips() -> Array:
+	if _state.walkers():
+		return TIPS_WALK
+	if max_hearts > 0:
+		return TIPS_HEARTS
+	return TIPS
+
+## Sleepwalkers has no hint, no Check, and an Undo that stays grey.
 func capabilities() -> Array[String]:
+	if _state.walkers():
+		return ["undo"]
 	return ["undo", "hint", "check"]
 
 func _ready() -> void:
@@ -219,17 +388,43 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	_heart_layer = Control.new()
+	_heart_layer.name = "Hearts"
+	_heart_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_heart_layer.z_index = 1
+	_heart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_heart_layer.draw.connect(_draw_hearts)
+	add_child(_heart_layer)
+	_life_layer = Control.new()
+	_life_layer.name = "Life"
+	_life_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_life_layer.z_index = 3
+	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_life_layer.draw.connect(_draw_life)
+	add_child(_life_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.setup(rng, difficulty)
 	_turn += 1
+	_close_card()
 	brush = State.RAKE
+	max_hearts = State.hearts_for(difficulty)
+	_heart_used = false
+	_lost_ever = false
+	_flawless = false
+	_deal_hearts()
+	_reset_rewards()
 	var n: int = _state.size()
-	for a in [_blow_at, _cover_at, _flag_at, _unflag_at, _bump_at, _rustle_at, _until]:
+	for a in [_blow_at, _cover_at, _flag_at, _unflag_at, _bump_at, _rustle_at, _until, _num_at, _walk_at, _release_at]:
 		a.resize(n)
 		a.fill(-100.0)
+	_sync_numbers()
+	_paws = Vector2i(-1, -1)
+	_bell_view = 0
+	_bell_at = AGO
+	_walk_told = false
 	_blow_from.resize(n)
 	_blow_from.fill(-1)
 	_moving = {}
@@ -264,8 +459,26 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	fx.cue("enter")
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## Every heart back and the morning light: a new deal and Try again.
+func _deal_hearts() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_split_index = -1
+	_split_at = AGO
+	_back_index = -1
+	_back_at = AGO
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+
+## The numbers shown catch up with the state's.
+func _sync_numbers() -> void:
+	_num_view = _state.g.num.duplicate() if not _state.g.is_empty() else PackedInt32Array()
 
 func _clear_faces() -> void:
 	for face in _faces.values():
@@ -280,13 +493,18 @@ func _cell_for(available: float) -> float:
 	if _state.size() == 0:
 		return 0.0
 	return maxf(0.0, minf((size.x - 2.0 * PAD) / float(_state.cols()),
-		(available - 2.0 * PAD - TALLY) / float(_state.rows())))
+		(available - 2.0 * PAD - _top_h()) / float(_state.rows())))
+
+## The strip over the lawn: the tally, and on Hard and Insane the hearts'
+## pill over it.
+func _top_h() -> float:
+	return TALLY + (HEART_ROW if max_hearts > 0 else 0.0)
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * float(_state.rows()) + 2.0 * PAD + TALLY)
+	return minf(available, cell * float(_state.rows()) + 2.0 * PAD + _top_h())
 
 func card_centred() -> bool:
 	return true
@@ -296,10 +514,10 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var field := Vector2(_state.cols(), _state.rows()) * _cell
-	var tall := minf(size.y, field.y + 2.0 * PAD + TALLY)
+	var tall := minf(size.y, field.y + 2.0 * PAD + _top_h())
 	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + TALLY)
-	_tally_y = top + PAD + TALLY * 0.5
+	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + _top_h())
+	_tally_y = _grid.y - TALLY * 0.5
 	for c: int in _faces:
 		_seat(_faces[c], _centre(c))
 	if _tally_face != null:
@@ -307,7 +525,13 @@ func _layout() -> void:
 		_tally_face.pivot_offset = Vector2(TALLY_GLYPH * 0.5, TALLY_GLYPH * 0.8)
 	_bands = []
 	_lawn = null
+	_love_mesh = null
+	_seal_mesh = null
 	_refresh()
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+	if _life_layer != null:
+		_life_layer.queue_redraw()
 
 func _centre(c: int) -> Vector2:
 	return _grid + (Vector2(c % _state.cols(), c / _state.cols()) + Vector2(0.5, 0.5)) * _cell
@@ -405,7 +629,7 @@ func _rake_stroke(c: int) -> void:
 
 ## A hedgehog a rake woke: its cell washes rose, it pops in curled and
 ## shivers, and the toast says so kindly.
-func _wake(c: int, lead := 0.0) -> void:
+func _wake(c: int, lead := 0.0, tell := true) -> void:
 	var t := _now() + lead
 	_blow_at[c] = t
 	_blow_from[c] = c
@@ -422,7 +646,8 @@ func _wake(c: int, lead := 0.0) -> void:
 			Motion.bump(face, 0.16)
 			fx.puff(_centre(c) + Vector2(-_cell * 0.3, -_cell * 0.1), Pal.PAPER, 4))
 	fx.cue("woke")
-	_tell("HH_WOKE_FIRST" if _state.woken == 1 else "HH_WOKE_AGAIN", Face.Expr.STRAIN)
+	if tell:
+		_tell("HH_WOKE_FIRST" if _state.woken == 1 else "HH_WOKE_AGAIN", Face.Expr.STRAIN)
 
 func _refuse(c: int, key: String) -> void:
 	_bump_at[c] = _now()
@@ -433,7 +658,7 @@ func _refuse(c: int, key: String) -> void:
 ## One tap's worth on cell `c`, with the rake or the flag. A raked number
 ## always chords.
 func _act(c: int, use: int) -> void:
-	if is_done() or c < 0 or _now() < _busy_until:
+	if is_done() or out_of_hearts or c < 0 or _now() < _busy_until:
 		return
 	if _state.open[c] == 1:
 		# Raked, but its gust has not reached it yet: it still looks
@@ -461,15 +686,18 @@ func _act(c: int, use: int) -> void:
 	_show_rake(_state.rake(c), c)
 
 func _show_rake(r: Dictionary, c: int) -> void:
+	var lead := 0.0 if Motion.reduce else RAKE_LEAD
 	match String(r.kind):
 		"raked":
 			_rake_stroke(c)
-			_gust(r.cells, r.rings, c, 0.0 if Motion.reduce else RAKE_LEAD)
+			_gust(r.cells, r.rings, c, lead)
+			_after_rake(r, c, PackedInt32Array(), lead)
 			_after_move()
 		"woke":
 			_last = c
 			_rake_stroke(c)
-			_wake(c, 0.0 if Motion.reduce else RAKE_LEAD)
+			_wake(c, lead, max_hearts == 0)
+			_after_rake(r, c, PackedInt32Array([c]), lead)
 			_after_move()
 		"refused_flag":
 			_refuse(c, "HH_FLAGGED")
@@ -482,14 +710,97 @@ func _show_chord(r: Dictionary, c: int) -> void:
 	match String(r.kind):
 		"chord":
 			_gust(r.cells, r.rings, c)
+			var tell := max_hearts == 0
 			for w: int in r.woke:
-				_wake(w)
+				_wake(w, 0.0, tell)
+				tell = false
 			fx.cue("chord")
+			_after_rake(r, c, r.woke, 0.0)
 			_after_move()
 		"too_few":
 			_refuse(c, "HH_CHORD_FEW")
 		"too_many":
 			_refuse(c, "HH_CHORD_MANY")
+
+## What a rake gesture brings beyond its gust: a wake costs a heart on Hard
+## and Insane; a safe one (not a hint's) grows the streak and may play a gag;
+## a big flood says Whoosh; on Sleepwalkers the bell counts it, and when it
+## rings a hedgehog walks once the gust is under way. The numbers shown wait
+## for the walk.
+func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> void:
+	var cells: PackedInt32Array = r.cells
+	var lands := _now() + lead
+	if not woke.is_empty():
+		_break_streak()
+		_clear_gags()
+		if max_hearts > 0:
+			_lose_heart(lands)
+			_later(lead + 0.25, func(): fx.cue("heart_lost"))
+			_tell_hearts("HH_WOKE_HEART")
+			if out_of_hearts:
+				_later(lead + 0.9, _run_out)
+	elif not cells.is_empty() and not _hinting:
+		_on_safe_rake(c, lands)
+	if cells.size() >= BIG_GUST and not Motion.reduce:
+		_later(lead + 0.15, func():
+			fx.sparkle(_centre(c), Pal.SUN)
+			fx.cue("whoosh"))
+		if woke.is_empty():
+			_say(tr("HH_WHOOSH"), Face.Expr.JOY)
+	_queue_walk(r, lead)
+
+## Sleepwalkers' bell. A gesture that did not ring it lights a dot; one that
+## did lights the third, holds input, and after WALK_LEAD rings: the two
+## piles snuffle alike and the numbers round them change.
+func _queue_walk(r: Dictionary, lead: float) -> void:
+	if not r.has("walk") or not _state.walkers() or _state.is_solved():
+		_sync_numbers()
+		return
+	if _state.bell != 0:
+		_bell_view = _state.bell
+		_bell_at = _now()
+		_sync_numbers()
+		return
+	_bell_view = State.Gen.WALK_EVERY
+	_bell_at = _now()
+	var w: Vector2i = r.walk
+	var wait := lead + (0.05 if Motion.reduce else WALK_LEAD)
+	_busy_until = maxf(_busy_until, _now() + wait + (0.05 if Motion.reduce else WALK_HOLD))
+	_busy_for(wait + WALK_TIME)
+	_later(wait, func(): _show_walk(w))
+
+func _show_walk(w: Vector2i) -> void:
+	var t := _now()
+	_bell_view = 0
+	_bell_at = t
+	fx.cue("bell")
+	if w.x < 0:
+		_sync_numbers()
+		_say(tr("HH_WALK_NONE"), Face.Expr.SLEEPY)
+		_refresh()
+		return
+	_paws = w
+	for c in [w.x, w.y]:
+		_walk_at[c] = t
+		_touch(c, t + WALK_TIME)
+		if not Motion.reduce:
+			fx.puff(_centre(c) + Vector2(0.0, _cell * 0.1), Pal.AUTUMN_LEAVES[c % Pal.AUTUMN_LEAVES.size()], 6)
+			fx.ring(_centre(c), _cell * 0.45, Pal.MOON_INK)
+	# Every number whose count the walk changed pops as the piles settle.
+	var now_num: PackedInt32Array = _state.g.num
+	for c in _state.size():
+		if _state.open[c] == 1 and c < _num_view.size() and _num_view[c] != now_num[c]:
+			_num_at[c] = t + (0.0 if Motion.reduce else WALK_TIME * 0.45)
+	_sync_numbers()
+	_later(0.0 if Motion.reduce else 0.18, func(): fx.cue("snuffle"))
+	# Only the first walk is toasted: the toast sits over the lawn's foot,
+	# and on Sleepwalkers every number there counts.
+	if _walk_told:
+		_say(tr("HH_WALK"), Face.Expr.WORRIED)
+	else:
+		_tell("HH_WALK_FIRST", Face.Expr.WORRIED)
+	_walk_told = true
+	_refresh()
 
 ## A move counts (note_move emits `moved` and checks the solve); a hint's
 ## does not, so it emits and checks for itself, as PuzzleBase's contract has
@@ -517,6 +828,19 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0 or _state.size() == 0:
 		return
 	var t := _now()
+	# A wake's heart or a walk lets go of the HUD: it greyed Undo, Hint and
+	# Reset.
+	var bz := busy()
+	if _was_busy and not bz:
+		moved.emit()
+	_was_busy = bz
+	if _tick_life(t):
+		_life_layer.queue_redraw()
+	if t >= _cat_at and not _cat_curled:
+		_place_cat(t)
+	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
 	# A band a frame while the card is still hidden before its entrance, so
 	# the first frame it shows does not pay for a hundred piles at once.
 	if t - _opened < Motion.ENTER_DELAY and not Motion.reduce:
@@ -538,7 +862,7 @@ func _process(delta: float) -> void:
 ## it says nothing about what sleeps under which.
 func _breeze(t: float) -> void:
 	_next_breeze = t + randf_range(BREEZE_MIN, BREEZE_MAX)
-	if Motion.reduce or is_done() or _cell <= 0.0:
+	if Motion.reduce or is_done() or out_of_hearts or _cell <= 0.0:
 		return
 	var cols: int = _state.cols()
 	var row := randi() % _state.rows()
@@ -603,7 +927,7 @@ func _draw() -> void:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
 	_draw_numbers(t, xf, seen)
-	_draw_tally(t, seen)
+	_draw_tally(t, seen, shown)
 	_draw_toast(t, shown)
 	_shown = shown
 
@@ -706,7 +1030,15 @@ func _update_bands(t: float, limit := -1) -> void:
 func _look(c: int, t: float) -> int:
 	var raked := 1 if _shows_raked(c, t) else 0
 	var up := 1 if _flag_up(c, t) else 0
-	return raked | (int(_state.woke[c]) << 1) | (up << 2) | (int(_state.wrong[c]) << 3) | (int(_state.pin[c]) << 4)
+	var paw := 1 if _paw_on(c) else 0
+	return raked | (int(_state.woke[c]) << 1) | (up << 2) | (int(_state.wrong[c]) << 3) | (int(_state.pin[c]) << 4) \
+		| (paw << 5)
+
+## Whether cell `c` carries the last walk's paw prints: one of its two
+## cells, still covered and unflagged.
+func _paw_on(c: int) -> bool:
+	return (c == _paws.x or c == _paws.y) and _state.open[c] == 0 and _state.flag[c] == 0 \
+		and _state.woke[c] == 0 and _solved_at < 0.0
 
 ## Every moving cell, the rake's strokes, the wind, the win's swirl and the
 ## hint's ring.
@@ -750,11 +1082,52 @@ func _draw_cell(b: Face.Builder, c: int, t: float) -> void:
 	else:
 		var cover := t - float(_cover_at[c])
 		var sc := Motion.pop_in_scale(cover) if cover >= 0.0 and cover < Motion.POP_IN else Vector2.ONE
-		var pressed := _press(c, t)
+		var pressed := _press(c, t) * _finger(c, t)
+		var walk := _snuffle(c, t)
+		if walk > 0.0:
+			# A sleepwalker under it: the pile heaves twice and settles.
+			var heave := absf(sin(walk * PI * 2.0)) * (1.0 - walk)
+			pressed *= Vector2(1.0 - 0.08 * heave, 1.0 + 0.16 * heave)
+			rustle = maxf(rustle, walk)
 		# The pile sits on its foot, so a press squashes it down, not in.
 		var foot := at + Vector2(0.0, s * 0.3 * (1.0 - pressed.y))
 		Lawn.pile(b, foot, s, c, 0.0, Vector2.UP, sc * pressed, 1.0, rustle)
+		if _paw_on(c):
+			_draw_paws(b, at, s)
 	_draw_flag(b, c, at, t, rustle)
+
+## A walk's snuffle through cell `c` at `t`: 0 still, 0..1 while it heaves.
+func _snuffle(c: int, t: float) -> float:
+	if Motion.reduce:
+		return 0.0
+	var u := (t - float(_walk_at[c])) / WALK_TIME
+	return u if u > 0.0 and u < 1.0 else 0.0
+
+## A finger's weight on cell `c`: the pile sinks while it is held and
+## springs back once let go.
+func _finger(c: int, t: float) -> Vector2:
+	if Motion.reduce:
+		return Vector2.ONE
+	if c == _press_cell and _press_finger != -2 and not _long_fired:
+		var k := clampf((t - _press_at) / PRESS_IN, 0.0, 1.0)
+		return Vector2.ONE.lerp(PRESS_DIP, k)
+	var e := t - float(_release_at[c])
+	if e >= 0.0 and e < RELEASE_TIME:
+		var k := Motion.bump_scale(e, 0.1, RELEASE_TIME)
+		return Vector2(2.0 - k, k)
+	return Vector2.ONE
+
+## Little paw prints at a pile's foot: the two cells of the last walk wear
+## the same ones, so they say where it walked and never which way.
+func _draw_paws(b: Face.Builder, at: Vector2, s: float) -> void:
+	var ink := Color(Pal.MOON_DEEP, 0.85)
+	for k in 2:
+		var p := at + Vector2(-0.16 + 0.3 * float(k), 0.3 - 0.14 * float(k)) * s
+		b.disc(p, s * PAW * 1.25, Color(Pal.PAPER, 0.75))
+		b.ellipse(p, s * PAW * 0.62, s * PAW * 0.5, ink)
+		for toe in 3:
+			var a := -PI * 0.5 + (float(toe) - 1.0) * 0.6
+			b.disc(p + Vector2(cos(a), sin(a)) * s * PAW * 0.85, s * PAW * 0.24, ink)
 
 ## The breeze through cell `c` at `t`: 0 still, 0..1 while it passes.
 func _rustle(c: int, t: float) -> float:
@@ -893,12 +1266,16 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 		return
 	var rise := font.get_ascent(px) * 0.5
 	for c in _state.size():
-		if _state.open[c] == 0:
+		if _state.open[c] == 0 or c >= _num_view.size():
 			continue
-		var v: int = _state.number(c)
+		var v: int = _num_view[c]
 		if v <= 0:
 			continue
 		var since := t - float(_blow_at[c]) - NUM_LAG
+		var changed := t - float(_num_at[c])
+		if changed < Motion.POP_IN and not Motion.reduce:
+			# A walk changed it: out while the piles snuffle, then back in.
+			since = changed if changed >= 0.0 else -1.0
 		if since < 0.0 and not Motion.reduce:
 			continue
 		var sc: Vector2 = Motion.pop_in_scale(since) if not Motion.reduce else Vector2.ONE
@@ -921,12 +1298,16 @@ func _tally_line() -> String:
 		return tr("HH_TALLY_OVER_ONE") if left == -1 else tr("HH_TALLY_OVER_N") % -left
 	return tr("HH_TALLY_ONE") if left == 1 else tr("HH_TALLY_N") % left
 
-func _draw_tally(t: float, seen: float) -> void:
+func _draw_tally(t: float, seen: float, shown: Array) -> void:
 	var font: Font = CozyTheme.display(700)
 	var line := _tally_line()
 	var wide := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TALLY_SIZE).x
-	var run := TALLY_GLYPH + TALLY_GAP + wide
+	var moon := _state.walkers() and _solved_at < 0.0
+	var bell_w := 2.0 * MOON_R + 12.0 + PIP_GAP * float(State.Gen.WALK_EVERY)
+	var run := TALLY_GLYPH + TALLY_GAP + wide + (TALLY_GAP * 1.6 + bell_w if moon else 0.0)
 	var start := size.x * 0.5 - run * 0.5
+	if moon:
+		_draw_bell(Vector2(start + TALLY_GLYPH + TALLY_GAP + wide + TALLY_GAP * 1.6 + MOON_R, _tally_y), t, seen, shown)
 	var ink: Color = Pal.BAD if _state.flags_left() < 0 and _solved_at < 0.0 else Pal.TEXT
 	draw_string(font, Vector2(start + TALLY_GLYPH + TALLY_GAP, _tally_y + font.get_ascent(TALLY_SIZE) * 0.4),
 		line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TALLY_SIZE, Color(ink, seen))
@@ -935,6 +1316,37 @@ func _draw_tally(t: float, seen: float) -> void:
 		if _tally_face.position != want:
 			_tally_face.position = want
 		_tally_face.modulate.a = seen
+
+## Sleepwalkers' bell: a crescent moon and a dot for each rake since it
+## last rang, lit one by one; on the ring the moon swings and glows and the
+## dots go out. One mesh, rebuilt only when what it shows changes.
+func _draw_bell(at: Vector2, t: float, seen: float, shown: Array) -> void:
+	var e := t - _bell_at
+	var ringing := e >= 0.0 and e < BELL_TIME and not Motion.reduce
+	var swing := sin(e * 22.0) * 0.35 * (1.0 - e / BELL_TIME) if ringing else 0.0
+	var glow := (1.0 - e / BELL_TIME) if ringing else 0.0
+	var key := [_bell_view, snappedf(swing, 0.02), snappedf(glow, 0.05)]
+	if _bell_mesh == null or key != _bell_key:
+		var b := Face.Builder.new()
+		if glow > 0.0:
+			b.disc(Vector2.ZERO, MOON_R * (1.5 + 0.4 * glow), Color(Pal.SUN, 0.35 * glow))
+		var tip := Vector2.from_angle(swing - PI * 0.5)
+		var bite := Face.Builder.ring(tip.rotated(0.9) * MOON_R * 0.55, MOON_R * 0.86, MOON_R * 0.86)
+		for rim in [[2.0, Pal.LINE], [0.0, Pal.SUN]]:
+			var disc := Face.Builder.ring(Vector2.ZERO, MOON_R + float(rim[0]), MOON_R + float(rim[0]))
+			for part in Geometry2D.clip_polygons(disc, bite):
+				b.polygon(part, rim[1])
+		for k in State.Gen.WALK_EVERY:
+			var p := Vector2(MOON_R + 12.0 + PIP_GAP * (float(k) + 0.5), 0.0)
+			var lit := k < _bell_view
+			b.disc(p, PIP_R + 1.5, Pal.LINE)
+			b.disc(p, PIP_R, Pal.SUN if lit else Pal.SURFACE)
+		_bell_mesh = b.mesh()
+		_bell_key = key
+	draw_mesh(_bell_mesh, null, Transform2D(0.0, at), Color(1.0, 1.0, 1.0, seen))
+	shown.append(_bell_mesh)
+	if ringing:
+		queue_redraw()
 
 ## The tally sleeper's z: a Label under its face that drifts up and fades
 ## every Z_EVERY seconds on a tween of its own, so it never redraws the board.
@@ -1030,7 +1442,7 @@ func _ring_at(c: int) -> void:
 ## chip's action at once and the release is then ignored. One finger holds
 ## the press: another landing meanwhile is ignored, press and release.
 func _gui_input(event: InputEvent) -> void:
-	if _done:
+	if _done or out_of_hearts:
 		return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
@@ -1045,7 +1457,10 @@ func _gui_input(event: InputEvent) -> void:
 			_press_cell = c
 			_long_fired = false
 			_press_id += 1
+			_press_at = _now()
 			var id := _press_id
+			if c >= 0 and _state.open[c] == 0:
+				_touch(c, _press_at + LONG_PRESS + 0.3)
 			if c >= 0:
 				_later(LONG_PRESS, func():
 					if id == _press_id and _press_cell == c and not _long_fired:
@@ -1058,6 +1473,9 @@ func _gui_input(event: InputEvent) -> void:
 		_press_cell = -1
 		_press_finger = -2
 		_press_id += 1
+		if was >= 0 and not _long_fired:
+			_release_at[was] = _now()
+			_touch(was, _now() + RELEASE_TIME)
 		if _long_fired or c < 0 or c != was:
 			return
 		if event is InputEventScreenTouch and event.canceled:
@@ -1096,13 +1514,16 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return _state.can_undo() and not is_done()
+	return _state.can_undo() and not is_done() and not out_of_hearts and not busy() \
+		and not _state.walkers()
 
 ## Takes back the last gesture: its cells' piles pop back in, back to front;
 ## its flag pops in or out. A woken hedgehog stays awake.
 func undo() -> bool:
-	if is_done():
+	if not can_undo():
 		return false
+	_break_streak()
+	_clear_gags()
 	var u: Dictionary = _state.undo()
 	if u.is_empty():
 		return false
@@ -1129,13 +1550,16 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	if _state.walkers():
+		return 0
+	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
 ## The next thing logic can prove from what the player can see: a bare cell
 ## raked, else a hedgehog flagged and pinned.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or _now() < _busy_until:
+	if is_done() or out_of_hearts or hints_left() <= 0 or busy():
 		return false
+	_break_streak()
 	var step: Dictionary = _state.hint_step()
 	if step.is_empty():
 		return false
@@ -1163,7 +1587,7 @@ func hint() -> bool:
 ## Every wrong flag's pennant turns rose and shivers, and holds until the
 ## next move. Counts a check.
 func check() -> int:
-	if is_done():
+	if is_done() or out_of_hearts or _state.walkers():
 		return 0
 	checks += 1
 	var wrong: PackedInt32Array = _state.check()
@@ -1183,9 +1607,24 @@ func check() -> int:
 
 ## Back to the opening, the piles popping back in out from it; woken
 ## hedgehogs and a hint's flags stay.
+func can_reset() -> bool:
+	return not (is_done() or out_of_hearts or busy())
+
+## Whether a wake's heart or a walk is still playing out: input, Undo, Hint
+## and Reset wait.
+func busy() -> bool:
+	return _now() < _busy_until
+
 func reset_board() -> void:
+	if not can_reset():
+		return
+	_break_streak()
+	_clear_gags()
+	var night := _state.walkers()
 	var before: PackedByteArray = _state.flag.duplicate()
 	var covered: PackedInt32Array = _state.reset_board()
+	if night:
+		_night_back()
 	var t := _now()
 	var start: int = _state.g.start
 	var cols: int = _state.cols()
@@ -1202,9 +1641,27 @@ func reset_board() -> void:
 	_last = start
 	moves = 0
 	_running = true
-	_tell("HH_RESET", Face.Expr.HAPPY)
+	_tell("HH_NIGHT_RESET" if night else "HH_RESET", Face.Expr.HAPPY)
 	fx.cue("reset")
+	moved.emit()
 	_refresh()
+
+## After State.restart: nobody woken, every number as dealt, no paw prints,
+## the moon's dots out.
+func _night_back() -> void:
+	var t := _now()
+	for c: int in _faces:
+		_cover_at[c] = t
+		_blow_at[c] = -100.0
+		_touch(c, t + Motion.POP_IN)
+	_clear_faces()
+	_sync_numbers()
+	_num_at.fill(-100.0)
+	_walk_at.fill(-100.0)
+	_paws = Vector2i(-1, -1)
+	_bell_view = 0
+	_bell_at = AGO
+	_bands = []
 
 func is_solved() -> bool:
 	return _state.is_solved()
@@ -1213,6 +1670,10 @@ func is_solved() -> bool:
 func share_glyphs() -> String:
 	var tail := tr("HH_SHARE_NONE") if _state.woken == 0 else (tr("HH_SHARE_ONE") if _state.woken == 1
 		else tr("HH_SHARE_N") % _state.woken)
+	if _state.walkers() and is_solved():
+		tail += " 🌙 " + tr("HH_WALK_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		tail += " 🏅 " + tr("BN_FLAWLESS")
 	return _state.share_glyphs() + "\n" + tail
 
 # --- the win ---
@@ -1234,10 +1695,13 @@ func _wave_span() -> float:
 			far = maxi(far, maxi(absi(c % cols - _last % cols), absi(c / cols - _last / cols)))
 	return Motion.stagger(far, Motion.WAVE_STEP * 2.0)
 
+## The win screen waits for the sleepers' wave and the party's moment.
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_LEAD + _wave_span() + WIN_WAIT
+	var wave := WIN_LEAD + _wave_span() + WIN_WAIT
+	var party := maxf(0.0, _party_at - _now()) + PARTY_TIME if _party_at < INF else wave
+	return maxf(wave, party)
 
 ## Every sleeper's leaves blow off in a wave out of the last cell raked, and
 ## each hedgehog pops up awake and hops; the woken ones cheer up too.
@@ -1246,6 +1710,14 @@ func _on_solved() -> void:
 	_solved_at = t
 	_tip_timer.stop()
 	_stop_z()
+	_press_cell = -1
+	# Flawless: no hint and not one hedgehog woken.
+	_flawless = hints_used == 0 and _state.woken == 0
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = t
+	_streak_gen += 1
+	_clear_gags()
+	_heart_layer.queue_redraw()
 	var cols: int = _state.cols()
 	for c in _state.size():
 		if not _state.is_hog(c):
@@ -1270,7 +1742,9 @@ func _on_solved() -> void:
 			fx.cue("solved"))
 	else:
 		fx.cue("solved")
-	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_TIP_WOKE"), Face.Expr.JOY)
+	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_WIN_WOKE_ONE") if _state.woken == 1
+		else tr("HH_WIN_WOKE_N") % _state.woken, Face.Expr.JOY)
+	_party(0.0 if Motion.reduce else WIN_LEAD + _wave_span() + PARTY_AT)
 	_refresh()
 
 ## A sleeper the win uncovers: it pops up still asleep, stretches tall with
@@ -1293,10 +1767,17 @@ func _wake_up(face: Control, delay: float) -> void:
 ## the same cells rose. Plain ints, because it goes through a ConfigFile.
 func completion_record() -> Dictionary:
 	var out: Array = []
+	var hogs: Array = []
 	for c in _state.size():
 		if _state.woke[c] == 1:
 			out.append(c)
-	return {"woke": out}
+		if _state.is_hog(c):
+			hogs.append(c)
+	var rec := {"woke": out, "hearts": hearts, "flawless": _flawless}
+	# Sleepwalkers ends with the hedgehogs where they walked to.
+	if _state.walkers():
+		rec["hogs"] = hogs
+	return rec
 
 ## A reopened daily that was already solved: every bare cell raked and every
 ## hedgehog awake on it, the ones a rake woke back on their rose cells from
@@ -1304,6 +1785,15 @@ func completion_record() -> Dictionary:
 ## none, and reads as a day nobody woke). Never check_solved(): `solved`
 ## must not fire twice.
 func restore_completed_board() -> void:
+	_turn += 1
+	_close_card()
+	_deal_hearts()
+	_reset_rewards()
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	_flawless = bool(completed_record.get("flawless", false))
+	_restore_hogs()
+	_sync_numbers()
+	_paws = Vector2i(-1, -1)
 	for c in _state.size():
 		if not _state.is_hog(c):
 			_state.open[c] = 1
@@ -1314,7 +1804,9 @@ func restore_completed_board() -> void:
 		_state.woken += 1
 	_state.history = []
 	var t := _now()
-	_solved_at = t - 100.0
+	# Never below zero: _solved_at >= 0 is what "solved" reads as, and a day
+	# reopened within 100 s of launch would read unsolved.
+	_solved_at = maxf(0.0, t - 100.0)
 	_opened = t - 100.0
 	_blow_at.fill(-100.0)
 	_moving = {}
@@ -1324,8 +1816,31 @@ func restore_completed_board() -> void:
 			_face_at(c, Face.Expr.JOY)
 	_tip_timer.stop()
 	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_TIP_WOKE"), Face.Expr.JOY)
+	_cat_at = t - 100.0
+	_place_cat(t)
+	if _flawless or _state.walkers():
+		_stamp_at = t - 100.0
+	_heart_layer.queue_redraw()
+	_life_layer.queue_redraw()
 	_bands = []
 	_refresh()
+
+## Sleepwalkers' record keeps where the hedgehogs walked to: the lawn is
+## put back that way when the record holds k distinct cells, as dealt
+## otherwise.
+func _restore_hogs() -> void:
+	var raw = completed_record.get("hogs", [])
+	if not _state.walkers() or not raw is Array or raw.size() != int(_state.g.k):
+		return
+	var hog := PackedByteArray()
+	hog.resize(_state.size())
+	for v in raw:
+		var c := int(v)
+		if c < 0 or c >= _state.size() or hog[c] == 1:
+			return
+		hog[c] = 1
+	_state.g.hog = hog
+	State.Gen.count(_state.g)
 
 ## The record's woken cells if every one is a hedgehog on today's lawn, each
 ## once, and none otherwise.
@@ -1340,6 +1855,626 @@ func _recorded_woke() -> PackedInt32Array:
 			return PackedInt32Array()
 		out.append(c)
 	return out
+
+# --- hearts ---
+
+func _hearts_y() -> float:
+	return _grid.y - TALLY - HEART_ROW * 0.5 + 4.0
+
+## A heart splits off the pill at `at`; the last one sets out_of_hearts.
+func _lose_heart(at: float) -> void:
+	_lost_ever = true
+	hearts = maxi(0, hearts - 1)
+	_split_index = hearts
+	_split_at = at
+	if hearts <= 0:
+		out_of_hearts = true
+	_heart_layer.queue_redraw()
+
+## A line about a lost heart, with how many are left after it.
+func _tell_hearts(key: String) -> void:
+	_tell(key, Face.Expr.WORRIED)
+	if hearts > 0:
+		_say(tr(key) + " " + (tr("SB_HEARTS_ONE") if hearts == 1 else tr("SB_HEARTS_N") % hearts), Face.Expr.WORRIED)
+
+## The hearts' pill over the tally: Knight's, heart for heart.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _hearts_y()
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var left := size.x * 0.5 - pill.x * 0.5
+	var corner := Vector2(left, y - pill.y * 0.5)
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	var x0 := left + HEART_PILL_PAD.x + HEART_R
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+## The last heart is gone: dusk falls on the lawn, every woken hedgehog
+## dozes off again, and the out-of-hearts card comes up.
+func _run_out() -> void:
+	if _asleep or not out_of_hearts or is_done():
+		return
+	_asleep = true
+	_press_cell = -1
+	_press_finger = -2
+	_break_streak()
+	_clear_gags()
+	_tip_timer.stop()
+	for face in _faces.values():
+		face.expression = Face.Expr.SLEEPY
+	fx.cue("out_of_hearts")
+	_say(tr("HH_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	_refresh()
+	_later(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["HH_OUT_BODY", "HH_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same lawn as it was dealt, at its opening, every heart
+## back, the clock and the moves from zero. Hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_turn += 1
+	var before: PackedByteArray = _state.flag.duplicate()
+	var covered: PackedInt32Array = _state.restart()
+	_deal_hearts()
+	_night_back()
+	var t := _now()
+	var start: int = _state.g.start
+	var cols: int = _state.cols()
+	for c in covered:
+		var d := absi(c % cols - start % cols) + absi(c / cols - start / cols)
+		var at := t + (0.0 if Motion.reduce else Motion.stagger(d, Motion.RESET_STAGGER))
+		_cover_at[c] = at
+		_blow_at[c] = -100.0
+		_touch(c, at + Motion.POP_IN)
+	for c in _state.size():
+		if before[c] == 1 and _state.flag[c] == 0:
+			_unflag_at[c] = t
+			_touch(c, t + FLAG_OUT)
+	_last = start
+	_break_streak()
+	_clear_gags()
+	_busy_until = t + (0.0 if Motion.reduce else Motion.POP_IN + 0.3)
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	_refresh()
+	moved.emit()
+
+## One more heart (the card's video): once a board. Morning comes back and
+## the lawn plays on as it was.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	var now := _now()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = now
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	for face in _faces.values():
+		face.expression = Face.Expr.STRAIN
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_refresh()
+	_say(tr("HH_HEART_BACK"), Face.Expr.HAPPY)
+	_tip_timer.start()
+	moved.emit()
+
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+# --- the rewards ---
+
+func _reset_rewards() -> void:
+	_streak = 0
+	_streak_gen += 1
+	_rakes_n = 0
+	_gag_until = 0.0
+	_gag_gen += 1
+	_combo_n = 0
+	_combo_at = -INF
+	_combo_out_at = -INF
+	_love = []
+	_acorns = []
+	_flies = []
+	_party_at = INF
+	_stamp_at = INF
+	_seal_mesh = null
+	_cat_at = INF
+	_cat_curled = false
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## The day's own number, so a day always deals the same gags and wisdom.
+func _day_hash() -> int:
+	if _state.size() == 0:
+		return 0
+	return absi(hash([_state.cols(), _state.rows(), int(_state.g.start), int(_state.g.k)]))
+
+## A safe rake that was not a hint's: the streak grows -- a note up the
+## pentatonic from the second, the bubble over the pile from the third,
+## confetti at 4, 7 and every 5 -- and the gag picked for it plays.
+func _on_safe_rake(c: int, lands: float) -> void:
+	_streak += 1
+	var count := _streak
+	var gen := _streak_gen
+	var at := _centre(c)
+	var wait := maxf(0.0, lands - _now())
+	if count >= 2:
+		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
+		_later(wait + 0.05, func() -> void:
+			if gen == _streak_gen:
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if count >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = count
+		_combo_pos = at - Vector2(0.0, _cell * 0.45)
+		_combo_at = lands
+		_combo_out_at = -INF
+	if _confetti_at(count) and not Motion.reduce:
+		_later(wait, func() -> void:
+			if gen == _streak_gen:
+				fx.confetti(at, 22)
+				fx.cue("confetti"))
+	_start_gag(c, _pick_gag(), lands)
+	_life_layer.queue_redraw()
+
+static func _confetti_at(count: int) -> bool:
+	return count == 4 or count == 7 or (count >= 10 and count % 5 == 0)
+
+## The gag for the next safe rake, off the day's hash: one in GAG_ODDS,
+## never while one is still on.
+func _pick_gag() -> int:
+	_rakes_n += 1
+	var t := _now()
+	if Motion.reduce or t < _gag_until or force_gag == Gag.NONE:
+		return Gag.NONE
+	if force_gag >= 0:
+		return force_gag
+	var roll := posmod(_day_hash() + _rakes_n * GAG_STEP, GAG_SPAN)
+	if roll >= GAG_SPAN / GAG_ODDS:
+		return Gag.NONE
+	return roll % 3
+
+## The streak ends: a wake, an undo, a hint, a reset, the hearts running
+## out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	_streak_gen += 1
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+	else:
+		_combo_n = 0
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+func _clear_gags() -> void:
+	_love = []
+	_acorns = []
+	_flies = []
+	_gag_until = 0.0
+	_gag_gen += 1
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## The gag for a rake of `c`: an acorn the rake turned up hops out and rolls
+## away; love hearts float off the pile; or a butterfly that slept in the
+## leaves flutters up and off.
+func _start_gag(c: int, gag: int, lands: float) -> void:
+	if gag == Gag.NONE:
+		return
+	var wait := maxf(0.0, lands - _now())
+	var gg := _gag_gen
+	var at := _centre(c)
+	var side := -1.0 if at.x > size.x * 0.5 else 1.0
+	var cue := ""
+	match gag:
+		Gag.ACORN:
+			_acorns.append({"at": at, "t": lands + 0.1, "side": side})
+			cue = "acorn"
+			_gag_until = lands + ACORN_TIME
+		Gag.LOVE:
+			for k in LOVE_HEARTS:
+				_love.append({"at": at + Vector2(float(k - 1) * 0.28, -0.3) * _cell,
+					"t": lands + 0.12 * float(k), "phase": float(k) * 2.1})
+			cue = "love"
+			_gag_until = lands + 0.24 + LOVE_TIME
+		Gag.BUTTERFLY:
+			_flies.append({"at": at, "t": lands + 0.15, "side": side})
+			cue = "flutter"
+			_gag_until = lands + FLY_TIME
+	_later(wait, func() -> void:
+		if gg == _gag_gen:
+			fx.cue(cue))
+
+# --- the life over the board ---
+
+func _tick_life(now: float) -> bool:
+	_love = _love.filter(func(l): return now < float(l.t) + LOVE_TIME)
+	_acorns = _acorns.filter(func(a): return now < float(a.t) + ACORN_TIME)
+	_flies = _flies.filter(func(f): return now < float(f.t) + FLY_TIME)
+	return not (_love.is_empty() and _acorns.is_empty() and _flies.is_empty()) \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## Love hearts (one cached mesh through a transform each), the acorns and
+## butterflies (one mesh a frame), the seal and the streak's bubble.
+func _draw_life() -> void:
+	if _cell <= 0.0 or _state.size() == 0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	var s := _cell
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.1 * s,
+				-LOVE_RISE * s * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	if not _acorns.is_empty() or not _flies.is_empty():
+		var b := Face.Builder.new()
+		for a in _acorns:
+			_acorn_hop(b, a, now)
+		for f in _flies:
+			_fly(b, f, now)
+		if not b.verts.is_empty():
+			var m := b.mesh()
+			shown.append(m)
+			_life_layer.draw_mesh(m, null)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_draw_combo(now, shown)
+	_life_shown = shown
+
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := maxf(12.0, _cell * LOVE_R)
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## An acorn the rake turned up: it pops out of the pile, lands a cell
+## along with a squash, bounces once, rolls a little and fades.
+func _acorn_hop(b: Face.Builder, a: Dictionary, now: float) -> void:
+	var e := now - float(a.t)
+	if e <= 0.0:
+		return
+	var s := _cell
+	var side: float = a.side
+	var u := e / ACORN_TIME
+	var x := side * s * 0.9 * minf(1.0, u * 1.4)
+	var h := 0.0
+	if u < 0.45:
+		var v := u / 0.45
+		h = 4.0 * v * (1.0 - v) * s * 0.9
+	elif u < 0.7:
+		var v := (u - 0.45) / 0.25
+		h = 4.0 * v * (1.0 - v) * s * 0.25
+	var at: Vector2 = a.at + Vector2(x, s * 0.1 - h)
+	# It shrinks away at the end: an acorn has no fade of its own.
+	var k := clampf((1.0 - u) / 0.2, 0.0, 1.0)
+	Scenery.soft_disc(b, a.at + Vector2(x, s * 0.22), s * 0.12 * k, s * 0.04 * k, Color(Pal.TEXT, 0.12))
+	if k > 0.05:
+		Lawn.acorn(b, at, s * 0.13 * k, side * u * 6.0)
+
+## A butterfly that napped in the pile: up out of it with a flutter and off
+## over the card's far side.
+func _fly(b: Face.Builder, f: Dictionary, now: float) -> void:
+	var e := now - float(f.t)
+	if e <= 0.0:
+		return
+	var s := _cell
+	var u := e / FLY_TIME
+	var side: float = f.side
+	var at: Vector2 = f.at + Vector2(side * s * 2.6 * u * u + sin(u * 11.0) * s * 0.18, -s * 3.0 * u)
+	var beat := 0.3 + 0.7 * absf(sin(e * 14.0))
+	var alpha := clampf((1.0 - u) / 0.3, 0.0, 1.0) * minf(1.0, u / 0.08)
+	Cat.butterfly(b, at, s * 0.42, beat, side * 0.25, alpha)
+
+func _draw_combo(now: float, shown: Array) -> void:
+	if _combo_n < COMBO_FROM:
+		return
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		if e < 0.0:
+			return
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var tail := _combo_pos
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var tip := (tail - centre).round()
+	var key := [text, tip]
+	if _combo_shown == null or _combo_key != key:
+		var b := Face.Builder.new()
+		var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+		b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+		b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+		_combo_shown = b.mesh()
+		_combo_key = key
+	shown.append(_combo_shown)
+	_life_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_life_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_life_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.SUN_DEEP, alpha))
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+# --- the party ---
+
+func _frame_rect() -> Rect2:
+	return Rect2(_grid, Vector2(_state.cols(), _state.rows()) * _cell).grow(FRAME)
+
+## After the sleepers' wave: confetti twice, the nap cat hopping onto the
+## bed's foot and curling up, a bit of hedgehog wisdom, and the seal when
+## the solve earned one (flawless, or any Sleepwalkers). Under reduce motion
+## the cat and the seal are simply there.
+func _party(lead: float) -> void:
+	var now := _now()
+	_party_at = now + lead
+	_later(lead + 0.8, func() -> void:
+		_say(_cheer(), Face.Expr.JOY))
+	_cat_at = now if Motion.reduce else _party_at + CAT_AT
+	if _flawless or _state.walkers():
+		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
+		_seal_mesh = null
+		_later(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		_life_layer.queue_redraw()
+		return
+	var field := _frame_rect()
+	_later(lead + 0.1, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell * 0.5), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_later(lead + 0.7, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	_life_layer.queue_redraw()
+
+func _cheer() -> String:
+	return tr("HH_CHEER_%d" % posmod(_day_hash(), CHEERS))
+
+func _cat_px() -> float:
+	return size.x * CAT_PX
+
+## Where she curls up: on the bed's foot, a fifth of the way along from its
+## left (the seal takes the right).
+func _cat_spot() -> Vector2:
+	var box := _frame_rect()
+	return Vector2(box.position.x + box.size.x * 0.22, box.end.y - _cat_px() * 0.28)
+
+func _cat_start() -> Vector2:
+	var box := _frame_rect()
+	return Vector2(box.position.x + _cat_px() * 0.5, box.end.y - _cat_px() * 0.28)
+
+func _cat_walk() -> float:
+	return CAT_POP + CAT_HOPS * CAT_HOP_TIME
+
+func _place_cat(t: float) -> void:
+	if t < _cat_at or _cell <= 0.0:
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.z_index = 3
+		_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		_cat.set_idle(true)
+		_cat_curled = false
+	var px := _cat_px()
+	if _cat.size.x != px:
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+	var e := t - _cat_at
+	var spot := _cat_spot()
+	var start := _cat_start()
+	var at := spot
+	var sc := Vector2.ONE
+	if Motion.reduce or e >= CURL_AT - CAT_AT or _cat_curled:
+		if not _cat_curled:
+			_curl_cat(e > CURL_AT - CAT_AT + 1.0)
+		else:
+			_cat.position = _cat_spot() - _cat.size * 0.5
+		return
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < _cat_walk():
+		var h := (e - CAT_POP) / CAT_HOP_TIME
+		var n := int(h)
+		var u := h - float(n)
+		var from := start.lerp(spot, float(n) / CAT_HOPS)
+		var to := start.lerp(spot, float(n + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * CAT_HOP_H * px)
+		var sq := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - sq, 1.0 + sq)
+	elif e < _cat_walk() + CAT_SETTLE:
+		var u := (e - _cat_walk()) / CAT_SETTLE
+		var sq := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + sq, 1.0 - sq)
+	_cat.position = at - _cat.size * Vector2(0.5, 0.5)
+	_cat.scale = sc
+
+func _curl_cat(quiet: bool) -> void:
+	_cat_curled = true
+	_cat.expression = Face.Expr.SLEEPY
+	_cat.scale = Vector2.ONE
+	_cat.rotation = 0.0
+	_cat.position = _cat_spot() - _cat.size * 0.5
+	if not quiet:
+		fx.cue("purr")
+
+## The seal on the bed's lower right corner, dropping in and settling, its
+## words over it: Flawless; on Sleepwalkers "Insane" over Flawless or
+## Sleepwalkers, on the night seal.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	var insane: bool = _state.walkers()
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var box := _frame_rect()
+	var centre := box.end - Vector2(rad * 0.85, rad * 0.72)
+	centre.x = clampf(centre.x, rad * 1.08, size.x - rad * 1.08)
+	centre.y = minf(centre.y, size.y - rad * 1.02)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("HH_WALK_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
