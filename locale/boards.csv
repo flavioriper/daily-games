@@ -1319,9 +1319,9 @@ PG_SHORT,"Bead by bead,\ncopy the picture.","Conta por conta,\ncopie a figura.",
 PG_MOTTO,Bead by bead,Conta por conta,Cuenta a cuenta
 PG_LVL_0,"10 × 10, 3–4 colours","10 × 10, 3–4 cores","10 × 10, 3–4 colores"
 PG_LVL_1,"12 × 12, 4–5 colours","12 × 12, 4–5 cores","12 × 12, 4–5 colores"
-PG_LVL_2,"14 × 14, 5–6 colours","14 × 14, 5–6 cores","14 × 14, 5–6 colores"
-PG_LVL_3,"16 × 16, 6–7 colours","16 × 16, 6–7 cores","16 × 16, 6–7 colores"
-PG_FUSED,A hint fixed that peg for good.,Uma dica fixou esse pino de vez.,Una pista fijó esa clavija para siempre.
+PG_LVL_2,"14 × 14, 5–6 colours, three hearts","14 × 14, 5–6 cores, três corações","14 × 14, 5–6 colores, tres corazones"
+PG_LVL_3,Windblown: the pattern's squares blew about,Ventania: os quadrados do molde voaram,Ventolera: los cuadrados del patrón volaron
+PG_FUSED,That peg is fixed for good.,Esse pino está fixo de vez.,Esa clavija está fija para siempre.
 PG_NONE_LEFT,That colour is used up. One of its beads is in the wrong place.,Essa cor acabou. Uma das contas dela está no lugar errado.,Ese color se acabó. Una de sus cuentas está en el lugar equivocado.
 PG_ALL_SEATED,"Every bead is on the board. Check it, or look again.","Todas as contas estão no tabuleiro. Confira, ou olhe de novo.","Todas las cuentas están en el tablero. Compruébalo, o vuelve a mirar."
 PG_HINT_LIFT,That bead did not belong there.,Essa conta não era daí.,Esa cuenta no iba ahí.
@@ -1334,6 +1334,33 @@ PG_CHECK_ONE,One bead is out of place.,Uma conta está fora do lugar.,Una cuenta
 PG_CHECK_N,%s beads are out of place.,%s contas estão fora do lugar.,%s cuentas están fuera de lugar.
 PG_RESET,Every bead back in the kit.,Todas as contas de volta ao kit.,Todas las cuentas de vuelta al kit.
 PG_WIN,"%s, finished and ironed.",Figura pronta e passada a ferro: %s.,Dibujo terminado y planchado: %s.
+PG_RULES_PLATES,"The board is four plates. When a plate holds as many beads as the picture puts on it, the iron passes over it: if every bead is right, the plate is ironed for good; if not, the beads astray hop back into the box.","O tabuleiro tem quatro placas. Quando uma placa tem tantas contas quanto a figura pede nela, o ferro passa por cima: se todas estão certas, a placa fica passada de vez; se não, as contas fora do lugar pulam de volta para a caixa.","El tablero tiene cuatro placas. Cuando una placa tiene tantas cuentas como el dibujo pide en ella, la plancha pasa por encima: si todas están bien, la placa queda planchada para siempre; si no, las cuentas fuera de lugar saltan de vuelta a la caja."
+PG_RULES_HEARTS,Hard: three hearts. A plate ironed with beads astray costs one. There is no Check: the iron is the judge.,Difícil: três corações. Uma placa passada com contas fora do lugar custa um. Não há Conferir: o ferro é o juiz.,Difícil: tres corazones. Una placa planchada con cuentas fuera de lugar cuesta uno. No hay Comprobar: la plancha es el juez.
+PG_RULES_WIND,"Windblown: the wind blew the pattern card's four squares about. Each one landed somewhere else, turned. A square's clip has the colour and dots of the plate it shows, and points to that plate's top. Two hearts, no hints, no Check.","Ventania: o vento espalhou os quatro quadrados do molde. Cada um caiu em outro lugar, girado. O clipe de um quadrado tem a cor e os pontinhos da placa que ele mostra, e aponta para o topo dessa placa. Dois corações, sem dicas, sem Conferir.","Ventolera: el viento desordenó los cuatro cuadrados del patrón. Cada uno cayó en otro lugar, girado. La pinza de un cuadrado tiene el color y los puntitos de la placa que muestra, y apunta a la parte de arriba de esa placa. Dos corazones, sin pistas, sin Comprobar."
+PG_WIND_TIP,"Windblown! Match each square's clip to a plate, and turn it in your head so the clip is on top.",Ventania! Ache a placa de cada quadrado pelo clipe e gire-o na cabeça até o clipe ficar em cima.,¡Ventolera! Busca la placa de cada cuadrado por su pinza y gíralo en tu cabeza hasta que la pinza quede arriba.
+PG_HARD_TIP,A full plate is ironed at once. Beads astray cost a heart.,Uma placa cheia é passada na hora. Contas fora do lugar custam um coração.,Una placa llena se plancha al momento. Las cuentas fuera de lugar cuestan un corazón.
+PG_PLATE_OFF_ONE,The iron found 1 bead astray. It hopped back into the box.,O ferro achou 1 conta fora do lugar. Ela pulou de volta para a caixa.,La plancha encontró 1 cuenta fuera de lugar. Saltó de vuelta a la caja.
+PG_PLATE_OFF_N,The iron found %s beads astray. They hopped back into the box.,O ferro achou %s contas fora do lugar. Elas pularam de volta para a caixa.,La plancha encontró %s cuentas fuera de lugar. Saltaron de vuelta a la caja.
+PG_PLATE_HEART_ONE,1 bead astray on that plate: a heart lost.,1 conta fora do lugar nessa placa: um coração a menos.,1 cuenta fuera de lugar en esa placa: un corazón menos.
+PG_PLATE_HEART_N,%d beads astray on that plate: a heart lost.,%d contas fora do lugar nessa placa: um coração a menos.,%d cuentas fuera de lugar en esa placa: un corazón menos.
+PG_OUT_BODY,"Out of hearts. The iron has gone cold. Start this picture again, or watch a short video for one more heart.","Sem corações. O ferro esfriou. Comece esta figura de novo, ou veja um vídeo curto por mais um coração.","Sin corazones. La plancha se enfrió. Empieza este dibujo de nuevo, o mira un video corto por un corazón más."
+PG_OUT_REST,Out of hearts. The iron has gone cold. Start this picture again whenever you like.,Sem corações. O ferro esfriou. Comece esta figura de novo quando quiser.,Sin corazones. La plancha se enfrió. Empieza este dibujo de nuevo cuando quieras.
+PG_HEART_BACK,One more heart. The iron is warm again.,Mais um coração. O ferro esquentou de novo.,Un corazón más. La plancha vuelve a estar caliente.
+PG_WORD_PLATE,Perfect plate!,Placa perfeita!,¡Placa perfecta!
+PG_WORD_ROW,%s in a row!,%s seguidas!,¡%s seguidas!
+PG_WORD_STEADY,Steady hand!,Mão firme!,¡Pulso firme!
+PG_WORD_WHOOSH,Whoosh!,Zum!,¡Zas!
+PG_WIND_SEAL,Windblown,Ventania,Ventolera
+PG_CHEER_0,Bead wisdom: the tweezers never hurry.,Sabedoria das contas: a pinça nunca tem pressa.,Sabiduría de cuentas: la pinza nunca tiene prisa.
+PG_CHEER_1,"Bead wisdom: count twice, iron once.","Sabedoria das contas: conte duas vezes, passe o ferro uma.","Sabiduría de cuentas: cuenta dos veces, plancha una."
+PG_CHEER_2,Bead wisdom: every picture starts with one bead.,Sabedoria das contas: toda figura começa com uma conta.,Sabiduría de cuentas: todo dibujo empieza con una cuenta.
+PG_CHEER_3,Bead wisdom: a lost bead is always under the table.,Sabedoria das contas: conta perdida está sempre debaixo da mesa.,Sabiduría de cuentas: una cuenta perdida siempre está bajo la mesa.
+PG_CHEER_4,Bead wisdom: the iron likes a little patience.,Sabedoria das contas: o ferro gosta de um pouco de paciência.,Sabiduría de cuentas: a la plancha le gusta un poco de paciencia.
+PG_CHEER_5,"Bead wisdom: close shades are best friends, not twins.","Sabedoria das contas: tons parecidos são amigos, não gêmeos.","Sabiduría de cuentas: los tonos parecidos son amigos, no gemelos."
+PG_CHEER_6,Bead wisdom: the cat always finds the finished picture.,Sabedoria das contas: o gato sempre acha a figura pronta.,Sabiduría de cuentas: el gato siempre encuentra el dibujo terminado.
+PG_CHEER_7,Bead wisdom: one plate at a time.,Sabedoria das contas: uma placa de cada vez.,Sabiduría de cuentas: una placa a la vez.
+PG_CHEER_8,"Bead wisdom: tidy box, tidy mind.","Sabedoria das contas: caixa arrumada, cabeça arrumada.","Sabiduría de cuentas: caja ordenada, mente ordenada."
+PG_CHEER_9,"Bead wisdom: it's not a mistake, it's a happy little bead.","Sabedoria das contas: não é erro, é uma continha feliz.","Sabiduría de cuentas: no es un error, es una cuentita feliz."
 PG_PIC_STRAWBERRY,Strawberry,Morango,Fresa
 PG_PIC_MUSHROOM,Mushroom,Cogumelo,Seta
 PG_PIC_TULIP,Tulip,Tulipa,Tulipán
