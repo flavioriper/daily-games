@@ -159,27 +159,17 @@ static func doors(b: Face.Builder, o: Vector2, cell: float, open: float) -> void
 
 ## One block, its cells' box at `at` (top-left, pixels) `cells` across and
 ## down, `cell` a side. `lift` 0 to 1 raises it off the floor (a longer
-## shadow and a rise); `squash` is a landing's dip, a fraction of its
-## height; `expr` is the big block's face.
+## shadow and a rise); `expr` is the big block's face, which looks `look` (a
+## fraction of a cell, toward what it watches) and opens its eyes by `eye`
+## (0 shut, 1 open).
 ##
-## `lean` stretches it along its travel and squeezes it across (a fraction a
-## side, signed: the leading edge runs ahead), so a quick slide reads as
-## speed. The big block's face looks `look` (a fraction of a cell, toward
-## what it watches) and opens its eyes by `eye` (0 shut, 1 open).
+## **A block is hard wood: it never stretches, squashes or leans** (players
+## read the old lean and landing dip as jelly, 2026-10-01). Everything that
+## moves a block moves all of it: a slide, a knock's recoil, a lift's shadow.
 static func block(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int, lift := 0.0,
-		squash := 0.0, expr := Face.Expr.HAPPY, lean := Vector2.ZERO, look := Vector2.ZERO, eye := 1.0) -> void:
-	var box := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
-	var h := box.y * (1.0 - squash)
-	var p := at + Vector2.ONE * GAP * cell + Vector2(0.0, box.y - h)
-	var sz := Vector2(box.x * (1.0 + squash * 0.5), h)
-	p.x -= box.x * squash * 0.25
-	if lean != Vector2.ZERO:
-		var st := Vector2(absf(lean.x), absf(lean.y)) * cell
-		var across := Vector2(st.y, st.x) * 0.5
-		var grown := sz + st - across
-		# the trailing edge stays, the leading edge runs ahead
-		p += Vector2(minf(lean.x, 0.0), minf(lean.y, 0.0)) * cell + across * 0.5
-		sz = grown
+		expr := Face.Expr.HAPPY, look := Vector2.ZERO, eye := 1.0) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var p := at + Vector2.ONE * GAP * cell
 	var rad := RADIUS * cell
 	var rise := lift * cell * 0.1
 	var shade := LIP * cell

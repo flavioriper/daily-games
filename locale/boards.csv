@@ -1217,8 +1217,35 @@ SL_SHORT,"Slide the blocks,\nfree the red one.","Deslize os blocos,\nsolte o ver
 SL_MOTTO,Out through the gate,Para fora pelo portão,Fuera por la puerta
 SL_LVL_0,8–16 moves,8–16 lances,8–16 jugadas
 SL_LVL_1,20–34 moves,20–34 lances,20–34 jugadas
-SL_LVL_2,38–56 moves,38–56 lances,38–56 jugadas
-SL_LVL_3,60 moves or more,60 lances ou mais,60 jugadas o más
+SL_LVL_2,"38–56 moves, 3 hearts","38–56 lances, 3 corações","38–56 jugadas, 3 corazones"
+SL_LVL_3,Homesick: the red block never goes back up,Saudade de casa: o bloco vermelho nunca volta para cima,Morriña: el bloque rojo nunca vuelve hacia arriba
+SL_RULES_HEARTS,"You have %d hearts. A move that takes the big red block farther from the gate costs one, and the block slides back. While you hold a move like that, the red block sweats, so you can always change your mind before you let go.","Você tem %d corações. Um lance que deixa o bloco vermelho grande mais longe do portão custa um, e o bloco desliza de volta. Enquanto você segura um lance assim, o bloco vermelho sua, então dá sempre para mudar de ideia antes de soltar.","Tienes %d corazones. Una jugada que aleja el bloque rojo grande de la puerta cuesta uno, y el bloque se desliza de vuelta. Mientras sostienes una jugada así, el bloque rojo suda, así que siempre puedes cambiar de idea antes de soltar."
+SL_RULES_HOME,"Homesick: the big red block never goes back up, only down or sideways. Bring it down too soon and it can get stuck for good: a move that leaves it no way home costs a heart and slides back. You have %d hearts, no undo and no hints.","Saudade de casa: o bloco vermelho grande nunca volta para cima, só desce ou vai para os lados. Se descer cedo demais, pode ficar preso para sempre: um lance que o deixa sem caminho para casa custa um coração e desliza de volta. Você tem %d corações, sem desfazer e sem dicas.","Morriña: el bloque rojo grande nunca vuelve hacia arriba, solo baja o va de lado. Si baja demasiado pronto, puede quedar atrapado para siempre: una jugada que lo deja sin camino a casa cuesta un corazón y se desliza de vuelta. Tienes %d corazones, sin deshacer y sin pistas."
+SL_TIP_FRET,"If the red block sweats, that move takes it farther from the gate.","Se o bloco vermelho suar, esse lance o deixa mais longe do portão.","Si el bloque rojo suda, esa jugada lo aleja de la puerta."
+SL_TIP_HEARTS,A step back costs a heart. Let go only when the red block is calm.,Um passo para trás custa um coração. Solte só quando o bloco vermelho estiver tranquilo.,Un paso atrás cuesta un corazón. Suelta solo cuando el bloque rojo esté tranquilo.
+SL_TIP_HOME,Homesick: the red block never goes back up.,Saudade de casa: o bloco vermelho nunca volta para cima.,Morriña: el bloque rojo nunca vuelve hacia arriba.
+SL_TIP_HOME_PLAN,Clear the way below before you bring the red block down.,Abra o caminho embaixo antes de descer o bloco vermelho.,Despeja el camino de abajo antes de bajar el bloque rojo.
+SL_TIP_HOME_HEARTS,A move that strands the red block costs a heart.,Um lance que prende o bloco vermelho custa um coração.,Una jugada que deja atrapado al bloque rojo cuesta un corazón.
+SL_SETBACK,That took the red block farther from the gate. It costs a heart.,Isso deixou o bloco vermelho mais longe do portão. Custa um coração.,Eso alejó el bloque rojo de la puerta. Cuesta un corazón.
+SL_DOOMED,The red block can't get home from there. That costs a heart.,Dali o bloco vermelho não consegue voltar para casa. Isso custa um coração.,Desde ahí el bloque rojo no puede volver a casa. Eso cuesta un corazón.
+SL_HOME_UP,The red block is homesick: it never goes back up.,O bloco vermelho está com saudade de casa: nunca volta para cima.,El bloque rojo tiene morriña: nunca vuelve hacia arriba.
+SL_OUT,The tray dozes off for now.,A bandeja cochilou por agora.,La bandeja se echa una siesta por ahora.
+SL_OUT_BODY,"Out of hearts. Start this tray again from the top, or watch a short video for one more heart.","Sem corações. Comece esta bandeja de novo do início, ou veja um vídeo curto por mais um coração.","Sin corazones. Empieza esta bandeja de nuevo desde el principio, o mira un video corto por un corazón más."
+SL_OUT_REST,Out of hearts. Start this tray again from the top whenever you like.,Sem corações. Comece esta bandeja de novo do início quando quiser.,Sin corazones. Empieza esta bandeja de nuevo desde el principio cuando quieras.
+SL_HEART_BACK,One more heart. Watch the red block's face.,Mais um coração. Fique de olho na cara do bloco vermelho.,Un corazón más. Mira la cara del bloque rojo.
+SL_HOME_SEAL,Homesick,Saudade,Morriña
+SL_CHEER_0,Sliding wisdom: the way out often starts by going round.,Sabedoria deslizante: a saída muitas vezes começa dando a volta.,Sabiduría deslizante: la salida suele empezar dando la vuelta.
+SL_CHEER_1,Sliding wisdom: two empty cells are all the room you ever need.,Sabedoria deslizante: duas casas vazias são todo o espaço de que você precisa.,Sabiduría deslizante: dos casillas vacías son todo el sitio que necesitas.
+SL_CHEER_2,Sliding wisdom: the little squares do the big work.,Sabedoria deslizante: os quadradinhos fazem o trabalho grande.,Sabiduría deslizante: los cuadraditos hacen el trabajo grande.
+SL_CHEER_3,Sliding wisdom: a bar lying down is a door left open.,Sabedoria deslizante: uma barra deitada é uma porta aberta.,Sabiduría deslizante: una barra tumbada es una puerta abierta.
+SL_CHEER_4,"Sliding wisdom: when in doubt, make room first.","Sabedoria deslizante: na dúvida, abra espaço primeiro.","Sabiduría deslizante: ante la duda, haz sitio primero."
+SL_CHEER_5,Sliding wisdom: every block was in the way once. Now look.,Sabedoria deslizante: todo bloco já esteve no caminho. Agora olha só.,Sabiduría deslizante: todos los bloques estorbaron alguna vez. Y mira ahora.
+SL_CHEER_6,Sliding wisdom: the shortest way is rarely the straightest.,Sabedoria deslizante: o caminho mais curto quase nunca é o mais reto.,Sabiduría deslizante: el camino más corto casi nunca es el más recto.
+SL_CHEER_7,Sliding wisdom: patience slides further than force.,Sabedoria deslizante: paciência desliza mais longe que força.,Sabiduría deslizante: la paciencia desliza más lejos que la fuerza.
+SL_CHEER_8,Sliding wisdom: the gate was always open. It just needed a friend.,Sabedoria deslizante: o portão sempre esteve aberto. Só faltava um amigo.,Sabiduría deslizante: la puerta siempre estuvo abierta. Solo faltaba un amigo.
+SL_CHEER_9,Sliding wisdom: corners are just moves that changed their mind.,Sabedoria deslizante: esquinas são lances que mudaram de ideia.,Sabiduría deslizante: las esquinas son jugadas que cambiaron de idea.
+SL_CHEER_10,Sliding wisdom: a tidy tray is a happy tray.,Sabedoria deslizante: bandeja arrumada é bandeja feliz.,"Sabiduría deslizante: bandeja ordenada, bandeja feliz."
+SL_CHEER_11,Sliding wisdom: home is wherever the gate opens.,Sabedoria deslizante: casa é onde o portão se abre.,Sabiduría deslizante: el hogar está donde se abre la puerta.
 MG_TIP_AIM,"Drag to aim, let go to shoot a seed.",Arraste para mirar e solte para lançar uma semente.,Arrastra para apuntar y suelta para lanzar una semilla.
 MG_TIP_GOAL,Bloom every marigold to finish the garden.,Faça florescer todas as calêndulas para terminar o jardim.,Haz florecer todas las caléndulas para terminar el jardín.
 MG_TIP_POT,A seed that lands in the pot comes back.,Uma semente que cai no vaso volta para você.,Una semilla que cae en la maceta vuelve a ti.
