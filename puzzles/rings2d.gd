@@ -660,6 +660,10 @@ func _tap(i: int) -> void:
 	if is_done() or out_of_hearts or busy():
 		return
 	if _state.held == -1:
+		# A ring still threading down onto this peg lands first, or it would
+		# be drawn twice: in flight and rising into the hand.
+		if not _flight.is_empty() and int(_flight.get("to", -1)) == i:
+			_land_flight(_now())
 		if _state.lift(i):
 			_held_at = _now()
 			fx.cue("lift")
@@ -2024,9 +2028,9 @@ func share_glyphs() -> String:
 		(pegs[m.y] as Array).append(Gen.flip(ring))
 		if Gen.locked(pegs[m.y]):
 			out += SHARE_GLYPHS[Gen.top(int(pegs[m.y][0]))]
-	if (_state.difficulty >= 3 and is_solved()) or (_flawless and is_solved()):
+	if (_state.tumble and is_solved()) or (_flawless and is_solved()):
 		out += "\n"
-	if _state.difficulty >= 3 and is_solved():
+	if _state.tumble and is_solved():
 		out += "🙃 " + tr("RG_TUMBLE_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
 	elif _flawless and is_solved():
 		out += "🏅 " + tr("BN_FLAWLESS")
@@ -2062,7 +2066,7 @@ func restore_completed_board() -> void:
 	_solved_at = t - 10.0
 	_cat_at = t - 100.0
 	_place_cat(t)
-	if _flawless or _state.difficulty >= 3:
+	if _flawless or _state.tumble:
 		_stamp_at = t - 100.0
 	_tip_timer.stop()
 	_say(tr("RG_WIN"), Face.Expr.JOY)
@@ -2454,7 +2458,7 @@ func _party(wave: float) -> void:
 	_after(lead + 0.6, func() -> void:
 		_say(_cheer(), Face.Expr.JOY))
 	_cat_at = now if Motion.reduce else _party_at + CAT_AT
-	if _flawless or _state.difficulty >= 3:
+	if _flawless or _state.tumble:
 		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
 		_seal_mesh = null
 		_after(_stamp_at - now, func() -> void:
@@ -2793,7 +2797,7 @@ func _draw_combo(now: float, shown: Array) -> void:
 ## on Tumble "Insane" over Flawless or Tumble, on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
 	var rad := size.x * STAMP_R * 0.75
-	var insane: bool = _state.difficulty >= 3
+	var insane: bool = _state.tumble
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
 	shown.append(_seal_mesh)

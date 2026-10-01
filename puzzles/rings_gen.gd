@@ -51,9 +51,18 @@ const BANDS := [
 	{"colours": 6, "pegs": 7},
 ]
 
-## Deals tried before the day gives up and takes the last one anyway. Measured
-## need: zero. This is the guard, not the plan.
-const ATTEMPTS := 40
+## Deals tried before the day gives up and takes the last one anyway. Hard on
+## seven pegs (2026-10-01) needs up to ~30 tries for a proved deal and 40 ran
+## out about once in 440 seeds -- a dead board on a judged band, where every
+## drop would cost a heart. A failed proof costs a few hundred nodes, so 400
+## tries is cheap and the fallback is never reached in practice.
+const ATTEMPTS := 400
+
+## Nodes a doom check may cost. A search that runs out counts as alive, so a
+## smaller budget only lets an occasional dead end through -- never takes a
+## heart wrongly -- and keeps Insane's check off the phone's frame (52 ms worst
+## on this Mac at the full budget).
+const DOOM_BUDGET := 4000
 
 ## Nodes a single verdict may cost. Measured worst: 267 for a deal, 3346
 ## for a Tumble position's doom check (Python, the miner's same search).

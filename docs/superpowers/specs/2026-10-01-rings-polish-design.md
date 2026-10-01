@@ -153,7 +153,8 @@ one at a time, peak draw calls from 0.5 s (through `world/main.tscn`):
 | lift (somersault, put back) | Insane | 73 (ANGLE 73) |
 | doom (wobble, heart, hop back) | Hard | 89 |
 | out (dusk, card, Try again) | Hard | **110** |
-| right (streak, bubble, confetti, gags, undo) | Easy | (see run log) |
+| press (the dip) | Medium | 87 |
+| right (streak, bubble, confetti, gags, undo) | Easy | 92 |
 | solve and party (hoop, cat, night seal) | Insane | flawless, `🙃 Tumble · Flawless` |
 
 Peak 110, 745 under the 855 budget. Suite `passed=122403 failed=0`;
@@ -175,3 +176,15 @@ Peak 110, 745 under the 855 budget. Suite `passed=122403 failed=0`;
   the post). Remove `_landing_mark` if it reads as hand-holding.
 - Bee, hoop, love-heart sizes, the wobble's 0.55 s and the somersault -- all
   judged on stills only.
+
+- **Review findings, fixed**: Hard on seven pegs ran out of its 40 deal
+  tries about once in 440 seeds and fell back to a proved-dead deal (every
+  drop a heart, for everyone that day) -- `ATTEMPTS` is 400 now and the nine
+  reported seeds all deal sortable boards (worst deal 20 ms); the doom check
+  has its own `DOOM_BUDGET` 4000 (out of nodes = alive, so it can only let a
+  dead end through, never take a heart wrongly) and caught 110 of 1040 on
+  Insane with a 42 ms worst on this Mac; lifting a ring off a peg another ring
+  was still threading down onto drew that ring twice (an old bug) -- the
+  flight lands first now; the 🙃 share and the night seal key on a Tumble
+  deal, not on the band. Left: a reopened Tumble solve shows its colours home
+  as plain rings (the record does not keep the rings).

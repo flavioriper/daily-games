@@ -146,7 +146,7 @@ func would_doom(j: int) -> bool:
 	for s in pegs:
 		copy.append((s as Array).duplicate())
 	(copy[j] as Array).append(held)
-	return not Gen.solved(copy) and Gen.verdict(copy) == 0
+	return not Gen.solved(copy) and Gen.verdict(copy, Gen.DOOM_BUDGET) == 0
 
 ## Why a drop on `j` would be refused right now, or "" when it would not be.
 ## Exactly these two keys (RG_FULL, RG_WRONG_COLOUR); the board puts them
