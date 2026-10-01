@@ -263,7 +263,8 @@ func press(t: float, lane: int) -> String:
 		score += rp
 		events.append({"type": "roll", "i": k, "hits": n.hits, "points": rp})
 		return "roll"
-	# the nearest note waiting on this drum
+	# the earliest note waiting on this drum within reach: a late stroke
+	# belongs to the note it was late for, never the next one
 	var best := -1
 	var best_dt := INF
 	for k in range(_next, notes.size()):
@@ -273,10 +274,11 @@ func press(t: float, lane: int) -> String:
 			break
 		if n.lane != lane or n.st != St.WAIT or is_long(n.type) or n.held:
 			continue
-		if absf(dt) < absf(best_dt):
+		if absf(dt) <= bad_win:
 			best = k
 			best_dt = dt
-	if best < 0 or absf(best_dt) > bad_win:
+			break
+	if best < 0:
 		return _stray(t)
 	var note: Dictionary = notes[best]
 	var ad := absf(best_dt)
@@ -301,11 +303,17 @@ func lift(t: float, lane: int) -> void:
 		return
 	for k in range(_next, notes.size()):
 		var n: Dictionary = notes[k]
-		if float(n.t) > t:
+		if float(n.t) > t + float(BAD_WIN[level]):
 			break
 		if n.lane == lane and n.type == Type.HOLD and n.held:
-			_pay_hold(k, minf(t, float(n.end)))
+			_pay_hold(k, clampf(t, float(n.t), float(n.end)))
 			_finish_hold(k, t >= float(n.end) - HOLD_SLACK)
+
+## Every finger came up at once (the app lost focus): every hold being kept
+## is let go.
+func lift_all(t: float) -> void:
+	for lane in LANES:
+		lift(t, lane)
 
 ## A stroke with no note near it on its drum. Free below Hard; on Hard and
 ## Insane, while a note is due on another drum, a slip.
@@ -417,11 +425,14 @@ func _break_heart(why: String) -> void:
 	if hearts <= 0:
 		out = true
 		for n: Dictionary in notes:
-			n.held = false
+			if n.held:
+				n.held = false
+				n.st = St.HIT
 		events.append({"type": "out"})
 
-## One more heart: the song picks up again from `from` with a heart. Every
-## note from there on waits again, as if never reached.
+## One more heart: the song picks up again from `from` (where it stopped)
+## with a heart. Nothing judged is judged again: only notes not yet reached
+## are waiting, as they were.
 func revive(from: float) -> void:
 	out = false
 	done = false
@@ -430,10 +441,8 @@ func revive(from: float) -> void:
 	_next = 0
 	for k in notes.size():
 		var n: Dictionary = notes[k]
-		if float(n.t) >= from:
+		if float(n.t) >= from and n.grade < 0 and n.hits == 0:
 			n.st = St.WAIT
-			n.grade = -1
-			n.hits = 0
 			n.held = false
 	while _next < notes.size() and notes[_next].st != St.WAIT:
 		_next += 1

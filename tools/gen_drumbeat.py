@@ -758,8 +758,10 @@ def chart(song, level):
 def echo(song, hard):
     """Insane is Echo: the bars go in pairs, and the second of each pair
     plays the first again -- with its notes hidden. Read it, play it, then
-    play it back from memory, by ear. A long note running out of its bar is
-    cut at the bar line; the echo of a balloon asks for as many strokes."""
+    play it back from memory: the screen lets the tune step aside under a
+    hidden bar, so the player hears the backing and their own drums. A long
+    note running out of its bar is cut at the bar line; a pair whose second
+    bar holds a drumroll or a balloon is played as Hard plays it."""
     beat = 60.0 / song["bpm"]
     bars, _, _ = all_bars(song)
     bar_len = 4 * beat
@@ -768,7 +770,12 @@ def echo(song, hard):
         a = bar_start(song, k)
         b = a + bar_len
         call = [dict(n) for n in hard if a - 1e-6 <= n["t"] < b - 1e-6]
-        if not call:
+        second = [dict(n) for n in hard if b - 1e-6 <= n["t"] < b + bar_len - 1e-6]
+        if not call or any(n["type"] in (ROLL, BALLOON) for n in second):
+            # a drumroll or a balloon in the second bar: the pair is played
+            # as Hard plays it, so Insane keeps its long notes
+            out.extend(call)
+            out.extend(second)
             continue
         for n in call:
             if "end" in n:

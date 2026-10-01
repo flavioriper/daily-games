@@ -150,3 +150,26 @@ play, peak ~222 in Go-Go's burst (ANGLE 250); reduce motion 145 peak.
 - The tap-along's first guess on a blind phone (120 ms) is a guess.
 - Whether Echo should allow a third heart; it is meant to be nearly
   impossible.
+
+## 10. Review findings, fixed
+
+- **A late stroke stole the next note on its drum** (the nearest note won, so
+  a stroke past the midpoint of two close notes judged the second and let the
+  first pass): a stroke now judges the earliest waiting note in reach.
+- **A hold struck early and let go before its time finished itself** (the
+  lift stopped looking at notes not yet due): a lift reaches every hold in
+  reach and pays only from the hold's own time.
+- **A pause left a hold held** and it completed on resume: losing focus lets
+  go of every hold.
+- **One more heart judged notes twice** and showed missed berries still
+  coming down: it picks up the state exactly where it stopped (only notes
+  never reached wait), the music lead-in plays over settled notes, a missed
+  note is never drawn before its time, a hold kept when the hearts ran out is
+  settled as dropped, and the tune's dip is cleared.
+- **Insane had no drumrolls or balloons** (they all fell in the second bar of
+  a pair): a pair whose second bar holds one is played as Hard plays it.
+  **Echo's hidden notes did not sit on the tune** (the stem is shared): the
+  tune steps aside (−30 dB) under every hidden bar, so the player hears the
+  backing and their own drums answering. Notes now 292/267/448 on Insane.
+- Resume adds the output latency like a start does; Reset and Try again stop
+  the dusk tween.

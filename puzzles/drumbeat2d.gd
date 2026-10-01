@@ -107,6 +107,7 @@ const STICK_COLS := [Color("ff8fb0"), Color("7fe0ff"), Color("ffe066"), Color("a
 ## comes back at DUCK_RATE dB a second.
 const DUCK_DB := [-6.0, -9.0, -12.0, -12.0]
 const DUCK_RATE := 30.0
+const ECHO_DB := -30.0
 ## The timing: its step on the card's buttons, its reach, its first guess on
 ## a phone that reports no output latency.
 const OFFSET_STEP := 0.01
@@ -412,13 +413,15 @@ func _pause(on: bool) -> void:
 		_phase = "paused"
 		_music.stream_paused = true
 		_lead.stream_paused = true
+		_st.lift_all(_clock - _offset)
+		_handle()
 		_release_all()
 		queue_redraw()
 	elif not on and _phase == "paused":
 		_phase = "play"
 		_music.stream_paused = false
 		_lead.stream_paused = false
-		var wait := AudioServer.get_time_to_next_mix()
+		var wait := AudioServer.get_time_to_next_mix() + AudioServer.get_output_latency()
 		_zero_us = Time.get_ticks_usec() + int((wait - _clock) * 1e6)
 		queue_redraw()
 
@@ -525,7 +528,11 @@ func _process(delta: float) -> void:
 		_tune_step()
 	# the tune comes back after a dip
 	var want: float = DUCK_DB[clampi(_level, 0, 3)] if _duck else 0.0
-	_lead_db = move_toward(_lead_db, want, DUCK_RATE * delta * (2.0 if want < _lead_db else 1.0))
+	# Echo: the tune steps aside under a hidden bar, so what the player hears
+	# there is the band's backing and their own drums answering
+	if _phase == "play" and not _st.echo.is_empty() and _st.echo_at(view_t()):
+		want = ECHO_DB
+	_lead_db = move_toward(_lead_db, want, DUCK_RATE * delta * (4.0 if want < _lead_db else 2.0))
 	if _phase == "play":
 		_lead.volume_db = _lead_db
 	if _score_shown < _st.score:
@@ -1022,6 +1029,7 @@ func try_again() -> void:
 		return
 	_close_card()
 	Motion.stop(_wind_tw)
+	Motion.stop(_dusk_tw)
 	_kept_hearts = -1
 	_fresh()
 	_log += "·"
@@ -1054,7 +1062,9 @@ func heart_back() -> void:
 		return
 	var beat := _beat()
 	var from := maxf(0.0, _stopped_at - PICK_UP_BEATS * beat)
-	_st.revive(from + 2.0 * beat)
+	_st.revive(_stopped_at)
+	_duck = false
+	_last_vt = -10.0
 	_counted = -1
 	_go_said = true
 	_phase = "play"
@@ -1168,6 +1178,7 @@ func _place_cat(t: float) -> void:
 func reset_board() -> void:
 	_close_card()
 	Motion.stop(_wind_tw)
+	Motion.stop(_dusk_tw)
 	_kept_hearts = -1
 	_fresh()
 	moves = 0
@@ -1813,6 +1824,8 @@ func _draw_notes(vt: float, now: float) -> void:
 		var x := _lane_x(lane, y)
 		if n.st == State.St.MISSED:
 			# let past: on off the end of the path, tumbling, fading
+			if dt > 0.0:
+				continue
 			var k := clampf(-dt / FALL_TIME, 0.0, 1.0)
 			if k >= 1.0 or Motion.reduce and dt < -0.2:
 				continue
