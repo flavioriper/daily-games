@@ -1790,3 +1790,36 @@ HTP_TN_OAK_CAP,An old oak wants two tents,Um carvalho velho quer duas barracas,U
 HTP_TN_OAK_TOUCH_CAP,Neighbouring sides would touch,Lados vizinhos se tocariam,Lados vecinos se tocarían
 HTP_TN_OAK_DONE_CAP,One either side: the oak beams,Uma de cada lado: o carvalho sorri,Una a cada lado: el roble sonríe
 HTP_TN_HIDDEN_CAP,A ? keeps its line's count to itself,Um ? guarda a conta da linha,Un ? se guarda la cuenta de su línea
+HTP_LU_LIGHT,Light every stone,Ilumine cada pedra,Ilumina cada piedra
+HTP_LU_LIGHT_BODY,"Tap a stone to set a lantern down, and tap it again to take it up. A lantern lights its whole row and column until a block stops it. Light every floor stone to win.",Toque numa pedra para pôr uma lanterna e toque de novo para tirá-la. Uma lanterna ilumina a linha e a coluna inteiras até um bloco barrar. Ilumine cada pedra do chão para vencer.,Toca una piedra para poner un farol y tócala otra vez para quitarlo. Un farol ilumina toda su fila y su columna hasta que un bloque lo detiene. Ilumina cada piedra del suelo para ganar.
+HTP_LU_SEE,Lanterns never see each other,Lanternas nunca se enxergam,Los faroles nunca se ven
+HTP_LU_SEE_BODY,"No lantern may light another. Two that can see each other down a line both blush, so you spot it at once. Undo takes back your last move; Reset clears the court.","Nenhuma lanterna pode iluminar outra. Duas que se enxergam numa linha ficam rosadas, então você percebe na hora. Desfazer volta a última jogada; Recomeçar limpa o pátio.","Ningún farol puede iluminar a otro. Dos que se ven en una línea se ponen rosados, así lo notas al instante. Deshacer quita tu última jugada; Reiniciar despeja el patio."
+HTP_LU_NUMBERS,Count the lanterns,Conte as lanternas,Cuenta los faroles
+HTP_LU_NUMBERS_BODY,"A number on a block counts the lanterns touching it: above, below, left or right. It turns green with exactly that many and rose with too many. A block with no number takes any.","Um número num bloco conta as lanternas encostadas nele: em cima, embaixo, à esquerda ou à direita. Ele fica verde com a quantidade exata e rosado com lanternas demais. Um bloco sem número aceita qualquer quantidade.","Un número en un bloque cuenta los faroles que lo tocan: arriba, abajo, a la izquierda o a la derecha. Se pone verde con la cantidad justa y rosado con demasiados. Un bloque sin número acepta cualquiera."
+HTP_LU_CHIPS,Mark what's ruled out,Marque o que já descartou,Marca lo descartado
+HTP_LU_CHIPS_BODY,"Drag across the court to lay chips on stones that can't hold a lantern, like every stone beside a 0. Chips are only notes for you. Start a drag on a chip to rub chips out.","Arraste pelo pátio para pôr marcas nas pedras que não podem ter lanterna, como toda pedra ao lado de um 0. As marcas são só anotações suas. Comece a arrastar numa marca para apagar marcas.","Arrastra por el patio para poner marcas en las piedras que no pueden tener farol, como toda piedra junto a un 0. Las marcas son solo notas tuyas. Empieza a arrastrar sobre una marca para borrar marcas."
+HTP_LU_HINT_BODY_ONE,"The bulb sets down one lantern of the answer and pins it, so it stays lit. Check shows which lanterns aren't the answer's. You have one hint.","A lâmpada põe uma lanterna da resposta e a prende, então ela fica acesa. Conferir mostra quais lanternas não são da resposta. Você tem uma dica.","La bombilla pone un farol de la respuesta y lo fija, así que queda encendido. Comprobar muestra qué faroles no son de la respuesta. Tienes una pista."
+HTP_LU_HINT_BODY_N,"The bulb sets down one lantern of the answer and pins it, so it stays lit. Check shows which lanterns aren't the answer's. You have %d hints.","A lâmpada põe uma lanterna da resposta e a prende, então ela fica acesa. Conferir mostra quais lanternas não são da resposta. Você tem %d dicas.","La bombilla pone un farol de la respuesta y lo fija, así que queda encendido. Comprobar muestra qué faroles no son de la respuesta. Tienes %d pistas."
+HTP_LU_START_CAP,Light every stone,Ilumine cada pedra,Ilumina cada piedra
+HTP_LU_ROW_CAP,A lantern lights its row and column,Uma lanterna ilumina linha e coluna,Un farol ilumina su fila y su columna
+HTP_LU_STOP_CAP,A block stops the light,Um bloco barra a luz,Un bloque detiene la luz
+HTP_LU_MORE_CAP,More lanterns light the rest,Mais lanternas iluminam o resto,Más faroles iluminan el resto
+HTP_LU_ALL_CAP,Every stone lit: solved,Todas as pedras acesas: resolvido,Todas las piedras iluminadas: resuelto
+HTP_LU_SEE_CAP,In one line: both lanterns blush,Na mesma linha: as duas ficam rosadas,En la misma línea: los dos se ponen rosados
+HTP_LU_TAKE_CAP,Tap one to take it up...,Toque numa para tirá-la...,Toca uno para quitarlo...
+HTP_LU_APART_CAP,...and set it out of sight,...e ponha fora da vista,...y ponlo fuera de su vista
+HTP_LU_NUM_CAP,A 2 wants two lanterns beside it,Um 2 quer duas lanternas ao lado,Un 2 quiere dos faroles al lado
+HTP_LU_MET_CAP,Two beside it: it turns green,Duas ao lado: ele fica verde,Dos al lado: se pone verde
+HTP_LU_OVER_CAP,Three is too many: it turns rose,Três é demais: ele fica rosado,Tres son demasiados: se pone rosado
+HTP_LU_ZERO_CAP,A 0 wants no lantern beside it,Um 0 não quer lanterna ao lado,Un 0 no quiere faroles al lado
+HTP_LU_SWEEP_CAP,Drag to mark the stones ruled out,Arraste para marcar as pedras descartadas,Arrastra para marcar las piedras descartadas
+HTP_LU_CHIPPED_CAP,A marked stone is still lit by a lantern,Pedra marcada ainda é iluminada,Una piedra marcada igual se ilumina
+HTP_LU_HINT_CAP,The bulb sets a lantern down for you,A lâmpada põe uma lanterna por você,La bombilla pone un farol por ti
+HTP_LU_PINNED_CAP,A pinned lantern stays lit,Uma lanterna presa fica acesa,Un farol fijo se queda encendido
+HTP_LU_FAIR_CAP,This lantern breaks no rule...,Essa lanterna não quebra nenhuma regra...,Este farol no rompe ninguna regla...
+HTP_LU_GUTTER_CAP,...but it isn't the answer: it goes out,...mas não é a resposta: ela se apaga,...pero no es la respuesta: se apaga
+HTP_LU_RIGHT_CAP,The right ones cost nothing,As certas não custam nada,Los correctos no cuestan nada
+HTP_LU_CAT_CAP,A cat wants the light her tag says,O gato quer a luz que a plaquinha diz,El gato quiere la luz que dice su placa
+HTP_LU_CAT_ONE_CAP,One lantern on her: she purrs,Uma lanterna nele: ele ronrona,Un farol sobre él: ronronea
+HTP_LU_CAT_TWO_CAP,Two on her: too much light,Duas nele: luz demais,Dos sobre él: demasiada luz
+HTP_LU_CAT_OVER_CAP,Light passes over a cat,A luz passa por cima do gato,La luz pasa por encima del gato

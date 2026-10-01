@@ -29,6 +29,15 @@ pinned, a lantern lit) gets its new mesh; `CountChip.numeral()` and the
 "numeral" skip let a board draw every chip's number itself. A tutorial page
 can hold the board itself, quietened (Tents' `Meadow`), instead of
 re-drawing it.
+Since Light Up (2026-10-01): `Face.FlatBuilder.append_flat(f)` and
+`FlatBuilder.flat_of(builder)` let a board keep its own cache of flat
+triangle lists (no ArrayMesh per entry), and an append under the identity
+transform copies without transforming. A board whose pieces fade through a
+colour can cache a few steps of it (Light Up's stones, eight warmth levels)
+so even a moving piece is a native copy. A board that bakes what is at rest
+must keep building until everything is at rest: the last frame of a fade
+is a step short (`busy` while anything is live), or the stale live mesh
+stays on screen.
 
 | # | Board | Done | Notes |
 |---|---|---|---|
@@ -38,7 +47,7 @@ re-drawing it.
 | 4 | untangle | 2026-10-01 | resting pegs baked to one mesh (Insane idle 130 -> 95 draws, ~10.8 -> ~8.4 ms); carrying 16.7 -> 11.9 ms (rope mesh writer, crossings kept per pair, binds only when changed); shared `Face.Builder` stroke/fan/feather and `Scenery.soft_disc` write whole arrays; 3-5 page tutorial; undo/reset/hint already there |
 | 5 | shikaku | 2026-10-01 | signs at rest baked (eyes-open twin, blinks drawn over it), beds at rest baked, fence still/moving split, crop one mesh (Insane idle 129 -> 100 draws, ~9.0 -> ~7.2 ms; full 156 -> ~115; solve peak 253 -> 164); shared `Face.FlatBuilder`, `bake_into(rest)`, Fx2D sound prefetch; 3-6 page tutorial; undo/hint/check/reset already there |
 | 6 | tents | 2026-10-01 | ground at rest baked (a full meadow's ground rebuild was ~28 ms a frame while anything moved), faces drawn as MultiMesh bodies + one numeral run (Insane idle 142 -> 95 draws; full 182 -> 109, ~14.8 -> ~9.7 ms, p95 25 -> 10.6; solve peak 211 -> 134); shared `Face._mesh_for` memo keys on `_kind()`; 4-6 page tutorial played by a real board; undo/hint/check/reset already there |
-| 7 | lightup | | |
+| 7 | lightup | 2026-10-01 | the court was built whole in script every frame anything moved (floor ~10 ms + ground ~8 ms full Insane): stones, blocks, chips and lamp shadows at rest baked from parts made once, a moving stone a cached step of eight warmth levels, a moving block its cached body under its pose (Insane play 26.8 -> 12.8 ms, p95 32 -> 17); lanterns and cats one MultiMesh per mesh, moths one mesh (near-full idle 150 -> 109 draws, 12.2 -> 10.4 ms); shared `FlatBuilder.append_flat`/`flat_of`, identity appends skip the transform; 5-7 page tutorial played by a real board; undo/hint/check/reset already there |
 | 8 | oneline | | |
 | 9 | nonogram | | |
 | 10 | queens | | |

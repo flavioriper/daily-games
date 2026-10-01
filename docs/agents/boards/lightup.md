@@ -88,3 +88,53 @@ so the game fails and celebrates one way.
   Insane party is the peak, a quarter of the 855 budget. Part 1 alone read
   165 (d=3 solve) and 137 (d=3 wrong). Suite 122778 passed, 0 failed;
   `tests/_win.gd -- lightup` PASS.
+
+### The checkup (2026-10-01)
+
+Board 7 of the per-board checkup (`docs/agents/checkup.md`).
+
+- **The lag** was script, not draw calls: `_build_floor` and `_build_ground`
+  rebuilt every stone, block, chip and shadow in GDScript on every frame
+  anything on the court moved -- a press, a hop, a flare, the light
+  travelling -- about 10 ms and 8 ms on a full Insane court (play window
+  26.8 ms a frame, `x=lu_count`). Now `_build_court`:
+  - every stone at rest is one of four looks (lit or not, dusk or not) and
+    every block, chip and lamp shadow at rest one part, each made once
+    (`_stone_cache` as flat lists, `_rest_parts` as meshes) and baked into
+    `_floor_rest` / `_ground_rest` with native copies, again only when the
+    resting set changes (`_floor_key`, `_ground_key`, `_stone_code`,
+    `_block_code`);
+  - a stone whose light is moving is the nearest of `WARM_LEVELS` (8)
+    cached steps (`_floor_flat`) with the glint fanned over it; only a sunk
+    stone, a stone in a dusk fade and a flashing block are built in script
+    (`_floor_live`, `_ground_live`);
+  - a block that hops, is pressed or bumped, or only has a moving light
+    beside it, is its cached shadow and body (`_local_part`, about its own
+    centre) under its pose, with its rims (`_block_rims`) drawn live; a
+    popping lamp's shadow likewise;
+  - the beams are built again only while the light moves, and the court
+    keeps building (`busy`) until nothing is live, since the last frame of
+    a fade is a step short and the live mesh would otherwise stay stale.
+  A first try held everything that went live until the whole court settled
+  (one rebake a tap); at the probe's four taps a second the court never
+  settled and everything stayed live (23 ms): don't.
+- **Draw calls**: every lantern and cat drew itself, a canvas command a
+  layer (about fifty of a full Insane court's 170). The bodies now draw in
+  `_cast`, one MultiMesh per mesh on show (Tents' `_sync_cast`), the faces
+  keeping only hats and glasses; the moths bake into one mesh a frame
+  (`_moth_flat`). The cats' tags are still a string each.
+- **Readings** (angle, 810x1440, second of two, `tests/_probe_perf.gd`):
+  Insane empty idle 113 -> 100 mean draws, 8.9 -> 8.7 ms; Insane play
+  (lamps tapped in four a second) 26.8 -> 12.8 ms, p95 32 -> 17; near-full
+  Insane idle 150 -> 109 mean draws, 12.2 -> 10.4 ms; near-full play
+  15.4 -> 11.7 ms, p95 28.8 -> 16.7. d=0..2 idle 7.3-8.7 ms, ~92-100
+  draws. The ~40-50 ms spike after the solve is the host's win card.
+- **Tutorial**: `tutorial_pages()`, five pages (light and blocks, sight,
+  numbers, chips, the hint), six on Hard (hearts), seven on Insane (cats),
+  each a 4x3 court played by a quietened board through its own input
+  (`ui/hud/lightup_tutorial_diagram.gd`, its `Court` subclass: no sound,
+  tips, gags, moths, streak, solve or out-of-hearts card). A page that
+  kills the entrance's pop (a second `_start` before the first finished)
+  must put the cats' scale back, which `_reset(fresh)` does.
+- Undo, Hint, Check, Reset and the shared ? were already on every band.
+  Suite 122403 passed, 0 failed; `tests/_win.gd -- lightup` PASS.
