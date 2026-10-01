@@ -118,3 +118,17 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   idle breeze spins one wheel a half turn every few seconds, never
   continuously, and the win is a gust through every wheel. 56 draw calls
   bare, 57 played, ANGLE agreeing.
+- **Polished again on 2026-10-01** (spec
+  `2026-10-01-pinwheel-polish-design.md`, unattended). **Hard and Insane can
+  be failed**: turning a piece already home **snags** it -- it catches on its
+  thread, a heart splits, and a gold button sews it home for good (Fairy
+  Lights' judge; every movable piece opens off its answer, so a piece is home
+  only because the player put it there). **Insane is Ribbons**: pinwheels
+  tied in a forest, a tap tugs everything tied below (a crossed blue ribbon
+  the other way), no undo, no hints, two hearts; dealt live and worked
+  backwards from the answer, so the top-down route always solves it. **A
+  swing turns its true quarters now** (`_cw` / `_ccw`): the old swing turned
+  index steps, so a tap over a skipped orientation swung one quarter from a
+  pose the piece was never in. Rewards (streak on *tidier* taps, whirl, love,
+  butterfly, kite, nap cat, seal), the LINEN sound set, and
+  `tests/_shot_pinwheel.gd`. Peak 104 draw calls (the card over Hard).

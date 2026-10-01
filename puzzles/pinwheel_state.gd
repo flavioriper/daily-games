@@ -40,8 +40,12 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/pinwheel_gen.gd")
 
-## Three a board, as every flat board gives.
+## Three a board, as every flat board gives -- on Easy and Medium. The
+## polish (2026-10-01) gives Hard one and Insane none, and hearts to the two
+## bands that judge a tap (`hints_for`, `hearts_for`).
 const HINTS := 3
+const HINTS_BY := [3, 3, 1, 0]
+const HEARTS_BY := [0, 0, 3, 2]
 ## The share's squares, one per `Pal.CLOTH` index.
 ##
 ## A share is only ever taken from a **solved** frame, where by definition no
@@ -78,6 +82,31 @@ var history: Array = []
 var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
+## The band this board was dealt on, and whether a tap is judged on it: on
+## Hard and Insane, turning a piece that is **already home** snags it and
+## costs a heart (the board spends it; the state only answers `would_snag`).
+## Only on a proved board, Quilt's `ok` and Fairy Lights' rule: the stored
+## answer is the only one, so a deducing player never has to touch a piece
+## that is home -- and every movable piece opens off its answer, so a piece
+## is only ever home because the player (or a ribbon) turned it there.
+var difficulty := 1
+var judged := false
+## Insane's ribbons: [{"from": p, "to": q, "sign": 1 or -1}], a forest (a
+## piece has at most one ribbon pulling it). Turning `from` tugs `to` one
+## step round its own cycle the same way (sign 1) or the other way (a
+## crossed ribbon, -1), and on down the ribbons tied to `to`. Empty on every
+## other band.
+var ribbons: Array = []
+## Per piece: [[child, sign], ...], derived from `ribbons` in setup.
+var _kids: Array = []
+## Per piece: sewn down -- proved home by a snag (a heart's worth) or by a
+## hint on a judged board. A sewn piece never moves again until Try again:
+## a tap on it is refused for free, a ribbon cannot tug it (nor anything
+## tied below it), Reset leaves it home.
+var tacked := PackedByteArray()
+## Whether the board offers Undo: every band but Insane, where a tug that
+## moved four pieces would make it trial and error.
+var undo_allowed := true
 ## Derived: cell index -> how many pieces sit on it. Rebuilt by `recompute()`
 ## after every change, never stored and never in history.
 var cover := PackedInt32Array()
@@ -87,7 +116,14 @@ var _pin_of: Array = []
 ## Cell index -> the piece pinned there, -1 for none.
 var _pinned_at := PackedInt32Array()
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+static func hints_for(d: int) -> int:
+	return int(HINTS_BY[clampi(d, 0, HINTS_BY.size() - 1)])
+
+static func hearts_for(d: int) -> int:
+	return int(HEARTS_BY[clampi(d, 0, HEARTS_BY.size() - 1)])
+
+func setup(rng: RandomNumberGenerator, d: int) -> void:
+	difficulty = clampi(d, 0, Gen.BANDS.size() - 1)
 	var out: Dictionary = Gen.generate(rng, difficulty)
 	cols = int(out.cols)
 	rows = int(out.rows)
@@ -97,6 +133,9 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	start = out.start
 	cloth = out.cloth
 	ok = bool(out.unique)
+	ribbons = (out.get("ribbons", []) as Array).duplicate(true)
+	judged = difficulty >= 2 and ok
+	undo_allowed = difficulty < 3
 	if cols <= 0 or rows <= 0 or shapes.is_empty():
 		push_warning("Pinwheel: no frame could be grown for this seed")
 	turned = start.duplicate()
@@ -112,6 +151,16 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_pin_of.append(cell_of(at))
 		if at >= 0 and at < _pinned_at.size():
 			_pinned_at[at] = p
+	tacked = PackedByteArray()
+	tacked.resize(shapes.size())
+	_kids = []
+	for p in shapes.size():
+		_kids.append([])
+	for r: Dictionary in ribbons:
+		var a := int(r["from"])
+		var b := int(r["to"])
+		if a >= 0 and a < shapes.size() and b >= 0 and b < shapes.size():
+			(_kids[a] as Array).append([b, int(r.get("sign", 1))])
 	recompute()
 
 # ------------------------------------------------------------- reading it
@@ -204,7 +253,69 @@ func is_solved() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, hints_for(difficulty) + hints_extra - hints_used)
+
+## Whether Insane's ribbons are on this board.
+func ribboned() -> bool:
+	return not ribbons.is_empty()
+
+## Whether piece `p` is sewn down.
+func is_tacked(p: int) -> bool:
+	return p >= 0 and p < tacked.size() and tacked[p] != 0
+
+## Whether a tap on `p` would snag on a judged board: it is movable, not
+## sewn down, and **already home**. Read off the stored answer, which on a
+## proved board is the only one. The board answers it with a heart and a
+## tack; `turn()` itself never judges.
+func would_snag(p: int) -> bool:
+	return judged and p >= 0 and p < shapes.size() and not fixed(p) \
+		and not is_tacked(p) and steps_home(p) == 0
+
+## Sews piece `p` down where it is. On the bands with an undo its own history
+## entries go with it: what a heart (or a hint) proved home stays home, and
+## an undo that turned it off again would sell the proof back.
+func tack(p: int) -> void:
+	if p < 0 or p >= tacked.size():
+		return
+	tacked[p] = 1
+	var keep: Array = []
+	for e: Dictionary in history:
+		if int(e["piece"]) == p:
+			continue
+		# A tug that moved it inside another tap's entry no longer turns it
+		# back either.
+		if e.has("moves"):
+			var moves: Array = []
+			for mv: Array in (e["moves"] as Array):
+				if int(mv[0]) != p:
+					moves.append(mv)
+			e["moves"] = moves
+		keep.append(e)
+	history = keep
+
+## Every piece unpicked: Try again's.
+func untack_all() -> void:
+	tacked.fill(0)
+
+## The pieces a tap on `p` turns, with how many steps each (1 for `p`
+## itself, the ribbons' signs multiplied down for the rest) and how many
+## ribbons down from `p` each hangs: [[piece, step, depth], ...], `p` first. A sewn piece is skipped and so is everything tied
+## below it -- it does not move, so it tugs nothing.
+func tugged(p: int) -> Array:
+	var out: Array = [[p, 1, 0]]
+	if p < 0 or p >= _kids.size():
+		return out
+	var stack: Array = [[p, 1, 0]]
+	while not stack.is_empty():
+		var top: Array = stack.pop_back()
+		for k: Array in (_kids[int(top[0])] as Array):
+			var q := int(k[0])
+			if is_tacked(q) or fixed(q):
+				continue
+			var step := int(top[1]) * int(k[1])
+			out.append([q, step, int(top[2]) + 1])
+			stack.append([q, step, int(top[2]) + 1])
+	return out
 
 ## Rebuilds `cover` from where the pieces are sitting. Called after every
 ## change, and the reason no gesture has to remember what it stained.
@@ -224,14 +335,24 @@ func recompute() -> void:
 ## False, with nothing changed and **nothing pushed**, when the piece is
 ## pinned fast; the board answers that with a halo and a shiver, not a
 ## history entry.
+##
+## On Insane the tap tugs every piece tied below `p` too (`tugged`), and the
+## one history entry carries every piece it moved in `moves`, [[piece, from,
+## to, step], ...], so an undo (the state keeps one even where the board offers
+## none: Reset is built on the same entries) turns them all back.
+## A sewn-down piece is refused like a pinned-fast one.
 func turn(p: int) -> bool:
-	if p < 0 or p >= shapes.size() or fixed(p):
+	if p < 0 or p >= shapes.size() or fixed(p) or is_tacked(p):
 		return false
-	var m: int = (shapes[p] as Array).size()
-	var was := int(turned[p])
-	turned[p] = (was + 1) % m
+	var moves: Array = []
+	for pair: Array in tugged(p):
+		var q := int(pair[0])
+		var m: int = (shapes[q] as Array).size()
+		var was := int(turned[q])
+		turned[q] = posmod(was + int(pair[1]), m)
+		moves.append([q, was, int(turned[q]), int(pair[1])])
 	recompute()
-	history.append({"piece": p, "from": was, "to": int(turned[p])})
+	history.append({"piece": p, "from": int(moves[0][1]), "to": int(moves[0][2]), "moves": moves})
 	return true
 
 ## Walks one wrong piece all the way home and pushes **one** entry for the
@@ -252,7 +373,7 @@ func hint() -> Dictionary:
 	var best := -1
 	var furthest := 0
 	for p in shapes.size():
-		if fixed(p):
+		if fixed(p) or is_tacked(p):
 			continue
 		var steps := steps_home(p)
 		if steps > furthest:
@@ -280,7 +401,13 @@ func undo() -> Dictionary:
 		return {}
 	var entry: Dictionary = history.pop_back()
 	var p := int(entry.piece)
-	turned[p] = int(entry.from)
+	if entry.has("moves"):
+		var moves: Array = entry["moves"]
+		for k in range(moves.size() - 1, -1, -1):
+			var mv: Array = moves[k]
+			turned[int(mv[0])] = int(mv[1])
+	else:
+		turned[p] = int(entry.from)
 	recompute()
 	return {"piece": p, "from": int(entry.to), "to": int(entry.from)}
 
@@ -288,11 +415,18 @@ func undo() -> Dictionary:
 ## -- reset is not a gesture and cannot be undone, which is what Queens and
 ## Quilt both do. Returns one {"piece", "from", "to"} per piece that actually
 ## moved, for the board's wave.
+##
+## A sewn-down piece stays home: a heart bought that, and Reset is not Try
+## again. (On Insane every piece left is still solvable from there: the
+## ribbons are a forest and a sewn piece tugs nothing, so turning each piece
+## home from the top of its ribbons down always works.)
 func reset() -> Array:
 	var moved: Array = []
 	for p in shapes.size():
 		var was := int(turned[p])
 		var home := int(start[p])
+		if is_tacked(p):
+			continue
 		if was == home:
 			continue
 		turned[p] = home
