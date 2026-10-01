@@ -116,11 +116,27 @@ WALNUT_TUNE = ("real acoustic kalimba and wooden music box recorded close in a "
                "warm quiet room, natural, soft, rounded, gentle, no synth, no "
                "electronic tones, no beeps, no music bed, no voice")
 
+# Marigold's dusk pond (2026-10-01 polish): the first set was the house
+# marimba and glockenspiel, thin next to the boards re-recorded the same
+# day, so a seed's world is close-mic foley of a real garden (seeds, clay,
+# water, leaves) and every note a real kalimba, music box or hand bell,
+# recorded, never synth, rolled off above 7 kHz where it hisses.
+POND = ("close-mic foley recorded in a quiet garden by a pond at dusk, real "
+        "seeds, clay pots, soft leaves and water, natural and acoustic, soft "
+        "and warm, rounded, no synth, no electronic tones, no beeps, no music, "
+        "no voice")
+POND_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+             "recorded close in a warm quiet room, natural, soft, rounded, "
+             "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+             "bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
 #                                     | "warm:<Hz>": rolled off above <Hz> and eased in
-#                                       over 4 ms, for a take that came back scratchy]])
+#                                       over 4 ms, for a take that came back scratchy
+#                                     | "cut:<s>": only the take's first <s> seconds, for a
+#                                       tick the API keeps doubling (Marigold's wall, pop)]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -1021,24 +1037,41 @@ SETS = {
     # flower buds; every bud it touches blooms with the next note of a rising
     # scale, the blooms are picked, and the last marigold is a full bloom.
     "marigold": {
-        "shoot":    ("a soft round airy 'thoop', a small seed puffed out of a leaf tube, light and cute, very short", 0.5, -8),
-        "hit":      ("a single clear soft glockenspiel note, one bell tone, bright and short with a quick natural decay, no other notes", 0.5, -8),
-        "wall":     ("a tiny soft wooden tock, a small bead bouncing off a wooden post, very short", 0.5, -16),
-        "clover":   ("a quick bright magical double chime with a soft shimmer, something splitting in two happily", 0.7, -8),
-        "violet":   ("a sweet bright three-note rising kalimba sparkle, a special bonus found", 0.8, -6),
-        "pop":      ("a single tiny soft petal pop, a small flower plucked, light and airy, very short", 0.5, -12),
-        "pot":      ("a small bead dropping into a clay flowerpot with a hollow terracotta clunk and a happy little kalimba note going up", 0.8, -6),
-        "free":     ("a cheerful short marimba jingle of three rising notes, a reward earned", 1.0, -6),
-        "drain":    ("a very soft low airy swoosh fading down, a small bead falling away out of sight, gentle", 0.6, -14),
-        "fever":    ("a swelling magical harp glissando rising up into a bright shimmering chime, a sudden wonderful moment, joyful", 1.8, -4),
-        "roll":     ("a steady soft rolling tremolo on a low wooden marimba and a felt-mallet tom, a suspenseful drumroll, even and constant, no accents, no ending", 3.0, -8, STYLE, "loop"),
-        "close":    ("a soft playful disappointed 'awww', two marimba notes sliding down with a little wooden wobble, a near miss, gentle and funny, never sad", 0.9, -8),
-        "fever_pot":("a bright triumphant bell and marimba hit with a sparkling shimmer, a big prize won, joyful", 1.2, -4),
-        "out":      ("a gentle soft two-note downward kalimba, a kind 'try again', never sad or harsh", 0.8, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little garden growing back", 1.0, -8),
-        "solved":   ("a joyful celebratory marimba and glockenspiel fanfare, a bright rising melody that lands on a big warm chord with sparkles, triumphant and cozy", 2.8, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little evening garden appearing", 1.0, -9),
+        # 2026-10-01 (polish): every cue taken again in POND / POND_TUNE, and
+        # the hearts, Sweethearts and the silly rewards added. `hit` is pitched
+        # up a scale, so it has to be one clean note.
+        "shoot":    ("a small seed puffed softly out of a curled green leaf tube, one round airy 'pff' with a tiny leafy flick, very short", 0.5, -10, POND, "warm:7000"),
+        "hit":      ("one single soft note plucked on a real kalimba, clean and round with a quick natural ring, only one note, nothing else", 0.5, -9, POND_TUNE, "warm:7000"),
+        "wall":     ("a tiny dry seed tapping a smooth wooden garden post, one soft woody tick, very short", 0.5, -17, POND, "warm:7000", "cut:0.1"),
+        "clover":   ("two quick soft music box notes ringing together with a tiny leafy rustle, something splitting in two happily", 0.7, -10, POND_TUNE, "warm:7000"),
+        "violet":   ("three sweet rising notes on a real music box with a soft hand bell shimmer, a special find, delicate", 0.8, -8, POND_TUNE, "warm:7000"),
+        "pop":      ("one tiny soft pluck of a flower petal off its stem, a light papery 'pip', very short and quiet", 0.5, -14, POND, "warm:7000", "cut:0.06"),
+        "pot":      ("a small seed dropping into a terracotta flowerpot full of soft soil, a hollow warm clay 'tunk', then one happy rising kalimba note", 0.8, -8, POND_TUNE, "warm:7000"),
+        "free":     ("three cheerful rising notes plucked on a real kalimba with a little music box sparkle on top, a reward earned", 1.0, -8, POND_TUNE, "warm:7000"),
+        "drain":    ("a small seed dropping softly into a still pond, one gentle little 'plip' and a tiny ripple, quiet", 0.6, -15, POND, "warm:7000"),
+        "fever":    ("a swelling run of soft hand bells and a real kalimba rising up into a bright warm shimmering music box chord, a wonderful moment, joyful", 1.8, -5, POND_TUNE, "warm:7000"),
+        "roll":     ("a steady soft rolling tremolo of fingers drumming on a wooden box and a felt-mallet frame drum, a suspenseful drumroll, even and constant, no accents, no ending", 3.0, -9, POND, "loop"),
+        "close":    ("a soft playful disappointed 'awww' of two kalimba notes bending down with a little wooden wobble, a near miss, funny and kind, never sad", 0.9, -10, POND_TUNE, "warm:7000"),
+        "fever_pot":("a bright happy cascade of hand bells and music box notes landing on a warm chord, a big prize won, joyful", 1.2, -5, POND_TUNE, "warm:7000"),
+        "out":      ("a gentle soft two-note kalimba falling, a kind 'try again', warm and patient, never sad or harsh", 0.8, -11, POND_TUNE, "warm:7000"),
+        "hint":     ("three soft rising music box notes with a delicate hand bell sparkle, gentle and magical", 1.0, -9, POND_TUNE, "warm:7000"),
+        "reset":    ("a soft rustle of leaves and little stems springing back up in a garden bed, with one calm low kalimba note, a garden growing back", 1.0, -11, POND, "warm:7000"),
+        "solved":   ("a warm joyful rising run on a real kalimba, music box and soft hand bells, landing on a bright gentle chord, cozy and triumphant", 2.6, -5, POND_TUNE, "warm:7000"),
+        "enter":    ("a soft airy rustle of leaves and petals settling in an evening garden by a pond, with one warm low kalimba note", 1.0, -12, POND, "warm:7000"),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -14, POND_TUNE, "warm:7000"),
+        "out_of_hearts": ("a real wind-up music box winding slowly down, a few soft notes descending and slowing, a pond garden at dusk going quiet, calm and kind", 1.6, -13, POND_TUNE, "warm:7000"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -13, POND_TUNE, "warm:7000"),
+        "pair":     ("a sweet little two-note music box 'aww' rising, two notes ringing together in harmony, two sweethearts meeting, tender and warm", 0.8, -9, POND_TUNE, "warm:7000"),
+        "apart":    ("a soft sad little slide down on a kalimba with a tiny wooden wobble, a flower closing up, gentle and a bit funny, never harsh", 0.8, -12, POND_TUNE, "warm:7000"),
+        "combo":    ("a single short soft bright pluck on a real kalimba, one clean warm note, very short", 0.5, -10, POND_TUNE, "warm:7000"),
+        "confetti": ("a soft flutter of tiny paper confetti and petals falling, with a tiny music box twinkle, light and airy", 1.0, -11, POND_TUNE, "warm:7000"),
+        "ribbit":   ("one small cute frog croak by a pond at night, a short soft round 'ribbit', friendly and funny", 0.6, -10, POND, "warm:7000"),
+        "splash":   ("a small frog landing back on a lily pad, a soft wet little 'plap' and a tiny ripple of water, quiet", 0.5, -14, POND, "warm:7000"),
+        "quack":    ("a mother duck quacking softly twice and three tiny ducklings peeping as they paddle across a calm pond, cute and gentle", 1.4, -11, POND, "warm:7000"),
+        "shades":   ("a playful cool little slide up on a kalimba ending in a tiny bright music box 'ting', something putting on sunglasses, funny and cute, short", 0.7, -9, POND_TUNE, "warm:7000"),
+        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, POND_TUNE, "warm:7000"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -5, POND_TUNE, "warm:7000"),
+        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # Pixel Garden: copy a little picture onto a pegboard in beads; the
     # finished picture is ironed. `place` fires on every bead a stroke seats
@@ -1375,7 +1408,7 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         sys.exit(f"ElevenLabs answered {e.code}: {detail}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -1394,6 +1427,8 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     # cozy family is rolled off -- two gentle low-pass poles and a high shelf
     # -- and eased in so its first transient is a touch rather than a click.
     soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d=0.004" if warm else ""
+    if cut:
+        soft += f",atrim=0:{cut},afade=t=out:st={cut * 0.6:.3f}:d={cut * 0.4:.3f}"
     with tempfile.TemporaryDirectory() as tmp:
         mono = pathlib.Path(tmp) / "mono.wav"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
@@ -1441,13 +1476,14 @@ def main() -> None:
         style = rest[0] if rest else STYLE
         loop = "loop" in rest[1:]
         warm = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("warm:")), 0)
+        cut = next((float(f[4:]) for f in rest[1:] if isinstance(f, str) and f.startswith("cut:")), 0.0)
         raw = raw_dir / f"{cue}.mp3"
         if "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
         if "fall" in rest[1:]:
             raw = fall(raw)
-        to_ogg(raw, out, peak, loop, warm)
+        to_ogg(raw, out, peak, loop, warm, cut)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

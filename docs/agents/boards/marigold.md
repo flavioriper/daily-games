@@ -46,3 +46,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   as stickers with coin rain. Stickers are in the card's pixels, never the
   view's. 78 at rest, ~159 at a long shot's peak (+2.6 ms here), ANGLE
   agreeing.
+  **Polished again on 2026-10-01** (unattended; spec
+  `2026-10-01-marigold-polish-design.md`). Hard (3 hearts) and Insane (2)
+  can be lost: a garden run out of seeds, or Reset once a seed has flown,
+  costs a heart (on a wooden sign off the arch); out of hearts the sun
+  sleeps, dusk, the out-of-hearts card. **Insane is Sweethearts**: the
+  marigolds come in ribbon-tied pairs, and one that blooms without its
+  sweetheart in the same shot folds back into a bud. Its 160 gardens are
+  mined (`tools/mine_marigold_sweethearts.gd`, merged by
+  `tools/merge_marigold_sweethearts.py`): every pair is tied out of one
+  shot's blooms, so six `proof` shots bloom them all from the opening.
+  **A banked shot must ship at full precision and never mirrored**: the
+  physics is chaotic, and rounding buds to a thousandth or flipping a garden
+  lost every proof (nine significant digits are exact for float32). Gags:
+  the frog on the lily pad, the ducks, the sun's sunglasses, the streak; the
+  party has the nap cat on the right lily pad and the seal. The POND /
+  POND_TUNE sound set (real garden foley, kalimba, music box, hand bells;
+  32 cues, a `cut:` flag in gen_sfx for takes that come back doubled),
+  unheard. 92 draw calls at rest, 224 at the full bloom's party.
+  `tests/_shot_marigold.gd` drives every mode; `tests/_win.gd -- marigold`
+  fails, as on `main` before (it cannot aim a seed).

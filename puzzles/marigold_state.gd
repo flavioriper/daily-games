@@ -63,6 +63,10 @@ const FREE_AT := [25000, 75000, 125000]
 ## Every seed left when the last marigold goes is worth LEFT_BONUS.
 const LEFT_BONUS := 10000
 
+## Hints and hearts by band: Hard and Insane can be lost.
+const HINTS_BY := [3, 3, 2, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+
 const BANDS := [
 	{"pegs": 54, "orange": 12, "seeds": 10, "pot": 17.0, "green": 2},
 	{"pegs": 72, "orange": 18, "seeds": 10, "pot": 15.0, "green": 2},
@@ -101,11 +105,30 @@ var quiet := 0.0
 var caught := 0
 var _rng := RandomNumberGenerator.new()
 var _purple_seed := 0
+## Sweethearts (Insane): each marigold's sweetheart, -1 for any other bud;
+## the bank's own shots that bloom every pair from the opening.
+var sweethearts := false
+var pair := PackedInt32Array()
+var proof: Array = []
+## The buds bloomed this shot, in order (an unstuck one is gone already).
+var shot_bloomed := PackedInt32Array()
+
+static func hints_for(b: int) -> int:
+	return HINTS_BY[clampi(b, 0, HINTS_BY.size() - 1)]
+
+static func hearts_for(b: int) -> int:
+	return HEARTS_BY[clampi(b, 0, HEARTS_BY.size() - 1)]
 
 # --- the garden ---
 
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+func build(rng: RandomNumberGenerator, difficulty: int, bank_step := -1) -> void:
 	band = clampi(difficulty, 0, BANDS.size() - 1)
+	sweethearts = false
+	proof = []
+	if band == 3 and bank_step >= 0:
+		var d: Dictionary = InsaneBank.pick("marigold", bank_step)
+		if not d.is_empty() and from_bank(d):
+			return
 	var b: Dictionary = BANDS[band]
 	var pts := _garden(rng, int(b.pegs))
 	pos = pts
@@ -123,15 +146,53 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 			kind[order[k]] = GREEN
 			k += 1
 	kind0 = kind.duplicate()
+	pair = PackedInt32Array()
+	pair.resize(pts.size())
+	pair.fill(-1)
 	pot_w = float(b.pot)
 	_purple_seed = rng.randi()
 	tries = 1
 	_grid()
 	_begin()
 
+## A mined Sweethearts garden: {"pos": [x, y, ...], "kind": [...], "pair":
+## [...], "proof": [angles], "violet": seed}. Never mirrored: a shot's
+## path is chaotic, and the mirror's float rounding loses the proof. False
+## when the entry does not read.
+func from_bank(d: Dictionary) -> bool:
+	var flat: Array = d.get("pos", [])
+	var kinds: Array = d.get("kind", [])
+	var pairs: Array = d.get("pair", [])
+	if flat.size() < 2 or flat.size() != kinds.size() * 2 or pairs.size() != kinds.size():
+		return false
+	pos = PackedVector2Array()
+	kind0 = PackedInt32Array()
+	pair = PackedInt32Array()
+	for k in kinds.size():
+		var x := float(flat[2 * k])
+		pos.append(Vector2(x, float(flat[2 * k + 1])))
+		kind0.append(int(kinds[k]))
+		pair.append(int(pairs[k]))
+	proof = []
+	for a in d.get("proof", []):
+		proof.append(float(a))
+	band = 3
+	sweethearts = true
+	pot_w = float(BANDS[3].pot)
+	_purple_seed = int(d.get("violet", 1))
+	tries = 1
+	_grid()
+	_begin()
+	return true
+
 ## A new try: the same buds, every one back up, the seeds and score anew.
 func regrow() -> void:
 	tries += 1
+	_begin()
+
+## Try again after the hearts ran out: the garden as dealt, the tries anew.
+func restart() -> void:
+	tries = 1
 	_begin()
 
 func _begin() -> void:
@@ -365,6 +426,7 @@ func fire(angle: float) -> bool:
 	balls = [{"p": SUN_C + aim_dir(angle) * MUZZLE, "v": aim_dir(angle) * SPEED}]
 	shot_points = 0
 	shot_hits = 0
+	shot_bloomed = PackedInt32Array()
 	shot_time = 0.0
 	shot_max_y = LAUNCH.y
 	quiet = 0.0
@@ -513,6 +575,7 @@ func _bounce_off(c: Vector2, r: float, p: Vector2, v: Vector2) -> void:
 func _hit(i: int, p: Vector2, v: Vector2, events: Array, spawned: Array) -> void:
 	st[i] = LIT
 	shot_hits += 1
+	shot_bloomed.append(i)
 	if kind[i] == ORANGE:
 		oranges_left -= 1
 	shot_points += int(VALUE[kind[i]]) * mult()
@@ -549,6 +612,16 @@ func _unstick(events: Array, all: bool) -> void:
 ## points banked, seeds back for a big shot, the violet moved. Returns
 ## {"cleared" (bud indices, in the order they bloomed), "points", "free"}.
 func end_shot(order: PackedInt32Array = PackedInt32Array()) -> Dictionary:
+	# Sweethearts: a marigold whose sweetheart did not bloom this shot folds
+	# back into a bud (its points stay; the share and the multiplier go back)
+	var folded := PackedInt32Array()
+	if sweethearts:
+		for i in shot_bloomed:
+			if kind[i] == ORANGE and pair[i] >= 0 and st[pair[i]] == UP:
+				folded.append(i)
+		for i in folded:
+			st[i] = UP
+			oranges_left += 1
 	var cleared := PackedInt32Array()
 	for i in order:
 		if st[i] == LIT:
@@ -570,7 +643,7 @@ func end_shot(order: PackedInt32Array = PackedInt32Array()) -> Dictionary:
 		score += left_bonus
 	else:
 		_move_purple()
-	return {"cleared": cleared, "points": shot_points, "free": free}
+	return {"cleared": cleared, "points": shot_points, "free": free, "folded": folded}
 
 func _move_purple() -> void:
 	var blues: Array = []
@@ -605,7 +678,25 @@ func clone():
 	c.pot_dir = pot_dir
 	c.pot_w = pot_w
 	c.fever = fever
+	c.sweethearts = sweethearts
+	c.pair = pair
 	return c
+
+## Every bud a seed shot at `angle` from here blooms, in order, played out on
+## a copy to the end of the shot (the miner's and the probe's).
+func shot_order(angle: float) -> PackedInt32Array:
+	var c = clone()
+	c.seeds = maxi(c.seeds, 1)
+	c.fire(angle)
+	var out := PackedInt32Array()
+	var steps := int(SHOT_CAP / DT) + 10
+	for s in steps:
+		for e: Dictionary in c.step([]):
+			if String(e.t) == "hit":
+				out.append(int(e.i))
+		if c.balls.is_empty():
+			break
+	return out
 
 ## Where a seed shot at `angle` goes: the path (every `every` steps) up to
 ## `hits` new blooms or `seconds`, and what it bloomed.
@@ -625,8 +716,8 @@ func trace(angle: float, hits: int, seconds: float, every := 6) -> Dictionary:
 			match String(e.t):
 				"hit":
 					got += 1
-					if c.kind[e.i] == ORANGE:
-						oranges += 1
+					if c.kind[e.i] == ORANGE and (not sweethearts or c.st[c.pair[e.i]] == LIT):
+						oranges += 2 if sweethearts else 1
 				"pot":
 					pot = true
 		if c.balls.is_empty():
