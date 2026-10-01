@@ -197,3 +197,28 @@ pixelgarden` PASS; `tests/_shot_anim.gd -- pixelgarden` 92 and `solve` 105.
   under reduce motion a Steady hand! toast no longer hides a plate's verdict.
 - Left as designed: a wrong plate's beads are back in the box the moment the
   iron judges, while they still shiver on the plate until they hop home.
+
+## 11. Amendment: hairline seams, the real beads, beads that fly (2026-10-01, the user's note)
+
+The user, on the first build: "the grid lines should be way way smaller and
+thinner, also the boxes with pegs should show the real amount of pegs on it,
+and when placing a peg, show an animation of the piece moving from box to
+the table".
+
+- **Seams**: `GAP` 0.3 -> 0.06 of a cell, the plates meeting at a hairline
+  of `PG_BOARD_DEEP` with barely rounded inner corners (`_corners`); clips
+  at 0.7 x 0.16 of a cell (were 1.1 x 0.26). The pattern card's seam is a
+  hairline too (`THUMB_GAP` 0.25), wider only on Windblown where the clips
+  stand in it.
+- **Every bead left is in the box**: one drawn bead a bead, rows from the
+  floor's middle out and up (`_slot`), at the largest radius (`HEAP_MAX` 9
+  down to `HEAP_MIN` 3 px) at which the fullest compartment fits
+  (`_heap_room`); compartments widen to fill the room (`CHIP` 118 wide at
+  most).
+- **A bead flies from its compartment to its peg** (`FLY_TIME` 0.26 s, an
+  arc, growing from a box bead's size), off the top of its compartment's
+  beads, and hands over to the seat held above the peg; a bead lifted by a
+  touch flies back onto its heap. Beads in the air are their own mesh over
+  the header. Off under reduce motion.
+- Peaks after it: rest 91, wind 73, solve 123 draw calls. Probe, suite
+  (`passed=122403 failed=0`) and `_win.gd -- pixelgarden` pass.
