@@ -643,6 +643,8 @@ func _wake(c: int, lead := 0.0, tell := true) -> void:
 	if not Motion.reduce:
 		# bump reads the scale it starts from, so it waits for the pop.
 		_later(lead + Motion.POP_IN, func():
+			if not is_instance_valid(face):
+				return
 			Motion.bump(face, 0.16)
 			fx.puff(_centre(c) + Vector2(-_cell * 0.3, -_cell * 0.1), Pal.PAPER, 4))
 	fx.cue("woke")
@@ -731,6 +733,8 @@ func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> 
 	var cells: PackedInt32Array = r.cells
 	var lands := _now() + lead
 	if not woke.is_empty():
+		# The wake holds the HUD until the hedgehog has popped in.
+		_busy_until = maxf(_busy_until, _now() + lead + Motion.POP_IN + 0.05)
 		_break_streak()
 		_clear_gags()
 		if max_hearts > 0:
@@ -880,7 +884,7 @@ func _breeze(t: float) -> void:
 		if face.expression == Face.Expr.STRAIN:
 			face.expression = Face.Expr.WORRIED
 			_later(PEEK_TIME, func():
-				if face.expression == Face.Expr.WORRIED:
+				if is_instance_valid(face) and face.expression == Face.Expr.WORRIED:
 					face.expression = Face.Expr.STRAIN)
 
 func _notification(what: int) -> void:
@@ -1621,6 +1625,8 @@ func reset_board() -> void:
 	_break_streak()
 	_clear_gags()
 	var night := _state.walkers()
+	# Timers waiting on faces or a walk belong to the lawn before the reset.
+	_turn += 1
 	var before: PackedByteArray = _state.flag.duplicate()
 	var covered: PackedInt32Array = _state.reset_board()
 	if night:
@@ -1773,7 +1779,9 @@ func completion_record() -> Dictionary:
 			out.append(c)
 		if _state.is_hog(c):
 			hogs.append(c)
-	var rec := {"woke": out, "hearts": hearts, "flawless": _flawless}
+	# `woken` is the day's tally: a Try again or an Insane Reset puts the
+	# woken back to sleep, but they still count.
+	var rec := {"woke": out, "hearts": hearts, "flawless": _flawless, "woken": _state.woken}
 	# Sleepwalkers ends with the hedgehogs where they walked to.
 	if _state.walkers():
 		rec["hogs"] = hogs
@@ -1802,6 +1810,7 @@ func restore_completed_board() -> void:
 	for w in _recorded_woke():
 		_state.woke[w] = 1
 		_state.woken += 1
+	_state.woken = maxi(_state.woken, int(completed_record.get("woken", 0)))
 	_state.history = []
 	var t := _now()
 	# Never below zero: _solved_at >= 0 is what "solved" reads as, and a day

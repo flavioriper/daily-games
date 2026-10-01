@@ -60,7 +60,12 @@ under a flag or into one.**
   `Gen.prove_from` -- the generator's no-guess solver, started from what the
   player can see (raked numbers, woken hedgehogs, a hint's flags; never the
   player's own flags) -- still rakes the whole lawn. Up to `WALK_TRIES` 30
-  are tried; with none the bell rings and "everyone stayed snug". So at
+  are tried; with none the bell rings and "everyone stayed snug". A step
+  is never taken if a raked number touches only one of its two piles
+  (`State._tells_way`): that number would go one up or one down and give
+  the direction away (the review measured 54% of walks doing so before
+  this rule). So every number either touches both piles and stays as it
+  was, or touches neither; walks still average 13.6 a day. So at
   every moment the rest of the lawn is provable from the screen, whatever
   order the player raked in, and without remembering a single rustle. The
   probe played 30 days by logic alone after every walk: 30 solved, no guess,
@@ -153,3 +158,16 @@ Peak 138, 717 under the 855 budget. Suite `passed=122403 failed=0`;
 - **One heart per gesture**, even when a chord wakes several.
 - **Every third rake** (`Gen.WALK_EVERY`); a flood counts as one rake.
 - The look (moon, paws, heave) was judged on stills only. Sounds unheard.
+
+- **Review findings, fixed**: an Insane Reset within a third of a second of
+  a wake freed the woken faces under callbacks still waiting on them (a
+  script error) -- Reset now bumps `_turn`, a wake holds the HUD until the
+  hedgehog has popped in, and the face callbacks check the face; the walk's
+  direction could be read from a number next to only one pile (above); a
+  number left at nought by a walk could not be tapped -- a nought with
+  covered neighbours now chords them (the direction rule also stops walks
+  from making one); the record keeps the day's `woken` tally, which Try
+  again and an Insane Reset put back to sleep. Checked clean by the review:
+  the shown numbers after every gesture, solvability after every walk with
+  wrong flags laid (0 failures in about 600 walks), every timer race, the
+  band cache's key.

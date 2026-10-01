@@ -114,6 +114,21 @@ func _tick() -> Vector2i:
 	bell = 0
 	return walk()
 
+## Whether a step would show its direction: a raked number next to only one
+## of the two piles would count one less (it left) or one more (it came).
+## Such steps are never taken, so every number either touches both piles
+## and stays as it was, or touches neither.
+func _tells_way(s: Vector2i) -> bool:
+	var from: PackedInt32Array = g.nb[s.x]
+	var to: PackedInt32Array = g.nb[s.y]
+	for r in from:
+		if open[r] == 1 and r != s.y and not to.has(r):
+			return true
+	for r in to:
+		if open[r] == 1 and r != s.x and not from.has(r):
+			return true
+	return false
+
 ## One sleepwalker's step: from a sleeping hedgehog not under a flag to a
 ## covered, unflagged, empty cell beside it, the first in the walk's own
 ## shuffled order after which `Gen.prove_from` still plays the lawn out from
@@ -139,8 +154,13 @@ func walk() -> Vector2i:
 	for c in size():
 		if woke[c] == 1 or pin[c] == 1:
 			known[c] = 1
-	for i in mini(steps.size(), Gen.WALK_TRIES):
-		var s := steps[i]
+	var tried := 0
+	for s in steps:
+		if tried >= Gen.WALK_TRIES:
+			break
+		if _tells_way(s):
+			continue
+		tried += 1
 		hog[s.x] = 0
 		hog[s.y] = 1
 		Gen.count(g)
@@ -245,7 +265,9 @@ func chord(c: int) -> Dictionary:
 	for r: int in g.nb[c]:
 		if open[r] == 0 and flag[r] == 0 and woke[r] == 0:
 			covered.append(r)
-	if v <= 0 or covered.is_empty():
+	# A nought with covered neighbours (a flood ran before they were bare)
+	# rakes them like any chord.
+	if v < 0 or covered.is_empty():
 		return res
 	var m := marked_around(c)
 	if m != v:

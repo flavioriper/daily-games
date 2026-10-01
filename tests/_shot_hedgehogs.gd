@@ -9,7 +9,8 @@ extends SceneTree
 ## splits); `out` (wakes until the hearts run out: dusk, the card, Try
 ## again); `walk` (Insane: rakes logic proves, shot as the bell rings and the
 ## piles snuffle); `streak` (proved rakes with the gags forced: acorn, love,
-## butterfly, the bubble); `solve` (logic plays the lawn out, then the party);
+## butterfly, the bubble); `wakereset` (a wake, then Reset at once and
+## again after the hold); `solve` (logic plays the lawn out, then the party);
 ## `restore`. Frames go to <dir>/hh_<mode>_d<level>_<n>.png; every mode
 ## prints the peak draw calls and the mean frame from 0.5 s on.
 
@@ -220,6 +221,13 @@ func _script() -> void:
 		"solve":
 			_drive(t0, 120.0, func(c: int): pass)
 			_end = 120.0
+		"wakereset":
+			# A wake, then Reset at once (held) and again once it is free.
+			_at(t0, func(): _tap(_hog()))
+			_at(t0 + 0.1, func(): print("reset at once: can_reset ", _puzzle.can_reset()); _puzzle.reset_board())
+			_at(t0 + 0.6, func(): print("reset later: can_reset ", _puzzle.can_reset()); _puzzle.reset_board())
+			_at(t0 + 2.4, _shot)
+			_end = t0 + 3.0
 		"restore":
 			_at(0.6, func():
 				_puzzle.completed_record = {"woke": [], "hearts": 1, "flawless": true}
