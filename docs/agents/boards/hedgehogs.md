@@ -28,3 +28,16 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   where the sleepers stretch, yawn and hop under a swirl of leaves. The
   still mesh is cut into bands of three rows rebuilt only when a cell's look
   changes. 84 bare, 85 played, 119 on the win, ANGLE agreeing.
+- **Polished again on 2026-10-01** (unattended, spec
+  `2026-10-01-hedgehogs-polish-design.md`): Hard (3 hearts) and Insane (2)
+  can be failed -- a wake costs a heart, out of hearts is dusk and the card.
+  **Insane is Sleepwalkers**: every third rake the moon's bell rings and one
+  sleeping hedgehog not under a flag steps to a covered pile beside it; the
+  two piles rustle alike (never the direction) and wear paw prints. A walk
+  is taken only if `Gen.prove_from` still plays the lawn out from what the
+  player can see, so whatever the rake order there is never a forced guess
+  (`tests/_probe_hh_walk.gd`). **The numbers drawn are `_num_view`, a copy**
+  synced after each gesture except one that rang the bell -- read it, not
+  `g.num`, or a walk's new counts show before its rustle. No tidy-row reward:
+  it would leak that the row's covered piles are hedgehogs. HARVEST sound
+  set (unheard). Peak 138 draw calls (party), ANGLE agreeing.
