@@ -275,6 +275,8 @@ var _head_at := -100.0
 var _munch_at := -100.0
 var _dragging := false
 var _drag_pos := Vector2.ZERO
+## The touch index of the finger holding the stroke (-1 the mouse).
+var _finger := -1
 ## The last square whose margin the finger crossed: which side a corner was
 ## cut by.
 var _via := -1
@@ -403,7 +405,10 @@ func _tips() -> Array:
 	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
+## No hint on Insane (Peckish), and no undo there either: can_undo() says so.
 func capabilities() -> Array[String]:
+	if _state.difficulty >= 3:
+		return ["undo"]
 	return ["undo", "hint"]
 
 func _ready() -> void:
@@ -1241,7 +1246,7 @@ func _leaf(soup: Soup, c: int, t: float) -> void:
 	var f := _badge_frame(c, t)
 	if f.scale.x <= 0.01:
 		return
-	var got: bool = _state.body.has(c)
+	var got: bool = _state.body.has(c) and c != _misstepped()
 	var bites := ""
 	for q in CHEWS:
 		bites += str(roundi(_bite(c, t, q) * 4.0))
@@ -1294,7 +1299,7 @@ func _unmarked(c: int) -> bool:
 	return _state.peckish() and k != 1 and k != _state.last_leaf()
 
 func _bite(c: int, t: float, q: int) -> float:
-	if not _state.body.has(c):
+	if not _state.body.has(c) or c == _misstepped():
 		return 0.0
 	if Motion.reduce or not _munched.has(c):
 		return 1.0
@@ -1321,7 +1326,7 @@ func _badge(b, c: int, t: float) -> void:
 	var s := _cell()
 	var r := s * BADGE_R
 	var xf := Transform2D(0.0, f.scale, 0.0, f.at)
-	var got: bool = _state.body.has(c)
+	var got: bool = _state.body.has(c) and c != _misstepped()
 	Scenery.soft_disc(b, f.at + Vector2(0.0, s * 0.04), r * 1.3 * f.scale.x, r * 1.15 * f.scale.x, Color(Pal.TEXT, 0.18))
 	if got:
 		var ring := r + s * (EATEN_RING + EATEN_RING_W * 0.5)
@@ -1482,20 +1487,29 @@ func _flight(u: float, start: Vector2, s: float) -> Vector2:
 
 # --- input ---
 
+## Only the finger that started a stroke moves it (Quilt's rule): a second
+## finger's press, drag and release are ignored while one is held, or the
+## walked drag would crawl the line between two fingers -- and on Hard and
+## Insane, price the squares it crossed.
 func _gui_input(event: InputEvent) -> void:
 	if _done or out_of_hearts:
 		return
+	var finger: int = event.index if (event is InputEventScreenTouch or event is InputEventScreenDrag) else -1
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if event.pressed:
+			if _dragging:
+				accept_event()
+				return
+			_finger = finger
 			_drag_pos = event.position
 			_via = -1
 			_press(_cell_at(event.position))
-		else:
+		elif finger == _finger:
 			_release()
 		accept_event()
-	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _dragging:
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _dragging and finger == _finger:
 		_drag_to(event.position)
 		accept_event()
 
@@ -1738,13 +1752,18 @@ func _misstep(c: int, kind: String, t: float) -> void:
 	hearts = maxi(0, hearts - 1)
 	_split_index = hearts
 	_split_at = t + (0.0 if Motion.reduce else SLIDE_TIME)
+	var room: int = _state.tummy()
+	_retreat = PackedInt32Array()
 	_lag0 = minf(_lag(t) + 1.0, LAG_MAX)
 	_lag_at = t
 	_head_at = t
 	_state.grow(c)
 	_seg_at.append(t)
 	_crawl(t)
-	_wrong = {"at": t, "cell": c, "cells": cells}
+	# A leaf stepped onto in error is not eaten: no bites, no gold ring, and
+	# the tummy shows what it had (`_misstepped`).
+	_munched[c] = INF
+	_wrong = {"at": t, "cell": c, "cells": cells, "room": room}
 	var eject := Motion.REDUCED_TIME if Motion.reduce else EJECT_AFTER
 	_busy_until = t + eject + (0.0 if Motion.reduce else SLIP_TIME) + 0.05
 	_was_busy = true
@@ -1768,12 +1787,19 @@ func _misstep(c: int, kind: String, t: float) -> void:
 	moved.emit()
 	_after(eject, _slip_back.bind(c))
 
+## The square a wrong step is standing on until it scoots back, or -1.
+func _misstepped() -> int:
+	if _wrong.is_empty() or _state.head() != int(_wrong["cell"]):
+		return -1
+	return int(_wrong["cell"])
+
 ## The scoot home: the square comes off the body and the head runs back.
 func _slip_back(c: int) -> void:
 	if _state.head() != c:
 		return
 	var t := _now()
 	_state.take_back()
+	_munched.erase(c)
 	_seg_at.resize(_state.body.size())
 	if not Motion.reduce:
 		_retreat = PackedInt32Array([c])
@@ -2026,6 +2052,8 @@ func _draw_hearts() -> void:
 		b.polygon(Face.Builder.round_rect(tc - rim, tummy_pill + 2.0 * rim, tummy_pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
 		b.polygon(Face.Builder.round_rect(tc, tummy_pill, tummy_pill.y * 0.5), Pal.SURFACE)
 		var room: int = _state.tummy() if not _state.body.is_empty() else _state.hunger
+		if _misstepped() >= 0:
+			room = int(_wrong["room"])
 		var low: bool = room <= 1 and not _state.body.is_empty()
 		for i in _state.hunger:
 			var at := Vector2(tc.x + HEART_PILL_PAD.x + PIP_R + pip_step * i, y)

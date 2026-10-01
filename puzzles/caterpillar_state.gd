@@ -162,7 +162,8 @@ func judge(n: int) -> String:
 		return ""
 	if not stranded(n).is_empty() or _starved(n):
 		return "strand"
-	if difficulty >= 3 and (agreed() < body.size() or path[body.size()] != n):
+	# Off the answer is fatal only where the walk is proved the only one.
+	if difficulty >= 3 and unique and (agreed() < body.size() or path[body.size()] != n):
 		return "doom"
 	return ""
 

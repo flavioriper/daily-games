@@ -217,3 +217,17 @@ Peak 113, 742 under the 855 budget. Suite `passed=122403 failed=0`;
   ladybug, butterflies and the lag's 0.045 s were judged on stills and
   numbers only.
 - Sounds unheard.
+
+- **Review findings, fixed**: a second finger moved the stroke (the walked
+  drag crawled the line between two fingers and could price the squares it
+  crossed) -- only the finger that started a stroke moves it now, Quilt's
+  rule; a wrong step during a cut's run-back drew the body over the squares
+  just cut away -- the run-back is dropped first; Insane offered a hint by
+  video though its rules say none -- `capabilities()` drops "hint" there, as
+  Rings does; a wrong step onto a leaf showed it eaten (bites, gold ring, a
+  full tummy) until the scoot -- it shows as it was; and Insane without a
+  bank (Hard's live garden, perhaps not proved unique) no longer prices
+  steps off the answer (`judge()` needs `unique`). Checked clean by the
+  review with an independent solver: the judge never charged a step that
+  could still finish (7,181 Hard and 5,675 Insane steps), and all 200 banked
+  gardens have exactly one walk.
