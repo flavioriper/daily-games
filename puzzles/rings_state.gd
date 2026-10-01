@@ -23,17 +23,25 @@ extends RefCounted
 ## `hint()` never invents a move: it asks Gen.solve() for the same path a
 ## full solve would take and plays its first step through drop()'s own path,
 ## so a hinted move is logged and undoable exactly like a tapped one.
-## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md.
+## **Hard and Insane judge** (2026-10-01 polish, `judged`): a drop that would
+## leave the pegs unsortable is `would_doom()` -- Gen.verdict() proves it on a
+## copy -- and the board takes a heart for it and hops the ring back, so the
+## pegs never stand in a dead position on a judged band. Insane is **Tumble**:
+## the bank deals six two-tone rings, and `lift()` turns a ring over (Gen.flip)
+## so what is in the hand is what it will land as; `put_back()` and `undo()`
+## turn it back. No undo and no hints there.
+## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md and
+## docs/superpowers/specs/2026-10-01-rings-polish-design.md.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
 const Gen = preload("res://puzzles/rings_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
+## Hints and hearts by band (Easy, Medium, Hard, Insane).
+const HINTS_BY := [3, 3, 1, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+## Kept for the old suite's name: Easy's hints.
 const HINTS := 3
-## Moves Insane allows over the shortest solve the bank records. Undo gives a
-## move back, so this is slack on the line the player finishes on, not on
-## how much they may explore.
-const PAR_SLACK := 2
 
 var pegs: Array = []
 var deal: Array = []
@@ -44,21 +52,27 @@ var colours := 6
 var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
-## Insane's move budget: moves the pegs may take from the deal, or 0 for no
-## limit (every other band). `log.size()` is what it is spent against.
-var par := 0
+var difficulty := 0
+## Hard and Insane: a dooming drop costs a heart (would_doom).
+var judged := false
+## Insane from the bank: two-tone rings that turn over when lifted.
+var tumble := false
+var undo_allowed := true
 
-## The day's deal, proved solvable by Gen. Keeps a duplicate of it in `deal`
-## so reset_board() can go back to exactly what was dealt, not to one undo
-## at a time.
-##
-## Insane (band 3) reads the day's deal and its shortest solve from the bank
-## (content/insane/rings.json, mined by tools/insane/rings_ladder.gd) and
-## allows that plus PAR_SLACK. Without a bank it deals Hard's knobs live and
-## takes the game's own solver's line as the budget: looser, since that
-## solver is not shortest-first, but the card is never empty.
-func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
-	par = 0
+static func hints_for(band: int) -> int:
+	return HINTS_BY[clampi(band, 0, HINTS_BY.size() - 1)]
+
+static func hearts_for(band: int) -> int:
+	return HEARTS_BY[clampi(band, 0, HEARTS_BY.size() - 1)]
+
+## The day's deal, proved solvable. Keeps a duplicate of it in `deal` so
+## reset_board() can go back to exactly what was dealt, not to one undo at a
+## time. Insane (band 3) reads a Tumble deal from the bank
+## (content/insane/rings.json, mined and proved by
+## tools/insane/rings_tumble_mine.py); without one it deals Hard live, plain.
+func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
+	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
+	tumble = false
 	var banked: Dictionary = InsaneBank.pick("rings", bank_step) if difficulty == 3 else {}
 	if banked.get("pegs") is Array:
 		pegs = []
@@ -66,16 +80,17 @@ func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 			var peg: Array = []
 			for c in s:
 				peg.append(int(c))
+				if int(c) >= 8:
+					tumble = true
 			pegs.append(peg)
-		par = int(banked["grade"]["rung"]) + PAR_SLACK
 	else:
 		pegs = Gen.deal(rng, difficulty)
-		if difficulty == 3:
-			par = Gen.solve(pegs).size() + PAR_SLACK
 	deal = []
 	for s in pegs:
 		deal.append((s as Array).duplicate())
-	colours = int(Gen.BANDS[clampi(difficulty, 0, Gen.BANDS.size() - 1)]["colours"])
+	colours = int(Gen.BANDS[difficulty]["colours"])
+	judged = difficulty >= 2
+	undo_allowed = difficulty < 3
 	log = []
 	held = -1
 	held_from = -1
@@ -89,23 +104,16 @@ func locked(i: int) -> bool:
 ## A ring may be lifted off a peg that has one, is not locked, and only when
 ## the hand is empty.
 func can_lift(i: int) -> bool:
-	return held == -1 and not out_of_moves() and not (pegs[i] as Array).is_empty() and not locked(i)
+	return held == -1 and not (pegs[i] as Array).is_empty() and not locked(i)
 
-## Moves left in Insane's budget; -1 when there is no budget.
-func moves_left() -> int:
-	return par - log.size() if par > 0 else -1
-
-## The budget is spent and the pegs are not sorted. Undo gives a move back.
-func out_of_moves() -> bool:
-	return par > 0 and log.size() >= par and not is_solved()
-
-## Takes the top ring off peg `i` into the hand. Refused (and `false`) on an
-## empty peg, a locked peg, or with a ring already in hand.
+## Takes the top ring off peg `i` into the hand, turned over (a Tumble ring
+## shows its under colour now; a plain ring is itself). Refused (and `false`)
+## on an empty peg, a locked peg, or with a ring already in hand.
 func lift(i: int) -> bool:
 	if not can_lift(i):
 		return false
 	held_from = i
-	held = (pegs[i] as Array).pop_back()
+	held = Gen.flip(int((pegs[i] as Array).pop_back()))
 	return true
 
 ## Puts the ring in hand back where it came from. Not a move: the log never
@@ -113,7 +121,7 @@ func lift(i: int) -> bool:
 func put_back() -> void:
 	if held == -1:
 		return
-	(pegs[held_from] as Array).append(held)
+	(pegs[held_from] as Array).append(Gen.flip(held))
 	held = -1
 	held_from = -1
 
@@ -126,7 +134,19 @@ func can_drop(j: int) -> bool:
 	var dst: Array = pegs[j]
 	if dst.size() >= Gen.CAP:
 		return false
-	return dst.is_empty() or int(dst.back()) == held
+	return dst.is_empty() or Gen.top(int(dst.back())) == Gen.top(held)
+
+## On a judged band: whether dropping the held ring on `j` would leave the
+## pegs unsortable -- proved on a copy (Gen.verdict() == 0). A search that
+## runs out of nodes is not a proof, and is let through.
+func would_doom(j: int) -> bool:
+	if not judged or not can_drop(j):
+		return false
+	var copy: Array = []
+	for s in pegs:
+		copy.append((s as Array).duplicate())
+	(copy[j] as Array).append(held)
+	return not Gen.solved(copy) and Gen.verdict(copy) == 0
 
 ## Why a drop on `j` would be refused right now, or "" when it would not be.
 ## Exactly these two keys (RG_FULL, RG_WRONG_COLOUR); the board puts them
@@ -160,8 +180,8 @@ func undo() -> Vector2i:
 	if log.is_empty():
 		return Vector2i(-1, -1)
 	var m: Vector2i = log.pop_back()
-	var ring = (pegs[m.y] as Array).pop_back()
-	(pegs[m.x] as Array).append(ring)
+	var ring := int((pegs[m.y] as Array).pop_back())
+	(pegs[m.x] as Array).append(Gen.flip(ring))
 	return m
 
 ## Locked pegs, counted fresh every time -- the colours already home.
@@ -203,7 +223,7 @@ func reset_board() -> void:
 ## happened when it did not, nor lose a count for one that never played.
 func hint() -> Vector2i:
 	put_back()
-	if par > 0 or hints_used >= HINTS + hints_extra or is_solved():
+	if hints_used >= hints_for(difficulty) + hints_extra or is_solved():
 		return Vector2i(-1, -1)
 	var path: Array = Gen.solve(pegs)
 	if path.is_empty():

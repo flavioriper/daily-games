@@ -18,7 +18,14 @@ extends RefCounted
 ## search is thousands of nodes; with it, it is dozens.
 ##
 ## The same solver answers the board's hint, which is why solve() returns the
-## path and not just a verdict.
+## path and not just a verdict, and since the 2026-10-01 polish it also judges
+## Hard and Insane: a drop that leaves the pegs unsortable (`verdict() == 0`)
+## costs a heart and hops back.
+##
+## **A ring is an int.** A plain ring is its colour, 0-5, as it always was.
+## Insane's Tumble rings are two-tone, `top | (under + 1) << 3`, and lifting
+## one turns it over (`flip`); a plain ring flips onto itself, so every rule
+## below reads a ring through `top()` and never cares which kind it is.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md, section 3.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
@@ -30,23 +37,44 @@ const CAP := 4
 ## spread over the deal rather than left as two empty pegs. Six over eight is
 ## the reference's own three a peg; the other two bands leave a peg or two one
 ## short, which is the arithmetic and not a choice.
+## Hard is six colours on **seven** pegs since the 2026-10-01 polish: on
+## eight, under one move in a hundred could doom a board, so a heart would
+## almost never be at stake; on seven it is about one in seventeen (measured
+## over random play), and about four deals in one are proved.
 const BANDS := [
 	{"colours": 4, "pegs": 6},
 	{"colours": 5, "pegs": 7},
-	{"colours": 6, "pegs": 8},
-	# Insane: Hard's deal, because the screen holds no more pegs and the
-	# palette no more colours, and less slack only deals dead boards. What
-	# makes it Insane is rings_state.gd's move budget, read from
-	# content/insane/rings.json (tools/insane/rings_ladder.gd).
-	{"colours": 6, "pegs": 8},
+	{"colours": 6, "pegs": 7},
+	# Insane: Tumble -- Hard's pegs with six two-tone rings, read from
+	# content/insane/rings.json (tools/insane/rings_tumble_mine.py). Live,
+	# without the bank, it falls back to Hard's plain deal.
+	{"colours": 6, "pegs": 7},
 ]
 
 ## Deals tried before the day gives up and takes the last one anyway. Measured
 ## need: zero. This is the guard, not the plan.
 const ATTEMPTS := 40
 
-## Nodes a single verdict may cost. Measured worst: 267.
+## Nodes a single verdict may cost. Measured worst: 267 for a deal, 3346
+## for a Tumble position's doom check (Python, the miner's same search).
 const NODE_BUDGET := 20000
+
+## A ring's colour as it lies: what it shows, and what it is matched on.
+static func top(c: int) -> int:
+	return c & 7
+
+## The colour under a Tumble ring; a plain ring's own.
+static func under(c: int) -> int:
+	return (c >> 3) - 1 if c >= 8 else c
+
+static func two_tone(c: int) -> bool:
+	return c >= 8
+
+## The ring turned over: its under colour on top. A plain ring is itself.
+static func flip(c: int) -> int:
+	if c < 8:
+		return c
+	return ((c >> 3) - 1) | (((c & 7) + 1) << 3)
 
 ## The day's deal, proved solvable. `difficulty` is 0 to 3.
 static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
@@ -96,11 +124,8 @@ static func solved(pegs: Array) -> bool:
 	for s in pegs:
 		if s.is_empty():
 			continue
-		if s.size() != CAP:
+		if not locked(s):
 			return false
-		for c in s:
-			if c != s[0]:
-				return false
 	return true
 
 ## A peg nothing comes off again: full and all one colour. Safe to forbid as a
@@ -110,46 +135,44 @@ static func solved(pegs: Array) -> bool:
 static func locked(peg: Array) -> bool:
 	if peg.size() != CAP:
 		return false
+	var c0 := top(int(peg[0]))
 	for c in peg:
-		if c != peg[0]:
+		if top(int(c)) != c0:
 			return false
 	return true
 
-## The canonical key. A peg is (colour + 1) in three bits a ring, under 4096 so
-## it fits one character; the codes are sorted, so two positions that differ
-## only in which peg is which come out identical.
+## The canonical key. A peg is (ring + 1) in six bits a ring (a Tumble
+## ring's code runs to 53); the codes are sorted, so two positions that
+## differ only in which peg is which come out identical.
 static func key(pegs: Array) -> String:
 	var codes: Array[int] = []
 	for s in pegs:
 		var code := 0
 		for k in s.size():
-			code |= (int(s[k]) + 1) << (3 * k)
+			code |= (int(s[k]) + 1) << (6 * k)
 		codes.append(code)
 	codes.sort()
 	var out := ""
 	for c in codes:
-		out += String.chr(c + 32)
+		out += str(c) + ","
 	return out
 
 ## Every legal move from `pegs`, best first: a move that finishes a peg, then
 ## any other move onto a matching colour, then a move onto an empty peg. The
-## ordering is what makes the search cheap, and the two prunings are what keep
-## it from walking in circles: a locked peg is never a source, and a whole
-## uniform peg is never moved onto an empty one (that is the same position
-## with the pegs renamed).
+## ordering is what makes the search cheap. The prunings are only the ones
+## that are **sound**, because a doom verdict costs a heart: a locked peg is
+## never a source (the game's own rule), and a lone plain ring is never moved
+## onto an empty peg (the same position with the pegs renamed). The old
+## "never split a uniform peg" pruning went with the 2026-10-01 polish -- it
+## was never proved, and a Tumble ring turns over when it moves anyway.
 static func moves_from(pegs: Array) -> Array:
 	var scored: Array = []
 	for i in pegs.size():
 		var src: Array = pegs[i]
 		if src.is_empty() or locked(src):
 			continue
-		var col: int = src.back()
-		var run := 0
-		var x := src.size() - 1
-		while x >= 0 and int(src[x]) == col:
-			run += 1
-			x -= 1
-		var uniform := run == src.size()
+		var ring := flip(int(src.back()))
+		var col := top(ring)
 		for j in pegs.size():
 			if i == j:
 				continue
@@ -157,13 +180,18 @@ static func moves_from(pegs: Array) -> Array:
 			if dst.size() >= CAP:
 				continue
 			if dst.is_empty():
-				if uniform:
+				if src.size() == 1 and ring == int(src.back()):
 					continue
 				scored.append([2, i, j])
 				continue
-			if int(dst.back()) != col:
+			if top(int(dst.back())) != col:
 				continue
-			var finishes := dst.size() + mini(run, CAP - dst.size()) == CAP
+			var finishes := dst.size() + 1 == CAP
+			if finishes:
+				for c in dst:
+					if top(int(c)) != col:
+						finishes = false
+						break
 			scored.append([0 if finishes else 1, i, j])
 	scored.sort_custom(func(a, b): return a[0] < b[0])
 	var out: Array[Vector2i] = []
@@ -175,6 +203,19 @@ static func moves_from(pegs: Array) -> Array:
 ## a solution and not the shortest -- which is all either caller needs: the
 ## deal wants a yes, and the hint wants a next move that leads somewhere.
 static func solve(pegs: Array, budget := NODE_BUDGET) -> Array:
+	return _search(pegs, budget)["path"]
+
+## 1 when `pegs` can still be sorted, 0 when the search proved it cannot (a
+## doomed position: every line from it walked), -1 when it ran out of nodes
+## first -- which the board treats as alive, so a heart is only ever taken
+## for a proof.
+static func verdict(pegs: Array, budget := NODE_BUDGET) -> int:
+	var out := _search(pegs, budget)
+	if not (out["path"] as Array).is_empty() or solved(pegs):
+		return 1
+	return 0 if int(out["nodes"]) <= budget else -1
+
+static func _search(pegs: Array, budget: int) -> Dictionary:
 	var work: Array = []
 	for s in pegs:
 		work.append((s as Array).duplicate())
@@ -182,8 +223,8 @@ static func solve(pegs: Array, budget := NODE_BUDGET) -> Array:
 	var path: Array[Vector2i] = []
 	var nodes := [0]
 	if _dfs(work, seen, path, nodes, budget):
-		return path
-	return []
+		return {"path": path, "nodes": nodes[0]}
+	return {"path": [] as Array[Vector2i], "nodes": nodes[0]}
 
 static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budget: int) -> bool:
 	if solved(pegs):
@@ -198,12 +239,12 @@ static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budge
 	for m in moves_from(pegs):
 		var src: Array = pegs[m.x]
 		var dst: Array = pegs[m.y]
-		dst.append(src.pop_back())
+		dst.append(flip(int(src.pop_back())))
 		path.append(m)
 		if _dfs(pegs, seen, path, nodes, budget):
 			return true
 		path.pop_back()
-		src.append(dst.pop_back())
+		src.append(flip(int(dst.pop_back())))
 		if nodes[0] > budget:
 			return false
 	return false

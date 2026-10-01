@@ -50,12 +50,13 @@ static func _test_deal_shape(t) -> void:
 		for c in seen:
 			t.eq(int(seen[c]), Gen.CAP, "band %d four of colour %d" % [band, c])
 
-## The hard band is the reference's own deal: eight pegs of exactly three.
+## The hard band is six colours on seven pegs since the 2026-10-01 polish:
+## three or four rings a peg.
 static func _test_hard_band_is_three_a_peg(t) -> void:
 	var pegs := Gen.deal(_rng(11), 2)
-	t.eq(pegs.size(), 8, "eight pegs")
+	t.eq(pegs.size(), 7, "seven pegs")
 	for s in pegs:
-		t.eq(s.size(), 3, "three rings a peg")
+		t.check(s.size() == 3 or s.size() == 4, "three or four rings a peg")
 
 ## Every deal the generator hands over can actually be sorted, and the path it
 ## returns is legal move by move and ends solved.
@@ -190,7 +191,7 @@ static func _test_hint(t) -> void:
 	t.eq(s.hints_used, 1, "one spent")
 	for i in 5:
 		s.hint()
-	t.eq(s.hints_used, State.HINTS, "never more than three")
+	t.eq(s.hints_used, State.hints_for(s.difficulty), "never more than the band's")
 
 ## Regression: a ring already in hand when hint() is called used to make
 ## lift(m.x) fail silently (held already set) while drop(m.y) tested
