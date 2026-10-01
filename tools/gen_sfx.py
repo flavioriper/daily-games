@@ -130,6 +130,23 @@ POND_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
              "gentle, cozy, no synth, no electronic tones, no beeps, no music "
              "bed, no voice")
 
+# Pixel Garden's bead box (2026-10-01 polish): the first set was the house
+# glockenspiel, marimba and a tape-rewind undo, thin beside the boards re-
+# recorded the same day, so a bead's world is close-mic foley of the real
+# kit -- small plastic fuse beads, a clear plastic compartment box, steel
+# tweezers, a pegboard, a warm iron on paper -- and every note a real
+# kalimba, music box or hand bell, recorded, never synth, rolled off above
+# 7 kHz where it hisses.
+BEADBOX = ("close-mic foley of a real craft table on a quiet afternoon, small "
+           "plastic fuse beads, a clear plastic compartment box, steel tweezers, "
+           "a plastic pegboard and a warm iron on baking paper, natural and "
+           "acoustic, soft and warm, rounded, no synth, no electronic tones, no "
+           "beeps, no music, no voice")
+BEADBOX_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+                "recorded close in a warm quiet room, natural, soft, rounded, "
+                "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+                "bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1073,23 +1090,38 @@ SETS = {
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -5, POND_TUNE, "warm:7000"),
         "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
-    # Pixel Garden: copy a little picture onto a pegboard in beads; the
-    # finished picture is ironed. `place` fires on every bead a stroke seats
-    # (pitched a hair apart), so it is tiny and quiet.
+    # Pixel Garden: copy a little picture onto a pegboard in beads; a full
+    # plate is ironed. Re-recorded 2026-10-01 (the polish) as BEADBOX: real
+    # beads, box, tweezers and iron, every note a kalimba or music box. `place`
+    # fires on every bead a stroke seats (pitched a hair apart), so it is tiny
+    # and quiet and cut to its first click.
     "pixelgarden": {
-        "place":    ("a single tiny soft click, a small plastic bead dropped onto a peg of a pegboard, light and cute, very short", 0.5, -13),
-        "lift":     ("a tiny soft plucking tick, a small bead pulled off a peg, very short and light", 0.5, -15),
-        "pick":     ("a tiny soft rattle of a few small beads in a little wooden dish, very short", 0.5, -12),
-        "peek":     ("a very short soft paper whoosh, a small card lifted up to look at", 0.5, -14),
-        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check":    ("a soft two-note downward kalimba, gentle, not yet", 0.6, -9),
-        "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -8),
-        "reset":    ("a soft quick cascade of many small beads pouring back into a wooden dish", 1.0, -8),
-        "iron":     ("a soft warm gentle steam puff and a slow shimmering glockenspiel glissando, a warm iron gliding over a finished bead picture, cozy", 1.6, -7),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy handful of small beads poured gently into a wooden dish", 1.0, -10),
+        "place":    ("a single tiny soft click, one small plastic fuse bead set down onto a peg of a plastic pegboard with tweezers, light, very short", 0.5, -14, BEADBOX, "warm:7000", "cut:0.25"),
+        "lift":     ("a tiny soft plucking tick, steel tweezers lifting one small plastic bead off a peg, very short and light", 0.5, -16, BEADBOX, "warm:7000", "cut:0.25"),
+        "pick":     ("steel tweezers dipping into a compartment of small plastic beads, a tiny soft rattle, very short", 0.5, -13, BEADBOX, "warm:7000"),
+        "peek":     ("a very short soft paper whoosh, a small paper pattern card lifted up to look at", 0.5, -15, BEADBOX, "warm:7000"),
+        "refuse":   ("tweezers tapping the empty plastic bottom of a compartment twice, a soft hollow little tick tick, gentle", 0.5, -12, BEADBOX, "warm:7000"),
+        "undo":     ("a tiny soft plucking tick and one small plastic bead dropped back into a box of beads, very short", 0.5, -12, BEADBOX, "warm:7000"),
+        "hint":     ("a gentle sparkle, three soft kalimba notes rising with a tiny hand bell on top, kind and helpful", 1.0, -8, BEADBOX_TUNE, "warm:7000"),
+        "check":    ("a soft two-note downward kalimba, gentle, kind, not yet", 0.6, -10, BEADBOX_TUNE, "warm:7000"),
+        "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -9, BEADBOX_TUNE, "warm:7000"),
+        "reset":    ("a soft quick cascade of many small plastic beads pouring back into a clear plastic box", 1.0, -9, BEADBOX, "warm:7000"),
+        "enter":    ("a soft handful of small plastic beads poured gently into a clear plastic compartment box", 1.0, -11, BEADBOX, "warm:7000"),
+        "iron":     ("a warm household iron set down gently on baking paper with a soft gentle steam puff and a slow glide, cozy, quiet", 1.6, -9, BEADBOX, "warm:7000"),
+        "steam":    ("one small soft puff of steam from a warm iron, a gentle short hiss, quiet and cozy", 0.7, -14, BEADBOX, "warm:7000"),
+        "plate":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -7, BEADBOX_TUNE, "warm:7000"),
+        "astray":   ("a few small plastic beads hopping off a pegboard and pattering back into a plastic box, soft and light, playful", 0.9, -11, BEADBOX, "warm:7000"),
+        "heart_lost": ("a soft sad little two-note kalimba falling, gentle and kind, not scolding", 0.9, -9, BEADBOX_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow gentle descending music box lullaby phrase, sleepy and soft, three notes winding down", 1.8, -9, BEADBOX_TUNE, "warm:7000"),
+        "heart_back": ("a warm hopeful rising kalimba phrase with a small hand bell, a heart coming back", 1.0, -8, BEADBOX_TUNE, "warm:7000"),
+        "combo":    ("a single bright soft kalimba note, warm and round, short", 0.5, -10, BEADBOX_TUNE, "warm:7000"),
+        "steady":   ("a quick soft run of small plastic beads clicking onto pegs one after another, a tidy little patter, very light", 0.8, -13, BEADBOX, "warm:7000"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "flutter":  ("a butterfly's soft wings fluttering past, a tiny delicate papery flutter, very quiet", 0.8, -16, BEADBOX, "warm:7000"),
+        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -5, BEADBOX_TUNE, "warm:7000"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -6, BEADBOX_TUNE, "warm:7000"),
+        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.

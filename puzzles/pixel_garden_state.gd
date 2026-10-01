@@ -16,13 +16,32 @@ extends RefCounted
 ## A stroke is one move however many pegs it crossed (Nonogram's rule), so
 ## the history keeps a list of pegs a stroke. The pictures are hand-drawn and
 ## banked in content/pixel_garden.json, never generated.
-## Spec: docs/superpowers/specs/2026-09-27-pixel-garden-flat-design.md.
+##
+## **The board is four plates** (2026-10-01 polish), as a real big pegboard
+## is four small ones clipped together. A plate whose beads are all on it --
+## as many as the picture puts there -- is ironed at once: right, and it is
+## fused for good; wrong, and the beads astray hop back into the box (and on
+## Hard and Insane it costs a heart, which the board keeps). On Insane,
+## Windblown, the pattern card's four squares have blown about: each shows
+## somewhere else, turned (`perm`, `turn`), and the board must still be the
+## true picture.
+## Spec: docs/superpowers/specs/2026-09-27-pixel-garden-flat-design.md and
+## docs/superpowers/specs/2026-10-01-pixel-garden-polish-design.md.
 
 const Pal = preload("res://core/palette.gd")
 
 const BANK := "res://content/pixel_garden.json"
 const EMPTY := -1
 const HINTS := 3
+## Hints and hearts by band: Hard trades a hint for hearts, Insane has
+## neither hints nor Check -- only the iron judges.
+const HINTS_BY := [3, 3, 2, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+const WINDBLOWN := 3
+## `locked` holds HINTED for a peg a hint put right, FUSED for one an iron
+## fused with its plate; Try again keeps a hint's and melts the rest.
+const HINTED := 1
+const FUSED := 2
 
 ## The bank, read once.
 static var _bank: Dictionary = {}
@@ -49,6 +68,23 @@ var history: Array = []
 var _stroke: Array = []
 var _in_stroke := false
 var _rng := RandomNumberGenerator.new()
+var band := 0
+## Half the board's side: a plate is half x half pegs. Plates are numbered
+## row-major, 0 top left to 3 bottom right.
+var half := 0
+## How many beads the picture puts on each plate, and whether each is ironed.
+var plate_need := PackedInt32Array([0, 0, 0, 0])
+var ironed := PackedByteArray([0, 0, 0, 0])
+## Windblown: the square the pattern card shows in place q is plate perm[q],
+## turned turn[q] quarter turns clockwise. Identity elsewhere.
+var perm := PackedInt32Array([0, 1, 2, 3])
+var turn := PackedInt32Array([0, 0, 0, 0])
+
+static func hints_for(difficulty: int) -> int:
+	return HINTS_BY[clampi(difficulty, 0, 3)]
+
+static func hearts_for(difficulty: int) -> int:
+	return HEARTS_BY[clampi(difficulty, 0, 3)]
 
 static func bank() -> Dictionary:
 	if _bank.is_empty():
@@ -73,8 +109,41 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var pics := band_pictures(difficulty)
 	if pics.is_empty():
 		return
+	band = clampi(difficulty, 0, 3)
 	load_picture(pics[rng.randi() % pics.size()])
 	_rng.seed = rng.randi()
+	if band == WINDBLOWN:
+		blow(rng)
+
+## Windblown: shuffles where the pattern card shows each plate and turns
+## each one, so that no square is left both in its own place and upright, and
+## at least three are turned.
+func blow(rng: RandomNumberGenerator) -> void:
+	for _try in 64:
+		var p := PackedInt32Array([0, 1, 2, 3])
+		for i in range(3, 0, -1):
+			var j := rng.randi() % (i + 1)
+			var tmp := p[i]
+			p[i] = p[j]
+			p[j] = tmp
+		var r := PackedInt32Array()
+		var turned := 0
+		var ok := true
+		for q in 4:
+			r.append(rng.randi() % 4)
+			if r[q] != 0:
+				turned += 1
+			if p[q] == q and r[q] == 0:
+				ok = false
+		if ok and turned >= 3:
+			perm = p
+			turn = r
+			return
+	perm = PackedInt32Array([3, 2, 1, 0])
+	turn = PackedInt32Array([1, 2, 3, 1])
+
+func windblown() -> bool:
+	return band == WINDBLOWN
 
 ## Takes `pic` (one entry of the bank) as the day's picture, on a bare board.
 func load_picture(pic: Dictionary) -> void:
@@ -128,6 +197,113 @@ func load_picture(pic: Dictionary) -> void:
 	history = []
 	_stroke = []
 	_in_stroke = false
+	half = n / 2
+	plate_need = PackedInt32Array([0, 0, 0, 0])
+	for c in size():
+		if want[c] != EMPTY:
+			plate_need[plate_of(c)] += 1
+	ironed = PackedByteArray([0, 0, 0, 0])
+	perm = PackedInt32Array([0, 1, 2, 3])
+	turn = PackedInt32Array([0, 0, 0, 0])
+	# A plate the picture leaves bare has nothing to iron: it is done.
+	for q in 4:
+		if plate_need[q] == 0:
+			_fuse_plate(q)
+
+# --- the plates ---
+
+func plate_of(c: int) -> int:
+	return (2 if c / n >= half else 0) + (1 if c % n >= half else 0)
+
+## Every peg of plate `q`, row-major.
+func plate_pegs(q: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var x0 := (q % 2) * half
+	var y0 := (q / 2) * half
+	for y in half:
+		for x in half:
+			out.append((y0 + y) * n + x0 + x)
+	return out
+
+func plate_placed(q: int) -> int:
+	var k := 0
+	for c in plate_pegs(q):
+		if beads[c] != EMPTY:
+			k += 1
+	return k
+
+## Plates not yet ironed with as many beads on them as the picture puts
+## there (or more): the iron's next work.
+func plates_full() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for q in 4:
+		if ironed[q] == 0 and plate_placed(q) >= plate_need[q]:
+			out.append(q)
+	return out
+
+func plate_right(q: int) -> bool:
+	for c in plate_pegs(q):
+		if beads[c] != want[c]:
+			return false
+	return true
+
+## Irons plate `q`: right, and every peg on it is fused for good; wrong, and
+## every bead astray goes back to the kit. Returns {"ok", "astray": [[peg,
+## colour], ...]}.
+func iron_plate(q: int) -> Dictionary:
+	if plate_right(q):
+		_fuse_plate(q)
+		return {"ok": true, "astray": []}
+	var astray: Array = []
+	for c in plate_pegs(q):
+		if beads[c] != EMPTY and beads[c] != want[c] and locked[c] == 0:
+			astray.append([c, beads[c]])
+			_seat(c, EMPTY)
+			_forget(c)
+	return {"ok": false, "astray": astray}
+
+func _fuse_plate(q: int) -> void:
+	ironed[q] = 1
+	for c in plate_pegs(q):
+		if locked[c] == 0:
+			locked[c] = FUSED
+		_forget(c)
+
+## The pattern card's square in place `q` at its own (u, v): which peg of the
+## board it shows. Windblown turns square q by turn[q] quarter turns
+## clockwise and shows plate perm[q] there.
+func card_peg(q: int, u: int, v: int) -> int:
+	var h := half
+	var x := u
+	var y := v
+	match turn[q]:
+		1:
+			x = v
+			y = h - 1 - u
+		2:
+			x = h - 1 - u
+			y = h - 1 - v
+		3:
+			x = h - 1 - v
+			y = u
+	var p := perm[q]
+	return ((p / 2) * h + y) * n + (p % 2) * h + x
+
+## Try again: every bead back in the kit but what a hint fused; the plates
+## un-ironed (a bare one stays done).
+func restart() -> void:
+	for c in size():
+		if locked[c] == FUSED:
+			locked[c] = 0
+	for q in 4:
+		ironed[q] = 0
+	for c in size():
+		if beads[c] != EMPTY and locked[c] == 0:
+			_seat(c, EMPTY)
+	history = []
+	for q in 4:
+		if plate_need[q] == 0:
+			_fuse_plate(q)
 
 # --- reading ---
 
@@ -169,7 +345,7 @@ func begin_stroke() -> void:
 func put(c: int, to: int) -> String:
 	if beads[c] == to:
 		return "same"
-	if locked[c] == 1:
+	if locked[c] != 0:
 		return "locked"
 	if to != EMPTY and left(to) <= 0:
 		return "none_left"
@@ -210,9 +386,12 @@ func undo() -> PackedInt32Array:
 	var entry: Array = history.pop_back()
 	for i in range(entry.size() - 1, -1, -1):
 		var c := int(entry[i][0])
-		# A hint may have fused this peg since; the hint wins.
-		if locked[c] == 0:
-			_seat(c, int(entry[i][1]))
+		# A hint or an iron may have fixed this peg since; it wins. And a bead
+		# put back must still be in the kit: a later stroke the iron has
+		# since taken over (forgotten) may hold it.
+		var to := int(entry[i][1])
+		if locked[c] == 0 and not (to != EMPTY and beads[c] != to and left(to) <= 0):
+			_seat(c, to)
 			out.append(c)
 	return out
 
@@ -274,6 +453,8 @@ func reset() -> PackedInt32Array:
 func fill() -> void:
 	for c in size():
 		_seat(c, want[c])
+	for q in 4:
+		_fuse_plate(q)
 	history = []
 
 ## The finished picture in coloured squares, the nearest of the nine a phone
