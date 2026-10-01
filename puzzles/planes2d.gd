@@ -6,11 +6,30 @@ extends "res://core/puzzle_base.gd"
 ## out to the edge of the board. Clear the sky and the board is done. The
 ## rules live in puzzles/planes_state.gd, which this only draws.
 ##
-## **Nothing here can go wrong.** A launch only ever empties cells, so it can
-## never block another plane: there is no Check, no lose, and no order of taps
-## that can dead-end the board (spec section 3). Undo and Reset are
-## convenience rather than repair, and a refused tap costs nothing at all --
-## no life, no counter, no mark left behind.
+## **On Easy and Medium nothing here can go wrong.** A launch only ever empties
+## cells, so it can never block another plane: there is no Check, no lose, and
+## no order of taps that can dead-end the board (spec section 3). Undo and
+## Reset are convenience rather than repair, and a refused tap costs nothing
+## at all -- no life, no counter, no mark left behind.
+##
+## **The polish (2026-09-30, docs/superpowers/specs/2026-09-30-paper-planes-
+## polish-design.md, sections 1, 3 and 5).** Hard and Insane judge a tap
+## (`State.judged`): a tap on a blocked plane is **a crash**. The plane takes
+## off anyway, flies up its lane to whatever is in the way, bonks its nose,
+## crumples a little and flutters home while a heart splits on the paper pill
+## over the card; the blocker shivers (a plane) or puffs (a cloud). Nothing
+## in the state changes -- `launch()` refuses -- so the crash is all picture,
+## on one clock (`_crash`) that holds input, Undo, Hint and Reset (`busy()`).
+## Out of hearts the planes left droop, dusk falls and the out-of-hearts card
+## comes up (Fairy Lights' and Quilt's family). **Insane is Windy Day**: soft
+## clouds over the sky, one cached mesh drawn under a transform each on a
+## layer of their own (`_sky_layer`), which glide a cell downwind on every
+## launch or gust; a dotted ghost shows where each will be next and a wind
+## sock on the panel's rim points the way. When the clouds close in
+## (`State.stuck()`), a tap on a cloud spends a heart to blow the wind on.
+## A **press dip** sinks and shades a plane under one finger, and the plane
+## goes only when that finger lifts from it (a stray tap now costs a heart);
+## an **idle flutter** lifts one resting plane's wing tip now and then.
 ##
 ## How it is drawn. Two meshes and no Controls, because nothing here has a face
 ## on it and a Control per plane would be fifty-two nodes on the hard band. The
@@ -114,9 +133,9 @@ const GLOW_W := 0.86
 const GLOW_ALPHA := 0.32
 const RING_R := 0.5
 
-## Three, as everywhere. A hint only ever *names* a plane that can go -- it
-## never launches it, because there is no wrong move to save anyone from.
-const HINTS := 3
+## A hint only ever *names* a plane that can go -- it never launches it.
+## How many a band starts with is the state's (`State.hints_for`: 3, 3, 1
+## and none on Windy Day).
 ## The entrance's stagger cap. A plane pops in ENTER_STAGGER after the one a
 ## king-move nearer the top-left corner, and **the cap is this board's own**:
 ## fifty-two planes at the family's uncapped 0.6 is a minute of entrance, so
@@ -192,6 +211,97 @@ const TIPS := [
 	"PP_TIP_SAFE",
 	"PP_TIP_FRONT",
 ]
+## Hard leads with what a heart is for; Windy Day with the wind's two lines.
+const TIPS_HEARTS := ["PP_TIP_HEARTS", "PP_TIP_TAP", "PP_TIP_LANE", "PP_TIP_FRONT"]
+const TIPS_WIND := ["PP_TIP_WIND", "PP_TIP_WIND_2", "PP_TIP_HEARTS", "PP_TIP_FRONT"]
+
+## A moment far enough in the future never to arrive, and one far enough in
+## the past that every curve reader is already past the end of it.
+const FAR := 1.0e9
+const AGO := -1.0e9
+
+# --- the hearts (polish section 1; Quilt's and Fairy Lights' pill) ---
+## The strip the hearts take over the panel on Hard and Insane: the grid
+## gives up the room (Quilt's 64). The pill sits HEART_TOP under the card's
+## top edge, clear of the panel's rim below it.
+const HEART_ROW := 64.0
+const HEART_TOP := 6.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+## While the clouds have closed in, the pill breathes: this much bigger at
+## the top of a breath, one breath a PILL_BREATH seconds. It is the pill
+## saying "a heart buys a gust" without a word.
+const PILL_PULSE := 0.08
+const PILL_BREATH := 0.9
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+## The planes left sink and dim over this as the hearts run out.
+const DROOP_TIME := 0.5
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+
+# --- the crash (polish section 1), on its own clock from the tap ---
+## Cells a second the plane rushes up its lane at (slower than a launch, so
+## the bonk is seen coming), and the least it lunges when the blocker is the
+## very next cell. The nose stops CRASH_INTO short of the blocker's centre:
+## the dart's tip reaches into its cell a hair.
+const CRASH_SPEED := 13.0
+const CRASH_MIN := 0.3
+const CRASH_INTO := 0.92
+const CRASH_OUT_MIN := 0.14
+## The bonk: the nose held on the blocker this long, knocked back this many
+## cells, the dart crumpled this much along its length.
+const BONK_HOLD := 0.16
+const BONK_BACK := 0.14
+const CRUMPLE := 0.24
+## The flutter home: how long, how far a wing-rock carries it across its own
+## line (cells) and how far it rocks (radians), dying out as it lands.
+const HOME_TIME := 0.55
+const HOME_SWAY := 0.12
+const HOME_ROCK := 0.32
+## The heart splits this long after the bonk.
+const SPLIT_LAG := 0.08
+
+# --- Windy Day (polish section 3) ---
+## How long a cloud takes to glide its one cell, and the longest a Reset or a
+## Try again takes to blow every cloud back to where the day began.
+const GLIDE := 0.35
+const GLIDE_BACK_MAX := 0.8
+## The clouds: drawn at this much opacity over the planes, so a body under
+## one still reads; the ghost of the next position at this.
+const CLOUD_ALPHA := 0.8
+const GHOST_ALPHA := 0.42
+## How much a cloud swells when it is bonked or pressed (a bump).
+const CLOUD_POKE := 0.18
+## `drift` under each glide, quietly: it plays on every launch.
+const DRIFT_DB := -9.0
+## The wind sock: how far it swings about its pole (radians) and how long a
+## swing takes; it also ripples along its length.
+const SOCK_SWAY := 0.1
+const SOCK_PERIOD := 2.4
+
+# --- the idle flutter (polish section 5) ---
+## One resting plane lifts a wing tip about every IDLE_EVERY seconds (give or
+## take a third), for IDLE_TIME; only that plane leaves the still mesh.
+const IDLE_EVERY := 3.6
+const IDLE_TIME := 0.7
+const IDLE_LIFT := 0.12
+
+## The press's targets beside a plane's index: nothing, or a cloud on a
+## stuck sky (a gust).
+const NO_TARGET := -1
+const GUST_TARGET := -2
+
+## The out-of-hearts card's Back: the host takes the board away.
+signal leave
 
 ## What the sprout says after a launch, and **it stops** (spec section 13).
 ## The first few launches are still teaching the rule, so each gets a line;
@@ -276,13 +386,96 @@ var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
 var _tip_timer: Timer
 
+## The hearts (Hard and Insane): how many are left of how many, whether they
+## have run out, and the pill's own moments -- Fairy Lights' names.
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+## Whether a heart has ever been spent on this deal, by a crash or a gust
+## (the seal reads it in the rewards pass).
+var _lost_ever := false
+var _undo_ever := false
+var _flawless := false
+var _asleep := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := AGO
+var _back_index := -1
+var _back_at := AGO
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _hearts_y := 0.0
+var _dusk_tw: Tween
+## When the planes left began to droop (FAR: they have not).
+var _droop_at := FAR
+## Bumped on every deal, so an `_after` from the last one never lands.
+var _gen := 0
+## The crash in the air: {"i", "at", "bonk", "adv", "end", "cloud"}, or
+## empty. Input, Undo, Hint and Reset wait until `_busy_until`.
+var _crash: Dictionary = {}
+var _busy_until := 0.0
+## Under reduce motion a crash has no flight: the blocker's cell is ringed
+## for a moment instead ({"cell", "until"}, or empty).
+var _ringed: Dictionary = {}
+
+## The press: what is under the finger (a plane's index or GUST_TARGET),
+## when it landed, when it lifted (-1 while still down), and the touch index
+## of that finger (-1 for the mouse).
+var _press_target := NO_TARGET
+var _press_down := AGO
+var _press_up := -1.0
+var _press_finger := -1
+
+## The idle flutter: the plane lifting a wing tip and when, and when the next
+## one is due.
+var _idle_plane := -1
+var _idle_at := AGO
+var _idle_next := FAR
+
+## Windy Day. The clouds are drawn at a continuous count that glides from
+## `_glide_from` to the state's `count()` over `_glide_dur` from `_glide_at`,
+## so a launch, a gust, a Reset and a Try again all move them the same way.
+var _sky_layer: Control
+var _glide_from := 0.0
+var _glide_to := 0.0
+var _glide_at := AGO
+var _glide_dur := GLIDE
+## One cloud, built once a layout and drawn under a transform per cloud; the
+## dotted ghosts of the next position, rebuilt only when the count moves.
+var _cloud_mesh: ArrayMesh
+var _ghost: ArrayMesh
+var _ghost_count := -1
+var _ghost_shown: ArrayMesh
+var _sock_mesh: ArrayMesh
+## A cloud's bump: its index in `clouds` -> when it was bonked or tapped.
+var _cloud_poke: Dictionary = {}
+## The count a stuck sky was last announced at, so the sound plays once.
+var _stuck_told := -1
+
 func puzzle_id() -> String: return "planes"
 func title() -> String: return "Paper Planes"
 
-## The three sentences of the spec's section 3: what a lane is, what a tap
-## does, and that a blocked tap costs nothing.
+## What a lane is and what a tap does, then the band's own closing: that
+## nothing can be lost (Easy, Medium), what a heart is for (Hard), or the
+## wind (Insane).
 func rules() -> String:
-	return tr("PP_RULES")
+	var out := tr("PP_RULES")
+	if _state.windy():
+		out += "\n\n" + tr("PP_RULES_WIND") % max_hearts
+	elif max_hearts > 0:
+		out += "\n\n" + tr("PP_RULES_HEARTS") % max_hearts
+	else:
+		out += "\n\n" + tr("PP_RULES_SAFE")
+	return out
+
+## The lines the tips cycle, by band.
+func _tips() -> Array:
+	if _state.windy():
+		return TIPS_WIND
+	if max_hearts > 0:
+		return TIPS_HEARTS
+	return TIPS
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can ever be sitting on the board: a launch only empties cells, so the
@@ -308,22 +501,77 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	# The clouds and the sock, over the planes and under the hearts. A layer
+	# of its own so the sock's sway and a glide redraw only it, never the
+	# field.
+	_sky_layer = Control.new()
+	_sky_layer.name = "Sky"
+	_sky_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sky_layer.z_index = 1
+	_sky_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_sky_layer.draw.connect(_draw_sky)
+	add_child(_sky_layer)
+	_heart_layer = Control.new()
+	_heart_layer.name = "Hearts"
+	_heart_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_heart_layer.z_index = 1
+	_heart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_heart_layer.draw.connect(_draw_hearts)
+	add_child(_heart_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	_gen += 1
+	_close_card()
 	_state.build(rng, difficulty, bank_step)
+	max_hearts = State.hearts_for(_state.difficulty) if _state.judged else 0
+	_heart_used = false
+	_lost_ever = false
+	_undo_ever = false
+	_flawless = false
 	_hint_lit = -1
 	_anim_until = 0.0
 	_solved_at = -1.0
 	_solve_from = Vector2i.ZERO
 	_forget()
+	_deal()
+	_reset_rewards()
 	_place_sprigs()
 	_layout()
 	_enter()
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The sky as it is dealt, and as Try again deals it back: every heart, the
+## day's light, no crash, the clouds where the clock says.
+func _deal() -> void:
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_split_index = -1
+	_split_at = AGO
+	_back_index = -1
+	_back_at = AGO
+	_droop_at = FAR
+	_crash = {}
+	_busy_until = 0.0
+	_stuck_told = -1
+	_cloud_poke = {}
+	_glide_from = float(_state.count())
+	_glide_to = _glide_from
+	_glide_at = AGO
+	_ghost = null
+	_clear_press()
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	_idle_plane = -1
+	_idle_next = _now() + IDLE_EVERY
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+	if _sky_layer != null:
+		_sky_layer.queue_redraw()
 
 # --- layout ---
 
@@ -331,16 +579,32 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## band is bound by the height** -- 91, 71 and 58 against the 944 the width
 ## would allow -- so the few pixels left over go into the centring and there
 ## is nothing else to spend them on.
+##
+## On Hard and Insane the hearts' strip comes off the top first (HEART_ROW),
+## and the grid is centred in what is left under it.
 func _layout() -> void:
 	_cell = 0.0
 	_origin = Vector2.ZERO
+	var row := _heart_row()
 	if _state.cols > 0 and _state.rows > 0:
 		_cell = maxf(0.0, floorf(minf(
 			(size.x - 2.0 * INSET) / float(_state.cols),
-			(size.y - 2.0 * INSET) / float(_state.rows))))
-		_origin = Vector2(size.x - float(_state.cols) * _cell,
-			size.y - float(_state.rows) * _cell) * 0.5
+			(size.y - row - 2.0 * INSET) / float(_state.rows))))
+		_origin = Vector2((size.x - float(_state.cols) * _cell) * 0.5,
+			row + (size.y - row - float(_state.rows) * _cell) * 0.5)
+	_hearts_y = HEART_TOP + HEART_PILL_PAD.y + HEART_R
+	_cloud_mesh = null
+	_sock_mesh = null
+	_ghost = null
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+	if _sky_layer != null:
+		_sky_layer.queue_redraw()
 	_refresh_all()
+
+## The strip the hearts take over the panel, on a sky that has them.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 ## The card this board wants: every pixel it is given. The grid is taller
 ## than it is wide in a slot that is taller than it is wide, so the height
@@ -389,8 +653,25 @@ func _process(delta: float) -> void:
 	var dirty := _retire(t)
 	if _cell <= 0.0:
 		return
+	_idle_tick(t)
 	if dirty or _animating(t):
 		_refresh()
+	# The droop rebuilds the still mesh (every plane at rest sinks), so it is
+	# asked for here and not through the live field.
+	if _droop_at < FAR and t - _droop_at < DROOP_TIME + 0.05:
+		_refresh_all()
+	# The pill pops in with the field, splits, takes a heart back, and
+	# breathes while the clouds have closed in.
+	if max_hearts > 0 and ((_split_index >= 0 and t - _split_at < SPLIT_TIME + 0.1)
+			or (_back_index >= 0 and t - _back_at < HEART_BACK_TIME + 0.1)
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1
+			or _pill_breathing()):
+		_heart_layer.queue_redraw()
+	# The sky: the sock sways for ever on a windy day (one transform, no
+	# rebuild), and a glide or a bump moves the clouds.
+	if _state.windy() and (not Motion.reduce or t - _glide_at < _glide_dur + 0.1
+			or t - _opened < 1.0):
+		_sky_layer.queue_redraw()
 
 ## Whether anything on this card is still moving, and **every wave is in
 ## here** -- the entrance, the hint's ring (through `_anim_until`), the
@@ -406,6 +687,9 @@ func _animating(t: float) -> bool:
 	if not _fly.is_empty() or not _beat.is_empty():
 		return true
 	if not _shiver.is_empty() or not _nudge.is_empty() or not _refuse.is_empty():
+		return true
+	# The crash, the press (down, or springing back) and the idle flutter.
+	if not _crash.is_empty() or _press_target >= 0 or _idle_plane >= 0 or not _ringed.is_empty():
 		return true
 	# The solve wave, which `_retire` clears the frame it runs out; while it
 	# is set, the dots are still hopping (or waiting for the last flight to
@@ -448,6 +732,22 @@ func _retire(t: float) -> bool:
 	if _solved_at >= 0.0 and t >= _solved_at + _wave_span():
 		_solved_at = -1.0
 		dirty = true
+	if not _crash.is_empty() and t >= float(_crash["end"]):
+		_crash = {}
+		dirty = true
+	if not _ringed.is_empty() and t >= float(_ringed["until"]):
+		_ringed = {}
+		dirty = true
+	if _idle_plane >= 0 and t >= _idle_at + IDLE_TIME:
+		_idle_plane = -1
+		dirty = true
+	# A press that has let go and sprung all the way home.
+	if _press_target != NO_TARGET and _press_up >= 0.0 and t >= _press_up + Motion.RELEASE_TIME:
+		_press_target = NO_TARGET
+		dirty = true
+	for k in _cloud_poke.keys():
+		if t >= float(_cloud_poke[k]) + Motion.BUMP_TIME:
+			_cloud_poke.erase(k)
 	return dirty
 
 ## How long the solve wave takes from the second it begins: the family's own
@@ -471,6 +771,10 @@ func _forget() -> void:
 	_nudge = {}
 	_refuse = {}
 	_puffs = []
+	_crash = {}
+	_ringed = {}
+	_idle_plane = -1
+	_cloud_poke = {}
 
 ## The sparkles a launch leaves where it crossed the edge of the board, each
 ## fired on the frame its own plane reaches that point rather than when the
@@ -481,7 +785,7 @@ func _spend_puffs(t: float) -> void:
 	var i := 0
 	while i < _puffs.size():
 		if t >= float(_puffs[i]["at"]):
-			fx.puff(_puffs[i]["pos"], Pal.SUN_RAY)
+			fx.puff(_puffs[i]["pos"], _puffs[i].get("colour", Pal.SUN_RAY))
 			_puffs.remove_at(i)
 		else:
 			i += 1
@@ -547,13 +851,19 @@ func _moving(t: float) -> Dictionary:
 	for book in [_fly, _beat, _shiver, _nudge]:
 		for i in book:
 			out[i] = true
+	if not _crash.is_empty():
+		out[int(_crash["i"])] = true
+	if _press_target >= 0:
+		out[_press_target] = true
+	if _idle_plane >= 0:
+		out[_idle_plane] = true
 	if not Motion.reduce and t - _opened < Motion.ENTER_DELAY + ENTER_CAP + Motion.POP_IN:
 		for i in _state.planes.size():
 			out[i] = true
 	return out
 
 func _key(moving: Dictionary) -> String:
-	var k := PackedStringArray([str(_hint_lit)])
+	var k := PackedStringArray([str(_hint_lit), "d%d" % int(_droop_level(_now()) * 10.0)])
 	for i in _state.planes.size():
 		k.append("m" if moving.has(i) else ("g" if _state.planes[i]["gone"] else "."))
 	return "".join(k)
@@ -565,10 +875,21 @@ func _build_still(moving: Dictionary) -> ArrayMesh:
 	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
 		PaperPlane.band(b, _cell_pts(_state.planes[_hint_lit]["cells"]), _cell,
 			GLOW_W * _cell, Color(Pal.SUN_RAY, GLOW_ALPHA))
+	var droop := _droop_level(_now())
 	for i in _state.planes.size():
 		if not moving.has(i) and not _state.planes[i]["gone"]:
-			_plane(b, i, 1e9)
+			_plane(b, i, 1e9, droop)
 	return b.mesh()
+
+## How far the planes left have drooped, 0 to 1: they sink over DROOP_TIME
+## as the hearts run out, at once under reduce motion.
+func _droop_level(t: float) -> float:
+	if _droop_at >= FAR:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	var u := clampf((t - _droop_at) / DROOP_TIME, 0.0, 1.0)
+	return u * u * (3.0 - 2.0 * u)
 
 ## The field pressed into the card: a soft drop under it, a tan rim with a lit
 ## inner edge, and a paper a shade creamier than the card's own.
@@ -585,6 +906,29 @@ func _panel(b) -> void:
 	b.fan(Face.Builder.round_rect(inner, isz, ir), Pal.ACORN.lerp(Pal.STONE_GIVEN, 0.55))
 	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 3.0), isz - Vector2(0.0, 3.0), ir),
 		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
+	if _state.windy():
+		# The wind sock's pole, standing on the rim at the upwind corner: a
+		# little wooden stick and its knob. The sock itself sways on the sky
+		# layer (`_draw_sky`).
+		var top := _sock_root()
+		var foot := Vector2(top.x, _origin.y - PANEL_PAD - PANEL_RIM * 0.5)
+		b.stroke(PackedVector2Array([foot + Vector2(2.0, 2.0), top + Vector2(2.0, 2.0)]),
+			_sock_px() * 0.07, Color(Pal.ACORN_DEEP, 0.25))
+		b.stroke(PackedVector2Array([foot, top]), _sock_px() * 0.07, Pal.WOOD_DEEP)
+		b.disc(top, _sock_px() * 0.06, Pal.ACORN_DEEP)
+
+## The wind sock's size: about a cell, but never so tall that its pole runs
+## off the top of the card.
+func _sock_px() -> float:
+	return minf(_cell * 0.95, 82.0)
+
+## The top of the pole: over the panel's upwind top corner, inside its round.
+func _sock_root() -> Vector2:
+	var span := float(_state.cols) * _cell
+	var x := _origin.x - PANEL_PAD + PANEL_RADIUS * 0.6
+	if _state.wind.x < 0:
+		x = _origin.x + span + PANEL_PAD - PANEL_RADIUS * 0.6
+	return Vector2(x, _origin.y - PANEL_PAD - PANEL_RIM - _sock_px() * 0.62)
 
 ## The dots, the leaves, the refusal's band, the contrails and every moving
 ## plane, rebuilt on every frame something moves.
@@ -597,14 +941,18 @@ func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 		if lv > 0.0:
 			PaperPlane.band(b, _cell_pts(_refuse["cells"]), _cell, LANE_W * _cell,
 				Color(Pal.BAD_TILE.lerp(Pal.BAD, 0.25), lv))
+	if not _ringed.is_empty():
+		b.stroke(Face.Builder.arc_points(_centre(_ringed["cell"]), _cell * 0.46, 0.0, TAU),
+			maxf(3.0, _cell * 0.07), Color(Pal.BAD, 0.85), true)
 	for i in _fly:
 		_contrail(b, i, t)
+	var droop := _droop_level(t)
 	for i in moving:
 		# A plane in the air is drawn from its flight and not from the state:
 		# the state let it go on the tap, and a returning one is back in the
 		# state before it has flown home.
 		if _fly.has(i) or not _state.planes[i]["gone"]:
-			_plane(b, i, t)
+			_plane(b, i, t, droop)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A faint dot on every cell no plane stands on, and a **fading** one on
@@ -776,12 +1124,22 @@ func _contrail(b, i: int, t: float) -> void:
 ## whole of it. While it is in the air the body is the slice of its track
 ## between the tail and the head, so the tail follows the head through every
 ## bend the plane ever made, and the stitch travels with it.
-func _plane(b, i: int, t: float) -> void:
+##
+## The polish adds four more: the crash (a slice of the same track, out to
+## the bonk and home again, crumpled and rocking), the press dip (the whole
+## plane sinks about its middle and shades), the idle flutter (one wing tip
+## lifts) and the droop (the planes left sink and dim as the hearts run out).
+func _plane(b, i: int, t: float, droop := 0.0) -> void:
 	var cells: Array = _state.planes[i]["cells"]
 	var n := cells.size()
 	var dir := Vector2(_state.planes[i]["dir"])
-	var flying := _fly.has(i)
-	var s := _flown(i, t) if flying else 0.0
+	var crashing := not _crash.is_empty() and int(_crash["i"]) == i
+	var flying := _fly.has(i) or crashing
+	var s := 0.0
+	if _fly.has(i):
+		s = _flown(i, t)
+	elif crashing:
+		s = _crash_s(t)
 	var head: Vector2 = _track(i, s + float(n - 1)) if flying else _centre(cells[n - 1])
 	var since := t - _opened - Motion.ENTER_DELAY \
 		- Motion.stagger(_king(cells[n - 1], Vector2i.ZERO),
@@ -795,12 +1153,47 @@ func _plane(b, i: int, t: float) -> void:
 	# Both take the vocabulary's own pixels, so neither costs a constant.
 	var off := Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
 		+ dir * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
-	var xf := Transform2D(0.0, grow, 0.0, head - head * grow + off)
+	var angle := dir.angle()
+	var wings := Vector2.ONE
+	var dim := 0.0
+	var lift := _lift(i, t)
+	if crashing:
+		# Home is a flutter: the plane rocks its wings and drifts across
+		# its own line, both dying out as it lands.
+		var rock := _crash_rock(t)
+		off += dir.orthogonal() * rock * HOME_SWAY * _cell
+		angle += rock * HOME_ROCK
+		var c := _crumple(t)
+		wings = Vector2(1.0 - CRUMPLE * c, 1.0 + 0.1 * c)
+		angle += 0.14 * c
+		lift = _crash_lift(t)
+	# The press dip: the plane sinks about the middle of its body under the
+	# finger and shades -- a sink of 0.94 alone is invisible on a 58 px
+	# cell, so the paper darkens with it.
+	var press := 1.0
+	if i == _press_target:
+		press = Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0)
+		dim = maxf(dim, (1.0 - press) / (1.0 - Motion.PRESS_SCALE) * 0.55)
+	# The idle flutter: one wing tip lifts a hair and settles.
+	if i == _idle_plane:
+		var u := clampf((t - _idle_at) / IDLE_TIME, 0.0, 1.0)
+		var w := sin(u * PI) * sin(u * PI * 3.0)
+		angle += w * IDLE_LIFT * 0.6
+		wings.y *= 1.0 + absf(w) * IDLE_LIFT
+		lift = maxf(lift, absf(w) * 0.35)
+	if droop > 0.0:
+		dim = maxf(dim, droop * 0.5)
+		wings *= Vector2(1.0 - 0.06 * droop, 1.0 - 0.16 * droop)
+		off += Vector2(0.0, 0.05 * _cell * droop)
+	var sc := grow * press
+	var mid: Vector2 = _centre(cells[(n - 1) / 2]) if not flying else head
+	var pivot := mid if press < 1.0 else head
+	var xf := Transform2D(0.0, sc, 0.0, pivot - pivot * sc + off)
 	var pts: PackedVector2Array = xf * (_body(i, s) if flying else _cell_pts(cells))
-	PaperPlane.trail(b, pts, _cell * grow.x, i, seen, s * _cell)
+	PaperPlane.trail(b, pts, _cell * sc.x, i, seen, s * _cell, dim)
 	var beat := Motion.bump_scale(t - float(_beat.get(i, -1e9)))
-	PaperPlane.dart(b, xf * head, dir.angle(), _cell * grow.x, i, seen,
-		Vector2(1.0 + (beat - 1.0) * 0.3, beat), _lift(i, t))
+	PaperPlane.dart(b, xf * head, angle, _cell * sc.x, i, seen,
+		Vector2(1.0 + (beat - 1.0) * 0.3, beat) * wings, lift, dim)
 
 ## How far a dart has risen off the paper: up over LIFT_TIME as it launches,
 ## and down again over the same as a plane coming home lands.
@@ -907,6 +1300,51 @@ static func _flash_now(elapsed: float) -> float:
 	return Motion.flash_level(elapsed, BLOCK_FLASH * Motion.FLASH_IN / span,
 		BLOCK_FLASH * Motion.FLASH_OUT / span)
 
+# --- the crash's curves, all read off `_crash` ---
+
+## Where the crashing plane has got to along its own track, in cells: out to
+## the bonk on the launch's own accelerating ease, knocked back BONK_BACK as
+## the nose hits, then home on a sine.
+func _crash_s(t: float) -> float:
+	var adv := float(_crash["adv"])
+	var at := float(_crash["at"])
+	var bonk := float(_crash["bonk"])
+	if t < bonk:
+		return adv * _ease((t - at) / maxf(bonk - at, 0.001))
+	var e := t - bonk
+	if e < BONK_HOLD:
+		return adv - BONK_BACK * sin(clampf(e / BONK_HOLD, 0.0, 1.0) * PI * 0.5)
+	var u := clampf((e - BONK_HOLD) / HOME_TIME, 0.0, 1.0)
+	return (adv - BONK_BACK) * (0.5 + 0.5 * cos(u * PI))
+
+## How crumpled the dart is, 0 to 1: it folds in the instant the nose hits,
+## stays folded through the bonk, and smooths out on the way home.
+func _crumple(t: float) -> float:
+	var e := t - float(_crash["bonk"])
+	if e <= 0.0:
+		return 0.0
+	if e < 0.06:
+		return e / 0.06
+	if e < BONK_HOLD:
+		return 1.0
+	var u := clampf((e - BONK_HOLD) / HOME_TIME, 0.0, 1.0)
+	return 1.0 - u * u * (3.0 - 2.0 * u)
+
+## The flutter home's rock, -1 to 1: three swings dying out as it lands.
+func _crash_rock(t: float) -> float:
+	var e := t - float(_crash["bonk"]) - BONK_HOLD
+	if e <= 0.0:
+		return 0.0
+	var u := clampf(e / HOME_TIME, 0.0, 1.0)
+	return sin(u * PI * 3.0) * (1.0 - u)
+
+## The dart lifts off the paper as it rushes out and settles as it lands,
+## the launch's own lift at both ends.
+func _crash_lift(t: float) -> float:
+	var up := clampf((t - float(_crash["at"])) / LIFT_TIME, 0.0, 1.0)
+	var down := clampf((float(_crash["end"]) - t) / LIFT_TIME, 0.0, 1.0)
+	return Motion.back_out(minf(up, down))
+
 # --- the moments ---
 
 ## The chrome is the host's. The field's own entrance is one wide pop about
@@ -921,26 +1359,104 @@ func _enter() -> void:
 # --- input ---
 
 ## A tap, and nothing else: there is no drag on this board and no cell to
-## focus. The cell under the finger names a plane, and the plane answers.
+## focus. The cell under the finger names a plane (or, on a stuck Windy Day
+## sky, a cloud), and it answers when the finger lifts.
+##
+## **One finger launches a plane** (Fairy Lights' review, fde0e7a), and it
+## matters more here than anywhere, because on Hard and Insane a stray tap is
+## a crash and a heart. The press keeps its touch index (-1 for the mouse);
+## another finger's press, slide and release are ignored outright, so a thumb
+## resting on the sky neither launches a second plane nor steals the dip. The
+## plane goes only when the finger that went down on it lifts from it: a
+## finger that slid off, a release with no press, a release on another plane
+## and a touch the system cancelled launch nothing (the dip springs back). A
+## press while a crash plays out is ignored. A new press from the same finger
+## replaces a press whose release never came.
 func _gui_input(event: InputEvent) -> void:
-	if _done:
+	if _done or out_of_hearts:
+		return
+	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var finger: int = event.index if (event is InputEventScreenTouch or event is InputEventScreenDrag) else -1
+	if event is InputEventScreenDrag or event is InputEventMouseMotion:
+		if _held() and finger == _press_finger and _target_at(event.position) != _press_target:
+			_release_press()
 		return
 	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
 		return
-	if not event.is_pressed():
+	var target := _target_at(event.position)
+	if event.pressed:
+		if _held() and finger != _press_finger:
+			accept_event()
+			return
+		if target != NO_TARGET and not busy():
+			accept_event()
+			_press_finger = finger
+			_press(target)
 		return
-	var cell := _cell_at(event.position)
-	if cell.x < 0:
+	if not _held() or finger != _press_finger:
 		return
-	var i := _state.plane_at(cell)
-	if i < 0:
-		return
-	_tap(i)
+	var pressed_on := _press_target
+	_release_press()
 	accept_event()
+	if event.is_canceled() or target != pressed_on or busy():
+		return
+	if pressed_on == GUST_TARGET:
+		_gust()
+	else:
+		_tap(pressed_on)
 
-## The whole game. A free plane goes and a blocked one is refused, and the
-## refusal costs nothing: no toast, no counter, no analytics event, no mark
-## left on the board.
+## What a finger at `local` would press. **A cloud only answers on a stuck
+## sky**: then a tap on any cloud's cell blows the wind on, whatever lies
+## under it. Otherwise a cloud is weather and the tap goes to the plane under
+## it -- a cloud may sit on part of a plane's body, and a plane that cannot
+## be tapped through its cloud would be a plane that cannot be tapped.
+func _target_at(local: Vector2) -> int:
+	var cell := _cell_at(local)
+	if cell.x < 0:
+		return NO_TARGET
+	if _state.windy() and _state.stuck() and _state.cloud_at(cell) and hearts > 0:
+		return GUST_TARGET
+	var i := _state.plane_at(cell)
+	return i if i >= 0 else NO_TARGET
+
+## Whether a finger is down on something now.
+func _held() -> bool:
+	return _press_target != NO_TARGET and _press_up < 0.0
+
+## The finger lands on `target`: a plane starts to sink, a cloud swells.
+func _press(target: int) -> void:
+	_press_target = target
+	_press_down = _now()
+	_press_up = -1.0
+	_busy_for(Motion.PRESS_TIME + 0.05)
+	if target == GUST_TARGET:
+		_sky_layer.queue_redraw()
+	_refresh()
+
+## The finger lifts or slides off: the plane springs home from wherever the
+## press had got to (the launch, if one follows, takes it from there).
+func _release_press() -> void:
+	if not _held():
+		return
+	_press_up = _now()
+	_busy_for(Motion.RELEASE_TIME + 0.05)
+	_refresh()
+
+## No press at all: a new deal, or the hearts running out.
+func _clear_press() -> void:
+	_press_target = NO_TARGET
+	_press_down = AGO
+	_press_up = -1.0
+	_press_finger = -1
+
+## Whether a crash is still playing out: input, Undo, Hint and Reset wait,
+## and the host holds its hint video.
+func busy() -> bool:
+	return _now() < _busy_until
+
+## The whole game. A free plane goes. A blocked one is refused for free on
+## Easy and Medium, and on Hard and Insane it crashes and costs a heart.
 ##
 ## **The state goes first and the picture follows.** The plane is out of the
 ## state on the frame of the tap, which is what makes the freed planes right
@@ -948,20 +1464,23 @@ func _gui_input(event: InputEvent) -> void:
 ## snapshot taken a line earlier -- and what lets the departing plane be
 ## drawn from its flight rather than from a board it has already left.
 ##
-## **There is no busy gate**: a tap is never refused because something else
-## is still moving, several planes may be in the air at once, and a player
-## who taps quickly is playing well rather than fighting the board. Boards
-## here that gate on animation do it to protect a *shared* piece; nothing on
-## this board is shared. It is also what lets `tests/_win.gd` clear a whole
-## board inside a single frame.
+## **Launches never wait for one another**: several planes may be in the air
+## at once, and a player who taps quickly is playing well rather than
+## fighting the board. It is also what lets `tests/_win.gd` clear a whole
+## board inside a single frame. **A crash does hold the board** (`busy()`):
+## it is a heart going, and the next tap should be read, not queued.
 func _tap(i: int) -> void:
-	if _state.planes[i]["gone"]:
+	if _state.planes[i]["gone"] or busy() or out_of_hearts or is_done():
 		return
 	var t := _now()
 	# A plane's index, State.CLOUD on a Windy Day sky, or -1 when clear.
 	var blocked := _state.blocker(i)
 	if blocked != -1:
-		_refuse_tap(i, blocked, t)
+		if _state.judged:
+			_crash_tap(i, blocked, t)
+		else:
+			_refuse_tap(i, blocked, t)
+			_break_streak()
 		_refresh()
 		return
 	var before := _free_set()
@@ -971,6 +1490,8 @@ func _tap(i: int) -> void:
 		_hint_lit = -1
 	_refuse = {}
 	_beat.erase(i)
+	if _idle_plane == i:
+		_idle_plane = -1
 	var cells: Array = _state.planes[i]["cells"]
 	# Where the wake runs out of, and -- if this was the last plane -- where
 	# the solve wave runs out of too. Written before `note_move()`, which is
@@ -979,11 +1500,155 @@ func _tap(i: int) -> void:
 	_fly_out(i, t)
 	_wake(before, _solve_from, t)
 	fx.cue("place")
+	if _state.windy():
+		# The clock ticked: every cloud glides a cell downwind.
+		_glide(t)
+		fx.cue("drift", 1.0, DRIFT_DB)
 	_speak()
 	_refresh()
+	_on_launched(i)
 	# note_move() counts the move and ends the puzzle if that was the last
 	# plane; the host raises the win screen after win_delay().
 	note_move()
+	if _state.windy() and not is_done():
+		# The clouds may have closed in. Said once they have settled, so the
+		# sound lands on the picture.
+		_after(0.0 if Motion.reduce else GLIDE, _check_stuck)
+
+## A tap on a blocked plane on Hard or Insane: **the crash**. Nothing in the
+## state changes (`launch()` refused); it is all picture, on one clock. The
+## plane rushes up its lane to the blocker (`blocker_cell`), bonks its nose
+## (`crash`), crumples, and flutters home (`flutter`); the lane flashes up to
+## the blocker, which shivers (a plane) or puffs and swells (a cloud), and a
+## heart splits on the pill (`heart_lost`). The board holds every tap, Undo,
+## Hint and Reset until it lands. Under reduce motion there is no flight: the
+## heart splits and the blocker is ringed.
+func _crash_tap(i: int, blocked: int, t: float) -> void:
+	var cloud := blocked == State.CLOUD
+	var stop := _state.blocker_cell(i)
+	var lane: Array[Vector2i] = []
+	for c in _state.lane(i):
+		lane.append(c)
+		if c == stop:
+			break
+	_lost_ever = true
+	_break_streak()
+	var had := hearts > 0
+	hearts = maxi(0, hearts - 1)
+	_split_index = hearts if had else -1
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+	_say(tr("PP_CRASH_CLOUD" if cloud else "PP_CRASH"), Face.Expr.WORRIED)
+	moved.emit()
+	if Motion.reduce:
+		_split_at = t
+		_busy_until = t + Motion.REDUCED_TIME
+		fx.cue("crash")
+		fx.cue("heart_lost")
+		_ringed = {"cell": stop, "until": t + 0.9}
+		_heart_layer.queue_redraw()
+		if out_of_hearts:
+			_after(0.25, _run_out)
+		return
+	var adv := maxf(CRASH_MIN, float(lane.size()) - CRASH_INTO)
+	var out_t := maxf(CRASH_OUT_MIN, adv / CRASH_SPEED * 1.6)
+	var bonk := t + out_t
+	var end := bonk + BONK_HOLD + HOME_TIME
+	_crash = {"i": i, "at": t, "bonk": bonk, "adv": adv, "end": end, "cloud": cloud}
+	_busy_until = end
+	_busy_for(end - t + 0.05)
+	_refuse = {"cells": lane, "at": bonk - 0.04}
+	_split_at = bonk + SPLIT_LAG
+	var dir := Vector2(_state.planes[i]["dir"])
+	var nose := _centre(stop) - dir * 0.5 * _cell
+	if cloud:
+		var k := _cloud_index(stop)
+		if k >= 0:
+			_cloud_poke[k] = bonk
+		_puffs.append({"at": bonk, "pos": _centre(stop), "i": -1, "colour": Color.WHITE})
+	else:
+		_shiver[blocked] = bonk
+		_puffs.append({"at": bonk, "pos": nose, "i": -1, "colour": PaperPlane.paper(i)})
+	fx.cue("place", 1.0, -4.0)
+	var gen := _gen
+	_after(out_t, func() -> void:
+		fx.cue("crash"))
+	_after(out_t + SPLIT_LAG, func() -> void:
+		fx.cue("heart_lost")
+		_heart_layer.queue_redraw())
+	_after(out_t + BONK_HOLD, func() -> void:
+		fx.cue("flutter"))
+	_after(end - t, func() -> void:
+		if gen != _gen:
+			return
+		moved.emit()
+		if out_of_hearts:
+			_run_out())
+
+## Which cloud stands on `cell` now, as an index into the state's `clouds`,
+## or -1.
+func _cloud_index(cell: Vector2i) -> int:
+	var now_at: Array[Vector2i] = _state.cloud_cells()
+	for k in now_at.size():
+		if now_at[k] == cell:
+			return k
+	return -1
+
+## A tap on a cloud while the sky is stuck: **a gust**. A heart goes and the
+## wind blows on a tick without a launch (`State.gust()`), so every cloud
+## glides a cell. The last heart can buy a gust: the sky is only lost when it
+## is stuck again with none left, or a plane crashes with none left (a
+## decision, recorded in the spec's section 8 -- otherwise One more heart on a
+## stuck sky would be spent before it could be used).
+func _gust() -> void:
+	if not _state.windy() or not _state.stuck() or hearts <= 0 or busy() or is_done():
+		return
+	if not _state.gust():
+		return
+	var t := _now()
+	hearts -= 1
+	_split_index = hearts
+	_split_at = t
+	_lost_ever = true
+	_break_streak()
+	for k in _state.clouds.size():
+		_cloud_poke[k] = t
+	_glide(t)
+	fx.cue("gust")
+	_after(SPLIT_LAG, func() -> void: fx.cue("heart_lost"))
+	_say(tr("PP_GUST"), Face.Expr.HAPPY)
+	_heart_layer.queue_redraw()
+	_stuck_told = -1
+	moved.emit()
+	_after(0.0 if Motion.reduce else GLIDE, _check_stuck)
+
+## The clouds have settled: if they have closed in, say so -- `stuck` once a
+## count, the tip, and the pill breathes (`_pill_breathing`) -- or, with no
+## heart left to blow them on, the sky is lost.
+func _check_stuck() -> void:
+	if is_done() or out_of_hearts or not _state.windy() or not _state.stuck():
+		return
+	if _stuck_told == _state.count():
+		return
+	_stuck_told = _state.count()
+	fx.cue("stuck")
+	_break_streak()
+	if hearts <= 0:
+		out_of_hearts = true
+		_running = false
+		_say(tr("PP_TIP_STUCK_OUT"), Face.Expr.WORRIED)
+		moved.emit()
+		_after(0.35, _run_out)
+		return
+	_say(tr("PP_TIP_STUCK"), Face.Expr.PUZZLED)
+	_heart_layer.queue_redraw()
+
+## Whether the pill is breathing: the clouds have closed in and a heart can
+## blow them on.
+func _pill_breathing() -> bool:
+	return _state.windy() and hearts > 0 and not out_of_hearts and not is_done() \
+		and _state.stuck()
 
 ## Every plane that can go right now, as a set to diff against.
 func _free_set() -> Dictionary:
@@ -1115,7 +1780,9 @@ func _refuse_tap(i: int, blocked: int, t: float) -> void:
 ## so it is a lesson running out and not a countdown running down -- see
 ## `SAID`. The win's own line comes from `_on_solved`, not from here.
 func _speak() -> void:
-	if is_done():
+	# Windy Day's tips say what matters there; "any order you like" is the
+	# one thing that is not true of it.
+	if is_done() or _state.windy():
 		return
 	var gone: int = _state.planes.size() - _state.left()
 	if gone < 1 or gone > SAID.size():
@@ -1132,8 +1799,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _state.left() < _state.planes.size():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: there
 ## is no rule a tap can break on this board.
@@ -1148,8 +1816,13 @@ func is_solved() -> bool:
 ## Something has gone, so something can come back. The state keeps the
 ## launch history itself, and a plane is on the board or it is not, so this
 ## needs no book of its own.
+##
+## Never on Windy Day (`undo_allowed`): a plane in the wind never comes back,
+## and Undo would turn the timetable into trial and error. Never while a crash
+## plays out or once the hearts are gone either.
 func can_undo() -> bool:
-	return _state.undo_allowed and _state.left() < _state.planes.size()
+	return _state.undo_allowed and not is_done() and not out_of_hearts and not busy() \
+		and _state.left() < _state.planes.size()
 
 ## Calls the last plane back, flying it home along the track it left on.
 ## Counts no move.
@@ -1159,6 +1832,8 @@ func undo() -> bool:
 	var i := _state.undo()
 	if i < 0:
 		return false
+	_undo_ever = true
+	_break_streak()
 	_hint_lit = -1
 	_refuse = {}
 	# Nothing to unwind in the wake: who was freed by what was never written
@@ -1173,7 +1848,7 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
 ## Rings a plane that can go and leaves a wash under it until it does. It
 ## never launches it: **naming a legal move is the whole of the help this
@@ -1181,7 +1856,7 @@ func hints_left() -> int:
 ## pick is the state's -- the generator's own order while the player is still
 ## on it, any free plane once they are not.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0:
+	if is_done() or out_of_hearts or busy() or hints_left() <= 0:
 		return false
 	var i: int = _state.hint_plane()
 	if i < 0:
@@ -1202,10 +1877,37 @@ func hint() -> bool:
 	check_solved()
 	return true
 
-## Every plane back on the field. What a hint gave stays given: the hints
-## spent are not refunded, only unpinned.
+## Whether Reset can do anything now: the top bar greys it while a crash
+## plays out and once the hearts are gone (Try again is the way back then),
+## so the host never logs a board_reset that did nothing.
+func can_reset() -> bool:
+	return not (is_done() or out_of_hearts or busy())
+
+## Every plane back on the field, and on Windy Day the clock back to the
+## deal's (the clouds blow back to where the day began). What a hint gave
+## stays given: the hints spent are not refunded, only unpinned. The hearts
+## stay as they are: only Try again gives those back.
 func reset_board() -> void:
+	if not can_reset():
+		return
+	_release_press()
+	_break_streak()
+	_fly_all_home()
+	_hint_lit = -1
+	_refuse = {}
+	_solved_at = -1.0
+	moves = 0
+	_running = true
+	_say(tr("PP_RESET"), Face.Expr.HAPPY)
+	fx.cue("reset")
+	_refresh()
+	moved.emit()
+
+## Every launched plane flies home in the family's reset wave and the state
+## goes back to the deal, clock and all; the clouds glide back with it.
+func _fly_all_home() -> void:
 	var t := _now()
+	var k0 := _cloud_k(t)
 	var far := Vector2i(_state.cols - 1, _state.rows - 1)
 	# Pulled back one at a time rather than with `reset()`, because each one
 	# needs a flight home of its own and the state's `undo()` is the only
@@ -1221,14 +1923,9 @@ func reset_board() -> void:
 		_fly_back(i, t, Motion.stagger(
 			_king(cells[cells.size() - 1], far), Motion.RESET_STAGGER))
 	_state.reset()
-	_hint_lit = -1
-	_refuse = {}
-	_solved_at = -1.0
-	moves = 0
-	_running = true
-	_say(tr("PP_RESET"), Face.Expr.HAPPY)
-	fx.cue("reset")
-	_refresh()
+	_stuck_told = -1
+	if _state.windy():
+		_glide(t, k0)
 
 ## A completed daily is rebuilt from its seed, so it reopens with a full sky.
 ## Launch every plane in the state's own solve order and settle the picture
@@ -1236,21 +1933,38 @@ func reset_board() -> void:
 ## to run -- the empty lattice a finished board shows once its wave has gone.
 ## Never `check_solved()`: the host owns the win for an already-completed
 ## daily and `solved` must not fire a second time.
+##
+## The hearts it kept come back from the record (the pill shows them), and
+## whether it was flawless (the rewards pass's seal reads `_flawless`).
 func restore_completed_board() -> void:
 	var t := _now()
+	_gen += 1
+	_close_card()
 	for i in _state.solve_order():
 		_state.launch(i)
 	# Clears the launch history (every cell is already empty), so nothing is
 	# left for an undo to call back.
 	_state.clear_occupancy()
 	_forget()
+	_deal()
+	_reset_rewards()
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	_flawless = bool(completed_record.get("flawless", false))
+	_idle_next = FAR
 	_hint_lit = -1
 	_solved_at = -1.0
 	_anim_until = 0.0
 	_opened = t - 10.0
 	_tip_timer.stop()
 	_say(tr("PP_WIN"), Face.Expr.JOY)
+	_heart_layer.queue_redraw()
+	_sky_layer.queue_redraw()
 	_refresh()
+
+## What a reopened daily needs to look as it was left: the hearts kept and
+## whether it was flawless. Plain values only (it goes through a ConfigFile).
+func completion_record() -> Dictionary:
+	return {"hearts": hearts, "flawless": _flawless}
 
 # --- the win ---
 
@@ -1285,9 +1999,16 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_hint_lit = -1
 	_refuse = {}
+	_idle_plane = -1
+	_idle_next = FAR
 	_say(tr("PP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	_heart_layer.queue_redraw()
 	_refresh()
+	# Flawless: no hint, and no crash or gust on a judged sky, or on Easy and
+	# Medium never an undo (spec section 4; the seal is the rewards pass's).
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_party()
 	if Motion.reduce:
 		return
 	_solved_at = t + _flight_left(t)
@@ -1302,6 +2023,412 @@ func _flight_left(t: float) -> float:
 		var f: Dictionary = _fly[i]
 		left = maxf(left, float(f["at"]) + float(f["dur"]) - t)
 	return maxf(0.0, left)
+
+# --- the idle flutter (polish section 5) ---
+
+## Every few seconds, on a quiet board, one resting plane lifts a wing tip a
+## hair. Only that plane leaves the still mesh, for IDLE_TIME. Never under
+## reduce motion, never while anything else moves, never once done or dark.
+func _idle_tick(t: float) -> void:
+	if _idle_plane >= 0 or t < _idle_next:
+		return
+	var h: int = absi(hash(Vector2i(int(t * 10.0), _state.planes.size())))
+	_idle_next = t + IDLE_EVERY * (0.67 + float(h % 67) / 100.0)
+	if Motion.reduce or is_done() or out_of_hearts or busy() or _animating(t):
+		return
+	var resting: Array[int] = []
+	for i in _state.planes.size():
+		if not _state.planes[i]["gone"] and not _fly.has(i):
+			resting.append(i)
+	if resting.is_empty():
+		return
+	_idle_plane = resting[(h >> 4) % resting.size()]
+	_idle_at = t
+	_refresh()
+
+# --- Windy Day's sky (polish section 3) ---
+
+## The clock ticked (a launch, a gust, a Reset or a Try again): the clouds
+## glide from wherever they are drawn now to the state's count. One cell takes
+## GLIDE; a Reset's long way back takes longer, up to GLIDE_BACK_MAX. Under
+## reduce motion they jump.
+func _glide(t: float, from := NAN) -> void:
+	if is_nan(from):
+		from = _cloud_k(t)
+	var to := float(_state.count())
+	_glide_from = to if Motion.reduce else from
+	_glide_to = to
+	_glide_at = t
+	_glide_dur = clampf(GLIDE + 0.04 * (absf(to - from) - 1.0), GLIDE, GLIDE_BACK_MAX)
+	_sky_layer.queue_redraw()
+
+## The count the clouds are drawn at: continuous, gliding on a sine in-out.
+## It reads the glide's own end and not the state's count, so a glide asked
+## for after the state has already ticked still starts where the clouds were.
+func _cloud_k(t: float) -> float:
+	var u := clampf((t - _glide_at) / maxf(_glide_dur, 0.001), 0.0, 1.0)
+	if Motion.reduce or u >= 1.0:
+		return _glide_to
+	return lerpf(_glide_from, _glide_to, 0.5 - 0.5 * cos(u * PI))
+
+## The sky layer: the ghosts of where the clouds will be after the next
+## launch (one mesh, rebuilt when the count moves), every cloud (one cached
+## mesh under a transform each; a cloud sliding off one edge is drawn twice,
+## fading out there and in at the other), and the wind sock swaying.
+func _draw_sky() -> void:
+	if not _state.windy() or _cell <= 0.0 or _state.planes.is_empty():
+		return
+	var t := _now()
+	var seen := Motion.appear_level(t - _opened - Motion.ENTER_DELAY - 0.15, 0.3)
+	if seen <= 0.0:
+		return
+	var settled := Motion.reduce or t >= _glide_at + _glide_dur
+	if settled and not is_done() and not out_of_hearts:
+		if _ghost == null or _ghost_count != _state.count():
+			_ghost = _build_ghost()
+			_ghost_count = _state.count()
+		if _ghost != null:
+			_sky_layer.draw_mesh(_ghost, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, seen))
+		_ghost_shown = _ghost
+	if _cloud_mesh == null:
+		_cloud_mesh = _build_cloud()
+	var k := _cloud_k(t)
+	var cols := float(_state.cols)
+	var pressed := Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0) \
+		if _press_target == GUST_TARGET else 1.0
+	for j in _state.clouds.size():
+		var c: Vector2i = _state.clouds[j]
+		var x := fposmod(float(c.x) + float(_state.wind.x) * k, cols)
+		var bump := 1.0 + (Motion.bump_scale(t - float(_cloud_poke.get(j, AGO)), CLOUD_POKE) - 1.0)
+		# A slow bob of its own, a pixel or two, so the sky is never stone.
+		var bob := 0.0 if Motion.reduce else sin(t * 1.3 + float(j) * 1.7) * 0.025 * _cell
+		for twin in [0.0, -cols, cols]:
+			var cx: float = x + twin
+			var out := maxf(0.0, maxf(-cx, cx - (cols - 1.0)))
+			if out >= 1.0:
+				continue
+			var at := _origin + (Vector2(cx, float(c.y)) + Vector2.ONE * 0.5) * _cell + Vector2(0.0, bob)
+			var sc := bump * pressed
+			_sky_layer.draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(sc, sc), 0.0, at),
+				Color(1.0, 1.0, 1.0, CLOUD_ALPHA * seen * (1.0 - out)))
+	if _sock_mesh == null:
+		_sock_mesh = _build_sock()
+	var sway := 0.0 if Motion.reduce else sin(t * TAU / SOCK_PERIOD) * SOCK_SWAY \
+		+ sin(t * TAU / SOCK_PERIOD * 2.7) * SOCK_SWAY * 0.3
+	var flip := Vector2(1.0 if _state.wind.x >= 0 else -1.0, 1.0)
+	_sky_layer.draw_mesh(_sock_mesh, null,
+		Transform2D(sway * flip.x, flip, 0.0, _sock_root()), Color(1.0, 1.0, 1.0, seen))
+
+## One cloud, centred on the origin, a little wider than its cell so two
+## neighbours merge into one big cloud: a few overlapping puffs taken as one
+## outline (the union, traced round from the middle), so the soft alpha it is
+## drawn at never shows a seam between them. A cool underside, the white
+## body, and a brighter cap.
+func _build_cloud() -> ArrayMesh:
+	var c := _cell
+	var puffs := [[Vector2(-0.36, 0.08), 0.26], [Vector2(-0.12, -0.12), 0.33],
+		[Vector2(0.2, -0.07), 0.3], [Vector2(0.42, 0.1), 0.22], [Vector2(0.02, 0.13), 0.3]]
+	var b := Face.Builder.new()
+	b.polygon(_union(puffs, c, Vector2(0.0, 0.08 * c), 1.0), Color(Pal.CLOUD_DEEP, 0.3))
+	b.polygon(_union(puffs, c, Vector2.ZERO, 1.0), Pal.CLOUD_TILE.lerp(Pal.CLOUD, 0.3))
+	b.polygon(_union(puffs, c, Vector2(0.0, -0.05 * c), 0.9), Color("fbfcfe"))
+	var cap := [[Vector2(-0.14, -0.15), 0.2], [Vector2(0.14, -0.1), 0.17]]
+	b.polygon(_union(cap, c, Vector2(-0.02 * c, -0.07 * c), 1.0), Color(1.0, 1.0, 1.0))
+	return b.mesh()
+
+## The outline of a union of discs ({centre, radius} in cells), traced round
+## from the origin: for every heading the farthest point any disc reaches.
+## Fine for a cloud, whose puffs all reach back over its middle.
+static func _union(puffs: Array, cell: float, shift: Vector2, grow: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	const N := 56
+	for a in N:
+		var d := Vector2.from_angle(TAU * float(a) / float(N))
+		var far := 0.0
+		for p in puffs:
+			var ctr: Vector2 = p[0] * grow
+			var r: float = float(p[1]) * grow
+			var along := d.dot(ctr)
+			var disc := r * r - ctr.length_squared() + along * along
+			if disc >= 0.0:
+				far = maxf(far, along + sqrt(disc))
+		pts.append(d * far * cell + shift)
+	return pts
+
+## The dotted ghosts of where every cloud will stand after the next launch:
+## a ring of dots round each such cell, faint, in the clouds' cool ink.
+func _build_ghost() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var next: Array[Vector2i] = _state.cloud_cells(_state.count() + 1)
+	var r := 0.4 * _cell
+	var dot := maxf(1.6, 0.035 * _cell)
+	for cell in next:
+		var at := _centre(cell)
+		const N := 14
+		for a in N:
+			b.disc(at + Vector2.from_angle(TAU * float(a) / float(N)) * Vector2(r * 1.15, r * 0.9),
+				dot, Color(Pal.CLOUD_DEEP, GHOST_ALPHA))
+	return b.mesh() if not b.verts.is_empty() else null
+
+## The wind sock, streaming along +x from its pole top at the origin: a
+## tapered sleeve in coral and cream bands, sagging a little toward its tip,
+## with a darker hoop at the mouth. The board flips it for a west wind.
+func _build_sock() -> ArrayMesh:
+	var L := _sock_px()
+	var h0 := L * 0.2
+	var h1 := L * 0.08
+	var b := Face.Builder.new()
+	const BANDS := 4
+	for k in BANDS:
+		var u0 := float(k) / BANDS
+		var u1 := float(k + 1) / BANDS
+		var x0 := L * (0.06 + 0.94 * u0)
+		var x1 := L * (0.06 + 0.94 * u1)
+		var y0 := L * 0.12 * u0 * u0
+		var y1 := L * 0.12 * u1 * u1
+		var w0 := lerpf(h0, h1, u0)
+		var w1 := lerpf(h0, h1, u1)
+		var colour := Pal.BERRY.lerp(Pal.CHEEK, 0.25) if k % 2 == 0 else Pal.SURFACE
+		b.polygon(PackedVector2Array([Vector2(x0, y0 - w0), Vector2(x1, y1 - w1),
+			Vector2(x1, y1 + w1), Vector2(x0, y0 + w0)]), colour)
+		# The shaded underside of each band.
+		b.polygon(PackedVector2Array([Vector2(x0, y0 + w0 * 0.35), Vector2(x1, y1 + w1 * 0.35),
+			Vector2(x1, y1 + w1), Vector2(x0, y0 + w0)]), Color(Pal.TEXT, 0.08))
+	b.ellipse(Vector2(L * 0.06, 0.0), L * 0.035, h0 * 1.05, Pal.BERRY.lerp(Pal.TEXT, 0.25))
+	b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(L * 0.06, 0.0)]), L * 0.03, Pal.WOOD_DEEP)
+	return b.mesh()
+
+# --- the hearts (polish section 1) ---
+
+## The hearts over the panel as one mesh on a paper pill (Quilt's and Fairy
+## Lights'): pink with a small face and a leaf, a faint ghost where one was,
+## the lost one's halves falling apart, one coming back popping in, and the
+## whole pill breathing while the clouds have closed in.
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := _hearts_y
+	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	if _pill_breathing() and not Motion.reduce:
+		enter *= 1.0 + PILL_PULSE * (0.5 - 0.5 * cos(now * TAU / PILL_BREATH))
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## A heart's small face: two dots and a smile in ink, a shine at the top
+## left, and a leaf on top (Mushroom Patch's).
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+## A heart `s` half-wide about `at` (side 0), or its left (-1) or right (1)
+## half, split along a zigzag crack so the two halves fit together
+## (Binairo's, by way of Mushroom Patch and Fairy Lights).
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+# --- running out ---
+
+## The last heart is gone: the planes left droop, dusk falls on the card
+## (`out_of_hearts`), and the out-of-hearts card comes up.
+func _run_out() -> void:
+	if _asleep or not out_of_hearts:
+		return
+	_asleep = true
+	_clear_press()
+	_break_streak()
+	_tip_timer.stop()
+	_idle_plane = -1
+	fx.cue("out_of_hearts")
+	_say(tr("PP_OUT"), Face.Expr.SLEEPY)
+	_droop_at = _now()
+	_busy_for(DROOP_TIME + 0.05)
+	_dusk_toward(DUSK)
+	_refresh_all()
+	_sky_layer.queue_redraw()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The card, over the whole screen: laid on the host so it covers the
+## chrome, or on the root when there is none (a probe).
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["PP_OUT_BODY", "PP_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same sky back in Reset's wave, the clouds blown back to
+## the deal, every heart back, the clock and the moves from zero. Hints spent
+## stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_gen += 1
+	_forget()
+	# Dealt first, so the planes' flights home and the clouds' glide back
+	# (both in _fly_all_home) are not wiped by it.
+	_deal()
+	_fly_all_home()
+	_hint_lit = -1
+	_solved_at = -1.0
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_refresh_all()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	moved.emit()
+
+## One more heart (the card's video): once a sky. The planes perk up and the
+## day comes back; on a stuck Windy Day sky the heart is there to blow the
+## wind on.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	var now := _now()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = now
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	_droop_at = FAR
+	_stuck_told = -1
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_refresh_all()
+	_heart_layer.queue_redraw()
+	_sky_layer.queue_redraw()
+	_say(tr("PP_HEART_BACK"), Face.Expr.HAPPY)
+	_tip_timer.start()
+	moved.emit()
+	if _state.windy() and _state.stuck():
+		_after(0.3, _check_stuck)
+
+## Back from the card: the board ends unsolved first, so the host logs
+## puzzle_complete {solved: false} and not an abandon.
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+## Runs `what` after `delay`, unless the board has been dealt again
+## meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	if not is_inside_tree():
+		return
+	var gen := _gen
+	if delay <= 0.0:
+		what.call()
+		return
+	get_tree().create_timer(delay).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+# --- hooks for the rewards (polish section 4, the next pass) ---
+
+## Every reward's clock back to nothing: a new board, or a restored one.
+func _reset_rewards() -> void:
+	pass
+
+## Plane `i` has just launched (not refused, not crashed), before
+## note_move(). The streak, its bubble and the gags hang off here.
+func _on_launched(_i: int) -> void:
+	pass
+
+## The streak ends: a refusal, a crash, an undo, a reset, a gust, the clouds
+## closing in, the hearts running out.
+func _break_streak() -> void:
+	pass
+
+## The party after the last flight: the flock, the cat, the clouds' send-off
+## and the seal. Called from `_on_solved`.
+func _party() -> void:
+	pass
 
 # --- odds and ends ---
 

@@ -74,17 +74,24 @@ static func fill_colour() -> Color:
 ## shadow, rim, fill and stitch. `phase` slides the stitch along the groove in
 ## pixels, so it travels with a body that is moving.
 static func trail(b, pts: PackedVector2Array, cell: float, i: int, alpha := 1.0,
-		phase := 0.0) -> void:
+		phase := 0.0, dim := 0.0) -> void:
 	if pts.size() < 2:
 		return
 	var path := fillet(pts, BEND * cell)
 	var w := WIDTH * cell
 	b.stroke(_moved(path, Vector2(0.0, DROP * cell)), w + 1.0,
 		Color(Pal.ACORN_DEEP, 0.2 * alpha))
-	b.stroke(path, w, Color(rim_colour(), alpha))
-	b.stroke(path, w - 2.0 * RIM * cell, Color(fill_colour(), alpha))
+	b.stroke(path, w, Color(_dimmed(rim_colour(), dim), alpha))
+	b.stroke(path, w - 2.0 * RIM * cell, Color(_dimmed(fill_colour(), dim), alpha))
 	dashes(b, path, STITCH_W * cell, STITCH_ON * cell, STITCH_OFF * cell, phase,
-		Color(thread(i), 0.85 * alpha), w * 0.35)
+		Color(_dimmed(thread(i), dim), 0.85 * alpha), w * 0.35)
+
+## A colour pressed toward the ink by `dim` (0 is the colour itself): the
+## press dip's shade and the droop when the hearts run out. Every paper
+## darkens by the same share, so it says "under the finger" or "tired" and
+## never which plane is which (the colour stays identity).
+static func _dimmed(c: Color, dim: float) -> Color:
+	return c if dim <= 0.0 else c.lerp(Pal.TEXT, clampf(dim, 0.0, 1.0) * 0.35)
 
 ## A glow or a band along the same rounded path a groove takes.
 static func band(b, pts: PackedVector2Array, cell: float, width: float, colour: Color) -> void:
@@ -97,7 +104,7 @@ static func band(b, pts: PackedVector2Array, cell: float, width: float, colour: 
 ## and across (y) -- the wake's beat opens the wings -- and `lift` raises it
 ## off the paper: bigger, and its shadow further away and fainter.
 static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1.0,
-		wings := Vector2.ONE, lift := 0.0) -> void:
+		wings := Vector2.ONE, lift := 0.0, dim := 0.0) -> void:
 	var s := wings * cell * (1.0 + 0.16 * lift)
 	var turn := Transform2D(angle, head)
 	var tip := turn * (Vector2(TIP, 0.0) * s)
@@ -112,9 +119,9 @@ static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1
 	var left_out := turn.basis_xform(Vector2(0.0, -1.0))
 	var left_lit := left_out.dot(LIGHT) >= 0.0
 	b.polygon(PackedVector2Array([tip, notch, left]),
-		Color(lit(i) if left_lit else shade(i), alpha))
+		Color(_dimmed(lit(i) if left_lit else shade(i), dim), alpha))
 	b.polygon(PackedVector2Array([tip, right, notch]),
-		Color(shade(i) if left_lit else lit(i), alpha))
+		Color(_dimmed(shade(i) if left_lit else lit(i), dim), alpha))
 	# The keel showing through the notch, and the fold down the spine.
 	var keel := turn * (Vector2(-NOTCH + 0.02, 0.0) * s)
 	b.polygon(PackedVector2Array([notch.lerp(tip, 0.28),
