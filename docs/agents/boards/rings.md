@@ -46,3 +46,18 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   calls on the animation strip where 72 were, ANGLE agreeing. **Run windowed harnesses with `--always-on-top`**: a
   covered window stops presenting after about 1.7 s and every later shot repeats
   the last frame.
+- **Polished on 2026-10-01** (unattended, spec
+  `2026-10-01-rings-polish-design.md`). **The move budget and its bank are
+  gone.** Hard (now six colours on **seven** pegs) and Insane are judged by
+  **dead ends**: `Gen.verdict()` proves a drop leaves the pegs unsortable,
+  the ring wobbles, a heart splits and it hops home -- the state never holds
+  a dead position. Insane is **Tumble**: six two-tone rings
+  (`top | (under + 1) << 3`, plain rings still 0-5) that turn over when
+  lifted, mined into `content/insane/rings.json` by
+  `tools/insane/rings_tumble_mine.py` (Python, same search and move order);
+  no undo, no hints, two hearts. The solver's old "never split a uniform
+  peg" pruning was removed because a verdict now costs a heart and must be
+  sound. Rewards and party follow Pinwheel (streak, twirl/love/bee gags,
+  hoop, nap cat, seal, `RG_CHEER_0..11`); sound is the `TERRACE` style.
+  `tests/_shot_rings.gd` plays every mode through the board's input. Peak
+  draw calls 110 (the out-of-hearts card on Hard).

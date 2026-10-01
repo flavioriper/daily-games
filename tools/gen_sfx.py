@@ -64,6 +64,14 @@ LINEN = ("cozy casual mobile puzzle game sound, soft paper pinwheel whirrs, "
          "linen and felt, warm kalimba and music box tones, gentle breeze, "
          "rounded, no harsh transients, clean, dry, no music bed, no voice")
 
+# Rings' sunny terrace (2026-10-01): soft hollow wooden rings on felt-capped
+# dowels, warm kalimba and a music box, a hush of leaves, in place of the
+# house marimba (whose undo was a tape rewind).
+TERRACE = ("cozy casual mobile puzzle game sound, soft hollow wooden rings "
+           "on smooth wooden dowels, felt, warm kalimba and music box tones, "
+           "a sunny garden terrace, rounded, no harsh transients, clean, dry, "
+           "no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1096,15 +1104,31 @@ SETS = {
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {
-        "lift":     ("a tiny soft hollow wooden ring sliding up off a smooth peg, a light airy lift, very short", 0.5, -12),
-        "drop":     ("a single soft hollow wooden ring settling down onto a stack of rings on a peg, a gentle clack, very short", 0.5, -8),
-        "lock":     ("a short happy two-note soft kalimba pluck with a tiny sparkle, a peg filled with one colour", 0.7, -6),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a quick soft ripple of hollow wooden rings clacking down onto pegs, a set being put back", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny hollow wooden clacks rolling in, stacks of rings on pegs appearing", 1.0, -9),
+        "lift":     ("a tiny soft hollow wooden ring sliding up off a smooth felt-lined dowel, a light airy lift with a faint kalimba breath, very short", 0.5, -12, TERRACE),
+        "drop":     ("a single soft hollow wooden ring settling down onto a felt-cushioned stack of rings, a gentle muted wooden clack, very short", 0.5, -9, TERRACE),
+        "lock":     ("a short happy two-note soft kalimba pluck with a tiny music box sparkle and a little daisy pop, a peg filled with one colour", 0.7, -7, TERRACE),
+        "refused":  ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not there', very short", 0.5, -12, TERRACE),
+        "undo":     ("a tiny soft wooden ring sliding back with a small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, TERRACE),
+        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, TERRACE),
+        "reset":    ("a soft ripple of hollow wooden rings settling one after another onto felt, hushed and cozy", 1.0, -11, TERRACE),
+        "enter":    ("a soft airy cascade of tiny felt-muted wooden clacks and leaves rustling, stacks of rings appearing on a sunny terrace, hushed", 1.0, -11, TERRACE),
+        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending in a soft bright shimmer and a happy rustle of leaves, joyful and cozy", 2.0, -4, TERRACE),
+        # The polish (docs/superpowers/specs/2026-10-01-rings-polish-design.md).
+        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, TERRACE),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, TERRACE),
+        "twirl":    ("a little wooden ring spinning happily on a smooth peg, a soft rising whirr with a playful two-note kalimba whistle and a tiny hop, cute", 0.9, -11, TERRACE),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, TERRACE),
+        "buzz":     ("a tiny fuzzy bumblebee buzzing a happy loop around and drifting away, soft and cute, a little music box twinkle, never annoying", 1.2, -15, TERRACE),
+        "tumble":   ("a soft wooden ring flipping over in the air, a quick airy whoosh and a playful little kalimba flip, two notes up then down, cute, very short", 0.5, -12, TERRACE),
+        "wobble":   ("a wooden ring wobbling uncertainly on top of a stack, a soft rattling clatter slowing down with a small worried kalimba note bending down, gentle, short", 0.7, -12, TERRACE),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, TERRACE),
+        "hop_back": ("a soft wooden ring hopping back home, a light airy boing and a felt-soft clack, kind, short", 0.5, -12, TERRACE),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a garden terrace at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, TERRACE),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, TERRACE),
+        "stamp":    ("a soft paper stamp thump followed by a clear warm music box chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, TERRACE),
+        "party":    ("a short joyful flourish on a music box and kalimba, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, TERRACE),
+        "hoop":     ("a wooden hoop rolling across stone flags, a soft rumbling roll with a wobbly spin settling down flat, a playful kalimba glissando, cute", 1.6, -11, TERRACE),
+        "purr":     ("a small cat purring contentedly, soft and close, a cozy rumble, very gentle", 1.4, -16, COZY),
     },
     # Drumbeat (puzzles/drumbeat2d.gd): the drum-festival rhythm game. don
     # and ka, the player's own drum, are synthesised by tools/gen_drumbeat.py
