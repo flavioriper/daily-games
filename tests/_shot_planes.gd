@@ -15,8 +15,13 @@ extends SceneTree
 ## again), `stuck` (Insane: greedy launches until the clouds close in -- the
 ## tip, the pill breathing), `gust` (stuck, then a cloud tapped: the heart,
 ## the glide), `solve` (Insane: the stored order played tap by tap to the
-## win), `howto` (the first-play sheet's diagram), `restore` (a solved day
-## reopened with a heart gone). Frames go to <dir>/pp_<mode>_d<level>_<n>.png.
+## win, then the party: flock, confetti, the cat batting the straggler and
+## curling up, the seal, Windy Day's gold clouds; on any band), `right` (the
+## rewards: launches in a row with the longest lanes -- combo, the bubble,
+## confetti at 5 -- with each gag forced once, loop, bird, roll and love, then
+## an undo), `howto` (the first-play sheet's diagram), `restore` (a solved
+## day reopened flawless with a heart gone: the cat asleep, the seal). Frames
+## go to <dir>/pp_<mode>_d<level>_<n>.png.
 ## Every mode prints the peak draw calls from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
@@ -139,6 +144,27 @@ func _tap(i: int) -> void:
 	_mouse(_head(i), true)
 	_mouse(_head(i), false)
 
+## The free plane with the longest lane (the gags show best on it).
+func _longest_free() -> int:
+	var st = _puzzle._state
+	var best := -1
+	var reach := -1
+	for i in st.free_planes():
+		var n: int = st.lane(i).size()
+		if n > reach:
+			reach = n
+			best = i
+	return best
+
+## A launch through the board's input with `gag` forced (-1 for none).
+func _launch(gag: int, label: String) -> void:
+	_puzzle.force_gag = gag
+	var i := _longest_free()
+	_tap(i)
+	_puzzle.force_gag = -2
+	print("%s: plane %d lane %d, streak %d, combo %d, gag_until %.2f" % [label, i,
+		_puzzle._state.lane(i).size(), _puzzle._streak, _puzzle._combo_n, _puzzle._gag_until - _puzzle._now()])
+
 ## A plane blocked by another plane (or, with `cloud`, by a cloud), the
 ## longest way to its blocker first so the rush shows.
 func _blocked(cloud := false) -> int:
@@ -259,11 +285,37 @@ func _script() -> void:
 			var order: Array = st.solve_order()
 			for k in order.size():
 				_at(1.0 + k * 0.12, _tap.bind(int(order[k])))
-			var last := 1.0 + order.size() * 0.12
+			var last := 1.0 + (order.size() - 1) * 0.12
 			_at(last - 1.0, _shot.bind("_late"))
+			_at(last + 0.05, func() -> void:
+				print("win_delay %.2f" % _puzzle.win_delay()))
+			for dt in [0.5, 0.9, 1.3, 1.8, 2.3, 2.8, 3.3]:
+				_at(last + dt, _shot.bind("_p%02d" % int(dt * 10)))
 			_at(last + 0.6, func() -> void:
-				print("solved %s done %s record %s" % [_puzzle.is_solved(), _puzzle.is_done(), _puzzle.completion_record()]))
-			_end = last + 0.8
+				print("solved %s done %s record %s" % [_puzzle.is_solved(), _puzzle.is_done(), _puzzle.completion_record()])
+				print("share: ", _puzzle.share_glyphs()))
+			_end = last + 3.5
+		"right":
+			var NONE := -1
+			_at(1.2, _launch.bind(NONE, "one"))
+			_at(1.6, _launch.bind(0, "two, loop"))
+			for dt in [0.2, 0.4, 0.6, 0.8, 1.0]:
+				_at(1.6 + dt, _shot.bind("_loop%02d" % int(dt * 10)))
+			_at(3.0, _launch.bind(2, "three, roll"))
+			for dt in [0.06, 0.14, 0.22, 0.32]:
+				_at(3.0 + dt, _shot.bind("_roll%02d" % int(dt * 100)))
+			_at(3.8, _launch.bind(1, "four, bird"))
+			for dt in [0.15, 0.4, 0.7, 1.0, 1.4]:
+				_at(3.8 + dt, _shot.bind("_bird%02d" % int(dt * 10)))
+			_at(6.0, _launch.bind(3, "five, love"))
+			for dt in [0.08, 0.3, 0.6]:
+				_at(6.0 + dt, _shot.bind("_love%02d" % int(dt * 100)))
+			_at(7.0, _launch.bind(NONE, "six"))
+			_at(7.5, func() -> void:
+				print("undo: %s, streak %d" % [_puzzle.undo(), _puzzle._streak]))
+			_at(7.56, _shot.bind("_undo"))
+			_at(8.0, _shot.bind("_after"))
+			_end = 8.2
 		"howto":
 			_ms_from = 9.0
 			for k in 12:
@@ -271,7 +323,8 @@ func _script() -> void:
 			_end = 6.0
 		"restore":
 			_at(1.5, func() -> void:
-				_puzzle.completed_record = {"hearts": maxi(0, _puzzle.max_hearts - 1), "flawless": false}
-				_puzzle.restore_completed())
+				_puzzle.completed_record = {"hearts": maxi(0, _puzzle.max_hearts - 1), "flawless": true}
+				_puzzle.restore_completed()
+				print("share: ", _puzzle.share_glyphs()))
 			_at(2.0, _shot)
 			_end = 2.2
