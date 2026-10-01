@@ -993,8 +993,42 @@ CP_SHORT,"Every square,\nleaf by leaf.","Cada quadrado,\nfolha por folha.","Cada
 CP_MOTTO,"Leaf by leaf, every square","Folha por folha, cada quadrado","Hoja a hoja, cada cuadro"
 CP_LVL_0,5 × 5 garden,Jardim 5 × 5,Jardín 5 × 5
 CP_LVL_1,"6 × 6 garden, fences","Jardim 6 × 6, com cercas","Jardín 6 × 6, con cercas"
-CP_LVL_2,"7 × 7 garden, fences","Jardim 7 × 7, com cercas","Jardín 7 × 7, con cercas"
-CP_LVL_3,"8 × 8 garden, fences","Jardim 8 × 8, com cercas","Jardín 8 × 8, con cercas"
+CP_LVL_2,"7 × 7 garden, fences, 3 hearts","Jardim 7 × 7, cercas, 3 corações","Jardín 7 × 7, cercas, 3 corazones"
+CP_LVL_3,"Peckish: 8 × 8, no numbers, a tiny tummy","Fominha: 8 × 8, sem números, barriga pequena","Glotona: 8 × 8, sin números, panza pequeña"
+CP_RULES_SAFE,Nothing can be lost here: drag back over the body or Undo to take steps back.,Aqui não dá para perder: arraste de volta sobre o corpo ou use Desfazer para voltar passos.,Aquí no se puede perder: arrastra de vuelta sobre el cuerpo o usa Deshacer para volver pasos.
+CP_RULES_HEARTS,"You have %d hearts. A step that cuts off a square -- one the caterpillar can no longer reach, or a dead end that is not the last leaf -- costs a heart, and the caterpillar scoots back.","Você tem %d corações. Um passo que isola um quadrado -- um que a lagarta não alcança mais, ou um beco sem saída que não é a última folha -- custa um coração, e a lagarta volta.","Tienes %d corazones. Un paso que aísla un cuadro -- uno que la oruga ya no alcanza, o un callejón sin salida que no es la última hoja -- cuesta un corazón, y la oruga vuelve."
+CP_RULES_PECKISH,"Peckish: only the first leaf and the last (the star) are marked. Eat the others in any order -- but the tummy holds only %d bare squares between leaves, and every leaf fills it again. Any step off the garden's one walk costs a heart; you have %d. No Undo, no hints.","Fominha: só a primeira folha e a última (a estrela) são marcadas. Coma as outras em qualquer ordem -- mas a barriga só aguenta %d quadrados vazios entre uma folha e outra, e cada folha enche de novo. Qualquer passo fora do único caminho do jardim custa um coração; você tem %d. Sem Desfazer, sem dicas.","Glotona: solo la primera hoja y la última (la estrella) están marcadas. Come las demás en cualquier orden -- pero la panza aguanta solo %d cuadros vacíos entre hojas, y cada hoja la llena de nuevo. Cualquier paso fuera del único camino del jardín cuesta un corazón; tienes %d. Sin Deshacer, sin pistas."
+CP_TIP_STRAND,Never cut a square off: it costs a heart.,Nunca isole um quadrado: custa um coração.,Nunca aísles un cuadro: cuesta un corazón.
+CP_TIP_HEARTS,Hearts are for steps you can't take back. Look before you crawl.,Corações são para passos sem volta. Olhe antes de rastejar.,Los corazones son para pasos sin vuelta. Mira antes de reptar.
+CP_TIP_PECKISH,"No numbers today: start on 1, end on the star.","Sem números hoje: comece no 1, termine na estrela.","Sin números hoy: empieza en el 1, termina en la estrella."
+CP_TIP_TUMMY,The tummy holds %d squares. Every leaf fills it again.,A barriga aguenta %d quadrados. Cada folha enche de novo.,La panza aguanta %d cuadros. Cada hoja la llena de nuevo.
+CP_TIP_ANY,"Any leaf, any order. Just never go hungry.","Qualquer folha, em qualquer ordem. Só nunca passe fome.","Cualquier hoja, en cualquier orden. Solo nunca pases hambre."
+CP_NO_LAST_PECK,The star is the last bite. Fill every square first.,A estrela é a última mordida. Preencha todos os quadrados antes.,La estrella es el último bocado. Llena todos los cuadros antes.
+CP_HUNGRY,Too hungry! A leaf first.,Fome demais! Uma folha antes.,¡Demasiada hambre! Primero una hoja.
+CP_STRAND,"Oops, that cuts a square off.","Ops, isso isola um quadrado.","Uy, eso aísla un cuadro."
+CP_DOOM,"Hmm, no walk finishes from there.","Hmm, nenhum caminho termina a partir dali.","Mmm, ningún camino termina desde ahí."
+CP_STARVE,Too far from any leaf.,Longe demais de qualquer folha.,Demasiado lejos de cualquier hoja.
+CP_HEARTS_ONE,One heart left.,Resta um coração.,Queda un corazón.
+CP_HEARTS_N,%d hearts left.,Restam %d corações.,Quedan %d corazones.
+CP_YUM_ONE,Yum! One leaf to go.,Nham! Falta uma folha.,¡Ñam! Queda una hoja.
+CP_YUM_N,Yum! %d leaves to go.,Nham! Faltam %d folhas.,¡Ñam! Quedan %d hojas.
+CP_OUT,The caterpillar is napping for now.,A lagarta está tirando um cochilo por agora.,La oruga está echando una siesta por ahora.
+CP_OUT_BODY,"Out of hearts. Walk this garden again from the start, or watch a short video for one more heart.",Sem corações. Percorra este jardim de novo desde o começo ou veja um vídeo curto por mais um coração.,Sin corazones. Recorre este jardín de nuevo desde el principio o mira un video corto para un corazón más.
+CP_OUT_REST,Out of hearts. Walk this garden again from the start whenever you like.,Sem corações. Percorra este jardim de novo desde o começo quando quiser.,Sin corazones. Recorre este jardín de nuevo desde el principio cuando quieras.
+CP_HEART_BACK,One more heart. Look before you crawl.,Mais um coração. Olhe antes de rastejar.,Un corazón más. Mira antes de reptar.
+CP_PECKISH_SEAL,Peckish,Fominha,Glotona
+CP_CHEER_0,Caterpillar wisdom: one square at a time is still a whole garden.,Sabedoria de lagarta: um quadrado de cada vez ainda é um jardim inteiro.,Sabiduría de oruga: un cuadro a la vez sigue siendo un jardín entero.
+CP_CHEER_1,"Caterpillar wisdom: snack first, philosophy later.","Sabedoria de lagarta: primeiro o lanche, depois a filosofia.","Sabiduría de oruga: primero el bocado, luego la filosofía."
+CP_CHEER_2,"Caterpillar wisdom: many legs, zero hurry.","Sabedoria de lagarta: muitas pernas, nenhuma pressa.","Sabiduría de oruga: muchas patas, cero prisa."
+CP_CHEER_3,Caterpillar wisdom: every leaf is the best leaf.,Sabedoria de lagarta: toda folha é a melhor folha.,Sabiduría de oruga: toda hoja es la mejor hoja.
+CP_CHEER_4,Caterpillar wisdom: a nap is just a tiny cocoon.,Sabedoria de lagarta: um cochilo é só um casulinho.,Sabiduría de oruga: una siesta es solo un capullito.
+CP_CHEER_5,"Caterpillar wisdom: when in doubt, wiggle.","Sabedoria de lagarta: na dúvida, rebole.","Sabiduría de oruga: ante la duda, menéate."
+CP_CHEER_6,Caterpillar wisdom: fences are just suggestions you walk around.,Sabedoria de lagarta: cercas são só sugestões que a gente contorna.,Sabiduría de oruga: las cercas son sugerencias que se rodean.
+CP_CHEER_7,Caterpillar wisdom: you can't rush a butterfly.,Sabedoria de lagarta: não dá para apressar uma borboleta.,Sabiduría de oruga: no se puede apurar a una mariposa.
+CP_CHEER_8,Caterpillar wisdom: the longest walk starts on leaf one.,Sabedoria de lagarta: a caminhada mais longa começa na folha um.,Sabiduría de oruga: el paseo más largo empieza en la hoja uno.
+CP_CHEER_9,"Caterpillar wisdom: crunchy leaves, cozy heart.","Sabedoria de lagarta: folha crocante, coração quentinho.","Sabiduría de oruga: hoja crujiente, corazón calentito."
+CP_CHEER_10,"Caterpillar wisdom: today a worm, tomorrow wings.","Sabedoria de lagarta: hoje lagarta, amanhã asas.","Sabiduría de oruga: hoy oruga, mañana alas."
+CP_CHEER_11,Caterpillar wisdom: the ladybugs say hi.,Sabedoria de lagarta: as joaninhas mandam oi.,Sabiduría de oruga: las mariquitas te saludan.
 SB_TIP_DRAG,Drag a mirror along its rail. The light follows.,Arraste um espelho pelo trilho. A luz vai junto.,Arrastra un espejo por su riel. La luz lo sigue.
 SB_TIP_GOAL,"Light every dewdrop, then end in the bud.",Acenda todas as gotas de orvalho e termine no botão.,Ilumina todas las gotas de rocío y termina en el capullo.
 SB_TIP_CUP,"A copper cup sends the light back, one lane over.","Uma concha de cobre devolve a luz, uma faixa ao lado.","Una copa de cobre devuelve la luz, un carril más allá."

@@ -72,6 +72,14 @@ TERRACE = ("cozy casual mobile puzzle game sound, soft hollow wooden rings "
            "a sunny garden terrace, rounded, no harsh transients, clean, dry, "
            "no music bed, no voice")
 
+# Caterpillar's sunny clover garden (2026-10-01): soft felt and leaf rustles,
+# tiny wooden ticks, kalimba and a music box, in place of the house marimba
+# (whose undo was a tape rewind and whose refuse was a wooden bonk).
+CLOVER = ("cozy casual mobile puzzle game sound in a sunny clover garden, "
+          "soft felt and leaf rustles, tiny wooden ticks, warm kalimba and "
+          "music box tones, hushed, rounded, never harsh, no buzzers, no synth "
+          "beeps, clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -749,16 +757,36 @@ SETS = {
     },
     # Caterpillar: drag from leaf 1 and every square grows the caterpillar a
     # segment; it eats the leaves in order. `step` fires on every square, so
-    # it gets no file (docs/art/sound-direction.md).
+    # it gets no file (docs/art/sound-direction.md). Re-prompted in the
+    # polish (2026-10-01) toward a sunny clover garden (CLOVER in place of
+    # the house marimba): no tape-rewind undo, no wooden bonk.
     "caterpillar": {
-        "place":    ("a tiny soft leafy rustle with a small wooden tick, a little caterpillar waking up, very short", 0.5, -11),
-        "munch":    ("a tiny soft crisp leaf nibble, two quick gentle crunches with a small rising marimba blip, cute, very short", 0.5, -8),
-        "refuse":   ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft quick descending ripple of leafy rustles, a caterpillar curling back up small", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish rising into a light airy flutter of butterfly wings, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a little garden of leaves appearing", 1.0, -9),
+        "place":    ("a tiny soft clover leaf rustle with a small felt-soft wooden tick, a little caterpillar waking up and stretching, hushed, very short", 0.5, -11, CLOVER),
+        "munch":    ("a tiny cute caterpillar nibbling a soft leaf, two quick gentle crunch-crunch nibbles with a small warm rising kalimba plink, soft and adorable, very short", 0.5, -9, CLOVER),
+        "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leafy tap, a kind 'not that way', warm, very short", 0.5, -12, CLOVER),
+        "undo":     ("a tiny soft leaf rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, CLOVER),
+        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, CLOVER),
+        "reset":    ("a soft quick descending ripple of leafy rustles and tiny felt ticks, a little caterpillar curling back up small, hushed and cozy", 1.0, -11, CLOVER),
+        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending in a soft bright shimmer and a light airy flutter of butterfly wings over clover, joyful and cozy", 2.0, -4, CLOVER),
+        "enter":    ("a soft airy cascade of tiny felt pops and a light rustle of clover leaves, a little garden of leaves appearing, hushed", 1.0, -11, CLOVER),
+        # The polish's new cues.
+        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, CLOVER),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, CLOVER),
+        "burp":     ("a tiny cute caterpillar hiccup-burp that blows a little soap bubble, a soft bubbly 'blip' and a tiny bubble pop, adorable, not gross, very short", 0.6, -12, CLOVER),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, CLOVER),
+        "ladybug":  ("a tiny ladybug buzzing softly in and landing on a leaf with a soft little tick, cute, gentle, never annoying, short", 0.9, -14, CLOVER),
+        "hungry":   ("a tiny soft tummy rumble, a cute little 'grumble' of a hungry caterpillar, muffled and gentle, a kind 'not yet', short", 0.6, -12, CLOVER),
+        "strand":   ("a soft worried 'uh-oh', two kalimba notes with a gentle wobble bending down, warm and muffled, never a buzzer, short", 0.6, -12, CLOVER),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, CLOVER),
+        "slip":     ("a little caterpillar scooting back one square, a soft quick leafy slide with a felt-soft tick, gentle, very short", 0.5, -12, CLOVER),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a clover garden at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, CLOVER),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, CLOVER),
+        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -5, CLOVER),
+        "party":    ("a short cozy celebratory flourish on kalimba and music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -4, CLOVER),
+        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        "flutter":  ("several tiny butterflies taking off together, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.2, -12, CLOVER),
+        "row":      ("a quick soft rising sparkle run across a row of little tiles, a tiny music box glissando, light and bright, short", 0.7, -11, CLOVER),
+        "fill":     ("a tummy filling back up after a leaf, a soft happy 'mmm' with a warm rising kalimba plink, content and cute, short", 0.6, -11, CLOVER),
     },
     # Sunbeam: drag a brass mirror or a copper cup along its wooden rail and
     # the light follows; wet every dewdrop, then the bud blooms. `step` fires
