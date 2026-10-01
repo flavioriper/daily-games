@@ -283,7 +283,7 @@ const BFLY_IN := 0.7
 const BFLY_SIT := 0.8
 const BFLY_OUT := 0.8
 const BFLY_FLAP := 7.0
-const BFLY_PX := Vector2(44.0, 70.0)
+const BFLY_PX := Vector2(60.0, 96.0)
 const BFLY_WING := Color("f4c95d")
 const BFLY_WING_DEEP := Color("e08a4f")
 ## The party, PARTY_AT after the solve; win_delay() waits PARTY_TIME past it.
@@ -2539,7 +2539,7 @@ func _love_heart() -> ArrayMesh:
 # --- the butterfly ---
 
 func _bfly_px() -> float:
-	return clampf(_cell() * 0.42, BFLY_PX.x, BFLY_PX.y)
+	return clampf(_cell() * 0.6, BFLY_PX.x, BFLY_PX.y)
 
 ## One wing, its root at the origin, reaching to +x: a big round forewing
 ## over a smaller hindwing, butter with an apricot rim and a dot.
@@ -2576,7 +2576,7 @@ func _draw_butterfly(f: Dictionary, now: float, shown: Array) -> void:
 	var e := now - float(f.t)
 	if e <= 0.0:
 		return
-	var pin := _pin_point(int(f.p)) - Vector2(0.0, _cell() * 0.12)
+	var pin := _pin_point(int(f.p)) - Vector2(0.0, _cell() * 0.3)
 	var side := float(f.from)
 	var far := pin + Vector2(side * _cell() * 2.2, -_cell() * 1.6)
 	var at := pin
@@ -2590,7 +2590,7 @@ func _draw_butterfly(f: Dictionary, now: float, shown: Array) -> void:
 		tilt = side * -0.25 * (1.0 - u)
 	elif e < BFLY_IN + BFLY_SIT:
 		var u := (e - BFLY_IN) / BFLY_SIT
-		flap = 0.35 + 0.35 * cos(u * TAU * 1.5)
+		flap = 0.75 + 0.25 * cos(u * TAU * 1.5)
 	else:
 		var u := (e - BFLY_IN - BFLY_SIT) / BFLY_OUT
 		at = pin.lerp(far + Vector2(0.0, -_cell()), u * u) + Vector2(sin(u * TAU * 2.0) * _cell() * 0.15, 0.0)
