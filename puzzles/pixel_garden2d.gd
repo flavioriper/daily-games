@@ -170,6 +170,9 @@ const WORD_FONT := 48
 const STEADY := 8
 const WHOOSH := 14
 const STEADY_GAP := 5.0
+## How far a stroke's finger travels, in cells, before its row or column is
+## chosen.
+const AXIS_AFTER := 0.7
 const COMBO_STEPS := [0, 2, 4, 7, 9, 12]
 ## Hearts of love off a happy iron; a butterfly that lands on a plate.
 const LOVE_HEARTS := 3
@@ -297,6 +300,12 @@ var _stroking := false
 var _erase := false
 var _refused := false
 var _last := -1
+## The stroke's first peg and where the finger pressed, and the line it keeps
+## to once it has moved AXIS_AFTER of a cell: 0 none yet, 1 its row, 2 its
+## column. A fingertip is wider than a peg, so a run must not wander.
+var _start := -1
+var _start_at := Vector2.ZERO
+var _line := 0
 var _painted := {}
 var _seated_in_stroke := 0
 var _peek := false
@@ -1633,13 +1642,24 @@ func _press(at: Vector2) -> void:
 	if c < 0 or _plate_busy(_state.plate_of(c)):
 		return
 	_stroking = true
+	_start = c
+	_start_at = at
+	_line = 0
 	_erase = _state.beads[c] == brush
 	_state.begin_stroke()
 	_paint(c)
 	_refresh()
 
 func _drag(at: Vector2) -> void:
-	var c := _peg_at(at)
+	# The run keeps to the row or the column it set off along: whichever way
+	# the finger first went farther, once it has gone AXIS_AFTER of a cell.
+	if _line == 0:
+		var d := at - _start_at
+		if d.length() < _cell * AXIS_AFTER:
+			return
+		_line = 1 if absf(d.x) >= absf(d.y) else 2
+	var home := _centre(_start)
+	var c := _peg_at(Vector2(at.x, home.y) if _line == 1 else Vector2(home.x, at.y))
 	if c < 0 or c == _last:
 		return
 	# Every peg between the last one painted and this one, so a quick finger
@@ -1663,6 +1683,9 @@ func _paint(c: int) -> void:
 		return
 	_painted[c] = true
 	var had: int = _state.beads[c]
+	# Lifting only ever lifts the chosen colour.
+	if _erase and had != brush:
+		return
 	var r: String = _state.put(c, State.EMPTY if _erase else brush)
 	var t := _now()
 	match r:
@@ -1697,6 +1720,13 @@ func _paint(c: int) -> void:
 				_refused = true
 				fx.cue("refuse")
 				_tell("PG_FUSED")
+		"taken":
+			_shake_at[c] = t
+			_touch(c, t + Motion.SHIVER_TIME)
+			if not _refused:
+				_refused = true
+				fx.cue("refuse")
+				_tell("PG_TAKEN")
 		"none_left":
 			_shake_at[c] = t
 			_touch(c, t + Motion.SHIVER_TIME)
@@ -1760,6 +1790,8 @@ func _clear_gesture() -> void:
 	_erase = false
 	_refused = false
 	_last = -1
+	_start = -1
+	_line = 0
 	_painted = {}
 	_seated_in_stroke = 0
 

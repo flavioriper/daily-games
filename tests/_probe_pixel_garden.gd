@@ -73,6 +73,7 @@ func _process(delta: float) -> bool:
 			_ok(_b.is_done() and _b._flawless, "Windblown solved, flawless")
 			_ok(_b.share_glyphs().contains("🌬"), "Windblown share line")
 			_undo_after_fuse()
+			_stroke_checks()
 			print("\n".join(_log))
 			print("pixel garden probe: %s (%d failed)" % ["PASS" if _fails == 0 else "FAIL", _fails])
 			return true
@@ -166,3 +167,43 @@ func _undo_after_fuse() -> void:
 	_ok(st.ironed[0] == 1, "plate 0 ironed by the moved bead")
 	_b.undo()
 	_ok(st.left(k) >= 0, "undo after a fuse keeps the kit honest (left %d)" % st.left(k))
+
+## A run dragged sideways with a wobbling finger stays on its row; one that
+## sets off downwards stays on its column; a peg holding another colour
+## refuses a bead and keeps its own.
+func _stroke_checks() -> void:
+	_deal(1)
+	var st = _b._state
+	var n: int = st.n
+	var cell: float = _b._cell
+	var c0 := 2 * n + 1
+	var from: Vector2 = _b.cell_to_local(2, 1)
+	_b.set_brush(0)
+	_b._press(from)
+	for i in range(1, 9):
+		# Drifting up and down by half a peg either way as it goes right.
+		_b._drag(from + Vector2(i * cell * 0.6, sin(i * 1.7) * cell * 0.45))
+	_b._release()
+	var rows := {}
+	var placed := 0
+	for c in st.size():
+		if int(st.beads[c]) != -1:
+			rows[c / n] = true
+			placed += 1
+	_ok(rows.size() == 1 and rows.has(2) and placed >= 4, "a wobbly sideways run stays on its row (%d beads, rows %s)" % [placed, rows.keys()])
+	_b.undo()
+	_b._press(from)
+	for i in range(1, 7):
+		_b._drag(from + Vector2(sin(i * 1.3) * cell * 0.45, i * cell * 0.6))
+	_b._release()
+	var cols := {}
+	for c in st.size():
+		if int(st.beads[c]) != -1:
+			cols[c % n] = true
+	_ok(cols.size() == 1 and cols.has(1), "a run set off downwards stays on its column (cols %s)" % [cols.keys()])
+	_b.set_brush(1)
+	_tap(c0)
+	_ok(int(st.beads[c0]) == 0, "a peg holding another colour keeps its bead")
+	_b.set_brush(0)
+	_tap(c0)
+	_ok(int(st.beads[c0]) == -1, "its own colour lifts it")

@@ -340,13 +340,18 @@ func begin_stroke() -> void:
 	_in_stroke = true
 
 ## Seats bead `to` (EMPTY lifts) on peg `c`, as part of the stroke in hand.
-## Returns "put", "same" (nothing to do), "locked" (a hint fused it) or
-## "none_left" (the kit has no more of that colour).
+## Returns "put", "same" (nothing to do), "locked" (a hint fused it),
+## "taken" (another colour's bead is on it) or "none_left" (the kit has no
+## more of that colour).
 func put(c: int, to: int) -> String:
 	if beads[c] == to:
 		return "same"
 	if locked[c] != 0:
 		return "locked"
+	# A peg holding another colour keeps it until that bead is lifted: a
+	# finger sweeping a run never knocks off a bead it only brushed.
+	if to != EMPTY and beads[c] != EMPTY:
+		return "taken"
 	if to != EMPTY and left(to) <= 0:
 		return "none_left"
 	var prev := beads[c]
