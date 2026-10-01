@@ -11,6 +11,19 @@ extends "res://core/puzzle_base.gd"
 ## no Check, no tray and no actions row: Undo, Reset and Hint ride in the
 ## top bar -- Pinwheel's shape.
 ##
+## The polish (2026-10-01, spec 2026-10-01-knight-polish-design.md): on Hard
+## and Insane a catch costs a heart, and out of hearts the garden dozes off
+## and the card offers Try again. Insane is Brambles: every square you hop
+## off grows a bramble that nothing lands on again, and a rose knight fenced
+## in by them naps for good; a hop that leaves you boxed in (no hop that is
+## not a catch) costs a heart and the brambles wither back to the opening.
+## On every other band a position with no way left to the king is told at
+## once, and a Start over button comes up under the board (players got stuck
+## with no idea the day was lost). Rewards: a streak of safe hops, gags (a
+## somersault, love hearts, a butterfly), and the party -- the crown lands
+## on your knight's head, confetti, the nap cat, the seal and a bit of
+## knightly wisdom.
+##
 ## How it is drawn. Three meshes:
 ##   table -- the garden table under the board, clipped to the card and
 ##            drawn outside the entrance's grow;
@@ -32,6 +45,13 @@ const Face = preload("res://ui/faces/face.gd")
 const Piece = preload("res://ui/faces/chess_piece.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Cat = preload("res://ui/faces/caterpillar.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
+const Gen = preload("res://puzzles/knight_gen.gd")
+
+signal leave
 
 const INSET := 70.0
 const CELL_CAP := 170.0
@@ -100,12 +120,26 @@ const TOPPLE_TIME := 0.45
 const WIN_WAIT := 2.2
 ## The trail keeps only your last few hops' prints, the oldest faintest.
 const TRAIL_HOPS := 3
-const HINTS := 3
-## Insane's moves-left line under the board.
-const BUDGET_FONT := 40
-const BUDGET_DROP := 64.0
 const TIP_CYCLE := 8.0
 const TIPS := ["KN_TIP_TAP", "KN_TIP_GOAL", "KN_TIP_ANSWER", "KN_TIP_CORNERS", "KN_TIP_TAKE"]
+const TIPS_HEARTS := ["KN_TIP_TAP", "KN_TIP_CORNERS", "KN_TIP_HEARTS", "KN_TIP_ANSWER", "KN_TIP_STUCK"]
+const TIPS_BRAMBLES := ["KN_TIP_BRAMBLE", "KN_TIP_FENCE", "KN_TIP_NAP", "KN_TIP_CORNERS", "KN_TIP_HEARTS"]
+## A press on a square you can hop to: your knight crouches this deep, ready,
+## and the dot swells, until the finger lets go.
+const PRESS_SQUASH := 0.07
+const PRESS_TIME := 0.12
+## A bramble springs up over this as your knight leaves the square, and
+## withers over WITHER_TIME when the board goes back.
+const BRAMBLE_GROW := 0.45
+const WITHER_TIME := 0.4
+## A napping rose knight's z's: one every Z_EVERY, rising for Z_LIFE.
+const Z_EVERY := 1.3
+const Z_LIFE := 2.4
+## The stuck button under the board: how far under the frame, and its pop.
+const STUCK_DROP := 30.0
+const STUCK_H := 104.0
+## Insane boxed in: the beat before the brambles wither back to the opening.
+const BOXED_HOLD := 0.9
 ## The toast: the board's own line for what just happened (a catch, a take,
 ## a refusal, a hint, an undo), drawn over the foot of the card. The tip card
 ## that used to carry these is gone from every board, so without it they
@@ -119,6 +153,68 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 66.0
 const STUCK_MSG := "KN_STUCK"
 const REWOUND_MSG := "KN_REWOUND"
+
+# --- hearts, Binairo's and Sunbeam's measures ---
+const HEART_ROW := 64.0
+const HEART_TOP := 6.0
+const HEART_R := 21.0
+const HEART_GAP := 12.0
+const HEART_PILL_PAD := Vector2(18.0, 8.0)
+const HEART_PILL_RIM := 2.0
+const SPLIT_TIME := 0.7
+const SPLIT_FALL := 56.0
+const SPLIT_SPREAD := 14.0
+const SPLIT_TURN := 0.7
+const HEART_BACK_TIME := 0.3
+const DUSK := Color(0.74, 0.76, 0.92)
+const DUSK_TIME := 0.8
+const CARD_AFTER := 1.1
+const CARD_AFTER_STILL := 0.3
+const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const AGO := -1.0e9
+
+# --- the streak and the gags ---
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## A gag on one kept hop in GAG_ODDS, picked off the day's hash so a day
+## always deals the same ones; never two at once.
+enum Gag { NONE = -1, FLIP, LOVE, BUTTERFLY }
+const GAG_SPAN := 9
+const GAG_ODDS := 3
+const GAG_STEP := 5
+const LOVE_HEARTS := 3
+const LOVE_TIME := 1.2
+const LOVE_RISE := 0.9
+const LOVE_R := 0.13
+const FLY_IN := 0.7
+const FLY_SIT := 0.9
+const FLY_OUT := 0.7
+## A taken knight's dizzy stars, circling over it as it tumbles.
+const STARS := 3
+
+# --- the party ---
+const PARTY_AT := 0.35
+const PARTY_TIME := 3.0
+const CHEERS := 12
+## The win's crown: off the king, up, and down onto your knight's head,
+## sitting a size smaller there.
+const CROWN_ON := 0.78
+const CAT_PX := 0.18
+const CAT_AT := 0.9
+const CAT_POP := 0.22
+const CAT_HOPS := 3
+const CAT_HOP_TIME := 0.32
+const CAT_HOP_H := 0.45
+const CAT_SETTLE := 0.25
+const CURL_AT := 2.7
+const STAMP_AT := 1.6
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
 
 var _state = State.new()
 var fx: Node2D
@@ -165,15 +261,98 @@ var _toast := ""
 var _toast_at := -100.0
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
+## Which deal the timers belong to: a build, Try again or a restore bumps it.
+var _gen := 0
+## A press waiting on its release: {"c", "at"}; empty when none.
+var _press := {}
+## Brambles drawn: square -> when it sprang up; and withering: square -> when.
+var _grown := {}
+var _wither := {}
+## Rose knights that fell asleep: index -> when.
+var _nap_at := {}
+var _nap_told := false
+## Bumped by every hop, Undo, hint rewind, Reset and deal: a stuck verdict
+## shows only for the position it was judged on.
+var _hop_id := 0
+## Whether the position is lost (no way to the king), shown by the stuck
+## button under the board once the pieces are still.
+var _lost := false
+var _stuck_btn: Button
+var _stuck_at := AGO
+
+# --- hearts ---
+var hearts := 0
+var max_hearts := 0
+var out_of_hearts := false
+var _heart_used := false
+var _lost_ever := false
+var _undo_ever := false
+var _flawless := false
+var _asleep := false
+var _heart_card: Control
+var _split_index := -1
+var _split_at := AGO
+var _back_index := -1
+var _back_at := AGO
+var _heart_layer: Control
+var _hearts_shown: ArrayMesh
+var _dusk_tw: Tween
+var _was_busy := false
+
+# --- rewards ---
+## Harness hook: -2 lets the day pick, Gag.NONE never, a Gag forces it.
+var force_gag := -2
+var _streak := 0
+var _streak_gen := 0
+var _hops := 0
+var _gag_until := 0.0
+var _gag_gen := 0
+var _combo_n := 0
+var _combo_at := -INF
+var _combo_pos := Vector2.ZERO
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_shown: ArrayMesh
+var _combo_key: Array = []
+var _life_layer: Control
+var _life_shown: Array = []
+var _love: Array = []       # [{"at", "t", "phase"}]
+var _flies: Array = []      # [{"t", "from"}] a butterfly visiting your knight
+var _love_mesh: ArrayMesh
+var _seal_mesh: ArrayMesh
+var _party_at := INF
+var _stamp_at := INF
+var _cat: Control
+var _cat_at := INF
+var _cat_curled := false
 
 func puzzle_id() -> String: return "knight"
 func title() -> String: return "Knight"
 
+## The rules, then the band's own closing: nothing can be lost (Easy,
+## Medium), hearts (Hard), or Brambles (Insane).
 func rules() -> String:
-	return tr("KN_RULES")
+	var out := tr("KN_RULES")
+	if _state.brambles():
+		out += "\n\n" + tr("KN_RULES_BRAMBLES") % max_hearts
+	elif max_hearts > 0:
+		out += "\n\n" + tr("KN_RULES_HEARTS") % max_hearts
+	else:
+		out += "\n\n" + tr("KN_RULES_SAFE")
+	return out
+
+func _tips() -> Array:
+	if _state.brambles():
+		return TIPS_BRAMBLES
+	if max_hearts > 0:
+		return TIPS_HEARTS
+	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: a catch is the check.
+## Insane has neither undo nor hint: can_undo() and hints_left() say so.
 func capabilities() -> Array[String]:
+	if _state.difficulty >= 3:
+		return ["undo"]
 	return ["undo", "hint"]
 
 func _ready() -> void:
@@ -186,19 +365,41 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	_heart_layer = Control.new()
+	_heart_layer.name = "Hearts"
+	_heart_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_heart_layer.z_index = 1
+	_heart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_heart_layer.draw.connect(_draw_hearts)
+	add_child(_heart_layer)
+	_life_layer = Control.new()
+	_life_layer.name = "Life"
+	_life_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_life_layer.z_index = 3
+	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_life_layer.draw.connect(_draw_life)
+	add_child(_life_layer)
+	_stuck_btn = Dialog.primary("reset", tr("KN_START_OVER"))
+	_stuck_btn.name = "StartOver"
+	_stuck_btn.custom_minimum_size = Vector2(0.0, STUCK_H)
+	_stuck_btn.z_index = 4
+	_stuck_btn.visible = false
+	_stuck_btn.pressed.connect(_on_start_over)
+	add_child(_stuck_btn)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.build(rng, difficulty)
-	_turn += 1
-	_snap_to_state()
-	_rings = []
-	_shake_at = -100.0
-	_bump_at = -100.0
-	_solved_at = -1.0
-	_toast = ""
-	_toast_at = -100.0
+	_gen += 1
+	_close_card()
+	_state.build(rng, difficulty, bank_step)
+	max_hearts = State.hearts_for(difficulty)
+	_heart_used = false
+	_lost_ever = false
+	_undo_ever = false
+	_flawless = false
+	_deal()
+	_reset_rewards()
 	_opened = _now()
 	# The marks wait for the pieces' entrance, then fade in.
 	if not Motion.reduce:
@@ -208,8 +409,33 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	fx.cue("enter")
 	_tip_idx = 0
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The board as it is dealt, and as Try again deals it back: every heart,
+## every piece where it opened, no brambles.
+func _deal() -> void:
+	_turn += 1
+	hearts = max_hearts
+	out_of_hearts = false
+	_asleep = false
+	_split_index = -1
+	_split_at = AGO
+	_back_index = -1
+	_back_at = AGO
+	Motion.stop(_dusk_tw)
+	modulate = Color.WHITE
+	_snap_to_state()
+	_rings = []
+	_shake_at = -100.0
+	_bump_at = -100.0
+	_solved_at = -1.0
+	_toast = ""
+	_toast_at = -100.0
+	_press = {}
+	_hop_id += 1
+	_nap_told = false
+	_set_lost(false)
 
 static func _still_at(c: int) -> Dictionary:
 	return {"from": c, "to": c, "at": -100.0, "dur": 1.0, "arc": 0.0, "pop": false}
@@ -218,8 +444,15 @@ static func _still_at(c: int) -> Dictionary:
 func _snap_to_state() -> void:
 	_you_a = _still_at(_state.you)
 	_foe_a = []
-	for f in _state.foes:
-		_foe_a.append(_still_at(f))
+	for i in _state.foes.size():
+		_foe_a.append(_still_at(_state.foe_square(i)))
+	_grown = {}
+	_wither = {}
+	for c in _state.size():
+		if _state.is_bramble(c):
+			_grown[c] = AGO
+	_nap_at = {}
+	_sync_naps()
 	_gone = []
 	_caught = {}
 	_dust = []
@@ -232,13 +465,17 @@ func _snap_to_state() -> void:
 func _cell() -> float:
 	if _state.w <= 0:
 		return 0.0
-	return maxf(0.0, minf(CELL_CAP, minf(size.x - 2.0 * INSET, size.y - 2.0 * INSET) / float(_state.w)))
+	return maxf(0.0, minf(CELL_CAP, minf(size.x - 2.0 * INSET, size.y - 2.0 * INSET - _heart_row()) / float(_state.w)))
+
+## The room the hearts' pill takes over the board on Hard and Insane.
+func _heart_row() -> float:
+	return HEART_ROW if max_hearts > 0 else 0.0
 
 func _grid_size() -> Vector2:
 	return Vector2.ONE * float(_state.w) * _cell()
 
 func _origin() -> Vector2:
-	return (size - _grid_size()) * 0.5
+	return (size - _grid_size() + Vector2(0.0, _heart_row())) * 0.5
 
 func _centre(c: int) -> Vector2:
 	return _origin() + (Vector2(c % _state.w, c / _state.w) + Vector2(0.5, 0.5)) * _cell()
@@ -258,7 +495,14 @@ func card_centred() -> bool:
 func _layout() -> void:
 	_still = null
 	_table = null
+	_love_mesh = null
+	_seal_mesh = null
+	_place_stuck()
 	_refresh()
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+	if _life_layer != null:
+		_life_layer.queue_redraw()
 
 func _square_at(local: Vector2) -> int:
 	var s := _cell()
@@ -304,6 +548,9 @@ func _where(a: Dictionary, t: float) -> Dictionary:
 			var st := TAKEOFF_STRETCH * maxf(0.0, 1.0 - u / 0.35)
 			sq = Vector2(1.0 - st * 0.6, 1.0 + st)
 			tilt = dir * LEAN * -cos(PI * u) * sin(PI * u) * 2.0
+			if bool(a.get("flip", false)):
+				# the gag: a whole somersault over the top of the hop
+				tilt -= dir * TAU * (u * u * (3.0 - 2.0 * u))
 	return {"at": start.lerp(end, e), "lift": sin(PI * u) * arc * _cell(),
 		"land": fly_at + float(a.dur), "sq": sq, "tilt": tilt, "dir": dir, "hopping": hopping}
 
@@ -330,42 +577,59 @@ func _kick_dust(c: int, at: float) -> void:
 		_dust.append({"pos": _centre(c), "at": at})
 
 ## One hop of yours and the rose side's answer, animated. A catch holds, then
-## everything slides back; the state never kept it.
+## everything slides back; the state never kept it. On Hard and Insane it
+## costs a heart. A kept hop grows the streak (and maybe a gag), grows a
+## bramble on Insane, and once everything is still the position is checked:
+## lost on Easy to Hard (the Start over button), boxed in on Insane.
 func _play(to: int, from_hint := false) -> void:
 	var t := _now()
-	if is_done() or t < _busy_until:
+	if is_done() or out_of_hearts or t < _busy_until:
 		return
 	if not _state.legal().has(to):
-		_refuse("KN_L")
-		return
-	if _state.moves_left() == 0:
-		_refuse("KN_NO_MOVES")
+		if _state.is_bramble(to) and Gen.hops(_state.w, _state.you).has(to):
+			_refuse("KN_BRAMBLE")
+		else:
+			_refuse("KN_L")
 		return
 	var from: int = _state.you
 	var r: Dictionary = _state.play(to)
+	if r.is_empty():
+		return
 	var jt := _jump()
 	var lead := _crouch()
 	var land := t + lead + jt
+	var caught := int(r.caught) >= 0
+	var gag := Gag.NONE
+	if not caught and not bool(r.won) and not from_hint:
+		gag = _pick_gag()
 	_you_a = _hop(from, to, t)
+	_you_a["flip"] = gag == Gag.FLIP
 	_kick_dust(to, land)
 	fx.cue("hop")
+	if gag == Gag.FLIP:
+		_later(lead, func(): fx.cue("flip"))
+	if int(r.get("grew", -1)) >= 0:
+		_grown[from] = t + lead
+		_later(lead + jt * 0.3, func(): fx.cue("bramble"))
 	var took: int = r.took
 	if took >= 0:
 		var away := 1.0 if _centre(to).x >= _centre(from).x else -1.0
 		_gone.append({"c": to, "at": land, "dir": away})
 		_foe_a[took] = _still_at(-1)
+		_nap_at.erase(took)
 		var turn := _turn
 		_later(lead + jt, func():
 			if turn != _turn:
 				return
 			fx.puff(_centre(to), Pal.KNIGHT_ROSE, 7)
+			fx.sparkle(_centre(to) - Vector2(0.0, _cell() * 0.4), Pal.SUN)
 			fx.cue("take"))
 	var last := land
 	var k := 0
 	var catcher := -1
-	var moved: Array = r.moved
-	for i in moved.size():
-		var mv: Vector2i = moved[i]
+	var mvs: Array = r.moved
+	for i in mvs.size():
+		var mv: Vector2i = mvs[i]
 		if i == took or mv.x < 0 or mv.y < 0 or mv.x == mv.y:
 			continue
 		var at := land + (0.0 if Motion.reduce else ANSWER_GAP + Motion.stagger(k, ANSWER_STEP))
@@ -385,36 +649,119 @@ func _play(to: int, from_hint := false) -> void:
 		_busy_for(land - t)
 		note_move()
 		return
-	if int(r.caught) >= 0:
+	if caught:
 		var knock := -1.0 if catcher >= 0 and _centre(catcher).x > _centre(to).x else 1.0
 		_caught = {"at": last, "dir": knock}
 		_shake_at = last
 		_busy_until = last + CAUGHT_HOLD + (0.0 if Motion.reduce else SLIDE_BACK)
 		_busy_for(_busy_until - t + MARK_FADE)
+		_was_busy = true
+		_break_streak()
+		_clear_gags()
+		if max_hearts > 0:
+			_lose_heart(last)
 		var turn := _turn
 		_later(last - t, func():
 			if turn != _turn:
 				return
 			fx.cue("caught")
-			_tell("KN_CAUGHT", Face.Expr.STRAIN))
+			if max_hearts > 0:
+				fx.cue("heart_lost")
+				_tell_hearts("KN_CAUGHT_HEART")
+			else:
+				_tell("KN_CAUGHT", Face.Expr.STRAIN))
 		_later(last - t + CAUGHT_HOLD, func():
 			if turn == _turn and not _caught.is_empty():
 				fx.cue("slide")
-				_slide_to_state(_now(), 0.0))
+				_slide_to_state(_now(), 0.0)
+				if out_of_hearts:
+					_later(SLIDE_BACK, _run_out))
 		_refresh()
+		moved.emit()
 		return
-	_busy_until = last
+	var napped: Array = r.get("napped", [])
+	for i: int in napped:
+		_nap_at[i] = last
+	if not napped.is_empty():
+		var turn := _turn
+		_later(last - t + 0.1, func():
+			if turn != _turn:
+				return
+			fx.cue("nap")
+			if not _nap_told:
+				_nap_told = true
+				_tell("KN_NAPPED", Face.Expr.JOY))
+	# Judged now, while the position is the one this hop made (a hop slipped
+	# in before the reveal must not be charged for this one's box), and
+	# shown once everything is still. Boxed in holds input until it plays.
+	var boxed: bool = _state.brambles() and _state.trapped()
+	var lost: bool = not _state.brambles() and _state.lost()
+	_busy_until = last + (100.0 if boxed else 0.0)
 	_busy_for(last - t + MARK_FADE)
+	_hop_id += 1
+	var hop_id := _hop_id
 	note_move()
 	if took >= 0:
 		_tell("KN_TAKEN", Face.Expr.HAPPY)
 	elif from_hint:
 		_tell("KN_HINT", Face.Expr.HAPPY)
 	elif _tip_mood == Face.Expr.STRAIN:
-		_say(tr(TIPS[1]), Face.Expr.HAPPY)
-	if _state.moves_left() == 0:
-		_tell("KN_LAST_MOVE", Face.Expr.STRAIN)
+		_say(tr(_tips()[1]), Face.Expr.HAPPY)
+	if from_hint:
+		_break_streak()
+	else:
+		_on_safe_hop(to, land, gag)
+	_later(last - t + 0.05, func():
+		if hop_id == _hop_id:
+			_show_stuck(boxed, lost))
 	_refresh()
+
+## Once a kept hop has settled: on Brambles, boxed in (no hop that is not a
+## catch) costs a heart and the board withers back to the opening; on every
+## other band a position with no way left to the king says so and brings up
+## the Start over button.
+func _show_stuck(boxed: bool, lost: bool) -> void:
+	if is_done() or out_of_hearts:
+		return
+	if boxed:
+		_boxed_in()
+		return
+	if _state.brambles():
+		return
+	var was := _lost
+	_set_lost(lost)
+	if _lost and not was:
+		_tell(STUCK_MSG, Face.Expr.STRAIN)
+		fx.cue("stuck")
+
+## Brambles: nowhere left to hop that is not a catch. A heart splits, your
+## knight shivers, and after a beat the brambles wither and every piece
+## slides back to the opening -- or, the last heart gone, dusk.
+func _boxed_in() -> void:
+	var t := _now()
+	_break_streak()
+	_clear_gags()
+	_bump_at = t
+	_lose_heart(t)
+	fx.cue("boxed")
+	fx.cue("heart_lost")
+	_tell_hearts("KN_BOXED")
+	var hold := Motion.REDUCED_TIME if Motion.reduce else BOXED_HOLD
+	_busy_until = t + hold + (0.0 if Motion.reduce else SLIDE_BACK)
+	_was_busy = true
+	_busy_for(_busy_until - t + MARK_FADE)
+	_refresh()
+	moved.emit()
+	var turn := _turn
+	_later(hold, func():
+		if turn != _turn:
+			return
+		if out_of_hearts:
+			_run_out()
+			return
+		_state.reset_board()
+		fx.cue("wither")
+		_slide_to_state(_now(), Motion.RESET_STAGGER))
 
 ## How far a caught knight has been knocked at `t`: 0 to 1, 0 when none.
 func _knocked(t: float) -> float:
@@ -443,9 +790,16 @@ func _slide_to_state(t: float, stagger: float) -> void:
 	if not you_now.is_empty():
 		_you_a["from_px"] = you_now.at + Vector2(kdir * KNOCK * _cell() * kn, 0.0)
 		_you_a["tilt_from"] = kdir * KNOCK_TILT * kn + float(you_now.tilt)
+	# brambles the state no longer has wither where they stood
+	for c in _grown.keys():
+		if not _state.is_bramble(int(c)):
+			_wither[c] = t
+			_grown.erase(c)
+	_hop_id += 1
+	_sync_naps()
 	var k := 0
 	for i in _state.foes.size():
-		var want: int = _state.foes[i]
+		var want: int = _state.foe_square(i)
 		var shown: int = int(_foe_a[i].to)
 		var drawn := _where(_foe_a[i], t)
 		var at := t + Motion.stagger(k, stagger)
@@ -461,15 +815,19 @@ func _slide_to_state(t: float, stagger: float) -> void:
 		k += 1
 	_gone = []
 	_dust = []
+	_press = {}
 	_busy_until = t + Motion.stagger(k, stagger) + dur
-	_busy_for(_busy_until - t + MARK_FADE)
+	_busy_for(maxf(_busy_until - t + MARK_FADE, WITHER_TIME))
 	_refresh()
 
 ## Runs `fn` after `delay`, unless the board has left the tree meanwhile
 ## (Mushroom Patch's `_after`); the turn guard inside each `fn` does the rest.
 func _later(delay: float, fn: Callable) -> void:
+	if not is_inside_tree():
+		return
+	var gen := _gen
 	get_tree().create_timer(maxf(0.0, delay)).timeout.connect(func():
-		if is_inside_tree():
+		if gen == _gen and is_inside_tree():
 			fn.call())
 
 func _refuse(key: String) -> void:
@@ -486,6 +844,19 @@ func _process(delta: float) -> void:
 	if _cell() <= 0.0 or _state.size() == 0:
 		return
 	var t := _now()
+	# A catch or a boxed-in ending lets go of the HUD: it greyed Undo, Hint
+	# and Reset.
+	var bz := busy()
+	if _was_busy and not bz:
+		moved.emit()
+	_was_busy = bz
+	if _tick_life(t):
+		_life_layer.queue_redraw()
+	if t >= _cat_at and not _cat_curled:
+		_place_cat(t)
+	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
 	if _animating(t):
 		_refresh()
 	elif _idle_moment(t):
@@ -505,10 +876,12 @@ func _notification(what: int) -> void:
 ## Moving while anything travels, the marks are still fading in, or the
 ## pieces are still entering.
 func _animating(t: float) -> bool:
-	if t < _anim_until:
+	if t < _anim_until or not _press.is_empty():
 		return true
 	if Motion.reduce:
 		return false
+	if not _nap_at.is_empty() and not is_done():
+		return true
 	var entrance := Motion.ENTER_DELAY + Motion.ENTER_POP \
 		+ Motion.stagger(_state.foes.size() + 2, 0.07) + Motion.POP_IN + 0.2
 	return t - _opened < entrance
@@ -574,7 +947,6 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
-	_draw_budget()
 	_draw_toast(t, shown)
 	_shown = shown
 
@@ -738,8 +1110,11 @@ func _build_still() -> ArrayMesh:
 func _build_live(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := _cell()
-	_draw_trail(b, s, t)
-	if not is_done() and t >= _busy_until:
+	if _state.brambles():
+		_draw_brambles(b, s, t)
+	else:
+		_draw_trail(b, s, t)
+	if not is_done() and not out_of_hearts and t >= _busy_until:
 		var fade := 1.0 if Motion.reduce else clampf((t - _busy_until) / MARK_FADE, 0.0, 1.0)
 		_draw_marks(b, s, fade, t)
 	var items: Array = []
@@ -761,13 +1136,6 @@ func _build_live(t: float) -> ArrayMesh:
 	var king_e := _entry(0, t)
 	var crowned := not fallen
 	items.append({"air": 0, "y": kc.y - 2.0, "fn": func(): Piece.king(b, king_at, s, tip, king_e, fallen, crowned, dozing)})
-	if fallen:
-		var cu := 1.0 if Motion.reduce else clampf((t - _solved_at) / CROWN_FLY, 0.0, 1.0)
-		var c0 := Piece.crown_seat(kc, s)
-		var c1 := kc + Vector2(fall * s * 1.4, s * 0.12)
-		var cp := c0.lerp(c1, cu) + Vector2(0.0, -sin(PI * cu) * CROWN_ARC * s)
-		var ca := fall * (TAU + 0.5) * Motion.back_out(cu) if not Motion.reduce else fall * 0.5
-		items.append({"air": 2, "y": cp.y, "fn": func(): Piece.crown(b, cp, s, ca)})
 	var you_now := _where(_you_a, t)
 	for i in _foe_a.size():
 		var a: Dictionary = _foe_a[i]
@@ -779,8 +1147,17 @@ func _build_live(t: float) -> ArrayMesh:
 		var look := -1.0 if not you_now.is_empty() and you_now.at.x < w.at.x else 1.0
 		if bool(w.hopping):
 			look = w.dir
+		var eye := 1.0
+		var tilt: float = w.tilt
+		if _nap_at.has(i) and t >= float(_nap_at[i]):
+			# fenced in: eyes shut, nodding off, breathing slow
+			eye = 0.0
+			var nod := 1.0 if Motion.reduce else minf(1.0, (t - float(_nap_at[i])) / 0.5)
+			tilt += look * 0.12 * nod
+			if not Motion.reduce:
+				sq *= Vector2(1.0 + 0.015 * sin(t * 2.2 + i), 1.0 - 0.02 * sin(t * 2.2 + i))
 		items.append({"air": 1 if float(w.lift) > 0.5 else 0, "y": w.at.y,
-			"fn": func(): Piece.knight(b, w.at, s, Piece.ROSE, look, w.lift, sq, false, 1.0, w.tilt)})
+			"fn": func(): Piece.knight(b, w.at, s, Piece.ROSE, look, w.lift, sq, false, 1.0, tilt, eye)})
 	for gn: Dictionary in _gone:
 		var gs := t - float(gn.at)
 		var gc := _centre(gn.c)
@@ -794,7 +1171,9 @@ func _build_live(t: float) -> ArrayMesh:
 			var k := 1.0 - u * u
 			var spin := d * TUMBLE_SPIN * u
 			items.append({"air": 2, "y": pos.y,
-				"fn": func(): Piece.knight(b, pos, s, Piece.ROSE, -d, lift, Vector2.ONE * (1.0 - 0.25 * u), false, k, spin, 1.0, true)})
+				"fn": func():
+					Piece.knight(b, pos, s, Piece.ROSE, -d, lift, Vector2.ONE * (1.0 - 0.25 * u), false, k, spin, 1.0, true)
+					_dizzy_stars(b, pos - Vector2(0.0, lift + s * 0.62), s, gs, k)})
 	if not you_now.is_empty():
 		var look := -1.0 if kc.x < you_now.at.x else 1.0
 		if bool(you_now.hopping):
@@ -808,6 +1187,10 @@ func _build_live(t: float) -> ArrayMesh:
 		else:
 			var sh := Motion.shiver_offset(t - _bump_at) * 4.0
 			var sq: Vector2 = Vector2.ONE * _entry(_foe_a.size() + 1, t) * _land_squash(float(you_now.land), t) * you_now.sq
+			if not _press.is_empty() and not Motion.reduce:
+				# ready to spring: a little crouch while the finger is down
+				var pk := minf(1.0, (t - float(_press.at)) / PRESS_TIME) * PRESS_SQUASH
+				sq *= Vector2(1.0 + pk * 0.6, 1.0 - pk)
 			var lift: float = you_now.lift
 			var tilt: float = you_now.tilt
 			if fallen and not Motion.reduce:
@@ -816,14 +1199,26 @@ func _build_live(t: float) -> ArrayMesh:
 					tilt += -look * REAR * sin(PI * v)
 					lift += s * 0.12 * sin(PI * v)
 			var eye := _eye(t)
+			var at: Vector2 = you_now.at + Vector2(sh, 0.0)
 			items.append({"air": 1 if lift > 0.5 else 0, "y": you_now.at.y,
-				"fn": func(): Piece.knight(b, you_now.at + Vector2(sh, 0.0), s, Piece.CREAM, look, lift, sq, fallen, 1.0, tilt, eye)})
+				"fn": func(): Piece.knight(b, at, s, Piece.CREAM, look, lift, sq, fallen, 1.0, tilt, eye)})
+			if fallen:
+				# the king's crown: off his head, up, and down onto yours
+				var head := Piece.knight_head(at, s, look, lift, sq, tilt)
+				var cu := 1.0 if Motion.reduce else clampf((t - _solved_at) / CROWN_FLY, 0.0, 1.0)
+				var c0 := Piece.crown_seat(kc, s)
+				var ce := cu * cu * (3.0 - 2.0 * cu)
+				var cp := c0.lerp(head, ce) + Vector2(0.0, -sin(PI * cu) * CROWN_ARC * s)
+				var ca := fall * TAU * (1.0 - ce) + tilt - look * 0.18 * ce
+				var cs := lerpf(1.0, CROWN_ON, ce)
+				items.append({"air": 2, "y": cp.y, "fn": func(): Piece.crown(b, cp, s, ca, 1.0, cs)})
 	items.sort_custom(func(p, q): return p.y < q.y if p.air == q.air else p.air < q.air)
 	for it: Dictionary in items:
 		it.fn.call()
 	_draw_dust(b, s, t)
 	if doze >= 0.0 and not won:
 		_draw_z(b, kc, s, doze, fall)
+	_draw_nap_zs(b, s, t)
 	if won:
 		_draw_petals(b, s, t - _solved_at)
 	_drop_rings(t)
@@ -949,7 +1344,9 @@ func _draw_marks(b: Face.Builder, s: float, fade: float, t: float) -> void:
 		var q: int = legal[i]
 		var at := _centre(q)
 		var e := 1.0 if Motion.reduce else maxf(0.05, Motion.pop_in_scale(maxf(0.0, t - _busy_until - float(i) * 0.025)).x)
-		if q == _state.king or _state.foes.has(q):
+		if not _press.is_empty() and int(_press.c) == q:
+			e *= 1.35 if Motion.reduce else 1.0 + 0.35 * minf(1.0, (t - float(_press.at)) / PRESS_TIME)
+		if q == _state.king or _foe_on(q):
 			var r := s * 0.44 * e
 			b.stroke(Face.Builder.ring(at, r, r), s * 0.05, Color(Pal.KNIGHT_MOVE, 0.85 * fade), true)
 		elif reach.has(q):
@@ -957,18 +1354,6 @@ func _draw_marks(b: Face.Builder, s: float, fade: float, t: float) -> void:
 			b.stroke(Face.Builder.ring(at, r, r), s * 0.035, Color(Pal.KNIGHT_REACH, 0.7 * fade), true)
 		else:
 			b.disc(at, s * 0.13 * e, Color(Pal.KNIGHT_MOVE, 0.8 * fade))
-
-## Insane's moves left, centred under the board.
-func _draw_budget() -> void:
-	var left: int = _state.moves_left()
-	if left < 0:
-		return
-	var text := tr("KN_ONE_MOVE_LEFT") if left == 1 else tr("KN_MOVES_LEFT") % left
-	var font: Font = CozyTheme.body(700)
-	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT).x
-	var y := _origin().y + _grid_size().y + FRAME + BUDGET_DROP
-	var ink: Color = Pal.BAD if left == 0 and not _state.is_solved() else Pal.TEXT
-	draw_string(font, Vector2((size.x - w) * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, BUDGET_FONT, ink)
 
 ## The toast over the foot of the card, fading in and out over
 ## Motion.DROP_FADE -- Rings' `_draw_toast`, in the card's own pixels and
@@ -1006,6 +1391,9 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if _toast_mesh == null:
 		return
 	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - h * 0.5)
+	if _stuck_btn != null and _stuck_btn.visible:
+		# the Start over button holds the foot: the toast goes over the board
+		mid.y = maxf(h * 0.5 + 8.0, _origin().y - FRAME - 12.0 - h * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1031,23 +1419,35 @@ func _drop_rings(t: float) -> void:
 
 # --- input ---
 
-## A tap on release: on a square your knight can reach, the hop; on your own
-## knight, the first tip again; anywhere else on the board, a refusal.
+## A press on a square your knight can reach crouches it, ready; the hop
+## goes on the release over that same square (a finger slid off takes it
+## back). A tap on your own knight shows the first tip again; anywhere else
+## on the board, a refusal.
 func _gui_input(event: InputEvent) -> void:
-	if _done:
+	if _done or out_of_hearts:
 		return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		accept_event()
-		if event.pressed:
-			return
 		var c := _square_at(event.position)
+		if event.pressed:
+			_press = {}
+			if c >= 0 and _state.legal().has(c) and _now() >= _busy_until:
+				_press = {"c": c, "at": _now()}
+				_refresh()
+			return
+		var pressed: Dictionary = _press
+		_press = {}
 		if c < 0:
+			_refresh()
+			return
+		if not pressed.is_empty() and int(pressed.c) != c:
+			_refresh()
 			return
 		if c == _state.you:
 			_bump_at = _now()
-			_say(tr(TIPS[0]), Face.Expr.HAPPY)
+			_say(tr(_tips()[0]), Face.Expr.HAPPY)
 			_refresh()
 		else:
 			_play(c)
@@ -1068,11 +1468,18 @@ func _tell(key: String, mood: int) -> void:
 	_toast_at = _now()
 	queue_redraw()
 
+## A line about a lost heart, with how many are left after it.
+func _tell_hearts(key: String) -> void:
+	_tell(key, Face.Expr.WORRIED)
+	if hearts > 0:
+		_say(tr(key) + " " + (tr("SB_HEARTS_ONE") if hearts == 1 else tr("SB_HEARTS_N") % hearts), Face.Expr.WORRIED)
+
 func _cycle_tip() -> void:
 	if is_done() or _state.can_undo():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -1080,32 +1487,39 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return _state.can_undo() and not is_done()
+	return _state.can_undo() and not is_done() and not out_of_hearts and not busy() \
+		and _state.difficulty < 3
 
 ## Slides everything back to before your last kept hop. Counts no move.
 func undo() -> bool:
-	if is_done() or _now() < _busy_until or not _state.undo():
+	if not can_undo() or not _state.undo():
 		return false
+	_undo_ever = true
+	_break_streak()
+	_clear_gags()
 	_slide_to_state(_now(), 0.0)
-	_tell("KN_UNDONE", Face.Expr.HAPPY)
+	_set_lost(_state.lost())
+	_tell(STUCK_MSG if _lost else "KN_UNDONE", Face.Expr.STRAIN if _lost else Face.Expr.HAPPY)
 	fx.cue("undo")
 	moved.emit()
 	return true
 
 func hints_left() -> int:
-	return maxi(0, HINTS + hints_extra - hints_used)
+	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
 ## Plays the next hop of the shortest line from here for you. From a lost
-## position -- no line left, or none inside Insane's moves left -- it spends
-## the hint rewinding to the last position that still had one instead.
+## position -- no line left -- it spends the hint rewinding to the last
+## position that still had one instead.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or _now() < _busy_until:
+	if is_done() or out_of_hearts or hints_left() <= 0 or busy():
 		return false
 	var m: int = _state.hint_move()
 	if m < 0:
 		if _state.rewind_to_live() > 0:
 			hints_used += 1
+			_break_streak()
 			_slide_to_state(_now(), 0.0)
+			_set_lost(false)
 			_tell(REWOUND_MSG, Face.Expr.HAPPY)
 			fx.cue("hint")
 			moved.emit()
@@ -1119,40 +1533,560 @@ func hint() -> bool:
 	_play(m, true)
 	return true
 
+func can_reset() -> bool:
+	return not (is_done() or out_of_hearts or busy())
+
+## Back to the opening, the brambles withering away. Hearts lost stay lost.
 func reset_board() -> void:
+	if not can_reset():
+		return
+	_break_streak()
+	_clear_gags()
 	_state.reset_board()
 	_slide_to_state(_now(), Motion.RESET_STAGGER)
+	_set_lost(false)
 	_rings = []
 	_solved_at = -1.0
 	_toast = ""
 	_toast_at = -100.0
 	moves = 0
 	_running = true
-	_say(tr(TIPS[0]), Face.Expr.HAPPY)
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	fx.cue("reset")
+	moved.emit()
+
+func _on_start_over() -> void:
+	reset_board()
+
+## Whether a catch or a boxed-in ending is still playing out: input, Undo,
+## Hint and Reset wait, and the host holds its hint video.
+func busy() -> bool:
+	return _now() < _busy_until
 
 func is_solved() -> bool:
 	return _state.is_solved()
 
-## The shape of the day and never its answer: you, a rose each, the crown.
+## The shape of the day and never its answer: you, a rose each, the crown;
+## Brambles and Flawless when earned.
 func share_glyphs() -> String:
-	return "🐴" + "🌹".repeat(_state.foes.size()) + "👑"
+	var out := "🐴" + "🌹".repeat(_state.foes.size()) + "👑"
+	if _state.brambles() and is_solved():
+		out += " 🌿 " + tr("KN_BRAMBLE_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	elif _flawless:
+		out += " 🏅 " + tr("BN_FLAWLESS")
+	return out
+
+## What a reopened daily needs: the hearts kept and whether it was flawless.
+func completion_record() -> Dictionary:
+	return {"hearts": hearts, "flawless": _flawless}
+
+# --- lost positions and the Start over button ---
+
+## The naps drawn follow the state: one gone after a take is undone or
+## slid back comes back asleep, and a restored day shows its nappers.
+func _sync_naps() -> void:
+	for i in _state.foes.size():
+		if _state.napping(i):
+			if not _nap_at.has(i):
+				_nap_at[i] = AGO
+		else:
+			_nap_at.erase(i)
+
+## Whether a rose knight (napping or not) stands on `c`.
+func _foe_on(c: int) -> bool:
+	for i in _state.foes.size():
+		if _state.foe_square(i) == c:
+			return true
+	return false
+
+func _set_lost(v: bool) -> void:
+	if v and not _lost:
+		_stuck_at = _now()
+	_lost = v
+	_place_stuck()
+
+## The Start over button, centred under the board, popping in once the
+## position is known lost and gone the moment it is not.
+func _place_stuck() -> void:
+	if _stuck_btn == null:
+		return
+	var show := _lost and not is_done() and not out_of_hearts and _cell() > 0.0
+	if not show:
+		_stuck_btn.visible = false
+		return
+	var was := _stuck_btn.visible
+	_stuck_btn.visible = true
+	_stuck_btn.size = _stuck_btn.get_combined_minimum_size()
+	var w := maxf(_stuck_btn.size.x, minf(size.x - 80.0, 420.0))
+	_stuck_btn.size = Vector2(w, STUCK_H)
+	var top := _origin().y + _grid_size().y + FRAME + STUCK_DROP
+	top = minf(top, size.y - STUCK_H - 12.0)
+	_stuck_btn.position = Vector2((size.x - w) * 0.5, top)
+	_stuck_btn.pivot_offset = _stuck_btn.size * 0.5
+	if not was and not Motion.reduce:
+		_stuck_btn.scale = Vector2.ONE * 0.6
+		var tw := _stuck_btn.create_tween()
+		tw.tween_property(_stuck_btn, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		# and a little nudge a moment later, so the eye finds it
+		tw.tween_interval(1.4)
+		tw.tween_property(_stuck_btn, "scale", Vector2.ONE * 1.06, 0.12)
+		tw.tween_property(_stuck_btn, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+# --- the brambles and the naps ---
+
+## A bramble on every square your knight has left: a low thorny mound of
+## leaves with a few curling canes and thorns and one small wild rose,
+## springing up over BRAMBLE_GROW as your knight takes off; withering ones
+## sink and fade.
+func _draw_brambles(b: Face.Builder, s: float, t: float) -> void:
+	for c in _grown:
+		var e := t - float(_grown[c])
+		if e < 0.0:
+			continue
+		var k := 1.0 if Motion.reduce else Motion.back_out(clampf(e / BRAMBLE_GROW, 0.0, 1.0))
+		_bramble(b, _centre(int(c)), s, k, 1.0, int(c))
+	for c in _wither.keys():
+		var u := 1.0 if Motion.reduce else (t - float(_wither[c])) / WITHER_TIME
+		if u >= 1.0:
+			_wither.erase(c)
+			continue
+		_bramble(b, _centre(int(c)), s, 1.0 - u * u, 1.0 - u, int(c))
+
+static func _bramble(b: Face.Builder, at: Vector2, s: float, k: float, alpha: float, seed_c: int) -> void:
+	if k <= 0.01:
+		return
+	var h := fposmod(sin(float(seed_c) * 12.9898) * 43758.5453, 1.0)
+	var foot := at + Vector2(0.0, s * 0.3)
+	Scenery.soft_disc(b, foot, s * 0.36 * k, s * 0.07, Color(Pal.TEXT, 0.16 * alpha))
+	var deep := Color(Pal.LEAF_DEEP, alpha)
+	var leaf := Color(Pal.LEAF, alpha)
+	# the mound: overlapping leafy blobs, deep ones behind
+	var blobs := [Vector2(-0.22, -0.02), Vector2(0.2, 0.0), Vector2(0.0, -0.14), Vector2(-0.1, 0.06), Vector2(0.12, 0.07)]
+	for i in blobs.size():
+		var bp: Vector2 = foot + (blobs[i] * Vector2(1.0, 1.0) + Vector2(0.0, -0.12)) * s * k
+		b.disc(bp, s * (0.16 if i < 3 else 0.13) * k, deep if i < 3 else leaf)
+	b.disc(foot + Vector2(-0.05, -0.2) * s * k, s * 0.1 * k, leaf)
+	# canes curling out of the mound with thorns along them
+	for side: float in [-1.0, 1.0]:
+		var pts := PackedVector2Array()
+		for j in 7:
+			var f := float(j) / 6.0
+			var a := PI * (0.55 + side * 0.25) + side * f * 1.6
+			pts.append(foot + Vector2(-0.0, -0.18) * s * k + Vector2(side * f * 0.34, -sin(f * PI) * 0.22 - f * 0.06) * s * k
+				+ Vector2.from_angle(a) * 0.0)
+		b.stroke(pts, maxf(1.5, s * 0.03 * k), Color(Pal.CHESS_FRAME_DEEP, alpha))
+		for j in [2, 4]:
+			var p: Vector2 = pts[j]
+			var tip := p + Vector2(side * 0.03, -0.06).normalized() * s * 0.06 * k
+			b.polygon(PackedVector2Array([p + Vector2(-0.015, 0.0) * s * k, tip, p + Vector2(0.015, 0.0) * s * k]),
+				Color(Pal.CHESS_FRAME_DEEP, alpha))
+	# one small wild rose, on a side picked off the square
+	var rp := foot + Vector2((h - 0.5) * 0.3, -0.26) * s * k
+	for i in 5:
+		var a := TAU * float(i) / 5.0 + h
+		b.disc(rp + Vector2.from_angle(a) * s * 0.05 * k, s * 0.045 * k, Color(Pal.FLOWER_TILE, alpha))
+	b.disc(rp, s * 0.03 * k, Color(Pal.CROWN, alpha))
+
+## Each napping rose knight's z's, rising and drifting off its ear, one every
+## Z_EVERY; a single still z under reduce motion.
+func _draw_nap_zs(b: Face.Builder, s: float, t: float) -> void:
+	if is_done():
+		return
+	for i in _nap_at:
+		if t < float(_nap_at[i]) or int(_foe_a[i].to) < 0:
+			continue
+		var at := _centre(int(_foe_a[i].to)) + Vector2(s * 0.18, -s * 0.62)
+		if Motion.reduce:
+			_z(b, at, s * 0.09, 0.75)
+			continue
+		var e := t - float(_nap_at[i])
+		for k in 3:
+			var age := fmod(e - float(k) * Z_EVERY, Z_EVERY * 3.0)
+			if e - float(k) * Z_EVERY < 0.0 or age > Z_LIFE:
+				continue
+			var u := age / Z_LIFE
+			var p := at + Vector2(sin(u * 5.0 + float(k)) * s * 0.06 + u * s * 0.15, -u * s * 0.55)
+			_z(b, p, s * (0.06 + 0.05 * u), sin(PI * u) * 0.8)
+
+static func _z(b: Face.Builder, at: Vector2, h: float, alpha: float) -> void:
+	var z := PackedVector2Array([at + Vector2(-h, -h), at + Vector2(h, -h), at + Vector2(-h, h), at + Vector2(h, h)])
+	b.stroke(z, maxf(2.0, h * 0.32), Color(Pal.MOON_DEEP, alpha))
+
+## A taken knight's dizzy stars: three little gold stars circling over it.
+func _dizzy_stars(b: Face.Builder, at: Vector2, s: float, e: float, alpha: float) -> void:
+	for k in STARS:
+		var a := e * 9.0 + TAU * float(k) / float(STARS)
+		var p := at + Vector2(cos(a) * s * 0.22, sin(a) * s * 0.07)
+		b.polygon(Seal.star(p, s * 0.06), Color(Pal.CROWN, alpha * (0.6 + 0.4 * sin(a))))
+
+# --- hearts ---
+
+## A heart splits off the pill at `at`; the last one sets out_of_hearts.
+func _lose_heart(at: float) -> void:
+	_lost_ever = true
+	hearts = maxi(0, hearts - 1)
+	_split_index = hearts
+	_split_at = at
+	if hearts <= 0:
+		out_of_hearts = true
+		_set_lost(false)
+	_heart_layer.queue_redraw()
+
+func _draw_hearts() -> void:
+	if max_hearts <= 0 or _cell() <= 0.0:
+		return
+	var b := Face.Builder.new()
+	var now := _now()
+	var step := 2.0 * HEART_R + HEART_GAP
+	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+		_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)
+	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var left := size.x * 0.5 - pill.x * 0.5
+	var corner := Vector2(left, y - pill.y * 0.5)
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	var x0 := left + HEART_PILL_PAD.x + HEART_R
+	for i in max_hearts:
+		var at := Vector2(x0 + step * i, y)
+		if i < hearts or (i == _split_index and now < _split_at):
+			var r := HEART_R
+			if i == _back_index and not Motion.reduce:
+				r *= Motion.pop_in_scale(now - _back_at, HEART_BACK_TIME).x
+			if r > 0.5:
+				b.polygon(_heart(at, r, -1), Pal.FLOWER)
+				b.polygon(_heart(at, r, 1), Pal.FLOWER_DEEP)
+				_heart_face(b, at, r)
+			continue
+		b.polygon(_heart(at, HEART_R, 0), Color(Pal.FLOWER, 0.22))
+		var u := (now - _split_at) / SPLIT_TIME
+		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var fade := 1.0 - u * u
+			for side in [-1, 1]:
+				var turn: float = side * SPLIT_TURN * u
+				var shift := Vector2(side * SPLIT_SPREAD * u, SPLIT_FALL * u * u)
+				var pts := _heart(Vector2.ZERO, HEART_R, side)
+				for k in pts.size():
+					pts[k] = at + shift + pts[k].rotated(turn)
+				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+	_hearts_shown = b.mesh()
+	var c := Vector2(size.x * 0.5, y)
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+static func _heart_face(b, at: Vector2, s: float) -> void:
+	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
+	for sx in [-1.0, 1.0]:
+		b.disc(at + Vector2(sx * 0.28, -0.12) * s, 0.09 * s, Pal.OUTLINE)
+	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, 0.02) * s, 0.16 * s, PI * 0.2, PI * 0.8), 0.07 * s, Pal.OUTLINE)
+	b.ellipse(at + Vector2(0.25, -0.76) * s, 0.24 * s, 0.11 * s, Pal.LEAF)
+
+static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
+	const STEPS := 36
+	var k := s / 16.0
+	var off := Vector2(0.0, -2.5)
+	var pts := PackedVector2Array()
+	var from := 0.0 if side >= 0 else PI
+	var to := TAU if side == 0 else from + PI
+	var count := STEPS if side == 0 else STEPS / 2 + 1
+	for i in count:
+		var t := lerpf(from, to, float(i) / float(STEPS if side == 0 else STEPS / 2))
+		var p := Vector2(16.0 * pow(sin(t), 3.0),
+			-(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t)))
+		pts.append(at + (p + off) * k)
+	if side == 0:
+		return pts
+	var zig := [Vector2(0.0, 13.0), Vector2(1.5, 8.0), Vector2(-1.5, 3.0), Vector2(1.0, -2.0)]
+	if side < 0:
+		zig.reverse()
+	for z: Vector2 in zig:
+		pts.append(at + (z + off) * k)
+	return pts
+
+## The last heart is gone: dusk falls on the garden table, the pieces nod
+## off, and the out-of-hearts card comes up.
+func _run_out() -> void:
+	if _asleep or not out_of_hearts or is_done():
+		return
+	_asleep = true
+	_press = {}
+	_break_streak()
+	_clear_gags()
+	_tip_timer.stop()
+	_set_lost(false)
+	fx.cue("out_of_hearts")
+	_say(tr("KN_OUT"), Face.Expr.SLEEPY)
+	_dusk_toward(DUSK)
+	_refresh()
+	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
+
+func _dusk_toward(tint: Color) -> void:
+	Motion.stop(_dusk_tw)
+	if Motion.reduce:
+		modulate = tint
+		return
+	_dusk_tw = create_tween()
+	_dusk_tw.tween_property(self, "modulate", tint, DUSK_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _open_card() -> void:
+	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
+		return
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["KN_OUT_BODY", "KN_OUT_REST"])
+	_heart_card = card
+	card.try_again.connect(try_again)
+	card.one_more_heart.connect(heart_back)
+	card.leave.connect(_leave_board)
+	var host := get_tree().get_first_node_in_group("puzzle_host")
+	if host != null and host.is_ancestor_of(self):
+		host.add_child(card)
+	else:
+		get_tree().root.add_child(card)
+
+## Try again: the same board at its opening, every heart back, the clock and
+## the moves from zero. Hints spent stay spent.
+func try_again() -> void:
+	if is_done():
+		return
+	_close_card()
+	_gen += 1
+	_state.reset_board()
+	var withering := _grown.duplicate()
+	_deal()
+	var t := _now()
+	for c in withering:
+		_wither[c] = t
+	_slide_from_dusk()
+	_break_streak()
+	_clear_gags()
+	elapsed = 0.0
+	moves = 0
+	_running = true
+	modulate = DUSK
+	_dusk_toward(Color.WHITE)
+	_heart_layer.queue_redraw()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+	fx.cue("reset")
+	_refresh()
+	moved.emit()
+
+## Try again's pieces: a gentle pop back onto their opening squares.
+func _slide_from_dusk() -> void:
+	var t := _now()
+	_you_a = {"from": _state.you, "to": _state.you, "at": t, "dur": 0.001, "arc": 0.0, "pop": true}
+	for i in _foe_a.size():
+		var c := _state.foe_square(i)
+		_foe_a[i] = {"from": c, "to": c, "at": t + Motion.stagger(i + 1, Motion.RESET_STAGGER * 3.0),
+			"dur": 0.001, "arc": 0.0, "pop": true}
+	_busy_for(maxf(WITHER_TIME, Motion.POP_IN + 0.3))
+
+## One more heart (the card's video): once a board. Morning comes back, and
+## a board left boxed in withers back to the opening.
+func heart_back() -> void:
+	if is_done() or not out_of_hearts:
+		return
+	_close_card()
+	var now := _now()
+	_heart_used = true
+	hearts = 1
+	_back_index = 0
+	_back_at = now
+	out_of_hearts = false
+	_asleep = false
+	_running = true
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	if _state.brambles() and _state.trapped():
+		_state.reset_board()
+		_slide_to_state(now, Motion.RESET_STAGGER)
+	elif not _state.brambles():
+		_set_lost(_state.lost())
+	_heart_layer.queue_redraw()
+	_refresh()
+	_say(tr("KN_HEART_BACK"), Face.Expr.HAPPY)
+	_tip_timer.start()
+	moved.emit()
+
+func _leave_board() -> void:
+	_close_card()
+	finish_unsolved()
+	leave.emit()
+
+func _close_card() -> void:
+	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
+		_heart_card.queue_free()
+	_heart_card = null
+
+## Runs `what` after `delay`, unless the board has been dealt again meanwhile.
+func _after(delay: float, what: Callable) -> void:
+	if not is_inside_tree():
+		return
+	var gen := _gen
+	if delay <= 0.0:
+		what.call()
+		return
+	get_tree().create_timer(delay).timeout.connect(func() -> void:
+		if gen == _gen and is_inside_tree():
+			what.call())
+
+# --- the rewards ---
+
+func _reset_rewards() -> void:
+	_streak = 0
+	_streak_gen += 1
+	_hops = 0
+	_gag_until = 0.0
+	_gag_gen += 1
+	_combo_n = 0
+	_combo_at = -INF
+	_combo_out_at = -INF
+	_love = []
+	_flies = []
+	_party_at = INF
+	_stamp_at = INF
+	_seal_mesh = null
+	_cat_at = INF
+	_cat_curled = false
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## The day's own number, so a day always deals the same gags and wisdom.
+func _day_hash() -> int:
+	if _state.size() == 0:
+		return 0
+	return absi(hash([_state.w, _state.king, int(_state.g.you), _state.foes.size()]))
+
+## A kept hop that was not a hint: the streak grows -- a note up the
+## pentatonic from the second, the bubble over your knight from the third,
+## confetti at 4, 7 and every 5 -- and the gag picked for it plays.
+func _on_safe_hop(to: int, land: float, gag: int) -> void:
+	_streak += 1
+	var count := _streak
+	var gen := _streak_gen
+	var at := _centre(to)
+	var wait := maxf(0.0, land - _now())
+	if count >= 2:
+		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
+		_after(wait + 0.05, func() -> void:
+			if gen == _streak_gen:
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if count >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = count
+		_combo_pos = at - Vector2(0.0, _cell() * 0.55)
+		_combo_at = land
+		_combo_out_at = -INF
+	if _confetti_at(count) and not Motion.reduce:
+		_after(wait, func() -> void:
+			if gen == _streak_gen:
+				fx.confetti(at, 22)
+				fx.cue("confetti"))
+	_start_gag(to, gag, land)
+	_life_layer.queue_redraw()
+
+static func _confetti_at(count: int) -> bool:
+	return count == 4 or count == 7 or (count >= 10 and count % 5 == 0)
+
+## The gag for the next kept hop, off the day's hash: one in GAG_ODDS, never
+## while one is still on.
+func _pick_gag() -> int:
+	_hops += 1
+	var t := _now()
+	if Motion.reduce or t < _gag_until or force_gag == Gag.NONE:
+		return Gag.NONE
+	if force_gag >= 0:
+		return force_gag
+	var roll := posmod(_day_hash() + _hops * GAG_STEP, GAG_SPAN)
+	if roll >= GAG_SPAN / GAG_ODDS:
+		return Gag.NONE
+	return roll % 3
+
+## The streak ends: a catch, boxed in, an undo, a hint, a reset, the hearts
+## running out. The bubble deflates.
+func _break_streak() -> void:
+	_streak = 0
+	_streak_gen += 1
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+	else:
+		_combo_n = 0
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+func _clear_gags() -> void:
+	_love = []
+	_flies = []
+	_gag_until = 0.0
+	_gag_gen += 1
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## The gag for a hop to `c`: the somersault is the hop itself (`_where`);
+## love hearts float off your knight as it lands; or a butterfly flutters
+## in, sits on its ear a moment and flies off.
+func _start_gag(c: int, gag: int, lands: float) -> void:
+	if gag == Gag.NONE:
+		return
+	var wait := maxf(0.0, lands - _now())
+	var gg := _gag_gen
+	var at := _centre(c)
+	var cue := ""
+	match gag:
+		Gag.FLIP:
+			_gag_until = lands + 0.3
+			_after(wait, func() -> void:
+				if gg == _gag_gen and not Motion.reduce:
+					fx.sparkle(at - Vector2(0.0, _cell() * 0.3), Pal.SUN))
+			return
+		Gag.LOVE:
+			for k in LOVE_HEARTS:
+				_love.append({"at": at + Vector2(float(k - 1) * 0.28, -0.45) * _cell(),
+					"t": lands + 0.12 * float(k), "phase": float(k) * 2.1})
+			cue = "love"
+			_gag_until = lands + 0.24 + LOVE_TIME
+		Gag.BUTTERFLY:
+			_flies.append({"t": lands, "from": -1.0 if at.x > size.x * 0.5 else 1.0})
+			cue = "flutter"
+			_gag_until = lands + FLY_IN + FLY_SIT + FLY_OUT
+	_after(wait, func() -> void:
+		if gg == _gag_gen:
+			fx.cue(cue))
 
 # --- the win ---
 
 func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": tr("KN_WIN")}
 
-## The win screen waits for your knight to land and the king to fall.
+## The win screen waits for your knight to land, the king to fall, the crown
+## to find your head and the party to have its moment.
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return maxf(0.0, _solved_at - _now()) + WIN_WAIT
+	var fall := maxf(0.0, _solved_at - _now()) + WIN_WAIT
+	var party := maxf(0.0, _party_at - _now()) + PARTY_TIME if _party_at < INF else fall
+	return maxf(fall, party)
 
 func _on_solved() -> void:
 	var t := _now()
 	_solved_at = maxf(t, float(_you_a.at) + float(_you_a.get("crouch", 0.0)) + float(_you_a.dur))
 	_tip_timer.stop()
+	_press = {}
+	_set_lost(false)
+	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
+	# Undo on Easy and Medium.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = t
+	_streak_gen += 1
+	_clear_gags()
 	var kc := _centre(_state.king)
 	if not Motion.reduce:
 		_later(_solved_at - t, func():
@@ -1161,16 +2095,28 @@ func _on_solved() -> void:
 			fx.puff(kc + Vector2(0.0, _cell() * 0.25), Pal.KNIGHT_ROSE, 6)
 			fx.cue("solved"))
 		_later(_solved_at - t + 0.2, func(): fx.sparkle(kc, Pal.CROWN))
+		_later(_solved_at - t + CROWN_FLY, func():
+			fx.sparkle(kc - Vector2(0.0, _cell() * 0.5), Pal.CROWN)
+			fx.cue("crown"))
 	else:
 		fx.cue("solved")
 	_busy_for(_solved_at - t + maxf(TOPPLE_TIME, PETAL_TIME + 0.6))
 	_say(tr("KN_WIN"), Face.Expr.JOY)
+	_heart_layer.queue_redraw()
+	_party()
 	_refresh()
 
 ## A reopened daily that was already solved: the day's line replayed through
-## the state, your knight on the king's square and the king already fallen.
-## Never check_solved(): `solved` must not fire twice.
+## the state, your knight on the king's square wearing his crown, the king
+## already fallen, the cat asleep and the seal. Never check_solved():
+## `solved` must not fire twice.
 func restore_completed_board() -> void:
+	_gen += 1
+	_close_card()
+	_deal()
+	_reset_rewards()
+	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	_flawless = bool(completed_record.get("flawless", false))
 	_state.reset_board()
 	for m in _state.g.line:
 		_state.play(m)
@@ -1178,9 +2124,304 @@ func restore_completed_board() -> void:
 	var t := _now()
 	_solved_at = t - 100.0
 	_opened = t - 100.0
+	_cat_at = t - 100.0
+	_place_cat(t)
+	if _flawless or _state.brambles():
+		_stamp_at = t - 100.0
 	_tip_timer.stop()
 	_say(tr("KN_WIN"), Face.Expr.JOY)
+	_heart_layer.queue_redraw()
+	_life_layer.queue_redraw()
 	_refresh()
+
+# --- the party ---
+
+## After the king falls and the crown lands: confetti twice, the nap cat
+## hopping onto the frame's foot and curling up, a bit of knightly wisdom,
+## and the seal when the solve earned one (flawless, or any Brambles). Under
+## reduce motion the cat and the seal are simply there.
+func _party() -> void:
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else maxf(0.0, _solved_at - now) + CROWN_FLY + PARTY_AT
+	_party_at = now + lead
+	_after(lead + 0.8, func() -> void:
+		_say(_cheer(), Face.Expr.JOY))
+	_cat_at = now if Motion.reduce else _party_at + CAT_AT
+	if _flawless or _state.brambles():
+		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if Motion.reduce:
+		_life_layer.queue_redraw()
+		return
+	var field := _field_rect()
+	_after(lead + 0.1, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell() * 0.5), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.7, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	_life_layer.queue_redraw()
+
+func _cheer() -> String:
+	return tr("KN_CHEER_%d" % posmod(_day_hash(), CHEERS))
+
+func _field_rect() -> Rect2:
+	return Rect2(_origin(), _grid_size())
+
+func _frame_rect() -> Rect2:
+	return _field_rect().grow(FRAME)
+
+# --- the nap cat ---
+
+func _cat_px() -> float:
+	return size.x * CAT_PX
+
+## Where she curls up: on the frame's foot, a fifth of the way along from its
+## left (the seal takes the right).
+func _cat_spot() -> Vector2:
+	var box := _frame_rect()
+	var f := 0.46 if _seal_left() else 0.22
+	return Vector2(box.position.x + box.size.x * f, box.end.y - _cat_px() * 0.3)
+
+func _cat_start() -> Vector2:
+	var box := _frame_rect()
+	var x := box.end.x - _cat_px() * 0.5 if _seal_left() else box.position.x + _cat_px() * 0.5
+	return Vector2(x, box.end.y - _cat_px() * 0.3)
+
+## The win happens on the king's square: when that is in the board's lower
+## right quarter, where the seal goes, the seal takes the lower left corner
+## and the cat the right, so neither covers your crowned knight.
+func _seal_left() -> bool:
+	var w: int = _state.w
+	return w > 0 and _state.king % w >= w / 2 and _state.king / w >= w / 2
+
+func _cat_walk() -> float:
+	return CAT_POP + CAT_HOPS * CAT_HOP_TIME
+
+func _place_cat(t: float) -> void:
+	if t < _cat_at or _cell() <= 0.0:
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.z_index = 3
+		_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		_cat.set_idle(true)
+		_cat_curled = false
+	var px := _cat_px()
+	if _cat.size.x != px:
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+	var e := t - _cat_at
+	var spot := _cat_spot()
+	var start := _cat_start()
+	var at := spot
+	var sc := Vector2.ONE
+	if Motion.reduce or e >= CURL_AT - CAT_AT or _cat_curled:
+		if not _cat_curled:
+			_curl_cat(e > CURL_AT - CAT_AT + 1.0)
+		else:
+			_cat.position = _cat_spot() - _cat.size * 0.5
+		return
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < _cat_walk():
+		var h := (e - CAT_POP) / CAT_HOP_TIME
+		var n := int(h)
+		var u := h - float(n)
+		var from := start.lerp(spot, float(n) / CAT_HOPS)
+		var to := start.lerp(spot, float(n + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * CAT_HOP_H * px)
+		var sq := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - sq, 1.0 + sq)
+	elif e < _cat_walk() + CAT_SETTLE:
+		var u := (e - _cat_walk()) / CAT_SETTLE
+		var sq := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + sq, 1.0 - sq)
+	_cat.position = at - _cat.size * Vector2(0.5, 0.5)
+	_cat.scale = sc
+
+func _curl_cat(quiet: bool) -> void:
+	_cat_curled = true
+	_cat.expression = Face.Expr.SLEEPY
+	_cat.scale = Vector2.ONE
+	_cat.rotation = 0.0
+	_cat.position = _cat_spot() - _cat.size * 0.5
+	if not quiet:
+		fx.cue("purr")
+
+# --- the life over the board ---
+
+func _tick_life(now: float) -> bool:
+	_love = _love.filter(func(l): return now < float(l.t) + LOVE_TIME)
+	_flies = _flies.filter(func(f): return now < float(f.t) + FLY_IN + FLY_SIT + FLY_OUT)
+	return not (_love.is_empty() and _flies.is_empty()) \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## Love hearts (one cached mesh through a transform each), the butterfly
+## (one mesh a frame), the seal and the streak's bubble with their words.
+func _draw_life() -> void:
+	if _cell() <= 0.0 or _state.size() == 0:
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	var s := _cell()
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.1 * s,
+				-LOVE_RISE * s * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	if not _flies.is_empty():
+		var b := Face.Builder.new()
+		for f in _flies:
+			_fly(b, f, now)
+		if not b.verts.is_empty():
+			var m := b.mesh()
+			shown.append(m)
+			_life_layer.draw_mesh(m, null)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_draw_combo(now, shown)
+	_life_shown = shown
+
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := maxf(12.0, _cell() * LOVE_R)
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## A butterfly's visit: in on a curve from the card's side, a rest on your
+## knight's ear (following it if it hops away), and off up the other way.
+func _fly(b: Face.Builder, f: Dictionary, now: float) -> void:
+	var e := now - float(f.t)
+	if e <= 0.0:
+		return
+	var s := _cell()
+	var you_now := _where(_you_a, now)
+	if you_now.is_empty():
+		return
+	var look := -1.0 if _centre(_state.king).x < you_now.at.x else 1.0
+	var spot := Piece.knight_head(you_now.at, s, look, float(you_now.lift)) + Vector2(0.0, -s * 0.05)
+	var side: float = f.from
+	var at := spot
+	var beat := 0.3 + 0.7 * absf(sin(e * 14.0))
+	var lean := 0.0
+	if e < FLY_IN:
+		var u := e / FLY_IN
+		var from := spot + Vector2(side * s * 3.0, -s * 2.2)
+		at = from.lerp(spot, 1.0 - (1.0 - u) * (1.0 - u)) + Vector2(0.0, -sin(PI * u) * s * 0.5)
+		lean = -side * 0.3
+	elif e < FLY_IN + FLY_SIT:
+		var w := e - FLY_IN
+		beat = 0.25 + 0.5 * absf(sin(w * 3.0))
+	else:
+		var u := (e - FLY_IN - FLY_SIT) / FLY_OUT
+		var to := spot + Vector2(-side * s * 2.8, -s * 3.4)
+		at = spot.lerp(to, u * u) + Vector2(sin(u * 14.0) * s * 0.08, 0.0)
+		lean = side * 0.3
+	Cat.butterfly(b, at, s * 0.36, beat, lean)
+
+func _draw_combo(now: float, shown: Array) -> void:
+	if _combo_n < COMBO_FROM:
+		return
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		if e < 0.0:
+			return
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var tail := _combo_pos
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var tip := (tail - centre).round()
+	var key := [text, tip]
+	if _combo_shown == null or _combo_key != key:
+		var b := Face.Builder.new()
+		var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+		b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+		b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+		_combo_shown = b.mesh()
+		_combo_key = key
+	shown.append(_combo_shown)
+	_life_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_life_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_life_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.SUN_DEEP, alpha))
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+## The seal on the frame's lower right corner, dropping in and settling, its
+## words over it: Flawless; on Brambles "Insane" over Flawless or Brambles,
+## on the night seal.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	var insane: bool = _state.brambles()
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	var box := _frame_rect()
+	var corner := box.end
+	var centre := corner - Vector2(rad * 0.85, rad * 0.72)
+	if _seal_left():
+		centre.x = box.position.x + rad * 0.85
+	centre.x = clampf(centre.x, rad * 1.08, size.x - rad * 1.08)
+	centre.y = minf(centre.y, size.y - rad * 1.02)
+	var xf := Transform2D(-STAMP_TILT if _seal_left() else STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("KN_BRAMBLE_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
