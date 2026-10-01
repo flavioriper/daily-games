@@ -19,6 +19,7 @@ const BeeFace = preload("res://ui/faces/bee_face.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Cloth = preload("res://ui/faces/patch_cloth.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
+const PaperPlane = preload("res://ui/faces/paper_plane.gd")
 
 const GRID := 4
 const GAP := 10.0
@@ -32,6 +33,10 @@ var _progress := 0.0:
 		_layout_pieces()
 		queue_redraw()
 var _loop: Tween
+## Paper Planes' lesson mesh, kept until the next draw replaces it: a canvas
+## command holds a mesh by RID, so dropping the only reference leaves the
+## renderer drawing a freed one.
+var _planes_shown: ArrayMesh
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -112,7 +117,7 @@ func _layout_pieces() -> void:
 	var cell := (board.size.x - GAP * (GRID - 1)) / GRID
 	var a := board.position + Vector2(cell * 1.5 + GAP, cell * 1.5 + GAP)
 	var b := board.position + Vector2(cell * 2.5 + GAP * 2.0, cell * 2.5 + GAP * 2.0)
-	var moving := puzzle_id in ["untangle", "oneline", "wordtrail", "bridges", "planes"]
+	var moving := puzzle_id in ["untangle", "oneline", "wordtrail", "bridges"]
 	for i in _pieces.size():
 		var piece := _pieces[i]
 		var extent := cell * (0.82 if puzzle_id != "shikaku" else 0.95)
@@ -137,7 +142,7 @@ func _animate() -> void:
 	# Bridges lays three planks and Quilt drags two patches in one loop, so
 	# they take their time.
 	# Fairy Lights taps, turns and then lets the light run, so it is between.
-	var span := 2.4 if puzzle_id in ["bridges", "quilt"] else (1.7 if puzzle_id == "fairylights" else 0.9)
+	var span := 2.4 if puzzle_id in ["bridges", "quilt", "planes"] else (1.7 if puzzle_id == "fairylights" else 0.9)
 	_loop.tween_property(self, "_progress", 1.0, span).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_loop.tween_interval(1.35)
 	_loop.tween_property(self, "_progress", 0.0, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -154,6 +159,9 @@ func _draw() -> void:
 		return
 	if puzzle_id == "fairylights":
 		_draw_fairylights(board)
+		return
+	if puzzle_id == "planes":
+		_draw_planes(board, cell)
 		return
 	for r in GRID:
 		for c in GRID:
@@ -201,11 +209,6 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 		"sudoku":
 			for i in 4: _draw_number(str(i + 1), _centre(board, cell, i, i), Pal.TEXT)
 			if p > 0.45: _draw_number("3", _centre(board, cell, 2, 0), Pal.ACCENT)
-		"planes":
-			var from := _centre(board, cell, 0, 3)
-			var to := _centre(board, cell, 3, 0)
-			draw_line(from, from.lerp(to, p), Pal.ACCENT, 8.0, true)
-			_draw_plane(from.lerp(to, p))
 		"rings":
 			var centre := _centre(board, cell, 1, 1)
 			for i in 3: draw_arc(centre, cell * (0.18 + i * 0.14), 0.0, TAU * p, 32, [Pal.BERRY, Pal.SUN, Pal.ACCENT][i], 8.0, true)
@@ -526,9 +529,71 @@ func _draw_path(points: PackedVector2Array, amount: float, colour: Color, width:
 	if whole < points.size() - 1:
 		draw_line(points[whole], points[whole].lerp(points[whole + 1], scaled - whole), colour, width, true)
 
-func _draw_plane(at: Vector2) -> void:
-	var points := PackedVector2Array([at + Vector2(0, -18), at + Vector2(14, 16), at, at + Vector2(-14, 16)])
-	draw_colored_polygon(points, Pal.ACCENT)
+## Paper Planes' lesson on its own little sky (the polish, 2026-09-30; the
+## first cut slid a triangle diagonally across the grid, which is not a move
+## this game has, under a caption that said to draw a line). A 4 x 4 field of
+## dots with two of the board's own planes: a yellow one on the second row
+## pointing east with a clear lane, and a pink one below it pointing north,
+## whose lane the yellow one blocks. A finger taps the yellow plane, it dips
+## and flies off east; then the pink one's lane is clear, the finger taps it
+## and it flies off north: tap a plane whose lane is clear, the front first.
+func _draw_planes(board: Rect2, cell: float) -> void:
+	var p := _progress
+	var step := cell + GAP
+	var at := func(c: float, r: float) -> Vector2:
+		return board.position + Vector2(c * step + cell * 0.5, r * step + cell * 0.5)
+	draw_style_box(_tile(Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45)), board.grow(6.0))
+	var b := Face.Builder.new()
+	# The two planes: cells tail to head, the direction, when the finger
+	# lands on it and when it flies.
+	var planes := [
+		{"cells": [Vector2(0, 1), Vector2(1, 1)], "dir": Vector2(1, 0), "paper": 0, "tap": 0.06, "go": 0.16},
+		{"cells": [Vector2(1, 3), Vector2(1, 2)], "dir": Vector2(0, -1), "paper": 1, "tap": 0.52, "go": 0.62},
+	]
+	var taken := {}
+	for pl in planes:
+		if p < float(pl["go"]) + 0.12:
+			for c: Vector2 in pl["cells"]:
+				taken[c] = true
+	for r in GRID:
+		for c in GRID:
+			if not taken.has(Vector2(c, r)):
+				b.disc(at.call(float(c), float(r)), cell * 0.06, Color(Pal.LINE, 0.55))
+	var finger := Vector2(-1.0, -1.0)
+	for pl in planes:
+		var cells: Array = pl["cells"]
+		var dir: Vector2 = pl["dir"]
+		var head: Vector2 = cells[cells.size() - 1]
+		var fly := clampf((p - float(pl["go"])) / 0.3, 0.0, 1.0)
+		var dist := fly * fly * 4.0
+		var pts := PackedVector2Array()
+		for c: Vector2 in cells:
+			pts.append(at.call(c.x, c.y))
+		var shift := dir * dist * step
+		var alpha := clampf(1.0 - (dist - 2.2) / 1.0, 0.0, 1.0)
+		if alpha <= 0.0:
+			continue
+		# Pressed: it dips under the finger until it goes.
+		var dip := 1.0
+		if p >= float(pl["tap"]) and p < float(pl["go"]):
+			dip = 0.92
+		var mid := (pts[0] + pts[pts.size() - 1]) * 0.5
+		for k in pts.size():
+			pts[k] = mid + (pts[k] - mid) * dip + shift
+		PaperPlane.trail(b, pts, cell * dip, int(pl["paper"]), alpha, 0.0, 1.0 - dip)
+		PaperPlane.dart(b, pts[pts.size() - 1], dir.angle(), cell * dip, int(pl["paper"]), alpha,
+			Vector2.ONE, minf(fly * 3.0, 1.0), (1.0 - dip) * 6.0)
+		if p > float(pl["tap"]) - 0.06 and p < float(pl["go"]) + 0.03:
+			finger = at.call(head.x, head.y) + Vector2(cell * 0.12, cell * 0.22)
+	_planes_shown = b.mesh()
+	draw_mesh(_planes_shown, null)
+	# The sky is clear: the panel glows green while the loop holds.
+	if p >= 0.97:
+		_draw_outline(board.grow(6.0), Pal.GOOD, 6.0)
+	if finger.x >= 0.0:
+		draw_circle(finger + Vector2(4.0, 8.0), cell * 0.2, Color(Pal.TEXT, 0.16))
+		draw_circle(finger, cell * 0.17, Color(Pal.SURFACE, 0.95))
+		draw_arc(finger, cell * 0.17, 0.0, TAU, 24, Pal.LINE, 3.0, true)
 
 func _ease(value: float) -> float:
 	return value * value * (3.0 - 2.0 * value)

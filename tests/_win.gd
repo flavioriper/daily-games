@@ -855,6 +855,9 @@ func _solve_planes() -> void:
 		for c in st.cols:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# A Windy Day sky (Insane) is a timetable: any free plane can strand it,
+	# so it is played in the state's own solve order, and it has no hints.
+	var order: Array = st.solve_order() if st.windy() else []
 	var guard := 0
 	while not _puzzle.is_done() and guard < 400:
 		guard += 1
@@ -862,7 +865,9 @@ func _solve_planes() -> void:
 		if free.is_empty():
 			return
 		var i: int = free[0]
-		if st.left() == 1:
+		if not order.is_empty():
+			i = order.pop_front()
+		if st.left() == 1 and _puzzle.hints_left() > 0:
 			_press(_host.top_bar.hint_button)
 			_hud_ok = _puzzle.hints_used == 1
 			if _puzzle._hint_lit >= 0:

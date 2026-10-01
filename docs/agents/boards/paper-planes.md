@@ -124,3 +124,53 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   channel delta of 1** -- edge antialiasing between backends, not a garbage
   `instance uniform`. Reduce motion stills it completely: two frames 1.5 s
   apart are pixel-identical, 0 of 1,166,400, against non-zero controls.
+- **The polish, board side (2026-09-30, spec
+  `2026-09-30-paper-planes-polish-design.md` sections 1, 3 and 5; numbers in
+  its section 7).** Hard and Insane judge a tap: a blocked plane crashes
+  (`_crash`, one clock: the rush up the lane to `blocker_cell`, the bonk, the
+  crumple, the flutter home) and a heart splits on the paper pill in a 64 px
+  strip over the panel; `busy()` holds input, Undo, Hint and Reset while it
+  plays. Out of hearts: the planes droop (`_droop_at`, a still-mesh rebuild a
+  frame for 0.5 s), dusk, the card with `PP_OUT_BODY`/`PP_OUT_REST`, Try
+  again (Reset's wave, clouds blown back, hearts full), One more heart.
+  **Windy Day** is drawn on its own layer (`_sky_layer`, so the sock's sway
+  and a glide never rebuild the field): one cloud mesh (puffs traced as a
+  single outline so the 0.8 alpha shows no seams) under a transform per
+  cloud, a twin drawn while one wraps, a ghost mesh of dotted rings at
+  `cloud_cells(count() + 1)` rebuilt only when the count moves, and the sock
+  (pole in the still mesh, sleeve on the sky layer). The clouds are drawn
+  at a continuous count (`_cloud_k`) that glides to the glide's own end
+  (`_glide_to`), never straight to the state's count -- the first cut read
+  the state and jumped a whole cell, because the state ticks on the tap
+  before the glide is asked for. A stuck sky (`State.stuck()`) says
+  `PP_TIP_STUCK` once a count, the pill breathes, and a cloud tap gusts.
+  Input follows Fairy Lights' review (fde0e7a): one finger, the plane goes
+  on release from the plane pressed. Hooks for the rewards pass:
+  `_on_launched`, `_break_streak`, `_reset_rewards`, `_party`; the
+  `completion_record` keeps `hearts` and `flawless`. Harness:
+  `tests/_shot_planes.gd` (modes in its header).
+- **The polish, rewards (2026-09-30, spec section 4; numbers in section 7,
+  calls in section 8).** The hooks are filled: `_on_launched(i, gag)` (the
+  streak, the bubble, confetti, the countdown), `_break_streak`,
+  `_reset_rewards`, `_clear_gags` (undo, Reset and Try again) and `_party`.
+  **A gag shapes the flight itself**: `_flight(i, gag)` returns the flight
+  dictionary, and a loop is a circle spliced into the track (`_track` reads
+  `_fly[i]["loop"]`) with its own time warp (`_s_at`/`_tau_at`, which every
+  timing reader now goes through -- covers, the leaves' flutter, the
+  contrail, the puff -- instead of `_ease_inv` straight), so the body runs
+  round the loop like a ribbon and an undo mid-loop flies home back round
+  it; a roll is a slower flight whose dart's wings scale through -1. The
+  bird, hearts, flock, straggler, bubble and seal live on a life layer
+  (`_life_layer`, z 3) as moments drawn through transforms of cached meshes;
+  Windy Day's gold clouds are a second cloud mesh on the sky layer.
+  `PaperPlane.dart` takes `shadow := false` for darts that turn over in the
+  air. `force_gag` is the harness's switch. Harness modes `right` and
+  `solve` (any band) in `tests/_shot_planes.gd`.
+- **Review findings, fixed (2026-09-30**, polish spec section 8). A judged
+  tap is refused for free when its blocker is not on screen yet (a plane
+  still flying home after Undo, Reset or Try again, or a cloud still
+  gliding to the count the state already reads: `_unseen_block`). The host
+  is told after `busy()` is set and again by `_process` the frame it ends
+  (`_was_busy`), never by a timer, which fires up to a frame early. A Windy
+  Day hint goes dark on every tick; no gag sound plays once the hearts are
+  gone; Undo lets go of a held press; `_sky_shown` keeps the sky's meshes.
