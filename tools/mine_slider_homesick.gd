@@ -12,15 +12,18 @@ extends SceneTree
 ##
 ## A graph is kept only if a fair share of the big block's moves in it lead
 ## nowhere (DOOM_MIN): that is what makes the band losable.
-##   godot --headless --script tools/mine_slider_homesick.gd -- <seed> <seconds> <out.json>
+## Graphs come first from the existing bank's trays (content/slider.json,
+## every `step`-th from `seed`, so several processes share it out), then
+## from random layouts.
+##   godot --headless --script tools/mine_slider_homesick.gd -- <seed> <seconds> <out.json> [step]
 ## then python3 tools/merge_slider_homesick.py <out.json> ...
 
 const Gen = preload("res://puzzles/slider_gen.gd")
 const Mine = preload("res://tools/mine_slider.gd")
 
-const MIN_PAR := 60
-const DEEP_SLACK := 8
-const PER_GRAPH := 4
+const MIN_PAR := 50
+const DEEP_SLACK := 14
+const PER_GRAPH := 8
 const DOOM_MIN := 0.08
 const CAP := 120000
 
@@ -36,8 +39,20 @@ func _process(_d: float) -> bool:
 	var seen_graphs := {}
 	var t0 := Time.get_ticks_msec()
 	var graphs := 0
+	var step := int(args[3]) if args.size() > 3 else 1
+	var seeds: Array = []
+	var bands: Array = Gen.bank()
+	for b in range(1, bands.size()):
+		for e: Dictionary in bands[b]:
+			seeds.append(Gen.decode(String(e.b)))
+	var si := seed_ % step
 	while Time.get_ticks_msec() - t0 < seconds * 1000:
-		var k: int = miner._layout(rng)
+		var k: int
+		if si < seeds.size():
+			k = seeds[si]
+			si += step
+		else:
+			k = miner._layout(rng)
 		if k < 0:
 			continue
 		var r := Gen.distances(k, CAP)

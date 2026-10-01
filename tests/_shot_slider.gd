@@ -75,7 +75,8 @@ func _process(delta: float) -> bool:
 		_puzzle = _host._puzzle
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
-		_puzzle._state.finish()
+		if _mode != "early":
+			_puzzle._state.finish()
 		_script()
 		return false
 	while not _plan.is_empty() and float(_plan[0][0]) <= _t:
@@ -149,7 +150,7 @@ func _drag(path: PackedInt32Array, from: float, over := 0.4, hold := false) -> v
 func _all_moves() -> Array:
 	var st = _puzzle._state
 	var out: Array = []
-	var here := st.key
+	var here: int = st.key
 	for p in st.blocks.size():
 		var a: int = st.kind(p)
 		var base: int = here - Gen.contrib(a, st.at(p))
@@ -271,6 +272,48 @@ func _script() -> void:
 						_drag(h.path, _t, 0.3))
 				at += 0.8
 			_end = at + 1.0
+		"nudge":
+			# Insane: a finger a little below the big block leans it toward an
+			# open cell and must never move it there
+			_at(t0, func():
+				var st = _puzzle._state
+				# play nearer moves until the cell under the big block is open
+				for i in 40:
+					var b: int = st.big()
+					var below: int = st.at(b) + 2 * Gen.COLS
+					if below < Gen.N and st.block_at(below) < 0 and st.block_at(below + 1) < 0:
+						break
+					var h: Dictionary = st.hint_move()
+					if h.is_empty():
+						break
+					st.play(h.p, h.to)
+				for q in st.blocks.size():
+					_puzzle._disp[q] = _puzzle._still_at(q)
+				var b2: int = st.big()
+				var was: int = st.at(b2)
+				var at: Vector2 = _cell_at(was)
+				_mouse(at, true)
+				for k in 5:
+					_motion(at + Vector2(0.0, _puzzle._cell() * 0.08 * float(k + 1)))
+				print("nudge: big was ", was, " now ", st.at(b2), " want ", _puzzle._drag.want)
+				_mouse(at, false))
+			_end = t0 + 1.0
+		"early":
+			# Insane: a move let go before the solver is done waits for it
+			_at(0.05, func():
+				var st = _puzzle._state
+				print("ready at open: ", st.solver_ready())
+				for p in st.blocks.size():
+					if p == st.big():
+						continue
+					for to in st.reach(p):
+						if to != st.at(p):
+							_drag(st.path(p, to), _t, 0.15)
+							return)
+			_at(0.35, func(): print("pending ", not _puzzle._pending.is_empty(), " busy ", _puzzle.busy(), " ready ", _puzzle._state.solver_ready()))
+			_at(0.36, _shot)
+			_at(3.5, func(): print("after: pending ", not _puzzle._pending.is_empty(), " busy ", _puzzle.busy(), " moves ", _puzzle.moves, " hearts ", _puzzle.hearts))
+			_end = 3.6
 		"streak":
 			_drive(t0, 30.0, func():
 				_puzzle.force_gag = _moves_done % 3
@@ -283,8 +326,11 @@ func _script() -> void:
 		"restore":
 			_at(0.6, func():
 				_puzzle.completed_record = {"hearts": 1, "flawless": true}
-				_puzzle.restore_completed())
-			_at(1.4, _shot)
+				_puzzle.restore_completed()
+				print("restored: solved_at ", _puzzle._solved_at, " now ", _puzzle._now(), " exit ", _puzzle._exit(_puzzle._now()), " big ", _puzzle._state.big(), " at ", _puzzle._state.at(_puzzle._state.big())))
+			_at(1.4, func():
+				print("later: solved_at ", _puzzle._solved_at, " exit ", _puzzle._exit(_puzzle._now()))
+				_shot())
 			_end = 2.0
 
 var _done_home := false

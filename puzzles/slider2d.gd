@@ -207,8 +207,11 @@ var _blink_at := 0.0
 var _last_dust := 0.0
 var _opened := 0.0
 var _anim_until := 0.0
-## When the big block stood on the mat, and the gate starts to open.
+## When the big block stood on the mat, and the gate starts to open; `_won`
+## says whether it has (a restored day's clock can be negative: the app may
+## have been open under the hundred seconds it is set back).
 var _solved_at := -1.0
+var _won := false
 var _still: ArrayMesh
 var _live: ArrayMesh
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
@@ -250,6 +253,11 @@ var _was_busy := false
 var _fret := false
 ## The big block is upset (a costly move landed) until then.
 var _upset_until := -100.0
+## A Homesick move let go before the solver was done: {"p", "before", "key",
+## "t"}, judged once it is.
+var _pending := {}
+## A costly move is waiting to slide back: until it has, nothing else moves.
+var _slipping := false
 
 # --- the rewards ---
 ## A harness sets it to force (or, with Gag.NONE, forbid) the next gag.
@@ -389,7 +397,10 @@ func _deal() -> void:
 	_busy_until = -100.0
 	_upset_until = -100.0
 	_fret = false
+	_pending = {}
+	_slipping = false
 	_solved_at = -1.0
+	_won = false
 	_halfway = false
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
@@ -520,7 +531,7 @@ func _entry_drop(i: int, t: float) -> float:
 
 ## The big block's eyes: shut for a blink, else open.
 func _eye(t: float) -> float:
-	if Motion.reduce or _solved_at >= 0.0:
+	if Motion.reduce or _won:
 		return 1.0
 	var e := t - _blink_at
 	if e < 0.0 or e > Face.BLINK_TIME:
@@ -552,14 +563,14 @@ func _knock(p: int, t: float) -> Vector2:
 # --- the win's clock ---
 
 func _glow(t: float) -> float:
-	if _solved_at < 0.0:
+	if not _won:
 		return 0.0
 	if Motion.reduce:
 		return 1.0
 	return clampf((t - _solved_at) / GLOW_TIME, 0.0, 1.0)
 
 func _door(t: float) -> float:
-	if _solved_at < 0.0:
+	if not _won:
 		var e := t - _latch_at
 		if Motion.reduce or e < 0.0 or e >= LATCH_TIME:
 			return 0.0
@@ -572,7 +583,7 @@ func _door(t: float) -> float:
 
 ## How far the big block has walked out of the gate, in cells.
 func _exit(t: float) -> float:
-	if _solved_at < 0.0:
+	if not _won:
 		return 0.0
 	if Motion.reduce:
 		return EXIT
@@ -585,7 +596,7 @@ func _exit(t: float) -> float:
 
 ## The big block's hop as it walks out: up and down once a step, in cells.
 func _exit_hop(t: float) -> float:
-	if _solved_at < 0.0 or Motion.reduce:
+	if not _won or Motion.reduce:
 		return 0.0
 	var u := (t - _solved_at - GLOW_TIME - DOOR_TIME * 0.6) / EXIT_TIME
 	if u <= 0.0 or u >= 1.0:
@@ -594,7 +605,7 @@ func _exit_hop(t: float) -> float:
 
 ## The others' hop as the big block leaves: a wave out from the gate.
 func _cheer(p: int, t: float) -> float:
-	if _solved_at < 0.0 or Motion.reduce:
+	if not _won or Motion.reduce:
 		return 0.0
 	var c := _xy(_state.at(p)) + Vector2(_state.size_of(p)) * 0.5
 	var far := c.distance_to(_xy(Gen.GOAL) + Vector2.ONE)
@@ -617,6 +628,7 @@ func _process(delta: float) -> void:
 		return
 	var t := _now()
 	# A costly move lets go of the HUD as it ends: it greyed Undo and Hint.
+	_settle_pending()
 	var bz := busy()
 	if _was_busy and not bz:
 		moved.emit()
@@ -629,7 +641,7 @@ func _process(delta: float) -> void:
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
 		_heart_layer.queue_redraw()
 	_ease_gaze(t, delta)
-	if not Motion.reduce and _solved_at < 0.0 and t > _blink_at + Face.BLINK_TIME:
+	if not Motion.reduce and not _won and t > _blink_at + Face.BLINK_TIME:
 		_blink_at = t + randf_range(BLINK_MIN, BLINK_MAX)
 	if not _drag.is_empty():
 		_chase(delta)
@@ -644,7 +656,7 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 func _animating(t: float) -> bool:
-	if t < _anim_until or not _drag.is_empty():
+	if t < _anim_until or not _drag.is_empty() or not _pending.is_empty():
 		return true
 	if Motion.reduce:
 		return false
@@ -669,7 +681,7 @@ func _ease_gaze(t: float, delta: float) -> void:
 		var p: int = _drag.p
 		var there: Vector2 = Vector2(_drag.v) + Vector2(_state.size_of(p)) * 0.5
 		want = (there - me).limit_length(1.0) * GAZE
-	elif _solved_at >= 0.0:
+	elif _won:
 		want = Vector2(0.0, GAZE)
 	if Motion.reduce:
 		_gaze = want
@@ -843,7 +855,7 @@ func _build_live(t: float) -> ArrayMesh:
 	order.sort_custom(func(a, z): return _rank(a, held, big) < _rank(z, held, big))
 	var doors_drawn := false
 	for p: int in order:
-		if p == big and _solved_at >= 0.0 and not doors_drawn:
+		if p == big and _won and not doors_drawn:
 			Block.doors(b, o, s, _door(t))
 			doors_drawn = true
 		_block(b, p, t)
@@ -855,7 +867,7 @@ func _build_live(t: float) -> ArrayMesh:
 ## top edge, and a brass notch on each side of the frame -- the line it
 ## never goes back over. It only ever moves down.
 func _draw_home_line(b: Face.Builder, t: float) -> void:
-	if not _state.homesick or _solved_at >= 0.0:
+	if not _state.homesick or _won:
 		return
 	var big: int = _state.big()
 	if big < 0:
@@ -926,7 +938,7 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 		v.y += _exit(t)
 		look = _gaze
 		eye = _eye(t)
-		if _solved_at >= 0.0:
+		if _won:
 			expr = Face.Expr.JOY
 			var hop := _exit_hop(t)
 			v.y -= hop
@@ -935,6 +947,8 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 			expr = Face.Expr.SLEEPY
 		elif t < _upset_until or _fret:
 			expr = Face.Expr.WORRIED
+		elif not _pending.is_empty():
+			expr = Face.Expr.PUZZLED
 		elif _knocked(p, t):
 			expr = Face.Expr.STRAIN
 		else:
@@ -962,7 +976,7 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 ## A sweat drop by the big block's brow: Hard's peek at a move that would
 ## take it farther from the gate.
 static func _sweat(b: Face.Builder, at: Vector2, s: float) -> void:
-	var r := s * 0.07
+	var r := s * 0.095
 	b.disc(at, r, SWEAT)
 	b.fan(PackedVector2Array([at + Vector2(-r * 0.9, -r * 0.3), at + Vector2(0.0, -r * 2.4), at + Vector2(r * 0.9, -r * 0.3)]), SWEAT)
 	b.disc(at + Vector2(-r * 0.3, -r * 0.2), r * 0.3, Color(1.0, 1.0, 1.0, 0.8))
@@ -1043,7 +1057,7 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		if event.pressed:
-			if not busy():
+			if _drag.is_empty() and not busy():
 				_press(event.position)
 		else:
 			_release()
@@ -1137,11 +1151,18 @@ func _give(p: int, comp: float, ux: int, uy: int) -> float:
 		lim = 0.0
 	return clampf(comp, -lim, lim)
 
+## Whether block `p` could step by (`dx`, `dy`), asked without moving it (a
+## step there and back would strand the big block on Homesick, which never
+## steps back up).
 func _can_step(p: int, dx: int, dy: int) -> bool:
-	if _state.step(p, dx, dy):
-		_state.step(p, -dx, -dy)
-		return true
-	return false
+	if not _state.may_step(p, dy):
+		return false
+	var x := _state.at(p) % Gen.COLS + dx
+	var y := _state.at(p) / Gen.COLS + dy
+	var sz := _state.size_of(p)
+	if x < 0 or y < 0 or x + sz.x > Gen.COLS or y + sz.y > Gen.ROWS:
+		return false
+	return _state.fits(p, y * Gen.COLS + x)
 
 ## A block pushed into a wall or another block knocks once, the first time
 ## the finger drags it half a cell that way from a cell.
@@ -1220,10 +1241,18 @@ func _release() -> void:
 		fx.cue("drop")
 		_refresh()
 		return
-	# Homesick judges every move, so the first one waits for the solver if it
-	# has to (it only can in the first second or two)
-	if _state.homesick and max_hearts > 0:
-		_state.finish()
+	# Homesick judges every move: one let go before the solver is done waits
+	# for it (Red looks puzzled meanwhile; nothing else can move)
+	if _state.homesick and max_hearts > 0 and not _state.solver_ready():
+		_pending = {"p": p, "before": before, "key": before_key, "t": t}
+		_busy_until = INF
+		_refresh()
+		return
+	_judge(p, before, before_key, t)
+
+## A move let go: kept (the streak, the sounds, the count) or, when it costs
+## a heart, sent back.
+func _judge(p: int, before: Array, before_key: int, t: float) -> void:
 	var d0: int = _state.dist_of(before_key)
 	var d1: int = _state.dist_of(_state.key)
 	var why := _verdict(d0, d1)
@@ -1232,15 +1261,25 @@ func _release() -> void:
 		_refresh()
 		return
 	_state.commit(before)
-	_land_puff(p, SNAP_TIME)
+	_land_puff(p, maxf(0.0, t + SNAP_TIME - _now()))
 	fx.cue("slide")
 	if d0 >= 0 and d1 >= 0:
 		if d1 < d0:
-			_on_nearer(p, t + SNAP_TIME, d1)
+			_on_nearer(p, maxf(t + SNAP_TIME, _now()), d1)
 		elif d1 > d0:
 			_break_streak()
 	_refresh()
 	note_move()
+
+## The move waiting for the solver, judged as soon as it is done.
+func _settle_pending() -> void:
+	if _pending.is_empty() or not _state.solver_ready():
+		return
+	var w := _pending
+	_pending = {}
+	_busy_until = -100.0
+	_judge(int(w.p), w.before, int(w.key), float(w.t))
+	moved.emit()
 
 ## What a kept move would cost, as the toast's key; "" when nothing. Hard: a
 ## move that takes the big block farther from the gate. Homesick: a move
@@ -1276,10 +1315,12 @@ func _cost(p: int, before: Array, why: String) -> void:
 		if not Motion.reduce:
 			fx.puff(foot, Pal.FLOWER, 4))
 	_tell_hearts(why)
+	_slipping = true
 	_after(SNAP_TIME + SLIP_HOLD, func() -> void: _slip_back(p, before, pts))
 	moved.emit()
 
 func _slip_back(p: int, before: Array, pts: PackedVector2Array) -> void:
+	_slipping = false
 	_state.revert(before)
 	var t := _now()
 	var dur := _travel(pts)
@@ -1391,7 +1432,7 @@ static func _travel(pts: PackedVector2Array) -> float:
 ## Whether a costly move is still playing out: input, Undo, Hint and Reset
 ## wait, and the host holds its hint video.
 func busy() -> bool:
-	return _now() < _busy_until
+	return _now() < _busy_until or _slipping or not _drag.is_empty()
 
 func can_undo() -> bool:
 	return _state.can_undo() and not is_done() and not out_of_hearts and not busy() \
@@ -1469,6 +1510,7 @@ func reset_board() -> void:
 	_break_streak()
 	_clear_gags()
 	_solved_at = -1.0
+	_won = false
 	moves = 0
 	_running = true
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
@@ -1847,6 +1889,7 @@ func _on_solved() -> void:
 	var big: int = _state.big()
 	var d: Dictionary = _disp[big]
 	# the gate waits for the big block to land on the mat
+	_won = true
 	_solved_at = t + (0.0 if Motion.reduce else maxf(0.0, float(d.at) + float(d.dur) - t) + 0.06)
 	_tip_timer.stop()
 	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
@@ -1918,6 +1961,7 @@ func restore_completed_board() -> void:
 		_disp[p] = _still_at(p)
 	_drag = {}
 	_solved_at = t - 100.0
+	_won = true
 	_anim_until = 0.0
 	_opened = t - 100.0
 	_cat_at = t - 100.0

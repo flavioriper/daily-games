@@ -58,13 +58,13 @@ static func hearts_for(band: int) -> int:
 
 ## Insane deals a mined Homesick tray; without the bank it deals the old
 ## Insane band's tray, two-way.
-func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
-	difficulty = band
+func build(rng: RandomNumberGenerator, level: int, bank_step := 0) -> void:
+	difficulty = level
 	var d := {}
-	if band >= 3:
+	if level >= 3:
 		d = Gen.from_homesick(InsaneBank.pick("slider", bank_step), rng)
 	if d.is_empty():
-		d = Gen.deal(rng, band)
+		d = Gen.deal(rng, level)
 	homesick = bool(d.get("homesick", false))
 	start_key = d.start
 	par = d.par
