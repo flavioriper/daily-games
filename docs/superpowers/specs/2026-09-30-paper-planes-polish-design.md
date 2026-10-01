@@ -356,3 +356,22 @@ few lines to change:
   - Windy Day's restore shows the sky clear (the clouds left at the party),
     the night seal and the cat.
   - The party lengthens the wait before the win screen to about 4 s.
+- **Review findings, fixed** (2026-09-30, Fairy Lights' fde0e7a and Quilt's
+  9e6ceb4 as the checklist). A blocked tap on Hard or Insane is refused for
+  free, not crashed, when what blocks it is not on screen yet: after an
+  Undo, a Reset or Try again a plane is back in the state while it still
+  flies home (the blocker, or the tapped plane itself), and on Windy Day the
+  clouds are at the new count while they glide there. The crash told the
+  host before `busy()` was set (Undo, Hint and Reset stayed lit through the
+  crash) and its timer told it again up to a frame before the busy window
+  closed (they then stayed grey; under reduce motion nothing told it at
+  all): the crash now says so once busy, and `_process` says so the frame it
+  ends. A Windy Day hint goes dark when the clock ticks (a plane free at one
+  count may stand behind a cloud at the next). No gag sound still to come
+  plays once the hearts run out, and the dusk clears the birds and hearts;
+  Undo lets go of a held press; the sky layer keeps the meshes it last drew.
+  Checked and not bugs: one finger and a cancelled touch already launch
+  nothing, the win fires once, Insane offers no Undo, a hint on Windy Day
+  (a video's) costs under 20 ms on the main thread from any state of 30
+  random playouts, completion records and restores per band, locale keys
+  complete in en/pt/es, and the original game's name appears nowhere.

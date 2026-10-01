@@ -166,3 +166,11 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `PaperPlane.dart` takes `shadow := false` for darts that turn over in the
   air. `force_gag` is the harness's switch. Harness modes `right` and
   `solve` (any band) in `tests/_shot_planes.gd`.
+- **Review findings, fixed (2026-09-30**, polish spec section 8). A judged
+  tap is refused for free when its blocker is not on screen yet (a plane
+  still flying home after Undo, Reset or Try again, or a cloud still
+  gliding to the count the state already reads: `_unseen_block`). The host
+  is told after `busy()` is set and again by `_process` the frame it ends
+  (`_was_busy`), never by a timer, which fires up to a frame early. A Windy
+  Day hint goes dark on every tick; no gag sound plays once the hearts are
+  gone; Undo lets go of a held press; `_sky_shown` keeps the sky's meshes.

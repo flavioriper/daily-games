@@ -511,6 +511,8 @@ var _gen := 0
 ## empty. Input, Undo, Hint and Reset wait until `_busy_until`.
 var _crash: Dictionary = {}
 var _busy_until := 0.0
+## busy() as of the last frame, so the frame it ends can tell the host.
+var _was_busy := false
 ## Under reduce motion a crash has no flight: the blocker's cell is ringed
 ## for a moment instead ({"cell", "until"}, or empty).
 var _ringed: Dictionary = {}
@@ -544,6 +546,9 @@ var _ghost: ArrayMesh
 var _ghost_count := -1
 var _ghost_shown: ArrayMesh
 var _sock_mesh: ArrayMesh
+## The cloud, gold cloud and sock meshes the sky layer last drew, kept until
+## its next draw replaces them (`_layout` drops the cached ones).
+var _sky_shown: Array = []
 ## A cloud's bump: its index in `clouds` -> when it was bonked or tapped.
 var _cloud_poke: Dictionary = {}
 ## The count a stuck sky was last announced at, so the sound plays once.
@@ -803,6 +808,13 @@ func _process(delta: float) -> void:
 	if _state.planes.is_empty():
 		return
 	var t := _now()
+	# The frame a crash is over, the host re-reads Undo, Hint and Reset: a
+	# timer cannot say it, because a SceneTreeTimer counts frame deltas and
+	# fires up to a frame before the clock busy() reads has got there.
+	var b := busy()
+	if _was_busy and not b:
+		moved.emit()
+	_was_busy = b
 	_spend_puffs(t)
 	# Sudoku's lesson: decide once a frame, here, and never again in _draw --
 	# two asks disagreeing on the frame a moment expires is the One Line bug
@@ -1773,7 +1785,7 @@ func _tap(i: int) -> void:
 	# A plane's index, State.CLOUD on a Windy Day sky, or -1 when clear.
 	var blocked := _state.blocker(i)
 	if blocked != -1:
-		if _state.judged:
+		if _state.judged and not _unseen_block(i, blocked, t):
 			_crash_tap(i, blocked, t)
 		else:
 			_refuse_tap(i, blocked, t)
@@ -1800,7 +1812,10 @@ func _tap(i: int) -> void:
 	_wake(before, _solve_from, t)
 	fx.cue("place")
 	if _state.windy():
-		# The clock ticked: every cloud glides a cell downwind.
+		# The clock ticked: every cloud glides a cell downwind, and a hint
+		# named for the count that was is no longer one (a plane free then
+		# may stand behind a cloud now).
+		_hint_lit = -1
 		_glide(t)
 		fx.cue("drift", 1.0, DRIFT_DB)
 	_speak()
@@ -1813,6 +1828,25 @@ func _tap(i: int) -> void:
 		# The clouds may have closed in. Said once they have settled, so the
 		# sound lands on the picture.
 		_after(0.0 if Motion.reduce else GLIDE, _check_stuck)
+
+## Whether a blocked tap on a judged sky is blocked by something the player
+## cannot see yet, and so is refused for free rather than crashed: the state
+## is right before the picture is, so after an Undo, a Reset or Try again a
+## plane is back in its cells while it is still flying home over the sky (the
+## blocker, or the tapped plane itself, drawn off its cells), and on Windy Day
+## the clouds are already at the new count while they glide there. A heart is
+## never spent on a lane that looked clear.
+func _unseen_block(i: int, blocked: int, t: float) -> bool:
+	if _homing(i, t) or (blocked >= 0 and _homing(blocked, t)):
+		return true
+	return blocked == State.CLOUD and not Motion.reduce and t < _glide_at + _glide_dur
+
+## Whether plane `i` is back in the state but still flying home.
+func _homing(i: int, t: float) -> bool:
+	if not _fly.has(i):
+		return false
+	var f: Dictionary = _fly[i]
+	return bool(f["back"]) and t < float(f["at"]) + float(f["dur"])
 
 ## A tap on a blocked plane on Hard or Insane: **the crash**. Nothing in the
 ## state changes (`launch()` refused); it is all picture, on one clock. The
@@ -1838,11 +1872,13 @@ func _crash_tap(i: int, blocked: int, t: float) -> void:
 	if hearts <= 0:
 		out_of_hearts = true
 		_running = false
+		# No gag sound still to come plays over the hearts running out.
+		_gag_gen += 1
 	_say(tr("PP_CRASH_CLOUD" if cloud else "PP_CRASH"), Face.Expr.WORRIED)
-	moved.emit()
 	if Motion.reduce:
 		_split_at = t
 		_busy_until = t + Motion.REDUCED_TIME
+		moved.emit()
 		fx.cue("crash")
 		fx.cue("heart_lost")
 		_ringed = {"cell": stop, "until": t + 0.9}
@@ -1856,6 +1892,9 @@ func _crash_tap(i: int, blocked: int, t: float) -> void:
 	var end := bonk + BONK_HOLD + HOME_TIME
 	_crash = {"i": i, "at": t, "bonk": bonk, "adv": adv, "end": end, "cloud": cloud}
 	_busy_until = end
+	# Only now that the board is busy, so the host greys Undo, Hint and Reset
+	# for the crash (`_process` tells it again the frame the crash is over).
+	moved.emit()
 	_busy_for(end - t + 0.05)
 	_refuse = {"cells": lane, "at": bonk - 0.04}
 	_split_at = bonk + SPLIT_LAG
@@ -1881,7 +1920,6 @@ func _crash_tap(i: int, blocked: int, t: float) -> void:
 	_after(end - t, func() -> void:
 		if gen != _gen:
 			return
-		moved.emit()
 		if out_of_hearts:
 			_run_out())
 
@@ -1913,6 +1951,7 @@ func _gust() -> void:
 	_break_streak()
 	for k in _state.clouds.size():
 		_cloud_poke[k] = t
+	_hint_lit = -1
 	_glide(t)
 	fx.cue("gust")
 	_after(SPLIT_LAG, func() -> void: fx.cue("heart_lost"))
@@ -1936,6 +1975,7 @@ func _check_stuck() -> void:
 	if hearts <= 0:
 		out_of_hearts = true
 		_running = false
+		_gag_gen += 1
 		_say(tr("PP_TIP_STUCK_OUT"), Face.Expr.WORRIED)
 		moved.emit()
 		_after(0.35, _run_out)
@@ -2143,6 +2183,8 @@ func undo() -> bool:
 	var i := _state.undo()
 	if i < 0:
 		return false
+	# A finger still down on a plane lets go: the sky under it just changed.
+	_release_press()
 	_undo_ever = true
 	_break_streak()
 	_clear_gags()
@@ -2442,6 +2484,7 @@ func _draw_sky() -> void:
 	else:
 		_draw_clouds(t, k, seen)
 	_draw_sock(t, seen)
+	_sky_shown = [_cloud_mesh, _gold_cloud, _sock_mesh]
 
 ## Every cloud where the count `k` puts it, a cloud sliding off one edge drawn
 ## twice (out there, in at the other), each bumping when poked.
@@ -2694,6 +2737,7 @@ func _run_out() -> void:
 	_asleep = true
 	_clear_press()
 	_break_streak()
+	_clear_gags()
 	_tip_timer.stop()
 	_idle_plane = -1
 	fx.cue("out_of_hearts")
