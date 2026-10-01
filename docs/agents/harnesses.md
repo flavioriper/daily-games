@@ -78,7 +78,10 @@ leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
 `fill` leaves two moves, or two whole gestures where a board's moves are a
 gesture's events (`_keep`; Shikaku's drags are five each). `x=log` prints
 every frame for a moment after each move; `x=confetti` fires one burst
-early; `x=sk_markers|sk_numbers|sk_count` are Shikaku's.
+early; `x=sk_markers|sk_numbers|sk_count` are Shikaku's; `x=tn_count` (times one
+ground build) and `x=tn_trees|tn_tents|tn_chips` (hide one cast) are Tents'.
+Tents' moves sweep each row into cairns a run at a time, then tap the
+answer's tents.
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
 (a click in board space) or `{do}` (a Callable, for a board played
 through its own methods, Code Break's `pick`/`check`); a move waits while

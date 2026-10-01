@@ -192,6 +192,19 @@ func _experiment() -> void:
 		"sk_numbers":
 			for m in _puzzle._markers:
 				m.number = 0
+		"tn_count":
+			await create_timer(2.0).timeout
+			var t0 := Time.get_ticks_usec()
+			_puzzle._build_ground(_puzzle._now())
+			print("  ground build %.2f ms cairns %d anim %.2f flies %d" % [(Time.get_ticks_usec() - t0) / 1000.0,
+				_puzzle.state.cairns(), _puzzle._anim_until - _puzzle._now(), _puzzle._flies.size()])
+			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " process ", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+			_log_until = _t + 0.1
+		"tn_trees", "tn_tents", "tn_chips":
+			var hide: Array = {"tn_trees": _puzzle._trees.values(), "tn_tents": _puzzle._tents.values(),
+				"tn_chips": _puzzle._chips_row + _puzzle._chips_col}[_exp]
+			for f in hide:
+				f.visible = false
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -460,4 +473,35 @@ func _moves_shikaku() -> Array:
 			out.append({"do": func() -> void:
 				_ut_motion(_puzzle.cell_to_local(a.x, a.y).lerp(_puzzle.cell_to_local(b.x, b.y), f))})
 		out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(b.x, b.y), false)})
+	return out
+
+## Tents: every row swept into cairns a run at a time (press, a motion a
+## square, release; a run stops at the answer's tents, and a lone square is
+## left bare, since a press without a drag would pitch a tent), then the
+## answer's tents tapped in, one event a step.
+func _moves_tents() -> Array:
+	_keep = 2
+	var out := []
+	var st = _puzzle.state
+	var tents: Dictionary = {}
+	for t: Vector2i in st.solution:
+		tents[t] = true
+	for r in st.h:
+		var run: Array = []
+		for c in st.w + 1:
+			var cell := Vector2i(c, r)
+			if c < st.w and not tents.has(cell):
+				run.append(cell)
+				continue
+			if run.size() >= 2:
+				var cells := run.duplicate()
+				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(cells[0].y, cells[0].x), true)})
+				for k in range(1, cells.size()):
+					var at: Vector2i = cells[k]
+					out.append({"do": func() -> void: _ut_motion(_puzzle.cell_to_local(at.y, at.x))})
+				var last: Vector2i = cells[cells.size() - 1]
+				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(last.y, last.x), false)})
+			run = []
+	for t: Vector2i in st.solution:
+		out.append({"at": _puzzle.cell_to_local.bind(t.y, t.x)})
 	return out

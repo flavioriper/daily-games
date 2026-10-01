@@ -23,6 +23,12 @@ rest)` bakes a face eyes open and looking ahead, `at_rest()` says whether it
 is drawn so, and hats/glasses fully on are baked; `Fx2D` asks the loader
 thread for the board's sounds at open, so a cue's first play is no longer a
 1-3 ms load mid-move.
+Since Tents (2026-10-01): `Face._mesh_for`'s per-face memo keys on
+`_kind()` as well, so a face whose kind changes (a tent pegged, a bee
+pinned, a lantern lit) gets its new mesh; `CountChip.numeral()` and the
+"numeral" skip let a board draw every chip's number itself. A tutorial page
+can hold the board itself, quietened (Tents' `Meadow`), instead of
+re-drawing it.
 
 | # | Board | Done | Notes |
 |---|---|---|---|
@@ -31,7 +37,7 @@ thread for the board's sounds at open, so a cue's first play is no longer a
 | 3 | balance | 2026-10-01 | already ~100 draws; the lag was a glyph-rasterising hitch on the first big sticker (solve 27-47 ms frame) -> shared `Rewards.warm()`; 3-6 page tutorial; Undo on Insane |
 | 4 | untangle | 2026-10-01 | resting pegs baked to one mesh (Insane idle 130 -> 95 draws, ~10.8 -> ~8.4 ms); carrying 16.7 -> 11.9 ms (rope mesh writer, crossings kept per pair, binds only when changed); shared `Face.Builder` stroke/fan/feather and `Scenery.soft_disc` write whole arrays; 3-5 page tutorial; undo/reset/hint already there |
 | 5 | shikaku | 2026-10-01 | signs at rest baked (eyes-open twin, blinks drawn over it), beds at rest baked, fence still/moving split, crop one mesh (Insane idle 129 -> 100 draws, ~9.0 -> ~7.2 ms; full 156 -> ~115; solve peak 253 -> 164); shared `Face.FlatBuilder`, `bake_into(rest)`, Fx2D sound prefetch; 3-6 page tutorial; undo/hint/check/reset already there |
-| 6 | tents | | |
+| 6 | tents | 2026-10-01 | ground at rest baked (a full meadow's ground rebuild was ~28 ms a frame while anything moved), faces drawn as MultiMesh bodies + one numeral run (Insane idle 142 -> 95 draws; full 182 -> 109, ~14.8 -> ~9.7 ms, p95 25 -> 10.6; solve peak 211 -> 134); shared `Face._mesh_for` memo keys on `_kind()`; 4-6 page tutorial played by a real board; undo/hint/check/reset already there |
 | 7 | lightup | | |
 | 8 | oneline | | |
 | 9 | nonogram | | |

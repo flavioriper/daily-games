@@ -1760,3 +1760,33 @@ HTP_SK_CROW,Scarecrows count neighbours,Espantalhos contam vizinhos,Los espantap
 HTP_SK_CROW_CAP,A scarecrow takes a bed of any size,Um espantalho aceita canteiro de qualquer tamanho,Un espantapájaros acepta una parcela de cualquier tamaño
 HTP_SK_COUNT_CAP,Sharing its fence: %d,Dividindo a cerca: %d,Comparten su cerca: %d
 HTP_SK_CROWED_CAP,Three neighbours: its 3 is right,Três vizinhos: o 3 dele está certo,Tres vecinos: su 3 es correcto
+HTP_TN_PITCH,Beside a tree,Ao lado de uma árvore,Junto a un árbol
+HTP_TN_PITCH_BODY,"Every tree gets one tent on a square beside it: above, below, left or right, never on a corner. Tap a square to pitch a tent and tap it again to take it down. A tree beams once it has its tent.","Cada árvore ganha uma barraca numa casa ao lado dela: em cima, embaixo, à esquerda ou à direita, nunca na quina. Toque numa casa para armar uma barraca e toque de novo para desmontar. A árvore sorri quando ganha a sua barraca.","Cada árbol recibe una carpa en una casilla a su lado: arriba, abajo, a la izquierda o a la derecha, nunca en la esquina. Toca una casilla para armar una carpa y vuelve a tocarla para desarmarla. El árbol sonríe cuando tiene su carpa."
+HTP_TN_TOUCH,Tents never touch,Barracas nunca se tocam,Las carpas nunca se tocan
+HTP_TN_TOUCH_BODY,"No two tents touch, not even corner to corner. A tent that breaks a rule turns rose, so you see it at once. Undo takes back your last move; Reset clears the meadow.","Duas barracas nunca se tocam, nem pelas quinas. Uma barraca que quebra uma regra fica rosada, então você vê na hora. Desfazer volta a última jogada; Recomeçar limpa o campo.","Dos carpas nunca se tocan, ni por las esquinas. Una carpa que rompe una regla se vuelve rosada, así que la ves al instante. Deshacer anula tu última jugada; Reiniciar limpia el prado."
+HTP_TN_LINES,Count the lines,Conte as linhas,Cuenta las líneas
+HTP_TN_LINES_BODY,"The numbers say how many tents each row and column holds, and a number turns green when its line has them. Drag across the meadow to lay cairns on ground where no tent can go; drag from a cairn to rub them out.","Os números dizem quantas barracas cada linha e coluna tem, e o número fica verde quando a linha completa. Arraste pelo campo para pôr pedrinhas onde nenhuma barraca pode ir; arraste a partir de uma pedrinha para apagar.","Los números dicen cuántas carpas tiene cada fila y columna, y el número se pone verde cuando su línea las tiene. Arrastra por el prado para poner piedritas donde no puede ir ninguna carpa; arrastra desde una piedrita para borrarlas."
+HTP_TN_HINT,Stuck? Ask the bulb,Travou? Peça à lâmpada,¿Atascado? Pide a la bombilla
+HTP_TN_HINT_BODY_ONE,"The bulb pitches one tent of the answer and pegs it down, so it stays put. Check shows which tents aren't the answer's. You have one hint.","A lâmpada arma uma barraca da resposta e a finca, então ela fica no lugar. Conferir mostra quais barracas não são da resposta. Você tem uma dica.","La bombilla arma una carpa de la respuesta y la clava, así que se queda en su sitio. Comprobar muestra qué carpas no son de la respuesta. Tienes una pista."
+HTP_TN_HINT_BODY_N,"The bulb pitches one tent of the answer and pegs it down, so it stays put. Check shows which tents aren't the answer's. You have %d hints.","A lâmpada arma uma barraca da resposta e a finca, então ela fica no lugar. Conferir mostra quais barracas não são da resposta. Você tem %d dicas.","La bombilla arma una carpa de la respuesta y la clava, así que se queda en su sitio. Comprobar muestra qué carpas no son de la respuesta. Tienes %d pistas."
+HTP_TN_HEARTS,Mind your hearts,Cuidado com os corações,Cuida tus corazones
+HTP_TN_OAK,Old oaks,Carvalhos velhos,Robles viejos
+HTP_TN_START_CAP,Every tree wants a tent,Toda árvore quer uma barraca,Cada árbol quiere una carpa
+HTP_TN_CORNER_CAP,On a corner: that isn't beside it,Na quina: isso não é ao lado,En la esquina: eso no es al lado
+HTP_TN_DOWN_CAP,Tap again to take it down,Toque de novo para desmontar,Toca otra vez para desarmarla
+HTP_TN_BESIDE_CAP,Beside its tree: the tree beams,Ao lado da árvore: ela sorri,Junto a su árbol: el árbol sonríe
+HTP_TN_TOUCH_CAP,Touching at a corner: both turn rose,Encostando na quina: as duas ficam rosadas,Se tocan en la esquina: las dos se ponen rosadas
+HTP_TN_MOVE_CAP,Take one down...,Desmonte uma...,Desarma una...
+HTP_TN_APART_CAP,...and pitch it apart,...e arme longe da outra,...y ármala lejos de la otra
+HTP_TN_FULL_CAP,One tent in a 1 line: it turns green,Uma barraca numa linha 1: fica verde,Una carpa en una línea de 1: se pone verde
+HTP_TN_SWEEP_CAP,Drag cairns over the rest of it,Arraste pedrinhas pelo resto dela,Arrastra piedritas por el resto
+HTP_TN_ZERO_CAP,A 0 line takes no tent at all,Uma linha 0 não leva barraca nenhuma,Una línea de 0 no lleva ninguna carpa
+HTP_TN_HINT_CAP,The bulb pitches a tent for you,A lâmpada arma uma barraca por você,La bombilla arma una carpa por ti
+HTP_TN_PEGGED_CAP,A pegged tent stays put,Uma barraca fincada fica no lugar,Una carpa clavada se queda en su sitio
+HTP_TN_FAIR_CAP,This tent breaks no rule...,Essa barraca não quebra nenhuma regra...,Esta carpa no rompe ninguna regla...
+HTP_TN_WILT_CAP,...but it isn't the answer: it wilts,...mas não é a resposta: ela murcha,...pero no es la respuesta: se marchita
+HTP_TN_RIGHT_CAP,The right tents cost nothing,As barracas certas não custam nada,Las carpas correctas no cuestan nada
+HTP_TN_OAK_CAP,An old oak wants two tents,Um carvalho velho quer duas barracas,Un roble viejo quiere dos carpas
+HTP_TN_OAK_TOUCH_CAP,Neighbouring sides would touch,Lados vizinhos se tocariam,Lados vecinos se tocarían
+HTP_TN_OAK_DONE_CAP,One either side: the oak beams,Uma de cada lado: o carvalho sorri,Una a cada lado: el roble sonríe
+HTP_TN_HIDDEN_CAP,A ? keeps its line's count to itself,Um ? guarda a conta da linha,Un ? se guarda la cuenta de su línea

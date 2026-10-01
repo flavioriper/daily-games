@@ -68,16 +68,26 @@ func _build_layer(name: String, R: float, _eye: float, b: Builder) -> void:
 
 func _draw() -> void:
 	super()
+	# A board that draws its chips' numerals itself (Tents, checkup
+	# 2026-10-01: every numeral one batched run of glyphs) says "numeral".
+	if skip_layers.has("numeral"):
+		return
+	var n := numeral()
+	if not n.is_empty():
+		draw_string(CozyTheme.display(700), n[0], n[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, n[2], n[3])
+
+## The numeral as _draw writes it, [baseline point, text, px, colour] in this
+## Control's own space, or [] for none.
+func numeral() -> Array:
 	var R := _R_for(minf(size.x, size.y))
 	if R <= 0.0:
-		return
+		return []
 	var font: Font = CozyTheme.display(700)
 	var px := int(roundf(NUM_SIZE * R))
 	if px <= 0:
-		return
+		return []
 	# A count taken off its line (Tents' Insane) shows a soft question mark.
 	var text := str(number) if number >= 0 else "?"
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	var at := size * 0.5 + Vector2(-wide * 0.5, NUM_Y * R + font.get_ascent(px) * 0.5)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px,
-		_skin()[2] if number >= 0 else Color(Pal.TEXT, 0.35))
+	return [at, text, px, _skin()[2] if number >= 0 else Color(Pal.TEXT, 0.35)]

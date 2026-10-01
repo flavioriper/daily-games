@@ -434,11 +434,16 @@ func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> Array
 	# every frame for a hundred faces (Binairo's MultiMesh, 2026-10-01).
 	var memo_key := Vector4i(int(R), int(roundf(eye * 100.0)), expression, (int(plain) << 4) | _look_index()) \
 		if carries_face else Vector4i(int(R), 0, 0, 0)
+	# The kind is in the answer too: a tent pegged by a hint, a bee pinned or
+	# a lantern lit changes its kind and nothing else (Tents checkup,
+	# 2026-10-01: a hinted tent on a square tapped before kept its unpegged
+	# fabric).
+	var kind := _kind()
 	var memo: Array = _memo.get(layer, [])
-	if not memo.is_empty() and memo[0] == memo_key:
+	if not memo.is_empty() and memo[0] == memo_key and memo[2] == kind:
 		return memo[1]
 	var mesh := _shared_mesh(layer, carries_face, R, eye)
-	_memo[layer] = [memo_key, mesh]
+	_memo[layer] = [memo_key, mesh, kind]
 	return mesh
 
 func _shared_mesh(layer: String, carries_face: bool, R: float, eye: float) -> ArrayMesh:
