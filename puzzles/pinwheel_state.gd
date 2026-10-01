@@ -280,8 +280,17 @@ func tack(p: int) -> void:
 	tacked[p] = 1
 	var keep: Array = []
 	for e: Dictionary in history:
-		if int(e["piece"]) != p:
-			keep.append(e)
+		if int(e["piece"]) == p:
+			continue
+		# A tug that moved it inside another tap's entry no longer turns it
+		# back either.
+		if e.has("moves"):
+			var moves: Array = []
+			for mv: Array in (e["moves"] as Array):
+				if int(mv[0]) != p:
+					moves.append(mv)
+			e["moves"] = moves
+		keep.append(e)
 	history = keep
 
 ## Every piece unpicked: Try again's.

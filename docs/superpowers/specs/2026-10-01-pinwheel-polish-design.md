@@ -175,8 +175,8 @@ the second of two readings for rest). This harness opens the board through
 | snag (catch, split, button) | Hard | 82 (81 under reduce motion) |
 | ribbon (one tap tugging three) | Insane | 83 |
 | out (three snags, dusk, card, Try again) | Hard | **104** |
-| right (streak, whirl, love, butterfly, x3, undo) | Easy | 88 |
-| solve and party (kite, ribbons loose, cat, night seal) | Insane | 101 (84 under reduce motion) |
+| right (streak, whirl, love, butterfly, x3, undo) | Easy | 87 |
+| solve and party (kite, ribbons loose, cat, night seal) | Insane | 106 (84 under reduce motion) |
 | restore (flawless, a heart gone) | Insane | 84 |
 
 The peak is the out-of-hearts card over Hard at **104**, 751 under the 855
@@ -214,3 +214,16 @@ few lines to change:
   Insane's frame is bound by the width and left a gap.
 - Butterfly, kite and button sizes, the snag's 24° and 0.62 s, the tug's
   0.09 s a ribbon -- all judged on stills only.
+
+- **Review findings, fixed** (Paper Planes' c0de74e and Fairy Lights'
+  fde0e7a as the checklist): the tips cycled the Easy list after the first
+  on Hard and Insane; a curled cat stayed put on a resize; a ribbon tug ran
+  the solve wave from the last tugged piece, not the tapped one; a hint's
+  button and a gag were timed off one quarter when the swing ran two or
+  three; a whirl outlived the undo or reset that cleared its gag; a gag's
+  late sound could land on the party; Insane had no fallback board if no
+  ribbons would ever tie; `tack()` now also drops a sewn piece from other
+  taps' tugs. Checked and not bugs (a reviewer's probe over 60 Insane
+  seeds): no movable piece opens home, the ribbons are a forest at most three
+  deep, the top-down route solves every one, and after a snag and a Reset no
+  unsewn piece sits home and the frame still solves.

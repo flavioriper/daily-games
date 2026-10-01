@@ -89,6 +89,11 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		if d == 3:
 			scramble = _ribbon_deal(rng, shapes, pins, cols, rows, b)
 			if scramble.is_empty():
+				# No ribbons would tie: keep a plain board as the last resort, so a
+				# seed that exhausts ATTEMPTS still opens something playable.
+				if fallback.is_empty():
+					fallback = _board(cols, rows, pins, shapes, cloth,
+						_plain_scramble(rng, shapes), attempt)
 				continue
 		else:
 			scramble = _scramble(rng, shapes, cols, rows, b)

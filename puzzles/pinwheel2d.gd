@@ -439,6 +439,8 @@ var _life_layer: Control
 var _life_shown: Array = []
 var _love: Array = []        # [{"at", "t", "phase"}]
 var _flies: Array = []       # [{"p", "t", "from"}]
+## The piece whirling in a gag, so an undo or a reset can stop it.
+var _whirl := -1
 var _love_mesh: ArrayMesh
 var _bfly_wing: ArrayMesh
 var _bfly_body: ArrayMesh
@@ -1570,12 +1572,14 @@ func _tap(at: Vector2i) -> void:
 			delays[int(pull[0])] = 0.0 if Motion.reduce else TUG_LAG * float(pull[2])
 			deepest = maxi(deepest, int(pull[2]))
 		_settle(before, t, false, delays, dirs)
+		_last_turned = p
+		var q := int(_cw[p][int(before[p])][int(_state.turned[p])])
 		if pulls.size() > 1:
 			_tugs(pulls, t)
 		fx.cue("place")
 		_taps += 1
 		_sparkle_cleared(before, t)
-		_on_turned(p, trouble, _trouble(), t + _swing_time(1) + TUG_LAG * float(deepest))
+		_on_turned(p, trouble, _trouble(), t + _swing_time(q) + TUG_LAG * float(deepest))
 		_speak()
 		_refresh()
 		note_move()
@@ -1637,8 +1641,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _tip_mood != Face.Expr.HAPPY or not _state.history.is_empty():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var list := _tips()
+	_tip_idx = (_tip_idx + 1) % list.size()
+	_say(tr(list[_tip_idx]), Face.Expr.HAPPY)
 
 ## The sprout's own line, rather than Binairo's cycle of broken rules: this
 ## board answers a turn with a count, and a refusal with the rule.
@@ -1750,8 +1755,9 @@ func hint() -> bool:
 	# proved it, as a heart would have.
 	if _state.judged:
 		_state.tack(p)
-		_tack_at[p] = _now() + _swing_time(1) + 0.1
-		_after(_swing_time(1) + 0.1, fx.cue.bind("tack"))
+		var lands := _swing_time(int(_cw[p][int(out["from"])][int(out["to"])])) + 0.1
+		_tack_at[p] = _now() + lands
+		_after(lands, fx.cue.bind("tack"))
 	_fx_at(_pin_point(p), Pal.LEAF)
 	fx.cue("hint")
 	_say(tr("PW_HINT") + " " + _left_line(), Face.Expr.HAPPY)
@@ -1906,6 +1912,9 @@ func _on_solved() -> void:
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _solved_at
 	_streak_gen += 1
+	# A gag's sound still to come (a butterfly's second flutter) would land on
+	# the party; its picture can finish.
+	_gag_gen += 1
 	_heart_layer.queue_redraw()
 	_party()
 	# Gold on each piece as the hop reaches it, and no ring: thirteen rings
@@ -2311,6 +2320,9 @@ func _break_streak() -> void:
 func _clear_gags() -> void:
 	_love = []
 	_flies = []
+	if _whirl >= 0 and _gust.has(_whirl) and float(_gust[_whirl]["turn"]) == WHIRL_TURN:
+		_gust.erase(_whirl)
+	_whirl = -1
 	_gag_until = 0.0
 	_gag_gen += 1
 	if _life_layer != null:
@@ -2329,6 +2341,7 @@ func _start_gag(p: int, gag: int, lands: float) -> void:
 	match gag:
 		Gag.WHIRL:
 			_gust[p] = {"at": lands, "turn": WHIRL_TURN, "time": WHIRL_TIME}
+			_whirl = p
 			_busy_for(wait + WHIRL_TIME)
 			_after(wait, func() -> void:
 				if gg == _gag_gen:
@@ -2451,6 +2464,8 @@ func _place_cat(t: float) -> void:
 	if Motion.reduce or e >= CURL_AT - CAT_AT or _cat_curled:
 		if not _cat_curled:
 			_curl_cat(e > CURL_AT - CAT_AT + 1.0)
+		else:
+			_cat.position = _cat_spot() - _cat.size * 0.5
 		return
 	elif e < CAT_POP:
 		at = start
