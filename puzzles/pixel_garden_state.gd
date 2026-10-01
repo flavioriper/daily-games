@@ -386,9 +386,12 @@ func undo() -> PackedInt32Array:
 	var entry: Array = history.pop_back()
 	for i in range(entry.size() - 1, -1, -1):
 		var c := int(entry[i][0])
-		# A hint may have fused this peg since; the hint wins.
-		if locked[c] == 0:
-			_seat(c, int(entry[i][1]))
+		# A hint or an iron may have fixed this peg since; it wins. And a bead
+		# put back must still be in the kit: a later stroke the iron has
+		# since taken over (forgotten) may hold it.
+		var to := int(entry[i][1])
+		if locked[c] == 0 and not (to != EMPTY and beads[c] != to and left(to) <= 0):
+			_seat(c, to)
 			out.append(c)
 	return out
 

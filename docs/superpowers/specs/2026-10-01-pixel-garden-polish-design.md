@@ -180,3 +180,20 @@ pixelgarden` PASS; `tests/_shot_anim.gd -- pixelgarden` 92 and `solve` 105.
   which is a kind check -- with Check still there.
 - The look (plates, clips, box, tweezers, iron, cat on the card) was judged
   on stills. Sounds unheard.
+
+## 10. Review findings, fixed
+
+- **Undo could seat a bead the kit no longer had**: the last bead of a
+  colour, astray, lifted and seated where it completed a plate -- the iron
+  forgets that stroke, and undoing the lift put the bead back (the box went
+  to -1, and on Hard a refilled plate could cost a heart on Undo).
+  `State.undo` now skips a re-seat whose colour is used up; the probe
+  reproduces the case.
+- A stroke held when the last heart goes now ends there (it could go on
+  seating, iron more plates and even solve under dusk).
+- A plate verdict still queued behind the last heart, or behind the solve,
+  says nothing (it cheered under the card, or took the bought heart).
+- Undo that completes the picture no longer irons a plate over the party;
+  under reduce motion a Steady hand! toast no longer hides a plate's verdict.
+- Left as designed: a wrong plate's beads are back in the box the moment the
+  iron judges, while they still shiver on the plate until they hop home.

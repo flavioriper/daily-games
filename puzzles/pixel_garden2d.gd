@@ -950,6 +950,10 @@ func _maybe_iron() -> void:
 ## The iron has crossed plate `ir.q`: a right plate cheers, a wrong one
 ## sends its beads home, and on Hard and Insane costs a heart.
 func _plate_done(ir: Dictionary, astray: int) -> void:
+	# A verdict still queued behind the one that took the last heart, or
+	# behind the solve, says nothing: the card or the party has the floor.
+	if is_done() or (max_hearts > 0 and out_of_hearts):
+		return
 	var rect := _plate_rect(int(ir.q))
 	var top := rect.get_center()
 	if bool(ir.ok):
@@ -1554,7 +1558,7 @@ func _drag(at: Vector2) -> void:
 ## has already crossed.
 func _paint(c: int) -> void:
 	_last = c
-	if _painted.has(c) or _plate_busy(_state.plate_of(c)):
+	if out_of_hearts or _painted.has(c) or _plate_busy(_state.plate_of(c)):
 		return
 	_painted[c] = true
 	var had: int = _state.beads[c]
@@ -1617,7 +1621,9 @@ func _release() -> void:
 	_halo = {}
 	if not _state.is_solved():
 		_maybe_iron()
-	if seated >= STEADY and _now() - _steady_at > STEADY_GAP:
+	# Under reduce motion a word is a toast; a plate's verdict this frame
+	# keeps the floor.
+	if seated >= STEADY and _now() - _steady_at > STEADY_GAP and not (Motion.reduce and _now() - _toast_at < 0.05):
 		_steady_at = _now()
 		mid /= float(changed.size())
 		_word(tr("PG_WORD_WHOOSH" if seated >= WHOOSH else "PG_WORD_STEADY"), mid)
@@ -1671,7 +1677,8 @@ func undo() -> bool:
 	_halo = {}
 	_streak = 0
 	fx.cue("undo")
-	_maybe_iron()
+	if not _state.is_solved():
+		_maybe_iron()
 	moved.emit()
 	check_solved()
 	_refresh()
@@ -1806,6 +1813,10 @@ func _lose_heart() -> void:
 	_split_at = _now()
 	if hearts <= 0:
 		out_of_hearts = true
+		# A stroke in hand when the last heart goes ends where it is.
+		if _stroking:
+			_state.end_stroke()
+			_clear_gesture()
 	_busy_for(SPLIT_TIME)
 	queue_redraw()
 

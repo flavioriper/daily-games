@@ -72,6 +72,7 @@ func _process(delta: float) -> bool:
 			_solve_all()
 			_ok(_b.is_done() and _b._flawless, "Windblown solved, flawless")
 			_ok(_b.share_glyphs().contains("🌬"), "Windblown share line")
+			_undo_after_fuse()
 			print("\n".join(_log))
 			print("pixel garden probe: %s (%d failed)" % ["PASS" if _fails == 0 else "FAIL", _fails])
 			return true
@@ -132,3 +133,36 @@ func _ok(cond: bool, what: String, quiet := false) -> void:
 		_log.append("FAIL " + what)
 	elif not quiet:
 		_log.append("ok   " + what)
+
+## The review's case: the last bead of a colour, misplaced on a bare peg of
+## another plate, lifted, then seated where plate 0 wants it -- completing
+## plate 0, whose iron fuses it and forgets that stroke. Undo of the lift
+## must not seat a bead the kit no longer has.
+func _undo_after_fuse() -> void:
+	_deal(0)
+	var st = _b._state
+	var target := -1
+	for d in st.plate_pegs(0):
+		if int(st.want[d]) != -1:
+			target = d
+	var k := int(st.want[target])
+	var stray := -1
+	for d in st.plate_pegs(3):
+		if int(st.want[d]) == -1:
+			stray = d
+			break
+	for d in st.plate_pegs(0):
+		if d != target and int(st.want[d]) != -1:
+			_b.set_brush(int(st.want[d]))
+			_tap(d)
+	_b.set_brush(k)
+	for d in st.size():
+		if d != target and int(st.want[d]) == k and int(st.beads[d]) != k:
+			_tap(d)
+	_tap(stray)
+	_ok(st.left(k) == 0 and int(st.beads[stray]) == k, "the last bead of the colour sits astray")
+	_tap(stray)
+	_tap(target)
+	_ok(st.ironed[0] == 1, "plate 0 ironed by the moved bead")
+	_b.undo()
+	_ok(st.left(k) >= 0, "undo after a fuse keeps the kit honest (left %d)" % st.left(k))
