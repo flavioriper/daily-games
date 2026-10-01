@@ -66,7 +66,7 @@ const PERSP := 1.25
 const TRAVEL := [1.9, 1.6, 1.4, 1.3]
 const NOTE_R := 46.0
 const FAR_SCALE := 0.58
-const DRUM_SHARE := 0.42
+const DRUM_SHARE := 0.46
 const VOICES := 4
 const SCORE_FONT := 50
 const KICKER_FONT := 24
@@ -947,8 +947,8 @@ func _song_over() -> void:
 		_party_until = _now() + WIN_HOLD + 1.5
 		check_solved()
 	else:
+		_clock = song_now()
 		_phase = "missed"
-		_clock = view_t()
 		_kept_hearts = _st.hearts
 		_wind_down(false)
 		fx.cue("fail")
@@ -969,9 +969,9 @@ func _lose_heart(t: float, left: int) -> void:
 ## The last heart is gone: the band winds down -- the music slows and fades
 ## like a music box running out -- dusk falls, Tam nods off, and the card.
 func _run_out() -> void:
-	_phase = "out"
 	_stopped_at = view_t()
-	_clock = _stopped_at
+	_clock = song_now()
+	_phase = "out"
 	_running = false
 	_release_all()
 	_kept_hearts = 0
@@ -1415,8 +1415,20 @@ func _draw() -> void:
 		var yb := clampf(y1, top, hit + 40.0 * u)
 		if yb - ya < 1.0:
 			continue
-		b.polygon(_band_quad(ya, yb), Color(Parts.ECHO, 0.26))
-		b.stroke(PackedVector2Array([Vector2(_lane_x(0, ya) - _path_w(ya) / 8.0, ya), Vector2(_lane_x(3, ya) + _path_w(ya) / 8.0, ya)]), 4.0 * u, Color(Parts.ECHO, 0.8))
+		b.polygon(_band_quad(ya, yb), Color(Parts.ECHO, 0.4))
+		for edge: float in [ya, yb]:
+			if edge > top + 1.0 and edge < hit + 39.0 * u:
+				b.stroke(PackedVector2Array([Vector2(size.x * 0.5 - _path_w(edge) * 0.5, edge), Vector2(size.x * 0.5 + _path_w(edge) * 0.5, edge)]), 5.0 * u, Color(Color("e6dcff"), 0.9))
+		# moonlight twinkles in the veil, riding down with it
+		for k in 9:
+			var f := fposmod(k * 0.37 + 0.13, 1.0)
+			var tw := float(e[0]) + (float(e[1]) - float(e[0])) * f
+			var y := _y_of(tw - vt)
+			if y < ya or y > yb:
+				continue
+			var x := size.x * 0.5 + (fposmod(k * 0.61, 1.0) - 0.5) * _path_w(y) * 0.9
+			var tw_a := 0.5 + 0.5 * (1.0 if calm else sin(now * 3.0 + k))
+			Rewards.star(b, Vector2(x, y), 7.0 * u * _scale_at(y), Color(Color("f4efff"), 0.35 + 0.4 * tw_a), 0.0)
 	if tier > 0:
 		var rail: Color = [GOLD, Color("ff9a4a"), Color.from_hsv(fmod(now * 0.25, 1.0), 0.55, 1.0)][tier - 1]
 		var a := 0.4 + 0.35 * pulse
@@ -1493,6 +1505,7 @@ func _draw() -> void:
 			mood = Parts.Mood.JOY
 		var wob := 0.0 if calm or since > 0.3 else sin(since * 40.0) * 0.04 * (1.0 - since / 0.3)
 		draw_mesh(Parts.band_drum(lane, _drum_r(), mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
+	_draw_balloons(vt, now)
 	for f: Dictionary in _flies:
 		var k := (now - float(f.at)) / FLY_TIME
 		if k >= 1.0 or calm:
@@ -1781,22 +1794,6 @@ func _draw_notes(vt: float, now: float) -> void:
 		var dt := float(n.t) - vt
 		var lane := int(n.lane)
 		if type == State.Type.BALLOON:
-			if n.st == State.St.HIT or n.hidden:
-				continue
-			var gone: float = now - float(_balloon_gone.get(i, INF))
-			if float(n.end) < vt - 1.2:
-				continue
-			var y := minf(_y_of(dt), hit)
-			var p := Vector2(_lane_x(lane, y), y - 10.0 * u)
-			var fill := float(n.hits) / maxf(1.0, float(n.count))
-			if gone >= 0.0:
-				if gone > 1.0:
-					continue
-				p += Vector2(-gone * 120.0, -gone * 420.0) * u
-			var sc := _scale_at(y)
-			draw_mesh(Parts.balloon(NOTE_R * u, fill), null, Transform2D(0.0, Vector2(sc, sc), 0.0, p))
-			if dt <= 0.0 and gone < 0.0:
-				_label(p + Vector2(NOTE_R * 1.0, -NOTE_R * 1.1) * u, str(maxi(0, int(n.count) - int(n.hits))), int(44 * u), Color.WHITE, Parts.INK)
 			continue
 		if type == State.Type.ROLL:
 			if dt > 0.0 and not n.hidden:
@@ -1830,6 +1827,39 @@ func _draw_notes(vt: float, now: float) -> void:
 			hop = absf(sin(dt * TAU)) * 4.0 * u * sc
 		var m := Parts.golden_berry(r) if _golden.has(i) else Parts.berry(lane, r, mood)
 		draw_mesh(m, null, Transform2D(0.0, Vector2(sc, sc), 0.0, Vector2(x, y - hop)))
+
+
+## The balloons, over the drums: up the path to their drum, then sitting on
+## its skin swelling with every tap, or flying off when let go.
+func _draw_balloons(vt: float, now: float) -> void:
+	var u := _u()
+	var hit := _hit_y()
+	var notes: Array = _st.notes
+	for i in notes.size():
+		var n: Dictionary = notes[i]
+		var dt := float(n.t) - vt
+		if dt > _travel() + 0.05:
+			break
+		if int(n.type) != State.Type.BALLOON:
+			continue
+		var lane := int(n.lane)
+		if n.st == State.St.HIT or n.hidden:
+			continue
+		var gone: float = now - float(_balloon_gone.get(i, INF))
+		if float(n.end) < vt - 1.2:
+			continue
+		var y := minf(_y_of(dt), hit)
+		var p := Vector2(_lane_x(lane, y), y - 10.0 * u)
+		var fill := float(n.hits) / maxf(1.0, float(n.count))
+		if gone >= 0.0:
+			if gone > 1.0:
+				continue
+			p += Vector2(-gone * 120.0, -gone * 420.0) * u
+		var sc := _scale_at(y)
+		draw_mesh(Parts.balloon(NOTE_R * u, fill), null, Transform2D(0.0, Vector2(sc, sc), 0.0, p))
+		if dt <= 0.0 and gone < 0.0:
+			_label(p + Vector2(NOTE_R * 1.0, -NOTE_R * 1.1) * u, str(maxi(0, int(n.count) - int(n.hits))), int(44 * u), Color.WHITE, Parts.INK)
+		continue
 
 func _draw_path_combo(now: float, tier: int) -> void:
 	var u := _u()

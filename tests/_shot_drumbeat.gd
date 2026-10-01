@@ -22,6 +22,7 @@ var _miss := false
 var _full := false
 var _reduce := false
 var _tune := false
+var _revive := false
 var _t := 0.0
 var _step := 0
 var _struck := {}
@@ -57,6 +58,8 @@ func _initialize() -> void:
 			_miss = true
 		elif a == "full":
 			_full = true
+		elif a == "revive":
+			_revive = true
 		elif a == "tune":
 			_tune = true
 		elif a == "reduce":
@@ -129,22 +132,7 @@ func _process(delta: float) -> bool:
 					_b._begin_tune(false)
 					_step = 10
 					_t = 0.0
-						10:
-			# the tap-along: taps a hair late on every knock, shot halfway
-			var clicks: Array = State.calib().clicks
-			var now: float = _b.song_now()
-			for k in clicks.size():
-				if not _struck.has(1000 + k) and now >= float(clicks[k]) + 0.09:
-					_struck[1000 + k] = true
-					_b.strike(k % 4)
-			if not _struck.has(-2) and now > float(clicks[6]) + 0.2:
-				_struck[-2] = true
-				_shot("1b_tune")
-			if _b._phase == "ready" and _t > 2.0:
-				print("tuned offset %.3f" % _b._offset)
-				_shot("1c_tuned")
-				quit()
-	return false
+					return false
 				_b.strike(0)
 				var song: Dictionary = _b._song
 				var gogo: Array = song.gogo
@@ -172,11 +160,36 @@ func _process(delta: float) -> bool:
 				_step = 3
 				_t = 0.0
 		3:
+			if _revive and _b._phase == "out" and _t > 1.9:
+				# One more heart, as the card's video would give it: the bot
+				# plays from here on
+				_revive = false
+				_miss = false
+				print("revived from %.2f" % _b._stopped_at)
+				_b.heart_back()
+				_step = 2
+				_shots = []
+				return false
 			if not _miss and _t > 0.9 and not _struck.has(-1):
 				_struck[-1] = true
 				_shot("5a_finale")
 			if _t > (2.0 if _miss else 6.5):
 				_shot("5_end")
 				print("phase %s solved %s all_good %s" % [_b._phase, _b.is_solved(), _b._st.all_good()])
+				quit()
+		10:
+			# the tap-along: taps a hair late on every knock, shot halfway
+			var clicks: Array = State.calib().clicks
+			var now: float = _b.song_now()
+			for k in clicks.size():
+				if not _struck.has(1000 + k) and now >= float(clicks[k]) + 0.09:
+					_struck[1000 + k] = true
+					_b.strike(k % 4)
+			if not _struck.has(-2) and now > float(clicks[6]) + 0.2:
+				_struck[-2] = true
+				_shot("1b_tune")
+			if _b._phase == "ready" and _t > 2.0:
+				print("tuned offset %.3f" % _b._offset)
+				_shot("1c_tuned")
 				quit()
 	return false

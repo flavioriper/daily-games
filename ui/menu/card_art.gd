@@ -1322,27 +1322,33 @@ func _draw_marigold() -> void:
 	_marigold_mesh = b.mesh()
 	draw_mesh(_marigold_mesh, null)
 
-## Drumbeat: a strip of the board's wooden lane with the hit ring at the
-## left, a don, a ka, a big don and a drumroll riding in, and lanterns on a
-## cord over it, through `ui/faces/drumbeat_parts.gd`, the file
+## Drumbeat: the board's path of planks narrowing up into the dusk, four
+## berries coming down it, the four drums at its foot and lanterns on a cord
+## over it, through `ui/faces/drumbeat_parts.gd`, the file
 ## `puzzles/drumbeat2d.gd` draws with.
 func _draw_drumbeat() -> void:
 	_drumbeat_keep.clear()
 	var b := Face.Builder.new()
-	var lane_y := 18.0
-	b.polygon(Face.Builder.round_rect(at(-170.0, lane_y - 26.0), Vector2(340.0, 52.0) * _u, 0.0), Color("7a5134"))
-	b.polygon(Face.Builder.round_rect(at(-170.0, lane_y - 21.0), Vector2(340.0, 42.0) * _u, 8.0 * _u), Color("3f2c22"))
-	var ring := at(-118.0, lane_y)
-	b.disc(ring, 20.0 * _u, Color("5a463a"))
-	b.stroke(Face.Builder.arc_points(ring, 18.5 * _u, 0.0, TAU), 2.0 * _u, DbParts.CREAM, true)
-	b.stroke(Face.Builder.arc_points(ring, 13.5 * _u, 0.0, TAU), 1.2 * _u, Color(DbParts.CREAM, 0.55), true)
-	for k in 3:
-		var x := -60.0 + 68.0 * k
-		b.stroke(PackedVector2Array([at(x, lane_y - 18.0), at(x, lane_y + 18.0)]), 1.2 * _u, Color(1, 1, 1, 0.3))
+	var top := -36.0
+	var foot := 38.0
+	var wt := 110.0
+	var wb := 300.0
+	b.polygon(PackedVector2Array([at(-wt * 0.53, top), at(wt * 0.53, top), at(wb * 0.53, foot), at(-wb * 0.53, foot)]), Color("5a3a25"))
+	b.polygon(PackedVector2Array([at(-wt * 0.5, top), at(wt * 0.5, top), at(wb * 0.5, foot), at(-wb * 0.5, foot)]), Color("4a3426"))
+	for k in 6:
+		var f0 := k / 6.0
+		var f1 := (k + 0.5) / 6.0
+		var y0 := lerpf(top, foot, f0)
+		var y1 := lerpf(top, foot, f1)
+		var w0 := lerpf(wt, wb, f0) * 0.49
+		var w1 := lerpf(wt, wb, f1) * 0.49
+		b.polygon(PackedVector2Array([at(-w0, y0), at(w0, y0), at(w1, y1), at(-w1, y1)]), Color("8a5c3a", 0.35))
+	for l in range(1, 4):
+		b.stroke(PackedVector2Array([at((l - 2) * wt / 4.0, top), at((l - 2) * wb / 4.0, foot)]), 1.0 * _u, Color(DbParts.CREAM, 0.3))
 	var cord := PackedVector2Array()
 	for k in 17:
 		var t := k / 16.0
-		cord.append(at(-160.0 + 320.0 * t, -50.0 + sin(PI * t) * 12.0))
+		cord.append(at(-160.0 + 320.0 * t, -58.0 + sin(PI * t) * 10.0))
 	b.stroke(cord, 1.2 * _u, Color(DbParts.INK, 0.7))
 	var m := b.mesh()
 	_drumbeat_keep.append(m)
@@ -1350,18 +1356,25 @@ func _draw_drumbeat() -> void:
 	var cols := [Color("f59a6a"), Color("f2c14e"), Color("f08aa6"), Color("8cc8ec"), Color("f59a6a")]
 	for k in cols.size():
 		var t := k / float(cols.size() - 1)
-		var hang := at(-140.0 + 280.0 * t, -50.0 + sin(PI * (0.06 + 0.88 * t)) * 12.0)
-		var lm := DbParts.lantern(9.0 * _u, cols[k], 0.8)
+		var hang := at(-140.0 + 280.0 * t, -58.0 + sin(PI * (0.06 + 0.88 * t)) * 10.0)
+		var lm := DbParts.lantern(8.0 * _u, cols[k], 0.8)
 		_drumbeat_keep.append(lm)
 		draw_mesh(lm, null, Transform2D(0.0, hang))
-	var roll := DbParts.roll(48.0 * _u, 13.0 * _u)
-	_drumbeat_keep.append(roll)
-	draw_mesh(roll, null, Transform2D(0.0, at(96.0, lane_y)))
-	var notes := [[1, -8.0, 14.0], [2, 46.0, 19.0], [0, -66.0, 14.0]]
-	for n: Array in notes:
-		var nm := DbParts.note(int(n[0]), float(n[2]) * _u, DbParts.Mood.HAPPY)
+	# berries on their way down, smaller far up the path
+	var berries := [[0, 0.75], [2, 0.42], [3, 0.6], [1, 0.18]]
+	for e: Array in berries:
+		var f: float = e[1]
+		var y := lerpf(top, foot, f)
+		var w := lerpf(wt, wb, f)
+		var nm := DbParts.berry(int(e[0]), lerpf(8.0, 13.0, f) * _u, DbParts.Mood.HAPPY)
 		_drumbeat_keep.append(nm)
-		draw_mesh(nm, null, Transform2D(0.0, at(float(n[1]), lane_y)))
+		draw_mesh(nm, null, Transform2D(0.0, at((int(e[0]) - 1.5) * w / 4.0, y)))
+	var r := wb / 4.0 * 0.42
+	for lane in 4:
+		var dm := DbParts.band_drum(lane, r * _u)
+		_drumbeat_keep.append(dm)
+		var skin := at((lane - 1.5) * wb / 4.0, foot)
+		draw_mesh(dm, null, Transform2D(0.0, skin - Vector2(0, DbParts.skin_y(lane, r * _u))))
 
 ## Pixel Garden: the board's own pegboard and beads, through
 ## `ui/faces/bead.gd`, the file `puzzles/pixel_garden2d.gd` draws with: a

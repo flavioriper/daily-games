@@ -147,6 +147,20 @@ BEADBOX_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
                 "gentle, cozy, no synth, no electronic tones, no beeps, no music "
                 "bed, no voice")
 
+# Drumbeat's band (2026-10-01 polish): the first set was retro arcade synth
+# and cartoon, loud beside the boards re-recorded the same day, so its world
+# is close-mic foley of a garden festival at dusk -- hand drums struck
+# softly, paper lanterns, small party balloons, confetti -- and every note a
+# real kalimba, music box, wooden tongue drum or hand bell, never synth.
+FESTIVAL = ("close-mic foley of a small cozy garden festival at dusk, real soft "
+            "hand drums, wooden beads, paper lanterns and party balloons, "
+            "natural and acoustic, soft and warm, rounded, no synth, no "
+            "electronic tones, no beeps, no music, no voice")
+FESTIVAL_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum and "
+                 "small hand bells recorded close in a warm quiet room, natural, "
+                 "soft, rounded, gentle, cozy, no synth, no electronic tones, no "
+                 "beeps, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1335,25 +1349,40 @@ SETS = {
         "hoop":     ("a wooden hoop rolling across stone flags, a soft rumbling roll with a wobbly spin settling down flat, a playful kalimba glissando, cute", 1.6, -11, TERRACE),
         "purr":     ("a small cat purring contentedly, soft and close, a cozy rumble, very gentle", 1.4, -16, COZY),
     },
-    # Drumbeat (puzzles/drumbeat2d.gd): the drum-festival rhythm game. don
-    # and ka, the player's own drum, are synthesised by tools/gen_drumbeat.py
-    # with the songs, not generated here: the takes were late, too quiet
-    # under the music and did not sound like a drum.
+    # Drumbeat (puzzles/drumbeat2d.gd): a band of four drums at a garden
+    # festival at dusk. The drums themselves (drum_0..3) are synthesised by
+    # tools/gen_drumbeat.py with the songs, not generated here: they play on
+    # every stroke over the music and must start on their first sample.
+    # 2026-10-01 (the polish): every cue taken again as FESTIVAL /
+    # FESTIVAL_TUNE -- real hand percussion, paper lanterns, kalimba, music
+    # box and hand bells -- and the hearts, Echo and the silly rewards added.
     "drumbeat": {
-        "balloon":      ("a tiny soft rubbery squeak of a balloon being squeezed, very short", 0.5, -12, CARTOON),
-        "pop":          ("a balloon popping with a cheerful bang and a tiny confetti sparkle, short", 0.7, -4, CARTOON),
-        "balloon_gone": ("a small balloon slowly deflating and flying off with a comic squeaky whistle, short", 0.9, -9, CARTOON),
-        "gogo":         ("a festive rising whoosh with a bright shimmer and a small gong, the party begins, short", 1.4, -5, ARCADE),
-        "soul":         ("a bright short rising chime with a sparkle, a meter filling past its line", 0.8, -7, ARCADE),
-        "combo":        ("a short bright festival bell flourish, three quick rising notes", 0.7, -8, ARCADE),
-        "break":        ("a short soft comic descending wobble, a drumstick fumbled, gentle", 0.5, -12, CARTOON),
-        "select":       ("a single tiny soft wooden click, choosing a song, very short", 0.5, -12),
-        "start":        ("a short festival drum roll on a taiko building into one big hit, get ready", 1.6, -5, FOLEY),
-        "clear":        ("a festive celebratory jingle on marimba and small bells, a song cleared, joyful, about two seconds", 2.4, -4, ARCADE),
-        "full_combo":   ("a triumphant festive fanfare on bells and marimba ending on a big drum hit and sparkles, a perfect performance", 2.8, -3, ARCADE),
-        "fail":         ("a gentle short descending marimba phrase, a kind try again, soft and warm not sad", 2.0, -6, ARCADE),
-        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
-        "tick":         ("a single soft wooden clock tick with a tiny bell, very short", 0.5, -9, ARCADE),
+        "enter":        ("a soft evening garden festival settling in, distant paper lanterns rustling in a breeze, one warm low kalimba note and a tiny wind chime", 1.0, -12, FESTIVAL, "warm:7000"),
+        "select":       ("a single tiny soft wooden click of a small wooden bead, very short", 0.5, -13, FESTIVAL, "warm:7000", "cut:0.1"),
+        "reset":        ("a soft rustle of paper lanterns and one calm low kalimba note, a garden stage getting ready again", 0.9, -12, FESTIVAL_TUNE, "warm:7000"),
+        "gogo":         ("a joyful swell of small hand bells and a soft shaker rising into one warm gentle frame drum hit and a kalimba sparkle, the festival begins, cozy", 1.4, -6, FESTIVAL_TUNE, "warm:7000"),
+        "soul":         ("three bright rising music box notes with a small hand bell shimmer, a meter filling past its line, delicate", 0.8, -9, FESTIVAL_TUNE, "warm:7000"),
+        "combo":        ("a single short bright pluck on a real kalimba with a tiny bell, one clean warm note, very short", 0.5, -10, FESTIVAL_TUNE, "warm:7000"),
+        "break":        ("a soft comic little wooden wobble, a drumstick fumbled onto a soft mat, gentle and funny, never harsh", 0.5, -13, FESTIVAL, "warm:7000"),
+        "balloon":      ("a tiny soft rubbery squeak of a small party balloon being squeezed, very short", 0.5, -13, FESTIVAL, "warm:7000", "cut:0.25"),
+        "pop":          ("a small party balloon popping with a soft round pop and a flutter of paper confetti and a tiny bell, cheerful", 0.8, -6, FESTIVAL, "warm:7000"),
+        "balloon_gone": ("a small balloon slowly deflating and flying off with a soft comic squeaky whistle, short and funny", 0.9, -11, FESTIVAL, "warm:7000"),
+        "clear":        ("a warm joyful rising run on a real kalimba, music box and soft hand bells over a gentle hand drum, landing on a bright chord, cozy and triumphant", 2.4, -5, FESTIVAL_TUNE, "warm:7000"),
+        "full_combo":   ("a happy festive flourish of hand bells, music box and kalimba with a soft frame drum roll ending on one warm big drum hit and a sparkle, a perfect performance, cozy", 2.8, -4, FESTIVAL_TUNE, "warm:7000"),
+        "fail":         ("a gentle short descending kalimba phrase, a kind try again, soft and warm, never sad", 1.6, -9, FESTIVAL_TUNE, "warm:7000"),
+        "heart_lost":   ("a soft gentle kalimba two-note fall, a small sad 'oh', warm and muffled, never a buzzer", 0.6, -12, FESTIVAL_TUNE, "warm:7000"),
+        "out_of_hearts":("a real wind-up music box winding slowly down, a few soft notes descending and slowing, a garden festival at night going quiet, calm and kind", 1.8, -12, FESTIVAL_TUNE, "warm:7000"),
+        "heart_back":   ("a warm rising pair of soft kalimba plucks and a tiny hand bell, a little heart coming back, gentle and happy", 0.7, -11, FESTIVAL_TUNE, "warm:7000"),
+        "echo":         ("a friendly little call of three quick soft wooden tongue drum notes rising, then a tiny bell, your turn, playful and cozy", 0.8, -8, FESTIVAL_TUNE, "warm:7000"),
+        "echo_perfect": ("a sweet shimmering answer of soft hand bells and a music box, two bright notes ringing together, a call answered perfectly, magical and warm", 1.0, -8, FESTIVAL_TUNE, "warm:7000"),
+        "golden":       ("a shower of small soft coins and a bright warm music box glissando with a hand bell, a golden treasure found, joyful and cozy", 1.2, -7, FESTIVAL_TUNE, "warm:7000"),
+        "conga":        ("a playful little soft hand drum and shaker conga shuffle with a kalimba hop, bouncy and cute, critters dancing in a line, cozy", 1.6, -9, FESTIVAL_TUNE, "warm:7000"),
+        "shades":       ("a playful cool little slide up on a kalimba ending in a tiny bright music box 'ting', a frog putting on sunglasses, funny and cute, short", 0.7, -9, FESTIVAL_TUNE, "warm:7000"),
+        "hold_done":    ("one soft round chime of a small hand bell, warm and clear, very short", 0.6, -12, FESTIVAL_TUNE, "warm:7000"),
+        "tune_done":    ("two soft warm wooden tongue drum notes and a tiny bell, everything in tune, gentle and satisfied", 0.8, -10, FESTIVAL_TUNE, "warm:7000"),
+        "stamp":        ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, FESTIVAL_TUNE, "warm:7000"),
+        "party":        ("a short cozy celebratory flourish on a real kalimba and a music box with soft party blower toots and a gentle hand drum, rising and bright, warm and joyful", 2.0, -6, FESTIVAL_TUNE, "warm:7000"),
+        "purr":         ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # Trestle (puzzles/trestle2d.gd): a bridge built of road planks, wooden
     # beams and rope over a river, then a little cart sent across. The
