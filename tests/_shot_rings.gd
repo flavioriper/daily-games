@@ -147,6 +147,34 @@ func _doom_move() -> Vector2i:
 			return m
 	return Vector2i(-1, -1)
 
+## Plays good moves on the state (no flights) until a doomed one is on offer.
+func _walk_to_doom() -> Vector2i:
+	var mv := _doom_move()
+	var q := 0
+	var st = _puzzle._state
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	while mv.x < 0 and q < 60:
+		var ms: Array = Gen.moves_from(st.pegs)
+		var safe: Array = []
+		for m: Vector2i in ms:
+			st.lift(m.x)
+			if not st.would_doom(m.y):
+				safe.append(m)
+			st.put_back()
+		if safe.is_empty():
+			break
+		var g: Vector2i = safe[rng.randi_range(0, safe.size() - 1)]
+		st.lift(g.x)
+		st.drop(g.y)
+		if st.is_solved():
+			break
+		mv = _doom_move()
+		q += 1
+	_puzzle._reconcile_locks()
+	_puzzle._refresh()
+	return mv
+
 ## A move onto its own colour that dooms nothing; failing that the solver's.
 func _good_onto() -> Vector2i:
 	var st = _puzzle._state
@@ -214,8 +242,8 @@ func _script() -> void:
 			_end = 3.0
 		"doom":
 			var m := [Vector2i(-1, -1)]
+			_at(0.9, func() -> void: m[0] = _walk_to_doom())
 			_at(1.2, func() -> void:
-				m[0] = _doom_move()
 				print("doom move ", m[0], " hearts ", _puzzle.hearts)
 				if m[0].x >= 0:
 					_move(m[0]))
@@ -226,32 +254,22 @@ func _script() -> void:
 			_end = 3.2
 		"out":
 			for k in 4:
-				_at(1.0 + 1.6 * k, func() -> void:
-					if _puzzle.out_of_hearts:
+				_at(1.0 + 1.8 * k, func() -> void:
+					if _puzzle.out_of_hearts or _puzzle.busy():
 						return
-					var mv := _doom_move()
-					if mv.x < 0:
-						# Walk on until a doom is on offer.
-						for q in 6:
-							var g := _good_onto()
-							_puzzle._state.lift(g.x)
-							_puzzle._state.drop(g.y)
-							mv = _doom_move()
-							if mv.x >= 0:
-								break
-						_puzzle._refresh()
+					var mv := _walk_to_doom()
 					print("out %d: doom %s" % [k, str(mv)])
 					if mv.x >= 0:
 						_move(mv))
-			_at(6.2, _shot)
-			_at(7.4, _shot)
-			_at(7.8, func() -> void:
+			_at(7.7, _shot)
+			_at(9.4, _shot)
+			_at(9.8, func() -> void:
 				print("out: hearts %d, out %s, can_reset %s" % [_puzzle.hearts, _puzzle.out_of_hearts, _puzzle.can_reset()])
 				_cleanup()
 				_puzzle.try_again())
-			_at(8.0, _shot)
-			_at(9.0, _shot)
-			_end = 9.3
+			_at(10.0, _shot)
+			_at(11.0, _shot)
+			_end = 11.3
 		"right":
 			var gags := [-1, -1, 0, 1, 2, -2, -2]
 			for k in gags.size():
@@ -271,13 +289,15 @@ func _script() -> void:
 			_at(12.5, _shot)
 			_end = 13.0
 		"solve":
+			var line: Array = []
+			_at(0.95, func() -> void:
+				line.append_array(Gen.solve(_puzzle._state.pegs))
+				print("solve: line of %d" % line.size()))
 			for k in 90:
-				_at(1.0 + 0.5 * k, func() -> void:
-					if _puzzle.is_done() or _puzzle.busy():
+				_at(1.0 + 0.45 * k, func() -> void:
+					if _puzzle.is_done() or line.is_empty():
 						return
-					var path: Array = Gen.solve(_puzzle._state.pegs)
-					if not path.is_empty():
-						_move(path[0]))
+					_move(line.pop_front()))
 			_at(0.9, func() -> void:
 				_puzzle.solved.connect(func() -> void:
 					var base := _t

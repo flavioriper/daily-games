@@ -254,12 +254,12 @@ const TWIRL_TIME := 0.8
 const LOVE_HEARTS := 3
 const LOVE_TIME := 1.2
 const LOVE_RISE := 150.0
-const LOVE_R := 14.0
+const LOVE_R := 22.0
 ## The bee: in, twice round the post, and off; px of the control.
 const BEE_IN := 0.45
 const BEE_ROUND := 1.1
 const BEE_OUT := 0.55
-const BEE_PX := 34.0
+const BEE_PX := 62.0
 ## The party, from the solve.
 const PARTY_AT := 0.35
 const PARTY_TIME := 3.4
@@ -1434,6 +1434,31 @@ static func _capsule(cx: float, y0: float, y1: float, rx: float, ry: float) -> P
 		pts.append(Vector2(cx + p.x * rx, y1 + p.y * ry))
 	return pts
 
+## The front of a band between two levels: the near half of the ellipse at
+## `y0` down to the near half of the one at `y1` -- a two-tone ring's lower
+## layer, curving round the ring rather than bulging over its upper half.
+static func _front_band(cx: float, y0: float, y1: float, rx: float, ry: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	const N := 18
+	for q in N + 1:
+		var a := lerpf(PI, 0.0, float(q) / N)
+		pts.append(Vector2(cx + cos(a) * rx, y0 + sin(a) * ry))
+	for q in N + 1:
+		var a := lerpf(0.0, PI, float(q) / N)
+		pts.append(Vector2(cx + cos(a) * rx, y1 + sin(a) * ry))
+	return pts
+
+## `points`, each carried through `map`, as one (triangulated) polygon.
+static func _poly_mapped(b, points: PackedVector2Array, colour: Color, map: Callable) -> void:
+	if map.is_null():
+		b.polygon(points, colour)
+		return
+	var mapped := PackedVector2Array()
+	mapped.resize(points.size())
+	for i in points.size():
+		mapped[i] = map.call(points[i])
+	b.polygon(mapped, colour)
+
 ## One ring, `w` wide, its top face centred on (cx, yt): the band with its
 ## rounded shoulders, its sheen, the inlaid emblem, the lighter top face with
 ## its cream inner lip, and the hole. `sc` squashes it and `tilt` leans it
@@ -1477,9 +1502,9 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 		# The lower layer: its own colour from the seam down, rounded and
 		# shaded like the band, and a cream seam between the two.
 		var lower: Color = RING_COLOURS[under % RING_COLOURS.size()]
-		_fan_mapped(b, _capsule(cx, mid, yb, rx, ry), Color(lower.lerp(Pal.TEXT, 0.26), alpha), smap)
-		_fan_mapped(b, _capsule(cx, mid, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.03), alpha), smap)
-		_fan_mapped(b, _capsule(cx, yt + SIDE * w * 0.78, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.26), 0.38 * alpha), smap)
+		_poly_mapped(b, _front_band(cx, mid, yb, rx, ry), Color(lower.lerp(Pal.TEXT, 0.26), alpha), smap)
+		_poly_mapped(b, _front_band(cx, mid, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.03), alpha), smap)
+		_poly_mapped(b, _front_band(cx, yt + SIDE * w * 0.8, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.26), 0.38 * alpha), smap)
 		var seam := PackedVector2Array()
 		for p in Face.Builder.arc_points(Vector2.ZERO, 1.0, 0.05, PI - 0.05):
 			seam.append(Vector2(cx + p.x * rx * 0.995, mid + p.y * ry))
@@ -1999,6 +2024,8 @@ func share_glyphs() -> String:
 		(pegs[m.y] as Array).append(Gen.flip(ring))
 		if Gen.locked(pegs[m.y]):
 			out += SHARE_GLYPHS[Gen.top(int(pegs[m.y][0]))]
+	if (_state.difficulty >= 3 and is_solved()) or (_flawless and is_solved()):
+		out += "\n"
 	if _state.difficulty >= 3 and is_solved():
 		out += "🙃 " + tr("RG_TUMBLE_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
 	elif _flawless and is_solved():
