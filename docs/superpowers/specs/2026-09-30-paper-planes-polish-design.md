@@ -230,6 +230,64 @@ is stuck (so no board bug can spend a heart on a free sky); undo stays in the
 state on Insane (Reset flies planes home through it) and `undo_allowed` is
 what the board offers.
 
+**The board** (2026-09-30, `tests/_shot_planes.gd` at `--resolution
+810x1440 --always-on-top`, peak draw calls from 0.5 s on, each state run
+twice and the second quoted; both readings agreed on every state). This
+harness opens the board through `world/main.tscn` with the day card's art
+behind it, so its floor is **77** on Easy at rest -- the pre-polish board
+read **77** under the same harness the same afternoon (stashed and re-run),
+so the 53 in the board notes is `tests/_shot_anim.gd`'s figure on a bare
+host and not a regression:
+
+| state | band | peak draw calls | mean ms |
+|---|---|---|---|
+| rest | Easy / Medium / Hard / Insane | 77 / 77 / 78 / **83** | 4.1-4.3 |
+| press (dip, launch) | Easy / Insane (with the glide) | 78 / 84 | 5.6 / 6.3 |
+| refuse | Easy | 77 | 4.8 |
+| crash (a plane) | Hard / Insane | 79 / 84 | 8.7 / 7.5 |
+| crash (a cloud) | Insane | 84 | 7.2 |
+| out (droop, dusk, card, Try again) | Hard / Insane | 100 / **104** | 6.0 / 4.8 |
+| stuck | Insane | 88 | 9.1 |
+| gust | Insane | 88 | 7.2 |
+| solve (stored order, tap by tap) | Insane | 88 | 10.3 |
+| restore | Hard | 78 | 4.4 |
+
+The peak is the out-of-hearts card over Windy Day at **104**, 751 under the
+855 budget. Windy Day costs **+6 at rest** (eight clouds under a transform
+each, one ghost mesh, the sock; a cloud wrapping draws twice, so +5 more
+mid-glide at most) and the hearts' pill +1. On the phone's driver
+(`--rendering-driver opengl3_angle`) Windy Day at rest reads the same 83
+and draws the same picture. The cells: the hearts' strip takes 64 off the
+top on Hard and Insane, which leaves Hard width-bound at **59** (the card
+measured 1000 x 1480 in this harness) and Insane at **94**.
+
+The suite is green (`passed=123188 failed=0`) and `tests/_win.gd -- planes`
+passes (Medium, 31 planes, the hint on the last); `_win.gd` now plays a
+Windy Day sky in `solve_order()` and skips the hint on a band with none, and
+`_shot_planes.gd solve` cleared a banked Insane sky tap by tap through the
+board's input with both hearts kept.
+
 ## 8. Calls for the user
 
-Filled in by the build.
+Decisions the build made while you were away -- each is one constant or a
+few lines to change:
+
+- **The last heart can buy a gust.** A crash that spends the last heart is
+  the card (as on every family board), but a gust that spends it is not: the
+  wind blows, and only a sky stuck again with no heart, or a crash with none,
+  ends it. Otherwise One more heart on a stuck sky would be gone before it
+  could be used.
+- **A plane launches when the finger lifts**, not on the press (Fairy
+  Lights' input rules): a stray thumb can no longer cost a heart, and a
+  finger that slides off launches nothing. It is a hair slower to play fast.
+- **A tap through a cloud goes to the plane under it**; only a stuck sky
+  turns a cloud into a button.
+- **The press shades a plane** (all three papers darken alike for a moment)
+  and the **droop** dims every plane left: neither tells one plane from
+  another, so the colour stays identity.
+- The hearts' strip costs the grid 64 px of height (Quilt's), and the wind
+  sock stands at the panel's upwind top corner beside the pill.
+- Cloud opacity 0.8, ghost rings at 0.42, glide 0.35 s, crash 13 cells/s
+  with a 0.16 s bonk and a 0.55 s flutter home -- all judged on stills only.
+- The how-to-play lesson was wrong (a triangle sliding diagonally under
+  "draw each plane from its head"); it now shows the tap.
