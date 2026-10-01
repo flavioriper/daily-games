@@ -26,3 +26,18 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   Ls, a blink and a dozing king at rest, and a win where the king is shoved
   over, his crown spins off, your knight rears and petals fall. 68 bare, 67
   played, 73 on the win, ANGLE agreeing.
+- **Polished again on 2026-10-01** (spec `2026-10-01-knight-polish-design.md`):
+  players got stuck in dead positions with nothing on the board saying so
+  (a quarter of random Medium positions and half of Hard ones are lost), so
+  Easy to Hard now prove `State.lost()` after every kept hop and raise a
+  **Start over** button under the board. Hard has 3 hearts (a catch costs
+  one), Insane 2. **Insane is Brambles**: every square you hop off grows a
+  bramble nothing lands on again, a rose knight fenced in naps for good
+  (`Gen.NAP`), and boxed in costs a heart and withers back to the opening;
+  200 boards mined by `tools/insane/knight_bramble_mine.py` (lines 14-30,
+  at most 12 lines within two more hops, 46 need a nap), re-proved by
+  `tests/_probe_knight_bank.gd`. The move budget is gone. Rewards: streak,
+  somersault / love / butterfly gags, the crown landing on your knight's
+  head, the nap cat and the seal (moved to the lower left when the king is
+  in the lower right). PADDOCK sound set, unheard. Peak 105 draw calls
+  (out of hearts), `tests/_shot_knight.gd` has every mode.
