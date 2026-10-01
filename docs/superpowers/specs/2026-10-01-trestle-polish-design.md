@@ -76,6 +76,9 @@ fails the test. The bridge must be stiff and level, not only strong.**
   holds the cart still spills. Only a pruned, tuned design crosses, the
   budget is the proof's cost times **1.08** (Hard's slack is 1.25), the
   cart is the heaviest, there are no hints and two hearts.
+- **The bank**: 72 mined on six seeds, 69 proved, and the 3 where an
+  obvious truss fit the budget were dropped (`_probe_trestle_tea.gd --
+  write`): **66 Insane levels**, every one level-banked and tea.
 - **Fair, always**: the levels are mined (`tools/mine_trestle.gd`, band 3
   is `tea`): `Gen.proves` also asks that the proof's tea lean stays under
   `TEA_MARGIN` 0.85 of the rim, and the miner tries a truss over and under
@@ -160,18 +163,31 @@ a solve):
 | run | band | draws |
 |---|---|---|
 | empty / built / test | Insane | 88 / 88 / 86 |
-| win, party | Insane | 163, 144 |
+| win, party | Insane | 159-163, 144-173 |
 | win, party, ANGLE | Insane | 163, 92 |
 | win, reduce motion | Insane | 212 |
 | spill, test then building | Insane | 123, 88 |
 | out of hearts (card), Try again | Hard | 125, 103 |
 
-Peak 212, 643 under the 855 budget. The suite `passed=122403 failed=0`;
+Peak 212 (reduce motion), 643 under the 855 budget. The suite `passed=122403 failed=0`;
 `_probe_trestle.gd` and `_probe_trestle_convoy.gd` as before;
 `_probe_trestle_bank.gd` holds every level of every band;
 `_probe_trestle_tea.gd` as in section 2.
 
-## 7. Calls for the user
+## 7. Review findings, fixed
+
+The hearts flow came back clean (no heart lost twice, on a convoy, in the
+free build or after the solve; no way out of a committed test). Fixed: the
+cart's roll-in had never reached its transform; "First try!" and the
+sunglasses counted tests from a Try again (now `_tests_all`, since the
+board opened); a restored daily lost its seal and ✨ (`flawless` is read
+back); a convoy took the party hats off; the sag line and tea tag outlived
+a Reset and the free build, and the tag could sit on a member's tag; a
+spill sticker could follow a snap during the fail hold; the hint video was
+offered mid-test (`busy()`); New left the troll asleep; a crossing after a
+test had already failed (a timeout) could still solve.
+
+## 8. Calls for the user
 
 - **Insane is the Tea Party.** Considered: wind gusts on the span (a side
   load in a 2D truss reads as a heavier cart, not new); a cart that grows

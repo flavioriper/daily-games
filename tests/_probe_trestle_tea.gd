@@ -2,13 +2,14 @@ extends SceneTree
 
 ## How hard the Tea Party is, headless:
 ##
-##     godot --headless --script res://tests/_probe_trestle_tea.gd
+##     godot --headless --script res://tests/_probe_trestle_tea.gd -- [write]
 ##
 ## For every Insane level in content/trestle.json: whether its proof keeps
 ## the tea in (and how far it leans), and how many of the obvious full
 ## trusses (one or two rows under the road, one over it, both, each
 ## diagonal pattern) both fit the budget and get the tea over. A level where
-## an obvious truss does is too easy; the proof is the only way we know.
+## an obvious truss does is too easy; with `write` those (and any whose
+## proof fails) are dropped from the file.
 ## Spec: docs/superpowers/specs/2026-10-01-trestle-polish-design.md, section 2.
 
 const Sim = preload("res://puzzles/trestle_sim.gd")
@@ -20,6 +21,7 @@ func _initialize() -> void:
 	var bad := 0
 	var strong := 0
 	var n := 0
+	var keep: Array = []
 	for lv: Dictionary in bands[3]:
 		n += 1
 		var proof: Array = []
@@ -45,9 +47,15 @@ func _initialize() -> void:
 					fit += 1
 		if fit > 0:
 			easy += 1
+		elif over and lv.get("tea", false):
+			keep.append(lv)
 		if held > 0:
 			strong += 1
 		print("w %d budget %d proof %d: tea %s lean %.2f | obvious trusses in budget that cross %d, strong but spilling %d" % [
 			lv.w, lv.budget, lv.proof_cost, over, sim.tea_peak, fit, held])
 	print("insane: %d levels, %d proofs fail, %d with an obvious truss in budget, %d where a strong truss spills" % [n, bad, easy, strong])
+	if OS.get_cmdline_user_args().has("write") and keep.size() < n:
+		bands[3] = keep
+		FileAccess.open(Gen.BANK, FileAccess.WRITE).store_string(JSON.stringify({"bands": bands}) + "\n")
+		print("wrote %s with %d Insane levels" % [Gen.BANK, keep.size()])
 	quit()

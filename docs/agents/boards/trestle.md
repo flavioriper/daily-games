@@ -37,3 +37,21 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   a wave, bunting, a stamped three-star medal, fireworks and coins on the win.
   87 building, 88 testing, 151 on the win, ~278 at its peak, ANGLE agreeing. The sim's lead cart is still its scalar fields, so one-cart runs
   are unchanged. The crowd needs `tools/deploy_functions.sh` run by a person.
+
+**Polished unattended on 2026-10-01** (`feat/trestle-tea`, spec
+`2026-10-01-trestle-polish-design.md`): **Hard 3 hearts, Insane 2**; on
+those bands a Go is a promise (no Stop mid-test) and a failed test costs a
+heart; out of hearts the riders and the troll sleep, dusk, the shared card;
+Try again drops the bridge in the river and keeps it sketched in pencil.
+**Insane is the Tea Party**: the lead cart's tea is an underdamped spring on
+the cart's tilt (`Sim.tea`, `TEA_RIM` 0.03 rad) and a spill fails the test,
+so a stiff deck matters as much as a strong one; level banks only, budget
+1.08 of the proof; the deck at the tea's worst is drawn dashed ten times
+over after each test. **The tea bank must be re-mined after any physics
+change** (`tools/mine_trestle.gd -- 3 <n> <seed>`, band 3 is `tea`) and
+checked with `tests/_probe_trestle_tea.gd` (no obvious truss in budget,
+strong trusses spill). The bridge troll (`ui/faces/troll_face.gd`) under the
+near bank holds up the score card (11 for a 3-star tea bridge); hats, first-
+try sunglasses, honk, ducks, nap cat on the deck, seal. The bridge settles
+after a test, tags pop, the budget rolls, the cart rolls in. WORKSHOP sound
+set, 33 cues, unheard. Peak 212 draw calls.

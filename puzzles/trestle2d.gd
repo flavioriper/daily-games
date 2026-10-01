@@ -301,6 +301,9 @@ var _seal_mesh: ArrayMesh
 var _stamp := false
 var _flawless := false
 var _laid := 0
+## Tests since the board opened (a Try again does not wind it back): what
+## "First try!" and the sunglasses mean.
+var _tests_all := 0
 
 func puzzle_id() -> String: return "trestle"
 func title() -> String: return "Trestle"
@@ -334,6 +337,10 @@ func _committed() -> bool:
 
 func _tea() -> bool:
 	return bool(state.level.get("tea", false))
+
+## The host holds its offers (the hint video) while a committed test runs.
+func busy() -> bool:
+	return _testing and _committed()
 
 ## Reset waits while a committed test runs, and while the riders sleep.
 func can_reset() -> bool:
@@ -417,6 +424,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_sag_peak = 0.0
 	_spilled_at = -100.0
 	_laid = 0
+	_tests_all = 0
+	_troll.expression = Face.Expr.HAPPY
+	_troll_hop = -100.0
+	_troll_duck = -100.0
 	_reset_party()
 	_clear_trail()
 	if _rw != null:
@@ -723,7 +734,10 @@ func _events(t: float) -> void:
 				_mood(Face.Expr.WORRIED)
 			"spill":
 				# the tea goes over the cups' rims: a brown splash off the
-				# cart, and the run is lost
+				# cart, and the run is lost (a cart already falling says so
+				# itself)
+				if _fail_at >= 0.0 or not sim.broken.is_empty() or sim.cart == Sim.CART_AIR:
+					continue
 				_spilled_at = t
 				var cart := _cart_xf()
 				var side := float(e.side)
@@ -815,6 +829,8 @@ func check() -> int:
 ## A test of the design as it stands, with `carts` carts.
 func _start_test(carts: int) -> void:
 	_tests += 1
+	if not is_done():
+		_tests_all += 1
 	_testing = true
 	_convoy = carts > 1
 	_run_over = false
@@ -837,9 +853,10 @@ func _start_test(carts: int) -> void:
 	_spilled_at = -100.0
 	_enter_at = -100.0
 	_troll.expression = Face.Expr.HAPPY
-	for f in _faces:
-		f.hat = 0.0
-		f.glasses = 0.0
+	if not is_done():
+		for f in _faces:
+			f.hat = 0.0
+			f.glasses = 0.0
 	sim.setup(state.level, state.for_sim(), carts)
 	_clear_trail()
 	for i in carts - 1:
@@ -969,13 +986,15 @@ func _failed(t: float) -> void:
 			_tell("TR_SNAPPED_N", [snapped]))
 
 func _crossed(t: float) -> void:
+	if _fail_at >= 0.0:
+		return
 	_run_over = true
 	fx.cue("cross")
 	_mood(Face.Expr.JOY)
 	if not is_done():
 		_crossed_at = t
 		_keep_peaks()
-		_hats_on(_tests == 1)
+		_hats_on(_tests_all == 1)
 		check_solved()
 		return
 	# a crossing after the solve: the convoy, or a free build's test
@@ -1028,7 +1047,7 @@ func _stars() -> int:
 func _on_solved() -> void:
 	_solved_at = _now()
 	_testing = false
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _tests == 1)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _tests_all == 1)
 	_stamp = _flawless or _tea()
 	_seal_mesh = null
 	_party_at = _solved_at
@@ -1068,7 +1087,7 @@ func _on_solved() -> void:
 	if _tea():
 		_after(1.5, func():
 			_rw.sticker(tr("TR_W_NO_SPILL"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, false, Color("f2c48a"), false, "tea", 0.0, true))
-	elif _tests == 1:
+	elif _tests_all == 1:
 		_after(1.5, func():
 			_rw.sticker(tr("TR_W_FIRST_TRY"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, true, Color.WHITE, false, "first", 0.0, true))
 	# the medal: a star stamped in for each one earned, a hollow one else
@@ -1268,6 +1287,9 @@ func restore_completed_board() -> void:
 	_party_at = _now() - 100.0
 	_cat_curled = false
 	_score_card = _card_for(_stars())
+	_flawless = bool(completed_record.get("flawless", false))
+	_stamp = _flawless or _tea()
+	_seal_mesh = null
 	_hats_on(false)
 	_rest_over()
 	_ask_crowd(false)
@@ -1561,6 +1583,7 @@ func reset_board() -> void:
 		_drop(d)
 	if not gone.is_empty():
 		_kick(0.06)
+	_sag = []
 	_last_broken = {}
 	_sel = Vector2i(-99, -99)
 	_solved_at = -1.0
@@ -1666,6 +1689,7 @@ func _pill(pill: int) -> void:
 				return
 			_free = true
 			state.free = true
+			_sag = []
 			sim.setup(state.level, [])
 			_solved_at = -1.0
 			_frame = null
@@ -1908,7 +1932,7 @@ func _place_cart() -> void:
 
 ## The cart's frame on the screen: its origin on the road's top.
 func _cart_xf() -> Transform2D:
-	return _xf_of(sim.cart, sim.cart_pos, sim.cart_angle)
+	return _xf_of(sim.cart, sim.cart_pos + Vector2(_enter_off(_now()), 0.0), sim.cart_angle)
 
 func _xf_of(state_: int, pos: Vector2, angle: float) -> Transform2D:
 	var at := px(pos)
@@ -2442,6 +2466,9 @@ func _load_tags() -> Array:
 		var text := tr("TR_TEA_TAG") % mini(999, int(round(_sag_peak * 100.0)))
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0
 		var at := px(_sag_cart) + Vector2(0.0, -_u * 1.25)
+		var r := Rect2(at - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0))
+		# it goes first, so a member's tag under it gives way
+		out = out.filter(func(o: Dictionary) -> bool: return not (o.rect as Rect2).grow(4.0).intersects(r))
 		out.push_front({"rect": Rect2(at - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0)), "text": text,
 			"col": Parts.BAD if _sag_peak >= 1.0 else TEA_COL, "s": 1.0})
 	return out
