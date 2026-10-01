@@ -292,6 +292,8 @@ var _best_exact := 0
 var _bubble: Control
 var _stamp: Control
 var _mark: Array = []         # [g] -> the swap mark on row g's hem
+var _baked: Array = []        # [g] -> BakedRow, shown while the row is still
+var _bake_key: Array = []     # [g] -> what the bake on show was made from
 var _peeker: Array = []       # [s] -> the eyes under code lid s
 ## True while a finished daily is laid back down: no party, no sounds.
 var _restoring := false
@@ -315,6 +317,30 @@ func rules() -> String:
 	if state.shell:
 		out += "\n\n" + tr("CB_RULES_SHELL")
 	return out
+
+## The tutorial's pages, for this board's band (ui/hud/how_to_play.gd):
+## seating, reading a score, cracking it in the rows there are (ink on Hard
+## and Insane), then the hint -- or, on Insane, which has none, the Shell
+## Game. Performance checkup, 2026-10-01.
+func tutorial_pages() -> Array:
+	const Diagram = preload("res://ui/hud/codebreak_tutorial_diagram.gd")
+	var crack: String = tr("HTP_CB_CRACK_BODY") % _num(clampi(state.tries, 2, 8)).to_lower()
+	if state.keeps_rows:
+		crack += " " + tr("CB_RULES_INK")
+	var steps := [
+		[Diagram.Lesson.SEAT, "HTP_CB_SEAT", tr("HTP_CB_SEAT_BODY")],
+		[Diagram.Lesson.SCORE, "HTP_CB_SCORE", tr("HTP_CB_SCORE_BODY")],
+		[Diagram.Lesson.CRACK, "HTP_CB_CRACK", crack]]
+	if state.hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_CB_HINT", tr("HTP_CB_HINT_BODY") % tr("CB_HINTS_%d" % state.hints)])
+	if state.shell:
+		steps.append([Diagram.Lesson.SHELL, "HTP_CB_SHELL", tr("CB_RULES_SHELL")])
+	var pages := []
+	for step in steps:
+		var d := Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 ## Insane gives no hints, so its bar has no bulb (and no video for one).
 func capabilities() -> Array[String]:
@@ -374,6 +400,8 @@ func _build_column() -> void:
 	_seat_tw = []
 	_row_tw = []
 	_mark = []
+	_baked = []
+	_bake_key = []
 	_peeker = []
 
 	_code_label = Label.new()
@@ -416,6 +444,11 @@ func _add_row(g: int) -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_child(row)
 	_rows.append(row)
+	var baked := BakedRow.new()
+	baked.visible = false
+	row.add_child(baked)
+	_baked.append(baked)
+	_bake_key.append(null)
 	var card := Panel.new()
 	var card_sb := CozyTheme.card(Pal.SURFACE, 28, Pal.LINE, 6, 0)
 	card.add_theme_stylebox_override("panel", card_sb)
@@ -614,6 +647,85 @@ func _fit_faces(g: int) -> void:
 			continue
 		face.plain = plain
 		face.set_idle(not plain)
+
+# --- the played rows, baked ---
+
+## Each frame: a played row that has come to rest is drawn as one mesh, and
+## one that anything is moving goes back to its nodes. A bake is remade when
+## what it was made from changes.
+func _process(_delta: float) -> void:
+	for g in _rows.size():
+		var baked: BakedRow = _baked[g]
+		if not _still(g):
+			if baked.visible:
+				_show_nodes(g, true)
+			continue
+		var key := _row_key(g)
+		if not baked.visible or key != _bake_key[g]:
+			_bake(g, key)
+
+## A played row at its compact size with nothing on it moving or dressed up.
+func _still(g: int) -> bool:
+	if g >= state.guesses.size() or _big[g] != 0.0:
+		return false
+	var pouch: Pouch = _pouch[g]
+	if not pouch.scored or pouch.reveal < 1.0 or pouch.scale != Vector2.ONE \
+			or pouch.self_modulate != Color.WHITE:
+		return false
+	if (_mark[g] as SwapMark).grow < 1.0:
+		return false
+	var k := Vector2.ONE * (_piece_small / _piece_big)
+	for s in length:
+		var seat: Control = _seat[g][s]
+		if Motion.running(_seat_tw[g][s]) or seat.position != _seat_rest(g, s) \
+				or not seat.scale.is_equal_approx(k) or seat.rotation != 0.0:
+			return false
+		var face: Control = _face[g][s]
+		if face == null or face.is_queued_for_deletion() or face.scale != Vector2.ONE \
+				or face.rotation != 0.0 or face.hat > 0.0 or face.glasses > 0.0 \
+				or face.modulate != Color.WHITE:
+			return false
+	return true
+
+func _row_key(g: int) -> Array:
+	var mark: SwapMark = _mark[g]
+	var pouch: Pouch = _pouch[g]
+	var key := [_piece_big, pouch.exact, pouch.colours, mark.x0, mark.x1]
+	for s in length:
+		key.append(int(_face[g][s].get_meta("friend")))
+		key.append((_socket_sb[g][s] as StyleBoxFlat).bg_color)
+	return key
+
+func _bake(g: int, key: Array) -> void:
+	var b := Face.Builder.new()
+	var card: Panel = _row_card[g]
+	Bake.box(b, card.get_transform(), Rect2(Vector2.ZERO, card.size), _row_sb[g], 1.0)
+	for s in length:
+		var seat: Control = _seat[g][s]
+		var at := seat.get_transform()
+		var socket: Panel = _socket[g][s]
+		Bake.box(b, at * socket.get_transform(), Rect2(Vector2.ZERO, socket.size), _socket_sb[g][s], socket.modulate.a)
+		var face: Control = _face[g][s]
+		face.bake_into(b, at * face.get_transform())
+	var pouch: Pouch = _pouch[g]
+	pouch.bake_into(b, pouch.get_transform(), pouch.modulate.a)
+	var mark: SwapMark = _mark[g]
+	if mark.x0 >= 0.0:
+		b.append(SwapMark._mesh(mark.x1 - mark.x0), mark.get_transform()
+			* Transform2D(0.0, Vector2((mark.x0 + mark.x1) * 0.5, mark.size.y - 14.0)))
+	(_baked[g] as BakedRow).mesh = b.mesh()
+	_bake_key[g] = key
+	_show_nodes(g, false)
+
+## The row's own nodes, or its bake in their place. The number stays a
+## Label either way.
+func _show_nodes(g: int, on: bool) -> void:
+	(_baked[g] as BakedRow).visible = not on
+	(_row_card[g] as Control).visible = on
+	(_pouch[g] as Control).visible = on
+	(_mark[g] as Control).visible = on
+	for s in length:
+		(_seat[g][s] as Control).visible = on
 
 # --- what the state says is on the board ---
 
@@ -2024,6 +2136,47 @@ static func _dash_ring(r: float, dash: float, gap: float, width: float, colour: 
 	_dash_cache[key] = mesh
 	return mesh
 
+## A played row at rest, drawn as one mesh (the performance checkup of
+## 2026-10-01): card, sockets, plain friends, pouch and swap mark, which
+## were some thirty draw calls a row and nearly two hundred on a full
+## Insane board. The live nodes stay where they are, hidden, and come back
+## the moment anything on the row moves.
+class BakedRow extends Control:
+	var mesh: ArrayMesh:
+		set(v):
+			mesh = v
+			queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		if mesh != null:
+			draw_mesh(mesh, null)
+
+class Bake:
+	## A StyleBoxFlat with a bottom lip (CozyTheme.card), as polygons: the
+	## fill above, the lip the outline less the fill, so a faded box never
+	## doubles up where the two meet.
+	static func box(b: Face.Builder, xf: Transform2D, rect: Rect2, sb: StyleBoxFlat, alpha: float) -> void:
+		var r := float(sb.corner_radius_top_left)
+		var lip := float(sb.border_width_bottom)
+		var outer := _moved(Face.Builder.round_rect(rect.position, rect.size, r), xf)
+		var inner := _moved(Face.Builder.round_rect(rect.position, rect.size - Vector2(0.0, lip), r), xf)
+		if lip > 0.0:
+			var tint := Color(sb.border_color, sb.border_color.a * alpha)
+			for poly in Geometry2D.clip_polygons(outer, inner):
+				if poly.size() >= 3:
+					b.polygon(poly, tint)
+		b.polygon(inner, Color(sb.bg_color, sb.bg_color.a * alpha))
+
+	static func _moved(pts: PackedVector2Array, xf: Transform2D) -> PackedVector2Array:
+		var out := PackedVector2Array()
+		out.resize(pts.size())
+		for i in pts.size():
+			out[i] = xf * pts[i]
+		return out
+
 ## A run of dashes, drawn as one command.
 class Dashed extends Control:
 	var mesh: ArrayMesh:
@@ -2259,8 +2412,40 @@ class Pouch extends Panel:
 				draw_line(Vector2(size.x * 0.5 - 17.0 * k, y), Vector2(size.x * 0.5 + 17.0 * k, y),
 					Color(Pal.TEXT_DIM, 0.75), 5.0 * k, true)
 			return
-		# Two bands from two pips up, so the pouch is always a pile and never
-		# a line lying parallel to the seats.
+		var spots := _spots()
+		for idx in n:
+			var at: Vector2 = spots[idx]
+			var filled := idx < exact
+			var u := clampf((clock - idx * PIP_STAGGER) / PIP_POP, 0.0, 1.0)
+			if u <= 0.0:
+				continue
+			# Falling: accelerating in from above, fading up as it comes.
+			# Landed: a squash that springs back to round.
+			var r := PIP_R * k
+			var squash := Vector2.ONE
+			var alpha := 1.0
+			if u < PIP_LAND:
+				var f := u / PIP_LAND
+				at.y -= PIP_FALL * k * (1.0 - f * f)
+				alpha = clampf(f * 2.5, 0.0, 1.0)
+			else:
+				var e := (u - PIP_LAND) / (1.0 - PIP_LAND)
+				var give := 0.28 * (1.0 - _back_out(e))
+				squash = Vector2(1.0 + give * 0.6, 1.0 - give)
+			draw_set_transform(at + Vector2(0.0, r * (1.0 - squash.y)), 0.0, squash)
+			if filled:
+				draw_circle(Vector2.ZERO, r, Color(Pal.TEXT, 0.88 * alpha))
+			else:
+				draw_circle(Vector2.ZERO, r, Color(Pal.SURFACE, alpha))
+				draw_arc(Vector2.ZERO, r, 0.0, TAU, 24, Color(Pal.TEXT_DIM, 0.9 * alpha), 5.0 * k, true)
+		draw_set_transform(Vector2.ZERO)
+
+	## Where each pip rests, filled ones first: two bands from two pips up,
+	## so the pouch is always a pile and never a line lying parallel to the
+	## seats.
+	func _spots() -> Array:
+		var n := exact + colours
+		var out := []
 		var bands := [n] if n <= 1 else [int(ceil(n / 2.0)), int(floor(n / 2.0))]
 		var idx := 0
 		for bi in bands.size():
@@ -2269,32 +2454,31 @@ class Pouch extends Panel:
 			for q in c:
 				var jx := (_hash(idx * 17 + q, idx * 5 + 3) - 0.5) * PIP_JITTER * k
 				var jy := (_hash(idx * 11 + 2, q * 7 + 1) - 0.5) * PIP_JITTER * k
-				var at := Vector2(size.x * 0.5 + (q - (c - 1) * 0.5) * PIP_STEP * k + jx, by + jy)
-				var u := clampf((clock - idx * PIP_STAGGER) / PIP_POP, 0.0, 1.0)
-				var filled := idx < exact
+				out.append(Vector2(size.x * 0.5 + (q - (c - 1) * 0.5) * PIP_STEP * k + jx, by + jy))
 				idx += 1
-				if u <= 0.0:
-					continue
-				# Falling: accelerating in from above, fading up as it comes.
-				# Landed: a squash that springs back to round.
-				var r := PIP_R * k
-				var squash := Vector2.ONE
-				var alpha := 1.0
-				if u < PIP_LAND:
-					var f := u / PIP_LAND
-					at.y -= PIP_FALL * k * (1.0 - f * f)
-					alpha = clampf(f * 2.5, 0.0, 1.0)
-				else:
-					var e := (u - PIP_LAND) / (1.0 - PIP_LAND)
-					var give := 0.28 * (1.0 - _back_out(e))
-					squash = Vector2(1.0 + give * 0.6, 1.0 - give)
-				draw_set_transform(at + Vector2(0.0, r * (1.0 - squash.y)), 0.0, squash)
-				if filled:
-					draw_circle(Vector2.ZERO, r, Color(Pal.TEXT, 0.88 * alpha))
-				else:
-					draw_circle(Vector2.ZERO, r, Color(Pal.SURFACE, alpha))
-					draw_arc(Vector2.ZERO, r, 0.0, TAU, 24, Color(Pal.TEXT_DIM, 0.9 * alpha), 5.0 * k, true)
-		draw_set_transform(Vector2.ZERO)
+		return out
+
+	## The pouch at rest, every pip landed, into a played row's bake.
+	func bake_into(b: Face.Builder, xf: Transform2D, alpha: float) -> void:
+		Bake.box(b, xf, Rect2(Vector2.ZERO, size), _sb, alpha)
+		if not scored:
+			return
+		if exact + colours == 0:
+			var y := size.y * 0.5 - 3.0 * k
+			var pts := PackedVector2Array([xf * Vector2(size.x * 0.5 - 17.0 * k, y), xf * Vector2(size.x * 0.5 + 17.0 * k, y)])
+			b.stroke(pts, 5.0 * k * xf.get_scale().y, Color(Pal.TEXT_DIM, 0.75 * alpha), false, false)
+			return
+		var r := PIP_R * k * xf.get_scale().y
+		var spots := _spots()
+		for idx in spots.size():
+			var at: Vector2 = xf * spots[idx]
+			if idx < exact:
+				b.disc(at, r, Color(Pal.TEXT, 0.88 * alpha))
+			else:
+				b.disc(at, r, Color(Pal.SURFACE, alpha))
+				# The feather widens a stroke by about its own width; draw_arc's
+				# antialiasing does not.
+				b.stroke(Face.Builder.arc_points(at, r, 0.0, TAU), maxf(1.0, 5.0 * k * xf.get_scale().y - Face.FEATHER), Color(Pal.TEXT_DIM, 0.9 * alpha), true)
 
 	static func _back_out(u: float) -> float:
 		u = clampf(u, 0.0, 1.0)

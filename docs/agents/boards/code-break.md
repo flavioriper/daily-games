@@ -87,3 +87,33 @@ window (after the party) 192. Far under 855.
   chosen. A pick, a Check and a Reset clear the choice; with none, a chip
   fills the first free seat as before. The accent, not the sun: the sun rim
   already means a hint's seat.
+
+### Performance checkup and the tutorial (2026-10-01)
+
+- **The lag was draw calls per played row.** Each row was some thirty
+  commands -- its card, five sockets, five friends (one to three layers
+  each), a draw_circle or two per pip and the swap mark -- and a full Insane
+  board idled at **300 draw calls, 21.5 ms a frame** on this M1 (ANGLE,
+  `tests/_probe_perf.gd mastermind d=3 fill`). A played row at rest
+  (compact, scored, nothing on it moving: `_still()`) is now one mesh
+  (`BakedRow`, the row's first child) built from its live nodes, which stay
+  in place hidden: the card and sockets as polygons (`Bake.box`: the fill,
+  and the lip as the outline less the fill, so a faded socket never doubles),
+  each friend's layers (`Face.bake_into`, `Builder.append`), the pouch's
+  resting pips (`Pouch.bake_into`, sharing `_spots()` with its `_draw`) and
+  the swap mark. `_process` checks each row every frame; any motion on it,
+  a hat or glasses, or a row the state no longer has hands it back to its
+  nodes the same frame, and a changed `_row_key` (friends, score, mark,
+  socket fill, piece size) rebakes. The number stays a Label. Second of two
+  runs: full Insane idle **147 draws, ~12 ms**; Hard 159; Easy 154. The
+  bake was compared pixel for pixel against the live row (`x=cb_live`); the
+  only difference, the hollow pips' rings a feather wider, is trimmed. The
+  palette tray (22 draws) is shared host code and was left for a pass of
+  its own.
+- **The tutorial is four pages** (`tutorial_pages()`,
+  `ui/hud/codebreak_tutorial_diagram.gd`, built from the board's own Lid,
+  Pouch and SwapMark): seating (and sending back), reading the pouch (the
+  lids lift on the code that scored it), cracking it in the band's rows
+  (Hard and Insane add the ink rule), then the hint -- or on Insane, which
+  has none, the Shell Game.
+- Undo was already on every band, and Reset wherever `can_reset()` allows.

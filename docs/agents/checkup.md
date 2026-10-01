@@ -14,7 +14,7 @@ holds while the tutorial is up; `Face._mesh_for` memoises per face.
 | # | Board | Done | Notes |
 |---|---|---|---|
 | 1 | binairo | 2026-10-01 | MultiMesh coins and faces (391 -> 147 draws full Insane); 5-page tutorial; Undo on Insane |
-| 2 | mastermind (Code Break) | | |
+| 2 | mastermind (Code Break) | 2026-10-01 | played rows baked to one mesh each (300 -> 147 draws full Insane); 4-page tutorial; undo/reset already there |
 | 3 | balance | | fallback card's diagram is a bare grid |
 | 4 | untangle | | |
 | 5 | shikaku | | |

@@ -1659,3 +1659,23 @@ WT_CHEER_8,That was the scenic route.,Esse foi o caminho mais bonito.,Ese fue el
 WT_CHEER_9,Tiny trumpets for you: toot toot!,Trompetinhas para você: fom fom!,Trompetitas para ti: ¡tu tu!
 WT_CHEER_10,Words found. Snacks earned.,Palavras achadas. Lanchinho merecido.,Palabras encontradas. Merienda ganada.
 WT_CHEER_11,You traced it like a pro doodler.,Você traçou como um rabiscador profissional.,Lo trazaste como un garabateador profesional.
+HTP_CB_SEAT,Seat your friends,Sente seus amigos,Sienta a tus amigos
+HTP_CB_SEAT_BODY,Tap a friend below the board and they hop into the next empty seat. Tap a seat first to choose where. Tap a seated friend to send them back.,Toque num amigo embaixo do tabuleiro e ele pula para o próximo lugar vazio. Toque antes num lugar para escolher onde. Toque num amigo sentado para mandá-lo de volta.,Toca un amigo bajo el tablero y salta al siguiente lugar vacío. Toca antes un lugar para elegir dónde. Toca un amigo sentado para devolverlo.
+HTP_CB_SEAT_CAP,Tap a friend: they take a seat,Toque num amigo: ele se senta,Toca un amigo: se sienta
+HTP_CB_BACK_CAP,Tap a seated friend: back they go,Toque num sentado: ele volta,Toca uno sentado: vuelve
+HTP_CB_SCORE,Read the pouch,Leia a bolsinha,Lee la bolsita
+HTP_CB_SCORE_BODY,Check scores a full row. A filled pip is a friend in the right seat; a hollow ring is a right friend in the wrong seat. The pouch only counts: it never says which seat.,Conferir pontua uma fileira cheia. Um ponto cheio é um amigo no lugar certo; um anel vazio é um amigo certo no lugar errado. A bolsinha só conta: nunca diz qual lugar.,Comprobar puntúa una fila llena. Un punto lleno es un amigo en el lugar correcto; un aro vacío es un amigo correcto en el lugar equivocado. La bolsita solo cuenta: nunca dice qué lugar.
+HTP_CB_SCORE_CAP,A full row: Check,Fileira cheia: Conferir,Fila llena: Comprobar
+HTP_CB_SCORE_READ,Filled: right seat. Ring: wrong seat,Cheio: lugar certo. Anel: lugar errado,Lleno: lugar correcto. Aro: lugar equivocado
+HTP_CB_SCORE_CODE,Sun in place; berry and leaf misplaced,Sol no lugar; amora e folha fora,Sol en su sitio; mora y hoja fuera
+HTP_CB_CRACK,Crack the code,Descubra o código,Descifra el código
+HTP_CB_CRACK_BODY,"You have %s rows. Play each one against what the scores so far have told you. Every pip filled cracks it, and the lids come off.","Você tem %s fileiras. Jogue cada uma contra o que as pontuações já disseram. Todos os pontos cheios descobrem o código, e as tampas saem.","Tienes %s filas. Juega cada una con lo que te dijeron las puntuaciones. Todos los puntos llenos lo descifran, y las tapas salen."
+HTP_CB_CRACK_CAP,Each row learns from the last,Cada fileira aprende com a anterior,Cada fila aprende de la anterior
+HTP_CB_CRACK_DONE,Every pip filled: cracked!,Todos cheios: descoberto!,Todos llenos: ¡descifrado!
+HTP_CB_HINT,Stuck? A hint,Travou? Uma dica,¿Atascado? Una pista
+HTP_CB_HINT_BODY,"The bulb seats one friend of the code in their own seat, and they stay there for every row after. You have %s.","A lâmpada senta um amigo do código no lugar dele, e ele fica ali em todas as fileiras seguintes. Você tem %s.","La bombilla sienta a un amigo del código en su lugar, y se queda ahí en todas las filas siguientes. Tienes %s."
+HTP_CB_HINT_CAP,The bulb shows one seat,A lâmpada mostra um lugar,La bombilla muestra un lugar
+HTP_CB_HINT_DONE,"A friend of the code, for good","Um amigo do código, para sempre","Un amigo del código, para siempre"
+HTP_CB_SHELL,The Shell Game,O Jogo dos Copinhos,El Juego de los Vasitos
+HTP_CB_SHELL_CAP,"After each row, two lids move","Depois de cada fileira, duas tampas mudam","Tras cada fila, dos tapas se mueven"
+HTP_CB_SHELL_DONE,The arc under the row shows which,O arco sob a fileira mostra quais,El arco bajo la fila muestra cuáles

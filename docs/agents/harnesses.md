@@ -75,6 +75,10 @@ spikes over 25 ms and any move whose script took over 4 ms:
 board); `x=board|host|hide:<Node>|nowash|faces|parts|undo` switches one
 thing off (or times the parts) to see what it costs; `howto shot=1.5`
 leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
-A board needs a `_moves_<id>` in the probe to play. On this Mac render CPU
+A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
+(a click in board space) or `{do}` (a Callable, for a board played
+through its own methods, Code Break's `pick`/`check`); a move waits while
+the board is `_busy`, and `fill` holds the clock until the board is full
+or done. On this Mac render CPU
 is nearly the whole frame and runs about 70 us per draw call, so draw calls
 are the lever; ms readings swing about 1.5 ms run to run.
