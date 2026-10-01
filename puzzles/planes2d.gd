@@ -70,6 +70,9 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
+const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Seal = preload("res://ui/flat/seal.gd")
+const CozyTheme = preload("res://ui/theme.gd")
 
 # --- the screen, measured (spec section 7) ---
 ## The board card's own inset: 28 off a 1000 by 1340 card leaves a field box
@@ -295,6 +298,99 @@ const IDLE_EVERY := 3.6
 const IDLE_TIME := 0.7
 const IDLE_LIFT := 0.12
 
+# --- the rewards (polish section 4; Fairy Lights' and Quilt's) ---
+## The streak: a launch plucks `combo` up the pentatonic from the second; the
+## bubble from COMBO_FROM; confetti at 5, 10, 20 and every 10 after.
+const COMBO_FROM := 3
+const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_DB := -4.0
+const COMBO_DEFLATE := 0.25
+const COMBO_FONT := 44
+## Gags: one launch in GAG_ODDS, the kind the plane's own (any GAG_SPAN
+## planes share the four kinds evenly), one at a time.
+enum Gag { NONE = -1, LOOP, BIRD, ROLL, LOVE }
+const GAG_ODDS := 4
+const GAG_SPAN := 16
+const GAG_STEP := 5
+## The loop-the-loop: a circle LOOP_R cells across the lane's last stretch
+## inside the grid (its far side LOOP_CLEAR short of the edge), on the side
+## toward the middle of the sky; the plane slows to LOOP_SPEED cells a second
+## through it, faster at the ends than over the top (LOOP_EASE).
+const LOOP_R := 0.75
+const LOOP_CLEAR := 0.1
+const LOOP_SPEED := 9.0
+const LOOP_MIN := 0.55
+const LOOP_EASE := 0.6
+## The barrel roll: the flight runs ROLL_SLOW times as long and the dart turns
+## over ROLLS times while its head crosses the sky.
+const ROLL_SLOW := 1.5
+const ROLLS := 2
+## Hearts in the contrail: up to LOVE_HEARTS, LOVE_GAP cells apart, each
+## rising LOVE_RISE cells over LOVE_TIME.
+const LOVE_HEARTS := 5
+const LOVE_GAP := 0.85
+const LOVE_TIME := 1.2
+const LOVE_RISE := 0.7
+const LOVE_R := 0.16
+## The little bird: it pops up at the plane's tail, flaps after it along its
+## trail at BIRD_SPEED cells a second, stops at the edge of the sky, hovers BIRD_HOVER looking for it and
+## flutters off over BIRD_LEAVE. BIRD_FLAP beats a second, BIRD_PX across.
+const BIRD_POP := 0.2
+const BIRD_SPEED := 6.5
+const BIRD_HOVER := 0.45
+const BIRD_LEAVE := 0.6
+const BIRD_FLAP := 9.0
+const BIRD_PX := Vector2(40.0, 60.0)
+const BIRD_BODY := Color("8f6a4a")
+const BIRD_BREAST := Color("f0915a")
+const BIRD_WING := Color("6e4f37")
+## The last few: when this many planes are left, the tip counts them down
+## and each wears a soft glow.
+const LAST_FEW := 3
+const LAST_GLOW := 0.2
+## The party, PARTY_AT after the last flight lands; win_delay() waits
+## PARTY_TIME past its start.
+const PARTY_AT := 0.1
+const PARTY_TIME := 3.3
+const CHEERS := 12
+## The flock: up to FLOCK_MAX darts FLOCK_PX across in a V (FLOCK_LAG
+## seconds a row behind, FLOCK_SPREAD pixels a row out), from the left at
+## FLOCK_IN, sweeping across at FLOCK_SPEED pixels a second, looping a circle
+## FLOCK_LOOP of the card's width round and out to the right.
+const FLOCK_MAX := 9
+const FLOCK_PX := 64.0
+const FLOCK_AT := 0.25
+const FLOCK_LAG := 0.06
+const FLOCK_SPREAD := 34.0
+const FLOCK_SPEED := 1250.0
+const FLOCK_LOOP := 0.25
+## The straggler: one late plane skims the panel's foot past the cat at
+## STRAGGLE_SPEED, gets batted (BAT_AT) and tumbles up and away.
+const STRAGGLE_SPEED := 620.0
+const BAT_AT := 2.15
+const BAT_TIME := 0.4
+const CURL_AT := 2.7
+## The nap cat: CAT_PX of the card's width, popping up on the panel's lower
+## left corner at CAT_AT and hopping CAT_HOPS times along its foot.
+const CAT_PX := 0.18
+const CAT_AT := 0.35
+const CAT_POP := 0.22
+const CAT_HOPS := 3
+const CAT_HOP_TIME := 0.32
+const CAT_HOP_H := 0.45
+const CAT_SETTLE := 0.25
+## The seal on the panel's lower right corner.
+const STAMP_AT := 1.1
+const STAMP_FROM := 1.8
+const STAMP_DROP := 0.18
+const STAMP_R := 0.16
+const STAMP_TILT := -0.22
+## Windy Day's send-off: the clouds turn gold over GOLD_TIME, smile, and from
+## CLOUDS_GO drift away downwind and up, fading out by CLOUDS_GONE.
+const GOLD_TIME := 0.4
+const CLOUDS_GO := 0.8
+const CLOUDS_GONE := 2.0
+
 ## The press's targets beside a plane's index: nothing, or a cloud on a
 ## stuck sky (a gust).
 const NO_TARGET := -1
@@ -453,6 +549,50 @@ var _cloud_poke: Dictionary = {}
 ## The count a stuck sky was last announced at, so the sound plays once.
 var _stuck_told := -1
 
+## The rewards (polish section 4). The streak, and a count bumped every time
+## it breaks so nothing scheduled for a broken streak lands; the bubble's own
+## moments (Quilt's names); when the gag playing now is over (one at a time).
+## `force_gag` is the harness's: a Gag kind every launch plays (one at a
+## time still), or NONE for none at all; -2 leaves it to the day.
+var force_gag := -2
+var _streak := 0
+var _streak_gen := 0
+var _gag_until := 0.0
+var _gag_gen := 0
+var _combo_n := 0
+var _combo_at := -INF
+var _combo_pos := Vector2.ZERO
+var _combo_popped := false
+var _combo_out_at := -INF
+var _combo_shown: ArrayMesh
+var _combo_key: Array = []
+## The life over the sky, a layer over everything on the card: love hearts,
+## birds, the flock, the straggler, the bubble and the seal. Each list holds
+## moments only, and every mesh is built once a layout and drawn through a
+## transform.
+var _life_layer: Control
+var _life_shown: Array = []
+var _life_alive := false
+var _love: Array = []       # [{"at", "t", "phase"}]
+var _birds: Array = []      # [{"i", "f", "t", "side"}]
+var _love_mesh: ArrayMesh
+var _bird_mesh: ArrayMesh
+var _wing_mesh: ArrayMesh
+var _flock_meshes: Array = []
+var _seal_mesh: ArrayMesh
+var _gold_cloud: ArrayMesh
+## The party's moments, each INF until the party sets it: its start (the
+## flock leaves then), the seal, the cat, the bat, the clouds' send-off; and
+## the flock's colours (plane indices, the last launched leading).
+var _party_at := INF
+var _stamp_at := INF
+var _cat: Control
+var _cat_at := INF
+var _cat_curled := false
+var _clouds_at := INF
+var _flock: Array[int] = []
+var _last_plane := 0
+
 func puzzle_id() -> String: return "planes"
 func title() -> String: return "Paper Planes"
 
@@ -518,6 +658,15 @@ func _ready() -> void:
 	_heart_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_heart_layer.draw.connect(_draw_hearts)
 	add_child(_heart_layer)
+	# The rewards over everything on the card: hearts and birds, the flock,
+	# the bubble and the seal.
+	_life_layer = Control.new()
+	_life_layer.name = "Life"
+	_life_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_life_layer.z_index = 3
+	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_life_layer.draw.connect(_draw_life)
+	add_child(_life_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -596,6 +745,17 @@ func _layout() -> void:
 	_cloud_mesh = null
 	_sock_mesh = null
 	_ghost = null
+	_gold_cloud = null
+	_love_mesh = null
+	_bird_mesh = null
+	_wing_mesh = null
+	_flock_meshes = []
+	_seal_mesh = null
+	_combo_shown = null
+	if is_instance_valid(_cat):
+		_place_cat(_now())
+	if _life_layer != null:
+		_life_layer.queue_redraw()
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 	if _sky_layer != null:
@@ -672,6 +832,14 @@ func _process(delta: float) -> void:
 	if _state.windy() and (not Motion.reduce or t - _glide_at < _glide_dur + 0.1
 			or t - _opened < 1.0):
 		_sky_layer.queue_redraw()
+	# The life over the sky, and one more redraw once it goes quiet so its
+	# last frame is not left standing; the cat on her own clock.
+	var alive := _tick_life(t)
+	if alive or _life_alive:
+		_life_layer.queue_redraw()
+	_life_alive = alive
+	if t >= _cat_at and not _cat_curled:
+		_place_cat(t)
 
 ## Whether anything on this card is still moving, and **every wave is in
 ## here** -- the entrance, the hint's ring (through `_anim_until`), the
@@ -875,11 +1043,23 @@ func _build_still(moving: Dictionary) -> ArrayMesh:
 	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
 		PaperPlane.band(b, _cell_pts(_state.planes[_hint_lit]["cells"]), _cell,
 			GLOW_W * _cell, Color(Pal.SUN_RAY, GLOW_ALPHA))
+	# The last few planes each wear a soft glow (a halo under the body, never
+	# a shade of its own paper).
+	if _last_few():
+		for i in _state.planes.size():
+			if not _state.planes[i]["gone"] and i != _hint_lit:
+				PaperPlane.band(b, _cell_pts(_state.planes[i]["cells"]), _cell,
+					GLOW_W * _cell, Color(Pal.SUN_RAY, LAST_GLOW))
 	var droop := _droop_level(_now())
 	for i in _state.planes.size():
 		if not moving.has(i) and not _state.planes[i]["gone"]:
 			_plane(b, i, 1e9, droop)
 	return b.mesh()
+
+## Whether the sky is down to its last few planes (and still being played).
+func _last_few() -> bool:
+	var left := _state.left()
+	return left > 0 and left <= LAST_FEW and not is_done() and not out_of_hearts
 
 ## How far the planes left have drooped, 0 to 1: they sink over DROOP_TIME
 ## as the hearts run out, at once under reduce motion.
@@ -1002,11 +1182,9 @@ func _covers(t: float) -> Dictionary:
 	for i in _fly:
 		var f: Dictionary = _fly[i]
 		var cells: Array = _state.planes[i]["cells"]
-		var s_end := float(f["s_end"])
 		var back: bool = f["back"]
 		for j in cells.size():
-			var u := _ease_inv(float(j) / s_end)
-			var when := float(f["at"]) + float(f["dur"]) * (1.0 - u if back else u)
+			var when := _when(f, float(j))
 			var lv := Motion.appear_level(t - when)
 			out[cells[j]] = lv if back else 1.0 - lv
 	return out
@@ -1086,8 +1264,11 @@ func _flutter(corner: Vector2i, t: float) -> float:
 		var along := rel.dot(dir)
 		if absf(rel.cross(dir)) > 0.75 or along < -0.5:
 			continue
-		var u := _ease_inv(clampf((float(n - 1) + along) / float(f["s_end"]), 0.0, 1.0))
-		var when := float(f["at"]) + float(f["dur"]) * (1.0 - u if bool(f["back"]) else u)
+		var x := float(n - 1) + along
+		var lp: Dictionary = f.get("loop", {})
+		if not lp.is_empty() and along > float(lp["e0"]):
+			x += float(lp["lp"])
+		var when := _when(f, clampf(x, 0.0, float(f["s_end"])))
 		angle += Motion.wobble_angle(t - when, Motion.WOBBLE_ANGLE * 2.5)
 	return angle
 
@@ -1100,22 +1281,19 @@ func _contrail(b, i: int, t: float) -> void:
 		return
 	var cells: Array = _state.planes[i]["cells"]
 	var n := cells.size()
-	var dir := Vector2(_state.planes[i]["dir"])
-	var head := _centre(cells[n - 1])
 	var reach := float(f["s_end"]) - float(n - 1)
-	var on := PaperPlane.STITCH_ON * _cell * 1.3
-	var gap := PaperPlane.STITCH_OFF * _cell * 1.6
-	var d := 0.3 * _cell
+	# In cells along the track, so a loop-the-loop leaves a dashed loop.
+	var on := PaperPlane.STITCH_ON * 1.3
+	var gap := PaperPlane.STITCH_OFF * 1.6
+	var e := 0.3
 	var colour := PaperPlane.paper(i)
-	while d < reach * _cell:
-		var e := d / _cell
-		var u := _ease_inv(clampf((float(n - 1) + e + 0.3) / float(f["s_end"]), 0.0, 1.0))
-		var since := t - (float(f["at"]) + float(f["dur"]) * u)
+	while e < reach:
+		var since := t - _when(f, clampf(float(n - 1) + e + 0.3, 0.0, float(f["s_end"])))
 		if since >= 0.0 and since < CONTRAIL:
 			var a := 0.7 * (1.0 - since / CONTRAIL)
-			b.stroke(PackedVector2Array([head + dir * d, head + dir * (d + on)]),
+			b.stroke(PackedVector2Array([_track(i, float(n - 1) + e), _track(i, float(n - 1) + e + on)]),
 				PaperPlane.STITCH_W * _cell * 1.25, Color(colour, a), false, true)
-		d += on + gap
+		e += on + gap
 
 ## One plane: its groove and its dart, wearing every moment it is in at once
 ## -- the entrance's pop about its **head** (that is where the eye is; a body
@@ -1157,6 +1335,19 @@ func _plane(b, i: int, t: float, droop := 0.0) -> void:
 	var wings := Vector2.ONE
 	var dim := 0.0
 	var lift := _lift(i, t)
+	if _fly.has(i):
+		var f: Dictionary = _fly[i]
+		# A loop-the-loop: the dart points along the curve it is on.
+		if f.has("loop"):
+			var ahead := _track(i, s + float(n - 1) + 0.05) - head
+			if ahead.length() > 0.01:
+				angle = ahead.angle()
+		# A barrel roll: the dart turns over about its spine as its head
+		# crosses the sky, its underside showing halfway round.
+		if f.has("roll"):
+			var span := maxf(1.2, float(_state.lane(i).size()) + 0.5)
+			var turn := cos(clampf(s / span, 0.0, 1.0) * TAU * ROLLS)
+			wings.y *= signf(turn) * maxf(absf(turn), 0.08) if turn != 0.0 else 0.08
 	if crashing:
 		# Home is a flutter: the plane rocks its wings and drifts across
 		# its own line, both dying out as it lands.
@@ -1227,14 +1418,29 @@ static func _king(a: Vector2i, z: Vector2i) -> int:
 ## `s + len - 1` -- and that is why the tail follows the head through every
 ## bend the plane ever made instead of sliding sideways off it. **Nothing
 ## else in the game moves a piece along its own body.**
+##
+## A loop-the-loop (a gag, `_fly[i]["loop"]`) is a circle spliced into the
+## lane: `e0` cells past the head the track turns up and right round a circle
+## of `LOOP_R` and carries on, `lp` cells longer, so the body follows the head
+## round it like a ribbon.
 func _track(i: int, x: float) -> Vector2:
 	var cells: Array = _state.planes[i]["cells"]
 	var n := cells.size()
 	if x < float(n - 1):
 		var j := clampi(int(floorf(x)), 0, n - 2)
 		return _centre(cells[j]).lerp(_centre(cells[j + 1]), x - float(j))
-	return _centre(cells[n - 1]) \
-		+ Vector2(_state.planes[i]["dir"]) * (x - float(n - 1)) * _cell
+	var dir := Vector2(_state.planes[i]["dir"])
+	var head := _centre(cells[n - 1])
+	var e := x - float(n - 1)
+	var lp: Dictionary = (_fly[i] as Dictionary).get("loop", {}) if _fly.has(i) else {}
+	if not lp.is_empty() and e > float(lp["e0"]):
+		var e0 := float(lp["e0"])
+		if e < e0 + float(lp["lp"]):
+			var th := (e - e0) / LOOP_R
+			var up: Vector2 = lp["up"]
+			return head + (dir * e0 + up * LOOP_R + (dir * sin(th) - up * cos(th)) * LOOP_R) * _cell
+		e -= float(lp["lp"])
+	return head + dir * e * _cell
 
 ## The body as a polyline, `s` cells along the track: the tail, every bend
 ## between it and the head, and the head. The bends are the whole-numbered
@@ -1242,8 +1448,11 @@ func _track(i: int, x: float) -> Vector2:
 func _body(i: int, s: float) -> PackedVector2Array:
 	var n: int = (_state.planes[i]["cells"] as Array).size()
 	var pts := PackedVector2Array([_track(i, s)])
-	for k in range(int(floorf(s)) + 1, int(ceilf(s + float(n - 1)))):
-		pts.append(_track(i, float(k)))
+	# Round a loop the body is sampled every quarter cell (which still lands
+	# on every whole-numbered bend exactly).
+	var per := 4 if _fly.has(i) and (_fly[i] as Dictionary).has("loop") else 1
+	for k in range(int(floorf(s * per)) + 1, int(ceilf((s + float(n - 1)) * per))):
+		pts.append(_track(i, float(k) / float(per)))
 	pts.append(_track(i, s + float(n - 1)))
 	return pts
 
@@ -1287,8 +1496,96 @@ static func _ease_inv(e: float) -> float:
 ## backwards and not a second animation.
 func _flown(i: int, t: float) -> float:
 	var f: Dictionary = _fly[i]
-	var u := clampf((t - float(f["at"])) / maxf(float(f["dur"]), 0.0001), 0.0, 1.0)
-	return float(f["s_end"]) * _ease(1.0 - u if bool(f["back"]) else u)
+	var dur := float(f["dur"])
+	var e := clampf(t - float(f["at"]), 0.0, dur)
+	return _s_at(f, dur - e if bool(f["back"]) else e)
+
+## The second flight `f` brings its tail `s` cells along the track: the
+## outbound reading off `_tau_at`, the other way round for a flight home.
+func _when(f: Dictionary, s: float) -> float:
+	var tau := _tau_at(f, s)
+	return float(f["at"]) + (float(f["dur"]) - tau if bool(f["back"]) else tau)
+
+## Where flight `f`'s tail is `tau` seconds into its outbound reading, in
+## cells along the track. A plain flight is the launch's ease over the whole
+## of it. A loop-the-loop flight is that same flight with the stretch from
+## the head entering the loop to the tail leaving it slowed to LOOP_SPEED
+## (`tl` seconds where the plain one took `d0`), quicker at the ends than
+## over the top.
+func _s_at(f: Dictionary, tau: float) -> float:
+	var lp: Dictionary = f.get("loop", {})
+	if lp.is_empty():
+		return float(f["s_end"]) * _ease(tau / maxf(float(f["dur"]), 0.0001))
+	var s0 := float(lp["s0"])
+	var dur0 := float(lp["dur0"])
+	var e0 := float(lp["e0"])
+	var tl := float(lp["tl"])
+	var ta := dur0 * _ease_inv(e0 / s0)
+	if tau < ta:
+		return s0 * _ease(tau / dur0)
+	if tau < ta + tl:
+		return e0 + float(lp["seg"]) * _loop_w((tau - ta) / tl)
+	return s0 * _ease((tau - tl + float(lp["d0"])) / dur0) + float(lp["lp"])
+
+## Its inverse: how many seconds into the outbound reading the tail is `s`
+## cells along.
+func _tau_at(f: Dictionary, s: float) -> float:
+	var lp: Dictionary = f.get("loop", {})
+	if lp.is_empty():
+		return float(f["dur"]) * _ease_inv(clampf(s / float(f["s_end"]), 0.0, 1.0))
+	var s0 := float(lp["s0"])
+	var dur0 := float(lp["dur0"])
+	var e0 := float(lp["e0"])
+	var seg := float(lp["seg"])
+	var ta := dur0 * _ease_inv(clampf(e0 / s0, 0.0, 1.0))
+	if s <= e0:
+		return dur0 * _ease_inv(clampf(s / s0, 0.0, 1.0))
+	if s < e0 + seg:
+		return ta + float(lp["tl"]) * _loop_w_inv((s - e0) / seg)
+	return dur0 * _ease_inv(clampf((s - float(lp["lp"])) / s0, 0.0, 1.0)) \
+		+ float(lp["tl"]) - float(lp["d0"])
+
+## The loop's own pace, 0 to 1 over its stretch: quicker at both ends than
+## over the top, the way a real loop slows as it climbs.
+static func _loop_w(v: float) -> float:
+	return v + LOOP_EASE * sin(TAU * v) / TAU
+
+static func _loop_w_inv(w: float) -> float:
+	var v := clampf(w, 0.0, 1.0)
+	for k in 6:
+		v = clampf(v - (_loop_w(v) - w) / (1.0 + LOOP_EASE * cos(TAU * v)), 0.0, 1.0)
+	return v
+
+## Plane `i`'s flight out: its length, how long it takes, and a gag's shape
+## -- a loop spliced into the lane, or a barrel roll's slower flight.
+func _flight(i: int, gag: int) -> Dictionary:
+	var s_end := _s_end(i)
+	var dur := _dur(i)
+	var f := {"s_end": s_end, "dur": dur}
+	if gag == Gag.ROLL:
+		f["dur"] = dur * ROLL_SLOW
+		f["roll"] = true
+	elif gag == Gag.LOOP:
+		var cells: Array = _state.planes[i]["cells"]
+		var n := cells.size()
+		var dir := Vector2(_state.planes[i]["dir"])
+		# The loop's far side LOOP_CLEAR short of the grid's edge, and on the
+		# side toward the middle of the sky so it stays on the card.
+		var e0 := maxf(0.0, float(_state.lane(i).size()) + 0.5 - LOOP_R - LOOP_CLEAR)
+		var up := dir.orthogonal()
+		var mid := _origin + Vector2(float(_state.cols), float(_state.rows)) * _cell * 0.5
+		if (mid - _centre(cells[n - 1])).dot(up) < 0.0:
+			up = -up
+		var lp := TAU * LOOP_R
+		var seg := float(n - 1) + lp
+		var d0 := dur * (_ease_inv(clampf((e0 + float(n - 1)) / s_end, 0.0, 1.0))
+			- _ease_inv(clampf(e0 / s_end, 0.0, 1.0)))
+		var tl := maxf(LOOP_MIN, seg / LOOP_SPEED)
+		f["loop"] = {"e0": e0, "up": up, "lp": lp, "seg": seg, "s0": s_end, "dur0": dur,
+			"d0": d0, "tl": tl}
+		f["s_end"] = s_end + lp
+		f["dur"] = dur + tl - d0
+	return f
 
 ## The refusal's band level: **the family's flash, compressed into
 ## `BLOCK_FLASH`**. `flash_level` takes its two halves as parameters, so the
@@ -1497,7 +1794,9 @@ func _tap(i: int) -> void:
 	# the solve wave runs out of too. Written before `note_move()`, which is
 	# what emits `solved` and calls `_on_solved` on this same frame.
 	_solve_from = cells[cells.size() - 1]
-	_fly_out(i, t)
+	_last_plane = i
+	var gag := _pick_gag(i, t)
+	_fly_out(i, t, gag)
 	_wake(before, _solve_from, t)
 	fx.cue("place")
 	if _state.windy():
@@ -1506,7 +1805,7 @@ func _tap(i: int) -> void:
 		fx.cue("drift", 1.0, DRIFT_DB)
 	_speak()
 	_refresh()
-	_on_launched(i)
+	_on_launched(i, gag)
 	# note_move() counts the move and ends the puzzle if that was the last
 	# plane; the host raises the win screen after win_delay().
 	note_move()
@@ -1680,19 +1979,26 @@ func _free_set() -> Dictionary:
 ##
 ## The edge's sparkles are skipped when that phase is already past the edge:
 ## a plane still off the board when it is re-launched never crosses it again.
-func _fly_out(i: int, t: float) -> void:
+func _fly_out(i: int, t: float, gag := Gag.NONE) -> void:
 	if Motion.reduce:
 		return
-	var dur := _dur(i)
-	var s_end := _s_end(i)
+	var f := _flight(i, gag)
 	var at := t
 	if _fly.has(i):
-		at = t - _ease_inv(clampf(_flown(i, t) / s_end, 0.0, 1.0)) * dur
-	_fly[i] = {"at": at, "dur": dur, "s_end": s_end, "back": false}
+		# Turned round in the air: the old flight's shape, so the track under
+		# the plane does not move.
+		var old: Dictionary = _fly[i]
+		f = old.duplicate()
+		at = t - _tau_at(f, _flown(i, t))
+	f["at"] = at
+	f["back"] = false
+	_fly[i] = f
+	var dur := float(f["dur"])
 	_busy_for(at + dur - t)
 	var cells: Array = _state.planes[i]["cells"]
 	var out := float(_state.lane(i).size()) + 0.5
-	var crosses := at + dur * _ease_inv(out / s_end)
+	var lp: Dictionary = f.get("loop", {})
+	var crosses := at + _tau_at(f, out + (float(lp["lp"]) if not lp.is_empty() else 0.0))
 	if crosses >= t:
 		_puffs.append({
 			"at": crosses,
@@ -1724,13 +2030,18 @@ func _fly_back(i: int, t: float, delay: float) -> void:
 	_forget_puff(i)
 	if Motion.reduce:
 		return
-	var dur := _dur(i)
-	var s_end := _s_end(i)
+	var f := _flight(i, Gag.NONE)
 	var at := t + delay
 	if _fly.has(i):
-		at = t - (1.0 - _ease_inv(clampf(_flown(i, t) / s_end, 0.0, 1.0))) * dur
-	_fly[i] = {"at": at, "dur": dur, "s_end": s_end, "back": true}
-	_busy_for(at + dur - t)
+		# Turned round where it is, on the track it was flying (a loop and
+		# all: a plane called back mid-loop flies home back round it).
+		var old: Dictionary = _fly[i]
+		f = old.duplicate()
+		at = t - (float(f["dur"]) - _tau_at(f, _flown(i, t)))
+	f["at"] = at
+	f["back"] = true
+	_fly[i] = f
+	_busy_for(at + float(f["dur"]) - t)
 
 ## **The board answers the move.** This is Queens' `_settle` with a departure
 ## in place of a queen's sight: the free planes were snapshotted before the
@@ -1834,6 +2145,7 @@ func undo() -> bool:
 		return false
 	_undo_ever = true
 	_break_streak()
+	_clear_gags()
 	_hint_lit = -1
 	_refuse = {}
 	# Nothing to unwind in the wake: who was freed by what was never written
@@ -1892,6 +2204,7 @@ func reset_board() -> void:
 		return
 	_release_press()
 	_break_streak()
+	_clear_gags()
 	_fly_all_home()
 	_hint_lit = -1
 	_refuse = {}
@@ -1935,7 +2248,8 @@ func _fly_all_home() -> void:
 ## daily and `solved` must not fire a second time.
 ##
 ## The hearts it kept come back from the record (the pill shows them), and
-## whether it was flawless (the rewards pass's seal reads `_flawless`).
+## whether it was flawless; the party's leavings stand where it left them
+## (the cat asleep, the seal, a Windy Day sky clear of clouds).
 func restore_completed_board() -> void:
 	var t := _now()
 	_gen += 1
@@ -1950,6 +2264,16 @@ func restore_completed_board() -> void:
 	_reset_rewards()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	_flawless = bool(completed_record.get("flawless", false))
+	# The party's leavings and none of its motion: the cat asleep on the
+	# panel's foot, the seal when the solve earned one, and on Windy Day the
+	# clouds long gone off with the wind.
+	_cat_at = t - 100.0
+	_place_cat(t)
+	if _flawless or _state.windy():
+		_stamp_at = t - 100.0
+	if _state.windy():
+		_clouds_at = t - 100.0
+	_life_layer.queue_redraw()
 	_idle_next = FAR
 	_hint_lit = -1
 	_solved_at = -1.0
@@ -1966,6 +2290,16 @@ func restore_completed_board() -> void:
 func completion_record() -> Dictionary:
 	return {"hearts": hearts, "flawless": _flawless}
 
+## No glyphs of its own (a sky of planes says nothing about how it was
+## played), only the seal's words: `🌬️ Windy Day` for any Insane sky (and
+## ` · Flawless` when it was), `🏅 Flawless` otherwise.
+func share_glyphs() -> String:
+	if _state.windy() and is_solved():
+		return "🌬️ " + tr("PP_WINDY_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	if _flawless:
+		return "🏅 " + tr("BN_FLAWLESS")
+	return ""
+
 # --- the win ---
 
 ## No cast and a subtitle, so the win screen keeps the family's sun and moon.
@@ -1980,8 +2314,14 @@ func flat_win() -> Dictionary:
 ## arithmetic; under reduce-motion there is neither a flight nor a wave to
 ## wait for, so the win follows the last tap (spec section 10's
 ## reduce-motion row).
+##
+## The party comes after the last flight lands (`_party_at`) and takes
+## PARTY_TIME: the flock, the straggler batted, the cat curled up.
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
+	if Motion.reduce:
+		return Motion.REDUCED_TIME
+	var party := (_party_at - _now()) if _party_at < INF else _flight_left(_now()) + PARTY_AT
+	return maxf(WIN_WAIT, maxf(0.0, party) + PARTY_TIME)
 
 ## **The wave waits for the plane that won the board.** The last launch is
 ## still in the air when `note_move()` ends the puzzle -- the state let it go
@@ -2008,6 +2348,10 @@ func _on_solved() -> void:
 	# Flawless: no hint, and no crash or gust on a judged sky, or on Easy and
 	# Medium never an undo (spec section 4; the seal is the rewards pass's).
 	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	# The streak's bubble goes; the party takes over.
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = t
+	_streak_gen += 1
 	_party()
 	if Motion.reduce:
 		return
@@ -2093,6 +2437,15 @@ func _draw_sky() -> void:
 	if _cloud_mesh == null:
 		_cloud_mesh = _build_cloud()
 	var k := _cloud_k(t)
+	if t >= _clouds_at:
+		_draw_send_off(t, k, seen)
+	else:
+		_draw_clouds(t, k, seen)
+	_draw_sock(t, seen)
+
+## Every cloud where the count `k` puts it, a cloud sliding off one edge drawn
+## twice (out there, in at the other), each bumping when poked.
+func _draw_clouds(t: float, k: float, seen: float) -> void:
 	var cols := float(_state.cols)
 	var pressed := Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0) \
 		if _press_target == GUST_TARGET else 1.0
@@ -2111,6 +2464,38 @@ func _draw_sky() -> void:
 			var sc := bump * pressed
 			_sky_layer.draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(sc, sc), 0.0, at),
 				Color(1.0, 1.0, 1.0, CLOUD_ALPHA * seen * (1.0 - out)))
+
+## Windy Day's send-off after the last flight: every cloud turns gold and
+## smiles (the white one fading under the gold one), then from CLOUDS_GO
+## drifts off downwind and up, fading out by CLOUDS_GONE. Under reduce
+## motion, and once it has run, there is nothing left to draw.
+func _draw_send_off(t: float, k: float, seen: float) -> void:
+	var e := t - _clouds_at
+	if Motion.reduce or e >= CLOUDS_GONE:
+		return
+	if _gold_cloud == null:
+		_gold_cloud = _build_cloud(true)
+	var gold := clampf(e / GOLD_TIME, 0.0, 1.0)
+	var go := maxf(0.0, e - CLOUDS_GO)
+	var fade := 1.0 - clampf((e - CLOUDS_GO) / (CLOUDS_GONE - CLOUDS_GO), 0.0, 1.0)
+	var cols := float(_state.cols)
+	for j in _state.clouds.size():
+		var c: Vector2i = _state.clouds[j]
+		var x := fposmod(float(c.x) + float(_state.wind.x) * k, cols)
+		# Each sets off a moment after the last, away downwind and up.
+		var mine := maxf(0.0, go - float(j) * 0.05)
+		var drift := Vector2(float(_state.wind.x) * (2.2 * mine + 5.0 * mine * mine), -1.4 * mine)
+		var bob := sin(t * 3.0 + float(j) * 1.7) * 0.04 * _cell
+		var at := _origin + (Vector2(x, float(c.y)) + Vector2.ONE * 0.5 + drift) * _cell + Vector2(0.0, bob)
+		var sc := 1.0 + 0.12 * sin(gold * PI)
+		var xf := Transform2D(0.0, Vector2(sc, sc), 0.0, at)
+		var a := seen * fade
+		if gold < 1.0:
+			_sky_layer.draw_mesh(_cloud_mesh, null, xf, Color(1.0, 1.0, 1.0, CLOUD_ALPHA * a * (1.0 - gold)))
+		_sky_layer.draw_mesh(_gold_cloud, null, xf, Color(1.0, 1.0, 1.0, a * gold))
+
+## The wind sock swaying on its pole.
+func _draw_sock(t: float, seen: float) -> void:
 	if _sock_mesh == null:
 		_sock_mesh = _build_sock()
 	var sway := 0.0 if Motion.reduce else sin(t * TAU / SOCK_PERIOD) * SOCK_SWAY \
@@ -2124,16 +2509,31 @@ func _draw_sky() -> void:
 ## outline (the union, traced round from the middle), so the soft alpha it is
 ## drawn at never shows a seam between them. A cool underside, the white
 ## body, and a brighter cap.
-func _build_cloud() -> ArrayMesh:
+##
+## The party's gold cloud is the same shape in sun colours, with a happy
+## face: two closed eyes, a smile and rosy cheeks.
+func _build_cloud(gold := false) -> ArrayMesh:
 	var c := _cell
 	var puffs := [[Vector2(-0.36, 0.08), 0.26], [Vector2(-0.12, -0.12), 0.33],
 		[Vector2(0.2, -0.07), 0.3], [Vector2(0.42, 0.1), 0.22], [Vector2(0.02, 0.13), 0.3]]
 	var b := Face.Builder.new()
-	b.polygon(_union(puffs, c, Vector2(0.0, 0.08 * c), 1.0), Color(Pal.CLOUD_DEEP, 0.3))
-	b.polygon(_union(puffs, c, Vector2.ZERO, 1.0), Pal.CLOUD_TILE.lerp(Pal.CLOUD, 0.3))
-	b.polygon(_union(puffs, c, Vector2(0.0, -0.05 * c), 0.9), Color("fbfcfe"))
+	var under: Color = Pal.SUN_DEEP if gold else Pal.CLOUD_DEEP
+	var body: Color = Pal.SUN if gold else Pal.CLOUD_TILE.lerp(Pal.CLOUD, 0.3)
+	var top: Color = Pal.SUN_RAY if gold else Color("fbfcfe")
+	b.polygon(_union(puffs, c, Vector2(0.0, 0.08 * c), 1.0), Color(under, 0.3))
+	b.polygon(_union(puffs, c, Vector2.ZERO, 1.0), body)
+	b.polygon(_union(puffs, c, Vector2(0.0, -0.05 * c), 0.9), top)
 	var cap := [[Vector2(-0.14, -0.15), 0.2], [Vector2(0.14, -0.1), 0.17]]
-	b.polygon(_union(cap, c, Vector2(-0.02 * c, -0.07 * c), 1.0), Color(1.0, 1.0, 1.0))
+	b.polygon(_union(cap, c, Vector2(-0.02 * c, -0.07 * c), 1.0),
+		Pal.SUN_SPARK if gold else Color(1.0, 1.0, 1.0))
+	if gold:
+		var w := maxf(1.6, 0.035 * c)
+		for sx in [-1.0, 1.0]:
+			b.stroke(Face.Builder.arc_points(Vector2(sx * 0.15, 0.02) * c, 0.065 * c, PI * 1.15, PI * 1.85),
+				w, Pal.OUTLINE)
+			b.ellipse(Vector2(sx * 0.27, 0.12) * c, 0.07 * c, 0.045 * c, Color(Pal.CHEEK, 0.75))
+		b.stroke(Face.Builder.arc_points(Vector2(0.0, 0.06) * c, 0.09 * c, PI * 0.15, PI * 0.85),
+			w, Pal.OUTLINE)
 	return b.mesh()
 
 ## The outline of a union of discs ({centre, radius} in cells), traced round
@@ -2338,6 +2738,8 @@ func try_again() -> void:
 	_close_card()
 	_gen += 1
 	_forget()
+	_break_streak()
+	_clear_gags()
 	# Dealt first, so the planes' flights home and the clouds' glide back
 	# (both in _fly_all_home) are not wiped by it.
 	_deal()
@@ -2409,26 +2811,654 @@ func _after(delay: float, what: Callable) -> void:
 		if gen == _gen and is_inside_tree():
 			what.call())
 
-# --- hooks for the rewards (polish section 4, the next pass) ---
+# --- the rewards (polish section 4) ---
 
 ## Every reward's clock back to nothing: a new board, or a restored one.
 func _reset_rewards() -> void:
-	pass
+	_streak = 0
+	_streak_gen += 1
+	_gag_until = 0.0
+	_gag_gen += 1
+	_combo_n = 0
+	_combo_at = -INF
+	_combo_out_at = -INF
+	_love = []
+	_birds = []
+	_party_at = INF
+	_stamp_at = INF
+	_seal_mesh = null
+	_cat_at = INF
+	_cat_curled = false
+	_clouds_at = INF
+	_flock = []
+	if is_instance_valid(_cat):
+		_cat.queue_free()
+	_cat = null
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+	if _sky_layer != null:
+		_sky_layer.queue_redraw()
+
+## The day's own number: the sky's size and its first plane, so a day always
+## deals the same gags and the same bit of wisdom.
+func _day_hash() -> int:
+	if _state.planes.is_empty():
+		return 0
+	return absi(hash([_state.cols, _state.rows, _state.planes.size(), _state.planes[0]["cells"]]))
+
+## Which gag plane `i`'s launch plays, if any: one plane in GAG_ODDS, the kind
+## its own -- the day picks where the cycle starts and each plane steps
+## GAG_STEP along it, so any GAG_SPAN planes share the four gags evenly
+## (Quilt's rule; a plain hash a plane clumps). One at a time, never under
+## reduce motion, never on the winning launch (its party is coming), and
+## never on a plane turned round in the air (its flight already has a shape).
+func _pick_gag(i: int, t: float) -> int:
+	if Motion.reduce or _state.solved() or _fly.has(i) or t < _gag_until or force_gag == Gag.NONE:
+		return Gag.NONE
+	var roll := posmod(_day_hash() + i * GAG_STEP, GAG_SPAN)
+	if force_gag >= 0:
+		roll = force_gag
+	elif roll >= GAG_SPAN / GAG_ODDS:
+		return Gag.NONE
+	# A roll needs sky to turn over in: on a plane at the edge it would turn
+	# out past the hem, so it loops instead (the loop sits on its own head).
+	if roll == Gag.ROLL and _state.lane(i).size() < 2:
+		return Gag.LOOP
+	return roll
 
 ## Plane `i` has just launched (not refused, not crashed), before
-## note_move(). The streak, its bubble and the gags hang off here.
-func _on_launched(_i: int) -> void:
-	pass
+## note_move(), with the gag its flight was shaped for. The streak: a note
+## up the pentatonic from the second, the bubble over the launch spot from
+## the third, confetti at 5, 10, 20 and every 10 after. The last few planes
+## are counted down. The winning launch does none of it: the party is coming
+## (Mushroom Patch's review found a combo landing over the party).
+func _on_launched(i: int, gag: int) -> void:
+	if _state.solved():
+		return
+	var cells: Array = _state.planes[i]["cells"]
+	var head := _centre(cells[cells.size() - 1])
+	_streak += 1
+	var count := _streak
+	var gen := _streak_gen
+	if count >= 2:
+		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
+		_after(0.06, func() -> void:
+			if gen == _streak_gen:
+				fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB))
+	if count >= COMBO_FROM:
+		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
+		_combo_n = count
+		_combo_pos = head - Vector2(0.0, _cell * 0.3)
+		_combo_at = _now()
+		_combo_out_at = -INF
+	if _confetti_at(count) and not Motion.reduce:
+		fx.confetti(head, 22)
+		fx.cue("confetti")
+	var left := _state.left()
+	if left <= LAST_FEW:
+		_say(tr("PP_LAST_%d" % left), Face.Expr.JOY)
+	_start_gag(i, gag)
+	_life_layer.queue_redraw()
+
+## The streak's confetti counts: 5, 10, 20 and every 10 after.
+static func _confetti_at(count: int) -> bool:
+	return count == 5 or count == 10 or (count >= 20 and count % 10 == 0)
 
 ## The streak ends: a refusal, a crash, an undo, a reset, a gust, the clouds
-## closing in, the hearts running out.
+## closing in, the hearts running out. The bubble deflates, and a note the
+## streak still had to play is dropped.
 func _break_streak() -> void:
-	pass
+	_streak = 0
+	_streak_gen += 1
+	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
+		_combo_out_at = _now()
+	else:
+		_combo_n = 0
+	if _life_layer != null:
+		_life_layer.queue_redraw()
 
-## The party after the last flight: the flock, the cat, the clouds' send-off
-## and the seal. Called from `_on_solved`.
+## What a launch set going that an undo or a reset takes back with it: a bird
+## after a plane coming home, hearts in a contrail it no longer leaves. A
+## loop or a roll is the flight's own shape and turns round with it.
+func _clear_gags() -> void:
+	_love = []
+	_birds = []
+	_gag_until = 0.0
+	_gag_gen += 1
+	if _life_layer != null:
+		_life_layer.queue_redraw()
+
+## Plane `i`'s gag, its flight already shaped for it (`_flight`): the loop's
+## `loop` as the head enters it, the roll's `whoosh`, the bird popping up
+## beside it (`tweet`), or hearts left along its contrail (`love`). The next
+## gag waits for this one to finish.
+func _start_gag(i: int, gag: int) -> void:
+	if gag == Gag.NONE or not _fly.has(i):
+		return
+	var f: Dictionary = _fly[i]
+	var now := _now()
+	var at := float(f["at"])
+	var gg := _gag_gen
+	match gag:
+		Gag.LOOP:
+			var lp: Dictionary = f["loop"]
+			_after(maxf(0.0, at + _tau_at(f, float(lp["e0"])) - now), func() -> void:
+				if gg == _gag_gen:
+					fx.cue("loop"))
+			_gag_until = at + float(f["dur"])
+		Gag.ROLL:
+			fx.cue("whoosh")
+			_gag_until = at + float(f["dur"])
+		Gag.BIRD:
+			var cells: Array = _state.planes[i]["cells"]
+			var n := cells.size()
+			var dir := Vector2(_state.planes[i]["dir"])
+			var side := dir.orthogonal()
+			var mid := _origin + Vector2(float(_state.cols), float(_state.rows)) * _cell * 0.5
+			if (mid - _centre(cells[n - 1])).dot(side) < 0.0:
+				side = -side
+			# It follows the plane's own trail from the tail, through every
+			# bend, to where the sky ends -- on the card whatever the lane.
+			var stop := float(n - 1) + maxf(0.0, float(_state.lane(i).size()) - 0.1)
+			var chase := stop / BIRD_SPEED + BIRD_POP
+			var bird := {"i": i, "t": now, "side": side, "stop": stop,
+				"chase": chase, "end": chase + BIRD_HOVER + BIRD_LEAVE}
+			_birds.append(bird)
+			_after(0.08, func() -> void:
+				if gg == _gag_gen:
+					fx.cue("tweet"))
+			_gag_until = now + float(bird["end"])
+		Gag.LOVE:
+			var cells: Array = _state.planes[i]["cells"]
+			var n := cells.size()
+			var dir := Vector2(_state.planes[i]["dir"])
+			# Along the trail it leaves (its own body, then the lane), each
+			# popping as the tail passes -- on the card whatever the lane.
+			var room := float(n - 1) + float(_state.lane(i).size()) + 0.3
+			var count := clampi(int(room / LOVE_GAP), 2, LOVE_HEARTS)
+			var gap := room / float(count)
+			var last := now
+			for k in count:
+				var x := gap * (float(k) + 0.5)
+				var when := at + _tau_at(f, clampf(x, 0.0, float(f["s_end"])))
+				var wob := dir.orthogonal() * _cell * 0.16 * (1.0 if k % 2 == 0 else -1.0)
+				_love.append({"at": _track(i, x) + wob, "t": when,
+					"phase": float(posmod(hash([i, k]), 100)) / 100.0 * TAU})
+				last = maxf(last, when)
+			fx.cue("love")
+			_gag_until = last + LOVE_TIME * 0.5
+
+# --- the party ---
+
+## After the last flight: the sprout shares a bit of paper plane wisdom,
+## confetti twice, the planes that flew come back as a flock in a V and loop
+## out, one straggler skims the panel's foot, the nap cat hops on, bats at it
+## and curls up, the seal stamps when the solve earned one (flawless, or any
+## Windy Day), and on Windy Day the clouds turn gold, smile and drift away.
+## Under reduce motion the cat and the seal are simply there and the clouds
+## simply gone.
 func _party() -> void:
-	pass
+	var now := _now()
+	var lead := 0.0 if Motion.reduce else _flight_left(now) + PARTY_AT
+	_party_at = now + lead
+	_after(lead, func() -> void:
+		_say(_cheer(), Face.Expr.JOY))
+	_cat_at = now if Motion.reduce else _party_at + CAT_AT
+	if _flawless or _state.windy():
+		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
+		_seal_mesh = null
+		_after(_stamp_at - now, func() -> void:
+			fx.cue("stamp")
+			_life_layer.queue_redraw())
+	if _state.windy():
+		_clouds_at = _party_at
+		if not Motion.reduce:
+			_after(lead, fx.cue.bind("clouds"))
+		_sky_layer.queue_redraw()
+	if Motion.reduce:
+		_life_layer.queue_redraw()
+		return
+	_flock = []
+	var n := mini(FLOCK_MAX, _state.planes.size())
+	for k in n:
+		_flock.append(posmod(_last_plane - k, _state.planes.size()))
+	var field := Rect2(_origin, Vector2(float(_state.cols), float(_state.rows)) * _cell)
+	_after(lead + 0.15, func() -> void:
+		fx.confetti(Vector2(field.get_center().x, field.position.y + _cell * 0.6), 30, field.size.x * 0.9)
+		fx.cue("party"))
+	_after(lead + 0.6, func() -> void:
+		fx.confetti(field.get_center(), 24, field.size.x * 0.7))
+	_after(lead + FLOCK_AT, fx.cue.bind("flock"))
+	_after(lead + BAT_AT, fx.cue.bind("whoosh", 1.2, -6.0))
+	_life_layer.queue_redraw()
+
+## One of CHEERS silly bits of paper plane wisdom, picked by the sky itself,
+## so a day always gets the same one.
+func _cheer() -> String:
+	return tr("PP_CHEER_%d" % posmod(_day_hash(), CHEERS))
+
+## The flock's leader's path, `dist` pixels along it, as [where, heading,
+## how far round the loop, 0 to 1]: in from the left low, across and up to a
+## loop of FLOCK_LOOP of the card's width round, and on out to the right.
+func _flock_path(dist: float) -> Array:
+	var W := size.x
+	var H := size.y
+	var S := Vector2(-0.12 * W, 0.66 * H)
+	var P := Vector2(0.56 * W, 0.46 * H)
+	var d := (P - S).normalized()
+	var up := d.orthogonal()
+	var R := FLOCK_LOOP * W
+	var la := S.distance_to(P)
+	var lc := TAU * R
+	if dist < la:
+		return [S + d * dist, d, 0.0]
+	if dist < la + lc:
+		var th := (dist - la) / R
+		return [P + up * R + (d * sin(th) - up * cos(th)) * R, d * cos(th) + up * sin(th), th / TAU]
+	return [P + d * (dist - la - lc), d, 0.0]
+
+## How long the flock takes, from FLOCK_AT, until its last row is off the
+## card.
+func _flock_time() -> float:
+	var W := size.x
+	var H := size.y
+	var S := Vector2(-0.12 * W, 0.66 * H)
+	var P := Vector2(0.56 * W, 0.46 * H)
+	var d := (P - S).normalized()
+	var out := (1.15 * W - P.x) / maxf(d.x, 0.1)
+	var rows := (FLOCK_MAX + 1) / 2
+	return (S.distance_to(P) + TAU * FLOCK_LOOP * W + out) / FLOCK_SPEED + rows * FLOCK_LAG
+
+## The darts of the party, one mesh a paper (three), each about its own head
+## and pointing along +x, with no shadow (they turn over in the loop).
+func _flock_mesh(i: int) -> ArrayMesh:
+	if _flock_meshes.size() < 3:
+		_flock_meshes = []
+		for c in 3:
+			var b := Face.Builder.new()
+			PaperPlane.dart(b, Vector2.ZERO, 0.0, FLOCK_PX, c, 1.0, Vector2.ONE, 1.0, 0.0, false)
+			_flock_meshes.append(b.mesh())
+	return _flock_meshes[posmod(i, 3)]
+
+## The flock: the leader on the path, each row FLOCK_LAG behind it and
+## FLOCK_SPREAD further out to either side, so the V holds its shape round the
+## loop. Their wings shimmer a little.
+func _draw_flock(now: float, shown: Array) -> void:
+	var tau := now - _party_at - FLOCK_AT
+	if tau < 0.0 or tau > _flock_time() or _flock.is_empty():
+		return
+	for k in _flock.size():
+		var row := (k + 1) / 2
+		var side := 0.0 if k == 0 else (1.0 if k % 2 == 1 else -1.0)
+		var dist := FLOCK_SPEED * (tau - float(row) * FLOCK_LAG)
+		var at: Array = _flock_path(dist)
+		var heading: Vector2 = at[1]
+		# The V closes up round the loop, so its inner wing never crosses
+		# the middle of it.
+		var close := 1.0 - 0.6 * sin(PI * float(at[2]))
+		var pos: Vector2 = at[0] + heading.orthogonal() * side * float(row) * FLOCK_SPREAD * close
+		if pos.x < -FLOCK_PX or pos.x > size.x + FLOCK_PX:
+			continue
+		var mesh := _flock_mesh(_flock[k])
+		shown.append(mesh)
+		var flap := 1.0 + 0.1 * sin(now * 14.0 + float(k) * 1.3)
+		_life_layer.draw_mesh(mesh, null, Transform2D(heading.angle(), Vector2(1.0, flap), 0.0, pos))
+
+## The straggler, the last plane to have flown: it skims in low along the
+## panel's foot, wobbling, just over the cat's head; she bats at it and it
+## tumbles up and away to the right.
+func _draw_straggler(now: float, shown: Array) -> void:
+	if not is_instance_valid(_cat):
+		return
+	var spot := _cat_spot()
+	var y0 := spot.y - _cat_px() * 0.62
+	var bat := _party_at + BAT_AT
+	var from := -FLOCK_PX
+	var start := bat - (spot.x - from) / STRAGGLE_SPEED
+	var e := now - start
+	if e < 0.0 or e > 3.0:
+		return
+	var pos: Vector2
+	var angle: float
+	if now < bat:
+		pos = Vector2(from + STRAGGLE_SPEED * e, y0 + sin(e * 9.0) * 5.0)
+		angle = 0.12 * sin(e * 9.0 + 1.0)
+	else:
+		var u := now - bat
+		pos = Vector2(spot.x + STRAGGLE_SPEED * 0.85 * u, y0 - 820.0 * u + 260.0 * u * u)
+		angle = -0.5 + u * TAU * 1.4 * maxf(0.0, 1.0 - u * 0.8)
+	if pos.x > size.x + FLOCK_PX or pos.y < -FLOCK_PX:
+		return
+	var mesh := _flock_mesh(_last_plane)
+	shown.append(mesh)
+	_life_layer.draw_mesh(mesh, null, Transform2D(angle, Vector2.ONE * 0.85, 0.0, pos))
+
+# --- the nap cat ---
+
+func _cat_px() -> float:
+	return size.x * CAT_PX
+
+## The panel's outer rect (rim and all).
+func _panel_rect() -> Rect2:
+	var span := Vector2(float(_state.cols), float(_state.rows)) * _cell
+	var pad := Vector2.ONE * (PANEL_PAD + PANEL_RIM)
+	return Rect2(_origin - pad, span + pad * 2.0)
+
+## Where she curls up: on the panel's foot, a fifth of the way along from
+## its left (the seal takes the right), her cushion on the rim. The sky is
+## empty by then, so she hides nothing.
+func _cat_spot() -> Vector2:
+	var box := _panel_rect()
+	return Vector2(box.position.x + box.size.x * 0.22, box.end.y - _cat_px() * 0.38)
+
+## Where she pops up: the panel's lower left corner.
+func _cat_start() -> Vector2:
+	var box := _panel_rect()
+	return Vector2(box.position.x + _cat_px() * 0.5, box.end.y - _cat_px() * 0.38)
+
+func _cat_walk() -> float:
+	return CAT_POP + CAT_HOPS * CAT_HOP_TIME
+
+## Puts the cat where her clock says: nowhere yet; popping up on the corner;
+## hopping along the foot; landing with a squash; sitting up awake; batting
+## at the straggler (up on her hind legs, leaning into it); curled up asleep,
+## purring. Under reduce motion she is simply curled up there.
+func _place_cat(t: float) -> void:
+	if t < _cat_at or _cell <= 0.0:
+		return
+	if not is_instance_valid(_cat):
+		_cat = NapCat.new()
+		_cat.name = "Cat"
+		_cat.need = 0
+		_cat.z_index = 3
+		_cat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cat.expression = Face.Expr.JOY
+		add_child(_cat)
+		_cat.set_idle(true)
+		_cat_curled = false
+	var px := _cat_px()
+	if _cat.size.x != px:
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+	var e := t - _cat_at
+	var spot := _cat_spot()
+	var start := _cat_start()
+	var at := spot
+	var sc := Vector2.ONE
+	var turn := 0.0
+	var bat := BAT_AT - CAT_AT
+	if Motion.reduce or e >= CURL_AT - CAT_AT or _cat_curled:
+		if not _cat_curled:
+			_curl_cat(e > CURL_AT - CAT_AT + 1.0)
+	elif e < CAT_POP:
+		at = start
+		sc = Motion.pop_in_scale(e, CAT_POP)
+	elif e < _cat_walk():
+		var h := (e - CAT_POP) / CAT_HOP_TIME
+		var n := int(h)
+		var u := h - float(n)
+		var from := start.lerp(spot, float(n) / CAT_HOPS)
+		var to := start.lerp(spot, float(n + 1) / CAT_HOPS)
+		at = from.lerp(to, u) - Vector2(0.0, 4.0 * u * (1.0 - u) * CAT_HOP_H * px)
+		# Tall in the air, squashed at each take-off and landing.
+		var s := 0.1 * sin(u * PI)
+		sc = Vector2(1.0 - s, 1.0 + s)
+	elif e < _cat_walk() + CAT_SETTLE:
+		var u := (e - _cat_walk()) / CAT_SETTLE
+		var s := 0.14 * sin(u * PI)
+		sc = Vector2(1.0 + s, 1.0 - s)
+	elif e >= bat - 0.12 and e < bat + BAT_TIME:
+		# Up she goes at the passing plane, leaning into it, and down.
+		var u := clampf((e - bat + 0.12) / (BAT_TIME + 0.12), 0.0, 1.0)
+		var up := sin(u * PI)
+		at = spot - Vector2(0.0, 0.3 * px * up)
+		sc = Vector2(1.0 - 0.08 * up, 1.0 + 0.12 * up)
+		turn = -0.32 * up
+	_cat.position = at - _cat.size * Vector2(0.5, 0.5)
+	_cat.scale = sc
+	_cat.rotation = turn
+
+## She curls up: the sleepy face and the drifting "z", and a purr -- unless
+## she was already asleep when the board opened (a restore), who is quiet.
+func _curl_cat(quiet: bool) -> void:
+	_cat_curled = true
+	_cat.expression = Face.Expr.SLEEPY
+	_cat.scale = Vector2.ONE
+	_cat.rotation = 0.0
+	_cat.position = _cat_spot() - _cat.size * 0.5
+	if not quiet:
+		fx.cue("purr")
+
+# --- the life over the sky ---
+
+## Drops what has finished and says whether anything on the life layer still
+## moves.
+func _tick_life(now: float) -> bool:
+	_love = _love.filter(func(l): return now < float(l.t) + LOVE_TIME)
+	_birds = _birds.filter(func(b): return now < float(b.t) + float(b.end))
+	var party := not Motion.reduce and now >= _party_at - 0.05 and now < _party_at + PARTY_TIME + 0.5
+	return not (_love.is_empty() and _birds.is_empty()) or party \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
+
+## The life over the sky, each thing one cached mesh through a transform:
+## love hearts, birds, the flock and the straggler, then the seal and the
+## streak's bubble with their words.
+func _draw_life() -> void:
+	if _cell <= 0.0 or _state.planes.is_empty():
+		_life_shown = []
+		return
+	var now := _now()
+	var shown: Array = []
+	if not _love.is_empty():
+		var mesh := _love_heart()
+		shown.append(mesh)
+		for l in _love:
+			var e: float = now - float(l.t)
+			if e <= 0.0:
+				continue
+			var u := e / LOVE_TIME
+			var at: Vector2 = l.at + Vector2(sin(u * TAU + float(l.phase)) * 0.1 * _cell,
+				-LOVE_RISE * _cell * (1.0 - (1.0 - u) * (1.0 - u)))
+			var k := Motion.pop_in_scale(e, 0.2).x
+			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
+				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
+	for bird in _birds:
+		_draw_bird(bird, now, shown)
+	if not Motion.reduce and now >= _party_at:
+		_draw_flock(now, shown)
+		_draw_straggler(now, shown)
+	if now >= _stamp_at:
+		_draw_stamp(now, shown)
+	_draw_combo(now, shown)
+	_life_shown = shown
+
+## A little pink heart for the love gag, built once a layout.
+func _love_heart() -> ArrayMesh:
+	if _love_mesh == null:
+		var b := Face.Builder.new()
+		var r := _love_r()
+		b.polygon(_heart(Vector2.ZERO, r * 1.15, 0), Pal.FLOWER_DEEP)
+		b.polygon(_heart(Vector2.ZERO, r, 0), Pal.FLOWER)
+		b.ellipse(Vector2(-0.45, -0.45) * r, 0.18 * r, 0.1 * r, Color(1.0, 1.0, 1.0, 0.5))
+		_love_mesh = b.mesh()
+	return _love_mesh
+
+## A love heart's size: a share of the cell, but never a crumb on the hard
+## band's small one.
+func _love_r() -> float:
+	return maxf(11.0, _cell * LOVE_R)
+
+# --- the bird ---
+
+func _bird_px() -> float:
+	return clampf(_cell * 0.62, BIRD_PX.x, BIRD_PX.y)
+
+## A little robin facing right about its middle: a tail, a round brown body
+## with an orange breast, a head with a beak and a bright eye. Its wing is a
+## mesh of its own (`_bird_wing`) so it can flap.
+func _bird_body() -> ArrayMesh:
+	if _bird_mesh == null:
+		var b := Face.Builder.new()
+		var s := _bird_px() * 0.5
+		b.polygon(PackedVector2Array([Vector2(-0.5, -0.05) * s, Vector2(-1.0, -0.32) * s,
+			Vector2(-0.98, 0.12) * s]), BIRD_WING)
+		b.ellipse(Vector2(0.0, 0.05) * s, 0.62 * s, 0.5 * s, BIRD_BODY)
+		b.ellipse(Vector2(0.2, 0.2) * s, 0.38 * s, 0.3 * s, BIRD_BREAST)
+		b.disc(Vector2(0.45, -0.3) * s, 0.34 * s, BIRD_BODY)
+		b.polygon(PackedVector2Array([Vector2(0.72, -0.37) * s, Vector2(1.0, -0.28) * s,
+			Vector2(0.72, -0.19) * s]), Pal.SUN_DEEP)
+		b.disc(Vector2(0.55, -0.36) * s, 0.075 * s, Pal.OUTLINE)
+		b.disc(Vector2(0.57, -0.39) * s, 0.025 * s, Color.WHITE)
+		b.ellipse(Vector2(0.62, -0.18) * s, 0.07 * s, 0.045 * s, Color(Pal.CHEEK, 0.7))
+		_bird_mesh = b.mesh()
+	return _bird_mesh
+
+## The wing, its root at the origin (the shoulder), reaching back and up.
+func _bird_wing() -> ArrayMesh:
+	if _wing_mesh == null:
+		var b := Face.Builder.new()
+		var s := _bird_px() * 0.5
+		var pts := PackedVector2Array()
+		for k in 16:
+			var a := TAU * float(k) / 16.0
+			pts.append((Vector2(-0.3, -0.22) + Vector2(cos(a) * 0.42, sin(a) * 0.2).rotated(-0.45)) * s)
+		b.polygon(pts, BIRD_WING)
+		_wing_mesh = b.mesh()
+	return _wing_mesh
+
+## Where bird `bird` is `e` seconds in, which way it faces and how much of
+## it shows: popping up over the plane's tail, flapping after it along its
+## trail (through every bend it made), stopping where the sky ends, hovering
+## there looking round, then fluttering off and up, fading.
+func _bird_at(bird: Dictionary, e: float) -> Array:
+	var i: int = bird.i
+	var dir := Vector2(_state.planes[i]["dir"])
+	var side: Vector2 = bird.side
+	var lift := Vector2(0.0, -_cell * 0.3)
+	var stop := _track(i, float(bird.stop)) + lift
+	var chase := float(bird.chase)
+	var bob := Vector2(0.0, sin(e * 11.0) * _cell * 0.05)
+	var face := signf(dir.x) if dir.x != 0.0 else (signf(side.x) if side.x != 0.0 else 1.0)
+	if e < chase:
+		var x := clampf((e - BIRD_POP) * BIRD_SPEED, 0.0, float(bird.stop))
+		var at := _track(i, x)
+		var ahead := _track(i, minf(x + 0.3, float(bird.stop) + 0.3)) - at
+		if absf(ahead.x) > 0.5:
+			face = signf(ahead.x)
+		return [at + lift + bob, face, 1.0]
+	if e < chase + BIRD_HOVER:
+		# Where did it go? A look one way, then the other.
+		var u := (e - chase) / BIRD_HOVER
+		return [stop + bob, face if u < 0.5 else -face, 1.0]
+	var u := clampf((e - chase - BIRD_HOVER) / BIRD_LEAVE, 0.0, 1.0)
+	var away := (side * 1.2 - dir * 0.8 + Vector2(0.0, -1.2)).normalized()
+	var at := stop + away * _cell * 3.0 * u * u + Vector2(0.0, sin(u * TAU * 2.0) * _cell * 0.12)
+	return [at, signf(away.x) if away.x != 0.0 else face, 1.0 - u]
+
+func _draw_bird(bird: Dictionary, now: float, shown: Array) -> void:
+	var e := now - float(bird.t)
+	if e < 0.0:
+		return
+	var where: Array = _bird_at(bird, e)
+	var k := Motion.pop_in_scale(e, 0.2).x
+	if k <= 0.0:
+		return
+	var body := _bird_body()
+	var wing := _bird_wing()
+	shown.append(body)
+	shown.append(wing)
+	var xf := Transform2D(0.0, Vector2(float(where[1]) * k, k), 0.0, where[0])
+	var alpha := Color(1.0, 1.0, 1.0, float(where[2]))
+	_life_layer.draw_mesh(body, null, xf, alpha)
+	var flap := 0.15 + 0.85 * cos(e * BIRD_FLAP * TAU)
+	var shoulder := Vector2(-0.05, -0.08) * _bird_px() * 0.5
+	_life_layer.draw_mesh(wing, null, xf * Transform2D(0.0, Vector2(1.0, flap), 0.0, shoulder), alpha)
+
+# --- the bubble and the seal ---
+
+## The streak's paper bubble over the launch spot, "x3" and up in leaf ink:
+## it pops in the first time, bumps at each launch and deflates when the
+## streak ends. Rebuilt only when its words or its tail change (Quilt's).
+func _draw_combo(now: float, shown: Array) -> void:
+	if _combo_n < COMBO_FROM:
+		return
+	var k := 1.0
+	var alpha := 1.0
+	if _combo_out_at > -INF:
+		var u := (now - _combo_out_at) / COMBO_DEFLATE
+		if u >= 1.0 or Motion.reduce:
+			_combo_n = 0
+			return
+		k = 1.0 - 0.75 * u * u
+		alpha = 1.0 - u
+	elif not Motion.reduce:
+		var e := now - _combo_at
+		k = Motion.pop_in_scale(e).x if _combo_popped else Motion.bump_scale(e)
+	if k <= 0.01:
+		return
+	var font: Font = CozyTheme.display(700)
+	var text := "x%d" % _combo_n
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
+	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
+	var tail := _combo_pos
+	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
+	var tip := (tail - centre).round()
+	var key := [text, tip]
+	if _combo_shown == null or _combo_key != key:
+		var b := Face.Builder.new()
+		var root := Vector2(clampf(tip.x, -box.x * 0.3, box.x * 0.3), box.y * 0.3)
+		b.polygon(PackedVector2Array([root + Vector2(-9.0, 0.0), tip, root + Vector2(9.0, 0.0)]), Pal.LINE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2(2.0, 2.0), box + Vector2(4.0, 4.0), box.y * 0.5 + 2.0), Pal.LINE)
+		b.polygon(PackedVector2Array([root + Vector2(-6.5, -2.0), tip + (root - tip).normalized() * 3.0, root + Vector2(6.5, -2.0)]), Pal.SURFACE)
+		b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+		_combo_shown = b.mesh()
+		_combo_key = key
+	shown.append(_combo_shown)
+	_life_layer.draw_set_transform(centre, 0.0, Vector2.ONE * k)
+	_life_layer.draw_mesh(_combo_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	var ascent := font.get_ascent(COMBO_FONT)
+	var descent := font.get_descent(COMBO_FONT)
+	_life_layer.draw_string(font, Vector2(-tw * 0.5, (ascent - descent) * 0.5), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color(Pal.LEAF_DEEP, alpha))
+	_life_layer.draw_set_transform(Vector2.ZERO)
+
+## The seal on the panel's lower right corner, dropping in from STAMP_FROM
+## its size and settling with the back ease's overshoot, its words over it:
+## Flawless; on Windy Day "Insane" over Flawless or Windy Day, on the night
+## seal.
+func _draw_stamp(now: float, shown: Array) -> void:
+	var rad := size.x * STAMP_R * 0.75
+	var insane: bool = _state.windy()
+	if _seal_mesh == null:
+		_seal_mesh = Seal.mesh(rad, insane)
+	shown.append(_seal_mesh)
+	var e := now - _stamp_at
+	var k := 1.0
+	if not Motion.reduce and e < STAMP_DROP * 2.0:
+		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
+		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
+	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
+	# Over the panel's lower right corner, hanging off it like a stamp on a
+	# parcel.
+	var corner := _panel_rect().end
+	var centre := corner - Vector2(rad * 0.85, rad * 0.72)
+	# Never past the card's hem (Hard's panel runs nearly to it).
+	centre.x = minf(centre.x, size.x - rad * 1.08)
+	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
+	_life_layer.draw_set_transform_matrix(xf)
+	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_life_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	var lines: Array
+	if insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
+			[tr("BN_FLAWLESS") if _flawless else tr("PP_WINDY_SEAL"), 0.17, 0.36]]
+	else:
+		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
+	Seal.text(_life_layer, rad, lines)
+	_life_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # --- odds and ends ---
 

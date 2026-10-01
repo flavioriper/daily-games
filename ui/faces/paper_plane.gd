@@ -102,9 +102,11 @@ static func band(b, pts: PackedVector2Array, cell: float, width: float, colour: 
 
 ## The folded dart at `head`, turned to `angle`. `wings` scales it along (x)
 ## and across (y) -- the wake's beat opens the wings -- and `lift` raises it
-## off the paper: bigger, and its shadow further away and fainter.
+## off the paper: bigger, and its shadow further away and fainter. `shadow`
+## false leaves the shadow out (a dart drawn turning in the air, whose shadow
+## would turn with it).
 static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1.0,
-		wings := Vector2.ONE, lift := 0.0, dim := 0.0) -> void:
+		wings := Vector2.ONE, lift := 0.0, dim := 0.0, shadow := true) -> void:
 	var s := wings * cell * (1.0 + 0.16 * lift)
 	var turn := Transform2D(angle, head)
 	var tip := turn * (Vector2(TIP, 0.0) * s)
@@ -112,8 +114,9 @@ static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1
 	var notch := turn * (Vector2(-NOTCH, 0.0) * s)
 	var left := turn * (Vector2(-BACK, -WING) * s)
 	var fall := SHADOW * cell * (1.0 + SHADOW_FALL * lift)
-	b.polygon(_moved(PackedVector2Array([tip, right, notch, left]), fall),
-		Color(Pal.TEXT, SHADOW_ALPHA * alpha * (1.0 - 0.45 * lift)))
+	if shadow:
+		b.polygon(_moved(PackedVector2Array([tip, right, notch, left]), fall),
+			Color(Pal.TEXT, SHADOW_ALPHA * alpha * (1.0 - 0.45 * lift)))
 	# Which half faces the light: the wing whose outward side points more
 	# toward it. Only four headings exist, so every plane is one of two cases.
 	var left_out := turn.basis_xform(Vector2(0.0, -1.0))
