@@ -411,6 +411,7 @@ var _life_shown: Array = []
 ## per wing and opening, the smoke heart, a purring heart, a sky lantern, and
 ## the garland once it has come to rest.
 var _moth_meshes: Dictionary = {}
+var _moth_flat: Dictionary = {}
 var _smoke_mesh: ArrayMesh
 var _purr_mesh: ArrayMesh
 var _sky_mesh: ArrayMesh
@@ -470,9 +471,56 @@ var _block_shiver: Dictionary = {}
 var _block_flash: Dictionary = {}
 ## Vector2i -> the second a lamp's wick catches on it (FLARE_*).
 var _flare: Dictionary = {}
-var _floor: ArrayMesh
-var _ground: ArrayMesh
 var _ground_dirty := true
+## The checkup (2026-10-01): the floor and the ground were built whole, every
+## stone and block in script, on every frame anything on the court moved -- a
+## press, a hop, a flare -- about 10 ms and 8 ms on a full Insane court.
+## Each stone, block, chip and lamp shadow at rest is now made once
+## (`_rest_parts`, Vector3i(x, y, code) -> ArrayMesh) and every one at rest is
+## baked into `_floor_rest` / `_ground_rest` with native copies
+## (Face.FlatBuilder over `_flat_cache`), again only when that set changes
+## (`_floor_key`, `_ground_key`). `_floor_live` and `_ground_live` keep only
+## what moves, and the beams are built again only while the light moves.
+const STILL_NONE := -2
+const STILL_LIGHT := -3
+const STILL_MOVING := -1
+const STILL_CHIP := 1
+const STILL_SHADOW := 2
+const STILL_BLOCK := 8
+const BLOCK_LIT_MOVING := -5
+## The parts drawn about their own centre and put through a transform
+## (_local_part): a block's shadow, a lamp's shadow, a block's body
+## (LOCAL_BODY + its state).
+const LOCAL_BLOCK_SHADOW := 300
+const LOCAL_LAMP_SHADOW := 301
+const LOCAL_BODY := 310
+var _rest_parts: Dictionary = {}
+var _flat_cache: Dictionary = {}
+var _floor_key := PackedInt32Array()
+var _ground_key := PackedInt32Array()
+var _bed: ArrayMesh
+var _floor_rest: ArrayMesh
+var _floor_flat: ArrayMesh
+var _floor_live: ArrayMesh
+## Vector4i(x, y, level, dusk) -> a stone's flat triangle list (_stone_flat).
+var _stone_cache: Dictionary = {}
+const WARM_LEVELS := 8
+var _beams: ArrayMesh
+var _beams_dirty := true
+var _flares: ArrayMesh
+var _ground_rest: ArrayMesh
+var _ground_flat: ArrayMesh
+var _ground_live: ArrayMesh
+## The checkup (2026-10-01): every lamp and cat drew itself, a canvas command
+## a layer -- fifty of a full Insane court's 170 draw calls. They still move
+## as ever (pops, hops, flickers, blinks and expressions are theirs) but draw
+## only their hats and glasses: `_cast`, under them, draws every body in one
+## MultiMesh per mesh on show (Tents'), synced every frame since the candles
+## always flicker; a buffer is handed over only when it changed.
+var _cast: Control
+var _cast_mm: Dictionary = {}     # ArrayMesh -> MultiMesh, the meshes on show
+var _cast_order: Array = []       # the meshes on show, in drawing order
+var _cast_sent: Dictionary = {}   # MultiMesh -> the buffer last handed over
 ## The meshes the last _draw handed over that the next may let go of: a
 ## canvas command holds a mesh by RID, and a frame rendered before the queued
 ## redraw is flushed would otherwise draw a freed one (see CLAUDE.md).
@@ -520,6 +568,32 @@ func _tips() -> Array:
 		out = ["LU_TIP_CAT"] + out
 	return out
 
+## The tutorial, a page a rule, each a small court played by the board itself
+## (ui/hud/lightup_tutorial_diagram.gd): light and blocks, sight, numbers,
+## chips, the hint, then hearts on Hard and Insane and cats on Cat Naps.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/lightup_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.LIGHT, "HTP_LU_LIGHT", tr("HTP_LU_LIGHT_BODY")],
+		[Diagram.Lesson.SEE, "HTP_LU_SEE", tr("HTP_LU_SEE_BODY")],
+		[Diagram.Lesson.NUMBERS, "HTP_LU_NUMBERS", tr("HTP_LU_NUMBERS_BODY")],
+		[Diagram.Lesson.CHIPS, "HTP_LU_CHIPS", tr("HTP_LU_CHIPS_BODY")],
+		[Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_LU_HINT_BODY_ONE") if hints == 1 else tr("HTP_LU_HINT_BODY_N") % hints]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("LU_RULES_HEARTS_1") if max_hearts == 1 else tr("LU_RULES_HEARTS_N") % max_hearts])
+	if state.has_cats():
+		steps.append([Diagram.Lesson.CATS, "LU_CAT_SEAL", tr("LU_RULES_CAT")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
@@ -530,6 +604,7 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	_cast = _layer("Cast", 0, _draw_cast)
 	_veil_layer = _layer("Veil", 1, _draw_veil)
 	_life_layer = _layer("Life", 1, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
@@ -630,6 +705,7 @@ func _build_pieces() -> void:
 	_cat_was = {}
 	for cell: Vector2i in state.cats:
 		var cat := NapCat.new()
+		cat.skip_layers = ["base", "tip", "head"]
 		cat.need = state.cat_need(cell)
 		cat.scale = Vector2.ZERO
 		_stand(cat, "cat_%d_%d" % [cell.x, cell.y])
@@ -659,6 +735,7 @@ func _lamp_node(cell: Vector2i) -> CourtLantern:
 	var lamp := CourtLantern.new()
 	# The shadow is the board's, on the ground (see _build_ground).
 	lamp.casts = false
+	lamp.skip_layers = ["glow", "body"]
 	lamp.visible = false
 	lamp.scale = Vector2.ZERO
 	_stand(lamp, "lamp_%d_%d" % [cell.x, cell.y])
@@ -821,6 +898,12 @@ func _layout() -> void:
 	_refresh_faces(true)
 	# The life's meshes are drawn in cells: a new cell size builds them again.
 	_moth_meshes = {}
+	_moth_flat = {}
+	_rest_parts = {}
+	_flat_cache = {}
+	_stone_cache = {}
+	_floor_key = PackedInt32Array()
+	_ground_key = PackedInt32Array()
 	_smoke_mesh = null
 	_purr_mesh = null
 	_sky_mesh = null
@@ -1018,83 +1101,169 @@ func _draw() -> void:
 	var busy := false
 	var shown: Array = []
 	if _ground_dirty or now < _anim_until:
-		_floor = _build_floor(now)
-		var out := _build_ground(now)
-		_ground = out.mesh
-		busy = out.busy
+		busy = _build_court(now)
 		_ground_dirty = false
 	# The court pops in wide once the chrome has slid in, drawn.
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.ENTER_POP:
 		busy = true
 	var seen := Motion.appear_level(since)
-	if seen > 0.0 and _floor != null:
+	if seen > 0.0:
 		var grown := Motion.wide_pop_scale(since)
-		draw_mesh(_floor, null,
-			Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre()),
-			Color(1.0, 1.0, 1.0, seen))
-		shown.append(_floor)
-	if _ground != null:
-		draw_mesh(_ground, null)
-		shown.append(_ground)
+		var xf := Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre())
+		for m in [_bed, _floor_rest, _floor_flat, _floor_live, _beams, _flares]:
+			if m != null:
+				draw_mesh(m, null, xf, Color(1.0, 1.0, 1.0, seen))
+				shown.append(m)
+	for m in [_ground_rest, _ground_flat, _ground_live]:
+		if m != null:
+			draw_mesh(m, null)
+			shown.append(m)
 	_shown = shown
 	_draw_numbers(now)
 	if busy:
 		_anim_until = maxf(_anim_until, now + 0.1)
 
-## The display: the mortar bed on its edge, a flagstone per cell carrying its
-## own warmth -- the stones *are* the display, which is why every one is its
-## own tile rather than a tint over a shared field -- and the beams over
-## them. Built about the court's centre, so its pop on the entrance is a
-## transform.
-func _build_floor(now: float) -> ArrayMesh:
-	var b := Face.Builder.new()
-	var field := Vector2(_cell * state.w, _cell * state.h)
-	var origin := -field * 0.5
+## Builds what the court shows right now: the bed, the stones and the ground
+## at rest (baked again only when that set changes), what moves, and the
+## beams (again only while the light moves). Returns whether anything is
+## still moving.
+func _build_court(now: float) -> bool:
+	var origin := -Vector2(_cell * state.w, _cell * state.h) * 0.5
+	var dusk := _dusk(now)
+	var busy := false
+	for cell in _sunk.keys():
+		if now >= float(_sunk[cell].up) + Motion.RELEASE_TIME:
+			_sunk.erase(cell)
+	busy = not _sunk.is_empty()
 	# The bed warms toward lamplight once the court is solved.
 	var bed := Color(Pal.TEXT, MORTAR_ALPHA)
+	var winning := false
 	if _solved_at > NEVER:
 		var won := _dec((now - _solved_at - Motion.SOLVE_DELAY) / WARM_TIME)
+		winning = won < 1.0
 		bed = bed.lerp(Color(Pal.SUN, WARM_ALPHA), _sine_io(won))
-	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
+	var field := Vector2(_cell * state.w, _cell * state.h)
+	var bb := Face.Builder.new()
+	bb.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
 		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
-	var gone: Array = []
-	var dusk := _dusk(now)
+	_bed = bb.mesh()
+	# The stones: each at rest is one of four made once (lit or not, dusk or
+	# not); a stone sinking, warming or glinting is built again this frame.
+	var key := PackedInt32Array()
+	key.resize(state.w * state.h)
+	var live := Face.Builder.new()
+	var flat := Face.FlatBuilder.new()
+	var light_moving := winning or not _guttering.is_empty() or not _beam_out.is_empty() \
+		or (dusk > 0.0 and dusk < 1.0)
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
+			var i: int = y * state.w + x
 			if not state.lets_light(cell):
+				key[i] = STILL_NONE
 				continue
-			var warm := _shown_warmth(cell, now)
-			var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
-			var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
-			if dusk > 0.0:
-				face = face.lerp(deep, DUSK_SHADE * dusk)
-			var tone := (_hash(cell) - 0.5) * 2.0 * STONE_TONE
-			face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
-			# A stone under the finger sinks, drawn (press_scale), and goes
-			# a little into its own shade as it does.
+			var code := _stone_code(cell, now, dusk)
+			key[i] = code
+			if code >= 0:
+				continue
+			light_moving = light_moving or code == STILL_LIGHT
+			var glint := _glint(cell, now)
+			if not _sunk.has(cell) and (dusk == 0.0 or dusk == 1.0):
+				# Only its light moves: the stone at the nearest of
+				# WARM_LEVELS, made once, and the light's front over it.
+				var level := roundi(_warmth(cell, now) * WARM_LEVELS)
+				flat.append_flat(_stone_flat(cell, level, int(dusk), origin))
+				if glint > 0.0:
+					live.fan(_tile(cell, STONE_EDGE, origin), Color(1.0, 1.0, 1.0, GLINT_ALPHA * glint))
+				continue
 			var grown := 1.0
+			var sink := 0.0
 			if _sunk.has(cell):
 				var pr: Dictionary = _sunk[cell]
 				var released := -1.0 if now < float(pr.up) else now - float(pr.up)
-				if released >= Motion.RELEASE_TIME:
-					gone.append(cell)
-				else:
-					grown = Motion.press_scale(now - float(pr.down), released)
-					var depth := clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
-					face = face.lerp(deep, SINK_SHADE * depth)
-			b.fan(_tile(cell, 0.0, origin, grown), deep)
-			b.fan(_tile(cell, STONE_EDGE, origin, grown), face)
-			_dress_stone(b, cell, origin, grown, deep)
-			var glint := _glint(cell, now)
-			if glint > 0.0:
-				b.fan(_tile(cell, STONE_EDGE, origin, grown), Color(1.0, 1.0, 1.0, GLINT_ALPHA * glint))
-	for cell in gone:
-		_sunk.erase(cell)
-	_build_beams(b, now, origin)
-	_build_flares(b, now, origin)
-	return b.mesh()
+				grown = Motion.press_scale(now - float(pr.down), released)
+				sink = clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
+			_stone(live, cell, origin, _shown_warmth(cell, now), dusk, grown, sink, glint)
+	_floor_flat = flat.mesh()
+	_floor_live = live.mesh() if not live.verts.is_empty() else null
+	if key != _floor_key:
+		_floor_key = key
+		var fb := Face.FlatBuilder.new(_flat_cache)
+		for y in state.h:
+			for x in state.w:
+				var code: int = key[y * state.w + x]
+				if code >= 0:
+					fb.append_flat(_stone_flat(Vector2i(x, y), (code & 1) * WARM_LEVELS, code >> 1, origin))
+		_floor_rest = fb.mesh()
+	if light_moving or _beams_dirty:
+		_beams_dirty = false
+		var beams := Face.Builder.new()
+		_build_beams(beams, now, origin)
+		_beams = beams.mesh() if not beams.verts.is_empty() else null
+	if light_moving:
+		# Built again until it has stopped, and once more at rest: the last
+		# frame of a fade is a step short of where the stone lands.
+		_beams_dirty = true
+		busy = true
+	var fl := Face.Builder.new()
+	_build_flares(fl, now, origin)
+	_flares = fl.mesh() if not fl.verts.is_empty() else null
+	busy = _build_ground(now, key) or busy
+	return busy
+
+## Where a stone stands: STILL_LIGHT while its light, the solve's glint or
+## dusk moves on it, STILL_MOVING while it is sunk under a finger, otherwise
+## which of its four resting looks it wears (lit + 2 * dusk).
+func _stone_code(cell: Vector2i, now: float, dusk: float) -> int:
+	if dusk > 0.0 and dusk < 1.0:
+		return STILL_LIGHT
+	if not Motion.reduce:
+		var rec: Dictionary = _warm.get(cell, {})
+		if not rec.is_empty() and now < float(rec.at) + float(rec.dur):
+			return STILL_LIGHT
+		if _solved_at > NEVER:
+			var e := (now - _solved_at - _solve_delay(cell)) / WIN_GLINT
+			if e > 0.0 and e < 1.0:
+				return STILL_LIGHT
+	if _sunk.has(cell):
+		return STILL_MOVING
+	return int(_warmth(cell, now) >= 0.5) + 2 * int(dusk >= 0.5)
+
+## One stone still at `level` of WARM_LEVELS of warmth (dusk 0 or 1), as a
+## flat triangle list made once: the resting looks are its two ends, and a
+## stone whose light is moving steps through the rest.
+func _stone_flat(cell: Vector2i, level: int, dusk: int, origin: Vector2) -> Array:
+	var k := Vector4i(cell.x, cell.y, level, dusk)
+	var f: Array = _stone_cache.get(k, [])
+	if f.is_empty():
+		var b := Face.Builder.new()
+		var warm := float(level) / WARM_LEVELS * (1.0 - (1.0 - DUSK_WARM) * dusk)
+		_stone(b, cell, origin, warm, float(dusk), 1.0, 0.0, 0.0)
+		f = Face.FlatBuilder.flat_of(b)
+		_stone_cache[k] = f
+	return f
+
+## One flagstone, carrying its own warmth -- the stones *are* the display,
+## which is why every one is its own tile rather than a tint over a shared
+## field -- `grown` of its size, `sink` into its own shade under a finger,
+## and `glint` brightened by the light's front. Built about the court's
+## centre, so its pop on the entrance is a transform.
+func _stone(b, cell: Vector2i, origin: Vector2, warm: float, dusk: float, grown: float,
+		sink: float, glint: float) -> void:
+	var deep: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.LAMPLIT_DEEP, warm)
+	var face: Color = Pal.FLAGSTONE.lerp(Pal.LAMPLIT_FLOOR, warm)
+	if dusk > 0.0:
+		face = face.lerp(deep, DUSK_SHADE * dusk)
+	var tone := (_hash(cell) - 0.5) * 2.0 * STONE_TONE
+	face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
+	if sink > 0.0:
+		face = face.lerp(deep, SINK_SHADE * sink)
+	b.fan(_tile(cell, 0.0, origin, grown), deep)
+	b.fan(_tile(cell, STONE_EDGE, origin, grown), face)
+	_dress_stone(b, cell, origin, grown, deep)
+	if glint > 0.0:
+		b.fan(_tile(cell, STONE_EDGE, origin, grown), Color(1.0, 1.0, 1.0, GLINT_ALPHA * glint))
 
 ## What makes a flagstone a stone and not a tile: a light along its crest,
 ## and on some a few specks or a hairline crack in its own deep colour. All of
@@ -1255,14 +1424,20 @@ static func _shaft(b, from: Vector2, to: Vector2, half: float, c0: Color, c1: Co
 	b.tri(i + 1, i + 2, i + 5)
 	b.tri(i + 1, i + 5, i + 4)
 
-## Everything standing on the court that is not a lamp, in one mesh: the
-## blush of a pointed-at stone, the shadow under every lamp, the blocks with
-## their shadows, and the chips arriving, standing and leaving. Returns the
-## mesh and whether any of it is still moving. (A sinking stone is the
-## floor's, since the stone itself is what sinks.)
-func _build_ground(now: float) -> Dictionary:
+## Everything standing on the court that is not a lamp: the blush of a
+## pointed-at stone, the shadow under every lamp, the blocks with their
+## shadows, and the chips arriving, standing and leaving. What is at rest is
+## one baked mesh, made again only when that set changes; the rest is built
+## again this frame. `floor_key` is the stones' (see _stone_code), so a block
+## whose lit neighbour is still warming is drawn live. Returns whether any of
+## it is still moving. (A sinking stone is the floor's, since the stone
+## itself is what sinks.)
+func _build_ground(now: float, floor_key: PackedInt32Array) -> bool:
 	var b := Face.Builder.new()
-	var busy := not _sunk.is_empty()
+	var flat := Face.FlatBuilder.new(_flat_cache)
+	var key := PackedInt32Array()
+	key.resize(state.w * state.h)
+	var busy := false
 	# The blush: toward the family's rose and back, read off flash_level.
 	var gone: Array = []
 	for cell in _blush:
@@ -1280,9 +1455,17 @@ func _build_ground(now: float) -> Dictionary:
 	# height, so one arrives with the pop and stays put when the lamp hops.
 	for cell in _lamps:
 		var lamp: CourtLantern = _lamps[cell]
-		if lamp.visible:
-			_lamp_shadow(b, lamp, cell)
+		if not lamp.visible:
+			continue
+		if is_equal_approx(lamp.scale.y, 1.0) and lamp.modulate.a >= 1.0:
+			key[cell.y * state.w + cell.x] = STILL_SHADOW
+		else:
+			var seen := clampf(lamp.scale.y, 0.0, 1.0) * clampf(lamp.modulate.a, 0.0, 1.0)
+			if seen > 0.0:
+				flat.append(_local_part(LOCAL_LAMP_SHADOW, cell), Transform2D(0.0, Vector2(seen, seen), 0.0,
+					cell_to_local(cell.y, cell.x) + LAMP_SHADOW_AT * _cell), Color(1.0, 1.0, 1.0, seen))
 	# The blocks, each through whatever it is doing.
+	var dusk_bit := int(_dusk(now) >= 0.5)
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
@@ -1292,7 +1475,24 @@ func _build_ground(now: float) -> Dictionary:
 			if pose.is_empty():
 				continue
 			busy = busy or bool(pose.busy)
-			_block(b, cell, pose, now)
+			var code := _block_code(cell, pose, now, floor_key)
+			if code >= 0:
+				key[y * state.w + x] = STILL_BLOCK + code + 64 * dusk_bit
+			elif float(pose.flash) > 0.0:
+				_block(b, cell, pose, now)
+			else:
+				# A block hopping, pressed, bumped or only lit by a light
+				# that is moving: its shadow and body made once and put
+				# through its pose, its rims drawn now.
+				var s := _cell * BLOCK_SIZE
+				var at := cell_to_local(y, x)
+				var scale: Vector2 = pose.scale
+				var seen := clampf(scale.y, 0.0, 1.0)
+				flat.append(_local_part(LOCAL_BLOCK_SHADOW, cell), Transform2D(0.0, Vector2(seen, seen),
+					0.0, at + BLOCK_SHADOW_AT * s), Color.WHITE if seen >= 1.0 else Color(1.0, 1.0, 1.0, seen))
+				var xf := Transform2D(0.0, scale, 0.0, at + (pose.offset as Vector2))
+				flat.append(_local_part(LOCAL_BODY + state.block_state(cell), cell), xf)
+				_block_rims(b, cell, xf, s, now)
 	# Chips on their way out, drawn from the shape the state has forgotten.
 	var still: Array = []
 	for out in _chip_out:
@@ -1313,11 +1513,13 @@ func _build_ground(now: float) -> Dictionary:
 		if int(state.marks[cell]) != State.CHIP:
 			continue
 		var grow := Vector2.ONE
+		var moving := false
 		if _chip_in.has(cell):
 			var e: float = now - float(_chip_in[cell])
 			grow = Motion.pop_in_scale(e)
 			if e < Motion.POP_IN:
 				busy = true
+				moving = true
 			else:
 				gone.append(cell)
 		var alpha := 1.0
@@ -1325,17 +1527,90 @@ func _build_ground(now: float) -> Dictionary:
 			var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 			if cleared >= 1.0:
 				continue
-			busy = true
-			alpha = 1.0 - cleared
-			grow *= 1.0 - cleared * CLEAR_SHRINK
+			if cleared > 0.0:
+				busy = true
+				moving = true
+				alpha = 1.0 - cleared
+				grow *= 1.0 - cleared * CLEAR_SHRINK
+			else:
+				busy = true
+		if not moving:
+			key[cell.y * state.w + cell.x] = STILL_CHIP
+			continue
 		if grow.x <= 0.0 or grow.y <= 0.0:
 			continue
 		_chip(b, cell_to_local(cell.y, cell.x), _cell * CHIP_SIZE, grow, 0.0, alpha)
 	for cell in gone:
 		_chip_in.erase(cell)
-	if b.verts.is_empty():
-		return {"mesh": null, "busy": busy}
-	return {"mesh": b.mesh(), "busy": busy}
+	_ground_flat = flat.mesh()
+	_ground_live = b.mesh() if not b.verts.is_empty() else null
+	if key != _ground_key:
+		_ground_key = key
+		var fb := Face.FlatBuilder.new(_flat_cache)
+		for y in state.h:
+			for x in state.w:
+				var code: int = key[y * state.w + x]
+				if code > 0:
+					fb.append(_ground_part(Vector2i(x, y), code, now), Transform2D.IDENTITY)
+		_ground_rest = fb.mesh()
+	return busy
+
+## A part drawn about its own centre, made once (see LOCAL_*); a body is the
+## cell's own, since a blank block's chisel marks are.
+func _local_part(kind: int, cell: Vector2i) -> ArrayMesh:
+	var k := Vector3i(cell.x, cell.y, kind) if kind >= LOCAL_BODY else Vector3i(0, 0, kind)
+	var m: ArrayMesh = _rest_parts.get(k)
+	if m == null:
+		var b := Face.Builder.new()
+		var s := _cell * BLOCK_SIZE
+		match kind:
+			LOCAL_BLOCK_SHADOW:
+				Scenery.soft_disc(b, Vector2.ZERO, BLOCK_SHADOW_RX * s, BLOCK_SHADOW_RY * s,
+					Color(Pal.TEXT, BLOCK_SHADOW_ALPHA))
+			LOCAL_LAMP_SHADOW:
+				Scenery.soft_disc(b, Vector2.ZERO, LAMP_SHADOW_RX * _cell, LAMP_SHADOW_RY * _cell,
+					Color(Pal.TEXT, SHADOW_ALPHA))
+			_:
+				var tone := _block_tones(kind - LOCAL_BODY)
+				_block_body(b, cell, Transform2D.IDENTITY, s, tone[0], tone[1])
+		m = b.mesh()
+		_rest_parts[k] = m
+	return m
+
+## A block's resting look -- its state and which of its four sides a lit
+## stone warms -- or -1 while it moves or a neighbour's light does.
+func _block_code(cell: Vector2i, pose: Dictionary, now: float, floor_key: PackedInt32Array) -> int:
+	if bool(pose.busy) or float(pose.flash) > 0.0 or pose.scale != Vector2.ONE \
+			or pose.offset != Vector2.ZERO:
+		return -1
+	var code := state.block_state(cell)
+	for k in State.DIRS.size():
+		var n: Vector2i = cell + State.DIRS[k]
+		if not state.lets_light(n):
+			continue
+		if floor_key[n.y * state.w + n.x] == STILL_LIGHT:
+			return BLOCK_LIT_MOVING
+		if _shown_warmth(n, now) > BEAM_MIN:
+			code |= 4 << k
+	return code
+
+## One thing on the ground at rest, made once: a block in its look, a chip
+## or a lamp's shadow (see _build_ground's keys).
+func _ground_part(cell: Vector2i, code: int, now: float) -> ArrayMesh:
+	var k := Vector3i(cell.x, cell.y, code)
+	var m: ArrayMesh = _rest_parts.get(k)
+	if m == null:
+		var b := Face.Builder.new()
+		if code == STILL_CHIP:
+			_chip(b, cell_to_local(cell.y, cell.x), _cell * CHIP_SIZE, Vector2.ONE, 0.0, 1.0)
+		elif code == STILL_SHADOW:
+			Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + LAMP_SHADOW_AT * _cell,
+				LAMP_SHADOW_RX * _cell, LAMP_SHADOW_RY * _cell, Color(Pal.TEXT, SHADOW_ALPHA))
+		else:
+			_block(b, cell, {"scale": Vector2.ONE, "offset": Vector2.ZERO, "flash": 0.0}, now)
+		m = b.mesh()
+		_rest_parts[k] = m
+	return m
 
 ## A stone's own outline over `cell`, `grown` of its size about its centre.
 func _stone_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
@@ -1344,16 +1619,6 @@ func _stone_wash(b, cell: Vector2i, grown: float, colour: Color) -> void:
 	var span := (_cell - 2.0 * _cell * GAP) * grown
 	b.fan(Face.Builder.round_rect(cell_to_local(cell.y, cell.x) - Vector2.ONE * span * 0.5,
 		Vector2.ONE * span, _cell * STONE_RADIUS * grown), colour)
-
-## The family's soft disc under `lamp` on `cell`, scaled by how much of the
-## lamp is there and faded with it while it drops in.
-func _lamp_shadow(b, lamp: Control, cell: Vector2i) -> void:
-	var seen := clampf(lamp.scale.y, 0.0, 1.0) * clampf(lamp.modulate.a, 0.0, 1.0)
-	if seen <= 0.0:
-		return
-	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + LAMP_SHADOW_AT * _cell,
-		LAMP_SHADOW_RX * _cell * seen, LAMP_SHADOW_RY * _cell * seen,
-		Color(Pal.TEXT, SHADOW_ALPHA * seen))
 
 ## What a block is doing right now, read off the curves: its scale (the
 ## entrance pop, the press, the Count bump), its offset (a hop, a lean, a
@@ -1419,22 +1684,16 @@ func _block_pose(cell: Vector2i, now: float) -> Dictionary:
 ## nothing to be satisfied about, so it never goes green: half of a generated
 ## court's stone says nothing, and a blank block is information too -- it
 ## stops the light.
-func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
+func _block(b, cell: Vector2i, pose: Dictionary, now: float, rims := true) -> void:
 	var s := _cell * BLOCK_SIZE
 	var at := cell_to_local(cell.y, cell.x)
 	var scale: Vector2 = pose.scale
 	var seen := clampf(scale.y, 0.0, 1.0)
 	Scenery.soft_disc(b, at + BLOCK_SHADOW_AT * s, BLOCK_SHADOW_RX * s * seen,
 		BLOCK_SHADOW_RY * s * seen, Color(Pal.TEXT, BLOCK_SHADOW_ALPHA * seen))
-	var face: Color = Pal.BLOCK_STONE
-	var deep: Color = Pal.BLOCK_DEEP
-	match state.block_state(cell):
-		State.BLOCK_OK:
-			face = face.lerp(Pal.LEAF, BLOCK_GREEN)
-			deep = deep.lerp(Pal.LEAF_DEEP, BLOCK_GREEN)
-		State.BLOCK_OVER:
-			face = face.lerp(Pal.BAD, BLOCK_ROSE)
-			deep = deep.lerp(Pal.MARKER_DEEP, BLOCK_ROSE)
+	var tone := _block_tones(state.block_state(cell))
+	var face: Color = tone[0]
+	var deep: Color = tone[1]
 	var flash := float(pose.flash)
 	if flash > 0.0:
 		# A refused tap: the block flashes toward its own rose, the way a
@@ -1442,6 +1701,28 @@ func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
 		face = face.lerp(Pal.BAD, BLOCK_ROSE * flash)
 		deep = deep.lerp(Pal.MARKER_DEEP, BLOCK_ROSE * flash)
 	var xf := Transform2D(0.0, scale, 0.0, at + (pose.offset as Vector2))
+	_block_body(b, cell, xf, s, face, deep)
+	if rims:
+		_block_rims(b, cell, xf, s, now)
+
+## A block's crown and front in state `st`: plain stone, green once its
+## number is met, rose when it is over.
+static func _block_tones(st: int) -> Array:
+	var face: Color = Pal.BLOCK_STONE
+	var deep: Color = Pal.BLOCK_DEEP
+	match st:
+		State.BLOCK_OK:
+			face = face.lerp(Pal.LEAF, BLOCK_GREEN)
+			deep = deep.lerp(Pal.LEAF_DEEP, BLOCK_GREEN)
+		State.BLOCK_OVER:
+			face = face.lerp(Pal.BAD, BLOCK_ROSE)
+			deep = deep.lerp(Pal.MARKER_DEEP, BLOCK_ROSE)
+	return [face, deep]
+
+## A block's stone itself, about its own centre put through `xf`, `s` its
+## size: the crown in `face` over its `deep` front, the cut and the bevel,
+## and the plaque its number is carved in or the chisel marks of a blank.
+func _block_body(b, cell: Vector2i, xf: Transform2D, s: float, face: Color, deep: Color) -> void:
 	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2.ONE * 0.92 * s, 0.15 * s), deep)
 	_shape(b, xf, Face.Builder.round_rect(-Vector2.ONE * 0.46 * s, Vector2(0.92, 0.8) * s, 0.15 * s), face)
 	# Cut stone, lit from up and left: the right side of the crown in shade,
@@ -1463,7 +1744,9 @@ func _block(b, cell: Vector2i, pose: Dictionary, now: float) -> void:
 			Color(0.0, 0.0, 0.0, 0.14))
 		_scratch(b, xf, [Vector2(-0.06, 0.12 - 0.1 * h), Vector2(0.14, 0.2 - 0.1 * h)], s, 0.03,
 			Color(0.0, 0.0, 0.0, 0.1))
-	# The light the lit stones beside it throw on its sides.
+
+## The light the lit stones beside a block throw on its sides.
+func _block_rims(b, cell: Vector2i, xf: Transform2D, s: float, now: float) -> void:
 	for d in State.DIRS:
 		var n: Vector2i = cell + d
 		if not state.lets_light(n):
@@ -2918,14 +3201,20 @@ func _draw_life() -> void:
 			var k := Motion.pop_in_scale(e, 0.2).x
 			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.15, Vector2(k, k), 0.0, at),
 				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
-	for f in _flies:
-		var circling: bool = not f.leave and f.until >= 0.0
-		var beat: float = absf(sin(now * (9.0 if circling else 15.0) + f.phase))
-		var level := roundi(beat * (MOTH_LEVELS - 1))
-		var mesh := _moth(int(f.wing), level)
-		shown.append(mesh)
-		var bob := Vector2(0.0, sin(now * 6.0 + f.phase) * _cell * 0.03)
-		_life_layer.draw_mesh(mesh, null, Transform2D(sin(now * 3.0 + f.phase) * 0.18, f.pos + bob))
+	# Every moth in one mesh, its cached wings copied natively under its
+	# transform (checkup 2026-10-01: a draw call a moth before).
+	if not _flies.is_empty():
+		var fb := Face.FlatBuilder.new(_moth_flat)
+		for f in _flies:
+			var circling: bool = not f.leave and f.until >= 0.0
+			var beat: float = absf(sin(now * (9.0 if circling else 15.0) + f.phase))
+			var level := roundi(beat * (MOTH_LEVELS - 1))
+			var bob := Vector2(0.0, sin(now * 6.0 + f.phase) * _cell * 0.03)
+			fb.append(_moth(int(f.wing), level), Transform2D(sin(now * 3.0 + f.phase) * 0.18, f.pos + bob))
+		var moths := fb.mesh()
+		if moths != null:
+			shown.append(moths)
+			_life_layer.draw_mesh(moths, null)
 	if now >= _stamp_at:
 		_draw_stamp(now, shown)
 	_life_shown = shown
@@ -3254,10 +3543,101 @@ func _process(delta: float) -> void:
 	if _tick_life(now):
 		_fly(delta)
 		_life_layer.queue_redraw()
+	_sync_cast()
+
+# --- the cast: every lamp's and cat's body in a few MultiMesh draws ---
+
+## Copies every cat's and lamp's place, turn, look and tint into the cast's
+## MultiMeshes (see `_cast`).
+func _sync_cast() -> void:
+	if _cell <= 0.0 or _cast == null:
+		return
+	var groups: Dictionary = {}   # mesh -> [Transform2D, Color, ...]
+	var order: Array = []
+	for cell in _cats:
+		var cat: Control = _cats[cell]
+		_cast_face(cat, _slots[cat], groups, order)
+	for cell in _lamps:
+		var lamp: Control = _lamps[cell]
+		_cast_face(lamp, _slots[lamp], groups, order)
+	for mesh in _cast_mm.keys():
+		if not groups.has(mesh):
+			_cast_sent.erase(_cast_mm[mesh])
+			_cast_mm.erase(mesh)
+	for mesh: ArrayMesh in order:
+		var list: Array = groups[mesh]
+		var count := list.size() / 2
+		var buf := PackedFloat32Array()
+		buf.resize(count * 12)
+		for k in count:
+			_put(buf, k, list[2 * k], list[2 * k + 1])
+		var mm: MultiMesh = _cast_mm.get(mesh)
+		if mm == null:
+			mm = MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_2D
+			mm.use_colors = true
+			mm.mesh = mesh
+			_cast_mm[mesh] = mm
+		if mm.instance_count != count:
+			mm.instance_count = count
+			_cast_sent.erase(mm)
+		if _cast_sent.get(mm) != buf:
+			mm.buffer = buf
+			_cast_sent[mm] = buf
+	if order != _cast_order:
+		_cast_order = order
+		_cast.queue_redraw()
+
+## Puts the layers of `f` the cast draws (its `skip_layers`) into `groups`,
+## under its slot's transform. Returns whether the face is on show at all.
+func _cast_face(f: Face, slot: Control, groups: Dictionary, order: Array) -> bool:
+	if not f.visible or not slot.visible:
+		return false
+	var xf := slot.get_transform() * f.get_transform()
+	var tone := f.modulate * f.self_modulate * slot.modulate
+	if is_zero_approx(xf.determinant()) or tone.a <= 0.0:
+		return false
+	var R := roundf(f._R_for(minf(f.size.x, f.size.y)) / Face.R_STEP) * Face.R_STEP
+	if R <= 0.0:
+		return false
+	var eye := f._eye_level()
+	var centre := f.size * 0.5
+	for layer in f._layers():
+		if not f.skip_layers.has(layer[0]):
+			continue
+		var mesh: ArrayMesh = f._mesh_for(layer[0], layer[1], R, eye)
+		if not groups.has(mesh):
+			groups[mesh] = []
+			order.append(mesh)
+		groups[mesh].append(xf * f._layer_transform(layer[0], R, centre))
+		groups[mesh].append(tone)
+	return true
+
+## Instance `i` of a 2D MultiMesh buffer: the basis and origin in the
+## server's row order, then the colour (Binairo's).
+static func _put(buf: PackedFloat32Array, i: int, xf: Transform2D, col: Color) -> void:
+	var o := i * 12
+	buf[o] = xf.x.x
+	buf[o + 1] = xf.y.x
+	buf[o + 3] = xf.origin.x
+	buf[o + 4] = xf.x.y
+	buf[o + 5] = xf.y.y
+	buf[o + 7] = xf.origin.y
+	buf[o + 8] = col.r
+	buf[o + 9] = col.g
+	buf[o + 10] = col.b
+	buf[o + 11] = col.a
+
+func _draw_cast() -> void:
+	for mesh in _cast_order:
+		var mm: MultiMesh = _cast_mm.get(mesh)
+		if mm != null:
+			_cast.draw_multimesh(mm, null)
 
 ## Something on the court changed: rebuild it on the next draw.
 func _redraw() -> void:
 	_ground_dirty = true
+	_beams_dirty = true
 	_place_light(_now())
 	queue_redraw()
 

@@ -29,6 +29,7 @@ var _t := -0.3
 var _opened := false
 var _windows := {"idle": [], "play": []}
 var _draws := {"idle": 0, "play": 0}
+var _draw_sum := {"idle": 0.0, "play": 0.0}
 var _next_move := IDLE_TO
 var _moves: Array = []
 var _vp: RID
@@ -128,6 +129,7 @@ func _process(delta: float) -> bool:
 			print("  spike %.1f ms at t=%.2f (%s) moves=%d done=%s | process %.1f render-cpu %.1f draws %d" % [delta * 1000.0, _t, window, _puzzle.get("moves") if _puzzle.get("moves") != null else -1, _puzzle.is_done(),
 				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, RenderingServer.viewport_get_measured_render_time_cpu(_vp), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))])
 		_draws[window] = maxi(_draws[window], int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+		_draw_sum[window] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 		if window == "play" and _t >= _next_move:
 			_next_move += PLAY_EVERY
 			if _exp == "log":
@@ -185,7 +187,7 @@ func _experiment() -> void:
 			var vis := 0
 			for m in _puzzle._markers:
 				vis += int(m.visible)
-			print("  markers drawn by themselves ", vis, "/", _puzzle._markers.size(), " beds ", _puzzle.state.rects.size(), " flies ", _puzzle._flies.size(), " fence ", _puzzle._fence != null, " anim ", _puzzle._anim_until - _puzzle._now())
+			print("  markers drawn by themselves ", vis, "/", _puzzle._markers.size(), " beds ", _puzzle.state.rects.size(), " flies ", _puzzle._flies.size(), " fence ", _puzzle._fence != null, " anim ", _puzzle._anim_until - _puzzle._now(), " flies ", _puzzle._flies.size(), " purrs ", _puzzle._purrs.size(), " shown ", _puzzle._life_shown.size(), " snail ", _puzzle._snail.size())
 		"sk_markers":
 			for m in _puzzle._markers:
 				m.visible = false
@@ -205,6 +207,36 @@ func _experiment() -> void:
 				"tn_chips": _puzzle._chips_row + _puzzle._chips_col}[_exp]
 			for f in hide:
 				f.visible = false
+		"lu_count":
+			# One court build as a frame does it, then one with every bake made
+			# again (the cost of a change to what is at rest), then the beams.
+			await create_timer(2.0).timeout
+			for k in 3:
+				var t0 := Time.get_ticks_usec()
+				_puzzle._build_court(_puzzle._now())
+				var t1 := Time.get_ticks_usec()
+				_puzzle._floor_key = PackedInt32Array()
+				_puzzle._ground_key = PackedInt32Array()
+				_puzzle._beams_dirty = true
+				_puzzle._build_court(_puzzle._now())
+				var t2 := Time.get_ticks_usec()
+				_puzzle._build_beams(load("res://ui/faces/face.gd").Builder.new(), _puzzle._now(), Vector2.ZERO)
+				var t3 := Time.get_ticks_usec()
+				print("  court %.2f ms rebake %.2f ms beams %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
+			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " lamps ", _puzzle.state.lamps().size(),
+				" cats ", _puzzle._cats.size(), " anim ", _puzzle._anim_until - _puzzle._now(), " moths ", _puzzle._flies.size())
+		"lu_lamps", "lu_cats", "lu_life", "lu_veil":
+			match _exp:
+				"lu_lamps":
+					for c in _puzzle._lamps:
+						_puzzle._slots[_puzzle._lamps[c]].visible = false
+				"lu_cats":
+					for c in _puzzle._cats:
+						_puzzle._slots[_puzzle._cats[c]].visible = false
+				"lu_life":
+					_puzzle._life_layer.visible = false
+				"lu_veil":
+					_puzzle._veil_layer.visible = false
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -344,9 +376,9 @@ func _report() -> void:
 			frame.append(v.x)
 			proc.append(v.y)
 			cpu.append(v.z)
-		print("  %-4s frames=%d frame mean=%.2f p95=%.2f max=%.2f | gpu mean=%.2f max=%.2f | render-cpu mean=%.2f max=%.2f | draws=%d" % [
+		print("  %-4s frames=%d frame mean=%.2f p95=%.2f max=%.2f | gpu mean=%.2f max=%.2f | render-cpu mean=%.2f max=%.2f | draws=%d (mean %.0f)" % [
 			w, f.size(), _mean(frame), _pct(frame, 0.95), frame.max(),
-			_mean(proc), proc.max(), _mean(cpu), cpu.max(), _draws[w]])
+			_mean(proc), proc.max(), _mean(cpu), cpu.max(), _draws[w], _draw_sum[w] / f.size()])
 
 static func _count(n: Node) -> int:
 	var k := 0
@@ -504,4 +536,12 @@ func _moves_tents() -> Array:
 			run = []
 	for t: Vector2i in st.solution:
 		out.append({"at": _puzzle.cell_to_local.bind(t.y, t.x)})
+	return out
+
+## Light Up: the answer's lamps tapped in, one tap a step.
+func _moves_lightup() -> Array:
+	_keep = 2
+	var out := []
+	for cell: Vector2i in _puzzle.state.solution:
+		out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
 	return out

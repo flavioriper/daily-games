@@ -789,12 +789,32 @@ class FlatBuilder:
 		if f.is_empty():
 			f = _flatten(m)
 			_flat[m] = f
-		verts.append_array(xf * (f[0] as PackedVector2Array))
+		if xf == Transform2D.IDENTITY:
+			verts.append_array(f[0])
+		else:
+			verts.append_array(xf * (f[0] as PackedVector2Array))
 		if tint == Color.WHITE:
 			cols.append_array(f[1])
 		else:
 			for c: Color in f[1]:
 				cols.append(c * tint)
+
+	## A flattened triangle list made elsewhere (`flat_of`), appended whole.
+	func append_flat(f: Array) -> void:
+		verts.append_array(f[0])
+		cols.append_array(f[1])
+
+	## A Builder's drawing as a plain triangle list, for a caller that keeps
+	## its own cache of them and never needs the mesh.
+	static func flat_of(b) -> Array:
+		var v := PackedVector2Array()
+		var c := PackedColorArray()
+		v.resize(b.idx.size())
+		c.resize(b.idx.size())
+		for k in b.idx.size():
+			v[k] = b.verts[b.idx[k]]
+			c[k] = b.cols[b.idx[k]]
+		return [v, c]
 
 	static func _flatten(m: ArrayMesh) -> Array:
 		var a := m.surface_get_arrays(0)
