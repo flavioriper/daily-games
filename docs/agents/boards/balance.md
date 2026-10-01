@@ -74,3 +74,35 @@ unattended on `feat/balance-sunset` at the user's word.
   the last step (the card is `_out_card`); stamp baseline excludes hinted
   fruit; old saves restore with no stamp. **Open**: a lost day is not saved,
   so reopening deals it fresh -- the same gap as Code Break's, a host change.
+
+### Performance checkup and the tutorial (2026-10-01)
+
+- **Draw calls were never the problem here**: the board already bakes its
+  still scene, plank, keel and fronts into a handful of meshes. Second of
+  two runs (`tests/_probe_perf.gd balance d=<n> fill`, ANGLE, 810x1440):
+  full Insane idles at **101 draw calls, ~8 ms**; Hard 116, Easy 112; the
+  solve's peak 240-254. The board's own scripts cost ~1 ms a frame at rest
+  (`_draw_air` 0.5-1 ms: butterflies and the sweat drops, rebuilt every
+  frame; `_draw_sky` ~0.3).
+- **The lag was a hitch, not a frame rate**: the solve, the first Level!
+  and the first cheer each cost one 27-47 ms frame on the M1. The cause was
+  glyph rasterising: a sticker letter is four glyphs (three outlines and
+  the face), each rasterised at its size the first time it is drawn, and
+  "Balanced!" at 112 px is 36 of them in one frame (`x=bal_warm`, which
+  letters the words early, made the solve's frame ordinary). Fixed in the
+  shared layer: `Rewards.warm(text, fs)` queues words and `_warm_one()`
+  draws one glyph a frame off screen from then on; Balance warms its words
+  (`_warm_words()`, Balanced!, Level!, the cheers, So close!, Boing!) 1.2 s
+  after it opens. Worst play frame since: ~18 ms. Any board whose big
+  stickers hitch can call `_rw.warm()` the same way.
+- **Undo on Insane** (capabilities `["undo"]`): a bounce is appended to the
+  history entry of the move that caused it, so one undo puts the bounced
+  fruit back too; it costs a step of the sun like any move. Insane still has
+  no hint. Reset was already on every band.
+- **The tutorial is up to six pages** (`tutorial_pages()`,
+  `ui/hud/balance_tutorial_diagram.gd`, the seesaw drawn small from the
+  board's own palette and proportions with real `Fruit` faces): drag into a
+  cup and tap home, read the level (cup 1 reads a weight, cup 3 pulls three
+  times), dead level around a pinned fruit; then the hint where the band has
+  one (Hard's costs a step of the sun), the sunset on Hard and Insane, and
+  Insane's springy bales. The page's weights are its own.

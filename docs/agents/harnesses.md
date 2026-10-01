@@ -72,7 +72,7 @@ spikes over 25 ms and any move whose script took over 4 ms:
         --script res://tests/_probe_perf.gd -- <id> d=<0..3> [fill] [x=<exp>] [howto shot=<s>]
 
 `fill` plays every right move but two before the idle window (a full
-board); `x=board|host|hide:<Node>|nowash|faces|parts|undo` switches one
+board); `x=board|host|hide:<Node>|nowash|faces|parts|undo|bal_warm` switches one
 thing off (or times the parts) to see what it costs; `howto shot=1.5`
 leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
