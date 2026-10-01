@@ -576,18 +576,34 @@ class Builder:
 	func ellipse(centre: Vector2, rx: float, ry: float, colour: Color) -> void:
 		fan(ring(centre, rx, ry), colour)
 
-	## A convex outline as a fan about its centroid.
+	## A convex outline as a fan about its centroid. (Written into local
+	## arrays sized once, here and in stroke() and _feather(): a vertex at a
+	## time through vertex() and tri() was most of what a board rebuilding
+	## its meshes every frame paid.)
 	func fan(points: PackedVector2Array, colour: Color) -> void:
 		var n := points.size()
 		var c := Vector2.ZERO
 		for p in points:
 			c += p
-		var ci := vertex(c / n, colour)
-		var first := verts.size()
-		for p in points:
-			vertex(p, colour)
+		var ci := verts.size()
+		var vs := PackedVector2Array()
+		vs.resize(n + 1)
+		vs[0] = c / n
 		for i in n:
-			tri(ci, first + i, first + (i + 1) % n)
+			vs[i + 1] = points[i]
+		var cs := PackedColorArray()
+		cs.resize(n + 1)
+		cs.fill(colour)
+		verts.append_array(vs)
+		cols.append_array(cs)
+		var first := ci + 1
+		var ix := PackedInt32Array()
+		ix.resize(n * 3)
+		for i in n:
+			ix[i * 3] = ci
+			ix[i * 3 + 1] = first + i
+			ix[i * 3 + 2] = first + (i + 1) % n
+		idx.append_array(ix)
 		_feather(points, first, colour)
 
 	## Any simple outline, concave allowed.
@@ -608,23 +624,44 @@ class Builder:
 		var half := width * 0.5
 		var clear := Color(colour, 0.0)
 		var base := verts.size()
+		var vs := PackedVector2Array()
+		var cs := PackedColorArray()
+		vs.resize(n * 4)
+		cs.resize(n * 4)
 		for i in n:
 			var prev := points[(i - 1 + n) % n] if closed or i > 0 else points[i]
 			var next := points[(i + 1) % n] if closed or i < n - 1 else points[i]
 			var t := (next - prev).normalized()
 			var nrm := Vector2(-t.y, t.x)
 			# Four across: outer feather, edge, edge, outer feather.
-			vertex(points[i] - nrm * (half + FEATHER), clear)
-			vertex(points[i] - nrm * half, colour)
-			vertex(points[i] + nrm * half, colour)
-			vertex(points[i] + nrm * (half + FEATHER), clear)
+			var w := i * 4
+			vs[w] = points[i] - nrm * (half + FEATHER)
+			vs[w + 1] = points[i] - nrm * half
+			vs[w + 2] = points[i] + nrm * half
+			vs[w + 3] = points[i] + nrm * (half + FEATHER)
+			cs[w] = clear
+			cs[w + 1] = colour
+			cs[w + 2] = colour
+			cs[w + 3] = clear
+		verts.append_array(vs)
+		cols.append_array(cs)
 		var segs := n if closed else n - 1
-		for i in segs:
-			var a := base + i * 4
-			var c := base + ((i + 1) % n) * 4
-			for k in 3:
-				tri(a + k, c + k, c + k + 1)
-				tri(a + k, c + k + 1, a + k + 1)
+		if segs > 0:
+			var ix := PackedInt32Array()
+			ix.resize(segs * 18)
+			var w := 0
+			for i in segs:
+				var a := base + i * 4
+				var c := base + ((i + 1) % n) * 4
+				for k in 3:
+					ix[w] = a + k
+					ix[w + 1] = c + k
+					ix[w + 2] = c + k + 1
+					ix[w + 3] = a + k
+					ix[w + 4] = c + k + 1
+					ix[w + 5] = a + k + 1
+					w += 6
+			idx.append_array(ix)
 		if not closed and caps:
 			disc(points[0], half, colour)
 			disc(points[n - 1], half, colour)
@@ -641,17 +678,32 @@ class Builder:
 			area += points[i].x * points[j].y - points[j].x * points[i].y
 		var out := 1.0 if area > 0.0 else -1.0
 		var rim := verts.size()
+		var vs := PackedVector2Array()
+		vs.resize(n)
 		for i in n:
 			var e0 := (points[i] - points[(i - 1 + n) % n]).normalized()
 			var e1 := (points[(i + 1) % n] - points[i]).normalized()
 			var nrm := Vector2(e0.y, -e0.x) + Vector2(e1.y, -e1.x)
 			if nrm.length_squared() < 1e-8:
 				nrm = Vector2(e1.y, -e1.x)
-			vertex(points[i] + nrm.normalized() * out * FEATHER, clear)
+			vs[i] = points[i] + nrm.normalized() * out * FEATHER
+		var cs := PackedColorArray()
+		cs.resize(n)
+		cs.fill(clear)
+		verts.append_array(vs)
+		cols.append_array(cs)
+		var ix := PackedInt32Array()
+		ix.resize(n * 6)
 		for i in n:
 			var j := (i + 1) % n
-			tri(first + i, first + j, rim + j)
-			tri(first + i, rim + j, rim + i)
+			var w := i * 6
+			ix[w] = first + i
+			ix[w + 1] = first + j
+			ix[w + 2] = rim + j
+			ix[w + 3] = first + i
+			ix[w + 4] = rim + j
+			ix[w + 5] = rim + i
+		idx.append_array(ix)
 
 	## Another Builder-made mesh, moved by `xf` and tinted, over what is
 	## here: how a board bakes many cached drawings into one.

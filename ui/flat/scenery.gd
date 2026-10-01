@@ -126,11 +126,24 @@ static func shadow() -> ArrayMesh:
 ## cord mesh) draws its shadows with this, so they are the family's shadow at
 ## no draw call of their own.
 static func soft_disc(b: Face.Builder, at: Vector2, rx: float, ry: float, colour: Color) -> void:
-	var centre := b.vertex(at, colour)
 	var rim := Face.Builder.ring(at, rx, ry)
-	var first := b.verts.size()
-	var clear := Color(colour, 0.0)
-	for p in rim:
-		b.vertex(p, clear)
-	for i in rim.size():
-		b.tri(centre, first + i, first + (i + 1) % rim.size())
+	var n := rim.size()
+	var centre := b.verts.size()
+	var first := centre + 1
+	# Written whole, not a vertex at a time: a board lays dozens of these a
+	# frame (Untangle's knot halos).
+	var vs := PackedVector2Array([at])
+	vs.append_array(rim)
+	var cs := PackedColorArray()
+	cs.resize(n + 1)
+	cs.fill(Color(colour, 0.0))
+	cs[0] = colour
+	b.verts.append_array(vs)
+	b.cols.append_array(cs)
+	var ix := PackedInt32Array()
+	ix.resize(n * 3)
+	for i in n:
+		ix[i * 3] = centre
+		ix[i * 3 + 1] = first + i
+		ix[i * 3 + 2] = first + (i + 1) % n
+	b.idx.append_array(ix)

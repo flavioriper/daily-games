@@ -69,6 +69,9 @@ var wiggles: Array = []
 var _line := PackedVector2Array()
 var _cum := PackedFloat32Array()
 var _line_ok := false
+## Goes up every time the drawn line may have changed: what a caller keeps
+## worked out from the line (the board's crossings) is good while it holds.
+var ver := 0
 ## Where each chain span starts in the drawn line: a span is one piece where
 ## the rope runs straight, three where it bends or twists.
 var _span_at := PackedInt32Array()
@@ -84,6 +87,7 @@ func setup(a: Vector2, b: Vector2, max_length: float, bow: float) -> void:
 		p[i] = a.lerp(b, u) + n * bow * sin(PI * u)
 		q[i] = p[i]
 	_line_ok = false
+	ver += 1
 
 ## Straight and still between two points, no physics: a board that has just
 ## been laid out, a rope restored. Binds still apply, so a wrap is drawn.
@@ -97,6 +101,7 @@ func snap(a: Vector2, b: Vector2) -> void:
 		q[i] = p[i]
 	extra = 0.0
 	_line_ok = false
+	ver += 1
 
 func clear_binds() -> void:
 	bind_i.resize(0)
@@ -106,6 +111,20 @@ func clear_binds() -> void:
 	_held.fill(0.0)
 	wiggles = []
 	_line_ok = false
+	ver += 1
+
+## Every bind, the braids' twists and the route at once, from a caller that
+## lays them all out again whenever anything moves: a rope whose binds come
+## out the same keeps its line (and `ver`), so what was worked out from it
+## still holds.
+func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> void:
+	if bi == bind_i and bat == bind_at and bk == bind_k and way == route and wg == wiggles:
+		return
+	clear_binds()
+	route = way
+	for n in bi.size():
+		bind(bi[n], bat[n], bk[n])
+	wiggles = wg
 
 func bind(i: int, at: Vector2, k: float) -> void:
 	bind_i.append(i)
@@ -143,6 +162,7 @@ func step(a: Vector2, b: Vector2) -> void:
 		for i in range(1, SEGS - 1):
 			p[i] += ((p[i - 1] + p[i + 1]) * 0.5 - p[i]) * BEND
 	_line_ok = false
+	ver += 1
 
 func _relax(seg: float, passes: int) -> void:
 	for it in passes:
@@ -423,12 +443,28 @@ static func _ribbon(b: Face.Builder, line: PackedVector2Array, off: Vector2, hal
 	if n < 2:
 		return
 	var m := across.size()
-	# Each stop's colour as seen from the other side, for the blend.
-	var mirror: Array = []
+	# Each stop's colour as given and as seen from the other side, for the
+	# blend; and the stops' offsets across, in px.
+	var given := PackedColorArray()
+	var mirror := PackedColorArray()
+	var wide := PackedFloat32Array()
+	given.resize(m)
+	mirror.resize(m)
+	wide.resize(m)
 	for j in m:
-		mirror.append(_sample(across, cols, -across[j]))
+		given[j] = cols[j]
+		mirror[j] = _sample(across, cols, -across[j])
+		wide[j] = across[j] * half
+	# Written into local arrays sized once and handed over whole: a rope is a
+	# thousand vertices, and an append a vertex through the builder was most
+	# of what a moving rope cost.
 	var base := b.verts.size()
+	var vs := PackedVector2Array()
+	var cs := PackedColorArray()
+	vs.resize(n * m)
+	cs.resize(n * m)
 	var prev := Vector2.ZERO
+	var w := 0
 	for i in n:
 		var t := line[mini(i + 1, n - 1)] - line[maxi(i - 1, 0)]
 		var nm := t.orthogonal().normalized() if t.length_squared() > 0.0 else prev
@@ -441,13 +477,40 @@ static func _ribbon(b: Face.Builder, line: PackedVector2Array, off: Vector2, hal
 		var flip := smoothstep(-0.35, 0.35, nm.dot(LIGHT))
 		var at := line[i] + off
 		for j in m:
-			b.verts.append(at + nm * (across[j] * half))
-			b.cols.append((cols[j] as Color).lerp(mirror[j], flip))
+			vs[w] = at + nm * wide[j]
+			cs[w] = given[j].lerp(mirror[j], flip)
+			w += 1
+	b.verts.append_array(vs)
+	b.cols.append_array(cs)
+	b.idx.append_array(_grid(n, m, base))
+
+## The triangles of a band `n` points long and `m` stops across whose first
+## vertex is `base`, kept: a moving rope asks for the same few again and
+## again, frame after frame.
+static var _grids := {}
+static func _grid(n: int, m: int, base: int) -> PackedInt32Array:
+	var key := Vector3i(n, m, base)
+	var got = _grids.get(key)
+	if got != null:
+		return got
+	if _grids.size() > 512:
+		_grids.clear()
+	var out := PackedInt32Array()
+	out.resize((n - 1) * (m - 1) * 6)
+	var w := 0
 	for i in n - 1:
 		var r0 := base + i * m
 		var r1 := r0 + m
 		for j in m - 1:
-			b.idx.append_array([r0 + j, r1 + j, r1 + j + 1, r0 + j, r1 + j + 1, r0 + j + 1])
+			out[w] = r0 + j
+			out[w + 1] = r1 + j
+			out[w + 2] = r1 + j + 1
+			out[w + 3] = r0 + j
+			out[w + 4] = r1 + j + 1
+			out[w + 5] = r0 + j + 1
+			w += 6
+	_grids[key] = out
+	return out
 
 ## The colour of a band `across` / `cols` at the place `a` across it.
 static func _sample(across: PackedFloat32Array, cols: Array, a: float) -> Color:
@@ -484,8 +547,19 @@ func _strands(b: Face.Builder, line: PackedVector2Array, c: PackedFloat32Array, 
 	var dark := Color(deep, 0.42 * alpha)
 	var pale := Color(light, 0.45 * alpha)
 	var s := ceilf((s0 - step * 0.5) / step) * step + step * 0.5
+	if s >= s1:
+		return
+	var count := int(ceilf((s1 - s) / step))
+	# Two quads a strand, eight vertices a quad, written into local arrays
+	# sized once (see _ribbon).
+	var vs := PackedVector2Array()
+	var cs := PackedColorArray()
+	vs.resize(count * 16)
+	cs.resize(count * 16)
+	var base := b.verts.size()
+	var at := 0
 	var k := 1
-	while s < s1:
+	while s < s1 and at < count * 16:
 		while k < c.size() - 1 and c[k] < s:
 			k += 1
 		var seg := c[k] - c[k - 1]
@@ -497,26 +571,59 @@ func _strands(b: Face.Builder, line: PackedVector2Array, c: PackedFloat32Array, 
 		# on the side the light comes from.
 		var e0 := pt - nm * half - tn * half * 0.7
 		var e1 := pt + nm * half + tn * half * 0.7
-		_quad(b, e0, e1, w * 0.12, dark)
+		_quad_at(vs, cs, at, e0, e1, w * 0.12, dark)
 		var ridge := tn * (w * 0.19)
 		var lit := nm if nm.dot(LIGHT) > 0.0 else -nm
 		var r0 := pt + ridge + lit * half * 0.85 + tn * half * 0.6 * (1.0 if lit == nm else -1.0)
-		_quad(b, pt + ridge, r0, w * 0.11, pale)
+		_quad_at(vs, cs, at + 8, pt + ridge, r0, w * 0.11, pale)
+		at += 16
 		s += step
+	if at < vs.size():
+		vs.resize(at)
+		cs.resize(at)
+	b.verts.append_array(vs)
+	b.cols.append_array(cs)
+	b.idx.append_array(_quads(at / 8, base))
 
 ## A short straight stroke as one quad with a feathered rim, the same shape
-## as Builder.stroke's segment, written out: a rope has hundreds of these.
-static func _quad(b: Face.Builder, a: Vector2, c: Vector2, width: float, colour: Color) -> void:
+## as Builder.stroke's segment, written out at `w` in `vs`/`cs`: eight
+## vertices, a rim either side.
+static func _quad_at(vs: PackedVector2Array, cs: PackedColorArray, w: int, a: Vector2, c: Vector2, width: float, colour: Color) -> void:
 	var t := (c - a).normalized()
 	var nrm := Vector2(-t.y, t.x)
-	var w := nrm * (width * 0.5)
+	var hw := nrm * (width * 0.5)
 	var f := nrm * (width * 0.5 + Face.FEATHER)
 	var clear := Color(colour, 0.0)
-	var base := b.verts.size()
-	for end in [a, c]:
-		b.verts.append(end - f); b.cols.append(clear)
-		b.verts.append(end - w); b.cols.append(colour)
-		b.verts.append(end + w); b.cols.append(colour)
-		b.verts.append(end + f); b.cols.append(clear)
-	for k in 3:
-		b.idx.append_array([base + k, base + 4 + k, base + 5 + k, base + k, base + 5 + k, base + k + 1])
+	vs[w] = a - f; cs[w] = clear
+	vs[w + 1] = a - hw; cs[w + 1] = colour
+	vs[w + 2] = a + hw; cs[w + 2] = colour
+	vs[w + 3] = a + f; cs[w + 3] = clear
+	vs[w + 4] = c - f; cs[w + 4] = clear
+	vs[w + 5] = c - hw; cs[w + 5] = colour
+	vs[w + 6] = c + hw; cs[w + 6] = colour
+	vs[w + 7] = c + f; cs[w + 7] = clear
+
+## The triangles of `n` quads from `_quad_at`, the first vertex at `base`.
+static var _quad_grids := {}
+static func _quads(n: int, base: int) -> PackedInt32Array:
+	var key := Vector2i(n, base)
+	var got = _quad_grids.get(key)
+	if got != null:
+		return got
+	if _quad_grids.size() > 512:
+		_quad_grids.clear()
+	var out := PackedInt32Array()
+	out.resize(n * 18)
+	var w := 0
+	for q in n:
+		var o := base + q * 8
+		for k in 3:
+			out[w] = o + k
+			out[w + 1] = o + 4 + k
+			out[w + 2] = o + 5 + k
+			out[w + 3] = o + k
+			out[w + 4] = o + 5 + k
+			out[w + 5] = o + k + 1
+			w += 6
+	_quad_grids[key] = out
+	return out

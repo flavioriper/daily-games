@@ -79,6 +79,9 @@ A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
 (a click in board space) or `{do}` (a Callable, for a board played
 through its own methods, Code Break's `pick`/`check`); a move waits while
 the board is `_busy`, and `fill` holds the clock until the board is full
-or done. On this Mac render CPU
+or done. Untangle's moves are carries (a press, six drags over the
+ropes, a release) built at play time from `state.hint_step()`, whose beam
+search shows up as a 45-90 ms `hint_step` line on Insane -- the probe's
+cost, not a frame of play. On this Mac render CPU
 is nearly the whole frame and runs about 70 us per draw call, so draw calls
 are the lever; ms readings swing about 1.5 ms run to run.
