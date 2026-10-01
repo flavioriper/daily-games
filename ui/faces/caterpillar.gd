@@ -78,40 +78,55 @@ const SNACK := 0.36
 ## each segment's walk: x how far its left leg has swung forward (the right
 ## swings the other way), y how far through its lift the step is, both -1..1
 ## already scaled by how hard it is walking.
+##
+## `from` and `to` draw only segments [from, to) -- `to` -1 runs on through
+## the head's point -- and `layer` picks the passes: 1 the shadows and legs,
+## 2 the tube and the rounds, 3 both. The board bakes the settled tail once
+## and rebuilds only the stretch near the head each frame, so a long body
+## costs no more a frame than a short one; drawn tail-lo, head-lo, tail-hi,
+## head-hi, the four meshes layer exactly as one call would. The tail's tube
+## runs on to point `to`, under the first round the head's stretch draws.
 static func body(b: Face.Builder, pts: PackedVector2Array, s: float, scales: Array,
-		breath: PackedFloat32Array, glow := PackedFloat32Array(), gait := PackedVector2Array()) -> void:
+		breath: PackedFloat32Array, glow := PackedFloat32Array(), gait := PackedVector2Array(),
+		from := 0, to := -1, layer := 3) -> void:
 	var n := pts.size()
-	if n == 0:
+	if n == 0 or from >= n:
 		return
-	for i in n:
-		var sc: Vector2 = scales[i] if i < n - 1 else Vector2.ONE
-		if sc.x <= 0.01:
-			continue
-		var r := s * SEG_R * _taper(i) * sc.x
-		Scenery.soft_disc(b, pts[i] + Vector2(0.0, s * SHADOW_DROP), r * 1.25, r * 1.1,
-			Color(Pal.TEXT, SHADOW_ALPHA))
-	for i in n - 1:
-		var sc: Vector2 = scales[i]
-		if sc.x <= 0.01:
-			continue
-		var r := s * SEG_R * _taper(i) * sc.x
-		var dir := _dir(pts, i)
-		var nrm := dir.orthogonal()
-		var step := gait[i] if i < gait.size() else Vector2.ZERO
-		for side: float in [-1.0, 1.0]:
-			# A leg swinging forward is lifted: it tucks in toward the body and
-			# its foot pales a little, then plants and pushes back.
-			var fwd := step.x * side
-			var lift := maxf(0.0, step.y * side)
-			var root := pts[i] + nrm * side * r * LEG_ROOT
-			var tip := pts[i] + nrm * side * r * (LEG_REACH - LEG_TUCK * lift) + dir * r * (0.12 + LEG_STRIDE * fwd)
-			var bend := root.lerp(tip, 0.5) + dir * r * LEG_STRIDE * fwd * 0.3
-			b.stroke(PackedVector2Array([root, bend, tip]), s * LEG_W * sc.x, Pal.LEAF_DEEP)
-			b.disc(tip, s * FOOT_R * sc.x * (1.0 - 0.15 * lift), Pal.LEAF_DEEP.lerp(Pal.TEXT, 0.25).lerp(Pal.LEAF, 0.5 * lift))
-	if n > 1:
-		b.stroke(pts, s * TUBE_DEEP, Pal.LEAF_DEEP)
-		b.stroke(pts, s * TUBE, Pal.LEAF)
-	for i in n - 1:
+	var shadow_to := n if to < 0 else mini(to, n)
+	var seg_to := n - 1 if to < 0 else mini(to, n - 1)
+	if layer & 1:
+		for i in range(from, shadow_to):
+			var sc: Vector2 = scales[i] if i < n - 1 else Vector2.ONE
+			if sc.x <= 0.01:
+				continue
+			var r := s * SEG_R * _taper(i) * sc.x
+			Scenery.soft_disc(b, pts[i] + Vector2(0.0, s * SHADOW_DROP), r * 1.25, r * 1.1,
+				Color(Pal.TEXT, SHADOW_ALPHA))
+		for i in range(from, seg_to):
+			var sc: Vector2 = scales[i]
+			if sc.x <= 0.01:
+				continue
+			var r := s * SEG_R * _taper(i) * sc.x
+			var dir := _dir(pts, i)
+			var nrm := dir.orthogonal()
+			var step := gait[i] if i < gait.size() else Vector2.ZERO
+			for side: float in [-1.0, 1.0]:
+				# A leg swinging forward is lifted: it tucks in toward the body and
+				# its foot pales a little, then plants and pushes back.
+				var fwd := step.x * side
+				var lift := maxf(0.0, step.y * side)
+				var root := pts[i] + nrm * side * r * LEG_ROOT
+				var tip := pts[i] + nrm * side * r * (LEG_REACH - LEG_TUCK * lift) + dir * r * (0.12 + LEG_STRIDE * fwd)
+				var bend := root.lerp(tip, 0.5) + dir * r * LEG_STRIDE * fwd * 0.3
+				b.stroke(PackedVector2Array([root, bend, tip]), s * LEG_W * sc.x, Pal.LEAF_DEEP)
+				b.disc(tip, s * FOOT_R * sc.x * (1.0 - 0.15 * lift), Pal.LEAF_DEEP.lerp(Pal.TEXT, 0.25).lerp(Pal.LEAF, 0.5 * lift))
+	if not (layer & 2):
+		return
+	var tube := pts.slice(from, n if to < 0 else mini(to + 1, n))
+	if tube.size() > 1:
+		b.stroke(tube, s * TUBE_DEEP, Pal.LEAF_DEEP)
+		b.stroke(tube, s * TUBE, Pal.LEAF)
+	for i in range(from, seg_to):
 		var sc: Vector2 = scales[i]
 		if sc.x <= 0.01:
 			continue

@@ -210,11 +210,12 @@ static func _stir(rng: RandomNumberGenerator, w: int, h: int) -> PackedInt32Arra
 # field and not hedged); shifting a set by 1 or `w` moves it one cell, and the
 # right shifts are masked because GDScript's are arithmetic.
 
-## Counts walks from leaf 1 over every cell, leaves in order, ending on the
-## last leaf, up to `limit`. {count, walks (the first `limit` found), capped}.
-static func count(w: int, h: int, leaves: PackedInt32Array, hedges: Array, limit: int, cap: int) -> Dictionary:
+## The masks every search and judge reads: which cells have an open edge on
+## each side, the leaves by cell, the last leaf's bit and, on Peckish, the
+## middle leaves' bits (`food`) and the tummy (`hunger`).
+static func context(w: int, h: int, leaves: PackedInt32Array, hedges: Array, hunger := 0) -> Dictionary:
 	var n := w * h
-	var ctx := {"w": w, "n": n, "limit": limit, "cap": cap, "nodes": 0, "walks": []}
+	var ctx := {"w": w, "n": n, "hunger": hunger}
 	var hs := {}
 	for e in hedges:
 		hs[e] = true
@@ -242,12 +243,28 @@ static func count(w: int, h: int, leaves: PackedInt32Array, hedges: Array, limit
 	ctx.clue = clue
 	ctx.last = leaves.size()
 	ctx.end_bit = 1 << leaves[leaves.size() - 1]
+	var food := 0
+	for k in range(1, leaves.size() - 1):
+		food |= 1 << leaves[k]
+	ctx.food = food
+	return ctx
+
+## Counts walks from leaf 1 over every cell, leaves in order, ending on the
+## last leaf, up to `limit`. {count, walks (the first `limit` found), capped}.
+static func count(w: int, h: int, leaves: PackedInt32Array, hedges: Array, limit: int, cap: int,
+		hunger := 0) -> Dictionary:
+	var n := w * h
+	var ctx := context(w, h, leaves, hedges, hunger)
+	ctx.limit = limit
+	ctx.cap = cap
+	ctx.nodes = 0
+	ctx.walks = []
 	var full := -1 if n == 64 else (1 << n) - 1
 	var path := PackedInt32Array([leaves[0]])
-	_walk(ctx, leaves[0], 2, full & ~(1 << leaves[0]), path)
+	_walk(ctx, leaves[0], 2, full & ~(1 << leaves[0]), path, hunger)
 	return {"count": ctx.walks.size(), "walks": ctx.walks, "capped": ctx.nodes > cap}
 
-static func _walk(ctx: Dictionary, head: int, next: int, free: int, path: PackedInt32Array) -> void:
+static func _walk(ctx: Dictionary, head: int, next: int, free: int, path: PackedInt32Array, tummy := 0) -> void:
 	ctx.nodes += 1
 	if ctx.nodes > ctx.cap:
 		return
@@ -267,15 +284,28 @@ static func _walk(ctx: Dictionary, head: int, next: int, free: int, path: Packed
 		if not (free & mb):
 			continue
 		var k: int = ctx.clue[m]
-		if k != 0 and k != next:
+		var t2 := 0
+		var hunger: int = ctx.hunger
+		if hunger > 0:
+			# Peckish: any leaf in any order, but a bare square only on a
+			# tummy that still has room.
+			if k == 0:
+				if tummy <= 0:
+					continue
+				t2 = tummy - 1
+			else:
+				t2 = hunger
+		elif k != 0 and k != next:
 			continue
 		if mb == ctx.end_bit and free != mb:
 			continue
 		var f2 := free & ~mb
 		if f2 != 0 and not _viable(ctx, m, f2):
 			continue
+		if hunger > 0 and f2 != 0 and not _fed(ctx, m, f2, t2):
+			continue
 		path.append(m)
-		_walk(ctx, m, next + 1 if k != 0 else next, f2, path)
+		_walk(ctx, m, next + 1 if k != 0 else next, f2, path, t2)
 		path.resize(path.size() - 1)
 		if ctx.walks.size() >= ctx.limit or ctx.nodes > ctx.cap:
 			return
@@ -310,3 +340,176 @@ static func _viable(ctx: Dictionary, head: int, free: int) -> bool:
 	if free & ~any:
 		return false
 	return (one & ~int(ctx.end_bit)) == 0
+
+## Peckish: whether a leaf is still within the tummy's reach of the head --
+## `tummy` bare squares and then a leaf, through free squares only -- or,
+## once only the last leaf is left, whether the bare squares left fit in it.
+static func _fed(ctx: Dictionary, head: int, free: int, tummy: int) -> bool:
+	var food: int = free & int(ctx.food)
+	if food == 0:
+		return popcount(free) - 1 <= tummy
+	var w: int = ctx.w
+	var r: int = ctx.r
+	var l: int = ctx.l
+	var d: int = ctx.d
+	var u: int = ctx.u
+	var m1: int = ctx.m1
+	var mw: int = ctx.mw
+	var bare: int = free & ~int(ctx.food) & ~int(ctx.end_bit)
+	var reach := 1 << head
+	for i in tummy + 1:
+		var near := ((reach & r) << 1) | (((reach & l) >> 1) & m1) \
+			| ((reach & d) << w) | (((reach & u) >> w) & mw)
+		if near & food:
+			return true
+		var grown := reach | (near & bare)
+		if grown == reach:
+			return false
+		reach = grown
+	return false
+
+## How many bits are set.
+static func popcount(x: int) -> int:
+	var c := 0
+	while x != 0:
+		x &= x - 1
+		c += 1
+	return c
+
+# --------------------------------------------------------------- Peckish
+#
+# Insane's garden: the leaves carry no numbers (only the first and the last
+# are marked) and the caterpillar's tummy holds HUNGER bare squares between
+# bites. The answer is grown as every band's is, leaves are laid along it at
+# most HUNGER bare squares apart, and the proof counts walks under those
+# rules; while it finds a second, the first place the two part is fenced (or,
+# where the answer itself runs, given a leaf).
+
+## {cols, rows, path, leaves (first, the unnumbered ones, last), hedges,
+##  unique, hunger}
+static func generate_peckish(rng: RandomNumberGenerator, w: int, h: int, hunger: int,
+		hedge_max: int, cap: int) -> Dictionary:
+	var n := w * h
+	var p := _stir(rng, w, h)
+	var on_path := {}
+	for i in n - 1:
+		on_path[edge_key(p[i], p[i + 1])] = true
+	# Leaves as far apart as the tummy allows, now and then one sooner.
+	var idx := {0: true, n - 1: true}
+	var at := 0
+	while at + hunger + 1 < n - 1:
+		at += hunger + 1 - (1 if rng.randf() < 0.25 else 0)
+		idx[at] = true
+	var hedges := {}
+	var unique := false
+	for g in n * 2:
+		var s := count(w, h, _peck_leaves(p, idx), hedges.keys(), 2, cap, hunger)
+		if s.count == 1 and not s.capped:
+			unique = true
+			break
+		if s.capped or s.walks.size() < 2:
+			if hedges.size() >= hedge_max:
+				break
+			# Out of nodes: a fence on a random edge the answer never crosses.
+			for tries in 40:
+				var c := rng.randi_range(0, n - 1)
+				var ns := _nbrs(w, h, c)
+				var e := edge_key(c, ns[rng.randi_range(0, ns.size() - 1)])
+				if not on_path.has(e) and not hedges.has(e):
+					hedges[e] = true
+					break
+			continue
+		var alt: PackedInt32Array = s.walks[0] if s.walks[0] != p else s.walks[1]
+		var i := 0
+		while alt[i] == p[i]:
+			i += 1
+		var e := edge_key(alt[i - 1], alt[i])
+		if not on_path.has(e) and hedges.size() < hedge_max:
+			hedges[e] = true
+		else:
+			# The stray walk ran along the answer's own edge: a leaf where
+			# the two first disagree pins it instead.
+			var q := i
+			while q < n - 1 and idx.has(q):
+				q += 1
+			if q >= n - 1:
+				break
+			idx[q] = true
+	return {"cols": w, "rows": h, "path": p, "leaves": _peck_leaves(p, idx),
+		"hedges": PackedInt32Array(hedges.keys()), "unique": unique, "hunger": hunger}
+
+## The leaves in path order: the first, the middle ones, the last.
+static func _peck_leaves(p: PackedInt32Array, idx: Dictionary) -> PackedInt32Array:
+	return _leaves_of(p, idx)
+
+## Insane's knobs: an 8x8 garden, a tummy of five bare squares, up to
+## sixteen fences, and the proof's node cap. Mined offline
+## (tools/insane/caterpillar_ladder.gd) into content/insane/caterpillar.json,
+## because one board costs ~400 ms here.
+const PECK_SIDE := 8
+const PECK_HUNGER := 5
+const PECK_FENCES := 16
+const PECK_CAP := 4000
+
+## One bank row, plain ints only.
+static func to_bank(g: Dictionary) -> Dictionary:
+	return {"cols": g.cols, "rows": g.rows, "hunger": g.hunger, "path": Array(g.path),
+		"leaves": Array(g.leaves), "hedges": Array(g.hedges)}
+
+static func from_bank(row: Dictionary) -> Dictionary:
+	if row.is_empty() or not row.has("path"):
+		return {}
+	var path := PackedInt32Array()
+	for v in row.path:
+		path.append(int(v))
+	var leaves := PackedInt32Array()
+	for v in row.leaves:
+		leaves.append(int(v))
+	var hedges := PackedInt32Array()
+	for v in row.hedges:
+		hedges.append(int(v))
+	return {"cols": int(row.cols), "rows": int(row.rows), "hunger": int(row.hunger), "path": path,
+		"leaves": leaves, "hedges": hedges, "unique": true}
+
+## How many steps a player could take along the answer that the board would
+## not refuse and that no walk finishes from: on a proved board, every legal
+## step off the answer. The bank's rung.
+static func traps(g: Dictionary) -> int:
+	var w: int = g.cols
+	var h: int = g.rows
+	var p: PackedInt32Array = g.path
+	var hunger: int = g.get("hunger", 0)
+	var ctx := context(w, h, g.leaves, Array(g.hedges), hunger)
+	var on := {}
+	var tummy := hunger
+	var out := 0
+	on[p[0]] = true
+	for i in p.size() - 1:
+		var head := p[i]
+		var hb := 1 << head
+		for s in [[ctx.r, 1], [ctx.l, -1], [ctx.d, w], [ctx.u, -w]]:
+			if not (int(s[0]) & hb):
+				continue
+			var m: int = head + int(s[1])
+			if on.has(m) or m == p[i + 1]:
+				continue
+			var k: int = ctx.clue[m]
+			if (1 << m) == int(ctx.end_bit) and on.size() + 1 < p.size():
+				continue
+			if hunger > 0:
+				if k == 0 and tummy <= 0:
+					continue
+			elif k != 0 and k != _eaten_on(ctx, on) + 1:
+				continue
+			out += 1
+		var nxt := p[i + 1]
+		on[nxt] = true
+		tummy = hunger if ctx.clue[nxt] != 0 else tummy - 1
+	return out
+
+static func _eaten_on(ctx: Dictionary, on: Dictionary) -> int:
+	var k := 0
+	for c in on:
+		if ctx.clue[c] != 0:
+			k += 1
+	return k
