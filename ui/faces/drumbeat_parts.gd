@@ -383,3 +383,230 @@ static func critter(kind: int, s: float, mood := Mood.HAPPY, arms_up := false, s
 	var m := b.mesh()
 	_cache[key] = m
 	return m
+
+# --- the four drums (2026-10-01): a band of drums in a row, each with its own
+# colour, voice and face; the notes coming down to each are berries of its
+# colour. Left to right, low to high: the big drum, the hand drum, the
+# jingle drum and the tongue drum. ---
+
+## Each drum's berry: body, deep, highlight.
+const LANE_BODY := [Color("e8604c"), Color("f2a33a"), Color("7fbf5a"), Color("4fa3d6")]
+const LANE_DEEP := [Color("c24a3a"), Color("d07f22"), Color("5f9c3e"), Color("3a82b4")]
+const LANE_HI := [Color("f59a84"), Color("fbd08a"), Color("b7e07a"), Color("8cc8ec")]
+const GOLDEN := Color("f2c14e")
+const ECHO := Color("b9a8f0")
+
+## A berry for drum `lane` at radius `r`: an ink rim, a cream ring and the
+## berry inside with a shine, a leaf and a face. `ghost` draws it as Echo's
+## memory -- a lilac outline with no fill, for a hidden note struck.
+static func berry(lane: int, r: float, mood := Mood.HAPPY) -> ArrayMesh:
+	var key := _key(["berry", lane, roundi(r), mood])
+	if _cache.has(key):
+		return _cache[key]
+	lane = clampi(lane, 0, 3)
+	var body: Color = LANE_BODY[lane]
+	var deep: Color = LANE_DEEP[lane]
+	var hi: Color = LANE_HI[lane]
+	var b := Face.Builder.new()
+	b.disc(Vector2(0, r * 0.12), r * 1.04, Color(INK, 0.18))
+	b.disc(Vector2.ZERO, r, INK)
+	b.disc(Vector2.ZERO, r * 0.9, CREAM)
+	var inner := r * 0.72
+	b.disc(Vector2.ZERO, inner, deep)
+	b.disc(Vector2(-inner * 0.06, -inner * 0.08), inner * 0.9, body)
+	b.ellipse(Vector2(-inner * 0.36, -inner * 0.44), inner * 0.26, inner * 0.14, Color(hi, 0.9))
+	# each drum's berry its own leaf: one, two, a sprig, none (a plum)
+	match lane:
+		0:
+			b.ellipse(Vector2(inner * 0.1, -inner * 0.92), inner * 0.28, inner * 0.12, LEAF)
+		1:
+			for s in [-1.0, 1.0]:
+				b.ellipse(Vector2(s * inner * 0.2, -inner * 0.9), inner * 0.22, inner * 0.1, LEAF)
+		2:
+			b.stroke(PackedVector2Array([Vector2(0, -inner * 0.8), Vector2(inner * 0.1, -inner * 1.12)]), inner * 0.08, LEAF_DEEP)
+			b.disc(Vector2(inner * 0.18, -inner * 1.1), inner * 0.12, LEAF)
+	_face(b, Vector2(0, inner * 0.12), inner * 0.9, mood)
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## The golden berry: one in a song, worth a shower of coins.
+static func golden_berry(r: float, mood := Mood.JOY) -> ArrayMesh:
+	var key := _key(["golden", roundi(r), mood])
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for i in 8:
+		var a := TAU * i / 8.0
+		b.polygon(PackedVector2Array([Vector2.from_angle(a - 0.12) * r * 0.9, Vector2.from_angle(a) * r * 1.38, Vector2.from_angle(a + 0.12) * r * 0.9]), Color(GOLDEN, 0.7))
+	b.disc(Vector2.ZERO, r, INK)
+	b.disc(Vector2.ZERO, r * 0.9, Color("fff1c8"))
+	b.disc(Vector2.ZERO, r * 0.72, ROLL_DEEP)
+	b.disc(Vector2(-r * 0.04, -r * 0.06), r * 0.65, GOLDEN)
+	b.ellipse(Vector2(-r * 0.26, -r * 0.32), r * 0.2, r * 0.1, Color(1, 1, 0.9, 0.95))
+	_face(b, Vector2(0, r * 0.1), r * 0.64, mood)
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## Echo's hidden note, shown for a moment once struck: a lilac ring.
+static func ghost(r: float) -> ArrayMesh:
+	var key := _key(["ghost", roundi(r)])
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.stroke(Face.Builder.arc_points(Vector2.ZERO, r * 0.9, 0.0, TAU), r * 0.18, Color(ECHO, 0.9), true)
+	b.stroke(Face.Builder.arc_points(Vector2.ZERO, r * 0.62, 0.0, TAU), r * 0.08, Color(Color.WHITE, 0.6), true)
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## A hold note's tail for drum `lane`, `length` long running up from the
+## origin (to -y) and `w` wide: a soft ribbon of the drum's colour with an
+## ink edge and beads along it. `lit` draws it glowing, held.
+static func tail(lane: int, length: float, w: float, lit: bool) -> ArrayMesh:
+	var key := _key(["tail", lane, roundi(length / 4.0), roundi(w), lit])
+	if _cache.has(key):
+		return _cache[key]
+	lane = clampi(lane, 0, 3)
+	var L := maxf(0.0, length)
+	var b := Face.Builder.new()
+	var body: Color = LANE_BODY[lane]
+	if lit:
+		b.polygon(Face.Builder.round_rect(Vector2(-w * 0.9, -L - w * 0.4), Vector2(w * 1.8, L + w * 0.4), w * 0.9), Color(body.lightened(0.5), 0.35))
+	b.polygon(Face.Builder.round_rect(Vector2(-w * 0.5, -L - w * 0.5), Vector2(w, L + w * 0.5), w * 0.5), INK)
+	b.polygon(Face.Builder.round_rect(Vector2(-w * 0.36, -L - w * 0.36), Vector2(w * 0.72, L + w * 0.36), w * 0.36), body.lightened(0.25 if lit else 0.0))
+	b.stroke(PackedVector2Array([Vector2(-w * 0.12, -w * 0.2), Vector2(-w * 0.12, -L)]), w * 0.1, Color(1, 1, 1, 0.45 if lit else 0.25))
+	var step := w * 1.3
+	var y := -step
+	while y > -L:
+		b.disc(Vector2(w * 0.08, y), w * 0.1, Color(CREAM, 0.7))
+		y -= step
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## One of the four drums at scale `r` (half its width), standing with its
+## foot on the origin, seen from a little above: the skin's oval on top --
+## where it is struck -- and the body under it with a face.
+##   0 the big drum: a wide lacquered barrel with brass tacks
+##   1 the hand drum: a goblet of warm wood laced with rope
+##   2 the jingle drum: a shallow green frame with brass jingles
+##   3 the tongue drum: a blue box of wood with its tongues cut on top
+static func band_drum(kind: int, r: float, mood := Mood.HAPPY) -> ArrayMesh:
+	var key := _key(["band", kind, roundi(r), mood])
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var top := skin_y(kind, r)
+	b.ellipse(Vector2(0, -r * 0.04), r * 1.0, r * 0.16, Color(INK, 0.18))
+	match kind:
+		0:
+			var body := Color("b5523b")
+			var deep := Color("8c3b2a")
+			b.polygon(_barrel(r * 0.98, r * 0.86, top, -r * 0.06), deep)
+			b.polygon(_barrel(r * 0.9, r * 0.8, top, -r * 0.1), body)
+			b.stroke(PackedVector2Array([Vector2(-r * 0.6, top + r * 0.2), Vector2(-r * 0.7, -r * 0.3)]), r * 0.07, Color(RIM_HI, 0.7))
+			for k in 7:
+				var x := lerpf(-r * 0.78, r * 0.78, k / 6.0)
+				var y := top + r * 0.12 + absf(x) * 0.05
+				b.disc(Vector2(x, y), r * 0.045, BRASS_DEEP)
+				b.disc(Vector2(x, y - r * 0.01), r * 0.035, BRASS)
+			_skin(b, top, r * 0.9, r * 0.26, Color("8c3b2a"))
+			_face(b, Vector2(0, top + r * 0.62), r * 0.5, mood)
+		1:
+			var wood := Color("d9894a")
+			var deep := Color("b36a32")
+			var cup := PackedVector2Array()
+			var steps := 18
+			for i in steps + 1:
+				var t := float(i) / steps
+				var y := lerpf(top, -r * 0.08, t)
+				var w := r * (0.72 - 0.42 * sin(clampf(t * 1.25, 0.0, 1.0) * PI * 0.5) + 0.2 * smoothstep(0.75, 1.0, t))
+				cup.append(Vector2(-w, y))
+			for i in range(steps, -1, -1):
+				var t := float(i) / steps
+				var y := lerpf(top, -r * 0.08, t)
+				var w := r * (0.72 - 0.42 * sin(clampf(t * 1.25, 0.0, 1.0) * PI * 0.5) + 0.2 * smoothstep(0.75, 1.0, t))
+				cup.append(Vector2(w, y))
+			var outer := PackedVector2Array()
+			for p in cup:
+				outer.append(p * Vector2(1.08, 1.0) + Vector2(0, r * 0.02))
+			b.polygon(outer, deep)
+			b.polygon(cup, wood)
+			# the rope lacing, a zigzag round the cup
+			var zig := PackedVector2Array()
+			for k in 9:
+				var x := lerpf(-r * 0.62, r * 0.62, k / 8.0)
+				zig.append(Vector2(x, top + r * (0.12 if k % 2 == 0 else 0.42)))
+			b.stroke(zig, r * 0.05, Color(CREAM, 0.9))
+			_skin(b, top, r * 0.76, r * 0.22, deep)
+			_face(b, Vector2(0, top + r * 0.62), r * 0.42, mood)
+		2:
+			var frame := Color("6fae4e")
+			var deep := Color("4f8a36")
+			b.polygon(Face.Builder.round_rect(Vector2(-r * 0.96, top), Vector2(r * 1.92, -top - r * 0.06), r * 0.3), deep)
+			b.polygon(Face.Builder.round_rect(Vector2(-r * 0.9, top), Vector2(r * 1.8, -top - r * 0.14), r * 0.26), frame)
+			# the jingles, pairs of brass discs in slots round the frame
+			for k in 4:
+				var x := lerpf(-r * 0.6, r * 0.6, k / 3.0)
+				var y := top + (-top) * 0.55
+				b.polygon(Face.Builder.round_rect(Vector2(x - r * 0.13, y - r * 0.08), Vector2(r * 0.26, r * 0.16), r * 0.06), Color(INK, 0.45))
+				b.ellipse(Vector2(x, y), r * 0.1, r * 0.05, BRASS)
+				b.ellipse(Vector2(x - r * 0.02, y - r * 0.015), r * 0.05, r * 0.02, Color(1, 1, 0.9, 0.9))
+			_skin(b, top, r * 0.92, r * 0.27, deep)
+			_face(b, Vector2(0, top + r * 0.02), r * 0.4, mood)
+		_:
+			var box := Color("4f93c4")
+			var deep := Color("356f9c")
+			b.polygon(Face.Builder.round_rect(Vector2(-r * 0.92, top - r * 0.1), Vector2(r * 1.84, -top + r * 0.04), r * 0.14), deep)
+			b.polygon(Face.Builder.round_rect(Vector2(-r * 0.86, top - r * 0.06), Vector2(r * 1.72, -top - r * 0.06), r * 0.12), box)
+			# the lid seen from above, its tongues cut in
+			var lid := Face.Builder.round_rect(Vector2(-r * 0.92, top - r * 0.34), Vector2(r * 1.84, r * 0.4), r * 0.14)
+			b.polygon(lid, Color("8cc4e8"))
+			for k in 3:
+				var x := lerpf(-r * 0.5, r * 0.5, k / 2.0)
+				b.stroke(PackedVector2Array([Vector2(x - r * 0.18, top - r * 0.2), Vector2(x + r * 0.18, top - r * 0.2), Vector2(x + r * 0.18, top - r * 0.06)]), r * 0.04, Color(deep, 0.8))
+			b.disc(Vector2(0, top - r * 0.14), r * 0.07, Color(INK, 0.5))
+			_face(b, Vector2(0, top + r * 0.42), r * 0.44, mood)
+	var m := b.mesh()
+	_cache[key] = m
+	return m
+
+## Where a drum's skin (its striking face) sits above its foot.
+static func skin_y(kind: int, r: float) -> float:
+	return [-r * 1.0, -r * 1.15, -r * 0.62, -r * 0.62][clampi(kind, 0, 3)]
+
+static func _barrel(w_mid: float, w_end: float, top: float, foot: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var n := 14
+	for i in n + 1:
+		var t := float(i) / n
+		pts.append(Vector2(-lerpf(w_end, w_mid, sin(t * PI)), lerpf(top, foot, t)))
+	for i in range(n, -1, -1):
+		var t := float(i) / n
+		pts.append(Vector2(lerpf(w_end, w_mid, sin(t * PI)), lerpf(top, foot, t)))
+	return pts
+
+static func _skin(b: Face.Builder, y: float, rx: float, ry: float, rim: Color) -> void:
+	b.ellipse(Vector2(0, y), rx * 1.06, ry * 1.18, rim)
+	b.ellipse(Vector2(0, y), rx, ry, SKIN_DEEP)
+	b.ellipse(Vector2(-rx * 0.04, y - ry * 0.06), rx * 0.94, ry * 0.88, SKIN)
+	b.ellipse(Vector2(-rx * 0.4, y - ry * 0.3), rx * 0.24, ry * 0.2, Color(1, 1, 1, 0.4))
+
+## Tam's sunglasses, for a run hot enough: two dark lenses and a bridge,
+## centred on the origin at scale `s` (Tam's).
+static func shades(s: float) -> ArrayMesh:
+	var key := _key(["shades", roundi(s * 4.0)])
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * s * 0.5, 0)
+		b.polygon(Face.Builder.round_rect(c - Vector2(s * 0.34, s * 0.22), Vector2(s * 0.68, s * 0.42), s * 0.16), INK)
+		b.polygon(Face.Builder.round_rect(c - Vector2(s * 0.28, s * 0.17), Vector2(s * 0.56, s * 0.32), s * 0.12), Color("2c3e5a"))
+		b.stroke(PackedVector2Array([c + Vector2(-s * 0.18, -s * 0.08), c + Vector2(-s * 0.04, -s * 0.14)]), s * 0.05, Color(1, 1, 1, 0.6))
+	b.stroke(PackedVector2Array([Vector2(-s * 0.16, -s * 0.06), Vector2(s * 0.16, -s * 0.06)]), s * 0.07, INK)
+	var m := b.mesh()
+	_cache[key] = m
+	return m

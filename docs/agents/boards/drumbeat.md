@@ -33,3 +33,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   ~10 ms over Go-Go's burst, ANGLE agreeing; reduce motion ~4-5 ms.
   `tests/_shot_drumbeat.gd` keeps its own progress file and sets `reduce`
   after `main.tscn` loads (set before, it never took).
+  **Rebuilt on 2026-10-01 as four drums** (spec
+  `2026-10-01-drumbeat-polish-design.md`): a guitar-highway path of four
+  lanes to the big, hand, jingle and tongue drums, each with a face and its
+  own synthesised voice; taps, chords, holds (ribbons), rolls, balloons.
+  Three lessons travel. **A chart must be made from the same events as the
+  music**: the hand-written sixteenth strings ran beside the tune, and
+  players heard "weird rhythms" -- `gen_drumbeat.py`'s `bar_events` now feeds
+  both. **Android reports no output latency** (`get_output_latency()` is 0),
+  so a rhythm board measures the phone with a tap-along before its first
+  song and keeps the result. **The song's clock runs off the microsecond
+  clock and is only steered by the playback position** (≤1 ms a frame, never
+  back); easing toward the position every frame made the notes shuffle.
+  Hard 3 hearts, Insane 2 (three misses in a row, or a song under the line);
+  out of hearts the music winds down. **Insane is Echo**: bars in pairs, the
+  second repeats the first with its berries hidden. The tune is its own stem
+  and dips while notes are let past. `_shot_drumbeat.gd` takes `tune`,
+  `revive` and `miss full` (out of hearts) and puts `user://drumbeat.cfg`
+  back; `_probe_drumbeat.gd -- jitter slips lag`. 84-137 draw calls in play,
+  ~222 at Go-Go's burst (ANGLE 250). `_win.gd` has no driver for it (a
+  real-time board), so it reports FAIL there by construction.
