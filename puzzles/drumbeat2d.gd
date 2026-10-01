@@ -923,8 +923,7 @@ func _seat(i: int) -> Vector2:
 	var slot: int = order[i]
 	var side := -1.0 if slot < 5 else 1.0
 	var k := slot if slot < 5 else 9 - slot
-	var x := size.x * 0.5 + side * (PATH_TOP * 0.5 + 20.0 + (4 - k) * 0.0 + k * 0.0) * u
-	x = size.x * 0.5 + side * (310.0 + (k % 5) * 44.0) * u
+	var x := size.x * 0.5 + side * (310.0 + k * 44.0) * u
 	var back := k % 2 == 1
 	return Vector2(x, _path_top() - (18.0 if back else 0.0) * u)
 
@@ -1582,7 +1581,7 @@ func _draw_long(b: Face.Builder, vt: float, now: float) -> void:
 		var wide := 0.42 if type == State.Type.ROLL else 0.3
 		for k in steps + 1:
 			var y := lerpf(y_end, y_head, float(k) / steps)
-			pts.append(Vector2(_lane_x(lane, y) - _path_w(y) / State.LANES * wide * 0.5 * (1.0 if type == State.Type.ROLL else 1.0), y))
+			pts.append(Vector2(_lane_x(lane, y) - _path_w(y) / State.LANES * wide * 0.5, y))
 		for k in range(steps, -1, -1):
 			var y := lerpf(y_end, y_head, float(k) / steps)
 			pts.append(Vector2(_lane_x(lane, y) + _path_w(y) / State.LANES * wide * 0.5, y))
@@ -1590,7 +1589,7 @@ func _draw_long(b: Face.Builder, vt: float, now: float) -> void:
 		var lit: bool = n.held or (type == State.Type.ROLL and t0 <= vt)
 		if lit:
 			b.polygon(pts, Color(col.lightened(0.45), 0.5))
-		b.polygon(_shrink(pts, lane, 0.75, y_end, y_head, wide, type == State.Type.ROLL), col.lightened(0.2 if lit else 0.0))
+		b.polygon(_narrow(pts, lane, 0.75), col.lightened(0.2 if lit else 0.0))
 		# beads up the ribbon, riding with it
 		var step := 0.12 if type == State.Type.ROLL else 0.2
 		var bt: float = ceil(maxf(t0, vt) / step) * step
@@ -1603,7 +1602,8 @@ func _draw_long(b: Face.Builder, vt: float, now: float) -> void:
 		if type == State.Type.ROLL:
 			b.disc(Vector2(_lane_x(lane, y_end), y_end), _path_w(y_end) / State.LANES * wide * 0.5, col)
 
-func _shrink(pts: PackedVector2Array, lane: int, k: float, y0: float, y1: float, wide: float, _roll: bool) -> PackedVector2Array:
+## A ribbon's outline drawn in toward its lane's centre line by `k`.
+func _narrow(pts: PackedVector2Array, lane: int, k: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for p in pts:
 		var cx := _lane_x(lane, p.y)

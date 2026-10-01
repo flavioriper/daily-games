@@ -143,6 +143,10 @@ func _process(delta: float) -> bool:
 						break
 				_shots = [["2_early", 7.0], ["2b_count", float(_b._st.notes[0].t) - float(song.beat) * 2.5], ["3_gogo", float(gogo[0][0]) + 1.2 if not gogo.is_empty() else 20.0],
 					["4_balloon", first_balloon + 0.35]]
+				for n: Dictionary in _b._st.notes:
+					if int(n.type) == State.Type.HOLD and not n.hidden:
+						_shots.append(["2c_hold", float(n.t) + 0.15])
+						break
 				var echo: Array = song.get("echo", [])
 				if _level == 3 and echo.size() > 2:
 					_shots.append(["4b_echo", float(echo[2][0]) + 0.4])
