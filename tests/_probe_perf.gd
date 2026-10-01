@@ -38,6 +38,9 @@ var _vp: RID
 var _exp := ""
 ## `fill` plays every right move but the last two before the idle window.
 var _fill := false
+## How many moves `fill` leaves: two, or two whole gestures on a board whose
+## moves are a gesture's events (Shikaku's drags are five).
+var _keep := 2
 ## `howto` leaves the first-play tutorial up; `shot=<s>` saves the screen to
 ## /tmp/probe_<id>.png that many seconds after opening.
 var _howto := false
@@ -75,8 +78,12 @@ func _initialize() -> void:
 	_vp = root.get_viewport_rid()
 	RenderingServer.viewport_set_measure_render_time(_vp, true)
 
+var _log_until := -1.0
+
 func _process(delta: float) -> bool:
 	_t += delta
+	if _t < _log_until:
+		print("  frame %.1f ms process %.1f render-cpu %.1f" % [delta * 1000.0, Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, RenderingServer.viewport_get_measured_render_time_cpu(_vp)])
 	if not _opened:
 		if _t >= 0.0:
 			_open()
@@ -85,11 +92,11 @@ func _process(delta: float) -> bool:
 		# Every right move but the last two, one a frame, so the idle window
 		# measures a nearly full board.
 		for k in 4:
-			if _moves.size() > 2:
+			if _moves.size() > _keep:
 				_step()
 		# A board whose moves animate (Code Break's Check) fills slower than
 		# the window allows: hold the clock until it is full.
-		if _moves.size() > 2 and not _puzzle.is_done():
+		if _moves.size() > _keep and not _puzzle.is_done():
 			_t = minf(_t, IDLE_FROM - 0.5)
 	if _exp != "" and not _exp_done and _t >= IDLE_FROM - 0.3:
 		_exp_done = true
@@ -123,6 +130,9 @@ func _process(delta: float) -> bool:
 		_draws[window] = maxi(_draws[window], int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 		if window == "play" and _t >= _next_move:
 			_next_move += PLAY_EVERY
+			if _exp == "log":
+				_log_until = _t + 0.12
+				print("  step at %.2f" % _t)
 			_step()
 	if _t >= PLAY_TO:
 		_report()
@@ -164,6 +174,24 @@ func _experiment() -> void:
 			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
 			_host._on_undo()
 			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"confetti":
+			var t0 := Time.get_ticks_usec()
+			_puzzle.fx.confetti(_puzzle.size * 0.5, 22)
+			print("  confetti call %.2f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
+			_log_until = _t + 0.2
+		"sk_count":
+			await create_timer(3.0).timeout
+			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " objects ", Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+			var vis := 0
+			for m in _puzzle._markers:
+				vis += int(m.visible)
+			print("  markers drawn by themselves ", vis, "/", _puzzle._markers.size(), " beds ", _puzzle.state.rects.size(), " flies ", _puzzle._flies.size(), " fence ", _puzzle._fence != null, " anim ", _puzzle._anim_until - _puzzle._now())
+		"sk_markers":
+			for m in _puzzle._markers:
+				m.visible = false
+		"sk_numbers":
+			for m in _puzzle._markers:
+				m.number = 0
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -417,3 +445,19 @@ func _ut_motion(at: Vector2) -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.position = at
 	_puzzle._gui_input(ev)
+
+## Shikaku: each answer bed dragged by hand, corner to corner -- a press, a
+## few motions as the wash grows, the release -- one event a step.
+func _moves_shikaku() -> Array:
+	_keep = 10
+	var out := []
+	for rect: Rect2i in _puzzle.state.solution:
+		var a := Vector2i(rect.position.y, rect.position.x)
+		var b := Vector2i(rect.end.y - 1, rect.end.x - 1)
+		out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(a.x, a.y), true)})
+		for i in range(1, 4):
+			var f := i / 3.0
+			out.append({"do": func() -> void:
+				_ut_motion(_puzzle.cell_to_local(a.x, a.y).lerp(_puzzle.cell_to_local(b.x, b.y), f))})
+		out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(b.x, b.y), false)})
+	return out

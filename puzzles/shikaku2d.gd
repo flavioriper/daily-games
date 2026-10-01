@@ -352,6 +352,10 @@ var _markers: Array = []      # [i] -> MarkerFace
 ## board a size, and the entrance that starts there would otherwise hold
 ## every marker at the y it was measured at.
 var _slots: Array = []
+## Every sign standing still, drawn as one mesh (`_bake_signs`), and what the
+## bake on show was made from.
+var _sign_bake: SignBake
+var _sign_key: Array = []
 var _pos_tw: Array = []       # [i] -> the hop, the nudge or the shiver
 var _look_tw: Array = []      # [i] -> the pop in, the wobble or the bump
 ## Whether the markers have been set blinking: once, on the first layout
@@ -359,14 +363,27 @@ var _look_tw: Array = []      # [i] -> the pop in, the wobble or the bump
 var _idling := false
 ## Bumped on every rebuild; a pending callback from the last board checks it.
 var _gen := 0
-## "x_y_w_h_locked_blush_planted" -> the bed's mesh, in its own centre's space.
+## "x_y_w_h_locked_blush_till_sprout" -> the bed's mesh, in its own centre's space.
 var _bed_cache: Dictionary = {}
+## Every mesh baked into one of the board's baked meshes, flattened once
+## (Face.FlatBuilder), thrown away with the bed meshes.
+var _flat_cache: Dictionary = {}
 ## Growth step and variant -> one seedling's mesh.
 var _seed_cache: Dictionary = {}
 ## Bed key -> its BLOOMS index, filled by _colour_beds once the field is done.
 var _blooms: Dictionary = {}
 var _ground: ArrayMesh
 var _fence: ArrayMesh
+## Every bed at rest as one mesh, and the beds and places it was made from.
+var _beds_baked: ArrayMesh
+var _beds_key: Array = []
+## The planted field's crop, one mesh over the beds (see _crop_bake).
+var _crop_mesh: ArrayMesh
+## The stretches that have finished growing, and what they were made from
+## (see _build_fence); `_fence_dirty` asks for both again on the next draw.
+var _fence_still: ArrayMesh
+var _fence_still_key := -1
+var _fence_dirty := true
 ## Every stretch of fence standing or on its way, one per unit seam:
 ## Vector3i(vertical, line, index) -> {"at": when it starts to grow, "from_a":
 ## whether it grows out of its first lattice point, "gone": when it starts to
@@ -416,7 +433,7 @@ var _gone: Array = []
 ## drag refused on a pinned bed.
 var _bed_flash: Dictionary = {}
 ## The planting wave: the msec each bed starts, and whether it has finished
-## and been folded into the bed meshes.
+## (the crop then stands as one kept mesh, _crop_mesh).
 var _plant_at: Dictionary = {}
 var _planted := false
 ## The meshes the last _draw handed over that the next may let go of: a
@@ -454,6 +471,34 @@ func _tips() -> Array:
 		out = ["SK_TIP_CROW"] + out
 	return out
 
+## The tutorial, a page a rule (ui/hud/shikaku_tutorial_diagram.gd, the
+## board's own beds, fence and signs on a small field): draw a bed, one sign
+## in each; then the shapes from Medium up, the hint, the hearts on Hard and
+## Insane, and Insane's scarecrows.
+func tutorial_pages() -> Array:
+	const Diagram = preload("res://ui/hud/shikaku_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.DRAG, "HTP_SK_DRAG", tr("HTP_SK_DRAG_BODY")],
+		[Diagram.Lesson.ONE, "HTP_SK_ONE", tr("HTP_SK_ONE_BODY")]]
+	if state.band >= 1:
+		steps.append([Diagram.Lesson.SHAPES, "HTP_SK_SHAPES", tr("HTP_SK_SHAPES_BODY")])
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	steps.append([Diagram.Lesson.HINT, "HTP_SK_HINT",
+		tr("HTP_SK_HINT_BODY_ONE") if hints == 1 else tr("HTP_SK_HINT_BODY_N") % hints])
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_SK_HEARTS",
+			tr("SK_RULES_HEARTS_1") if max_hearts == 1 else tr("SK_RULES_HEARTS_N") % max_hearts])
+	if state.has_crows():
+		steps.append([Diagram.Lesson.CROW, "HTP_SK_CROW", tr("SK_RULES_CROW")])
+	var pages := []
+	for step in steps:
+		var d := Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
+## Undo, Hint and Check on every band; Reset is the host's.
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
@@ -470,6 +515,11 @@ func _ready() -> void:
 	_over.z_index = 1
 	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_over)
+	# Before the markers' slots, so the bake draws where they would.
+	_sign_bake = SignBake.new()
+	_sign_bake.name = "SignBake"
+	_sign_bake.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_sign_bake)
 	_life_layer = _layer("Life", 1, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_combo_layer = _layer("Combo", 2, _draw_combo)
@@ -518,12 +568,14 @@ func _deal() -> void:
 	_split_index = -1
 	_back_index = -1
 	_bed_cache = {}
+	_flat_cache = {}
 	_bed_in = {}
 	_gone = []
 	_bed_flash = {}
 	_plant_at = {}
 	_blooms = {}
 	_planted = false
+	_crop_mesh = null
 	_wilt = {}
 	_sprout_at = {}
 	_streak = 0
@@ -642,10 +694,13 @@ func _layout() -> void:
 		# layout never writes it, so a resize cannot cut an entrance short.
 	# Every mesh is cut to the cell, so a relayout throws all of them away.
 	_bed_cache = {}
+	_flat_cache = {}
 	_seed_cache = {}
+	_crop_mesh = null
 	_ground = _build_ground()
 	_fence_sync(Vector2.ZERO, 0.0, true)
-	_fence = null
+	_fence_dirty = true
+	_fence_still_key = -1
 	_shadows = null
 	if not _idling:
 		_idling = true
@@ -729,11 +784,11 @@ func _build_shadows() -> ArrayMesh:
 
 ## One bed: a raised plot of tilled earth inset from its cells on a lip of
 ## darker soil, two ridges along each of its rows broken at every column, the
-## pinned line when a hint drew it, and the crop once the field is planted.
-## `till` is how far the rake has come, 0 to 1, and `sprout` how far a
+## pinned line when a hint drew it, and its shoots once it is settled (the
+## planted field's crop is its own mesh over the beds, _crop_bake). `till` is how far the rake has come, 0 to 1, and `sprout` how far a
 ## settled bed's shoots have come up, 0 to 1. Built about the plot's own
 ## centre, so the pop is a transform.
-func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool, till := 1.0,
+func _build_bed(rect: Rect2i, lock: bool, blush: bool, till := 1.0,
 		sprout := 0.0) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var span := Vector2(rect.size) * _cell
@@ -779,12 +834,7 @@ func _build_bed(rect: Rect2i, lock: bool, blush: bool, planted: bool, till := 1.
 		b.stroke(Face.Builder.round_rect(at + Vector2.ONE * LOCK_INSET,
 			span - Vector2.ONE * 2.0 * LOCK_INSET - Vector2(0.0, lip), LOCK_RADIUS),
 			maxf(LOCK_MIN, _cell * LOCK_WIDTH), Color(Pal.LEAF, LOCK_ALPHA), true)
-	if planted:
-		for x in rect.size.x:
-			for y in rect.size.y:
-				_seedling(b, at + (Vector2(x, y) + SEED_AT) * _cell, 1.0,
-					_seed_variant(rect, x, y), _bloom_of(rect))
-	elif sprout > 0.0:
+	if sprout > 0.0:
 		# The shoots stop short of the bud, so no colour is asked of a field
 		# that is not done.
 		for x in rect.size.x:
@@ -846,7 +896,7 @@ func _fence_sync(from: Vector2, delay := 0.0, instant := false) -> void:
 	if not still:
 		_fence_until = maxf(_fence_until, far)
 		_anim_until = maxf(_anim_until, far)
-	_fence = null
+	_fence_dirty = true
 
 ## How far a stretch has grown at `now`, 0 to 1 -- and as it leaves, how much
 ## of it is left.
@@ -856,24 +906,35 @@ func _edge_level(e: Dictionary, now: float) -> float:
 	var u := clampf((now - float(e.at)) / RAIL_TIME, 0.0, 1.0)
 	return 1.0 - pow(1.0 - u, 3.0)
 
-## The whole fence as it stands at `now`, in the grid's own space: every
-## stretch's shade, then every rail and its lit top, then the posts over them.
-## A post takes the largest of its stretches' pops -- a growing stretch's
-## near post as it sets off, its far one as the rail arrives -- and is capped
-## where the fence meets, turns or crosses.
-func _build_fence(now: float) -> ArrayMesh:
-	var fw := maxf(FENCE_MIN, _cell * FENCE_WIDTH)
-	var shades := []
-	var rails := []
-	var posts: Dictionary = {}   # Vector2i -> scale
+## The whole fence as it stands at `now`, in the grid's own space, in two
+## meshes: `_fence_still` holds every stretch that has finished growing (and
+## the posts only those touch), made again only when that set changes;
+## `_fence` holds the stretches still growing or leaving and their posts,
+## made again every frame they move (checkup 2026-10-01: rebuilding the whole
+## fence each frame of a wave was 1.5-2 ms on an Insane field). Each is its
+## stretches' shades, then rails and lit tops, then posts over them; the
+## moving mesh is drawn over the still one. A post takes the largest of its
+## stretches' pops -- a growing stretch's near post as it sets off, its far
+## one as the rail arrives -- and is capped where the fence meets, turns or
+## crosses.
+func _build_fence(now: float) -> void:
+	var still_edges := []
+	var moving_edges := []
+	var moving_posts: Dictionary = {}   # Vector2i -> scale
+	var still_key := 0
 	for key: Vector3i in _edges.keys():
 		var e: Dictionary = _edges[key]
 		var leaving := float(e.gone) >= 0.0 and now >= float(e.gone)
 		if leaving and now >= float(e.gone) + Motion.POP_OUT:
 			_edges.erase(key)
 			continue
-		var level := _edge_level(e, now)
 		var ends := _edge_ends(key)
+		if float(e.gone) < 0.0 and now - float(e.at) >= maxf(RAIL_TIME, RAIL_TIME * 0.8 + Motion.POP_IN):
+			still_edges.append([_lattice(ends[0].x, ends[0].y), _lattice(ends[1].x, ends[1].y),
+				key.x == 1, ends])
+			still_key = still_key ^ hash(key)
+			continue
+		var level := _edge_level(e, now)
 		var a := _lattice(ends[0].x, ends[0].y)
 		var b := _lattice(ends[1].x, ends[1].y)
 		var p0: Vector2
@@ -883,27 +944,46 @@ func _build_fence(now: float) -> ArrayMesh:
 			p0 = mid.lerp(a, level)
 			p1 = mid.lerp(b, level)
 			for end in ends:
-				posts[end] = maxf(float(posts.get(end, 0.0)), level)
+				moving_posts[end] = maxf(float(moving_posts.get(end, 0.0)), level)
 		else:
 			var start: Vector2i = ends[0] if e.from_a else ends[1]
 			var stop: Vector2i = ends[1] if e.from_a else ends[0]
 			var t := now - float(e.at)
-			posts[start] = maxf(float(posts.get(start, 0.0)), Motion.pop_in_scale(t).x)
-			posts[stop] = maxf(float(posts.get(stop, 0.0)), Motion.pop_in_scale(t - RAIL_TIME * 0.8).x)
+			moving_posts[start] = maxf(float(moving_posts.get(start, 0.0)), Motion.pop_in_scale(t).x)
+			moving_posts[stop] = maxf(float(moving_posts.get(stop, 0.0)), Motion.pop_in_scale(t - RAIL_TIME * 0.8).x)
 			p0 = _lattice(start.x, start.y)
 			p1 = p0.lerp(_lattice(stop.x, stop.y), level)
 		if level <= 0.0 or p0.distance_to(p1) < 0.5:
 			continue
-		shades.append([p0, p1])
-		rails.append([p0, p1, key.x == 1])
-	if shades.is_empty() and posts.is_empty():
+		moving_edges.append([p0, p1, key.x == 1, []])
+	# A post a still stretch touches stands whole; if a moving one touches it
+	# too it is drawn with the moving mesh, over its rails, at the larger pop.
+	var still_posts: Dictionary = {}
+	for s in still_edges:
+		for end: Vector2i in s[3]:
+			if moving_posts.has(end):
+				moving_posts[end] = 1.0
+			else:
+				still_posts[end] = 1.0
+	# The partition is in the key too: a post's cap depends on its neighbours.
+	still_key = hash([still_key, still_edges.size(), _cell])
+	if still_key != _fence_still_key:
+		_fence_still_key = still_key
+		_fence_still = _fence_mesh(still_edges, still_posts)
+	_fence = _fence_mesh(moving_edges, moving_posts)
+
+## One fence mesh: the stretches' shades, their rails and lit tops, then the
+## posts. `edges` are [p0, p1, vertical, _]; `posts` lattice point -> scale.
+func _fence_mesh(edges: Array, posts: Dictionary) -> ArrayMesh:
+	if edges.is_empty() and posts.is_empty():
 		return null
+	var fw := maxf(FENCE_MIN, _cell * FENCE_WIDTH)
 	var b := Face.Builder.new()
 	var shade := Vector2(0.0, fw * 0.5)
-	for s in shades:
+	for s in edges:
 		b.stroke(PackedVector2Array([s[0] + shade, s[1] + shade]), fw, Pal.FENCE_DARK)
 	var lit: Color = Pal.FENCE_RAIL.lerp(Pal.SURFACE, 0.55)
-	for r in rails:
+	for r in edges:
 		b.stroke(PackedVector2Array([r[0], r[1]]), fw * RAIL_SHARE, Pal.FENCE_RAIL)
 		# The light falls from above, so a lying rail is lit along its top
 		# edge; an upright one is seen end on to it and takes none.
@@ -1125,16 +1205,16 @@ func _bed_key(rect: Rect2i) -> String:
 func _bed_mesh(i: int) -> ArrayMesh:
 	var rect: Rect2i = state.rects[i]
 	return _bed_variant(rect, state.locked[i], state.plot_blushes(i), TILL_STEPS,
-		_sprout_step(_bed_key(rect), _now()))
+		0 if _planted else _sprout_step(_bed_key(rect), _now()))
 
 ## A bed's mesh for the look asked for. The blushing variant of a bed that
 ## is not blushing is what a flash draws over it.
 ## `till` is the rake's step of TILL_STEPS, the whole bed by default.
 func _bed_variant(rect: Rect2i, lock: bool, blush: bool, till := TILL_STEPS, sprout := 0) -> ArrayMesh:
-	var key := "%s_%d_%d_%d_%d_%d" % [_bed_key(rect), int(lock), int(blush), int(_planted), till, sprout]
+	var key := "%s_%d_%d_%d_%d" % [_bed_key(rect), int(lock), int(blush), till, sprout]
 	var mesh: ArrayMesh = _bed_cache.get(key)
 	if mesh == null:
-		mesh = _build_bed(rect, lock, blush, _planted, float(till) / TILL_STEPS,
+		mesh = _build_bed(rect, lock, blush, float(till) / TILL_STEPS,
 			float(sprout) / SPROUT_STEPS)
 		_bed_cache[key] = mesh
 	return mesh
@@ -1188,6 +1268,13 @@ func _draw() -> void:
 		draw_mesh(mesh, null, Transform2D(0.0, Vector2(shrunk, shrunk), 0.0,
 			_rect_px(gone.rect).get_center()), gone.get("tint", Color.WHITE))
 	_gone = still
+	# Checkup 2026-10-01: the beds at rest are one mesh (`_beds_baked`), made
+	# again only when one of them changes; a full Insane field drew twenty
+	# beds as twenty calls.
+	var bake_key: Array = [_cell]
+	var bake_beds: Array = []
+	var own_beds: Array = []
+	var crops: Array[int] = []
 	for i in state.rects.size():
 		var rect: Rect2i = state.rects[i]
 		var key := _bed_key(rect)
@@ -1215,8 +1302,8 @@ func _draw() -> void:
 					busy = true
 				elif till >= TILL_STEPS:
 					_bed_in.erase(key)
-		var sprout := _sprout_step(key, now)
-		if _sprout_at.has(key) and sprout < SPROUT_STEPS and not _plant_at.has(key):
+		var sprout := 0 if _planted else _sprout_step(key, now)
+		if not _planted and _sprout_at.has(key) and sprout < SPROUT_STEPS and not _plant_at.has(key):
 			busy = true
 		if _wilt.has(key):
 			var level := clampf((now - float(_wilt[key])) / WILT_TIME, 0.0, 1.0)
@@ -1226,7 +1313,18 @@ func _draw() -> void:
 			xf = xf * Transform2D(0.0, Vector2(1.0 + sag * 0.3, 1.0 - sag), 0.0,
 				Vector2(0.0, px.size.y * sag * 0.5))
 		var bed: ArrayMesh = _bed_variant(rect, state.locked[i], state.plot_blushes(i), till, sprout)
-		draw_mesh(bed, null, xf, tint)
+		# A bed standing where it lands, untinted and done growing, goes into
+		# the one baked mesh; anything else is drawn on its own after it (beds
+		# never overlap, so the order between them is free).
+		var flat := tint == Color.WHITE and xf.x == Vector2.RIGHT and xf.y == Vector2.DOWN \
+			and not _bed_in.has(key) and not _wilt.has(key) \
+			and not (not _planted and _sprout_at.has(key) and sprout < SPROUT_STEPS)
+		if flat:
+			bake_key.append(bed.get_instance_id())
+			bake_key.append(xf.origin)
+			bake_beds.append([bed, xf])
+		else:
+			own_beds.append([bed, xf, tint])
 		if _bed_flash.has(key):
 			var e: float = now - float(_bed_flash[key])
 			var level := Motion.flash_level(e)
@@ -1235,10 +1333,35 @@ func _draw() -> void:
 			else:
 				_bed_flash.erase(key)
 			if level > 0.0:
-				draw_mesh(_bed_variant(rect, state.locked[i], true, TILL_STEPS, sprout), null, xf,
-					Color(1.0, 1.0, 1.0, level * tint.a))
+				own_beds.append([_bed_variant(rect, state.locked[i], true, TILL_STEPS, sprout), xf,
+					Color(1.0, 1.0, 1.0, level * tint.a)])
 		if _plant_at.has(key) and not _planted:
-			busy = _draw_crop(i, now) or busy
+			crops.append(i)
+	if bake_key != _beds_key:
+		_beds_key = bake_key
+		var fb := Face.FlatBuilder.new(_flat_cache)
+		for part in bake_beds:
+			fb.append(part[0], part[1])
+		_beds_baked = fb.mesh()
+	if _beds_baked != null:
+		draw_mesh(_beds_baked, null)
+		shown.append(_beds_baked)
+	for part in own_beds:
+		draw_mesh(part[0], null, part[1], part[2])
+	if _planted:
+		if _crop_mesh == null:
+			var all: Array[int] = []
+			all.assign(range(state.rects.size()))
+			_crop_mesh = _crop_bake(all, INF)[0]
+		if _crop_mesh != null:
+			draw_mesh(_crop_mesh, null)
+			shown.append(_crop_mesh)
+	elif not crops.is_empty():
+		var grown: Array = _crop_bake(crops, now)
+		busy = grown[1] or busy
+		if grown[0] != null:
+			draw_mesh(grown[0], null)
+			shown.append(grown[0])
 	# The shadows follow the markers up while they pop in, then stand.
 	if _shadows == null or now < _enter_until:
 		_shadows = _build_shadows()
@@ -1247,10 +1370,14 @@ func _draw() -> void:
 	if _shadows != null:
 		draw_mesh(_shadows, null)
 	# The fence is cached while it stands and rebuilt every frame it moves.
-	if _fence == null or now < _fence_until:
-		_fence = _build_fence(now)
+	if _fence_dirty or now < _fence_until:
+		_fence_dirty = false
+		_build_fence(now)
 		if now < _fence_until:
 			busy = true
+	if _fence_still != null:
+		draw_mesh(_fence_still, null, Transform2D(0.0, _origin))
+		shown.append(_fence_still)
 	if _fence != null:
 		draw_mesh(_fence, null, Transform2D(0.0, _origin))
 		shown.append(_fence)
@@ -1261,26 +1388,31 @@ func _draw() -> void:
 	if busy:
 		_anim_until = maxf(_anim_until, now + 0.1)
 
-## The crop coming up in bed `i`, cell by cell. True while any of it is still
-## growing; once the whole field is up it is folded into the bed meshes and
-## this stops being drawn at all.
-func _draw_crop(i: int, now: float) -> bool:
-	var rect: Rect2i = state.rects[i]
-	var at: float = _plant_at[_bed_key(rect)]
-	var origin := _rect_px(rect).position
+## The crop coming up in the beds `beds`, cell by cell, as one mesh made from
+## the cached seedlings (checkup 2026-10-01: a seedling a draw call took an
+## Insane field's wave to ~250 calls). `now` INF is the whole field grown,
+## the planted field's own mesh, kept while it stands -- the beds are never
+## rebuilt with the crop in them. Returns [mesh or null, whether any of it
+## is still growing].
+func _crop_bake(beds: Array[int], now: float) -> Array:
+	var fb := Face.FlatBuilder.new(_flat_cache)
 	var growing := false
-	for x in rect.size.x:
-		for y in rect.size.y:
-			# Every bed is settled by now, so every cell starts from its
-			# shoot and grows on from there.
-			var u := (now - at - (x + y) * PLANT_CELL) / PLANT_TIME
-			if u < 1.0:
-				growing = true
-			var g := SPROUT_U + (1.0 - SPROUT_U) * clampf(u, 0.0, 1.0)
-			var step := clampi(int(ceil(g * SEED_STEPS)), 1, SEED_STEPS)
-			draw_mesh(_seed_mesh(step, _seed_variant(rect, x, y), _bloom_of(rect)), null,
-				Transform2D(0.0, origin + (Vector2(x, y) + SEED_AT) * _cell))
-	return growing
+	for i in beds:
+		var rect: Rect2i = state.rects[i]
+		var at: float = _plant_at.get(_bed_key(rect), -INF)
+		var origin := _rect_px(rect).position
+		for x in rect.size.x:
+			for y in rect.size.y:
+				# Every bed is settled by now, so every cell starts from its
+				# shoot and grows on from there.
+				var u := 1.0 if now == INF else (now - at - (x + y) * PLANT_CELL) / PLANT_TIME
+				if u < 1.0:
+					growing = true
+				var g := SPROUT_U + (1.0 - SPROUT_U) * clampf(u, 0.0, 1.0)
+				var step := clampi(int(ceil(g * SEED_STEPS)), 1, SEED_STEPS)
+				fb.append(_seed_mesh(step, _seed_variant(rect, x, y), _bloom_of(rect)),
+					Transform2D(0.0, origin + (Vector2(x, y) + SEED_AT) * _cell))
+	return [fb.mesh(), growing]
 
 ## The rectangle under the finger: its cells washed in the colour the count
 ## has earned, under a dashed edge crawling round it, popping in wide as the
@@ -2333,12 +2465,14 @@ func restore_completed_board() -> void:
 	state.history.clear()
 	state.reown()
 	_bed_cache = {}
+	_flat_cache = {}
 	_bed_in = {}
 	_gone = []
 	_bed_flash = {}
 	_plant_at = {}
 	_blooms = {}
 	_planted = true
+	_crop_mesh = null
 	_flawless = false
 	_stamp_at = INF
 	_flies = []
@@ -2418,8 +2552,8 @@ func _on_solved() -> void:
 	_speak()
 	fx.cue("solved")
 	_party(last - now)
-	# Once the whole field is up, the crop is folded into the bed meshes and
-	# the per-seedling draws stop; under reduce-motion it is already there.
+	# Once the whole field is up, the crop stops growing and its mesh is kept;
+	# under reduce-motion it is already there.
 	var grow := 0.0 if Motion.reduce else (last - now) + PLANT_TIME + (w + h) * PLANT_CELL
 	if grow <= 0.0:
 		_finish_planting()
@@ -2499,6 +2633,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 
 func _finish_planting() -> void:
 	_planted = true
+	_crop_mesh = null
 	_redraw()
 
 # --- entrance ---
@@ -2542,6 +2677,7 @@ func _after(delay: float, what: Callable) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_bake_signs()
 	var now := _now()
 	if now < _anim_until:
 		_redraw()
@@ -2554,6 +2690,71 @@ func _process(delta: float) -> void:
 			or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1):
 		_fly(delta)
 		_life_layer.queue_redraw()
+
+## The signs, baked (checkup 2026-10-01). On an Insane field the signs were
+## a third of the frame's draw calls, three apiece (stake, plaque, numeral).
+## Each frame: every sign at rest in its slot -- no hop, nudge, wobble or
+## pop on it, and no hat or glasses on their way -- is drawn by `_sign_bake` as one mesh plus its
+## numeral, and hidden; a moving one draws itself. The bake is remade only
+## when a sign joins or leaves it or changes its face. A baked sign that is
+## only blinking or glancing is drawn by itself over its baked twin (the bake
+## is eyes open and looking ahead, and the plaque is opaque), so blinks never
+## ask for a bake.
+func _bake_signs() -> void:
+	if _sign_bake == null or _markers.is_empty():
+		return
+	var key: Array = [_cell]
+	var still: Array[bool] = []
+	for i in _markers.size():
+		var m: MarkerFace = _markers[i]
+		var ok := _sign_still(i)
+		still.append(ok)
+		key.append([m.get_instance_id(), m.expression, m.number, m.shape, m.crow, m.size, m.hat, m.glasses,
+			(_slots[i] as Control).position] if ok else null)
+	if key != _sign_key:
+		_sign_key = key
+		var b := Face.FlatBuilder.new(_flat_cache)
+		var nums: Array = []
+		for i in _markers.size():
+			if not still[i]:
+				continue
+			var m: MarkerFace = _markers[i]
+			var xf: Transform2D = (_slots[i] as Control).get_transform() * m.get_transform()
+			m.bake_into(b, xf, Color.WHITE, true)
+			var n := m.numeral()
+			if not n.is_empty():
+				n[0] = xf * n[0]
+				nums.append(n)
+		_sign_bake.mesh = b.mesh()
+		_sign_bake.numbers = nums
+		_sign_bake.queue_redraw()
+	for i in _markers.size():
+		var m: MarkerFace = _markers[i]
+		var own := not still[i] or not m.at_rest()
+		if m.visible != own:
+			m.visible = own
+
+## Whether sign `i` stands at rest in its slot, as its bake would draw it.
+func _sign_still(i: int) -> bool:
+	var m: MarkerFace = _markers[i]
+	if m.is_queued_for_deletion() or m.size.x <= 0.0:
+		return false
+	return m.position == Vector2.ZERO and m.scale == Vector2.ONE and m.rotation == 0.0 \
+		and (m.hat == 0.0 or m.hat == 1.0) and (m.glasses == 0.0 or m.glasses == 1.0) \
+		and m.modulate == Color.WHITE \
+		and m.self_modulate == Color.WHITE and (_slots[i] as Control).visible
+
+## The still signs' one mesh and their numerals (see _bake_signs).
+class SignBake extends Control:
+	var mesh: ArrayMesh
+	var numbers: Array = []   # [baseline point, text, px, colour]
+
+	func _draw() -> void:
+		if mesh != null:
+			draw_mesh(mesh, null)
+		var font: Font = CozyTheme.display(700)
+		for n in numbers:
+			draw_string(font, n[0], n[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, n[2], n[3])
 
 ## The field and the disc over it are two canvas items, and every change
 ## that moves one moves the other.

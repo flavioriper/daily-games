@@ -50,6 +50,9 @@ var _next_voice := 0
 var _streams := {}
 var _played_at := {}
 var _puzzle := ""
+## The board's sounds asked of the loader thread at open (`_prefetch`), path
+## -> true until a cue first takes one.
+var _fetching := {}
 
 ## Build the two pools and name the node.
 func _ready() -> void:
@@ -77,6 +80,30 @@ func _ready() -> void:
 	for i in CONFETTI_POOL:
 		confetti_suns.append(_confetti_emitter("ConfettiSun_%d" % i, sun_texture()))
 		confetti_moons.append(_confetti_emitter("ConfettiMoon_%d" % i, moon_texture()))
+	_prefetch.call_deferred()
+
+## Asks the loader thread for every sound the board has, so a cue's first
+## play is not a 1-3 ms load in the middle of a move (the board checkup,
+## 2026-10-01: Shikaku's first plot, streak and confetti each paid one).
+func _prefetch() -> void:
+	if not is_inside_tree():
+		return
+	var dir := "res://assets/sfx/%s/" % _puzzle_id()
+	for f in ResourceLoader.list_directory(dir):
+		if not f.ends_with(".ogg"):
+			continue
+		var path := dir + f
+		if _streams.has(path) or _fetching.has(path):
+			continue
+		if ResourceLoader.load_threaded_request(path) == OK:
+			_fetching[path] = true
+
+## A sound fetched but never played is collected as the board goes, or the
+## loader would keep it for the rest of the session.
+func _exit_tree() -> void:
+	for path: String in _fetching:
+		ResourceLoader.load_threaded_get(path)
+	_fetching = {}
 
 ## A confetti emitter: a wide toss upward, a strong pull back down with drag
 ## so the pieces hang and flutter, a tumble, and a fade over the last fifth.
@@ -183,7 +210,11 @@ func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	last_cue = cue_name
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):
-		_streams[path] = load(path) if ResourceLoader.exists(path) else null
+		if _fetching.has(path):
+			_fetching.erase(path)
+			_streams[path] = ResourceLoader.load_threaded_get(path)
+		else:
+			_streams[path] = load(path) if ResourceLoader.exists(path) else null
 	var stream: AudioStream = _streams[path]
 	if stream == null:
 		return

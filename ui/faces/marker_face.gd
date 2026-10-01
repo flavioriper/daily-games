@@ -187,19 +187,25 @@ func _crow_hat(b: Builder, R: float, top: float) -> void:
 ## The numeral, over the plaque's mesh. Centred on the mock's own baseline.
 func _draw() -> void:
 	super()
+	var n := numeral()
+	if not n.is_empty():
+		draw_string(CozyTheme.display(700), n[0], n[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, n[2], n[3])
+
+## The numeral as _draw writes it, [baseline point, text, px, colour] in this
+## Control's own space, or [] for none: a board that bakes its still signs
+## (Shikaku, checkup 2026-10-01) writes them the same way.
+func numeral() -> Array:
 	var R := _R_for(minf(size.x, size.y))
-	if R <= 0.0:
-		return
-	if number <= 0:
-		return
+	if R <= 0.0 or number <= 0:
+		return []
 	var font: Font = CozyTheme.display(700)
 	var px := int(roundf(NUM_SIZE * R))
 	if px <= 0:
-		return
+		return []
 	var text := str(number)
 	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	# draw_string sits on the baseline; the mock's text() centres on the
 	# glyph, so half the ascent puts the two in the same place.
 	var centre: Vector2 = PLAQUES[shape][2]
 	var at := size * 0.5 + Vector2(centre.x * R - wide * 0.5, centre.y * R + font.get_ascent(px) * 0.5)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, _skin()[2])
+	return [at, text, px, _skin()[2]]
