@@ -172,3 +172,16 @@ Peak 105, 750 under the 855 budget. Suite `passed=122403 failed=0`;
 - **Two hearts on Insane, three on Hard**; `HEARTS_BY` in the state.
 - The crown on your knight's head and the brambles' look were judged on
   stills only. Sounds unheard.
+
+- **Review findings, fixed**: on Insane a tap landing in the 50 ms between a
+  boxing-in hop settling and its check was charged as a catch *and* the box
+  (both hearts, the board left boxed in) -- the verdict is now judged when
+  the hop is played and input is held until it shows (`_hop_id` keeps a
+  stale verdict from showing); a napping knight taken by a hop that got you
+  caught came back awake, and a reopened Brambles day showed its nappers
+  awake -- the naps drawn now follow the state (`_sync_naps`). Checked clean
+  by the review: `Gen.step` against the miner's Python on 20000 random
+  cases, the Array-keyed `solve`, every timer guard, the Start over
+  button's visibility. Known wrinkle left: after an Undo into a lost
+  position the button shows during the slide back, and a press there is
+  ignored until the slide ends.

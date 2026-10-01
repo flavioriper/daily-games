@@ -271,6 +271,9 @@ var _wither := {}
 ## Rose knights that fell asleep: index -> when.
 var _nap_at := {}
 var _nap_told := false
+## Bumped by every hop, Undo, hint rewind, Reset and deal: a stuck verdict
+## shows only for the position it was judged on.
+var _hop_id := 0
 ## Whether the position is lost (no way to the king), shown by the stuck
 ## button under the board once the pieces are still.
 var _lost := false
@@ -430,9 +433,7 @@ func _deal() -> void:
 	_toast = ""
 	_toast_at = -100.0
 	_press = {}
-	_grown = {}
-	_wither = {}
-	_nap_at = {}
+	_hop_id += 1
 	_nap_told = false
 	_set_lost(false)
 
@@ -450,6 +451,8 @@ func _snap_to_state() -> void:
 	for c in _state.size():
 		if _state.is_bramble(c):
 			_grown[c] = AGO
+	_nap_at = {}
+	_sync_naps()
 	_gone = []
 	_caught = {}
 	_dust = []
@@ -688,8 +691,15 @@ func _play(to: int, from_hint := false) -> void:
 			if not _nap_told:
 				_nap_told = true
 				_tell("KN_NAPPED", Face.Expr.JOY))
-	_busy_until = last
+	# Judged now, while the position is the one this hop made (a hop slipped
+	# in before the reveal must not be charged for this one's box), and
+	# shown once everything is still. Boxed in holds input until it plays.
+	var boxed: bool = _state.brambles() and _state.trapped()
+	var lost: bool = not _state.brambles() and _state.lost()
+	_busy_until = last + (100.0 if boxed else 0.0)
 	_busy_for(last - t + MARK_FADE)
+	_hop_id += 1
+	var hop_id := _hop_id
 	note_move()
 	if took >= 0:
 		_tell("KN_TAKEN", Face.Expr.HAPPY)
@@ -701,25 +711,25 @@ func _play(to: int, from_hint := false) -> void:
 		_break_streak()
 	else:
 		_on_safe_hop(to, land, gag)
-	var turn2 := _turn
 	_later(last - t + 0.05, func():
-		if turn2 == _turn:
-			_check_stuck())
+		if hop_id == _hop_id:
+			_show_stuck(boxed, lost))
 	_refresh()
 
 ## Once a kept hop has settled: on Brambles, boxed in (no hop that is not a
 ## catch) costs a heart and the board withers back to the opening; on every
 ## other band a position with no way left to the king says so and brings up
 ## the Start over button.
-func _check_stuck() -> void:
+func _show_stuck(boxed: bool, lost: bool) -> void:
 	if is_done() or out_of_hearts:
 		return
+	if boxed:
+		_boxed_in()
+		return
 	if _state.brambles():
-		if _state.trapped():
-			_boxed_in()
 		return
 	var was := _lost
-	_set_lost(_state.lost())
+	_set_lost(lost)
 	if _lost and not was:
 		_tell(STUCK_MSG, Face.Expr.STRAIN)
 		fx.cue("stuck")
@@ -785,9 +795,8 @@ func _slide_to_state(t: float, stagger: float) -> void:
 		if not _state.is_bramble(int(c)):
 			_wither[c] = t
 			_grown.erase(c)
-	for i in _nap_at.keys():
-		if not _state.napping(int(i)):
-			_nap_at.erase(i)
+	_hop_id += 1
+	_sync_naps()
 	var k := 0
 	for i in _state.foes.size():
 		var want: int = _state.foe_square(i)
@@ -1572,6 +1581,16 @@ func completion_record() -> Dictionary:
 	return {"hearts": hearts, "flawless": _flawless}
 
 # --- lost positions and the Start over button ---
+
+## The naps drawn follow the state: one gone after a take is undone or
+## slid back comes back asleep, and a restored day shows its nappers.
+func _sync_naps() -> void:
+	for i in _state.foes.size():
+		if _state.napping(i):
+			if not _nap_at.has(i):
+				_nap_at[i] = AGO
+		else:
+			_nap_at.erase(i)
 
 ## Whether a rose knight (napping or not) stands on `c`.
 func _foe_on(c: int) -> bool:
