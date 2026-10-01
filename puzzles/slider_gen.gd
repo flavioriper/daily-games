@@ -124,7 +124,8 @@ static func is_goal(key: int) -> bool:
 
 ## The anchors a shape `a` standing at `from` can reach through the empty
 ## cells of `g` (which must not hold the shape itself), `from` included.
-static func reach(g: PackedByteArray, a: int, from: int) -> PackedInt32Array:
+## `homesick`: the big block never steps up (Insane, below).
+static func reach(g: PackedByteArray, a: int, from: int, homesick := false) -> PackedInt32Array:
 	var sz: Vector2i = SIZE[a]
 	var seen := {from: true}
 	var out := PackedInt32Array([from])
@@ -135,6 +136,8 @@ static func reach(g: PackedByteArray, a: int, from: int) -> PackedInt32Array:
 		var x := at % COLS
 		var y := at / COLS
 		for d in 4:
+			if homesick and a == B0 and DY[d] < 0:
+				continue
 			var nx: int = x + DX[d]
 			var ny: int = y + DY[d]
 			if nx < 0 or ny < 0 or nx + sz.x > COLS or ny + sz.y > ROWS:
@@ -178,7 +181,12 @@ static func moves(key: int) -> Array:
 ## hint of a day. With a `cap`, a graph larger than that gives up and
 ## answers {} (the miner skips it: a phone's hint would wait too long on it);
 ## a `stop` box whose "stop" is set gives up too (a board closed mid-run).
-static func distances(start: int, cap := 0, stop := {}) -> Dictionary:
+##
+## `homesick` (Insane): the big block never steps up, so moves no longer
+## reverse -- the graph is every position the start can reach, and the
+## second pass walks the edges backwards. A position whose distance is -1
+## there is a dead end: the big block can never get home from it.
+static func distances(start: int, cap := 0, stop := {}, homesick := false) -> Dictionary:
 	var keys := PackedInt64Array([start])
 	var index := {start: 0}
 	var adj_at := PackedInt32Array()
@@ -199,7 +207,7 @@ static func distances(start: int, cap := 0, stop := {}) -> Dictionary:
 		if is_goal(k):
 			goals.append(i)
 		nbr.clear()
-		_next_keys(k, nbr, queue)
+		_next_keys(k, nbr, queue, homesick)
 		for nk in nbr:
 			var j: int = index.get(nk, -1)
 			if j < 0:
@@ -209,6 +217,10 @@ static func distances(start: int, cap := 0, stop := {}) -> Dictionary:
 			adj.append(j)
 		i += 1
 	adj_at.append(adj.size())
+	if homesick:
+		var back := _reversed(adj_at, adj)
+		adj_at = back[0]
+		adj = back[1]
 	var dist := PackedInt32Array()
 	dist.resize(keys.size())
 	dist.fill(-1)
@@ -226,6 +238,25 @@ static func distances(start: int, cap := 0, stop := {}) -> Dictionary:
 				dist[v] = dist[u] + 1
 				q.append(v)
 	return {"keys": keys, "index": index, "dist": dist}
+
+## The edges of a graph walked backwards: [at, to] in the same layout.
+static func _reversed(at: PackedInt32Array, to: PackedInt32Array) -> Array:
+	var n := at.size() - 1
+	var rat := PackedInt32Array()
+	rat.resize(n + 1)
+	for e in to.size():
+		rat[to[e] + 1] += 1
+	for v in n:
+		rat[v + 1] += rat[v]
+	var fill := rat.duplicate()
+	var rto := PackedInt32Array()
+	rto.resize(to.size())
+	for u in n:
+		for e in range(at[u], at[u + 1]):
+			var v: int = to[e]
+			rto[fill[v]] = u
+			fill[v] += 1
+	return [rat, rto]
 
 ## `moves` without the bookkeeping, for the breadth-first run: only the keys,
 ## into `out`, with occupancy as a 20-bit mask and each block's flood through
@@ -268,7 +299,7 @@ static func _fast_tables() -> void:
 	_adj = adj
 	_mask = mask
 
-static func _next_keys(key: int, out: PackedInt64Array, queue: PackedInt32Array) -> void:
+static func _next_keys(key: int, out: PackedInt64Array, queue: PackedInt32Array, homesick := false) -> void:
 	var occ := 0
 	for i in N:
 		if (key >> (3 * i)) & 7 != E:
@@ -282,6 +313,7 @@ static func _next_keys(key: int, out: PackedInt64Array, queue: PackedInt32Array)
 		var rest := occ & ~masks[i]
 		var base := key - con[i]
 		var seen := 1 << i
+		var no_up := homesick and code == B0
 		queue[0] = i
 		var head := 0
 		var tail := 1
@@ -290,6 +322,8 @@ static func _next_keys(key: int, out: PackedInt64Array, queue: PackedInt32Array)
 			head += 1
 			for to in _adj[at]:
 				if seen & (1 << to):
+					continue
+				if no_up and to == at - COLS:
 					continue
 				var m: int = masks[to]
 				if m == 0 or m & rest:
@@ -355,6 +389,17 @@ static func deal(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			k = mirror(k)
 		return {"start": k, "par": int(e.p), "band": band}
 	return {"start": decode(CLASSIC), "par": CLASSIC_PAR, "band": band}
+
+## Insane's tray from content/insane/slider.json's entry `e` (a mined
+## Homesick tray: {"b", "p"}), mirrored half the days; {} without one.
+static func from_homesick(e: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var b := String(e.get("b", ""))
+	if b.length() != N:
+		return {}
+	var k := decode(b)
+	if rng.randf() < 0.5:
+		k = mirror(k)
+	return {"start": k, "par": int(e.get("p", 0)), "band": 3, "homesick": true}
 
 ## The oldest layout of all: the big block top middle, four bars standing,
 ## one lying across the middle, four squares and two empty cells.

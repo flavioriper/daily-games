@@ -13,8 +13,21 @@ extends RefCounted
 ## Each block keeps an index for the whole day, so the board can draw and
 ## animate it; the rules themselves only ever look at the key
 ## (slider_gen.gd), where two bars of a shape are the same bar.
+##
+## The polish (2026-10-01, spec 2026-10-01-slider-polish-design.md): Hard
+## and Insane have hearts, and the board judges a let-go move by the
+## solver's distances (`dist_of`). Insane is **Homesick**: the big block
+## never steps back up, so a tray can be lost; its trays are mined
+## (content/insane/slider.json).
 
 const Gen = preload("res://puzzles/slider_gen.gd")
+
+const HINTS_BY := [3, 3, 2, 0]
+const HEARTS_BY := [0, 0, 3, 2]
+
+var difficulty := 0
+## Insane's rule: the big block never steps up.
+var homesick := false
 
 ## [anchor code, anchor cell] per block, in the opening's cell order.
 var blocks: Array = []
@@ -37,8 +50,22 @@ var _task := -1
 ## wait (its run is told to stop and is collected here once it has).
 static var _pending: Array = []
 
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	var d := Gen.deal(rng, difficulty)
+static func hints_for(band: int) -> int:
+	return HINTS_BY[clampi(band, 0, HINTS_BY.size() - 1)]
+
+static func hearts_for(band: int) -> int:
+	return HEARTS_BY[clampi(band, 0, HEARTS_BY.size() - 1)]
+
+## Insane deals a mined Homesick tray; without the bank it deals the old
+## Insane band's tray, two-way.
+func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
+	difficulty = band
+	var d := {}
+	if band >= 3:
+		d = Gen.from_homesick(InsaneBank.pick("slider", bank_step), rng)
+	if d.is_empty():
+		d = Gen.deal(rng, band)
+	homesick = bool(d.get("homesick", false))
 	start_key = d.start
 	par = d.par
 	band = d.band
@@ -63,12 +90,12 @@ func solve_async() -> void:
 	# Both keys exist before the worker starts, so neither side ever adds one
 	# to a Dictionary the other is reading.
 	_box = {"r": {}, "stop": false}
-	_task = _start(start_key, _box)
+	_task = _start(start_key, _box, homesick)
 	_pending.append(_task)
 
 ## The task, from a static function so the lambda holds no tray at all.
-static func _start(from: int, box: Dictionary) -> int:
-	return WorkerThreadPool.add_task(func(): box["r"] = Gen.distances(from, 0, box))
+static func _start(from: int, box: Dictionary, one_way: bool) -> int:
+	return WorkerThreadPool.add_task(func(): box["r"] = Gen.distances(from, 0, box, one_way))
 
 ## Waits for the worker, if one is running.
 func finish() -> void:
@@ -91,6 +118,23 @@ func dist_table() -> Dictionary:
 
 func solver_ready() -> bool:
 	return _task < 0 or WorkerThreadPool.is_task_completed(_task)
+
+## How far the tray `k` stands from the gate, never waiting: -1 when the big
+## block can never get home from it (Homesick's dead end), -2 while the
+## worker is still running (nothing is judged then).
+func dist_of(k: int) -> int:
+	if not solver_ready():
+		return -2
+	var r := dist_table()
+	if r.is_empty():
+		return -2
+	var i: int = r.index.get(k, -1)
+	return -1 if i < 0 else int(r.dist[i])
+
+## Whether block `p` may step by (`dx`, `dy`) under the day's rule: on
+## Homesick the big block never steps up.
+func may_step(p: int, dy: int) -> bool:
+	return not (homesick and dy < 0 and kind(p) == Gen.B0)
 
 ## Puts the blocks as a key says, with no history: a reopened day's end.
 func restore_key(k: int) -> void:
@@ -129,7 +173,7 @@ func _without(p: int) -> PackedByteArray:
 ## Every anchor block `p` can be slid to from where it stands, its own
 ## included.
 func reach(p: int) -> PackedInt32Array:
-	return Gen.reach(_without(p), kind(p), at(p))
+	return Gen.reach(_without(p), kind(p), at(p), homesick)
 
 ## Whether block `p` fits with its anchor at `to` (every other block still).
 func fits(p: int, to: int) -> bool:
@@ -148,6 +192,8 @@ func fits(p: int, to: int) -> bool:
 ## drag's live step): one cell at a time, so it never passes through another
 ## block.
 func step(p: int, dx: int, dy: int) -> bool:
+	if not may_step(p, dy):
+		return false
 	var x := at(p) % Gen.COLS + dx
 	var y := at(p) / Gen.COLS + dy
 	var sz := size_of(p)
@@ -192,6 +238,16 @@ func undo() -> bool:
 	_restore(history.pop_back())
 	return true
 
+## Puts a let-go move back without a history entry: a move that cost a
+## heart slides back where it came from.
+func revert(before: Array) -> void:
+	_restore(before)
+
+## The tray as dealt, with no history: Try again.
+func restart() -> void:
+	history.clear()
+	_restore(start_blocks)
+
 func reset_board() -> bool:
 	if key == start_key and _same(blocks, start_blocks):
 		return false
@@ -231,8 +287,9 @@ func hint_move() -> Dictionary:
 	return {}
 
 ## The anchors block `p` passes through on the shortest slide to `to`, both
-## ends included, or [] when it cannot get there.
-func path(p: int, to: int) -> PackedInt32Array:
+## ends included, or [] when it cannot get there. `any_way`: ignore
+## Homesick, for a move sliding back (a costly one, an undo).
+func path(p: int, to: int, any_way := false) -> PackedInt32Array:
 	var g := _without(p)
 	var a := kind(p)
 	var sz := size_of(p)
@@ -248,6 +305,8 @@ func path(p: int, to: int) -> PackedInt32Array:
 		var x := u % Gen.COLS
 		var y := u / Gen.COLS
 		for d in 4:
+			if homesick and not any_way and a == Gen.B0 and Gen.DY[d] < 0:
+				continue
 			var nx: int = x + Gen.DX[d]
 			var ny: int = y + Gen.DY[d]
 			if nx < 0 or ny < 0 or nx + sz.x > Gen.COLS or ny + sz.y > Gen.ROWS:
