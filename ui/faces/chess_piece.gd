@@ -146,6 +146,16 @@ static func knight(b: Face.Builder, at: Vector2, s: float, side: int, look: floa
 	b.ellipse(map.call(Vector2(-0.14, -0.1)), u * 0.045 * sq.x, u * 0.028 * sq.y, Color(Pal.CHEEK, 0.75 * alpha))
 	b.disc(map.call(Vector2(-0.265, -0.06)), u * 0.012, Color(line, alpha))
 
+## Where the crown sits on a knight drawn with these same arguments (the
+## win's crown lands on your knight's head), and the angle it sits at.
+const HEAD := Vector2(-0.06, -0.47)
+
+static func knight_head(at: Vector2, s: float, look: float, lift := 0.0, sq := Vector2.ONE, tilt := 0.0) -> Vector2:
+	var u := s * PIECE
+	var foot := at + Vector2(0.0, -lift - s * STAND) + FOOT * u
+	var p := HEAD
+	return foot + (Vector2((p.x - FOOT.x) * -look * sq.x, (p.y - FOOT.y) * sq.y) * u).rotated(tilt)
+
 ## The king's body in unit coordinates, cached like the knight's outline.
 static var _king_body := PackedVector2Array()
 
@@ -216,8 +226,8 @@ const CROWN_MID := Vector2(0.0, -0.3)
 
 ## The gold crown alone, centred at `at` and turned `angle`: the one knocked
 ## off the king on the win.
-static func crown(b: Face.Builder, at: Vector2, s: float, angle := 0.0, alpha := 1.0) -> void:
-	var u := s * PIECE
+static func crown(b: Face.Builder, at: Vector2, s: float, angle := 0.0, alpha := 1.0, scale := 1.0) -> void:
+	var u := s * PIECE * scale
 	_crown_into(b, func(p: Vector2) -> Vector2: return at + ((p - CROWN_MID) * u).rotated(angle), u, alpha)
 
 static func _crown_into(b: Face.Builder, map: Callable, u: float, alpha := 1.0) -> void:

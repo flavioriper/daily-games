@@ -34,14 +34,20 @@ const NAIVE_CAP := 40
 ## shortest line first and the cap only ever cuts the search off before it
 ## gets there.
 const NODE_CAP := 1500
+## A napping rose knight is stored as its square plus this (Brambles).
+const NAP := 1000
 ## Per level: board size, rose knights (least, most), the shortest line's
-## range, how many Ls from the king you start at least, and Insane's slack
-## (the move budget is the shortest line plus this; 0 means no budget).
+## range, how many Ls from the king you start at least, and a move budget's
+## slack (the budget is the shortest line plus this; 0 means none -- the old
+## Insane had 2; Brambles needs none, since every hop spends a square).
+## Insane is Brambles, read from the bank (`from_bank`); its row here is only
+## what a missing bank would deal live, which the state never asks for (it
+## deals Hard instead).
 const BANDS := [
 	{"w": 5, "foes": Vector2i(1, 1), "min": 4, "max": 6, "far": 3, "slack": 0},
 	{"w": 6, "foes": Vector2i(2, 2), "min": 6, "max": 9, "far": 3, "slack": 0},
 	{"w": 7, "foes": Vector2i(2, 3), "min": 8, "max": 12, "far": 4, "slack": 0},
-	{"w": 8, "foes": Vector2i(3, 3), "min": 10, "max": 16, "far": 4, "slack": 2},
+	{"w": 8, "foes": Vector2i(3, 3), "min": 10, "max": 16, "far": 4, "slack": 0},
 ]
 
 ## Positions the last `solve` expanded, for the probe.
@@ -113,34 +119,47 @@ static func dist(w: int) -> Array:
 ## in knight moves (ties: the first L), never onto their king or each other;
 ## with nowhere to go, stand. A later knight sees the earlier ones' new
 ## squares.
-static func step(g: Dictionary, you: int, foes: PackedInt32Array, to: int) -> Dictionary:
+##
+## **Brambles** (Insane, `g.brambles`; spec 2026-10-01-knight-polish-design.md,
+## section 3): `mask` is the bramble squares, bit c for square c, and already
+## holds the square you hopped off. No rose knight lands on a bramble, and one
+## left with nowhere to hop is fenced in and naps for good: it is stored as
+## its square plus NAP, catches no one, never moves again, and can be taken.
+## `napped` lists the knights that fell asleep this turn. Ported line for
+## line to tools/insane/knight_bramble_mine.py, which mines the bank.
+static func step(g: Dictionary, you: int, foes: PackedInt32Array, to: int, mask := 0) -> Dictionary:
 	var w: int = g.w
 	var king: int = g.king
 	var d: Array = dist(w)
 	var ht := hop_table(w)
 	var fs := foes.duplicate()
+	var bramble := bool(g.get("brambles", false))
 	var moved: Array[Vector2i] = []
+	var napped: Array[int] = []
 	for f in fs:
-		moved.append(Vector2i(f, f))
+		moved.append(Vector2i(sq(f), sq(f)))
 	if to == king:
-		return {"you": to, "foes": fs, "won": true, "took": -1, "caught": -1, "moved": moved}
-	var took := fs.find(to)
+		return {"you": to, "foes": fs, "won": true, "took": -1, "caught": -1, "moved": moved, "napped": napped}
+	var took := -1
+	for i in fs.size():
+		if fs[i] >= 0 and sq(fs[i]) == to:
+			took = i
 	if took >= 0:
 		fs[took] = -1
 		moved[took] = Vector2i(to, -1)
 	for i in fs.size():
 		var f: int = fs[i]
-		if f < 0:
+		if f < 0 or f >= NAP:
 			continue
 		var ms: PackedInt32Array = ht[f]
 		if ms.has(to):
 			fs[i] = to
 			moved[i] = Vector2i(f, to)
-			return {"you": to, "foes": fs, "won": false, "took": took, "caught": i, "moved": moved}
+			return {"you": to, "foes": fs, "won": false, "took": took, "caught": i, "moved": moved, "napped": napped}
 		var best := -1
 		var bd := 99
 		for m in ms:
-			if m == king or fs.has(m):
+			if m == king or _held(fs, m) or (bramble and (mask >> m) & 1):
 				continue
 			var dm: int = d[m][to]
 			if dm < bd:
@@ -149,7 +168,35 @@ static func step(g: Dictionary, you: int, foes: PackedInt32Array, to: int) -> Di
 		if best >= 0:
 			fs[i] = best
 			moved[i] = Vector2i(f, best)
-	return {"you": to, "foes": fs, "won": false, "took": took, "caught": -1, "moved": moved}
+		elif bramble:
+			fs[i] = f + NAP
+			napped.append(i)
+	return {"you": to, "foes": fs, "won": false, "took": took, "caught": -1, "moved": moved, "napped": napped}
+
+## A rose knight's square, napping or not; -1 once taken.
+static func sq(f: int) -> int:
+	return f - NAP if f >= NAP else f
+
+static func napping(f: int) -> bool:
+	return f >= NAP
+
+## Whether a rose knight (napping or not) stands on `c`.
+static func _held(fs: PackedInt32Array, c: int) -> bool:
+	for f in fs:
+		if f >= 0 and sq(f) == c:
+			return true
+	return false
+
+## The squares you may hop to: in an L, never onto a bramble.
+static func moves(g: Dictionary, you: int, mask := 0) -> PackedInt32Array:
+	var all := hops(int(g.w), you)
+	if mask == 0:
+		return all
+	var out := PackedInt32Array()
+	for m in all:
+		if not (mask >> m) & 1:
+			out.append(m)
+	return out
 
 ## A position as one int: you, then each rose knight plus one (0 = taken),
 ## base w*w+1. Four pieces on 8x8 stay under 65^4, inside 32 bits.
@@ -158,6 +205,7 @@ static func _key(you: int, foes: PackedInt32Array, base: int) -> int:
 	for f in foes:
 		k = k * base + f + 1
 	return k
+
 
 ## The shortest winning line from a position, as the squares you land on;
 ## empty when there is none within `cap` moves. A move that gets you caught
@@ -169,17 +217,23 @@ static func _key(you: int, foes: PackedInt32Array, base: int) -> int:
 ## because a breadth-first search finds the shortest line first, before it
 ## has expanded enough positions to hit the cap on any deal that was going to
 ## be accepted anyway. `state.gd`'s future `hint_move` calls this uncapped.
-static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max_nodes: int = 0) -> PackedInt32Array:
+##
+## On Brambles the position also holds the brambles (`mask`), so a key is
+## the position's int and the mask, and every hop grows one more.
+static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max_nodes: int = 0, mask := 0) -> PackedInt32Array:
 	var w: int = g.w
-	var ht := hop_table(w)
-	var base := w * w + 1
-	var root := _key(you, foes, base)
-	# key -> Vector2i(parent key, the square landed on to get here)
-	var parent := {root: Vector2i(-1, -1)}
+	var bramble := bool(g.get("brambles", false))
+	var base := w * w + 1 if not bramble else NAP + w * w + 1
+	var root: Variant = _key(you, foes, base)
+	if bramble:
+		root = [root, mask]
+	# key -> [parent key, the square landed on to get here]
+	var parent := {root: null}
 	var qy := PackedInt32Array([you])
 	var qf: Array = [foes]
+	var qm: Array = [mask]
 	var qd := PackedInt32Array([0])
-	var qk := PackedInt32Array([root])
+	var qk: Array = [root]
 	var h := 0
 	while h < qy.size():
 		if max_nodes > 0 and h >= max_nodes:
@@ -187,30 +241,35 @@ static func solve(g: Dictionary, you: int, foes: PackedInt32Array, cap: int, max
 			return PackedInt32Array()
 		var y := qy[h]
 		var fs: PackedInt32Array = qf[h]
+		var mk: int = qm[h]
 		var depth := qd[h]
-		var k := qk[h]
+		var k: Variant = qk[h]
 		h += 1
 		if depth >= cap:
 			continue
-		for m in ht[y]:
-			var r := step(g, y, fs, m)
+		var nm := mk | (1 << y) if bramble else 0
+		for m in moves(g, y, mk):
+			var r := step(g, y, fs, m, nm)
 			if r.won:
 				var line := PackedInt32Array([m])
-				var kk := k
-				while kk != root:
-					var p: Vector2i = parent[kk]
-					line.insert(0, p.y)
-					kk = p.x
+				var kk: Variant = k
+				while parent[kk] != null:
+					var p: Array = parent[kk]
+					line.insert(0, int(p[1]))
+					kk = p[0]
 				last_nodes = h
 				return line
 			if int(r.caught) >= 0:
 				continue
-			var nk := _key(r.you, r.foes, base)
+			var nk: Variant = _key(r.you, r.foes, base)
+			if bramble:
+				nk = [nk, nm]
 			if parent.has(nk):
 				continue
-			parent[nk] = Vector2i(k, m)
+			parent[nk] = [k, m]
 			qy.append(r.you)
 			qf.append(r.foes)
+			qm.append(nm)
 			qd.append(depth + 1)
 			qk.append(nk)
 	last_nodes = h
@@ -316,3 +375,19 @@ static func _generate_once(rng: RandomNumberGenerator, difficulty: int) -> Dicti
 			best = g
 	best["attempts"] = attempts
 	return best
+
+## A banked Brambles board (content/insane/knight.json, mined by
+## tools/insane/knight_bramble_mine.py) as `generate` would hand it out; {}
+## for an empty or unreadable row.
+static func from_bank(row: Dictionary) -> Dictionary:
+	if row.is_empty() or not row.has("king"):
+		return {}
+	var foes := PackedInt32Array()
+	for f in row.foes:
+		foes.append(int(f))
+	var line := PackedInt32Array()
+	for m in row.line:
+		line.append(int(m))
+	return {"w": 8, "king": int(row.king), "you": int(row.you), "foes": foes, "line": line,
+		"opt": line.size(), "budget": 0, "brambles": true, "attempts": 0, "nodes": 0,
+		"nap": bool(row.get("grade", {}).get("nap", false))}
