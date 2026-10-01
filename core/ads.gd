@@ -188,13 +188,22 @@ func _load_banner() -> void:
 		return
 	var size := AdSize.get_current_orientation_anchored_adaptive_banner_ad_size(AdSize.FULL_WIDTH)
 	_ad_view = AdView.new(unit, size, AdPosition.BOTTOM)
+	# The iOS plugin puts its native view on the window the moment it is
+	# created, loaded or not, and an empty banner view still swallows every
+	# touch in its band: with no fill the bottom of the screen went dead under
+	# buttons laid out for no banner. It stays hidden until an ad is there.
+	if ios:
+		_ad_view.hide()
 	var listener := AdListener.new()
 	listener.on_ad_loaded = func() -> void:
-		if _removed:
+		if _removed or _ad_view == null:
 			return
+		_ad_view.show()
 		_set_banner(true, float(_ad_view.get_height_in_pixels()))
 		Analytics.track("ad_banner_loaded")
 	listener.on_ad_failed_to_load = func(error: LoadAdError) -> void:
+		if _ad_view != null:
+			_ad_view.hide()
 		_set_banner(false, 0.0)
 		Analytics.track("ad_banner_failed", {"error": "%d %s" % [error.code, error.message]})
 	listener.on_ad_impression = func() -> void: Analytics.track("ad_banner_impression")
