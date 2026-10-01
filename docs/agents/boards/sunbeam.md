@@ -26,3 +26,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   a held piece and a dip and a puff when it lands, a bloom that unfurls (the
   shut bud used to vanish as it began), and a gold wave down the beam on the
   win. 65 at rest, 69 solved; a drag frame costs ~1.7 ms more on this Mac.
+- **The second polish, 2026-10-01** (unattended, spec
+  `2026-10-01-sunbeam-polish-design.md`): Hard and Insane can be lost, and
+  the rule is about **where the light is let go**, never where a piece
+  stands -- holding a piece is a free peek, and a move released with the
+  light resting on a **sleeper** costs a heart and slides back
+  (`State.judge`, `_misstep`). Hard's sleepers are three **snails**
+  (`Gen.lay_snails`: never on a reference way home, where near misses put the
+  light); Insane is **Shy Dew**, whose sleepers are the drops themselves, so
+  the last move lights them all at once (`Gen.dark_path`, exact BFS over
+  arrangements on the lean tracer `Gen.Fast`; 200 banked floors, each needing
+  a detour). Two lessons: **a board with no wrong placement can still judge
+  its release** -- price the state a move is let go in, and prove a way home
+  through unpriced states, so backtracking is always safe; and **"long ago"
+  is not a negative time** -- `t - 100` read as "never" in the first 100 s
+  after launch and showed a restored day's bud shut (both clocks use `AGO`
+  now). Rewards, party and the GLASSHOUSE sound set as Caterpillar's. Peak
+  107 draw calls (out of hearts), ANGLE agreeing on the solve. Same day: the
+  light leaves the sun weak and gains a step at every drop it passes, and the
+  bud grows (shut) by the strength that reaches it (spec section 9).

@@ -80,6 +80,14 @@ CLOVER = ("cozy casual mobile puzzle game sound in a sunny clover garden, "
           "music box tones, hushed, rounded, never harsh, no buzzers, no synth "
           "beeps, clean, dry, no music bed, no voice")
 
+# Sunbeam's sunlit greenhouse (2026-10-01): soft glass and music box chimes,
+# felt-soft brass ticks on wood, kalimba and airy shimmers, in place of the
+# house marimba (whose undo was a tape rewind and whose refuse a wooden bonk).
+GLASSHOUSE = ("cozy casual mobile puzzle game sound in a warm sunlit greenhouse, "
+              "soft glass and music box chimes, felt-soft little brass ticks on "
+              "wood, warm kalimba, gentle airy shimmer, hushed, rounded, never "
+              "harsh, no buzzers, no synth beeps, clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -793,18 +801,37 @@ SETS = {
     # on every peg a drag crosses, so it gets no file
     # (docs/art/sound-direction.md).
     "sunbeam": {
-        "lift":     ("a tiny soft brass click, a small mirror lifted off a wooden peg, very short", 0.5, -12),
+        # Re-prompted in the polish (2026-10-01) toward the greenhouse.
+        "lift":     ("a tiny felt-soft brass click, a little mirror lifted off a wooden peg with a breath of air, hushed, very short", 0.5, -13, GLASSHOUSE),
         "step":     ("a single tiny soft wooden rail tick, a small brass piece passing a peg as it slides, very short and quiet", 0.5, -15),
-        "slide":    ("a short soft wooden slide ending in a gentle brass tick, a mirror settling onto a peg, cozy", 0.5, -10),
-        "drop":     ("a tiny soft brass tick on wood, very short and quiet", 0.5, -14),
-        "dew":      ("a single tiny bright glass droplet chime, a dewdrop catching sunlight, soft glockenspiel, very short", 0.6, -9),
-        "dry":      ("a soft gentle two-note downward marimba, not yet, warm and patient", 0.6, -10),
-        "refuse":   ("a tiny soft muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft quick descending ripple of wooden ticks, pieces sliding back along rails", 1.0, -8),
-        "solved":   ("a warm celebratory glockenspiel and marimba flourish rising into a soft airy shimmer, a flower opening in morning sunlight, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny brass clicks and a light warm shimmer, a greenhouse waking in the morning sun", 1.0, -9),
+        "slide":    ("a short soft wooden glide ending in a gentle felt-soft brass tick, a mirror settling onto its peg, cozy and hushed", 0.5, -11, GLASSHOUSE),
+        "drop":     ("a tiny felt-soft brass tick on wood, very short and quiet", 0.5, -15, GLASSHOUSE),
+        "dew":      ("a single tiny bright glass droplet chime, a dewdrop catching warm sunlight, soft music box, very short", 0.6, -10, GLASSHOUSE),
+        "dry":      ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient, short", 0.6, -12, GLASSHOUSE),
+        "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not that one', warm, very short", 0.5, -12, GLASSHOUSE),
+        "undo":     ("a soft little glass shimmer sliding gently down with a felt-soft wooden tick, a kind 'take that back', warm and quiet, very short", 0.5, -11, GLASSHOUSE),
+        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm glass chime underneath, cozy and kind", 1.0, -8, GLASSHOUSE),
+        "reset":    ("a soft quick descending ripple of tiny felt-soft wooden ticks, little mirrors sliding home along their rails, hushed and cozy", 1.0, -11, GLASSHOUSE),
+        "solved":   ("a warm short celebratory music box and glass chime flourish rising into a soft airy shimmer, a flower opening in morning sunlight, joyful and cozy", 2.0, -4, GLASSHOUSE),
+        "enter":    ("a soft airy cascade of tiny glass chimes and felt-soft brass clicks, a greenhouse waking in the morning sun, hushed", 1.0, -11, GLASSHOUSE),
+        # The polish's new cues.
+        "stir":     ("a tiny sleepy snail murmuring in its sleep, a soft muffled 'mmh' with a little wobbly kalimba note, cute, very short", 0.5, -15, GLASSHOUSE),
+        "shy":      ("a tiny shy nervous glass twinkle trembling, a dewdrop blushing, a soft quivering music box note, cute, very short", 0.5, -15, GLASSHOUSE),
+        "wake":     ("a little snail startled awake, a cute soft surprised 'oh!' squeak made of two quick rising kalimba notes, gentle, never a buzzer, short", 0.6, -12, GLASSHOUSE),
+        "sizzle":   ("a tiny dewdrop drying in the sun, a very soft little steam 'pfff' with a delicate glass note fading, gentle, short", 0.7, -13, GLASSHOUSE),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, GLASSHOUSE),
+        "slip":     ("a little brass mirror sliding back along its wooden rail, a soft quick glide with a felt-soft tick, gentle, very short", 0.5, -12, GLASSHOUSE),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a greenhouse at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, GLASSHOUSE),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, GLASSHOUSE),
+        "combo":    ("a single short soft bright glass and music box pluck, one clean note, very short", 0.5, -8, GLASSHOUSE),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, GLASSHOUSE),
+        "rainbow":  ("a soft shimmering rising glissando of tiny glass chimes, a little rainbow appearing in a sunbeam, magical and warm, short", 1.0, -10, GLASSHOUSE),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, GLASSHOUSE),
+        "flutter":  ("tiny butterflies fluttering by, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -12, GLASSHOUSE),
+        "chorus":   ("many tiny glass dewdrops chiming together all at once in warm sunlight, a soft bright shimmering chord on music box and glass, magical, short", 1.2, -7, GLASSHOUSE),
+        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -5, GLASSHOUSE),
+        "party":    ("a short cozy celebratory flourish on music box and glass chimes, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -4, GLASSHOUSE),
+        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
     },
     # Knight: a cream knight hops in Ls to take the rose king; rose knights
     # answer every hop. A catch slides the board back one move.

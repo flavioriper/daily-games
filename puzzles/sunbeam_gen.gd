@@ -33,14 +33,16 @@ const SLASH: Array[int] = [3, 2, 1, 0]
 const BACK: Array[int] = [1, 0, 3, 2]
 
 ## cols, rows, pieces, cups, rail pegs, drops and pots, each a [lo, hi]
-## range, and whether two rails may share a cell. Insane's row is Hard's
-## floor with a seventh piece and crossing rails, provisional as every
-## board's Insane is (docs/superpowers/specs/2026-09-23-insane-level-design.md).
+## range, whether two rails may share a cell, and how many snails sleep on
+## the floor (Hard's: the light must never be let go on one). Insane's row
+## is the floor Shy Dew is mined from (generate_shy): Hard's floor with a
+## seventh piece and crossing rails, and no snails -- the drops themselves
+## are the sleepers there.
 const BANDS := [
-	{"cols": 5, "rows": 6, "pieces": [3, 3], "cups": [0, 1], "rail": [3, 4], "drops": [2, 3], "pots": [0, 1], "cross": false},
-	{"cols": 6, "rows": 7, "pieces": [4, 5], "cups": [1, 1], "rail": [3, 5], "drops": [3, 4], "pots": [1, 2], "cross": false},
-	{"cols": 7, "rows": 8, "pieces": [6, 6], "cups": [1, 2], "rail": [4, 5], "drops": [4, 5], "pots": [1, 3], "cross": false},
-	{"cols": 7, "rows": 8, "pieces": [7, 7], "cups": [1, 2], "rail": [4, 6], "drops": [4, 6], "pots": [1, 3], "cross": true},
+	{"cols": 5, "rows": 6, "pieces": [3, 3], "cups": [0, 1], "rail": [3, 4], "drops": [2, 3], "pots": [0, 1], "cross": false, "snails": 0},
+	{"cols": 6, "rows": 7, "pieces": [4, 5], "cups": [1, 1], "rail": [3, 5], "drops": [3, 4], "pots": [1, 2], "cross": false, "snails": 0},
+	{"cols": 7, "rows": 8, "pieces": [6, 6], "cups": [1, 2], "rail": [4, 5], "drops": [4, 5], "pots": [1, 3], "cross": false, "snails": 3},
+	{"cols": 7, "rows": 8, "pieces": [7, 7], "cups": [1, 2], "rail": [4, 6], "drops": [4, 6], "pots": [1, 3], "cross": true, "snails": 0},
 ]
 ## Whole grows before giving up and handing back the last one, unproved.
 ## Never reached on the 160 seeds measured (Hard's worst took 982).
@@ -69,6 +71,10 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			continue
 		last = g
 		if count(g, 2) == 1:
+			if int(bd.snails) > 0:
+				g["snails"] = lay_snails(rng, g, int(bd.snails))
+				if g.snails.size() < int(bd.snails):
+					continue
 			g["unique"] = true
 			g["attempts"] = attempts
 			return g
@@ -458,7 +464,7 @@ static func _grow(rng: RandomNumberGenerator, bd: Dictionary) -> Dictionary:
 	for pc: Dictionary in pieces:
 		pc["rail"] = PackedInt32Array([pc.sol])
 	var g := {"cols": w, "rows": h, "lamp": lamp, "dir": dir0, "bud": bud, "pieces": pieces,
-		"drops": PackedInt32Array(), "pots": PackedInt32Array()}
+		"drops": PackedInt32Array(), "pots": PackedInt32Array(), "snails": PackedInt32Array(), "shy": false}
 	var home := PackedInt32Array()
 	home.resize(pieces.size())
 	var sol := trace(g, home)
@@ -610,3 +616,375 @@ static func _commit(x: int, y: int, dir: int, r: int, w: int, axis: PackedByteAr
 	for i in range(1, r):
 		var c := (y + DY[dir] * i) * w + x + DX[dir] * i
 		axis[c] |= ax
+
+# --- sleepers: Hard's snails and Insane's shy dew ---
+
+## A lean tracer for searches that walk thousands of arrangements: what one
+## arrangement lights of a set of marked cells (the sleepers), and whether
+## it is the solve. No dictionaries, no allocation a call.
+class Fast:
+	var w := 0
+	var h := 0
+	var np := 0
+	var lamp := 0
+	var dir0 := 0
+	var bud := 0
+	var drops := 0
+	var cells: Array = []      ## cells[p][q]
+	var kind := PackedByteArray()   ## 0 mirror "/", 1 mirror "\", 2 cup
+	var face := PackedInt32Array()
+	var is_drop := PackedByteArray()
+	var is_pot := PackedByteArray()
+	var mark := PackedByteArray()
+	var occ_at := PackedInt32Array()
+	var occ_p := PackedInt32Array()
+	var lit_at := PackedInt32Array()
+	var seen := PackedInt32Array()
+	var stamp := 0
+	var rails := PackedInt32Array()
+	## When `tally` is set, probe() adds one to hits[c] for every cell it lights.
+	var tally := false
+	var hits := PackedInt32Array()
+
+	func _init(g: Dictionary, marked: PackedInt32Array) -> void:
+		w = g.cols
+		h = g.rows
+		var n := w * h
+		np = g.pieces.size()
+		lamp = g.lamp
+		dir0 = g.dir
+		bud = g.bud
+		drops = g.drops.size()
+		for p in np:
+			var pc: Dictionary = g.pieces[p]
+			var per: Array = []
+			for q in pc.rail.size():
+				var a: int = pc.rail[q]
+				per.append(PackedInt32Array([a]) if pc.kind == "m" \
+					else PackedInt32Array([a, a + DX[pc.s] + DY[pc.s] * w]))
+			cells.append(per)
+			rails.append(pc.rail.size())
+			if pc.kind == "m":
+				kind.append(0 if pc.t == "/" else 1)
+				face.append(0)
+			else:
+				kind.append(2)
+				face.append(int(pc.f))
+		is_drop.resize(n)
+		for c in g.drops:
+			is_drop[c] = 1
+		is_pot.resize(n)
+		for c in g.pots:
+			is_pot[c] = 1
+		mark.resize(n)
+		for c in marked:
+			mark[c] = 1
+		occ_at.resize(n)
+		occ_p.resize(n)
+		lit_at.resize(n)
+		seen.resize(n * 4)
+		hits.resize(n)
+
+	## Whether piece `p` on peg `q` overlaps another piece of `pos`.
+	func fits(pos: PackedInt32Array, p: int, q: int) -> bool:
+		var mine: PackedInt32Array = cells[p][q]
+		for o in np:
+			if o == p:
+				continue
+			for c in cells[o][pos[o]]:
+				if mine.has(c):
+					return false
+		return true
+
+	## Vector2i(marked cells lit, 1 if solved).
+	func probe(pos: PackedInt32Array) -> Vector2i:
+		stamp += 1
+		for p in np:
+			for c in cells[p][pos[p]]:
+				occ_at[c] = stamp
+				occ_p[c] = p
+		var marked := 0
+		var lit_drops := 0
+		var x := lamp % w
+		var y := lamp / w
+		var d := dir0
+		for k in w * h * 4 + 8:
+			x += DX[d]
+			y += DY[d]
+			if x < 0 or y < 0 or x >= w or y >= h:
+				break
+			var c := y * w + x
+			if seen[c * 4 + d] == stamp:
+				break
+			seen[c * 4 + d] = stamp
+			if c == bud:
+				return Vector2i(marked, 1 if lit_drops == drops else 0)
+			if is_pot[c] or c == lamp:
+				break
+			if occ_at[c] == stamp:
+				var p := occ_p[c]
+				var kd := kind[p]
+				if kd == 2:
+					if d != (face[p] + 2) % 4:
+						break
+					var cs: PackedInt32Array = cells[p][pos[p]]
+					var o: int = cs[1] if cs[0] == c else cs[0]
+					for e: int in [c, o]:
+						if lit_at[e] != stamp:
+							lit_at[e] = stamp
+							marked += mark[e]
+							lit_drops += is_drop[e]
+							if tally:
+								hits[e] += 1
+					x = o % w
+					y = o / w
+					d = face[p]
+					continue
+				d = SLASH[d] if kd == 0 else BACK[d]
+			if lit_at[c] != stamp:
+				lit_at[c] = stamp
+				marked += mark[c]
+				lit_drops += is_drop[c]
+				if tally:
+					hits[c] += 1
+		return Vector2i(marked, 0)
+
+## The fewest moves from `start` to the answer that never let go with the
+## light on a sleeper (`marked`), the last move excepted -- it is the solve --
+## or -1 when there is none. Breadth first over every arrangement, so exact;
+## gives up past `cap` arrangements seen (-2).
+static func dark_path(g: Dictionary, marked: PackedInt32Array, start: PackedInt32Array, cap := 400000) -> int:
+	var f := Fast.new(g, marked)
+	var np: int = f.np
+	var mul := PackedInt32Array()
+	var total := 1
+	for p in np:
+		mul.append(total)
+		total *= f.rails[p]
+	var home := 0
+	var at := 0
+	for p in np:
+		home += int(g.pieces[p].home) * mul[p]
+		at += start[p] * mul[p]
+	if f.probe(start).x > 0:
+		return -1
+	var visited := PackedByteArray()
+	visited.resize(total)
+	visited[at] = 1
+	var queue := PackedInt32Array([at])
+	var dist := PackedInt32Array([0])
+	var head := 0
+	var pos := PackedInt32Array()
+	pos.resize(np)
+	while head < queue.size():
+		var s := queue[head]
+		var dd := dist[head]
+		head += 1
+		for p in np:
+			pos[p] = (s / mul[p]) % f.rails[p]
+		for p in np:
+			var was := pos[p]
+			for q in f.rails[p]:
+				if q == was or not f.fits(pos, p, q):
+					continue
+				var t := s + (q - was) * mul[p]
+				if t == home:
+					return dd + 1
+				if visited[t]:
+					continue
+				visited[t] = 1
+				pos[p] = q
+				var r := f.probe(pos)
+				pos[p] = was
+				if r.x == 0 and r.y == 0:
+					queue.append(t)
+					dist.append(dd + 1)
+					if queue.size() > cap:
+						return -2
+	return -1
+
+## Hard's snails: `want` cells the light must never be let go on. They sleep
+## off the answer's beam and off every rail, never where the light falls on
+## the way home -- every piece slid straight home, in one of a few orders,
+## from the opening -- so the floor can always be finished without waking
+## one; and among those, where the most near misses would put the light (one
+## piece a peg off, at any point along that way). Empty when none tempts.
+static func lay_snails(rng: RandomNumberGenerator, g: Dictionary, want: int) -> PackedInt32Array:
+	var f := Fast.new(g, PackedInt32Array())
+	var n: int = f.w * f.h
+	var bad := PackedByteArray()
+	bad.resize(n)
+	bad[int(g.lamp)] = 1
+	bad[int(g.bud)] = 1
+	for c in g.drops:
+		bad[c] = 1
+	for c in g.pots:
+		bad[c] = 1
+	for p in f.np:
+		for cs: PackedInt32Array in f.cells[p]:
+			for c in cs:
+				bad[c] = 1
+	var start: PackedInt32Array = g.start
+	var off: Array = []
+	for p in f.np:
+		if start[p] != int(g.pieces[p].home):
+			off.append(p)
+	var best := PackedInt32Array()
+	var best_score := 0
+	for attempt in 6:
+		var order: Array = off.duplicate()
+		if attempt > 0:
+			order = _shuffle(rng, order)
+		var states: Array = [start.duplicate()]
+		var pos := start.duplicate()
+		for p: int in order:
+			pos[p] = int(g.pieces[p].home)
+			states.append(pos.duplicate())
+		# Where the light falls on the way home: never a snail.
+		f.hits.fill(0)
+		f.tally = true
+		for st: PackedInt32Array in states:
+			f.probe(st)
+		var on_way := f.hits.duplicate()
+		# Where a near miss puts it: one piece a peg off, anywhere on the way.
+		f.hits.fill(0)
+		for i in states.size() - 1:
+			var st: PackedInt32Array = states[i].duplicate()
+			for p in f.np:
+				var was := st[p]
+				for q in f.rails[p]:
+					if q == was or not f.fits(st, p, q):
+						continue
+					st[p] = q
+					f.probe(st)
+				st[p] = was
+		f.tally = false
+		var cand: Array = []
+		for c in n:
+			if not bad[c] and on_way[c] == 0 and f.hits[c] > 0:
+				cand.append(c)
+		cand = _shuffle(rng, cand)
+		cand.sort_custom(func(a, b): return f.hits[a] > f.hits[b])
+		var pick := PackedInt32Array()
+		var score := 0
+		for c: int in cand:
+			if pick.size() >= want:
+				break
+			# not two snails side by side
+			var near := false
+			for o in pick:
+				if absi(o % f.w - c % f.w) + absi(o / f.w - c / f.w) <= 1:
+					near = true
+			if near:
+				continue
+			pick.append(c)
+			score += f.hits[c]
+		if pick.size() == want and score > best_score:
+			best = pick
+			best_score = score
+	return best
+
+# --- Insane: Shy Dew ---
+
+## Openings tried for a dark one, and dark ones searched, a floor.
+const SHY_OPENINGS := 120
+const SHY_SEARCHES := 3
+
+## One Shy Dew floor: Insane's band, proved to have one answer, with an
+## opening that lights no drop and a way home that never lets go with the
+## light on one -- every drop catches the light at once, on the last move.
+## `dark` is that way's length in moves, `par` how many pieces start off
+## home. {} when this grow found none (the miner simply tries again).
+static func generate_shy(rng: RandomNumberGenerator) -> Dictionary:
+	var bd := band(3)
+	for grows in 400:
+		var g := _grow(rng, bd)
+		if g.is_empty() or count(g, 2) != 1:
+			continue
+		var f := Fast.new(g, g.drops)
+		var searched := 0
+		for tries in SHY_OPENINGS:
+			var start := _opening(rng, g)
+			if start.is_empty() or f.probe(start).x > 0:
+				continue
+			searched += 1
+			var d := dark_path(g, g.drops, start)
+			if d > 0:
+				g["start"] = start
+				g["shy"] = true
+				g["unique"] = true
+				g["dark"] = d
+				var par := 0
+				for p in g.pieces.size():
+					if start[p] != int(g.pieces[p].home):
+						par += 1
+				g["par"] = par
+				return g
+			if searched >= SHY_SEARCHES:
+				break
+	return {}
+
+## A random opening: every piece off home, nothing overlapping. Empty when
+## the draw boxed a piece in.
+static func _opening(rng: RandomNumberGenerator, g: Dictionary) -> PackedInt32Array:
+	var occ := {}
+	var start := PackedInt32Array()
+	for p in g.pieces.size():
+		var opts: Array = []
+		for q in g.pieces[p].rail.size():
+			if q == int(g.pieces[p].home):
+				continue
+			var ok := true
+			for c in cells_of(g, p, q):
+				if occ.has(c):
+					ok = false
+			if ok:
+				opts.append(q)
+		if opts.is_empty():
+			return PackedInt32Array()
+		var q: int = opts[rng.randi_range(0, opts.size() - 1)]
+		start.append(q)
+		for c in cells_of(g, p, q):
+			occ[c] = true
+	return start
+
+# --- the bank ---
+
+static func to_bank(g: Dictionary) -> Dictionary:
+	var pieces: Array = []
+	for pc: Dictionary in g.pieces:
+		var row := {"kind": pc.kind, "rail": Array(pc.rail), "home": int(pc.home)}
+		if pc.kind == "m":
+			row["t"] = pc.t
+		else:
+			row["f"] = int(pc.f)
+			row["s"] = int(pc.s)
+		pieces.append(row)
+	return {"cols": g.cols, "rows": g.rows, "lamp": g.lamp, "dir": g.dir, "bud": g.bud,
+		"pieces": pieces, "drops": Array(g.drops), "pots": Array(g.pots), "start": Array(g.start),
+		"snails": Array(g.get("snails", [])), "shy": bool(g.get("shy", false)),
+		"dark": int(g.get("dark", 0)), "par": int(g.get("par", 0))}
+
+static func from_bank(row: Dictionary) -> Dictionary:
+	if row.is_empty() or not row.has("pieces"):
+		return {}
+	var pieces: Array = []
+	for r: Dictionary in row.pieces:
+		var pc := {"kind": String(r.kind), "rail": _ints(r.rail), "home": int(r.home)}
+		if pc.kind == "m":
+			pc["t"] = String(r.t)
+		else:
+			pc["f"] = int(r.f)
+			pc["s"] = int(r.s)
+		pc["sol"] = int(pc.rail[pc.home])
+		pieces.append(pc)
+	return {"cols": int(row.cols), "rows": int(row.rows), "lamp": int(row.lamp), "dir": int(row.dir),
+		"bud": int(row.bud), "pieces": pieces, "drops": _ints(row.drops), "pots": _ints(row.pots),
+		"start": _ints(row.start), "snails": _ints(row.get("snails", [])), "shy": bool(row.get("shy", false)),
+		"dark": int(row.get("dark", 0)), "par": int(row.get("par", 0)), "unique": true, "attempts": 0}
+
+static func _ints(a: Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for v in a:
+		out.append(int(v))
+	return out
