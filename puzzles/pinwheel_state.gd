@@ -289,14 +289,14 @@ func untack_all() -> void:
 	tacked.fill(0)
 
 ## The pieces a tap on `p` turns, with how many steps each (1 for `p`
-## itself, the ribbons' signs multiplied down for the rest): [[piece,
-## step], ...], `p` first. A sewn piece is skipped and so is everything tied
+## itself, the ribbons' signs multiplied down for the rest) and how many
+## ribbons down from `p` each hangs: [[piece, step, depth], ...], `p` first. A sewn piece is skipped and so is everything tied
 ## below it -- it does not move, so it tugs nothing.
 func tugged(p: int) -> Array:
-	var out: Array = [[p, 1]]
+	var out: Array = [[p, 1, 0]]
 	if p < 0 or p >= _kids.size():
 		return out
-	var stack: Array = [[p, 1]]
+	var stack: Array = [[p, 1, 0]]
 	while not stack.is_empty():
 		var top: Array = stack.pop_back()
 		for k: Array in (_kids[int(top[0])] as Array):
@@ -304,8 +304,8 @@ func tugged(p: int) -> Array:
 			if is_tacked(q) or fixed(q):
 				continue
 			var step := int(top[1]) * int(k[1])
-			out.append([q, step])
-			stack.append([q, step])
+			out.append([q, step, int(top[2]) + 1])
+			stack.append([q, step, int(top[2]) + 1])
 	return out
 
 ## Rebuilds `cover` from where the pieces are sitting. Called after every
@@ -329,7 +329,7 @@ func recompute() -> void:
 ##
 ## On Insane the tap tugs every piece tied below `p` too (`tugged`), and the
 ## one history entry carries every piece it moved in `moves`, [[piece, from,
-## to], ...], so an undo (the state keeps one even where the board offers
+## to, step], ...], so an undo (the state keeps one even where the board offers
 ## none: Reset is built on the same entries) turns them all back.
 ## A sewn-down piece is refused like a pinned-fast one.
 func turn(p: int) -> bool:
@@ -341,7 +341,7 @@ func turn(p: int) -> bool:
 		var m: int = (shapes[q] as Array).size()
 		var was := int(turned[q])
 		turned[q] = posmod(was + int(pair[1]), m)
-		moves.append([q, was, int(turned[q])])
+		moves.append([q, was, int(turned[q]), int(pair[1])])
 	recompute()
 	history.append({"piece": p, "from": int(moves[0][1]), "to": int(moves[0][2]), "moves": moves})
 	return true

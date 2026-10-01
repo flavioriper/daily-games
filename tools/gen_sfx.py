@@ -57,6 +57,13 @@ BREEZE = ("cozy casual mobile puzzle game sound, soft paper, felt, warm kalimba 
           "and music box tones, gentle breaths of air, rounded, no harsh "
           "transients, clean, dry, no music bed, no voice")
 
+# Pinwheel's sewing basket on a breezy porch (2026-10-01): soft paper
+# whirrs, linen and felt, kalimba and a music box, in place of the house
+# marimba.
+LINEN = ("cozy casual mobile puzzle game sound, soft paper pinwheel whirrs, "
+         "linen and felt, warm kalimba and music box tones, gentle breeze, "
+         "rounded, no harsh transients, clean, dry, no music bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -702,14 +709,35 @@ SETS = {
         "clouds":   ("soft fluffy clouds drifting apart, an airy gentle shimmer of breeze with a warm slow music box note, dreamy and calm", 1.5, -12, BREEZE),
     },
     # Pinwheel: tap a paper pinwheel and its cloth piece takes a quarter turn.
+    # Re-prompted in the polish (2026-10-01) toward a sewing basket on a
+    # breezy porch (LINEN in place of the house marimba): soft paper whirrs,
+    # linen, felt, a wooden spool, kalimba and a music box. No tape-rewind
+    # undo, no wooden bonk.
     "pinwheel": {
-        "place":    ("a short soft airy paper pinwheel whirr with a tiny wooden click, a quarter turn, very short", 0.5, -11),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a soft quick ripple of airy paper whirrs and small wooden clicks, pinwheels spinning back", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light breezy flutter, little paper pinwheels appearing", 1.0, -9),
+        "place":    ("a soft airy paper pinwheel whirr turning a quarter round, with a tiny felt-soft wooden click as it settles, hushed, very short", 0.5, -11, LINEN),
+        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'that one stays', muffled and warm, very short", 0.5, -12, LINEN),
+        "undo":     ("a tiny soft linen rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, LINEN),
+        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, LINEN),
+        "reset":    ("a soft airy ripple of little paper pinwheels whirring back one after another with tiny felt clicks, hushed and cozy", 1.0, -11, LINEN),
+        "enter":    ("a soft airy cascade of tiny paper flutters and felt pops, a quilt of little pinwheels appearing on a breezy porch, hushed", 1.0, -11, LINEN),
+        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending in a soft bright shimmer and a happy breeze through paper pinwheels, joyful and cozy", 2.0, -4, LINEN),
+        # The polish's new cues.
+        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, LINEN),
+        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, LINEN),
+        "whirl":    ("a little paper pinwheel catching a happy gust and whirring round and round fast, a soft rising airy whirr with a playful two-note kalimba whistle, cute", 1.0, -11, LINEN),
+        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, LINEN),
+        "flutter":  ("a tiny butterfly fluttering past, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute, short", 0.9, -12, LINEN),
+        "snag":     ("a soft fabric snag, a gentle thread catching with a tiny tug and a muffled felt thump, a small 'oops', warm, never harsh, short", 0.5, -12, LINEN),
+        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, LINEN),
+        "tack":     ("a tiny soft needle and thread stitch, two quick gentle pulls of thread through linen and a small bright music box ding, neat and kind", 0.6, -12, LINEN),
+        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, paper pinwheels going still at dusk, calm and kind, maybe tomorrow", 1.6, -14, LINEN),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, LINEN),
+        "tug":      ("a soft satin ribbon pulled taut with a gentle little stretch and release, a quiet springy twang on a felt-muted kalimba, short", 0.5, -14, LINEN),
+        "stamp":    ("a soft paper stamp thump followed by a clear warm music box chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, LINEN),
+        "party":    ("a short joyful flourish on a music box and kalimba, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, LINEN),
+        "kite":     ("a paper kite with a ribbon tail swooping up on a warm breeze, a soft rising airy whoosh and a gentle fluttering of paper and ribbon, joyful", 1.4, -10, LINEN),
+        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        "ribbons":  ("satin ribbons slipping loose and fluttering up into a breeze, soft silky swishes with a slow dreamy music box note, calm and happy", 1.5, -12, LINEN),
     },
     # Caterpillar: drag from leaf 1 and every square grows the caterpillar a
     # segment; it eats the leaves in order. `step` fires on every square, so

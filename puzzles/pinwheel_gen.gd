@@ -417,11 +417,14 @@ const RIBBON_REACH := 2
 const RIBBON_KIDS := 2
 const RIBBON_DEPTH := 3
 const RIBBON_CROSSED := 0.35
-const RIBBON_SHARE := 0.75
+const RIBBON_SHARE := 0.5
 const RIBBON_TRIES := 40
 ## The chance a piece is left untied when it could tie: ribbons on every pin
-## read as a net; about ten on sixteen pieces read as ribbons.
-const RIBBON_SKIP := 0.3
+## read as a net; six or seven on sixteen pieces read as ribbons.
+## A ribbon may also pass no nearer than RIBBON_CLEAR cells to a pin it is
+## not tied to: a ribbon over a stranger's wheel reads as tied to it.
+const RIBBON_SKIP := 0.45
+const RIBBON_CLEAR := 0.5
 
 ## Ties the movable pieces into a forest of ribbons and deals the opening
 ## **backwards from the answer**: pick how many times each pin will be
@@ -553,6 +556,14 @@ static func _tie(rng: RandomNumberGenerator, movable: Array, pins: PackedInt32Ar
 			if _depth_of(a, parent) + 1 + _height_of(q, kids, ribbons) > RIBBON_DEPTH:
 				continue
 			var clash := false
+			for other in pins.size():
+				var o := int(pins[other])
+				if o == int(pins[a]) or o == int(pins[q]):
+					continue
+				var oc := Vector2(o % cols, o / cols)
+				if Geometry2D.get_closest_point_to_segment(oc, Vector2(aa), Vector2(qa)).distance_to(oc) < RIBBON_CLEAR:
+					clash = true
+					break
 			for sg: Array in segs:
 				if _cross(Vector2(aa), Vector2(qa), sg[0], sg[1]):
 					clash = true
