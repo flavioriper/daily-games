@@ -30,3 +30,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   neighbour flinch; the big block watches the held one and blinks; a hint
   leaves a dotted trail; the big block hops out in three steps. 68 played,
   67 on ANGLE, reduce motion pixel-still.
+  **Polished again on 2026-10-01** (spec `2026-10-01-slider-polish-design.md`,
+  built unattended): **hard wood** -- players read the lean, the landing
+  squash, the overshooting settle and the wobble as jelly, so
+  `slider_block.gd`'s `block()` can no longer bend a block and every motion
+  moves it whole (a settle that stops dead, one recoil off a wall, blocks
+  set into the tray on the entrance). **Hearts on Hard** (3; a let-go move
+  that takes the big block farther from the gate costs one and slides back;
+  it sweats while such a move is held) **and Insane** (2). **Insane is
+  Homesick**: the big block never steps back up, so a tray can be lost; a
+  move that leaves it no way home costs a heart and slides back. The solver
+  runs that graph one-way (`distances(..., homesick)`, edges reversed for
+  the second pass); the bank is `content/insane/slider.json`
+  (`tools/mine_slider_homesick.gd`, `tools/merge_slider_homesick.py`). A
+  Homesick move let go before the worker is done waits for it (`_pending`)
+  rather than blocking the frame. Rewards: the nearer-streak, the twirl /
+  love / butterfly gags, the latch one move from home, the halfway sparkle,
+  the party (nap cat, seal, `SL_CHEER_*`). Sound: WALNUT foley and
+  WALNUT_TUNE kalimba, 27 cues, unheard. A restored day now keeps `_won`
+  apart from its clock (it showed the gate shut in the app's first 100 s).
+  `tests/_shot_slider.gd` plays every mode through the board's input.
