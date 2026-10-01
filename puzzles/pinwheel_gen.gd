@@ -36,8 +36,10 @@ const DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 ## Each multiset sums to exactly `cols * rows`, which is what makes "no cell
 ## bare" and "no cell stained" the same sentence (the spec's rule 7). Band 1
 ## is the 5x7 of eleven pieces counted off the reference screenshot, and it
-## is the band the menu opens. Insane's row is provisional, replaced by the
-## bank in this board's own batch.
+## is the band the menu opens. Insane (2026-10-01) keeps its 7x8 of sixteen
+## and ties the pinwheels together with ribbons (`_ribbon_deal`): a live
+## deal, because a board is a few milliseconds and the ribbons make every
+## scramble solvable by construction.
 const BANDS := [
 	{"cols": 5, "rows": 5, "sizes": [1, 2, 2, 3, 3, 3, 4, 4, 3], "min_turns": 8, "max_stack": 2},
 	{"cols": 5, "rows": 7, "sizes": [1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 4], "min_turns": 14, "max_stack": 3},
@@ -83,7 +85,13 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		var cloth: PackedInt32Array = _colour(shapes)
 		if cloth.is_empty():
 			continue
-		var scramble: Dictionary = _scramble(rng, shapes, cols, rows, b)
+		var scramble: Dictionary
+		if d == 3:
+			scramble = _ribbon_deal(rng, shapes, pins, cols, rows, b)
+			if scramble.is_empty():
+				continue
+		else:
+			scramble = _scramble(rng, shapes, cols, rows, b)
 		if scramble.is_empty():
 			if fallback.is_empty():
 				fallback = _board(cols, rows, pins, shapes, cloth,
@@ -122,6 +130,7 @@ static func _board(cols: int, rows: int, pins: PackedInt32Array, shapes: Array,
 		"unique": true,
 		"attempts": attempt,
 		"turns": int(scramble.turns),
+		"ribbons": scramble.get("ribbons", []),
 	}
 
 # ------------------------------------------------------------------ the grow
@@ -397,6 +406,209 @@ static func _plain_scramble(rng: RandomNumberGenerator, shapes: Array) -> Dictio
 		start.append(si)
 		turns += (m - si) % m
 	return {"start": start, "turns": turns, "score": 0}
+
+# --------------------------------------------------------------- the ribbons
+
+## Insane's ribbons: how near two pins must be to tie (king moves), how many
+## pieces a pin may pull, how deep a run of ribbons may hang, the share of
+## crossed ribbons (they turn the tied piece the other way), and the least
+## share of movable pieces that must be tied to something.
+const RIBBON_REACH := 2
+const RIBBON_KIDS := 2
+const RIBBON_DEPTH := 3
+const RIBBON_CROSSED := 0.35
+const RIBBON_SHARE := 0.75
+const RIBBON_TRIES := 40
+## The chance a piece is left untied when it could tie: ribbons on every pin
+## read as a net; about ten on sixteen pieces read as ribbons.
+const RIBBON_SKIP := 0.3
+
+## Ties the movable pieces into a forest of ribbons and deals the opening
+## **backwards from the answer**: pick how many times each pin will be
+## tapped on the way home (`x`), work out where every piece must then start
+## (its own taps plus every tug from the ribbons above it), and keep the deal
+## only if **no movable piece opens at home** -- the hearts' judge stands on
+## that (a piece is home only because the player put it there). Turning the
+## pins from the top of each ribbon down then always solves it, which is why
+## no search is needed: a forest's tugs only ever run downhill.
+##
+## Kept: the deal whose ribbons tie at least RIBBON_SHARE of the movable
+## pieces, with a run at least three deep, worth `min_turns` taps on that
+## top-down route, under `max_stack`, tidiest first. {} when none was found
+## (the caller grows another board).
+static func _ribbon_deal(rng: RandomNumberGenerator, shapes: Array, pins: PackedInt32Array,
+		cols: int, rows: int, b: Dictionary) -> Dictionary:
+	var movable: Array = []
+	for p in shapes.size():
+		if (shapes[p] as Array).size() >= 2:
+			movable.append(p)
+	if movable.size() < 4:
+		return {}
+	var best := {}
+	for _try in RIBBON_TRIES:
+		var ribbons: Array = _tie(rng, movable, pins, cols)
+		if ribbons.is_empty():
+			continue
+		var parent := {}
+		var sign := {}
+		for r: Dictionary in ribbons:
+			parent[int(r["to"])] = int(r["from"])
+			sign[int(r["to"])] = int(r["sign"])
+		var tied := {}
+		var deepest := 0
+		for r: Dictionary in ribbons:
+			tied[int(r["from"])] = true
+			tied[int(r["to"])] = true
+			deepest = maxi(deepest, _depth_of(int(r["to"]), parent))
+		if float(tied.size()) < RIBBON_SHARE * float(movable.size()) or deepest < 2:
+			continue
+		for _deal in 30:
+			var x := {}
+			var turns := 0
+			for p: int in movable:
+				var m: int = (shapes[p] as Array).size()
+				x[p] = rng.randi_range(0, m - 1)
+				turns += int(x[p])
+			if turns < int(b.min_turns):
+				continue
+			var start := PackedInt32Array()
+			start.resize(shapes.size())
+			var home_any := false
+			for p in shapes.size():
+				var m: int = (shapes[p] as Array).size()
+				if m < 2:
+					start[p] = 0
+					continue
+				# Every tug that reaches p on the way home: its own taps, and each
+				# ancestor's taps times the signs on the ribbons between.
+				var d := int(x[p])
+				var q := p
+				var s := 1
+				while parent.has(q):
+					s *= int(sign[q])
+					q = int(parent[q])
+					d += s * int(x[q])
+				start[p] = posmod(-d, m)
+				if start[p] == 0:
+					home_any = true
+					break
+			if home_any:
+				continue
+			var cover: Array = []
+			cover.resize(cols * rows)
+			cover.fill(0)
+			for p in shapes.size():
+				for c: Vector2i in ((shapes[p] as Array)[start[p]] as Array):
+					cover[c.y * cols + c.x] += 1
+			var deep := 0
+			var stained := 0
+			for n: int in cover:
+				deep = maxi(deep, n)
+				if n > 1:
+					stained += 1
+			if deep > int(b.max_stack):
+				continue
+			var score := stained * 10 + deep
+			if best.is_empty() or score < int(best.score):
+				best = {"start": start, "turns": turns, "score": score, "ribbons": ribbons}
+			break
+	return best
+
+## One forest of ribbons over the movable pieces: each piece, in a shuffled
+## order, ties to a pin within RIBBON_REACH that is not below it, pulls fewer
+## than RIBBON_KIDS already and leaves the run no deeper than RIBBON_DEPTH,
+## and whose ribbon would cross no ribbon already tied (a straight line pin to
+## pin; crossed ribbons read as a knot).
+static func _tie(rng: RandomNumberGenerator, movable: Array, pins: PackedInt32Array,
+		cols: int) -> Array:
+	var order := movable.duplicate()
+	_shuffle(rng, order)
+	var parent := {}
+	var kids := {}
+	var ribbons: Array = []
+	var segs: Array = []
+	for q: int in order:
+		if rng.randf() < RIBBON_SKIP:
+			continue
+		var qa := Vector2i(int(pins[q]) % cols, int(pins[q]) / cols)
+		var cands: Array = []
+		for a: int in movable:
+			if a == q or kids.get(a, 0) >= RIBBON_KIDS:
+				continue
+			var aa := Vector2i(int(pins[a]) % cols, int(pins[a]) / cols)
+			if maxi(absi(aa.x - qa.x), absi(aa.y - qa.y)) > RIBBON_REACH:
+				continue
+			# Not below q (no loop), and the run stays shallow enough.
+			var up := a
+			var loop := false
+			while true:
+				if up == q:
+					loop = true
+					break
+				if not parent.has(up):
+					break
+				up = int(parent[up])
+			if loop:
+				continue
+			if _depth_of(a, parent) + 1 + _height_of(q, kids, ribbons) > RIBBON_DEPTH:
+				continue
+			var clash := false
+			for sg: Array in segs:
+				if _cross(Vector2(aa), Vector2(qa), sg[0], sg[1]):
+					clash = true
+					break
+			if clash:
+				continue
+			cands.append([a, aa])
+		if cands.is_empty():
+			continue
+		var pick: Array = cands[rng.randi_range(0, cands.size() - 1)]
+		var a := int(pick[0])
+		parent[q] = a
+		kids[a] = int(kids.get(a, 0)) + 1
+		var s := -1 if rng.randf() < RIBBON_CROSSED else 1
+		ribbons.append({"from": a, "to": q, "sign": s})
+		segs.append([Vector2(pick[1]), Vector2(qa)])
+	return ribbons
+
+## How many ribbons hang above `p`.
+static func _depth_of(p: int, parent: Dictionary) -> int:
+	var n := 0
+	while parent.has(p):
+		p = int(parent[p])
+		n += 1
+	return n
+
+## How many ribbons hang below `p`, at the deepest.
+static func _height_of(p: int, kids: Dictionary, ribbons: Array) -> int:
+	if int(kids.get(p, 0)) == 0:
+		return 0
+	var h := 0
+	for r: Dictionary in ribbons:
+		if int(r["from"]) == p:
+			h = maxi(h, 1 + _height_of(int(r["to"]), kids, ribbons))
+	return h
+
+## Whether segments ab and cd cross, sharing an end allowed (two ribbons may
+## leave one pin).
+static func _cross(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> bool:
+	if a == c or a == d or b == c or b == d:
+		# Sharing a pin: they cross only if they lie along each other.
+		var u := (b - a).normalized()
+		var v := (d - c).normalized()
+		return absf(u.cross(v)) < 0.01 and u.dot(v) * (1.0 if (a == c or b == d) else -1.0) > 0.0
+	var d1 := (b - a).cross(c - a)
+	var d2 := (b - a).cross(d - a)
+	var d3 := (d - c).cross(a - c)
+	var d4 := (d - c).cross(b - c)
+	if ((d1 > 0.0 and d2 < 0.0) or (d1 < 0.0 and d2 > 0.0)) \
+			and ((d3 > 0.0 and d4 < 0.0) or (d3 < 0.0 and d4 > 0.0)):
+		return true
+	# Collinear and overlapping: one ribbon would lie along the other.
+	if absf(d1) < 0.001 and absf(d2) < 0.001:
+		var ab := Rect2(a, Vector2.ZERO).expand(b)
+		return ab.grow(0.01).has_point(c) or ab.grow(0.01).has_point(d)
+	return false
 
 # ------------------------------------------------------------- the colouring
 
