@@ -1,0 +1,302 @@
+extends SceneTree
+
+## The performance checkup's probe (2026-10-01): opens one board at one
+## difficulty, idles, then plays right moves through the board's own input
+## path, and prints where each window's frame time goes -- the whole frame,
+## the script/process share and the renderer's CPU share -- with the peak
+## draw calls and the node count. Vsync is off, so a frame is its real cost.
+##
+##     godot --path . --resolution 810x1440 --always-on-top \
+##         --rendering-driver opengl3_angle \
+##         --script res://tests/_probe_perf.gd -- <id> d=<0..3>
+##
+## A single ms reading off this Mac is noise; run it twice and quote the
+## second, and compare windows within one run (idle against play) rather
+## than across runs. A board with no `_play_<id>` here only idles.
+
+const IDLE_FROM := 1.5
+const IDLE_TO := 6.5
+const PLAY_EVERY := 0.25
+const PLAY_TO := 13.0  # (a `howto` run with five pages needs ~10 s)
+
+var _menu: Node
+var _host: Node
+var _puzzle: Node
+var _entry: Dictionary
+var _id := "binairo"
+var _level := 3
+var _t := -0.3
+var _opened := false
+var _windows := {"idle": [], "play": []}
+var _draws := {"idle": 0, "play": 0}
+var _next_move := IDLE_TO
+var _moves: Array = []
+var _vp: RID
+## `x=<name>` switches one thing off at IDLE_FROM to see what it costs:
+## faces (stop every face's idle), board (hide the board), page (hide all
+## but the board's own subtree), host (hide the whole host).
+var _exp := ""
+## `fill` plays every right move but the last two before the idle window.
+var _fill := false
+## `howto` leaves the first-play tutorial up; `shot=<s>` saves the screen to
+## /tmp/probe_<id>.png that many seconds after opening.
+var _howto := false
+var _shot_at := INF
+var _page := 0
+var _exp_done := false
+
+func _initialize() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
+	var args := OS.get_cmdline_user_args()
+	for a in args:
+		if a == "howto":
+			_howto = true
+		elif a.begins_with("shot="):
+			_shot_at = float(a.substr(5))
+		elif a == "fill":
+			_fill = true
+		elif a.begins_with("x="):
+			_exp = a.substr(2)
+		elif a.begins_with("d="):
+			_level = int(a.substr(2))
+		else:
+			_id = a
+	var progress_path := "user://_probe_perf_progress.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
+	var progress = load("res://core/progress.gd")
+	progress.path = progress_path
+	for e in load("res://ui/registry.gd").PUZZLES:
+		if not _howto:
+			progress.mark_tutorial_seen(String(e.id))
+	var main: Node = load("res://world/main.tscn").instantiate()
+	root.add_child(main)
+	_menu = main.get_node("UI/Menu")
+	_vp = root.get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(_vp, true)
+
+func _process(delta: float) -> bool:
+	_t += delta
+	if not _opened:
+		if _t >= 0.0:
+			_open()
+		return false
+	if _fill and _t >= 0.3 and _t < IDLE_FROM - 0.4:
+		# Every right move but the last two, one a frame, so the idle window
+		# measures a nearly full board.
+		for k in 4:
+			if _moves.size() > 2:
+				_step()
+	if _exp != "" and not _exp_done and _t >= IDLE_FROM - 0.3:
+		_exp_done = true
+		_experiment()
+	if _t >= _shot_at:
+		_shot_at = INF
+		var name := "/tmp/probe_%s%s.png" % [_id, "_p%d" % _page if _howto else ""]
+		root.get_viewport().get_texture().get_image().save_png(name)
+		print("shot ", name)
+		var c0 = _host.get_node_or_null("HowToPlay")
+		if c0 != null:
+			print("  diagram size ", c0._diagram.size, " slot ", c0._diagram_slot.size, " caption ", c0._diagram._caption.position, " ", c0._diagram._caption.size)
+		# With the tutorial up, every page in turn, 1.8 s apart.
+		var card = _host.get_node_or_null("HowToPlay")
+		if _howto and card != null and _page < card._pages.size() - 1:
+			_page += 1
+			card._turn(1)
+			_shot_at = _t + 1.8
+	var window := ""
+	if _t >= IDLE_FROM and _t < IDLE_TO:
+		window = "idle"
+	elif _t >= IDLE_TO and _t < PLAY_TO:
+		window = "play"
+	if window != "":
+		_windows[window].append(Vector3(delta * 1000.0,
+			RenderingServer.viewport_get_measured_render_time_gpu(_vp),
+			RenderingServer.viewport_get_measured_render_time_cpu(_vp)))
+		if delta * 1000.0 > 25.0:
+			print("  spike %.1f ms at t=%.2f (%s) moves=%d done=%s" % [delta * 1000.0, _t, window, _puzzle.get("moves") if _puzzle.get("moves") != null else -1, _puzzle.is_done()])
+		_draws[window] = maxi(_draws[window], int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+		if window == "play" and _t >= _next_move:
+			_next_move += PLAY_EVERY
+			_step()
+	if _t >= PLAY_TO:
+		_report()
+		quit()
+		return true
+	return false
+
+func _open() -> void:
+	_opened = true
+	_t = 0.0
+	for e in load("res://ui/registry.gd").PUZZLES:
+		if e.id == _id:
+			_entry = e
+	if bool(_entry.get("pick_difficulty", false)):
+		_menu._open_at(_entry, _level)
+	else:
+		_menu._open(_entry)
+	_host = _menu.get_child(_menu.get_child_count() - 1)
+	_puzzle = _host._puzzle
+	if not _howto and _host.has_node("HowToPlay"):
+		_host.get_node("HowToPlay").free()
+	if has_method("_moves_" + _id):
+		_moves = call("_moves_" + _id)
+
+func _experiment() -> void:
+	match _exp:
+		"faces":
+			for f in _all(_host, func(n): return n.has_method("set_idle")):
+				f.set_idle(false)
+		"board":
+			_puzzle.visible = false
+		"host":
+			_host.visible = false
+		"undo":
+			var m: Dictionary = _moves[0]
+			_click(m.at.call())
+			var cell: Vector2i = _puzzle._cell_at(m.at.call())
+			var before: int = _puzzle.state.grid[cell.y][cell.x]
+			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
+			_host._on_undo()
+			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"trivialwash":
+			var sh := Shader.new()
+			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
+			load("res://ui/theme.gd").paper().shader = sh
+		"bn_tints":
+			for row in _puzzle._tints:
+				for t in row:
+					t.visible = false
+		"bn_faces":
+			for row in _puzzle._faces:
+				for f in row:
+					if f != null:
+						f.visible = false
+		"bn_coins":
+			for row in _puzzle._styles:
+				for sb in row:
+					sb.draw_center = false
+					sb.border_width_bottom = 0
+		"bn_layers":
+			for l in [_puzzle._sign_layer, _puzzle._heart_layer, _puzzle._combo_layer]:
+				l.visible = false
+		"bn_fx":
+			_puzzle.fx.visible = false
+		"nowash":
+			for c in _all(_host, func(n): return n is CanvasItem and n.material != null):
+				c.material = null
+		_:
+			if _exp.begins_with("hide:"):
+				for name in _exp.substr(5).split(","):
+					var hit := _host.find_child(name, true, false)
+					if hit != null:
+						hit.visible = false
+					else:
+						print("no node ", name)
+	if _exp == "parts":
+		for k in 3:
+			for name in ["_host._refresh", "_puzzle._recolour", "_puzzle._focus", "_puzzle._glance", "_puzzle.state.refresh_bad", "_puzzle.state.broken_rule", "_host.top_bar.refresh", "_host.action_bar.refresh", "_host.tray.refresh", "flip", "puff", "cue", "hop", "nudge", "note_move", "celebrate", "after_change", "sync_under"]:
+				var t0 := Time.get_ticks_usec()
+				for j in 10:
+					match name:
+						"_host._refresh": _host._refresh()
+						"_puzzle._recolour": _puzzle._recolour()
+						"_puzzle._focus": _puzzle._focus(3, 3)
+						"_puzzle._glance": _puzzle._glance(3, 3)
+						"_puzzle.state.refresh_bad": _puzzle.state.refresh_bad()
+						"_puzzle.state.broken_rule": _puzzle.state.broken_rule()
+						"_host.top_bar.refresh": _host.top_bar.refresh(_puzzle)
+						"_host.action_bar.refresh": _host.action_bar.refresh(_puzzle)
+						"_host.tray.refresh": _host.tray.refresh(_puzzle)
+						"flip": _puzzle._flip_face(3, 3, j % 2)
+						"puff": _puzzle.fx.puff(Vector2(300, 300), Color.RED, 5)
+						"cue": _puzzle.fx.cue("place")
+						"hop": _puzzle._hop(3, 3, -10.0, 0.2)
+						"nudge": _puzzle._nudge_neighbours(3, 3)
+						"note_move": _puzzle.note_move()
+						"celebrate": _puzzle._celebrate(_puzzle.state.line_just_completed(3, 3), 3, 3)
+						"after_change": _puzzle._after_change(3, 3)
+						"sync_under": _puzzle._sync_under()
+				if k == 2:
+					print("  part %s %.2f ms" % [name, (Time.get_ticks_usec() - t0) / 10000.0])
+	print("experiment ", _exp, " moves left ", _moves.size(), " done ", _puzzle.is_done(), " moves ", _puzzle.moves, " out ", _puzzle.out_of_hearts)
+
+func _all(n: Node, pred: Callable) -> Array:
+	var out := []
+	for c in n.get_children():
+		if pred.call(c):
+			out.append(c)
+		out.append_array(_all(c, pred))
+	return out
+
+func _step() -> void:
+	if _moves.is_empty() or _puzzle.is_done():
+		return
+	var m: Dictionary = _moves.pop_front()
+	# Positions are asked for at the move, after the board has laid out.
+	var t0 := Time.get_ticks_usec()
+	_click(m.at.call() if m.at is Callable else m.at)
+	var took := (Time.get_ticks_usec() - t0) / 1000.0
+	if took > 4.0:
+		print("  slow move %.1f ms at t=%.2f" % [took, _t])
+
+## A press and its release at a point in the board's own space, through
+## the board's _gui_input as a finger would reach it.
+func _click(at: Vector2) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = pressed
+		ev.position = at
+		var t0 := Time.get_ticks_usec()
+		_puzzle._gui_input(ev)
+		if _exp == "parts":
+			print("  click %s %.2f ms" % ["down" if pressed else "up", (Time.get_ticks_usec() - t0) / 1000.0])
+
+func _report() -> void:
+	print("perf %s d=%d nodes=%d" % [_id, _level, root.get_child_count() + _count(root)])
+	for w in ["idle", "play"]:
+		var f: Array = _windows[w]
+		if f.is_empty():
+			continue
+		var frame: Array[float] = []
+		var proc: Array[float] = []
+		var cpu: Array[float] = []
+		for v: Vector3 in f:
+			frame.append(v.x)
+			proc.append(v.y)
+			cpu.append(v.z)
+		print("  %-4s frames=%d frame mean=%.2f p95=%.2f max=%.2f | gpu mean=%.2f max=%.2f | render-cpu mean=%.2f max=%.2f | draws=%d" % [
+			w, f.size(), _mean(frame), _pct(frame, 0.95), frame.max(),
+			_mean(proc), proc.max(), _mean(cpu), cpu.max(), _draws[w]])
+
+static func _count(n: Node) -> int:
+	var k := 0
+	for c in n.get_children():
+		k += 1 + _count(c)
+	return k
+
+static func _mean(a: Array[float]) -> float:
+	var s := 0.0
+	for v in a:
+		s += v
+	return s / maxf(1.0, a.size())
+
+static func _pct(a: Array[float], p: float) -> float:
+	var s := a.duplicate()
+	s.sort()
+	return s[clampi(int(s.size() * p), 0, s.size() - 1)]
+
+# --- per-board moves: right moves, one a step ---
+
+func _moves_binairo() -> Array:
+	var out := []
+	for r in _puzzle.n:
+		for c in _puzzle.n:
+			if _puzzle.state.given[r][c]:
+				continue
+			var at: Callable = _puzzle.cell_to_local.bind(r, c)
+			out.append({"at": at})
+			if _puzzle.state.solution[r][c] == 1:
+				out.append({"at": at})
+	return out

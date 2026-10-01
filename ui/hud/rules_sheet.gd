@@ -11,6 +11,7 @@ const SEP := 14.0
 
 var close_button: Button
 var _list: VBoxContainer
+var _shown_key := ""
 
 func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
@@ -28,6 +29,13 @@ func refresh(puzzle) -> void:
 	set_rules(puzzle.rules() if puzzle != null else "")
 
 func set_rules(text: String) -> void:
+	# The host refreshes on every move and focus change; rebuilding and
+	# reshaping every bullet each time was a few ms a tap on a phone for a
+	# sheet that is usually shut and whose text rarely changes.
+	var key := "%s|%d" % [text, int(content_width())]
+	if key == _shown_key and _list.get_child_count() > 0:
+		return
+	_shown_key = key
 	for child in _list.get_children():
 		_list.remove_child(child)
 		child.free()

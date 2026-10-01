@@ -21,6 +21,8 @@ signal undo
 signal reset
 signal hint
 signal settings
+## The ? button: the board's tutorial again, any time (checkup, 2026-10-01).
+signal help
 
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -50,6 +52,7 @@ var hint_button: Button
 ## board's own are spent (the badge then shows a play mark).
 var hint_offer := false
 var settings_button: Button
+var help_button: Button
 var _title: Label
 var _motto: Label
 var _block: Control
@@ -106,6 +109,7 @@ func _build() -> void:
 	reset_button = _button("reset", reset)
 	reset_button.visible = with_reset
 	hint_button = _button("bulb", hint)
+	help_button = _button("help", help)
 	settings_button = _button("gear", settings)
 	_block.resized.connect(_fit_title)
 	_fit_title.call_deferred()

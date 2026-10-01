@@ -226,6 +226,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	top_bar.reset.connect(_on_reset)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(_open_settings)
+	top_bar.help.connect(_open_rules)
 	_top_stack.add_child(top_bar)
 	day_card = FlatDayCard.new()
 	day_card.name = "DayCard"

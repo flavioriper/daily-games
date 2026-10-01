@@ -120,6 +120,11 @@ var shadowless := false:
 	set(v):
 		shadowless = v
 		queue_redraw()
+## Layers the owner draws itself, every face's at once (Binairo's board puts
+## all its suns' shadows and rays in two MultiMesh draws, since a canvas
+## command per layer per face was most of a full 10x10's draw calls). Empty
+## draws every layer, as before.
+var skip_layers: Array = []
 ## Whether set_idle(true) rocks this face. Only a moon reads it, and the owner
 ## turns it on for about a third of them so a board sways rather than nods.
 var rocks := false
@@ -148,6 +153,8 @@ var glasses := 0.0:
 var hat_style := 0
 
 var _idle := false
+## _mesh_for's last answer per layer: [key, mesh].
+var _memo: Dictionary = {}
 var _blink_tw: Tween
 var _blink_wait: Tween
 var _idle_tw: Tween
@@ -271,6 +278,8 @@ func _draw() -> void:
 	for layer in _layers():
 		if shadowless and layer[0] == "shadow":
 			continue
+		if skip_layers.has(layer[0]):
+			continue
 		var mesh := _mesh_for(layer[0], layer[1], R, eye)
 		draw_mesh(mesh, null, _layer_transform(layer[0], R, centre))
 	if hat > 0.0 or glasses > 0.0:
@@ -367,6 +376,19 @@ func _eye_level() -> float:
 	return best
 
 func _mesh_for(layer: String, carries_face: bool, R: float, eye: float) -> ArrayMesh:
+	# This face's last answer per layer, checked on plain numbers first: the
+	# shared cache's string key cost more than the draw on a board that asks
+	# every frame for a hundred faces (Binairo's MultiMesh, 2026-10-01).
+	var memo_key := Vector4i(int(R), int(roundf(eye * 100.0)), expression, (int(plain) << 4) | _look_index()) \
+		if carries_face else Vector4i(int(R), 0, 0, 0)
+	var memo: Array = _memo.get(layer, [])
+	if not memo.is_empty() and memo[0] == memo_key:
+		return memo[1]
+	var mesh := _shared_mesh(layer, carries_face, R, eye)
+	_memo[layer] = [memo_key, mesh]
+	return mesh
+
+func _shared_mesh(layer: String, carries_face: bool, R: float, eye: float) -> ArrayMesh:
 	var key := "%s|%s|%d" % [_kind(), layer, int(R)]
 	if carries_face:
 		key += "|%d|%d|%d|%d" % [expression, int(roundf(eye * 100.0)), int(plain), _look_index()]
