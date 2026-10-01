@@ -1036,8 +1036,8 @@ SB_TIP_MIRROR,Mirrors turn the light on either face.,Os espelhos desviam a luz p
 SB_TIP_STOP,A pot stops the light. So does the back of a cup.,Um vaso bloqueia a luz. As costas de uma concha também.,Una maceta detiene la luz. También el dorso de una copa.
 SB_PINNED,That one is home. The hint pinned it.,Esse já está no lugar. A dica o fixou.,Esa ya está en su sitio. La pista la fijó.
 SB_TAKEN,Another piece stands there.,Outra peça está ali.,Otra pieza está ahí.
-SB_BUD_DRY_ONE,The bud wants every drop first. One is still dry.,O botão quer todas as gotas antes. Uma ainda está seca.,El capullo quiere todas las gotas antes. Una sigue seca.
-SB_BUD_DRY_N,The bud wants every drop first. %d are still dry.,O botão quer todas as gotas antes. %d ainda estão secas.,El capullo quiere todas las gotas antes. %d siguen secas.
+SB_BUD_DRY_ONE,"The bud grew a little. Pass one more drop for a stronger light.","O botão cresceu um pouco. Passe por mais uma gota para a luz ficar mais forte.","El capullo creció un poco. Pasa por una gota más para que la luz sea más fuerte."
+SB_BUD_DRY_N,"The bud grew a little. Pass %d more drops for a stronger light.","O botão cresceu um pouco. Passe por mais %d gotas para a luz ficar mais forte.","El capullo creció un poco. Pasa por %d gotas más para que la luz sea más fuerte."
 SB_UNDONE,One slide taken back.,Um deslize desfeito.,Un deslizamiento deshecho.
 SB_HINT,That one is home. It stays pinned.,Esse está no lugar. Fica fixo.,Esa está en su sitio. Queda fija.
 SB_WIN,"Every dewdrop, and the bud is open.","Todas as gotas, e o botão se abriu.","Todas las gotas, y el capullo se abrió."

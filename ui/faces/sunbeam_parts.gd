@@ -110,13 +110,15 @@ static func _shift(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 ## The beam along `pts` (pixels), in three passes. A run is cut at every
 ## sharp turn and stroked on its own, because a stroke's joint pinches at a
 ## right angle; the caps meet under the mirror that turned it.
-static func beam(b: Face.Builder, pts: PackedVector2Array, s: float, alpha := 1.0) -> void:
+## `width` scales every pass's width: the board draws a beam that has crossed
+## no drop yet thin and pale, and fuller with every drop it passes.
+static func beam(b: Face.Builder, pts: PackedVector2Array, s: float, alpha := 1.0, width := 1.0) -> void:
 	var runs := _runs(pts)
 	for pass_i: Vector2 in [BEAM_GLOW, BEAM_HALO, BEAM_CORE]:
 		var col := Pal.BEAM_CORE if pass_i == BEAM_CORE else Pal.BEAM
 		for r: PackedVector2Array in runs:
 			if r.size() >= 2 and r[0].distance_to(r[r.size() - 1]) > 0.5:
-				b.stroke(r, s * pass_i.x, Color(col, pass_i.y * alpha))
+				b.stroke(r, s * pass_i.x * width, Color(col, pass_i.y * alpha))
 
 ## `pts` cut into runs at every sharp turn.
 static func _runs(pts: PackedVector2Array) -> Array:
@@ -195,18 +197,27 @@ static func pot(b: Face.Builder, at: Vector2, s: float, sway := 0.0) -> void:
 ## to 1 across the bloom, linear: the bud swells, its sepals part, and two
 ## rings of petals unfurl with the back ease, the shut bud shrinking into
 ## them so the head is never empty. `sway` bends the stem (radians).
-static func bud(b: Face.Builder, at: Vector2, s: float, open := 0.0, glow := false, spin := 0.0, sway := 0.0) -> void:
+## `grow` 0 to 1 is how much the light reaching it has fed it short of the
+## bloom: the stem stretches, a second pair of leaves unfolds and the bud
+## swells, but it stays shut -- only the solve opens it.
+static func bud(b: Face.Builder, at: Vector2, s: float, open := 0.0, glow := false, spin := 0.0, sway := 0.0, grow := 0.0) -> void:
 	var base := at + Vector2(0.0, s * 0.14)
 	Scenery.soft_disc(b, base + Vector2(0.0, s * 0.2), s * 0.3, s * 0.08, Color(Pal.TEXT, 0.14))
 	b.ellipse(base + Vector2(0.0, s * 0.18), s * 0.26, s * 0.1, Pal.BARK)
-	var head := base + Vector2(0.0, -s * 0.34).rotated(sway) + Vector2(0.0, s * 0.14)
-	b.stroke(Face.Builder.bezier2(base + Vector2(0.0, s * 0.16), base + Vector2(s * 0.04, 0.0), head + Vector2(0.0, s * 0.08), 6),
-		s * 0.05, Pal.LEAF_DEEP)
-	leaf(b, base + Vector2(0.0, s * 0.08), s * 0.26, -0.4, Pal.LEAF)
-	leaf(b, base + Vector2(0.0, s * 0.1), s * 0.24, -2.7, Pal.LEAF_DEEP)
+	var tall := s * 0.2 * grow
+	var head := base + Vector2(0.0, -s * 0.34 - tall).rotated(sway) + Vector2(0.0, s * 0.14)
+	b.stroke(Face.Builder.bezier2(base + Vector2(0.0, s * 0.16), base + Vector2(s * 0.04, -tall * 0.5), head + Vector2(0.0, s * 0.08), 6),
+		s * (0.05 + 0.015 * grow), Pal.LEAF_DEEP)
+	leaf(b, base + Vector2(0.0, s * 0.08), s * (0.26 + 0.05 * grow), -0.4, Pal.LEAF)
+	leaf(b, base + Vector2(0.0, s * 0.1), s * (0.24 + 0.05 * grow), -2.7, Pal.LEAF_DEEP)
+	if grow > 0.01:
+		# the new pair, unfolding up the stem as it is fed
+		var mid := base.lerp(head, 0.55) + Vector2(0.0, s * 0.06)
+		leaf(b, mid, s * 0.26 * grow, -0.7 + (1.0 - grow) * 0.6, Pal.LEAF_LIGHT)
+		leaf(b, mid, s * 0.24 * grow, -2.45 - (1.0 - grow) * 0.6, Pal.LEAF)
 	if glow:
 		Scenery.soft_disc(b, head, s * 0.42, s * 0.42, Color(Pal.BEAM, 0.6))
-	var swell := smoothstep(0.0, 0.3, open)
+	var swell := maxf(smoothstep(0.0, 0.3, open), 0.75 * grow)
 	var outer := _ease_back(clampf((open - 0.25) / 0.55, 0.0, 1.0))
 	var inner := _ease_back(clampf((open - 0.45) / 0.55, 0.0, 1.0))
 	var shut := 1.0 - clampf((open - 0.3) / 0.35, 0.0, 1.0)
@@ -226,7 +237,7 @@ static func bud(b: Face.Builder, at: Vector2, s: float, open := 0.0, glow := fal
 			var petal := Face.Builder.ring(Vector2(0.0, -s * 0.1 * inner), s * 0.07 * inner, s * 0.11 * inner)
 			b.fan(Transform2D(a, head) * petal, Pal.FLOWER.lerp(Color.WHITE, 0.5))
 	if shut > 0.0:
-		var k := (1.0 + 0.22 * swell) * (0.35 + 0.65 * shut)
+		var k := (1.0 + 0.22 * swell + 0.4 * grow) * (0.35 + 0.65 * shut)
 		b.ellipse(head, s * 0.12 * k, s * 0.17 * k, Pal.FLOWER_DEEP)
 		b.ellipse(head + Vector2(-s * 0.03, -s * 0.01) * k, s * 0.08 * k, s * 0.15 * k, Pal.FLOWER)
 	if outer > 0.0:

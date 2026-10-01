@@ -248,8 +248,16 @@ func _quiet_home(o: int) -> bool:
 
 ## Every piece back to its opening peg, except a pinned one, which keeps its
 ## answer; anything the opening put under it steps aside.
+##
+## On a floor with sleepers the pins are dropped and every piece goes back to
+## its opening: the opening is the one arrangement proved to have a dark way
+## home, and a pinned piece left home can leave the light on a sleeper -- or,
+## rarely, cut every dark way off (the review's probe found such a Hard
+## floor, which Try again then dealt again and again).
 func reset_board() -> void:
 	var before := pos.duplicate()
+	if not sleepers().is_empty():
+		pinned = {}
 	for p in pos.size():
 		if not pinned.has(p):
 			pos[p] = start[p]

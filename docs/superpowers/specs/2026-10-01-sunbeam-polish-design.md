@@ -178,3 +178,43 @@ Peak 107, 748 under the 855 budget. Suite `passed=122403 failed=0`;
   the puzzle, and backtracking always works.
 - Rainbow, butterfly, arch and the snails' startle were judged on stills and
   numbers only. Sounds unheard.
+
+- **Review findings, fixed**: Reset and Try again kept a hint's pins and
+  were never judged, so the floor they dealt could leave the light on a
+  snail, and in 2 of 595 probed Hard resets no dark way home was left at all
+  (Try again dealt the same dead floor forever) -- on a floor with sleepers,
+  Reset now drops the pins and goes back to the proved opening (hints spent
+  stay spent); and the tip cycle read Easy's tips on every band, so Hard and
+  Insane showed one band tip and then Easy's, Shy Dew's including "light
+  every dewdrop" -- it cycles `_tips()` now. Checked clean by the review:
+  `Gen.Fast` agrees with `Gen.trace` on 300 random arrangements of each of
+  the 200 banked floors and 40 Hard floors; every banked opening is dark with
+  a dark way home and one answer; every Hard opening wakes no snail.
+
+## 9. Amendment: the light gathers strength from the dew (2026-10-01)
+
+Asked for by the user the same morning ("make the beam start weak visually
+and get stronger as it pass on the water, so if the player direct the laser
+to the plant weak, it only grow the plant a little bit").
+
+- **The beam leaves the sun weak**: `WEAK_WIDTH` 0.3 of its width and
+  `WEAK_ALPHA` 0.28 of its alpha, and gains an even step at every drop the
+  drawn light passes (`_drop_marks`, from `_trace_live`'s `drop_at`, snails
+  excluded), full once it has passed them all. It is stroked a stretch per
+  drop (`_draw_beam`, `Parts.beam`'s new `width`); the pulses flowing at rest
+  follow the same strength (`_power_at`). The joins sit under the drops, so
+  the step reads as the drop lighting it up.
+- **The bud grows by the light that reaches it**: (drops passed + 1) /
+  (drops + 1) of the way -- the stem stretches, a second pair of leaves
+  unfolds, the bud swells -- but it stays shut; only the solve blooms it
+  (`Parts.bud`'s new `grow`). It eases up over `GROW_UP` 0.25 s and back
+  over `GROW_DOWN` 0.8 s when the light leaves, and follows the light live,
+  so a held piece previews it too. The dry-bud line now says "The bud grew a
+  little. Pass N more drops for a stronger light."
+- On Shy Dew the light at rest never passes a drop, so it always arrives
+  weak until the last move -- which brightens it all at once.
+- Draw calls unchanged (one mesh): 94 solving Insane, 107 out of hearts.
+  `tests/_shot_sunbeam.gd`'s new `weak` mode lays the answer with one or two
+  pieces off and shoots every arrangement whose light reaches the bud
+  through fewer drops; on a proved board they are rare (none on some
+  floors), so the grow is seen mostly mid-drag.

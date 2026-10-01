@@ -125,6 +125,16 @@ const BLOOM_TIME := 1.0
 const PETAL_LIFE := 2.2
 const PETALS := 6
 const WIN_HOLD := 1.1
+## The light gathers strength from the dew (2026-10-01): it leaves the sun at
+## WEAK of its full width and alpha and grows by an even step at every drop
+## it passes, full once it has passed them all. The bud it reaches grows by
+## that strength -- (drops passed + 1) / (drops + 1) of the way, never the
+## bloom, which is the solve's -- easing up over GROW_UP and back over
+## GROW_DOWN seconds.
+const WEAK_WIDTH := 0.3
+const WEAK_ALPHA := 0.28
+const GROW_UP := 0.25
+const GROW_DOWN := 0.8
 
 const TIP_CYCLE := 8.0
 const TIPS := ["SB_TIP_DRAG", "SB_TIP_GOAL", "SB_TIP_CUP", "SB_TIP_MIRROR", "SB_TIP_STOP"]
@@ -231,6 +241,8 @@ var _wet := {}
 var _chimed := {}
 ## The arrangement a dry-bud line was said for, so it is said once.
 var _bud_told := ""
+## How much the bud has been fed by the light now, eased toward _grow_goal().
+var _grow := 0.0
 
 ## Each piece's settle onto its peg: {"from": float peg, "at": time}.
 var _disp: Array = []
@@ -725,6 +737,7 @@ func _process(delta: float) -> void:
 		_tr = _trace_live(t)
 		_tr_dirty = false
 	_arrivals(t)
+	_feed_bud(delta)
 	if moving:
 		_refresh()
 	elif not Motion.reduce:
@@ -1029,7 +1042,6 @@ func _build_live(t: float) -> ArrayMesh:
 		_tr = _trace_live(t)
 	var drawn := _drawn(t)
 	var bpts: PackedVector2Array = _tr.pts
-	var lit := _cut(bpts, drawn)
 	if not _drag.is_empty():
 		# the peg the held piece lands on if let go now
 		var hp: int = _drag.p
@@ -1052,7 +1064,7 @@ func _build_live(t: float) -> ArrayMesh:
 			for i in pts.size():
 				pts[i] = mid + (pts[i] - mid) * e
 		Parts.cup(b, pts, s * e, f, _lift(p, t), _state.pinned.has(p))
-	Parts.beam(b, lit, s)
+	_draw_beam(b, drawn)
 	if _arrived(t) and String(_tr.end) in ["pot", "cup", "lamp"]:
 		b.disc(_pt(bpts[bpts.size() - 1]), s * 0.07, Color(Pal.BEAM, 0.8))
 	elif not _arrived(t) and drawn > 0.0:
@@ -1103,6 +1115,65 @@ func _build_live(t: float) -> ArrayMesh:
 			var rad := s * (0.3 + 0.4 * u)
 			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 	return b.mesh() if not b.verts.is_empty() else null
+
+## How far along the beam each drop it passes lies, in order: the steps at
+## which the light gathers strength. Snails are not dew.
+func _drop_marks() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	var dm: Dictionary = _tr.get("drop_at", {})
+	for c in _state.drops():
+		if dm.has(c):
+			out.append(float(dm[c]))
+	out.sort()
+	return out
+
+## The light's strength `at` cells along the beam, 0 (straight out of the
+## sun) to 1 (every drop passed).
+func _power_at(at: float) -> float:
+	var n: int = _state.drops().size()
+	if n <= 0:
+		return 1.0
+	var k := 0
+	for m in _drop_marks():
+		if m <= at:
+			k += 1
+	return float(k) / float(n)
+
+## The beam drawn up to `drawn` cells, a stretch per drop it passes, each
+## fuller and brighter than the last.
+func _draw_beam(b: Face.Builder, drawn: float) -> void:
+	var s := _cell()
+	var n: int = _state.drops().size()
+	var marks := _drop_marks()
+	var from := 0.0
+	for i in marks.size() + 1:
+		var to: float = marks[i] if i < marks.size() else _total()
+		var z := minf(to, drawn)
+		if z > from:
+			var pw := float(i) / float(n) if n > 0 else 1.0
+			Parts.beam(b, _span(from, z), s, lerpf(WEAK_ALPHA, 1.0, pw), lerpf(WEAK_WIDTH, 1.0, pw))
+		from = to
+		if from >= drawn:
+			break
+
+## How much the light reaching the bud feeds it now: nothing unless the
+## drawn beam ends there, else (drops passed + 1) / (drops + 1).
+func _grow_goal() -> float:
+	if _tr.is_empty() or String(_tr.end) != "bud" or not _arrived(_now()):
+		return 0.0
+	var n: int = _state.drops().size()
+	return float(_drop_marks().size() + 1) / float(n + 1)
+
+## Eases the bud toward what the light feeds it: up quickly, down slowly.
+func _feed_bud(delta: float) -> void:
+	var goal := _grow_goal()
+	if Motion.reduce:
+		_grow = goal
+		return
+	var tau := GROW_UP if goal > _grow else GROW_DOWN
+	_grow = lerpf(_grow, goal, 1.0 - exp(-delta / tau))
+	if absf(_grow - goal) < 0.002:
+		_grow = goal
 
 ## How far the bloom has got, 0 to 1, linear (the bud eases it).
 func _bloom(t: float) -> float:
@@ -1163,8 +1234,11 @@ func _build_air(t: float) -> ArrayMesh:
 				if head > tot:
 					continue
 				var fade := clampf(head / 0.8, 0.0, 1.0) * clampf((tot - head) / 0.8, 0.0, 1.0)
-				Scenery.soft_disc(b, _along(head), s * 0.2, s * 0.2, Color(Pal.BEAM, 0.45 * fade))
-				_stroke(b, _span(head - PULSE_LEN, head), s * 0.09, Color(Pal.BEAM_CORE, 0.9 * fade))
+				var pw := _power_at(head)
+				var wd := lerpf(WEAK_WIDTH, 1.0, pw)
+				fade *= lerpf(WEAK_ALPHA + 0.25, 1.0, pw)
+				Scenery.soft_disc(b, _along(head), s * 0.2 * wd, s * 0.2 * wd, Color(Pal.BEAM, 0.45 * fade))
+				_stroke(b, _span(head - PULSE_LEN, head), s * 0.09 * wd, Color(Pal.BEAM_CORE, 0.9 * fade))
 	# a glint where the drawn light strikes each mirror's glass
 	for k in _tr.glints.size():
 		var gl: Array = _tr.glints[k]
@@ -1189,7 +1263,7 @@ func _build_air(t: float) -> ArrayMesh:
 	if open >= 1.0 and not Motion.reduce:
 		sway = sin((t - _bloom_at) * 1.3) * 0.07
 	var bud := _centre(_state.g.bud)
-	Parts.bud(b, bud, s * _entry(_state.pieces().size() + 1, t), open, glow, 0.0, sway)
+	Parts.bud(b, bud, s * _entry(_state.pieces().size() + 1, t), open, glow, 0.0, sway, 0.0 if open > 0.0 else _grow)
 	if _bloom_at > AGO and not Motion.reduce:
 		var e := t - _bloom_at - BLOOM_TIME * 0.4
 		if e > 0.0 and e < PETAL_LIFE:
@@ -1395,8 +1469,9 @@ func _say(text: String, mood: int) -> void:
 func _cycle_tip() -> void:
 	if is_done() or _state.can_undo():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}

@@ -42,4 +42,6 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   is not a negative time** -- `t - 100` read as "never" in the first 100 s
   after launch and showed a restored day's bud shut (both clocks use `AGO`
   now). Rewards, party and the GLASSHOUSE sound set as Caterpillar's. Peak
-  107 draw calls (out of hearts), ANGLE agreeing on the solve.
+  107 draw calls (out of hearts), ANGLE agreeing on the solve. Same day: the
+  light leaves the sun weak and gains a step at every drop it passes, and the
+  bud grows (shut) by the strength that reaches it (spec section 9).

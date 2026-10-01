@@ -264,6 +264,37 @@ func _script() -> void:
 			for k in 8:
 				_at(t + 0.4 + k * 0.7, _shot)
 			_end = t + 0.4 + 8 * 0.7
+		"weak":
+			# arrangements whose light reaches the bud through fewer drops,
+			# fewest first: the bud grows only as much as the light is strong
+			_end = 6.0
+			var found := {}
+			# the answer with one or two pieces a peg or more off
+			var home: PackedInt32Array = st.home_pos()
+			var np: int = st.pieces().size()
+			for a in np:
+				for qa in st.g.pieces[a].rail.size():
+					for c in range(a, np):
+						for qc in st.g.pieces[c].rail.size():
+							var pos := home.duplicate()
+							pos[a] = qa
+							pos[c] = qc
+							var tr: Dictionary = Gen.trace(st.g, pos)
+							if tr.end == "bud" and not tr.won and not found.has(tr.lit_drops):
+								found[tr.lit_drops] = pos
+			var keys: Array = found.keys()
+			keys.sort()
+			print("weak: drops lit on the way to the bud: ", keys, " of ", st.drops().size())
+			var t := 1.0
+			for kk in keys:
+				var pos: PackedInt32Array = found[kk]
+				_at(t, func() -> void:
+					st.pos = pos
+					st.retrace()
+					_puzzle._refresh())
+				_at(t + 1.2, _shot.bind("_lit%d" % kk))
+				t += 1.6
+			_end = t + 0.2
 		"restore":
 			_end = 2.5
 			_at(0.6, func() -> void:
