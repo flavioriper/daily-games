@@ -25,3 +25,18 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   peak, idle 3.2-3.6 ms; ANGLE agrees on 78 (frames within 1/255) and the
   reduce-motion pair is pixel-identical. 13 sounds generated (2026-09-27),
   one take a cue, awaiting the user's listen.
+- **Polish (2026-10-01, unattended, spec
+  `2026-10-01-pixel-garden-polish-design.md`).** The board is four plates
+  with a seam and clips; a plate full is ironed at once by an iron with a
+  face (`ui/faces/iron.gd`): right fuses it for good (`locked` FUSED, a
+  hint's is HINTED), wrong sends the beads astray home -- a heart on Hard
+  (3) and Insane (2), which have no Check. Only the plate under the iron
+  waits; the rest of the board stays live. Insane is **Windblown**: the
+  pattern card's squares shuffled and turned (`perm`, `turn`,
+  `card_peg`), each framed in its plate's colour with its clip (pips 1-4)
+  on the plate's top edge. The chips are a clear compartment box with
+  heaps of beads and steel tweezers. Rewards: plate words and streak,
+  love hearts or a butterfly, Steady hand!/Whoosh!, the party (nap cat on
+  the pattern card, seal). BEADBOX sound set, 26 cues, unheard. Use `_won`,
+  never `_solved_at < 0` (a restored day's clock can be negative). Peak 124
+  draw calls; `tests/_shot_pixel_garden.gd`, `tests/_probe_pixel_garden.gd`.
