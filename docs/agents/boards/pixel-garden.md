@@ -40,3 +40,5 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   the pattern card, seal). BEADBOX sound set, 26 cues, unheard. Use `_won`,
   never `_solved_at < 0` (a restored day's clock can be negative). Peak 124
   draw calls; `tests/_shot_pixel_garden.gd`, `tests/_probe_pixel_garden.gd`.
+  Amended the same day (spec section 11): hairline seams, every bead left
+  drawn in its compartment, and a seated bead flies there from the box.

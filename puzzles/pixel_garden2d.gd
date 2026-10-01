@@ -68,26 +68,28 @@ const PAD := 30.0
 const HEAD := 212.0
 const HEAD_GAP := 26.0
 ## The tray's rim round the board, the board's own margin round its pegs, and
-## the seam between two plates, in cells.
+## the seam between two plates, in cells -- a hairline, as on a real board.
 const RIM := 18.0
 const MARGIN := 0.35
-const GAP := 0.3
+const GAP := 0.06
 const CARD_RADIUS := 32.0
 const BOARD_RADIUS := 22.0
-## A compartment of the box: its slot, the gap between two, and the bead a
-## heap is drawn in (a fraction of the slot's width). HEAP beads stand for a
-## full compartment.
-const CHIP := Vector2(78.0, 124.0)
+## A compartment of the box: its widest slot and the gap between two. Every
+## bead left is drawn in it, so the beads are as small as the fullest
+## compartment needs (HEAP_MAX the largest, HEAP_MIN the smallest radius).
+const CHIP := Vector2(118.0, 124.0)
 const CHIP_GAP := 8.0
-const HEAP_BEAD := 0.13
-const HEAP := 11
+const HEAP_MAX := 9.0
+const HEAP_MIN := 3.0
 const NAME_SIZE := 34
 const COUNT_SIZE := 28
 const BAR_H := 20.0
 ## The still beads are cut into bands of this many rows.
 const BAND := 4
-## The pattern card's own seam between squares, in its pixels.
-const THUMB_GAP := 1.0
+## The pattern card's own seam between squares, in its pixels: a hairline,
+## wider on Windblown where each square's clip stands in it.
+const THUMB_GAP := 0.25
+const THUMB_GAP_WIND := 1.0
 ## The four plates' clips on Windblown: their colours (sun, sky, rose,
 ## leaf -- far apart in lightness as well as hue) and each one's pips.
 const PLATE_TINTS := [Color("f2b33d"), Color("4f84cc"), Color("e07a9a"), Color("5fa845")]
@@ -106,6 +108,11 @@ const SEAT_HIGH := 0.34
 const SEAT_NEAR := 0.16
 const SEAT_PRESS := 0.06
 const LIFT_TIME := 0.16
+## A bead seated by a touch flies there from its compartment first, over
+## FLY_TIME on an arc FLY_ARC of the way high, and hands over to the seat
+## (held above the peg) as it arrives.
+const FLY_TIME := 0.26
+const FLY_ARC := 0.22
 ## A bead going home to its compartment (astray, or a reset) flies there on
 ## an arc over HOME_TIME, HOME_ARC of the way's length high.
 const HOME_TIME := 0.5
@@ -207,6 +214,10 @@ var _leaving: Array = []
 ## Beads going home to the box: {from, to, colour, at, sits} -- until `at`
 ## the bead still sits on its peg (shivering when `sits` says so).
 var _flying: Array = []
+## Beads flying from the box to a peg: {from, peg, colour, at}.
+var _incoming: Array = []
+## The radius a bead in the box is drawn at, set by the layout.
+var _heap_r := 6.0
 ## Pegs Check pointed at: their halos hold until the next move.
 var _halo := {}
 var _halo_at := -100.0
@@ -380,6 +391,7 @@ func _reset_looks() -> void:
 	_chip_shake.fill(-100.0)
 	_leaving = []
 	_flying = []
+	_incoming = []
 	_halo = {}
 	_moving = {}
 	_rings = []
@@ -464,6 +476,52 @@ func _place_chips() -> void:
 	for i in k:
 		_chip_rects.append(Rect2(Vector2(x0 + i * (chip.x + gap), y), chip))
 	_box = Rect2(Vector2(x0, y), Vector2(run, chip.y)).grow(6.0)
+	var most := 1
+	for v in _state.need:
+		most = maxi(most, v)
+	_heap_r = HEAP_MIN
+	var r := HEAP_MAX
+	while r >= HEAP_MIN:
+		if _heap_room(_well(_chip_rects[0]), r) >= most:
+			_heap_r = r
+			break
+		r -= 0.25
+
+## The floor of a compartment, where its beads lie.
+func _well(r: Rect2) -> Rect2:
+	return Rect2(r.position, Vector2(r.size.x, r.size.y * 0.74))
+
+## How many beads of radius `r` lie in `well`: rows from the floor up, every
+## other one shifted half a bead, under the clear lip.
+func _heap_room(well: Rect2, r: float) -> int:
+	var cols := int(floor((well.size.x - 6.0) / (2.0 * r)))
+	var rows := int(floor((well.size.y - 14.0 - 6.0 - 2.0 * r) / (1.7 * r))) + 1
+	return maxi(0, cols * rows - rows / 2)
+
+## Where bead `k` (from 0, the floor's middle first) of compartment `i` lies.
+func _slot(i: int, k: int) -> Vector2:
+	if i >= _chip_rects.size():
+		return _thumb.get_center()
+	var well := _well(_chip_rects[i])
+	var r := _heap_r
+	var cols := int(floor((well.size.x - 6.0) / (2.0 * r)))
+	var k2 := maxi(0, k)
+	var row := 0
+	while true:
+		var m := cols - (row % 2)
+		if k2 < m:
+			break
+		k2 -= m
+		row += 1
+	var m := cols - (row % 2)
+	# The middle of the row fills first, then out to either side.
+	var off := (k2 + 1) / 2 * (1 if k2 % 2 == 1 else -1)
+	if m % 2 == 0:
+		off = k2 / 2 if k2 % 2 == 0 else -(k2 / 2 + 1)
+	var x := well.get_center().x + float(off) * 2.0 * r + (0.0 if m % 2 == 1 else r)
+	x += (_h01(i * 97 + k, 3) - 0.5) * r * 0.25
+	var y := well.end.y - 14.0 - r - row * 1.7 * r - _h01(i * 97 + k, 4) * r * 0.2
+	return Vector2(x, y)
 
 ## A peg's place on the board: its row and column, the seam between plates
 ## taken into account.
@@ -513,12 +571,9 @@ func _chip_at_point(local: Vector2) -> int:
 			return i
 	return -1
 
-## Where a bead going home lands: on its compartment's heap.
+## Where a bead going home lands: on top of its compartment's beads.
 func _home(k: int) -> Vector2:
-	if k >= _chip_rects.size():
-		return _thumb.get_center()
-	var r := _chip_rects[k]
-	return r.position + Vector2(r.size.x * 0.5, r.size.y * 0.5)
+	return _slot(k, maxi(0, _state.left(k) - 1))
 
 # --- frames ---
 
@@ -614,6 +669,15 @@ func _draw() -> void:
 	draw_mesh(_head, null, xf, tint)
 	shown.append(_head)
 	_draw_head_text(t, xf, seen)
+	# Beads in the air between the box and the board, over both.
+	if not (_flying.is_empty() and _incoming.is_empty()):
+		var air := Face.Builder.new()
+		_draw_flying(air, t)
+		_draw_incoming(air, t)
+		if not air.verts.is_empty():
+			var m := air.mesh()
+			draw_mesh(m, null, xf, tint)
+			shown.append(m)
 	if t >= _stamp_at:
 		_draw_stamp(t, shown)
 	_draw_words(t)
@@ -645,23 +709,26 @@ func _build_table(t: float) -> ArrayMesh:
 	var inner := r.grow(-RIM)
 	b.fan(Face.Builder.round_rect(inner.position - Vector2.ONE * 2.0, inner.size + Vector2.ONE * 4.0, BOARD_RADIUS),
 		Pal.PG_TRAY_DEEP)
-	# The seam's floor: what shows between the four plates.
-	b.fan(Face.Builder.round_rect(inner.position, inner.size, BOARD_RADIUS - 2.0), Pal.PG_BOARD_DEEP.darkened(0.12))
+	# The seam's floor: the hairline that shows between the four plates.
+	b.fan(Face.Builder.round_rect(inner.position, inner.size, BOARD_RADIUS - 2.0), Pal.PG_BOARD_DEEP)
 	var wind: bool = _state.windblown()
 	var m := MARGIN * _cell
 	for q in 4:
 		var pr := _plate_rect(q)
 		# Each plate runs out to the tray on its outer sides and stops a
-		# hair short of the seam on its inner ones.
-		var a := pr.position - Vector2(m if q % 2 == 0 else GAP * _cell * 0.18, m if q < 2 else GAP * _cell * 0.18)
-		var z := pr.end + Vector2(m if q % 2 == 1 else GAP * _cell * 0.18, m if q >= 2 else GAP * _cell * 0.18)
+		# hairline short of its neighbour on its inner ones; its outer
+		# corner is rounded like the tray's, the inner ones barely.
+		var seam := maxf(0.0, GAP * _cell * 0.5 - 0.75)
+		var a := pr.position - Vector2(m if q % 2 == 0 else seam, m if q < 2 else seam)
+		var z := pr.end + Vector2(m if q % 2 == 1 else seam, m if q >= 2 else seam)
 		var face := Rect2(a, z - a)
 		var rad := BOARD_RADIUS - 4.0
-		b.fan(Face.Builder.round_rect(face.position, face.size, rad), Pal.PG_BOARD_DEEP)
-		b.fan(Face.Builder.round_rect(face.position, face.size - Vector2(0.0, 4.0), rad), Pal.PG_BOARD)
+		var radii := [2.0, 2.0, 2.0, 2.0]
+		radii[q] = rad
+		b.fan(_corners(face, radii), Pal.PG_BOARD_DEEP)
+		b.fan(_corners(Rect2(face.position, face.size - Vector2(0.0, 2.0)), radii), Pal.PG_BOARD)
 		if wind:
-			b.stroke(Face.Builder.round_rect(face.position + Vector2.ONE * 3.0, face.size - Vector2(6.0, 10.0), rad - 3.0),
-				3.0, Color(PLATE_TINTS[q], 0.55), true)
+			b.stroke(_corners(face.grow(-3.0), radii), 2.0, Color(PLATE_TINTS[q], 0.55), true)
 		_clip(b, Vector2(pr.get_center().x, face.position.y + 1.0), _cell, 0.0, q, wind)
 	var gone := _pegs_gone(t)
 	for c in _state.size():
@@ -671,13 +738,29 @@ func _build_table(t: float) -> ArrayMesh:
 		Bead.peg(b, _centre(c), _cell, al)
 	return b.mesh()
 
+## A rectangle with its own radius at each corner: top left, top right,
+## bottom left, bottom right (plate q's outer corner is radii[q]).
+static func _corners(r: Rect2, radii: Array) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var spots := [[r.position, PI, 1.5 * PI, 0], [Vector2(r.end.x, r.position.y), 1.5 * PI, TAU, 1],
+		[r.end, 0.0, 0.5 * PI, 3], [Vector2(r.position.x, r.end.y), 0.5 * PI, PI, 2]]
+	for sp: Array in spots:
+		var rad: float = minf(float(radii[int(sp[3])]), minf(r.size.x, r.size.y) * 0.5)
+		var corner: Vector2 = sp[0]
+		var inward := Vector2(rad if corner.x == r.position.x else -rad, rad if corner.y == r.position.y else -rad)
+		var c := corner + inward
+		for k in 6:
+			var ang := lerpf(float(sp[1]), float(sp[2]), k / 5.0)
+			pts.append(c + Vector2(cos(ang), sin(ang)) * rad)
+	return pts
+
 ## A plate's clip: a little tab on its top edge, `s` a cell, turned `angle`
 ## (the pattern card turns it with its square). Plain wood, or on Windblown
 ## in the plate's colour with q + 1 pips, so a plate is named by colour and
 ## count and its top is where the clip is.
 func _clip(b: Face.Builder, at: Vector2, s: float, angle: float, q: int, wind: bool) -> void:
-	var w := s * 1.1
-	var h := s * 0.26
+	var w := s * 0.7
+	var h := s * 0.16
 	var xf := Transform2D(angle, at)
 	var ink: Color = PLATE_TINTS[q] if wind else Pal.PG_TRAY_HI
 	var deep: Color = ink.darkened(0.25)
@@ -751,7 +834,6 @@ func _build_live(t: float) -> ArrayMesh:
 	_leaving = keep
 	for c: int in _moving:
 		_draw_peg(b, c, t)
-	_draw_flying(b, t)
 	_draw_iron(b, t)
 	for ir: Dictionary in _irons:
 		_draw_plate_iron(b, ir, t)
@@ -789,10 +871,13 @@ func _draw_peg(b: Face.Builder, c: int, t: float) -> void:
 		lift = Motion.drop_in_lift(since, _cell * 0.9)
 		alpha = Motion.appear_level(since)
 	elif since < SEAT_TIME and not Motion.reduce:
+		if since < 0.0 and _drop[c] == 2:
+			# Still in the air from the box (_draw_incoming draws it).
+			return
 		var seat := _seat(since)
 		lift = seat.x
 		grow = Vector2.ONE * seat.y
-		alpha = seat.z
+		alpha = 1.0 if _drop[c] == 2 else seat.z
 	lift += _hop(c, t)
 	var fused := _fused(c, t)
 	Bead.bead(b, at, _cell, _state.colours[k], grow, alpha, lift, fused, _shine(c, t))
@@ -833,9 +918,31 @@ func _draw_flying(b: Face.Builder, t: float) -> void:
 		var e := u * u * (3.0 - 2.0 * u)
 		var arc := (to - from).length() * HOME_ARC * 4.0 * u * (1.0 - u)
 		var p := from.lerp(to, e) - Vector2(0.0, arc)
-		var s := lerpf(1.0 + 0.25 * sin(u * PI), HEAP_BEAD * CHIP.x / _cell / (Bead.R * 2.0), e)
+		var s := lerpf(1.0 + 0.25 * sin(u * PI), _heap_r / (_cell * Bead.R), e)
 		Bead.bead(b, p, _cell * s, g.colour, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_BOARD, false)
 	_flying = keep
+
+## Beads on their way from the box: lifted off the heap, over an arc, and
+## growing from a box bead's size to a peg's, held SEAT_HIGH above the peg as
+## they arrive -- where the seat takes them over and presses them home.
+func _draw_incoming(b: Face.Builder, t: float) -> void:
+	var keep: Array = []
+	for g: Dictionary in _incoming:
+		var u: float = (t - float(g.at)) / FLY_TIME
+		if u >= 1.0 or Motion.reduce or _state.beads[int(g.peg)] == State.EMPTY:
+			continue
+		keep.append(g)
+		if u < 0.0:
+			continue
+		var from: Vector2 = g.from
+		var to := _centre(int(g.peg)) - Vector2(0.0, _cell * SEAT_HIGH)
+		var e := 1.0 - (1.0 - u) * (1.0 - u)
+		var arc := (to - from).length() * FLY_ARC * 4.0 * u * (1.0 - u)
+		var p := from.lerp(to, e) - Vector2(0.0, arc)
+		var sc := lerpf(_heap_r / (_cell * Bead.R), 1.0 + SEAT_NEAR, e)
+		Bead.bead(b, p + Vector2(0.0, _cell * SEAT_HIGH * 0.0), _cell * sc, g.colour, Vector2.ONE, 1.0, 0.0, 0.0, 0.0,
+			Pal.PG_BOARD, false)
+	_incoming = keep
 
 ## The diagonal a peg stands on, from the top left.
 func _diag(c: int) -> int:
@@ -1193,12 +1300,14 @@ func _build_thumb_pixels(r: Rect2) -> ArrayMesh:
 	var n: int = _state.n
 	var h: int = _state.half
 	var inner := r.grow(-8.0)
-	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
-	var at := inner.position + Vector2.ONE * 6.0
 	var wind: bool = _state.windblown()
+	var gap := THUMB_GAP_WIND if wind else THUMB_GAP
+	var s := (inner.size.x - 12.0) / (float(n) + gap)
+	var at := inner.position + Vector2.ONE * 6.0
 	for q in 4:
-		var o := at + Vector2(float(q % 2) * (h + THUMB_GAP), float(q / 2) * (h + THUMB_GAP)) * s
-		var tile := Rect2(o - Vector2.ONE * s * 0.15, Vector2.ONE * (h * s + s * 0.3))
+		var o := at + Vector2(float(q % 2) * (h + gap), float(q / 2) * (h + gap)) * s
+		var pad := minf(0.15, gap * 0.4) * s
+		var tile := Rect2(o - Vector2.ONE * pad, Vector2.ONE * (h * s + 2.0 * pad))
 		b.fan(Face.Builder.round_rect(tile.position, tile.size, s * 0.6), Pal.PG_BOARD)
 		var p: int = _state.perm[q]
 		if wind:
@@ -1215,7 +1324,7 @@ func _build_thumb_pixels(r: Rect2) -> ArrayMesh:
 			var mid := tile.get_center()
 			var turn: int = _state.turn[q]
 			var dir := Vector2.UP.rotated(turn * PI * 0.5)
-			_clip(b, mid + dir * (tile.size.x * 0.5 + s * 0.1), s * 2.2, turn * PI * 0.5, p, true)
+			_clip(b, mid + dir * (tile.size.x * 0.5 + s * 0.1), s * 3.4, turn * PI * 0.5, p, true)
 	return b.mesh()
 
 ## The clear plastic box: a compartment a colour, each heaped with beads as
@@ -1258,31 +1367,23 @@ func _draw_box(b: Face.Builder, t: float) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(x - 1.5, box.position.y + 4.0), Vector2(3.0, box.size.y * 0.74), 1.5),
 			Color("c7dde4"))
 
-## Compartment `i`'s heap: the beads left, in rows from the floor up, each a
-## little bead lying flat with its hole showing, jittered off the day.
-func _heap(b: Face.Builder, i: int, well: Rect2, bump: float) -> void:
-	var need: int = maxi(1, _state.need[i])
+## Compartment `i`'s beads: every one left, lying flat with its hole
+## showing, from the floor's middle up. A bead flying out has already left.
+func _heap(b: Face.Builder, i: int, _well_r: Rect2, bump: float) -> void:
 	var left: int = maxi(0, _state.left(i))
-	var count := 0 if left == 0 else maxi(1, int(ceil(float(HEAP) * left / need)))
-	var r := well.size.x * HEAP_BEAD * bump
-	var rows := [4, 3, 3, 1]
-	var k := 0
+	var r := _heap_r * bump
 	var col: Color = _state.colours[i]
-	var floor_y := well.end.y - 14.0 - r
-	for row in rows.size():
-		var m: int = rows[row]
-		for j in m:
-			if k >= count:
-				return
-			var x := well.get_center().x + (float(j) - float(m - 1) * 0.5) * r * 2.1
-			x += (_h01(i * 31 + k, 3) - 0.5) * r * 0.6
-			var y := floor_y - row * r * 1.55 - (_h01(i * 31 + k, 4)) * r * 0.3
-			var at := Vector2(x, y)
-			b.ellipse(at + Vector2(0.0, r * 0.18), r, r * 0.86, col.darkened(0.25))
-			b.ellipse(at, r * 0.96, r * 0.82, col)
-			b.ellipse(at + Vector2(0.0, r * 0.04), r * 0.4, r * 0.34, col.darkened(0.45))
-			b.ellipse(at - Vector2(r * 0.4, r * 0.32), r * 0.24, r * 0.14, Color(col.lerp(Color.WHITE, 0.6), 0.9))
-			k += 1
+	var deep := col.darkened(0.25)
+	var hole := col.darkened(0.45)
+	var hi := Color(col.lerp(Color.WHITE, 0.6), 0.9)
+	var shake := Motion.shiver_offset(_now() - float(_chip_shake[i]), 4.0)
+	for k in left:
+		var at := _slot(i, k) + Vector2(shake, 0.0)
+		b.ellipse(at + Vector2(0.0, r * 0.18), r, r * 0.86, deep)
+		b.ellipse(at, r * 0.96, r * 0.82, col)
+		b.ellipse(at + Vector2(0.0, r * 0.04), r * 0.4, r * 0.34, hole)
+		if r >= 4.0:
+			b.ellipse(at - Vector2(r * 0.4, r * 0.32), r * 0.24, r * 0.14, hi)
 
 ## The steel tweezers, resting in the chosen compartment with their tips in
 ## the heap; they glide there from the last one and dip as they take hold.
@@ -1298,7 +1399,7 @@ func _draw_tweezers(b: Face.Builder, t: float) -> void:
 	var since := t - _tweez_at - TWEEZ_TIME
 	if since > 0.0 and since < 0.3 and not Motion.reduce:
 		tip.y += sin(since / 0.3 * PI) * TWEEZ_DIP
-	var back := tip + Vector2(CHIP.x * 0.52, -CHIP.y * 0.5)
+	var back := tip + Vector2(minf(to.size.x, 80.0) * 0.6, -CHIP.y * 0.5)
 	var dir := (back - tip).normalized()
 	var side := Vector2(-dir.y, dir.x)
 	Scenery.soft_disc(b, tip + Vector2(10.0, 8.0), 10.0, 6.0, Color(Pal.TEXT, 0.18))
@@ -1567,11 +1668,17 @@ func _paint(c: int) -> void:
 	match r:
 		"put":
 			if had != State.EMPTY:
-				_leaving.append({"peg": c, "colour": _state.colours[had], "at": t})
+				_go_home(c, had, t)
 			if _state.beads[c] != State.EMPTY:
-				_arrive_at[c] = t
-				_drop[c] = 0
-				_touch(c, t + SEAT_TIME)
+				var k: int = _state.beads[c]
+				var fly := 0.0 if Motion.reduce else FLY_TIME
+				if fly > 0.0:
+					# Out of the box from the top of its beads, the one the
+					# kit just gave up.
+					_incoming.append({"from": _slot(k, _state.left(k)), "peg": c, "colour": _state.colours[k], "at": t})
+				_arrive_at[c] = t + fly
+				_drop[c] = 2 if fly > 0.0 else 0
+				_touch(c, t + fly + SEAT_TIME)
 				_seated_in_stroke += 1
 				# A run climbs a little as it goes, like beads clicking down
 				# a row one after another.
@@ -1580,6 +1687,7 @@ func _paint(c: int) -> void:
 			else:
 				_touch(c, t + LIFT_TIME)
 				fx.cue("lift", 0.96 + 0.08 * _h01(c, 3))
+			_busy_for(FLY_TIME + SEAT_TIME)
 			_bar_bump = t
 			_busy_for(Motion.BUMP_TIME)
 		"locked":
@@ -1782,6 +1890,13 @@ func reset_board() -> void:
 	_tell("PG_RESET")
 	fx.cue("reset")
 	_refresh()
+
+## A bead lifted by a touch flies back to its compartment.
+func _go_home(c: int, k: int, t: float) -> void:
+	if Motion.reduce:
+		return
+	_flying.append({"from": _centre(c), "to": _home(k), "colour": _state.colours[k], "at": t, "sits": false})
+	_busy_for(HOME_TIME + 0.1)
 
 func _send_home(before: PackedInt32Array, pegs: PackedInt32Array) -> void:
 	var t := _now()

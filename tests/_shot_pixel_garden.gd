@@ -164,7 +164,7 @@ func _script() -> void:
 						_tap(c)
 						k += 1
 				_puzzle.set_brush((_puzzle.brush + 1) % st.names.size()))
-			for t in [0.4, 0.75, 0.82, 1.0, 1.6]:
+			for t in [0.4, 0.64, 0.7, 0.78, 1.0, 1.6]:
 				_at(t, _shot)
 			_end = 3.0
 		"plate":
