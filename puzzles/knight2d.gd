@@ -24,13 +24,16 @@ extends "res://core/puzzle_base.gd"
 ## on your knight's head, confetti, the nap cat, the seal and a bit of
 ## knightly wisdom.
 ##
-## How it is drawn. Three meshes:
+## How it is drawn. Four meshes:
 ##   table -- the garden table under the board, clipped to the card and
 ##            drawn outside the entrance's grow;
-##   still -- the frame and the squares, rebuilt only on a relayout;
-##   live  -- the trail, the marks and every piece, rebuilt only while
-##            something moves, or for a blink or a doze now and then. At
-##            rest otherwise nothing rebuilds.
+##   still  -- the frame and the squares, made once a board size and drawn
+##             scaled onto a smaller relayout (the win card's);
+##   ground -- the brambles or the trail, and the marks, put together from
+##             looks and handed back while nothing on it changes;
+##   pieces -- every piece and what flies over them, put together from
+##             looks (`_make_shape`) on every frame anything moves, or for a
+##             blink or a doze now and then. At rest nothing rebuilds.
 ## The pieces are ui/faces/chess_piece.gd, which the menu card draws too.
 ##
 ## Spec: docs/superpowers/specs/2026-09-26-knight-flat-design.md, section 7.
@@ -50,6 +53,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Gen = preload("res://puzzles/knight_gen.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 signal leave
 
@@ -120,6 +124,25 @@ const TOPPLE_TIME := 0.45
 const WIN_WAIT := 2.2
 ## The trail keeps only your last few hops' prints, the oldest faintest.
 const TRAIL_HOPS := 3
+## A knight's eight hops, in the order the trail's looks are numbered.
+const HOPS: Array[Vector2i] = [Vector2i(1, 2), Vector2i(2, 1), Vector2i(2, -1), Vector2i(1, -2),
+	Vector2i(-1, -2), Vector2i(-2, -1), Vector2i(-2, 1), Vector2i(-1, 2)]
+## The looks' ids (`_make_shape`).
+const SH_KNIGHT := 0     # + side * 4 + EYE_*
+const SH_KING := 10      # + 1 fallen, + 2 crowned, + 4 dozing
+const SH_CROWN := 20
+const SH_SHADOW := 21
+const SH_REACH := 30
+const SH_DOT := 31       # + MARK_*
+const SH_TRAIL := 40     # + hop * TRAIL_HOPS + age
+const SH_BRAMBLE := 100  # + square
+const EYE_OPEN := 0
+const EYE_SHUT := 1
+const EYE_JOY := 2
+const EYE_DIZZY := 3
+const MARK_DOT := 0
+const MARK_RING := 1
+const MARK_TAKE := 2
 const TIP_CYCLE := 8.0
 const TIPS := ["KN_TIP_TAP", "KN_TIP_GOAL", "KN_TIP_ANSWER", "KN_TIP_CORNERS", "KN_TIP_TAKE"]
 const TIPS_HEARTS := ["KN_TIP_TAP", "KN_TIP_CORNERS", "KN_TIP_HEARTS", "KN_TIP_ANSWER", "KN_TIP_STUCK"]
@@ -247,7 +270,23 @@ var _busy_until := -100.0
 var _anim_until := 0.0
 var _solved_at := -1.0
 var _still: ArrayMesh
-var _live: ArrayMesh
+## The layout the still was made at: kept across the win card's smaller
+## relayout and drawn scaled (3-4 ms a rebuild), made again only when the
+## board grows or changes size.
+var _still_s := 0.0
+var _still_o := Vector2.ZERO
+var _still_w := 0
+## The ground (brambles or trail, and the marks) and the pieces, each put
+## together from looks (`_make_shape`) by its own RunMesh; the ground is
+## handed back while `_ground_key` holds.
+var _ground: ArrayMesh
+var _ground_key: Array = []
+var _pieces: ArrayMesh
+var _piece_rm: RunMesh
+var _ground_rm: RunMesh
+var _ref_s := 0.0
+## What is drawn live between two looks, flushed before the next look.
+var _lb: Face.Builder
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
 ## RID, so dropping the only reference leaves the renderer a freed one.
 var _shown: Array = []
@@ -340,6 +379,45 @@ func rules() -> String:
 	else:
 		out += "\n\n" + tr("KN_RULES_SAFE")
 	return out
+
+## The how-to-play card's pages, the band's own: hopping in an L onto the
+## king, the rose knights' answer and a catch, taking a rose knight,
+## Brambles (Insane), a dead end -- Start over (Easy to Hard) or boxed in
+## (Insane) --, Undo and Reset, and the bulb (bands with hints). Each page is
+## the board itself on a hand-made 5x5 position, playing the lesson
+## (ui/hud/knight_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/knight_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.HOP, "HTP_KN_HOP", tr("HTP_KN_HOP_BODY")]]
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.ANSWER, "HTP_KN_ANSWER", tr("HTP_KN_ANSWER_BODY_HEARTS") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.ANSWER, "HTP_KN_ANSWER", tr("HTP_KN_ANSWER_BODY")])
+	steps.append([Diagram.Lesson.TAKE, "HTP_KN_TAKE", tr("HTP_KN_TAKE_BODY")])
+	if band >= 3:
+		steps.append([Diagram.Lesson.BRAMBLES, "KN_BRAMBLE_SEAL", tr("HTP_KN_BRAMBLES_BODY")])
+		steps.append([Diagram.Lesson.STUCK, "HTP_KN_BOXED", tr("HTP_KN_BOXED_BODY") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.STUCK, "HTP_KN_STUCK", tr("HTP_KN_STUCK_BODY")])
+	var undo_body := "HTP_KN_UNDO_BODY"
+	if band >= 3:
+		undo_body = "HTP_KN_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_KN_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_KN_HINT_BODY_ONE") if hints == 1 else tr("HTP_KN_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func _tips() -> Array:
 	if _state.brambles():
@@ -465,7 +543,12 @@ func _snap_to_state() -> void:
 func _cell() -> float:
 	if _state.w <= 0:
 		return 0.0
-	return maxf(0.0, minf(CELL_CAP, minf(size.x - 2.0 * INSET, size.y - 2.0 * INSET - _heart_row()) / float(_state.w)))
+	var inset := _inset()
+	return maxf(0.0, minf(CELL_CAP, minf(size.x - 2.0 * inset, size.y - 2.0 * inset - _heart_row()) / float(_state.w)))
+
+## The table's margin round the board (the tutorial's page is short).
+func _inset() -> float:
+	return INSET
 
 ## The room the hearts' pill takes over the board on Hard and Insane.
 func _heart_row() -> float:
@@ -493,11 +576,17 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
-	_still = null
 	_table = null
 	_love_mesh = null
 	_seal_mesh = null
 	_place_stuck()
+	# a cat already curled up follows the frame onto the win card's smaller
+	# board (she stayed where the frame was, over the card's buttons)
+	if _cat_curled and is_instance_valid(_cat) and _cell() > 0.0:
+		var px := _cat_px()
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+		_cat.position = _cat_spot() - _cat.size * 0.5
 	_refresh()
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
@@ -908,7 +997,7 @@ func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds + Motion.POP_IN + 0.2)
 
 func _refresh() -> void:
-	_live = null
+	_pieces = null
 	queue_redraw()
 
 func _entry(i: int, t: float) -> float:
@@ -939,11 +1028,22 @@ func _draw() -> void:
 	var shake := Motion.shiver_offset(t - _shake_at) * 3.0
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow) + Vector2(shake, 0.0))
 	var tint := Color(1.0, 1.0, 1.0, seen)
-	if _still == null:
+	var s := _cell()
+	if _still == null or s > _still_s + 0.5 or _still_w != _state.w:
 		_still = _build_still()
-	if _live == null:
-		_live = _build_live(t)
-	for m in [_still, _live]:
+		_still_s = s
+		_still_o = _origin()
+		_still_w = _state.w
+	_check_ref()
+	if _pieces == null:
+		_lb = Face.Builder.new()
+		_build_ground(t)
+		_pieces = _build_pieces(t)
+	# the frame and squares as made, scaled onto the board as laid out now
+	var k := s / _still_s
+	draw_mesh(_still, null, xf * Transform2D(0.0, Vector2.ONE * k, 0.0, _origin() - _still_o * k), tint)
+	shown.append(_still)
+	for m in [_ground, _pieces]:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
@@ -1105,18 +1205,108 @@ func _build_still() -> ArrayMesh:
 	b.fan(PackedVector2Array([o, o + Vector2(6.0, 0.0), o + Vector2(6.0, g.y), o + Vector2(0.0, g.y)]), Color(Pal.CHESS_FRAME_DEEP, 0.12))
 	return b.mesh()
 
-## The trail, the marks, every piece (lowest first, anything in the air
-## over the rest), the dust, the win's crown and petals, and a hint's ring.
-func _build_live(t: float) -> ArrayMesh:
+## The shapes the ground and the pieces are put together from, made once at
+## the reference cell `_ref_s` about their own origin (Quilt's split, at the
+## 2026-10-02 checkup): before it, every piece, bramble, hoofprint and mark
+## was drawn in script on every frame anything moved -- and on Brambles a
+## napping rose knight keeps the board moving, so a late Insane board built
+## 20k vertices a frame (8-22 ms).
+func _make_shape(id: int) -> Face.Builder:
 	var b := Face.Builder.new()
-	var s := _cell()
-	if _state.brambles():
-		_draw_brambles(b, s, t)
+	var s := _ref_s
+	if id < SH_KING:
+		var eye := id % 4
+		Piece.knight(b, Vector2.ZERO, s, id / 4, -1.0, 0.0, Vector2.ONE, eye == EYE_JOY, 1.0, 0.0,
+			0.0 if eye == EYE_SHUT else 1.0, eye == EYE_DIZZY, false)
+	elif id < SH_CROWN:
+		var k := id - SH_KING
+		Piece.king(b, Vector2.ZERO, s, 0.0, 1.0, (k & 1) != 0, (k & 2) != 0, (k & 4) != 0, false)
+	elif id == SH_CROWN:
+		Piece.crown(b, Vector2.ZERO, s)
+	elif id == SH_SHADOW:
+		Scenery.soft_disc(b, Vector2.ZERO, s * 0.3, s * 0.08, RunMesh.slot(0))
+	elif id == SH_REACH:
+		_mark_reach(b, Vector2.ZERO, s, 1.0)
+	elif id >= SH_DOT and id <= SH_DOT + MARK_TAKE:
+		_mark_move(b, Vector2.ZERO, s, id - SH_DOT, 1.0, 1.0)
+	elif id < SH_BRAMBLE:
+		var k := id - SH_TRAIL
+		var d: Vector2i = HOPS[k / TRAIL_HOPS]
+		_hop_prints(b, Vector2.ZERO, Vector2(d) * s, s, _trail_col(k % TRAIL_HOPS))
 	else:
-		_draw_trail(b, s, t)
-	if not is_done() and not out_of_hearts and t >= _busy_until:
-		var fade := 1.0 if Motion.reduce else clampf((t - _busy_until) / MARK_FADE, 0.0, 1.0)
-		_draw_marks(b, s, fade, t)
+		# about its foot, which is where it grows from
+		_bramble(b, Vector2(0.0, -s * 0.3), s, 1.0, 1.0, id - SH_BRAMBLE)
+	return b
+
+## The looks are made again only when the board grows past them; the win
+## card's smaller board draws them scaled.
+func _check_ref() -> void:
+	var s := _cell()
+	if _piece_rm == null:
+		_piece_rm = RunMesh.new(_make_shape)
+		_ground_rm = RunMesh.new(_make_shape)
+	if s > _ref_s + 0.5:
+		_ref_s = s
+		_piece_rm.reset()
+		_ground_rm.reset()
+		_ground_rm.share_shapes(_piece_rm)
+		_ground_key = []
+
+## Puts shape `id` under `xf`, after whatever the live builder holds, so the
+## paint order is the order things were drawn in.
+func _put(rm: RunMesh, id: int, xf: Transform2D, colours: Array = []) -> void:
+	if not _lb.verts.is_empty():
+		rm.put_builder(_lb)
+		_lb = Face.Builder.new()
+	rm.put(id, colours, xf)
+
+func _flush(rm: RunMesh) -> ArrayMesh:
+	if not _lb.verts.is_empty():
+		rm.put_builder(_lb)
+		_lb = Face.Builder.new()
+	return rm.mesh()
+
+## A piece's soft shadow, `r` of a cell wide, at alpha `a`.
+func _put_shadow(at: Vector2, s: float, r: float, a: float) -> void:
+	var xf := Transform2D(0.0, Vector2.ONE * (s / _ref_s) * (r / 0.3), 0.0, at + Vector2(0.0, s * 0.33))
+	_put(_piece_rm, SH_SHADOW, xf, [Color(Pal.TEXT, snappedf(a, 0.01))])
+
+## A knight look put where Piece.knight would draw it with these arguments
+## (its map is affine: foot, turn, squash and cell size).
+func _put_knight(at: Vector2, s: float, side: int, look: float, lift := 0.0, sq := Vector2.ONE,
+		joy := false, tilt := 0.0, eye := 1.0, dizzy := false) -> void:
+	var up := clampf(lift / s, 0.0, 1.0)
+	_put_shadow(at, s, (0.3 - up * 0.08) * sq.x, 0.2 - up * 0.12)
+	var u := s * Piece.PIECE
+	var u0 := _ref_s * Piece.PIECE
+	var foot := at + Vector2(0.0, -lift - s * Piece.STAND) + Piece.FOOT * u
+	var foot0 := Vector2(0.0, -_ref_s * Piece.STAND) + Piece.FOOT * u0
+	var k := u / u0
+	var sx := -look * sq.x * k
+	var sy := sq.y * k
+	var c := cos(tilt)
+	var n := sin(tilt)
+	var xf := Transform2D(Vector2(c, n) * sx, Vector2(-n, c) * sy, foot) * Transform2D(0.0, -foot0)
+	var e := EYE_DIZZY if dizzy else EYE_JOY if joy else EYE_SHUT if eye < 0.5 else EYE_OPEN
+	_put(_piece_rm, SH_KNIGHT + side * 4 + e, xf)
+
+## The king's look put where Piece.king would draw him.
+func _put_king(at: Vector2, s: float, tip: float, scale: float, fallen: bool, crowned: bool, doze: bool) -> void:
+	_put_shadow(at, s, 0.3, 0.2)
+	var k := scale * s / _ref_s
+	var lift := Vector2(0.0, -s * (0.3 + Piece.STAND))
+	var foot0 := Vector2(0.0, _ref_s * 0.3) + Vector2(0.0, -_ref_s * (0.3 + Piece.STAND))
+	var xf := Transform2D(tip, at + Vector2(0.0, s * 0.3)) * Transform2D(0.0, Vector2.ONE * k, 0.0, lift) \
+		* Transform2D(0.0, -foot0)
+	_put(_piece_rm, SH_KING + (1 if fallen else 0) + (2 if crowned else 0) + (4 if doze else 0), xf)
+
+## The pieces' layer: every piece (lowest first, anything in the air over
+## the rest), the dust, the win's crown and petals, the z's and a hint's
+## ring. Rebuilt on every frame anything moves, from looks.
+func _build_pieces(t: float) -> ArrayMesh:
+	var s := _cell()
+	var b := _lb
+	_piece_rm.begin()
 	var items: Array = []
 	var kc := _centre(_state.king)
 	var fall := -1.0 if _state.king % _state.w >= _state.w / 2 else 1.0
@@ -1135,7 +1325,7 @@ func _build_live(t: float) -> ArrayMesh:
 		tip = sin(PI * doze) * DOZE_NOD * fall
 	var king_e := _entry(0, t)
 	var crowned := not fallen
-	items.append({"air": 0, "y": kc.y - 2.0, "fn": func(): Piece.king(b, king_at, s, tip, king_e, fallen, crowned, dozing)})
+	items.append({"air": 0, "y": kc.y - 2.0, "fn": func(): _put_king(king_at, s, tip, king_e, fallen, crowned, dozing)})
 	var you_now := _where(_you_a, t)
 	for i in _foe_a.size():
 		var a: Dictionary = _foe_a[i]
@@ -1157,12 +1347,12 @@ func _build_live(t: float) -> ArrayMesh:
 			if not Motion.reduce:
 				sq *= Vector2(1.0 + 0.015 * sin(t * 2.2 + i), 1.0 - 0.02 * sin(t * 2.2 + i))
 		items.append({"air": 1 if float(w.lift) > 0.5 else 0, "y": w.at.y,
-			"fn": func(): Piece.knight(b, w.at, s, Piece.ROSE, look, w.lift, sq, false, 1.0, tilt, eye)})
+			"fn": func(): _put_knight(w.at, s, Piece.ROSE, look, w.lift, sq, false, tilt, eye)})
 	for gn: Dictionary in _gone:
 		var gs := t - float(gn.at)
 		var gc := _centre(gn.c)
 		if gs < 0.0:
-			items.append({"air": 0, "y": gc.y, "fn": func(): Piece.knight(b, gc, s, Piece.ROSE, -float(gn.dir))})
+			items.append({"air": 0, "y": gc.y, "fn": func(): _put_knight(gc, s, Piece.ROSE, -float(gn.dir))})
 		elif gs < TAKE_TIME and not Motion.reduce:
 			var u := gs / TAKE_TIME
 			var d := float(gn.dir)
@@ -1170,10 +1360,11 @@ func _build_live(t: float) -> ArrayMesh:
 			var lift := s * (1.0 * u - 0.55 * u * u)
 			var k := 1.0 - u * u
 			var spin := d * TUMBLE_SPIN * u
+			# fading as it tumbles: drawn live, for the half second it takes
 			items.append({"air": 2, "y": pos.y,
 				"fn": func():
-					Piece.knight(b, pos, s, Piece.ROSE, -d, lift, Vector2.ONE * (1.0 - 0.25 * u), false, k, spin, 1.0, true)
-					_dizzy_stars(b, pos - Vector2(0.0, lift + s * 0.62), s, gs, k)})
+					Piece.knight(_lb, pos, s, Piece.ROSE, -d, lift, Vector2.ONE * (1.0 - 0.25 * u), false, k, spin, 1.0, true)
+					_dizzy_stars(_lb, pos - Vector2(0.0, lift + s * 0.62), s, gs, k)})
 	if not you_now.is_empty():
 		var look := -1.0 if kc.x < you_now.at.x else 1.0
 		if bool(you_now.hopping):
@@ -1183,7 +1374,7 @@ func _build_live(t: float) -> ArrayMesh:
 			var kd := float(_caught.dir)
 			var pos: Vector2 = you_now.at + Vector2(kd * KNOCK * s * kn, 0.0)
 			items.append({"air": 0, "y": you_now.at.y - 1.0,
-				"fn": func(): Piece.knight(b, pos, s, Piece.CREAM, -kd, 0.0, Vector2.ONE, false, 1.0, kd * KNOCK_TILT * kn, 1.0, true)})
+				"fn": func(): _put_knight(pos, s, Piece.CREAM, -kd, 0.0, Vector2.ONE, false, kd * KNOCK_TILT * kn, 1.0, true)})
 		else:
 			var sh := Motion.shiver_offset(t - _bump_at) * 4.0
 			var sq: Vector2 = Vector2.ONE * _entry(_foe_a.size() + 1, t) * _land_squash(float(you_now.land), t) * you_now.sq
@@ -1201,7 +1392,7 @@ func _build_live(t: float) -> ArrayMesh:
 			var eye := _eye(t)
 			var at: Vector2 = you_now.at + Vector2(sh, 0.0)
 			items.append({"air": 1 if lift > 0.5 else 0, "y": you_now.at.y,
-				"fn": func(): Piece.knight(b, at, s, Piece.CREAM, look, lift, sq, fallen, 1.0, tilt, eye)})
+				"fn": func(): _put_knight(at, s, Piece.CREAM, look, lift, sq, fallen, tilt, eye)})
 			if fallen:
 				# the king's crown: off his head, up, and down onto yours
 				var head := Piece.knight_head(at, s, look, lift, sq, tilt)
@@ -1211,10 +1402,12 @@ func _build_live(t: float) -> ArrayMesh:
 				var cp := c0.lerp(head, ce) + Vector2(0.0, -sin(PI * cu) * CROWN_ARC * s)
 				var ca := fall * TAU * (1.0 - ce) + tilt - look * 0.18 * ce
 				var cs := lerpf(1.0, CROWN_ON, ce)
-				items.append({"air": 2, "y": cp.y, "fn": func(): Piece.crown(b, cp, s, ca, 1.0, cs)})
+				items.append({"air": 2, "y": cp.y, "fn": func():
+					_put(_piece_rm, SH_CROWN, Transform2D(ca, Vector2.ONE * cs * s / _ref_s, 0.0, cp))})
 	items.sort_custom(func(p, q): return p.y < q.y if p.air == q.air else p.air < q.air)
 	for it: Dictionary in items:
 		it.fn.call()
+	b = _lb
 	_draw_dust(b, s, t)
 	if doze >= 0.0 and not won:
 		_draw_z(b, kc, s, doze, fall)
@@ -1227,7 +1420,134 @@ func _build_live(t: float) -> ArrayMesh:
 		if u >= 0.0 and u < 1.0:
 			var rad := s * (0.3 + 0.4 * u)
 			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
-	return b.mesh() if not b.verts.is_empty() else null
+	return _flush(_piece_rm)
+
+## The ground under the pieces: the brambles or the trail, and the marks.
+## Made again only while one of them moves (a bramble growing or withering,
+## the marks fading in, a square pressed) or when what it shows changes;
+## otherwise the last one is handed back -- a napping knight's breath
+## rebuilds only the pieces.
+func _build_ground(t: float) -> void:
+	var s := _cell()
+	var marks := not is_done() and not out_of_hearts and t >= _busy_until
+	var legal: PackedInt32Array = _state.legal() if marks and _state.moves_left() != 0 else PackedInt32Array()
+	var settled := _press.is_empty() and _wither.is_empty() and (not marks or Motion.reduce
+		or t - _busy_until >= maxf(MARK_FADE, Motion.POP_IN + float(maxi(0, legal.size() - 1)) * 0.025))
+	var route: PackedInt32Array = _state.route()
+	var last := route.size()
+	var you_now := _where(_you_a, t)
+	if not you_now.is_empty() and t < float(you_now.land) and float(_you_a.arc) > 0.0:
+		last -= 1
+	if _state.brambles():
+		for c in _grown:
+			if not Motion.reduce and t - float(_grown[c]) < BRAMBLE_GROW:
+				settled = false
+	var key := [s, _origin(), route, last, _grown.keys(), _state.foes, marks, legal]
+	if settled and _ground != null and key == _ground_key:
+		return
+	_ground_key = key if settled else []
+	_ground_rm.begin()
+	var rel := s / _ref_s
+	if _state.brambles():
+		for c in _grown:
+			var e := t - float(_grown[c])
+			if e < 0.0:
+				continue
+			var k := 1.0 if Motion.reduce else Motion.back_out(clampf(e / BRAMBLE_GROW, 0.0, 1.0))
+			if k > 0.01:
+				_put(_ground_rm, SH_BRAMBLE + int(c), Transform2D(0.0, Vector2.ONE * k * rel, 0.0,
+					_centre(int(c)) + Vector2(0.0, s * 0.3)))
+		for c in _wither.keys():
+			var u := 1.0 if Motion.reduce else (t - float(_wither[c])) / WITHER_TIME
+			if u >= 1.0:
+				_wither.erase(c)
+				continue
+			# fading as it sinks: drawn live, for the moment it takes
+			_bramble(_lb, _centre(int(c)), s, 1.0 - u * u, 1.0 - u, int(c))
+	else:
+		var hops := route.size() - 1
+		for i in range(maxi(1, route.size() - TRAIL_HOPS), last):
+			var d := Vector2i(route[i] % _state.w - route[i - 1] % _state.w, route[i] / _state.w - route[i - 1] / _state.w)
+			var h := HOPS.find(d)
+			if h >= 0:
+				_put(_ground_rm, SH_TRAIL + h * TRAIL_HOPS + (hops - i),
+					Transform2D(0.0, Vector2.ONE * rel, 0.0, _centre(route[i - 1])))
+	if marks:
+		var fade := 1.0 if Motion.reduce else clampf((t - _busy_until) / MARK_FADE, 0.0, 1.0)
+		var reach: Dictionary = _state.reach()
+		for q: int in reach:
+			if q == _state.king:
+				continue
+			if fade >= 1.0:
+				_put(_ground_rm, SH_REACH, Transform2D(0.0, Vector2.ONE * rel, 0.0, _centre(q)))
+			else:
+				_mark_reach(_lb, _centre(q), s, fade)
+		for i in legal.size():
+			var q: int = legal[i]
+			var at := _centre(q)
+			var e := 1.0 if Motion.reduce else maxf(0.05, Motion.pop_in_scale(maxf(0.0, t - _busy_until - float(i) * 0.025)).x)
+			if not _press.is_empty() and int(_press.c) == q:
+				e *= 1.35 if Motion.reduce else 1.0 + 0.35 * minf(1.0, (t - float(_press.at)) / PRESS_TIME)
+			var kind := MARK_TAKE if q == _state.king or _foe_on(q) else MARK_RING if reach.has(q) else MARK_DOT
+			if fade >= 1.0:
+				_put(_ground_rm, SH_DOT + kind, Transform2D(0.0, Vector2.ONE * rel * e, 0.0, at))
+			else:
+				_mark_move(_lb, at, s, kind, e, fade)
+	_ground = _flush(_ground_rm)
+
+## A hop's hoofprints from `a` to `z`: the long leg of the L, then the short,
+## a small horseshoe a step, alternating sides.
+static func _hop_prints(b: Face.Builder, a: Vector2, z: Vector2, s: float, col: Color) -> void:
+	var d := z - a
+	var corner := a + Vector2(d.x, 0.0) if absf(d.x) > absf(d.y) else a + Vector2(0.0, d.y)
+	var n := 0
+	for leg in [[a, corner], [corner, z]]:
+		var p0: Vector2 = leg[0]
+		var p1: Vector2 = leg[1]
+		var ln := p0.distance_to(p1)
+		if ln <= 0.0:
+			continue
+		var dv := (p1 - p0) / ln
+		var nrm := Vector2(-dv.y, dv.x)
+		var steps := maxi(1, int(round(ln / (s * 0.34))))
+		var first := 1 if leg[0] == a else 0
+		for k in range(first, steps):
+			var p := p0 + dv * (float(k) * ln / float(steps))
+			var side := 1.0 if n % 2 == 0 else -1.0
+			n += 1
+			var base := dv.angle()
+			b.stroke(Face.Builder.arc_points(p + nrm * side * s * 0.07, s * 0.052, base - PI * 0.68, base + PI * 0.68),
+				s * 0.026, col)
+
+## The prints of the hop `age` hops back from the last: older ones fainter.
+static func _trail_col(age: int) -> Color:
+	return Color(Pal.KNIGHT_CREAM_LINE, 0.3 - 0.07 * float(age))
+
+## Rose corners in a square a rose knight reaches right now.
+static func _mark_reach(b: Face.Builder, mid: Vector2, s: float, fade: float) -> void:
+	var o := mid - Vector2.ONE * s * 0.5
+	var col := Color(Pal.KNIGHT_REACH, 0.55 * fade)
+	var gap := s * 0.1
+	var tick := s * 0.16
+	for cn: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+		var corner := o + Vector2(gap + cn.x * (s - 2.0 * gap), gap + cn.y * (s - 2.0 * gap))
+		var dx := 1.0 if cn.x == 0.0 else -1.0
+		var dy := 1.0 if cn.y == 0.0 else -1.0
+		b.stroke(PackedVector2Array([corner + Vector2(0.0, dy * tick), corner, corner + Vector2(dx * tick, 0.0)]),
+			s * 0.035, col)
+
+## A square you can hop to: a sage dot, a rose ring where a rose knight
+## reaches it, a big sage ring round a rose knight or the king you can take;
+## `e` its pop.
+static func _mark_move(b: Face.Builder, at: Vector2, s: float, kind: int, e: float, fade: float) -> void:
+	if kind == MARK_TAKE:
+		var r := s * 0.44 * e
+		b.stroke(Face.Builder.ring(at, r, r), s * 0.05, Color(Pal.KNIGHT_MOVE, 0.85 * fade), true)
+	elif kind == MARK_RING:
+		var r := s * 0.13 * e
+		b.stroke(Face.Builder.ring(at, r, r), s * 0.035, Color(Pal.KNIGHT_REACH, 0.7 * fade), true)
+	else:
+		b.disc(at, s * 0.13 * e, Color(Pal.KNIGHT_MOVE, 0.8 * fade))
 
 ## A landing's dust: little soft clouds puffing out from both sides of the
 ## plinth, rising a touch and fading.
@@ -1282,78 +1602,6 @@ func _draw_petals(b: Face.Builder, s: float, since: float) -> void:
 			var a := TAU * float(k) / 12.0
 			pts.append(Vector2(x, y) + Vector2(cos(a) * r, sin(a) * r * (0.35 + 0.25 * abs(sin(u * 9.0 + float(i))))).rotated(ang))
 		b.fan(pts, Color(cols[i % cols.size()], minf(1.0, (1.0 - u) * 2.5)))
-
-## Hoofprints along the L of every hop you have kept: the long leg, then the
-## short, a small horseshoe a step, alternating sides; older hops fainter.
-## The hop in flight leaves its prints only once it lands.
-func _draw_trail(b: Face.Builder, s: float, t: float) -> void:
-	var route: PackedInt32Array = _state.route()
-	var hops := route.size() - 1
-	var last := route.size()
-	var first_hop := maxi(1, route.size() - TRAIL_HOPS)
-	var you_now := _where(_you_a, t)
-	if not you_now.is_empty() and t < float(you_now.land) and float(_you_a.arc) > 0.0:
-		last -= 1
-	for i in range(first_hop, last):
-		var a := _centre(route[i - 1])
-		var z := _centre(route[i])
-		var d := z - a
-		var corner := a + Vector2(d.x, 0.0) if absf(d.x) > absf(d.y) else a + Vector2(0.0, d.y)
-		var col := Color(Pal.KNIGHT_CREAM_LINE, 0.3 - 0.07 * float(hops - i))
-		var n := 0
-		for leg in [[a, corner], [corner, z]]:
-			var p0: Vector2 = leg[0]
-			var p1: Vector2 = leg[1]
-			var ln := p0.distance_to(p1)
-			if ln <= 0.0:
-				continue
-			var dv := (p1 - p0) / ln
-			var nrm := Vector2(-dv.y, dv.x)
-			var steps := maxi(1, int(round(ln / (s * 0.34))))
-			var first := 1 if leg[0] == a else 0
-			for k in range(first, steps):
-				var p := p0 + dv * (float(k) * ln / float(steps))
-				var side := 1.0 if n % 2 == 0 else -1.0
-				n += 1
-				var base := dv.angle()
-				b.stroke(Face.Builder.arc_points(p + nrm * side * s * 0.07, s * 0.052, base - PI * 0.68, base + PI * 0.68),
-					s * 0.026, col)
-
-## Rose corners in every square a rose knight reaches right now, a sage dot
-## on each square you can hop to -- a rose ring instead where that square is
-## in reach, and a sage ring round a rose knight or the king you can take.
-func _draw_marks(b: Face.Builder, s: float, fade: float, t: float) -> void:
-	var reach: Dictionary = _state.reach()
-	var reach_col := Color(Pal.KNIGHT_REACH, 0.55 * fade)
-	var gap := s * 0.1
-	var tick := s * 0.16
-	for q: int in reach:
-		if q == _state.king:
-			continue
-		var o := _origin() + Vector2(q % _state.w, q / _state.w) * s
-		for cn: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
-			var corner := o + Vector2(gap + cn.x * (s - 2.0 * gap), gap + cn.y * (s - 2.0 * gap))
-			var dx := 1.0 if cn.x == 0.0 else -1.0
-			var dy := 1.0 if cn.y == 0.0 else -1.0
-			b.stroke(PackedVector2Array([corner + Vector2(0.0, dy * tick), corner, corner + Vector2(dx * tick, 0.0)]),
-				s * 0.035, reach_col)
-	if _state.moves_left() == 0:
-		return
-	var legal: PackedInt32Array = _state.legal()
-	for i in legal.size():
-		var q: int = legal[i]
-		var at := _centre(q)
-		var e := 1.0 if Motion.reduce else maxf(0.05, Motion.pop_in_scale(maxf(0.0, t - _busy_until - float(i) * 0.025)).x)
-		if not _press.is_empty() and int(_press.c) == q:
-			e *= 1.35 if Motion.reduce else 1.0 + 0.35 * minf(1.0, (t - float(_press.at)) / PRESS_TIME)
-		if q == _state.king or _foe_on(q):
-			var r := s * 0.44 * e
-			b.stroke(Face.Builder.ring(at, r, r), s * 0.05, Color(Pal.KNIGHT_MOVE, 0.85 * fade), true)
-		elif reach.has(q):
-			var r := s * 0.13 * e
-			b.stroke(Face.Builder.ring(at, r, r), s * 0.035, Color(Pal.KNIGHT_REACH, 0.7 * fade), true)
-		else:
-			b.disc(at, s * 0.13 * e, Color(Pal.KNIGHT_MOVE, 0.8 * fade))
 
 ## The toast over the foot of the card, fading in and out over
 ## Motion.DROP_FADE -- Rings' `_draw_toast`, in the card's own pixels and
@@ -1617,11 +1865,9 @@ func _place_stuck() -> void:
 	var was := _stuck_btn.visible
 	_stuck_btn.visible = true
 	_stuck_btn.size = _stuck_btn.get_combined_minimum_size()
-	var w := maxf(_stuck_btn.size.x, minf(size.x - 80.0, 420.0))
+	var w := _stuck_width()
 	_stuck_btn.size = Vector2(w, STUCK_H)
-	var top := _origin().y + _grid_size().y + FRAME + STUCK_DROP
-	top = minf(top, size.y - STUCK_H - 12.0)
-	_stuck_btn.position = Vector2((size.x - w) * 0.5, top)
+	_stuck_btn.position = _stuck_spot(w)
 	_stuck_btn.pivot_offset = _stuck_btn.size * 0.5
 	if not was and not Motion.reduce:
 		_stuck_btn.scale = Vector2.ONE * 0.6
@@ -1631,6 +1877,15 @@ func _place_stuck() -> void:
 		tw.tween_interval(1.4)
 		tw.tween_property(_stuck_btn, "scale", Vector2.ONE * 1.06, 0.12)
 		tw.tween_property(_stuck_btn, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## How wide the Start over button is: its own width, or most of the card's.
+func _stuck_width() -> float:
+	return maxf(_stuck_btn.get_combined_minimum_size().x, minf(size.x - 80.0, 420.0))
+
+## Where the Start over button `w` wide stands: centred under the board.
+func _stuck_spot(w: float) -> Vector2:
+	var top := _origin().y + _grid_size().y + FRAME + STUCK_DROP
+	return Vector2((size.x - w) * 0.5, minf(top, size.y - STUCK_H - 12.0))
 
 # --- the brambles and the naps ---
 
@@ -1741,7 +1996,9 @@ func _draw_hearts() -> void:
 	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
 		_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var left := size.x * 0.5 - pill.x * 0.5
+	var c := _hearts_at(pill, y)
+	y = c.y
+	var left := c.x - pill.x * 0.5
 	var corner := Vector2(left, y - pill.y * 0.5)
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
@@ -1773,10 +2030,14 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The hearts' pill's centre: over the board, centred (the tutorial's page
+## hangs it beside the board).
+func _hearts_at(_pill: Vector2, y: float) -> Vector2:
+	return Vector2(size.x * 0.5, y)
 
 static func _heart_face(b, at: Vector2, s: float) -> void:
 	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))

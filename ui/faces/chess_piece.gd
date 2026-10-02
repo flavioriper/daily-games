@@ -82,15 +82,18 @@ const FOOT := Vector2(0.0, 0.34)
 ## shrinks under it); `sq` squashes it about its foot (a crouch, a landing,
 ## an entrance); `joy` shuts its eye in a smile; `alpha` fades it; `tilt`
 ## turns it about its foot in radians (a lean into a hop, a rear, a knock);
-## `eye` below a half blinks it; `dizzy` spins its eye into a swirl (caught).
+## `eye` below a half blinks it; `dizzy` spins its eye into a swirl (caught);
+## `shadow` false leaves its shadow off (the board puts it as a look apart).
 static func knight(b: Face.Builder, at: Vector2, s: float, side: int, look: float, lift := 0.0,
-		sq := Vector2.ONE, joy := false, alpha := 1.0, tilt := 0.0, eye := 1.0, dizzy := false) -> void:
+		sq := Vector2.ONE, joy := false, alpha := 1.0, tilt := 0.0, eye := 1.0, dizzy := false,
+		shadow := true) -> void:
 	var col: Color = Pal.KNIGHT_CREAM if side == CREAM else Pal.KNIGHT_ROSE
 	var deep: Color = Pal.KNIGHT_CREAM_DEEP if side == CREAM else Pal.KNIGHT_ROSE_DEEP
 	var line: Color = Pal.KNIGHT_CREAM_LINE if side == CREAM else Pal.KNIGHT_ROSE_LINE
 	var up := clampf(lift / s, 0.0, 1.0)
-	Scenery.soft_disc(b, at + Vector2(0.0, s * 0.33), s * (0.3 - up * 0.08) * sq.x, s * 0.08,
-		Color(Pal.TEXT, (0.2 - up * 0.12) * alpha))
+	if shadow:
+		Scenery.soft_disc(b, at + Vector2(0.0, s * 0.33), s * (0.3 - up * 0.08) * sq.x, s * 0.08,
+			Color(Pal.TEXT, (0.2 - up * 0.12) * alpha))
 	var u := s * PIECE
 	var o := at + Vector2(0.0, -lift - s * STAND)
 	var foot := o + FOOT * u
@@ -173,10 +176,11 @@ static func _king_outline() -> PackedVector2Array:
 ## gold three-point crown with a sleepy face. `tip` tips him over about his
 ## foot (the win, negative to the left; a nod, a little); `scale` is his
 ## entrance; `fallen` crosses his eyes; `crowned` false leaves the crown off
-## (it is flying, see crown()); `doze` shuts his eyes.
+## (it is flying, see crown()); `doze` shuts his eyes; `shadow` as knight's.
 static func king(b: Face.Builder, at: Vector2, s: float, tip := 0.0, scale := 1.0, fallen := false,
-		crowned := true, doze := false) -> void:
-	Scenery.soft_disc(b, at + Vector2(0.0, s * 0.33), s * 0.3, s * 0.08, Color(Pal.TEXT, 0.2))
+		crowned := true, doze := false, shadow := true) -> void:
+	if shadow:
+		Scenery.soft_disc(b, at + Vector2(0.0, s * 0.33), s * 0.3, s * 0.08, Color(Pal.TEXT, 0.2))
 	var u := s * PIECE * scale
 	var map := _king_map(at, s, u, tip)
 	b.fan(_mapped(Face.Builder.round_rect(Vector2(-0.3, 0.2), Vector2(0.6, 0.14), 0.06), map), Pal.KNIGHT_ROSE_DEEP)
