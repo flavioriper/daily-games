@@ -67,6 +67,7 @@ const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the patch ---
@@ -286,6 +287,26 @@ const TALLY_GLYPH_X := 26.0
 const TALLY_TEXT_X := 70.0
 const TALLY_SIZE := 34
 
+## The floor's shapes (`_floor_shape`), and its one run per cell.
+const SHAPE_BED := 0
+const SHAPE_TURF := 1
+const SHAPE_TUFT := 1000   # + the cell's index: each sod's own tuft
+const SHAPE_RING := 100000 # + the cell's index: each fairy ring, grown
+const PART_CELL := 0
+## The ground's shapes (`_ground_shape`) and its runs, in paint order.
+const G_SQUARE := 0
+const G_DISC := 1
+const G_PEBBLE := 2
+const G_PEBBLE_SHADOW := 3
+const G_HALO := 4
+const G_FLOWER := 5
+const PART_PILL := 0
+const PART_BLUSH := 1
+const PART_REACH := 2
+const PART_FLOWER := 3
+const PART_DISC := 4
+const PART_PEBBLE := 5
+
 ## The out-of-hearts card's Back: the host takes the board away.
 signal leave
 
@@ -366,6 +387,24 @@ var _glint: Dictionary = {}      # cell -> at: a light crosses its bed then
 var _tally_at := -100.0          # the tally recounted then
 var _sway_timer: Timer
 var _floor: ArrayMesh
+## The floor is put together from shapes made once (the board checkup,
+## 2026-10-02): a bed, a sod, each sod's tuft and each fairy ring's caps,
+## made at the cell `_ref` and copied natively into a run of vertices per
+## cell, painted by fills. A floor of 28k vertices built in script was 12 ms a
+## frame on a full Insane patch while anything on it moved.
+var _frm := RunMesh.new(_floor_shape)
+var _ref := 0.0
+## The ground the same way: blushes, the reach's glow, flowers, the soft discs
+## under the mushrooms and every pebble, a run per cell for each (a full
+## Insane patch's ground was 6-12 ms in script a frame).
+var _grm := RunMesh.new(_ground_shape)
+var _ground_shown := -1   # how many shown cells the ground's runs were laid for
+var _turf_cols: Array = []   # per cell index: [foot, rim, face], toned off its hash
+## The mushrooms at rest, baked into one mesh (`_bake_caps`); a flattened copy
+## of each face mesh it copies, thrown away with the layout.
+var _cap_bake: CapBake
+var _cap_key: Array = []
+var _flat_cache: Dictionary = {}
 var _ground: ArrayMesh
 var _ground_dirty := true
 ## The meshes the last _draw handed the canvas item. A canvas command holds a
@@ -415,6 +454,35 @@ func _tips() -> Array:
 		return ["MP_TIP_HEARTS"] + TIPS
 	return TIPS
 
+## The tutorial (the board checkup, 2026-10-02): one lesson a page, each
+## played by a real, quietened board on a 5 by 5 patch
+## (ui/hud/mushroom_tutorial_diagram.gd), the pages this band needs: Fairy
+## Rings on Insane, the hearts on a judged band, the bulb while the band has
+## hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/mushroom_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.COUNT, "HTP_MP_COUNT", tr("HTP_MP_COUNT_BODY")],
+		[Diagram.Lesson.PEBBLE, "HTP_MP_PEBBLE", tr("HTP_MP_PEBBLE_BODY")]]
+	if not state.rings.is_empty():
+		steps.append([Diagram.Lesson.RINGS, "MP_RINGS_SEAL", tr("MP_RULES_RINGS")])
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("HTP_MP_HEARTS_BODY_ONE") if max_hearts == 1 else tr("HTP_MP_HEARTS_BODY_N") % max_hearts])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+		tr("HTP_MP_UNDO_BODY_JUDGED") if state.judged() else tr("HTP_MP_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_MP_HINT_BODY_ONE") if hints == 1 else tr("HTP_MP_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
@@ -433,6 +501,11 @@ func _ready() -> void:
 	_sway_timer.wait_time = SWAY_EVERY
 	_sway_timer.timeout.connect(_sway)
 	add_child(_sway_timer)
+	_cap_bake = CapBake.new()
+	_cap_bake.name = "CapBake"
+	_cap_bake.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cap_bake.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_cap_bake)
 	_life_layer = _layer("Life", 3, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_combo_layer = _layer("Combo", 4, _draw_combo)
@@ -457,6 +530,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_heart_used = false
 	_lost_ever = false
 	_deal()
+	_frm.reset()
+	_grm.reset()
+	_ref = 0.0
 	brush = State.FOUND
 	_pebble_in = {}
 	_pebble_out = []
@@ -594,17 +670,25 @@ func _layout() -> void:
 	_cell = _cell_for(size.y)
 	if _cell <= 0.0:
 		return
+	# The floor's shapes are drawn scaled after a smaller relayout (the win
+	# card's), and made again for a bigger one.
+	if _cell > _ref + 0.01:
+		_frm.reset()
+		_grm.reset()
+		_ref = _cell
 	var field: Vector2 = Vector2.ONE * (_cell * state.n)
 	var row := _heart_row()
-	var tall := minf(size.y, field.y + 2.0 * PAD + TALLY + row)
+	var tall := minf(size.y, field.y + 2.0 * _pad() + _tally_h() + row)
 	var top := (size.y - tall) * 0.5
 	_card = Rect2(0.0, top, size.x, tall)
-	_hearts_y = top + PAD * 0.6 + row * 0.5
-	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + row + TALLY)
-	_tally_y = top + PAD + row + TALLY * 0.5
+	_hearts_y = top + _pad() * 0.6 + row * 0.5
+	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + _pad() + row + _tally_h())
+	_tally_y = top + _pad() + row + _tally_h() * 0.5
 	for cell in _caps:
 		_seat(_caps[cell], cell_centre(cell), _seat_px())
 	_layout_tally()
+	_flat_cache = {}
+	_cap_key = []
 	_love_mesh = null
 	_seal_mesh = null
 	_refresh_faces()
@@ -612,6 +696,14 @@ func _layout() -> void:
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		if layer != null:
 			layer.queue_redraw()
+
+## The air round the field inside the card, and the tally strip's height:
+## hooks a tutorial's patch lays out without (the board's are PAD and TALLY).
+func _pad() -> float:
+	return PAD
+
+func _tally_h() -> float:
+	return TALLY
 
 ## The strip the hearts take over the tally, on a patch that has them.
 func _heart_row() -> float:
@@ -635,14 +727,14 @@ func _seat(face: Control, centre: Vector2, px: float) -> void:
 func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
-	return minf((size.x - 2.0 * PAD) / state.n,
-		(available - 2.0 * PAD - TALLY - _heart_row()) / state.n)
+	return minf((size.x - 2.0 * _pad()) / state.n,
+		(available - 2.0 * _pad() - _tally_h() - _heart_row()) / state.n)
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * state.n + 2.0 * PAD + TALLY + _heart_row())
+	return minf(available, cell * state.n + 2.0 * _pad() + _tally_h() + _heart_row())
 
 func card_centred() -> bool:
 	return true
@@ -674,6 +766,7 @@ func _field_centre() -> Vector2:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_bake_caps()
 	var now := _now()
 	if _cell > 0.0 and _heart_layer != null:
 		# The pill pops in with the tally, then stands until a heart moves.
@@ -772,7 +865,10 @@ func _entered(cell: Vector2i, now: float) -> float:
 ## its standing. Each back is a faint rim with its face laid on top a little
 ## lower and a little shorter, so every cell wears the family's bottom lip.
 func _build_floor(now: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	if not _frm.laid():
+		_lay_floor()
+	_frm.begin()
+	var q := _cell / _ref
 	var origin: Vector2 = -Vector2.ONE * (_cell * state.n * 0.5)
 	var gone: Array = []
 	var settled: Array = []
@@ -783,6 +879,7 @@ func _build_floor(now: float) -> ArrayMesh:
 			var seen := _entered(cell, now)
 			if seen <= 0.0:
 				continue
+			var ix: int = y * state.n + x
 			var given: bool = state.given.has(cell)
 			var mark: int = int(state.marks.get(cell, State.BLANK))
 			var base: Color = Pal.SURFACE if given else Pal.SOCKET_OUT
@@ -807,19 +904,37 @@ func _build_floor(now: float) -> ArrayMesh:
 					sink = Motion.press_scale(now - float(pr.down), released)
 			var at := origin + (Vector2(cell) + Vector2.ONE * 0.5) * _cell
 			at.x += Motion.shiver_offset(now - float(_shiver.get(cell, -100.0)), _cell * SHIVER)
-			var side := _cell * (1.0 - 2.0 * CELL_INSET) * sink
-			var radius := _cell * CELL_RADIUS * sink
 			var shine := _shine(cell, now)
 			var sod := _sod_pose(cell, now, not given and mark == State.BLANK, lifted)
+			_frm.open(PART_CELL, ix)
 			# The bed shows wherever the sod is not wholly down: under a mark,
 			# and under a sod on its way off or back.
 			if given or mark != State.BLANK or sod.x < 1.0 or sod.z < 1.0:
-				_bed(b, at, side, radius, base.lerp(Pal.SURFACE, shine * SHINE), seen)
+				var floor_col := base.lerp(Pal.SURFACE, shine * SHINE)
+				_frm.put(SHAPE_BED, [Color(floor_col.lerp(Pal.TEXT, BED_WALL), seen), Color(floor_col, seen)],
+					Transform2D(0.0, Vector2.ONE * (q * sink), 0.0, at))
 			if sod.z > 0.0:
-				_turf(b, at + Vector2(0.0, sod.y * _cell), side, radius,
-					Vector2(sod.x, sod.z), cell, seen, shine)
+				var cols: Array = _turf_cols[ix]
+				var rim: Color = cols[1]
+				var face: Color = cols[2]
+				if shine > 0.0:
+					face = face.lerp(Pal.SURFACE, shine * SHINE)
+					rim = rim.lerp(Pal.SURFACE, shine * SHINE)
+				var xf := Transform2D(0.0, Vector2(sod.x, sod.z) * (q * sink), 0.0,
+					at + Vector2(0.0, sod.y * _cell))
+				_frm.put(SHAPE_TURF, [Color(cols[0], seen), Color(rim, seen), Color(face, seen)], xf)
+				if _hash(cell, 1) < TUFT_SHARE:
+					_frm.put(SHAPE_TUFT + ix, [Color(Pal.TURF, TUFT_ALPHA * seen)], xf)
 			if given and state.rings.has(cell):
-				_ring_caps(b, at, cell, now, seen * sink)
+				if _ring_grown(cell, now):
+					var cs := _ring_colours(cell, now)
+					var a := seen * sink
+					_frm.put(SHAPE_RING + ix, [Color(cs[0], a), Color(cs[1], a)],
+						Transform2D(0.0, Vector2.ONE * q, 0.0, at))
+				else:
+					var live := Face.Builder.new()
+					_ring_caps(live, at, cell, now, seen * sink)
+					_frm.put_builder(live)
 	for cell in gone:
 		_sunk.erase(cell)
 	for cell in lifted:
@@ -834,10 +949,57 @@ func _build_floor(now: float) -> ArrayMesh:
 		_wash.erase(cell)
 		_bump.erase(cell)
 	# Nothing has entered yet on the board's first frames, and a mesh with no
-	# surface in it is an error rather than an empty drawing.
-	if b.verts.is_empty():
-		return null
-	return b.mesh()
+	# surface in it is an error rather than an empty drawing (mesh() is null).
+	return _frm.mesh()
+
+## One run per cell, in reading order, as long as everything the cell can
+## wear at once: its bed, its sod and tuft (a covered cell), and its fairy
+## ring (the caps drawn live while they grow in can overshoot it onto the
+## tail, which only paints them after the other cells: a ring stays inside
+## its own). Each sod's tones are read off its hash once here.
+func _lay_floor() -> void:
+	_frm.reset()
+	_turf_cols = []
+	var bed := _frm.size_of(SHAPE_BED)
+	var turf := _frm.size_of(SHAPE_TURF)
+	for y in state.n:
+		for x in state.n:
+			var cell := Vector2i(x, y)
+			var ix: int = y * state.n + x
+			# A turned-over cell never wears a sod.
+			var room := bed
+			if not state.given.has(cell):
+				room += turf
+				if _hash(cell, 1) < TUFT_SHARE:
+					room += _frm.size_of(SHAPE_TUFT + ix)
+			if state.rings.has(cell):
+				room += _frm.size_of(SHAPE_RING + ix)
+			_frm.room(PART_CELL, ix, room)
+			var tone := _hash(cell) * 2.0 - 1.0
+			var face: Color = Pal.TURF_REACH.lightened(tone * TONE) if tone > 0.0 \
+				else Pal.TURF_REACH.darkened(-tone * TONE)
+			_turf_cols.append([face.lerp(Pal.TURF, TURF_FOOT), face.lerp(Pal.SURFACE, TURF_LIT), face])
+
+## Floor shape `id` about its own origin at the cell `_ref`, in slot colours
+## (`RunMesh.slot`): a bed (wall, floor), a sod (foot, rim, crown), a cell's
+## tuft, a cell's fairy ring grown (stems, caps).
+func _floor_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var side := _ref * (1.0 - 2.0 * CELL_INSET)
+	var radius := _ref * CELL_RADIUS
+	if id == SHAPE_BED:
+		_bed(b, Vector2.ZERO, side, radius, _ref, RunMesh.slot(0), RunMesh.slot(1))
+	elif id == SHAPE_TURF:
+		_turf(b, side, radius, _ref, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+	elif id >= SHAPE_RING:
+		var ix := id - SHAPE_RING
+		_ring_shape(b, Vector2i(ix % state.n, ix / state.n), _ref, RunMesh.slot(0), RunMesh.slot(1))
+	else:
+		var ix := id - SHAPE_TUFT
+		var cell := Vector2i(ix % state.n, ix / state.n)
+		var root := Vector2((_hash(cell, 2) - 0.5) * 0.5, 0.2 + 0.12 * _hash(cell, 3)) * side
+		_tuft(b, Transform2D.IDENTITY, root, _ref * TUFT_H, RunMesh.slot(0))
+	return b
 
 ## Where `cell`'s sod is at `now`: x and z its scale across and down, y how
 ## far it has risen, in cells (negative is up); z of nought means no sod is
@@ -859,42 +1021,29 @@ func _sod_pose(cell: Vector2i, now: float, covered: bool, lifted: Array) -> Vect
 	var u := Motion.pop_out_scale(e, SOD_TIME)
 	return Vector3(u, -SOD_LIFT * (1.0 - u), u)
 
-## A bed sunk into the card about `at`: its wall in a shade of `floor_col`,
-## showing BED_LIP of a cell along the top, and its floor under it.
-func _bed(b: Face.Builder, at: Vector2, side: float, radius: float, floor_col: Color,
-		alpha: float) -> void:
+## A bed sunk into the card about `at`, for a cell `cell` across: its wall
+## (`wall`), showing BED_LIP of a cell along the top, and its floor
+## (`floor_col`) under it.
+static func _bed(b: Face.Builder, at: Vector2, side: float, radius: float, cell: float,
+		wall: Color, floor_col: Color) -> void:
 	var corner := at - Vector2.ONE * (side * 0.5)
-	var lip := _cell * BED_LIP
-	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * side, radius),
-		Color(floor_col.lerp(Pal.TEXT, BED_WALL), alpha))
+	var lip := cell * BED_LIP
+	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * side, radius), wall)
 	b.fan(Face.Builder.round_rect(corner + Vector2(0.0, lip), Vector2(side, side - lip), radius),
-		Color(floor_col, alpha))
+		floor_col)
 
-## A sod of turf about `at`, drawn at `grow` of its size: a foot in TURF, a lit
-## rim and the crown toned off the cell's hash, and on some sods a tuft.
-## `shine` is the win's light crossing it.
-func _turf(b: Face.Builder, at: Vector2, side: float, radius: float, grow: Vector2,
-		cell: Vector2i, alpha: float, shine: float) -> void:
-	var tone := _hash(cell) * 2.0 - 1.0
-	var face: Color = Pal.TURF_REACH.lightened(tone * TONE) if tone > 0.0 \
-		else Pal.TURF_REACH.darkened(-tone * TONE)
-	var foot: Color = face.lerp(Pal.TURF, TURF_FOOT)
-	var rim: Color = face.lerp(Pal.SURFACE, TURF_LIT)
-	if shine > 0.0:
-		face = face.lerp(Pal.SURFACE, shine * SHINE)
-		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
-	var xf := Transform2D(0.0, grow, 0.0, at)
+## A sod of turf about the origin, for a cell `cell` across: a foot, a lit
+## rim and the crown (`foot`, `rim`, `face`; the board tones each sod off its
+## hash and lights it with the win's shine).
+static func _turf(b: Face.Builder, side: float, radius: float, cell: float,
+		foot: Color, rim: Color, face: Color) -> void:
 	var corner := -Vector2.ONE * (side * 0.5)
 	var edge := side * (FACE_SHORT + FACE_DROP)
-	var bev := _cell * BEVEL
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2.ONE * side, radius), Color(foot, alpha))
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(side, side - edge), radius), Color(rim, alpha))
-	b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
-		Vector2(side - bev * 1.4, side - edge - bev), maxf(radius - bev * 0.5, 0.0)),
-		Color(face, alpha))
-	if _hash(cell, 1) < TUFT_SHARE:
-		var root := Vector2((_hash(cell, 2) - 0.5) * 0.5, 0.2 + 0.12 * _hash(cell, 3)) * side
-		_tuft(b, xf, root, _cell * TUFT_H, Color(Pal.TURF, TUFT_ALPHA * alpha))
+	var bev := cell * BEVEL
+	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * side, radius), foot)
+	b.fan(Face.Builder.round_rect(corner, Vector2(side, side - edge), radius), rim)
+	b.fan(Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+		Vector2(side - bev * 1.4, side - edge - bev), maxf(radius - bev * 0.5, 0.0)), face)
 
 ## Three slim blades from `root`, the middle one tallest, under `xf`.
 static func _tuft(b: Face.Builder, xf: Transform2D, root: Vector2, h: float, col: Color) -> void:
@@ -914,15 +1063,12 @@ func _shine(cell: Vector2i, now: float) -> float:
 
 ## A fairy ring about `at`: RING_CAPS little violet caps on a circle round
 ## the numeral, each growing in on its own beat after the patch's entrance,
-## and all of them warming to gold at the party.
+## and all of them warming to gold at the party. Drawn live while any cap is
+## still growing; once all are up the floor copies the ring's shape.
 func _ring_caps(b: Face.Builder, at: Vector2, cell: Vector2i, now: float, alpha: float) -> void:
-	var cap: Color = Pal.MG_PURPLE
-	var stem: Color = Pal.SURFACE
-	if now >= _glow_at:
-		var u := 1.0 if Motion.reduce else clampf((now - _glow_at - (cell.x + cell.y) * MEADOW_STEP) / RING_GLOW, 0.0, 1.0)
-		cap = cap.lerp(Pal.SUN, u)
-		stem = stem.lerp(Pal.SUN_TILE, u)
-	var r := _cell * RING_CAP
+	var cs := _ring_colours(cell, now)
+	var stem := Color(cs[0], alpha)
+	var cap := Color(cs[1], alpha)
 	var spin := _hash(cell, 5) * TAU
 	for i in RING_CAPS:
 		var grow := 1.0
@@ -931,14 +1077,39 @@ func _ring_caps(b: Face.Builder, at: Vector2, cell: Vector2i, now: float, alpha:
 			grow = Motion.pop_in_scale(e).x
 		if grow <= 0.0:
 			continue
-		var a := spin + TAU * i / RING_CAPS
-		var p := at + Vector2(cos(a), sin(a)) * _cell * RING_AT
-		var k := r * grow
-		b.fan(Face.Builder.round_rect(p + Vector2(-k * 0.35, -k * 0.1), Vector2(k * 0.7, k * 1.0), k * 0.3),
-			Color(stem, alpha))
-		var dome := Face.Builder.arc_points(p, k, PI, TAU)
-		dome.append(p + Vector2(k, 0.0))
-		b.fan(dome, Color(cap, alpha))
+		_ring_cap(b, at + Vector2.from_angle(spin + TAU * i / RING_CAPS) * _cell * RING_AT,
+			_cell * RING_CAP * grow, stem, cap)
+
+## One of a ring's caps about `p`, `k` its size: a stem and a dome.
+static func _ring_cap(b: Face.Builder, p: Vector2, k: float, stem: Color, cap: Color) -> void:
+	b.fan(Face.Builder.round_rect(p + Vector2(-k * 0.35, -k * 0.1), Vector2(k * 0.7, k * 1.0), k * 0.3), stem)
+	var dome := Face.Builder.arc_points(p, k, PI, TAU)
+	dome.append(p + Vector2(k, 0.0))
+	b.fan(dome, cap)
+
+## `cell`'s whole ring about the origin at a cell `cell_px` across, every cap
+## up.
+func _ring_shape(b: Face.Builder, cell: Vector2i, cell_px: float, stem: Color, cap: Color) -> void:
+	var spin := _hash(cell, 5) * TAU
+	for i in RING_CAPS:
+		_ring_cap(b, Vector2.from_angle(spin + TAU * i / RING_CAPS) * cell_px * RING_AT,
+			cell_px * RING_CAP, stem, cap)
+
+## Whether every cap of `cell`'s ring is up at `now`.
+func _ring_grown(cell: Vector2i, now: float) -> bool:
+	return Motion.reduce or now - (_rings_at + (cell.x + cell.y) * RING_WAVE
+		+ (RING_CAPS - 1) * RING_STEP) >= Motion.POP_IN
+
+## A ring's stem and cap colours at `now`: violet, warming to gold at the
+## party.
+func _ring_colours(cell: Vector2i, now: float) -> Array:
+	var cap: Color = Pal.MG_PURPLE
+	var stem: Color = Pal.SURFACE
+	if now >= _glow_at:
+		var u := 1.0 if Motion.reduce else clampf((now - _glow_at - (cell.x + cell.y) * MEADOW_STEP) / RING_GLOW, 0.0, 1.0)
+		cap = cap.lerp(Pal.SUN, u)
+		stem = stem.lerp(Pal.SUN_TILE, u)
+	return [stem, cap]
 
 ## A steady 0-1 value per cell, so a sod's tone and tuft never change.
 static func _hash(cell: Vector2i, salt := 0) -> float:
@@ -1103,13 +1274,20 @@ func _layout_tally() -> void:
 		return
 	_seat(_tally_face, Vector2(size.x * 0.5, _tally_y), TALLY_GLYPH)
 
-## Everything standing on the field, in one mesh: the blushes, the soft discs
-## under the mushrooms, the pebbles on their way out and the pebbles that are
-## here.
+## Everything standing on the field, in one mesh: the tally's pill, the
+## blushes, the reach's glow, the flowers, the soft discs under the mushrooms,
+## the pebbles on their way out and the pebbles that are here -- each a shape
+## made once (`_ground_shape`) copied into its cell's run (`_lay_ground`).
 func _build_ground(now: float) -> Dictionary:
-	var b := Face.Builder.new()
+	if not _grm.laid() or _ground_shown != state.shown.size():
+		_lay_ground()
+	_grm.begin()
+	var q := _cell / _ref
 	var busy := not _sunk.is_empty()
-	_tally_pill(b, now)
+	var pill := Face.Builder.new()
+	_tally_pill(pill, now)
+	_grm.open(PART_PILL, 0)
+	_grm.put_builder(pill)
 	# The blush: toward the family's rose and back.
 	var gone: Array = []
 	for cell in _blush:
@@ -1118,15 +1296,14 @@ func _build_ground(now: float) -> Dictionary:
 			gone.append(cell)
 			continue
 		busy = true
-		var side := _cell * (1.0 - 2.0 * CELL_INSET)
-		b.fan(Face.Builder.round_rect(cell_centre(cell) - Vector2.ONE * (side * 0.5),
-			Vector2.ONE * side, _cell * CELL_RADIUS),
-			Color(Pal.BAD, BLUSH_ALPHA * Motion.flash_level(e)))
+		_grm.open(PART_BLUSH, _ix(cell))
+		_grm.put(G_SQUARE, [Color(Pal.BAD, BLUSH_ALPHA * Motion.flash_level(e))],
+			Transform2D(0.0, Vector2(q, q), 0.0, cell_centre(cell)))
 	for cell in gone:
 		_blush.erase(cell)
-	if _reach_glow(b, now):
+	if _reach_glow(now, q):
 		busy = true
-	if _flowers(b, now):
+	if _flowers(now, q):
 		busy = true
 	# The soft discs under the mushrooms, anchored at the cell and read off
 	# each face's own scale and alpha, so one arrives with the pop and stays
@@ -1138,10 +1315,13 @@ func _build_ground(now: float) -> Dictionary:
 		var seen := clampf(face.scale.y, 0.0, 1.0) * clampf(face.modulate.a, 0.0, 1.0)
 		if seen <= 0.0:
 			continue
-		Scenery.soft_disc(b, cell_centre(cell) + SHADOW_AT * _cell,
-			SHADOW_RX * _cell * seen, SHADOW_RY * _cell * seen,
-			Color(Pal.TEXT, SHADOW_ALPHA * seen))
-	# Pebbles on their way out, drawn from the shape the state has forgotten.
+		_grm.open(PART_DISC, _ix(cell))
+		_grm.put(G_DISC, [Color(Pal.TEXT, SHADOW_ALPHA * seen)],
+			Transform2D(0.0, Vector2.ONE * (q * seen), 0.0, cell_centre(cell) + SHADOW_AT * _cell))
+	# Pebbles on their way out, drawn from the shape the state has forgotten,
+	# on the tail: a run for every cell's leaving pebble was most of the
+	# ground's vertices, for a moment a stroke or a reset has now and then.
+	_grm.open(-1, 0)
 	var still: Array = []
 	for out in _pebble_out:
 		var e: float = now - float(out.at)
@@ -1151,7 +1331,7 @@ func _build_ground(now: float) -> Dictionary:
 		still.append(out)
 		busy = true
 		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
-		Mosaic.pebble(b, cell_centre(out.cell), _pebble_px(), Vector2.ONE * shrunk, 1.0, turn)
+		_put_pebble(cell_centre(out.cell), Vector2.ONE * shrunk * q, 1.0, turn)
 	_pebble_out = still
 	# The pebbles that are here: waiting for their wave, popping in with the
 	# squash, standing, shivering when refused or wobbling under Check.
@@ -1193,25 +1373,85 @@ func _build_ground(now: float) -> Dictionary:
 			at.x += Motion.shiver_offset(since, _cell * SHIVER)
 		elif _shiver.has(cell):
 			shook.append(cell)
+		_grm.open(PART_PEBBLE, _ix(cell))
 		if state.shown.has(cell):
 			# A heart showed this cell bare: its pebble stands on a rose halo,
 			# never a shade of its own colour.
-			var halo := _cell * SHOWN_HALO
-			b.fan(Face.Builder.ring(cell_centre(cell), halo * grow.x * 1.08, halo * grow.y * 1.08),
-				Color(Pal.BAD, 0.55 * seen))
-			b.fan(Face.Builder.ring(cell_centre(cell), halo * grow.x, halo * grow.y),
-				Color(Pal.BAD_TILE, seen))
+			_grm.put(G_HALO, [Color(Pal.BAD, 0.55 * seen), Color(Pal.BAD_TILE, seen)],
+				Transform2D(0.0, grow * q, 0.0, cell_centre(cell)))
 		var turn := Motion.wobble_angle(now - float(_wobble.get(cell, -100.0)))
 		if turn != 0.0:
 			busy = true
-		Mosaic.pebble(b, at, _pebble_px(), grow, seen, turn)
+		_put_pebble(at, grow * q, seen, turn)
 	for cell in gone:
 		_pebble_in.erase(cell)
 	for cell in shook:
 		_shiver.erase(cell)
-	if b.verts.is_empty():
-		return {"mesh": null, "busy": busy}
-	return {"mesh": b.mesh(), "busy": busy}
+	return {"mesh": _grm.mesh(), "busy": busy}
+
+## Mosaic.pebble's pebble about `at`, grown `grow` (with the layout's
+## scale), `alpha` and turned `angle`: its shadow unturned, then its body
+## and glint.
+func _put_pebble(at: Vector2, grow: Vector2, alpha: float, angle: float) -> void:
+	_grm.put(G_PEBBLE_SHADOW, [Color(Pal.TEXT, Mosaic.PEBBLE_SHADOW_A * alpha)],
+		Transform2D(0.0, grow, 0.0, at))
+	_grm.put(G_PEBBLE, [Color(Pal.SOCKET_PEBBLE, Mosaic.PEBBLE_ALPHA * alpha),
+		Color(1.0, 1.0, 1.0, Mosaic.GLINT_ALPHA * alpha)], Transform2D(angle, grow, 0.0, at))
+
+## `cell`'s index in reading order.
+func _ix(cell: Vector2i) -> int:
+	return cell.y * state.n + cell.x
+
+## The ground's runs, in paint order: the pill, then every cell's blush,
+## every cell's glow, flower, disc and pebble (with room for a rose halo
+## under it only on a cell a heart showed bare, laid again when one is).
+func _lay_ground() -> void:
+	_grm.reset()
+	_ground_shown = state.shown.size()
+	var pill := Face.Builder.new()
+	_tally_pill(pill, INF)
+	_grm.room(PART_PILL, 0, pill.verts.size())
+	var sq := _grm.size_of(G_SQUARE)
+	var pebble := _grm.size_of(G_PEBBLE) + _grm.size_of(G_PEBBLE_SHADOW)
+	var sizes := {PART_BLUSH: sq, PART_REACH: sq, PART_FLOWER: _grm.size_of(G_FLOWER),
+		PART_DISC: _grm.size_of(G_DISC), PART_PEBBLE: pebble}
+	for part in [PART_BLUSH, PART_REACH, PART_FLOWER, PART_DISC, PART_PEBBLE]:
+		for k in state.n * state.n:
+			var cell := Vector2i(k % state.n, k / state.n)
+			# A turned-over cell has no mushroom and no pebble on it.
+			if state.given.has(cell) and part >= PART_DISC:
+				continue
+			var room: int = sizes[part]
+			if part == PART_PEBBLE and state.shown.has(cell):
+				room += _grm.size_of(G_HALO)
+			_grm.room(part, k, room)
+
+## Ground shape `id` about its own origin at the cell `_ref`, in slot colours.
+func _ground_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var side := _ref * (1.0 - 2.0 * CELL_INSET)
+	var s := _ref * PEBBLE * PEBBLE_BODY / Mosaic.PEBBLE_R
+	var r := Mosaic.PEBBLE_R * s
+	match id:
+		G_SQUARE:
+			b.fan(Face.Builder.round_rect(-Vector2.ONE * (side * 0.5), Vector2.ONE * side,
+				_ref * CELL_RADIUS), RunMesh.slot(0))
+		G_DISC:
+			Scenery.soft_disc(b, Vector2.ZERO, SHADOW_RX * _ref, SHADOW_RY * _ref, RunMesh.slot(0))
+		G_PEBBLE_SHADOW:
+			Scenery.soft_disc(b, Vector2(0.0, (Mosaic.PEBBLE_Y + Mosaic.PEBBLE_SHADOW_Y) * s),
+				r * Mosaic.PEBBLE_SHADOW.x, r * Mosaic.PEBBLE_SHADOW.y, RunMesh.slot(0))
+		G_PEBBLE:
+			b.fan(Face.Builder.ring(Vector2(0.0, Mosaic.PEBBLE_Y * s), r, r), RunMesh.slot(0))
+			b.fan(Face.Builder.ring(Mosaic.GLINT_AT * s, Mosaic.GLINT_R * s, Mosaic.GLINT_R * s),
+				RunMesh.slot(1))
+		G_HALO:
+			var halo := _ref * SHOWN_HALO
+			b.fan(Face.Builder.ring(Vector2.ZERO, halo * 1.08, halo * 1.08), RunMesh.slot(0))
+			b.fan(Face.Builder.ring(Vector2.ZERO, halo, halo), RunMesh.slot(1))
+		G_FLOWER:
+			_flower(b, Vector2.ZERO, _ref * BLOOM_R, 0.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+	return b
 
 ## The cell Mosaic.pebble is handed. It measures everything off that cell and
 ## draws its body at Mosaic.PEBBLE_R of it; this board's mock draws a pebble
@@ -2057,7 +2297,7 @@ func _end_reach(now: float) -> void:
 
 ## The cells a held number counts, lit in leaf (violet for a fairy ring) while
 ## the finger is down and fading after. True while it is still moving.
-func _reach_glow(b: Face.Builder, now: float) -> bool:
+func _reach_glow(now: float, q: float) -> bool:
 	if _reach.is_empty():
 		return false
 	var cell: Vector2i = _reach.cell
@@ -2075,10 +2315,9 @@ func _reach_glow(b: Face.Builder, now: float) -> bool:
 	# Pale on the meadow's green, never a shade of it: sunlight for a plain
 	# number, a lilac haze for a ring.
 	var col: Color = Pal.MG_PURPLE_HI if state.rings.has(cell) else Pal.SUN_TILE
-	var side := _cell * (1.0 - 2.0 * CELL_INSET)
 	for p in state.reach(cell):
-		b.fan(Face.Builder.round_rect(cell_centre(p) - Vector2.ONE * (side * 0.5),
-			Vector2.ONE * side, _cell * CELL_RADIUS), Color(col, REACH_ALPHA * level))
+		_grm.open(PART_REACH, _ix(p))
+		_grm.put(G_SQUARE, [Color(col, REACH_ALPHA * level)], Transform2D(0.0, Vector2(q, q), 0.0, cell_centre(p)))
 	return moving
 
 # --- flowers ---
@@ -2116,7 +2355,7 @@ func _judged_wrong_in(g: Vector2i) -> bool:
 ## The finished numbers' flowers, each in its bed's upper right corner, and
 ## at the party the meadow: a flower on every bare cell along the diagonal.
 ## True while any of them is still opening or folding.
-func _flowers(b: Face.Builder, now: float) -> bool:
+func _flowers(now: float, q: float) -> bool:
 	var busy := false
 	for g in _bloom:
 		var d: Dictionary = _bloom[g]
@@ -2136,7 +2375,7 @@ func _flowers(b: Face.Builder, now: float) -> bool:
 			k = 1.0 - clampf(e / BLOOM_FOLD, 0.0, 1.0)
 		if k <= 0.01:
 			continue
-		_flower(b, cell_centre(g) + BLOOM_AT * _cell, _cell * BLOOM_R * k,
+		_put_flower(g, cell_centre(g) + BLOOM_AT * _cell, q * k,
 			(1.0 - minf(k, 1.0)) * 1.2 + _hash(g, 4) * TAU, Pal.SURFACE)
 	if now >= _meadow_at:
 		for y in state.n:
@@ -2154,20 +2393,27 @@ func _flowers(b: Face.Builder, now: float) -> bool:
 				var h := _hash(cell, 6)
 				var petal: Color = [Pal.SURFACE, Pal.FLOWER, Pal.SUN_TILE, Pal.SURFACE][int(h * 4.0) % 4]
 				var at := cell_centre(cell) + Vector2(h - 0.5, _hash(cell, 8) - 0.5) * _cell * 0.3
-				_flower(b, at, _cell * MEADOW_R * kk, h * TAU + (1.0 - kk) * 1.2, petal)
+				_put_flower(cell, at, q * kk * MEADOW_R / BLOOM_R, h * TAU + (1.0 - kk) * 1.2, petal)
 	return busy
 
-## One flower of radius `r` about `at`, turned `turn`: BLOOM_PETALS petals
-## rimmed in the daisies' edge, and a sun-gold heart (Queens').
-func _flower(b: Face.Builder, at: Vector2, r: float, turn: float, petal: Color) -> void:
-	if r <= 0.5:
+## The flower in `cell`'s run about `at`, `k` times the bloom's size at the
+## cell `_ref`, turned `turn`, its petals `petal`.
+func _put_flower(cell: Vector2i, at: Vector2, k: float, turn: float, petal: Color) -> void:
+	if _ref * BLOOM_R * k <= 0.5:
 		return
+	_grm.open(PART_FLOWER, _ix(cell))
+	_grm.put(G_FLOWER, [Pal.PETAL_EDGE, petal, Pal.SUN], Transform2D(turn, Vector2(k, k), 0.0, at))
+
+## One flower of radius `r` about `at`, turned `turn`: BLOOM_PETALS petals
+## rimmed in `edge` (the daisies'), and a heart (sun-gold; Queens').
+static func _flower(b: Face.Builder, at: Vector2, r: float, turn: float, edge: Color, petal: Color,
+		heart: Color) -> void:
 	for p in BLOOM_PETALS:
 		var a := turn + TAU * p / BLOOM_PETALS
 		var dir := Vector2.from_angle(a)
-		b.fan(_oval(at + dir * r * 0.55, r * 0.52, r * 0.3, a), Pal.PETAL_EDGE)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.52, r * 0.3, a), edge)
 		b.fan(_oval(at + dir * r * 0.55, r * 0.45, r * 0.23, a), petal)
-	b.fan(Face.Builder.ring(at, r * 0.32, r * 0.32), Pal.SUN)
+	b.fan(Face.Builder.ring(at, r * 0.32, r * 0.32), heart)
 
 static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -2797,6 +3043,62 @@ func _sway() -> void:
 		return
 	var face: MushroomFace = standing[randi() % standing.size()]
 	_look_tw[face] = Motion.wobble2d(face, SWAY_ANGLE, SWAY_TIME)
+
+## The mushrooms, baked (the board checkup, 2026-10-02): each was two draw
+## calls, a full Insane patch's fourteen a quarter of the board's. Every
+## frame, each one standing still in her slot -- no pop, hop, press, sway or
+## wilt on her -- is drawn by `_cap_bake` as one mesh, eyes open and looking
+## ahead, and her slot hidden; a moving one draws herself. The bake is remade
+## only when one joins or leaves it or changes her look. One only blinking
+## or glancing draws herself over her baked twin, without her shadow (the
+## twin's is there), so blinks never ask for a bake.
+func _bake_caps() -> void:
+	if _cap_bake == null:
+		return
+	var key: Array = [_cell]
+	var still: Dictionary = {}
+	for cell in _caps:
+		var face: MushroomFace = _caps[cell]
+		var ok := _cap_still(face)
+		still[cell] = ok
+		key.append([cell, face.expression, face.sprig, (_slots[face] as Control).position, face.size] if ok else null)
+	if key != _cap_key:
+		_cap_key = key
+		var b := Face.FlatBuilder.new(_flat_cache)
+		for cell in _caps:
+			if still[cell]:
+				var face: MushroomFace = _caps[cell]
+				# Her twin keeps her shadow, which she drops while baked.
+				var bare := face.shadowless
+				face.shadowless = false
+				face.bake_into(b, (_slots[face] as Control).get_transform() * face.get_transform(), Color.WHITE, true)
+				face.shadowless = bare
+		_cap_bake.mesh = b.mesh() if not b.verts.is_empty() else null
+		_cap_bake.queue_redraw()
+	for cell in _caps:
+		var face: MushroomFace = _caps[cell]
+		var slot: Control = _slots[face]
+		var baked: bool = still[cell]
+		var own := not baked or not face.at_rest()
+		if slot.visible != own:
+			slot.visible = own
+		if face.shadowless != baked:
+			face.shadowless = baked
+
+## Whether `face` stands still in her slot, as her bake would draw her.
+func _cap_still(face: MushroomFace) -> bool:
+	return face.visible and not face.is_queued_for_deletion() and face.size.x > 0.0 \
+		and face.position == Vector2.ZERO and face.scale == Vector2.ONE and face.rotation == 0.0 \
+		and face.modulate == Color.WHITE and face.self_modulate == Color.WHITE \
+		and face.hat == 0.0 and face.glasses == 0.0
+
+## The still mushrooms' one mesh (see _bake_caps).
+class CapBake extends Control:
+	var mesh: ArrayMesh
+
+	func _draw() -> void:
+		if mesh != null:
+			draw_mesh(mesh, null)
 
 static func _tweening(tw) -> bool:
 	return tw != null and (tw as Tween).is_valid() and (tw as Tween).is_running()
