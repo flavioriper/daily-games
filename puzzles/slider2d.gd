@@ -27,11 +27,18 @@ extends "res://core/puzzle_base.gd"
 ##     it gets one move from home, and the party -- confetti, the nap cat,
 ##     the seal and a bit of sliding wisdom.
 ##
-## How it is drawn. Two meshes:
+## How it is drawn. Three meshes:
 ##   still -- the lawn, the path out of the gate and the tray, rebuilt only on
 ##            a relayout;
-##   live  -- the mat's glow, the blocks and the gate's doors, rebuilt only
-##            while something moves. An idle tray costs nothing.
+##   floor -- the mat's glow, the hollows, Homesick's line, the hint's trail
+##            and rings, built in script (a few hundred vertices) only while
+##            something moves, and handed back while it is unchanged;
+##   live  -- the blocks and the gate's doors, put together while something
+##            moves from looks made once (`_rm`, the checkup 2026-10-02): a
+##            block is its shadow at a lift step, its wood, its sheen, its
+##            carving and the big block's face per expression and eye step,
+##            each copied under the block's transform. An idle tray costs
+##            nothing.
 ## Two layers over them: the hearts' pill, and the life (love hearts, the
 ## butterfly, the streak's bubble, the seal). The blocks are
 ## ui/faces/slider_block.gd, which the menu card draws too.
@@ -51,6 +58,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the tray, the largest cell, the card's corner, the
@@ -213,7 +221,13 @@ var _anim_until := 0.0
 var _solved_at := -1.0
 var _won := false
 var _still: ArrayMesh
+var _floor: ArrayMesh
+var _floor_key: Array = []
 var _live: ArrayMesh
+## The blocks' looks, made at `_look_cell` and made again when the cell
+## changes.
+var _rm: RunMesh
+var _look_cell := -1.0
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
 ## RID, so dropping the only reference leaves the renderer a freed one.
 var _shown: Array = []
@@ -301,6 +315,39 @@ func rules() -> String:
 	elif max_hearts > 0:
 		out += "\n\n" + tr("SL_RULES_HEARTS") % max_hearts
 	return out
+
+## The tutorial, a page a rule, each the board itself on a hand-made tray
+## playing the lesson (ui/hud/slider_tutorial_diagram.gd): slide a block and
+## bring the red one out, round a corner in one move, then the band's own --
+## hearts (Hard) or Homesick (Insane) --, Undo and Reset, and the bulb (bands
+## with hints).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/slider_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.SLIDE, "HTP_SL_SLIDE", tr("HTP_SL_SLIDE_BODY")],
+		[Diagram.Lesson.CORNER, "HTP_SL_CORNER", tr("HTP_SL_CORNER_BODY")]]
+	if band >= 3:
+		steps.append([Diagram.Lesson.HOMESICK, "HTP_SL_HOMESICK", tr("HTP_SL_HOMESICK_BODY") % hearts_n])
+	elif hearts_n > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_SL_HEARTS", tr("HTP_SL_HEARTS_BODY") % hearts_n])
+	var undo_body := "HTP_SL_UNDO_BODY"
+	if band >= 3:
+		undo_body = "HTP_SL_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_SL_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_SL_HINT_BODY_ONE") if hints == 1 else tr("HTP_SL_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func _tips() -> Array:
 	if _state.homesick:
@@ -418,7 +465,12 @@ func _top_band() -> float:
 func _cell() -> float:
 	var w := float(Gen.COLS) + 2.0 * Block.FRAME
 	var h := float(Gen.ROWS) + 2.0 * Block.FRAME + PATH
-	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * INSET) / w, (size.y - 2.0 * INSET - _top_band()) / h)))
+	var inset := _inset()
+	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * inset) / w, (size.y - 2.0 * inset - _top_band()) / h)))
+
+## The card's margin round the tray (the tutorial's page is short).
+func _inset() -> float:
+	return INSET
 
 func _grid_size() -> Vector2:
 	return Vector2(Gen.COLS, Gen.ROWS) * _cell()
@@ -725,9 +777,10 @@ func _draw() -> void:
 	if _still == null:
 		_still = _build_still()
 	if _live == null:
+		_build_floor(t)
 		_live = _build_live(t)
 	var shown: Array = []
-	for m in [_still, _live]:
+	for m in [_still, _floor, _live]:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
@@ -828,13 +881,23 @@ static func _hash(a: int, b: int) -> float:
 	h = (h ^ (h >> 13)) * 1274126177
 	return float((h ^ (h >> 16)) & 0x7fffffff) / float(0x7fffffff)
 
-## The mat's glow, a hint's ring, Homesick's line, every block where it is
-## drawn (the held one last, over the rest), and the gate's doors.
-func _build_live(t: float) -> ArrayMesh:
+## The mat's glow, the hollows, Homesick's line, the hint's trail and its
+## rings: everything under the blocks that moves. Built in script, and only
+## when what it shows changed (a drag moves none of it unless the big block
+## is held on Homesick).
+func _build_floor(t: float) -> void:
 	var b := Face.Builder.new()
 	var s := _cell()
 	var o := _origin()
 	var glow := _glow(t)
+	var line := -1.0
+	if _state.homesick and not _won and _state.big() >= 0:
+		line = _vis(_state.big(), t).y
+	_drop_rings(t)
+	var key := [_state.key, glow, line, s, o, _trail.is_empty(), _rings.size()]
+	if _floor != null and key == _floor_key and _trail.is_empty() and _rings.is_empty():
+		return
+	_floor_key = key
 	if glow > 0.0:
 		Block.mat(b, o, s, glow)
 	for c in Gen.N:
@@ -842,12 +905,24 @@ func _build_live(t: float) -> ArrayMesh:
 			Block.hollow(b, _pt(_xy(c)), s)
 	_draw_home_line(b, t)
 	_draw_trail(b, t)
-	_drop_rings(t)
 	for r: Dictionary in _rings:
 		var u := (t - float(r.at)) / Motion.RING_TIME
 		if u >= 0.0 and u < 1.0:
 			var rad := s * (0.5 + 0.5 * u)
 			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.06 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
+	_floor = b.mesh() if not b.verts.is_empty() else null
+
+## Every block where it is drawn (the held one last, over the rest), and the
+## gate's doors, from the looks.
+func _build_live(t: float) -> ArrayMesh:
+	var s := _cell()
+	var o := _origin()
+	if _rm == null:
+		_rm = RunMesh.new(_make_look)
+	if s != _look_cell:
+		_rm.reset()
+		_look_cell = s
+	_rm.begin()
 	var order: Array = range(_state.blocks.size())
 	var held: int = int(_drag.p) if not _drag.is_empty() else -1
 	var big: int = _state.big()
@@ -856,12 +931,59 @@ func _build_live(t: float) -> ArrayMesh:
 	var doors_drawn := false
 	for p: int in order:
 		if p == big and _won and not doors_drawn:
-			Block.doors(b, o, s, _door(t))
+			_put_doors(o, s, t)
 			doors_drawn = true
-		_block(b, p, t)
+		_block(p, t)
 	if not doors_drawn:
-		Block.doors(b, o, s, _door(t))
-	return b.mesh() if not b.verts.is_empty() else null
+		_put_doors(o, s, t)
+	return _rm.mesh()
+
+func _put_doors(o: Vector2, s: float, t: float) -> void:
+	var b := Face.Builder.new()
+	Block.doors(b, o, s, _door(t))
+	_rm.put_builder(b)
+
+# --- the looks ---
+
+## A block's look parts, and how finely a lift and a blink are stepped.
+enum Look { SHADOW = 1, WOOD, SHEEN, CARVE, FACE, CHEVRONS }
+const LIFT_STEPS := 16
+const EYE_STEPS := 8
+
+static func _cells_code(cells: Vector2i) -> int:
+	return (cells.x - 1) * 2 + (cells.y - 1)
+
+static func _code_cells(code: int) -> Vector2i:
+	return Vector2i(code / 2 + 1, code % 2 + 1)
+
+## Look `id` (part * 100000 + a * 1000 + b * 10 + c) at the origin, at the
+## cell the looks are made at: SHADOW (cells, lift step), WOOD, SHEEN (kind,
+## cells, lift step), CARVE (kind, cells), FACE (expression, eye step) and
+## CHEVRONS.
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var part := id / 100000
+	var a := (id / 1000) % 100
+	var k := (id / 10) % 100
+	var c := id % 10
+	var s := _look_cell
+	match part:
+		Look.SHADOW:
+			Block.shadow(b, Vector2.ZERO, _code_cells(a), s, float(k) / LIFT_STEPS, true)
+		Look.WOOD:
+			Block.wood(b, Vector2.ZERO, _code_cells(c), s, a)
+		Look.SHEEN:
+			Block.sheen(b, Vector2.ZERO, _code_cells(c), s, a, float(k) / LIFT_STEPS)
+		Look.CARVE:
+			Block.carving(b, Vector2.ZERO, _code_cells(c), s, a)
+		Look.FACE:
+			Block.face(b, Vector2.ZERO, Vector2i(2, 2), s, Gen.B0, a, Vector2.ZERO, float(k) / EYE_STEPS)
+		Look.CHEVRONS:
+			Block.chevrons(b, Vector2.ZERO, Vector2i(2, 2), s, Gen.B0)
+	return b
+
+static func _look(part: int, a: int, k := 0, c := 0) -> int:
+	return part * 100000 + a * 1000 + k * 10 + c
 
 ## Homesick's line: a row of brass dots across the floor at the big block's
 ## top edge, and a brass notch on each side of the frame -- the line it
@@ -921,7 +1043,9 @@ static func _rank(p: int, held: int, big: int) -> int:
 		return 1
 	return 0
 
-func _block(b: Face.Builder, p: int, t: float) -> void:
+## Block `p` as drawn at `t`: its looks under its place, raised by its lift
+## and, in the twirl, turned round its middle -- all of it, rigid.
+func _block(p: int, t: float) -> void:
 	var fall := _entry_drop(p, t)
 	if fall < 0.0:
 		return
@@ -963,15 +1087,28 @@ func _block(b: Face.Builder, p: int, t: float) -> void:
 	v += _knock(p, t)
 	v.y -= fall
 	var at := _pt(v)
-	var from := b.verts.size()
-	Block.block(b, at, cells, s, _state.kind(p), lift, expr, look, eye)
+	var spin := Transform2D.IDENTITY
 	if turn > 0.0:
 		# the twirl turns the whole block, rigid, round its middle
 		var mid := at + Vector2(cells) * s * 0.5
-		for i in range(from, b.verts.size()):
-			b.verts[i] = mid + (b.verts[i] - mid).rotated(turn)
+		spin = Transform2D(turn, mid) * Transform2D(0.0, -mid)
+	var kind := _state.kind(p)
+	var code := _cells_code(cells)
+	var step := clampi(roundi(lift * LIFT_STEPS), 0, LIFT_STEPS)
+	var up := at - Vector2(0.0, lift * s * 0.1)
+	_rm.put(_look(Look.SHADOW, code, step), [], spin * Transform2D(0.0, at))
+	var there := spin * Transform2D(0.0, up)
+	_rm.put(_look(Look.WOOD, kind, 0, code), [], there)
+	_rm.put(_look(Look.SHEEN, kind, step, code), [], there)
+	_rm.put(_look(Look.CARVE, kind, 0, code), [], there)
+	if kind == Gen.B0:
+		var shut := clampi(roundi(eye * EYE_STEPS), 0, EYE_STEPS)
+		_rm.put(_look(Look.FACE, expr, shut), [], spin * Transform2D(0.0, up + look * s))
+		_rm.put(_look(Look.CHEVRONS, 0), [], there)
 	if is_big and _fret and not out_of_hearts:
+		var b := Face.Builder.new()
 		_sweat(b, at + Vector2(cells.x * s * 0.86, s * 0.28), s)
+		_rm.put_builder(b)
 
 ## A sweat drop by the big block's brow: Hard's peek at a move that would
 ## take it farther from the gate.
@@ -991,12 +1128,19 @@ func _knocked(p: int, t: float) -> bool:
 func _draw_count(alpha: float) -> void:
 	var font: Font = CozyTheme.body(700)
 	var text: String = tr("SL_COUNT_ONE") % _state.par if moves == 1 else tr("SL_COUNT") % [moves, _state.par]
-	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT).x
+	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _count_font()).x
+	draw_string(font, _count_spot(w, font), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _count_font(),
+		Color(Pal.TEXT, 0.75 * alpha))
+
+func _count_font() -> int:
+	return COUNT_FONT
+
+## Where the count line's text starts (its baseline's left end), `w` wide.
+func _count_spot(w: float, font: Font) -> Vector2:
 	var band_top := _top_band() - COUNT_BAND
 	var top := _origin().y - Block.FRAME * _cell()
 	var y := band_top + minf(COUNT_BAND, top - band_top) * 0.5 + font.get_ascent(COUNT_FONT) * 0.5 + 8.0
-	draw_string(font, Vector2((size.x - w) * 0.5, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_FONT,
-		Color(Pal.TEXT, 0.75 * alpha))
+	return Vector2((size.x - w) * 0.5, y)
 
 ## The count line's middle, for the halfway sparkle.
 func _count_at() -> Vector2:
@@ -1554,9 +1698,10 @@ func _draw_hearts() -> void:
 	var b := Face.Builder.new()
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
-	var y := HEART_TOP + HEART_PILL_PAD.y + HEART_R
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var left := size.x * 0.5 - pill.x * 0.5
+	var mid := _hearts_mid(pill)
+	var y := mid.y
+	var left := mid.x - pill.x * 0.5
 	var corner := Vector2(left, y - pill.y * 0.5)
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
@@ -1588,10 +1733,14 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
+	var c := mid
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The hearts' pill's middle, `pill` its size: centred over the count line.
+func _hearts_mid(_pill: Vector2) -> Vector2:
+	return Vector2(size.x * 0.5, HEART_TOP + HEART_PILL_PAD.y + HEART_R)
 
 static func _heart_face(b, at: Vector2, s: float) -> void:
 	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))

@@ -168,35 +168,57 @@ static func doors(b: Face.Builder, o: Vector2, cell: float, open: float) -> void
 ## moves a block moves all of it: a slide, a knock's recoil, a lift's shadow.
 static func block(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int, lift := 0.0,
 		expr := Face.Expr.HAPPY, look := Vector2.ZERO, eye := 1.0) -> void:
+	shadow(b, at, cells, cell, lift)
+	var up := at - Vector2(0.0, lift * cell * 0.1)
+	wood(b, up, cells, cell, kind)
+	if lift > 0.01:
+		sheen(b, up, cells, cell, kind, lift)
+	carving(b, up, cells, cell, kind)
+	if kind == Gen.B0:
+		face(b, up, cells, cell, kind, expr, look, eye)
+		chevrons(b, up, cells, cell, kind)
+
+## The pieces of a block, in the order `block` lays them, each about the
+## block's own cells' box at `at` -- so the board can make each once and put
+## it under a transform (the checkup, 2026-10-02): the shadow (the only part
+## a lift changes besides the sheen), the painted wood, the sheen, the
+## carving, and the big block's face and chevrons. All but the shadow take
+## `at` already raised by the lift.
+
+## A block's shadows at `lift`: the soft outer one that spreads as it lifts
+## (`always`: drawn at no alpha while it rests, so the shadow's vertex count
+## never changes), then the contact shadow.
+static func shadow(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, lift: float, always := false) -> void:
 	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
 	var p := at + Vector2.ONE * GAP * cell
 	var rad := RADIUS * cell
 	var rise := lift * cell * 0.1
 	var shade := LIP * cell
-	# a soft outer shadow that spreads as it lifts, then the contact shadow
-	if lift > 0.01:
+	if lift > 0.01 or always:
 		var spread := cell * 0.05 * lift
 		b.fan(Face.Builder.round_rect(p + Vector2(lift * cell * 0.06 - spread, shade + rise * 0.9 - spread * 0.5), sz + Vector2.ONE * spread * 2.0, rad + spread),
 			Color(Pal.TEXT, 0.06 * lift))
 	b.fan(Face.Builder.round_rect(p + Vector2(lift * cell * 0.04, shade + cell * 0.02 + rise * 0.6), sz, rad),
 		Color(Pal.TEXT, 0.13 - 0.04 * lift))
-	p.y -= rise
-	var main: Color
-	var hi: Color
-	var deep: Color
+
+static func _inks(kind: int) -> Array:
 	match kind:
 		Gen.B0:
-			main = Pal.SLIDE_BIG
-			hi = Pal.SLIDE_BIG_HI
-			deep = Pal.SLIDE_BIG_DEEP
+			return [Pal.SLIDE_BIG, Pal.SLIDE_BIG_HI, Pal.SLIDE_BIG_DEEP]
 		Gen.SQ:
-			main = Pal.SLIDE_SQ
-			hi = Pal.SLIDE_SQ_HI
-			deep = Pal.SLIDE_SQ_DEEP
-		_:
-			main = Pal.SLIDE_BAR
-			hi = Pal.SLIDE_BAR_HI
-			deep = Pal.SLIDE_BAR_DEEP
+			return [Pal.SLIDE_SQ, Pal.SLIDE_SQ_HI, Pal.SLIDE_SQ_DEEP]
+	return [Pal.SLIDE_BAR, Pal.SLIDE_BAR_HI, Pal.SLIDE_BAR_DEEP]
+
+## The painted wood: the lip, the top, the bevel and the grain.
+static func wood(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var p := at + Vector2.ONE * GAP * cell
+	var rad := RADIUS * cell
+	var shade := LIP * cell
+	var inks := _inks(kind)
+	var main: Color = inks[0]
+	var hi: Color = inks[1]
+	var deep: Color = inks[2]
 	b.fan(Face.Builder.round_rect(p, sz, rad), deep)
 	var top := sz - Vector2(0.0, shade)
 	b.fan(Face.Builder.round_rect(p, top, rad), main)
@@ -219,10 +241,27 @@ static func block(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, ki
 			a = p + Vector2(rad * 1.2, top.y * u)
 			z = p + Vector2(top.x - rad * 1.2, top.y * u)
 		_grain(b, a, z, cell * 0.01, Color(deep, 0.16), kind * 7 + k + cells.x * 3)
-	# a sheen across the top as it is lifted toward the light
-	if lift > 0.01:
-		b.fan(Face.Builder.round_rect(p + Vector2(rad * 0.5, cell * 0.03), Vector2(top.x - rad, top.y * 0.3), rad * 0.8),
-			Color(hi, 0.22 * lift))
+
+## A sheen across the top as it is lifted toward the light, `lift` its
+## strength (or a slot colour's alpha, when the board paints it).
+static func sheen(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int, lift: float, ink := Color(0, 0, 0, 0)) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var p := at + Vector2.ONE * GAP * cell
+	var rad := RADIUS * cell
+	var top := sz - Vector2(0.0, LIP * cell)
+	var hi: Color = _inks(kind)[1]
+	b.fan(Face.Builder.round_rect(p + Vector2(rad * 0.5, cell * 0.03), Vector2(top.x - rad, top.y * 0.3), rad * 0.8),
+		ink if ink.a > 0.0 else Color(hi, 0.22 * lift))
+
+## The carving: a square's ring, boss and cross, a bar's slot; nothing on
+## the big block (its face and chevrons are their own).
+static func carving(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var p := at + Vector2.ONE * GAP * cell
+	var top := sz - Vector2(0.0, LIP * cell)
+	var inks := _inks(kind)
+	var hi: Color = inks[1]
+	var deep: Color = inks[2]
 	var c := p + top * 0.5
 	var w := CARVE * cell
 	match kind:
@@ -246,11 +285,23 @@ static func block(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, ki
 			var gl := Vector2(wide * 0.22, cell * 0.1) if kind == Gen.V0 else Vector2(cell * 0.1, wide * 0.22)
 			b.stroke(PackedVector2Array([r0 + gl, r0 + gl + (Vector2(0.0, slot.y * 0.35) if kind == Gen.V0 else Vector2(slot.x * 0.35, 0.0))]),
 				cell * 0.02, Color(hi, 0.9))
-		Gen.B0:
-			var ink := deep.darkened(0.45)
-			Face.face_parts(b, cell * 0.5, c + Vector2(0.0, -cell * 0.18) + look * cell, ink, eye, expr)
-			# the handheld's double chevron, pointing at the gate
-			for k in 2:
-				var y := c.y + cell * (0.42 + 0.14 * float(k))
-				b.stroke(PackedVector2Array([Vector2(c.x - cell * 0.13, y), Vector2(c.x, y + cell * 0.1), Vector2(c.x + cell * 0.13, y)]),
-					w * 1.2, Color(deep, 0.9))
+
+## The big block's face, looking `look` (a fraction of a cell) with its eyes
+## open by `eye`.
+static func face(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int, expr: int,
+		look := Vector2.ZERO, eye := 1.0) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var c := at + Vector2.ONE * GAP * cell + (sz - Vector2(0.0, LIP * cell)) * 0.5
+	var ink: Color = Color(_inks(kind)[2]).darkened(0.45)
+	Face.face_parts(b, cell * 0.5, c + Vector2(0.0, -cell * 0.18) + look * cell, ink, eye, expr)
+
+## The handheld's double chevron on the big block, pointing at the gate.
+static func chevrons(b: Face.Builder, at: Vector2, cells: Vector2i, cell: float, kind: int) -> void:
+	var sz := Vector2(cells) * cell - Vector2.ONE * GAP * cell * 2.0
+	var c := at + Vector2.ONE * GAP * cell + (sz - Vector2(0.0, LIP * cell)) * 0.5
+	var deep: Color = _inks(kind)[2]
+	var w := CARVE * cell
+	for k in 2:
+		var y := c.y + cell * (0.42 + 0.14 * float(k))
+		b.stroke(PackedVector2Array([Vector2(c.x - cell * 0.13, y), Vector2(c.x, y + cell * 0.1), Vector2(c.x + cell * 0.13, y)]),
+			w * 1.2, Color(deep, 0.9))

@@ -2343,3 +2343,34 @@ HTP_HH_UNDO_CAP,Undo puts its leaves back,Desfazer devolve as folhas,Deshacer de
 HTP_HH_RESET_CAP,Reset takes the lawn back,Recomeçar volta o gramado,Reiniciar devuelve el césped
 HTP_HH_NIGHT_CAP,Reset starts the night over,Recomeçar começa a noite de novo,Reiniciar empieza la noche de nuevo
 HTP_HH_HINT_CAP,The bulb does what the numbers prove,A lâmpada faz o que os números provam,La bombilla hace lo que los números demuestran
+HTP_SL_SLIDE,Slide the blocks,Deslize os blocos,Desliza los bloques
+HTP_SL_SLIDE_BODY,"Drag a block and it slides through the empty cells, never over another. Get the big red block down to the green gate at the bottom: the doors open and it walks out.","Arraste um bloco e ele desliza pelas casas vazias, nunca por cima de outro. Leve o bloco vermelho grande até o portão verde embaixo: as portas se abrem e ele sai.","Arrastra un bloque y se desliza por las casillas vacías, nunca por encima de otro. Lleva el bloque rojo grande hasta la puerta verde de abajo: las puertas se abren y sale."
+HTP_SL_CORNER,Round a corner,Dobrando a esquina,Doblando la esquina
+HTP_SL_CORNER_BODY,"One drag can take a block as far as it can go, round corners too, and it counts as one move. The line over the tray counts your moves against the shortest way.","Um arrasto pode levar um bloco até onde ele conseguir ir, dobrando esquinas também, e conta como um lance. A linha sobre a bandeja conta seus lances contra o caminho mais curto.","Un arrastre puede llevar un bloque tan lejos como pueda ir, doblando esquinas también, y cuenta como una jugada. La línea sobre la bandeja cuenta tus jugadas contra el camino más corto."
+HTP_SL_HEARTS,Watch the red block,De olho no bloco vermelho,Mira el bloque rojo
+HTP_SL_HEARTS_BODY,"A move that takes the red block farther from the gate costs a heart, and the block slides back. While you hold such a move, the red block sweats: let go only when it is calm. You have %d hearts.","Um lance que deixa o bloco vermelho mais longe do portão custa um coração, e o bloco volta deslizando. Enquanto você segura um lance assim, o bloco vermelho sua: solte só quando ele estiver calmo. Você tem %d corações.","Una jugada que aleja el bloque rojo de la puerta cuesta un corazón, y el bloque vuelve deslizándose. Mientras sostienes una jugada así, el bloque rojo suda: suelta solo cuando esté tranquilo. Tienes %d corazones."
+HTP_SL_HOMESICK,Homesick,Saudade de casa,Morriña
+HTP_SL_HOMESICK_BODY,"The red block never goes back up, only down or sideways. Bring it down too soon and it can get stuck for good: a move that leaves it no way home costs a heart, and slides back. Make room below first. You have %d hearts.","O bloco vermelho nunca volta para cima, só desce ou vai para o lado. Desça cedo demais e ele pode ficar preso de vez: um lance que o deixa sem caminho para casa custa um coração, e volta deslizando. Abra espaço embaixo primeiro. Você tem %d corações.","El bloque rojo nunca vuelve hacia arriba, solo baja o va de lado. Bájalo demasiado pronto y puede quedar atrapado para siempre: una jugada que lo deja sin camino a casa cuesta un corazón, y vuelve deslizándose. Haz sitio abajo primero. Tienes %d corazones."
+HTP_SL_UNDO_BODY,"Undo takes your last move back, and Reset puts every block where it started. Nothing here can be lost.","Desfazer volta o seu último lance, e Recomeçar põe cada bloco onde começou. Aqui nada se perde.","Deshacer devuelve tu última jugada, y Reiniciar pone cada bloque donde empezó. Aquí nada se pierde."
+HTP_SL_UNDO_BODY_JUDGED,"Undo takes your last move back, and Reset puts every block where it started. A heart once spent stays spent.","Desfazer volta o seu último lance, e Recomeçar põe cada bloco onde começou. Um coração gasto continua gasto.","Deshacer devuelve tu última jugada, y Reiniciar pone cada bloque donde empezó. Un corazón gastado sigue gastado."
+HTP_SL_RESET_BODY,There is no Undo on Homesick. Reset puts every block where it started; a heart once spent stays spent.,Não há Desfazer na Saudade de casa. Recomeçar põe cada bloco onde começou; um coração gasto continua gasto.,No hay Deshacer en Morriña. Reiniciar pone cada bloque donde empezó; un corazón gastado sigue gastado.
+HTP_SL_HINT_BODY_ONE,The bulb slides the next block of the shortest way out for you. You have one hint.,A lâmpada desliza para você o próximo bloco do caminho mais curto. Você tem uma dica.,La bombilla desliza por ti el siguiente bloque del camino más corto. Tienes una pista.
+HTP_SL_HINT_BODY_N,The bulb slides the next block of the shortest way out for you. You have %d hints.,A lâmpada desliza para você o próximo bloco do caminho mais curto. Você tem %d dicas.,La bombilla desliza por ti el siguiente bloque del camino más corto. Tienes %d pistas.
+HTP_SL_DRAG_CAP,Drag a block into an empty cell,Arraste um bloco para uma casa vazia,Arrastra un bloque a una casilla vacía
+HTP_SL_ASIDE_CAP,Clear the red block's way,Abra o caminho do bloco vermelho,Despeja el camino del bloque rojo
+HTP_SL_DOWN_CAP,Bring the red block down to the gate,Leve o bloco vermelho até o portão,Lleva el bloque rojo hasta la puerta
+HTP_SL_OUT_CAP,Out through the gate: solved,Para fora pelo portão: resolvido,Fuera por la puerta: resuelto
+HTP_SL_ROUND_CAP,Down and round a corner...,Para baixo e dobrando a esquina...,Abajo y doblando la esquina...
+HTP_SL_ONE_CAP,...in one drag: one move,...num só arrasto: um lance,...en un solo arrastre: una jugada
+HTP_SL_SWEAT_CAP,It sweats: that takes it farther from the gate,Ele sua: isso o afasta do portão,Suda: eso lo aleja de la puerta
+HTP_SL_HEART_CAP,"Let go anyway: a heart, and it slides back","Soltou mesmo assim: um coração, e volta","Si sueltas igual: un corazón, y vuelve"
+HTP_SL_CALM_CAP,Moves that keep it calm cost nothing,Lances que o deixam calmo não custam nada,Las jugadas que lo dejan tranquilo no cuestan nada
+HTP_SL_UP_CAP,Up? The red block shakes its head...,Para cima? O bloco vermelho balança a cabeça...,¿Arriba? El bloque rojo niega con la cabeza...
+HTP_SL_NEVER_CAP,...it never goes back up,...ele nunca volta para cima,...nunca vuelve hacia arriba
+HTP_SL_SOON_CAP,"Down a cell, too soon...","Uma casa para baixo, cedo demais...","Una casilla abajo, demasiado pronto..."
+HTP_SL_STUCK_CAP,"...no way home: a heart, and it slides back","...sem caminho para casa: um coração, e volta","...sin camino a casa: un corazón, y vuelve"
+HTP_SL_ROOM_CAP,Make room below first,Abra espaço embaixo primeiro,Haz sitio abajo primero
+HTP_SL_SLIDE_CAP,A slide...,Um deslize...,Un deslizamiento...
+HTP_SL_UNDO_CAP,Undo takes the move back,Desfazer volta o lance,Deshacer devuelve la jugada
+HTP_SL_RESET_CAP,Reset puts every block back,Recomeçar põe cada bloco de volta,Reiniciar devuelve cada bloque
+HTP_SL_HINT_CAP,The bulb slides for you,A lâmpada desliza por você,La bombilla desliza por ti
