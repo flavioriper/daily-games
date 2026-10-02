@@ -300,6 +300,21 @@ func _experiment() -> void:
 				var a = m.surface_get_arrays(0) if m != null else [[]]
 				print("  field %.2f ms verts %d | slots %.2f | air %.2f | found %d" % [(t1 - t0) / 1000.0, a[0].size(),
 					(t2 - t1) / 1000.0, (t3 - t2) / 1000.0, _puzzle._state.found_count()])
+		"mp_count":
+			# One floor and one ground build as an animating frame does them,
+			# timed, a few times over the run.
+			for k in 6:
+				await create_timer(2.0).timeout
+				var now: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				var fl: ArrayMesh = _puzzle._build_floor(now)
+				var t1 := Time.get_ticks_usec()
+				var gr: Dictionary = _puzzle._build_ground(now)
+				var t2 := Time.get_ticks_usec()
+				var fa = fl.surface_get_arrays(0) if fl != null else [[]]
+				var ga = gr.mesh.surface_get_arrays(0) if gr.mesh != null else [[]]
+				print("  floor %.2f ms verts %d | ground %.2f ms verts %d | marks %d" % [(t1 - t0) / 1000.0, fa[0].size(),
+					(t2 - t1) / 1000.0, ga[0].size(), _puzzle.state.marks.size()])
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -733,4 +748,28 @@ func _moves_wordtrail() -> Array:
 			out.append({"do": func() -> void: _ut_motion(_puzzle._centre(at))})
 		out.append({"do": func() -> void: _ut_button(_puzzle._centre(path[-1]), false)})
 	_keep = (words[-1]["path"] as Array).size() + 1
+	return out
+
+## Mushroom Patch: a row at a time, a pebble tapped on every bare cell of it,
+## then its mushrooms planted, the chip switched as a player would.
+func _moves_mushroom() -> Array:
+	_keep = 2
+	var out := []
+	var st = _puzzle.state
+	for r in st.n:
+		var safe := []
+		var shrooms := []
+		for c in st.n:
+			var cell := Vector2i(c, r)
+			if st.given.has(cell):
+				continue
+			(shrooms if st.mushrooms.has(cell) else safe).append(cell)
+		if not safe.is_empty():
+			out.append({"do": func() -> void: _puzzle.set_brush(st.CLEAR)})
+			for cell: Vector2i in safe:
+				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
+		if not shrooms.is_empty():
+			out.append({"do": func() -> void: _puzzle.set_brush(st.FOUND)})
+			for cell: Vector2i in shrooms:
+				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
 	return out

@@ -51,3 +51,17 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   off the player's marks), and a party (meadow, dance, a line of mushroom
   wisdom, the seal; the night seal on Insane). `tests/_shot_mushroom.gd`
   drives every scenario; peaks 81 to 147 draw calls on `opengl3_angle`.
+- **The board checkup** (2026-10-02, `docs/agents/checkup.md` row 13). The
+  floor and the ground are put together by two `ui/flat/run_mesh.gd`s
+  (`_frm`, `_grm`) from shapes made at the first layout's cell (`_ref`) and
+  drawn scaled after a smaller one (the win card): `_floor_shape` (bed, sod,
+  each cell's tuft, each ring grown) into one run per cell (`_lay_floor`),
+  `_ground_shape` (square, disc, pebble and its shadow, halo, flower) into
+  runs per part in paint order (`_lay_ground`, relaid when `state.shown`
+  grows; pebbles leaving go on the tail). A ring's caps are drawn live while
+  any is still growing (`_ring_grown`). The mushrooms at rest are one mesh
+  (`_bake_caps`, `CapBake`), each hidden by her slot while baked. The
+  tutorial (`ui/hud/mushroom_tutorial_diagram.gd`) is the board itself,
+  quietened, on a fixed 5x5 of five mushrooms, through the layout hooks
+  `_pad()` and `_tally_h()` (no card air, no tally strip on the page), with a
+  drawn chip tray the finger taps to switch chips.

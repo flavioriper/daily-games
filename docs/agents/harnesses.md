@@ -87,7 +87,8 @@ ground build) and `x=tn_trees|tn_tents|tn_chips` (hide one cast) are Tents'; `x=
 (one figure cast, with its vertex, index and look counts) is One Line's; `x=ng_count`
 (one floor build, with its vertex, index, shape and colour-cache counts) is Nonogram's; `x=hw_count` (a grid build every 2 s, with its vertices) is
 Hidden Word's; `x=wt_count` (a field, slots and air build every 2 s, with
-the field's vertices) is Word Trail's. `rm` turns reduce motion on as the
+the field's vertices) is Word Trail's; `x=mp_count` (a floor and a ground build every 2 s, with
+their vertices) is Mushroom Patch's. `rm` turns reduce motion on as the
 board opens (with `howto`, the tutorial's still pages). Each
 window also prints its mean draw calls beside the peak.
 Tents' moves sweep each row into cairns a run at a time, then tap the
@@ -96,7 +97,9 @@ planted walk as one drag (a press, a motion a post, the release; `_keep`
 3). Nonogram's drag each row's runs of the picture as strokes (`_keep` 3).
 Queens' drag a row of crosses across every other row (one event a step),
 then tap the answer's queens in (a tap crosses a bare seat, a second seats
-her). Word Trail's trace every word along its path, a press, a motion a tile
+her). Mushroom Patch's go a row at a time, the pebble chip armed and a pebble
+tapped on every bare cell, then the mushroom chip and the row's mushrooms.
+Word Trail's trace every word along its path, a press, a motion a tile
 and the release (`_keep` the last word's events). Hidden Word's type five wrong guesses that keep every clue (so Hard's
 rule never refuses them) and then the answer, a letter a step, each commit
 waiting while the row before still turns (`_keep` 6).
