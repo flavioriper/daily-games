@@ -74,7 +74,9 @@ spikes over 25 ms and any move whose script took over 4 ms:
 `fill` plays every right move but two before the idle window (a full
 board); `x=board|host|hide:<Node>|nowash|faces|parts|undo|bal_warm` switches one
 thing off (or times the parts) to see what it costs; `howto shot=1.5`
-leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png.
+leaves the tutorial up and shoots each page to /tmp/probe_<id>_p<n>.png,
+each page `gap=<s>` after the last (1.8 by default; a lesson's later moments
+need 4-7, with `to=<s>` moving the run's end past PLAY_TO).
 `fill` leaves two moves, or two whole gestures where a board's moves are a
 gesture's events (`_keep`; Shikaku's drags are five each). `x=log` prints
 every frame for a moment after each move; `x=confetti` fires one burst
@@ -89,6 +91,9 @@ Tents' moves sweep each row into cairns a run at a time, then tap the
 answer's tents. Light Up's tap the answer's lamps in. One Line's draw the
 planted walk as one drag (a press, a motion a post, the release; `_keep`
 3). Nonogram's drag each row's runs of the picture as strokes (`_keep` 3).
+Queens' drag a row of crosses across every other row (one event a step),
+then tap the answer's queens in (a tap crosses a bare seat, a second seats
+her).
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
 (a click in board space) or `{do}` (a Callable, for a board played
 through its own methods, Code Break's `pick`/`check`); a move waits while

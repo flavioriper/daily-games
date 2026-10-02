@@ -42,3 +42,27 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   patch's first cell cannot hide them. `tests/_shot_queens.gd` plays it
   through the real taps (a bare seat takes a cross first); remember zsh's
   `${=args}` when looping its modes.
+- **The checkup (2026-10-02)**: the ground (the sink, the wave's, glint's
+  and blush's washes, the flowers, the bees' halos and shadows, the leaving
+  and standing Xs) was one Builder mesh rebuilt in script every animating
+  frame, 9-13 ms on a full Insane court, and the floor (3 ms) with it. The
+  floor is now made once a court (the finger's sink moved into the ground as
+  a wash in `Pal.TEXT`), and the ground goes through `ui/flat/run_mesh.gd`:
+  four shapes (`SHAPE_SQUARE`, `SHAPE_DISC`, `SHAPE_CROSS`, `SHAPE_FLOWER`,
+  the flower in three slots: rim, petal, heart) copied into per-cell runs
+  laid in paint order (`PART_SINK`, `PART_WASH`, `PART_FLOWER`, `PART_BEE`,
+  `PART_GONE`, `PART_CROSS`), alphas kept in `ALPHA_STEPS`/`WASH_STEPS`.
+  Shapes and floor are made at `_ref`/`_floor_cell` and drawn scaled, and a
+  finished court's relayout (the win card's slide) keeps them: making them
+  again there was a 45-75 ms frame. Ground build ~2 ms; pixel-identical at
+  rest. `_solved_at` is `-INF` while unsolved: a restore stamps `now - 10`
+  and the clock counts from launch, so the old `>= 0` test showed a day
+  reopened in its first ten seconds with its crosses and mist crowns.
+- **Tutorial (2026-10-02)**: `ui/hud/queens_tutorial_diagram.gd`, a
+  quietened board (`Court.lay()`) on a 5x5 court of five patches: SEAT (a
+  tap crosses, a second seats; her wave), TOUCH (her corner refused, the
+  next queen where she cannot see), CROSS (a stroke lays crosses, one from a
+  cross picks them up), HINT (pinned queen refuses a lift), HEARTS (band 2,
+  a wrong queen buzzes off and leaves a rose cross), MIST (the last two
+  patches run together; one crown of two, then the rest crossed). Easy and
+  Medium 4 pages, Hard 5, Insane 6.

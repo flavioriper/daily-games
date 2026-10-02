@@ -41,7 +41,8 @@ hold the rest).
 - **The same cold-launch trap elsewhere**: a restore that stamps `now - 10`
   where the clock counts from launch reads as unsolved in the first ten
   seconds when the board tests `_solved_at >= 0`. Pinwheel, Paper Planes,
-  Quilt, Queens and Untangle carry that test; not checked here.
+  Quilt, Queens and Untangle carry that test; not checked here. (Queens and
+  Untangle fixed at Queens' checkup, 2026-10-02, with a `-INF` sentinel.)
 - **The checkup (2026-10-02)**: the floor was one Builder mesh rebuilt in
   script every animating frame (14 ms full Insane, 33k vertices; a 5-10 ms
   hitch on every stroke event). Now `_build_floor` copies cached shapes
