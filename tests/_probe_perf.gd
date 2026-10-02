@@ -240,6 +240,54 @@ func _experiment() -> void:
 				print("  court %.2f ms rebake %.2f ms beams %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
 			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " lamps ", _puzzle.state.lamps().size(),
 				" cats ", _puzzle._cats.size(), " anim ", _puzzle._anim_until - _puzzle._now(), " moths ", _puzzle._flies.size())
+		"rg_count":
+			# Every station's mesh made again and the ring in hand built, as an
+			# animating frame does them, every 1.5 s, with their vertices.
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				var vs := 0
+				for i in _puzzle._state.pegs.size():
+					var look: Dictionary = _puzzle._station_look(i, t, 0.0)
+					var st: Dictionary = _puzzle._station(i)
+					var m: ArrayMesh = _puzzle._build_station(float(st["cx"]), float(st["ground"]), look)
+					vs += 0 if m == null else m.surface_get_array_len(0)
+				var t1 := Time.get_ticks_usec()
+				var held: bool = _puzzle._state.held != -1
+				if not held:
+					_puzzle._state.lift(_first_liftable())
+					_puzzle._held_at = t
+				var t2 := Time.get_ticks_usec()
+				var l = _puzzle._build_live(t + 1.0)
+				var t3 := Time.get_ticks_usec()
+				if not held:
+					_puzzle._state.put_back()
+					_puzzle._held_at = -100.0
+				if n == 1:
+					var lk = _puzzle._looks
+					var a0 := Time.get_ticks_usec()
+					for r in 100:
+						lk.begin()
+						_puzzle._put_ring(500.0, 500.0, 9, Vector2.ONE, 0.0, 0.0, 0.0)
+					var a1 := Time.get_ticks_usec()
+					lk.begin()
+					for r in 100:
+						_puzzle._put_post(500.0, 300.0, 500.0)
+					var a2 := Time.get_ticks_usec()
+					lk.begin()
+					for r in 4:
+						_puzzle._put_ring(500.0, 500.0, 9, Vector2.ONE, 0.0, 0.0, 0.0)
+					var a3 := Time.get_ticks_usec()
+					for r in 100:
+						lk.mesh()
+					var a4 := Time.get_ticks_usec()
+					for r in 100:
+						var_to_str(_puzzle._station_look(0, t, 0.0))
+					var a5 := Time.get_ticks_usec()
+					print("  ring %.3f post %.3f mesh(4 rings) %.3f look+key %.3f ms each" % [(a1 - a0) / 100000.0, (a2 - a1) / 100000.0, (a4 - a3) / 100000.0, (a5 - a4) / 100000.0])
+				print("  frame with every station rebuilt %.2f ms v%d | held ring %.2f ms v%d" % [(t1 - t0) / 1000.0, vs,
+					(t3 - t2) / 1000.0, 0 if l == null else l.surface_get_array_len(0)])
 		"pw_count":
 			# The still and live builds as an animating frame does them, every
 			# 1.5 s, with their vertices: the still mesh made again, and handed
@@ -561,6 +609,24 @@ func _all(n: Node, pred: Callable) -> Array:
 		if pred.call(c):
 			out.append(c)
 		out.append_array(_all(c, pred))
+	return out
+
+## Rings: the solver's own line from the deal, each move a tap lifting the
+## top ring off its peg and a tap dropping it on the other, at the middle of
+## each station's column.
+func _first_liftable() -> int:
+	for i in _puzzle._state.pegs.size():
+		if _puzzle._state.can_lift(i):
+			return i
+	return 0
+
+func _moves_rings() -> Array:
+	var out := []
+	for m: Vector2i in load("res://puzzles/rings_gen.gd").solve(_puzzle._state.pegs):
+		for i in [m.x, m.y]:
+			out.append({"at": func() -> Vector2:
+				var st: Dictionary = _puzzle._station(i)
+				return Vector2(float(st["cx"]), float(st["ground"]) - 120.0) * _puzzle._s})
 	return out
 
 func _step() -> void:
