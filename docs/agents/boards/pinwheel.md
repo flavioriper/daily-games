@@ -132,3 +132,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   pose the piece was never in. Rewards (streak on *tidier* taps, whirl, love,
   butterfly, kite, nap cat, seal), the LINEN sound set, and
   `tests/_shot_pinwheel.gd`. Peak 104 draw calls (the card over Hard).
+- **The board checkup, 2026-10-02** (`docs/agents/checkup.md`, row 19).
+  The lag was the drawing, not the rules: both layers were built in script
+  on every frame anything moved, and the idle breeze moves something every
+  few seconds, so even an untouched Insane frame spent 15-40 ms a frame
+  through every gust. Every piece is now looks made once in a reference
+  layout -- a silhouette painted three ways (shadow, lip, cloth), a print in
+  its own colours and a trim painted in the thread and the edge, so the
+  solve's warmth is a fill and not a remake -- put under the transform
+  `Cloth.place` would have laid it with: squashed and turned about the pin,
+  moved by the shiver and the hop, the lip and the shadow offset outside the
+  turn as the old code moved them on screen. The wheels, their shadows, the
+  tack, the button, every resting ribbon and each settled stain are looks
+  too, and the still, stain, ribbon and wheel meshes are separate, each
+  handed back while its plan stands (a gusting wheel rebuilds the wheels and
+  nothing else). `build()` is now `_state.setup()` plus `_dealt()`, and the
+  state's `take()` holds a hand-made frame: the tutorial's pages
+  (`ui/hud/pinwheel_tutorial_diagram.gd`) deal a 4x3 frame of an L, a T, a
+  domino and a bar through them and play each lesson through the board's own
+  input. `_solved_at` is `-INF` until a solve, not `-1`: a day restored in
+  the first ten seconds after launch stamped it negative and lost its warm
+  edges.

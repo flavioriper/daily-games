@@ -364,7 +364,7 @@ var _pressed := Vector2i(-1, -1)
 
 var _opened := 0.0
 var _anim_until := 0.0
-var _solved_at := -1.0
+var _solved_at := -INF
 ## The piece the last gesture moved: the solve wave runs out of its pin.
 var _last_turned := 0
 
@@ -511,6 +511,43 @@ func rules() -> String:
 		out += "\n\n" + tr("PW_RULES_SAFE")
 	return out
 
+## The tutorial, a page a rule, each played on a little frame of its own
+## (`ui/hud/pinwheel_tutorial_diagram.gd`): a tap turns a piece a quarter
+## round its pin, the frame is done with every square covered once, what a
+## turn of a piece already home costs on a judged band, Ribbons' tugs, Undo
+## and Reset, and the bulb on a band that has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/pinwheel_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var judged := hearts_n > 0
+	var steps := [
+		[Diagram.Lesson.TURN, "HTP_PW_TURN", tr("HTP_PW_TURN_BODY")],
+		[Diagram.Lesson.DONE, "HTP_PW_DONE", tr("HTP_PW_DONE_BODY")],
+	]
+	if judged:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("PW_RULES_HEARTS") % hearts_n])
+	if band == 3:
+		steps.append([Diagram.Lesson.RIBBONS, "PW_RIBBONS_SEAL", tr("HTP_PW_RIBBONS_BODY")])
+	var undo_body := "HTP_PW_UNDO_BODY"
+	if band == 3:
+		undo_body = "HTP_PW_RESET_BODY"
+	elif judged:
+		undo_body = "HTP_PW_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_PW_HINT_BODY_ONE") if hints == 1 else tr("HTP_PW_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.hearts = hearts_n
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## The lines the tips cycle, by band.
 func _tips() -> Array:
 	if _state.ribboned():
@@ -559,6 +596,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
 	_state.setup(rng, difficulty)
+	_dealt()
+
+## Everything a new frame starts from once the state holds it: the hearts,
+## the rewards, nothing in flight, the shapes traced, the layout and the
+## entrance. The tutorial's pages deal their frames by hand and call it too.
+func _dealt() -> void:
 	max_hearts = State.hearts_for(_state.difficulty) if _state.judged else 0
 	_heart_used = false
 	_lost_ever = false
@@ -578,7 +621,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gust_rng.randomize()
 	_pressed = Vector2i(-1, -1)
 	_anim_until = 0.0
-	_solved_at = -1.0
+	_solved_at = -INF
 	_last_turned = 0
 	_turned_at = PackedFloat32Array()
 	_turned_at.resize(_state.shapes.size())
@@ -994,7 +1037,7 @@ func _animating(t: float) -> bool:
 		var since := t - float(_refused["at"])
 		if since < maxf(Motion.FLASH_IN + Motion.FLASH_OUT, Motion.SHIVER_TIME):
 			return true
-	if _solved_at >= 0.0 and t - _solved_at < Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME:
+	if _solved_at > -INF and t - _solved_at < Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME:
 		return true
 	return false
 
@@ -1055,7 +1098,7 @@ func _frame_of(p: int, t: float) -> Dictionary:
 	if not _refused.is_empty() and int(_refused["piece"]) == p:
 		offset.x += Motion.shiver_offset(t - float(_refused["at"]))
 	var warm := 0.0
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		var at := _solved_at + _solve_delay(p)
 		offset.y += Motion.hop_lift(t - at, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 		warm = 1.0 if Motion.reduce else clampf((t - at) / WARM_TIME, 0.0, 1.0)
@@ -2078,7 +2121,7 @@ func _wave_home(_quiet := false) -> bool:
 		delays[int((order[k] as Dictionary)["piece"])] = Motion.stagger(k, Motion.RESET_STAGGER)
 	_refused = {}
 	_pending = []
-	_solved_at = -1.0
+	_solved_at = -INF
 	_settle(before, _now(), true, delays)
 	return true
 
@@ -2296,13 +2339,11 @@ func _draw_hearts() -> void:
 	var b := Face.Builder.new()
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
-	# Just over the frame's rim, so the pill sits with the frame it belongs to
-	# on a band whose frame is bound by the width and leaves air above it.
-	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
-		_origin().y - FRAME_PAD - FRAME_RIM - HEART_PILL_PAD.y - HEART_R - 10.0)
-	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var mid := _hearts_at()
+	var y := mid.y
+	var x0 := mid.x - step * (max_hearts - 1) * 0.5
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var corner := mid - pill * 0.5
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
 	if enter <= 0.0:
@@ -2332,10 +2373,17 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
+	var c := mid
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The middle of the hearts' pill: just over the frame's rim, so the pill
+## sits with the frame it belongs to on a band whose frame is bound by the
+## width and leaves air above it.
+func _hearts_at() -> Vector2:
+	return Vector2(size.x * 0.5, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+		_origin().y - FRAME_PAD - FRAME_RIM - HEART_PILL_PAD.y - HEART_R - 10.0))
 
 ## A heart's small face: two dots and a smile in ink, a shine at the top
 ## left, and a leaf on top (Mushroom Patch's).
@@ -2427,7 +2475,7 @@ func try_again() -> void:
 	_tug_at = {}
 	_wave_home()
 	_state.history = []
-	_solved_at = -1.0
+	_solved_at = -INF
 	elapsed = 0.0
 	moves = 0
 	_running = true
