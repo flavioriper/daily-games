@@ -210,6 +210,34 @@ const STAMP_TILT := -0.22
 ## What the sprout thinks the picture is, picked by the picture's hash.
 const LOOKS := 12
 
+# --- the floor's pieces (the checkup, 2026-10-02) ---
+const PART_TAB := 0
+const PART_LEAF := 1
+const PART_DAISY := 2
+const PART_SOCKET := 3
+const PART_GUIDES := 4
+const PART_GONE := 5
+const PART_PIECE := 6
+const SHAPE_SOCKET := 0
+const SHAPE_TAB_ROW := 1
+const SHAPE_TAB_COL := 2
+const SHAPE_LEAF := 3
+const SHAPE_DAISY := 4
+const SHAPE_CROSS := 5
+const SHAPE_GUIDES := 6
+## SHAPE_TILE + the grout's step, 0 to GROUT_STEPS.
+const SHAPE_TILE := 16
+const GROUT_STEPS := 12
+## A fading pebble's alpha is kept in this many steps.
+const ALPHA_STEPS := 16
+## How many colour slots a shape can have (`_slot`).
+const SLOTS := 8.0
+## The painted colours kept before the cache starts again.
+const PAINTED_MAX := 4000
+## A moment on a cell older than this has played out (`_prune`).
+const PRUNE_AFTER := 2.0
+const DAISY_INKS := [Pal.PETAL_EDGE, Pal.SURFACE, Pal.SUN]
+
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 ## Translation keys (locale/ui.csv), read through tr() when said.
@@ -327,6 +355,23 @@ var _floor: ArrayMesh
 ## reference to a mesh still on the item's command list leaves the renderer
 ## drawing a freed RID ("Parameter mesh is null", and an empty card).
 var _shown: ArrayMesh
+## The floor's pieces (`_build_floor`): shape id -> [verts, indices, colour
+## runs]; painted colours by [shape, colours...]; a shape's indices offset to
+## a run's base by Vector2i(shape, base); each piece's run of vertices by
+## Vector2i(part, index) -> Vector2i(base, room). Cut to the cell and the
+## puzzle, so cleared by `_layout` and a new deal.
+var _shapes: Dictionary = {}
+var _inked: Dictionary = {}
+var _offsets: Dictionary = {}
+var _runs: Dictionary = {}
+var _fixed := 0
+var _cursor := 0
+var _run_end := -1
+var _fv := PackedVector2Array()
+var _fc := PackedColorArray()
+var _fi := PackedInt32Array()
+var _tv := PackedVector2Array()
+var _tc := PackedColorArray()
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -350,6 +395,32 @@ func _tips() -> Array:
 	if max_hearts > 0:
 		return ["NG_TIP_HEARTS"] + TIPS
 	return TIPS
+
+## The tutorial, a page a rule, each a little house painted by the board
+## itself (ui/hud/nonogram_tutorial_diagram.gd): the runs, their order and
+## the rub-out, the X's, the hint, then hearts on Hard and Insane and Leaf
+## Fall on a leafy day.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/nonogram_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.RUNS, "HTP_NG_RUNS", tr("HTP_NG_RUNS_BODY")],
+		[Diagram.Lesson.ORDER, "HTP_NG_ORDER", tr("HTP_NG_ORDER_BODY")],
+		[Diagram.Lesson.CROSS, "HTP_NG_CROSS", tr("HTP_NG_CROSS_BODY")],
+		[Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_NG_HINT_BODY_ONE") if hints == 1 else tr("HTP_NG_HINT_BODY_N") % hints]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("HTP_NG_HEARTS_BODY_1") if max_hearts == 1 else tr("HTP_NG_HEARTS_BODY_N") % max_hearts])
+	if state.has_leaves():
+		steps.append([Diagram.Lesson.LEAVES, "NG_LEAF_SEAL", tr("NG_RULES_LEAF")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -477,6 +548,7 @@ func _layout() -> void:
 		_card.position.y + row + (tall - row - floor_size.y) * 0.5) + _band
 	# The life's meshes are cut to the cell; a new cell cuts them again.
 	_love_mesh = null
+	_runs = {}
 	_mushroom.size = Vector2.ONE * _cell * MUSH_SIZE
 	_mushroom.pivot_offset = _mushroom.size * 0.5
 	_bee.size = Vector2.ONE * _cell * BEE_SIZE
@@ -573,59 +645,297 @@ func _draw() -> void:
 	_draw_badge()
 
 ## Everything on the floor in one mesh, in the order the mock paints it: the
-## sockets, the five-cell guides over them, the pieces on their way out, and
-## what the player has put down.
+## bands' tabs, leaves and daisies, the sockets, the five-cell guides over
+## them, the pieces on their way out, and what the player has put down.
+##
+## Building all of that in script was 14 ms on a full Insane floor, on every
+## frame anything on it moved (the checkup, docs/agents/boards/nonogram.md):
+## play ran at 22 ms a frame. Now every piece is a shape made once about its
+## own origin (`_shape`) and copied in natively under its transform, its
+## colours filled a run at a time (`_ink`), into a run of vertices laid out
+## for it (`_runs`) so its indices, offset once, stay true; only the frame
+## round the finished picture is built in script. It is still one indexed
+## mesh, so at rest it draws exactly as before.
 func _build_floor(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	if _runs.is_empty():
+		_lay_runs()
+	_fv = PackedVector2Array()
+	_fc = PackedColorArray()
+	_fi = PackedInt32Array()
+	_tv = PackedVector2Array()
+	_tc = PackedColorArray()
+	_prune(t)
 	var gone := _gone(t)
 	var focus := _focus_level(t)
-	_tabs(b, gone, focus, t)
-	_leaves(b, gone, t)
-	_daisies(b, t)
+	_tabs(gone, focus, t)
+	_leaves(gone, t)
+	_daisies(t)
+	var floor_alpha := 1.0 - gone
 	for y in state.h:
 		for x in state.w:
 			var cell := Vector2i(x, y)
+			var sink := _sink(cell, t)
+			if floor_alpha <= 0.0:
+				continue
 			var lit := focus if focus > 0.0 and (x == _focus_cell.x or y == _focus_cell.y) else 0.0
 			var tint := Color(Pal.SUN, FOCUS * lit)
+			var pebble := state.mark_at(cell) == State.MARK
 			# Check on Hard and Insane points at pebbles: the socket blushes.
-			if _wrong.has(cell) and state.mark_at(cell) == State.MARK:
+			if pebble and _wrong.has(cell):
 				tint = Color(Pal.BAD_TILE, Motion.flash_level(t - float(_wrong[cell])) * 0.85)
-			Mosaic.socket(b, _grid + Vector2(x, y) * _cell, _cell,
-				state.mark_at(cell) == State.MARK, 1.0 - gone, _sink(cell, t), tint)
-	_guides(b, gone)
-	_build_leaving(b, t)
-	for cell in state.marks:
-		if int(state.marks[cell]) == State.MARK:
-			_draw_pebble(b, cell, t)
-		else:
-			_draw_tile(b, cell, t, gone)
-	_build_bad(b, t)
+			_open_run(PART_SOCKET, y * state.w + x)
+			_put(SHAPE_SOCKET, [Mosaic.socket_colour(pebble, floor_alpha, sink, tint)],
+				Transform2D(0.0, Vector2.ONE * sink, 0.0, cell_to_local(y, x)))
+	_guides(gone)
+	_build_leaving(t)
+	var grout := _grout(gone)
+	for y in state.h:
+		for x in state.w:
+			var cell := Vector2i(x, y)
+			var mark := state.mark_at(cell)
+			if mark == State.BLANK:
+				continue
+			_open_run(PART_PIECE, y * state.w + x)
+			if mark == State.MARK:
+				_draw_pebble(cell, t)
+			else:
+				_draw_tile(cell, t, grout)
+	_close_run()
+	_build_bad(t)
+	var b := Face.Builder.new()
 	_frame(b, t)
-	if b.verts.is_empty():
+	if not b.verts.is_empty():
+		_tail(b.verts, b.cols, b.idx, Transform2D.IDENTITY)
+	if _fi.is_empty():
 		return null
-	return b.mesh()
+	_fv.resize(_fixed)
+	_fc.resize(_fixed)
+	_fv.append_array(_tv)
+	_fc.append_array(_tc)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = _fv
+	arrays[Mesh.ARRAY_COLOR] = _fc
+	arrays[Mesh.ARRAY_INDEX] = _fi
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
+
+## Forgets every moment on a cell that has played out (each is under a
+## second), so a piece at rest skips the curve readers (`_draw_tile`).
+func _prune(t: float) -> void:
+	for d: Dictionary in [_arrive, _nudge, _hop]:
+		for cell in d.keys():
+			if t - float(d[cell].at) > PRUNE_AFTER:
+				d.erase(cell)
+	for d: Dictionary in [_wrong, _shiver]:
+		for cell in d.keys():
+			if t - float(d[cell]) > PRUNE_AFTER:
+				d.erase(cell)
+	for key in _glint.keys():
+		if t - float(_glint[key]) > PRUNE_AFTER:
+			_glint.erase(key)
+
+# --- the floor's shapes and runs ---
+
+## Every piece's run of vertices, in the order `_build_floor` visits them,
+## each as long as the piece's largest look: a line's tab, leaves and daisy,
+## then every cell's socket, the guides, every cell's leaving piece and every
+## cell's piece (a tile with its gaps open is the largest).
+func _lay_runs() -> void:
+	_runs = {}
+	_shapes = {}
+	_inked = {}
+	_offsets = {}
+	_fixed = 0
+	var room := func(part: int, index: int, verts: int) -> void:
+		_runs[Vector2i(part, index)] = Vector2i(_fixed, verts)
+		_fixed += verts
+	var lines: int = state.h + state.w
+	for k in lines:
+		room.call(PART_TAB, k, _shape(SHAPE_TAB_ROW if k < state.h else SHAPE_TAB_COL)[0].size())
+	for k in lines:
+		if _tumbled(k):
+			room.call(PART_LEAF, k, _shape(SHAPE_LEAF)[0].size() * _numbers(k, _now()).size())
+	for k in lines:
+		room.call(PART_DAISY, k, _shape(SHAPE_DAISY)[0].size())
+	var socket: int = _shape(SHAPE_SOCKET)[0].size()
+	for k in state.w * state.h:
+		room.call(PART_SOCKET, k, socket)
+	room.call(PART_GUIDES, 0, _shape(SHAPE_GUIDES)[0].size())
+	var piece := maxi(_shape(SHAPE_TILE)[0].size(), 2 * _shape(SHAPE_CROSS)[0].size())
+	for k in state.w * state.h:
+		room.call(PART_GONE, k, piece)
+	for k in state.w * state.h:
+		room.call(PART_PIECE, k, piece)
+
+## Shape `id` about its own origin, made the first time it is asked for, as
+## [verts, indices, colour runs]. It is drawn in slot colours (`_slot`), and
+## its colour runs are (count, slot * 2 + clear) pairs: a fan's body is one
+## run and its feather another, so painting it is a fill a run.
+func _shape(id: int) -> Array:
+	var hit = _shapes.get(id)
+	if hit != null:
+		return hit
+	var b := Face.Builder.new()
+	var inset := _cell * TAB_INSET
+	match id:
+		SHAPE_SOCKET:
+			b.fan(Mosaic.socket_outline(_cell), _slot(0))
+		SHAPE_TAB_ROW:
+			b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(_band.x - _cell * TAB_GAP, _cell - 2.0 * inset),
+				_cell * TAB_RADIUS), _slot(0))
+		SHAPE_TAB_COL:
+			b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(_cell - 2.0 * inset, _band.y - _cell * TAB_GAP),
+				_cell * TAB_RADIUS), _slot(0))
+		SHAPE_LEAF:
+			var len := _cell * LEAF_LEN
+			b.fan(_leaf_shape(len, _cell * LEAF_WIDE), _slot(0))
+			b.stroke(PackedVector2Array([Vector2(-len * 0.4, 0.0), Vector2(len * 0.56, 0.0)]),
+				maxf(1.5, _cell * 0.018), _slot(1), false, false)
+		SHAPE_DAISY:
+			_daisy(b, Vector2.ZERO, _cell * DAISY_R, 0.0, [_slot(0), _slot(1), _slot(2)])
+		SHAPE_CROSS:
+			CrossMark._x(b, Transform2D.IDENTITY, _cell, CrossMark.WIDTH * _cell, _slot(0))
+		SHAPE_GUIDES:
+			if state.w > GUIDE_EVERY or state.h > GUIDE_EVERY:
+				var field := Vector2(_cell * state.w, _cell * state.h)
+				for i in range(GUIDE_EVERY, state.w, GUIDE_EVERY):
+					b.stroke(PackedVector2Array([_grid + Vector2(i * _cell, 0.0),
+						_grid + Vector2(i * _cell, field.y)]), GUIDE_WIDTH, _slot(0), false, false)
+				for i in range(GUIDE_EVERY, state.h, GUIDE_EVERY):
+					b.stroke(PackedVector2Array([_grid + Vector2(0.0, i * _cell),
+						_grid + Vector2(field.x, i * _cell)]), GUIDE_WIDTH, _slot(0), false, false)
+		_:
+			# SHAPE_TILE + a step of the grout closing on the win.
+			var outlines := Mosaic.tile_outlines(_cell, float(id - SHAPE_TILE) / GROUT_STEPS)
+			for k in outlines.size():
+				b.fan(outlines[k], _slot(k))
+	var runs := PackedInt32Array()
+	var last := -1
+	for c in b.cols:
+		var code := roundi(c.r * SLOTS) * 2 + (1 if c.a < 0.5 else 0)
+		if code == last:
+			runs[runs.size() - 2] += 1
+		else:
+			runs.append(1)
+			runs.append(code)
+			last = code
+	var shape := [b.verts, b.idx, runs]
+	_shapes[id] = shape
+	return shape
+
+## The colour a shape is drawn in for slot `k`, read back by `_shape`.
+static func _slot(k: int) -> Color:
+	return Color(float(k) / SLOTS, 0.0, 0.0, 1.0)
+
+## Shape `id`'s colours with its slots painted `colours`: kept, since most
+## pieces wear the same ones frame after frame.
+func _ink(id: int, colours: Array) -> PackedColorArray:
+	var key := [id] + colours
+	var hit = _inked.get(key)
+	if hit != null:
+		return hit
+	if _inked.size() > PAINTED_MAX:
+		_inked = {}
+	var runs: PackedInt32Array = _shape(id)[2]
+	var out := PackedColorArray()
+	var run := PackedColorArray()
+	for i in range(0, runs.size(), 2):
+		var code := runs[i + 1]
+		var c: Color = colours[code >> 1]
+		run.resize(runs[i])
+		run.fill(Color(c, 0.0) if code & 1 else c)
+		out.append_array(run)
+	_inked[key] = out
+	return out
+
+## The next pieces go into run (`part`, `index`).
+func _open_run(part: int, index: int) -> void:
+	var run: Vector2i = _runs[Vector2i(part, index)]
+	_cursor = run.x
+	_run_end = run.x + run.y
+
+## The next pieces go on the tail.
+func _close_run() -> void:
+	_cursor = 0
+	_run_end = -1
+
+## Shape `id` painted `colours` under `xf`, into the open run while it has
+## room, or on the tail.
+func _put(id: int, colours: Array, xf: Transform2D) -> void:
+	var shape := _shape(id)
+	var verts: PackedVector2Array = shape[0]
+	var n := verts.size()
+	var cols := _ink(id, colours)
+	if _cursor + n > _run_end:
+		_tail(verts, cols, shape[1], xf)
+		return
+	_fv.resize(_cursor)
+	_fc.resize(_cursor)
+	_fv.append_array(xf * verts)
+	_fc.append_array(cols)
+	var key := Vector2i(id, _cursor)
+	var ix = _offsets.get(key)
+	if ix == null:
+		ix = (shape[1] as PackedInt32Array).duplicate()
+		for k in ix.size():
+			ix[k] += _cursor
+		_offsets[key] = ix
+	_fi.append_array(ix)
+	_cursor += n
+
+## A drawing with no run of its own, after every run, its indices offset in
+## script (One Line's).
+func _tail(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, xf: Transform2D) -> void:
+	var base := _fixed + _tv.size()
+	_tv.append_array(verts if xf == Transform2D.IDENTITY else xf * verts)
+	_tc.append_array(cols)
+	var ix := idx.duplicate()
+	for k in ix.size():
+		ix[k] += base
+	_fi.append_array(ix)
+
+## The grout's step now: the tile's shape is kept at GROUT_STEPS of them.
+static func _grout(gone: float) -> float:
+	return roundf(gone * GROUT_STEPS) / GROUT_STEPS
+
+## A tile painted `colours` under `xf`, its gaps closed by `grout`.
+func _put_tile(grout: float, colours: Array, xf: Transform2D) -> void:
+	_put(SHAPE_TILE + roundi(grout * GROUT_STEPS), colours, xf)
+
+## A pebble -- Queens' X and its shadow -- at `at`, scaled `grow`, turned
+## `angle`, at `alpha` (in ALPHA_STEPS, so a fading one keeps its colours).
+func _put_cross(at: Vector2, grow: Vector2, alpha: float, angle := 0.0) -> void:
+	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
+		return
+	alpha = ceilf(alpha * ALPHA_STEPS) / ALPHA_STEPS
+	_put(SHAPE_CROSS, [Color(Pal.TEXT, CrossMark.SHADOW_ALPHA * alpha)],
+		Transform2D(angle, grow, 0.0, at + Vector2(0.0, CrossMark.DROP * _cell * grow.y)))
+	_put(SHAPE_CROSS, [Color(Pal.BARK, alpha)], Transform2D(angle, grow, 0.0, at))
 
 ## The paper tabs behind the clue numbers, one a line, each washed toward its
 ## line's verdict and toward the sun while the finger is on its line. They
 ## leave with the rest of the scaffolding on the win.
-func _tabs(b, gone: float, focus: float, t: float) -> void:
+func _tabs(gone: float, focus: float, t: float) -> void:
 	var alpha := TAB_A * (1.0 - gone)
 	if alpha <= 0.0:
 		return
 	var inset := _cell * TAB_INSET
-	var r := _cell * TAB_RADIUS
 	for y in state.h:
 		var ink := _tab_colour("r%d" % y, state.row_state(y), t)
 		if focus > 0.0 and y == _focus_cell.y:
 			ink = ink.lerp(Pal.SUN_TILE, FOCUS_TAB * focus)
-		b.fan(Face.Builder.round_rect(Vector2(_grid.x - _band.x, _grid.y + y * _cell + inset),
-			Vector2(_band.x - _cell * TAB_GAP, _cell - 2.0 * inset), r), Color(ink, alpha))
+		_open_run(PART_TAB, y)
+		_put(SHAPE_TAB_ROW, [Color(ink, alpha)],
+			Transform2D(0.0, Vector2(_grid.x - _band.x, _grid.y + y * _cell + inset)))
 	for x in state.w:
 		var ink := _tab_colour("c%d" % x, state.col_state(x), t)
 		if focus > 0.0 and x == _focus_cell.x:
 			ink = ink.lerp(Pal.SUN_TILE, FOCUS_TAB * focus)
-		b.fan(Face.Builder.round_rect(Vector2(_grid.x + x * _cell + inset, _grid.y - _band.y),
-			Vector2(_cell - 2.0 * inset, _band.y - _cell * TAB_GAP), r), Color(ink, alpha))
+		_open_run(PART_TAB, state.h + x)
+		_put(SHAPE_TAB_COL, [Color(ink, alpha)],
+			Transform2D(0.0, Vector2(_grid.x + x * _cell + inset, _grid.y - _band.y)))
 
 ## What a tab is washed to for a line in `line_state`.
 func _verdict_ink(line_state: int) -> Color:
@@ -740,20 +1050,14 @@ func _focus_level(t: float) -> float:
 
 ## The heavier line every fifth cell. A 5x5 has none to rule; on the 9x9 it is
 ## the difference between counting and glancing.
-func _guides(b, gone: float) -> void:
+func _guides(gone: float) -> void:
 	if state.w <= GUIDE_EVERY and state.h <= GUIDE_EVERY:
 		return
 	var alpha := 1.0 - gone
 	if alpha <= 0.0:
 		return
-	var ink := Color(Pal.LINE, GUIDE_ALPHA * alpha)
-	var field := Vector2(_cell * state.w, _cell * state.h)
-	for i in range(GUIDE_EVERY, state.w, GUIDE_EVERY):
-		b.stroke(PackedVector2Array([_grid + Vector2(i * _cell, 0.0),
-			_grid + Vector2(i * _cell, field.y)]), GUIDE_WIDTH, ink, false, false)
-	for i in range(GUIDE_EVERY, state.h, GUIDE_EVERY):
-		b.stroke(PackedVector2Array([_grid + Vector2(0.0, i * _cell),
-			_grid + Vector2(field.x, i * _cell)]), GUIDE_WIDTH, ink, false, false)
+	_open_run(PART_GUIDES, 0)
+	_put(SHAPE_GUIDES, [Color(Pal.LINE, GUIDE_ALPHA * alpha)], Transform2D.IDENTITY)
 
 ## press_scale for the cell under the finger, one when it is not.
 func _sink(cell: Vector2i, t: float) -> float:
@@ -769,50 +1073,72 @@ func _sink(cell: Vector2i, t: float) -> float:
 ## A laid tile: it pops in with the squash (or drops in, from a hint), sinks
 ## under the finger, leans when a neighbour lands, wobbles and blushes when
 ## Check points at it, shivers when it refuses, and hops on the win.
-func _draw_tile(b, cell: Vector2i, t: float, gone: float) -> void:
+func _draw_tile(cell: Vector2i, t: float, grout: float) -> void:
+	if _resting(cell):
+		_put_tile(grout, Mosaic.tile_colours(state.locked.has(cell), grout, 1.0, 0.0, _tone(cell)),
+			Transform2D(0.0, cell_to_local(cell.y, cell.x)))
+		return
 	var grow := _grow(cell, t)
-	if grow.x <= 0.0:
+	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var at := cell_to_local(cell.y, cell.x) + _offset(cell, t)
-	var angle := Motion.wobble_angle(t - float(_wrong.get(cell, -100.0)))
-	var blush := Motion.flash_level(t - float(_wrong.get(cell, -100.0)))
-	Mosaic.tile(b, at, _cell, grow, state.locked.has(cell), gone, _alpha(cell, t), angle, blush,
-		_tone(cell), _shine(cell, t))
+	var since := t - float(_wrong.get(cell, -100.0))
+	_put_tile(grout, Mosaic.tile_colours(state.locked.has(cell), grout, _alpha(cell, t),
+		Motion.flash_level(since), _tone(cell), _shine(cell, t)),
+		Transform2D(Motion.wobble_angle(since), grow, 0.0, at))
 
 ## A pebble: the same arrival, sink and lean, and on the win it clears away
 ## in a scatter -- a hard board finishes with 38 of its 81 cells under
 ## pebbles, and the picture has to be left standing on its own.
-func _draw_pebble(b, cell: Vector2i, t: float) -> void:
+func _draw_pebble(cell: Vector2i, t: float) -> void:
 	var alpha := _alpha(cell, t)
 	if _solved_at > -INF:
 		var clear := _dec((t - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 		if clear >= 1.0:
 			return
 		alpha *= 1.0 - clear
-	var grow := _grow(cell, t)
-	if grow.x <= 0.0:
+	if alpha >= 1.0 and _resting(cell):
+		_put_cross(cell_to_local(cell.y, cell.x), Vector2.ONE, 1.0)
 		return
-	CrossMark.draw(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, alpha)
+	_put_cross(cell_to_local(cell.y, cell.x) + _offset(cell, t), _grow(cell, t), alpha)
+
+## Nothing is happening to the piece on `cell`: it is drawn as it lies.
+func _resting(cell: Vector2i) -> bool:
+	return not (_arrive.has(cell) or _sunk.has(cell) or _nudge.has(cell) or _hop.has(cell)
+		or _wrong.has(cell) or _shiver.has(cell)) and _glint.is_empty() and _solved_at == -INF
 
 ## The pieces Reset, an undo or a fresh stroke took away: each shrinks to
 ## nothing with the quarter turn where it lay, after the state has forgotten
-## it (the Remove moment).
-func _build_leaving(b, t: float) -> void:
+## it (the Remove moment), each in its cell's leaving run (a second one on
+## the same cell goes on the tail).
+func _build_leaving(t: float) -> void:
 	var keep: Array = []
 	for g in _leaving:
-		var elapsed: float = t - float(g.at)
-		var grow := Motion.pop_out_scale(elapsed)
-		if grow <= 0.0:
-			continue
-		keep.append(g)
+		if Motion.pop_out_scale(t - float(g.at)) > 0.0:
+			keep.append(g)
+	_leaving = keep
+	if keep.is_empty():
+		return
+	var order := keep.duplicate()
+	order.sort_custom(func(a, b) -> bool:
+		return a.cell.y * state.w + a.cell.x < b.cell.y * state.w + b.cell.x)
+	var last := -1
+	for g in order:
 		var cell: Vector2i = g.cell
+		var index: int = cell.y * state.w + cell.x
+		if index != last:
+			_open_run(PART_GONE, index)
+			last = index
+		var elapsed: float = t - float(g.at)
+		var grow := Vector2.ONE * Motion.pop_out_scale(elapsed)
 		var at := cell_to_local(cell.y, cell.x)
 		var angle := 0.0 if Motion.reduce else PI * 0.5 * clampf(elapsed / Motion.POP_OUT, 0.0, 1.0)
 		if int(g.kind) == State.MARK:
-			CrossMark.draw(b, at, _cell, Vector2.ONE * grow, 1.0, angle)
+			_put_cross(at, grow, 1.0, angle)
 		else:
-			Mosaic.tile(b, at, _cell, Vector2.ONE * grow, bool(g.held), 0.0, 1.0, angle, 0.0, _tone(cell))
-	_leaving = keep
+			_put_tile(0.0, Mosaic.tile_colours(bool(g.held), 0.0, 1.0, 0.0, _tone(cell)),
+				Transform2D(angle, grow, 0.0, at))
+	_close_run()
 
 ## A piece's scale now: its arrival's pop (the squash) or one, times the sink
 ## under the finger.
@@ -1601,7 +1927,7 @@ static func _hash(cell: Vector2i) -> float:
 ## A leaf under each tumbled number (Leaf Fall), in the line's own frame so
 ## it pops, bumps and flutters with the number it carries. They leave with
 ## the rest of the scaffolding on the win.
-func _leaves(b, gone: float, t: float) -> void:
+func _leaves(gone: float, t: float) -> void:
 	if not state.has_leaves():
 		return
 	var alpha := 1.0 - gone
@@ -1614,17 +1940,15 @@ func _leaves(b, gone: float, t: float) -> void:
 		var scale := _clue_scale(_key(k), index, t)
 		if scale.x <= 0.0:
 			continue
+		_open_run(PART_LEAF, k)
 		var xf := _line_xf(k, scale, t)
 		var i := 0
 		for n in _numbers(k, t):
 			var h := _hash(Vector2i(k * 5 + 1, i * 3 + 2))
 			var tint: Color = Pal.AUTUMN_LEAVES[int(h * 97.0) % Pal.AUTUMN_LEAVES.size()]
-			var leaf := xf * Transform2D(float(n.rot), n.at) * Transform2D(-0.55, Vector2(0.0, _cell * LEAF_DOWN))
-			var len := _cell * LEAF_LEN
-			var pts := _leaf_shape(len, _cell * LEAF_WIDE)
-			b.fan(leaf * pts, Color(tint.lerp(Pal.SURFACE, LEAF_WASH), alpha))
-			b.stroke(PackedVector2Array([leaf * Vector2(-len * 0.4, 0.0), leaf * Vector2(len * 0.56, 0.0)]),
-				maxf(1.5, _cell * 0.018), Color(tint.lerp(Pal.SURFACE, LEAF_WASH * 0.5), alpha * 0.8), false, false)
+			_put(SHAPE_LEAF, [Color(tint.lerp(Pal.SURFACE, LEAF_WASH), alpha),
+				Color(tint.lerp(Pal.SURFACE, LEAF_WASH * 0.5), alpha * 0.8)],
+				xf * Transform2D(float(n.rot), n.at) * Transform2D(-0.55, Vector2(0.0, _cell * LEAF_DOWN)))
 			i += 1
 
 ## A leaf `len` long and `wide` across, pointed at both ends, about the
@@ -1643,8 +1967,11 @@ static func _leaf_shape(len: float, wide: float) -> PackedVector2Array:
 ## The daisies at the outer end of every tab whose line reads right: they
 ## open with a twist, fold when the line stops being right, and let their
 ## petals go at the party.
-func _daisies(b, t: float) -> void:
-	for key in _bloom:
+func _daisies(t: float) -> void:
+	for line in state.h + state.w:
+		var key := _key(line)
+		if not _bloom.has(key):
+			continue
 		var d: Dictionary = _bloom[key]
 		var e: float = t - float(d.at)
 		var k := 0.0
@@ -1660,22 +1987,25 @@ func _daisies(b, t: float) -> void:
 			k *= 1.0 - clampf((t - _frame_at) / 0.3, 0.0, 1.0)
 		if k <= 0.01:
 			continue
-		var i := int((key as String).substr(1))
+		var i := int(key.substr(1))
 		var at: Vector2
-		if (key as String).begins_with("r"):
+		if key.begins_with("r"):
 			at = Vector2(_grid.x - _band.x, _grid.y + (i + 0.5) * _cell)
 		else:
 			at = Vector2(_grid.x + (i + 0.5) * _cell, _grid.y - _band.y)
-		_daisy(b, at, _cell * DAISY_R * k, (1.0 - minf(k, 1.0)) * 1.2 + _hash(Vector2i(i, key.length())) * TAU)
+		_open_run(PART_DAISY, line)
+		_put(SHAPE_DAISY, DAISY_INKS, Transform2D((1.0 - minf(k, 1.0)) * 1.2 + _hash(Vector2i(i, key.length())) * TAU,
+			Vector2.ONE * k, 0.0, at))
 
-## One daisy of radius `r` about `at`, turned `turn`.
-func _daisy(b, at: Vector2, r: float, turn: float) -> void:
+## One daisy of radius `r` about `at`, turned `turn`, in `inks` (petal edge,
+## petal, heart).
+func _daisy(b, at: Vector2, r: float, turn: float, inks: Array = DAISY_INKS) -> void:
 	for p in DAISY_PETALS:
 		var a := turn + TAU * p / DAISY_PETALS
 		var dir := Vector2.from_angle(a)
-		b.fan(_oval(at + dir * r * 0.55, r * 0.5, r * 0.26, a), Pal.PETAL_EDGE)
-		b.fan(_oval(at + dir * r * 0.55, r * 0.44, r * 0.2, a), Pal.SURFACE)
-	b.fan(Face.Builder.ring(at, r * 0.3, r * 0.3), Pal.SUN)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.5, r * 0.26, a), inks[0])
+		b.fan(_oval(at + dir * r * 0.55, r * 0.44, r * 0.2, a), inks[1])
+	b.fan(Face.Builder.ring(at, r * 0.3, r * 0.3), inks[2])
 
 static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -1686,15 +2016,17 @@ static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVect
 
 ## The wrong tiles on Hard and Insane, before they are taken back: they pop
 ## in like any tile, blushing, and wobble.
-func _build_bad(b, t: float) -> void:
+func _build_bad(t: float) -> void:
 	for cell in _bad:
 		var at: float = _bad[cell]
 		if t < at and not Motion.reduce:
 			continue
 		var e := t - at
 		var grow := Motion.pop_in_scale(e) * _sink(cell, t)
-		Mosaic.tile(b, cell_to_local(cell.y, cell.x) + _offset(cell, t), _cell, grow, false, 0.0, 1.0,
-			Motion.wobble_angle(e), maxf(0.75, Motion.flash_level(e)), _tone(cell))
+		if grow.x <= 0.0 or grow.y <= 0.0:
+			continue
+		_put_tile(0.0, Mosaic.tile_colours(false, 0.0, 1.0, maxf(0.75, Motion.flash_level(e)), _tone(cell)),
+			Transform2D(Motion.wobble_angle(e), grow, 0.0, cell_to_local(cell.y, cell.x) + _offset(cell, t)))
 
 ## The frame hung round the finished picture: wood a FRAME_W of a cell wide,
 ## FRAME_OUT clear of the tiles, with a darker lip inside and a brass nail at

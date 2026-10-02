@@ -81,17 +81,29 @@ const PEBBLE_SHADOW_A := 0.2
 ## the column under the finger.
 static func socket(b, at: Vector2, s: float, out: bool, alpha: float, sink := 1.0,
 		tint := Color(0.0, 0.0, 0.0, 0.0)) -> void:
-	var col: Color = Pal.SOCKET_OUT if out else Pal.SOCKET
-	if tint.a > 0.0:
-		col = col.lerp(Color(tint, 1.0), tint.a)
 	var box := Vector2.ONE * (s * SOCKET_SIZE)
 	var corner := at + Vector2.ONE * (s * SOCKET_INSET)
 	if sink < 1.0:
-		var depth := clampf((1.0 - sink) / 0.06, 0.0, 1.0)
-		col = col.lerp(Pal.LINE, SINK_SHADE * depth)
 		corner += box * (1.0 - sink) * 0.5
 		box *= sink
-	b.fan(Face.Builder.round_rect(corner, box, s * SOCKET_RADIUS * sink), Color(col, alpha))
+	b.fan(Face.Builder.round_rect(corner, box, s * SOCKET_RADIUS * sink), socket_colour(out, alpha, sink, tint))
+
+## A socket's outline about its centre at rest, for a board that keeps it and
+## draws it under a transform (the sink is a scale about the centre).
+static func socket_outline(s: float) -> PackedVector2Array:
+	var box := Vector2.ONE * (s * SOCKET_SIZE)
+	return Face.Builder.round_rect(-box * 0.5, box, s * SOCKET_RADIUS)
+
+## The colour `socket` paints with.
+static func socket_colour(out: bool, alpha: float, sink := 1.0,
+		tint := Color(0.0, 0.0, 0.0, 0.0)) -> Color:
+	var col: Color = Pal.SOCKET_OUT if out else Pal.SOCKET
+	if tint.a > 0.0:
+		col = col.lerp(Color(tint, 1.0), tint.a)
+	if sink < 1.0:
+		var depth := clampf((1.0 - sink) / 0.06, 0.0, 1.0)
+		col = col.lerp(Pal.LINE, SINK_SHADE * depth)
+	return Color(col, alpha)
 
 ## A laid tile, centred on `at`, drawn at `grow` of its size (x across, y
 ## down, so the pop's squash reads) and turned `angle` about its centre.
@@ -106,6 +118,32 @@ static func tile(b, at: Vector2, s: float, grow: Vector2, held: bool,
 		grout: float, alpha: float, angle := 0.0, blush := 0.0, tone := 0.0, shine := 0.0) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0:
 		return
+	var xf := Transform2D(angle, grow, 0.0, at)
+	var cols := tile_colours(held, grout, alpha, blush, tone, shine)
+	var outlines := tile_outlines(s, grout)
+	for k in outlines.size():
+		b.fan(xf * (outlines[k] as PackedVector2Array), cols[k])
+
+## A tile's layers about its centre -- the deep edge, the lit rim, and the
+## face while there is bevel enough to show -- for a board that keeps them and
+## draws them under a transform.
+static func tile_outlines(s: float, grout: float) -> Array:
+	var inset := s * lerpf(GROUT_OPEN, GROUT_SHUT, grout)
+	var radius := s * lerpf(RADIUS_OPEN, RADIUS_SHUT, grout)
+	var edge := s * lerpf(EDGE_OPEN, EDGE_SHUT, grout)
+	var corner := -Vector2.ONE * (s * 0.5) + Vector2.ONE * inset
+	var box := Vector2.ONE * (s - 2.0 * inset)
+	var out := [Face.Builder.round_rect(corner, box, radius),
+		Face.Builder.round_rect(corner, box - Vector2(0.0, edge), radius)]
+	var bev := s * BEVEL * (1.0 - grout)
+	if bev > 0.5:
+		out.append(Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+			box - Vector2(bev * 1.4, edge + bev), maxf(radius - bev * 0.5, 0.0)))
+	return out
+
+## The colours of `tile_outlines`' layers, in order.
+static func tile_colours(held: bool, grout: float, alpha: float, blush := 0.0, tone := 0.0,
+		shine := 0.0) -> Array:
 	var face: Color = Pal.MOSAIC_LOCK if held else Pal.MOSAIC
 	var deep: Color = Pal.MOSAIC_LOCK_DEEP if held else Pal.MOSAIC_DEEP
 	if tone > 0.0:
@@ -119,20 +157,7 @@ static func tile(b, at: Vector2, s: float, grow: Vector2, held: bool,
 	if shine > 0.0:
 		face = face.lerp(GLAZE_LIT, shine * SHINE)
 		rim = rim.lerp(GLAZE_LIT, shine * SHINE)
-	var inset := s * lerpf(GROUT_OPEN, GROUT_SHUT, grout)
-	var radius := s * lerpf(RADIUS_OPEN, RADIUS_SHUT, grout)
-	var edge := s * lerpf(EDGE_OPEN, EDGE_SHUT, grout)
-	var corner := -Vector2.ONE * (s * 0.5) + Vector2.ONE * inset
-	var box := Vector2.ONE * (s - 2.0 * inset)
-	var xf := Transform2D(angle, grow, 0.0, at)
-	b.fan(xf * Face.Builder.round_rect(corner, box, radius), Color(deep, alpha))
-	b.fan(xf * Face.Builder.round_rect(corner, box - Vector2(0.0, edge), radius),
-		Color(rim, alpha))
-	var bev := s * BEVEL * (1.0 - grout)
-	if bev > 0.5:
-		b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
-			box - Vector2(bev * 1.4, edge + bev), maxf(radius - bev * 0.5, 0.0)),
-			Color(face, alpha))
+	return [Color(deep, alpha), Color(rim, alpha), Color(face, alpha)]
 
 ## A letter centred in the cell, taking the piece's own `grow` so it squashes
 ## with the tile it is on. Hidden Word's only addition to this file. `at` is
