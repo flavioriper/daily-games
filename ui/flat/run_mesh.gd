@@ -159,10 +159,25 @@ func put(id: int, colours: Array, xf: Transform2D) -> void:
 	_fi.append_array(ix)
 	_cursor += n
 
-## A drawing with no run of its own (a Builder made this frame), on the tail.
+## A drawing made this frame (a Builder): into the open run while it has
+## room, its indices offset in script, or on the tail when no run is open or
+## it does not fit.
 func put_builder(b: Face.Builder) -> void:
-	if not b.verts.is_empty():
+	var n := b.verts.size()
+	if n == 0:
+		return
+	if _cursor + n > _run_end:
 		_tail(b.verts, b.cols, b.idx, Transform2D.IDENTITY)
+		return
+	_fv.resize(_cursor)
+	_fc.resize(_cursor)
+	_fv.append_array(b.verts)
+	_fc.append_array(b.cols)
+	var ix := b.idx.duplicate()
+	for k in ix.size():
+		ix[k] += _cursor
+	_fi.append_array(ix)
+	_cursor += n
 
 func _tail(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, xf: Transform2D) -> void:
 	var base := _fixed + _tv.size()

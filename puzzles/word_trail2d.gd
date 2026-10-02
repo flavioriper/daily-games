@@ -40,6 +40,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset and the gap between two tiles.
@@ -381,6 +382,36 @@ var _band: ArrayMesh
 ## reference to a mesh still on the item's command list leaves the renderer
 ## drawing a freed RID ("Parameter mesh is null", and an empty card).
 var _shown: Array = []
+## The field's pieces and the slots' (the board checkup, 2026-10-02): every
+## wall, tile, glow, flower and whole ribbon is a shape made once at the
+## layout it is drawn at and copied natively into a run of vertices laid for
+## it (`RunMesh`), painted by colour fills; only what is moving along a path
+## (a ribbon's wave, a glint, the beam) is drawn live, into its own run.
+## Built in script a vertex at a time, the field was 8-9 ms and the slots 3
+## on every frame anything moved -- every tile a trail took.
+var _rm := RunMesh.new(_shape)
+var _sm := RunMesh.new(_slot_shape)
+## The board the shapes and runs were made for; another remakes them. They
+## are made at the first layout's cell (`_ref_cell`, the field then at
+## `_ref_origin`) and the slots' scale (`_ref_q`) and drawn scaled after a
+## relayout, so the win card's (the board shrinks to half) makes nothing: it
+## was a 20 ms frame.
+var _rm_key: Array = []
+var _sm_key: Array = []
+var _ref_cell := 0.0
+var _ref_origin := Vector2.ZERO
+var _ref_q := 1.0
+## The tile transforms worked out this frame, by cell: the field, its glows
+## and its letters all ask for the same ones.
+var _xf_t := -1.0
+var _xf_memo: Dictionary = {}
+
+enum { SHAPE_TILE, SHAPE_WALL, SHAPE_GLOW, SHAPE_LEAVES, SHAPE_HEAD, SHAPE_SKY, SHAPE_LAMP, SHAPE_RIBBON }
+enum { PART_SKY, PART_CELL, PART_RIBBON, PART_BEAM, PART_GLOW, PART_FLOWER, PART_LAMP }
+enum { SLOT_BED, SLOT_PIECE }
+## The live beam's run: the most a trail across the whole field draws.
+const BEAM_ROOM := 4000
+const GLOWS_KEPT := 2
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -451,6 +482,37 @@ func rules() -> String:
 	if _state.night():
 		out += "\n\n" + tr("WT_RULES_NIGHT")
 	return out
+
+## The tutorial, a lesson a page, played by a little field of the board's
+## own (ui/hud/word_trail_tutorial_diagram.gd): tracing a word, the boxes as
+## the only clue, Undo and Reset, and as the band has them the bulb, the
+## wishes and Night Walk. The board checkup, 2026-10-02.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/word_trail_tutorial_diagram.gd")
+	var hints: int = HINTS_BY_BAND[_state.band]
+	var wishes: bool = _state.counts_wishes()
+	var steps := [
+		[Diagram.Lesson.TRACE, "HTP_WT_TRACE", tr("HTP_WT_TRACE_BODY")],
+		[Diagram.Lesson.LENGTHS, "HTP_WT_LENGTHS",
+			tr("HTP_WT_LENGTHS_BODY_WISH") if wishes else tr("HTP_WT_LENGTHS_BODY")]]
+	if wishes:
+		steps.append([Diagram.Lesson.WISHES, "HTP_WT_WISHES",
+			tr("HTP_WT_WISHES_BODY") % int(State.WISHES[_state.band])])
+	if _state.night():
+		steps.append([Diagram.Lesson.NIGHT, "HTP_WT_NIGHT", tr("HTP_WT_NIGHT_BODY")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_WT_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_WT_HINT_BODY_ONE") if hints == 1 else tr("HTP_WT_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.wishes = wishes
+		if wishes:
+			d.wish_count = int(State.WISHES[_state.band])
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func _tips() -> Array:
 	if _state.night():
@@ -620,7 +682,7 @@ func _layout() -> void:
 func _slot_lines(k := -1.0) -> Array:
 	if k < 0.0:
 		k = _slot_k()
-	var wide := size.x - 2.0 * INSET
+	var wide := _slots_wide()
 	var lines: Array = []
 	var cur: Array = []
 	var cur_w := 0.0
@@ -638,6 +700,14 @@ func _slot_lines(k := -1.0) -> Array:
 	if not cur.is_empty():
 		lines.append({"items": cur, "w": cur_w})
 	return lines
+
+## How wide a line of slot groups may run, and where a line of `w` starts:
+## across the card, each line centred.
+func _slots_wide() -> float:
+	return size.x - 2.0 * INSET
+
+func _slots_left(w: float) -> float:
+	return size.x * 0.5 - w * 0.5
 
 ## The height the slots may take: SLOTS_H, and as much of the scenery band as
 ## leaves it BAND_KEEP tall, up to SLOT_ROOM more. The field never gives up a
@@ -754,6 +824,7 @@ func _busy_for(seconds: float) -> void:
 ## for that draw. The meshes the last _draw handed over are still held by
 ## _shown, so the renderer is never left pointing at a freed RID.
 func _refresh() -> void:
+	_xf_t = -1.0
 	_field = null
 	_slots = null
 	queue_redraw()
@@ -835,30 +906,126 @@ func _draw() -> void:
 ## hint glows over those. The slots are their own mesh, because they do not
 ## take the field's entrance.
 func _build_field(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	_lay_runs()
+	_rm.begin()
 	var night: bool = _state.night()
 	var levels: Dictionary = _levels(t) if night else {}
 	if night:
-		_night_sky(b, t)
+		_rm.open(PART_SKY, 0)
+		_night_sky(t)
+	var k := 0
 	for cell: Vector2i in _state.walls:
+		_rm.open(PART_CELL, k)
+		k += 1
 		var lv: float = levels.get(cell, 1.0)
 		if lv < 1.0:
-			_night_piece(b, cell, t)
+			_night_piece(cell, t)
 		if lv > 0.0:
-			_wall(b, cell, lv, t)
+			_wall(cell, lv, t)
 	for cell: Vector2i in _state.letters:
+		_rm.open(PART_CELL, k)
+		k += 1
 		var lv: float = levels.get(cell, 1.0)
 		if lv < 1.0:
-			_night_piece(b, cell, t)
+			_night_piece(cell, t)
 		if lv > 0.0:
-			_tile(b, cell, t, lv)
-	_ribbons(b, t)
+			_tile(cell, t, lv)
+	_ribbons(t)
 	for i in _state.words.size():
-		_glow(b, i, t)
-	_meadow(b, t)
+		_rm.open(PART_GLOW, i)
+		_glow(i, t)
+	_meadow(t)
 	if night:
-		_lamp_glow(b, t)
-	return b.mesh() if not b.verts.is_empty() else null
+		_rm.open(PART_LAMP, 0)
+		_lamp_glow(t)
+	return _rm.mesh()
+
+## Every piece's run, laid in paint order: the night sky, every cell (walls,
+## then tiles, each room for a night piece and its own), every word's ribbon
+## with its glint, the beam, every word's glows, every wall's flower and the
+## lantern's pool. Laid again only when the cell, the field's place or the
+## board changes.
+func _lay_runs() -> void:
+	var key := [_gen, _state.n]
+	# Remade for a new board, or for a bigger cell than they were made at (a
+	# layout before the host settled): a shape is only ever drawn smaller.
+	if _rm.laid() and key == _rm_key and _cell() <= _ref_cell + 0.5:
+		return
+	_rm_key = key
+	_ref_cell = _cell()
+	_ref_origin = _origin()
+	_rm.reset()
+	_rm.room(PART_SKY, 0, _rm.size_of(SHAPE_SKY))
+	var tile := _rm.size_of(SHAPE_TILE)
+	var cells: int = _state.walls.size() + _state.letters.size()
+	var own := maxi(tile, _rm.size_of(SHAPE_WALL))
+	for k in cells:
+		_rm.room(PART_CELL, k, own + (tile if _state.night() else 0))
+	for i in _state.words.size():
+		# A ribbon's wave is never longer than the whole ribbon; its glint is
+		# a short stroke inside it.
+		_rm.room(PART_RIBBON, i, _rm.size_of(SHAPE_RIBBON + i) * 2 + 256)
+	_rm.room(PART_BEAM, 0, BEAM_ROOM)
+	# Room for GLOWS_KEPT glows a word; a word hinted further than that puts
+	# the rest on the tail (it is rare: a hint lights one tile).
+	for i in _state.words.size():
+		_rm.room(PART_GLOW, i, _rm.size_of(SHAPE_GLOW) * GLOWS_KEPT)
+	var flower := _rm.size_of(SHAPE_LEAVES) + _rm.size_of(SHAPE_HEAD)
+	for k in _state.walls.size():
+		_rm.room(PART_FLOWER, k, flower)
+	_rm.room(PART_LAMP, 0, _rm.size_of(SHAPE_LAMP))
+
+## A cell's shape from the reference cell to this layout's, about `corner`.
+func _at_corner(corner: Vector2) -> Transform2D:
+	var k := _cell() / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, corner)
+
+## Whether this layout is not the one the shapes were made at. The shapes
+## that lie where they are drawn (a whole ribbon, the night sky) cannot be
+## scaled to another, because the gap between two tiles is the same pixels
+## at every cell, so they are drawn live then (the win card's little board).
+func _relaid() -> bool:
+	return not is_equal_approx(_cell(), _ref_cell) or not _origin().is_equal_approx(_ref_origin)
+
+## Shape `id` at the cell the runs are laid at, in slot colours: a cell's
+## pieces about the cell's top-left corner, a flower's about its middle, a
+## word's whole ribbon and the night sky where they lie on the field.
+func _shape(id: int) -> Face.Builder:
+	var s := _ref_cell
+	var b := Face.Builder.new()
+	var box := Vector2(s, s)
+	match id:
+		SHAPE_TILE:
+			_piece(b, Vector2.ZERO, box, s * RADIUS, TILE_EDGE, s * BEVEL,
+				RunMesh.slot(2), RunMesh.slot(1), RunMesh.slot(0))
+		SHAPE_WALL:
+			_bed(b, Vector2.ZERO, box, s * RADIUS, s * BED_LIP, RunMesh.slot(1), RunMesh.slot(0))
+			var leaf := Transform2D(WALL_LEAF_ANGLE, WALL_LEAF_AT * s + Vector2(0.0, s * BED_LIP * 0.5))
+			b.polygon(leaf * _leaf_points(s * WALL_LEAF), RunMesh.slot(2))
+		SHAPE_GLOW:
+			b.fan(Face.Builder.round_rect(Vector2.ONE * GLOW_INSET, box - GLOW_TRIM, s * GLOW_RADIUS),
+				RunMesh.slot(0))
+			var ring := Face.Builder.round_rect(Vector2.ONE * DASH_INSET, box - DASH_TRIM, s * DASH_RADIUS)
+			for dash in _dashes(ring, s * DASH_ON, s * DASH_OFF):
+				b.stroke(dash as PackedVector2Array, DASH_W, RunMesh.slot(1))
+		SHAPE_LEAVES:
+			var r := BLOOM_R * s
+			_leaf(b, Vector2(0.0, r * 0.4), r * 1.3, 0.5, RunMesh.slot(0))
+			_leaf(b, Vector2(0.0, r * 0.4), r * 1.1, PI - 0.4, RunMesh.slot(0))
+		SHAPE_HEAD:
+			var r := BLOOM_R * s
+			for k in 5:
+				b.disc(Vector2.from_angle(TAU * float(k) / 5.0) * r * 0.62, r * 0.52, RunMesh.slot(0))
+			b.disc(Vector2.ZERO, r * 0.42, RunMesh.slot(1))
+		SHAPE_SKY:
+			_sky_into(b, RunMesh.slot(0), RunMesh.slot(1))
+		SHAPE_LAMP:
+			Scenery.soft_disc(b, Vector2.ZERO, s * LAMP_GLOW.x, s * LAMP_GLOW.x, RunMesh.slot(0))
+		_:
+			var i := id - SHAPE_RIBBON
+			if i >= 0 and i < _state.words.size():
+				_ribbon(b, _state.words[i]["path"], s * RIBBON_W, RunMesh.slot(0))
+	return b
 
 ## A rounded card: its face over a bottom edge in the rim colour, the soft
 ## lip every card on these screens wears. The canvas mock's `card()`.
@@ -890,14 +1057,9 @@ func _bed(b, at: Vector2, box: Vector2, r: float, lip: float, floor_col: Color, 
 
 ## A wall: a bed sunk into the card in the family's warm stone, with a leaf
 ## pressed into its floor. It is a hole in the field and not a blank tile.
-func _wall(b, cell: Vector2i, alpha := 1.0, t := 0.0) -> void:
-	var s := _cell()
-	var at := _corner(cell)
-	var xf := _cell_xf(cell, t)
-	_bed(b, at, Vector2(s, s), s * RADIUS, s * BED_LIP, Color(BED, alpha),
-		Color(BED_SHADE, alpha), xf)
-	var leaf := Transform2D(WALL_LEAF_ANGLE, at + WALL_LEAF_AT * s + Vector2(0.0, s * BED_LIP * 0.5))
-	b.polygon(xf * leaf * _leaf_points(s * WALL_LEAF), Color(Pal.TEXT, WALL_LEAF_INK * alpha))
+func _wall(cell: Vector2i, alpha: float, t: float) -> void:
+	_rm.put(SHAPE_WALL, [Color(BED_SHADE, alpha), Color(BED, alpha), Color(Pal.TEXT, WALL_LEAF_INK * alpha)],
+		_cell_xf(cell, t) * _at_corner(_corner(cell)))
 
 ## A cell's own tone, -1 to 1, off its hash.
 static func _tone(cell: Vector2i) -> float:
@@ -910,8 +1072,7 @@ static func _toned(c: Color, tone: float) -> Color:
 ## it is on the trail being traced, or its word's pale once the wave has
 ## reached it; shining while the solve hop crosses it, and wearing whatever
 ## else it is wearing this frame.
-func _tile(b, cell: Vector2i, t: float, alpha := 1.0) -> void:
-	var s := _cell()
+func _tile(cell: Vector2i, t: float, alpha := 1.0) -> void:
 	var tone := _tone(cell)
 	var face: Color = _toned(Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN), tone)
 	var rim: Color = Pal.SURFACE
@@ -932,8 +1093,8 @@ func _tile(b, cell: Vector2i, t: float, alpha := 1.0) -> void:
 	if shine > 0.0:
 		face = face.lerp(Pal.SURFACE, shine * SHINE)
 		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
-	_piece(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, s * BEVEL,
-		Color(face, alpha), Color(rim, alpha), Color(lip, alpha), _tile_xf(cell, t))
+	_rm.put(SHAPE_TILE, [Color(lip, alpha), Color(rim, alpha), Color(face, alpha)],
+		_tile_xf(cell, t) * _at_corner(_corner(cell)))
 
 ## How far into the solve hop `cell` is, as the light's level: nothing either
 ## side of its hop, all of it at the top.
@@ -1019,6 +1180,17 @@ func _cell_xf(cell: Vector2i, t: float) -> Transform2D:
 ## Every one of them is a reader off core/motion.gd handed the seconds since
 ## its moment began.
 func _tile_xf(cell: Vector2i, t: float) -> Transform2D:
+	if t != _xf_t:
+		_xf_t = t
+		_xf_memo.clear()
+	var hit = _xf_memo.get(cell)
+	if hit != null:
+		return hit
+	var xf := _tile_pose(cell, t)
+	_xf_memo[cell] = xf
+	return xf
+
+func _tile_pose(cell: Vector2i, t: float) -> Transform2D:
 	var pose := _cell_pose(cell, t)
 	var turn := pose.x
 	var grow := pose.y
@@ -1068,19 +1240,34 @@ func _tile_xf(cell: Vector2i, t: float) -> Transform2D:
 ## centres: the corners are filleted into the centreline rather than joined,
 ## because a stroke's own join pinches at ninety degrees and two overlapping
 ## strokes at half alpha would darken where they cross.
-func _ribbons(b, t: float) -> void:
+func _ribbons(t: float) -> void:
 	var s := _cell()
 	for i in _state.words.size():
 		var front := _front(i, t)
 		if front <= 0.0:
 			continue
-		# `front` counts tiles and `reach` segments, and the partial one is
-		# interpolated, so the head of the ribbon travels rather than jumping
-		# from tile to tile.
-		_ribbon(b, _state.words[i]["path"], s * RIBBON_W,
-			Color(WORD_COLS[i % WORD_COLS.size()], SHOWN_ALPHA if _state.shown.has(i) else RIBBON_ALPHA),
-			maxf(front - 1.0, 0.0))
+		_rm.open(PART_RIBBON, i)
+		var colour := Color(WORD_COLS[i % WORD_COLS.size()], SHOWN_ALPHA if _state.shown.has(i) else RIBBON_ALPHA)
+		var span := float((_state.words[i]["path"] as Array).size())
+		var b := Face.Builder.new()
+		if front >= span and not _relaid():
+			# A whole ribbon is the word's own shape, made once.
+			_rm.put(SHAPE_RIBBON + i, [colour], Transform2D.IDENTITY)
+		else:
+			# `front` counts tiles and `reach` segments, and the partial one is
+			# interpolated, so the head of the ribbon travels rather than
+			# jumping from tile to tile.
+			_ribbon(b, _state.words[i]["path"], s * RIBBON_W, colour, maxf(front - 1.0, 0.0))
 		_glint(b, i, t)
+		_rm.put_builder(b)
+	_rm.open(PART_BEAM, 0)
+	var b := Face.Builder.new()
+	_beam(b, t)
+	_rm.put_builder(b)
+
+## The beam under the finger and the one a release let go of, drawn live.
+func _beam(b, t: float) -> void:
+	var s := _cell()
 	if not _ghost.is_empty():
 		var u := clampf((t - float(_ghost["at"])) / BEAM_TIME, 0.0, 1.0)
 		if u >= 1.0 or Motion.reduce:
@@ -1220,25 +1407,18 @@ static func _leaf_points(length: float) -> PackedVector2Array:
 ## The glow a hint leaves on a tile: a pale wash under a dashed outline,
 ## which stays until that word is found. A hint is a given, and every board
 ## in this game says so in the same language.
-func _glow(b, i: int, t: float) -> void:
+func _glow(i: int, t: float) -> void:
 	if bool(_state.words[i]["found"]):
 		return
 	var shown := _state.hint_shown(i)
 	if shown <= 0:
 		return
-	var s := _cell()
 	var path: Array = _state.words[i]["path"]
 	for k in mini(shown, path.size()):
-		var at := _corner(path[k])
 		# The glow rides its tile: it is part of that cell's face, so it takes
 		# the press and the hop with it rather than sitting still under one.
-		var xf := _tile_xf(path[k], t)
-		b.fan(xf * Face.Builder.round_rect(at + Vector2.ONE * GLOW_INSET,
-			Vector2(s, s) - GLOW_TRIM, s * GLOW_RADIUS), Color(Pal.SUN_RAY, GLOW_ALPHA))
-		var ring := Face.Builder.round_rect(at + Vector2.ONE * DASH_INSET,
-			Vector2(s, s) - DASH_TRIM, s * DASH_RADIUS)
-		for dash in _dashes(ring, s * DASH_ON, s * DASH_OFF):
-			b.stroke(xf * (dash as PackedVector2Array), DASH_W * xf.get_scale().x, Pal.SUN_DEEP)
+		_rm.put(SHAPE_GLOW, [Color(Pal.SUN_RAY, GLOW_ALPHA), Pal.SUN_DEEP],
+			_tile_xf(path[k], t) * _at_corner(_corner(path[k])))
 
 ## The closed outline `pts` cut into dashes of `on` with `off` between them.
 static func _dashes(pts: PackedVector2Array, on: float, off: float) -> Array:
@@ -1308,29 +1488,31 @@ func _build_slots(t: float) -> ArrayMesh:
 	var lines := _slot_lines(q)
 	if lines.is_empty():
 		return null
-	var b := Face.Builder.new()
 	var box := Vector2(SLOT_W, SLOT_H) * q
-	var r := SLOT_RADIUS * q
+	_lay_slot_runs(q)
+	_sm.begin()
 	var y := _slots_block_top(lines, q)
 	var group := 0
+	var run := 0
 	var preview := _preview_slot()
 	for line in lines:
-		var x := size.x * 0.5 - float(line["w"]) * 0.5
+		var x := _slots_left(float(line["w"]))
 		for item in line["items"]:
 			var i: int = item["i"]
 			var since := _slot_since(group, t)
 			var seen := Motion.appear_level(since)
+			var span: int = (_state.words[i]["path"] as Array).size()
 			if seen > 0.0:
 				var drop := Transform2D(0.0, Vector2(0.0, -Motion.drop_in_lift(since)))
 				var front := _front(i, t)
-				var span: int = (_state.words[i]["path"] as Array).size()
 				var deep: Color = WORD_DEEPS[i % WORD_DEEPS.size()]
 				for k in span:
+					_sm.open(0, run + k)
 					var at := Vector2(x + float(k) * (SLOT_W + SLOT_GAP) * q, y)
 					var rest := BED.lerp(Pal.SUN_RAY, PREVIEW_FILL * 0.4) \
 						if i == preview and k >= _trail.size() else BED
-					_bed(b, at, box, r, SLOT_EDGE * q, Color(rest, seen),
-						Color(BED_SHADE, seen), drop)
+					_sm.put(SLOT_BED, [Color(BED_SHADE, seen), Color(rest, seen)],
+						drop * Transform2D(0.0, Vector2.ONE * (q / _ref_q), 0.0, at))
 					# A lit box is a piece in its word's pale popping into its
 					# bed as the wave brings its letter; the trail being traced,
 					# spelt into the slot it fits, stands on paper lit toward
@@ -1359,12 +1541,43 @@ func _build_slots(t: float) -> ArrayMesh:
 					var hop := _slot_hop(i, k, t) * q if float(k) < front else 0.0
 					var xf := Transform2D(0.0, Vector2(0.0, hop)) * drop \
 						* Transform2D(0.0, pop, 0.0, mid - mid * pop)
-					_piece(b, at, box, r, SLOT_EDGE * q, SLOT_BEVEL * q,
-						Color(face, seen), Color(rim, seen), Color(lip, seen), xf)
+					_sm.put(SLOT_PIECE, [Color(lip, seen), Color(rim, seen), Color(face, seen)],
+						xf * Transform2D(0.0, Vector2.ONE * (q / _ref_q), 0.0, at))
 			x += float(item["w"]) + GROUP_GAP * q
 			group += 1
+			run += span
 		y += (SLOT_H + LINE_GAP) * q
-	return b.mesh() if not b.verts.is_empty() else null
+	return _sm.mesh()
+
+## A run for every box, a bed and a piece long, laid in the slots' order;
+## again only when the boxes' scale or the board changes.
+func _lay_slot_runs(q: float) -> void:
+	var key := [_gen]
+	if _sm.laid() and key == _sm_key and q <= _ref_q + 0.01:
+		return
+	_sm_key = key
+	_ref_q = q
+	_sm.reset()
+	var room := _sm.size_of(SLOT_BED) + _sm.size_of(SLOT_PIECE)
+	var boxes := 0
+	for w in _state.words:
+		boxes += (w["path"] as Array).size()
+	for k in boxes:
+		_sm.room(0, k, room)
+
+## A slot box's bed or piece about its top-left corner, at the scale the
+## slot runs are laid at, in slot colours.
+func _slot_shape(id: int) -> Face.Builder:
+	var q := _ref_q
+	var b := Face.Builder.new()
+	var box := Vector2(SLOT_W, SLOT_H) * q
+	var r := SLOT_RADIUS * q
+	if id == SLOT_BED:
+		_bed(b, Vector2.ZERO, box, r, SLOT_EDGE * q, RunMesh.slot(1), RunMesh.slot(0))
+	else:
+		_piece(b, Vector2.ZERO, box, r, SLOT_EDGE * q, SLOT_BEVEL * q,
+			RunMesh.slot(2), RunMesh.slot(1), RunMesh.slot(0))
+	return b
 
 ## The seconds since slot group `index` was due to drop in: after the field's
 ## own pop, then the stagger.
@@ -1414,7 +1627,7 @@ func _draw_slot_letters(t: float) -> void:
 	# The glyph sits on the piece's crown, which is the edge's height up.
 	var seat := (SLOT_H - SLOT_EDGE) * 0.5 * q
 	for line in lines:
-		var x := size.x * 0.5 - float(line["w"]) * 0.5
+		var x := _slots_left(float(line["w"]))
 		for item in line["items"]:
 			var i: int = item["i"]
 			var since := _slot_since(group, t)
@@ -2162,8 +2375,8 @@ func _dandelion(b, t: float) -> void:
 	var fade := 1.0 - _stage_level(t)
 	if fade <= 0.0:
 		return
-	var base := Vector2(size.x - INSET - PUFF_RIGHT, _ground() + BLADE_ROOT)
-	var h := minf(PUFF_H, base.y - _band_top() - PUFF_R - 8.0)
+	var base := _puff_foot()
+	var h := _puff_height(base)
 	if h <= 20.0:
 		return
 	var shake := 0.0
@@ -2196,6 +2409,14 @@ func _dandelion(b, t: float) -> void:
 		elif grow > 0.0:
 			_seed(b, head + dir * r * 0.2, dir, r * SEED_LEN, fade)
 	b.disc(head, 5.0 * maxf(grow, 0.6), Color(Pal.ACORN, fade))
+
+## Where the dandelion's stem stands, and how tall it may grow from there:
+## on the band, in from the card's right.
+func _puff_foot() -> Vector2:
+	return Vector2(size.x - INSET - PUFF_RIGHT, _ground() + BLADE_ROOT)
+
+func _puff_height(base: Vector2) -> float:
+	return minf(PUFF_H, base.y - _band_top() - PUFF_R - 8.0)
 
 ## One seed: a fine stalk from `at` along `dir`, and a fluffy tuft at its end.
 func _seed(b, at: Vector2, dir: Vector2, length: float, alpha: float) -> void:
@@ -2437,37 +2658,42 @@ func _levels(t: float) -> Dictionary:
 
 ## The night sky under the field: a deep blue pond the tiles stand in, with a
 ## few stars where four tiles meet. It fades at dawn.
-func _night_sky(b, t: float) -> void:
+func _night_sky(t: float) -> void:
 	var a := 1.0
 	if _dawn_at > NEVER:
 		a = 1.0 - clampf((t - _dawn_at) / DAWN_TIME, 0.0, 1.0)
 	if a <= 0.0:
 		return
+	if _relaid():
+		var b := Face.Builder.new()
+		_sky_into(b, Color(NIGHT_SKY, a), Color(NIGHT_STAR, a * 0.8))
+		_rm.put_builder(b)
+	else:
+		_rm.put(SHAPE_SKY, [Color(NIGHT_SKY, a), Color(NIGHT_STAR, a * 0.8)], Transform2D.IDENTITY)
+
+## The night sky under the field as this layout lays it: a deep blue pond
+## the tiles stand in, with a star at some of the corners where four meet.
+func _sky_into(b, sky: Color, star: Color) -> void:
 	var o := _origin() - Vector2.ONE * GAP * 0.5
 	var w := _field_size() + GAP
-	b.fan(Face.Builder.round_rect(o, Vector2(w, w), _cell() * RADIUS + GAP * 0.5), Color(NIGHT_SKY, a))
+	b.fan(Face.Builder.round_rect(o, Vector2(w, w), _cell() * RADIUS + GAP * 0.5), sky)
 	var step := _cell() + GAP
 	for y in range(1, _state.n):
 		for x in range(1, _state.n):
 			if _hash(x * 7, y * 13) < 0.3:
-				b.disc(_origin() + Vector2(x, y) * step - Vector2.ONE * GAP * 0.5, GAP * 0.3,
-					Color(NIGHT_STAR, a * 0.8))
+				b.disc(_origin() + Vector2(x, y) * step - Vector2.ONE * GAP * 0.5, GAP * 0.3, star)
 
 ## A cell in the dark: the same piece for a wall and a tile, so the night
 ## tells nothing of the field's shape.
-func _night_piece(b, cell: Vector2i, t: float) -> void:
-	var s := _cell()
-	var tone := _tone(cell)
-	_piece(b, _corner(cell), Vector2(s, s), s * RADIUS, TILE_EDGE, s * BEVEL,
-		_toned(NIGHT_TILE, tone), NIGHT_RIM, NIGHT_LIP, _cell_xf(cell, t))
+func _night_piece(cell: Vector2i, t: float) -> void:
+	_rm.put(SHAPE_TILE, [NIGHT_LIP, NIGHT_RIM, _toned(NIGHT_TILE, _tone(cell))],
+		_cell_xf(cell, t) * _at_corner(_corner(cell)))
 
 ## The lantern's warm pool over the tiles round the finger.
-func _lamp_glow(b, t: float) -> void:
+func _lamp_glow(_t: float) -> void:
 	if not _lamp_on or _lamp_cell.x < 0:
 		return
-	var s := _cell()
-	Scenery.soft_disc(b, _centre(_lamp_cell), s * LAMP_GLOW.x, s * LAMP_GLOW.x,
-		Color(Pal.SUN_RAY, LAMP_GLOW.y))
+	_rm.put(SHAPE_LAMP, [Color(Pal.SUN_RAY, LAMP_GLOW.y)], _at_corner(_centre(_lamp_cell)))
 
 ## The lantern floats after the finger, up and to the left of it so the
 ## finger never hides it, and hangs on the band's left when nothing is held.
@@ -2478,7 +2704,7 @@ func _ride_lamp(t: float, delta: float) -> void:
 	var s := _cell()
 	var px := s * LAMP_SIZE
 	_lamp.size = Vector2(px, px)
-	var target := Vector2(INSET + 110.0, _band_top() + 40.0)
+	var target := _lamp_rest()
 	if _lamp_on and _lamp_cell.x >= 0:
 		target = _centre(_lamp_cell) + LAMP_OFFSET * s
 	var away := 0.0
@@ -2494,6 +2720,10 @@ func _ride_lamp(t: float, delta: float) -> void:
 	else:
 		_lamp_pos = _lamp_pos.lerp(target, 1.0 - exp(-LAMP_FOLLOW * delta))
 	_lamp.position = _lamp_pos - _lamp.size * 0.5
+
+## Where the lantern hangs while nothing is held: on the band's left.
+func _lamp_rest() -> Vector2:
+	return Vector2(INSET + 110.0, _band_top() + 40.0)
 
 # --- the party and the seal (section 3) ---
 
@@ -2538,27 +2768,27 @@ func _party_on() -> void:
 
 ## Every wall blooms a flower in one of the day's colours, popping open in a
 ## wave from the top-left; they stay.
-func _meadow(b, t: float) -> void:
+func _meadow(t: float) -> void:
 	if _bloom_at <= NEVER:
 		return
 	var s := _cell()
+	var k := -1
 	for cell: Vector2i in _state.walls:
+		k += 1
 		var grow := 1.0
 		if not Motion.reduce and t - _bloom_at < 5.0:
 			grow = Motion.pop_in_scale(t - _bloom_at - Motion.stagger(cell.x + cell.y, BLOOM_STEP, 1.2),
 				BLOOM_TIME).x
 		if grow <= 0.0:
 			continue
+		_rm.open(PART_FLOWER, k)
 		var xf := _cell_xf(cell, t)
 		var mid := xf * _centre(cell) + Vector2(0.0, s * BED_LIP * 0.5)
-		var r := BLOOM_R * s * grow
 		var petal: Color = WORD_COLS[int(_hash(cell.x, cell.y + 40) * float(_state.words.size())) % WORD_COLS.size()]
 		var spin := _hash(cell.y, cell.x) * TAU
-		_leaf(b, mid + Vector2(0.0, r * 0.4), r * 1.3, 0.5, Pal.LEAF)
-		_leaf(b, mid + Vector2(0.0, r * 0.4), r * 1.1, PI - 0.4, Pal.LEAF)
-		for k in 5:
-			b.disc(mid + Vector2.from_angle(spin + TAU * float(k) / 5.0) * r * 0.62, r * 0.52, petal)
-		b.disc(mid, r * 0.42, Pal.SUN)
+		var sz := Vector2.ONE * (grow * s / _ref_cell)
+		_rm.put(SHAPE_LEAVES, [Pal.LEAF], Transform2D(0.0, sz, 0.0, mid))
+		_rm.put(SHAPE_HEAD, [petal, Pal.SUN], Transform2D(spin, sz, 0.0, mid))
 
 ## The stage on the band: the sprout and the card beside it rise together at
 ## `at` -- the cheer on a solve, a kind line on shown words.
