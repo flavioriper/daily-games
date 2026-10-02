@@ -1143,3 +1143,18 @@ func _moves_pinwheel() -> Array:
 				st.turned[q] = posmod(int(st.turned[q]) + int(pull[1]), (st.shapes[q] as Array).size())
 	st.turned = keep
 	return out
+
+## Caterpillar: the answer's walk drawn as one drag -- a press on its first
+## square, a motion a square, the release -- one event a step (`_keep` 3).
+func _moves_caterpillar() -> Array:
+	_keep = 3
+	var out := []
+	var path: PackedInt32Array = _puzzle._state.path
+	var cols: int = _puzzle._state.cols
+	var at := func(c: int) -> Vector2: return _puzzle.cell_to_local(c / cols, c % cols)
+	out.append({"do": func() -> void: _ut_button(at.call(path[0]), true)})
+	for k in range(1, path.size()):
+		var c := int(path[k])
+		out.append({"do": func() -> void: _ut_motion(at.call(c))})
+	out.append({"do": func() -> void: _ut_button(at.call(path[-1]), false)})
+	return out

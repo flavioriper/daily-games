@@ -43,3 +43,32 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   love hearts, ladybug, the party's flutter, the nap cat and the seal; the
   CLOVER sound set (unheard). Peak 113 draw calls (ANGLE, the party).
   Harness: `tests/_shot_caterpillar.gd`.
+
+## The board checkup (2026-10-02)
+
+- **Made in a reference layout's space.** The bed (`_build_bed`), the leaf,
+  fence and badge looks, the body and the head are built while `_in_ref`
+  makes `_cell()`/`_origin()` answer the reference layout, and drawn under
+  `_relay()`; only the lawn (`_build_lawn`, the whole card) is made again
+  when the card changes size. The win card's relayout made all of it again:
+  70-97 ms. While the relay is the identity the lawn and the bed are drawn as
+  one mesh (`_join`), a draw call fewer. A new garden (`build`, the
+  tutorial's `lay`) clears `_ref_cell` so every look is made again.
+- **Looks, not rebuilds.** Leaves, fences, badges and every segment part are
+  `RunMesh` shapes keyed by look (`_look`, `_cache`, `_look_makers`); the
+  resting leaves, fences and given washes go into `_rm`'s runs (one per
+  piece, laid by `_lay_rooms`), the badges into `_rm_over`'s, each a rest
+  mesh handed back while its signature stands, and whatever moves into
+  `_rm_live`; the stretch near the head goes into `_rm_lo`/`_rm_hi` runs per
+  segment slot from the seam (`BODY_SLOTS`). The head is `_head_look`: a
+  mesh per turn (72), eyes (eighths), sway (fiftieths of a radian) and scrap
+  (eighths), under `_top_xf`. The tail is still baked by `Cat.body` every
+  eight squares (~2.5 ms then).
+- **Small caches.** The hearts-and-tummy pill by what it shows
+  (`_hearts_cache`), the party's flutter in sixteen wing beats
+  (`_flutter_look`, made at its drawn size: a Builder's feather is absolute
+  pixels), and the streak's digits drawn out of sight on the first frame
+  (`_warm_combo`).
+- **Tutorial**: `tutorial_pages()` and `ui/hud/caterpillar_tutorial_diagram.gd`
+  (a `Garden` subclass with no sounds, tips, gags, party or card; `_inset()`
+  keeps just the frame's width of lawn on the short page).
