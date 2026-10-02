@@ -46,6 +46,10 @@ var _keep := 2
 ## /tmp/probe_<id>.png that many seconds after opening.
 var _howto := false
 var _shot_at := INF
+## `gap=<s>`: with the tutorial up, how long each page plays before its shot.
+var _gap := 1.8
+## `to=<s>`: when the run ends (PLAY_TO by default; a long `gap` needs more).
+var _play_to := PLAY_TO
 var _page := 0
 var _exp_done := false
 
@@ -58,6 +62,10 @@ func _initialize() -> void:
 			_howto = true
 		elif a.begins_with("shot="):
 			_shot_at = float(a.substr(5))
+		elif a.begins_with("gap="):
+			_gap = float(a.substr(4))
+		elif a.begins_with("to="):
+			_play_to = float(a.substr(3))
 		elif a == "fill":
 			_fill = true
 		elif a.begins_with("x="):
@@ -110,16 +118,16 @@ func _process(delta: float) -> bool:
 		var c0 = _host.get_node_or_null("HowToPlay")
 		if c0 != null:
 			print("  diagram size ", c0._diagram.size, " slot ", c0._diagram_slot.size, " caption ", c0._diagram._caption.position, " ", c0._diagram._caption.size)
-		# With the tutorial up, every page in turn, 1.8 s apart.
+		# With the tutorial up, every page in turn, `gap` apart.
 		var card = _host.get_node_or_null("HowToPlay")
 		if _howto and card != null and _page < card._pages.size() - 1:
 			_page += 1
 			card._turn(1)
-			_shot_at = _t + 1.8
+			_shot_at = _t + _gap
 	var window := ""
 	if _t >= IDLE_FROM and _t < IDLE_TO:
 		window = "idle"
-	elif _t >= IDLE_TO and _t < PLAY_TO:
+	elif _t >= IDLE_TO and _t < _play_to:
 		window = "play"
 	if window != "":
 		_windows[window].append(Vector3(delta * 1000.0,
@@ -136,7 +144,7 @@ func _process(delta: float) -> bool:
 				_log_until = _t + 0.12
 				print("  step at %.2f" % _t)
 			_step()
-	if _t >= PLAY_TO:
+	if _t >= _play_to:
 		_report()
 		quit()
 		return true
@@ -602,4 +610,25 @@ func _moves_nonogram() -> Array:
 				var last: Vector2i = cells[cells.size() - 1]
 				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(last.y, last.x), false)})
 			run = []
+	return out
+
+## Queens: a row's stroke of crosses dragged across it a row at a time (one
+## event a step), then every queen of the answer tapped in -- a tap on a
+## crossed cell seats her -- so the play has both waves and strokes.
+func _moves_queens() -> Array:
+	_keep = 2
+	var out := []
+	var st = _puzzle.state
+	var taps := []
+	for r in st.n:
+		var c := int(st.solution[r])
+		if r % 2 == 0:
+			out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(r, 0), true)})
+			for x in range(1, st.n):
+				out.append({"do": func() -> void: _ut_motion(_puzzle.cell_to_local(r, x))})
+			out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(r, st.n - 1), false)})
+		else:
+			taps.append({"at": _puzzle.cell_to_local.bind(r, c)})
+		taps.append({"at": _puzzle.cell_to_local.bind(r, c)})
+	out.append_array(taps)
 	return out

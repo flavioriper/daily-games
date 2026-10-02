@@ -17,11 +17,13 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it is drawn. Only the bees are nodes (ui/faces/bee_face.gd), each
 ## in a slot of its own so the layout and the motion never fight (rule 2 of
-## docs/art/flat-motion.md). Everything else is two meshes rebuilt only while
-## something moves: the floor (the frame, the region-tinted cells, the grid,
-## and the seams), built about the court's centre
-## so the entrance pop is a transform; and the ground (the wave's washes, the
-## blushes, the bees' shadows and every X) over it. Every drawn moment
+## docs/art/flat-motion.md). Everything else is two meshes: the floor (the
+## frame, the region-tinted cells, the grid, and the seams), made once a court
+## about its centre so the entrance pop is a transform; and the ground (the
+## finger's sink, the wave's washes, the blushes, the flowers, the bees'
+## shadows and every X) over it, put together while something moves from
+## shapes made once and copied natively into each cell's run of vertices
+## (ui/flat/run_mesh.gd, since the checkup of 2026-10-02). Every drawn moment
 ## reads the flat boards' vocabulary as curves off core/motion.gd (rule 8);
 ## nothing here needed a new reader. Every move -- a tap, a sweep, an undo, a
 ## hint, a reset -- goes through one _settle that diffs a snapshot of the
@@ -48,6 +50,7 @@ const CrossMark = preload("res://ui/faces/cross_mark.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the court ---
@@ -215,6 +218,24 @@ const STAMP_DROP := 0.18
 const STAMP_R := 0.16
 const STAMP_TILT := -0.22
 
+## The ground's shapes (`_shape`), each made once about its own origin.
+const SHAPE_SQUARE := 0
+const SHAPE_DISC := 1
+const SHAPE_CROSS := 2
+const SHAPE_FLOWER := 3
+## The ground's runs, in paint order: a cell's sink, its washes (the wave,
+## the glint, the blush), its flowers (a patch's bloom and the party's), its
+## halo and shadow, its leaving X and its X.
+const PART_SINK := 0
+const PART_WASH := 1
+const PART_FLOWER := 2
+const PART_BEE := 3
+const PART_GONE := 4
+const PART_CROSS := 5
+## A fading X or wash keeps its colours in this many alpha steps.
+const ALPHA_STEPS := 16
+const WASH_STEPS := 32
+
 const HINTS := State.HINTS
 ## How long a teaching line stands before the next, the family's own cycle.
 const TIP_CYCLE := 10.0
@@ -251,9 +272,18 @@ var _glint: Dictionary = {}     # cell -> at: the win's light crosses it then
 var _blush: Dictionary = {}     # cell -> at: Check pointed at it, or a refusal
 var _shiver: Dictionary = {}    # cell -> at: a refused X
 var _sunk: Dictionary = {}      # cell -> {"down", "up"}: the finger has it
-var _floor: ArrayMesh
+var _floor: ArrayMesh          # the court's still floor, made once a layout
 var _ground: ArrayMesh
 var _ground_dirty := true
+## The ground is one mesh put together from shapes made once (Queens'
+## checkup, 2026-10-02): a full Insane court's ground was built in script on
+## every frame anything moved, 9-13 ms a build.
+var _rm := RunMesh.new(_shape)
+## The cell size the ground's shapes and the floor were made at: a relayout
+## (the win card's slide) draws them scaled rather than making them again.
+var _ref := 0.0
+var _floor_cell := 0.0
+var _laid_n := -1
 ## The meshes the last _draw handed the canvas item. A canvas command holds a
 ## mesh by RID and not by reference; dropping the only reference to a mesh
 ## still on the item's command list leaves the renderer drawing a freed RID.
@@ -269,7 +299,9 @@ var _pending: Array = []
 var _last_paint := Vector2i(-1, -1)
 
 var _opened := -1.0e9
-var _solved_at := -1.0
+## When the solve began; -INF while unsolved. Never a sign test: the clock
+## is seconds since launch, and a restore stamps a moment before it.
+var _solved_at := -INF
 var _anim_until := 0.0
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
@@ -346,6 +378,31 @@ func _tips() -> Array:
 		return ["QN_TIP_HEARTS"] + TIPS
 	return TIPS
 
+## The tutorial (the board checkup, 2026-10-02): one page a rule, each a
+## little court played by the board itself (ui/hud/queens_tutorial_diagram.gd),
+## with the hearts page on a judged band and Morning Mist's on Insane.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/queens_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.SEAT, "HTP_QN_SEAT", tr("HTP_QN_SEAT_BODY")],
+		[Diagram.Lesson.TOUCH, "HTP_QN_TOUCH", tr("HTP_QN_TOUCH_BODY")],
+		[Diagram.Lesson.CROSS, "HTP_QN_CROSS", tr("HTP_QN_CROSS_BODY")],
+		[Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_QN_HINT_BODY_ONE") if hints == 1 else tr("HTP_QN_HINT_BODY_N") % hints]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("HTP_QN_HEARTS_BODY_1") if max_hearts == 1 else tr("HTP_QN_HEARTS_BODY_N") % max_hearts])
+	if state.has_mist():
+		steps.append([Diagram.Lesson.MIST, "QN_MIST_SEAL", tr("QN_RULES_MIST")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = maxi(1, max_hearts)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
@@ -402,7 +459,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shiver = {}
 	_sunk = {}
 	_clear_gesture()
-	_solved_at = -1.0
+	_solved_at = -INF
+	_laid_n = -1
 	_build_pieces()
 	_layout()
 	_tip_idx = 0
@@ -504,7 +562,7 @@ func _refresh_faces() -> void:
 			bee.pinned = pinned
 		# The win writes JOY on each bee as the wave reaches her, and a
 		# refusal's strain settles on its own clock.
-		if _solved_at >= 0.0 or bee.expression == Face.Expr.STRAIN:
+		if _solved_at > -INF or bee.expression == Face.Expr.STRAIN:
 			continue
 		if _asleep:
 			_set_expr(bee, Face.Expr.SLEEPY)
@@ -540,6 +598,12 @@ func _layout() -> void:
 	_drone.pivot_offset = _drone.size * 0.5
 	_love_mesh = null
 	_mist_mesh = null
+	# A new court, or a new size mid-play, makes the floor and the shapes
+	# again; the finished court sliding into the win card keeps them, scaled.
+	if _laid_n != state.n or (not is_done() and _ref > 0.0 and absf(_cell / _ref - 1.0) > 0.01):
+		_laid_n = state.n
+		_floor = null
+		_rm.reset()
 	_refresh_faces()
 	_redraw()
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
@@ -635,8 +699,10 @@ func _draw() -> void:
 	var now := _now()
 	var busy := false
 	var shown: Array = []
+	if _floor == null:
+		_floor = _build_floor()
+		_floor_cell = _cell
 	if _ground_dirty or now < _anim_until:
-		_floor = _build_floor(now)
 		var out := _build_ground(now)
 		_ground = out.mesh
 		busy = out.busy
@@ -646,7 +712,7 @@ func _draw() -> void:
 		busy = true
 	var seen := Motion.appear_level(since)
 	if seen > 0.0 and _floor != null:
-		var grown := Motion.wide_pop_scale(since)
+		var grown := Motion.wide_pop_scale(since) * _cell / _floor_cell
 		draw_mesh(_floor, null, Transform2D(0.0, Vector2(grown, grown), 0.0, _court_centre()),
 			Color(1.0, 1.0, 1.0, seen))
 		shown.append(_floor)
@@ -669,32 +735,22 @@ func _draw() -> void:
 	if busy:
 		_anim_until = maxf(_anim_until, now + 0.1)
 
-## The court, built about its centre: the ink frame (a filled round rect the
-## cells lie flush on, so its rounded corners are ink and not parchment), a
-## cell per region colour shaded toward the ink while the finger holds it,
-## the faint grid over them and the seams where two regions meet.
-func _build_floor(now: float) -> ArrayMesh:
+## The court, built about its centre once a layout: the ink frame (a filled
+## round rect the cells lie flush on, so its rounded corners are ink and not
+## parchment), a cell per region colour, the faint grid over them and the
+## seams where two regions meet. The finger's sink is the ground's.
+func _build_floor() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field: Vector2 = Vector2.ONE * (_cell * state.n)
 	var origin: Vector2 = -field * 0.5
 	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * FRAME,
 		field + Vector2.ONE * (2.0 * FRAME), FRAME_RADIUS), Pal.TEXT)
-	var gone: Array = []
 	for y in state.n:
 		for x in state.n:
 			var cell := Vector2i(x, y)
 			var col: Color = Pal.REGION[state.region_at(cell) % Pal.REGION.size()]
 			if state.is_misty(state.region_at(cell)):
 				col = col.lerp(Pal.PAPER, MIST_PALE)
-			if _sunk.has(cell):
-				var pr: Dictionary = _sunk[cell]
-				var released := -1.0 if now < float(pr.up) else now - float(pr.up)
-				if released >= Motion.RELEASE_TIME:
-					gone.append(cell)
-				else:
-					var grown := Motion.press_scale(now - float(pr.down), released)
-					var depth := clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
-					col = col.lerp(Pal.TEXT, SINK_SHADE * depth)
 			if _hash(cell) > 0.5:
 				col = col.lightened(TONE * 2.0 * (_hash(cell) - 0.5))
 			else:
@@ -704,8 +760,6 @@ func _build_floor(now: float) -> ArrayMesh:
 			var lip := _cell * BEVEL
 			b.fan(_rect(at, Vector2(_cell, lip)), col.lerp(Pal.PAPER, BEVEL_LIT))
 			b.fan(_rect(at + Vector2(0.0, _cell - lip), Vector2(_cell, lip)), col.lerp(Pal.TEXT, BEVEL_SHADE))
-	for cell in gone:
-		_sunk.erase(cell)
 	# The grid: every line across the whole court, faint and flat-ended.
 	var grid_ink := Color(Pal.TEXT, GRID_ALPHA)
 	for i in range(1, state.n):
@@ -736,63 +790,86 @@ static func _rect(at: Vector2, s: Vector2) -> PackedVector2Array:
 static func _square(at: Vector2, s: float) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2.ONE * s, at + Vector2(0.0, s)])
 
-## Everything standing on the court, in one mesh: the wave's gold washes, the
-## blushes, the bees' shadows, the Xs on their way out and the Xs
-## that are here.
+## Everything on the court that comes and goes, as one mesh put together
+## from shapes made once (`_rm`), each piece into its own cell's run: the
+## finger's sink, the wave's and the win's flashes, the blushes, the flowers,
+## the bees' halos and shadows, and the Xs, leaving or here. Busy while any
+## of it is moving.
 func _build_ground(now: float) -> Dictionary:
-	var b := Face.Builder.new()
-	var busy := not _sunk.is_empty()
+	if not _rm.laid():
+		_lay_runs()
+	_rm.begin()
+	var busy := false
+	var n2: int = state.n
+	# The finger's sink: the cell shaded toward the ink while it is held.
+	var gone: Array = []
+	for cell in _sunk:
+		busy = true
+		var pr: Dictionary = _sunk[cell]
+		var released := -1.0 if now < float(pr.up) else now - float(pr.up)
+		if released >= Motion.RELEASE_TIME:
+			gone.append(cell)
+			continue
+		var grown := Motion.press_scale(now - float(pr.down), released)
+		var depth := clampf((1.0 - grown) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
+		if depth > 0.0:
+			_rm.open(PART_SINK, _ix(cell))
+			_wash_put(cell, Pal.TEXT, SINK_SHADE * depth)
+	for cell in gone:
+		_sunk.erase(cell)
 	# The wave: as it reaches a cell the cell flashes toward gold and back,
 	# read off flash_level; a cell it has not reached yet keeps us drawing.
-	var gone: Array = []
-	for cell in _wash:
-		var e: float = now - float(_wash[cell])
-		if e < 0.0:
+	# Then the win's glint, and the blush toward the family's rose and back.
+	var washes: Dictionary = {}  # cell -> [[colour, alpha]...]
+	for kind in 3:
+		var d: Dictionary = [_wash, _glint, _blush][kind]
+		var ink: Color = [Pal.QUEEN_WASH, Pal.SUN_TILE, Pal.BAD][kind]
+		var top: float = [WAVE_FLASH, WIN_GLINT_ALPHA, BLUSH_ALPHA][kind]
+		gone = []
+		for cell in d:
+			var e: float = now - float(d[cell])
+			if e < 0.0:
+				busy = true
+				continue
+			if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
+				gone.append(cell)
+				continue
 			busy = true
-			continue
-		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
-			gone.append(cell)
-			continue
-		busy = true
-		_cell_wash(b, cell, Color(Pal.QUEEN_WASH, WAVE_FLASH * Motion.flash_level(e)))
-	for cell in gone:
-		_wash.erase(cell)
-	gone = []
-	for cell in _glint:
-		var e: float = now - float(_glint[cell])
-		if e < 0.0:
-			busy = true
-			continue
-		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
-			gone.append(cell)
-			continue
-		busy = true
-		_cell_wash(b, cell, Color(Pal.SUN_TILE, WIN_GLINT_ALPHA * Motion.flash_level(e)))
-	for cell in gone:
-		_glint.erase(cell)
-	# The blush: toward the family's rose and back.
-	gone = []
-	for cell in _blush:
-		var e: float = now - float(_blush[cell])
-		if e >= Motion.FLASH_IN + Motion.FLASH_OUT:
-			gone.append(cell)
-			continue
-		busy = true
-		_cell_wash(b, cell, Color(Pal.BAD, BLUSH_ALPHA * Motion.flash_level(e)))
-	for cell in gone:
-		_blush.erase(cell)
+			if not washes.has(cell):
+				washes[cell] = []
+			washes[cell].append([ink, top * Motion.flash_level(e)])
+		for cell in gone:
+			d.erase(cell)
+	for y in n2:
+		for x in n2:
+			var cell := Vector2i(x, y)
+			if washes.has(cell):
+				_rm.open(PART_WASH, _ix(cell))
+				for w: Array in washes[cell]:
+					_wash_put(cell, w[0], w[1])
 	# The flowers: a patch's when it has its queens, and the party's meadow.
-	if _flowers(b, now):
+	if _flowers(now):
 		busy = true
-	# The bees' shadows, anchored at the cell and read off each bee's own
-	# scale and alpha, so one arrives with the pop and stays put when she hops.
-	for cell in _bees:
-		var bee: BeeFace = _bees[cell]
-		if bee.visible:
-			_bee_halo(b, bee, cell)
-			_bee_shadow(b, bee, cell)
+	# The bees' halos and shadows, anchored at the cell and read off each
+	# bee's own scale and alpha, so one arrives with the pop and stays put
+	# when she hops.
+	for y in n2:
+		for x in n2:
+			var cell := Vector2i(x, y)
+			var bee: BeeFace = _bees.get(cell)
+			if bee == null or not bee.visible:
+				continue
+			var seen := clampf(bee.scale.y, 0.0, 1.0) * clampf(bee.modulate.a, 0.0, 1.0)
+			if seen <= 0.0:
+				continue
+			_rm.open(PART_BEE, _ix(cell))
+			_wash_put(cell, Pal.QUEEN_WASH, HALO_ALPHA * seen)
+			seen = ceilf(seen * WASH_STEPS) / WASH_STEPS
+			_rm.put(SHAPE_DISC, [Color(Pal.TEXT, SHADOW_ALPHA * seen)],
+				Transform2D(0.0, Vector2(seen, seen) * _cell / _ref, 0.0, cell_to_local(cell.y, cell.x) + BEE_SHADOW_AT * _cell))
 	# Xs on their way out, drawn from the shape the state has forgotten.
 	var still: Array = []
+	var leaving: Dictionary = {}  # cell -> [entries]
 	for out in _cross_out:
 		var e: float = now - float(out.at)
 		var shrunk := Motion.pop_out_scale(e)
@@ -800,18 +877,30 @@ func _build_ground(now: float) -> Dictionary:
 			continue
 		still.append(out)
 		busy = true
-		var turn := PI * 0.5 * clampf(e / Motion.POP_OUT, 0.0, 1.0)
-		if float(out.alpha) < 1.0:
-			shrunk *= AUTO_SCALE
-		CrossMark.draw(b, cell_to_local(out.cell.y, out.cell.x), _cell, Vector2.ONE * shrunk,
-			float(out.alpha), turn, _ink(float(out.alpha) < 1.0))
+		if not leaving.has(out.cell):
+			leaving[out.cell] = []
+		leaving[out.cell].append([out, e, shrunk])
 	_cross_out = still
+	for y in n2:
+		for x in n2:
+			var cell := Vector2i(x, y)
+			if not leaving.has(cell):
+				continue
+			_rm.open(PART_GONE, _ix(cell))
+			for l: Array in leaving[cell]:
+				var out: Dictionary = l[0]
+				var shrunk: float = l[2]
+				var turn := PI * 0.5 * clampf(float(l[1]) / Motion.POP_OUT, 0.0, 1.0)
+				if float(out.alpha) < 1.0:
+					shrunk *= AUTO_SCALE
+				_put_cross(cell_to_local(cell.y, cell.x), Vector2.ONE * shrunk, float(out.alpha),
+					turn, _ink(float(out.alpha) < 1.0))
 	# The Xs that are here: waiting for the wave, popping in with the
 	# squash, standing, shivering when refused, or clearing away on the win.
 	gone = []
 	var shook_gone: Array = []
-	for y in state.n:
-		for x in state.n:
+	for y in n2:
+		for x in n2:
 			var cell := Vector2i(x, y)
 			var mark := state.mark_at(cell)
 			if not _crossed(mark):
@@ -827,11 +916,12 @@ func _build_ground(now: float) -> Dictionary:
 					busy = true
 				else:
 					gone.append(cell)
-			grow *= _sink(cell, now)
+			if _sunk.has(cell):
+				grow *= _sink(cell, now)
 			var alpha := AUTO_ALPHA if mark == State.AUTO else 1.0
 			if mark == State.AUTO:
 				grow *= AUTO_SCALE
-			if _solved_at >= 0.0:
+			if _solved_at > -INF:
 				var cleared := _dec((now - _solved_at - CLEAR_DELAY - _hash(cell) * CLEAR_SPREAD) / CLEAR_TIME)
 				if cleared >= 1.0:
 					continue
@@ -841,42 +931,75 @@ func _build_ground(now: float) -> Dictionary:
 			if grow.x <= 0.0 or grow.y <= 0.0:
 				continue
 			var at := cell_to_local(cell.y, cell.x)
-			var shook: float = now - float(_shiver.get(cell, -100.0))
-			if shook < Motion.SHIVER_TIME:
-				busy = true
-				at.x += Motion.shiver_offset(shook, _cell * SHIVER)
-			elif _shiver.has(cell):
-				shook_gone.append(cell)
+			if _shiver.has(cell):
+				var shook: float = now - float(_shiver[cell])
+				if shook < Motion.SHIVER_TIME:
+					busy = true
+					at.x += Motion.shiver_offset(shook, _cell * SHIVER)
+				else:
+					shook_gone.append(cell)
 			var ink := SHOWN_INK if state.shown.has(cell) else _ink(mark == State.AUTO)
-			CrossMark.draw(b, at, _cell, grow, alpha, 0.0, ink)
+			_rm.open(PART_CROSS, _ix(cell))
+			_put_cross(at, grow, alpha, 0.0, ink)
 	for cell in gone:
 		_cross_in.erase(cell)
 	for cell in shook_gone:
 		_shiver.erase(cell)
-	if b.verts.is_empty():
-		return {"mesh": null, "busy": busy}
-	return {"mesh": b.mesh(), "busy": busy}
+	return {"mesh": _rm.mesh(), "busy": busy}
 
-## A wash over the whole of `cell`.
-func _cell_wash(b: Face.Builder, cell: Vector2i, colour: Color) -> void:
-	b.fan(_square(_grid + Vector2(cell) * _cell, _cell), colour)
+## Every cell's runs, in the order `_build_ground` visits them, each as long
+## as the piece's largest look: a sink, three washes, two flowers, a halo and
+## a shadow, a leaving X and an X (each with its drop).
+func _lay_runs() -> void:
+	_rm.reset()
+	_ref = _cell
+	var cells: int = state.n * state.n
+	var sq := _rm.size_of(SHAPE_SQUARE)
+	var x2 := 2 * _rm.size_of(SHAPE_CROSS)
+	var sizes := {PART_SINK: sq, PART_WASH: 3 * sq, PART_FLOWER: 2 * _rm.size_of(SHAPE_FLOWER),
+		PART_BEE: sq + _rm.size_of(SHAPE_DISC), PART_GONE: x2, PART_CROSS: x2}
+	for part in [PART_SINK, PART_WASH, PART_FLOWER, PART_BEE, PART_GONE, PART_CROSS]:
+		for k in cells:
+			_rm.room(part, k, sizes[part])
 
-## The warm wash a seated queen's cell takes, coming and going with her.
-func _bee_halo(b: Face.Builder, bee: Control, cell: Vector2i) -> void:
-	var seen := clampf(bee.scale.y, 0.0, 1.0) * clampf(bee.modulate.a, 0.0, 1.0)
-	if seen <= 0.0:
+## A cell's run index.
+func _ix(cell: Vector2i) -> int:
+	return cell.y * state.n + cell.x
+
+## Shape `id` about its own origin, in slot colours (`RunMesh.slot`), at the
+## cell size of this layout.
+func _shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	match id:
+		SHAPE_SQUARE:
+			b.fan(_square(Vector2.ZERO, _ref), RunMesh.slot(0))
+		SHAPE_DISC:
+			Scenery.soft_disc(b, Vector2.ZERO, BEE_SHADOW_RX * _ref, BEE_SHADOW_RY * _ref, RunMesh.slot(0))
+		SHAPE_CROSS:
+			CrossMark._x(b, Transform2D.IDENTITY, _ref, CrossMark.WIDTH * _ref, RunMesh.slot(0))
+		SHAPE_FLOWER:
+			_flower(b, Vector2.ZERO, _ref * BLOOM_R, 0.0, RunMesh.slot(1))
+	return b
+
+## A wash of `ink` at `alpha` over the whole of `cell`, into the open run.
+func _wash_put(cell: Vector2i, ink: Color, alpha: float) -> void:
+	alpha = ceilf(alpha * WASH_STEPS) / WASH_STEPS
+	if alpha <= 0.0:
 		return
-	_cell_wash(b, cell, Color(Pal.QUEEN_WASH, HALO_ALPHA * seen))
+	var k := _cell / _ref
+	_rm.put(SHAPE_SQUARE, [Color(ink, alpha)], Transform2D(0.0, Vector2(k, k), 0.0, _grid + Vector2(cell) * _cell))
 
-## The family's soft disc under `bee` on `cell`, scaled by how much of her
-## is there and faded with her while she drops in.
-func _bee_shadow(b: Face.Builder, bee: Control, cell: Vector2i) -> void:
-	var seen := clampf(bee.scale.y, 0.0, 1.0) * clampf(bee.modulate.a, 0.0, 1.0)
-	if seen <= 0.0:
+## CrossMark's X and its drop about `at`, scaled `grow`, turned `angle`, at
+## `alpha` (in ALPHA_STEPS, so a fading one keeps its colours), in `ink`.
+func _put_cross(at: Vector2, grow: Vector2, alpha: float, angle: float, ink: Color) -> void:
+	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
 		return
-	Scenery.soft_disc(b, cell_to_local(cell.y, cell.x) + BEE_SHADOW_AT * _cell,
-		BEE_SHADOW_RX * _cell * seen, BEE_SHADOW_RY * _cell * seen,
-		Color(Pal.TEXT, SHADOW_ALPHA * seen))
+	alpha = ceilf(alpha * ALPHA_STEPS) / ALPHA_STEPS
+	var drop := CrossMark.DROP * _cell * grow.y
+	grow *= _cell / _ref
+	_rm.put(SHAPE_CROSS, [Color(Pal.TEXT, CrossMark.SHADOW_ALPHA * alpha)],
+		Transform2D(angle, grow, 0.0, at + Vector2(0.0, drop)))
+	_rm.put(SHAPE_CROSS, [Color(ink, alpha)], Transform2D(angle, grow, 0.0, at))
 
 ## press_scale for the cell under the finger, one when it is not.
 func _sink(cell: Vector2i, now: float) -> float:
@@ -886,12 +1009,13 @@ func _sink(cell: Vector2i, now: float) -> float:
 	var released := -1.0 if now < float(pr.up) else now - float(pr.up)
 	return Motion.press_scale(now - float(pr.down), released)
 
-## The flowers on the court, one mesh with the rest of the ground: each
-## patch's BLOOMS in the corners of its free seats while it has its queens,
-## opening with a twist and folding when it loses one; and on the win a
-## flower on every free seat, along the diagonal. True while any is moving.
-func _flowers(b: Face.Builder, now: float) -> bool:
+## The flowers on the court: each patch's BLOOMS in the corners of its free
+## seats while it has its queens, opening with a twist and folding when it
+## loses one; and on the win a flower on every free seat, along the diagonal.
+## True while any is moving.
+func _flowers(now: float) -> bool:
 	var busy := false
+	var at_cell: Dictionary = {}  # cell -> [[at, r, turn, petal]...]
 	for g in _bloom:
 		var d: Dictionary = _bloom[g]
 		var e: float = now - float(d.at)
@@ -921,9 +1045,10 @@ func _flowers(b: Face.Builder, now: float) -> bool:
 			i += 1
 			if kk <= 0.01:
 				continue
-			var at := cell_to_local(cell.y, cell.x) + BLOOM_AT * _cell
-			_flower(b, at, _cell * BLOOM_R * kk, (1.0 - minf(kk, 1.0)) * 1.2 + _hash(cell) * TAU,
-				Pal.SURFACE)
+			if not at_cell.has(cell):
+				at_cell[cell] = []
+			at_cell[cell].append([cell_to_local(cell.y, cell.x) + BLOOM_AT * _cell, _cell * BLOOM_R * kk,
+				(1.0 - minf(kk, 1.0)) * 1.2 + _hash(cell) * TAU, Pal.SURFACE])
 	if now >= _meadow_at:
 		for y in state.n:
 			for x in state.n:
@@ -940,20 +1065,37 @@ func _flowers(b: Face.Builder, now: float) -> bool:
 				var h := _hash(cell + Vector2i(3, 9))
 				var petal: Color = [Pal.SURFACE, Pal.FLOWER, Pal.SUN_TILE, Pal.SURFACE][int(h * 4.0) % 4]
 				var at := cell_to_local(y, x) + Vector2(h - 0.5, _hash(cell + Vector2i(7, 1)) - 0.5) * _cell * 0.3
-				_flower(b, at, _cell * BLOOM_R * 1.4 * kk, h * TAU + (1.0 - kk) * 1.2, petal)
+				if not at_cell.has(cell):
+					at_cell[cell] = []
+				at_cell[cell].append([at, _cell * BLOOM_R * 1.4 * kk, h * TAU + (1.0 - kk) * 1.2, petal])
+	if at_cell.is_empty():
+		return busy
+	var base := _ref * BLOOM_R
+	for y in state.n:
+		for x in state.n:
+			var cell := Vector2i(x, y)
+			if not at_cell.has(cell):
+				continue
+			_rm.open(PART_FLOWER, _ix(cell))
+			for f: Array in at_cell[cell]:
+				var r: float = f[1]
+				if r <= 0.5:
+					continue
+				var k := r / base
+				_rm.put(SHAPE_FLOWER, [Pal.PETAL_EDGE, f[3], Pal.SUN],
+					Transform2D(float(f[2]), Vector2(k, k), 0.0, f[0]))
 	return busy
 
 ## One flower of radius `r` about `at`, turned `turn`: BLOOM_PETALS petals
-## rimmed in the daisies' edge, and a sun-gold heart.
+## rimmed in the daisies' edge, and a sun-gold heart. Made once as a shape,
+## in slots: the rim 0, `petal` 1, the heart 2.
 func _flower(b: Face.Builder, at: Vector2, r: float, turn: float, petal: Color) -> void:
-	if r <= 0.5:
-		return
 	for p in BLOOM_PETALS:
 		var a := turn + TAU * p / BLOOM_PETALS
 		var dir := Vector2.from_angle(a)
-		b.fan(_oval(at + dir * r * 0.55, r * 0.52, r * 0.3, a), Pal.PETAL_EDGE)
+		b.fan(_oval(at + dir * r * 0.55, r * 0.52, r * 0.3, a), RunMesh.slot(0))
 		b.fan(_oval(at + dir * r * 0.55, r * 0.45, r * 0.23, a), petal)
-	b.fan(Face.Builder.ring(at, r * 0.32, r * 0.32), Pal.SUN)
+	b.fan(Face.Builder.ring(at, r * 0.32, r * 0.32), RunMesh.slot(2))
 
 static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -966,7 +1108,7 @@ static func _oval(at: Vector2, rx: float, ry: float, angle: float) -> PackedVect
 ## corner, over the bees (the life layer draws it), one crown for each queen
 ## it takes, gold once she sits and faint until then. They go with the win.
 func _pips(b: Face.Builder) -> void:
-	if not state.has_mist() or _solved_at >= 0.0:
+	if not state.has_mist() or _solved_at > -INF:
 		return
 	for g in state.mist:
 		var first := Vector2i(-1, -1)
@@ -1253,7 +1395,7 @@ func _refuse_pinned(cell: Vector2i) -> void:
 		return
 	_set_expr(bee, Face.Expr.STRAIN)
 	_after(STRAIN_TIME, func() -> void:
-		if bee.expression == Face.Expr.STRAIN and _solved_at < 0.0:
+		if bee.expression == Face.Expr.STRAIN and _solved_at == -INF:
 			bee.expression = Face.Expr.HAPPY)
 	Motion.stop(_pos_tw.get(bee))
 	bee.position = Vector2.ZERO
@@ -2274,7 +2416,7 @@ func _draw_life() -> void:
 			var k := Motion.pop_in_scale(e, 0.2).x
 			_life_layer.draw_mesh(mesh, null, Transform2D(sin(u * TAU) * 0.2, Vector2(k, k), 0.0, at),
 				Color(1.0, 1.0, 1.0, clampf((1.0 - u) / 0.4, 0.0, 1.0)))
-	if state.has_mist() and _solved_at < 0.0:
+	if state.has_mist() and _solved_at == -INF:
 		var pb := Face.Builder.new()
 		_pips(pb)
 		if not pb.verts.is_empty():

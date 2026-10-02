@@ -50,6 +50,18 @@ one `fill()` a run, no per-vertex script, and one cached shape serves every
 piece that shares its geometry (`_shape`/`_ink`/`_put` in
 `puzzles/nonogram2d.gd`); `ui/faces/mosaic_tile.gd` hands out a tile's and a
 socket's outlines and colours separately for that.
+Since Queens (2026-10-02): Nonogram's machinery is shared as
+`ui/flat/run_mesh.gd` (`RunMesh`: `room` a run per piece in paint order,
+`put` a cached shape painted by slot colours under a transform, `mesh`); a
+board hands it a Callable that draws shape `id` in `RunMesh.slot(k)` colours.
+Make the shapes (and any still floor) at a reference cell size and draw them
+scaled, and keep them across a relayout that only rescales: the win card's
+slide relays the board out (`_thaw_board`), which was a 45-75 ms frame on
+Queens while every shape, run and index offset was made again. And never
+test a restore's stamped moment by its sign: the boards' clock counts from
+launch, so `now - 10` is negative for a day reopened in the first seconds
+(Queens and Untangle fixed with a `-INF` sentinel; Pinwheel, Paper Planes
+and Quilt still carry the test).
 
 | # | Board | Done | Notes |
 |---|---|---|---|
@@ -62,7 +74,7 @@ socket's outlines and colours separately for that.
 | 7 | lightup | 2026-10-01 | the court was built whole in script every frame anything moved (floor ~10 ms + ground ~8 ms full Insane): stones, blocks, chips and lamp shadows at rest baked from parts made once, a moving stone a cached step of eight warmth levels, a moving block its cached body under its pose (Insane play 26.8 -> 12.8 ms, p95 32 -> 17); lanterns and cats one MultiMesh per mesh, moths one mesh (near-full idle 150 -> 109 draws, 12.2 -> 10.4 ms); shared `FlatBuilder.append_flat`/`flat_of`, identity appends skip the transform; 5-7 page tutorial played by a real board; undo/hint/check/reset already there |
 | 8 | oneline | 2026-10-02 | the whole figure was built in script every frame anything moved (16-20 ms full Insane): now one indexed mesh put together from pieces that each own a run of vertices sized at layout, a look made once and copied natively, a moving piece its look under a transform, only colour changes built live (Insane play 23.1 -> 9.3 ms, step hitch 17 -> ~3 ms; idle and draw calls unchanged); 5-6 page tutorial played by a real board on a little house; undo/hint/check/reset already there |
 | 9 | nonogram | 2026-10-02 | the whole floor (33k vertices: sockets, tiles, X's, tabs, leaves, daisies) was built in script on every frame anything on it moved, 14 ms a build on a full Insane floor: now every piece is a shape made once about its origin, copied natively under its transform into a run of vertices laid out for it (One Line's pattern) and painted a colour run at a time with fills, finished moments pruned so a resting piece skips the curve readers (build 14 -> ~1.5 ms headless; Insane play 12.4 -> 7.8 ms, p95 16 -> 8.3; full-board animating frames ~22 -> 8-12 ms, solve spikes 57-61 -> 15-27 ms; idle and draw calls unchanged, pixel-identical at rest); shared `Mosaic.tile_outlines/tile_colours/socket_outline/socket_colour`; 4-6 page tutorial played by a real board on a 5x5 house; undo/hint/check/reset already there |
-| 10 | queens | | |
+| 10 | queens | 2026-10-02 | the ground (washes, flowers, halos, shadows, every X) was built in script on every frame anything moved (9-13 ms full Insane, a 56-60 ms frame on a seat's wave) and the floor (3 ms) with it: now the floor is made once a court and the ground is put together by the new shared `RunMesh` from four shapes copied natively into per-cell runs (ground build ~2 ms, p95 2.5; Insane play 10.7 -> 8.5 ms, p95 11.7 -> 9.1; full-board play p95 24 -> 11, the per-move spikes gone; draw calls unchanged, pixel-identical at rest); shapes and floor kept across the win card's relayout (a 45-75 ms frame gone); a restored day opened in the first ten seconds showed its crosses and crowns again (`-INF` sentinel; Untangle too); 4-6 page tutorial played by a real board on a 5x5 court; undo/hint/check/reset already there |
 | 11 | hiddenword | | |
 | 12 | wordtrail | | |
 | 13 | mushroom | | |

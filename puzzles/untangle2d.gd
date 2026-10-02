@@ -243,7 +243,9 @@ var _ghost: Array = []                       # the kitten's foreseen swipe
 # the clock
 var _last := -1.0
 var _opened := 0.0
-var _solved_at := -1.0
+## When the solve began; -INF while unsolved. Never a sign test: the clock
+## is seconds since launch, and a restore stamps a moment before it.
+var _solved_at := -INF
 var _busy_until := 0.0
 var _later: Array = []
 var _idle_at := 0.0
@@ -409,7 +411,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_restored = false
 	_streak = 0
 	_stuck_key = PackedByteArray()
-	_solved_at = -1.0
+	_solved_at = -INF
 	_last = -1.0
 	_opened = _now()
 	_busy_until = 0.0
@@ -658,7 +660,7 @@ func _animating(t: float) -> bool:
 		return true
 	if t < _opened + Motion.ENTER_DELAY + Motion.stagger(state.at.size(), Motion.ENTER_STAGGER) + Motion.POP_IN + ENTER_LAG + 0.3:
 		return true
-	if _solved_at >= 0.0 and t < _solved_at + WIN_HOLD + 2.0:
+	if _solved_at > -INF and t < _solved_at + WIN_HOLD + 2.0:
 		return true
 	if t < _needle_dip + 0.5 or t < _kitten_mood_until:
 		return true
@@ -1075,7 +1077,7 @@ func _refresh_rope(r: int, t: float) -> void:
 	var glow := Color(0, 0, 0, 0)
 	var from := 0.0
 	var to := 0.0
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		var since := t - _solved_at - Motion.SOLVE_DELAY - WAVE_STEP * float(state.order.find(r))
 		if since > 0.0 and since < 1.0:
 			glow = Color(Color("fff2b8"), 0.6 * sin(PI * since))
@@ -1462,7 +1464,7 @@ func _pair_crossings(k: int, pr: Vector2i) -> void:
 ## top.
 func _draw_knots(b: Face.Builder, t: float) -> void:
 	_knot_alpha = clampf((KNOT_FADE - _cross.size()) / KNOT_SPAN, 0.0, 1.0)
-	if _knot_alpha <= 0.0 or _solved_at >= 0.0 or _out_card:
+	if _knot_alpha <= 0.0 or _solved_at > -INF or _out_card:
 		return
 	for c in _cross:
 		var at: Vector2 = c[4]
@@ -2166,7 +2168,7 @@ func _landed(p: int, hole: int, res: Dictionary, hint: bool) -> void:
 		fx.sparkle(at, Pal.GOOD)
 		if left > 0:
 			fx.cue("untie", 1.0 + 0.06 * mini(cleared, 5), -6.0)
-	if _solved_at < 0.0 and left > 0:
+	if _solved_at == -INF and left > 0:
 		_speak(cleared, left)
 	_rewards(p, cleared, left)
 	_rewards_knots(p, res)
@@ -2751,7 +2753,7 @@ func reset_board() -> void:
 			_sq_at[pp] = _now()
 			_whip(pp >> 1, WHIP_HOME, 0.01))
 		k += 1
-	_solved_at = -1.0
+	_solved_at = -INF
 	_streak = 0
 	moves = 0
 	_running = true

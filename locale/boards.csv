@@ -1878,3 +1878,31 @@ HTP_NG_WRONG_CAP,"A wrong one costs a heart, and turns to a cross","Um errado cu
 HTP_NG_AUTO_CAP,A finished line fills up with crosses,Uma linha pronta se enche de xis,Una línea terminada se llena de cruces
 HTP_NG_LEAF_CAP,"On leaves, the wind tumbled the numbers","Nas folhas, o vento embaralhou os números","En las hojas, el viento revolvió los números"
 HTP_NG_ANY_CAP,3 then 1 or 1 then 3: both read right,3 e 1 ou 1 e 3: os dois batem,3 y 1 o 1 y 3: los dos coinciden
+HTP_QN_SEAT,"One queen in every row, column and colour","Uma rainha em cada linha, coluna e cor","Una reina en cada fila, columna y color"
+HTP_QN_SEAT_BODY,"Tap a seat once to cross it out, and again to seat a queen. She crosses out her row, her column and her colour for you.","Toque uma casa uma vez para riscá-la e de novo para pôr uma rainha. Ela risca a linha, a coluna e a cor dela para você.","Toca una casilla una vez para tacharla y otra vez para sentar una reina. Ella tacha su fila, su columna y su color por ti."
+HTP_QN_TOUCH,Queens never touch,Rainhas nunca se tocam,Las reinas nunca se tocan
+HTP_QN_TOUCH_BODY,"Not even at a corner. A seat a queen can see is refused, so two queens never clash: a queen in every row is the win.","Nem na diagonal. Uma casa que uma rainha vê é recusada, então duas rainhas nunca brigam: uma rainha em cada linha é a vitória.","Ni siquiera en diagonal. Una casilla que una reina ve se rechaza, así que dos reinas nunca chocan: una reina en cada fila es la victoria."
+HTP_QN_CROSS,Cross out what you've ruled out,Risque o que você já descartou,Tacha lo que ya descartaste
+HTP_QN_CROSS_BODY,Drag across seats to cross them out yourself. Start a drag on one of your crosses to pick them up again.,Arraste sobre as casas para riscá-las você mesmo. Comece a arrastar em um dos seus X para tirá-los de novo.,Arrastra sobre las casillas para tacharlas tú mismo. Empieza a arrastrar sobre una de tus cruces para quitarlas otra vez.
+HTP_QN_HINT_BODY_ONE,"The bulb seats one queen of the answer and pins her, so she stays. Check shows which queens are in the wrong seat. You have one hint.","A lâmpada põe uma rainha da resposta e a prende, então ela fica. Conferir mostra quais rainhas estão no lugar errado. Você tem uma dica.","La bombilla sienta una reina de la respuesta y la fija, así que se queda. Comprobar muestra qué reinas están en el lugar equivocado. Tienes una pista."
+HTP_QN_HINT_BODY_N,"The bulb seats one queen of the answer and pins her, so she stays. Check shows which queens are in the wrong seat. You have %d hints.","A lâmpada põe uma rainha da resposta e a prende, então ela fica. Conferir mostra quais rainhas estão no lugar errado. Você tem %d dicas.","La bombilla sienta una reina de la respuesta y la fija, así que se queda. Comprobar muestra qué reinas están en el lugar equivocado. Tienes %d pistas."
+HTP_QN_HEARTS_BODY_1,"You have one heart. Every queen is judged as she sits: one the answer doesn't seat there costs it, buzzes off and leaves a cross that stays.","Você tem um coração. Cada rainha é julgada ao sentar: uma que a resposta não põe ali custa o coração, sai voando e deixa um X que fica.","Tienes un corazón. Cada reina se juzga al sentarse: una que la respuesta no pone ahí lo cuesta, se va volando y deja una cruz que se queda."
+HTP_QN_HEARTS_BODY_N,"You have %d hearts. Every queen is judged as she sits: one the answer doesn't seat there costs a heart, buzzes off and leaves a cross that stays.","Você tem %d corações. Cada rainha é julgada ao sentar: uma que a resposta não põe ali custa um coração, sai voando e deixa um X que fica.","Tienes %d corazones. Cada reina se juzga al sentarse: una que la respuesta no pone ahí cuesta un corazón, se va volando y deja una cruz que se queda."
+HTP_QN_START_CAP,"One queen in every row, column and colour","Uma rainha em cada linha, coluna e cor","Una reina en cada fila, columna y color"
+HTP_QN_ONCE_CAP,Tap once: a cross,Um toque: um X,Un toque: una cruz
+HTP_QN_TWICE_CAP,Tap again: a queen,Outro toque: uma rainha,Otro toque: una reina
+HTP_QN_SEES_CAP,She crosses out every seat she sees,Ela risca todas as casas que vê,Ella tacha todas las casillas que ve
+HTP_QN_EACH_CAP,The next queen goes where none can see,A próxima vai onde nenhuma vê,La siguiente va donde ninguna ve
+HTP_QN_CORNER_CAP,"Queens never touch, not even at a corner","Rainhas não se tocam, nem na diagonal","Las reinas no se tocan, ni en diagonal"
+HTP_QN_REFUSED_CAP,A seat she sees is refused,Uma casa que ela vê é recusada,Una casilla que ella ve se rechaza
+HTP_QN_FREE_CAP,Seat the next where she can't see,Ponha a próxima onde ela não vê,Sienta la siguiente donde ella no ve
+HTP_QN_DRAG_CAP,Drag to cross out seats yourself,Arraste para riscar casas você mesmo,Arrastra para tachar casillas tú mismo
+HTP_QN_PICK_CAP,Drag from a cross to pick them up,Arraste de um X para tirá-los,Arrastra desde una cruz para quitarlas
+HTP_QN_HINT_CAP,The bulb seats a queen for you,A lâmpada põe uma rainha por você,La bombilla sienta una reina por ti
+HTP_QN_PINNED_CAP,A given queen stays put,Uma rainha dada fica no lugar,Una reina dada se queda en su sitio
+HTP_QN_JUDGED_CAP,Every queen is judged as she sits,Cada rainha é julgada ao sentar,Cada reina se juzga al sentarse
+HTP_QN_WRONG_CAP,A wrong queen costs a heart,Uma rainha errada custa um coração,Una reina equivocada cuesta un corazón
+HTP_QN_SHOWN_CAP,Her seat keeps a cross for good,A casa dela fica com um X para sempre,Su casilla se queda con una cruz
+HTP_QN_MIST_CAP,A misty patch takes two queens,Um canteiro enevoado leva duas rainhas,Una parcela con niebla lleva dos reinas
+HTP_QN_HALF_CAP,One crown lit: it wants one more,Uma coroinha acesa: falta mais uma,Una coronita encendida: falta otra
+HTP_QN_FULL_CAP,"With both seated, the rest is crossed","Com as duas, o resto é riscado","Con las dos, el resto se tacha"
