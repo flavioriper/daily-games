@@ -23,7 +23,7 @@ extends RefCounted
 ## First ported from the canvas mock
 ## (docs/brainstorm/concepts.html#caterpillar), redrawn in the polish of
 ## 2026-09-26; the body was a string of round beads on a thin tube until
-## 2026-10-02, when it became one smooth creature (players read the beads as
+## 2026-10-02, when it became one smooth creature (the beads read as
 ## an old browser game). The menu card draws the same parts with the same calls.
 ## Spec: docs/superpowers/specs/2026-09-25-caterpillar-flat-design.md, section 7
 ## and the amendment at its end.
