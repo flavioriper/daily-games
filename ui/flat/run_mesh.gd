@@ -84,15 +84,28 @@ func size_of(id: int) -> int:
 
 ## Shape `id` as [verts, indices, colour runs, colours as drawn], made the
 ## first time it is asked for. Its colour runs are (count, slot * 2 + clear)
-## pairs: a fan's body is one run and its feather another.
+## pairs -- a fan's body is one run and its feather another -- and null
+## until the shape is first painted (`_runs_of`).
 func shape(id: int) -> Array:
 	var hit = _shapes.get(id)
 	if hit != null:
 		return hit
 	var b: Face.Builder = _make.call(id)
+	# The colour runs are read the first time the shape is painted (`ink`):
+	# a shape only ever put in its own colours never pays for the scan
+	# (Hedgehogs' hundred piles, a few hundred vertices each).
+	var out := [b.verts, b.idx, null, b.cols]
+	_shapes[id] = out
+	return out
+
+## Shape `id`'s colour runs, read from its slot colours the first time.
+func _runs_of(id: int) -> PackedInt32Array:
+	var s := shape(id)
+	if s[2] != null:
+		return s[2]
 	var runs := PackedInt32Array()
 	var last := -1
-	for c in b.cols:
+	for c: Color in s[3]:
 		var code := roundi(c.r * SLOTS) * 2 + (1 if c.a < 0.5 else 0)
 		if code == last:
 			runs[runs.size() - 2] += 1
@@ -100,9 +113,8 @@ func shape(id: int) -> Array:
 			runs.append(1)
 			runs.append(code)
 			last = code
-	var out := [b.verts, b.idx, runs, b.cols]
-	_shapes[id] = out
-	return out
+	s[2] = runs
+	return runs
 
 ## Shape `id`'s colours with its slots painted `colours`: kept, since most
 ## pieces wear the same ones frame after frame.
@@ -113,7 +125,7 @@ func ink(id: int, colours: Array) -> PackedColorArray:
 		return hit
 	if _inked.size() > PAINTED_MAX:
 		_inked = {}
-	var runs: PackedInt32Array = shape(id)[2]
+	var runs: PackedInt32Array = _runs_of(id)
 	var out := PackedColorArray()
 	var run := PackedColorArray()
 	for i in range(0, runs.size(), 2):

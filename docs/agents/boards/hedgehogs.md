@@ -41,3 +41,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `g.num`, or a walk's new counts show before its rustle. No tidy-row reward:
   it would leak that the row's covered piles are hedgehogs. HARVEST sound
   set (unheard). Peak 138 draw calls (party), ANGLE agreeing.
+- **Checkup on 2026-10-02** (`docs/agents/checkup.md`, row 24). The bands
+  stay, but nothing on a cell is drawn in script while it plays: every
+  cell's ground, pile at rest, pile pressed under a flag and mound-and-rim
+  are looks made once at a reference cell (`_make_look`, ids `Look * 4096 +
+  cell`), each leaf kind a look painted through two slots, the flag a look
+  painted `Lawn.flag_inks()`. A band is a `RunMesh` with a run a cell
+  (ground + pile + 64), its flags, pins and paws on the tail; the live mesh
+  is a `RunMesh` with no runs, moving cells sorted latest-settling first.
+  Both are built in the reference layout's space (`_into_ref`) and drawn
+  under `_relay()`; a new deal (`build`) takes the reference afresh, the win
+  card's relayout keeps it. `ui/faces/leaf_pile.gd` gained `leaves()` (a
+  pile's leaves as data, which `pile()` now draws), `back()` and
+  `flag_inks()`; its drawings are byte-identical. `build()` is split so
+  `_dealt()` can start a hand-made lawn (the tutorial's `Board.lay`), and
+  `_pad()` / `_hearts_at()` are layout hooks the tutorial overrides. The
+  bell's walk proof still runs inside the third rake's tap (~1-2.5 ms on this
+  Mac). The tutorial (`ui/hud/hedgehogs_tutorial_diagram.gd`) plays one 5x4
+  lawn (hedgehogs under 11, 12, 19, opening from 9) whose walk seed
+  2310537765 makes the board's own walk, after rakes 10, 15, 16 with 11 and
+  12 flagged, send 19 to 18 -- found by a throwaway search over seeds; a
+  change to `State.walk()`'s order would need a new seed.
