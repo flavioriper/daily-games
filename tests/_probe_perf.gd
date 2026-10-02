@@ -273,6 +273,26 @@ func _experiment() -> void:
 						print("   run ", _puzzle._run_looks[id].count, " verts ", _puzzle._rm_runs.size_of(id))
 						break
 					_puzzle._in_ref = false
+		"ql_count":
+			# The quilt, rack and hand built as an animating frame builds them,
+			# timed, every 1.5 s, with their vertices.
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				var q: ArrayMesh = _puzzle._build_quilt(t)
+				var t1 := Time.get_ticks_usec()
+				var r: ArrayMesh = _puzzle._build_rack(t)
+				var t2 := Time.get_ticks_usec()
+				var h: ArrayMesh = _puzzle._build_hand(t)
+				var t3 := Time.get_ticks_usec()
+				var sm := Time.get_ticks_usec()
+				var seams: Array = _puzzle._seams()
+				var t4 := Time.get_ticks_usec()
+				var vc := func(m) -> int: return m.surface_get_array_len(0) if m != null else 0
+				print("  quilt %.2f ms v%d | rack %.2f ms v%d | hand %.2f ms v%d | seams %.2f ms n%d | sewn %d drag %s" % [
+					(t1 - t0) / 1000.0, vc.call(q), (t2 - t1) / 1000.0, vc.call(r), (t3 - t2) / 1000.0, vc.call(h),
+					(t4 - sm) / 1000.0, seams.size(), _puzzle._state.covered(), not _puzzle._drag.is_empty()])
 		"sd_count":
 			# One grid build as a frame does it, every 2 s, with its vertices.
 			for n in 5:
@@ -863,3 +883,40 @@ func _br_drag(key: String) -> void:
 	up.button_index = MOUSE_BUTTON_LEFT
 	up.position = b
 	_puzzle._gui_input(up)
+
+## Quilt: every answer patch carried from its bay to its spot by hand -- a
+## press on its first cell, motions across in steps (the ghost, the snag and
+## the sway under the hand are the cost to watch), the release over the
+## spot -- one event a step.
+func _moves_quilt() -> Array:
+	_keep = 8
+	var out := []
+	var st = _puzzle._state
+	for p in st.shapes.size():
+		if int(st.answer[p]) < 0:
+			continue
+		out.append({"do": _ql_press.bind(p)})
+		for i in range(1, 6):
+			out.append({"do": _ql_move.bind(p, i / 5.0)})
+		out.append({"do": _ql_release.bind(p)})
+	return out
+
+func _ql_from(p: int) -> Vector2:
+	var c: Vector2i = _puzzle._state.shapes[p][0]
+	return _puzzle._bay_home(p) + (Vector2(c) + Vector2(0.5, 0.5)) * _puzzle._rack_cell()
+
+func _ql_to(p: int) -> Vector2:
+	var c: Vector2i = _puzzle._state.shapes[p][0]
+	return _puzzle._corner_of(int(_puzzle._state.answer[p])) \
+		+ (Vector2(c) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * _puzzle._cell()
+
+func _ql_press(p: int) -> void:
+	if int(_puzzle._state.at[p]) >= 0:
+		return
+	_ut_button(_ql_from(p), true)
+
+func _ql_move(p: int, f: float) -> void:
+	_ut_motion(_ql_from(p).lerp(_ql_to(p), f))
+
+func _ql_release(p: int) -> void:
+	_ut_button(_ql_to(p), false)
