@@ -56,6 +56,7 @@ const PinWheel = preload("res://ui/faces/pin_wheel.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (spec section 4) ---
 ## The card's own inset, all round. At the standard 1000 x 1340 card that
@@ -63,6 +64,20 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 ## board, and not indulgence: the tap target is the pin cell and nothing
 ## else, so a generous cell is what stops a mis-tap turning a neighbour.
 const INSET := 28.0
+## The looks' kinds (`_look`): the kind in the high bits, the piece and its
+## orientation (`p * 4 + o`), the cloth, the ribbon or the stain in the low.
+const K_SIL := 1 << 16
+const K_PRINT := 2 << 16
+const K_TRIM := 3 << 16
+const K_WHEEL := 4 << 16
+const K_WSHADOW := 5 << 16
+const K_TACK := 6 << 16
+const K_BUTTON := 7 << 16
+const K_RIBBON := 8 << 16
+const K_STAIN := 9 << 16
+const K_LOW := (1 << 16) - 1
+## Settled stains kept before the looks start again.
+const STAINS_MAX := 300
 ## The ground's border round the grid, its corner and its rim, in design
 ## pixels. It is drawn **outside** the cells, so on the band where the cell
 ## is bound by the width it eats into the inset rather than into the grid --
@@ -358,6 +373,33 @@ var _last_turned := 0
 var _frame_mesh: ArrayMesh
 var _still: ArrayMesh
 var _live: ArrayMesh
+## The checkup of 2026-10-02: every piece, wheel, ribbon and settled stain is
+## a look made once and copied natively under a transform (`RunMesh`, no
+## rooms), in a reference layout's space and drawn under `_relay()`, so the
+## win card's smaller relayout makes nothing again. `_still` is handed back
+## while its plan (every resting piece's look, transform and warmth) is the
+## one it was built from.
+var _rm_still: RunMesh
+var _rm_top: RunMesh
+var _rm_stain: RunMesh
+var _rm_rib: RunMesh
+var _rm_wheel: RunMesh
+var _still_plan: Array = []
+var _still_built := false
+## The layers over the lifted pieces, each its own mesh so a live part of
+## one never moves where another's looks land (their indices are offset
+## once a place), each handed back while its plan is unchanged.
+var _stain_mesh: ArrayMesh
+var _rib_mesh: ArrayMesh
+var _wheel_mesh: ArrayMesh
+var _stain_plan = null
+var _rib_plan = null
+var _wheel_plan = null
+var _dirty := true
+var _in_ref := false
+var _ref_cell := 0.0
+var _ref_origin := Vector2.ZERO
+var _stain_ids: Dictionary = {}
 ## The meshes the last _draw actually handed to the canvas item. A canvas
 ## command holds a mesh by RID and not by reference, so dropping the only
 ## reference to a mesh still on the item's command list leaves the renderer
@@ -541,6 +583,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_turned_at = PackedFloat32Array()
 	_turned_at.resize(_state.shapes.size())
 	_shape_cache()
+	_ref_cell = 0.0
 	_layout()
 	_enter()
 	# The opening stain arrives **with the pieces that make it**, not before
@@ -659,6 +702,8 @@ func _cell_key(cells: Array) -> String:
 ## On Hard and Insane the hearts' strip comes off the top first (HEART_ROW),
 ## and the frame is centred in what is left under it.
 func _cell() -> float:
+	if _in_ref:
+		return _ref_cell
 	if _state.cols <= 0 or _state.rows <= 0:
 		return 0.0
 	return minf((size.x - 2.0 * INSET) / float(_state.cols),
@@ -671,10 +716,65 @@ func _heart_row() -> float:
 ## The top-left of the grid, centred in the card both ways (under the
 ## hearts' strip when there is one).
 func _origin() -> Vector2:
+	if _in_ref:
+		return _ref_origin
 	var cell := _cell()
 	var row := _heart_row()
 	return Vector2((size.x - float(_state.cols) * cell) * 0.5,
 		row + (size.y - row - float(_state.rows) * cell) * 0.5)
+
+## The reference layout's space onto the layout the card has now.
+func _relay() -> Transform2D:
+	var k := _cell() / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, _origin() - _ref_origin * k)
+
+## Takes the layout as the reference when there is none or the card has
+## grown past it (a look made small would blur drawn large), and starts the
+## looks again.
+func _take_ref() -> void:
+	var cell := _cell()
+	if cell <= 0.0 or (_ref_cell > 0.0 and cell <= _ref_cell + 0.5):
+		return
+	_ref_cell = cell
+	_ref_origin = _origin()
+	_reset_looks()
+	_prime_looks()
+
+func _reset_looks() -> void:
+	_rm_still = RunMesh.new(_look)
+	_rm_top = RunMesh.new(_look)
+	_rm_stain = RunMesh.new(_look)
+	_rm_rib = RunMesh.new(_look)
+	_rm_wheel = RunMesh.new(_look)
+	for rm: RunMesh in [_rm_top, _rm_stain, _rm_rib, _rm_wheel]:
+		rm.share_shapes(_rm_still)
+	_still_plan = []
+	_still_built = false
+	_stain_plan = null
+	_rib_plan = null
+	_wheel_plan = null
+	_stain_ids = {}
+	_dirty = true
+
+## Makes every look the board can need while it opens -- every piece's
+## parts in every orientation, the wheels in their cloths, the tack and the
+## button, every ribbon -- so a first turn mid-game copies and makes
+## nothing.
+func _prime_looks() -> void:
+	if _rm_still == null or _ref_cell <= 0.0:
+		return
+	_in_ref = true
+	for p in _state.shapes.size():
+		for o in (_state.shapes[p] as Array).size():
+			var n: int = p * 4 + o
+			for k in [K_SIL, K_PRINT, K_TRIM]:
+				_rm_still.shape(k + n)
+		_rm_still.shape(K_WHEEL + int(_state.cloth[p]))
+	for k in [K_WSHADOW, K_TACK, K_BUTTON]:
+		_rm_still.shape(k)
+	for i in _state.ribbons.size():
+		_rm_still.shape(K_RIBBON + i)
+	_in_ref = false
 
 func _grid_centre() -> Vector2:
 	var cell := _cell()
@@ -727,6 +827,7 @@ func _layout() -> void:
 	_bow_mesh = null
 	_seal_mesh = null
 	_combo_shown = null
+	_take_ref()
 	if is_instance_valid(_cat):
 		_place_cat(_now())
 	if _life_layer != null:
@@ -924,8 +1025,7 @@ func _busy_for(seconds: float) -> void:
 ## What the last _draw handed over is still held by _shown, so the renderer
 ## is never left pointing at a freed RID.
 func _refresh() -> void:
-	_still = null
-	_live = null
+	_dirty = true
 	queue_redraw()
 
 # --- where each piece is, this frame ---
@@ -1015,16 +1115,27 @@ func _draw() -> void:
 	if _frame_mesh != null:
 		draw_mesh(_frame_mesh, null, xf, tint)
 		shown.append(_frame_mesh)
-	if _still == null:
+	if _ref_cell <= 0.0:
+		_take_ref()
+	if _rm_still == null:
+		_reset_looks()
+	if _dirty:
+		_dirty = false
+		if _stain_ids.size() > STAINS_MAX:
+			_reset_looks()
+			_dirty = false
+		_in_ref = true
 		_still = _build_still(t)
-	if _still != null:
-		draw_mesh(_still, null, xf, tint)
-		shown.append(_still)
-	if _live == null:
 		_live = _build_live(t)
-	if _live != null:
-		draw_mesh(_live, null, xf, tint)
-		shown.append(_live)
+		_stain_mesh = _build_stain(t)
+		_rib_mesh = _build_ribbons(t)
+		_wheel_mesh = _build_wheels(t)
+		_in_ref = false
+	var on := xf * _relay()
+	for m: ArrayMesh in [_still, _live, _stain_mesh, _rib_mesh, _wheel_mesh]:
+		if m != null:
+			draw_mesh(m, null, on, tint)
+			shown.append(m)
 	_shown = shown
 
 ## The ground: one panel of Shikaku's unclaimed plot behind the grid, the
@@ -1063,14 +1174,24 @@ func _build_frame() -> ArrayMesh:
 	b.stroke(panel, FRAME_RIM, Pal.LINE, true)
 	return _mesh(b)
 
-## Every piece that is not swinging, in index order.
+## Every piece that is not swinging, in index order: each its look under
+## its transform, handed back while the plan is the one it was built from.
 func _build_still(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	var plan: Array = []
 	for p in _state.shapes.size():
 		if _lifted(p, t):
 			continue
-		_piece(b, p, _frame_of(p, t))
-	return _mesh(b)
+		var e := _plan_of(p, _frame_of(p, t))
+		if not e.is_empty():
+			plan.append(e)
+	if _still_built and plan == _still_plan:
+		return _still
+	_still_plan = plan
+	_still_built = true
+	_rm_still.begin()
+	for e: Array in plan:
+		_put_piece(_rm_still, e)
+	return _rm_still.mesh()
 
 ## Whether piece `p` is off the pile this frame: it is lifted **only while
 ## its cloth is actually turning**, and not for the extra moment its blades
@@ -1109,15 +1230,14 @@ func _snag_angle(e: float) -> float:
 ## draw over every piece or it says nothing, and a pinwheel is the handle and
 ## draws over all of it.
 func _build_live(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	_rm_top.begin()
 	for p in _state.shapes.size():
 		if not _lifted(p, t):
 			continue
-		_piece(b, p, _frame_of(p, t))
-	_stain(b, t)
-	_ribbons(b, t)
-	_pins(b, t)
-	return _mesh(b)
+		var e := _plan_of(p, _frame_of(p, t))
+		if not e.is_empty():
+			_put_piece(_rm_top, e)
+	return _rm_top.mesh()
 
 ## A builder's mesh, or null when it has nothing in it. Asking an empty
 ## builder for a mesh is an engine error ("array_len == 0"), and the live
@@ -1138,40 +1258,54 @@ func _span(p: int) -> Vector2i:
 	var pin := _state.pin_cell(p)
 	return Vector2i(pin.x * 2 + 1, pin.y * 2 + 1)
 
-## One piece: its shadow, its cloth over its own lip, the cloth's print, the
-## quilting stitch inside its edge, a solid edge round it, and the rose halo
-## if it has just been refused.
-func _piece(b, p: int, f: Dictionary) -> void:
+## Piece `p` this frame as the still mesh's plan has it: [piece,
+## orientation, transform, warmth, lift, halo, scale, turn, offset], or []
+## while it is popped down to nothing. The transform carries its look (made
+## at rest about the frame's origin) to where `Cloth.place` would lay it:
+## squashed and turned about its pin, moved by the shiver and the hop. The
+## warmth is cut to 32 steps, so a resting piece's plan stays equal.
+func _plan_of(p: int, f: Dictionary) -> Array:
 	var sc: Vector2 = f["sc"]
 	if sc.x <= 0.0 or sc.y <= 0.0:
-		return
+		return []
+	var rot := float(f["angle"])
+	var offset: Vector2 = f["offset"]
+	var xf := Transform2D(rot, sc, 0.0, Vector2.ZERO)
+	var pin := _pin_point(p)
+	xf.origin = pin + offset - xf * pin
+	var halo := 0.0
+	if not _refused.is_empty() and int(_refused["piece"]) == p:
+		halo = Motion.flash_level(_now() - float(_refused["at"]))
+	return [p, int(_state.turned[p]), xf, roundf(float(f["warm"]) * 32.0) / 32.0,
+		float(f["lift"]), halo, sc, rot, offset]
+
+## One piece: its shadow, its cloth over its own lip, the cloth's print, the
+## quilting stitch inside its edge, a solid edge round it, and the rose halo
+## if it has just been refused. The shadow, the lip and the cloth are one
+## silhouette painted three ways; the stitch and the edge one trim painted
+## in the thread and the edge, which warm with the solve.
+func _put_piece(rm: RunMesh, e: Array) -> void:
+	var p: int = e[0]
+	var n: int = p * 4 + int(e[1])
+	var xf: Transform2D = e[2]
+	var warm: float = e[3]
+	var lift: float = e[4]
 	var cell := _cell()
 	var ci := int(_state.cloth[p])
-	var o := int(_state.turned[p])
-	var warm := float(f["warm"])
-	var lift := float(f["lift"])
-	var rot := float(f["angle"])
-	var pos := _origin() + (f["offset"] as Vector2)
-	var span := _span(p)
-	var loops: Array = (_loops[p] as Array)[o]
 	var edge := Cloth.cloth_stitch(ci)
 	var thread := Cloth.cloth_thread(ci)
 	if warm > 0.0:
 		edge = edge.lerp(Pal.SUN_RAY, warm * WARM_MIX)
 		thread = thread.lerp(Pal.SUN_RAY, warm * WARM_MIX)
-	Cloth.shadow(b, loops, pos, cell, span, REST_SHADOW.lerp(LIFT_SHADOW, lift) * cell,
-		lerpf(REST_LEVEL, 1.0, lift), sc, rot)
-	Cloth.patch(b, loops, pos, cell, span, Cloth.cloth(ci), Cloth.cloth_deep(ci), sc, 1.0, rot)
-	Cloth.print_cloth(b, (_state.shapes[p] as Array)[o], ci, pos, cell, span, sc, 1.0, rot)
-	for loop: PackedVector2Array in (_insets[p] as Array)[o]:
-		Cloth.dash_loop(b, Cloth.laid(loop, pos, cell, span, sc, rot, Cloth.RADIUS * 0.6),
-			Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell, Cloth.QUILT_OFF * cell, thread)
-	var pts_all: Array = []
-	for loop: PackedVector2Array in loops:
-		var pts := Cloth.laid(loop, pos, cell, span, sc, rot)
-		b.stroke(pts, EDGE_W * cell, edge, true)
-		pts_all.append(pts)
-	_halo(b, p, pts_all)
+	var by := REST_SHADOW.lerp(LIFT_SHADOW, lift) * cell
+	var level := lerpf(REST_LEVEL, 1.0, lift)
+	if level > 0.0 and by != Vector2.ZERO:
+		rm.put(K_SIL + n, [Color(Pal.TEXT, Cloth.SHADOW_ALPHA * level)], Transform2D(0.0, by) * xf)
+	rm.put(K_SIL + n, [Cloth.cloth_deep(ci)], Transform2D(0.0, Vector2(0.0, Cloth.EDGE * cell)) * xf)
+	rm.put(K_SIL + n, [Cloth.cloth(ci)], xf)
+	rm.put(K_PRINT + n, [], xf)
+	rm.put(K_TRIM + n, [thread, edge], xf)
+	_halo(rm, e)
 
 ## A piece that is being turned down wears a rose **halo** round its
 ## silhouette. It does not blush.
@@ -1183,14 +1317,92 @@ func _piece(b, p: int, f: Dictionary) -> void:
 ## a piece that is genuinely pinned fast would be exactly the wrong word. So
 ## the halo is drawn beside the cloth and the cloth is left alone:
 ## `docs/art/flat-motion.md`'s rule 9 read for a piece that is its own shape.
-func _halo(b, p: int, pts_all: Array) -> void:
-	if _refused.is_empty() or int(_refused["piece"]) != p:
-		return
-	var level := Motion.flash_level(_now() - float(_refused["at"]))
+func _halo(rm: RunMesh, e: Array) -> void:
+	var level: float = e[5]
 	if level <= 0.0:
 		return
-	for pts: PackedVector2Array in pts_all:
-		b.stroke(pts, HALO_W * _cell(), Color(Pal.BAD, level), true)
+	var p: int = e[0]
+	var cell := _cell()
+	var b := Face.Builder.new()
+	var pos: Vector2 = _origin() + (e[8] as Vector2)
+	for loop: PackedVector2Array in (_loops[p] as Array)[int(e[1])]:
+		b.stroke(Cloth.laid(loop, pos, cell, _span(p), e[6], e[7]), HALO_W * cell,
+			Color(Pal.BAD, level), true)
+	rm.put_builder(b)
+
+## Look `id`, made once a reference layout about the frame's origin (a
+## piece's parts) or about (0, 0) (a wheel, its shadow, the tack, the
+## button), in slot colours where it is painted more than one way.
+func _look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var kind := id & ~K_LOW
+	var n := id & K_LOW
+	var cell := _cell()
+	match kind:
+		K_SIL, K_PRINT, K_TRIM:
+			var p := n >> 2
+			var o := n & 3
+			var pos := _origin()
+			var span := _span(p)
+			var loops: Array = (_loops[p] as Array)[o]
+			if kind == K_SIL:
+				for loop: PackedVector2Array in loops:
+					if Cloth._area(loop) > 0.0:
+						b.polygon(Cloth.laid(loop, pos, cell, span), RunMesh.slot(0))
+			elif kind == K_PRINT:
+				Cloth.print_cloth(b, (_state.shapes[p] as Array)[o], int(_state.cloth[p]), pos, cell, span)
+			else:
+				for loop: PackedVector2Array in (_insets[p] as Array)[o]:
+					Cloth.dash_loop(b, Cloth.laid(loop, pos, cell, span, Vector2.ONE, 0.0, Cloth.RADIUS * 0.6),
+						Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell, Cloth.QUILT_OFF * cell, RunMesh.slot(0))
+				for loop: PackedVector2Array in loops:
+					b.stroke(Cloth.laid(loop, pos, cell, span), EDGE_W * cell, RunMesh.slot(1), true)
+		K_WHEEL:
+			PinWheel.wheel(b, Vector2.ZERO, cell * PIN_R, 0.0, Pal.LINE, Pal.SURFACE, PinWheel.BRASS,
+				Cloth.cloth_deep(n))
+		K_WSHADOW:
+			PinWheel.shadow(b, Vector2.ZERO, cell * PIN_R, Pal.TEXT)
+		K_TACK:
+			PinWheel.pin(b, Vector2.ZERO, cell * PIN_R, Pal.LINE)
+		K_BUTTON:
+			_button(b, Vector2.ZERO, cell * BUTTON_R)
+		K_RIBBON:
+			_ribbon(b, n, 0.0, true)
+		K_STAIN:
+			_stain(b, FAR)
+	return b
+
+## The stain's mesh: a look once every stained cell has arrived (one per set
+## of stained cells, handed back while the set stands), drawn live while the
+## wave is crossing.
+func _build_stain(t: float) -> ArrayMesh:
+	var occ := _owners()
+	var key := PackedInt32Array()
+	var settled := true
+	for i in occ.size():
+		var os: Array = occ[i]
+		if os.size() > 1:
+			key.append(i)
+			if settled and _stain_level(t, _state.cell_of(i), os) < 1.0:
+				settled = false
+	var rm := _rm_stain
+	if key.is_empty():
+		_stain_plan = ""
+		return null
+	if not settled:
+		_stain_plan = null
+		var b := Face.Builder.new()
+		_stain(b, t)
+		return _mesh(b)
+	var k := str(key)
+	if k == _stain_plan:
+		return _stain_mesh
+	_stain_plan = k
+	if not _stain_ids.has(k):
+		_stain_ids[k] = K_STAIN + _stain_ids.size()
+	rm.begin()
+	rm.put(int(_stain_ids[k]), [], Transform2D.IDENTITY)
+	return rm.mesh()
 
 ## The stain: every cell more than one piece is sitting on, washed and then
 ## hatched.
@@ -1318,8 +1530,14 @@ func _owners() -> Array:
 ## The blades read the same swing with a longer time, so they carry the
 ## overshoot the cloth does not, and they sit at the quarter their piece is
 ## lying at, so a settled wheel says which way round its piece is.
-func _pins(b, t: float) -> void:
+func _build_wheels(t: float) -> ArrayMesh:
 	var cell := _cell()
+	var r0 := cell * PIN_R
+	# [look, transform] pairs: every wheel's shadow and wheel, then the
+	# buttons, which come and go, after them all so they move no wheel's
+	# place.
+	var plan: Array = []
+	var after: Array = []
 	for p in _state.shapes.size():
 		var f := _frame_of(p, t)
 		var sc: Vector2 = f["sc"]
@@ -1337,20 +1555,38 @@ func _pins(b, t: float) -> void:
 			var held := t - _press_down
 			var up := (t - _press_up) if _press_up >= 0.0 else -1.0
 			r *= lerpf(1.0, PRESS_DIP, (1.0 - Motion.press_scale(held, up)) / (1.0 - Motion.PRESS_SCALE))
-		PinWheel.shadow(b, at, r, Pal.TEXT)
+		if r <= 0.0:
+			continue
+		# One look a part, under the wheel's own scale (and turn).
+		var s := r / r0
+		var place := Transform2D(0.0, Vector2(s, s), 0.0, at)
+		plan.append(K_WSHADOW)
+		plan.append(place)
 		if _state.fixed(p):
-			PinWheel.pin(b, at, r, Pal.LINE)
+			plan.append(K_TACK)
+			plan.append(place)
 			continue
 		var rest := float((_quarter[p] as Array)[int(_state.turned[p])]) * PI * 0.5
 		var wob := 0.0
 		if _wob.has(p):
 			wob = Motion.wobble_angle(t - float(_wob[p]), WOB_ANGLE, WOB_TIME)
-		var vane := Cloth.cloth_deep(int(_state.cloth[p]))
-		PinWheel.wheel(b, at, r, rest + _swung(p, t, HUB_FACTOR) + wob + _gusted(p, t),
-			Pal.LINE, Pal.SURFACE, PinWheel.BRASS, vane)
+		plan.append(K_WHEEL + int(_state.cloth[p]))
+		plan.append(Transform2D(rest + _swung(p, t, HUB_FACTOR) + wob + _gusted(p, t),
+			Vector2(s, s), 0.0, at))
 		if _tack_at.has(p):
-			_button(b, at + BUTTON_AT * cell, cell * BUTTON_R
-				* Motion.pop_in_scale(t - float(_tack_at[p]), BUTTON_POP).x)
+			var bs := Motion.pop_in_scale(t - float(_tack_at[p]), BUTTON_POP).x
+			if cell * BUTTON_R * bs > 0.5:
+				after.append(K_BUTTON)
+				after.append(Transform2D(0.0, Vector2(bs, bs), 0.0, at + BUTTON_AT * cell))
+	plan.append_array(after)
+	if plan == _wheel_plan:
+		return _wheel_mesh
+	_wheel_plan = plan
+	var rm := _rm_wheel
+	rm.begin()
+	for k in range(0, plan.size(), 2):
+		rm.put(int(plan[k]), [], plan[k + 1])
+	return rm.mesh()
 
 ## The gold button a sewn piece wears: brass, a darker rim, and a cross of
 ## rose thread through it. It says "home, and staying" without touching the
@@ -1374,78 +1610,112 @@ func _button(b, at: Vector2, r: float) -> void:
 ## bow where it is tied on, and at the tied wheel a little curved arrow that
 ## says which way it will turn. A tug pulls it taut and lets it spring back;
 ## at the party they slip loose and float up out of the frame.
-func _ribbons(b, t: float) -> void:
+func _build_ribbons(t: float) -> ArrayMesh:
 	if not _state.ribboned():
-		return
-	var cell := _cell()
+		return null
 	var untie := 0.0
 	if t >= _untie_at:
 		untie = clampf((t - _untie_at) / UNTIE_TIME, 0.0, 1.0) if not Motion.reduce else 1.0
 		if untie >= 1.0:
-			return
+			return null
+	# 1 lying still, 0 not seen, -1 drawn this frame.
+	var plan := PackedInt32Array()
+	plan.resize(_state.ribbons.size())
 	for i in _state.ribbons.size():
 		var rib: Dictionary = _state.ribbons[i]
-		var pa := int(rib["from"])
-		var pb := int(rib["to"])
-		var crossed := int(rib["sign"]) < 0
-		var a := _pin_point(pa)
-		var z := _pin_point(pb)
-		var seen := minf(_frame_of(pa, t)["sc"].x, _frame_of(pb, t)["sc"].x)
+		var seen := minf(_frame_of(int(rib["from"]), t)["sc"].x, _frame_of(int(rib["to"]), t)["sc"].x)
 		if seen <= 0.05:
+			plan[i] = 0
 			continue
-		var amp := RIBBON_BOW * a.distance_to(z)
+		var tugging := false
 		if _tug_at.has(i):
 			var e := t - float(_tug_at[i])
-			if e > 0.0 and e < TUG_TIME:
-				var u := e / TUG_TIME
-				# Taut in a flash, then a spring back past its rest and home.
-				amp *= 1.0 - 0.9 * sin(minf(u * 3.0, 1.0) * PI * 0.5) * (1.0 - u) \
-					+ 0.25 * sin(u * PI * 2.0) * u * (1.0 - u) * 4.0
-		var lift := Vector2.ZERO
-		var alpha := 1.0
-		if untie > 0.0:
-			amp *= 1.0 + 2.5 * untie
-			lift = Vector2(sin(float(i) * 1.7) * 0.4, -1.6 - 0.3 * float(i % 3)) * cell * untie * untie
-			alpha = 1.0 - untie * untie
-		var line := _ribbon_line(a + lift, z + lift, amp, crossed, t + float(i) * 0.37, untie)
-		var deep := SATIN_X_DEEP if crossed else SATIN_DEEP
-		var satin := SATIN_X if crossed else SATIN
-		deep.a = alpha * seen
-		satin.a = alpha * seen
-		b.stroke(line, RIBBON_W * cell, deep, false, true)
-		b.stroke(line, RIBBON_W * cell * 0.62, satin, false, true)
-		b.stroke(line, RIBBON_W * cell * 0.16, Color(1.0, 1.0, 1.0, 0.35 * alpha * seen), false, true)
-		# Two chevrons down the ribbon, pointing at the piece it pulls.
-		for k in [0.4, 0.6]:
-			var idx := int(round(k * float(line.size() - 1)))
-			var here: Vector2 = line[idx]
-			var dir: Vector2 = (line[mini(idx + 1, line.size() - 1)] - line[maxi(idx - 1, 0)]).normalized()
-			var side := dir.orthogonal()
-			var c := cell * 0.06
-			b.stroke(PackedVector2Array([here - dir * c + side * c, here + dir * c * 0.4,
-				here - dir * c - side * c]), maxf(2.0, cell * 0.022), deep, false, true)
-		if untie > 0.0:
-			continue
-		# A knot where it is tied on, just off the pulling wheel.
-		var away := (z - a).normalized()
-		var knot := a + away * cell * (PIN_R + 0.06)
-		b.disc(knot, cell * 0.055, deep)
-		b.disc(knot, cell * 0.032, satin)
-		# The tied wheel's arrow: a short arc round it on the side away from the
-		# ribbon, its head clockwise or anticlockwise.
-		var back := (a - z).angle() + PI
-		var rr := cell * (PIN_R + 0.1)
-		var sweep := 1.1
-		var from_a := back - sweep * 0.5
-		var to_a := back + sweep * 0.5
-		var arc := Face.Builder.arc_points(z, rr, from_a, to_a)
-		b.stroke(arc, maxf(2.0, cell * 0.03), deep, false, true)
-		var head_at: Vector2 = arc[arc.size() - 1] if not crossed else arc[0]
-		var head_ang := (to_a + PI * 0.5) if not crossed else (from_a - PI * 0.5)
-		var hd := Vector2.from_angle(head_ang)
-		var hs := cell * 0.06
-		b.polygon(PackedVector2Array([head_at + hd * hs, head_at - hd * hs * 0.5 + hd.orthogonal() * hs * 0.8,
-			head_at - hd * hs * 0.5 - hd.orthogonal() * hs * 0.8]), deep)
+			tugging = e > 0.0 and e < TUG_TIME
+		# A ribbon lying still is its look; a tugged, popping or loosening one
+		# is drawn this frame.
+		plan[i] = 1 if untie <= 0.0 and not tugging and is_equal_approx(seen, 1.0) else -1
+	if plan == _rib_plan:
+		return _rib_mesh
+	_rib_plan = null if plan.has(-1) else plan
+	# The ones lying still first, so their places stay put while others move.
+	var rm := _rm_rib
+	rm.begin()
+	for i in plan.size():
+		if plan[i] == 1:
+			rm.put(K_RIBBON + i, [], Transform2D.IDENTITY)
+	for i in plan.size():
+		if plan[i] == -1:
+			var b := Face.Builder.new()
+			_ribbon(b, i, t, false)
+			rm.put_builder(b)
+	return rm.mesh()
+
+## Ribbon `i` this frame, or (`rest`) lying still: no tug, no pop, tied on.
+func _ribbon(b, i: int, t: float, rest: bool) -> void:
+	var cell := _cell()
+	var untie := 0.0
+	if not rest and t >= _untie_at:
+		untie = clampf((t - _untie_at) / UNTIE_TIME, 0.0, 1.0) if not Motion.reduce else 1.0
+	var rib: Dictionary = _state.ribbons[i]
+	var pa := int(rib["from"])
+	var pb := int(rib["to"])
+	var crossed := int(rib["sign"]) < 0
+	var a := _pin_point(pa)
+	var z := _pin_point(pb)
+	var seen := 1.0 if rest else minf(_frame_of(pa, t)["sc"].x, _frame_of(pb, t)["sc"].x)
+	var amp := RIBBON_BOW * a.distance_to(z)
+	if not rest and _tug_at.has(i):
+		var e := t - float(_tug_at[i])
+		if e > 0.0 and e < TUG_TIME:
+			var u := e / TUG_TIME
+			# Taut in a flash, then a spring back past its rest and home.
+			amp *= 1.0 - 0.9 * sin(minf(u * 3.0, 1.0) * PI * 0.5) * (1.0 - u) \
+				+ 0.25 * sin(u * PI * 2.0) * u * (1.0 - u) * 4.0
+	var lift := Vector2.ZERO
+	var alpha := 1.0
+	if untie > 0.0:
+		amp *= 1.0 + 2.5 * untie
+		lift = Vector2(sin(float(i) * 1.7) * 0.4, -1.6 - 0.3 * float(i % 3)) * cell * untie * untie
+		alpha = 1.0 - untie * untie
+	var line := _ribbon_line(a + lift, z + lift, amp, crossed, t + float(i) * 0.37, untie)
+	var deep := SATIN_X_DEEP if crossed else SATIN_DEEP
+	var satin := SATIN_X if crossed else SATIN
+	deep.a = alpha * seen
+	satin.a = alpha * seen
+	b.stroke(line, RIBBON_W * cell, deep, false, true)
+	b.stroke(line, RIBBON_W * cell * 0.62, satin, false, true)
+	b.stroke(line, RIBBON_W * cell * 0.16, Color(1.0, 1.0, 1.0, 0.35 * alpha * seen), false, true)
+	# Two chevrons down the ribbon, pointing at the piece it pulls.
+	for k in [0.4, 0.6]:
+		var idx := int(round(k * float(line.size() - 1)))
+		var here: Vector2 = line[idx]
+		var dir: Vector2 = (line[mini(idx + 1, line.size() - 1)] - line[maxi(idx - 1, 0)]).normalized()
+		var side := dir.orthogonal()
+		var c := cell * 0.06
+		b.stroke(PackedVector2Array([here - dir * c + side * c, here + dir * c * 0.4,
+			here - dir * c - side * c]), maxf(2.0, cell * 0.022), deep, false, true)
+	if untie > 0.0:
+		return
+	# A knot where it is tied on, just off the pulling wheel.
+	var away := (z - a).normalized()
+	var knot := a + away * cell * (PIN_R + 0.06)
+	b.disc(knot, cell * 0.055, deep)
+	b.disc(knot, cell * 0.032, satin)
+	# The tied wheel's arrow: a short arc round it on the side away from the
+	# ribbon, its head clockwise or anticlockwise.
+	var back := (a - z).angle() + PI
+	var rr := cell * (PIN_R + 0.1)
+	var sweep := 1.1
+	var from_a := back - sweep * 0.5
+	var to_a := back + sweep * 0.5
+	var arc := Face.Builder.arc_points(z, rr, from_a, to_a)
+	b.stroke(arc, maxf(2.0, cell * 0.03), deep, false, true)
+	var head_at: Vector2 = arc[arc.size() - 1] if not crossed else arc[0]
+	var head_ang := (to_a + PI * 0.5) if not crossed else (from_a - PI * 0.5)
+	var hd := Vector2.from_angle(head_ang)
+	var hs := cell * 0.06
+	b.polygon(PackedVector2Array([head_at + hd * hs, head_at - hd * hs * 0.5 + hd.orthogonal() * hs * 0.8,
+		head_at - hd * hs * 0.5 - hd.orthogonal() * hs * 0.8]), deep)
 
 ## A ribbon's centre line from `a` to `z`, bowed `amp` to one side (an S for
 ## a crossed one), with a slow flutter along it once it has slipped loose.
