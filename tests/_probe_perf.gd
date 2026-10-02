@@ -315,6 +315,37 @@ func _experiment() -> void:
 				var l0 := Time.get_ticks_usec()
 				_puzzle._lanterns_mesh()
 				print("  lanterns %.2f ms" % ((Time.get_ticks_usec() - l0) / 1000.0))
+		"pp_count":
+			# One field and one still build as an animating frame does them,
+			# every 1.5 s, with their vertices and what is moving.
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				var mv: Dictionary = _puzzle._moving(t)
+				var t0 := Time.get_ticks_usec()
+				var f: ArrayMesh = _puzzle._build_field(t, mv)
+				var t1 := Time.get_ticks_usec()
+				var s: ArrayMesh = _puzzle._build_still(mv)
+				var t2 := Time.get_ticks_usec()
+				var vc := func(x) -> int: return x.surface_get_array_len(0) if x != null else 0
+				print("  field %.2f ms v%d | still %.2f ms v%d | moving %d left %d flying %d" % [(t1 - t0) / 1000.0, vc.call(f),
+					(t2 - t1) / 1000.0, vc.call(s), mv.size(), _puzzle._state.left(), _puzzle._fly.size()])
+				var B = load("res://ui/faces/face.gd").Builder
+				var p0 := Time.get_ticks_usec()
+				_puzzle._dots(B.new(), _puzzle._covers(t), t)
+				var p1 := Time.get_ticks_usec()
+				_puzzle._draw_sprigs(B.new(), t)
+				var p2 := Time.get_ticks_usec()
+				var bb = B.new()
+				for i in _puzzle._fly:
+					_puzzle._contrail(bb, i, t)
+				var p3 := Time.get_ticks_usec()
+				var bp = B.new()
+				for i in mv:
+					if _puzzle._fly.has(i) or not _puzzle._state.planes[i]["gone"]:
+						_puzzle._plane(bp, i, t, 0.0)
+				var p4 := Time.get_ticks_usec()
+				print("   dots %.2f sprigs %.2f (%d) contrails %.2f planes %.2f" % [(p1 - p0) / 1000.0, (p2 - p1) / 1000.0, _puzzle._sprigs.size(), (p3 - p2) / 1000.0, (p4 - p3) / 1000.0])
 		"fl_lanterns":
 			# Every lantern hidden: what the painted lanterns cost.
 			for slot in _puzzle._slots.values():
@@ -959,3 +990,18 @@ func _moves_fairylights() -> Array:
 		for q in _puzzle._quarters(st.grid[i], st.sol[i]):
 			out.append({"at": at})
 	return out
+
+## Paper Planes: the deal's own launch order (on a Windy Day sky the one
+## order known to replay without a gust), each plane tapped on its head
+## cell, a tap a step.
+func _moves_planes() -> Array:
+	var out := []
+	var st = _puzzle._state
+	for i in st.solve_order():
+		out.append({"at": _pp_head.bind(i)})
+	return out
+
+func _pp_head(i: int) -> Vector2:
+	var cells: Array = _puzzle._state.planes[i]["cells"]
+	var c: Vector2i = cells[cells.size() - 1]
+	return _puzzle.cell_to_local(c.y, c.x)

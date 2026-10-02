@@ -806,9 +806,9 @@ FL_LVL_3,"Wish Tags: 8 × 8, two hearts","Etiquetas de Desejo: 8 × 8, dois cora
 PP_BLURB,"Tap a plane whose lane to the edge is clear, and off it goes.","Toque num avião com o caminho livre até a borda, e lá vai ele.","Toca un avión con el camino libre hasta el borde, y allá va."
 PP_SHORT,Send every plane\noff a clear lane.,Solte cada avião\npelo caminho livre.,Lanza cada avión\npor camino libre.
 PP_MOTTO,A clear lane and away,"Caminho livre, e lá vai","Camino libre, y a volar"
-PP_LVL_0,10 × 14 sky,Céu 10 × 14,Cielo de 10 × 14
-PP_LVL_1,13 × 18 sky,Céu 13 × 18,Cielo de 13 × 18
-PP_LVL_2,"16 × 22 sky, three hearts","Céu 16 × 22, três corações","Cielo de 16 × 22, tres corazones"
+PP_LVL_0,12 × 17 maze,Labirinto 12 × 17,Laberinto de 12 × 17
+PP_LVL_1,16 × 23 maze,Labirinto 16 × 23,Laberinto de 16 × 23
+PP_LVL_2,"21 × 30 maze, three hearts","Labirinto 21 × 30, três corações","Laberinto de 21 × 30, tres corazones"
 PP_LVL_3,Windy Day: two hearts,Dia de Vento: dois corações,Día de Viento: dos corazones
 PW_BLURB,Turn each pinned piece until the frame is full.,Gire cada peça presa até o quadro ficar cheio.,Gira cada pieza fija hasta llenar el marco.
 PW_SHORT,Turn each piece\ntill the frame fills.,Gire as peças até\npreencher o quadro.,Gira las piezas\ny llena el marco.
@@ -2112,3 +2112,31 @@ HTP_FL_TICK_CAP,Lit at that count: a gold tick,Acesa nessa conta: um visto doura
 HTP_FL_UNDO_CAP,Undo turns it back,Desfazer volta a peça,Deshacer la devuelve
 HTP_FL_RESET_CAP,Reset turns every piece back,Recomeçar volta todas as peças,Reiniciar devuelve todas las piezas
 HTP_FL_HINT_CAP,The bulb turns a piece for you,A lâmpada gira uma peça por você,La bombilla gira una pieza por ti
+HTP_PP_LAUNCH,Tap to launch,Toque para decolar,Toca para despegar
+HTP_PP_LAUNCH_BODY,"Every plane points somewhere, and its lane is every cell straight ahead of it to the edge. Tap a plane whose lane is clear and it flies off the board.","Cada avião aponta para algum lado, e o caminho dele são todas as casas em frente até a borda. Toque num avião com o caminho livre e ele sai voando do tabuleiro.","Cada avión apunta a algún lado, y su camino son todas las casillas de enfrente hasta el borde. Toca un avión con el camino libre y sale volando del tablero."
+HTP_PP_ORDER,The one in front goes first,O da frente sai primeiro,El de adelante sale primero
+HTP_PP_ORDER_BODY,"A plane in another's lane blocks it. Send the one in front first, and the one behind is free to go. The maze is all about finding that order.","Um avião no caminho de outro o bloqueia. Mande primeiro o da frente, e o de trás fica livre. O labirinto é achar essa ordem.","Un avión en el camino de otro lo bloquea. Manda primero el de adelante, y el de atrás queda libre. El laberinto es encontrar ese orden."
+HTP_PP_REFUSE_BODY,"A plane in another's lane blocks it: tap it and it just waits, and nothing is lost. Send the one in front first, and the one behind is free to go.","Um avião no caminho de outro o bloqueia: toque nele e ele só espera, sem perder nada. Mande primeiro o da frente, e o de trás fica livre.","Un avión en el camino de otro lo bloquea: tócalo y solo espera, sin perder nada. Manda primero el de adelante, y el de atrás queda libre."
+HTP_PP_DONE,Clear the sky,Limpe o céu,Despeja el cielo
+HTP_PP_DONE_BODY,"The sky is done when every plane has flown. A launch only ever empties cells, so there is always a plane that can go.","O céu fica pronto quando todo avião já voou. Uma decolagem só esvazia casas, então sempre há um avião que pode sair.","El cielo está listo cuando todos los aviones han volado. Un despegue solo vacía casillas, así que siempre hay un avión que puede salir."
+HTP_PP_UNDO_BODY,"Undo calls the last plane back, and Reset calls them all back, so you can try another order. Nothing here can be lost.","Desfazer chama de volta o último avião, e Recomeçar chama todos, para tentar outra ordem. Aqui nada se perde.","Deshacer trae de vuelta el último avión, y Reiniciar los trae a todos, para probar otro orden. Aquí nada se pierde."
+HTP_PP_UNDO_BODY_JUDGED,"Undo calls the last plane back, and Reset calls them all back. A heart once spent stays spent.","Desfazer chama de volta o último avião, e Recomeçar chama todos. Um coração gasto continua gasto.","Deshacer trae de vuelta el último avión, y Reiniciar los trae a todos. Un corazón gastado sigue gastado."
+HTP_PP_RESET_BODY,"A plane gone with the wind never comes back, so there is no Undo on a Windy Day. Reset calls every plane back and the clouds with them.","Avião que foi com o vento não volta, então não há Desfazer no Dia de Vento. Recomeçar chama todos os aviões de volta, e as nuvens junto.","Un avión que se fue con el viento no vuelve, así que no hay Deshacer en el Día de Viento. Reiniciar trae todos los aviones de vuelta, y las nubes con ellos."
+HTP_PP_HINT_BODY_ONE,The bulb lights a plane whose lane is clear right now. You have one hint.,A lâmpada acende um avião com o caminho livre agora. Você tem uma dica.,La bombilla ilumina un avión con el camino libre ahora. Tienes una pista.
+HTP_PP_HINT_BODY_N,The bulb lights a plane whose lane is clear right now. You have %d hints.,A lâmpada acende um avião com o caminho livre agora. Você tem %d dicas.,La bombilla ilumina un avión con el camino libre ahora. Tienes %d pistas.
+HTP_PP_CLEAR_CAP,Nothing in this plane's lane,Nada no caminho deste avião,Nada en el camino de este avión
+HTP_PP_TAP_CAP,Tap: off it goes,Toque: lá vai ele,Toca: allá va
+HTP_PP_GONE_CAP,"Out over the edge, and gone","Passou da borda, e foi","Pasó el borde, y se fue"
+HTP_PP_BLOCKED_CAP,This plane's lane is blocked,O caminho deste avião está bloqueado,El camino de este avión está bloqueado
+HTP_PP_FRONT_CAP,Send the one in front first,Mande primeiro o da frente,Manda primero el de adelante
+HTP_PP_FREE_CAP,Now the lane is clear,Agora o caminho está livre,Ahora el camino está libre
+HTP_PP_WAIT_CAP,"Blocked: it waits, nothing lost","Bloqueado: ele espera, nada se perde","Bloqueado: espera, nada se pierde"
+HTP_PP_BONK_CAP,Bonk! A blocked plane costs a heart,Toc! Avião bloqueado custa um coração,¡Toc! Un avión bloqueado cuesta un corazón
+HTP_PP_LAST_CAP,Two planes left,Faltam dois aviões,Quedan dos aviones
+HTP_PP_DONE_CAP,Every plane flown: done!,Todos voaram: pronto!,Todos volaron: ¡listo!
+HTP_PP_CLOUD_CAP,A cloud sits in this plane's lane,Uma nuvem está no caminho deste avião,Una nube está en el camino de este avión
+HTP_PP_BLOW_CAP,Each launch blows the clouds a step,Cada decolagem empurra as nuvens um passo,Cada despegue empuja las nubes un paso
+HTP_PP_PAST_CAP,The cloud blew past: lane clear,A nuvem passou: caminho livre,La nube pasó: camino libre
+HTP_PP_UNDO_CAP,Undo calls it back,Desfazer chama de volta,Deshacer lo trae de vuelta
+HTP_PP_RESET_CAP,Reset calls them all back,Recomeçar chama todos de volta,Reiniciar los trae a todos
+HTP_PP_HINT_CAP,The bulb lights a plane that can go,A lâmpada acende um avião que pode sair,La bombilla ilumina un avión que puede salir

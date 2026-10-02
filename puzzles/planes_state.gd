@@ -41,10 +41,15 @@ const HEARTS := [0, 0, 3, 2]
 ## plane is its index, a clear lane -1).
 const CLOUD := -2
 
-## The bands. Hard is the reference's own 16 x 22. The weights pick a plane's
-## length: the middle lengths are the common ones, because a board of
-## two-cell darts reads as confetti and a board of ten-cell ones cannot be
-## packed.
+## The bands. **Easy, Medium and Hard are mazes** (2026-10-02, the user's
+## second reference: a field packed nearly full of long, bent arrows, where
+## the first 16 x 22 sky of short darts read as too easy and not a maze):
+## 12 x 17, 16 x 23 and 21 x 30, carved by `_carve_maze` to 0.95-0.98 of the
+## field, planes up to `max_len` long, a tail walking straight on with
+## `straight` odds, lengths drawn toward the short end by `skew` and the
+## gaps then filled by growing tails. The player is down to two launches or
+## fewer on about two steps in five (one in five before), with about three
+## free at a time. The weights (Insane's row) pick a windy plane's length.
 ##
 ## `picks` and `noise` are the tighter carve (polish spec section 2): each
 ## step draws `picks` legal placements and keeps the one whose body covers
@@ -58,12 +63,12 @@ const CLOUD := -2
 ## This row is the live fallback's and the miner's (tools/insane/
 ## planes_ladder.gd); the phone deals Insane from content/insane/planes.json.
 const BANDS: Array[Dictionary] = [
-	{"cols": 10, "rows": 14, "min_len": 2, "max_len": 8, "weights": [2, 3, 4, 5, 5, 4, 3], "floor": 0.72,
-		"picks": 3, "noise": 1.5},
-	{"cols": 13, "rows": 18, "min_len": 2, "max_len": 9, "weights": [2, 3, 4, 5, 5, 5, 4, 3], "floor": 0.72,
-		"picks": 6, "noise": 1.0},
-	{"cols": 16, "rows": 22, "min_len": 2, "max_len": 10, "weights": [2, 3, 4, 5, 5, 5, 4, 3, 2], "floor": 0.72,
-		"picks": 10, "noise": 0.6},
+	{"cols": 12, "rows": 17, "min_len": 2, "max_len": 15, "maze": true, "skew": 1.3, "straight": 0.6,
+		"floor": 0.93, "picks": 3, "noise": 1.5, "tries": 120},
+	{"cols": 16, "rows": 23, "min_len": 2, "max_len": 22, "maze": true, "skew": 1.3, "straight": 0.65,
+		"floor": 0.93, "picks": 6, "noise": 1.0, "tries": 120},
+	{"cols": 21, "rows": 30, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
+		"floor": 0.93, "picks": 10, "noise": 0.6, "tries": 120},
 	{"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
 		"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0},
 ]
@@ -118,6 +123,11 @@ var _lanes: Dictionary = {}
 ## carve places planes in reverse launch order, so it counts back from the
 ## end); `carve()` turns them into `clouds` once the plane count is known.
 var _cloud_end: Array[Vector2i] = []
+## The maze carve's launch keys, one a plane (highest launches first), and
+## its book of lanes: cell index (y * cols + x) -> the planes whose lane
+## crosses it.
+var _keys: Array[float] = []
+var _lane_book: Array = []
 
 func clear_occupancy() -> void:
 	_occupant = {}
@@ -382,6 +392,7 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 	var best_cov := -1.0
 	var best_wind := Vector2i.ZERO
 	var best_end: Array[Vector2i] = []
+	var best_keys: Array = []
 	var n_clouds := int(b.get("clouds", 0))
 	for attempt in CANDIDATES:
 		planes = []
@@ -391,7 +402,10 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 		if n_clouds > 0:
 			wind = Vector2i(1, 0) if rng.randi_range(0, 1) == 0 else Vector2i(-1, 0)
 			_cloud_end = _pick_clouds(rng, n_clouds)
-		_carve(rng, b)
+		if bool(b.get("maze", false)):
+			_carve_maze(rng, b)
+		else:
+			_carve(rng, b)
 		var cov := float(_occupant.size()) / area
 		if cov > best_cov:
 			best_cov = cov
@@ -399,6 +413,7 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 			best_occupant = _occupant.duplicate()
 			best_wind = wind
 			best_end = _cloud_end.duplicate()
+			best_keys = _keys.duplicate()
 		if cov >= floor_cov:
 			break
 	planes = best_planes
@@ -411,8 +426,18 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 		clouds.append(Vector2i(posmod(e.x - wind.x * planes.size(), cols), e.y))
 	_cloud_end = []
 	_lanes = {}
-	for i in range(planes.size() - 1, -1, -1):
-		order.append(i)
+	if bool(b.get("maze", false)):
+		# The maze's launch order is its keys', highest first.
+		var by_key: Array = []
+		for i in planes.size():
+			by_key.append(i)
+		var keys: Array = best_keys
+		by_key.sort_custom(func(x, y): return float(keys[x]) > float(keys[y]))
+		for i in by_key:
+			order.append(int(i))
+	else:
+		for i in range(planes.size() - 1, -1, -1):
+			order.append(i)
 	# Called inside the assert itself so a release export strips the work.
 	assert(replays(order), "PlanesState.carve: the generated sky must replay to empty")
 
@@ -497,6 +522,189 @@ func _carve(rng: RandomNumberGenerator, b: Dictionary) -> void:
 				_lanes[c] = []
 			(_lanes[c] as Array).append(idx)
 		fails = 0
+
+## The maze carve (2026-10-02). The backward carve can only put a new plane
+## at the front of the launch order, so once the sky fills every leftover
+## cell sits in some lane and the field stalls at 0.7-0.8. Here a plane
+## carries a **key** instead, highest first to fly, and a new plane may go
+## anywhere in the order it fits: after every plane in its own lane (they
+## must have flown, `hi`) and before every plane whose lane crosses its body
+## (they wait for it, `lo`) -- it fits when `lo < hi`, and takes a key
+## between. That is the whole proof the sky replays: launched by key, each
+## plane finds its lane already emptied. The carve lays the band's best of
+## `picks` draws until `tries` draws in a row fail, then offers every empty
+## cell as a head, then grows tails into what is left.
+func _carve_maze(rng: RandomNumberGenerator, b: Dictionary) -> void:
+	_keys = []
+	_lane_book = []
+	_lane_book.resize(rows * cols)
+	for k in rows * cols:
+		_lane_book[k] = []
+	var picks := int(b.get("picks", 1))
+	var noise := float(b.get("noise", 0.0))
+	var tries := int(b.get("tries", 120))
+	var max_len := int(b["max_len"])
+	var fails := 0
+	while fails < tries:
+		var best: Dictionary = {}
+		var best_score := -INF
+		var got := 0
+		var draws := 0
+		while got < picks and draws < picks * DRAWS_A_PICK:
+			draws += 1
+			var p := _propose_maze(rng, b, Vector2i(rng.randi_range(0, cols - 1), rng.randi_range(0, rows - 1)))
+			if p.is_empty():
+				continue
+			got += 1
+			var sc := _waits(p) + rng.randf() * noise + 0.05 * float((p["cells"] as Array).size())
+			if sc > best_score:
+				best_score = sc
+				best = p
+		if best.is_empty():
+			fails += 1
+			continue
+		_lay_maze(best)
+		fails = 0
+	for pass_ in 3:
+		for y in rows:
+			for x in cols:
+				if not _occupant.has(Vector2i(x, y)):
+					var p := _propose_maze(rng, b, Vector2i(x, y))
+					if not p.is_empty():
+						_lay_maze(p)
+	# The last of the gaps: a tail grows into an empty neighbour that no
+	# lane of a plane flying after it crosses, and not into its own lane.
+	var grew := true
+	while grew:
+		grew = false
+		for i in planes.size():
+			var cells: Array[Vector2i] = planes[i]["cells"]
+			var mine := {}
+			for c in lane(i):
+				mine[c] = true
+			while cells.size() < max_len:
+				var tail: Vector2i = cells[0]
+				var opts: Array[Vector2i] = []
+				for e in DIRS:
+					var q: Vector2i = tail + e
+					if in_board(q) and not _occupant.has(q) and not mine.has(q) \
+							and _lane_top(q) < _keys[i]:
+						opts.append(q)
+				if opts.is_empty():
+					break
+				var q: Vector2i = opts[rng.randi_range(0, opts.size() - 1)]
+				cells.insert(0, q)
+				_occupant[q] = i
+				grew = true
+
+## The highest key among the planes whose lane crosses `c` (-INF for none).
+func _lane_top(c: Vector2i) -> float:
+	var top := -INF
+	for o in _lane_book[c.y * cols + c.x]:
+		top = maxf(top, _keys[o])
+	return top
+
+## One maze placement with its head at `head`, or {}: {"cells" tail to
+## head, "dir", "lane", "lo", "hi"}. The four directions in a random order;
+## for the first whose lane and body fit (`lo < hi`), a tail walked
+## backwards that goes straight on with the band's odds, never into the lane,
+## itself or a cell whose lanes' planes would have to fly after it.
+func _propose_maze(rng: RandomNumberGenerator, b: Dictionary, head: Vector2i) -> Dictionary:
+	if _occupant.has(head):
+		return {}
+	var min_len := int(b["min_len"])
+	var straight := float(b.get("straight", 0.5))
+	var dirs: Array[Vector2i] = DIRS.duplicate()
+	_shuffle_dirs(dirs, rng)
+	for d in dirs:
+		var lane_cells: Array[Vector2i] = []
+		var lane_set := {}
+		var hi := INF
+		var at: Vector2i = head + d
+		while in_board(at):
+			lane_cells.append(at)
+			lane_set[at] = true
+			if _occupant.has(at):
+				hi = minf(hi, _keys[int(_occupant[at])])
+			at += d
+		var lo := _lane_top(head)
+		if lo >= hi:
+			continue
+		var prev: Vector2i = head - d
+		if not in_board(prev) or _occupant.has(prev) or lane_set.has(prev):
+			continue
+		lo = maxf(lo, _lane_top(prev))
+		if lo >= hi:
+			continue
+		var want := min_len + int(floorf(pow(rng.randf(), float(b.get("skew", 1.0)))
+			* float(int(b["max_len"]) - min_len + 1)))
+		var body: Array[Vector2i] = [head, prev]
+		var used := {head: true, prev: true}
+		var way: Vector2i = -d
+		while body.size() < want:
+			var last: Vector2i = body[body.size() - 1]
+			var cand: Array[Vector2i] = []
+			var ahead := false
+			for e in DIRS:
+				var q: Vector2i = last + e
+				if not in_board(q) or _occupant.has(q) or used.has(q) or lane_set.has(q):
+					continue
+				if _lane_top(q) >= hi:
+					continue
+				cand.append(e)
+				if e == way:
+					ahead = true
+			if cand.is_empty():
+				break
+			var e: Vector2i = way
+			if not ahead or rng.randf() > straight:
+				e = cand[rng.randi_range(0, cand.size() - 1)]
+			way = e
+			var q: Vector2i = last + e
+			body.append(q)
+			used[q] = true
+			lo = maxf(lo, _lane_top(q))
+		if body.size() < min_len:
+			continue
+		body.reverse()
+		return {"cells": body, "dir": d, "lane": lane_cells, "lo": lo, "hi": hi}
+	return {}
+
+## How many planes this placement would be tied to: those whose lane its
+## body crosses and those standing in its own lane. The carve keeps the
+## best tied of its draws, which is what makes the maze a maze.
+func _waits(p: Dictionary) -> float:
+	var tied := {}
+	for c in p["cells"]:
+		for o in _lane_book[c.y * cols + c.x]:
+			tied[o] = true
+	for c in p["lane"]:
+		if _occupant.has(c):
+			tied[_occupant[c]] = true
+	return float(tied.size())
+
+## Lays a maze placement with a key between its bounds, then renumbers the
+## keys to their ranks so the gaps never run out of halves.
+func _lay_maze(p: Dictionary) -> void:
+	var lo: float = p["lo"]
+	var hi: float = p["hi"]
+	var key := 0.0
+	if lo == -INF and hi == INF:
+		key = 0.0
+	elif lo == -INF:
+		key = hi - 1.0
+	elif hi == INF:
+		key = lo + 1.0
+	else:
+		key = (lo + hi) * 0.5
+	var idx := add_plane(p["cells"])
+	_keys.append(key)
+	for c in p["lane"]:
+		(_lane_book[c.y * cols + c.x] as Array).append(idx)
+	var by: Array = range(_keys.size())
+	by.sort_custom(func(x, y): return _keys[x] < _keys[y])
+	for r in by.size():
+		_keys[by[r]] = float(r)
 
 ## How many planes already placed would wait on this body (their lanes cross
 ## it), plus, on a Windy Day sky, `wind_w` times the share of the clouds'

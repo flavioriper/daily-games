@@ -2842,6 +2842,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 <section class="tab-panel" id="tab-planes">
   <h2>Paper Planes &middot; flat, the seventeenth screen <span class="pill blue">concept &middot; 2026-09-20</span></h2>
   <p class="lede">A field of folded paper darts, each one sitting on a bent trail of cells and pointing somewhere. <b>Tap one and it flies</b> &mdash; forward along its own body and then straight off the board, the tail dragged after the head like a snake pulled through a hole &mdash; but only if the lane in front of it is clear all the way to the edge. If something is in the way the tap is refused and <b>nothing is lost</b>: no life, no counter, no mistake recorded. Because taking a plane off the board only ever empties cells, <b>a removal can never block anything</b>, so there is no wrong move, no dead end and <b>no Check button</b>. The game is a Portuguese daily's <em>SETAS</em>; <b>the name is not that one, and neither are the arrows</b> &mdash; this repo already ships Mastermind as <em>Code Break</em>, the New York Times' word game as <em>Hidden Word</em> and LinkedIn's as <em>Word Trail</em>, and an arrowhead becomes a paper dart with a crease down it, which is a thing this camp would actually fold. Spec: <code>docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md</code>.</p>
+  <div class="decide"><b>2026-10-02: the sky is a maze now.</b> The user's second reference (a field packed nearly full of long, bent arrows, like the SETAS screenshot below) said the first build of short darts at 0.72-0.91 cover read as too easy and not a maze. Easy, Medium and Hard are now <b>12&times;17, 16&times;23 and 21&times;30</b>, carved to <b>0.95-0.98</b> of the field with planes up to 15 / 22 / 29 cells that walk straight on more often than they turn. The carve that does it gives every plane a <b>launch key</b> (highest flies first) and lets a new plane go anywhere in the order it fits &mdash; after every plane standing in its lane, before every plane whose lane crosses its body &mdash; so the leftovers fill where the backward carve stalled near 0.8; then every empty cell is offered as a head and tails grow into the rest. The player is down to two launches or fewer on about two steps in five (one in five before). Insane keeps its banked Windy Day sky. The mock below deals the maze (<code>?d=0|1|2</code>).</div>
 
   <div class="hero">
     <div class="refs">
@@ -16120,69 +16121,84 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
 
   // ---- the state (puzzles/planes_state.gd is the one truth, scene-free) ----
   const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+  // The maze (2026-10-02, the user's second reference: a field packed nearly
+  // full of long bent arrows). planes_state.gd's BANDS, maze rows.
   const BANDS=[
-    {name:'Easy · 10×14',cols:10,rows:14,min:2,max:8,w:[2,3,4,5,5,4,3]},
-    {name:'Medium · 13×18',cols:13,rows:18,min:2,max:9,w:[2,3,4,5,5,5,4,3]},
-    {name:'Hard · 16×22',cols:16,rows:22,min:2,max:10,w:[2,3,4,5,5,5,4,3,2]}];
-  // The coverage retry: six candidates, keep the first at or above 0.72,
-  // else the fullest of the six. TARGET and TRIES are the carve's own stop.
-  const COVER_WANT=0.72,CANDIDATES=6,TARGET=0.95,TRIES=400;
+    {name:'Easy · 12×17',cols:12,rows:17,min:2,max:15,skew:1.3,straight:0.6,picks:3,noise:1.5},
+    {name:'Medium · 16×23',cols:16,rows:23,min:2,max:22,skew:1.3,straight:0.65,picks:6,noise:1.0},
+    {name:'Hard · 21×30',cols:21,rows:30,min:2,max:29,skew:1.3,straight:0.7,picks:10,noise:0.6}];
+  // The coverage retry: six candidates, keep the first at or above 0.93,
+  // else the fullest of the six. TRIES is the carve's own stop.
+  const COVER_WANT=0.93,CANDIDATES=6,TRIES=120;
 
   let B=BANDS[0],diff=0,seed=5;
   let planes=[],occ=null,pos=null,order=[],genTries=1,cover=0;
   let hintsLeft=3,moves=0,openedAt=0,solvedAt=-1e9,winAt=-1e9,hasSolve=false;
   let refuse=null,rings=[],particles=[],btnPress={},auto=[],L=null,hintLit=-1,press=null;
 
-  // The board is carved backwards out of an empty grid and PLAY ORDER IS
-  // THE REVERSE OF INSERTION ORDER, which is what makes it solvable by
-  // construction: plane i's lane was empty of planes 0..i-1 when it was
-  // placed, so once every plane after it has gone its lane is clear.
+  // The maze carve (planes_state.gd's _carve_maze). Every plane carries a
+  // KEY, and the highest key launches first. A new plane fits anywhere in
+  // that order where it can go after every plane standing in its own lane
+  // (hi: they must have flown) and before every plane whose lane crosses its
+  // body (lo: they wait for it) -- lo < hi -- and takes a key between. So
+  // the sky replays by construction, and unlike the old backward carve
+  // (which could only put a plane at the front) the leftovers still fill:
+  // a pass offers every empty cell as a head, then tails grow into the rest.
   function carve(rng){
-    const rows=B.rows,cols=B.cols,occ2=new Map(),out=[];
-    const pick=w=>{let s=0;for(const v of w)s+=v;let r=rng()*s;for(let i=0;i<w.length;i++){r-=w[i];if(r<0)return i;}return w.length-1;};
-    let fails=0;
-    while(occ2.size<TARGET*rows*cols&&fails<TRIES){
-      const r=(rng()*rows)|0,c=(rng()*cols)|0;
-      if(occ2.has(r*cols+c)){fails++;continue;}
+    const rows=B.rows,cols=B.cols,occ2=new Map(),out=[],lanes=Array.from({length:rows*cols},()=>[]);
+    const inb=(r,c)=>r>=0&&c>=0&&r<rows&&c<cols;
+    const top=k=>{let t=-Infinity;for(const o of lanes[k])t=Math.max(t,out[o].key);return t;};
+    function propose(r,c){
+      if(occ2.has(r*cols+c)) return null;
       const dirs=DIRS.slice();
       for(let i=dirs.length-1;i>0;i--){const j=(rng()*(i+1))|0,tm=dirs[i];dirs[i]=dirs[j];dirs[j]=tm;}
-      let placed=false;
       for(const d of dirs){
-        // 1. a head and a direction whose lane is entirely empty
-        let rr=r+d[0],cc=c+d[1],clear=true;const lane=new Set();
-        while(rr>=0&&rr<rows&&cc>=0&&cc<cols){
-          if(occ2.has(rr*cols+cc)){clear=false;break;}
-          lane.add(rr*cols+cc); rr+=d[0]; cc+=d[1];
-        }
-        if(!clear) continue;
-        // 2. a tail grown backwards as a self-avoiding walk that NEVER
-        //    enters the lane, so a plane can never block itself
-        const prev=[r-d[0],c-d[1]];
-        if(!(prev[0]>=0&&prev[0]<rows&&prev[1]>=0&&prev[1]<cols)) continue;
-        const pk=prev[0]*cols+prev[1];
-        if(occ2.has(pk)||lane.has(pk)) continue;
-        const want=B.min+pick(B.w);
-        const body=[[r,c],prev],used=new Set([r*cols+c,pk]);
+        const lane=[],ls=new Set();let rr=r+d[0],cc=c+d[1],hi=Infinity;
+        while(inb(rr,cc)){const k=rr*cols+cc;lane.push(k);ls.add(k);if(occ2.has(k))hi=Math.min(hi,out[occ2.get(k)].key);rr+=d[0];cc+=d[1];}
+        let lo=top(r*cols+c); if(lo>=hi) continue;
+        const pr=r-d[0],pc=c-d[1]; if(!inb(pr,pc)) continue; const pk=pr*cols+pc;
+        if(occ2.has(pk)||ls.has(pk)) continue; lo=Math.max(lo,top(pk)); if(lo>=hi) continue;
+        const want=B.min+Math.floor(Math.pow(rng(),B.skew)*(B.max-B.min+1));
+        const body=[[r,c],[pr,pc]],used=new Set([r*cols+c,pk]);let way=[-d[0],-d[1]];
         while(body.length<want){
-          const last=body[body.length-1],cand=[];
-          for(const e of DIRS){
-            const q=[last[0]+e[0],last[1]+e[1]];
-            if(q[0]<0||q[1]<0||q[0]>=rows||q[1]>=cols) continue;
-            const qk=q[0]*cols+q[1];
-            if(occ2.has(qk)||used.has(qk)||lane.has(qk)) continue;
-            cand.push(q);
-          }
+          const l=body[body.length-1],cand=[];let ahead=false;
+          for(const e of DIRS){const q=[l[0]+e[0],l[1]+e[1]];if(!inb(q[0],q[1]))continue;const qk=q[0]*cols+q[1];
+            if(occ2.has(qk)||used.has(qk)||ls.has(qk)||top(qk)>=hi)continue;cand.push(e);if(e[0]===way[0]&&e[1]===way[1])ahead=true;}
           if(!cand.length) break;
-          const q=cand[(rng()*cand.length)|0]; body.push(q); used.add(q[0]*cols+q[1]);
+          const e=(ahead&&rng()<=B.straight)?way:cand[(rng()*cand.length)|0]; way=e;
+          const q=[l[0]+e[0],l[1]+e[1]]; body.push(q); used.add(q[0]*cols+q[1]); lo=Math.max(lo,top(q[0]*cols+q[1]));
         }
         if(body.length<B.min) continue;
-        body.reverse();                       // tail first, head last
-        const idx=out.length;
-        for(const cell of body) occ2.set(cell[0]*cols+cell[1],idx);
-        out.push({cells:body,dir:d});
-        placed=true; break;
+        body.reverse();
+        return {cells:body,dir:d,lane:lane,lo:lo,hi:hi};
       }
-      if(placed) fails=0; else fails++;
+      return null;
+    }
+    function lay(p){
+      const key=p.lo===-Infinity&&p.hi===Infinity?0:p.lo===-Infinity?p.hi-1:p.hi===Infinity?p.lo+1:(p.lo+p.hi)/2;
+      const idx=out.length;
+      for(const cell of p.cells) occ2.set(cell[0]*cols+cell[1],idx);
+      for(const k of p.lane) lanes[k].push(idx);
+      out.push({cells:p.cells,dir:p.dir,key:key});
+      const by=out.map((_,i)=>i).sort((x,y)=>out[x].key-out[y].key); by.forEach((i,rk)=>out[i].key=rk);
+    }
+    const waits=p=>{const s=new Set();for(const c of p.cells)for(const o of lanes[c[0]*cols+c[1]])s.add(o);for(const k of p.lane)if(occ2.has(k))s.add(occ2.get(k));return s.size;};
+    let fails=0;
+    while(fails<TRIES){
+      let best=null,bs=-Infinity,got=0,draws=0;
+      while(got<B.picks&&draws<B.picks*4){draws++;const p=propose((rng()*rows)|0,(rng()*cols)|0);if(!p)continue;got++;
+        const sc=waits(p)+rng()*B.noise+0.05*p.cells.length;if(sc>bs){bs=sc;best=p;}}
+      if(!best){fails++;continue;} lay(best); fails=0;
+    }
+    for(let pass=0;pass<3;pass++)for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const p=propose(r,c);if(p)lay(p);}
+    let grew=true;
+    while(grew){grew=false;
+      out.forEach((p,i)=>{const h=p.cells[p.cells.length-1],mine=new Set();let rr=h[0]+p.dir[0],cc=h[1]+p.dir[1];
+        while(inb(rr,cc)){mine.add(rr*cols+cc);rr+=p.dir[0];cc+=p.dir[1];}
+        while(p.cells.length<B.max){const t=p.cells[0],opts=[];
+          for(const e of DIRS){const q=[t[0]+e[0],t[1]+e[1]];if(!inb(q[0],q[1]))continue;const qk=q[0]*cols+q[1];
+            if(!occ2.has(qk)&&!mine.has(qk)&&top(qk)<p.key)opts.push(q);}
+          if(!opts.length)break;const q=opts[(rng()*opts.length)|0];p.cells.unshift(q);occ2.set(q[0]*cols+q[1],i);grew=true;}});
     }
     return {out:out,occ:occ2,cover:occ2.size/(rows*cols)};
   }

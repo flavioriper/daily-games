@@ -61,6 +61,14 @@ func reset() -> void:
 	_tail_offsets = {}
 	_fixed = 0
 
+## Draws its shapes from `other`'s cache and adds to it: two meshes put
+## together from the same shapes, one with runs and one without (Paper
+## Planes' still mesh and its live trails). Called again after either
+## resets, which starts a new cache.
+func share_shapes(other) -> void:
+	_shapes = other._shapes
+	_inked = other._inked
+
 ## Whether runs have been laid since the last reset.
 func laid() -> bool:
 	return not _runs.is_empty()

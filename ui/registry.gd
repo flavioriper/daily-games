@@ -525,10 +525,11 @@ const PUZZLES := [
 		"tray": "none",
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): a 10 by 14, 13 by 18 or 16 by 22 sky
-		# (planes_state.gd's BANDS), and each is its own daily with its own
-		# done mark. The planes are not counted on the sheet: 300 seeds a
-		# level laid 20-33, 29-47 and 43-68 of them.
+		# Asks like Sudoku (2026-09-23): a 12 by 17, 16 by 23 or 21 by 30
+		# maze (planes_state.gd's BANDS, mazes since 2026-10-02) or Insane's
+		# Windy Day sky, and each is its own daily with its own done mark.
+		# The planes are not counted on the sheet: 20 seeds a level laid
+		# about 37, 50 and 74 of them.
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "PP_LVL_0"},
