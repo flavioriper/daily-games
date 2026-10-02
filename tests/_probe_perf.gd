@@ -267,6 +267,16 @@ func _experiment() -> void:
 				print("  floor %.2f ms verts %d (runs %d) indices %d shapes %d painted %d" % [(t1 - t0) / 1000.0,
 					a[0].size(), _puzzle._fixed, a[Mesh.ARRAY_INDEX].size(), _puzzle._shapes.size(), _puzzle._inked.size()])
 			print("  size %dx%d marks %d draws now %d" % [_puzzle.state.w, _puzzle.state.h, _puzzle.state.marks.size(), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
+		"hw_count":
+			# One grid build as an animating frame does it, timed, a few times
+			# over the run (a flip, a typed row, a sealed row).
+			for k in 6:
+				await create_timer(2.0).timeout
+				var t0 := Time.get_ticks_usec()
+				var m: ArrayMesh = _puzzle._build_grid(_puzzle._now())
+				var t1 := Time.get_ticks_usec()
+				var a = m.surface_get_arrays(0) if m != null else [[]]
+				print("  grid %.2f ms verts %d rows %d" % [(t1 - t0) / 1000.0, a[0].size(), _puzzle.state.rows.size()])
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -632,3 +642,57 @@ func _moves_queens() -> Array:
 		taps.append({"at": _puzzle.cell_to_local.bind(r, c)})
 	out.append_array(taps)
 	return out
+
+## Hidden Word: five wrong guesses that keep every clue the rows before them
+## gave (so Hard's and Insane's clue rule never refuses them), then the
+## answer, each typed a letter a step and committed -- a commit waits while
+## the row before it is still turning, as a player would.
+func _moves_hiddenword() -> Array:
+	_keep = 6
+	var out := []
+	var st = _puzzle.state
+	var rows: Array[String] = []
+	var marks: Array = []
+	var words: Array = st._accept.keys()
+	words.sort()
+	var k := 0
+	while rows.size() < st.tries - 1:
+		var w := ""
+		while k < words.size():
+			var cand := String(words[(k * 7919) % words.size()])
+			k += 1
+			if cand != st.answer and not rows.has(cand) and _hw_keeps(cand, rows, marks):
+				w = cand
+				break
+		if w == "":
+			break
+		rows.append(w)
+		marks.append(st.mark_guess(w, st.answer))
+	rows.append(st.answer)
+	for w in rows:
+		for i in w.length():
+			var ch := w[i]
+			out.append({"do": func() -> void: _puzzle.type_letter(ch)})
+		out.append({"do": _hw_commit})
+	return out
+
+func _hw_commit() -> void:
+	if _puzzle.busy():
+		_moves.push_front({"do": _hw_commit})
+		return
+	_puzzle.commit_row()
+
+## The clue rule against every row, delivered or not (a word that keeps them
+## all keeps any fewer).
+func _hw_keeps(w: String, rows: Array[String], marks: Array) -> bool:
+	for r in rows.size():
+		var need: Dictionary = {}
+		for i in 5:
+			if int(marks[r][i]) == 0 and w[i] != rows[r][i]:
+				return false
+			if int(marks[r][i]) != 2:
+				need[rows[r][i]] = int(need.get(rows[r][i], 0)) + 1
+		for ch in need:
+			if w.count(ch) < int(need[ch]):
+				return false
+	return true
