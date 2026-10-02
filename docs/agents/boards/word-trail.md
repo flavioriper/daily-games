@@ -59,3 +59,16 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   tile adds its own (`_tile_xf`, with a turn its glyph follows).
   `tests/_shot_wordtrail.gd` drives every scenario; peaks 82 to 111 draw
   calls on `opengl3_angle`.
+- **The board checkup** (2026-10-02, `docs/agents/checkup.md` row 12). The
+  field and the slots are put together by `ui/flat/run_mesh.gd` from shapes
+  made once (`_shape`, `_slot_shape`) into runs laid in paint order
+  (`_lay_runs`: sky, cells, ribbons, beam, glows, flowers, lantern pool);
+  a whole ribbon is its word's shape, a ribbon mid-wave, its glint and the
+  beam are drawn live into their run. The shapes are made at the first
+  layout (`_ref_cell`, `_ref_origin`, `_ref_q`) and drawn scaled after a
+  smaller one, remade for a bigger. `_tile_xf` is memoised a frame. The
+  tutorial (`ui/hud/word_trail_tutorial_diagram.gd`) is the board itself,
+  quietened, on a fixed 4x4 of three words from `HTP_WT_WORDS` (a four, a
+  four, a five in the player's language), with the slots in a column beside
+  the field through the layout hooks `_slots_wide`, `_slots_left`,
+  `_puff_foot`, `_puff_height`, `_lamp_rest`.

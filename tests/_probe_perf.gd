@@ -52,6 +52,9 @@ var _gap := 1.8
 var _play_to := PLAY_TO
 var _page := 0
 var _exp_done := false
+## `rm`: reduce motion, set as the board opens (the settings load over it
+## at launch).
+var _rm := false
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -60,6 +63,8 @@ func _initialize() -> void:
 	for a in args:
 		if a == "howto":
 			_howto = true
+		elif a == "rm":
+			_rm = true
 		elif a.begins_with("shot="):
 			_shot_at = float(a.substr(5))
 		elif a.begins_with("gap="):
@@ -152,6 +157,8 @@ func _process(delta: float) -> bool:
 
 func _open() -> void:
 	_opened = true
+	if _rm:
+		load("res://core/motion.gd").reduce = true
 	_t = 0.0
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if e.id == _id:
@@ -277,6 +284,22 @@ func _experiment() -> void:
 				var t1 := Time.get_ticks_usec()
 				var a = m.surface_get_arrays(0) if m != null else [[]]
 				print("  grid %.2f ms verts %d rows %d" % [(t1 - t0) / 1000.0, a[0].size(), _puzzle.state.rows.size()])
+		"wt_count":
+			# One field, slots and air build as an animating frame does them,
+			# timed, a few times over the run.
+			for k in 6:
+				await create_timer(2.0).timeout
+				var now: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				var m: ArrayMesh = _puzzle._build_field(now)
+				var t1 := Time.get_ticks_usec()
+				_puzzle._build_slots(now)
+				var t2 := Time.get_ticks_usec()
+				_puzzle._build_air(now)
+				var t3 := Time.get_ticks_usec()
+				var a = m.surface_get_arrays(0) if m != null else [[]]
+				print("  field %.2f ms verts %d | slots %.2f | air %.2f | found %d" % [(t1 - t0) / 1000.0, a[0].size(),
+					(t2 - t1) / 1000.0, (t3 - t2) / 1000.0, _puzzle._state.found_count()])
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -696,3 +719,18 @@ func _hw_keeps(w: String, rows: Array[String], marks: Array) -> bool:
 			if w.count(ch) < int(need[ch]):
 				return false
 	return true
+
+## Word Trail: every word traced along its own path -- a press on its first
+## tile, a motion a tile, the release -- one event a step.
+func _moves_wordtrail() -> Array:
+	var out := []
+	var words: Array = _puzzle._state.words
+	for w in words:
+		var path: Array = w["path"]
+		out.append({"do": func() -> void: _ut_button(_puzzle._centre(path[0]), true)})
+		for k in range(1, path.size()):
+			var at: Vector2i = path[k]
+			out.append({"do": func() -> void: _ut_motion(_puzzle._centre(at))})
+		out.append({"do": func() -> void: _ut_button(_puzzle._centre(path[-1]), false)})
+	_keep = (words[-1]["path"] as Array).size() + 1
+	return out
