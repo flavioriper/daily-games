@@ -223,6 +223,13 @@ const PETAL_FALL := 1.1
 const PETAL_STAGGER := 0.04
 
 const HINTS := State.HINTS
+## The figure's pieces: one of each per post or per line, each with its own
+## run of vertices in the figure mesh (`_slot`).
+enum { PIECE_GLOW, PIECE_SHADOW, PIECE_FORD, PIECE_STONE, PIECE_PLANK,
+	PIECE_DRUM, PIECE_CAP, PIECE_DAISY }
+## The steps a line's fade is drawn in while it arrives, so even an arriving
+## line is a cached piece.
+const FADE_STEPS := 4
 const TIP_CYCLE := 10.0
 ## The three lines that teach the board, cycled while there is nothing better
 ## to say.
@@ -311,7 +318,7 @@ var _card := Rect2()
 ## Count bump then.
 var _stroke: Dictionary = {}
 ## Every drawn thing's moments, keyed by post or line, each the second it
-## began, read off Motion's curve readers in _build_figure.
+## began, read off Motion's curve readers in _cast_figure.
 var _post_press: Dictionary = {}  # post -> {"down", "up"}
 var _post_hop: Dictionary = {}    # post -> {"at", "height", "time"}
 var _cap_bump: Dictionary = {}    # post -> at: the cap was recounted
@@ -335,11 +342,33 @@ var _placed_at := 0.0
 var _joy := false
 var _opened := 0.0
 var _anim_until := 0.0
+var _settling := false
 var _solved_at := -1.0
 var _gen := 0
 var _look_tw: Tween
 var _pos_tw: Tween
 
+## The figure as one indexed mesh, put together each frame something on it
+## moves without building more than the moving pieces in script
+## (`_cast_figure`). Every piece -- a post's glow, shadow, drum, cap and
+## daisy, a line's shadow, stone and plank -- owns a run of vertices sized at
+## layout for its largest look (`_slot`: Vector2i(piece, index) ->
+## Vector2i(base, room)), so its indices, offset to that run once, stay true
+## whatever else changes. A look is made once (`_looks`: Vector4i(piece,
+## index, look, 0) -> [verts, cols, offset indices, fits]) and copied in
+## natively, under the piece's transform when it pops, hops or wobbles; only a
+## piece whose colours move (a blush, a press, a warming cap, the plank being
+## laid) is built in script. Cut to the step and the figure, so cleared on
+## both. A flat triangle list instead (one native copy, no indices) was four
+## times the vertices and 1.3 ms a frame more to draw on a full Insane figure.
+var _slot: Dictionary = {}
+var _looks: Dictionary = {}
+var _fixed := 0
+var _fv := PackedVector2Array()
+var _fc := PackedColorArray()
+var _fi := PackedInt32Array()
+var _tv := PackedVector2Array()
+var _tc := PackedColorArray()
 var _figure: ArrayMesh
 ## The mesh the last _draw actually handed to the canvas item. A canvas
 ## command holds the mesh by RID and not by reference, so dropping the only
@@ -373,6 +402,34 @@ func _tips() -> Array:
 	if state.has_sun():
 		return ["OL_TIP_SUN", "OL_TIP_POSTS"] + TIPS
 	return TIPS
+
+## The tutorial, a page a rule, each a little house walked by the board
+## itself (ui/hud/oneline_tutorial_diagram.gd): one stroke, the green posts,
+## never twice, stranding (with hearts on Hard and Insane), the hint, then
+## Sunny Spells on Insane.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/oneline_tutorial_diagram.gd")
+	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
+	var steps := [
+		[Diagram.Lesson.TRACE, "HTP_OL_TRACE", tr("HTP_OL_TRACE_BODY")],
+		[Diagram.Lesson.START, "HTP_OL_START", tr("HTP_OL_START_BODY")],
+		[Diagram.Lesson.ONCE, "HTP_OL_ONCE", tr("HTP_OL_ONCE_BODY")]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.STRAND, "HTP_TN_HEARTS",
+			tr("OL_RULES_HEARTS_1") if max_hearts == 1 else tr("OL_RULES_HEARTS_N") % max_hearts])
+	else:
+		steps.append([Diagram.Lesson.STRAND, "HTP_OL_STRAND", tr("HTP_OL_STRAND_BODY")])
+	steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+		tr("HTP_OL_HINT_BODY_ONE") if hints == 1 else tr("HTP_OL_HINT_BODY_N") % hints])
+	if state.has_sun():
+		steps.append([Diagram.Lesson.SUN, "OL_SUN_SEAL", tr("OL_RULES_SUN")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hearts = max_hearts
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
@@ -452,6 +509,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## The figure as it is dealt, and as Try again deals it back: every heart,
 ## the day's light, nothing judged, blooming or riding.
 func _deal() -> void:
+	_slot = {}
+	_looks = {}
 	hearts = max_hearts
 	out_of_hearts = false
 	_asleep = false
@@ -496,6 +555,8 @@ func _layout() -> void:
 	_step = _step_for(size.y)
 	if _step <= 0.0:
 		return
+	_slot = {}
+	_looks = {}
 	var figure := Vector2(_step * (state.cols - 1), _step * (state.rows - 1))
 	var row := _heart_row()
 	var tall := minf(size.y, figure.y + 2.0 * PAD + _step * MARGIN + row)
@@ -575,7 +636,10 @@ func _process(delta: float) -> void:
 	if _step <= 0.0 or state.nodes.is_empty():
 		return
 	var now := _now()
-	if now < _anim_until:
+	# One build past the motion, with every piece at its rest: the last
+	# animating frame was a step short of it, and this one fills the cache.
+	if now < _anim_until or _settling:
+		_settling = now < _anim_until
 		_refresh()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
@@ -600,7 +664,7 @@ func _refresh() -> void:
 		return
 	var t := _now()
 	_place_walker(t)
-	_figure = _build_figure(t)
+	_cast_figure(t)
 	queue_redraw()
 
 # --- the walker ---
@@ -721,59 +785,356 @@ func _draw() -> void:
 	if _shown != null:
 		draw_mesh(_shown, null)
 
-## The whole figure in one mesh: every post's shadow and glow, every line as
-## stone, every plank walked over it, then the posts. The stone runs in one
-## pass before any plank, so a walked line is never cut where an unwalked one
-## crosses it -- the island cannot do that at all, since its planks are solids
-## at the same height.
-func _build_figure(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+## The whole figure in one mesh: every post's shadow and glow, every line's
+## shadow, every line as stone, every plank walked over it, then the posts.
+## The stone runs in one pass before any plank, so a walked line is never cut
+## where an unwalked one crosses it -- the island cannot do that at all, since
+## its planks are solids at the same height.
+##
+## Building the whole of a 45-line Insane figure in script was 16-20 ms, on
+## every frame anything on it moved (the checkup,
+## docs/agents/boards/oneline.md); now a piece at rest, or only popping,
+## hopping or wobbling, is a native copy of a look made once (`_slot`).
+func _cast_figure(t: float) -> void:
+	if _slot.is_empty():
+		_lay_slots()
+	_fv = PackedVector2Array()
+	_fc = PackedColorArray()
+	_fi = PackedInt32Array()
+	_tv = PackedVector2Array()
+	_tc = PackedColorArray()
+	var R := _step * POST_R
+	var glow: bool = state.current < 0 and not is_done()
+	for n in state.nodes:
+		var grow := _post_entrance(n, t)
+		if grow.y <= 0.0:
+			continue
+		var at := node_to_local(n)
+		var xf := _about(at, at, grow)
+		if glow and state.may_start(n):
+			_show(PIECE_GLOW, n, 0, _build_glow.bind(n), xf)
+		var under := at + Vector2(0.05, 0.3) * R
+		_show(PIECE_SHADOW, n, 0, _build_shadow.bind(n), _about(under, under, grow))
+	var lines: Dictionary = {}
+	for i in state.edges.size():
+		var pose := _line_pose(i, t)
+		if not pose.is_empty():
+			lines[i] = pose
+	for i in lines:
+		var pose: Array = lines[i]
+		_show(PIECE_FORD, i, pose[1], _build_ford.bind(i, pose[1]), pose[0])
 	var lost: Dictionary = {}
 	for e in state.stranded():
 		lost[e] = true
-	for n in state.nodes:
-		_build_shadow(b, n, t)
-	var lines: Dictionary = {}
-	for i in state.edges.size():
-		var line := _line_geometry(i, t)
-		if not line.is_empty():
-			lines[i] = line
-	for i in lines:
-		var line: Dictionary = lines[i]
-		var off: Vector2 = FORD_SHADOW * _step
-		b.stroke(PackedVector2Array([line.a + off, line.b + off]), _step * LINE_W * 1.2,
-			Color(Pal.TEXT, FORD_SHADOW_A * line.alpha))
 	var refused := _refused_now(t)
 	for i in lines:
-		var line: Dictionary = lines[i]
-		var stone: Color = Pal.PLANK_LOST if lost.has(i) else Pal.FORD_STONE
-		if state.has_sun() and not lost.has(i):
-			stone = Pal.FORD_SUN if state.is_sunny(i) else Pal.FORD_DEW
+		var pose: Array = lines[i]
 		var blush := Motion.flash_level(t - float(_wrong.get(i, -100.0)))
+		var look: int = int(lost.has(i)) | int(state.walked.has(i)) << 1 | int(refused.has(i)) << 2 | pose[1] << 3
 		if blush > 0.0:
-			stone = stone.lerp(Pal.BAD_TILE, blush)
-		var fade: float = line.alpha * (DRY_FADE if refused.has(i) else 1.0)
-		var ends := PackedVector2Array([line.a, line.b])
-		b.stroke(ends, _step * LINE_W, Color(stone, fade))
-		if state.has_sun() and not state.walked.has(i):
-			_dress_ford(b, i, line, fade, t)
-		# The crest sits on whichever side faces up the page, so a light falls
-		# on every ford from the same sky.
-		var along: Vector2 = (line.b - line.a).normalized()
-		var up := Vector2(along.y, -along.x)
-		if up.y > 0.0:
-			up = -up
-		var lift := up * _step * (LINE_W * 0.5 - CREST_W * 0.7)
-		b.stroke(PackedVector2Array([line.a + lift, line.b + lift]), _step * CREST_W,
-			Color(1.0, 1.0, 1.0, CREST_A * line.alpha), false, false)
+			var alpha: float = float(pose[1]) / FADE_STEPS * (DRY_FADE if refused.has(i) else 1.0)
+			_show_live(PIECE_STONE, i, _build_stone.bind(i, _line_geometry(i, t), lost.has(i), alpha, blush, t, true))
+		else:
+			_show(PIECE_STONE, i, look, _build_rest_stone.bind(i, lost.has(i), refused.has(i), pose[1]), pose[0])
 	for i in lines:
-		_build_plank(b, i, t)
-	_build_gone(b, t)
+		var look := _plank_look(i, t)
+		if look < 0:
+			_show_live(PIECE_PLANK, i, _build_plank.bind(i, t))
+		elif look > 0:
+			_show(PIECE_PLANK, i, look, _build_rest_plank.bind(i, look))
+	if not _gone.is_empty():
+		var b := Face.Builder.new()
+		_build_gone(b, t)
+		_tail([b.verts, b.cols, b.idx], Transform2D.IDENTITY)
 	for n in state.nodes:
-		_build_post(b, n, t)
-	if b.verts.is_empty():
-		return null
-	return b.mesh()
+		_cast_post(n, t)
+	if _fi.is_empty():
+		_figure = null
+		return
+	_fv.resize(_fixed)
+	_fc.resize(_fixed)
+	_fv.append_array(_tv)
+	_fc.append_array(_tc)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = _fv
+	arrays[Mesh.ARRAY_COLOR] = _fc
+	arrays[Mesh.ARRAY_INDEX] = _fi
+	_figure = ArrayMesh.new()
+	_figure.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
+## Every piece's run of vertices, in the order `_cast_figure` visits them,
+## each as long as the piece's largest look: a line's stone dressed, a
+## post's glow, cap and open daisy. This builds every piece once, which is
+## what the figure cost a frame before its pieces were kept.
+func _lay_slots() -> void:
+	_fixed = 0
+	var room := func(piece: int, index: int, draw: Callable) -> void:
+		var b := Face.Builder.new()
+		draw.call(b)
+		_slot[Vector2i(piece, index)] = Vector2i(_fixed, b.verts.size())
+		_fixed += b.verts.size()
+	for n in state.nodes:
+		room.call(PIECE_GLOW, n, _build_glow.bind(n))
+		room.call(PIECE_SHADOW, n, _build_shadow.bind(n))
+	for i in state.edges.size():
+		room.call(PIECE_FORD, i, _build_ford.bind(i, FADE_STEPS))
+	for i in state.edges.size():
+		room.call(PIECE_STONE, i, func(b) -> void:
+			var e: Vector2i = state.edges[i]
+			_build_stone(b, i, {"a": node_to_local(e.x), "b": node_to_local(e.y)}, false, 1.0, 0.0, -1.0, true))
+	for i in state.edges.size():
+		room.call(PIECE_PLANK, i, _build_rest_plank.bind(i, 1))
+	for n in state.nodes:
+		var at := node_to_local(n)
+		var R := _step * POST_R
+		room.call(PIECE_DRUM, n, _build_drum.bind(at, R, R, Pal.POST_STONE, Pal.POST_DEEP))
+		room.call(PIECE_CAP, n, _build_cap.bind(at, R, R, Pal.ACCENT, 1.0))
+		room.call(PIECE_DAISY, n, _build_open_daisy.bind(n))
+
+## Piece (`piece`, `index`) in `look` under `xf`: the look's vertices into the
+## piece's run, made by `draw` the first time.
+func _show(piece: int, index: int, look: int, draw: Callable, xf := Transform2D.IDENTITY) -> void:
+	var key := Vector4i(piece, index, look, 0)
+	var part = _looks.get(key)
+	if part == null:
+		part = _part(piece, index, draw)
+		_looks[key] = part
+	_emit(piece, index, part, xf)
+
+## Piece (`piece`, `index`) built afresh by `draw`, for a piece whose colours
+## are moving.
+func _show_live(piece: int, index: int, draw: Callable) -> void:
+	_emit(piece, index, _part(piece, index, draw), Transform2D.IDENTITY)
+
+## What `draw` builds, as [verts, cols, indices, fits]: the indices offset to
+## the piece's run when it fits there, and left as they are when it does not
+## (it then goes on the tail, `_tail`).
+func _part(piece: int, index: int, draw: Callable) -> Array:
+	var b := Face.Builder.new()
+	draw.call(b)
+	var run: Vector2i = _slot[Vector2i(piece, index)]
+	if b.verts.size() > run.y:
+		return [b.verts, b.cols, b.idx, false]
+	var ix := b.idx
+	for k in ix.size():
+		ix[k] += run.x
+	return [b.verts, b.cols, ix, true]
+
+func _emit(piece: int, index: int, part: Array, xf: Transform2D) -> void:
+	if not part[3]:
+		_tail(part, xf)
+		return
+	var base: int = _slot[Vector2i(piece, index)].x
+	_fv.resize(base)
+	_fc.resize(base)
+	_fv.append_array(part[0] if xf == Transform2D.IDENTITY else xf * (part[0] as PackedVector2Array))
+	_fc.append_array(part[1])
+	_fi.append_array(part[2])
+
+## A drawing with no run of its own (the planks Reset takes up), after every
+## run, its indices offset in script.
+func _tail(part: Array, xf: Transform2D) -> void:
+	var base := _fixed + _tv.size()
+	_tv.append_array(part[0] if xf == Transform2D.IDENTITY else xf * (part[0] as PackedVector2Array))
+	_tc.append_array(part[1])
+	var ix: PackedInt32Array = (part[2] as PackedInt32Array).duplicate()
+	for k in ix.size():
+		ix[k] += base
+	_fi.append_array(ix)
+
+## The transform that takes a drawing made about `from` to `to`, scaled by
+## `scale` and turned by `angle` about it.
+static func _about(from: Vector2, to: Vector2, scale: Vector2, angle := 0.0) -> Transform2D:
+	if from == to and scale == Vector2.ONE and angle == 0.0:
+		return Transform2D.IDENTITY
+	return Transform2D(angle, scale, 0.0, to) * Transform2D(0.0, -from)
+
+## Line `i` as it is drawn now: [the transform from its rest, its fade step],
+## or [] while it has not arrived. It pops in wide about its middle along the
+## entrance stagger, stretched along itself (rule 7 of the motion doc: a long
+## thing comes from most of the way), and wobbles about that middle when
+## Check has found it stranded.
+func _line_pose(i: int, t: float) -> Array:
+	var elapsed := t - _opened - _enter_line_delay(i)
+	if elapsed <= 0.0 and not Motion.reduce:
+		return []
+	var grow := Motion.wide_pop_scale(elapsed)
+	var angle := Motion.wobble_angle(t - float(_wrong.get(i, -100.0)))
+	var fade := clampi(ceili(Motion.appear_level(elapsed) * FADE_STEPS), 1, FADE_STEPS)
+	if grow == 1.0 and angle == 0.0:
+		return [Transform2D.IDENTITY, fade]
+	var edge: Vector2i = state.edges[i]
+	var a := node_to_local(edge.x)
+	var c := node_to_local(edge.y)
+	var mid := a.lerp(c, 0.5)
+	var phi := (c - a).angle()
+	var xf := Transform2D(0.0, -mid).rotated(-phi).scaled(Vector2(grow, 1.0)).rotated(phi + angle).translated(mid)
+	return [xf, fade]
+
+## Line `i`'s soft shadow on the parchment, under every stone, at fade step
+## `fade`.
+func _build_ford(b, i: int, fade: int) -> void:
+	var edge: Vector2i = state.edges[i]
+	var off: Vector2 = FORD_SHADOW * _step
+	b.stroke(PackedVector2Array([node_to_local(edge.x) + off, node_to_local(edge.y) + off]),
+		_step * LINE_W * 1.2, Color(Pal.TEXT, FORD_SHADOW_A * float(fade) / FADE_STEPS))
+
+## Line `i`'s stone at rest: lost or not, faded back while the sun refuses
+## it, at fade step `fade`.
+func _build_rest_stone(b, i: int, lost: bool, refused: bool, fade: int) -> void:
+	var e: Vector2i = state.edges[i]
+	var alpha := float(fade) / FADE_STEPS * (DRY_FADE if refused else 1.0)
+	_build_stone(b, i, {"a": node_to_local(e.x), "b": node_to_local(e.y)}, lost, alpha, 0.0, -1.0,
+		not state.walked.has(i))
+
+## A line as stone, its Sunny Spells dressing while `dressed`, and its crest,
+## at `alpha`, blushing by `blush`. `t` is negative for a line at rest, whose
+## sparkles stand still.
+func _build_stone(b, i: int, line: Dictionary, lost: bool, alpha: float, blush: float, t: float,
+		dressed: bool) -> void:
+	var stone: Color = Pal.PLANK_LOST if lost else Pal.FORD_STONE
+	if state.has_sun() and not lost:
+		stone = Pal.FORD_SUN if state.is_sunny(i) else Pal.FORD_DEW
+	if blush > 0.0:
+		stone = stone.lerp(Pal.BAD_TILE, blush)
+	b.stroke(PackedVector2Array([line.a, line.b]), _step * LINE_W, Color(stone, alpha))
+	if state.has_sun() and dressed:
+		_dress_ford(b, i, line, alpha, t)
+	# The crest sits on whichever side faces up the page, so a light falls
+	# on every ford from the same sky.
+	var along: Vector2 = (line.b - line.a).normalized()
+	var up := Vector2(along.y, -along.x)
+	if up.y > 0.0:
+		up = -up
+	var lift := up * _step * (LINE_W * 0.5 - CREST_W * 0.7)
+	b.stroke(PackedVector2Array([line.a + lift, line.b + lift]), _step * CREST_W,
+		Color(1.0, 1.0, 1.0, CREST_A * alpha), false, false)
+
+## Line `i`'s plank as a look: 0 for none, -1 while it is live (being laid or
+## taken up, or changing colour), or its resting look (the way it was laid,
+## blushed, brightened by the win).
+func _plank_look(i: int, t: float) -> int:
+	if not _stroke.is_empty() and int(_stroke.edge) == i:
+		return -1
+	if not state.walked.has(i):
+		return 0
+	var look := 1 | int(int(state.lay_from.get(i, state.edges[i].x)) == state.edges[i].x) << 1
+	if _bad_plank.has(i):
+		if not Motion.reduce and t - float(_bad_plank[i]) < 0.25:
+			return -1
+		look |= 4
+	if _bright.has(i):
+		var g := (t - float(_bright[i])) / BRIGHT_TIME
+		if not Motion.reduce and g < 1.0:
+			return -1 if g > 0.0 else look
+		look |= 8
+	return look
+
+## Line `i`'s plank at rest in `look`: the wood `_build_plank` lays, in the
+## colour it settles on.
+func _build_rest_plank(b, i: int, look: int) -> void:
+	var edge: Vector2i = state.edges[i]
+	var anchor: int = int(state.lay_from.get(i, edge.x))
+	var warm: Color = Pal.PLANK_LAID
+	if state.is_sunny(i):
+		warm = warm.lightened(0.14)
+	if look & 4:
+		warm = warm.lerp(Pal.BAD_TILE, 0.8)
+	if look & 8:
+		warm = warm.lerp(Pal.PLANK_HI, 1.0)
+	_plank(b, node_to_local(anchor), node_to_local(edge.y if anchor == edge.x else edge.x), 1.0, warm, 1.0, i)
+
+## Post `n`: its drum, cap and daisy, each a look under the post's entrance,
+## hop, shiver and cap bump. A pressed or blushing drum and a warming cap,
+## whose colours move, are built in script. Drawn off the readers: it pops in
+## with the squash along the diagonal, sinks under the finger, hops when the
+## walker lands and on the waves, shivers and blushes when it refuses, and its
+## cap bumps when the count it shows has changed. On the win the cap turns
+## toward the sun.
+func _cast_post(n: int, t: float) -> void:
+	var grow := _post_entrance(n, t)
+	if grow.y <= 0.0:
+		return
+	var rest := node_to_local(n)
+	var at := rest
+	var R := _step * POST_R
+	var drum: Color = Pal.POST_STONE
+	var deep: Color = Pal.POST_DEEP
+	var live := false
+	if _post_press.has(n):
+		var pr: Dictionary = _post_press[n]
+		var released := -1.0 if is_inf(float(pr.up)) else t - float(pr.up)
+		var sink := Motion.press_scale(t - float(pr.down), released)
+		if sink != 1.0:
+			grow *= sink
+			drum = drum.lerp(deep, SINK_SHADE * clampf((1.0 - sink) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0))
+			live = true
+	if _post_hop.has(n):
+		var hop: Dictionary = _post_hop[n]
+		at.y += Motion.hop_lift(t - float(hop.at), hop.height, hop.time)
+	at.x += Motion.shiver_offset(t - float(_post_shiver.get(n, -100.0)), Motion.SHIVER_PX)
+	var blush := Motion.flash_level(t - float(_post_blush.get(n, -100.0)))
+	if blush > 0.0:
+		drum = drum.lerp(Pal.BAD_TILE, blush)
+		deep = deep.lerp(Pal.BAD, blush * 0.5)
+		live = true
+	if live:
+		_show_live(PIECE_DRUM, n, _build_drum.bind(at, R * grow.x, R * grow.y, drum, deep))
+	else:
+		_show(PIECE_DRUM, n, 0, _build_drum.bind(rest, R, R, drum, deep), _about(rest, at, grow))
+	var cap := Motion.bump_scale(t - float(_cap_bump.get(n, -100.0)))
+	var colour := _cap_colour(n, t)
+	var warming := false
+	if _warm.has(n):
+		var w := (t - float(_warm[n])) / BRIGHT_TIME
+		colour = colour.lerp(Pal.SUN_RAY, CAP_WARM * _dec(w))
+		warming = not Motion.reduce and w > 0.0 and w < 1.0
+	var centre := at + Vector2(0.0, -0.04) * R * grow.y
+	var home := rest + Vector2(0.0, -0.04) * R
+	if warming:
+		_show_live(PIECE_CAP, n, _build_cap.bind(at, R * grow.x, R * grow.y, colour, cap))
+	else:
+		_show(PIECE_CAP, n, colour.to_rgba32(), _build_cap.bind(rest, R, R, colour, 1.0),
+			_about(home, centre, grow * cap))
+	if _bloom.has(n) and n != state.current:
+		var e := t - float(_bloom[n])
+		if e < 0.0:
+			return
+		var u := clampf(e / DAISY_TIME, 0.0, 1.0)
+		var k := 1.0 if Motion.reduce else Motion.back_out(u)
+		if k <= 0.01:
+			return
+		var turn := 0.0 if Motion.reduce else (1.0 - u) * 0.8
+		_show(PIECE_DAISY, n, 0, _build_open_daisy.bind(n), _about(home, centre, grow * k, turn))
+
+## The pieces `_cast_post` places, each at the post's rest: its shadow and
+## its green glow, the drum, the cap (`cap` its bump), and its daisy open.
+func _build_shadow(b, n: int) -> void:
+	var R := _step * POST_R
+	Scenery.soft_disc(b, node_to_local(n) + Vector2(0.05, 0.3) * R, 0.92 * R * SHADOW_SPREAD,
+		0.8 * R * SHADOW_SPREAD, Color(Pal.TEXT, SHADOW_A))
+
+func _build_glow(b, n: int) -> void:
+	var R := _step * POST_R
+	Scenery.soft_disc(b, node_to_local(n), GLOW_SPREAD * R, GLOW_SPREAD * R, Color(Pal.GOOD, GLOW_A))
+
+func _build_drum(b, at: Vector2, rx: float, ry: float, drum: Color, deep: Color) -> void:
+	b.ellipse(at + Vector2(0.0, 0.1) * ry, rx, ry, deep)
+	b.ellipse(at, rx, ry, drum)
+	# The drum's cut face catches the light on its upper rim.
+	b.stroke(Face.Builder.arc_points(at, 0.86 * rx, PI * 1.05, PI * 1.7), 0.07 * rx,
+		Color(1.0, 1.0, 1.0, 0.3), false, false)
+
+func _build_cap(b, at: Vector2, rx: float, ry: float, colour: Color, cap: float) -> void:
+	var centre := at + Vector2(0.0, -0.04) * ry
+	b.ellipse(centre + Vector2(0.0, 0.07) * ry, 0.64 * rx * cap, 0.64 * ry * cap, colour.darkened(CAP_LIP))
+	b.ellipse(centre, 0.6 * rx * cap, 0.6 * ry * cap, colour)
+	b.ellipse(at + Vector2(-0.2, -0.26) * ry, 0.26 * rx * cap, 0.16 * ry * cap, Color(1.0, 1.0, 1.0, 0.28))
+
+func _build_open_daisy(b, n: int) -> void:
+	var R := _step * POST_R
+	_daisy(b, node_to_local(n) + Vector2(0.0, -0.04) * R, R * DAISY_R, DAISY_TIME, n)
 
 ## The sunny lines the snail may not take from here while she is dry: they
 ## fade back, so the rule is seen before it is broken.
@@ -797,7 +1158,7 @@ func _dress_ford(b, i: int, line: Dictionary, alpha: float, t: float) -> void:
 		var u := (k + 0.5) / count
 		var at := a.lerp(z, u)
 		if state.is_sunny(i):
-			var tw := 1.0 if Motion.reduce else 0.75 + 0.25 * sin(t * 3.0 + float(i * 7 + k * 3))
+			var tw := 1.0 if Motion.reduce or t < 0.0 else 0.75 + 0.25 * sin(t * 3.0 + float(i * 7 + k * 3))
 			var r := _step * SUN_SPARK * tw
 			b.polygon(PackedVector2Array([at + Vector2(0, -r * 1.6), at + Vector2(r * 0.4, -r * 0.4),
 				at + Vector2(r * 1.6, 0), at + Vector2(r * 0.4, r * 0.4), at + Vector2(0, r * 1.6),
@@ -957,65 +1318,13 @@ func _build_gone(b, t: float) -> void:
 ## The post's soft shadow on the parchment, at the post's rest: a hopping post
 ## leaves it behind, which is what makes the hop read as height. It arrives
 ## with the post's own pop. A post the stroke may begin at glows green under
-## it until the stroke has begun.
-func _build_shadow(b, n: int, t: float) -> void:
-	var grow := _post_entrance(n, t)
-	if grow.y <= 0.0:
-		return
-	var R := _step * POST_R
-	if state.current < 0 and state.may_start(n) and not is_done():
-		Scenery.soft_disc(b, node_to_local(n), GLOW_SPREAD * R * grow.x, GLOW_SPREAD * R * grow.y,
-			Color(Pal.GOOD, GLOW_A))
-	var at := node_to_local(n) + Vector2(0.05, 0.3) * R
-	Scenery.soft_disc(b, at, 0.92 * R * SHADOW_SPREAD * grow.x, 0.8 * R * SHADOW_SPREAD * grow.y,
-		Color(Pal.TEXT, SHADOW_A))
+## it until the stroke has begun. (Placed by `_cast_figure`, of the pieces
+## `_build_shadow` and `_build_glow`.)
 
 ## A mooring post, seen from above the way the whole board is: a stone drum
 ## with a coloured cap. The cap carries all the guidance, which is the
 ## island's own use for it -- a player who cannot see where the stroke may
-## start cannot start it. Drawn off the readers: it pops in with the squash
-## along the diagonal, sinks under the finger, hops when the walker lands and
-## on the waves, shivers and blushes when it refuses, and its cap bumps when
-## the count it shows has changed. On the win the cap turns toward the sun.
-func _build_post(b, n: int, t: float) -> void:
-	var grow := _post_entrance(n, t)
-	if grow.y <= 0.0:
-		return
-	var at := node_to_local(n)
-	var R := _step * POST_R
-	var drum: Color = Pal.POST_STONE
-	var deep: Color = Pal.POST_DEEP
-	if _post_press.has(n):
-		var pr: Dictionary = _post_press[n]
-		var released := -1.0 if is_inf(float(pr.up)) else t - float(pr.up)
-		var sink := Motion.press_scale(t - float(pr.down), released)
-		grow *= sink
-		drum = drum.lerp(deep, SINK_SHADE * clampf((1.0 - sink) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0))
-	if _post_hop.has(n):
-		var hop: Dictionary = _post_hop[n]
-		at.y += Motion.hop_lift(t - float(hop.at), hop.height, hop.time)
-	at.x += Motion.shiver_offset(t - float(_post_shiver.get(n, -100.0)), Motion.SHIVER_PX)
-	var blush := Motion.flash_level(t - float(_post_blush.get(n, -100.0)))
-	if blush > 0.0:
-		drum = drum.lerp(Pal.BAD_TILE, blush)
-		deep = deep.lerp(Pal.BAD, blush * 0.5)
-	var rx := R * grow.x
-	var ry := R * grow.y
-	b.ellipse(at + Vector2(0.0, 0.1) * ry, rx, ry, deep)
-	b.ellipse(at, rx, ry, drum)
-	# The drum's cut face catches the light on its upper rim.
-	b.stroke(Face.Builder.arc_points(at, 0.86 * rx, PI * 1.05, PI * 1.7), 0.07 * rx,
-		Color(1.0, 1.0, 1.0, 0.3), false, false)
-	var cap := Motion.bump_scale(t - float(_cap_bump.get(n, -100.0)))
-	var colour := _cap_colour(n, t)
-	if _warm.has(n):
-		colour = colour.lerp(Pal.SUN_RAY, CAP_WARM * _dec((t - float(_warm[n])) / BRIGHT_TIME))
-	var centre := at + Vector2(0.0, -0.04) * ry
-	b.ellipse(centre + Vector2(0.0, 0.07) * ry, 0.64 * rx * cap, 0.64 * ry * cap, colour.darkened(CAP_LIP))
-	b.ellipse(centre, 0.6 * rx * cap, 0.6 * ry * cap, colour)
-	b.ellipse(at + Vector2(-0.2, -0.26) * ry, 0.26 * rx * cap, 0.16 * ry * cap, Color(1.0, 1.0, 1.0, 0.28))
-	if _bloom.has(n) and n != state.current:
-		_daisy(b, centre, rx * DAISY_R, t - float(_bloom[n]), n)
+## start cannot start it. (Placed by `_cast_post`.)
 
 ## An ellipse `rx` by `ry` about `at`, turned by `a`.
 static func _oval(b, at: Vector2, rx: float, ry: float, a: float, colour: Color) -> void:
@@ -1078,7 +1387,7 @@ func _cap_of(n: int) -> Color:
 ## read, and the planks are the answer to it.
 func _enter() -> void:
 	_opened = _now()
-	var lines := _enter_line_delay(state.edges.size() - 1) + Motion.ENTER_POP
+	var lines := _enter_line_delay(state.edges.size() - 1) + maxf(Motion.ENTER_POP, Motion.DROP_FADE)
 	var posts := _enter_post_delay(_far()) + Motion.POP_IN
 	_busy_for(maxf(lines, posts))
 	fx.cue("enter")

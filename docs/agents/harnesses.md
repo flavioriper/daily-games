@@ -81,10 +81,13 @@ every frame for a moment after each move; `x=confetti` fires one burst
 early; `x=sk_markers|sk_numbers|sk_count` are Shikaku's; `x=tn_count` (times one
 ground build) and `x=tn_trees|tn_tents|tn_chips` (hide one cast) are Tents'; `x=lu_count`
 (one court build, a full rebake, the beams) and
-`x=lu_lamps|lu_cats|lu_life|lu_veil` (hide one) are Light Up's. Each
+`x=lu_lamps|lu_cats|lu_life|lu_veil` (hide one) are Light Up's; `x=ol_count`
+(one figure cast, with its vertex, index and look counts) is One Line's. Each
 window also prints its mean draw calls beside the peak.
 Tents' moves sweep each row into cairns a run at a time, then tap the
-answer's tents. Light Up's tap the answer's lamps in.
+answer's tents. Light Up's tap the answer's lamps in. One Line's draw the
+planted walk as one drag (a press, a motion a post, the release; `_keep`
+3).
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`
 (a click in board space) or `{do}` (a Callable, for a board played
 through its own methods, Code Break's `pick`/`check`); a move waits while
