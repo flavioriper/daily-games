@@ -65,3 +65,42 @@ one at a time.
   1.5 s apart; Try again clears clips, gives every heart back and keeps a
   hint's pin; the winning turn's join spark lands 0.2 s after the tap, before
   the chase, so it is not over the party.
+
+## The checkup (2026-10-02)
+
+- **The wire is shapes now.** `_build` reads every cell's curves once
+  (frame, pull, lift, level, chase, press, bead pop) and gives each a look
+  (`_look`): the stubs, which of them meet (`_matched_of`), lit, no middle
+  bead, a clip on, a tag's reading and gold -- or -1 while anything on the
+  cell is not at its resting value. Cells with a look are put pass by pass
+  (`P_WASH` .. `P_TAG`, the live passes' own order) from shapes made once
+  (`_shape`, id `pass << 16 | look`) into the rest mesh (`_build_rest`),
+  handed back while the plan of looks and pins is unchanged; the rest are
+  drawn live into the mesh `_build` returns, drawn over it. A live cell's
+  glow and wash land over its still neighbours while it moves (Quilt's
+  trade). `_arms`, `_glow`, `_beads`, `_arm_end_m` take a piece's masks, not
+  its cell, so a shape can be drawn about the origin.
+- **Built in a reference layout's space** (Bridges'): `_in_ref` swaps
+  `_grid`/`_cell` for the largest layout of this deal while the still, rest
+  and live meshes are built, and `_draw` puts them under `_relay()`. The win
+  card's smaller relayout rebuilds nothing; a new deal (`_dealt`) takes a new
+  reference. Fixed-pixel lips scale with it there.
+- **The lanterns are painted** by the `Lanterns` child (`_draw_lanterns`):
+  each LanternFace is `painted` (its node draws nothing) and its
+  `layers_now()` go into one RunMesh under the slot's and its own transform,
+  origin rounded to a whole pixel (the renderer does that to a node; without
+  it every lantern sat half a pixel off). A lantern whose `modulate` is not
+  white (the press shade) or that is hidden is drawn by its node. The paint
+  is redrawn from `_dress`, `_refresh` and `_sway_all` (while any lantern is
+  lit), which covers the sway, the blinks and the entrance.
+- **The tutorial** (`ui/hud/fairylights_tutorial_diagram.gd`) plays a
+  quietened board (`Garden`: no sounds, tips, gags, streak, party or card;
+  a fuse never runs the hearts out) on a hand-dealt 4x4 garden laid by
+  `lay()` through the board's own `_dealt()`. Pages: TURN, DONE, HEARTS
+  (Hard/Insane), TAGS (Insane), UNDO, HINT (bands with hints). The garden
+  takes the page's whole width, `_inset()` the frame alone and the hearts
+  beside it (`_heart_row()` 0, `_hearts_at()`).
+- Probe: `tests/_probe_perf.gd -- fairylights d=<0..3> [fill]` taps every
+  piece round to its answer; `x=fl_count` times a rest-mesh build, a handed-
+  back build, the still mesh and the lantern paint; `x=fl_lanterns` hides
+  every lantern.
