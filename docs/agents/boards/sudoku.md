@@ -86,3 +86,20 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   confetti, number wisdom, the seal; the night seal on Insane). The win
   card got its own words (`flat_win`, no mascot). `tests/_shot_sudoku.gd`
   drives every scenario.
+- **The board checkup** (2026-10-02, `docs/agents/checkup.md` row 14). The
+  grid's mesh is put together by a `ui/flat/run_mesh.gd` (`_rm`, reset on
+  every layout) from shapes made at the cell (`_make_shape`): the tray, its
+  floor and the panels as one shape in their own colours (`SHAPE_BASE`, and
+  `SHAPE_BASE_GLOW` once the win's warmth is full; drawn live only while it
+  rises and its glint goes round), each wash, twin coin and wave gold the one
+  shape under its cell's shiver and bump (on the tail, `_tail_offsets`), a
+  region's daisy open (`SHAPE_DAISY + region`, a run each), the selected
+  tile (`SHAPE_SEL`, its face again for the wave's gold) and a hill at rest
+  (`_hill_id`, a run each); a landing, a hill's reach and a hill or daisy on
+  the move are drawn live. The pad (`ui/flat/digit_pad.gd`) paints its chips
+  from one `Paint` control. The tutorial (`ui/hud/sudoku_tutorial_diagram.gd`)
+  is the board itself, quietened (`Sheet`), dealt a fixed answer of the
+  band's size (Gen holds one size at a time, so the page plays the size the
+  board behind it is on), laid out by the page (`left`, `hearts_at`,
+  `_hearts_x()`), with the real `DigitPad` scaled beside it and the finger
+  firing its chips; the Hilltops page magnifies the grid about its hill.

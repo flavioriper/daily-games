@@ -52,6 +52,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 ## The out-of-hearts card's Back to camp.
@@ -300,6 +301,14 @@ var _won_at := -1.0e9
 var _anim_until := 0.0
 var _dirty := true
 var _grid_mesh: ArrayMesh
+## The grid's mesh is put together by a RunMesh (the board checkup,
+## 2026-10-02): the tray, its floor and the nine panels are one shape in the
+## colours they were drawn in, made once a layout (and once more warmed for
+## the win), and every hill at rest a shape painted by slots, copied
+## natively into a run of its own; only the washes, a landing, the selected
+## tile and a hill on the move are drawn live. Whole in script that build
+## was 3-4 ms on every frame anything on the grid moved (Insane).
+var _rm: RunMesh
 ## The mesh the last _draw handed the canvas item. Held so its RID stays
 ## alive until the next _draw has put another one on the command list.
 var _shown: ArrayMesh
@@ -370,6 +379,36 @@ func rules() -> String:
 		out += "\n\n" + tr("SD_RULES_SAFE")
 	return out
 
+## The tutorial (the board checkup, 2026-10-02): one lesson a page, each
+## played by a real, quietened board on this band's own grid with the pad
+## beside it (ui/hud/sudoku_tutorial_diagram.gd), the pages this band needs:
+## a slip and how it is taken out on Easy and Medium, the hearts on a judged
+## band, the hills on Insane, the bulb while the band has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/sudoku_tutorial_diagram.gd")
+	var band: int = state.band if state != null else 0
+	var hints: int = State.HINTS_BY_BAND[band]
+	var steps := [[Diagram.Lesson.PLACE, "HTP_SD_PLACE", tr("HTP_SD_PLACE_BODY") % Gen.N]]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("SD_RULES_HEARTS") % max_hearts])
+	else:
+		steps.append([Diagram.Lesson.MISTAKE, "HTP_SD_MISTAKE", tr("HTP_SD_MISTAKE_BODY")])
+	if state != null and not state.hills.is_empty():
+		steps.append([Diagram.Lesson.HILLS, "SD_HILLS_SEAL", tr("SD_RULES_HILLS")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+		tr("HTP_SD_UNDO_BODY_JUDGED") if max_hearts > 0 else tr("HTP_SD_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_SD_HINT_BODY_ONE") if hints == 1 else tr("HTP_SD_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.hearts = max_hearts
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## Hard and Insane judge every number as it lands, so no wrong one can stand
 ## and Check has nothing left to find: those bands leave it out.
 func capabilities() -> Array[String]:
@@ -400,6 +439,7 @@ func _ready() -> void:
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_life_layer = _layer("Life", 3, _draw_life)
 	_combo_layer = _layer("Combo", 4, _draw_combo)
+	_rm = RunMesh.new(_make_shape)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -487,6 +527,7 @@ func _layout() -> void:
 	_hearts_y = _grid.y - FRAME * _scale() - TRAY_LIP - row * 0.5
 	_love_mesh = null
 	_seal_mesh = null
+	_rm.reset()
 	_redraw()
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		if layer != null:
@@ -649,11 +690,35 @@ func _draw() -> void:
 ## cell's lifted tile. The heavy rule is no longer a stroke: it is the tray's
 ## floor showing between the panels (section 16).
 func _build_grid(now: float) -> ArrayMesh:
-	var b := Face.Builder.new()
 	var k := _scale()
 	var field: float = _cell * Gen.N
+	if not _rm.laid():
+		_rm.room(PART_BASE, 0, maxi(_rm.size_of(SHAPE_BASE), _rm.size_of(SHAPE_BASE_GLOW)))
+		for reg in Gen.N:
+			_rm.room(PART_STICKER, reg, _rm.size_of(SHAPE_DAISY + reg))
+		_rm.room(PART_SEL, 0, _rm.size_of(SHAPE_SEL) + _rm.size_of(SHAPE_SEL_TOP))
+		var most := _rm.size_of(_hill_id(true, true, 4))
+		for i in Gen.CELLS:
+			if state.has_hill(i):
+				_rm.room(PART_HILL, i, most)
+	_rm.begin()
+	# The tray and the panels as made, but for the moments its warmth is
+	# rising and its glint goes round, drawn live.
+	var glow := _glow(now)
+	_rm.open(PART_BASE, 0)
+	if (glow == 0.0 or glow == 1.0) and not _glinting(now):
+		_rm.put(SHAPE_BASE if glow == 0.0 else SHAPE_BASE_GLOW, [], Transform2D.IDENTITY)
+	else:
+		var tray := Face.Builder.new()
+		_tray(tray, now, field, k, glow)
+		_panels(tray, k)
+		_rm.put_builder(tray)
+	_rm.close()
 	# The washes are derived here and nowhere else: the state keeps no
-	# highlight, so nothing can leave a stale one behind after an undo.
+	# highlight, so nothing can leave a stale one behind after an undo. Each
+	# cell's wash, twin coin and wave gold is the one shape (made at the cell,
+	# about its middle) under the cell's shiver and bump, put first on the
+	# tail, where a place keeps its indices (no run under every cell).
 	var peers: Dictionary = {}
 	var twins: Dictionary = {}
 	if _sel >= 0:
@@ -662,42 +727,103 @@ func _build_grid(now: float) -> ArrayMesh:
 		for j in state.twins(_sel):
 			twins[j] = true
 	var clash: Dictionary = _clash
-	_tray(b, now, field, k)
-	_panels(b, k)
 	for i in Gen.CELLS:
 		if i == _sel:
 			continue
-		var grow := _cell_grow(now, i)
-		var shift := _cell_shift(now, i)
 		var wash := _wash_of(i, peers, twins, clash)
-		if wash.a > 0.0:
-			b.fan(_wash_quad(i, shift, grow), wash)
-		elif twins.has(i):
-			var mid := cell_to_local(Gen.row_of(i), Gen.col_of(i)) + Vector2(shift, 0.0)
-			b.disc(mid, _cell * TWIN_R * grow, Color(Pal.SUN, WASH_TWIN_COIN))
 		var lit := _flash_level(now, i)
+		var twin := wash.a <= 0.0 and twins.has(i)
+		if wash.a <= 0.0 and lit <= 0.0 and not twin:
+			continue
+		var grow := _cell_grow(now, i)
+		var mid := cell_to_local(Gen.row_of(i), Gen.col_of(i)) + Vector2(_cell_shift(now, i), 0.0)
+		var xf := Transform2D(0.0, Vector2(grow, grow), 0.0, mid)
+		if wash.a > 0.0:
+			_rm.put(SHAPE_WASH, [wash], xf)
+		elif twin:
+			_rm.put(SHAPE_TWIN, [Color(Pal.SUN, WASH_TWIN_COIN)], xf)
 		if lit > 0.0:
-			b.fan(_wash_quad(i, shift, grow), Color(Pal.SUN_RAY, WASH_FLASH * lit))
+			_rm.put(SHAPE_WASH, [Color(Pal.SUN_RAY, WASH_FLASH * lit)], xf)
+	_rm.close()
+	var b := Face.Builder.new()
 	_reach(b, k)
-	_stickers(b, now, k)
+	_rm.put_builder(b)
+	_stickers(now)
+	_rm.close()
+	b = Face.Builder.new()
 	_landings(b, now, k)
+	_rm.put_builder(b)
 	if _sel >= 0:
-		_selected_tile(b, now, k, _wash_of(_sel, peers, twins, clash))
-	_hills(b, now, k)
-	if b.verts.is_empty():
-		return null
-	return b.mesh()
+		_rm.open(PART_SEL, 0)
+		_selected_tile(now, k, _wash_of(_sel, peers, twins, clash))
+	_hills(now, k)
+	return _rm.mesh()
+
+enum { PART_BASE, PART_STICKER, PART_SEL, PART_HILL }
+const SHAPE_BASE := 0
+const SHAPE_BASE_GLOW := 1
+const SHAPE_WASH := 2
+const SHAPE_TWIN := 3
+## A region's daisy at rest, open and turned its own way: SHAPE_DAISY + region.
+const SHAPE_DAISY := 4
+## The selected tile at rest, and its face alone for the wave's gold over it
+## (the mini's six regions and the nine's nine daisies end at 12).
+const SHAPE_SEL := 13
+const SHAPE_SEL_TOP := 14
+## A hill at rest: SHAPE_HILL + 10 with a halo, + 5 with the party's glow,
+## + its dots.
+const SHAPE_HILL := 16
+
+static func _hill_id(halo: bool, glow: bool, dots: int) -> int:
+	return SHAPE_HILL + (10 if halo else 0) + (5 if glow else 0) + dots
+
+## Shape `id` for the RunMesh, at this layout: the tray and the panels in
+## their own colours; a cell's wash or twin coin about its middle, a region's
+## daisy open about its eye, or a hill about its foot, in slot colours.
+func _make_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var k := _scale()
+	if id == SHAPE_BASE or id == SHAPE_BASE_GLOW:
+		_tray(b, -INF, _cell * Gen.N, k, 0.0 if id == SHAPE_BASE else 1.0)
+		_panels(b, k)
+		return b
+	if id == SHAPE_WASH:
+		var side := _cell - 2.0 * WASH_INSET * k
+		b.fan(Face.Builder.round_rect(-Vector2.ONE * (side * 0.5), Vector2.ONE * side, WASH_R * k), RunMesh.slot(0))
+		return b
+	if id == SHAPE_TWIN:
+		b.disc(Vector2.ZERO, _cell * TWIN_R, RunMesh.slot(0))
+		return b
+	if id == SHAPE_SEL or id == SHAPE_SEL_TOP:
+		var slots := [RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3), RunMesh.slot(4)]
+		_tile(b, Vector2.ZERO, 1.0, k, slots, id == SHAPE_SEL_TOP)
+		return b
+	if id < SHAPE_HILL:
+		var reg := id - SHAPE_DAISY
+		_daisy(b, Vector2.ZERO, _cell * STICKER_R, _sticker_turn(reg, 1.0),
+			[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3)])
+		return b
+	var h := id - SHAPE_HILL
+	var slots := []
+	for n in HILL_COLOURS:
+		slots.append(RunMesh.slot(n))
+	_hill(b, Vector2.ZERO, HILL_W * _cell, HILL_H * _cell, 1.0, h % 5, h >= 10, 1.0 if (h / 5) % 2 == 1 else 0.0, slots)
+	return b
+
+## True while the win's glint is going round the tray.
+func _glinting(now: float) -> bool:
+	var since := now - _won_at - Motion.SOLVE_DELAY
+	return not Motion.reduce and since > 0.0 and since < GLINT_TIME
 
 ## The tray: a WOOD_DEEP lip under a face in the rule's own wood, lit along
 ## its top edge, and inside it the floor the panels stand on, darker so the
 ## gutters between them read as grooves. On the win the wood warms toward the
 ## sun and a glint runs once round it.
-func _tray(b: Face.Builder, now: float, field: float, k: float) -> void:
+func _tray(b: Face.Builder, now: float, field: float, k: float, glow: float) -> void:
 	var f := FRAME * k
 	var outer := _grid - Vector2.ONE * f
 	var side := Vector2.ONE * (field + 2.0 * f)
 	var r := (CORNER + FRAME * 0.5) * k
-	var glow := _glow(now)
 	var face: Color = Pal.GRID_RULE.lerp(Pal.SUN_RAY, WIN_GLOW * glow)
 	var lip: Color = Pal.WOOD_DEEP.lerp(Pal.SUN, WIN_GLOW * glow * 0.5)
 	b.fan(Face.Builder.round_rect(outer + Vector2(0.0, TRAY_LIP * k), side, r), lip)
@@ -832,24 +958,38 @@ func _landings(b: Face.Builder, now: float, k: float) -> void:
 ## the panel, a lip in the sun's deep, a face washed as the cell is (gold, or
 ## rose while it clashes), and the gold rim. It takes the cell's shiver and
 ## bump, so a refusal still shakes the clearest thing on the cell.
-func _selected_tile(b: Face.Builder, now: float, k: float, wash: Color) -> void:
+## Into its own run: the tile is its shape copied over the cell, and the
+## wave's gold its face's shape over it. A bump scales the whole shape about
+## the cell, so the lift and the shadow's drop swell with it by the bump's
+## tenth (under a pixel) where they used to stand still; at rest it is as it
+## was.
+func _selected_tile(now: float, k: float, wash: Color) -> void:
 	var grow := _cell_grow(now, _sel)
-	var inset := EDGE_INSET * k
-	var side := (_cell - 2.0 * inset) * grow
 	var mid := _corner_of(_sel) + Vector2.ONE * (_cell * 0.5) + Vector2(_cell_shift(now, _sel), 0.0)
-	Scenery.soft_disc(b, mid + Vector2(0.0, _cell * 0.34), side * 0.56, _cell * 0.16,
-		Color(Pal.TEXT, SEL_SHADOW_A))
+	var lit := _flash_level(now, _sel)
+	var colours := [Color(Pal.TEXT, SEL_SHADOW_A), Pal.SUN.darkened(0.12),
+		Pal.SURFACE.lerp(Color(wash, 1.0), wash.a), Color(Pal.SUN_RAY, WASH_FLASH * lit), Pal.SUN]
+	var xf := Transform2D(0.0, Vector2(grow, grow), 0.0, mid)
+	_rm.put(SHAPE_SEL, colours, xf)
+	if lit > 0.0:
+		_rm.put(SHAPE_SEL_TOP, colours, xf)
+
+## The selected tile over a cell's middle `mid`, `grow` bumped: its shadow,
+## lip, face and rim in `colours` (the wave's gold, slot 3, unused), or with
+## `top` its face alone in the wave's gold.
+func _tile(b: Face.Builder, mid: Vector2, grow: float, k: float, colours: Array, top_only: bool) -> void:
+	var side := (_cell - 2.0 * EDGE_INSET * k) * grow
 	var top := mid - Vector2(side * 0.5, side * 0.5 + SEL_LIFT * k)
 	var r := EDGE_RADIUS * k * grow
-	b.fan(Face.Builder.round_rect(top + Vector2(0.0, SEL_LIFT * k), Vector2.ONE * side, r),
-		Pal.SUN.darkened(0.12))
-	b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), Pal.SURFACE.lerp(Color(wash, 1.0), wash.a))
-	var lit := _flash_level(now, _sel)
-	if lit > 0.0:
-		b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), Color(Pal.SUN_RAY, WASH_FLASH * lit))
+	if top_only:
+		b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), colours[3])
+		return
+	Scenery.soft_disc(b, mid + Vector2(0.0, _cell * 0.34), side * 0.56, _cell * 0.16, colours[0])
+	b.fan(Face.Builder.round_rect(top + Vector2(0.0, SEL_LIFT * k), Vector2.ONE * side, r), colours[1])
+	b.fan(Face.Builder.round_rect(top, Vector2.ONE * side, r), colours[2])
 	var w := EDGE_W * k * grow
 	b.stroke(Face.Builder.round_rect(top + Vector2.ONE * (w * 0.5), Vector2.ONE * (side - w),
-		maxf(r - w * 0.5, 0.0)), w, Pal.SUN, true)
+		maxf(r - w * 0.5, 0.0)), w, colours[4], true)
 
 static func _hash(a: int, c: int) -> float:
 	return float(posmod(hash(Vector2i(a, c)), 1000)) / 1000.0
@@ -1628,12 +1768,15 @@ func _reach(b: Face.Builder, k: float) -> void:
 ## rises in along the diagonal after the entrance, turns gold once its count
 ## comes true around it, sits on a rose halo while what is written beside it
 ## cannot come true, and glows gold at the party.
-func _hills(b: Face.Builder, now: float, k: float) -> void:
+## Each into its own run: a hill at rest (risen, unbumped, its glow none or
+## full) is its shape copied under its foot, one on the move drawn live.
+func _hills(now: float, k: float) -> void:
 	if state.hills.is_empty():
 		return
 	var glow := 0.0
 	if now >= _glow_at:
 		glow = 1.0 if Motion.reduce else clampf((now - _glow_at) / HILL_GLOW, 0.0, 1.0)
+	var lit := glow > 0.0 and not Motion.reduce
 	for i in Gen.CELLS:
 		if state.hills[i] < 0:
 			continue
@@ -1646,27 +1789,44 @@ func _hills(b: Face.Builder, now: float, k: float) -> void:
 		var foot := _mid(i) + Vector2(HILL_AT.x * _cell + _cell_shift(now, i), HILL_AT.y * _cell)
 		if i == _sel:
 			foot.y -= SEL_LIFT * k
-		var w := HILL_W * _cell * _cell_grow(now, i)
-		var h := HILL_H * _cell * rise
+		var grow := _cell_grow(now, i)
 		var standing: int = state.hill_standing(i)
-		if standing < 0:
-			b.ellipse(foot - Vector2(0.0, h * 0.45), w * 0.66, h * 0.95, Color(Pal.BAD, 0.32))
 		var body: Color = Pal.LEAF
 		if standing > 0:
 			body = Pal.LEAF.lerp(Pal.SUN_RAY, 0.55)
 		body = body.lerp(Pal.SUN_RAY, glow)
-		b.ellipse(foot + Vector2(0.0, h * 0.06), w * 0.52, h * 0.16, Color(Pal.TEXT, 0.12))
-		b.polygon(_mound(foot, w * 0.5, h), body.darkened(0.18))
-		b.polygon(_mound(foot - Vector2(0.0, h * 0.08), w * 0.46, h * 0.9), body)
-		b.ellipse(foot + Vector2(-w * 0.16, -h * 0.62), w * 0.1, h * 0.12, Color(Pal.SURFACE, 0.45))
-		var dots: int = state.hills[i]
-		var r := HILL_DOT * _cell
-		var gap := r * 2.6
-		for n in dots:
-			var x := (float(n) - (dots - 1) * 0.5) * gap
-			b.disc(foot + Vector2(x, -h * 0.42), r * rise, Pal.SURFACE)
-		if glow > 0.0 and not Motion.reduce:
-			b.disc(foot + Vector2(w * 0.3, -h * 0.9), r * 0.8 * glow, Color(Pal.SUN_TILE, glow))
+		var colours := [Color(Pal.BAD, 0.32), Color(Pal.TEXT, 0.12), body.darkened(0.18), body,
+			Color(Pal.SURFACE, 0.45), Pal.SURFACE, Color(Pal.SUN_TILE, glow)]
+		_rm.open(PART_HILL, i)
+		if rise == 1.0 and grow == 1.0 and (glow == 0.0 or glow == 1.0):
+			_rm.put(_hill_id(standing < 0, lit, state.hills[i]), colours, Transform2D(0.0, foot))
+			continue
+		var live := Face.Builder.new()
+		_hill(live, foot, HILL_W * _cell * grow, HILL_H * _cell * rise, rise, state.hills[i],
+			standing < 0, glow if lit else 0.0, colours)
+		_rm.put_builder(live)
+
+## The colours a hill is drawn in: the halo, its shadow, the mound's rim and
+## body, its shine, the dots and the party's glow.
+const HILL_COLOURS := 7
+
+## One hill `w` wide and `h` tall standing on `foot`, its dots `rise` grown,
+## in `colours` (HILL_COLOURS of them: real ones, or RunMesh slots).
+func _hill(b: Face.Builder, foot: Vector2, w: float, h: float, rise: float, dots: int,
+		halo: bool, glow: float, colours: Array) -> void:
+	if halo:
+		b.ellipse(foot - Vector2(0.0, h * 0.45), w * 0.66, h * 0.95, colours[0])
+	b.ellipse(foot + Vector2(0.0, h * 0.06), w * 0.52, h * 0.16, colours[1])
+	b.polygon(_mound(foot, w * 0.5, h), colours[2])
+	b.polygon(_mound(foot - Vector2(0.0, h * 0.08), w * 0.46, h * 0.9), colours[3])
+	b.ellipse(foot + Vector2(-w * 0.16, -h * 0.62), w * 0.1, h * 0.12, colours[4])
+	var r := HILL_DOT * _cell
+	var gap := r * 2.6
+	for n in dots:
+		var x := (float(n) - (dots - 1) * 0.5) * gap
+		b.disc(foot + Vector2(x, -h * 0.42), r * rise, colours[5])
+	if glow > 0.0:
+		b.disc(foot + Vector2(w * 0.3, -h * 0.9), r * 0.8 * glow, colours[6])
 
 ## The outline of a mound `hw` half-wide and `h` tall standing on `foot`.
 static func _mound(foot: Vector2, hw: float, h: float) -> PackedVector2Array:
@@ -1686,10 +1846,16 @@ func _hills_moving(now: float) -> bool:
 
 ## A finished region's daisy sticker opening or folding in its panel's top
 ## right corner (Queens' flowers).
-func _stickers(b: Face.Builder, now: float, k: float) -> void:
+## Each into its own run: a daisy fully open is its region's shape copied
+## under its spot, one opening or folding drawn live.
+func _stickers(now: float) -> void:
 	var size := Vector2(Gen.BOX_C, Gen.BOX_R) * _cell
 	var per_row: int = Gen.N / Gen.BOX_C
-	for reg in _sticker:
+	var colours := [Pal.FLOWER.darkened(0.12), Pal.FLOWER, Pal.SUN, Color(Pal.SURFACE, 0.6)]
+	# In region order, the order their runs were laid.
+	for reg in Gen.N:
+		if not _sticker.has(reg):
+			continue
 		var st: Dictionary = _sticker[reg]
 		var e := now - float(st.at)
 		var open := 0.0
@@ -1703,8 +1869,18 @@ func _stickers(b: Face.Builder, now: float, k: float) -> void:
 		var bc: int = int(reg) % per_row
 		var corner := _grid + Vector2(bc + 1, br) * size
 		var at := corner + Vector2(-STICKER_AT.x, STICKER_AT.y) * _cell * 0.62
-		var turn := (1.0 - open) * 1.2 + _hash(br, bc + 7) * 0.6
-		_daisy(b, at, _cell * STICKER_R * open, turn, Pal.FLOWER)
+		_rm.open(PART_STICKER, int(reg))
+		if open == 1.0:
+			_rm.put(SHAPE_DAISY + int(reg), colours, Transform2D(0.0, at))
+			continue
+		var live := Face.Builder.new()
+		_daisy(live, at, _cell * STICKER_R * open, _sticker_turn(int(reg), open), colours)
+		_rm.put_builder(live)
+
+## How far region `reg`'s daisy is turned, `open` of the way open.
+func _sticker_turn(reg: int, open: float) -> float:
+	var per_row: int = Gen.N / Gen.BOX_C
+	return (1.0 - open) * 1.2 + _hash(reg / per_row, reg % per_row + 7) * 0.6
 
 func _stickers_moving(now: float) -> bool:
 	if Motion.reduce:
@@ -1715,14 +1891,15 @@ func _stickers_moving(now: float) -> bool:
 			return true
 	return false
 
-## A little daisy: five petals round a sun-gold eye.
-func _daisy(b: Face.Builder, at: Vector2, r: float, turn: float, petal: Color) -> void:
+## A little daisy: five petals round a sun-gold eye, in `colours` (the
+## petals' rim and body, the eye, its shine: real ones, or RunMesh slots).
+func _daisy(b: Face.Builder, at: Vector2, r: float, turn: float, colours: Array) -> void:
 	for n in 5:
 		var a := turn + TAU * n / 5.0
-		b.ellipse(at + Vector2.from_angle(a) * r * 0.62, r * 0.42, r * 0.42, petal.darkened(0.12))
-		b.ellipse(at + Vector2.from_angle(a) * r * 0.6, r * 0.36, r * 0.36, petal)
-	b.disc(at, r * 0.36, Pal.SUN)
-	b.disc(at - Vector2(r, r) * 0.1, r * 0.12, Color(Pal.SURFACE, 0.6))
+		b.ellipse(at + Vector2.from_angle(a) * r * 0.62, r * 0.42, r * 0.42, colours[0])
+		b.ellipse(at + Vector2.from_angle(a) * r * 0.6, r * 0.36, r * 0.36, colours[1])
+	b.disc(at, r * 0.36, colours[2])
+	b.disc(at - Vector2(r, r) * 0.1, r * 0.12, colours[3])
 
 ## Which regions are finished now, against what the stickers show: a region
 ## that has just come right opens its daisy, one that has come apart folds it.
@@ -1797,9 +1974,9 @@ func _draw_hearts() -> void:
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
 	var y := _hearts_y
-	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var x0 := _hearts_x() - step * (max_hearts - 1) * 0.5
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var corner := Vector2(_hearts_x(), y) - pill * 0.5
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
 	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
@@ -1827,10 +2004,15 @@ func _draw_hearts() -> void:
 					pts[n] = at + shift + pts[n].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
+	var c := Vector2(_hearts_x(), y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## Where the hearts' pill is centred across: over the grid (the tutorial's
+## stands it over the pad beside its grid).
+func _hearts_x() -> float:
+	return size.x * 0.5
 
 ## A heart's small face: two dots and a smile in ink, a shine at the top left,
 ## and a leaf on top.

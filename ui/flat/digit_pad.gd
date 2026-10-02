@@ -38,6 +38,8 @@ extends "res://ui/hud/panel.gd"
 signal pick(i: int)
 
 const Icons = preload("res://ui/icons.gd")
+const Face = preload("res://ui/faces/face.gd")
+const KeyBoard = preload("res://ui/flat/key_board.gd")
 
 ## The narrowest the pad asks for; it fills whatever it is given.
 const MIN_WIDTH := 600.0
@@ -66,6 +68,19 @@ var _press: Dictionary = {}   # Button -> Tween
 ## How many digit chips are laid out; 0 until the first _lay.
 var _digits := 0
 var _slots: Array[Control] = []
+## The chips' paint (the board checkup, 2026-10-02), Hidden Word's keyboard
+## pattern: a Button with its own StyleBoxFlat and digit cost two draw calls,
+## 20 of Sudoku's 104 at rest. The Buttons still take the taps and carry the
+## squash, but draw nothing; `_paint`, over them, draws every chip's face (and
+## the cross) as one mesh and every digit after it, read off each Button's
+## transform. A look (size, pressed, spent, the cross) is made once as a flat
+## triangle list and copied natively under the chip's transform; the mesh is
+## made again only on a frame where some chip moved, was pressed or spent.
+var _paint: Control
+var _flats: Dictionary = {}   # look key -> [verts, cols]
+var _faces: ArrayMesh
+var _sig := PackedFloat32Array()
+var _font: Font
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -78,6 +93,16 @@ func _make_inner() -> Container:
 	return box
 
 func _build() -> void:
+	_font = CozyTheme.display(600)
+	_paint = Control.new()
+	_paint.name = "Paint"
+	_paint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_paint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_paint.draw.connect(_draw_chips)
+	add_child(_paint)
+	# The paper every Button wore, on the paint instead, so the chips keep
+	# their grain.
+	_paint.material = CozyTheme.paper()
 	for k in COUNT:
 		# A plain Control holds each chip so the press can move the chip
 		# freely; the row's HBoxContainer would otherwise put it straight
@@ -90,16 +115,14 @@ func _build() -> void:
 		var b := Button.new()
 		b.name = "Digit%d" % k if k < REMOVE else "RemoveChip"
 		b.focus_mode = Control.FOCUS_NONE
-		b.text = str(k + 1) if k < REMOVE else ""
-		b.add_theme_font_override("font", CozyTheme.display(600))
-		b.add_theme_font_size_override("font_size", FONT_SIZE)
 		b.pressed.connect(_on_chip.bind(k))
 		slot.add_child(b)
+		# Dropped after add_child, which is when CozyTheme.dress() puts the
+		# shared paper wash on; the paint draws the chip instead.
+		b.material = null
+		KeyBoard._blank(b)
 		_chips.append(b)
-		if k == REMOVE:
-			b.draw.connect(_draw_remove.bind(b))
 	_lay(9)
-	_paint()
 
 ## Place the chips for `n` digits: nine as five over four-and-the-cross,
 ## six as three over three with the cross standing the height of both rows
@@ -152,8 +175,92 @@ func _bump(b: Button) -> void:
 	Motion.stop(_press.get(b))
 	_press[b] = Motion.squash(b, SQUASH, Motion.CHIP_LIFT_TIME)
 
-func _draw_remove(on: Button) -> void:
-	Icons.paint(on, "cross", Rect2(on.size * 0.5 - Vector2(32, 32), Vector2(64, 64)), Pal.TEXT)
+func _process(_delta: float) -> void:
+	if _paint == null or not is_visible_in_tree():
+		return
+	# Every chip's place, scale, press and spend, in the paint's space; a
+	# frame that matches the last one draws the mesh it already has.
+	var inv := _paint.get_global_transform().affine_inverse()
+	var sig := PackedFloat32Array()
+	sig.resize(_chips.size() * 8)
+	var k := 0
+	for chip in _chips:
+		var xf := inv * chip.get_global_transform()
+		sig[k] = xf.x.x
+		sig[k + 1] = xf.x.y
+		sig[k + 2] = xf.y.x
+		sig[k + 3] = xf.y.y
+		sig[k + 4] = xf.origin.x
+		sig[k + 5] = xf.origin.y
+		sig[k + 6] = (1.0 if KeyBoard._held(chip) else 0.0) + (2.0 if chip.is_visible_in_tree() else 0.0)
+		sig[k + 7] = chip.modulate.a
+		k += 8
+	if sig == _sig:
+		return
+	_sig = sig
+	_faces = null
+	_paint.queue_redraw()
+
+## Every chip's face and the cross as one mesh, then every digit: two draw
+## calls.
+func _draw_chips() -> void:
+	if _chips.is_empty():
+		return
+	var inv := _paint.get_global_transform().affine_inverse()
+	if _faces == null:
+		var b := Face.FlatBuilder.new()
+		for k in _chips.size():
+			var chip := _chips[k]
+			if not chip.is_visible_in_tree():
+				continue
+			var f := _flat_for(chip, k == REMOVE)
+			b.verts.append_array((inv * chip.get_global_transform()) * (f[0] as PackedVector2Array))
+			b.cols.append_array(f[1])
+		_faces = b.mesh() if not b.verts.is_empty() else null
+	if _faces != null:
+		_paint.draw_mesh(_faces, null)
+	var asc := _font.get_ascent(FONT_SIZE)
+	for k in mini(_digits, REMOVE):
+		var chip := _chips[k]
+		if not chip.is_visible_in_tree():
+			continue
+		var text := str(k + 1)
+		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+		var at := Vector2((chip.size.x - ts.x) * 0.5, (chip.size.y - ts.y) * 0.5 + asc)
+		_paint.draw_set_transform_matrix(inv * chip.get_global_transform())
+		_paint.draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE,
+			Color(Pal.TEXT, chip.modulate.a))
+	_paint.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## A chip's face as a flat triangle list about its own top-left corner, made
+## once per size, press, spend and glyph: CozyTheme.soft_button's look in
+## SURFACE (the soft shadow, the two-pixel border, the face; key_board.gd's
+## triangles), the cross stroked on the remove chip as Icons' "cross" is.
+func _flat_for(chip: Button, cross: bool) -> Array:
+	var held := KeyBoard._held(chip)
+	var a := chip.modulate.a
+	var key := "%d|%d|%s|%.2f|%s" % [int(chip.size.x), int(chip.size.y), held, a, cross]
+	var f: Array = _flats.get(key, [])
+	if not f.is_empty():
+		return f
+	var fill: Color = Pal.SURFACE
+	var b := Face.Builder.new()
+	var sz := chip.size
+	var tint := fill.darkened(0.55).lerp(Color(0.35, 0.23, 0.12), 0.5)
+	KeyBoard._shadow(b, Vector2(0.0, 1.0 if held else 4.0), sz, RADIUS, 3.0 if held else 10.0,
+		Color(tint, (0.10 if held else 0.2) * a))
+	b.fan(KeyBoard._rounded(Vector2.ZERO, sz, RADIUS), Color(fill.darkened(0.16), a))
+	b.fan(KeyBoard._rounded(Vector2(2.0, 2.0), sz - Vector2(4.0, 4.0), RADIUS - 2.0),
+		Color(fill.darkened(0.07) if held else fill, a))
+	if cross:
+		var lo := sz * 0.5 - Vector2(32.0, 32.0)
+		# A hair under Icons' width: the stroke's feather adds to it.
+		var w := Icons.STROKE * 64.0 - 1.5
+		for line in Icons.shape("cross").lines:
+			b.stroke(Transform2D(0.0, Vector2(64.0, 64.0), 0.0, lo) * (line as PackedVector2Array), w, Pal.TEXT)
+	f = Face.FlatBuilder.flat_of(b)
+	_flats[key] = f
+	return f
 
 ## Read the digit counts back off the board. Called by the host on
 ## every move and every focus change.
@@ -166,15 +273,3 @@ func refresh(puzzle) -> void:
 		var spent := left <= 0
 		_chips[k].disabled = spent
 		_chips[k].modulate.a = SPENT_ALPHA if spent else 1.0
-
-func _paint() -> void:
-	for k in COUNT:
-		var face: Color = Pal.SURFACE
-		var ink: Color = Pal.TEXT
-		var rest := CozyTheme.soft_button(face, RADIUS, false, 0)
-		_chips[k].add_theme_stylebox_override("normal", rest)
-		_chips[k].add_theme_stylebox_override("hover", rest)
-		_chips[k].add_theme_stylebox_override("pressed", CozyTheme.soft_button(face, RADIUS, true, 0))
-		_chips[k].add_theme_stylebox_override("disabled", rest)
-		_chips[k].add_theme_color_override("font_color", ink)
-		_chips[k].add_theme_color_override("font_disabled_color", ink)

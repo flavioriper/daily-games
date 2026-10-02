@@ -1999,3 +1999,27 @@ HTP_MP_UNDO_CAP,Undo takes the whole stroke back,Desfazer volta o arrasto inteir
 HTP_MP_RESET_CAP,Reset clears the whole patch,Recomeçar limpa a horta toda,Reiniciar limpia toda la huerta
 HTP_MP_HINT_CAP,The bulb plants one for you,A lâmpada planta um por você,La bombilla planta uno por ti
 HTP_MP_PINNED_CAP,A given mushroom stays put,Um cogumelo dado fica no lugar,Un hongo dado se queda en su sitio
+HTP_SD_PLACE,Every number once,Cada número uma vez,Cada número una vez
+HTP_SD_PLACE_BODY,"Every row, every column and every box holds the numbers 1 to %d, each exactly once. Tap a cell, then a number in the pad. A row, column or box you finish lights up.","Cada linha, cada coluna e cada bloco tem os números de 1 a %d, cada um exatamente uma vez. Toque numa casa, depois num número do teclado. Uma linha, coluna ou bloco que você completa se acende.","Cada fila, cada columna y cada bloque tiene los números del 1 al %d, cada uno exactamente una vez. Toca una casilla y luego un número del teclado. Una fila, columna o bloque que completas se ilumina."
+HTP_SD_MISTAKE,Spot your own slips,Ache seus próprios deslizes,Encuentra tus propios despistes
+HTP_SD_MISTAKE_BODY,"A number already in the same row, column or box turns rose, and so does its twin. The cross takes it out, and so does tapping the same number again. Nothing is lost: Check marks anything that disagrees with the answer.","Um número que já está na mesma linha, coluna ou bloco fica rosa, e o gêmeo dele também. O X tira ele, e tocar o mesmo número de novo também. Nada se perde: Conferir marca tudo o que não bate com a resposta.","Un número que ya está en la misma fila, columna o bloque se pone rosa, y su gemelo también. La X lo quita, y tocar el mismo número otra vez también. Nada se pierde: Comprobar marca todo lo que no coincide con la respuesta."
+HTP_SD_UNDO_BODY,"Undo takes back your last number, and Reset clears every number you wrote. Neither costs anything.","Desfazer volta seu último número, e Recomeçar limpa todos os números que você escreveu. Nenhum dos dois custa nada.","Deshacer quita tu último número, y Reiniciar borra todos los números que escribiste. Ninguno cuesta nada."
+HTP_SD_UNDO_BODY_JUDGED,"Undo takes back your last number, and Reset clears every number you wrote. A heart once spent stays spent, and a crossed-out number stays crossed out.","Desfazer volta seu último número, e Recomeçar limpa todos os números que você escreveu. Um coração gasto continua gasto, e um número riscado continua riscado.","Deshacer quita tu último número, y Reiniciar borra todos los números que escribiste. Un corazón gastado sigue gastado, y un número tachado sigue tachado."
+HTP_SD_HINT_BODY_ONE,The bulb writes one number of the answer into the cell with the fewest choices left. You have one hint.,A lâmpada escreve um número da resposta na casa com menos opções. Você tem uma dica.,La bombilla escribe un número de la respuesta en la casilla con menos opciones. Tienes una pista.
+HTP_SD_HINT_BODY_N,The bulb writes one number of the answer into the cell with the fewest choices left. You have %d hints.,A lâmpada escreve um número da resposta na casa com menos opções. Você tem %d dicas.,La bombilla escribe un número de la respuesta en la casilla con menos opciones. Tienes %d pistas.
+HTP_SD_RULE_CAP,"Each row, column and box holds 1 to %d once","Cada linha, coluna e bloco tem de 1 a %d uma vez","Cada fila, columna y bloque tiene del 1 al %d una vez"
+HTP_SD_PICK_CAP,"Tap a cell: its row, column and box light up","Toque numa casa: linha, coluna e bloco se acendem","Toca una casilla: su fila, columna y bloque se iluminan"
+HTP_SD_MISSING_CAP,This row is missing just one number,Falta só um número nesta linha,A esta fila le falta solo un número
+HTP_SD_DONE_CAP,Tap it in the pad: the row lights up,Toque nele no teclado: a linha se acende,Tócalo en el teclado: la fila se ilumina
+HTP_SD_CLASH_CAP,Twice in one row: both turn rose,Duas vezes na linha: os dois ficam rosa,Dos veces en la fila: los dos se ponen rosa
+HTP_SD_CROSS_CAP,The cross takes it out again,O X tira ele de novo,La X lo quita otra vez
+HTP_SD_JUDGED_CAP,Every number is judged as it lands,Cada número é julgado ao cair,Cada número se juzga al caer
+HTP_SD_WRONG_CAP,A wrong one costs a heart,Um errado custa um coração,Uno equivocado cuesta un corazón
+HTP_SD_RULED_CAP,And it is crossed out of that cell,E fica riscado daquela casa,Y queda tachado de esa casilla
+HTP_SD_HILL_CAP,A hill looks at the four cells beside it,A colina olha as quatro casas ao lado,La colina mira las cuatro casillas a su lado
+HTP_SD_DOTS_CAP,%d dots: that many of them are smaller,%d pontinhos: essa quantidade é menor,%d puntitos: esa cantidad es menor
+HTP_SD_TRUE_CAP,When it comes true the hill turns gold,Quando se cumpre a colina fica dourada,Cuando se cumple la colina se vuelve dorada
+HTP_SD_WRITE_CAP,Write a number,Escreva um número,Escribe un número
+HTP_SD_UNDO_CAP,Undo takes the last number back,Desfazer volta o último número,Deshacer quita el último número
+HTP_SD_RESET_CAP,Reset clears every number you wrote,Recomeçar limpa todos os seus números,Reiniciar borra todos tus números
+HTP_SD_HINT_CAP,The bulb writes one in for you,A lâmpada escreve um por você,La bombilla escribe uno por ti
