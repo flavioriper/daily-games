@@ -240,6 +240,39 @@ func _experiment() -> void:
 				print("  court %.2f ms rebake %.2f ms beams %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
 			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " lamps ", _puzzle.state.lamps().size(),
 				" cats ", _puzzle._cats.size(), " anim ", _puzzle._anim_until - _puzzle._now(), " moths ", _puzzle._flies.size())
+		"br_count":
+			# One board build as an animating frame does it (the bands, the
+			# runs, the islets), every 1.5 s, with the meshes' vertices.
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				_puzzle._in_ref = true
+				var t0 := Time.get_ticks_usec()
+				var ms: Array = _puzzle._build(t)
+				var t1 := Time.get_ticks_usec()
+				_puzzle._runs_sig = []
+				_puzzle._islets_sig = []
+				_puzzle._build_runs(t)
+				var t2 := Time.get_ticks_usec()
+				_puzzle._build_islets(t)
+				var t3 := Time.get_ticks_usec()
+				_puzzle._in_ref = false
+				print("  runs %.2f ms islets %.2f ms" % [(t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
+				var verts := []
+				for m in ms:
+					verts.append(m.surface_get_array_len(0) if m != null else 0)
+				print("  board %.2f ms verts %s runs %d shapes %d" % [(t1 - t0) / 1000.0, verts,
+					_puzzle.state.runs.size(), _puzzle._run_ids.size()])
+				if n == 0:
+					var rmi = _puzzle._rm_islets
+					_puzzle._in_ref = true
+					print("  sea %d body %d flag %d coin %d lantern %d ring2 %d islets %d cell %.1f" % [_puzzle._sea.surface_get_array_len(0),
+						rmi.size_of(0), rmi.size_of(100000), rmi.size_of(200000), rmi.size_of(200001), rmi.size_of(300000 + 2004),
+						_puzzle.state.islets.size(), _puzzle._cell()])
+					for id in _puzzle._run_looks:
+						print("   run ", _puzzle._run_looks[id].count, " verts ", _puzzle._rm_runs.size_of(id))
+						break
+					_puzzle._in_ref = false
 		"sd_count":
 			# One grid build as a frame does it, every 2 s, with its vertices.
 			for n in 5:
@@ -421,6 +454,10 @@ func _all(n: Node, pred: Callable) -> Array:
 	return out
 
 func _step() -> void:
+	# The tutorial is up over the board: a move under it would play the board
+	# on (and could solve it out from under the pages).
+	if _howto:
+		return
 	if _moves.is_empty() or _puzzle.is_done() or _puzzle.get("_busy") == true:
 		return
 	var m: Dictionary = _moves.pop_front()
@@ -798,3 +835,31 @@ func _moves_sudoku() -> Array:
 		var d: int = int(st.sol[i]) - 1
 		out.append({"do": func() -> void: _puzzle.pick(d)})
 	return out
+
+## Bridges: every plank of the answer, a drag from one islet to the other
+## (a press on the islet, a motion over the far one, the release), run by run
+## in the answer's order.
+func _moves_bridges() -> Array:
+	var out := []
+	var st = _puzzle.state
+	for key in st.answer:
+		for k in int(st.answer[key]):
+			out.append({"do": _br_drag.bind(String(key))})
+	return out
+
+func _br_drag(key: String) -> void:
+	var lane: Dictionary = _puzzle.state.lanes[key]
+	var a: Vector2 = _puzzle._at(lane.a)
+	var b: Vector2 = _puzzle._at(lane.b)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = a
+	_puzzle._gui_input(press)
+	var drag := InputEventMouseMotion.new()
+	drag.position = b
+	_puzzle._gui_input(drag)
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.position = b
+	_puzzle._gui_input(up)

@@ -56,6 +56,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 ## The out-of-hearts card's Back to camp.
@@ -485,7 +486,37 @@ var fx: Node2D
 ## canvas item. The first is dropped whenever something changed so the next
 ## `_draw` rebuilds it; the second is held because a canvas command keeps a
 ## mesh by RID and not by reference.
-var _mesh: ArrayMesh
+## The board's meshes as the last build left them -- [under, runs, islets] --
+## or null when the next `_draw` must build them again.
+var _mesh = null
+## The runs and the islets, each put together from shapes made once (the
+## checkup of 2026-10-02): an islet's body, pennant, coin and ring, and a run
+## at rest, copied natively under their transforms; only a run rolling out,
+## shivering, previewed or half lit is drawn live. A room per islet and per
+## lane that has carried planks (`RunMesh.room`), so a shape's indices are
+## offset once.
+var _rm_runs := RunMesh.new(_shape)
+var _rm_islets := RunMesh.new(_shape)
+## lane key -> its index: the room it owns in `_rm_runs`, laid the first time
+## the lane is drawn and kept until the shapes are made again.
+var _lane_ix: Dictionary = {}
+## A run's look at rest ([key, count, glow, blush, wave u, low]) -> its shape
+## id, and the id -> the look it was made from.
+var _run_ids: Dictionary = {}
+var _run_looks: Dictionary = {}
+## The layout the shapes were made at: the board's own space while it builds
+## (`_in_ref`), drawn under `_relay()` onto the layout it has now -- so the
+## win card's half-size relayout makes nothing again (Queens' lesson).
+var _ref_cell := 0.0
+var _ref_origin := Vector2.ZERO
+var _in_ref := false
+## Each layer's last mesh and what it was built from: a build whose pieces
+## all stand as they stood hands the last mesh back (an islet bumping does
+## not rebuild the runs, a plank rolling out does not rebuild the islets).
+var _runs_mesh: ArrayMesh
+var _runs_sig: Array = []
+var _islets_mesh: ArrayMesh
+var _islets_sig: Array = []
 ## The still sea -- basin, shallows, sandbars and ripples -- built once a size
 ## and a board, and dropped only by a resize or a new board.
 var _sea: ArrayMesh
@@ -643,6 +674,40 @@ func rules() -> String:
 		out += "\n\n" + tr("BR_RULES_SAFE")
 	return out
 
+## The tutorial, a page a rule, each played on a little sea of its own
+## (`ui/hud/bridges_tutorial_diagram.gd`): planks to a number, no crossing,
+## one network, then what a mistake does on this band -- rose and Check on
+## Easy and Medium, a heart and a buoy on Hard and Insane -- Lantern Night's
+## lanterns, Undo and Reset, and the bulb on a band that has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/bridges_tutorial_diagram.gd")
+	var hints: int = int(State.HINTS[state.band]) if state != null else 0
+	var steps := [
+		[Diagram.Lesson.NUMBERS, "HTP_BR_NUM",
+			tr("HTP_BR_NUM_BODY") + ("" if max_hearts > 0 else " " + tr("HTP_BR_NUM_BODY_TAP"))],
+		[Diagram.Lesson.CROSS, "HTP_BR_CROSS", tr("HTP_BR_CROSS_BODY")],
+		[Diagram.Lesson.NETWORK, "HTP_BR_NET", tr("HTP_BR_NET_BODY")],
+	]
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("BR_RULES_HEARTS") % max_hearts])
+	else:
+		steps.append([Diagram.Lesson.OVER, "HTP_BR_OVER", tr("HTP_BR_OVER_BODY")])
+	if state != null and not state.lanterns.is_empty():
+		steps.append([Diagram.Lesson.LANTERNS, "HTP_BR_LANTERN", tr("BR_RULES_LANTERNS")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+		tr("HTP_BR_UNDO_BODY_JUDGED") if max_hearts > 0 else tr("HTP_BR_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_BR_HINT_BODY_ONE") if hints == 1 else tr("HTP_BR_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = state.band if state != null else 0
+		d.hearts = max_hearts
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## Undo, Hint and Check on Easy and Medium. Hard and Insane judge every plank
 ## as it lands, so no wrong one can stand and Check has nothing to find.
 func capabilities() -> Array[String]:
@@ -692,6 +757,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state = State.new()
 	state.build(rng, difficulty, bank_step)
 	max_hearts = int(State.HEARTS[state.band])
+	_begin()
+
+## Everything a newly dealt `state` starts from, and its entrance: what
+## `build` does after the deal, and what the tutorial's own sea does after it
+## lays one by hand.
+func _begin() -> void:
 	_heart_used = false
 	_lost_ever = false
 	_from = State.NOWHERE
@@ -713,6 +784,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_pending = []
 	_laps = []
 	_sea = null
+	_ref_cell = 0.0
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
 	_solved_at = -INF
@@ -785,6 +857,8 @@ func _hearts_y() -> float:
 ## **The width binds at every band** -- 920 of lattice against 1110 of pool
 ## height at 1080 wide -- because the lattice is square and the slot is tall.
 func _cell() -> float:
+	if _in_ref:
+		return _ref_cell
 	if state.n <= 0:
 		return 0.0
 	var p := _pool()
@@ -798,6 +872,8 @@ func _field_size() -> float:
 ## it does not spend **halved above and below** -- 107 each, which is what
 ## `card_centred()` says on the card and this says inside the pool.
 func _origin() -> Vector2:
+	if _in_ref:
+		return _ref_origin
 	var p := _pool()
 	var g := _field_size()
 	return Vector2(size.x * 0.5 - g * 0.5, p.position.y + (p.size.y - g) * 0.5)
@@ -892,20 +968,55 @@ func _draw() -> void:
 	var t := _now()
 	if _sea == null:
 		_sea = _build_sea()
+	_take_ref()
+	_in_ref = true
 	if _mesh == null:
 		_mesh = _build(t)
+	_in_ref = false
 	var lap := _build_laps(t)
 	var since := t - _opened - Motion.ENTER_DELAY
 	var seen := Motion.appear_level(since, Motion.ENTER_POP)
 	var grow := Motion.wide_pop_scale(since)
 	var mid := _pool().get_center()
 	var page := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	var board := page * _relay()
 	if seen > 0.0:
-		for m in [_sea, lap, _mesh]:
+		for m in [_sea, lap]:
 			if m != null:
 				draw_mesh(m, null, page, Color(1.0, 1.0, 1.0, seen))
-		_draw_numbers(t, page, seen)
-	_shown = [_sea, lap, _mesh]
+		for m in _mesh:
+			if m != null:
+				draw_mesh(m, null, board, Color(1.0, 1.0, 1.0, seen))
+		_in_ref = true
+		_draw_numbers(t, board, seen)
+		_in_ref = false
+	_shown = [_sea, lap] + _mesh
+
+## The layout the shapes are made at: the first one with room on it, and any
+## larger one after (a shape made small and drawn large would blur). A
+## smaller one -- the win card's -- keeps it and is drawn under `_relay()`.
+func _take_ref() -> void:
+	var c := _cell()
+	if c <= 0.0:
+		return
+	if _ref_cell <= 0.0 or c > _ref_cell + 0.01:
+		_ref_cell = c
+		_ref_origin = _origin()
+		_rm_runs.reset()
+		_rm_islets.reset()
+		_lane_ix = {}
+		_run_ids = {}
+		_run_looks = {}
+		_runs_sig = []
+		_islets_sig = []
+		_mesh = null
+
+## The reference layout onto the one the board has now.
+func _relay() -> Transform2D:
+	if _ref_cell <= 0.0:
+		return Transform2D.IDENTITY
+	var k := _cell() / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, _origin() - _ref_origin * k)
 
 ## The order the mock draws in, and it is not a preference either: the lit
 ## lane and a refusal's band go **under** the runs, so a highlight on the run
@@ -913,16 +1024,87 @@ func _draw() -> void:
 ## and everything goes under the islets, which are opaque. The lane under the
 ## finger is drawn with the runs even while it is bare, because its preview
 ## is the plank the drag would lay.
-func _build(t: float) -> ArrayMesh:
+##
+## Three meshes since the checkup (2026-10-02), in that order: the bands under
+## the runs, drawn live (there is rarely one); the runs, a lane at a time in
+## its own room, a run at rest one cached shape and a moving one drawn live
+## into its room, then what sinks and the buoys; and the islets, each its
+## body, pennant, coin and ring as shapes under its own scale and offset.
+## Built in the reference layout's space (`_in_ref`).
+func _build(t: float) -> Array:
 	var b := Face.Builder.new()
 	_aim_band(b)
 	_refusal(b, t)
+	var under: ArrayMesh = b.mesh() if not b.verts.is_empty() else null
+	return [under, _build_runs(t), _build_islets(t)]
+
+## Shape ids: an islet's body is BODY + its index * 2 + over; a pennant FLAG
+## + its hue; the coin and the lantern one each; a ring of slots RING + want *
+## 1000 + got * 2 + over; a run at rest RUN + the order its look was first met.
+const SHAPE_BODY := 0
+const SHAPE_FLAG := 100000
+const SHAPE_COIN := 200000
+const SHAPE_LANTERN := 200001
+const SHAPE_RING := 300000
+const SHAPE_RUN := 1000000
+## Rooms: one per lane in `_rm_runs`, one per islet in `_rm_islets`.
+const ROOM_LANE := 0
+const ROOM_ISLET := 1
+## Seconds after a plank is laid before its run is drawn from a shape: the
+## roll, the landing's dip and the far posts' pop are all over by then.
+const RUN_REST := 1.0
+## And after a Check mark, before the marked run is: the flash and the
+## rattle are over, the held tint stays.
+const MARK_REST := 0.7
+
+func _build_runs(t: float) -> ArrayMesh:
+	var drawn := {}
 	for key in state.runs:
-		_run(b, String(key), t)
+		drawn[String(key)] = true
 	if _aim != "" and state.planks(_aim) <= 0:
-		_run(b, _aim, t)
+		drawn[_aim] = true
 	for ghost: Dictionary in _ghosts:
-		_ghost(b, ghost, t)
+		drawn[String(ghost["key"])] = true
+	# Every run's look, and whether any of them moves.
+	var looks: Array = []
+	var sig: Array = [state.ruled.duplicate()]
+	var live := not _ghosts.is_empty() or not _sinking.is_empty()
+	for k in drawn:
+		var key := String(k)
+		if not state.lanes.has(key):
+			continue
+		# Its room before the build begins: a room laid mid-build would move
+		# the tail out from under indices already written for it.
+		_lane_room(key)
+		var rl := _run_look(key, t)
+		var rest = null if rl.is_empty() else _run_rest(rl)
+		if rest == null and not rl.is_empty():
+			live = true
+		looks.append([key, rl, rest])
+		sig.append(rest)
+	# Put in room order: a put truncates the mesh to its cursor, so opening
+	# a lower room after a higher one would cut the higher one's run off --
+	# and `state.runs` reorders as lanes go to nothing and come back.
+	looks.sort_custom(func(x: Array, y: Array) -> bool:
+		return int(_lane_ix[x[0]]) < int(_lane_ix[y[0]]))
+	sig = [sig[0]]
+	for entry: Array in looks:
+		sig.append(entry[2])
+	if not live and _runs_mesh != null and sig == _runs_sig:
+		return _runs_mesh
+	_runs_sig = [] if live else sig
+	_rm_runs.begin()
+	for entry: Array in looks:
+		var key := String(entry[0])
+		_rm_runs.open(ROOM_LANE, int(_lane_ix[key]))
+		_put_run(key, entry[1], entry[2])
+		for ghost: Dictionary in _ghosts:
+			if String(ghost["key"]) == key:
+				var g := Face.Builder.new()
+				_ghost(g, ghost, t)
+				_rm_runs.put_builder(g)
+	_rm_runs.close()
+	var b := Face.Builder.new()
 	for sink: Dictionary in _sinking:
 		_sink(b, sink, t)
 	for key in state.ruled:
@@ -930,9 +1112,164 @@ func _build(t: float) -> ArrayMesh:
 		if _sinking.any(func(k: Dictionary) -> bool: return String(k.key) == String(key)):
 			continue
 		_buoy(b, String(key))
-	for cell in state.islets:
-		_islet(b, cell, t)
-	return b.mesh() if not b.verts.is_empty() else null
+	_rm_runs.put_builder(b)
+	_runs_mesh = _rm_runs.mesh()
+	return _runs_mesh
+
+## The room `key` owns, laid the first time it is drawn: as long as its
+## largest look but the hint's halo -- two planks and the wave's gold half on
+## (a hinted run is rare and runs on the tail, which is still under the
+## islets).
+func _lane_room(key: String) -> int:
+	var ix = _lane_ix.get(key)
+	if ix != null:
+		return ix
+	ix = _lane_ix.size()
+	_lane_ix[key] = ix
+	var b := Face.Builder.new()
+	_planks(b, key, State.MAX_PLANKS, {"wave": {"u": 0.5, "low": true}})
+	_rm_runs.room(ROOM_LANE, ix, b.verts.size() + 64)
+	return ix
+
+## One run (`rl` its look, `rest` its key at rest or null): its cached
+## shape when nothing on it moves, else drawn live.
+func _put_run(key: String, rl: Dictionary, rest) -> void:
+	if rl.is_empty():
+		return
+	if rest == null:
+		var b := Face.Builder.new()
+		_run_draw(b, key, rl)
+		_rm_runs.put_builder(b)
+		return
+	var id = _run_ids.get(rest)
+	if id == null:
+		id = SHAPE_RUN + _run_ids.size()
+		_run_ids[rest] = id
+		var still: Dictionary = rl.duplicate(true)
+		still.look["shine"] = 0.0
+		_run_looks[id] = still
+	_rm_runs.put(id, [], Transform2D.IDENTITY)
+
+## A run's look as a key when nothing on it moves, or null: no plank still
+## rolling or landing, no preview, no flash or rattle, the wave's gold all on
+## or not yet come (and the win's glint is under the gold).
+func _run_rest(rl: Dictionary):
+	var look: Dictionary = rl.look
+	if look.has("alpha") or look.has("faint_from"):
+		return null
+	if not Motion.reduce and float(look.since) < RUN_REST:
+		return null
+	var mark := float(look.since_wrong)
+	if mark > -1.0e8 and mark < MARK_REST and not Motion.reduce:
+		return null
+	var wave: Dictionary = look.wave
+	var u := float(wave.get("u", 0.0))
+	if u > 0.0 and u < 1.0:
+		return null
+	if u <= 0.0 and float(look.shine) > 0.0:
+		return null
+	return [rl.key, int(rl.count), bool(rl.glow), float(look.blush), u, bool(wave.get("low", true))]
+
+func _build_islets(t: float) -> ArrayMesh:
+	if not _rm_islets.laid():
+		for i in state.islets.size():
+			var cell: Vector2i = state.islets[i]
+			var want := state.need_of(cell)
+			var room := _rm_islets.size_of(SHAPE_BODY + i * 2) \
+				+ _rm_islets.size_of(SHAPE_FLAG) \
+				+ maxi(_rm_islets.size_of(SHAPE_COIN), _rm_islets.size_of(SHAPE_LANTERN)) \
+				+ _rm_islets.size_of(SHAPE_RING + want * 1000 + want * 2)
+			_rm_islets.room(ROOM_ISLET, i, room + 128)
+	var looks: Array = []
+	var live := false
+	for i in state.islets.size():
+		var look := _islet_look(i, t)
+		live = live or bool(look[8])
+		looks.append(look)
+	looks.append(_solved_at == -INF)
+	if not live and _islets_mesh != null and looks == _islets_sig:
+		return _islets_mesh
+	_islets_sig = looks
+	_rm_islets.begin()
+	for i in state.islets.size():
+		_rm_islets.open(ROOM_ISLET, i)
+		_put_islet(i, looks[i], t)
+	_islets_mesh = _rm_islets.mesh()
+	return _islets_mesh
+
+## What an islet looks like at `t`: [scale, middle, over, pennant, coin,
+## turn, got, want, drawn live].
+func _islet_look(i: int, t: float) -> Array:
+	var cell: Vector2i = state.islets[i]
+	var want: int = state.need_of(cell)
+	var got: int = state.count(cell)
+	var turn := _coin_turn(cell, t)
+	return [_islet_scale(cell, t), _at(cell) + _islet_off(cell, t), got > want, _flag_k(cell, t),
+		_coin_colour(cell, t, want, got), turn, got, want,
+		state.lanterns.has(cell) and absf(turn) < 1.0, _lantern_glow(t) if state.lanterns.has(cell) else 0.0]
+
+## An islet as its shapes under its scale and offset (what `_islet` draws,
+## piece by piece): the body, the pennant, the coin or the lantern -- a
+## turning lantern drawn live -- and the ring of slots.
+func _put_islet(i: int, look: Array, t: float) -> void:
+	var cell: Vector2i = state.islets[i]
+	var sc: Vector2 = look[0]
+	if sc.x <= 0.001 or sc.y <= 0.001:
+		return
+	var r := _islet_r()
+	var mid: Vector2 = look[1]
+	var over: bool = look[2]
+	var want: int = look[7]
+	var got: int = look[6]
+	var xf := Transform2D(0.0, sc, 0.0, mid)
+	_rm_islets.put(SHAPE_BODY + i * 2 + int(over), [], xf)
+	var k: float = look[3]
+	if k > 0.01:
+		var foot := Vector2(r * 0.55, -r * TOP_Y * 0.55)
+		_rm_islets.put(SHAPE_FLAG + _hue_of(cell), [], xf * Transform2D(0.0, Vector2(k, k), 0.0, foot))
+	var coin: Color = look[4]
+	var turn: float = look[5]
+	if state.lanterns.has(cell):
+		if bool(look[8]):
+			var b := Face.Builder.new()
+			_lantern(b, cell, mid - Vector2(0.0, r * sc.y * COIN_LIFT), r * sc.x, r * sc.y, coin, t)
+			_rm_islets.put_builder(b)
+		else:
+			_rm_islets.put(SHAPE_LANTERN, _lantern_inks(coin, float(look[9])), xf)
+	else:
+		_rm_islets.put(SHAPE_COIN, [Color(Pal.TEXT, COIN_SHADOW), coin.lerp(Pal.TEXT, COIN_EDGE), coin],
+			xf * Transform2D(0.0, Vector2(absf(turn), 1.0), 0.0, Vector2.ZERO))
+	if _solved_at == -INF:
+		var shown := 0 if over else got
+		_rm_islets.put(SHAPE_RING + want * 1000 + shown * 2 + int(over), [],
+			xf * Transform2D(0.0, Vector2.ONE, 0.0, Vector2(0.0, -r * COIN_LIFT)))
+
+## Makes shape `id` in the reference layout, about its own origin for an
+## islet's and in the board's space for a run's.
+func _shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var r := _islet_r()
+	if id >= SHAPE_RUN:
+		var rl: Dictionary = _run_looks[id]
+		_run_draw(b, String(rl.key), rl)
+	elif id >= SHAPE_RING:
+		var code := id - SHAPE_RING
+		var ring := r * COIN_R * SLOT_R
+		_slots(b, Vector2.ZERO, ring, ring, code / 1000, (code % 1000) / 2, r, code % 2 == 1)
+	elif id == SHAPE_LANTERN:
+		_lantern_draw(b, Vector2(0.0, -r * COIN_LIFT), r, r, 1.0,
+			[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3), RunMesh.slot(4)])
+	elif id == SHAPE_COIN:
+		var cx := r * COIN_R
+		Scenery.soft_disc(b, Vector2(0.0, r * COIN_LIP * 0.8), cx * 1.14 + 1.0, cx * 1.08, RunMesh.slot(0))
+		b.ellipse(Vector2(0.0, r * (COIN_LIP - COIN_LIFT)), cx, cx, RunMesh.slot(1))
+		b.ellipse(Vector2(0.0, -r * COIN_LIFT), cx, cx, RunMesh.slot(2))
+	elif id >= SHAPE_FLAG:
+		_pennant_draw(b, Vector2.ZERO, r * FLAG_H, r, id - SHAPE_FLAG)
+	else:
+		var i := (id - SHAPE_BODY) / 2
+		_islet_body(b, state.islets[i], Vector2.ZERO, r, r, id % 2 == 1)
+	return b
 
 ## A wrong plank on Hard or Insane: it rolls out from the islet the finger
 ## left and lands like any other, stands a beat, then cracks in two and sinks
@@ -1611,12 +1948,17 @@ func _lap(t: float) -> void:
 ## drag would lay, faint, beside the ones standing, or the whole run faint
 ## when the drag would lift it.
 func _run(b, key: String, t: float) -> void:
+	var rl := _run_look(key, t)
+	if not rl.is_empty():
+		_run_draw(b, key, rl)
+
+## What `_run` draws, as {key, count, glow, look}, or {} for nothing.
+func _run_look(key: String, t: float) -> Dictionary:
 	var count: int = state.planks(key)
 	var next := _preview(key)
 	if count <= 0 and next <= 0:
-		return
-	if _given.has(key) and not is_done() and count > 0:
-		_glow(b, _lane_ends(key), _run_width(count))
+		return {}
+	var glow := _given.has(key) and not is_done() and count > 0
 	var laid: Dictionary = _laid.get(key, {})
 	# The check's mark, in one level: the flash while it lasts, and never
 	# below BAD_HELD for as long as the mark is standing. Under reduce motion
@@ -1641,7 +1983,12 @@ func _run(b, key: String, t: float) -> void:
 	elif next > count:
 		look["faint_from"] = count
 		count = next
-	_planks(b, key, count, look)
+	return {"key": key, "count": count, "planks": state.planks(key), "glow": glow, "look": look}
+
+func _run_draw(b, key: String, rl: Dictionary) -> void:
+	if bool(rl.glow):
+		_glow(b, _lane_ends(key), _run_width(int(rl.planks)))
+	_planks(b, key, int(rl.count), rl.look)
 
 ## What the lane under the finger would hold once the finger lets go, or -1
 ## when `key` is not that lane or the lane is refused.
@@ -1917,6 +2264,31 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	var want: int = state.need_of(cell)
 	var got: int = state.count(cell)
 	var over := got > want
+	_islet_body(b, cell, mid, rx, ry, over)
+	_pennant(b, cell, mid, rx, ry * TOP_Y, t)
+	# The coin: its shadow on the moss, its edge, its face. It flips over
+	# when its number comes right and spins a turn for the twirl gag, both
+	# read off its horizontal scale; a lantern stands a paper lantern on the
+	# moss instead, glowing.
+	var coin := _coin_colour(cell, t, want, got)
+	var cx := rx * COIN_R * _coin_turn(cell, t)
+	var cy := ry * COIN_R
+	var at := mid - Vector2(0.0, ry * COIN_LIFT)
+	if state.lanterns.has(cell):
+		_lantern(b, cell, at, rx, ry, coin, t)
+	else:
+		Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), absf(cx) * 1.14 + 1.0, cy * 1.08,
+			Color(Pal.TEXT, COIN_SHADOW))
+		if absf(cx) > 0.5:
+			b.ellipse(at + Vector2(0.0, ry * COIN_LIP), absf(cx), cy, coin.lerp(Pal.TEXT, COIN_EDGE))
+			b.ellipse(at, absf(cx), cy, coin)
+	if _solved_at == -INF:
+		_slots(b, at, rx * COIN_R * SLOT_R, ry * COIN_R * SLOT_R, want, got, r)
+
+## The islet under its coin: its shadow on the water, the drum, the moss and
+## its sprouts and flower, about `mid` at radii `rx` and `ry`.
+func _islet_body(b, cell: Vector2i, mid: Vector2, rx: float, ry: float, over: bool) -> void:
+	var r := _islet_r()
 	var seed_i := cell.x * 17 + cell.y * 5
 	var top_y := ry * TOP_Y
 	var depth := ry * SIDE
@@ -1949,37 +2321,19 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 		var a := -PI * 0.5 + (float(k) - (sprouts - 1) * 0.5) * 0.5 \
 			+ (_hash(seed_i, 65 + k) - 0.5) * 0.3
 		var root := mid + Vector2(cos(a) * rx * 0.8, sin(a) * top_y * 0.8)
-		_sprout(b, root, r * TUFT_H * sc.y, Pal.LEAF_DEEP.lerp(Pal.BANK, 0.3))
+		_sprout(b, root, r * TUFT_H * ry / r, Pal.LEAF_DEEP.lerp(Pal.BANK, 0.3))
 	if _hash(seed_i, 67) < FLOWER_SHARE:
 		var side := -1.0 if _hash(seed_i, 69) < 0.5 else 1.0
 		_flower(b, mid + Vector2(side * rx * 0.72, top_y * 0.3), r * 0.16)
-	_pennant(b, cell, mid, rx, top_y, t)
-	# The coin: its shadow on the moss, its edge, its face. It flips over
-	# when its number comes right and spins a turn for the twirl gag, both
-	# read off its horizontal scale; a lantern stands a paper lantern on the
-	# moss instead, glowing.
-	var coin := _coin_colour(cell, t, want, got)
-	var cx := rx * COIN_R * _coin_turn(cell, t)
-	var cy := ry * COIN_R
-	var at := mid - Vector2(0.0, ry * COIN_LIFT)
-	if state.lanterns.has(cell):
-		_lantern(b, cell, at, rx, ry, coin, t)
-	else:
-		Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), absf(cx) * 1.14 + 1.0, cy * 1.08,
-			Color(Pal.TEXT, COIN_SHADOW))
-		if absf(cx) > 0.5:
-			b.ellipse(at + Vector2(0.0, ry * COIN_LIP), absf(cx), cy, coin.lerp(Pal.TEXT, COIN_EDGE))
-			b.ellipse(at, absf(cx), cy, coin)
-	if _solved_at == -INF:
-		_slots(b, at, rx * COIN_R * SLOT_R, ry * COIN_R * SLOT_R, want, got, r)
 
 ## The slots round a coin: one arc per plank the number asks for (per islet,
 ## on a lantern), set round its lower half and filled in wood as they come,
 ## so a number reads as "this many planks, and this many are in". Over its
 ## number they all go rose.
-func _slots(b, at: Vector2, rx: float, ry: float, want: int, got: int, r: float) -> void:
+func _slots(b, at: Vector2, rx: float, ry: float, want: int, got: int, r: float,
+		over := false) -> void:
 	var w := maxf(SLOT_MIN, r * SLOT_W)
-	var over := got > want
+	over = over or got > want
 	# Round the whole coin, starting at the top, clockwise.
 	var step := TAU / float(want)
 	var gap := minf(SLOT_GAP, step * 0.4)
@@ -2031,52 +2385,73 @@ func _flipped(cell: Vector2i, t: float) -> bool:
 ## the coin's own wash, a cap and a foot in wood, ribs, and a little handle.
 ## Its number goes on the paper like any coin's.
 func _lantern(b, cell: Vector2i, at: Vector2, rx: float, ry: float, paper: Color, t: float) -> void:
+	_lantern_draw(b, at, rx, ry, absf(_coin_turn(cell, t)), _lantern_inks(paper, _lantern_glow(t)))
+
+## How bright the lanterns glow at `t`: the party's flash over the standing
+## glow.
+func _lantern_glow(t: float) -> float:
 	var glow := LANTERN_GLOW_ALPHA
 	if _glow_at < INF and t >= _glow_at:
 		glow += 0.3 * Motion.flash_level(t - _glow_at, 0.2, 0.8)
-	Scenery.soft_disc(b, at, rx * LANTERN_GLOW, ry * LANTERN_GLOW, Color(Pal.SUN_RAY, glow))
-	var k := absf(_coin_turn(cell, t))
+	return glow
+
+## A lantern's five inks: its glow, the paper's edge and face, the ribs and
+## the wood.
+static func _lantern_inks(paper: Color, glow: float) -> Array:
+	return [Color(Pal.SUN_RAY, glow), paper.lerp(Pal.TEXT, COIN_EDGE), paper.lerp(Pal.SUN_RAY, 0.35),
+		Color(Pal.SUN_DEEP, 0.35), Pal.WOOD_DEEP]
+
+## A lantern `k` face on, in `inks` (`_lantern_inks`, or slot colours for its
+## shape).
+func _lantern_draw(b, at: Vector2, rx: float, ry: float, k: float, inks: Array) -> void:
+	Scenery.soft_disc(b, at, rx * LANTERN_GLOW, ry * LANTERN_GLOW, inks[0])
 	var w := rx * 0.62 * k
 	var h := ry * 0.72
 	if w > 0.5:
 		b.fan(Face.Builder.round_rect(at - Vector2(w, h) + Vector2(0.0, ry * 0.08), Vector2(2.0 * w, 2.0 * h), w * 0.7),
-			paper.lerp(Pal.TEXT, COIN_EDGE))
+			inks[1])
 		b.fan(Face.Builder.round_rect(at - Vector2(w, h), Vector2(2.0 * w, 2.0 * h), w * 0.7),
-			paper.lerp(Pal.SUN_RAY, 0.35))
+			inks[2])
 		for sx in [-0.5, 0.5]:
 			b.stroke(PackedVector2Array([at + Vector2(w * sx, -h * 0.8), at + Vector2(w * sx * 1.1, 0.0),
-				at + Vector2(w * sx, h * 0.8)]), maxf(1.0, rx * 0.03), Color(Pal.SUN_DEEP, 0.35))
+				at + Vector2(w * sx, h * 0.8)]), maxf(1.0, rx * 0.03), inks[3])
 	var cap := Vector2(rx * 0.42 * maxf(k, 0.3), ry * 0.14)
-	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, -h - cap.y), cap * Vector2(2.0, 1.6), cap.y * 0.5), Pal.WOOD_DEEP)
-	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, h - cap.y * 0.4), cap * Vector2(2.0, 1.4), cap.y * 0.5), Pal.WOOD_DEEP)
+	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, -h - cap.y), cap * Vector2(2.0, 1.6), cap.y * 0.5), inks[4])
+	b.fan(Face.Builder.round_rect(at + Vector2(-cap.x, h - cap.y * 0.4), cap * Vector2(2.0, 1.4), cap.y * 0.5), inks[4])
 	b.stroke(Face.Builder.arc_points(at + Vector2(0.0, -h - cap.y), cap.x * 0.6, PI, TAU),
-		maxf(1.5, rx * 0.05), Pal.WOOD_DEEP)
+		maxf(1.5, rx * 0.05), inks[4])
 
 ## A met islet's pennant on the back of its moss: a little pole and a
 ## triangular flag, popping up when the number comes right and folding back
 ## down when it comes apart.
 func _pennant(b, cell: Vector2i, mid: Vector2, rx: float, top_y: float, t: float) -> void:
-	if not _flag.has(cell):
-		return
-	var f: Dictionary = _flag[cell]
-	var e: float = t - float(f.at)
-	var k := 1.0
-	if bool(f.open):
-		if not Motion.reduce:
-			k = Motion.pop_in_scale(e, FLAG_TIME).y
-	else:
-		if Motion.reduce or e >= FLAG_FOLD:
-			return
-		k = 1.0 - e / FLAG_FOLD
+	var k := _flag_k(cell, t)
 	if k <= 0.01:
 		return
-	var foot := mid + Vector2(rx * 0.55, -top_y * 0.55)
-	var h := _islet_r() * FLAG_H * k
+	_pennant_draw(b, mid + Vector2(rx * 0.55, -top_y * 0.55), _islet_r() * FLAG_H * k, rx, _hue_of(cell))
+
+## How far up an islet's pennant stands at `t`, 0 when it has none.
+func _flag_k(cell: Vector2i, t: float) -> float:
+	if not _flag.has(cell):
+		return 0.0
+	var f: Dictionary = _flag[cell]
+	var e: float = t - float(f.at)
+	if bool(f.open):
+		return 1.0 if Motion.reduce else Motion.pop_in_scale(e, FLAG_TIME).y
+	if Motion.reduce or e >= FLAG_FOLD:
+		return 0.0
+	return 1.0 - e / FLAG_FOLD
+
+static func _hue_of(cell: Vector2i) -> int:
+	return posmod(cell.x * 3 + cell.y, 4)
+
+## A pennant `h` tall standing at `foot`, in hue `hue`.
+func _pennant_draw(b, foot: Vector2, h: float, rx: float, hue: int) -> void:
 	var top := foot - Vector2(0.0, h)
 	b.stroke(PackedVector2Array([foot, top]), maxf(1.5, rx * 0.06), Pal.WOOD_DEEP)
 	var fw := h * 0.55
-	var hue: Color = [Pal.FLOWER, Pal.SUN, Pal.ACCENT, Pal.BERRY][posmod(cell.x * 3 + cell.y, 4)]
-	b.polygon(PackedVector2Array([top, top + Vector2(fw, h * 0.16), top + Vector2(0.0, h * 0.34)]), hue)
+	var ink: Color = [Pal.FLOWER, Pal.SUN, Pal.ACCENT, Pal.BERRY][hue]
+	b.polygon(PackedVector2Array([top, top + Vector2(fw, h * 0.16), top + Vector2(0.0, h * 0.34)]), ink)
 	b.disc(top, maxf(1.5, rx * 0.06), Pal.SUN_RAY)
 
 ## The moss's outline about `c`: an ellipse whose edge is lumpy off the hash,
@@ -2197,7 +2572,11 @@ func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 	var r := _islet_r()
 	var font: Font = CozyTheme.display(700)
 	var px := maxi(1, int(round(r * NUMBER_SIZE)))
-	var drawn := false
+	# A number standing still is drawn under the page's own transform, so the
+	# resting ones batch together (a transform set per glyph is a draw call
+	# per glyph); only one scaled or turning takes one of its own.
+	draw_set_transform_matrix(page)
+	var plain := true
 	for cell in state.islets:
 		var sc := _islet_scale(cell, t)
 		if sc.x <= 0.001 or sc.y <= 0.001:
@@ -2208,13 +2587,16 @@ func _draw_numbers(t: float, page: Transform2D, seen: float) -> void:
 		if absf(turn) < 0.08:
 			continue
 		var sx := sc.x * absf(turn)
-		draw_set_transform_matrix(page * Transform2D(0.0, Vector2(sx, sc.y), 0.0,
-			Vector2(mid.x * (1.0 - sx), mid.y * (1.0 - sc.y))))
-		drawn = true
+		var own := sx != 1.0 or sc.y != 1.0
+		if own:
+			draw_set_transform_matrix(page * Transform2D(0.0, Vector2(sx, sc.y), 0.0,
+				Vector2(mid.x * (1.0 - sx), mid.y * (1.0 - sc.y))))
+		elif not plain:
+			draw_set_transform_matrix(page)
+		plain = not own
 		_glyph(font, px, str(state.need_of(cell)), Color(ink, ink.a * seen),
 			mid + Vector2(0.0, r * (NUMBER_AT - COIN_LIFT)))
-	if drawn:
-		draw_set_transform_matrix(Transform2D.IDENTITY)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## One glyph centred on `at`, as Nonogram centres a clue number.
 func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
