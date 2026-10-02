@@ -41,3 +41,14 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   head, the nap cat and the seal (moved to the lower left when the king is
   in the lower right). PADDOCK sound set, unheard. Peak 105 draw calls
   (out of hearts), `tests/_shot_knight.gd` has every mode.
+- **Checkup on 2026-10-02** (`docs/agents/checkup.md`, row 23): four meshes
+  now -- table, still (kept across the win card's relayout and drawn
+  scaled), ground (brambles or trail, and the marks; handed back while
+  `_ground_key` holds) and pieces -- the last two put together by `RunMesh`
+  from looks made at `_ref_s` (`_make_shape`, ids `SH_*`). `Piece.knight` and
+  `Piece.king` take `shadow := false` so the board can put the shadow as its
+  own look, painted per alpha. The tutorial is
+  `ui/hud/knight_tutorial_diagram.gd`, a quietened board (`Board`) on 5x5
+  positions; the board gained `_inset()`, `_hearts_at()`, `_stuck_width()`
+  and `_stuck_spot()` for it. Peak draw calls 111 (out of hearts, was 105).
+

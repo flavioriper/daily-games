@@ -191,6 +191,34 @@ func _experiment() -> void:
 			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
 			_host._on_undo()
 			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"kn_relay":
+			# What the win card's relayout makes again: the table and the still.
+			for k in 3:
+				var t0 := Time.get_ticks_usec()
+				_puzzle._build_table()
+				var t1 := Time.get_ticks_usec()
+				_puzzle._build_still()
+				var t2 := Time.get_ticks_usec()
+				print("  kn table %.2f ms, still %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0])
+		"kn_count":
+			# One live build, timed every 1.5 s, with its vertices.
+			for k in 5:
+				create_timer(1.5 * k).timeout.connect(func():
+					var now: float = _puzzle._now()
+					_puzzle._lb = load("res://ui/faces/face.gd").Builder.new()
+					var t0 := Time.get_ticks_usec()
+					_puzzle._ground_key = []
+					_puzzle._build_ground(now)
+					var t1 := Time.get_ticks_usec()
+					_puzzle._build_ground(now)
+					var t2 := Time.get_ticks_usec()
+					var m: ArrayMesh = _puzzle._build_pieces(now)
+					var t3 := Time.get_ticks_usec()
+					var g: ArrayMesh = _puzzle._ground
+					print("  kn ground %.2f ms (handed back %.2f), %d vertices; pieces %.2f ms, %d vertices; hops %d, brambles %d" % [
+						(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, g.surface_get_array_len(0) if g != null else 0,
+						(t3 - t2) / 1000.0, m.surface_get_array_len(0) if m != null else 0,
+						_puzzle._state.route().size() - 1, _puzzle._grown.size()]))
 		"sb_frozen":
 			# The board stops redrawing: what drawing its meshes costs as they
 			# stand, against re-recording them every frame.
@@ -1240,6 +1268,24 @@ func _moves_caterpillar() -> Array:
 		var c := int(path[k])
 		out.append({"do": func() -> void: _ut_motion(at.call(c))})
 	out.append({"do": func() -> void: _ut_button(at.call(path[-1]), false)})
+	return out
+
+## Knight: the shortest line from the opening (the rose side answers by a
+## fixed rule, so it is the whole game), a tap a hop on the square; a hop
+## waits, put back at the front, while the last one still plays out.
+func _moves_knight() -> Array:
+	var st = _puzzle._state
+	var Gen = load("res://puzzles/knight_gen.gd")
+	var line: PackedInt32Array = Gen.solve(st.g, st.you, st.foes, 64, 0, st.mask)
+	var out := []
+	for c: int in line:
+		var m := {}
+		m["do"] = func() -> void:
+			if _puzzle.busy():
+				_moves.push_front(m)
+				return
+			_click(_puzzle.cell_to_local(c / st.w, c % st.w))
+		out.append(m)
 	return out
 
 ## Sunbeam: every piece dragged home along its rail -- a press on it, a
