@@ -124,7 +124,12 @@ static func hearts_for(d: int) -> int:
 
 func setup(rng: RandomNumberGenerator, d: int) -> void:
 	difficulty = clampi(d, 0, Gen.BANDS.size() - 1)
-	var out: Dictionary = Gen.generate(rng, difficulty)
+	take(Gen.generate(rng, difficulty), difficulty)
+
+## Holds frame `out` (`Gen.generate`'s dictionary, or a hand-made one: the
+## tutorial's pages) as band `d`'s.
+func take(out: Dictionary, d: int) -> void:
+	difficulty = d
 	cols = int(out.cols)
 	rows = int(out.rows)
 	pins = out.pins

@@ -240,6 +240,39 @@ func _experiment() -> void:
 				print("  court %.2f ms rebake %.2f ms beams %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
 			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " lamps ", _puzzle.state.lamps().size(),
 				" cats ", _puzzle._cats.size(), " anim ", _puzzle._anim_until - _puzzle._now(), " moths ", _puzzle._flies.size())
+		"pw_count":
+			# The still and live builds as an animating frame does them, every
+			# 1.5 s, with their vertices: the still mesh made again, and handed
+			# back.
+			for n in 7:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				_puzzle._in_ref = true
+				var t0 := Time.get_ticks_usec()
+				_puzzle._still_built = false
+				var s = _puzzle._build_still(t)
+				var t1 := Time.get_ticks_usec()
+				_puzzle._build_still(t)
+				var t2 := Time.get_ticks_usec()
+				var l = _puzzle._build_live(t)
+				_puzzle._stain_plan = null
+				_puzzle._rib_plan = null
+				_puzzle._wheel_plan = null
+				var w0 := Time.get_ticks_usec()
+				_puzzle._build_stain(t)
+				var w1 := Time.get_ticks_usec()
+				_puzzle._build_ribbons(t)
+				var w2 := Time.get_ticks_usec()
+				_puzzle._build_wheels(t)
+				var w3 := Time.get_ticks_usec()
+				_puzzle._build_wheels(t)
+				var w4 := Time.get_ticks_usec()
+				print("  stain %.2f ribbons %.2f wheels %.2f (handed back %.2f)" % [(w1 - w0) / 1000.0, (w2 - w1) / 1000.0, (w3 - w2) / 1000.0, (w4 - w3) / 1000.0])
+				var t3 := Time.get_ticks_usec()
+				_puzzle._in_ref = false
+				var vc := func(m): return 0 if m == null else m.surface_get_array_len(0)
+				print("  still %.2f ms v%d (handed back %.2f) | live %.2f ms v%d | pieces %d %dx%d anim %s" % [(t1 - t0) / 1000.0, vc.call(s),
+					(t2 - t1) / 1000.0, (t3 - t2) / 1000.0, vc.call(l), _puzzle._state.shapes.size(), _puzzle._state.cols, _puzzle._state.rows, _puzzle._animating(t)])
 		"br_count":
 			# One board build as an animating frame does it (the bands, the
 			# runs, the islets), every 1.5 s, with the meshes' vertices.
@@ -1005,3 +1038,42 @@ func _pp_head(i: int) -> Vector2:
 	var cells: Array = _puzzle._state.planes[i]["cells"]
 	var c: Vector2i = cells[cells.size() - 1]
 	return _puzzle.cell_to_local(c.y, c.x)
+
+## Pinwheel: every wrong piece tapped round to its answer, roots of the
+## ribbons first (a tap tugs only what hangs below it), worked out on a copy
+## of where the pieces lie so the list is exactly the taps that solve it.
+func _moves_pinwheel() -> Array:
+	var out := []
+	var st = _puzzle._state
+	var keep: PackedInt32Array = st.turned.duplicate()
+	var order: Array = []
+	var seen := {}
+	var parent := {}
+	for p in st._kids.size():
+		for k: Array in (st._kids[p] as Array):
+			parent[int(k[0])] = p
+	var queue: Array = []
+	for p in st.shapes.size():
+		if not parent.has(p):
+			queue.append(p)
+	while not queue.is_empty():
+		var p: int = queue.pop_front()
+		if seen.has(p):
+			continue
+		seen[p] = true
+		order.append(p)
+		if p < st._kids.size():
+			for k: Array in (st._kids[p] as Array):
+				queue.append(int(k[0]))
+	for p: int in order:
+		if st.fixed(p) or st.is_tacked(p):
+			continue
+		var guard := 0
+		while st.steps_home(p) > 0 and guard < 8:
+			guard += 1
+			out.append({"at": _puzzle._pin_point.bind(p)})
+			for pull: Array in st.tugged(p):
+				var q := int(pull[0])
+				st.turned[q] = posmod(int(st.turned[q]) + int(pull[1]), (st.shapes[q] as Array).size())
+	st.turned = keep
+	return out
