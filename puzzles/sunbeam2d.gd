@@ -12,15 +12,27 @@ extends "res://core/puzzle_base.gd"
 ## Undo, Reset and Hint ride in the top bar and the tip card stands alone --
 ## Pinwheel's shape.
 ##
-## How it is drawn. Three meshes:
-##   still -- the glass wall, the floor, the rails, the pots and the window,
-##            rebuilt only on a relayout (none of them ever moves);
-##   live  -- the cups, the beam, the drops, the mirrors, the bud and a
-##            hint's ring, rebuilt only while something is moving;
-##   air   -- the sun's turning rays and the motes drifting down the light,
-##            the only thing that moves at rest, and small, so an idle floor
-##            rebuilds that and nothing else (Caterpillar's lesson).
-## The pieces are ui/faces/sunbeam_parts.gd, which the menu card draws too.
+## How it is drawn. Five meshes:
+##   glass -- the glass wall, the shelf and the window box, made again
+##            whenever the card changes size;
+##   bed   -- the frame, the floor, the rails, the pots and the window, made
+##            once in a reference layout's space (the two joined into one
+##            mesh while the layout is that one);
+##   lower, upper -- the cups and the light; the drops, the mirrors and
+##            the sparks over it: rebuilt only while something is moving,
+##            every piece a look made once and copied under its transform;
+##   air   -- the sun's turning rays, the motes drifting down the light, the
+##            glints and the bud, the only things that move at rest, looks
+##            under transforms too.
+## Everything but the glass is made in the reference layout and drawn under
+## `_relay()`, so the win card's smaller relayout makes nothing again but
+## the glass. The pieces are ui/faces/sunbeam_parts.gd, which the menu card
+## draws too.
+##
+## The board checkup (2026-10-02): every piece was drawn in script on every
+## frame anything moved -- a drag held still included, 3.2-6 ms a frame on
+## Insane -- the air ~1 ms on every idle frame, and the win card's relayout
+## made the whole greenhouse again (11-18 ms).
 ##
 ## Spec: docs/superpowers/specs/2026-09-26-sunbeam-flat-design.md, section 7.
 ##
@@ -49,6 +61,7 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the floor, the largest cell any band asks for, the
@@ -135,6 +148,13 @@ const WEAK_WIDTH := 0.3
 const WEAK_ALPHA := 0.28
 const GROW_UP := 0.25
 const GROW_DOWN := 0.8
+## The looks' steps: a held piece's lift, a ring's spread,
+## a mote's or a pulse's fade, the bud's bloom and growth, and its sway.
+const LIFT_STEPS := 8.0
+const RING_STEPS := 16.0
+const FADE_STEPS := 8.0
+const BUD_STEPS := 40.0
+const SWAY_STEPS := 8.0
 
 const TIP_CYCLE := 8.0
 const TIPS := ["SB_TIP_DRAG", "SB_TIP_GOAL", "SB_TIP_CUP", "SB_TIP_MIRROR", "SB_TIP_STOP"]
@@ -260,9 +280,37 @@ var _solved_at := AGO
 ## When the solve's wave reaches the bud and it starts to open.
 var _bloom_at := AGO
 var _wave_speed := WAVE_SPEED
+## The glass over the whole card and the bed in the reference layout (see
+## the header), and the two joined while the layout is the reference one.
+var _glass: ArrayMesh
+var _bed: ArrayMesh
 var _still: ArrayMesh
-var _live: ArrayMesh
+var _lower: ArrayMesh
+var _upper: ArrayMesh
 var _air: ArrayMesh
+var _live_dirty := true
+var _air_dirty := true
+## The layout every mesh but the glass is made at: the board's own space
+## while it builds (`_in_ref`), drawn under `_relay()` onto the layout it has
+## now.
+var _ref_cell := 0.0
+var _ref_origin := Vector2.ZERO
+var _in_ref := false
+## The looks: a key per look, its maker, and the RunMeshes that put them,
+## sharing `_rm`'s shapes. The lower and upper meshes give every piece a
+## run of its own (`_lay_rooms`), so a piece changing its look (a lift, a
+## landing) offsets only its own indices -- on one tail every look after it
+## moved and was offset again in script, 1-2 ms a frame through a drag.
+var _rm: RunMesh
+var _rm_lo: RunMesh
+var _rm_hi: RunMesh
+var _rm_air: RunMesh
+var _rooms_laid := false
+var _cache := {}
+var _fades := {}
+var _look_makers: Array = []
+## The streak's digits are rasterised out of sight on the first frame.
+var _warm_combo := true
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
 ## RID, so dropping the only reference leaves the renderer a freed one.
 var _shown: Array = []
@@ -361,6 +409,9 @@ func capabilities() -> Array[String]:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_rm = RunMesh.new(_make_look)
+	_rm_air = RunMesh.new(_make_look)
+	_rm_air.share_shapes(_rm)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -437,10 +488,16 @@ func _deal() -> void:
 	_bloom_at = AGO
 	_tr = {}
 	_tr_dirty = true
+	# A new floor: the bed, the light and the pieces' runs are made again.
+	_bed = null
+	_still = null
+	_rooms_laid = false
 
 # --- layout ---
 
 func _cell() -> float:
+	if _in_ref:
+		return _ref_cell
 	if _state.cols <= 0:
 		return 0.0
 	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * INSET) / _state.cols,
@@ -454,6 +511,8 @@ func _grid_size() -> Vector2:
 	return Vector2(_state.cols, _state.rows) * _cell()
 
 func _origin() -> Vector2:
+	if _in_ref:
+		return _ref_origin
 	return (size - _grid_size()) * 0.5 + Vector2(0.0, _heart_row() * 0.5)
 
 func _mid() -> Vector2:
@@ -483,8 +542,78 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	_glass = null
 	_still = null
+	_take_ref()
 	_refresh()
+
+## The layout the bed and the looks are made at: the first one with room on
+## it, and any larger one after (a look made small and drawn large would
+## blur). A smaller one -- the win card's -- keeps it and is drawn under
+## `_relay()`.
+func _take_ref() -> void:
+	if _in_ref:
+		return
+	var c := _cell()
+	if c <= 0.0:
+		return
+	if _ref_cell <= 0.0 or c > _ref_cell + 0.01:
+		_ref_cell = c
+		_ref_origin = _origin()
+		_bed = null
+		_still = null
+		_cache = {}
+		_fades = {}
+		_look_makers = []
+		_rm.reset()
+		_rm_air.share_shapes(_rm)
+		_rooms_laid = false
+		_live_dirty = true
+		_air_dirty = true
+
+## The reference layout onto the one the board has now.
+func _relay() -> Transform2D:
+	if _ref_cell <= 0.0:
+		return Transform2D.IDENTITY
+	var k := _cell() / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, _origin() - _ref_origin * k)
+
+## The shape id of the look `key`, drawn by `maker(builder)` the first time
+## it is put.
+func _look(key: String, maker: Callable) -> int:
+	var id = _cache.get(key)
+	if id == null:
+		id = _look_makers.size()
+		_look_makers.append(maker)
+		_cache[key] = id
+	return id
+
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	_look_makers[id].call(b)
+	return b
+
+## `under` and `over` as one mesh, `over` drawn last.
+static func _join(under: ArrayMesh, over: ArrayMesh) -> ArrayMesh:
+	var a := under.surface_get_arrays(0)
+	var b := over.surface_get_arrays(0)
+	var verts: PackedVector2Array = b[Mesh.ARRAY_VERTEX]
+	var cols: PackedColorArray = b[Mesh.ARRAY_COLOR]
+	var base := verts.size()
+	verts.append_array(a[Mesh.ARRAY_VERTEX])
+	cols.append_array(a[Mesh.ARRAY_COLOR])
+	var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	for k in idx.size():
+		idx[k] += base
+	idx.append_array(b[Mesh.ARRAY_INDEX])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
 
 # --- the pieces' geometry ---
 
@@ -743,7 +872,7 @@ func _process(delta: float) -> void:
 	elif not Motion.reduce:
 		# At rest only the sun's rays and the motes move, and they are their
 		# own small mesh.
-		_air = null
+		_air_dirty = true
 		queue_redraw()
 	_place_snails(t)
 	if _tick_life(t):
@@ -813,8 +942,8 @@ func _busy_for(seconds: float) -> void:
 
 func _refresh() -> void:
 	_tr_dirty = true
-	_live = null
-	_air = null
+	_live_dirty = true
+	_air_dirty = true
 	queue_redraw()
 
 # --- the drawing ---
@@ -831,25 +960,42 @@ func _draw() -> void:
 	var mid := _mid()
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
 	var tint := Color(1.0, 1.0, 1.0, seen)
-	if _still == null:
-		_still = _build_still()
-	if _live == null:
-		_live = _build_live(t)
-	if _air == null:
+	if _glass == null:
+		_glass = _build_glass()
+	_take_ref()
+	var relay := _relay()
+	_in_ref = true
+	if _bed == null:
+		_bed = _build_bed()
+	if _live_dirty:
+		_live_dirty = false
+		_build_live(t)
+	if _air_dirty:
+		_air_dirty = false
 		_air = _build_air(t)
+	_in_ref = false
+	var board := xf * relay
 	var shown: Array = []
-	for m in [_still, _live, _air]:
+	if relay == Transform2D.IDENTITY:
+		if _still == null:
+			_still = _join(_glass, _bed)
+		draw_mesh(_still, null, xf, tint)
+		shown.append(_still)
+	else:
+		draw_mesh(_glass, null, xf, tint)
+		draw_mesh(_bed, null, board, tint)
+		shown.append_array([_glass, _bed])
+	for m in [_lower, _upper, _air]:
 		if m != null:
-			draw_mesh(m, null, xf, tint)
+			draw_mesh(m, null, board, tint)
 			shown.append(m)
 	_shown = shown
 
-## The greenhouse: a glass wall of sage panes behind everything, the iron
-## frame round the floor, its warm tiles, the rails, the pots and the window
-## the sun sits in. None of it ever moves.
-func _build_still() -> ArrayMesh:
+## The greenhouse's glass: a wall of sage panes behind everything, light
+## shafts, the potting shelf over the floor and the window box under it.
+## Made in the layout the board has now, as it covers the card.
+func _build_glass() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var s := _cell()
 	var o := _origin()
 	var g := _grid_size()
 	var card := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
@@ -884,6 +1030,16 @@ func _build_still() -> ArrayMesh:
 	var bottom := o.y + g.y + FRAME + 6.0
 	if size.y - bottom > BAND_MIN:
 		_window_box(b, bottom, size.y - bottom)
+	return b.mesh()
+
+## The iron frame round the floor, its warm tiles, the rails, the pots and
+## the window the sun sits in. None of it ever moves; made in the reference
+## layout.
+func _build_bed() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := _cell()
+	var o := _origin()
+	var g := _grid_size()
 	# The frame, its shadow, and the floor inside it.
 	var out := o - Vector2.ONE * FRAME
 	var out_size := g + Vector2.ONE * FRAME * 2.0
@@ -1031,48 +1187,53 @@ func _entry(i: int, t: float) -> float:
 	var e := t - _opened - Motion.ENTER_DELAY - 0.2 - Motion.stagger(i, 0.05)
 	return 0.01 if e <= 0.0 else Motion.pop_in_scale(e).x
 
-## The peg a held piece will land on, the cups under the light, the light, the drops, the mirrors over it,
-## and a hint's ring. The bud, the glints and everything that moves at rest
-## are the air's.
-func _build_live(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+## The peg a held piece will land on, the cups under the light and the light
+## itself (`_lower`), and over it the light's spark, the drops, the mirrors
+## and the rings (`_upper`). The
+## bud, the glints and everything that moves at rest are the air's. Every
+## piece is a look made once in the reference layout and copied under its
+## moment's transform (Quilt's and Rings' lesson): drawing them in script
+## cost 3.2-6 ms a frame while anything moved, a held piece included.
+func _build_live(t: float) -> void:
 	var s := _cell()
 	var n: int = _state.pieces().size()
 	if _tr.is_empty():
 		_tr = _trace_live(t)
 	var drawn := _drawn(t)
 	var bpts: PackedVector2Array = _tr.pts
+	if not _rooms_laid:
+		_lay_rooms()
+	_rm_lo.begin()
 	if not _drag.is_empty():
 		# the peg the held piece lands on if let go now
 		var hp: int = _drag.p
-		var at := _pt(_piece_mid(hp, float(_state.pos[hp])))
-		Scenery.soft_disc(b, at, s * 0.42, s * 0.42, Color(Pal.BEAM, 0.45))
-		b.stroke(Face.Builder.ring(at, s * 0.2, s * 0.2), 3.0, Color(Pal.BEAM_CORE, 0.9), true)
+		_rm_lo.open(0, 0)
+		_rm_lo.put(_look("target", _mk_target), [], Transform2D(0.0, _pt(_piece_mid(hp, float(_state.pos[hp])))))
 	for p in n:
 		var pc: Dictionary = _state.g.pieces[p]
 		if pc.kind != "u":
 			continue
 		var peg := _peg_now(p, t)
-		var a := _anchor(p, peg)
-		var z := a + Vector2(Gen.DX[pc.s], Gen.DY[pc.s])
-		var f := Vector2(Gen.DX[pc.f], Gen.DY[pc.f])
 		var e := _entry(p, t) * _land(p, t)
-		var sh := Vector2(_shiver(p, t), 0.0)
-		var mid := _pt(_piece_mid(p, peg))
-		var pts := Parts.cup_path(_pt(a) + sh, _pt(z) + sh, s, f)
-		if absf(e - 1.0) > 0.001:
-			for i in pts.size():
-				pts[i] = mid + (pts[i] - mid) * e
-		Parts.cup(b, pts, s * e, f, _lift(p, t), _state.pinned.has(p))
-	_draw_beam(b, drawn)
+		var mid := _pt(_piece_mid(p, peg)) + Vector2(_shiver(p, t), 0.0)
+		var lift := _stepped(_lift(p, t), LIFT_STEPS)
+		var pin: bool = _state.pinned.has(p)
+		_rm_lo.open(1, p)
+		_rm_lo.put(_cup_look(p, pin, lift), [], Transform2D(0.0, Vector2(e, e), 0.0, mid))
+	_rm_lo.close()
+	_put_beam(drawn)
+	_lower = _rm_lo.mesh()
+	_rm_hi.begin()
+	_rm_hi.open(0, 0)
 	if _arrived(t) and String(_tr.end) in ["pot", "cup", "lamp"]:
-		b.disc(_pt(bpts[bpts.size() - 1]), s * 0.07, Color(Pal.BEAM, 0.8))
+		_rm_hi.put(_look("end", _mk_end), [], Transform2D(0.0, _pt(bpts[bpts.size() - 1])))
 	elif not _arrived(t) and drawn > 0.0:
 		# the light's leading spark on its first run out of the lamp
 		var tip := _along(drawn)
-		Scenery.soft_disc(b, tip, s * 0.4, s * 0.4, Color(Pal.BEAM, 0.7))
-		Parts.star(b, tip, s * 0.24, Pal.BEAM_CORE, drawn * 0.4)
+		_rm_hi.put(_look("spark", _mk_spark), [], Transform2D(0.0, tip))
+		_rm_hi.put(_look("star", _mk_star.bind(0.24, Pal.BEAM_CORE)), [], Transform2D(drawn * 0.4, tip))
 	var shy := _state.shy() and _solved_at <= AGO and not _state.is_solved()
+	var lift_y := Vector2(0.0, s * 0.17 * 0.2)
 	for i in _state.drops().size():
 		var c: int = _state.drops()[i]
 		var wet: bool = _wet.has(c)
@@ -1080,11 +1241,12 @@ func _build_live(t: float) -> ArrayMesh:
 		var glow := 1.0
 		var at := _centre(c)
 		var dry_e := t - float(_dried.get(c, AGO))
+		_rm_hi.open(2, i)
 		if dry_e < DRY_TIME:
 			# dried by a wrong move: it shrinks to a speck in a puff of
 			# steam, and fills back up again as the move slides back
 			var k := 0.35 + 0.65 * smoothstep(0.35, 1.0, dry_e / DRY_TIME)
-			Parts.drop(b, at, s, false, sc * k, 1.0)
+			_rm_hi.put(_look("drop0", _mk_drop.bind(false)), [], Transform2D(0.0, sc * k, 0.0, at + lift_y))
 			continue
 		if wet and shy:
 			# a shy drop under a held piece's light: it trembles, blushing
@@ -1092,29 +1254,138 @@ func _build_live(t: float) -> ArrayMesh:
 			# the piece were let go here
 			if not Motion.reduce:
 				at.x += sin(t * 46.0 + float(i)) * SHY_SHAKE
-			b.stroke(Face.Builder.ring(at, s * 0.3, s * 0.3), s * 0.05, Color(Pal.FLOWER, 0.85), true)
-			Parts.drop(b, at, s, false, sc, 1.0)
+			_rm_hi.put(_look("blush", _mk_blush), [], Transform2D(0.0, at))
+			_rm_hi.put(_look("drop0", _mk_drop.bind(false)), [], Transform2D(0.0, sc, 0.0, at + lift_y))
 			continue
 		if wet:
 			var pu := _pulse(t - float(_chimed.get(c, -100.0)), 0.26)
 			sc *= Vector2(1.0, 1.0) + Vector2(0.08, -0.16) * pu
 			glow += 0.6 * _pulse(t - float(_chimed.get(c, -100.0)), 0.5)
-		Parts.drop(b, at, s, wet, sc, glow)
+			_rm_hi.put(_look("dew", _mk_dew), [], Transform2D(0.0, Vector2(glow, glow), 0.0, at))
+		_rm_hi.put(_look("drop%d" % int(wet), _mk_drop.bind(wet)), [], Transform2D(0.0, sc, 0.0, at + lift_y))
 	for p in n:
 		var pc: Dictionary = _state.g.pieces[p]
 		if pc.kind != "m":
 			continue
 		var at := _pt(_piece_mid(p, _peg_now(p, t))) + Vector2(_shiver(p, t), 0.0)
-		var lift := _lift(p, t)
-		var sheen := fposmod(_peg_now(p, t) * 0.8, 1.0) if lift > 0.0 else -1.0
-		Parts.mirror(b, at, s, pc.t == "/", lift, _state.pinned.has(p), _entry(p, t) * _land(p, t), sheen)
+		var lift := _stepped(_lift(p, t), LIFT_STEPS)
+		var pin: bool = _state.pinned.has(p)
+		var slash: bool = pc.t == "/"
+		var k := _entry(p, t) * _land(p, t)
+		var xf := Transform2D(0.0, Vector2(k, k), 0.0, at)
+		_rm_hi.open(3, p)
+		_rm_hi.put(_mirror_look(p, pin, lift), [], xf)
+		if lift > 0.0:
+			# the sheen sliding along the glass with the slide: its own look,
+			# so the glass under it stays one
+			var u := fposmod(_peg_now(p, t) * 0.8, 1.0)
+			var x := lerpf(-0.85, 0.85, u) * s * 0.4
+			_rm_hi.put(_look("sheen", _mk_sheen), [],
+				xf * Transform2D(-PI * 0.25 if slash else PI * 0.25, Vector2(0.0, -lift * 6.0)) * Transform2D(0.0, Vector2(x, 0.0)))
+	_rm_hi.close()
 	_drop_rings(t)
 	for r: Dictionary in _rings:
 		var u := (t - float(r.at)) / Motion.RING_TIME
 		if u >= 0.0 and u < 1.0:
-			var rad := s * (0.3 + 0.4 * u)
-			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
-	return b.mesh() if not b.verts.is_empty() else null
+			var q := floorf(u * RING_STEPS) / RING_STEPS
+			_rm_hi.put(_look("ring%.3f" % q, _mk_ring.bind(q)), [], Transform2D(0.0, _pt(r.pos)))
+	_upper = _rm_hi.mesh()
+
+## Each piece's run of vertices in the lower and upper meshes, as long as its
+## largest look: the target peg, every cup; the light's spark, every drop
+## (its glow or blush and its body), every mirror (and its sheen). Rings go
+## on the tail.
+func _lay_rooms() -> void:
+	_rooms_laid = true
+	_rm_lo = RunMesh.new(_make_look)
+	_rm_hi = RunMesh.new(_make_look)
+	_rm_lo.share_shapes(_rm)
+	_rm_hi.share_shapes(_rm)
+	_rm_lo.room(0, 0, _rm.size_of(_look("target", _mk_target)))
+	var n: int = _state.pieces().size()
+	for p in n:
+		if _state.g.pieces[p].kind == "u":
+			_rm_lo.room(1, p, maxi(_rm.size_of(_cup_look(p, true, 0.0)), _rm.size_of(_cup_look(p, false, 0.0))))
+	_rm_hi.room(0, 0, maxi(_rm.size_of(_look("end", _mk_end)),
+		_rm.size_of(_look("spark", _mk_spark)) + _rm.size_of(_look("star", _mk_star.bind(0.24, Pal.BEAM_CORE)))))
+	var body := maxi(_rm.size_of(_look("drop0", _mk_drop.bind(false))), _rm.size_of(_look("drop1", _mk_drop.bind(true))))
+	var halo := maxi(_rm.size_of(_look("dew", _mk_dew)), _rm.size_of(_look("blush", _mk_blush)))
+	for i in _state.drops().size():
+		_rm_hi.room(2, i, body + halo)
+	var sheen := _rm.size_of(_look("sheen", _mk_sheen))
+	for p in n:
+		if _state.g.pieces[p].kind == "m":
+			_rm_hi.room(3, p, maxi(_rm.size_of(_mirror_look(p, true, 0.0)), _rm.size_of(_mirror_look(p, false, 0.0))) + sheen)
+
+func _cup_look(p: int, pin: bool, lift: float) -> int:
+	var pc: Dictionary = _state.g.pieces[p]
+	return _look("u%d.%d.%d.%.3f" % [pc.s, pc.f, int(pin), lift], _mk_cup.bind(int(pc.s), int(pc.f), pin, lift))
+
+func _mirror_look(p: int, pin: bool, lift: float) -> int:
+	var slash: bool = _state.g.pieces[p].t == "/"
+	return _look("m%d.%d.%.3f" % [int(slash), int(pin), lift], _mk_mirror.bind(slash, pin, lift))
+
+## `v` (0 to 1) to the nearest of `steps` steps: a look's key.
+static func _stepped(v: float, steps: float) -> float:
+	return roundf(clampf(v, 0.0, 1.0) * steps) / steps
+
+# --- the looks, each about its own origin at the reference cell ---
+
+func _mk_target(b: Face.Builder) -> void:
+	var s := _cell()
+	Scenery.soft_disc(b, Vector2.ZERO, s * 0.42, s * 0.42, Color(Pal.BEAM, 0.45))
+	b.stroke(Face.Builder.ring(Vector2.ZERO, s * 0.2, s * 0.2), 3.0, Color(Pal.BEAM_CORE, 0.9), true)
+
+## A cup about its middle: `sd` the side its second cell is on, `fd` the way
+## its mouth faces.
+func _mk_cup(b: Face.Builder, sd: int, fd: int, pinned: bool, lift: float) -> void:
+	var s := _cell()
+	var sv := Vector2(Gen.DX[sd], Gen.DY[sd])
+	var f := Vector2(Gen.DX[fd], Gen.DY[fd])
+	Parts.cup(b, Parts.cup_path(-sv * s * 0.5, sv * s * 0.5, s, f), s, f, lift, pinned)
+
+func _mk_mirror(b: Face.Builder, slash: bool, pinned: bool, lift: float) -> void:
+	Parts.mirror(b, Vector2.ZERO, _cell(), slash, lift, pinned)
+
+## Parts.mirror's sheen at the middle of the glass, in the glass's frame.
+func _mk_sheen(b: Face.Builder) -> void:
+	var th := _cell() * 0.075
+	b.fan(PackedVector2Array([Vector2(-th * 0.2, -th * 0.9), Vector2(th * 0.5, -th * 0.9),
+		Vector2(th * 0.2, th * 0.9), Vector2(-th * 0.5, th * 0.9)]), Color(1.0, 1.0, 1.0, 0.9))
+
+func _mk_end(b: Face.Builder) -> void:
+	b.disc(Vector2.ZERO, _cell() * 0.07, Color(Pal.BEAM, 0.8))
+
+func _mk_spark(b: Face.Builder) -> void:
+	var s := _cell()
+	Scenery.soft_disc(b, Vector2.ZERO, s * 0.4, s * 0.4, Color(Pal.BEAM, 0.7))
+
+## A four-pointed star `r` cells across, unturned.
+func _mk_star(b: Face.Builder, r: float, col: Color) -> void:
+	Parts.star(b, Vector2.ZERO, _cell() * r, col)
+
+## A drop's body about its belly (Parts.drop's, without its glow).
+func _mk_drop(b: Face.Builder, lit: bool) -> void:
+	var r := _cell() * 0.17
+	var shape := Parts._drop_shape(r)
+	b.polygon(Parts._grow(shape, 3.0), Pal.DEW_LIT_EDGE if lit else Pal.DEW_EDGE)
+	b.polygon(shape, Pal.DEW_LIT if lit else Pal.DEW)
+	b.ellipse(Vector2(-r * 0.35, -r * 0.05), r * 0.16, r * 0.26, Color(1.0, 1.0, 1.0, 0.9))
+
+## A lit drop's glow (Parts.drop's).
+func _mk_dew(b: Face.Builder) -> void:
+	var s := _cell()
+	Scenery.soft_disc(b, Vector2.ZERO, s * 0.5, s * 0.5, Color(Pal.BEAM, 0.55))
+
+func _mk_blush(b: Face.Builder) -> void:
+	var s := _cell()
+	b.stroke(Face.Builder.ring(Vector2.ZERO, s * 0.3, s * 0.3), s * 0.05, Color(Pal.FLOWER, 0.85), true)
+
+## A drop's ring `u` of the way through.
+func _mk_ring(b: Face.Builder, u: float) -> void:
+	var s := _cell()
+	var rad := s * (0.3 + 0.4 * u)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 
 ## How far along the beam each drop it passes lies, in order: the steps at
 ## which the light gathers strength. Snails are not dew.
@@ -1129,19 +1400,21 @@ func _drop_marks() -> PackedFloat32Array:
 
 ## The light's strength `at` cells along the beam, 0 (straight out of the
 ## sun) to 1 (every drop passed).
-func _power_at(at: float) -> float:
+func _power_at(at: float, marks := _drop_marks()) -> float:
 	var n: int = _state.drops().size()
 	if n <= 0:
 		return 1.0
 	var k := 0
-	for m in _drop_marks():
+	for m in marks:
 		if m <= at:
 			k += 1
 	return float(k) / float(n)
 
 ## The beam drawn up to `drawn` cells, a stretch per drop it passes, each
-## fuller and brighter than the last.
-func _draw_beam(b: Face.Builder, drawn: float) -> void:
+## fuller and brighter than the last: Parts.beam's three passes a stretch,
+## each run's body a strip drawn here and its round caps a disc look (the
+## caps were most of the beam's vertices), on the lower mesh's tail.
+func _put_beam(drawn: float) -> void:
 	var s := _cell()
 	var n: int = _state.drops().size()
 	var marks := _drop_marks()
@@ -1151,10 +1424,29 @@ func _draw_beam(b: Face.Builder, drawn: float) -> void:
 		var z := minf(to, drawn)
 		if z > from:
 			var pw := float(i) / float(n) if n > 0 else 1.0
-			Parts.beam(b, _span(from, z), s, lerpf(WEAK_ALPHA, 1.0, pw), lerpf(WEAK_WIDTH, 1.0, pw))
+			var alpha := lerpf(WEAK_ALPHA, 1.0, pw)
+			var width := lerpf(WEAK_WIDTH, 1.0, pw)
+			var runs := Parts._runs(_span(from, z))
+			for pass_i: Vector2 in [Parts.BEAM_GLOW, Parts.BEAM_HALO, Parts.BEAM_CORE]:
+				var col := Color(Pal.BEAM_CORE if pass_i == Parts.BEAM_CORE else Pal.BEAM, pass_i.y * alpha)
+				var w := s * pass_i.x * width
+				var body := Face.Builder.new()
+				var caps: Array = []
+				for r: PackedVector2Array in runs:
+					if r.size() >= 2 and r[0].distance_to(r[r.size() - 1]) > 0.5:
+						body.stroke(r, w, col, false, false)
+						caps.append(r[0])
+						caps.append(r[r.size() - 1])
+				_rm_lo.put_builder(body)
+				var cap := _look("cap%.3f.%s" % [w, col.to_html()], _mk_cap.bind(w * 0.5, col))
+				for at: Vector2 in caps:
+					_rm_lo.put(cap, [], Transform2D(0.0, at))
 		from = to
 		if from >= drawn:
 			break
+
+func _mk_cap(b: Face.Builder, r: float, col: Color) -> void:
+	b.disc(Vector2.ZERO, r, col)
 
 ## How much the light reaching the bud feeds it now: nothing unless the
 ## drawn beam ends there, else (drops passed + 1) / (drops + 1).
@@ -1215,66 +1507,143 @@ func _shiver(p: int, t: float) -> float:
 ## sun's turning rays, the motes drifting down the light, the pulses flowing
 ## along its core, a twinkling glint on every mirror it strikes, the bud (it
 ## sways once open), and on the solve the gold wave and the drifting petals.
+## The sun, the motes, the pulses' glow, the glints and the bud are looks
+## under transforms (a mote's and a pulse's fade in steps); only the pulses'
+## cores, the z's, the wave and the petals are drawn live.
 func _build_air(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
 	var s := _cell()
+	_rm_air.begin()
 	var lamp := _centre(_state.g.lamp)
-	Parts.sun(b, lamp, s * _entry(0, t), 0.0 if Motion.reduce else t * SUN_TURN)
+	var k0 := _entry(0, t)
+	var turn := 0.0 if Motion.reduce else t * SUN_TURN
+	_rm_air.put(_look("rays", _mk_rays), [], Transform2D(turn, Vector2(k0, k0), 0.0, lamp))
+	_rm_air.put(_look("sun", _mk_sun), [], Transform2D(0.0, Vector2(k0, k0), 0.0, lamp))
 	var tot := _drawn(t)
 	if not Motion.reduce:
 		var count := int(tot * MOTE_DENSITY)
 		for k in count:
 			var at := fmod(float(k) / MOTE_DENSITY + t * MOTE_SPEED, tot)
 			var p := _along(at) + Vector2(sin(float(k) + t), cos(float(k) * 1.3 + t)) * s * 0.05
-			b.disc(p, s * 0.018, Color(1.0, 1.0, 1.0, 0.5 + 0.4 * sin(float(k) * 1.7 + t * 3.0)))
+			var a := roundi((0.4 * sin(float(k) * 1.7 + t * 3.0) + 0.4) / 0.8 * FADE_STEPS)
+			_rm_air.put(_faded("mote", a, _mk_mote), [], Transform2D(0.0, p))
 		if _arrived(t) and tot > PULSE_LEN:
+			var marks := _drop_marks()
+			var cores := Face.Builder.new()
+			var ends: Array = []
 			var n := int(ceil(tot / PULSE_GAP))
 			for k in n:
 				var head := fmod(t * PULSE_SPEED + float(k) * PULSE_GAP, float(n) * PULSE_GAP)
 				if head > tot:
 					continue
 				var fade := clampf(head / 0.8, 0.0, 1.0) * clampf((tot - head) / 0.8, 0.0, 1.0)
-				var pw := _power_at(head)
+				var pw := _power_at(head, marks)
 				var wd := lerpf(WEAK_WIDTH, 1.0, pw)
 				fade *= lerpf(WEAK_ALPHA + 0.25, 1.0, pw)
-				Scenery.soft_disc(b, _along(head), s * 0.2 * wd, s * 0.2 * wd, Color(Pal.BEAM, 0.45 * fade))
-				_stroke(b, _span(head - PULSE_LEN, head), s * 0.09 * wd, Color(Pal.BEAM_CORE, 0.9 * fade))
+				var f := roundi(clampf(fade, 0.0, 1.0) * FADE_STEPS)
+				if f > 0:
+					_rm_air.put(_faded("pulse", f, _mk_pulse), [], Transform2D(0.0, Vector2(wd, wd), 0.0, _along(head)))
+				# the core a strip, its round ends a disc look each
+				var core := _span(head - PULSE_LEN, head)
+				if core.size() >= 2:
+					cores.stroke(core, s * 0.09 * wd, Color(Pal.BEAM_CORE, 0.9 * fade), false, false)
+					if f > 0:
+						var cap := _faded("pcap", f, _mk_pcap)
+						ends.append([cap, Transform2D(0.0, Vector2(wd, wd), 0.0, core[0])])
+						ends.append([cap, Transform2D(0.0, Vector2(wd, wd), 0.0, core[core.size() - 1])])
+			_rm_air.put_builder(cores)
+			for e: Array in ends:
+				_rm_air.put(e[0], [], e[1])
 	# a glint where the drawn light strikes each mirror's glass
 	for k in _tr.glints.size():
 		var gl: Array = _tr.glints[k]
 		if float(gl[1]) <= tot:
 			var tw := 1.0 if Motion.reduce else 0.85 + 0.25 * sin(t * 2.2 + float(k) * 1.7)
 			var at := _pt(gl[0])
-			Scenery.soft_disc(b, at, s * 0.22, s * 0.22, Color(Pal.BEAM, 0.55))
-			Parts.star(b, at, s * 0.21 * tw, Pal.BEAM_CORE, 0.0 if Motion.reduce else t * 0.5 + float(k))
-			b.disc(at, s * 0.05, Color.WHITE)
-	_zs(b, t)
+			_rm_air.put(_look("glow", _mk_glow), [], Transform2D(0.0, at))
+			_rm_air.put(_look("glint", _mk_star.bind(0.21, Pal.BEAM_CORE)), [],
+				Transform2D(0.0 if Motion.reduce else t * 0.5 + float(k), Vector2(tw, tw), 0.0, at))
+			_rm_air.put(_look("glint_eye", _mk_glint_eye), [], Transform2D(0.0, at))
+	var live := Face.Builder.new()
+	_zs(live, t)
 	# the solve's wave, from the sun to the bud
 	if _solved_at > AGO and not Motion.reduce:
 		var head := (t - _solved_at) * _wave_speed
 		if head > 0.0 and head < _total() + 1.5:
-			_stroke(b, _span(head - 1.8, head), s * 0.26, Color(Pal.BEAM_CORE, 0.5))
-			_stroke(b, _span(head - 1.0, head), s * 0.12, Color.WHITE)
+			_stroke(live, _span(head - 1.8, head), s * 0.26, Color(Pal.BEAM_CORE, 0.5))
+			_stroke(live, _span(head - 1.0, head), s * 0.12, Color.WHITE)
 			if head < _total():
-				Scenery.soft_disc(b, _along(head), s * 0.5, s * 0.5, Color(Pal.BEAM, 0.7))
-	var open := _bloom(t)
+				Scenery.soft_disc(live, _along(head), s * 0.5, s * 0.5, Color(Pal.BEAM, 0.7))
+	_rm_air.put_builder(live)
+	var open := _stepped(_bloom(t), BUD_STEPS)
 	var glow: bool = _tr.end == "bud" and _arrived(t) and _solved_at <= AGO
 	var sway := 0.0
 	if open >= 1.0 and not Motion.reduce:
-		sway = sin((t - _bloom_at) * 1.3) * 0.07
+		sway = roundf(sin((t - _bloom_at) * 1.3) * SWAY_STEPS) / SWAY_STEPS * 0.07
+	var grow := 0.0 if open > 0.0 else _stepped(_grow, BUD_STEPS)
 	var bud := _centre(_state.g.bud)
-	Parts.bud(b, bud, s * _entry(_state.pieces().size() + 1, t), open, glow, 0.0, sway, 0.0 if open > 0.0 else _grow)
+	var kb := _entry(_state.pieces().size() + 1, t)
+	var bid := _look("bud%.3f.%d.%.4f.%.3f" % [open, int(glow), sway, grow], _mk_bud.bind(open, glow, sway, grow))
+	_rm_air.put(bid, [], Transform2D(0.0, Vector2(kb, kb), 0.0, bud))
 	if _bloom_at > AGO and not Motion.reduce:
 		var e := t - _bloom_at - BLOOM_TIME * 0.4
 		if e > 0.0 and e < PETAL_LIFE:
+			var petals := Face.Builder.new()
 			var u := e / PETAL_LIFE
 			for i in PETALS:
 				var ang := -PI * 0.5 + (float(i) - float(PETALS - 1) * 0.5) * 0.6
 				var out := Vector2.from_angle(ang) * s * (0.3 + 1.3 * (1.0 - exp(-2.2 * e)))
 				var at := bud + Vector2(0.0, -s * 0.06) + out \
 					+ Vector2(sin(e * 3.0 + float(i) * 1.9) * s * 0.14, e * e * s * 0.22)
-				Parts.petal(b, at, s * 0.09, e * 2.4 + float(i), 1.0 - u * u)
-	return b.mesh()
+				Parts.petal(petals, at, s * 0.09, e * 2.4 + float(i), 1.0 - u * u)
+			_rm_air.put_builder(petals)
+	return _rm_air.mesh()
+
+## The look `name` faded to step `k` of FADE_STEPS, its id kept in a row a
+## name (a mote's and a pulse's every frame at rest).
+func _faded(name: String, k: int, maker: Callable) -> int:
+	var row: PackedInt32Array = _fades.get(name, PackedInt32Array())
+	if row.is_empty():
+		for i in int(FADE_STEPS) + 1:
+			var f := float(i) / FADE_STEPS
+			row.append(_look("%s%.3f" % [name, f], maker.bind(f)))
+		_fades[name] = row
+	return row[clampi(k, 0, row.size() - 1)]
+
+func _mk_rays(b: Face.Builder) -> void:
+	var s := _cell()
+	for i in 10:
+		var d := Vector2.from_angle(float(i) * PI / 5.0)
+		var n := d.orthogonal()
+		b.fan(PackedVector2Array([d * s * 0.22 + n * s * 0.045, d * s * 0.36, d * s * 0.22 - n * s * 0.045]), Pal.BEAM)
+
+## The sun's disc and its shine (Parts.sun's, without the rays).
+func _mk_sun(b: Face.Builder) -> void:
+	var s := _cell()
+	b.disc(Vector2.ZERO, s * 0.2, Pal.SUN)
+	b.disc(Vector2(-s * 0.05, -s * 0.05), s * 0.1, Pal.BEAM)
+
+## A mote, `a` of the way from its faintest to its brightest.
+func _mk_mote(b: Face.Builder, a: float) -> void:
+	b.disc(Vector2.ZERO, _cell() * 0.018, Color(1.0, 1.0, 1.0, 0.1 + 0.8 * a))
+
+## A pulse's glow at full width, faded to `f`.
+func _mk_pulse(b: Face.Builder, f: float) -> void:
+	var s := _cell()
+	Scenery.soft_disc(b, Vector2.ZERO, s * 0.2, s * 0.2, Color(Pal.BEAM, 0.45 * f))
+
+## A pulse's round end at full width, faded to `f`.
+func _mk_pcap(b: Face.Builder, f: float) -> void:
+	b.disc(Vector2.ZERO, _cell() * 0.045, Color(Pal.BEAM_CORE, 0.9 * f))
+
+func _mk_glow(b: Face.Builder) -> void:
+	var s := _cell()
+	Scenery.soft_disc(b, Vector2.ZERO, s * 0.22, s * 0.22, Color(Pal.BEAM, 0.55))
+
+func _mk_glint_eye(b: Face.Builder) -> void:
+	b.disc(Vector2.ZERO, _cell() * 0.05, Color.WHITE)
+
+func _mk_bud(b: Face.Builder, open: float, glow: bool, sway: float, grow: float) -> void:
+	Parts.bud(b, Vector2.ZERO, _cell(), open, glow, 0.0, sway, grow)
 
 ## A stroke along `pts`, if there is one to draw.
 static func _stroke(b: Face.Builder, pts: PackedVector2Array, w: float, col: Color) -> void:
@@ -1446,10 +1815,12 @@ func _refuse(p: int, t: float, line := "SB_PINNED") -> void:
 	_say(tr(line), Face.Expr.STRAIN)
 	_refresh()
 
+## A ring out of `at` (Control-local), kept in cell units: it is drawn in
+## the reference layout.
 func _ring_at(at: Vector2, when: float) -> void:
 	if Motion.reduce:
 		return
-	_rings.append({"pos": at, "at": when})
+	_rings.append({"pos": (at - _origin()) / _cell(), "at": when})
 	_busy_for(when - _now() + Motion.RING_TIME)
 
 func _drop_rings(t: float) -> void:
@@ -2279,6 +2650,12 @@ func _tick_life(now: float) -> bool:
 ## hearts and rainbows; the butterflies and the party's arch and flutter one
 ## mesh a frame; then the seal and the streak's bubble with their words.
 func _draw_life() -> void:
+	if _warm_combo:
+		# The streak's numbers, rasterised out of sight on the first frame:
+		# drawn cold, "x3" cost its frame 26-60 ms (Caterpillar's lesson).
+		_warm_combo = false
+		_life_layer.draw_string(CozyTheme.display(700), Vector2(-4000.0, -4000.0), "x0123456789",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color.WHITE)
 	if _cell() <= 0.0 or _state.size() == 0:
 		_life_shown = []
 		return
