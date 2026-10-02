@@ -42,3 +42,19 @@ hold the rest).
   where the clock counts from launch reads as unsolved in the first ten
   seconds when the board tests `_solved_at >= 0`. Pinwheel, Paper Planes,
   Quilt, Queens and Untangle carry that test; not checked here.
+- **The checkup (2026-10-02)**: the floor was one Builder mesh rebuilt in
+  script every animating frame (14 ms full Insane, 33k vertices; a 5-10 ms
+  hitch on every stroke event). Now `_build_floor` copies cached shapes
+  (`_shape`: socket, row/column tab, leaf, daisy, X, guides, tile at each of
+  `GROUT_STEPS`) into fixed runs per piece (`_runs`, laid out in paint order:
+  tabs, leaves, daisies, sockets, guides, leaving pieces, pieces; bad tiles
+  and the frame go on the tail), colours by fills (`_ink`, cached by
+  colours), indices offset once per (shape, base) (`_offsets`). `_prune`
+  drops played-out moments so `_resting` pieces skip `_grow`/`_offset`/
+  `_shine`. A fading X's alpha is kept in `ALPHA_STEPS`. Pixel-identical at
+  rest against the old floor. Probe: `x=ng_count` times one floor build.
+- **Tutorial (2026-10-02)**: `ui/hud/nonogram_tutorial_diagram.gd`, a
+  quietened board (`Floor.lay()`) dealt a 5x5 house whose door makes two
+  rows read 1 3: RUNS, ORDER (over-fill rose, tap to rub out), CROSS, HINT,
+  HEARTS (band 2 judged, wrong tile -> X, finished line fills with X's),
+  LEAVES (rows 3-4 tumbled). Easy/Medium 4 pages, Hard 5, Insane 5-6.

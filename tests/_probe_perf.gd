@@ -248,6 +248,17 @@ func _experiment() -> void:
 				print("  cast %.2f ms verts %d (runs %d) indices %d looks %d lines %d posts %d" % [(t1 - t0) / 1000.0,
 					a[0].size(), _puzzle._fixed, a[Mesh.ARRAY_INDEX].size(), _puzzle._looks.size(), _puzzle.state.edges.size(), _puzzle.state.nodes.size()])
 			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " anim ", _puzzle._anim_until - _puzzle._now())
+		"ng_count":
+			# One floor build as a frame does it, timed, and what it draws.
+			await create_timer(2.0).timeout
+			for k in 3:
+				var t0 := Time.get_ticks_usec()
+				var m: ArrayMesh = _puzzle._build_floor(_puzzle._now())
+				var t1 := Time.get_ticks_usec()
+				var a = m.surface_get_arrays(0)
+				print("  floor %.2f ms verts %d (runs %d) indices %d shapes %d painted %d" % [(t1 - t0) / 1000.0,
+					a[0].size(), _puzzle._fixed, a[Mesh.ARRAY_INDEX].size(), _puzzle._shapes.size(), _puzzle._inked.size()])
+			print("  size %dx%d marks %d draws now %d" % [_puzzle.state.w, _puzzle.state.h, _puzzle.state.marks.size(), Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -568,4 +579,27 @@ func _moves_oneline() -> Array:
 		var n := int(path[k])
 		out.append({"do": func() -> void: _ut_motion(_puzzle.node_to_local(n))})
 	out.append({"do": func() -> void: _ut_button(_puzzle.node_to_local(int(path[-1])), false)})
+	return out
+
+## Nonogram: every row's runs of the picture dragged as strokes -- a press
+## on its first cell, a motion a cell, the release -- one event a step.
+func _moves_nonogram() -> Array:
+	_keep = 3
+	var out := []
+	var st = _puzzle.state
+	for y in st.h:
+		var run: Array = []
+		for x in st.w + 1:
+			if x < st.w and int(st.bitmap[y][x]) == 1:
+				run.append(Vector2i(x, y))
+				continue
+			if not run.is_empty():
+				var cells := run.duplicate()
+				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(cells[0].y, cells[0].x), true)})
+				for k in range(1, cells.size()):
+					var at: Vector2i = cells[k]
+					out.append({"do": func() -> void: _ut_motion(_puzzle.cell_to_local(at.y, at.x))})
+				var last: Vector2i = cells[cells.size() - 1]
+				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(last.y, last.x), false)})
+			run = []
 	return out
