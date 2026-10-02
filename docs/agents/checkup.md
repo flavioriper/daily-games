@@ -60,8 +60,9 @@ slide relays the board out (`_thaw_board`), which was a 45-75 ms frame on
 Queens while every shape, run and index offset was made again. And never
 test a restore's stamped moment by its sign: the boards' clock counts from
 launch, so `now - 10` is negative for a day reopened in the first seconds
-(Queens and Untangle fixed with a `-INF` sentinel; Pinwheel, Paper Planes
-and Quilt still carry the test).
+(Queens and Untangle fixed with a `-INF` sentinel; Pinwheel and Paper
+Planes still carry the test; Quilt was checked at its checkup and does not:
+its restore leaves `_solved_at` at -1 and stamps nothing it tests by sign).
 Since Hidden Word (2026-10-02): a Button with its own StyleBoxFlat and text
 costs two draw calls (the box is a polygon, the text a glyph batch); a tray
 of them is the lever, not the board. `ui/flat/key_board.gd` keeps its
@@ -123,6 +124,23 @@ GL from stacked translucent full-pool layers (fill), which no mesh work
 reaches. The probe's shots freeze when the Mac's display sleeps (every frame
 identical; under ANGLE the readback is all zeros): run windowed harnesses
 under `caffeinate -d -i -u`.
+Since Quilt (2026-10-02): a board whose pieces are **dragged** pays its
+rebuild on every frame the finger is down, not just while something
+animates -- Quilt's whole quilt and rack were built in script on every
+frame of a drag (4.4-6 ms and 2.6-3 ms on a full Scrap Basket), so holding
+a patch still cost 11.7 ms a frame. The split that fixed it is the general
+one for a board of pieces that move as wholes: every piece is **at rest**
+(its look, made once about its own top-left, put where it lies into a still
+mesh that is handed back while its plan -- look, x, y per piece -- is
+unchanged), **moving as a whole** (the same look under one transform: a
+wiggle, a squash, a hop, a dance; a colour change the look cannot hold is a
+few cached steps of it, the solve's sheen in eight), or **changing**
+(drawn live). The looks go through `RunMesh.put(id, [], xf)` with no rooms
+at all -- everything on the tail -- so the still mesh stays indexed and its
+places' offsets are kept. The live mesh keeps paint order by flushing a
+Builder (`put_builder`) before each look it puts. Order changes this makes
+(a still seam under a moving neighbour, a moving patch over still ones) only
+show while something moves.
 
 | # | Board | Done | Notes |
 |---|---|---|---|
@@ -141,7 +159,7 @@ under `caffeinate -d -i -u`.
 | 13 | mushroom | 2026-10-02 | the floor (beds, sods, tufts, fairy rings; 28k vertices) was built in script on every frame anything moved, ~12 ms on Insane, and the ground (pebbles, discs, flowers, halos) 6-12 ms more on a full patch: both now on `RunMesh` from shapes made at the cell (floor ~1.2 ms, ground <1 ms; a ring's caps drawn live only while they grow in); the mushrooms at rest baked into one mesh, eyes-open twins under any that blink (full Insane idle 124 -> 100 draws, 10.1 -> 8.0 ms); Insane play 20.7 -> 9.0 ms (p95 25 -> 10.4, max 67 -> 16), full-board play p95 26.5 -> 10.4 (the remaining ~33 ms frame is the host's solve overlay, every board's); pixel-identical at rest but for sub-pixel AA on ring caps and baked mushrooms; 4-6 page band-aware tutorial played by a real, quietened board on a 5x5 patch with a chip tray beside it: a number held lights what it counts and the covered one is planted (green), pebbles by stroke and rubbed out, Fairy Rings (Insane), hearts (Hard/Insane), Undo/Reset, the bulb (bands with hints); undo/hint/check/reset/? already there |
 | 14 | sudoku | 2026-10-02 | the digit pad was 25 of Insane's 104 idle draw calls (each chip a Button: its StyleBoxFlat a polygon, its digit a glyph batch, the cross three Icons polylines): now Hidden Word's pattern, the Buttons take the taps and carry the squash but draw nothing, and one `Paint` control draws every face and the cross as one mesh and every digit after it, the paper grain on the paint (Insane idle 104 -> 81 draws, ~9.1 -> ~7.3 ms); the grid (tray, floor, nine panels, every wash, daisy, the selected tile and Insane's ~25 hills) was built in script on every frame anything moved, 3.3-8 ms: now on `RunMesh`, the tray and panels one shape in their own colours (`put` with no colours), each wash, daisy, the selected tile and each hill at rest a shape under its transform, washes on the tail where a place keeps its indices (`_tail_offsets`), only a landing, a hill's reach and a hill or daisy on the move drawn live (build ~1.0-1.3 ms; Insane play 11.5 -> ~8.8 ms, now render-bound); pixel-identical at rest, the selected tile's lift and shadow swelling with its bump by under a pixel; 4-5 page band-aware tutorial played by a real, quietened board on the band's own grid (6x6 or 9x9) with the real pad scaled beside it: placing the missing number of a row and the row lighting up, a clash and the cross (Easy/Medium) or a heart lost and the number crossed out (Hard/Insane), Hilltops through a magnifying window (Insane), Undo/Reset, the bulb; undo/hint/check/reset/? already there (Check left out on judged bands by design). The ~40 ms frames left are the host's win card, every board's |
 | 15 | bridges | 2026-10-02 | the whole board (84k vertices: every run's planks, slats and posts, every islet's drum, moss, sprouts, coin and ring) was built in script on every frame anything moved, 30-53 ms a build: now two `RunMesh`es built in a reference layout's space and drawn under one relay transform, an islet its body, pennant, coin (painted through slots) or lantern and ring as shapes under its own scale and offset, a run at rest one cached shape and a run rolling, previewed, shivering or half lit drawn live into its room, each layer handing back its last mesh while nothing on it changed (build ~1.5-2 ms; Insane play 37.5 -> ~8-13 ms, p95 54 -> 13-15, max 70 -> 20; full-board Insane play 18.7 -> 10.5, p95 43 -> 14; Easy play 21 -> 10.2; idle and draw calls unchanged, pixel-identical at rest); the win card's relayout reuses every shape (the sea is still made again there, its pool changes shape: ~17 ms once, inside the host's win frame); 6-page band-aware tutorial played by a real, quietened board on hand-made 5x5 seas: two planks from an islet to the one it faces and its ring filling, a crossing drag refused, two groups joined into one network and the gold wave, a plank too many turning an islet rose with Check and taps on the water (Easy/Medium) or a wrong plank sinking for a heart and its buoy (Hard/Insane), Lantern Night's lantern counting islets (Insane), Undo/Reset, the bulb (bands with hints); undo/hint/check/reset/? already there (Check left out on judged bands by design) |
-| 16 | quilt | | |
+| 16 | quilt | 2026-10-02 | the whole quilt (every sewn patch, its print, stitch and button, every seam) and the rack (every waiting patch and empty bay) were built in script on every frame of a drag or any animation, 4.4-6 ms and 2.6-3 ms on a full Scrap Basket: now every patch, bay and finished seam at rest is a look made once and put into a still mesh handed back while nothing at rest changed, a patch that only moves (wiggle, boing, the solve's hop and dance) is its look under a transform, the solve's sheen and the hem's warming eight cached steps, and only a patch sewing, blushing, flying or popping a button drawn live (quilt build 0.6-1.0 ms, rack ~0.2 ms; Insane play 8.6 -> 5.2 ms, p95 10 -> 6; full Scrap Basket with a patch held 11.7 -> 4.7 ms; full Insane play 8.4 -> 5.4, p95 13.6 -> 7.4; Easy play 5.8 -> 4.0; draw calls unchanged but +1 for the ghost's own mesh while a drag is live; pixel-identical at rest); 5-page band-aware tutorial played by a real, quietened board on a hand-made 4x3 quilt laid out quilt-left, rack-right: two patches dragged on and the quilt lighting up, a patch held over another refused with the rose halo and then fitting as drawn, a sewn patch dragged off (Easy/Medium) or a wrong patch snapping its stitch for a heart and its spot chalked (Hard/Insane), Scrap Basket's scrap left in the basket (Insane), Undo and Reset (Reset alone on judged bands, where a right patch stays), the bulb (bands with hints); undo/hint/reset/? already there (no Check by design: nothing wrong can be sitting on the quilt) |
 | 17 | fairylights | | |
 | 18 | planes | | |
 | 19 | pinwheel | | |

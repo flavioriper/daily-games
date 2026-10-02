@@ -55,6 +55,7 @@ const Cloth = preload("res://ui/faces/patch_cloth.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset, all round.
@@ -319,6 +320,17 @@ const BUNT_SWING := 3.2
 const BUNT_ANGLE := 0.3
 const TWINE := Color("b88f5f")
 
+## The looks `_rm` keeps, each drawn once about its own top-left at the cell
+## it is shown at: a sewn patch (+ p * 64 + sheen step * 4, + 1 with its
+## button, + 2 with a hint's glow), a patch waiting in its bay, a bay left
+## empty, and a seam (+ cloth * 2 * SHEEN_STEPS + lit step * 2, + 1 across).
+const LOOK_SEWN := 0
+const LOOK_WAIT := 1000000
+const LOOK_GONE := 2000000
+const LOOK_SEAM := 3000000
+## The solve's sheen and the hem's warming, in this many cached steps.
+const SHEEN_STEPS := 8
+
 var _state = State.new()
 ## The board's own effects node: the hint's ring and every sparkle come
 ## through it and nowhere else.
@@ -355,6 +367,20 @@ var _solved_at := -1.0
 var _quilt: ArrayMesh
 var _rack: ArrayMesh
 var _hand: ArrayMesh
+## The ghost under the finger, drawn under every sewn patch.
+var _under: ArrayMesh
+## What is at rest on the quilt and on the rack (the board checkup,
+## 2026-10-02): every sewn patch lying still, every seam finished between two
+## of them, every patch waiting in its bay and every bay left empty, put
+## together from looks made once (`_rm`) and handed back while the plan it
+## was put from (`_still_*_plan`: look, x, y per piece) is unchanged. Before,
+## the whole quilt and rack were built in script on every frame anything
+## moved: 4.4-6 ms and 2.6-3 ms on a full Scrap Basket, through every drag.
+var _still_quilt: ArrayMesh
+var _still_quilt_plan := PackedFloat32Array()
+var _still_rack: ArrayMesh
+var _still_rack_plan := PackedFloat32Array()
+var _rm: RunMesh
 ## The tufted backing, which never changes while the card keeps its size:
 ## built once and kept, rather than retraced on every frame of a drag.
 var _ground: ArrayMesh
@@ -484,6 +510,42 @@ func rules() -> String:
 		out += "\n\n" + tr("QL_RULES_SAFE")
 	return out
 
+## The tutorial, a page a rule, each played on a little quilt of its own
+## (`ui/hud/quilt_tutorial_diagram.gd`): dragging patches on until every
+## square is covered, where a patch fits (never over another, never turned),
+## then what a mistake does on this band -- taken off on Easy and Medium, a
+## heart and the chalk on Hard and Insane -- Scrap Basket's scraps, Undo and
+## Reset, and the bulb on a band that has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/quilt_tutorial_diagram.gd")
+	var band: int = _state.band
+	var hints: int = int(State.HINTS[band])
+	var judged := band >= 2
+	var steps := [
+		[Diagram.Lesson.FILL, "HTP_QL_FILL", tr("HTP_QL_FILL_BODY")],
+		[Diagram.Lesson.FIT, "HTP_QL_FIT", tr("HTP_QL_FIT_BODY")],
+	]
+	if judged:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("QL_RULES_HEARTS") % State.hearts_for(band)])
+	else:
+		steps.append([Diagram.Lesson.OFF, "HTP_QL_OFF", tr("HTP_QL_OFF_BODY")])
+	if band == 3:
+		steps.append([Diagram.Lesson.SCRAPS, "HTP_QL_SCRAPS", tr("HTP_QL_SCRAPS_BODY")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+		tr("HTP_QL_UNDO_BODY_JUDGED") if judged else tr("HTP_QL_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_QL_HINT_BODY_ONE") if hints == 1 else tr("HTP_QL_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.hearts = State.hearts_for(band) if judged else 0
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can be sitting on the quilt to check: an illegal drop is never taken, and
 ## on Hard and Insane a wrong one is judged as it lands. So the registry
@@ -511,6 +573,7 @@ func _ready() -> void:
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
 	add_child(_tip_timer)
+	_rm = RunMesh.new(_look)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_life_layer = _layer("Life", 3, _draw_life)
 	resized.connect(_layout)
@@ -584,6 +647,7 @@ func _shape_cache() -> void:
 	_ground = null
 	_mat_mesh = null
 	_shelf_cache = []
+	_forget_looks()
 	for p in _state.shapes.size():
 		var cells: Array = _state.shapes[p]
 		_loops.append(Cloth.loops(cells))
@@ -784,6 +848,7 @@ func card_centred() -> bool:
 	return false
 
 func _layout() -> void:
+	_forget_looks()
 	_ground = null
 	_mat_mesh = null
 	_tag_mesh = null
@@ -940,7 +1005,17 @@ func _refresh() -> void:
 	_quilt = null
 	_rack = null
 	_hand = null
+	_under = null
 	queue_redraw()
+
+## The looks were drawn at the old cells (or for the old board's patches).
+func _forget_looks() -> void:
+	if _rm != null:
+		_rm.reset()
+	_still_quilt = null
+	_still_quilt_plan = PackedFloat32Array()
+	_still_rack = null
+	_still_rack_plan = PackedFloat32Array()
 
 # --- where each patch is, this frame ---
 
@@ -1223,7 +1298,7 @@ func _seams() -> Array:
 					when = _sewn_at(q)
 				out.append({
 					"a": o + a * cell, "b": o + b * cell,
-					"owner": owner, "at": when,
+					"owner": owner, "other": -1 if off else (q if owner == p else p), "at": when,
 					"reach": (a + b) * 0.5 - _centroid(owner),
 					"hem": off,
 				})
@@ -1267,9 +1342,10 @@ func _draw() -> void:
 			shown.append(_ground)
 		if _quilt == null:
 			_quilt = _build_quilt(t)
-		if _quilt != null:
-			draw_mesh(_quilt, null, xf, Color(1.0, 1.0, 1.0, seen))
-			shown.append(_quilt)
+		for m: ArrayMesh in [_under, _still_quilt, _quilt]:
+			if m != null:
+				draw_mesh(m, null, xf, Color(1.0, 1.0, 1.0, seen))
+				shown.append(m)
 		_draw_tag(t, xf, seen, shown)
 	if _mat_mesh == null:
 		var mb := Face.Builder.new()
@@ -1280,9 +1356,10 @@ func _draw() -> void:
 		shown.append(_mat_mesh)
 	if _rack == null:
 		_rack = _build_rack(t)
-	if _rack != null:
-		draw_mesh(_rack, null)
-		shown.append(_rack)
+	for m: ArrayMesh in [_still_rack, _rack]:
+		if m != null:
+			draw_mesh(m, null)
+			shown.append(m)
 	if _hand == null:
 		_hand = _build_hand(t)
 	if _hand != null:
@@ -1380,8 +1457,9 @@ func _build_tag(box: Rect2) -> ArrayMesh:
 ## seams over the lot. The order is the only one that works -- a seam drawn
 ## under a patch is a seam nobody sees.
 func _build_quilt(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
-	_ghost(b, t)
+	var ub := Face.Builder.new()
+	_ghost(ub, t)
+	_under = _mesh(ub)
 	# Landed patches first and the one still gliding down last, so a patch
 	# on its way onto the quilt passes over its neighbours and not under.
 	var order: Array = []
@@ -1391,14 +1469,185 @@ func _build_quilt(t: float) -> ArrayMesh:
 		order.append(p)
 	order.sort_custom(func(a: int, z: int) -> bool:
 		return float(_landed.get(a, -100.0)) < float(_landed.get(z, -100.0)))
+	# Every patch is at rest (a look put where it lies, in the still mesh),
+	# moving as a whole (its look under the move's transform: a wiggle, a
+	# boing, the solve's hop and dance), or changing (sewing, blushing, a
+	# button popping on: drawn as it is).
+	var plan := PackedFloat32Array()
+	var still: Dictionary = {}
+	var live: Array = []
 	for p: int in order:
 		var f := _frame_of(p, t)
-		_patch(b, p, f, true)
-		if int(_state.locked[p]) == 1:
-			_hint_glow(b, p, f)
-	_stitches(b, t)
+		var look := _sewn_look_id(p, f, t)
+		if look >= 0 and _at_rest(f, _corner_of(int(_state.at[p])), _cell()) \
+				and (look - LOOK_SEWN) % 64 < 4:
+			plan.append_array([float(look), f["pos"].x, f["pos"].y])
+			still[p] = true
+		else:
+			live.append([p, f, look])
+	var seams_live: Array = []
+	for sm: Dictionary in _seams():
+		var u := _seam_reach(sm, t)
+		if u <= 0.0:
+			continue
+		var look := _seam_look_id(sm, t) if u >= 1.0 else -1
+		if look >= 0 and (look - LOOK_SEAM) % (2 * SHEEN_STEPS) < 2 and still.has(int(sm["owner"])) \
+				and (int(sm["other"]) < 0 or still.has(int(sm["other"]))):
+			plan.append_array([float(look), sm["a"].x, sm["a"].y])
+		else:
+			seams_live.append([sm, u, look])
+	if plan != _still_quilt_plan or (_still_quilt == null and not plan.is_empty()):
+		_still_quilt_plan = plan
+		_still_quilt = _put_plan(plan)
+	_rm.begin()
+	var b := Face.Builder.new()
+	for e: Array in live:
+		var p: int = e[0]
+		var f: Dictionary = e[1]
+		if int(e[2]) >= 0:
+			b = _flush(b)
+			_rm.put(int(e[2]), [], _look_xf(p, f))
+		else:
+			_patch(b, p, f, true)
+			if int(_state.locked[p]) == 1:
+				_hint_glow(b, p, f)
+	for e: Array in seams_live:
+		var sm: Dictionary = e[0]
+		if int(e[2]) >= 0:
+			b = _flush(b)
+			_rm.put(int(e[2]), [], Transform2D(0.0, sm["a"]))
+		else:
+			Cloth.stitch(b, sm["a"], sm["b"], STITCH_W * _cell(), STITCH_ON * _cell(),
+				STITCH_OFF * _cell(), _seam_ink(sm, t), float(e[1]))
 	_dead_pulse(b, t)
-	return _mesh(b)
+	_flush(b)
+	return _rm.mesh()
+
+## A drawing made so far handed to `_rm` (in its paint order), and a fresh
+## one to go on with.
+func _flush(b) -> Face.Builder:
+	if not b.verts.is_empty():
+		_rm.put_builder(b)
+		return Face.Builder.new()
+	return b
+
+## The still pieces in `plan` (look, x, y each) as one mesh.
+func _put_plan(plan: PackedFloat32Array) -> ArrayMesh:
+	if plan.is_empty():
+		return null
+	_rm.begin()
+	for i in range(0, plan.size(), 3):
+		_rm.put(int(plan[i]), [], Transform2D(0.0, Vector2(plan[i + 1], plan[i + 2])))
+	return _rm.mesh()
+
+## Whether a frame is the patch lying flat where it belongs: no squash, no
+## lean, no lift, at full strength, at the cell its look was drawn at.
+func _at_rest(f: Dictionary, home: Vector2, cell: float) -> bool:
+	return f["sc"] == Vector2.ONE and float(f["rot"]) == 0.0 \
+		and (f["pos"] as Vector2).is_equal_approx(home) and float(f["cell"]) == cell
+
+## The look a sewn patch's frame is drawn as, or -1 when it is changing in a
+## way no look holds: its stitch still running, a halo, a button popping on,
+## a shadow, a fade, a cell between the rack's and the quilt's.
+func _sewn_look_id(p: int, f: Dictionary, t: float) -> int:
+	if float(f["alpha"]) != 1.0 or float(f["lift"]) != 0.0 or float(f["cell"]) != _cell():
+		return -1
+	if not Motion.reduce and t - _sewn_at(p) < SEW_TIME:
+		return -1
+	if _blush_level(p) > 0.0:
+		return -1
+	var bits := 0
+	if _buttons.has(p):
+		var e := t - float(_buttons[p])
+		if e >= 0.0:
+			if not Motion.reduce and e < Motion.POP_IN:
+				return -1
+			bits |= 1
+	if int(_state.locked[p]) == 1:
+		bits |= 2
+	var step := 0
+	if _solved_at >= 0.0:
+		step = roundi(_sheen(p, t) * float(SHEEN_STEPS - 1))
+	return LOOK_SEWN + p * 64 + step * 4 + bits
+
+## A patch's look laid where its frame puts it: the look is drawn about its
+## own top-left at the cell, so `Cloth.place`'s squash and turn about the
+## patch's middle are this one transform.
+func _look_xf(p: int, f: Dictionary) -> Transform2D:
+	var half := Vector2(_spans[p]) * float(f["cell"]) * 0.5
+	var sc: Vector2 = f["sc"]
+	var rot := float(f.get("rot", 0.0))
+	var mid: Vector2 = (f["pos"] as Vector2) + half
+	return Transform2D(rot, sc, 0.0, mid - (half * sc).rotated(rot))
+
+## How much of a seam is sewn at `t` (0 to 1): its wave's.
+func _seam_reach(sm: Dictionary, t: float) -> float:
+	var wait := (sm["reach"] as Vector2).length() * _stitch_step()
+	return clampf((t - float(sm["at"]) - wait) / _stitch_time(), 0.0, 1.0)
+
+## How warm the hem is on the solve, 0 to 1 (0 off the hem or before it).
+func _seam_lit(sm: Dictionary, t: float) -> float:
+	if not bool(sm["hem"]) or _solved_at < 0.0:
+		return 0.0
+	var mid: Vector2 = ((sm["a"] as Vector2) + (sm["b"] as Vector2)) * 0.5
+	var at := (mid - _origin()) / _cell()
+	return Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY
+		- Motion.stagger(int(at.x + at.y), Motion.SOLVE_STAGGER), Motion.FLASH_IN, Motion.SOLVE_TIME)
+
+func _seam_ink(sm: Dictionary, t: float) -> Color:
+	return Cloth.cloth_stitch(_ci(int(sm["owner"]))).lerp(Pal.SUN_RAY, _seam_lit(sm, t))
+
+## A finished seam's look: its owner's thread, warmed a cached step on the
+## solve, across or down.
+func _seam_look_id(sm: Dictionary, t: float) -> int:
+	var step := roundi(_seam_lit(sm, t) * float(SHEEN_STEPS - 1))
+	var across := 1 if absf((sm["b"] as Vector2).y - (sm["a"] as Vector2).y) < 0.5 else 0
+	return LOOK_SEAM + _ci(int(sm["owner"])) * 2 * SHEEN_STEPS + step * 2 + across
+
+## Draws look `id` about its own top-left, in its own colours, for `_rm`.
+func _look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	if id >= LOOK_SEAM:
+		var k := id - LOOK_SEAM
+		var across := k % 2 == 1
+		var step := (k / 2) % SHEEN_STEPS
+		var ci := k / (2 * SHEEN_STEPS)
+		var cell := _cell()
+		var ink := Cloth.cloth_stitch(ci).lerp(Pal.SUN_RAY, float(step) / float(SHEEN_STEPS - 1))
+		Cloth.stitch(b, Vector2.ZERO, Vector2(cell, 0.0) if across else Vector2(0.0, cell),
+			STITCH_W * cell, STITCH_ON * cell, STITCH_OFF * cell, ink, 1.0)
+	elif id >= LOOK_GONE:
+		var p := id - LOOK_GONE
+		var cell := _rack_cell()
+		var chalk := Color(MAT_STITCH, 0.95)
+		for loop: PackedVector2Array in _loops[p]:
+			var pts := Cloth.laid(loop, Vector2.ZERO, cell, _spans[p])
+			b.polygon(pts, Color(Cloth.cloth(_ci(p)), GONE_ALPHA))
+			Cloth.dash_loop(b, pts, CHALK_W * cell, CHALK_ON * cell, CHALK_OFF * cell, chalk)
+	elif id >= LOOK_WAIT:
+		var p := id - LOOK_WAIT
+		_patch(b, p, {"pos": Vector2.ZERO, "cell": _rack_cell(), "sc": Vector2.ONE, "alpha": 1.0,
+			"rot": 0.0, "lift": 0.0, "face": Cloth.cloth(_ci(p))}, false, -1.0, true)
+	else:
+		var k := id - LOOK_SEWN
+		var p := k / 64
+		var step := (k % 64) / 4
+		var level := float(step) / float(SHEEN_STEPS - 1)
+		var f := {"pos": Vector2.ZERO, "cell": _cell(), "sc": Vector2.ONE, "alpha": 1.0,
+			"rot": 0.0, "lift": 0.0, "face": Cloth.cloth(_ci(p)).lerp(Pal.SURFACE, SHEEN * level)}
+		var cell := _cell()
+		Cloth.patch(b, _loops[p], f["pos"], cell, _spans[p], f["face"], Cloth.cloth_deep(_ci(p)))
+		Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p])
+		if k & 1:
+			_button(b, p, f, 1.0)
+		var ink := Cloth.cloth_thread(_ci(p)).lerp(Pal.SUN_RAY, level)
+		for loop: PackedVector2Array in _insets[p]:
+			var pts := Cloth.laid(loop, f["pos"], cell, _spans[p], Vector2.ONE, 0.0, Cloth.RADIUS * 0.6)
+			Cloth.dash_loop(b, pts, Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell,
+				Cloth.QUILT_OFF * cell, ink, Cloth.perimeter(pts))
+		if k & 2:
+			_hint_glow(b, p, f)
+	return b
 
 ## The dead end on Easy and Medium: every bare cell no patch left can reach
 ## wears a rose halo that pulses DEAD_PULSES times. Under reduce motion it
@@ -1463,26 +1712,45 @@ func _build_ground() -> ArrayMesh:
 ## it back. It is the patch's own silhouette at GONE_ALPHA, with no lip,
 ## because a lip is what says a thing is sitting on top of something.
 func _build_rack(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
 	var cell := _rack_cell()
-	var chalk := Color(MAT_STITCH, 0.95)
+	var plan := PackedFloat32Array()
+	var live: Array = []
 	for p in _state.shapes.size():
 		var held: bool = _in_hand() == p \
 			or (not _peel.is_empty() and int(_peel["patch"]) == p) \
 			or _bunted(p, t)
+		var home := _bay_home(p)
 		if held or (int(_state.at[p]) >= 0 and not _flying.has(p)):
-			for loop: PackedVector2Array in _loops[p]:
-				var pts := Cloth.laid(loop, _bay_home(p), cell, _spans[p])
-				b.polygon(pts, Color(Cloth.cloth(_ci(p)), GONE_ALPHA))
-				Cloth.dash_loop(b, pts, CHALK_W * cell, CHALK_ON * cell, CHALK_OFF * cell, chalk)
+			plan.append_array([float(LOOK_GONE + p), home.x, home.y])
 			continue
-		if not _flying.has(p):
-			_patch(b, p, _frame_of(p, t))
+		if _flying.has(p):
+			continue
+		var f := _frame_of(p, t)
+		var whole := float(f["alpha"]) == 1.0 and float(f["lift"]) == 0.0 and not _buttons.has(p) \
+			and _blush_level(p) <= 0.0 and float(f["cell"]) == cell
+		if whole and _at_rest(f, home, cell):
+			plan.append_array([float(LOOK_WAIT + p), home.x, home.y])
+		else:
+			live.append([p, f, LOOK_WAIT + p if whole else -1])
 	# The flights last, so a patch on its way home passes over the ones
 	# still waiting rather than under them.
 	for p in _flying:
-		_patch(b, int(p), _frame_of(int(p), t))
-	return _mesh(b)
+		live.append([int(p), _frame_of(int(p), t), -1])
+	if plan != _still_rack_plan or (_still_rack == null and not plan.is_empty()):
+		_still_rack_plan = plan
+		_still_rack = _put_plan(plan)
+	if live.is_empty():
+		return null
+	_rm.begin()
+	var b := Face.Builder.new()
+	for e: Array in live:
+		if int(e[2]) >= 0:
+			b = _flush(b)
+			_rm.put(int(e[2]), [], _look_xf(int(e[0]), e[1]))
+		else:
+			_patch(b, int(e[0]), e[1])
+	_flush(b)
+	return _rm.mesh()
 
 ## The felt mat the rack's patches wait on: a soft sage felt with a lip and
 ## a stitched border, so the rack reads as a place the cloth is kept and not
@@ -1607,7 +1875,7 @@ func _mesh(b) -> ArrayMesh:
 ## Every patch wears its print; a patch sewn on the quilt (`sewn`) also wears
 ## the quilting stitch just inside its edge, which is what tells a patch that
 ## is sewn from one only lying there -- and a lifted one casts its shadow.
-func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0) -> void:
+func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0, still := false) -> void:
 	var cell := float(f["cell"])
 	var lift := float(f.get("lift", 0.0))
 	Cloth.shadow(b, _loops[p], f["pos"], cell, _spans[p], HELD_SHADOW * cell * lift,
@@ -1617,6 +1885,8 @@ func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0) -> void:
 		float(f.get("rot", 0.0)))
 	Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p],
 		f["sc"], float(f["alpha"]), float(f.get("rot", 0.0)))
+	if still:
+		return
 	if _buttons.has(p):
 		_button(b, p, f)
 	if sewn:
@@ -1669,21 +1939,25 @@ func _quilting(b, p: int, f: Dictionary, reach := -1.0) -> void:
 ## cloth rather than mixed into it, so it reads the same on all eight. The
 ## piece still moves; the halo carries the colour.
 func _blush(b, p: int, f: Dictionary) -> void:
-	var level := 0.0
-	if not _refused.is_empty() and int(_refused["patch"]) == p and bool(_refused.get("halo", true)):
-		level = Motion.flash_level(_now() - float(_refused["at"]))
-	elif _in_hand() == p and _hold_state() == SNAG:
-		# Held over the quilt somewhere it will not go. The hand says so
-		# while it is held, rather than the board waiting for the release --
-		# a drag is a question, and this is the only moment the board can
-		# answer it before the answer costs anything.
-		level = 1.0
+	var level := _blush_level(p)
 	if level <= 0.0:
 		return
 	var cell := float(f["cell"])
 	for loop: PackedVector2Array in _loops[p]:
 		b.stroke(Cloth.laid(loop, f["pos"], cell, _spans[p], f["sc"], float(f.get("rot", 0.0))),
 			HALO_W * cell, Color(Pal.BAD, HALO_ALPHA * level), true)
+
+## How strongly patch `p` wears the halo now, 0 to 1.
+func _blush_level(p: int) -> float:
+	if not _refused.is_empty() and int(_refused["patch"]) == p and bool(_refused.get("halo", true)):
+		return Motion.flash_level(_now() - float(_refused["at"]))
+	if _in_hand() == p and _hold_state() == SNAG:
+		# Held over the quilt somewhere it will not go. The hand says so
+		# while it is held, rather than the board waiting for the release --
+		# a drag is a question, and this is the only moment the board can
+		# answer it before the answer costs anything.
+		return 1.0
+	return 0.0
 
 ## The glow a hint's patch keeps: a soft sun ring round its silhouette, so a
 ## patch that was given is never mistaken for one that was worked out.
@@ -1817,23 +2091,12 @@ func _ghost(b, _t: float) -> void:
 ## not a fade over it.
 func _stitches(b, t: float) -> void:
 	var cell := _cell()
-	for s: Dictionary in _seams():
-		var owner := int(s["owner"])
-		var wait := (s["reach"] as Vector2).length() * _stitch_step()
-		var u := clampf((t - float(s["at"]) - wait) / _stitch_time(), 0.0, 1.0)
+	for sm: Dictionary in _seams():
+		var u := _seam_reach(sm, t)
 		if u <= 0.0:
 			continue
-		var ink := Cloth.cloth_stitch(_ci(owner))
-		if bool(s["hem"]) and _solved_at >= 0.0:
-			# On the solve the hem warms all the way round, which is the one
-			# moment the quilt is spoken of as a whole thing.
-			var mid: Vector2 = ((s["a"] as Vector2) + (s["b"] as Vector2)) * 0.5
-			var at := (mid - _origin()) / cell
-			var lit := Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY
-				- Motion.stagger(int(at.x + at.y), Motion.SOLVE_STAGGER), Motion.FLASH_IN, Motion.SOLVE_TIME)
-			ink = ink.lerp(Pal.SUN_RAY, lit)
-		Cloth.stitch(b, s["a"] as Vector2, s["b"] as Vector2, STITCH_W * cell,
-			STITCH_ON * cell, STITCH_OFF * cell, ink, u)
+		Cloth.stitch(b, sm["a"] as Vector2, sm["b"] as Vector2, STITCH_W * cell,
+			STITCH_ON * cell, STITCH_OFF * cell, _seam_ink(sm, t), u)
 
 ## Nothing under reduce-motion: a seam is simply there the moment its two
 ## patches are.
@@ -2669,11 +2932,12 @@ func _boing_at(p: int, t: float) -> Vector2:
 ## A button sewn on a patch's middle: a pearl disc over its deeper rim, a
 ## pressed ring, four holes and a cross of the patch's own thread. It pops on
 ## with the family's back ease and then simply stays.
-func _button(b, p: int, f: Dictionary) -> void:
-	var e := _now() - float(_buttons[p])
-	if e < 0.0:
-		return
-	var k := 1.0 if Motion.reduce else Motion.pop_in_scale(e).x
+func _button(b, p: int, f: Dictionary, k := -1.0) -> void:
+	if k < 0.0:
+		var e := _now() - float(_buttons[p])
+		if e < 0.0:
+			return
+		k = 1.0 if Motion.reduce else Motion.pop_in_scale(e).x
 	if k <= 0.01:
 		return
 	var cell := float(f["cell"])

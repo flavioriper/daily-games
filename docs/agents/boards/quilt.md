@@ -183,3 +183,32 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   stops redrawing while its alpha is 0; the streak's bubble is built once a
   count and moved by its transform. Peaks at 810x1440: rest (Easy) **84**,
   was 95; solve (Insane) 92.
+
+
+## The checkup (2026-10-02, `docs/agents/checkup.md` row 16)
+
+- **The lag was the drag.** `_gui_input` calls `_refresh()` on every motion
+  and `_animating()` is true while `_drag` is live, so the quilt (4.4-6 ms)
+  and the rack (2.6-3 ms) were rebuilt every frame a finger was down: a full
+  Scrap Basket with a patch held was 11.7 ms a frame.
+- **Three kinds of patch** (`_build_quilt`, `_build_rack`): at rest -- a
+  look (`_look`, ids `LOOK_*`) put where it lies into `_still_quilt` /
+  `_still_rack`, rebuilt only when the plan (`_still_*_plan`: look, x, y)
+  changes; moving as a whole -- the look under `_look_xf` (the squash and
+  turn about the patch's middle that `Cloth.place` does); changing -- drawn
+  by the old `_patch` path. `_sewn_look_id` says which: -1 while its stitch
+  runs, it blushes, its button pops on, it has a shadow, a fade or a cell
+  between the rack's and the quilt's. A seam is still only when both its
+  patches are (`"other"` on each seam now) and it is fully sewn.
+- **The ghost has its own mesh** (`_under`), drawn under the still patches as
+  it always was under every patch: one more draw call while a drag is live.
+- **Looks are per layout**: `_forget_looks()` on `_layout()` and on a new
+  board (`_shape_cache()`), so the win card's relayout redraws them once.
+- **The tutorial** (`ui/hud/quilt_tutorial_diagram.gd`, `Patchwork`): a
+  4x3 quilt, A A B B / A C C B / D D C B, plus a three-tall scrap on Insane,
+  dealt by `lay()`; the page's card puts the quilt left and the rack right
+  (`_field_box`/`_rack_box` overridden), the label in the quilt's share.
+  The finger lets go HOLD_LIFT cells under the spot, as the board holds a
+  patch above the thumb.
+- **`-INF` sentinel**: not needed here -- the restore leaves `_solved_at` at
+  -1 and its stamps (`t - 10`, `t - 100`) are only ever subtracted.

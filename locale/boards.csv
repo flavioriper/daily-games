@@ -2059,3 +2059,34 @@ HTP_BR_LAY_CAP,Lay a plank,Ponha uma tábua,Pon una tabla
 HTP_BR_UNDO_CAP,Undo lifts the last plank,Desfazer tira a última tábua,Deshacer quita la última tabla
 HTP_BR_RESET_CAP,Reset lifts every plank,Recomeçar tira todas as tábuas,Reiniciar quita todas las tablas
 HTP_BR_HINT_CAP,The bulb lays a plank of the answer,A lâmpada põe uma tábua da resposta,La bombilla pone una tabla de la respuesta
+HTP_QL_FILL,Cover every square,Cubra todos os quadradinhos,Cubre todos los cuadritos
+HTP_QL_FILL_BODY,Drag a patch from the rack up onto the quilt and let go: it lands where its outline showed and sews itself on. The quilt is done when every square of it is covered.,Arraste um retalho da prateleira para cima da colcha e solte: ele cai onde o contorno mostrou e se costura sozinho. A colcha fica pronta quando todos os quadradinhos estão cobertos.,Arrastra un retazo del estante hasta la colcha y suéltalo: cae donde mostró su contorno y se cose solo. La colcha está lista cuando todos sus cuadritos están cubiertos.
+HTP_QL_FIT,Only where it fits,Só onde couber,Solo donde quepa
+HTP_QL_FIT_BODY,"A patch has to lie wholly on the quilt and never over another patch. Held where it won't go, it wears a rose ring and goes back to the rack. Patches never turn: each one goes on just as it's drawn.","Um retalho tem que ficar inteiro na colcha e nunca por cima de outro. Segurado onde não cabe, ele ganha um contorno rosa e volta para a prateleira. Os retalhos nunca giram: cada um entra do jeito que está desenhado.","Un retazo tiene que quedar entero en la colcha y nunca encima de otro. Sostenido donde no cabe, se le ve un borde rosa y vuelve al estante. Los retazos nunca giran: cada uno entra tal como está dibujado."
+HTP_QL_OFF,Changed your mind about one?,Mudou de ideia sobre um?,¿Cambiaste de idea con uno?
+HTP_QL_OFF_BODY,"Drag a sewn patch off the quilt and let go anywhere clear of it, and it goes home to the rack. Nothing here can be lost.",Arraste um retalho costurado para fora da colcha e solte longe dela: ele volta para a prateleira. Aqui nada se perde.,Arrastra un retazo cosido fuera de la colcha y suéltalo lejos de ella: vuelve al estante. Aquí nada se pierde.
+HTP_QL_SCRAPS,Scrap Basket,Cesto de Retalhos,Cesto de Retazos
+HTP_QL_SCRAPS_BODY,The basket holds three scraps too many. They look just like the others but don't belong on this quilt: count the squares and leave out whatever the quilt doesn't need. A scrap dropped on the quilt costs a heart.,"O cesto tem três retalhos a mais. Eles parecem iguais aos outros, mas não são desta colcha: conte os quadradinhos e deixe de fora o que a colcha não precisa. Um retalho a mais solto na colcha custa um coração.","El cesto tiene tres retazos de más. Se parecen a los otros, pero no son de esta colcha: cuenta los cuadritos y deja fuera lo que la colcha no necesita. Un retazo de más soltado en la colcha cuesta un corazón."
+HTP_QL_UNDO_BODY,"Undo takes the last patch back to where it was, and Reset sends every patch home to the rack, so you can try another way. Neither costs anything.","Desfazer leva o último retalho de volta para onde estava, e Recomeçar manda todos os retalhos de volta para a prateleira, para você tentar outro caminho. Nenhum dos dois custa nada.","Deshacer devuelve el último retazo a donde estaba, y Reiniciar manda todos los retazos de vuelta al estante, para que pruebes otro camino. Ninguno cuesta nada."
+HTP_QL_UNDO_BODY_JUDGED,"A right patch stays for good, so there is nothing to undo. Reset sends every patch home to the rack to start again; a heart once spent stays spent.","Um retalho certo fica para sempre, então não há o que desfazer. Recomeçar manda todos os retalhos de volta para a prateleira para começar de novo; um coração gasto continua gasto.","Un retazo correcto se queda para siempre, así que no hay nada que deshacer. Reiniciar manda todos los retazos de vuelta al estante para empezar de nuevo; un corazón gastado sigue gastado."
+HTP_QL_HINT_BODY_ONE,"The bulb sews one patch of the answer, ringed in gold, and takes back anything in its way. That patch stays put. You have one hint.","A lâmpada costura um retalho da resposta, com um contorno dourado, e tira o que estiver no caminho. Esse retalho fica no lugar. Você tem uma dica.","La bombilla cose un retazo de la respuesta, con un contorno dorado, y quita lo que esté en el camino. Ese retazo se queda en su sitio. Tienes una pista."
+HTP_QL_HINT_BODY_N,"The bulb sews one patch of the answer, ringed in gold, and takes back anything in its way. That patch stays put. You have %d hints.","A lâmpada costura um retalho da resposta, com um contorno dourado, e tira o que estiver no caminho. Esse retalho fica no lugar. Você tem %d dicas.","La bombilla cose un retazo de la respuesta, con un contorno dorado, y quita lo que esté en el camino. Ese retazo se queda en su sitio. Tienes %d pistas."
+HTP_QL_FILL_CAP,Two patches left for the gap,Faltam dois retalhos para o vão,Faltan dos retazos para el hueco
+HTP_QL_DRAG_CAP,Drag a patch up onto the quilt,Arraste um retalho para a colcha,Arrastra un retazo a la colcha
+HTP_QL_DONE_CAP,Every square covered: done!,Tudo coberto: pronto!,Todo cubierto: ¡listo!
+HTP_QL_FIT_CAP,Where does this one fit?,Onde este cabe?,¿Dónde cabe este?
+HTP_QL_OVER_CAP,Never over another patch,Nunca por cima de outro,Nunca encima de otro
+HTP_QL_FITS_CAP,"It fits here, just as it's drawn","Aqui cabe, do jeito que está","Aquí cabe, tal como está"
+HTP_QL_TAKE_CAP,Sewn on the wrong spot?,Costurou no lugar errado?,¿Cosido en el sitio equivocado?
+HTP_QL_OFF_CAP,Drag it off the quilt to take it back,Arraste para fora para tirá-lo,Arrástralo fuera para quitarlo
+HTP_QL_BACK_CAP,Then try it again,Depois tente de novo,Luego pruébalo otra vez
+HTP_QL_JUDGED_CAP,Every patch is judged as it lands,Cada retalho é julgado ao pousar,Cada retazo se juzga al posarse
+HTP_QL_SNIP_CAP,"Wrong spot: the stitch snaps, a heart goes","Lugar errado: a linha arrebenta, vai um coração","Sitio equivocado: el hilo se rompe, se va un corazón"
+HTP_QL_CHALK_CAP,That spot is chalked: tried already,Esse lugar está marcado: já tentou,Ese sitio está marcado: ya lo probaste
+HTP_QL_SCRAP_CAP,One patch here doesn't belong,Um retalho aqui está sobrando,Aquí sobra un retazo
+HTP_QL_SCRAP_DONE_CAP,Quilt covered: the scrap stays out,Colcha coberta: o retalho a mais fica fora,Colcha cubierta: el retazo de más queda fuera
+HTP_QL_LAY_CAP,Sew a patch on,Costure um retalho,Cose un retazo
+HTP_QL_UNDO_CAP,Undo takes it back,Desfazer tira de volta,Deshacer lo quita
+HTP_QL_AGAIN_CAP,Sew it on again,Costure de novo,Cóselo otra vez
+HTP_QL_RESET_CAP,Reset sends them all home,Recomeçar manda todos de volta,Reiniciar los manda todos de vuelta
+HTP_QL_HINT_CAP,The bulb sews a patch for you,A lâmpada costura um retalho por você,La bombilla cose un retazo por ti
