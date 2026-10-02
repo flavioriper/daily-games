@@ -93,12 +93,19 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 			out = Gen.generate(rng, cols, rows, d[2])
 	else:
 		out = Gen.generate(rng, cols, rows, d[2])
-	edges = out.edges
-	nodes = out.nodes
-	starts = out.starts
-	sunny = out.get("sunny", [])
+	load_figure(out.edges, out.nodes, out.starts, out.get("sunny", []))
 	answer = out.get("trail", [])
 	answer_start = int(out.get("start", -1))
+
+## Takes a figure as it is, with nothing walked: `setup`'s, or a tutorial
+## page's own (ui/hud/oneline_tutorial_diagram.gd).
+func load_figure(lines: Array, posts: Array, odd: Array, sun: Array = []) -> void:
+	edges = lines
+	nodes = posts
+	starts = odd
+	sunny = sun
+	answer = []
+	answer_start = -1
 	_sun = Gen.Sun.new(edges, sunny) if not sunny.is_empty() else null
 	adj = {}
 	for i in edges.size():

@@ -69,3 +69,54 @@ so the game fails and celebrates one way.
 - `tests/_shot_oneline.gd -- d=<n> rest|right|wrong|sun|solve|restore|perf [rm]`.
   In zsh, split a mode string held in a variable with `${=args}`; an
   unsplit "d=3 solve" reads as level 3 in rest mode and walks nothing.
+
+### The checkup (2026-10-02)
+
+Board 8 of the per-board checkup (`docs/agents/checkup.md`).
+
+- **The lag** was script, not draw calls: `_build_figure` built the whole
+  figure in GDScript on every frame anything on it moved -- 16-20 ms for a
+  45-line Insane figure (`x=ol_count`), so the play window ran at 23 ms a
+  frame and each step's own rebuild was a 17 ms hitch. Now `_cast_figure`
+  puts one indexed mesh together from pieces:
+  - every piece -- a post's glow, shadow, drum, cap and daisy, a line's
+    shadow, stone and plank -- owns a run of vertices sized at layout for
+    its largest look (`_slot`, laid out by `_lay_slots`, which builds every
+    piece once: the old frame's cost, paid at open); a look is made once
+    (`_looks`) with its indices offset to its run, and copied in natively;
+  - a piece that only pops, hops, sinks, shivers, bumps or wobbles is its
+    cached look under a transform (`_about`, `_line_pose`; an arriving
+    line's fade is one of `FADE_STEPS` cached steps); only a piece whose
+    colours move -- a blushing stone, a pressed or blushing drum, a warming
+    cap, the plank being laid or blushing or brightening -- is built in
+    script (`_show_live`), into its own run; Reset's falling planks go on a
+    tail after every run;
+  - the figure builds one frame past the motion (`_settling`), so nothing
+    is left a step short, and the entrance now covers the lines' fade, so
+    the looks are made while it plays and not on the first touch.
+  Tried and dropped: a flat triangle list (FlatBuilder style, one native
+  copy a piece, no indices) was four times the vertices and drew 1.3 ms a
+  frame slower on a full figure at rest (`SurfaceTool.index()` on it: 30-40
+  ms, no use); one MultiMesh per look was 65 more draw calls and 3.5 ms
+  worse at idle; offsetting every index in script each frame is 6 ms.
+- **What changed to look at**: the sparkles of a sunny line at rest no
+  longer twinkle (they only ever twinkled while something else moved); a
+  line arriving stretches along itself with its caps, rather than keeping
+  their size.
+- **Readings** (angle, 810x1440, second of two, `tests/_probe_perf.gd`,
+  the planted walk as one drag): Insane play 23.1 -> 9.3 ms, p95 26 ->
+  10.4, the per-step hitch 17 -> ~3 ms (the Sunny Spells judgment is ~2.5
+  ms of what is left); idle unchanged (8.6 ms, 90 draws); near-full Insane
+  idle 8.8 vs 8.7 ms before (alternating runs), play 11.7 -> 10.1 ms, p95
+  28 -> 12.5; d=0..2 idle 6.1-6.9 ms, play 7.5-8.6. Draw calls unchanged
+  (one mesh, as before). The ~50 ms spike after the solve is the host's
+  win card.
+- **Tutorial**: `tutorial_pages()`, five pages (one stroke, the green
+  posts, never twice, stranding, the hint), the fourth teaching hearts on
+  Hard and Insane, and a sixth on Insane (Sunny Spells), each a little
+  house of eight lines on six posts walked by a quietened board through
+  its own input (`ui/hud/oneline_tutorial_diagram.gd`, its `Walk`
+  subclass: no sound, tips, gags, ladybugs, streak, solve or
+  out-of-hearts card). `State.load_figure()` deals it a figure by hand.
+- Undo, Hint, Check, Reset and the shared ? were already on every band.
+  Suite 122403 passed, 0 failed; `tests/_win.gd -- oneline` PASS.

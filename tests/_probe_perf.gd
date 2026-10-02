@@ -237,6 +237,17 @@ func _experiment() -> void:
 					_puzzle._life_layer.visible = false
 				"lu_veil":
 					_puzzle._veil_layer.visible = false
+		"ol_count":
+			# One figure cast as a frame does it, timed, and what it draws.
+			await create_timer(2.0).timeout
+			for k in 3:
+				var t0 := Time.get_ticks_usec()
+				_puzzle._cast_figure(_puzzle._now())
+				var t1 := Time.get_ticks_usec()
+				var a = _puzzle._figure.surface_get_arrays(0)
+				print("  cast %.2f ms verts %d (runs %d) indices %d looks %d lines %d posts %d" % [(t1 - t0) / 1000.0,
+					a[0].size(), _puzzle._fixed, a[Mesh.ARRAY_INDEX].size(), _puzzle._looks.size(), _puzzle.state.edges.size(), _puzzle.state.nodes.size()])
+			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " anim ", _puzzle._anim_until - _puzzle._now())
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -544,4 +555,17 @@ func _moves_lightup() -> Array:
 	var out := []
 	for cell: Vector2i in _puzzle.state.solution:
 		out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
+	return out
+
+## One Line: the planted walk drawn as one drag -- the press on its first
+## post, a motion to each next post, the release -- one event a step.
+func _moves_oneline() -> Array:
+	_keep = 3
+	var out := []
+	var path: Array = _puzzle.state.solution_path()
+	out.append({"do": func() -> void: _ut_button(_puzzle.node_to_local(int(path[0])), true)})
+	for k in range(1, path.size()):
+		var n := int(path[k])
+		out.append({"do": func() -> void: _ut_motion(_puzzle.node_to_local(n))})
+	out.append({"do": func() -> void: _ut_button(_puzzle.node_to_local(int(path[-1])), false)})
 	return out

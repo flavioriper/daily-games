@@ -1823,3 +1823,30 @@ HTP_LU_CAT_CAP,A cat wants the light her tag says,O gato quer a luz que a plaqui
 HTP_LU_CAT_ONE_CAP,One lantern on her: she purrs,Uma lanterna nele: ele ronrona,Un farol sobre él: ronronea
 HTP_LU_CAT_TWO_CAP,Two on her: too much light,Duas nele: luz demais,Dos sobre él: demasiada luz
 HTP_LU_CAT_OVER_CAP,Light passes over a cat,A luz passa por cima do gato,La luz pasa por encima del gato
+HTP_OL_TRACE,"One stroke, every line","Um traço, todas as linhas","Un trazo, todas las líneas"
+HTP_OL_TRACE_BODY,Press a green post and drag from post to post without lifting your finger. Every line you walk turns from stone to plank. Walk every line exactly once to win.,Toque num poste verde e arraste de poste em poste sem tirar o dedo. Cada linha percorrida vira de pedra em tábua. Passe por todas as linhas uma única vez para vencer.,Toca un poste verde y arrastra de poste en poste sin levantar el dedo. Cada línea recorrida pasa de piedra a tabla. Recorre todas las líneas una sola vez para ganar.
+HTP_OL_START,Begin on a green post,Comece num poste verde,Empieza en un poste verde
+HTP_OL_START_BODY,"When two posts are green, the stroke has to begin at one of them, and it ends at the other. With no green post, begin anywhere.","Quando dois postes estão verdes, o traço tem que começar num deles, e termina no outro. Sem poste verde, comece onde quiser.","Cuando hay dos postes verdes, el trazo tiene que empezar en uno de ellos y termina en el otro. Sin poste verde, empieza donde quieras."
+HTP_OL_ONCE,Never twice,Nunca duas vezes,Nunca dos veces
+HTP_OL_ONCE_BODY,"A plank can't be walked again, so every line takes exactly one crossing. Undo takes back your last line; Reset takes the whole jetty up.",Uma tábua não pode ser percorrida de novo: cada linha se cruza uma vez só. Desfazer volta a última linha; Recomeçar desmonta o píer inteiro.,Una tabla no se puede recorrer de nuevo: cada línea se cruza una sola vez. Deshacer quita la última línea; Reiniciar desarma todo el muelle.
+HTP_OL_STRAND,Don't strand a line,Não isole nenhuma linha,No aísles ninguna línea
+HTP_OL_STRAND_BODY,Walk into a corner you can't get back out of and the lines behind you are stranded: they turn grey. Undo back to the fork and go the other way. Check shows any line already stranded.,"Se você entrar num canto de onde não dá para sair, as linhas que ficaram para trás ficam isoladas e cinzentas. Desfaça até a bifurcação e vá pelo outro lado. Conferir mostra as linhas já isoladas.","Si entras en un rincón del que no puedes salir, las líneas que quedan atrás quedan aisladas y grises. Deshaz hasta la bifurcación y ve por el otro lado. Comprobar muestra las líneas ya aisladas."
+HTP_OL_HINT_BODY_ONE,"The bulb shows where to begin, then walks one safe step for you, never one that strands a line. You have one hint.","A lâmpada mostra onde começar e depois dá um passo seguro por você, nunca um que isole uma linha. Você tem uma dica.","La bombilla muestra dónde empezar y luego da un paso seguro por ti, nunca uno que aísle una línea. Tienes una pista."
+HTP_OL_HINT_BODY_N,"The bulb shows where to begin, then walks one safe step for you, never one that strands a line. You have %d hints.","A lâmpada mostra onde começar e depois dá um passo seguro por você, nunca um que isole uma linha. Você tem %d dicas.","La bombilla muestra dónde empezar y luego da un paso seguro por ti, nunca uno que aísle una línea. Tienes %d pistas."
+HTP_OL_START_CAP,Walk every line in one stroke,Passe por cada linha num só traço,Recorre cada línea en un solo trazo
+HTP_OL_PRESS_CAP,Press a green post...,Toque num poste verde...,Toca un poste verde...
+HTP_OL_DRAG_CAP,...and drag from post to post,...e arraste de poste em poste,...y arrastra de poste en poste
+HTP_OL_DONE_CAP,Every line walked: solved,Todas as linhas percorridas: resolvido,Todas las líneas recorridas: resuelto
+HTP_OL_TEAL_CAP,A teal post can't begin the stroke,Um poste azul não começa o traço,Un poste azul no empieza el trazo
+HTP_OL_GREEN_CAP,Begin on a green one,Comece num verde,Empieza en uno verde
+HTP_OL_BACK_CAP,A plank can't be walked twice,Uma tábua não se percorre duas vezes,Una tabla no se recorre dos veces
+HTP_OL_ON_CAP,Take a stone line instead,Pegue uma linha de pedra,Toma una línea de piedra
+HTP_OL_CORNER_CAP,This step leaves lines behind...,Esse passo deixa linhas para trás...,Este paso deja líneas atrás...
+HTP_OL_LOST_CAP,...stranded: undo to the fork,...isoladas: desfaça até a bifurcação,...aisladas: deshaz hasta la bifurcación
+HTP_OL_HEART_CAP,"...it costs a heart, and comes back up","...custa um coração, e a tábua volta","...cuesta un corazón, y la tabla vuelve"
+HTP_OL_OTHER_CAP,Then go the other way round,Depois vá pelo outro lado,Luego ve por el otro lado
+HTP_OL_HINT_CAP,The bulb shows where to begin...,A lâmpada mostra onde começar...,La bombilla muestra dónde empezar...
+HTP_OL_HINT_STEP_CAP,...then walks one safe step,...e dá um passo seguro,...y da un paso seguro
+HTP_OL_SUN_CAP,A sunny line dries the snail out,Uma linha de sol resseca a lesma,Una línea de sol seca al caracol
+HTP_OL_DRY_CAP,Two sunny lines in a row: no,Duas linhas de sol seguidas: não,Dos líneas de sol seguidas: no
+HTP_OL_DEW_CAP,A dewy line between: ahh,Uma de orvalho no meio: ahh,Una de rocío en medio: ahh
