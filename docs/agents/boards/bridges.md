@@ -87,3 +87,28 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   of a session came back unlit. The sentinel is `-INF` now; any board that
   writes `t - 100.0` into a clock that is also checked `< 0.0` has the same
   bug.
+
+- **The checkup of 2026-10-02** (`docs/agents/checkup.md`, row 15). The lag
+  was the board mesh -- 84k vertices, every plank's slats and posts and every
+  islet's moss, sprouts, coin and ring -- built in script on every animating
+  frame (30-53 ms), and a move animates for a second. It is now two
+  `RunMesh`es: an islet is its body (per islet, and per over-or-not), its
+  pennant (per hue), its coin (one shape, painted through three slots, so the
+  wave's gold and a glint are a fill) or lantern (five slots; a turning one is
+  drawn live) and its ring of slots (per want, got, over), each a shape under
+  the islet's own scale and offset, so a bumping, hopping or dancing islet
+  costs a transform; a run at rest is one shape cached by its rest key
+  (`_run_rest`: count, halo, Check's held tint, the wave's gold all on or not
+  come), and only a run rolling out, previewed, rattling or half lit is drawn
+  live, into the room its lane got the first time it was drawn. **The win
+  card's glint is hidden under a lit run's gold**, which is why a run at rest
+  after the wave ignores its shine. Shapes are made in the first layout's
+  space and the meshes drawn under `_relay()`, so the win card's half-size
+  board reuses them; the sea cannot follow (its pool changes shape there) and
+  is made again once, ~17 ms, inside the host's win frame. What idle is left
+  is the sea's stacked translucent pool (fill, ~1 ms on native GL).
+  The tutorial (`ui/hud/bridges_tutorial_diagram.gd`) deals its own 5x5 seas
+  by hand (`Sea.lay`, through `_begin()`, the half of `build()` after the
+  deal) and plays them through `_gui_input`; its seas have no ripple dashes,
+  which are spaced in pixels for a full-size pool and bunch up on a page.
+

@@ -62,6 +62,10 @@ frame time and peak draw calls over a window with no screenshots (a
 
 ## The performance probe (2026-10-01)
 
+**Keep the display awake** (2026-10-02): a sleeping display freezes every
+windowed harness's shots (each frame the same; ANGLE reads back zeros) and
+skews its milliseconds, so wrap runs in `caffeinate -d -i -u`.
+
 `tests/_probe_perf.gd` opens one board at one difficulty, idles, then plays
 right moves through the board's own `_gui_input`, and prints each window's
 frame time (mean, p95, max), the renderer's CPU share, peak draw calls,
@@ -89,7 +93,9 @@ ground build) and `x=tn_trees|tn_tents|tn_chips` (hide one cast) are Tents'; `x=
 Hidden Word's; `x=wt_count` (a field, slots and air build every 2 s, with
 the field's vertices) is Word Trail's; `x=mp_count` (a floor and a ground build every 2 s, with
 their vertices) is Mushroom Patch's; `x=sd_count` (a grid build every 2 s,
-with its vertices) is Sudoku's. `rm` turns reduce motion on as the
+with its vertices) is Sudoku's; `x=br_count` (a board build every 1.5 s,
+the runs and islets timed apart, with each mesh's vertices and the cached
+run looks) is Bridges'. `rm` turns reduce motion on as the
 board opens (with `howto`, the tutorial's still pages). Each
 window also prints its mean draw calls beside the peak.
 Tents' moves sweep each row into cairns a run at a time, then tap the
@@ -102,7 +108,10 @@ her). Mushroom Patch's go a row at a time, the pebble chip armed and a pebble
 tapped on every bare cell, then the mushroom chip and the row's mushrooms.
 Word Trail's trace every word along its path, a press, a motion a tile
 and the release (`_keep` the last word's events). Sudoku's tap each empty cell in reading order and pick its answer's chip
-(`pick`, `_keep` 4). Hidden Word's type five wrong guesses that keep every clue (so Hard's
+(`pick`, `_keep` 4). Bridges' lay every plank of the answer as a drag from one islet to the
+other (a press, a motion over the far islet, the release). With `howto` up
+the probe plays no moves at all (Bridges' Easy board was solved under its
+pages and the win screen took over). Hidden Word's type five wrong guesses that keep every clue (so Hard's
 rule never refuses them) and then the answer, a letter a step, each commit
 waiting while the row before still turns (`_keep` 6).
 A board needs a `_moves_<id>` in the probe to play: each move is `{at}`

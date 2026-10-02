@@ -2023,3 +2023,39 @@ HTP_SD_WRITE_CAP,Write a number,Escreva um número,Escribe un número
 HTP_SD_UNDO_CAP,Undo takes the last number back,Desfazer volta o último número,Deshacer quita el último número
 HTP_SD_RESET_CAP,Reset clears every number you wrote,Recomeçar limpa todos os seus números,Reiniciar borra todos tus números
 HTP_SD_HINT_CAP,The bulb writes one in for you,A lâmpada escreve um por você,La bombilla escribe uno por ti
+HTP_BR_NUM,Plank every islet to its number,Cada ilhota com o seu número de tábuas,Cada islote con su número de tablas
+HTP_BR_NUM_BODY,"Drag from an islet to the one it faces across the water to lay a plank, and again for a second: two at most between the same pair. An islet's number is how many planks touch it. Its ring fills a slot for each, and it turns green when the count is right.","Arraste de uma ilhota até a que fica de frente, do outro lado da água, para pôr uma tábua, e de novo para uma segunda: no máximo duas entre o mesmo par. O número de uma ilhota é quantas tábuas tocam nela. O anel dela enche um espaço para cada uma, e ela fica verde quando a conta bate.","Arrastra de un islote al que tiene enfrente, al otro lado del agua, para poner una tabla, y otra vez para una segunda: como mucho dos entre la misma pareja. El número de un islote es cuántas tablas lo tocan. Su anillo llena un hueco por cada una, y se pone verde cuando la cuenta cuadra."
+HTP_BR_NUM_BODY_TAP,A tap on the water between two islets lays a plank too.,Um toque na água entre duas ilhotas também põe uma tábua.,Un toque en el agua entre dos islotes también pone una tabla.
+HTP_BR_CROSS,Bridges never cross,Pontes nunca se cruzam,Los puentes nunca se cruzan
+HTP_BR_CROSS_BODY,"Planks run straight across open water, and two bridges may never cross. A drag over a bridge that is in the way is refused, and that bridge flashes.","As tábuas vão em linha reta pela água aberta, e duas pontes nunca podem se cruzar. Um arraste por cima de uma ponte no caminho é recusado, e essa ponte pisca.","Las tablas van en línea recta por el agua abierta, y dos puentes nunca pueden cruzarse. Un arrastre por encima de un puente en el camino se rechaza, y ese puente parpadea."
+HTP_BR_NET,One single network,Uma rede só,Una sola red
+HTP_BR_NET_BODY,At the end every islet must be joined into one network you could walk all the way across. Every number right but the islets still in groups is not solved yet: the groups left apart pulse.,"No fim, todas as ilhotas precisam estar ligadas numa rede só, que dê para atravessar a pé de ponta a ponta. Todos os números certos mas as ilhotas ainda em grupos ainda não é solução: os grupos separados pulsam.","Al final, todos los islotes deben estar unidos en una sola red que se pueda cruzar a pie de punta a punta. Todos los números bien pero los islotes aún en grupos todavía no es la solución: los grupos sueltos laten."
+HTP_BR_OVER,One plank too many?,Uma tábua a mais?,¿Una tabla de más?
+HTP_BR_OVER_BODY,"An islet with more planks than its number turns rose. Check marks the bridges that don't belong, and a tap on a bridge's water steps it to two planks and then to none. Nothing is lost.","Uma ilhota com mais tábuas que o seu número fica rosa. Conferir marca as pontes que não pertencem ali, e um toque na água de uma ponte passa ela para duas tábuas e depois para nenhuma. Nada se perde.","Un islote con más tablas que su número se pone rosa. Comprobar marca los puentes que no van ahí, y un toque en el agua de un puente lo pasa a dos tablas y luego a ninguna. Nada se pierde."
+HTP_BR_LANTERN,Lantern Night,Noite das Lanternas,Noche de Faroles
+HTP_BR_UNDO_BODY,"Undo lifts the last plank you laid, and Reset lifts them all, so you can try another way. Neither costs anything.","Desfazer tira a última tábua que você pôs, e Recomeçar tira todas, para você tentar outro caminho. Nenhum dos dois custa nada.","Deshacer quita la última tabla que pusiste, y Reiniciar las quita todas, para que pruebes otro camino. Ninguno cuesta nada."
+HTP_BR_UNDO_BODY_JUDGED,"Undo lifts the last plank you laid, and Reset lifts them all. A heart once spent stays spent, and a buoy stays where it is.","Desfazer tira a última tábua que você pôs, e Recomeçar tira todas. Um coração gasto continua gasto, e uma boia fica onde está.","Deshacer quita la última tabla que pusiste, y Reiniciar las quita todas. Un corazón gastado sigue gastado, y una boya se queda donde está."
+HTP_BR_HINT_BODY_ONE,"The bulb lays one plank of the answer, ringed in gold, and lifts anything in its way. You have one hint.","A lâmpada põe uma tábua da resposta, com um contorno dourado, e tira o que estiver no caminho. Você tem uma dica.","La bombilla pone una tabla de la respuesta, con un contorno dorado, y quita lo que esté en el camino. Tienes una pista."
+HTP_BR_HINT_BODY_N,"The bulb lays one plank of the answer, ringed in gold, and lifts anything in its way. You have %d hints.","A lâmpada põe uma tábua da resposta, com um contorno dourado, e tira o que estiver no caminho. Você tem %d dicas.","La bombilla pone una tabla de la respuesta, con un contorno dorado, y quita lo que esté en el camino. Tienes %d pistas."
+HTP_BR_NUM_CAP,The number is how many planks touch it,O número é quantas tábuas tocam nela,El número es cuántas tablas lo tocan
+HTP_BR_DRAG_CAP,Drag to the islet it faces,Arraste até a ilhota da frente,Arrastra hasta el islote de enfrente
+HTP_BR_TWO_CAP,Again for a second plank: two at most,De novo para a segunda: no máximo duas,Otra vez para la segunda: como mucho dos
+HTP_BR_MET_CAP,Ring full: both islets turn green,Anel cheio: as duas ilhotas ficam verdes,Anillo lleno: los dos islotes se ponen verdes
+HTP_BR_NOCROSS_CAP,This lane would cross a bridge,Esse caminho cruzaria uma ponte,Ese camino cruzaría un puente
+HTP_BR_CROSS_CAP,Bridges can't cross: that one flashes,Pontes não se cruzam: aquela pisca,Los puentes no se cruzan: ese parpadea
+HTP_BR_APART_CAP,Two groups: every islet must join up,Dois grupos: todas precisam se ligar,Dos grupos: todos deben unirse
+HTP_BR_ONE_CAP,"One network, every number right: solved!","Uma rede só, todos os números certos: resolvido!","Una sola red, todos los números bien: ¡resuelto!"
+HTP_BR_TOO_CAP,This islet already has its two,Esta ilhota já tem as duas dela,Este islote ya tiene sus dos
+HTP_BR_OVER_CAP,One too many: the islet turns rose,Uma a mais: a ilhota fica rosa,Una de más: el islote se pone rosa
+HTP_BR_CHECK_CAP,Check marks the bridge that doesn't belong,Conferir marca a ponte que não é dali,Comprobar marca el puente que no va ahí
+HTP_BR_TAP_CAP,"Tap its water: two planks, then none","Toque na água: duas tábuas, depois nenhuma","Toca su agua: dos tablas, luego ninguna"
+HTP_BR_JUDGED_CAP,Every plank is judged as it lands,Cada tábua é julgada ao pousar,Cada tabla se juzga al posarse
+HTP_BR_SINK_CAP,A wrong plank sinks and costs a heart,Uma tábua errada afunda e custa um coração,Una tabla equivocada se hunde y cuesta un corazón
+HTP_BR_BUOY_CAP,The buoy says no plank goes there,A boia diz que ali não vai tábua,La boya dice que ahí no va tabla
+HTP_BR_LANTERN_CAP,"A lantern counts islets, not planks","A lanterna conta ilhotas, não tábuas","El farol cuenta islotes, no tablas"
+HTP_BR_LANTERN2_CAP,"Two planks, still one islet","Duas tábuas, ainda uma ilhota","Dos tablas, todavía un islote"
+HTP_BR_LANTERN3_CAP,Two islets joined: the lantern is happy,Duas ilhotas ligadas: a lanterna está feliz,Dos islotes unidos: el farol está feliz
+HTP_BR_LAY_CAP,Lay a plank,Ponha uma tábua,Pon una tabla
+HTP_BR_UNDO_CAP,Undo lifts the last plank,Desfazer tira a última tábua,Deshacer quita la última tabla
+HTP_BR_RESET_CAP,Reset lifts every plank,Recomeçar tira todas as tábuas,Reiniciar quita todas las tablas
+HTP_BR_HINT_CAP,The bulb lays a plank of the answer,A lâmpada põe uma tábua da resposta,La bombilla pone una tabla de la respuesta
