@@ -72,3 +72,27 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 - **Tutorial**: `tutorial_pages()` and `ui/hud/caterpillar_tutorial_diagram.gd`
   (a `Garden` subclass with no sounds, tips, gags, party or card; `_inset()`
   keeps just the frame's width of lawn on the short page).
+
+## One smooth body (2026-10-02)
+
+- **The beads are gone.** The body was a round segment on every square over a
+  thin tube, mitred at every turn; the user found it "too square ... like an
+  old browser canvas game". It is now one tube (`Cat.body`, `_spine`,
+  `_ribbon`): each segment owns the stretch from the middle of the step
+  before it to the middle of the step after, a quadratic through its square's
+  centre, so a turn is a round bend; its width eases between neighbours down
+  to a pointed tail (`TAIL`, `TIP`). Over a base shaded away from the light: the
+  lit body, a lit band leaning toward the top left (`LIGHT`), a crease bowed
+  toward the tail between segments, two spots and a short shine per segment
+  (`crease`, `decal`). Legs, spots and shadow sit on `Cat.seat` (inside a
+  bend, not on the corner). A cut segment pops out as a short piece of tube.
+- **Two stretches built apart must meet on one edge**: the tail and the live
+  stretch end flat in the middle of a step, and the strip's normals come from
+  the curve's own slope, not from neighbouring samples. One-sided normals
+  left a light hairline across the body at every bake seam.
+- **Cost**: the tube near the head is built whole every frame (it is one
+  shape); its creases, spots and shines are RunMesh looks (`_rm_hi`, a look
+  per 72nd of a turn for the marks, which lean to the light). Probe
+  (`tests/_probe_cat_perf.gd`, Insane): 0.7-1.4 ms before, 0.85-1.7 ms after
+  (built with the builder they were 2.3-2.8). Draw calls unchanged (108 peak
+  on the Insane solve, ANGLE).

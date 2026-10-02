@@ -351,19 +351,21 @@ var _rm_over: RunMesh
 var _rm_live: RunMesh
 var _look_makers: Array[Callable] = []
 var _rooms_laid := false
-enum Part { GIVEN, LEAF, FENCE, BADGE, SHADOW, LEGS, SEG }
+enum Part { GIVEN, LEAF, FENCE, BADGE, SHADOW, LEGS, MARKS }
 ## The stretch near the head the same way: a run per segment slot counted
-## from the seam (its shadow, then its legs and feet, in `_rm_lo`; its round,
-## spots and glow in `_rm_hi`), so every frame of a drag copies the same
-## looks into the same places and no index is offset in script. As triangle
-## lists it was up to 55k vertices uploaded every frame of a drag.
+## from the seam (its shadow, then its legs and feet, in `_rm_lo`), so every
+## frame of a drag copies the same looks into the same places and no index is
+## offset in script. As triangle lists it was up to 55k vertices uploaded
+## every frame of a drag. The tube over them is one smooth shape, built whole
+## for the stretch from the seam (`_live_hi`).
 const BODY_SLOTS := DYN + TAIL_STEP + 2
 var _rm_lo: RunMesh
 var _rm_hi: RunMesh
 var _body_rooms := false
 var _live_lo: ArrayMesh
-var _live_tube: ArrayMesh
 var _live_hi: ArrayMesh
+## The creases, spots and shine on the live stretch, copied from looks.
+var _live_marks: ArrayMesh
 ## The segments cut away popping out, and the rings round a leaf just eaten.
 var _live_fx: ArrayMesh
 var _top: ArrayMesh
@@ -886,7 +888,7 @@ func _draw() -> void:
 		draw_mesh(_lawn, null, xf, tint)
 		draw_mesh(_bed, null, board, tint)
 		shown.append_array([_lawn, _bed])
-	for m in [_rest_under, _under, _tail_lo, _live_lo, _tail_hi, _live_tube, _live_hi, _live_fx, _rest_over, _over]:
+	for m in [_rest_under, _under, _tail_lo, _live_lo, _tail_hi, _live_hi, _live_marks, _live_fx, _rest_over, _over]:
 		if m != null:
 			draw_mesh(m, null, board, tint)
 			shown.append(m)
@@ -1268,21 +1270,22 @@ func _settled(t: float, n: int) -> int:
 				return i / TAIL_STEP * TAIL_STEP
 	return m
 
-## The body's four meshes: the settled tail and the stretch near the head,
-## each in two layers (shadows and legs under, tube and rounds over).
+## The body's meshes: the settled tail and the stretch near the head, each
+## in two layers (shadows and legs under, the tube and its marks over).
 ##
 ## **The tail is appended to, never rebuilt**: when the seam moves on by
 ## TAIL_STEP squares the new segments are added to the builders it already
 ## has (a cut, an undo or a relayout below the seam starts it again). **The
-## stretch near the head is copied, not drawn**: every part of a segment --
-## its shadow, a leg, a foot, its round, its spots, the solve's glow -- is a
-## triangle list baked once a layout (`_part`), and each frame only appends
-## those lists through a transform, which is native array work. Building the
-## same stretch with the builder cost 0.4 ms a segment on this Mac.
+## stretch near the head is mostly copied, not drawn**: its shadows, legs,
+## feet, creases, spots and shines are triangle lists baked once a layout
+## (`_part`), and each frame only appends those lists through a transform,
+## which is native array work (building them with the builder cost 0.4 ms a
+## segment on this Mac). Only the tube itself, one smooth shape, is built
+## for that stretch each frame (`_live_hi`, ~0.4 ms for twenty segments).
 func _build_body(t: float) -> void:
 	_live_lo = null
 	_live_hi = null
-	_live_tube = null
+	_live_marks = null
 	_live_fx = null
 	var gb := Face.Builder.new()
 	_draw_ghosts(gb, t)
@@ -1354,22 +1357,27 @@ func _put_body(pts: PackedVector2Array, m: int, t: float) -> void:
 	var seam := float(maxi(m, n - 1 - WALK_REACH))
 	var shadow := _part("shadow")
 	_rm_lo.begin()
+	var scales: Array = []
+	var breath := PackedFloat32Array()
+	for i in n:
+		scales.append(_seg_scale(i, t) if i >= m and i < n - 1 else Vector2.ONE)
+		breath.append(_swell(i, n, t) if i >= m else 1.0)
 	for i in range(m, n):
-		var sc: Vector2 = _seg_scale(i, t) if i < n - 1 else Vector2.ONE
-		if sc.x <= 0.01:
-			continue
-		var k := Cat._taper(i) * sc.x
+		var sc: Vector2 = scales[i]
+		var k := Cat._taper(i) * (1.0 - Cat.POP_W + Cat.POP_W * sc.x)
 		_rm_lo.open(Part.SHADOW, i - m)
-		_rm_lo.put(shadow, [], Transform2D(0.0, Vector2(k, k), 0.0, pts[i]))
+		_rm_lo.put(shadow, [], Transform2D(0.0, Vector2(k, k), 0.0, Cat.seat(pts, i)[0]))
 	var leg := _part("leg")
 	var foot := _part("foot")
 	for i in range(m, n - 1):
-		var sc := _seg_scale(i, t)
+		var sc: Vector2 = scales[i]
 		if sc.x <= 0.01:
 			continue
 		_rm_lo.open(Part.LEGS, i - m)
 		var r := big * Cat._taper(i) * sc.x
-		var dir := Cat._dir(pts, i)
+		var st := Cat.seat(pts, i)
+		var at: Vector2 = st[0]
+		var dir: Vector2 = st[1]
 		var nrm := dir.orthogonal()
 		var step := Vector2.ZERO
 		if walk > 0.0:
@@ -1378,41 +1386,48 @@ func _put_body(pts: PackedVector2Array, m: int, t: float) -> void:
 		for side: float in [-1.0, 1.0]:
 			var fwd := step.x * side
 			var lift := maxf(0.0, step.y * side)
-			var root := pts[i] + nrm * side * r * Cat.LEG_ROOT
-			var tip := pts[i] + nrm * side * r * (Cat.LEG_REACH - Cat.LEG_TUCK * lift) + dir * r * (0.12 + Cat.LEG_STRIDE * fwd)
+			var root := at + nrm * side * r * Cat.LEG_ROOT
+			var tip := at + nrm * side * r * (Cat.LEG_REACH - Cat.LEG_TUCK * lift) + dir * r * (0.12 + Cat.LEG_STRIDE * fwd)
 			var ax := tip - root
 			_rm_lo.put(leg, [], Transform2D(ax, ax.normalized().orthogonal() * sc.x, root))
 			var f := sc.x * (1.0 - 0.15 * lift)
 			_rm_lo.put(foot, [], Transform2D(0.0, Vector2(f, f), 0.0, tip))
 	_live_lo = _rm_lo.mesh()
-	var line := pts.slice(m, n)
-	if line.size() > 1:
-		var tube := Face.Builder.new()
-		tube.stroke(line, s * Cat.TUBE_DEEP, Pal.LEAF_DEEP)
-		tube.stroke(line, s * Cat.TUBE, Pal.LEAF)
-		_live_tube = tube.mesh()
-	var spots := _part("spots")
-	var rounds := [_part("round0"), _part("round1")]
+	# The tube and what lies on it: one smooth shape, so it is drawn whole for
+	# the stretch from the seam each frame rather than copied part by part.
+	var glow := PackedFloat32Array()
+	if _solved_at >= 0.0:
+		glow.resize(n)
+		for i in range(m, n - 1):
+			var g := Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY - _wave(i, n), 0.1, 0.6)
+			glow[i] = clampf(g, 0.0, 1.0)
+	var hb := Face.Builder.new()
+	Cat.body(hb, pts, s, scales, breath, glow, PackedVector2Array(), m, -1, 2, false)
+	_live_hi = hb.mesh() if not hb.verts.is_empty() else null
+	# Each segment's crease, spots and shine, a look per way it faces.
+	var crease := _part("crease")
 	_rm_hi.begin()
-	for i in range(m, n - 1):
-		var sc := _seg_scale(i, t)
+	for i in range(m, n):
+		var sc: Vector2 = scales[i]
 		if sc.x <= 0.01:
 			continue
-		_rm_hi.open(Part.SEG, i - m)
-		var k := Cat._taper(i) * _swell(i, n, t)
-		var xf := Transform2D(0.0, sc * k, 0.0, pts[i])
-		_rm_hi.put(rounds[i % 2], [], xf)
-		_rm_hi.put(spots, [], Transform2D(Cat._dir(pts, i).angle(), sc * k, 0.0, pts[i]))
-		if _solved_at >= 0.0:
-			var g := Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY - _wave(i, n), 0.1, 0.6)
-			var level := clampi(roundi(g * 5.0), 0, 5)
-			if level > 0:
-				_rm_hi.put(_part("glow%d" % level), [], xf)
-	_live_hi = _rm_hi.mesh()
+		_rm_hi.open(Part.MARKS, i - m)
+		var k := Cat._taper(i) * breath[i] * (1.0 - Cat.POP_W + Cat.POP_W * clampf(sc.x, 0.0, 1.3)) * minf(sc.x, 1.0)
+		var g := glow[i] if i < glow.size() else 0.0
+		if i > 0 and g < 0.5:
+			var d := pts[i] - pts[i - 1]
+			if d.length() > 0.5:
+				_rm_hi.put(crease, [], Transform2D(d.angle(), Vector2(k, k), 0.0, (pts[i] + pts[i - 1]) * 0.5))
+		if i < n - 1:
+			var st := Cat.seat(pts, i)
+			var turn := posmod(roundi((st[1] as Vector2).angle() / TAU * 72.0), 72)
+			_rm_hi.put(_part("marks%d" % turn), [], Transform2D(0.0, Vector2(k, k), 0.0, st[0]))
+	_live_marks = _rm_hi.mesh()
 
 ## A run for each of BODY_SLOTS segments from the seam: shadows, then legs
-## and feet, in `_rm_lo`; rounds, spots and glow in `_rm_hi`. A body longer
-## than that (the solve's hop lights all of it) puts the rest on the tail.
+## and feet, in `_rm_lo`; creases, spots and shine in `_rm_hi`. A body
+## longer than that (the solve's hop lights all of it) puts the rest on the
+## tail.
 func _lay_body_rooms() -> void:
 	_body_rooms = true
 	for i in BODY_SLOTS:
@@ -1420,10 +1435,9 @@ func _lay_body_rooms() -> void:
 	var legs := 2 * (_rm.size_of(_part("leg")) + _rm.size_of(_part("foot")))
 	for i in BODY_SLOTS:
 		_rm_lo.room(Part.LEGS, i, legs)
-	var seg := maxi(_rm.size_of(_part("round0")), _rm.size_of(_part("round1"))) \
-		+ _rm.size_of(_part("spots")) + _rm.size_of(_part("glow5"))
+	var marks := _rm.size_of(_part("crease")) + _rm.size_of(_part("marks0"))
 	for i in BODY_SLOTS:
-		_rm_hi.room(Part.SEG, i, seg)
+		_rm_hi.room(Part.MARKS, i, marks)
 
 ## Segment `i`'s pop-in this frame.
 func _seg_scale(i: int, t: float) -> Vector2:
@@ -1431,9 +1445,10 @@ func _seg_scale(i: int, t: float) -> Vector2:
 
 ## A segment's parts, each a RunMesh look at the segment's full radius,
 ## made once a layout: its shadow, a leg (a unit stroke along +x, stretched
-## to its tip by the transform), a foot, its round (rim, face and shine,
-## never turned, so the light stays top left), its two spots (turned the way
-## it faces) and the solve's warm glow in five strengths.
+## to its tip by the transform), a foot, the crease between two segments
+## and a segment's spots and shine (a look per seventy-second of a turn: they
+## lean toward the light). The tube itself is one smooth shape, drawn whole
+## (`Cat.body`).
 func _part(key: String) -> int:
 	return _look("p" + key, _part_shape.bind(key))
 
@@ -1447,17 +1462,11 @@ func _part_shape(b, key: String) -> void:
 			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(1.0, 0.0)]), s * Cat.LEG_W, Pal.LEAF_DEEP, false, false)
 		"foot":
 			b.disc(Vector2.ZERO, s * Cat.FOOT_R, Pal.LEAF_DEEP.lerp(Pal.TEXT, 0.25))
-		"round0", "round1":
-			var fill: Color = Pal.LEAF if key == "round1" else Pal.LEAF_LIGHT
-			b.fan(Face.Builder.ring(Vector2(0.0, r * Cat.RIM_DROP / Cat.SEG_R), r, r), Pal.LEAF_DEEP)
-			b.fan(Face.Builder.ring(Vector2.ZERO, r * Cat.FACE_IN, r * Cat.FACE_IN), fill)
-			b.fan(Face.Builder.ring(Vector2(-0.3, -0.38) * r, r * 0.3, r * 0.17), Color(1.0, 1.0, 1.0, Cat.SHINE_ALPHA))
-		"spots":
-			for side: float in [-1.0, 1.0]:
-				b.fan(Face.Builder.ring(Vector2(0.0, side * r * Cat.SPOT_OUT), r * Cat.SPOT_R, r * Cat.SPOT_R), Pal.SUN)
+		"crease":
+			Cat.crease(b, Vector2(-1.0, 0.0), Vector2(1.0, 0.0), s * Cat.BODY_HW, s)
 		_:
-			var level := int(key.substr(4))
-			b.fan(Face.Builder.ring(Vector2.ZERO, r * Cat.FACE_IN, r * Cat.FACE_IN), Color(Pal.SURFACE, 0.1 * level))
+			var turn := int(key.substr(5))
+			Cat.decal(b, Vector2.ZERO, Vector2.from_angle(float(turn) / 72.0 * TAU), s * Cat.BODY_HW, s)
 
 ## How swollen segment `i` of `n` is by the crawl and the gulps.
 func _swell(i: int, n: int, t: float) -> float:
