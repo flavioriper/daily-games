@@ -191,6 +191,56 @@ func _experiment() -> void:
 			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
 			_host._on_undo()
 			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"sb_frozen":
+			# The board stops redrawing: what drawing its meshes costs as they
+			# stand, against re-recording them every frame.
+			for what in ["live", "frozen"]:
+				var sum := 0.0
+				var n := 0
+				var t_end := _t + 1.5
+				if what == "frozen":
+					_puzzle.set_process(false)
+				while _t < t_end:
+					await process_frame
+					sum += RenderingServer.viewport_get_measured_render_time_cpu(_vp)
+					n += 1
+				print("  %s: render-cpu %.2f over %d frames" % [what, sum / maxf(n, 1), n])
+			_puzzle.set_process(true)
+		"sb_parts":
+			# Sunbeam's meshes dropped one at a time over the idle window, the
+			# renderer's CPU share read over each second.
+			for what in ["all", "lower", "upper", "still", "none"]:
+				var sum := 0.0
+				var n := 0
+				var t_end := _t + 1.0
+				match what:
+					"lower":
+						_puzzle.set("_lower", null)
+						if "_live" in _puzzle:
+							_puzzle.set("_live", ArrayMesh.new())
+					"upper":
+						_puzzle.set("_upper", null)
+					"still":
+						_puzzle._still = ArrayMesh.new()
+				while _t < t_end:
+					await process_frame
+					sum += RenderingServer.viewport_get_measured_render_time_cpu(_vp)
+					n += 1
+				print("  without %s: render-cpu %.2f over %d frames" % [what, sum / maxf(n, 1), n])
+		"cue_late":
+			# Every cue the streak plays, one at a time inside the idle window.
+			for c in ["combo", "confetti", "rainbow", "love", "flutter", "dew", "slide"]:
+				await create_timer(0.4).timeout
+				var t0 := Time.get_ticks_usec()
+				_puzzle.fx.cue(c, 1.2, -4.0)
+				print("  cue %s %.2f ms at t=%.2f" % [c, (Time.get_ticks_usec() - t0) / 1000.0, _t])
+				_log_until = _t + 0.1
+		"confetti_late":
+			# One burst inside the idle window, so a first burst's hitch shows.
+			await create_timer(2.0).timeout
+			_puzzle.fx.confetti(_puzzle.size * 0.5, 22)
+			print("  confetti fired at t=%.2f" % _t)
+			_log_until = _t + 0.2
 		"confetti":
 			var t0 := Time.get_ticks_usec()
 			_puzzle.fx.confetti(_puzzle.size * 0.5, 22)
@@ -396,6 +446,39 @@ func _experiment() -> void:
 				var l0 := Time.get_ticks_usec()
 				_puzzle._lanterns_mesh()
 				print("  lanterns %.2f ms" % ((Time.get_ticks_usec() - l0) / 1000.0))
+		"sb_count":
+			# The light traced and the live, air and still meshes built as a
+			# frame builds them, every 1.5 s, with their vertices; once with a
+			# piece held (the drag frame).
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				if n % 2 == 1 and _puzzle._drag.is_empty():
+					var p0: int = 0
+					while _puzzle._state.pinned.has(p0):
+						p0 += 1
+					_puzzle._drag = {"p": p0, "s": float(_puzzle._state.pos[p0]) + 0.3, "off": 0.0, "before": _puzzle._state.pos.duplicate(), "at": t - 1.0}
+				var vc := func(x) -> int: return x.surface_get_array_len(0) if x != null else 0
+				var t0 := Time.get_ticks_usec()
+				_puzzle._tr = _puzzle._trace_live(t)
+				var t1 := Time.get_ticks_usec()
+				_puzzle._in_ref = true
+				_puzzle._build_live(t)
+				var t2 := Time.get_ticks_usec()
+				_puzzle._beam_key = []
+				_puzzle._build_live(t)
+				var t2b := Time.get_ticks_usec()
+				var a = _puzzle._build_air(t)
+				var t3 := Time.get_ticks_usec()
+				var s = _puzzle._build_bed()
+				var t4 := Time.get_ticks_usec()
+				_puzzle._in_ref = false
+				var gl = _puzzle._build_glass()
+				var t5 := Time.get_ticks_usec()
+				print("  trace %.2f | live %.2f ms (beam made %.2f) v%d+%d+%d | air %.2f ms v%d | bed %.2f ms v%d | glass %.2f ms v%d | drag %s" % [(t1 - t0) / 1000.0,
+					(t2 - t1) / 1000.0, (t2b - t2) / 1000.0, vc.call(_puzzle._lower), vc.call(_puzzle._beam_mesh), vc.call(_puzzle._upper),
+					(t3 - t2b) / 1000.0, vc.call(a), (t4 - t3) / 1000.0, vc.call(s), (t5 - t4) / 1000.0, vc.call(gl), not _puzzle._drag.is_empty()])
+				_puzzle._drag = {}
 		"pp_count":
 			# One field and one still build as an animating frame does them,
 			# every 1.5 s, with their vertices and what is moving.
@@ -1157,4 +1240,127 @@ func _moves_caterpillar() -> Array:
 		var c := int(path[k])
 		out.append({"do": func() -> void: _ut_motion(at.call(c))})
 	out.append({"do": func() -> void: _ut_button(at.call(path[-1]), false)})
+	return out
+
+## Sunbeam: every piece dragged home along its rail -- a press on it, a
+## motion a third of a peg, the release on its home peg -- in an order
+## worked out on a copy of the floor so no let-go move leaves the light on a
+## sleeper (Hard's snails, Shy Dew's drops) unless it is the solve. One event
+## a step (`_keep` the last two drags' events).
+func _moves_sunbeam() -> Array:
+	var st = _puzzle._state
+	var order: Array = _sb_dark_way(st) if not st.sleepers().is_empty() else []
+	if order.is_empty():
+		order = _sb_greedy(st)
+	var out := []
+	var counts: Array = []
+	for mv: Array in order:
+		var p: int = mv[0]
+		var a := float(mv[1])
+		var z := float(mv[2])
+		var at := func(s: float) -> Vector2: return _puzzle._pt(_puzzle._piece_mid(p, s))
+		out.append({"do": func() -> void: _ut_button(at.call(a), true)})
+		var n := maxi(1, int(ceil(absf(z - a) * 3.0)))
+		for k in range(1, n + 1):
+			var s := lerpf(a, z, float(k) / float(n))
+			out.append({"do": func() -> void: _ut_motion(at.call(s))})
+		out.append({"do": func() -> void: _ut_button(at.call(z), false)})
+		counts.append(n + 2)
+	_keep = 0
+	for k in mini(2, counts.size()):
+		_keep += int(counts[counts.size() - 1 - k])
+	return out
+
+## A greedy order home: each piece in turn whose move home is free and
+## leaves the light off every sleeper, [piece, from, to] each.
+func _sb_greedy(st) -> Array:
+	var Gen = load("res://puzzles/sunbeam_gen.gd")
+	var pos: PackedInt32Array = st.pos.duplicate()
+	var order: Array = []
+	var left: Array = range(pos.size()).filter(func(p): return pos[p] != st.home(p))
+	var guard := 0
+	while not left.is_empty() and guard < 64:
+		guard += 1
+		var pick := -1
+		for p: int in left:
+			var free := true
+			for o in pos.size():
+				if o != p:
+					for c in st.cells_of(o, pos[o]):
+						if st.cells_of(p, st.home(p)).has(c):
+							free = false
+			if not free:
+				continue
+			pick = p
+			break
+		if pick < 0:
+			pick = left[0]
+		order.append([pick, pos[pick], st.home(pick)])
+		pos[pick] = st.home(pick)
+		left.erase(pick)
+	return order
+
+## The shortest way home that never lets go with the light on a sleeper
+## (sunbeam_gen.gd's dark_path, keeping the moves): [piece, from, to] each.
+func _sb_dark_way(st) -> Array:
+	var Gen = load("res://puzzles/sunbeam_gen.gd")
+	var g: Dictionary = st.g
+	var f = Gen.Fast.new(g, st.sleepers())
+	var np: int = f.np
+	var mul := PackedInt32Array()
+	var total := 1
+	for p in np:
+		mul.append(total)
+		total *= f.rails[p]
+	var home := 0
+	var at := 0
+	for p in np:
+		home += int(g.pieces[p].home) * mul[p]
+		at += st.pos[p] * mul[p]
+	var parent := {at: -1}
+	var queue := PackedInt32Array([at])
+	var head := 0
+	var pos := PackedInt32Array()
+	pos.resize(np)
+	var found := false
+	while head < queue.size() and not found:
+		var s := queue[head]
+		head += 1
+		for p in np:
+			pos[p] = (s / mul[p]) % f.rails[p]
+		for p in np:
+			var was: int = pos[p]
+			for q in f.rails[p]:
+				if q == was or not f.fits(pos, p, q):
+					continue
+				var t: int = s + (q - was) * mul[p]
+				if parent.has(t):
+					continue
+				if t == home:
+					parent[t] = s
+					found = true
+					break
+				pos[p] = q
+				var r: Vector2i = f.probe(pos)
+				pos[p] = was
+				if r.x == 0 and r.y == 0:
+					parent[t] = s
+					queue.append(t)
+			if found:
+				break
+	if not found:
+		return []
+	var chain: Array = []
+	var k := home
+	while k != at:
+		chain.push_front(k)
+		k = parent[k]
+	chain.push_front(at)
+	var out: Array = []
+	for i in range(1, chain.size()):
+		for p in np:
+			var a: int = (int(chain[i - 1]) / mul[p]) % f.rails[p]
+			var z: int = (int(chain[i]) / mul[p]) % f.rails[p]
+			if a != z:
+				out.append([p, a, z])
 	return out
