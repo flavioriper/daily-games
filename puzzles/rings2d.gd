@@ -63,6 +63,11 @@ extends "res://core/puzzle_base.gd"
 ## whole mesh for one moving part paid for all of it every frame. All are
 ## kept in `_shown` until the next ones replace them (a canvas command holds
 ## a mesh by RID).
+## (2026-10-02, the board checkup: a station's rebuild still drew its rings
+## in script, 2.5-5 ms each, every frame of a squash, a glint or the solve's
+## spin. Every ring part is now a look made once -- `_make_look` -- and a
+## station or the ring in hand is those looks copied under the moment's
+## squash, lean and turn, ~0.4 ms a station.)
 ##
 ## **The 2026-10-01 polish** (`docs/superpowers/specs/2026-10-01-rings-polish-design.md`):
 ## Hard and Insane can be lost -- a drop that would leave the pegs unsortable
@@ -89,6 +94,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 
 signal leave
@@ -280,6 +286,24 @@ const STAMP_DROP := 0.18
 const STAMP_R := 0.15
 const STAMP_TILT := -0.22
 
+# --- the looks (the 2026-10-02 checkup) ---
+## Shape ids in `_looks`: every part of a ring made once at RING_W about its
+## own origin (the ring's top face centred on it), and copied natively under
+## a transform -- a squash, a lean, a hop or a flight is that transform.
+const LOOK_BODY := 0          # + the ring's code: the band, under the emblems
+const LOOK_FACE := 100        # + its top colour: the top face and the hole
+const LOOK_EMBLEM := 200      # + the emblem's kind, in slots (shade, inlay, eye)
+const LOOK_EMBLEM_SMALL := 210  # + the kind: a two-tone ring's smaller ones
+const LOOK_GLINT := 300       # the lock's shine, in a slot
+const LOOK_SHADOW := 301      # a stack's shadow, about (cx, ground)
+const LOOK_SOCKET := 302      # an empty peg's socket, about (cx, ground)
+const LOOK_DAISY := 303       # the cap, about its centre, full size
+const LOOK_HOVER := 304       # the soft disc under a ring in the air
+const LOOK_MARK := 305        # Easy and Medium's leaf ring round a post it may land on
+const LOOK_POST := 1000       # + its length in whole design px: the dowel from its top
+## The steps a glint or an emblem fades in, so their paint is kept.
+const FADE_STEPS := 16.0
+
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
 const TOAST_RADIUS := 28.0
@@ -305,6 +329,9 @@ var _station_meshes: Array = []
 var _station_keys: Array = []
 ## The ring in hand or in flight, rebuilt every frame it moves.
 var _live_mesh: ArrayMesh
+## Every ring part, made once; the stations and the ring in hand are put
+## together from them (`_build_station`, `_build_live`).
+var _looks := RunMesh.new(_make_look)
 var _shown: Array = []
 
 var _tip_timer: Timer
@@ -335,7 +362,7 @@ var _flight: Dictionary = {}
 var _land_peg := -1
 var _land_slot := -1
 var _land_at := -100.0
-var _solved_at := -100.0
+var _solved_at := -INF
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
 
@@ -416,6 +443,41 @@ func rules() -> String:
 		line += "\n\n" + tr("RG_RULES_SAFE")
 	return line
 
+## The tutorial, a page a rule, each played on a row of pegs of its own
+## (`ui/hud/rings_tutorial_diagram.gd`): a lift and a drop, four of a colour
+## locking a peg and the board done, what a dead end costs on a judged band,
+## Tumble's two-tone rings, Undo and Reset, and the bulb on a band that has
+## hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/rings_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [
+		[Diagram.Lesson.LIFT, "HTP_RG_LIFT", tr("HTP_RG_LIFT_BODY")],
+		[Diagram.Lesson.SORT, "HTP_RG_SORT", tr("HTP_RG_SORT_BODY")],
+	]
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("HTP_RG_HEARTS_BODY") % hearts_n])
+	if band == 3:
+		steps.append([Diagram.Lesson.TUMBLE, "RG_TUMBLE_SEAL", tr("HTP_RG_TUMBLE_BODY")])
+	var undo_body := "HTP_RG_UNDO_BODY"
+	if band == 3:
+		undo_body = "HTP_RG_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_RG_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_RG_HINT_BODY_ONE") if hints == 1 else tr("HTP_RG_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _tips() -> Array:
 	if _state.tumble:
 		return TIPS_TUMBLE
@@ -487,10 +549,21 @@ func _ready() -> void:
 	add_child(_life_layer)
 	solved.connect(_on_solved)
 
+## A judge still at work on the ring in hand is waited for, not left running.
+func _exit_tree() -> void:
+	_state.settle_judge()
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
+	_state.settle_judge()
 	_state.build(rng, difficulty, bank_step)
+	_dealt()
+
+## Everything a new deal starts from once the state holds it: the hearts, the
+## rewards, nothing in flight, the layout and the entrance. The tutorial's
+## pages deal their pegs by hand (`State.take`) and call it too.
+func _dealt() -> void:
 	max_hearts = State.hearts_for(_state.difficulty)
 	hearts = max_hearts
 	out_of_hearts = false
@@ -530,10 +603,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
-	_solved_at = -100.0
+	_solved_at = -INF
 	_tip_timer.start()
 
 # --- layout ---
+
+## The pegs a row: `_rows_of` this deal (the tutorial's one row overrides it).
+func _row_counts() -> Array:
+	return _rows_of(_state.pegs.size())
+
+## The design box's least height, the heart strip aside.
+func _min_h() -> float:
+	return MIN_H
 
 ## Rows of four at the hard band, four and three at the medium one, three and
 ## three at the easy one.
@@ -547,7 +628,7 @@ static func _rows_of(peg_count: int) -> Array:
 ## tenths above the rows, three between them and three to the foot, so the
 ## rows sit in the middle of the card rather than hanging from its top.
 func _layout() -> void:
-	var min_h := MIN_H + _top_pad()
+	var min_h := _min_h() + _top_pad()
 	if size.x > 0.0 and size.y > 0.0:
 		_s = minf(size.x / DESIGN_W, size.y / min_h)
 		_dsize = size / _s
@@ -582,7 +663,7 @@ func _top_pad() -> float:
 
 ## Where peg `i` stands, in design pixels: a short row is centred.
 func _station(i: int) -> Dictionary:
-	var counts := _rows_of(_state.pegs.size())
+	var counts := _row_counts()
 	var a: int = counts[0]
 	var row := 0 if i < a else 1
 	var k := i if row == 0 else i - a
@@ -665,6 +746,7 @@ func _tap(i: int) -> void:
 		if not _flight.is_empty() and int(_flight.get("to", -1)) == i:
 			_land_flight(_now())
 		if _state.lift(i):
+			_state.prejudge()
 			_held_at = _now()
 			fx.cue("lift")
 			if Gen.two_tone(_state.held):
@@ -975,7 +1057,7 @@ func reset_board() -> void:
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
-	_solved_at = -100.0
+	_solved_at = -INF
 	_break_streak()
 	_clear_gags()
 	fx.cue("reset")
@@ -1055,7 +1137,7 @@ func _stations_moving(t: float) -> bool:
 			return true
 	if not _twirl.is_empty() and t - float(_twirl["at"]) < TWIRL_TIME + 0.05:
 		return true
-	if _solved_at >= 0.0 and t - _solved_at < Motion.SOLVE_DELAY + Motion.stagger(n, Motion.SOLVE_STAGGER) + Motion.SOLVE_TIME:
+	if _solved_at > -INF and t - _solved_at < Motion.SOLVE_DELAY + Motion.stagger(n, Motion.SOLVE_STAGGER) + Motion.SOLVE_TIME:
 		return true
 	return false
 
@@ -1136,11 +1218,8 @@ func _draw_stations(t: float) -> void:
 		var look := _station_look(i, t, float(pose["hop"]))
 		var key := var_to_str(look)
 		if _station_meshes[i] == null or _station_keys[i] != key:
-			var b := Face.Builder.new()
 			var st := _station(i)
-			_append_peg(b, float(st["cx"]), float(st["ground"]), RING_W, look["pegs"], Callable(), 1.0,
-				look["scales"], look["glints"], float(look["cap"]), look["turns"])
-			_station_meshes[i] = b.mesh() if not b.verts.is_empty() else null
+			_station_meshes[i] = _build_station(float(st["cx"]), float(st["ground"]), look)
 			_station_keys[i] = key
 		if _station_meshes[i] != null:
 			_place(centre, wide, pose["off"])
@@ -1154,7 +1233,7 @@ func _place(centre: Vector2, wide: float, off: Vector2) -> void:
 
 func _build_planks() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var counts := _rows_of(_state.pegs.size())
+	var counts := _row_counts()
 	for row in 2:
 		var n: int = counts[row]
 		if n <= 0:
@@ -1295,7 +1374,7 @@ func _station_pose(i: int, t: float) -> Dictionary:
 		lift = Motion.drop_in_lift(since)
 	lift += -Motion.hop_lift(t - _reset_at - Motion.stagger(i, Motion.RESET_STAGGER), Motion.RESET_HOP, Motion.HOP_TIME)
 	var hop := 0.0
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
 		hop = -Motion.hop_lift(e, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 		lift += hop * 2.2
@@ -1322,7 +1401,7 @@ func _press_dip(i: int, t: float) -> float:
 ## the key that says when that mesh is stale.
 func _station_look(i: int, t: float, hop: float) -> Dictionary:
 	var turn := 0.0
-	if _solved_at >= 0.0 and not Motion.reduce:
+	if _solved_at > -INF and not Motion.reduce:
 		# The solve spins every ring a half turn on its post while it hops.
 		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
 		var u := clampf(e / Motion.SOLVE_TIME, 0.0, 1.0)
@@ -1487,6 +1566,16 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 		else:
 			smap = func(p: Vector2) -> Vector2:
 				return map.call(about + rot * ((p - about) * sc))
+	_donut_body(b, cx, yt, w, colour, alpha, smap, under)
+	_donut_emblems(b, cx, yt, w, colour, emblem, alpha, smap, turn, under)
+	_donut_face(b, cx, yt, w, colour, alpha, smap)
+	if glint > 0.0:
+		_donut_glint(b, cx, yt, w, Color(Color.WHITE, 0.55 * glint * alpha), smap)
+
+## A ring's band: its rim and body, the tube's shading, a two-tone ring's
+## lower layer and seam, and the sheen spot -- everything under the emblems.
+static func _donut_body(b, cx: float, yt: float, w: float, colour: Color, alpha: float, smap: Callable,
+		under := -1) -> void:
 	var rx := w * 0.5
 	var ry := FACE * w
 	var yb := yt + SIDE * w
@@ -1500,9 +1589,8 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 	# so the shading curves round it the way a torus's does.
 	_fan_mapped(b, _capsule(cx, yt + SIDE * w * 0.62, yb - edge, rx * 0.99, ry), Color(rim, 0.38 * alpha), smap)
 	_fan_mapped(b, _capsule(cx, yt, yt + SIDE * w * 0.3, rx * 0.985, ry), Color(Color.WHITE, 0.2 * alpha), smap)
-	var two := under >= 0
 	var mid := yt + SIDE * w * 0.5
-	if two:
+	if under >= 0:
 		# The lower layer: its own colour from the seam down, rounded and
 		# shaded like the band, and a cream seam between the two.
 		var lower: Color = RING_COLOURS[under % RING_COLOURS.size()]
@@ -1515,19 +1603,42 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 		_stroke_mapped(b, seam, w * 0.022, Color(Pal.SURFACE, 0.9 * alpha), smap)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx - rx * 0.66, yt + ry + SIDE * w * 0.36), rx * 0.1, SIDE * w * 0.22),
 		Color(Color.WHITE, 0.22 * alpha), smap)
-	var emb_y := yt + ry + SIDE * w * (0.26 if two else 0.48)
+
+## Where an emblem `q` (0 or 1, opposite each other) sits on a ring whose
+## top face is centred on (cx, yt), turned `turn` round: [centre, how square
+## to the eye, fade], or [] when it is round the back. `low` is a two-tone
+## ring's lower emblem.
+static func _emblem_spot(cx: float, yt: float, w: float, turn: float, q: int, two: bool, low: bool) -> Array:
+	var a := turn + PI * float(q)
+	var c := cos(a)
+	if c < 0.1:
+		return []
+	var rx := w * 0.5
+	var ry := FACE * w
+	var y := yt + ry + SIDE * w * ((0.74 if low else 0.26) if two else 0.48) + ry * (c - 1.0)
+	return [Vector2(cx + sin(a) * rx * EMBLEM_REACH, y), c, clampf((c - 0.1) / 0.3, 0.0, 1.0)]
+
+## The emblems inlaid on the band, two of them opposite each other so one is
+## always to the front when the turn is a whole number of half turns; a
+## two-tone ring wears a small one of its lower colour under each.
+static func _donut_emblems(b, cx: float, yt: float, w: float, colour: Color, emblem: int, alpha: float,
+		smap: Callable, turn: float, under: int) -> void:
+	var two := under >= 0
 	var emb_s := EMBLEM * w * (0.62 if two else 1.0)
 	for q in 2:
-		var a := turn + PI * float(q)
-		var c := cos(a)
-		if c < 0.1:
+		var spot := _emblem_spot(cx, yt, w, turn, q, two, false)
+		if spot.is_empty():
 			continue
-		var fade := clampf((c - 0.1) / 0.3, 0.0, 1.0) * alpha
-		var at := Vector2(cx + sin(a) * rx * EMBLEM_REACH, emb_y + ry * (c - 1.0))
-		_append_emblem(b, emblem, at, emb_s, c, colour, fade, smap)
+		_append_emblem(b, emblem, spot[0], emb_s, spot[1], colour, float(spot[2]) * alpha, smap)
 		if two:
-			var low := Vector2(cx + sin(a) * rx * EMBLEM_REACH, yt + ry + SIDE * w * 0.74 + ry * (c - 1.0))
-			_append_emblem(b, under, low, emb_s, c, RING_COLOURS[under % RING_COLOURS.size()], fade, smap)
+			var low := _emblem_spot(cx, yt, w, turn, q, two, true)
+			_append_emblem(b, under, low[0], emb_s, low[1], RING_COLOURS[under % RING_COLOURS.size()],
+				float(low[2]) * alpha, smap)
+
+## The lighter top face, its cream inner lip and the hole.
+static func _donut_face(b, cx: float, yt: float, w: float, colour: Color, alpha: float, smap: Callable) -> void:
+	var rx := w * 0.5
+	var ry := FACE * w
 	var face := colour.lerp(Color.WHITE, 0.24)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx, yt), rx, ry), Color(face, alpha), smap)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx, yt + ry * 0.04), rx * 0.66, ry * 0.62),
@@ -1539,16 +1650,21 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx, yt), HOLE_X * w, HOLE_Y * w * 1.6), Color(colour.lerp(Pal.TEXT, 0.58), alpha), smap)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx, yt + HOLE_Y * w * 0.5), HOLE_X * w * 0.8, HOLE_Y * w * 0.9),
 		Color(colour.lerp(Pal.TEXT, 0.34), alpha), smap)
-	if glint > 0.0:
-		_fan_mapped(b, _capsule(cx, yt, yb, rx, ry), Color(Color.WHITE, 0.55 * glint * alpha), smap)
+
+## The lock's shine laid over the whole ring.
+static func _donut_glint(b, cx: float, yt: float, w: float, colour: Color, smap: Callable) -> void:
+	_fan_mapped(b, _capsule(cx, yt, yt + SIDE * w, w * 0.5, FACE * w), colour, smap)
 
 ## The emblem inlaid on a band at `at`, `s` its half size, `sx` how square to
 ## the eye it is (a cosine: it narrows as it turns away round the band). A
 ## cream inlay over a thin shade just under it, so it reads as set into the
 ## ring rather than printed on it.
-static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colour: Color, alpha: float, map: Callable) -> void:
-	var ink := Color(colour.lerp(Color.WHITE, 0.78), 0.95 * alpha)
-	var deep := Color(colour.lerp(Pal.TEXT, 0.45), 0.45 * alpha)
+static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colour: Color, alpha: float, map: Callable,
+		inks: Array = []) -> void:
+	if inks.is_empty():
+		inks = _emblem_inks(colour, alpha)
+	var deep: Color = inks[0]
+	var ink: Color = inks[1]
 	var drop := Vector2(0.0, s * 0.16)
 	for pass_i in 2:
 		var col := deep if pass_i == 0 else ink
@@ -1584,12 +1700,18 @@ static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colou
 					var eye := PackedVector2Array()
 					for p in Face.Builder.ring(Vector2.ZERO, 0.28, 0.28):
 						eye.append(to.call(p))
-					b.fan(eye, Color(colour.lerp(Pal.TEXT, 0.1), alpha))
+					b.fan(eye, inks[2])
 			Emblem.DIAMOND:
 				_stroke_to(b, [Vector2(0.0, -0.95), Vector2(0.78, 0.0), Vector2(0.0, 0.95), Vector2(-0.78, 0.0)],
 					0.3, s, col, to, true)
 			Emblem.TRIANGLE:
 				_stroke_to(b, [Vector2(0.0, -0.82), Vector2(0.9, 0.7), Vector2(-0.9, 0.7)], 0.3, s, col, to, true)
+
+## An emblem's three inks on a ring of `colour`: the shade under it, the
+## cream inlay and a flower's eye.
+static func _emblem_inks(colour: Color, alpha: float) -> Array:
+	return [Color(colour.lerp(Pal.TEXT, 0.45), 0.45 * alpha), Color(colour.lerp(Color.WHITE, 0.78), 0.95 * alpha),
+		Color(colour.lerp(Pal.TEXT, 0.1), alpha)]
 
 static func _stroke_to(b, pts: Array, width: float, s: float, col: Color, to: Callable, closed := false) -> void:
 	var mapped := PackedVector2Array()
@@ -1643,18 +1765,120 @@ static func _land_squash(elapsed: float, amount := 0.12) -> Vector2:
 		return Vector2.ONE.lerp(squashed, sin(elapsed / split * PI * 0.5))
 	return squashed.lerp(Vector2.ONE, Motion.back_out((elapsed - split) / (_LAND_SQUASH_TIME - split)))
 
+# --- the looks ---
+
+## Shape `id` of `_looks` (LOOK_*), drawn about its own origin.
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var w := RING_W
+	var none := Callable()
+	if id < LOOK_FACE:
+		var code := id - LOOK_BODY
+		_donut_body(b, 0.0, 0.0, w, RING_COLOURS[Gen.top(code)], 1.0, none,
+			Gen.under(code) if Gen.two_tone(code) else -1)
+	elif id < LOOK_EMBLEM:
+		_donut_face(b, 0.0, 0.0, w, RING_COLOURS[id - LOOK_FACE], 1.0, none)
+	elif id < LOOK_GLINT:
+		# At the size it is drawn, so its feather stays a pixel and a half.
+		var small := id >= LOOK_EMBLEM_SMALL
+		var kind := id - (LOOK_EMBLEM_SMALL if small else LOOK_EMBLEM)
+		_append_emblem(b, kind, Vector2.ZERO, EMBLEM * w * (0.62 if small else 1.0), 1.0, Color.WHITE, 1.0, none,
+			[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2)])
+	elif id == LOOK_GLINT:
+		_donut_glint(b, 0.0, 0.0, w, RunMesh.slot(0), none)
+	elif id == LOOK_SHADOW or id == LOOK_SOCKET:
+		# What `_append_peg` lays first, under the rings, about (cx, ground).
+		var foot := -SEAT * w
+		if id == LOOK_SOCKET:
+			b.fan(Face.Builder.ring(Vector2(0.0, foot), HOLE_X * w * 1.15, HOLE_Y * w * 2.0), Color(Pal.PLAQUE_DEEP, 0.55))
+			b.fan(Face.Builder.ring(Vector2(POST * w * 0.3, foot + HOLE_Y * w * 0.9), POST * w * 0.9, HOLE_Y * w * 1.2),
+				Color(Pal.TEXT, 0.12))
+		else:
+			b.fan(Face.Builder.ring(Vector2(0.07 * w, foot + FACE * w * 0.75), 0.55 * w, FACE * w * 0.85), Color(Pal.TEXT, 0.16))
+	elif id == LOOK_DAISY:
+		_append_daisy(b, Vector2.ZERO, CAP_R * w, none)
+	elif id == LOOK_HOVER:
+		_ring_shadow(b, 0.0, -6.0, none)
+	elif id == LOOK_MARK:
+		_landing_mark(b, 0.0, -6.0, none)
+	elif id >= LOOK_POST:
+		_append_post(b, 0.0, 0.0, float(id - LOOK_POST), w, 1.0, none)
+	return b
+
+## A station from the looks, the drawing `_append_peg` makes (the menu card
+## still draws through that): the shadow or socket, each ring under its
+## squash and turn, the post into the top ring's hole, and the cap.
+func _build_station(cx: float, ground: float, look: Dictionary) -> ArrayMesh:
+	var w := RING_W
+	var rings: Array = look["pegs"]
+	var top_y := _post_top(ground, w)
+	_looks.begin()
+	_looks.put(LOOK_SOCKET if rings.is_empty() else LOOK_SHADOW, [], Transform2D(0.0, Vector2(cx, ground)))
+	var into := ground - SEAT * w
+	for k in rings.size():
+		var sc: Vector2 = look["scales"][k]
+		# A squash sits the ring on its own bottom rather than its middle.
+		var yt := _ring_yt(ground, w, k) + (1.0 - sc.y) * (SIDE + FACE) * w
+		_put_ring(cx, yt, int(rings[k]), sc, 0.0, float(look["turns"][k]), float(look["glints"][k]))
+		into = yt
+	_put_post(cx, top_y, into)
+	var cap: float = look["cap"]
+	if cap > 0.0:
+		_looks.put(LOOK_DAISY, [], Transform2D(0.0, Vector2(cap, cap), 0.0, Vector2(cx, top_y + POST * w * 0.2)))
+	return _looks.mesh()
+
+## One ring by its code, its top face centred on (cx, yt): `_append_donut`'s
+## drawing from the looks, squashed by `sc` and leaned by `tilt` about its
+## own middle, its emblems walked round the band by `turn`, `glint` the
+## lock's shine over it.
+func _put_ring(cx: float, yt: float, code: int, sc := Vector2.ONE, tilt := 0.0, turn := 0.0, glint := 0.0) -> void:
+	var half := SIDE * RING_W * 0.5
+	var xf := Transform2D(tilt, sc, 0.0, Vector2(cx, yt + half)) * Transform2D(0.0, Vector2(0.0, -half))
+	var ci := Gen.top(code)
+	var two := Gen.two_tone(code)
+	_looks.put(LOOK_BODY + code, [], xf)
+	for q in 2:
+		var spot := _emblem_spot(0.0, 0.0, RING_W, turn, q, two, false)
+		if spot.is_empty():
+			continue
+		_put_emblem(xf, ci, spot, two)
+		if two:
+			_put_emblem(xf, Gen.under(code), _emblem_spot(0.0, 0.0, RING_W, turn, q, two, true), true)
+	_looks.put(LOOK_FACE + ci, [], xf)
+	if glint > 0.0:
+		_looks.put(LOOK_GLINT, [Color(Color.WHITE, 0.55 * roundf(glint * FADE_STEPS) / FADE_STEPS)], xf)
+
+## An emblem at `spot` (`_emblem_spot`) on the ring under `xf`, narrowed as
+## it turns away and faded in steps.
+func _put_emblem(xf: Transform2D, kind: int, spot: Array, small: bool) -> void:
+	var fade := roundf(float(spot[2]) * FADE_STEPS) / FADE_STEPS
+	if fade <= 0.0:
+		return
+	_looks.put((LOOK_EMBLEM_SMALL if small else LOOK_EMBLEM) + kind, _emblem_inks(RING_COLOURS[kind], fade),
+		xf * Transform2D(Vector2(float(spot[1]), 0.0), Vector2(0.0, 1.0), spot[0]))
+
+## The dowel down into a ring at `bottom_y`, a look a whole design pixel of
+## length (the half pixel it can be short of a sliding ring is in its hole).
+func _put_post(cx: float, top_y: float, bottom_y: float) -> void:
+	var h := roundi(bottom_y - top_y)
+	if h > 0:
+		_looks.put(LOOK_POST + h, [], Transform2D(0.0, Vector2(cx, top_y)))
+
+## The soft disc at a post top under a ring in the air.
+func _put_hover(cx: float, top_y: float) -> void:
+	_looks.put(LOOK_HOVER, [], Transform2D(0.0, Vector2(cx, top_y + 6.0)))
+
 # --- the ring in hand and the ring in flight ---
 
 func _build_live(t: float) -> ArrayMesh:
 	if _state.held == -1 and _flight.is_empty():
 		return null
-	var b := Face.Builder.new()
-	var ident := func(p: Vector2) -> Vector2: return p
+	_looks.begin()
 	if _state.held != -1:
-		_build_held(b, t, ident)
+		_build_held(t)
 	if not _flight.is_empty():
-		_build_flight(b, t, ident)
-	return b.mesh() if not b.verts.is_empty() else null
+		_build_flight(t)
+	return _looks.mesh()
 
 ## A two-tone ring's somersault at `u` (0..1 across its turn): how tall it is
 ## drawn (it squashes to its edge at the middle) and which face is up -- the
@@ -1671,7 +1895,7 @@ static func _flip_pose(from: int, to: int, u: float) -> Array:
 ## ring turns over as it rises (Tumble). A refusal dips it toward the peg that
 ## refused it and shivers it there. On Easy and Medium a soft leaf ring marks
 ## every post it may land on. Under reduce motion it is simply up and still.
-func _build_held(b, t: float, map: Callable) -> void:
+func _build_held(t: float) -> void:
 	var st := _station(_state.held_from)
 	var cx: float = st["cx"]
 	var ground: float = st["ground"]
@@ -1680,10 +1904,12 @@ func _build_held(b, t: float, map: Callable) -> void:
 	var sc := Vector2.ONE
 	var code: int = _state.held
 	if _state.difficulty <= 1:
+		# Breathing: the look made at rest, scaled about its middle.
+		var k := 1.0 + 0.06 * sin(t * 4.0)
 		for j in _state.pegs.size():
 			if j != _state.held_from and _state.can_drop(j):
 				var sj := _station(j)
-				_landing_mark(b, float(sj["cx"]), float(sj["top"]), t, map)
+				_looks.put(LOOK_MARK, [], Transform2D(0.0, Vector2(k, k), 0.0, Vector2(float(sj["cx"]), float(sj["top"]) + 6.0)))
 	if not Motion.reduce:
 		var since := t - _held_at
 		var from_y := _ring_yt(ground, RING_W, (_state.pegs[_state.held_from] as Array).size())
@@ -1704,24 +1930,16 @@ func _build_held(b, t: float, map: Callable) -> void:
 			var e := t - _refuse_at
 			cx += dir * Motion.nudge_offset(e, DIP, Motion.NUDGE_TIME, 0.0)
 			cx += Motion.shiver_offset(e - Motion.NUDGE_TIME * 0.5, Motion.SHIVER_PX * 2.5)
-	_ring_shadow(b, float(st["cx"]), float(st["top"]), map)
-	_append_ring(b, cx, y, code, map, sc, 0.0, _held_turn(t))
+	_put_hover(float(st["cx"]), float(st["top"]))
+	_put_ring(cx, y, code, sc, 0.0, _held_turn(t))
 	# Still on its post while it slides: the post over the ring, into its hole.
-	_append_post(b, float(st["cx"]), float(st["top"]), y, RING_W, 1.0, map)
-
-## One ring by its code, the board's size: its top colour, emblem and, when
-## it is two-tone, its lower layer.
-static func _append_ring(b, cx: float, yt: float, code: int, map: Callable, sc := Vector2.ONE,
-		tilt := 0.0, turn := 0.0) -> void:
-	var ci := Gen.top(code)
-	_append_donut(b, cx, yt, RING_W, RING_COLOURS[ci], ci, 1.0, map, sc, 0.0, tilt, turn,
-		Gen.under(code) if Gen.two_tone(code) else -1)
+	_put_post(float(st["cx"]), float(st["top"]), y)
 
 ## A soft leaf-green ring breathing round a post top the held ring may land
 ## on (Easy and Medium only: the harder bands read the pegs themselves).
-static func _landing_mark(b, cx: float, y: float, t: float, map: Callable) -> void:
-	var k := 1.0 + 0.06 * sin(t * 4.0)
-	var pts := Face.Builder.ring(Vector2(cx, y + 6.0), RING_W * 0.24 * k, 13.0 * k)
+## It breathes by its put's scale (`_build_held`).
+static func _landing_mark(b, cx: float, y: float, map: Callable) -> void:
+	var pts := Face.Builder.ring(Vector2(cx, y + 6.0), RING_W * 0.24, 13.0)
 	_stroke_mapped(b, pts, 4.0, Color(Pal.LEAF, 0.55), map, true)
 
 ## Where a ring on one leg of a flight is `e` seconds in: {x, yt, tilt, peg,
@@ -1782,14 +2000,14 @@ func _pose(t: float) -> Dictionary:
 	back["code_u"] = back["arc"]
 	return back
 
-func _build_flight(b, t: float, map: Callable) -> void:
+func _build_flight(t: float) -> void:
 	var p := _pose(t)
 	var peg: int = p["peg"]
 	if peg < 0:
 		var land := int(_flight["from"]) if _flight.get("doom", false) and t - float(_flight["at"]) > float(_flight.get("there", 0.0)) \
 			else int(_flight["to"])
 		var d := _station(land)
-		_ring_shadow(b, float(p["x"]), float(d["top"]), map)
+		_put_hover(float(p["x"]), float(d["top"]))
 	var sc := Vector2(1.0 + 0.04 * float(p["u"]), 1.0 - 0.02 * float(p["u"]))
 	var start: int = _flight["code"]
 	var end: int = _flight["end_code"]
@@ -1799,10 +2017,10 @@ func _build_flight(b, t: float, map: Callable) -> void:
 	sc.y *= float(fp[1])
 	var f := clampf((t - float(_flight["at"])) / float(_flight["dur"]), 0.0, 1.0)
 	var turn := lerpf(float(_flight.get("turn", 0.0)), float(_flight.get("turn_to", 0.0)), 1.0 - pow(1.0 - f, 3.0))
-	_append_ring(b, float(p["x"]), float(p["yt"]), int(fp[0]), map, sc, float(p["tilt"]), turn)
+	_put_ring(float(p["x"]), float(p["yt"]), int(fp[0]), sc, float(p["tilt"]), turn)
 	if peg >= 0:
 		var st := _station(peg)
-		_append_post(b, float(st["cx"]), float(st["top"]), float(p["yt"]), RING_W, 1.0, map)
+		_put_post(float(st["cx"]), float(st["top"]), float(p["yt"]))
 
 ## How far round the ring in hand has turned: still as it rises, then easing
 ## into a slow turn on its post's axis for as long as it waits.
@@ -2244,7 +2462,7 @@ func try_again() -> void:
 	_land_peg = -1
 	_held_at = -100.0
 	_reset_at = _now()
-	_solved_at = -100.0
+	_solved_at = -INF
 	_reset_rewards()
 	elapsed = 0.0
 	moves = 0

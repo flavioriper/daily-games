@@ -58,6 +58,14 @@ var judged := false
 ## Insane from the bank: two-tone rings that turn over when lifted.
 var tumble := false
 var undo_allowed := true
+## The judge's answers for the ring in hand, worked out on a worker thread
+## from the moment it is lifted (`prejudge`): peg -> whether a drop there
+## dooms. A verdict is a search of 10-15 ms on Insane on this Mac, and it was
+## paid inside the drop's tap (the 2026-10-02 checkup); a player takes longer
+## than that between lifting a ring and dropping it.
+var _judge_task := -1
+var _judge_out: Dictionary = {}
+var _judge_for := ""
 
 static func hints_for(band: int) -> int:
 	return HINTS_BY[clampi(band, 0, HINTS_BY.size() - 1)]
@@ -89,6 +97,31 @@ func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
 	for s in pegs:
 		deal.append((s as Array).duplicate())
 	colours = int(Gen.BANDS[difficulty]["colours"])
+	judged = difficulty >= 2
+	undo_allowed = difficulty < 3
+	log = []
+	held = -1
+	held_from = -1
+	hints_used = 0
+	hints_extra = 0
+
+## A hand-made deal (the tutorial's pages): `given` pegs, bottom ring first,
+## `count` colours, judged, undone and hinted as band `band` is.
+func take(given: Array, band: int, count: int) -> void:
+	settle_judge()
+	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
+	tumble = false
+	pegs = []
+	deal = []
+	for s in given:
+		var peg: Array = []
+		for c in s:
+			peg.append(int(c))
+			if int(c) >= 8:
+				tumble = true
+		pegs.append(peg)
+		deal.append(peg.duplicate())
+	colours = count
 	judged = difficulty >= 2
 	undo_allowed = difficulty < 3
 	log = []
@@ -142,11 +175,52 @@ func can_drop(j: int) -> bool:
 func would_doom(j: int) -> bool:
 	if not judged or not can_drop(j):
 		return false
+	if _judge_task >= 0 and _judge_for == _judge_sig():
+		settle_judge()
+		if _judge_out.has(j):
+			return _judge_out[j]
 	var copy: Array = []
 	for s in pegs:
 		copy.append((s as Array).duplicate())
 	(copy[j] as Array).append(held)
 	return not Gen.solved(copy) and Gen.verdict(copy, Gen.DOOM_BUDGET) == 0
+
+## Starts judging every drop the ring in hand could make, off the main
+## thread; `would_doom` reads the answers (waiting for them if it must).
+## Nothing on a band that is not judged or with an empty hand.
+func prejudge() -> void:
+	settle_judge()
+	_judge_out = {}
+	if not judged or held == -1:
+		return
+	var base: Array = []
+	for s in pegs:
+		base.append((s as Array).duplicate())
+	_judge_for = _judge_sig()
+	_judge_task = WorkerThreadPool.add_task(_judge_all.bind(base, held, held_from, _judge_out))
+
+## Waits for a judge still at work (a deal or a board going away must not
+## leave one running).
+func settle_judge() -> void:
+	if _judge_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_judge_task)
+		_judge_task = -1
+
+## What the answers are for: the pegs and the ring in hand.
+func _judge_sig() -> String:
+	return "%d|%d|%s" % [held, held_from, Gen.key(pegs)]
+
+## The worker: `would_doom` for every peg `ring` may land on, on copies.
+static func _judge_all(base: Array, ring: int, from: int, out: Dictionary) -> void:
+	for j in base.size():
+		var dst: Array = base[j]
+		if j == from or dst.size() >= Gen.CAP or not (dst.is_empty() or Gen.top(int(dst.back())) == Gen.top(ring)):
+			continue
+		var copy: Array = []
+		for s in base:
+			copy.append((s as Array).duplicate())
+		(copy[j] as Array).append(ring)
+		out[j] = not Gen.solved(copy) and Gen.verdict(copy, Gen.DOOM_BUDGET) == 0
 
 ## Why a drop on `j` would be refused right now, or "" when it would not be.
 ## Exactly these two keys (RG_FULL, RG_WRONG_COLOUR); the board puts them

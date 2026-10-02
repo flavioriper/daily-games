@@ -61,3 +61,15 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   hoop, nap cat, seal, `RG_CHEER_0..11`); sound is the `TERRACE` style.
   `tests/_shot_rings.gd` plays every mode through the board's input. Peak
   draw calls 110 (the out-of-hearts card on Hard).
+- **Checked up on 2026-10-02** (`docs/agents/checkup.md`, row 20). Every
+  ring part is a `RunMesh` look made once (`_make_look`, `LOOK_*`) and a
+  station or the ring in hand is those looks under the moment's squash,
+  lean and turn (`_build_station`, `_put_ring`, `_put_emblem`, `_put_post`);
+  `_append_peg`/`_append_donut` still draw the menu card, `_append_donut` now
+  in parts (`_donut_body`, `_donut_emblems`, `_donut_face`, `_donut_glint`)
+  that the looks share. The judge runs off the main thread from the lift
+  (`State.prejudge`, `settle_judge`). The tutorial is
+  `ui/hud/rings_tutorial_diagram.gd`, a `Yard` (one row, `_row_counts` and
+  `_min_h` overridden, dealt with `State.take`). `tests/_probe_perf.gd`
+  plays the solver's line (a lift tap and a drop tap a move) and
+  `x=rg_count` times every station's rebuild and the ring in hand.
