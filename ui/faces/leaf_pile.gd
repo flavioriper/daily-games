@@ -119,9 +119,11 @@ static func _oak_w(x: float) -> float:
 
 ## One leaf of `kind`, `length` long, centred on `at` and turned `angle`,
 ## with its midrib and a stub of stem. `flip` squashes it across its length,
-## a leaf tumbling edge-on.
+## a leaf tumbling edge-on. `vein` (alpha >= 0) is the midrib's colour in
+## place of the leaf's own lightened one: a look drawn in slot colours
+## (ui/flat/run_mesh.gd) paints the two apart.
 static func leaf(b: Face.Builder, at: Vector2, length: float, angle: float, colour: Color,
-		kind := Kind.ALMOND, flip := 1.0) -> void:
+		kind := Kind.ALMOND, flip := 1.0, vein := Color(0.0, 0.0, 0.0, -1.0)) -> void:
 	var u := _unit(kind)
 	var xf := Transform2D(angle, Vector2(length, length * maxf(flip, 0.08)), 0.0, at)
 	var pts: PackedVector2Array = xf * (u[0] as PackedVector2Array)
@@ -131,9 +133,10 @@ static func leaf(b: Face.Builder, at: Vector2, length: float, angle: float, colo
 	for t: int in u[1]:
 		b.idx.append(first + t)
 	b._feather(pts, first, colour)
-	if length < 14.0 or colour.a < 0.05:
+	if length < 14.0 or (vein.a < 0.0 and colour.a < 0.05):
 		return
-	var vein := Color(colour.lightened(0.3), 0.55 * colour.a)
+	if vein.a < 0.0:
+		vein = Color(colour.lightened(0.3), 0.55 * colour.a)
 	b.stroke(xf * PackedVector2Array([Vector2(-0.4, 0.0), Vector2(0.3, 0.0)]),
 		maxf(1.0, length * 0.035), vein, false, false)
 
@@ -199,6 +202,27 @@ static func pile(b: Face.Builder, centre: Vector2, s: float, cell_id: int, blow 
 		return
 	if blow <= 0.0:
 		_mound(b, centre, s, cell_id, scale, alpha)
+	for l: Array in leaves(centre, s, cell_id, blow, dir, scale, alpha, rustle):
+		leaf(b, l[0], l[1], l[2], l[3], l[4], l[5])
+
+## A pile's mound and the leaves fanned round its rim, at rest: what stays
+## still while the breeze lifts the top leaves (the board puts this as one
+## look and each top leaf as a leaf look of its own).
+static func back(b: Face.Builder, centre: Vector2, s: float, cell_id: int, scale := Vector2.ONE) -> void:
+	_mound(b, centre, s, cell_id, scale, 1.0)
+	var all := leaves(centre, s, cell_id, 0.0, Vector2.UP, scale)
+	for i in BACK:
+		var l: Array = all[i]
+		leaf(b, l[0], l[1], l[2], l[3], l[4], l[5])
+
+## Each of a pile's LEAVES leaves as `pile` draws them, the rim's first:
+## [at, length, angle, colour (its alpha applied), kind, flip]. Empty when
+## the pile is gone.
+static func leaves(centre: Vector2, s: float, cell_id: int, blow := 0.0,
+		dir := Vector2.UP, scale := Vector2.ONE, alpha := 1.0, rustle := 0.0) -> Array:
+	var out: Array = []
+	if blow >= 1.0 or alpha <= 0.0:
+		return out
 	var u := clampf(blow, 0.0, 1.0)
 	var lift := sin(PI * clampf(rustle, 0.0, 1.0))
 	var side := Vector2(-dir.y, dir.x)
@@ -231,7 +255,8 @@ static func pile(b: Face.Builder, centre: Vector2, s: float, cell_id: int, blow 
 			at.y -= s * RUSTLE_LIFT * lift * (0.5 + hv)
 			angle += RUSTLE_TURN * lift * (hv - 0.5) * 2.0
 			flip = 1.0 - 0.3 * lift * hv
-		leaf(b, at, float(look[4]) * scale.x, angle, Color(colour, a), look[3], flip)
+		out.append([at, float(look[4]) * scale.x, angle, Color(colour, a), look[3], flip])
+	return out
 
 ## The mound under the leaves: a soft shadow, the deep lip, a lumpy body and
 ## a lit crown.
@@ -258,29 +283,39 @@ static func _mound(b: Face.Builder, centre: Vector2, s: float, cell_id: int, sca
 ## `centre`. `wrong` turns the pennant rose (Check's answer); `scale` pops it
 ## in and out; `wave` -1..1 flutters the pennant's tip.
 static func flag(b: Face.Builder, centre: Vector2, R: float, wrong := false, scale := Vector2.ONE, alpha := 1.0,
-		wave := 0.0) -> void:
+		wave := 0.0, inks := []) -> void:
 	if scale.x <= 0.0 or scale.y <= 0.0 or alpha <= 0.0:
 		return
+	# `inks` stands in for flag_inks(): the board's flag look is drawn in
+	# slot colours and painted.
+	var ink: Array = inks if not inks.is_empty() else flag_inks(wrong, alpha)
 	var xf := Transform2D(0.0, scale, 0.0, centre)
-	b.ellipse(centre + Vector2(0.0, R * 0.62) * scale, R * 0.34 * scale.x, R * 0.1 * scale.y, Color(Pal.TEXT, 0.16 * alpha))
+	b.ellipse(centre + Vector2(0.0, R * 0.62) * scale, R * 0.34 * scale.x, R * 0.1 * scale.y, ink[0])
 	b.stroke(xf * PackedVector2Array([Vector2(-0.08, 0.62) * R, Vector2(-0.08, -0.7) * R]), R * 0.12 * scale.x,
-		Color(Pal.BARK, alpha))
+		ink[1])
 	b.stroke(xf * PackedVector2Array([Vector2(-0.08, 0.1) * R, Vector2(-0.24, -0.08) * R]), R * 0.07 * scale.x,
-		Color(Pal.BARK, alpha))
-	b.disc(xf * (Vector2(-0.08, -0.72) * R), R * 0.08 * scale.x, Color(Pal.BARK.darkened(0.2), alpha))
-	var lit: Color = Pal.BAD if wrong else Pal.PENNANT
-	var deep: Color = Color("b54a45") if wrong else Pal.PENNANT_DEEP
+		ink[1])
+	b.disc(xf * (Vector2(-0.08, -0.72) * R), R * 0.08 * scale.x, ink[2])
+	var lit: Color = ink[3]
+	var deep: Color = ink[4]
 	var tip := Vector2(0.68, -0.44 + wave * 0.1) * R
 	var top := Face.Builder.bezier2(Vector2(-0.02, -0.7) * R, Vector2(0.3, -0.64 + wave * 0.12) * R, tip, 6)
 	var foot := Face.Builder.bezier2(tip, Vector2(0.3, -0.24 - wave * 0.08) * R, Vector2(-0.02, -0.16) * R, 6)
 	var whole := PackedVector2Array(top)
 	whole.append_array(foot)
 	whole.append(Vector2(-0.02, -0.16) * R)
-	b.polygon(xf * whole, Color(lit, alpha))
+	b.polygon(xf * whole, lit)
 	var fold := PackedVector2Array([Vector2(-0.02, -0.43) * R])
 	fold.append_array(foot)
 	fold.append(Vector2(-0.02, -0.16) * R)
-	b.polygon(xf * fold, Color(deep, alpha))
+	b.polygon(xf * fold, deep)
+
+## A flag's colours, as `flag` takes them in `inks`: the shadow, the twig,
+## its knot, the pennant and its fold -- rose when Check found it wrong --
+## faded by `alpha`.
+static func flag_inks(wrong := false, alpha := 1.0) -> Array:
+	return [Color(Pal.TEXT, 0.16 * alpha), Color(Pal.BARK, alpha), Color(Pal.BARK.darkened(0.2), alpha),
+		Color(Pal.BAD if wrong else Pal.PENNANT, alpha), Color(Color("b54a45") if wrong else Pal.PENNANT_DEEP, alpha)]
 
 ## The rake: a bark handle and a five-tined head, `s` across, centred on
 ## `centre`, leaning `angle` (the chip's picture leans right).

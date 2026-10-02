@@ -27,6 +27,15 @@ extends "res://core/puzzle_base.gd"
 ##            win's swirl. Rebuilt only while something moves.
 ##   the numbers and the tally line are drawn text, one draw_set_transform a
 ##            cell (Mushroom Patch's precedent).
+## Since the board checkup (2026-10-02) nothing on a cell is drawn in script
+## while it plays: every cell's ground, pile (as it rests, pressed under a
+## flag, and its mound and rim alone), the flag, a pin and the paw prints are
+## looks made once (`_make_look`) at a reference cell, and each leaf kind a
+## look painted in its colours, all put by RunMesh (ui/flat/run_mesh.gd) --
+## a band's cells into runs of their own, a moving cell's pile under its
+## squash and its flying or lifted leaves one look each. The bands and the
+## live mesh are built in the reference layout's space and drawn under
+## `_relay()`, so the win card's smaller relayout makes only the lawn again.
 ## The woken hedgehogs, and on the win every hedgehog, are HedgehogFace nodes
 ## in slots of their own (docs/art/flat-motion.md rule 2). The pile and the
 ## flag are ui/faces/leaf_pile.gd, which the tray and the menu card draw too.
@@ -50,6 +59,21 @@ const Rings = preload("res://puzzles/rings2d.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
+
+## The looks a cell is put together from, each made once at the reference
+## cell about the cell's centre: a look's id is its kind times LOOK_SPAN plus
+## its cell (or, for a leaf, its kind of leaf).
+enum Look { GROUND, RAKED, WOKE, PILE, PRESSED, BACK, LEAF, FLAG, PIN, PAWS }
+const LOOK_SPAN := 4096
+## A leaf look's length, as a fraction of a cell: the size a pile's leaves
+## are near, so a look drawn at another length scales its feather little.
+const LEAF_LOOK := 0.36
+## Room a band's cell keeps beyond its covered look, for a pressed pile's
+## few more feather vertices.
+const ROOM_SLACK := 64
+## How long a quiet frame may spend making looks ahead of their first use.
+const PRIME_BUDGET_MS := 1.0
 
 ## The out-of-hearts card's Back: the host takes the player back to camp.
 signal leave
@@ -240,6 +264,23 @@ var _next_breeze := 0.0
 ## The still mesh's bands, and the looks each was built from.
 var _bands: Array = []
 var _band_looks: Array = []
+## The looks' cache (`_looks`, no runs), a RunMesh a band (a run a cell)
+## and the live mesh's (no runs), all sharing the looks.
+var _looks: RunMesh
+var _band_rms: Array = []
+var _live_rm: RunMesh
+## The layout the looks, bands and live mesh are made in: the first with
+## room on it after a deal, and any larger one; a smaller one (the win
+## card's) is drawn under `_relay()`.
+var _ref_cell := 0.0
+var _ref_grid := Vector2.ZERO
+var _cur_cell := 0.0
+var _cur_grid := Vector2.ZERO
+## Looks still to make ahead of their first use, a few each frame.
+var _prime_ids := PackedInt32Array()
+## A numeral's width, by value and pixel size.
+var _num_w := {}
+var _warm_combo := true
 var _lawn: ArrayMesh
 var _z_label: Label
 var _z_tw: Tween
@@ -365,6 +406,43 @@ func rules() -> String:
 		out += "\n\n" + tr("HH_RULES_SAFE")
 	return out
 
+## The how-to-play card's pages, the band's own: raking and what a number
+## counts, flagging a sleeper, raking round a number, a guess that wakes a
+## hedgehog (a heart on Hard and Insane), Sleepwalkers (Insane), Undo and
+## Reset (Reset alone on Insane), and the bulb (bands with hints). Each page
+## is the board itself on one hand-made 5x4 lawn, playing the lesson
+## (ui/hud/hedgehogs_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/hedgehogs_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.RAKE, "HTP_HH_RAKE", tr("HTP_HH_RAKE_BODY")],
+		[Diagram.Lesson.FLAG, "HTP_HH_FLAG", tr("HTP_HH_FLAG_BODY")],
+		[Diagram.Lesson.CHORD, "HTP_HH_CHORD", tr("HTP_HH_CHORD_BODY")]]
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.WOKE, "HTP_HH_WOKE", tr("HTP_HH_WOKE_BODY_HEARTS") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.WOKE, "HTP_HH_WOKE", tr("HTP_HH_WOKE_BODY")])
+	if band >= 3:
+		steps.append([Diagram.Lesson.WALK, "HH_WALK_SEAL", tr("HTP_HH_WALK_BODY")])
+	var undo_body := "HTP_HH_UNDO_BODY"
+	if band >= 3:
+		undo_body = "HTP_HH_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_HH_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_HH_HINT_BODY_ONE") if hints == 1 else tr("HTP_HH_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _tips() -> Array:
 	if _state.walkers():
 		return TIPS_WALK
@@ -402,15 +480,26 @@ func _ready() -> void:
 	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_life_layer.draw.connect(_draw_life)
 	add_child(_life_layer)
+	_looks = RunMesh.new(_make_look)
+	_live_rm = RunMesh.new(_make_look)
+	_live_rm.share_shapes(_looks)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.setup(rng, difficulty)
+	# A new lawn takes its reference layout afresh (its cell may be smaller
+	# than the last deal's).
+	_ref_cell = 0.0
+	_dealt()
+
+## Everything a new lawn starts from, once the state holds it: build()'s,
+## and the tutorial's hand-made lawns'.
+func _dealt() -> void:
 	_turn += 1
 	_close_card()
 	brush = State.RAKE
-	max_hearts = State.hearts_for(difficulty)
+	max_hearts = State.hearts_for(_state.difficulty)
 	_heart_used = false
 	_lost_ever = false
 	_flawless = false
@@ -492,8 +581,12 @@ func _clear_faces() -> void:
 func _cell_for(available: float) -> float:
 	if _state.size() == 0:
 		return 0.0
-	return maxf(0.0, minf((size.x - 2.0 * PAD) / float(_state.cols()),
-		(available - 2.0 * PAD - _top_h()) / float(_state.rows())))
+	return maxf(0.0, minf((size.x - 2.0 * _pad()) / float(_state.cols()),
+		(available - 2.0 * _pad() - _top_h()) / float(_state.rows())))
+
+## The card's inset round the lawn and its strip (the tutorial's is less).
+func _pad() -> float:
+	return PAD
 
 ## The strip over the lawn: the tally, and on Hard and Insane the hearts'
 ## pill over it.
@@ -504,7 +597,7 @@ func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * float(_state.rows()) + 2.0 * PAD + _top_h())
+	return minf(available, cell * float(_state.rows()) + 2.0 * _pad() + _top_h())
 
 func card_centred() -> bool:
 	return true
@@ -514,16 +607,23 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var field := Vector2(_state.cols(), _state.rows()) * _cell
-	var tall := minf(size.y, field.y + 2.0 * PAD + _top_h())
+	var tall := minf(size.y, field.y + 2.0 * _pad() + _top_h())
 	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + PAD + _top_h())
+	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + _pad() + _top_h())
 	_tally_y = _grid.y - TALLY * 0.5
 	for c: int in _faces:
 		_seat(_faces[c], _centre(c))
 	if _tally_face != null:
 		_tally_face.size = Vector2.ONE * TALLY_GLYPH
 		_tally_face.pivot_offset = Vector2(TALLY_GLYPH * 0.5, TALLY_GLYPH * 0.8)
-	_bands = []
+	_take_ref()
+	# A curled-up nap cat follows the bed (the win card lays the board out
+	# again smaller; Knight's lesson).
+	if is_instance_valid(_cat) and _cat_curled:
+		var px := _cat_px()
+		_cat.size = Vector2(px, px)
+		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
+		_cat.position = _cat_spot() - _cat.size * 0.5
 	_lawn = null
 	_love_mesh = null
 	_seal_mesh = null
@@ -533,8 +633,102 @@ func _layout() -> void:
 	if _life_layer != null:
 		_life_layer.queue_redraw()
 
+## The layout the looks, bands and live mesh are made in: taken on the first
+## layout with room on it after a deal, and again on any larger one (a look
+## made small and drawn large would blur). A smaller one -- the win card's
+## -- keeps it, and everything is drawn under `_relay()`.
+func _take_ref() -> void:
+	if _cell <= 0.0:
+		return
+	if _ref_cell > 0.0 and _cell <= _ref_cell + 0.01:
+		return
+	_ref_cell = _cell
+	_ref_grid = _grid
+	_looks.reset()
+	_live_rm.share_shapes(_looks)
+	_band_rms = []
+	_bands = []
+	_live = null
+	# Made ahead, a few a frame: what a rake, a flag or the breeze will put
+	# first (a pile at rest and the covered ground are made with the bands).
+	_prime_ids = PackedInt32Array()
+	for id in [_id(Look.WOKE, 0), _id(Look.FLAG, 0), _id(Look.PIN, 0), _id(Look.PAWS, 0),
+			_id(Look.LEAF, 0), _id(Look.LEAF, 1), _id(Look.LEAF, 2)]:
+		_prime_ids.append(id)
+	for kind in [Look.RAKED, Look.BACK, Look.PRESSED]:
+		for c in _state.size():
+			_prime_ids.append(_id(kind, c))
+	_prime_ids.reverse()
+
+## The reference layout onto the one the board has now.
+func _relay() -> Transform2D:
+	if _ref_cell <= 0.0:
+		return Transform2D.IDENTITY
+	var k := _cell / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, _grid - _ref_grid * k)
+
+## While a mesh is made, `_cell` and `_grid` (and so `_centre`) answer the
+## reference layout; `_out_of_ref` puts the layout back.
+func _into_ref() -> void:
+	_cur_cell = _cell
+	_cur_grid = _grid
+	_cell = _ref_cell
+	_grid = _ref_grid
+
+func _out_of_ref() -> void:
+	_cell = _cur_cell
+	_grid = _cur_grid
+
+static func _id(kind: int, c: int) -> int:
+	return kind * LOOK_SPAN + c
+
+## Makes the looks still waiting, newest need first, for at most
+## PRIME_BUDGET_MS.
+func _prime_looks() -> void:
+	if _prime_ids.is_empty() or _ref_cell <= 0.0:
+		return
+	var t0 := Time.get_ticks_usec()
+	while not _prime_ids.is_empty() and Time.get_ticks_usec() - t0 < PRIME_BUDGET_MS * 1000.0:
+		var id := _prime_ids[_prime_ids.size() - 1]
+		_prime_ids.resize(_prime_ids.size() - 1)
+		_looks.shape(id)
+
+## Look `id` drawn at the reference cell about the cell's centre: the
+## ground, raked or woken, the pile as it rests, pressed under a flag, or
+## its mound and rim alone; a leaf in slot colours (0 the leaf, 1 its
+## midrib); the flag in slot colours (Lawn.flag_inks' order); a hint's pin;
+## the paw prints.
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var kind := id / LOOK_SPAN
+	var c := id % LOOK_SPAN
+	var s := _ref_cell
+	match kind:
+		Look.GROUND:
+			Lawn.ground(b, Vector2.ZERO, s, c, false, false)
+		Look.RAKED:
+			Lawn.ground(b, Vector2.ZERO, s, c, true, false)
+		Look.WOKE:
+			Lawn.ground(b, Vector2.ZERO, s, c, true, true)
+		Look.PILE:
+			Lawn.pile(b, Vector2.ZERO, s, c)
+		Look.PRESSED:
+			Lawn.pile(b, Vector2.ZERO, s, c, 0.0, Vector2.UP, Lawn.PRESSED)
+		Look.BACK:
+			Lawn.back(b, Vector2.ZERO, s, c)
+		Look.LEAF:
+			Lawn.leaf(b, Vector2.ZERO, s * LEAF_LOOK, 0.0, RunMesh.slot(0), c, 1.0, RunMesh.slot(1))
+		Look.FLAG:
+			Lawn.flag(b, Vector2.ZERO, s * FLAG_R, false, Vector2.ONE, 1.0, 0.0,
+				[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3), RunMesh.slot(4)])
+		Look.PIN:
+			b.disc(Vector2(0.3, 0.3) * s, s * PIN_DOT, Pal.SUN)
+		Look.PAWS:
+			_draw_paws(b, Vector2.ZERO, s)
+	return b
+
 func _centre(c: int) -> Vector2:
-	return _grid + (Vector2(c % _state.cols(), c / _state.cols()) + Vector2(0.5, 0.5)) * _cell
+	return _grid +(Vector2(c % _state.cols(), c / _state.cols()) + Vector2(0.5, 0.5)) * _cell
 
 ## Control-local point over the centre of the cell at (row, column), the name
 ## every flat board gives it and the one a harness taps.
@@ -616,7 +810,8 @@ func _wind(from: int, far: int, at: float) -> void:
 	var time := minf(1.1, float(far) * Motion.WAVE_STEP + 0.45)
 	for k in STREAKS:
 		var dir := Vector2.from_angle(turn + TAU * float(k) / float(STREAKS) + (Lawn.h01(from, k) - 0.5) * 0.6)
-		_streaks.append({"from": _centre(from), "dir": dir, "reach": _cell * (float(far) * 0.55 + 1.2) * (0.75 + 0.35 * Lawn.h01(k, from)),
+		# Its cell and its reach in cells: drawn in the reference layout.
+		_streaks.append({"from": from, "dir": dir, "reach": (float(far) * 0.55 + 1.2) * (0.75 + 0.35 * Lawn.h01(k, from)),
 			"at": at + float(k) * 0.03, "time": time, "bend": (Lawn.h01(k + 5, from) - 0.5) * 2.0})
 	_busy_for(at - _now() + time + float(STREAKS) * 0.03)
 
@@ -624,7 +819,7 @@ func _wind(from: int, far: int, at: float) -> void:
 func _rake_stroke(c: int) -> void:
 	if Motion.reduce:
 		return
-	_rakes.append({"pos": _centre(c), "at": _now()})
+	_rakes.append({"cell": c, "at": _now()})
 	_busy_for(RAKE_TIME)
 
 ## A hedgehog a rake woke: its cell washes rose, it pops in curled and
@@ -849,6 +1044,8 @@ func _process(delta: float) -> void:
 	# the first frame it shows does not pay for a hundred piles at once.
 	if t - _opened < Motion.ENTER_DELAY and not Motion.reduce:
 		_update_bands(t, 1)
+	elif not _prime_ids.is_empty():
+		_prime_looks()
 	var settled := false
 	for c: int in _moving.keys():
 		if float(_until[c]) <= t:
@@ -926,9 +1123,10 @@ func _draw() -> void:
 	if _live == null:
 		_live = _build_live(t)
 	var shown: Array = [_lawn]
+	var at := xf * _relay()
 	for m in _bands + [_live]:
 		if m != null:
-			draw_mesh(m, null, xf, tint)
+			draw_mesh(m, null, at, tint)
 			shown.append(m)
 	_draw_numbers(t, xf, seen)
 	_draw_tally(t, seen, shown)
@@ -1001,16 +1199,23 @@ func _build_lawn() -> ArrayMesh:
 	return b.mesh()
 
 ## Rebuilds each band of the still mesh whose cells' looks have changed
-## since it was built: every cell with nothing moving on it. At most `limit`
-## bands when it is not negative.
+## since it was built: every cell with nothing moving on it, its looks put
+## into its own run. At most `limit` bands when it is not negative.
 func _update_bands(t: float, limit := -1) -> void:
+	if _ref_cell <= 0.0:
+		return
 	var cols: int = _state.cols()
 	var n := int(ceil(float(_state.rows()) / float(BAND)))
-	if _bands.size() != n:
+	if _bands.size() != n or _band_rms.size() != n:
 		_bands.resize(n)
 		_bands.fill(null)
 		_band_looks.resize(n)
 		_band_looks.fill(PackedInt32Array())
+		_band_rms = []
+		for k in n:
+			var rm := RunMesh.new(_make_look)
+			rm.share_shapes(_looks)
+			_band_rms.append(rm)
 	for k in n:
 		var first := k * BAND * cols
 		var last := mini(_state.size(), (k + 1) * BAND * cols)
@@ -1023,12 +1228,58 @@ func _update_bands(t: float, limit := -1) -> void:
 		if limit == 0:
 			return
 		limit -= 1
-		var b := Face.Builder.new()
-		for c in range(first, last):
-			if not _moving.has(c):
-				_draw_cell(b, c, t)
-		_bands[k] = b.mesh() if not b.verts.is_empty() else null
+		_into_ref()
+		_bands[k] = _build_band(k, first, last, t)
+		_out_of_ref()
 		_band_looks[k] = looks
+
+## Band `k` (cells first..last-1) at rest: a run a cell, laid the first
+## time as long as its ground and pile, so a cell's looks are offset once
+## and kept; then, after every run, the flags, pins and paw prints, which
+## only a few cells wear (each stays inside its own cell, so drawing it
+## after its neighbours' piles changes no pixel).
+func _build_band(k: int, first: int, last: int, t: float) -> ArrayMesh:
+	var rm: RunMesh = _band_rms[k]
+	if not rm.laid():
+		for c in range(first, last):
+			rm.room(0, c, _looks.size_of(_id(Look.GROUND, c)) + _looks.size_of(_id(Look.PILE, c)) + ROOM_SLACK)
+	rm.begin()
+	var marked: Array = []
+	for c in range(first, last):
+		if not _moving.has(c):
+			rm.open(0, c)
+			if _put_rest(rm, c, t):
+				marked.append(c)
+	rm.close()
+	for c: int in marked:
+		_put_marks(rm, c, t)
+	return rm.mesh()
+
+## A cell at rest, as `_put_cell` puts it once nothing on it moves: its
+## ground and its pile, pressed under a standing flag. Whether it wears a
+## flag or paw prints (`_put_marks`).
+func _put_rest(rm: RunMesh, c: int, t: float) -> bool:
+	var at := _centre(c)
+	if _shows_raked(c, t):
+		rm.put(_id(Look.WOKE, 0) if _state.woke[c] == 1 else _id(Look.RAKED, c), [], Transform2D(0.0, at))
+		return false
+	rm.put(_id(Look.GROUND, c), [], Transform2D(0.0, at))
+	var up := _flag_up(c, t)
+	if up:
+		rm.put(_id(Look.PRESSED, c), [], Transform2D(0.0, at + Vector2(0.0, _cell * 0.3 * (1.0 - Lawn.PRESSED.y))))
+	else:
+		rm.put(_id(Look.PILE, c), [], Transform2D(0.0, at))
+	return up or _paw_on(c)
+
+## A resting cell's paw prints, or its flag and a hint's pin.
+func _put_marks(rm: RunMesh, c: int, t: float) -> void:
+	var at := _centre(c)
+	if _paw_on(c):
+		rm.put(_id(Look.PAWS, 0), [], Transform2D(0.0, at))
+	if _flag_up(c, t):
+		rm.put(_id(Look.FLAG, 0), Lawn.flag_inks(_state.wrong[c] == 1), Transform2D(0.0, at + Vector2(0.0, _cell * 0.02)))
+		if _state.pin[c] == 1:
+			rm.put(_id(Look.PIN, 0), [], Transform2D(0.0, at))
 
 ## Everything a resting cell's drawing depends on.
 func _look(c: int, t: float) -> int:
@@ -1044,14 +1295,26 @@ func _paw_on(c: int) -> bool:
 	return (c == _paws.x or c == _paws.y) and _state.open[c] == 0 and _state.flag[c] == 0 \
 		and _state.woke[c] == 0 and _solved_at < 0.0
 
-## Every moving cell, the rake's strokes, the wind, the win's swirl and the
-## hint's ring.
+## Every moving cell, the wind, the win's swirl, the rake's strokes and the
+## hint's ring, in the reference layout. The cells go latest-settling first,
+## so one that settles or starts to blow changes the size of nothing put
+## before it and the looks after it keep their places' indices.
 func _build_live(t: float) -> ArrayMesh:
+	if _ref_cell <= 0.0:
+		return null
+	_into_ref()
+	var rm := _live_rm
+	rm.begin()
+	var cells: Array = _moving.keys()
+	cells.sort_custom(func(a: int, b: int) -> bool:
+		return _until[a] > _until[b] or (_until[a] == _until[b] and a < b))
+	for c: int in cells:
+		_put_cell(rm, c, t)
 	var b := Face.Builder.new()
-	for c: int in _moving:
-		_draw_cell(b, c, t)
 	_draw_wind(b, t)
-	_draw_swirl(b, t)
+	rm.put_builder(b)
+	_put_swirl(rm, t)
+	b = Face.Builder.new()
 	_draw_rakes(b, t)
 	var keep: Array = []
 	for r: Dictionary in _rings:
@@ -1060,9 +1323,11 @@ func _build_live(t: float) -> ArrayMesh:
 			keep.append(r)
 		if u >= 0.0 and u < 1.0:
 			var rad := _cell * (0.3 + 0.4 * u)
-			b.stroke(Face.Builder.ring(r.pos, rad, rad), _cell * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
+			b.stroke(Face.Builder.ring(_centre(int(r.cell)), rad, rad), _cell * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 	_rings = keep
-	return b.mesh() if not b.verts.is_empty() else null
+	rm.put_builder(b)
+	_out_of_ref()
+	return rm.mesh()
 
 ## Whether cell `c` shows as raked at `t`: raked (or woken, or a sleeper
 ## uncovered by the win) and the gust has reached it.
@@ -1071,18 +1336,25 @@ func _shows_raked(c: int, t: float) -> bool:
 		or (_solved_at >= 0.0 and _state.is_hog(c))
 	return uncovered and t >= float(_blow_at[c])
 
-## One cell: its ground, its pile at rest, rustling or blowing off, its flag.
-func _draw_cell(b: Face.Builder, c: int, t: float) -> void:
+## One moving cell: its ground, its pile squashed, rustling or blowing off,
+## its flag. The ground and a still pile are the cell's looks under the
+## moment's shiver and squash; a rustle puts the mound and rim as one look
+## and lifts each top leaf as a leaf look; a gust carries every leaf off as
+## one look each. Only a fluttering pennant is drawn live.
+func _put_cell(rm: RunMesh, c: int, t: float) -> void:
 	var s := _cell
 	var at := _centre(c)
 	at.x += Motion.shiver_offset(t - float(_bump_at[c]), s * 0.03)
 	var raked := _shows_raked(c, t)
-	Lawn.ground(b, at, s, c, raked, _state.woke[c] == 1)
+	var ground := _id(Look.RAKED, c) if raked else _id(Look.GROUND, c)
+	if raked and _state.woke[c] == 1:
+		ground = _id(Look.WOKE, 0)
+	rm.put(ground, [], Transform2D(0.0, at))
 	var rustle := _rustle(c, t)
 	if raked:
 		var u := 1.0 if Motion.reduce else (t - float(_blow_at[c])) / LEAF_TIME
 		if u < 1.0:
-			Lawn.pile(b, at, s, c, maxf(u, 0.001), _blow_dir(c), _press(c, t))
+			_put_leaves(rm, Lawn.leaves(at, s, c, maxf(u, 0.001), _blow_dir(c), _press(c, t)))
 	else:
 		var cover := t - float(_cover_at[c])
 		var sc := Motion.pop_in_scale(cover) if cover >= 0.0 and cover < Motion.POP_IN else Vector2.ONE
@@ -1095,10 +1367,60 @@ func _draw_cell(b: Face.Builder, c: int, t: float) -> void:
 			rustle = maxf(rustle, walk)
 		# The pile sits on its foot, so a press squashes it down, not in.
 		var foot := at + Vector2(0.0, s * 0.3 * (1.0 - pressed.y))
-		Lawn.pile(b, foot, s, c, 0.0, Vector2.UP, sc * pressed, 1.0, rustle)
+		var k := sc * pressed
+		if rustle > 0.0:
+			rm.put(_id(Look.BACK, c), [], Transform2D(0.0, k, 0.0, foot))
+			_put_leaves(rm, Lawn.leaves(foot, s, c, 0.0, Vector2.UP, k, 1.0, rustle).slice(Lawn.BACK))
+		elif k == Lawn.PRESSED:
+			rm.put(_id(Look.PRESSED, c), [], Transform2D(0.0, foot))
+		else:
+			rm.put(_id(Look.PILE, c), [], Transform2D(0.0, k, 0.0, foot))
 		if _paw_on(c):
-			_draw_paws(b, at, s)
-	_draw_flag(b, c, at, t, rustle)
+			rm.put(_id(Look.PAWS, 0), [], Transform2D(0.0, at))
+	_put_flag(rm, c, at, t, rustle)
+
+## Leaves as Lawn.leaves hands them out, each its kind's look painted its
+## colour (and its midrib's) under its place, turn, length and flip.
+func _put_leaves(rm: RunMesh, leaves: Array) -> void:
+	var made := _cell * LEAF_LOOK
+	for l: Array in leaves:
+		var length: float = l[1]
+		var colour: Color = l[3]
+		var vein := Color(colour, 0.0)
+		if length >= 14.0 and colour.a >= 0.05:
+			vein = Color(colour.lightened(0.3), 0.55 * colour.a)
+		var xf := Transform2D(float(l[2]), Vector2(length, length * maxf(float(l[5]), 0.08)) / made, 0.0, l[0])
+		rm.put(_id(Look.LEAF, int(l[4])), [colour, vein], xf)
+
+## A flag drops in from above and thunks into its pile; the breeze flutters
+## its pennant (drawn live while it does); a lifted one shrinks out.
+func _put_flag(rm: RunMesh, c: int, at: Vector2, t: float, rustle: float) -> void:
+	var s := _cell
+	var foot := at + Vector2(0.0, s * 0.02)
+	if _flag_up(c, t):
+		var since := t - float(_flag_at[c])
+		var fall := Motion.drop_in_lift(since, s * FLAG_FALL, FLAG_DROP)
+		var a := Motion.appear_level(since, Motion.DROP_FADE)
+		var wave := sin(rustle * TAU * 1.5) * (1.0 - rustle)
+		var landed := since - FLAG_DROP
+		if landed > 0.0 and landed < FLAG_FLUTTER and not Motion.reduce:
+			# The pennant still shaking from the thunk.
+			wave += sin(landed * 30.0) * 0.6 * (1.0 - landed / FLAG_FLUTTER)
+		var wrong: bool = _state.wrong[c] == 1
+		if wave == 0.0:
+			rm.put(_id(Look.FLAG, 0), Lawn.flag_inks(wrong, a), Transform2D(0.0, foot - Vector2(0.0, fall)))
+		elif a > 0.0:
+			var b := Face.Builder.new()
+			Lawn.flag(b, foot - Vector2(0.0, fall), s * FLAG_R, wrong, Vector2.ONE, a, wave)
+			rm.put_builder(b)
+		if _state.pin[c] == 1:
+			rm.put(_id(Look.PIN, 0), [], Transform2D(0.0, at))
+		return
+	var out := t - float(_unflag_at[c])
+	if out >= 0.0 and out < FLAG_OUT and not Motion.reduce:
+		var k := 1.0 - out / FLAG_OUT
+		if k > 0.0:
+			rm.put(_id(Look.FLAG, 0), Lawn.flag_inks(), Transform2D(0.0, Vector2(k, k), 0.0, foot))
 
 ## A walk's snuffle through cell `c` at `t`: 0 still, 0..1 while it heaves.
 func _snuffle(c: int, t: float) -> float:
@@ -1171,7 +1493,7 @@ func _draw_rakes(b: Face.Builder, t: float) -> void:
 		if u < 0.0:
 			continue
 		var e := 1.0 - (1.0 - u) * (1.0 - u)
-		var at: Vector2 = r.pos + Vector2(lerpf(0.28, -0.22, e), lerpf(-0.18, 0.02, e)) * _cell
+		var at: Vector2 = _centre(int(r.cell)) + Vector2(lerpf(0.28, -0.22, e), lerpf(-0.18, 0.02, e)) * _cell
 		var a := minf(1.0, u / 0.15) * minf(1.0, (1.0 - u) / 0.3)
 		Lawn.rake(b, at, _cell * 0.8, lerpf(-0.15, -0.75, e), a)
 	_rakes = keep
@@ -1189,7 +1511,7 @@ func _draw_wind(b: Face.Builder, t: float) -> void:
 			continue
 		var dir: Vector2 = w.dir
 		var side := Vector2(-dir.y, dir.x) * float(w.bend)
-		var reach: float = w.reach
+		var reach: float = float(w.reach) * _cell
 		var head := minf(1.0, u * 1.25)
 		var tail := maxf(0.0, u * 1.25 - 0.45)
 		# A soft curving streak that ends in a little curl, cut where it
@@ -1198,7 +1520,7 @@ func _draw_wind(b: Face.Builder, t: float) -> void:
 		var pts := PackedVector2Array()
 		for k in 12:
 			var q := lerpf(tail, head, float(k) / 11.0)
-			var p: Vector2 = w.from + dir * (_cell * 0.35 + reach * q) + side * sin(q * PI * 1.2) * reach * 0.3
+			var p: Vector2 = _centre(int(w.from)) + dir * (_cell * 0.35 + reach * q) + side * sin(q * PI * 1.2) * reach * 0.3
 			if q > 0.8:
 				var curl := (q - 0.8) / 0.2 * PI * 1.4
 				p += (dir * sin(curl) + side.normalized() * (1.0 - cos(curl))) * _cell * 0.18
@@ -1210,11 +1532,12 @@ func _draw_wind(b: Face.Builder, t: float) -> void:
 	_streaks = keep
 
 ## The win's swirl: leaves spiralling up out of the last cell raked and
-## across the lawn, tumbling and fading.
-func _draw_swirl(b: Face.Builder, t: float) -> void:
+## across the lawn, tumbling and fading: a leaf look each.
+func _put_swirl(rm: RunMesh, t: float) -> void:
 	var u0 := (t - _swirl_at) / SWIRL_TIME
 	if u0 <= 0.0 or u0 >= 1.0:
 		return
+	var leaves: Array = []
 	var from := _centre(_last)
 	var span := Vector2(_state.cols(), _state.rows()) * _cell
 	for i in SWIRL_LEAVES:
@@ -1228,7 +1551,8 @@ func _draw_swirl(b: Face.Builder, t: float) -> void:
 		var at := from + Vector2(cos(ang), sin(ang) * 0.7) * rad + Vector2(0.0, -u * _cell * 1.5)
 		var colour: Color = Pal.AUTUMN_LEAVES[i % Pal.AUTUMN_LEAVES.size()]
 		var a := minf(1.0, u / 0.1) * (1.0 - u)
-		Lawn.leaf(b, at, _cell * 0.3, ang * 1.7, Color(colour, a), i % 3, 0.3 + 0.7 * absf(cos(u * 8.0 + float(i))))
+		leaves.append([at, _cell * 0.3, ang * 1.7, Color(colour, a), i % 3, 0.3 + 0.7 * absf(cos(u * 8.0 + float(i)))])
+	_put_leaves(rm, leaves)
 
 func _blow_dir(c: int) -> Vector2:
 	var from: int = _blow_from[c]
@@ -1236,29 +1560,6 @@ func _blow_dir(c: int) -> Vector2:
 		return Vector2(Lawn.h01(c, 5) - 0.5, -0.6).normalized()
 	var d := _centre(c) - _centre(from)
 	return d.normalized() if d.length() > 0.001 else Vector2.UP
-
-## A flag drops in from above and thunks into its pile; the breeze flutters
-## its pennant.
-func _draw_flag(b: Face.Builder, c: int, at: Vector2, t: float, rustle := 0.0) -> void:
-	var s := _cell
-	var foot := at + Vector2(0.0, s * 0.02)
-	if _flag_up(c, t):
-		var since := t - float(_flag_at[c])
-		var fall := Motion.drop_in_lift(since, s * FLAG_FALL, FLAG_DROP)
-		var a := Motion.appear_level(since, Motion.DROP_FADE)
-		var wave := sin(rustle * TAU * 1.5) * (1.0 - rustle)
-		var landed := since - FLAG_DROP
-		if landed > 0.0 and landed < FLAG_FLUTTER and not Motion.reduce:
-			# The pennant still shaking from the thunk.
-			wave += sin(landed * 30.0) * 0.6 * (1.0 - landed / FLAG_FLUTTER)
-		Lawn.flag(b, foot - Vector2(0.0, fall), s * FLAG_R, _state.wrong[c] == 1, Vector2.ONE, a, wave)
-		if _state.pin[c] == 1:
-			b.disc(at + Vector2(0.3, 0.3) * s, s * PIN_DOT, Pal.SUN)
-		return
-	var out := t - float(_unflag_at[c])
-	if out >= 0.0 and out < FLAG_OUT and not Motion.reduce:
-		var k := 1.0 - out / FLAG_OUT
-		Lawn.flag(b, foot, s * FLAG_R, false, Vector2(k, k))
 
 ## The numerals, over the meshes and inside the entrance pop: one
 ## draw_set_transform a cell, so each pops in just after its leaves go. A
@@ -1286,7 +1587,10 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 		var at := _centre(c) + Vector2(Motion.shiver_offset(t - float(_bump_at[c]), _cell * 0.03), _cell * 0.02)
 		draw_set_transform_matrix(xf * Transform2D(0.0, sc, 0.0, at))
 		var text := str(v)
-		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+		var wide: float = _num_w.get(v * 1000 + px, -1.0)
+		if wide < 0.0:
+			wide = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+			_num_w[v * 1000 + px] = wide
 		draw_string(font, Vector2(-wide * 0.5, rise), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px,
 			Color(Pal.NUM_INK[mini(v, Pal.NUM_INK.size() - 1)], seen))
 	draw_set_transform(Vector2.ZERO)
@@ -1437,7 +1741,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 func _ring_at(c: int) -> void:
 	if Motion.reduce:
 		return
-	_rings.append({"pos": _centre(c), "at": _now()})
+	_rings.append({"cell": c, "at": _now()})
 	_busy_for(Motion.RING_TIME)
 
 # --- input ---
@@ -1870,6 +2174,11 @@ func _recorded_woke() -> PackedInt32Array:
 func _hearts_y() -> float:
 	return _grid.y - TALLY - HEART_ROW * 0.5 + 4.0
 
+## The middle of the hearts' pill (`pill` its size): over the tally. The
+## tutorial's lawn hangs it beside the bed.
+func _hearts_at(_pill: Vector2) -> Vector2:
+	return Vector2(size.x * 0.5, _hearts_y())
+
 ## A heart splits off the pill at `at`; the last one sets out_of_hearts.
 func _lose_heart(at: float) -> void:
 	_lost_ever = true
@@ -1893,9 +2202,10 @@ func _draw_hearts() -> void:
 	var b := Face.Builder.new()
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
-	var y := _hearts_y()
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var left := size.x * 0.5 - pill.x * 0.5
+	var mid := _hearts_at(pill)
+	var y := mid.y
+	var left := mid.x - pill.x * 0.5
 	var corner := Vector2(left, y - pill.y * 0.5)
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
@@ -1927,8 +2237,7 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
-	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_set_transform(mid * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
 
@@ -2217,6 +2526,12 @@ func _tick_life(now: float) -> bool:
 ## Love hearts (one cached mesh through a transform each), the acorns and
 ## butterflies (one mesh a frame), the seal and the streak's bubble.
 func _draw_life() -> void:
+	if _warm_combo:
+		# The streak's numbers, rasterised out of sight on the first frame:
+		# drawn cold, "x3" costs its frame (Caterpillar's lesson).
+		_warm_combo = false
+		_life_layer.draw_string(CozyTheme.display(700), Vector2(-4000.0, -4000.0), "x0123456789",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color.WHITE)
 	if _cell <= 0.0 or _state.size() == 0:
 		_life_shown = []
 		return

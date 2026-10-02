@@ -55,6 +55,9 @@ var _exp_done := false
 ## `rm`: reduce motion, set as the board opens (the settings load over it
 ## at launch).
 var _rm := false
+## `lang=<code>`: the language the board opens in (the Mac's own otherwise),
+## to read a tutorial's pages in each.
+var _lang := ""
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -65,6 +68,8 @@ func _initialize() -> void:
 			_howto = true
 		elif a == "rm":
 			_rm = true
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		elif a.begins_with("shot="):
 			_shot_at = float(a.substr(5))
 		elif a.begins_with("gap="):
@@ -159,6 +164,8 @@ func _open() -> void:
 	_opened = true
 	if _rm:
 		load("res://core/motion.gd").reduce = true
+	if _lang != "":
+		TranslationServer.set_locale(_lang)
 	_t = 0.0
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if e.id == _id:
@@ -191,6 +198,106 @@ func _experiment() -> void:
 			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
 			_host._on_undo()
 			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"hh_hud":
+			# Hedgehogs: the ?, Undo and Reset as the player reaches them.
+			var bar = _host.top_bar
+			var acts = _host.action_bar
+			print("  hh ? visible=%s undo visible=%s reset (bar) visible=%s reset (actions)=%s" % [bar.help_button.visible,
+				bar.undo_button.visible, bar.reset_button.visible, acts != null and acts.reset_button.visible])
+			bar.help.emit()
+			await create_timer(0.3).timeout
+			var card = _host.get_node_or_null("HowToPlay")
+			print("  hh ? opened: %s, pages %d" % [card != null, card._pages.size() if card != null else 0])
+			if card != null:
+				card.queue_free()
+			await create_timer(0.3).timeout
+			var st = _puzzle._state
+			var pick := -1
+			for c in st.size():
+				if st.open[c] == 0 and not st.is_hog(c):
+					pick = c
+					break
+			_click(_puzzle.cell_to_local(pick / st.cols(), pick % st.cols()))
+			await create_timer(1.2).timeout
+			_host._refresh()
+			print("  hh raked %d: open=%d can_undo=%s undo enabled=%s" % [pick, st.open[pick], _puzzle.can_undo(), bar.undo_button.disabled == false])
+			_host._on_undo()
+			await create_timer(0.8).timeout
+			print("  hh after undo: open=%d" % st.open[pick])
+			_click(_puzzle.cell_to_local(pick / st.cols(), pick % st.cols()))
+			await create_timer(1.2).timeout
+			_host._refresh()
+			print("  hh can_reset=%s" % _puzzle.can_reset())
+			_host._on_reset()
+			await create_timer(0.8).timeout
+			print("  hh after reset: open=%d moves=%d" % [st.open[pick], _puzzle.moves])
+		"hh_calm":
+			# Hedgehogs: no breeze, so a shot at rest is the same run to run.
+			_puzzle._next_breeze = INF
+			print("  hh calm: done=%s woken=%d hearts=%d moving=%d moves left=%d" % [_puzzle.is_done(), _puzzle._state.woken, _puzzle.hearts, _puzzle._moving.size(), _moves.size()])
+		"hh_relay":
+			# Hedgehogs: what the win card's relayout makes again -- the lawn, and
+			# the bands when the reference is not kept.
+			for k in 3:
+				var t0 := Time.get_ticks_usec()
+				_puzzle._build_lawn()
+				var t1 := Time.get_ticks_usec()
+				_puzzle._layout()
+				_puzzle._update_bands(_puzzle._now())
+				var t2 := Time.get_ticks_usec()
+				print("  hh lawn %.2f ms, relayout and bands %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0])
+		"hh_count":
+			# Hedgehogs: every band of the still made again, the live mesh
+			# built as it stands, and a whole row rustling built live, every
+			# 1.5 s, with their vertices.
+			for k in 5:
+				await create_timer(1.5).timeout
+				var now: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				for b in _puzzle._band_looks.size():
+					_puzzle._band_looks[b] = PackedInt32Array()
+				_puzzle._update_bands(now)
+				var t1 := Time.get_ticks_usec()
+				var live = _puzzle._build_live(now)
+				var t2 := Time.get_ticks_usec()
+				var vs := 0
+				for m in _puzzle._bands:
+					if m != null:
+						vs += m.surface_get_array_len(0)
+				var saved: Dictionary = _puzzle._moving.duplicate()
+				var cols: int = _puzzle._state.cols()
+				for x in cols:
+					_puzzle._moving[3 * cols + x] = true
+					_puzzle._rustle_at[3 * cols + x] = now - 0.35
+				var t3 := Time.get_ticks_usec()
+				var row = _puzzle._build_live(now)
+				var t4 := Time.get_ticks_usec()
+				for x in cols:
+					_puzzle._rustle_at[3 * cols + x] = -100.0
+				_puzzle._moving = saved
+				var rm0 = _puzzle._band_rms[1]
+				var cols0: int = _puzzle._state.cols()
+				_puzzle._into_ref()
+				var u0 := Time.get_ticks_usec()
+				rm0.begin()
+				for c in range(3 * cols0, 6 * cols0):
+					if not _puzzle._moving.has(c):
+						rm0.open(0, c)
+						_puzzle._put_rest(rm0, c, now)
+				var u1 := Time.get_ticks_usec()
+				var mm = rm0.mesh()
+				var u2 := Time.get_ticks_usec()
+				var looks := 0
+				for c in _puzzle._state.size():
+					looks += _puzzle._look(c, now)
+				var u3 := Time.get_ticks_usec()
+				_puzzle._out_of_ref()
+				print("  band 1: puts %.2f ms, mesh %.2f ms (%d vertices); every look %.2f ms" % [(u1 - u0) / 1000.0, (u2 - u1) / 1000.0, mm.surface_get_array_len(0), (u3 - u2) / 1000.0])
+				var L = _puzzle._looks
+				print("  looks: ground %d raked %d pile %d pressed %d back %d leaf %d flag %d pin %d paws %d" % [L.size_of(_puzzle._id(0, 5)), L.size_of(_puzzle._id(1, 5)), L.size_of(_puzzle._id(3, 5)), L.size_of(_puzzle._id(4, 5)), L.size_of(_puzzle._id(5, 5)), L.size_of(_puzzle._id(6, 2)), L.size_of(_puzzle._id(7, 0)), L.size_of(_puzzle._id(8, 0)), L.size_of(_puzzle._id(9, 0))])
+				print("  hh bands %.2f ms, %d vertices; live %.2f ms, %d vertices; a rustling row %.2f ms, %d vertices; moving %d" % [
+					(t1 - t0) / 1000.0, vs, (t2 - t1) / 1000.0, live.surface_get_array_len(0) if live != null else 0,
+					(t4 - t3) / 1000.0, row.surface_get_array_len(0) if row != null else 0, saved.size()])
 		"kn_relay":
 			# What the win card's relayout makes again: the table and the still.
 			for k in 3:
@@ -1410,3 +1517,55 @@ func _sb_dark_way(st) -> Array:
 			if a != z:
 				out.append([p, a, z])
 	return out
+
+## Hedgehogs: the lawn cleared in reading order, each move the first cell
+## still to do -- a sleeping hedgehog flagged (the flag chip armed for the
+## tap) or a bare pile raked -- picked at the move, since on Sleepwalkers the
+## hedgehogs walk. Waits while a wake or a walk holds input. After each move
+## the list is cut to what a copy of the lawn still needs (floods clear cells
+## for free, and a walk changes the numbers), so `fill` leaves two.
+func _moves_hedgehogs() -> Array:
+	var m := {}
+	m["do"] = func() -> void:
+		var st = _puzzle._state
+		if _puzzle.busy():
+			_moves.push_front(m)
+			return
+		for c in st.size():
+			if st.open[c] == 1 or st.woke[c] == 1:
+				continue
+			if st.is_hog(c):
+				if st.flag[c] == 1:
+					continue
+				_puzzle.set_brush(st.FLAG)
+				_click(_puzzle.cell_to_local(c / st.cols(), c % st.cols()))
+				_puzzle.set_brush(st.RAKE)
+			else:
+				_click(_puzzle.cell_to_local(c / st.cols(), c % st.cols()))
+			break
+		var left := _hh_need()
+		_moves.clear()
+		for k in left:
+			_moves.append(m)
+	var out := []
+	for k in _hh_need():
+		out.append(m)
+	return out
+
+func _hh_need() -> int:
+	var st = _puzzle._state
+	var Gen = load("res://puzzles/hedgehogs_gen.gd")
+	var open: PackedByteArray = st.open.duplicate()
+	# Moves up to the last rake: a flag after it would come once the lawn is
+	# already done.
+	var n := 0
+	var upto := 0
+	for c in st.size():
+		if st.is_hog(c):
+			if st.flag[c] == 0 and st.woke[c] == 0:
+				n += 1
+		elif open[c] == 0:
+			Gen.flood(st.g, open, c)
+			n += 1
+			upto = n
+	return upto
