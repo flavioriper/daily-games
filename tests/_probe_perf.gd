@@ -240,6 +240,16 @@ func _experiment() -> void:
 				print("  court %.2f ms rebake %.2f ms beams %.2f ms" % [(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0])
 			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " lamps ", _puzzle.state.lamps().size(),
 				" cats ", _puzzle._cats.size(), " anim ", _puzzle._anim_until - _puzzle._now(), " moths ", _puzzle._flies.size())
+		"sd_count":
+			# One grid build as a frame does it, every 2 s, with its vertices.
+			for n in 5:
+				await create_timer(2.0).timeout
+				var t0 := Time.get_ticks_usec()
+				var m: ArrayMesh = _puzzle._build_grid(_puzzle._now())
+				var t1 := Time.get_ticks_usec()
+				_puzzle.queue_redraw()
+				print("  grid build %.2f ms verts %d filled %d" % [(t1 - t0) / 1000.0,
+					m.surface_get_array_len(0) if m != null else 0, _puzzle.state.grid.count(0)])
 		"lu_lamps", "lu_cats", "lu_life", "lu_veil":
 			match _exp:
 				"lu_lamps":
@@ -772,4 +782,19 @@ func _moves_mushroom() -> Array:
 			out.append({"do": func() -> void: _puzzle.set_brush(st.FOUND)})
 			for cell: Vector2i in shrooms:
 				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
+	return out
+
+## Sudoku: every empty cell in reading order, tapped (it only selects) and
+## then its answer's chip picked, as a player would.
+func _moves_sudoku() -> Array:
+	_keep = 4
+	var out := []
+	var st = _puzzle.state
+	for i in st.sol.size():
+		if st.grid[i] != 0:
+			continue
+		var n: int = _puzzle.Gen.N
+		out.append({"at": _puzzle.cell_to_local.bind(i / n, i % n)})
+		var d: int = int(st.sol[i]) - 1
+		out.append({"do": func() -> void: _puzzle.pick(d)})
 	return out

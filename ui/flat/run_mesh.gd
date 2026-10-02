@@ -25,11 +25,14 @@ const Face = preload("res://ui/faces/face.gd")
 const SLOTS := 8.0
 ## The painted colours kept before the cache starts again.
 const PAINTED_MAX := 4000
+## The same for indices offset to a place on the tail.
+const OFFSETS_MAX := 2000
 
 var _make: Callable
 var _shapes: Dictionary = {}   # id -> [verts, indices, colour runs]
 var _inked: Dictionary = {}    # [id, colours...] -> PackedColorArray
 var _offsets: Dictionary = {}  # Vector2i(id, at) -> indices offset to at
+var _tail_offsets: Dictionary = {}  # Vector2i(id, at) on the tail -> the same
 var _runs: Dictionary = {}     # Vector2i(part, index) -> Vector2i(start, size)
 var _fixed := 0
 var _cursor := 0
@@ -55,6 +58,7 @@ func reset() -> void:
 	_shapes = {}
 	_inked = {}
 	_offsets = {}
+	_tail_offsets = {}
 	_fixed = 0
 
 ## Whether runs have been laid since the last reset.
@@ -70,9 +74,9 @@ func room(part: int, index: int, verts: int) -> void:
 func size_of(id: int) -> int:
 	return (shape(id)[0] as PackedVector2Array).size()
 
-## Shape `id` as [verts, indices, colour runs], made the first time it is
-## asked for. Its colour runs are (count, slot * 2 + clear) pairs: a fan's
-## body is one run and its feather another.
+## Shape `id` as [verts, indices, colour runs, colours as drawn], made the
+## first time it is asked for. Its colour runs are (count, slot * 2 + clear)
+## pairs: a fan's body is one run and its feather another.
 func shape(id: int) -> Array:
 	var hit = _shapes.get(id)
 	if hit != null:
@@ -88,7 +92,7 @@ func shape(id: int) -> Array:
 			runs.append(1)
 			runs.append(code)
 			last = code
-	var out := [b.verts, b.idx, runs]
+	var out := [b.verts, b.idx, runs, b.cols]
 	_shapes[id] = out
 	return out
 
@@ -131,19 +135,25 @@ func open(part: int, index: int) -> void:
 	_cursor = run.x
 	_run_end = run.x + run.y
 
+## The next pieces go on the tail, after every run (a live drawing that has
+## no run of its own; the indices keep the order things are put in).
+func close() -> void:
+	_close()
+
 func _close() -> void:
 	_cursor = 0
 	_run_end = -1
 
 ## Shape `id` painted `colours` under `xf`, into the open run while it has
-## room, or on the tail.
+## room, or on the tail. No `colours` puts the shape in the colours it was
+## drawn in: a still drawing with more colours than slots (Sudoku's tray).
 func put(id: int, colours: Array, xf: Transform2D) -> void:
 	var s := shape(id)
 	var verts: PackedVector2Array = s[0]
 	var n := verts.size()
-	var cols := ink(id, colours)
+	var cols: PackedColorArray = s[3] if colours.is_empty() else ink(id, colours)
 	if _cursor + n > _run_end:
-		_tail(verts, cols, s[1], xf)
+		_tail(verts, cols, s[1], xf, id)
 		return
 	_fv.resize(_cursor)
 	_fc.resize(_cursor)
@@ -179,13 +189,24 @@ func put_builder(b: Face.Builder) -> void:
 	_fi.append_array(ix)
 	_cursor += n
 
-func _tail(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, xf: Transform2D) -> void:
+## A shape (`id` >= 0) put on the tail keeps its offset indices for that
+## place, as a run does: pieces put first on the tail (Sudoku's washes, one
+## shape cell after cell) land on the same places build after build, so a
+## piece that comes and goes needs no run reserved for it.
+func _tail(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, xf: Transform2D, id := -1) -> void:
 	var base := _fixed + _tv.size()
 	_tv.append_array(verts if xf == Transform2D.IDENTITY else xf * verts)
 	_tc.append_array(cols)
-	var ix := idx.duplicate()
-	for k in ix.size():
-		ix[k] += base
+	var key := Vector2i(id, base)
+	var ix = _tail_offsets.get(key) if id >= 0 else null
+	if ix == null:
+		ix = idx.duplicate()
+		for k in ix.size():
+			ix[k] += base
+		if id >= 0:
+			if _tail_offsets.size() > OFFSETS_MAX:
+				_tail_offsets = {}
+			_tail_offsets[key] = ix
 	_fi.append_array(ix)
 
 ## The build as one mesh, or null when nothing was put.
