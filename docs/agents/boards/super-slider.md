@@ -50,3 +50,10 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   WALNUT_TUNE kalimba, 27 cues, unheard. A restored day now keeps `_won`
   apart from its clock (it showed the gate shut in the app's first 100 s).
   `tests/_shot_slider.gd` plays every mode through the board's input.
+  **Checked up on 2026-10-02** (docs/agents/checkup.md, board 25): the
+  blocks are `RunMesh` looks of `slider_block.gd`'s layers (`block()` still
+  draws them in order for the menu card), the floor's moving bits a small
+  mesh of their own; a 4-5 page tutorial
+  (`ui/hud/slider_tutorial_diagram.gd`) plays the real board on crowded
+  hand-made trays -- keep any new one crowded, an open tray's graph takes
+  seconds to solve.

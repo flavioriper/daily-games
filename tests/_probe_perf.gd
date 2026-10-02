@@ -1569,3 +1569,44 @@ func _hh_need() -> int:
 			n += 1
 			upto = n
 	return upto
+
+## Super Slider: the shortest way out, each move a drag through the board's
+## own input -- a press on the block, a motion a cell at a time along the
+## way it slides, the release -- one event a step, so the play window holds
+## real drags. The line is worked out once the solver is done (on a copy:
+## hint moves played and the tray put back).
+func _moves_slider() -> Array:
+	var plan := {}
+	plan["do"] = func() -> void:
+		var st = _puzzle._state
+		if not st.solver_ready() or _puzzle.busy():
+			_moves.push_front(plan)
+			return
+		var keep: Array = st.snapshot()
+		var hist: int = st.history.size()
+		var line: Array = []
+		for i in 400:
+			var m: Dictionary = st.hint_move()
+			if m.is_empty():
+				break
+			line.append([int(m.p), m.path])
+			st.play(m.p, m.to)
+		st._restore(keep)
+		st.history.resize(hist)
+		var counts: Array = []
+		var Gen = load("res://puzzles/slider_gen.gd")
+		for mv: Array in line:
+			var path: PackedInt32Array = mv[1]
+			var at := func(c: int) -> Vector2:
+				return _puzzle._pt(Vector2(c % Gen.COLS, c / Gen.COLS) + Vector2(0.5, 0.5))
+			_moves.append({"do": func() -> void: _ut_button(at.call(path[0]), true)})
+			for k in range(1, path.size()):
+				var c: int = path[k]
+				_moves.append({"do": func() -> void: _ut_motion(at.call(c))})
+			_moves.append({"do": func() -> void: _ut_button(at.call(path[path.size() - 1]), false)})
+			counts.append(path.size() + 1)
+		_keep = 0
+		for k in mini(2, counts.size()):
+			_keep += int(counts[counts.size() - 1 - k])
+	_keep = 0
+	return [plan]
