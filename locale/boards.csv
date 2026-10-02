@@ -2231,3 +2231,36 @@ HTP_CP_STAR_CAP,End on the star,Termine na estrela,Termina en la estrella
 HTP_CP_UNDO_CAP,Undo takes the stroke back,Desfazer volta o traço,Deshacer devuelve el trazo
 HTP_CP_RESET_CAP,Reset empties the garden,Recomeçar esvazia o jardim,Reiniciar vacía el jardín
 HTP_CP_HINT_CAP,The bulb crawls on to the next leaf,A lâmpada rasteja até a próxima folha,La bombilla repta hasta la siguiente hoja
+HTP_SB_DRAG,Bend the light,Desvie a luz,Desvía la luz
+HTP_SB_DRAG_BODY,"Drag a brass mirror along its rail, or tap an empty peg to send it there. The light follows live and turns off the mirror's glass. End the beam in the bud.","Arraste um espelho de latão pelo trilho, ou toque num pino vazio para mandá-lo até lá. A luz acompanha na hora e desvia no vidro do espelho. Termine o raio no botão.","Arrastra un espejo de latón por su riel, o toca una clavija vacía para enviarlo allí. La luz lo sigue al instante y se desvía en el cristal del espejo. Termina el rayo en el capullo."
+HTP_SB_GOAL,"Every drop, then the bud","Todas as gotas, depois o botão","Todas las gotas, luego el capullo"
+HTP_SB_GOAL_BODY,"Reaching the bud isn't enough: the light must pass every dewdrop first. Each drop it passes makes the beam stronger, and the bud blooms only once they're all lit.","Chegar ao botão não basta: a luz precisa passar por todas as gotas antes. Cada gota que ela atravessa deixa o raio mais forte, e o botão só se abre quando todas estão acesas.","Llegar al capullo no basta: la luz debe pasar antes por todas las gotas. Cada gota que atraviesa hace el rayo más fuerte, y el capullo solo florece cuando todas están encendidas."
+HTP_SB_CUP,Copper cups,Conchas de cobre,Copas de cobre
+HTP_SB_CUP_BODY,"A cup takes the light into its mouth and sends it back the way it came, one lane over. Its back stops the light, and so does a pot.","Uma concha recebe a luz pela boca e a devolve por onde veio, uma faixa ao lado. As costas dela bloqueiam a luz, e um vaso também.","Una copa recibe la luz por la boca y la devuelve por donde vino, un carril más allá. Su dorso detiene la luz, y una maceta también."
+HTP_SB_SNAILS,Let snails sleep,Deixe os caracóis dormirem,Deja dormir a los caracoles
+HTP_SB_SNAILS_BODY,"You have %d hearts. Holding a piece is only a peek: let go with the light resting on a snail and it wakes up -- that costs a heart, and the piece slides back.","Você tem %d corações. Segurar uma peça é só uma espiada: solte com a luz sobre um caracol e ele acorda -- isso custa um coração, e a peça volta.","Tienes %d corazones. Sostener una pieza es solo un vistazo: suéltala con la luz sobre un caracol y se despierta -- eso cuesta un corazón, y la pieza vuelve."
+HTP_SB_SHY_BODY,"The drops are shy: let go with the light on any drop and it dries -- a heart, and the piece slides back. Only the move that lights every drop at once and ends in the bud is safe. You have %d hearts.","As gotas são tímidas: solte com a luz sobre qualquer gota e ela seca -- um coração, e a peça volta. Só é seguro o movimento que acende todas as gotas de uma vez e termina no botão. Você tem %d corações.","Las gotas son tímidas: suelta con la luz sobre cualquier gota y se seca -- un corazón, y la pieza vuelve. Solo es seguro el movimiento que ilumina todas las gotas a la vez y termina en el capullo. Tienes %d corazones."
+HTP_SB_UNDO_BODY,"Undo takes your last slide back, and Reset puts every piece where it started. Nothing here can be lost.","Desfazer volta o seu último deslize, e Recomeçar põe cada peça onde começou. Aqui nada se perde.","Deshacer devuelve tu último deslizamiento, y Reiniciar pone cada pieza donde empezó. Aquí nada se pierde."
+HTP_SB_UNDO_BODY_JUDGED,"Undo takes your last slide back, and Reset puts every piece where it started. A heart once spent stays spent.","Desfazer volta o seu último deslize, e Recomeçar põe cada peça onde começou. Um coração gasto continua gasto.","Deshacer devuelve tu último deslizamiento, y Reiniciar pone cada pieza donde empezó. Un corazón gastado sigue gastado."
+HTP_SB_RESET_BODY,There is no Undo on Shy Dew. Reset puts every piece where it started; a heart once spent stays spent.,Não há Desfazer no Orvalho Tímido. Recomeçar põe cada peça onde começou; um coração gasto continua gasto.,No hay Deshacer en Rocío Tímido. Reiniciar pone cada pieza donde empezó; un corazón gastado sigue gastado.
+HTP_SB_HINT_BODY_ONE,The bulb slides the next piece along the answer's light home and pins it there. You have one hint.,A lâmpada desliza a próxima peça da luz da resposta até o lugar dela e a prende ali. Você tem uma dica.,La bombilla desliza la siguiente pieza de la luz de la respuesta hasta su sitio y la fija allí. Tienes una pista.
+HTP_SB_HINT_BODY_N,The bulb slides the next piece along the answer's light home and pins it there. You have %d hints.,A lâmpada desliza a próxima peça da luz da resposta até o lugar dela e a prende ali. Você tem %d dicas.,La bombilla desliza la siguiente pieza de la luz de la respuesta hasta su sitio y la fija allí. Tienes %d pistas.
+HTP_SB_PRESS_CAP,Take a mirror...,Pegue um espelho...,Toma un espejo...
+HTP_SB_TURN_CAP,...slide it into the light: it turns,...deslize até a luz: ela desvia,...deslízalo hasta la luz: se desvía
+HTP_SB_BUD_CAP,The light ends in the bud,A luz termina no botão,La luz termina en el capullo
+HTP_SB_DONE_CAP,The bud blooms: solved,O botão se abre: resolvido,El capullo florece: resuelto
+HTP_SB_DRY_CAP,"The bud, but a drop is still dry","O botão, mas uma gota ainda está seca","El capullo, pero una gota sigue seca"
+HTP_SB_DROP_CAP,Swing the light over the drop...,Leve a luz até a gota...,Lleva la luz sobre la gota...
+HTP_SB_HOME_CAP,...then into the bud,...depois para o botão,...luego al capullo
+HTP_SB_CUP_CAP,Slide the cup into the light...,Deslize a concha até a luz...,Desliza la copa hasta la luz...
+HTP_SB_BACK_CAP,"...it sends the light back, one lane over","...ela devolve a luz, uma faixa ao lado","...devuelve la luz, un carril más allá"
+HTP_SB_PEEK_CAP,Holding is only a peek,Segurar é só uma espiada,Sostener es solo un vistazo
+HTP_SB_WAKE_CAP,"Let go on a snail: a heart, and it slides back","Soltou sobre um caracol: um coração, e a peça volta","Soltar sobre un caracol: un corazón, y la pieza vuelve"
+HTP_SB_MISS_CAP,Let go where the light misses the snail,Solte onde a luz não pega o caracol,Suelta donde la luz no toca al caracol
+HTP_SB_SHY_CAP,The light on the drops...,A luz sobre as gotas...,La luz sobre las gotas...
+HTP_SB_DRIED_CAP,"...let go there: they dry, a heart","...soltou ali: elas secam, um coração","...soltar ahí: se secan, un corazón"
+HTP_SB_FIRST_CAP,Set the rest in the shade first,Arrume o resto na sombra primeiro,Prepara el resto en la sombra primero
+HTP_SB_ONCE_CAP,Then every drop at once,Depois todas as gotas de uma vez,Luego todas las gotas a la vez
+HTP_SB_UNDO_CAP,Undo takes the slide back,Desfazer volta o deslize,Deshacer devuelve el deslizamiento
+HTP_SB_RESET_CAP,Reset puts every piece back,Recomeçar põe cada peça de volta,Reiniciar devuelve cada pieza
+HTP_SB_HINT_CAP,The bulb slides a piece home,A lâmpada desliza uma peça para o lugar,La bombilla desliza una pieza a su sitio

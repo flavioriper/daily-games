@@ -45,3 +45,11 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   107 draw calls (out of hearts), ANGLE agreeing on the solve. Same day: the
   light leaves the sun weak and gains a step at every drop it passes, and the
   bud grows (shut) by the strength that reaches it (spec section 9).
+- **The board checkup, 2026-10-02** (row 22 of `docs/agents/checkup.md`):
+  five meshes -- glass (the card, made again on a resize), bed (made once
+  in a reference layout, joined with the glass while the relay is the
+  identity), lower (cups and the beam), upper (sparks, drops, mirrors,
+  rings) and air -- every piece a look under its transform, the pieces in
+  rooms of their own. A board tutorial `ui/hud/sunbeam_tutorial_diagram.gd`
+  plays a quietened `Floor` on hand-made floors; the board gained the
+  `_inset()` and `_hearts_at()` hooks for it.

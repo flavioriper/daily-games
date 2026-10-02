@@ -100,7 +100,7 @@ build, the still mesh and the lantern paint, timed every 1.5 s, with their
 vertices) and `x=fl_lanterns` (every lantern hidden) are Fairy Lights'; `x=pp_count` (a field and
 a still build every 1.5 s, the dots', leaves', contrails' and planes' share)
 is Paper Planes'; `x=rg_count` (every station rebuilt from its look and
-the ring in hand built, every 1.5 s, with their vertices) is Rings'. `rm` turns reduce motion on as the
+the ring in hand built, every 1.5 s, with their vertices) is Rings'. `x=sb_count` (the light traced and the live, air, bed and glass built every 1.5 s, once with a piece held, with their vertices), `x=sb_parts` (Sunbeam's meshes dropped one at a time, render-cpu over a second each) and `x=sb_frozen` (the board's redraw stopped) are Sunbeam's; `x=cue_late` and `x=confetti_late` fire the streak's cues or a burst inside the idle window, to catch a first-time hitch. `rm` turns reduce motion on as the
 board opens (with `howto`, the tutorial's still pages). Each
 window also prints its mean draw calls beside the peak.
 Tents' moves sweep each row into cairns a run at a time, then tap the
@@ -119,7 +119,7 @@ tap every piece round to its answer in reading order, a tap a step. Paper
 Planes' tap the deal's own order, each plane on its head. Rings' play the
 solver's line from the deal, a tap lifting the top ring and a tap dropping
 it, up each station's column. Caterpillar's draw the answer as one drag (a press on
-leaf 1, a motion a square, the release; `_keep` 3). With `howto` up
+leaf 1, a motion a square, the release; `_keep` 3). Sunbeam's drag every piece home along its rail (a press, a motion a third of a peg, the release) on the shortest way that never lets go with the light on a sleeper (a BFS over arrangements like `Gen.dark_path`). With `howto` up
 the probe plays no moves at all (Bridges' Easy board was solved under its
 pages and the win screen took over). Hidden Word's type five wrong guesses that keep every clue (so Hard's
 rule never refuses them) and then the answer, a letter a step, each commit

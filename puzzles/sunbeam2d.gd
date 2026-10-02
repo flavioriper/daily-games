@@ -393,6 +393,41 @@ func rules() -> String:
 		out += "\n\n" + tr("SB_RULES_SAFE")
 	return out
 
+## The how-to-play card's pages, the band's own: bending the light, every
+## drop before the bud (Easy to Hard), the cups, the snails (Hard) or Shy
+## Dew (Insane), Undo and Reset, and the bulb (bands with hints). Each page
+## is the board itself on a small hand-made floor, playing the lesson
+## (ui/hud/sunbeam_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/sunbeam_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.DRAG, "HTP_SB_DRAG", tr("HTP_SB_DRAG_BODY")]]
+	if band < 3:
+		steps.append([Diagram.Lesson.GOAL, "HTP_SB_GOAL", tr("HTP_SB_GOAL_BODY")])
+	steps.append([Diagram.Lesson.CUP, "HTP_SB_CUP", tr("HTP_SB_CUP_BODY")])
+	if band >= 3:
+		steps.append([Diagram.Lesson.SHY, "SB_SHY_SEAL", tr("HTP_SB_SHY_BODY") % hearts_n])
+	elif hearts_n > 0:
+		steps.append([Diagram.Lesson.SNAILS, "HTP_SB_SNAILS", tr("HTP_SB_SNAILS_BODY") % hearts_n])
+	var undo_body := "HTP_SB_UNDO_BODY"
+	if band >= 3:
+		undo_body = "HTP_SB_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_SB_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_SB_HINT_BODY_ONE") if hints == 1 else tr("HTP_SB_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _tips() -> Array:
 	if _state.shy():
 		return TIPS_SHY
@@ -500,8 +535,13 @@ func _cell() -> float:
 		return _ref_cell
 	if _state.cols <= 0:
 		return 0.0
-	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * INSET) / _state.cols,
-		(size.y - _heart_row() - 2.0 * INSET) / _state.rows)))
+	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * _inset()) / _state.cols,
+		(size.y - _heart_row() - 2.0 * _inset()) / _state.rows)))
+
+## The card kept round the floor (a tutorial page, short and wide, keeps
+## less).
+func _inset() -> float:
+	return INSET
 
 ## The strip the hearts take over the floor, on a band that has them.
 func _heart_row() -> float:
@@ -2201,7 +2241,9 @@ func _draw_hearts() -> void:
 	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
 		_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var left := size.x * 0.5 - pill.x * 0.5
+	var c := _hearts_at(pill, y)
+	y = c.y
+	var left := c.x - pill.x * 0.5
 	var corner := Vector2(left, y - pill.y * 0.5)
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
@@ -2233,10 +2275,14 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The middle of the hearts' pill (`pill` its size): over the floor, at
+## height `y` (a tutorial page hangs it beside the floor).
+func _hearts_at(_pill: Vector2, y: float) -> Vector2:
+	return Vector2(size.x * 0.5, y)
 
 static func _heart_face(b, at: Vector2, s: float) -> void:
 	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
