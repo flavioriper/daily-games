@@ -293,6 +293,32 @@ func _experiment() -> void:
 				print("  quilt %.2f ms v%d | rack %.2f ms v%d | hand %.2f ms v%d | seams %.2f ms n%d | sewn %d drag %s" % [
 					(t1 - t0) / 1000.0, vc.call(q), (t2 - t1) / 1000.0, vc.call(r), (t3 - t2) / 1000.0, vc.call(h),
 					(t4 - sm) / 1000.0, seams.size(), _puzzle._state.covered(), not _puzzle._drag.is_empty()])
+		"fl_count":
+			# One garden build as an animating frame does it, every 1.5 s,
+			# with its vertices, and the still layer's.
+			for n in 6:
+				await create_timer(1.5).timeout
+				var t: float = _puzzle._now()
+				_puzzle._in_ref(true)
+				_puzzle._rest_plan = PackedInt32Array()
+				var t0 := Time.get_ticks_usec()
+				var m: ArrayMesh = _puzzle._build(t)
+				var t1 := Time.get_ticks_usec()
+				var st: ArrayMesh = _puzzle._build_still()
+				var t2 := Time.get_ticks_usec()
+				var m2: ArrayMesh = _puzzle._build(t)
+				var t3 := Time.get_ticks_usec()
+				_puzzle._in_ref(false)
+				var vc := func(x) -> int: return x.surface_get_array_len(0) if x != null else 0
+				print("  garden %.2f ms (handed back %.2f) live v%d rest v%d | still %.2f ms v%d | lit %d" % [(t1 - t0) / 1000.0, (t3 - t2) / 1000.0, vc.call(m),
+					vc.call(_puzzle._rest_mesh), (t2 - t1) / 1000.0, vc.call(st), Array(_puzzle.state.depths()).filter(func(d): return d >= 0).size()])
+				var l0 := Time.get_ticks_usec()
+				_puzzle._lanterns_mesh()
+				print("  lanterns %.2f ms" % ((Time.get_ticks_usec() - l0) / 1000.0))
+		"fl_lanterns":
+			# Every lantern hidden: what the painted lanterns cost.
+			for slot in _puzzle._slots.values():
+				slot.visible = false
 		"sd_count":
 			# One grid build as a frame does it, every 2 s, with its vertices.
 			for n in 5:
@@ -920,3 +946,16 @@ func _ql_move(p: int, f: float) -> void:
 
 func _ql_release(p: int) -> void:
 	_ut_button(_ql_to(p), false)
+
+## Fairy Lights: every piece tapped round to its answer in reading order, a
+## tap a step (never past the answer, which on a judged garden is a fuse).
+func _moves_fairylights() -> Array:
+	var out := []
+	var st = _puzzle.state
+	for i in st.n * st.n:
+		if st.pinned[i] == 1:
+			continue
+		var at: Callable = _puzzle.cell_centre.bind(i)
+		for q in _puzzle._quarters(st.grid[i], st.sol[i]):
+			out.append({"at": at})
+	return out

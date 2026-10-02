@@ -2090,3 +2090,25 @@ HTP_QL_UNDO_CAP,Undo takes it back,Desfazer tira de volta,Deshacer lo quita
 HTP_QL_AGAIN_CAP,Sew it on again,Costure de novo,Cóselo otra vez
 HTP_QL_RESET_CAP,Reset sends them all home,Recomeçar manda todos de volta,Reiniciar los manda todos de vuelta
 HTP_QL_HINT_CAP,The bulb sews a patch for you,A lâmpada costura um retalho por você,La bombilla cose un retazo por ti
+HTP_FL_TURN,Tap to turn,Toque para girar,Toca para girar
+HTP_FL_TURN_BODY,Tap a piece of wire and it turns a quarter turn clockwise: that is the only move. Wire joined all the way back to the post glows gold.,Toque num pedaço de fio e ele gira um quarto de volta no sentido horário: é a única jogada. O fio ligado até o poste brilha dourado.,Toca un tramo de cable y gira un cuarto de vuelta en el sentido de las agujas del reloj: es la única jugada. El cable unido hasta el poste brilla dorado.
+HTP_FL_DONE,Light every lantern,Acenda todas as lanternas,Enciende todos los faroles
+HTP_FL_DONE_BODY,The garden is done when every wire end meets another and the light reaches every lantern. An end that meets nothing stops short with a round tip.,O jardim fica pronto quando cada ponta de fio encontra outra e a luz chega a todas as lanternas. Uma ponta que não encontra nada termina curta e arredondada.,El jardín está listo cuando cada punta de cable encuentra otra y la luz llega a todos los faroles. Una punta que no encuentra nada se queda corta y redondeada.
+HTP_FL_TAGS,Wish Tags,Etiquetas de Desejo,Etiquetas de Deseo
+HTP_FL_UNDO_BODY,"Undo turns the last piece you tapped back, and Reset turns every piece back to how it was dealt, so you can try another way. Nothing here can be lost.","Desfazer volta a última peça que você tocou, e Recomeçar volta todas as peças para como vieram, para você tentar outro caminho. Aqui nada se perde.","Deshacer devuelve la última pieza que tocaste, y Reiniciar devuelve todas las piezas a como venían, para que pruebes otro camino. Aquí nada se pierde."
+HTP_FL_UNDO_BODY_JUDGED,"Undo turns the last piece you tapped back, and Reset turns every piece back to how it was dealt. A heart once spent stays spent, and a clipped piece stays clipped.","Desfazer volta a última peça que você tocou, e Recomeçar volta todas as peças para como vieram. Um coração gasto continua gasto, e uma peça presa pelo grampo continua presa.","Deshacer devuelve la última pieza que tocaste, y Reiniciar devuelve todas las piezas a como venían. Un corazón gastado sigue gastado, y una pieza con pinza sigue sujeta."
+HTP_FL_HINT_BODY_ONE,"The bulb turns one piece to its answer and pins it there, ringed in gold, so it can't be turned again. You have one hint.","A lâmpada gira uma peça para a resposta e a prende ali, com um contorno dourado, para que não gire mais. Você tem uma dica.","La bombilla gira una pieza hasta su respuesta y la fija ahí, con un contorno dorado, para que no gire más. Tienes una pista."
+HTP_FL_HINT_BODY_N,"The bulb turns one piece to its answer and pins it there, ringed in gold, so it can't be turned again. You have %d hints.","A lâmpada gira uma peça para a resposta e a prende ali, com um contorno dourado, para que não gire mais. Você tem %d dicas.","La bombilla gira una pieza hasta su respuesta y la fija ahí, con un contorno dorado, para que no gire más. Tienes %d pistas."
+HTP_FL_WRONG_CAP,This piece points the wrong way,Esta peça aponta para o lado errado,Esta pieza apunta para el lado equivocado
+HTP_FL_TAP_CAP,Tap: a quarter turn,Toque: um quarto de volta,Toca: un cuarto de vuelta
+HTP_FL_GOLD_CAP,"Joined to the post, it glows gold","Ligado ao poste, ele brilha dourado","Unido al poste, brilla dorado"
+HTP_FL_LOOSE_CAP,"One loose end left, one lantern dark","Falta uma ponta solta, uma lanterna apagada","Queda una punta suelta, un farol apagado"
+HTP_FL_DONE_CAP,"All joined, all lit: done!","Tudo ligado, tudo aceso: pronto!","Todo unido, todo encendido: ¡listo!"
+HTP_FL_RIGHT_CAP,This piece is already right,Esta peça já está certa,Esta pieza ya está bien
+HTP_FL_FUSE_CAP,"A right piece turned: a fuse blows, a heart goes","Peça certa girada: o fusível queima, vai um coração","Una pieza correcta: salta un fusible, se va un corazón"
+HTP_FL_CLIP_CAP,The clip holds it where it belongs,O grampo a prende no lugar certo,La pinza la deja en su sitio
+HTP_FL_TAG_CAP,The tag: how many steps from the post,A etiqueta: quantos passos até o poste,La etiqueta: cuántos pasos hasta el poste
+HTP_FL_TICK_CAP,Lit at that count: a gold tick,Acesa nessa conta: um visto dourado,Encendido en esa cuenta: una marca dorada
+HTP_FL_UNDO_CAP,Undo turns it back,Desfazer volta a peça,Deshacer la devuelve
+HTP_FL_RESET_CAP,Reset turns every piece back,Recomeçar volta todas as peças,Reiniciar devuelve todas las piezas
+HTP_FL_HINT_CAP,The bulb turns a piece for you,A lâmpada gira uma peça por você,La bombilla gira una pieza por ti

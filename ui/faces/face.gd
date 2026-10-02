@@ -128,6 +128,13 @@ var shadowless := false:
 ## command per layer per face was most of a full 10x10's draw calls). Empty
 ## draws every layer, as before.
 var skip_layers: Array = []
+## Whether the owner paints this face into a mesh of its own from
+## `layers_now()`, so the node draws nothing (Fairy Lights' lanterns, checkup
+## 2026-10-02: a draw call or three a lantern was a third of the board's).
+var painted := false:
+	set(v):
+		painted = v
+		queue_redraw()
 ## Whether set_idle(true) rocks this face. Only a moon reads it, and the owner
 ## turns it on for about a third of them so a board sways rather than nods.
 var rocks := false
@@ -273,6 +280,8 @@ func _build_layer(_name: String, _R: float, _eye: float, _b: Builder) -> void:
 	pass
 
 func _draw() -> void:
+	if painted:
+		return
 	var R := roundf(_R_for(minf(size.x, size.y)) / R_STEP) * R_STEP
 	if R <= 0.0:
 		return
@@ -327,6 +336,25 @@ func bake_into(b, xf: Transform2D, tint := Color.WHITE, rest := false) -> void:
 			var seat: Array = _hat_place(R)
 			b.append(_accessory("hat", roundf(float(seat[2])), hat_style),
 				at * Transform2D(float(seat[1]), Vector2.ONE, 0.0, seat[0]), tint)
+
+## The layers as _draw draws them now, each [mesh, transform in this
+## Control's own space], for an owner that paints many faces into one mesh
+## (`painted`). Accessories are not in it: a face wearing one is drawn by
+## itself.
+func layers_now() -> Array:
+	var out: Array = []
+	var R := roundf(_R_for(minf(size.x, size.y)) / R_STEP) * R_STEP
+	if R <= 0.0:
+		return out
+	var eye := _eye_level()
+	var centre := size * 0.5
+	for layer in _layers():
+		if shadowless and layer[0] == "shadow":
+			continue
+		if skip_layers.has(layer[0]):
+			continue
+		out.append([_mesh_for(layer[0], layer[1], R, eye), _layer_transform(layer[0], R, centre)])
+	return out
 
 func at_rest() -> bool:
 	if _look_index() != 0:

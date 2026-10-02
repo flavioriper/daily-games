@@ -124,6 +124,7 @@ const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (spec section 2.1) ---
 ## The card's own inset. The grid is what is left of the card's width, cut
@@ -541,6 +542,31 @@ var _shown: ArrayMesh
 ## changes, and the one the last _draw handed over, for _shown's reason.
 var _still: ArrayMesh
 var _still_shown: ArrayMesh
+## Whether the garden mesh is owed a rebuild (`_refresh`).
+var _dirty := true
+## The garden at rest (`_build_rest`), the plan it was built from, and the
+## one the last _draw handed over; `_rm` puts it together from shapes.
+var _rest_mesh: ArrayMesh
+var _rest_shown: ArrayMesh
+var _rest_plan := PackedInt32Array()
+var _rm := RunMesh.new(_shape)
+## Each cell's stubs that meet a stub, for the build in progress.
+var _mt := PackedInt32Array()
+## The reference layout every garden mesh is built in (Bridges' checkup): the
+## largest the board has been laid out at this deal. A smaller relayout (the
+## win card) draws the same meshes under `_relay()` and builds nothing again.
+var _ref_cell := 0.0
+var _ref_grid := Vector2.ZERO
+var _ref_n := 0
+var _real := [Vector2.ZERO, 0.0]
+## Every lantern, painted as one mesh by `_paint` (`_draw_lanterns`): a
+## LanternFace node costs two or three draw calls, and an Insane garden hangs
+## twenty of them.
+var _paint: Control
+var _lantern_rm := RunMesh.new(_lantern_shape)
+var _lantern_ids: Dictionary = {}  # ArrayMesh -> shape id
+var _lantern_meshes: Array = []     # shape id -> ArrayMesh
+var _lanterns_shown: ArrayMesh
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -655,6 +681,39 @@ func _tips() -> Array:
 		return TIPS_HEARTS
 	return TIPS
 
+## The tutorial, a page a rule, each played on a little garden of its own
+## (`ui/hud/fairylights_tutorial_diagram.gd`): a tap turns a piece and joined
+## wire runs gold, done when every lantern is lit, what a turn of a right
+## piece costs on a judged band, Wish Tags' tags, Undo and Reset, and the
+## bulb on a band that has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/fairylights_tutorial_diagram.gd")
+	var band: int = state.band
+	var hints: int = State.hints_for(band)
+	var judged := State.hearts_for(band) > 0
+	var steps := [
+		[Diagram.Lesson.TURN, "HTP_FL_TURN", tr("HTP_FL_TURN_BODY")],
+		[Diagram.Lesson.DONE, "HTP_FL_DONE", tr("HTP_FL_DONE_BODY")],
+	]
+	if judged:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("FL_RULES_HEARTS") % State.hearts_for(band)])
+	if band == 3:
+		steps.append([Diagram.Lesson.TAGS, "HTP_FL_TAGS", tr("FL_RULES_TAGS")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+		tr("HTP_FL_UNDO_BODY_JUDGED") if judged else tr("HTP_FL_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_FL_HINT_BODY_ONE") if hints == 1 else tr("HTP_FL_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.hearts = State.hearts_for(band)
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can exist on this board: a garden is unfinished or it is done. So the
 ## registry drops the actions row and Reset rides up into the top bar --
@@ -694,6 +753,14 @@ func _ready() -> void:
 	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_life_layer.draw.connect(_draw_life)
 	add_child(_life_layer)
+	# Under the slots in the tree, so a lantern its own node draws (a pressed
+	# one) hangs over the painted ones, as it would have anyway.
+	_paint = Control.new()
+	_paint.name = "Lanterns"
+	_paint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_paint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_paint.draw.connect(_draw_lanterns)
+	add_child(_paint)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -701,6 +768,16 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
 	state.start(rng, difficulty, bank_step)
+	_dealt()
+	_enter()
+	_tip_idx = 0
+	_say(tr(_tips()[0]), Face.Expr.HAPPY)
+	_tip_timer.start()
+
+## Everything a garden now in `state` needs before it is shown: its hearts,
+## clean clocks and rewards, its lanterns' papers and nodes, and a layout of
+## its own. A deal's (`build`) and the tutorial's hand-dealt gardens'.
+func _dealt() -> void:
 	max_hearts = State.hearts_for(state.band) if state.judged else 0
 	_heart_used = false
 	_lost_ever = false
@@ -714,11 +791,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_hue[i] = posmod(hash(Vector2i(i, state.post * 31 + state.n)),
 			Pal.LANTERN_PAPER.size())
 	_build_lanterns()
+	# A new deal is a new reference layout: its stones are its own.
+	_ref_cell = 0.0
 	_layout()
-	_enter()
-	_tip_idx = 0
-	_say(tr(_tips()[0]), Face.Expr.HAPPY)
-	_tip_timer.start()
 
 ## The garden as it is dealt, and as Try again deals it back: every heart, the
 ## day's light, nothing splitting and no card.
@@ -812,6 +887,8 @@ func _build_lanterns() -> void:
 		slot.add_child(lantern)
 		_slots[i] = slot
 		_lanterns[i] = lantern
+	if _paint != null:
+		_paint.queue_redraw()
 
 # --- layout ---
 
@@ -824,7 +901,7 @@ func _build_lanterns() -> void:
 func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
-	var room := minf(size.x, available - _heart_row()) - 2.0 * INSET
+	var room := minf(size.x, available - _heart_row()) - 2.0 * _inset()
 	return floorf(maxf(0.0, room) / float(state.n))
 
 ## The card this board wants: the grid and its two insets, and the hearts'
@@ -835,11 +912,21 @@ func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * float(state.n) + 2.0 * INSET + _heart_row())
+	return minf(available, cell * float(state.n) + 2.0 * _inset() + _heart_row())
 
 ## The strip the hearts take over the frame, on a garden that has them.
 func _heart_row() -> float:
 	return HEART_ROW if max_hearts > 0 else 0.0
+
+## The air between the card's edge and the grid, the frame inside it. A
+## hook for the tutorial's page, which has less of it to spare.
+func _inset() -> float:
+	return INSET
+
+## The middle of the hearts' pill: centred over the frame. A hook for the
+## tutorial's page, which hangs it beside the garden.
+func _hearts_at() -> Vector2:
+	return Vector2(size.x * 0.5, _hearts_y)
 
 func card_centred() -> bool:
 	return true
@@ -855,13 +942,22 @@ func _layout() -> void:
 	# it, so the grid is square in its card whether or not the host trimmed
 	# the card to card_height().
 	var row := _heart_row()
-	var tall := minf(size.y, span + 2.0 * INSET + row)
+	var tall := minf(size.y, span + 2.0 * _inset() + row)
 	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - span * 0.5, top + INSET + row)
+	_grid = Vector2(size.x * 0.5 - span * 0.5, top + _inset() + row)
 	_hearts_y = top + HEART_TOP + HEART_R + HEART_PILL_PAD.y
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
-	_still = null
+	# A deal, or a layout bigger than the reference, takes a new reference;
+	# a smaller one (the win card) draws the meshes it has, scaled.
+	if _ref_cell <= 0.0 or _cell > _ref_cell or _ref_n != state.n:
+		_ref_cell = _cell
+		_ref_grid = _grid
+		_ref_n = state.n
+		_still = null
+		_rm.reset()
+		_rest_plan = PackedInt32Array()
+		_rest_mesh = null
 	_love_mesh = null
 	_note_mesh = null
 	_moth_mesh = null
@@ -952,8 +1048,14 @@ func _process(delta: float) -> void:
 func _sway_all(t: float) -> void:
 	if Motion.reduce:
 		return
+	var any := false
 	for i in _lanterns:
-		_hang(i, t, not (_lanterns[i] as LanternFace).plain)
+		var live := not (_lanterns[i] as LanternFace).plain
+		_hang(i, t, live)
+		any = any or live
+	# The painted lanterns follow: only a lit one sways (or blinks).
+	if any:
+		_paint.queue_redraw()
 
 ## Lantern `i` in its slot at `t`: level against the slot's turn, plus its
 ## sway about the ring it hangs by. The paper's pivot is its middle (the
@@ -1044,8 +1146,26 @@ func _busy_for(seconds: float) -> void:
 ## mesh the last _draw handed over is still held by _shown, so the renderer
 ## is never left pointing at a freed RID.
 func _refresh() -> void:
-	_mesh = null
+	_dirty = true
 	queue_redraw()
+	if _paint != null:
+		_paint.queue_redraw()
+
+## While on, `_grid` and `_cell` answer the reference layout's, so a mesh is
+## built in its space; off puts the real ones back.
+func _in_ref(on: bool) -> void:
+	if on:
+		_real = [_grid, _cell]
+		_grid = _ref_grid
+		_cell = _ref_cell
+	else:
+		_grid = _real[0]
+		_cell = _real[1]
+
+## The reference layout's space onto the one the board has now.
+func _relay() -> Transform2D:
+	var k := _cell / _ref_cell if _ref_cell > 0.0 else 1.0
+	return Transform2D(0.0, Vector2.ONE * k, 0.0, _grid - _ref_grid * k)
 
 # --- the drawing ---
 
@@ -1061,18 +1181,27 @@ func _draw() -> void:
 	if seen <= 0.0:
 		return
 	if _still == null:
+		_in_ref(true)
 		_still = _build_still()
-	if _mesh == null:
+		_in_ref(false)
+	if _dirty:
+		_dirty = false
+		_in_ref(true)
 		_mesh = _build(now)
-	if _mesh == null:
-		return
+		_in_ref(false)
 	var grow := Motion.wide_pop_scale(since)
 	var mid := _grid + Vector2.ONE * (_cell * float(state.n) * 0.5)
 	var at := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
-	draw_mesh(_still, null, at, Color(1.0, 1.0, 1.0, seen))
-	draw_mesh(_mesh, null, at, Color(1.0, 1.0, 1.0, seen))
+	var tint := Color(1.0, 1.0, 1.0, seen)
+	var laid := at * _relay()
+	draw_mesh(_still, null, laid, tint)
+	if _rest_mesh != null:
+		draw_mesh(_rest_mesh, null, laid, tint)
+	if _mesh != null:
+		draw_mesh(_mesh, null, laid, tint)
 	_shown = _mesh
 	_still_shown = _still
+	_rest_shown = _rest_mesh
 	if state.wish_tags():
 		_draw_tag_numbers(at, now, seen)
 	var k := Motion.flash_level(now - _tw_at, TWINKLE_IN, TWINKLE_OUT)
@@ -1095,18 +1224,26 @@ func _flare_mesh() -> ArrayMesh:
 	return b.mesh()
 
 ## Everything on the board with no face on it, as it stands `t` seconds into
-## whatever is moving: the frame and its vines, the terrace, the pinned
-## washes, the glow under every live run, the wire's shade, face and back,
-## the beads, and the post.
+## whatever is moving: the terrace's washes, the pinned cells, the glow under
+## every live run, the wire's shade, face and back, the beads, the clips, the
+## post and the tags. Every piece standing as it stands at rest is a shape
+## made once (`_shape`) and put into the rest mesh, handed back while no
+## piece's look changed (`_build_rest`); only a piece turning, pressed,
+## shivering, fading, flaring or popping is drawn here, live, into the mesh
+## this returns, which is drawn over the rest mesh (checkup 2026-10-02: the
+## whole garden was built in script on every moving frame, 7-20 ms on
+## Insane).
 func _build(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
-	var span := _cell * float(state.n)
 	var cells: int = state.n * state.n
 	# What is live, recomputed here and never kept; the wash only decides when
 	# the eye is allowed to see it and how far up it has come. One frame, one
 	# pull, one lift, one level and one chase flare a cell, read once and
 	# handed to every pass, so no two passes disagree about a moving piece.
 	var depths: PackedInt32Array = state.depths()
+	_mt = PackedInt32Array()
+	_mt.resize(cells)
+	for i in cells:
+		_mt[i] = _matched_of(i)
 	var frames: Array[Transform2D] = []
 	frames.resize(cells)
 	var pulls := PackedFloat32Array()
@@ -1117,11 +1254,15 @@ func _build(t: float) -> ArrayMesh:
 	levels.resize(cells)
 	var chase := PackedFloat32Array()
 	chase.resize(cells)
+	var pops := PackedFloat32Array()
+	pops.resize(cells)
 	# The fuse's brown-out dims every live cell at once; the press shades the
 	# one piece under the finger.
 	var flicker := _flicker(t)
 	var shades := PackedFloat32Array()
 	shades.resize(cells)
+	var looks := PackedInt32Array()
+	looks.resize(cells)
 	for i in cells:
 		frames[i] = _frame(i, t)
 		pulls[i] = _spin_pull(i, t)
@@ -1129,69 +1270,222 @@ func _build(t: float) -> ArrayMesh:
 		levels[i] = _level(i, depths, t) * flicker
 		chase[i] = _chase(i, depths, t)
 		shades[i] = _press_shade(i, t)
+		pops[i] = Motion.bump_scale(t - _live_at[i], BEAD_BUMP) if depths[i] >= 0 else 1.0
+		looks[i] = _look(i, frames[i], pulls[i], lifts[i], shades[i], levels[i], chase[i], pops[i], depths, t)
+	_build_rest(looks)
+	var b := Face.Builder.new()
 	# The light spilling onto the stones: a wash over each lit stone's face,
 	# since the stones themselves are in the still mesh.
 	for i in cells:
 		var warm := WARM * levels[i] + WIN_WARM * chase[i]
-		if warm > 0.0:
-			_stone_wash(b, i, Color(Pal.SUN_RAY, warm))
-	for i in cells:
-		if state.pinned[i] == 1:
-			_pin(b, i)
+		if looks[i] < 0 and warm > 0.0:
+			_stone_wash(b, cell_centre(i), Color(Pal.SUN_RAY, warm))
 	# The glow under every live run first, widest pass across the whole board
 	# before the next, so a narrower band never lands under a wider one.
 	for g in GLOWS:
 		for i in cells:
-			if levels[i] > 0.0:
-				_glow(b, i, frames[i], pulls[i], g.x,
+			if looks[i] < 0 and levels[i] > 0.0:
+				_glow(b, state.grid[i], _mt[i], frames[i], pulls[i], g.x,
 					Color(Pal.SUN_RAY, g.y * (levels[i] + 0.8 * chase[i])))
 	# Then the wire: every shade first, then every face over the lot, so a
 	# neighbour's shade never lands on this cell's cable.
 	for i in cells:
+		if looks[i] >= 0:
+			continue
 		var lv := levels[i]
 		# A pressed piece sits closer to its stone: its lip shrinks with the dip.
 		var drop := Vector2(0.0, SHADE_DROP * (1.0 - 0.5 * shades[i]) + LIFT_SHADE * lifts[i] / TURN_LIFT)
 		var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
-		_arms(b, i, frames[i], pulls[i], 1.0, col, drop)
+		_arms(b, state.grid[i], _mt[i], frames[i], pulls[i], 1.0, col, drop)
 		if Gen.degree(state.grid[i]) >= 3:
 			_dot(b, frames[i] * drop, _cell * WIRE * COLLAR, col)
 	for i in cells:
+		if looks[i] >= 0:
+			continue
 		var lv := levels[i]
 		var col: Color = Pal.FLAGSTONE.lerp(Pal.SUN, lv)
 		if shades[i] > 0.0:
 			# The press shades what it sinks (a dip alone is 6%, and 6% of a
 			# wire is not seen): the stone darkens under it, the wire toward
 			# its own shade.
-			_stone_wash(b, i, Color(Pal.TEXT, 0.07 * shades[i]))
+			_stone_wash(b, cell_centre(i), Color(Pal.TEXT, 0.07 * shades[i]))
 			col = col.lerp(Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv), PRESS_SHADE * shades[i])
-		_arms(b, i, frames[i], pulls[i], 1.0, col)
-		if Gen.degree(state.grid[i]) >= 3:
-			_dot(b, frames[i].origin, _cell * WIRE * COLLAR, col)
-		var back := Color(Pal.SURFACE.lerp(Pal.LANTERN_LIT, lv), TOP_ALPHA + (SHEEN_ALPHA - TOP_ALPHA) * lv)
-		_glow(b, i, frames[i], pulls[i], TOP if lv <= 0.0 else SHEEN, back,
-			Vector2(0.0, -_cell * WIRE * TOP_RISE * (1.0 - lv)))
+		_face(b, state.grid[i], _mt[i], frames[i], pulls[i], lv, col)
 	for i in cells:
-		if levels[i] > 0.0:
-			_beads(b, i, frames[i], pulls[i], levels[i], chase[i], depths, t)
+		if looks[i] < 0 and levels[i] > 0.0:
+			_beads(b, state.grid[i], _mt[i], _mid_bead(i), frames[i], pulls[i], levels[i],
+				chase[i], pops[i])
 	# The clips a fuse left, each on its stone's corner, popping on as it
 	# snaps.
 	for i in cells:
-		if state.clipped[i] == 1 and t >= _clip_at[i]:
-			_clip(b, i, frames[i].origin, t - _clip_at[i])
+		if looks[i] < 0 and state.clipped[i] == 1 and t >= _clip_at[i]:
+			_clip(b, frames[i].origin, t - _clip_at[i])
 	# The post stands level however its own cell is turning, the way a lantern
 	# does: it takes the cell's place, not the cell's turn.
-	_post(b, frames[state.post].origin)
+	if looks[state.post] < 0:
+		_post(b, frames[state.post].origin)
 	# Wish Tags' paper last, so no wire or bead crosses a tag; the lanterns are
 	# Controls and hang over their own threads.
 	if state.wish_tags():
-		for i in state.tags:
-			_tag(b, int(i), frames[int(i)].origin, _tag_seen(int(i), depths, t), t)
+		for key in state.tags:
+			var i := int(key)
+			if looks[i] < 0:
+				var centre := frames[i].origin
+				_tag(b, centre, _tag_frame(i, centre, t), _tag_seen(i, depths, t), _tag_gold(i, t))
 	return b.mesh() if not b.verts.is_empty() else null
 
-## A wash over cell `i`'s stone face: an octagon inside its rounded face, a
-## rounded rect's arcs cost more than everything else in the wash together.
-func _stone_wash(b, i: int, colour: Color) -> void:
-	var at := _stone_at(i)
+## The rest mesh's passes, in the live mesh's paint order: a cell's piece in
+## each is one shape (`_shape`), id `pass << 16 | look`.
+const P_WASH := 0
+const P_PIN := 1
+const P_GLOW := 2  # one a band of GLOWS
+const P_SHADE := 5
+const P_FACE := 6
+const P_BEAD := 7
+const P_CLIP := 8
+const P_POST := 9
+const P_TAG := 10
+## A look's bits: the stubs (0-3), which of them meet a stub (4-7), lit (8),
+## no bead in the middle (9), a clip on (10), pinned (11); a tag's reading
+## (12-13) and gold (14).
+const LOOK_LIT := 1 << 8
+const LOOK_NO_MID := 1 << 9
+const LOOK_CLIP := 1 << 10
+const LOOK_PIN := 1 << 11
+
+## Cell `i`'s look when every piece on it stands as it does at rest -- turned
+## home, unpressed, still, fully lit or fully dark, no flare, no bead popping,
+## a clip on or not there yet, its tag still and its gold either way -- and
+## -1 while anything on it moves, which draws it live. A pinned cell keeps
+## its pin in the rest mesh either way.
+func _look(i: int, frame: Transform2D, pull: float, lift: float, shade: float,
+		level: float, flare: float, pop: float, depths: PackedInt32Array, t: float) -> int:
+	if frame.origin != cell_centre(i) or frame.x != Vector2.RIGHT or frame.y != Vector2.DOWN \
+			or pull != 1.0 or lift != 0.0 or shade != 0.0 or flare != 0.0 or pop != 1.0 \
+			or (level != 0.0 and level != 1.0):
+		return -1
+	var look: int = state.grid[i] | (_mt[i] << 4)
+	if level == 1.0:
+		look |= LOOK_LIT
+	if not _mid_bead(i):
+		look |= LOOK_NO_MID
+	if state.clipped[i] == 1 and t >= _clip_at[i]:
+		if t - _clip_at[i] < Motion.POP_IN:
+			return -1
+		look |= LOOK_CLIP
+	if state.wish_tags() and state.tags.has(i):
+		var gold := _tag_gold(i, t)
+		if _tag_flutter(i, t) != 0.0 or (gold != 0.0 and gold != 1.0):
+			return -1
+		look |= (_tag_seen(i, depths, t) << 12) | (int(gold) << 14)
+	return look
+
+## Whether cell `i` wears a bead in its middle: the post and a lantern have
+## their own light there.
+func _mid_bead(i: int) -> bool:
+	return i != state.post and not _lanterns.has(i)
+
+## The mask of cell `i`'s stubs that meet a stub back.
+func _matched_of(i: int) -> int:
+	var out := 0
+	for d in 4:
+		if state.matched(i, 1 << d):
+			out |= 1 << d
+	return out
+
+## The rest mesh: every cell at rest (`looks` >= 0) as its shapes, pass by
+## pass, and every pin. Handed back while the plan -- each cell's look, and
+## which are pinned -- is the one it was built from.
+func _build_rest(looks: PackedInt32Array) -> void:
+	var cells: int = looks.size()
+	var plan := looks.duplicate()
+	for i in cells:
+		if state.pinned[i] == 1:
+			plan[i] = plan[i] | LOOK_PIN if plan[i] >= 0 else -2
+	if plan == _rest_plan:
+		return
+	_rest_plan = plan
+	_rm.begin()
+	for i in cells:
+		if looks[i] >= 0 and looks[i] & LOOK_LIT:
+			_rm.put(P_WASH << 16, [], Transform2D(0.0, cell_centre(i)))
+	for i in cells:
+		if state.pinned[i] == 1:
+			_rm.put(P_PIN << 16, [], Transform2D(0.0, cell_centre(i)))
+	for g in GLOWS.size():
+		for i in cells:
+			if looks[i] >= 0 and looks[i] & LOOK_LIT:
+				_rm.put((P_GLOW + g) << 16 | (looks[i] & 0xff), [], Transform2D(0.0, cell_centre(i)))
+	for p in [P_SHADE, P_FACE]:
+		for i in cells:
+			if looks[i] >= 0 and state.grid[i] != 0:
+				_rm.put(p << 16 | (looks[i] & 0x1ff), [], Transform2D(0.0, cell_centre(i)))
+	for i in cells:
+		if looks[i] >= 0 and looks[i] & LOOK_LIT:
+			_rm.put(P_BEAD << 16 | (looks[i] & 0x3ff), [], Transform2D(0.0, cell_centre(i)))
+	for i in cells:
+		if looks[i] >= 0 and looks[i] & LOOK_CLIP:
+			_rm.put(P_CLIP << 16, [], Transform2D(0.0, cell_centre(i)))
+	if looks[state.post] >= 0:
+		_rm.put(P_POST << 16, [], Transform2D(0.0, cell_centre(state.post)))
+	if state.wish_tags():
+		for key in state.tags:
+			var i := int(key)
+			if looks[i] >= 0:
+				_rm.put(P_TAG << 16 | ((looks[i] >> 12) & 7), [], Transform2D(0.0, cell_centre(i)))
+	_rest_mesh = _rm.mesh()
+
+## Shape `id` (`pass << 16 | look`) about a cell's centre at the origin, in
+## the colours it is drawn in: what the live passes draw for a piece at rest.
+func _shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var pass_ := id >> 16
+	var m := id & 0xf
+	var mt := (id >> 4) & 0xf
+	var lv := 1.0 if id & LOOK_LIT else 0.0
+	match pass_:
+		P_WASH:
+			_stone_wash(b, Vector2.ZERO, Color(Pal.SUN_RAY, WARM))
+		P_PIN:
+			_pin(b, Vector2.ZERO)
+		P_GLOW, P_GLOW + 1, P_GLOW + 2:
+			var g: Vector2 = GLOWS[pass_ - P_GLOW]
+			_glow(b, m, mt, Transform2D.IDENTITY, 1.0, g.x, Color(Pal.SUN_RAY, g.y))
+		P_SHADE:
+			var drop := Vector2(0.0, SHADE_DROP)
+			var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
+			_arms(b, m, mt, Transform2D.IDENTITY, 1.0, 1.0, col, drop)
+			if Gen.degree(m) >= 3:
+				_dot(b, drop, _cell * WIRE * COLLAR, col)
+		P_FACE:
+			_face(b, m, mt, Transform2D.IDENTITY, 1.0, lv, Pal.FLAGSTONE.lerp(Pal.SUN, lv))
+		P_BEAD:
+			_beads(b, m, mt, id & LOOK_NO_MID == 0, Transform2D.IDENTITY, 1.0, 1.0, 0.0, 1.0)
+		P_CLIP:
+			_clip(b, Vector2.ZERO, Motion.POP_IN)
+		P_POST:
+			_post(b, Vector2.ZERO)
+		P_TAG:
+			var seen := id & 3
+			var gold := float((id >> 2) & 1)
+			_tag(b, Vector2.ZERO, Transform2D(TAG_TILT, TAG_AT * _cell), seen, gold)
+	return b
+
+## A piece's wire face over its shade: the arms, the collar on a tee or a
+## cross, and the lit back along the top (the sheen once it is live).
+func _face(b, m: int, mt: int, frame: Transform2D, pull: float, lv: float, col: Color) -> void:
+	_arms(b, m, mt, frame, pull, 1.0, col)
+	if Gen.degree(m) >= 3:
+		_dot(b, frame.origin, _cell * WIRE * COLLAR, col)
+	var back := Color(Pal.SURFACE.lerp(Pal.LANTERN_LIT, lv), TOP_ALPHA + (SHEEN_ALPHA - TOP_ALPHA) * lv)
+	_glow(b, m, mt, frame, pull, TOP if lv <= 0.0 else SHEEN, back,
+		Vector2(0.0, -_cell * WIRE * TOP_RISE * (1.0 - lv)))
+
+## A wash over the stone face of the cell centred on `centre`: an octagon
+## inside its rounded face, a rounded rect's arcs cost more than everything
+## else in the wash together.
+func _stone_wash(b, centre: Vector2, colour: Color) -> void:
+	var at := centre - Vector2.ONE * (_cell * 0.5 - TILE_GAP)
 	var sz := Vector2.ONE * (_cell - 2.0 * TILE_GAP) - Vector2(0.0, TILE_LIP)
 	var c := _cell * TILE_RADIUS * 0.6
 	b.fan(PackedVector2Array([at + Vector2(c, 0.0), at + Vector2(sz.x - c, 0.0),
@@ -1203,7 +1497,7 @@ func _stone_wash(b, i: int, colour: Color) -> void:
 ## The brass clip a fuse leaves on cell `i`: a little bulldog clip gripping
 ## its stone's upper-left corner, across it, with a wire handle, a lit edge and
 ## a dark jaw. It pops on over POP_IN `since` seconds after it snaps.
-func _clip(b, i: int, centre: Vector2, since: float) -> void:
+func _clip(b, centre: Vector2, since: float) -> void:
 	var k := Motion.pop_in_scale(since).x
 	if k <= 0.01:
 		return
@@ -1304,13 +1598,13 @@ func _tag_flutter(i: int, t: float) -> float:
 func _tag_delay(i: int) -> float:
 	return float(maxi(0, int(state.tags.get(i, 0)))) * TAG_STEP
 
-## Wish Tags' paper label for lantern `i`: a thread from its lantern's base to
-## the hole, a luggage tag with its top corners cut, and the reading once the
-## lantern is lit -- a gold tick and warm paper when its depth is the tag.
-## The number itself is drawn text (`_draw_tag_numbers`).
-func _tag(b, i: int, centre: Vector2, seen: int, t: float) -> void:
-	var xf := _tag_frame(i, centre, t)
-	var gold := _tag_gold(i, t)
+## Wish Tags' paper label for the lantern centred on `centre`, hanging in
+## `xf` (`_tag_frame`): a thread from its lantern's base to the hole, a
+## luggage tag with its top corners cut, and the reading once the lantern is
+## lit -- a gold tick and warm paper when its depth is the tag, `gold` of the
+## way to the party's gold. The number itself is drawn text
+## (`_draw_tag_numbers`).
+func _tag(b, centre: Vector2, xf: Transform2D, seen: int, gold: float) -> void:
 	var s := TAG_SIZE * _cell
 	var hole := xf * Vector2(0.0, -s.y * 0.3)
 	# The thread, tied to the lantern's base and sagging to the hole.
@@ -1368,15 +1662,15 @@ func _draw_tag_numbers(at: Transform2D, t: float, seen: float) -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, Color(ink, seen))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
-## Cell `i`'s arms in its own `frame`, `weight` times the wire's width and
-## `pull` of their full length, offset by `drop`. An arm runs from the cell's
-## middle to its edge when it meets a stub on the other side and stops at
-## LOOSE of the way with a round cap when it does not -- which is the whole
-## of "a loose end looks loose". The drop rides inside the frame, as the
-## mock's own `translate(0, 4)` does, so a piece's lip turns with it.
-func _arms(b, i: int, frame: Transform2D, pull: float, weight: float,
+## A piece's arms -- stubs `m`, of which `mt` meet a stub -- in its own
+## `frame`, `weight` times the wire's width and `pull` of their full length,
+## offset by `drop`. An arm runs from the cell's middle to its edge when it
+## meets a stub on the other side and stops at LOOSE of the way with a round
+## cap when it does not -- which is the whole of "a loose end looks loose".
+## The drop rides inside the frame, as the mock's own `translate(0, 4)` does,
+## so a piece's lip turns with it.
+func _arms(b, m: int, mt: int, frame: Transform2D, pull: float, weight: float,
 		colour: Color, drop := Vector2.ZERO) -> void:
-	var m: int = state.grid[i]
 	if m == 0:
 		return
 	var mid := frame * drop
@@ -1388,25 +1682,29 @@ func _arms(b, i: int, frame: Transform2D, pull: float, weight: float,
 	for d in 4:
 		if m & (1 << d) == 0:
 			continue
-		var end := frame * (drop + _arm_end(i, d, pull))
+		var end := frame * (drop + _arm_end_m(mt, d, pull))
 		b.stroke(PackedVector2Array([mid, end]), w, colour, false, false)
-		if not state.matched(i, 1 << d):
+		if mt & (1 << d) == 0:
 			_dot(b, end, w * 0.5, colour)
 
 ## Where arm `d` of cell `i` ends, in the cell's own frame: its edge when it
 ## meets a stub, LOOSE of the way when it does not.
 func _arm_end(i: int, d: int, pull: float) -> Vector2:
+	return _arm_end_m(_matched_of(i), d, pull)
+
+## The same for a piece whose met stubs are `mt`.
+func _arm_end_m(mt: int, d: int, pull: float) -> Vector2:
 	var half := _cell * 0.5
-	var reach := (half if state.matched(i, 1 << d) else half * LOOSE) * pull
+	var reach := (half if mt & (1 << d) else half * LOOSE) * pull
 	return Vector2(float(Gen.DC[d]), float(Gen.DR[d])) * reach
 
-## The glow under cell `i`'s wire, `weight` wires wide. A straight or an elbow
-## is one polyline through the middle, so it never overlaps itself; a tee or
-## a cross is one polyline and the odd arm. An end that meets a neighbour is
-## flat, so the two cells' glows meet edge to edge; a loose end is round.
-func _glow(b, i: int, frame: Transform2D, pull: float, weight: float, colour: Color,
+## The glow under a piece's wire (`m`, `mt` as for `_arms`), `weight` wires
+## wide. A straight or an elbow is one polyline through the middle, so it
+## never overlaps itself; a tee or a cross is one polyline and the odd arm. An
+## end that meets a neighbour is flat, so the two cells' glows meet edge to
+## edge; a loose end is round.
+func _glow(b, m: int, mt: int, frame: Transform2D, pull: float, weight: float, colour: Color,
 		drop := Vector2.ZERO) -> void:
-	var m: int = state.grid[i]
 	if m == 0 or colour.a <= 0.0:
 		return
 	var arms: Array[int] = []
@@ -1415,38 +1713,38 @@ func _glow(b, i: int, frame: Transform2D, pull: float, weight: float, colour: Co
 			arms.append(d)
 	var w := _cell * WIRE * weight
 	var mid := frame * drop
+	var loose := func(d: int) -> bool: return mt & (1 << d) == 0
 	if arms.size() == 1:
-		_glow_run(b, [frame * (drop + _arm_end(i, arms[0], pull)), mid], [i, arms[0]], [-1, -1], w, colour)
+		_glow_run(b, [frame * (drop + _arm_end_m(mt, arms[0], pull)), mid], loose.call(arms[0]), false, w, colour)
 		return
-	_glow_run(b, [frame * (drop + _arm_end(i, arms[0], pull)), mid,
-		frame * (drop + _arm_end(i, arms[1], pull))], [i, arms[0]], [i, arms[1]], w, colour)
+	_glow_run(b, [frame * (drop + _arm_end_m(mt, arms[0], pull)), mid,
+		frame * (drop + _arm_end_m(mt, arms[1], pull))], loose.call(arms[0]), loose.call(arms[1]), w, colour)
 	for k in range(2, arms.size()):
-		_glow_run(b, [mid, frame * (drop + _arm_end(i, arms[k], pull))], [-1, -1], [i, arms[k]], w, colour)
+		_glow_run(b, [mid, frame * (drop + _arm_end_m(mt, arms[k], pull))], false, loose.call(arms[k]), w, colour)
 
 ## One glow stroke along `pts`, with a round cap at an end that is a loose
-## arm (`head`/`tail` name the cell and arm the end belongs to, -1 for the
-## middle, which the bead covers) and flat everywhere else.
-func _glow_run(b, pts: Array, head: Array, tail: Array, w: float, colour: Color) -> void:
+## arm (`head`/`tail`; the middle, which the bead covers, never is) and flat
+## everywhere else.
+func _glow_run(b, pts: Array, head: bool, tail: bool, w: float, colour: Color) -> void:
 	b.stroke(PackedVector2Array(pts), w, colour, false, false)
-	for end in [[head, pts[0]], [tail, pts[pts.size() - 1]]]:
-		var who: Array = end[0]
-		if who[0] >= 0 and not state.matched(who[0], 1 << who[1]):
-			_dot(b, end[1], w * 0.5, colour)
+	if head:
+		_dot(b, pts[0], w * 0.5, colour)
+	if tail:
+		_dot(b, pts[pts.size() - 1], w * 0.5, colour)
 
-## The beads on a live piece: one in its middle (the post and a lantern have
-## their own light there) and one on every join it makes to the east or the
-## south, so a join shared by two cells gets one bead and not two. Each pops
-## with BEAD_BUMP as the light reaches it and flares with the win's chase.
-func _beads(b, i: int, frame: Transform2D, pull: float, level: float, flare: float,
-		depths: PackedInt32Array, t: float) -> void:
-	var m: int = state.grid[i]
-	var pop := Motion.bump_scale(t - _live_at[i], BEAD_BUMP) if depths[i] >= 0 else 1.0
+## The beads on a live piece: one in its middle when `mid` (the post and a
+## lantern have their own light there) and one on every join it makes to the
+## east or the south, so a join shared by two cells gets one bead and not
+## two. Each pops by `pop` (BEAD_BUMP as the light reaches it) and flares
+## with the win's chase.
+func _beads(b, m: int, mt: int, mid: bool, frame: Transform2D, pull: float, level: float,
+		flare: float, pop: float) -> void:
 	var r := _cell * WIRE * BEAD * 0.5 * pop * frame.get_scale().x
-	if i != state.post and not _lanterns.has(i):
+	if mid:
 		_bead(b, frame.origin, r, level, flare)
 	for d in [1, 2]:
-		if m & (1 << d) and state.matched(i, 1 << d):
-			_bead(b, frame * _arm_end(i, d, pull), r, level, flare)
+		if m & (1 << d) and mt & (1 << d):
+			_bead(b, frame * _arm_end_m(mt, d, pull), r, level, flare)
 
 func _bead(b, at: Vector2, r: float, level: float, flare: float) -> void:
 	var k := clampf(level + flare, 0.0, 1.6)
@@ -1797,10 +2095,10 @@ func _settle(before: PackedInt32Array, at: float, by_turn := false) -> void:
 	_wake_cues.sort_custom(func(a, b): return float(a.at) < float(b.at))
 	_busy_for(last - _now() + LIGHT_FADE + Motion.BUMP_TIME)
 
-## A pinned cell reads as a given, in the language every board in this game
+## A pinned cell (centred on `centre`) reads as a given, in the language every board in this game
 ## uses: a pale sun wash under a dotted ring. Word Trail's hint mark.
-func _pin(b, i: int) -> void:
-	var at := cell_centre(i) - Vector2.ONE * (_cell * 0.5)
+func _pin(b, centre: Vector2) -> void:
+	var at := centre - Vector2.ONE * (_cell * 0.5)
 	b.fan(Face.Builder.round_rect(at + Vector2.ONE * PIN_INSET,
 		Vector2.ONE * (_cell - 2.0 * PIN_INSET), _cell * PIN_RADIUS),
 		Color(Pal.SUN_RAY, PIN_ALPHA))
@@ -1942,6 +2240,53 @@ func _dress(t: float) -> void:
 		# The press shades the paper too, not only the wire under it.
 		var shade := 1.0 - 0.12 * _press_shade(i, t)
 		lantern.modulate = Color(shade, shade, shade)
+	_paint.queue_redraw()
+
+## Every lantern as one mesh: each one's layers, as its node would draw
+## them, put under its slot's and its own transform. A lantern its node must
+## draw itself -- shaded by a press, or hidden -- is left to it.
+func _draw_lanterns() -> void:
+	_lanterns_shown = _lanterns_mesh()
+	if _lanterns_shown != null:
+		_paint.draw_mesh(_lanterns_shown, null)
+
+func _lanterns_mesh() -> ArrayMesh:
+	_lantern_rm.begin()
+	for i in _lanterns:
+		var lantern: LanternFace = _lanterns[i]
+		var slot: Control = _slots[i]
+		var paint := lantern.modulate == Color.WHITE and lantern.visible and slot.visible \
+			and lantern.self_modulate == Color.WHITE
+		if lantern.painted != paint:
+			lantern.painted = paint
+		if not paint:
+			continue
+		# The renderer puts a node's origin on a whole pixel; so does the
+		# paint, or every lantern moves by a fraction of one (measured against
+		# the nodes' frames, 2026-10-02).
+		var xf := slot.get_transform() * lantern.get_transform()
+		xf.origin = xf.origin.round()
+		for layer in lantern.layers_now():
+			_lantern_rm.put(_lantern_id(layer[0]), [], xf * (layer[1] as Transform2D))
+	return _lantern_rm.mesh()
+
+## The shape id of a lantern layer's mesh (Face's shared cache hands every
+## lantern of a look the same one).
+func _lantern_id(m: ArrayMesh) -> int:
+	var id = _lantern_ids.get(m)
+	if id == null:
+		id = _lantern_meshes.size()
+		_lantern_ids[m] = id
+		_lantern_meshes.append(m)
+	return id
+
+func _lantern_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var a := (_lantern_meshes[id] as ArrayMesh).surface_get_arrays(0)
+	b.verts = a[Mesh.ARRAY_VERTEX]
+	b.cols = a[Mesh.ARRAY_COLOR]
+	b.idx = a[Mesh.ARRAY_INDEX]
+	return b
 
 # --- the moments ---
 
@@ -2914,10 +3259,11 @@ func _draw_hearts() -> void:
 	var b := Face.Builder.new()
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
-	var y := _hearts_y
-	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var c := _hearts_at()
+	var y := c.y
+	var x0 := c.x - step * (max_hearts - 1) * 0.5
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var corner := c - pill * 0.5
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
 	if enter <= 0.0:
@@ -2947,7 +3293,6 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
