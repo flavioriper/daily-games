@@ -97,7 +97,9 @@ with its vertices) is Sudoku's; `x=br_count` (a board build every 1.5 s,
 the runs and islets timed apart, with each mesh's vertices and the cached
 run looks) is Bridges'; `x=fl_count` (a rest-mesh build, a handed-back
 build, the still mesh and the lantern paint, timed every 1.5 s, with their
-vertices) and `x=fl_lanterns` (every lantern hidden) are Fairy Lights'. `rm` turns reduce motion on as the
+vertices) and `x=fl_lanterns` (every lantern hidden) are Fairy Lights'; `x=pp_count` (a field and
+a still build every 1.5 s, the dots', leaves', contrails' and planes' share)
+is Paper Planes'. `rm` turns reduce motion on as the
 board opens (with `howto`, the tutorial's still pages). Each
 window also prints its mean draw calls beside the peak.
 Tents' moves sweep each row into cairns a run at a time, then tap the
@@ -112,7 +114,8 @@ Word Trail's trace every word along its path, a press, a motion a tile
 and the release (`_keep` the last word's events). Sudoku's tap each empty cell in reading order and pick its answer's chip
 (`pick`, `_keep` 4). Bridges' lay every plank of the answer as a drag from one islet to the
 other (a press, a motion over the far islet, the release). Fairy Lights'
-tap every piece round to its answer in reading order, a tap a step. With `howto` up
+tap every piece round to its answer in reading order, a tap a step. Paper
+Planes' tap the deal's own order, each plane on its head. With `howto` up
 the probe plays no moves at all (Bridges' Easy board was solved under its
 pages and the win screen took over). Hidden Word's type five wrong guesses that keep every clue (so Hard's
 rule never refuses them) and then the answer, a letter a step, each commit

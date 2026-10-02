@@ -73,6 +73,7 @@ const Face = preload("res://ui/faces/face.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (spec section 7) ---
 ## The board card's own inset: 28 off a 1000 by 1340 card leaves a field box
@@ -249,6 +250,13 @@ const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 ## The planes left sink and dim over this as the hearts run out.
 const DROOP_TIME := 0.5
+## The droop's steps in the still mesh: each a look per plane, made as the
+## droop reaches it.
+const DROOP_STEPS := 10
+const STILL_PANEL := 0
+const STILL_PLANE := 1
+## Where the trails-alone shapes' ids start (a plane's index on top).
+const TRAIL_SHAPES := 1000000
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 # --- the crash (polish section 1), on its own clock from the tap ---
@@ -437,6 +445,28 @@ var _shown: ArrayMesh
 var _still: ArrayMesh
 var _still_key := ""
 var _still_shown: ArrayMesh
+## The still mesh's pieces (the board checkup, 2026-10-02): the panel and
+## every plane's look at rest, each made once a layout and copied natively
+## into a run of its own, so a launch, a landing or a press -- which change
+## which planes are at rest -- no longer draw the whole sky again in script
+## (14-18 ms a time on Insane). `_still_laid` says the runs are laid for the
+## layout there is now.
+var _rm_still: RunMesh
+## The live trails' RunMesh: no runs, the still mesh's shapes.
+var _rm_live: RunMesh
+var _still_laid := false
+## The ground at rest: every dot no plane stands on or is flying off, and
+## every leaf no flight goes past, as one mesh made only when that set
+## changes (`_ground_key`), so a frame of flight draws just the dots and
+## leaves it is moving. The key it was built for, and the one last shown.
+var _ground: ArrayMesh
+var _ground_key := ""
+var _ground_shown: ArrayMesh
+## The trails of the planes that only beat, shiver, nudge or flutter: their
+## looks at rest under a slide, made with the field (`_build_field`), and the
+## one last shown.
+var _trails: ArrayMesh
+var _trails_shown: ArrayMesh
 ## The leaves on the paper: {"at": lattice corner, "ang", "flower"}, chosen
 ## once a board off its own layout.
 var _sprigs: Array[Dictionary] = []
@@ -549,6 +579,14 @@ var _sock_mesh: ArrayMesh
 ## The cloud, gold cloud and sock meshes the sky layer last drew, kept until
 ## its next draw replaces them (`_layout` drops the cached ones).
 var _sky_shown: Array = []
+## The sky's clouds and sock as one mesh a frame (the board checkup,
+## 2026-10-02: a draw call a cloud was a tenth of Insane's idle calls): each
+## mesh's arrays, faded colours and placed indices kept in `_sky_flat`, its
+## vertices copied under its transform into `_sky_v`/`_sky_c`/`_sky_i`.
+var _sky_flat: Dictionary = {}
+var _sky_v := PackedVector2Array()
+var _sky_c := PackedColorArray()
+var _sky_i := PackedInt32Array()
 ## A cloud's bump: its index in `clouds` -> when it was bonked or tapped.
 var _cloud_poke: Dictionary = {}
 ## The count a stuck sky was last announced at, so the sound plays once.
@@ -621,6 +659,45 @@ func _tips() -> Array:
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
+
+## The tutorial, a page a rule, each played on a little sky of its own
+## (`ui/hud/planes_tutorial_diagram.gd`): a tap launches a plane whose lane
+## is clear, the one in front goes first, what a blocked tap does on this
+## band (refused for free, or a crash and a heart), Windy Day's clouds, the
+## last plane clearing the sky, Undo and Reset, and the bulb on a band that
+## has hints.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/planes_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var judged := hearts_n > 0
+	var steps := [[Diagram.Lesson.LAUNCH, "HTP_PP_LAUNCH", tr("HTP_PP_LAUNCH_BODY")]]
+	if judged:
+		steps.append([Diagram.Lesson.ORDER, "HTP_PP_ORDER", tr("HTP_PP_ORDER_BODY")])
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("PP_RULES_HEARTS") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.REFUSE, "HTP_PP_ORDER", tr("HTP_PP_REFUSE_BODY")])
+	if band == 3:
+		steps.append([Diagram.Lesson.WIND, "PP_WINDY_SEAL", tr("PP_RULES_WIND") % hearts_n])
+	steps.append([Diagram.Lesson.DONE, "HTP_PP_DONE", tr("HTP_PP_DONE_BODY")])
+	var undo_body := "HTP_PP_UNDO_BODY"
+	if band == 3:
+		undo_body = "HTP_PP_RESET_BODY"
+	elif judged:
+		undo_body = "HTP_PP_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_PP_HINT_BODY_ONE") if hints == 1 else tr("HTP_PP_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.hearts = hearts_n
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can ever be sitting on the board: a launch only empties cells, so the
@@ -749,6 +826,7 @@ func _layout() -> void:
 	_hearts_y = HEART_TOP + HEART_PILL_PAD.y + HEART_R
 	_cloud_mesh = null
 	_sock_mesh = null
+	_sky_flat = {}
 	_ghost = null
 	_gold_cloud = null
 	_love_mesh = null
@@ -757,6 +835,7 @@ func _layout() -> void:
 	_flock_meshes = []
 	_seal_mesh = null
 	_combo_shown = null
+	_still_laid = false
 	if is_instance_valid(_cat):
 		_place_cat(_now())
 	if _life_layer != null:
@@ -995,6 +1074,7 @@ func _refresh() -> void:
 ## one without a plane starting or stopping (an undo under reduce motion).
 func _refresh_all() -> void:
 	_still = null
+	_ground = null
 	_refresh()
 
 # --- the drawing ---
@@ -1019,6 +1099,16 @@ func _draw() -> void:
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
 	draw_mesh(_still, null, xf)
 	_still_shown = _still
+	var gk := _ground_key_now()
+	if _ground == null or gk != _ground_key:
+		_ground = _build_ground()
+		_ground_key = gk
+	if _ground != null:
+		draw_mesh(_ground, null, xf)
+	_ground_shown = _ground
+	if _trails != null:
+		draw_mesh(_trails, null, xf)
+	_trails_shown = _trails
 	if _field != null:
 		draw_mesh(_field, null, xf)
 	_shown = _field
@@ -1043,15 +1133,21 @@ func _moving(t: float) -> Dictionary:
 	return out
 
 func _key(moving: Dictionary) -> String:
-	var k := PackedStringArray([str(_hint_lit), "d%d" % int(_droop_level(_now()) * 10.0)])
+	var k := PackedStringArray([str(_hint_lit), "d%d" % _droop_step(_now())])
 	for i in _state.planes.size():
 		k.append("m" if moving.has(i) else ("g" if _state.planes[i]["gone"] else "."))
 	return "".join(k)
 
-## The paper panel, the hint's glow and every plane at rest.
+## The paper panel, the hint's glow and every plane at rest. The panel and
+## each plane's look are shapes made once a layout (`_still_shape`), put
+## into their own runs; only the glows are drawn here, between them.
 func _build_still(moving: Dictionary) -> ArrayMesh:
+	var rm := _still_rm()
+	rm.begin()
+	rm.open(STILL_PANEL, 0)
+	rm.put(STILL_PANEL, [], Transform2D.IDENTITY)
+	rm.close()
 	var b := Face.Builder.new()
-	_panel(b)
 	if _hint_lit >= 0 and not _state.planes[_hint_lit]["gone"]:
 		PaperPlane.band(b, _cell_pts(_state.planes[_hint_lit]["cells"]), _cell,
 			GLOW_W * _cell, Color(Pal.SUN_RAY, GLOW_ALPHA))
@@ -1062,11 +1158,74 @@ func _build_still(moving: Dictionary) -> ArrayMesh:
 			if not _state.planes[i]["gone"] and i != _hint_lit:
 				PaperPlane.band(b, _cell_pts(_state.planes[i]["cells"]), _cell,
 					GLOW_W * _cell, Color(Pal.SUN_RAY, LAST_GLOW))
-	var droop := _droop_level(_now())
+	rm.put_builder(b)
+	var droop := _droop_step(_now())
 	for i in _state.planes.size():
 		if not moving.has(i) and not _state.planes[i]["gone"]:
-			_plane(b, i, 1e9, droop)
-	return b.mesh()
+			rm.open(STILL_PLANE, i)
+			rm.put(_look_id(i, droop), [], Transform2D.IDENTITY)
+	return rm.mesh()
+
+## The still mesh's RunMesh, its runs laid for the layout there is now. The
+## live field borrows it between builds for the shapes it shares.
+func _still_rm() -> RunMesh:
+	if _rm_still == null:
+		_rm_still = RunMesh.new(_still_shape)
+		_rm_live = RunMesh.new(_still_shape)
+	if not _still_laid:
+		_lay_still()
+	return _rm_still
+
+## A plane's trail alone at rest, as a shape id.
+func _trail_id(i: int) -> int:
+	return TRAIL_SHAPES + i
+
+## The still mesh's runs for this layout: the panel's, then one per plane on
+## the board as long as its look, in paint order.
+func _lay_still() -> void:
+	var rm := _rm_still
+	rm.reset()
+	_rm_live.reset()
+	_rm_live.share_shapes(rm)
+	rm.room(STILL_PANEL, 0, rm.size_of(STILL_PANEL))
+	# Only the planes on the board: the win card relays out an empty sky, and
+	# a plane called back after that is put on the tail.
+	for i in _state.planes.size():
+		if not _state.planes[i]["gone"]:
+			rm.room(STILL_PLANE, i, rm.size_of(_look_id(i, 0)))
+	_still_laid = true
+	# Every look put in its run once now, while the board opens, so the
+	# runs' offset indices (tens of thousands on a Hard maze, offset in
+	# script once a layout) are not first paid mid-game.
+	rm.begin()
+	for i in _state.planes.size():
+		if not _state.planes[i]["gone"]:
+			rm.open(STILL_PLANE, i)
+			rm.put(_look_id(i, 0), [], Transform2D.IDENTITY)
+
+## A plane's look at rest as a still-mesh shape id, at droop step `droop`
+## (0 to DROOP_STEPS).
+func _look_id(i: int, droop: int) -> int:
+	return 1 + i * (DROOP_STEPS + 1) + droop
+
+## The droop as the still mesh draws it: DROOP_STEPS steps, the key's.
+func _droop_step(t: float) -> int:
+	return int(_droop_level(t) * float(DROOP_STEPS))
+
+## Still-mesh shape `id`, drawn where it lies: the panel (0), or a plane at
+## rest at a droop step.
+func _still_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	if id == STILL_PANEL:
+		_panel(b)
+		return b
+	if id >= TRAIL_SHAPES:
+		_plane(b, id - TRAIL_SHAPES, 1e9, 0.0, true, 1)
+		return b
+	var k := id - 1
+	_plane(b, k / (DROOP_STEPS + 1), 1e9,
+		float(k % (DROOP_STEPS + 1)) / float(DROOP_STEPS), true)
+	return b
 
 ## Whether the sky is down to its last few planes (and still being played).
 func _last_few() -> bool:
@@ -1126,8 +1285,9 @@ func _sock_root() -> Vector2:
 ## plane, rebuilt on every frame something moves.
 func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 	var b := Face.Builder.new()
-	_dots(b, _covers(t), t)
-	_draw_sprigs(b, t)
+	var wave := _solved_at >= 0.0
+	_dots(b, _covers(t), t, not wave)
+	_draw_sprigs(b, t, not wave)
 	if not _refuse.is_empty():
 		var lv := _flash_now(t - float(_refuse["at"]))
 		if lv > 0.0:
@@ -1139,12 +1299,40 @@ func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 	for i in _fly:
 		_contrail(b, i, t)
 	var droop := _droop_level(t)
-	for i in moving:
+	# The steady planes go into their own mesh, drawn under this one, as
+	# shapes copied natively. Through the entrance every plane pops in,
+	# each its look under its pop in its own run of the still mesh (whose
+	# offsets were worked out at layout); after it, the few that beat or
+	# shiver are their trails, slid, on a mesh with no runs at all (the
+	# still mesh's would upload every run's vertices a frame).
+	var entering := not Motion.reduce \
+		and t - _opened < Motion.ENTER_DELAY + ENTER_CAP + Motion.POP_IN
+	var rm := _still_rm()
+	if not entering:
+		rm = _rm_live
+	rm.begin()
+	rm.close()
+	for i in _state.planes.size():
+		if not moving.has(i):
+			continue
 		# A plane in the air is drawn from its flight and not from the state:
 		# the state let it go on the tap, and a returning one is back in the
 		# state before it has flown home.
-		if _fly.has(i) or not _state.planes[i]["gone"]:
+		if not _fly.has(i) and _state.planes[i]["gone"]:
+			continue
+		if not _steady(i, t, droop):
 			_plane(b, i, t, droop)
+		elif not _stirred(i):
+			# Popping in, or landed from it, and nothing else: its look.
+			rm.open(STILL_PLANE, i)
+			rm.put(_look_id(i, 0), [], _pop_xf(i, t))
+		elif _pop_xf(i, t) == Transform2D.IDENTITY:
+			rm.close()
+			rm.put(_trail_id(i), [], Transform2D(0.0, _rest_offset(i, t)))
+			_plane(b, i, t, droop, false, 2)
+		else:
+			_plane(b, i, t, droop)
+	_trails = rm.mesh()
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A faint dot on every cell no plane stands on, and a **fading** one on
@@ -1156,8 +1344,17 @@ func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 ## The solve wave rides here too: when the sky is empty the dots and the
 ## leaves are the only things left on the card, so the family's wave is a hop
 ## on each of them, read as a curve off `Motion` -- the whole of it is `_hop`.
-func _dots(b, cover: Dictionary, t: float) -> void:
+##
+## `moving_only` draws just the dots under a flight (the rest are the
+## ground's, `_build_ground`).
+func _dots(b, cover: Dictionary, t: float, moving_only := false) -> void:
 	var r := DOT * _cell
+	if moving_only:
+		for cell: Vector2i in cover:
+			var shown := 1.0 - float(cover[cell])
+			if shown > 0.004:
+				b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA * shown))
+		return
 	for y in _state.rows:
 		for x in _state.cols:
 			var cell := Vector2i(x, y)
@@ -1250,8 +1447,13 @@ func _place_sprigs() -> void:
 
 ## The leaves, each fluttering as a plane goes by and hopping with the dots on
 ## the solve.
-func _draw_sprigs(b, t: float) -> void:
+##
+## `moving_only` draws just the leaves a flight goes past (the rest are the
+## ground's).
+func _draw_sprigs(b, t: float, moving_only := false) -> void:
 	for sp in _sprigs:
+		if moving_only and not _passed(sp["at"]):
+			continue
 		var corner: Vector2i = sp["at"]
 		var at := _origin + Vector2(corner) * _cell
 		var lift := 0.0
@@ -1261,6 +1463,52 @@ func _draw_sprigs(b, t: float) -> void:
 				Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 		PaperPlane.sprig(b, at + Vector2(0.0, lift), SPRIG_R * _cell,
 			float(sp["ang"]) + _flutter(corner, t), sp["flower"])
+
+## The ground's key: which planes stand, which have gone and which are in
+## the air (their cells are the live layer's), or the solve wave, when every
+## dot and leaf hops and none is at rest.
+func _ground_key_now() -> String:
+	if _solved_at >= 0.0:
+		return "wave"
+	var k := PackedStringArray()
+	for i in _state.planes.size():
+		k.append("f" if _fly.has(i) else ("g" if _state.planes[i]["gone"] else "."))
+	return "".join(k)
+
+## Every dot at rest -- on a cell no plane stands on and no flight is
+## leaving -- and every leaf no flight goes past, drawn still. Null in the
+## solve wave, when the field draws them all.
+func _build_ground() -> ArrayMesh:
+	if _solved_at >= 0.0:
+		return null
+	var flown: Dictionary = {}
+	for i in _fly:
+		for c in _state.planes[i]["cells"]:
+			flown[c] = true
+	var b := Face.Builder.new()
+	var r := DOT * _cell
+	for y in _state.rows:
+		for x in _state.cols:
+			var cell := Vector2i(x, y)
+			if flown.has(cell) or _state.plane_at(cell) >= 0:
+				continue
+			b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA))
+	for sp in _sprigs:
+		if not _passed(sp["at"]):
+			PaperPlane.sprig(b, _origin + Vector2(sp["at"]) * _cell, SPRIG_R * _cell,
+				float(sp["ang"]), sp["flower"])
+	return b.mesh() if not b.verts.is_empty() else null
+
+## Whether any flight in the air goes past the leaf at `corner` (`_flutter`'s
+## reach, without its clock): such a leaf is drawn live.
+func _passed(corner: Vector2i) -> bool:
+	for i in _fly:
+		var cells: Array = _state.planes[i]["cells"]
+		var dir := Vector2(_state.planes[i]["dir"])
+		var rel := Vector2(corner) - (Vector2(cells[cells.size() - 1]) + Vector2.ONE * 0.5)
+		if absf(rel.cross(dir)) <= 0.75 and rel.dot(dir) >= -0.5:
+			return true
+	return false
 
 ## How far a leaf is turned by the planes going past it: the family's wobble,
 ## timed from the moment a dart's head draws level with it. A leaf beside a
@@ -1319,14 +1567,20 @@ func _contrail(b, i: int, t: float) -> void:
 ## the bonk and home again, crumpled and rocking), the press dip (the whole
 ## plane sinks about its middle and shades), the idle flutter (one wing tip
 ## lifts) and the droop (the planes left sink and dim as the hearts run out).
-func _plane(b, i: int, t: float, droop := 0.0) -> void:
+##
+## `rest` draws the plane as it lies at rest whatever its books say: the
+## still mesh's look (`_still_shape`), which may be made while it flies.
+##
+## `part` picks what is drawn: 1 the trail, 2 the dart, 3 both.
+func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void:
 	var cells: Array = _state.planes[i]["cells"]
 	var n := cells.size()
 	var dir := Vector2(_state.planes[i]["dir"])
-	var crashing := not _crash.is_empty() and int(_crash["i"]) == i
-	var flying := _fly.has(i) or crashing
+	var crashing := not rest and not _crash.is_empty() and int(_crash["i"]) == i
+	var aloft := not rest and _fly.has(i)
+	var flying := aloft or crashing
 	var s := 0.0
-	if _fly.has(i):
+	if aloft:
 		s = _flown(i, t)
 	elif crashing:
 		s = _crash_s(t)
@@ -1341,13 +1595,12 @@ func _plane(b, i: int, t: float, droop := 0.0) -> void:
 	# The refusal's two movers, both read as curves: the blocker shivers
 	# across the board and the tapped plane leans the way it wanted to go.
 	# Both take the vocabulary's own pixels, so neither costs a constant.
-	var off := Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
-		+ dir * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
+	var off := _rest_offset(i, t)
 	var angle := dir.angle()
 	var wings := Vector2.ONE
 	var dim := 0.0
-	var lift := _lift(i, t)
-	if _fly.has(i):
+	var lift := _lift(i, t) if aloft else 0.0
+	if aloft:
 		var f: Dictionary = _fly[i]
 		# A loop-the-loop: the dart points along the curve it is on.
 		if f.has("loop"):
@@ -1374,11 +1627,11 @@ func _plane(b, i: int, t: float, droop := 0.0) -> void:
 	# finger and shades -- a sink of 0.94 alone is invisible on a 58 px
 	# cell, so the paper darkens with it.
 	var press := 1.0
-	if i == _press_target:
+	if i == _press_target and not rest:
 		press = Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0)
 		dim = maxf(dim, (1.0 - press) / (1.0 - Motion.PRESS_SCALE) * 0.55)
 	# The idle flutter: one wing tip lifts a hair and settles.
-	if i == _idle_plane:
+	if i == _idle_plane and not rest:
 		var u := clampf((t - _idle_at) / IDLE_TIME, 0.0, 1.0)
 		var w := sin(u * PI) * sin(u * PI * 3.0)
 		angle += w * IDLE_LIFT * 0.6
@@ -1393,10 +1646,57 @@ func _plane(b, i: int, t: float, droop := 0.0) -> void:
 	var pivot := mid if press < 1.0 else head
 	var xf := Transform2D(0.0, sc, 0.0, pivot - pivot * sc + off)
 	var pts: PackedVector2Array = xf * (_body(i, s) if flying else _cell_pts(cells))
-	PaperPlane.trail(b, pts, _cell * sc.x, i, seen, s * _cell, dim)
+	if part & 1:
+		PaperPlane.trail(b, pts, _cell * sc.x, i, seen, s * _cell, dim)
+	if not part & 2:
+		return
 	var beat := Motion.bump_scale(t - float(_beat.get(i, -1e9)))
 	PaperPlane.dart(b, xf * head, angle, _cell * sc.x, i, seen,
 		Vector2(1.0 + (beat - 1.0) * 0.3, beat) * wings, lift, dim)
+
+## The refusal's two movers, both read as curves: the blocker shivers
+## across the board and the tapped plane leans the way it wanted to go.
+## Both take the vocabulary's own pixels, so neither costs a constant.
+func _rest_offset(i: int, t: float) -> Vector2:
+	return Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
+		+ Vector2(_state.planes[i]["dir"]) * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
+
+## Whether moving plane `i`'s trail is its look at rest, only slid: it is not
+## flying, crashing, pressed, drooping or popping in -- a wing-beat, a
+## shiver, a nudge or the idle flutter. Its trail is then the still mesh's
+## shape under a translation and only its dart is drawn live (a long maze
+## plane's trail is most of a millisecond to draw).
+##
+## A plane still popping in with the entrance is steady too when it is doing
+## nothing else (`_pop_xf`): the whole field pops in at once, and drawing
+## every maze plane live for that second was 30 ms a frame on Hard.
+func _steady(i: int, t: float, droop: float) -> bool:
+	if _fly.has(i) or i == _press_target or droop > 0.0:
+		return false
+	if not _crash.is_empty() and int(_crash["i"]) == i:
+		return false
+	return true
+
+## Whether plane `i` is beating, shivering, nudging or fluttering.
+func _stirred(i: int) -> bool:
+	return _beat.has(i) or _shiver.has(i) or _nudge.has(i) or i == _idle_plane
+
+## The entrance's pop on plane `i` as a transform about its head, the
+## identity once it has landed. Its fade in (`appear_level`, a tenth of a
+## second) is not carried: the look is copied in its own colours, and it
+## grows from nothing anyway.
+func _pop_xf(i: int, t: float) -> Transform2D:
+	if Motion.reduce:
+		return Transform2D.IDENTITY
+	var cells: Array = _state.planes[i]["cells"]
+	var head: Vector2i = cells[cells.size() - 1]
+	var since := t - _opened - Motion.ENTER_DELAY \
+		- Motion.stagger(_king(head, Vector2i.ZERO), Motion.ENTER_STAGGER, ENTER_CAP)
+	if since >= Motion.POP_IN:
+		return Transform2D.IDENTITY
+	var grow := Motion.pop_in_scale(since)
+	var at := _centre(head)
+	return Transform2D(0.0, grow, 0.0, at - at * grow)
 
 ## How far a dart has risen off the paper: up over LIFT_TIME as it launches,
 ## and down again over the same as a plane coming home lands.
@@ -2479,12 +2779,60 @@ func _draw_sky() -> void:
 	if _cloud_mesh == null:
 		_cloud_mesh = _build_cloud()
 	var k := _cloud_k(t)
+	_sky_v = PackedVector2Array()
+	_sky_c = PackedColorArray()
+	_sky_i = PackedInt32Array()
 	if t >= _clouds_at:
 		_draw_send_off(t, k, seen)
 	else:
 		_draw_clouds(t, k, seen)
 	_draw_sock(t, seen)
-	_sky_shown = [_cloud_mesh, _gold_cloud, _sock_mesh]
+	var all: ArrayMesh = null
+	if not _sky_v.is_empty():
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = _sky_v
+		arrays[Mesh.ARRAY_COLOR] = _sky_c
+		arrays[Mesh.ARRAY_INDEX] = _sky_i
+		all = ArrayMesh.new()
+		all.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_sky_layer.draw_mesh(all, null)
+	_sky_shown = [_cloud_mesh, _gold_cloud, _sock_mesh, all]
+
+## Mesh `m` under `xf` at alpha `a` into this frame's sky mesh: its arrays
+## read once, its colours faded once per alpha (most frames draw every cloud
+## at the same one) and its indices offset once per place in the list, so a
+## frame is native copies.
+func _sky_put(m: ArrayMesh, xf: Transform2D, a: float) -> void:
+	if a <= 0.0:
+		return
+	var rid := m.get_rid()
+	var src: Array = _sky_flat.get(rid, [])
+	if src.is_empty():
+		var arr := m.surface_get_arrays(0)
+		src = [arr[Mesh.ARRAY_VERTEX], arr[Mesh.ARRAY_COLOR], arr[Mesh.ARRAY_INDEX]]
+		_sky_flat[rid] = src
+	if _sky_flat.size() > 512:
+		_sky_flat = {rid: src}
+	var ck := [rid, a]
+	var cs: PackedColorArray = _sky_flat.get(ck, PackedColorArray())
+	if cs.is_empty():
+		cs = (src[1] as PackedColorArray).duplicate()
+		if a < 1.0:
+			for j in cs.size():
+				cs[j].a *= a
+		_sky_flat[ck] = cs
+	var base := _sky_v.size()
+	var ik := [rid, base, 0]
+	var ix: PackedInt32Array = _sky_flat.get(ik, PackedInt32Array())
+	if ix.is_empty():
+		ix = (src[2] as PackedInt32Array).duplicate()
+		for j in ix.size():
+			ix[j] += base
+		_sky_flat[ik] = ix
+	_sky_v.append_array(xf * (src[0] as PackedVector2Array))
+	_sky_c.append_array(cs)
+	_sky_i.append_array(ix)
 
 ## Every cloud where the count `k` puts it, a cloud sliding off one edge drawn
 ## twice (out there, in at the other), each bumping when poked.
@@ -2505,8 +2853,8 @@ func _draw_clouds(t: float, k: float, seen: float) -> void:
 				continue
 			var at := _origin + (Vector2(cx, float(c.y)) + Vector2.ONE * 0.5) * _cell + Vector2(0.0, bob)
 			var sc := bump * pressed
-			_sky_layer.draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(sc, sc), 0.0, at),
-				Color(1.0, 1.0, 1.0, CLOUD_ALPHA * seen * (1.0 - out)))
+			_sky_put(_cloud_mesh, Transform2D(0.0, Vector2(sc, sc), 0.0, at),
+				CLOUD_ALPHA * seen * (1.0 - out))
 
 ## Windy Day's send-off after the last flight: every cloud turns gold and
 ## smiles (the white one fading under the gold one), then from CLOUDS_GO
@@ -2534,8 +2882,8 @@ func _draw_send_off(t: float, k: float, seen: float) -> void:
 		var xf := Transform2D(0.0, Vector2(sc, sc), 0.0, at)
 		var a := seen * fade
 		if gold < 1.0:
-			_sky_layer.draw_mesh(_cloud_mesh, null, xf, Color(1.0, 1.0, 1.0, CLOUD_ALPHA * a * (1.0 - gold)))
-		_sky_layer.draw_mesh(_gold_cloud, null, xf, Color(1.0, 1.0, 1.0, a * gold))
+			_sky_put(_cloud_mesh, xf, CLOUD_ALPHA * a * (1.0 - gold))
+		_sky_put(_gold_cloud, xf, a * gold)
 
 ## The wind sock swaying on its pole.
 func _draw_sock(t: float, seen: float) -> void:
@@ -2544,8 +2892,7 @@ func _draw_sock(t: float, seen: float) -> void:
 	var sway := 0.0 if Motion.reduce else sin(t * TAU / SOCK_PERIOD) * SOCK_SWAY \
 		+ sin(t * TAU / SOCK_PERIOD * 2.7) * SOCK_SWAY * 0.3
 	var flip := Vector2(1.0 if _state.wind.x >= 0 else -1.0, 1.0)
-	_sky_layer.draw_mesh(_sock_mesh, null,
-		Transform2D(sway * flip.x, flip, 0.0, _sock_root()), Color(1.0, 1.0, 1.0, seen))
+	_sky_put(_sock_mesh, Transform2D(sway * flip.x, flip, 0.0, _sock_root()), seen)
 
 ## One cloud, centred on the origin, a little wider than its cell so two
 ## neighbours merge into one big cloud: a few overlapping puffs taken as one

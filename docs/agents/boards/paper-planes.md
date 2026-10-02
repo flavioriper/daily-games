@@ -174,3 +174,57 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (`_was_busy`), never by a timer, which fires up to a frame early. A Windy
   Day hint goes dark on every tick; no gag sound plays once the hearts are
   gone; Undo lets go of a held press; `_sky_shown` keeps the sky's meshes.
+- **The maze (2026-10-02).** The user's second reference (a phone screen
+  packed nearly full of long, bent arrows -- the original SETAS screenshot
+  in the concept tab was this dense too) said the 0.72-0.91 sky of short
+  darts was too easy and not a maze. Easy, Medium and Hard are now **12 x 17,
+  16 x 23 and 21 x 30** (cells ~76 / ~55 / ~40), carved by
+  `_carve_maze` in `puzzles/planes_state.gd` to **0.95-0.98** of the field
+  (GDScript, 20 seeds a band: 0.974 / 0.975 / 0.978; 37 / 50 / 74 planes;
+  6 / 14 / 36 ms a board, worst 60), planes up to 15 / 22 / 29 cells whose
+  tails walk straight on with `straight` odds. The carve gives every plane
+  a **launch key** (highest flies first): a new plane fits anywhere in the
+  order where it goes after every plane in its own lane (`hi`) and before
+  every plane whose lane crosses its body (`lo`), `lo < hi`, and takes a key
+  between (keys renumbered to ranks after each, so halves never run out).
+  That is the replay proof, and it is what lets the leftovers fill where the
+  backward carve (a new plane only at the front of the order) stalled near
+  0.8: after the drawn placements every empty cell is offered as a head
+  (three passes), then tails grow into empty neighbours no later-flying
+  lane crosses. `order` is the keys, highest first. The JS prototype
+  measured the player down to two launches or fewer on ~40% of steps (20%
+  before), ~3 free at a time (6 before). **Insane keeps its banked Windy
+  Day sky** (10 x 14, mined offline against the 62-plane exact search):
+  making it a maze means re-mining the bank with a new miner, not done.
+- **The board checkup (2026-10-02).** The still mesh (panel, glows, every
+  plane at rest) was built whole in script whenever the set of moving planes
+  changed -- every launch, landing, beat, press and idle flutter: 14-18 ms a
+  time on the old Insane, 28-38 on a Hard maze. Now `_rm_still` (a
+  `RunMesh`) holds the panel and every plane's look (`_look_id(i, droop)`,
+  a droop step of ten) as shapes made once a layout, each in a run laid in
+  `_lay_still` and put once there so the runs' offset indices are worked
+  out while the board opens (~50 ms then on a Hard maze, nothing after);
+  the glows are a Builder between. The ground (every dot and leaf at rest)
+  is its own mesh keyed on which planes stand, fly or have gone
+  (`_ground_key_now`), so a frame of flight draws only the dots under a
+  flight and the leaves one passes (`_passed`). The entrance popped every
+  plane in live (30 ms frames on a Hard maze): a popping plane is its look
+  under its pop (`_pop_xf`, its 0.1 s fade not carried) in its own run of
+  the still mesh; a plane that only beats, shivers, nudges or flutters is
+  its trail alone (`_trail_id`), slid, on `_rm_live` (no runs, the same
+  shapes through `RunMesh.share_shapes`), with its dart drawn live. The sky
+  layer's clouds and sock were a draw call each: now one mesh a frame
+  (`_sky_put`, colours faded once per alpha, indices offset once per place).
+  Figures in `docs/agents/checkup.md`.
+- **The tutorial** (`ui/hud/planes_tutorial_diagram.gd`) plays a quietened
+  board (`TutorialSky`: no sounds, tips, idle flutter, gags, streak, party
+  or card; a crash never runs the hearts out) on a hand-made 6 x 5 sky of
+  seven planes laid by `lay()`. Pages: LAUNCH, then REFUSE (Easy/Medium:
+  a blocked plane waits for free, then the one in front goes and it
+  follows) or ORDER and HEARTS (Hard/Insane: the crash and a heart), WIND
+  (Insane: the cloud in C's lane blows past after B's launch), DONE (the
+  last two planes and the solve wave), UNDO (Reset alone on Insane, where
+  there is no Undo), HINT (bands with hints).
+- Probe: `tests/_probe_perf.gd -- planes d=<0..3> [fill]` taps the deal's
+  own order, each plane on its head; `x=pp_count` times a field and a still
+  build every 1.5 s, with the dots', leaves', contrails' and planes' share.
