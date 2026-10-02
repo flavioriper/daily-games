@@ -54,6 +54,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const SproutFace = preload("res://ui/faces/sprout_face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
 
 # --- this board's own three numbers (spec section 9) ---
@@ -458,6 +459,17 @@ var _reveal_mesh: ArrayMesh
 ## reference to a mesh still on the item's command list leaves the renderer
 ## drawing a freed RID ("Parameter mesh is null", and an empty card).
 var _shown: Array = []
+## The grid's pieces (the board checkup, 2026-10-02): every bed, tile, caret
+## and shadow is a shape made once at the cell it is laid out at and copied
+## natively into a run of vertices its cell owns (`RunMesh`), painted by
+## colour fills. Built in script, a vertex at a time, it was 4-8 ms on every
+## frame anything on the grid moved -- each typed letter, each flip.
+var _rm := RunMesh.new(_shape)
+## The cell the shapes and runs were made at; another remakes them.
+var _rm_cell := -1.0
+
+enum { SHAPE_SQ, SHAPE_LIP, SHAPE_TOP, SHAPE_BEVEL, SHAPE_CARET, SHAPE_SHADOW, SHAPE_FLAP, SHAPE_WAX }
+enum { PART_CARET, PART_CELL }
 
 func puzzle_id() -> String: return "hiddenword"
 func title() -> String: return "Hidden Word"
@@ -478,6 +490,37 @@ func tip_line() -> Dictionary:
 	if state.snail:
 		return {"text": tr("HW_TIP_SNAIL"), "mood": Face.Expr.HAPPY}
 	return {"text": tr("HW_TIP"), "mood": Face.Expr.HAPPY}
+
+## The tutorial (the board checkup, 2026-10-02): one page a rule, each two
+## rows of the board itself over the game's own keyboard
+## (ui/hud/hidden_word_tutorial_diagram.gd) -- a guess and its colours, the
+## keys that keep them, a tapped bed and the back key, the bulb where the band
+## has one, running out of rows, and the clue rule on Hard and Snail Mail on
+## Insane.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/hidden_word_tutorial_diagram.gd")
+	# The band's own count (State.HINTS_BY_BAND), read off the rules it set.
+	var hints: int = State.HINTS_BY_BAND[3 if state.no_hints else (2 if state.strict else 0)]
+	var steps := [
+		[Diagram.Lesson.GUESS, "HTP_HW_GUESS", tr("HTP_HW_GUESS_BODY")],
+		[Diagram.Lesson.CLUES, "HTP_HW_CLUES", tr("HTP_HW_CLUES_BODY")],
+		[Diagram.Lesson.TAP, "HTP_HW_TAP", tr("HTP_HW_TAP_BODY")]]
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_HW_HINT_BODY_ONE") if hints == 1 else tr("HTP_HW_HINT_BODY_N") % hints])
+	steps.append([Diagram.Lesson.ROWS, "HTP_HW_ROWS",
+		tr("HTP_HW_ROWS_BODY_INK") if state.keeps_rows else tr("HTP_HW_ROWS_BODY")])
+	if state.strict:
+		steps.append([Diagram.Lesson.STRICT, "HTP_HW_STRICT", tr("HTP_HW_STRICT_BODY")])
+	if state.snail:
+		steps.append([Diagram.Lesson.SNAIL, "HTP_HW_SNAIL", tr("HTP_HW_SNAIL_BODY")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.hints = hints
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 ## Hint alone. Every Enter *is* the check, and taking a committed guess back
 ## is not this game, so there is no Check and no Undo -- the top bar hides
@@ -906,6 +949,10 @@ func _flower(b, at: Vector2) -> void:
 ## piece squashed edge-on by the flip.
 func _build_grid(t: float) -> ArrayMesh:
 	var cell := _cell()
+	_lay_runs(cell)
+	_rm.begin()
+	# What has no run of its own (the party's meadow, Reset's ghosts, the
+	# gags) goes on the tail, after every run.
 	var b := Face.Builder.new()
 	var work := _working_row()
 	var lit_row := -1 if state.is_solved() or out_of_hearts else work
@@ -914,10 +961,12 @@ func _build_grid(t: float) -> ArrayMesh:
 		var fade := _row_alpha(r, t)
 		var rise := _enter_rise(r, t)
 		if r == lit_row:
-			_caret(b, r, t, cell, fade, shake, rise)
+			_rm.open(PART_CARET, r)
+			_caret(r, t, cell, fade, shake, rise)
 		for c in State.LEN:
+			_rm.open(PART_CELL, r * State.LEN + c)
 			var seat := _tile_at(r, c) + Vector2(shake, rise)
-			_bed(b, seat, cell, fade, 1.0 if r == lit_row else 0.0)
+			_bed(seat, cell, fade, 1.0 if r == lit_row else 0.0)
 			var move := _move(r, c, t)
 			var at := seat + Vector2(move.x, move.y)
 			if r < state.rows.size():
@@ -925,36 +974,88 @@ func _build_grid(t: float) -> ArrayMesh:
 				var up := at + Vector2(0.0, pose.z * cell)
 				var swell := _swell(r, c, t)
 				if swell > 0.0:
-					Scenery.soft_disc(b, at + Vector2(cell * 0.5, cell * 0.96),
-						cell * 0.5, cell * 0.12, Color(Pal.TEXT, FLIP_SHADOW_A * swell * fade))
+					_rm.put(SHAPE_SHADOW, [Color(Pal.TEXT, FLIP_SHADOW_A * swell * fade)],
+						Transform2D(0.0, at + Vector2(cell * 0.5, cell * 0.96)))
 				var grow := Vector2(pose.x, pose.y)
 				match _face_at(r, c, t):
 					FACE_MARK:
-						_mark_tile(b, up, cell, int(state.marks[r][c]), r, c, grow, fade,
+						_mark_tile(up, cell, int(state.marks[r][c]), r, c, grow, fade,
 							move.z, _shine(r, c, t))
 					FACE_POST:
-						_post_tile(b, up, cell, grow, fade, move.z)
+						_post_tile(up, cell, grow, fade, move.z)
 					_:
-						_paper_tile(b, up, cell, grow, fade, move.z)
+						_paper_tile(up, cell, grow, fade, move.z)
 			elif r == work and state.letter_at(c) != "":
-				_paper_tile(b, at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade, move.z)
+				_paper_tile(at, cell, Motion.pop_in_scale(t - _typed_at[c], TYPE_POP), fade, move.z)
 			elif _party_at < INF and r > state.rows.size() - 1:
 				_bloom(b, seat + Vector2.ONE * (cell * 0.5), cell, r, c, t)
 	# Reset's wave, over the beds the tiles have just gone back to being: a
 	# committed tile keeps its mark's colour and turns out where it stood.
+	_rm.open(-1, 0)
 	for g in _ghosts:
 		var elapsed: float = t - float(g.at)
 		var at := _tile_at(int(g.r), int(g.c))
 		if elapsed < 0.0:
-			_mark_tile(b, at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE)
+			_mark_tile(at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE)
 			continue
 		var out := Motion.pop_out_scale(elapsed)
 		if out <= 0.0:
 			continue
-		_mark_tile(b, at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE * out, 1.0,
+		_mark_tile(at, cell, int(g.m), int(g.r), int(g.c), Vector2.ONE * out, 1.0,
 			_turn_out(elapsed))
 	_draw_gags(b, t, cell)
-	return b.mesh() if not b.verts.is_empty() else null
+	_rm.put_builder(b)
+	return _rm.mesh()
+
+## Every cell's run, laid in paint order -- a row's caret, then its five
+## cells -- each as long as the most a cell ever puts (a bed, a flip's
+## shadow, a sealed tile with its flap and wax). Laid again only when the
+## cell changes (a new layout, One more row making room).
+func _lay_runs(cell: float) -> void:
+	if _rm.laid() and is_equal_approx(cell, _rm_cell):
+		return
+	_rm_cell = cell
+	_rm.reset()
+	var sq := _rm.size_of(SHAPE_SQ)
+	var room := sq + _rm.size_of(SHAPE_LIP) + _rm.size_of(SHAPE_SHADOW) \
+		+ sq + _rm.size_of(SHAPE_TOP) + _rm.size_of(SHAPE_BEVEL) \
+		+ _rm.size_of(SHAPE_FLAP) + _rm.size_of(SHAPE_WAX)
+	for r in State.MAX_ROWS:
+		_rm.room(PART_CARET, r, _rm.size_of(SHAPE_CARET))
+		for c in State.LEN:
+			_rm.room(PART_CELL, r * State.LEN + c, room)
+
+## Shape `id` about its own centre at the cell `_rm_cell`, in slot colours.
+func _shape(id: int) -> Face.Builder:
+	var s := _rm_cell
+	var b := Face.Builder.new()
+	var r := s * RADIUS
+	var corner := -Vector2.ONE * (s * 0.5)
+	var edge := maxf(EDGE_MIN, s * EDGE)
+	var ink := RunMesh.slot(0)
+	match id:
+		SHAPE_SQ:
+			b.fan(Face.Builder.round_rect(corner, Vector2(s, s), r), ink)
+		SHAPE_LIP:
+			var lip := s * BED_LIP
+			b.fan(Face.Builder.round_rect(corner + Vector2(0.0, lip), Vector2(s, s - lip), r), ink)
+		SHAPE_TOP:
+			b.fan(Face.Builder.round_rect(corner, Vector2(s, s - edge), r), ink)
+		SHAPE_BEVEL:
+			var bev := s * BEVEL
+			b.fan(Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
+				Vector2(s - bev * 1.4, s - edge - bev), maxf(r - bev * 0.5, 0.0)), ink)
+		SHAPE_CARET:
+			var w := s * CARET
+			b.fan(Face.Builder.round_rect(corner - Vector2.ONE * w, Vector2.ONE * (s + w * 2.0), r + w), ink)
+		SHAPE_SHADOW:
+			Scenery.soft_disc(b, Vector2.ZERO, s * 0.5, s * 0.12, ink)
+		SHAPE_FLAP:
+			b.polygon(PackedVector2Array([Vector2(-0.4, -0.4) * s, Vector2(0.4, -0.4) * s,
+				Vector2(0.0, -0.08) * s]), ink)
+		SHAPE_WAX:
+			b.disc(Vector2.ZERO, s * WAX_R, ink)
+	return b
 
 ## The flip in effect on tile (r, c) at `t`: when it began, and the face it
 ## turns from and to. A row turns once from paper into its marks -- or, on
@@ -1029,16 +1130,14 @@ func _enter_rise(r: int, t: float) -> float:
 ## The sun rim round the bed the next letter goes into -- the next empty
 ## one, or whichever the player tapped -- gliding there from the bed it was
 ## round over CARET_GLIDE.
-func _caret(b, r: int, t: float, cell: float, alpha: float, shake: float, rise: float) -> void:
+func _caret(r: int, t: float, cell: float, alpha: float, shake: float, rise: float) -> void:
 	var to: int = state.cursor
 	if to >= State.LEN or alpha <= 0.0:
 		return
 	var u := 1.0 if Motion.reduce else clampf((t - _caret_at) / CARET_GLIDE, 0.0, 1.0)
 	var col := lerpf(float(_caret_from), float(to), 1.0 - pow(1.0 - u, 3.0))
 	var at := _tile_at(r, 0) + Vector2(col * (cell + GAP) + shake, rise)
-	var w := cell * CARET
-	b.fan(Face.Builder.round_rect(at - Vector2.ONE * w, Vector2.ONE * (cell + w * 2.0), cell * RADIUS + w),
-		Color(Pal.SUN, CARET_A * alpha))
+	_rm.put(SHAPE_CARET, [Color(Pal.SUN, CARET_A * alpha)], Transform2D(0.0, at + Vector2.ONE * (cell * 0.5)))
 
 ## A committed tile's pose at `t`: x and y its scale, z how far it has risen,
 ## in cells (negative is up). The flip squashes y; the swell grows both and
@@ -1124,39 +1223,37 @@ func _flip(r: int, c: int, t: float) -> Vector2:
 ## An empty bed at `at` (its top-left): the lip in BED_SHADE, the floor over
 ## it a little down, lit `lit` of ROW_LIT toward the sun on the row being
 ## typed. The caret round the next one is `_caret`'s, drawn first.
-func _bed(b, at: Vector2, s: float, alpha: float, lit: float) -> void:
+func _bed(at: Vector2, s: float, alpha: float, lit: float) -> void:
 	if alpha <= 0.0:
 		return
-	var r := s * RADIUS
 	var floor_col: Color = BED.lerp(Pal.SUN, ROW_LIT * lit)
 	var shade: Color = BED_SHADE.lerp(Pal.SUN, ROW_LIT * lit * 0.5)
-	var lip := s * BED_LIP
-	b.fan(Face.Builder.round_rect(at, Vector2(s, s), r), Color(shade, alpha))
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, lip), Vector2(s, s - lip), r),
-		Color(floor_col, alpha))
+	var xf := Transform2D(0.0, at + Vector2.ONE * (s * 0.5))
+	_rm.put(SHAPE_SQ, [Color(shade, alpha)], xf)
+	_rm.put(SHAPE_LIP, [Color(floor_col, alpha)], xf)
 
 ## A typed letter's piece: paper with a lit rim round a crown a shade toward
 ## SURFACE_HI, over a lip toward LINE.
-func _paper_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
+func _paper_tile(at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
 	var crown: Color = Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN)
 	var deep: Color = Pal.SURFACE_HI.lerp(Pal.LINE, PAPER_LIP)
-	_tile_face(b, at, s, crown, deep, grow, alpha, angle, Pal.SURFACE)
+	_tile_face(at, s, crown, deep, grow, alpha, angle, Pal.SURFACE)
 
 ## Snail Mail's sealed tile: a moonlit envelope, its flap folded down in a
 ## shade toward MOON_INK, a berry wax seal in its corner, the letter over it.
-func _post_tile(b, at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
+func _post_tile(at: Vector2, s: float, grow: Vector2, alpha: float, angle := 0.0) -> void:
 	var deep: Color = POST.lerp(Pal.MOON_INK, POST_DEEP)
-	_tile_face(b, at, s, POST, deep, grow, alpha, angle, POST.lerp(Pal.SURFACE, 0.6))
+	_tile_face(at, s, POST, deep, grow, alpha, angle, POST.lerp(Pal.SURFACE, 0.6))
 	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
 		return
 	var xf := Transform2D(angle, grow, 0.0, at + Vector2.ONE * (s * 0.5))
-	var flap := PackedVector2Array([Vector2(-0.4, -0.4) * s, Vector2(0.4, -0.4) * s, Vector2(0.0, -0.08) * s])
-	b.polygon(xf * flap, Color(POST.lerp(Pal.MOON_INK, POST_FLAP), alpha))
-	b.disc(xf * (Vector2(0.3, 0.27) * s), s * WAX_R * minf(grow.x, grow.y), Color(Pal.BERRY, alpha))
+	_rm.put(SHAPE_FLAP, [Color(POST.lerp(Pal.MOON_INK, POST_FLAP), alpha)], xf)
+	_rm.put(SHAPE_WAX, [Color(Pal.BERRY, alpha)],
+		Transform2D(0.0, Vector2.ONE * minf(grow.x, grow.y), 0.0, xf * (Vector2(0.3, 0.27) * s)))
 
 ## A committed tile in mark `m`'s colour, toned off its cell's hash, bevelled,
 ## and shining `shine` of SHINE toward SURFACE at the top of a glint.
-func _mark_tile(b, at: Vector2, s: float, m: int, r: int, c: int, grow: Vector2,
+func _mark_tile(at: Vector2, s: float, m: int, r: int, c: int, grow: Vector2,
 		alpha := 1.0, angle := 0.0, shine := 0.0) -> void:
 	var fill: Color = MARK[m]
 	var tone := _hash(r * State.LEN + c, 3) * 2.0 - 1.0
@@ -1166,29 +1263,25 @@ func _mark_tile(b, at: Vector2, s: float, m: int, r: int, c: int, grow: Vector2,
 	if shine > 0.0:
 		fill = fill.lerp(Pal.SURFACE, shine * SHINE)
 		rim = rim.lerp(Pal.SURFACE, shine * SHINE)
-	_tile_face(b, at, s, fill, deep, grow, alpha, angle, rim)
+	_tile_face(at, s, fill, deep, grow, alpha, angle, rim)
 
 ## One piece: its face over a bottom edge in a darker shade of itself, the
 ## soft lip every card on these screens wears, drawn at `grow` of its size
 ## about its own centre so the flip's squash reads. With a `rim`, the face is
 ## the rim and the crown sits BEVEL down and in from it, so the piece is lit
-## along its top and sides.
-func _tile_face(b, at: Vector2, s: float, fill: Color, deep: Color, grow: Vector2,
+## along its top and sides. The shapes are the cell's own (`_shape`), so `s`
+## is the cell they were made at.
+func _tile_face(at: Vector2, s: float, fill: Color, deep: Color, grow: Vector2,
 		alpha := 1.0, angle := 0.0, rim := Color(0.0, 0.0, 0.0, 0.0)) -> void:
 	if grow.x <= 0.0 or grow.y <= 0.0 or alpha <= 0.0:
 		return
-	var edge := maxf(EDGE_MIN, s * EDGE)
-	var r := s * RADIUS
-	var corner := -Vector2.ONE * (s * 0.5)
 	var xf := Transform2D(angle, grow, 0.0, at + Vector2.ONE * (s * 0.5))
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s), r), Color(deep, deep.a * alpha))
+	_rm.put(SHAPE_SQ, [Color(deep, deep.a * alpha)], xf)
 	if rim.a <= 0.0:
-		b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(fill, fill.a * alpha))
+		_rm.put(SHAPE_TOP, [Color(fill, fill.a * alpha)], xf)
 		return
-	b.fan(xf * Face.Builder.round_rect(corner, Vector2(s, s - edge), r), Color(rim, rim.a * alpha))
-	var bev := s * BEVEL
-	b.fan(xf * Face.Builder.round_rect(corner + Vector2(bev * 0.7, bev),
-		Vector2(s - bev * 1.4, s - edge - bev), maxf(r - bev * 0.5, 0.0)), Color(fill, fill.a * alpha))
+	_rm.put(SHAPE_TOP, [Color(rim, rim.a * alpha)], xf)
+	_rm.put(SHAPE_BEVEL, [Color(fill, fill.a * alpha)], xf)
 
 ## The letters, over the grid's mesh and inside the same entrance: the
 ## working row's in ink, a committed row's in paper once its tile has turned

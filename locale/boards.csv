@@ -1906,3 +1906,40 @@ HTP_QN_SHOWN_CAP,Her seat keeps a cross for good,A casa dela fica com um X para 
 HTP_QN_MIST_CAP,A misty patch takes two queens,Um canteiro enevoado leva duas rainhas,Una parcela con niebla lleva dos reinas
 HTP_QN_HALF_CAP,One crown lit: it wants one more,Uma coroinha acesa: falta mais uma,Una coronita encendida: falta otra
 HTP_QN_FULL_CAP,"With both seated, the rest is crossed","Com as duas, o resto é riscado","Con las dos, el resto se tacha"
+HTP_HW_GUESS,Guess the hidden word,Adivinhe a palavra oculta,Adivina la palabra oculta
+HTP_HW_GUESS_BODY,"Type a five-letter word on the keys and press Enter. The row turns over: green is the right letter in the right place, amber is in the word somewhere else, grey is not in the word.","Digite uma palavra de cinco letras no teclado e toque em Enviar. A fileira vira: verde é a letra certa no lugar certo, âmbar está na palavra em outro lugar, cinza não está na palavra.","Escribe una palabra de cinco letras en el teclado y pulsa Enviar. La fila se da vuelta: verde es la letra correcta en su lugar, ámbar está en la palabra en otro lugar, gris no está en la palabra."
+HTP_HW_CLUES,Follow the colours,Siga as cores,Sigue los colores
+HTP_HW_CLUES_BODY,"The keys keep every colour your rows found, so you can see at a glance which letters are left. Use them to close in, until a row turns all green.","As teclas guardam todas as cores que as fileiras acharam, então dá para ver de relance quais letras sobram. Use-as para chegar perto, até uma fileira ficar toda verde.","Las teclas guardan todos los colores que encontraron tus filas, así ves de un vistazo qué letras quedan. Úsalas para acercarte, hasta que una fila quede toda verde."
+HTP_HW_TAP,Pick your square,Escolha a casa,Elige la casilla
+HTP_HW_TAP_BODY,"Tap a square of the row you are typing and the next letter goes there, over whatever it held. The back key takes a letter away.","Toque numa casa da fileira que você está digitando e a próxima letra vai para ela, por cima do que tinha. A tecla de apagar tira uma letra.","Toca una casilla de la fila que escribes y la siguiente letra va ahí, encima de lo que tenía. La tecla de borrar quita una letra."
+HTP_HW_HINT_BODY_ONE,"The bulb drops one letter of the word into its place, ghosted, and greens its key. Type over it to keep it. You have one hint.","A lâmpada coloca uma letra da palavra no lugar dela, apagadinha, e deixa a tecla verde. Digite por cima para ficar com ela. Você tem uma dica.","La bombilla pone una letra de la palabra en su lugar, tenue, y pinta su tecla de verde. Escribe encima para quedártela. Tienes una pista."
+HTP_HW_HINT_BODY_N,"The bulb drops one letter of the word into its place, ghosted, and greens its key. Type over it to keep it. You have %d hints.","A lâmpada coloca uma letra da palavra no lugar dela, apagadinha, e deixa a tecla verde. Digite por cima para ficar com ela. Você tem %d dicas.","La bombilla pone una letra de la palabra en su lugar, tenue, y pinta su tecla de verde. Escribe encima para quedártela. Tienes %d pistas."
+HTP_HW_ROWS,Six rows,Seis fileiras,Seis filas
+HTP_HW_ROWS_BODY,"You have six rows. Spend them all and the word is still hiding? Take one more row, or see the word. Reset starts the word again from the first row.","Você tem seis fileiras. Gastou todas e a palavra continua escondida? Pegue mais uma fileira, ou veja a palavra. Recomeçar começa a palavra de novo da primeira fileira.","Tienes seis filas. ¿Las gastaste todas y la palabra sigue escondida? Toma una fila más, o mira la palabra. Reiniciar empieza la palabra otra vez desde la primera fila."
+HTP_HW_ROWS_BODY_INK,"You have six rows, and here they are ink: Reset only clears the row you are typing. Spend them all and the word is still hiding? Take one more row, or see the word.","Você tem seis fileiras, e aqui elas são à tinta: Recomeçar só limpa a fileira que você está digitando. Gastou todas e a palavra continua escondida? Pegue mais uma fileira, ou veja a palavra.","Tienes seis filas, y aquí son de tinta: Reiniciar solo borra la fila que escribes. ¿Las gastaste todas y la palabra sigue escondida? Toma una fila más, o mira la palabra."
+HTP_HW_STRICT,Every clue counts,Toda pista conta,Cada pista cuenta
+HTP_HW_STRICT_BODY,"Every clue must be used: a green letter stays in its place, and a letter your rows found goes in every guess after. A guess that drops one is sent back.","Toda pista tem que ser usada: uma letra verde fica no lugar dela, e uma letra que as fileiras acharam entra em todo palpite depois. Um palpite que deixa uma de fora volta.","Hay que usar cada pista: una letra verde se queda en su lugar, y una letra que tus filas encontraron va en cada intento siguiente. Un intento que deja una fuera se devuelve."
+HTP_HW_SNAIL,Snail Mail,Correio Caracol,Correo Caracol
+HTP_HW_SNAIL_BODY,"A row turns over sealed. The snail brings its colours when you send the next one, so every guess is made without the row just before it. The answer, and the last row, arrive at once.","Uma fileira vira lacrada. O caracol traz as cores dela quando você envia a próxima, então todo palpite é feito sem a fileira logo antes. A resposta, e a última fileira, chegam na hora.","Una fila se da vuelta sellada. El caracol trae sus colores cuando envías la siguiente, así que cada intento se hace sin la fila de justo antes. La respuesta, y la última fila, llegan al instante."
+HTP_HW_START_CAP,"Five letters, a word to find","Cinco letras, uma palavra para achar","Cinco letras, una palabra que encontrar"
+HTP_HW_TYPE_CAP,Type a word on the keys,Digite uma palavra no teclado,Escribe una palabra en el teclado
+HTP_HW_ENTER_CAP,Enter turns the row over,Enviar vira a fileira,Enviar da vuelta la fila
+HTP_HW_GREEN_CAP,"Green: right letter, right place","Verde: letra certa, lugar certo","Verde: letra correcta, lugar correcto"
+HTP_HW_AMBER_CAP,"Amber: in the word, somewhere else","Âmbar: está na palavra, em outro lugar","Ámbar: está en la palabra, en otro lugar"
+HTP_HW_GREY_CAP,Grey: not in the word,Cinza: não está na palavra,Gris: no está en la palabra
+HTP_HW_KEYS_CAP,The keys keep the colours,As teclas guardam as cores,Las teclas guardan los colores
+HTP_HW_USE_CAP,Use them for the next guess,Use-as no próximo palpite,Úsalos en el siguiente intento
+HTP_HW_FOUND_CAP,All green: you found it!,Tudo verde: você achou!,Todo verde: ¡la encontraste!
+HTP_HW_BED_CAP,Tap a square: the next letter goes there,Toque numa casa: a próxima letra vai nela,Toca una casilla: la siguiente letra va ahí
+HTP_HW_BACK_CAP,The back key takes a letter away,A tecla de apagar tira uma letra,La tecla de borrar quita una letra
+HTP_HW_READY_CAP,"A full row hops, ready to send","A fileira cheia pula, pronta para enviar","La fila llena salta, lista para enviar"
+HTP_HW_STUCK_CAP,Stuck? Ask the bulb,Travou? Peça à lâmpada,¿Atascado? Pide a la bombilla
+HTP_HW_HINT_CAP,The bulb gives one letter,A lâmpada dá uma letra,La bombilla da una letra
+HTP_HW_GIVEN_CAP,It waits in its place for you,Ela espera por você no lugar dela,Te espera en su lugar
+HTP_HW_LAST_CAP,The last row,A última fileira,La última fila
+HTP_HW_OUT_CAP,"Out of rows: one more, or see the word","Sem fileiras: mais uma, ou veja a palavra","Sin filas: una más, o mira la palabra"
+HTP_HW_STRICT_CAP,Every clue must be used,Toda pista tem que ser usada,Hay que usar cada pista
+HTP_HW_REFUSED_CAP,A green has to stay in its place,Uma verde tem que ficar no lugar dela,Una verde tiene que quedarse en su lugar
+HTP_HW_SEALED_CAP,A row turns over sealed,A fileira vira lacrada,La fila se da vuelta sellada
+HTP_HW_WAIT_CAP,Its colours wait for the snail,As cores esperam o caracol,Sus colores esperan al caracol
+HTP_HW_MAIL_CAP,The next Enter brings them,O próximo Enviar traz as cores,El siguiente Enviar los trae

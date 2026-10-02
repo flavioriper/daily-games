@@ -83,3 +83,29 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   so the rest of the card lets them through. The keyboard's backspace moved
   to the right end of the bottom row and Enter to the left, where phone
   keyboards keep them. `_shot_hiddenword.gd select` taps bed five for real.
+- **The board checkup** (2026-10-02, `docs/agents/checkup.md` row 11).
+  The lag was the keyboard and the grid. Every key was a Button drawing its
+  own `soft_button` StyleBoxFlat and its own letter, two draw calls a key, 56
+  of the 125 an Insane board drew at rest; the keys now draw nothing and the
+  tray's `Paint` child draws all of them (faces one mesh of looks made once
+  per size, face, press and glyph, letters after), re-meshed only on a frame
+  whose signature of key transforms and presses changed. Insane idle 125 ->
+  68 draws, 9.4 -> 5.1 ms (probe, opengl3_angle, second of two). The grid was
+  `_build_grid` writing every round rect a vertex at a time on each animating
+  frame (each typed letter, flip, caret glide), 4-7.6 ms and growing with the
+  rows; it now runs on `RunMesh` (`_shape`, `_lay_runs`: a caret run per row
+  and a cell run sized for a bed, a flip's shadow and a sealed tile, laid for
+  `MAX_ROWS` and laid again only when the cell changes -- One more row's
+  grow), with the party's meadow, Reset's ghosts and the gags on the tail.
+  Build ~1-1.6 ms; Insane play 12.5 -> 5.5 ms, full-board play 10.8 -> 6.5,
+  the 44-46 ms frames gone; pixel-identical at rest (max 8/255 on edges).
+  `_shot_hiddenword.gd` peaks now 87-99 draws (out, solve, refuse,
+  restore). The tutorial (`tutorial_pages()`,
+  `ui/hud/hidden_word_tutorial_diagram.gd`) is the board itself as a `Desk`
+  (no sounds, reactions, party, card or band; two rows; a `DeskState` that
+  accepts any word) over a real `KeyBoard` scaled to 56% of the page, played
+  by a finger in the player's language (`WORDS`: en, pt, es): GUESS, CLUES,
+  TAP, HINT (bands with hints), ROWS (ink wording on Hard and Insane), STRICT
+  (Hard and Insane) and SNAIL (Insane). Still no Undo: an Enter is the check
+  and taking a row back is not this game; backspace undoes typing, Reset is
+  there on every band.

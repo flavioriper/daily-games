@@ -35,6 +35,7 @@ signal commit
 signal erase
 
 const HiddenWordState = preload("res://puzzles/hidden_word_state.gd")
+const Face = preload("res://ui/faces/face.gd")
 
 const HEIGHT := 340.0
 const KEY := Vector2(91.0, 100.0)
@@ -74,6 +75,22 @@ var _row_tw: Array = [null, null, null]
 ## the settings sheet that spawns a New puzzle also carries the language
 ## picker, so a board asks match_locale() before it deals a word.
 var _lang := ""
+## The keys' paint (the board checkup, 2026-10-02). A Button with its own
+## StyleBoxFlat and its own text cost two draw calls (the box is a polygon,
+## the letter a glyph batch), 56 of Hidden Word's 125 at rest. The Buttons
+## still take the taps and carry the press and bump tweens and the rows'
+## slides, but draw nothing; `_paint`, over them, draws every key's face as
+## one mesh and every letter after it, read off each Button's transform, so
+## the keyboard is two draw calls whatever it is doing. A look (size, face,
+## pressed, the backspace's glyph) is made once as a flat triangle list and
+## copied natively under the key's transform; the mesh is made again only on
+## a frame where some key moved, was pressed or was repainted (`_sig`).
+var _paint: Control
+var _look: Dictionary = {}    # Button -> [fill, ink, label, role]
+var _flats: Dictionary = {}   # look key -> [verts, cols]
+var _faces: ArrayMesh
+var _sig := PackedFloat32Array()
+var _font: Font
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -87,6 +104,14 @@ func _make_inner() -> Container:
 	return col
 
 func _build() -> void:
+	if _paint == null:
+		_font = CozyTheme.display(700)
+		_paint = Control.new()
+		_paint.name = "Paint"
+		_paint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_paint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_paint.draw.connect(_draw_keys)
+		add_child(_paint)
 	_lang = Locale.current()
 	var rows: Array = ROWS_ES if Locale.current() == "es" else ROWS
 	for r in rows.size():
@@ -130,6 +155,8 @@ func match_locale() -> void:
 	_row_tw = [null, null, null]
 	_keys = {}
 	_chips = []
+	_look = {}
+	_sig = PackedFloat32Array()
 	_press_tw = {}
 	_bump_tw = {}
 	_build()
@@ -163,14 +190,12 @@ func _add_letter(row: HBoxContainer, letter: String) -> void:
 	chip.focus_mode = Control.FOCUS_NONE
 	chip.size = Vector2(KEY.x, KEY.y)
 	chip.pivot_offset = chip.size * 0.5
-	chip.text = letter.to_upper()
-	chip.add_theme_font_override("font", CozyTheme.display(700))
-	chip.add_theme_font_size_override("font_size", FONT_SIZE)
 	slot.add_child(chip)
 	# Dropped after add_child, which is when CozyTheme.dress() puts the
 	# shared paper wash on; a key carries its own flat face instead.
 	chip.material = null
-	_style(chip, Pal.KEY_FACE, Pal.TEXT)
+	_blank(chip)
+	_look[chip] = [Pal.KEY_FACE, Pal.TEXT, letter.to_upper(), "letter"]
 	chip.button_down.connect(_press.bind(chip))
 	chip.button_up.connect(_release.bind(chip))
 	chip.pressed.connect(func() -> void: key.emit(letter))
@@ -189,21 +214,12 @@ func _add_special(row: HBoxContainer, role: String, width: float) -> void:
 	chip.pivot_offset = chip.size * 0.5
 	slot.add_child(chip)
 	chip.material = null
+	_blank(chip)
 	if role == "commit":
-		chip.text = "KEY_ENTER"
-		chip.add_theme_font_override("font", CozyTheme.display(700))
-		chip.add_theme_font_size_override("font_size", FONT_SIZE)
-		_style(chip, Pal.GOOD, Pal.PAPER)
+		_look[chip] = [Pal.GOOD, Pal.PAPER, "KEY_ENTER", role]
 		chip.pressed.connect(func() -> void: commit.emit())
 	else:
-		_style(chip, Pal.KEY_FACE, Pal.TEXT)
-		var icon := Control.new()
-		icon.name = "Glyph"
-		icon.size = Vector2(56.0, 56.0)
-		icon.position = chip.size * 0.5 - icon.size * 0.5
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.draw.connect(_draw_erase.bind(icon))
-		chip.add_child(icon)
+		_look[chip] = [Pal.KEY_FACE, Pal.TEXT, "", role]
 		chip.pressed.connect(func() -> void: erase.emit())
 	chip.button_down.connect(_press.bind(chip))
 	chip.button_up.connect(_release.bind(chip))
@@ -213,32 +229,153 @@ func _add_special(row: HBoxContainer, role: String, width: float) -> void:
 ## two fonts carries U+232B, so a Button.text of "⌫" renders as a missing
 ## glyph box. An outlined arrow pointing at the letter it clears, with an X
 ## laid across it -- the concept tab's own icon (docs/brainstorm/concepts.html,
-## the `bksp` icon), redrawn here as canvas commands.
-func _draw_erase(icon: Control) -> void:
-	var s: float = icon.size.x
+## the `bksp` icon), stroked into the key's look about the key's centre `c`.
+static func _erase_glyph(b, c: Vector2) -> void:
+	var s := 56.0
 	var w := s * 0.09
-	var c := icon.size * 0.5
 	var pts := PackedVector2Array([
 		c + Vector2(-0.46, 0.0) * s, c + Vector2(-0.14, -0.32) * s,
 		c + Vector2(0.46, -0.32) * s, c + Vector2(0.46, 0.32) * s,
-		c + Vector2(-0.14, 0.32) * s, c + Vector2(-0.46, 0.0) * s,
+		c + Vector2(-0.14, 0.32) * s,
 	])
-	icon.draw_polyline(pts, Pal.TEXT, w, true)
-	icon.draw_line(c + Vector2(-0.02, -0.14) * s, c + Vector2(0.24, 0.14) * s, Pal.TEXT, w, true)
-	icon.draw_line(c + Vector2(0.24, -0.14) * s, c + Vector2(-0.02, 0.14) * s, Pal.TEXT, w, true)
+	b.stroke(pts, w, Pal.TEXT, true)
+	b.stroke(PackedVector2Array([c + Vector2(-0.02, -0.14) * s, c + Vector2(0.24, 0.14) * s]), w, Pal.TEXT)
+	b.stroke(PackedVector2Array([c + Vector2(0.24, -0.14) * s, c + Vector2(-0.02, 0.14) * s]), w, Pal.TEXT)
 
 ## A key's look: the theme's soft button in the key's face (UI polish,
 ## 2026-09-28; a thick bottom edge before), lettered in `ink` for every
-## state a key can be in.
+## state a key can be in -- painted by `_paint`, never by the Button.
 func _style(chip: Button, fill: Color, ink: Color) -> void:
-	var sb := CozyTheme.soft_button(fill, RADIUS, false, 0)
-	var pressed := CozyTheme.soft_button(fill, RADIUS, true, 0)
-	for state in ["normal", "hover", "focus"]:
-		chip.add_theme_stylebox_override(state, sb)
-	chip.add_theme_stylebox_override("pressed", pressed)
-	chip.add_theme_stylebox_override("disabled", sb)
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
-		chip.add_theme_color_override(state, ink)
+	var look: Array = _look.get(chip, [])
+	if look.is_empty():
+		return
+	look[0] = fill
+	look[1] = ink
+	_sig = PackedFloat32Array()
+
+## A Button that takes input and moves but paints nothing of its own.
+static func _blank(chip: Button) -> void:
+	var none := StyleBoxEmpty.new()
+	for state in ["normal", "hover", "focus", "pressed", "disabled", "hover_pressed"]:
+		chip.add_theme_stylebox_override(state, none)
+
+func _process(_delta: float) -> void:
+	if _paint == null or not is_visible_in_tree():
+		return
+	# Every key's place, scale and press, in the paint's space; a frame that
+	# matches the last one draws the mesh it already has.
+	var inv := _paint.get_global_transform().affine_inverse()
+	var sig := PackedFloat32Array()
+	sig.resize(_chips.size() * 7)
+	var k := 0
+	for chip in _chips:
+		var xf := inv * chip.get_global_transform()
+		sig[k] = xf.x.x
+		sig[k + 1] = xf.x.y
+		sig[k + 2] = xf.y.x
+		sig[k + 3] = xf.y.y
+		sig[k + 4] = xf.origin.x
+		sig[k + 5] = xf.origin.y
+		sig[k + 6] = 1.0 if _held(chip) else 0.0
+		k += 7
+	if sig == _sig:
+		return
+	_sig = sig
+	_faces = null
+	_paint.queue_redraw()
+
+static func _held(chip: Button) -> bool:
+	var mode := chip.get_draw_mode()
+	return mode == BaseButton.DRAW_PRESSED or mode == BaseButton.DRAW_HOVER_PRESSED
+
+## Every key's face as one mesh, then every key's letter: two draw calls.
+func _draw_keys() -> void:
+	if _chips.is_empty():
+		return
+	var inv := _paint.get_global_transform().affine_inverse()
+	if _faces == null:
+		var b := Face.FlatBuilder.new()
+		for chip in _chips:
+			var f := _flat_for(chip)
+			var xf := inv * chip.get_global_transform()
+			b.verts.append_array(xf * (f[0] as PackedVector2Array))
+			b.cols.append_array(f[1])
+		_faces = b.mesh()
+	if _faces != null:
+		_paint.draw_mesh(_faces, null)
+	var asc := _font.get_ascent(FONT_SIZE)
+	for chip in _chips:
+		var look: Array = _look[chip]
+		if String(look[2]) == "":
+			continue
+		var text := tr(String(look[2]))
+		var ts := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
+		var at := Vector2((chip.size.x - ts.x) * 0.5, (chip.size.y - ts.y) * 0.5 + asc)
+		_paint.draw_set_transform_matrix(inv * chip.get_global_transform())
+		_paint.draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, look[1])
+	_paint.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## A key's face as a flat triangle list about its own top-left corner, made
+## once per size, face, press and glyph: CozyTheme.soft_button's look (a
+## soft shadow below, a two-pixel border a shade darker, the face) laid out
+## as triangles.
+func _flat_for(chip: Button) -> Array:
+	var look: Array = _look[chip]
+	var held := _held(chip)
+	var key := "%d|%d|%s|%s|%s" % [int(chip.size.x), int(chip.size.y), look[0].to_html(), held, look[3]]
+	var f: Array = _flats.get(key, [])
+	if not f.is_empty():
+		return f
+	var fill: Color = look[0]
+	var b := Face.Builder.new()
+	var sz := chip.size
+	var tint := fill.darkened(0.55).lerp(Color(0.35, 0.23, 0.12), 0.5)
+	var spread := 3.0 if held else 10.0
+	var drop := Vector2(0.0, 1.0 if held else 4.0)
+	_shadow(b, drop, sz, RADIUS, spread, Color(tint, 0.10 if held else 0.2))
+	b.fan(_rounded(Vector2.ZERO, sz, RADIUS), Color(fill.darkened(0.16), fill.a))
+	b.fan(_rounded(Vector2(2.0, 2.0), sz - Vector2(4.0, 4.0), RADIUS - 2.0),
+		fill.darkened(0.07) if held else fill)
+	if look[3] == "erase":
+		_erase_glyph(b, sz * 0.5)
+	f = Face.FlatBuilder.flat_of(b)
+	_flats[key] = f
+	return f
+
+## A rounded rectangle's outline with a fixed count of points a corner, so
+## two of them of different radii can be joined point to point.
+static func _rounded(at: Vector2, sz: Vector2, r: float) -> PackedVector2Array:
+	const N := 8
+	var rr := minf(r, minf(sz.x, sz.y) * 0.5)
+	var pts := PackedVector2Array()
+	var corners := [
+		[at + Vector2(sz.x - rr, rr), -PI * 0.5],
+		[at + Vector2(sz.x - rr, sz.y - rr), 0.0],
+		[at + Vector2(rr, sz.y - rr), PI * 0.5],
+		[at + Vector2(rr, rr), PI],
+	]
+	for c in corners:
+		for i in N + 1:
+			pts.append(c[0] + Vector2.from_angle(c[1] + PI * 0.5 * i / N) * rr)
+	return pts
+
+## StyleBoxFlat's shadow: the rect in `colour`, fading to nothing `spread`
+## further out, moved by `drop`.
+static func _shadow(b, drop: Vector2, sz: Vector2, r: float, spread: float, colour: Color) -> void:
+	var inner := _rounded(drop, sz, r)
+	var outer := _rounded(drop - Vector2.ONE * spread, sz + Vector2.ONE * spread * 2.0, r + spread)
+	var n := inner.size()
+	var first: int = b.verts.size()
+	for p in inner:
+		b.vertex(p, colour)
+	for p in outer:
+		b.vertex(p, Color(colour, 0.0))
+	var c: int = b.vertex(drop + sz * 0.5, colour)
+	for i in n:
+		var j := (i + 1) % n
+		b.tri(c, first + i, first + j)
+		b.tri(first + i, first + n + i, first + n + j)
+		b.tri(first + i, first + n + j, first + j)
 
 func _press(chip: Button) -> void:
 	Motion.stop(_press_tw.get(chip))
