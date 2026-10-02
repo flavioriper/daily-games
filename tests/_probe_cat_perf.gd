@@ -33,8 +33,6 @@ func _process(_delta: float) -> bool:
 			var t0 := Time.get_ticks_usec()
 			for r in reps:
 				_b._walked_at = _b._now()
-				_b._head_from_pos = _b._centre(st.path[maxi(n - 2, 0)])
-				_b._head_at = _b._now()
 				_b._ripples.append(_b._now())
 				_b._refresh()
 				if _b._under == null:
