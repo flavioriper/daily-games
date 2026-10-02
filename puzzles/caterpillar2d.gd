@@ -453,6 +453,46 @@ func rules() -> String:
 		out += "\n\n" + tr("CP_RULES_SAFE")
 	return out
 
+## The how-to-play card's pages, the band's own: the walk, the order of the
+## leaves (Easy to Hard), fences (Medium on), backing up, hearts (Hard,
+## Insane), the tummy (Insane), Undo and Reset, and the bulb (bands with
+## hints). Each page is the board itself on a garden of four by three
+## squares, playing the lesson (ui/hud/caterpillar_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/caterpillar_tutorial_diagram.gd")
+	var band: int = _state.difficulty
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.WALK, "HTP_CP_WALK",
+		tr("HTP_CP_WALK_BODY_PECK" if band >= 3 else "HTP_CP_WALK_BODY")]]
+	if band < 3:
+		steps.append([Diagram.Lesson.ORDER, "HTP_CP_ORDER", tr("HTP_CP_ORDER_BODY")])
+	if band >= 1:
+		steps.append([Diagram.Lesson.FENCE, "HTP_CP_FENCE", tr("HTP_CP_FENCE_BODY")])
+	steps.append([Diagram.Lesson.BACK, "HTP_CP_BACK", tr("HTP_CP_BACK_BODY")])
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
+			tr("HTP_CP_HEARTS_BODY_PECK" if band >= 3 else "HTP_CP_HEARTS_BODY") % hearts_n])
+	if band >= 3:
+		steps.append([Diagram.Lesson.PECKISH, "CP_PECKISH_SEAL",
+			tr("HTP_CP_PECKISH_BODY") % maxi(_state.hunger, 1)])
+	var undo_body := "HTP_CP_UNDO_BODY"
+	if band >= 3:
+		undo_body = "HTP_CP_RESET_BODY"
+	elif hearts_n > 0:
+		undo_body = "HTP_CP_UNDO_BODY_JUDGED"
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_CP_HINT_BODY_ONE") if hints == 1 else tr("HTP_CP_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _tips() -> Array:
 	if _state.peckish():
 		return TIPS_PECKISH
@@ -558,8 +598,12 @@ func _cell() -> float:
 		return _ref_cell
 	if _state.cols <= 0:
 		return 0.0
-	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * INSET) / _state.cols,
-		(size.y - _heart_row() - 2.0 * INSET) / _state.rows)))
+	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * _inset()) / _state.cols,
+		(size.y - _heart_row() - 2.0 * _inset()) / _state.rows)))
+
+## The lawn kept round the bed (a tutorial page, short and wide, keeps less).
+func _inset() -> float:
+	return INSET
 
 ## The strip the hearts take over the bed, on a band that has them.
 func _heart_row() -> float:

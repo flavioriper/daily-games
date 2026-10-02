@@ -118,7 +118,8 @@ other (a press, a motion over the far islet, the release). Fairy Lights'
 tap every piece round to its answer in reading order, a tap a step. Paper
 Planes' tap the deal's own order, each plane on its head. Rings' play the
 solver's line from the deal, a tap lifting the top ring and a tap dropping
-it, up each station's column. With `howto` up
+it, up each station's column. Caterpillar's draw the answer as one drag (a press on
+leaf 1, a motion a square, the release; `_keep` 3). With `howto` up
 the probe plays no moves at all (Bridges' Easy board was solved under its
 pages and the win screen took over). Hidden Word's type five wrong guesses that keep every clue (so Hard's
 rule never refuses them) and then the answer, a letter a step, each commit
