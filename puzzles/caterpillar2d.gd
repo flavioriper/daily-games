@@ -54,6 +54,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 ## Rings' garden pieces -- a leaf, a daisy and the stable hash -- are statics,
 ## shared so the two terraces grow the same plants.
 const Rings = preload("res://puzzles/rings2d.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured ---
 ## The card's inset, the largest cell any band asks for, the card's corner the
@@ -302,24 +303,74 @@ var _anim_until := 0.0
 ## The leaves' and badges' meshes rebuild every frame until this.
 var _decor_until := 0.0
 var _solved_at := -1.0
+## The lawn over the whole card, made again whenever the card changes size,
+## and the bed (frame, grout, tiles), made in the reference layout's space.
+var _lawn: ArrayMesh
+var _bed: ArrayMesh
+## The two joined into one mesh, drawn while the layout is the reference one
+## (all of play): apart they are one draw call more, ~0.3 ms a frame here.
 var _still: ArrayMesh
+## The layout everything on the bed is made at: the board's own space while
+## it builds (`_in_ref`), drawn under `_relay()` onto the layout it has now --
+## so the win card's smaller relayout makes nothing again but the lawn
+## (Queens' and Bridges' lesson: it cost the solve a 70-97 ms frame).
+var _ref_cell := 0.0
+var _ref_origin := Vector2.ZERO
+var _in_ref := false
+## The leaves, fences and badges in two meshes a layer: every piece at
+## rest (`_rest_under`, `_rest_over`), handed back while their looks are the
+## ones it was built from, and only what moves (`_under`, `_over`: a leaf
+## popping, bumping or being chewed, a fence or badge flashing, the blush)
+## built each frame. Rebuilding all of it every frame anything on it moved
+## cost 1-2 ms a frame through every chew on Insane.
 var _under: ArrayMesh
 var _over: ArrayMesh
+var _rest_under: ArrayMesh
+var _rest_over: ArrayMesh
+var _rest_under_sig: Array = []
+var _rest_over_sig: Array = []
+var _decor_built := false
 var _tail_lo: ArrayMesh
 var _tail_hi: ArrayMesh
 var _tail_key: Array = []
 var _tail_b_lo: Face.Builder
 var _tail_b_hi: Face.Builder
-## A segment's parts as triangle lists, baked once a layout (`_part`), and
-## every leaf and fence as it has looked, by its look (`_leaf`, `_fence`).
-var _parts := {}
+## Every look the board puts -- a segment's parts (`_part`), each leaf, fence
+## and badge as it has looked (`_leaf`, `_fence`, `_badge`) -- as RunMesh
+## shapes (indexed, copied natively under a transform): a look's key -> its
+## shape id, and each id's drawing.
 var _cache := {}
+##
+## The resting pieces each own a run of vertices (`room`), laid once a
+## reference layout in paint order, so a leaf changing its look offsets only
+## its own indices: on one tail, every look after it moved and a rest
+## rebuild cost 5-10 ms. What moves goes into `_rm_live`, which has no runs
+## and shares the shapes.
+var _rm: RunMesh
+var _rm_over: RunMesh
+var _rm_live: RunMesh
+var _look_makers: Array[Callable] = []
+var _rooms_laid := false
+enum Part { GIVEN, LEAF, FENCE, BADGE, SHADOW, LEGS, SEG }
+## The stretch near the head the same way: a run per segment slot counted
+## from the seam (its shadow, then its legs and feet, in `_rm_lo`; its round,
+## spots and glow in `_rm_hi`), so every frame of a drag copies the same
+## looks into the same places and no index is offset in script. As triangle
+## lists it was up to 55k vertices uploaded every frame of a drag.
+const BODY_SLOTS := DYN + TAIL_STEP + 2
+var _rm_lo: RunMesh
+var _rm_hi: RunMesh
+var _body_rooms := false
 var _live_lo: ArrayMesh
 var _live_tube: ArrayMesh
 var _live_hi: ArrayMesh
 ## The segments cut away popping out, and the rings round a leaf just eaten.
 var _live_fx: ArrayMesh
 var _top: ArrayMesh
+## Where the head's look is put this frame (its breath, squash and place),
+## and every look it has worn, made once (`_head_look`).
+var _top_xf := Transform2D.IDENTITY
+var _heads := {}
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
 ## RID, so dropping the only reference leaves the renderer a freed one.
 var _shown: Array = []
@@ -344,6 +395,9 @@ var _back_index := -1
 var _back_at := AGO
 var _heart_layer: Control
 var _hearts_shown: ArrayMesh
+## The pill as it stood ([hearts, tummy room, worried, place]) -> its mesh:
+## every Peckish step changes the tummy, and building the pill was ~2.8 ms.
+var _hearts_cache := {}
 var _dusk_tw: Tween
 var _gen := 0
 var _busy_until := 0.0
@@ -367,12 +421,14 @@ var _combo_popped := false
 var _combo_out_at := -INF
 var _combo_shown: ArrayMesh
 var _combo_key: Array = []
+var _warm_combo := true
 var _life_layer: Control
 var _life_shown: Array = []
 var _love: Array = []      # [{"at", "t", "phase"}]
 var _bubbles: Array = []   # [{"at", "t"}]
 var _bugs: Array = []      # [{"cell", "t", "from"}]
 var _love_mesh: ArrayMesh
+var _flutters := {}
 var _bubble_mesh: ArrayMesh
 var _bug_mesh: ArrayMesh
 var _seal_mesh: ArrayMesh
@@ -413,6 +469,13 @@ func capabilities() -> Array[String]:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_rm = RunMesh.new(_make_look)
+	_rm_over = RunMesh.new(_make_look)
+	_rm_live = RunMesh.new(_make_look)
+	_rm_lo = RunMesh.new(_make_look)
+	_rm_hi = RunMesh.new(_make_look)
+	for rm: RunMesh in [_rm_over, _rm_live, _rm_lo, _rm_hi]:
+		rm.share_shapes(_rm)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -449,6 +512,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_flawless = false
 	_deal()
 	_reset_rewards()
+	# A new garden makes every look again (a leaf's size, the clovers).
+	_ref_cell = 0.0
 	_layout()
 	_opened = _now()
 	_decor_for(_entrance())
@@ -489,6 +554,8 @@ func _deal() -> void:
 # --- layout ---
 
 func _cell() -> float:
+	if _in_ref:
+		return _ref_cell
 	if _state.cols <= 0:
 		return 0.0
 	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * INSET) / _state.cols,
@@ -502,6 +569,8 @@ func _grid_size() -> Vector2:
 	return Vector2(_state.cols, _state.rows) * _cell()
 
 func _origin() -> Vector2:
+	if _in_ref:
+		return _ref_origin
 	var row := _heart_row()
 	var g := _grid_size()
 	return Vector2((size.x - g.x) * 0.5, row + (size.y - row - g.y) * 0.5)
@@ -541,11 +610,12 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	_lawn = null
 	_still = null
-	_tail_key = []
-	_parts = {}
-	_cache = {}
+	_take_ref()
 	_love_mesh = null
+	_flutters = {}
+	_hearts_cache = {}
 	_bubble_mesh = null
 	_bug_mesh = null
 	_seal_mesh = null
@@ -558,6 +628,108 @@ func _layout() -> void:
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 	_dirty()
+
+## The layout the bed's meshes are made at: the first one with room on it,
+## and any larger one after (a look made small and drawn large would blur).
+## A smaller one -- the win card's -- keeps it and is drawn under `_relay()`.
+func _take_ref() -> void:
+	var c := _cell()
+	if c <= 0.0:
+		return
+	if _ref_cell <= 0.0 or c > _ref_cell + 0.01:
+		_ref_cell = c
+		_ref_origin = _origin()
+		_bed = null
+		_still = null
+		_tail_key = []
+		_cache = {}
+		_heads = {}
+		_rm.reset()
+		_rm_over.reset()
+		_rm_live.reset()
+		_rm_lo.reset()
+		_rm_hi.reset()
+		for rm: RunMesh in [_rm_over, _rm_live, _rm_lo, _rm_hi]:
+			rm.share_shapes(_rm)
+		_body_rooms = false
+		_look_makers = []
+		_rooms_laid = false
+		_rest_under = null
+		_rest_over = null
+
+## The reference layout onto the one the board has now.
+func _relay() -> Transform2D:
+	if _ref_cell <= 0.0:
+		return Transform2D.IDENTITY
+	var k := _cell() / _ref_cell
+	return Transform2D(0.0, Vector2(k, k), 0.0, _origin() - _ref_origin * k)
+
+## The shape id of the look `key`, drawn by `maker(builder)` the first time
+## it is put.
+func _look(key: String, maker: Callable) -> int:
+	var id = _cache.get(key)
+	if id == null:
+		id = _look_makers.size()
+		_look_makers.append(maker)
+		_cache[key] = id
+	return id
+
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	_look_makers[id].call(b)
+	return b
+
+## `pieces` ([shape id, transform] each, after `b` when given) as one mesh
+## with no runs, or null.
+func _put_live(pieces: Array, b: Face.Builder = null) -> ArrayMesh:
+	_rm_live.begin()
+	if b != null:
+		_rm_live.put_builder(b)
+	for p: Array in pieces:
+		_rm_live.put(p[0], [], p[1])
+	return _rm_live.mesh()
+
+## `pieces` ([shape id, transform, part, index] each, in the order their runs
+## were laid) into `rm`'s runs, as one mesh or null.
+func _put_rest(rm: RunMesh, pieces: Array) -> ArrayMesh:
+	rm.begin()
+	for p: Array in pieces:
+		rm.open(p[2], p[3])
+		rm.put(p[0], [], p[1])
+	return rm.mesh()
+
+## A run for every square that can wear the sun wash, every leaf, every
+## fence and every badge, each as long as its largest look, in paint order.
+func _lay_rooms() -> void:
+	_rooms_laid = true
+	var given := _given_look()
+	for c in _state.given:
+		_rm.room(Part.GIVEN, c, _rm.size_of(given))
+	for k in _state.leaves.size():
+		var c: int = _state.leaves[k]
+		var most := 0
+		for got in [false, true]:
+			for bites in ["000", "444"]:
+				most = maxi(most, _rm.size_of(_look("l%s|%s|%s" % [_unmarked(c), got, bites],
+					_leaf_shape.bind(_unmarked(c), got, bites))))
+		_rm.room(Part.LEAF, k, most + most / 4)
+	var i := 0
+	for e in _state.hedges:
+		var vertical: bool = (e / 4096) / _state.cols == (e % 4096) / _state.cols
+		_rm.room(Part.FENCE, i, _rm.size_of(_look("f%s|0" % vertical, _fence_shape.bind(vertical, 0.0))))
+		i += 1
+	for k in _state.leaves.size():
+		var most := 0
+		for got in [false, true]:
+			for star in [false, true]:
+				most = maxi(most, _rm.size_of(_look("b%s|0|%s" % [got, star], _badge_shape.bind(got, 0.0, star))))
+		_rm_over.room(Part.BADGE, k, most)
+
+func _given_look() -> int:
+	return _look("given", func(b: Face.Builder) -> void:
+		var s := _cell()
+		b.fan(Face.Builder.round_rect(-Vector2.ONE * s * GIVEN_R, Vector2.ONE * s * GIVEN_R * 2.0, s * 0.18),
+			Color(Pal.SUN_RAY, GIVEN_ALPHA)))
 
 # --- the frame ---
 
@@ -625,8 +797,7 @@ func _refresh() -> void:
 ## What the body covers changed (a leaf, a hint's square, a cut, a deal):
 ## the leaves and badges too.
 func _dirty() -> void:
-	_under = null
-	_over = null
+	_decor_built = false
 	_refresh()
 
 # --- the drawing ---
@@ -645,23 +816,41 @@ func _draw() -> void:
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var shown: Array = []
 	var moving := t < _decor_until
-	if _still == null:
-		_still = _build_still()
-	if _under == null or moving:
-		_under = _build_under(t)
+	if _lawn == null:
+		_lawn = _build_lawn()
+	_take_ref()
+	_in_ref = true
+	if _bed == null:
+		_bed = _build_bed()
+	if not _decor_built or moving:
+		_build_under(t)
+		_build_over(t)
+		_decor_built = true
 	if _live_lo == null:
 		_build_body(t)
-	if _over == null or moving:
-		_over = _build_over(t)
 	if _top == null:
 		_top = _build_top(t)
-	for m in [_still, _under, _tail_lo, _live_lo, _tail_hi, _live_tube, _live_hi, _live_fx, _over]:
+	_in_ref = false
+	var relay := _relay()
+	var board := xf * relay
+	if relay == Transform2D.IDENTITY:
+		if _still == null:
+			_still = _join(_lawn, _bed)
+		draw_mesh(_still, null, xf, tint)
+		shown.append(_still)
+	else:
+		draw_mesh(_lawn, null, xf, tint)
+		draw_mesh(_bed, null, board, tint)
+		shown.append_array([_lawn, _bed])
+	for m in [_rest_under, _under, _tail_lo, _live_lo, _tail_hi, _live_tube, _live_hi, _live_fx, _rest_over, _over]:
 		if m != null:
-			draw_mesh(m, null, xf, tint)
+			draw_mesh(m, null, board, tint)
 			shown.append(m)
-	_draw_numbers(t, xf, seen)
+	_in_ref = true
+	_draw_numbers(t, board, seen)
+	_in_ref = false
 	if _top != null:
-		draw_mesh(_top, null, xf, tint)
+		draw_mesh(_top, null, board * _top_xf, tint)
 		shown.append(_top)
 	_draw_butterfly_mesh(t, shown)
 	_shown = shown
@@ -670,18 +859,16 @@ func _draw() -> void:
 
 ## The garden: a mown lawn over the whole card with dappled shade, tufts and
 ## daisies, foliage hanging into the top corners and bushes along the foot,
-## and in the middle the bed -- a wooden frame round a checker of pale grass
-## tiles, a clover on some. It never moves, so it is one mesh built once a
-## layout, and the live mesh rebuilt while anything moves stays as small as
-## before.
-func _build_still() -> ArrayMesh:
+## and in the middle the bed (`_build_bed`). Neither moves, so each is one
+## mesh, the lawn made once a card size and the bed once a reference layout,
+## and the live meshes rebuilt while anything moves stay small.
+func _build_lawn() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var s := _cell()
 	var o := _origin()
 	var g := _grid_size()
 	var w := size.x
 	var h := size.y
-	var seed_i: int = _state.cols * 131 + _state.last_leaf() * 7 + _state.hedges.size()
+	var seed_i := _seed_i()
 	var clip := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
 	Rings._clip_polygon(b, clip, Pal.MEADOW.lerp(Pal.PAPER, 0.55), clip)
 	# Mown stripes across the lawn, a shade apart.
@@ -714,7 +901,44 @@ func _build_still() -> ArrayMesh:
 	_bush(b, Vector2(44.0, h + 6.0), 100.0, seed_i + 3, clip)
 	_bush(b, Vector2(w - 50.0, h + 6.0), 112.0, seed_i + 4, clip)
 	_bush(b, Vector2(w * 0.6, h + 4.0), 54.0, seed_i + 5, clip)
-	# The bed: a shadow, the wooden frame with its grain, the grout, then the tiles.
+	return b.mesh()
+
+## `under` and `over` as one mesh, `under` painted first: the vertices are
+## `over`'s then `under`'s, so only `under`'s indices are offset (once a
+## layout).
+static func _join(under: ArrayMesh, over: ArrayMesh) -> ArrayMesh:
+	var a := under.surface_get_arrays(0)
+	var b := over.surface_get_arrays(0)
+	var verts: PackedVector2Array = b[Mesh.ARRAY_VERTEX]
+	var cols: PackedColorArray = b[Mesh.ARRAY_COLOR]
+	var base := verts.size()
+	verts.append_array(a[Mesh.ARRAY_VERTEX])
+	cols.append_array(a[Mesh.ARRAY_COLOR])
+	var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	for k in idx.size():
+		idx[k] += base
+	idx.append_array(b[Mesh.ARRAY_INDEX])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
+
+func _seed_i() -> int:
+	return _state.cols * 131 + _state.last_leaf() * 7 + _state.hedges.size()
+
+## The bed: a shadow, the wooden frame with its grain, the grout, then the
+## tiles -- a checker of pale grass, a clover on some. Made in the reference
+## layout's space.
+func _build_bed() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := _cell()
+	var o := _origin()
+	var g := _grid_size()
+	var seed_i := _seed_i()
 	var lawn := o - Vector2.ONE * GROUND_PAD
 	var lawn_size := g + Vector2.ONE * GROUND_PAD * 2.0
 	var out := lawn - Vector2.ONE * FRAME
@@ -802,21 +1026,35 @@ func _clip_leaf(b, root: Vector2, ang: float, lng: float, col: Color, clip: Pack
 
 # --- the leaves and fences under the body ---
 
-func _build_under(t: float) -> ArrayMesh:
-	var soup := Soup.new()
-	var b := Face.Builder.new()
-	var s := _cell()
+## Builds `_rest_under` (handed back while every resting piece looks as it
+## did) and `_under`, what moves this frame.
+func _build_under(t: float) -> void:
+	if not _rooms_laid:
+		_lay_rooms()
+	var sig: Array = []
+	var still: Array = []
+	var moving: Array = []
+	var covered := PackedInt32Array()
 	for c in _state.given:
 		if _state.body.has(c):
-			b.fan(Face.Builder.round_rect(_centre(c) - Vector2.ONE * s * GIVEN_R,
-				Vector2.ONE * s * GIVEN_R * 2.0, s * 0.18), Color(Pal.SUN_RAY, GIVEN_ALPHA))
-	_blush(b, t)
-	soup.add_builder(b)
+			covered.append(c)
+	sig.append(covered)
 	for k in _state.leaves.size():
-		_leaf(soup, _state.leaves[k], t)
+		_leaf(k, t, sig, still, moving)
+	var i := 0
 	for e in _state.hedges:
-		_fence(soup, e, t)
-	return soup.mesh() if not soup.verts.is_empty() else null
+		_fence(e, i, t, sig, still, moving)
+		i += 1
+	if _rest_under == null or sig != _rest_under_sig:
+		var given := _given_look()
+		var pieces: Array = []
+		for c in covered:
+			pieces.append([given, Transform2D(0.0, _centre(c)), Part.GIVEN, c])
+		_rest_under = _put_rest(_rm, pieces + still)
+		_rest_under_sig = sig
+	var gb := Face.Builder.new()
+	_blush(gb, t)
+	_under = _put_live(moving, gb if not gb.verts.is_empty() else null)
 
 ## The squares a wrong step stranded: a rose wash that wobbles in and fades,
 ## so the player sees exactly what the heart bought.
@@ -842,7 +1080,7 @@ func _blush(b, t: float) -> void:
 ## A fence on the edge between two squares: a soft shadow, a wooden rail with
 ## its lit top and grain, and a capped post at either end and in the middle,
 ## flashing and shivering when the head was just refused across it.
-func _fence(soup: Soup, e: int, t: float) -> void:
+func _fence(e: int, i: int, t: float, sig: Array, still: Array, moving: Array) -> void:
 	var a := e / 4096
 	var z := e % 4096
 	var mid := (_centre(a) + _centre(z)) * 0.5
@@ -852,15 +1090,15 @@ func _fence(soup: Soup, e: int, t: float) -> void:
 	var level := roundi(Motion.flash_level(since) * 6.0) if hot else 0
 	var sh := Motion.shiver_offset(since) * 2.0 if hot else 0.0
 	var vertical: bool = a / _state.cols == z / _state.cols
-	var key := "f%d|%d" % [e, level]
-	if not _cache.has(key):
-		var b := Face.Builder.new()
-		_fence_shape(b, vertical, float(level) / 6.0)
-		var piece := Soup.new()
-		piece.add_builder(b)
-		_cache[key] = piece
+	var key := "f%s|%d" % [vertical, level]
+	var id := _look(key, _fence_shape.bind(vertical, float(level) / 6.0))
 	var across := Vector2(1.0, 0.0) if vertical else Vector2(0.0, 1.0)
-	soup.add(_cache[key], Transform2D(0.0, mid + across * sh))
+	if level == 0 and sh == 0.0:
+		sig.append(e)
+		sig.append(id)
+		still.append([id, Transform2D(0.0, mid), Part.FENCE, i])
+	else:
+		moving.append([id, Transform2D(0.0, mid + across * sh)])
 
 ## A fence about the origin: a soft shadow, a wooden rail with its lit top and
 ## grain, and a capped post at either end and in the middle, flashed `fl`
@@ -1002,7 +1240,6 @@ func _build_body(t: float) -> void:
 	_live_hi = null
 	_live_tube = null
 	_live_fx = null
-	var hi := Soup.new()
 	var gb := Face.Builder.new()
 	_draw_ghosts(gb, t)
 	if _state.body.is_empty():
@@ -1015,10 +1252,7 @@ func _build_body(t: float) -> void:
 		var m := mini(_settled(t, n), n - 1)
 		var chain := _chain(t)
 		_bake_tail(chain, m, t)
-		var lo := Soup.new()
-		_soup_body(lo, hi, pts, m, t)
-		if not lo.verts.is_empty():
-			_live_lo = lo.mesh()
+		_put_body(pts, m, t)
 	var s := _cell()
 	_drop_rings(t)
 	for r: Dictionary in _rings:
@@ -1028,8 +1262,6 @@ func _build_body(t: float) -> void:
 				s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 	if not gb.verts.is_empty():
 		_live_fx = gb.mesh()
-	if not hi.verts.is_empty():
-		_live_hi = hi.mesh()
 
 ## The settled tail up to segment `m`, at rest on its squares' centres:
 ## appended to when the seam has moved on, started again when anything
@@ -1065,27 +1297,33 @@ func _bake_tail(chain: PackedInt32Array, m: int, t: float) -> void:
 	_tail_hi = _tail_b_hi.mesh()
 	_tail_key = [m, _cell(), glowing, chain.slice(0, m + 1)]
 
-## Segments m.. of `pts` into the two soups, the head's point last (its
-## shadow only: the head is `_top`).
-func _soup_body(lo: Soup, hi: Soup, pts: PackedVector2Array, m: int, t: float) -> void:
+## Segments m.. of `pts` into `_live_lo` and `_live_hi`, the head's point
+## last (its shadow only: the head is `_top`), each segment's parts put in
+## its slot's runs.
+func _put_body(pts: PackedVector2Array, m: int, t: float) -> void:
+	if not _body_rooms:
+		_lay_body_rooms()
 	var n := pts.size()
 	var s := _cell()
 	var big := s * Cat.SEG_R
 	var walk := _walk(t)
 	var seam := float(maxi(m, n - 1 - WALK_REACH))
 	var shadow := _part("shadow")
+	_rm_lo.begin()
 	for i in range(m, n):
 		var sc: Vector2 = _seg_scale(i, t) if i < n - 1 else Vector2.ONE
 		if sc.x <= 0.01:
 			continue
 		var k := Cat._taper(i) * sc.x
-		lo.add(shadow, Transform2D(0.0, Vector2(k, k), 0.0, pts[i]))
+		_rm_lo.open(Part.SHADOW, i - m)
+		_rm_lo.put(shadow, [], Transform2D(0.0, Vector2(k, k), 0.0, pts[i]))
 	var leg := _part("leg")
 	var foot := _part("foot")
 	for i in range(m, n - 1):
 		var sc := _seg_scale(i, t)
 		if sc.x <= 0.01:
 			continue
+		_rm_lo.open(Part.LEGS, i - m)
 		var r := big * Cat._taper(i) * sc.x
 		var dir := Cat._dir(pts, i)
 		var nrm := dir.orthogonal()
@@ -1099,9 +1337,10 @@ func _soup_body(lo: Soup, hi: Soup, pts: PackedVector2Array, m: int, t: float) -
 			var root := pts[i] + nrm * side * r * Cat.LEG_ROOT
 			var tip := pts[i] + nrm * side * r * (Cat.LEG_REACH - Cat.LEG_TUCK * lift) + dir * r * (0.12 + Cat.LEG_STRIDE * fwd)
 			var ax := tip - root
-			lo.add(leg, Transform2D(ax, ax.normalized().orthogonal() * sc.x, root))
+			_rm_lo.put(leg, [], Transform2D(ax, ax.normalized().orthogonal() * sc.x, root))
 			var f := sc.x * (1.0 - 0.15 * lift)
-			lo.add(foot, Transform2D(0.0, Vector2(f, f), 0.0, tip))
+			_rm_lo.put(foot, [], Transform2D(0.0, Vector2(f, f), 0.0, tip))
+	_live_lo = _rm_lo.mesh()
 	var line := pts.slice(m, n)
 	if line.size() > 1:
 		var tube := Face.Builder.new()
@@ -1109,35 +1348,54 @@ func _soup_body(lo: Soup, hi: Soup, pts: PackedVector2Array, m: int, t: float) -
 		tube.stroke(line, s * Cat.TUBE, Pal.LEAF)
 		_live_tube = tube.mesh()
 	var spots := _part("spots")
+	var rounds := [_part("round0"), _part("round1")]
+	_rm_hi.begin()
 	for i in range(m, n - 1):
 		var sc := _seg_scale(i, t)
 		if sc.x <= 0.01:
 			continue
+		_rm_hi.open(Part.SEG, i - m)
 		var k := Cat._taper(i) * _swell(i, n, t)
 		var xf := Transform2D(0.0, sc * k, 0.0, pts[i])
-		hi.add(_part("round1" if i % 2 == 1 else "round0"), xf)
-		hi.add(spots, Transform2D(Cat._dir(pts, i).angle(), sc * k, 0.0, pts[i]))
+		_rm_hi.put(rounds[i % 2], [], xf)
+		_rm_hi.put(spots, [], Transform2D(Cat._dir(pts, i).angle(), sc * k, 0.0, pts[i]))
 		if _solved_at >= 0.0:
 			var g := Motion.flash_level(t - _solved_at - Motion.SOLVE_DELAY - _wave(i, n), 0.1, 0.6)
 			var level := clampi(roundi(g * 5.0), 0, 5)
 			if level > 0:
-				hi.add(_part("glow%d" % level), xf)
+				_rm_hi.put(_part("glow%d" % level), [], xf)
+	_live_hi = _rm_hi.mesh()
+
+## A run for each of BODY_SLOTS segments from the seam: shadows, then legs
+## and feet, in `_rm_lo`; rounds, spots and glow in `_rm_hi`. A body longer
+## than that (the solve's hop lights all of it) puts the rest on the tail.
+func _lay_body_rooms() -> void:
+	_body_rooms = true
+	for i in BODY_SLOTS:
+		_rm_lo.room(Part.SHADOW, i, _rm.size_of(_part("shadow")))
+	var legs := 2 * (_rm.size_of(_part("leg")) + _rm.size_of(_part("foot")))
+	for i in BODY_SLOTS:
+		_rm_lo.room(Part.LEGS, i, legs)
+	var seg := maxi(_rm.size_of(_part("round0")), _rm.size_of(_part("round1"))) \
+		+ _rm.size_of(_part("spots")) + _rm.size_of(_part("glow5"))
+	for i in BODY_SLOTS:
+		_rm_hi.room(Part.SEG, i, seg)
 
 ## Segment `i`'s pop-in this frame.
 func _seg_scale(i: int, t: float) -> Vector2:
 	return Motion.pop_in_scale(t - _seg_at[i]) if i < _seg_at.size() else Vector2.ONE
 
-## A segment's parts, each a triangle list at the segment's full radius,
-## baked once a layout: its shadow, a leg (a unit stroke along +x, stretched
+## A segment's parts, each a RunMesh look at the segment's full radius,
+## made once a layout: its shadow, a leg (a unit stroke along +x, stretched
 ## to its tip by the transform), a foot, its round (rim, face and shine,
 ## never turned, so the light stays top left), its two spots (turned the way
 ## it faces) and the solve's warm glow in five strengths.
-func _part(key: String) -> Soup:
-	if _parts.has(key):
-		return _parts[key]
+func _part(key: String) -> int:
+	return _look("p" + key, _part_shape.bind(key))
+
+func _part_shape(b, key: String) -> void:
 	var s := _cell()
 	var r := s * Cat.SEG_R
-	var b := Face.Builder.new()
 	match key:
 		"shadow":
 			Scenery.soft_disc(b, Vector2(0.0, s * Cat.SHADOW_DROP), r * 1.25, r * 1.1, Color(Pal.TEXT, Cat.SHADOW_ALPHA))
@@ -1156,34 +1414,6 @@ func _part(key: String) -> Soup:
 		_:
 			var level := int(key.substr(4))
 			b.fan(Face.Builder.ring(Vector2.ZERO, r * Cat.FACE_IN, r * Cat.FACE_IN), Color(Pal.SURFACE, 0.1 * level))
-	var soup := Soup.new()
-	soup.add_builder(b)
-	_parts[key] = soup
-	return soup
-
-## Triangles as a flat list -- three vertices each, no index -- so whole
-## lists can be appended through a transform with native array calls.
-class Soup:
-	var verts := PackedVector2Array()
-	var cols := PackedColorArray()
-
-	func add(part: Soup, xf: Transform2D) -> void:
-		verts.append_array(xf * part.verts)
-		cols.append_array(part.cols)
-
-	func add_builder(b) -> void:
-		for i in b.idx:
-			verts.append(b.verts[i])
-			cols.append(b.cols[i])
-
-	func mesh() -> ArrayMesh:
-		var arrays := []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = verts
-		arrays[Mesh.ARRAY_COLOR] = cols
-		var out := ArrayMesh.new()
-		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		return out
 
 ## How swollen segment `i` of `n` is by the crawl and the gulps.
 func _swell(i: int, n: int, t: float) -> float:
@@ -1242,7 +1472,8 @@ func _ghost_diff(old: PackedInt32Array, t: float, stagger := 0.0) -> void:
 
 ## The leaf lying on a leaf's square, under the body: it pops in with its
 ## badge, and once eaten carries three bites out of its edge.
-func _leaf(soup: Soup, c: int, t: float) -> void:
+func _leaf(k: int, t: float, sig: Array, still: Array, moving: Array) -> void:
+	var c: int = _state.leaves[k]
 	var f := _badge_frame(c, t)
 	if f.scale.x <= 0.01:
 		return
@@ -1250,21 +1481,22 @@ func _leaf(soup: Soup, c: int, t: float) -> void:
 	var bites := ""
 	for q in CHEWS:
 		bites += str(roundi(_bite(c, t, q) * 4.0))
-	var key := "l%d|%s|%s" % [c, got, bites]
-	if not _cache.has(key):
-		var b := Face.Builder.new()
-		_leaf_shape(b, c, got, bites)
-		var piece := Soup.new()
-		piece.add_builder(b)
-		_cache[key] = piece
-	soup.add(_cache[key], Transform2D(0.0, f.scale, 0.0, f.at))
+	var key := "l%s|%s|%s" % [_unmarked(c), got, bites]
+	var id := _look(key, _leaf_shape.bind(_unmarked(c), got, bites))
+	# At rest: full size on its square, and not part-way through a bite.
+	if f.scale == Vector2.ONE and f.at == _centre(c) and (bites == "000" or bites == "444"):
+		sig.append(c)
+		sig.append(id)
+		still.append([id, Transform2D(0.0, f.at), Part.LEAF, k])
+	else:
+		moving.append([id, Transform2D(0.0, f.scale, 0.0, f.at)])
 
 ## A leaf about its square's centre: its shadow side, its face, the vein and
 ## its side veins, the stalk, and the bites in `bites` (one digit a chew,
 ## quarters of the way open).
-func _leaf_shape(b, c: int, got: bool, bites: String) -> void:
+func _leaf_shape(b, unmarked: bool, got: bool, bites: String) -> void:
 	var s := _cell()
-	var big := PECK_LEAF if _unmarked(c) else 1.0
+	var big := PECK_LEAF if unmarked else 1.0
 	var xf := Transform2D(LEAF_ANGLE, Vector2(big, big), 0.0, Vector2(s * 0.03, s * 0.02))
 	var ln := s * LEAF_LEN
 	var wd := s * LEAF_WIDE
@@ -1307,35 +1539,56 @@ func _bite(c: int, t: float, q: int) -> float:
 
 # --- the badges over the body ---
 
-func _build_over(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+## Builds `_rest_over` and `_over` the way `_build_under` does the leaves.
+func _build_over(t: float) -> void:
+	var sig: Array = []
+	var still: Array = []
+	var moving: Array = []
 	for k in _state.leaves.size():
-		_badge(b, _state.leaves[k], t)
-	return b.mesh() if not b.verts.is_empty() else null
+		_badge(k, t, sig, still, moving)
+	if _rest_over == null or sig != _rest_over_sig:
+		_rest_over = _put_rest(_rm_over, still)
+		_rest_over_sig = sig
+	_over = _put_live(moving)
 
 ## A leaf's badge over the body: an ink disc with a gold ring once eaten. It
 ## pops in on the entrance by its number, bumps when eaten, and flashes and
 ## shivers when a step onto it was refused. On Peckish the last leaf's badge
-## carries a star instead of a number, and the middle leaves have none.
-func _badge(b, c: int, t: float) -> void:
+## carries a star instead of a number, and the middle leaves have none. Its
+## look (eaten, its flash in six steps, the star) is made once about the
+## origin and put where the badge is, as large as it is.
+func _badge(k: int, t: float, sig: Array, still: Array, moving: Array) -> void:
+	var c: int = _state.leaves[k]
 	if _unmarked(c):
 		return
 	var f := _badge_frame(c, t)
 	if f.scale.x <= 0.01:
 		return
+	var got: bool = _state.body.has(c) and c != _misstepped()
+	var level := roundi(float(f.flash) * 6.0)
+	var star: bool = _state.peckish() and _state.clue[c] == _state.last_leaf()
+	var key := "b%s|%d|%s" % [got, level, star]
+	var id := _look(key, _badge_shape.bind(got, float(level) / 6.0, star))
+	if f.scale == Vector2.ONE and f.at == _centre(c) and level == 0:
+		sig.append(c)
+		sig.append(id)
+		still.append([id, Transform2D(0.0, f.at), Part.BADGE, k])
+	else:
+		moving.append([id, Transform2D(0.0, f.scale, 0.0, f.at)])
+
+## A badge about the origin, flashed `fl` toward the refusal's colour.
+func _badge_shape(b, got: bool, fl: float, star: bool) -> void:
 	var s := _cell()
 	var r := s * BADGE_R
-	var xf := Transform2D(0.0, f.scale, 0.0, f.at)
-	var got: bool = _state.body.has(c) and c != _misstepped()
-	Scenery.soft_disc(b, f.at + Vector2(0.0, s * 0.04), r * 1.3 * f.scale.x, r * 1.15 * f.scale.x, Color(Pal.TEXT, 0.18))
+	Scenery.soft_disc(b, Vector2(0.0, s * 0.04), r * 1.3, r * 1.15, Color(Pal.TEXT, 0.18))
 	if got:
 		var ring := r + s * (EATEN_RING + EATEN_RING_W * 0.5)
-		b.fan(xf * Face.Builder.ring(Vector2(0.0, s * 0.02), ring, ring), Pal.SUN_DEEP)
-		b.fan(xf * Face.Builder.ring(Vector2.ZERO, ring, ring), Pal.SUN)
-	b.fan(xf * Face.Builder.ring(Vector2.ZERO, r, r), Pal.TEXT.lerp(Pal.BAD, f.flash * 0.7))
-	b.fan(xf * Face.Builder.ring(Vector2(-0.3, -0.42) * r, r * 0.34, r * 0.16), Color(1.0, 1.0, 1.0, 0.12))
-	if _state.peckish() and _state.clue[c] == _state.last_leaf():
-		b.polygon(xf * Seal.star(Vector2(0.0, r * 0.04), r * 0.62), Pal.SUN)
+		b.fan(Face.Builder.ring(Vector2(0.0, s * 0.02), ring, ring), Pal.SUN_DEEP)
+		b.fan(Face.Builder.ring(Vector2.ZERO, ring, ring), Pal.SUN)
+	b.fan(Face.Builder.ring(Vector2.ZERO, r, r), Pal.TEXT.lerp(Pal.BAD, fl * 0.7))
+	b.fan(Face.Builder.ring(Vector2(-0.3, -0.42) * r, r * 0.34, r * 0.16), Color(1.0, 1.0, 1.0, 0.12))
+	if star:
+		b.polygon(Seal.star(Vector2(0.0, r * 0.04), r * 0.62), Pal.SUN)
 
 func _badge_frame(c: int, t: float) -> Dictionary:
 	var k: int = _state.clue[c]
@@ -1374,7 +1627,6 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 func _build_top(t: float) -> ArrayMesh:
 	if _state.body.is_empty():
 		return null
-	var b := Face.Builder.new()
 	var chain := _chain(t)
 	var n := chain.size()
 	var at := _points_head(t)
@@ -1422,8 +1674,31 @@ func _build_top(t: float) -> ArrayMesh:
 		sway += 0.25 * sin(e * 9.0)
 	if strain and not Motion.reduce:
 		sway -= 0.3 * sin(PI * clampf(since / (Motion.SHIVER_TIME * 2.0), 0.0, 1.0))
-	Cat.head(b, at, dir, _cell(), grow, sq, expr, eye, sway, snack)
-	return b.mesh()
+	_top_xf = Transform2D(0.0, sq * grow, 0.0, at)
+	return _head_look(dir, expr, eye, sway, snack)
+
+## The head as it looks facing `dir` with `expr`, its eyes `eye` open, its
+## antennae swayed `sway` and `snack` of a scrap in its mouth, made once
+## about the origin at rest size (each a step of the way: a turn in 72, the
+## eyes and the scrap in eighths, the sway in fiftieths of a radian) and put
+## under the moment's breath, squash and place. Building it every frame was
+## 0.5-2 ms a frame, idle included.
+func _head_look(dir: Vector2, expr: int, eye: float, sway: float, snack: float) -> ArrayMesh:
+	var turn := posmod(roundi(dir.angle() / TAU * 72.0), 72)
+	var e := roundi(eye * 8.0)
+	var w := roundi(sway * 50.0)
+	var k := roundi(snack * 8.0)
+	var key := Vector4i(turn, expr * 16 + e, w, k)
+	var m: ArrayMesh = _heads.get(key)
+	if m == null:
+		if _heads.size() > 600:
+			_heads = {}
+		var b := Face.Builder.new()
+		Cat.head(b, Vector2.ZERO, Vector2.from_angle(float(turn) / 72.0 * TAU), _cell(), 1.0, Vector2.ONE,
+			expr, float(e) / 8.0, float(w) / 50.0, float(k) / 8.0)
+		m = b.mesh()
+		_heads[key] = m
+	return m
 
 ## The head's point this frame, as `_points` would place it, without
 ## walking the whole chain.
@@ -2004,8 +2279,23 @@ func share_glyphs() -> String:
 func _draw_hearts() -> void:
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
-	var b := Face.Builder.new()
 	var now := _now()
+	# Still (no heart splitting or coming back, the tummy not shaking): the
+	# pill as it looked the last time it stood like this.
+	var still := now - _split_at >= SPLIT_TIME and now - _back_at >= HEART_BACK_TIME \
+		and now - _hungry_at >= Motion.SHIVER_TIME * 2.0
+	var key := []
+	if still:
+		var room: int = _state.tummy() if not _state.body.is_empty() else _state.hunger
+		if _misstepped() >= 0:
+			room = int(_wrong["room"])
+		key = [hearts, room if _state.peckish() else -1, not _state.body.is_empty(), size.x, _origin().y]
+		var hit: ArrayMesh = _hearts_cache.get(key)
+		if hit != null:
+			_hearts_shown = hit
+			_put_hearts(now)
+			return
+	var b := Face.Builder.new()
 	var step := 2.0 * HEART_R + HEART_GAP
 	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
 		_origin().y - GROUND_PAD - FRAME - HEART_PILL_PAD.y - HEART_R - 8.0)
@@ -2061,6 +2351,17 @@ func _draw_hearts() -> void:
 			var col: Color = (Pal.FLOWER if low else Pal.LEAF) if full else Color(Pal.LEAF, 0.2)
 			_pip(b, at, PIP_R, col, Pal.LEAF_DEEP if full else Color(Pal.LEAF_DEEP, 0.15))
 	_hearts_shown = b.mesh()
+	if still:
+		if _hearts_cache.size() > 64:
+			_hearts_cache = {}
+		_hearts_cache[key] = _hearts_shown
+	_put_hearts(now)
+
+## The pill's mesh, popped in with the entrance about its centre.
+func _put_hearts(now: float) -> void:
+	var enter := Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+		_origin().y - GROUND_PAD - FRAME - HEART_PILL_PAD.y - HEART_R - 8.0)
 	var c := Vector2(size.x * 0.5, y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
@@ -2585,6 +2886,12 @@ func _draw_life() -> void:
 	if now >= _stamp_at:
 		_draw_stamp(now, shown)
 	_draw_combo(now, shown)
+	if _warm_combo:
+		# The streak's numbers, rasterised out of sight on the first frame:
+		# drawn cold, "x3" cost its frame ~20 ms on the M1.
+		_warm_combo = false
+		_life_layer.draw_string(CozyTheme.display(700), Vector2(-4000.0, -4000.0), "x0123456789",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT, Color.WHITE)
 	_life_shown = shown
 
 func _love_heart() -> ArrayMesh:
@@ -2679,7 +2986,6 @@ func _draw_bug(f: Dictionary, now: float, shown: Array) -> void:
 ## frame.
 func _draw_flutter(e: float, shown: Array) -> void:
 	var s := _cell()
-	var b := Face.Builder.new()
 	var count := mini(FLUTTERS, _state.leaves.size())
 	var stride := maxi(1, _state.leaves.size() / maxi(count, 1))
 	for k in count:
@@ -2693,12 +2999,25 @@ func _draw_flutter(e: float, shown: Array) -> void:
 		var open := clampf(u * 6.0, 0.0, 1.0)
 		var beat := lerpf(0.2, 0.3 + 0.7 * absf(sin(e * 14.0 + float(k))), open)
 		var alpha := clampf((1.0 - u) / 0.25, 0.0, 1.0)
-		Cat.butterfly(b, at, s * 0.32 * lerpf(0.4, 1.0, open), beat, cos(u * 5.0) * 0.3 * side, alpha)
-	if b.verts.is_empty():
-		return
-	var m := b.mesh()
-	shown.append(m)
-	_life_layer.draw_mesh(m, null)
+		var m := _flutter_look(beat)
+		shown.append(m)
+		var w := lerpf(0.4, 1.0, open)
+		_life_layer.draw_mesh(m, null, Transform2D(cos(u * 5.0) * 0.3 * side, Vector2(w, w), 0.0, at),
+			Color(1.0, 1.0, 1.0, alpha))
+
+## A little butterfly at its full size, its wings `beat` open, in sixteen
+## steps: made once each (at the size it flies, so its feather stays a
+## pixel), so the party's flutter puts five looks a frame instead of drawing
+## five butterflies (~3 ms a frame through the party).
+func _flutter_look(beat: float) -> ArrayMesh:
+	var k := clampi(roundi(beat * 16.0), 0, 16)
+	var m: ArrayMesh = _flutters.get(k)
+	if m == null:
+		var b := Face.Builder.new()
+		Cat.butterfly(b, Vector2.ZERO, _cell() * 0.32, float(k) / 16.0, 0.0)
+		m = b.mesh()
+		_flutters[k] = m
+	return m
 
 func _draw_combo(now: float, shown: Array) -> void:
 	if _combo_n < COMBO_FROM:
