@@ -94,6 +94,11 @@ func _ready() -> void:
 	settings_sheet.reduce_changed.connect(_on_reduce_changed)
 	settings_sheet.new_puzzle.connect(_on_new)
 	settings_sheet.rules.connect(_open_rules)
+	# The clock waits while the settings are up, as it does under the
+	# tutorial (and a board played on the clock, Drumbeat, pauses its song).
+	settings_sheet.closed.connect(func() -> void:
+		if not is_instance_valid(_tutorial):
+			_hold_clock(false))
 	add_child(settings_sheet)
 	remove_ads_sheet = RemoveAdsSheet.new()
 	remove_ads_sheet.name = "RemoveAdsSheet"
@@ -331,6 +336,7 @@ func _on_new() -> void:
 	_spawn(randi())
 
 func _open_settings() -> void:
+	_hold_clock(true)
 	settings_sheet.open()
 
 func _open_rules() -> void:

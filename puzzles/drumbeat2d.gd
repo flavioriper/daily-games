@@ -53,6 +53,7 @@ const Rewards = preload("res://arcade/rewards.gd")
 const UiSound = preload("res://ui/ui_sound.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured (design pixels at a 1000-wide card) ---
 const CARD_RADIUS := 32.0
@@ -264,6 +265,64 @@ var _seal_mesh: ArrayMesh
 var _still: ArrayMesh
 var _shown: Array = []
 
+# The checkup (2026-10-03): whatever only moves, swells, turns or fades is a
+# shape made once at this layout and copied natively under a transform into
+# one of three meshes -- the road's (under the berries), the top's (the
+# gauge, the hearts, the glows and bursts) and the one over the drums --
+# painted through a slot when its colour changes (`RunMesh`). A firework is
+# one look a step of its life, copied the same way (`_fw`). Only what
+# changes shape is still made on the frame: the gauge's fill when it moves,
+# a heart breaking, a rocket. Draw calls are what the phone's driver pays
+# for, so nothing here is a draw call of its own but a drum.
+const S_BAR := 0x100
+const S_BEAD := 0x200
+const S_MARK := 0x300        # + drum * 2 + (1 under a twin)
+const S_ROLL := 0x400        # + drum
+const S_CAP := 0x500         # + ribbon (2 a drumroll's, 1 the ribbon over its ink)
+const S_BODY := 0x600
+const S_RING := 0x700
+const S_RING_PULSE := 0x800
+const S_DISC := 0x900
+const S_WASH := 0xa00
+const S_RAILS := 0xb00       # + tier
+const S_VEIL := 0xc00
+const S_VEIL_STARS := 0xd00  # + group
+const S_GLOW := 0xe00
+const S_RIPPLE := 0xf00      # + step
+const S_BURST := 0x1000      # + kind * 16 + step
+const S_GAUGE_OVER := 0x1100
+const S_GLINT := 0x1200
+const S_STAR := 0x1300       # + 1 gold
+const S_GAUGE_HEART := 0x1400  # + 1 cleared
+const S_HEART := 0x1500
+const S_HEART_EMPTY := 0x1600
+const S_FILL := 0x10000      # + half-pixels of width * 2 + (1 cleared)
+const RIPPLE_STEPS := 8
+const BURST_STEPS := 10
+## A tint's alpha (and a rainbow's hue) is cut into this many steps, so the
+## painted colours are found again.
+const TINT_STEPS := 24.0
+## A firework's life in looks, its trails, and the radius its looks are made at.
+const FW_STEPS := 32
+const FW_TRAILS := 16
+const FW_R := 100.0
+var _looks := {}
+var _road: RunMesh
+var _top: RunMesh
+var _over: RunMesh
+var _veil_w := 0.0
+var _fw: RunMesh
+var _fw_cols := {}
+var _fw_tiled := PackedInt32Array()
+var _fw_tiled_n := 0
+## The first note that can still be on screen: every loop over the notes
+## starts here.
+var _first := 0
+var _held_was := false
+## Looks waiting to be made, a few a frame from the moment the board opens,
+## so the first cheer, Go-Go or firework of a song makes nothing.
+var _warm: Array = []
+
 func puzzle_id() -> String: return "drumbeat"
 func title() -> String: return "Drumbeat"
 
@@ -281,9 +340,40 @@ func rules() -> String:
 func capabilities() -> Array[String]:
 	return []
 
+## The tutorial, a page a rule, each the road and the drums themselves
+## playing a few notes (ui/hud/drumbeat_tutorial_diagram.gd): the stroke,
+## the drums (two or more), ribbons, golden bars and balloons, the soul
+## gauge (and the hearts, Hard and Insane), Echo (Insane), and the top bar.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/drumbeat_tutorial_diagram.gd")
+	var level := clampi(_level, 0, 3)
+	var hearts: int = State.HEARTS[level]
+	var steps := [[Diagram.Lesson.STRIKE, "HTP_DB_STRIKE", tr("HTP_DB_STRIKE_BODY")]]
+	if level >= 1:
+		steps.append([Diagram.Lesson.DRUMS, "HTP_DB_DRUMS", tr("HTP_DB_DRUMS_BODY_TWIN" if level >= 2 else "HTP_DB_DRUMS_BODY")])
+	steps.append([Diagram.Lesson.HOLD, "HTP_DB_HOLD", tr("HTP_DB_HOLD_BODY")])
+	steps.append([Diagram.Lesson.ROLL, "HTP_DB_ROLL", tr("HTP_DB_ROLL_BODY")])
+	steps.append([Diagram.Lesson.SOUL, "HTP_DB_SOUL", tr("HTP_DB_SOUL_BODY_HEARTS") % hearts if hearts > 0 else tr("HTP_DB_SOUL_BODY")])
+	if level == 3:
+		steps.append([Diagram.Lesson.ECHO, "HTP_DB_ECHO", tr("HTP_DB_ECHO_BODY")])
+	steps.append([Diagram.Lesson.HUD, "HTP_DB_HUD", tr("HTP_DB_HUD_BODY")])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = level
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
+	_road = RunMesh.new(_shape)
+	_top = RunMesh.new(_shape)
+	_over = RunMesh.new(_shape)
+	_top.share_shapes(_road)
+	_over.share_shapes(_road)
+	_fw = RunMesh.new(_fw_shape)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 3
@@ -295,6 +385,13 @@ func _ready() -> void:
 	add_child(_music)
 	_lead = AudioStreamPlayer.new()
 	add_child(_lead)
+	_make_voices()
+	_load_offset()
+	resized.connect(_layout)
+	solved.connect(_on_solved)
+
+## Each drum's voice, a pool of players a drum.
+func _make_voices() -> void:
 	for kind in 4:
 		var path := "res://assets/sfx/drumbeat/drum_%d.ogg" % kind
 		var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
@@ -305,9 +402,6 @@ func _ready() -> void:
 			add_child(p)
 			pool.append(p)
 		_voices.append(pool)
-	_load_offset()
-	resized.connect(_layout)
-	solved.connect(_on_solved)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -356,6 +450,7 @@ func _fresh() -> void:
 				_rows[twins[k]] = k - (twins.size() - 1) * 0.5
 		at = to
 	_still = null
+	_first = 0
 	_ghosts = []
 	_bursts = []
 	_roll_pop = {}
@@ -435,10 +530,14 @@ func _play_music(file: String, lead: String, from: float) -> void:
 	_last_vt = -10.0
 
 func _stop_music() -> void:
+	# (and no longer paused: a song reset while it waited under the ? must
+	# sound when it starts again)
 	if _music != null:
 		_music.stop()
+		_music.stream_paused = false
 	if _lead != null:
 		_lead.stop()
+		_lead.stream_paused = false
 
 func _pause(on: bool) -> void:
 	if on and _phase == "play":
@@ -462,6 +561,12 @@ func _pause(on: bool) -> void:
 
 func _u() -> float:
 	return size.x / 1000.0
+
+## Whether the stage stands over the road: the sky, the lanterns, the crowd
+## and Tam, the fireworks, the cards and the big combo. A tutorial page's
+## board (ui/hud/drumbeat_tutorial_diagram.gd) is the road and the drums alone.
+func _staged() -> bool:
+	return true
 
 func _band_h() -> float:
 	return BAND * _u()
@@ -532,6 +637,17 @@ func card_centred() -> bool:
 
 func _layout() -> void:
 	_still = null
+	_looks = {}
+	_veil_w = 0.0
+	_fw_cols = {}
+	_fw_tiled = PackedInt32Array()
+	_fw_tiled_n = 0
+	if _road != null:
+		_road.reset()
+		_top.share_shapes(_road)
+		_over.share_shapes(_road)
+		_fw.reset()
+	_queue_warm()
 	queue_redraw()
 
 func _now() -> float:
@@ -557,6 +673,15 @@ func _process(delta: float) -> void:
 	super(delta)
 	if _st == null:
 		return
+	# the ? is up over a song: the band waits
+	# (on the moment it comes up only: a tap on a drum after it goes on)
+	if clock_held and not _held_was and _phase == "play":
+		_pause(true)
+	_held_was = clock_held
+	# looks a song will want, a couple a frame
+	for k in 2:
+		if not _warm.is_empty():
+			(_warm.pop_front() as Callable).call()
 	if _phase == "play" or _phase == "tune":
 		_steer_clock()
 	if _phase == "play":
@@ -658,7 +783,10 @@ func _hold_motes() -> void:
 	if Motion.reduce:
 		return
 	var now := _now()
-	for n: Dictionary in _st.notes:
+	for i in range(_first, _st.notes.size()):
+		var n: Dictionary = _st.notes[i]
+		if float(n.t) > _last_vt:
+			break
 		if not n.held:
 			continue
 		var lane := int(n.lane)
@@ -871,7 +999,8 @@ func _on_judge(ev: Dictionary, t: float) -> void:
 	_duck = false
 	_set_drum_mood(lane, Parts.Mood.JOY)
 	var golden := _golden.has(i)
-	if not n.held or golden:
+	# (to the gauge: a board with no band over it has nowhere to send it)
+	if (not n.held or golden) and _band_h() > 0.0:
 		_flies.append({"lane": lane, "at": t, "golden": golden, "from": at})
 	if bool(ev.hidden):
 		_ghosts.append({"pos": at, "at": t})
@@ -962,7 +1091,7 @@ func _launch(n: int, delay: float) -> void:
 	for k in n:
 		_fireworks.append({"at": _now() + delay + k * gap,
 			"pos": Vector2(size.x * randf_range(0.14, 0.86), _band_h() + randf_range(70.0, 170.0) * u),
-			"col": FIREWORK_COLS[randi() % FIREWORK_COLS.size()], "n": randi_range(14, 20),
+			"ci": randi() % FIREWORK_COLS.size(),
 			"r": randf_range(70.0, 110.0) * u, "turn": randf() * TAU})
 
 ## How hot the run is: 0 below the first of TIERS, up to 3.
@@ -1113,6 +1242,7 @@ func heart_back() -> void:
 	var beat := _beat()
 	var from := maxf(0.0, _stopped_at - PICK_UP_BEATS * beat)
 	_st.revive(_stopped_at)
+	_first = 0
 	_duck = false
 	_last_vt = -10.0
 	_counted = -1
@@ -1425,114 +1555,71 @@ func _draw() -> void:
 	var calm := Motion.reduce
 	var tier := _tier() if playing else 0
 	var pulse := 0.0 if calm or not playing else pow(1.0 - fposmod(beats, 1.0), 3.0)
+	_trim(vt)
 
-	# the sky: Go-Go's warmth and the fireworks
-	var sky := Face.Builder.new()
-	if gogo:
-		var top := _band_h()
-		var low := _path_top()
-		var warm := Color("ff7a59", 0.0)
-		var i0 := sky.vertex(Vector2(0, top), warm)
-		var i1 := sky.vertex(Vector2(size.x, top), warm)
-		var hot := Color("ff7a59", 0.22 + 0.12 * pulse)
-		var i2 := sky.vertex(Vector2(size.x, low), hot)
-		var i3 := sky.vertex(Vector2(0, low), hot)
-		sky.tri(i0, i1, i2)
-		sky.tri(i0, i2, i3)
-	_draw_fireworks(sky, now)
-	_put(sky)
+	if _staged():
+		_draw_stage(now, beats, gogo, tier, pulse)
 
-	# the lanterns on their cord, swinging to the beat
-	var flare := 1.0 - clampf((now - _flare_at) / 0.8, 0.0, 1.0)
-	var n_l := LANTERN_COLS.size()
-	for k in n_l:
-		var x := size.x * (0.1 + 0.8 * k / float(n_l - 1))
-		var sag := sin(PI * k / float(n_l - 1)) * 30.0 * u
-		var hang := Vector2(x, _band_h() + 30.0 * u + sag)
-		var swing := 0.0 if calm else sin(beats * PI + k) * ((0.12 if gogo else 0.05) + 0.25 * flare)
-		var glow := 1.0 if gogo or flare > 0.0 or _phase == "won" else 0.35 + 0.15 * tier
-		var sc := 1.0 + (0.0 if calm else 0.08 * pulse * (1.0 if gogo else 0.4))
-		draw_mesh(Parts.lantern(22.0 * u, LANTERN_COLS[k], glow), null, Transform2D(swing, Vector2(sc, sc), 0.0, hang))
-
-	_draw_conga(now, beats)
-	_draw_crowd(now, beats, gogo, tier)
-	_draw_frog(now, beats, gogo)
-
-	# the road: Go-Go warms it; a hot run lights its rails; bar lines ride it
-	# with the berries; Echo's hidden bars under a lilac veil; the ring every
-	# berry is struck in breathes on the beat
-	var b := Face.Builder.new()
-	var top := _path_top()
-	var plank := top + ROAD_RAIL * u
-	var floor_y := top + ROAD_FLOOR * u
+	# the road, one mesh: Go-Go warms it; Echo's hidden bars under a lilac
+	# veil; a hot run lights its rails; the ring every berry is struck in
+	# breathes on the beat and flashes on a stroke in the colour of the drum
+	# struck; bar lines, ribbons and marks ride it with the berries
 	var ring := _ring()
+	_road.begin()
 	if gogo:
 		var a := 0.12 + 0.1 * (0.0 if calm else absf(sin(beats * PI)))
-		b.polygon(_rect(0.0, plank, size.x, floor_y), Color(PATH_GOGO, a))
-	for e: Array in _st.echo:
-		var x0 := clampf(_x_of(float(e[0]) - vt), 0.0, size.x)
-		var x1 := clampf(_x_of(float(e[1]) - vt), 0.0, size.x)
-		if x1 - x0 < 1.0:
-			continue
-		b.polygon(_rect(x0, plank, x1, floor_y), Color(Parts.ECHO, 0.4))
-		for edge: float in [x0, x1]:
-			if edge > 1.0 and edge < size.x - 1.0:
-				b.stroke(PackedVector2Array([Vector2(edge, plank), Vector2(edge, floor_y)]), 5.0 * u, Color(Color("e6dcff"), 0.9))
-		# moonlight twinkles in the veil, riding along with it
-		for k in 9:
-			var f := fposmod(k * 0.37 + 0.13, 1.0)
-			var x := _x_of(float(e[0]) + (float(e[1]) - float(e[0])) * f - vt)
-			if x < x0 or x > x1:
-				continue
-			var y := lerpf(plank + 14.0 * u, floor_y - 14.0 * u, fposmod(k * 0.61, 1.0))
-			var tw_a := 0.5 + 0.5 * (1.0 if calm else sin(now * 3.0 + k))
-			Rewards.star(b, Vector2(x, y), 7.0 * u, Color(Color("f4efff"), 0.35 + 0.4 * tw_a), 0.0)
+		_road.put(S_WASH, [Color(PATH_GOGO, _q(a))], Transform2D.IDENTITY)
+	_draw_veils(vt, now)
 	if tier > 0:
-		var rail: Color = [GOLD, Color("ff9a4a"), Color.from_hsv(fmod(now * 0.25, 1.0), 0.55, 1.0)][tier - 1]
-		var a := 0.4 + 0.35 * pulse
-		for y: float in [top + ROAD_RAIL * 0.5 * u, floor_y + 5.0 * u]:
-			b.stroke(PackedVector2Array([Vector2(0, y), Vector2(size.x, y)]), (5.0 + 2.0 * tier) * u, Color(rail, a))
-	for bt: float in bars:
-		var x := _x_of(bt - vt)
-		if x < ring.x - 100.0 * u or x > size.x:
-			continue
-		b.stroke(PackedVector2Array([Vector2(x, plank), Vector2(x, floor_y)]), 3.0 * u, Color(1, 1, 1, 0.22))
-	# the ring, flashing on a stroke in the colour of the drum struck
+		var rail: Color = [GOLD, Color("ff9a4a"), Color.from_hsv(_q(fmod(now * 0.25, 1.0)), 0.55, 1.0)][tier - 1]
+		_road.put(S_RAILS + tier, [Color(rail, _q(0.4 + 0.35 * pulse))], Transform2D.IDENTITY)
 	var rr := (NOTE_R + 10.0) * u
-	b.disc(ring, rr, Color(Parts.CREAM, 0.14))
-	b.stroke(_ellipse_pts(ring, rr + (9.0 + 6.0 * pulse) * u, rr + (9.0 + 6.0 * pulse) * u), 6.0 * u, Color(Parts.CREAM, 0.22 + 0.3 * pulse), true)
-	b.stroke(_ellipse_pts(ring, rr, rr), 7.0 * u, Parts.CREAM, true)
-	b.stroke(PackedVector2Array([Vector2(ring.x, floor_y + 12.0 * u), Vector2(ring.x, top + (ROAD - 10.0) * u)]), 4.0 * u, Color(Parts.CREAM, 0.5))
+	var swell := (rr + (9.0 + 6.0 * pulse) * u) / (rr + 9.0 * u)
+	_road.put(S_RING_PULSE, [Color(Parts.CREAM, _q(0.22 + 0.3 * pulse))], Transform2D(0.0, Vector2(swell, swell), 0.0, ring))
+	_road.put(S_RING, [], Transform2D(0.0, ring))
 	var struck := 0
 	for lane in _n():
 		if float(_hit_at[lane]) > float(_hit_at[struck]):
 			struck = lane
 	var fl := 1.0 - clampf((now - float(_hit_at[struck])) / FLASH_TIME, 0.0, 1.0)
 	if fl > 0.0 and not calm:
-		b.disc(ring, rr * (1.0 + 0.2 * (1.0 - fl)), Color(Parts.LANE_HI[_kind(struck)], 0.45 * fl))
-	_draw_long(b, vt)
-	_draw_marks(b, vt)
-	_put(b)
+		var fs := 1.0 + 0.2 * (1.0 - fl)
+		_road.put(S_DISC, [Color(Parts.LANE_HI[_kind(struck)], _q(0.45 * fl))], Transform2D(0.0, Vector2(fs, fs), 0.0, ring))
+	for bt: float in bars:
+		var x := _x_of(bt - vt)
+		if x < ring.x - 100.0 * u or x > size.x:
+			continue
+		_road.put(S_BAR, [], Transform2D(0.0, Vector2(x, 0.0)))
+	_draw_long(vt)
+	_draw_marks(vt)
+	_put_mesh(_road.mesh())
 
 	_draw_notes(vt, now)
 	_draw_balloons(vt, now)
 
-	# over the notes: bursts in the ring, Echo's ghosts, the gauge
-	var fb := Face.Builder.new()
+	# over the notes, one mesh: the gauge and the hearts, the glow on the
+	# drum the next berry wants as it nears the ring, the bursts in the ring
+	var n_d := _n()
+	_top.begin()
+	if _band_h() > 0.0:
+		_draw_gauge(now, pulse)
+		_draw_hearts(now)
+	if playing and n_d > 1:
+		for h: Array in _next_up(vt):
+			var c := _drum_foot(int(h[0])) + Vector2(0, -_drum_r() * 0.6)
+			_top.put(S_GLOW, [Color(GOLD, _q(0.16 + 0.44 * float(h[1])))], Transform2D(0.0, c))
 	for bu: Dictionary in _bursts:
 		var k := (now - float(bu.at)) / BURST_TIME
 		if k >= 1.0 or calm:
 			continue
-		var c: Vector2 = bu.pos
 		var col: Color = bu.col
-		var r := (NOTE_R * u * 1.2 if bu.ring else _drum_r()) * (0.8 + 0.7 * k) * (1.2 if bu.big else 1.0)
-		fb.stroke(_ellipse_pts(c, r, r if bu.ring else r * 0.42), 9.0 * u * (1.0 - k), Color(col, 0.9 * (1.0 - k)), true)
-		if bu.big:
-			Rewards.sunrays(fb, c, r * 0.5, r * 0.95, 10, k * 0.6, Color(col, 0.45 * (1.0 - k)))
+		var step := mini(int(k * BURST_STEPS), BURST_STEPS - 1)
+		var grow := (0.8 + 0.7 * k) / (0.8 + 0.7 * (step + 0.5) / BURST_STEPS)
+		var ba := _q(0.9 * (1.0 - k))
+		_top.put(S_BURST + ((1 if bu.big else 0) if bu.ring else 2) * 16 + step, [Color(col.r, col.g, col.b, ba), Color(col.r, col.g, col.b, ba * 0.5)],
+			Transform2D(0.0, Vector2(grow, grow), 0.0, bu.pos))
 	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return now - float(bu.at) < BURST_TIME)
-	_draw_gauge(fb, now, pulse)
-	_draw_hearts(fb, now)
-	_put(fb)
+	_put_mesh(_top.mesh())
 	for g: Dictionary in _ghosts:
 		var k := (now - float(g.at)) / 0.5
 		if k >= 1.0:
@@ -1542,21 +1629,12 @@ func _draw() -> void:
 	_ghosts = _ghosts.filter(func(g: Dictionary) -> bool: return now - float(g.at) < 0.5)
 
 	# the combo, faint and large on the ground over the drums
-	if _st.combo >= 3 and playing:
+	if _st.combo >= 3 and playing and _staged():
 		_draw_path_combo(now, tier)
 
-	# the drum the next berry wants glows as the berry nears the ring
-	var n_d := _n()
-	if playing and n_d > 1:
-		var gb := Face.Builder.new()
-		for h: Array in _next_up(vt):
-			var c := _drum_foot(int(h[0])) + Vector2(0, -_drum_r() * 0.6)
-			gb.ellipse(c, _drum_r() * 1.28, _drum_r() * 1.02, Color(GOLD, 0.16 + 0.44 * float(h[1])))
-		_put(gb)
-
-	# the drums, squashed on a stroke, nodding on the beat, and each one's
+	# the drums, squashed on a stroke, nodding on the beat, each with its
 	# mark on its skin
-	var mb := Face.Builder.new()
+	_over.begin()
 	for lane in n_d:
 		var kind := _kind(lane)
 		var foot := _drum_foot(lane)
@@ -1573,13 +1651,13 @@ func _draw() -> void:
 		elif _phase == "won":
 			mood = Parts.Mood.JOY
 		var wob := 0.0 if calm or since > 0.3 else sin(since * 40.0) * 0.04 * (1.0 - since / 0.3)
-		draw_mesh(Parts.band_drum(kind, _drum_r(), mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
-		var skin := foot + Vector2(0, Parts.skin_y(kind, _drum_r()) * (1.0 + nod) * squash)
-		_mark(mb, kind, skin, _drum_r() * 0.3, Color(Parts.LANE_BODY[kind], 0.9), 0.3)
+		draw_mesh(_drum_look(kind, mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
 		if since < 0.36 and not calm:
 			var k := since / 0.36
-			mb.stroke(_ellipse_pts(skin, _drum_r() * (0.35 + 0.5 * k), _drum_r() * 0.26 * (0.35 + 0.5 * k)), 7.0 * u * (1.0 - k), Color(Parts.LANE_HI[kind], 0.8 * (1.0 - k)), true)
-	_put(mb)
+			var skin := foot + Vector2(0, Parts.skin_y(kind, _drum_r()) * (1.0 + nod) * squash)
+			var step := mini(int(k * RIPPLE_STEPS), RIPPLE_STEPS - 1)
+			var grow := (0.35 + 0.5 * k) / (0.35 + 0.5 * (step + 0.5) / RIPPLE_STEPS)
+			_over.put(S_RIPPLE + step, [Color(Parts.LANE_HI[kind], _q(0.8 * (1.0 - k)))], Transform2D(0.0, Vector2(grow, grow), 0.0, skin))
 	for f: Dictionary in _flies:
 		var k := (now - float(f.at)) / FLY_TIME
 		if k >= 1.0 or calm:
@@ -1603,10 +1681,310 @@ func _draw() -> void:
 	if heat > 0.0 and not calm:
 		var eg := Face.Builder.new()
 		Rewards.edge_glow(eg, Rect2(Vector2.ZERO, size), Color("ffb347") if tier < 3 or gogo else Color.from_hsv(fmod(now * 0.2, 1.0), 0.5, 1.0), heat, pulse)
-		_put(eg)
+		_over.put_builder(eg)
+	# over the drums, one mesh: a stroke's ripple on its skin, the edges' glow
+	_put_mesh(_over.mesh())
 	if _stamp_at < INF and now >= _stamp_at:
 		_draw_stamp(now)
 	_draw_words(now)
+
+## The stage over the road: the sky's Go-Go warmth and the fireworks, the
+## lanterns on their cord swinging to the beat, the conga, the crowd and Tam.
+func _draw_stage(now: float, beats: float, gogo: bool, tier: int, pulse: float) -> void:
+	var u := _u()
+	var calm := Motion.reduce
+	var sky := Face.Builder.new()
+	if gogo:
+		var top := _band_h()
+		var low := _path_top()
+		var warm := Color("ff7a59", 0.0)
+		var i0 := sky.vertex(Vector2(0, top), warm)
+		var i1 := sky.vertex(Vector2(size.x, top), warm)
+		var hot := Color("ff7a59", 0.22 + 0.12 * pulse)
+		var i2 := sky.vertex(Vector2(size.x, low), hot)
+		var i3 := sky.vertex(Vector2(0, low), hot)
+		sky.tri(i0, i1, i2)
+		sky.tri(i0, i2, i3)
+	_draw_rockets(sky, now)
+	_draw_fireworks(sky, now)
+	var flare := 1.0 - clampf((now - _flare_at) / 0.8, 0.0, 1.0)
+	var n_l := LANTERN_COLS.size()
+	for k in n_l:
+		var x := size.x * (0.1 + 0.8 * k / float(n_l - 1))
+		var sag := sin(PI * k / float(n_l - 1)) * 30.0 * u
+		var hang := Vector2(x, _band_h() + 30.0 * u + sag)
+		var swing := 0.0 if calm else sin(beats * PI + k) * ((0.12 if gogo else 0.05) + 0.25 * flare)
+		var glow := 1.0 if gogo or flare > 0.0 or _phase == "won" else 0.35 + 0.15 * tier
+		var sc := 1.0 + (0.0 if calm else 0.08 * pulse * (1.0 if gogo else 0.4))
+		draw_mesh(Parts.lantern(22.0 * u, LANTERN_COLS[k], glow), null, Transform2D(swing, Vector2(sc, sc), 0.0, hang))
+	_draw_conga(now, beats)
+	_draw_crowd(now, beats, gogo, tier)
+	_draw_frog(now, beats, gogo)
+
+## Notes long gone by are left behind: `_first` is the earliest that can
+## still be on screen.
+func _trim(vt: float) -> void:
+	var notes: Array = _st.notes
+	while _first < notes.size():
+		var n: Dictionary = notes[_first]
+		if n.held or maxf(float(n.t), float(n.end)) > vt - 2.0:
+			break
+		_first += 1
+
+# --- looks ---
+
+## A tint's alpha (or a hue) in steps.
+func _q(a: float) -> float:
+	return roundf(a * TINT_STEPS) / TINT_STEPS
+
+## Draws a mesh made this frame, keeping it until the next frame's.
+func _put_mesh(m: ArrayMesh) -> void:
+	if m == null:
+		return
+	_shown.append(m)
+	draw_mesh(m, null)
+
+## Drum `kind` in mood `mood` with its mark on its skin: the drum's own
+## arrays with the mark's after them, a mesh drawn under the drum's squash.
+func _drum_look(kind: int, mood: int) -> ArrayMesh:
+	var key := kind * 8 + mood
+	var hit: ArrayMesh = _looks.get(key)
+	if hit != null:
+		return hit
+	var bd := Face.Builder.new()
+	var arrays := Parts.band_drum(kind, _drum_r(), mood).surface_get_arrays(0)
+	_mark(bd, kind, Vector2(0, Parts.skin_y(kind, _drum_r())), _drum_r() * 0.3, Color(Parts.LANE_BODY[kind], 0.9), 0.3)
+	var verts: PackedVector2Array = arrays[Mesh.ARRAY_VERTEX]
+	var cols: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	var base := verts.size()
+	var ix := bd.idx.duplicate()
+	for i in ix.size():
+		ix[i] += base
+	verts.append_array(bd.verts)
+	cols.append_array(bd.cols)
+	idx.append_array(ix)
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = verts
+	out[Mesh.ARRAY_COLOR] = cols
+	out[Mesh.ARRAY_INDEX] = idx
+	var dm := ArrayMesh.new()
+	dm.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out)
+	_looks[key] = dm
+	return dm
+
+## Shape `id` (an S_ constant and what it adds), made the first time it is
+## put: about its own origin unless it lies where it is drawn (the wash, the
+## rails, the gauge's ticks and fill), in its own colours unless it is
+## tinted, when it is in slot 0 (a star in three).
+func _shape(id: int) -> Face.Builder:
+	var u := _u()
+	var o := Vector2.ZERO
+	var b := Face.Builder.new()
+	var top := _path_top()
+	var plank := top + ROAD_RAIL * u
+	var floor_y := top + ROAD_FLOOR * u
+	var rr := (NOTE_R + 10.0) * u
+	var tint := RunMesh.slot(0)
+	if id >= S_FILL:
+		# the gauge filled `w` wide, past its line or not, with its sheen
+		var r := _gauge_rect()
+		var w := float((id - S_FILL) >> 1) * 0.5
+		b.polygon(Face.Builder.round_rect(r.position, Vector2(w, r.size.y), r.size.y * 0.5), GAUGE_CLEAR if (id - S_FILL) & 1 == 1 else GAUGE_FILL)
+		b.polygon(Face.Builder.round_rect(r.position + Vector2(r.size.y * 0.3, r.size.y * 0.16), Vector2(maxf(0.0, w - r.size.y * 0.6), r.size.y * 0.22), r.size.y * 0.11), Color(1, 1, 1, 0.35))
+		return b
+	var a := id & 0xff
+	match id & ~0xff:
+		S_BAR:
+			b.stroke(PackedVector2Array([Vector2(0, plank), Vector2(0, floor_y)]), 3.0 * u, Color(1, 1, 1, 0.22))
+		S_BEAD:
+			b.disc(o, 6.0 * u, Color(Parts.CREAM, 0.75))
+		S_MARK:
+			_mark(b, a >> 1, o, (13.0 if a & 1 == 1 else 16.0) * u, Parts.LANE_BODY[a >> 1])
+		S_ROLL:
+			_mark(b, a, o, 12.0 * u, Parts.ROLL_DEEP)
+		S_CAP, S_BODY:
+			# a ribbon's round end and its body a pixel long: a hold's or a
+			# drumroll's (2), its ink or the ribbon itself (1)
+			var half := NOTE_R * (0.8 if a >= 2 else 0.4) * u + (0.0 if a % 2 == 1 else 5.0 * u)
+			if id & ~0xff == S_BODY:
+				# (a stroke: feathered along its sides only, so the stretch
+				# leaves its ends square under the round ones)
+				b.stroke(PackedVector2Array([o, Vector2(1.0, 0.0)]), half * 2.0, tint, false, false)
+			else:
+				b.disc(o, half, tint)
+		S_RING:
+			# about the ring's centre: its pale disc, the ring, the post down
+			# to the marks' strip
+			var ry := _note_y()
+			b.disc(o, rr, Color(Parts.CREAM, 0.14))
+			b.stroke(_ellipse_pts(o, rr, rr), 7.0 * u, Parts.CREAM, true)
+			b.stroke(PackedVector2Array([Vector2(0, floor_y + 12.0 * u - ry), Vector2(0, top + (ROAD - 10.0) * u - ry)]), 4.0 * u, Color(Parts.CREAM, 0.5))
+		S_RING_PULSE:
+			b.stroke(_ellipse_pts(o, rr + 9.0 * u, rr + 9.0 * u), 6.0 * u, tint, true)
+		S_DISC:
+			b.disc(o, rr, tint)
+		S_WASH:
+			b.polygon(_rect(0.0, plank, size.x, floor_y), tint)
+		S_RAILS:
+			for y: float in [top + ROAD_RAIL * 0.5 * u, floor_y + 5.0 * u]:
+				b.stroke(PackedVector2Array([Vector2(0, y), Vector2(size.x, y)]), (5.0 + 2.0 * a) * u, tint)
+		S_VEIL:
+			# a hidden bar `_veil_w` long, from its left edge
+			b.polygon(_rect(0.0, plank, _veil_w, floor_y), Color(Parts.ECHO, 0.4))
+			for edge: float in [0.0, _veil_w]:
+				b.stroke(PackedVector2Array([Vector2(edge, plank), Vector2(edge, floor_y)]), 5.0 * u, Color(Color("e6dcff"), 0.9))
+		S_VEIL_STARS:
+			# the moonlight in it, in three groups that twinkle apart
+			for k in 9:
+				if k % 3 != a:
+					continue
+				var f := fposmod(k * 0.37 + 0.13, 1.0)
+				var y := lerpf(plank + 14.0 * u, floor_y - 14.0 * u, fposmod(k * 0.61, 1.0))
+				Rewards._star(b, Vector2(_veil_w * f, y), 7.0 * u, 0.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+		S_GLOW:
+			b.ellipse(o, _drum_r() * 1.28, _drum_r() * 1.02, tint)
+		S_RIPPLE:
+			var k := (a + 0.5) / RIPPLE_STEPS
+			var s := 0.35 + 0.5 * k
+			b.stroke(_ellipse_pts(o, _drum_r() * s, _drum_r() * 0.26 * s), 7.0 * u * (1.0 - k), tint, true)
+		S_BURST:
+			# a stroke's ring (0), a GOOD's with its rays (1), a bare drum's (2)
+			var kind := a >> 4
+			var k := ((a & 15) + 0.5) / BURST_STEPS
+			var r := (NOTE_R * u * 1.2 if kind < 2 else _drum_r()) * (0.8 + 0.7 * k) * (1.2 if kind == 1 else 1.0)
+			b.stroke(_ellipse_pts(o, r, r if kind < 2 else r * 0.42), 9.0 * u * (1.0 - k), tint, true)
+			if kind == 1:
+				# (half as strong as the ring: a second slot)
+				Rewards.sunrays(b, o, r * 0.5, r * 0.95, 10, k * 0.6, RunMesh.slot(1))
+		S_GAUGE_OVER:
+			var r := _gauge_rect()
+			for i in range(1, 10):
+				var x := r.position.x + r.size.x * i / 10.0
+				b.stroke(PackedVector2Array([Vector2(x, r.position.y + 6.0 * u), Vector2(x, r.end.y - 6.0 * u)]), 2.0 * u, Color(Parts.INK, 0.18))
+			var line := _gauge_line()
+			b.stroke(PackedVector2Array([line + Vector2(0, -r.size.y * 0.75), line + Vector2(0, r.size.y * 0.75)]), 5.0 * u, Parts.CREAM)
+		S_GLINT:
+			Rewards.glint(b, o, 100.0, 0.0)
+		S_STAR:
+			Rewards.star(b, o, 14.0 * u, GOLD if a == 1 else Parts.CREAM, 0.0)
+		S_GAUGE_HEART:
+			Rewards.heart(b, o, 22.0 * u * 1.12, 0.0, Color(Parts.INK, 0.6))
+			Rewards.heart(b, o, 22.0 * u, 0.0, Parts.DON if a == 1 else Color("8a7a6e"))
+		S_HEART:
+			var r := 17.0 * u
+			Rewards.heart(b, o, r * 1.15, 0.0, Color(Parts.INK, 0.55))
+			Rewards.heart(b, o, r, 0.0, HEART)
+			b.ellipse(Vector2(-r * 0.35, -r * 0.35), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5))
+		S_HEART_EMPTY:
+			Rewards.heart(b, o, 17.0 * u, 0.0, Color(Parts.INK, 0.25))
+	return b
+
+## A fan of exactly `n` points, so every look of a drawing has one topology.
+func _fan_n(b: Face.Builder, at: Vector2, r: float, colour: Color, n: int) -> void:
+	var pts := PackedVector2Array()
+	pts.resize(n)
+	for i in n:
+		pts[i] = at + Vector2.from_angle(TAU * i / n) * r
+	b.fan(pts, colour)
+
+## A firework's burst at step `id` of its life, made about its heart at
+## FW_R in slot colours: the flash (slot 4), then every trail and its head
+## (the even trails slots 0 and 2, the odd 1 and 3). The look is drawn
+## scaled by how far the burst has opened, so its widths are divided by that.
+func _fw_shape(id: int) -> Face.Builder:
+	var u := _u()
+	var k := (id + 0.5) / FW_STEPS
+	var out := 1.0 - pow(1.0 - k, 3.0)
+	var back := 1.0 - pow(1.0 - maxf(0.0, k - 0.12), 3.0)
+	var a := 1.0 - pow(k, 1.6)
+	var r := FW_R * u
+	var b := Face.Builder.new()
+	_fan_n(b, Vector2.ZERO, (r * 0.55 * maxf(0.0, 1.0 - k / 0.2) + 6.0 * u) / out, RunMesh.slot(4), 14)
+	for i in FW_TRAILS:
+		var d := Vector2.from_angle(TAU * i / FW_TRAILS)
+		b.stroke(PackedVector2Array([d * r * back / out, d * r]), 4.5 * u * a / out, RunMesh.slot(i % 2), false, false)
+		_fan_n(b, d * r, 4.0 * u * (0.5 + 0.5 * a) / out, RunMesh.slot(2 + i % 2), 8)
+	return b
+
+## Step `step`'s colours for a firework of colour `ci`.
+func _fw_colours(ci: int, step: int) -> PackedColorArray:
+	var key := ci * FW_STEPS + step
+	var hit = _fw_cols.get(key)
+	if hit != null:
+		return hit
+	var k := (step + 0.5) / FW_STEPS
+	var a := 1.0 - pow(k, 1.6)
+	var col: Color = FIREWORK_COLS[ci]
+	var light := col.lightened(0.35)
+	var out := _fw.ink(step, [Color(col, 0.85 * a), Color(light, 0.85 * a), Color(col.lightened(0.5), a), Color(light.lightened(0.5), a),
+		Color(col.lightened(0.6), 0.5 * maxf(0.0, 1.0 - k / 0.2))])
+	_fw_cols[key] = out
+	return out
+
+## One firework look's indices tiled for `n` of them.
+func _fw_indices(n: int) -> PackedInt32Array:
+	var s := _fw.shape(0)
+	var idx: PackedInt32Array = s[1]
+	var per := idx.size()
+	if n > _fw_tiled_n:
+		var count := (s[0] as PackedVector2Array).size()
+		var ix := PackedInt32Array()
+		ix.resize((n - _fw_tiled_n) * per)
+		for m in n - _fw_tiled_n:
+			var base := (_fw_tiled_n + m) * count
+			var w := m * per
+			for j in per:
+				ix[w + j] = idx[j] + base
+		_fw_tiled.append_array(ix)
+		_fw_tiled_n = n
+	return _fw_tiled.slice(0, n * per)
+
+## What a song will draw for the first time mid-song, made ahead: the
+## fireworks' steps, the drums' moods, the crowd's and the berries' faces.
+func _queue_warm() -> void:
+	_warm = []
+	if size.x <= 0.0 or _st == null:
+		return
+	var u := _u()
+	var r := NOTE_R * u
+	for lane in _n():
+		var kind := _kind(lane)
+		for mood in [Parts.Mood.JOY, Parts.Mood.WORRIED, Parts.Mood.SAD]:
+			_warm.append(func() -> void:
+				_drum_look(kind, mood)
+				Parts.berry(kind, r, mood))
+	_warm.append(func() -> void:
+		Parts.golden_berry(r)
+		Parts.ghost(r)
+		Parts.shades(52.0 * u))
+	for mood in [Parts.Mood.JOY, Parts.Mood.WORRIED, Parts.Mood.SAD]:
+		_warm.append(func() -> void:
+			Parts.frog(52.0 * u, mood, false)
+			if mood != Parts.Mood.JOY:
+				Parts.frog(52.0 * u, mood, true))
+	for i in CROWD_MAX:
+		var back := _seat(i).y < _path_top() - 1.0
+		var s := (25.0 if back else 30.0) * u
+		var kind := (i * 3 + 1) % Parts.CRITTERS.size()
+		var stick: Color = STICK_COLS[i % STICK_COLS.size()]
+		_warm.append(func() -> void:
+			Parts.critter(kind, s, Parts.Mood.HAPPY, false, Color(0, 0, 0, 0))
+			Parts.critter(kind, s, Parts.Mood.JOY, true, Color(0, 0, 0, 0)))
+		_warm.append(func() -> void:
+			Parts.critter(kind, s, Parts.Mood.JOY, true, stick)
+			Parts.critter(kind, s, Parts.Mood.WORRIED, false, Color(0, 0, 0, 0)))
+	for i in CONGA_N:
+		_warm.append(func() -> void:
+			Parts.critter((i * 2 + 3) % Parts.CRITTERS.size(), 22.0 * u, Parts.Mood.JOY, i % 2 == 0, STICK_COLS[i % STICK_COLS.size()]))
+	_warm.append(func() -> void: _fw_indices(14))
+	for step in FW_STEPS:
+		_warm.append(func() -> void: _fw.shape(step))
+	for k in LANTERN_COLS.size():
+		_warm.append(func() -> void:
+			for glow: float in [0.5, 0.65, 0.8, 1.0]:
+				Parts.lantern(22.0 * u, LANTERN_COLS[k], glow))
 
 func _rect(x0: float, y0: float, x1: float, y1: float) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)])
@@ -1630,7 +2008,7 @@ func _mark(b: Face.Builder, kind: int, c: Vector2, s: float, col: Color, flat :=
 func _next_up(vt: float) -> Array:
 	var reach := _travel() * GLOW_REACH
 	var notes: Array = _st.notes
-	for i in notes.size():
+	for i in range(_first, notes.size()):
 		var n: Dictionary = notes[i]
 		if n.st != State.St.WAIT or n.held or n.hidden:
 			continue
@@ -1657,13 +2035,13 @@ func _ellipse_pts(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
 		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
 	return pts
 
-## The long notes, into the road's live mesh: a hold's ribbon from its berry
+## The long notes, into the road's mesh: a hold's ribbon from its berry
 ## back to its end (lit while kept), a drumroll's golden bar stamped with its
 ## drum's mark.
-func _draw_long(b: Face.Builder, vt: float) -> void:
+func _draw_long(vt: float) -> void:
 	var u := _u()
 	var ring_x := RING_X * u
-	for i in _st.notes.size():
+	for i in range(_first, _st.notes.size()):
 		var n: Dictionary = _st.notes[i]
 		var t0 := float(n.t)
 		if t0 - vt > _travel() + 0.1:
@@ -1686,27 +2064,32 @@ func _draw_long(b: Face.Builder, vt: float) -> void:
 		var y := _row_y(i)
 		var half := NOTE_R * (0.8 if roll else 0.4) * u
 		var col: Color = Parts.ROLL if roll else Parts.LANE_BODY[kind]
-		b.polygon(Face.Builder.round_rect(Vector2(x0, y - half - 5.0 * u), Vector2(x1 - x0 + half + 5.0 * u, (half + 5.0 * u) * 2.0), half + 5.0 * u), Parts.INK)
-		b.polygon(Face.Builder.round_rect(Vector2(x0, y - half), Vector2(x1 - x0 + half, half * 2.0), half), col.lightened(0.3 if lit else 0.0))
+		# the ribbon, its ink under it: a round end, a body stretched to its
+		# length, a round end
+		for layer in 2:
+			var v := (2 if roll else 0) + layer
+			var paint := [Parts.INK if layer == 0 else col.lightened(0.3 if lit else 0.0)]
+			var xl := minf(x0 + half + (5.0 * u if layer == 0 else 0.0), x1)
+			_road.put(S_CAP + v, paint, Transform2D(0.0, Vector2(xl, y)))
+			if x1 > xl:
+				_road.put(S_BODY + v, paint, Transform2D(0.0, Vector2(x1 - xl, 1.0), 0.0, Vector2(xl, y)))
+			_road.put(S_CAP + v, paint, Transform2D(0.0, Vector2(x1, y)))
 		# beads along the ribbon, the drum's mark along the bar, riding with it
 		var step := 0.24 if roll else 0.2
 		var bt: float = ceil(maxf(t0, vt) / step) * step
 		while bt < t1:
 			var x := _x_of(bt - vt)
 			if x > x0 + NOTE_R * u and x < size.x:
-				if roll:
-					_mark(b, kind, Vector2(x, y), 12.0 * u, Parts.ROLL_DEEP)
-				else:
-					b.disc(Vector2(x, y), 6.0 * u, Color(Parts.CREAM, 0.75))
+				_road.put(S_ROLL + kind if roll else S_BEAD, [], Transform2D(0.0, Vector2(x, y)))
 			bt += step
 
 ## Under every berry in sight, its drum's mark in the drum's colour, on the
 ## strip under the road.
-func _draw_marks(b: Face.Builder, vt: float) -> void:
+func _draw_marks(vt: float) -> void:
 	var u := _u()
 	var y := _path_top() + ROAD_MARK * u
 	var ring_x := RING_X * u
-	for i in _st.notes.size():
+	for i in range(_first, _st.notes.size()):
 		var n: Dictionary = _st.notes[i]
 		var dt := float(n.t) - vt
 		if dt > _travel() + 0.05:
@@ -1722,44 +2105,64 @@ func _draw_marks(b: Face.Builder, vt: float) -> void:
 			continue
 		var kind := _kind(int(n.lane))
 		var twin := _rows.has(i)
-		_mark(b, kind, Vector2(x + float(_rows.get(i, 0.0)) * 40.0 * u, y), (13.0 if twin else 16.0) * u, Parts.LANE_BODY[kind])
+		_road.put(S_MARK + kind * 2 + (1 if twin else 0), [], Transform2D(0.0, Vector2(x + float(_rows.get(i, 0.0)) * 40.0 * u, y)))
 
-## The fireworks over the stage: a rocket's climb trailing sparks, then the
-## burst -- a flash, a ring of trails falling slowly and fading.
-func _draw_fireworks(b: Face.Builder, now: float) -> void:
+## The fireworks over the stage. A rocket's climb trailing sparks is made
+## on the frame, into the sky's builder (two little shapes a rocket).
+func _draw_rockets(b: Face.Builder, now: float) -> void:
 	var u := _u()
 	for fw: Dictionary in _fireworks:
 		var t := now - float(fw.at)
-		if t < 0.0:
+		if t < 0.0 or t >= ROCKET_TIME:
 			continue
 		var pos: Vector2 = fw.pos
-		var col: Color = fw.col
-		if t < ROCKET_TIME:
-			var k := t / ROCKET_TIME
-			var from := Vector2(pos.x, _path_top())
-			var head := from.lerp(pos, 1.0 - pow(1.0 - k, 2.0))
-			var tail := from.lerp(pos, maxf(0.0, 1.0 - pow(1.0 - maxf(0.0, k - 0.3), 2.0)))
-			b.stroke(PackedVector2Array([tail, head]), 4.0 * u, Color(col.lightened(0.4), 0.7))
-			b.disc(head, 5.0 * u, Color(1, 1, 0.9))
+		var col: Color = FIREWORK_COLS[int(fw.ci)]
+		var k := t / ROCKET_TIME
+		var from := Vector2(pos.x, _path_top())
+		var head := from.lerp(pos, 1.0 - pow(1.0 - k, 2.0))
+		var tail := from.lerp(pos, maxf(0.0, 1.0 - pow(1.0 - maxf(0.0, k - 0.3), 2.0)))
+		b.stroke(PackedVector2Array([tail, head]), 4.0 * u, Color(col.lightened(0.4), 0.7))
+		b.disc(head, 5.0 * u, Color(1, 1, 0.9))
+
+## Then the burst -- a flash, a ring of trails falling slowly and fading:
+## every burst in the sky is one look a step of its life (`_fw_shape`),
+## copied under how far it has opened and fallen. All of them are one mesh
+## with what `sky` holds (Go-Go's warmth, the rockets) after them.
+func _draw_fireworks(sky: Face.Builder, now: float) -> void:
+	var u := _u()
+	var v := PackedVector2Array()
+	var c := PackedColorArray()
+	var n := 0
+	for fw: Dictionary in _fireworks:
+		var k := (now - float(fw.at) - ROCKET_TIME) / BURST_LIFE
+		if k < 0.0 or k >= 1.0:
 			continue
-		var k := (t - ROCKET_TIME) / BURST_LIFE
-		if k >= 1.0:
-			continue
-		var r: float = fw.r
-		if k < 0.2:
-			b.disc(pos, r * 0.55 * (1.0 - k / 0.2) + 6.0 * u, Color(col.lightened(0.6), 0.5 * (1.0 - k / 0.2)))
-		var a := 1.0 - pow(k, 1.6)
-		var n := int(fw.n)
-		for i in n:
-			var d := Vector2.from_angle(TAU * i / n + float(fw.turn))
-			var out := 1.0 - pow(1.0 - k, 3.0)
-			var drop := Vector2(0, 46.0 * u * k * k)
-			var head := pos + d * r * out + drop
-			var back := pos + d * r * (1.0 - pow(1.0 - maxf(0.0, k - 0.12), 3.0)) + drop * 0.7
-			var c := col if i % 2 == 0 else col.lightened(0.35)
-			b.stroke(PackedVector2Array([back, head]), 4.5 * u * a, Color(c, 0.85 * a))
-			b.disc(head, 4.0 * u * (0.5 + 0.5 * a), Color(c.lightened(0.5), a))
+		var step := mini(int(k * FW_STEPS), FW_STEPS - 1)
+		var s := float(fw.r) * (1.0 - pow(1.0 - k, 3.0)) / (FW_R * u)
+		v.append_array(Transform2D(float(fw.turn), Vector2(s, s), 0.0, (fw.pos as Vector2) + Vector2(0, 46.0 * u * k * k)) * (_fw.shape(step)[0] as PackedVector2Array))
+		c.append_array(_fw_colours(int(fw.ci), step))
+		n += 1
 	_fireworks = _fireworks.filter(func(fw: Dictionary) -> bool: return now - float(fw.at) < ROCKET_TIME + BURST_LIFE)
+	if n == 0:
+		_put(sky)
+		return
+	var idx := _fw_indices(n)
+	if not sky.verts.is_empty():
+		var base := v.size()
+		var ix := sky.idx.duplicate()
+		for i in ix.size():
+			ix[i] += base
+		v.append_array(sky.verts)
+		c.append_array(sky.cols)
+		idx.append_array(ix)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = v
+	arrays[Mesh.ARRAY_COLOR] = c
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_put_mesh(m)
 
 ## The crowd either side of the path: each critter bobs on the beat, jumps
 ## with its paws up on a cheer, waves glow sticks through Go-Go and the
@@ -1825,6 +2228,24 @@ func _draw_conga(now: float, beats: float) -> void:
 		var kick := sin(beats * PI * 0.5 + i) * 0.22
 		var at := Vector2(x, _band_h() + _stage_h() * 0.66 - hop)
 		draw_mesh(Parts.critter((i * 2 + 3) % Parts.CRITTERS.size(), 22.0 * u, Parts.Mood.JOY, i % 2 == 0, STICK_COLS[i % STICK_COLS.size()]), null, Transform2D(kick, at))
+
+## Echo's hidden bars under a lilac veil riding the road, moonlight
+## twinkling in it: a shape a bar's length (the first bar's; another length
+## is that one stretched), put where the bar is.
+func _draw_veils(vt: float, now: float) -> void:
+	for e: Array in _st.echo:
+		var x0 := _x_of(float(e[0]) - vt)
+		var x1 := _x_of(float(e[1]) - vt)
+		if x1 < 1.0 or x0 > size.x - 1.0:
+			continue
+		if _veil_w <= 0.0:
+			_veil_w = x1 - x0
+		var xf := Transform2D(0.0, Vector2((x1 - x0) / _veil_w, 1.0), 0.0, Vector2(x0, 0.0))
+		_road.put(S_VEIL, [], xf)
+		var moon := Color("f4efff")
+		for g in 3:
+			var tw := _q(0.35 + 0.4 * (0.5 + 0.5 * (1.0 if Motion.reduce else sin(now * 3.0 + g * 2.1))))
+			_road.put(S_VEIL_STARS + g, [Color(moon.darkened(0.35), tw), Color(moon, tw), Color(1, 1, 1, 0.5 * tw)], xf)
 
 ## Draws what a builder holds, keeping the mesh until the next frame's
 ## replaces it; an empty builder draws nothing.
@@ -1899,11 +2320,11 @@ func _draw_notes(vt: float, _now_t: float) -> void:
 	var r := NOTE_R * u
 	var hi := notes.size() - 1
 	# the last note in sight
-	for i in notes.size():
+	for i in range(_first, notes.size()):
 		if float(notes[i].t) - vt > _travel() + 0.05:
 			hi = i - 1
 			break
-	for i in range(hi, -1, -1):
+	for i in range(hi, _first - 1, -1):
 		var n: Dictionary = notes[i]
 		var type := int(n.type)
 		var dt := float(n.t) - vt
@@ -1943,7 +2364,7 @@ func _draw_notes(vt: float, _now_t: float) -> void:
 func _draw_balloons(vt: float, now: float) -> void:
 	var u := _u()
 	var notes: Array = _st.notes
-	for i in notes.size():
+	for i in range(_first, notes.size()):
 		var n: Dictionary = notes[i]
 		var dt := float(n.t) - vt
 		if dt > _travel() + 0.05:
@@ -1990,68 +2411,74 @@ func _draw_path_combo(now: float, tier: int) -> void:
 	draw_set_transform(Vector2.ZERO)
 	_label(mid + Vector2(0, fs * 0.66), tr("DB_COMBO"), int(30 * u), Color(Parts.INK, 0.5), Color(0, 0, 0, 0))
 
-func _draw_gauge(b: Face.Builder, now: float, pulse: float) -> void:
+## The soul gauge, into the top's mesh. Its bed is in the still picture;
+## its fill is a shape a width (made when the gauge moves), its ticks, line,
+## star and heart shapes; only a full gauge's rainbow is made on the frame.
+func _draw_gauge(now: float, pulse: float) -> void:
 	var u := _u()
 	var r := _gauge_rect()
 	var calm := Motion.reduce
-	b.polygon(Face.Builder.round_rect(r.position - Vector2(4, 4) * u, r.size + Vector2(8, 8) * u, (r.size.y * 0.5 + 4.0 * u)), Color(Parts.INK, 0.55))
-	b.polygon(Face.Builder.round_rect(r.position, r.size, r.size.y * 0.5), GAUGE_BACK)
 	var k := _st.gauge / State.GAUGE_MAX
 	var full := _st.gauge >= State.GAUGE_MAX
+	var cleared := _st.cleared()
 	if k > 0.01:
 		var w := maxf(r.size.y, r.size.x * k)
-		var col := GAUGE_CLEAR if _st.cleared() else GAUGE_FILL
-		b.polygon(Face.Builder.round_rect(r.position, Vector2(w, r.size.y), r.size.y * 0.5), col)
+		_top.put(S_FILL + roundi(w * 2.0) * 2 + (1 if cleared else 0), [], Transform2D.IDENTITY)
 		if full and not calm:
+			# the rainbow running along a full gauge: plain quads
+			var bb := Face.Builder.new()
 			var bands := 12
+			var y0 := r.position.y + 3.0 * u
+			var y1 := r.end.y - 3.0 * u
 			for i in bands:
 				var x0 := r.position.x + r.size.y * 0.4 + (r.size.x - r.size.y * 0.8) * i / bands
 				var x1 := r.position.x + r.size.y * 0.4 + (r.size.x - r.size.y * 0.8) * (i + 1) / bands
 				var c := Color.from_hsv(fposmod(i / float(bands) - now * 0.6, 1.0), 0.45, 1.0, 0.55)
-				b.polygon(PackedVector2Array([Vector2(x0, r.position.y + 3.0 * u), Vector2(x1, r.position.y + 3.0 * u),
-					Vector2(x1, r.end.y - 3.0 * u), Vector2(x0, r.end.y - 3.0 * u)]), c)
-		b.polygon(Face.Builder.round_rect(r.position + Vector2(r.size.y * 0.3, r.size.y * 0.16), Vector2(maxf(0.0, w - r.size.y * 0.6), r.size.y * 0.22), r.size.y * 0.11), Color(1, 1, 1, 0.35))
+				var i0 := bb.vertex(Vector2(x0, y0), c)
+				var i1 := bb.vertex(Vector2(x1, y0), c)
+				var i2 := bb.vertex(Vector2(x1, y1), c)
+				var i3 := bb.vertex(Vector2(x0, y1), c)
+				bb.tri(i0, i1, i2)
+				bb.tri(i0, i2, i3)
+			_top.put_builder(bb)
 		if not calm and _phase == "play":
-			Rewards.glint(b, Vector2(r.position.x + w - r.size.y * 0.35, r.get_center().y), r.size.y * (0.7 + 0.5 * pulse), now * 3.0)
-	for i in range(1, 10):
-		var x := r.position.x + r.size.x * i / 10.0
-		b.stroke(PackedVector2Array([Vector2(x, r.position.y + 6.0 * u), Vector2(x, r.end.y - 6.0 * u)]), 2.0 * u, Color(Parts.INK, 0.18))
-	var line := _gauge_line()
-	b.stroke(PackedVector2Array([line + Vector2(0, -r.size.y * 0.75), line + Vector2(0, r.size.y * 0.75)]), 5.0 * u, Parts.CREAM)
+			var gr := r.size.y * (0.7 + 0.5 * pulse) / 100.0
+			_top.put(S_GLINT, [], Transform2D(now * 3.0, Vector2(gr, gr), 0.0, Vector2(r.position.x + w - r.size.y * 0.35, r.get_center().y)))
+	_top.put(S_GAUGE_OVER, [], Transform2D.IDENTITY)
 	var pop := 1.0 + (0.0 if calm else 0.4 * (1.0 - clampf((now - _soul_at) / 0.5, 0.0, 1.0)))
-	Rewards.star(b, line + Vector2(0, -r.size.y * 1.05), 14.0 * u * pop, GOLD if _st.cleared() else Parts.CREAM, 0.0 if calm or not _st.cleared() else now * 1.5)
-	var hs := 22.0 * u * (1.0 + (0.25 * pulse if full else 0.0)) * pop
-	var hc := Parts.DON if _st.cleared() else Color("8a7a6e")
-	Rewards.heart(b, Vector2(r.end.x + 4.0 * u, r.get_center().y), hs * 1.12, 0.0, Color(Parts.INK, 0.6))
-	Rewards.heart(b, Vector2(r.end.x + 4.0 * u, r.get_center().y), hs, 0.0, hc)
+	_top.put(S_STAR + (1 if cleared else 0), [],
+		Transform2D(0.0 if calm or not cleared else now * 1.5, Vector2(pop, pop), 0.0, _gauge_line() + Vector2(0, -r.size.y * 1.05)))
+	var hs := (1.0 + (0.25 * pulse if full else 0.0)) * pop
+	_top.put(S_GAUGE_HEART + (1 if cleared else 0), [], Transform2D(0.0, Vector2(hs, hs), 0.0, Vector2(r.end.x + 4.0 * u, r.get_center().y)))
 
 ## The hearts in the band on Hard and Insane: a lost one cracks and falls, a
 ## heart given back pops in, and the last one beats while it is all there is.
-func _draw_hearts(b: Face.Builder, now: float) -> void:
+func _draw_hearts(now: float) -> void:
 	if _st.max_hearts <= 0:
 		return
 	var u := _u()
 	var calm := Motion.reduce
 	for i in _st.max_hearts:
 		var at := _heart_at(i)
-		var r := 17.0 * u
 		if i < _st.hearts:
-			var rr := r
+			var sc := 1.0
 			if _st.hearts == 1 and not calm and _phase == "play":
-				rr *= 1.0 + 0.12 * absf(sin(now * 6.0))
+				sc *= 1.0 + 0.12 * absf(sin(now * 6.0))
 			if i == 0 and now - _back_at < 0.3 and not calm:
-				rr *= Motion.pop_in_scale(now - _back_at, 0.3).x
-			Rewards.heart(b, at, rr * 1.15, 0.0, Color(Parts.INK, 0.55))
-			Rewards.heart(b, at, rr, 0.0, HEART)
-			b.ellipse(at + Vector2(-rr * 0.35, -rr * 0.35), rr * 0.18, rr * 0.11, Color(1, 1, 1, 0.5))
+				sc *= Motion.pop_in_scale(now - _back_at, 0.3).x
+			_top.put(S_HEART, [], Transform2D(0.0, Vector2(sc, sc), 0.0, at))
 			continue
-		Rewards.heart(b, at, r, 0.0, Color(Parts.INK, 0.25))
+		_top.put(S_HEART_EMPTY, [], Transform2D(0.0, at))
 		var k := (now - _split_at) / SPLIT_TIME
 		if i == _split_index and k < 1.0 and not calm:
+			# the halves of a heart just broken, falling: made on the frame
+			var b := Face.Builder.new()
+			var r := 17.0 * u
 			var fade := 1.0 - k * k
 			for side in [-1.0, 1.0]:
 				var p: Vector2 = at + Vector2(side * 14.0 * k, 50.0 * k * k) * u
 				Rewards.heart(b, p, r * 0.8, side * 0.6 * k, Color(HEART_DEEP if side > 0 else HEART, fade))
+			_top.put_builder(b)
 
 ## The seal over the road: Flawless for a full combo; on Insane the night
 ## seal, "Insane" over Flawless or Echo.
@@ -2082,19 +2509,21 @@ func _draw_stamp(now: float) -> void:
 
 func _draw_words(now: float) -> void:
 	var u := _u()
-	_label_left(Vector2(30.0 * u, _band_h() * 0.36), tr("DB_SCORE"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
-	var kick := 0.0 if Motion.reduce else 1.0 - clampf((now - _score_at) / KICK_TIME, 0.0, 1.0)
-	var sk := 1.0 + 0.12 * kick
-	draw_set_transform(Vector2(30.0 * u, _band_h() * 0.8), 0.0, Vector2(sk, sk))
-	_label_left(Vector2.ZERO, Locale.number(int(_score_shown)), int(SCORE_FONT * u), Parts.INK.lerp(Parts.DON_DEEP, kick * 0.6), Color(0, 0, 0, 0))
-	draw_set_transform(Vector2.ZERO)
-	var gr := _gauge_rect()
-	_label_left(Vector2(gr.position.x, gr.position.y - 12.0 * u), tr("DB_SOUL"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
-	var level_name: String = tr(["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "DIFF_INSANE"][clampi(_level, 0, 3)])
-	var title := "%s · %s" % [String(_song.get("title", "")), level_name]
-	if _level == 3:
-		title += " · " + tr("DB_ECHO")
-	_label(Vector2(size.x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Parts.CREAM, Color(Parts.INK, 0.5))
+	if _band_h() > 0.0:
+		_label_left(Vector2(30.0 * u, _band_h() * 0.36), tr("DB_SCORE"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
+		var kick := 0.0 if Motion.reduce else 1.0 - clampf((now - _score_at) / KICK_TIME, 0.0, 1.0)
+		var sk := 1.0 + 0.12 * kick
+		draw_set_transform(Vector2(30.0 * u, _band_h() * 0.8), 0.0, Vector2(sk, sk))
+		_label_left(Vector2.ZERO, Locale.number(int(_score_shown)), int(SCORE_FONT * u), Parts.INK.lerp(Parts.DON_DEEP, kick * 0.6), Color(0, 0, 0, 0))
+		draw_set_transform(Vector2.ZERO)
+		var gr := _gauge_rect()
+		_label_left(Vector2(gr.position.x, gr.position.y - 12.0 * u), tr("DB_SOUL"), int(KICKER_FONT * u), Color(Parts.INK, 0.7), Color(0, 0, 0, 0))
+	if _staged():
+		var level_name: String = tr(["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "DIFF_INSANE"][clampi(_level, 0, 3)])
+		var title := "%s · %s" % [String(_song.get("title", "")), level_name]
+		if _level == 3:
+			title += " · " + tr("DB_ECHO")
+		_label(Vector2(size.x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Parts.CREAM, Color(Parts.INK, 0.5))
 	# the latest judgement, stamped over the ring and rising
 	if not _judge.is_empty() and now - float(_judge.at) < JUDGE_TIME:
 		var k := (now - float(_judge.at)) / JUDGE_TIME
@@ -2108,6 +2537,8 @@ func _draw_words(now: float) -> void:
 		draw_set_transform(Vector2.ZERO)
 	if not _roll_pop.is_empty() and now - float(_roll_pop.at) < 0.5:
 		_label(Vector2((RING_X + 190.0) * u, _path_top() - 30.0 * u), str(int(_roll_pop.n)), int(44 * u), Parts.ROLL, Parts.INK)
+	if not _staged():
+		return
 	match _phase:
 		"ready":
 			_draw_card(tr("DB_TAP_START"), "", now)
@@ -2241,8 +2672,46 @@ func _label_left(at: Vector2, text: String, px: int, col: Color, outline: Color)
 func _build_still() -> ArrayMesh:
 	var u := _u()
 	var b := Face.Builder.new()
-	var w := size.x
 	b.polygon(Face.Builder.round_rect(Vector2.ZERO, size, CARD_RADIUS * u), Pal.PAPER)
+	var top := _band_h()
+	var low := _path_top()
+	var w := size.x
+	if top > 0.0:
+		# the soul gauge's bed
+		var gr := _gauge_rect()
+		b.polygon(Face.Builder.round_rect(gr.position - Vector2(4, 4) * u, gr.size + Vector2(8, 8) * u, (gr.size.y * 0.5 + 4.0 * u)), Color(Parts.INK, 0.55))
+		b.polygon(Face.Builder.round_rect(gr.position, gr.size, gr.size.y * 0.5), GAUGE_BACK)
+	if _staged():
+		_build_stage(b)
+	# the ground: a festival mat under everything below the stage
+	b.polygon(PackedVector2Array([Vector2(0, low), Vector2(w, low), Vector2(w, size.y - CARD_RADIUS * u), Vector2(0, size.y - CARD_RADIUS * u)]), Color("e8dcc4"))
+	b.polygon(Face.Builder.round_rect(Vector2(0, size.y - CARD_RADIUS * u * 2.0), Vector2(w, CARD_RADIUS * u * 2.0), CARD_RADIUS * u), Color("e8dcc4"))
+	# the road of planks across the card: a rail over it and one under, and
+	# the strip under the lower rail where each berry's mark rides
+	var plank := low + ROAD_RAIL * u
+	var floor_y := low + ROAD_FLOOR * u
+	b.polygon(_rect(0, low, w, low + ROAD * u), PATH_DEEP)
+	b.polygon(_rect(0, plank, w, floor_y), PATH_TRACK)
+	var board := 96.0 * u
+	var k := 0
+	while k * board < w:
+		if k % 2 == 0:
+			b.polygon(_rect(k * board, plank, minf(w, (k + 1) * board), floor_y), Color(PATH_WOOD, 0.3))
+		k += 1
+	b.polygon(_rect(0, low, w, plank), PATH_WOOD)
+	b.polygon(_rect(0, low, w, low + 5.0 * u), PATH_WOOD.lightened(0.25))
+	b.polygon(_rect(0, floor_y, w, floor_y + 10.0 * u), PATH_WOOD)
+	# a faint seam between the drums' columns
+	for lane in range(1, _n()):
+		var x := w * lane / float(_n())
+		b.stroke(PackedVector2Array([Vector2(x, low + (ROAD + 50.0) * u), Vector2(x, size.y - 70.0 * u)]), 3.0 * u, Color(Parts.INK, 0.07))
+	return b.mesh()
+
+## The dusk stage, into the still picture: the sky and its stars, the moon,
+## the hills, the stalls and the lanterns' cord.
+func _build_stage(b: Face.Builder) -> void:
+	var u := _u()
+	var w := size.x
 	var top := _band_h()
 	var low := _path_top()
 	var i0 := b.vertex(Vector2(0, top), SKY_TOP)
@@ -2286,26 +2755,3 @@ func _build_still() -> ArrayMesh:
 		var t := k / 24.0
 		cord.append(Vector2(w * (0.02 + 0.96 * t), top + 30.0 * u + sin(PI * (t - 0.02) / 0.96) * 30.0 * u))
 	b.stroke(cord, 3.0 * u, Color(Parts.INK, 0.7))
-	# the ground: a festival mat under everything below the stage
-	b.polygon(PackedVector2Array([Vector2(0, low), Vector2(w, low), Vector2(w, size.y - CARD_RADIUS * u), Vector2(0, size.y - CARD_RADIUS * u)]), Color("e8dcc4"))
-	b.polygon(Face.Builder.round_rect(Vector2(0, size.y - CARD_RADIUS * u * 2.0), Vector2(w, CARD_RADIUS * u * 2.0), CARD_RADIUS * u), Color("e8dcc4"))
-	# the road of planks across the card: a rail over it and one under, and
-	# the strip under the lower rail where each berry's mark rides
-	var plank := low + ROAD_RAIL * u
-	var floor_y := low + ROAD_FLOOR * u
-	b.polygon(_rect(0, low, w, low + ROAD * u), PATH_DEEP)
-	b.polygon(_rect(0, plank, w, floor_y), PATH_TRACK)
-	var board := 96.0 * u
-	var k := 0
-	while k * board < w:
-		if k % 2 == 0:
-			b.polygon(_rect(k * board, plank, minf(w, (k + 1) * board), floor_y), Color(PATH_WOOD, 0.3))
-		k += 1
-	b.polygon(_rect(0, low, w, plank), PATH_WOOD)
-	b.polygon(_rect(0, low, w, low + 5.0 * u), PATH_WOOD.lightened(0.25))
-	b.polygon(_rect(0, floor_y, w, floor_y + 10.0 * u), PATH_WOOD)
-	# a faint seam between the drums' columns
-	for lane in range(1, _n()):
-		var x := w * lane / float(_n())
-		b.stroke(PackedVector2Array([Vector2(x, low + (ROAD + 50.0) * u), Vector2(x, size.y - 70.0 * u)]), 3.0 * u, Color(Parts.INK, 0.07))
-	return b.mesh()
