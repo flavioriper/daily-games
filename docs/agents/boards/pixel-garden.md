@@ -44,3 +44,18 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   drawn in its compartment, and a seated bead flies there from the box.
   Then (section 12): a stroke locks to its row or column after 0.7 of a
   cell, and a peg holding another colour refuses a bead (`taken`).
+- **Checkup (2026-10-03, `docs/agents/checkup.md` row 27).** Beads, bare
+  pegs and the box's beads are copies of `Kit` looks
+  (`puzzles/pixel_garden_looks.gd`): one topology a kit, so a layer is
+  native copies and tiled indices. `Looks.bead_kit` must stay in step with
+  `Bead.bead` by hand (the menu card still draws through `Bead.bead`); a look
+  that breaks the topology trips the kit's assert. The board's beads are in
+  bands of four rows at rest (`_update_bands`, keyed on colour and fused) and
+  one live mesh of the moving ones (`_live_beads`), with Check's halos and a
+  hint's dots in `_marks` over both. The head is five meshes (`_head_under`,
+  `_head_pick`, `_heaps`, `_head_over`, `_head_lid`). The tutorial is
+  `ui/hud/pixel_garden_tutorial_diagram.gd` (lessons SEAT, KIT, PLATE, PEEK,
+  WIND, CHECK, UNDO, HINT) on a hand-made 6x6 tulip, five beads a plate; its
+  Windblown card is `PERM` [3, 2, 1, 0], `TURN` [1, 2, 3, 1]. Probe flags
+  `x=pg_count`, `x=pg_relay`, `x=pg_hud`.
+
