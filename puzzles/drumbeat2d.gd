@@ -927,6 +927,9 @@ func _play_voice(lane: int) -> void:
 	if p.stream != null:
 		p.pitch_scale = randf_range(0.985, 1.015)
 		p.play()
+		# What is heard is felt: a drum struck on nothing still knocks, an
+		# echo under the tap a berry earns.
+		fx.buzz(Haptics.ECHO)
 	UiSound.board_frame = Engine.get_process_frames()
 
 # --- what the state said ---

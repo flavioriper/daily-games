@@ -44,6 +44,7 @@ var last_cue := ""
 ## The board's buzzes: cue name -> a Haptics kind. A cue named here buzzes
 ## whenever it fires, file or no file, and core/haptics.gd keeps only the
 ## strongest of a frame's. The board sets it once (docs/agents/haptics.md).
+## A cue not named here knocks an ECHO as its sound plays (`cue`).
 var haptics := {}
 ## False on a board no hand is on (a tutorial's own): nothing buzzes, by
 ## cue or by `buzz`.
@@ -53,6 +54,8 @@ var _next_sparkle := 0
 ## Sound: a few voices round-robin so quick taps overlap instead of cutting.
 const VOICES := 4
 const CUE_GAP := 60
+## A sound this long or longer (seconds) is music, not a knock: no echo.
+const ECHO_MAX := 4.0
 var _players: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 var _streams := {}
@@ -223,7 +226,8 @@ func buzz(kind: int) -> void:
 ## (snooker's clack).
 func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	last_cue = cue_name
-	if buzzes and haptics.has(cue_name):
+	var mapped := haptics.has(cue_name)
+	if buzzes and mapped:
 		Haptics.play(haptics[cue_name])
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):
@@ -239,6 +243,12 @@ func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	if now - int(_played_at.get(path, -CUE_GAP)) < CUE_GAP:
 		return
 	_played_at[path] = now
+	# What is heard is felt: a sound the board gave no kind still knocks,
+	# the faintest there is, as loud and as high as it plays. A knock the
+	# board chose outranks it, so it only fills where there was none; a
+	# song or a drone (anything long) is not a knock.
+	if buzzes and not mapped and stream.get_length() < ECHO_MAX:
+		Haptics.play(Haptics.ECHO, clampf(db_to_linear(volume_db) * pitch, 0.4, 1.6))
 	if _players.is_empty():
 		for i in VOICES:
 			var p := AudioStreamPlayer.new()

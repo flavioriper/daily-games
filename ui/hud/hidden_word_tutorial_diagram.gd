@@ -217,6 +217,7 @@ func _ready() -> void:
 	# the lesson.
 	for chip: Control in _keys._chips:
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.set_meta("still", true)  # (it clicks, the phone does not knock)
 	_keys.key.connect(func(l: String) -> void: _art.type_letter(l))
 	_keys.commit.connect(func() -> void: _art.commit_row())
 	_keys.erase.connect(func() -> void: _art.erase_letter())

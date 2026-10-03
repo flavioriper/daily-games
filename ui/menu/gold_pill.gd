@@ -10,6 +10,7 @@ extends Button
 const CozyTheme = preload("res://ui/theme.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 const H := 84.0
 const COIN := 30.0
@@ -112,6 +113,8 @@ func _process(delta: float) -> void:
 			if _clink.stream != null:
 				_clink.pitch_scale = 1.0 + 0.05 * _landed
 				_clink.play()
+				# What is heard is felt: each coin's clink, climbing with it.
+				Haptics.play(Haptics.ECHO, 1.0 + 0.1 * _landed)
 			_landed += 1
 	_coins = _coins.filter(func(c: Dictionary) -> bool: return not c.get("done", false))
 	_air.size = get_viewport_rect().size

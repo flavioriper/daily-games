@@ -9,6 +9,8 @@ extends RefCounted
 ## of the frame before it plays. A button with the meta "silent" never clicks.
 ## The file is assets/sfx/ui/click.ogg (tools/gen_sfx.py ui).
 
+const Haptics = preload("res://core/haptics.gd")
+
 const CLICK := "res://assets/sfx/ui/click.ogg"
 ## The menu's page turn: a paper slide in place of the click (ui/menu.gd).
 const PAGE := "res://assets/sfx/ui/page.ogg"
@@ -18,6 +20,7 @@ static var board_frame := -1
 static var _player: AudioStreamPlayer
 static var _stream: AudioStream
 static var _pending := false
+static var _still := false
 static var _page_player: AudioStreamPlayer
 
 ## Wire `button` to click when pressed, once however often it re-enters.
@@ -32,6 +35,7 @@ static func click(from: Node) -> void:
 	if from.has_meta("silent") or _pending or not from.is_inside_tree():
 		return
 	_pending = true
+	_still = from.has_meta("still")
 	_flush.call_deferred(from.get_tree())
 
 static func _flush(tree: SceneTree) -> void:
@@ -48,6 +52,10 @@ static func _flush(tree: SceneTree) -> void:
 		tree.root.add_child(_player)
 	_player.stream = _stream
 	_player.play()
+	# What is heard is felt: the click is the faintest knock there is. A
+	# button with the meta "still" is pressed by a tutorial, not a hand.
+	if not _still:
+		Haptics.play(Haptics.ECHO)
 
 ## The page turn's slide, played at once on its own player so a quick second
 ## turn restarts it rather than waiting on the click's frame. A missing file
@@ -61,3 +69,4 @@ static func page(from: Node) -> void:
 		_page_player.stream = load(PAGE)
 		from.get_tree().root.add_child(_page_player)
 	_page_player.play()
+	Haptics.play(Haptics.ECHO)
