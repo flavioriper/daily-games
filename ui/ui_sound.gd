@@ -12,7 +12,6 @@ extends RefCounted
 const CLICK := "res://assets/sfx/ui/click.ogg"
 ## The menu's page turn: a paper slide in place of the click (ui/menu.gd).
 const PAGE := "res://assets/sfx/ui/page.ogg"
-const Haptics = preload("res://core/haptics.gd")
 
 ## The frame a board last played a cue in; ui/fx2d.gd stamps it.
 static var board_frame := -1
@@ -37,9 +36,6 @@ static func click(from: Node) -> void:
 
 static func _flush(tree: SceneTree) -> void:
 	_pending = false
-	# Every button ticks under the finger; a board's own buzz on this frame
-	# outranks it (core/haptics.gd), so the two never stack.
-	Haptics.play(Haptics.TICK)
 	if board_frame == Engine.get_process_frames():
 		return
 	if _stream == null:
@@ -57,10 +53,7 @@ static func _flush(tree: SceneTree) -> void:
 ## turn restarts it rather than waiting on the click's frame. A missing file
 ## is silence, like every other cue.
 static func page(from: Node) -> void:
-	if not from.is_inside_tree():
-		return
-	Haptics.play(Haptics.TICK)
-	if not ResourceLoader.exists(PAGE):
+	if not from.is_inside_tree() or not ResourceLoader.exists(PAGE):
 		return
 	if not is_instance_valid(_page_player):
 		_page_player = AudioStreamPlayer.new()

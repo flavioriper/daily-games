@@ -170,16 +170,13 @@ const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 
 ## What the phone does under each cue (core/haptics.gd keeps the strongest
-## of a frame's). A tile set is a tap and a tile cleared only a tick; the
-## focus ticks when a given is touched, since nothing else answers that. A
-## blush warns (from `_recolour`, after the grace, not from its cue), which
-## on Easy and Medium is the only word a wrong tile gets; a heart lost
-## knocks twice and the last one falls. The streak's pluck and
-## the entrance say nothing: the tap already spoke, and nobody touched the
-## board yet.
+## of a frame's). A tile set and a tile cleared are the faintest knock there
+## is; touching a given and arming the brush say nothing (2026-10-03: less
+## is more, a buzz for every touch was too much). A blush warns (from
+## `_recolour`, after the grace, not from its cue), which on Easy and Medium
+## is the only word a wrong tile gets; a heart lost is a heavy knock. The
+## streak's pluck and the entrance say nothing either.
 const HAPTICS := {
-	"focus": Haptics.TICK,
-	"brush": Haptics.TICK,
 	"clear": Haptics.TICK,
 	"undo": Haptics.TICK,
 	"place": Haptics.TAP,
