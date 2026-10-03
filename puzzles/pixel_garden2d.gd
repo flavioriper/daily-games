@@ -51,6 +51,7 @@ const State = preload("res://puzzles/pixel_garden_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Bead = preload("res://ui/faces/bead.gd")
 const Iron = preload("res://ui/faces/iron.gd")
@@ -200,6 +201,30 @@ const STAMP_FROM := 1.8
 const STAMP_DROP := 0.18
 const STAMP_R := 0.16
 const STAMP_TILT := -0.22
+
+## What the phone does (docs/agents/haptics.md). A stroke is the move, and
+## its beads click down a peg at a time under the finger with none of them
+## felt (`place`, `lift`): it knocks once as it is let go (`_release`, by
+## `fx.buzz`), a tap when it seated a bead, a tick when it only lifted some.
+## A plate is judged as the iron has crossed it: a bump when it fuses
+## (`plate`; the streak's confetti a tenth of a second later is the same
+## bump), a warn where beads astray cost nothing (`_plate_done`: `astray`
+## rings under the heart too), the heart where they cost one. A hint is a
+## good unless it finishes the picture, which is the win (`hint`). The
+## picture held, a chip picked, a fused or taken peg, a colour run out, the
+## iron setting off, its steam, the words, the gags and the party say
+## nothing; the seal knocks as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"plate": Haptics.BUMP,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
 
 var _state = State.new()
 var fx: Node2D
@@ -397,6 +422,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
@@ -1270,6 +1296,7 @@ func _plate_done(ir: Dictionary, astray: int) -> void:
 		if out_of_hearts:
 			_after(HOME_TIME + 0.5, _run_out)
 	else:
+		fx.buzz(Haptics.WARN)
 		_tell("PG_PLATE_OFF_ONE" if astray == 1 else "PG_PLATE_OFF_N", "" if astray == 1 else str(astray))
 	moved.emit()
 
@@ -1984,6 +2011,8 @@ func _release() -> void:
 		return
 	_halo = {}
 	if not _state.is_solved():
+		# the stroke's one knock; the one that finishes the picture is the win
+		fx.buzz(Haptics.TAP if seated > 0 else Haptics.TICK)
 		_maybe_iron()
 	# Under reduce motion a word is a toast; a plate's verdict this frame
 	# keeps the floor.
@@ -2093,6 +2122,8 @@ func hint() -> bool:
 		_busy_for(Motion.RING_TIME)
 	fx.sparkle(_centre(c), Pal.SUN)
 	fx.cue("hint")
+	if not _state.is_solved():
+		fx.buzz(Haptics.GOOD)
 	if int(h.was) != State.EMPTY and _state.beads[c] == State.EMPTY:
 		_tell("PG_HINT_LIFT")
 	elif int(h.was) != State.EMPTY:
@@ -2363,6 +2394,8 @@ func _party(span: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_busy_for(STAMP_DROP * 2.0 + 0.1))
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var field := _board

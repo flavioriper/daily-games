@@ -3947,6 +3947,101 @@ func _moves_marigold() -> Array:
 	_keep = 0
 	return [plan]
 
+## Marigold's buzzes: the aim turned and put down over the band, a seed
+## let go on a line that blooms no marigold and on one that blooms some (on
+## Sweethearts a marigold alone, which folds back), Undo, a hint, the last
+## seed spent with a marigold up (not on Sweethearts, whose banked shots
+## need the first try) and Reset. The shots are set to the angle and let go
+## through the board's own release: the garden is chaotic, and a pixel's
+## aim would bloom something else. The plain run then plays the best line
+## (the win as the last marigold opens, the seal when it is earned).
+func _buzz_marigold() -> void:
+	var st = _puzzle._state
+	_buzz_more = 60.0
+	var MgState = load("res://puzzles/marigold_state.gd")
+	var at := func(a: float) -> Vector2:
+		return _puzzle._pt(MgState.SUN_C + MgState.aim_dir(a) * 30.0)
+	var settle := func() -> void:
+		await create_timer(0.3).timeout
+		while _puzzle.busy():
+			await create_timer(0.2).timeout
+		await create_timer(0.8).timeout
+	# every line across the fan, and how many marigolds it keeps
+	var scan := func() -> Array:
+		var out: Array = []
+		for k in 65:
+			var a := lerpf(MgState.AIM_MIN + 0.02, PI - MgState.AIM_MIN - 0.02, float(k) / 64.0)
+			var r: Dictionary = st.trace(a, 0, 8.0, 1000)
+			var lone := 0
+			for i: int in st.shot_order(a):
+				if st.kind[i] == MgState.ORANGE:
+					lone += 1
+			out.append([a, int(r.oranges), bool(r.pot), lone])
+		return out
+	var shoot := func(a: float, what: String) -> void:
+		var left: int = st.oranges_left
+		var seeds: int = st.seeds
+		var hearts: int = _puzzle.hearts
+		_ut_button(at.call(a), true)
+		_puzzle._aim = a
+		_ut_button(Vector2(at.call(a).x, _puzzle.size.y - 40.0), false)
+		_puzzle._aim = a
+		await create_timer(0.1).timeout
+		_buzzed(what + ": let go")
+		await settle.call()
+		_buzzed("  its shot (marigolds %d -> %d, seeds %d -> %d, hearts %d -> %d)" % [left, st.oranges_left, seeds, st.seeds, hearts, _puzzle.hearts])
+	_buzz_seen = Haptics.trace.size()
+	_ut_button(at.call(1.2), true)
+	await create_timer(0.1).timeout
+	_ut_motion(at.call(1.5))
+	await create_timer(0.1).timeout
+	_ut_motion(at.call(1.9))
+	await create_timer(0.3).timeout
+	_buzzed("the aim turned (still held)")
+	_ut_button(Vector2(_puzzle.size.x * 0.5, 20.0), false)
+	await create_timer(0.5).timeout
+	_buzzed("put down over the band")
+	var lines: Array = scan.call()
+	for l: Array in lines:
+		if int(l[3]) == 0 and not bool(l[2]):
+			await shoot.call(float(l[0]), "a line with no marigold")
+			break
+	# (the garden is another one after a shot: the lines are looked for again)
+	lines = scan.call()
+	for l: Array in lines:
+		if not st.sweethearts and int(l[1]) > 0 and int(l[1]) < st.oranges_left:
+			await shoot.call(float(l[0]), "a line with %d marigolds%s" % [int(l[1]), " and the pot" if bool(l[2]) else ""])
+			break
+		if st.sweethearts and int(l[1]) == 0 and int(l[3]) > 0:
+			await shoot.call(float(l[0]), "a marigold without its sweetheart")
+			break
+	if _puzzle.can_undo():
+		var hearts: int = _puzzle.hearts
+		_host._on_undo()
+		await create_timer(1.6).timeout
+		_buzzed("undo (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	else:
+		print("  buzz (no Undo here)")
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(2.4).timeout
+		_buzzed("hint")
+	if not st.sweethearts:
+		lines = scan.call()
+		for l: Array in lines:
+			if int(l[3]) == 0 and not bool(l[2]):
+				st.seeds = 1
+				await shoot.call(float(l[0]), "the last seed, a marigold up")
+				await create_timer(3.2).timeout
+				_buzzed("  the garden grown back")
+				break
+		if _puzzle.can_reset() and not _puzzle.out_of_hearts:
+			var hearts: int = _puzzle.hearts
+			_puzzle.reset_board()
+			await create_timer(2.0).timeout
+			_buzzed("reset, no seed flown (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	_moves = _moves_marigold()
+
 ## Pixel Garden: the picture copied row by row, a stroke a run of one
 ## colour -- the chip picked when the colour changes, a press on the run's
 ## first peg, a motion a peg at a time, the release -- one event a step, so
@@ -3966,11 +4061,13 @@ func _moves_pixelgarden() -> Array:
 			var x := 0
 			while x < n:
 				var k: int = st.want[r * n + x]
-				if k == st.EMPTY:
+				# (a peg already right is a hint's or a fused plate's, left by
+				# the buzz routine: a press there would lift, not seat)
+				if k == st.EMPTY or st.beads[r * n + x] == k:
 					x += 1
 					continue
 				var run: Array = []
-				while x < n and st.want[r * n + x] == k:
+				while x < n and st.want[r * n + x] == k and st.beads[r * n + x] != k:
 					run.append(r * n + x)
 					x += 1
 				var steps := 0
@@ -3992,6 +4089,133 @@ func _moves_pixelgarden() -> Array:
 			_keep += int(counts[counts.size() - 1 - k])
 	_keep = 0
 	return [plan]
+
+## Pixel Garden's buzzes: the picture held, a chip picked, a run seated (the
+## finger still down, then let go), a bead lifted, Undo, a peg that holds
+## another colour, Check clean and with a bead astray (Easy and Medium), a
+## plate filled wrong (a warn there, the heart on Hard and Insane) and one
+## filled right, a hint and Reset. The plain run then copies the picture
+## (a bump a plate, the win as the last stroke is let go, the seal when it
+## is earned).
+func _buzz_pixelgarden() -> void:
+	var st = _puzzle._state
+	var n: int = st.n
+	_buzz_more = 30.0
+	var at := func(c: int) -> Vector2:
+		return _puzzle.cell_to_local(c / n, c % n)
+	var seat := func(c: int, k: int) -> void:
+		_puzzle.set_brush(k)
+		_click(at.call(c))
+		await create_timer(0.12).timeout
+	var still := func() -> void:
+		await create_timer(0.6).timeout
+		while _puzzle._blocked():
+			await create_timer(0.2).timeout
+		await create_timer(0.6).timeout
+	_buzz_seen = Haptics.trace.size()
+	_click(_puzzle._thumb.get_center())
+	await create_timer(0.8).timeout
+	_buzzed("the picture held")
+	# the first run of two pegs or more
+	var run: Array = []
+	for c in n * n - 1:
+		if st.want[c] != st.EMPTY and st.want[c + 1] == st.want[c] and (c + 1) % n != 0:
+			run = [c, c + 1]
+			break
+	var k: int = st.want[run[0]]
+	_click(_puzzle.chip_to_local(k))
+	await create_timer(0.5).timeout
+	_buzzed("a chip picked")
+	_ut_button(at.call(run[0]), true)
+	await create_timer(0.1).timeout
+	_ut_motion(at.call(run[1]))
+	await create_timer(0.3).timeout
+	_buzzed("a run seated (still held)")
+	_ut_button(at.call(run[1]), false)
+	await create_timer(0.8).timeout
+	_buzzed("let go")
+	_click(at.call(run[1]))
+	await create_timer(0.8).timeout
+	_buzzed("a bead lifted")
+	_host._on_undo()
+	await create_timer(0.8).timeout
+	_buzzed("undo")
+	var other := -1
+	for j in st.names.size():
+		if j != k and st.left(j) > 0:
+			other = j
+			break
+	_puzzle.set_brush(other)
+	_click(at.call(run[0]))
+	await create_timer(0.8).timeout
+	_buzzed("a peg holding another colour")
+	if _puzzle.capabilities().has("check"):
+		_host._on_check()
+		await create_timer(1.2).timeout
+		_buzzed("check, all right so far")
+		var spare := -1
+		for c in n * n:
+			if st.beads[c] == st.EMPTY and st.want[c] != other:
+				spare = c
+				break
+		await seat.call(spare, other)
+		_buzz_seen = Haptics.trace.size()
+		_host._on_check()
+		await create_timer(1.2).timeout
+		_buzzed("check, a bead astray")
+		_host._on_undo()
+		await create_timer(0.6).timeout
+		_buzz_seen = Haptics.trace.size()
+	# the plate that needs the fewest beads, filled with two of them swapped
+	# (or one on a peg the picture leaves bare)
+	var q := 0
+	for j in 4:
+		if st.ironed[j] == 0 and st.plate_need[j] < st.plate_need[q]:
+			q = j
+	var pegs: Array = []
+	var bare := -1
+	for c: int in st.plate_pegs(q):
+		if st.want[c] != st.EMPTY:
+			pegs.append(c)
+		elif bare < 0:
+			bare = c
+	var a: int = pegs[0]
+	var b := -1
+	for c: int in pegs:
+		if st.want[c] != st.want[a]:
+			b = c
+			break
+	var hearts: int = _puzzle.hearts
+	for c: int in pegs:
+		if st.beads[c] != st.EMPTY:
+			continue
+		if b >= 0 and c == a:
+			await seat.call(a, st.want[b])
+		elif b >= 0 and c == b:
+			await seat.call(b, st.want[a])
+		elif b < 0 and c == a:
+			await seat.call(bare, st.want[a])
+		else:
+			await seat.call(c, st.want[c])
+	await create_timer(0.1).timeout
+	_buzzed("a plate filled wrong, bead by bead")
+	await still.call()
+	_buzzed("  the iron over it (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	for c: int in pegs:
+		if st.beads[c] != st.want[c]:
+			await seat.call(c, st.want[c])
+	await create_timer(0.1).timeout
+	_buzzed("the plate put right")
+	await still.call()
+	_buzzed("  the iron over it")
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	_host._on_reset()
+	await create_timer(2.0).timeout
+	_buzzed("reset")
+	_moves = _moves_pixelgarden()
 
 ## Super Slider's buzzes: a block lifted and put back, one pushed at a
 ## wall, a move kept (the day's own next one), Undo, a move that takes the

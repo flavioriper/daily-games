@@ -47,6 +47,7 @@ const Locale = preload("res://core/locale.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the counts take, the
@@ -239,6 +240,36 @@ const STAMP_FROM := 1.8
 const STAMP_DROP := 0.18
 const STAMP_R := 0.13
 const STAMP_TILT := -0.22
+
+## What the phone does (docs/agents/haptics.md). The hand does one thing, it
+## lets a seed go: a tap as it leaves the sun (`shoot`). What the seed then
+## does is the garden's, a dozen blooms a shot, and is read, not felt, but
+## for the one thing the shot was for: a bump as its first marigold opens
+## (`_handle`, by `fx.buzz`: `hit` rings for every bud), or on Sweethearts as
+## its first pair comes together (`_sweethearts`), and a warn at the shot's
+## end if a marigold alone folds back (`apart`). A seed that comes back is a
+## good: caught by the pot (`pot`), or handed back for a big shot
+## (`_after_pick`: `free` is also the shot's words and the multiplier). The
+## last marigold is the win, as it opens and the garden slams to a crawl
+## (`fever`: `solved` rings seconds later, when the seed has fallen and the
+## blooms are picked). Out of seeds is a warn where the garden just grows
+## back (`out`), the heart where it costs one. Undo is a tick and Reset a
+## tap where they are free (`reset` is the garden growing back by itself
+## too), the heart alone where they cost one. The aim, the guide, the buds,
+## the clover, the violet, the walls, a seed past the pot, the picking, the
+## words, the streak, the jackpot pot, the gags and the party say nothing;
+## the seal knocks as it lands (`_party`).
+const HAPTICS := {
+	"shoot": Haptics.TAP,
+	"pot": Haptics.GOOD,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"out": Haptics.WARN,
+	"apart": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"fever": Haptics.WIN,
+}
 
 var _state = State.new()
 var fx: Node2D
@@ -538,6 +569,7 @@ func undo() -> bool:
 	if max_hearts > 0:
 		_tell("MG_UNDO_HEART_ONE" if hearts == 1 else "MG_UNDO_HEART", Face.Expr.WORRIED, [] if hearts == 1 else [hearts])
 	else:
+		fx.buzz(Haptics.TICK)
 		_tell("MG_UNDONE", Face.Expr.HAPPY)
 	moved.emit()
 	return true
@@ -582,6 +614,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_roll = _voice("roll", true)
 	_music = _voice("music", false)
@@ -1058,6 +1091,9 @@ func _handle(events: Array, t: float) -> void:
 								_sweethearts(i, j)
 						elif _shot_oranges >= 2 and not _state.fever:
 							_bunch(_shot_oranges)
+						# the shot's first marigold; the last one is the win's
+						if _shot_oranges == 1 and not _state.sweethearts and not _state.fever:
+							fx.buzz(Haptics.BUMP)
 					State.PURPLE:
 						fx.cue("violet")
 						fx.sparkle(at, Pal.MG_PURPLE_HI)
@@ -1163,6 +1199,8 @@ func _after_pick(t: float) -> void:
 	if free > 0:
 		_tell("MG_FREE_ONE" if free == 1 else "MG_FREE", Face.Expr.JOY, [free])
 		fx.cue("free")
+		if _state.oranges_left > 0:
+			fx.buzz(Haptics.GOOD)
 		_big_shot(free, t)
 	if _state.oranges_left <= 0:
 		_phase = "won"
@@ -1518,6 +1556,8 @@ func _sweethearts(i: int, j: int) -> void:
 	_spray(_bits, a.lerp(c, 0.5), Color("fff0f5"), 6, 300.0, "spark", k)
 	_threads = null
 	fx.cue("pair", 1.0 + 0.06 * float(mini(_shot_pairs - 1, 6)))
+	if _shot_pairs == 1 and not _state.fever:
+		fx.buzz(Haptics.BUMP)
 	_hop_at = _now()
 	if _state.fever:
 		return
@@ -1896,6 +1936,7 @@ func try_again() -> void:
 	modulate = DUSK
 	_dusk_toward(Color.WHITE)
 	fx.cue("reset")
+	fx.buzz(Haptics.TAP)
 	_tip_idx = 0
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	moved.emit()
@@ -1963,6 +2004,10 @@ func _party() -> void:
 		get_tree().create_timer(maxf(0.01, _stamp_at - t)).timeout.connect(func():
 			if is_inside_tree():
 				fx.cue("stamp"))
+		if not Motion.reduce:
+			get_tree().create_timer(_stamp_at - t + STAMP_DROP).timeout.connect(func():
+				if is_inside_tree():
+					fx.buzz(Haptics.THUD))
 	get_tree().create_timer(PARTY_AT + 0.9).timeout.connect(func():
 		if is_inside_tree():
 			_say(tr("MG_CHEER_%d" % posmod(_day_hash(), CHEERS)), Face.Expr.JOY))
@@ -3630,6 +3675,7 @@ func reset_board() -> void:
 	if max_hearts > 0 and _split_at == t:
 		_tell("MG_RESET_HEART_ONE" if hearts == 1 else "MG_RESET_HEART", Face.Expr.WORRIED, [] if hearts == 1 else [hearts])
 	else:
+		fx.buzz(Haptics.TAP)
 		_say(tr("MG_TRY") % [_state.tries], Face.Expr.HAPPY)
 
 func is_solved() -> bool:
