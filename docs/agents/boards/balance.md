@@ -106,3 +106,15 @@ unattended on `feat/balance-sunset` at the user's word.
   times), dead level around a pinned fruit; then the hint where the band has
   one (Hard's costs a step of the sun), the sunset on Hard and Insane, and
   Insane's springy bales. The page's weights are its own.
+
+### Haptics (2026-10-03)
+
+`HAPTICS` in `puzzles/balance2d.gd`; the row in `docs/agents/haptics.md`
+says what knocks. A fruit set down is not a cue: `_release` marks the fruit
+the hand let go (`_by_hand`), `_after_physics` knocks on its `land` (tap) or
+`home` (tick), and `_hop` -- every move the board makes itself -- clears the
+mark. The toss is handled before the tap so its good is the one knock. The
+seal's thud is in `_stamp_down`'s landing callback. `tests/_probe_perf.gd --
+balance d=<n> x=buzz` (`_buzz_balance`, which carries a fruit through
+`_gui_input`); the probe's moves take a twin's cup when a hint pinned a twin
+in theirs.

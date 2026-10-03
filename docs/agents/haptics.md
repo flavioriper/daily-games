@@ -55,6 +55,18 @@ Rules:
   for a sun on its way to a moon; its warn waits out `WRONG_GRACE` and looks
   again (`_recolour`), like the hearts do. Map a cue only when it fires at
   the moment the player should feel it.
+- **The win knocks when the player learns of it**, which is not always the
+  `solved` cue: Code Break's fires under the Check press, a second before
+  the lids come off, so its win is played from `_reveal`. A seal's thud is
+  played from the drop's landing callback, not from the `stamp` cue that
+  starts the drop.
+- **A cue the board also fires for its own moves is not mapped.** Balance's
+  `land` and `step` fire for a hint, Undo, Reset, a bounce and the shown
+  answer as well as for the fruit the hand let go: the board marks that one
+  (`_by_hand`) and knocks as it lands. A refused touch (a full row, a hinted
+  seat, a pinned fruit) says nothing, like Binairo's given.
+- **A count is read, not felt**: Code Break's pips land one by one and say
+  nothing; the row knocks once as it is scored.
 - **Nothing continuous**: a drag knocks on the cells it crosses at most, it
   does not hum.
 - **The switch**: Settings > Vibration (`[haptics] on` beside Motion's and
@@ -74,8 +86,8 @@ Rules:
 | # | Game | Done | What buzzes |
 |---|---|---|---|
 | 1 | binairo | 2026-10-03 | the shared piece came with it (core/haptics.gd, the Vibration switch, the Android permission); tap on a tile set, tick on a clear and Undo; bump on a line, a streak's confetti and the liar's unmasking; good on a hint, a clean Check and a heart back; warn on a blush that outlives the grace and on a Check that finds something; bad on a heart, lose on the last, win on the solve, thud on the flawless stamp; nothing for a given, the brush or a button |
-| 2 | mastermind (Code Break) | | |
-| 3 | balance | | |
+| 2 | mastermind (Code Break) | 2026-10-03 | tap on a friend seated and Reset, tick on one sent back and Undo; bump once as a full row is scored (`check`, not a cue); good on a hint, a new best in the right seats (Warmer!, So close!), every friend present and a bought row; warn on Check with seats empty; lose out of rows; win as the lids come off (`_reveal`), thud as the seal lands; nothing for the pips, a palette tap on a full row, a hinted seat tapped, the clean miss's sunglasses, the Shell Game's swap, the peeks. Probed Easy and Insane; out of rows and the bought row are mapped but not probed |
+| 3 | balance | 2026-10-03 | tap as a fruit the hand let go lands in a cup, tick as one tapped or dropped home gets there (`_by_hand`, not the `land`/`step` cues); good on a far toss that lands (over the tap), a hint and One more hour; bump on the beam level with fruit still to place; tick on Undo, tap on Reset; bad on Insane's bounce; lose at sunset; win on the solve, thud as the seal lands; nothing for a fruit lifted, a pinned fruit, the beam at rest off level or on its bale, the cheers, the sun tapped or getting low, and every fruit the board moves itself. Probed on all four bands; the level, the bounce and the sunset are mapped but not probed |
 | 4 | untangle | | |
 | 5 | shikaku | | |
 | 6 | tents | | |
