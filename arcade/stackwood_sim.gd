@@ -203,6 +203,7 @@ func _fall() -> void:
 func _land() -> void:
 	var c: int = piece.col
 	var kind: int = piece.kind
+	var dropped: bool = piece.dropping
 	drops += 1
 	chain = 0
 	var at := height(c)
@@ -235,7 +236,7 @@ func _land() -> void:
 			v = 1 << low_exp
 	var block := {"id": piece.id, "v": v}
 	(cols[c] as Array).append(block)
-	events.append({"type": "land", "id": block.id, "col": c, "row": at, "v": v, "wild": kind == Piece.WILD})
+	events.append({"type": "land", "id": block.id, "col": c, "row": at, "v": v, "wild": kind == Piece.WILD, "dropped": dropped})
 	piece = {}
 	_active = [block.id]
 	_start_resolve(false)

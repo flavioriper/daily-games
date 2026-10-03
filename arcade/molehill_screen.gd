@@ -33,6 +33,12 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). A whack's cues come
+## several to a frame (`whack`, `combo`, `streak_lost`) and `clang`, `combo`
+## and `tick` are shared, so only the end card's is mapped: the events ask
+## through `_feel` and the frame knocks once, with the strongest.
+const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -114,6 +120,8 @@ var _best := 0
 var _shown_score := -1
 var _roll := 0.0
 var _beat_best := false
+## The knock this frame's events asked for, the strongest of them (-1: none).
+var _knock := -1
 ## Pixels a field unit, and where the field's origin lands in `field`.
 var _u := 3.0
 var _origin := Vector2.ZERO
@@ -168,7 +176,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_ask()
+	_ask(false)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -247,6 +255,7 @@ func _build() -> void:
 	_over.draw.connect(_draw_over)
 	field.add_child(_over)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	field.add_child(_fx)
 
 	var over := VBoxContainer.new()
@@ -420,11 +429,21 @@ func _process(delta: float) -> void:
 			_play_events()
 		_animate(delta)
 	_refresh_hud(delta)
+	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
 	_redraw_all()
+
+## Asks for a knock this frame; the strongest asked for is the one played.
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+func _knock_now() -> void:
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
 
 func _redraw_all() -> void:
 	field.queue_redraw()
@@ -556,10 +575,13 @@ func _play_events() -> void:
 				if gold:
 					_fx.ring(px(top), 34.0 * _u, Art.GOLD)
 				_shake = maxf(_shake, 0.35 if gold else 0.2)
+				# the mallet on a head; only the golden mole is more
+				_feel(Haptics.BUMP if gold else Haptics.TAP)
 				_on_hit(hill, kind, bool(ev.quick))
 			"clang":
 				_hit_at[hill] = _clock
 				_fx.cue("clang", randf_range(0.95, 1.05))
+				_feel(Haptics.TAP)
 				_fx.sparkle(px(top + Vector2(0, -16.0)), Art.POT_RIM)
 				_impacts.append({"pos": top + Vector2(0, -20.0), "t": 0.0, "gold": false})
 				_shake = maxf(_shake, 0.2)
@@ -569,6 +591,7 @@ func _play_events() -> void:
 			"bunny":
 				_hit_at[hill] = _clock
 				_fx.cue("bunny")
+				_feel(Haptics.BAD)
 				_pop(top + Vector2(0, -16.0), "-%d" % Sim.BUNNY_COST, Color("f4a7a0"), true)
 				_fx.puff(px(top + Vector2(0, -20.0)), Color("f4a7a0"), 6)
 				_shake = maxf(_shake, 0.6)
@@ -585,16 +608,19 @@ func _play_events() -> void:
 				_fx.puff(px(top + Vector2(3.0, 22.0)), Color("fffaf0"), 4)
 			"combo":
 				_fx.cue("combo", 1.0 + 0.08 * (int(ev.mult) - 2))
+				_feel(Haptics.BUMP)
 				_on_combo(hill, int(ev.mult))
 				_score_k.pivot_offset = _score_k.size * 0.5
 				Motion.bump(_score_k, 0.3, 0.35)
 			"forgiven":
 				# Steady hand (arcade/boosters.gd) kept the streak
 				_fx.cue("clang", 1.2, -6.0)
+				_feel(Haptics.GOOD)
 				var where := top + Vector2(0, -40.0) if hill >= 0 else Vector2(Sim.W * 0.5, Sim.H * 0.5)
 				_rw.sticker(tr("BST_STEADY_POP"), _in_rw(where), 54, 1.0, false, Pal.GOOD, false, "steady", 30.0)
 			"streak_lost":
 				_fx.cue("streak_lost", 1.0, -3.0)
+				_feel(Haptics.WARN)
 				Motion.shiver(_score_k)
 				if String(ev.why) != "bunny":
 					var where := top + Vector2(0, -40.0) if hill >= 0 else Vector2(Sim.W * 0.5, Sim.H * 0.5)
@@ -612,6 +638,8 @@ func _play_events() -> void:
 				_count_n = int(ev.left)
 				_count_at = _clock
 			"time_up":
+				# the bell: the whacks after it land on nothing
+				_feel(Haptics.THUD)
 				_time_up()
 	sim.events.clear()
 
@@ -1220,6 +1248,7 @@ func _on_hit(hill: int, kind: int, quick: bool) -> void:
 			_rw.spray(at, Rewards.CONFETTI[tier % Rewards.CONFETTI.size()], 8 + 2 * tier, 700.0, "confetti", 1.0)
 			_flash_now(Color("fffaf0"), 0.2 + 0.06 * tier)
 			_shake = maxf(_shake, 0.25 + 0.06 * tier)
+			_feel(Haptics.BUMP)
 			if tier >= 3:
 				_rw.rain(1.6, ["confetti", "star", "coin"], Rewards.CONFETTI)
 			break
@@ -1256,6 +1285,7 @@ func _new_best_passed() -> void:
 	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
 	_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
 	_fx.cue("combo", 1.3, -3.0)
+	_feel(Haptics.BUMP)
 
 ## The lawn flashes `col`, `amount` at most.
 func _flash_now(col: Color, amount: float) -> void:
@@ -1476,7 +1506,7 @@ func go_back() -> void:
 
 ## Before a run: the boost card, when a booster is held or the gold for one
 ## is, else straight in. A run still going when it is asked for stops there.
-func _ask() -> void:
+func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
@@ -1485,6 +1515,9 @@ func _ask() -> void:
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()
+		# Restart and Play again tap; the screen opening says nothing.
+		if by_hand:
+			_fx.buzz(Haptics.TAP)
 		return
 	if sim != null and not sim.is_over():
 		sim = null
@@ -1492,7 +1525,8 @@ func _ask() -> void:
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:
 		_boosts = ids
-		_new_game())
+		_new_game()
+		_fx.buzz(Haptics.TAP))
 	add_child(card)
 
 ## At game over, once a run: the Second chance, when one is held or the gold
@@ -1506,6 +1540,7 @@ func _offer_chance() -> bool:
 	card.taken.connect(func() -> void:
 		_boosted = true
 		Boosters.revive(GAME, sim)
+		_fx.buzz(Haptics.GOOD)
 		_show_banner(tr("CHANCE_GO"), "", 1.0)
 		_play_events()
 		top_bar.refresh(self))

@@ -29,6 +29,13 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). The shelf settles by
+## itself after a drop, a round of merges at a time, and `move`, `wild` and
+## `warn` are shared or are not the hand's, so only the end card's cue is
+## mapped: the events ask through `_feel` and the frame knocks once, with
+## the strongest.
+const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -129,6 +136,13 @@ var _shake_off := Vector2.ZERO
 var _dragging := false
 var _lane := -1
 var _danger := false
+## The knock this frame's events asked for, the strongest of them (-1: none);
+## whether the block on the shelf was let go by the hand, and whether this
+## drop (or bomb, or zap) has had its one bump for what it set off: a
+## chain's later rounds add nothing.
+var _knock := -1
+var _by_hand := false
+var _answered := false
 var _seat: Control
 var _milestones := {}
 ## The falling block's drawn column, its pace, and the piece it belongs to.
@@ -184,7 +198,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_ask()
+	_ask(false)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -243,6 +257,7 @@ func _build() -> void:
 	field.gui_input.connect(_on_field_input)
 	frame.add_child(field)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	field.add_child(_fx)
 
 	var over := VBoxContainer.new()
@@ -506,12 +521,32 @@ func _process(delta: float) -> void:
 			_play_events()
 		_animate(delta)
 	_refresh_hud(delta)
+	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	field.queue_redraw()
 	_air.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
+
+## Asks for a knock this frame; the strongest asked for is the one played.
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+func _knock_now() -> void:
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
+
+## Whether the block just landed at (c, row) touches one of its own number,
+## so the shelf's first round will merge it.
+func _will_merge(c: int, row: int, v: int) -> bool:
+	for n: Vector2i in [Vector2i(c - 1, row), Vector2i(c + 1, row), Vector2i(c, row - 1)]:
+		if n.x < 0 or n.x >= Sim.COLS or n.y < 0 or n.y >= sim.height(n.x):
+			continue
+		if int(sim.cols[n.x][n.y].v) == v:
+			return true
+	return false
 
 func _animate(delta: float) -> void:
 	# every block on the shelf settles toward its cell
@@ -580,8 +615,10 @@ func _animate(delta: float) -> void:
 			danger = true
 	if danger and not _danger and not sim.is_over():
 		_fx.cue("warn")
+		_feel(Haptics.WARN)
 	elif _danger and not danger and not sim.is_over():
 		_phew()
+		_feel(Haptics.GOOD)
 	_danger = danger
 	_animate_rewards(delta)
 
@@ -765,6 +802,14 @@ func _play_events() -> void:
 				_fx.cue("land", randf_range(0.92, 1.06))
 				_landed = true
 				_drop_merged = false
+				# One tap a drop: a block let go taps as it lands, or, when
+				# it is about to merge, as it merges a tenth of a second on;
+				# over the line it leaves the knock to the lose. One that
+				# fell by itself says nothing.
+				_answered = false
+				_by_hand = bool(ev.get("dropped", false))
+				if _by_hand and int(ev.row) < Sim.ROWS and not _will_merge(int(ev.col), int(ev.row), int(ev.v)):
+					_feel(Haptics.TAP)
 				if _was_dropping:
 					_spray(_bits, px(ev.col, ev.row - 0.45), Art.WOOD_HI, 5, 260.0, "splinter", _u / 150.0)
 				for side in [-0.42, 0.42]:
@@ -784,6 +829,8 @@ func _play_events() -> void:
 				_fx.cue("retired")
 			"bomb":
 				_fx.cue("bomb")
+				_feel(Haptics.THUD)
+				_answered = true
 				_fx.puff(px(ev.col, ev.row), Color("fffaf0"), 14)
 				_fx.puff(px(ev.col, ev.row), Pal.SUN, 8)
 				_fx.ring(px(ev.col, ev.row), 1.4 * _u, Color("ffb05c"))
@@ -797,6 +844,8 @@ func _play_events() -> void:
 				_flash_now(Color("ffcf8a"), 0.6)
 			"zap":
 				_fx.cue("zap")
+				_feel(Haptics.BUMP)
+				_answered = true
 				for g: Dictionary in ev.blocks:
 					_bolts.append({"to": px(g.col, g.row), "t": 0.0, "seed": randf() * 10.0})
 					_fling(int(g.v), Vector2(g.col, g.row))
@@ -809,9 +858,11 @@ func _play_events() -> void:
 				match String(ev.tool):
 					"wild":
 						_fx.cue("buy")
+						_feel(Haptics.TAP)
 						_show_banner(tr("SW_WILD"), tr("SW_WILD_LINE"), 0.7)
 					"bomb":
 						_fx.cue("fuse")
+						_feel(Haptics.TAP)
 						_show_banner(tr("SW_BOMB"), tr("SW_BOMB_LINE"), 0.7)
 					"zap":
 						_show_banner(tr("SW_ZAP"), tr("SW_ZAP_LINE"), 0.7)
@@ -821,6 +872,7 @@ func _play_events() -> void:
 				var b: Control = _tool_buttons[{"wild": Sim.Tool.WILD, "bomb": Sim.Tool.BOMB, "zap": Sim.Tool.ZAP}[ev.tool]]
 				Motion.shiver(b)
 			"over":
+				_feel(Haptics.LOSE)
 				_topple()
 	sim.events.clear()
 
@@ -848,6 +900,15 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.ring(px(to.x, to.y), 1.2 * _u, Art.GOLD)
 	_launch_acorns(ev)
 	_fx.cue("merge", minf(1.0 + 0.09 * (chain - 1), 1.6))
+	# A merge is the common right move, the tap its drop held back; a chain
+	# bumps once, at its second round.
+	if not _answered:
+		if chain == 1:
+			if _by_hand:
+				_feel(Haptics.TAP)
+		else:
+			_answered = true
+			_feel(Haptics.BUMP)
 	if not _drop_merged:
 		_drop_merged = true
 		_streak += 1
@@ -1056,6 +1117,8 @@ func _on_new_max(v: int) -> void:
 	_sticker(Record.grouped(v) + "!", top, 104 if gold else (92 if v >= 256 else 80), 2.4 if gold else 1.5, true, Color.WHITE, true, "max")
 	_sticker(tr("SW_2048_LINE") if v == 2048 else tr("SW_NEW_BLOCK"), top + Vector2(0, 86.0 if gold else 74.0), 40, 2.4 if gold else 1.5,
 		false, Color("fffaf0"), false, "max_line")
+	# a new biggest block is its own bump, even rounds into a chain
+	_feel(Haptics.BUMP)
 	if gold:
 		_fx.cue("milestone")
 		_flash_now(Art.GOLD, 0.8)
@@ -1115,6 +1178,7 @@ func _refresh_hud(delta := 0.0) -> void:
 		if not _beat_best and _best > 0 and sim.score > _best:
 			_beat_best = true
 			_kick(_best_l, 0.3, 0.4)
+			_feel(Haptics.BUMP)
 	if Motion.reduce or sim.score < _roll:
 		_roll = sim.score
 	else:
@@ -1891,7 +1955,7 @@ func go_back() -> void:
 
 ## Before a run: the boost card, when a booster is held or the gold for one
 ## is, else straight in. A run still going when it is asked for stops there.
-func _ask() -> void:
+func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
@@ -1900,6 +1964,9 @@ func _ask() -> void:
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()
+		# Restart and Play again tap; the screen opening says nothing.
+		if by_hand:
+			_fx.buzz(Haptics.TAP)
 		return
 	if sim != null and not sim.is_over():
 		sim = null
@@ -1907,7 +1974,8 @@ func _ask() -> void:
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:
 		_boosts = ids
-		_new_game())
+		_new_game()
+		_fx.buzz(Haptics.TAP))
 	add_child(card)
 
 ## At game over, once a run: the Second chance, when one is held or the gold
@@ -1921,6 +1989,7 @@ func _offer_chance() -> bool:
 	card.taken.connect(func() -> void:
 		_boosted = true
 		Boosters.revive(GAME, sim)
+		_fx.buzz(Haptics.GOOD)
 		_show_banner(tr("CHANCE_GO"), "", 1.0)
 		_play_events()
 		top_bar.refresh(self))
