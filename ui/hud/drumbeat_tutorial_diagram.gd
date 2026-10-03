@@ -98,6 +98,7 @@ class Road extends "res://puzzles/drumbeat2d.gd":
 		add_child(_rw)
 		_offset = 0.0
 		_tuned = true
+		fx.buzzes = false
 
 	## How tall the board is for its width's unit `u`.
 	func height_for(u: float) -> float:

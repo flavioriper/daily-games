@@ -3885,6 +3885,119 @@ var _tr_post := 0
 var _db_looks := 0
 var _db_struck := {}
 var _db_roll := -10.0
+## True while `_buzz_drumbeat` wants the berries let past.
+var _db_hold := false
+
+## Drumbeat's buzzes, on the song's own clock: the stroke that starts the
+## song, one in the air, a berry struck, one let past, a stroke too early,
+## one on the wrong drum, ten in a row, a berry let past on that run, then
+## every berry let past: on Hard and Insane a heart every three until the
+## last, One more heart and Try again; on Easy and Medium the song ending
+## under the line. Reset, and the bot plays the song through (the ribbons,
+## the golden berry, the combos, the win, the seal).
+func _buzz_drumbeat() -> void:
+	const DbState = preload("res://puzzles/drumbeat_state.gd")
+	var b = _puzzle
+	_buzz_more = 34.0
+	_db_struck[-1] = true  # (the bot's first stroke is this routine's)
+	while _t < IDLE_TO:
+		await process_frame
+	_buzz_seen = Haptics.trace.size()
+	b.strike(0)
+	await create_timer(0.3).timeout
+	_buzzed("the song started")
+	var st = b._st
+	var playing := func() -> bool:
+		return b._phase == "play" and not st.done and not st.out
+	# the next plain berry still ahead of the ring by `lead` seconds
+	var ahead := func(lead: float) -> int:
+		for i in st.notes.size():
+			var n: Dictionary = st.notes[i]
+			if n.type == DbState.Type.TAP and n.st == DbState.St.WAIT and float(n.t) - b.view_t() > lead:
+				return i
+		return -1
+	b.strike(0)
+	await create_timer(0.2).timeout
+	_buzzed("a stroke in the air")
+	while playing.call() and st.goods + st.oks < 1:
+		await process_frame
+	await process_frame
+	_buzzed("a berry struck")
+	while playing.call() and st.combo < 3:
+		await process_frame
+	_db_hold = true
+	_buzz_seen = Haptics.trace.size()
+	var bads: int = st.bads
+	while playing.call() and st.bads == bads:
+		await process_frame
+	await process_frame
+	_buzzed("a berry let past")
+	var i: int = ahead.call(0.3)
+	if i >= 0:
+		var n: Dictionary = st.notes[i]
+		var early: float = (float(DbState.OK_WIN[st.level]) + float(DbState.BAD_WIN[st.level])) * 0.5
+		while playing.call() and b.view_t() < float(n.t) - early:
+			await process_frame
+		_db_struck[i] = true
+		_buzz_seen = Haptics.trace.size()
+		b.strike(int(n.lane))
+		await process_frame
+		_buzzed("a stroke too early (bads %d, hearts %d)" % [st.bads, st.hearts])
+	i = ahead.call(0.3)
+	if i >= 0 and st.lanes > 1:
+		var n: Dictionary = st.notes[i]
+		while playing.call() and b.view_t() < float(n.t):
+			await process_frame
+		_buzz_seen = Haptics.trace.size()
+		var slips: int = st.slips
+		b.strike((int(n.lane) + 1) % st.lanes)
+		await process_frame
+		_buzzed("the wrong drum (slips +%d)" % (st.slips - slips))
+	_db_hold = false
+	_buzz_seen = Haptics.trace.size()
+	while playing.call() and st.combo < 10:
+		await process_frame
+	await process_frame
+	_buzzed("ten in a row")
+	_db_hold = true
+	bads = st.bads
+	while playing.call() and st.bads == bads:
+		await process_frame
+	await process_frame
+	_buzzed("one let past on that run")
+	if st.max_hearts > 0:
+		var hearts: int = st.hearts
+		while playing.call() and st.hearts == hearts:
+			await process_frame
+		await process_frame
+		_buzzed("three let past (hearts %d -> %d)" % [hearts, st.hearts])
+		while b._phase == "play":
+			await process_frame
+		await process_frame
+		_buzzed("the last heart (hearts %d, %s)" % [st.hearts, b._phase])
+		await create_timer(2.4).timeout
+		_buzzed("  the card up")
+		b.heart_back()
+		await create_timer(0.3).timeout
+		_buzzed("one more heart")
+		st = b._st
+		while b._phase == "play":
+			await process_frame
+		await create_timer(2.4).timeout
+		_buzzed("out again (%s)" % b._phase)
+		b.try_again()
+		await create_timer(0.6).timeout
+		_buzzed("try again")
+	else:
+		while b._phase == "play":
+			await process_frame
+		await create_timer(0.5).timeout
+		_buzzed("the song ended under the line (%s)" % b._phase)
+	_host._on_reset()
+	await create_timer(1.0).timeout
+	_buzzed("reset")
+	_db_struck.clear()
+	_db_hold = false
 
 func _db_bot() -> void:
 	var b = _puzzle
@@ -3899,7 +4012,7 @@ func _db_bot() -> void:
 			_db_struck[-1] = true
 			b.strike(0)
 		return
-	if b._phase != "play":
+	if b._phase != "play" or _db_hold:
 		return
 	const DbState = preload("res://puzzles/drumbeat_state.gd")
 	var st = b._st
@@ -4377,6 +4490,107 @@ func _moves_trestle() -> Array:
 	out.append({"do": func() -> void: _host._on_check()})
 	_keep = 1
 	return out
+
+## Trestle's buzzes: a joint tapped, a member laid, tapped away, laid again
+## and taken back by Undo, a hint, Go and (Easy and Medium) Stop, a test that
+## fails -- a warn where it is free; on Hard and Insane a heart a test to the
+## last, One more heart, out again and Try again -- then Reset, the day's
+## proof laid and driven over (the win, the seal when it is earned) and the
+## convoy sent after it.
+func _buzz_trestle() -> void:
+	var b = _puzzle
+	var proof: Array = b.state.proof
+	var until := func(cond: Callable, limit: float) -> void:
+		var t0 := _t
+		while not cond.call() and _t - t0 < limit:
+			await process_frame
+		await process_frame
+	var first: Dictionary = proof[0]
+	_buzz_seen = Haptics.trace.size()
+	_click(b.point_to_local(first.a))
+	await create_timer(0.3).timeout
+	_buzzed("a pin tapped")
+	_click(b.point_to_local(first.a))
+	_tr_lay(first.a, first.b, int(first.m))
+	await create_timer(0.5).timeout
+	_buzzed("a member laid")
+	_click(b.point_to_local(first.b))  # (puts the chosen joint down)
+	await create_timer(0.2).timeout
+	_click((b.point_to_local(first.a) + b.point_to_local(first.b)) * 0.5)
+	await create_timer(0.5).timeout
+	_buzzed("tapped away (members %d)" % b.state.design.size())
+	_tr_lay(first.a, first.b, int(first.m))
+	await create_timer(0.4).timeout
+	_buzz_seen = Haptics.trace.size()
+	_host._on_undo()
+	await create_timer(0.5).timeout
+	_buzzed("undo (members %d)" % b.state.design.size())
+	if b.capabilities().has("hint") and b.hints_left() > 0:
+		b.hint()
+		await create_timer(1.0).timeout
+		_buzzed("hint")
+	if b.max_hearts == 0:
+		_host._on_check()
+		await create_timer(0.4).timeout
+		_buzzed("go")
+		_host._on_check()
+		await create_timer(0.6).timeout
+		_buzzed("stop")
+		_host._on_check()
+		await create_timer(0.2).timeout
+		_buzz_seen = Haptics.trace.size()
+		await until.call(func() -> bool: return b._fail_at >= 0.0, 30.0)
+		_buzzed("the test failed")
+		await until.call(func() -> bool: return not b._testing, 6.0)
+	else:
+		while not b.out_of_hearts:
+			var hearts: int = b.hearts
+			_host._on_check()
+			await create_timer(0.3).timeout
+			_buzzed("go")
+			await until.call(func() -> bool: return b._fail_at >= 0.0, 30.0)
+			_buzzed("the test failed (hearts %d -> %d)" % [hearts, b.hearts])
+			await until.call(func() -> bool: return not b._testing, 6.0)
+			_buzzed("  the bridge building again")
+		await create_timer(2.2).timeout
+		_buzzed("  the card up")
+		b.heart_back()
+		await create_timer(0.6).timeout
+		_buzzed("one more heart")
+		_host._on_check()
+		await create_timer(0.3).timeout
+		_buzz_seen = Haptics.trace.size()
+		await until.call(func() -> bool: return b._fail_at >= 0.0, 30.0)
+		await until.call(func() -> bool: return not b._testing, 6.0)
+		await create_timer(2.2).timeout
+		_buzzed("out again")
+		b.try_again()
+		await create_timer(1.2).timeout
+		_buzzed("try again")
+	await create_timer(0.5).timeout
+	_host._on_reset()
+	await create_timer(1.0).timeout
+	_buzzed("reset")
+	for p: Dictionary in proof:
+		_tr_lay(p.a, p.b, int(p.m))
+		await create_timer(0.25).timeout
+	_buzzed("the proof laid (members %d)" % b.state.design.size())
+	_host._on_check()
+	await create_timer(0.3).timeout
+	_buzzed("go")
+	await until.call(func() -> bool: return b.is_done() or b._fail_at >= 0.0, 40.0)
+	_buzzed("the cart over (done %s)" % b.is_done())
+	await until.call(func() -> bool: return not b._pills().is_empty(), 8.0)
+	await create_timer(1.5).timeout
+	_buzzed("  the party")
+	_click(b._pill_rect(0).get_center())
+	await create_timer(0.3).timeout
+	_buzzed("the convoy sent")
+	var run: int = b._tests
+	await until.call(func() -> bool: return b._run_over or b._fail_at >= 0.0, 40.0)
+	_buzzed("the convoy %s" % ("over" if b._run_over else "in the river"))
+	await create_timer(1.0).timeout
+	_moves = []
 
 func _tr_lay(a: Vector2i, b: Vector2i, m: int) -> void:
 	if _puzzle._mat != m:

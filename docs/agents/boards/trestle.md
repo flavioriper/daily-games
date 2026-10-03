@@ -82,3 +82,8 @@ its arithmetic** (the substeps on locals, the compliance a member a step):
 any further change there must give the same hash over every banked proof,
 or the bank and the tea bank are re-mined as before.
 
+**Haptics (2026-10-03, `docs/agents/haptics.md` row 29).** The building and
+Go tap, the test is silent, its verdict is the one knock (`_failed`,
+`_lose_heart`, `_crossed`, `solved`). Probe: `tests/_probe_perf.gd --
+trestle d=<n> x=buzz` (`_buzz_trestle` plays the whole board itself: fails
+tests to the last heart, lays the proof, wins and sends the convoy).
