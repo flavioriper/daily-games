@@ -23,8 +23,8 @@ extends "res://core/puzzle_base.gd"
 ## grid. A free tile set against the solution costs one -- it cracks, its face
 ## yelps, and it ejects itself a beat later through the state with no move
 ## and no history. The last heart gone puts the faces to sleep and raises
-## ui/hud/out_of_hearts.gd. Insane is a 10x10 whose one sign lies; it looks
-## like every other sign until the solve unmasks it.
+## ui/hud/out_of_hearts.gd. Insane was a 10x10 whose one sign lied until
+## 2026-10-03; the unmasking code is still here and never runs.
 ##
 ## Motion and rewards (2026-09-29, the same spec's section 2): a change of
 ## symbol turns the tile like a coin (each tile is a slot for the hops and
@@ -93,7 +93,7 @@ const SIGN_IN := 0.3
 ## asked to reason (Gen.BASIC: the tutorial's own steps; Gen.LINES: one
 ## whole line read at a time). Every board is built to be finished by that
 ## reasoning and nothing more -- no guess, no hint (2026-10-03). Insane is
-## Gen.generate_liar's 10x10, built live since the same day.
+## a 10x10 built live, every sign true: its lying sign went the same day.
 const LEVELS := [
 	{"size": 6, "min_clues": 12, "signs": 8, "tier": Gen.BASIC},
 	{"size": 6, "min_clues": 0, "signs": 6, "tier": Gen.LINES},
@@ -366,7 +366,7 @@ func rules() -> String:
 
 ## The tutorial's pages, for this board's level (ui/hud/how_to_play.gd):
 ## how a tap works, the three rules, the signs, and on Hard and Insane what a
-## wrong tile costs -- and on Insane, that one sign lies.
+## wrong tile costs.
 func tutorial_pages() -> Array:
 	const Diagram = preload("res://ui/hud/binairo_tutorial_diagram.gd")
 	var pages := []
@@ -439,15 +439,12 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
-## Insane is a 10x10 with a liar; the rest are plain boards with signs.
+## No board has a liar since 2026-10-03, so `state.liar` is always -1 and
+## the unmasking below (_unmask, _draw_liar, _liar_hidden) never runs.
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_level = clampi(difficulty, 0, LEVELS.size() - 1)
 	var level: Dictionary = LEVELS[_level]
-	var data := {}
-	if _level == 3:
-		data = Gen.generate_liar(rng, level.size, level.signs, level.min_clues)
-	else:
-		data = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
+	var data: Dictionary = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
 	_data = data
 	max_hearts = HEART_COUNTS[_level]
 	_setup_board()

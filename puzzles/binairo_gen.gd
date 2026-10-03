@@ -22,11 +22,10 @@ extends RefCounted
 ## stripped, so the strip leans on them as it does on a clue, and leaves far
 ## fewer clues than a board without.
 ##
-## Liars (2026-09-29): Insane's board shows one sign that lies -- its kind is
-## the opposite of the truth, and nothing marks which. `generate_liar` builds
-## those (see its comment). Since 2026-10-03 the liar is caught by deduction
-## too, which made the board cheap enough to build on the phone: the mined
-## bank (content/insane/binairo.json) and its ladder went.
+## Liars (2026-09-29 to 2026-10-03): Insane's board showed one sign that
+## lied. It went on the user's word: a sign is there to be reasoned from, and
+## one that may lie makes every sign a gamble. `flip_sign`/`with_flipped`
+## stay for the state, which still reads a board dict's "liar" (always -1).
 ##
 ## `solve_count` is the old search. Nothing in the game calls it now; the
 ## suite does, to check from outside that a deduced board has one answer.
@@ -75,76 +74,6 @@ static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sig
 		else:
 			puzzle[r][c] = kept
 	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": -1}
-
-## An Insane board: a size-`n` board with `sign_count` signs, exactly one of
-## which lies, stripped to minimal clues (a `min_clues` floor above 0 stops
-## the strip early, as in generate). Same dict as generate(), with `signs` as
-## shown (the liar's kind is the false one) and "liar" its index.
-##
-## The board is sound when the liar can be caught and the rest then solved,
-## both by deduction (`liar_caught`). It starts sound on the full grid and
-## every strip step keeps it so; minimal by construction as generate()'s is.
-static func generate_liar(rng: RandomNumberGenerator, n: int = 10, sign_count: int = 12, min_clues: int = 0) -> Dictionary:
-	assert(n % 2 == 0, "Binairo needs an even board size")
-	assert(sign_count > 0, "a liar needs a sign to lie")
-	var sol: Array = _random_solution(rng, n)
-	var signs: Array = _pick_signs(rng, sol, n, sign_count)
-	var liar: int = rng.randi_range(0, signs.size() - 1)
-	signs[liar] = flip_sign(signs[liar])
-	var lines := valid_lines(n)
-	var puzzle: Array = []
-	for r in n:
-		puzzle.append((sol[r] as Array).duplicate())
-
-	var cells: Array = []
-	for r in n:
-		for c in n:
-			cells.append(r * n + c)
-	_shuffle(cells, rng)
-
-	var clues: int = n * n
-	for idx in cells:
-		if min_clues > 0 and clues <= min_clues:
-			break
-		var r: int = idx / n
-		var c: int = idx % n
-		var kept = puzzle[r][c]
-		puzzle[r][c] = -1
-		if liar_caught(puzzle, signs, liar, lines):
-			clues -= 1
-		else:
-			puzzle[r][c] = kept
-	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": liar}
-
-## Whether `grid` with `signs` (as shown) is a sound liar board whose liar is
-## sign `liar`, by deduction alone. The rules never lie, so the player works
-## by the rules and trusts no sign until one is caught out: the rules alone
-## must reach both ends of the liar (which then reads broken -- and only it
-## can, every other sign being true), and from there the board must finish
-## with every sign read the right way round.
-static func liar_caught(grid: Array, signs: Array, liar: int, lines := PackedInt32Array()) -> bool:
-	if liar < 0 or liar >= signs.size():
-		return false
-	var by_rules: Array = deduce(grid, [], LINES, lines).grid
-	if not sign_broken(by_rules, signs[liar]):
-		return false
-	return deduce(by_rules, with_flipped(signs, liar), LINES, lines).solved
-
-## The liar a board's signs imply, found without being told, the way the
-## player finds it: -1 unless the rules alone break exactly one sign and the
-## board then finishes by deduction, else that sign's index. For proving a
-## board, not for play.
-static func find_liar(grid: Array, signs: Array) -> int:
-	var by_rules: Array = deduce(grid, [], LINES).grid
-	var found := -1
-	for i in signs.size():
-		if sign_broken(by_rules, signs[i]):
-			if found != -1:
-				return -1
-			found = i
-	if found == -1 or not deduce(by_rules, with_flipped(signs, found), LINES).solved:
-		return -1
-	return found
 
 ## Sign `s` telling the other story: "=" becomes "x" and back.
 static func flip_sign(s: Vector4i) -> Vector4i:

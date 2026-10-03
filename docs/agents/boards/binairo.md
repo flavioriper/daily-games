@@ -229,3 +229,16 @@ The notes above that say a tap "waits `WRONG_GRACE`" describe the old rule.
 Known and unchanged: on Hard and Insane the streak's pluck sounds only for
 a right tile, so it still tells a right tap from a wrong one before any
 heart is at stake.
+
+### Insane's lying sign is gone (2026-10-03)
+
+The user followed an `=` on Insane, lost the heart and read it as a bug: the
+sign was the liar. Asked, they chose to remove it. A sign that may lie makes
+every sign a gamble until the liar is caught, which is the opposite of what
+the signs are for. Insane is now `Gen.generate(rng, 10, 0, 12, LINES)`: 10x10,
+twelve true signs, one heart, no hints. `Gen.generate_liar`, `liar_caught`
+and `find_liar` are deleted and the tutorial's Insane page no longer speaks
+of a liar. **Left in place and unreachable**: the board's unmasking
+(`_unmask`, `_draw_liar`, `_liar_hidden`, the `UNMASK_*` constants, the
+`liar` cue, `BN_CAUGHT`) and the state's `liar` field, which is always -1.
+Everything above about the liar describes what was.
