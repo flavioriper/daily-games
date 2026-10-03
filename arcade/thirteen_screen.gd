@@ -31,6 +31,13 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). The chain is a trail
+## that is one move: its pebbles say nothing under the finger and the merge
+## knocks once as it lands (`_on_merge`). `select` is also a swap's pick and
+## the end card's count, and `land` every pebble that falls, so only the end
+## card's cue is mapped; the rest knocks through `_fx.buzz`.
+const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -181,6 +188,8 @@ var _tier := 0
 var _air_live: ArrayMesh
 var _end_score: Label
 var _end_at := 0.0
+## True while the Second chance shuffles the tray: its knock is the card's.
+var _reviving := false
 
 func puzzle_id() -> String:
 	return GAME
@@ -195,7 +204,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_ask()
+	_ask(false)
 
 # --- building ---
 
@@ -247,6 +256,7 @@ func _build() -> void:
 	field.gui_input.connect(_on_field_input)
 	frame.add_child(field)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	field.add_child(_fx)
 
 	var over := VBoxContainer.new()
@@ -669,6 +679,7 @@ func _animate(delta: float) -> void:
 			and (_banner.get_meta("box") as Control).modulate.a < 0.05:
 		_stuck_said = true
 		_fx.cue("stuck")
+		_fx.buzz(Haptics.WARN)
 		_stuck_pulse = 0.6
 		_stuck_box.visible = true
 		_stuck_box.size = Vector2(field.size.x - 120, 0)
@@ -1066,6 +1077,8 @@ func _play_events() -> void:
 				var t: int = Sim.TOOL_KEYS.find_key(String(ev.tool))
 				Motion.shiver(_tool_buttons[t])
 			"over":
+				# the move that ended it does not tap as well (`_on_merge`)
+				_fx.buzz(Haptics.LOSE)
 				_game_over()
 	sim.events.clear()
 	if sim.phase != Sim.Phase.STUCK:
@@ -1094,10 +1107,20 @@ func _on_merge(ev: Dictionary) -> void:
 	var at := px(into.x, into.y)
 	var big := int(ev.v) >= 10
 	_pop(Vector2(into) + Vector2(0, -0.3), "+%s" % Record.grouped(int(ev.points)), Art.paint(int(ev.v)).lightened(0.4) if n < 6 else Pal.SUN, big or n >= 5)
+	# The move's one knock, as the chain lands: a tap, a bump for a new
+	# number or the best passed, a thud for the thirteen. A long chain is
+	# still a tap: on a young tray every other chain is long.
+	var feel := Haptics.TAP
+	if bool(ev.get("new_max", false)) or (not _beat_best and _best > 0 and sim.score > _best):
+		feel = Haptics.BUMP
+	if int(ev.v) == Sim.GOAL and bool(ev.get("new_max", false)):
+		feel = Haptics.THUD
 	var delay := 0.0 if Motion.reduce else JOIN_T
 	get_tree().create_timer(delay).timeout.connect(func() -> void:
 		if not is_instance_valid(_fx):
 			return
+		if sim != null and not sim.is_over():
+			_fx.buzz(feel)
 		_fx.puff(at, Art.paint(int(ev.v)), 6)
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
 		_fx.cue("merge", clampf(0.85 + 0.05 * int(ev.v), 0.85, 1.6))
@@ -1186,6 +1209,14 @@ func _merge_burst(ev: Dictionary, at: Vector2) -> void:
 
 func _on_tool_event(ev: Dictionary) -> void:
 	_kick(_clover_l, 0.25, 0.3)
+	# A tool used is one knock: a tick for Undo, a tap for the rest, and a
+	# good in its place when it got a stuck tray moving. (The Second
+	# chance's shuffle comes through here on a tray that was over: its good
+	# is the card's.)
+	if _stuck_box.visible and sim.phase == Sim.Phase.PLAY:
+		_fx.buzz(Haptics.GOOD)
+	elif not _reviving:
+		_fx.buzz(Haptics.TICK if String(ev.tool) == "undo" else Haptics.TAP)
 	match String(ev.tool):
 		"undo":
 			_fx.cue("undo")
@@ -2099,7 +2130,7 @@ func go_back() -> void:
 
 ## Before a run: the boost card, when a booster is held or the gold for one
 ## is, else straight in. A run still going when it is asked for stops there.
-func _ask() -> void:
+func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
@@ -2108,6 +2139,9 @@ func _ask() -> void:
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()
+		# Restart and Play again tap; the screen opening says nothing.
+		if by_hand:
+			_fx.buzz(Haptics.TAP)
 		return
 	if sim != null and not sim.is_over():
 		sim = null
@@ -2115,7 +2149,8 @@ func _ask() -> void:
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:
 		_boosts = ids
-		_new_game())
+		_new_game()
+		_fx.buzz(Haptics.TAP))
 	add_child(card)
 
 ## At game over, once a run: the Second chance, when one is held or the gold
@@ -2129,9 +2164,12 @@ func _offer_chance() -> bool:
 	card.taken.connect(func() -> void:
 		_boosted = true
 		Boosters.revive(GAME, sim)
+		_fx.buzz(Haptics.GOOD)
 		_show_banner(tr("CHANCE_GO"), "", 1.0)
 		_stuck_box.visible = false
+		_reviving = true
 		_play_events()
+		_reviving = false
 		top_bar.refresh(self))
 	card.declined.connect(_game_over)
 	add_child(card)

@@ -8,10 +8,11 @@ extends SceneTree
 ##
 ##     godot --headless --path . --script res://tests/_probe_arcade_buzz.gd -- firefly
 ##
-## Games: firefly, molehill, stackwood.
+## Games: firefly, molehill, stackwood, thirteen, posy.
 ##
 ## `rm` after the game runs it under reduce motion. SECS (the first run's
-## length before its fireflies are taken away, 60) from the environment.
+## length before its fireflies are taken away, 60) and MOVES (thirteen's and
+## posy's bot, 40 and 60) from the environment.
 ## Throwaway wallet; puts user://arcade.cfg and user://ads.cfg back.
 
 const Haptics = preload("res://core/haptics.gd")
@@ -22,6 +23,8 @@ const QUIET := {
 	"firefly": ["shoot", "dive", "beam"],
 	"molehill": ["up"],
 	"stackwood": ["spawn", "move"],
+	"thirteen": ["select", "unselect", "settle", "merge"],
+	"posy": ["fall", "unswap", "goal_done", "convert", "offer", "over"],
 }
 
 var _game := "firefly"
@@ -75,6 +78,9 @@ func _initialize() -> void:
 	# run time (a preload compiles before the Ads autoload exists).
 	var gd := GDScript.new()
 	gd.source_code = "extends \"res://arcade/%s_screen.gd\"\nvar heard: Array = []\nfunc _play_events() -> void:\n\tfor ev: Dictionary in sim.events:\n\t\theard.append(ev.duplicate())\n\tsuper()\n" % _game
+	if _game == "posy":
+		# Posy plays its events off a queue, one at a time: heard as played
+		gd.source_code = "extends \"res://arcade/posy_screen.gd\"\nvar heard: Array = []\nfunc _apply(ev: Dictionary) -> void:\n\theard.append(ev.duplicate())\n\tsuper(ev)\n"
 	gd.reload()
 	_s = gd.new()
 	root.add_child(_s)
@@ -152,6 +158,19 @@ func _report() -> void:
 			n = "land%s%s" % [" dropped" if bool(ev.get("dropped", false)) else " by itself", " wild" if bool(ev.wild) else ""]
 		if _game == "stackwood" and n == "merge":
 			n = "merge x%d" % int(ev.chain)
+		if (_game == "thirteen" or _game == "posy") and (n == "tool" or n == "refused"):
+			n = "%s %s" % [n, ev.tool]
+		if _game == "posy" and n == "swap":
+			n = "swap%s" % (" (a tool's)" if bool(ev.get("free", false)) else ("" if bool(ev.ok) else " refused"))
+		if _game == "posy" and n == "clear":
+			var met := true
+			for g: Dictionary in ev.goals:
+				met = met and int(g.got) >= int(g.need)
+			var kinds := {}
+			for b: Dictionary in ev.blasts:
+				kinds[String(b.kind)] = true
+			n = "clear %d%s%s%s" % [int(ev.step), " made" if not (ev.made as Array).is_empty() else "",
+				" blast:" + "+".join(kinds.keys()) if not kinds.is_empty() else "", " (day met)" if met else ""]
 		if not _quiet.has(n):
 			names.append(n)
 	heard.clear()
@@ -194,6 +213,10 @@ func _run() -> void:
 			await _molehill()
 		"stackwood":
 			await _stackwood()
+		"thirteen":
+			await _thirteen()
+		"posy":
+			await _posy()
 		_:
 			await _firefly()
 	_finish()
@@ -429,6 +452,353 @@ func _stackwood() -> void:
 		_bot = true
 		await _wait(5.0)
 	await _end_card_and_cards(field, mid, short, end_run)
+
+# --- thirteen ---
+
+## The longest chain the tray holds, or [].
+func _lt_longest() -> Array:
+	var sim: RefCounted = _s.sim
+	var best: Array = []
+	for g: Array in sim.groups_of(_s.Sim.MIN_CHAIN):
+		for end: Vector2i in g:
+			var chain: Array = _s.Sim.chain_through(g, end, 300)
+			if chain.size() > best.size():
+				best = chain
+			if best.size() == g.size():
+				break
+	return best
+
+func _lt_at(cell: Vector2i) -> Vector2:
+	return _s.px(cell.x, cell.y)
+
+## Waits for the tray to stop moving, and a little more.
+func _lt_still(more := 0.1) -> void:
+	await process_frame
+	while _s.sim != null and _s.busy():
+		await process_frame
+	await _wait(more)
+
+## Presses on the chain's first pebble and drags through the rest; lets go
+## when `release`.
+func _lt_draw(chain: Array, release := true) -> void:
+	_press(_s.field, _lt_at(chain[0]), true)
+	for k in range(1, chain.size()):
+		_move(_lt_at(chain[k]))
+	if release:
+		_press(_s.field, _lt_at(chain[-1]), false)
+
+## The bot's move: the longest chain there is, named by what it makes.
+func _lt_play() -> bool:
+	var sim: RefCounted = _s.sim
+	var chain := _lt_longest()
+	if chain.size() < _s.Sim.MIN_CHAIN or sim.phase != _s.Sim.Phase.PLAY:
+		return false
+	var nv: int = sim.value(chain[-1]) + 1
+	_do("chain of %d -> %d%s" % [chain.size(), nv, " (a new number)" if nv > sim.max_v else ""])
+	_lt_draw(chain)
+	await _lt_still(0.45)
+	_say()
+	return true
+
+## A tray with no two touching pebbles alike, checked: stuck with clovers
+## for a tool, over without.
+func _lt_jam(clovers: int) -> void:
+	var sim: RefCounted = _s.sim
+	for c in _s.Sim.COLS:
+		for r in _s.Sim.ROWS:
+			sim.grid[c][r].v = 1 + (c % 2) + 2 * (r % 2)
+	sim.clovers = clovers
+	sim._check()
+	_s._play_events()
+
+func _lt_tool(tool: int) -> void:
+	_s._tool_buttons[tool].pressed.emit()
+
+func _lt_tap(cell: Vector2i) -> void:
+	_press(_s.field, _lt_at(cell), true)
+	_press(_s.field, _lt_at(cell), false)
+
+## A pebble whose number is (or is not) `v`, other than `skip`.
+func _lt_find(v: int, same: bool, skip := Vector2i(-1, -1)) -> Vector2i:
+	for c in _s.Sim.COLS:
+		for r in _s.Sim.ROWS:
+			var p := Vector2i(c, r)
+			if p != skip and (_s.sim.value(p) == v) == same:
+				return p
+	return Vector2i(-1, -1)
+
+func _thirteen() -> void:
+	var field: Control = _s.field
+	var Sim: GDScript = _s.Sim
+	_do("the screen opened")
+	await _wait(0.2)
+	_say()
+	await _lt_still(0.3)
+	_do("Undo with nothing to take back")
+	_lt_tool(Sim.Tool.UNDO)
+	await _wait(0.3)
+	_say()
+	var chain := _lt_longest()
+	_do("a pebble pressed and let go")
+	_lt_draw(chain.slice(0, 1))
+	await _wait(0.3)
+	_say()
+	_do("two pebbles and let go (too short)")
+	_lt_draw(chain.slice(0, 2))
+	await _wait(0.3)
+	_say()
+	_do("a chain of %d drawn, one back, on again" % chain.size())
+	_lt_draw(chain, false)
+	await _wait(0.1)
+	_move(_lt_at(chain[-2]))
+	await _wait(0.1)
+	_move(_lt_at(chain[-1]))
+	await _wait(0.1)
+	_say()
+	_do("let go: the merge lands")
+	_press(field, _lt_at(chain[-1]), false)
+	await _lt_still(0.45)
+	_say()
+	var moves := _env("MOVES", 40)
+	var played := 0
+	while played < moves and await _lt_play():
+		played += 1
+	print("  -- %d moves: score %d, biggest %d, best chain %d, clovers %d" % [_s.sim.moves, _s.sim.score, _s.sim.max_v,
+		_s.sim.best_chain, _s.sim.clovers])
+	# three twelves laid by the probe: the thirteen
+	for c in 3:
+		_s.sim.grid[c][0].v = 12
+	_s.sim.max_v = 12
+	await _wait(0.2)
+	_do("three twelves: the thirteen")
+	_lt_draw([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+	await _lt_still(3.0)
+	_say()
+	# the tools, with clovers handed over
+	_s.sim.clovers = 5000
+	await _lt_still()
+	_do("Swap armed")
+	_lt_tool(Sim.Tool.SWAP)
+	await _wait(0.2)
+	_say()
+	var a := Vector2i(0, 0)
+	_do("  its first pebble picked")
+	_lt_tap(a)
+	await _wait(0.2)
+	_say()
+	var twin := _lt_find(_s.sim.value(a), true, a)
+	if twin.x >= 0:
+		_do("  a second of the same number")
+		_lt_tap(twin)
+		await _wait(0.2)
+		_say()
+	_do("  a second pebble: swapped")
+	_lt_tap(_lt_find(_s.sim.value(a), false))
+	await _lt_still(0.3)
+	_say()
+	_do("Pluck armed, a pebble tapped")
+	_lt_tool(Sim.Tool.PLUCK)
+	_lt_tap(Vector2i(2, 3))
+	await _lt_still(0.3)
+	_say()
+	_do("Lift armed, the biggest tapped")
+	_lt_tool(Sim.Tool.LIFT)
+	_lt_tap(_lt_find(_s.sim.max_v, true))
+	await _wait(0.3)
+	_say()
+	_do("  a smaller pebble: lifted")
+	_lt_tap(_lt_find(_s.sim.max_v, false))
+	await _lt_still(0.3)
+	_say()
+	_do("Shuffle")
+	_lt_tool(Sim.Tool.SHUFFLE)
+	await _lt_still(0.3)
+	_say()
+	_do("Undo")
+	_lt_tool(Sim.Tool.UNDO)
+	await _lt_still(0.3)
+	_say()
+	_do("Pluck armed and put away")
+	_lt_tool(Sim.Tool.PLUCK)
+	await _wait(0.2)
+	_lt_tool(Sim.Tool.PLUCK)
+	await _wait(1.2)
+	_say()
+	print("  -- the tray jammed by the probe, clovers in the bank")
+	_do("the tray is stuck")
+	_lt_jam(5000)
+	await _wait(1.5)
+	_say()
+	_do("a tool that does not free it (Lift)")
+	_lt_tool(Sim.Tool.LIFT)
+	_lt_tap(Vector2i(0, 0))
+	await _lt_still(0.3)
+	_say()
+	_do("Shuffle sets it moving")
+	_lt_tool(Sim.Tool.SHUFFLE)
+	await _lt_still(0.3)
+	_say()
+	await _lt_play()
+	print("  -- jammed again")
+	_do("the tray is stuck")
+	_lt_jam(5000)
+	await _wait(2.0)
+	_say()
+	_do("End game")
+	_button(_s._stuck_box, "EndGame").pressed.emit()
+	await _wait(0.4)
+	_say()
+	var end_run := func() -> void:
+		_lt_jam(0)
+	# the second run: the best is passed on its first merge (set low)
+	var short := func() -> void:
+		_s._best = 15
+		await _lt_still(0.3)
+		for k in 4:
+			await _lt_play()
+	await _end_card_and_cards(field, _lt_at(Vector2i(2, 2)), short, end_run)
+
+# --- posy ---
+
+## Waits for the bed to finish playing out, and a little more.
+func _ps_still(more := 0.1) -> void:
+	await process_frame
+	var t := 0.0
+	while _s.sim != null and _s.busy() and t < 30.0:
+		await process_frame
+		t += root.get_process_delta_time()
+	await _wait(more)
+
+## A drag from `a` far enough toward `b` to swap them.
+func _ps_drag(a: Vector2i, b: Vector2i) -> void:
+	var from: Vector2 = _s.px(a.x, a.y)
+	_press(_s.field, from, true)
+	_move(from + Vector2(b - a) * _s._u * 0.5)
+	_press(_s.field, from + Vector2(b - a) * _s._u * 0.5, false)
+
+func _ps_tap(cell: Vector2i) -> void:
+	_press(_s.field, _s.px(cell.x, cell.y), true)
+	_press(_s.field, _s.px(cell.x, cell.y), false)
+
+## The bot's move: the sim's own hint. False with none to make.
+func _ps_play() -> bool:
+	await _ps_still()
+	var sim: RefCounted = _s.sim
+	if sim.phase != _s.Sim.Phase.PLAY:
+		return false
+	var m: Array = sim.hint()
+	if m.is_empty():
+		return false
+	_ps_drag(m[0], m[1])
+	return true
+
+## A plain tile (no special) with a plain neighbour: [a, b], taken or not.
+func _ps_pair(taken: bool) -> Array:
+	var sim: RefCounted = _s.sim
+	var moves: Array = sim.all_moves()
+	for c in _s.Sim.COLS - 1:
+		for r in _s.Sim.ROWS:
+			var a := Vector2i(c, r)
+			var b := Vector2i(c + 1, r)
+			if sim.at(a).is_empty() or sim.at(b).is_empty() or sim.special(a) != 0 or sim.special(b) != 0:
+				continue
+			if moves.has([a, b]) == taken:
+				return [a, b]
+	return []
+
+func _posy() -> void:
+	var field: Control = _s.field
+	var Sim: GDScript = _s.Sim
+	_do("the screen opened")
+	await _ps_still(0.3)
+	_say()
+	var idle: Array = _ps_pair(false)
+	_do("a tile picked, and put down")
+	_ps_tap(idle[0])
+	await _wait(0.2)
+	_ps_tap(idle[0])
+	await _wait(0.2)
+	_say()
+	_do("a swap that lines nothing up")
+	_ps_drag(idle[0], idle[1])
+	await _ps_still(0.3)
+	_say()
+	_label = "(nothing played)"
+	var moves := _env("MOVES", 60)
+	var played := 0
+	while played < 6 and await _ps_play():
+		played += 1
+	await _ps_still(0.5)
+	if _s.sim.phase == Sim.Phase.PLAY:
+		# a breeze laid by the probe, tapped where it stands
+		var spot: Array = _ps_pair(false)
+		if spot.is_empty():
+			spot = _ps_pair(true)
+		var tile: Dictionary = _s.sim.at(spot[0])
+		tile.sp = Sim.Sp.ROW
+		_s._tiles[tile.id].sp = Sim.Sp.ROW
+		_s.sim.moves_left += 20
+		_s._shown_moves += 20
+		print("  -- a breeze laid by the probe, tapped")
+		_ps_tap(spot[0])
+		await _ps_still(0.5)
+		# the tools
+		for tool: int in [Sim.Tool.TROWEL, Sim.Tool.SWAP, Sim.Tool.BOMB, Sim.Tool.RAINBOW]:
+			if _s.sim.phase != Sim.Phase.PLAY:
+				break
+			_s.sim.tools[tool] = 1
+			var pair: Array = _ps_pair(false)
+			if pair.is_empty():
+				pair = _ps_pair(true)
+			_do("%s armed" % Sim.TOOL_KEYS[tool])
+			_s._tool_buttons[tool].pressed.emit()
+			await _wait(0.2)
+			_say()
+			_label = "(nothing played)"
+			_ps_tap(pair[0])
+			if tool == Sim.Tool.SWAP:
+				await _wait(0.2)
+				_ps_tap(pair[1])
+			await _ps_still(0.5)
+			_do("%s with none left" % Sim.TOOL_KEYS[tool])
+			_s._tool_buttons[tool].pressed.emit()
+			await _wait(0.2)
+			_say()
+	_label = "(nothing played)"
+	while played < moves and await _ps_play():
+		played += 1
+	await _ps_still(0.5)
+	print("  -- %d moves: day %d, score %d, specials made %d, best cascade %d" % [_s.sim.moves, _s.sim.day, _s.sim.score,
+		_s.sim.made, _s.sim.best_cascade])
+	if _s.sim.phase == Sim.Phase.PLAY:
+		print("  -- one move left, the day short: the offer")
+		for g: Dictionary in _s.sim.goals:
+			g.need = int(g.got) + 99
+		_s.sim.moves_left = 1
+		_label = "(nothing played)"
+		await _ps_play()
+		await _ps_still(0.8)
+	if _s.sim.is_offered():
+		_do("the offer taken")
+		_button(_s._offer, "Take").pressed.emit()
+		await _ps_still(0.5)
+		_say()
+		print("  -- one move left again: out of moves")
+		_s.sim.moves_left = 1
+		_label = "(nothing played)"
+		await _ps_play()
+		await _ps_still(0.5)
+	var end_run := func() -> void:
+		_s.sim.give_up()
+		_s._take_events()
+	# the second run: the best is passed mid-run (set low for the probe)
+	var short := func() -> void:
+		_s._best = 15
+		_label = "(nothing played)"
+		for k in 4:
+			await _ps_play()
+		await _ps_still(0.3)
+	await _end_card_and_cards(field, _s.px(3, 3), short, end_run)
 
 # --- firefly ---
 
