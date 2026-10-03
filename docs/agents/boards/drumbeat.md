@@ -53,3 +53,13 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   back; `_probe_drumbeat.gd -- jitter slips lag`. 84-137 draw calls in play,
   ~222 at Go-Go's burst (ANGLE 250). `_win.gd` has no driver for it (a
   real-time board), so it reports FAIL there by construction.
+  **One road, in concept (2026-10-03).** The user's reference showed what
+  they had meant all along: not four lanes but one track, every note riding
+  it into one ring, and several drums to tap in place of the reference's
+  kinds of stroke. `docs/brainstorm/concepts.html#drumbeat` is a playable
+  mock of that (the game's own songs, charts and drum voices; two drums on
+  Easy, three on Medium, four on Hard and Insane; a note names its drum by
+  colour and by the drum's mark under it). Nothing in Godot has changed yet:
+  the tab's "calls this page is for" list is waiting on the user. The whole
+  page no longer renders in headless Chrome inside 100 s; shoot one tab from
+  a standalone copy (the head, the tab's section, its script).
