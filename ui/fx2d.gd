@@ -15,6 +15,7 @@ extends Node2D
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 const UiSound = preload("res://ui/ui_sound.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 const PUFF_POOL := 4
 const SPARKLE_POOL := 3
@@ -40,6 +41,10 @@ var confetti_moons: Array[CPUParticles2D] = []
 var _next_confetti := 0
 ## The most recent audio cue name. A later audio layer plays these.
 var last_cue := ""
+## The board's buzzes: cue name -> a Haptics kind. A cue named here buzzes
+## whenever it fires, file or no file, and core/haptics.gd keeps only the
+## strongest of a frame's. The board sets it once (docs/agents/haptics.md).
+var haptics := {}
 var _next_puff := 0
 var _next_sparkle := 0
 ## Sound: a few voices round-robin so quick taps overlap instead of cutting.
@@ -208,6 +213,8 @@ class Ring extends Control:
 ## (snooker's clack).
 func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	last_cue = cue_name
+	if haptics.has(cue_name):
+		Haptics.play(haptics[cue_name])
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):
 		if _fetching.has(path):

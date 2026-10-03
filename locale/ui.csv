@@ -109,6 +109,8 @@ STATS_BEST,Best,Melhor,Mejor
 STATS_MEAN,Average,Média,Media
 STATS_NOT_YET,Not solved yet,Ainda não resolvido,Aún sin resolver
 SETTINGS_SOUND,Sound,Som,Sonido
+SETTINGS_HAPTICS,Vibration,Vibração,Vibración
+SETTINGS_HAPTICS_SUB,A small buzz when you play,Uma vibração leve ao jogar,Una vibración suave al jugar
 SETTINGS_CREDITS,Credits,Créditos,Créditos
 CREDITS_TITLE,Credits,Créditos,Créditos
 CREDITS_FONTS,Typefaces,Fontes,Tipografías

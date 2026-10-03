@@ -15,7 +15,7 @@ see "Ads and the purchase" below.
   `GA_API_SECRET`. Missing secret means the game runs untracked, not broken.
 - Events: `game_open`, `puzzle_start`, `puzzle_complete`, `puzzle_abandon`,
   `hint_used`, `undo_used`, `check_used`, `board_reset`, `rules_opened`,
-  `new_puzzle`, `reduce_motion`, `tab_opened` (the menu's Stats or Streak
+  `new_puzzle`, `reduce_motion`, `haptics_toggled` (with `on`, 2026-10-03), `tab_opened` (the menu's Stats or Streak
   tab, with `tab`), and on a board that can be turned,
   `view_turn` and `peek_used`. A daily turn adds `turn_lock`, `turn_reveal`,
   `turn_share` and `crowd_reveal_opened`. Board events carry puzzle_id,

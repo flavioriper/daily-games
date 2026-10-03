@@ -7,6 +7,7 @@ extends Node
 
 const Motion = preload("res://core/motion.gd")
 const Sound = preload("res://core/sound.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
@@ -18,6 +19,7 @@ const AgeScreen = preload("res://ui/hud/age_screen.gd")
 func _enter_tree() -> void:
 	Motion.load_settings()
 	Sound.load_settings()
+	Haptics.load_settings()
 	Locale.apply()
 	# Every paper face in the HUD takes its painted wash from here on, the
 	# one place that runs before any screen builds (ui/theme.gd dress()).
