@@ -34,6 +34,7 @@ const Rope = preload("res://puzzles/untangle_rope.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const KittenFace = preload("res://ui/faces/kitten_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -357,10 +358,31 @@ func tutorial_pages() -> Array:
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
 	return pages
 
+## What the phone does under each cue (docs/agents/haptics.md). The `drop`
+## cue is not here: the kitten's swat and a hint's flight fire it too, so the
+## peg the hand let go knocks from `_landed` (a tap, or a bump when a rope
+## comes free or two crossings go at once). The rope going taut in the hand
+## ticks once (`_update_held`), which is the reach rule felt, and the pluck
+## that shares its cue does not. The win knocks on `solved`, which waits for
+## the last peg to land; the seal thuds as it lands (`_stamp_down`). A peg
+## lifted, put back or selected, a hole hovered, a braid cinching under the
+## hand, a refused peg, a stitch sewn, the kitten petted or swatting and the
+## shown answer say nothing.
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"spool_back": Haptics.GOOD,
+	"thread_low": Haptics.WARN,
+	"thread_out": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1988,6 +2010,7 @@ func _update_held() -> void:
 	if strain > 0.05 and not _taut_sent:
 		_taut_sent = true
 		fx.cue("taut")
+		Haptics.play(Haptics.TICK)
 		_whip(p >> 1, -WHIP_PICK, 0.0)
 	elif strain <= 0.0:
 		_taut_sent = false
@@ -2159,6 +2182,10 @@ func _landed(p: int, hole: int, res: Dictionary, hint: bool) -> void:
 		_later_call(0.12, fx.cue.bind("unwind", 1.0, -3.0))
 	_whip(p >> 1, WHIP_DROP * (1.0 if p % 2 == 0 else -1.0), SLACK_DROP)
 	fx.cue("drop")
+	if not hint:
+		# The hand's peg is home: a bump when that freed a rope or undid two
+		# crossings at once (the sticker's moments), a tap otherwise.
+		Haptics.play(Haptics.BUMP if cleared >= 2 or not (res.freed as Array).is_empty() else Haptics.TAP)
 	fx.puff(at + Vector2(0.0, _peg_r * 0.4), Pal.WOOD, 3)
 	if hint:
 		fx.ring(at, _peg_r * 1.4, Pal.SUN)
@@ -2616,6 +2643,7 @@ func _stamp_down(quiet := false) -> void:
 	tw.tween_property(stamp, "modulate:a", 1.0, 0.16)
 	tw.chain().tween_callback(func() -> void:
 		Motion.squash(stamp, 0.22, 0.26)
+		Haptics.play(Haptics.THUD)
 		fx.ring(stamp.position + stamp.pivot_offset, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN)
 		fx.puff(stamp.position + stamp.pivot_offset + Vector2(0.0, rad * 0.8), Pal.WHEAT, 5))
 

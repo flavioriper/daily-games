@@ -52,6 +52,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -502,10 +503,33 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A bed
+## fenced is the faintest knock, whether or not it fits its sign (the sign's
+## face says that), and one cleared or undone the same; the streak knocks
+## only where its confetti flies. The wash growing under the finger says
+## nothing: its count is read, and a tick a cell would hum. A drag refused
+## on a pinned or taken bed, a tap on bare ground, the sprout, the streak's
+## pluck and the gags say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"clear": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"plot": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -2584,6 +2608,8 @@ func _party(lead: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, Haptics.play.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var at := lead + PARTY_AT
