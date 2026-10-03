@@ -45,6 +45,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 ## A ruled-out cell takes Queens' X (2026-09-30, the user's call): the pebble
@@ -425,10 +426,33 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A stroke
+## knocks once, as it is let go (`_release`, not the `place` cue, which a
+## wrong tile's landing fires too): a tap when it laid a tile, a tick when
+## it only crossed cells out or rubbed some out, a bump when it brought a
+## line to read right (the `bloom` cue also fires for a hint, an Undo and an
+## eject). The streak's confetti is the other milestone. The cells sinking
+## under the finger, the brush, a grouted tile tapped (`locked`), the
+## pebbles a finished line lays, the eject's `slip`, the streak's pluck and
+## the gags say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1540,6 +1564,7 @@ func _release() -> void:
 		# its pieces in a wave along the finger's path and puffs none; a
 		# single tap puffs and leans the neighbours.
 		var arrivals := _commit(before, changed, now, per, Vector2i(-1, -1) if was_drag else cell)
+		_knock(changed, ok_before)
 		if bad.x >= 0:
 			var land := now + (0.0 if Motion.reduce else Motion.stagger(changed.size(), per))
 			# A run painted one cell too far still finishes its line.
@@ -1576,6 +1601,22 @@ func _commit(before: Dictionary, changed: Array, t: float, per: float, tapped: V
 	_refresh()
 	note_move()
 	return arrivals
+
+## The stroke's one knock, as the finger lets it go: a bump when it brought
+## a line to read right, a tap when it laid a tile, a tick for crosses and
+## rub-outs. Nothing when it changed nothing, or solved the picture (the win
+## has spoken).
+func _knock(changed: Array, ok_before: Dictionary) -> void:
+	if changed.is_empty() or is_done():
+		return
+	var kind: int = Haptics.TICK
+	for cell in changed:
+		if state.mark_at(cell) == State.FILL:
+			kind = Haptics.TAP
+	for k in _ok_lines():
+		if not ok_before.has(k):
+			kind = Haptics.BUMP
+	fx.buzz(kind)
 
 func _clear_gesture() -> void:
 	_press_cell = Vector2i(-1, -1)
@@ -2650,6 +2691,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	_busy_for(lead + FRAME_TIME + 0.4)
