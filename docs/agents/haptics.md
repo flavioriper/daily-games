@@ -65,6 +65,14 @@ Rules:
   answer as well as for the fruit the hand let go: the board marks that one
   (`_by_hand`) and knocks as it lands. A refused touch (a full row, a hinted
   seat, a pinned fruit) says nothing, like Binairo's given.
+- **A milestone bumps, a right move taps.** A move that is merely right is
+  what happens on every touch: Untangle's peg home is a tap and only a rope
+  left free (or two crossings gone at once) is a bump; Shikaku's bed is a
+  tap fitting or not, and the streak bumps only at its confetti.
+- **A limit felt under the hand ticks once.** Untangle's rope going taut is
+  the reach rule in the fingers: one tick as it strains, none again until it
+  slackens, and nothing more when the peg is let go out of reach and flies
+  home.
 - **A count is read, not felt**: Code Break's pips land one by one and say
   nothing; the row knocks once as it is scored.
 - **Nothing continuous**: a drag knocks on the cells it crosses at most, it
@@ -88,8 +96,8 @@ Rules:
 | 1 | binairo | 2026-10-03 | the shared piece came with it (core/haptics.gd, the Vibration switch, the Android permission); tap on a tile set, tick on a clear and Undo; bump on a line, a streak's confetti and the liar's unmasking; good on a hint, a clean Check and a heart back; warn on a blush that outlives the grace and on a Check that finds something; bad on a heart, lose on the last, win on the solve, thud on the flawless stamp; nothing for a given, the brush or a button |
 | 2 | mastermind (Code Break) | 2026-10-03 | tap on a friend seated and Reset, tick on one sent back and Undo; bump once as a full row is scored (`check`, not a cue); good on a hint, a new best in the right seats (Warmer!, So close!), every friend present and a bought row; warn on Check with seats empty; lose out of rows; win as the lids come off (`_reveal`), thud as the seal lands; nothing for the pips, a palette tap on a full row, a hinted seat tapped, the clean miss's sunglasses, the Shell Game's swap, the peeks. Probed Easy and Insane; out of rows and the bought row are mapped but not probed |
 | 3 | balance | 2026-10-03 | tap as a fruit the hand let go lands in a cup, tick as one tapped or dropped home gets there (`_by_hand`, not the `land`/`step` cues); good on a far toss that lands (over the tap), a hint and One more hour; bump on the beam level with fruit still to place; tick on Undo, tap on Reset; bad on Insane's bounce; lose at sunset; win on the solve, thud as the seal lands; nothing for a fruit lifted, a pinned fruit, the beam at rest off level or on its bale, the cheers, the sun tapped or getting low, and every fruit the board moves itself. Probed on all four bands; the level, the bounce and the sunset are mapped but not probed |
-| 4 | untangle | | |
-| 5 | shikaku | | |
+| 4 | untangle | 2026-10-03 | tap as the peg the hand let go lands in its hole, bump instead when that left a rope with no crossing or undid two at once (`_landed`, not the `drop` cue, which the kitten's swat and a hint's flight fire too); tick once as the rope goes taut in the hand (`_update_held`; the pluck shares the cue and says nothing); tick on Undo, tap on Reset; good on a hint and One more spool; warn on the thread running low; lose out of thread; win on the solve (it waits for the last peg to land), thud as the seal lands; nothing for a peg lifted, selected or put back, a hole hovered, a braid cinching or unwinding under the hand, a stuck peg or a drop out of reach, a stitch, the kitten petted, pouncing or swatting, the shown answer. Probed Easy, Hard and Insane; out of thread and the spool are mapped but not probed |
+| 5 | shikaku | 2026-10-03 | tap on a bed fenced (fits its sign or not: the sign's face says that), tick on one tapped away and Undo; bump where the streak's confetti flies (5, 10); good on a hint, a clean Check and a heart back; warn on a Check that finds something; bad on a heart, lose on the last; tap on Reset and Try again; win on the solve, thud as the seal lands (`_stamp_at` + `STAMP_DROP`, flawless or Insane); nothing for the wash growing under the finger, a tap on bare ground, a drag refused on a pinned or taken bed, the sprout, the streak's pluck, the gags. Probed on all four bands; the last heart and the heart back are mapped but not probed |
 | 6 | tents | | |
 | 7 | lightup | | |
 | 8 | oneline | | |

@@ -1514,6 +1514,76 @@ func _ut_motion(at: Vector2) -> void:
 	ev.position = at
 	_puzzle._gui_input(ev)
 
+## A peg carried from where it is to `to` and let go, through the board's own
+## input, an event a frame.
+func _ut_carry_to(p: int, to: Vector2) -> void:
+	var from: Vector2 = _puzzle._peg_px[p]
+	_ut_button(from, true)
+	for i in range(1, 7):
+		await process_frame
+		_ut_motion(from.lerp(to, i / 6.0))
+	await process_frame
+	_ut_button(to, false)
+
+## Untangle's buzzes: a peg tapped (selected) and tapped again, a rope
+## plucked, a peg pulled past its rope's reach and let go, a peg carried the
+## way home, Undo, a hint, the kitten petted and Reset. The plain run then
+## carries pegs home to the win (or, on a day with thread, as far as the
+## thread these moves left goes).
+func _buzz_untangle() -> void:
+	var st = _puzzle.state
+	_buzz_more = 14.0
+	var rest := func() -> void: await create_timer(1.2).timeout
+	var free := -1
+	for p in st.at.size():
+		if st.can_go(p):
+			free = p
+			break
+	_click(_puzzle._peg_px[free])
+	await create_timer(0.3).timeout
+	_buzzed("a peg tapped: selected")
+	_click(_puzzle._peg_px[free])
+	await create_timer(0.3).timeout
+	_buzzed("tapped again: let go")
+	var chain: PackedVector2Array = _puzzle._ropes[0].p
+	_click(chain[chain.size() / 2])
+	await create_timer(0.3).timeout
+	_buzzed("a rope plucked")
+	# a peg pulled to the far side of the ring from its rope's other end
+	for p in st.at.size():
+		var other: Vector2 = _puzzle._peg_px[p ^ 1]
+		var far: Vector2 = _puzzle._c + (_puzzle._c - other).normalized() * _puzzle._ro
+		if st.can_go(p) and far.distance_to(other) > _puzzle._ropes[p >> 1].length * 1.15 \
+				and _puzzle._nearest_peg(far) < 0:
+			await _ut_carry_to(p, far)
+			await create_timer(0.1).timeout
+			_buzzed("pulled taut and let go")
+			await rest.call()
+			_buzzed("it flies home")
+			break
+	var step: Array = st.hint_step()
+	if not step.is_empty():
+		await _ut_carry_to(int(step[0]), _puzzle._hole_px(int(step[2])))
+		await create_timer(0.1).timeout
+		_buzzed("a peg carried and let go")
+		await create_timer(2.4).timeout  # (the kitten's swat, on Insane)
+		_buzzed("it lands")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await rest.call()
+		_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(2.4).timeout
+		_buzzed("hint")
+	if st.cat:
+		_click(_puzzle._kitten.position + _puzzle._kitten.size * 0.5)
+		await create_timer(0.4).timeout
+		_buzzed("the kitten petted")
+	_puzzle.reset_board()
+	await create_timer(2.0).timeout
+	_buzzed("reset")
+
 ## Shikaku: each answer bed dragged by hand, corner to corner -- a press, a
 ## few motions as the wash grows, the release -- one event a step.
 func _moves_shikaku() -> Array:
@@ -1529,6 +1599,89 @@ func _moves_shikaku() -> Array:
 				_ut_motion(_puzzle.cell_to_local(a.x, a.y).lerp(_puzzle.cell_to_local(b.x, b.y), f))})
 		out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(b.x, b.y), false)})
 	return out
+
+## A bed dragged corner to corner through the board's own input, an event a
+## frame.
+func _sk_drag(rect: Rect2i) -> void:
+	var a: Vector2 = _puzzle.cell_to_local(rect.position.y, rect.position.x)
+	var b: Vector2 = _puzzle.cell_to_local(rect.end.y - 1, rect.end.x - 1)
+	_ut_button(a, true)
+	for i in range(1, 4):
+		await process_frame
+		_ut_motion(a.lerp(b, i / 3.0))
+	await process_frame
+	_ut_button(b, false)
+
+## Shikaku's buzzes: a tap on bare ground, a bed that fits no sign, a drag
+## over it from outside, a tap that clears it, a right bed, Undo, on a board
+## with hearts a bed that fits its sign and is not the answer, a hint and a
+## press on its pinned bed, Check and Reset. The plain run then drags the
+## answer (the streak's confetti, the win, the seal when it is earned).
+func _buzz_shikaku() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var first: Rect2i = st.solution[0]
+	_click(_puzzle.cell_to_local(first.position.y, first.position.x))
+	await pause.call()
+	_buzzed("a tap on bare ground")
+	# a two-cell bed in the first answer bed: it fits no sign there
+	var stub := Rect2i(first.position, Vector2i(2, 1) if first.size.x >= 2 else Vector2i(1, 2))
+	if st.fitted_clue(stub) < 0:
+		await _sk_drag(stub)
+		await pause.call()
+		_buzzed("a bed that fits no sign")
+		for other: Rect2i in st.solution:
+			if other != first and other.grow(1).intersects(stub):
+				# (pressed in the neighbour's far corner, so the stub is not its own)
+				var from: Vector2 = _puzzle.cell_to_local(other.end.y - 1, other.end.x - 1)
+				var to: Vector2 = _puzzle.cell_to_local(stub.position.y, stub.position.x)
+				_ut_button(from, true)
+				await process_frame
+				_ut_motion(to)
+				await process_frame
+				_ut_button(to, false)
+				await pause.call()
+				_buzzed("a drag over it, refused")
+				break
+		_click(_puzzle.cell_to_local(stub.position.y, stub.position.x))
+		await pause.call()
+		_buzzed("tapped away")
+	await _sk_drag(first)
+	await pause.call()
+	_buzzed("a right bed")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	if _puzzle.max_hearts > 1:
+		# a bed that fits its sign and is not the answer
+		var wrong := Rect2i()
+		for x in st.w:
+			for y in st.h:
+				for ww in range(1, st.w - x + 1):
+					for hh in range(1, st.h - y + 1):
+						var r := Rect2i(x, y, ww, hh)
+						if wrong.size == Vector2i.ZERO and r.get_area() > 1 and st.fitted_clue(r) >= 0 and not st.is_answer(r):
+							wrong = r
+		if wrong.size != Vector2i.ZERO:
+			await _sk_drag(wrong)
+			await create_timer(2.5).timeout
+			_buzzed("a bed that costs a heart")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+		for i in st.rects.size():
+			if st.locked[i]:
+				_click(_puzzle.cell_to_local(st.rects[i].position.y, st.rects[i].position.x))
+		await pause.call()
+		_buzzed("the pinned bed pressed")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
 
 ## Tents: every row swept into cairns a run at a time (press, a motion a
 ## square, release; a run stops at the answer's tents, and a lone square is
