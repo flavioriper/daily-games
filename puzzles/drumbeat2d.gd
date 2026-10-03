@@ -54,6 +54,25 @@ const UiSound = preload("res://ui/ui_sound.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
+
+## What the phone knocks for (docs/agents/haptics.md). A stroke that played
+## a berry taps from `strike`, under the finger; these are what it earned or
+## cost. Nothing for the beat, Go-Go, the gauge, the crowd or the words.
+const HAPTICS := {
+	"hold_done": Haptics.BUMP,
+	"pop": Haptics.BUMP,
+	"combo": Haptics.BUMP,
+	"golden": Haptics.BUMP,
+	"echo_perfect": Haptics.BUMP,
+	"break": Haptics.WARN,
+	"fail": Haptics.WARN,
+	"reset": Haptics.TAP,
+	"heart_back": Haptics.GOOD,
+	"out_of_hearts": Haptics.LOSE,
+	"clear": Haptics.WIN,
+	"full_combo": Haptics.WIN,
+}
 
 # --- the screen, measured (design pixels at a 1000-wide card) ---
 const CARD_RADIUS := 32.0
@@ -377,6 +396,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 3
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_rw = Rewards.new()
 	_rw.z_index = 4
@@ -872,6 +892,7 @@ func strike(lane: int) -> void:
 			if _needs_tune():
 				_begin_tune(true)
 			else:
+				fx.buzz(Haptics.TAP)
 				_start()
 		"tune":
 			_tune_taps.append(song_now())
@@ -879,7 +900,13 @@ func strike(lane: int) -> void:
 			var said := _st.press(view_t(), lane)
 			if said == "" and not Motion.reduce:
 				_bursts.append({"at": t, "col": Color(Parts.CREAM, 0.6), "pos": _drum_skin(lane), "big": false, "ring": false})
+			var knocks := Haptics.count
 			_handle()
+			# The drum answers the hand only for a stroke that played a
+			# berry (one in the air, a slip or one too far off says nothing),
+			# and what the stroke earned is its one knock.
+			if said != "" and said != "bad" and said != "slip" and Haptics.count == knocks:
+				fx.buzz(Haptics.TAP)
 
 func _lift(lane: int) -> void:
 	for l: int in _held.values():
@@ -1146,6 +1173,8 @@ func _lose_heart(t: float, left: int) -> void:
 	_split_at = t
 	_log += "💔"
 	fx.cue("heart_lost")
+	if left > 0:
+		fx.buzz(Haptics.BAD)  # (the last heart's knock is the lose)
 	_set_mood(Parts.Mood.SAD, 1.2)
 	_worry_until = t + 1.2
 	if not Motion.reduce:
@@ -1312,6 +1341,9 @@ func _party() -> void:
 		get_tree().create_timer(maxf(0.01, _stamp_at - t)).timeout.connect(func():
 			if is_inside_tree():
 				fx.cue("stamp"))
+		get_tree().create_timer(maxf(0.01, _stamp_at - t) + (0.0 if Motion.reduce else STAMP_DROP)).timeout.connect(func():
+			if is_inside_tree():
+				fx.buzz(Haptics.THUD))
 	if Motion.reduce:
 		return
 	get_tree().create_timer(PARTY_AT).timeout.connect(func():

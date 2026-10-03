@@ -66,6 +66,25 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
+
+## What the phone knocks for (docs/agents/haptics.md): the building under
+## the hand, Go, and the test's verdict (`_failed`, `_lose_heart` and
+## `_crossed` knock theirs through `fx.buzz`). Nothing for what the bridge
+## and the cart do on the way: the creaks, a snap, the splash, the tea.
+const HAPTICS := {
+	"place_road": Haptics.TAP,
+	"place_wood": Haptics.TAP,
+	"place_rope": Haptics.TAP,
+	"remove": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"go": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
 
 const PAD := 24.0
 ## The strip over the scene: the material chips and the budget.
@@ -435,6 +454,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 3
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_rw = Rewards.new()
 	_rw.z_index = 4
@@ -1135,6 +1155,8 @@ func _failed(t: float) -> void:
 	var spilled := sim.spilled and sim.in_water() == 0 and sim.broken.is_empty()
 	if _committed():
 		_lose_heart(t)
+	else:
+		fx.buzz(Haptics.WARN)  # (a test that cost nothing)
 	var snapped := _last_broken.size()
 	var run := _tests
 	var convoy := _convoy
@@ -1178,6 +1200,7 @@ func _crossed(t: float) -> void:
 		check_solved()
 		return
 	# a crossing after the solve: the convoy, or a free build's test
+	fx.buzz(Haptics.GOOD)
 	var at := Vector2(size.x * 0.5, _scene.position.y + _u * 1.2)
 	var run := _tests
 	if _convoy:
@@ -1246,6 +1269,9 @@ func _on_solved() -> void:
 		_after(DUCKS_AT, func(): fx.cue("quack"))
 	if _stamp:
 		_after(0.01 if Motion.reduce else STAMP_AT, func(): fx.cue("stamp"))
+		_after(0.01 if Motion.reduce else STAMP_AT + STAMP_DROP, func():
+			if is_done() and not _free and not _testing:
+				fx.buzz(Haptics.THUD))
 	_after(1.9, func(): _tell("TR_CHEER_%d" % posmod(_day_hash(), CHEERS)))
 	_solved_design = state.design.duplicate(true)
 	_ask_crowd(true)
@@ -1598,6 +1624,7 @@ func _lose_heart(t: float) -> void:
 	out_of_hearts = hearts <= 0
 	fx.cue("heart_lost")
 	if not out_of_hearts:
+		fx.buzz(Haptics.BAD)  # (the last heart's knock is the lose)
 		_after(0.7, func(): _tell("TR_HEART_LOST_ONE" if hearts == 1 else "TR_HEART_LOST_N", [] if hearts == 1 else [hearts]))
 
 ## The last heart is gone: the riders and the troll nod off, dusk falls on

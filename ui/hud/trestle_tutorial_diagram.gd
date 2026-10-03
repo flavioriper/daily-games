@@ -92,6 +92,7 @@ class Gap extends "res://puzzles/trestle2d.gd":
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_roll.stream = null
+		fx.buzzes = false
 
 	func _view() -> Vector2:
 		return rows

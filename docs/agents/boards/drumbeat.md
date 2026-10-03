@@ -97,3 +97,9 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `tests/_probe_perf.gd -- drumbeat d=3 to=40` plays the whole song with a
   bot on the frame; `song=parade|festival|gallop`, `x=db_count`, `x=db_hud`,
   `x=db_spike`.
+- **Haptics (2026-10-03, `docs/agents/haptics.md` row 28).** A stroke that
+  played a berry taps from `strike`; what it earned (a combo called, the
+  golden berry, a pop, a hidden bar) is the knock in its place. Probe:
+  `tests/_probe_perf.gd -- drumbeat d=<n> x=buzz` (`_buzz_drumbeat` lets
+  berries past by `_db_hold`, runs out of hearts on Hard and Insane, then
+  the bot plays the song through).
