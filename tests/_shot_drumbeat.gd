@@ -150,6 +150,8 @@ func _process(delta: float) -> bool:
 				var echo: Array = song.get("echo", [])
 				if _level == 3 and echo.size() > 2:
 					_shots.append(["4b_echo", float(echo[2][0]) + 0.4])
+				# a short song may have no balloon at all
+				_shots = _shots.filter(func(s: Array) -> bool: return float(s[1]) < INF)
 				_shots.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) < float(b[1]))
 				print("song %s level %d, %d notes" % [song.id, _level, _b._st.notes.size()])
 				_step = 2
@@ -188,7 +190,7 @@ func _process(delta: float) -> bool:
 			for k in clicks.size():
 				if not _struck.has(1000 + k) and now >= float(clicks[k]) + 0.09:
 					_struck[1000 + k] = true
-					_b.strike(k % 4)
+					_b.strike(k % int(_b._st.lanes))
 			if not _struck.has(-2) and now > float(clicks[6]) + 0.2:
 				_struck[-2] = true
 				_shot("1b_tune")

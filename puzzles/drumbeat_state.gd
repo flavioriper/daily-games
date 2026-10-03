@@ -7,8 +7,9 @@ extends RefCounted
 ## (`update`), every press and every lift (`press`, `lift`), and reads back
 ## the score, the combo, the soul gauge, the hearts and the events.
 ##
-## Four drums stand in a row, and the notes come down four lanes to them.
-## A note is struck on its own drum: a tap note once, a hold note struck and
+## The drums stand in a row -- one on Easy, two on Medium, three on Hard and
+## Insane (`lanes`) -- and every note rides one road to the same ring, named
+## for its drum. A note is struck on its own drum: a tap note once, a hold note struck and
 ## kept down to the end of its tail, a drumroll on its drum as often as the
 ## player can, a balloon that many strokes before it pops. Two notes at the
 ## same instant are struck together. Every note is GOOD, OK or BAD by how far
@@ -30,7 +31,8 @@ enum Type { TAP, HOLD, ROLL, BALLOON }
 enum Grade { GOOD, OK, BAD }
 enum St { WAIT, HIT, MISSED }
 
-const LANES := 4
+## The drums standing, by difficulty (the user's word, 2026-10-03).
+const DRUMS := [1, 2, 3, 3]
 ## The judgement windows, in seconds either side of a note, by difficulty.
 ## Wider than an arcade cabinet's, because a phone's glass and its audio are
 ## both slower than a drum.
@@ -69,6 +71,8 @@ const MISS_RUN := 3
 
 var song: Dictionary
 var level := 0
+## How many drums this level has; a note's `lane` is one of them.
+var lanes := 1
 ## {t, lane, type, end, count, hidden, st, grade, hits, held, done_hold}
 var notes: Array = []
 var gogo: Array = []
@@ -106,6 +110,7 @@ var _full := false
 func _init(the_song: Dictionary, the_level: int) -> void:
 	song = the_song
 	level = clampi(the_level, 0, 3)
+	lanes = DRUMS[level]
 	length = float(song.get("length", 60.0))
 	gogo = song.get("gogo", [])
 	echo = song.get("echo", []) if level == 3 else []
@@ -114,7 +119,7 @@ func _init(the_song: Dictionary, the_level: int) -> void:
 	var charts: Array = song.get("charts", [])
 	var rows: Array = charts[mini(level, charts.size() - 1)] if not charts.is_empty() else []
 	for r: Array in rows:
-		var n := {"t": float(r[0]), "lane": int(r[1]), "type": int(r[2]), "end": float(r[3]), "count": int(r[4]),
+		var n := {"t": float(r[0]), "lane": clampi(int(r[1]), 0, lanes - 1), "type": int(r[2]), "end": float(r[3]), "count": int(r[4]),
 			"hidden": int(r[5]) == 1, "st": St.WAIT, "grade": -1, "hits": 0, "held": false, "paid": 0.0}
 		notes.append(n)
 		if n.type <= Type.HOLD:
@@ -312,7 +317,7 @@ func lift(t: float, lane: int) -> void:
 ## Every finger came up at once (the app lost focus): every hold being kept
 ## is let go.
 func lift_all(t: float) -> void:
-	for lane in LANES:
+	for lane in lanes:
 		lift(t, lane)
 
 ## A stroke with no note near it on its drum. Free below Hard; on Hard and

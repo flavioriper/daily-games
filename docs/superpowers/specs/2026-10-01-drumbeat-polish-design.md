@@ -173,3 +173,23 @@ play, peak ~222 in Go-Go's burst (ANGLE 250); reduce motion 145 peak.
   backing and their own drums answering. Notes now 292/267/448 on Insane.
 - Resume adds the output latency like a start does; Reset and Try again stop
   the dusk tween.
+
+## Amendment, 2026-10-03: one road
+
+The user, with a reference screenshot: "this is what i was thinking for the
+drumbeat, but instead of having one tap, double tap, we just had multiple
+drums to tap to make easier"; then, on the playable mock
+(`docs/brainstorm/concepts.html#drumbeat`): "all great, keep it 3 at most,
+1/2/3/3" and "keep game short, around 20 to 30 seconds at most".
+
+- The four-lane path is replaced by one road across the card: notes ride it
+  right to left into one ring at its left; the drums stand in a row under it.
+- A note names its drum by colour and by the drum's mark under it; the drum
+  the next note wants glows. Two at once are a twin, one over the other.
+- Drums by level: 1, 2, 3, 3 (big; big + tongue; big + hand + tongue).
+- Songs are 21-25 s: pick-up bar, verse, Go-Go chorus, last chord. Charts are
+  written per level for that level's drums.
+- Unchanged: judging windows, soul gauge and its line, hearts, Echo, Go-Go,
+  the clock, the tap-along, the sound set.
+- Not asked, decided by me: twins stay on Hard and Insane; the glow is on at
+  every level with more than one drum; fever tiers at combos of 10/25/50.

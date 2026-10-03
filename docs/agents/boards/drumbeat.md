@@ -53,13 +53,26 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   back; `_probe_drumbeat.gd -- jitter slips lag`. 84-137 draw calls in play,
   ~222 at Go-Go's burst (ANGLE 250). `_win.gd` has no driver for it (a
   real-time board), so it reports FAIL there by construction.
-  **One road, in concept (2026-10-03).** The user's reference showed what
-  they had meant all along: not four lanes but one track, every note riding
-  it into one ring, and several drums to tap in place of the reference's
-  kinds of stroke. `docs/brainstorm/concepts.html#drumbeat` is a playable
-  mock of that (the game's own songs, charts and drum voices; two drums on
-  Easy, three on Medium, four on Hard and Insane; a note names its drum by
-  colour and by the drum's mark under it). Nothing in Godot has changed yet:
-  the tab's "calls this page is for" list is waiting on the user. The whole
-  page no longer renders in headless Chrome inside 100 s; shoot one tab from
-  a standalone copy (the head, the tab's section, its script).
+  **Rebuilt on 2026-10-03 as one road** (the user's reference and word; the
+  playable mock is `docs/brainstorm/concepts.html#drumbeat`). The four lanes
+  were a misreading: what was meant was one track, every berry riding it
+  right to left into one ring, and several drums to tap in place of the
+  reference's kinds of stroke. A berry names its drum by its colour and by
+  the drum's mark under it on the road's strip (dot, triangle, square; the
+  same mark is on the drum's skin), and the drum the next berry wants glows
+  as it nears the ring. **One drum on Easy, two on Medium, three on Hard and
+  Insane, never more** (`State.DRUMS`, `DRUM_KINDS`: big; big and tongue;
+  big, hand and tongue -- the jingle drum is out of the band, its voice and
+  drawing still in the tree). Two at once are twins, one over the other
+  (`_rows`). **A day's song is 21-25 seconds** (the user: twenty to thirty at
+  most): a bar of pick-up, a verse, a Go-Go chorus, a last chord, and
+  `gen_drumbeat.py` writes each level's chart for its own drums
+  (`DRUM_COUNT`, `tune_lanes`); Echo pairs from the verse's first bar. With
+  songs this short the fever tiers are combos of 10, 25 and 50 and the conga
+  comes at 30. The judging, gauge, hearts, clock and tap-along are as they
+  were. Hard through the win on native GL: 84-107 draws in play, 207-263 at
+  Go-Go's burst (ANGLE the same counts); suite 249741/0.
+  `_shot_drumbeat.gd` no longer waits for a balloon a song does not have.
+  The whole concepts page no longer renders in headless Chrome inside 100 s;
+  shoot one tab from a standalone copy (the head, the tab's section, its
+  script).

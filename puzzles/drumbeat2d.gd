@@ -1,23 +1,28 @@
 extends "res://core/puzzle_base.gd"
 
-## Drumbeat as a flat board: a band of four drums on a garden stage at dusk.
-## Berries with faces come down a path of planks in four lanes, one to each
-## drum, in time with the day's song; strike a drum as its berry reaches it.
-## A berry with a ribbon behind it is held down to the ribbon's end, a golden
-## bar is drummed as fast as the player can, a balloon wants that many
-## strokes. Two berries at once are two fingers. Clear the song -- end it
-## with the soul gauge at or over its line -- and the day's board is solved.
-## On Easy and Medium a song that ends under the line is simply played
-## again; Hard and Insane carry hearts (MISS_RUN misses in a row, or a song
-## under the line, break one), and out of hearts the song stops.
+## Drumbeat as a flat board: a little band of drums on a garden stage at
+## dusk. Berries with faces ride one road of planks, right to left, in time
+## with the day's short song, every one into the same ring; each wears the
+## colour of the drum it wants and has that drum's mark under it, and the
+## drums stand in a row under the road, where the thumbs are. Strike a
+## berry's drum as it reaches the ring. One drum on Easy, two on Medium,
+## three on Hard and Insane. A berry with a ribbon behind it is held down to
+## the ribbon's end, a golden bar is drummed as fast as the player can, a
+## balloon wants that many strokes. Two berries at once (one over the other)
+## are two fingers. Clear the song -- end it with the soul gauge at or over
+## its line -- and the day's board is solved. On Easy and Medium a song that
+## ends under the line is simply played again; Hard and Insane carry hearts
+## (MISS_RUN misses in a row, or a song under the line, break one), and out
+## of hearts the song stops.
 ##
 ## Insane is Echo: the bars go in pairs, and the second of each pair plays
 ## the first again with its berries hidden -- read it, play it, then play it
 ## back from memory by ear.
 ##
 ## Every note on a chart is a note in the music: tools/gen_drumbeat.py writes
-## the songs and their charts from the same events, the tune's notes on the
-## three right drums by pitch and the kick and bass on the big drum. The tune
+## the songs and their charts from the same events, each level's chart for
+## the drums it has: the tune's notes by pitch, the kick and bass on the big
+## drum. The tune
 ## is its own stem (`_lead`), and it dips while the player lets notes pass.
 ##
 ## The clock. The song's time runs off the microsecond clock from the
@@ -31,7 +36,8 @@ extends "res://core/puzzle_base.gd"
 ## The rules, the judging and the score live in puzzles/drumbeat_state.gd;
 ## the drawings in ui/faces/drumbeat_parts.gd.
 ##
-## Spec: docs/superpowers/specs/2026-10-01-drumbeat-polish-design.md.
+## Spec: docs/superpowers/specs/2026-10-01-drumbeat-polish-design.md, and
+## its 2026-10-03 amendment (one road; docs/brainstorm/concepts.html#drumbeat).
 
 signal leave
 
@@ -52,25 +58,35 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const CARD_RADIUS := 32.0
 ## The band over the stage with the score, the hearts and the soul gauge.
 const BAND := 118.0
-## The stage over the path.
-const STAGE := 290.0
-## The path of planks: its width where it leaves the stage and at the drums,
-## and how far under the hit line the card goes on.
-const PATH_TOP := 560.0
-const PATH_BOTTOM := 980.0
-const DRUM_BELOW := 150.0
-## Notes speed up toward the drums as if coming nearer: their way down the
-## path goes as its share of the travel to this power.
-const PERSP := 1.25
-## Seconds a note is in sight before it reaches its drum, by difficulty.
-const TRAVEL := [1.9, 1.6, 1.4, 1.3]
-const NOTE_R := 46.0
-const FAR_SCALE := 0.58
-const DRUM_SHARE := 0.46
+## The road the berries ride, under the stage: its height, the rail along
+## its top, the line the berries are on, where the planks end, and the strip
+## under them where each berry's mark rides.
+const ROAD := 260.0
+const ROAD_RAIL := 18.0
+const ROAD_NOTE := 104.0
+const ROAD_FLOOR := 188.0
+const ROAD_MARK := 229.0
+## The ring every berry is struck in, from the card's left.
+const RING_X := 150.0
+## The drums' ground under the road, and their feet above the card's foot.
+const GROUND := 620.0
+const DRUM_FOOT := 150.0
+## A drum's half-width, by how many stand.
+const DRUM_R := [190.0, 172.0, 150.0]
+## Which of the band's drums stand (ui/faces/drumbeat_parts.gd's kinds: the
+## big drum, the hand drum, the jingle drum, the tongue drum), by how many.
+const DRUM_KINDS := [[0], [0, 3], [0, 1, 3]]
+## Seconds a note is in sight before it reaches the ring, by difficulty.
+const TRAVEL := [2.2, 1.9, 1.6, 1.5]
+const NOTE_R := 44.0
+## Two berries at once ride this far apart, one over the other (in NOTE_R).
+const TWIN := 1.5
+## The drum the next berry wants glows from this share of the travel out.
+const GLOW_REACH := 0.45
 const VOICES := 4
 const SCORE_FONT := 50
 const KICKER_FONT := 24
-const COMBO_FONT := 130
+const COMBO_FONT := 110
 const JUDGE_FONT := 34
 const TITLE_FONT := 60
 const LINE_FONT := 32
@@ -82,8 +98,8 @@ const BURST_TIME := 0.3
 const FLASH_TIME := 0.16
 const SQUASH_TIME := 0.14
 const MOOD_TIME := 0.6
-## A note let past falls off the end of the path for FALL_TIME.
-const FALL_TIME := 0.7
+## A note let past sinks off the road past the ring for FALL_TIME.
+const FALL_TIME := 0.5
 ## The finale: fireworks, the crowd on its feet, before the win screen.
 const WIN_HOLD := 3.4
 const ROCKET_TIME := 0.35
@@ -94,10 +110,10 @@ const CHEER_TIME := 0.7
 const KICK_TIME := 0.16
 ## The combo at which each fever tier begins: a gold glow, a hotter one, a
 ## rainbow (and Tam's sunglasses).
-const TIERS := [25, 50, 100]
+const TIERS := [10, 25, 50]
 ## A conga line of critters dances across the stage on these combos and every
 ## hundred past them.
-const CONGA_AT := [50, 150]
+const CONGA_AT := [30, 80]
 const CONGA_TIME := 5.0
 const CONGA_N := 5
 const SHADES_DROP := 0.35
@@ -155,7 +171,7 @@ const HEART_DEEP := Color("c9566a")
 const JUDGE_COLS := [Color("f2b632"), Color("fff6e6"), Color("9fb3c8")]
 const JUDGE_KEYS := ["DB_GOOD", "DB_OK", "DB_BAD"]
 const LANTERN_COLS := [Color("f59a6a"), Color("f2c14e"), Color("f08aa6"), Color("f59a6a"), Color("8cc8ec"), Color("f2c14e")]
-const DRUM_KEYS := [KEY_D, KEY_F, KEY_J, KEY_K]
+const DRUM_KEYS := [[KEY_J], [KEY_F, KEY_J], [KEY_F, KEY_J, KEY_K]]
 
 var fx: Node2D
 var _rw: Rewards
@@ -193,16 +209,18 @@ var _stopped_at := 0.0
 var _held := {}
 
 # motion, on the screen's own clock (seconds, `_now()`)
-var _judges := [{}, {}, {}, {}]   # per drum: {grade, at}
+var _judge := {}          # the latest: {grade, at}
 var _flies: Array = []    # {lane, from, at, golden}
-var _ghosts: Array = []   # {lane, at}
-var _bursts: Array = []   # {at, col, lane, big}
+## Two berries at once: note index -> its row, in TWINs either side of the line.
+var _rows := {}
+var _ghosts: Array = []   # {pos, at}
+var _bursts: Array = []   # {at, col, pos, big, ring}
 var _hit_at := [-10.0, -10.0, -10.0, -10.0]
 var _drum_mood := [0, 0, 0, 0]
 var _drum_mood_until := [0.0, 0.0, 0.0, 0.0]
 var _arm_at := [-10.0, -10.0]
 var _arm_next := 0
-var _roll_pop := {}       # {n, at, lane}
+var _roll_pop := {}       # {n, at}
 var _gogo_at := -10.0
 var _soul_at := -10.0
 var _mood := Parts.Mood.HAPPY
@@ -277,8 +295,8 @@ func _ready() -> void:
 	add_child(_music)
 	_lead = AudioStreamPlayer.new()
 	add_child(_lead)
-	for lane in State.LANES:
-		var path := "res://assets/sfx/drumbeat/drum_%d.ogg" % lane
+	for kind in 4:
+		var path := "res://assets/sfx/drumbeat/drum_%d.ogg" % kind
 		var stream: AudioStream = load(path) if ResourceLoader.exists(path) else null
 		var pool: Array = []
 		for i in VOICES:
@@ -321,8 +339,23 @@ func _fresh() -> void:
 	_phase = "ready"
 	_clock = -0.5
 	_last_vt = -10.0
-	_judges = [{}, {}, {}, {}]
+	_judge = {}
 	_flies = []
+	# two berries at one instant ride one over the other, the lower drum's on top
+	_rows = {}
+	var at := 0
+	while at < _st.notes.size():
+		var twins: Array = []
+		var to := at
+		while to < _st.notes.size() and absf(float(_st.notes[to].t) - float(_st.notes[at].t)) < 0.002:
+			if int(_st.notes[to].type) <= State.Type.HOLD:
+				twins.append(to)
+			to += 1
+		if twins.size() > 1:
+			for k in twins.size():
+				_rows[twins[k]] = k - (twins.size() - 1) * 0.5
+		at = to
+	_still = null
 	_ghosts = []
 	_bursts = []
 	_roll_pop = {}
@@ -433,52 +466,63 @@ func _u() -> float:
 func _band_h() -> float:
 	return BAND * _u()
 
+## How many drums stand, and which of the band's drums stands at `lane`.
+func _n() -> int:
+	return _st.lanes if _st != null else 1
+
+func _kind(lane: int) -> int:
+	var kinds: Array = DRUM_KINDS[_n() - 1]
+	return kinds[clampi(lane, 0, kinds.size() - 1)]
+
+## The stage's foot, which is the road's top.
 func _path_top() -> float:
-	return (BAND + STAGE) * _u()
+	return size.y - (ROAD + GROUND) * _u()
 
-func _hit_y() -> float:
-	return size.y - DRUM_BELOW * _u()
+func _stage_h() -> float:
+	return _path_top() - _band_h()
 
-func _path_w(y: float) -> float:
-	var k := (y - _path_top()) / maxf(1.0, _hit_y() - _path_top())
-	return lerpf(PATH_TOP, PATH_BOTTOM, k) * _u()
+## The line the berries ride, and the ring on it.
+func _note_y() -> float:
+	return _path_top() + ROAD_NOTE * _u()
 
-## The centre of drum `lane`'s lane at height `y`.
-func _lane_x(lane: int, y: float) -> float:
-	return size.x * 0.5 + (lane - 1.5) * _path_w(y) / State.LANES
+func _ring() -> Vector2:
+	return Vector2(RING_X * _u(), _note_y())
 
-## A note's height for its time to go `dt` (seconds before its drum): the
-## top of the path at the travel's start, the hit line at 0, on past it.
-func _y_of(dt: float) -> float:
-	var f := 1.0 - dt / _travel()
-	var span := _hit_y() - _path_top()
-	if f <= 1.0:
-		return _path_top() + span * pow(maxf(0.0, f), PERSP)
-	return _hit_y() + span * PERSP * (f - 1.0)
+## A note's place along the road for its time to go `dt` (seconds before the
+## ring): the card's right edge at the travel's start, the ring at 0, on
+## past it to the left.
+func _x_of(dt: float) -> float:
+	var r := RING_X * _u()
+	return r + dt / _travel() * (size.x + (NOTE_R + 10.0) * _u() - r)
 
-## Size of a note at height `y`: smaller far up the path.
-func _scale_at(y: float) -> float:
-	var k := clampf((y - _path_top()) / maxf(1.0, _hit_y() - _path_top()), 0.0, 1.0)
-	return lerpf(FAR_SCALE, 1.0, k)
+## Note `i`'s height on the road: the line, or its row of a twin.
+func _row_y(i: int) -> float:
+	return _note_y() + float(_rows.get(i, 0.0)) * NOTE_R * TWIN * _u()
+
+## Where note `i` is struck: the ring, at its row.
+func _ring_at(i: int) -> Vector2:
+	return Vector2(RING_X * _u(), _row_y(i))
+
+## Over the ring, clear of the card's edge: where its stickers are said.
+func _over_ring() -> Vector2:
+	return Vector2(290.0 * _u(), _path_top() - 56.0 * _u())
 
 func _travel() -> float:
 	return TRAVEL[clampi(_level, 0, 3)]
 
 func _drum_r() -> float:
-	return PATH_BOTTOM * _u() / State.LANES * DRUM_SHARE
+	return DRUM_R[_n() - 1] * _u()
 
-## Where drum `lane` stands: its foot, so its skin is on the hit line.
+## Where drum `lane` stands: its foot, in its column of the ground.
 func _drum_foot(lane: int) -> Vector2:
-	return Vector2(_lane_x(lane, _hit_y()), _hit_y() - Parts.skin_y(lane, _drum_r()))
+	return Vector2(size.x * (lane + 0.5) / _n(), size.y - DRUM_FOOT * _u())
 
 func _drum_skin(lane: int) -> Vector2:
-	return Vector2(_lane_x(lane, _hit_y()), _hit_y())
+	return _drum_foot(lane) + Vector2(0, Parts.skin_y(_kind(lane), _drum_r()))
 
-## Which drum a point of the board strikes: its column at the drums.
+## Which drum a point of the board strikes: its column.
 func _lane_at(at: Vector2) -> int:
-	var w := PATH_BOTTOM * _u()
-	var left := size.x * 0.5 - w * 0.5
-	return clampi(int(floor((at.x - left) / (w / State.LANES))), 0, State.LANES - 1)
+	return clampi(int(floor(at.x / (size.x / _n()))), 0, _n() - 1)
 
 func card_height(available: float) -> float:
 	return available
@@ -620,10 +664,10 @@ func _hold_motes() -> void:
 		var lane := int(n.lane)
 		if now - _hold_note_at[lane] > 0.22:
 			_hold_note_at[lane] = now
-			_rw.spray(_drum_skin(lane) + Vector2(0, -20.0 * _u()), Parts.LANE_HI[lane], 1, 160.0, "note", 0.8)
+			_rw.spray(_drum_skin(lane) + Vector2(0, -20.0 * _u()), Parts.LANE_HI[_kind(lane)], 1, 160.0, "note", 0.8)
 
 func _stage_mid() -> Vector2:
-	return Vector2(size.x * 0.5, _band_h() + STAGE * 0.42 * _u())
+	return Vector2(size.x * 0.5, _band_h() + _stage_h() * 0.42)
 
 # --- the strokes ---
 
@@ -651,11 +695,15 @@ func _gui_input(event: InputEvent) -> void:
 			_held.erase(-1)
 			_lift(lane)
 
-## The keyboard, on a desktop: D, F, J and K are the four drums.
+## The keyboard, on a desktop: J for one drum, F and J for two, F, J and K
+## for three.
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not is_visible_in_tree() or not (event is InputEventKey) or event.echo:
 		return
-	var lane := DRUM_KEYS.find((event as InputEventKey).keycode)
+	var code := (event as InputEventKey).keycode
+	var lane: int = (DRUM_KEYS[_n() - 1] as Array).find(code)
+	if lane < 0 and _n() == 1 and code in [KEY_D, KEY_F, KEY_K, KEY_SPACE]:
+		lane = 0
 	if lane < 0:
 		return
 	if event.pressed:
@@ -702,7 +750,7 @@ func strike(lane: int) -> void:
 		"play":
 			var said := _st.press(view_t(), lane)
 			if said == "" and not Motion.reduce:
-				_bursts.append({"at": t, "col": Color(Parts.CREAM, 0.6), "lane": lane, "big": false})
+				_bursts.append({"at": t, "col": Color(Parts.CREAM, 0.6), "pos": _drum_skin(lane), "big": false, "ring": false})
 			_handle()
 
 func _lift(lane: int) -> void:
@@ -717,9 +765,10 @@ func _release_all() -> void:
 	_held.clear()
 
 func _play_voice(lane: int) -> void:
-	var pool: Array = _voices[lane]
-	var p: AudioStreamPlayer = pool[_voice[lane] % VOICES]
-	_voice[lane] += 1
+	var kind := _kind(lane)
+	var pool: Array = _voices[kind]
+	var p: AudioStreamPlayer = pool[_voice[kind] % VOICES]
+	_voice[kind] += 1
 	if p.stream != null:
 		p.pitch_scale = randf_range(0.985, 1.015)
 		p.play()
@@ -737,31 +786,30 @@ func _handle() -> void:
 				_set_drum_mood(-1, Parts.Mood.WORRIED)
 			"hold_done":
 				var lane := int(_st.notes[int(ev.i)].lane)
-				_bursts.append({"at": t, "col": Parts.LANE_HI[lane], "lane": lane, "big": true})
+				var at := _ring_at(int(ev.i))
+				_bursts.append({"at": t, "col": Parts.LANE_HI[_kind(lane)], "pos": at, "big": true, "ring": true})
 				fx.cue("hold_done", 1.0 + 0.06 * lane, -6.0)
 				if not Motion.reduce:
-					_rw.spray(_drum_skin(lane), Parts.LANE_BODY[lane], 5, 360.0, "star", 0.8)
+					_rw.spray(at, Parts.LANE_BODY[_kind(lane)], 5, 360.0, "star", 0.8)
 			"hold_drop":
 				pass
 			"roll":
-				var lane := int(_st.notes[int(ev.i)].lane)
-				_roll_pop = {"n": int(ev.hits), "at": t, "lane": lane}
+				_roll_pop = {"n": int(ev.hits), "at": t}
 				if not Motion.reduce and int(ev.hits) % 4 == 0:
-					_rw.spray(_drum_skin(lane), Parts.ROLL, 2, 260.0, "spark", 0.6)
+					_rw.spray(_ring(), Parts.ROLL, 2, 260.0, "spark", 0.6)
 			"roll_end":
 				if int(ev.hits) >= 8:
-					var lane := int(_st.notes[int(ev.i)].lane)
-					_rw.sticker(tr("DB_HITS") % int(ev.hits), _drum_skin(lane) + Vector2(0, -240.0 * _u()), 44, 0.9, false, Parts.ROLL, false, "roll", 20.0)
+					_rw.sticker(tr("DB_HITS") % int(ev.hits), _over_ring(), 44, 0.9, false, Parts.ROLL, false, "roll", 20.0)
 					_cheer()
 			"balloon":
 				fx.cue("balloon", 1.0 + 0.04 * clampf(float(_st.notes[int(ev.i)].hits), 0.0, 12.0), -4.0)
 			"pop":
-				var at := _drum_skin(int(_st.notes[int(ev.i)].lane)) + Vector2(0, -60.0 * _u())
+				var at := _ring()
 				fx.cue("pop")
 				_rw.spray(at, Parts.BALLOON, 14, 620.0, "confetti", 1.0)
 				_rw.spray(at, GOLD, 6, 520.0, "star", 0.9)
 				_rw.ring(at, 160.0 * _u(), Parts.BALLOON)
-				_rw.sticker(tr("DB_POP"), at + Vector2(0, -140.0 * _u()), 64, 1.0, true, Color.WHITE, true, "pop", 24.0)
+				_rw.sticker(tr("DB_POP"), _over_ring(), 64, 1.0, true, Color.WHITE, true, "pop", 24.0)
 				_launch(1, 0.0)
 				_cheer()
 			"balloon_gone":
@@ -810,29 +858,31 @@ func _on_judge(ev: Dictionary, t: float) -> void:
 	var i := int(ev.i)
 	var lane := int(ev.lane)
 	var n: Dictionary = _st.notes[i]
-	_judges[lane] = {"grade": grade, "at": t}
+	var kind := _kind(lane)
+	var at := _ring_at(i)
+	_judge = {"grade": grade, "at": t}
 	if grade == State.Grade.BAD:
 		_duck = true
 		_set_drum_mood(lane, Parts.Mood.WORRIED)
 		if not bool(ev.passed):
-			_bursts.append({"at": t, "col": JUDGE_COLS[2], "lane": lane, "big": false})
+			_bursts.append({"at": t, "col": JUDGE_COLS[2], "pos": at, "big": false, "ring": true})
 		_echo_count(float(n.t), false)
 		return
 	_duck = false
 	_set_drum_mood(lane, Parts.Mood.JOY)
 	var golden := _golden.has(i)
 	if not n.held or golden:
-		_flies.append({"lane": lane, "at": t, "golden": golden})
+		_flies.append({"lane": lane, "at": t, "golden": golden, "from": at})
 	if bool(ev.hidden):
-		_ghosts.append({"lane": lane, "at": t})
+		_ghosts.append({"pos": at, "at": t})
 		_echo_count(float(n.t), true)
-	_bursts.append({"at": t, "col": JUDGE_COLS[grade], "lane": lane, "big": grade == State.Grade.GOOD})
+	_bursts.append({"at": t, "col": JUDGE_COLS[grade], "pos": at, "big": grade == State.Grade.GOOD, "ring": true})
 	_combo_at = t
 	_score_at = t
 	moves += 1
-	var skin := _drum_skin(lane)
+	var skin := at
 	if not Motion.reduce:
-		var juice: Color = Parts.LANE_BODY[lane]
+		var juice: Color = Parts.LANE_BODY[kind]
 		_rw.spray(skin, juice, 3 if grade == State.Grade.GOOD else 2, 420.0, "clod", 0.9)
 		if grade == State.Grade.GOOD:
 			_rw.spray(skin, Color(1, 1, 0.9), 2, 260.0, "spark", 0.8)
@@ -841,7 +891,7 @@ func _on_judge(ev: Dictionary, t: float) -> void:
 	if golden:
 		_goldens_hit += 1
 		fx.cue("golden")
-		_rw.sticker(tr("DB_GOLDEN"), skin + Vector2(0, -230.0 * _u()), 56, 1.2, true, Color.WHITE, true, "golden", 24.0)
+		_rw.sticker(tr("DB_GOLDEN"), _over_ring() + Vector2(60.0 * _u(), 0), 56, 1.2, true, Color.WHITE, true, "golden", 24.0)
 		_rw.spray(skin, GOLD, 12, 640.0, "coin", 1.0)
 		_rw.spray(_stage_mid(), Parts.BALLOON, 8, 420.0, "heart", 0.9)
 		_launch(2, 0.0)
@@ -860,7 +910,7 @@ func _echo_count(t: float, hit: bool) -> void:
 	if not eb[3] and eb[1] + eb[2] >= eb[0] and eb[2] == 0 and eb[0] >= 2:
 		eb[3] = true
 		fx.cue("echo_perfect")
-		var mid := Vector2(size.x * 0.5, _hit_y() - 260.0 * _u())
+		var mid := Vector2(size.x * 0.5, _path_top() - 56.0 * _u())
 		_rw.sticker(tr("DB_ECHO_PERFECT"), mid, 50, 1.0, false, Parts.ECHO, false, "echo_ok", 20.0)
 		if not Motion.reduce:
 			_rw.spray(mid, Parts.ECHO, 8, 420.0, "star", 0.9)
@@ -894,7 +944,7 @@ func _set_mood(m: int, hold: float) -> void:
 
 ## A drum's face for a moment: -1 is every drum.
 func _set_drum_mood(lane: int, m: int) -> void:
-	for l in State.LANES:
+	for l in _n():
 		if lane < 0 or l == lane:
 			_drum_mood[l] = m
 			_drum_mood_until[l] = _now() + MOOD_TIME
@@ -923,14 +973,14 @@ func _tier() -> int:
 			t += 1
 	return t
 
-## The crowd's seat `i`, at the foot of the stage either side of the path.
+## The crowd's seat `i`, along the foot of the stage over the road.
 func _seat(i: int) -> Vector2:
 	var u := _u()
 	var order := [0, 9, 1, 8, 2, 7, 3, 6, 4, 5]
 	var slot: int = order[i]
 	var side := -1.0 if slot < 5 else 1.0
 	var k := slot if slot < 5 else 9 - slot
-	var x := size.x * 0.5 + side * (310.0 + k * 44.0) * u
+	var x := size.x * 0.5 + side * (70.0 + k * 82.0) * u
 	var back := k % 2 == 1
 	return Vector2(x, _path_top() - (18.0 if back else 0.0) * u)
 
@@ -1102,7 +1152,7 @@ func _on_solved() -> void:
 	elif _level == 3:
 		crown = "DB_ECHO_CLEARED"
 	fx.cue("full_combo" if _st.full_combo() else "clear")
-	var mid := Vector2(size.x * 0.5, _band_h() + STAGE * 0.45 * _u())
+	var mid := Vector2(size.x * 0.5, _band_h() + _stage_h() * 0.45)
 	_rw.sticker(tr(crown), mid, 84, WIN_HOLD, true, Color.WHITE, true, "crown", 24.0)
 	if not Motion.reduce:
 		_rw.rain(WIN_HOLD, ["confetti", "star", "note"], Rewards.CONFETTI)
@@ -1408,82 +1458,75 @@ func _draw() -> void:
 	_draw_crowd(now, beats, gogo, tier)
 	_draw_frog(now, beats, gogo)
 
-	# the path: Go-Go warms it; a hot run lights its edges; bar lines; Echo's
-	# hidden bars under a lilac veil; the hit line breathes on the beat
+	# the road: Go-Go warms it; a hot run lights its rails; bar lines ride it
+	# with the berries; Echo's hidden bars under a lilac veil; the ring every
+	# berry is struck in breathes on the beat
 	var b := Face.Builder.new()
 	var top := _path_top()
-	var hit := _hit_y()
+	var plank := top + ROAD_RAIL * u
+	var floor_y := top + ROAD_FLOOR * u
+	var ring := _ring()
 	if gogo:
 		var a := 0.12 + 0.1 * (0.0 if calm else absf(sin(beats * PI)))
-		b.polygon(_path_quad(top, hit, 1.0), Color(PATH_GOGO, a))
+		b.polygon(_rect(0.0, plank, size.x, floor_y), Color(PATH_GOGO, a))
 	for e: Array in _st.echo:
-		var y0 := _y_of(float(e[1]) - vt)
-		var y1 := _y_of(float(e[0]) - vt)
-		if y1 < top or y0 > size.y:
+		var x0 := clampf(_x_of(float(e[0]) - vt), 0.0, size.x)
+		var x1 := clampf(_x_of(float(e[1]) - vt), 0.0, size.x)
+		if x1 - x0 < 1.0:
 			continue
-		var ya := clampf(y0, top, hit + 40.0 * u)
-		var yb := clampf(y1, top, hit + 40.0 * u)
-		if yb - ya < 1.0:
-			continue
-		b.polygon(_band_quad(ya, yb), Color(Parts.ECHO, 0.4))
-		for edge: float in [ya, yb]:
-			if edge > top + 1.0 and edge < hit + 39.0 * u:
-				b.stroke(PackedVector2Array([Vector2(size.x * 0.5 - _path_w(edge) * 0.5, edge), Vector2(size.x * 0.5 + _path_w(edge) * 0.5, edge)]), 5.0 * u, Color(Color("e6dcff"), 0.9))
-		# moonlight twinkles in the veil, riding down with it
+		b.polygon(_rect(x0, plank, x1, floor_y), Color(Parts.ECHO, 0.4))
+		for edge: float in [x0, x1]:
+			if edge > 1.0 and edge < size.x - 1.0:
+				b.stroke(PackedVector2Array([Vector2(edge, plank), Vector2(edge, floor_y)]), 5.0 * u, Color(Color("e6dcff"), 0.9))
+		# moonlight twinkles in the veil, riding along with it
 		for k in 9:
 			var f := fposmod(k * 0.37 + 0.13, 1.0)
-			var tw := float(e[0]) + (float(e[1]) - float(e[0])) * f
-			var y := _y_of(tw - vt)
-			if y < ya or y > yb:
+			var x := _x_of(float(e[0]) + (float(e[1]) - float(e[0])) * f - vt)
+			if x < x0 or x > x1:
 				continue
-			var x := size.x * 0.5 + (fposmod(k * 0.61, 1.0) - 0.5) * _path_w(y) * 0.9
+			var y := lerpf(plank + 14.0 * u, floor_y - 14.0 * u, fposmod(k * 0.61, 1.0))
 			var tw_a := 0.5 + 0.5 * (1.0 if calm else sin(now * 3.0 + k))
-			Rewards.star(b, Vector2(x, y), 7.0 * u * _scale_at(y), Color(Color("f4efff"), 0.35 + 0.4 * tw_a), 0.0)
+			Rewards.star(b, Vector2(x, y), 7.0 * u, Color(Color("f4efff"), 0.35 + 0.4 * tw_a), 0.0)
 	if tier > 0:
 		var rail: Color = [GOLD, Color("ff9a4a"), Color.from_hsv(fmod(now * 0.25, 1.0), 0.55, 1.0)][tier - 1]
 		var a := 0.4 + 0.35 * pulse
-		for side in [-1.0, 1.0]:
-			b.stroke(PackedVector2Array([Vector2(size.x * 0.5 + side * PATH_TOP * 0.5 * u, top), Vector2(size.x * 0.5 + side * PATH_BOTTOM * 0.5 * u, hit)]), (5.0 + 2.0 * tier) * u, Color(rail, a))
+		for y: float in [top + ROAD_RAIL * 0.5 * u, floor_y + 5.0 * u]:
+			b.stroke(PackedVector2Array([Vector2(0, y), Vector2(size.x, y)]), (5.0 + 2.0 * tier) * u, Color(rail, a))
 	for bt: float in bars:
-		var y := _y_of(bt - vt)
-		if y < top or y > hit:
+		var x := _x_of(bt - vt)
+		if x < ring.x - 100.0 * u or x > size.x:
 			continue
-		var w := _path_w(y)
-		b.stroke(PackedVector2Array([Vector2(size.x * 0.5 - w * 0.5, y), Vector2(size.x * 0.5 + w * 0.5, y)]), 3.0 * u * _scale_at(y), Color(1, 1, 1, 0.22))
-	# the targets on the hit line: a ring a drum, flashing on a stroke
-	for lane in State.LANES:
-		var c := _drum_skin(lane)
-		var rx := _drum_r() * 0.95
-		var since := now - float(_hit_at[lane])
-		var fl := 1.0 - clampf(since / FLASH_TIME, 0.0, 1.0)
-		var ring_a := 0.55 + 0.35 * pulse
-		b.stroke(_ellipse_pts(c, rx, rx * 0.32), 5.0 * u, Color(Parts.CREAM, ring_a), true)
-		if fl > 0.0 and not calm:
-			b.polygon(_ellipse_pts(c, rx * (1.0 + 0.2 * (1.0 - fl)), rx * 0.32 * (1.0 + 0.2 * (1.0 - fl))), Color(Parts.LANE_HI[lane], 0.45 * fl))
-		# a beam up the lane while its key is down
-		if fl > 0.0 and not calm:
-			var beam := PackedVector2Array([Vector2(c.x - rx * 0.6, c.y), Vector2(c.x + rx * 0.6, c.y),
-				Vector2(_lane_x(lane, top + (hit - top) * 0.4) + rx * 0.25, top + (hit - top) * 0.4), Vector2(_lane_x(lane, top + (hit - top) * 0.4) - rx * 0.25, top + (hit - top) * 0.4)])
-			b.polygon(beam, Color(Parts.LANE_HI[lane], 0.16 * fl))
-	_draw_long(b, vt, now)
+		b.stroke(PackedVector2Array([Vector2(x, plank), Vector2(x, floor_y)]), 3.0 * u, Color(1, 1, 1, 0.22))
+	# the ring, flashing on a stroke in the colour of the drum struck
+	var rr := (NOTE_R + 10.0) * u
+	b.disc(ring, rr, Color(Parts.CREAM, 0.14))
+	b.stroke(_ellipse_pts(ring, rr + (9.0 + 6.0 * pulse) * u, rr + (9.0 + 6.0 * pulse) * u), 6.0 * u, Color(Parts.CREAM, 0.22 + 0.3 * pulse), true)
+	b.stroke(_ellipse_pts(ring, rr, rr), 7.0 * u, Parts.CREAM, true)
+	b.stroke(PackedVector2Array([Vector2(ring.x, floor_y + 12.0 * u), Vector2(ring.x, top + (ROAD - 10.0) * u)]), 4.0 * u, Color(Parts.CREAM, 0.5))
+	var struck := 0
+	for lane in _n():
+		if float(_hit_at[lane]) > float(_hit_at[struck]):
+			struck = lane
+	var fl := 1.0 - clampf((now - float(_hit_at[struck])) / FLASH_TIME, 0.0, 1.0)
+	if fl > 0.0 and not calm:
+		b.disc(ring, rr * (1.0 + 0.2 * (1.0 - fl)), Color(Parts.LANE_HI[_kind(struck)], 0.45 * fl))
+	_draw_long(b, vt)
+	_draw_marks(b, vt)
 	_put(b)
 
-	# the combo, faint and large on the path behind the notes
-	if _st.combo >= 3 and playing:
-		_draw_path_combo(now, tier)
-
 	_draw_notes(vt, now)
+	_draw_balloons(vt, now)
 
-	# over the notes: bursts at the drums, Echo's ghosts, the gauge
+	# over the notes: bursts in the ring, Echo's ghosts, the gauge
 	var fb := Face.Builder.new()
 	for bu: Dictionary in _bursts:
 		var k := (now - float(bu.at)) / BURST_TIME
 		if k >= 1.0 or calm:
 			continue
-		var c := _drum_skin(int(bu.lane))
+		var c: Vector2 = bu.pos
 		var col: Color = bu.col
-		var r := _drum_r() * (0.8 + 0.7 * k) * (1.2 if bu.big else 1.0)
-		fb.stroke(_ellipse_pts(c, r, r * 0.42), 9.0 * u * (1.0 - k), Color(col, 0.9 * (1.0 - k)), true)
+		var r := (NOTE_R * u * 1.2 if bu.ring else _drum_r()) * (0.8 + 0.7 * k) * (1.2 if bu.big else 1.0)
+		fb.stroke(_ellipse_pts(c, r, r if bu.ring else r * 0.42), 9.0 * u * (1.0 - k), Color(col, 0.9 * (1.0 - k)), true)
 		if bu.big:
 			Rewards.sunrays(fb, c, r * 0.5, r * 0.95, 10, k * 0.6, Color(col, 0.45 * (1.0 - k)))
 	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return now - float(bu.at) < BURST_TIME)
@@ -1495,11 +1538,27 @@ func _draw() -> void:
 		if k >= 1.0:
 			continue
 		var sc := 1.0 + 0.6 * k
-		draw_mesh(Parts.ghost(NOTE_R * u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, _drum_skin(int(g.lane)) + Vector2(0, -k * 30.0 * u)), Color(1, 1, 1, 1.0 - k))
+		draw_mesh(Parts.ghost(NOTE_R * u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, (g.pos as Vector2) + Vector2(0, -k * 30.0 * u)), Color(1, 1, 1, 1.0 - k))
 	_ghosts = _ghosts.filter(func(g: Dictionary) -> bool: return now - float(g.at) < 0.5)
 
-	# the four drums, squashed on a stroke, nodding on the beat
-	for lane in State.LANES:
+	# the combo, faint and large on the ground over the drums
+	if _st.combo >= 3 and playing:
+		_draw_path_combo(now, tier)
+
+	# the drum the next berry wants glows as the berry nears the ring
+	var n_d := _n()
+	if playing and n_d > 1:
+		var gb := Face.Builder.new()
+		for h: Array in _next_up(vt):
+			var c := _drum_foot(int(h[0])) + Vector2(0, -_drum_r() * 0.6)
+			gb.ellipse(c, _drum_r() * 1.28, _drum_r() * 1.02, Color(GOLD, 0.16 + 0.44 * float(h[1])))
+		_put(gb)
+
+	# the drums, squashed on a stroke, nodding on the beat, and each one's
+	# mark on its skin
+	var mb := Face.Builder.new()
+	for lane in n_d:
+		var kind := _kind(lane)
 		var foot := _drum_foot(lane)
 		var since := now - float(_hit_at[lane])
 		var squash := 1.0
@@ -1514,17 +1573,22 @@ func _draw() -> void:
 		elif _phase == "won":
 			mood = Parts.Mood.JOY
 		var wob := 0.0 if calm or since > 0.3 else sin(since * 40.0) * 0.04 * (1.0 - since / 0.3)
-		draw_mesh(Parts.band_drum(lane, _drum_r(), mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
-	_draw_balloons(vt, now)
+		draw_mesh(Parts.band_drum(kind, _drum_r(), mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
+		var skin := foot + Vector2(0, Parts.skin_y(kind, _drum_r()) * (1.0 + nod) * squash)
+		_mark(mb, kind, skin, _drum_r() * 0.3, Color(Parts.LANE_BODY[kind], 0.9), 0.3)
+		if since < 0.36 and not calm:
+			var k := since / 0.36
+			mb.stroke(_ellipse_pts(skin, _drum_r() * (0.35 + 0.5 * k), _drum_r() * 0.26 * (0.35 + 0.5 * k)), 7.0 * u * (1.0 - k), Color(Parts.LANE_HI[kind], 0.8 * (1.0 - k)), true)
+	_put(mb)
 	for f: Dictionary in _flies:
 		var k := (now - float(f.at)) / FLY_TIME
 		if k >= 1.0 or calm:
 			continue
-		var from := _drum_skin(int(f.lane))
+		var from: Vector2 = f.from
 		var to := _gauge_end()
 		var p := from.lerp(to, k) + Vector2(0, -sin(k * PI) * 160.0 * u)
 		var sc := lerpf(1.0, 0.45, k)
-		var m := Parts.golden_berry(NOTE_R * u) if f.golden else Parts.berry(int(f.lane), NOTE_R * u, Parts.Mood.JOY)
+		var m := Parts.golden_berry(NOTE_R * u) if f.golden else Parts.berry(_kind(int(f.lane)), NOTE_R * u, Parts.Mood.JOY)
 		draw_mesh(m, null, Transform2D(k * 4.0, Vector2(sc, sc), 0.0, p))
 	_flies = _flies.filter(func(f: Dictionary) -> bool: return now - float(f.at) < FLY_TIME)
 
@@ -1544,15 +1608,47 @@ func _draw() -> void:
 		_draw_stamp(now)
 	_draw_words(now)
 
-## The path's outline from height `y0` to `y1`, `share` of its width.
-func _path_quad(y0: float, y1: float, share: float) -> PackedVector2Array:
-	var c := size.x * 0.5
-	var w0 := _path_w(y0) * 0.5 * share
-	var w1 := _path_w(y1) * 0.5 * share
-	return PackedVector2Array([Vector2(c - w0, y0), Vector2(c + w0, y0), Vector2(c + w1, y1), Vector2(c - w1, y1)])
+func _rect(x0: float, y0: float, x1: float, y1: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)])
 
-func _band_quad(y0: float, y1: float) -> PackedVector2Array:
-	return _path_quad(y0, y1, 1.0)
+## A drum's mark, `s` its half-size: the big drum's dot, the hand drum's
+## triangle, the jingle drum's diamond, the tongue drum's square. `flat`
+## lays it on a skin seen from above.
+func _mark(b: Face.Builder, kind: int, c: Vector2, s: float, col: Color, flat := 1.0) -> void:
+	match kind:
+		0:
+			b.ellipse(c, s * 0.82, s * 0.82 * flat, col)
+		1:
+			b.polygon(PackedVector2Array([c + Vector2(0, -s * flat), c + Vector2(s * 0.95, s * 0.72 * flat), c + Vector2(-s * 0.95, s * 0.72 * flat)]), col)
+		2:
+			b.polygon(PackedVector2Array([c + Vector2(0, -s * flat), c + Vector2(s, 0), c + Vector2(0, s * flat), c + Vector2(-s, 0)]), col)
+		_:
+			b.polygon(_rect(c.x - s * 0.76, c.y - s * 0.76 * flat, c.x + s * 0.76, c.y + s * 0.76 * flat), col)
+
+## The drums the next berry into the ring wants, and how near it is:
+## [[lane, 0..1]], two for a twin. A hidden berry is never given away.
+func _next_up(vt: float) -> Array:
+	var reach := _travel() * GLOW_REACH
+	var notes: Array = _st.notes
+	for i in notes.size():
+		var n: Dictionary = notes[i]
+		if n.st != State.St.WAIT or n.held or n.hidden:
+			continue
+		var dt := float(n.t) - vt
+		if State.is_long(n.type) and dt <= 0.0:
+			if vt <= float(n.end):
+				return [[int(n.lane), 1.0]]
+			continue
+		if dt > reach:
+			return []
+		var out := [[int(n.lane), 1.0 - clampf(dt / reach, 0.0, 1.0)]]
+		for j in range(i + 1, notes.size()):
+			if absf(float(notes[j].t) - float(n.t)) > 0.002:
+				break
+			if notes[j].st == State.St.WAIT and not notes[j].hidden:
+				out.append([int(notes[j].lane), out[0][1]])
+		return out
+	return []
 
 func _ellipse_pts(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -1561,65 +1657,72 @@ func _ellipse_pts(c: Vector2, rx: float, ry: float) -> PackedVector2Array:
 		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
 	return pts
 
-## The long notes, into the path's live mesh: a hold's ribbon from its berry
-## up to its end (lit while kept), a drumroll's golden bar, a balloon's string.
-func _draw_long(b: Face.Builder, vt: float, now: float) -> void:
+## The long notes, into the road's live mesh: a hold's ribbon from its berry
+## back to its end (lit while kept), a drumroll's golden bar stamped with its
+## drum's mark.
+func _draw_long(b: Face.Builder, vt: float) -> void:
 	var u := _u()
-	var top := _path_top()
-	var hit := _hit_y()
-	for n: Dictionary in _st.notes:
+	var ring_x := RING_X * u
+	for i in _st.notes.size():
+		var n: Dictionary = _st.notes[i]
 		var t0 := float(n.t)
 		if t0 - vt > _travel() + 0.1:
 			break
 		var type := int(n.type)
-		if type == State.Type.TAP or n.hidden:
+		if type == State.Type.TAP or type == State.Type.BALLOON or n.hidden:
 			continue
 		var t1 := float(n.end)
 		if t1 < vt - 0.1:
 			continue
-		if type == State.Type.HOLD and n.st != State.St.WAIT and not n.held:
+		if n.st != State.St.WAIT and not n.held:
 			continue
-		if type == State.Type.BALLOON:
+		var kind := _kind(int(n.lane))
+		var roll := type == State.Type.ROLL
+		var lit: bool = n.held or (roll and t0 <= vt)
+		var x0 := ring_x if lit else _x_of(t0 - vt)
+		var x1 := minf(_x_of(t1 - vt), size.x + 80.0 * u)
+		if x1 <= x0:
 			continue
-		var lane := int(n.lane)
-		var head_t := maxf(t0, vt) if (n.held or type == State.Type.ROLL) else t0
-		var y_head := minf(_y_of(head_t - vt), hit) if (n.held or type == State.Type.ROLL) else _y_of(t0 - vt)
-		var y_end := maxf(top, _y_of(t1 - vt))
-		if y_head <= y_end:
-			continue
-		var pts := PackedVector2Array()
-		var steps := 8
-		var wide := 0.42 if type == State.Type.ROLL else 0.3
-		for k in steps + 1:
-			var y := lerpf(y_end, y_head, float(k) / steps)
-			pts.append(Vector2(_lane_x(lane, y) - _path_w(y) / State.LANES * wide * 0.5, y))
-		for k in range(steps, -1, -1):
-			var y := lerpf(y_end, y_head, float(k) / steps)
-			pts.append(Vector2(_lane_x(lane, y) + _path_w(y) / State.LANES * wide * 0.5, y))
-		var col: Color = Parts.ROLL if type == State.Type.ROLL else Parts.LANE_BODY[lane]
-		var lit: bool = n.held or (type == State.Type.ROLL and t0 <= vt)
-		if lit:
-			b.polygon(pts, Color(col.lightened(0.45), 0.5))
-		b.polygon(_narrow(pts, lane, 0.75), col.lightened(0.2 if lit else 0.0))
-		# beads up the ribbon, riding with it
-		var step := 0.12 if type == State.Type.ROLL else 0.2
+		var y := _row_y(i)
+		var half := NOTE_R * (0.8 if roll else 0.4) * u
+		var col: Color = Parts.ROLL if roll else Parts.LANE_BODY[kind]
+		b.polygon(Face.Builder.round_rect(Vector2(x0, y - half - 5.0 * u), Vector2(x1 - x0 + half + 5.0 * u, (half + 5.0 * u) * 2.0), half + 5.0 * u), Parts.INK)
+		b.polygon(Face.Builder.round_rect(Vector2(x0, y - half), Vector2(x1 - x0 + half, half * 2.0), half), col.lightened(0.3 if lit else 0.0))
+		# beads along the ribbon, the drum's mark along the bar, riding with it
+		var step := 0.24 if roll else 0.2
 		var bt: float = ceil(maxf(t0, vt) / step) * step
 		while bt < t1:
-			var y := _y_of(bt - vt)
-			if y >= top and y <= y_head:
-				b.disc(Vector2(_lane_x(lane, y), y), 6.0 * u * _scale_at(y), Color(Parts.CREAM, 0.75))
+			var x := _x_of(bt - vt)
+			if x > x0 + NOTE_R * u and x < size.x:
+				if roll:
+					_mark(b, kind, Vector2(x, y), 12.0 * u, Parts.ROLL_DEEP)
+				else:
+					b.disc(Vector2(x, y), 6.0 * u, Color(Parts.CREAM, 0.75))
 			bt += step
-		# the roll's cap at its end
-		if type == State.Type.ROLL:
-			b.disc(Vector2(_lane_x(lane, y_end), y_end), _path_w(y_end) / State.LANES * wide * 0.5, col)
 
-## A ribbon's outline drawn in toward its lane's centre line by `k`.
-func _narrow(pts: PackedVector2Array, lane: int, k: float) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for p in pts:
-		var cx := _lane_x(lane, p.y)
-		out.append(Vector2(cx + (p.x - cx) * k, p.y))
-	return out
+## Under every berry in sight, its drum's mark in the drum's colour, on the
+## strip under the road.
+func _draw_marks(b: Face.Builder, vt: float) -> void:
+	var u := _u()
+	var y := _path_top() + ROAD_MARK * u
+	var ring_x := RING_X * u
+	for i in _st.notes.size():
+		var n: Dictionary = _st.notes[i]
+		var dt := float(n.t) - vt
+		if dt > _travel() + 0.05:
+			break
+		if n.hidden or (n.st != State.St.WAIT and not n.held):
+			continue
+		var x := _x_of(dt)
+		if n.held or State.is_long(n.type):
+			if vt > float(n.end):
+				continue
+			x = maxf(x, ring_x)
+		elif dt < -0.3:
+			continue
+		var kind := _kind(int(n.lane))
+		var twin := _rows.has(i)
+		_mark(b, kind, Vector2(x + float(_rows.get(i, 0.0)) * 40.0 * u, y), (13.0 if twin else 16.0) * u, Parts.LANE_BODY[kind])
 
 ## The fireworks over the stage: a rocket's climb trailing sparks, then the
 ## burst -- a flash, a ring of trails falling slowly and fading.
@@ -1720,7 +1823,7 @@ func _draw_conga(now: float, beats: float) -> void:
 			continue
 		var hop := absf(sin(beats * PI + i * 0.5)) * 16.0 * u
 		var kick := sin(beats * PI * 0.5 + i) * 0.22
-		var at := Vector2(x, _band_h() + STAGE * 0.66 * u - hop)
+		var at := Vector2(x, _band_h() + _stage_h() * 0.66 - hop)
 		draw_mesh(Parts.critter((i * 2 + 3) % Parts.CRITTERS.size(), 22.0 * u, Parts.Mood.JOY, i % 2 == 0, STICK_COLS[i % STICK_COLS.size()]), null, Transform2D(kick, at))
 
 ## Draws what a builder holds, keeping the mesh until the next frame's
@@ -1734,7 +1837,7 @@ func _put(b: Face.Builder) -> void:
 
 func _frog_foot() -> Vector2:
 	var u := _u()
-	return Vector2(size.x - 120.0 * u, _band_h() + STAGE * 0.78 * u)
+	return Vector2(size.x - 120.0 * u, _band_h() + _stage_h() * 0.78)
 
 func _frog_head() -> Vector2:
 	var s := 52.0 * _u()
@@ -1787,12 +1890,13 @@ func _draw_frog(now: float, beats: float, gogo: bool) -> void:
 			var p := at + Vector2(s * (0.9 + ph * 0.8), -s * (2.3 + ph * 1.6))
 			_label(p, "z", int((22.0 + 14.0 * ph) * u), Color(Parts.CREAM, 1.0 - ph), Color(Parts.INK, 0.5 * (1.0 - ph)))
 
-## The berries coming down the path, the earliest drawn last; Echo's hidden
-## ones not at all; a note let past falls off the end, frowning.
-func _draw_notes(vt: float, now: float) -> void:
+## The berries riding the road, the earliest drawn last; Echo's hidden ones
+## not at all; a note let past goes on past the ring, sinking and frowning.
+func _draw_notes(vt: float, _now_t: float) -> void:
 	var u := _u()
 	var notes: Array = _st.notes
-	var hit := _hit_y()
+	var ring_x := RING_X * u
+	var r := NOTE_R * u
 	var hi := notes.size() - 1
 	# the last note in sight
 	for i in notes.size():
@@ -1803,50 +1907,41 @@ func _draw_notes(vt: float, now: float) -> void:
 		var n: Dictionary = notes[i]
 		var type := int(n.type)
 		var dt := float(n.t) - vt
-		var lane := int(n.lane)
-		if type == State.Type.BALLOON:
+		var kind := _kind(int(n.lane))
+		if type == State.Type.BALLOON or n.hidden:
 			continue
 		if type == State.Type.ROLL:
-			if dt > 0.0 and not n.hidden:
-				var y := _y_of(dt)
-				var sc := _scale_at(y)
-				draw_mesh(Parts.roll(0.0, NOTE_R * 0.8 * u), null, Transform2D(0.0, Vector2(sc, sc), 0.0, Vector2(_lane_x(lane, y), y)))
-			continue
-		if n.hidden:
+			# a drumroll's head is its drum's berry, waiting in the ring
+			if n.st == State.St.WAIT and vt <= float(n.end):
+				draw_mesh(Parts.berry(kind, r, Parts.Mood.JOY if dt <= 0.0 else Parts.Mood.HAPPY), null, Transform2D(0.0, Vector2(maxf(_x_of(dt), ring_x), _note_y())))
 			continue
 		if n.st == State.St.HIT and not n.held:
 			continue
-		var y := _y_of(dt)
-		if n.held:
-			y = hit
-		var sc := _scale_at(y)
-		var r := NOTE_R * u
-		var x := _lane_x(lane, y)
+		var y := _row_y(i)
+		var x := ring_x if n.held else _x_of(dt)
 		if n.st == State.St.MISSED:
-			# let past: on off the end of the path, tumbling, fading
+			# let past: on past the ring, sinking, fading
 			if dt > 0.0:
 				continue
 			var k := clampf(-dt / FALL_TIME, 0.0, 1.0)
 			if k >= 1.0 or Motion.reduce and dt < -0.2:
 				continue
-			var fall := Vector2(0, k * k * 260.0 * u)
-			draw_mesh(Parts.berry(lane, r, Parts.Mood.SAD), null, Transform2D(k * 2.0, Vector2(sc, sc), 0.0, Vector2(x, y) + fall), Color(1, 1, 1, 1.0 - k))
+			draw_mesh(Parts.berry(kind, r, Parts.Mood.SAD), null, Transform2D(-k * 1.2, Vector2(x, y + k * k * 70.0 * u)), Color(1, 1, 1, 1.0 - k))
 			continue
 		if dt < -0.3 and not n.held:
 			continue
 		var mood := Parts.Mood.JOY if dt < 0.25 and not Motion.reduce else Parts.Mood.HAPPY
 		var hop := 0.0
 		if not Motion.reduce and not n.held:
-			hop = absf(sin(dt * TAU)) * 4.0 * u * sc
-		var m := Parts.golden_berry(r) if _golden.has(i) else Parts.berry(lane, r, mood)
-		draw_mesh(m, null, Transform2D(0.0, Vector2(sc, sc), 0.0, Vector2(x, y - hop)))
+			hop = absf(sin(dt * TAU)) * 4.0 * u
+		var m := Parts.golden_berry(r) if _golden.has(i) else Parts.berry(kind, r, mood)
+		draw_mesh(m, null, Transform2D(0.0, Vector2(x, y - hop)))
 
 
-## The balloons, over the drums: up the path to their drum, then sitting on
-## its skin swelling with every tap, or flying off when let go.
+## The balloons: along the road to the ring, then sitting in it swelling
+## with every tap, or flying off when let go.
 func _draw_balloons(vt: float, now: float) -> void:
 	var u := _u()
-	var hit := _hit_y()
 	var notes: Array = _st.notes
 	for i in notes.size():
 		var n: Dictionary = notes[i]
@@ -1855,24 +1950,20 @@ func _draw_balloons(vt: float, now: float) -> void:
 			break
 		if int(n.type) != State.Type.BALLOON:
 			continue
-		var lane := int(n.lane)
 		if n.st == State.St.HIT or n.hidden:
 			continue
 		var gone: float = now - float(_balloon_gone.get(i, INF))
 		if float(n.end) < vt - 1.2:
 			continue
-		var y := minf(_y_of(dt), hit)
-		var p := Vector2(_lane_x(lane, y), y - 10.0 * u)
+		var p := Vector2(maxf(_x_of(dt), RING_X * u), _note_y() - 10.0 * u)
 		var fill := float(n.hits) / maxf(1.0, float(n.count))
 		if gone >= 0.0:
 			if gone > 1.0:
 				continue
-			p += Vector2(-gone * 120.0, -gone * 420.0) * u
-		var sc := _scale_at(y)
-		draw_mesh(Parts.balloon(NOTE_R * u, fill), null, Transform2D(0.0, Vector2(sc, sc), 0.0, p))
+			p += Vector2(gone * 120.0, -gone * 420.0) * u
+		draw_mesh(Parts.balloon(NOTE_R * u, fill), null, Transform2D(0.0, p))
 		if dt <= 0.0 and gone < 0.0:
 			_label(p + Vector2(NOTE_R * 1.0, -NOTE_R * 1.1) * u, str(maxi(0, int(n.count) - int(n.hits))), int(44 * u), Color.WHITE, Parts.INK)
-		continue
 
 func _draw_path_combo(now: float, tier: int) -> void:
 	var u := _u()
@@ -1882,8 +1973,8 @@ func _draw_path_combo(now: float, tier: int) -> void:
 	var text := str(_st.combo)
 	var font: Font = CozyTheme.display(700)
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var base: Color = [Parts.CREAM, Parts.ROLL, Color("ffb08a")][mini(tier, 2)]
-	var mid := Vector2(size.x * 0.5, _path_top() + (_hit_y() - _path_top()) * 0.3)
+	var base: Color = [Color("d6bf98"), Parts.ROLL, Color("ffb08a")][mini(tier, 2)]
+	var mid := Vector2(size.x * 0.5, _path_top() + (ROAD + 84.0) * u)
 	draw_set_transform(mid, 0.0, Vector2(sc, sc))
 	var x := -w * 0.5
 	for i in text.length():
@@ -1893,11 +1984,11 @@ func _draw_path_combo(now: float, tier: int) -> void:
 		if tier >= 3:
 			col = Rewards.STICKER_COLS[(i + int(now * 6.0)) % Rewards.STICKER_COLS.size()]
 		var o := Vector2(x, fs * 0.36)
-		draw_char_outline(font, o, ch, fs, int(fs * 0.12), Color(Parts.INK, 0.35))
-		draw_char(font, o, ch, fs, Color(col, 0.55))
+		draw_char_outline(font, o, ch, fs, int(fs * 0.12), Color(Parts.INK, 0.5))
+		draw_char(font, o, ch, fs, Color(col, 0.95))
 		x += adv
 	draw_set_transform(Vector2.ZERO)
-	_label(mid + Vector2(0, fs * 0.66), tr("DB_COMBO"), int(30 * u), Color(Parts.CREAM, 0.55), Color(0, 0, 0, 0))
+	_label(mid + Vector2(0, fs * 0.66), tr("DB_COMBO"), int(30 * u), Color(Parts.INK, 0.5), Color(0, 0, 0, 0))
 
 func _draw_gauge(b: Face.Builder, now: float, pulse: float) -> void:
 	var u := _u()
@@ -1962,7 +2053,7 @@ func _draw_hearts(b: Face.Builder, now: float) -> void:
 				var p: Vector2 = at + Vector2(side * 14.0 * k, 50.0 * k * k) * u
 				Rewards.heart(b, p, r * 0.8, side * 0.6 * k, Color(HEART_DEEP if side > 0 else HEART, fade))
 
-## The seal over the path: Flawless for a full combo; on Insane the night
+## The seal over the road: Flawless for a full combo; on Insane the night
 ## seal, "Insane" over Flawless or Echo.
 func _draw_stamp(now: float) -> void:
 	var rad := size.x * STAMP_R
@@ -1976,7 +2067,7 @@ func _draw_stamp(now: float) -> void:
 		var uu := clampf(e / STAMP_DROP, 0.0, 1.0)
 		k = lerpf(STAMP_FROM, 1.0, uu * uu) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
-	var centre := Vector2(size.x * 0.5, _path_top() + (_hit_y() - _path_top()) * 0.5)
+	var centre := Vector2(size.x * 0.5, _path_top() + ROAD * 0.5 * _u())
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	draw_set_transform_matrix(xf)
 	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -2004,24 +2095,19 @@ func _draw_words(now: float) -> void:
 	if _level == 3:
 		title += " · " + tr("DB_ECHO")
 	_label(Vector2(size.x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Parts.CREAM, Color(Parts.INK, 0.5))
-	# each drum's latest judgement, stamped over it and rising
-	for lane in State.LANES:
-		var j: Dictionary = _judges[lane]
-		if j.is_empty():
-			continue
-		var k := (now - float(j.at)) / JUDGE_TIME
-		if k >= 1.0:
-			continue
-		var rise := 0.0 if Motion.reduce else (1.0 - pow(1.0 - k, 3.0)) * 34.0 * u
+	# the latest judgement, stamped over the ring and rising
+	if not _judge.is_empty() and now - float(_judge.at) < JUDGE_TIME:
+		var k := (now - float(_judge.at)) / JUDGE_TIME
+		var rise := 0.0 if Motion.reduce else (1.0 - pow(1.0 - k, 3.0)) * 24.0 * u
 		var a := 1.0 - clampf((k - 0.6) / 0.4, 0.0, 1.0)
-		var col: Color = JUDGE_COLS[int(j.grade)]
+		var col: Color = JUDGE_COLS[int(_judge.grade)]
 		var pop := 1.0 if Motion.reduce else Motion.back_out(clampf(k / 0.35, 0.0, 1.0))
-		var fs := JUDGE_FONT + (6 if int(j.grade) == State.Grade.GOOD else 0)
-		draw_set_transform(_drum_skin(lane) + Vector2(0, -_drum_r() * 0.9 - 30.0 * u - rise), 0.0, Vector2(pop, pop))
-		_label(Vector2.ZERO, tr(JUDGE_KEYS[int(j.grade)]), int(fs * u), Color(col, a), Color(Parts.INK, 0.85 * a))
+		var fs := JUDGE_FONT + (6 if int(_judge.grade) == State.Grade.GOOD else 0)
+		draw_set_transform(Vector2((RING_X + 14.0) * u, _path_top() - 30.0 * u - rise), 0.0, Vector2(pop, pop))
+		_label(Vector2.ZERO, tr(JUDGE_KEYS[int(_judge.grade)]), int(fs * u), Color(col, a), Color(Parts.INK, 0.85 * a))
 		draw_set_transform(Vector2.ZERO)
 	if not _roll_pop.is_empty() and now - float(_roll_pop.at) < 0.5:
-		_label(_drum_skin(int(_roll_pop.lane)) + Vector2(0, -_drum_r() * 1.9), str(int(_roll_pop.n)), int(44 * u), Parts.ROLL, Parts.INK)
+		_label(Vector2((RING_X + 190.0) * u, _path_top() - 30.0 * u), str(int(_roll_pop.n)), int(44 * u), Parts.ROLL, Parts.INK)
 	match _phase:
 		"ready":
 			_draw_card(tr("DB_TAP_START"), "", now)
@@ -2062,12 +2148,12 @@ func _draw_card(head: String, line: String, now: float, buttons := true) -> void
 		if _st.max_hearts > 0:
 			sub += " · " + (tr("DB_HEARTS_ONE") if _st.hearts == 1 else tr("DB_HEARTS_N") % _st.hearts)
 		_label(Vector2(c.x, y), sub, int(28 * u), Color(Parts.INK, 0.65), Color(0, 0, 0, 0))
-		# the legend: the four drums' berries, then a ribbon and a roll
+		# the legend: the drums' berries, then a ribbon and a roll
 		y += 80.0 * u
-		for lane in State.LANES:
-			var x := c.x + (lane - 1.5) * 110.0 * u
-			draw_mesh(Parts.berry(lane, 30.0 * u), null, Transform2D(0.0, Vector2(x, y)))
-		_label(Vector2(c.x, y + 62.0 * u), tr("DB_LEGEND_DRUMS"), int(26 * u), Parts.INK, Color(0, 0, 0, 0))
+		for lane in _n():
+			var x := c.x + (lane - (_n() - 1) * 0.5) * 110.0 * u
+			draw_mesh(Parts.berry(_kind(lane), 30.0 * u), null, Transform2D(0.0, Vector2(x, y)))
+		_label(Vector2(c.x, y + 62.0 * u), tr("DB_LEGEND_ONE" if _n() == 1 else "DB_LEGEND_DRUMS"), int(26 * u), Parts.INK, Color(0, 0, 0, 0))
 		y += 112.0 * u
 		var line2 := tr("DB_LEGEND_HOLD") + "   ·   " + tr("DB_LEGEND_ROLL")
 		if _level == 3:
@@ -2150,8 +2236,8 @@ func _label_left(at: Vector2, text: String, px: int, col: Color, outline: Color)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, col)
 
 ## The still picture: the card, the band, the dusk stage with its hills and
-## stalls and the lanterns' cord, the path of planks to the drums and the
-## festival mat they stand on.
+## stalls and the lanterns' cord, the road of planks across the card and the
+## festival mat the drums stand on.
 func _build_still() -> ArrayMesh:
 	var u := _u()
 	var b := Face.Builder.new()
@@ -2203,40 +2289,23 @@ func _build_still() -> ArrayMesh:
 	# the ground: a festival mat under everything below the stage
 	b.polygon(PackedVector2Array([Vector2(0, low), Vector2(w, low), Vector2(w, size.y - CARD_RADIUS * u), Vector2(0, size.y - CARD_RADIUS * u)]), Color("e8dcc4"))
 	b.polygon(Face.Builder.round_rect(Vector2(0, size.y - CARD_RADIUS * u * 2.0), Vector2(w, CARD_RADIUS * u * 2.0), CARD_RADIUS * u), Color("e8dcc4"))
-	# the path of planks, narrowing up into the stage, a rail each side and a
-	# string between the lanes
-	var hit := _hit_y()
-	var bottom := hit + 70.0 * u
-	b.polygon(_path_quad(low, bottom, 1.06), PATH_DEEP)
-	b.polygon(_path_quad(low, bottom, 1.0), PATH_TRACK)
-	var plank := 0.0
+	# the road of planks across the card: a rail over it and one under, and
+	# the strip under the lower rail where each berry's mark rides
+	var plank := low + ROAD_RAIL * u
+	var floor_y := low + ROAD_FLOOR * u
+	b.polygon(_rect(0, low, w, low + ROAD * u), PATH_DEEP)
+	b.polygon(_rect(0, plank, w, floor_y), PATH_TRACK)
+	var board := 96.0 * u
 	var k := 0
-	while plank < 1.0:
-		var y0 := lerpf(low, bottom, plank)
-		var step := 0.05 + 0.03 * plank
-		var y1 := lerpf(low, bottom, minf(1.0, plank + step))
+	while k * board < w:
 		if k % 2 == 0:
-			b.polygon(_path_quad(y0, y1, 0.98), Color(PATH_WOOD, 0.35))
-		plank += step
+			b.polygon(_rect(k * board, plank, minf(w, (k + 1) * board), floor_y), Color(PATH_WOOD, 0.3))
 		k += 1
-	for lane in range(1, State.LANES):
-		var x0 := size.x * 0.5 + (lane - 2) * PATH_TOP * u / State.LANES
-		var x1 := size.x * 0.5 + (lane - 2) * PATH_BOTTOM * u / State.LANES
-		b.stroke(PackedVector2Array([Vector2(x0, low), Vector2(x1, bottom)]), 2.5 * u, Color(Parts.CREAM, 0.25))
-	for side in [-1.0, 1.0]:
-		b.stroke(PackedVector2Array([Vector2(size.x * 0.5 + side * PATH_TOP * 0.5 * u, low), Vector2(size.x * 0.5 + side * PATH_BOTTOM * 0.5 * u, hit)]), 6.0 * u, Color(PATH_WOOD, 0.9))
-	# each lane's colour, a faint wash up from its drum
-	for lane in State.LANES:
-		var lw := PATH_BOTTOM * u / State.LANES
-		var cx := _lane_x(lane, hit)
-		var ty := lerpf(low, hit, 0.55)
-		var tw := _path_w(ty) / State.LANES
-		var tx := _lane_x(lane, ty)
-		var col: Color = Parts.LANE_BODY[lane]
-		var a0 := b.vertex(Vector2(tx - tw * 0.48, ty), Color(col, 0.0))
-		var a1 := b.vertex(Vector2(tx + tw * 0.48, ty), Color(col, 0.0))
-		var a2 := b.vertex(Vector2(cx + lw * 0.48, hit), Color(col, 0.22))
-		var a3 := b.vertex(Vector2(cx - lw * 0.48, hit), Color(col, 0.22))
-		b.tri(a0, a1, a2)
-		b.tri(a0, a2, a3)
+	b.polygon(_rect(0, low, w, plank), PATH_WOOD)
+	b.polygon(_rect(0, low, w, low + 5.0 * u), PATH_WOOD.lightened(0.25))
+	b.polygon(_rect(0, floor_y, w, floor_y + 10.0 * u), PATH_WOOD)
+	# a faint seam between the drums' columns
+	for lane in range(1, _n()):
+		var x := w * lane / float(_n())
+		b.stroke(PackedVector2Array([Vector2(x, low + (ROAD + 50.0) * u), Vector2(x, size.y - 70.0 * u)]), 3.0 * u, Color(Parts.INK, 0.07))
 	return b.mesh()

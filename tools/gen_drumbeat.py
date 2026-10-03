@@ -293,12 +293,21 @@ def chord(name):
 # --- the songs ---
 # A section: its bars as (chord or [two chords], melody, chart). The chart is
 # Hard's, sixteen characters a bar.
+#
+# A day's song is short (the user's word, 2026-10-03: twenty to thirty seconds
+# at most): a bar of pick-up, a verse, a Go-Go chorus and a last chord. Echo
+# pairs its bars from the first of the verse (`echo_from`).
 
 def S(chords, tunes, charts, gogo=False):
     assert len(chords) == len(tunes) == len(charts)
     for c in charts:
         assert len(c) == 16, f"chart bar is {len(c)} long: {c}"
     return {"bars": list(zip(chords, tunes, charts)), "gogo": gogo}
+
+
+def half(section):
+    """A section's second four bars: the phrase that closes it."""
+    return tuple(part[4:] for part in section)
 
 
 REST = "-:8"
@@ -309,38 +318,14 @@ PARADE = {
     "lead": "marimba", "stars": [1, 3, 5], "style": "parade",
 }
 PARADE["sections"] = [
-    S(["F", "C"], [REST, REST], [EMPTY, "d.......d......."]),
-    S(["F", "Bb", "Bb", "F", "F", "C", "C", "F"],
-      ["1:2 3:2 5:2 5:2", "6:2 5:2 3:4", "4:2 4:2 6:2 4:2", "3:2 2:2 1:4",
-       "1:2 3:2 5:2 1':2", "7:2 6:2 5:4", "4:2 3:2 2:2 5,:2", "1:6 -:2"],
-      ["d...d.k.d...d.k.", "d...k...D...k...", "d.d.k...d.d.k...", "k...k...D...kk..",
-       "d...d.k.d...d.k.", "d.k.d.k.D.......", "d...k...d.d.k.k.", "D.......d.d.kkk."]),
-    S(["F", "Bb", "Bb", "F", "F", "C", "C", "F"],
-      ["1:2 3:2 5:2 5:2", "6:2 5:2 3:4", "4:2 4:2 6:2 4:2", "3:2 2:2 1:4",
-       "1:2 3:2 5:2 1':2", "7:2 6:2 5:4", "4:2 3:2 2:2 5,:2", "1:6 -:2"],
-      ["d.kkd.k.d...d.k.", "d...k...D...k.k.", "d.d.k.kkd.d.k...", "k...k...D...k.k.",
-       "d.kkd.k.d...d.k.", "d.k.d.k.D...kk..", "d...k...d.d.k.kk", "D.......r=====.."]),
-    S(["Dm", "Dm", "Bb", "C", "Dm", "Dm", "Bb", "C"],
-      ["6:3 5:1 6:2 1':2", "6:4 5:4", "4:3 3:1 4:2 6:2", "5:8",
-       "6:3 5:1 6:2 1':2", "2':4 1':4", "7:2 6:2 5:2 4:2", "5:6 -:2"],
-      ["d.....k.d...D...", "d...k...d...k.k.", "d.....k.d...k...", "r===========....",
-       "d.....k.d...D...", "D.......D.......", "k.k.k.k.d.d.d.d.", "b=========......"]),
-    S(["F", "C", "Dm", "Bb", "F", "C", "Bb", "F"],
-      ["1':2 1':1 1':1 7:2 6:2", "5:2 5:2 7:4", "6:2 6:1 6:1 5:2 4:2", "3:2 4:2 6:4",
-       "1':2 1':1 1':1 7:2 6:2", "5:2 1':2 2':4", "1':2 7:2 6:2 7:2", "1':6 -:2"],
-      ["d...d.d.k...k...", "d...d...K...k.k.", "d...d.d.k...k.kk", "d...k...D...k.k.",
-       "d...d.d.k...k...", "d...d...D...d.d.", "d.k.d.k.d.k.d.k.", "D.......R=====.."], gogo=True),
-    S(["F", "Bb", "Bb", "F", "F", "C", "C", "F"],
-      ["1:2 3:2 5:2 5:2", "6:2 5:2 3:4", "4:2 4:2 6:2 4:2", "3:2 2:2 1:4",
-       "1:2 3:2 5:2 1':2", "7:2 6:2 5:4", "4:2 3:2 2:2 5,:2", "1:6 -:2"],
-      ["d.kkd.k.d...d.k.", "d...k...D...k.k.", "d.d.k.kkd.d.k...", "k...k...D...k.k.",
-       "d.kkd.k.d...d.k.", "d.k.d.k.D...kk..", "d...k...d.d.k.kk", "D...........kkk."]),
-    S(["F", "C", "Dm", "Bb", "F", "C", "Bb", "F"],
-      ["1':2 1':1 1':1 7:2 6:2", "5:2 5:2 7:4", "6:2 6:1 6:1 5:2 4:2", "3:2 4:2 6:4",
-       "1':2 1':1 1':1 7:2 6:2", "5:2 1':2 2':4", "1':2 7:2 6:2 7:2", "1':6 -:2"],
-      ["d...d.d.k...k...", "d...d...K...k.k.", "d...d.d.k...k.kk", "d...k...D...k.k.",
-       "d...d.d.k...k...", "d...d...D...d.d.", "d.k.d.k.d.k.d.k.", "D.......R=====.."], gogo=True),
-    S(["F", "F"], ["1:8", REST], ["D...............", EMPTY]),
+    S(["C"], [REST], ["d.......d......."]),
+    S(["F", "Bb", "Bb", "F"],
+      ["1:2 3:2 5:2 5:2", "6:2 5:2 3:4", "4:2 4:2 6:2 4:2", "3:2 2:2 1:4"],
+      ["d.kkd.k.d...d.k.", "d...k...D...k.k.", "d.d.k.kkd.d.k...", "k...k...D...k.k."]),
+    S(["F", "C", "Bb", "F"],
+      ["1':2 1':1 1':1 7:2 6:2", "5:2 1':2 2':4", "1':2 7:2 6:2 7:2", "1':6 -:2"],
+      ["d...d.d.k...k...", "d...d...D...d.d.", "d.k.d.k.d.k.d.k.", "D.......R=====.."], gogo=True),
+    S(["F"], ["1:8"], ["D..............."]),
 ]
 
 FESTIVAL = {
@@ -358,19 +343,10 @@ _FC = (["D", "A", "Bm", "G", "D", "A", ["G", "A"], "D"],
        ["d.ddk.d.d.ddk.d.", "d.k.d.k.D...k.k.", "d.ddk.d.d.ddk.d.", "D...k...D...kkkk",
         "d.ddk.d.d.ddk.d.", "d.k.d.k.D...k.k.", "d.k.d.k.d.kkd.kk", "D.......R======."])
 FESTIVAL["sections"] = [
-    S(["D", "Bm", "G", "A"],
-      ["5:4 6:2 5:2", "3:8", "2:2 3:2 5:2 6:2", "5:8"],
-      [EMPTY, EMPTY, "d.......d.......", "d...d...d...D..."]),
-    S(*_FA),
-    S(["Bm", "Bm", "G", "G", "Em", "Em", "A", "A"],
-      ["6:3 6:1 5:2 6:2", "1':4 6:4", "5:3 5:1 3:2 5:2", "6:8",
-       "3:2 5:2 6:2 5:2", "3:2 2:2 1:4", "2:2 3:2 5:2 6:2", "5:6 -:2"],
-      ["d.....k.d...d.k.", "D.......d...k...", "d.....k.d...d.k.", "k.k.k.k.b======.",
-       "d.k.d.k.d.k.d.kk", "d...k...D.......", "d.k.d.k.d.k.d.k.", "D...k...kkkkD..."]),
-    S(*_FC, gogo=True),
-    S(*_FA),
-    S(*_FC, gogo=True),
-    S(["D", "D"], ["1':8", REST], ["D...............", EMPTY]),
+    S(["A"], ["5:8"], ["d...d...d...D..."]),
+    S(*half(_FA)),
+    S(*half(_FC), gogo=True),
+    S(["D"], ["1':8"], ["D..............."]),
 ]
 
 GALLOP = {
@@ -383,7 +359,7 @@ _GA = (["Am", "Am", "E", "E", "Am", "Am", "E", "Am"],
         "5:1 5:.5 5:.5 5:1 5:.5 5:.5 5:1 1':1 2':1 3':1", "2':2 1':1 3':1 5':4",
         "4':1 3':1 2':1 1':1 7#:2 2':2", "1':6 -:2"],
        ["d.ddd.ddd.k.k.k.", "D...k.k.d...k.k.", "k.kkk.kkd.d.d.d.", "D...d.d.k...k.k.",
-        "d.ddd.ddd.k.k.k.", "D...d.k.D...k.k.", "d.k.d.k.d...D...", "D...........kkk."])
+        "d.ddd.ddd.k.k.k.", "D...d.k.D...k.k.", "d.k.d.k.d...D...", "D.......b=====.."])
 _GB = (["F", "G", "C", "Am", "F", "G", "E", "E"],
        ["6:2 1':2 4':2 3':2", "2':2 7:2 5:4", "1':2 3':2 5':2 3':2", "1':4 5:4",
         "6:2 1':2 4':2 6':2", "5':2 4':2 2':4", "3':1 2':1 1':1 7#:1 1':1 2':1 3':2", "7#:8"],
@@ -397,23 +373,26 @@ _GC = (["Am", "F", "C", "G", "Am", "F", "E", "Am"],
        ["d.ddk.kkd...D...", "d.ddk.kkd...D...", "k.kkd.ddk...D...", "d...k...D...kkkk",
         "d.ddk.kkd...D...", "d.ddk.kkd...D...", "D...k...d...k.k.", "D.......R=====.."])
 GALLOP["sections"] = [
-    S(["Am", "E"], [REST, REST], [EMPTY, "d...d...d.ddD..."]),
+    S(["E"], [REST], ["d...d...d.ddD..."]),
     S(*_GA),
-    S(*_GA),
-    S(*_GB),
-    S(*_GC, gogo=True),
-    S(["Am", "E", "Am", "E"], ["1':8", "7#:8", "1':8", "7#:8"],
-      ["d.ddk.ddd.ddk.dd", "b=============..", "d.ddk.ddd.ddk.dd", "R=============.."]),
-    S(*_GB),
-    S(*_GC, gogo=True),
-    S(["Am", "Am"], ["1':8", REST], ["D...............", EMPTY]),
+    S(*half(_GC), gogo=True),
+    S(["Am"], ["1':8"], ["D..............."]),
 ]
 
 SONGS = [PARADE, FESTIVAL, GALLOP]
 
 # Note types, as puzzles/drumbeat_state.gd reads them.
 TAP, HOLD, ROLL, BALLOON = range(4)
-LANES = 4
+# The drums standing at each level (the user's word, 2026-10-03: one, two,
+# three and three), and the drums the tune is played on: with three the big
+# drum keeps the kick and the bass to itself.
+DRUM_COUNT = [1, 2, 3, 3]
+
+
+def tune_lanes(nd):
+    return [0] if nd == 1 else [0, 1] if nd == 2 else [1, 2]
+
+
 # Hits a second a balloon asks for, by difficulty.
 BALLOON_RATE = [4.0, 5.5, 7.5, 7.5]
 # A melody note this many beats long or longer is held, by difficulty.
@@ -602,9 +581,9 @@ def spans(song):
     return out
 
 
-def lane_bands(song):
-    """Each section's tune split into three bands of pitch, low to high, for
-    the drums 1-3; drum 0 keeps the kick and the bass."""
+def lane_bands(song, lanes):
+    """Each section's tune split into bands of pitch, low to high, one for
+    each of the drums in `lanes`."""
     bars, gogo_bar, section = all_bars(song)
     pitches = {}
     for i in range(len(bars)):
@@ -612,26 +591,24 @@ def lane_bands(song):
             if e["inst"] == "lead":
                 pitches.setdefault(section[i], []).append(e["m"])
     bands = {}
+    k = len(lanes)
     for s, ps in pitches.items():
         u = sorted(set(ps))
-        if len(u) <= 3:
-            bands[s] = {m: 1 + k for k, m in enumerate(u)} if len(u) == 3 else {m: 1 + min(2, k * 2) for k, m in enumerate(u)}
-            continue
-        # split the sorted distinct pitches into three runs as even as can be
-        lo = u[len(u) // 3]
-        hi = u[(2 * len(u)) // 3]
-        bands[s] = {m: (1 if m < lo else 2 if m < hi else 3) for m in u}
+        # the sorted distinct pitches in runs as even as can be
+        bands[s] = {m: lanes[min(k - 1, idx * k // len(u))] for idx, m in enumerate(u)}
     return bands
 
 
 def chart(song, level):
-    """One level's chart: the tune's notes on drums 1-3 by pitch, the kick on
-    drum 0, rolls and balloons where the hand-written lines put them, and on
-    Hard the backing's own strokes in the tune's rests. Every note is an
-    onset in the music."""
+    """One level's chart, for the drums that level has: the tune's notes on
+    its drums by pitch, the kick on drum 0, rolls and balloons where the
+    hand-written lines put them, and on Hard the backing's own strokes in the
+    tune's rests. Every note is an onset in the music."""
     beat = 60.0 / song["bpm"]
     bars, gogo_bar, section = all_bars(song)
-    bands = lane_bands(song)
+    nd = DRUM_COUNT[level]
+    tl = tune_lanes(nd)
+    bands = lane_bands(song, tl)
     lv = min(level, 2)
     grid = [4.0, 2.0, 1.0][lv]  # sixteenths: Easy on the beat, Medium the eighths
     long_spans = spans(song)
@@ -654,7 +631,7 @@ def chart(song, level):
         for e in lead:
             if abs(e["s"] / grid - round(e["s"] / grid)) > 1e-3:
                 continue
-            lane = bands[section[i]].get(e["m"], 2)
+            lane = bands[section[i]].get(e["m"], tl[-1])
             if e["dur"] >= HOLD_BEATS[lv] * beat - 1e-6:
                 cands.append((e["t"], lane, HOLD, e["t"] + e["dur"] - beat * 0.5, 3))
             else:
@@ -696,14 +673,14 @@ def chart(song, level):
                 if any(a <= e["t"] < z for a, z in busy):
                     continue
                 seen.add(at)
-                lane = 0 if e["inst"] == "bass" else 2 + (k % 2)
+                lane = 0 if e["inst"] == "bass" else tl[k % len(tl)]
                 if e["inst"] != "bass":
                     k += 1
                 cands.append((e["t"], lane, TAP, 0.0, 1))
     # one candidate per instant and drum, the higher priority first
     cands.sort(key=lambda c: (round(c[0], 4), -c[4], c[1]))
     notes = []
-    last_on = [-10.0] * LANES
+    last_on = [-10.0] * nd
     last_any = -10.0
     last_t = -10.0
     for t, lane, typ, end, pri in cands:
@@ -730,7 +707,7 @@ def chart(song, level):
                     return False
             return not any(abs(n["t"] - t) < 1e-4 and n["lane"] == l for n in notes)
         if not free(lane):
-            alt = [l for l in ([lane - 1, lane + 1] if lane > 1 else [lane + 1]) if 0 <= l < LANES]
+            alt = [l for l in (lane - 1, lane + 1) if 0 <= l < nd and (l != 0 or nd < 3)]
             alt = [l for l in alt if free(l)]
             if not alt:
                 continue
@@ -747,10 +724,10 @@ def chart(song, level):
         last_t = t
     for a, z, kind in long_spans:
         if kind == "b":
-            notes.append({"t": a, "lane": 1, "type": BALLOON, "end": z,
+            notes.append({"t": a, "lane": min(1, nd - 1), "type": BALLOON, "end": z,
                           "count": max(3, int(round((z - a) * BALLOON_RATE[level])))})
         else:
-            notes.append({"t": a, "lane": 0 if kind == "R" else 3, "type": ROLL, "end": z})
+            notes.append({"t": a, "lane": 0 if kind == "R" else nd - 1, "type": ROLL, "end": z})
     notes.sort(key=lambda n: (n["t"], n["lane"]))
     return notes
 
@@ -766,7 +743,14 @@ def echo(song, hard):
     bars, _, _ = all_bars(song)
     bar_len = 4 * beat
     out, spans_ = [], []
-    for k in range(0, len(bars) - 1, 2):
+    first = song.get("echo_from", 1)
+    pairs = range(first, len(bars) - 1, 2)
+    # the pick-up before the first pair and whatever follows the last are
+    # played as Hard plays them
+    lo = bar_start(song, first)
+    hi = bar_start(song, pairs[-1] + 2) if len(pairs) else lo
+    out.extend(dict(n) for n in hard if n["t"] < lo - 1e-6 or n["t"] >= hi - 1e-6)
+    for k in pairs:
         a = bar_start(song, k)
         b = a + bar_len
         call = [dict(n) for n in hard if a - 1e-6 <= n["t"] < b - 1e-6]
