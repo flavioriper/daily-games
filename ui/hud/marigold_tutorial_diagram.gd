@@ -124,6 +124,7 @@ class Garden extends "res://puzzles/marigold2d.gd":
 	func _ready() -> void:
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx.buzzes = false  # (the page's finger is not the player's)
 
 	func _voice(_cue_name: String, _loop: bool) -> AudioStreamPlayer:
 		var p := AudioStreamPlayer.new()
