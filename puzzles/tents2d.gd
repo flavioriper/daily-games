@@ -54,6 +54,7 @@ const State = preload("res://puzzles/tents_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const TentFace = preload("res://ui/faces/tent_face.gd")
 const ConiferFace = preload("res://ui/faces/conifer_face.gd")
@@ -427,10 +428,35 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A tent
+## pitched is the faintest knock, fair or not (its face and the chips say
+## that), and one struck or undone fainter still; an oak given its second
+## tent and the streak's confetti are the milestones. The sweep's `cairn`
+## and `clear` fire a square and are not here: a row of them would hum, so
+## the sweep ticks once as it is let go (`_release`). A tree or a pegged
+## tent tapped, the trees' hops, the streak's pluck and the gags say
+## nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"strike": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"place": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"oak": Haptics.BUMP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1227,6 +1253,7 @@ func _release() -> void:
 			# One gesture is one move, however many squares it touched; the
 			# cairns arrive in a wave along the finger's path.
 			arrivals = _commit(before, state.apply(moves_), Motion.ENTER_STAGGER, false)
+			fx.buzz(Haptics.TICK)
 		_end_shades(now, arrivals)
 		_redraw()
 		return
@@ -2391,6 +2418,8 @@ func _party(lead: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	_bunting_at = now if Motion.reduce else now + lead + PARTY_AT
 	_after(_bunting_at - now, func() -> void: _life_layer.queue_redraw())
 	if Motion.reduce:

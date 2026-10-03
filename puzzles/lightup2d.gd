@@ -57,6 +57,7 @@ const Gen = preload("res://puzzles/lightup_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
@@ -597,10 +598,38 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A lamp set
+## down is the faintest knock, fair or not (its face and the blocks say
+## that); the streak knocks only where its confetti flies. `strike` and
+## `clear` are not here: the board blows a wrong lamp out itself with the
+## one and the sweep fires the other a stone, so the tap that takes a lamp
+## or a chip up ticks from `_commit` and the sweep once as it is let go
+## (`_release`). `purr` fires on Undo and a hint too: a cat whose number
+## the hand's own tap met bumps from `_cat_turns` (`_by_hand`). A block or
+## a pinned lamp tapped, a block's hop, a cat woken, the streak's pluck, the
+## moths and the gags say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"place": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+## True while the hand's own tap is being put on the court: only then does
+## a cat's number met knock.
+var _by_hand := false
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -834,6 +863,8 @@ func _cat_turns(cell: Vector2i, was: int, now_state: int) -> void:
 	var napping := state.cat_need(cell) == 0
 	if now_state == State.CAT_OK and not napping:
 		fx.cue("purr")
+		if _by_hand:
+			fx.buzz(Haptics.BUMP)
 		_hop(cat, Motion.HOP, Motion.HOP_TIME, Motion.NUDGE_LAG)
 		_on_cat_happy(cell)
 	elif napping and now_state == State.CAT_OVER and was == State.CAT_OK:
@@ -1961,6 +1992,7 @@ func _release() -> void:
 			# chips arrive in a wave along the finger's path. Chips change no
 			# light, and a swept run has no one place to travel from anyway.
 			arrivals = _commit(before, state.apply(pending), now, Motion.ENTER_STAGGER, Vector2i(-1, -1))
+			fx.buzz(Haptics.TICK)
 		_end_sinks(now, arrivals)
 		_redraw()
 		return
@@ -1972,7 +2004,9 @@ func _release() -> void:
 		_redraw()
 		return
 	var before: Dictionary = state.marks.duplicate()
+	_by_hand = true
 	var arrivals := _commit(before, state.tap(cell), now, 0.0, cell)
+	_by_hand = false
 	_end_sinks(now, arrivals)
 	if state.mark_at(cell) == State.LAMP:
 		_judge(cell)
@@ -1997,8 +2031,10 @@ func _commit(before: Dictionary, changed: Array, t: float, per: float, from: Vec
 			fx.cue("place")
 		elif int(before.get(from, State.BLANK)) == State.LAMP:
 			fx.cue("strike")
+			fx.buzz(Haptics.TICK)
 		else:
 			fx.cue("clear")
+			fx.buzz(Haptics.TICK)
 	else:
 		_relight(t, _at_once)
 	_speak()
@@ -3388,6 +3424,8 @@ func _party(lead: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	_garland_at = now if Motion.reduce else now + lead + PARTY_AT
 	_garland_mesh = null
 	_after(_garland_at - now, func() -> void: _life_layer.queue_redraw())
