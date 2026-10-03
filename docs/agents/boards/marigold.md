@@ -66,3 +66,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   unheard. 92 draw calls at rest, 224 at the full bloom's party.
   `tests/_shot_marigold.gd` drives every mode; `tests/_win.gd -- marigold`
   fails, as on `main` before (it cannot aim a seed).
+  **The checkup on 2026-10-02**: the lag was script, never draw calls --
+  every bud strip a seed brushed past (~3.7 ms each, 50k vertices for all six
+  on Insane), the breathing blooms, Sweethearts' ribbons (3.5 ms a bloom), the
+  bits, ripples, frog and ducks, the full bloom's pots and the band's pips
+  were drawn live. Now buds, blooms, ribbons, the garden's pieces and the
+  pots are `RunMesh` looks (a layer a RunMesh sharing one shape cache; looks
+  made at the first layout's scale and drawn scaled after a smaller one),
+  bits and ripples are meshes of copies with tiled indices, and the looks are
+  primed one a frame after the entrance. Native GL Insane play 9.1 -> 4.9
+  ms, p95 14.2 -> 7.1. **Undo** takes the last shot back on every band (the
+  state's `snapshot()`/`restore()` before each shot; on Hard and Insane it
+  costs a heart, as Reset does, and stays grey at one heart so it never puts
+  the sun to sleep; it breaks the flawless seal). **The tutorial**
+  (`ui/hud/marigold_tutorial_diagram.gd`): aim, the last marigold and the
+  full bloom, clover and violet, the pot, out of seeds (a heart on Hard and
+  Insane), Sweethearts (Insane), Undo and Reset, the bulb -- a quietened
+  board zoomed onto hand-made staggered rows, each shot an exact angle found
+  by `tests/_mg_tut_search.gd` (the garden is chaotic: re-run it if the
+  physics or the gardens change).

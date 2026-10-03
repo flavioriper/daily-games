@@ -662,6 +662,33 @@ func is_solved() -> bool:
 func is_out() -> bool:
 	return balls.is_empty() and seeds <= 0 and oranges_left > 0
 
+# --- undo ---
+
+## What a shot changes, to take it back (the board's Undo): the buds, the
+## violet's place and the dice that move it, the seeds and the score. The
+## pot slides on regardless.
+func snapshot() -> Dictionary:
+	return {"st": st.duplicate(), "kind": kind.duplicate(), "seeds": seeds, "score": score, "shots": shots,
+		"oranges_left": oranges_left, "fever": fever, "fever_bonus": fever_bonus, "left_bonus": left_bonus,
+		"rng": _rng.state}
+
+## The garden as `snapshot()` saw it, no seed in flight.
+func restore(d: Dictionary) -> void:
+	st = (d.st as PackedInt32Array).duplicate()
+	kind = (d.kind as PackedInt32Array).duplicate()
+	seeds = int(d.seeds)
+	score = int(d.score)
+	shots = int(d.shots)
+	oranges_left = int(d.oranges_left)
+	fever = bool(d.fever)
+	fever_bonus = int(d.fever_bonus)
+	left_bonus = int(d.left_bonus)
+	_rng.state = int(d.rng)
+	balls = []
+	shot_points = 0
+	shot_hits = 0
+	shot_bloomed = PackedInt32Array()
+
 # --- the hint ---
 
 func clone():
