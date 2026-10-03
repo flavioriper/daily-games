@@ -131,7 +131,8 @@ func _process(delta: float) -> bool:
 		print("shot ", name)
 		var c0 = _host.get_node_or_null("HowToPlay")
 		if c0 != null:
-			print("  diagram size ", c0._diagram.size, " slot ", c0._diagram_slot.size, " caption ", c0._diagram._caption.position, " ", c0._diagram._caption.size)
+			print("  diagram size ", c0._diagram.size, " slot ", c0._diagram_slot.size, " caption ", c0._diagram._caption.position, " ", c0._diagram._caption.size,
+				" body lines ", c0._body.get_line_count(), " \"", c0._diagram._caption.text, "\"")
 		# With the tutorial up, every page in turn, `gap` apart.
 		var card = _host.get_node_or_null("HowToPlay")
 		if _howto and card != null and _page < card._pages.size() - 1:
@@ -172,6 +173,45 @@ func _process(delta: float) -> bool:
 		print("  db t=%.1f %s song %.1f gogo=%s combo=%d bits=%d stickers=%d fireworks=%d draws=%d process %.2f ms looks=%d" % [_t, _puzzle._phase,
 			_puzzle.song_now(), _puzzle._st.in_gogo, _puzzle._st.combo, _puzzle._rw.bits.size(), _puzzle._rw.stickers.size(), _puzzle._fireworks.size(),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, _puzzle._looks.size()])
+	if _exp == "tr_win":
+		# where a frame goes: the nodes' process (to pre-draw), the draw
+		# (to post-draw), and the rest (to the next frame's start)
+		var now_us := Time.get_ticks_usec()
+		if not _tr_hooked:
+			_tr_hooked = true
+			RenderingServer.frame_pre_draw.connect(func() -> void: _tr_pre = Time.get_ticks_usec())
+			RenderingServer.frame_post_draw.connect(func() -> void: _tr_post = Time.get_ticks_usec())
+		elif _t < _log_until or delta > 0.025:
+			var pf: Dictionary = _puzzle.perf if _opened else {}
+			print("  parts: process %.1f draw %.1f rest %.1f ms (done=%s) board: process %.2f bridge %.2f front %.2f" % [(_tr_pre - _tr_start) / 1000.0, (_tr_post - _tr_pre) / 1000.0, (now_us - _tr_post) / 1000.0, _puzzle.is_done() if _opened else false,
+				int(pf.get("process_max", 0)) / 1000.0, int(pf.get("bridge_max", 0)) / 1000.0, int(pf.get("front_max", 0)) / 1000.0], " ", pf)
+			if _opened:
+				_puzzle.perf_on = true
+				_puzzle.perf = {}
+		_tr_start = now_us
+	if _exp == "tr_win" and _opened:
+		# Trestle: every frame from just before the cart is over until the
+		# win has played a moment, to see what the solve's frames cost.
+		if not _tr_logged and _puzzle._testing and _puzzle.sim.cart == 3:
+			_tr_logged = true
+			_log_until = _t + 2.6
+	if _exp == "tr_count" and _t >= _db_next:
+		# Trestle: every 1.5 s, what the board's script cost a frame (the
+		# process with the sim's steps in it, a bridge build, the front
+		# layer), with the frame's draw calls and the meshes' vertices.
+		_db_next = _t + 1.5
+		_puzzle.perf_on = true
+		var pf: Dictionary = _puzzle.perf
+		var n := maxi(1, int(pf.get("frames", 0)))
+		var line := "  tr t=%.1f testing=%s members=%d frames=%d steps=%d draws=%d |" % [_t, _puzzle._testing, _puzzle.state.design.size(), n,
+			int(pf.get("steps", 0)), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))]
+		for k in ["process", "bridge", "front"]:
+			line += " %s %.2f" % [k, float(pf.get(k, 0)) / n / 1000.0]
+		for m in [["bridge", _puzzle._frame], ["front", _puzzle._front_mesh]]:
+			if m[1] != null:
+				line += " %s verts %d" % [m[0], (m[1].surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector2Array).size()]
+		print(line)
+		_puzzle.perf = {}
 	if _t >= _play_to:
 		_report()
 		quit()
@@ -224,6 +264,47 @@ func _experiment() -> void:
 			print("  undo visible=", _host.top_bar.undo_button.visible, " enabled=", _puzzle.can_undo())
 			_host._on_undo()
 			print("  cell ", cell, " after tap=", before, " after undo=", _puzzle.state.grid[cell.y][cell.x], " hearts=", _puzzle.hearts)
+		"tr_hud":
+			# Trestle: the ?, Undo, Reset and Go as the player reaches them,
+			# and a running test held while the card is up.
+			var bar = _host.top_bar
+			var acts = _host.action_bar
+			print("  tr ? visible=%s undo visible=%s hint visible=%s reset (bar) visible=%s reset (actions)=%s go (actions)=%s" % [bar.help_button.visible,
+				bar.undo_button.visible, bar.hint_button.visible if bar.get("hint_button") != null else "-", bar.reset_button.visible,
+				acts != null and acts.reset_button.visible, acts != null and acts.get("check_button") != null and acts.check_button.visible])
+			var road: Array = []
+			for p: Dictionary in _puzzle.state.proof:
+				if int(p.m) == 0:
+					road.append(p)
+			_tr_lay(road[0].a, road[0].b, 0)
+			_tr_lay(road[1].a, road[1].b, 0)
+			await create_timer(0.5).timeout
+			_host._refresh()
+			print("  tr laid: members=%d can_undo=%s undo enabled=%s" % [_puzzle.state.design.size(), _puzzle.can_undo(), not bar.undo_button.disabled])
+			_host._on_undo()
+			await create_timer(0.4).timeout
+			print("  tr after undo: members=%d" % _puzzle.state.design.size())
+			_host._on_check()
+			await create_timer(0.6).timeout
+			var t0: float = _puzzle.sim.t
+			bar.help.emit()
+			await create_timer(0.3).timeout
+			var card = _host.get_node_or_null("HowToPlay")
+			print("  tr Go, then ?: opened=%s pages=%d testing=%s clock_held=%s" % [card != null, card._pages.size() if card != null else 0, _puzzle._testing, _puzzle.clock_held])
+			var t1: float = _puzzle.sim.t
+			await create_timer(1.5).timeout
+			print("  tr under the card: sim %.2f -> %.2f (before it %.2f)" % [t1, _puzzle.sim.t, t0])
+			if card != null:
+				card.free()
+			await create_timer(1.0).timeout
+			print("  tr card gone: clock_held=%s sim %.2f" % [_puzzle.clock_held, _puzzle.sim.t])
+			await create_timer(6.0).timeout
+			_host._refresh()
+			print("  tr test over: testing=%s hearts=%d/%d can_reset=%s reset enabled=%s" % [_puzzle._testing, _puzzle.hearts, _puzzle.max_hearts, _puzzle.can_reset(),
+				acts != null and not acts.reset_button.disabled])
+			_host._on_reset()
+			await create_timer(0.5).timeout
+			print("  tr after reset: members=%d moves=%d" % [_puzzle.state.design.size(), _puzzle.moves])
 		"hh_hud":
 			# Hedgehogs: the ?, Undo and Reset as the player reaches them.
 			var bar = _host.top_bar
@@ -1797,6 +1878,11 @@ func _hh_need() -> int:
 ## rolled at twelve a second (`tests/_shot_drumbeat.gd`'s bot). `to=38` plays
 ## a whole song through the win.
 var _db_next := 0.0
+var _tr_logged := false
+var _tr_hooked := false
+var _tr_start := 0
+var _tr_pre := 0
+var _tr_post := 0
 var _db_looks := 0
 var _db_struck := {}
 var _db_roll := -10.0
@@ -1948,3 +2034,26 @@ func _moves_slider() -> Array:
 			_keep += int(counts[counts.size() - 1 - k])
 	_keep = 0
 	return [plan]
+
+## Trestle: the day's proof laid a member a move, each a drag from one end
+## to the other through the board's own input (the chip picked first when
+## the material changes), then Go -- so the play window holds the building,
+## the whole test (the sim stepped on the frame, the bridge drawn bent) and,
+## past `to=30`, the win. `fill` leaves only Go, so the idle window is the
+## whole bridge standing.
+func _moves_trestle() -> Array:
+	if _exp == "tr_hud":
+		return []
+	var out := []
+	for p: Dictionary in _puzzle.state.proof:
+		out.append({"do": _tr_lay.bind(p.a, p.b, int(p.m))})
+	out.append({"do": func() -> void: _host._on_check()})
+	_keep = 1
+	return out
+
+func _tr_lay(a: Vector2i, b: Vector2i, m: int) -> void:
+	if _puzzle._mat != m:
+		_click(_puzzle.chip_to_local(m))
+	_ut_button(_puzzle.point_to_local(a), true)
+	_ut_motion(_puzzle.point_to_local(b))
+	_ut_button(_puzzle.point_to_local(b), false)

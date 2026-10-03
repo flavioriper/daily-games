@@ -70,6 +70,7 @@ func _process(_delta: float) -> bool:
 		# harness's own progress file has never seen one.
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
+			_host._hold_clock(false)
 	elif slot == 12:
 		_puzzle = _host._puzzle
 		_fit_ok = true

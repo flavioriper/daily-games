@@ -69,6 +69,13 @@ func share_shapes(other) -> void:
 	_shapes = other._shapes
 	_inked = other._inked
 
+## Forgets shape `id`, so its maker draws it again the next time it is put:
+## a drawing that changes now and then (Trestle's sag line after a test, its
+## bunting once hung). For a shape put in its own colours, on the tail.
+func forget(id: int) -> void:
+	_shapes.erase(id)
+	_tail_offsets = {}
+
 ## Whether runs have been laid since the last reset.
 func laid() -> bool:
 	return not _runs.is_empty()

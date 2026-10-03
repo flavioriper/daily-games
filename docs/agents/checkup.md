@@ -284,7 +284,7 @@ plays a real crowded mid-game tray.
 | 26 | marigold | 2026-10-02 | every bud strip a seed brushed past was drawn in script whole on every frame it shivered (~3.7 ms a strip, ~22 ms all six, 50k vertices on Insane), and the blooms (breathing through a shot), the ribbons (3.5 ms a bloom on Sweethearts), the bits, the ripples, the frog and ducks, the full bloom's pots and the band's pips (a whole bloom a pip, ~8 ms by the end of a garden) were drawn live: buds, blooms (an opening step each, a fade step each), ribbons (a pair and style each), the garden's pieces and the pots are RunMesh looks made once at the reference scale, a layer a RunMesh sharing the shapes (strips at rest by code, moving buds apart); bits and ripples a mesh a kind of copies with tiled indices; looks primed one a frame after the entrance (native GL Insane play 9.1 -> 4.9 ms, p95 14.2 -> 7.1, max 28-57 -> 13-15; ANGLE 11.7 -> 9.5, p95 18.5 -> 13.3; draws 83 -> 88 at rest, peak 214 -> 208); Undo on every band (the last shot taken back; a heart on Hard and Insane, as Reset, grey at one heart); a 7-page band-aware tutorial played by a real, quietened board on hand-made rows, every shot an exact angle found by `tests/_mg_tut_search.gd` |
 | 27 | pixelgarden | 2026-10-03 | every bead on the board was drawn in script by `Bead.bead` on every frame it moved -- and the win wave moves all 256 at once (27-38 ms a frame for 2.3 s on Insane, the table and its 256 pegs, 27k vertices, also made again on every frame of the bare pegs' fade), a plate's iron moves 64 -- and the head (the box with every bead left in it, 14k vertices) was made again on every bead seated and every frame the tweezers or bar moved (5-10 ms): now a bead, a bare peg and a box bead are each a `Kit` of looks sharing one topology (`puzzles/pixel_garden_looks.gd`: Bead.bead's drawing with every part always drawn and every ellipse a fixed point count, its fuse, shine, fade and shade in steps, the shade split off so a lifted bead leaves it on the board), and every layer is copies -- looks transformed and appended natively, one copy's indices tiled n times once and sliced -- so nothing is offset in script; the bead kit is made at a reference cell and drawn scaled; the bare pegs fade by their mesh's alpha; the head is five layers (under the heaps, the chosen compartment lit, the heaps -- each compartment's whole heap laid out once and a slice of it shown --, the lips and labels, and the tweezers, hearts and bar), each made only when it changes; the pattern card is made about its own corner, so the win card's relayout moves it (relayout ~25 -> ~7 ms); the tiled indices grow a few copies a frame after the entrance (native GL Insane play 8.4 -> 4.6-6.1 ms, p95 11.4 -> 5-7, max 17-26 -> 6-10; full Insane through the win 9.0 -> 5.8, p95 28 -> 7.6, max 50-55 -> 9; ANGLE full Insane play 13.9 -> ~10, p95 34 -> 11-12, max 55 -> 16-18, idle p95 24 -> 11; draws 92 -> 96 peak, +6 at rest; pixel-identical at rest but for sub-pixel AA); a 6-7 page band-aware tutorial played by a real, quietened board (`Board`, laid out side by side for the short page) on a hand-made 6x6 tulip: a colour picked, a peg tapped and a run dragged, a bead on a wrong peg making its colour run out and lifted back, a plate ironed right and another with a bead astray hopping home (a heart on Hard/Insane), the picture held big, Windblown's turned square matched to its plate by its clip (Insane), Check's halo (Easy/Medium), Undo and Reset, the bulb (bands with hints); undo/hint/check/reset/? already there (no Check on Hard or Insane, no hints on Insane, by design) |
 | 28 | drumbeat | 2026-10-03 | the whole song was drawn in script on every frame: the gauge, ticks, star and hearts (0.7 ms every frame), the ring's three strokes, bar lines and marks, each drum's mark and ripple, every firework's trails (2.7-4.4 ms a frame through Go-Go's volley and the finale), and the shared reward layer drew every bit in script (`arcade/rewards.gd`, 1.3-4 ms through a win's rain): now everything that only moves, swells or fades is a `RunMesh` shape copied natively into three meshes (the road's, the top's, the one over the drums), tinted through a slot in 24 steps, a ribbon two round ends and a stretched body, a firework one look a step of its life copied with tiled indices into the sky's mesh, the drums' marks baked into their looks, the reward bits a look a kind copied with tiled indices (a mesh a kind in the air); the song's looks warmed two a frame from the open (native GL Insane through the win 6.08 -> 4.0 ms, p95 9.5 -> 5.5, max 16-25 -> 8-11; the densest song 6.7 -> 4.4, p95 10.6 -> 5.9, max 20 -> 11; script a frame 1.3-4.2 -> 0.3-0.8 ms; draws 94 -> 93 at rest, 115 -> 117 mean, peak 263 -> 266; ANGLE unchanged inside its swing, 10.0-10.9 -> 10.75); a 5-7 page band-aware tutorial played by a real, quietened board with no stage (strike, drums and twins, ribbons, golden bars and balloons, the gauge and hearts, Echo, the top bar); the song pauses under the ? and the settings; **no Undo** (a note is judged as it passes), Reset in the top bar on every level |
-| 29 | trestle | | |
+| 29 | trestle | 2026-10-03 | the bridge was drawn in script on every frame of a test (every member's strokes, seams and rope ticks, every bolt and pin: 4.0 ms a frame on Insane's 37 members), the front layer on every idle frame (the water's face, glints, the troll's ledge, the cups, the hearts' sign: 1.3 ms on an empty board, 2.0 with the bunting up), and the still scene and sky were built again on every relayout (5.6 ms): now every member is a `RunMesh` look a material and a length, put turned and stretched to where it is and painted by its load in 24 steps, the front and the budget bar are looks under transforms (the water a strip of vertices, the tea four), the hung bunting and the sag line are one look each (`RunMesh.forget`), the load tags and the reach dots are kept, and the still scene is drawn shifted while the win card only slides it up (bridge 4.0 -> 0.38 ms a frame of a test, front 1.3 -> 0.35 idle; native GL Insane idle 4.70 -> 3.68 ms, a full bridge standing 7.39 -> 4.00, build+test+win mean 7.43 -> 4.57, p95 10.0 -> 6.1, max 57 -> 12-14; ANGLE play 10.9 -> 8.4, p95 15.6 -> 9.9, max 71 -> 22-35; 92 draw calls as they were). The solve's 30-65 ms frame was the strip lettering a "★" (not in the game's fonts: 12.6 ms of fallback hunt) -- the stars are drawn, the words warmed. Shared: `arcade/rewards.gd` letters a sticker a pass at a time (the win's 366 draw calls -> 127, every board's stickers), `RunMesh.forget`, the host releases the clock whenever the tutorial card leaves the tree. The sim's substeps run on locals (16% less a step; every banked proof gives the same joints and peaks, bank re-proved 122 of 122). A 5-7 page band-aware tutorial played by a real, quietened board on hand-made three-step gaps with its own Go to press (build and Go, triangles and loads, chips and budget, rope, hearts, the Tea Party, Undo and Reset, the bulb) in three languages; a running test waits while the ? or the settings are up; Undo in the top bar and Reset beside Go were already on every level |
 
 Since Knight (2026-10-02): **a piece drawn through an affine map is a look
 under that map.** Knight's `Piece.knight` and `Piece.king` already drew every
@@ -404,3 +404,44 @@ alone, 588 units tall for 1000 wide), running a hand-made chart on the
 microsecond clock with a finger a drum striking through the board's own
 strokes; a still page (reduce motion) is the song held at a moment
 (`freeze`).
+
+Since Trestle (2026-10-03), the last row: **a character the game's fonts
+lack is a hitch the first time it is lettered** -- Trestle's solved strip
+drew its stars as "★" in a string, and the text server's hunt for a fallback
+font was 12.6 ms inside the solve's frame (the win card's subtitle carried
+them too); draw such a mark as a shape. **Lettering goes a pass at a time**:
+`Rewards._draw_stickers` drew each letter's shadow, two rims and face in
+turn, and each pass's glyphs live in their own atlas, so every letter was
+four draw calls (Trestle's win, five stickers up, 300); every letter's
+shadow, then every rim, then every face, is four a sticker. A board whose
+pieces are **segments between moving points** (a truss member, a rope, a
+cord) is a look made lying along x at its rest length, put with its x axis
+along the segment (stretched to the length it has now) and its y axis the
+side that should be lit, the load or fade painted through slots in steps
+(`_put_member`, `_load_inks`); a pennant's swinging tip is a shear of its
+look, a pole growing a scale of it. A look that changes now and then (the
+sag line after a test, the bunting once hung) is one shape made again on
+`RunMesh.forget(id)`, in a space of its own (grid points at the reference
+step) under one transform, so a relayout makes nothing. Things that come and
+go inside a mesh put together every frame are **put always** (a glint clear
+while it is out, a drop at no size), or everything after them lands on a new
+place and its indices are offset in script. **A `Vector3` keeps 32-bit
+floats**: a "built for this size" key held in one never equalled the 64-bit
+step it was compared with, and the still scene was built on every frame
+(5.6 ms) until the key became plain floats -- compare a cached build's key
+in the types it was made from, and time the frame after adding a cache. A
+tutorial board in a short wide slot wants **layout hooks, not a second
+drawing**: Trestle's `_view()` (the rows shown), `_strip_shown()`,
+`_scene_top()`, `_sign_top()`/`_sign_left()` and `_deal(level, band)` let
+the page deal a three-step gap at 100 px a step; a board whose Check is the
+host's button gets a drawn one on the page for the finger to press. And the
+sim that a bank was proved on can still be made cheaper **if the arithmetic
+and its order stay exactly the same**: hash every joint and peak of every
+banked proof before and after (`_probe_trestle_bank.gd` then re-proves it).
+The probe's frame split (`x=tr_win`: the nodes' process to
+`frame_pre_draw`, the draw to `frame_post_draw`, the rest) is what found
+both the "★" and the still scene; `Performance.TIME_PROCESS` only moves
+once a second and says nothing about one frame.
+
+**The checkup is complete**: all twenty-nine rows are dated. "Next game on
+the list" now means the first row again (Binairo), for a second pass.

@@ -269,49 +269,70 @@ func step() -> void:
 		else:
 			_w[j] = 1.0 / (jm[j] + float(lent.get(j, 0.0)))
 	var nm := ma.size()
-	for k in nm:
-		_fsum[k] = 0.0
 	var fade := exp(-DAMP * h)
 	var h2 := h * h
+	# The substeps run on locals -- the arrays, each member's compliance,
+	# the joints that move, gravity's kick -- since a member read is most of
+	# what a pass costs in script. The arithmetic and its order are exactly
+	# what they were (the bank is proved on them): checked by running every
+	# banked proof before and after and comparing every joint and peak.
+	var alpha := PackedFloat64Array()
+	alpha.resize(nm)
+	for k in nm:
+		alpha[k] = mrest[k] / MATS[mmat[k]].ea / h2
+	var free := PackedInt32Array()
+	for j in n:
+		if jfix[j] == 0:
+			free.append(j)
+	var gh := g * h
+	var p := jp
+	var v := jv
+	var prev := _prev
+	var w := _w
+	var ends_a := ma
+	var ends_b := mb
+	var rest := mrest
+	var mats := mmat
+	var alive := malive
+	var fsum := _fsum
+	fsum.fill(0.0)
 	for _s in SUB:
-		for j in n:
-			if jfix[j] == 1:
-				continue
-			jv[j] += g * h
-			_prev[j] = jp[j]
-			jp[j] += jv[j] * h
+		for j in free:
+			v[j] += gh
+			prev[j] = p[j]
+			p[j] += v[j] * h
 		for k in nm:
-			if malive[k] == 0:
+			if alive[k] == 0:
 				continue
-			var a := ma[k]
-			var b := mb[k]
-			var wa := _w[a]
-			var wb := _w[b]
+			var a := ends_a[k]
+			var b := ends_b[k]
+			var wa := w[a]
+			var wb := w[b]
 			var ws := wa + wb
 			if ws == 0.0:
 				continue
-			var d := jp[b] - jp[a]
+			var d := p[b] - p[a]
 			var l := d.length()
 			if l < 1e-6:
 				continue
-			var c := l - mrest[k]
-			var mat := mmat[k]
-			if mat == ROPE and c < 0.0:
+			var c := l - rest[k]
+			if c < 0.0 and mats[k] == ROPE:
 				continue
-			var alpha: float = mrest[k] / MATS[mat].ea / h2
-			var lam := -c / (ws + alpha)
+			var lam := -c / (ws + alpha[k])
 			var nrm := d / l
-			jp[a] -= nrm * (lam * wa)
-			jp[b] += nrm * (lam * wb)
-			_fsum[k] -= lam / h2
-		for j in n:
-			if jfix[j] == 1:
-				continue
-			var v := (jp[j] - _prev[j]) / h * fade
-			if jp[j].y < BED:
-				jp[j].y = BED
-				v = Vector2(v.x * 0.5, maxf(v.y, 0.0))
-			jv[j] = v
+			p[a] -= nrm * (lam * wa)
+			p[b] += nrm * (lam * wb)
+			fsum[k] -= lam / h2
+		for j in free:
+			var vel := (p[j] - prev[j]) / h * fade
+			if p[j].y < BED:
+				p[j].y = BED
+				vel = Vector2(vel.x * 0.5, maxf(vel.y, 0.0))
+			v[j] = vel
+	jp = p
+	jv = v
+	_prev = prev
+	_fsum = fsum
 	var keep := 1.0 - exp(-DT / SMOOTH)
 	for k in nm:
 		if malive[k] == 0 or mstub[k] == 1:

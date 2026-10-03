@@ -55,3 +55,30 @@ near bank holds up the score card (11 for a 3-star tea bridge); hats, first-
 try sunglasses, honk, ducks, nap cat on the deck, seal. The bridge settles
 after a test, tags pop, the budget rolls, the cart rolls in. WORKSHOP sound
 set, 33 cues, unheard. Peak 212 draw calls.
+
+**Checked up on 2026-10-03** (`feat/checkup-trestle`, the row in
+`docs/agents/checkup.md`). How it is drawn now: the still scene (sky, hills,
+banks, river) is built for a width and a grid step and drawn shifted while a
+relayout only slides it up; **the bridge, the front layer and the budget bar
+are `RunMesh` meshes put together from looks** (`Look`, `LOOK_MEMBER`,
+`_make_look`) made once at the grid step the board first laid out at (`_ru`)
+and drawn scaled by `_k()`. A member is `_put_member(rm, p, q, material,
+rest length, inks)`; its inks come from `_load_inks` (24 load steps) or
+`Parts.member_inks` (`ui/faces/trestle_parts.gd` now splits `member` into
+`member_inks` and `member_in`; the menu card still calls `member`). 92 draw
+calls building and testing, 127 at the win's peak. The words are warmed at
+open (`_warm_words`) and no star is ever lettered as text. **A running test
+waits while the host holds the clock** (the ? or the settings up).
+`tutorial_pages()` hands 5-7 pages of `ui/hud/trestle_tutorial_diagram.gd`:
+its `Gap` is this board dealt a hand-made three-step gap through `_deal`,
+with the layout hooks `_view`, `_strip_shown`, `_scene_top`, `_sign_top`,
+`_sign_left` and the doors `_sticker`, `_tell`, `_warm_words` shut. The
+lessons' bridges were tried in the sim at cart 1.6: the road alone snaps,
+two struts from the low pins hold at 0.73, two ropes from posts at (-1, 1)
+and (4, 1) at 0.80, and with tea the two struts spill at x 2.46 where the
+two knight's-step braces carry it at 0.77 of the rim; change the sim and
+try them again. **The sim's step was tightened without changing a bit of
+its arithmetic** (the substeps on locals, the compliance a member a step):
+any further change there must give the same hash over every banked proof,
+or the bank and the tea bank are re-mined as before.
+
