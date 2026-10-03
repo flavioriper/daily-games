@@ -2503,6 +2503,81 @@ func _moves_sudoku() -> Array:
 		out.append({"do": func() -> void: _puzzle.pick(d)})
 	return out
 
+## Sudoku's buzzes: a given and an empty cell selected, a chip on the given,
+## a right number, the same chip again (taken out on Easy and Medium, kept on
+## Hard and Insane), the remove chip, Undo, a wrong number (plain on Easy and
+## Medium, a heart on Hard and Insane) and that number asked for again, a
+## hint, Check where there is one and Reset. The plain run then plays the
+## grid (a line finished, the streak's confetti, the win, the seal when it
+## is earned).
+func _buzz_sudoku() -> void:
+	var st = _puzzle.state
+	var n: int = _puzzle.Gen.N
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(i: int) -> Vector2: return _puzzle.cell_to_local(i / n, i % n)
+	var given := -1
+	var bare: Array = []
+	for i in st.sol.size():
+		if st.given[i] > 0:
+			if given < 0:
+				given = i
+		elif bare.size() < 2:
+			bare.append(i)
+	_click(at.call(given))
+	await pause.call()
+	_buzzed("a given selected")
+	_puzzle.pick(0)
+	await pause.call()
+	_buzzed("a chip on the given")
+	var a: int = bare[0]
+	var d: int = int(st.sol[a]) - 1
+	_click(at.call(a))
+	await pause.call()
+	_buzzed("an empty cell selected")
+	_puzzle.pick(d)
+	await create_timer(1.6).timeout
+	_buzzed("a right number")
+	_puzzle.pick(d)
+	await pause.call()
+	_buzzed("the same chip again")
+	if not st.judged():
+		_puzzle.pick(d)
+		await pause.call()
+		_puzzle.pick(_puzzle.REMOVE_CHIP)
+		await pause.call()
+		_buzzed("written, then the remove chip")
+	_puzzle.pick(_puzzle.REMOVE_CHIP)
+	await pause.call()
+	_buzzed("the remove chip on nothing to take")
+	var b: int = bare[1]
+	var wrong: int = int(st.sol[b]) % n
+	_click(at.call(b))
+	await pause.call()
+	_puzzle.pick(wrong)
+	await create_timer(0.3).timeout
+	_buzzed("a wrong number: written")
+	await create_timer(3.0).timeout
+	_buzzed("and what it costs")
+	if st.judged():
+		_puzzle.pick(wrong)
+		await pause.call()
+		_buzzed("the crossed-out number again")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	if _puzzle.capabilities().has("check"):
+		_puzzle.check()
+		await pause.call()
+		_buzzed("check")
+	_puzzle.reset_board()
+	await create_timer(1.6).timeout
+	_buzzed("reset")
+
 ## Bridges: every plank of the answer, a drag from one islet to the other
 ## (a press on the islet, a motion over the far one, the release), run by run
 ## in the answer's order.
@@ -2530,6 +2605,71 @@ func _br_drag(key: String) -> void:
 	up.button_index = MOUSE_BUTTON_LEFT
 	up.position = b
 	_puzzle._gui_input(up)
+
+## Bridges' buzzes: an islet tapped, a drag at no islet, a plank dragged
+## across and its landing, a tap on its water (a second plank on Easy and
+## Medium, a wrong one and its heart on Hard and Insane), a tap more (the run
+## lifted, or the buoyed lane refused), Undo, a hint, Check where there is
+## one and Reset. The plain run then plays the sea (islets met, the streak's
+## confetti, the win as the last plank lands, the seal when it is earned).
+func _buzz_bridges() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var key := ""
+	for k in st.answer:
+		if key == "" or int(st.answer[k]) == 1:
+			key = String(k)
+			if int(st.answer[k]) == 1:
+				break
+	var lane: Dictionary = st.lanes[key]
+	_click(_puzzle._at(lane.a))
+	await pause.call()
+	_buzzed("an islet tapped")
+	for cell: Vector2i in st.islets:
+		var done := false
+		for dir: Vector2i in [Vector2i.LEFT, Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN]:
+			if st.facing(cell, dir) == st.NOWHERE:
+				var at: Vector2 = _puzzle._at(cell)
+				_ut_button(at, true)
+				await process_frame
+				_ut_motion(at + Vector2(dir) * _puzzle._cell())
+				await process_frame
+				_ut_button(at + Vector2(dir) * _puzzle._cell(), false)
+				done = true
+				break
+		if done:
+			break
+	await pause.call()
+	_buzzed("a drag at no islet")
+	_br_drag(key)
+	await create_timer(0.12).timeout
+	_buzzed("a plank dragged across")
+	await create_timer(1.5).timeout
+	_buzzed("as it lands")
+	var water: Vector2 = _puzzle._lane_middle(key)
+	_click(water)
+	await create_timer(0.12).timeout
+	_buzzed("a tap on its water")
+	await create_timer(3.0).timeout
+	_buzzed("as that lands")
+	_click(water)
+	await create_timer(1.5).timeout
+	_buzzed("and a tap more")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	if _puzzle.capabilities().has("check"):
+		_puzzle.check()
+		await pause.call()
+		_buzzed("check")
+	_puzzle.reset_board()
+	await create_timer(2.0).timeout
+	_buzzed("reset")
 
 ## Quilt: every answer patch carried from its bay to its spot by hand -- a
 ## press on its first cell, motions across in steps (the ghost, the snag and

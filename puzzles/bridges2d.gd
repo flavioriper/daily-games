@@ -57,6 +57,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 ## The out-of-hearts card's Back to camp.
@@ -648,6 +649,9 @@ var _flip: Dictionary = {}       # islet -> at: its coin flips to met then
 var _flag: Dictionary = {}       # islet -> {"at", "open"}: its pennant rising or folding
 var _pulse: Dictionary = {}      # islet -> at: a split group pulsing then
 var _groups := 1
+## True while the board settles a move the hand made: only then does an
+## islet met, one pushed over or the split named knock (docs/agents/haptics.md).
+var _by_hand := false
 var _dance_at := INF
 var _boat_at := INF
 var _glow_at := INF
@@ -724,12 +728,39 @@ func _tips() -> Array:
 		return ["BR_TIP_HEARTS"] + TIPS
 	return TIPS
 
+## What the phone does under each cue (docs/agents/haptics.md). A plank laid
+## taps (right or not: on Hard and Insane the heart says so as it lands) and
+## a run lifted ticks. `met`, `over` and `split` are not mapped: a hint, an
+## Undo and Reset settle the board through them too, so an islet come right
+## bumps as the plank lands, and one pushed over its number or the islets
+## named in groups warns, only under the hand's own move (`_by_hand`). The
+## streak's confetti is the other milestone. `solved` is not mapped either:
+## it fires as the finger lifts, and the win knocks when the last plank lands
+## and the wave sets off (`_on_solved`). An islet read, the lane lit under
+## the finger, a refused lane (`locked`, `ruled`), two groups joined, the
+## plank sinking and its buoy, the streak's notes, the gags and the party say
+## nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"remove": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2888,8 +2919,10 @@ func _after_move(snap: Dictionary, src := State.NOWHERE, key := "") -> void:
 	_coach_lane = ""
 	_hold_until = 0.0
 	_resume_tips()
+	_by_hand = true
 	_settle(snap, Callable(), src)
 	_network(key)
+	_by_hand = false
 	note_move()
 
 ## What the move did to the network: two groups joined by it sparkle along
@@ -2922,6 +2955,7 @@ func _near_miss(groups: Array, delay: float) -> void:
 		if (groups[k] as Array).size() > (groups[biggest] as Array).size():
 			biggest = k
 	var t := _now() + delay
+	var hand := _by_hand
 	for k in groups.size():
 		if k == biggest:
 			continue
@@ -2933,6 +2967,8 @@ func _near_miss(groups: Array, delay: float) -> void:
 			return
 		_speak(tr("BR_SPLIT") % groups.size(), Face.Expr.WORRIED)
 		fx.cue("split")
+		if hand:
+			fx.buzz(Haptics.WARN)
 		for cell in _pulse:
 			if not Motion.reduce:
 				for beat in SPLIT_PULSES:
@@ -3014,13 +3050,15 @@ func _settle(snap: Dictionary, when := Callable(), src := State.NOWHERE) -> void
 			_met_at[cell] = t + landed
 			_flip[cell] = t + landed
 			_glint[cell] = t + landed + GLINT_LAG
-			_later(t + landed, _met.bind(cell))
+			_later(t + landed, _met.bind(cell, _by_hand))
 		else:
 			if was_d == 0 and _flag.has(cell) and bool(_flag[cell].open):
 				_flag[cell] = {"at": t, "open": false}
 			if now_d > 0 and was_d <= 0:
 				_shiver_at[cell] = t
 				fx.cue("over")
+				if _by_hand:
+					fx.buzz(Haptics.WARN)
 	_busy_for(maxf(longest + maxf(LAY_TIME + SETTLE_TIME, maxf(Motion.BUMP_TIME,
 		maxf(PULL_TIME, Motion.SHIVER_TIME))), landed + GLINT_LAG + GLINT_TIME))
 	_refresh()
@@ -3039,12 +3077,14 @@ func _splash(key: String, far: Vector2i) -> void:
 
 ## An islet that has just come right: its ring and its note, its pennant
 ## up, and three times in five a gag.
-func _met(cell: Vector2i) -> void:
+func _met(cell: Vector2i, by_hand := false) -> void:
 	# The solve has already raised every pennant and plays its own wave.
 	if is_done() or not state.is_islet(cell) or state.count(cell) != state.need_of(cell):
 		return
 	fx.ring(_at(cell), _islet_r() * RING_R, Pal.GOOD)
 	fx.cue("met")
+	if by_hand:
+		fx.buzz(Haptics.BUMP)
 	_flag[cell] = {"at": _now(), "open": true}
 	_busy_for(FLAG_TIME)
 	_gag(cell)
@@ -3303,6 +3343,7 @@ func _on_solved() -> void:
 			* WIN_GLINT_STEP
 	_busy_for(light - _now() + float(2 * state.n) * WIN_GLINT_STEP + GLINT_TIME)
 	fx.cue("solved")
+	_after(_land_lag(), fx.buzz.bind(Haptics.WIN))
 	_tip_timer.stop()
 	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
 	_combo_out_at = _now() if _combo_n >= COMBO_FROM else -INF
@@ -3790,6 +3831,8 @@ func _party(after_wave: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var pool := _pool()
