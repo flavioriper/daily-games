@@ -125,19 +125,25 @@ func reset() -> Array[Vector2i]:
 
 ## The cell a hint would fill, as (c, r): a wrong filled free cell first,
 ## since a hint that corrects a mistake teaches more than one that fills a
-## blank; else the empty cell whose row and column together hold the most
-## filled cells, the one the player is closest to deducing. Ties go to the
-## first in row-major order. (-1, -1) when nothing qualifies.
+## blank; else an empty cell the player can reason out from the board as it
+## stands (Gen.deducible), so the hint shows a step and not just an answer.
+## Among those, and among every empty cell if reasoning finds none (only on
+## a board that was not built by Gen), the one whose row and column together
+## hold the most filled cells. Ties go to the first in row-major order.
+## (-1, -1) when nothing qualifies.
 func hint_cell() -> Vector2i:
 	for r in n:
 		for c in n:
 			if not given[r][c] and grid[r][c] != -1 and grid[r][c] != solution[r][c]:
 				return Vector2i(c, r)
+	var open := {}
+	for step in Gen.deducible(grid, true_signs()):
+		open[Vector2i(step.y, step.x)] = true
 	var best := Vector2i(-1, -1)
 	var best_score := -1
 	for r in n:
 		for c in n:
-			if grid[r][c] != -1:
+			if grid[r][c] != -1 or (not open.is_empty() and not open.has(Vector2i(c, r))):
 				continue
 			var score := 0
 			for j in n:
@@ -235,26 +241,18 @@ func sign_broken(i: int) -> bool:
 	return Gen.sign_broken(grid, signs[i])
 
 ## Which rule the board breaks, for the tip card: 0 none, 1 three alike side
-## by side, 2 more than half a line of one symbol, 3 two identical complete
-## lines, 4 a sign between two cells that is not kept. The lowest id among
-## every broken line; a line breaking both 1 and 2
-## reads as 1, since the run of three is what the eye finds first. Gen's
-## bad_lines only says which lines are wrong, so the rule is worked out here.
+## by side, 2 more than half a line of one symbol, 4 a sign between two cells
+## that is not kept (3 was two identical lines, a rule dropped on
+## 2026-10-03). The lowest id among every broken line; a line breaking both 1
+## and 2 reads as 1, since the run of three is what the eye finds first.
+## Gen's bad_lines only says which lines are wrong, so the rule is worked
+## out here.
 func broken_rule() -> int:
 	var half: int = n / 2
 	var worst := 0
 	for i in n:
 		worst = _lowest(worst, _line_rule(grid[i], half))
 		worst = _lowest(worst, _line_rule(_column(i), half))
-	if worst == 1:
-		return 1
-	for a in n:
-		for b in range(a + 1, n):
-			if not (grid[a] as Array).has(-1) and grid[a] == grid[b]:
-				worst = _lowest(worst, 3)
-			var ca := _column(a)
-			if not ca.has(-1) and ca == _column(b):
-				worst = _lowest(worst, 3)
 	if worst == 0 and not bad.cells.is_empty():
 		return 4
 	return worst

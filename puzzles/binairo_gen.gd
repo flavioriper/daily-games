@@ -3,28 +3,33 @@ extends RefCounted
 ## Binairo / Takuzu generator and solver.
 ##
 ## Grid representation: Array of rows, each an Array of int, where -1 is empty.
-## Rules enforced: no three of the same in a line, each line balanced 50/50,
-## and no two rows (or two columns) identical.
+## Rules enforced: no three of the same in a line, and each line balanced
+## 50/50. Two lines may be alike: that rule was dropped on 2026-10-03, with
+## the search it needed to be of any use to a player.
 ##
 ## Generation is the build-then-strip shape: make a full valid solution, then
-## remove clues one at a time, keeping a removal only while the solver still
-## reports exactly one solution. The result is minimal by construction --
-## removing clues only ever loosens constraints, so a clue proven load-bearing
-## at any point stays load-bearing.
+## remove clues one at a time, keeping a removal only while `deduce` still
+## finishes the board. `deduce` never searches and never guesses: it only
+## takes steps a player takes (see "deduction" below), so a board that ships
+## is solved by reasoning alone, and one answer is all it can have. The
+## result is minimal by construction -- a clue fewer only ever lets `deduce`
+## see less, so a clue proven load-bearing at any point stays load-bearing.
 ##
 ## Signs (2026-09-23): a board may also carry signs between side-by-side
 ## cells, Vector4i(r, c, dir, same) -- dir 0 joins (r, c) to the cell on its
 ## right and 1 to the cell below; same 1 is "=" (the two match) and 0 is "x"
 ## (they differ). They are read off the solution before the clues are
-## stripped, so every sign is load-bearing for uniqueness in the same way a
-## clue is, and the strip then leaves far fewer clues than a board without.
+## stripped, so the strip leans on them as it does on a clue, and leaves far
+## fewer clues than a board without.
 ##
 ## Liars (2026-09-29): Insane's board shows one sign that lies -- its kind is
 ## the opposite of the truth, and nothing marks which. `generate_liar` builds
-## those (see its comment), and `insane_board` reads the mined ones out of
-## the bank (content/insane/binairo.json, tools/insane/binairo_ladder.gd).
-
-const InsaneBank = preload("res://core/insane_bank.gd")
+## those (see its comment). Since 2026-10-03 the liar is caught by deduction
+## too, which made the board cheap enough to build on the phone: the mined
+## bank (content/insane/binairo.json) and its ladder went.
+##
+## `solve_count` is the old search. Nothing in the game calls it now; the
+## suite does, to check from outside that a deduced board has one answer.
 
 static func solve_count(grid: Array, limit: int, signs: Array = []) -> int:
 	var n: int = grid.size()
@@ -40,11 +45,13 @@ static func solve_count(grid: Array, limit: int, signs: Array = []) -> int:
 	return _search(g, n, limit, signs, by_cell)
 
 ## `sign_count` signs are laid on distinct edges picked at random, each
-## reading the solution, before any clue is taken away.
-static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sign_count: int = 0) -> Dictionary:
+## reading the solution, before any clue is taken away. `tier` is how far the
+## player is asked to reason (BASIC or LINES, see `deduce`).
+static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sign_count: int = 0, tier: int = LINES) -> Dictionary:
 	assert(n % 2 == 0, "Binairo needs an even board size")
 	var sol: Array = _random_solution(rng, n)
 	var signs: Array = _pick_signs(rng, sol, n, sign_count)
+	var lines := valid_lines(n)
 	var puzzle: Array = []
 	for r in n:
 		puzzle.append((sol[r] as Array).duplicate())
@@ -63,7 +70,7 @@ static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sig
 		var c: int = idx % n
 		var kept = puzzle[r][c]
 		puzzle[r][c] = -1
-		if solve_count(puzzle, 2, signs) == 1:
+		if deduce(puzzle, signs, tier, lines).solved:
 			clues -= 1
 		else:
 			puzzle[r][c] = kept
@@ -74,14 +81,9 @@ static func generate(rng: RandomNumberGenerator, n: int, min_clues: int = 0, sig
 ## the strip early, as in generate). Same dict as generate(), with `signs` as
 ## shown (the liar's kind is the false one) and "liar" its index.
 ##
-## The board is sound when believing every sign leaves no solution, and
-## flipping one sign at a time leaves exactly one solution over all the
-## flips together -- so the player can find the liar by reasoning, and the
-## grid is unique once it is found (`liar_valid`). It starts sound on the
-## full grid (only the liar's own flip keeps the solution) and every strip
-## step keeps it so. Removing a clue only ever adds solutions, so the strip
-## is minimal by construction exactly as generate()'s is. Too slow for the
-## phone at 10x10: it is mined off the phone (tools/mine_insane.gd).
+## The board is sound when the liar can be caught and the rest then solved,
+## both by deduction (`liar_caught`). It starts sound on the full grid and
+## every strip step keeps it so; minimal by construction as generate()'s is.
 static func generate_liar(rng: RandomNumberGenerator, n: int = 10, sign_count: int = 12, min_clues: int = 0) -> Dictionary:
 	assert(n % 2 == 0, "Binairo needs an even board size")
 	assert(sign_count > 0, "a liar needs a sign to lie")
@@ -89,6 +91,7 @@ static func generate_liar(rng: RandomNumberGenerator, n: int = 10, sign_count: i
 	var signs: Array = _pick_signs(rng, sol, n, sign_count)
 	var liar: int = rng.randi_range(0, signs.size() - 1)
 	signs[liar] = flip_sign(signs[liar])
+	var lines := valid_lines(n)
 	var puzzle: Array = []
 	for r in n:
 		puzzle.append((sol[r] as Array).duplicate())
@@ -107,46 +110,41 @@ static func generate_liar(rng: RandomNumberGenerator, n: int = 10, sign_count: i
 		var c: int = idx % n
 		var kept = puzzle[r][c]
 		puzzle[r][c] = -1
-		if liar_valid(puzzle, signs, liar):
+		if liar_caught(puzzle, signs, liar, lines):
 			clues -= 1
 		else:
 			puzzle[r][c] = kept
 	return {"solution": sol, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": liar}
 
 ## Whether `grid` with `signs` (as shown) is a sound liar board whose liar is
-## sign `liar`: every sign believed gives 0 solutions, and the solutions over
-## each single flip sum to exactly 1, all of them from flipping `liar`.
-## Checked cheapest-refusal first: the liar's own flip must be unique, then
-## every other reading must be dead.
-static func liar_valid(grid: Array, signs: Array, liar: int) -> bool:
+## sign `liar`, by deduction alone. The rules never lie, so the player works
+## by the rules and trusts no sign until one is caught out: the rules alone
+## must reach both ends of the liar (which then reads broken -- and only it
+## can, every other sign being true), and from there the board must finish
+## with every sign read the right way round.
+static func liar_caught(grid: Array, signs: Array, liar: int, lines := PackedInt32Array()) -> bool:
 	if liar < 0 or liar >= signs.size():
 		return false
-	if solve_count(grid, 2, with_flipped(signs, liar)) != 1:
+	var by_rules: Array = deduce(grid, [], LINES, lines).grid
+	if not sign_broken(by_rules, signs[liar]):
 		return false
-	if solve_count(grid, 1, signs) != 0:
-		return false
-	for i in signs.size():
-		if i != liar and solve_count(grid, 1, with_flipped(signs, i)) != 0:
-			return false
-	return true
+	return deduce(by_rules, with_flipped(signs, liar), LINES, lines).solved
 
-## The liar a board's signs imply, found without being told: -1 unless every
-## sign believed gives no solution and the single flips' solutions sum to
-## exactly 1, else the index of the flip that gave it. Stops as soon as the
-## running sum passes 1. For proving a mined board, not for play.
+## The liar a board's signs imply, found without being told, the way the
+## player finds it: -1 unless the rules alone break exactly one sign and the
+## board then finishes by deduction, else that sign's index. For proving a
+## board, not for play.
 static func find_liar(grid: Array, signs: Array) -> int:
-	if solve_count(grid, 1, signs) != 0:
-		return -1
-	var total := 0
+	var by_rules: Array = deduce(grid, [], LINES).grid
 	var found := -1
 	for i in signs.size():
-		var k := solve_count(grid, 2 - total, with_flipped(signs, i))
-		if k > 0:
-			total += k
-			found = i
-			if total > 1:
+		if sign_broken(by_rules, signs[i]):
+			if found != -1:
 				return -1
-	return found if total == 1 else -1
+			found = i
+	if found == -1 or not deduce(by_rules, with_flipped(signs, found), LINES).solved:
+		return -1
+	return found
 
 ## Sign `s` telling the other story: "=" becomes "x" and back.
 static func flip_sign(s: Vector4i) -> Vector4i:
@@ -157,47 +155,6 @@ static func with_flipped(signs: Array, i: int) -> Array:
 	var out: Array = signs.duplicate()
 	out[i] = flip_sign(out[i])
 	return out
-
-## Today's banked Insane board (core/insane_bank.gd), in generate()'s dict
-## shape with "liar"; {} when the bank is empty or unreadable, and the board
-## falls back to its live row. `step` is PuzzleBase.bank_step (how many times
-## New was pressed since the card opened): the pick is by day and step, like
-## Rings', so `rng` is not drawn from -- it is taken so a board can swap this
-## in where it already holds one for generate().
-static func insane_board(_rng: RandomNumberGenerator = null, step: int = 0) -> Dictionary:
-	var b: Dictionary = InsaneBank.pick("binairo", step)
-	if not (b.get("puzzle") is Array and b.get("solution") is Array and b.get("signs") is Array):
-		return {}
-	return from_bank(b)
-
-## A bank entry (JSON: numbers arrive as floats, signs as [r, c, dir, same])
-## as generate()'s dict.
-static func from_bank(b: Dictionary) -> Dictionary:
-	var puzzle: Array = []
-	var solution: Array = []
-	var clues := 0
-	for r in (b["puzzle"] as Array).size():
-		var row: Array = []
-		var sol_row: Array = []
-		for c in (b["puzzle"][r] as Array).size():
-			var v := int(b["puzzle"][r][c])
-			row.append(v)
-			sol_row.append(int(b["solution"][r][c]))
-			if v != -1:
-				clues += 1
-		puzzle.append(row)
-		solution.append(sol_row)
-	var signs: Array = []
-	for s in b["signs"]:
-		signs.append(Vector4i(int(s[0]), int(s[1]), int(s[2]), int(s[3])))
-	return {"solution": solution, "puzzle": puzzle, "clues": clues, "signs": signs, "liar": int(b.get("liar", -1))}
-
-## A generate_liar() dict in the bank's JSON encoding: signs as arrays.
-static func to_bank(out: Dictionary) -> Dictionary:
-	var signs: Array = []
-	for s: Vector4i in out["signs"]:
-		signs.append([s.x, s.y, s.z, s.w])
-	return {"puzzle": out["puzzle"], "solution": out["solution"], "signs": signs, "liar": out["liar"], "clues": out["clues"]}
 
 ## `count` distinct edges, each signed from the solution. Every edge of the
 ## board is a candidate, shuffled with the board's own rng so a day's signs
@@ -270,19 +227,196 @@ static func is_valid_complete(g: Array) -> bool:
 		for r in n - 2:
 			if g[r][c] == g[r + 1][c] and g[r + 1][c] == g[r + 2][c]:
 				return false
-	# Distinct lines.
-	for a in n:
-		for b in range(a + 1, n):
-			if g[a] == g[b]:
-				return false
-			var ca := []
-			var cb := []
-			for i in n:
-				ca.append(g[i][a])
-				cb.append(g[i][b])
-			if ca == cb:
-				return false
 	return true
+
+# --- deduction ---
+
+## How far `deduce` reasons. BASIC is the four steps the tutorial teaches:
+## two alike side by side close off both ends, a gap between two alike takes
+## the other, a line with half of one symbol fills with the other, and a sign
+## with one end known gives its other end. LINES adds reading one whole line
+## at a time: whatever every way of finishing that line (never three alike,
+## half and half, its own signs kept) agrees on. Nothing looks at two lines
+## at once and nothing tries a value to see what happens further off.
+const BASIC := 1
+const LINES := 2
+
+## Every way to fill a line of `n`, as bit masks (bit i set: cell i a moon).
+static func valid_lines(n: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var half: int = n / 2
+	for m in 1 << n:
+		var ones := 0
+		var ok := true
+		for i in n:
+			var b: int = (m >> i) & 1
+			ones += b
+			if i >= 2 and b == ((m >> (i - 1)) & 1) and b == ((m >> (i - 2)) & 1):
+				ok = false
+				break
+		if ok and ones == half:
+			out.append(m)
+	return out
+
+## Fills `grid` as far as reasoning at `tier` goes: {"grid": the grid it
+## reached, "solved": whether that is the finished board}. Every step is
+## sound, so a solved grid is the only answer the clues and signs allow.
+## `lines` is valid_lines(n), passed by a caller that asks many times.
+static func deduce(grid: Array, signs: Array, tier: int = LINES, lines := PackedInt32Array()) -> Dictionary:
+	var n: int = grid.size()
+	var g := _flat(grid)
+	var in_line: Array = []
+	if tier >= LINES:
+		if lines.is_empty():
+			lines = valid_lines(n)
+		in_line = _signs_in_lines(signs, n)
+	while true:
+		var k := _sweep_basic(g, g, n, signs)
+		if k == 0 and tier >= LINES:
+			k = _sweep_lines(g, g, n, lines, in_line)
+		if k == 0:
+			break
+	var out: Array = []
+	for r in n:
+		var row: Array = []
+		for c in n:
+			row.append(g[r * n + c])
+		out.append(row)
+	return {"grid": out, "solved": not g.has(-1) and is_valid_complete(out) and signs_ok(out, signs)}
+
+## The empty cells one step of reasoning fills on `grid` as it stands, as
+## Vector3i(r, c, value): the BASIC steps when any applies, else one line
+## read whole. Each reads the grid given and nothing another step found, so
+## every cell listed can be explained from what is on the board. For a hint.
+static func deducible(grid: Array, signs: Array) -> Array[Vector3i]:
+	var n: int = grid.size()
+	var src := _flat(grid)
+	var dst := src.duplicate()
+	if _sweep_basic(src, dst, n, signs) == 0:
+		_sweep_lines(src, dst, n, valid_lines(n), _signs_in_lines(signs, n))
+	var out: Array[Vector3i] = []
+	for i in n * n:
+		if src[i] == -1 and dst[i] != -1:
+			out.append(Vector3i(i / n, i % n, dst[i]))
+	return out
+
+static func _flat(grid: Array) -> PackedInt32Array:
+	var n: int = grid.size()
+	var g := PackedInt32Array()
+	g.resize(n * n)
+	for r in n:
+		for c in n:
+			g[r * n + c] = grid[r][c]
+	return g
+
+## Each line's own signs -- the ones between two of its cells -- as a flat
+## run of (i, same) pairs joining cell i of the line to cell i + 1. Rows
+## first, then columns, as the sweeps number them.
+static func _signs_in_lines(signs: Array, n: int) -> Array:
+	var out: Array = []
+	for i in 2 * n:
+		out.append(PackedInt32Array())
+	for s: Vector4i in signs:
+		var line: PackedInt32Array = out[s.x] if s.z == 0 else out[n + s.y]
+		line.append(s.y if s.z == 0 else s.x)
+		line.append(s.w)
+		out[s.x if s.z == 0 else n + s.y] = line
+	return out
+
+## One pass of the BASIC steps over every sign and line, reading `src` and
+## writing `dst` (the same array when the caller wants each step to see the
+## last). Returns how many cells it filled.
+static func _sweep_basic(src: PackedInt32Array, dst: PackedInt32Array, n: int, signs: Array) -> int:
+	var changed := 0
+	var half: int = n / 2
+	for s: Vector4i in signs:
+		var a: int = s.x * n + s.y
+		var b: int = a + (1 if s.z == 0 else n)
+		var va := src[a]
+		var vb := src[b]
+		if va == -1 and vb != -1 and dst[a] == -1:
+			dst[a] = vb if s.w == 1 else 1 - vb
+			changed += 1
+		elif vb == -1 and va != -1 and dst[b] == -1:
+			dst[b] = va if s.w == 1 else 1 - va
+			changed += 1
+	for line in 2 * n:
+		var start: int = line * n if line < n else line - n
+		var step: int = 1 if line < n else n
+		var c0 := 0
+		var c1 := 0
+		for i in n:
+			var v := src[start + i * step]
+			if v == 0:
+				c0 += 1
+			elif v == 1:
+				c1 += 1
+		if c0 + c1 == n:
+			continue
+		var fill := 1 if c0 == half else (0 if c1 == half else -1)
+		for i in n:
+			var at: int = start + i * step
+			var v := src[at]
+			if v == -1:
+				var to := fill
+				if to == -1 and i >= 1 and i + 1 < n and src[at - step] != -1 and src[at - step] == src[at + step]:
+					to = 1 - src[at - step]
+				if to != -1 and dst[at] == -1:
+					dst[at] = to
+					changed += 1
+			elif i + 1 < n and src[at + step] == v:
+				if i >= 1 and src[at - step] == -1 and dst[at - step] == -1:
+					dst[at - step] = 1 - v
+					changed += 1
+				if i + 2 < n and src[at + 2 * step] == -1 and dst[at + 2 * step] == -1:
+					dst[at + 2 * step] = 1 - v
+					changed += 1
+	return changed
+
+## One pass of the LINES step: each unfinished line takes whatever all of
+## its possible fillings agree on. Same `src`/`dst` and return as above.
+static func _sweep_lines(src: PackedInt32Array, dst: PackedInt32Array, n: int, lines: PackedInt32Array, in_line: Array) -> int:
+	var changed := 0
+	var all: int = (1 << n) - 1
+	for line in 2 * n:
+		var start: int = line * n if line < n else line - n
+		var step: int = 1 if line < n else n
+		var known := 0
+		var value := 0
+		for i in n:
+			var v := src[start + i * step]
+			if v != -1:
+				known |= 1 << i
+				value |= v << i
+		if known == all:
+			continue
+		var pairs: PackedInt32Array = in_line[line]
+		var ones := all
+		var zeros := all
+		for m in lines:
+			if (m & known) != value:
+				continue
+			var kept := true
+			for p in range(0, pairs.size(), 2):
+				# Differing ends under "=", or matching ends under "x".
+				if (((m >> pairs[p]) ^ (m >> (pairs[p] + 1))) & 1) == pairs[p + 1]:
+					kept = false
+					break
+			if kept:
+				ones &= m
+				zeros &= ~m
+		for i in n:
+			var bit: int = 1 << i
+			var at: int = start + i * step
+			if (known & bit) != 0 or dst[at] != -1 or (ones & zeros & bit) != 0:
+				continue
+			if (ones & bit) != 0:
+				dst[at] = 1
+				changed += 1
+			elif (zeros & bit) != 0:
+				dst[at] = 0
+				changed += 1
+	return changed
 
 # --- internals ---
 
@@ -351,27 +485,6 @@ static func _partial_ok(g: Array, r: int, c: int, n: int, by_cell: Array = []) -
 		elif g[j][c] == 1: c1 += 1
 	if r0 > half or r1 > half or c0 > half or c1 > half:
 		return false
-	# A completed line must not duplicate another completed line.
-	if r0 + r1 == n:
-		for i in n:
-			if i != r and not (g[i] as Array).has(-1) and g[i] == g[r]:
-				return false
-	if c0 + c1 == n:
-		var col := []
-		for i in n:
-			col.append(g[i][c])
-		for j in n:
-			if j == c:
-				continue
-			var other := []
-			var full := true
-			for i in n:
-				if g[i][j] == -1:
-					full = false
-					break
-				other.append(g[i][j])
-			if full and other == col:
-				return false
 	return true
 
 static func _random_solution(rng: RandomNumberGenerator, n: int) -> Array:
@@ -405,8 +518,8 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 		arr[j] = tmp
 
 ## Rule feedback for a partial grid: which rows and columns already break a
-## rule (three alike in a row, more than half of one symbol, or two identical
-## complete lines). Boards tint these so players learn the rules by touch.
+## rule (three alike in a row, or more than half of one symbol). Boards tint
+## these so players learn the rules by touch.
 ## A broken sign marks its two cells (as (c, r) keys in "cells"), not
 ## their whole lines: the sign is the thing that is wrong.
 static func bad_lines(grid: Array, signs: Array = []) -> Dictionary:
@@ -424,19 +537,6 @@ static func bad_lines(grid: Array, signs: Array = []) -> Dictionary:
 			rows[i] = true
 		if _line_bad(col, half):
 			cols[i] = true
-	for a in n:
-		for b in range(a + 1, n):
-			if not (grid[a] as Array).has(-1) and grid[a] == grid[b]:
-				rows[a] = true
-				rows[b] = true
-			var ca := []
-			var cb := []
-			for i in n:
-				ca.append(grid[i][a])
-				cb.append(grid[i][b])
-			if not ca.has(-1) and ca == cb:
-				cols[a] = true
-				cols[b] = true
 	var cells := {}
 	for s in signs:
 		if sign_broken(grid, s):

@@ -28,9 +28,10 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   step harder -- until that board's batch is mined into a bank
   (`core/insane_bank.gd`, `tools/mine_insane.gd`, `content/insane/`); a
   board then reads its bank and falls back to the row without one. Spec: `docs/superpowers/specs/2026-09-23-insane-level-design.md`.
-  Two provisional rows miss the 194 ms gate and are accepted by ruling
-  rather than weakened: Binairo's Insane is its Hard row again, and Sudoku's
-  22-given Insane shares Hard's own 300 ms budget. `tools/` never reaches
+  One provisional row misses the 194 ms gate and is accepted by ruling
+  rather than weakened: Sudoku's 22-given Insane shares Hard's own 300 ms
+  budget. (Binairo's Insane was the other until 2026-10-03; it is built
+  live now and has no bank, `docs/agents/boards/binairo.md`.) `tools/` never reaches
   the APK (`export_presets.cfg`'s `exclude_filter`).
 - **The heights are a budget, not a taste.** At 1080x1920 since 2026-09-24:
   80 of margin (`ui/menu.gd`'s `MARGIN` 40, top and bottom), 60 of gaps

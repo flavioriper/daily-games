@@ -33,9 +33,9 @@ and `ui/hud/out_of_hearts.gd`.
   calls `finish_unsolved()` and the board's `leave` signal, wired to the
   host's `_on_back`, so the host logs `puzzle_complete {solved: false}` and
   no abandon; `_on_back` also ends a heartless board unsolved on its own.
-- **Insane** takes `Gen.insane_board(rng, bank_step)` (10x10, 12 signs, one
-  liar) and falls back to Hard's live row with no liar when the bank is
-  empty. At the solve the liar's badge swells (x2.7), blushes, turns over
+- **Insane** took `Gen.insane_board(rng, bank_step)` (10x10, 12 signs, one
+  liar) from a mined bank until 2026-10-03; it is `Gen.generate_liar`, live,
+  since (see "Solved by reasoning" below). At the solve the liar's badge swells (x2.7), blushes, turns over
   onto a sheepish face with a "Caught you!" bubble, turns back onto its true
   glyph, and keeps the blush; cue `liar`; the solve wave and `solved` wait
   `UNMASK_WAVE` (1.6 s) and `win_delay()` tells the host.
@@ -167,3 +167,45 @@ is well under 855, so nothing was baked.
   Hard and Insane the hearts (Insane's page says one sign lies). The top
   bar's ? and Settings > How to play open it again; the clock holds while
   it is up.
+
+### Solved by reasoning, and no twin-lines rule (2026-10-03)
+
+The user's ruling: a board must be solvable without hints and without
+guessing where a symbol goes -- "that's why we use the = and x symbols" --
+and the rule that no two rows or columns may be alike goes.
+
+- **The twin-lines rule is gone** from `Gen.is_valid_complete`,
+  `_partial_ok`, `bad_lines`, the state's `broken_rule` (id 3 is retired; 4
+  is still the sign), `BN_RULES` and the tutorial's half-and-half page.
+- **The strip asks a reasoner, not a search.** `Gen.deduce(grid, signs,
+  tier)` only takes steps a player takes and never tries a value to see what
+  happens. `BASIC`: two alike close off both ends, a gap between two alike
+  takes the other, a line with half of one symbol fills with the other, a
+  sign with one end known gives the other end. `LINES` adds one whole line
+  read at a time: whatever every legal way of finishing that line (never
+  three, half and half, its own signs kept) agrees on. A clue is taken away
+  only while `deduce` still finishes the board, so one answer follows from
+  that and `solve_count` (the old search) is only the suite's outside check.
+  Easy is `BASIC`; Medium, Hard and Insane are `LINES` (`LEVELS[].tier`).
+- **What the search was hiding**: the old boards had one answer but no
+  promise of a path to it, and Insane's banked 10x10 (11-22 clues, a liar
+  found only by trying thirteen readings of the board) was the worst of it.
+  The clue counts barely moved -- 20 seeds each: Medium 3-8, Hard at its
+  floor of 12 (8-13 without it), so the boards are no fuller, only fair.
+- **Insane's liar is caught by the rules** (`Gen.liar_caught`): the rules
+  alone, no sign trusted, must reach both ends of the lying sign, which then
+  reads broken -- and only it can, the rest being true -- and from there the
+  board finishes with every sign read the right way. The tutorial's Insane
+  page says so. That made the board cheap: 60 seeds of 10x10 with 12 signs
+  left 12-23 clues, worst 181 ms on this M1 (most far under), so it is built
+  live and `content/insane/binairo.json`, `tools/insane/binairo_ladder.gd`
+  and `Gen.insane_board` went. **Not ruled on by the user**: the liar's new
+  definition and going live were this pass's own calls.
+- **A hint is a step**: `hint_cell` still mends a wrong tile first, then
+  picks among `Gen.deducible(grid, signs)` -- the cells one step of reasoning
+  fills on the board as it stands (the BASIC steps when any applies, else a
+  line read whole) -- by the old most-filled-neighbours score. A probe that
+  solved one board a level by hints alone found a deducible cell every time.
+- Checked: suite 249752/0, `tests/_win.gd -- binairo` 1/1, and a throwaway
+  probe (20 seeds a level, 60 liars) where every board deduced to its own
+  solution and the search agreed it was the only one.

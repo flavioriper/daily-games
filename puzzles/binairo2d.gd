@@ -23,8 +23,8 @@ extends "res://core/puzzle_base.gd"
 ## grid. A free tile set against the solution costs one -- it cracks, its face
 ## yelps, and it ejects itself a beat later through the state with no move
 ## and no history. The last heart gone puts the faces to sleep and raises
-## ui/hud/out_of_hearts.gd. Insane is a banked 10x10 whose one sign lies; it
-## looks like every other sign until the solve unmasks it.
+## ui/hud/out_of_hearts.gd. Insane is a 10x10 whose one sign lies; it looks
+## like every other sign until the solve unmasks it.
 ##
 ## Motion and rewards (2026-09-29, the same spec's section 2): a change of
 ## symbol turns the tile like a coin (each tile is a slot for the hops and
@@ -89,18 +89,16 @@ const SIGN_STROKE := 0.028
 ## How long the signs take to fade in once the tiles have landed.
 const SIGN_IN := 0.3
 ## Per difficulty: the board's side, the clue floor the strip stops at (0
-## strips to minimal) and how many signs are laid. Hard's floor of 12 is what
-## keeps an 8x8 strip affordable: the last clues are the expensive ones.
+## strips to minimal), how many signs are laid and how far the player is
+## asked to reason (Gen.BASIC: the tutorial's own steps; Gen.LINES: one
+## whole line read at a time). Every board is built to be finished by that
+## reasoning and nothing more -- no guess, no hint (2026-10-03). Insane is
+## Gen.generate_liar's 10x10, built live since the same day.
 const LEVELS := [
-	{"size": 6, "min_clues": 12, "signs": 8},
-	{"size": 6, "min_clues": 0, "signs": 6},
-	{"size": 8, "min_clues": 12, "signs": 10},
-	# Insane's provisional band is exactly Hard's row: the 10x10/min_clues 14
-	# row and the 8x8/min_clues 0 fallback both blew the 194 ms gate (2381 ms
-	# worst) -- every row tried past Hard's own measured 4x and up slower --
-	# so there is nothing harder to give it live; the bank in its own batch
-	# is what makes this band Insane.
-	{"size": 8, "min_clues": 12, "signs": 10},
+	{"size": 6, "min_clues": 12, "signs": 8, "tier": Gen.BASIC},
+	{"size": 6, "min_clues": 0, "signs": 6, "tier": Gen.LINES},
+	{"size": 8, "min_clues": 12, "signs": 10, "tier": Gen.LINES},
+	{"size": 10, "min_clues": 0, "signs": 12, "tier": Gen.LINES},
 ]
 ## Hearts per difficulty: none on Easy and Medium, three on Hard, one on Insane.
 const HEART_COUNTS := [0, 0, 3, 1]
@@ -435,16 +433,15 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
-## Insane takes a banked 10x10 with a liar (core/insane_bank.gd, stepped by
-## New); with no bank it falls back to Hard's live row, as Rings does.
+## Insane is a 10x10 with a liar; the rest are plain boards with signs.
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_level = clampi(difficulty, 0, LEVELS.size() - 1)
 	var level: Dictionary = LEVELS[_level]
 	var data := {}
 	if _level == 3:
-		data = Gen.insane_board(rng, bank_step)
-	if data.is_empty():
-		data = Gen.generate(rng, level.size, level.min_clues, level.signs)
+		data = Gen.generate_liar(rng, level.size, level.signs, level.min_clues)
+	else:
+		data = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
 	_data = data
 	max_hearts = HEART_COUNTS[_level]
 	_setup_board()
@@ -1166,7 +1163,7 @@ func line_state() -> Dictionary:
 	return state.line_state(focus_cell)
 
 ## Which rule a line on the board breaks right now (0 none, 1 three alike, 2
-## an uneven count, 3 two lines alike); the tip card names it.
+## an uneven count, 4 a sign); the tip card names it.
 func broken_rule() -> int:
 	var rule := state.broken_rule()
 	# A broken sign is the liar's tell while it hides (see _bad).

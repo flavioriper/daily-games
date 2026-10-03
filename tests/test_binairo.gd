@@ -23,7 +23,7 @@ static func _grid(rows: Array) -> Array:
 	return g
 
 # A verified-valid 6x6 solution: every row and column holds three of each,
-# no line has three in a row, and all twelve lines are distinct.
+# and no line has three in a row.
 const GOOD := ["010011", "101100", "101001", "010110", "110100", "001011"]
 
 static func _test_complete_validity(t) -> void:
@@ -46,9 +46,10 @@ static func _test_rules_isolated(t) -> void:
 	t.eq(Gen.solve_count(_grid(["110110", "......", "......", "......", "......", "......"]), 2), 0,
 		"row balance rejected in isolation")
 
-	# Two identical complete rows, each individually legal.
-	t.eq(Gen.solve_count(_grid(["010011", "010011", "......", "......", "......", "......"]), 2), 0,
-		"duplicate rows rejected in isolation")
+	# Two identical complete rows, each individually legal: no rule against it
+	# since 2026-10-03.
+	t.check(Gen.solve_count(_grid(["010011", "010011", "......", "......", "......", "......"]), 2) >= 1,
+		"duplicate rows are allowed")
 
 	# Three 0s in a column.
 	t.eq(Gen.solve_count(_grid(["0.....", "0.....", "0.....", "......", "......", "......"]), 2), 0,
@@ -67,6 +68,7 @@ static func _test_generate_is_unique(t) -> void:
 			var out: Dictionary = Gen.generate(rng, n)
 			t.check(Gen.is_valid_complete(out.solution), "n=%d seed=%d solution is valid" % [n, i])
 			t.eq(Gen.solve_count(out.puzzle, 3), 1, "n=%d seed=%d puzzle is uniquely solvable" % [n, i])
+			t.eq(Gen.deduce(out.puzzle, out.signs).grid, out.solution, "n=%d seed=%d puzzle is reasoned out, no guess" % [n, i])
 			var agrees := true
 			for r in n:
 				for c in n:
@@ -83,8 +85,8 @@ static func _test_determinism(t) -> void:
 	t.check(Gen.generate(c, 6).puzzle != Gen.generate(d, 6).puzzle, "different seeds differ")
 
 static func _test_minimality(t) -> void:
-	# Removal only loosens constraints, so a clue proven load-bearing during
-	# generation stays load-bearing. Verify that invariant actually holds.
+	# A clue fewer only lets the reasoning see less, so a clue proven
+	# load-bearing during generation stays load-bearing. Verify that holds.
 	var rng := RandomNumberGenerator.new(); rng.seed = 7
 	var out: Dictionary = Gen.generate(rng, 6)
 	var n := 6
@@ -97,7 +99,7 @@ static func _test_minimality(t) -> void:
 			for rr in n:
 				trial.append((out.puzzle[rr] as Array).duplicate())
 			trial[r][c] = -1
-			if Gen.solve_count(trial, 3) == 1:
+			if Gen.deduce(trial, out.signs).solved:
 				all_needed = false
 	t.check(all_needed, "every remaining clue is load-bearing")
 
@@ -124,7 +126,4 @@ static func _test_bad_lines(t) -> void:
 	t.check(too_many.cols.has(0), "four ones in a six-column is over half")
 
 	var twin_rows: Dictionary = Gen.bad_lines(_grid(["010011", "010011", "......", "......", "......", "......"]))
-	t.check(twin_rows.rows.has(0) and twin_rows.rows.has(1), "identical complete rows flag both rows")
-
-	var partial_twins: Dictionary = Gen.bad_lines(_grid(["01001.", "01001.", "......", "......", "......", "......"]))
-	t.check(not partial_twins.rows.has(0), "incomplete rows are never compared")
+	t.check(twin_rows.rows.is_empty(), "identical complete rows break no rule")
