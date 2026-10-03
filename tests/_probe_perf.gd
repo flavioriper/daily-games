@@ -2708,6 +2708,179 @@ func _ql_move(p: int, f: float) -> void:
 func _ql_release(p: int) -> void:
 	_ut_button(_ql_to(p), false)
 
+## A patch carried by hand from the point `from` to `to`, an event a frame.
+func _ql_carry(from: Vector2, to: Vector2) -> void:
+	_ut_button(from, true)
+	await process_frame
+	for i in range(1, 5):
+		_ut_motion(from.lerp(to, i / 4.0))
+		await process_frame
+	_ut_button(to, false)
+
+## Where the finger holds patch `p` with its corner over `origin`, and where
+## it presses it lying there.
+func _ql_over(p: int, origin: int) -> Vector2:
+	var c: Vector2i = _puzzle._state.shapes[p][0]
+	return _puzzle._corner_of(origin) + (Vector2(c) + Vector2(0.5, 0.5 + _puzzle.HOLD_LIFT)) * _puzzle._cell()
+
+func _ql_on(p: int, origin: int) -> Vector2:
+	var c: Vector2i = _puzzle._state.shapes[p][0]
+	return _puzzle._corner_of(origin) + (Vector2(c) + Vector2(0.5, 0.5)) * _puzzle._cell()
+
+## Quilt's buzzes: a patch tapped in the basket, lifted and put back in it,
+## sewn on its spot, tapped there, lifted and set down where it lay and taken
+## off (Easy and Medium; on Hard and Insane it stays), a second let go over
+## the first (turned down), then sewn where the answer has none (a dead end
+## or not on Easy and Medium, a heart on Hard and Insane), Undo, a hint, the
+## hint's patch pressed and Reset. The plain run then sews the quilt (a row
+## finished, the streak's confetti, the win, the seal when it is earned).
+func _buzz_quilt() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var own: Array = []
+	for p in st.shapes.size():
+		if int(st.answer[p]) >= 0:
+			own.append(p)
+	var a: int = own[0]
+	var home: int = int(st.answer[a])
+	_click(_ql_from(a))
+	await pause.call()
+	_buzzed("a patch tapped in the basket")
+	await _ql_carry(_ql_from(a), _ql_from(a) + Vector2(30.0, 60.0))
+	await pause.call()
+	_buzzed("lifted, back in the basket")
+	await _ql_carry(_ql_from(a), _ql_over(a, home))
+	await create_timer(1.6).timeout
+	_buzzed("sewn on its spot")
+	_click(_ql_on(a, home))
+	await pause.call()
+	_buzzed("tapped where it lies")
+	if not st.judged():
+		await _ql_carry(_ql_on(a, home), _ql_over(a, home))
+		await pause.call()
+		_buzzed("lifted, set down where it lay")
+		await _ql_carry(_ql_on(a, home), _ql_from(a) + Vector2(0.0, _puzzle._rack_cell() * _puzzle.HOLD_LIFT))
+		await pause.call()
+		_buzzed("taken off the quilt at=%d" % int(st.at[a]))
+		await _ql_carry(_ql_from(a), _ql_over(a, home))
+		await create_timer(1.6).timeout
+		_buzz_seen = Haptics.trace.size()
+	# A second patch over the first: turned down.
+	var b := -1
+	var over := -1
+	var spare := -1
+	for p: int in own:
+		if p == a:
+			continue
+		var o1 := -1
+		var o2 := -1
+		for o in st.cols * st.rows:
+			var code: int = st.fits(p, o)
+			if code == st.OVER and o1 < 0:
+				o1 = o
+			if code == st.OK and not st.is_right(p, o) and o2 < 0:
+				o2 = o
+		if o1 >= 0 and o2 >= 0:
+			b = p
+			over = o1
+			spare = o2
+			break
+	if b >= 0 and over >= 0:
+		await _ql_carry(_ql_from(b), _ql_over(b, over))
+		await pause.call()
+		_buzzed("let go over another patch")
+	if b >= 0 and spare >= 0:
+		await _ql_carry(_ql_from(b), _ql_over(b, spare))
+		await create_timer(0.3).timeout
+		_buzzed("sewn where the answer has none")
+		await create_timer(3.0).timeout
+		_buzzed("and what it costs stuck=%s" % _puzzle._stuck_ever)
+		if st.judged():
+			await _ql_carry(_ql_from(b), _ql_over(b, spare))
+			await pause.call()
+			_buzzed("the chalked spot again")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+		for p in st.shapes.size():
+			if int(st.locked[p]) == 1 and int(st.at[p]) >= 0:
+				_ut_button(_ql_on(p, int(st.at[p])), true)
+				await process_frame
+				_ut_button(_ql_on(p, int(st.at[p])), false)
+				break
+		await pause.call()
+		_buzzed("the hint's patch pressed")
+	_puzzle.reset_board()
+	await create_timer(2.2).timeout
+	_buzzed("reset")
+
+## Fairy Lights' buzzes: a piece turned and turned back by Undo, a piece that
+## is every way round (when the garden has one), a piece already right turned
+## (a plain turn on Easy and Medium, undone; a fuse and its heart on Hard and
+## Insane, and the clipped piece tapped again), a hint and its pinned piece
+## tapped, and Reset. The plain run then turns the garden (lanterns lit, the
+## streak's confetti, the win, the seal when it is earned).
+func _buzz_fairylights() -> void:
+	var st = _puzzle.state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var loose := -1
+	var right := -1
+	var cross := -1
+	for i in st.n * st.n:
+		if st.pinned[i] == 1:
+			continue
+		if st.grid[i] == 15:
+			if cross < 0:
+				cross = i
+		elif st.grid[i] != st.sol[i]:
+			if loose < 0:
+				loose = i
+		elif right < 0 and st.grid[i] != 0:
+			right = i
+	_click(_puzzle.cell_centre(loose))
+	await create_timer(1.6).timeout
+	_buzzed("a piece turned")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	if cross >= 0:
+		_click(_puzzle.cell_centre(cross))
+		await pause.call()
+		_buzzed("a piece every way round")
+	if right >= 0:
+		_click(_puzzle.cell_centre(right))
+		await create_timer(0.3).timeout
+		_buzzed("a right piece turned")
+		await create_timer(2.6).timeout
+		_buzzed("and what it costs")
+		if _puzzle.max_hearts > 0:
+			_click(_puzzle.cell_centre(right))
+			await pause.call()
+			_buzzed("the clipped piece tapped")
+		else:
+			_host._on_undo()
+			await pause.call()
+			_buzz_seen = Haptics.trace.size()
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+		for i in st.n * st.n:
+			if st.pinned[i] == 1:
+				_click(_puzzle.cell_centre(i))
+				break
+		await pause.call()
+		_buzzed("the pinned piece tapped")
+	_puzzle.reset_board()
+	await create_timer(2.2).timeout
+	_buzzed("reset")
+
 ## Fairy Lights: every piece tapped round to its answer in reading order, a
 ## tap a step (never past the answer, which on a judged garden is a fuse).
 func _moves_fairylights() -> Array:
