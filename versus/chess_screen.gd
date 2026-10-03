@@ -29,6 +29,11 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). `check` rings for
+## either king and is not mapped: `_after_move` warns for yours.
+const HAPTICS := {"hint": Haptics.GOOD, "win": Haptics.WIN, "lose": Haptics.LOSE,
+	"draw": Haptics.BUMP}
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -165,6 +170,7 @@ func _build() -> void:
 		_say(tr("CHS_KING_SAFE") if reason == "king" else tr("CHS_STUCK")))
 	inset.add_child(board)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	add_child(_fx)
 
 	_toast = PanelContainer.new()
@@ -438,6 +444,11 @@ func _start_turn() -> void:
 func _on_chosen(m: int) -> void:
 	if _state != State.YOURS:
 		return
+	# One knock a move: a tap as it is chosen, unless the move earns the
+	# board's bump (a capture, a promotion).
+	var d: Dictionary = rules.describe(m)
+	if int(d.captured) == 0 and int(d.promo) == 0:
+		_fx.buzz(Haptics.TAP)
 	_play(m)
 
 func _play(m: int) -> void:
@@ -461,6 +472,9 @@ func _after_move() -> void:
 		board.set_check(king)
 		board.tremble(king)
 		_fx.cue("check")
+		# Their check on you is a warn; a mate is the lose alone.
+		if rules.turn == player and rules.status() == Rules.PLAYING:
+			_fx.buzz(Haptics.WARN)
 		_react(0 if rules.turn == player else 1, Face.Expr.WORRIED)
 	else:
 		board.set_check(-1)
@@ -543,6 +557,7 @@ func _on_undo() -> void:
 	_undos += 1
 	_rewinds = 2
 	_state = State.REWIND
+	_fx.buzz(Haptics.TICK)
 	board.interactive = false
 	board.set_hint(-1)
 	_hush()
@@ -644,6 +659,7 @@ func _build_end(outcome: String, reason: String) -> Control:
 	again.pressed.connect(func() -> void:
 		player = 1 - player
 		Record.set_last_colour(GAME, player)
+		_fx.buzz(Haptics.TAP)
 		_new_game())
 	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
@@ -701,6 +717,7 @@ func _on_reset() -> void:
 	if _state == State.ANIM or _state == State.REWIND:
 		return
 	Analytics.track("board_reset", {"puzzle_id": GAME})
+	_fx.buzz(Haptics.TAP)
 	_new_game()
 
 func _on_back() -> void:
