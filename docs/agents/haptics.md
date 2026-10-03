@@ -240,7 +240,29 @@ Rules:
   tick at the end of its reach.
 - **One knock a move.** Chess taps a quiet move under the finger and leaves
   a capture or a promotion to the bump that lands with it a moment later,
-  rather than a tap and then a bump 0.2 s apart.
+  rather than a tap and then a bump 0.2 s apart. Checkers the same: a
+  quiet move taps, a capture bumps once as its first piece is taken however
+  long the chain (the wave's head), a crown bumps as it lands, and a move
+  that ends the game leaves its bump to the win that lands with the piece
+  (the board asks `rules.status()`).
+- **A game that runs by itself knocks once a frame, with the strongest.**
+  Firefly's sim is stepped twice a frame and a step can pop three bugs,
+  clear the stage and pass the best: its events ask through `_feel(kind)`
+  and `_knock_now` plays the frame's strongest after the steps (a mapped cue
+  and a `buzz` on one frame both land and read `tap bump`). Only the end
+  card's `new_best` is mapped.
+- **Fire held is not felt, what it hits is.** Firefly shoots four times a
+  second while the finger is down and none of it knocks, nor the slide: a
+  bug shot down taps, a moth or a rogue bumps, a chain's word bumps in the
+  kill's place. What the garden does to the firefly knocks by what it
+  costs: a warn as the beam catches it (it can still be shot free), the bad
+  as it is carried off or popped, the lose in the bad's place on the last
+  one. A bug that flew into it is not a kill and does not tap.
+- **An arcade run's win is its best.** A run always ends on the last life,
+  which is the lose; the card knocks only when it shows a new best (the
+  win), and the best passed mid-run is a bump. Restart and Play again tap as
+  the run starts (after the boost card, on its Play), the screen opening
+  from the menu does not, and a Second chance taken is a good.
 - **Nothing continuous**: a drag knocks on the cells it crosses at most, it
   does not hum.
 - **The switch**: Settings > Vibration (`[haptics] on` beside Motion's and
@@ -254,7 +276,10 @@ Rules:
   a player: a run of right moves should be taps and bumps and end in `win`.
   Versus screens are not registry boards: `tests/_probe_versus_buzz.gd --
   <game>` does the same through the real screen, headless, and puts
-  `user://versus.cfg` back. A probe that acts faster than a hand must wait
+  `user://versus.cfg` back. Arcade screens: `tests/_probe_arcade_buzz.gd --
+  <game>` plays a run through the real screen with a bot and prints every
+  sim event against what landed with it (a throwaway wallet; puts
+  `user://arcade.cfg` and `user://ads.cfg` back). A probe that acts faster than a hand must wait
   between steps (one knock holds the motor 40 ms of real time and a weaker
   one asked for meanwhile is dropped: a missing tap right after a warn is
   the probe, not the board).
@@ -296,8 +321,8 @@ Rules:
 | 29 | trestle | 2026-10-03 | tap on a member laid, dragged or tapped out (`place_road`, `place_wood`, `place_rope`), tick on one tapped away (`remove`), on Undo and on Stop (they share a cue); tap on Go as the cart sets off (`go`: the convoy and a free build's test too); the test's verdict is one knock: win as the cart reaches the far bank (`solved`), on Easy and Medium a warn when it fails (`_failed`, by `fx.buzz`), on Hard and Insane a bad as the heart splits and lose on the last, as the riders nod off (`_lose_heart`: `heart_lost` is not mapped); after the solve a good for a crossing (`_crossed`: the convoy, a free build's test) and a warn for one that fails; good on a hint and a heart back; tap on Reset, Try again and the free build's Done; thud as the seal lands (flawless, or Insane; under reduce motion it lands with the win and the win is the knock); nothing for a pin or a joint tapped (`select`), a chip picked, a member refused (too long, too steep, off the zone, over budget, a hinted one tapped), Go pressed again on a promise, the bridge taking its weight, the creaks, a snap and its Crack!, the cart leaving the road, landing and the splash, the tea sloshing and spilling, the honk, the bridge settling, the prices, the score card, the clink, the ducks, the troll, the cat, the party, the tutorial's gap. Probed on all four bands (Easy's seal by a plain run, `to=32`; Medium under reduce motion); a free build's test is mapped but not probed |
 | 30 | snooker (Versus) | 2026-10-03 | tap as the tip meets the ball on the hand's own shot (`_shoot`'s stroke, by `_fx.buzz`: `strike` rings for the computer's too), tap on the cue ball set down in the D (`placed`); one tick as the cue is drawn to the end of its reach, none again until it has eased under nine tenths (`_on_pull`); bump once a shot as a ball the hand was playing for drops (`_pot_on`: a ball on, and after a red the colour struck first), warn when the referee calls the hand's foul once everything has stopped (`_judge`); good on a hint as its line shows (`hint`), tap on Reset and Play again; win and lose as the frame ends (`win`, `lose`). Nothing for the aim, the spin, a cue put back, the clacks, the cushions, the roll, a ball that drops off no plan, the cue ball going in (the warn says it), the score counting up, or anything in the computer's visit: its strike, its pots, its fouls. No tutorial. Probe: `tests/_probe_versus_buzz.gd -- snooker` |
 | 31 | chess (Versus) | 2026-10-03 | one knock a move: tap as a quiet move is chosen, by tap or let go on its square (`_on_chosen`; a castle too), bump in its place as a capture lands its blow (`_knock`, the hand's only) or as a pawn turns (`promote`; a capturing promotion is the capture's bump alone); warn as the computer's move leaves your king in check (`_after_move`: `check` rings for either king and is not mapped); tick on Undo (once, for the two moves walked back), good on a hint as its mark shows (`hint`), tap on Reset and Play again; win and lose as the mate lands, a bump for a draw (`win`, `lose`, `draw`), and a mate against you is the lose alone, not a warn first. Nothing for a piece picked up, put down or carried, a piece that cannot move (`refused`), the promotion picker opening, a check you give, the computer's move or its captures, the pieces coming in, the crown or the party. No tutorial. Probe: `tests/_probe_versus_buzz.gd -- chess` (`LEVEL=2 YOU=0` for the checks and the lose) |
-| 32 | checkers (Versus) | | |
-| 33 | firefly (Arcade) | | |
+| 32 | checkers (Versus) | 2026-10-03 | one knock a move: tap as a quiet move is chosen, by tap or let go on its square (`_on_chosen`), bump in its place as a capture takes its first piece (`_knock`, the hand's only, once however long the chain) or as a man is crowned on a quiet move (`crown`; a capturing crown is the capture's bump alone), and no bump on the move that ends the game (the win lands with the piece); tick on Undo (once, for the two moves walked back), good on a hint as its route shows (`hint`), tap on Reset and Play again; win, lose and a bump for a draw (`win`, `lose`, `draw`). Nothing for a piece picked up, put down or carried, a piece that cannot move or must capture elsewhere (`refused`), a landing chosen where routes part, the rings of the compulsory capture, the computer's move, its captures and crowns, the pieces coming in or the party. No tutorial. Probe: `tests/_probe_versus_buzz.gd -- checkers` (`LEVEL=2 YOU=0` for the lose) |
+| 33 | firefly (Arcade) | 2026-10-03 | one knock a frame, the strongest its events asked for (`_feel`, `_knock_now`): tap for a bug shot down and for a moth's first hit (`pop`, `hurt`), bump in its place for a moth or a rogue, a chain's word (6, 12, 20, 30, 40), a stage cleared, a perfect flyby and the best passed mid-run; warn as the beam catches the firefly and as a shot pops your own captive (`captured`, `captive_lost`), bad as it is carried off or popped (`carried`, `ship_pop`), lose in its place on the last one (`game_over`); good as a captive is shot free (`rescue`), on an extra firefly and on a Second chance taken; win as the end card shows a new best (`new_best`, the only mapped cue); tap as a run starts from Restart, Play again or the boost card's Play. Nothing for the shots, the slide, the finger down, pause and resume, the dives, the beam opening, a bug that flew into the firefly, the captive docking, a flyby short of perfect, the stage and flyby banners, the score's round numbers, the card without a best, or the screen opening. No tutorial. Probe: `tests/_probe_arcade_buzz.gd -- firefly` (`SECS`); mapped but not seen in a probe run: `rescue`, `captive_lost`, the perfect flyby, the best passed mid-run |
 | 34 | molehill (Arcade) | | |
 | 35 | stackwood (Arcade) | | |
 | 36 | thirteen (Arcade) | | |

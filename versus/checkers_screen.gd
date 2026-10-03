@@ -32,6 +32,11 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). The board's cues ring
+## for both players and are not mapped: the hand's move knocks by `_fx.buzz`.
+const HAPTICS := {"hint": Haptics.GOOD, "win": Haptics.WIN, "lose": Haptics.LOSE,
+	"draw": Haptics.BUMP}
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -169,6 +174,7 @@ func _build() -> void:
 		_say(tr("CKR_MUST") if reason == "must" else tr("CKR_STUCK")))
 	inset.add_child(board)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	add_child(_fx)
 
 	_toast = PanelContainer.new()
@@ -452,6 +458,11 @@ func _start_turn() -> void:
 func _on_chosen(m: PackedInt32Array) -> void:
 	if _state != State.YOURS:
 		return
+	# One knock a move: a tap as it is chosen, unless the move earns the
+	# board's bump (a capture, a crown).
+	var d: Dictionary = rules.describe(m)
+	if (d.caps as Array).is_empty() and not bool(d.crown):
+		_fx.buzz(Haptics.TAP)
 	_play(m)
 
 func _play(m: PackedInt32Array) -> void:
@@ -552,6 +563,7 @@ func _on_undo() -> void:
 	_undos += 1
 	_rewinds = 2
 	_state = State.REWIND
+	_fx.buzz(Haptics.TICK)
 	board.interactive = false
 	board.set_hint(PackedInt32Array())
 	board.set_must(PackedInt32Array())
@@ -649,6 +661,7 @@ func _build_end(outcome: String, reason: String) -> Control:
 	again.pressed.connect(func() -> void:
 		player = 1 - player
 		Record.set_last_colour(GAME, player)
+		_fx.buzz(Haptics.TAP)
 		_new_game())
 	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
@@ -705,6 +718,7 @@ func _on_reset() -> void:
 	if _state == State.ANIM or _state == State.REWIND:
 		return
 	Analytics.track("board_reset", {"puzzle_id": GAME})
+	_fx.buzz(Haptics.TAP)
 	_new_game()
 
 func _on_back() -> void:
