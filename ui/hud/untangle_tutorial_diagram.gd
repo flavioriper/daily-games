@@ -435,47 +435,20 @@ func _settle(steps: int) -> void:
 # --- braids, as the board lays them (untangle2d.gd _braid, _bind_all) ---
 
 func _braid(k: Vector2i, e: Dictionary) -> Dictionary:
-	var n: int = e.n
 	var a0 := _pos[2 * k.x]
 	var a1 := _pos[2 * k.x + 1]
 	var b0 := _pos[2 * k.y]
 	var b1 := _pos[2 * k.y + 1]
-	var c := (a0 + a1 + b0 + b1) * 0.25
-	var axis: Vector2
-	var sb := 1.0
-	var hit = Geometry2D.segment_intersects_segment(a0, a1, b0, b1)
-	if hit != null:
-		c = hit
-		var da := (a1 - a0).normalized()
-		var db := (b1 - b0).normalized()
-		sb = 1.0 if da.dot(db) >= 0.0 else -1.0
-		axis = da + db * sb
-	else:
-		var with0: bool = Geometry2D.segment_intersects_segment(a0, b0, a1, b1) == null
-		var bx := b0 if with0 else b1
-		var by := b1 if with0 else b0
-		sb = 1.0 if with0 else -1.0
-		var mid = Geometry2D.segment_intersects_segment(a0, by, a1, bx)
-		if mid != null:
-			c = mid
-		axis = (a1 + by) * 0.5 - (a0 + bx) * 0.5
-	axis = axis.normalized() if axis.length_squared() > 0.0001 else (a1 - a0).normalized()
-	var L := float(n) * UT.BRAID_PITCH * _wd
-	for r in [k.x, k.y]:
-		L = minf(L, maxf(_pos[2 * r].distance_to(_pos[2 * r + 1]) * 0.9, L * UT.BRAID_SHORTEST))
+	var a_core := UT.core_is_a(a0, a1, b0, b1, e.get("core"))
+	e["core"] = a_core
+	var br := UT.lay_braid(a0, a1, b0, b1, int(e.n), _wd, a_core)
+	var c: Vector2 = br.c
 	var out := (c - _c).normalized() if c.distance_to(_c) > 0.001 else Vector2.RIGHT
-	var room := _ri - _wd * 1.1 - absf(axis.dot(out)) * L * 0.5
+	var room := _ri - _wd * 1.1 - absf((br.axis as Vector2).dot(out)) * float(br.len) * 0.5
 	if c.distance_to(_c) > room:
-		c = _c + out * maxf(room, 0.0)
-	var perp := axis.orthogonal()
-	var b_start := b0 if sb > 0.0 else b1
-	if (a0 - c).dot(perp) - (b_start - c).dot(perp) < 0.0:
-		perp = -perp
-	return {"c": c, "axis": axis, "perp": perp, "len": L, "n": n, "sb": sb, "w": float(e.w)}
-
-func _braid_point(br: Dictionary, side: float, u: float) -> Vector2:
-	return (br.c as Vector2) + (br.axis as Vector2) * (u - 0.5) * float(br.len) \
-		+ (br.perp as Vector2) * side * UT.BRAID_SIDE * _wd * cos(PI * float(br.n) * u)
+		br.c = _c + out * maxf(room, 0.0)
+	br["w"] = float(e.w)
+	return br
 
 ## Each rope held to the braid it is in, or to nothing.
 func _bind() -> void:
@@ -487,17 +460,17 @@ func _bind() -> void:
 		var br := _braid(k, e)
 		for which in 2:
 			var r: int = k.x if which == 0 else k.y
-			var side := 1.0 if which == 0 else -1.0
-			var dir := 1.0 if which == 0 else float(br.sb)
+			var side := float(br.side_a if which == 0 else br.side_b)
+			var dir := float(br.dir_a if which == 0 else br.dir_b)
 			var a := _pos[2 * r]
 			var b := _pos[2 * r + 1]
-			var way := PackedVector2Array([a, _braid_point(br, side, 0.0 if dir > 0.0 else 1.0),
-				_braid_point(br, side, 1.0 if dir > 0.0 else 0.0), b])
+			var way := PackedVector2Array([a, UT.braid_point(br, _wd, side, dir, 0.0),
+				UT.braid_point(br, _wd, side, dir, 1.0), b])
 			var firm: Array[bool] = [false, false, true, false]
 			var most: float = br.w
 			var turn := (1.0 - most) * UT.BRAID_SPIN * (1.0 if float(e.goal) > 0.0 else -1.0)
 			var wg: Array = [{"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
-				"side": side, "w": most, "swing": UT.BRAID_SIDE * _wd, "spin": turn}]
+				"p0": br.p0, "p1": br.p1, "side": side, "w": most, "swing": UT.BRAID_SIDE * _wd, "spin": turn}]
 			var cum := Rope.lengths(way)
 			var total: float = cum[cum.size() - 1]
 			var bi := PackedInt32Array()
@@ -539,8 +512,8 @@ func _crossings() -> Array:
 		if float(e.w) > 0.3:
 			var br := _braid(k, e)
 			near = br.c
-			radius = float(br.len) * 0.55 + _wd * 1.2
-			margin = UT.BRAID_SIDE * _wd
+			radius = float(br.len) * 0.55 + _wd * (1.2 + UT.BRAID_SIDE)
+			margin = UT.BRAID_SIDE * _wd * 2.0
 		else:
 			var hit = Geometry2D.segment_intersects_segment(_pos[2 * k.x], _pos[2 * k.x + 1], _pos[2 * k.y], _pos[2 * k.y + 1])
 			var bent := not ra.wiggles.is_empty() or not rb.wiggles.is_empty()
@@ -548,7 +521,7 @@ func _crossings() -> Array:
 				continue
 			near = hit if hit != null else (_pos[2 * k.x] + _pos[2 * k.x + 1] + _pos[2 * k.y] + _pos[2 * k.y + 1]) * 0.25
 			radius = _wd * (10.0 if bent else 1.8)
-			margin = UT.BRAID_SIDE * _wd if bent else 2.0
+			margin = UT.BRAID_SIDE * _wd * 2.0 if bent else 2.0
 		var hs: Array = ra.hits(rb, near, radius, margin)
 		var t0: int = e.t
 		for i in hs.size():
