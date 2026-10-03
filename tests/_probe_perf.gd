@@ -2332,6 +2332,51 @@ func _moves_wordtrail() -> Array:
 	_keep = (words[-1]["path"] as Array).size() + 1
 	return out
 
+## Word Trail's buzzes: the first word begun and let go off
+## the field (put down), the word traced backwards and let go on it (a trail
+## that could have been a word: a seed on Hard and Insane), the same again
+## (tried before), the word itself (it locks), Undo, a hint, Reset. The
+## plain run then locks every word (the win, the seal).
+func _buzz_wordtrail() -> void:
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var path: Array = _puzzle._state.words[0]["path"]
+	var back: Array = path.duplicate()
+	back.reverse()
+	var trace := func(cells: Array, upto: int) -> void:
+		_ut_button(_puzzle._centre(cells[0]), true)
+		for k in range(1, upto):
+			await process_frame
+			_ut_motion(_puzzle._centre(cells[k]))
+		await process_frame
+	# (short of the word: a right word locks even let go off the field)
+	await trace.call(path, mini(3, path.size() - 1))
+	_buzzed("tiles under the finger")
+	_ut_button(Vector2(-200.0, -200.0), false)
+	await pause.call()
+	_buzzed("let go off the field")
+	for k in 2:
+		await trace.call(back, back.size())
+		_buzz_seen = Haptics.trace.size()
+		_ut_button(_puzzle._centre(back[-1]), false)
+		await create_timer(1.6).timeout
+		_buzzed("a trail that is no word" if k == 0 else "the same trail again")
+	await trace.call(path, path.size())
+	_buzz_seen = Haptics.trace.size()
+	_ut_button(_puzzle._centre(path[-1]), false)
+	await create_timer(2.5).timeout
+	_buzzed("a word locked")
+	_host._on_undo()
+	await create_timer(1.6).timeout
+	_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(1.6).timeout
+	_buzzed("reset")
+
 ## Mushroom Patch: a row at a time, a pebble tapped on every bare cell of it,
 ## then its mushrooms planted, the chip switched as a player would.
 func _moves_mushroom() -> Array:
@@ -2355,6 +2400,93 @@ func _moves_mushroom() -> Array:
 			for cell: Vector2i in shrooms:
 				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
 	return out
+
+## Mushroom Patch's buzzes: a number pressed, a mushroom planted where the
+## answer grows one and pulled up, a pebble tapped down and up, two pebbles
+## swept and rubbed out, Undo, on Hard and Insane a mushroom the answer does
+## not grow, a hint and a tap on its mushroom, Check and Reset. The plain run
+## then plays the patch (a number finished, the streak's confetti, the win,
+## the seal when it is earned).
+func _buzz_mushroom() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
+	var right := Vector2i(-1, -1)
+	var bare := Vector2i(-1, -1)
+	var run: Array = []
+	for y in st.n:
+		for x in st.n:
+			var cell := Vector2i(x, y)
+			if st.given.has(cell):
+				continue
+			if st.mushrooms.has(cell):
+				if right.x < 0:
+					right = cell
+				continue
+			if bare.x < 0:
+				bare = cell
+			var next := Vector2i(x + 1, y)
+			if run.is_empty() and cell != bare and x + 1 < st.n and not st.given.has(next) \
+					and not st.mushrooms.has(next):
+				run = [cell, next]
+	for g: Vector2i in st.given:
+		_click(at.call(g))
+		break
+	await pause.call()
+	_buzzed("a number pressed")
+	_puzzle.set_brush(st.FOUND)
+	_click(at.call(right))
+	await create_timer(1.6).timeout
+	_buzzed("a mushroom planted")
+	_click(at.call(right))
+	await pause.call()
+	_buzzed("pulled up")
+	_puzzle.set_brush(st.CLEAR)
+	_click(at.call(bare))
+	await pause.call()
+	_buzzed("a pebble tapped down")
+	_click(at.call(bare))
+	await pause.call()
+	_buzzed("and tapped up")
+	if not run.is_empty():
+		for k in 2:
+			_ut_button(at.call(run[0]), true)
+			await process_frame
+			_ut_motion(at.call(run[1]))
+			await process_frame
+			_buzzed("the sweep under the finger")
+			_ut_button(at.call(run[1]), false)
+			await pause.call()
+			_buzzed("two pebbles swept" if k == 0 else "and rubbed out")
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+		_host._on_undo()
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+	if st.judged() and _puzzle.max_hearts > 1:
+		_puzzle.set_brush(st.FOUND)
+		_click(at.call(bare))
+		await create_timer(0.3).timeout
+		_buzzed("a wrong mushroom: planted")
+		await create_timer(3.0).timeout
+		_buzzed("and the heart she costs")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+		_puzzle.set_brush(st.FOUND)
+		for cell: Vector2i in st.pinned:
+			_click(at.call(cell))
+		await pause.call()
+		_buzzed("the hint's mushroom tapped")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
 
 ## Sudoku: every empty cell in reading order, tapped (it only selects) and
 ## then its answer's chip picked, as a player would.
