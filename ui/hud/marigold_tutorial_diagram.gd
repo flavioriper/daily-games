@@ -196,6 +196,10 @@ class Garden extends "res://puzzles/marigold2d.gd":
 		_streak = 0
 		_reset_party()
 		modulate = Color.WHITE
+		# a full bloom's grin, coin rain and flying bits stay with it
+		_expr_until = 0.0
+		_rain = 0.0
+		_air_bits = []
 		_looks = null
 		_opened = _now() if enter else _now() - 10.0
 		_fresh(_opened if enter else _opened - 10.0)
@@ -369,6 +373,9 @@ func _run(gen: int, fresh: bool) -> void:
 					_say("HTP_MG_RESET_HEART_CAP" if band >= 2 else "HTP_MG_RESET_CAP")
 					ok = await _wait(0.9, gen)
 				if ok:
+					# Insane's two hearts are spent by Undo and this Reset: the
+					# page keeps one back so Reset grows the garden as it says
+					_art.hearts = maxi(_art.hearts, 2)
 					_art.reset_board()
 			Lesson.HINT:
 				_say("HTP_MG_HINT_CAP")
