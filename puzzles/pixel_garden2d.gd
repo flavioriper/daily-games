@@ -60,6 +60,7 @@ const Rings = preload("res://puzzles/rings2d.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
+const Looks = preload("res://puzzles/pixel_garden_looks.gd")
 
 # --- the card ---
 const PAD := 30.0
@@ -247,12 +248,33 @@ var _thumb := Rect2()
 var _head_top := 0.0
 var _right := Rect2()
 var _table: ArrayMesh
-var _head: ArrayMesh
-var _head_key := ""
 var _thumb_mesh: ArrayMesh
 var _bands: Array = []
 var _band_looks: Array = []
 var _live: ArrayMesh
+## The checkup's copies (puzzles/pixel_garden_looks.gd): the beads' kit made
+## at `_kit_cell` and drawn scaled, the pegs' and the box's, the bare and the
+## covered pegs, the beads moving and the marks over them (halos, a hint's
+## dots), and the head in four layers -- under the heaps, the heaps, over
+## them, and what moves on top -- each made again only when it changes.
+var _kit
+var _kit_cell := 0.0
+var _peg_kit
+var _heap_kit
+var _heap_runs: Array = []
+var _pegs_under: ArrayMesh
+var _pegs_bare: ArrayMesh
+var _live_beads: ArrayMesh
+var _leaving_mesh: ArrayMesh
+var _marks: ArrayMesh
+var _head_under: ArrayMesh
+var _head_over: ArrayMesh
+var _head_lid: ArrayMesh
+var _head_pick: ArrayMesh
+var _heaps: ArrayMesh
+var _box_key := ""
+var _heaps_key := ""
+var _top_key := ""
 var _shown: Array = []
 ## Bumped by every deal, Try again and restore: a delayed callback from
 ## before it does nothing.
@@ -327,6 +349,40 @@ func rules() -> String:
 	elif _state.windblown():
 		out += "\n\n" + tr("PG_RULES_WIND")
 	return out
+
+## The tutorial, one lesson a page (the board checkup, 2026-10-03): pick
+## and seat, the kit running out, the plates and the iron (a heart on Hard
+## and Insane), the picture held big, Windblown (Insane), Check (Easy and
+## Medium), Undo and Reset, and the bulb (bands with hints). Each page is the
+## board itself on a hand-made 6x6 tulip, playing the lesson
+## (ui/hud/pixel_garden_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/pixel_garden_tutorial_diagram.gd")
+	var band: int = _state.band
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.SEAT, "HTP_PG_SEAT", tr("HTP_PG_SEAT_BODY")],
+		[Diagram.Lesson.KIT, "HTP_PG_KIT", tr("HTP_PG_KIT_BODY")]]
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_PG_PLATE_BODY_HEARTS") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_PG_PLATE_BODY")])
+	steps.append([Diagram.Lesson.PEEK, "HTP_PG_PEEK", tr("HTP_PG_PEEK_BODY")])
+	if _state.windblown():
+		steps.append([Diagram.Lesson.WIND, "HTP_PG_WIND", tr("HTP_PG_WIND_BODY")])
+	if "check" in capabilities():
+		steps.append([Diagram.Lesson.CHECK, "HTP_PG_CHECK", tr("HTP_PG_CHECK_BODY")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_PG_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_PG_HINT_BODY_ONE") if hints == 1 else tr("HTP_PG_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 ## Easy and Medium keep Check and three hints; Hard has two hints and no
 ## Check (the iron is the judge); Windblown has neither.
@@ -421,8 +477,10 @@ func _reset_looks() -> void:
 	_cat_curled = false
 	_bands = []
 	_table = null
-	_head = null
 	_thumb_mesh = null
+	_kit = null
+	_heap_kit = null
+	_drop_layout_meshes()
 	_clear_gesture()
 
 # --- layout ---
@@ -463,11 +521,67 @@ func _layout() -> void:
 	_grid = _board.position + Vector2.ONE * (RIM + MARGIN * _cell)
 	_place_chips()
 	_table = null
-	_thumb_mesh = null
-	_head = null
 	_bands = []
 	_love_mesh = null
+	_drop_layout_meshes()
 	_refresh()
+
+## Everything laid out at the old size. The bead kit is kept unless the cell
+## grew past it (drawn scaled, a relayout makes no bead again); the box's
+## kit is made again only if its beads changed size.
+func _drop_layout_meshes() -> void:
+	_pegs_under = null
+	_pegs_bare = null
+	_head_under = null
+	_head_pick = null
+	_head_over = null
+	_head_lid = null
+	_heaps = null
+	_heap_runs = []
+	_box_key = ""
+	_heaps_key = ""
+	_top_key = ""
+	_band_looks = []
+
+## A few more copies' indices a frame, once the entrance is over, until the
+## beads' kit holds the whole board and the box's every bead.
+func _prime() -> void:
+	if _kit == null or _heap_kit == null or _now() - _opened < Motion.ENTER_DELAY + Motion.ENTER_POP:
+		return
+	if _kit.count == 0:
+		_kit.look(Looks.bead_id(0, 0.0, 0.0, 1.0, 1.0, true))
+	if _kit.tiled_count() < _state.size():
+		_kit.grow(PRIME_STEP)
+		return
+	var all := 0
+	for v in _state.need:
+		all += v
+	if _heap_kit.count == 0:
+		_heap_kit.look(0)
+	if _heap_kit.tiled_count() < all:
+		_heap_kit.grow(PRIME_STEP * 4)
+
+## The kits for this picture and cell.
+func _ensure_kits() -> void:
+	if _kit == null or _cell > _kit_cell * 1.001:
+		_kit = Looks.bead_kit(_cell, _state.colours)
+		_kit_cell = _cell
+		_band_looks = []
+		_bands = []
+	if _peg_kit == null or not is_equal_approx(_peg_kit_cell, _cell):
+		_peg_kit = Looks.peg_kit(_cell)
+		_peg_kit_cell = _cell
+	if _heap_kit == null or not is_equal_approx(_heap_kit_r, _heap_r):
+		_heap_kit = Looks.heap_kit(_heap_r, _state.colours)
+		_heap_kit_r = _heap_r
+		_heap_runs = []
+
+var _peg_kit_cell := 0.0
+## How many copies a frame the kits' tiled indices grow by after the
+## entrance, so the win (every bead live at once) finds them made.
+const PRIME_STEP := 12
+var _live_dirty := true
+var _heap_kit_r := 0.0
 
 ## The compartments stand in a row under the picture's name, centred in the
 ## room beside the picture, closing up when a day has many colours.
@@ -597,6 +711,7 @@ func _process(delta: float) -> void:
 			_moving.erase(c)
 			settled = true
 	_steam(t)
+	_prime()
 	if is_instance_valid(_cat) or t >= _cat_at:
 		_place_cat(t)
 	if settled or t < _anim_until:
@@ -618,6 +733,7 @@ func _touch(c: int, until: float) -> void:
 
 func _refresh() -> void:
 	_live = null
+	_live_dirty = true
 	queue_redraw()
 
 ## Runs `what` after `delay`, unless the board has been dealt again.
@@ -660,23 +776,35 @@ func _draw() -> void:
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var shown: Array = []
-	if _table == null or _pegs_fading(t):
+	_ensure_kits()
+	if _table == null:
 		_table = _build_table(t)
 	draw_mesh(_table, null, xf, tint)
 	shown.append(_table)
+	if _pegs_under == null:
+		_build_pegs()
+	# The bare pegs fade once the win's iron has passed: the mesh's alpha,
+	# not a rebuild.
+	for m in [_pegs_under, _pegs_bare]:
+		if m != null:
+			var a := seen * (1.0 - _pegs_gone(t) if m == _pegs_bare else 1.0)
+			if a > 0.0:
+				draw_mesh(m, null, xf, Color(1.0, 1.0, 1.0, a))
+				shown.append(m)
 	_update_bands(t)
-	if _live == null:
-		_live = _build_live(t)
-	for m in _bands + [_live]:
+	if _live_dirty:
+		_live_dirty = false
+		_build_live(t)
+	# The marks go over every bead and under the irons, love and flies.
+	for m in _bands + [_leaving_mesh, _live_beads, _marks, _live]:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
-	var key := _head_state(t)
-	if _head == null or key != _head_key or _head_moving(t):
-		_head = _build_head(t)
-		_head_key = key
-	draw_mesh(_head, null, xf, tint)
-	shown.append(_head)
+	_update_head(t)
+	for m in [_head_under, _head_pick, _heaps, _head_over, _head_lid]:
+		if m != null:
+			draw_mesh(m, null, xf, tint)
+			shown.append(m)
 	_draw_head_text(t, xf, seen)
 	# Beads in the air between the box and the board, over both.
 	if not (_flying.is_empty() and _incoming.is_empty()):
@@ -739,13 +867,18 @@ func _build_table(t: float) -> ArrayMesh:
 		if wind:
 			b.stroke(_corners(face.grow(-3.0), radii), 2.0, Color(PLATE_TINTS[q], 0.55), true)
 		_clip(b, Vector2(pr.get_center().x, face.position.y + 1.0), _cell, 0.0, q, wind)
-	var gone := _pegs_gone(t)
-	for c in _state.size():
-		# Under a bead the peg is hidden anyway; the fade only matters where
-		# the picture leaves the board bare.
-		var al := 1.0 - gone if _state.want[c] == State.EMPTY else 1.0
-		Bead.peg(b, _centre(c), _cell, al)
 	return b.mesh()
+
+## Every peg, as copies of one: the ones the picture covers, and the bare
+## ones, which the win fades (under a bead the peg is hidden anyway).
+func _build_pegs() -> void:
+	var under := Looks.Copies.new()
+	var bare := Looks.Copies.new()
+	for c in _state.size():
+		var into := bare if _state.want[c] == State.EMPTY else under
+		into.add(_peg_kit, 0, Transform2D(0.0, _centre(c)))
+	_pegs_under = under.mesh(_peg_kit)
+	_pegs_bare = bare.mesh(_peg_kit)
 
 ## A rectangle with its own radius at each corner: top left, top right,
 ## bottom left, bottom right (plate q's outer corner is radii[q]).
@@ -794,14 +927,10 @@ func _pegs_gone(t: float) -> float:
 	var start := _solved_at + IRON_AT + float(_state.n) * IRON_STEP
 	return clampf((t - start) / PEGS_GONE, 0.0, 1.0)
 
-func _pegs_fading(t: float) -> bool:
-	var g := _pegs_gone(t)
-	return g > 0.0 and t < _solved_at + IRON_AT + (2.0 * _state.n) * IRON_STEP + IRON_TIME + PEGS_GONE + 0.1
-
 func _update_bands(t: float) -> void:
 	var n: int = _state.n
 	var count := int(ceil(float(n) / float(BAND)))
-	if _bands.size() != count:
+	if _bands.size() != count or _band_looks.size() != count:
 		_bands.resize(count)
 		_bands.fill(null)
 		_band_looks.resize(count)
@@ -815,19 +944,37 @@ func _update_bands(t: float) -> void:
 			looks[c - first] = -2 if _moving.has(c) else _look(c, t)
 		if _bands[k] != null and looks == _band_looks[k]:
 			continue
-		var b := Face.Builder.new()
+		var cp := Looks.Copies.new()
 		for c in range(first, last):
 			if not _moving.has(c):
-				_draw_peg(b, c, t)
-		_bands[k] = b.mesh() if not b.verts.is_empty() else null
+				_put_bead(cp, c, t)
+		_bands[k] = cp.mesh(_kit)
 		_band_looks[k] = looks
 
-## Everything a resting peg's drawing depends on.
+## Everything a resting bead's drawing depends on (its marks are drawn over
+## it apart, _build_live).
 func _look(c: int, t: float) -> int:
 	var fused := 1 if _fused(c, t) >= 1.0 else 0
-	return (_state.beads[c] + 1) | (int(_halo.has(c)) << 8) | (fused << 9) | (int(_state.locked[c]) << 10)
+	return (_state.beads[c] + 1) | (fused << 9)
 
-func _build_live(t: float) -> ArrayMesh:
+## The moving beads (copies), what else moves on the board (a Builder), and
+## the marks over every bead -- Check's halos and a hint's sun dots.
+func _build_live(t: float) -> void:
+	_leaving_mesh = _build_leaving(t)
+	var cp := Looks.Copies.new()
+	for c: int in _moving:
+		_put_bead(cp, c, t)
+	_live_beads = cp.mesh(_kit)
+	var marks := Face.Builder.new()
+	for c in _state.size():
+		if _state.locked[c] == State.HINTED or _halo.has(c):
+			_mark(marks, c, t)
+	_marks = marks.mesh() if not marks.verts.is_empty() else null
+	_live = _build_air(t)
+
+## Beads lifting off their pegs, under the moving ones (a hint's swap: the
+## right bead drops in over the wrong one rising).
+func _build_leaving(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var keep: Array = []
 	for g: Dictionary in _leaving:
@@ -841,8 +988,10 @@ func _build_live(t: float) -> ArrayMesh:
 			Bead.bead(b, _centre(int(g.peg)), _cell, g.colour, Vector2.ONE * (1.0 + SEAT_NEAR * h),
 				1.0 - k * k, _cell * SEAT_HIGH * h)
 	_leaving = keep
-	for c: int in _moving:
-		_draw_peg(b, c, t)
+	return b.mesh() if not b.verts.is_empty() else null
+
+func _build_air(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
 	_draw_iron(b, t)
 	for ir: Dictionary in _irons:
 		_draw_plate_iron(b, ir, t)
@@ -861,19 +1010,17 @@ func _build_live(t: float) -> ArrayMesh:
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## One peg's bead: popping in (or dropping in, from a hint), shaking when a
-## press is refused, hopping on the solve, fused by an iron, and haloed when
-## Check pointed at it.
-func _draw_peg(b: Face.Builder, c: int, t: float) -> void:
+## press is refused, hopping on the solve, fused by an iron. As [where, lift,
+## grow, alpha], or empty while it is still in the air from the box
+## (_draw_incoming draws it then) or there is no bead.
+func _pose(c: int, t: float) -> Array:
 	var k: int = _state.beads[c]
+	if k == State.EMPTY:
+		return []
 	var at := _centre(c)
 	at.x += Motion.shiver_offset(t - float(_shake_at[c]), _cell * 0.05)
-	if k == State.EMPTY:
-		if _state.locked[c] == State.HINTED:
-			# A peg a hint cleared: a small sun dot says it is fixed bare.
-			b.disc(at + Vector2(_cell * 0.24, _cell * 0.24), _cell * 0.06, Color(Pal.SUN, 0.8))
-		return
 	var since := t - float(_arrive_at[c])
-	var grow := Vector2.ONE
+	var grow := 1.0
 	var lift := 0.0
 	var alpha := 1.0
 	if _drop[c] == 1:
@@ -881,20 +1028,44 @@ func _draw_peg(b: Face.Builder, c: int, t: float) -> void:
 		alpha = Motion.appear_level(since)
 	elif since < SEAT_TIME and not Motion.reduce:
 		if since < 0.0 and _drop[c] == 2:
-			# Still in the air from the box (_draw_incoming draws it).
-			return
+			return []
 		var seat := _seat(since)
 		lift = seat.x
-		grow = Vector2.ONE * seat.y
+		grow = seat.y
 		alpha = 1.0 if _drop[c] == 2 else seat.z
 	lift += _hop(c, t)
-	var fused := _fused(c, t)
-	Bead.bead(b, at, _cell, _state.colours[k], grow, alpha, lift, fused, _shine(c, t))
-	if _state.locked[c] == State.HINTED and fused <= 0.0:
+	return [at, lift, grow, alpha]
+
+## Bead `c` as it is now, a copy of its look: the shade left on the board,
+## the bead lifted off it.
+func _put_bead(cp, c: int, t: float) -> void:
+	var p := _pose(c, t)
+	if p.is_empty() or float(p[3]) <= 0.0:
+		return
+	var at: Vector2 = p[0]
+	var lift: float = p[1]
+	var id := Looks.bead_id(_state.beads[c], _fused(c, t), _shine(c, t), p[3],
+		clampf(1.0 - lift / (_cell * 0.8), 0.3, 1.0), lift <= _cell * 0.05)
+	var sc := Vector2.ONE * (float(p[2]) * _cell / _kit_cell)
+	cp.add2(_kit, id, Transform2D(0.0, sc, 0.0, at), Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
+
+## A peg's marks: the sun dot of a hint (on a bare peg it cleared, or on its
+## bead until an iron fuses it), and the rose halo Check points with.
+func _mark(b: Face.Builder, c: int, t: float) -> void:
+	var at := _centre(c)
+	at.x += Motion.shiver_offset(t - float(_shake_at[c]), _cell * 0.05)
+	if _state.beads[c] == State.EMPTY:
+		if _state.locked[c] == State.HINTED:
+			b.disc(at + Vector2(_cell * 0.24, _cell * 0.24), _cell * 0.06, Color(Pal.SUN, 0.8))
+		return
+	var p := _pose(c, t)
+	if p.is_empty():
+		return
+	if _state.locked[c] == State.HINTED and _fused(c, t) <= 0.0:
 		b.disc(at + Vector2(_cell * 0.3, _cell * 0.3), _cell * 0.07, Pal.SUN)
 	if _halo.has(c):
 		var ha := Motion.appear_level(t - _halo_at, 0.12)
-		Bead.halo(b, at - Vector2(0.0, lift), _cell, ha)
+		Bead.halo(b, at - Vector2(0.0, float(p[1])), _cell, ha)
 
 ## A seating bead `since` seconds in: its lift, its scale and its alpha.
 func _seat(since: float) -> Vector3:
@@ -1252,32 +1423,76 @@ func _draw_words(t: float) -> void:
 
 # --- the header ---
 
-func _head_state(_t: float) -> String:
-	var out := "%d|%d|%d|%d" % [brush, _state.placed(), 1 if _won else 0, hearts]
-	for k in _state.seated.size():
-		out += ",%d" % _state.seated[k]
-	return out
-
-func _head_moving(t: float) -> bool:
-	for k in _chip_at.size():
-		if t - float(_chip_at[k]) < Motion.BUMP_TIME + 0.05 or t - float(_chip_shake[k]) < Motion.SHIVER_TIME + 0.05:
-			return true
-	if t - _tweez_at < maxf(TWEEZ_TIME, 0.3) + 0.05:
-		return true
-	if t - _split_at < SPLIT_TIME + 0.05 or t - _back_at < HEART_BACK_TIME + 0.05:
-		return true
-	return t - _bar_bump < Motion.BUMP_TIME + 0.05
-
-## The pattern card's frame, the box, the tweezers, the hearts and the bar.
-func _build_head(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
-	_draw_thumb_frame(b, _thumb)
+## The head's four layers, each made again only when what it shows changes:
+## under the heaps (the card's frame, the box, the wells, the chosen one lit)
+## on the chosen colour or a compartment shaking; the heaps on a count or a
+## compartment bumped or shaking; over them (the lips, labels, dividers) with
+## the first; the tweezers, hearts and bar on top while they move or their
+## numbers change.
+func _update_head(t: float) -> void:
+	# The pattern card's pixels are made about the card's own corner (its
+	# size never changes), so a relayout only moves them.
 	if _thumb_mesh == null:
-		_thumb_mesh = _build_thumb_pixels(_thumb)
-	_draw_box(b, t)
+		_thumb_mesh = _build_thumb_pixels(Rect2(Vector2.ZERO, _thumb.size))
+	var shaking := false
+	var bumping := false
+	for k in _chip_at.size():
+		if t - float(_chip_shake[k]) < Motion.SHIVER_TIME + 0.05:
+			shaking = true
+		if t - float(_chip_at[k]) < Motion.BUMP_TIME + 0.05:
+			bumping = true
+	var box_key := "%d|%d" % [brush, 1 if _won else 0]
+	if _head_under == null or shaking:
+		var under := Face.Builder.new()
+		var over := Face.Builder.new()
+		var pick := Face.Builder.new()
+		_draw_thumb_frame(under, _thumb)
+		_draw_box(under, over, pick, t)
+		_head_under = under.mesh()
+		_head_over = over.mesh() if not over.verts.is_empty() else null
+		_head_pick = pick.mesh() if not pick.verts.is_empty() else null
+		# A shake's last frame leaves the key unset, so the chosen
+		# compartment is made once more at rest.
+		_box_key = "" if shaking else box_key
+	elif box_key != _box_key:
+		var pick := Face.Builder.new()
+		_draw_chosen(pick, t)
+		_head_pick = pick.mesh() if not pick.verts.is_empty() else null
+		_box_key = box_key
+	var heaps_key := ""
+	for k in _state.seated.size():
+		heaps_key += "%d," % _state.left(k)
+	if _heaps_key != heaps_key or shaking or bumping or _heaps == null:
+		_heaps = _build_heaps(t)
+		_heaps_key = "" if shaking or bumping else heaps_key
+	var top_key := "%d|%d|%d|%d" % [brush, _state.placed(), 1 if _won else 0, hearts]
+	var top_moving := t - _tweez_at < maxf(TWEEZ_TIME, 0.3) + 0.05 or t - _split_at < SPLIT_TIME + 0.05 \
+		or t - _back_at < HEART_BACK_TIME + 0.05 or t - _bar_bump < Motion.BUMP_TIME + 0.05
+	if _head_lid == null or top_key != _top_key or top_moving:
+		_head_lid = _build_head_lid(t)
+		_top_key = "" if top_moving else top_key
+
+## The chosen compartment lit from under, a layer of its own so a pick makes
+## only this: its glow, its warm floor, and the next compartment's floor
+## again over the glow's edge, as the box draws them left to right.
+func _draw_chosen(pick: Face.Builder, t: float) -> void:
+	if _won or brush < 0 or brush >= _chip_rects.size():
+		return
+	for i in range(brush, mini(brush + 2, _chip_rects.size())):
+		var r := _chip_rects[i]
+		var shake := Motion.shiver_offset(t - float(_chip_shake[i]), 4.0)
+		var well := Rect2(r.position + Vector2(shake, 0.0), Vector2(r.size.x, r.size.y * 0.74))
+		if i == brush:
+			pick.fan(Face.Builder.round_rect(well.position - Vector2.ONE * 3.0, well.size + Vector2.ONE * 6.0, 13.0),
+				Color(Pal.SUN, 0.75))
+		pick.fan(Face.Builder.round_rect(well.position, well.size, 11.0), Color("fff3d6" if i == brush else "d3e7ee"))
+		pick.fan(Face.Builder.round_rect(well.position, Vector2(well.size.x, 6.0), 3.0), Color("bdd6de"))
+
+## The tweezers, the hearts and the bar of beads seated.
+func _build_head_lid(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
 	_draw_tweezers(b, t)
 	_draw_hearts(b, t)
-	# The bar of beads seated.
 	var bar := Rect2(_right.position.x, _right.end.y - BAR_H - 4.0, _right.size.x - 150.0, BAR_H)
 	var bump := Motion.bump_scale(t - _bar_bump, 0.08)
 	bar = Rect2(bar.position - Vector2(0.0, (bump - 1.0) * BAR_H * 0.5), Vector2(bar.size.x, BAR_H * bump))
@@ -1339,7 +1554,7 @@ func _build_thumb_pixels(r: Rect2) -> ArrayMesh:
 ## The clear plastic box: a compartment a colour, each heaped with beads as
 ## many as are left (HEAP for a full one), a paper label strip for the count,
 ## and the chosen compartment lit from under.
-func _draw_box(b: Face.Builder, t: float) -> void:
+func _draw_box(b: Face.Builder, over: Face.Builder, pick: Face.Builder, t: float) -> void:
 	if _chip_rects.is_empty():
 		return
 	var box := _box
@@ -1348,51 +1563,62 @@ func _draw_box(b: Face.Builder, t: float) -> void:
 	b.fan(Face.Builder.round_rect(box.position, box.size, 16.0), Color("e4f1f5"))
 	for i in _chip_rects.size():
 		var r := _chip_rects[i]
-		var chosen := i == brush and not _won
 		var shake := Motion.shiver_offset(t - float(_chip_shake[i]), 4.0)
 		var bump := Motion.bump_scale(t - float(_chip_at[i]), 0.06)
 		var well := Rect2(r.position + Vector2(shake, 0.0), Vector2(r.size.x, r.size.y * 0.74))
-		var floor_ink := Color("d3e7ee")
-		if chosen:
-			b.fan(Face.Builder.round_rect(well.position - Vector2.ONE * 3.0, well.size + Vector2.ONE * 6.0, 13.0),
-				Color(Pal.SUN, 0.75))
-			floor_ink = Color("fff3d6")
-		b.fan(Face.Builder.round_rect(well.position, well.size, 11.0), floor_ink)
+		b.fan(Face.Builder.round_rect(well.position, well.size, 11.0), Color("d3e7ee"))
 		b.fan(Face.Builder.round_rect(well.position, Vector2(well.size.x, 6.0), 3.0), Color("bdd6de"))
-		_heap(b, i, well, bump)
-		# The box's front wall: a clear lip with a gloss along it.
+		# (The heap lies here, _build_heaps.) The box's front wall: a clear
+		# lip with a gloss along it.
 		var lip := Rect2(well.position + Vector2(0.0, well.size.y - 12.0), Vector2(well.size.x, 12.0))
-		b.fan(Face.Builder.round_rect(lip.position, lip.size, 5.0), Color(Color.WHITE, 0.35))
-		b.fan(Face.Builder.round_rect(lip.position + Vector2(5.0, 2.0), Vector2(lip.size.x - 10.0, 3.0), 1.5),
+		over.fan(Face.Builder.round_rect(lip.position, lip.size, 5.0), Color(Color.WHITE, 0.35))
+		over.fan(Face.Builder.round_rect(lip.position + Vector2(5.0, 2.0), Vector2(lip.size.x - 10.0, 3.0), 1.5),
 			Color(Color.WHITE, 0.6))
 		# The label strip with the count.
 		var label := Rect2(r.position + Vector2(4.0 + shake, r.size.y * 0.77), Vector2(r.size.x - 8.0, r.size.y * 0.21))
-		b.fan(Face.Builder.round_rect(label.position, label.size, label.size.y * 0.4), Pal.PAPER)
-		b.fan(Face.Builder.round_rect(label.position + Vector2(label.size.x * 0.5 - 7.0, -3.0), Vector2(14.0, 6.0), 3.0),
+		over.fan(Face.Builder.round_rect(label.position, label.size, label.size.y * 0.4), Pal.PAPER)
+		over.fan(Face.Builder.round_rect(label.position + Vector2(label.size.x * 0.5 - 7.0, -3.0), Vector2(14.0, 6.0), 3.0),
 			_state.colours[i])
+	_draw_chosen(pick, t)
 	# The dividers, a hair of clear plastic between two compartments.
 	for i in range(1, _chip_rects.size()):
 		var x := (_chip_rects[i - 1].end.x + _chip_rects[i].position.x) * 0.5
-		b.fan(Face.Builder.round_rect(Vector2(x - 1.5, box.position.y + 4.0), Vector2(3.0, box.size.y * 0.74), 1.5),
+		over.fan(Face.Builder.round_rect(Vector2(x - 1.5, box.position.y + 4.0), Vector2(3.0, box.size.y * 0.74), 1.5),
 			Color("c7dde4"))
 
-## Compartment `i`'s beads: every one left, lying flat with its hole
+## Every compartment's beads: every one left, lying flat with its hole
 ## showing, from the floor's middle up. A bead flying out has already left.
-func _heap(b: Face.Builder, i: int, _well_r: Rect2, bump: float) -> void:
-	var left: int = maxi(0, _state.left(i))
-	var r := _heap_r * bump
-	var col: Color = _state.colours[i]
-	var deep := col.darkened(0.25)
-	var hole := col.darkened(0.45)
-	var hi := Color(col.lerp(Color.WHITE, 0.6), 0.9)
-	var shake := Motion.shiver_offset(_now() - float(_chip_shake[i]), 4.0)
-	for k in left:
-		var at := _slot(i, k) + Vector2(shake, 0.0)
-		b.ellipse(at + Vector2(0.0, r * 0.18), r, r * 0.86, deep)
-		b.ellipse(at, r * 0.96, r * 0.82, col)
-		b.ellipse(at + Vector2(0.0, r * 0.04), r * 0.4, r * 0.34, hole)
-		if r >= 4.0:
-			b.ellipse(at - Vector2(r * 0.4, r * 0.32), r * 0.24, r * 0.14, hi)
+## A compartment's whole heap is laid out once (`_heap_runs`) and its first
+## `left` beads are a slice of it; a bumped compartment's beads swell about
+## their own places, a copy each.
+func _build_heaps(t: float) -> ArrayMesh:
+	if _chip_rects.is_empty():
+		return null
+	var cp := Looks.Copies.new()
+	if _heap_runs.size() != _chip_rects.size():
+		_heap_runs = []
+		for i in _chip_rects.size():
+			var full := Looks.Copies.new()
+			for k in maxi(0, _state.need[i]):
+				full.add(_heap_kit, i, Transform2D(0.0, _slot(i, k)))
+			_heap_runs.append(full)
+	for i in _chip_rects.size():
+		var left: int = mini(maxi(0, _state.left(i)), _heap_runs[i].n)
+		if left == 0:
+			continue
+		var shake := Motion.shiver_offset(t - float(_chip_shake[i]), 4.0)
+		var bump := Motion.bump_scale(t - float(_chip_at[i]), 0.06)
+		if not is_equal_approx(bump, 1.0):
+			for k in left:
+				cp.add(_heap_kit, i, Transform2D(0.0, Vector2.ONE * bump, 0.0, _slot(i, k) + Vector2(shake, 0.0)))
+			continue
+		var full: Looks.Copies = _heap_runs[i]
+		var count: int = _heap_kit.count
+		var verts := full.v.slice(0, left * count)
+		if shake != 0.0:
+			verts = Transform2D(0.0, Vector2(shake, 0.0)) * verts
+		cp.add_run(verts, full.c.slice(0, left * count), left)
+	return cp.mesh(_heap_kit)
 
 ## The steel tweezers, resting in the chosen compartment with their tips in
 ## the heap; they glide there from the last one and dip as they take hold.
@@ -1496,7 +1722,7 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, NAME_SIZE, Color(Pal.TEXT, seen))
 	draw_set_transform(Vector2.ZERO)
 	if _thumb_mesh != null:
-		draw_mesh(_thumb_mesh, null, xf, Color(1.0, 1.0, 1.0, seen))
+		draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
 
 ## The held picture: the pattern card grown over the board, so it can be
 ## read peg for peg beside nothing at all.
@@ -1519,7 +1745,7 @@ func _draw_peek(t: float, shown: Array) -> void:
 	_draw_thumb_frame(b, _thumb)
 	var frame := b.mesh()
 	draw_mesh(frame, null, xf, Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
-	draw_mesh(_thumb_mesh, null, xf, Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
+	draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
 	shown.append(frame)
 
 # --- the toast ---

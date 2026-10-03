@@ -298,6 +298,103 @@ func _experiment() -> void:
 				print("  hh bands %.2f ms, %d vertices; live %.2f ms, %d vertices; a rustling row %.2f ms, %d vertices; moving %d" % [
 					(t1 - t0) / 1000.0, vs, (t2 - t1) / 1000.0, live.surface_get_array_len(0) if live != null else 0,
 					(t4 - t3) / 1000.0, row.surface_get_array_len(0) if row != null else 0, saved.size()])
+		"pg_count":
+			# Pixel Garden: every per-frame builder timed against the board as
+			# it stands, every half second through the play window, with
+			# vertices: the bands all made again, the live layers, the head's
+			# four layers made again, the table and the pegs.
+			while _t < _play_to - 0.6:
+				await create_timer(0.5).timeout
+				var now: float = _puzzle._now()
+				var vs := func(m) -> int: return m.surface_get_array_len(0) if m != null else 0
+				var t0 := Time.get_ticks_usec()
+				_puzzle._band_looks = []
+				_puzzle._update_bands(now)
+				var t1 := Time.get_ticks_usec()
+				_puzzle._build_live(now)
+				var t2 := Time.get_ticks_usec()
+				_puzzle._head_under = null
+				_puzzle._update_head(now)
+				var h1 := Time.get_ticks_usec()
+				_puzzle._heaps = null
+				_puzzle._update_head(now)
+				var h2 := Time.get_ticks_usec()
+				_puzzle._head_lid = null
+				_puzzle._update_head(now)
+				var t3 := Time.get_ticks_usec()
+				print("  pg head: box %.2f ms, heaps %.2f ms, lid %.2f ms" % [(h1 - t2) / 1000.0, (h2 - h1) / 1000.0, (t3 - h2) / 1000.0])
+				var table = _puzzle._build_table(now)
+				var t4 := Time.get_ticks_usec()
+				_puzzle._build_pegs()
+				var t5 := Time.get_ticks_usec()
+				var band_vs := 0
+				for m in _puzzle._bands:
+					band_vs += vs.call(m)
+				print("  pg bands %.2f ms (%d v); live %.2f ms (beads %d v, air %d v, marks %d v, moving %d); head %.2f ms (under %d, heaps %d, over %d, lid %d v); table %.2f ms (%d v); pegs %.2f ms (%d v)" % [
+					(t1 - t0) / 1000.0, band_vs, (t2 - t1) / 1000.0, vs.call(_puzzle._live_beads), vs.call(_puzzle._live), vs.call(_puzzle._marks), _puzzle._moving.size(),
+					(t3 - t2) / 1000.0, vs.call(_puzzle._head_under), vs.call(_puzzle._heaps), vs.call(_puzzle._head_over), vs.call(_puzzle._head_lid),
+					(t4 - t3) / 1000.0, vs.call(table), (t5 - t4) / 1000.0, vs.call(_puzzle._pegs_under) + vs.call(_puzzle._pegs_bare)])
+		"pg_relay":
+			# Pixel Garden: what the win card's relayout makes again, timed.
+			for k in 3:
+				await create_timer(0.4).timeout
+				var now: float = _puzzle._now()
+				var t0 := Time.get_ticks_usec()
+				_puzzle._layout()
+				_puzzle._ensure_kits()
+				var t1 := Time.get_ticks_usec()
+				_puzzle._table = _puzzle._build_table(now)
+				var t2 := Time.get_ticks_usec()
+				_puzzle._build_pegs()
+				var t3 := Time.get_ticks_usec()
+				_puzzle._update_bands(now)
+				_puzzle._build_live(now)
+				var t4 := Time.get_ticks_usec()
+				_puzzle._update_head(now)
+				var t5 := Time.get_ticks_usec()
+				print("  pg relay: layout %.2f, table %.2f, pegs %.2f, bands+live %.2f, head %.2f ms" % [(t1 - t0) / 1000.0,
+					(t2 - t1) / 1000.0, (t3 - t2) / 1000.0, (t4 - t3) / 1000.0, (t5 - t4) / 1000.0])
+		"pg_hud":
+			# Pixel Garden: the ?, Undo and Reset as the player reaches them.
+			var bar = _host.top_bar
+			var acts = _host.action_bar
+			print("  pg ? visible=%s undo visible=%s reset (bar) visible=%s reset (actions)=%s check (actions)=%s" % [bar.help_button.visible,
+				bar.undo_button.visible, bar.reset_button.visible, acts != null and acts.reset_button.visible,
+				acts != null and acts.get("check_button") != null and acts.check_button.visible])
+			bar.help.emit()
+			await create_timer(0.3).timeout
+			var card = _host.get_node_or_null("HowToPlay")
+			print("  pg ? opened: %s, pages %d" % [card != null, card._pages.size() if card != null else 0])
+			if card != null:
+				card.queue_free()
+			await create_timer(0.3).timeout
+			var st = _puzzle._state
+			var n: int = st.n
+			var run: Array = []
+			for c in st.size():
+				if st.want[c] != st.EMPTY and (run.is_empty() or (c == int(run[-1]) + 1 and st.want[c] == st.want[run[0]] and c / n == int(run[0]) / n)):
+					run.append(c)
+				elif not run.is_empty():
+					break
+			_click(_puzzle.chip_to_local(st.want[run[0]]))
+			_ut_button(_puzzle.cell_to_local(int(run[0]) / n, int(run[0]) % n), true)
+			for c in run:
+				_ut_motion(_puzzle.cell_to_local(int(c) / n, int(c) % n))
+			_ut_button(_puzzle.cell_to_local(int(run[-1]) / n, int(run[-1]) % n), false)
+			await create_timer(0.6).timeout
+			_host._refresh()
+			print("  pg stroke: placed %d can_undo=%s undo enabled=%s" % [st.placed(), _puzzle.can_undo(), not bar.undo_button.disabled])
+			_host._on_undo()
+			await create_timer(0.6).timeout
+			print("  pg after undo: placed %d" % st.placed())
+			_ut_button(_puzzle.cell_to_local(int(run[0]) / n, int(run[0]) % n), true)
+			_ut_button(_puzzle.cell_to_local(int(run[0]) / n, int(run[0]) % n), false)
+			await create_timer(0.6).timeout
+			_host._refresh()
+			print("  pg tapped: placed %d" % st.placed())
+			_host._on_reset()
+			await create_timer(0.8).timeout
+			print("  pg after reset: placed %d moves %d" % [st.placed(), _puzzle.moves])
 		"mg_hud":
 			# Marigold: the ?, Undo and Reset as the player reaches them.
 			var bar = _host.top_bar
@@ -1647,6 +1744,52 @@ func _moves_marigold() -> Array:
 		# and needs the angle exact, so the aim is set and the seed shot
 		_puzzle._aim = a
 		_puzzle._shoot()
+	_keep = 0
+	return [plan]
+
+## Pixel Garden: the picture copied row by row, a stroke a run of one
+## colour -- the chip picked when the colour changes, a press on the run's
+## first peg, a motion a peg at a time, the release -- one event a step, so
+## the play window holds real strokes and plates being ironed.
+func _moves_pixelgarden() -> Array:
+	if _exp == "pg_hud":
+		return []
+	var plan := {}
+	plan["do"] = func() -> void:
+		var st = _puzzle._state
+		var n: int = st.n
+		var at := func(c: int) -> Vector2:
+			return _puzzle.cell_to_local(c / n, c % n)
+		var held := -1
+		var counts: Array = []
+		for r in n:
+			var x := 0
+			while x < n:
+				var k: int = st.want[r * n + x]
+				if k == st.EMPTY:
+					x += 1
+					continue
+				var run: Array = []
+				while x < n and st.want[r * n + x] == k:
+					run.append(r * n + x)
+					x += 1
+				var steps := 0
+				if k != held:
+					held = k
+					var chip: int = k
+					_moves.append({"do": func() -> void: _click(_puzzle.chip_to_local(chip))})
+					steps += 1
+				var first: int = run[0]
+				_moves.append({"do": func() -> void: _ut_button(at.call(first), true)})
+				for i in range(1, run.size()):
+					var c: int = run[i]
+					_moves.append({"do": func() -> void: _ut_motion(at.call(c))})
+				var last: int = run[run.size() - 1]
+				_moves.append({"do": func() -> void: _ut_button(at.call(last), false)})
+				counts.append(steps + run.size() + 1)
+		_keep = 0
+		for k in mini(2, counts.size()):
+			_keep += int(counts[counts.size() - 1 - k])
 	_keep = 0
 	return [plan]
 
