@@ -51,6 +51,7 @@ const Cat = preload("res://ui/faces/caterpillar.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Haptics = preload("res://core/haptics.gd")
 ## Rings' garden pieces -- a leaf, a daisy and the stable hash -- are statics,
 ## shared so the two terraces grow the same plants.
 const Rings = preload("res://puzzles/rings2d.gd")
@@ -509,6 +510,32 @@ func capabilities() -> Array[String]:
 		return ["undo"]
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). The walk is
+## one drag over every square, so a bare square under the finger says nothing
+## and neither does one taken back (`step` is both): what taps is the
+## caterpillar set down (`place`) and each leaf eaten (`munch`), and a stroke
+## that did neither -- it only walked bare squares or took some back -- ticks
+## once as the finger lifts (`_release`, by `fx.buzz`). A wrong step on Hard
+## and Insane is its heart alone, as the head gets there. A square that will
+## not be walked (`refuse`, `hungry`), the worry (`strand`), the scoot home
+## (`slip`), a row's sparkle, the tummy filling, the streak's notes, the gags
+## and the party say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"munch": Haptics.TAP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+## True once the stroke in hand has knocked (the caterpillar set down, a leaf
+## eaten, a heart): its release then says nothing more.
+var _stroke_knocked := false
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_rm = RunMesh.new(_make_look)
@@ -521,6 +548,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -1898,6 +1926,7 @@ func _press(c: int) -> void:
 		return
 	var t := _now()
 	_stroke_from = _state.body.duplicate()
+	_stroke_knocked = false
 	if _state.body.is_empty():
 		if _state.start(c):
 			_busy_for(Motion.POP_IN)
@@ -1907,6 +1936,7 @@ func _press(c: int) -> void:
 			_press_at = t
 			_dragging = true
 			_ring_at(c, t)
+			_stroke_knocked = true
 			fx.cue("place")
 			_dirty()
 		else:
@@ -1951,6 +1981,7 @@ func _step(c: int) -> void:
 	_busy_for(maxf(SLIDE_TIME, Motion.POP_IN))
 	if _state.clue[c] != 0:
 		_eat(c, t + SLIDE_TIME)
+		_stroke_knocked = true
 		fx.cue("munch")
 		if _state.peckish() and not _state.is_solved():
 			_after(SLIDE_TIME + float(CHEWS) * CHEW, fx.cue.bind("fill", 1.0, -3.0))
@@ -2047,6 +2078,8 @@ func _release() -> void:
 		return
 	_dragging = false
 	if _state.commit(_stroke_from):
+		if not _stroke_knocked:
+			fx.buzz(Haptics.TICK)
 		note_move()
 
 func _ring_at(c: int, at: float) -> void:
@@ -2072,6 +2105,7 @@ func _drop_rings(t: float) -> void:
 ## spirit -- nothing else can happen until it has (`busy()`) -- and for real
 ## when the scoot starts.
 func _misstep(c: int, kind: String, t: float) -> void:
+	_stroke_knocked = true  # (the heart is this stroke's knock)
 	_release()
 	_lost_ever = true
 	_break_streak()
@@ -2756,6 +2790,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return

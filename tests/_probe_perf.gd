@@ -1165,6 +1165,96 @@ func _moves_rings() -> Array:
 				return Vector2(float(st["cx"]), float(st["ground"]) - 120.0) * _puzzle._s})
 	return out
 
+func _rg_at(i: int) -> Vector2:
+	var st: Dictionary = _puzzle._station(i)
+	return Vector2(float(st["cx"]), float(st["ground"]) - 120.0) * _puzzle._s
+
+## Rings' buzzes: an empty peg tapped, a ring lifted and put back, one held
+## over a peg that will not take it, a ring dropped on another peg (the tap
+## under the finger, and what its landing says), Undo, on Hard and Insane a
+## drop that dooms the pegs (found by asking the judge about every lift) and
+## its heart, a hint and Reset. The plain run then plays the solver's line
+## (the locks, the streak's confetti, the win as the last ring lands, the
+## seal when it is earned).
+func _buzz_rings() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	for i in st.pegs.size():
+		if (st.pegs[i] as Array).is_empty():
+			_click(_rg_at(i))
+			await pause.call()
+			_buzzed("an empty peg tapped")
+			break
+	var a := _first_liftable()
+	_click(_rg_at(a))
+	await pause.call()
+	_buzzed("a ring lifted")
+	_click(_rg_at(a))
+	await pause.call()
+	_buzzed("put back on its own peg")
+	_click(_rg_at(a))
+	await pause.call()
+	_buzz_seen = Haptics.trace.size()
+	for j in st.pegs.size():
+		if j != a and not st.can_drop(j):
+			_click(_rg_at(j))
+			await pause.call()
+			_buzzed("a peg that will not take it")
+			break
+	var to := -1
+	for j in st.pegs.size():
+		if j != a and st.can_drop(j) and not st.would_doom(j):
+			to = j
+			break
+	if to >= 0:
+		_click(_rg_at(to))
+		await create_timer(0.1).timeout
+		_buzzed("a ring dropped")
+		await pause.call()
+		_buzzed("as it lands")
+		if _puzzle.can_undo():
+			_host._on_undo()
+			await pause.call()
+			_buzzed("undo")
+	else:
+		_click(_rg_at(a))
+		await pause.call()
+		print("  buzz (the first ring has nowhere to go)")
+	_buzz_seen = Haptics.trace.size()
+	if st.judged:
+		var doomed := false
+		for i in st.pegs.size():
+			if doomed or st.held != -1 or not st.can_lift(i):
+				continue
+			_click(_rg_at(i))
+			await create_timer(0.5).timeout
+			for j in st.pegs.size():
+				if j != i and st.can_drop(j) and st.would_doom(j):
+					_buzz_seen = Haptics.trace.size()
+					var hearts: int = _puzzle.hearts
+					_click(_rg_at(j))
+					await create_timer(0.1).timeout
+					_buzzed("a drop that dooms the pegs")
+					await create_timer(2.4).timeout
+					_buzzed("and its heart (%d -> %d)" % [hearts, _puzzle.hearts])
+					doomed = true
+					break
+			if not doomed:
+				_click(_rg_at(i))
+				await create_timer(0.5).timeout
+		if not doomed:
+			print("  buzz (no first drop dooms these pegs)")
+		_buzz_seen = Haptics.trace.size()
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(2.4).timeout
+	_buzzed("reset")
+	_moves = _moves_rings()
+
 func _step() -> void:
 	# The tutorial is up over the board: a move under it would play the board
 	# on (and could solve it out from under the pages).
@@ -3125,6 +3215,107 @@ func _moves_caterpillar() -> Array:
 		out.append({"do": func() -> void: _ut_motion(at.call(c))})
 	out.append({"do": func() -> void: _ut_button(at.call(path[-1]), false)})
 	return out
+
+func _cp_at(c: int) -> Vector2:
+	var cols: int = _puzzle._state.cols
+	return _puzzle.cell_to_local(c / cols, c % cols)
+
+## One stroke through the board's own input: a press on `cells[0]`, a drag
+## over the rest an event a frame, and the finger up.
+func _cp_stroke(cells: Array) -> void:
+	_ut_button(_cp_at(cells[0]), true)
+	for k in range(1, cells.size()):
+		await create_timer(0.16).timeout
+		_ut_motion(_cp_at(cells[k]))
+	await create_timer(0.16).timeout
+	_ut_button(_cp_at(cells[-1]), false)
+
+## The head's neighbour for which `pick` says yes, or -1.
+func _cp_side(pick: Callable) -> int:
+	var st = _puzzle._state
+	var h: int = st.head()
+	for n: int in [h - st.cols, h + st.cols, h - 1, h + 1]:
+		if n >= 0 and n < st.size() and st.adjacent(h, n) and not st.body.has(n) and pick.call(n):
+			return n
+	return -1
+
+## Caterpillar's buzzes: a square that is not leaf 1 pressed, the caterpillar
+## set down, a stroke over bare squares, one that eats the next leaf, a drag
+## back over the body, Undo, a square that will not be walked, on Hard and
+## Insane a step that costs a heart (the first one the judge prices, looked
+## for along the answer), a hint and Reset. The plain run then walks the
+## answer in one stroke (the leaves, the streak's confetti, the win, the seal
+## when it is earned).
+func _buzz_caterpillar() -> void:
+	var st = _puzzle._state
+	var path: PackedInt32Array = st.path
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	await _cp_stroke([path[1]])
+	await pause.call()
+	_buzzed("a square that is not leaf 1")
+	await _cp_stroke([path[0]])
+	await pause.call()
+	_buzzed("the caterpillar set down")
+	# (How far the answer runs over bare squares from leaf 1, and to its leaf.)
+	var leaf := 1
+	while st.clue[path[leaf]] == 0:
+		leaf += 1
+	if leaf > 1:
+		await _cp_stroke(Array(path.slice(0, leaf)))
+		await pause.call()
+		_buzzed("%d bare squares walked" % (leaf - 1))
+	await _cp_stroke(Array(path.slice(leaf - 1, leaf + 1)))
+	await create_timer(1.6).timeout
+	_buzzed("a leaf eaten")
+	await _cp_stroke([path[leaf], path[leaf - 1]])
+	await pause.call()
+	_buzzed("a drag back over the body")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+	_buzz_seen = Haptics.trace.size()
+	# The body walks the answer a square a stroke until a side square is one
+	# it may not take, and (judged) one that costs a heart.
+	var refused := false
+	var cost: bool = not st.judged()
+	for k in range(st.body.size(), path.size() - 1):
+		if refused and cost:
+			break
+		if st.head() != path[k - 1]:
+			break
+		if not refused:
+			var no := _cp_side(func(n: int) -> bool: return st.why(n) != "")
+			if no >= 0:
+				_buzz_seen = Haptics.trace.size()
+				await _cp_stroke([st.head(), no])
+				await pause.call()
+				_buzzed("a square refused (%s)" % st.why(no))
+				refused = true
+		if not cost:
+			var bad := _cp_side(func(n: int) -> bool: return st.judge(n) != "")
+			if bad >= 0:
+				_buzz_seen = Haptics.trace.size()
+				var hearts: int = _puzzle.hearts
+				var kind: String = st.judge(bad)
+				await _cp_stroke([st.head(), bad])
+				await create_timer(2.4).timeout
+				_buzzed("a %s step (hearts %d -> %d)" % [kind, hearts, _puzzle.hearts])
+				cost = true
+		await _cp_stroke([path[k - 1], path[k]])
+		await create_timer(1.0).timeout
+	if st.judged() and not cost:
+		print("  buzz (no step off the answer costs a heart)")
+	_buzz_seen = Haptics.trace.size()
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(2.4).timeout
+	_buzzed("reset")
+	_moves = _moves_caterpillar()
 
 ## Knight: the shortest line from the opening (the rose side answers by a
 ## fixed rule, so it is the whole game), a tap a hop on the square; a hop

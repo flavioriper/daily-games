@@ -96,6 +96,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 signal leave
 
@@ -521,6 +522,28 @@ func card_height(available: float) -> float:
 func card_centred() -> bool:
 	return false
 
+## What the phone does under each cue (docs/agents/haptics.md). The `drop`
+## cue is a ring put down on a new peg, one put back on its own and a doomed
+## one setting off, so it is not mapped: `_tap` and `_doom` tap for the ring
+## that goes somewhere, by `fx.buzz`. `lock` and the stuck toast come out of
+## `_settle`, which a hint's ring lands through too: they knock only under
+## `_by_hand`, as the ring lands. `solved` fires under the finger with the
+## last ring still in the air, so the win is played from `_on_solved` at the
+## landing. A ring lifted, turned over or put back, a peg that will not give
+## or take one (`refused`), the wobble, the hop home, the streak's notes, the
+## gags and the party say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+}
+## True while the ring landing is one the hand dropped (not a hint's).
+var _by_hand := false
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(_layout)
@@ -530,6 +553,7 @@ func _ready() -> void:
 	add_child(_tip_timer)
 	fx = Fx2D.new()
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_heart_layer = Control.new()
 	_heart_layer.name = "Hearts"
@@ -789,10 +813,13 @@ func _tap(i: int) -> void:
 		else:
 			_held_at = -100.0
 			fx.cue("drop")
+			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads _flight for the landing moment
 			# its hop wave waits on.
+			_by_hand = true
 			_fly(code, from, i, slot, -1, _now(), true, turn)
+			_by_hand = false
 			note_move()
 			_on_dropped(i, onto)
 	_refresh()
@@ -850,6 +877,7 @@ func _doom(to: int) -> void:
 					fx.cue("tumble", 0.92))
 	_was_busy = true
 	fx.cue("drop", 0.9, -3.0)
+	fx.buzz(Haptics.TAP)
 	_say(tr("RG_DOOM") if hearts > 0 else tr("RG_DOOM_LAST"), Face.Expr.WORRIED)
 	_heart_layer.queue_redraw()
 	moved.emit()
@@ -891,7 +919,7 @@ func _fly(code: int, from: int, to: int, slot: int, from_slot: int, at: float, s
 		turn_to += PI
 	_flight = {"code": code, "end_code": code if end_code < 0 else end_code, "from": from, "to": to,
 		"slot": slot, "from_slot": from_slot, "at": at, "dur": dur, "settle": settle, "turn": turn,
-		"turn_to": turn_to}
+		"turn_to": turn_to, "hand": _by_hand}
 
 ## Resolves whatever flight is in the air right now, as if it had just
 ## landed at `at`. A no-op when nothing is flying. A doomed ring lands home.
@@ -902,6 +930,7 @@ func _land_flight(at: float) -> void:
 	var to: int = _flight["from"] if doom else _flight["to"]
 	var slot: int = _flight["home_slot"] if doom else _flight["slot"]
 	var settle: bool = _flight.get("settle", false)
+	var hand: bool = _flight.get("hand", false)
 	_flight = {}
 	_land_peg = to
 	_land_slot = slot
@@ -917,7 +946,11 @@ func _land_flight(at: float) -> void:
 		if slot == 0:
 			fx.puff(_loc(foot), Pal.ACORN_TILE.lerp(Pal.WOOD, 0.35), 4)
 	if settle:
+		# (A flight landed early by the next tap's: that one's flag is kept.)
+		var was := _by_hand
+		_by_hand = hand
 		_settle(to, at)
+		_by_hand = was
 
 ## Drops `_lock_at`'s entry for any peg that is no longer locked, checked
 ## against the state fresh rather than trusted.
@@ -942,6 +975,8 @@ func _settle(j: int, at: float) -> void:
 		fx.sparkle(top_pt, Pal.SUN)
 		if not _state.is_solved():
 			fx.cue("lock")
+			if _by_hand:
+				fx.buzz(Haptics.BUMP)
 			if not Motion.reduce:
 				fx.confetti(top_pt, 10, RING_W * _s * 0.6)
 	if _state.is_solved():
@@ -953,6 +988,8 @@ func _settle(j: int, at: float) -> void:
 	if not _state.is_solved() and _state.is_stuck():
 		_toast = STUCK_MSG
 		_toast_at = at
+		if _by_hand:
+			fx.buzz(Haptics.WARN)
 	queue_redraw()
 
 func _colours_left() -> int:
@@ -1157,6 +1194,7 @@ func _on_solved() -> void:
 	_streak_gen += 1
 	_gag_gen += 1
 	fx.cue("solved")
+	_after(land - _now(), fx.buzz.bind(Haptics.WIN))
 	_heart_layer.queue_redraw()
 	_party(maxf(0.0, _solved_at - _now()))
 	_refresh()
@@ -2682,6 +2720,8 @@ func _party(wave: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
