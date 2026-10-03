@@ -13,23 +13,49 @@ crisp knock, and `Haptics` calls it through the `AndroidRuntime` singleton
 and `JavaClassWrapper` (no plugin). `vibrate_handheld` remains only as the
 fallback (Android under 10, iOS): one short weak pulse a kind.
 
+**What is heard is felt (2026-10-03, second word from the user).** With the
+first pass done the user played Lucky Thirteen and found it "incomplete": the
+pebbles sound under the finger as they are picked, and the phone knocked only
+as they merged. The ask: "all sounds should have an equivalent haptic feedback
+with different intensities and styles". So the sparse rule below is no longer
+"silence unless a board chose a knock":
+
+- `Fx2D.cue` knocks an **ECHO**, a new weakest kind, for every cue the board
+  gave no kind, at the moment its sound really plays (a file exists, the
+  60 ms `CUE_GAP` let it through, the stream is under 4 s so a song or a
+  drone is not a knock). Its strength follows the sound: `volume_db` and
+  `pitch` become the gain, so Thirteen's chain climbs in the hand as it
+  climbs in the ear and a quiet landing is fainter still.
+- An ECHO ranks under everything, so a knock the board chose on that frame
+  (or still in the motor) is the one felt, and no row of the table below
+  changes: the echoes fill what was silent between them.
+- The button click and the menu's page turn echo too (`ui/ui_sound.gd`).
+- A tutorial's board is still silent (`fx.buzzes = false`).
+- **The kinds now differ in shape as well as weight.** Where the phone
+  composes primitives (`VibrationEffect.startComposition`, Android 11 and up
+  with `areAllPrimitivesSupported`; `Haptics.COMPOSED`) each kind is built
+  from tick / click / thud at its own strength. Elsewhere the predefined
+  effects carry the shape (`Haptics.EFFECTS`), and a tap is now a click so it
+  stands over an echo's tick.
+
+Not felt on a phone yet (no device on this Mac's adb): the composition path
+goes through JavaClassWrapper untested, and falls back to the predefined
+effects if `areAllPrimitivesSupported` does not answer `true`.
+
 The kinds, weakest first; the order is the rank:
 
-| Kind | Android effect | For |
-|---|---|---|
-| `TICK` | tick | a clear, an Undo |
-| `TAP` | tick | a piece set down, a reset |
-| `BUMP` | click | something finished or locked: a line, a milestone, a reveal |
-| `GOOD` | click | a small yes: a hint, a clean check, a heart back |
-| `WARN` | click | not yet: a rule broken, a check that found something |
-| `THUD` | heavy click | a stamp, a slam |
-| `BAD` | heavy click | a mistake that cost something: a heart |
-| `LOSE` | heavy click | the day is lost |
-| `WIN` | click, then heavy click | solved |
-
-Several kinds share an effect on purpose: the kind is the meaning and the
-rank, the effect is what three strengths of knock can say. Only the win is
-more than one knock.
+| Kind | Composed (primitive x strength) | Predefined | For |
+|---|---|---|---|
+| `ECHO` | tick x 0.35, times the sound's gain | tick | a sound no kind answers |
+| `TICK` | tick x 0.6 | tick | a clear, an Undo |
+| `TAP` | tick x 1.0 | click | a piece set down, a reset |
+| `BUMP` | click x 0.7 | click | something finished or locked: a line, a milestone, a reveal |
+| `GOOD` | tick, then click (rising) | tick, then click | a small yes: a hint, a clean check, a heart back |
+| `WARN` | click, click (even, soft) | double click | not yet: a rule broken, a check that found something |
+| `THUD` | thud x 1.0 | heavy click | a stamp, a slam |
+| `BAD` | click, then thud | heavy click | a mistake that cost something: a heart |
+| `LOSE` | thud, then a weaker thud | heavy click twice | the day is lost |
+| `WIN` | tick, click, click (rising) | click, click, heavy click | solved |
 
 Rules:
 
@@ -44,13 +70,15 @@ Rules:
   only if it outranks it. So a frame's cues come out as the strongest of
   them (place, focus, line -> the line's bump), a per-cell cue cannot rattle,
   and a button's tick never stacks on the board's answer to it.
-- **Less is more.** What happens on every touch gets the faintest knock or
-  none: no buzz for a button, a focus, a brush armed or a selection moved
-  (all removed 2026-10-03). Stronger knocks are for what is rare: a line, a
-  heart, the solve. Never a pattern of pulses for a mistake.
-- **Do not buzz what the hand did not do.** The entrance, idle life, a
-  blink, scenery, the streak's pluck over a tap that already spoke: nothing.
-  A buzz answers a touch or says a judgement.
+- **Less is more, but never nothing where there is a sound.** What happens
+  on every touch gets the faintest knock: a button, a brush armed or a
+  selection moved is an echo of its sound, and a cue with no file (Binairo's
+  `focus`) is still nothing. Stronger knocks are for what is rare: a line, a
+  heart, the solve.
+- **Do not choose a kind for what the hand did not do.** The entrance, idle
+  life, a blink, scenery, the streak's pluck over a tap that already spoke:
+  no mapped kind. Where they make a sound they echo it, and that is all. A
+  kind answers a touch or says a judgement.
 - **A judgement that waits, buzzes when it lands.** Binairo's blush cue fires
   for a sun on its way to a moon; its warn waits out `WRONG_GRACE` and looks
   again (`_recolour`), like the hearts do. Map a cue only when it fires at
@@ -334,6 +362,10 @@ Rules:
   cannot run on this Mac, so only a phone proves it.
 
 "Next game on the list" means the first row below without a date.
+
+**Read every row's "nothing for ..." as "no kind for ..."** since the echo
+(2026-10-03): whatever in that list makes a sound now knocks an ECHO with it,
+and only what is silent stays still. The kinds a row names are unchanged.
 
 | # | Game | Done | What buzzes |
 |---|---|---|---|
