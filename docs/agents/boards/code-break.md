@@ -117,3 +117,15 @@ window (after the party) 192. Far under 855.
   (Hard and Insane add the ink rule), then the hint -- or on Insane, which
   has none, the Shell Game.
 - Undo was already on every band, and Reset wherever `can_reset()` allows.
+
+### Haptics (2026-10-03)
+
+`HAPTICS` in `puzzles/codebreak2d.gd`; the row in `docs/agents/haptics.md`
+says what knocks. Three are played directly, not through a cue: the row's
+bump in `check()` once it is committed, the win in `_reveal(true)` (the
+`solved` cue fires under the Check press, before the player knows) and the
+seal's thud in `_stamp_down`'s landing callback. `tests/_probe_perf.gd --
+mastermind d=<n> x=buzz` (`_buzz_mastermind`); its moves now skip a seat a
+hint filled. `_glance` holds its face by weak reference: a friend sent back
+inside `GLANCE_TIME` was freed under the lambda, which the engine logged as
+an error (harmless, the lambda checked).

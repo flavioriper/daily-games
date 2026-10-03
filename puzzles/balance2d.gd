@@ -46,6 +46,7 @@ const State = preload("res://puzzles/balance_state.gd")
 const Sim = preload("res://puzzles/balance_sim.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fruit = preload("res://ui/faces/fruit.gd")
@@ -57,6 +58,29 @@ const OUT_OF_SUN := "res://ui/hud/out_of_rows.gd"
 ## The sunset card's words (ui/hud/out_of_rows.gd, Code Break's card).
 const OUT_WORDS := {"title": "BAL_OUT_TITLE", "body": "BAL_OUT_BODY", "body_rest": "BAL_OUT_BODY_REST",
 	"more": "BAL_ONE_HOUR", "show": "BAL_SHOW_ANSWER", "placement": "hour"}
+
+## What the phone does under each cue (docs/agents/haptics.md). The knock
+## for a fruit set down is not a cue: `land` and `step` fire for every fruit
+## the board moves too (a hint, Undo, Reset, a bounce, the shown answer), so
+## `_by_hand` marks the one the hand let go and `_after_physics` knocks as
+## it lands (a tap) or gets home (a tick). A far toss that lands is a small
+## yes over that tap. The beam level knocks; the beam at rest anywhere else
+## (`tock`, the cheers) says nothing, and neither does the plank on its bale
+## (`thud`), which every uneven move would make a heavy knock of. Insane's
+## bounce is the mistake that costs. A pinned fruit touched, a fruit lifted,
+## the sun tapped and the sun getting low say nothing. The seal thuds as it
+## lands (`_stamp_down`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"level": Haptics.BUMP,
+	"toss": Haptics.GOOD,
+	"hint": Haptics.GOOD,
+	"hour_back": Haptics.GOOD,
+	"boing": Haptics.BAD,
+	"sunset": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
 
 # --- layout, in the board card's pixels ---
 const PAD := 30.0
@@ -276,6 +300,9 @@ var _look_dir: Array[Vector2] = []
 var _look_until: Array[float] = []
 ## Tosses: the fruit let go as a toss and not landed yet, and the run.
 var _tossed: Array[bool] = []
+## Per fruit: let go by the hand and not yet down, so its landing knocks
+## (a hop the board made -- a hint, Undo, Reset, a bounce -- lands silent).
+var _by_hand: Array[bool] = []
 var _toss_run := 0
 var _glasses_tw: Array = []
 ## The cup a held fruit would drop into, and its glow's level.
@@ -360,6 +387,7 @@ func _ready() -> void:
 	_front.z_index = 1
 	add_child(_front)
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 3
 	add_child(fx)
@@ -402,6 +430,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_look_dir = []
 	_look_until = []
 	_tossed = []
+	_by_hand = []
 	_toss_run = 0
 	_glasses_tw = []
 	_aim_a = 0.0
@@ -426,6 +455,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_look_dir.append(Vector2.ZERO)
 		_look_until.append(-100.0)
 		_tossed.append(false)
+		_by_hand.append(false)
 		_glasses_tw.append(null)
 	_held = -1
 	_solved_at = -1.0
@@ -825,6 +855,9 @@ func _after_physics() -> void:
 				if _tossed[f]:
 					_tossed[f] = false
 					_nice_toss(f)
+				if _by_hand[f]:
+					_by_hand[f] = false
+					Haptics.play(Haptics.TAP)
 			"bump":
 				_squash_at[int(e.f)] = t
 			"seat":
@@ -842,6 +875,9 @@ func _after_physics() -> void:
 			"home":
 				_squash_at[int(e.f)] = t
 				_tossed[int(e.f)] = false
+				if _by_hand[int(e.f)]:
+					_by_hand[int(e.f)] = false
+					Haptics.play(Haptics.TICK)
 				fx.cue("step", 0.85)
 	sim.events.clear()
 	var calm: bool = sim.calm() and _held < 0
@@ -1935,6 +1971,7 @@ func _release(p: Vector2) -> void:
 			# a tap on the plank: home to the basket
 			state.place(f, State.BASKET)
 			sim.hop(f, 0)
+			_by_hand[f] = true
 			_toss_run = 0
 			_spend()
 			note_move()
@@ -1953,6 +1990,7 @@ func _release(p: Vector2) -> void:
 	_tossed[f] = false
 	if state.place(f, x):
 		_tossed[f] = toss
+		_by_hand[f] = true
 		if not toss:
 			_toss_run = 0
 		_spend()
@@ -2118,6 +2156,7 @@ func _drop_held() -> void:
 	_hop(f, state.at[f], 0.0)
 
 func _hop(f: int, x: int, delay: float) -> void:
+	_by_hand[f] = false
 	sim.hop(f, x, delay)
 	if Motion.reduce:
 		sim.snap()
@@ -2264,6 +2303,7 @@ func _stamp_down(quiet := false) -> void:
 	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
 	tw.chain().tween_callback(func() -> void:
 		Motion.squash(stamp, 0.22, 0.26)
+		Haptics.play(Haptics.THUD)
 		fx.ring(stamp.position + stamp.pivot_offset, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN)
 		fx.puff(stamp.position + stamp.pivot_offset + Vector2(0.0, rad * 0.8), Pal.WHEAT, 5))
 

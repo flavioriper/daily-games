@@ -39,6 +39,7 @@ const Friends = preload("res://ui/faces/friends.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
+const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Seal = preload("res://ui/flat/seal.gd")
@@ -176,6 +177,31 @@ const WIN_DELAY_STILL := 0.3
 
 # --- the polish pass (docs/superpowers/specs/2026-09-29-codebreak-polish-design.md) ---
 const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
+
+## What the phone does under each cue (docs/agents/haptics.md). A friend
+## seated is the faintest knock and one sent back or undone the same; a
+## palette tap on a full row and a tap on a hinted seat say nothing, like
+## every touch that is only refused. Check on a short row warns. A row
+## scored knocks once as it turns to ink (`check`, not a cue: the pips that
+## follow are a count to read, and five ticks would rattle), and a second
+## time only for a new best in the right seats or every friend present. The
+## win knocks when the lids come off (`_reveal`), not on `solved`, which
+## fires under the Check press a second before the player knows; the seal
+## thuds as it lands (`_stamp_down`). The Shell Game's swap, the clean
+## miss's sunglasses, the entrance and the idle peeks say nothing.
+const HAPTICS := {
+	"clear": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"place": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"warmer": Haptics.GOOD,
+	"so_close": Haptics.GOOD,
+	"all_here": Haptics.GOOD,
+	"row_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"out_of_rows": Haptics.LOSE,
+}
 ## A friend in flight leans this far (radians) into the run, and looks where
 ## it is going; the friends already seated glance at it for GLANCE_TIME.
 const FLY_LEAN := 0.22
@@ -356,6 +382,7 @@ func _ready() -> void:
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_column)
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.z_index = 2
 	add_child(fx)
 	resized.connect(_layout)
@@ -858,9 +885,13 @@ func _glance(g: int, s: int) -> void:
 		face.look = dir
 		var n: int = int(face.get_meta("look_n", 0)) + 1
 		face.set_meta("look_n", n)
+		# (a weak reference: a friend sent back inside GLANCE_TIME is freed,
+		# and a lambda holding the face itself logs an error for it)
+		var ref: WeakRef = weakref(face)
 		_after(GLANCE_TIME, func() -> void:
-			if is_instance_valid(face) and int(face.get_meta("look_n", 0)) == n:
-				face.look = Vector2.ZERO)
+			var seen := ref.get_ref() as Control
+			if seen != null and int(seen.get_meta("look_n", 0)) == n:
+				seen.look = Vector2.ZERO)
 
 ## Where a friend runs in from. The chips span the same column the board
 ## does, so chip `i` stands at about this fraction across it: the run keeps
@@ -1061,6 +1092,7 @@ func check() -> int:
 	if m.is_empty():
 		return -1
 	_busy = true
+	Haptics.play(Haptics.BUMP)
 	_refresh_seats()
 	_dip(g)
 	# On the faces, not the seats: a quick Check can land while the last
@@ -1501,6 +1533,8 @@ func _reveal(won: bool) -> void:
 	focus_changed.emit()
 	if not _restoring:
 		fx.cue("reveal")
+		if won:
+			Haptics.play(Haptics.WIN)
 
 func _lid_away(s: int, delay: float) -> void:
 	var lid: Control = _lid[s]
@@ -1635,6 +1669,7 @@ func _stamp_down() -> void:
 	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
 	tw.chain().tween_callback(func() -> void:
 		Motion.squash(stamp, 0.22, 0.26)
+		Haptics.play(Haptics.THUD)
 		fx.ring(_column.position + centre * _scale, rad * 0.9 * _scale, Pal.MOON_INK if insane else Pal.SUN))
 
 ## After the joint hop: party hats pop onto the code and the row that

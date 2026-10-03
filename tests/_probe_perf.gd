@@ -22,6 +22,9 @@ const PLAY_TO := 13.0  # (a `howto` run with five pages needs ~10 s)
 const Haptics = preload("res://core/haptics.gd")
 
 var _buzz_seen := 0
+## Seconds a board's `_buzz_<id>` adds to the run after it, where the moves
+## wait on the board (Code Break holds a scored row a second or two).
+var _buzz_more := 0.0
 var _menu: Node
 var _host: Node
 var _puzzle: Node
@@ -265,9 +268,10 @@ func _experiment() -> void:
 			# player can do, and the kind that landed for it.
 			_buzzed("open")
 			_next_move = INF
+			_play_to = INF  # (a long routine outlasts PLAY_TO)
 			await call("_buzz_" + _id)
 			_next_move = _t + 0.5
-			_play_to = _t + 0.5 + _moves.size() * PLAY_EVERY + 5.0
+			_play_to = _t + 0.5 + _moves.size() * PLAY_EVERY + 5.0 + _buzz_more
 		"undo":
 			var m: Dictionary = _moves[0]
 			_click(m.at.call())
@@ -1308,14 +1312,62 @@ func _buzz_binairo() -> void:
 func _moves_mastermind() -> Array:
 	var out := []
 	var st = _puzzle.state
+	# (a seat a hint already filled is skipped: pick takes the first free one)
 	for g in st.tries - 1:
 		for s in st.length:
-			out.append({"do": func() -> void: _puzzle.pick((int(st.code[s]) + 1 + g % (st.palette_size - 1)) % st.palette_size)})
+			out.append({"do": func() -> void:
+				if st.row[s] == -1:
+					_puzzle.pick((int(st.code[s]) + 1 + g % (st.palette_size - 1)) % st.palette_size)})
 		out.append({"do": func() -> void: _puzzle.check()})
 	for s in st.length:
-		out.append({"do": func() -> void: _puzzle.pick(int(st.code[s]))})
+		out.append({"do": func() -> void:
+			if st.row[s] == -1:
+				_puzzle.pick(int(st.code[s]))})
 	out.append({"do": func() -> void: _puzzle.check()})
 	return out
+
+## Code Break's buzzes: a friend seated, one sent back, Undo, Check on a
+## short row, a palette tap on a full row, Reset, a hint and a tap on the
+## hinted seat. The plain run then scores every row and cracks the last
+## (the row's knock, a new best, the lids, the seal).
+func _buzz_mastermind() -> void:
+	var st = _puzzle.state
+	_buzz_more = st.tries * 2.0 + 4.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	_puzzle.pick(0)
+	await pause.call()
+	_buzzed("a friend seated")
+	_click(_puzzle.cell_to_local(st.active(), 0))
+	await pause.call()
+	_buzzed("sent back with a tap")
+	_puzzle.pick(1)
+	await pause.call()
+	_buzzed("another seated")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check on a short row")
+	for s in st.length:
+		_puzzle.pick(s % st.palette_size)
+	await pause.call()
+	_buzzed("the row filled")
+	_puzzle.pick(0)
+	await pause.call()
+	_buzzed("a tap on a full row")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+		for s in st.length:
+			if st.locked[s] and st.row[s] != -1:
+				_click(_puzzle.cell_to_local(st.active(), s))
+		await pause.call()
+		_buzzed("the hinted seat tapped")
 
 ## Balance: each loose fruit dropped into its answer cup, in the safe order
 ## (Insane's bales bounce a low side home), through the board's own hop.
@@ -1331,12 +1383,91 @@ func _moves_balance() -> Array:
 		if not st.loose(f) or st.at[f] == st.answer[f]:
 			continue
 		out.append({"do": func() -> void:
-			if st.place(f, st.answer[f]):
-				_puzzle._hop(f, st.answer[f], 0.0)
+			# (a hint may have pinned a twin of this fruit in its cup: it
+			# takes the twin's)
+			var x: int = st.answer[f]
+			var o: int = st.occupant(x)
+			if o >= 0 and o != f:
+				x = st.answer[o]
+			if st.place(f, x):
+				_puzzle._hop(f, x, 0.0)
+				_puzzle._by_hand[f] = true  # the hand's release, for x=buzz
 				_puzzle._spend()
 				_puzzle.note_move()
 				_puzzle._moving = true})
 	return out
+
+## A fruit carried from where it is to over cup `x` and let go, through the
+## board's own input (two drags a frame apart, so it is let go at rest).
+func _bal_carry(f: int, x: int) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = _puzzle.fruit_to_local(f)
+	_puzzle._gui_input(ev)
+	var over: Vector2 = _puzzle.cup_to_local(x) + Vector2(0.0, -_puzzle.sim.r * 1.5)
+	for i in 2:
+		await process_frame
+		var mv := InputEventMouseMotion.new()
+		mv.position = over
+		_puzzle._gui_input(mv)
+	await process_frame
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = over
+	_puzzle._gui_input(up)
+
+## Balance's buzzes: a pinned fruit touched, a fruit carried to a cup and
+## left to settle, tapped home, a toss, Undo, a hint, the sun
+## tapped and Reset. On Insane a drop may bounce (the bale's `bad`). The
+## plain run then drops every fruit in its cup and ends level.
+func _buzz_balance() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0  # (the beam settles before the solve, the seal after)
+	var rest := func() -> void: await create_timer(2.6).timeout
+	var loose: Array = []
+	var pinned := -1
+	for f in st.fruit.size():
+		if st.loose(f):
+			loose.append(f)
+		else:
+			pinned = f
+	if pinned >= 0:
+		_click(_puzzle.fruit_to_local(pinned))
+		await create_timer(0.6).timeout
+		_buzzed("a pinned fruit touched")
+	var a: int = loose[0]
+	await _bal_carry(a, st.answer[a])
+	await create_timer(0.1).timeout
+	_buzzed("a fruit lifted and let go")
+	await rest.call()
+	_buzzed("it lands, the beam rests")
+	if st.at[a] != 0:
+		_click(_puzzle.fruit_to_local(a))
+		await rest.call()
+		_buzzed("tapped home")
+	var b: int = loose[1]
+	# (a toss is a fast let-go far from the cup it lands in, which a free
+	# cup under the hand rarely allows: the carry is marked one by hand)
+	await _bal_carry(b, st.answer[b])
+	_puzzle._tossed[b] = true
+	await rest.call()
+	_buzzed("a toss that lands")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await rest.call()
+		_buzzed("undo")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await rest.call()
+		_buzzed("hint")
+	_click(_puzzle._sun_at())
+	await create_timer(0.6).timeout
+	_buzzed("the sun tapped")
+	_puzzle.reset_board()
+	await rest.call()
+	_buzzed("reset")
 
 ## Untangle: the way home, a peg at a time, carried by hand -- a press, a
 ## drag in steps over the ropes (the tangle reacts under the hand, which is
