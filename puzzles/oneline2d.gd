@@ -44,6 +44,7 @@ const State = preload("res://puzzles/oneline_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Face = preload("res://ui/faces/face.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
@@ -434,10 +435,35 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). The walker
+## set down and a plank laid are the faintest knock, a post at a time as the
+## finger crosses them (a hint's own step is under its `hint`), and a line
+## taken back fainter still; the streak's confetti is the milestone. On Easy
+## and Medium the step that first strands a line warns (`_walk_to`: it has
+## no cue); on Hard and Insane that step costs the heart instead. A post
+## that will not start, a walked line, a sunny line refused (`locked`,
+## `sun`), the eject's `slip`, the daisies, the dew, the streak's pluck and
+## the gags say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"start": Haptics.TAP,
+	"lay": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1540,6 +1566,8 @@ func _walk_to(n: int, judged := true) -> void:
 	var to_cap := _cap_of(n)
 	var was_dry: bool = state.dry()
 	var finishes: bool = state.may_step(n) and state.step_leaves_finish(n)
+	# (Easy and Medium: whether a line was out of reach before this step)
+	var was_lost: bool = max_hearts == 0 and not state.stranded().is_empty()
 	match state.step(n):
 		State.STEP_WALKED:
 			_refuse(n)
@@ -1580,6 +1608,10 @@ func _walk_to(n: int, judged := true) -> void:
 			note_move()
 			if is_done():
 				return
+			# The step that strands a line is felt once, as it is taken; the
+			# steps after it on the same lost figure are plain planks.
+			if max_hearts == 0 and not was_lost and not state.stranded().is_empty():
+				fx.buzz(Haptics.WARN)
 			if finishes:
 				_on_right_step(e, n, judged and max_hearts > 0)
 			else:
@@ -2494,6 +2526,8 @@ func _party(lead: float) -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var at := lead + PARTY_AT

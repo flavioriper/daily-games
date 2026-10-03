@@ -1894,6 +1894,201 @@ func _buzz_lightup() -> void:
 	await pause.call()
 	_buzzed("reset")
 
+## One Line's buzzes: a post that may not start, the walker set down, a
+## line walked by a tap and two by a drag, a walked line refused, Undo, a
+## step that leaves no finish (the warn as it strands a line on Easy and
+## Medium, a heart on Hard and Insane), a hint, Check and Reset. The plain
+## run then draws the planted walk to the win.
+func _buzz_oneline() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var path: Array = st.solution_path()
+	for n in st.nodes:
+		if not st.may_start(int(n)):
+			_click(_puzzle.node_to_local(int(n)))
+			await pause.call()
+			_buzzed("a post that may not start")
+			break
+	_click(_puzzle.node_to_local(int(path[0])))
+	await pause.call()
+	_buzzed("the walker set down")
+	_click(_puzzle.node_to_local(int(path[1])))
+	await pause.call()
+	_buzzed("a line walked")
+	if st.edge_between(int(path[0]), int(path[1])) >= 0 and not st.may_step(int(path[0])):
+		_click(_puzzle.node_to_local(int(path[0])))
+		await pause.call()
+		_buzzed("a walked line refused")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	_ut_button(_puzzle.node_to_local(int(path[0])), true)
+	await process_frame
+	_buzz_seen = Haptics.trace.size()
+	for k in range(1, mini(3, path.size())):
+		_ut_motion(_puzzle.node_to_local(int(path[k])))
+		await create_timer(0.3).timeout
+	_ut_button(_puzzle.node_to_local(int(path[mini(2, path.size() - 1)])), false)
+	await pause.call()
+	_buzzed("two lines in one drag")
+	# along the planted walk, the first step off it that leaves no finish
+	var k := mini(2, path.size() - 1)
+	var found := false
+	while not found and k < path.size() - 1:
+		for q: Dictionary in st.adj.get(st.current, []):
+			var to := int(q.to)
+			if not st.may_step(to) or st.step_leaves_finish(to):
+				continue
+			var hearts: int = _puzzle.hearts
+			_click(_puzzle.node_to_local(to))
+			if _puzzle.max_hearts > 0:
+				await create_timer(3.0).timeout
+				_buzzed("a step that costs a heart (%d -> %d)" % [hearts, _puzzle.hearts])
+				found = true
+			elif not st.stranded().is_empty():
+				await pause.call()
+				_buzzed("a step that strands a line")
+				for r: Dictionary in st.adj.get(st.current, []):
+					if st.may_step(int(r.to)):
+						_click(_puzzle.node_to_local(int(r.to)))
+						await pause.call()
+						_buzzed("the next step, still stranded")
+						_host._on_undo()
+						await pause.call()
+						break
+				_puzzle.check()
+				await pause.call()
+				_buzzed("check, a line stranded")
+				_host._on_undo()
+				await pause.call()
+				found = true
+			else:
+				await pause.call()
+				_host._on_undo()
+				await pause.call()
+			_buzz_seen = Haptics.trace.size()
+			if found:
+				break
+		if not found:
+			k += 1
+			_click(_puzzle.node_to_local(int(path[k])))
+			await pause.call()
+			_buzz_seen = Haptics.trace.size()
+	if not found:
+		print("  buzz (no step off the walk loses the figure)")
+	if _puzzle.out_of_hearts:
+		return
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.2).timeout
+		_buzzed("hint")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await create_timer(1.5).timeout
+	_buzzed("reset")
+
+## Nonogram's buzzes: a tile tapped down and tapped away, a run swept, a
+## cross, a stroke that brings a line to read right, Undo, a tile the
+## picture does not want (it stays on Easy and Medium, a heart on Hard and
+## Insane), a hint and its grouted tile tapped, Check and Reset. The plain
+## run then sweeps the picture to the win.
+func _buzz_nonogram() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
+	# the picture's longest run in a row, and a row it would finish
+	var run: Array = []
+	var whole: Array = []
+	var bare := Vector2i(-1, -1)
+	for y in st.h:
+		var here: Array = []
+		var runs := 0
+		for x in st.w + 1:
+			if x < st.w and int(st.bitmap[y][x]) == 1:
+				here.append(Vector2i(x, y))
+				continue
+			if x < st.w and bare.x < 0:
+				bare = Vector2i(x, y)
+			if not here.is_empty():
+				runs += 1
+				if here.size() > run.size():
+					run = here.duplicate()
+				if runs == 1 and (st.row_clues[y] as Array).size() == 1 and whole.is_empty():
+					whole = here.duplicate()
+			here = []
+	var first: Vector2i = run[0]
+	_click(at.call(first))
+	await pause.call()
+	_buzzed("a right tile tapped down")
+	if st.mark_at(first) == st.FILL and not st.locked.has(first):
+		_click(at.call(first))
+		await pause.call()
+		_buzzed("tapped away")
+	_buzz_seen = Haptics.trace.size()
+	if not whole.is_empty():
+		_ut_button(at.call(whole[0]), true)
+		for k in range(1, whole.size()):
+			await process_frame
+			_ut_motion(at.call(whole[k]))
+		await process_frame
+		_buzzed("the sweep under the finger")
+		_ut_button(at.call(whole[whole.size() - 1]), false)
+		await create_timer(1.6).timeout
+		_buzzed("a stroke that finishes a row")
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+	if bare.x >= 0 and st.mark_at(bare) == st.BLANK:
+		_puzzle.set_brush(st.MARK)
+		_buzzed("the cross armed")
+		_click(at.call(bare))
+		await pause.call()
+		_buzzed("a cross")
+		_click(at.call(bare))
+		await pause.call()
+		_buzzed("the cross rubbed out")
+		_puzzle.set_brush(st.FILL)
+	# a tile the picture does not want, in a row that still wants some
+	var wrong := Vector2i(-1, -1)
+	for y in st.h:
+		for x in st.w:
+			var cell := Vector2i(x, y)
+			if wrong.x < 0 and int(st.bitmap[y][x]) == 0 and st.mark_at(cell) == st.BLANK \
+					and not (st.row_clues[y] as Array).is_empty() and int(st.row_clues[y][0]) > 0:
+				wrong = cell
+	if wrong.x >= 0:
+		var hearts: int = _puzzle.hearts
+		_click(at.call(wrong))
+		await create_timer(2.5).timeout
+		_buzzed("a wrong tile (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+		if _puzzle.max_hearts == 0:
+			_puzzle.check()
+			await pause.call()
+			_buzzed("check, a tile wrong")
+	if _puzzle.out_of_hearts:
+		return
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+		for cell: Vector2i in st.locked:
+			if st.mark_at(cell) == st.FILL:
+				_click(at.call(cell))
+				break
+		await pause.call()
+		_buzzed("the grouted tile tapped")
+	if _puzzle.max_hearts > 0:
+		_puzzle.check()
+		await pause.call()
+		_buzzed("check")
+	_puzzle.reset_board()
+	await create_timer(1.5).timeout
+	_buzzed("reset")
+
 ## One Line: the planted walk drawn as one drag -- the press on its first
 ## post, a motion to each next post, the release -- one event a step.
 func _moves_oneline() -> Array:
