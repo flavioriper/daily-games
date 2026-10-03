@@ -92,6 +92,7 @@ class TutorialSky extends "res://puzzles/planes2d.gd":
 	func _ready() -> void:
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx.buzzes = false  # (the page's finger is not the player's)
 		force_gag = Gag.NONE
 		_tip_timer.stop()
 

@@ -74,6 +74,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 # --- the screen, measured (spec section 7) ---
 ## The board card's own inset: 28 off a 1000 by 1340 card leaves a field box
@@ -591,6 +592,10 @@ var _sky_i := PackedInt32Array()
 var _cloud_poke: Dictionary = {}
 ## The count a stuck sky was last announced at, so the sound plays once.
 var _stuck_told := -1
+## True from a heart coming back until the stuck sky it came back to is said
+## again: the player lost the day to those clouds, and the heart's own knock
+## is the news (no warn 0.3 s behind it).
+var _stuck_known := false
 
 ## The rewards (polish section 4). The streak, and a count bumped every time
 ## it breaks so nothing scheduled for a broken streak lands; the bubble's own
@@ -705,6 +710,28 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A plane sent
+## off taps, the one gesture there is (`place`, which a crash's rush up the
+## lane fires too: its heart knocks over it as it splits, and a gust's the
+## same way, the cloud's own cue saying nothing). `stuck` is not mapped: it
+## is a warn while a heart can still blow the clouds on, and nothing when
+## the sky is lost by it (the lose is that knock) or a heart just came back
+## to a sky the player knows is stuck (`_check_stuck`). A plane pressed, one
+## refused, the clouds' drift, the bonk and the flutter home, the streak's
+## notes, the gags and the party say nothing. The seal thuds as it lands
+## (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# **The card is the wall a plane disappears behind**, and this is the one
@@ -718,6 +745,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2265,6 +2293,8 @@ func _gust() -> void:
 ## count, the tip, and the pill breathes (`_pill_breathing`) -- or, with no
 ## heart left to blow them on, the sky is lost.
 func _check_stuck() -> void:
+	var known := _stuck_known
+	_stuck_known = false
 	if is_done() or out_of_hearts or not _state.windy() or not _state.stuck():
 		return
 	if _stuck_told == _state.count():
@@ -2281,6 +2311,8 @@ func _check_stuck() -> void:
 		_after(0.35, _run_out)
 		return
 	_say(tr("PP_TIP_STUCK"), Face.Expr.PUZZLED)
+	if not known:
+		fx.buzz(Haptics.WARN)
 	_heart_layer.queue_redraw()
 
 ## Whether the pill is breathing: the clouds have closed in and a heart can
@@ -3175,6 +3207,7 @@ func heart_back() -> void:
 	_tip_timer.start()
 	moved.emit()
 	if _state.windy() and _state.stuck():
+		_stuck_known = true
 		_after(0.3, _check_stuck)
 
 ## Back from the card: the board ends unsolved first, so the host logs
@@ -3401,6 +3434,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if _state.windy():
 		_clouds_at = _party_at
 		if not Motion.reduce:

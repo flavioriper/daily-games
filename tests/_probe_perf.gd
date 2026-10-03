@@ -2881,6 +2881,169 @@ func _buzz_fairylights() -> void:
 	await create_timer(2.2).timeout
 	_buzzed("reset")
 
+## Paper Planes' buzzes: a plane pressed and slid off, a free plane sent off
+## and called back by Undo, a blocked plane tapped (refused on Easy and
+## Medium; a crash and its heart on Hard), a hint and Reset. On a Windy Day
+## sky it then sends off the planes that close the clouds in (when a greedy
+## search of the state finds such a run), taps a cloud for the gust and
+## resets. The
+## plain run then empties the sky (the streak's confetti, the win, the seal
+## when it is earned).
+func _buzz_planes() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var free: int = st.free_planes()[0]
+	var blocked := -1
+	for i in st.planes.size():
+		if not st.planes[i]["gone"] and st.blocker(i) >= 0:
+			blocked = i
+			break
+	_ut_button(_pp_head(free), true)
+	await process_frame
+	_ut_motion(_pp_head(free) + Vector2(400.0, 0.0))
+	await process_frame
+	_ut_button(_pp_head(free) + Vector2(400.0, 0.0), false)
+	await pause.call()
+	_buzzed("a plane pressed, slid off")
+	_click(_pp_head(free))
+	await create_timer(1.6).timeout
+	_buzzed("a free plane sent off")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await create_timer(1.6).timeout
+		_buzzed("undo")
+	else:
+		_puzzle.reset_board()
+		await create_timer(2.2).timeout
+		_buzz_seen = Haptics.trace.size()
+	# (A Windy Day sky has two hearts and its gust wants one: the crash is
+	# Hard's to show.)
+	if blocked >= 0 and not st.windy():
+		_click(_pp_head(blocked))
+		await create_timer(0.1).timeout
+		_buzzed("a blocked plane tapped")
+		await create_timer(3.0).timeout
+		_buzzed("and what it costs hearts=%d" % _puzzle.hearts)
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+	if st.windy():
+		# The launches that close the clouds in, found on the state itself:
+		# always the free plane that leaves the fewest free behind it.
+		var way: Array = []
+		var closed := false
+		while not st.solved() and not closed:
+			var best := -1
+			var least := 1 << 30
+			for i: int in st.free_planes():
+				st.launch(i)
+				var n: int = st.free_planes().size()
+				if not st.solved() and n < least:
+					least = n
+					best = i
+				st.undo()
+			if best < 0:
+				break
+			st.launch(best)
+			way.append(best)
+			closed = st.stuck()
+		for i in way.size():
+			st.undo()
+		if closed:
+			for i: int in way:
+				_click(_pp_head(i))
+				await create_timer(0.5).timeout
+			await create_timer(1.0).timeout
+		_buzz_seen = Haptics.trace.size() - (1 if closed and Haptics.trace.size() > 0 else 0)
+		if closed and _puzzle.hearts > 0:
+			_buzzed("the clouds close in")
+			var cloud: Vector2i = st.cloud_cells()[0]
+			_click(_puzzle.cell_to_local(cloud.y, cloud.x))
+			await create_timer(0.3).timeout
+			_buzzed("a cloud tapped: the gust")
+			await create_timer(1.2).timeout
+			_buzzed("and after it stuck=%s hearts=%d" % [st.stuck(), _puzzle.hearts])
+		else:
+			print("  buzz the clouds never closed in (not probed)")
+	_puzzle.reset_board()
+	await create_timer(2.6).timeout
+	_buzzed("reset")
+	_moves = _moves_planes()
+
+## Pinwheel's buzzes: a square that is no pin, a piece turned and turned
+## back by Undo, a piece pinned fast (when the frame has one), a piece
+## already home tapped (a plain turn on Easy and Medium, undone; a snag and
+## its heart on Hard and Insane, and the sewn piece tapped again), a hint
+## and Reset. The plain run then turns the frame home (the streak's
+## confetti, the win, the seal when it is earned).
+func _buzz_pinwheel() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var loose := -1
+	var home := -1
+	var fast := -1
+	for p in st.shapes.size():
+		if st.fixed(p):
+			if fast < 0:
+				fast = p
+		elif st.steps_home(p) > 0:
+			if loose < 0:
+				loose = p
+		elif home < 0 and not st.is_tacked(p):
+			home = p
+	for i in st.cols * st.rows:
+		var c: Vector2i = st.cell_of(i)
+		if st.piece_at_pin(c.x, c.y) < 0:
+			_click(_puzzle.cell_to_local(c.x, c.y))
+			break
+	await pause.call()
+	_buzzed("a square that is no pin")
+	_click(_puzzle._pin_point(loose))
+	await create_timer(1.4).timeout
+	_buzzed("a piece turned")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+	if fast >= 0:
+		_click(_puzzle._pin_point(fast))
+		await pause.call()
+		_buzzed("a piece pinned fast")
+	if home < 0:
+		# (A deal leaves no movable piece home: one is turned there first.)
+		for k in st.steps_home(loose):
+			_click(_puzzle._pin_point(loose))
+			await create_timer(0.6).timeout
+		if st.steps_home(loose) == 0:
+			home = loose
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+	if home >= 0:
+		_click(_puzzle._pin_point(home))
+		await create_timer(0.1).timeout
+		_buzzed("a piece already home tapped")
+		await create_timer(2.4).timeout
+		_buzzed("and what it costs hearts=%d" % _puzzle.hearts)
+		if _puzzle.max_hearts > 0:
+			_click(_puzzle._pin_point(home))
+			await pause.call()
+			_buzzed("the sewn piece tapped")
+		elif _puzzle.can_undo():
+			_host._on_undo()
+			await pause.call()
+			_buzz_seen = Haptics.trace.size()
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(2.4).timeout
+	_buzzed("reset")
+	_moves = _moves_pinwheel()
+
 ## Fairy Lights: every piece tapped round to its answer in reading order, a
 ## tap a step (never past the answer, which on a judged garden is a fuse).
 func _moves_fairylights() -> Array:
