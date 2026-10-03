@@ -11,8 +11,9 @@ extends RefCounted
 ## wrapped round another rope the board *binds* a run of its points to the
 ## line of a braid the two share (`bind`), and the rest length grows to the
 ## way round; the chain does the rest, so a wrap pulls both ropes in towards
-## each other, a new one cinches, and one let go springs apart. The twist
-## itself -- the two swinging across each other, turn by turn -- is laid on
+## each other, a new one cinches, and one let go springs apart. The coil
+## itself -- the shorter rope swinging across the longer, turn by turn, while
+## the longer runs straight through -- is laid on
 ## the drawn line (`wiggles`), not the chain, so it stays round however coarse
 ## the chain. A peg let go kicks the chain sideways and it whips and settles.
 ## Nothing here is a tween.
@@ -62,7 +63,8 @@ var bind_k := PackedFloat32Array()
 var _held := PackedFloat32Array()
 ## The braids this rope is twisted in, laid on its drawn line: each
 ## {"c", "axis", "perp", "len", "n", "side" (+1 or -1), "w", "swing" (px),
-## "spin" (radians the twist is turned by while it cinches or lets go)}.
+## "spin" (radians the twist is turned by while it cinches or lets go),
+## "dir" (+1 when the rope travels the axis's way, -1 against it)}.
 var wiggles: Array = []
 
 ## Its drawn line and the length along it, built on demand after each step.
@@ -75,6 +77,8 @@ var ver := 0
 ## Where each chain span starts in the drawn line: a span is one piece where
 ## the rope runs straight, three where it bends or twists.
 var _span_at := PackedInt32Array()
+## The box round each span as drawn (twists included): x0, x1, y0, y1 a span.
+var _box := PackedFloat32Array()
 
 func setup(a: Vector2, b: Vector2, max_length: float, bow: float) -> void:
 	length = max_length
@@ -116,15 +120,17 @@ func clear_binds() -> void:
 ## Every bind, the braids' twists and the route at once, from a caller that
 ## lays them all out again whenever anything moves: a rope whose binds come
 ## out the same keeps its line (and `ver`), so what was worked out from it
-## still holds.
-func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> void:
+## still holds. Returns whether anything changed: the chain has to be stepped
+## to its new way, so the caller wakes the rope.
+func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> bool:
 	if bi == bind_i and bat == bind_at and bk == bind_k and way == route and wg == wiggles:
-		return
+		return false
 	clear_binds()
 	route = way
 	for n in bi.size():
 		bind(bi[n], bat[n], bk[n])
 	wiggles = wg
+	return true
 
 func bind(i: int, at: Vector2, k: float) -> void:
 	bind_i.append(i)
@@ -224,6 +230,23 @@ func polyline() -> PackedVector2Array:
 		for wg in wiggles:
 			_twist(wg)
 		_cum = lengths(_line)
+		# The box round each span's drawn pieces, for `hits`.
+		_box.resize((SEGS - 1) * 4)
+		for i in SEGS - 1:
+			var x0 := INF
+			var x1 := -INF
+			var y0 := INF
+			var y1 := -INF
+			for j in range(_span_at[i], _span_at[i + 1] + 1):
+				var v := _line[j]
+				x0 = minf(x0, v.x)
+				x1 = maxf(x1, v.x)
+				y0 = minf(y0, v.y)
+				y1 = maxf(y1, v.y)
+			_box[i * 4] = x0
+			_box[i * 4 + 1] = x1
+			_box[i * 4 + 2] = y0
+			_box[i * 4 + 3] = y1
 		_line_ok = true
 	return _line
 
@@ -260,7 +283,12 @@ func _twist(wg: Dictionary) -> void:
 	# The chain already runs from its side at one end to its side at the
 	# other (straight between): what is laid on is the swing across and back
 	# less that straight run, so nothing moves at the ends.
-	var end_side := cos(PI * n)
+	# The swing runs from phase `p0` to `p1` along the braid (a full swing
+	# across and back every two pi).
+	var p0: float = float(wg.get("p0", 0.0))
+	var p1: float = float(wg.get("p1", PI * n))
+	var from_side := cos(p0)
+	var end_side := cos(p1)
 	if wg.has("i0"):
 		# The stretch of chain held to the braid, by length along the line.
 		var j0 := _span_at[clampi(int(floor(float(wg.i0))), 0, SEGS - 1)]
@@ -274,17 +302,32 @@ func _twist(wg: Dictionary) -> void:
 		var span := along[along.size() - 1]
 		if span <= 0.0:
 			return
+		# Inside the stretch the line is laid where the braid *is* -- the
+		# core dead straight, the winder on its turns -- and only eased onto
+		# the chain at the two ends. Laid as a swing off the chain alone, a
+		# chain still on its way there (bunched, bowed, mid-whip) folded the
+		# turns into torn arrowheads.
+		var dir: float = float(wg.get("dir", 0.0))
 		for j in range(j0 + 1, j1):
 			var u := along[j - j0] / span
-			var shape := cos(PI * n * u + spin * sin(PI * u)) - lerpf(1.0, end_side, u)
-			_line[j] += perp * swing * shape * w
+			var turn := cos(lerpf(p0, p1, u) + spin * sin(PI * u))
+			var loose := _line[j] + perp * swing * (turn - lerpf(from_side, end_side, u)) * w
+			if dir == 0.0:
+				_line[j] = loose
+				continue
+			var laid := c + axis * (u - 0.5) * dir * L + perp * swing * turn
+			var hold := w * smoothstep(0.0, 0.2, u) * smoothstep(1.0, 0.8, u)
+			_line[j] = loose.lerp(laid, hold)
+		return
+	# The core of a coil runs straight through it.
+	if swing == 0.0:
 		return
 	for i in range(1, _line.size() - 1):
 		var d := _line[i] - c
 		var u := d.dot(axis) / L + 0.5
 		if u <= 0.0 or u >= 1.0 or absf(d.dot(perp)) > near:
 			continue
-		var shape := cos(PI * n * u + spin * sin(PI * u)) - lerpf(1.0, end_side, u)
+		var shape := cos(lerpf(p0, p1, u) + spin * sin(PI * u)) - lerpf(from_side, end_side, u)
 		_line[i] += perp * swing * shape * w
 
 func cum() -> PackedFloat32Array:
@@ -328,9 +371,9 @@ static func slice(line: PackedVector2Array, c: PackedFloat32Array, s0: float, s1
 
 ## Every place this rope's drawn line crosses `other`'s within `radius` of
 ## `near`, as [s along this, s along other, point], in order along this one.
-## Two stages: the chains' spans near `near` whose boxes (grown by `margin`,
-## the most a twist moves the drawn line off its chain) overlap, and then only
-## the drawn pieces of those spans, exactly.
+## Two stages: the chains' spans near `near` (within `radius` plus `margin`,
+## the most a twist moves the drawn line off its chain) whose drawn boxes
+## overlap, and then only the drawn pieces of those spans, exactly.
 func hits(other, near: Vector2, radius: float, margin := 0.0) -> Array:
 	var la := polyline()
 	var ca := cum()
@@ -351,15 +394,14 @@ func hits(other, near: Vector2, radius: float, margin := 0.0) -> Array:
 			ib.append(j)
 	if ib.is_empty():
 		return out
-	var m := margin + 2.0
+	var bb: PackedFloat32Array = other._box
 	for i in ia:
-		var x0 := minf(p[i].x, p[i + 1].x) - m
-		var x1 := maxf(p[i].x, p[i + 1].x) + m
-		var y0 := minf(p[i].y, p[i + 1].y) - m
-		var y1 := maxf(p[i].y, p[i + 1].y) + m
+		var x0 := _box[i * 4] - 1.0
+		var x1 := _box[i * 4 + 1] + 1.0
+		var y0 := _box[i * 4 + 2] - 1.0
+		var y1 := _box[i * 4 + 3] + 1.0
 		for j in ib:
-			if maxf(pb[j].x, pb[j + 1].x) + m < x0 or minf(pb[j].x, pb[j + 1].x) - m > x1 \
-					or maxf(pb[j].y, pb[j + 1].y) + m < y0 or minf(pb[j].y, pb[j + 1].y) - m > y1:
+			if bb[j * 4 + 1] < x0 or bb[j * 4] > x1 or bb[j * 4 + 3] < y0 or bb[j * 4 + 2] > y1:
 				continue
 			var sb: PackedInt32Array = other._span_at
 			for u in range(_span_at[i], _span_at[i + 1]):
@@ -427,6 +469,42 @@ func draw(b: Face.Builder, w: float, fill: Color, deep: Color, light: Color, lif
 			var seg := slice(full, c, g0, g1)
 			if seg.size() >= 2:
 				b.stroke(seg, thick * 0.8, Color(glow, glow.a * alpha), false, false)
+
+## The dark this rope leaves on a rope it lies over at `s` along it: a soft
+## band down either side of it, `half` each way along it, darkest beside the
+## rope at `s` and gone at the ends and a rope's half-width out. It lies
+## outside this rope's own body, so it can go on over everything.
+func shade(b: Face.Builder, w: float, s: float, half: float, ink: Color) -> void:
+	var full := polyline()
+	var c := cum()
+	var s0 := maxf(s - half, 0.0)
+	var s1 := minf(s + half, c[c.size() - 1])
+	if s1 - s0 < 2.0 or ink.a <= 0.0:
+		return
+	var n := 9
+	var near := w * 0.44
+	var far := w * 0.74
+	var base := b.verts.size()
+	for i in n:
+		var u := float(i) / float(n - 1)
+		var got := at(full, c, lerpf(s0, s1, u))
+		var pt: Vector2 = got[0]
+		var nm: Vector2 = (got[1] as Vector2).orthogonal()
+		var a := sin(PI * u)
+		var dark := Color(ink, ink.a * a * a)
+		var clear := Color(ink, 0.0)
+		b.verts.append(pt - nm * far)
+		b.cols.append(clear)
+		b.verts.append(pt - nm * near)
+		b.cols.append(dark)
+		b.verts.append(pt + nm * near)
+		b.cols.append(dark)
+		b.verts.append(pt + nm * far)
+		b.cols.append(clear)
+	for i in n - 1:
+		for j in [0, 2]:
+			var v: int = base + i * 4 + j
+			b.idx.append_array(PackedInt32Array([v, v + 4, v + 5, v, v + 5, v + 1]))
 
 ## A band along `line` (moved by `off`), `half` wide either side, whose colour
 ## runs across it: `across` are the places across it (-1 the side the light

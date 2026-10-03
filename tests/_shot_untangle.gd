@@ -3,7 +3,7 @@ extends SceneTree
 ## Shots and probes of the Untangle ring, played through the board's own input
 ## path. Windowed, one at a time:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- [d=0..3] [mode] [rm] [out=<dir>]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- [d=0..3] [day=N] [mode] [rm] [out=<dir>]
 ##
 ## Modes: `rest` (the board as dealt), `carry` (a peg carried over ropes in
 ## steps, a frame each, then `_folds` -- any rope line turning back on
@@ -11,7 +11,9 @@ extends SceneTree
 ## hole), `taut` (a peg dragged past what its rope reaches), `plan` (the
 ## dealer's answer played move by move to the win), `wrong` (moves that make
 ## it worse until the thread runs out, Hard and Insane), `answer` (the same,
-## then Show the answer), `hint` (the HUD's hint), `undo`, `reset`.
+## then Show the answer), `hint` (the HUD's hint), `undo`, `reset`, `lifts`
+## (every peg in turn, or `peg=N` alone, lifted a little toward the middle,
+## held, shot at 0.2 s and 0.6 s and let go: the knots under a hand).
 ## Each mode saves numbered frames to <dir>/ut_<mode>_<n>.png and prints the
 ## board's draw-call count and mean frame time over its last second.
 
@@ -19,6 +21,8 @@ const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/530f0079
 
 var _t := 0.0
 var _level := 0
+var _day := 0
+var _peg := -1
 var _mode := "rest"
 var _reduce := false
 var _dir := SHOT_DIR
@@ -42,6 +46,10 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("d="):
 			_level = int(a.substr(2))
+		elif a.begins_with("day="):
+			_day = int(a.substr(4))
+		elif a.begins_with("peg="):
+			_peg = int(a.substr(4))
 		elif a == "rm":
 			_reduce = true
 		elif a.begins_with("out="):
@@ -70,7 +78,13 @@ func _process(delta: float) -> bool:
 		for e in load("res://ui/registry.gd").PUZZLES:
 			if e.id == "untangle":
 				entry = e
-		_menu._open_at(entry, _level)
+		if _day > 0:
+			# A later day's deal: the host is told that many are done.
+			var host: Control = load("res://ui/flat/flat_host.gd").new()
+			host.setup(entry, _level, _day - 1)
+			_menu._mount_host(host)
+		else:
+			_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
 		if _host.has_node("HowToPlay") and _mode != "howto":
@@ -177,6 +191,24 @@ func _script() -> void:
 		"rest":
 			_end = 3.0
 			_at(2.4, _shot)
+		"lifts":
+			# Every peg in turn lifted a little off its hole, held, shot and
+			# put back: the tangle under a hand that has not gone anywhere.
+			var n: int = _puzzle.state.at.size()
+			_end = 1.5 + 0.9 * n
+			for p in n:
+				if _peg >= 0 and p != _peg:
+					continue
+				var t0 := 1.0 + 0.9 * (p if _peg < 0 else 0)
+				if _peg >= 0:
+					_end = 3.0
+				var home: Vector2 = _puzzle.peg_to_local(p)
+				var inward: Vector2 = (_puzzle.size * 0.5 - home).normalized()
+				for k in 6:
+					_at(t0 + 0.05 + 0.05 * k, func() -> void: _motion(home + inward * 12.0 * (k + 1) + Vector2(-20.0, 0.0)))
+				_at(t0 + 0.2, _shot)
+				_at(t0 + 0.6, _shot)
+				_at(t0 + 0.7, func() -> void: _release(_puzzle.peg_to_local(p)))
 		"hold":
 			_end = 4.0
 			var m := _free_move()

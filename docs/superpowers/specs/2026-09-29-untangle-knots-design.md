@@ -45,6 +45,9 @@ the walk backwards) and the kitten's backwards deal working unchanged.
 Physically each rope is still a Verlet chain (`untangle_rope.gd`, 37 points).
 What changed:
 
+- *(2026-10-03: braids are now coils -- the shorter rope winds round the
+  longer, which runs straight; see `docs/agents/boards/untangle.md`. The two
+  bullets below describe the first build.)*
 - **Braids.** A pair wrapped twice or more shares a braid: a short stretch
   where both run along one line, `n * 1.6` rope widths long, placed where two
   ropes pulled tight round each other meet (the point nearest all four pegs:

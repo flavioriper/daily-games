@@ -1,5 +1,49 @@
 # Untangle
 
+**Coils, not twists (2026-10-03)**, after the user: "untangle cords knots are
+extremely weird still" (a rope with both pegs on one side made a hairpin loop
+through the twist; squeezed twists read as curls; nothing showed which rope
+lay on top).
+
+- **A braid is a coil.** The rope whose pegs are further apart is the *core*
+  and runs straight through; the other, the *winder*, swings a full rope
+  width across it and back (`BRAID_SIDE` 1.0, `BRAID_PITCH` 2.1). `lay_braid`
+  and `core_is_a` are static on the board and the tutorial diagram calls
+  them, so the two cannot drift again. The core is sticky (`BRAID_CORE_KEEP`)
+  so a carry does not flip a coil. Side by side, the two still meet where the
+  diagonals of the four pegs cross, and the reach rule still pulls a braid
+  toward a rope too short to get there: then the core bends too.
+- **Phase.** The swing runs from `BRAID_LEAD` before the first crossing to
+  the same after the last (`p0`/`p1` in the braid and the wiggle), so the
+  winder comes in already heading across and no crossing sits at an end.
+  `braid_point` takes the rope's travel (`dir`, `u`), not the axis's: the
+  winder enters on the side it arrives from (`item[2]` goes -1 when it comes
+  from another braid on the far side) and goes through whichever way is
+  shorter.
+- **Never squeezed into a scribble.** A core without room shows fewer turns
+  (two at a time, `BRAID_PITCH_MIN`), and `_draw_turns` writes the real count
+  beside the coil (`br.of` against `br.n`). Only two short ropes hooked
+  together are squeezed further (the coil must end between the core's pegs).
+- **Spacing** (`_space_braids`): each coil slides along its core to the free
+  stretch nearest where it would lie -- free of the core's other coils, of
+  the winder's other coils lying by, and of third ropes crossing the core.
+  A rope's braids are visited in the order that makes its way shortest
+  (`_shortest_round`), not the order along its own line.
+- **Over and under**: `Rope.shade` lays a soft dark either side of the rope
+  on top at every crossing, in the patch mesh (no draw call); it thins where
+  crossings crowd and past 24 of them. A patch piece reaches only as far as
+  the rope under it is wide (`_across`).
+- **Cost**: `Rope.hits` now tests the boxes of the drawn pieces (`_box`,
+  built with the line) instead of chain boxes grown by a margin, and only a
+  rope that really leaves its line (`_bent`) is searched wide. Carry on
+  Insane, same harness back to back: 11.2 ms against 12.2 before; draw calls
+  unchanged (95 at rest, 103 carrying). Phone reading still owed.
+- **Left as it is**: `carry` still reports one drawn turn over 100 degrees on
+  Hard and Insane when a peg is carried over five ropes at once (a slack rope
+  hooked on three ropes across the ring turns sharply between them); the
+  tutorial's braid pages were not looked at after the change (the `howto`
+  mode shoots page one only).
+
 **Live carry and clean rope (2026-09-30)**, after the user: "the wire is not
 reacting live with other, it create nots only after releasing, and the
 notches are all pixeled".

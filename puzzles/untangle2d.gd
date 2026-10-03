@@ -133,26 +133,45 @@ const ENTER_LAG := 0.12
 const KNOT_FADE := 14.0
 const KNOT_SPAN := 5.0
 
-## A braid: rope widths along it per crossing, how far each rope swings off
-## its line (in widths), how hard its points are held to it per step, how much
-## longer the way through it is than its line, and how fast one cinches and
+## A braid is a coil: the shorter rope of a wrapped pair (the winder) winds
+## round the longer (the core), which runs straight through it. Rope widths
+## along the core per crossing, how far the winder swings off the core's line
+## (in widths: a full width, so it clears the core at each turn), how hard a
+## rope's points are held to the braid per step, and how fast one cinches and
 ## lets go (s).
-const BRAID_PITCH := 1.6
-const BRAID_SIDE := 0.52
+const BRAID_PITCH := 2.1
+## A coil's turns begin and end this far (radians of its swing) before the
+## winder's first crossing and after its last: it comes in off its own side
+## already heading across the core, and the crossings stay clear of the ends.
+const BRAID_LEAD := PI / 3.0
+const BRAID_SIDE := 1.0
 const BRAID_PULL := 0.32
 ## How gently a wrapped rope's legs are held to the straight way between.
 const BRAID_LEG := 0.05
-const BRAID_WAY := 1.14
 const BRAID_CINCH := 0.34
 const BRAID_LET_GO := 0.3
 ## The way a wrapped rope may be sent round a braid, peg to braid to peg, as
 ## a share of the rope's own length.
 const BRAID_WAY_OF_LENGTH := 0.85
-## The shortest a braid is let get when its rope has no room for all of its
-## braids, as a share of its length.
-const BRAID_SHORTEST := 0.45
-## How far (radians) a braid's twist turns as it cinches in or lets go.
-const BRAID_SPIN := 2.4 * PI
+## The tightest a coil is ever drawn, rope widths per crossing: a core with
+## no room for every turn at this pitch shows fewer turns (two at a time, so
+## the winder still leaves on the right side) and the count beside it,
+## rather than turns squeezed into a scribble.
+const BRAID_PITCH_MIN := 1.75
+## The core of a pair changes hands only when the other rope is this much
+## tauter, so a carry does not flip a coil back and forth.
+const BRAID_CORE_KEEP := 1.15
+## How far out from the core (rope widths) a winder goes round a coil's end
+## when it has to come at it from the far side.
+const BRAID_ROUND := 1.7
+## The clear stretch of core kept either side of a coil, in rope widths.
+const BRAID_GAP := 0.9
+## The dark a rope lying on top leaves on the one under it, beside it.
+const CROSS_SHADE := Color(0.23, 0.18, 0.14, 0.26)
+## How far (radians) a braid's twist turns as it cinches in or lets go. A
+## quarter turn: more crams turns into the coil that its pitch has no room
+## for, and for a third of a second the rope is drawn torn.
+const BRAID_SPIN := 0.5 * PI
 ## A piece laid back over a lone crossing reaches this many rope widths either
 ## way (in a braid, halfway to the next crossing).
 const PATCH_HALF := 0.9
@@ -284,6 +303,9 @@ var _shown: Array = []
 var _knot_alpha := 0.0
 var _tw_px := PackedInt32Array()
 var _wraps := {}
+## Per rope, whether its way leaves the straight line between its pegs: it
+## winds round another, or is the core of a coil pulled off its line.
+var _bent: Array[bool] = []
 ## The braids as last laid by `_bind_all`, spaced along their ropes: pair ->
 ## `_braid` entry. What the crossing search and the rewards read.
 var _laid := {}
@@ -1178,38 +1200,18 @@ func _braid(k: int) -> Dictionary:
 	var a1 := _peg_px[2 * pr.x + 1]
 	var b0 := _peg_px[2 * pr.y]
 	var b1 := _peg_px[2 * pr.y + 1]
-	var c := (a0 + a1 + b0 + b1) * 0.25
-	var axis: Vector2
-	var sb := 1.0
-	var hit = Geometry2D.segment_intersects_segment(a0, a1, b0, b1)
-	if hit != null:
-		c = hit
-		var da := (a1 - a0).normalized()
-		var db := (b1 - b0).normalized()
-		sb = 1.0 if da.dot(db) >= 0.0 else -1.0
-		axis = da + db * sb
-	else:
-		# Side by side: a0 shares a side of the braid with the end of the
-		# other rope it can be joined to without crossing, a1 with the other.
-		var with0: bool = Geometry2D.segment_intersects_segment(a0, b0, a1, b1) == null
-		var bx := b0 if with0 else b1
-		var by := b1 if with0 else b0
-		sb = 1.0 if with0 else -1.0
-		var mid = Geometry2D.segment_intersects_segment(a0, by, a1, bx)
-		if mid != null:
-			c = mid
-		axis = (a1 + by) * 0.5 - (a0 + bx) * 0.5
-	axis = axis.normalized() if axis.length_squared() > 0.0001 else (a1 - a0).normalized()
-	var L := float(n) * BRAID_PITCH * _wd
-	# A wrap takes no rope further than it reaches: the point nearest all four
-	# pegs can be far out of a short rope's way (its pegs side by side, the
-	# other rope across the ring), and the rope would be sent out there and
-	# back in a hairpin. The braid is pulled toward the shorter rope instead,
-	# and is never longer than the gap between a rope's pegs.
-	for r in [pr.x, pr.y]:
-		var p0 := _peg_px[2 * r]
-		var p1 := _peg_px[2 * r + 1]
-		L = minf(L, maxf(p0.distance_to(p1) * 0.9, L * BRAID_SHORTEST))
+	var a_core := core_is_a(a0, a1, b0, b1, (_ropes[pr.x] as Rope).length, (_ropes[pr.y] as Rope).length, e.get("core"))
+	e["core"] = a_core
+	var br := lay_braid(a0, a1, b0, b1, n, _wd, a_core)
+	br["a"] = pr.x
+	br["b"] = pr.y
+	br["w"] = float(e.w)
+	br["k"] = k
+	var c: Vector2 = br.c
+	# A wrap takes no rope further than it reaches: the core's line can be
+	# out of a short winder's way (its pegs side by side, the core across the
+	# ring). The braid is pulled toward the rope that is too short instead,
+	# and the core bends to meet it.
 	for r in [pr.x, pr.y]:
 		var p0 := _peg_px[2 * r]
 		var p1 := _peg_px[2 * r + 1]
@@ -1227,25 +1229,79 @@ func _braid(k: int) -> Dictionary:
 			else:
 				hi = m
 		c = c.lerp(mid, hi)
-	# A braid lies on the cloth inside the ring, never over the wood: its
-	# middle is kept far enough in that both its ends are.
-	var out := (c - _c).normalized() if c.distance_to(_c) > 0.001 else Vector2.RIGHT
-	var room := _ri - _wd * 1.1 - absf(axis.dot(out)) * L * 0.5
-	if c.distance_to(_c) > room:
-		c = _c + out * maxf(room, 0.0)
-	var perp := axis.orthogonal()
-	var b_start := b0 if sb > 0.0 else b1
-	if (a0 - c).dot(perp) - (b_start - c).dot(perp) < 0.0:
-		perp = -perp
-	return {"c": c, "axis": axis, "perp": perp, "len": L, "n": n, "sb": sb,
-		"a": pr.x, "b": pr.y, "w": float(e.w), "k": k}
+	br.c = c
+	_keep_in(br)
+	return br
 
-## A point of a braid: `side` +1 for its first rope, -1 for its second, `u`
-## from 0 to 1 along it. The two swing across each other `n` times.
-func _braid_point(br: Dictionary, side: float, u: float) -> Vector2:
-	var L: float = br.len
-	return (br.c as Vector2) + (br.axis as Vector2) * (u - 0.5) * L \
-		+ (br.perp as Vector2) * side * BRAID_SIDE * _wd * cos(PI * float(br.n) * u)
+## Which rope of a pair is the core of its coil: the tauter one, its pegs
+## further apart for the rope it has (`len_a`, `len_b`: the ropes' lengths).
+## The slacker rope has the rope to wind with, and a taut one would not bend
+## out of its line to do it. `was` is what it was, kept unless the other is
+## clearly tauter now.
+static func core_is_a(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2, len_a: float, len_b: float, was = null) -> bool:
+	var la := a0.distance_to(a1) / maxf(len_a, 1.0)
+	var lb := b0.distance_to(b1) / maxf(len_b, 1.0)
+	if was == null:
+		return la >= lb
+	if bool(was):
+		return la * BRAID_CORE_KEEP >= lb
+	return la > lb * BRAID_CORE_KEEP
+
+## A pair's coil from its four pegs: on the core's line where the winder
+## crosses it (or, side by side, where the two pull each other to), running the
+## core's way, `n` crossings long. {"c", "axis", "perp" (the side the winder
+## comes in on), "len", "n" (turns drawn), "of" (turns there are), "side_a",
+## "side_b" (1 for the winder, 0 for the core), "dir_a", "dir_b" (+1 when
+## that rope runs the axis's way)}.
+static func lay_braid(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2, n: int, wd: float, a_core: bool) -> Dictionary:
+	var k0 := a0 if a_core else b0
+	var k1 := a1 if a_core else b1
+	var w0 := b0 if a_core else a0
+	var w1 := b1 if a_core else a1
+	var span := k0.distance_to(k1)
+	var axis := (k1 - k0) / span if span > 0.001 else Vector2.RIGHT
+	var c: Vector2
+	var hit = Geometry2D.segment_intersects_segment(a0, a1, b0, b1)
+	if hit != null:
+		c = hit
+	else:
+		# Side by side, two ropes hooked round each other pull each other
+		# in: they meet where the diagonals of the four pegs cross, and both
+		# bend to get there.
+		var dirs := 1.0 if (w1 - w0).dot(axis) >= 0.0 else -1.0
+		var mid = Geometry2D.segment_intersects_segment(k0, w1 if dirs > 0.0 else w0, k1, w0 if dirs > 0.0 else w1)
+		c = mid if mid != null else (a0 + a1 + b0 + b1) * 0.25
+	var dirw := 1.0 if (w1 - w0).dot(axis) >= 0.0 else -1.0
+	var perp := axis.orthogonal()
+	if (w0 - c).dot(perp) < 0.0:
+		perp = -perp
+	# Fewer turns drawn before any is squeezed: the core has only so much
+	# room between its pegs.
+	var room := span * 0.8
+	var shown := n
+	while shown - 2 >= 2 and braid_waves(shown) * BRAID_PITCH_MIN * wd > room:
+		shown -= 2
+	var L := clampf(room, braid_waves(shown) * BRAID_PITCH_MIN * wd, braid_waves(shown) * BRAID_PITCH * wd)
+	# Two short ropes hooked together: the coil still ends between its
+	# core's pegs, squeezed as it must be.
+	L = minf(L, maxf(span * 0.9, wd))
+	return {"c": c, "axis": axis, "perp": perp, "len": L, "n": shown, "of": n,
+		"p0": BRAID_LEAD, "p1": BRAID_LEAD + braid_waves(shown) * PI,
+		"side_a": 0.0 if a_core else 1.0, "side_b": 1.0 if a_core else 0.0,
+		"dir_a": 1.0 if a_core else dirw, "dir_b": dirw if a_core else 1.0}
+
+## How many swings across (half waves) a coil of `n` crossings is long: one
+## between each two crossings and the lead in and out.
+static func braid_waves(n: int) -> float:
+	return float(n - 1) + BRAID_LEAD / PI
+
+## A point of a braid for a rope going through it: `side` 1 for the winder, 0
+## for the core, `dir` +1 when the rope travels the axis's way, `u` from 0 to
+## 1 as the rope travels. The winder comes in on `perp`'s side whichever way
+## it travels, and swings across the core `n` times.
+static func braid_point(br: Dictionary, wd: float, side: float, dir: float, u: float) -> Vector2:
+	return (br.c as Vector2) + (br.axis as Vector2) * (u - 0.5) * dir * float(br.len) \
+		+ (br.perp as Vector2) * side * BRAID_SIDE * wd * cos(lerpf(float(br.p0), float(br.p1), u))
 
 ## Every rope's way round the braids it is in: pulled tight, a wrapped rope
 ## runs straight from its peg into the first braid, along it, straight on to
@@ -1263,8 +1319,8 @@ func _bind_all() -> void:
 		var br: Dictionary = _laid[k]
 		for which in 2:
 			var r: int = br.a if which == 0 else br.b
-			var side := 1.0 if which == 0 else -1.0
-			var dir := 1.0 if which == 0 else float(br.sb)
+			var side := float(br.side_a if which == 0 else br.side_b)
+			var dir := float(br.dir_a if which == 0 else br.dir_b)
 			var a := _peg_px[2 * r]
 			var b := _peg_px[2 * r + 1]
 			var ab := b - a
@@ -1272,10 +1328,13 @@ func _bind_all() -> void:
 			if not per_rope.has(r):
 				per_rope[r] = []
 			per_rope[r].append([u, br, side, dir])
+	_bent.resize(_ropes.size())
 	for r in _ropes.size():
 		var rope: Rope = _ropes[r]
+		_bent[r] = false
 		if not per_rope.has(r):
-			rope.set_binds(PackedInt32Array(), PackedVector2Array(), PackedFloat32Array(), [], 0.0)
+			if rope.set_binds(PackedInt32Array(), PackedVector2Array(), PackedFloat32Array(), [], 0.0):
+				_calm[r] = 0
 			continue
 		var bi := PackedInt32Array()
 		var bat := PackedVector2Array()
@@ -1285,26 +1344,71 @@ func _bind_all() -> void:
 		list.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 		var a := _peg_px[2 * r]
 		var b := _peg_px[2 * r + 1]
+		list = _shortest_round(list, a, b)
 		# The way: corners, and which stretches of it are braids.
 		var way := PackedVector2Array([a])
 		var firm: Array[bool] = [false]
+		# Where in the way each braid's stretch begins.
+		var first := PackedInt32Array()
 		var most := 0.0
-		for item in list:
+		for m in list.size():
+			var item: Array = list[m]
 			var br: Dictionary = item[1]
 			var dir: float = item[3]
-			# Each rope comes into the braid on its own side of its line and
-			# leaves on the side its turns bring it to, so the two never meet
-			# on the way in; the twist between is drawn (Rope._twist).
-			var enter := _braid_point(br, float(item[2]), 0.0 if dir > 0.0 else 1.0)
-			var leave := _braid_point(br, float(item[2]), 1.0 if dir > 0.0 else 0.0)
-			way.append(enter)
-			firm.append(false)
-			way.append(leave)
-			firm.append(true)
+			if float(item[2]) != 0.0 or absf(((br.c as Vector2) - a).dot((b - a).orthogonal().normalized())) > 2.0:
+				_bent[r] = true
+			if float(item[2]) != 0.0:
+				# The winder comes into the coil from the side it is on (it
+				# may come from another braid, not its peg), and goes through
+				# whichever way is the shorter from where it comes to where
+				# it goes next, so it never doubles back to reach the far end.
+				var prev: Vector2 = way[way.size() - 1]
+				var next: Vector2 = (list[m + 1][1].c as Vector2) if m + 1 < list.size() else b
+				if (prev - (br.c as Vector2)).dot(br.perp as Vector2) < 0.0:
+					item[2] = -1.0
+				var best := INF
+				for d in [dir, -dir]:
+					var cost := prev.distance_to(braid_point(br, _wd, float(item[2]), d, 0.0)) + next.distance_to(braid_point(br, _wd, float(item[2]), d, 1.0))
+					if cost < best - 1.0:
+						best = cost
+						dir = d
+			# The core runs straight through. The winder comes in on its own
+			# side of the core and leaves on the side its turns bring it to;
+			# the turns between are drawn (Rope._twist).
+			var enter := braid_point(br, _wd, float(item[2]), dir, 0.0)
+			var leave := braid_point(br, _wd, float(item[2]), dir, 1.0)
+			if float(item[2]) != 0.0:
+				# A winder that comes from beyond the coil's far end (or goes
+				# back past its near end) would turn on a point where it
+				# meets the coil. It is sent round instead: out past the end
+				# on its own side of the core, and in from there.
+				var side: float = item[2]
+				var ax: Vector2 = (br.axis as Vector2) * dir
+				var pp: Vector2 = (br.perp as Vector2) * side
+				var prev: Vector2 = way[way.size() - 1]
+				if (enter - prev).dot(ax) < 0.0:
+					way.append(enter + pp * _wd * BRAID_ROUND - ax * _wd * 0.4)
+					firm.append(false)
+				way.append(enter)
+				firm.append(false)
+				first.append(way.size() - 1)
+				way.append(leave)
+				firm.append(true)
+				var next: Vector2 = (list[m + 1][1].c as Vector2) if m + 1 < list.size() else b
+				if (next - leave).dot(ax) < 0.0:
+					var out_side := 1.0 if cos(float(br.p1)) >= 0.0 else -1.0
+					way.append(leave + pp * out_side * _wd * BRAID_ROUND + ax * _wd * 0.4)
+					firm.append(false)
+			else:
+				way.append(enter)
+				firm.append(false)
+				first.append(way.size() - 1)
+				way.append(leave)
+				firm.append(true)
 			most = maxf(most, float(br.w))
 			var turn := (1.0 - float(br.w)) * BRAID_SPIN * (1.0 if float(_wraps[br.k].goal) > 0.0 else -1.0)
 			wg.append({"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
-				"side": item[2], "w": br.w, "swing": BRAID_SIDE * _wd, "spin": turn})
+				"p0": br.p0, "p1": br.p1, "side": item[2], "dir": dir, "w": br.w, "swing": BRAID_SIDE * _wd, "spin": turn})
 		way.append(b)
 		firm.append(false)
 		var cum := Rope.lengths(way)
@@ -1325,67 +1429,184 @@ func _bind_all() -> void:
 			bat.append(at)
 			bk.append(k * most)
 		# Each braid's twist is laid only on the stretch of chain held to it
-		# (way pieces: peg, enter, leave, enter, leave ... peg), so a twist
+		# (`first`: its enter in the way, its leave the next), so a twist
 		# never reaches into the next braid's stretch or the legs.
 		for m in list.size():
 			var per := float(Rope.SEGS - 1) / maxf(total, 1.0)
-			wg[m]["i0"] = cum[2 * m + 1] * per
-			wg[m]["i1"] = cum[2 * m + 2] * per
-		rope.set_binds(bi, bat, bk, wg, way_len)
+			wg[m]["i0"] = cum[first[m]] * per
+			wg[m]["i1"] = cum[first[m] + 1] * per
+		# A rope whose way has changed is stepped to it: a coil slides when a
+		# third rope's peg lands by it, and a rope left asleep would keep its
+		# old chain under the new twist -- drawn torn, with pieces missing.
+		if rope.set_binds(bi, bat, bk, wg, way_len):
+			_calm[r] = 0
+
+## A rope's braids in the order that makes its way round them shortest, peg
+## to peg. Along its own line is right for braids that lie on it, but a slack
+## rope hooked on ropes across the ring would run out, back and out again.
+func _shortest_round(list: Array, a: Vector2, b: Vector2) -> Array:
+	var n := list.size()
+	if n < 3 or n > 4:
+		return list
+	var best: Array = []
+	var best_len := INF
+	for perm in _perms(n):
+		var at := a
+		var total := 0.0
+		for i in perm:
+			var c: Vector2 = list[i][1].c
+			total += at.distance_to(c)
+			at = c
+		total += at.distance_to(b)
+		# The order along the rope's line wins a near tie, so it does not
+		# flicker between two ways as a peg is carried.
+		if total < best_len - _wd:
+			best_len = total
+			best = perm
+	var out: Array = []
+	for i in best:
+		out.append(list[i])
+	return out
+
+static var _perm_kept := {}
+static func _perms(n: int) -> Array:
+	if _perm_kept.has(n):
+		return _perm_kept[n]
+	var out: Array = [[]]
+	for step in n:
+		var grown: Array = []
+		for p in out:
+			for i in n:
+				if not (p as Array).has(i):
+					grown.append((p as Array) + [i])
+		out = grown
+	_perm_kept[n] = out
+	return out
 
 ## A braid laid out now, spaced along its ropes when `_bind_all` has laid it.
 func _braid_laid(k: int) -> Dictionary:
 	return _laid[k] if _laid.has(k) else _braid(k)
 
-## A rope's braids lie one after another along it. A rope wrapped round
-## several ropes that cross close together (one carry over a bunch does it)
-## would have them overlap: the way would run into one, out past the start of
-## the next and back -- a fold, drawn as a torn knot. So where two of a rope's
-## braids overlap along it they are pushed apart along it, and a rope without
-## the room for all of them has them shortened first.
+## Coils keep clear of each other and of the ropes that only pass by. Each
+## is slid along its core's line to the free stretch nearest where it would
+## lie: free of the other coils its core is in (a rope's braids come one after
+## another along it, never overlapping -- that folded the way back on itself)
+## and of the places a third rope crosses the core, so three ropes never knot
+## in one spot. Laid in pair order, each seeing those laid before it.
 func _space_braids(brs: Dictionary) -> void:
-	var per := {}
-	for k in brs:
-		for r in [int(brs[k].a), int(brs[k].b)]:
-			if not per.has(r):
-				per[r] = []
-			per[r].append(k)
-	var gap := _wd * 0.5
-	for r in per:
-		var list: Array = per[r]
+	var keys: Array = brs.keys()
+	keys.sort()
+	# A core with no room for all its coils has the longest drawn tighter,
+	# then with fewer turns, until they fit.
+	var on_core := {}
+	for k in keys:
+		var core: int = brs[k].a if float(brs[k].side_a) == 0.0 else brs[k].b
+		if not on_core.has(core):
+			on_core[core] = []
+		on_core[core].append(k)
+	for core in on_core:
+		var list: Array = on_core[core]
 		if list.size() < 2:
 			continue
-		var ab := _peg_px[2 * r + 1] - _peg_px[2 * r]
-		var dir := ab.normalized()
-		var need := 0.0
-		for k in list:
-			need += float(brs[k].len) * absf((brs[k].axis as Vector2).dot(dir)) + gap
-		var fit := clampf(ab.length() * 0.8 / maxf(need, 1.0), BRAID_SHORTEST, 1.0)
-		for k in list:
-			brs[k].len = float(brs[k].len) * fit
-	for it in 6:
-		var moved := false
-		for r in per:
-			var list: Array = per[r]
-			if list.size() < 2:
-				continue
-			var a := _peg_px[2 * r]
-			var dir := (_peg_px[2 * r + 1] - a).normalized()
-			list.sort_custom(func(x, y) -> bool: return ((brs[x].c as Vector2) - a).dot(dir) < ((brs[y].c as Vector2) - a).dot(dir))
-			for i in range(1, list.size()):
-				var b0: Dictionary = brs[list[i - 1]]
-				var b1: Dictionary = brs[list[i]]
-				var h0 := float(b0.len) * 0.5 * absf((b0.axis as Vector2).dot(dir))
-				var h1 := float(b1.len) * 0.5 * absf((b1.axis as Vector2).dot(dir))
-				var over := h0 + h1 + gap - ((b1.c as Vector2) - a).dot(dir) + ((b0.c as Vector2) - a).dot(dir)
-				if over > 0.5:
-					b0.c = (b0.c as Vector2) - dir * over * 0.5
-					b1.c = (b1.c as Vector2) + dir * over * 0.5
-					moved = true
-		if not moved:
-			break
-	for k in brs:
-		_keep_in(brs[k])
+		var avail := _peg_px[2 * core].distance_to(_peg_px[2 * core + 1]) - _peg_r * 1.2
+		for it in 12:
+			var need := 0.0
+			var longest = list[0]
+			for k in list:
+				need += float(brs[k].len) + BRAID_GAP * _wd * 2.0
+				if float(brs[k].len) > float(brs[longest].len):
+					longest = k
+			if need <= avail:
+				break
+			var br: Dictionary = brs[longest]
+			var tight := braid_waves(int(br.n)) * BRAID_PITCH_MIN * _wd
+			if float(br.len) > tight + 0.5:
+				br.len = tight
+			elif int(br.n) - 2 >= 2:
+				br.n = int(br.n) - 2
+				br.p1 = BRAID_LEAD + braid_waves(int(br.n)) * PI
+				br.len = braid_waves(int(br.n)) * BRAID_PITCH_MIN * _wd
+			else:
+				break
+	var placed: Array = []
+	var in_hand := _held >> 1 if _held >= 0 else -1
+	for k in keys:
+		var br: Dictionary = brs[k]
+		var core: int = br.a if float(br.side_a) == 0.0 else br.b
+		var winder: int = br.b if core == int(br.a) else br.a
+		var k0 := _peg_px[2 * core]
+		var k1 := _peg_px[2 * core + 1]
+		var axis: Vector2 = br.axis
+		var span := k0.distance_to(k1)
+		var half := float(br.len) * 0.5 + BRAID_GAP * _wd
+		var lo := half + _peg_r * 0.6
+		var hi := span - half - _peg_r * 0.6
+		var want := ((br.c as Vector2) - k0).dot(axis)
+		var off := (br.c as Vector2) - (k0 + axis * want)
+		if lo < hi:
+			# Stretches of the core that are taken: [from, to] for the coil's
+			# middle. The other coils first, then the ropes passing by.
+			var taken: Array = []
+			for j in placed:
+				var o: Dictionary = brs[j]
+				if int(o.a) != core and int(o.b) != core:
+					# The winder's other coils count too where they lie by
+					# this core: two of its coils in one spot would have it
+					# run into one, back out and into the other.
+					if int(o.a) != winder and int(o.b) != winder:
+						continue
+					if absf(((o.c as Vector2) - (br.c as Vector2)).dot(axis.orthogonal())) > float(o.len) * 0.5 + _wd * 3.0:
+						continue
+				var t := ((o.c as Vector2) - k0).dot(axis)
+				var reach := float(o.len) * 0.5 * absf((o.axis as Vector2).dot(axis)) + BRAID_SIDE * _wd * absf((o.perp as Vector2).dot(axis))
+				taken.append([t - reach - half, t + reach + half])
+			var coils := taken.size()
+			for r in state.ropes:
+				# The rope in the hand is in the air: a coil does not slide
+				# out of its way, or every knot would shuffle as it is carried.
+				if r == core or r == winder or r == in_hand:
+					continue
+				var hit = Geometry2D.segment_intersects_segment(k0, k1, _peg_px[2 * r], _peg_px[2 * r + 1])
+				if hit != null:
+					var t := k0.distance_to(hit)
+					taken.append([t - half - _wd * 0.6, t + half + _wd * 0.6])
+			# Clear of everything if it can be; of the other coils at least;
+			# and with no room even for that, as little into them as it goes.
+			var best := clampf(want, lo, hi)
+			var found := false
+			for count in [taken.size(), coils]:
+				var best_cost := INF
+				var tries: Array = [clampf(want, lo, hi), lo, hi]
+				for i in count:
+					tries.append(float(taken[i][0]))
+					tries.append(float(taken[i][1]))
+				for t in tries:
+					var at: float = t
+					if at < lo - 0.01 or at > hi + 0.01:
+						continue
+					var inside := false
+					for i in count:
+						if at > float(taken[i][0]) + 0.01 and at < float(taken[i][1]) - 0.01:
+							inside = true
+							break
+					if not inside and absf(at - want) < best_cost:
+						best_cost = absf(at - want)
+						best = at
+						found = true
+				if found:
+					break
+			if not found and coils > 0:
+				var least := INF
+				for at in [lo, hi, clampf(want, lo, hi)]:
+					var deep := 0.0
+					for i in coils:
+						deep = maxf(deep, minf(float(at) - float(taken[i][0]), float(taken[i][1]) - float(at)))
+					if deep < least:
+						least = deep
+						best = at
+			br.c = k0 + axis * best + off
+		placed.append(k)
+		_keep_in(br)
 
 ## A braid lies on the cloth inside the ring, never over the wood: its middle
 ## is kept far enough in that both its ends are.
@@ -1433,17 +1654,17 @@ func _pair_crossings(k: int, pr: Vector2i) -> void:
 	if _wraps.has(k) and float(_wraps[k].w) > 0.3:
 		var br := _braid_laid(k)
 		near = br.c
-		radius = float(br.len) * 0.55 + _wd * 1.2
+		radius = float(br.len) * 0.55 + _wd * (1.2 + BRAID_SIDE)
 	else:
 		var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
-		var bent := not (_ropes[pr.x] as Rope).wiggles.is_empty() or not (_ropes[pr.y] as Rope).wiggles.is_empty()
+		var bent := _bent[pr.x] or _bent[pr.y]
 		if bent:
 			# A rope bent round a braid of its own crosses this one
 			# somewhere else than the pegs' lines say (two to nine widths
 			# off, measured): search wide, and keep the meeting nearest
 			# where the lines cross.
 			var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
-			var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd)
+			var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd * 1.5)
 			if all.is_empty():
 				return
 			var best: Array = all[0]
@@ -1451,7 +1672,7 @@ func _pair_crossings(k: int, pr: Vector2i) -> void:
 				if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
 					best = h
 			var top := _tw_px[k] & 1
-			var reach := _wd * PATCH_HALF * 2.0
+			var reach := _across(pr, best, _wd * PATCH_HALF * 2.0)
 			if top == 1:
 				_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
 			else:
@@ -1461,7 +1682,7 @@ func _pair_crossings(k: int, pr: Vector2i) -> void:
 			return
 		near = hit
 		radius = _wd * 1.8
-	var hs: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], near, radius, BRAID_SIDE * _wd if _wraps.has(k) else 2.0)
+	var hs: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], near, radius, BRAID_SIDE * _wd * 1.5 if _wraps.has(k) else 2.0)
 	var t0 := _tw_px[k] & 1
 	for i in hs.size():
 		var top := t0 if i % 2 == 0 else 1 - t0
@@ -1475,11 +1696,23 @@ func _pair_crossings(k: int, pr: Vector2i) -> void:
 			if j >= 0 and j < hs.size():
 				var there: float = hs[j][0] if top == 1 else hs[j][1]
 				reach = minf(reach, absf(there - here) * 0.5)
-		reach = maxf(reach, _wd * 0.55)
+		reach = maxf(_across(pr, h, reach), _wd * 0.55)
 		if top == 1:
 			_cross.append([pr.x, pr.y, h[0], h[1], h[2], reach])
 		else:
 			_cross.append([pr.y, pr.x, h[1], h[0], h[2], reach])
+
+## How far a piece laid back over the crossing `h` (from `Rope.hits`) of the
+## pair `pr` has to reach either way to cover the rope under it: that rope's
+## width seen along the one on top, and a little over. No further than
+## `most` -- a longer piece shows its cut ends where a third rope lies by.
+func _across(pr: Vector2i, h: Array, most: float) -> float:
+	var ra: Rope = _ropes[pr.x]
+	var rb: Rope = _ropes[pr.y]
+	var da: Vector2 = Rope.at(ra.polyline(), ra.cum(), float(h[0]))[1]
+	var db: Vector2 = Rope.at(rb.polyline(), rb.cum(), float(h[1]))[1]
+	var sin_a := maxf(absf(da.cross(db)), 0.2)
+	return minf(most, _wd * (0.5 / sin_a + 0.35))
 
 ## A soft coral halo under each crossing, once few enough remain to read, so
 ## what is left to undo shows round the ropes without covering which lies on
@@ -1512,6 +1745,17 @@ func _build_patches(b: Face.Builder) -> void:
 		var s: float = c[2]
 		(_ropes[o] as Rope).draw(b, _wd, col[0], col[1], col[2], look[0], look[1], look[2], look[3], look[4], look[5],
 			s - half, s + half, 0.85)
+	# And at every crossing, the dark the rope on top leaves on the one under
+	# it, either side of itself: which lies over which, read at a glance.
+	var share := clampf(24.0 / maxf(float(_cross.size()), 1.0), 0.0, 1.0)
+	for c in _cross:
+		var o: int = c[0]
+		if o >= _look.size() or _look[o] == null:
+			continue
+		# Crossings crowded together share the dark between them.
+		var room := clampf(float(c[5]) / (_wd * 0.85), 0.0, 1.0)
+		(_ropes[o] as Rope).shade(b, _wd, float(c[2]), minf(float(c[5]), _wd * 0.85),
+			Color(CROSS_SHADE, CROSS_SHADE.a * float(_look[o][1]) * room * room * share))
 
 ## The glow on every empty hole the lifted peg can go to, and the reticle on
 ## the one it is over.
@@ -1839,6 +2083,7 @@ func _draw_cat_badge(b: Face.Builder, t: float) -> void:
 ## The number over the yarn: the moves until the kitten pounces.
 func _draw_numbers() -> void:
 	_draw_preview()
+	_draw_turns()
 	if not state.cat or is_done() or _out_card or _peg_px.is_empty():
 		return
 	var nxt: Dictionary = state.cat_next()
@@ -1849,6 +2094,24 @@ func _draw_numbers() -> void:
 	var base := _yarn_at + Vector2(-w * 0.5, fs * 0.36)
 	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.3), Color(Pal.TEXT, 0.85))
 	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))
+
+## Beside a coil with more turns than its core has room to show, how many
+## there are.
+func _draw_turns() -> void:
+	if is_done() or _out_card:
+		return
+	var font: Font = CozyTheme.display(700)
+	var fs := int(_wd * 0.95)
+	for k in _laid:
+		var br: Dictionary = _laid[k]
+		if int(br.of) <= int(br.n) or float(br.w) < 0.6:
+			continue
+		var text := "\u00d7%d" % int(br.of)
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var at := (br.c as Vector2) - (br.perp as Vector2) * _wd * (BRAID_SIDE + 1.5)
+		var base := at + Vector2(-w * 0.5, fs * 0.36)
+		draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.34), Color("fffaf0"))
+		draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, KNOT_HALO)
 
 ## Over the hole the held peg would drop into, what the drop would do: the
 ## crossings it undoes in green ("-2"), or the ones it makes in coral ("+1"),
