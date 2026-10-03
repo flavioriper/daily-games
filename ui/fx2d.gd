@@ -45,6 +45,9 @@ var last_cue := ""
 ## whenever it fires, file or no file, and core/haptics.gd keeps only the
 ## strongest of a frame's. The board sets it once (docs/agents/haptics.md).
 var haptics := {}
+## False on a board no hand is on (a tutorial's own): nothing buzzes, by
+## cue or by `buzz`.
+var buzzes := true
 var _next_puff := 0
 var _next_sparkle := 0
 ## Sound: a few voices round-robin so quick taps overlap instead of cutting.
@@ -203,6 +206,13 @@ class Ring extends Control:
 	func _draw() -> void:
 		draw_arc(Vector2.ZERO, radius * (0.9 + 0.6 * t), 0.0, TAU, 48, Color(colour, 1.0 - t), 6.0, true)
 
+## A knock that is not a cue's (a sweep let go, a seal landing): `kind` is a
+## Haptics kind. A board calls this, not `Haptics.play`, so its tutorial's
+## copy stays still.
+func buzz(kind: int) -> void:
+	if buzzes:
+		Haptics.play(kind)
+
 ## Audio hook. Effects name their sound here, and it plays
 ## assets/sfx/<puzzle_id>/<cue>.ogg when that file exists, so a board with
 ## no set (or a cue with no file) stays silent. tools/gen_sfx.py makes the
@@ -213,7 +223,7 @@ class Ring extends Control:
 ## (snooker's clack).
 func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	last_cue = cue_name
-	if haptics.has(cue_name):
+	if buzzes and haptics.has(cue_name):
 		Haptics.play(haptics[cue_name])
 	var path := "res://assets/sfx/%s/%s.ogg" % [_puzzle_id(), cue_name]
 	if not _streams.has(path):

@@ -73,6 +73,16 @@ Rules:
   the reach rule in the fingers: one tick as it strains, none again until it
   slackens, and nothing more when the peg is let go out of reach and flies
   home.
+- **A sweep knocks once, as it is let go.** Tents' cairns and Light Up's
+  chips arrive a square at a time under the finger, each with its cue: none
+  is mapped, and the gesture ticks once on release if it changed anything.
+- **A tutorial's board does not buzz.** Many tutorial pages play a real
+  copy of the board through its own `_gui_input` (Tents' `Meadow`, Light
+  Up's `Court`): the copy sets `fx.buzzes = false` in its `_ready`, and the
+  board knocks through `fx.buzz(kind)`, never `Haptics.play`, for whatever
+  is not a cue. Check with `_probe_perf.gd -- <id> howto`: the trace must
+  come back empty. (Rows 1-5 have no such copy; every later board whose
+  `ui/hud/*_tutorial_diagram.gd` extends it needs the line.)
 - **A count is read, not felt**: Code Break's pips land one by one and say
   nothing; the row knocks once as it is scored.
 - **Nothing continuous**: a drag knocks on the cells it crosses at most, it
@@ -98,8 +108,8 @@ Rules:
 | 3 | balance | 2026-10-03 | tap as a fruit the hand let go lands in a cup, tick as one tapped or dropped home gets there (`_by_hand`, not the `land`/`step` cues); good on a far toss that lands (over the tap), a hint and One more hour; bump on the beam level with fruit still to place; tick on Undo, tap on Reset; bad on Insane's bounce; lose at sunset; win on the solve, thud as the seal lands; nothing for a fruit lifted, a pinned fruit, the beam at rest off level or on its bale, the cheers, the sun tapped or getting low, and every fruit the board moves itself. Probed on all four bands; the level, the bounce and the sunset are mapped but not probed |
 | 4 | untangle | 2026-10-03 | tap as the peg the hand let go lands in its hole, bump instead when that left a rope with no crossing or undid two at once (`_landed`, not the `drop` cue, which the kitten's swat and a hint's flight fire too); tick once as the rope goes taut in the hand (`_update_held`; the pluck shares the cue and says nothing); tick on Undo, tap on Reset; good on a hint and One more spool; warn on the thread running low; lose out of thread; win on the solve (it waits for the last peg to land), thud as the seal lands; nothing for a peg lifted, selected or put back, a hole hovered, a braid cinching or unwinding under the hand, a stuck peg or a drop out of reach, a stitch, the kitten petted, pouncing or swatting, the shown answer. Probed Easy, Hard and Insane; out of thread and the spool are mapped but not probed |
 | 5 | shikaku | 2026-10-03 | tap on a bed fenced (fits its sign or not: the sign's face says that), tick on one tapped away and Undo; bump where the streak's confetti flies (5, 10); good on a hint, a clean Check and a heart back; warn on a Check that finds something; bad on a heart, lose on the last; tap on Reset and Try again; win on the solve, thud as the seal lands (`_stamp_at` + `STAMP_DROP`, flawless or Insane); nothing for the wash growing under the finger, a tap on bare ground, a drag refused on a pinned or taken bed, the sprout, the streak's pluck, the gags. Probed on all four bands; the last heart and the heart back are mapped but not probed |
-| 6 | tents | | |
-| 7 | lightup | | |
+| 6 | tents | 2026-10-03 | tap on a tent pitched (fair or not: its face and the chips say that), tick on one struck and Undo; one tick as a sweep is let go, laying cairns or rubbing them out (`_release`; the per-square `cairn`/`clear` are not mapped); bump on an oak given its second tent and where the streak's confetti flies; good on a hint, a clean Check and a heart back; warn on a Check that finds something; bad on a heart, lose on the last; tap on Reset and Try again; win on the solve, thud as the seal lands (flawless or Insane); nothing for the sweep under the finger, a tree or a pegged tent tapped, the trees' hops, the streak's pluck, the gags, the tutorial's meadow. Probed Easy, Hard and Insane; the last heart, the heart back and a Check that finds something are mapped but not probed |
+| 7 | lightup | 2026-10-03 | tap on a lamp set down (fair or not), tick on a lamp or a chip tapped up (`_commit`: the `strike` cue is also the board blowing a wrong lamp out, `clear` also the sweep's) and on Undo; one tick as a sweep is let go; bump on a cat whose number the hand's own tap met (`_by_hand` in `_cat_turns`: `purr` fires on Undo and a hint too) and where the streak's confetti flies; good on a hint, a clean Check and a heart back; warn on a Check that finds something; bad on a heart, lose on the last; tap on Reset and Try again; win on the solve, thud as the seal lands (flawless or Insane); nothing for the sweep under the finger, a block, a cat or a pinned lamp tapped, a block's hop, a napping cat woken, the wrong lamp blown out, the streak's pluck, the moths, the gags, the tutorial's court. Probed on all four bands (the last heart on Hard, by a probe that slipped); the heart back is mapped but not probed |
 | 8 | oneline | | |
 | 9 | nonogram | | |
 | 10 | queens | | |

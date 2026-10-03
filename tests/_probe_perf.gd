@@ -1714,6 +1714,89 @@ func _moves_tents() -> Array:
 		out.append({"at": _puzzle.cell_to_local.bind(t.y, t.x)})
 	return out
 
+## Tents' buzzes: a tree tapped, a tent pitched where the answer has one and
+## tapped away, a tent with no tree beside it, a run swept into cairns and
+## rubbed out, Undo, on Hard a tent the board cannot fault that is not the
+## answer's, a hint and a tap on its pegged tent, Check and Reset. The plain
+## run then sweeps the rows and pitches the answer (the oaks, the streak's
+## confetti, the win, the seal when it is earned).
+func _buzz_tents() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
+	var tree: Vector2i = st.tree_list[0]
+	_click(at.call(tree))
+	await pause.call()
+	_buzzed("a tree tapped")
+	var first: Vector2i = st.solution[0]
+	_click(at.call(first))
+	await create_timer(1.6).timeout
+	_buzzed("a right tent")
+	_click(at.call(first))
+	await pause.call()
+	_buzzed("tapped away")
+	# two bare squares side by side, neither the answer's nor a tree's
+	var run: Array = []
+	var lone := Vector2i(-1, -1)
+	var wrong := Vector2i(-1, -1)
+	for y in st.h:
+		for x in st.w:
+			var cell := Vector2i(x, y)
+			if st.trees.has(cell) or st.solution.has(cell):
+				continue
+			var beside := false
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				beside = beside or st.trees.has(cell + d)
+			if not beside and lone.x < 0:
+				lone = cell
+			if beside and wrong.x < 0 and int(st.row_counts[y]) != 0 and int(st.col_counts[x]) != 0:
+				wrong = cell
+			var next := Vector2i(x + 1, y)
+			if run.is_empty() and x + 1 < st.w and not st.trees.has(next) and not st.solution.has(next):
+				run = [cell, next]
+	if lone.x >= 0:
+		_click(at.call(lone))
+		await pause.call()
+		_buzzed("a tent with no tree by it")
+		_click(at.call(lone))
+		await pause.call()
+	_buzz_seen = Haptics.trace.size()
+	if not run.is_empty():
+		for k in 2:
+			_ut_button(at.call(run[0]), true)
+			await process_frame
+			_ut_motion(at.call(run[1]))
+			await process_frame
+			_buzzed("the sweep under the finger")
+			_ut_button(at.call(run[1]), false)
+			await pause.call()
+			_buzzed("two cairns swept" if k == 0 else "and rubbed out")
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+		_host._on_undo()
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+	if _puzzle.max_hearts > 1 and wrong.x >= 0:
+		_click(at.call(wrong))
+		await create_timer(2.5).timeout
+		_buzzed("a tent that costs a heart")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+		for cell: Vector2i in st.locked:
+			_click(at.call(cell))
+		await pause.call()
+		_buzzed("the pegged tent tapped")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
+
 ## Light Up: the answer's lamps tapped in, one tap a step.
 func _moves_lightup() -> Array:
 	_keep = 2
@@ -1721,6 +1804,95 @@ func _moves_lightup() -> Array:
 	for cell: Vector2i in _puzzle.state.solution:
 		out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
 	return out
+
+## Light Up's buzzes: a block tapped, a lamp set where the answer has one
+## and tapped away, two lamps in sight of each other, a run swept into chips,
+## a chip tapped up, Undo, on Hard a lamp the board cannot fault that is not
+## the answer's, a hint and a tap on its pinned lamp, Check and Reset. The
+## plain run then taps the answer in (the cats' numbers met, the streak's
+## confetti, the win, the seal when it is earned).
+func _buzz_lightup() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
+	var block := Vector2i(-1, -1)
+	var run: Array = []
+	var wrong := Vector2i(-1, -1)
+	for y in st.h:
+		for x in st.w:
+			var cell := Vector2i(x, y)
+			if _puzzle._is_block(cell):
+				if block.x < 0:
+					block = cell
+				continue
+			if not st.is_white(cell) or st.solution.has(cell):
+				continue
+			var clear := true
+			for d: Vector2i in st.DIRS:
+				clear = clear and not _puzzle._is_block(cell + d)
+			if clear and wrong.x < 0:
+				wrong = cell
+			var next := Vector2i(x + 1, y)
+			if run.is_empty() and st.is_white(next) and not st.solution.has(next):
+				run = [cell, next]
+	if block.x >= 0:
+		_click(at.call(block))
+		await pause.call()
+		_buzzed("a block tapped")
+	var first: Vector2i = st.solution[0]
+	_click(at.call(first))
+	await create_timer(1.6).timeout
+	_buzzed("a right lamp")
+	# (a stone beside it, in its light: the two see each other)
+	for d: Vector2i in st.DIRS:
+		if st.is_white(first + d):
+			_click(at.call(first + d))
+			await pause.call()
+			_buzzed("a lamp in sight of another")
+			_click(at.call(first + d))
+			await pause.call()
+			_buzz_seen = Haptics.trace.size()
+			break
+	_click(at.call(first))
+	await pause.call()
+	_buzzed("tapped away")
+	if not run.is_empty():
+		_ut_button(at.call(run[0]), true)
+		await process_frame
+		_ut_motion(at.call(run[1]))
+		await process_frame
+		_buzzed("the sweep under the finger")
+		_ut_button(at.call(run[1]), false)
+		await pause.call()
+		_buzzed("two chips swept")
+		_click(at.call(run[0]))
+		await pause.call()
+		_buzzed("a chip tapped up")
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+		_host._on_undo()
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+	if _puzzle.max_hearts > 1 and wrong.x >= 0:
+		_click(at.call(wrong))
+		await create_timer(3.0).timeout
+		_buzzed("a lamp that costs a heart")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+		for cell: Vector2i in st.locked:
+			_click(at.call(cell))
+		await pause.call()
+		_buzzed("the pinned lamp tapped")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
 
 ## One Line: the planted walk drawn as one drag -- the press on its first
 ## post, a motion to each next post, the release -- one event a step.
