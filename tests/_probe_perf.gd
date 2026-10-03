@@ -3703,6 +3703,122 @@ func _sb_dark_way(st) -> Array:
 				out.append([p, a, z])
 	return out
 
+## Hedgehogs' buzzes: a raked number that cannot chord, a flag dropped and
+## lifted, one set by a long press (the finger still down), a rake (the
+## smallest flood on the lawn), Undo, the biggest flood there is, a pile
+## with a hedgehog under it (a warn on Easy and Medium, the heart on Hard
+## and Insane), Check clean and with a flag on a bare pile, a hint and
+## Reset. The plain run then clears the lawn (the streak's confetti, the win
+## as the wave sets off, the seal when it is earned).
+func _buzz_hedgehogs() -> void:
+	var st = _puzzle._state
+	var Gen = load("res://puzzles/hedgehogs_gen.gd")
+	_buzz_more = 12.0
+	var pause := func() -> void: await create_timer(1.6).timeout
+	var at := func(c: int) -> Vector2: return _puzzle.cell_to_local(c / st.cols(), c % st.cols())
+	# Each bare covered pile's flood, from where the lawn stands.
+	var floods := func() -> Dictionary:
+		var out := {}
+		for c in st.size():
+			if st.open[c] == 0 and not st.is_hog(c):
+				var open: PackedByteArray = st.open.duplicate()
+				out[c] = Gen.flood(st.g, open, c).size()
+		return out
+	var hog := -1
+	for c in st.size():
+		if st.is_hog(c) and st.woke[c] == 0:
+			hog = c
+			break
+	for c in st.size():
+		if st.open[c] == 1 and st.number(c) > 0:
+			_click(at.call(c))
+			await pause.call()
+			_buzzed("a number that cannot chord")
+			break
+	_puzzle.set_brush(st.FLAG)
+	_click(at.call(hog))
+	await pause.call()
+	_buzzed("a flag dropped")
+	_click(at.call(hog))
+	await pause.call()
+	_buzzed("the flag lifted")
+	_puzzle.set_brush(st.RAKE)
+	_ut_button(at.call(hog), true)
+	await create_timer(0.7).timeout
+	_buzzed("a long press (still held)")
+	_ut_button(at.call(hog), false)
+	await pause.call()
+	_buzzed("and let go")
+	var f: Dictionary = floods.call()
+	var small := -1
+	var big := -1
+	for c: int in f:
+		if small < 0 or int(f[c]) < int(f[small]):
+			small = c
+		if big < 0 or int(f[c]) > int(f[big]):
+			big = c
+	if small >= 0:
+		_click(at.call(small))
+		await pause.call()
+		_buzzed("a rake (%d piles)" % int(f[small]))
+		if _puzzle.can_undo():
+			_host._on_undo()
+			await pause.call()
+			_buzzed("undo")
+	f = floods.call()
+	big = -1
+	for c: int in f:
+		if big < 0 or int(f[c]) > int(f[big]):
+			big = c
+	if big >= 0 and int(f[big]) >= _puzzle.BIG_GUST:
+		_click(at.call(big))
+		await pause.call()
+		_buzzed("a big flood (%d piles)" % int(f[big]))
+	else:
+		print("  buzz (no flood of %d piles left on this lawn)" % _puzzle.BIG_GUST)
+	if _puzzle.capabilities().has("check"):
+		_host._on_check()
+		await pause.call()
+		_buzzed("check, clean")
+		f = floods.call()
+		if not f.is_empty():
+			var bare: int = f.keys()[0]
+			_puzzle.set_brush(st.FLAG)
+			_click(at.call(bare))
+			_puzzle.set_brush(st.RAKE)
+			await pause.call()
+			_buzz_seen = Haptics.trace.size()
+			_host._on_check()
+			await pause.call()
+			_buzzed("check, a flag on a bare pile")
+			_puzzle.set_brush(st.FLAG)
+			_click(at.call(bare))
+			_puzzle.set_brush(st.RAKE)
+			await pause.call()
+	_buzz_seen = Haptics.trace.size()
+	# The flag the long press left is lifted, and the pile under it raked.
+	var hearts: int = _puzzle.hearts
+	if st.flag[hog] == 1:
+		_puzzle.set_brush(st.FLAG)
+		_click(at.call(hog))
+		_puzzle.set_brush(st.RAKE)
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+	_click(at.call(hog))
+	await create_timer(0.1).timeout
+	_buzzed("a hedgehog raked, at the tap")
+	await create_timer(2.4).timeout
+	_buzzed("as it wakes (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(2.4).timeout
+		_buzzed("hint")
+	if _puzzle.can_reset():
+		_puzzle.reset_board()
+		await create_timer(2.4).timeout
+		_buzzed("reset")
+	_moves = _moves_hedgehogs()
+
 ## Hedgehogs: the lawn cleared in reading order, each move the first cell
 ## still to do -- a sleeping hedgehog flagged (the flag chip armed for the
 ## tap) or a bare pile raked -- picked at the move, since on Sleepwalkers the
@@ -3876,6 +3992,110 @@ func _moves_pixelgarden() -> Array:
 			_keep += int(counts[counts.size() - 1 - k])
 	_keep = 0
 	return [plan]
+
+## Super Slider's buzzes: a block lifted and put back, one pushed at a
+## wall, a move kept (the day's own next one), Undo, a move that takes the
+## big block farther from the gate (plain on Easy and Medium; on Hard the
+## tick while it is held and the heart let go) or, on Homesick, one that
+## leaves it no way home, a hint and Reset. The plain run then plays the
+## shortest way out (the streak's confetti, the win as the big block lands
+## on the mat, the seal when it is earned).
+func _buzz_slider() -> void:
+	var st = _puzzle._state
+	var Gen = load("res://puzzles/slider_gen.gd")
+	_buzz_more = 12.0
+	var pause := func() -> void: await create_timer(1.6).timeout
+	var at := func(c: int) -> Vector2:
+		return _puzzle._pt(Vector2(c % Gen.COLS, c / Gen.COLS) + Vector2(0.5, 0.5))
+	while not st.solver_ready():
+		await create_timer(0.2).timeout
+	_buzz_seen = Haptics.trace.size()
+	var m: Dictionary = st.hint_move()
+	var p: int = m.p
+	var path: PackedInt32Array = m.path
+	_ut_button(at.call(path[0]), true)
+	await create_timer(0.3).timeout
+	_ut_button(at.call(path[0]), false)
+	await pause.call()
+	_buzzed("a block lifted and put back")
+	# Every one-cell step there is, and what it does to the way out.
+	var steps: Array = []
+	var shut: Array = []
+	var d0: int = st.dist_of(st.key)
+	for q in st.blocks.size():
+		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var keep: Array = st.snapshot()
+			var from: int = st.at(q)
+			if st.step(q, dir.x, dir.y):
+				steps.append([q, from, st.at(q), st.dist_of(st.key)])
+				st._restore(keep)
+			elif shut.is_empty():
+				shut = [q, from, dir]
+	if not shut.is_empty():
+		var c: int = shut[1]
+		_ut_button(at.call(c), true)
+		await create_timer(0.1).timeout
+		_ut_motion(at.call(c) + Vector2(shut[2]) * _puzzle._cell() * 0.8)
+		await create_timer(0.3).timeout
+		_ut_button(at.call(c) + Vector2(shut[2]) * _puzzle._cell() * 0.8, false)
+		await pause.call()
+		_buzzed("a block pushed at a wall")
+	_ut_button(at.call(path[0]), true)
+	await create_timer(0.1).timeout
+	for k in range(1, path.size()):
+		_ut_motion(at.call(path[k]))
+		await create_timer(0.1).timeout
+	_buzzed("a block carried (still held)")
+	_ut_button(at.call(path[path.size() - 1]), false)
+	await create_timer(0.1).timeout
+	_buzzed("let go on a new cell")
+	await pause.call()
+	_buzzed("as it lands")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+	else:
+		print("  buzz (no Undo on this band: the kept move stands)")
+	_buzz_seen = Haptics.trace.size()
+	# From where the tray stands now.
+	steps = []
+	d0 = st.dist_of(st.key)
+	for q in st.blocks.size():
+		for dir: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var keep: Array = st.snapshot()
+			var from: int = st.at(q)
+			if st.step(q, dir.x, dir.y):
+				steps.append([q, from, st.at(q), st.dist_of(st.key)])
+				st._restore(keep)
+	var worse: Array = []
+	for s: Array in steps:
+		if (int(s[3]) == -1) if st.homesick else (int(s[3]) > d0):
+			worse = s
+			break
+	if worse.is_empty():
+		print("  buzz (no one-cell move here %s)" % ("leaves no way home" if st.homesick else "goes farther from the gate"))
+	else:
+		var hearts: int = _puzzle.hearts
+		_ut_button(at.call(worse[1]), true)
+		await create_timer(0.1).timeout
+		_ut_motion(at.call(worse[2]))
+		await create_timer(0.4).timeout
+		_buzzed("a worse move held")
+		_ut_button(at.call(worse[2]), false)
+		await create_timer(0.05).timeout
+		_buzzed("let go")
+		await create_timer(3.0).timeout
+		_buzzed("as it lands (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(2.4).timeout
+		_buzzed("hint")
+	if _puzzle.can_reset():
+		_puzzle.reset_board()
+		await create_timer(2.4).timeout
+		_buzzed("reset")
+	_moves = _moves_slider()
 
 ## Super Slider: the shortest way out, each move a drag through the board's
 ## own input -- a press on the block, a motion a cell at a time along the
