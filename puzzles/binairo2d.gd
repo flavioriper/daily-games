@@ -1353,8 +1353,8 @@ func _judge(r: int, c: int, grace: bool) -> void:
 			if _pending[r][c] == token and _held == Vector2i(c, r):
 				_commit())
 
-## The player has moved on from the tile they were cycling (another tile, a
-## brush, Undo, Hint, Check): what it shows now is what they meant. Wrong
+## The player has moved on from the tile they were cycling (another tile,
+## Undo, Hint, Check -- not a brush picked, which changes no tile): what it shows now is what they meant. Wrong
 ## costs a heart on a board with hearts; a blush ends the streak on one
 ## without.
 func _commit() -> void:
@@ -1813,7 +1813,8 @@ func _after_change(r: int, c: int) -> void:
 func set_brush(v: int) -> void:
 	if is_done() or out_of_hearts:
 		return
-	_commit()
+	# No _commit: picking a brush is not a move. A player who tapped a sun
+	# and then reaches for the moon brush is about to paint over it.
 	brush = -2 if brush == v else v
 	fx.cue("brush")
 	brush_changed.emit()

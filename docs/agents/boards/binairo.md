@@ -216,7 +216,10 @@ The user: placing a moon by tapping through a sun was marked as a mistake,
 "but it's a feature we provide". `WRONG_GRACE` gave the sun 0.4 s, so anyone
 slower between the two taps lost a heart. Now a tile changed under the cycle
 (no brush) is **held** (`_held`) and judged only at `_commit`: a tap on any
-other tile (a given too), a brush armed, Undo of another tile, Hint, Check.
+other tile (a given too), Undo of another tile, Hint, Check. **Not a brush
+armed**: the first build committed there, and a player who tapped a sun and
+then picked the moon brush to paint over it lost Insane's one heart with no
+tile touched (user, 2026-10-03).
 A brush's symbol is still judged at once. On a full board, where there is
 nothing to move on to, the held tile is judged after `FULL_GRACE` (1.5 s)
 without a further tap. On Easy and Medium the same hold keeps a cycling
