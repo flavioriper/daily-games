@@ -55,6 +55,13 @@ makes a pair, a flyby bonus stage third and every fourth after).
   4.65 ms a frame on this Mac, now about 1 ms.
 - **A slide, not a spot**: the firefly follows the finger's movement at
   1.35x, and holding fires.
+- **Haptics** (2026-10-03, `docs/agents/haptics.md` row 33): the sim's
+  events ask through `_feel(kind)` and the frame knocks once with the
+  strongest (`_knock_now`); only the end card's `new_best` is a mapped cue.
+  `tests/_probe_arcade_buzz.gd -- firefly [rm]` plays a run through the real
+  screen with a bot (`SECS`) and prints each event against what landed; it
+  overhears `_play_events` through a subclass made at run time, which the
+  next Arcade games can reuse where they have that function.
 - **A wrapped Label hidden before its first layout measures thousands of
   pixels tall** (it has a width of one), so the tab's fit measures its lines
   off the font instead. The Versus tab reads its labels and may have the

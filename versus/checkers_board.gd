@@ -38,6 +38,7 @@ const Pal = preload("res://core/palette.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 ## In cells: the tray strip above and below (at least TRAY, growing to
 ## TRAY_MAX into a tall phone's spare height), the air between it and the
@@ -487,6 +488,12 @@ func play(d: Dictionary) -> void:
 				_puff(leg[1], Color("efe4cc"), 3)
 			_ripple(leg[1], 1.0 if capture else 0.7))
 	# what it takes, each at the moment the piece is over it
+	# What the hand's own move earned knocks as it happens: one bump as its
+	# first piece is taken, however long the chain, or as a man is crowned.
+	# The cues ring for the computer's moves too and are not mapped
+	# (docs/agents/haptics.md). A move that ends the game leaves it to the
+	# win, which lands with the piece.
+	var hand: bool = int(d.side) == player and rules.status() == Rules.PLAYING
 	var caps: Array = d.caps
 	for i in caps.size():
 		var victim: Actor = _at_sq.get(int(caps[i]))
@@ -498,7 +505,7 @@ func play(d: Dictionary) -> void:
 		var lt: Vector2 = leg[1]
 		var frac := lf.distance_to(victim.at) / maxf(lf.distance_to(lt), 0.01)
 		var contact: float = float(leg[2]) + float(leg[3]) * (1.0 if reduce else skin.jump_contact(frac))
-		_knock(victim, lt - lf, contact, i)
+		_knock(victim, lt - lf, contact, i, hand and i == 0)
 	if bool(d.crown):
 		var ct: float = skin.crown_time()
 		_after(t, func() -> void:
@@ -513,6 +520,8 @@ func play(d: Dictionary) -> void:
 			a.type = Rules.KING
 			_cue("crown")
 			if _fx != null:
+				if hand and not capture:
+					_fx.buzz(Haptics.BUMP)
 				_fx.sparkle(px(a.to), Pal.SUN)
 				_fx.ring(px(a.to), cell * 0.55, Pal.SUN))
 	_last = PackedInt32Array([int(d.from)])
@@ -522,7 +531,7 @@ func play(d: Dictionary) -> void:
 
 ## Knocks `victim` off the board into its tray, `contact` seconds from now,
 ## pushed the way it was jumped; `n` is its place in a chain.
-func _knock(victim: Actor, dir: Vector2, contact: float, n: int) -> void:
+func _knock(victim: Actor, dir: Vector2, contact: float, n: int, knocks := false) -> void:
 	var tray := 0 if victim.side == 1 else 1
 	var slot: int = _trays[tray].size()
 	_trays[tray].append(victim)
@@ -540,6 +549,8 @@ func _knock(victim: Actor, dir: Vector2, contact: float, n: int) -> void:
 		victim.face_until = INF
 		_cue("capture", 1.0 + 0.1 * n)
 		if _fx != null:
+			if knocks:
+				_fx.buzz(Haptics.BUMP)
 			var hit := px(victim.at)
 			_fx.ring(hit, cell * 0.35, Color(Pal.PAPER, 0.9), 0.35)
 			_fx.puff(hit, Pal.SUN_RAY, 6)

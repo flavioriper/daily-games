@@ -27,6 +27,12 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). A run's cues come many
+## to a frame and several are shared (`docked`, `extra`, `ship_pop`), so only
+## the end card's is mapped: the events ask through `_feel` and the frame
+## knocks once, with the strongest.
+const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -90,6 +96,8 @@ var _banner_tw: Tween
 var _pause_card: Control
 var _end: Control
 var _acc := 0.0
+## The strongest kind this frame's events asked for, -1 for none.
+var _knock := -1
 var _paused := false
 var _started_at := 0
 var _best := 0
@@ -168,7 +176,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_ask()
+	_ask(false)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -227,6 +235,7 @@ func _build() -> void:
 	field.gui_input.connect(_on_field_input)
 	frame.add_child(field)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	field.add_child(_fx)
 
 	var over := VBoxContainer.new()
@@ -397,6 +406,7 @@ func _process(delta: float) -> void:
 		_animate(delta)
 	_beam_sound()
 	_refresh_hud(delta)
+	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
@@ -441,6 +451,15 @@ func _animate(delta: float) -> void:
 		seen[e.id] = v
 	_vis = seen
 	_animate_rewards(delta)
+
+## Asks for a knock this frame; the strongest asked for is the one played.
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+func _knock_now() -> void:
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
 
 func _hands() -> void:
 	var axis := 0.0
@@ -557,9 +576,14 @@ func _play_events() -> void:
 					_shake = maxf(_shake, 0.32)
 				_pops.append({"pos": ev.pos, "text": "+%d" % int(ev.points), "t": 0.0, "big": int(ev.points) >= 400,
 					"small": int(ev.points) < 150})
+				# A bug shot down taps, a big one bumps; one that flew into
+				# the firefly is the pop's knock, not a kill.
+				if not bool(ev.get("rammed", false)):
+					_feel(Haptics.BUMP if big else Haptics.TAP)
 				_on_kill(ev, colour)
 			"hurt":
 				_fx.cue("hurt")
+				_feel(Haptics.TAP)
 				_fx.sparkle(at, Art.MOTH_HURT)
 			"dive":
 				if int(ev.kind) == Sim.Kind.MOTH or randf() < 0.5:
@@ -568,12 +592,17 @@ func _play_events() -> void:
 				_fx.cue("beam_open")
 			"captured":
 				_fx.cue("captured")
+				# Still to be saved while it is hauled up: a warn. Carried off
+				# it is a firefly lost.
+				_feel(Haptics.WARN)
 				_shake = maxf(_shake, 0.4)
 				_rw.sticker(tr("FF_OH_NO"), _in_rw(ev.pos + Vector2(0, -26.0)), 56, 1.1, false, Art.MOTH_HURT, false, "caught")
 			"carried":
 				_fx.cue("carried")
+				_feel(Haptics.BAD)
 			"rescue":
 				_fx.cue("rescue")
+				_feel(Haptics.GOOD)
 				_fx.sparkle(at, Art.GLOW)
 				_burst(ev.pos, Art.GLOW, false)
 				_rw.sticker(tr("FF_SAVED"), _in_rw(ev.pos + Vector2(0, -22.0)), 60, 1.2, false, Art.GLOW, false, "saved", 30.0)
@@ -594,6 +623,7 @@ func _play_events() -> void:
 				_fx.puff(at, Art.FIREFLY_SHIELD, 6)
 				_burst(ev.pos, Art.FIREFLY_SHIELD, false)
 				_fx.cue("ship_pop")
+				_feel(Haptics.WARN)
 			"rogue":
 				_fx.cue("rogue")
 			"ship_pop":
@@ -606,6 +636,7 @@ func _play_events() -> void:
 				_burst(ev.pos, Art.GLOW, true)
 				_burst(ev.pos, Art.FIREFLY_SHIELD, false)
 				_fx.cue("ship_pop")
+				_feel(Haptics.BAD)
 				_shake = 1.0
 				_freeze = 0.12
 				_wake.clear()
@@ -624,14 +655,20 @@ func _play_events() -> void:
 				_show_banner(tr("FF_PERFECT") if perfect else tr("FF_HITS") % [ev.hits, ev.total],
 					tr("FF_BONUS") % Record.grouped(ev.bonus), 3.0)
 				_fx.cue("perfect" if perfect else "result")
+				if perfect:
+					_feel(Haptics.BUMP)
 				_flyby_result(perfect, int(ev.bonus))
 			"stage_clear":
 				_fx.cue("clear")
+				_feel(Haptics.BUMP)
 				_stage_cleared()
 			"extra_ship":
 				_fx.cue("extra")
+				_feel(Haptics.GOOD)
 				_extra_ship()
 			"game_over":
+				# The last firefly's knock is the lose.
+				_feel(Haptics.LOSE)
 				_game_over()
 	sim.events.clear()
 
@@ -728,6 +765,7 @@ func _count_chain() -> void:
 			_flash_now(Color("fff6c9"), 0.2 + 0.08 * tier)
 			_shake = maxf(_shake, 0.2 + 0.08 * tier)
 			_fx.cue("docked", 1.0 + 0.08 * tier, -2.0)
+			_feel(Haptics.BUMP)
 			if tier >= 3:
 				_rw.rain(1.6, ["star", "confetti", "mote"], [Art.GLOW, Pal.SUN, Art.MOTH_WING, Art.BEETLE_SHELL, Art.GNAT_BODY])
 			break
@@ -787,6 +825,7 @@ func _new_best_passed() -> void:
 	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
 	_rw.rain(1.6, ["confetti", "star"], [Art.GLOW, Pal.SUN, Pal.FLOWER, Art.MOTH_WING, Art.BEETLE_SHELL])
 	_fx.cue("extra", 1.1, -3.0)
+	_feel(Haptics.BUMP)
 
 ## The field flashes `col`, `amount` at most.
 func _flash_now(col: Color, amount: float) -> void:
@@ -1527,7 +1566,7 @@ func go_back() -> void:
 
 ## Before a run: the boost card, when a booster is held or the gold for one
 ## is, else straight in. A run still going when it is asked for stops there.
-func _ask() -> void:
+func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
@@ -1536,6 +1575,9 @@ func _ask() -> void:
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()
+		# Restart and Play again tap; the screen opening says nothing.
+		if by_hand:
+			_fx.buzz(Haptics.TAP)
 		return
 	if sim != null and not sim.is_over():
 		sim = null
@@ -1543,7 +1585,8 @@ func _ask() -> void:
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:
 		_boosts = ids
-		_new_game())
+		_new_game()
+		_fx.buzz(Haptics.TAP))
 	add_child(card)
 
 ## At game over, once a run: the Second chance, when one is held or the gold
@@ -1557,6 +1600,7 @@ func _offer_chance() -> bool:
 	card.taken.connect(func() -> void:
 		_boosted = true
 		Boosters.revive(GAME, sim)
+		_fx.buzz(Haptics.GOOD)
 		_show_banner(tr("CHANCE_GO"), "", 1.0)
 		_play_events()
 		top_bar.refresh(self))

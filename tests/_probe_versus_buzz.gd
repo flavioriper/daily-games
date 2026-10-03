@@ -7,9 +7,10 @@ extends SceneTree
 ##
 ##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- snooker
 ##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- chess
+##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- checkers
 ##
 ## `rm` after the game runs it under reduce motion. SPEED, LEVEL (the
-## computer's), YOU (chess: the hand's level, 0 to lose) and SHOTS (snooker)
+## computer's), YOU (chess, checkers: the hand's level, 0 to lose) and SHOTS (snooker)
 ## from the environment. Puts user://versus.cfg back afterwards.
 
 const Haptics = preload("res://core/haptics.gd")
@@ -17,6 +18,8 @@ const Motion = preload("res://core/motion.gd")
 const SnookerAI = preload("res://versus/snooker_ai.gd")
 const ChessAI = preload("res://versus/chess_ai.gd")
 const ChessRules = preload("res://versus/chess_rules.gd")
+const CheckersAI = preload("res://versus/checkers_ai.gd")
+const CheckersRules = preload("res://versus/checkers_rules.gd")
 
 var _game := "snooker"
 var _s: Node
@@ -38,6 +41,7 @@ func _initialize() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load("user://versus.cfg")
 	cfg.set_value("colour", "chess", 0)
+	cfg.set_value("colour", "checkers", 0)
 	cfg.save("user://versus.cfg")
 	Motion.settings_path = "user://_probe_versus_buzz.cfg"
 	Motion.reduce = args.has("rm")
@@ -57,6 +61,8 @@ func _process(_delta: float) -> bool:
 func _run() -> void:
 	if _game == "chess":
 		await _chess()
+	elif _game == "checkers":
+		await _checkers()
 	else:
 		await _snooker()
 	print("haptics: ", " ".join(Haptics.trace))
@@ -334,6 +340,127 @@ func _chess_reply() -> void:
 			what = "the reply takes" if int(d.captured) != 0 else "the reply"
 			if _s.rules.in_check():
 				what += ", check"
+	if _s._state == st.OVER:
+		what = "the end"
+	_say("  ... " + what)
+
+# --- checkers ---
+
+func _checkers() -> void:
+	var st: Dictionary = _s.State
+	var board: Control = _s.board
+	await _until(st.YOURS)
+	await _wait(0.2)
+	print("checkers, level ", _s.level, ", reduce ", Motion.reduce)
+	_seen = Haptics.trace.size()
+	var at := func(sq: int) -> Vector2: return board.px(board.cell_of(sq))
+	var tap := func(sq: int) -> void:
+		_press(board, at.call(sq), true)
+		_press(board, at.call(sq), false)
+	# a piece that cannot move, a piece picked up, put down, and moved by taps
+	var m := _checkers_plan(2, 3)
+	for sq in 64:
+		var p: int = _s.rules.board[sq]
+		if p != 0 and CheckersRules.side_of(p) == _s.player and _s.rules.moves_from(sq).is_empty():
+			tap.call(sq)
+			_say("a piece with no move")
+			break
+	await _wait(0.4)
+	tap.call(CheckersRules.mv_from(m))
+	_say("piece picked up")
+	tap.call(CheckersRules.mv_from(m))
+	_say("the same piece again")
+	tap.call(CheckersRules.mv_to(m))
+	_say("moved by taps")
+	await _checkers_reply()
+	# a move carried by the finger
+	m = _checkers_plan(2, 5)
+	var a: Vector2 = at.call(CheckersRules.mv_from(m))
+	var z: Vector2 = at.call(CheckersRules.mv_to(m))
+	_press(board, a, true)
+	_move(board, a.lerp(z, 0.5))
+	_move(board, z)
+	_say("piece carried")
+	var kind := _checkers_kind(m)
+	_press(board, z, false)
+	await process_frame
+	while _s._state == st.ANIM:
+		await process_frame
+	_say("let go on its square (%s)" % kind)
+	await _checkers_reply()
+	_s._on_undo()
+	_say("Undo")
+	await _until(st.YOURS)
+	_say("  ... both moves back")
+	_s._on_hint()
+	var t := 0.0
+	while board._hint.is_empty() and t < 20.0:
+		await process_frame
+		t += root.get_process_delta_time()
+	_say("hint")
+	# the hint's knock is still in the motor for a moment and outranks a tap
+	await _wait(0.5)
+	_s._on_reset()
+	_say("Reset")
+	await _until(st.YOURS)
+	_say("  ... the set comes in")
+	# the game played on: the hand on YOU, the computer on LEVEL
+	var plies := 0
+	while _s._state == st.YOURS and plies < 150:
+		while board.is_busy():
+			await process_frame
+		await _wait(0.3)
+		m = _checkers_plan(_env("YOU", 2), 7 + plies)
+		if m.is_empty():
+			break
+		plies += 1
+		kind = _checkers_kind(m)
+		_s._on_chosen(m)
+		t = 0.0
+		await process_frame
+		while _s._state == st.ANIM and t < 60.0:
+			await process_frame
+			t += root.get_process_delta_time()
+		_say("%d. %s" % [plies, kind])
+		await _checkers_reply()
+	print("  over: status ", _s.rules.status(), ", state ", _s._state)
+	await _wait(4.0)
+	_say("  ... the card")
+	if _s._end != null:
+		var again := _end_button()
+		if again != null:
+			again.pressed.emit()
+			_say("Play again")
+	await _wait(0.5)
+
+func _checkers_plan(lv: int, seed: int) -> PackedInt32Array:
+	return CheckersAI.new().plan(_s.rules.copy(), lv, seed, 300)
+
+func _checkers_kind(m: PackedInt32Array) -> String:
+	var d: Dictionary = _s.rules.describe(m)
+	var n: int = (d.caps as Array).size()
+	var kind := "takes %d" % n if n > 0 else "moves"
+	if bool(d.crown):
+		kind += ", crowned"
+	return kind
+
+## Waits for the computer's answer to land and says what it did.
+func _checkers_reply() -> void:
+	var st: Dictionary = _s.State
+	var before: int = _s._history.size()
+	var t := 0.0
+	await process_frame
+	while _s._state != st.YOURS and _s._state != st.OVER and t < 60.0:
+		await process_frame
+		t += root.get_process_delta_time()
+	var what := "the reply"
+	if _s._history.size() > before:
+		var d: Dictionary = _s._history[_s._history.size() - 1]
+		if int(d.side) != _s.player:
+			var n: int = (d.caps as Array).size()
+			what = "the reply takes %d" % n if n > 0 else "the reply"
+			if bool(d.crown):
+				what += ", crowned"
 	if _s._state == st.OVER:
 		what = "the end"
 	_say("  ... " + what)

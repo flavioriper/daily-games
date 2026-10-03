@@ -115,9 +115,9 @@ chess is: rules, computer, skin contract, house set, board, screen.
   outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes
   moves back). Both put `user://versus.cfg` back.
 
-**Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-31): the cues ring
-for both players, so only `hint`, `win`, `lose` (and chess's `draw`) are
-mapped; everything else is `_fx.buzz` where the hand's side is to move.
-`tests/_probe_versus_buzz.gd -- snooker|chess [rm]` reads the trace through
+**Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
+for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
+`draw`) are mapped; everything else is `_fx.buzz` where the hand's side is
+to move. `tests/_probe_versus_buzz.gd -- snooker|chess|checkers [rm]` reads the trace through
 the real screen (headless; `LEVEL`, `YOU`, `SHOTS`, `SPEED`) and puts
 `user://versus.cfg` back.
