@@ -50,6 +50,7 @@ const State = preload("res://puzzles/hedgehogs_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
@@ -318,6 +319,8 @@ var _press_id := 0
 var _press_finger := -2
 ## Whether the move being shown is a hint's, which counts no move.
 var _hinting := false
+## Whether the gesture being shown already bumped for its flood.
+var _gust_bumped := false
 var _long_fired := false
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
@@ -456,11 +459,39 @@ func capabilities() -> Array[String]:
 		return ["undo"]
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A rake or a
+## chord that cleared piles is one knock (`_after_rake`, by `fx.buzz`, not
+## the `rake` and `gust` cues): a tap, or a bump when the flood is BIG_GUST
+## piles or more (a hint's falls under its good); a flag taps as it drops
+## and ticks as it is lifted, under the finger still held when a long press
+## set it. The streak's confetti bumps unless that flood already has
+## (`_on_safe_rake`: `confetti` is not mapped). A wake does not tap: on Easy
+## and Medium, where it costs nothing but the clean lawn, it is a warn as
+## the hedgehog pops up (`_wake`: `woke` fires before the stroke is through),
+## on Hard and Insane the heart. The moon's bell and the walk are the
+## lawn's own, like a refusal, the Whoosh, the streak's notes, the gags and
+## the party: nothing. The win knocks as the sleepers' wave sets off
+## (`solved`), the seal as it lands (`_party`).
+const HAPTICS := {
+	"flag": Haptics.TAP,
+	"unflag": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -843,6 +874,12 @@ func _wake(c: int, lead := 0.0, tell := true) -> void:
 			Motion.bump(face, 0.16)
 			fx.puff(_centre(c) + Vector2(-_cell * 0.3, -_cell * 0.1), Pal.PAPER, 4))
 	fx.cue("woke")
+	if max_hearts == 0:
+		# Free, but it is on the win screen: a warn as it pops up.
+		if lead > 0.0:
+			_later(lead, fx.buzz.bind(Haptics.WARN))
+		else:
+			fx.buzz(Haptics.WARN)
 	if tell:
 		_tell("HH_WOKE_FIRST" if _state.woken == 1 else "HH_WOKE_AGAIN", Face.Expr.STRAIN)
 
@@ -927,6 +964,11 @@ func _show_chord(r: Dictionary, c: int) -> void:
 func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> void:
 	var cells: PackedInt32Array = r.cells
 	var lands := _now() + lead
+	# A big flood by hand is the move's one knock, over its tap and in place
+	# of the streak's confetti.
+	_gust_bumped = cells.size() >= BIG_GUST and woke.is_empty() and not _hinting
+	if not cells.is_empty() and String(r.kind) != "woke":
+		fx.buzz(Haptics.BUMP if _gust_bumped else Haptics.TAP)
 	if not woke.is_empty():
 		# The wake holds the HUD until the hedgehog has popped in.
 		_busy_until = maxf(_busy_until, _now() + lead + Motion.POP_IN + 0.05)
@@ -2426,6 +2468,7 @@ func _on_safe_rake(c: int, lands: float) -> void:
 	var gen := _streak_gen
 	var at := _centre(c)
 	var wait := maxf(0.0, lands - _now())
+	var bumped := _gust_bumped
 	if count >= 2:
 		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
 		_later(wait + 0.05, func() -> void:
@@ -2441,7 +2484,9 @@ func _on_safe_rake(c: int, lands: float) -> void:
 		_later(wait, func() -> void:
 			if gen == _streak_gen:
 				fx.confetti(at, 22)
-				fx.cue("confetti"))
+				fx.cue("confetti")
+				if not bumped and not is_done():
+					fx.buzz(Haptics.BUMP))
 	_start_gag(c, _pick_gag(), lands)
 	_life_layer.queue_redraw()
 
@@ -2682,6 +2727,8 @@ func _party(lead: float) -> void:
 		_later(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_later(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return

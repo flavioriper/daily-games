@@ -52,6 +52,7 @@ const Gen = preload("res://puzzles/slider_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Block = preload("res://ui/faces/slider_block.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -363,12 +364,39 @@ func capabilities() -> Array[String]:
 		return ["undo"]
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A block is
+## carried cell by cell under the finger and none of that is the move: the
+## release is, one tap as a block is let go somewhere new (`slide`, which
+## only the hand's move fires). On Hard one tick as the held move first
+## takes the big block farther from the gate (`fret`: holding is a free
+## peek, letting go there is the heart), and a move that costs a heart does
+## not tap: it is a bad as the block lands, the last one the lose once it
+## has slid back. A lift, the cells under the finger (`step`), a block put
+## back (`drop`), one pushed at a wall or a neighbour (`bump`), the big
+## block's refusal to go back up (`huff`), the slide back, the latch, the
+## streak's notes, the gags and the party say nothing. The win knocks as
+## the big block lands on the mat (`_on_solved`, by `fx.buzz`: `solved`
+## rings a second later, half way out of the gate), the seal as it lands
+## (`_party`).
+const HAPTICS := {
+	"slide": Haptics.TAP,
+	"fret": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2050,6 +2078,7 @@ func _on_solved() -> void:
 	_clear_gags()
 	var total := _solved_at - t + GLOW_TIME + DOOR_TIME + EXIT_TIME + Motion.SOLVE_TIME + 0.6
 	_busy_for(total)
+	_after(_solved_at - t, fx.buzz.bind(Haptics.WIN))
 	if not Motion.reduce:
 		var s := _cell()
 		var gate := _pt(_xy(Gen.GOAL) + Vector2(1.0, 2.0)) + Vector2(0.0, Block.FRAME * s * 0.5)
@@ -2142,6 +2171,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
