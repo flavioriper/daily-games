@@ -209,3 +209,20 @@ and the rule that no two rows or columns may be alike goes.
 - Checked: suite 249752/0, `tests/_win.gd -- binairo` 1/1, and a throwaway
   probe (20 seeds a level, 60 liars) where every board deduced to its own
   solution and the search agreed it was the only one.
+
+### A tapped tile is judged when the player moves on (2026-10-03)
+
+The user: placing a moon by tapping through a sun was marked as a mistake,
+"but it's a feature we provide". `WRONG_GRACE` gave the sun 0.4 s, so anyone
+slower between the two taps lost a heart. Now a tile changed under the cycle
+(no brush) is **held** (`_held`) and judged only at `_commit`: a tap on any
+other tile (a given too), a brush armed, Undo of another tile, Hint, Check.
+A brush's symbol is still judged at once. On a full board, where there is
+nothing to move on to, the held tile is judged after `FULL_GRACE` (1.5 s)
+without a further tap. On Easy and Medium the same hold keeps a cycling
+tile's blush from ending the streak unless it is left blushing; the blush
+itself still shows at once. `WRONG_GRACE` now only times the blush's buzz.
+The notes above that say a tap "waits `WRONG_GRACE`" describe the old rule.
+Known and unchanged: on Hard and Insane the streak's pluck sounds only for
+a right tile, so it still tells a right tap from a wrong one before any
+heart is at stake.
