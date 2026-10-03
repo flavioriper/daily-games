@@ -91,6 +91,7 @@ class Sea extends "res://puzzles/bridges2d.gd":
 	func _ready() -> void:
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx.buzzes = false  # (the page's finger is not the player's)
 		_tip_timer.stop()
 
 	func check_solved() -> void:

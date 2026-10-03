@@ -53,6 +53,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 ## The out-of-hearts card's Back to camp.
@@ -425,12 +426,36 @@ func _tips() -> Array:
 		return ["SD_TIP_HEARTS"] + TIPS
 	return TIPS
 
+## What the phone does under each cue (docs/agents/haptics.md). `place` is
+## not mapped: it is a number written and the same number tapped back out,
+## so `_apply` knocks by what the cell holds after (a tap, a tick). The
+## remove chip shares Undo's cue and its tick. `line` is not mapped either:
+## a row, column or region the hand finished bumps from `_apply`, but not
+## under a wrong number, whose heart is that move's one knock. The streak's
+## confetti is the other milestone. A cell selected, a tap refused (`locked`,
+## `ruled`), the wrong number tumbling off, every one of a number home, the
+## streak's notes, the daisies, the gags and the party say nothing. The seal
+## thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -1333,6 +1358,7 @@ func _apply(i: int, d: int) -> bool:
 	_settle(before, i, now)
 	_clash = state.clashes()
 	fx.cue("pencil" if _pencil else "place")
+	fx.buzz(Haptics.TAP if state.grid[i] == d else Haptics.TICK)
 	if not _pencil:
 		if state.grid[i] != d:
 			_break_streak()
@@ -1349,6 +1375,8 @@ func _apply(i: int, d: int) -> bool:
 	for u in after.size():
 		if bool(after[u]) and not bool(before[u]):
 			fx.cue("line")
+			if not _ejecting:
+				fx.buzz(Haptics.BUMP)
 			break
 	_redraw()
 	note_move()
@@ -2439,6 +2467,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var field := Rect2(_grid, Vector2.ONE * Gen.N * _cell)
