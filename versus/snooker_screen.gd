@@ -35,6 +35,7 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -87,6 +88,14 @@ var _think_at := 0.0
 var _ai_shot := {}
 var _ai_tw: Tween
 var _fx: Node2D
+## What the phone knocks for (docs/agents/haptics.md): the table's own cues
+## (`strike`, `clack`, `cushion`, `pot`, `foul`) ring for both players and are
+## not mapped; the hand's shot knocks through `_fx.buzz`.
+const HAPTICS := {"hint": Haptics.GOOD, "win": Haptics.WIN, "lose": Haptics.LOSE}
+## The cue is at the end of its draw (ticked once), and this shot's pot has
+## bumped.
+var _full := false
+var _pot_felt := false
 ## The cloth's rumble: one looping voice whose level follows how fast the
 ## balls are running, so a break roars and a last creeping ball fades out.
 var _roll: AudioStreamPlayer
@@ -197,10 +206,12 @@ func _build() -> void:
 	table.aimed.connect(func() -> void:
 		table.hint_power = 0.0
 		_hush())
-	table.pulling.connect(_hush)
+	table.pulling.connect(_on_pull)
+	table.placed.connect(func() -> void: _fx.buzz(Haptics.TAP))
 	table.released.connect(_on_release)
 	row.add_child(table)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	table.add_child(_fx)
 	_roll = AudioStreamPlayer.new()
 	_roll.volume_db = -80.0
@@ -553,7 +564,19 @@ func _aim_near() -> void:
 
 # --- the player's shot ---
 
+## The reach felt in the fingers: one tick as the cue comes to the end of
+## its draw, none again until it has eased off.
+func _on_pull() -> void:
+	_hush()
+	if table.power >= 1.0:
+		if not _full:
+			_full = true
+			_fx.buzz(Haptics.TICK)
+	elif table.power < 0.9:
+		_full = false
+
 func _on_release(power: float) -> void:
+	_full = false
 	if _state != State.AIM:
 		return
 	if power < 0.03:
@@ -578,9 +601,12 @@ func _shoot(dir: Vector2, speed: float, tip: Vector2) -> void:
 	table.aim_dir = dir
 	table.tip = tip
 	top_bar.refresh(self)
+	_pot_felt = false
 	table.play_stroke(func() -> void:
 		sim.strike(dir, speed, tip)
 		_fx.cue("strike", lerpf(0.9, 1.15, speed / Sim.MAX_SPEED))
+		if rules.turn == 0:
+			_fx.buzz(Haptics.TAP)
 		table.power = 0.0
 		_state = State.ROLL
 		_acc = 0.0)
@@ -642,11 +668,22 @@ func _play_events() -> void:
 				if e.has("from"):
 					table.sink(int(e.id), e.from, (e.at as Vector2) + out * 0.03)
 				_fx.cue("pot")
+				if rules.turn == 0 and not _pot_felt and _pot_on(int(e.id)):
+					_pot_felt = true
+					_fx.buzz(Haptics.BUMP)
 				table.flash("pot", (e.at as Vector2) + out * 0.03, 1.0)
 				if int(e.id) != Sim.CUE:
 					var col: Color = Table.RED if Sim.is_red(int(e.id)) else Table.BALL[int(e.id)]
 					_fx.puff(table.px(e.at), col.lightened(0.2), 6)
 	sim.events.clear()
+
+## Whether a ball dropping off the hand's shot is one it was playing for:
+## a ball on, and after a red the colour it struck first. The referee still
+## has the last word once everything has stopped (`_judge`).
+func _pot_on(id: int) -> bool:
+	if id == Sim.CUE or not table.targets.has(id):
+		return false
+	return rules.phase != Rules.COLOUR or id == sim.first_hit
 
 func _judge() -> void:
 	_state = State.WAIT
@@ -659,6 +696,8 @@ func _judge() -> void:
 		var who := tr("SNK_BOT") if player == 0 else tr("SNK_YOU")
 		_say(tr(String(res.reason)) + "\n" + tr("SNK_FOUL_TO") % [int(res.penalty), who])
 		_fx.cue("foul")
+		if player == 0:
+			_fx.buzz(Haptics.WARN)
 		_faces[player].expression = Face.Expr.WORRIED
 		Motion.shiver(_scores[player])
 		_float_points(1 - player, int(res.penalty))
@@ -816,6 +855,7 @@ func _build_end(won: bool) -> Control:
 	again.pressed.connect(func() -> void:
 		_breaker = 1 - _breaker
 		_respot_said = false
+		_fx.buzz(Haptics.TAP)
 		_new_frame())
 	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
@@ -878,6 +918,7 @@ func _on_reset() -> void:
 		return
 	Analytics.track("board_reset", {"puzzle_id": GAME})
 	_respot_said = false
+	_fx.buzz(Haptics.TAP)
 	_new_frame()
 
 func _on_back() -> void:

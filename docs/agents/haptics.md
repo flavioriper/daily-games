@@ -225,6 +225,22 @@ Rules:
 - **Under reduce motion a seal lands with the win** and the win is the one
   knock: the thud asked for a hundredth of a second later does not outrank
   it (Drumbeat, Trestle).
+- **Against the computer, only the hand's side knocks.** Versus cues ring
+  for both players (snooker's `strike`, `pot`, `foul`; chess's `place`,
+  `capture`, `check`), so none is mapped: the screen knocks through
+  `_fx.buzz` where the side to move is the player's. The computer's visit is
+  silent but for what it does to the player that must be answered (a check
+  is a warn); a piece of yours taken, its pots and its fouls say nothing.
+- **A shot on a table is the strike, and what drops.** Snooker taps as the
+  tip meets the ball, not as the finger lets go (the stroke is a tenth of a
+  second later and is what the hand did), is silent while the balls run,
+  and bumps once as a ball it was playing for drops; the referee's foul is
+  a warn when the table has stopped, seconds later, and may follow a bump
+  (the ball did drop). The draw of the cue is Untangle's taut rope: one
+  tick at the end of its reach.
+- **One knock a move.** Chess taps a quiet move under the finger and leaves
+  a capture or a promotion to the bump that lands with it a moment later,
+  rather than a tap and then a bump 0.2 s apart.
 - **Nothing continuous**: a drag knocks on the cells it crosses at most, it
   does not hum.
 - **The switch**: Settings > Vibration (`[haptics] on` beside Motion's and
@@ -236,6 +252,12 @@ Rules:
   board's `_buzz_<id>` (each thing the player can do, and what landed for
   it), then plays to the win and prints the whole trace. Read the trace like
   a player: a run of right moves should be taps and bumps and end in `win`.
+  Versus screens are not registry boards: `tests/_probe_versus_buzz.gd --
+  <game>` does the same through the real screen, headless, and puts
+  `user://versus.cfg` back. A probe that acts faster than a hand must wait
+  between steps (one knock holds the motor 40 ms of real time and a weaker
+  one asked for meanwhile is dropped: a missing tap right after a warn is
+  the probe, not the board).
   The trace says which kind landed, not how it feels: the native call
   cannot run on this Mac, so only a phone proves it.
 
@@ -272,8 +294,8 @@ Rules:
 | 27 | pixelgarden | 2026-10-03 | one knock a stroke, as it is let go (`_release`, by `fx.buzz`: `place` and `lift` are every peg under the finger): a tap when it seated a bead, a tick when it only lifted some; a plate is judged as the iron has crossed it: a bump when it fuses (`plate`; the streak's confetti is not mapped), on Easy and Medium a warn when beads go astray (`_plate_done`: `astray` rings under the heart too), on Hard and Insane a bad as the heart splits, lose on the last; tick on Undo, tap on Reset and Try again; good on a hint (not one that finishes the picture: that is the win), a clean Check and a heart back; warn on a Check that finds something; win as the last stroke is let go (`solved`; it does not tap as well), thud as the seal lands (flawless or Insane); nothing for the picture held (`peek`), a chip picked, the beads under the finger, a fused peg, one holding another colour or a colour run out (`refuse`), the iron setting off and its steam, the beads flying home, the words (Steady hand!, Whoosh!), the streak's notes, the hearts, the butterfly, the cat, the party, the tutorial's board. Probed on all four bands (Easy's and Insane's win and seal by plain runs, `to=60` and `to=90`; Hard under reduce motion, where two plates filled by one stroke are one bump); the last heart and the heart back are mapped but not probed |
 | 28 | drumbeat | 2026-10-03 | tap on the stroke that starts the song and on every stroke that played a berry, under the finger (`strike`, by `fx.buzz`: a berry struck GOOD or OK, a ribbon begun, each stroke of a golden bar or a balloon); what the stroke earned is its one knock in the tap's place: bump on a combo called (10, 25, 50, 100), the golden berry, a balloon popped (`pop`), a hidden bar all struck on Insane (`echo_perfect`); bump as a ribbon is kept to its end (`hold_done`); warn on a run of ten or more broken (`break`), by a berry let past, a stroke too far off or, on Hard and Insane, a slip; on Easy and Medium a warn when the song ends under the line (`fail`); on Hard and Insane a bad on a heart (three misses in a row, or the song under the line), lose on the last (`_lose_heart`, by `fx.buzz`: `heart_lost` is not mapped); tap on Reset and Try again; good on a heart back; win as the song ends cleared (`clear`, `full_combo`), thud as the seal lands (a full combo, or Insane; under reduce motion it lands with the win and the win is the knock); nothing for a stroke in the air, on the wrong drum or too far off, a berry let past on a short run, a ribbon let go early, the tap-along and its buttons, a stroke that goes on from a pause, the count-in, the beat, Go-Go, the soul gauge and its line, the echo's bell, the conga, the shades, the words, the crowd, the fireworks, the cat, the party, the tutorial's road. No Undo, no hint, no Check. Probed on all four bands (Medium under reduce motion); a balloon (no song has one now) is mapped but not probed |
 | 29 | trestle | 2026-10-03 | tap on a member laid, dragged or tapped out (`place_road`, `place_wood`, `place_rope`), tick on one tapped away (`remove`), on Undo and on Stop (they share a cue); tap on Go as the cart sets off (`go`: the convoy and a free build's test too); the test's verdict is one knock: win as the cart reaches the far bank (`solved`), on Easy and Medium a warn when it fails (`_failed`, by `fx.buzz`), on Hard and Insane a bad as the heart splits and lose on the last, as the riders nod off (`_lose_heart`: `heart_lost` is not mapped); after the solve a good for a crossing (`_crossed`: the convoy, a free build's test) and a warn for one that fails; good on a hint and a heart back; tap on Reset, Try again and the free build's Done; thud as the seal lands (flawless, or Insane; under reduce motion it lands with the win and the win is the knock); nothing for a pin or a joint tapped (`select`), a chip picked, a member refused (too long, too steep, off the zone, over budget, a hinted one tapped), Go pressed again on a promise, the bridge taking its weight, the creaks, a snap and its Crack!, the cart leaving the road, landing and the splash, the tea sloshing and spilling, the honk, the bridge settling, the prices, the score card, the clink, the ducks, the troll, the cat, the party, the tutorial's gap. Probed on all four bands (Easy's seal by a plain run, `to=32`; Medium under reduce motion); a free build's test is mapped but not probed |
-| 30 | snooker (Versus) | | |
-| 31 | chess (Versus) | | |
+| 30 | snooker (Versus) | 2026-10-03 | tap as the tip meets the ball on the hand's own shot (`_shoot`'s stroke, by `_fx.buzz`: `strike` rings for the computer's too), tap on the cue ball set down in the D (`placed`); one tick as the cue is drawn to the end of its reach, none again until it has eased under nine tenths (`_on_pull`); bump once a shot as a ball the hand was playing for drops (`_pot_on`: a ball on, and after a red the colour struck first), warn when the referee calls the hand's foul once everything has stopped (`_judge`); good on a hint as its line shows (`hint`), tap on Reset and Play again; win and lose as the frame ends (`win`, `lose`). Nothing for the aim, the spin, a cue put back, the clacks, the cushions, the roll, a ball that drops off no plan, the cue ball going in (the warn says it), the score counting up, or anything in the computer's visit: its strike, its pots, its fouls. No tutorial. Probe: `tests/_probe_versus_buzz.gd -- snooker` |
+| 31 | chess (Versus) | 2026-10-03 | one knock a move: tap as a quiet move is chosen, by tap or let go on its square (`_on_chosen`; a castle too), bump in its place as a capture lands its blow (`_knock`, the hand's only) or as a pawn turns (`promote`; a capturing promotion is the capture's bump alone); warn as the computer's move leaves your king in check (`_after_move`: `check` rings for either king and is not mapped); tick on Undo (once, for the two moves walked back), good on a hint as its mark shows (`hint`), tap on Reset and Play again; win and lose as the mate lands, a bump for a draw (`win`, `lose`, `draw`), and a mate against you is the lose alone, not a warn first. Nothing for a piece picked up, put down or carried, a piece that cannot move (`refused`), the promotion picker opening, a check you give, the computer's move or its captures, the pieces coming in, the crown or the party. No tutorial. Probe: `tests/_probe_versus_buzz.gd -- chess` (`LEVEL=2 YOU=0` for the checks and the lose) |
 | 32 | checkers (Versus) | | |
 | 33 | firefly (Arcade) | | |
 | 34 | molehill (Arcade) | | |
