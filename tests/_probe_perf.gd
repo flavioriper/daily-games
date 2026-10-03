@@ -58,6 +58,8 @@ var _rm := false
 ## `lang=<code>`: the language the board opens in (the Mac's own otherwise),
 ## to read a tutorial's pages in each.
 var _lang := ""
+## `song=<id>`: Drumbeat's song (the day's otherwise): parade, festival, gallop.
+var _song := ""
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -68,6 +70,8 @@ func _initialize() -> void:
 			_howto = true
 		elif a == "rm":
 			_rm = true
+		elif a.begins_with("song="):
+			_song = a.substr(5)
 		elif a.begins_with("lang="):
 			_lang = a.substr(5)
 		elif a.begins_with("shot="):
@@ -154,6 +158,20 @@ func _process(delta: float) -> bool:
 				_log_until = _t + 0.12
 				print("  step at %.2f" % _t)
 			_step()
+	if _id == "drumbeat" and not _howto and (_t >= IDLE_TO or _exp == "db_hud"):
+		_db_bot()
+	if _exp == "db_spike":
+		var nl: int = _puzzle._looks.size()
+		if delta > 0.02 and _t > 2.0:
+			print("  SPIKE %.1f ms t=%.2f song %.2f looks +%d (%d) bits %d stickers %s fw %d warm %d draws %d" % [delta * 1000.0, _t, _puzzle.song_now(), nl - _db_looks, nl, _puzzle._rw.bits.size(), _puzzle._rw.stickers.map(func(st): return "%s@%.2f" % [st.text, st.t]), _puzzle._fireworks.size(), _puzzle._warm.size(), int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))])
+		_db_looks = nl
+	if _exp == "db_count" and _t >= _db_next:
+		# Drumbeat: where the song is, every two seconds, with the frame's
+		# script time and draw calls.
+		_db_next = _t + 2.0
+		print("  db t=%.1f %s song %.1f gogo=%s combo=%d bits=%d stickers=%d fireworks=%d draws=%d process %.2f ms looks=%d" % [_t, _puzzle._phase,
+			_puzzle.song_now(), _puzzle._st.in_gogo, _puzzle._st.combo, _puzzle._rw.bits.size(), _puzzle._rw.stickers.size(), _puzzle._fireworks.size(),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, _puzzle._looks.size()])
 	if _t >= _play_to:
 		_report()
 		quit()
@@ -178,6 +196,14 @@ func _open() -> void:
 	_puzzle = _host._puzzle
 	if not _howto and _host.has_node("HowToPlay"):
 		_host.get_node("HowToPlay").free()
+		_host._hold_clock(false)
+	if _song != "" and _id == "drumbeat":
+		# Drumbeat: another of its songs than the day's
+		for sg: Dictionary in _puzzle._songs:
+			if String(sg.id) == _song:
+				_puzzle._song = sg
+				_puzzle._fresh()
+				_puzzle._layout()
 	if has_method("_moves_" + _id):
 		_moves = call("_moves_" + _id)
 
@@ -395,6 +421,50 @@ func _experiment() -> void:
 			_host._on_reset()
 			await create_timer(0.8).timeout
 			print("  pg after reset: placed %d moves %d" % [st.placed(), _puzzle.moves])
+		"db_hud":
+			# Drumbeat: the ? and Reset as the player reaches them, mid-song.
+			var bar = _host.top_bar
+			print("  db ? visible=%s undo visible=%s reset visible=%s enabled=%s" % [bar.help_button.visible, bar.undo_button.visible,
+				bar.reset_button.visible, not bar.reset_button.disabled])
+			_puzzle.strike(0)
+			await create_timer(4.0).timeout
+			print("  db playing: phase %s song %.2f" % [_puzzle._phase, _puzzle.song_now()])
+			bar.help.emit()
+			await create_timer(0.5).timeout
+			var card = _host.get_node_or_null("HowToPlay")
+			var held: float = _puzzle.song_now()
+			print("  db ? opened: %s pages %d phase %s music paused=%s" % [card != null, card._pages.size() if card != null else 0, _puzzle._phase, _puzzle._music.stream_paused])
+			await create_timer(1.5).timeout
+			print("  db under the card: song %.2f -> %.2f" % [held, _puzzle.song_now()])
+			if card != null:
+				card._continue()
+			await create_timer(0.5).timeout
+			print("  db card closed: phase %s clock_held=%s" % [_puzzle._phase, _puzzle.clock_held])
+			_puzzle.strike(0)
+			await create_timer(1.0).timeout
+			print("  db a tap goes on: phase %s song %.2f" % [_puzzle._phase, _puzzle.song_now()])
+			_host._open_settings()
+			await create_timer(0.8).timeout
+			print("  db settings up: phase %s" % _puzzle._phase)
+			_host.settings_sheet.close()
+			await create_timer(0.8).timeout
+			_puzzle.strike(0)
+			await create_timer(0.5).timeout
+			print("  db settings closed, a tap: phase %s clock_held=%s" % [_puzzle._phase, _puzzle.clock_held])
+			_host._on_reset()
+			await create_timer(0.5).timeout
+			print("  db after reset: phase %s song %.2f hearts %d moves %d music playing=%s" % [_puzzle._phase, _puzzle.song_now(), _puzzle._st.hearts, _puzzle.moves, _puzzle._music.playing])
+			# reset while paused, then started again: the music must sound
+			_puzzle.strike(0)
+			await create_timer(1.0).timeout
+			bar.help.emit()
+			await create_timer(0.4).timeout
+			_host.get_node("HowToPlay")._continue()
+			_host._on_reset()
+			await create_timer(0.3).timeout
+			_puzzle.strike(0)
+			await create_timer(0.6).timeout
+			print("  db reset under a pause, started again: phase %s music playing=%s paused=%s" % [_puzzle._phase, _puzzle._music.playing, _puzzle._music.stream_paused])
 		"mg_hud":
 			# Marigold: the ?, Undo and Reset as the player reaches them.
 			var bar = _host.top_bar
@@ -970,7 +1040,7 @@ func _experiment() -> void:
 						"sync_under": _puzzle._sync_under()
 				if k == 2:
 					print("  part %s %.2f ms" % [name, (Time.get_ticks_usec() - t0) / 10000.0])
-	print("experiment ", _exp, " moves left ", _moves.size(), " done ", _puzzle.is_done(), " moves ", _puzzle.moves, " out ", _puzzle.out_of_hearts)
+	print("experiment ", _exp, " moves left ", _moves.size(), " done ", _puzzle.is_done(), " moves ", _puzzle.moves, " out ", _puzzle.get("out_of_hearts"))
 
 func _all(n: Node, pred: Callable) -> Array:
 	var out := []
@@ -1720,6 +1790,51 @@ func _hh_need() -> int:
 			n += 1
 			upto = n
 	return upto
+
+## Drumbeat's: no moves a step -- a song is played on the frame. A stroke
+## starts the song as the play window opens, then every berry is struck on
+## its drum as it reaches the ring, a ribbon held to its end, a golden bar
+## rolled at twelve a second (`tests/_shot_drumbeat.gd`'s bot). `to=38` plays
+## a whole song through the win.
+var _db_next := 0.0
+var _db_looks := 0
+var _db_struck := {}
+var _db_roll := -10.0
+
+func _db_bot() -> void:
+	var b = _puzzle
+	if _exp == "db_hud":
+		# the experiment starts, pauses and goes on by its own strokes
+		if b._phase != "play":
+			return
+	elif b._phase == "paused":
+		b._pause(false)
+	if b._phase == "ready":
+		if not _db_struck.has(-1):
+			_db_struck[-1] = true
+			b.strike(0)
+		return
+	if b._phase != "play":
+		return
+	const DbState = preload("res://puzzles/drumbeat_state.gd")
+	var st = b._st
+	var vt: float = b.view_t()
+	for i in st.notes.size():
+		var n: Dictionary = st.notes[i]
+		if float(n.t) > vt + 0.01:
+			break
+		if DbState.is_long(n.type):
+			if vt <= float(n.end) and n.st == DbState.St.WAIT and vt - _db_roll >= 1.0 / 12.0:
+				_db_roll = vt
+				b.strike(int(n.lane))
+			continue
+		if n.type == DbState.Type.HOLD and n.held and vt >= float(n.end):
+			b._lift(int(n.lane))
+			continue
+		if _db_struck.has(i) or n.st != DbState.St.WAIT:
+			continue
+		_db_struck[i] = true
+		b.strike(int(n.lane))
 
 ## Marigold's: a shot a move, the aim set to the angle and the seed shot:
 ## Sweethearts plays its banked proof from the opening, the other

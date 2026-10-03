@@ -76,3 +76,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   The whole concepts page no longer renders in headless Chrome inside 100 s;
   shoot one tab from a standalone copy (the head, the tab's section, its
   script).
+- **Checkup (2026-10-03, `docs/agents/checkup.md` row 28).** The board still
+  redraws every frame, but nearly nothing is made on the frame: `_shape(id)`
+  makes each drawing once at this layout (the S_ constants: bar line, bead,
+  marks, ribbon ends and body, ring, pulse, flash, wash, rails, veil and its
+  stars, glow, ripple and burst steps, the gauge's ticks, glint, star,
+  hearts, and the gauge's fill a shape a width) and three `RunMesh`es with no
+  rooms copy them: `_road` (under the berries), `_top` (gauge, hearts, glow,
+  bursts) and `_over` (ripples and the edge glow, over the drums). A tinted
+  shape is in slot 0 and painted through `_q` (24 steps). `_drum_look` is a
+  drum with its mark baked in; `_fw` holds a firework's 32 steps and
+  `_draw_fireworks` copies them into the sky's mesh; `_queue_warm` makes the
+  song's looks two a frame from the open; `_first` skips the notes long
+  gone. `_staged()` is the stage (sky, lanterns, crowd, Tam, fireworks,
+  cards, combo): the tutorial's board answers false. The tutorial is
+  `ui/hud/drumbeat_tutorial_diagram.gd` (lessons STRIKE, DRUMS, HOLD, ROLL,
+  SOUL, ECHO, HUD): a `Road` with no music or voices running a hand-made
+  chart, a finger a drum. The song pauses when the ? or the settings come up
+  (the edge of `clock_held`); a tap on a drum goes on. No Undo. Probe:
+  `tests/_probe_perf.gd -- drumbeat d=3 to=40` plays the whole song with a
+  bot on the frame; `song=parade|festival|gallop`, `x=db_count`, `x=db_hud`,
+  `x=db_spike`.

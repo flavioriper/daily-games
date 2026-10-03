@@ -13,6 +13,13 @@ extends Control
 ## pause stops it, and it draws itself as one mesh plus the stickers'
 ## letters. Under reduce motion the bits, rings and rain are never made and
 ## a sticker is lettered still.
+##
+## The bits are copies (Drumbeat's checkup, 2026-10-03): each kind is one
+## look made once in slot colours (`_bit_shape`), and a frame's bits are that
+## look under each bit's place, turn and size, appended natively, its colours
+## painted a run at a time and its indices tiled -- a mesh a kind in the air.
+## Drawing every bit in script cost 2-4 ms a frame through a win's rain. A
+## bit's fade is cut into FADE_STEPS so its painted colours are found again.
 
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -24,6 +31,15 @@ const GOLD := Color("f2c14e")
 const GOLD_DEEP := Color("c98f22")
 ## The most bits alive at once.
 const MAX_BITS := 480
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
+## The kinds drawn as copies, in paint order; a mote is its glow and its heart.
+const KINDS := ["confetti", "star", "spark", "coin", "heart", "clod", "shard", "note", "mote", "mote_in"]
+const FADE_STEPS := 16.0
+## Indices are tiled this many copies at a time.
+const TILE_CHUNK := 16
+## The looks, shared by every layer: they are in pixels at size 1.
+static var _kit: RunMesh
+static var _tiled: Array = []
 
 ## {pos, vel, rot, spin, t, life, kind, col, size, float?, to?}
 var bits: Array = []
@@ -37,6 +53,7 @@ var _rain_cols: Array = CONFETTI
 var bounds := Rect2()
 var _clock := 0.0
 var _mesh: ArrayMesh
+var _meshes: Array = []
 var _ray_mesh: ArrayMesh
 var _font: Font
 ## Words a screen will letter later, [text, size, next letter]: see warm().
@@ -231,11 +248,7 @@ func busy() -> bool:
 
 func _draw() -> void:
 	_rays.queue_redraw()
-	var b := Face.Builder.new()
-	_draw_bits(b)
-	if not b.verts.is_empty():
-		_mesh = b.mesh()
-		draw_mesh(_mesh, null)
+	_draw_bits()
 	_draw_stickers()
 
 func _draw_rays() -> void:
@@ -261,7 +274,20 @@ func _draw_rays() -> void:
 func _sticker_at(st: Dictionary) -> Vector2:
 	return (st.at as Vector2) + Vector2(0, -float(st.rise) * minf(1.0, st.t / maxf(0.01, st.life)))
 
-func _draw_bits(b: Face.Builder) -> void:
+## Every bit in the air: a mesh a kind of copies of its look, and the rings
+## (whose width changes) made on the frame.
+func _draw_bits() -> void:
+	if bits.is_empty():
+		return
+	if _kit == null:
+		_kit = RunMesh.new(_bit_shape)
+		for k in KINDS.size():
+			_tiled.append([PackedInt32Array(), 0])
+	# each kind's copies this frame, as [transform, paint] pairs
+	var copies: Array = []
+	for k in KINDS.size():
+		copies.append([])
+	var rings: Face.Builder = null
 	for bit: Dictionary in bits:
 		if bit.t < 0.0:
 			continue
@@ -270,38 +296,144 @@ func _draw_bits(b: Face.Builder) -> void:
 		if bit.has("to"):
 			a = 1.0
 		var col: Color = bit.col
-		col.a *= a
+		var fade := col.a * roundf(a * FADE_STEPS) / FADE_STEPS
 		var p: Vector2 = bit.pos
 		var sz: float = bit.size
 		var rot: float = bit.rot
+		var k := -1
+		var xf: Transform2D
+		var paint: Array
 		match String(bit.kind):
 			"confetti":
-				petal(b, p, 11.0 * sz, 6.0 * sz * absf(cos(bit.t * 5.0 + rot)) + 1.0, rot, col)
+				k = 0
+				xf = Transform2D(rot, Vector2(sz, (6.0 * sz * absf(cos(bit.t * 5.0 + rot)) + 1.0) / 11.0), 0.0, p)
+				paint = [Color(col, fade)]
 			"star":
-				star(b, p, 14.0 * sz * (0.6 + 0.4 * a), col, rot)
+				k = 1
+				var s := sz * (0.6 + 0.4 * a)
+				xf = Transform2D(rot, Vector2(s, s), 0.0, p)
+				paint = [Color(col.darkened(0.35), fade), Color(col, fade), Color(1, 1, 1, 0.5 * fade)]
 			"spark":
-				glint(b, p, 22.0 * sz * a, rot, col)
+				if 22.0 * sz * a <= 0.5:
+					continue
+				k = 2
+				xf = Transform2D(rot, Vector2(sz * a, sz * a), 0.0, p)
+				paint = [Color(col, fade * 0.26), Color(col, fade), Color(1, 1, 1, fade)]
 			"coin":
-				coin(b, p, 13.0 * sz, bit.t * 9.0 + rot, a)
+				k = 3
+				var w := absf(cos(bit.t * 9.0 + rot))
+				var ca := roundf(a * FADE_STEPS) / FADE_STEPS
+				xf = Transform2D(0.0, Vector2(sz * maxf(0.18, w), sz), 0.0, p)
+				paint = [Color(GOLD_DEEP, ca), Color(GOLD, ca), Color(1, 1, 0.9, 0.7 * ca if w > 0.4 else 0.0)]
 			"heart":
-				heart(b, p, 13.0 * sz, sin(rot) * 0.4, col)
+				k = 4
+				xf = Transform2D(sin(rot) * 0.4, Vector2(sz, sz), 0.0, p)
+				paint = [Color(col, fade), Color(1, 1, 1, 0.45 * fade)]
 			"clod":
-				b.ellipse(p, 7.0 * sz, 5.5 * sz, col)
-				b.ellipse(p + Vector2(-1.5, -1.8) * sz, 3.0 * sz, 2.0 * sz, Color(col.lightened(0.3), col.a))
+				k = 5
+				xf = Transform2D(0.0, Vector2(sz, sz), 0.0, p)
+				paint = [Color(col, fade), Color(col.lightened(0.3), fade)]
 			"shard":
-				var d := Vector2.from_angle(rot)
-				var n := d.orthogonal()
-				b.polygon(PackedVector2Array([p - d * 10.0 * sz, p + n * 5.0 * sz, p + d * 9.0 * sz, p - n * 4.0 * sz]), col)
-				b.stroke(PackedVector2Array([p - d * 10.0 * sz, p + n * 5.0 * sz]), 2.0 * sz, Color(col.lightened(0.3), col.a), false, false)
+				k = 6
+				xf = Transform2D(rot, Vector2(sz, sz), 0.0, p)
+				paint = [Color(col, fade), Color(col.lightened(0.3), fade)]
 			"note":
-				music_note(b, p, 16.0 * sz, sin(bit.t * 5.0 + rot) * 0.3, col)
+				k = 7
+				xf = Transform2D(sin(bit.t * 5.0 + rot) * 0.3, Vector2(sz, sz), 0.0, p)
+				paint = [Color(col, fade), Color(col.darkened(0.45), fade), Color(1, 1, 1, 0.55 * fade)]
 			"mote":
-				b.disc(p, 9.0 * sz * a, Color(col, col.a * 0.25))
-				b.disc(p, 3.4 * sz, col)
+				(copies[8] as Array).append([Transform2D(0.0, Vector2(sz * a, sz * a), 0.0, p), [Color(col, fade * 0.25)]])
+				k = 9
+				xf = Transform2D(0.0, Vector2(sz, sz), 0.0, p)
+				paint = [Color(col, fade)]
 			"ring":
-				var k := clampf(bit.t / life, 0.0, 1.0)
-				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
-				b.stroke(Face.Builder.ring(p, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
+				if rings == null:
+					rings = Face.Builder.new()
+				var rk := clampf(bit.t / life, 0.0, 1.0)
+				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - rk, 3.0)))
+				rings.stroke(Face.Builder.ring(p, r, r), maxf(2.0, 14.0 * (1.0 - rk)), Color(bit.col, (bit.col as Color).a * (1.0 - rk)), true)
+		if k < 0:
+			continue
+		(copies[k] as Array).append([xf, paint])
+	_meshes.clear()
+	for k in KINDS.size():
+		var of: Array = copies[k]
+		if of.is_empty():
+			continue
+		var look: PackedVector2Array = _kit.shape(k)[0]
+		var v := PackedVector2Array()
+		var c := PackedColorArray()
+		for copy: Array in of:
+			v.append_array((copy[0] as Transform2D) * look)
+			c.append_array(_kit.ink(k, copy[1]))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = v
+		arrays[Mesh.ARRAY_COLOR] = c
+		arrays[Mesh.ARRAY_INDEX] = _tiled_for(k, of.size())
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_meshes.append(m)
+		draw_mesh(m, null)
+	if rings != null:
+		_mesh = rings.mesh()
+		draw_mesh(_mesh, null)
+
+## Kind `k`'s indices tiled for `n` copies, grown a chunk at a time.
+static func _tiled_for(k: int, n: int) -> PackedInt32Array:
+	var s := _kit.shape(k)
+	var idx: PackedInt32Array = s[1]
+	var per := idx.size()
+	var have: Array = _tiled[k]
+	if n > int(have[1]):
+		var count := (s[0] as PackedVector2Array).size()
+		var from := int(have[1])
+		var to := int(ceilf(float(n) / TILE_CHUNK)) * TILE_CHUNK
+		var ix := PackedInt32Array()
+		ix.resize((to - from) * per)
+		for m in to - from:
+			var base := (from + m) * count
+			var w := m * per
+			for j in per:
+				ix[w + j] = idx[j] + base
+		var all: PackedInt32Array = have[0]
+		have[0] = null
+		all.append_array(ix)
+		have[0] = all
+		have[1] = to
+	var tiled: PackedInt32Array = have[0]
+	return tiled.slice(0, n * per)
+
+## Kind `id`'s look at size 1, about its own place, in slot colours.
+static func _bit_shape(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var o := Vector2.ZERO
+	match id:
+		0:
+			petal(b, o, 11.0, 11.0, 0.0, RunMesh.slot(0))
+		1:
+			_star(b, o, 14.0, 0.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+		2:
+			_glint(b, o, 22.0, 0.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+		3:
+			_coin(b, o, 13.0, 1.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), true)
+		4:
+			_heart(b, o, 13.0, 0.0, RunMesh.slot(0), RunMesh.slot(1))
+		5:
+			b.ellipse(o, 7.0, 5.5, RunMesh.slot(0))
+			b.ellipse(Vector2(-1.5, -1.8), 3.0, 2.0, RunMesh.slot(1))
+		6:
+			var d := Vector2.RIGHT
+			var n := d.orthogonal()
+			b.polygon(PackedVector2Array([-d * 10.0, n * 5.0, d * 9.0, -n * 4.0]), RunMesh.slot(0))
+			b.stroke(PackedVector2Array([-d * 10.0, n * 5.0]), 2.0, RunMesh.slot(1), false, false)
+		7:
+			_music_note(b, o, 16.0, 0.0, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
+		8:
+			b.disc(o, 9.0, RunMesh.slot(0))
+		9:
+			b.disc(o, 3.4, RunMesh.slot(0))
+	return b
 
 ## Each letter hops in on its own, rocks for a moment, and the word swells
 ## away at the end; a pale rim and a dark one under the colour, so it reads
@@ -365,15 +497,21 @@ func _warm_one() -> void:
 static func glint(b: Face.Builder, c: Vector2, r: float, turn: float, col := Color(1, 1, 0.95, 0.95)) -> void:
 	if r <= 0.5:
 		return
-	b.disc(c, r * 0.45, Color(col, col.a * 0.26))
+	_glint(b, c, r, turn, Color(col, col.a * 0.26), col, Color(1, 1, 1, col.a))
+
+static func _glint(b: Face.Builder, c: Vector2, r: float, turn: float, halo: Color, col: Color, core: Color) -> void:
+	b.disc(c, r * 0.45, halo)
 	for k in 4:
 		var d := Vector2.from_angle(TAU * k / 4.0 + turn)
 		var side := d.orthogonal() * r * 0.13
 		b.polygon(PackedVector2Array([c + side, c + d * r * (1.0 if k % 2 == 0 else 0.7), c - side]), col)
-	b.disc(c, r * 0.14, Color(1, 1, 1, col.a))
+	b.disc(c, r * 0.14, core)
 
 ## A five-pointed star with a darker drop and a shine.
 static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0) -> void:
+	_star(b, c, r, turn, Color(col.darkened(0.35), col.a), col, Color(1, 1, 1, 0.5 * col.a))
+
+static func _star(b: Face.Builder, c: Vector2, r: float, turn: float, drop: Color, col: Color, shine: Color) -> void:
 	for pass_ in 2:
 		var pts := PackedVector2Array()
 		var from := c + (Vector2(r * 0.04, r * 0.1) if pass_ == 0 else Vector2.ZERO)
@@ -381,8 +519,8 @@ static func star(b: Face.Builder, c: Vector2, r: float, col: Color, turn := 0.0)
 		for i in 10:
 			var a := TAU * i / 10.0 - PI * 0.5 + turn
 			pts.append(from + Vector2.from_angle(a) * (rr if i % 2 == 0 else rr * 0.52))
-		b.polygon(pts, Color(col.darkened(0.35), col.a) if pass_ == 0 else col)
-	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, Color(1, 1, 1, 0.5 * col.a))
+		b.polygon(pts, drop if pass_ == 0 else col)
+	b.ellipse(c + Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, shine)
 
 ## A sunburst: `n` rays between `r0` and `r1`.
 static func sunrays(b: Face.Builder, c: Vector2, r0: float, r1: float, n: int, turn: float, col: Color) -> void:
@@ -404,15 +542,20 @@ static func petal(b: Face.Builder, c: Vector2, rx: float, ry: float, rot: float,
 ## to its rim and back.
 static func coin(b: Face.Builder, c: Vector2, r: float, spin: float, a := 1.0) -> void:
 	var w := absf(cos(spin))
-	b.ellipse(c, maxf(r * 0.18, r * w), r, Color(GOLD_DEEP, a))
-	b.ellipse(c + Vector2(-r * 0.06 * w, 0), maxf(r * 0.1, r * 0.82 * w), r * 0.82, Color(GOLD, a))
-	if w > 0.4:
-		b.ellipse(c + Vector2(-r * 0.3 * w, -r * 0.3), r * 0.16 * w, r * 0.26, Color(1, 1, 0.9, 0.7 * a))
+	_coin(b, c, r, w, Color(GOLD_DEEP, a), Color(GOLD, a), Color(1, 1, 0.9, 0.7 * a), w > 0.4)
+
+static func _coin(b: Face.Builder, c: Vector2, r: float, w: float, rim: Color, face: Color, shine: Color, shining: bool) -> void:
+	b.ellipse(c, maxf(r * 0.18, r * w), r, rim)
+	b.ellipse(c + Vector2(-r * 0.06 * w, 0), maxf(r * 0.1, r * 0.82 * w), r * 0.82, face)
+	if shining:
+		b.ellipse(c + Vector2(-r * 0.3 * w, -r * 0.3), r * 0.16 * w, r * 0.26, shine)
 
 ## An eighth note, its head at `c`, tipped by `rot`: a music bit.
 static func music_note(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:
+	_music_note(b, c, r, rot, col, Color(col.darkened(0.45), col.a), Color(1, 1, 1, 0.55 * col.a))
+
+static func _music_note(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color, dark: Color, shine: Color) -> void:
 	var t := Transform2D(rot, c)
-	var dark := Color(col.darkened(0.45), col.a)
 	var head := PackedVector2Array()
 	for i in 12:
 		var a := TAU * i / 12.0
@@ -421,10 +564,13 @@ static func music_note(b: Face.Builder, c: Vector2, r: float, rot: float, col: C
 	var top := Vector2(r * 0.5, -r * 1.9)
 	b.stroke(PackedVector2Array([t * Vector2(r * 0.5, -r * 0.1), t * top]), r * 0.2, dark)
 	b.polygon(PackedVector2Array([t * top, t * (top + Vector2(r * 0.75, r * 0.55)), t * (top + Vector2(r * 0.6, r * 0.8)), t * (top + Vector2(0, r * 0.45))]), dark)
-	b.ellipse(t * Vector2(-r * 0.2, -r * 0.14), r * 0.18, r * 0.1, Color(1, 1, 1, 0.55 * col.a))
+	b.ellipse(t * Vector2(-r * 0.2, -r * 0.14), r * 0.18, r * 0.1, shine)
 
 ## A heart tipped by `rot`.
 static func heart(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color) -> void:
+	_heart(b, c, r, rot, col, Color(1, 1, 1, 0.45 * col.a))
+
+static func _heart(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color, shine: Color) -> void:
 	var pts := PackedVector2Array()
 	for i in 24:
 		var t := TAU * i / 24.0
@@ -432,7 +578,7 @@ static func heart(b: Face.Builder, c: Vector2, r: float, rot: float, col: Color)
 		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
 		pts.append(c + (Vector2(x, y) * r / 16.0).rotated(rot))
 	b.polygon(pts, col)
-	b.ellipse(c + Vector2(-r * 0.4, -r * 0.35).rotated(rot), r * 0.2, r * 0.13, Color(1, 1, 1, 0.45 * col.a))
+	b.ellipse(c + Vector2(-r * 0.4, -r * 0.35).rotated(rot), r * 0.2, r * 0.13, shine)
 
 ## A warm glow breathing in from the edges of `rect`, `amount` 0..1 strong.
 static func edge_glow(b: Face.Builder, rect: Rect2, tint: Color, amount: float, beat: float) -> void:

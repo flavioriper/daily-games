@@ -124,6 +124,7 @@ func _process(delta: float) -> bool:
 				_b = _host._puzzle
 				if _host.has_node("HowToPlay"):
 					_host.get_node("HowToPlay").free()
+					_host._hold_clock(false)
 				_step = 1
 		1:
 			if _t > 2.2:
