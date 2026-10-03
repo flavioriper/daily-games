@@ -34,6 +34,13 @@ const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). A move plays out by
+## itself, a cascade step at a time, and `select`, `swap`, `goal` and
+## `convert` are shared or are not the hand's, so only the end card's cue is
+## mapped: the events ask through `_feel` and the frame knocks once, with
+## the strongest.
+const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -199,6 +206,14 @@ var _ground_later: Array = []
 ## The offer of more moves, while it is up.
 var _offer: Control
 var _hurry := false
+## The knock this frame asked for (`_feel`), or -1.
+var _knock := -1
+## A move of the hand's whose first tiles are yet to be picked: its knock
+## lands with them. `_by_hand` while what plays out is the hand's (not the
+## day's bloom or a booster's); `_bumped` once the move has had its bump.
+var _pending := false
+var _by_hand := false
+var _bumped := false
 
 func puzzle_id() -> String:
 	return GAME
@@ -213,7 +228,7 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	_ask()
+	_ask(false)
 
 # --- building ---
 
@@ -283,6 +298,7 @@ func _build() -> void:
 	field.gui_input.connect(_on_field_input)
 	_frame.add_child(field)
 	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
 	field.add_child(_fx)
 
 	var over := VBoxContainer.new()
@@ -559,6 +575,10 @@ func _new_game() -> void:
 	_ground.clear()
 	_ground_later.clear()
 	_hurry = false
+	_knock = -1
+	_pending = false
+	_by_hand = false
+	_bumped = false
 	if _offer != null:
 		_offer.queue_free()
 		_offer = null
@@ -597,6 +617,7 @@ func _process(delta: float) -> void:
 	_animate(d)
 	_run_queue(d)
 	_refresh_hud(delta)
+	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
 	field.queue_redraw()
@@ -604,6 +625,21 @@ func _process(delta: float) -> void:
 		_air.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
+
+## Asks for a knock this frame; the strongest asked for is the one played.
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+func _knock_now() -> void:
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
+
+static func _all_met(goals: Array) -> bool:
+	for g: Dictionary in goals:
+		if int(g.got) < int(g.need):
+			return false
+	return true
 
 ## The sim's new events join the back of the queue.
 func _take_events() -> void:
@@ -709,6 +745,7 @@ func _animate(delta: float) -> void:
 	_animate_rewards(delta)
 	if sim.is_over() and not _over_said and not busy():
 		_over_said = true
+		_feel(Haptics.LOSE)
 		_game_over()
 	if sim.is_offered() and _offer == null and not busy():
 		_show_offer()
@@ -1056,6 +1093,10 @@ func _apply(ev: Dictionary) -> void:
 			if bool(ev.ok):
 				_fx.cue("swap")
 				if not bool(ev.get("free", false)):
+					# the move's knock lands with its first tiles (`_on_clear`)
+					_pending = true
+					_by_hand = true
+					_bumped = false
 					_shown_moves -= 1
 					if _shown_moves <= 5 and _shown_moves > 0:
 						_kick(_moves_plate, 0.16, 0.3)
@@ -1084,6 +1125,9 @@ func _apply(ev: Dictionary) -> void:
 			_wait = 0.05 if quick else (BLAST_T if blast else PICK_T) * pace
 		"fire":
 			_fx.cue("select", 1.3, -2.0)
+			_pending = true
+			_by_hand = true
+			_bumped = false
 			_shown_moves -= 1
 			if _tiles.has(ev.id):
 				_tiles[ev.id].bump = 0.0
@@ -1103,6 +1147,7 @@ func _apply(ev: Dictionary) -> void:
 			_ring(_air_bits, at, 120.0, Art.GOLD)
 			_sticker(tr("PS_MORE_MOVES") % int(ev.moves), at + Vector2(-80, 130), 56, 1.4, false, Pal.SUN)
 			_fx.cue("more_moves")
+			_feel(Haptics.GOOD)
 			_wait = 0.0 if quick else 0.4
 		"fall":
 			var landed := false
@@ -1148,6 +1193,8 @@ func _apply(ev: Dictionary) -> void:
 			pass
 		"day_done":
 			_fx.cue("day_done")
+			_feel(Haptics.BUMP)
+			_by_hand = false
 			_blooming = true
 			_heat = 0.0
 			var left := int(ev.left)
@@ -1182,6 +1229,11 @@ func _apply(ev: Dictionary) -> void:
 				_fx.cue("arm", 1.2, -4.0)
 				_wait = 0.8
 		"tool":
+			# a tool used taps, and what it picks at once adds nothing
+			_feel(Haptics.TAP)
+			_pending = false
+			_by_hand = true
+			_bumped = false
 			_badges[Sim.TOOL_KEYS.find_key(String(ev.tool))].queue_redraw()
 			var cell: Vector2i = ev.cell
 			match String(ev.tool):
@@ -1224,6 +1276,8 @@ func _on_deal(ev: Dictionary) -> void:
 	for p: Dictionary in _goal_plates:
 		p.pic.queue_redraw()
 	_fx.cue("deal")
+	_pending = false
+	_by_hand = false
 	_day_moves = int(ev.moves)
 	_blooming = false
 	_goal_cheer.clear()
@@ -1326,6 +1380,7 @@ func _show_offer() -> void:
 	for g: Dictionary in sim.goals:
 		short += maxi(0, int(g.need) - int(g.got))
 	_fx.cue("offer")
+	_feel(Haptics.WARN)
 	var scrim := Dialog.scrim()
 	scrim.name = "Offer"
 	var center := CenterContainer.new()
@@ -1422,6 +1477,21 @@ func _goal_line() -> String:
 
 func _on_clear(ev: Dictionary) -> void:
 	var step: int = ev.step
+	# The move's one knock, as its first tiles are picked: a tap (a special
+	# made is still the tap), or a bump when it set a special off. A
+	# cascade's first word bumps a move that has not; the clear that fills
+	# the day leaves the bump to it.
+	var day_met := _all_met(ev.goals)
+	if _pending:
+		_pending = false
+		if not day_met and not (ev.blasts as Array).is_empty():
+			_bumped = true
+			_feel(Haptics.BUMP)
+		else:
+			_feel(Haptics.TAP)
+	elif _by_hand and not _bumped and not day_met and not _blooming and WORDS.has(step):
+		_bumped = true
+		_feel(Haptics.BUMP)
 	var made_at := {}
 	for m: Dictionary in ev.made:
 		made_at[m.id] = m
@@ -1658,6 +1728,7 @@ func _refresh_hud(delta := 0.0) -> void:
 		_beat_best = true
 		_kick(_score_l, 0.3, 0.4)
 		_fx.cue("goal", 1.3, -4.0)
+		_feel(Haptics.BUMP)
 	var day := tr("PS_DAY") % _shown_day
 	if _day_l.text != day:
 		_day_l.text = day
@@ -1690,6 +1761,11 @@ func _refresh_hud(delta := 0.0) -> void:
 			var at := _in_air(p.pic, p.pic.size * 0.5)
 			_kick(p.plate, 0.2, 0.4)
 			_fx.cue("goal")
+			# a goal filled bumps a move that has not; the day's last is
+			# the day's own bump
+			if _by_hand and not _bumped and not _blooming and not _all_met(_shown_goals):
+				_bumped = true
+				_feel(Haptics.BUMP)
 			_spray(_air_bits, at, Art.GOLD, 12, 560.0, "star", 1.0)
 			_spray(_air_bits, at, Art.LEAF, 6, 420.0, "leaf", 1.0)
 			_ring(_air_bits, at, 110.0, Art.LEAF)
@@ -2466,7 +2542,7 @@ func go_back() -> void:
 
 ## Before a run: the boost card, when a booster is held or the gold for one
 ## is, else straight in. A run still going when it is asked for stops there.
-func _ask() -> void:
+func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
@@ -2475,6 +2551,9 @@ func _ask() -> void:
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()
+		# Restart and Play again tap; the screen opening says nothing.
+		if by_hand:
+			_fx.buzz(Haptics.TAP)
 		return
 	if sim != null and not sim.is_over():
 		sim = null
@@ -2482,7 +2561,8 @@ func _ask() -> void:
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:
 		_boosts = ids
-		_new_game())
+		_new_game()
+		_fx.buzz(Haptics.TAP))
 	add_child(card)
 
 ## At game over, once a run: the Second chance, when one is held or the gold
