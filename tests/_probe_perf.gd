@@ -298,6 +298,60 @@ func _experiment() -> void:
 				print("  hh bands %.2f ms, %d vertices; live %.2f ms, %d vertices; a rustling row %.2f ms, %d vertices; moving %d" % [
 					(t1 - t0) / 1000.0, vs, (t2 - t1) / 1000.0, live.surface_get_array_len(0) if live != null else 0,
 					(t4 - t3) / 1000.0, row.surface_get_array_len(0) if row != null else 0, saved.size()])
+		"mg_hud":
+			# Marigold: the ?, Undo and Reset as the player reaches them.
+			var bar = _host.top_bar
+			var acts = _host.action_bar
+			print("  mg ? visible=%s undo visible=%s reset (bar) visible=%s reset (actions)=%s" % [bar.help_button.visible,
+				bar.undo_button.visible, bar.reset_button.visible, acts != null and acts.reset_button.visible])
+			bar.help.emit()
+			await create_timer(0.3).timeout
+			var card = _host.get_node_or_null("HowToPlay")
+			print("  mg ? opened: %s, pages %d" % [card != null, card._pages.size() if card != null else 0])
+			if card != null:
+				card.queue_free()
+			await create_timer(0.3).timeout
+			var st = _puzzle._state
+			var seeds0: int = st.seeds
+			_puzzle._aim = 1.3
+			_puzzle._shoot()
+			while _puzzle.busy():
+				await process_frame
+			_host._refresh()
+			print("  mg shot: seeds %d -> %d score %d can_undo=%s undo enabled=%s hearts %d" % [seeds0, st.seeds, st.score,
+				_puzzle.can_undo(), not bar.undo_button.disabled, _puzzle.hearts])
+			_host._on_undo()
+			await create_timer(0.5).timeout
+			print("  mg after undo: seeds %d score %d hearts %d" % [st.seeds, st.score, _puzzle.hearts])
+			_puzzle._aim = 0.9
+			_puzzle._shoot()
+			while _puzzle.busy():
+				await process_frame
+			_host._refresh()
+			print("  mg can_reset=%s" % _puzzle.can_reset())
+			_host._on_reset()
+			await create_timer(0.5).timeout
+			print("  mg after reset: seeds %d score %d hearts %d moves %d" % [st.seeds, st.score, _puzzle.hearts, _puzzle.moves])
+		"mg_count":
+			# Marigold: every per-frame builder timed against the board as it
+			# stands, every half second through the play window, with vertices.
+			while _t < _play_to - 0.6:
+				await create_timer(0.5).timeout
+				var now: float = _puzzle._now()
+				var row := []
+				for name in ["_build_lit", "_build_live_back", "_build_live", "_build_air", "_build_trail", "_build_buds"]:
+					var t0 := Time.get_ticks_usec()
+					var m: ArrayMesh
+					var vs := 0
+					if name == "_build_buds":
+						for k in _puzzle.BUD_BANDS:
+							m = _puzzle._build_buds(now, k)
+							vs += m.surface_get_array_len(0) if m != null else 0
+					else:
+						m = _puzzle.call(name, now) if name != "_build_trail" else _puzzle._build_trail()
+						vs = m.surface_get_array_len(0) if m != null else 0
+					row.append("%s %.2f/%d" % [name.substr(7), (Time.get_ticks_usec() - t0) / 1000.0, vs])
+				print("  mg t=%.1f %s bits %d air %d stickers %d lit %d phase %s | %s" % [_t, _puzzle._phase, _puzzle._bits.size(), _puzzle._air_bits.size(), _puzzle._stickers.size(), _puzzle._order.size(), _puzzle._phase, " ".join(row)])
 		"kn_relay":
 			# What the win card's relayout makes again: the table and the still.
 			for k in 3:
@@ -1569,6 +1623,32 @@ func _hh_need() -> int:
 			n += 1
 			upto = n
 	return upto
+
+## Marigold's: a shot a move, the aim set to the angle and the seed shot:
+## Sweethearts plays its banked proof from the opening, the other
+## bands the sun's own best line (a third of a second each, the probe's cost).
+func _moves_marigold() -> Array:
+	if _exp == "mg_hud":
+		return []
+	var plan := {}
+	plan["do"] = func() -> void:
+		if _puzzle.is_done():
+			return
+		_moves.push_front(plan)
+		if _puzzle.busy() or _puzzle._phase != "aim":
+			return
+		var st = _puzzle._state
+		var a: float
+		if st.sweethearts and st.tries == 1 and st.shots < st.proof.size():
+			a = float(st.proof[st.shots])
+		else:
+			a = st.clone().best_angle()
+		# a press and release turns the aim to a pixel; the proof is chaotic
+		# and needs the angle exact, so the aim is set and the seed shot
+		_puzzle._aim = a
+		_puzzle._shoot()
+	_keep = 0
+	return [plan]
 
 ## Super Slider: the shortest way out, each move a drag through the board's
 ## own input -- a press on the block, a motion a cell at a time along the

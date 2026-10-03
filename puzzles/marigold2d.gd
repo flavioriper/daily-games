@@ -46,6 +46,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Locale = preload("res://core/locale.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the counts take, the
@@ -128,6 +129,43 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 40.0
 const TIPS := ["MG_TIP_AIM", "MG_TIP_GOAL", "MG_TIP_POT"]
 const BUD_BANDS := 6
+## The looks' ids: a bud per kind, a bloom per kind and opening step.
+const LOOK_BUD := 0
+const LOOK_BLOOM := 100
+const OPEN_STEP := 0.05
+## A ribbon's look per pair and style (shut, one open, both open), in the
+## reference layout's own pixels.
+const LOOK_THREAD := 1000
+## The bits' looks, in the card's pixels at a bit's size 1.
+const LOOK_BIT := 500
+const BIT_KINDS := ["petal", "leaf", "star", "spark", "coin", "heart"]
+## The garden's own looks (the reference layout's pixels): a glint, a
+## firefly, a lantern's glow, and the frog in parts (shadow, body, throat,
+## face, eye whites, a pupil, shut eyes).
+const LOOK_SCENE := 5000
+enum { SC_TWINKLE = 5000, SC_FIREFLY, SC_LANTERN, SC_FROG_SHADOW, SC_FROG_BODY, SC_FROG_PUFF, SC_FROG_FACE,
+	SC_FROG_WHITES, SC_FROG_PUPIL, SC_FROG_SHUT }
+## A ripple's ring a step of its spread and fade (RIPPLE_STEPS) in one of
+## its inks (a bud kind's lit edge, the pot's gold, the frog's splash):
+## painted, a stroke's colour runs alternate along it, so a new alpha was a
+## script pass over every vertex.
+const SC_RIPPLE := 5100
+const RIPPLE_STEPS := 16
+const RIPPLE_POINTS := 40
+## A duck (0) or a duckling (1) with its wake, a fade step of DUCK_FADES
+## each: SC_DUCK + kind * (DUCK_FADES + 1) + step.
+const SC_DUCK := 5300
+const DUCK_FADES := 8
+## The pot a glow step of 8 (its own width), and a full bloom pot dark and
+## lit.
+const SC_POT := 5400
+const SC_FEVER_POT := 5420
+## A bloom fading as it is picked: a look per kind and alpha step (wide open).
+const FADE_AT := 40
+const FADE_STEPS := 16
+## The band's looks: a seed in the trough (two lies), a dent, a pip empty
+## and a pip filled.
+enum { HUD_KERNEL, HUD_KERNEL_2, HUD_DENT, HUD_PIP, HUD_PIP_FULL }
 
 # --- the rewards, made loud (the spec's third amendment) ---
 ## A long shot's words, by blooms in the shot, lettered bigger the higher.
@@ -298,6 +336,11 @@ var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
 var _lost_ever := false
+## Undo: the garden before each shot of this try (the state's snapshot with
+## the board's log and streak), and whether Undo was ever used (no
+## flawless seal then).
+var _undo: Array = []
+var _undo_ever := false
 var _flawless := false
 var _won := false
 var _heart_card: Control
@@ -315,12 +358,11 @@ var _fold_until := -100.0
 var _ribbon := PackedInt32Array()
 var _threads: ArrayMesh
 var _threads_for := ""
+var _threads_xf := Transform2D.IDENTITY
 var _shot_pairs := 0
 var _apart_told := false
-## Buds a seed brushed past: when each started shivering, and the strips
-## still shivering (band -> until).
+## Buds a seed brushed past: when each started shivering.
 var _rustle_at := PackedFloat32Array()
-var _rustling := {}
 ## The spout's own angle, following _aim.
 var _aim_shown := PI * 0.5
 ## The silly ones: the frog, the ducks, the sun's sunglasses, the streak.
@@ -341,9 +383,33 @@ var _stamp_at := INF
 var _seal_mesh: ArrayMesh
 
 var _still: ArrayMesh
-## The closed buds in BUD_BANDS strips down the field, so a bloom rebuilds
-## only its own strip.
+## The closed buds at rest in BUD_BANDS strips down the field, so a bloom
+## rebuilds only its own strip; what each bud was in its strip's last build
+## (0 not there, else 1 + its kind); the buds moving (popping in, shivering,
+## folding back) every frame in a mesh of their own.
 var _buds: Array = []
+var _bud_code := PackedInt32Array()
+var _live_buds: ArrayMesh
+## The buds' and blooms' looks, made once at _ref_s about their own middle
+## and put scaled to the layout (Hedgehogs' and Knight's way, 2026-10-02):
+## a strip of buds is copies, not drawing.
+var _looks: RunMesh
+## A RunMesh a layer, sharing _looks' shapes and colours: each keeps the
+## index lists it offset to its own places, and one layer's churn (the
+## blooms opening one after another) no longer fills the cache the others
+## live by -- RunMesh forgets every offset past OFFSETS_MAX, and the frame
+## after, every layer offset its indices again in script (4-7 ms).
+var _layers := {}
+var _rm: RunMesh
+var _ref_s := 0.0
+var _ref_o := Vector2.ZERO
+## Each bit look's indices tiled for n copies (id -> PackedInt32Array), so a
+## kind's bits are one mesh of native copies.
+var _tiled := {}
+## The looks still to make ahead of play, one a frame once the garden is up
+## (a bloom's opening steps, its fades, the ripples, the bits): made on
+## first use instead, each was a few tenths of a millisecond mid-shot.
+var _prime := PackedInt32Array()
 var _lit: ArrayMesh
 var _guide: ArrayMesh
 var _trail: ArrayMesh
@@ -356,12 +422,26 @@ var _body_for := ""
 var _spout: ArrayMesh
 var _spout_for := -1
 var _back: ArrayMesh
+## The full bloom's five pots, made once (the sky over them grows for two
+## seconds; the pots never move but the one lit).
+var _back_pots: ArrayMesh
+var _back_pots_for := -2
 var _live: ArrayMesh
+## The bits over the garden and in the air, a mesh per kind.
+var _live_bits: Array = []
+var _air_bits_meshes: Array = []
 var _live_back: ArrayMesh
+var _ripple_mesh: ArrayMesh
 var _pill: ArrayMesh
 var _pill_for := -1
 var _hud: ArrayMesh
 var _hud_for := ""
+## The band's trough and groove, and its seeds' and pips' looks (made for
+## one pip size).
+var _hud_base: ArrayMesh
+var _hud_base_for := ""
+var _hud_rm: RunMesh
+var _hud_rm_for := -1.0
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
 ## The meshes the last _draw handed over: a canvas command holds a mesh by
@@ -385,6 +465,39 @@ func rules() -> String:
 		out += "\n\n" + tr("MG_RULES_HEARTS") % max_hearts
 	return out
 
+## The how-to-play pages, band-aware: aiming and shooting, the marigolds
+## and the full bloom, the clover and the violet, the pot, running out of
+## seeds (a heart on Hard and Insane), Sweethearts (Insane), Undo and Reset,
+## and the bulb (bands with hints). Each page is the board itself on a few
+## hand-made rows of garden, playing the lesson
+## (ui/hud/marigold_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/marigold_tutorial_diagram.gd")
+	var band: int = _state.band
+	var hints: int = State.hints_for(band)
+	var hearts_n: int = State.hearts_for(band)
+	var steps := [[Diagram.Lesson.AIM, "HTP_MG_AIM", tr("HTP_MG_AIM_BODY")],
+		[Diagram.Lesson.GOAL, "HTP_MG_GOAL", tr("HTP_MG_GOAL_BODY")],
+		[Diagram.Lesson.CLOVER, "HTP_MG_CLOVER", tr("HTP_MG_CLOVER_BODY")],
+		[Diagram.Lesson.POT, "HTP_MG_POT", tr("HTP_MG_POT_BODY")]]
+	if hearts_n > 0:
+		steps.append([Diagram.Lesson.OUT, "HTP_MG_OUT", tr("HTP_MG_OUT_BODY_HEARTS") % hearts_n])
+	else:
+		steps.append([Diagram.Lesson.OUT, "HTP_MG_OUT", tr("HTP_MG_OUT_BODY")])
+	if band >= 3:
+		steps.append([Diagram.Lesson.SWEET, "HTP_MG_SWEET", tr("HTP_MG_SWEET_BODY")])
+	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_MG_UNDO_BODY_HEARTS" if hearts_n > 0 else "HTP_MG_UNDO_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_MG_HINT_BODY_ONE") if hints == 1 else tr("HTP_MG_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _tips() -> Array:
 	if _state.sweethearts:
 		return TIPS_SWEET
@@ -392,12 +505,68 @@ func _tips() -> Array:
 		return TIPS_HEARTS
 	return TIPS
 
-## Hint only: nothing to take back once a seed has flown. Reset is the
-## host's. Insane has no hint.
+## Undo takes the last shot back; Reset is the host's. Insane has no hint.
 func capabilities() -> Array[String]:
 	if _state.band >= 3:
-		return []
-	return ["hint"]
+		return ["undo"]
+	return ["undo", "hint"]
+
+## Undo waits for the shot to be over; on Hard and Insane it costs a heart,
+## as Reset does, so it waits for one to spare: it never puts the sun to
+## sleep.
+func can_undo() -> bool:
+	return not _undo.is_empty() and _phase == "aim" and _think.is_empty() and not is_done() \
+		and not out_of_hearts and (max_hearts <= 0 or hearts > 1)
+
+## The last shot taken back: the seed back in the trough, every bud it
+## bloomed up again, the violet back where it stood, the score as it was.
+## A heart on Hard and Insane.
+func undo() -> bool:
+	if not can_undo():
+		return false
+	var u: Dictionary = _undo.pop_back()
+	var t := _now()
+	if max_hearts > 0:
+		_lose_heart(t)
+	_undo_ever = true
+	var was: PackedInt32Array = _state.st.duplicate()
+	_state.restore(u.state)
+	_log = String(u.log) + ("💔" if max_hearts > 0 else "")
+	_streak = int(u.streak) if max_hearts <= 0 else 0
+	_clear_shot(t, was)
+	fx.cue("reset")
+	if max_hearts > 0:
+		_tell("MG_UNDO_HEART_ONE" if hearts == 1 else "MG_UNDO_HEART", Face.Expr.WORRIED, [] if hearts == 1 else [hearts])
+	else:
+		_tell("MG_UNDONE", Face.Expr.HAPPY)
+	moved.emit()
+	return true
+
+## Every bud back to what the state says (`was`: what it said before),
+## nothing of the last shot left on the field: the blooms, their ripples
+## and flies, the guide.
+func _clear_shot(t: float, was: PackedInt32Array) -> void:
+	for i in _state.pos.size():
+		if _state.st[i] == State.UP:
+			_hit_at[i] = -1.0
+			_pick_at[i] = -1.0
+			_fold_at[i] = -1.0
+			# each bud that comes back shivers as it stands up again
+			if was[i] != State.UP and not Motion.reduce:
+				_rustle_at[i] = t
+	_order = PackedInt32Array()
+	_picking = []
+	_flies = []
+	_ripples = []
+	_seed_flies = []
+	_threads = null
+	_lit = null
+	_guide = null
+	_hud = null
+	_pill = null
+	_mult_shown = _state.mult()
+	_score_shown = float(_state.score)
+	_seeds_start = maxi(_seeds_start, _state.seeds)
 
 ## Reset waits while a seed is out or the sun is thinking; it costs a heart
 ## on Hard and Insane once a seed has flown (reset_board).
@@ -428,11 +597,13 @@ func _exit_tree() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
+	_looks = null
 	max_hearts = State.hearts_for(difficulty)
 	hearts = max_hearts
 	out_of_hearts = false
 	_heart_used = false
 	_lost_ever = false
+	_undo_ever = false
 	_flawless = false
 	_won = false
 	_split_index = -1
@@ -453,6 +624,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## Everything a new try starts from.
 func _fresh(t: float) -> void:
 	var n: int = _state.pos.size()
+	_undo = []
 	_hit_at = PackedFloat32Array()
 	_hit_at.resize(n)
 	_hit_at.fill(-1.0)
@@ -488,6 +660,7 @@ func _fresh(t: float) -> void:
 	_lit = null
 	_guide = null
 	_back = null
+	_back_pots = null
 	_hud = null
 	_buds = []
 	_ripples = []
@@ -511,7 +684,6 @@ func _fresh(t: float) -> void:
 	_rustle_at = PackedFloat32Array()
 	_rustle_at.resize(n)
 	_rustle_at.fill(-100.0)
-	_rustling = {}
 	_aim_shown = _aim
 	_threads = null
 	_threads_for = ""
@@ -555,6 +727,7 @@ func card_centred() -> bool:
 func _layout() -> void:
 	_still = null
 	_buds = []
+	_live_buds = null
 	_lit = null
 	_guide = null
 	_trail = null
@@ -564,6 +737,7 @@ func _layout() -> void:
 	_body = null
 	_spout = null
 	_back = null
+	_back_pots = null
 	_hud = null
 	_pill = null
 	_threads = null
@@ -622,13 +796,10 @@ func _process(delta: float) -> void:
 		_blink_at = t + randf_range(2.8, 5.5)
 	if _lit_moving(t):
 		_lit = null
-	if _buds_moving(t):
-		_buds = []
-	elif not _rustling.is_empty() and _buds.size() == BUD_BANDS:
-		for band: int in _rustling.keys():
-			_buds[band] = null
-			if t > float(_rustling[band]):
-				_rustling.erase(band)
+	_sort_buds(t)
+	if not _prime.is_empty() and _looks != null and t - _grown_at > _entrance_time():
+		_looks.shape(_prime[_prime.size() - 1])
+		_prime.resize(_prime.size() - 1)
 	if _cat_at < INF:
 		_place_cat(t)
 	queue_redraw()
@@ -652,7 +823,6 @@ func _brush(t: float) -> void:
 						continue
 					if p.distance_squared_to(_state.pos[i]) < reach * reach:
 						_rustle_at[i] = t
-						_rustling[_band_of(i)] = t + RUSTLE_TIME
 ## The last marigold's approach and the full bloom: the clock, the view, the
 ## drumroll and the near miss, every frame.
 func _camera(t: float, delta: float) -> void:
@@ -796,11 +966,6 @@ func _lit_moving(t: float) -> bool:
 			return true
 	return false
 
-func _buds_moving(t: float) -> bool:
-	if Motion.reduce:
-		return t < _fold_until
-	return t - _grown_at < _entrance_time() or t < _fold_until + Motion.POP_IN
-
 func _entrance_time() -> float:
 	return Motion.ENTER_DELAY + 0.1 + 0.9 + Motion.POP_IN + 0.05
 
@@ -870,7 +1035,7 @@ func _handle(events: Array, t: float) -> void:
 				_fold_at[i] = -1.0
 				_threads = null
 				if not Motion.reduce:
-					_ripples.append({"at": _state.pos[i], "t": t, "col": Parts.colours(_state.kind[i])[1]})
+					_ripples.append({"at": _state.pos[i], "t": t, "ink": _state.kind[i]})
 					if _state.kind[i] == State.ORANGE:
 						_flies.append({"from": _pt(_state.pos[i]), "t": t + BLOOM_TIME * 0.6})
 						_hud = null
@@ -911,7 +1076,7 @@ func _handle(events: Array, t: float) -> void:
 					fx.cue("wall", 1.0, -4.0)
 			"pot":
 				_pot_glow_at = t
-				_ripples.append({"at": Vector2(e.at), "t": t, "col": Pal.SUN_RAY})
+				_ripples.append({"at": Vector2(e.at), "t": t, "ink": 4})
 				_shot_pot = true
 				fx.cue("pot")
 				fx.sparkle(_pt(e.at), Pal.SUN)
@@ -994,8 +1159,6 @@ func _end_shot(t: float) -> void:
 func _after_pick(t: float) -> void:
 	_picking = []
 	_lit = null
-	# the violet has moved
-	_buds = []
 	var free: int = _pick_result.get("free", 0)
 	if free > 0:
 		_tell("MG_FREE_ONE" if free == 1 else "MG_FREE", Face.Expr.JOY, [free])
@@ -1377,7 +1540,6 @@ func _fold(folded: PackedInt32Array, t: float) -> void:
 		_spray(_bits, _pt(_state.pos[i]), Color("b7a9c9"), 4, 160.0, "petal", k)
 	_fold_until = t + FOLD_TIME
 	_threads = null
-	_buds = []
 	_hud = null
 	var filled := _pips_filled(t)
 	for n in folded.size():
@@ -1393,13 +1555,11 @@ func _fold(folded: PackedInt32Array, t: float) -> void:
 ## both are shut, bright while one waits open in a shot, gold once both
 ## bloomed; a picked pair's ribbon is gone. Cached on what it shows.
 func _draw_threads(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
-	var waiting := PackedInt32Array()
-	if _phase == "shot":
-		waiting = _state.shot_bloomed
-	var key := "%d|%d|%d|%d" % [hash(_state.st), hash(waiting), int(size.x), int(size.y)]
+	var key := "%d|%d|%d" % [hash(_state.st), int(size.x), int(size.y)]
 	if _threads == null or _threads_for != key:
-		var b := Face.Builder.new()
-		var s := _s()
+		var relay := _relay()
+		_rm = _layer("threads")
+		_rm.begin()
 		for i in _state.pos.size():
 			var j: int = _state.pair[i]
 			if j <= i:
@@ -1408,35 +1568,44 @@ func _draw_threads(t: float, xf: Transform2D, tint: Color, shown: Array) -> void
 			var sj: int = _state.st[j]
 			if si == State.GONE and sj == State.GONE:
 				continue
-			var col: Color = RIBBONS[_ribbon[i] % RIBBONS.size()]
-			var width := 0.36
-			var alpha := 0.75
-			if si == State.LIT and sj == State.LIT:
-				col = GOLD
-				alpha = 0.85
-				width = 0.34
-			elif si == State.LIT or sj == State.LIT:
-				width = 0.42
-				alpha = 1.0
-			var a: Vector2 = _state.pos[i]
-			var z: Vector2 = _state.pos[j]
-			var ctrl := (a + z) * 0.5 + Vector2(0.0, 3.0 + 0.16 * a.distance_to(z))
-			var pts := PackedVector2Array()
-			for n in 25:
-				var u := float(n) / 24.0
-				pts.append(_pt(a.lerp(ctrl, u).lerp(ctrl.lerp(z, u), u)))
-			if alpha >= 1.0:
-				b.stroke(pts, s * width * 2.6, Color(col, 0.22))
-			b.stroke(pts, s * width * 1.8, Color(col.darkened(0.35), alpha * 0.35))
-			b.stroke(pts, s * width, Color(col, alpha))
-			# a collar in the ribbon's colour round each end, so a pair is
-			# told at a glance
-			for e: Vector2 in [a, z]:
-				b.disc(_pt(e), s * State.PEG_R * 1.55, Color(col.darkened(0.2), 0.9))
-				b.disc(_pt(e), s * State.PEG_R * 1.35, col)
-		_threads = b.mesh() if not b.verts.is_empty() else null
+			var style := int(si == State.LIT) + int(sj == State.LIT)
+			_rm.put(LOOK_THREAD + i * 3 + style, [], Transform2D.IDENTITY)
+		_threads = _rm.mesh()
 		_threads_for = key
-	_put(_threads, xf, tint, shown)
+		_threads_xf = relay
+	_put(_threads, xf * _threads_xf, tint, shown)
+
+## Pair `i`'s ribbon in `style` (0 both shut, 1 one open, 2 both open), drawn
+## in the reference layout's pixels: a look made the first time it shows.
+func _thread_look(b: Face.Builder, i: int, style: int) -> void:
+	var s := _ref_s
+	var j: int = _state.pair[i]
+	var col: Color = RIBBONS[_ribbon[i] % RIBBONS.size()]
+	var width := 0.36
+	var alpha := 0.75
+	if style == 2:
+		col = GOLD
+		alpha = 0.85
+		width = 0.34
+	elif style == 1:
+		width = 0.42
+		alpha = 1.0
+	var a: Vector2 = _state.pos[i]
+	var z: Vector2 = _state.pos[j]
+	var ctrl := (a + z) * 0.5 + Vector2(0.0, 3.0 + 0.16 * a.distance_to(z))
+	var pts := PackedVector2Array()
+	for n in 25:
+		var u := float(n) / 24.0
+		pts.append(_ref_pt(a.lerp(ctrl, u).lerp(ctrl.lerp(z, u), u)))
+	if alpha >= 1.0:
+		b.stroke(pts, s * width * 2.6, Color(col, 0.22))
+	b.stroke(pts, s * width * 1.8, Color(col.darkened(0.35), alpha * 0.35))
+	b.stroke(pts, s * width, Color(col, alpha))
+	# a collar in the ribbon's colour round each end, so a pair is told at a
+	# glance
+	for e: Vector2 in [a, z]:
+		b.disc(_ref_pt(e), s * State.PEG_R * 1.55, Color(col.darkened(0.2), 0.9))
+		b.disc(_ref_pt(e), s * State.PEG_R * 1.35, col)
 
 # --- the streak and the silly ones ---
 
@@ -1478,7 +1647,7 @@ func _frog_jump(flip: bool) -> void:
 	fx.cue("ribbit", 1.12 if flip else 1.0, -3.0)
 	get_tree().create_timer(FROG_HOP).timeout.connect(func():
 		if is_inside_tree():
-			_ripples.append({"at": FROG_AT + Vector2(0.0, 0.4), "t": _now(), "col": Pal.MG_SHINE})
+			_ripples.append({"at": FROG_AT + Vector2(0.0, 0.4), "t": _now(), "ink": 5})
 			fx.cue("splash", 1.0, -8.0))
 
 ## The sun puts its sunglasses on for a while.
@@ -1499,14 +1668,10 @@ func _ducks() -> void:
 
 ## A field point of the frog's body (about its middle, field units) to the
 ## card's pixels: squashed, turned and lifted.
-func _frog_pt(v: Vector2, mid: Vector2, sq: Vector2, turn: float) -> Vector2:
-	return _pt(mid + (v * sq * 1.3).rotated(turn))
-
 ## The frog on the left lily pad: round and green, eyes on top following the
 ## seed, a smile, a throat that puffs when it croaks; it hops and lands
-## squashing.
-func _draw_frog(b: Face.Builder, t: float) -> void:
-	var s := _s()
+## squashing. Its parts are looks under its hop's turn and squash.
+func _put_frog(t: float, q: float) -> void:
 	var e := t - _frog_hop_at
 	var lift := 0.0
 	var turn := 0.0
@@ -1520,66 +1685,63 @@ func _draw_frog(b: Face.Builder, t: float) -> void:
 		var u := (e - FROG_HOP) / 0.2
 		sq = Vector2(1.0 + 0.2 * sin(PI * u), 1.0 - 0.2 * sin(PI * u))
 	var mid := FROG_AT + Vector2(0.0, -1.2 - lift)
-	b.ellipse(_pt(FROG_AT + Vector2(0.0, 0.2)), s * 2.0 / (1.0 + lift * 0.1), s * 0.5 / (1.0 + lift * 0.1), Color(Pal.MG_POND_DEEP, 0.55))
-	var green := Color("79c26b")
-	var deep := Color("4f9150")
-	for sx: float in [-1.0, 1.0]:
-		b.ellipse(_frog_pt(Vector2(sx * 1.1, 0.7), mid, sq, turn), s * 0.95 * sq.x, s * 0.55 * sq.y, deep)
-	b.ellipse(_frog_pt(Vector2.ZERO, mid, sq, turn), s * 1.55 * 1.3 * sq.x, s * 1.2 * 1.3 * sq.y, green)
-	b.ellipse(_frog_pt(Vector2(0.0, 0.4), mid, sq, turn), s * 1.0 * 1.3 * sq.x, s * 0.7 * 1.3 * sq.y, Color("cfe9a8"))
+	var sh := q / (1.0 + lift * 0.1)
+	_rm.put(SC_FROG_SHADOW, [], Transform2D(0.0, Vector2(sh, sh), 0.0, _pt(FROG_AT + Vector2(0.0, 0.2))))
+	var body := Transform2D(turn, sq * q, 0.0, _pt(mid))
+	_rm.put(SC_FROG_BODY, [], body)
 	var c := t - _frog_croak_at
 	if c < FROG_CROAK:
-		var puff := sin(PI * c / FROG_CROAK)
-		b.disc(_frog_pt(Vector2(0.0, 0.35), mid, sq, turn), s * (0.4 + 0.6 * puff) * 1.3, Color("f4c6cf"))
-	for sx: float in [-1.0, 1.0]:
-		b.disc(_frog_pt(Vector2(sx * 0.62, 1.15), mid, sq, turn), s * 0.32, deep)
-		b.disc(_frog_pt(Vector2(sx * 1.0, 0.05), mid, sq, turn), s * 0.22, Color("f4a3a0", 0.7))
+		var k := 0.4 + 0.6 * sin(PI * c / FROG_CROAK)
+		_rm.put(SC_FROG_PUFF, [], body * Transform2D(0.0, Vector2(k, k), 0.0, Vector2(0.0, 0.35) * 1.3 * _ref_s))
+	_rm.put(SC_FROG_FACE, [], body)
 	# eyes on top, looking at the seed (or up at the sun)
 	var target := State.SUN_C
 	if not _state.balls.is_empty():
 		target = Vector2(_state.balls[0].p)
 	var look := (target - mid).normalized() * 0.14
-	var shut := fmod(t + 1.3, 4.7) < 0.13
+	if fmod(t + 1.3, 4.7) < 0.13:
+		_rm.put(SC_FROG_SHUT, [], body)
+		return
+	_rm.put(SC_FROG_WHITES, [], body)
 	for sx: float in [-1.0, 1.0]:
-		var at := _frog_pt(Vector2(sx * 0.7, -1.0), mid, sq, turn)
-		b.disc(at, s * 0.62 * 1.3, green)
-		if shut:
-			b.stroke(PackedVector2Array([at + Vector2(-0.4, 0.0) * s, at + Vector2(0.4, 0.0) * s]), s * 0.16, Pal.TEXT)
-		else:
-			b.disc(at, s * 0.44 * 1.3, Color("fffaf0"))
-			b.disc(at + look * s * 1.3 * 1.5, s * 0.24 * 1.3, Pal.TEXT)
-	var m := _frog_pt(Vector2(0.0, -0.35), mid, sq, turn)
-	b.stroke(Face.Builder.arc_points(m, s * 0.75, PI * 0.18 + turn, PI * 0.82 + turn), s * 0.14, deep, false, false)
+		_rm.put(SC_FROG_PUPIL, [], body * Transform2D(0.0, (Vector2(sx * 0.7, -1.0) + look * 1.5) * 1.3 * _ref_s))
 
 ## A duck and three ducklings paddling across the pond, bobbing, each with a
 ## little wake; they fade in and out at the pond's edges.
-func _draw_ducks(b: Face.Builder, t: float) -> void:
+func _put_ducks(t: float, q: float) -> void:
 	var e := t - _ducks_at
 	if e < 0.0 or e > DUCK_TIME:
 		return
-	var s := _s()
 	var x0 := lerpf(-6.0, State.W + 20.0, e / DUCK_TIME)
 	for k in 4:
 		var mother := k == 0
 		var x := x0 - (0.0 if mother else 5.4 + 4.0 * float(k - 1))
 		var fade := clampf(minf(x - 2.0, State.W - 2.0 - x) / 4.0, 0.0, 1.0)
-		if fade <= 0.0:
+		var step := int(round(fade * float(DUCK_FADES)))
+		if step <= 0:
 			continue
-		var r := 2.1 if mother else 1.3
-		var body := Color("fbf3dc") if mother else Color("ffd84d")
 		var c := Vector2(x, 66.0 + float(k) * 0.6 + sin(t * 5.0 + float(k) * 1.3) * 0.16)
-		b.stroke(PackedVector2Array([_pt(c + Vector2(-r * 1.1, r * 0.5)), _pt(c + Vector2(-r * 2.8, r * 0.95))]), s * 0.16, Color(Pal.MG_SHINE, 0.45 * fade))
-		b.stroke(PackedVector2Array([_pt(c + Vector2(-r * 1.1, r * 0.55)), _pt(c + Vector2(-r * 2.6, r * 0.2))]), s * 0.16, Color(Pal.MG_SHINE, 0.3 * fade))
-		b.ellipse(_pt(c + Vector2(0.0, r * 0.55)), r * 1.3 * s, r * 0.22 * s, Color(Pal.MG_POND_DEEP, 0.45 * fade))
-		b.fan(PackedVector2Array([_pt(c + Vector2(-r * 0.9, -r * 0.1)), _pt(c + Vector2(-r * 1.55, -r * 0.6)), _pt(c + Vector2(-r * 0.6, -r * 0.4))]),
-			Color(body.darkened(0.08), fade))
-		b.ellipse(_pt(c), r * 1.2 * s, r * 0.62 * s, Color(body, fade))
-		b.ellipse(_pt(c + Vector2(-r * 0.15, -r * 0.12)), r * 0.6 * s, r * 0.3 * s, Color(body.darkened(0.1), fade))
-		var head := c + Vector2(r * 0.8, -r * 0.8)
-		b.disc(_pt(head), r * 0.5 * s, Color(body, fade))
-		b.fan(PackedVector2Array([_pt(head + Vector2(r * 0.35, -r * 0.08)), _pt(head + Vector2(r * 0.85, r * 0.06)), _pt(head + Vector2(r * 0.35, r * 0.2))]),
-			Color(Color("f2a23a"), fade))
-		b.disc(_pt(head + Vector2(r * 0.15, -r * 0.12)), r * 0.09 * s + 1.0, Color(Pal.TEXT, fade))
+		_rm.put(SC_DUCK + (0 if mother else 1) * (DUCK_FADES + 1) + step, [], Transform2D(0.0, Vector2(q, q), 0.0, _pt(c)))
+
+## A duck (or a duckling) and its wake about its middle, at the reference
+## layout's scale, `fade` in.
+func _duck_look(b: Face.Builder, mother: bool, fade: float) -> void:
+	var s := _ref_s
+	var r := 2.1 if mother else 1.3
+	var body := Color("fbf3dc") if mother else Color("ffd84d")
+	var p := func(v: Vector2) -> Vector2: return v * s
+	b.stroke(PackedVector2Array([p.call(Vector2(-r * 1.1, r * 0.5)), p.call(Vector2(-r * 2.8, r * 0.95))]), s * 0.16, Color(Pal.MG_SHINE, 0.45 * fade))
+	b.stroke(PackedVector2Array([p.call(Vector2(-r * 1.1, r * 0.55)), p.call(Vector2(-r * 2.6, r * 0.2))]), s * 0.16, Color(Pal.MG_SHINE, 0.3 * fade))
+	b.ellipse(p.call(Vector2(0.0, r * 0.55)), r * 1.3 * s, r * 0.22 * s, Color(Pal.MG_POND_DEEP, 0.45 * fade))
+	b.fan(PackedVector2Array([p.call(Vector2(-r * 0.9, -r * 0.1)), p.call(Vector2(-r * 1.55, -r * 0.6)), p.call(Vector2(-r * 0.6, -r * 0.4))]),
+		Color(body.darkened(0.08), fade))
+	b.ellipse(Vector2.ZERO, r * 1.2 * s, r * 0.62 * s, Color(body, fade))
+	b.ellipse(p.call(Vector2(-r * 0.15, -r * 0.12)), r * 0.6 * s, r * 0.3 * s, Color(body.darkened(0.1), fade))
+	var head := Vector2(r * 0.8, -r * 0.8)
+	b.disc(p.call(head), r * 0.5 * s, Color(body, fade))
+	b.fan(PackedVector2Array([p.call(head + Vector2(r * 0.35, -r * 0.08)), p.call(head + Vector2(r * 0.85, r * 0.06)), p.call(head + Vector2(r * 0.35, r * 0.2))]),
+		Color(Color("f2a23a"), fade))
+	b.disc(p.call(head + Vector2(r * 0.15, -r * 0.12)), r * 0.09 * s + 1.0, Color(Pal.TEXT, fade))
 
 # --- hearts ---
 
@@ -1931,19 +2093,25 @@ func _draw() -> void:
 		if _back == null or t - _fever_at < 2.0:
 			_back = _build_back(t)
 		_put(_back, xf, tint, shown)
+		if _back_pots == null or _back_pots_for != _fever_pot:
+			_back_pots = _build_back_pots()
+			_back_pots_for = _fever_pot
+		_put(_back_pots, xf, tint, shown)
 	if not Motion.reduce:
 		_live_back = _build_live_back(t)
 		_put(_live_back, xf, tint, shown)
+		_put(_ripple_mesh, xf, tint, shown)
 	if _state.sweethearts:
 		_draw_threads(t, xf, tint, shown)
+	_size_codes()
 	if _buds.size() != BUD_BANDS:
 		_buds = []
-		for k in BUD_BANDS:
-			_buds.append(_build_buds(t, k))
+		_buds.resize(BUD_BANDS)
 	for k in BUD_BANDS:
 		if _buds[k] == null:
 			_buds[k] = _build_buds(t, k)
 		_put(_buds[k], xf, tint, shown)
+	_put(_live_buds, xf, tint, shown)
 	if _lit == null:
 		_lit = _build_lit(t)
 	_put(_lit, xf, tint, shown)
@@ -1960,9 +2128,11 @@ func _draw() -> void:
 		var glow := 0.0 if Motion.reduce else clampf(1.0 - (t - _pot_glow_at) / POT_GLOW_TIME, 0.0, 1.0)
 		var gk := int(glow * 8.0)
 		if _pot == null or _pot_for != gk:
-			var b := Face.Builder.new()
-			Parts.pot(b, _state.pot_w * s, float(gk) / 8.0)
-			_pot = b.mesh()
+			var q := _look_scale()
+			var rm := _layer("pot")
+			rm.begin()
+			rm.put(SC_POT + gk, [], Transform2D(0.0, Vector2(q, q), 0.0, Vector2.ZERO))
+			_pot = rm.mesh()
 			_pot_for = gk
 		_put(_pot, xf * _pot_xf(t), tint, shown)
 	# the seeds
@@ -1984,11 +2154,15 @@ func _draw() -> void:
 	if not Motion.reduce:
 		_live = _build_live(t)
 		_put(_live, xf, tint, shown)
+		for m: ArrayMesh in _live_bits:
+			_put(m, xf, tint, shown)
 	draw_set_transform_matrix(_cam)
 	_draw_floats(t, seen)
 	draw_set_transform(Vector2.ZERO)
 	_air = _build_air(t)
 	_put(_air, hud, tint, shown)
+	for m: ArrayMesh in _air_bits_meshes:
+		_put(m, hud, tint, shown)
 	_draw_count(t, hud, seen)
 	_draw_stickers(hud, seen)
 	if t >= _stamp_at:
@@ -2240,25 +2414,24 @@ func _build_back(t: float) -> ArrayMesh:
 			var far := 90.0 * s * (0.3 + 0.7 * e)
 			b.fan(PackedVector2Array([_fever_from, _fever_from + d * far + side * far * 0.08, _fever_from + d * far - side * far * 0.08]),
 				Color(Pal.SUN_RAY, 0.35 * a))
-	# the five pots, each with its worth
+	return b.mesh()
+
+## The five pots along the foot, the one a seed fell in lit.
+func _build_back_pots() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := _s()
+	var q := _look_scale()
+	var rm := _layer("pots")
+	rm.begin()
 	var n := State.FEVER_POTS.size()
 	var w := State.W / float(n)
 	for k in n:
 		var x := (float(k) + 0.5) * w
-		var lit := 1.0 if k == _fever_pot else 0.0
-		var rim := _pt(Vector2(x, State.POT_Y))
-		var pb := Face.Builder.new()
-		Parts.pot(pb, (w - 2.2) * s, lit)
-		# fold the small builder into this one at the pot's place
-		var base := b.verts.size()
-		for i in pb.verts.size():
-			b.verts.append(pb.verts[i] + rim)
-			b.cols.append(pb.cols[i])
-		for i in pb.idx:
-			b.idx.append(base + i)
+		rm.put(SC_FEVER_POT + (1 if k == _fever_pot else 0), [], Transform2D(0.0, Vector2(q, q), 0.0, _pt(Vector2(x, State.POT_Y))))
 	for k in range(1, n):
 		b.disc(_pt(Vector2(State.W * float(k) / float(n), State.POT_Y)), (State.POT_RIM + 0.4) * s, Pal.MG_ARBOR)
-	return b.mesh()
+	rm.put_builder(b)
+	return rm.mesh()
 
 ## Every closed bud, popping in top to bottom as the garden grows.
 func _band_of(i: int) -> int:
@@ -2270,74 +2443,302 @@ func _dirty_bud(i: int) -> void:
 		_buds[_band_of(i)] = null
 
 func _build_buds(t: float, band: int) -> ArrayMesh:
-	var b := Face.Builder.new()
-	var s := _s()
-	var r := State.PEG_R * s
+	var q := _look_scale()
+	_rm = _layer("band")
+	_rm.begin()
 	for i in _state.pos.size():
-		if _state.st[i] != State.UP or _band_of(i) != band:
+		if _band_of(i) != band:
+			continue
+		var c := _bud_rest(i, t)
+		_bud_code[i] = maxi(c, 0)
+		if c > 0:
+			_rm.put(LOOK_BUD + c - 1, [], Transform2D(0.0, Vector2(q, q), 0.0, _pt(_state.pos[i])))
+	return _rm.mesh()
+
+## What bud `i` is now: 0 not drawn (open, picked, not grown yet, folding
+## shut), 1 + its kind at rest, -1 moving (popping in, shivering).
+func _bud_rest(i: int, t: float) -> int:
+	if _state.st[i] != State.UP:
+		return 0
+	if Motion.reduce:
+		return 1 + _state.kind[i]
+	var e := _grow_e(i, t)
+	if e <= 0.0:
+		return 0
+	if e < Motion.POP_IN:
+		return -1
+	var f := _fold_at[i]
+	if f >= 0.0:
+		# a marigold folding back comes up as a bud once its bloom has shut
+		var g := t - f - FOLD_TIME * 0.7
+		if g <= 0.0:
+			return 0
+		if g < Motion.POP_IN:
+			return -1
+	if t - _rustle_at[i] < RUSTLE_TIME:
+		return -1
+	return 1 + _state.kind[i]
+
+## A strip whose resting buds changed is built again; the moving buds are
+## built every frame while there are any.
+func _sort_buds(t: float) -> void:
+	var n: int = _state.pos.size()
+	_size_codes()
+	var moving := false
+	for i in n:
+		var c := _bud_rest(i, t)
+		if c < 0:
+			moving = true
+		if maxi(c, 0) != _bud_code[i] and _buds.size() == BUD_BANDS:
+			_buds[_band_of(i)] = null
+	_live_buds = _build_live_buds(t) if moving else null
+
+## One code a bud, every strip built again, when the garden changed size (a
+## new garden, laid between frames: a draw can come before the next sort).
+func _size_codes() -> void:
+	var n: int = _state.pos.size()
+	if _bud_code.size() != n:
+		_bud_code.resize(n)
+		_bud_code.fill(-1)
+		_buds = []
+
+## The buds popping in, folding back up and shivering, each its look under
+## the moment's scale and shiver.
+func _build_live_buds(t: float) -> ArrayMesh:
+	var q := _look_scale()
+	var s := _s()
+	_rm = _layer("live_buds")
+	_rm.begin()
+	for i in _state.pos.size():
+		if _bud_rest(i, t) >= 0:
 			continue
 		var sc := _grow(i, t)
-		# a marigold folding back comes up as a bud once its bloom has shut
 		var f := _fold_at[i]
-		if f >= 0.0 and not Motion.reduce:
+		if f >= 0.0:
 			sc *= Motion.pop_in_scale(t - f - FOLD_TIME * 0.7).x if t - f > FOLD_TIME * 0.7 else 0.0
 		if sc <= 0.01:
 			continue
 		var at := _pt(_state.pos[i])
 		var e := t - _rustle_at[i]
-		if e < RUSTLE_TIME and not Motion.reduce:
+		if e < RUSTLE_TIME:
 			at.x += sin(e * 42.0) * exp(-e * 7.0) * 0.32 * s
-		Parts.bud(b, at, r, _state.kind[i], sc)
-	return b.mesh() if not b.verts.is_empty() else null
+		_rm.put(LOOK_BUD + _state.kind[i], [], Transform2D(0.0, Vector2(q, q) * sc, 0.0, at))
+	return _rm.mesh()
+
+func _grow_e(i: int, t: float) -> float:
+	var y: float = (_state.pos[i].y - State.TOP) / (State.BOTTOM - State.TOP)
+	return t - _grown_at - Motion.ENTER_DELAY - 0.1 - y * 0.8 - _hash(i, 31) * 0.1
 
 func _grow(i: int, t: float) -> float:
 	if Motion.reduce:
 		return 1.0
-	var y: float = (_state.pos[i].y - State.TOP) / (State.BOTTOM - State.TOP)
-	var e := t - _grown_at - Motion.ENTER_DELAY - 0.1 - y * 0.8 - _hash(i, 31) * 0.1
+	var e := _grow_e(i, t)
 	return 0.0 if e <= 0.0 else Motion.pop_in_scale(e).x
+
+## The looks' scale on the layout as it is now. They are made at the first
+## layout's size and kept across a smaller one (the win card's); a bigger
+## one makes them again, so they never blur.
+func _look_scale() -> float:
+	var s := _s()
+	if _looks == null or s > _ref_s * 1.001:
+		_ref_s = s
+		_ref_o = _origin()
+		_looks = RunMesh.new(_make_look)
+		_layers = {}
+		_tiled = {}
+		_prime = PackedInt32Array()
+		for k in 4:
+			for step in int(1.2 / OPEN_STEP) + 1:
+				_prime.append(LOOK_BLOOM + k * 100 + step)
+			for f in FADE_STEPS:
+				_prime.append(LOOK_BLOOM + k * 100 + FADE_AT + f)
+		for ink in 6:
+			for step in RIPPLE_STEPS:
+				_prime.append(SC_RIPPLE + ink * RIPPLE_STEPS + step)
+		for k in BIT_KINDS.size():
+			_prime.append(LOOK_BIT + k)
+		for k in 9:
+			_prime.append(SC_POT + k)
+		_prime.append(SC_FEVER_POT)
+		_prime.append(SC_FEVER_POT + 1)
+		for k in 2:
+			for step in range(1, DUCK_FADES + 1):
+				_prime.append(SC_DUCK + k * (DUCK_FADES + 1) + step)
+		_prime.reverse()
+	return s / _ref_s
+
+func _layer(name: String) -> RunMesh:
+	var rm: RunMesh = _layers.get(name)
+	if rm == null:
+		rm = RunMesh.new(_make_look)
+		rm.share_shapes(_looks)
+		_layers[name] = rm
+	return rm
+
+## The reference layout onto the layout as it is now.
+func _relay() -> Transform2D:
+	var q := _look_scale()
+	return Transform2D(0.0, Vector2(q, q), 0.0, _origin() - _ref_o * q)
+
+func _ref_pt(v: Vector2) -> Vector2:
+	return _ref_o + v * _ref_s
+
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var r := State.PEG_R * _ref_s
+	if id >= LOOK_SCENE:
+		_scene_look(b, id)
+	elif id >= LOOK_THREAD:
+		_thread_look(b, (id - LOOK_THREAD) / 3, (id - LOOK_THREAD) % 3)
+	elif id >= LOOK_BIT:
+		_bit_look(b, BIT_KINDS[id - LOOK_BIT])
+	elif id < LOOK_BLOOM:
+		Parts.bud(b, Vector2.ZERO, r, id - LOOK_BUD)
+	else:
+		var k := id - LOOK_BLOOM
+		if k % 100 >= FADE_AT:
+			Parts.bloom(b, Vector2.ZERO, r, k / 100, 1.0, 1.0, float(k % 100 - FADE_AT + 1) / float(FADE_STEPS))
+		else:
+			Parts.bloom(b, Vector2.ZERO, r, k / 100, float(k % 100) * OPEN_STEP)
+	return b
+
+## The garden's looks, made at the reference layout's scale about their
+## own middle (the frog's about its own: `mid`, a unit of it 1.3 cells).
+func _scene_look(b: Face.Builder, id: int) -> void:
+	var s := _ref_s
+	var green := Color("79c26b")
+	var deep := Color("4f9150")
+	var fv := func(v: Vector2) -> Vector2: return v * 1.3 * s
+	if id >= SC_FEVER_POT:
+		var w := State.W / float(State.FEVER_POTS.size())
+		Parts.pot(b, (w - 2.2) * _ref_s, float(id - SC_FEVER_POT))
+		return
+	if id >= SC_POT:
+		Parts.pot(b, _state.pot_w * _ref_s, float(id - SC_POT) / 8.0)
+		return
+	if id >= SC_DUCK:
+		var k := id - SC_DUCK
+		_duck_look(b, k / (DUCK_FADES + 1) == 0, float(k % (DUCK_FADES + 1)) / float(DUCK_FADES))
+		return
+	if id >= SC_RIPPLE:
+		var u := float((id - SC_RIPPLE) % RIPPLE_STEPS) / float(RIPPLE_STEPS - 1)
+		var ink := (id - SC_RIPPLE) / RIPPLE_STEPS
+		var col: Color = Pal.SUN_RAY if ink == 4 else (Pal.MG_SHINE if ink == 5 else Parts.colours(ink)[1])
+		var rad := State.PEG_R * s * (1.1 + 2.4 * Motion.back_out(u) * 0.8 + 0.4 * u)
+		# a fixed count of points, so every ripple look shares one index list
+		var pts := PackedVector2Array()
+		for k in RIPPLE_POINTS:
+			pts.append(Vector2.from_angle(TAU * float(k) / float(RIPPLE_POINTS)) * rad)
+		b.stroke(pts, s * 0.3 * (1.0 - 0.5 * u), Color(col, 0.6 * (1.0 - u)), true, false)
+		return
+	match id:
+		SC_TWINKLE:
+			_twinkle(b, Vector2.ZERO, 10.0, RunMesh.slot(0), 0.0)
+		SC_FIREFLY:
+			b.disc(Vector2.ZERO, s * 1.4, RunMesh.slot(0))
+			b.disc(Vector2.ZERO, s * 0.36, RunMesh.slot(1))
+		SC_LANTERN:
+			b.disc(Vector2.ZERO, s * 2.3, RunMesh.slot(0))
+		SC_FROG_SHADOW:
+			b.ellipse(Vector2.ZERO, s * 2.0, s * 0.5, Color(Pal.MG_POND_DEEP, 0.55))
+		SC_FROG_BODY:
+			for sx: float in [-1.0, 1.0]:
+				b.ellipse(fv.call(Vector2(sx * 1.1, 0.7)), s * 0.95, s * 0.55, deep)
+			b.ellipse(fv.call(Vector2.ZERO), s * 1.55 * 1.3, s * 1.2 * 1.3, green)
+			b.ellipse(fv.call(Vector2(0.0, 0.4)), s * 1.0 * 1.3, s * 0.7 * 1.3, Color("cfe9a8"))
+		SC_FROG_PUFF:
+			b.disc(Vector2.ZERO, s * 1.3, Color("f4c6cf"))
+		SC_FROG_FACE:
+			for sx: float in [-1.0, 1.0]:
+				b.disc(fv.call(Vector2(sx * 0.62, 1.15)), s * 0.32, deep)
+				b.disc(fv.call(Vector2(sx * 1.0, 0.05)), s * 0.22, Color("f4a3a0", 0.7))
+			for sx: float in [-1.0, 1.0]:
+				b.disc(fv.call(Vector2(sx * 0.7, -1.0)), s * 0.62 * 1.3, green)
+			b.stroke(Face.Builder.arc_points(fv.call(Vector2(0.0, -0.35)), s * 0.75, PI * 0.18, PI * 0.82), s * 0.14, deep, false, false)
+		SC_FROG_WHITES:
+			for sx: float in [-1.0, 1.0]:
+				b.disc(fv.call(Vector2(sx * 0.7, -1.0)), s * 0.44 * 1.3, Color("fffaf0"))
+		SC_FROG_PUPIL:
+			b.disc(Vector2.ZERO, s * 0.24 * 1.3, Pal.TEXT)
+		SC_FROG_SHUT:
+			for sx: float in [-1.0, 1.0]:
+				var at: Vector2 = fv.call(Vector2(sx * 0.7, -1.0))
+				b.stroke(PackedVector2Array([at + Vector2(-0.4, 0.0) * s, at + Vector2(0.4, 0.0) * s]), s * 0.16, Pal.TEXT)
 
 ## The blooms, opening as they are touched and fading as they are picked.
 func _build_lit(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	_look_scale()
+	_rm = _layer("lit")
+	_rm.begin()
+	# this shot's blooms in the order they bloomed, the ones still opening
+	# last: a bloom's look changes size as it opens, and one put among the
+	# rest would move every later one to a new place
+	var b: Face.Builder = null
+	var opening := PackedInt32Array()
+	for i in _order:
+		if not Motion.reduce and t - _hit_at[i] < BLOOM_TIME and _fold_at[i] < 0.0 and _pick_at[i] < 0.0:
+			opening.append(i)
+		else:
+			b = _put_bloom(i, t, b)
+	for i in opening:
+		b = _put_bloom(i, t, b)
+	# the blooms folding shut, drawn as they are, over the rest
+	if b != null:
+		_rm.put_builder(b)
+	return _rm.mesh()
+
+## Bloom `i` as it is now into the lit layer: a look of its opening step
+## under its breath, or of its fade turning as it is picked; one folding
+## shut is drawn into `b` (made when first needed and handed back).
+func _put_bloom(i: int, t: float, b: Face.Builder) -> Face.Builder:
 	var s := _s()
 	var r := State.PEG_R * s
-	for i in _state.pos.size():
-		var hit := _hit_at[i]
-		if hit < 0.0:
-			continue
-		var pick := _pick_at[i]
-		var alpha := 1.0
-		var sc := 1.0
-		var lift := 0.0
-		var spin := 0.0
-		var f := _fold_at[i]
-		if f >= 0.0:
-			# Sweethearts: a lonely bloom droops and shuts
-			var u := clampf((t - f) / FOLD_TIME, 0.0, 1.0)
-			if u >= 1.0 or Motion.reduce:
-				continue
-			var shut := 1.0 - u * u
-			Parts.bloom(b, _pt(_state.pos[i]) + Vector2(0.0, s * 0.8 * u), r, _state.kind[i], shut, 1.0 - 0.15 * u, 1.0, -0.5 * u)
-			continue
-		if pick >= 0.0:
-			var e := t - pick
-			if e >= PICK_TIME or (Motion.reduce and e >= 0.0):
-				continue
-			if e > 0.0:
-				var u := e / PICK_TIME
-				alpha = 1.0 - u * u
-				sc = 1.0 + 0.35 * u
-				lift = PICK_RISE * s * u
-				spin = 1.4 * u
-		elif _state.st[i] != State.LIT:
-			continue
-		var open := 1.0 if Motion.reduce else Motion.back_out(clampf((t - hit) / BLOOM_TIME, 0.0, 1.0))
-		# open blooms breathe while the seed is still out
-		if pick < 0.0 and _phase == "shot" and not Motion.reduce:
-			sc *= 1.0 + 0.05 * sin((t - hit) * 6.0 + float(i))
-		Parts.bloom(b, _pt(_state.pos[i]) - Vector2(0.0, lift), r, _state.kind[i], open, sc, alpha, spin)
-	return b.mesh() if not b.verts.is_empty() else null
+	var q := s / _ref_s
+	var hit := _hit_at[i]
+	if hit < 0.0:
+		return b
+	var pick := _pick_at[i]
+	var alpha := 1.0
+	var sc := 1.0
+	var lift := 0.0
+	var spin := 0.0
+	var f := _fold_at[i]
+	if f >= 0.0:
+		# Sweethearts: a lonely bloom droops and shuts
+		var u := clampf((t - f) / FOLD_TIME, 0.0, 1.0)
+		if u >= 1.0 or Motion.reduce:
+			return b
+		var shut := 1.0 - u * u
+		if b == null:
+			b = Face.Builder.new()
+		Parts.bloom(b, _pt(_state.pos[i]) + Vector2(0.0, s * 0.8 * u), r, _state.kind[i], shut, 1.0 - 0.15 * u, 1.0, -0.5 * u)
+		return b
+	if pick >= 0.0:
+		var e := t - pick
+		if e >= PICK_TIME or (Motion.reduce and e >= 0.0):
+			return b
+		if e > 0.0:
+			var u := e / PICK_TIME
+			alpha = 1.0 - u * u
+			sc = 1.0 + 0.35 * u
+			lift = PICK_RISE * s * u
+			spin = 1.4 * u
+	elif _state.st[i] != State.LIT:
+		return b
+	var open := 1.0 if Motion.reduce else Motion.back_out(clampf((t - hit) / BLOOM_TIME, 0.0, 1.0))
+	# open blooms breathe while the seed is still out
+	if pick < 0.0 and _phase == "shot" and not Motion.reduce:
+		sc *= 1.0 + 0.05 * sin((t - hit) * 6.0 + float(i))
+	var at := _pt(_state.pos[i]) - Vector2(0.0, lift)
+	if alpha < 1.0:
+		# fading wide open, a look an alpha step, turning
+		var fade := clampi(int(alpha * float(FADE_STEPS)), 0, FADE_STEPS - 1)
+		_rm.put(LOOK_BLOOM + _state.kind[i] * 100 + FADE_AT + fade, [], Transform2D(spin, Vector2(q, q) * sc, 0.0, at))
+		return b
+	# a look a step of its opening, under the moment's breath
+	var step := clampi(int(round(open / OPEN_STEP)), 0, int(1.2 / OPEN_STEP))
+	_rm.put(LOOK_BLOOM + _state.kind[i] * 100 + step, [], Transform2D(0.0, Vector2(q, q) * sc, 0.0, at))
+	return b
 
 ## The aim: dots down the seed's way to the first bud it will touch (the
 ## hint's long guide: through three), fading as they go.
@@ -2468,26 +2869,18 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 	var total: int = _state.orange_total
 	var got := _pips_filled(t)
 	var in_trough: int = _state.seeds - _seeds_flying(t)
-	var key := "%d|%d|%d|%d|%d" % [in_trough, got, total, _seeds_start, int(size.x)]
-	if _hud == null or _hud_for != key:
+	var slots := clampi(maxi(_seeds_start, _state.seeds), 1, 10)
+	var g := _pip_geom()
+	var pip: float = g.pip
+	var base_key := "%d|%d|%d" % [slots, total, int(size.x)]
+	if _hud_base == null or _hud_base_for != base_key:
 		var b := Face.Builder.new()
-		# the trough, the seeds lying in it and the dents of the ones shot
-		var slots := clampi(maxi(_seeds_start, _state.seeds), 1, 10)
+		# the trough and the pips' groove
 		var tw := 30.0 * float(slots) + 14.0
 		b.fan(Face.Builder.round_rect(Vector2(INSET + 5.0, 20.0), Vector2(tw, 40.0), 20.0), Pal.MG_ARBOR_DEEP.darkened(0.2))
 		b.fan(Face.Builder.round_rect(Vector2(INSET + 5.0, 17.0), Vector2(tw, 40.0), 20.0), Pal.MG_ARBOR_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(INSET + 10.0, 22.0), Vector2(tw - 10.0, 30.0), 15.0), Pal.MG_ARBOR_DEEP.darkened(0.3))
 		b.stroke(PackedVector2Array([Vector2(INSET + 22.0, 19.5), Vector2(INSET + tw - 12.0, 19.5)]), 2.0, Color(Pal.MG_ARBOR_HI, 0.6))
-		var shown_seeds := mini(in_trough, 10)
-		for k in slots:
-			var at := Vector2(INSET + 22.0 + float(k) * 30.0, 38.0)
-			if k < shown_seeds:
-				Parts.kernel(b, at, 9.5, -PI * 0.5 + (0.2 if k % 2 == 0 else -0.2))
-			else:
-				b.ellipse(at + Vector2(0.0, 3.0), 7.0, 4.0, Color(Pal.TEXT, 0.25))
-		# the pips' groove
-		var g := _pip_geom()
-		var pip: float = g.pip
 		var row_x: float = g.x
 		var row_w: float = g.w
 		var row_y: float = g.y
@@ -2497,14 +2890,25 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 			Pal.MG_ARBOR_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(row_x - 8.0, row_y - pip * 0.5 - 2.0), Vector2(row_w + 16.0, pip + 4.0), pip * 0.5 + 2.0),
 			Pal.MG_ARBOR_DEEP.darkened(0.3))
+		_hud_base = b.mesh()
+		_hud_base_for = base_key
+	_put(_hud_base, xf, tint, shown)
+	# the seeds lying in the trough and the dents of the ones shot, and the
+	# pips, empty or a marigold: looks put in place (a filled pip was a whole
+	# bloom drawn in script, ~0.3 ms each on every change)
+	var key := "%d|%d|%d|%d|%d" % [in_trough, got, total, slots, int(size.x)]
+	if _hud == null or _hud_for != key:
+		if _hud_rm == null or _hud_rm_for != pip:
+			_hud_rm = RunMesh.new(_make_hud_look)
+			_hud_rm_for = pip
+		_hud_rm.begin()
+		var shown_seeds := mini(in_trough, 10)
+		for k in slots:
+			var at := Vector2(INSET + 22.0 + float(k) * 30.0, 38.0)
+			_hud_rm.put((HUD_KERNEL + k % 2) if k < shown_seeds else HUD_DENT, [], Transform2D(0.0, at))
 		for k in total:
-			var at := _pip_at(k)
-			if k < got:
-				Parts.bloom(b, at, pip * 0.3, State.ORANGE, 1.0)
-			else:
-				b.disc(at, pip * 0.27, Color(Pal.MG_ARBOR, 0.9))
-				b.disc(at + Vector2(0.0, pip * 0.04), pip * 0.2, Pal.MG_ARBOR_DEEP.darkened(0.15))
-		_hud = b.mesh()
+			_hud_rm.put(HUD_PIP_FULL if k < got else HUD_PIP, [], Transform2D(0.0, _pip_at(k)))
+		_hud = _hud_rm.mesh()
 		_hud_for = key
 	_put(_hud, xf, tint, shown)
 	# the tag, popping when the multiplier steps
@@ -2551,6 +2955,21 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 	draw_string(font, Vector2(-mw * 0.5 + 6.0, 15.0), m, HORIZONTAL_ALIGNMENT_LEFT, -1, MULT_FONT, Color(Pal.PAPER, a))
 	draw_set_transform(Vector2.ZERO)
 
+func _make_hud_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var pip := _hud_rm_for
+	match id:
+		HUD_KERNEL, HUD_KERNEL_2:
+			Parts.kernel(b, Vector2.ZERO, 9.5, -PI * 0.5 + (0.2 if id == HUD_KERNEL else -0.2))
+		HUD_DENT:
+			b.ellipse(Vector2(0.0, 3.0), 7.0, 4.0, Color(Pal.TEXT, 0.25))
+		HUD_PIP:
+			b.disc(Vector2.ZERO, pip * 0.27, Color(Pal.MG_ARBOR, 0.9))
+			b.disc(Vector2(0.0, pip * 0.04), pip * 0.2, Pal.MG_ARBOR_DEEP.darkened(0.15))
+		HUD_PIP_FULL:
+			Parts.bloom(b, Vector2.ZERO, pip * 0.3, State.ORANGE, 1.0)
+	return b
+
 ## Where the multiplier's tag sits, its middle.
 func _tag_centre() -> Vector2:
 	return Vector2(size.x - INSET - 64.0, 39.0)
@@ -2596,8 +3015,10 @@ func _pot_xf(t: float) -> Transform2D:
 ## drifting across the pond, the lanterns' flicker, and the ripples round
 ## every bud that bloomed.
 func _build_live_back(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
 	var s := _s()
+	var q := _look_scale()
+	_rm = _layer("back")
+	_rm.begin()
 	var horizon := 58.0
 	for k in 5:
 		var j := k * 3 + 1
@@ -2605,8 +3026,9 @@ func _build_live_back(t: float) -> ArrayMesh:
 		if at.distance_to(Vector2(81.0, 15.0)) < 9.0:
 			continue
 		var a := pow(maxf(0.0, sin(t * (1.1 + 0.3 * _hash(j, 11)) + float(j) * 1.9)), 6.0)
-		if a > 0.05:
-			_twinkle(b, _pt(at), s * 1.3 * a, Color(Pal.MG_SHINE, 0.9 * a), 0.0)
+		if a > 0.05 and s * 1.3 * a > 0.3:
+			_rm.put(SC_TWINKLE, [_qa(Color(Pal.MG_SHINE, 0.9 * a))], Transform2D(0.0, Vector2.ONE * s * 1.3 * a / 10.0, 0.0, _pt(at)))
+	var b := Face.Builder.new()
 	for k in 7:
 		var y := horizon + 5.0 + _hash(k, 61) * 62.0
 		var span := 110.0
@@ -2617,6 +3039,7 @@ func _build_live_back(t: float) -> ArrayMesh:
 		var x1 := clampf(x + w, 1.0, State.W - 1.0)
 		if x1 - x0 > 0.3:
 			b.stroke(PackedVector2Array([_pt(Vector2(x0, y)), _pt(Vector2(x1, y))]), s * 0.32, Color(Pal.MG_SHINE, a))
+	_rm.put_builder(b)
 	for k in FIREFLIES:
 		var low := k % 2 == 0
 		var base := Vector2(6.0 + _hash(k, 51) * 88.0, (108.0 + _hash(k, 53) * 18.0) if low else (10.0 + _hash(k, 53) * 12.0))
@@ -2624,20 +3047,39 @@ func _build_live_back(t: float) -> ArrayMesh:
 		var glow := pow(maxf(0.0, sin(t * (0.8 + 0.5 * _hash(k, 57)) + float(k) * 2.1)), 3.0)
 		if glow < 0.03:
 			continue
-		b.disc(_pt(p), s * 1.4, Color(Pal.SUN_RAY, 0.2 * glow))
-		b.disc(_pt(p), s * 0.36, Color(Color("fff6c8"), 0.95 * glow))
+		_rm.put(SC_FIREFLY, [_qa(Color(Pal.SUN_RAY, 0.2 * glow)), _qa(Color(Color("fff6c8"), 0.95 * glow))],
+			Transform2D(0.0, Vector2(q, q), 0.0, _pt(p)))
 	for k in 2:
 		var at := _lantern_at(k) + Vector2(0.0, 1.5)
 		var f := 0.5 + 0.3 * sin(t * 6.3 + float(k) * 2.0) + 0.2 * sin(t * 10.7 + float(k))
-		b.disc(_pt(at), s * (2.3 + 0.35 * f), Color(Pal.SUN_RAY, 0.12 + 0.1 * f))
-	_draw_ducks(b, t)
-	_draw_frog(b, t)
+		var g := q * (2.3 + 0.35 * f) / 2.3
+		_rm.put(SC_LANTERN, [_qa(Color(Pal.SUN_RAY, 0.12 + 0.1 * f))], Transform2D(0.0, Vector2(g, g), 0.0, _pt(at)))
+	_put_ducks(t, q)
+	_put_frog(t, q)
+	_ripple_mesh = _build_ripples(t, q)
+	return _rm.mesh()
+
+## The ripples round the blooms, a mesh of their own: each a look a step of
+## its spread, all sharing one tiled index list (as the bits do).
+func _build_ripples(t: float, q: float) -> ArrayMesh:
+	if _ripples.is_empty():
+		return null
+	var vs := PackedVector2Array()
+	var cs := PackedColorArray()
 	for r: Dictionary in _ripples:
 		var u := clampf((t - float(r.t)) / RIPPLE_TIME, 0.0, 1.0)
-		var rad := State.PEG_R * s * (1.1 + 2.4 * Motion.back_out(u) * 0.8 + 0.4 * u)
-		b.stroke(Face.Builder.arc_points(_pt(r.at), rad, 0.0, TAU), s * 0.3 * (1.0 - 0.5 * u), Color(Color(r.col), 0.6 * (1.0 - u)),
-			true, false)
-	return b.mesh() if not b.verts.is_empty() else null
+		var step := clampi(int(round(u * float(RIPPLE_STEPS - 1))), 0, RIPPLE_STEPS - 1)
+		var look: Array = _looks.shape(SC_RIPPLE + int(r.ink) * RIPPLE_STEPS + step)
+		vs.append_array(Transform2D(0.0, Vector2(q, q), 0.0, _pt(r.at)) * (look[0] as PackedVector2Array))
+		cs.append_array(look[3])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_COLOR] = cs
+	arrays[Mesh.ARRAY_INDEX] = _tiled_for(SC_RIPPLE, _ripples.size())
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
 
 ## Over everything, every frame: a glint on a marigold now and then, the
 ## marigolds flying up to their pips, and the full bloom's falling petals.
@@ -2684,6 +3126,7 @@ func _build_live(t: float) -> ArrayMesh:
 			var pb := from.lerp(ctrl, ub).lerp(ctrl.lerp(to, ub), ub)
 			b.disc(pb, r * (0.4 - 0.1 * float(j)), Color(Pal.SUN_RAY, 0.5 - 0.12 * float(j)))
 		Parts.bloom(b, p, r, State.ORANGE, 1.0, 1.0 + 0.25 * sin(PI * u), 1.0, u * TAU)
+	var leaves: Array = []
 	if _state.fever and t - _fever_at < PETAL_TIME:
 		var cols := [Pal.MG_ORANGE, Pal.MG_ORANGE_HI, Pal.SUN_RAY, Color("f4a3a0"), Pal.MG_PURPLE_HI]
 		for k in 26:
@@ -2695,8 +3138,8 @@ func _build_live(t: float) -> ArrayMesh:
 			var at := Vector2(_hash(k, 73) * State.W + sin(e * 2.2 + float(k)) * 4.0, -3.0 + u * (State.H * 0.9))
 			var col: Color = cols[k % cols.size()]
 			col.a = minf(1.0, (1.0 - u) * 4.0)
-			Parts.leaf(b, _pt(at), Vector2.from_angle(e * 3.0 + float(k)), s * 1.5, s * 0.5, col)
-	_draw_bits(b, _bits)
+			leaves.append([Transform2D(e * 3.0 + float(k), Vector2(s * 1.5 / 16.0, s * 0.5 / 5.0), 0.0, _pt(at)), [_qa(col)]])
+	_live_bits = _bit_meshes(b, _bits, leaves)
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A four-pointed glint at `at`, `r` to a point.
@@ -2784,7 +3227,7 @@ func _build_air(t: float) -> ArrayMesh:
 				Parts.kernel(b, p, lerpf(14.0, 9.5, ease), e * 14.0)
 			else:
 				b.disc(p, 9.0 - float(j) * 1.3, Color(GOLD.lightened(0.2), 0.14 * float(6 - j)))
-	_draw_bits(b, _air_bits)
+	_air_bits_meshes = _bit_meshes(b, _air_bits, [])
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## A warm glow beating round the card's edge, rising with a long shot.
@@ -2807,8 +3250,18 @@ static func _quad(b: Face.Builder, pts: Array, cols: Array) -> void:
 	var i3 := b.vertex(pts[3], cols[3])
 	b.idx.append_array([i0, i1, i2, i0, i2, i3])
 
-## The bits flung about, each fading out over the end of its life.
-func _draw_bits(b: Face.Builder, bits: Array) -> void:
+## The bits flung about, each fading out over the end of its life: a mesh
+## per kind, its look copied under every bit's place, turn and size and
+## painted its colours (alpha in 32 steps), the copies sharing one index
+## list tiled once (`_tiled_for`) -- a hundred bits are native copies, not
+## drawing. A ring swells its own width, so it is drawn into `b`; `extra`
+## is more [transform, colours] for the leaves (the full bloom's petals).
+func _bit_meshes(b: Face.Builder, bits: Array, extra: Array) -> Array:
+	var buckets: Array = []
+	for k in BIT_KINDS.size():
+		buckets.append([])
+	buckets[1].append_array(extra)
+	_look_scale()
 	for bit: Dictionary in bits:
 		if bit.t < 0.0:
 			continue
@@ -2816,34 +3269,117 @@ func _draw_bits(b: Face.Builder, bits: Array) -> void:
 		var a := clampf((life - bit.t) / (life * 0.35), 0.0, 1.0)
 		var col: Color = bit.col
 		col.a *= a
+		if col.a < 0.5 / 32.0:
+			continue
 		var at: Vector2 = bit.pos
 		var sz: float = bit.size
 		var rot: float = bit.rot
 		match String(bit.kind):
 			"petal":
-				Parts.petal(b, at, 13.0 * sz, rot, 0.35 + 0.65 * absf(cos(bit.t * 4.0 + rot)), col)
+				var flip := 0.35 + 0.65 * absf(cos(bit.t * 4.0 + rot))
+				buckets[0].append([Transform2D(rot, Vector2(sz, sz * maxf(0.12, flip)), 0.0, at), [_qa(col)]])
 			"leaf":
-				Parts.leaf(b, at, Vector2.from_angle(rot), 16.0 * sz, 5.0 * sz, col)
+				buckets[1].append([Transform2D(rot, Vector2(sz, sz), 0.0, at), [_qa(col)]])
 			"star":
-				Parts.star(b, at, 13.0 * sz * (0.6 + 0.4 * a), col, rot)
+				var r := sz * (0.6 + 0.4 * a)
+				buckets[2].append([Transform2D(rot, Vector2(r, r), 0.0, at),
+					[_qa(Color(col.darkened(0.35), col.a)), _qa(col), _qa(Color(1, 1, 1, 0.5 * col.a))]])
 			"spark":
-				Parts.spark(b, at, 20.0 * sz * a, rot, col)
+				buckets[3].append([Transform2D(rot, Vector2(sz * a, sz * a), 0.0, at),
+					[_qa(Color(col, col.a * 0.26)), _qa(col), _qa(Color(1, 1, 1, col.a))]])
 			"coin":
 				# a gold coin turning over as it falls
 				var face := absf(cos(bit.t * 6.0 + rot))
-				b.ellipse(at, 12.0 * sz * maxf(0.15, face), 12.0 * sz, Color(GOLD.darkened(0.25), col.a))
-				b.ellipse(at, 9.5 * sz * maxf(0.12, face), 9.5 * sz, col)
-				b.ellipse(at + Vector2(-3.0 * sz * face, -3.0 * sz), 2.5 * sz * face, 2.5 * sz, Color(1, 1, 1, 0.6 * col.a))
+				buckets[4].append([Transform2D(0.0, Vector2(sz * maxf(0.15, face), sz), 0.0, at),
+					[_qa(Color(GOLD.darkened(0.25), col.a)), _qa(col), _qa(Color(1, 1, 1, 0.6 * col.a))]])
 			"heart":
-				var hs := 9.0 * sz * (0.8 + 0.2 * a)
-				var pts := _heart(Vector2.ZERO, hs, 0)
-				for k in pts.size():
-					pts[k] = at + pts[k].rotated(sin(bit.t * 5.0 + rot) * 0.3)
-				b.polygon(pts, col)
+				var hs := sz * (0.8 + 0.2 * a)
+				buckets[5].append([Transform2D(sin(bit.t * 5.0 + rot) * 0.3, Vector2(hs, hs), 0.0, at), [_qa(col)]])
 			"ring":
 				var k := clampf(bit.t / life, 0.0, 1.0)
 				var r := sz * (0.3 + 0.7 * (1.0 - pow(1.0 - k, 3.0)))
 				b.stroke(Face.Builder.ring(at, r, r), maxf(2.0, 14.0 * (1.0 - k)), Color(bit.col, (bit.col as Color).a * (1.0 - k)), true)
+	var out: Array = []
+	for k in BIT_KINDS.size():
+		var list: Array = buckets[k]
+		if list.is_empty():
+			continue
+		var id := LOOK_BIT + k
+		var verts: PackedVector2Array = _looks.shape(id)[0]
+		var vs := PackedVector2Array()
+		var cs := PackedColorArray()
+		for e: Array in list:
+			vs.append_array((e[0] as Transform2D) * verts)
+			cs.append_array(_looks.ink(id, e[1]))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vs
+		arrays[Mesh.ARRAY_COLOR] = cs
+		arrays[Mesh.ARRAY_INDEX] = _tiled_for(id, list.size())
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		out.append(m)
+	return out
+
+## A colour with its alpha in 32 steps, so painted looks are kept.
+static func _qa(c: Color) -> Color:
+	return Color(c.r, c.g, c.b, roundf(c.a * 32.0) / 32.0)
+
+## Look `id`'s indices for `n` copies laid one after another, grown (by
+## doubling, in script) only when more copies are asked for than ever.
+func _tiled_for(id: int, n: int) -> PackedInt32Array:
+	var s := _looks.shape(id)
+	var idx: PackedInt32Array = s[1]
+	var nv := (s[0] as PackedVector2Array).size()
+	var have: PackedInt32Array = _tiled.get(id, PackedInt32Array())
+	var copies := have.size() / maxi(1, idx.size())
+	if copies < n:
+		for c in range(copies, maxi(n, maxi(16, copies * 2))):
+			var ix := idx.duplicate()
+			var off := c * nv
+			for k in ix.size():
+				ix[k] += off
+			have.append_array(ix)
+		_tiled[id] = have
+	return have.slice(0, n * idx.size())
+
+## A bit kind's look at size 1, in slot colours.
+func _bit_look(b: Face.Builder, kind: String) -> void:
+	var c0 := RunMesh.slot(0)
+	var c1 := RunMesh.slot(1)
+	var c2 := RunMesh.slot(2)
+	match kind:
+		"petal":
+			Parts.petal(b, Vector2.ZERO, 13.0, 0.0, 1.0, c0)
+		"leaf":
+			Parts.leaf(b, Vector2.ZERO, Vector2.RIGHT, 16.0, 5.0, c0)
+		"star":
+			# Parts.star's, its drop and shine turning with it
+			var r := 13.0
+			for pass_ in 2:
+				var pts := PackedVector2Array()
+				var at := Vector2(r * 0.04, r * 0.1) if pass_ == 0 else Vector2.ZERO
+				var rr := r * (1.08 if pass_ == 0 else 1.0)
+				for i in 10:
+					var ang := TAU * i / 10.0 - PI * 0.5
+					pts.append(at + Vector2.from_angle(ang) * (rr if i % 2 == 0 else rr * 0.52))
+				b.polygon(pts, c0 if pass_ == 0 else c1)
+			b.ellipse(Vector2(-r * 0.18, -r * 0.2), r * 0.18, r * 0.11, c2)
+		"spark":
+			# Parts.spark's
+			var r := 20.0
+			b.disc(Vector2.ZERO, r * 0.45, c0)
+			for k in 4:
+				var d := Vector2.from_angle(TAU * k / 4.0)
+				var side := d.orthogonal() * r * 0.13
+				b.polygon(PackedVector2Array([side, d * r * (1.0 if k % 2 == 0 else 0.7), -side]), c1)
+			b.disc(Vector2.ZERO, r * 0.14, c2)
+		"coin":
+			b.ellipse(Vector2.ZERO, 12.0, 12.0, c0)
+			b.ellipse(Vector2.ZERO, 9.5, 9.5, c1)
+			b.ellipse(Vector2(-3.0, -3.0), 2.5, 2.5, c2)
+		"heart":
+			b.polygon(_heart(Vector2.ZERO, 9.0, 0), c0)
 
 ## The blooms of this shot counted under the sun, bumping with each one and
 ## warming as it climbs.
@@ -3003,8 +3539,10 @@ func _release(local: Vector2) -> void:
 	_shoot()
 
 func _shoot() -> void:
+	var before: Dictionary = _state.snapshot()
 	if not _state.fire(_aim):
 		return
+	_undo.append({"state": before, "log": _log, "streak": _streak})
 	_phase = "shot"
 	_order = PackedInt32Array()
 	_shot_oranges = 0
@@ -3124,7 +3662,7 @@ func _on_solved() -> void:
 	_won = true
 	# Flawless: no hint, and no heart lost on Hard and Insane, or the first
 	# try on Easy and Medium.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _state.tries == 1)
+	_flawless = hints_used == 0 and not _undo_ever and (not _lost_ever if max_hearts > 0 else _state.tries == 1)
 	_mood(Face.Expr.JOY, 100.0)
 	fx.cue("solved")
 	if not Motion.reduce:
