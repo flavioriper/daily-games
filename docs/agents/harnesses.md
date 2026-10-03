@@ -139,3 +139,12 @@ search shows up as a 45-90 ms `hint_step` line on Insane -- the probe's
 cost, not a frame of play. On this Mac render CPU
 is nearly the whole frame and runs about 70 us per draw call, so draw calls
 are the lever; ms readings swing about 1.5 ms run to run.
+
+## The buzz probe (2026-10-03)
+
+`tests/_probe_perf.gd -- <id> d=<0..3> x=buzz` sets `Haptics.trace`, runs
+`_buzz_<id>` (one line per thing the player can do, with the kinds that
+landed), then plays the board to its win and prints the whole trace under
+`haptics:`. A board without a `_buzz_<id>` errors: write one with its
+checkup row (`docs/agents/haptics.md`). `tests/_shot_sheets.gd` is stale
+(it takes the last child of the menu for the host and finds a Timer).

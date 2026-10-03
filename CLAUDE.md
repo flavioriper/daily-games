@@ -29,6 +29,7 @@ that area**, and add new history there rather than here.
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy) | `docs/agents/arcade.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
+| Haptics: the kinds, the rules and the per-game list | `docs/agents/haptics.md` |
 | Art, buttons, sheets, dialogs | `docs/agents/art-and-ui.md` |
 | Android build | `docs/agents/android.md` |
 | Analytics events | `docs/agents/analytics.md` |

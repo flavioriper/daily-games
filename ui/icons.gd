@@ -9,7 +9,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
-	"coin", "gift", "clock", "shield", "acorn", "run", "music", "globe", "swords", "gamepad"]
+	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -127,6 +127,14 @@ static func shape(name: String) -> Dictionary:
 			return _run()
 		"music":
 			return _music()
+		"buzz":
+			# A phone standing between two pairs of shake marks.
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.36, 0.14), Vector2(0.64, 0.14), Vector2(0.64, 0.86), Vector2(0.36, 0.86), Vector2(0.36, 0.14)]),
+				PackedVector2Array([Vector2(0.2, 0.34), Vector2(0.2, 0.66)]),
+				PackedVector2Array([Vector2(0.8, 0.34), Vector2(0.8, 0.66)]),
+				PackedVector2Array([Vector2(0.06, 0.42), Vector2(0.06, 0.58)]),
+				PackedVector2Array([Vector2(0.94, 0.42), Vector2(0.94, 0.58)])]}
 		"globe":
 			var g := circle(Vector2(0.5, 0.5), 0.36, 32)
 			g.append(g[0])

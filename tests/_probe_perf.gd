@@ -19,6 +19,9 @@ const IDLE_TO := 6.5
 const PLAY_EVERY := 0.25
 const PLAY_TO := 13.0  # (a `howto` run with five pages needs ~10 s)
 
+const Haptics = preload("res://core/haptics.gd")
+
+var _buzz_seen := 0
 var _menu: Node
 var _host: Node
 var _puzzle: Node
@@ -220,6 +223,7 @@ func _process(delta: float) -> bool:
 
 func _open() -> void:
 	_opened = true
+	Haptics.trace = []
 	if _rm:
 		load("res://core/motion.gd").reduce = true
 	if _lang != "":
@@ -256,6 +260,14 @@ func _experiment() -> void:
 			_puzzle.visible = false
 		"host":
 			_host.visible = false
+		"buzz":
+			# The haptics checkup (docs/agents/haptics.md): each thing the
+			# player can do, and the kind that landed for it.
+			_buzzed("open")
+			_next_move = INF
+			await call("_buzz_" + _id)
+			_next_move = _t + 0.5
+			_play_to = _t + 0.5 + _moves.size() * PLAY_EVERY + 5.0
 		"undo":
 			var m: Dictionary = _moves[0]
 			_click(m.at.call())
@@ -1184,7 +1196,14 @@ func _click(at: Vector2) -> void:
 		if _exp == "parts":
 			print("  click %s %.2f ms" % ["down" if pressed else "up", (Time.get_ticks_usec() - t0) / 1000.0])
 
+## `x=buzz`: what the phone did since the last call, under `what`.
+func _buzzed(what: String) -> void:
+	var all: Array = Haptics.trace
+	print("  buzz %-28s %s" % [what, " ".join(all.slice(_buzz_seen)) if all.size() > _buzz_seen else "-"])
+	_buzz_seen = all.size()
+
 func _report() -> void:
+	print("haptics: ", " ".join(Haptics.trace))
 	print("perf %s d=%d nodes=%d" % [_id, _level, root.get_child_count() + _count(root)])
 	for w in ["idle", "play"]:
 		var f: Array = _windows[w]
@@ -1231,6 +1250,58 @@ func _moves_binairo() -> Array:
 			if _puzzle.state.solution[r][c] == 1:
 				out.append({"at": at})
 	return out
+
+## Binairo's buzzes: a given, a right tile, a tile cleared, a wrong tile (a
+## blush on Easy and Medium, a heart on Hard and Insane), Undo, the brush,
+## a hint, Check and Reset. The plain run then plays to the win.
+func _buzz_binairo() -> void:
+	var st = _puzzle.state
+	var free: Array = []
+	var given := Vector2i(-1, -1)
+	for r in _puzzle.n:
+		for c in _puzzle.n:
+			if not st.given[r][c]:
+				free.append(Vector2i(c, r))
+			elif given.x < 0:
+				given = Vector2i(c, r)
+	_click(_puzzle.cell_to_local(given.y, given.x))
+	_buzzed("a given touched")
+	var pause := func() -> void: await create_timer(0.7).timeout
+	# a right tile: a sun is one tap, a moon two
+	var a: Vector2i = free[0]
+	for i in 1 + int(st.solution[a.y][a.x]):
+		_click(_puzzle.cell_to_local(a.y, a.x))
+	await pause.call()
+	_buzzed("a right tile")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	# a wrong one, left to be judged
+	var b: Vector2i = free[1]
+	for i in 2 - int(st.solution[b.y][b.x]):
+		_click(_puzzle.cell_to_local(b.y, b.x))
+	await create_timer(1.6).timeout
+	_buzzed("a wrong tile, judged")
+	if st.grid[b.y][b.x] != -1:
+		while st.grid[b.y][b.x] != -1:
+			_click(_puzzle.cell_to_local(b.y, b.x))
+		await pause.call()
+		_buzzed("tapped back to empty")
+	_puzzle.set_brush(0)
+	await pause.call()
+	_buzzed("brush armed")
+	_puzzle.set_brush(0)
+	await pause.call()
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
 
 ## Code Break: every row but the last a wrong guess (the code turned by one
 ## friend, so it scores), then the code as it sits at that moment.

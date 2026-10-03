@@ -39,6 +39,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const Face = preload("res://ui/faces/face.gd")
 ## Loaded when wanted, not preloaded: both reach the autoloads (Ads, Store),
@@ -167,6 +168,34 @@ const WARM_TIME := 0.3
 const COMBO_FROM := 3
 const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
+
+## What the phone does under each cue (core/haptics.gd keeps the strongest
+## of a frame's). A tile set is a tap and a tile cleared only a tick; the
+## focus ticks when a given is touched, since nothing else answers that. A
+## blush warns (from `_recolour`, after the grace, not from its cue), which
+## on Easy and Medium is the only word a wrong tile gets; a heart lost
+## knocks twice and the last one falls. The streak's pluck and
+## the entrance say nothing: the tap already spoke, and nobody touched the
+## board yet.
+const HAPTICS := {
+	"focus": Haptics.TICK,
+	"brush": Haptics.TICK,
+	"clear": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"place": Haptics.TAP,
+	"reset": Haptics.TAP,
+	"line": Haptics.BUMP,
+	"confetti": Haptics.BUMP,
+	"liar": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"flawless": Haptics.THUD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
 const COMBO_FONT := 44
@@ -404,6 +433,7 @@ func _ready() -> void:
 	fx.name = "Fx"
 	# Over the tiles, which are added after it: stars land on the board, not under it.
 	fx.z_index = 1
+	fx.haptics = HAPTICS
 	add_child(fx)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
@@ -780,6 +810,7 @@ func _recolour(animate := true) -> void:
 	state.refresh_bad()
 	_liar_hidden = state.liar >= 0 and not state.is_solved()
 	_sign_layer.queue_redraw()
+	var blushed: Array[Vector2i] = []
 	for r in n:
 		for c in n:
 			var target := 1.0 if _bad(r, c) else 0.0
@@ -804,9 +835,18 @@ func _recolour(animate := true) -> void:
 				_fades[r][c] = tw
 				Motion.shiver(_tiles[r][c])
 				fx.cue("blush_in")
+				blushed.append(Vector2i(c, r))
 			else:
 				_fades[r][c] = Motion.fade(self, setter, _blend[r][c], target, BLUSH_OUT, 16, 0.0, true)
 				fx.cue("blush_out")
+	# The blush's buzz waits out the grace a tapped sun gets: a sun on its
+	# way to a moon breaks a line for one tap and should not warn the hand.
+	if not blushed.is_empty():
+		_later(WRONG_GRACE, func() -> void:
+			for cell in blushed:
+				if _blend_target[cell.y][cell.x] > 0.5:
+					Haptics.play(Haptics.WARN)
+					return)
 
 ## Whether (r, c) blushes. While a liar hides, the ends of a broken sign do
 ## not: the state reads the liar as its true kind, so a pair of tiles
