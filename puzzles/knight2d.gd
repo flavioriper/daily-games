@@ -44,6 +44,7 @@ const State = preload("res://puzzles/knight_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Piece = preload("res://ui/faces/chess_piece.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -433,11 +434,39 @@ func capabilities() -> Array[String]:
 		return ["undo"]
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A hop taps
+## as your knight sets off (`hop`; a hint's falls under its good) and the
+## rest of the turn knocks only for what it did to you: a bump as it lands
+## on a rose knight (`_play`, by `fx.buzz`: `take` rings for a hint's hop
+## too) and where the streak's confetti flies, the same landing, so one
+## bump; a catch as the rose knight lands on you, a warn on Easy and Medium
+## where it costs nothing and the heart on Hard and Insane; a warn once the
+## board is still on the hop that left no way to the king (`stuck`), and on
+## Brambles the heart for being boxed in. The rose side's answer, a bramble
+## grown, a knight fenced in to nap, the slide back, the wither, a square
+## that is no L (`refuse`), your own knight tapped, the streak's notes, the
+## crown, the gags and the party say nothing. The win knocks as you land on
+## the king (`solved` is queued for it), the seal as it lands (`_party`).
+const HAPTICS := {
+	"hop": Haptics.TAP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"caught": Haptics.WARN,
+	"stuck": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -712,7 +741,9 @@ func _play(to: int, from_hint := false) -> void:
 				return
 			fx.puff(_centre(to), Pal.KNIGHT_ROSE, 7)
 			fx.sparkle(_centre(to) - Vector2(0.0, _cell() * 0.4), Pal.SUN)
-			fx.cue("take"))
+			fx.cue("take")
+			if not from_hint and not is_done():
+				fx.buzz(Haptics.BUMP))
 	var last := land
 	var k := 0
 	var catcher := -1
@@ -2414,6 +2445,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return

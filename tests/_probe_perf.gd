@@ -3335,6 +3335,251 @@ func _moves_knight() -> Array:
 		out.append(m)
 	return out
 
+func _kn_at(c: int) -> Vector2:
+	var w: int = _puzzle._state.w
+	return _puzzle.cell_to_local(c / w, c % w)
+
+## Knight's buzzes: your own knight tapped, a square that is no L, a kept
+## hop, Undo, a hop that takes a rose knight (the tap, then the landing), a
+## hop into the rose side's reach (a warn on Easy and Medium, the heart on
+## Hard and Insane), on Easy to Hard a hop that leaves no way to the king
+## (looked for one and two hops deep), a hint and Reset. The plain run then
+## plays the shortest line (the streak's confetti, the win as you land on
+## the king, the seal when it is earned).
+func _buzz_knight() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(1.6).timeout
+	_click(_kn_at(st.you))
+	await pause.call()
+	_buzzed("your own knight tapped")
+	for c in st.size():
+		if c != st.you and not st.legal().has(c):
+			_click(_kn_at(c))
+			await pause.call()
+			_buzzed("a square that is no L")
+			break
+	var safe := -1
+	var take := -1
+	var bad := -1
+	for m: int in st.legal():
+		var r: Dictionary = st.peek(m)
+		if int(r.caught) >= 0:
+			bad = m
+		elif not bool(r.won):
+			if int(r.took) >= 0:
+				take = m
+			elif safe < 0:
+				safe = m
+	if safe >= 0:
+		_click(_kn_at(safe))
+		await create_timer(0.1).timeout
+		_buzzed("a hop")
+		await pause.call()
+		_buzzed("as it lands")
+		if _puzzle.can_undo():
+			_host._on_undo()
+			await pause.call()
+			_buzzed("undo")
+		else:
+			_puzzle.reset_board()
+			await create_timer(2.4).timeout
+	_buzz_seen = Haptics.trace.size()
+	if take >= 0 and st.legal().has(take):
+		_click(_kn_at(take))
+		await create_timer(0.1).timeout
+		_buzzed("a hop onto a rose knight")
+		await pause.call()
+		_buzzed("as it is taken")
+		_puzzle.reset_board()
+		await create_timer(2.4).timeout
+	else:
+		print("  buzz (no rose knight to take from the opening)")
+	_buzz_seen = Haptics.trace.size()
+	if bad >= 0 and st.legal().has(bad):
+		var hearts: int = _puzzle.hearts
+		_click(_kn_at(bad))
+		await create_timer(0.1).timeout
+		_buzzed("a hop into their reach")
+		await create_timer(3.0).timeout
+		_buzzed("caught (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	else:
+		print("  buzz (no hop from the opening is a catch)")
+	if not st.brambles():
+		# A kept hop, or two, that leaves no line to the king.
+		var way: Array = []
+		for a: int in st.legal():
+			if not way.is_empty():
+				break
+			var ra: Dictionary = st.peek(a)
+			if int(ra.caught) >= 0 or bool(ra.won):
+				continue
+			st.play(a)
+			if st.lost():
+				way = [a]
+			else:
+				for b: int in st.legal():
+					var rb: Dictionary = st.peek(b)
+					if int(rb.caught) >= 0 or bool(rb.won):
+						continue
+					st.play(b)
+					var dead: bool = st.lost()
+					st.undo()
+					if dead:
+						way = [a, b]
+						break
+			st.undo()
+		if way.is_empty():
+			print("  buzz (no hop or two from the opening loses the board)")
+		else:
+			for k in way.size():
+				_click(_kn_at(way[k]))
+				await create_timer(0.1).timeout
+				if k == way.size() - 1:
+					_buzz_seen = Haptics.trace.size() - 1
+					_buzzed("a hop that loses the board")
+				await pause.call()
+			await pause.call()
+			_buzzed("once everything is still")
+			_puzzle.reset_board()
+			await create_timer(2.4).timeout
+			_buzzed("start over")
+	_buzz_seen = Haptics.trace.size()
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(2.4).timeout
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(2.4).timeout
+	_buzzed("reset")
+	_moves = _moves_knight()
+
+func _sb_mid(p: int, s: float) -> Vector2:
+	return _puzzle._pt(_puzzle._piece_mid(p, s))
+
+## One drag through the board's own input: a press on the piece, a motion a
+## third of a peg at a time to peg `q`, held `hold` seconds, and let go.
+func _sb_drag(p: int, q: int, hold := 0.0, held := "") -> void:
+	var a := float(_puzzle._state.pos[p])
+	var z := float(q)
+	_ut_button(_sb_mid(p, a), true)
+	var n := maxi(1, int(ceil(absf(z - a) * 3.0)))
+	for k in range(1, n + 1):
+		await create_timer(0.05).timeout
+		_ut_motion(_sb_mid(p, lerpf(a, z, float(k) / float(n))))
+	if hold > 0.0:
+		await create_timer(hold).timeout
+		_buzzed(held)
+	_ut_button(_sb_mid(p, z), false)
+
+## Every [piece, peg] one move away whose let-go arrangement `pick` says yes
+## to (asked on the state itself, put back each time).
+func _sb_find(pick: Callable) -> Array:
+	var st = _puzzle._state
+	var before: PackedInt32Array = st.pos.duplicate()
+	var out: Array = []
+	for p in before.size():
+		for q in (st.g.pieces[p].rail as Array).size():
+			if st.place(p, q):
+				var yes: bool = pick.call()
+				st.take_back(before)
+				if yes:
+					out.append([p, q])
+	return out
+
+## Sunbeam's buzzes: a piece lifted and put back, one dragged to another peg
+## and let go (a tap, or a bump when it lit a drop), Undo, an empty peg
+## tapped, a peg another piece stands on, on Easy and Medium a move that
+## brings the light to the bud with a drop dry, on Hard and Insane the light
+## held on a sleeper (the tick under the finger) and let go there (the
+## heart), a hint and Reset. The plain run then drags every piece home (the
+## streak, the win as the light arrives, the seal when it is earned).
+func _buzz_sunbeam() -> void:
+	var st = _puzzle._state
+	_buzz_more = 10.0
+	var pause := func() -> void: await create_timer(1.2).timeout
+	var free := -1
+	for p in st.pos.size():
+		if not st.pinned.has(p):
+			free = p
+			break
+	_click(_sb_mid(free, float(st.pos[free])))
+	await pause.call()
+	_buzzed("a piece lifted and put back")
+	var lit0: int = st.lit_drops()
+	var plain: Array = _sb_find(func() -> bool:
+		return st.judge() == "" and not st.is_solved() and st.lit_drops() <= lit0 \
+			and not (st.beam.end == "bud"))
+	var fresh: Array = _sb_find(func() -> bool:
+		return st.judge() == "" and not st.is_solved() and st.lit_drops() > lit0)
+	var dry: Array = _sb_find(func() -> bool:
+		return st.judge() == "" and not st.is_solved() and st.beam.end == "bud")
+	var wrong: Array = _sb_find(func() -> bool: return st.judge() != "")
+	for pair: Array in [[plain, "a piece dragged and let go"], [fresh, "one that lights a drop"]]:
+		var found: Array = pair[0]
+		if found.is_empty():
+			print("  buzz (no move from the opening for: %s)" % pair[1])
+			continue
+		await _sb_drag(found[0][0], found[0][1])
+		await pause.call()
+		_buzzed(pair[1])
+		if _puzzle.can_undo():
+			_host._on_undo()
+			await pause.call()
+			_buzzed("undo")
+		else:
+			_puzzle.reset_board()
+			await create_timer(2.4).timeout
+			_buzz_seen = Haptics.trace.size()
+	# An empty peg tapped: one of a mirror's, whose cell no piece's box covers.
+	var tapped := false
+	for mv: Array in plain + fresh:
+		var at: Vector2 = _puzzle._centre(int(st.g.pieces[mv[0]].rail[mv[1]]))
+		if _puzzle._piece_at(at) < 0 and not _puzzle._peg_at(at).is_empty() and int(_puzzle._peg_at(at).p) == int(mv[0]):
+			_click(at)
+			await pause.call()
+			_buzzed("an empty peg tapped")
+			tapped = true
+			if _puzzle.can_undo():
+				_host._on_undo()
+			else:
+				_puzzle.reset_board()
+			await create_timer(2.4).timeout
+			break
+	if not tapped:
+		print("  buzz (no empty peg to tap)")
+	_buzz_seen = Haptics.trace.size()
+	if int(_puzzle.max_hearts) <= 0:
+		if dry.is_empty():
+			print("  buzz (no move from the opening reaches the bud dry)")
+		else:
+			await _sb_drag(dry[0][0], dry[0][1])
+			await create_timer(0.1).timeout
+			_buzzed("let go with the bud in reach")
+			await create_timer(2.0).timeout
+			_buzzed("the bud reached, a drop dry")
+			_host._on_undo()
+			await create_timer(2.0).timeout
+			_buzzed("undo (the bud dry again)")
+			_host._on_undo()
+			await pause.call()
+	elif wrong.is_empty():
+		print("  buzz (no move from the opening leaves the light on a sleeper)")
+	else:
+		var hearts: int = _puzzle.hearts
+		await _sb_drag(wrong[0][0], wrong[0][1], 0.8, "the light held on a sleeper")
+		await create_timer(2.6).timeout
+		_buzzed("let go there (hearts %d -> %d)" % [hearts, _puzzle.hearts])
+	_buzz_seen = Haptics.trace.size()
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+	_puzzle.reset_board()
+	await create_timer(2.4).timeout
+	_buzzed("reset")
+	_moves = _moves_sunbeam()
+
 ## Sunbeam: every piece dragged home along its rail -- a press on it, a
 ## motion a third of a peg, the release on its home peg -- in an order
 ## worked out on a copy of the floor so no let-go move leaves the light on a
