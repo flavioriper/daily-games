@@ -63,7 +63,8 @@ var bind_k := PackedFloat32Array()
 var _held := PackedFloat32Array()
 ## The braids this rope is twisted in, laid on its drawn line: each
 ## {"c", "axis", "perp", "len", "n", "side" (+1 or -1), "w", "swing" (px),
-## "spin" (radians the twist is turned by while it cinches or lets go)}.
+## "spin" (radians the twist is turned by while it cinches or lets go),
+## "dir" (+1 when the rope travels the axis's way, -1 against it)}.
 var wiggles: Array = []
 
 ## Its drawn line and the length along it, built on demand after each step.
@@ -119,15 +120,17 @@ func clear_binds() -> void:
 ## Every bind, the braids' twists and the route at once, from a caller that
 ## lays them all out again whenever anything moves: a rope whose binds come
 ## out the same keeps its line (and `ver`), so what was worked out from it
-## still holds.
-func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> void:
+## still holds. Returns whether anything changed: the chain has to be stepped
+## to its new way, so the caller wakes the rope.
+func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> bool:
 	if bi == bind_i and bat == bind_at and bk == bind_k and way == route and wg == wiggles:
-		return
+		return false
 	clear_binds()
 	route = way
 	for n in bi.size():
 		bind(bi[n], bat[n], bk[n])
 	wiggles = wg
+	return true
 
 func bind(i: int, at: Vector2, k: float) -> void:
 	bind_i.append(i)
@@ -272,9 +275,6 @@ func _twist(wg: Dictionary) -> void:
 	var L: float = wg.len
 	var n: float = wg.n
 	var swing: float = float(wg.swing) * float(wg.side)
-	# The core of a coil runs straight through it.
-	if swing == 0.0:
-		return
 	var w: float = wg.w
 	# A braid cinching in or letting go turns as it does: its crossings run
 	# along it, so an unwind reads as a spin and not a fade.
@@ -302,10 +302,25 @@ func _twist(wg: Dictionary) -> void:
 		var span := along[along.size() - 1]
 		if span <= 0.0:
 			return
+		# Inside the stretch the line is laid where the braid *is* -- the
+		# core dead straight, the winder on its turns -- and only eased onto
+		# the chain at the two ends. Laid as a swing off the chain alone, a
+		# chain still on its way there (bunched, bowed, mid-whip) folded the
+		# turns into torn arrowheads.
+		var dir: float = float(wg.get("dir", 0.0))
 		for j in range(j0 + 1, j1):
 			var u := along[j - j0] / span
-			var shape := cos(lerpf(p0, p1, u) + spin * sin(PI * u)) - lerpf(from_side, end_side, u)
-			_line[j] += perp * swing * shape * w
+			var turn := cos(lerpf(p0, p1, u) + spin * sin(PI * u))
+			var loose := _line[j] + perp * swing * (turn - lerpf(from_side, end_side, u)) * w
+			if dir == 0.0:
+				_line[j] = loose
+				continue
+			var laid := c + axis * (u - 0.5) * dir * L + perp * swing * turn
+			var hold := w * smoothstep(0.0, 0.2, u) * smoothstep(1.0, 0.8, u)
+			_line[j] = loose.lerp(laid, hold)
+		return
+	# The core of a coil runs straight through it.
+	if swing == 0.0:
 		return
 	for i in range(1, _line.size() - 1):
 		var d := _line[i] - c

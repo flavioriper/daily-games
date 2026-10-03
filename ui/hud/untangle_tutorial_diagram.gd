@@ -439,7 +439,7 @@ func _braid(k: Vector2i, e: Dictionary) -> Dictionary:
 	var a1 := _pos[2 * k.x + 1]
 	var b0 := _pos[2 * k.y]
 	var b1 := _pos[2 * k.y + 1]
-	var a_core := UT.core_is_a(a0, a1, b0, b1, e.get("core"))
+	var a_core := UT.core_is_a(a0, a1, b0, b1, (_ropes[k.x] as Rope).length, (_ropes[k.y] as Rope).length, e.get("core"))
 	e["core"] = a_core
 	var br := UT.lay_braid(a0, a1, b0, b1, int(e.n), _wd, a_core)
 	var c: Vector2 = br.c
@@ -470,7 +470,7 @@ func _bind() -> void:
 			var most: float = br.w
 			var turn := (1.0 - most) * UT.BRAID_SPIN * (1.0 if float(e.goal) > 0.0 else -1.0)
 			var wg: Array = [{"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
-				"p0": br.p0, "p1": br.p1, "side": side, "w": most, "swing": UT.BRAID_SIDE * _wd, "spin": turn}]
+				"p0": br.p0, "p1": br.p1, "side": side, "dir": dir, "w": most, "swing": UT.BRAID_SIDE * _wd, "spin": turn}]
 			var cum := Rope.lengths(way)
 			var total: float = cum[cum.size() - 1]
 			var bi := PackedInt32Array()
