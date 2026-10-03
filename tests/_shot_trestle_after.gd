@@ -66,6 +66,7 @@ func _open() -> void:
 	_b = _host._puzzle
 	if _host.has_node("HowToPlay"):
 		_host.get_node("HowToPlay").free()
+		_host._hold_clock(false)
 
 func _process(delta: float) -> bool:
 	_t += delta

@@ -134,6 +134,9 @@ func _show_tutorial() -> void:
 	_tutorial.completed.connect(func() -> void:
 		_tutorial = null
 		_hold_clock(false))
+	# Gone any way at all (its Continue, or a harness freeing it): the clock
+	# runs again. Trestle holds a running test while the clock is held.
+	_tutorial.tree_exited.connect(_hold_clock.bind(false))
 	add_child(_tutorial)
 
 func _hold_clock(on: bool) -> void:

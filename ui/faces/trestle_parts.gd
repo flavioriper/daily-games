@@ -34,6 +34,22 @@ const BAD := Color("d9605a")
 ## A member between `p` and `q` in pixels: 0 road, 1 wood, 2 rope. `tint`
 ## blends toward a stress colour; `alpha` fades a ghost.
 static func member(b: Face.Builder, p: Vector2, q: Vector2, mat: int, u: float, tint := Color(0, 0, 0, 0), alpha := 1.0) -> void:
+	member_in(b, p, q, mat, u, member_inks(mat, tint, alpha))
+
+## The colours a member's layers take under `tint` and `alpha`, in the order
+## `member_in` draws them: road's edge, plank, top light and seams; wood's
+## edge, beam and light; rope's edge, cord and twist.
+static func member_inks(mat: int, tint := Color(0, 0, 0, 0), alpha := 1.0) -> Array:
+	match mat:
+		0:
+			return [_mix(ROAD_DEEP, tint, alpha), _mix(ROAD, tint, alpha), _mix(ROAD_TOP, tint, alpha), _mix(ROAD_DEEP, tint, alpha * 0.6)]
+		1:
+			return [_mix(WOOD_DEEP, tint, alpha), _mix(WOOD, tint, alpha), _mix(Color("f0d3a4"), tint, alpha * 0.8)]
+	return [_mix(ROPE_DEEP, tint, alpha), _mix(ROPE, tint, alpha), _mix(ROPE_DEEP, tint, alpha * 0.7)]
+
+## A member drawn in the colours `inks` (`member_inks`, or a board's slot
+## colours when it keeps the drawing as a look to paint later).
+static func member_in(b: Face.Builder, p: Vector2, q: Vector2, mat: int, u: float, inks: Array) -> void:
 	var d := q - p
 	var l := d.length()
 	if l < 0.5:
@@ -45,28 +61,28 @@ static func member(b: Face.Builder, p: Vector2, q: Vector2, mat: int, u: float, 
 	match mat:
 		0:
 			var w := u * 0.2
-			b.stroke(PackedVector2Array([p, q]), w + u * 0.05, _mix(ROAD_DEEP, tint, alpha))
-			b.stroke(PackedVector2Array([p, q]), w, _mix(ROAD, tint, alpha))
-			b.stroke(PackedVector2Array([p + side * w * 0.3, q + side * w * 0.3]), w * 0.28, _mix(ROAD_TOP, tint, alpha))
+			b.stroke(PackedVector2Array([p, q]), w + u * 0.05, inks[0])
+			b.stroke(PackedVector2Array([p, q]), w, inks[1])
+			b.stroke(PackedVector2Array([p + side * w * 0.3, q + side * w * 0.3]), w * 0.28, inks[2])
 			# plank seams across it, one every third of a step
 			var seams := int(l / (u * 0.34))
 			for k in range(1, seams):
 				var c := p + d * (float(k) / seams)
-				b.stroke(PackedVector2Array([c - side * w * 0.42, c + side * w * 0.42]), u * 0.025, _mix(ROAD_DEEP, tint, alpha * 0.6), false, false)
+				b.stroke(PackedVector2Array([c - side * w * 0.42, c + side * w * 0.42]), u * 0.025, inks[3], false, false)
 		1:
 			var w := u * 0.13
-			b.stroke(PackedVector2Array([p, q]), w + u * 0.045, _mix(WOOD_DEEP, tint, alpha))
-			b.stroke(PackedVector2Array([p, q]), w, _mix(WOOD, tint, alpha))
-			b.stroke(PackedVector2Array([p + side * w * 0.22, q + side * w * 0.22]), w * 0.22, _mix(Color("f0d3a4"), tint, alpha * 0.8))
+			b.stroke(PackedVector2Array([p, q]), w + u * 0.045, inks[0])
+			b.stroke(PackedVector2Array([p, q]), w, inks[1])
+			b.stroke(PackedVector2Array([p + side * w * 0.22, q + side * w * 0.22]), w * 0.22, inks[2])
 		_:
 			var w := u * 0.055
-			b.stroke(PackedVector2Array([p, q]), w + u * 0.03, _mix(ROPE_DEEP, tint, alpha))
-			b.stroke(PackedVector2Array([p, q]), w, _mix(ROPE, tint, alpha))
+			b.stroke(PackedVector2Array([p, q]), w + u * 0.03, inks[0])
+			b.stroke(PackedVector2Array([p, q]), w, inks[1])
 			# the twist: short dark ticks slanting across it
 			var ticks := int(l / (u * 0.12))
 			for k in range(1, ticks):
 				var c := p + d * (float(k) / ticks)
-				b.stroke(PackedVector2Array([c - n * w * 0.5 - side * w * 0.5, c + n * w * 0.5 + side * w * 0.5]), u * 0.018, _mix(ROPE_DEEP, tint, alpha * 0.7), false, false)
+				b.stroke(PackedVector2Array([c - n * w * 0.5 - side * w * 0.5, c + n * w * 0.5 + side * w * 0.5]), u * 0.018, inks[2], false, false)
 
 static func _mix(c: Color, tint: Color, alpha: float) -> Color:
 	var out := c.lerp(Color(tint, 1.0), tint.a)

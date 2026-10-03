@@ -65,6 +65,7 @@ const Troll = preload("res://ui/faces/troll_face.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const RunMesh = preload("res://ui/flat/run_mesh.gd")
 
 const PAD := 24.0
 ## The strip over the scene: the material chips and the budget.
@@ -72,6 +73,8 @@ const STRIP_H := 112.0
 const CHIP := Vector2(150.0, 92.0)
 const CHIP_GAP := 14.0
 const CHIP_R := 26.0
+## The solved strip's stars, one after another from its right end.
+const STAR_STEP := 30.0
 const U_CAP := 124.0
 ## The world the scene shows, in grid units: banks either side of the gap,
 ## the river under it, room over it for the posts.
@@ -153,6 +156,21 @@ const FIREWORKS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7f
 const FIRST_KEYS :=[["TR_FIRST_ROAD_ONE", "TR_FIRST_ROAD_N"], ["TR_FIRST_WOOD_ONE", "TR_FIRST_WOOD_N"], ["TR_FIRST_ROPE_ONE", "TR_FIRST_ROPE_N"]]
 ## The strip after the solve and in the free build.
 enum Pill { CONVOY, FREE, GO, DONE }
+## The looks (ui/flat/run_mesh.gd): everything on the bridge and over it that
+## only moves, turns, swells or fades is a shape made once about its own
+## origin, at the grid step the board first laid out at (`_ru`), and copied
+## under the moment's transform; one whose colour changes (a member's load, a
+## glint's wink, a tag's rim) is drawn in slots and painted as it is put.
+enum Look { JOINT = 1, ANCHOR, LEDGE, GLINT, RIPPLE, FISH, POLE, CORD, PENNANT, BUNTING, CUP_BACK, CUP_FRONT, TEA_LINE,
+	TEA_DROP, STEAM_A, STEAM_B, SAG, DUCK, DUCKLING, CARD, STICK, HAND, HEART, HEART_GONE, STAR, DOT, RING, BAR_STAR,
+	BAR_GLOW }
+## The hearts' sign, by how many it holds; a load tag, by its width in
+## pixels; a member, by its material and its length in hundredths of a step.
+const LOOK_SIGN := 100
+const LOOK_TAG := 1000
+const LOOK_MEMBER := 10000
+## How many steps a member's load is painted in.
+const LOAD_STEPS := 24
 
 var state: State = State.new()
 var sim: Sim = Sim.new()
@@ -179,6 +197,34 @@ var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
 var _shown: Array = []
 var _front_shown: Array = []
+## The bridge, the front layer and the budget bar, each put together from
+## the looks; `_ru` is the grid step the looks were made at.
+var _rm: RunMesh
+var _fm: RunMesh
+var _bm: RunMesh
+var _ru := 0.0
+## A member's inks by material and load step, made once.
+var _inks := {}
+## Where the still scene was built, so a relayout that only slides the
+## scene up (the win card) draws it shifted instead of building it again.
+var _still_origin := Vector2.ZERO
+var _still_w := 0.0
+var _still_u := 0.0
+var _still_foot := 0.0
+## The points in reach of the chosen joint, kept while it is the one.
+var _reach_from := Vector2i(-99, -99)
+var _reach: Array = []
+## The load tags, kept while the bridge and its last test are the same.
+var _tags: Array = []
+var _tags_for := ""
+## The hung bunting's poles and cords are one look, made again when the
+## deck under it changes; the sag line is one, made again after a test.
+var _bunt_decks: Array = []
+var _bunt_for := 0
+var _sag_stale := true
+## The budget bar's fill, kept while it stands still.
+var _bar_fill: Face.Builder
+var _bar_fill_for := ""
 var _faces: Array[Control] = []
 var _mat := Sim.ROAD
 ## Building: the joint a gesture started on, where it is making for, and the
@@ -316,6 +362,38 @@ func rules() -> String:
 		out += "\n\n" + tr("TR_RULES_TEA")
 	return out
 
+## The how-to-play pages, band-aware: laying the road and Go, wood
+## triangles and the loads, the chips and the budget, rope (the bands that
+## offer it), hearts (Hard and Insane), the Tea Party (Insane), Undo and
+## Reset, and the bulb (the bands with hints). Each page is the board itself
+## on a small hand-made gap, playing the lesson
+## (ui/hud/trestle_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/trestle_tutorial_diagram.gd")
+	var band := clampi(_difficulty, 0, 3)
+	var hints: int = HINTS_BY[band]
+	var rope := state.mats.has(Sim.ROPE)
+	var steps := [[Diagram.Lesson.BUILD, "HTP_TR_BUILD", tr("HTP_TR_BUILD_BODY")],
+		[Diagram.Lesson.TRUSS, "HTP_TR_TRUSS", tr("HTP_TR_TRUSS_BODY")],
+		[Diagram.Lesson.BUDGET, "HTP_TR_BUDGET", tr("HTP_TR_BUDGET_BODY")]]
+	if rope:
+		steps.append([Diagram.Lesson.ROPE, "HTP_TR_ROPE", tr("HTP_TR_ROPE_BODY")])
+	if max_hearts > 0:
+		steps.append([Diagram.Lesson.HEARTS, "HTP_TR_HEARTS", tr("HTP_TR_HEARTS_BODY") % max_hearts])
+	if _tea():
+		steps.append([Diagram.Lesson.TEA, "HTP_TR_TEA", tr("HTP_TR_TEA_BODY")])
+	steps.append([Diagram.Lesson.BAR, "HTP_WT_UNDO", tr("HTP_TR_BAR_BODY")])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT", tr("HTP_TR_HINT_BODY_ONE") if hints == 1 else tr("HTP_TR_HINT_BODY_N") % hints])
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.band = band
+		d.mats = state.mats.duplicate()
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 ## Undo, Hint (not on Insane, where hints_left() is 0) and Go (the Check
 ## button, relabelled); Reset is the host's.
 func capabilities() -> Array[String]:
@@ -376,12 +454,22 @@ func _ready() -> void:
 	add_child(_troll)
 	move_child(_troll, _front.get_index())
 	_troll.set_idle(true)
+	_rm = RunMesh.new(_make_look)
+	_fm = RunMesh.new(_make_look)
+	_bm = RunMesh.new(_make_look)
+	_fm.share_shapes(_rm)
+	_bm.share_shapes(_rm)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+	_deal(Gen.deal(rng, difficulty), difficulty)
+
+## The board on `level` at band `difficulty`: the day's from `build`, a
+## hand-made one from a tutorial page.
+func _deal(level: Dictionary, difficulty: int) -> void:
 	_difficulty = difficulty
-	state.setup(Gen.deal(rng, difficulty))
+	state.setup(level)
 	_mat = Sim.ROAD
 	_testing = false
 	_fail_at = -1.0
@@ -447,9 +535,29 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	sim.setup(state.level, [])
 	_opened = _now()
 	_enter_at = _opened
+	_still = null
+	_tags_for = ""
+	_reach_from = NONE
 	_layout()
+	_warm_words()
 	fx.cue("enter")
 	_tell("TR_TIP_TEA" if _tea() else ("TR_TIP_HEARTS" if max_hearts > 0 else "TR_TIP_START"))
+
+## The words this board letters loud, rasterised ahead (Rewards.warm): drawn
+## cold, the solve's stickers made its frame 30-65 ms and Go!'s its own.
+func _warm_words() -> void:
+	_rw.warm(tr("TR_W_GO"), 80)
+	_rw.warm(tr("TR_W_CROSSED"), 104)
+	_rw.warm(tr("TR_W_MASTER"), 56)
+	for w: String in WORDS:
+		_rw.warm(tr(w), 52)
+	_rw.warm(tr("TR_W_NO_SPILL" if _tea() else "TR_W_FIRST_TRY"), 46)
+	_rw.warm(tr("TR_W_UNDER") % "0123456789.,", 44)
+	_rw.warm(tr("TR_W_CRACK"), 76)
+	_rw.warm(tr("TR_W_SPLASH"), 70)
+	_rw.warm(tr("TR_W_ALMOST"), 70)
+	if _tea():
+		_rw.warm(tr("TR_W_SPILL"), 70)
 
 # --- layout ---
 
@@ -459,21 +567,55 @@ func card_height(available: float) -> float:
 func card_centred() -> bool:
 	return false
 
+## The layout's hooks, for a tutorial page's board (a short, wide slot): the
+## rows the scene shows (top, bottom, in grid units), whether the strip of
+## chips and budget is there, and where the scene and the hearts' sign start
+## under it.
+func _view() -> Vector2:
+	return Vector2(VIEW_TOP, VIEW_BOTTOM)
+
+func _strip_shown() -> bool:
+	return true
+
+func _scene_top() -> float:
+	return STRIP_H + PAD if _strip_shown() else 0.0
+
+func _sign_top() -> float:
+	return (STRIP_H if _strip_shown() else -16.0) + 26.0
+
+func _sign_left() -> float:
+	return PAD + 6.0
+
+## A loud word over the scene (arcade/rewards.gd's sticker); a tutorial
+## page's board letters none.
+func _sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "", rise := 0.0, keep := false) -> void:
+	_rw.sticker(text, where, fs, life, rainbow, col, rays, id, rise, keep)
+
 func _layout() -> void:
 	if size.x <= 0.0 or state.level.is_empty():
 		return
 	var w := float(state.level.w)
-	_scene = Rect2(Vector2(0.0, STRIP_H + PAD), Vector2(size.x, size.y - STRIP_H - PAD))
+	var view := _view()
+	_scene = Rect2(Vector2(0.0, _scene_top()), Vector2(size.x, size.y - _scene_top()))
 	var span_x := w + 2.0 * VIEW_SIDE
-	var span_y := VIEW_TOP - VIEW_BOTTOM
+	var span_y := view.x - view.y
 	_u = minf(U_CAP, minf((_scene.size.x - 2.0 * PAD) / span_x, _scene.size.y / span_y))
 	var mid_x := size.x * 0.5
 	# the view's middle row sits at the scene's middle
 	var mid_y := _scene.position.y + _scene.size.y * 0.5
-	_origin = Vector2(mid_x - w * 0.5 * _u, mid_y + (VIEW_TOP + VIEW_BOTTOM) * 0.5 * _u)
-	_still = null
-	_sun_mesh = null
-	_cloud_mesh = null
+	_origin = Vector2(mid_x - w * 0.5 * _u, mid_y + (view.x + view.y) * 0.5 * _u)
+	if _ru <= 0.0 or _u > _ru * 1.4:
+		# the looks are made at this grid step and drawn scaled after; only a
+		# board grown well past it makes them again
+		_ru = _u
+		_rm.reset()
+		_fm.reset()
+		_bm.reset()
+		_fm.share_shapes(_rm)
+		_bm.share_shapes(_rm)
+		_bunt_for = 0
+		_sag_stale = true
+	_tags_for = ""
 	_frame = null
 	_cart_mesh = null
 	_wheel_mesh = null
@@ -491,6 +633,23 @@ func _layout() -> void:
 func px(g: Vector2) -> Vector2:
 	return _origin + Vector2(g.x, -g.y) * _u
 
+## How much larger than the looks the board is drawn now.
+func _k() -> float:
+	return _u / _ru
+
+## A look put where it was made, `at`.
+func _at(at: Vector2) -> Transform2D:
+	var k := _u / _ru
+	return Transform2D(Vector2(k, 0.0), Vector2(0.0, k), at)
+
+## A grid point in the space a look of the whole scene is made in, and the
+## transform that puts such a look on the board.
+func _gp(g: Vector2) -> Vector2:
+	return Vector2(g.x, -g.y) * _ru
+
+func _gxf() -> Transform2D:
+	return _at(_origin)
+
 func grid(p: Vector2) -> Vector2:
 	var d := (p - _origin) / _u
 	return Vector2(d.x, -d.y)
@@ -500,19 +659,36 @@ func _now() -> float:
 
 # --- the clock ---
 
+## For the perf probe (`x=tr_count`): microseconds spent by name, and frames,
+## while it is on.
+var perf_on := false
+var perf := {}
+
+func _tick(what: String, since: int) -> void:
+	var took := Time.get_ticks_usec() - since
+	perf[what] = int(perf.get(what, 0)) + took
+	perf[what + "_max"] = maxi(int(perf.get(what + "_max", 0)), took)
+
 func _process(delta: float) -> void:
 	super(delta)
 	if state.level.is_empty() or size.x <= 0.0:
 		return
 	var t := _now()
+	var p0 := Time.get_ticks_usec() if perf_on else 0
 	_run_later(t)
-	if _testing:
+	if _testing and clock_held:
+		# the tutorial or the settings are up over the board: the test waits,
+		# so a cart never crosses, falls or spills its tea unseen
+		pass
+	elif _testing:
 		_acc += minf(delta, 0.1) * (SLOW if t - _first_at < SLOW_TIME and not Motion.reduce else 1.0)
 		var steps := 0
 		while _acc >= Sim.DT and steps < MAX_STEPS:
 			_acc -= Sim.DT
 			steps += 1
 			sim.step()
+			if perf_on:
+				perf["steps"] = int(perf.get("steps", 0)) + 1
 			_watch_tea()
 			_events(t)
 			if not _honked and sim.cart == Sim.CART_ROAD and sim.cart_pos.x > float(state.level.w) * 0.5:
@@ -544,11 +720,14 @@ func _process(delta: float) -> void:
 	_rw.step(delta)
 	queue_redraw()
 	_front.queue_redraw()
+	if perf_on:
+		perf["frames"] = int(perf.get("frames", 0)) + 1
+		_tick("process", p0)
 
 func _roll_sound(delta: float) -> void:
 	if _roll == null or _roll.stream == null:
 		return
-	var rolling := (_testing and sim.cart in [Sim.CART_BANK_L, Sim.CART_ROAD, Sim.CART_BANK_R]) \
+	var rolling := (_testing and not clock_held and sim.cart in [Sim.CART_BANK_L, Sim.CART_ROAD, Sim.CART_BANK_R]) \
 		or (_solved_at >= 0.0 and _now() - _solved_at < 1.2) or _enter_off(_now()) < -0.2
 	var want := 1.0 if rolling else 0.0
 	var now := db_to_linear(_roll.volume_db)
@@ -723,7 +902,7 @@ func _events(t: float) -> void:
 					if not Motion.reduce:
 						_rw.ring(at, _u * 1.1, Color(Parts.BAD, 0.9))
 						_rw.ring(at, _u * 1.6, Color(1, 1, 1, 0.8), 0.08)
-					_rw.sticker(tr("TR_W_CRACK"), at + Vector2(0.0, -_u * 0.9), 76, 1.4, false, Color("ff6f61"), true, "crack", _u * 0.4)
+					_sticker(tr("TR_W_CRACK"), at + Vector2(0.0, -_u * 0.9), 76, 1.4, false, Color("ff6f61"), true, "crack", _u * 0.4)
 				_kick(SHAKE_SNAP)
 				_troll_duck = t
 				_troll.expression = Face.Expr.WORRIED
@@ -745,7 +924,7 @@ func _events(t: float) -> void:
 					var cup := cart * _cup_at(i)
 					_rw.spray(cup, TEA_COL, 5, 360.0, "clod", 0.6)
 					_rw.spray(cup + Vector2(side * _u * 0.1, 0.0), Color("e9c9a0"), 3, 260.0, "spark", 0.6)
-				_rw.sticker(tr("TR_W_SPILL"), cart * Vector2(0.0, -_u * 1.5), 70, 1.6, false, Color("e9a46a"), true, "spill", _u * 0.3)
+				_sticker(tr("TR_W_SPILL"), cart * Vector2(0.0, -_u * 1.5), 70, 1.6, false, Color("e9a46a"), true, "spill", _u * 0.3)
 				_kick(0.05)
 				fx.cue("spill")
 				_mood(Face.Expr.WORRIED)
@@ -773,7 +952,7 @@ func _events(t: float) -> void:
 					_splash_at = t
 					_splash_x = at.x
 					var far := clampf(sim.cart_pos.x / maxf(1.0, float(state.level.w)), 0.0, 1.0)
-					_rw.sticker(tr("TR_W_ALMOST" if far > 0.6 else "TR_W_SPLASH"), Vector2(at.x, at.y - _u * 1.6), 70, 1.6,
+					_sticker(tr("TR_W_ALMOST" if far > 0.6 else "TR_W_SPLASH"), Vector2(at.x, at.y - _u * 1.6), 70, 1.6,
 						true, Color.WHITE, false, "splash", _u * 0.3)
 			"bank":
 				if not sim.spilled:
@@ -875,7 +1054,7 @@ func _start_test(carts: int) -> void:
 	fx.cue("go")
 	if _tea():
 		_after(0.25, func(): fx.cue("clink"))
-	_rw.sticker(tr("TR_W_GO"), Vector2(size.x * 0.5, _scene.position.y + _u * 1.1), 80, 1.0, true, Color.WHITE, false, "go", _u * 0.3)
+	_sticker(tr("TR_W_GO"), Vector2(size.x * 0.5, _scene.position.y + _u * 1.1), 80, 1.0, true, Color.WHITE, false, "go", _u * 0.3)
 	_toast = ""
 	_strip_mesh = null
 	focus_changed.emit()
@@ -898,6 +1077,7 @@ func _stop() -> void:
 	_mood(Face.Expr.HAPPY)
 	_frame = null
 	_strip_mesh = null
+	_sag_stale = true
 	focus_changed.emit()
 	if not _loads_told and not _peak.is_empty() and _last_broken.is_empty():
 		_loads_told = true
@@ -1004,13 +1184,13 @@ func _crossed(t: float) -> void:
 		var in_budget := state.cost() <= state.budget
 		if in_budget:
 			_convoy_proof = true
-		_rw.sticker(tr("TR_CONVOY_PROOF" if in_budget else "TR_CONVOY_OVER"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE, in_budget)
+		_sticker(tr("TR_CONVOY_PROOF" if in_budget else "TR_CONVOY_OVER"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE, in_budget)
 		if in_budget and not Motion.reduce:
 			_rw.rain(1.8, ["confetti", "star"], Rewards.CONFETTI)
 		if not in_budget:
-			_after(0.5, func(): _rw.sticker(tr("TR_CONVOY_BUDGET"), at + Vector2(0.0, _u * 0.9), 40, WIN_HOLD - 1.3, false, Pal.SUN))
+			_after(0.5, func(): _sticker(tr("TR_CONVOY_BUDGET"), at + Vector2(0.0, _u * 0.9), 40, WIN_HOLD - 1.3, false, Pal.SUN))
 	else:
-		_rw.sticker(tr("TR_W_CROSSED"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE)
+		_sticker(tr("TR_W_CROSSED"), at, 84, WIN_HOLD - 0.8, true, Color.WHITE)
 	_after(WIN_HOLD - 0.6, func():
 		if _testing and run == _tests:
 			_stop()
@@ -1073,23 +1253,23 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	# the medal's row sits over the words, the words over the bridge
 	var at := Vector2(size.x * 0.5, _scene.position.y + 185.0)
-	_rw.sticker(tr("TR_W_CROSSED"), at, 104, WIN_HOLD, true, Color.WHITE, true, "crossed")
+	_sticker(tr("TR_W_CROSSED"), at, 104, WIN_HOLD, true, Color.WHITE, true, "crossed")
 	var left := state.left()
 	var stars := _stars()
 	_after(0.55, func():
-		_rw.sticker(tr("TR_W_UNDER") % Locale.number(left), at + Vector2(0.0, 112.0), 44, WIN_HOLD - 0.6, false, Pal.SUN, false, "under", 0.0, true))
+		_sticker(tr("TR_W_UNDER") % Locale.number(left), at + Vector2(0.0, 112.0), 44, WIN_HOLD - 0.6, false, Pal.SUN, false, "under", 0.0, true))
 	if stars == 3:
 		_after(1.0, func():
-			_rw.sticker(tr("TR_W_MASTER"), at + Vector2(0.0, 198.0), 56, WIN_HOLD - 1.0, true, Color.WHITE, false, "master", 0.0, true))
+			_sticker(tr("TR_W_MASTER"), at + Vector2(0.0, 198.0), 56, WIN_HOLD - 1.0, true, Color.WHITE, false, "master", 0.0, true))
 	elif state.hints_placed() == 0:
 		_after(1.0, func():
-			_rw.sticker(tr(WORDS[clampi(stars - 1, 0, 2)]), at + Vector2(0.0, 198.0), 52, WIN_HOLD - 1.0, false, Color.WHITE, false, "word", 0.0, true))
+			_sticker(tr(WORDS[clampi(stars - 1, 0, 2)]), at + Vector2(0.0, 198.0), 52, WIN_HOLD - 1.0, false, Color.WHITE, false, "word", 0.0, true))
 	if _tea():
 		_after(1.5, func():
-			_rw.sticker(tr("TR_W_NO_SPILL"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, false, Color("f2c48a"), false, "tea", 0.0, true))
+			_sticker(tr("TR_W_NO_SPILL"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, false, Color("f2c48a"), false, "tea", 0.0, true))
 	elif _tests_all == 1:
 		_after(1.5, func():
-			_rw.sticker(tr("TR_W_FIRST_TRY"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, true, Color.WHITE, false, "first", 0.0, true))
+			_sticker(tr("TR_W_FIRST_TRY"), at + Vector2(0.0, 286.0), 46, WIN_HOLD - 1.2, true, Color.WHITE, false, "first", 0.0, true))
 	# the medal: a star stamped in for each one earned, a hollow one else
 	for i in 3:
 		_after(MEDAL_AT + MEDAL_STEP * i, func():
@@ -1222,7 +1402,9 @@ func flat_win() -> Dictionary:
 	var faces: Array[Control] = []
 	for i in _faces.size():
 		faces.append(Fruit.make([0, 2, 1, 3][i], 130.0, Vector2.ZERO))
-	return {"faces": faces, "subtitle": tr("TR_WIN") % [Locale.number(state.cost()), Locale.number(state.budget), "★".repeat(_stars())]}
+	# no stars in the line: a "★" is not in the game's fonts, and the text
+	# server's hunt for a fallback was a 12 ms frame (the strip draws them)
+	return {"faces": faces, "subtitle": (tr("TR_WIN") % [Locale.number(state.cost()), Locale.number(state.budget), ""]).strip_edges()}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else PARTY_END
@@ -1232,32 +1414,33 @@ func _medal_star(i: int) -> Vector2:
 	return Vector2(size.x * 0.5 + (i - 1) * 118.0, _scene.position.y + 62.0)
 
 ## The medal's three stars, each stamping in on its beat and bowing out with
-## the cheer: gold for one earned, a hollow paper one else.
-func _draw_medal(b: Face.Builder, t: float) -> void:
+## the cheer: gold for one earned, a hollow paper one else. One look, turned
+## and swelled by its put and painted by its kind.
+func _draw_medal(fm: RunMesh, t: float) -> void:
 	if _solved_at < 0.0 or _free:
 		return
 	var since := t - _solved_at
 	if since > WIN_HOLD + 0.2:
 		return
 	var out := clampf((WIN_HOLD + 0.2 - since) / 0.3, 0.0, 1.0)
+	var a := _q(out)
 	var stars := _stars()
 	for i in 3:
 		var k := (since - MEDAL_AT - MEDAL_STEP * i) / 0.32
 		if k <= 0.0:
 			continue
-		var c := _medal_star(i)
 		var s := (1.0 if Motion.reduce else Motion.back_out(clampf(k, 0.0, 1.0))) * out
 		# stamped from big, turning into place
 		var big := 1.0 + (0.0 if Motion.reduce else 1.2 * (1.0 - clampf(k, 0.0, 1.0)))
 		var turn := 0.0 if Motion.reduce else (1.0 - clampf(k, 0.0, 1.0)) * 1.4 + sin(since * 3.0 + i) * 0.06
-		var r := 50.0 * s * big
+		var inks: Array
 		if i < stars:
-			b.disc(c, r * 1.25, Color(Pal.SUN, 0.22 * out))
-			Rewards.star(b, c, r * 1.1, Color(Pal.PLAQUE_DEEP, out), turn)
-			Rewards.star(b, c, r, Color(Rewards.GOLD, out), turn)
+			inks = [Color(Pal.SUN, 0.22 * a), Color(Pal.PLAQUE_DEEP.darkened(0.35), a), Color(Pal.PLAQUE_DEEP, a), Color(1, 1, 1, 0.5 * a),
+				Color(Rewards.GOLD.darkened(0.35), a), Color(Rewards.GOLD, a), Color(1, 1, 1, 0.5 * a)]
 		else:
-			Rewards.star(b, c, r * 1.1, Color(Pal.TEXT, 0.25 * out), turn)
-			Rewards.star(b, c, r, Color(Pal.SURFACE_HI, 0.9 * out), turn)
+			inks = [Color(Pal.SUN, 0.0), Color(Pal.TEXT.darkened(0.35), 0.25 * a), Color(Pal.TEXT, 0.25 * a), Color(1, 1, 1, 0.125 * a),
+				Color(Pal.SURFACE_HI.darkened(0.35), 0.9 * a), Color(Pal.SURFACE_HI, 0.9 * a), Color(1, 1, 1, 0.45 * a)]
+		fm.put(Look.STAR, inks, Transform2D(turn, Vector2.ONE * (s * big), 0.0, _medal_star(i)))
 
 ## The player's own bridge and how many tests it took, kept with the
 ## completion so a reopened daily shows what they built, not the proof.
@@ -1760,7 +1943,7 @@ func _point_at(p: Vector2) -> Vector2i:
 	return q
 
 func _press(p: Vector2) -> void:
-	for i in 3:
+	for i in (3 if _strip_shown() else 0):
 		if _chip_rect(i).has_point(p):
 			_pick_mat(i)
 			return
@@ -1948,10 +2131,24 @@ func _xf_of(state_: int, pos: Vector2, angle: float) -> Transform2D:
 func _draw() -> void:
 	if state.level.is_empty() or size.x <= 0.0:
 		return
-	if _still == null:
+	# the still scene: built for this width and grid step, and drawn shifted
+	# while a relayout has only slid it up inside what was built (the win
+	# card takes the foot of the card and the scene's middle rises)
+	var shift := _origin - _still_origin
+	if _still == null or _still_w != size.x or _still_u != _u or absf(shift.x) > 0.01 or shift.y > 0.01 \
+			or _still_foot + shift.y < size.y:
 		_still = _build_still()
+		_build_sky()
+		_still_origin = _origin
+		_still_w = size.x
+		_still_u = _u
+		_still_foot = size.y
+		shift = Vector2.ZERO
 	if _frame == null:
+		var f0 := Time.get_ticks_usec()
 		_frame = _build_frame()
+		if perf_on:
+			_tick("bridge", f0)
 	if _cart_mesh == null:
 		var b := Face.Builder.new()
 		Parts.cart_body(b, _u, _faces.size())
@@ -1962,13 +2159,11 @@ func _draw() -> void:
 		var b2 := Face.Builder.new()
 		Parts.cart_body(b2, _u, 2)
 		_cart2_mesh = b2.mesh()
-	if _sun_mesh == null:
-		_build_sky()
 	var t := _now()
 	var still := 0.0 if Motion.reduce else 1.0
 	var shake := Transform2D(0.0, _shake_off())
 	# the sky behind everything: the sun turning, the clouds drifting by
-	draw_mesh(_sky_mesh, null)
+	draw_mesh(_sky_mesh, null, Transform2D(0.0, shift))
 	draw_mesh(_sun_mesh, null, Transform2D(t * 0.12 * still, _sun_at()))
 	var cw := _u * 2.4
 	for k in 3:
@@ -1977,7 +2172,7 @@ func _draw() -> void:
 		var y := _scene.position.y + _scene.size.y * (0.1 + 0.07 * ((k * 2) % 3))
 		var s := 0.8 + 0.25 * (k % 2)
 		draw_mesh(_cloud_mesh, null, Transform2D(0.0, Vector2(s, s), 0.0, Vector2(x, y)))
-	draw_mesh(_still, null, shake)
+	draw_mesh(_still, null, shake * Transform2D(0.0, shift))
 	if _halo != null:
 		var beat := 0.75 + 0.25 * sin(t * 4.5) if not Motion.reduce else 1.0
 		draw_mesh(_halo, null, shake, Color(1, 1, 1, beat))
@@ -2202,14 +2397,18 @@ static func _grad(b: Face.Builder, r: Rect2, top: Color, bottom: Color) -> void:
 
 ## The bridge: the design while building (with a member just laid growing out
 ## of its first end), the sim's members while testing (tinted by their load),
-## then the bolts and the pins over them.
+## then the bolts and the pins over them. Every member, bolt and pin is a
+## look copied under its transform (`_put_member`), so a test's frame, which
+## bends every member, draws nothing in script.
 func _build_frame() -> ArrayMesh:
-	var b := Face.Builder.new()
+	var rm := _rm
+	rm.begin()
 	var hb := Face.Builder.new()
 	var halos := 0
 	var t := _now()
 	var joints := {}
 	if _testing or (_crossed_at >= 0.0 and sim.ma.size() > 0):
+		var waving := _waving(t)
 		# rope, then wood, then road, so the deck is on top
 		for pass_mat in [Sim.ROPE, Sim.WOOD, Sim.ROAD]:
 			for k in sim.ma.size():
@@ -2217,22 +2416,24 @@ func _build_frame() -> ArrayMesh:
 					continue
 				var p := px(sim.jp[sim.ma[k]])
 				var q := px(sim.jp[sim.mb[k]])
-				p += _wave_off(p, t)
-				q += _wave_off(q, t)
-				var tint := Parts.stress(sim.mratio[k]) if sim.mstub[k] == 0 else Color(Parts.BAD, 0.3)
-				Parts.member(b, p, q, pass_mat, _u, tint)
+				if waving:
+					p += _wave_off(p, t)
+					q += _wave_off(q, t)
+				_put_member(rm, p, q, pass_mat, sim.mrest[k], _load_inks(pass_mat, sim.mratio[k], false) if sim.mstub[k] == 0 else _stub_inks(pass_mat))
 				if sim.mstub[k] == 0:
 					joints[sim.ma[k]] = p
 					joints[sim.mb[k]] = q
 		for j in joints:
 			if sim.jfix[j] == 0:
-				Parts.joint(b, joints[j], _u)
+				rm.put(Look.JOINT, [], _at(joints[j]))
 	else:
 		# the last bridge before a Try again, in pencil, where nothing stands now
+		var pencil := Face.Builder.new()
 		for d in _sketch:
 			if state.find(d.a, d.b) >= 0:
 				continue
-			_dashed(b, px(Vector2(d.a)), px(Vector2(d.b)), _u * 0.04, Color(Pal.TEXT, 0.22), _u * 0.16)
+			_dashed(pencil, px(Vector2(d.a)), px(Vector2(d.b)), _u * 0.04, Color(Pal.TEXT, 0.22), _u * 0.16)
+		rm.put_builder(pencil)
 		var order := range(state.design.size())
 		order.sort_custom(func(i: int, j: int) -> bool: return _layer(state.design[i].m) < _layer(state.design[j].m))
 		for i in order:
@@ -2265,22 +2466,172 @@ func _build_frame() -> ArrayMesh:
 				hb.stroke(PackedVector2Array([p, q]), _u * 0.32, Color(Pal.SUN, 0.35))
 				halos += 1
 			# the load it took in the last test, a little softer than live
-			var tint := Parts.stress(float(_peak.get(k, 0.0)))
-			tint.a *= 0.8
-			Parts.member(b, p, q, int(d.m), _u, tint)
+			_put_member(rm, p, q, int(d.m), Vector2(d.a).distance_to(Vector2(d.b)), _load_inks(int(d.m), float(_peak.get(k, 0.0)), true))
 			joints[d.a] = p
 			joints[d.b] = q if bent else px(Vector2(d.b))
 		for j in joints:
 			if not state.is_anchor(j):
-				Parts.joint(b, joints[j], _u)
+				rm.put(Look.JOINT, [], _at(joints[j]))
 	for a in state.anchors():
 		if not _testing and state.design.is_empty() and a == Vector2i(0, 0):
 			# the first pin calls: this is where the road starts
 			hb.disc(px(Vector2(a)), _u * 0.3, Color(Pal.SUN, 0.4))
 			halos += 1
-		Parts.anchor(b, px(Vector2(a)), _u)
+		rm.put(Look.ANCHOR, [], _at(px(Vector2(a))))
 	_halo = hb.mesh() if halos > 0 else null
-	return b.mesh()
+	return rm.mesh()
+
+## A member from `p` to `q` (pixels) as its look: made lying along x at
+## `rest` grid steps long, put turned to the member with its lit side up and
+## stretched to the length it has now (a bent bridge's members are a hair
+## off their rest length, one growing in is short of it).
+func _put_member(rm: RunMesh, p: Vector2, q: Vector2, mat: int, rest: float, inks: Array) -> void:
+	var d := q - p
+	var l := d.length()
+	if l < 0.5:
+		return
+	var key := clampi(roundi(rest * 100.0), 1, 999)
+	var n := d / l
+	var side := n.orthogonal()
+	if side.y > 0.0:
+		side = -side
+	rm.put(LOOK_MEMBER + mat * 1000 + key, inks, Transform2D(n * (l / (float(key) * 0.01 * _ru)), -side * (_u / _ru), p))
+
+## A member's inks at `r` of its limit, in `LOAD_STEPS` steps so every member
+## at a step shares one painted look; `soft` is the load carried into
+## building, a little fainter than live.
+func _load_inks(mat: int, r: float, soft: bool) -> Array:
+	var step := 0 if r < 0.3 else 1 + roundi(clampf((r - 0.3) / 0.7, 0.0, 1.0) * LOAD_STEPS)
+	var key := Vector3i(mat, step, 1 if soft else 0)
+	var hit = _inks.get(key)
+	if hit != null:
+		return hit
+	var tint := Parts.stress(0.3 + 0.7 * float(step - 1) / LOAD_STEPS) if step > 0 else Color(0, 0, 0, 0)
+	if soft:
+		tint.a *= 0.8
+	var out := Parts.member_inks(mat, tint)
+	_inks[key] = out
+	return out
+
+## A snapped member's stubs: faint red.
+func _stub_inks(mat: int) -> Array:
+	var key := Vector3i(mat, -1, 0)
+	var hit = _inks.get(key)
+	if hit != null:
+		return hit
+	var out := Parts.member_inks(mat, Color(Parts.BAD, 0.3))
+	_inks[key] = out
+	return out
+
+## A fading thing's alpha in sixteenths, so its painted look is shared.
+static func _q(a: float) -> float:
+	return roundf(clampf(a, 0.0, 1.0) * 16.0) / 16.0
+
+## Look `id`, drawn about its own origin at the reference grid step.
+func _make_look(id: int) -> Face.Builder:
+	var b := Face.Builder.new()
+	var u := _ru
+	if id >= LOOK_MEMBER:
+		var slots := [RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3)]
+		Parts.member_in(b, Vector2.ZERO, Vector2(float((id - LOOK_MEMBER) % 1000) * 0.01 * u, 0.0), (id - LOOK_MEMBER) / 1000, u, slots)
+		return b
+	if id >= LOOK_TAG:
+		# a load tag: a paper pill and its rim, about its middle
+		var w := float(id - LOOK_TAG)
+		var pill := Face.Builder.round_rect(Vector2(-w, -34.0) * 0.5, Vector2(w, 34.0), 17.0)
+		b.fan(pill, RunMesh.slot(0))
+		b.stroke(pill, 3.0, RunMesh.slot(1), true)
+		return b
+	if id >= LOOK_SIGN:
+		_sign_look(b, id - LOOK_SIGN)
+		return b
+	match id:
+		Look.JOINT:
+			Parts.joint(b, Vector2.ZERO, u)
+		Look.ANCHOR:
+			Parts.anchor(b, Vector2.ZERO, u)
+		Look.LEDGE:
+			_ledge_look(b, u)
+		Look.GLINT:
+			b.stroke(PackedVector2Array([Vector2(-u * 0.1, 0.0), Vector2(u * 0.1, 0.0)]), u * 0.035, RunMesh.slot(0))
+		Look.RIPPLE:
+			b.stroke(Face.Builder.ring(Vector2.ZERO, u * 0.4, u * 0.12), u * 0.03, RunMesh.slot(0), true)
+		Look.FISH:
+			_fish(b, Vector2.ZERO, u * 0.24, 0.0, 1.0)
+		Look.POLE:
+			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(0.0, -u * 0.62)]), u * 0.035, Color("8a6a4a"))
+		Look.CORD:
+			_cord(b, Vector2.ZERO, Vector2(u, 0.0), u)
+		Look.PENNANT:
+			b.polygon(PackedVector2Array([Vector2(-u * 0.1, 0.0), Vector2(u * 0.1, 0.0), Vector2(0.0, u * 0.24)]), RunMesh.slot(0))
+		Look.BUNTING:
+			# every pole and cord of the hung bunting, in the scene's space
+			var up := Vector2(0.0, -u * 0.62)
+			for pq in _bunt_decks:
+				var p := _gp(pq[0])
+				var q := _gp(pq[1])
+				for e in [p, q]:
+					b.stroke(PackedVector2Array([e, e + up]), u * 0.035, Color("8a6a4a"))
+				_cord(b, p + up, q + up, u)
+		Look.CUP_BACK, Look.CUP_FRONT:
+			_cup_look(b, u, id == Look.CUP_FRONT)
+		Look.TEA_LINE:
+			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(u * 0.216, 0.0)]), u * 0.02, Color("d79a5e"))
+		Look.TEA_DROP:
+			b.disc(Vector2.ZERO, u * 0.025, TEA_COL)
+		Look.STEAM_A, Look.STEAM_B:
+			# a curl of steam, risen and faded by its put
+			var k := id - Look.STEAM_A
+			var pts := PackedVector2Array()
+			for s in 5:
+				var f := s / 4.0
+				pts.append(Vector2((k - 0.5) * u * 0.07 + sin(f * 5.0 + k) * u * 0.025, -f * 0.12 * u))
+			b.stroke(pts, u * 0.02, RunMesh.slot(0), false, false)
+		Look.SAG:
+			var col := Color(Parts.BAD if _sag_peak >= 1.0 else Color("8a4fd0"), 0.85)
+			for e in _sag:
+				var h0: Vector2 = e[0]
+				var h1: Vector2 = e[2]
+				var p := _gp(h0 + ((e[1] as Vector2) - h0) * SAG_GAIN)
+				var q := _gp(h1 + ((e[3] as Vector2) - h1) * SAG_GAIN)
+				b.stroke(PackedVector2Array([p, q]), u * 0.075, Color(1, 1, 1, 0.55))
+				_dashed(b, p, q, u * 0.05, col, u * 0.12)
+		Look.DUCK:
+			_duck_look(b, u, 1.0, Color("fbf6ea"), Color("d9cbb5"))
+		Look.DUCKLING:
+			_duck_look(b, u, 0.6, Color("ffd84d"), Color("e6b22e"))
+		Look.CARD:
+			# the troll's score card, about the foot of its stick
+			var r := Rect2(Vector2(-u * 0.55, -u * 0.8), Vector2(u * 1.1, u * 0.8))
+			b.fan(Face.Builder.round_rect(r.position + Vector2(0, 4), r.size, u * 0.1), Color(Pal.TEXT, 0.18))
+			b.fan(Face.Builder.round_rect(r.position, r.size, u * 0.1), Color("fffaf0"))
+			b.stroke(Face.Builder.round_rect(r.position + Vector2.ONE * 5.0, r.size - Vector2.ONE * 10.0, u * 0.07), 3.0, Pal.SUN, true)
+		Look.STICK:
+			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(0.0, -u * 1.1)]), u * 0.06, Color("8a6a4a"))
+		Look.HAND:
+			b.disc(Vector2.ZERO, u * 0.07, Troll.SKIN_DEEP)
+		Look.HEART:
+			b.polygon(_heart(Vector2.ZERO, HEART_R, -1), Pal.FLOWER)
+			b.polygon(_heart(Vector2.ZERO, HEART_R, 1), Pal.FLOWER_DEEP)
+			_heart_face(b, Vector2.ZERO, HEART_R)
+		Look.HEART_GONE:
+			b.polygon(_heart(Vector2.ZERO, HEART_R, 0), Color(Parts.ROAD_DEEP, 0.55))
+		Look.STAR:
+			# a medal star: its glow, its rim and its face, each a star's
+			# three inks
+			b.disc(Vector2.ZERO, 62.5, RunMesh.slot(0))
+			Rewards._star(b, Vector2.ZERO, 55.0, 0.0, RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3))
+			Rewards._star(b, Vector2.ZERO, 50.0, 0.0, RunMesh.slot(4), RunMesh.slot(5), RunMesh.slot(6))
+		Look.DOT:
+			b.disc(Vector2.ZERO, u * 0.07, Color(Pal.SUN, 0.55))
+		Look.RING:
+			b.stroke(Face.Builder.arc_points(Vector2.ZERO, u * 0.2, 0.0, TAU), u * 0.05, Pal.SUN, true)
+		Look.BAR_STAR:
+			Rewards.star(b, Vector2.ZERO, 15.0, Pal.PLAQUE_DEEP)
+			Rewards.star(b, Vector2.ZERO, 12.0, Pal.SUN)
+		Look.BAR_GLOW:
+			b.disc(Vector2.ZERO, 12.0 * 1.7, Color(Pal.SUN, 0.3))
+	return b
 
 ## A dashed line from `p` to `q`, dashes `dash` long.
 static func _dashed(b: Face.Builder, p: Vector2, q: Vector2, width: float, col: Color, dash: float) -> void:
@@ -2295,11 +2646,14 @@ static func _layer(m: int) -> int:
 	return [2, 1, 0][m]
 
 func _draw_front() -> void:
-	if state.level.is_empty() or size.x <= 0.0:
+	if state.level.is_empty() or size.x <= 0.0 or _ru <= 0.0:
 		return
 	var t := _now()
+	var d0 := Time.get_ticks_usec()
 	var shown: Array = []
-	var b := Face.Builder.new()
+	var fm := _fm
+	fm.begin()
+	var k := _k()
 	var water := px(Vector2(0.0, Sim.WATER)).y
 	var x0 := px(Vector2(0.0, 0.0)).x
 	var x1 := px(Vector2(float(state.level.w), 0.0)).x
@@ -2308,113 +2662,137 @@ func _draw_front() -> void:
 	for f: Dictionary in _falling:
 		var half := (f.half as Vector2).rotated(f.rot)
 		var fade := clampf(1.0 - ((f.mid as Vector2).y - water) / (_u * 2.5), 0.0, 1.0) if f.splashed else 1.0
-		Parts.member(b, f.mid - half, f.mid + half, int(f.mat), _u, Color(0, 0, 0, 0), fade)
+		_put_member(fm, f.mid - half, f.mid + half, int(f.mat), half.length() * 2.0 / _u, Parts.member_inks(int(f.mat), Color(0, 0, 0, 0), _q(fade)))
 	# a fish leaps now and then while the river is quiet
 	if calm and not _testing:
 		var cycle := 6.3
 		var n := floori((t + 2.0) / cycle)
-		var k := (fmod(t + 2.0, cycle)) / 0.95
-		if k < 1.0:
+		var leap := (fmod(t + 2.0, cycle)) / 0.95
+		if leap < 1.0:
 			var fx0 := lerpf(x0 + _u * 0.6, x1 - _u * 1.6, fposmod(float(n) * 0.618, 1.0))
 			var dirx := 1.0 if n % 2 == 0 else -1.0
-			var at := Vector2(fx0 + dirx * k * _u * 1.2, water - sin(k * PI) * _u * 1.1)
-			var ang := atan2(-cos(k * PI) * PI * 1.1, dirx * 1.2)
-			_fish(b, at, _u * 0.24, ang, dirx)
+			var at := Vector2(fx0 + dirx * leap * _u * 1.2, water - sin(leap * PI) * _u * 1.1)
+			var ang := atan2(-cos(leap * PI) * PI * 1.1, dirx * 1.2)
+			# facing left the turn is near a half, so y is flipped back: belly down
+			fm.put(Look.FISH, [], Transform2D(ang, Vector2(k, k * signf(dirx)), 0.0, at))
 			for e in [0.0, 1.0]:
-				var since := absf(k - e)
+				var since := absf(leap - e)
 				if since < 0.35:
 					var rr := _u * (0.15 + since * 1.4)
-					b.stroke(Face.Builder.ring(Vector2(fx0 + dirx * e * _u * 1.2, water), rr, rr * 0.3), _u * 0.03, Color(1, 1, 1, 0.7 * (1.0 - since / 0.35)), true)
-	# the water's face, over anything that fell in
-	var wave := PackedVector2Array()
-	for k in 17:
-		var x := lerpf(x0 - _u * 0.2, x1 + _u * 0.2, k / 16.0)
-		wave.append(Vector2(x, water + sin(k * 1.3 + (0.0 if Motion.reduce else t * 2.0)) * _u * 0.03))
-	wave.append(Vector2(x1 + _u * 0.2, size.y))
-	wave.append(Vector2(x0 - _u * 0.2, size.y))
-	b.polygon(wave, Color(0.35, 0.62, 0.82, 0.55))
-	# glints on the water, winking in and out
-	for k in 9:
-		var ph := sin(t * (1.3 + 0.17 * k) + k * 2.1) if calm else 0.6
-		if ph <= 0.2:
-			continue
-		var gx := lerpf(x0, x1, fposmod(k * 0.377 + 0.05, 1.0))
-		var gy := water + _u * (0.12 + 0.13 * (k % 4))
-		var gl := _u * (0.12 + 0.1 * (k % 3)) * ph
-		b.stroke(PackedVector2Array([Vector2(gx - gl, gy), Vector2(gx + gl, gy)]), _u * 0.035, Color(1, 1, 1, 0.55 * ph))
+					fm.put(Look.RIPPLE, [Color(1, 1, 1, _q(0.7 * (1.0 - since / 0.35)))],
+						Transform2D(0.0, Vector2.ONE * (rr / (_ru * 0.4)), 0.0, Vector2(fx0 + dirx * e * _u * 1.2, water)))
+	# the water's face, over anything that fell in: a strip with its top edge
+	# feathered, written straight into its vertices
+	var wb := Face.Builder.new()
+	var wcol := Color(0.35, 0.62, 0.82, 0.55)
+	var wclear := Color(wcol, 0.0)
+	for i in 17:
+		var x := lerpf(x0 - _u * 0.2, x1 + _u * 0.2, i / 16.0)
+		var y := water + sin(i * 1.3 + (0.0 if Motion.reduce else t * 2.0)) * _u * 0.03
+		var v := wb.vertex(Vector2(x, y - Face.FEATHER), wclear)
+		wb.vertex(Vector2(x, y), wcol)
+		wb.vertex(Vector2(x, size.y), wcol)
+		if i > 0:
+			for row in 2:
+				wb.tri(v - 3 + row, v + row, v + row + 1)
+				wb.tri(v - 3 + row, v + row + 1, v - 2 + row)
+	fm.put_builder(wb)
+	# glints on the water, winking in and out (always put, clear while out,
+	# so nothing after them moves place in the mesh)
+	for i in 9:
+		var ph := sin(t * (1.3 + 0.17 * i) + i * 2.1) if calm else 0.6
+		var gx := lerpf(x0, x1, fposmod(i * 0.377 + 0.05, 1.0))
+		var gy := water + _u * (0.12 + 0.13 * (i % 4))
+		var gl := _u * (0.12 + 0.1 * (i % 3)) * maxf(ph, 0.2)
+		fm.put(Look.GLINT, [Color(1, 1, 1, _q(0.55 * ph) if ph > 0.2 else 0.0)],
+			Transform2D(Vector2(gl / (_ru * 0.1), 0.0), Vector2(0.0, k), Vector2(gx, gy)))
 	# birds gliding over, now and then
 	if calm:
 		var fly := fmod(t + 5.0, 13.0)
 		if fly < 7.0:
+			var bb := Face.Builder.new()
 			for i in 2:
 				var bx := lerpf(-_u, size.x + _u, fly / 7.0) - i * _u * 0.7
 				var by := _scene.position.y + _scene.size.y * 0.2 + i * _u * 0.35 + sin(fly * 1.5 + i) * _u * 0.12
 				var flap := sin(t * 9.0 + i * 1.3) * _u * 0.12
-				b.stroke(PackedVector2Array([Vector2(bx - _u * 0.22, by - flap), Vector2(bx, by + _u * 0.04), Vector2(bx + _u * 0.22, by - flap)]),
+				bb.stroke(PackedVector2Array([Vector2(bx - _u * 0.22, by - flap), Vector2(bx, by + _u * 0.04), Vector2(bx + _u * 0.22, by - flap)]),
 					_u * 0.045, Color("5a6070", 0.8))
+			fm.put_builder(bb)
 	# bunting over the solved deck, dropped in along the wave
 	if _crossed_at >= 0.0 and not _testing:
-		_bunting(b, t)
-	_troll_ledge(b)
-	_draw_cups(b, t)
-	_draw_sag(b)
-	_draw_ducks(b, t)
-	_draw_card(b, t)
-	_draw_hearts(b, t)
+		_bunting(fm, t)
+	fm.put(Look.LEDGE, [], _at(_troll_spot() + Vector2(0.0, _u * 0.55)))
+	_draw_cups(fm, t)
+	_draw_sag(fm)
+	_draw_ducks(fm, t)
+	_draw_card(fm, t)
+	_draw_hearts(fm, t)
 	# the bolts a member was just laid to pop
-	for j in _pops:
-		var k := (t - float(_pops[j])) / 0.3
-		if k < 0.0 or k > 1.0:
-			continue
-		var s := 1.0 + 0.7 * sin(k * PI) if calm else 1.0
-		b.disc(px(Vector2(j)), _u * 0.1 * s, Color(1, 0.95, 0.75, 0.5 * (1.0 - k)))
-		Parts.joint(b, px(Vector2(j)), _u * s)
-	_draw_medal(b, t)
+	if not _pops.is_empty():
+		var pb := Face.Builder.new()
+		for j in _pops:
+			var pop := (t - float(_pops[j])) / 0.3
+			if pop < 0.0 or pop > 1.0:
+				continue
+			var s := 1.0 + 0.7 * sin(pop * PI) if calm else 1.0
+			pb.disc(px(Vector2(j)), _u * 0.1 * s, Color(1, 0.95, 0.75, 0.5 * (1.0 - pop)))
+			Parts.joint(pb, px(Vector2(j)), _u * s)
+		fm.put_builder(pb)
+	_draw_medal(fm, t)
 	# building: where the finger reaches, the ghost member, the chosen joint
 	if not _testing and (not is_done() or _free):
 		var from := _from if _dragging and _from != NONE else _sel
 		if from != NONE:
-			for x in range(from.x - 2, from.x + 3):
-				for y in range(from.y - 2, from.y + 3):
-					var q := Vector2i(x, y)
-					if Gen.fits(from, q) and Gen.buildable(state.level, q):
-						b.disc(px(Vector2(q)), _u * 0.07, Color(Pal.SUN, 0.55))
+			if from != _reach_from:
+				_reach_from = from
+				_reach = []
+				for x in range(from.x - 2, from.x + 3):
+					for y in range(from.y - 2, from.y + 3):
+						var q := Vector2i(x, y)
+						if Gen.fits(from, q) and Gen.buildable(state.level, q):
+							_reach.append(Vector2(q))
+			for g: Vector2 in _reach:
+				fm.put(Look.DOT, [], _at(px(g)))
 			var pulse := 0.5 + 0.5 * sin(t * 6.0) if not Motion.reduce else 1.0
-			b.stroke(Face.Builder.arc_points(px(Vector2(from)), _u * (0.2 + 0.03 * pulse), 0.0, TAU), _u * 0.05, Pal.SUN, true)
+			fm.put(Look.RING, [], Transform2D(0.0, Vector2.ONE * (k * (0.2 + 0.03 * pulse) / 0.2), 0.0, px(Vector2(from))))
 		if _dragging and _from != NONE and _to != NONE:
 			var ok := state.why_not(_from, _to, _mat)
 			var good := ok == State.Refusal.OK
 			var tint := Color(0, 0, 0, 0) if good else Color(Parts.BAD, 0.7)
-			Parts.member(b, px(Vector2(_from)), px(Vector2(_to)), _mat, _u, tint, 0.75)
+			_put_member(fm, px(Vector2(_from)), px(Vector2(_to)), _mat, Vector2(_from).distance_to(Vector2(_to)), Parts.member_inks(_mat, tint, 0.75))
 	var tags := _load_tags() if not _testing and (not is_done() or _free or not _last_broken.is_empty()) else []
 	# each tag pops in after the test, one after another
+	var pops: Array = []
 	for i in tags.size():
-		var k := clampf((t - _tags_at - TAG_STEP * i) / TAG_POP, 0.0, 1.0)
-		var sc := 1.0 if Motion.reduce else Motion.back_out(k)
-		var r: Rect2 = tags[i].rect
-		var c := r.get_center()
-		tags[i].rect = Rect2(c - r.size * 0.5 * sc, r.size * sc)
-		tags[i].s = sc
-	for tag in tags:
-		if float(tag.s) <= 0.05:
+		var pop := clampf((t - _tags_at - TAG_STEP * i) / TAG_POP, 0.0, 1.0)
+		var sc := 1.0 if Motion.reduce else Motion.back_out(pop)
+		pops.append(sc)
+		if sc <= 0.05:
 			continue
-		b.fan(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), Color(Pal.SURFACE, 0.92))
-		b.stroke(Face.Builder.round_rect(tag.rect.position, tag.rect.size, tag.rect.size.y * 0.5), 3.0, tag.col, true)
-	_front_mesh = b.mesh()
+		var r: Rect2 = tags[i].rect
+		fm.put(LOOK_TAG + int(r.size.x), [Color(Pal.SURFACE, 0.92), tags[i].col], Transform2D(0.0, Vector2(sc, sc), 0.0, r.get_center()))
+	_front_mesh = fm.mesh()
 	_front.draw_mesh(_front_mesh, null, Transform2D(0.0, _shake_off()))
 	shown.append(_front_mesh)
 	_draw_floats()
 	var tag_font: Font = CozyTheme.body(700)
-	for tag in tags:
-		var fs := int(22 * float(tag.s))
+	for i in tags.size():
+		var fs := int(22 * float(pops[i]))
 		if fs < 8:
 			continue
-		var tsz := tag_font.get_string_size(tag.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		var c: Vector2 = (tag.rect as Rect2).get_center()
-		_front.draw_string(tag_font, Vector2(c.x - tsz.x * 0.5, c.y + tag_font.get_ascent(fs) * 0.36), tag.text,
+		var text: String = tags[i].text
+		var tsz := tag_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		var c: Vector2 = (tags[i].rect as Rect2).get_center()
+		_front.draw_string(tag_font, Vector2(c.x - tsz.x * 0.5, c.y + tag_font.get_ascent(fs) * 0.36), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 	_draw_card_number(t)
 	_draw_stamp(t, shown)
+	if not _strip_shown():
+		_draw_toast(t, shown)
+		_front_shown = shown
+		if perf_on:
+			_tick("front", d0)
+		return
 	if t - _chip_at < 0.4:
 		# a chip just picked is bouncing
 		_strip_mesh = null
@@ -2426,15 +2804,23 @@ func _draw_front() -> void:
 	shown.append(_strip_mesh)
 	if not is_done() and not _free:
 		_bar_mesh = _build_bar(t)
-		_front.draw_mesh(_bar_mesh, null)
-		shown.append(_bar_mesh)
+		if _bar_mesh != null:
+			_front.draw_mesh(_bar_mesh, null)
+			shown.append(_bar_mesh)
 	_draw_words()
 	_draw_toast(t, shown)
 	_front_shown = shown
+	if perf_on:
+		_tick("front", d0)
 
 ## The hardest-worked members of the last test, in figures: a paper tag at
 ## each one's middle saying the share of its limit it reached.
 func _load_tags() -> Array:
+	# kept while the bridge, its last test and the layout are the same
+	var key := "%d|%d|%d|%d|%d|%.3f|%s|%.2f" % [state.design.size(), state.cost(), _peak.size(), _tests, _sag.size(), _sag_peak, _origin, _u]
+	if key == _tags_for:
+		return _tags
+	_tags_for = key
 	var ranked: Array = []
 	for d in state.design:
 		var r := float(_peak.get(_key(d), 0.0))
@@ -2449,7 +2835,7 @@ func _load_tags() -> Array:
 		var r: float = e[0]
 		var d: Dictionary = e[1]
 		var text := "%d%%" % mini(999, int(round(r * 100.0)))
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0
+		var w := ceilf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0)
 		var mid := px(Vector2(d.a + d.b) * 0.5)
 		var col := Parts.stress(r)
 		var rect := Rect2(mid - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0))
@@ -2460,17 +2846,17 @@ func _load_tags() -> Array:
 				clear = false
 				break
 		if clear:
-			out.append({"rect": rect, "text": text, "col": Color(col, 1.0) if col.a > 0.0 else Pal.TEXT_DIM, "s": 1.0})
+			out.append({"rect": rect, "text": text, "col": Color(col, 1.0) if col.a > 0.0 else Pal.TEXT_DIM})
 	# on a Tea Party, how far the tea leaned at its worst, over where it was
 	if not _sag.is_empty():
 		var text := tr("TR_TEA_TAG") % mini(999, int(round(_sag_peak * 100.0)))
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0
+		var w := ceilf(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 20.0)
 		var at := px(_sag_cart) + Vector2(0.0, -_u * 1.25)
 		var r := Rect2(at - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0))
 		# it goes first, so a member's tag under it gives way
 		out = out.filter(func(o: Dictionary) -> bool: return not (o.rect as Rect2).grow(4.0).intersects(r))
-		out.push_front({"rect": Rect2(at - Vector2(w, 34.0) * 0.5, Vector2(w, 34.0)), "text": text,
-			"col": Parts.BAD if _sag_peak >= 1.0 else TEA_COL, "s": 1.0})
+		out.push_front({"rect": r, "text": text, "col": Parts.BAD if _sag_peak >= 1.0 else TEA_COL})
+	_tags = out
 	return out
 
 ## The strip: a paper band, the chips, the budget bar and the proof's star.
@@ -2487,6 +2873,9 @@ func _build_strip() -> ArrayMesh:
 		if hot:
 			b.stroke(Face.Builder.round_rect(r.position, r.size, CHIP_R), 4.0, Pal.SUN, true)
 	if is_done() and not _free:
+		# the bridge's stars at the strip's right end, after its cost
+		for i in _stars():
+			Rewards.star(b, Vector2(size.x - PAD - 8.0 - STAR_STEP * (i + 0.5), 46.0), 13.0, Rewards.GOLD)
 		return b.mesh()
 	for i in 3:
 		var r := _chip_rect(i)
@@ -2509,21 +2898,30 @@ func _build_strip() -> ArrayMesh:
 
 ## The budget bar's fill, eased to the cost, flashing as it moves, and the
 ## proof's star, which shines while the bridge is as cheap as the proof.
-## Built every frame over the strip.
+## Put together every frame over the strip: the fill kept while it stands
+## still, the star a look under its turn and swell.
 func _build_bar(t: float) -> ArrayMesh:
-	var b := Face.Builder.new()
+	var bm := _bm
+	bm.begin()
 	var bar := _budget_rect()
 	var spent := clampf(_bar_shown, 0.0, 1.0)
 	var col := Pal.GOOD if spent < 0.8 else (Parts.WARN if spent < 0.95 else Parts.BAD)
 	if spent > 0.005:
 		var fill := Vector2(maxf(bar.size.y, bar.size.x * spent), bar.size.y)
-		b.fan(Face.Builder.round_rect(bar.position, fill, bar.size.y * 0.5), col)
-		b.fan(Face.Builder.round_rect(bar.position + Vector2(6.0, 3.0), Vector2(maxf(0.0, fill.x - 12.0), bar.size.y * 0.3), bar.size.y * 0.15), Color(1, 1, 1, 0.35))
 		var hit := t - _bar_hit
-		if hit < 0.4 and not Motion.reduce:
-			# the leading edge flashes as the bar moves
-			var edge := Vector2(bar.position.x + fill.x - bar.size.y * 0.5, bar.get_center().y)
-			b.disc(edge, bar.size.y * (0.6 + 0.8 * hit), Color(1, 1, 1, 0.6 * (1.0 - hit / 0.4)))
+		var flash := hit < 0.4 and not Motion.reduce
+		var key := "%d|%s|%s" % [roundi(fill.x * 4.0), bar, flash]
+		if flash or _bar_fill == null or _bar_fill_for != key:
+			var b := Face.Builder.new()
+			b.fan(Face.Builder.round_rect(bar.position, fill, bar.size.y * 0.5), col)
+			b.fan(Face.Builder.round_rect(bar.position + Vector2(6.0, 3.0), Vector2(maxf(0.0, fill.x - 12.0), bar.size.y * 0.3), bar.size.y * 0.15), Color(1, 1, 1, 0.35))
+			if flash:
+				# the leading edge flashes as the bar moves
+				var edge := Vector2(bar.position.x + fill.x - bar.size.y * 0.5, bar.get_center().y)
+				b.disc(edge, bar.size.y * (0.6 + 0.8 * hit), Color(1, 1, 1, 0.6 * (1.0 - hit / 0.4)))
+			_bar_fill = b
+			_bar_fill_for = key
+		bm.put_builder(_bar_fill)
 	var proof := float(state.level.get("proof_cost", 0))
 	if proof > 0.0:
 		var at := Vector2(bar.position.x + bar.size.x * clampf(proof / float(state.budget), 0.0, 1.0), bar.get_center().y)
@@ -2531,10 +2929,9 @@ func _build_bar(t: float) -> ArrayMesh:
 		var turn := sin(t * 2.0) * 0.15 if cheap and not Motion.reduce else 0.0
 		var r := 12.0 + (2.0 + 1.5 * sin(t * 5.0) if cheap and not Motion.reduce else 0.0)
 		if cheap:
-			b.disc(at, r * 1.7, Color(Pal.SUN, 0.3))
-		Rewards.star(b, at, r + 3.0, Pal.PLAQUE_DEEP, turn)
-		Rewards.star(b, at, r, Pal.SUN, turn)
-	return b.mesh()
+			bm.put(Look.BAR_GLOW, [], Transform2D(0.0, Vector2.ONE * (r / 12.0), 0.0, at))
+		bm.put(Look.BAR_STAR, [], Transform2D(turn, Vector2.ONE * (r / 12.0), 0.0, at))
+	return bm.mesh()
 
 func _draw_words() -> void:
 	var bar := _budget_rect()
@@ -2552,10 +2949,10 @@ func _draw_words() -> void:
 		# the bridge's cost, its stars, and where it stands today
 		var right := size.x - PAD - 8.0
 		var left := _pill_rect(Pill.FREE).end.x + 20.0
-		var cost := "%s / %s  %s" % [Locale.number(state.cost()), Locale.number(state.budget), "★".repeat(_stars())]
+		var cost := "%s / %s" % [Locale.number(state.cost()), Locale.number(state.budget)]
 		var cfs := 32
 		var csz := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs)
-		_front.draw_string(font, Vector2(right - csz.x, 58.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs, Pal.TEXT)
+		_front.draw_string(font, Vector2(right - STAR_STEP * _stars() - 12.0 - csz.x, 58.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs, Pal.TEXT)
 		var crowd := _crowd_line()
 		if crowd != "":
 			var body: Font = CozyTheme.body(600)
@@ -2598,8 +2995,12 @@ func _draw_words() -> void:
 	elif kick < 0.25 and not Motion.reduce:
 		moff.y = -sin(kick / 0.25 * PI) * 7.0
 	_front.draw_string(font, Vector2(bar.end.x - msz.x, bar.position.y - 18.0) + moff, money, HORIZONTAL_ALIGNMENT_LEFT, -1, mfs, mcol)
+	# the bar's name, where the figure leaves it room (a tutorial page's
+	# strip is narrower)
 	var lbl := tr("TR_BUDGET")
-	_front.draw_string(CozyTheme.body(600), Vector2(bar.position.x, bar.position.y - 18.0), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Pal.TEXT_DIM)
+	var lfont: Font = CozyTheme.body(600)
+	if lfont.get_string_size(lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 14.0 <= bar.size.x - msz.x:
+		_front.draw_string(lfont, Vector2(bar.position.x, bar.position.y - 18.0), lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Pal.TEXT_DIM)
 
 ## How high chip `i` stands: the chosen one lifted, bouncing when just picked.
 func _chip_lift(i: int) -> float:
@@ -2628,7 +3029,6 @@ func _draw_floats() -> void:
 
 ## A leaping fish, facing `dirx`, turned by `ang`.
 static func _fish(b: Face.Builder, at: Vector2, r: float, ang: float, dirx: float) -> void:
-	# facing left the turn is near a half, so y is flipped back: belly down
 	var t := Transform2D(ang, Vector2(1.0, signf(dirx)), 0.0, at)
 	var body := PackedVector2Array()
 	for i in 14:
@@ -2643,52 +3043,78 @@ static func _fish(b: Face.Builder, at: Vector2, r: float, ang: float, dirx: floa
 
 ## Bunting strung along the solved deck: a pole at every road joint, a
 ## sagging cord between them and pennants waving on it, dropped in along the
-## win's wave.
-func _bunting(b: Face.Builder, t: float) -> void:
+## win's wave. Once hung, its poles and cords are one look made for the deck
+## as it stands, and only the pennants are put a frame.
+func _bunting(fm: RunMesh, t: float) -> void:
 	var calm := not Motion.reduce
 	var since := t - _solved_at if _solved_at >= 0.0 else 100.0
+	var k := _k()
 	var x0 := px(Vector2.ZERO).x
 	var span := maxf(1.0, px(Vector2(float(state.level.w), 0.0)).x - x0)
-	# the deck where it stands: the sim's, bent under its weight, when it ran
+	# the deck where it stands (grid): the sim's, bent under its weight, when it ran
 	var decks: Array = []
 	if sim.ma.size() > 0:
-		for k in sim.ma.size():
-			if sim.mmat[k] == Sim.ROAD and sim.malive[k] == 1 and sim.mstub[k] == 0:
-				decks.append([px(sim.jp[sim.ma[k]]), px(sim.jp[sim.mb[k]])])
+		for i in sim.ma.size():
+			if sim.mmat[i] == Sim.ROAD and sim.malive[i] == 1 and sim.mstub[i] == 0:
+				var a := sim.jp[sim.ma[i]]
+				var c := sim.jp[sim.mb[i]]
+				decks.append([a, c] if a.x <= c.x else [c, a])
 	else:
 		for d in state.design:
 			if int(d.m) == Sim.ROAD:
-				decks.append([px(Vector2(d.a)), px(Vector2(d.b))])
+				var a := Vector2(d.a)
+				var c := Vector2(d.b)
+				decks.append([a, c] if a.x <= c.x else [c, a])
+	var waving := _waving(t)
+	var hung := not calm or (since > 1.4 and not waving)
+	if hung:
+		var key := decks.hash()
+		if key != _bunt_for:
+			_bunt_for = key
+			_bunt_decks = decks
+			fm.forget(Look.BUNTING)
+		if not decks.is_empty():
+			fm.put(Look.BUNTING, [], _gxf())
+	var sag := _u * 0.16
 	var n := 0
 	for pq in decks:
-		var p: Vector2 = pq[0]
-		var q: Vector2 = pq[1]
-		p += _wave_off(p, t)
-		q += _wave_off(q, t)
-		if p.x > q.x:
-			var s := p
-			p = q
-			q = s
-		var drop := clampf((since - 0.2 - clampf((p.x - x0) / span, 0.0, 1.0) * 0.8) / 0.35, 0.0, 1.0) if calm else 1.0
-		if drop <= 0.0:
-			continue
-		var h := _u * 0.62 * Motion.back_out(drop)
-		var up := Vector2(0.0, -h)
-		for e in [p, q]:
-			b.stroke(PackedVector2Array([e, e + up]), _u * 0.035, Color("8a6a4a"))
-		var sag := _u * 0.16
-		var cord := PackedVector2Array()
-		for k in 7:
-			var f := k / 6.0
-			cord.append(p.lerp(q, f) + up + Vector2(0.0, sin(f * PI) * sag))
-		b.stroke(cord, _u * 0.018, Color("7a6048"), false, false)
-		for k in 3:
-			var f := (k + 0.5) / 3.0
+		var p := px(pq[0])
+		var q := px(pq[1])
+		var drop := 1.0
+		if not hung:
+			if waving:
+				p += _wave_off(p, t)
+				q += _wave_off(q, t)
+				if p.x > q.x:
+					var sw := p
+					p = q
+					q = sw
+			drop = clampf((since - 0.2 - clampf((p.x - x0) / span, 0.0, 1.0) * 0.8) / 0.35, 0.0, 1.0)
+			if drop <= 0.0:
+				continue
+		var rise := Motion.back_out(drop)
+		var up := Vector2(0.0, -_u * 0.62 * rise)
+		if not hung:
+			for e in [p, q]:
+				fm.put(Look.POLE, [], Transform2D(Vector2(k, 0.0), Vector2(0.0, k * rise), e))
+			# the cord: made over one grid step, put from pole top to pole top
+			fm.put(Look.CORD, [], Transform2D((q - p) / _ru, Vector2(0.0, k), p + up))
+		for i in 3:
+			var f := (i + 0.5) / 3.0
 			var top := p.lerp(q, f) + up + Vector2(0.0, sin(f * PI) * sag)
-			var sway := sin(t * 3.5 + n * 0.9 + k * 1.3) * _u * 0.05 if calm else 0.0
-			var col: Color = PENNANTS[(n * 3 + k) % PENNANTS.size()]
-			b.polygon(PackedVector2Array([top + Vector2(-_u * 0.1, 0.0), top + Vector2(_u * 0.1, 0.0), top + Vector2(sway, _u * 0.24 * drop)]), col)
+			var sway := sin(t * 3.5 + n * 0.9 + i * 1.3) * _u * 0.05 if calm else 0.0
+			# the pennant's tip swings and drops: a shear of its look
+			fm.put(Look.PENNANT, [PENNANTS[(n * 3 + i) % PENNANTS.size()]],
+				Transform2D(Vector2(k, 0.0), Vector2(sway / (0.24 * _ru), k * drop), top))
 		n += 1
+
+## A bunting cord from `p` to `q`, sagging between them.
+static func _cord(b: Face.Builder, p: Vector2, q: Vector2, u: float) -> void:
+	var cord := PackedVector2Array()
+	for i in 7:
+		var f := i / 6.0
+		cord.append(p.lerp(q, f) + Vector2(0.0, sin(f * PI) * u * 0.16))
+	b.stroke(cord, u * 0.018, Color("7a6048"), false, false)
 
 func _budget_rect() -> Rect2:
 	var x := PAD + 3.0 * (CHIP.x + CHIP_GAP) + 16.0
@@ -2745,29 +3171,48 @@ func _tell(key: String, args: Array = []) -> void:
 # --- the polish's drawings ---
 
 ## A flat stone at the foot of the near bank with a clump of reeds before
-## it: the troll stands behind them, chest-deep.
-func _troll_ledge(b: Face.Builder) -> void:
-	var at := _troll_spot() + Vector2(0.0, _u * 0.55)
-	b.ellipse(at + Vector2(0.0, _u * 0.06), _u * 0.62, _u * 0.16, Color(Parts.STONE_DEEP, 0.9))
-	b.ellipse(at, _u * 0.58, _u * 0.13, Parts.STONE)
+## it: the troll stands behind them, chest-deep. About the stone's middle.
+static func _ledge_look(b: Face.Builder, u: float) -> void:
+	b.ellipse(Vector2(0.0, u * 0.06), u * 0.62, u * 0.16, Color(Parts.STONE_DEEP, 0.9))
+	b.ellipse(Vector2.ZERO, u * 0.58, u * 0.13, Parts.STONE)
 	# reeds either side of him, never over his face
 	for k in 6:
-		var x := at.x + (k - 2.5) * _u * 0.24 + signf(k - 2.5) * _u * 0.12
-		var tall := _u * (0.24 + 0.1 * ((k * 5) % 3))
-		var lean := (k - 2.5) * _u * 0.04
-		b.stroke(PackedVector2Array([Vector2(x, at.y + _u * 0.05), Vector2(x + lean, at.y - tall)]), _u * 0.045, Color("6f9440"))
+		var x := (k - 2.5) * u * 0.24 + signf(k - 2.5) * u * 0.12
+		var tall := u * (0.24 + 0.1 * ((k * 5) % 3))
+		var lean := (k - 2.5) * u * 0.04
+		b.stroke(PackedVector2Array([Vector2(x, u * 0.05), Vector2(x + lean, -tall)]), u * 0.045, Color("6f9440"))
 		if k % 3 == 1:
-			b.ellipse(Vector2(x + lean, at.y - tall + _u * 0.05), _u * 0.035, _u * 0.09, Color("8a5a3a"))
+			b.ellipse(Vector2(x + lean, -tall + u * 0.05), u * 0.035, u * 0.09, Color("8a5a3a"))
 
 ## Where rider `i`'s teacup is held, in the cart's frame.
 func _cup_at(i: int) -> Vector2:
 	return Parts.seat(_u, _faces.size(), i) + Vector2(_u * 0.17, _u * 0.2)
 
+## A teacup about its middle: behind the tea its saucer, handle and bowl;
+## over the tea's lower edge (`front`) the bowl's face and a gold band.
+static func _cup_look(b: Face.Builder, u: float, front: bool) -> void:
+	var hw := u * 0.12
+	var hb := u * 0.08
+	var h := u * 0.16
+	var top := -h * 0.5
+	if front:
+		b.polygon(PackedVector2Array([Vector2(-hw * 0.95, top + h * 0.38), Vector2(hw * 0.95, top + h * 0.38),
+			Vector2(hb, h * 0.5), Vector2(-hb, h * 0.5)]), CUP)
+		b.stroke(PackedVector2Array([Vector2(-hw * 0.93, top + h * 0.45), Vector2(hw * 0.93, top + h * 0.45)]), u * 0.018, Pal.SUN)
+		return
+	b.ellipse(Vector2(0.0, h * 0.5 + u * 0.01), u * 0.15, u * 0.03, CUP_DEEP)
+	# the handle at the back
+	b.stroke(Face.Builder.arc_points(Vector2(-hw - u * 0.02, -h * 0.05), u * 0.05, 0.0, TAU), u * 0.025, CUP_DEEP, true)
+	b.polygon(PackedVector2Array([Vector2(-hw - 2.0, top - 1.0), Vector2(hw + 2.0, top - 1.0),
+		Vector2(hb + 2.0, h * 0.5 + 1.0), Vector2(-hb - 2.0, h * 0.5 + 1.0)]), CUP_DEEP)
+	b.polygon(PackedVector2Array([Vector2(-hw, top), Vector2(hw, top), Vector2(hb, h * 0.5), Vector2(-hb, h * 0.5)]), CUP)
+
 ## The Tea Party's cups, one held before each rider: the tea's surface leans
 ## in its cup as the sim's tea does (drawn larger, so the rim is a visible
 ## lean), steam curls off it while the cart stands, and after a spill the
-## cups are half empty.
-func _draw_cups(b: Face.Builder, t: float) -> void:
+## cups are half empty. The cup is two looks about the tea, which is four
+## vertices and a line turned to its lean.
+func _draw_cups(fm: RunMesh, t: float) -> void:
 	if not _tea() or _faces.is_empty():
 		return
 	if sim.cart == Sim.CART_WATER or (sim.cart == Sim.CART_OVER and _testing):
@@ -2780,65 +3225,60 @@ func _draw_cups(b: Face.Builder, t: float) -> void:
 	elif not Motion.reduce:
 		lean = sin(t * 2.2) * 0.04
 	var spilt := _testing and sim.spilled
+	# the cup's own measures, at the looks' grid step
+	var u := _ru
+	var hw := u * 0.12
+	var h := u * 0.16
+	var top := -h * 0.5
+	var ys := top + h * (0.42 if spilt else 0.14)
+	var slope := tan(lean)
+	var wl := hw * 0.9
+	var yl := maxf(top - u * 0.03, ys + wl * slope)
+	var yr := maxf(top - u * 0.03, ys - wl * slope)
+	var low := top + h * 0.55
+	var dripping := _testing and not spilt and absf(lean) > TEA_DRAWN * 0.75
 	for i in _faces.size():
-		var c := _cup_at(i) + Vector2(0.0, bob)
-		var hw := _u * 0.12
-		var hb := _u * 0.08
-		var h := _u * 0.16
-		var top := c.y - h * 0.5
-		b.ellipse(xf * (c + Vector2(0.0, h * 0.5 + _u * 0.01)), _u * 0.15, _u * 0.03, CUP_DEEP)
-		# the handle at the back
-		b.stroke(Face.Builder.arc_points(xf * (c + Vector2(-hw - _u * 0.02, -h * 0.05)), _u * 0.05, 0.0, TAU), _u * 0.025, CUP_DEEP, true)
-		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw - 2.0, top - 1.0), xf * Vector2(c.x + hw + 2.0, top - 1.0),
-			xf * Vector2(c.x + hb + 2.0, c.y + h * 0.5 + 1.0), xf * Vector2(c.x - hb - 2.0, c.y + h * 0.5 + 1.0)]), CUP_DEEP)
-		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw, top), xf * Vector2(c.x + hw, top),
-			xf * Vector2(c.x + hb, c.y + h * 0.5), xf * Vector2(c.x - hb, c.y + h * 0.5)]), CUP)
+		var cup := xf * _at(_cup_at(i) + Vector2(0.0, bob))
+		fm.put(Look.CUP_BACK, [], cup)
 		# the tea: its surface through the middle of the brim, leaning
-		var ys := top + h * (0.42 if spilt else 0.14)
-		var slope := tan(lean)
-		var wl := hw * 0.9
-		var yl := maxf(top - _u * 0.03, ys + wl * slope)
-		var yr := maxf(top - _u * 0.03, ys - wl * slope)
-		var low := top + h * 0.55
-		b.polygon(PackedVector2Array([xf * Vector2(c.x - wl, yl), xf * Vector2(c.x + wl, yr),
-			xf * Vector2(c.x + hw * 0.72, low), xf * Vector2(c.x - hw * 0.72, low)]), TEA_COL)
-		b.stroke(PackedVector2Array([xf * Vector2(c.x - wl, yl), xf * Vector2(c.x + wl, yr)]), _u * 0.02, Color("d79a5e"))
+		var p := cup * Vector2(-wl, yl)
+		var q := cup * Vector2(wl, yr)
+		var tb := Face.Builder.new()
+		var v := tb.vertex(p, TEA_COL)
+		tb.vertex(q, TEA_COL)
+		tb.vertex(cup * Vector2(hw * 0.72, low), TEA_COL)
+		tb.vertex(cup * Vector2(-hw * 0.72, low), TEA_COL)
+		tb.tri(v, v + 1, v + 2)
+		tb.tri(v, v + 2, v + 3)
+		fm.put_builder(tb)
+		var d := q - p
+		fm.put(Look.TEA_LINE, [], Transform2D(d / (2.0 * wl), d.orthogonal().normalized() * -_k(), p))
 		# the cup's face over the tea's lower edge, and a gold band
-		b.polygon(PackedVector2Array([xf * Vector2(c.x - hw * 0.95, top + h * 0.38), xf * Vector2(c.x + hw * 0.95, top + h * 0.38),
-			xf * Vector2(c.x + hb, c.y + h * 0.5), xf * Vector2(c.x - hb, c.y + h * 0.5)]), CUP)
-		b.stroke(PackedVector2Array([xf * Vector2(c.x - hw * 0.93, top + h * 0.45), xf * Vector2(c.x + hw * 0.93, top + h * 0.45)]), _u * 0.018, Pal.SUN)
-		# a drop over the low rim when the tea is near it
-		if _testing and not spilt and absf(lean) > TEA_DRAWN * 0.75:
-			var side := signf(lean)
-			b.disc(xf * Vector2(c.x - side * hw * 1.05, top + _u * 0.02), _u * 0.025, TEA_COL)
+		fm.put(Look.CUP_FRONT, [], cup)
+		# a drop over the low rim when the tea is near it (always put, at no
+		# size while there is none)
+		var drop := cup * Vector2(-signf(lean) * hw * 1.05, top + u * 0.02)
+		fm.put(Look.TEA_DROP, [], Transform2D(0.0, Vector2.ONE * (_k() if dripping else 0.0), 0.0, drop))
 		if not _testing and not Motion.reduce:
-			for k in 2:
-				var phase := fmod(t * 0.6 + k * 0.5 + i * 0.3, 1.0)
-				var pts := PackedVector2Array()
-				for s in 5:
-					var f := s / 4.0
-					pts.append(xf * Vector2(c.x + (k - 0.5) * _u * 0.07 + sin(f * 5.0 + t * 3.0 + k) * _u * 0.025,
-						top - _u * 0.04 - (phase * 0.15 + f * 0.12) * _u))
-				b.stroke(pts, _u * 0.02, Color(1, 1, 1, 0.45 * sin(phase * PI)), false, false)
+			for s in 2:
+				var phase := fmod(t * 0.6 + s * 0.5 + i * 0.3, 1.0)
+				fm.put(Look.STEAM_A + s, [Color(1, 1, 1, _q(0.45 * sin(phase * PI)))],
+					cup * Transform2D(0.0, Vector2(0.0, top - u * 0.04 - phase * 0.15 * u)))
 
 ## After a Tea Party test: the deck as it stood when the tea leaned most,
 ## its dip drawn `SAG_GAIN` times over, dashed in tea brown under the bridge
-## being built.
-func _draw_sag(b: Face.Builder) -> void:
+## being built. One look, made again after each test.
+func _draw_sag(fm: RunMesh) -> void:
 	if _sag.is_empty() or _testing or (is_done() and not _free):
 		return
-	var col := Color(Parts.BAD if _sag_peak >= 1.0 else Color("8a4fd0"), 0.85)
-	for e in _sag:
-		var h0: Vector2 = e[0]
-		var h1: Vector2 = e[2]
-		var p := px(h0 + ((e[1] as Vector2) - h0) * SAG_GAIN)
-		var q := px(h1 + ((e[3] as Vector2) - h1) * SAG_GAIN)
-		b.stroke(PackedVector2Array([p, q]), _u * 0.075, Color(1, 1, 1, 0.55))
-		_dashed(b, p, q, _u * 0.05, col, _u * 0.12)
+	if _sag_stale:
+		_sag_stale = false
+		fm.forget(Look.SAG)
+	fm.put(Look.SAG, [], _gxf())
 
 ## After the solve a duck and her three ducklings paddle along the river
 ## under the new bridge.
-func _draw_ducks(b: Face.Builder, t: float) -> void:
+func _draw_ducks(fm: RunMesh, t: float) -> void:
 	if Motion.reduce or _party_at == INF:
 		return
 	var e := t - _party_at - DUCKS_AT
@@ -2849,20 +3289,22 @@ func _draw_ducks(b: Face.Builder, t: float) -> void:
 	for k in 4:
 		var s := 1.0 if k == 0 else 0.6
 		var dx := x + (0.0 if k == 0 else _u * (0.25 + 0.42 * k))
-		var at := Vector2(dx, water - _u * 0.05 * s + sin(t * 4.0 + k) * _u * 0.02)
-		var body: Color = Color("fbf6ea") if k == 0 else Color("ffd84d")
-		var deep: Color = Color("d9cbb5") if k == 0 else Color("e6b22e")
-		b.ellipse(at + Vector2(_u * 0.02, _u * 0.02) * s, _u * 0.24 * s, _u * 0.1 * s, deep)
-		b.ellipse(at, _u * 0.22 * s, _u * 0.12 * s, body)
-		b.polygon(PackedVector2Array([at + Vector2(_u * 0.16, -_u * 0.02) * s, at + Vector2(_u * 0.3, -_u * 0.12) * s,
-			at + Vector2(_u * 0.2, _u * 0.04) * s]), body)
-		var head := at + Vector2(-_u * 0.15, -_u * 0.15) * s
-		b.disc(head, _u * 0.09 * s, body)
-		b.ellipse(head + Vector2(-_u * 0.1, _u * 0.01) * s, _u * 0.06 * s, _u * 0.025 * s, Color("f29a3a"))
-		b.disc(head + Vector2(-_u * 0.03, -_u * 0.02) * s, _u * 0.018 * s, Pal.TEXT)
-		b.ellipse(at + Vector2(_u * 0.03, -_u * 0.01) * s, _u * 0.09 * s, _u * 0.05 * s, Color(deep, 0.8))
-		# the ripple trailing each
-		b.stroke(PackedVector2Array([at + Vector2(_u * 0.24, _u * 0.1) * s, at + Vector2(_u * 0.44, _u * 0.1) * s]), _u * 0.02, Color(1, 1, 1, 0.5))
+		fm.put(Look.DUCK if k == 0 else Look.DUCKLING, [], _at(Vector2(dx, water - _u * 0.05 * s + sin(t * 4.0 + k) * _u * 0.02)))
+
+## A duck about where she sits on the water, `s` her size, and the ripple
+## she trails.
+static func _duck_look(b: Face.Builder, u: float, s: float, body: Color, deep: Color) -> void:
+	var at := Vector2.ZERO
+	b.ellipse(at + Vector2(u * 0.02, u * 0.02) * s, u * 0.24 * s, u * 0.1 * s, deep)
+	b.ellipse(at, u * 0.22 * s, u * 0.12 * s, body)
+	b.polygon(PackedVector2Array([at + Vector2(u * 0.16, -u * 0.02) * s, at + Vector2(u * 0.3, -u * 0.12) * s,
+		at + Vector2(u * 0.2, u * 0.04) * s]), body)
+	var head := at + Vector2(-u * 0.15, -u * 0.15) * s
+	b.disc(head, u * 0.09 * s, body)
+	b.ellipse(head + Vector2(-u * 0.1, u * 0.01) * s, u * 0.06 * s, u * 0.025 * s, Color("f29a3a"))
+	b.disc(head + Vector2(-u * 0.03, -u * 0.02) * s, u * 0.018 * s, Pal.TEXT)
+	b.ellipse(at + Vector2(u * 0.03, -u * 0.01) * s, u * 0.09 * s, u * 0.05 * s, Color(deep, 0.8))
+	b.stroke(PackedVector2Array([at + Vector2(u * 0.24, u * 0.1) * s, at + Vector2(u * 0.44, u * 0.1) * s]), u * 0.02, Color(1, 1, 1, 0.5))
 
 ## The troll's score card on its stick, rising for the party and staying up
 ## while the solved bridge stands.
@@ -2877,16 +3319,17 @@ func _card_rect(t: float) -> Rect2:
 	var top := hand + Vector2(0.0, -_u * 1.1 * rise)
 	return Rect2(top - Vector2(_u * 0.55, _u * 0.8), Vector2(_u * 1.1, _u * 0.8))
 
-func _draw_card(b: Face.Builder, t: float) -> void:
+func _draw_card(fm: RunMesh, t: float) -> void:
 	var r := _card_rect(t)
 	if r.size.x <= 0.0:
 		return
+	var k := _k()
 	var hand := _troll.position + _troll.size * Vector2(0.92, 0.55)
-	b.stroke(PackedVector2Array([hand, Vector2(r.get_center().x, r.end.y)]), _u * 0.06, Color("8a6a4a"))
-	b.fan(Face.Builder.round_rect(r.position + Vector2(0, 4), r.size, _u * 0.1), Color(Pal.TEXT, 0.18))
-	b.fan(Face.Builder.round_rect(r.position, r.size, _u * 0.1), Color("fffaf0"))
-	b.stroke(Face.Builder.round_rect(r.position + Vector2.ONE * 5.0, r.size - Vector2.ONE * 10.0, _u * 0.07), 3.0, Pal.SUN, true)
-	b.disc(hand, _u * 0.07, Troll.SKIN_DEEP)
+	var foot := Vector2(r.get_center().x, r.end.y)
+	# the stick, as tall as the card has risen
+	fm.put(Look.STICK, [], Transform2D(Vector2(k, 0.0), Vector2(0.0, (hand.y - foot.y) / (1.1 * _ru)), hand))
+	fm.put(Look.CARD, [], _at(foot))
+	fm.put(Look.HAND, [], _at(hand))
 
 func _draw_card_number(t: float) -> void:
 	var r := _card_rect(t)
@@ -2899,36 +3342,28 @@ func _draw_card_number(t: float) -> void:
 	_front.draw_string(font, at, _score_card, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Parts.PIN)
 
 ## The hearts on a little wooden sign hung under the strip's left end: a
-## lost one splits and falls, a heart given back pops in.
-func _draw_hearts(b: Face.Builder, t: float) -> void:
+## lost one splits and falls, a heart given back pops in. The sign and each
+## heart are looks; only the halves of one splitting are drawn as they fall.
+func _draw_hearts(fm: RunMesh, t: float) -> void:
 	if max_hearts <= 0 or is_done():
 		return
-	var w := HEART_STEP * max_hearts + 22.0
-	var top := STRIP_H + 26.0
-	var x0 := PAD + 6.0
-	for sx: float in [0.2, 0.8]:
-		var x := x0 + sx * w
-		b.stroke(PackedVector2Array([Vector2(x, STRIP_H + 4.0), Vector2(x, top + 8.0)]), 4.0, Parts.ROAD_DEEP)
-	b.fan(Face.Builder.round_rect(Vector2(x0, top + 5.0), Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD_DEEP)
-	b.fan(Face.Builder.round_rect(Vector2(x0, top), Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD)
-	b.stroke(PackedVector2Array([Vector2(x0 + 12.0, top + 8.0), Vector2(x0 + w - 12.0, top + 8.0)]), 5.0, Color(Parts.ROAD_TOP, 0.7))
-	for sx: float in [0.2, 0.8]:
-		b.disc(Vector2(x0 + sx * w, top + 10.0), 5.0, Parts.BOLT_DEEP)
+	var top := _sign_top()
+	var x0 := _sign_left()
+	fm.put(LOOK_SIGN + max_hearts, [], Transform2D(0.0, Vector2(x0, top)))
 	var cy := top + (SIGN_H - 14.0) * 0.5 + 2.0
 	for i in max_hearts:
 		var at := Vector2(x0 + 11.0 + HEART_STEP * (i + 0.5), cy)
 		if i < hearts:
-			var rr := HEART_R
+			var s := 1.0
 			if i == _back_index and not Motion.reduce:
-				rr *= Motion.pop_in_scale(t - _back_at, HEART_BACK_TIME).x
-			if rr > 0.5:
-				b.polygon(_heart(at, rr, -1), Pal.FLOWER)
-				b.polygon(_heart(at, rr, 1), Pal.FLOWER_DEEP)
-				_heart_face(b, at, rr)
+				s = Motion.pop_in_scale(t - _back_at, HEART_BACK_TIME).x
+			if s * HEART_R > 0.5:
+				fm.put(Look.HEART, [], Transform2D(0.0, Vector2(s, s), 0.0, at))
 			continue
-		b.polygon(_heart(at, HEART_R, 0), Color(Parts.ROAD_DEEP, 0.55))
+		fm.put(Look.HEART_GONE, [], Transform2D(0.0, at))
 		var u := (t - _split_at) / SPLIT_TIME
 		if i == _split_index and u < 1.0 and not Motion.reduce:
+			var b := Face.Builder.new()
 			var fade := 1.0 - u * u
 			for side in [-1, 1]:
 				var turn: float = side * 0.6 * u
@@ -2937,6 +3372,19 @@ func _draw_hearts(b: Face.Builder, t: float) -> void:
 				for k in pts.size():
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
+			fm.put_builder(b)
+
+## The hearts' sign for `n` hearts, about its top left corner, on the two
+## cords it hangs from under the strip.
+static func _sign_look(b: Face.Builder, n: int) -> void:
+	var w := HEART_STEP * n + 22.0
+	for sx: float in [0.2, 0.8]:
+		b.stroke(PackedVector2Array([Vector2(sx * w, -22.0), Vector2(sx * w, 8.0)]), 4.0, Parts.ROAD_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2(0.0, 5.0), Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(w, SIGN_H - 14.0), 14.0), Parts.ROAD)
+	b.stroke(PackedVector2Array([Vector2(12.0, 8.0), Vector2(w - 12.0, 8.0)]), 5.0, Color(Parts.ROAD_TOP, 0.7))
+	for sx: float in [0.2, 0.8]:
+		b.disc(Vector2(sx * w, 10.0), 5.0, Parts.BOLT_DEEP)
 
 static func _heart_face(b: Face.Builder, at: Vector2, s: float) -> void:
 	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))

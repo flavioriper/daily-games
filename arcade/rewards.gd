@@ -437,7 +437,11 @@ static func _bit_shape(id: int) -> Face.Builder:
 
 ## Each letter hops in on its own, rocks for a moment, and the word swells
 ## away at the end; a pale rim and a dark one under the colour, so it reads
-## over anything.
+## over anything. Lettered a pass at a time -- every letter's shadow, then
+## every pale rim, every dark one, every face -- and not a letter at a time:
+## each pass's glyphs live in one atlas, so the renderer draws a pass in one
+## call where a letter's four passes were four (Trestle's win, five stickers
+## up at once, was 300 draw calls of lettering).
 func _draw_stickers() -> void:
 	for st: Dictionary in stickers:
 		var text: String = st.text
@@ -448,6 +452,9 @@ func _draw_stickers() -> void:
 		var swell := 1.0 + 0.2 * (1.0 - out_a)
 		var tilt: float = st.tilt
 		var base := _sticker_at(st)
+		# each letter on show: [its place, its turn, its swell, where its glyph
+		# is drawn from, the letter, its colour]
+		var letters: Array = []
 		for i in text.length():
 			var ch := text[i]
 			var adv := _font.get_char_size(ch.unicode_at(0), fs).x
@@ -459,14 +466,23 @@ func _draw_stickers() -> void:
 			var hop := 0.0 if Motion.reduce else -sin(st.t * 8.0 - i * 0.55) * fs * 0.09 * exp(-st.t * 1.4)
 			var centre: Vector2 = base + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
 			var rock := 0.0 if Motion.reduce else sin(st.t * 7.0 + i) * 0.08 * exp(-st.t * 1.2)
-			draw_set_transform(centre, tilt + rock, Vector2(sc, sc) * swell)
-			var o := Vector2(-adv * 0.5, fs * 0.36)
 			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
-			draw_char_outline(_font, o + Vector2(0, fs * 0.09), ch, fs, int(fs * 0.34), Color(0.25, 0.15, 0.05, 0.35 * out_a))
-			draw_char_outline(_font, o, ch, fs, int(fs * 0.3), Color(Color("fffaf0"), out_a))
-			draw_char_outline(_font, o, ch, fs, int(fs * 0.13), Color(col.darkened(0.5), out_a))
-			draw_char(_font, o, ch, fs, Color(col, out_a))
+			letters.append([centre, tilt + rock, Vector2(sc, sc) * swell, Vector2(-adv * 0.5, fs * 0.36), ch, col])
 			x += adv
+		for pass_ in 4:
+			for l: Array in letters:
+				draw_set_transform(l[0], l[1], l[2])
+				var o: Vector2 = l[3]
+				var col: Color = l[5]
+				match pass_:
+					0:
+						draw_char_outline(_font, o + Vector2(0, fs * 0.09), l[4], fs, int(fs * 0.34), Color(0.25, 0.15, 0.05, 0.35 * out_a))
+					1:
+						draw_char_outline(_font, o, l[4], fs, int(fs * 0.3), Color(Color("fffaf0"), out_a))
+					2:
+						draw_char_outline(_font, o, l[4], fs, int(fs * 0.13), Color(col.darkened(0.5), out_a))
+					3:
+						draw_char(_font, o, l[4], fs, Color(col, out_a))
 	draw_set_transform(Vector2.ZERO)
 	_warm_one()
 
