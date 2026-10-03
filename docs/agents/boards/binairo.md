@@ -242,3 +242,28 @@ of a liar. **Left in place and unreachable**: the board's unmasking
 (`_unmask`, `_draw_liar`, `_liar_hidden`, the `UNMASK_*` constants, the
 `liar` cue, `BN_CAUGHT`) and the state's `liar` field, which is always -1.
 Everything above about the liar describes what was.
+
+### One second before anything is called wrong (2026-10-03)
+
+The user: a player double-taps to place a moon, so "delay the wrong flag for
+1 second", and a second tap on a sun must make a moon with a brush armed too.
+This replaces the hold rules of the two sections above where they differ.
+
+- `WRONG_GRACE` is **1.0** and covers every tap, brush or not. A tile a tap
+  changed is held (`_held`) and judged at `_commit`: after the grace with no
+  further change to it, or at once when the player taps another tile, or
+  presses Undo, Hint or Check. `FULL_GRACE` is gone (the one timer does it).
+- **The blush waits too.** `_recolour(animate, hold)` on a tap keeps
+  `_shown_bad` to what was already shown and is still broken, so a line or
+  sign a tap just broke shows nothing for the grace, while one it mended
+  clears at once. `_bad`, the faces' worry and the signs' red ink read
+  `_shown_bad`; the streak and `_commit` read the state. The blush's buzz now
+  fires as it shows.
+- **A brush cycles on its own symbol**: with the sun armed, a tap on a sun
+  makes a moon (and the moon brush on a moon clears it); the eraser never
+  cycles. So a brush's symbol is no longer judged at once -- it may be on
+  its way too.
+- Probe (throwaway, headless): Hard with the sun brush, a wrong sun at 0.6 s
+  keeps three hearts, a second tap makes the moon, a wrong sun left 1.3 s
+  costs one; Medium, a third sun in a row shows no blush at once, none when
+  tapped on to a moon at 0.5 s, and blushes when left 1.3 s.

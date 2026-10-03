@@ -112,13 +112,10 @@ const HEART_GAP := 12.0
 const HEART_PILL_PAD := Vector2(18.0, 8.0)
 const HEART_PILL_RIM := 2.0
 ## Tapping cycles empty, sun, moon: a sun set by a tap may be on its way to a
-## moon, however slowly, so a tile under the cycle is judged only once the
-## player moves on from it (`_held`, `_commit`). This is only how long a
-## blush waits before it buzzes.
-const WRONG_GRACE := 0.4
-## How long the last tile of a full board may stand wrong under the cycle
-## before it is judged: there is nothing left to move on to.
-const FULL_GRACE := 1.5
+## moon, so nothing a tap sets is called wrong -- no blush, no red sign, no
+## heart -- until it has stood this long, or the player has moved on to
+## another tile (`_held`, `_commit`). The user's figure, 2026-10-03.
+const WRONG_GRACE := 1.0
 ## The wrong tile: the face's jolt, the beat before it ejects, and the drop
 ## and fade it leaves by.
 const JOLT := 0.2
@@ -310,6 +307,10 @@ var _gen := 0
 var _pending: Array = []    # [r][c] -> token: a newer change cancels a waiting judgement
 ## The tile the player is cycling, as (c, r): not judged until they move on.
 var _held := Vector2i(-1, -1)
+## What the board shows as broken: state.bad, less whatever a tap broke
+## within the last WRONG_GRACE (same shape). _bad and the signs read this.
+var _shown_bad: Dictionary = {"rows": {}, "cols": {}, "cells": {}}
+var _shown_token := 0
 var _ejecting: Array = []   # [r][c] -> the wrong tile waiting to eject
 var _cracks: Array = []     # [r][c] -> its crack Control, or null
 var _asleep := false
@@ -716,7 +717,7 @@ func _draw_signs() -> void:
 			continue
 		var s: Vector4i = state.signs[i]
 		var at := _sign_at(s)
-		var ink: Color = Pal.BAD if state.sign_broken(i) else Pal.ACORN_DEEP
+		var ink: Color = Pal.BAD if state.sign_broken(i) and _shown_bad.cells.has(Vector2i(s.y, s.x)) else Pal.ACORN_DEEP
 		b.disc(at, r + 2.0, Pal.LINE)
 		b.disc(at, r, Pal.SURFACE)
 		_glyph(b, at, w, line, s.w, ink)
@@ -804,8 +805,25 @@ func _set_warm(w: float, r: int, c: int) -> void:
 ## Rule feedback. Cells whose line just broke blush with two heartbeats and
 ## shiver once, and their faces worry; cells whose line was fixed fade back.
 ## A cell already heading for the right blend is left alone.
-func _recolour(animate := true) -> void:
+## `hold` (a tap's change) lets what is no longer broken clear at once but
+## shows nothing newly broken until WRONG_GRACE has passed with no other
+## change; any other caller shows the board as it is.
+func _recolour(animate := true, hold := false) -> void:
 	state.refresh_bad()
+	_shown_token += 1
+	if hold:
+		var kept := {"rows": {}, "cols": {}, "cells": {}}
+		for kind in kept:
+			for key in _shown_bad[kind]:
+				if state.bad[kind].has(key):
+					kept[kind][key] = true
+		_shown_bad = kept
+		var token := _shown_token
+		_later(WRONG_GRACE, func() -> void:
+			if token == _shown_token:
+				_recolour())
+	else:
+		_shown_bad = state.bad
 	_liar_hidden = state.liar >= 0 and not state.is_solved()
 	_sign_layer.queue_redraw()
 	var blushed: Array[Vector2i] = []
@@ -837,14 +855,8 @@ func _recolour(animate := true) -> void:
 			else:
 				_fades[r][c] = Motion.fade(self, setter, _blend[r][c], target, BLUSH_OUT, 16, 0.0, true)
 				fx.cue("blush_out")
-	# The blush's buzz waits out the grace a tapped sun gets: a sun on its
-	# way to a moon breaks a line for one tap and should not warn the hand.
 	if not blushed.is_empty():
-		_later(WRONG_GRACE, func() -> void:
-			for cell in blushed:
-				if _blend_target[cell.y][cell.x] > 0.5:
-					Haptics.play(Haptics.WARN)
-					return)
+		Haptics.play(Haptics.WARN)
 
 ## Whether (r, c) blushes. While a liar hides, the ends of a broken sign do
 ## not: the state reads the liar as its true kind, so a pair of tiles
@@ -852,8 +864,8 @@ func _recolour(animate := true) -> void:
 ## still blush.
 func _bad(r: int, c: int) -> bool:
 	if _liar_hidden:
-		return state.bad.rows.has(r) or state.bad.cols.has(c)
-	return state.is_bad(r, c)
+		return _shown_bad.rows.has(r) or _shown_bad.cols.has(c)
+	return _shown_bad.rows.has(r) or _shown_bad.cols.has(c) or _shown_bad.cells.has(Vector2i(c, r))
 
 
 ## What a face should show: asleep when the hearts are gone, a yelp on a
@@ -1206,11 +1218,13 @@ func _tap(r: int, c: int) -> void:
 		_hop(r, c, DIP, Motion.HOP_TIME)
 		_focus(r, c)
 		return
-	var changed: bool
-	if brush == -2:
-		changed = state.cycle(r, c)
-	else:
+	# A brush paints its symbol; on a tile that already shows it, the tap
+	# cycles on, so a second tap on a sun makes a moon whatever is armed.
+	var changed := false
+	if brush != -2 and not (brush != -1 and state.grid[r][c] == brush):
 		changed = state.place(r, c, brush)
+	else:
+		changed = state.cycle(r, c)
 	if not changed:
 		return
 	var v: int = state.grid[r][c]
@@ -1222,18 +1236,16 @@ func _tap(r: int, c: int) -> void:
 		fx.puff(cell_to_local(r, c), Pal.SUN if v == 0 else Pal.MOON_INK, 5)
 	fx.cue("place" if v != -1 else "clear")
 	_focus(r, c)
-	_after_change(r, c)
-	# Every tap under the cycle is on its way somewhere: a sun to a moon, a
-	# moon (which always came from a sun) to empty. So the tile is held, and
-	# only a brush's symbol is judged at once.
-	var grace := brush == -2
-	_held = Vector2i(c, r) if grace else Vector2i(-1, -1)
+	_after_change(r, c, true)
+	# Every tap is on its way somewhere: a sun to a moon, a moon to empty.
+	# So the tile is held, whatever set it.
+	_held = Vector2i(c, r)
 	# Scored before the move is counted, since the move may solve: the
 	# streak's pluck and confetti belong to the tap, not after the party.
 	if v != -1:
-		_score(r, c, grace)
+		_score(r, c)
 	note_move()
-	_judge(r, c, grace)
+	_judge(r, c)
 
 # --- the streak ---
 
@@ -1244,15 +1256,15 @@ func _tap(r: int, c: int) -> void:
 ## never gives away more than the blush does. A wrong tile on a heart board
 ## ends the streak through _wrong (after the grace for a tapped sun); a
 ## blushing one on Easy or Medium ends it here.
-func _score(r: int, c: int, grace: bool) -> void:
+func _score(r: int, c: int) -> void:
 	var good: bool
 	if max_hearts > 0:
 		good = not state.is_wrong(r, c)
 	else:
-		good = not _bad(r, c)
-		# A cycling tile that blushes ends the streak only if it is left so.
-		if not good and not grace:
-			_break_streak()
+		# The state's word, not the blush's: the blush waits out the grace.
+		# A tile that breaks a rule ends the streak only if it is left so
+		# (_commit).
+		good = not state.is_bad(r, c)
 	if not good or _counted[r][c] != null:
 		return
 	_counted[r][c] = true
@@ -1329,26 +1341,16 @@ func _draw_combo() -> void:
 
 # --- hearts ---
 
-## After a change at (r, c) on a board with hearts: a wrong symbol costs one
-## at once when a brush set it. Under the cycle it waits for `_commit` -- a
-## sun may be on its way to a moon and a moon on its way to empty, and
-## tapping through one is how the next is placed, not a mistake (the 0.4 s
-## it used to get charged anyone who took longer between two taps; user,
-## 2026-10-03). On a full board there is no other tile to move on to, so the
-## held one is judged after FULL_GRACE without a further tap.
-func _judge(r: int, c: int, grace: bool) -> void:
-	if max_hearts <= 0:
-		return
+## After a change at (r, c): the tile is judged (`_commit`) once it has stood
+## WRONG_GRACE untouched, unless the player moved on first and it was judged
+## then. A sun may be on its way to a moon and a moon on its way to empty;
+## tapping through one is how the next is placed, not a mistake.
+func _judge(r: int, c: int) -> void:
 	_pending[r][c] += 1
-	if is_done() or not state.is_wrong(r, c):
-		return
-	if not grace:
-		_wrong(r, c)
-	elif state.is_full():
-		var token: float = _pending[r][c]
-		_later(FULL_GRACE, func() -> void:
-			if _pending[r][c] == token and _held == Vector2i(c, r):
-				_commit())
+	var token: float = _pending[r][c]
+	_later(WRONG_GRACE, func() -> void:
+		if _pending[r][c] == token and _held == Vector2i(c, r):
+			_commit())
 
 ## The player has moved on from the tile they were cycling (another tile,
 ## Undo, Hint, Check -- not a brush picked, which changes no tile): what it shows now is what they meant. Wrong
@@ -1366,8 +1368,11 @@ func _commit() -> void:
 	if max_hearts > 0:
 		if state.is_wrong(r, c):
 			_wrong(r, c)
-	elif _bad(r, c):
+	elif state.is_bad(r, c):
 		_break_streak()
+	# Moved on: whatever the tile broke shows now.
+	if _shown_bad != state.bad:
+		_recolour()
 
 ## `f` after `t` seconds, unless the board has been rebuilt or freed since.
 func _later(t: float, f: Callable) -> void:
@@ -1801,8 +1806,8 @@ static func _heart(at: Vector2, s: float, side: int) -> PackedVector2Array:
 
 ## After any change at (r, c): the blush, the worried faces, a completed
 ## line's wave.
-func _after_change(r: int, c: int) -> void:
-	_recolour()
+func _after_change(r: int, c: int, hold := false) -> void:
+	_recolour(true, hold)
 	if r >= 0:
 		_celebrate(state.line_just_completed(r, c), r, c)
 
@@ -1834,7 +1839,7 @@ func undo() -> bool:
 	var got: Vector3i = state.undo()
 	var r := got.x
 	var c := got.y
-	_held = Vector2i(c, r) if brush == -2 else Vector2i(-1, -1)
+	_held = Vector2i(c, r)
 	_flip_face(r, c, got.z)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	fx.cue("undo")
@@ -1842,9 +1847,8 @@ func undo() -> bool:
 	_after_change(r, c)
 	moved.emit()
 	# The player chose what the undo brings back, so it is judged like a tap
-	# that set it: charged and ejected when wrong, at once under a brush and
-	# once they move on (_commit) when no brush is armed.
-	_judge(r, c, brush == -2)
+	# that set it.
+	_judge(r, c)
 	return true
 
 func hints_left() -> int:
