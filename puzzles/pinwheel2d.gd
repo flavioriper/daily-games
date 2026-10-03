@@ -57,6 +57,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 # --- the screen, measured (spec section 4) ---
 ## The card's own inset, all round. At the standard 1000 x 1340 card that
@@ -562,12 +563,33 @@ func _tips() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A piece
+## turned taps, the one gesture there is (`place`; what its ribbons tug round
+## with it is the same move and says nothing). A piece already home tapped on
+## Hard and Insane does not turn and does not tap: its one knock is the heart,
+## as the thread catches (`snag` is not mapped). A wheel pressed, a piece
+## that will not turn (`refused`), a square that is no pin, the gold button
+## sewn on (`tack`), the streak's notes, the gags and the party say nothing.
+## The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2708,6 +2730,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if _state.ribboned():
 		_untie_at = now if Motion.reduce else _party_at + UNTIE_AT
 		if not Motion.reduce:
