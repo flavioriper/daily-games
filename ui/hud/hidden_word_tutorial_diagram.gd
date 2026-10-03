@@ -87,6 +87,7 @@ class Desk extends "res://puzzles/hidden_word2d.gd":
 	func _ready() -> void:
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx.buzzes = false  # (the page's finger is not the player's)
 
 	func check_solved() -> void:
 		pass
