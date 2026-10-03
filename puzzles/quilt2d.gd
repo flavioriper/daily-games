@@ -56,6 +56,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset, all round.
@@ -562,12 +563,36 @@ func _tips() -> Array:
 		return TIPS_HEARTS
 	return TIPS
 
+## What the phone does under each cue (docs/agents/haptics.md). `place` is
+## not mapped: it is a patch sewn on, one put back down on the spot it was
+## lifted from (nothing happened) and a wrong one's landing, so `_sewn` and
+## `_wrong_patch` tap by `fx.buzz`. `undo` is Undo and a patch taken off the
+## quilt by hand, one tick for both. A dead end on Easy and Medium warns
+## in place of its patch's tap. The streak's confetti bumps, and so does a
+## row or column the patch finished, as its glint sets off (`_rows_done`,
+## not the `row` cue: on a drop whose confetti flies that is the one bump). A patch lifted, tapped, put back in the basket, turned
+## down (`refused`, `ruled`), a hint's or a right one pressed, the snip, the
+## flutter, the streak's notes, the gags and the party say nothing. The seal
+## thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"stuck": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2387,6 +2412,7 @@ func _sewn(p: int, origin: int, from: int, hand: Vector2) -> void:
 	if stuck:
 		_dead_end()
 	else:
+		fx.buzz(Haptics.TAP)
 		_speak_left()
 		_on_good_drop(p)
 	_refresh()
@@ -3006,8 +3032,14 @@ func _rows_done(p: int, land: float) -> void:
 	if Motion.reduce:
 		_rows = []
 		fx.cue("row")
+		fx.buzz(Haptics.BUMP)
 		return
-	_after(lead, fx.cue.bind("row"))
+	# The streak's confetti bumps this drop already, a moment before.
+	var quiet := COMBO_CONFETTI.has(_streak)
+	_after(lead, func() -> void:
+		fx.cue("row")
+		if not quiet:
+			fx.buzz(Haptics.BUMP))
 
 ## Whether a finished row's glints are still running.
 func _rows_running(now: float) -> bool:
@@ -3040,6 +3072,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
@@ -3314,6 +3348,7 @@ func _wrong_patch(p: int, origin: int, hand: Vector2) -> void:
 	var scrap := int(_state.answer[p]) < 0
 	var line := tr("QL_WRONG_SCRAP") if scrap else tr("QL_WRONG")
 	fx.cue("place")
+	fx.buzz(Haptics.TAP)
 	if Motion.reduce:
 		_split_at = _now()
 		_lifted[p] = _now()

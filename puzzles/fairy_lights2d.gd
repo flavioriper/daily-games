@@ -125,6 +125,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 # --- the screen, measured (spec section 2.1) ---
 ## The card's own inset. The grid is what is left of the card's width, cut
@@ -721,12 +722,35 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A piece
+## turned taps, the one gesture there is (`place`, which a fuse's turn fires
+## too: its heart knocks over it as it splits). `wake` is not mapped: it rings
+## for every lantern a wash reaches, an Undo's, a hint's and Reset's too, and
+## a branch can wake five in a row. A turn by hand that lights lanterns bumps
+## once, as the wash reaches the first of them (`_on_turned`), which is where
+## the streak's confetti flies. A piece pressed, one that will not turn
+## (`refuse`), a join, a lantern put out, the fuse's sparks and its clip, the
+## streak's notes, the gags and the party say nothing. The seal thuds as it
+## lands (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -2690,6 +2714,9 @@ func _on_turned(i: int, before: PackedInt32Array) -> void:
 	var count := _streak
 	var gen := _streak_gen
 	var live := func() -> bool: return gen == _streak_gen and not is_done()
+	_after(land, func() -> void:
+		if live.call():
+			fx.buzz(Haptics.BUMP))
 	if count >= 2:
 		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
 		_after(land + 0.05, func() -> void:
@@ -2846,6 +2873,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
