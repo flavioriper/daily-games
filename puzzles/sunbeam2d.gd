@@ -53,6 +53,7 @@ const Gen = preload("res://puzzles/sunbeam_gen.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Parts = preload("res://ui/faces/sunbeam_parts.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -442,6 +443,36 @@ func capabilities() -> Array[String]:
 		return ["undo"]
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). The move is
+## the piece let go, not the pegs it crossed on the way: `lift` and `step`
+## say nothing, and a move that is kept knocks once as the finger lifts
+## (`_after_move`, by `fx.buzz`: `slide` is not mapped) -- a tap, or a bump
+## when it lit a drop the light had not reached, which is also where the
+## streak's confetti flies (`confetti` is not mapped: one bump). On Hard and
+## Insane the light is a free peek while the piece is held, and the one tick
+## under the finger is the sleeper it touches (`stir`, `shy`: both fire only
+## mid-drag); let go there it is the heart alone, as the piece lands. From
+## Easy to Hard a move of the hand's that brings the light to the bud with a
+## drop still dry warns once (`_arrivals`: `dry` fires after an Undo, a hint
+## and a Reset too). A piece put back where it was lifted (`drop`), a pinned
+## piece or a taken peg (`refuse`), the drops chiming (`dew`), the slide home
+## (`slip`), the chorus, the streak's notes, the gags and the party say
+## nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"stir": Haptics.TICK,
+	"shy": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+## True from a move of the hand's that was kept until the next thing that
+## moves the pieces: the bud reached dry warns only for it.
+var _by_hand := false
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_rm = RunMesh.new(_make_look)
@@ -450,6 +481,7 @@ func _ready() -> void:
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -960,6 +992,8 @@ func _arrivals(t: float) -> void:
 		if not _state.shy():
 			_say(tr("SB_BUD_DRY_ONE") if left == 1 else tr("SB_BUD_DRY_N") % left, Face.Expr.STRAIN)
 			fx.cue("dry")
+			if _by_hand:
+				fx.buzz(Haptics.WARN)
 
 ## Whether every piece has landed on its peg.
 func _settled(t: float) -> bool:
@@ -1779,6 +1813,7 @@ func _press(local: Vector2) -> void:
 		var s := _peg_now(p, t)
 		_drag = {"p": p, "s": s, "off": s - _rail_s(p, local), "before": _state.pos.duplicate(), "at": t}
 		_shy_told = false
+		_by_hand = false
 		fx.cue("lift")
 		_refresh()
 		return
@@ -1830,6 +1865,7 @@ func _release(local: Vector2) -> void:
 		return
 	var before: PackedInt32Array = _state.pos.duplicate()
 	var from := float(_state.pos[p])
+	_by_hand = false
 	if _state.place(p, pg.q):
 		_disp[p] = {"from": from, "at": t, "lift": true}
 		_busy_for(SNAP_TIME + LAND_TIME)
@@ -1910,6 +1946,7 @@ func undo() -> bool:
 	if not _state.undo():
 		return false
 	_undo_ever = true
+	_by_hand = false
 	_break_streak()
 	_clear_gags()
 	var t := _now()
@@ -1934,6 +1971,7 @@ func hint() -> bool:
 	if r.is_empty():
 		return false
 	hints_used += 1
+	_by_hand = false
 	_break_streak()
 	_settle(before, t)
 	var p: int = r.piece
@@ -1955,6 +1993,7 @@ func reset_board() -> void:
 	_break_streak()
 	_clear_gags()
 	_state.reset_board()
+	_by_hand = false
 	var t := _now()
 	_drag = {}
 	_settle(before, t, Motion.RESET_STAGGER)
@@ -2138,6 +2177,7 @@ func _slide_back(before: PackedInt32Array) -> void:
 	var now := _now()
 	var cur: PackedInt32Array = _state.pos.duplicate()
 	_state.take_back(before)
+	_by_hand = false
 	_settle(cur, now)
 	fx.cue("slip")
 	_refresh()
@@ -2361,6 +2401,7 @@ func try_again() -> void:
 	var before: PackedInt32Array = _state.pos.duplicate()
 	_state.reset_board()
 	_state.history.clear()
+	_by_hand = false
 	_deal()
 	_settle(before, _now(), Motion.RESET_STAGGER)
 	_break_streak()
@@ -2457,6 +2498,7 @@ func _day_hash() -> int:
 func _after_move(before: PackedInt32Array) -> void:
 	if _state.is_solved():
 		return
+	_by_hand = true
 	var had: Dictionary = Gen.trace(_state.g, before).lit
 	var lit: Dictionary = _state.beam.get("lit", {})
 	var fresh: Array = []
@@ -2466,6 +2508,7 @@ func _after_move(before: PackedInt32Array) -> void:
 			fresh.append(c)
 		elif had.has(c) and not lit.has(c):
 			lost = true
+	fx.buzz(Haptics.TAP if fresh.is_empty() else Haptics.BUMP)
 	if not fresh.is_empty():
 		_on_drops(fresh)
 	elif lost:
@@ -2585,6 +2628,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
