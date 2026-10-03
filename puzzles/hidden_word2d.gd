@@ -48,6 +48,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -528,12 +529,34 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return [] if state.no_hints else ["hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). `type` is
+## not mapped: the caret moved to a tapped bed shares it, and a selection
+## says nothing; a letter typed taps from `type_letter`. A row knocks once,
+## as it shows its colours (`_react`, not the five flips): a bump, or a good
+## when it earns a word (Warmer!, So close!, Everyone's here!); the word's
+## cue is not mapped, or the row would knock twice. A sealed row bumps as
+## it lands (`commit_row`) and again, like any row, when the snail brings
+## its colours. The win waits for the landing too (`solved` is queued for
+## it). The row made ready, the combo's notes, the confetti, the snail, the
+## droop, Show the word and the gags say nothing. The seal thuds as it
+## lands (`_stamp_down`).
+const HAPTICS := {
+	"erase": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"row_back": Haptics.GOOD,
+	"refused": Haptics.WARN,
+	"out_of_rows": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	# The keyboard takes the letters; the card answers only a tap on a bed
 	# of the row in hand (_has_point), which moves the caret there.
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1675,6 +1698,7 @@ func type_letter(letter: String) -> void:
 	_caret_at = now
 	_busy_for(maxf(TYPE_POP, CARET_GLIDE))
 	fx.cue("type")
+	fx.buzz(Haptics.TAP)
 	if state.filled() and not was_full:
 		_ready_at = now + TYPE_POP * 0.5
 		_busy_for(TYPE_POP * 0.5 + READY_TIME + float(State.LEN - 1) * READY_STEP)
@@ -1831,6 +1855,10 @@ func commit_row() -> void:
 				})
 		_party(landed)
 	else:
+		# A sealed row has no colours to answer for yet: it knocks as it
+		# lands. Any other knocks from `_react`.
+		if sealed:
+			_after(landed - now, fx.buzz.bind(Haptics.BUMP))
 		for pair in shown:
 			_react_due.append({"at": float(pair[1]) + REACT_AT, "r": int(pair[0])})
 		_react_due.sort_custom(func(a, b) -> bool:
@@ -1906,8 +1934,13 @@ func _react(r: int) -> void:
 	var best_before := _best
 	_best = maxi(_best, hits)
 	_busy_for(maxf(LOVE_TIME + 0.6, SPRIG_TIME + 0.3))
-	if Motion.reduce or state.is_solved():
+	if state.is_solved():
 		return
+	if Motion.reduce:
+		fx.buzz(Haptics.BUMP)
+		return
+	# The row's one knock: a small yes when it earns a word.
+	var kind: int = Haptics.BUMP
 	if hits + near == 0:
 		_glasses_at[r] = now
 		_bubble_at(r, tr("HW_COOL"))
@@ -1917,16 +1950,19 @@ func _react(r: int) -> void:
 		_conga_at[r] = now
 		_bubble_at(r, tr("HW_ALL_HERE"))
 		fx.cue("all_here")
+		kind = Haptics.GOOD
 		_busy_for(float(State.LEN * 2) * CONGA_STEP + Motion.HOP_TIME)
 	elif hits > best_before:
 		var close := hits == State.LEN - 1
 		_bubble_at(r, tr("HW_SO_CLOSE") if close else tr("HW_WARMER"))
 		fx.cue("so_close" if close else "warmer")
+		kind = Haptics.GOOD
 		if close:
 			var left := cell_to_local(r, 0)
 			var right := cell_to_local(r, State.LEN - 1)
 			fx.confetti((left + right) * 0.5, 28, right.x - left.x)
 			fx.cue("confetti")
+	fx.buzz(kind)
 	_refresh()
 
 ## A paper bubble over the row's right shoulder, popping in and fading after
@@ -2164,6 +2200,7 @@ func _stamp_down() -> void:
 	tw.tween_property(stamp, "scale", Vector2.ONE, STAMP_DROP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
 	tw.chain().tween_callback(func() -> void:
+		fx.buzz(Haptics.THUD)
 		Motion.squash(stamp, 0.22, 0.26)
 		fx.ring(centre, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN))
 

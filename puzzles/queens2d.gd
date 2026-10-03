@@ -44,6 +44,7 @@ const State = preload("res://puzzles/queens_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const CrossMark = preload("res://ui/faces/cross_mark.gd")
@@ -406,10 +407,33 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). `place` and
+## `remove` are not mapped: a cross, a queen and every cell of a sweep share
+## them. The hand's own tap knocks instead (`_tap_cycle`, `_tap_queen`): a
+## tick for a cross laid and a queen lifted, a tap for a queen seated, a
+## bump for the second queen of a misty patch; a sweep ticks once as it is
+## let go (`_release`). The streak's confetti is the other milestone. A seen,
+## pinned or shown cell refused (`locked`), the wave, the flowers (`bloom`
+## opens on every seat), the wrong queen's `buzz_off`, the streak's pluck
+## and the gags say nothing. The seal thuds as it lands (`_party`).
+const HAPTICS := {
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
+	fx.haptics = HAPTICS
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
@@ -1523,6 +1547,7 @@ func _release(at_cell: Vector2i) -> void:
 	# A stroke already laid or lifted its Xs as the finger went; all that
 	# is left is to count it, once, however many cells it crossed.
 	if not pending.is_empty():
+		fx.buzz(Haptics.TICK)
 		_speak()
 		note_move()
 	_redraw()
@@ -1541,6 +1566,7 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 		if not Motion.reduce:
 			fx.puff(cell_to_local(cell.y, cell.x), Pal.QUEEN_WASH, 4)
 		fx.cue("remove")
+		fx.buzz(Haptics.TICK)
 		_break_streak()
 		_update_blooms()
 		_speak()
@@ -1559,6 +1585,7 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 	fx.ring(at, _cell * RING_R, Pal.SUN)
 	fx.puff(at, Pal.SUN)
 	fx.cue("place")
+	fx.buzz(Haptics.TAP)
 	# On Hard and Insane every seat is judged as she lands: a wrong one costs
 	# a heart and buzzes off.
 	if state.judged() and not state.right_seat(cell):
@@ -1571,6 +1598,9 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 		_say(tr("QN_MIST_HALF"), Face.Expr.HAPPY)
 	else:
 		_speak()
+		# A misty patch given its second queen is the milestone.
+		if state.is_misty(g):
+			fx.buzz(Haptics.BUMP)
 	note_move()
 	_on_right_seat(cell, 0.0 if Motion.reduce else Motion.POP_IN * 0.5)
 
@@ -1584,6 +1614,7 @@ func _tap_cycle(cell: Vector2i, now: float) -> void:
 			return
 		_settle(before, now, _at_once())
 		fx.cue("place")
+		fx.buzz(Haptics.TICK)
 		_speak()
 		note_move()
 		return
@@ -2462,6 +2493,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var field := Rect2(_grid, Vector2.ONE * state.n * _cell)

@@ -2146,6 +2146,69 @@ func _moves_queens() -> Array:
 	out.append_array(taps)
 	return out
 
+## Queens' buzzes: a bare cell tapped (a cross), tapped again (a queen), a
+## cell she sees tapped, the queen tapped away, two crosses swept and rubbed
+## out, Undo, on Hard a queen the answer does not seat there, a hint and a
+## tap on its pinned queen, Check and Reset. The plain run then sweeps the
+## rows and seats the answer (a misty patch's second queen, the streak's
+## confetti, the win, the seal when it is earned).
+func _buzz_queens() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
+	var first := Vector2i(int(st.solution[0]), 0)
+	_click(at.call(first))
+	await pause.call()
+	_buzzed("a bare cell tapped: a cross")
+	_click(at.call(first))
+	await create_timer(1.6).timeout
+	_buzzed("tapped again: a queen")
+	_click(at.call(Vector2i((first.x + 2) % st.n, 0)))
+	await pause.call()
+	_buzzed("a cell she sees tapped")
+	_click(at.call(first))
+	await pause.call()
+	_buzzed("the queen tapped away")
+	var run := [Vector2i(0, st.n - 1), Vector2i(1, st.n - 1)]
+	for k in 2:
+		_ut_button(at.call(run[0]), true)
+		await process_frame
+		_ut_motion(at.call(run[1]))
+		await process_frame
+		_buzzed("the sweep under the finger")
+		_ut_button(at.call(run[1]), false)
+		await pause.call()
+		_buzzed("two crosses swept" if k == 0 else "and rubbed out")
+	_host._on_undo()
+	await pause.call()
+	_buzzed("undo")
+	_host._on_undo()
+	await pause.call()
+	_buzz_seen = Haptics.trace.size()
+	if _puzzle.max_hearts > 1:
+		var wrong := Vector2i((int(st.solution[st.n - 1]) + 1) % st.n, st.n - 1)
+		_click(at.call(wrong))
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+		_click(at.call(wrong))
+		await create_timer(3.0).timeout
+		_buzzed("a queen that costs a heart")
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+		for cell: Vector2i in st.locked:
+			_click(at.call(cell))
+		await pause.call()
+		_buzzed("the pinned queen tapped")
+	_puzzle.check()
+	await pause.call()
+	_buzzed("check")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
+
 ## Hidden Word: five wrong guesses that keep every clue the rows before them
 ## gave (so Hard's and Insane's clue rule never refuses them), then the
 ## answer, each typed a letter a step and committed -- a commit waits while
@@ -2178,6 +2241,60 @@ func _moves_hiddenword() -> Array:
 			out.append({"do": func() -> void: _puzzle.type_letter(ch)})
 		out.append({"do": _hw_commit})
 	return out
+
+## Hidden Word's buzzes: a letter typed, a bed of the row tapped, a letter
+## erased, Enter on a short row and on five letters that are no word, a
+## hint, Reset, then the plain run's first wrong word typed and entered (the
+## row's one knock as it lands, and its word if it earns one). The plain run
+## plays the rest: the rows' words, the win, the seal.
+func _buzz_hiddenword() -> void:
+	_buzz_more = 25.0
+	var pause := func() -> void: await create_timer(0.8).timeout
+	_puzzle.type_letter("q")
+	await pause.call()
+	_buzzed("a letter typed")
+	_puzzle.type_letter("x")
+	await pause.call()
+	_buzz_seen = Haptics.trace.size()
+	_click(_puzzle._tile_at(_puzzle.state.rows.size(), 3) + Vector2.ONE * _puzzle._cell() * 0.5)
+	await pause.call()
+	_buzzed("a bed tapped: the caret")
+	_puzzle.erase_letter()
+	await pause.call()
+	_buzzed("a letter erased")
+	_puzzle.commit_row()
+	await pause.call()
+	_buzzed("enter on a short row")
+	_puzzle.reset_board()
+	await pause.call()
+	_buzzed("reset")
+	for ch in "qxzjq":
+		_puzzle.type_letter(ch)
+		await process_frame
+		await process_frame
+	await pause.call()
+	_buzzed("five letters, the row ready")
+	_puzzle.commit_row()
+	await pause.call()
+	_buzzed("enter on no word")
+	for i in 5:
+		_puzzle.erase_letter()
+		await create_timer(0.1).timeout
+	_buzz_seen = Haptics.trace.size()
+	if _puzzle.hints_left() > 0:
+		_puzzle.hint()
+		await pause.call()
+		_buzzed("hint")
+	for i in 5:
+		(_moves.pop_front().do as Callable).call()
+		await create_timer(0.1).timeout
+	_buzz_seen = Haptics.trace.size()
+	_puzzle.commit_row()
+	await create_timer(0.5).timeout
+	_buzzed("enter: the row turning")
+	_moves.pop_front()
+	await create_timer(3.0).timeout
+	_buzzed("the row landed")
 
 func _hw_commit() -> void:
 	if _puzzle.busy():
