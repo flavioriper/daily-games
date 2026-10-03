@@ -60,6 +60,7 @@ extends "res://core/puzzle_base.gd"
 const State = preload("res://puzzles/mushroom_state.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
+const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -370,6 +371,8 @@ var _life_alive := false
 var _love: Array = []
 var _love_mesh: ArrayMesh
 var _stamp_at := INF
+## True while the hand's own tap or sweep settles: its flowers bump.
+var _by_hand := false
 var _seal_mesh: ArrayMesh
 
 ## Every drawn moment, each the second it begins, read off Motion's curve
@@ -486,12 +489,39 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint", "check"]
 
+## What the phone does under each cue (docs/agents/haptics.md). A mushroom
+## planted taps (right or not: on Hard and Insane the heart says so as she
+## opens); a pebble laid or rubbed out and a mushroom pulled up tick, and a
+## sweep fires `pebble`/`remove` once as it is let go, so it ticks once too.
+## `bloom` is not mapped: a hint, an Undo and a wilt open flowers as well, so
+## a number finished bumps only under the hand's own move (`_by_hand` in
+## `_update_blooms`). The streak's confetti is the other milestone. A given,
+## a pinned mushroom or a shown pebble pressed (`reach`, `locked`), the
+## wilt, the streak's notes, the gags and the party say nothing. The seal
+## thuds as it lands (`_party`).
+const HAPTICS := {
+	"place": Haptics.TAP,
+	"pebble": Haptics.TICK,
+	"remove": Haptics.TICK,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"confetti": Haptics.BUMP,
+	"hint": Haptics.GOOD,
+	"check_ok": Haptics.GOOD,
+	"heart_back": Haptics.GOOD,
+	"check": Haptics.WARN,
+	"heart_lost": Haptics.BAD,
+	"out_of_hearts": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -1901,7 +1931,9 @@ func _release(at_cell: Vector2i) -> void:
 		if not pending.is_empty():
 			var before := _snapshot()
 			var changed: Array = state.sweep(pending, lay)
+			_by_hand = true
 			var arrivals := _settle(before, now, _along(pending))
+			_by_hand = false
 			_end_sinks(now, arrivals)
 			if not changed.is_empty():
 				# One stroke is one move, however many cells it crossed, and
@@ -1941,7 +1973,9 @@ func _tap(cell: Vector2i, now: float) -> void:
 			return
 		State.COVERED:
 			return
+	_by_hand = true
 	_settle(before, now, _at_once())
+	_by_hand = false
 	var at := cell_centre(cell)
 	var mark := int(state.marks.get(cell, State.BLANK))
 	# A mark on a covered cell throws its sod off in a puff of turf.
@@ -2339,6 +2373,12 @@ func _update_blooms(_before: Dictionary, t: float, delay_of: Callable) -> void:
 			_bloom[g] = {"at": t, "open": false}
 	if opened and not is_done():
 		_after(0.0 if Motion.reduce else Motion.POP_IN, fx.cue.bind("bloom"))
+		# A number the hand's own move finished is the milestone (the move
+		# that wins the patch has the win instead).
+		if _by_hand:
+			_after(0.0 if Motion.reduce else Motion.POP_IN, func() -> void:
+				if not is_done():
+					fx.buzz(Haptics.BUMP))
 	_busy_for(Motion.POP_IN + BLOOM_TIME + 0.1)
 
 ## Whether a mushroom the answer does not grow stands in `g`'s reach on a
@@ -2961,6 +3001,8 @@ func _party() -> void:
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
 			_life_layer.queue_redraw())
+		if not Motion.reduce:
+			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 	if Motion.reduce:
 		return
 	var field := Rect2(_grid, Vector2.ONE * state.n * _cell)

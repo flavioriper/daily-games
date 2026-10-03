@@ -34,6 +34,7 @@ extends "res://core/puzzle_base.gd"
 
 const State = preload("res://puzzles/word_trail_state.gd")
 const Pal = preload("res://core/palette.gd")
+const Haptics = preload("res://core/haptics.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
@@ -525,12 +526,34 @@ func _tips() -> Array:
 func capabilities() -> Array[String]:
 	return ["undo", "hint"]
 
+## What the phone does under each cue (docs/agents/haptics.md). The move is
+## the word, not its tiles: `select` ticks the ear a tile at a time and says
+## nothing to the hand, and the trail knocks once as it is let go -- a bump
+## when it locks (`place`), a bad when it blows a seed (`_missed`: the `miss`
+## cue is the last seed's too, and that one is the droop's lose), nothing
+## when it only unwinds, was tried before or was put down off the field. The
+## word's note, its bubble (big, quick, a streak) and its gag come a beat
+## after the bump and add nothing; the seeds running low, the lantern, the
+## dawn, Show the words and the party say nothing either. The win waits for
+## the last word's wave (`solved` is queued for it); the seal thuds as it
+## lands (`_stamp_down`).
+const HAPTICS := {
+	"place": Haptics.BUMP,
+	"undo": Haptics.TICK,
+	"reset": Haptics.TAP,
+	"hint": Haptics.GOOD,
+	"wish_back": Haptics.GOOD,
+	"droop": Haptics.LOSE,
+	"solved": Haptics.WIN,
+}
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
+	fx.haptics = HAPTICS
 	add_child(fx)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
@@ -1947,6 +1970,9 @@ func _missed(path: Array, t: float) -> void:
 	_miss_at = t
 	_blown[_state.misses - 1] = t
 	fx.cue("miss")
+	# The seed's knock; the last seed's is the droop's.
+	if not _state.is_out():
+		fx.buzz(Haptics.BAD)
 	_after(0.14, fx.cue.bind("wish"))
 	_busy_for(maxf(MISS_TIME + 0.02 * float(path.size()), SEED_FLY))
 	var left: int = _state.wishes_left()
@@ -2924,6 +2950,7 @@ func _stamp_down() -> void:
 	tw.tween_property(stamp, "modulate:a", 1.0, STAMP_DROP * 0.6)
 	tw.chain().tween_callback(func() -> void:
 		Motion.squash(stamp, 0.22, 0.26)
+		fx.buzz(Haptics.THUD)
 		fx.ring(centre, rad * 0.9, Pal.MOON_INK if insane else Pal.SUN))
 
 # --- odds and ends ---
