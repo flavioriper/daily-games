@@ -359,6 +359,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="knight">Knight &middot; flat</button>
     <button data-tab="hedgehogs">Hedgehogs &middot; flat</button>
     <button data-tab="drumbeat">Drumbeat &middot; one road</button>
+    <button data-tab="knots">Untangle &middot; knots</button>
   </nav>
 </header>
 
@@ -3706,6 +3707,57 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Twenty stat tiles at 238 wide.</b> "Mushroom Patch" is the longest name, and it has to fit on one line at the tile's name size, or be lettered smaller as the top bar does.</li>
   </ul>
   <p style="font-size:14px;color:var(--muted)">For a headless shot the mock reads <code>?tab=stats|streak</code>, <code>?solved=0..3</code> for today's hearts, <code>?fresh=1</code> for an empty history, and <code>?d=0..3</code> for the Stats difficulty. Pick the tab with <code>#progress</code>.</p>
+</section>
+<section class="tab-panel" id="tab-knots">
+  <h2>Untangle &middot; straight ropes, knots at the crossing <span class="pill blue">concept &middot; 2026-10-03</span></h2>
+  <p class="lede">The rule does not change: every pair of ropes keeps how many times it crosses and which lies on top, and a peg carried over the top slides a rope off or wraps it once more (<code>puzzles/untangle_gen.gd</code>, ported here line for line). What changes is how a wrap is <b>drawn</b>. Today it is a coil laid somewhere along one rope, and the other rope has to leave its line to get to it: that detour is the kink, the hairpin and the arrowhead. Here <b>a rope is a straight line between its pegs</b>, and a wrap is drawn <b>where the two lines already meet</b>.</p>
+
+  <div class="hero">
+    <div class="noref">
+      <p><b>Playing it here.</b> Drag a peg to an empty hole. The tangle changes under the hand, as on the board. The buttons under the phone put two ropes in each state so the knot can be read on its own: <b>1</b> is a plain crossing, <b>3</b> and <b>5</b> are wraps on crossed ropes, <b>2</b> and <b>4</b> are two ropes hooked together with their pegs side by side.</p>
+      <table>
+        <tr><th>Crossings</th><th>Pegs</th><th>Drawn as</th></tr>
+        <tr><td class="k">1</td><td>interleave</td><td>Two straight ropes, one over the other, a soft dark either side of the one on top.</td></tr>
+        <tr><td class="k">3, 5, 7</td><td>interleave</td><td>The same crossing, and the rope on top wound round the other beside it: one band of its colour for every extra turn (one band at 3, two at 5). The ropes stay straight. <b>The rope whose bands show is the one to lift.</b></td></tr>
+        <tr><td class="k">2</td><td>side by side</td><td>A hook: each rope is pulled into a V and the two tips are caught in each other, over on one leg and under on the other. This is the only case where a rope leaves its line, and it bends once, at the hook.</td></tr>
+        <tr><td class="k">4, 6</td><td>side by side</td><td>The hook, with a band for every extra turn.</td></tr>
+      </table>
+      <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?n=1..6</code> for a two-rope state, <code>?d=0..3</code> and <code>?seed=</code> for a dealt ring, <code>?rm=1</code>; pick the tab with <code>#knots</code>.</p>
+    </div>
+
+    <div class="demo">
+      <div class="phone" style="background:#f6efe3">
+        <canvas id="uk" width="390" height="720" style="touch-action:none;cursor:grab"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="uk-level">Easy</button>
+        <button id="uk-new">New ring</button>
+        <button id="uk-undo">Undo</button>
+        <button id="uk-n1">1</button>
+        <button id="uk-n2">2</button>
+        <button id="uk-n3">3</button>
+        <button id="uk-n4">4</button>
+        <button id="uk-n5">5</button>
+        <button id="uk-n6">6</button>
+        <button id="uk-rm">Reduce motion: off</button>
+      </div>
+      <p class="lbl" id="uk-caption" style="font-size:13.5px;color:var(--muted)"></p>
+    </div>
+  </div>
+
+  <h3>What goes, what stays</h3>
+  <table>
+    <tr><td class="k">Stays</td><td>The rule, the dealer, par, the hint, the thread, the kitten, undo and reset (<code>untangle_gen.gd</code>, <code>untangle_state.gd</code>). The ring, the pegs, the rope's ribbon and strands, the over-and-under patch and its shade. The live carry: the tangle still changes under the hand.</td></tr>
+    <tr><td class="k">Goes</td><td>Coils laid along a core (<code>lay_braid</code>, <code>core_is_a</code>, <code>braid_point</code>), sliding them clear of each other (<code>_space_braids</code>), the shortest way round them (<code>_shortest_round</code>), the detour round a coil's end, the twist laid on the drawn line (<code>Rope._twist</code>), the count written beside a squeezed coil, and the reach rule's pull on a braid.</td></tr>
+    <tr><td class="k">Changes</td><td>The Verlet chain is kept only for the whip and the sag of a rope that is let go; at rest a rope is its line. The cinch and the unwind become a band popping on or off and a hook pulling in or springing straight. The tutorial's WRAP page is drawn with the same knot.</td></tr>
+  </table>
+
+  <h3>To judge here before any Godot code</h3>
+  <ul>
+    <li><b>Do the bands read as a rope wound round another</b>, or as a mark painted on it? They are the whole count: 3 is one band, 5 is two.</li>
+    <li><b>Is the hook a knot at a glance?</b> It is the one place two ropes still bend, and a deep hook across the ring crosses the ropes between (drawn over or under both legs alike, so it reads as lying on them, not tied to them).</li>
+    <li><b>A rope's reach is not in this mock.</b> On the board a hooked rope must still fit its own length; the hook would sit nearer the shorter rope, as the braid does today.</li>
+  </ul>
 </section>
 </main>
 
@@ -21588,6 +21640,222 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     if(Q.get('done')==='1'){phase='done';}
     update(now());}
   labels(); caption(); frame();
+})();
+
+/* ---------- the untangle knots mock: straight ropes, knots at the crossing ---------- */
+(function(){
+  const cv=document.getElementById('uk'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const MINE=location.hash==='#knots';
+  let RM=Q.get('rm')==='1';
+  const CX=CW/2,CY=385,RR=148; let PEG=21,WD=17;
+  const LEVELS=['Easy','Medium','Hard','Insane'];
+  // The game's own bands (untangle_gen.gd): holes, ropes, deepest wrap, wrapped pairs, most crossings.
+  const BANDS=[[10,4,1,0,6],[13,6,2,1,10],[17,8,2,2,13],[19,9,3,3,16]];
+  const COLS=['#e8857a','#f0cf5a','#ee9fcb','#a58fe0','#8fcf8a','#6fb2ea','#6fd0c0','#f0a868','#e6dcc6'];
+  const mix=(h,to,k)=>{const n=parseInt(h.slice(1),16),r=n>>16,g=n>>8&255,b=n&255;
+    const f=v=>Math.round(v+(to-v)*k); return 'rgb('+f(r)+','+f(g)+','+f(b)+')';};
+  const DEEP=COLS.map(c=>mix(c,70,0.42)),LIGHT=COLS.map(c=>mix(c,255,0.45));
+
+  // ---- the rule (untangle_gen.gd) ----
+  const crosses=(a,b,c,d)=>{const lo=Math.min(a,b),hi=Math.max(a,b); return (c>lo&&c<hi)!==(d>lo&&d<hi);};
+  const pairIndex=(r,s,R)=>{const a=Math.min(r,s),b=Math.max(r,s); return a*R-a*(a+1)/2+(b-a-1);};
+  const withA0=(at,a,b,f)=>!crosses(at[2*a],at[2*b+f],at[2*a+1],at[2*b+(1-f)]);
+  function topAt(at,tw,R,x,e,y){const k=pairIndex(x,y,R),n=tw[k]>>1; if(n===0) return -1; const t=tw[k]&1;
+    if(x<y) return (e===0||n%2===1)?t:1-t;
+    if(n%2===1) return 1-t;
+    return withA0(at,y,x,e)?1-t:t;}
+  // `mask`: the ropes the carry has passed over (the live carry); null: every
+  // rope the chord from the peg's hole to `to` crosses.
+  function applyToward(at,tw,R,peg,to,mask){const x=peg>>1,e=peg&1,from=at[peg],other=at[peg^1]; let delta=0;
+    for(let y=0;y<R;y++){ if(y===x) continue; const y0=at[2*y],y1=at[2*y+1];
+      if(mask!=null){ if(!(mask>>y&1)) continue; } else if(!crosses(from,to,y0,y1)) continue;
+      const k=pairIndex(x,y,R),n=tw[k]>>1,cur=topAt(at,tw,R,x,e,y),push=n===0||cur===0,n2=push?n+1:n-1,req=push?1:0; let t2=0;
+      if(n2>0){ if(x<y) t2=(n2%2===1)?req:(e===0?req:1-req);
+        else if(n2%2===1) t2=1-req;
+        else {const with0=!crosses(y0,to,y1,other); t2=with0?1-req:req;} }
+      tw[k]=n2*2+t2; delta+=push?1:-1;}
+    return delta;}
+  const total=tw=>tw.reduce((s,v)=>s+(v>>1),0);
+
+  // ---- the ring ----
+  let level=0,R=3,N=9,at=[],tw=[],undo=[],seed=1,preset=0;
+  let held=-1,hand=[0,0],shownTw=[],anim=[];
+  function rng(){seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296;}
+  function deal(){preset=0; const B=BANDS[level]; N=B[0]; R=B[1]; PEG=Math.min(21,Math.PI*RR/N*.78); WD=PEG*.8; let best=null;
+    for(let tries=0;tries<800&&!(best&&best[2]);tries++){
+      const a=[],t=new Array(R*(R-1)/2).fill(0),hs=[]; for(let h=0;h<N;h++) hs.push(h);
+      // A solved ring: ropes on neighbouring holes, the spare holes spread between.
+      let h0=Math.floor(rng()*N); for(let r=0;r<R;r++){a.push(h0%N,(h0+1)%N); h0+=2+(rng()<(N-2*R)/R?1:0);}
+      if(new Set(a).size<2*R||h0-a[0]>N+1) continue;
+      for(let s=0;s<40;s++){const peg=Math.floor(rng()*2*R); const free=[]; for(let h=0;h<N;h++) if(!a.includes(h)) free.push(h);
+        const h=free[Math.floor(rng()*free.length)]; applyToward(a,t,R,peg,h,null); a[peg]=h;
+        const deep=Math.max(...t.map(v=>v>>1)),tot=total(t),kn=t.filter(v=>(v>>1)>=2).length;
+        if(deep>B[2]||tot>B[4]) break;
+        const ok=s>=B[1]&&tot>=B[4]*.6&&kn>=B[3]&&kn<=B[3]+1&&deep===B[2];
+        if(ok||!best||(!best[2]&&tot>total(best[1]))) best=[a.slice(),t.slice(),ok];
+        if(ok) break;}}
+    at=best[0]; tw=best[1]; undo=[]; fresh();}
+  function setPreset(n){preset=n; R=2; N=8; PEG=21; WD=17; const t=1;
+    at=n%2===1?[7,3,1,5]:[6,2,0,4]; if(n%2===0) at=[7,5,1,3];
+    tw=[n*2+t]; undo=[]; fresh();}
+  function fresh(){held=-1; shownTw=tw.slice(); anim=tw.map(v=>({w:(v>>1)>=2&&(v>>1)%2===0?1:0,b:Math.max(0,((v>>1)-1)>>1)}));}
+  const holeAt=h=>{const a=-Math.PI/2+2*Math.PI*h/N; return [CX+Math.cos(a)*RR,CY+Math.sin(a)*RR];};
+  const pegPos=p=>p===held?hand:holeAt(at[p]);
+
+  // ---- geometry ----
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],add=(a,b)=>[a[0]+b[0],a[1]+b[1]],mul=(a,k)=>[a[0]*k,a[1]*k];
+  const len=a=>Math.hypot(a[0],a[1]),norm=a=>{const l=len(a)||1; return [a[0]/l,a[1]/l];};
+  const lerp=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1];
+  function segHit(p,p2,q,q2){const r=sub(p2,p),s=sub(q2,q),d=r[0]*s[1]-r[1]*s[0]; if(Math.abs(d)<1e-9) return null;
+    const qp=sub(q,p),t=(qp[0]*s[1]-qp[1]*s[0])/d,u=(qp[0]*r[1]-qp[1]*r[0])/d; if(t<0||t>1||u<0||u>1) return null; return [t,u];}
+  // Where two ropes hooked together meet: where the diagonals of their four
+  // pegs cross (the board's own rule for pegs side by side).
+  function hookAt(a0,a1,b0,b1){
+    let h=segHit(a0,b0,a1,b1); if(h) return lerp(a0,b0,h[0]);
+    h=segHit(a0,b1,a1,b0); if(h) return lerp(a0,b1,h[0]);
+    return lerp(lerp(a0,a1,.5),lerp(b0,b1,.5),.5);}
+  const foot=(p,a,b)=>{const d=sub(b,a),k=Math.max(0.12,Math.min(0.88,dot(sub(p,a),d)/(dot(d,d)||1))); return [lerp(a,b,k),k];};
+  // A rope's drawn line: straight peg to peg, with one rounded corner for
+  // every rope it is hooked to.
+  function lineOf(r){const a=pegPos(2*r),b=pegPos(2*r+1),cs=[];
+    for(let s=0;s<R;s++){ if(s===r) continue; const k=pairIndex(r,s,R),w=anim[k].w; if(w<=0.001) continue;
+      const c=pegPos(2*s),d=pegPos(2*s+1),K0=hookAt(a,b,c,d),f=foot(K0,a,b),g=foot(K0,c,d);
+      // The hook lies nearer the shorter rope: the longer one has the rope to give.
+      const la=len(sub(b,a)),lb=len(sub(d,c)),K=lerp(f[0],g[0],la/(la+lb)),out=norm(sub(g[0],f[0]));
+      cs.push([f[1],lerp(f[0],add(K,mul(out,WD*1.15)),w)]);}
+    cs.sort((p,q)=>p[0]-q[0]);
+    const way=[a,...cs.map(c=>c[1]),b],pts=[a];
+    for(let i=1;i<way.length-1;i++){const p=way[i],din=norm(sub(way[i-1],p)),dout=norm(sub(way[i+1],p));
+      const d=Math.min(WD*1.5,len(sub(way[i-1],p))*.45,len(sub(way[i+1],p))*.45),q0=add(p,mul(din,d)),q1=add(p,mul(dout,d));
+      for(let j=0;j<=10;j++){const u=j/10,v=1-u; pts.push([v*v*q0[0]+2*u*v*p[0]+u*u*q1[0],v*v*q0[1]+2*u*v*p[1]+u*u*q1[1]]);}}
+    pts.push(b);
+    const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+len(sub(pts[i],pts[i-1])));
+    return {pts,cum};}
+  function pointAt(L,s){const c=L.cum,n=c.length; s=Math.max(0,Math.min(c[n-1],s)); let i=1; while(i<n-1&&c[i]<s) i++;
+    const k=(s-c[i-1])/((c[i]-c[i-1])||1); return [lerp(L.pts[i-1],L.pts[i],k),norm(sub(L.pts[i],L.pts[i-1]))];}
+  function slice(L,s0,s1){const out=[pointAt(L,s0)[0]]; for(let i=0;i<L.cum.length;i++) if(L.cum[i]>s0&&L.cum[i]<s1) out.push(L.pts[i]); out.push(pointAt(L,s1)[0]); return out;}
+  function hits(A,B){const out=[];
+    for(let i=1;i<A.pts.length;i++) for(let j=1;j<B.pts.length;j++){const h=segHit(A.pts[i-1],A.pts[i],B.pts[j-1],B.pts[j]); if(!h) continue;
+      const ta=norm(sub(A.pts[i],A.pts[i-1])),tb=norm(sub(B.pts[j],B.pts[j-1]));
+      out.push({sa:A.cum[i-1]+(A.cum[i]-A.cum[i-1])*h[0],sb:B.cum[j-1]+(B.cum[j]-B.cum[j-1])*h[1],sin:Math.abs(ta[0]*tb[1]-ta[1]*tb[0]),ta,tb,at:lerp(A.pts[i-1],A.pts[i],h[0])});}
+    out.sort((p,q)=>p.sa-q.sa);
+    return out.filter((h,i)=>i===0||h.sa-out[i-1].sa>0.5);}
+
+  // ---- drawing ----
+  function path(pts){ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);}
+  function rope(L,r,s0,s1,cap){const pts=slice(L,s0,s1); ctx.lineJoin='round'; ctx.lineCap=cap;
+    path(pts); ctx.strokeStyle=DEEP[r]; ctx.lineWidth=WD+3; ctx.stroke();
+    path(pts); ctx.strokeStyle=COLS[r]; ctx.lineWidth=WD; ctx.stroke();
+    ctx.lineCap='round'; ctx.strokeStyle=LIGHT[r]; ctx.lineWidth=2.2; const P=8.5;
+    for(let s=Math.ceil((s0+2)/P)*P;s<s1-2;s+=P){const q=pointAt(L,s),p=q[0],t=q[1],n=[-t[1],t[0]];
+      ctx.beginPath(); ctx.moveTo(p[0]-n[0]*WD*.34-t[0]*WD*.2,p[1]-n[1]*WD*.34-t[1]*WD*.2);
+      ctx.lineTo(p[0]+n[0]*WD*.34+t[0]*WD*.2,p[1]+n[1]*WD*.34+t[1]*WD*.2); ctx.stroke();}}
+  function band(U,sU,T,scale){const q=pointAt(U,sU),p=q[0],t=q[1],n=[-t[1],t[0]],h=WD*.62*scale,
+      a=[p[0]-n[0]*h-t[0]*WD*.16,p[1]-n[1]*h-t[1]*WD*.16],b=[p[0]+n[0]*h+t[0]*WD*.16,p[1]+n[1]*h+t[1]*WD*.16];
+    ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.strokeStyle='rgba(60,45,35,.22)'; ctx.lineWidth=WD*.62+6; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.strokeStyle=DEEP[T]; ctx.lineWidth=WD*.62+2.6; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.strokeStyle=COLS[T]; ctx.lineWidth=WD*.62; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a[0]+t[0]*1.5,a[1]+t[1]*1.5); ctx.lineTo(lerp(a,b,.45)[0]+t[0]*1.5,lerp(a,b,.45)[1]+t[1]*1.5); ctx.strokeStyle=LIGHT[T]; ctx.lineWidth=2; ctx.stroke();}
+  function ring(){
+    ctx.fillStyle='#f3ead8'; ctx.fillRect(0,0,CW,CH);
+    const hoop=(r0,r1,c)=>{ctx.beginPath(); ctx.arc(CX,CY,r0,0,Math.PI*2); ctx.closePath(); ctx.moveTo(CX+r1,CY); ctx.arc(CX,CY,r1,0,Math.PI*2); ctx.closePath(); ctx.fillStyle=c; ctx.fill('evenodd');};
+    hoop(RR+30,RR-28,'#b98b55');
+    hoop(RR+27,RR-25,'#e9cf9c');
+    ctx.setLineDash([9,7]); ctx.beginPath(); ctx.arc(CX,CY,RR+40,0,7); ctx.strokeStyle='#e3c378'; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]);
+    for(let h=0;h<N;h++){const p=holeAt(h); ctx.beginPath(); ctx.arc(p[0],p[1],PEG*.72,0,7); ctx.fillStyle='#4a3020'; ctx.fill();
+      ctx.beginPath(); ctx.ellipse(p[0],p[1]+PEG*.3,PEG*.5,PEG*.24,0,0,7); ctx.fillStyle='#6b4a32'; ctx.fill();}}
+  function peg(p,r,lift){const y=p[1]-lift*7,s=1+lift*.14;
+    ctx.beginPath(); ctx.ellipse(p[0],p[1]+4+lift*5,PEG*s,PEG*.86*s,0,0,7); ctx.fillStyle='rgba(60,40,25,'+(.28-lift*.1)+')'; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0],y,PEG*s,0,7); ctx.fillStyle='#8a5a36'; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0],y-1.5,PEG*s-3,0,7); ctx.fillStyle='#b9814f'; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0],y-1.5,PEG*.42*s,0,7); ctx.fillStyle=DEEP[r]; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0],y-2.2,PEG*.33*s,0,7); ctx.fillStyle=COLS[r]; ctx.fill();
+    ctx.beginPath(); ctx.arc(p[0]-PEG*.1,y-PEG*.16,PEG*.1,0,7); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fill();}
+
+  let last=0,lift=0;
+  function draw(now){
+    const dt=Math.min(0.05,(now-last)/1000||0.016); last=now;
+    // The tangle as shown: the state's, or the carry's while a peg is held.
+    let cur=tw;
+    if(held>=0){cur=tw.slice(); const x=held>>1,home=holeAt(at[held]); let mask=0;
+      for(let y=0;y<R;y++) if(y!==x&&segHit(home,hand,holeAt(at[2*y]),holeAt(at[2*y+1]))) mask|=1<<y;
+      const a=Math.atan2(hand[1]-CY,hand[0]-CX)+Math.PI/2,to=((a/(2*Math.PI)*N)%N+N)%N;
+      applyToward(at,cur,R,held,to,mask);}
+    shownTw=cur;
+    const k=RM?1:1-Math.exp(-dt*14);
+    for(let i=0;i<cur.length;i++){const n=cur[i]>>1,gw=n>=2&&n%2===0?1:0,gb=Math.max(0,(n-1)>>1);
+      anim[i].w+=(gw-anim[i].w)*k; anim[i].b+=(gb-anim[i].b)*k;}
+    lift+=((held>=0?1:0)-lift)*(RM?1:1-Math.exp(-dt*18));
+
+    ctx.setTransform(DPR,0,0,DPR,0,0); ring();
+    ctx.fillStyle='#5a4636'; ctx.font='600 15px -apple-system,"SF Pro Rounded",sans-serif'; ctx.textAlign='center';
+    const tot=total(cur); ctx.fillText(preset?('Two ropes, '+(cur[0]>>1)+(cur[0]>>1===1?' crossing':' crossings')):(tot===0?'Not a knot left.':tot+(tot===1?' crossing':' crossings')+' to undo'),CX,120);
+
+    const L=[]; for(let r=0;r<R;r++) L.push(lineOf(r));
+    for(let r=0;r<R;r++){ctx.lineCap='round'; path(L[r].pts); ctx.strokeStyle='rgba(60,40,25,.13)'; ctx.lineWidth=WD+2; ctx.save(); ctx.translate(0,4); ctx.stroke(); ctx.restore();}
+    for(let r=0;r<R;r++) rope(L[r],r,0,L[r].cum[L[r].cum.length-1],'butt');
+    // Over and under: the rope on top is laid back over every crossing, with
+    // its shade, and the bands of a wrap beside the pair's own crossing.
+    const patches=[],bands=[];
+    for(let a=0;a<R;a++) for(let b=a+1;b<R;b++){const i=pairIndex(a,b,R),n=cur[i]>>1,t=cur[i]&1,hs=hits(L[a],L[b]); if(!hs.length) continue;
+      const side=new Array(hs.length).fill(n>0?t:0); let first=-1;
+      if(n%2===1&&hs.length%2===1){first=hs.length>>1; side[first]=t;}
+      else if(n>=2&&n%2===0&&hs.length>=2){
+        // The hook: the two crossings nearest where the ropes meet.
+        const pa=[pegPos(2*a),pegPos(2*a+1)],pb=[pegPos(2*b),pegPos(2*b+1)],K0=hookAt(pa[0],pa[1],pb[0],pb[1]),la=len(sub(pa[1],pa[0])),lb=len(sub(pb[1],pb[0])),K=lerp(foot(K0,pa[0],pa[1])[0],foot(K0,pb[0],pb[1])[0],la/(la+lb)); let bi=0,bd=1e9;
+        for(let j=0;j+1<hs.length;j++){const d=len(sub(pointAt(L[a],hs[j].sa)[0],K))+len(sub(pointAt(L[a],hs[j+1].sa)[0],K)); if(d<bd){bd=d; bi=j;}}
+        for(let j=0;j<hs.length;j++) side[j]=j<bi?t:(j===bi?t:(j===bi+1?1-t:1-t)); first=bi;}
+      hs.forEach((h,j)=>{const top=side[j]?a:b,sT=side[j]?h.sa:h.sb,half=(WD*.5+1.5)/Math.max(h.sin,.3); patches.push([top,sT,half,h.at,side[j]?h.ta:h.tb,side[j]?h.tb:h.ta]);});
+      if(first>=0&&anim[i].b>0.02){const h=hs[first],top=side[first]?a:b,under=side[first]?b:a,sU=side[first]?h.sb:h.sa;
+        const d0=(WD*.5)/Math.max(h.sin,.4)+WD*.55,nb=Math.ceil(anim[i].b-0.02);
+        for(let j=0;j<nb;j++){const sc=Math.min(1,anim[i].b-j),dir=j%2===0?1:-1,off=d0+Math.floor(j/2)*WD*.78; bands.push([under,sU+dir*off,top,RM?1:sc]);}}}
+    // The shade: the dark the rope on top leaves either side of it, on the
+    // rope under it and nowhere else.
+    for(const p of patches){const X=p[3],tT=p[4],tU=p[5],nT=[-tT[1],tT[0]],nU=[-tU[1],tU[0]],den=dot(tT,nU); if(Math.abs(den)<0.42) continue;
+      const lat=WD*.5+4,c=dot(nT,nU),pt=(l,e)=>{const q=(e*WD*.5-l*c)/den; return [X[0]+tT[0]*q+nT[0]*l,X[1]+tT[1]*q+nT[1]*l];};
+      path([pt(lat,1),pt(lat,-1),pt(-lat,-1),pt(-lat,1)]); ctx.closePath(); ctx.fillStyle='rgba(60,45,35,.3)'; ctx.fill();}
+    for(const p of patches) rope(L[p[0]],p[0],p[1]-p[2],p[1]+p[2],'butt');
+    for(const b of bands) band(L[b[0]],b[1],b[2],b[3]);
+    for(let p=0;p<2*R;p++) if(p!==held) peg(pegPos(p),p>>1,0);
+    if(held>=0) peg(hand,held>>1,lift);
+    requestAnimationFrame(draw);}
+
+  // ---- input ----
+  const at2=e=>{const b=cv.getBoundingClientRect(); return [(e.clientX-b.left)*CW/b.width,(e.clientY-b.top)*CH/b.height];};
+  const inRing=p=>{const d=sub(p,[CX,CY]),l=len(d); return l>RR?add([CX,CY],mul(d,RR/l)):p;};
+  cv.addEventListener('pointerdown',e=>{const p=at2(e); let best=-1,bd=PEG*1.9;
+    for(let i=0;i<2*R;i++){const d=len(sub(holeAt(at[i]),p)); if(d<bd){bd=d; best=i;}}
+    if(best>=0){held=best; hand=inRing(p); cv.setPointerCapture(e.pointerId);}});
+  cv.addEventListener('pointermove',e=>{if(held>=0) hand=inRing(at2(e));});
+  const drop=()=>{if(held<0) return; let best=-1,bd=PEG*2.2;
+    for(let h=0;h<N;h++){ if(at.includes(h)) continue; const d=len(sub(holeAt(h),hand)); if(d<bd){bd=d; best=h;}}
+    if(best>=0){undo.push([at.slice(),tw.slice()]); applyToward(at,tw,R,held,best,null); at[held]=best;}
+    held=-1; caption();};
+  cv.addEventListener('pointerup',drop); cv.addEventListener('pointercancel',drop);
+
+  // ---- the page's controls ----
+  const el=id=>document.getElementById(id);
+  function caption(){const c=el('uk-caption'); if(!c) return;
+    const parts=[]; for(let a=0;a<R;a++) for(let b=a+1;b<R;b++){const n=tw[pairIndex(a,b,R)]>>1; if(n>=2) parts.push(n);}
+    c.textContent=(preset?'Two ropes':LEVELS[level]+' · '+R+' ropes, '+N+' holes')+' · '+total(tw)+' crossings'+(parts.length?' · wrapped pairs: '+parts.join(', '):'')+' · '+undo.length+' moves';}
+  function labels(){el('uk-level').textContent=LEVELS[level]; el('uk-rm').textContent='Reduce motion: '+(RM?'on':'off');}
+  const btn=(id,fn)=>{const b=el(id); if(b) b.addEventListener('click',()=>{fn(); labels(); caption(); b.blur();});};
+  btn('uk-level',()=>{level=(level+1)%4; deal();});
+  btn('uk-new',()=>{deal();});
+  btn('uk-undo',()=>{const u=undo.pop(); if(u){at=u[0]; tw=u[1]; held=-1;}});
+  for(let n=1;n<=6;n++) btn('uk-n'+n,()=>setPreset(n));
+  btn('uk-rm',()=>{RM=!RM;});
+
+  level=Math.max(0,Math.min(3,parseInt(Q.get('d')||'1')||0)); seed=parseInt(Q.get('seed')||'7')||7;
+  const pn=MINE?parseInt(Q.get('n')||'0')||0:0;
+  if(pn>=1&&pn<=6) setPreset(pn); else deal();
+  labels(); caption(); draw(performance.now());
 })();
 
 </script>
