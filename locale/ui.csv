@@ -833,3 +833,12 @@ TUT_PEAPOD_M_HEAD,The head,A cabeça,La cabeza
 TUT_PEAPOD_M_HEAD_LINE,Squash it and every plate left goes with it.,Esmague a cabeça e as placas que restam vão junto.,Aplasta la cabeza y las placas que quedan se van con ella.
 TUT_PEAPOD_HUD_RESET,Starts a new run from the first wave.,"Começa uma nova partida, da primeira onda.","Empieza una partida nueva, desde la primera oleada."
 TUT_PEAPOD_HUD_PAUSE,"Settings pauses the run, and so does this card. Tap the garden to go on.","As configurações pausam a partida, e este cartão também. Toque no jardim para continuar.","Los ajustes pausan la partida, y esta tarjeta también. Toca el jardín para seguir."
+VS_NAME_BERRY,Berry,Frutinha,Baya
+VS_NAME_ACORN,Acorn,Bolota,Bellota
+VS_NAME_CLOUD,Cloud,Nuvem,Nube
+VS_NAME_LEAF,Leaf,Folha,Hoja
+VS_NAME_FLOWER,Flower,Flor,Flor
+VS_NAME_PEAR,Pear,Pera,Pera
+VS_NAME_PUMPKIN,Pumpkin,Abóbora,Calabaza
+VS_NAME_MUSHROOM,Mushroom,Cogumelo,Seta
+VS_NAME_HEDGEHOG,Hedgehog,Ouriço,Erizo
