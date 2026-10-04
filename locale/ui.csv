@@ -881,7 +881,6 @@ VS_FRIEND_GONE_VOID,%s didn't make it to the game.,%s não chegou à partida.,%s
 VS_FRIEND_GONE_UNFRIEND,You and %s are not friends any more.,Você e %s não são mais amigos.,Tú y %s ya no son amigos.
 VS_FRIEND_ASK_AGAIN,Ask again,Convidar de novo,Invitar de nuevo
 VS_FRIEND_REMATCH,Rematch,Revanche,Revancha
-VS_FRIEND_RECORD,Friend,Amigo,Amigo
 FRIENDS_TITLE,Friends,Amigos,Amigos
 FRIENDS_ROW_NONE,Play with someone you know,Jogue com quem você conhece,Juega con quien conoces
 FRIENDS_ROW_AWAY,Nobody online right now,Ninguém online agora,Nadie en línea ahora

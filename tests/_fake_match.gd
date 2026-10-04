@@ -11,6 +11,7 @@ signal move(d: Dictionary)
 signal ended(winner: int, why: String)
 signal clock(seat: int, seconds_left: int)
 signal offline
+signal gone(why: String)
 
 const Match = preload("res://versus/online/match.gd")
 
@@ -19,6 +20,9 @@ var phase: int = Match.Phase.IDLE
 var game := ""
 var seat := -1
 var opponent := ""
+## The friend asked or answered ("" for a seek), and which it was.
+var friend := ""
+var accepting := false
 ## What turn() and seconds_left() answer.
 var to_act := 0
 var left := 60
@@ -26,8 +30,19 @@ var left := 60
 var sent: Array = []
 var result := {}
 
+func invite(g: String, uid: String) -> void:
+	seek(g)
+	friend = uid
+
+func accept(g: String, uid: String) -> void:
+	seek(g)
+	friend = uid
+	accepting = true
+
 func seek(g: String) -> void:
 	game = g
+	friend = ""
+	accepting = false
 	seat = -1
 	result = {}
 	phase = Match.Phase.SEEKING
@@ -59,6 +74,11 @@ func turn() -> int:
 
 func say_nobody() -> void:
 	nobody.emit()
+
+## The friend will not come: "declined", "expired", "void" or "unfriend".
+func say_gone(why: String) -> void:
+	phase = Match.Phase.IDLE
+	gone.emit(why)
 
 func say_offline() -> void:
 	phase = Match.Phase.IDLE

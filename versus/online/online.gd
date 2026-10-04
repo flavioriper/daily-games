@@ -22,7 +22,15 @@ extends Node
 ##
 ## and `computer` (the lobby's Play the computer: free this and play a normal
 ## game) and `closed` (the player backed out: close the screen).
-## Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 3.
+##
+## **Against a friend** nothing of that changes for the screen. The menu sets
+## `Online.with_friend` before it builds the screen; `open()` then asks that
+## friend (or takes their invite) in place of looking, the lobby waits on
+## their face, and a game that will not come is the lobby's own card
+## (`Match.gone`), never the queue. core/social.gd is told who this is busy
+## with and whether a game is on, so it knows what to do with an invite.
+## Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 3;
+## 2026-10-04-friends-design.md, section 3.
 
 ## A fresh look for a player has begun (open(), Find another): the board goes
 ## back to idle behind the lobby.
@@ -49,6 +57,8 @@ signal ticked
 const Match = preload("res://versus/online/match.gd")
 const Lobby = preload("res://versus/online/lobby.gd")
 const Names = preload("res://versus/online/names.gd")
+const Social = preload("res://core/social.gd")
+const Backend = preload("res://core/backend.gd")
 const Record = preload("res://versus/versus_record.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Motion = preload("res://core/motion.gd")
@@ -70,6 +80,9 @@ static var stand_in: GDScript = null
 ## The friend the next screen at level 3 plays, set by the menu before it
 ## builds the screen: {uid, accept}. Read and cleared in _init.
 static var with_friend := {}
+## The Online that last told Social who it is busy with, so one on its way
+## out does not wipe what the next has just said.
+static var _teller := 0
 
 var game := ""
 ## This end's seat, the seat that opens, the number both ends share and the
@@ -100,11 +113,16 @@ var _held: Array[Dictionary] = []
 var _held_end := {}
 ## Moves made in this match, by either seat.
 var _plies := 0
+## The first open() takes the friend's invite; any after it asks them.
+var _accept := false
 
 func _init(screen: Control, the_game: String) -> void:
 	name = "Online"
 	_screen = screen
 	game = the_game
+	friend = str(with_friend.get("uid", ""))
+	_accept = not friend.is_empty() and bool(with_friend.get("accept", false))
+	with_friend = {}
 
 func _ready() -> void:
 	_match = (stand_in if stand_in != null else Match).new()
@@ -115,7 +133,22 @@ func _ready() -> void:
 	_match.move.connect(_on_move)
 	_match.ended.connect(_on_ended)
 	_match.clock.connect(_on_clock)
+	_match.gone.connect(_on_gone)
 	add_child(_match)
+	if not friend.is_empty():
+		Social.hub().matched.connect(_on_matched)
+
+func _exit_tree() -> void:
+	_tell("", false)
+
+## Social's two flags: who this is waiting on or playing, and whether a live
+## game is on (a stranger's too: no invite is shown over one).
+func _tell(busy: String, playing: bool) -> void:
+	if busy.is_empty() and not playing and _teller != get_instance_id():
+		return
+	_teller = get_instance_id()
+	Social.busy_with = busy
+	Social.in_game = playing
 
 # --- looking ---
 
@@ -134,9 +167,22 @@ func open() -> void:
 	_warned = false
 	_keep_t = -1.0
 	_close_ask()
+	_tell(friend, false)
 	seeking.emit()
-	_raise_lobby().show_looking()
 	_sought_at = Time.get_ticks_msec()
+	if not friend.is_empty():
+		_raise_lobby().show_waiting(friend)
+		# Their own invite to this game is already here (asked before this
+		# end did, and seen as a card, not as `matched`): it is taken, as
+		# two invites that cross would only wait on each other.
+		if _accept or Social.invite_from(friend) == game:
+			_accept = false
+			_match.accept(game, friend)
+		else:
+			Analytics.track("versus_friend_invite", {"game": game})
+			_match.invite(game, friend)
+		return
+	_raise_lobby().show_looking()
 	Analytics.track("versus_online_seek", {"game": game})
 	_match.seek(game)
 
@@ -146,6 +192,7 @@ func _raise_lobby() -> Control:
 		_lobby.cancel.connect(_on_cancel)
 		_lobby.keep.connect(_on_keep)
 		_lobby.computer.connect(_on_computer)
+		_lobby.again.connect(open)
 		_screen.add_child(_lobby)
 	return _lobby
 
@@ -158,6 +205,9 @@ func _on_nobody() -> void:
 	if is_instance_valid(_lobby) and _lobby.state == Lobby.State.LOOKING:
 		_keep_t = -1.0
 		_lobby.show_nobody()
+	elif is_instance_valid(_lobby) and _lobby.state == Lobby.State.WAITING:
+		_keep_t = -1.0
+		_lobby.show_no_answer(friend)
 
 func _on_offline() -> void:
 	_keep_t = -1.0
@@ -166,13 +216,49 @@ func _on_offline() -> void:
 ## Match says `nobody` once and keeps looking; so does the card, and it asks
 ## again after as long a wait.
 func _on_keep() -> void:
-	Analytics.track("versus_online_nobody", {"game": game, "choice": "keep"})
 	_keep_t = 0.0
+	if not friend.is_empty():
+		_lobby.show_waiting(friend)
+		return
+	Analytics.track("versus_online_nobody", {"game": game, "choice": "keep"})
 	_lobby.show_looking()
+
+## A game with the friend will not come of this asking (Match.gone). Nothing
+## is looked for in its place: the card says why, and Ask again is open().
+func _on_gone(why: String) -> void:
+	if friend.is_empty():
+		return
+	_keep_t = -1.0
+	seat = -1
+	_tell(friend, false)
+	if why == "expired":
+		Analytics.track("versus_friend_answer", {"game": game, "choice": "expired"})
+	# Removed from the friends meanwhile: there is nobody to ask again.
+	if Social.started() and Social.loaded() and not Social.is_friend(friend):
+		why = "unfriend"
+	_raise_lobby().show_gone(friend, why)
+
+## The friend this is waiting on has asked too (both pressed Rematch, or
+## each asked the other). One invite is enough: the end with the smaller uid
+## drops its own and takes theirs, the other just goes on waiting and is
+## taken. Anything else -- another game, or this end not asking at all (the
+## end card, the gone card) -- is an invite like any other, and is said as
+## one so the menu's card comes up.
+func _on_matched(from: String, their_game: String) -> void:
+	if from != friend or live():
+		return
+	var asking: bool = _match.phase == Match.Phase.SEEKING and in_lobby() \
+		and (_lobby.state == Lobby.State.WAITING or _lobby.state == Lobby.State.NO_ANSWER)
+	if not asking or their_game != game:
+		Social.hub().invited.emit(from, their_game)
+		return
+	if Backend.uid() < friend:
+		_match.accept(game, friend)
 
 func _on_computer() -> void:
 	Analytics.track("versus_online_nobody", {"game": game,
 		"choice": "computer" if _lobby.state == Lobby.State.NOBODY else "offline"})
+	_tell("", false)
 	_match.cancel()
 	_drop_lobby()
 	computer.emit()
@@ -197,6 +283,7 @@ func _on_found(the_seat: int, the_first: int, the_seed: int, uid: String) -> voi
 	match_seed = the_seed
 	opponent = uid
 	_keep_t = -1.0
+	_tell(friend, true)
 	Haptics.play(Haptics.GOOD)
 	Analytics.track("versus_online_found", {"game": game,
 		"wait_s": int((Time.get_ticks_msec() - _sought_at) / 1000.0)})
@@ -260,6 +347,7 @@ func foul() -> void:
 	if not live() and not their_end:
 		return
 	result = {"winner": seat, "why": "left"}
+	_tell(friend, false)
 	_match.leave()
 	_close_ask()
 	over.emit("won", "left")
@@ -273,6 +361,7 @@ func settle(outcome: String, why: String, moves: int, mine_last := false) -> voi
 	if _settled:
 		return
 	_settled = true
+	_tell(friend, false)
 	_close_ask()
 	if why.is_empty():
 		if mine_last and result.is_empty():
@@ -292,7 +381,11 @@ func _on_ended(winner: int, why: String) -> void:
 	if not result.is_empty():
 		return
 	if not _begun:
-		if _held.is_empty():
+		if _held.is_empty() and not friend.is_empty():
+			# The same with a friend, and there is no queue to go back to.
+			_run += 1
+			_on_gone("void")
+		elif _held.is_empty():
 			# Given up inside the found beat, before a move: it never began.
 			# Nothing is counted and nothing is shown; back to looking.
 			open()
@@ -300,6 +393,7 @@ func _on_ended(winner: int, why: String) -> void:
 			_held_end = {"winner": winner, "why": why}
 		return
 	result = {"winner": winner, "why": why}
+	_tell(friend, false)
 	_close_ask()
 	over.emit("draw" if winner < 0 else ("won" if winner == seat else "lost"), why)
 
@@ -393,9 +487,9 @@ func record_line() -> String:
 	return "%s  ·  %s" % [tr("VS_ONLINE"), Record.record_line(game, Record.ONLINE)]
 
 ## The end card's sun button online: Find another, a fresh look on the same
-## screen.
+## screen. With a friend it reads Rematch and asks them again.
 func again_button() -> Button:
-	var b := Dialog.primary("globe", tr("VS_FIND_ANOTHER"))
+	var b := Dialog.primary("globe", tr("VS_FIND_ANOTHER" if friend.is_empty() else "VS_FRIEND_REMATCH"))
 	b.pressed.connect(func() -> void:
 		Haptics.play(Haptics.TAP)
 		open())

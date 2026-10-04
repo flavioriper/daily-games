@@ -2,7 +2,9 @@ extends Node
 
 ## One live game against a stranger, from looking for one to the result: the
 ## ticket in the queue, the claim, both streams, the heartbeats, the clock
-## and the claims a clock allows. It knows no game -- a move is a Dictionary
+## and the claims a clock allows. Or against a friend (`invite`, `accept`):
+## the ticket is then an invite only they can take, nothing is looked for,
+## and from the match on it is the same game. It knows no game -- a move is a Dictionary
 ## it carries from one end to the other -- and a screen talks to nothing
 ## else: `seek`, then `found`, then `send` and `move` until `ended`.
 ##
@@ -22,7 +24,7 @@ extends Node
 ## Offline -- Backend not started, or the ticket cannot be written -- it says
 ## `offline` and stays idle.
 ## Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, sections
-## 2 and 3.
+## 2 and 3; 2026-10-04-friends-design.md, section 3.
 
 const Backend = preload("res://core/backend.gd")
 const Live = preload("res://core/live.gd")
@@ -41,6 +43,13 @@ signal ended(winner: int, why: String)
 signal clock(seat: int, seconds_left: int)
 ## There is no network to play over.
 signal offline
+## A game with a friend will not come of this asking, and nothing is looked
+## for in its place: "declined" (the invite was deleted under this player:
+## they said no, or are in a game), "expired" (the invite was not there to
+## take, or too old), "void" (the match was made and they never arrived, or
+## left before it began), "unfriend" (the rules refuse the invite: the two
+## are not friends).
+signal gone(why: String)
 
 enum Phase { IDLE, SEEKING, JOINING, PLAYING, OVER }
 
@@ -81,6 +90,9 @@ var opponent := ""
 var _uid := ""
 var _ticket := ""
 var _since := 0.0
+## The friend this is with ("" against a stranger): the ticket is an invite,
+## the queue is not read, and a match that comes to nothing is `gone`.
+var _friend := ""
 var _path := ""
 ## The match document as last known, with every array turned back into the
 ## keyed object it was written as.
@@ -92,6 +104,7 @@ var _sending := false
 var _scanning := false
 var _ticketing := false
 var _claiming := false
+var _refused := false
 var _said_nobody := false
 var _seek_t := 0.0
 var _beat_t := 0.0
@@ -137,6 +150,29 @@ func seek(g: String) -> void:
 	_seek_t = 0.0
 	_said_nobody = false
 	_seek()
+
+## Asks the friend `uid` to a game of `g`: the ticket is
+## social/{uid}/invites/{me}, kept fresh as a queue ticket is, and nobody
+## else can take it. `found` when they say Play and both are in the match;
+## `gone` when they say no; `nobody` after `wait`, and the asking goes on.
+func invite(g: String, uid: String) -> void:
+	leave()
+	game = g
+	_friend = uid
+	_seek_t = 0.0
+	_said_nobody = false
+	_seek()
+
+## Takes the friend `uid`'s invite to a game of `g`: the match and `match` on
+## their invite in one write, as a claim is. `found` as ever; `gone` when the
+## invite was not there to take.
+func accept(g: String, uid: String) -> void:
+	leave()
+	game = g
+	_friend = uid
+	_seek_t = 0.0
+	_said_nobody = true  # nothing is waited for
+	_accept()
 
 ## Stops looking. During a game it is leave().
 func cancel() -> void:
@@ -206,11 +242,16 @@ func _stop() -> void:
 	seat = -1
 	_sits = -1
 	opponent = ""
+	_friend = ""
 	_last_clock = Vector2i(-1, -1)
 
 func _go_offline() -> void:
 	_stop()
 	offline.emit()
+
+func _go(why: String) -> void:
+	_stop()
+	gone.emit(why)
 
 # --- looking ---
 
@@ -230,24 +271,77 @@ func _seek() -> void:
 		_go_offline()
 		return
 	_uid = Backend.uid()
-	_ticket = "queue/%s/%s" % [game, _uid]
+	_ticket = "queue/%s/%s" % [game, _uid] if _friend.is_empty() \
+		else "social/%s/invites/%s" % [_friend, _uid]
 	var ok := await _write_ticket()
 	if gen != _gen:
 		return
 	if not ok:
-		_go_offline()
+		if _refused and not _friend.is_empty():
+			_go("unfriend")
+		else:
+			_go_offline()
 		return
 	_beat_t = 0.0
 	_poll_t = QUEUE_POLL  # the first read is at once
 	_ticket_stream.open(_ticket)
 
+## The claim an invite is taken with: the match (the one who asked is p0,
+## this player p1) and `match` on their invite, together or not at all.
+func _accept() -> void:
+	_gen += 1
+	var gen := _gen
+	phase = Phase.SEEKING
+	_ticket = ""
+	if not Live.online():
+		_go_offline.call_deferred()
+		return
+	var token := await Backend.token()
+	if gen != _gen:
+		return
+	if token.is_empty():
+		_go_offline()
+		return
+	_uid = Backend.uid()
+	var ticket := "social/%s/invites/%s" % [_uid, _friend]
+	var mid := "%08x%08x%08x" % [randi(), randi(), Time.get_ticks_usec() & 0xffffffff]
+	var first := randi() % 2
+	_claim_mid = mid
+	var claim := await Live.patch("", {
+		"matches/%s" % mid: {
+			"game": game, "p0": _friend, "p1": _uid,
+			"first": first, "seed": randi() & 0x7fffffff, "at": Live.STAMP,
+			"n": 0, "turn": first, "turnAt": Live.STAMP,
+		},
+		"%s/match" % ticket: mid,
+	})
+	_claim_mid = ""
+	if gen != _gen:
+		# Abandoned with the claim on its way, as in _scan: a match that was
+		# made all the same is resigned, so the friend is not left to wait
+		# the void clock out.
+		if claim.ok:
+			@warning_ignore("return_value_discarded")
+			Live.write("matches/%s/result" % mid, {"winner": 0, "why": "resign"})
+		return
+	if claim.ok:
+		_ticket = ticket  # _join takes it away
+		_join(mid, 1)
+	elif int(claim.code) == 0:
+		_go_offline()
+	else:
+		_go("expired")
+
 ## Writes the ticket new: `since` and `at` are the server's clock, as the
-## rules insist. False when it would not go.
+## rules insist (an invite's are `game` and `at`). False when it would not
+## go, and `_refused` when it was the rules that said so.
 func _write_ticket() -> bool:
 	var gen := _gen
 	var path := _ticket
 	_ticketing = true
-	var res := await Live.write(path, {"since": Live.STAMP, "at": Live.STAMP})
+	_refused = false
+	var res := await Live.write(path, {"since": Live.STAMP, "at": Live.STAMP} if _friend.is_empty() \
+		else {"game": game, "at": Live.STAMP})
 	if gen != _gen:
 		# Abandoned while the write was on its way, and it may have landed
 		# after the delete that abandoning sent.
@@ -257,6 +351,7 @@ func _write_ticket() -> bool:
 		return false
 	_ticketing = false
 	if not res.ok or typeof(res.data) != TYPE_DICTIONARY:
+		_refused = int(res.code) == 401
 		return false
 	_since = float(res.data.get("since", 0.0))
 	return true
@@ -276,7 +371,7 @@ func _seek_tick(delta: float) -> void:
 		@warning_ignore("return_value_discarded")
 		Live.patch(_ticket, {"at": Live.STAMP})  # deliberately not awaited
 	_poll_t += delta
-	if _poll_t >= QUEUE_POLL and not _scanning:
+	if _friend.is_empty() and _poll_t >= QUEUE_POLL and not _scanning:
 		_poll_t = 0.0
 		_scan()
 
@@ -364,6 +459,11 @@ func _on_ticket(kind: String, path: String, data: Variant) -> void:
 	if typeof(_t) == TYPE_DICTIONARY and _t.has("match"):
 		# This player's own claim is heard of here too, and sometimes first.
 		_join(str(_t.match), 1 if str(_t.match) == _claim_mid else 0)
+	elif _t == null and not _friend.is_empty():
+		# The stream opens after the invite is written, so an invite that is
+		# not there was deleted: the friend said no (or has gone from the
+		# friends, and took it with them).
+		_go("declined")
 
 # --- joining ---
 
@@ -392,8 +492,12 @@ func _join(mid: String, sits: int) -> void:
 	_claim_wait = 0.0
 	_stream.open(_path)
 
-## Back to looking, without a word: the match was void.
+## Back to looking, without a word: the match was void. A friend's match
+## is not looked for again: it is `gone`.
 func _reseek() -> void:
+	if not _friend.is_empty():
+		_go("void")
+		return
 	var g := game
 	var looked := _seek_t
 	var said := _said_nobody
