@@ -4,9 +4,9 @@ extends Control
 ## that come down with a number on each (spec
 ## docs/superpowers/specs/2026-10-04-arcade-peapod-design.md). The flat
 ## boards' top bar (back, the title in ink, restart, settings), a paper row
-## with the score, the best and the wave, and under them the garden in the
-## Arcade's wooden frame: the sky the crates come down, the cart on the
-## grass at its foot.
+## with the score, the best and the wave, and under them the garden on the
+## flat boards' parchment card, hedges round its foot: a pale sky the crates
+## come down, the sun watching from it, the cart on the grass.
 ##
 ## Play: slide anywhere to roll the cart; it never stops firing. The game is
 ## arcade/peapod_sim.gd, stepped at its fixed DT; this screen draws it and
@@ -15,8 +15,15 @@ extends Control
 ## Drawing: the garden (sky, hills, grass) is one still mesh, built on
 ## resize. Everything that moves is drawn by one Control over it: a cached
 ## mesh a crate, a plate, a token and a part of the cart, moved by the
-## transform, their numbers lettered over them, and two live meshes for the
-## peas, the sparks and the line.
+## transform and gathered a MultiMesh a look, their numbers lettered over
+## them in ink, and one live mesh for what is laid fresh each frame.
+##
+## The soft pass (the spec's section 7): Lucky Thirteen's pastel pieces and
+## Posy's card and hedges; a gift caught flies to its place on the grass, a
+## crate gone leaves its shape swelling away, a streak is counted on a paper
+## pill with its time running down, a wave cleared is stamped one to three
+## stars and that many flowers come up along the grass, the pod wears a
+## crown once the best is passed, and the big moments are held a beat.
 
 signal closed
 
@@ -61,16 +68,36 @@ const GAIN := 1.35
 ## Where the grass begins, in field units: under the cart's wheels.
 const TURF := Sim.CART_Y + 9.0
 const RECOIL := 0.09
-const SKY_TOP := Color("8fd0f0")
-const SKY_LOW := Color("e2f5fb")
-const PEAK := Color("8fb4e6")
-const PEAK_FAR := Color("a9c6ee")
-const HILL := Color("a5d68a")
-const HILL_NEAR := Color("8fc873")
-const GRASS := Color("84c957")
-const GRASS_DEEP := Color("63ad42")
-const ALARM := Color("ff6f61")
-const HEAT := Color("ffb03b")
+const SKY_TOP := Color("d3e9f4")
+const SKY_LOW := Color("f9f3e3")
+const HILL_FAR := Color("d6e8c8")
+const HILL := Color("c2deac")
+const HILL_NEAR := Color("b0d596")
+const GRASS := Color("a5d385")
+const GRASS_DEEP := Color("8fc56f")
+const GRASS_LIP := Color("c8e8ab")
+const BUSH := [Color("8fc56f"), Color("a0d07f"), Color("b3db93")]
+const ALARM := Color("f07f72")
+const HEAT := Color("f6b866")
+const FROST := Color("8fd0ee")
+const STAR_OFF := Color("dccfb6")
+## A gift on its way from the cart to its place on the grass.
+const FLIGHT_T := 0.5
+## The shape a crate gone leaves, swelling away.
+const GHOST_T := 0.18
+## A streak is counted on its pill from this many.
+const STREAK_FROM := 5
+## The stars a cleared wave is stamped: three if the line was never nearer
+## than the first of these, two under the second.
+const STAR_PEAKS := [0.2, 0.65]
+const STAR_STEP := 0.22
+const MAX_BLOOMS := 30
+## The gun's three numbers on the grass, left to right.
+const GUN := [Sim.Kind.PEA, Sim.Kind.RATE, Sim.Kind.POWER]
+## The stickers' letters, in Lucky Thirteen's pastels.
+const STICKER_COLS := [Color("f08a80"), Color("f6b866"), Color("f0d36a"), Color("9ed48a"), Color("86c2ee"), Color("c19be0")]
+## How round the garden's corners are, inside the card's.
+const ROUND := 22.0
 ## A streak's word, by its length, loudest first.
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
 const GOT := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER", Sim.Kind.TWIN: "PP_GOT_TWIN",
@@ -83,6 +110,7 @@ const CATCH_CUE := {Sim.Kind.TWIN: "twin", Sim.Kind.FAN: "pod", Sim.Kind.PIERCE:
 	Sim.Kind.SHOVE: "shove"}
 const MAX_POPS := 12
 const MAX_SPARKS := 40
+const SunFace = preload("res://ui/faces/sun_face.gd")
 
 var sim: RefCounted
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
@@ -107,9 +135,15 @@ var _margins: MarginContainer
 var _score_l: Label
 var _best_l: Label
 var _wave_l: Label
-var _banner: Label
 var _sub: Label
+var _sub_pill: PanelContainer
 var _banner_tw: Tween
+## The hedges round the card's foot, and the sun in the garden's sky.
+var _hedge: Control
+var _hedge_mesh: ArrayMesh
+var _hedge_rect := Rect2()
+var _frame: PanelContainer
+var _sun: Control
 var _pause_card: Control
 var _end: Control
 var _over: Control
@@ -126,11 +160,13 @@ var _knock := -1
 var _u := 2.4
 var _origin := Vector2.ZERO
 var _scene: ArrayMesh
+var _land: ArrayMesh
 var _live_top: ArrayMesh
 ## Built with the garden and only moved or tinted after: the chalk line's
 ## dashes and the plates under the gun's three numbers.
 var _dashes: ArrayMesh
 var _chips: ArrayMesh
+var _text_fs := 13
 ## Every pea in the air is one draw a look, every spark one more (checkup,
 ## 2026-10-04: a pea laid into a mesh in script each frame was most of a
 ## frame once the gun was full and a millipede let the peas fly far).
@@ -140,7 +176,9 @@ var _spark_mm: MultiMesh
 ## The crates and the plates the same way, one draw a look of them: a wall
 ## of forty-five was forty-five draws, and the phone pays by the draw.
 ## ArrayMesh -> [MultiMesh, its buffer, how many this frame].
-var _cast: Dictionary = {}
+## One Dictionary a draw of the frame (`_cast_turn`).
+var _casts: Array = []
+var _cast_turn := 0
 var _spark_buf := PackedFloat32Array()
 ## The screen's own clock, for motion the sim does not own; it stops with
 ## the pause.
@@ -176,6 +214,31 @@ var _flash_col := Color.WHITE
 var _head_tag: Array = []
 var _end_score: Label
 var _end_at := 0.0
+## Crates and plates just gone: {pos, round, col, t}.
+var _ghosts: Array = []
+## Gifts flying to their place on the grass: {kind, from, t}.
+var _flights: Array = []
+## When each of the gun's three numbers, and each running gift, last took
+## one in (by chip 0..2, and by Sim.Kind), for the bump.
+var _chip_at := {}
+## The streak's pill: how many it shows, when it last went up, and how far
+## it has come in (0..1).
+var _streak_n := 0
+var _streak_at := -10.0
+var _streak_in := 0.0
+## The wave's stars: how near the line came, and the stamping of the last
+## clear ({at, stars, said}).
+var _wave_peak := 0.0
+var _clear := {}
+## The flowers the run has grown: {x, look, at, lean}.
+var _blooms: Array = []
+## The cart's hop ({at, tall, time}) and the crown it wears.
+var _hop := {}
+var _crown_at := -1.0
+var _dust_at := 0.0
+## The beat a big moment is held: seconds left of it, and how slow.
+var _hold_t := 0.0
+var _hold_k := 1.0
 
 func puzzle_id() -> String:
 	return GAME
@@ -234,6 +297,12 @@ func _build() -> void:
 	_backdrop = Vistas.board_plate(GAME, Pal.LEAF_DEEP)
 	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	add_child(_backdrop)
+	_hedge = Control.new()
+	_hedge.name = "Hedge"
+	_hedge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hedge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hedge.draw.connect(_draw_hedge)
+	add_child(_hedge)
 
 	_margins = MarginContainer.new()
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -252,20 +321,17 @@ func _build() -> void:
 	col.add_child(top_bar)
 	col.add_child(_build_hud())
 
-	var frame := PanelContainer.new()
-	frame.name = "Frame"
-	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
-	box.shadow_offset = Vector2(0, 6)
-	frame.add_theme_stylebox_override("panel", box)
-	col.add_child(frame)
+	_frame = PanelContainer.new()
+	_frame.name = "Frame"
+	_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# the flat boards' card (ui/flat/flat_host.gd): parchment, a hairline, a
+	# soft shadow
+	var box := CozyTheme.lifted(Pal.PARCHMENT, 36, FRAME)
+	box.set_border_width_all(2)
+	box.border_color = Color(Pal.LINE, 0.35)
+	_frame.add_theme_stylebox_override("panel", box)
+	_frame.resized.connect(func() -> void: _hedge.queue_redraw())
+	col.add_child(_frame)
 	field = Control.new()
 	field.name = "Field"
 	field.clip_contents = true
@@ -273,7 +339,14 @@ func _build() -> void:
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
-	frame.add_child(field)
+	_frame.add_child(field)
+	# the sun in the garden's sky, under everything that moves: it watches
+	# the cart, beams through a streak and frets as the line is neared
+	_sun = SunFace.new()
+	_sun.name = "Sun"
+	_sun.shadowless = true
+	field.add_child(_sun)
+	_sun.set_idle(true)
 	_over = Control.new()
 	_over.name = "Over"
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -287,30 +360,22 @@ func _build() -> void:
 	_quiet.buzzes = false
 	field.add_child(_quiet)
 
-	var over := VBoxContainer.new()
-	over.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	over.alignment = BoxContainer.ALIGNMENT_CENTER
-	over.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	over.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	over.grow_vertical = Control.GROW_DIRECTION_BOTH
-	field.add_child(over)
-	_banner = Label.new()
-	_banner.theme_type_variation = "WellDone"
-	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.add_theme_color_override("font_color", Color("fffaf0"))
-	_banner.add_theme_color_override("font_shadow_color", Color(0.2, 0.14, 0.06, 0.55))
-	_banner.add_theme_constant_override("shadow_offset_y", 4)
-	over.add_child(_banner)
+	# the line under a banner, on a paper pill (Posy's)
+	_sub_pill = PanelContainer.new()
+	_sub_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pill := CozyTheme.lifted(Color("fffaf0", 0.96), 34, 18)
+	pill.content_margin_left = 30
+	pill.content_margin_right = 30
+	_sub_pill.add_theme_stylebox_override("panel", pill)
+	field.add_child(_sub_pill)
 	_sub = Label.new()
-	_sub.theme_type_variation = "SheetTitle"
+	_sub.theme_type_variation = "SheetBody"
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_sub.add_theme_color_override("font_color", Color("fffaf0"))
-	_sub.add_theme_color_override("font_shadow_color", Color(0.2, 0.14, 0.06, 0.5))
-	_sub.add_theme_constant_override("shadow_offset_y", 3)
-	over.add_child(_sub)
-	over.modulate.a = 0.0
-	_banner.set_meta("box", over)
+	_sub.add_theme_color_override("font_color", Art.INK)
+	_sub_pill.add_child(_sub)
+	_sub_pill.modulate.a = 0.0
 	_rw = Rewards.new()
+	_rw.sticker_cols = STICKER_COLS
 	add_child(_rw)
 	_apply_insets()
 
@@ -363,13 +428,17 @@ func _layout_field() -> void:
 		return
 	_fit(s)
 	_scene = _build_scene()
-	_cast.clear()
+	_land = _build_land()
+	_casts.clear()
 	_dashes = _build_dashes()
 	_chips = _build_chips()
-	var box: Control = _banner.get_meta("box")
-	box.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	box.position = Vector2(0, s.y * 0.36)
-	box.size.x = s.x
+	_text_fs = int(12.0 * _u)
+	if _sun != null:
+		var side := 58.0 * _u
+		_sun.size = Vector2(side, side)
+		_sun.position = _sun_at() - _sun.size * 0.5
+	if _hedge != null:
+		_hedge.queue_redraw()
 	_redraw_all()
 
 ## The field's unit and origin in a room `s` (a tutorial page stands a slice
@@ -409,6 +478,19 @@ func _new_game() -> void:
 	_alarm = 0.0
 	_flash = 0.0
 	_end_score = null
+	_ghosts.clear()
+	_flights.clear()
+	_chip_at.clear()
+	_streak_n = 0
+	_streak_in = 0.0
+	_wave_peak = 0.0
+	_clear = {}
+	_blooms.clear()
+	_hop = {}
+	_crown_at = -1.0
+	_hold_t = 0.0
+	if _sun != null:
+		_sun.hat = 0.0
 	_rw.clear()
 	_best = Record.best(GAME)
 	_shown_score = -1
@@ -440,14 +522,15 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	if not _paused:
-		_clock += delta
+		var d := delta * _pace(delta)
+		_clock += d
 		_keys()
-		_acc += minf(delta, Sim.DT * MAX_STEPS)
+		_acc += minf(d, Sim.DT * MAX_STEPS)
 		while _acc >= Sim.DT:
 			_acc -= Sim.DT
 			sim.step()
 			_play_events()
-		_animate(delta)
+		_animate(d)
 	_refresh_hud(delta)
 	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
@@ -455,6 +538,21 @@ func _process(delta: float) -> void:
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
 	_redraw_all()
+
+## How fast the run goes this frame: slowed for the beat a big moment is
+## held, and eased back out of it.
+func _pace(delta: float) -> float:
+	if _hold_t <= 0.0:
+		return 1.0
+	_hold_t -= delta
+	return lerpf(1.0, _hold_k, clampf(_hold_t / 0.1, 0.0, 1.0))
+
+## Holds the run at `pace` of its speed for `seconds`: a big moment's beat.
+func _hold(seconds: float, pace: float) -> void:
+	if Motion.reduce:
+		return
+	_hold_t = maxf(_hold_t, seconds)
+	_hold_k = pace
 
 ## Asks for a knock this frame; the strongest asked for is the one played.
 func _feel(kind: int) -> void:
@@ -497,6 +595,111 @@ func _animate(delta: float) -> void:
 	_heat = move_toward(_heat, want, delta * (1.5 if want > _heat else 0.8))
 	_alarm = move_toward(_alarm, sim.danger(), delta * 2.0)
 	_flash = maxf(0.0, _flash - delta * 2.6)
+	for g: Dictionary in _ghosts:
+		g.t += delta
+	_ghosts = _ghosts.filter(func(g: Dictionary) -> bool: return g.t < GHOST_T)
+	_step_flights(delta)
+	# the streak's pill: in while a streak of five or more runs, out after
+	var live: bool = playing and sim.streak >= STREAK_FROM
+	if live:
+		if sim.streak > _streak_n:
+			_streak_at = _clock
+		_streak_n = sim.streak
+	_streak_in = move_toward(_streak_in, 1.0 if live else 0.0, delta * (7.0 if live else 3.0))
+	_wave_peak = maxf(_wave_peak, sim.danger())
+	_step_clear()
+	# a puff off the wheels of a cart rolled hard
+	if not Motion.reduce and absf(moved) > 6.0 * delta * 60.0 and _clock - _dust_at > 0.09:
+		_dust_at = _clock
+		_rw.spray(_in_rw(Vector2(sim.x - signf(moved) * 15.0, TURF - 2.0)), Color("fffaf0", 0.9), 1, 90.0, "mote", 0.7)
+	_mood_sun()
+
+## The sun's face: worried as the line is neared and at the end, beaming
+## through a streak and a cleared wave; its eyes follow the cart.
+func _mood_sun() -> void:
+	if _sun == null:
+		return
+	var want: int = Face.Expr.HAPPY
+	if sim.is_over() or _alarm > 0.35:
+		want = Face.Expr.WORRIED
+	elif _heat > 0.25 or not _clear.is_empty():
+		want = Face.Expr.JOY
+	if _sun.expression != want:
+		_sun.expression = want
+	var to := px(Vector2(sim.x, Sim.CART_Y)).x - (_sun.position.x + _sun.size.x * 0.5)
+	var look := Vector2(signf(to) if absf(to) > field.size.x * 0.15 else 0.0, 1.0)
+	if _sun.look != look:
+		_sun.look = look
+
+## The gifts on their way to the grass: each lands on its place with a bump.
+func _step_flights(delta: float) -> void:
+	if _flights.is_empty():
+		return
+	for f: Dictionary in _flights:
+		f.t += delta
+		if f.t >= FLIGHT_T:
+			_chip_at[int(f.kind)] = _clock
+			_quiet.cue("hit", 1.5, -7.0)
+			_rw.ring(_rw.at(field, _home_of(f.kind) + _shake_off), 15.0 * _u, Color(Art.GIFT[int(f.kind)], 0.9), 0.0, 0.3)
+	_flights = _flights.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT_T)
+
+## Where a gift caught comes to rest: the gun's line for a pea, the rate
+## and the weight, its ring on the right for one that runs down.
+func _home_of(kind: int) -> Vector2:
+	var k := GUN.find(kind)
+	if k >= 0:
+		return _gun_chip(k)
+	var timed := _timed()
+	for i in timed.size():
+		if int(timed[i][0]) == kind:
+			return _timed_at(i)
+	return _timed_at(0)
+
+## A thing on the grass swells as a gift lands on it and settles.
+func _bump(kind: int) -> float:
+	var since: float = _clock - float(_chip_at.get(kind, -10.0))
+	if since > 0.5 or Motion.reduce:
+		return 1.0
+	return 1.0 + 0.28 * exp(-since * 9.0) * cos(since * 22.0)
+
+## The stamping of a cleared wave: its stars one at a time, each a note
+## higher, and a flower up out of the grass for each.
+func _step_clear() -> void:
+	if _clear.is_empty():
+		return
+	var since: float = _clock - float(_clear.at)
+	while int(_clear.said) < int(_clear.stars) and since >= 0.35 + STAR_STEP * int(_clear.said):
+		var k: int = _clear.said
+		_clear.said = k + 1
+		_fx.cue("catch", 1.0 + 0.14 * k, -3.0)
+		_feel(Haptics.TICK)
+		var at := _rw.at(field, _star_at(k) + _shake_off)
+		_rw.spray(at, Pal.SUN, 6, 420.0, "star", 0.8)
+		_rw.ring(at, 26.0 * _u, Color(Pal.SUN, 0.8))
+		_bloom()
+	if since > 1.5:
+		_clear = {}
+
+func _star_at(k: int) -> Vector2:
+	return field.size * Vector2(0.5, 0.3) + Vector2((k - 1) * 36.0, 78.0) * _u
+
+## A flower comes up somewhere along the grass, clear of the others.
+func _bloom() -> void:
+	if _blooms.size() >= MAX_BLOOMS:
+		return
+	var x := 0.0
+	for attempt in 12:
+		x = randf_range(10.0, Sim.W - 10.0)
+		var free := true
+		for bl: Dictionary in _blooms:
+			if absf(float(bl.x) - x) < 9.0:
+				free = false
+				break
+		if free:
+			break
+	var look := randi() % Art.BLOOM.size()
+	_blooms.append({"x": x, "y": randf_range(1.0, 5.0), "look": look, "at": _clock, "size": randf_range(0.85, 1.15)})
+	_rw.spray(_in_rw(Vector2(x, TURF - 8.0)), Art.BLOOM[look][0], 5, 260.0, "confetti", 0.7)
 
 func _keys() -> void:
 	var axis := 0.0
@@ -609,6 +812,7 @@ func _play_events() -> void:
 			"go":
 				_fx.cue("go")
 			"wave":
+				_wave_peak = 0.0
 				var milli: bool = ev.kind == Sim.Wave.MILLI
 				if int(ev.wave) > 1:
 					_show_banner(tr("PP_WAVE_N") % int(ev.wave), tr("PP_MILLI_LINE") if milli else "", 0.7)
@@ -621,7 +825,7 @@ func _play_events() -> void:
 			"hit":
 				_hit_at[ev.id] = _clock
 				if not ev.quiet:
-					_spark(pos, Color("fffaf0"))
+					_spark(pos, Art.colour(ev.kind, 1).lerp(Color("fffaf0"), 0.6) if Sim.holds_token(ev.kind) else Color("fffaf0"))
 					if ev.kind == Sim.Kind.IRON:
 						_quiet.cue("clank", randf_range(0.92, 1.1), -6.0)
 					else:
@@ -640,6 +844,7 @@ func _play_events() -> void:
 				_fx.cue("boom")
 				_feel(Haptics.THUD)
 				_shake = maxf(_shake, 0.7)
+				_hold(0.07, 0.4)
 				_flash_now(Color("ffd65c"), 0.4)
 				_rw.ring(_in_rw(pos), 78.0 * _u, Color("ffd65c", 0.95))
 				_rw.ring(_in_rw(pos), 52.0 * _u, Color("fffaf0", 0.9), 0.06)
@@ -663,6 +868,7 @@ func _play_events() -> void:
 				_fx.cue("over")
 				_feel(Haptics.LOSE)
 				_shake = maxf(_shake, 0.9)
+				_hold(0.4, 0.3)
 				_flash_now(ALARM, 0.5)
 				_game_over()
 			"revive":
@@ -683,20 +889,23 @@ func _on_kill(ev: Dictionary) -> void:
 	var at := _in_rw(pos)
 	var k := _u / 2.4
 	var popped: bool = ev.popped
+	var head := kind == Sim.Kind.HEAD
+	var round: bool = head or sim.wave_kind == Sim.Wave.MILLI
+	_ghosts.append({"pos": pos, "round": round, "col": col.lerp(Color("fffaf0"), 0.45), "t": 0.0, "big": head})
 	_rw.spray(at, col, 3 if popped else 6, 460.0, "shard", 0.9 * k)
 	_rw.spray(at, Color("fffaf0"), 2 if popped else 3, 400.0, "spark", 0.9 * k)
 	_spark(pos, col.lightened(0.4))
 	var gold := kind == Sim.Kind.GOLD
-	var head := kind == Sim.Kind.HEAD
 	if _pops.size() >= MAX_POPS:
 		_pops.pop_front()
-	_pops.append({"pos": pos, "text": "+" + Art.short(int(ev.points)), "t": 0.0, "col": Pal.SUN if gold or head else Color("fffaf0"),
-		"big": gold or head, "drift": randf_range(-1.0, 1.0)})
+	_pops.append({"pos": pos, "text": "+" + Art.short(int(ev.points)), "t": 0.0, "col": Color("fff1c2") if gold or head else Color("fffaf0"),
+		"rim": Art.GOLD_INK if gold else Art.deepen(col).darkened(0.3), "big": gold or head, "drift": randf_range(-1.0, 1.0)})
 	var streak: int = ev.streak
 	if head:
 		_fx.cue("head")
 		_feel(Haptics.THUD)
 		_shake = maxf(_shake, 0.6)
+		_hold(0.2, 0.25)
 		_flash_now(Color("fffaf0"), 0.4)
 		_rw.sticker(tr("PP_SQUASHED"), _in_rw(pos + Vector2(0, -34.0)), 76, 1.3, true, Color.WHITE, true, "head", 30.0)
 		_rw.ring(at, 90.0 * _u, Color(Pal.SUN, 0.9))
@@ -721,12 +930,12 @@ func _on_kill(ev: Dictionary) -> void:
 			var mid := _rw.at(field, field.size * Vector2(0.5, 0.42))
 			_rw.sticker(tr(WORDS[i][1]), mid, 72 + 8 * tier, 1.3 + 0.12 * tier, true, Color.WHITE, tier >= 1, "word", 24.0)
 			_rw.spray(mid, Pal.SUN, 6 + 3 * tier, 760.0, "star", 1.0)
-			_rw.spray(mid, Rewards.CONFETTI[tier % Rewards.CONFETTI.size()], 8 + 2 * tier, 700.0, "confetti", 1.0)
+			_rw.spray(mid, STICKER_COLS[tier % STICKER_COLS.size()], 8 + 2 * tier, 700.0, "confetti", 1.0)
 			_flash_now(Color("fffaf0"), 0.2 + 0.06 * tier)
 			_fx.cue("word", 1.0 + 0.06 * tier)
 			_feel(Haptics.BUMP)
 			if tier >= 3:
-				_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
+				_rw.rain(1.6, ["confetti", "star"], STICKER_COLS)
 			break
 
 ## A gift caught: what it gave, lettered over the cart, and stars home to
@@ -746,51 +955,69 @@ func _on_catch(ev: Dictionary) -> void:
 		return
 	_fx.cue(CATCH_CUE.get(got, "catch"), 1.0 + 0.04 * (sim.peas + sim.rate_lv))
 	_feel(Haptics.GOOD)
+	_hop = {"at": _clock, "tall": 3.5, "time": 0.22, "twice": false}
 	if got == Sim.Kind.SHOVE:
 		_rw.ring(_in_rw(Vector2(Sim.W * 0.5, Sim.CART_Y - 60.0)), 200.0 * _u, Color(col, 0.9))
 		_shake = maxf(_shake, 0.3)
+	elif not Motion.reduce:
+		# it flies to its place on the grass
+		_flights.append({"kind": got, "from": px(Vector2(sim.x, Sim.CART_Y - 30.0)), "t": 0.0})
+	else:
+		_chip_at[got] = _clock
 	_rw.sticker(tr(GOT[got]), at + Vector2(0, -30.0), 58, 1.1, false, col.lightened(0.25), false, "got", 34.0)
 	_rw.ring(_in_rw(Vector2(sim.x, Sim.CART_Y - 14.0)), 40.0 * _u, Color(col, 0.9))
 	_rw.spray(at, col, 8, 520.0, "star", 0.9)
 	_rw.spray(at, Color("fffaf0"), 6, 460.0, "spark", 1.0)
 	_flash_now(col, 0.16)
 
-## A wave cleared: lettered, its bonus under it, a short rain.
+## A wave cleared: lettered, its bonus under it, one to three stars stamped
+## by how far off the line was kept (a flower for each: `_step_clear`), the
+## cart hopping and the pod letting off a volley of its own, a short rain.
 func _on_clear(ev: Dictionary) -> void:
 	var mid := _rw.at(field, field.size * Vector2(0.5, 0.3))
 	_fx.cue("clear")
 	_feel(Haptics.BUMP)
-	_rw.sticker(tr("PP_CLEARED"), mid, 78, 1.3, true, Color.WHITE, true, "clear")
-	_rw.sticker("+" + Record.grouped(int(ev.bonus)), mid + Vector2(0, 86.0), 46, 1.3, false, Pal.SUN, false, "clear_bonus")
+	var stars := 3 if _wave_peak < float(STAR_PEAKS[0]) else (2 if _wave_peak < float(STAR_PEAKS[1]) else 1)
+	_clear = {"at": _clock, "stars": stars, "said": 0}
+	_hop = {"at": _clock, "tall": 11.0, "time": 0.7, "twice": true}
+	_hold(0.16, 0.35)
+	_rw.sticker(tr("PP_CLEARED"), mid, 78, 1.3, true, Color.WHITE, true, "clear", 0.0, true)
+	_rw.sticker("+" + Record.grouped(int(ev.bonus)), mid + Vector2(0, 34.0 * _u), 46, 1.3, false, Pal.SUN, false, "clear_bonus", 0.0, true)
 	_rw.spray(mid, Pal.SUN, 12, 780.0, "star", 1.0)
 	_rw.spray(mid, Pal.SUN, 5, 520.0, "star", 0.8, 0.15, _plate_at(_score_l))
-	_rw.rain(1.2, ["confetti", "star"], Rewards.CONFETTI)
+	var mouth := _in_rw(Vector2(sim.x, Sim.CART_Y - 46.0))
+	for i in STICKER_COLS.size():
+		_rw.spray(mouth, STICKER_COLS[i], 3, 900.0, "confetti", 0.9, 0.05 * i)
+	_rw.rain(1.2, ["confetti", "star"], STICKER_COLS)
 	_flash_now(Color("fffaf0"), 0.25)
 
+## A banner: the word as a sticker, a letter hopping in at a time, and the
+## line under it on a paper pill.
 func _show_banner(text: String, sub: String, hold: float) -> void:
-	_banner.text = text
-	_sub.text = sub
-	_sub.visible = sub != ""
-	var box: Control = _banner.get_meta("box")
-	box.reset_size()
-	box.size.x = field.size.x
-	box.position = Vector2(0, field.size.y * 0.36)
-	box.pivot_offset = Vector2(box.size.x * 0.5, box.size.y * 0.5)
+	var mid := field.size * Vector2(0.5, 0.36)
+	_rw.sticker(text, _rw.at(field, mid), 92, hold + 0.75, true, Color.WHITE, false, "banner", 0.0, true)
 	Motion.stop(_banner_tw)
+	_sub.text = sub
+	if sub == "":
+		_sub_pill.modulate.a = 0.0
+		return
+	_sub_pill.reset_size()
+	_sub_pill.position = Vector2((field.size.x - _sub_pill.size.x) * 0.5, mid.y + 60.0)
+	_sub_pill.pivot_offset = _sub_pill.size * 0.5
 	_banner_tw = create_tween()
 	if Motion.reduce:
-		box.scale = Vector2.ONE
-		_banner_tw.tween_property(box, "modulate:a", 1.0, 0.15)
+		_sub_pill.scale = Vector2.ONE
+		_banner_tw.tween_property(_sub_pill, "modulate:a", 1.0, 0.15)
 		_banner_tw.tween_interval(hold)
-		_banner_tw.tween_property(box, "modulate:a", 0.0, 0.3)
+		_banner_tw.tween_property(_sub_pill, "modulate:a", 0.0, 0.3)
 		return
-	box.scale = Vector2(0.6, 0.6)
+	_sub_pill.scale = Vector2(0.7, 0.7)
+	_sub_pill.modulate.a = 0.0
 	_banner_tw.set_parallel(true)
-	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.14)
-	_banner_tw.tween_property(box, "scale", Vector2.ONE, 0.36).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_banner_tw.tween_property(_sub_pill, "modulate:a", 1.0, 0.14).set_delay(0.12)
+	_banner_tw.tween_property(_sub_pill, "scale", Vector2.ONE, 0.34).set_delay(0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_banner_tw.chain().tween_interval(hold)
-	_banner_tw.chain().tween_property(box, "modulate:a", 0.0, 0.3)
-	_banner_tw.tween_property(box, "scale", Vector2(1.12, 1.12), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_banner_tw.chain().tween_property(_sub_pill, "modulate:a", 0.0, 0.3)
 
 ## The score rolls up to the real one and gives a beat when it lands; the
 ## best follows it once passed.
@@ -821,82 +1048,127 @@ func _refresh_hud(delta := 0.0) -> void:
 
 # --- drawing ---
 
-## A quad with a colour at each corner, for the gradients.
-static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
-	var i0 := b.vertex(p[0], c[0])
-	var i1 := b.vertex(p[1], c[1])
-	var i2 := b.vertex(p[2], c[2])
-	var i3 := b.vertex(p[3], c[3])
-	b.tri(i0, i1, i2)
-	b.tri(i0, i2, i3)
+## Where the sun stands: low on the right, coming up from behind the far
+## hills, clear of the sky the crates come down.
+func _sun_at() -> Vector2:
+	return px(Vector2(Sim.W * 0.8, TURF - 94.0))
 
-## A pseudo-random 0..1 from two numbers, the same every frame.
-static func _hash(a: float, b: float) -> float:
-	var v := sin(a * 12.9898 + b * 78.233) * 43758.5453
-	return v - floorf(v)
+## The garden's foot from `y0` down, its round corners kept.
+func _foot(b: Face.Builder, y0: float, col: Color) -> void:
+	var s := field.size
+	var pts := PackedVector2Array([Vector2(0, y0), Vector2(s.x, y0)])
+	pts.append_array(Face.Builder.arc_points(Vector2(s.x - ROUND, s.y - ROUND), ROUND, 0.0, PI * 0.5))
+	pts.append_array(Face.Builder.arc_points(Vector2(ROUND, s.y - ROUND), ROUND, PI * 0.5, PI))
+	b.fan(pts, col)
 
-## The still garden, built on resize: the sky with a sun and clouds in it,
-## far peaks, nearer hills with trees, and the grass the cart rolls on.
+## The still sky, built on resize: pale blue going to cream at the grass,
+## and the sun's glow.
 func _build_scene() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var s := field.size
+	var k := _u / 2.4
 	var turf := px(Vector2(0, TURF)).y
-	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), Vector2(s.x, turf), Vector2(0, turf)], [SKY_TOP, SKY_TOP, SKY_LOW, SKY_LOW])
+	# the sky: one rounded sheet, a colour a vertex by how far down it is
+	var rim := Face.Builder.round_rect(Vector2.ZERO, s, ROUND)
+	var mid := b.vertex(s * 0.5, SKY_TOP.lerp(SKY_LOW, clampf(s.y * 0.5 / turf, 0.0, 1.0)))
+	var first := -1
+	var prev := -1
+	for p in rim:
+		var i := b.vertex(p, SKY_TOP.lerp(SKY_LOW, clampf(p.y / turf, 0.0, 1.0)))
+		if prev >= 0:
+			b.tri(mid, prev, i)
+		else:
+			first = i
+		prev = i
+	b.tri(mid, prev, first)
+	# the sun's glow and rays; its face is a node of its own over them, and
+	# where there is none (a tutorial page) a plain pale disc
+	var sun := _sun_at()
+	b.disc(sun, 62.0 * k, Color(1, 0.96, 0.78, 0.4))
+	Rewards.sunrays(b, sun, 56.0 * k, 124.0 * k, 12, 0.2, Color(1, 0.95, 0.72, 0.26))
+	if _sun == null:
+		b.disc(sun, 40.0 * k, Color("fdeeb5"))
+	return b.mesh()
+
+## The still land, laid over the sky and the sun: three rows of soft hills
+## with round trees and bushes on them, and the grass the cart rolls on.
+func _build_land() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var s := field.size
+	var turf := px(Vector2(0, TURF)).y
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12
-	# the sun, pale, with a ring of rays
-	var sun := Vector2(s.x * 0.8, s.y * 0.13)
-	b.disc(sun, 64.0 * _u / 2.4, Color(1, 0.98, 0.8, 0.35))
-	Rewards.sunrays(b, sun, 50.0 * _u / 2.4, 110.0 * _u / 2.4, 12, 0.2, Color(1, 0.98, 0.8, 0.18))
-	b.disc(sun, 40.0 * _u / 2.4, Color("fff4c2"))
+	# three rows of hills, the far one palest
+	for i in 3:
+		b.ellipse(Vector2(s.x * (0.12 + 0.38 * i), turf + 12.0 * _u), s.x * 0.34, (72.0 + 16.0 * ((i + 1) % 2)) * _u, HILL_FAR)
 	for i in 4:
-		var c := Vector2(s.x * (0.12 + 0.26 * i + rng.randf_range(-0.05, 0.05)), s.y * rng.randf_range(0.06, 0.34))
-		var w := rng.randf_range(60.0, 96.0) * _u / 2.4
-		for k in 3:
-			b.ellipse(c + Vector2((k - 1) * w * 0.55, (k % 2) * w * 0.1), w * 0.5, w * 0.24, Color(1, 1, 1, 0.55))
-		b.ellipse(c + Vector2(0, -w * 0.16), w * 0.42, w * 0.26, Color(1, 1, 1, 0.6))
-	# two rows of peaks, the far one paler
-	var foot := turf - 26.0 * _u
-	for layer in 2:
-		var col := PEAK_FAR if layer == 0 else PEAK
-		var n := 3 + layer
-		for i in n:
-			var cx := s.x * ((i + 0.5 + rng.randf_range(-0.25, 0.25)) / n)
-			var tall := (150.0 - 46.0 * layer + rng.randf_range(-20.0, 26.0)) * _u
-			var wide := tall * rng.randf_range(0.8, 1.05)
-			b.fan(PackedVector2Array([Vector2(cx - wide, turf), Vector2(cx, foot - tall), Vector2(cx + wide, turf)]), col)
-			b.fan(PackedVector2Array([Vector2(cx, foot - tall), Vector2(cx + wide * 0.18, foot - tall * 0.72), Vector2(cx, foot - tall * 0.8),
-				Vector2(cx - wide * 0.14, foot - tall * 0.7)]), Color(1, 1, 1, 0.5))
-	# the hills in front of them, with a few round trees
-	for i in 4:
-		var cx := s.x * (0.1 + 0.27 * i)
-		b.ellipse(Vector2(cx, turf + 6.0 * _u), s.x * 0.24, (30.0 + 9.0 * (i % 2)) * _u, HILL if i % 2 == 0 else HILL_NEAR)
-	for i in 7:
-		var at := Vector2(s.x * rng.randf_range(0.04, 0.96), turf - rng.randf_range(4.0, 18.0) * _u)
+		b.ellipse(Vector2(s.x * 0.33 * i, turf + 8.0 * _u), s.x * 0.26, (40.0 + 10.0 * (i % 2)) * _u, HILL)
+	for i in 3:
+		b.ellipse(Vector2(s.x * (0.2 + 0.36 * i), turf + 6.0 * _u), s.x * 0.24, (20.0 + 6.0 * (i % 2)) * _u, HILL_NEAR)
+	# a few round trees along them
+	for i in 6:
+		var at := Vector2(s.x * rng.randf_range(0.05, 0.95), turf - rng.randf_range(5.0, 22.0) * _u)
 		var r := rng.randf_range(5.0, 8.0) * _u
-		b.fan(Face.Builder.round_rect(at + Vector2(-r * 0.14, 0), Vector2(r * 0.28, r * 1.1), r * 0.1), Color("8a6a45", 0.7))
-		b.disc(at + Vector2(0, -r * 0.4), r, Color("6fb060", 0.85))
-		b.disc(at + Vector2(-r * 0.3, -r * 0.7), r * 0.4, Color(1, 1, 1, 0.12))
-	# the grass: a pale lip, a row of blades cut into the darker turf, daisies
-	b.fan(PackedVector2Array([Vector2(0, turf), Vector2(s.x, turf), s, Vector2(0, s.y)]), GRASS)
-	b.fan(PackedVector2Array([Vector2(0, turf), Vector2(s.x, turf), Vector2(s.x, turf + 3.0 * _u), Vector2(0, turf + 3.0 * _u)]), GRASS.lightened(0.22))
-	var blade := 9.0 * _u
-	var y0 := turf + 8.0 * _u
-	var zig := PackedVector2Array([Vector2(0, s.y), Vector2(0, y0 + blade)])
-	var x := 0.0
-	while x < s.x + blade:
-		zig.append(Vector2(x + blade * 0.5, y0))
-		zig.append(Vector2(x + blade, y0 + blade))
-		x += blade
-	zig.append(Vector2(s.x, s.y))
-	b.polygon(zig, GRASS_DEEP)
-	for i in 9:
-		# clear of the gun's line, which stands on the left
-		var p := Vector2(s.x * rng.randf_range(0.64, 1.0), rng.randf_range(y0 + blade * 1.6, s.y - 8.0))
-		for q in 5:
-			b.disc(p + Vector2.from_angle(TAU * q / 5.0) * 1.6 * _u, 1.3 * _u, Color("fffaf0"))
-		b.disc(p, 1.0 * _u, Color("f2c14e"))
+		b.fan(Face.Builder.round_rect(at + Vector2(-r * 0.14, 0), Vector2(r * 0.28, r * 1.1), r * 0.1), Color("c9a172", 0.8))
+		b.disc(at + Vector2(0, -r * 0.34), r, BUSH[0])
+		b.disc(at + Vector2(-r * 0.12, -r * 0.5), r * 0.78, BUSH[1])
+		b.disc(at + Vector2(-r * 0.3, -r * 0.74), r * 0.36, Color(1, 1, 1, 0.16))
+	# and Posy's bushes at the garden's sides, starred with daisies
+	for side in [0.0, 1.0]:
+		for i in 3:
+			var at := Vector2(s.x * (side + (0.02 + 0.07 * i) * (1.0 - 2.0 * side)), turf - rng.randf_range(0.0, 6.0) * _u)
+			var r := rng.randf_range(9.0, 13.0) * _u
+			for layer in 3:
+				b.disc(at + Vector2(rng.randf_range(-2.0, 2.0) * _u, -layer * r * 0.24), r * (1.0 - 0.2 * layer), BUSH[layer])
+			var d := at + Vector2(rng.randf_range(-0.4, 0.4), rng.randf_range(-0.9, -0.3)) * r
+			for q in 5:
+				b.disc(d + Vector2.from_angle(TAU * q / 5.0) * 1.7 * _u, 1.35 * _u, Color("fffaf0"))
+			b.disc(d, 1.1 * _u, Color("f6cb5e"))
+	# the grass: a pale lip, and a scalloped edge to the deeper turf under it
+	_foot(b, turf, GRASS)
+	b.fan(PackedVector2Array([Vector2(0, turf), Vector2(s.x, turf), Vector2(s.x, turf + 2.6 * _u), Vector2(0, turf + 2.6 * _u)]), GRASS_LIP)
+	var y0 := turf + 15.0 * _u
+	var scallop := 8.0 * _u
+	var x := scallop * 0.5
+	while x < s.x:
+		b.disc(Vector2(x, y0), scallop * 0.62, GRASS_DEEP)
+		x += scallop
+	_foot(b, y0, GRASS_DEEP)
 	return b.mesh()
+
+## The hedges round the card's foot (Posy's): leafy bushes poking out past
+## its sides and lower corners, built once for the card where it stands.
+func _draw_hedge() -> void:
+	if _frame == null or _frame.size.x <= 0.0:
+		return
+	var rect := Rect2(_hedge.get_global_transform().affine_inverse() * _frame.global_position, _frame.size)
+	if _hedge_mesh == null or rect != _hedge_rect:
+		_hedge_rect = rect
+		var b := Face.Builder.new()
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		var spots: Array = []
+		var y := rect.end.y - rect.size.y * 0.3
+		while y < rect.end.y + 30.0:
+			for side in [0, 1]:
+				var x: float = rect.position.x - 4.0 if side == 0 else rect.end.x + 4.0
+				spots.append(Vector2(x + rng.randf_range(-12.0, 12.0), y))
+			y += rng.randf_range(84.0, 130.0)
+		for corner in [Vector2(rect.position.x, rect.end.y), rect.end]:
+			for i in 3:
+				spots.append(corner + Vector2(rng.randf_range(-36.0, 36.0), rng.randf_range(-26.0, 22.0)))
+		for layer in 3:
+			for p: Vector2 in spots:
+				var r := rng.randf_range(32.0, 52.0) * (1.0 - layer * 0.18)
+				b.disc(p + Vector2(rng.randf_range(-10.0, 10.0), -layer * 10.0), r, BUSH[layer])
+		for p: Vector2 in spots:
+			if rng.randf() < 0.55:
+				var at := p + Vector2(rng.randf_range(-22.0, 22.0), rng.randf_range(-28.0, 0.0))
+				for q in 6:
+					b.disc(at + Vector2.from_angle(TAU * q / 6.0) * 7.0, 5.2, Color("fffaf0"))
+				b.disc(at, 4.2, Color("f6cb5e"))
+		_hedge_mesh = b.mesh()
+	_hedge.draw_mesh(_hedge_mesh, null)
 
 func _draw_field() -> void:
 	if _scene == null:
@@ -904,20 +1176,29 @@ func _draw_field() -> void:
 	if _scene != null:
 		field.draw_mesh(_scene, null)
 
-## Everything that moves, back to front: the line, the crates or the
-## millipede and their numbers, the peas and the sparks, the gifts on their
-## way down, the carts, the gun's line and the numbers going up.
+## Over the sky and the sun the land, and then everything that moves, back
+## to front: the clouds (under the land), the line, the crates
+## or the millipede and their numbers, the peas and the sparks, what is
+## laid fresh (the streak's pill, the stars, the glows), the gun's line and
+## what is running down, the flowers, the gifts on their way down, the
+## carts, the gifts flying home and the numbers going up.
 func _draw_over() -> void:
 	if sim == null:
 		return
-	_over.draw_set_transform(_shake_off)
 	var font := Art.font()
+	_cast_turn = 0
+	_over.draw_set_transform(Vector2.ZERO)
+	_draw_clouds()
+	if _land != null:
+		_over.draw_mesh(_land, null)
+	_over.draw_set_transform(_shake_off)
 	if sim.frost_t > 0.0:
 		# the frost: a pale wash over the garden, going as it runs out
-		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(Art.GIFT[Sim.Kind.FROST], 0.2 * minf(1.0, sim.frost_t)))
+		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(FROST, 0.2 * minf(1.0, sim.frost_t)))
 	_draw_line()
 	var top := Face.Builder.new()
 	_head_tag = []
+	_draw_ghosts()
 	if sim.wave_kind == Sim.Wave.WALL:
 		_draw_wall(font)
 	else:
@@ -926,7 +1207,11 @@ func _draw_over() -> void:
 	_draw_sparks()
 	_draw_muzzle(top)
 	var timed := _timed()
-	_draw_timed_rings(top, timed)
+	_draw_timed_seats(top, timed)
+	_draw_streak_pill(top)
+	_draw_stars(top)
+	if sim.frost_t > 0.0:
+		Rewards.edge_glow(top, Rect2(Vector2.ZERO, field.size), FROST, minf(1.0, sim.frost_t), 0.6)
 	if _heat > 0.01:
 		var hb := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
 		Rewards.edge_glow(top, Rect2(Vector2.ZERO, field.size), HEAT.lerp(ALARM, _heat), _heat, hb)
@@ -938,25 +1223,47 @@ func _draw_over() -> void:
 		_over.draw_mesh(_live_top, null)
 	if _chips != null:
 		_over.draw_mesh(_chips, null)
+	# the medallions on the gun's line, and what is running down
+	for k in GUN.size():
+		var sc := 0.62 * _bump(GUN[k])
+		_cast_add(Art.token(GUN[k], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _gun_chip(k)), Color.WHITE)
 	for k in timed.size():
 		var blink: bool = float(timed[k][1]) < 0.2 and fmod(_clock, 0.3) < 0.12 and not Motion.reduce
-		_over.draw_mesh(Art.token(timed[k][0], _u), null, Transform2D(0.0, Vector2(0.6, 0.6), 0.0, _timed_at(k)), Color(1, 1, 1, 0.45 if blink else 1.0))
-	if not _head_tag.is_empty():
-		Art.number(_over, font, px(_head_tag[0]), _head_tag[1], Sim.SEG_R * 1.25 * _u)
+		var sc := 0.6 * _bump(timed[k][0])
+		_cast_add(Art.token(timed[k][0], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _timed_at(k)), Color(1, 1, 1, 0.45 if blink else 1.0))
+	_draw_blooms()
 	for tk: Dictionary in sim.tokens:
 		var bob := 1.0 if Motion.reduce else 1.0 + 0.08 * sin(_clock * 9.0 + float(tk.id))
 		var tilt := 0.0 if Motion.reduce else sin(_clock * 4.0 + float(tk.id)) * 0.18
-		_over.draw_mesh(Art.token(tk.kind, _u), null, Transform2D(tilt, Vector2(bob, bob), 0.0, px(Vector2(tk.x, tk.y))))
+		_cast_add(Art.token(tk.kind, _u), Transform2D(tilt, Vector2(bob, bob), 0.0, px(Vector2(tk.x, tk.y))), Color.WHITE)
+	_cast_draw()
+	if not _head_tag.is_empty():
+		Art.number(_over, font, px(_head_tag[0]), _head_tag[1], Sim.SEG_R * 1.25 * _u, 1.0, Sim.Kind.HEAD)
 	if sim.twin_t > 0.0:
 		_draw_cart(sim.twin_x, true)
 	_draw_cart(sim.x, false)
+	_draw_flights()
 	_draw_gun_words(font)
+	_draw_streak_words(font)
 	_draw_pops(font)
 	_over.draw_set_transform(Vector2.ZERO)
 	if _flash > 0.0:
 		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.4))
 
-## The line nothing may reach: chalk dashes across the garden, turning red
+## Three clouds drifting across the top of the sky, round and round.
+func _draw_clouds() -> void:
+	var s := field.size
+	var w := 84.0 * _u / 2.4
+	var mesh := Art.cloud(w)
+	var t := 0.0 if Motion.reduce else _clock
+	for i in 3:
+		var span := s.x + w * 2.0
+		var x := fposmod(s.x * (0.1 + 0.37 * i) + t * (5.0 + 2.5 * i), span) - w
+		var sc := 1.0 + 0.25 * (i % 2)
+		_cast_add(mesh, Transform2D(0.0, Vector2(sc, sc), 0.0, Vector2(x, s.y * (0.07 + 0.11 * i))), Color(1, 1, 1, 0.75))
+	_cast_draw()
+
+## The line nothing may reach: soft dashes across the garden, turning red
 ## and running as something nears it. The dashes are one mesh built with
 ## the garden; the run is its transform and the red its tint.
 func _build_dashes() -> ArrayMesh:
@@ -972,12 +1279,13 @@ func _draw_line() -> void:
 	if _dashes == null:
 		return
 	var y := px(Vector2(0, Sim.DANGER + 6.0)).y
-	var col := Color("fffaf0", 0.4).lerp(Color(ALARM, 0.9), _alarm)
+	var col := Color("fffaf0", 0.85).lerp(Color(ALARM, 0.95), _alarm)
 	var dash := 9.0 * _u
 	var run := 0.0 if Motion.reduce else fmod(_clock * 30.0 * _alarm, dash * 2.0)
 	_over.draw_mesh(_dashes, null, Transform2D(0.0, Vector2(run - dash * 2.0, y)), col)
 
-## One MultiMesh a look of pea, as many shown as are in the air.
+## One MultiMesh a look of pea, as many shown as are in the air; a pea
+## flung out by the Fan leans the way it goes.
 func _draw_peas() -> void:
 	var looks := 3
 	if _pea_mm.is_empty():
@@ -996,9 +1304,19 @@ func _draw_peas() -> void:
 		var o: int = counts[k] * 8
 		if o + 8 > buf.size():
 			buf.resize(o + 8 * 64)
-		buf[o] = 1.0
+		var vx: float = p.vx
+		if vx == 0.0:
+			buf[o] = 1.0
+			buf[o + 1] = 0.0
+			buf[o + 4] = 0.0
+			buf[o + 5] = 1.0
+		else:
+			var a := atan2(vx, Sim.PEA_SPEED)
+			buf[o] = cos(a)
+			buf[o + 1] = -sin(a)
+			buf[o + 4] = sin(a)
+			buf[o + 5] = cos(a)
 		buf[o + 3] = ox + float(p.x) * u
-		buf[o + 5] = 1.0
 		buf[o + 7] = oy + float(p.y) * u
 		_pea_buf[k] = buf
 		counts[k] += 1
@@ -1016,26 +1334,34 @@ func _draw_peas() -> void:
 		mm.buffer = buf
 		_over.draw_multimesh(mm, null)
 
-## How a crate or a plate sits this frame: knocked by the pea that just
-## landed (a squeeze and a white flash), else as it is.
+## How a crate or a plate sits this frame, as [its squeeze, how fresh the
+## knock is 1..0]: squeezed by the pea that just landed, else as it is. The
+## knock is shown by a white blink laid over the piece, never by its paint.
 func _knocked(id: int) -> Array:
 	var since: float = _clock - float(_hit_at.get(id, -10.0))
-	if since > 0.1:
-		return [Vector2.ONE, Color.WHITE]
-	var k := 1.0 - since / 0.1
-	var sc := Vector2.ONE if Motion.reduce else Vector2(1.0 + 0.07 * k, 1.0 - 0.09 * k)
-	return [sc, Color(1.0 + 0.22 * k, 1.0 + 0.22 * k, 1.0 + 0.22 * k)]
+	if since > 0.12:
+		return [Vector2.ONE, 0.0]
+	var k := 1.0 - since / 0.12
+	var sc := Vector2.ONE if Motion.reduce else Vector2(1.0 + 0.08 * k, 1.0 - 0.1 * k)
+	return [sc, k]
 
-## One more of `mesh` this frame, under `xf` and tinted `col`.
+## One more of `mesh` this frame, under `xf` and tinted `col`. What is
+## gathered is drawn by the next `_cast_draw`, and each of a frame's draws
+## keeps MultiMeshes of its own (`_casts`, by the draw's turn): a MultiMesh
+## holds one buffer, so the same mesh drawn twice in a frame from one of
+## them showed the second draw's copies both times.
 func _cast_add(mesh: ArrayMesh, xf: Transform2D, col: Color) -> void:
-	var g: Array = _cast.get(mesh, [])
+	while _casts.size() <= _cast_turn:
+		_casts.append({})
+	var cast: Dictionary = _casts[_cast_turn]
+	var g: Array = cast.get(mesh, [])
 	if g.is_empty():
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_2D
 		mm.use_colors = true
 		mm.mesh = mesh
 		g = [mm, PackedFloat32Array(), 0]
-		_cast[mesh] = g
+		cast[mesh] = g
 	var buf: PackedFloat32Array = g[1]
 	var o: int = int(g[2]) * 12
 	if o + 12 > buf.size():
@@ -1053,10 +1379,17 @@ func _cast_add(mesh: ArrayMesh, xf: Transform2D, col: Color) -> void:
 	g[1] = buf
 	g[2] = int(g[2]) + 1
 
-## Draws what `_cast_add` gathered and empties it for the next frame.
+## Draws what `_cast_add` gathered since the last one and moves on to the
+## frame's next draw. Called the same number of times every frame, whether
+## or not anything was gathered, so a draw keeps its MultiMeshes.
 func _cast_draw() -> void:
-	for mesh in _cast:
-		var g: Array = _cast[mesh]
+	if _casts.size() <= _cast_turn:
+		_cast_turn += 1
+		return
+	var cast: Dictionary = _casts[_cast_turn]
+	_cast_turn += 1
+	for mesh in cast:
+		var g: Array = cast[mesh]
 		var n: int = g[2]
 		if n == 0:
 			continue
@@ -1069,8 +1402,41 @@ func _cast_draw() -> void:
 		_over.draw_multimesh(mm, null)
 		g[2] = 0
 
+## The shapes crates and plates just gone leave: swelling and thinning away.
+func _draw_ghosts() -> void:
+	for g: Dictionary in _ghosts:
+		var k: float = g.t / GHOST_T
+		var sc := 1.0 if Motion.reduce else 1.0 + 0.3 * (1.0 - (1.0 - k) * (1.0 - k))
+		if g.big:
+			sc *= Sim.HEAD_R / Sim.SEG_R
+		var col: Color = g.col
+		_cast_add(Art.blank(g.round, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, px(g.pos)), Color(col, 0.7 * (1.0 - k)))
+
+## The white blink over each piece a pea just landed on (`lit`: [where it
+## is drawn, how fresh the knock is]).
+func _draw_blinks(lit: Array, round: bool) -> void:
+	var blank := Art.blank(round, _u)
+	for l: Array in lit:
+		_cast_add(blank, l[0], Color(1, 1, 1, 0.55 * float(l[1])))
+	_cast_draw()
+
+## The numbers, in ink: `numbered` is [where, the number, the kind, how
+## fresh a knock is], and one just knocked swells a little.
+func _letter(font: Font, numbered: Array, s: float) -> void:
+	for n: Array in numbered:
+		var c := px(n[0])
+		var k: float = n[3]
+		if k > 0.0 and not Motion.reduce:
+			var sc := 1.0 + 0.18 * k
+			_over.draw_set_transform(_shake_off + c, 0.0, Vector2(sc, sc))
+			Art.number(_over, font, Vector2.ZERO, n[1], s, 1.0, n[2])
+			_over.draw_set_transform(_shake_off)
+		else:
+			Art.number(_over, font, c, n[1], s, 1.0, n[2])
+
 func _draw_wall(font: Font) -> void:
 	var numbered: Array = []
+	var lit: Array = []
 	for r in sim.rows.size():
 		var row: Array = sim.rows[r]
 		for c in Sim.COLS:
@@ -1083,18 +1449,23 @@ func _draw_wall(font: Font) -> void:
 			var kn := _knocked(cell.id)
 			var kind: int = cell.kind
 			var tier := Art.tier_of(cell.hp) if kind == Sim.Kind.CRATE else 0
-			var sway := 0.0
+			var xf := Transform2D(0.0, kn[0], 0.0, px(at))
 			if Sim.holds_token(kind) and not Motion.reduce:
-				sway = sin(_clock * 5.0 + c * 1.7 + r) * 0.04
-			_cast_add(Art.crate(kind, tier, _u), Transform2D(sway, kn[0], 0.0, px(at)), kn[1])
+				# a parcel sways and breathes, to be noticed
+				var ph: float = _clock * 3.2 + c * 1.7 + r
+				xf = Transform2D(sin(ph) * 0.04, kn[0] * (1.0 + 0.025 * sin(ph * 1.3)), 0.0, px(at))
+			_cast_add(Art.crate(kind, tier, _u), xf, Color.WHITE)
+			if float(kn[1]) > 0.0:
+				lit.append([xf, kn[1]])
 			if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
-				numbered.append([at, cell.hp])
+				numbered.append([at + Vector2(0, -Art.LIP * 0.5), cell.hp, kind, kn[1]])
 	_cast_draw()
-	for n: Array in numbered:
-		Art.number(_over, font, px(n[0] + Vector2(0, -2.2)), n[1], (Sim.CELL_H - 3.0) * _u)
+	_draw_blinks(lit, false)
+	_letter(font, numbered, (Sim.CELL_H - 3.0) * _u)
 
 func _draw_milli(font: Font, top: Face.Builder) -> void:
 	var numbered: Array = []
+	var lit: Array = []
 	var head_at: Array = []
 	# tail first, so each plate laps the one behind it and the head laps all
 	for i in range(sim.segs.size() - 1, -1, -1):
@@ -1106,38 +1477,49 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 		var kn := _knocked(sg.id)
 		var sc: Vector2 = kn[0]
 		var jitter := Vector2.ZERO
+		var waddle := 0.0
 		if not Motion.reduce:
 			var beat := 1.0 + 0.04 * sin(_clock * 7.0 - i * 0.9)
 			sc *= Vector2(beat, beat)
+			# its legs go, a plate after the one before
+			waddle = 0.1 * sin(_clock * 9.0 - i * 1.3)
 			if float(sg.dying) >= 0.0:
 				jitter = Vector2(sin(_clock * 90.0 + i), cos(_clock * 70.0 + i)) * 1.5
 		if sg.kind == Sim.Kind.HEAD:
 			var ahead: Vector2 = Sim.path_at(s + 3.0) - at
 			var ang := ahead.angle() if ahead.length_squared() > 0.0001 else 0.0
 			var cross: bool = sim.danger() > 0.35 or sim.is_over()
-			head_at = [Art.head(_u, cross), Transform2D(ang, sc, 0.0, px(at)), kn[1]]
+			head_at = [Art.head(_u, cross), Transform2D(ang, sc, 0.0, px(at))]
+			if float(kn[1]) > 0.0:
+				var big := Sim.HEAD_R / Sim.SEG_R
+				lit.append([Transform2D(0.0, sc * big, 0.0, px(at)), kn[1]])
 			# the pupils, turned with the head and watching the cart
 			var look := (Vector2(sim.x, Sim.CART_Y) - at).normalized()
 			var r := Sim.HEAD_R * _u
 			for side in [-1.0, 1.0]:
 				var eye := px(at) + Vector2(r * 0.36, side * r * 0.4 - 1.0 * _u).rotated(ang)
 				top.disc(eye + look * r * 0.12, r * 0.15, Art.FEELER)
-			# its number on a dark plate over it, lettered last so nothing laps it
+			# its number on a paper tag over it, lettered last so nothing laps it
 			var tag := at + Vector2(0, -Sim.HEAD_R - 9.0)
 			var wide := (9.0 + 5.0 * Art.short(sg.hp).length()) * _u
-			top.fan(Face.Builder.round_rect(px(tag) - Vector2(wide, 7.5 * _u), Vector2(wide * 2.0, 15.0 * _u), 7.5 * _u), Color(Art.HEAD_DEEP, 0.92))
+			var tag_at := px(tag) - Vector2(wide, 7.5 * _u)
+			top.fan(Face.Builder.round_rect(tag_at + Vector2(0, 1.6 * _u), Vector2(wide * 2.0, 15.0 * _u), 7.5 * _u), Color(Art.HEAD_DEEP, 0.5))
+			top.fan(Face.Builder.round_rect(tag_at, Vector2(wide * 2.0, 15.0 * _u), 7.5 * _u), Art.PAPER)
 			_head_tag = [tag, sg.hp]
 			continue
 		var kind: int = sg.kind
 		var tier := Art.tier_of(sg.hp) if kind == Sim.Kind.CRATE else 0
-		_cast_add(Art.plate(kind, tier, _u), Transform2D(0.0, sc, 0.0, px(at + jitter)), kn[1])
+		var xf := Transform2D(waddle, sc, 0.0, px(at + jitter))
+		_cast_add(Art.plate(kind, tier, _u), xf, Color.WHITE)
+		if float(kn[1]) > 0.0:
+			lit.append([xf, kn[1]])
 		if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
-			numbered.append([at + Vector2(0, -0.6), sg.hp, 1.0])
+			numbered.append([at + Vector2(0, -Sim.SEG_R * 0.09), sg.hp, kind, kn[1]])
 	_cast_draw()
 	if not head_at.is_empty():
-		_over.draw_mesh(head_at[0], null, head_at[1], head_at[2])
-	for n: Array in numbered:
-		Art.number(_over, font, px(n[0]), n[1], Sim.SEG_R * 1.7 * _u * float(n[2]))
+		_over.draw_mesh(head_at[0], null, head_at[1])
+	_draw_blinks(lit, true)
+	_letter(font, numbered, Sim.SEG_R * 1.7 * _u)
 
 func _draw_sparks() -> void:
 	if _sparks.is_empty():
@@ -1173,57 +1555,75 @@ func _draw_sparks() -> void:
 	_spark_mm.buffer = _spark_buf
 	_over.draw_multimesh(_spark_mm, null)
 
-## The flash at each pod's mouth just after a volley.
+## The puff at each pod's mouth just after a volley: a pale ring opening
+## and going.
 func _draw_muzzle(b: Face.Builder) -> void:
 	var since := _clock - _shot_at
-	if since > 0.07 or Motion.reduce or sim.phase != Sim.Phase.PLAY:
+	if since > 0.1 or Motion.reduce or sim.phase != Sim.Phase.PLAY:
 		return
-	var a := 1.0 - since / 0.07
+	var k := since / 0.1
 	var xs: Array = [sim.x]
 	if sim.twin_t > 0.0:
 		xs.append(sim.twin_x)
 	for x: float in xs:
-		var c := px(Vector2(x, Sim.CART_Y - 40.0))
-		var pts := PackedVector2Array()
-		for k in 12:
-			pts.append(c + Vector2.from_angle(TAU * k / 12.0 + _clock * 7.0) * (11.0 if k % 2 == 0 else 5.0) * _u)
-		b.polygon(pts, Color("fff1a8", 0.9 * a))
-		b.disc(c, 4.0 * _u, Color(1, 1, 1, a))
+		var c := px(Vector2(x, Sim.CART_Y - 41.0))
+		var r := (5.0 + 7.0 * k) * _u
+		b.stroke(Face.Builder.ring(c, r, r * 0.55), (2.6 - 2.0 * k) * _u, Color(Art.PAPER, 0.9 * (1.0 - k)), true)
+		b.disc(c, 3.0 * _u * (1.0 - k), Color(Art.POD_HI, 0.9 * (1.0 - k)))
+
+## How far the cart is off the grass this frame, in pixels: a small hop as
+## a gift is caught, two bounces as a wave is cleared.
+func _hop_now() -> float:
+	if _hop.is_empty() or Motion.reduce:
+		return 0.0
+	var k: float = (_clock - float(_hop.at)) / float(_hop.time)
+	if k >= 1.0:
+		_hop = {}
+		return 0.0
+	if _hop.twice:
+		return absf(sin(k * TAU)) * float(_hop.tall) * _u * (1.0 - 0.5 * k)
+	return sin(k * PI) * float(_hop.tall) * _u
 
 ## A cart: the pod sunk into its cradle by the shot just fired, the box, and
-## two wheels turned as far as it has rolled. The helper's is smaller.
+## two wheels turned as far as it has rolled. The helper's is smaller. The
+## cart's own pod wears the crown once the best is passed.
 func _draw_cart(x: float, helper: bool) -> void:
 	var u := _u * (0.8 if helper else 1.0)
-	var foot := px(Vector2(x, TURF)) - Vector2(0, 9.0 * u)
+	var hop := _hop_now()
+	var foot := px(Vector2(x, TURF)) - Vector2(0, 9.0 * u + hop)
 	var since := _clock - _shot_at
 	var kick := 0.0
 	if since < RECOIL and not Motion.reduce and sim.phase == Sim.Phase.PLAY:
 		kick = 1.0 - since / RECOIL
+		kick *= kick
 	var tint := Color.WHITE
 	if helper and sim.twin_t < 2.5 and fmod(_clock, 0.3) < 0.12 and not Motion.reduce:
 		tint = Color(1, 1, 1, 0.45)
 	var lean := Transform2D(_lean, foot)
-	_over.draw_mesh(Art.barrel(u, helper), null, lean * Transform2D(0.0, Vector2(1.0 + 0.1 * kick, 1.0 - 0.14 * kick), 0.0, Vector2(0, (-12.0 + 4.0 * kick) * u)), tint)
+	var pod := lean * Transform2D(0.0, Vector2(1.0 + 0.08 * kick, 1.0 - 0.12 * kick), 0.0, Vector2(0, (-12.0 + 3.5 * kick) * u))
+	_over.draw_mesh(Art.barrel(u, helper), null, pod, tint)
 	_over.draw_mesh(Art.cart(u, helper), null, lean, tint)
+	var spin := _wheel + (hop / _u) * 0.2
 	for side in [-1.0, 1.0]:
-		_over.draw_mesh(Art.wheel(u), null, Transform2D(_wheel, foot + Vector2(side * 13.0 * u, 0)), tint)
+		_over.draw_mesh(Art.wheel(u), null, Transform2D(spin, foot + Vector2(side * 13.0 * u, 0)), tint)
+	if not helper and _crown_at >= 0.0:
+		# it drops onto the pod's lip and sits there, a little askew
+		var k := 1.0 if Motion.reduce else clampf((_clock - _crown_at) / 0.5, 0.0, 1.0)
+		var drop := (1.0 - Motion.back_out(k)) * 40.0 * u
+		_over.draw_mesh(Art.crown(u), null, pod * Transform2D(-0.3, Vector2(-6.5 * u, -30.5 * u - drop)))
 
-## The gun's line on the grass: a picture for the peas, the rate and the
-## pea's weight, each with its number beside it.
+## The gun's line on the grass: a paper pill each for the peas, the rate
+## and the pea's weight, a medallion on it and its number beside that.
 func _gun_chip(k: int) -> Vector2:
 	return px(Vector2(18.0 + 56.0 * k, Sim.H - 13.0))
 
 func _build_chips() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var kinds := [Sim.Kind.PEA, Sim.Kind.RATE, Sim.Kind.POWER]
 	for k in 3:
-		var c := _gun_chip(k)
-		b.fan(Face.Builder.round_rect(c + Vector2(-13.0, -9.5) * _u, Vector2(50.0, 19.0) * _u, 9.0 * _u), Color(0.12, 0.25, 0.06, 0.35))
-		b.disc(c, 8.0 * _u, Art.GIFT[kinds[k]])
-		if k == 0:
-			Art.pea(b, c, 4.0 * _u)
-		else:
-			Art.icon(b, kinds[k], c, 13.0 * _u)
+		var at := _gun_chip(k) + Vector2(-12.0, -9.5) * _u
+		var size := Vector2(48.0, 19.0) * _u
+		b.fan(Face.Builder.round_rect(at + Vector2(0, 1.8 * _u), size, 9.5 * _u), Color(0.2, 0.32, 0.1, 0.2))
+		b.fan(Face.Builder.round_rect(at, size, 9.5 * _u), Art.CREAM)
 	return b.mesh()
 
 ## What is running down, as [kind, the part of it left]: the pod held, the
@@ -1243,36 +1643,134 @@ func _timed() -> Array:
 func _timed_at(k: int) -> Vector2:
 	return px(Vector2(Sim.W - 14.0 - 24.0 * k, Sim.H - 13.0))
 
-## Under each: a dark plate and a pale ring that runs down with it.
-func _draw_timed_rings(b: Face.Builder, timed: Array) -> void:
+## Under each: a paper seat and a ring of its own colour that runs down
+## with it.
+func _draw_timed_seats(b: Face.Builder, timed: Array) -> void:
 	for k in timed.size():
 		var c := _timed_at(k)
-		b.disc(c, 10.5 * _u, Color(0.12, 0.25, 0.06, 0.45))
+		b.disc(c + Vector2(0, 1.8 * _u), 10.8 * _u, Color(0.2, 0.32, 0.1, 0.2))
+		b.disc(c, 10.8 * _u, Art.CREAM)
 		var part := clampf(float(timed[k][1]), 0.0, 1.0)
 		if part > 0.02:
-			b.stroke(Face.Builder.arc_points(c, 9.4 * _u, -PI * 0.5, -PI * 0.5 + TAU * part), 1.8 * _u, Color("fffaf0"))
+			b.stroke(Face.Builder.arc_points(c, 9.2 * _u, -PI * 0.5, -PI * 0.5 + TAU * part), 1.9 * _u, Art.deepen(Art.GIFT[int(timed[k][0])]))
 
 func _draw_gun_words(font: Font) -> void:
 	var values := [sim.peas, sim.rate_lv + 1, sim.power]
-	var fs := int(13.0 * _u)
+	var ink := Art.INK
 	for k in 3:
 		var text := "x%s" % Art.short(values[k])
-		var at := _gun_chip(k) + Vector2(11.0 * _u, fs * 0.36)
-		_over.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))
+		var at := _gun_chip(k) + Vector2(10.5 * _u, _text_fs * 0.36)
+		var sc := _bump(GUN[k])
+		if sc != 1.0:
+			_over.draw_set_transform(_shake_off + at, 0.0, Vector2(sc, sc))
+			_over.draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs, ink)
+			_over.draw_set_transform(_shake_off)
+		else:
+			_over.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs, ink)
+
+## The flowers the run has grown, each popping up out of the grass and
+## nodding after.
+func _draw_blooms() -> void:
+	for bl: Dictionary in _blooms:
+		var since: float = _clock - float(bl.at)
+		var sc: float = bl.size
+		var sway := 0.0
+		if not Motion.reduce:
+			sc *= Motion.back_out(clampf(since / 0.4, 0.0, 1.0))
+			sway = sin(_clock * 1.7 + float(bl.x)) * 0.08 + 0.5 * exp(-since * 5.0) * sin(since * 16.0)
+		if sc <= 0.01:
+			continue
+		_cast_add(Art.flower(bl.look, _u), Transform2D(sway, Vector2(sc, sc), 0.0, px(Vector2(bl.x, TURF + float(bl.y)))), Color.WHITE)
+
+## The streak's pill, top and middle: paper, the count in ink (lettered by
+## `_draw_streak_words`) and under it the time the streak has left, running
+## down.
+func _streak_rect() -> Rect2:
+	var w := 78.0 * _u
+	var h := 17.0 * _u
+	var k := _streak_in if Motion.reduce else Motion.back_out(_streak_in)
+	return Rect2(Vector2((field.size.x - w) * 0.5, 7.0 * _u - (1.0 - k) * 30.0 * _u), Vector2(w, h))
+
+func _draw_streak_pill(b: Face.Builder) -> void:
+	if _streak_in <= 0.01:
+		return
+	var rect := _streak_rect()
+	var r := rect.size.y * 0.5
+	b.fan(Face.Builder.round_rect(rect.position + Vector2(0, 1.8 * _u), rect.size, r), Color(0.3, 0.2, 0.08, 0.16))
+	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), Art.CREAM)
+	var left := clampf(float(sim._streak_t) / Sim.STREAK_GAP, 0.0, 1.0) if sim.streak >= STREAK_FROM else 0.0
+	var bar := Vector2(rect.size.x - r * 2.0, 2.0 * _u)
+	var at := rect.position + Vector2(r, rect.size.y - 4.0 * _u)
+	b.fan(Face.Builder.round_rect(at, bar, bar.y * 0.5), Color(Art.CREAM_DEEP, 0.7))
+	if left > 0.03:
+		b.fan(Face.Builder.round_rect(at, Vector2(bar.x * left, bar.y), bar.y * 0.5), HEAT.lerp(ALARM, _heat))
+
+func _draw_streak_words(font: Font) -> void:
+	if _streak_in <= 0.01 or _streak_n < STREAK_FROM:
+		return
+	var rect := _streak_rect()
+	var text := tr("PP_STREAK") % _streak_n
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs).x
+	var since := _clock - _streak_at
+	var sc := 1.0 if Motion.reduce or since > 0.3 else 1.0 + 0.22 * exp(-since * 12.0)
+	var c := rect.position + Vector2(rect.size.x * 0.5, rect.size.y * 0.5 - 1.2 * _u)
+	_over.draw_set_transform(_shake_off + c, 0.0, Vector2(sc, sc))
+	_over.draw_string(font, Vector2(-w * 0.5, _text_fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs, Art.INK.lerp(ALARM.darkened(0.35), _heat))
+	_over.draw_set_transform(_shake_off)
+
+## The stars a cleared wave is stamped, under its bonus: three seats, and a
+## gold star popping onto each one earned.
+func _draw_stars(b: Face.Builder) -> void:
+	if _clear.is_empty():
+		return
+	var since: float = _clock - float(_clear.at)
+	# they leave by shrinking: gold thinned over the sky goes to mud
+	var out := 1.0 - clampf((since - 1.25) / 0.25, 0.0, 1.0)
+	out *= out
+	var seat := out if Motion.reduce else clampf((since - 0.15) / 0.2, 0.0, 1.0) * out
+	for k in 3:
+		var c := _star_at(k)
+		var t := since - 0.35 - STAR_STEP * k
+		var earned: bool = k < int(_clear.stars) and t > 0.0
+		if seat > 0.02 and not (earned and t > 0.3):
+			Rewards.star(b, c, 11.5 * _u * seat, STAR_OFF)
+		if earned and out > 0.02:
+			var sc := 1.0 if Motion.reduce else Motion.back_out(minf(1.0, t / 0.3))
+			var turn := 0.0 if Motion.reduce else 0.5 * exp(-t * 6.0) * cos(t * 14.0)
+			Rewards.star(b, c, 14.0 * _u * sc * out, Art.GOLD, turn)
+
+## The gifts flying to their place on the grass: up off the cart and round
+## in an arc, shrinking to the size they sit at.
+func _draw_flights() -> void:
+	for f: Dictionary in _flights:
+		var k := clampf(float(f.t) / FLIGHT_T, 0.0, 1.0)
+		var e := k * k * (3.0 - 2.0 * k)
+		var from: Vector2 = f.from
+		var to := _home_of(f.kind)
+		var bow := from.lerp(to, 0.35) + Vector2(0, -48.0 * _u)
+		var at := from.lerp(bow, e).lerp(bow.lerp(to, e), e)
+		var sc := lerpf(1.0, 0.62, e) * (1.0 + 0.25 * sin(e * PI))
+		_cast_add(Art.token(f.kind, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, at), Color.WHITE)
+		if int(f.t * 60.0) % 3 == 0:
+			_spark((at - _origin) / _u, (Art.GIFT[int(f.kind)] as Color).lerp(Color("fffaf0"), 0.4))
+	_cast_draw()
 
 ## The numbers off a crate gone, lettered like stickers: popping big and
-## settling, rising and drifting as they fade.
+## settling, rising and drifting as they fade. One size of letter, swelled
+## by the transform, so no glyph is cut twice.
 func _draw_pops(font: Font) -> void:
 	for p: Dictionary in _pops:
 		var a := 1.0 - clampf((p.t - 0.45) / 0.35, 0.0, 1.0)
 		var rise := 26.0 * _u * (1.0 - exp(-p.t * 4.5))
 		var at := px(p.pos) + Vector2(p.drift * 10.0 * p.t, -rise)
-		var full := int((19.0 if p.big else 14.0) * _u)
-		var fs := full if Motion.reduce else maxi(8, int(lerpf(full * 0.4, full * 1.0, Motion.back_out(minf(1.0, p.t / 0.2)))))
+		var fs := int((19.0 if p.big else 14.0) * _u)
+		var sc := 1.0 if Motion.reduce else lerpf(0.4, 1.0, Motion.back_out(minf(1.0, p.t / 0.2)))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var o := at + Vector2(-w * 0.5, 0)
-		_over.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color(Art.INK, a))
+		var o := Vector2(-w * 0.5, 0)
+		_over.draw_set_transform(_shake_off + at, 0.0, Vector2(sc, sc))
+		_over.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(4, int(fs * 0.3)), Color(p.rim, a))
 		_over.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
+	_over.draw_set_transform(_shake_off)
 
 # --- the rewards ---
 
@@ -1288,9 +1786,16 @@ func _new_best_passed() -> void:
 	_rw.spray(_plate_at(_best_l), Pal.SUN, 14, 620.0, "star", 1.0)
 	_rw.spray(_plate_at(_best_l), Art.GOLD, 10, 620.0, "coin", 1.0)
 	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
-	_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
+	_rw.rain(1.6, ["confetti", "star"], STICKER_COLS)
 	_fx.cue("word", 1.3, -3.0)
 	_feel(Haptics.BUMP)
+	# the pod is crowned, and the sun puts its party hat on
+	_crown_at = _clock
+	if _sun != null:
+		if Motion.reduce:
+			_sun.hat = 1.0
+		else:
+			_sun.create_tween().tween_property(_sun, "hat", 1.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## The garden flashes `col`, `amount` at most.
 func _flash_now(col: Color, amount: float) -> void:
@@ -1346,6 +1851,9 @@ func _build_end(better: bool) -> Control:
 	# in a row, a sunburst turning behind it once the card is up.
 	var u := 3.4
 	var shown_at := _clock
+	var grown: Array = []
+	for i in mini(_blooms.size(), 8):
+		grown.append(int(_blooms[i].look))
 	seat.draw.connect(func() -> void:
 		var t := 0.0 if Motion.reduce else _clock
 		var c := Vector2(seat.size.x * 0.5, 178.0)
@@ -1357,8 +1865,8 @@ func _build_end(better: bool) -> Control:
 			b.disc(rc, rr * 0.5, Color(Color("fff4c2"), 0.45))
 			Rewards.sunrays(b, rc, rr * 0.2, rr, 14, t * 0.5, Color(Art.GOLD if better else Pal.SUN, 0.5))
 			Rewards.sunrays(b, rc, rr * 0.2, rr * 0.75, 8, -t * 0.3, Color(Color("fffaf0"), 0.4))
-		b.ellipse(c + Vector2(0, 34.0), 150.0, 22.0, GRASS)
-		b.ellipse(c + Vector2(0, 30.0), 140.0, 16.0, GRASS.lightened(0.15))
+		b.ellipse(c + Vector2(0, 34.0), 150.0, 22.0, GRASS_DEEP)
+		b.ellipse(c + Vector2(0, 30.0), 142.0, 17.0, GRASS)
 		for k in 4:
 			var up := fmod(t * 1.6 + k * 0.25, 1.0)
 			Art.pea(b, c + Vector2(0, -44.0 * u - up * 120.0), 3.4 * u, 1.0 - up)
@@ -1370,7 +1878,14 @@ func _build_end(better: bool) -> Control:
 		seat.draw_mesh(Art.barrel(u), null, Transform2D(0.0, Vector2(1.0 + 0.1 * kick, 1.0 - 0.14 * kick), 0.0, foot + Vector2(0, (-12.0 + 4.0 * kick) * u)))
 		seat.draw_mesh(Art.cart(u), null, Transform2D(0.0, foot))
 		for side in [-1.0, 1.0]:
-			seat.draw_mesh(Art.wheel(u), null, Transform2D(sin(t * 1.3) * 0.4, foot + Vector2(side * 13.0 * u, 0))))
+			seat.draw_mesh(Art.wheel(u), null, Transform2D(sin(t * 1.3) * 0.4, foot + Vector2(side * 13.0 * u, 0)))
+		if better:
+			seat.draw_mesh(Art.crown(u), null, Transform2D(-0.3, foot + Vector2(-6.5 * u, (-42.5 + 4.0 * kick) * u)))
+		# the flowers the run grew, in a row either side of the cart
+		for i in grown.size():
+			var side := -1.0 if i % 2 == 0 else 1.0
+			var at := c + Vector2(side * (92.0 + 19.0 * (i / 2)), 30.0 + 3.0 * (i % 3))
+			seat.draw_mesh(Art.flower(grown[i], 2.6), null, Transform2D(sin(t * 1.7 + i) * 0.08, at)))
 	col.add_child(seat)
 	_seat = seat
 	var head := Label.new()
@@ -1461,7 +1976,7 @@ func _celebrate(better: bool) -> void:
 	card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if not better:
 		return
-	_rw.rain(3.5, ["confetti", "coin", "star"], Rewards.CONFETTI)
+	_rw.rain(3.5, ["confetti", "coin", "star"], STICKER_COLS)
 	var fx := Fx2D.new()
 	_end.add_child(fx)
 	var cols := [Art.GOLD, Art.POD, Art.GIFT[Sim.Kind.PEA], Pal.FLOWER, Pal.SUN_RAY, Art.GIFT[Sim.Kind.RATE]]

@@ -37,7 +37,7 @@ const BoosterIcon = preload("res://arcade/booster_icon.gd")
 
 enum Lesson { SLIDE, CRATES, GIFTS, PODS, SPECIAL, MILLI, HUD }
 
-## The wooden rim round the garden, and the gap to what is said beside it.
+## The card's rim round the garden, and the gap to what is said beside it.
 const RIM := 8.0
 const SIDE_GAP := 22.0
 const FINGER_ALPHA := 0.16
@@ -128,14 +128,8 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_quiet = Fx2D.new()
 		_quiet.buzzes = false
 		field.add_child(_quiet)
-		# the banner's box, which the layout places: never shown on a page
-		var box := Control.new()
-		box.visible = false
-		field.add_child(box)
-		_banner = Label.new()
-		box.add_child(_banner)
-		_banner.set_meta("box", box)
 		_rw = Quiet.new()
+		_rw.sticker_cols = STICKER_COLS
 		add_child(_rw)
 
 	func _fit(s: Vector2) -> void:
@@ -150,6 +144,14 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_hit_at.clear()
 		_sparks.clear()
 		_pops.clear()
+		_ghosts.clear()
+		_flights.clear()
+		_chip_at.clear()
+		_streak_n = 0
+		_streak_in = 0.0
+		_clear = {}
+		_blooms.clear()
+		_hop = {}
 		_shot_at = -10.0
 		_last_x = sim.x
 		_lean = 0.0
@@ -548,12 +550,13 @@ func _draw() -> void:
 		return
 	if _art == null or _art.size.x <= 0.0:
 		return
-	# the Arcade's wooden frame round the garden
+	# the screen's parchment card round the garden
 	var b := Face.Builder.new()
 	var at := _art.position - Vector2(RIM, RIM)
 	var s := _art.size + Vector2(RIM, RIM) * 2.0
-	b.fan(Face.Builder.round_rect(at, s, 18.0), Color("9c6b45"))
-	b.fan(Face.Builder.round_rect(at + Vector2(3, 3), s - Vector2(6, 6), 15.0), Color("6e4a2f"))
+	b.fan(Face.Builder.round_rect(at + Vector2(0, 4), s, 26.0), Color(Pal.TEXT, 0.1))
+	b.fan(Face.Builder.round_rect(at, s, 26.0), Color(Pal.LINE, 0.55))
+	b.fan(Face.Builder.round_rect(at + Vector2(2, 2), s - Vector2(4, 4), 24.0), Pal.PARCHMENT)
 	_frame_shown = b.mesh()
 	draw_mesh(_frame_shown, null)
 	if lesson == Lesson.CRATES:
