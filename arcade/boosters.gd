@@ -9,7 +9,7 @@ extends RefCounted
 ## A booster helps a run start or survive and never multiplies its score.
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -21,11 +21,13 @@ const ITEMS := {
 	"lt_head": {"game": "thirteen", "icon": "trend", "price": 120},
 	"po_kit": {"game": "posy", "icon": "gift", "price": 120},
 	"po_bloom": {"game": "posy", "icon": "sparkle", "price": 120},
+	"pp_pea": {"game": "peapod", "icon": "plus", "price": 120},
+	"pp_quick": {"game": "peapod", "icon": "trend", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
 }
 ## Each booster's colour on its disc: the game's, so a chip says whose it is.
 const TINT := {"firefly": Color("5b5fa8"), "molehill": Color("8a6a45"), "stackwood": Color("b0773a"),
-	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "": Color("d49a2a")}
+	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "": Color("d49a2a")}
 
 const FF_SPARE_SHIPS := 1
 const MH_TIME := 10.0
@@ -35,6 +37,8 @@ const SW_ACORNS := 200
 const SW_SMALL := 10
 const LT_CLOVERS := 40
 const PO_CHANCE_MOVES := 5
+const PP_PEAS := 1
+const PP_RATE := 2
 
 static func of(game: String) -> Array:
 	var out := []
@@ -63,7 +67,7 @@ static func line_key(id: String) -> String:
 static func chance_key(game: String) -> String:
 	return "BST_CHANCE_" + game.to_upper()
 
-## The booster a date features in its gifts: the ten game boosters in turn,
+## The booster a date features in its gifts: the game boosters in turn,
 ## a day each, the same for everyone.
 static func featured(date_key: int) -> String:
 	var ids: Array = []
@@ -98,6 +102,10 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 					sim.tools[t] = int(sim.tools[t]) + 1
 			"po_bloom":
 				sim.opening_bloom()
+			"pp_pea":
+				sim.peas += PP_PEAS
+			"pp_quick":
+				sim.rate_lv += PP_RATE
 
 ## The Second chance: a run over is taken up again where it ended.
 static func revive(game: String, sim: RefCounted) -> void:

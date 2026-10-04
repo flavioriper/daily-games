@@ -33,7 +33,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/second_chance.gd", "res://ui/menu/gold_pill.gd", "res://ui/hud/gifts_sheet.gd", "res://ui/hud/shop_sheet.gd",
 			"res://ui/menu/arcade_tab.gd", "res://ui/menu/menu_header.gd", "res://ui/menu.gd", "res://ui/flat/flat_host.gd",
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
-			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd"]:
+			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -147,6 +147,18 @@ func _process(_d: float) -> bool:
 	var m0: int = po.moves_left
 	Boosters.revive("posy", po)
 	_check(not po.is_over() and po.moves_left == m0 + 5, "posy revived with five moves")
+
+	var pp = load("res://arcade/peapod_sim.gd").new(3)
+	Boosters.apply("peapod", pp, ["pp_pea", "pp_quick"])
+	_check(pp.peas == 2 and pp.rate_lv == 2, "peapod: two peas, a quicker gun")
+	for i in 60 * 3:
+		pp.step()
+	pp.wall_y = 1000.0
+	pp.step()
+	_check(pp.is_over(), "peapod over at the line")
+	Boosters.revive("peapod", pp)
+	pp.step()
+	_check(not pp.is_over() and pp.wall_y < pp.DANGER - 100.0, "peapod revived, the wall back at %.0f" % pp.wall_y)
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

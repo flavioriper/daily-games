@@ -5,8 +5,9 @@ extends VBoxContainer
 ## formation shooter, Molehill (arcade/molehill_screen.gd), whack-a-mole,
 ## Stackwood (arcade/stackwood_screen.gd), falling blocks that merge, Lucky
 ## Thirteen (arcade/thirteen_screen.gd), chains of pebbles merged up to 13,
-## and Posy (arcade/posy_screen.gd), a swap-three garden played a day at a
-## time. Its body takes the day row's and the grid's room, as Versus, Stats
+## Posy (arcade/posy_screen.gd), a swap-three garden played a day at a
+## time, and Peapod (arcade/peapod_screen.gd), a pea cannon against crates
+## that come down with a number on each. Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
@@ -32,6 +33,8 @@ const MoleArt = preload("res://arcade/molehill_art.gd")
 const StackArt = preload("res://arcade/stackwood_art.gd")
 const PebbleArt = preload("res://arcade/thirteen_art.gd")
 const PosyArt = preload("res://arcade/posy_art.gd")
+const PeaArt = preload("res://arcade/peapod_art.gd")
+const PeaSim = preload("res://arcade/peapod_sim.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
 
@@ -42,12 +45,12 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -137,7 +140,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -499,3 +502,47 @@ class PosyBanner extends Control:
 		draw_mesh(PosyArt.breeze(s * 0.84), null, Transform2D(0.0, at[2]))
 		draw_mesh(PosyArt.bomb_glow(s * 0.84), null, Transform2D(0.0, at[5]))
 		draw_mesh(PosyArt.tile(3, s * 0.84), null, Transform2D(0.0, at[5]))
+
+## Peapod's banner: a strip of numbered crates over the plate, a gift among
+## them and one just burst, the cart on the grass under them with a volley
+## of peas on its way up. Drawn once.
+class PeapodBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := minf(size.y / 110.0, size.x / 330.0)
+		var mid := size.x * 0.5
+		var turf := size.y - 12.0 * u
+		var b := Face.Builder.new()
+		b.fan(PackedVector2Array([Vector2(0, turf), Vector2(size.x, turf), size, Vector2(0, size.y)]), Color("84c957", 0.95))
+		b.fan(PackedVector2Array([Vector2(0, turf), Vector2(size.x, turf), Vector2(size.x, turf + 2.0 * u), Vector2(0, turf + 2.0 * u)]), Color("a9dc7f"))
+		var cart_x := mid + 22.0 * u
+		for k in 3:
+			for side in [-0.5, 0.5]:
+				PeaArt.pea(b, Vector2(cart_x + side * 7.5 * u, turf - 52.0 * u - k * 13.0 * u), 3.3 * u)
+		var ground := b.mesh()
+		_keep.append(ground)
+		draw_mesh(ground, null)
+		var crates := [[-2, 0, PeaSim.Kind.CRATE, 35], [-1, 0, PeaSim.Kind.PEA, 0], [0, 0, PeaSim.Kind.CRATE, 120], [1, 0, PeaSim.Kind.CRATE, 8],
+			[2, 0, PeaSim.Kind.GOLD, 60], [-2, 1, PeaSim.Kind.CRATE, 3], [-1, 1, PeaSim.Kind.CRATE, 17], [2, 1, PeaSim.Kind.BOMB, 0]]
+		var font := PeaArt.font()
+		var top := 6.0 * u + (PeaSim.CELL_H - 3.0) * u * 0.5
+		for c: Array in crates:
+			var at := Vector2(mid + c[0] * PeaSim.CELL_W * u, top + c[1] * PeaSim.CELL_H * u)
+			var kind: int = c[2]
+			draw_mesh(PeaArt.crate(kind, PeaArt.tier_of(c[3]) if kind == PeaSim.Kind.CRATE else 0, u), null, Transform2D(0.0, at))
+			if c[3] > 0:
+				PeaArt.number(self, font, at + Vector2(0, -2.2 * u), c[3], (PeaSim.CELL_H - 3.0) * u)
+		var foot := Vector2(cart_x, turf - 9.0 * u)
+		draw_mesh(PeaArt.barrel(u), null, Transform2D(0.0, foot + Vector2(0, -12.0 * u)))
+		draw_mesh(PeaArt.cart(u), null, Transform2D(0.0, foot))
+		for side in [-1.0, 1.0]:
+			draw_mesh(PeaArt.wheel(u), null, Transform2D(0.4, foot + Vector2(side * 13.0 * u, 0)))
+		draw_mesh(PeaArt.token(PeaSim.Kind.RATE, u), null, Transform2D(-0.15, Vector2(mid - 60.0 * u, turf - 30.0 * u)))

@@ -8,7 +8,7 @@ extends SceneTree
 ##
 ##     godot --headless --path . --script res://tests/_probe_arcade_buzz.gd -- firefly
 ##
-## Games: firefly, molehill, stackwood, thirteen, posy.
+## Games: firefly, molehill, stackwood, thirteen, posy, peapod.
 ##
 ## `rm` after the game runs it under reduce motion. SECS (the first run's
 ## length before its fireflies are taken away, 60) and MOVES (thirteen's and
@@ -25,6 +25,7 @@ const QUIET := {
 	"stackwood": ["spawn", "move"],
 	"thirteen": ["select", "unselect", "settle", "merge"],
 	"posy": ["fall", "unswap", "goal_done", "convert", "offer", "over"],
+	"peapod": ["shot", "hit", "token", "knock"],
 }
 
 var _game := "firefly"
@@ -45,6 +46,7 @@ var _mh_slip := 6.0
 var _sw_piece := -1
 var _sw_wait := 0.0
 var _sw_bad := false
+var _pp_hand := 150.0
 
 func _env(name: String, fallback: int) -> int:
 	return int(OS.get_environment(name)) if OS.has_environment(name) else fallback
@@ -115,6 +117,8 @@ func _process(_delta: float) -> bool:
 					_molehill_bot()
 				"stackwood":
 					_stackwood_bot()
+				"peapod":
+					_peapod_bot()
 	return false
 
 func _wait(seconds: float) -> void:
@@ -150,6 +154,10 @@ func _report() -> void:
 		var n := String(ev.type)
 		if n == "pop":
 			n = "pop %s%s" % [["gnat", "beetle", "moth", "rogue"][int(ev.kind)] if _game == "firefly" else "", " rammed" if bool(ev.get("rammed", false)) else ""]
+		if _game == "peapod" and n == "kill":
+			n = "kill %s%s" % [["crate", "gold", "firecracker", "gift", "gift", "gift", "gift", "head"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
+		if _game == "peapod" and n == "catch":
+			n = "catch %s" % ["", "", "", "pea", "rate", "power", "twin"][int(ev.got)]
 		if _game == "molehill" and n == "hit":
 			n = "hit %s%s" % [["mole", "gold", "pot", "bunny"][int(ev.kind)], ""]
 		if _game == "molehill" and (n == "streak_lost" or n == "forgiven"):
@@ -217,6 +225,8 @@ func _run() -> void:
 			await _thirteen()
 		"posy":
 			await _posy()
+		"peapod":
+			await _peapod()
 		_:
 			await _firefly()
 	_finish()
@@ -336,6 +346,82 @@ func _molehill() -> void:
 		_bot = true
 		await _wait(7.0)
 	await _end_card_and_cards(field, lawn, passed, end_run)
+
+# --- peapod ---
+
+## Rolls under a falling gift, else under the lowest crate or the plate
+## furthest along, at a hand's pace.
+func _peapod_bot() -> void:
+	var sim: RefCounted = _s.sim
+	var Sim: GDScript = _s.Sim
+	if sim.phase != Sim.Phase.PLAY:
+		return
+	var want: float = sim.x
+	if not sim.tokens.is_empty():
+		want = sim.tokens[0].x
+	elif sim.wave_kind == Sim.Wave.WALL:
+		for r in sim.rows.size():
+			var found := false
+			for c in Sim.COLS:
+				if sim.rows[r][c] != null:
+					want = (c + 0.5) * Sim.CELL_W
+					found = true
+					break
+			if found:
+				break
+	elif not sim.segs.is_empty():
+		want = Sim.path_at(float(sim.segs[0].s) + 8.0).x
+	_pp_hand = move_toward(_pp_hand, want, 300.0 * root.get_process_delta_time())
+	sim.target_x = _pp_hand
+
+func _peapod() -> void:
+	var field: Control = _s.field
+	var Sim: GDScript = _s.Sim
+	var grass := field.size * Vector2(0.5, 0.9)
+	_do("the screen opened")
+	await _wait(0.2)
+	_say()
+	_do("a finger down and a slide before Go")
+	_press(field, grass, true)
+	_move(grass + Vector2(80, 0))
+	_press(field, grass + Vector2(80, 0), false)
+	await _wait(1.8)
+	_say()
+	_do("paused")
+	_s._pause(true)
+	await _wait(0.3)
+	_say()
+	_do("resumed by a touch")
+	_press(field, grass, true)
+	_press(field, grass, false)
+	await _wait(0.2)
+	_say()
+	_pp_hand = _s.sim.x
+	_bot = true
+	var secs := float(_env("SECS", 70))
+	var t0 := Time.get_ticks_msec()
+	while not _s.sim.is_over() and (Time.get_ticks_msec() - t0) / 1000.0 < secs:
+		await process_frame
+	_bot = false
+	print("  -- %d s: wave %d, score %d, kills %d, caught %d, best streak %d" % [int(_s.sim.t), _s.sim.wave, _s.sim.score,
+		_s.sim.kills, _s.sim.caught, _s.sim.best_streak])
+	var end_run := func() -> void:
+		_bot = false
+		if _s.sim.wave_kind == Sim.Wave.WALL:
+			_s.sim.wall_y = 1000.0
+		else:
+			_s.sim.segs[0].s = Sim.path_len()
+	if not _s.sim.is_over():
+		print("  -- the line reached, by the probe")
+		end_run.call()
+	await _wait(1.0)
+	# the second run: the best is passed mid-run (set low for the probe)
+	var passed := func() -> void:
+		_s._best = 5
+		_pp_hand = _s.sim.x
+		_bot = true
+		await _wait(9.0)
+	await _end_card_and_cards(field, grass, passed, end_run)
 
 # --- stackwood ---
 

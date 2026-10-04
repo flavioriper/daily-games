@@ -547,3 +547,34 @@ HTP_MOVES,Count your moves,Conte suas jogadas,Cuenta tus jugadas
 HTP_MOVES_BODY,"You have %d moves and nobody checks your work. Putting a piece down costs one, taking it back costs another. When they are gone the board is lost.","Você tem %d jogadas e ninguém confere seu trabalho. Colocar uma peça custa uma, retirar custa outra. Quando acabarem, o tabuleiro está perdido.","Tienes %d jugadas y nadie revisa tu trabajo. Poner una pieza cuesta una, quitarla cuesta otra. Cuando se acaben, el tablero está perdido."
 TIP_MOVES_SEQ,Every move counts here. Think it through before you make it.,Aqui cada jogada conta. Pense bem antes de fazer.,Aquí cada jugada cuenta. Piénsalo bien antes de hacerla.
 HTP_MOVES_SEQ_BODY,"You have %d moves and nobody checks your work. Every move costs one, and there is no taking one back. When they are gone the board is lost.","Você tem %d jogadas e ninguém confere seu trabalho. Cada movimento custa uma, e não dá para voltar atrás. Quando acabarem, o tabuleiro está perdido.","Tienes %d jugadas y nadie revisa tu trabajo. Cada movimiento cuesta una, y no hay vuelta atrás. Cuando se acaben, el tablero está perdido."
+ARC_PEAPOD_BLURB,"Slide the pea cannon under the crates and shoot them down before they reach you. Catch the gifts.","Deslize o canhão de ervilhas sob as caixas e derrube-as antes que cheguem até você. Pegue os presentes.","Desliza el cañón de guisantes bajo las cajas y derríbalas antes de que te alcancen. Atrapa los regalos."
+ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
+PP_MOTTO,Hold the line,Segure a linha,Mantén la línea
+PP_WAVE,WAVE,ONDA,OLEADA
+PP_READY,Ready?,Pronto?,¿Listo?
+PP_READY_LINE,Slide to aim. Catch the gifts.,Deslize para mirar. Pegue os presentes.,Desliza para apuntar. Atrapa los regalos.
+PP_WAVE_N,Wave %d,Onda %d,Oleada %d
+PP_MILLI_LINE,Stop the millipede,Detenha a centopeia,Detén al milpiés
+PP_CLEARED,Cleared!,Limpo!,¡Despejado!
+PP_CAREFUL,Too close!,Perto demais!,¡Muy cerca!
+PP_BOOM,Boom!,Bum!,¡Bum!
+PP_GOLDEN,Golden!,Dourada!,¡Dorada!
+PP_SQUASHED,Squashed!,Esmagada!,¡Aplastado!
+PP_GOT_PEA,+1 pea,+1 ervilha,+1 guisante
+PP_GOT_RATE,Quicker!,Mais rápido!,¡Más rápido!
+PP_GOT_POWER,Heavier!,Mais forte!,¡Más fuerte!
+PP_GOT_TWIN,A helper!,Um ajudante!,¡Un ayudante!
+PP_WORD_1,Nice!,Boa!,¡Bien!
+PP_WORD_2,Great!,Ótimo!,¡Genial!
+PP_WORD_3,Pea-fect!,Perfeito!,¡Perfecto!
+PP_WORD_4,Unstoppable!,Imparável!,¡Imparable!
+PP_WORD_5,Legendary!,Lendário!,¡Legendario!
+PP_END_CARD,The crates got through,As caixas passaram,Las cajas pasaron
+PP_STAT_WAVE,wave,onda,oleada
+PP_STAT_CRATES,shot down,derrubadas,derribadas
+PP_STAT_GIFTS,gifts caught,presentes pegos,regalos atrapados
+BST_PP_PEA,Second pea,Segunda ervilha,Segundo guisante
+BST_PP_PEA_LINE,Start with two peas a shot,Comece com duas ervilhas por tiro,Empieza con dos guisantes por disparo
+BST_PP_QUICK,Quick pod,Vagem veloz,Vaina veloz
+BST_PP_QUICK_LINE,Start with a quicker cannon,Comece com um canhão mais rápido,Empieza con un cañón más rápido
+BST_CHANCE_PEAPOD,Everything is pushed well back from the line.,Tudo é empurrado para bem longe da linha.,Todo se aleja bastante de la línea.
