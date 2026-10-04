@@ -373,6 +373,22 @@ pointing `seed_as` at them. Specs:
 
 Per-board entries (Queens through Shikaku) are in `docs/agents/boards/`.
 
+### The win screen comes in with the board's wave (2026-10-04)
+
+The host used to wait `win_delay()` (0.8 s by default, 3.3 on Code Break)
+before the rows left, the slots resized and the stats and buttons arrived;
+the user read the wave, then the resize, then the buttons as a win that took
+too long. `_on_solved` now calls `_show_win(hold)` on the next idle frame, so
+all of it starts with the wave. `win_delay()` keeps its meaning for the board
+(how long its own win animation runs) but the host spends it on one thing
+only: the board stays frozen (`_freeze_board`, scaled to follow its card)
+until `max(SLOT_TIME, hold)`, so the relayout a thaw causes never lands in
+the middle of a wave. Redo or New inside the hold thaws and replaces the
+board; the late timer checks it still has the same one. Under `Motion.reduce`
+the win screen is set at once. Any older note that times the win screen
+"after `win_delay()`" (Binairo's 0.77 s, Code Break's 3.3) now describes the
+thaw, not the screen.
+
 ### The streak's bubble goes after showing (2026-10-04)
 
 The `xN` bubble twenty boards share (`_draw_combo`, One Line's first) used to

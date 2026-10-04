@@ -73,9 +73,10 @@ const LEVEL_KEYS := {"Easy": "DIFF_EASY", "Medium": "DIFF_MEDIUM", "Hard": "DIFF
 ## Entrance delays per row (the island's order; ENTER_TOP, ENTER_CARDS and
 ## ENTER_ACTIONS come from the base host).
 const ENTER_TRAY := 0.2
-## The win: the board's wave first, then the layout change and the panels.
+## The win: the layout change and the panels come in with the board's wave,
+## not after it. WIN_AFTER is how long a board with no win_delay() of its own
+## is left frozen (_freeze_board) before it is laid out at its new size.
 const WIN_AFTER := 0.8
-const WIN_AFTER_STILL := 0.2
 const SLOT_TIME := 0.45
 const CHROME_OUT := 0.25
 const ART_DELAY := 0.2
@@ -644,7 +645,7 @@ func _spawn(the_seed: int) -> void:
 	day_card.set_hearts(Progress.hearts())
 	_fit_card()
 
-## The board's wave plays first; then the rows make way for the win screen.
+## The board's wave and the rows making way for the win screen run together.
 func _on_solved() -> void:
 	var puzzle_id := String(_entry.get("id", ""))
 	# Keep the result metrics with the completion flag. The menu still listens
@@ -696,14 +697,20 @@ func _on_solved() -> void:
 	Analytics.track("puzzle_complete", event)
 	Ads.note_finished()
 	_refresh()
-	# A board whose win has an animation of its own to play out first says
-	# how long it needs; Code Break's lids and code take nearly two seconds.
-	var wait := WIN_AFTER_STILL if Motion.reduce else WIN_AFTER
+	# A board whose win has an animation of its own says how long it runs
+	# (Code Break's lids and code take nearly two seconds). The win screen
+	# does not wait for it (2026-10-04: the wave, then the resize, then the
+	# buttons read as a long win); only the board's relayout does. Deferred,
+	# so the board's own solved handler has run before flat_win is asked.
+	var hold := 0.0 if Motion.reduce else WIN_AFTER
 	if is_instance_valid(_puzzle) and _puzzle.has_method("win_delay"):
-		wait = _puzzle.win_delay()
-	get_tree().create_timer(wait).timeout.connect(_show_win)
+		hold = _puzzle.win_delay()
+	_show_win.call_deferred(hold)
 
-func _show_win() -> void:
+## `hold` is how much longer the board's own win animation runs: the board
+## stays frozen, scaled to follow its card, until it is over, because a
+## relayout in the middle of a wave rebuilds what the wave is moving.
+func _show_win(hold := 0.0) -> void:
 	if _won or not is_instance_valid(_puzzle):
 		return
 	_won = true
@@ -738,7 +745,11 @@ func _show_win() -> void:
 	if slots == null:
 		_thaw_board()
 	else:
-		slots.finished.connect(_thaw_board)
+		var board := _puzzle
+		get_tree().create_timer(maxf(SLOT_TIME, hold)).timeout.connect(func() -> void:
+			# Redo or New inside the hold has thawed and replaced the board.
+			if is_instance_valid(board) and board == _puzzle:
+				_thaw_board())
 	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, bottom_win, SLOT_TIME, 0.0, false)
 	well_done.enter(ART_DELAY)
 	_win_stack.visible = true

@@ -58,4 +58,20 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   WIND, CHECK, UNDO, HINT) on a hand-made 6x6 tulip, five beads a plate; its
   Windblown card is `PERM` [3, 2, 1, 0], `TURN` [1, 2, 3, 1]. Probe flags
   `x=pg_count`, `x=pg_relay`, `x=pg_hud`.
-
+- **The iron waits for a full board (2026-10-04, the user's call).** A plate
+  filled on its own is no longer ironed: four irons a picture read as the
+  finish playing on every plate. `State.plates_due()` (it replaced
+  `plates_full()`) is empty until the plates not yet ironed hold as many
+  beads as the picture puts on them; then `_maybe_iron` irons every plate
+  that is right (fused, with its word and streak) or holds a bead astray
+  (home it goes), one after another, and leaves alone a plate that is only
+  short. One pass costs one heart at most on Insane (`_plate_done`'s
+  `costs`), however many plates are wrong, or two wrong plates would end a
+  two-heart board at once. A board finished right still skips the plate
+  irons for the win's own. `PG_RULES_PLATES` and the two `HTP_PG_PLATE_BODY`
+  strings say so in the three languages; the tutorial's PLATE diagram still
+  draws one plate ironed alone and `HTP_PG_LAST_CAP` still says "one bead
+  short of a full plate" -- both are owed a redraw. `_probe_pixel_garden.gd`
+  was already stale (five Hard-hearts checks, since hearts went to Insane
+  only); its "plate 0 ironed by the moved bead" and "not flawless" checks
+  now fail too, by design.

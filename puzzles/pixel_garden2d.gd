@@ -1215,13 +1215,18 @@ func _iron_px() -> float:
 
 # --- the plates' irons ---
 
-## Irons every plate that has just become full, one after another. The state
-## judges at once (a wrong plate's beads astray are back in the kit); the
-## board shows it as the iron gets there, and holds input until it has.
+## Once the whole board is full and not the picture, irons every plate there
+## is a verdict on, one after another (`State.plates_due`); a plate filled on
+## its own brings no iron, which read as the finish playing four times
+## (2026-10-04). The state judges at once (a wrong plate's beads astray are
+## back in the kit); the board shows it as the iron gets there, and holds
+## input until it has. One pass costs one heart at most, on its first wrong
+## plate, however many are wrong.
 func _maybe_iron() -> void:
-	var full: PackedInt32Array = _state.plates_full()
+	var full: PackedInt32Array = _state.plates_due()
 	if full.is_empty():
 		return
+	var costs := true
 	var t := _now()
 	var start := maxf(t, _busy_until)
 	var still := Motion.reduce
@@ -1252,7 +1257,9 @@ func _maybe_iron() -> void:
 					"at": reveal + 0.15 + Motion.stagger(i, 0.05, 0.3), "sits": true})
 				i += 1
 		_after(start - t, func() -> void: fx.cue("iron", 0.96 + 0.08 * _h01(q, 7)))
-		_after(start - t + lead + travel, _plate_done.bind(ir, res.astray.size()))
+		_after(start - t + lead + travel, _plate_done.bind(ir, res.astray.size(), costs and not ok))
+		if not ok:
+			costs = false
 		start = end
 		_busy_until = maxf(_busy_until, end - 0.05)
 	_busy_for(start - t + HOME_TIME + 0.3)
@@ -1261,7 +1268,7 @@ func _maybe_iron() -> void:
 
 ## The iron has crossed plate `ir.q`: a right plate cheers, a wrong one
 ## sends its beads home, and on Hard and Insane costs a heart.
-func _plate_done(ir: Dictionary, astray: int) -> void:
+func _plate_done(ir: Dictionary, astray: int, costs := true) -> void:
 	# A verdict still queued behind the one that took the last heart, or
 	# behind the solve, says nothing: the card or the party has the floor.
 	if is_done() or (max_hearts > 0 and out_of_hearts):
@@ -1288,7 +1295,7 @@ func _plate_done(ir: Dictionary, astray: int) -> void:
 	_streak = 0
 	_lost_ever = true
 	fx.cue("astray")
-	if max_hearts > 0:
+	if max_hearts > 0 and costs:
 		_lose_heart()
 		fx.cue("heart_lost")
 		_tell_hearts("PG_PLATE_HEART_ONE" if astray == 1 else "PG_PLATE_HEART_N", astray)

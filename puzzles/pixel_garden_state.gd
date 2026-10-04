@@ -232,12 +232,29 @@ func plate_placed(q: int) -> int:
 			k += 1
 	return k
 
-## Plates not yet ironed with as many beads on them as the picture puts
-## there (or more): the iron's next work.
-func plates_full() -> PackedInt32Array:
+## The iron's work once the whole board is full (as many beads seated on
+## the plates not yet ironed as the picture puts there): every such plate
+## that is right, or holds a bead astray. A plate that is only short, its
+## beads sitting on another, is left alone. Empty until the board is full:
+## a plate filled on its own is not judged (2026-10-04).
+func plates_due() -> PackedInt32Array:
 	var out := PackedInt32Array()
+	var placed := 0
+	var need := 0
 	for q in 4:
-		if ironed[q] == 0 and plate_placed(q) >= plate_need[q]:
+		if ironed[q] == 0:
+			placed += plate_placed(q)
+			need += plate_need[q]
+	if placed < need:
+		return out
+	for q in 4:
+		if ironed[q] != 0:
+			continue
+		var due := plate_right(q)
+		for c in plate_pegs(q):
+			if beads[c] != EMPTY and beads[c] != want[c] and locked[c] == 0:
+				due = true
+		if due:
 			out.append(q)
 	return out
 
