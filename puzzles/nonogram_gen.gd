@@ -305,11 +305,12 @@ static func picture(rng: RandomNumberGenerator, w: int, h: int, grain := 0.0) ->
 ##
 ## `line_solve` is plain line logic run to its fixpoint -- every placement of
 ## a line's runs (in any order, on a tumbled line) that agrees with what is
-## known, intersected. `deep_solve` adds the one step a careful player takes
-## when line logic stalls: suppose a cell one way, run line logic, and if
-## that ends in a contradiction the cell is the other way. A board it
-## completes has exactly one answer, reached without guessing.
-class Deep:
+## known, intersected -- and it is all there is: a board is dealt only when
+## that alone fills the picture, so it has exactly one answer and never asks
+## for a guess. The supposition this class once added when line logic
+## stalled (suppose a cell, follow it to a contradiction) went on 2026-10-04:
+## the user wants every board "fully solvable from deduction, no guess".
+class Lines:
 	var w := 0
 	var h := 0
 	var rows: Array = []
@@ -317,10 +318,7 @@ class Deep:
 	var tumbled: Array = []
 	var _opts: Array = []          # line index (rows then cols) -> PackedInt64Array
 	var _cache: Dictionary = {}
-	## What the last deep_solve took: cells line logic alone left open, and
-	## how many suppositions it needed.
-	var line_open := 0
-	var probes := 0
+	## Lines read by the last line_solve: its work.
 	var nodes := 0
 
 	func _init(p_rows: Array, p_cols: Array, p_tumbled: Array) -> void:
@@ -471,47 +469,13 @@ class Deep:
 	func copy(g: Dictionary) -> Dictionary:
 		return {"f": (g.f as PackedInt64Array).duplicate(), "e": (g.e as PackedInt64Array).duplicate()}
 
-	## Line logic, then suppositions one cell deep, until the grid is known or
-	## nothing more gives. Returns the grid; `line_open` and `probes` say what
-	## it took. `budget` caps the propagation work.
-	func deep_solve(budget := 4000000) -> Dictionary:
+	## Line logic to its fixpoint from a blank grid. Returns the grid ({} on a
+	## contradiction); `unknown` says what it left open.
+	func line_solve() -> Dictionary:
 		nodes = 0
-		probes = 0
 		var g := blank()
 		if not propagate(g):
 			return {}
-		line_open = unknown(g)
-		while unknown(g) > 0:
-			if nodes > budget:
-				return g
-			var moved := false
-			for y in h:
-				for x in w:
-					var bit := 1 << x
-					if (int(g.f[y]) | int(g.e[y])) & bit:
-						continue
-					for v in [1, 0]:
-						var t := copy(g)
-						if v == 1:
-							t.f[y] = int(t.f[y]) | bit
-						else:
-							t.e[y] = int(t.e[y]) | bit
-						if propagate(t, [y, h + x]):
-							continue
-						# v leads to a contradiction: the cell is the other way.
-						probes += 1
-						if v == 1:
-							g.e[y] = int(g.e[y]) | bit
-						else:
-							g.f[y] = int(g.f[y]) | bit
-						if not propagate(g, [y, h + x]):
-							return {}
-						moved = true
-						break
-					if nodes > budget:
-						return g
-			if not moved:
-				return g
 		return g
 
 	## Whether `g` is fully known and equal to `bmp`.

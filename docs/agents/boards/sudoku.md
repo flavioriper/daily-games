@@ -103,3 +103,44 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   board behind it is on), laid out by the page (`left`, `hearts_at`,
   `_hearts_x()`), with the real `DigitPad` scaled beside it and the finger
   firing its chips; the Hilltops page magnifies the grid about its hill.
+
+### Solved by reasoning, no guess (2026-10-04)
+
+The user: "nonogram, sudoku and queens should be exactly like binairo about no
+guess, it should be fully solvable from deduction". Before this the dig asked
+only for one answer: of 60 nines dug that way 41 fell to singles, 7 to the
+pencil's steps and **12 to neither**, and Hard kept the first that singles did
+not finish, so most Hard days wanted a guess or a technique nobody here knows.
+Insane's bank was graded with suppositions (0 of 200 finished without one).
+
+- **The dig asks a reasoner, not a count.** `Gen.deduce(puz, tier, hills)`:
+  `SINGLES` (a cell with one number left, a number with one cell left), and
+  `PENCIL` adds `_locked` (a number held to one line of a region, or one
+  region of a line), `_naked_pairs` and `_hidden_pairs`, tried only when
+  singles stall; the hills' reckoning joins when there are hills. `dig` keeps
+  a pair out only while `deduce` still finishes, so a deadline's shallow grid
+  is still a fair one and `count_solutions` is left to the tests.
+  `Gen.TIER`: Easy `SINGLES`, the rest `PENCIL`. `solve_logic` and its
+  suppositions are gone.
+- **`graded`** now means within `GIVENS_SLACK` of the target and, on the nine,
+  that singles stall. A mini dug by reasoning never wanted the pencil (0 in
+  60), so Medium is a mini with fewer givens (10-12 against Easy's 14), as it
+  mostly was (24 of 30 fell to singles before).
+- **Hard is banked** (`content/insane/sudoku_hard.json`, 300 grids,
+  `tools/insane/sudoku_hard_ladder.gd`, `mine_insane.gd -- sudoku_hard`): one
+  reasoned nine in eight stalls singles, and drawing until one does cost
+  194 ms mean and 313 ms worst on the Mac. Every banked grid wants the pencil
+  and none a guess; 25-30 givens. The live deal is the fallback
+  (`sudoku_state.setup`), reasoned too, graded when the budget allows.
+- **Hilltops** digs and prunes its hills by `deduce` as well, and still
+  lands on 15 givens (9-17 hills) -- under the seventeen, so
+  `SD_RULES_HILLS` stands. Re-mined, 640 of 640 passed, 200 kept, all
+  re-proved through `from_bank` and counted to one answer. A live deal took
+  225 ms mean (budget 900).
+- `_propagate` settles a cell against its peers once and finds a unit's lone
+  numbers with two masks (`once`, `twice`): a nine's dig is ~30 ms.
+- `SD_TIP_HILLS_2` told the player to suppose a number; it now says no
+  guessing. The hint still picks the cell with fewest numbers left, not a
+  cell one step of reasoning fills (Binairo's does).
+- Easy to Hard deal different grids than before; a day finished earlier
+  restores another.

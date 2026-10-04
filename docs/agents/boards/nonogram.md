@@ -59,3 +59,23 @@ hold the rest).
   rows read 1 3: RUNS, ORDER (over-fill rose, tap to rub out), CROSS, HINT,
   HEARTS (band 2 judged, wrong tile -> X, finished line fills with X's),
   LEAVES (rows 3-4 tumbled). Easy/Medium 4 pages, Hard 5, Insane 5-6.
+
+### Solved by reading lines, no supposition (2026-10-04)
+
+The user: "nonogram, sudoku and queens should be exactly like binairo about no
+guess, it should be fully solvable from deduction". Easy to Hard already were
+(`Gen.generate` ships a picture only when `solve`'s line logic fills it). Leaf
+Fall was not: its bank was proved by `Gen.Deep.deep_solve`, line logic plus
+one-cell suppositions, and kept the boards where line logic left over a third
+of the grid open (0 of the 160 finished on line logic).
+
+- `Gen.Deep` is `Gen.Lines`; `deep_solve`, `line_open` and `probes` are gone.
+  `line_solve()` is line logic to its fixpoint, a tumbled line read in every
+  order its numbers allow, and it is the whole proof.
+- The ladder (`tools/insane/nonogram_ladder.gd`) puts back one line's order
+  while `line_solve` does not fill the picture. The rung is the lines left
+  tumbled (`LEAVES_MIN` 8 is the gate); re-mined, 1625 of 3000 candidates
+  passed, the 160 kept carry 16 to 19 leaves, all 160 re-proved through
+  `from_bank`.
+- `NG_TIP_LEAF_2` told the player to suppose a cell; it now says no guessing.
+- A banked day finished before this restores a different picture.

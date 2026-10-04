@@ -66,3 +66,28 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   a wrong queen buzzes off and leaves a rose cross), MIST (the last two
   patches run together; one crown of two, then the rest crossed). Easy and
   Medium 4 pages, Hard 5, Insane 6.
+
+### Solved by reasoning, no supposition (2026-10-04)
+
+The user: "nonogram, sudoku and queens should be exactly like binairo about no
+guess, it should be fully solvable from deduction". Easy and Medium already
+finished on bands and reach. Hard's `fits` let in courts that needed a
+supposition (127 of the 200 banked), and Morning Mist's ladder kept only
+courts where bands and reach left over half the court open (0 of 180 finished
+without supposing).
+
+- `queens_logic.gd` has two rungs. `SUPPOSE`, `Court.suppose`, `probes` and
+  the grade's `solved` / `deep` are gone; `Logic.answer` and `from_bank(...,
+  true)` prove with bands and reach. Reach (a seat whose queen would leave a
+  row, column or patch without room is crossed) stays: it reads the court as
+  it stands and follows nothing.
+- `Gen.fits`: every band needs `solved2`; Hard is two wide bands.
+  `Gen.graded` only ever returns a court reasoning finishes (`REASONED_TRIES`
+  more draws when `GRADED_TRIES` found none; 40 seeds in 40 on each of 7, 8,
+  9 did).
+- Both banks re-mined: Hard 573 of 4000 fit, 200 kept (rungs 300-520);
+  Morning Mist 288 of 1600, 180 kept (at least one wide band, rungs
+  170-530). All re-proved through `from_bank(board, true)` and counted to
+  one seating.
+- `QN_TIP_MIST_2` told the player to seat a queen in her head and follow
+  her; it now says no guessing and points at counting rows.

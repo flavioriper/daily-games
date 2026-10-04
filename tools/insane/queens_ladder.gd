@@ -5,19 +5,19 @@ extends RefCounted
 ## of neighbouring patches; each misty patch takes two queens, every row and
 ## column still one (Gen.mist).
 ##
-## The rung is the per-mille of the court that singles, bands and reach
-## (puzzles/queens_logic.gd, rungs 1 and 2) leave undecided: the share a
-## player can only reach by supposing a queen and following her to a
-## contradiction. Hard's courts leave nothing (or almost nothing) there, so
-## HARD_RUNG keeps boards where more than half the court is open. `work` is
-## the suppositions the deep solve took.
+## Every court kept finishes on singles, bands and reach
+## (puzzles/queens_logic.gd), counting a misty patch as two: no supposition,
+## no guess (the user, 2026-10-04). The rung is a score like Hard's, 100 a
+## band over several lines and 10 each time the player had to think, and
+## HARD_RUNG keeps the courts with at least one such band; the mist is what
+## makes them Insane. `work` is the times the player had to think.
 
 const Gen = preload("res://puzzles/queens_gen.gd")
 const Logic = preload("res://puzzles/queens_logic.gd")
 
 const N := 10
 const MISTS := 2
-const HARD_RUNG := 500
+const HARD_RUNG := 99
 
 static func candidate(rng: RandomNumberGenerator) -> Dictionary:
 	var out := Gen.mist(rng, N, MISTS)
@@ -30,7 +30,6 @@ static func grade(board: Dictionary) -> Dictionary:
 	if b.is_empty():
 		return {"rung": -1, "work": 0, "unique": false}
 	var g := Logic.grade(Gen._flatten(b.region, b.n), b.n, b.quota)
-	var unique := bool(b.ok) and Gen.solve_count(b.region, b.n, 2, b.quota) == 1 \
-		and (b.mist as Array).size() == MISTS
-	return {"rung": int(round(float(g.open2) * 1000.0 / float(b.n * b.n))), "work": int(g.probes),
-		"unique": unique and bool(g.solved)}
+	var unique := bool(b.ok) and bool(g.solved2) and (b.mist as Array).size() == MISTS
+	return {"rung": mini(999, 100 * int(g.wide) + 10 * int(g.thinks)), "work": int(g.thinks),
+		"unique": unique}

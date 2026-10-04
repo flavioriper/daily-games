@@ -70,12 +70,16 @@ static func _test_generator(t) -> void:
 			t.check(givens >= int(Gen.TARGET[d]) - 1, "%s has at least its band's givens (%d)" % [tag, givens])
 			t.check(givens <= int(Gen.TARGET[d]) + 6, "%s is not far over its band's givens (%d)" % [tag, givens])
 			t.check(symmetric, "%s the givens are symmetric about the centre" % tag)
-			# Easy must fall to singles. Hard must not; medium is allowed to.
+			# No band asks for a guess: the band's reasoning finishes the grid.
+			# Easy must fall to singles; a graded hard grid must not (the
+			# live hard deal is the bank's fallback, and one dig in eight
+			# wants the pencil, so ungraded is allowed here).
 			var singled := Gen.is_complete(Gen.singles_solve(puz))
+			t.check(Gen.deduce(puz, Gen.TIER[d]), "%s is finished by reasoning, no guess" % tag)
 			if d == 0:
 				t.check(singled, "%s easy falls to singles" % tag)
-			elif d == 2:
-				t.check(not singled, "%s hard does not fall to singles" % tag)
+			elif d == 2 and out.graded:
+				t.check(not singled, "%s a graded hard does not fall to singles" % tag)
 	# **Every Gen.generate in this file passes -1, and it has to.**
 	# generate()'s output is contingent on wall-clock timing as well as on
 	# the seed, because TIME_BUDGET_MS abandons a dig that overruns and hands

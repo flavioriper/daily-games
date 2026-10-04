@@ -448,44 +448,55 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 ## this: 0.53, 0.45 and 0.93 free queens on the opening court of 7, 8 and 9.
 const KEEP := 2
 ## How many courts a band draws, at most, looking for one that asks for the
-## thinking the band promises (`fits`); past that the first proved one is
-## dealt.
+## thinking the band promises (`fits`); past that the first one reasoning
+## finishes is dealt.
 const GRADED_TRIES := [6, 10, 14]
+## How many more it draws when not one of those was finished by reasoning.
+## Measured 2026-10-04: 30 seeds in 30 on 7 and 8 found one inside
+## GRADED_TRIES, so this is a floor under a seed nobody has met.
+const REASONED_TRIES := 40
 
 ## A court for `band` (0 Easy, 1 Medium, 2 Hard), graded by the logic solver
-## (puzzles/queens_logic.gd):
-## - Easy finishes on singles, one-line bands and reach, never a band over
-##   several lines or a supposition;
+## (puzzles/queens_logic.gd). Every band's court finishes on singles, bands and
+## reach -- never a supposition, never a guess:
+## - Easy never needs a band over several lines;
 ## - Medium needs thinking at least five times, or a band over several lines;
-## - Hard needs two bands over several lines, or a supposition -- and every
-##   Hard court still finishes without a guess.
+## - Hard needs two bands over several lines.
+## "ok" is false only when no court drawn was finished by reasoning.
 static func graded(rng: RandomNumberGenerator, band: int, n: int) -> Dictionary:
 	var first: Dictionary = {}
 	var ones := PackedInt32Array()
 	ones.resize(n)
 	ones.fill(1)
-	for _t in GRADED_TRIES[clampi(band, 0, GRADED_TRIES.size() - 1)]:
+	var tries: int = GRADED_TRIES[clampi(band, 0, GRADED_TRIES.size() - 1)]
+	for t in tries + REASONED_TRIES:
+		if t >= tries and not first.is_empty():
+			break
 		var out := generate(rng, n, KEEP)
 		if not out.ok:
-			if first.is_empty():
-				first = out
 			continue
-		var g := Logic.grade(_flatten(out.region, n), n, ones, band >= 2)
+		var g := Logic.grade(_flatten(out.region, n), n, ones)
+		if not bool(g.solved2):
+			continue
 		out["grade"] = g
-		if first.is_empty() or not first.ok:
+		if first.is_empty():
 			first = out
 		if fits(band, g):
 			return out
+	if first.is_empty():
+		return {"region": [], "solution": PackedInt32Array(), "n": n, "ok": false}
 	return first
 
 static func fits(band: int, g: Dictionary) -> bool:
+	if not bool(g.solved2):
+		return false
 	match band:
 		0:
-			return bool(g.solved2) and int(g.wide) == 0
+			return int(g.wide) == 0
 		1:
-			return bool(g.solved2) and (int(g.wide) >= 1 or int(g.thinks) >= 5)
+			return int(g.wide) >= 1 or int(g.thinks) >= 5
 		_:
-			return bool(g.solved) and (not bool(g.solved2) or int(g.wide) >= 2)
+			return int(g.wide) >= 2
 
 # --- Insane: Morning Mist ---
 
@@ -579,8 +590,8 @@ static func to_bank(out: Dictionary) -> Dictionary:
 	return {"n": n, "cells": cells, "quota": Array(quota), "answer": answer}
 
 ## A bank entry back in `generate`'s shape. With `prove` (the miner and the
-## ladders) "ok" only when the logic solver finishes it without a guess and
-## lands on the stored answer; without (the phone, on every open), only that
+## ladders) "ok" only when bands and reach finish it, no supposition, and land
+## on the stored answer; without (the phone, on every open), only that
 ## the stored answer is a legal seating -- the full proof cost up to 244 ms on
 ## the Mac and was already paid when the court was mined.
 static func from_bank(board: Dictionary, prove := false) -> Dictionary:

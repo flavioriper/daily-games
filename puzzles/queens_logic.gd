@@ -3,7 +3,7 @@ extends RefCounted
 ## Queens solved by hand, the way a player does it, so a court can be graded
 ## by what it asks of the player rather than by whether it is unique.
 ##
-## Three rungs, each everything below it plus one idea:
+## Two rungs, the second everything in the first plus one idea:
 ##
 ## 1. **Singles.** A row or a column with one cell left takes its queen
 ##    there; a patch with as many cells left as queens to seat takes them
@@ -17,9 +17,11 @@ extends RefCounted
 ##    patches that reach into the run can only just fill it, they are
 ##    crossed out everywhere else. Then reach: a cell whose queen would cross
 ##    out the last cell of some row, column or patch is crossed itself.
-## 3. **Suppose.** Seat a queen on a cell in your head, follow rungs 1 and 2,
-##    and if the court breaks the cell is crossed. The careful player's last
-##    resort, never a guess: a court this finishes has exactly one answer.
+##
+## There is no third rung (the user, 2026-10-04: "fully solvable from
+## deduction, no guess"): seating a queen in your head and following her until
+## the court breaks is a guess with the working shown, and no court dealt asks
+## for it. A court rung 2 finishes has exactly one answer.
 ##
 ## A patch usually takes one queen; Insane's misty patches take two
 ## (`quota`), and everything here counts with that. Spec:
@@ -27,7 +29,6 @@ extends RefCounted
 
 const SINGLES := 1
 const BANDS := 2
-const SUPPOSE := 3
 
 class Court:
 	var n := 0
@@ -40,8 +41,6 @@ class Court:
 	var left := PackedInt32Array()     # patch -> queens still to seat
 	var broken := false
 	var seated := 0
-	## Suppositions tried, for the grade's work.
-	var probes := 0
 	## How many times the player had to think: bands or reach found a cross
 	## because no single was on offer; and of those, how many needed a band
 	## over several lines at once, the one players find hard.
@@ -350,33 +349,9 @@ class Court:
 				continue
 			return
 
-	## Rung 3: one supposition that breaks the court. True when it crossed a
-	## cell.
-	func suppose() -> bool:
-		for i in n * n:
-			if not cand[i]:
-				continue
-			probes += 1
-			var t := dup()
-			t.seat(i)
-			t.settle(BANDS)
-			if t.broken:
-				cand[i] = 0
-				return true
-			if t.solved():
-				# The only way forward was this queen: seat her.
-				pass
-		return false
-
 	## Everything up to `rung`.
 	func solve(rung: int) -> void:
 		settle(mini(rung, BANDS))
-		if rung < SUPPOSE:
-			return
-		while not broken and seated < n:
-			if not suppose():
-				return
-			settle(BANDS)
 
 static func court(region: PackedInt32Array, n: int, quota: PackedInt32Array) -> Court:
 	var c := Court.new()
@@ -411,32 +386,25 @@ static func opening_singles(region: PackedInt32Array, n: int, quota: PackedInt32
 			k += quota[g]
 	return k
 
-## The grade of a court, every rung measured from a fresh court:
-## `open1` / `open2` the cells singles alone, and bands and reach, leave
-## undecided; `solved` whether suppositions finish it (so it is unique and
-## fair); `probes` the suppositions that took; `first` the singles on offer
-## at the start after one pass of bands and reach -- what a player finds
-## before any real thinking.
-static func grade(region: PackedInt32Array, n: int, quota: PackedInt32Array, deep := true) -> Dictionary:
+## The grade of a court, each rung measured from a fresh court: `open1` /
+## `open2` the cells singles alone, and bands and reach, leave undecided;
+## `solved2` whether bands and reach finish it (so it is unique and asks for
+## no guess); `thinks` and `wide` what that took.
+static func grade(region: PackedInt32Array, n: int, quota: PackedInt32Array) -> Dictionary:
 	var c1 := court(region, n, quota)
 	c1.solve(SINGLES)
 	var c2 := court(region, n, quota)
 	c2.solve(BANDS)
-	var out := {"open1": c1.open_cells() if not c1.solved() else 0,
+	return {"open1": c1.open_cells() if not c1.solved() else 0,
 		"open2": c2.open_cells() if not c2.solved() else 0,
-		"solved1": c1.solved(), "solved2": c2.solved(), "solved": c2.solved(), "probes": 0,
+		"solved1": c1.solved(), "solved2": c2.solved(),
 		"opening": opening_singles(region, n, quota), "thinks": c2.thinks, "wide": c2.wide}
-	if deep and not c2.solved() and not c2.broken:
-		var c3 := court(region, n, quota)
-		c3.solve(SUPPOSE)
-		out.solved = c3.solved()
-		out.probes = c3.probes
-	return out
 
-## The queens a finished court seats, row -> column, or empty.
+## The queens a court seats by reasoning, row -> column, or empty when bands
+## and reach do not finish it.
 static func answer(region: PackedInt32Array, n: int, quota: PackedInt32Array) -> PackedInt32Array:
 	var c := court(region, n, quota)
-	c.solve(SUPPOSE)
+	c.solve(BANDS)
 	var out := PackedInt32Array()
 	if not c.solved():
 		return out

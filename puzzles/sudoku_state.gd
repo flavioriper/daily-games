@@ -77,7 +77,12 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 			out = Gen.generate_hills(rng, Gen.HILL_BUDGET_MS)
 		hills = out.hills
 	else:
-		out = Gen.generate(rng, difficulty)
+		# Hard is banked too (tools/insane/sudoku_hard_ladder.gd): a nine that
+		# wants the pencil and never a guess is one dig in eight.
+		if band == 2:
+			out = Gen.from_bank(InsaneBank.pick("sudoku_hard", bank_step))
+		if out.is_empty():
+			out = Gen.generate(rng, difficulty)
 		hills = PackedInt32Array()
 	ruled = {}
 	sol = out.solution

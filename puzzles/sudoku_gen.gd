@@ -5,14 +5,16 @@ extends RefCounted
 ## No state and no scene -- every entry point is static, and the cell tables
 ## are built once on first use.
 ##
-## Two things are worth knowing before changing anything here. **The dig is
-## the expensive half**, because every cell taken out is a uniqueness count;
-## the count is most-constrained-cell-first precisely so a second answer is
-## found or ruled out in a few thousand steps instead of a few million.
-## **And a band is a target AND a technique**: easy must fall to naked and
-## hidden singles, medium and hard must not, and ATTEMPTS tries is where
-## that stops being free. A band is a tendency; a hung generator is worse
-## than a medium day labelled hard.
+## Two things are worth knowing before changing anything here. **Every grid
+## is solved by reasoning, never by a guess** (the user, 2026-10-04: "fully
+## solvable from deduction, no guess"): the dig keeps a cell out only while
+## `deduce` still finishes the grid, and `deduce` is a reasoner, not a search
+## -- singles on Easy, singles and the pencil's steps (`PENCIL`) on the rest,
+## the hills' reckoning on Insane. A grid a reasoner finishes has one answer,
+## so the dig asks nothing else. **And a band is a target AND a technique**:
+## easy falls to singles alone, medium and hard should not, and ATTEMPTS tries
+## is where that stops being free. A band is a tendency; a hung generator is
+## worse than a medium day labelled hard.
 ## Spec: docs/superpowers/specs/2026-09-20-sudoku-flat-design.md, section 8.
 
 ## The grid's size is the band's: easy and medium are the mini, six by six
@@ -38,9 +40,26 @@ const SIZE := [6, 6, 9, 9]
 ## TIME_BUDGET_MS already degrades those seeds to graded:false rather than
 ## hanging, so the provisional row stands.
 const TARGET := [14, 10, 26, 22]
-## Tries before the band's technique test is given up on. Measured: six left
-## one hard day in twelve solvable by singles, ten leaves none.
+## Tries before the band's technique test is given up on.
 const ATTEMPTS := 10
+## What `deduce` may use. SINGLES: a cell with one number left, a number with
+## one cell left in a unit -- the moves made without writing anything down.
+## PENCIL adds what the pencil marks show: a number held to one line of a
+## region (or one region of a line) leaves the rest of it, two cells that
+## share the same two numbers keep them from the rest of their unit, and two
+## numbers with the same two cells left keep those cells to themselves.
+## How far over its target a graded grid may stop, per band: reasoning gives
+## out before a count of answers does.
+const GIVENS_SLACK := [2, 2, 4, 4]
+## Whether a graded grid must stall singles. Only the nine: measured
+## 2026-10-04, 0 minis in 60 dug by reasoning wanted the pencil, and one nine
+## in eight -- which is why Hard is banked (content/insane/sudoku_hard.json,
+## tools/insane/sudoku_hard_ladder.gd) and this live deal is its fallback.
+const NEEDS_PENCIL := [false, false, true, true]
+const SINGLES := 0
+const PENCIL := 1
+## The band's tier: Easy never needs the pencil.
+const TIER := [SINGLES, PENCIL, PENCIL, PENCIL]
 ## How far singles_solve will iterate before giving up. Eighty-one placements
 ## is the most any grid can need, so this cannot be hit by a real board and
 ## exists only so a bug here cannot hang a phone.
@@ -148,15 +167,17 @@ static func _tables() -> void:
 	_units = us
 	_beside = bs
 
-## The day's puzzle. `graded` says whether the band's technique test was met
-## within ATTEMPTS tries; the board plays either way and nothing reads it but
-## the tests and the probe. `deadline`, shared with dig(), is what makes
-## "give up on this attempt" and "give up on this whole call" the same
-## clock rather than two budgets that can disagree. `budget_ms` defaults to
-## TIME_BUDGET_MS for every real call; a test that wants generate()'s output
-## to depend on nothing but the seed -- proving determinism, say -- passes
-## -1 to turn the clock off entirely, the same sentinel dig() already uses
-## for "no deadline".
+## The day's puzzle. Whatever comes back is finished by the band's reasoning
+## (TIER), deadline or no deadline. `graded` says whether the band's own
+## test was also met within ATTEMPTS tries -- within GIVENS_SLACK of the
+## target, and on Hard a grid singles alone do not finish -- the board plays
+## either way and nothing reads it but the tests and the probe. `deadline`, shared with dig(), is what makes "give up on this
+## attempt" and "give up on this whole call" the same clock rather than two
+## budgets that can disagree. `budget_ms` defaults to TIME_BUDGET_MS for
+## every real call; a test that wants generate()'s output to depend on
+## nothing but the seed -- proving determinism, say -- passes -1 to turn the
+## clock off entirely, the same sentinel dig() already uses for "no
+## deadline".
 static func generate(rng: RandomNumberGenerator, difficulty: int, budget_ms: int = TIME_BUDGET_MS) -> Dictionary:
 	var d := clampi(difficulty, 0, TARGET.size() - 1)
 	use(size_for(d))
@@ -164,17 +185,28 @@ static func generate(rng: RandomNumberGenerator, difficulty: int, budget_ms: int
 	var deadline := -1
 	if budget_ms >= 0:
 		deadline = Time.get_ticks_msec() + budget_ms
+	var tier: int = TIER[d]
 	for attempt in ATTEMPTS:
 		var sol := full_grid(rng)
-		var puz := dig(rng, sol, int(TARGET[d]), deadline)
-		var singled := is_complete(singles_solve(puz))
-		var want := singled if d == 0 else not singled
-		out = {"puzzle": puz, "solution": sol, "graded": want}
+		var puz := dig(rng, sol, int(TARGET[d]), deadline, PackedInt32Array(), tier)
+		var want := givens_of(puz) <= int(TARGET[d]) + int(GIVENS_SLACK[d])
+		if want and NEEDS_PENCIL[d]:
+			want = not deduce(puz, SINGLES)
+		# The first grid stands unless a later one meets the band's test.
+		if out.is_empty() or want:
+			out = {"puzzle": puz, "solution": sol, "graded": want}
 		if want:
 			break
 		if deadline >= 0 and Time.get_ticks_msec() >= deadline:
 			break
 	return out
+
+static func givens_of(puz: PackedByteArray) -> int:
+	var n := 0
+	for v in puz:
+		if v > 0:
+			n += 1
+	return n
 
 ## A full legal grid, by randomised backtracking over row, column and region
 ## bitmasks. Packed arrays are passed by reference in GDScript, which is what
@@ -301,33 +333,30 @@ static func _count(g: PackedByteArray, rm: PackedInt32Array, cm: PackedInt32Arra
 
 ## Take cells out of `sol` in a shuffled order, in 180-degree pairs so the
 ## givens read as a pattern and not as spilled salt, keeping a cell out only
-## while exactly one solution survives. `deadline_ms` (an absolute
+## while `deduce` at `tier` (and with `hills`, when there are any) still
+## finishes the grid -- so the puzzle handed back is always one reasoning
+## solves, and has one answer for that reason. `deadline_ms` (an absolute
 ## Time.get_ticks_msec() reading, as generate() hands in) is checked before
 ## every pair: past it, the loop stops removing and returns the puzzle as it
 ## stands -- shallower than `target` wanted, but every removal already
-## committed was already proved unique, so the fallback is still a real,
-## still-unique puzzle and not a hang. -1 (the default) means no deadline,
-## for a caller with nothing to share one with.
+## committed was already reasoned through, so the fallback is still a fair
+## puzzle and not a hang. -1 (the default) means no deadline, for a caller
+## with nothing to share one with.
 static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, deadline_ms: int = -1,
-		hills := PackedInt32Array()) -> PackedByteArray:
+		hills := PackedInt32Array(), tier := PENCIL) -> PackedByteArray:
 	var puz := sol.duplicate()
 	var order: Array = []
 	for i in CELLS:
 		order.append(i)
 	_shuffle(order, rng)
-	# `order` shuffles all 81 cell indices, so every non-centre pair (i,
-	# 80-i) comes up twice -- once as i, once as its mirror -- rather than
-	# `order` being a shuffle of the forty-one distinct pairs. `seen` marks
-	# both indices the first time a pair is handled and skips it outright on
-	# its second visit, rather than re-running count_solutions on it. That is
-	# always safe, not just faster: if the pair succeeded, both its cells are
-	# already 0 and the second visit is a no-op anyway (the a==0 and b==0
-	# guard below would have caught it regardless); if it failed, it cannot
-	# succeed later, because whatever else got removed from the grid in
-	# between only ever has fewer givens than when this pair was first
-	# tried, and removing a given can only add solutions, never take one
-	# away -- a pair that leaves two answers at a higher given count leaves
-	# at least that many at every lower one too.
+	# `order` shuffles every cell index, so every non-centre pair (i and its
+	# mirror) comes up twice rather than `order` being a shuffle of the
+	# distinct pairs. `seen` marks both indices the first time a pair is
+	# handled and skips it outright on its second visit. That is always safe,
+	# not just faster: if the pair succeeded, both its cells are already 0;
+	# if it failed, it cannot succeed later, because whatever else got
+	# removed in between only ever leaves fewer givens, and a reasoner that
+	# stalls with a given in hand stalls without it too.
 	var seen := PackedByteArray()
 	seen.resize(CELLS)
 	var givens := CELLS
@@ -352,7 +381,7 @@ static func dig(rng: RandomNumberGenerator, sol: PackedByteArray, target: int, d
 			removing += 1
 		puz[i] = 0
 		puz[j] = 0
-		if count_solutions(puz, 2, hills) != 1:
+		if not deduce(puz, tier, hills):
 			puz[i] = a
 			puz[j] = b
 		else:
@@ -442,19 +471,16 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 # beside it -- up, down, left, right -- hold a smaller number. Those four
 # share a row or a column with it, so none can equal it: each is lower or
 # higher, and a hill of 0 is the lowest thing around it, a hill of 4 the
-# highest. The hills carry what the givens do not: a banked Insane grid has
-# fewer givens than any plain grid can have and stay unique (seventeen is the
-# floor there), and it only opens by supposing a number and following it.
+# highest. The hills carry what the givens do not, and every banked grid is
+# finished by reasoning -- singles, the pencil's steps and the hills' own
+# reckoning (`deduce`) -- never by supposing a number and following it.
 #
 # `hills` is one int a cell everywhere below: -1 for no hill, else its count.
 
 ## How many hills a fresh grid is dealt before the dig, and the dig's floor.
-## The dig goes as low as the hills let it; the prune after it then takes out
-## every hill the answer can do without.
+## The dig goes as low as reasoning lets it; the prune after it then takes out
+## every hill reasoning can do without.
 const HILLS_DEALT := 34
-## Sixteen: one under the seventeen no plain grid can go below and stay
-## unique. Measured: digging to nought took over a minute a grid and left
-## six givens that suppositions could not finish.
 const HILL_TARGET := 16
 ## Wall-clock ceiling on one live Hilltops deal (the fallback when the bank
 ## is empty or unreadable), in milliseconds.
@@ -510,9 +536,9 @@ static func hill_ok(g: PackedByteArray, hills: PackedInt32Array, h: int) -> bool
 		and higher + (open if v < N else 0) >= up
 
 ## The deal: a full grid, HILLS_DEALT hills read off it, the symmetric dig as
-## low as the hills allow, and then every hill the answer can do without taken
-## out. {"puzzle", "solution", "hills", "ok"}; `ok` false when the deadline
-## cut the dig short (the grid is still unique, only easier).
+## low as reasoning with the hills goes, and then every hill reasoning can do
+## without taken out. {"puzzle", "solution", "hills", "ok"}; `ok` false when
+## the deadline cut it short (the grid is still reasoned out, only easier).
 static func generate_hills(rng: RandomNumberGenerator, budget_ms: int = -1) -> Dictionary:
 	use(9)
 	var deadline := -1
@@ -526,12 +552,12 @@ static func generate_hills(rng: RandomNumberGenerator, budget_ms: int = -1) -> D
 	for i in CELLS:
 		order.append(i)
 	_shuffle(order, rng)
-	for k in HILLS_DEALT:
+	for k in mini(HILLS_DEALT, CELLS):
 		var i: int = order[k]
 		hills[i] = hill_count(sol, i)
-	var puz := dig(rng, sol, HILL_TARGET, deadline, hills)
+	var puz := dig(rng, sol, HILL_TARGET, deadline, hills, PENCIL)
 	var ok := deadline < 0 or Time.get_ticks_msec() < deadline
-	# Every hill the answer can do without comes out, in a shuffled order.
+	# Every hill reasoning can do without comes out, in a shuffled order.
 	_shuffle(order, rng)
 	for i in order:
 		if hills[i] < 0:
@@ -541,7 +567,7 @@ static func generate_hills(rng: RandomNumberGenerator, budget_ms: int = -1) -> D
 			break
 		var k := hills[i]
 		hills[i] = -1
-		if count_solutions(puz, 2, hills) != 1:
+		if not deduce(puz, PENCIL, hills):
 			hills[i] = k
 	return {"puzzle": puz, "solution": sol, "hills": hills, "ok": ok}
 
@@ -553,75 +579,44 @@ static func hill_total(hills: PackedInt32Array) -> int:
 			n += 1
 	return n
 
-# --- the logic solver: what the hills ask of a player ---
+# --- the reasoner: what a grid asks of a player ---
 
-## Solves `puz` under `hills` the way a player does, never guessing: singles
-## (a cell with one number left, a number with one cell left in a unit) and
-## the hills' own reckoning (a hill's number must leave exactly its count
-## lower beside it; a cell beside a hill keeps only the numbers some number of
-## the hill agrees with). With `deep`, it also **supposes**: puts a number in
-## a cell in its head, follows the rules, and crosses the number out when that
-## breaks the grid. {"ok": finished, "supposed": suppositions that crossed
-## something out, "probes": suppositions tried}.
-static func solve_logic(puz: PackedByteArray, hills: PackedInt32Array, deep: bool) -> Dictionary:
+## Whether reasoning at `tier` finishes `puz` (under `hills`, when there are
+## any): singles, the pencil's steps from PENCIL up, and the hills' own
+## reckoning (a hill's number must leave exactly its count lower beside it; a
+## cell beside a hill keeps only the numbers some number of the hill agrees
+## with). Never a supposition and never a search, so a grid this finishes has
+## one answer and asks for no guess.
+static func deduce(puz: PackedByteArray, tier: int, hills := PackedInt32Array()) -> bool:
 	_tables()
 	var cand := PackedInt32Array()
 	cand.resize(CELLS)
 	for i in CELLS:
 		cand[i] = (1 << (puz[i] - 1)) if puz[i] > 0 else FULL
-	var out := {"ok": false, "supposed": 0, "probes": 0}
-	if not _propagate(cand, hills):
-		return out
-	while not _settled(cand):
-		if not deep:
-			return out
-		var crossed := false
-		# The cells with fewest numbers left first: where a player would try.
-		var cells: Array = []
-		for i in CELLS:
-			if popcount(cand[i]) > 1:
-				cells.append(i)
-		cells.sort_custom(func(a: int, b: int) -> bool: return popcount(cand[a]) < popcount(cand[b]))
-		for i in cells:
-			for d in range(1, N + 1):
-				var bit := 1 << (d - 1)
-				if (cand[i] & bit) == 0:
-					continue
-				out.probes += 1
-				var trial := cand.duplicate()
-				trial[i] = bit
-				if _propagate(trial, hills):
-					continue
-				cand[i] &= ~bit
-				out.supposed += 1
-				if not _propagate(cand, hills):
-					return out
-				crossed = true
-				break
-			if crossed:
-				break
-		if not crossed:
-			return out
-	out.ok = true
-	return out
+	return _propagate(cand, hills, tier) and _settled(cand)
 
 static func _settled(cand: PackedInt32Array) -> bool:
 	for m in cand:
-		if popcount(m) != 1:
+		if m == 0 or (m & (m - 1)) != 0:
 			return false
 	return true
 
-## Singles and the hills until nothing changes. False when the grid breaks.
-static func _propagate(cand: PackedInt32Array, hills: PackedInt32Array) -> bool:
-	var changed := true
-	while changed:
-		changed = false
+## Reasoning until nothing changes: singles and the hills first, and only
+## when those stall (and `tier` allows) one step of the pencil. False when
+## the grid breaks.
+static func _propagate(cand: PackedInt32Array, hills: PackedInt32Array, tier := SINGLES) -> bool:
+	# A settled cell crosses its number out of its peers once.
+	var done := PackedByteArray()
+	done.resize(CELLS)
+	while true:
+		var changed := false
 		for i in CELLS:
 			var m := cand[i]
 			if m == 0:
 				return false
-			if popcount(m) != 1:
+			if done[i] or (m & (m - 1)) != 0:
 				continue
+			done[i] = 1
 			for j in _peers[i]:
 				if cand[j] & m:
 					cand[j] &= ~m
@@ -629,19 +624,28 @@ static func _propagate(cand: PackedInt32Array, hills: PackedInt32Array) -> bool:
 						return false
 					changed = true
 		for u in _units:
-			for d in range(1, N + 1):
-				var bit := 1 << (d - 1)
-				var seat := -1
-				var n := 0
-				for i in u:
-					if cand[i] & bit:
-						seat = i
-						n += 1
-				if n == 0:
+			# `once` the numbers some cell of the unit can take, `twice` those
+			# two or more can: a number in the first and not the second has
+			# one cell left.
+			var once := 0
+			var twice := 0
+			for i in u:
+				var m := cand[i]
+				twice |= once & m
+				once |= m
+			if once != FULL:
+				return false
+			var lone := once & ~twice
+			if lone == 0:
+				continue
+			for i in u:
+				var m := cand[i] & lone
+				if m == 0 or m == cand[i]:
+					continue
+				if (m & (m - 1)) != 0:
 					return false
-				if n == 1 and cand[seat] != bit:
-					cand[seat] = bit
-					changed = true
+				cand[i] = m
+				changed = true
 		if not hills.is_empty():
 			for h in CELLS:
 				if hills[h] < 0:
@@ -651,7 +655,105 @@ static func _propagate(cand: PackedInt32Array, hills: PackedInt32Array) -> bool:
 					return false
 				if r > 0:
 					changed = true
+		if changed:
+			continue
+		if tier < PENCIL or not _pencil(cand):
+			return true
 	return true
+
+## One step of the pencil over the candidates; true when it crossed something
+## out. Tried in the order a player meets them.
+static func _pencil(cand: PackedInt32Array) -> bool:
+	return _locked(cand) or _naked_pairs(cand) or _hidden_pairs(cand)
+
+## A number whose cells left in a region all lie on one line leaves the rest
+## of that line; one whose cells left on a line all lie in one region leaves
+## the rest of that region.
+static func _locked(cand: PackedInt32Array) -> bool:
+	var did := false
+	for ui in _units.size():
+		var u: PackedInt32Array = _units[ui]
+		for d in N:
+			var bit := 1 << d
+			var first := -1
+			var n := 0
+			var one_row := true
+			var one_col := true
+			var one_box := true
+			for i in u:
+				if (cand[i] & bit) == 0:
+					continue
+				if n == 0:
+					first = i
+				else:
+					one_row = one_row and row_of(i) == row_of(first)
+					one_col = one_col and col_of(i) == col_of(first)
+					one_box = one_box and box_of(i) == box_of(first)
+				n += 1
+			if n < 2:
+				continue
+			if ui >= 2 * N:
+				if one_row:
+					did = _strike(cand, _units[row_of(first)], bit, u) or did
+				elif one_col:
+					did = _strike(cand, _units[N + col_of(first)], bit, u) or did
+			elif one_box:
+				did = _strike(cand, _units[2 * N + box_of(first)], bit, u) or did
+		if did:
+			return true
+	return false
+
+## Crosses `bits` out of every cell of `unit` that is not also in `keep`.
+static func _strike(cand: PackedInt32Array, unit: PackedInt32Array, bits: int, keep: PackedInt32Array) -> bool:
+	var did := false
+	for i in unit:
+		if (cand[i] & bits) != 0 and not keep.has(i):
+			cand[i] &= ~bits
+			did = true
+	return did
+
+## Two cells of a unit left with the same two numbers: those two numbers go
+## nowhere else in it.
+static func _naked_pairs(cand: PackedInt32Array) -> bool:
+	for u in _units:
+		for a in u.size():
+			var m := cand[u[a]]
+			if popcount(m) != 2:
+				continue
+			for b in range(a + 1, u.size()):
+				if cand[u[b]] != m:
+					continue
+				if _strike(cand, u, m, PackedInt32Array([u[a], u[b]])):
+					return true
+	return false
+
+## Two numbers of a unit left with the same two cells: those two cells take
+## nothing else.
+static func _hidden_pairs(cand: PackedInt32Array) -> bool:
+	var seats := PackedInt32Array()
+	seats.resize(N)
+	for u in _units:
+		seats.fill(0)
+		for k in u.size():
+			var m := cand[u[k]]
+			for d in N:
+				if m & (1 << d):
+					seats[d] |= 1 << k
+		for d1 in N:
+			if popcount(seats[d1]) != 2:
+				continue
+			for d2 in range(d1 + 1, N):
+				if seats[d2] != seats[d1]:
+					continue
+				var pair := (1 << d1) | (1 << d2)
+				var did := false
+				for k in u.size():
+					if (seats[d1] & (1 << k)) != 0 and cand[u[k]] != pair:
+						cand[u[k]] &= pair
+						did = true
+				if did:
+					return true
+	return false
 
 ## One hill's reckoning over the candidates: keeps only the hill's numbers
 ## that can leave exactly `k` lower beside it, and only the neighbours'
@@ -769,7 +871,8 @@ static func _count_cand(cand: PackedInt32Array, cap: int, hills: PackedInt32Arra
 
 # --- the bank (content/insane/sudoku.json) ---
 
-## A Hilltops grid as the bank keeps it: `puzzle` and `solution` one digit a
+## A grid as the banks keep it (Hilltops in content/insane/sudoku.json, Hard's
+## plain nine in sudoku_hard.json, its `hills` all '.'): `puzzle` and `solution` one digit a
 ## cell in reading order ('.' empty), `hills` one character a cell ('.' none,
 ## else the count).
 static func to_bank(out: Dictionary) -> Dictionary:
@@ -779,13 +882,14 @@ static func to_bank(out: Dictionary) -> Dictionary:
 	for i in 81:
 		p += "." if out.puzzle[i] == 0 else str(out.puzzle[i])
 		s += str(out.solution[i])
-		h += "." if out.hills[i] < 0 else str(out.hills[i])
+		h += "." if out.hills.is_empty() or out.hills[i] < 0 else str(out.hills[i])
 	return {"puzzle": p, "solution": s, "hills": h}
 
 ## The bank's grid back as generate_hills hands one over; {} for an entry that
 ## does not hold together. The phone checks what is cheap -- a legal answer,
 ## givens that agree with it, hills that are its own counts -- and trusts the
-## miner's uniqueness proof, which the ladder's grade re-runs on the Mac.
+## miner's proof that reasoning finishes it, which the ladder's grade re-runs
+## on the Mac.
 static func from_bank(board: Dictionary) -> Dictionary:
 	var p := String(board.get("puzzle", ""))
 	var s := String(board.get("solution", ""))
