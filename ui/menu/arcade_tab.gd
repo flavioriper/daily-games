@@ -437,6 +437,9 @@ class ThirteenBanner extends Control:
 		if size.x <= 0.0 or size.y <= 0.0:
 			return
 		_keep.clear()
+		if PebbleArt.skin() == null:
+			texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			PebbleArt.ensure_skin(self, queue_redraw)
 		var s := minf(size.y * 0.42, size.x / 8.5)
 		var mid := size * Vector2(0.5, 0.56)
 		var font := PebbleArt.font()
@@ -464,7 +467,7 @@ class ThirteenBanner extends Control:
 		for k in row.size():
 			var sc := 1.1 if k >= 1 and k <= 3 else 1.0
 			draw_set_transform(at[k], 0.0, Vector2(sc, sc))
-			draw_mesh(PebbleArt.pebble(row[k], s), null, Transform2D.IDENTITY)
+			draw_mesh(PebbleArt.pebble(row[k], s), PebbleArt.skin(), Transform2D.IDENTITY)
 			PebbleArt.number(self, font, Vector2.ZERO, row[k], s)
 		draw_set_transform(Vector2.ZERO)
 

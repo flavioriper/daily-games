@@ -21,6 +21,7 @@ signal closed
 
 const Sim = preload("res://arcade/thirteen_sim.gd")
 const Art = preload("res://arcade/thirteen_art.gd")
+const SAND_SHADER = preload("res://shaders/sand_bake_2d.gdshader")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
@@ -126,6 +127,10 @@ var _clock := 0.0
 var _u := 100.0
 var _origin := Vector2.ZERO
 var _bed: ArrayMesh
+## The lit sand (shaders/sand_bake_2d.gdshader), baked for the field's size;
+## null until it is, and the flat `_bed` is drawn meanwhile.
+var _bed_tex: ImageTexture
+var _bed_for := Vector2.ZERO
 var _live: ArrayMesh
 ## One a pebble in the tray: id -> {pos: Vector2 (column, row, in cells),
 ## v, vel, hold: seconds before it may move, squash, amt, bump, pop,
@@ -203,6 +208,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = CozyTheme.make()
 	_build()
+	Art.ensure_skin(self, func() -> void:
+		field.queue_redraw()
+		_air.queue_redraw())
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
@@ -255,10 +263,12 @@ func _build() -> void:
 	box.shadow_size = 10
 	box.shadow_offset = Vector2(0, 6)
 	frame.add_theme_stylebox_override("panel", box)
+	frame.material = CozyTheme.wood_grain(13.0)
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
 	field.clip_contents = true
+	field.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	field.mouse_filter = Control.MOUSE_FILTER_STOP
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
@@ -303,6 +313,7 @@ func _build() -> void:
 
 	col.add_child(_build_tools())
 	_air = Control.new()
+	_air.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_air.name = "Air"
 	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -349,6 +360,7 @@ func _build_hud() -> Control:
 	# the biggest pebble so far, drawn beside its kicker
 	var parts := _plate("LT_BIGGEST", 0.8)
 	_big_view = Control.new()
+	_big_view.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_big_view.custom_minimum_size = Vector2(0, 60)
 	_big_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_big_view.draw.connect(_draw_biggest)
@@ -487,12 +499,31 @@ func _layout_field() -> void:
 	var board := Vector2(Sim.COLS, _rows()) * _u
 	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5) - (Sim.ROWS - _rows()) * _u)
 	_bed = _build_bed()
+	_bake_bed()
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(24, s.y * 0.3)
 	box.size = Vector2(s.x - 48, 0)
 	_stuck_box.size = Vector2(s.x - 120, 0)
 	_stuck_box.position = Vector2(60, s.y * 0.5 - _stuck_box.get_combined_minimum_size().y * 0.5)
 	field.queue_redraw()
+
+## Bake the lit sand for this size of field; the last one asked for wins.
+func _bake_bed() -> void:
+	var s := field.size
+	if s == _bed_for:
+		return
+	_bed_for = s
+	var m := ShaderMaterial.new()
+	m.shader = SAND_SHADER
+	m.set_shader_parameter("size", s)
+	m.set_shader_parameter("origin", _origin)
+	m.set_shader_parameter("unit", _u)
+	m.set_shader_parameter("cells", Vector2(Sim.COLS, Sim.ROWS))
+	m.set_shader_parameter("first_row", float(Sim.ROWS - _rows()))
+	var tex: ImageTexture = await Art.bake(self, [[Rect2(Vector2.ZERO, s), m]], Vector2i(s))
+	if tex != null and _bed_for == s:
+		_bed_tex = tex
+		field.queue_redraw()
 
 ## The centre of a cell, in the field's pixels (fractions allowed).
 func px(c: float, r: float) -> Vector2:
@@ -1494,7 +1525,10 @@ func _draw_field() -> void:
 		_layout_field()
 	if _bed == null or sim == null:
 		return
-	field.draw_mesh(_bed, null)
+	if _bed_tex != null:
+		field.draw_texture_rect(_bed_tex, Rect2(Vector2.ZERO, field.size), false)
+	else:
+		field.draw_mesh(_bed, null)
 	var font := Art.font()
 	var s := _u * 0.86
 	var picked := {}
@@ -1518,7 +1552,7 @@ func _draw_field() -> void:
 		var sc := lerpf(1.0, 0.7, k)
 		var ja := 1.0 - k * 0.5
 		field.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
-		field.draw_mesh(Art.pebble(j.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, ja))
+		field.draw_mesh(Art.pebble(j.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, ja))
 		Art.number(field, font, Vector2.ZERO, j.v, s, ja)
 	field.draw_set_transform(Vector2.ZERO)
 	# the pebbles in the tray (but for the ones at rest over a page's top edge)
@@ -1555,7 +1589,7 @@ func _draw_field() -> void:
 		elif stuck:
 			a = 0.55
 		field.draw_set_transform(c, rot, sc)
-		field.draw_mesh(Art.pebble(vis.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, a))
+		field.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
 		Art.number(field, font, Vector2.ZERO, vis.v, s, a)
 	field.draw_set_transform(Vector2.ZERO)
 	# glints running over pebbles at rest, and the tether to the finger
@@ -1580,7 +1614,7 @@ func _draw_field() -> void:
 			bc.y += sin(_clock * 3.0) * _u * 0.02
 			grow *= 1.0 + 0.04 * minf(8.0, sim.path.size() - Sim.MIN_CHAIN)
 		field.draw_set_transform(bc, tilt, Vector2(grow, grow))
-		field.draw_mesh(Art.pebble(nv, bs), null, Transform2D.IDENTITY)
+		field.draw_mesh(Art.pebble(nv, bs), Art.skin(), Transform2D.IDENTITY)
 		Art.number(field, font, Vector2.ZERO, nv, bs)
 		# four or more: how long the chain is, in the colour of its tier
 		if sim.path.size() >= 4:
@@ -1603,7 +1637,7 @@ func _draw_field() -> void:
 	for d: Dictionary in _debris:
 		var a := 1.0 - clampf((d.t - 1.0) / 0.6, 0.0, 1.0)
 		field.draw_set_transform(d.pos + _shake_off, d.rot, Vector2.ONE)
-		field.draw_mesh(Art.pebble(d.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, a))
+		field.draw_mesh(Art.pebble(d.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
 		Art.number(field, font, Vector2.ZERO, d.v, s, a)
 	field.draw_set_transform(Vector2.ZERO)
 	_draw_pops()
@@ -1908,7 +1942,7 @@ func _draw_reveal() -> void:
 		_air.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-_clock * 0.4, Vector2(rs, rs) * 0.7 / 512.0, 0.0, at))
 	var tilt := sin(t * 3.0) * 0.06 if t < hold else 0.0
 	_air.draw_set_transform(at, tilt, Vector2(size, size) / 200.0)
-	_air.draw_mesh(Art.pebble(v, 200.0), null, Transform2D.IDENTITY)
+	_air.draw_mesh(Art.pebble(v, 200.0), Art.skin(), Transform2D.IDENTITY)
 	Art.number(_air, Art.font(), Vector2.ZERO, v, 200.0)
 	_air.draw_set_transform(Vector2.ZERO)
 	# the line under it while it holds
@@ -1962,7 +1996,7 @@ func _draw_biggest() -> void:
 	var k := 1.0 if Motion.reduce else clampf(_big_t / 0.4, 0.0, 1.0)
 	var sc := Motion.back_out(k)
 	_big_view.draw_set_transform(c, 0.0, Vector2(sc, sc))
-	_big_view.draw_mesh(Art.pebble(shown, s), null, Transform2D.IDENTITY)
+	_big_view.draw_mesh(Art.pebble(shown, s), Art.skin(), Transform2D.IDENTITY)
 	Art.number(_big_view, Art.font(), Vector2.ZERO, shown, s)
 	_big_view.draw_set_transform(Vector2.ZERO)
 
@@ -2023,6 +2057,7 @@ func _build_end(better: bool) -> Control:
 	# the biggest pebble of the game dropping into a hollow between the two
 	# below it, bobbing
 	var seat := Control.new()
+	seat.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	seat.custom_minimum_size = Vector2(0, 250)
 	var biggest: int = sim.max_v
 	var shown_at := _clock
@@ -2035,7 +2070,7 @@ func _build_end(better: bool) -> Control:
 		var under := [maxi(1, biggest - 2), maxi(1, biggest - 1)]
 		for k in 2:
 			var c := mid + Vector2((k - 0.5) * s * 1.05, -s * 0.45)
-			seat.draw_mesh(Art.pebble(under[k], s), null, Transform2D(0.0, c))
+			seat.draw_mesh(Art.pebble(under[k], s), Art.skin(), Transform2D(0.0, c))
 			Art.number(seat, font, c, under[k], s)
 		var fall := clampf((since - 0.25) / 0.3, 0.0, 1.0)
 		var land := 1.0 if Motion.reduce else fall * fall
@@ -2054,7 +2089,7 @@ func _build_end(better: bool) -> Control:
 			seat.draw_mesh(Art.rays(512.0, rc, 14), null, Transform2D(t * 0.5, Vector2(rs, rs), 0.0, top))
 			seat.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-t * 0.3, Vector2(rs, rs) * 0.7, 0.0, top))
 		seat.draw_set_transform(top, sin(t * 1.5) * 0.05, sq)
-		seat.draw_mesh(Art.pebble(biggest, s * 1.15), null, Transform2D.IDENTITY)
+		seat.draw_mesh(Art.pebble(biggest, s * 1.15), Art.skin(), Transform2D.IDENTITY)
 		Art.number(seat, font, Vector2.ZERO, biggest, s * 1.15, 1.0 if since > 0.3 or Motion.reduce else 0.0)
 		seat.draw_set_transform(Vector2.ZERO))
 	col.add_child(seat)

@@ -45,7 +45,84 @@ const PAINT := [
 	Color("2f3a4a"),  # 16
 ]
 
+## The lit stones (shaders/pebble_bake_2d.gdshader), one cell a number, baked
+## once by ensure_skin(); null until then and for good where nothing renders,
+## and pebble() falls back to its flat drawing.
+const PEBBLE_SHADER = preload("res://shaders/pebble_bake_2d.gdshader")
+const SKIN_CELL := 320
+const SKIN_SIDE := 4
+const SKIN_SPAN := 1.3
+
 static var _cache := {}
+static var _skin: ImageTexture
+static var _skin_busy := false
+
+## The atlas pebble()'s quads are cut from; pass it as draw_mesh's texture.
+static func skin() -> Texture2D:
+	return _skin
+
+## Draw `items` ([Rect2, Material] each) into a picture `size` pixels, once,
+## off screen. Null where nothing renders (headless) or `host` left the tree.
+static func bake(host: Node, items: Array, size: Vector2i, mipmaps := false) -> ImageTexture:
+	if DisplayServer.get_name() == "headless" or not host.is_inside_tree():
+		return null
+	var vp := SubViewport.new()
+	vp.size = size
+	vp.transparent_bg = true
+	vp.disable_3d = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	for it: Array in items:
+		var rect := ColorRect.new()
+		rect.position = it[0].position
+		rect.size = it[0].size
+		rect.material = it[1]
+		vp.add_child(rect)
+	host.add_child(vp)
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp) or not vp.is_inside_tree():
+		return null
+	var img := vp.get_texture().get_image()
+	vp.queue_free()
+	if img == null or img.is_empty():
+		return null
+	if mipmaps:
+		img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+## Bake the stones if they are not baked yet, then call `done` (to redraw).
+static func ensure_skin(host: Node, done := Callable()) -> void:
+	if _skin == null and not _skin_busy:
+		_skin_busy = true
+		var items := []
+		for v in range(1, PAINT.size()):
+			var m := ShaderMaterial.new()
+			m.shader = PEBBLE_SHADER
+			m.set_shader_parameter("value", float(v))
+			m.set_shader_parameter("base", PAINT[v])
+			m.set_shader_parameter("px", 2.0 * SKIN_SPAN / SKIN_CELL)
+			items.append([Rect2(Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE) * SKIN_CELL, Vector2(SKIN_CELL, SKIN_CELL)), m])
+		var side := SKIN_CELL * SKIN_SIDE
+		_skin = await bake(host, items, Vector2i(side, side), true)
+		_skin_busy = false
+		_cache.clear()
+	while _skin_busy and is_instance_valid(host) and host.is_inside_tree():
+		await host.get_tree().process_frame
+	if _skin != null and done.is_valid():
+		done.call()
+
+## The quad a baked stone is drawn on: its cell of the atlas, `s` across the
+## stone itself (the cell is wider, for the shadow).
+static func _skin_quad(v: int, s: float) -> ArrayMesh:
+	var half := s * 0.5 * SKIN_SPAN
+	var cell := Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector2Array([Vector2(-half, -half), Vector2(half, -half), Vector2(half, half), Vector2(-half, half)])
+	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([cell / SKIN_SIDE, (cell + Vector2(1, 0)) / SKIN_SIDE, (cell + Vector2(1, 1)) / SKIN_SIDE, (cell + Vector2(0, 1)) / SKIN_SIDE])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
 
 static func paint(v: int) -> Color:
 	return PAINT[clampi(v, 0, PAINT.size() - 1)]
@@ -77,6 +154,9 @@ static func pebble(v: int, s: float) -> ArrayMesh:
 		return _cache[key]
 	if _cache.size() > 300:
 		_cache.clear()
+	if _skin != null and v >= 1 and v < PAINT.size():
+		_cache[key] = _skin_quad(v, s)
+		return _cache[key]
 	var b := Face.Builder.new()
 	var r := s * 0.5
 	var base := paint(v)

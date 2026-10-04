@@ -304,3 +304,20 @@ under the card. **A new Arcade game needs both**, and
 `top_bar.refresh(self)` in `_ready` before `_ask(false)`, or Undo and the
 bulb show behind the boost card. A harness that opens a screen through the
 menu sets `ScreenTutor.no_first_play`.
+
+**Lucky Thirteen's lit stones and sand** (2026-10-04, `feat/thirteen-painted`).
+The pebbles and the tray's sand are no longer flat fills: each is a height
+field in a canvas shader (`shaders/pebble_bake_2d.gdshader`,
+`shaders/sand_bake_2d.gdshader`), lit by one shared light from the upper left
+(`SUN`; `LIGHT` is a canvas built-in and will not compile as a constant).
+Neither shader is ever on screen. `Art.bake()` draws them once into a
+SubViewport and keeps the picture: the sixteen stones as a 1280x1280 atlas
+(`Art.ensure_skin`, `Art.skin()`), the sand at the field's size
+(`_bake_bed`). `Art.pebble(v, s)` then returns a textured quad instead of the
+flat mesh and every call site passes `Art.skin()` as `draw_mesh`'s texture, so
+the draw calls are what they were (peak 237 in the shot harness, ANGLE too).
+Until the bake lands, and for good under `--headless`, `skin()` is null and
+the old flat pebble and `_build_bed()` mesh are drawn. Both shaders write
+straight alpha with `blend_disabled`, or the atlas would carry a dark fringe.
+No image file was added: a generated picture cannot be re-posed, a height
+field can. The frame wears `CozyTheme.wood_grain(13.0)`.
