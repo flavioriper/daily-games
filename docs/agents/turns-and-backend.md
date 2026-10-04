@@ -133,3 +133,141 @@ is still the worst thing that board can do.
 
 Roadmap: `docs/brainstorm/single-turn-roadmap.md`. Phase 0's design:
 `docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md`.
+
+## The Realtime Database (Versus online)
+
+2026-10-04, spec `2026-10-04-versus-online-design.md`. The one live thing in
+the game is a Versus game against a stranger (`docs/agents/versus.md`,
+"Online"), and it runs on the **Realtime Database, not Firestore**. The game
+has no Firebase SDK, only REST, and Firestore's REST API cannot listen: a
+live game on it would be polling. The Realtime Database's REST API streams
+(`Accept: text/event-stream`: `put`, `patch`, `keep-alive`, `cancel`,
+`auth_revoked`), takes the same anonymous id token (`?auth=`), has an atomic
+multi-path `PATCH`, and its rules can read the server's clock (`now`) and
+stamp it (`{".sv": "timestamp"}`).
+
+**Rules only, no function.** `server/database.rules.json` is the whole
+server: matchmaking, moves in turn, the clocks and the results. That keeps
+clear of the organisation's `allUsers` policy (`tools/public_invoker.sh`)
+and of cold starts. Nothing on the server knows a game's rules; each end
+checks the other's move, and records live on the device, so a lie about a
+result fools only the liar.
+
+```
+/queue/{game}/{uid}      { since, at, match? }
+/matches/{id}            { game, p0, p1, first, seed, at,
+                           n, turn, turnAt,
+                           moves: { "0": {s, d}, "1": ... },
+                           seen:  { "0": ms, "1": ms },
+                           result: { winner, why } }
+```
+
+`game` is `snooker`, `chess` or `checkers`. `p0`/`p1` are uids and a seat is
+0 or 1; the claimed ticket's owner is `p0`. `first` is the seat that opens,
+`seed` one int both ends share, `d` a JSON string the game owns (20,000
+characters at most), `s` the seat that sent it, `n` the count of moves,
+`turn` the seat to act and `turnAt` when its clock started. `winner` is a
+seat or -1. What the rules hold, in the order a game meets them:
+
+- **A ticket** is written by its owner with `since` and `at` equal to `now`
+  (or unchanged); `/queue/{game}` is readable by anyone signed in and
+  indexed on `since`. Anyone may delete a ticket whose `at` is over 60 s
+  old.
+- **A claim is one `PATCH` at the root**: the match document and `match:
+  id` on both tickets, each rule checking the other through `newData`, so
+  they land together or not at all. `match` is set once, only while the
+  ticket's `at` is under 10 s old, only to a match that does not exist yet
+  and names exactly that ticket's owner and the writer. A match is created
+  only with both tickets pointing at it, `n` 0, `turn == first`, `at` and
+  `turnAt` now, and no moves, seen or result. A second claimer gets a 401.
+- **A match is read by its two players** and nobody else.
+- **A move** is one `PATCH` on the match: `moves/{n}` (new, `s` the seat to
+  act), `n` up by exactly one, `turn` (the same seat again is allowed:
+  snooker's shot before its table), `turnAt: now`. Each of the four is
+  refused without the others.
+- **`seen/{seat}`** is written by its own seat, as `now`.
+- **A result is written once**, by a player: `resign` (the winner is the
+  other seat), `timeout` (the winner is the writer, the turn is the other's
+  and `turnAt + 60000 < now`), `left` (the winner is the writer and the
+  other's `seen` is over 20 s old), `end` (winner -1, 0 or 1; after at least
+  one move, by the seat that made the last one), `void` (winner -1; 10 s
+  after `at`, by a player whose opponent has no `seen`). No move after it.
+- The clocks are numbers in the rules and again in
+  `versus/online/match.gd` (`VOID_MS`, `LEFT_MS`, `LIMIT_MS`, `FRESH_MS`,
+  `STALE_MS`) and `versus/online/online.gd` (`LIMIT`): change them together.
+- There is no sweep. Finished matches stay.
+
+**`core/live.gd`** (`Live`) is static like `Backend` and rides on its
+identity. `Live.read(path, query)`, `write(path, value)` (PUT),
+`patch(path, changes)` (a key may be a path, "moves/3"), `remove(path)`,
+each answering `{ok, code, data}`; `Live.STAMP`; `Live.server_now()` (ms;
+this device's clock plus an offset taken from the first stamp found in the
+last stamped write's answer, at the middle of the round trip) and
+`Live.clocked()`. **Unstarted `Backend` means offline here too**: every verb
+answers `{ok = false, code = 0}` and a stream stays shut, without touching
+the network. A 401 is retried once with a fresh token unless the body says
+"Permission denied": a rule's refusal is an answer. `Live.lose` (an int, for
+a probe, as `Stream.drop()` is): the next that many requests are made and
+land, and answer `{ok = false, code = 0}` -- a network that went quiet
+mid-request.
+
+`Live.Stream` is a `Node` holding one `HTTPClient`: `open(path)`, `close()`,
+`is_open()`, `drop()` (cuts it as a bad network would, for a probe),
+`opens`; signals `event(kind, path, data)` (`put`, `patch`, `cancel`; the
+path is relative to the one opened) and `dropped` (once an outage). It
+follows the 307 the live database answers with when the data lives on
+another host (up to four, and goes back to the first host after a drop),
+reads the body in `_process` a whole line at a time (a chunk ends anywhere,
+mid-character too), renews the token on `auth_revoked`, and after a drop or
+40 s of quiet (the server's `keep-alive` is every 30 s) opens again with a
+wait that grows from 0.5 s to 8 s. The first event after a reopen is the
+whole of the data again, which is why `Match` follows state and has no
+reconnect code. `cancel`, or a refusal that says "Permission denied", ends
+the stream for good.
+
+**`Backend` changed for this**:
+
+- `Backend.token(fresh := false)` hands out the id token (awaits
+  `_ensure_token`; "" when unstarted or when none can be had); `fresh`
+  renews it even if it looks good.
+- `BACKEND_PLAYER` (environment) names another file for the identity in
+  place of `PLAYER_PATH`, so two processes on one Mac are two players. The
+  online probes set it per child.
+- **A refresh that got no answer keeps its refresh token.** `_refresh` used
+  to drop the token on any failure and `_ensure_token` then signed up, which
+  handed a player a new uid whenever the network blinked -- in the middle of
+  a game online, a new uid is a stranger to its own match. Now only a 4xx
+  (the token is dead) drops it, and `_ensure_token` signs up only when there
+  is no refresh token at all.
+
+**Emulator specifics.** `server/firebase.json` has `database` (the rules
+file) and the emulator on port **9000**; start it with
+`cd server && PATH="/opt/homebrew/opt/openjdk/bin:$PATH" firebase
+emulators:start --only auth,database --project demo-peeplet`. The emulator's
+host names nothing, so the database is picked by `ns`:
+**`ns=demo-peeplet-default-rtdb`** (`Live.url` adds it under
+`FIREBASE_EMULATOR`, from `FIREBASE_PROJECT`). Two ways it is not the live
+database, both handled in `Live.Stream` and both worth knowing before
+"fixing" it: its event stream answers **`Connection: close`**, and a read
+the rules deny is a **plain 401 with "Permission denied" in the body, not a
+`cancel` event** (`_refused` turns it into one). It does send `keep-alive`
+every 30 s. `tests/_probe_live_rules.sh` reads `FIREBASE_EMULATOR` and
+`FIREBASE_PROJECT` the same way.
+
+**Not yet done on the live project** (2026-10-04) -- online play works
+against the emulator and nowhere else:
+
+- **The Realtime Database instance does not exist.** It is created once by
+  hand (Firebase console, Build > Realtime Database, United States).
+- **`Live.HOST` assumes us-central1**:
+  `https://daily-games-420bf-default-rtdb.firebaseio.com`. An instance in
+  any other region has another host
+  (`<name>.<region>.firebasedatabase.app`) and the const must say so; it is
+  spelled out, not built from the project id, for that reason.
+- **`tools/deploy_live.sh` is run by a person** (`firebase deploy --only
+  database --project daily-games-420bf`), like `tools/deploy_functions.sh`.
+  It has not been run.
+- **Nothing has been verified against production**: not the 307, not
+  `auth_revoked`, not the rules as deployed, not two real devices. Until
+  the instance exists a player who picks Online with the network up will
+  fail to write a ticket and see the No connection card.

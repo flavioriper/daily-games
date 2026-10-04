@@ -8,10 +8,18 @@ extends Control
 ##
 ## You always play the cream pieces at the bottom; which colour they move
 ## as swaps every game (Play again), so the computer opens every other one.
-## Local only for now: the other player is versus/chess_ai.gd, thinking on
-## a worker thread. The rules are versus/chess_rules.gd, the board and its
-## animation versus/chess_board.gd, the look and the motion of the pieces a
-## skin (versus/chess_skin.gd).
+## The other player is versus/chess_ai.gd, thinking on a worker thread. The
+## rules are versus/chess_rules.gd, the board and its animation
+## versus/chess_board.gd, the look and the motion of the pieces a skin
+## (versus/chess_skin.gd).
+##
+## **Level 3 is Online** (spec 2026-10-04-versus-online-design.md): the other
+## player is a stranger, and `online` (versus/online/online.gd) is everything
+## about that which is not chess. What is chess's own is under "online" below:
+## the board idles behind the lobby (State.WAIT), the seat that opens is
+## white, the computer's seat is the match -- a move is `{m: int}`, the very
+## int the rules make, so a promotion's piece, a castle and an en passant
+## travel in it -- and a move the rules do not list is a foul.
 
 signal closed
 
@@ -40,6 +48,7 @@ const MoonFace = preload("res://ui/faces/moon_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Online = preload("res://versus/online/online.gd")
 
 const GAME := "chess"
 const MARGIN := 40
@@ -56,9 +65,12 @@ const END_WAIT := 1.8
 ## A mate waits longer: the king's crown is still rolling to a stop.
 const MATE_WAIT := 2.6
 const TOAST_HOLD := 2.2
-const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD"]
+const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
+## The room a name has on a scoreboard plate, beside its face.
+const NAME_W := 250.0
 
-enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER }
+## WAIT is online's: the board laid and still while the lobby looks.
+enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER, WAIT }
 
 var level := 1
 var rules: RefCounted
@@ -99,10 +111,20 @@ var _end: Control
 var _plates: Array = []
 var _faces: Array = []
 var _status: Array[Label] = []
+var _names: Array[Label] = []
 var _move_label: Label
+## The game online, when the level is Record.ONLINE; null against the
+## computer (and again once the lobby's "Play the computer" is taken).
+var online: Node
+## The other seat's moves not played yet: one can land while this seat's own
+## is still in the air.
+var _inbox: Array[int] = []
+## What the other seat said the result was ("won", "lost", "draw" from here),
+## for a board that has not got there by its own rules.
+var _online_end := ""
 
 func _init(the_level := 1) -> void:
-	level = clampi(the_level, 0, 2)
+	level = clampi(the_level, 0, Record.ONLINE)
 
 func puzzle_id() -> String:
 	return GAME
@@ -120,7 +142,10 @@ func _ready() -> void:
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	player = Rules.WHITE if Record.last_colour(GAME) == Rules.WHITE else Rules.BLACK
-	_new_game()
+	if level == Record.ONLINE:
+		_go_online()
+	else:
+		_new_game()
 	top_bar.enter(0.0)
 	Analytics.track("versus_start", {"game": GAME, "level": level})
 
@@ -148,7 +173,8 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", GAP)
 	_margins.add_child(col)
 
-	top_bar = FlatTopBar.new("Chess", tr("CHS_MOTTO"), true)
+	# The motto names the moon: a game online has its own.
+	top_bar = FlatTopBar.new("Chess", tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "CHS_MOTTO"), true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)
@@ -323,6 +349,7 @@ func _build_scoreboard() -> Control:
 		words.add_child(name_l)
 		words.add_child(status)
 		_status.append(status)
+		_names.append(name_l)
 		if p == 0:
 			inner.add_child(seat)
 			inner.add_child(words)
@@ -356,7 +383,7 @@ func _build_move_panel() -> Control:
 
 ## Whose turn it is, on the plates: the one to move lit and saying so.
 func _refresh_board() -> void:
-	var over := _state == State.OVER
+	var over := _state == State.OVER or _state == State.WAIT
 	for p in 2:
 		var mine: bool = not over and (rules.turn == player) == (p == 0)
 		var box := CozyTheme.lifted(Pal.SURFACE if mine else Color("f7f0e4"), 30, 10)
@@ -372,7 +399,12 @@ func _refresh_board() -> void:
 			# Not before the checking piece has landed.
 			if rules.in_check() and _state != State.ANIM:
 				line = tr("CHS_IN_CHECK")
+		if _state == State.WAIT:
+			line = ""
 		_status[p].text = line
+		if online != null:
+			# The side to move carries its seconds.
+			online.dress(_status[p], line, mine and _state != State.ENTER, p == 0)
 	var shown := str(rules.fullmove)
 	if _move_label.text != shown:
 		_move_label.text = shown
@@ -392,19 +424,21 @@ func is_done() -> bool:
 func is_solved() -> bool:
 	return false
 
+## Undo, the bulb and Reset are the computer's games' alone: online they
+## stay on the bar, greyed.
 func can_undo() -> bool:
-	return _state == State.YOURS and _history.size() >= (2 if player == Rules.WHITE else 3)
+	return online == null and _state == State.YOURS and _history.size() >= (2 if player == Rules.WHITE else 3)
 
 func hints_left() -> int:
-	return _hints if _state == State.YOURS else 0
+	return _hints if _state == State.YOURS and online == null else 0
 
 ## The bulb's badge: the count stays up while the bulb waits its turn.
 func hints_held() -> int:
-	return _hints
+	return _hints if online == null else 0
 
 ## Reset waits out a move in the air, as `_on_reset` does.
 func can_reset() -> bool:
-	return _state != State.ANIM and _state != State.REWIND
+	return online == null and _state != State.ANIM and _state != State.REWIND
 
 ## The card's pages (ui/hud/chess_tutorial_diagram.gd): the board itself on
 ## a few pieces. The levels change only how well the computer plays, so the
@@ -432,23 +466,30 @@ func tutorial_pages() -> Array:
 # --- the game ---
 
 func _new_game() -> void:
+	_lay(State.ENTER)
+	if Motion.reduce:
+		_start_turn.call_deferred()
+
+## A fresh set on the board: dropping in for a game (ENTER), or simply
+## there, for the lobby to stand over (WAIT).
+func _lay(state: State) -> void:
 	_game += 1
 	rules = Rules.new()
 	_history.clear()
+	_inbox.clear()
+	_online_end = ""
 	_hints = HINTS
 	_hint_move = -1
 	_undos = 0
-	_state = State.ENTER
+	_state = state
 	if _end != null:
 		_end.queue_free()
 		_end = null
 	for f in _faces:
 		f.expression = Face.Expr.HAPPY
 	board.interactive = false
-	board.setup(rules, player, true)
+	board.setup(rules, player, state == State.ENTER)
 	_refresh_board()
-	if Motion.reduce:
-		_start_turn.call_deferred()
 
 func _on_settled() -> void:
 	match _state:
@@ -468,6 +509,12 @@ func _start_turn() -> void:
 		_finish(status)
 		return
 	var mine: bool = rules.turn == player
+	if online != null and _online_end != "" and (mine or _inbox.is_empty()):
+		# The other seat said the game is over, every move it sent has been
+		# played, and by this board's rules -- the same rules -- it is not.
+		_online_end = ""
+		online.foul()
+		return
 	if mine:
 		_state = State.YOURS
 		board.interactive = true
@@ -480,8 +527,11 @@ func _start_turn() -> void:
 		board.interactive = false
 		board.set_thinking(true)
 		if _history.is_empty():
-			_say(tr("CHS_BOT_FIRST"))
-		_think("ai")
+			_say(tr("CHS_BOT_FIRST") if online == null else online.first_line())
+		if online == null:
+			_think("ai")
+		else:
+			_take_online()
 	_refresh_board()
 
 func _on_chosen(m: int) -> void:
@@ -504,6 +554,8 @@ func _play(m: int) -> void:
 	_hint_move = -1
 	_hush()
 	board.play(d)
+	if online != null and int(d.side) == player:
+		online.send({"m": m})
 	_refresh_board()
 	if int(d.captured) != 0:
 		var taker := 0 if int(d.side) == player else 1
@@ -585,13 +637,14 @@ func _bot_moves(m: int) -> void:
 	board.set_lifted(Rules.mv_from(m))
 	var game := _game
 	get_tree().create_timer(0.0 if Motion.reduce else PONDER).timeout.connect(func() -> void:
-		if _game != game or not is_inside_tree():
+		# An online game can end (a resignation, a clock) inside the beat.
+		if _game != game or not is_inside_tree() or _state != State.ANIM:
 			return
 		_state = State.THINK
 		_play(m))
 
 func _on_hint() -> void:
-	if _state != State.YOURS or _task != -1:
+	if _state != State.YOURS or _task != -1 or online != null:
 		return
 	if _hint_move >= 0:
 		board.set_hint(_hint_move)
@@ -631,11 +684,109 @@ func _rewind_one() -> void:
 		board.set_check(rules.kings[rules.turn])
 	_refresh_board()
 
+# --- online (level 3): what is chess's own; the rest is versus/online/online.gd ---
+
+func _go_online() -> void:
+	online = Online.new(self, GAME)
+	online.seeking.connect(_on_online_seeking)
+	online.started.connect(_on_online_started)
+	online.move.connect(_on_online_move)
+	online.over.connect(_on_online_over)
+	online.ticked.connect(_on_online_ticked)
+	online.computer.connect(_play_computer)
+	online.closed.connect(func() -> void: closed.emit())
+	add_child(online)
+	online.open()
+
+## Looking for a player (the first time, and Find another): a still set
+## under the lobby, nobody in the far seat yet.
+func _on_online_seeking() -> void:
+	_seat_rival("")
+	_lay(State.WAIT)
+
+## Found: the seat that opens is white, and the game begins as any does.
+func _on_online_started() -> void:
+	player = Rules.WHITE if online.opens() else Rules.BLACK
+	_seat_rival(online.opponent)
+	_new_game()
+
+## The far plate's face and name: the other player's, or the moon's.
+func _seat_rival(uid: String) -> void:
+	var seat: Control = _faces[1].get_parent()
+	seat.remove_child(_faces[1])
+	_faces[1].queue_free()
+	var face: Control = MoonFace.new()
+	if uid.is_empty():
+		face.size = Vector2(88, 88)
+		_names[1].remove_theme_font_size_override("font_size")
+		_names[1].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
+		# Nobody yet while the lobby looks: the bot is not who is coming.
+		_names[1].text = "SNK_BOT" if online == null else "…"
+		face.visible = online == null
+	else:
+		face = online.face(88)
+		Online.fit(_names[1], online.rival(), NAME_W)
+	seat.add_child(face)
+	_faces[1] = face
+
+## The other seat's move. It is played when the board is ready for it.
+func _on_online_move(d: Dictionary) -> void:
+	var m: Variant = d.get("m")
+	_inbox.append(int(m) if typeof(m) == TYPE_FLOAT or typeof(m) == TYPE_INT else -1)
+	_take_online()
+
+## Plays the next move waiting, if it is the other seat's turn to be seen
+## moving. The move must be one this end's rules list, whole: the same from,
+## to, promotion and flags. Anything else is a foul.
+func _take_online() -> void:
+	if _state != State.THINK or _inbox.is_empty():
+		return
+	var m: int = _inbox.pop_front()
+	if not rules.legal_moves().has(m):
+		online.foul()
+		return
+	_bot_moves(m)
+
+## The match ended without this board ending it. A resignation, a clock or a
+## player gone ends the game where it stands. "end" is the other seat's word
+## that the game finished on the board, and it is not taken on trust: the
+## rules let the seat that moved last write it with any winner, but both ends
+## run the same rules, so a real ending is one this board reaches by itself
+## once the last move has been played (`_start_turn` finishes on its own
+## status, and the result shown is this board's). An "end" this board does
+## not reach, with nothing left to play, is a foul.
+func _on_online_over(outcome: String, why: String) -> void:
+	if _state == State.OVER:
+		return
+	if why != "end":
+		_conclude(outcome, "", -1, why)
+		return
+	_online_end = outcome
+	if _state == State.YOURS or (_state == State.THINK and _inbox.is_empty()):
+		_online_end = ""
+		online.foul()
+
+func _on_online_ticked() -> void:
+	if _state != State.OVER and _state != State.WAIT:
+		_refresh_board()
+
+## The lobby's "Play the computer": the level last played against it, and a
+## game as if that chip had been picked.
+func _play_computer() -> void:
+	online.queue_free()
+	online = null
+	level = Record.last_bot_level(GAME)
+	_seat_rival("")
+	for l in _status:
+		l.remove_theme_color_override("font_color")
+	top_bar.set_motto(tr("CHS_MOTTO"))
+	Analytics.track("versus_start", {"game": GAME, "level": level})
+	_new_game()
+	tutor.first_play()
+
 # --- the end ---
 
 func _finish(status: int) -> void:
-	_state = State.OVER
-	board.interactive = false
 	var outcome := "draw"
 	var reason := ""
 	var king := -1
@@ -652,15 +803,29 @@ func _finish(status: int) -> void:
 			reason = "CHS_DRAW_REPEAT"
 		_:
 			reason = "CHS_DRAW_MATERIAL"
+	_conclude(outcome, reason, king, "")
+
+## The game is over: "won", "lost" or "draw". On the board, `reason` is a
+## draw's and `king` the mated king's square; online and off the board, `why`
+## is what the match said ("resign", "timeout", "left", "end").
+func _conclude(outcome: String, reason: String, king: int, why: String) -> void:
+	# The seat that made the last move: the side not to move now.
+	var mine_last: bool = rules.turn != player
+	_state = State.OVER
+	board.interactive = false
+	board.set_thinking(false)
 	board.finish(outcome, king)
 	_refresh_board()
-	if outcome == "draw":
-		Record.add_draw(GAME, level)
+	if online != null:
+		online.settle(outcome, why, rules.fullmove, mine_last)
 	else:
-		Record.add(GAME, level, outcome == "won")
-	Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
-		"result": outcome, "moves": rules.fullmove, "undos": _undos,
-		"colour": "white" if player == Rules.WHITE else "black"})
+		if outcome == "draw":
+			Record.add_draw(GAME, level)
+		else:
+			Record.add(GAME, level, outcome == "won")
+		Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
+			"result": outcome, "moves": rules.fullmove, "undos": _undos,
+			"colour": "white" if player == Rules.WHITE else "black"})
 	Ads.note_finished()
 	_fx.cue({"won": "win", "lost": "lose", "draw": "draw"}[outcome])
 	_faces[0].expression = Face.Expr.JOY if outcome == "won" else (Face.Expr.WORRIED if outcome == "lost" else Face.Expr.SLEEPY)
@@ -672,12 +837,12 @@ func _finish(status: int) -> void:
 	get_tree().create_timer(0.3 if Motion.reduce else wait).timeout.connect(func() -> void:
 		if _game != game or not is_inside_tree():
 			return
-		_end = _build_end(outcome, reason)
+		_end = _build_end(outcome, reason, why)
 		add_child(_end)
 		Motion.appear(_end, 0.0, 1.0, 0.3)
 		_celebrate(outcome == "won"))
 
-func _build_end(outcome: String, reason: String) -> Control:
+func _build_end(outcome: String, reason: String, why := "") -> Control:
 	var scrim := Dialog.scrim()
 	var center := CenterContainer.new()
 	center.name = "Center"
@@ -690,7 +855,9 @@ func _build_end(outcome: String, reason: String) -> Control:
 	card.add_child(col)
 	var seat := Control.new()
 	seat.custom_minimum_size = Vector2(0, 170)
-	var face: Control = MoonFace.new() if outcome == "lost" else SunFace.new()
+	var face: Control = SunFace.new()
+	if outcome == "lost":
+		face = MoonFace.new() if online == null else online.face(170)
 	face.size = Vector2(170, 170)
 	face.position = Vector2(820 * 0.5 - 40 - 85, 0)
 	face.expression = Face.Expr.SLEEPY if outcome == "draw" else Face.Expr.JOY
@@ -698,27 +865,39 @@ func _build_end(outcome: String, reason: String) -> Control:
 	col.add_child(seat)
 	var head := Label.new()
 	head.text = {"won": "CHS_WIN", "lost": "CHS_LOSE", "draw": "CHS_DRAW"}[outcome]
+	if online != null:
+		head.text = online.head(outcome)
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
-	var why := Label.new()
-	why.text = tr(reason) if reason != "" else tr("CHS_MATE_IN") % rules.fullmove
-	why.theme_type_variation = "SheetBody"
-	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(why)
+	var said := Label.new()
+	said.text = tr(reason) if reason != "" else tr("CHS_MATE_IN") % rules.fullmove
+	# Off the board there was no mate: the match's own reason, if it has words.
+	if online != null and why != "":
+		said.text = online.why_line(why, outcome)
+		said.visible = said.text != ""
+	said.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	said.theme_type_variation = "SheetBody"
+	said.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(said)
 	var line := Label.new()
 	line.text = "%s  ·  %s" % [tr(LEVELS[level]), Record.record_line(GAME, level)]
+	line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(line)
-	var again := Dialog.primary("reset", tr("SNK_AGAIN"))
-	again.pressed.connect(func() -> void:
-		player = 1 - player
-		Record.set_last_colour(GAME, player)
-		_fx.buzz(Haptics.TAP)
-		_new_game())
+	var again: Button
+	if online != null:
+		again = online.again_button()  # Find another
+	else:
+		again = Dialog.primary("reset", tr("SNK_AGAIN"))
+		again.pressed.connect(func() -> void:
+			player = 1 - player
+			Record.set_last_colour(GAME, player)
+			_fx.buzz(Haptics.TAP)
+			_new_game())
 	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
 	Dialog.buttons(col, again, back)
@@ -772,19 +951,27 @@ func _place_toast() -> void:
 		at.position.y + frame.position.y + frame.size.y * 0.4)
 
 func _on_reset() -> void:
-	if _state == State.ANIM or _state == State.REWIND:
+	if not can_reset():
 		return
 	Analytics.track("board_reset", {"puzzle_id": GAME})
 	_fx.buzz(Haptics.TAP)
 	_new_game()
 
 func _on_back() -> void:
-	if _state != State.OVER and _history.size() > 0:
+	if online != null:
+		# A game in progress is resigned, and only on a yes; versus_abandon is
+		# the computer's games', online's is versus_online_end (why resign).
+		if online.live() and _state != State.OVER:
+			online.ask_leave(rules.fullmove)
+			return
+	elif _state != State.OVER and _history.size() > 0:
 		Analytics.track("versus_abandon", {"game": GAME, "level": level, "moves": rules.fullmove})
 	closed.emit()
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if online != null and online.back():
+		return
 	if tutor.close():
 		return
 	if settings_sheet.is_open():

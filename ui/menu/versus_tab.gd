@@ -1,17 +1,17 @@
 extends VBoxContainer
 
 ## The Versus tab: games played against someone rather than against the
-## day's board. Snooker, chess and checkers, and for now the someone is the
-## computer (versus/snooker_screen.gd, versus/chess_screen.gd,
-## versus/checkers_screen.gd); online play is the
-## plan the tab is named for. Its body takes the day row's and the grid's
-## room, the way Stats and Streak do, under the same header and over the
-## same bar.
+## day's board. Snooker, chess and checkers (versus/snooker_screen.gd,
+## versus/chess_screen.gd, versus/checkers_screen.gd), and the someone is the
+## computer at one of three levels or, on the fourth chip, another player
+## online (level Record.ONLINE; versus/online/). Its body takes the day row's
+## and the grid's room, the way Stats and Streak do, under the same header
+## and over the same bar.
 ##
 ## One card a game: a painted banner with the game's own drawing lying
 ## across it (still, so it costs meshes and no frame), the name and the
-## record at the level picked, a line, and the three levels beside Play.
-## Each game remembers its own level.
+## record at the chip picked, a line, and the four chips beside Play.
+## Each game remembers its own chip.
 ##
 ## Three cards are more than a short screen holds once an ad banner takes
 ## its share, so the tab measures the room the menu's column leaves it
@@ -42,7 +42,9 @@ const ART_H := 150.0
 ## The pictures' height once the room is short.
 const ART_H_SHORT := 96.0
 const CHIP_H := 84
-const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD"]
+const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
+## The line under the name while the Online chip is the one picked.
+const ONLINE_BLURB := "VS_ONLINE_BLURB"
 const GAMES := ["snooker", "chess", "checkers"]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers"}
 const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB"}
@@ -55,6 +57,7 @@ var _record := {}
 var _snooker_art: Control
 var _table: Control
 var _blurbs: Array[Label] = []
+var _blurb := {}
 var _arts: Array[Control] = []
 
 func _init() -> void:
@@ -62,7 +65,7 @@ func _init() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for game: String in GAMES:
-		_level[game] = Record.last_level(game)
+		_level[game] = clampi(Record.last_level(game), 0, LEVELS.size() - 1)
 		add_child(_game_card(game))
 
 func _game_card(game: String) -> Control:
@@ -111,6 +114,7 @@ func _game_card(game: String) -> Control:
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(blurb)
 	_blurbs.append(blurb)
+	_blurb[game] = blurb
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
@@ -177,6 +181,7 @@ func _paint_chips(game: String) -> void:
 		b.add_theme_color_override("font_color", Pal.ACCENT_2 if on else Pal.TEXT)
 		b.add_theme_color_override("font_hover_color", Pal.ACCENT_2 if on else Pal.TEXT)
 		b.add_theme_color_override("font_pressed_color", Pal.ACCENT_2 if on else Pal.TEXT)
+	(_blurb[game] as Label).text = ONLINE_BLURB if _level[game] == Record.ONLINE else BLURBS[game]
 	refresh()
 
 func refresh() -> void:

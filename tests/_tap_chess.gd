@@ -15,6 +15,9 @@ var _had := false
 var _record := ""
 
 func _initialize() -> void:
+	# The first play's tutorial card would stand over the run and hold the
+	# computer's answer (docs/agents/versus.md, Tutorials).
+	load("res://ui/hud/screen_tutor.gd").no_first_play = true
 	_had = FileAccess.file_exists("user://versus.cfg")
 	if _had:
 		_record = FileAccess.get_file_as_string("user://versus.cfg")

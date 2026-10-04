@@ -114,6 +114,16 @@ func _build() -> void:
 	_block.resized.connect(_fit_title)
 	_fit_title.call_deferred()
 
+## Another motto on a bar already built: a Versus screen that opened online
+## and goes on against the computer takes its own motto back.
+func set_motto(motto: String) -> void:
+	motto_text = motto if brand_binairo else motto.to_upper()
+	if _motto == null:
+		return
+	_motto.text = motto_text
+	_motto.visible = motto_text != ""
+	_fit_title()
+
 ## The title block is whatever the buttons leave, and a long title or motto
 ## is wider than that. A five-button bar (a board with no actions row, so
 ## Reset rides up here: Balance, Untangle, Word Trail, Quilt, Paper Planes

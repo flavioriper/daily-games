@@ -1,0 +1,104 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "queue": {
+      "$game": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "since"
+        ],
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || (!newData.exists() && data.child('at').val() < now - 60000))",
+          ".validate": "newData.hasChildren(['since', 'at']) && ($game === 'snooker' || $game === 'chess' || $game === 'checkers')",
+          "since": {
+            ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
+          },
+          "at": {
+            ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
+          },
+          "match": {
+            ".write": "auth != null && !data.exists() && newData.exists()",
+            ".validate": "newData.isString() && (data.exists() ? newData.val() === data.val() : (newData.parent().child('at').val() > now - 10000 && !root.child('matches').child(newData.val()).exists() && newData.parent().parent().parent().parent().child('matches').child(newData.val()).child('game').val() === $game && (newData.parent().parent().parent().parent().child('matches').child(newData.val()).child('p0').val() === $uid || newData.parent().parent().parent().parent().child('matches').child(newData.val()).child('p1').val() === $uid) && (newData.parent().parent().parent().parent().child('matches').child(newData.val()).child('p0').val() === auth.uid || newData.parent().parent().parent().parent().child('matches').child(newData.val()).child('p1').val() === auth.uid)))"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "matches": {
+      "$id": {
+        ".read": "auth != null && (data.child('p0').val() === auth.uid || data.child('p1').val() === auth.uid)",
+        ".write": "auth != null && !data.exists() && newData.exists() && (newData.child('p0').val() === auth.uid || newData.child('p1').val() === auth.uid) && newData.child('p0').val() !== newData.child('p1').val() && newData.child('n').val() === 0 && newData.child('turn').val() === newData.child('first').val() && newData.child('at').val() === now && newData.child('turnAt').val() === now && !newData.child('moves').exists() && !newData.child('seen').exists() && !newData.child('result').exists() && newData.parent().parent().child('queue').child(newData.child('game').val()).child(newData.child('p0').val()).child('match').val() === $id && newData.parent().parent().child('queue').child(newData.child('game').val()).child(newData.child('p1').val()).child('match').val() === $id",
+        ".validate": "newData.hasChildren(['game', 'p0', 'p1', 'first', 'seed', 'at', 'n', 'turn', 'turnAt'])",
+        "game": {
+          ".validate": "newData.val() === 'snooker' || newData.val() === 'chess' || newData.val() === 'checkers'"
+        },
+        "p0": {
+          ".validate": "newData.isString()"
+        },
+        "p1": {
+          ".validate": "newData.isString()"
+        },
+        "first": {
+          ".validate": "newData.val() === 0 || newData.val() === 1"
+        },
+        "seed": {
+          ".validate": "newData.isNumber()"
+        },
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "n": {
+          ".write": "auth != null && !root.child('matches').child($id).child('result').exists() && ((root.child('matches').child($id).child('turn').val() === 0 && root.child('matches').child($id).child('p0').val() === auth.uid) || (root.child('matches').child($id).child('turn').val() === 1 && root.child('matches').child($id).child('p1').val() === auth.uid)) && newData.parent().child('n').val() === root.child('matches').child($id).child('n').val() + 1 && newData.parent().child('moves').child('' + root.child('matches').child($id).child('n').val()).exists() && newData.parent().child('turnAt').val() === now",
+          ".validate": "newData.isNumber()"
+        },
+        "turn": {
+          ".write": "auth != null && !root.child('matches').child($id).child('result').exists() && ((root.child('matches').child($id).child('turn').val() === 0 && root.child('matches').child($id).child('p0').val() === auth.uid) || (root.child('matches').child($id).child('turn').val() === 1 && root.child('matches').child($id).child('p1').val() === auth.uid)) && newData.parent().child('n').val() === root.child('matches').child($id).child('n').val() + 1 && newData.parent().child('moves').child('' + root.child('matches').child($id).child('n').val()).exists() && newData.parent().child('turnAt').val() === now",
+          ".validate": "newData.val() === 0 || newData.val() === 1"
+        },
+        "turnAt": {
+          ".write": "auth != null && !root.child('matches').child($id).child('result').exists() && ((root.child('matches').child($id).child('turn').val() === 0 && root.child('matches').child($id).child('p0').val() === auth.uid) || (root.child('matches').child($id).child('turn').val() === 1 && root.child('matches').child($id).child('p1').val() === auth.uid)) && newData.parent().child('n').val() === root.child('matches').child($id).child('n').val() + 1 && newData.parent().child('moves').child('' + root.child('matches').child($id).child('n').val()).exists() && newData.parent().child('turnAt').val() === now",
+          ".validate": "newData.isNumber()"
+        },
+        "moves": {
+          "$i": {
+            ".write": "auth != null && !root.child('matches').child($id).child('result').exists() && ((root.child('matches').child($id).child('turn').val() === 0 && root.child('matches').child($id).child('p0').val() === auth.uid) || (root.child('matches').child($id).child('turn').val() === 1 && root.child('matches').child($id).child('p1').val() === auth.uid)) && !data.exists() && newData.exists() && $i === '' + root.child('matches').child($id).child('n').val() && newData.child('s').val() === root.child('matches').child($id).child('turn').val() && newData.parent().parent().child('n').val() === root.child('matches').child($id).child('n').val() + 1 && newData.parent().parent().child('moves').child('' + root.child('matches').child($id).child('n').val()).exists() && newData.parent().parent().child('turnAt').val() === now",
+            ".validate": "newData.hasChildren(['s', 'd'])",
+            "s": {
+              ".validate": "newData.val() === 0 || newData.val() === 1"
+            },
+            "d": {
+              ".validate": "newData.isString() && newData.val().length <= 20000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "seen": {
+          "$seat": {
+            ".write": "auth != null && newData.val() === now && (($seat === '0' && root.child('matches').child($id).child('p0').val() === auth.uid) || ($seat === '1' && root.child('matches').child($id).child('p1').val() === auth.uid))"
+          }
+        },
+        "result": {
+          ".write": "auth != null && !data.exists() && newData.exists() && (root.child('matches').child($id).child('p0').val() === auth.uid || root.child('matches').child($id).child('p1').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['winner', 'why']) && ((newData.child('why').val() === 'resign' && ((root.child('matches').child($id).child('p0').val() === auth.uid && newData.child('winner').val() === 1) || (root.child('matches').child($id).child('p1').val() === auth.uid && newData.child('winner').val() === 0))) || (newData.child('why').val() === 'timeout' && ((root.child('matches').child($id).child('p0').val() === auth.uid && newData.child('winner').val() === 0) || (root.child('matches').child($id).child('p1').val() === auth.uid && newData.child('winner').val() === 1)) && root.child('matches').child($id).child('turn').val() !== newData.child('winner').val() && root.child('matches').child($id).child('turnAt').val() + 60000 < now) || (newData.child('why').val() === 'left' && ((root.child('matches').child($id).child('p0').val() === auth.uid && newData.child('winner').val() === 0) || (root.child('matches').child($id).child('p1').val() === auth.uid && newData.child('winner').val() === 1)) && ((root.child('matches').child($id).child('p0').val() === auth.uid && root.child('matches').child($id).child('seen').child('1').val() < now - 20000) || (root.child('matches').child($id).child('p1').val() === auth.uid && root.child('matches').child($id).child('seen').child('0').val() < now - 20000))) || (newData.child('why').val() === 'end' && (newData.child('winner').val() === -1 || newData.child('winner').val() === 0 || newData.child('winner').val() === 1) && root.child('matches').child($id).child('n').val() > 0 && ((root.child('matches').child($id).child('p0').val() === auth.uid && root.child('matches').child($id).child('moves').child('' + (root.child('matches').child($id).child('n').val() - 1)).child('s').val() === 0) || (root.child('matches').child($id).child('p1').val() === auth.uid && root.child('matches').child($id).child('moves').child('' + (root.child('matches').child($id).child('n').val() - 1)).child('s').val() === 1))) || (newData.child('why').val() === 'void' && newData.child('winner').val() === -1 && root.child('matches').child($id).child('at').val() + 10000 < now && ((root.child('matches').child($id).child('p0').val() === auth.uid && !root.child('matches').child($id).child('seen').child('1').exists()) || (root.child('matches').child($id).child('p1').val() === auth.uid && !root.child('matches').child($id).child('seen').child('0').exists()))))",
+          "winner": {
+            ".validate": "newData.isNumber()"
+          },
+          "why": {
+            ".validate": "newData.isString()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

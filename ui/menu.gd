@@ -1124,7 +1124,11 @@ func _open_versus(game: String, level: int) -> void:
 		_show_list("versus")
 		Ads.leaving_game())
 	add_child(screen)
-	screen.tutor.first_play()
+	# Not over a game online (level 3): the lobby is up, and then a stranger's
+	# clock is running. The screen opens it itself if the player takes the
+	# computer instead.
+	if screen.get("online") == null:
+		screen.tutor.first_play()
 	_list_root.visible = false
 
 ## A game on the Arcade tab: its own screen over the list, and back to the

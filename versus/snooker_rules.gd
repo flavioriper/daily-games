@@ -52,6 +52,105 @@ func _init(the_sim: RefCounted, first := 0) -> void:
 	breaker = first
 	turn = first
 
+# --- the whole of it, for a game online ---
+
+## Everything the referee holds, as plain numbers, words and lists, so it
+## survives a trip as JSON: a game online sends this after every shot and the
+## other end takes it as sent (versus/snooker_screen.gd). `flip` swaps the two
+## players, since each end calls itself player 0.
+func to_dict(flip := false) -> Dictionary:
+	var a := 1 if flip else 0
+	var l := {}
+	if not last.is_empty():
+		l = {"foul": bool(last.foul), "penalty": int(last.penalty), "scored": int(last.scored),
+			"pots": (last.pots as Array).duplicate(), "cue_in": bool(last.cue_in),
+			"free_ball": bool(last.free_ball), "nominated": int(last.nominated),
+			"reason": String(last.reason), "player": int(last.player) ^ a,
+			"free_next": bool(last.get("free_next", false))}
+	return {
+		"turn": turn ^ a, "scores": [scores[a], scores[1 - a]], "phase": phase,
+		"in_hand": in_hand, "free_ball": free_ball,
+		"breaks": [breaks[a], breaks[1 - a]], "high": [high_break[a], high_break[1 - a]],
+		"over": over, "winner": winner if winner < 0 else winner ^ a,
+		"respot": respotted_black, "breaker": breaker ^ a, "last": l,
+	}
+
+## Takes a state `to_dict` made, whole, and answers true; one that is not
+## such a state is refused and nothing here changes. Numbers may come back
+## from JSON as floats.
+func from_dict(d: Dictionary, flip := false) -> bool:
+	var a := 1 if flip else 0
+	var ints := {}
+	for k in ["turn", "winner", "breaker"]:
+		ints[k] = _whole(d.get(k))
+	var pairs := {}
+	for k in ["scores", "breaks", "high"]:
+		var v: Variant = d.get(k)
+		if typeof(v) != TYPE_ARRAY or (v as Array).size() != 2:
+			return false
+		var x := _whole(v[a])
+		var y := _whole(v[1 - a])
+		if x < 0 or y < 0:
+			return false
+		pairs[k] = [x, y]
+	for k in ["in_hand", "free_ball", "over", "respot"]:
+		if typeof(d.get(k)) != TYPE_BOOL:
+			return false
+	if not (ints.turn == 0 or ints.turn == 1) or not (ints.breaker == 0 or ints.breaker == 1) \
+			or ints.winner < -1 or ints.winner > 1 or (bool(d.over) != (ints.winner >= 0)):
+		return false
+	if typeof(d.get("phase")) != TYPE_STRING or not [RED, COLOUR, SEQUENCE].has(d.phase):
+		return false
+	var l: Variant = d.get("last")
+	if typeof(l) != TYPE_DICTIONARY:
+		return false
+	var the_last := {}
+	if not (l as Dictionary).is_empty():
+		for k in ["foul", "cue_in", "free_ball", "free_next"]:
+			if typeof(l.get(k)) != TYPE_BOOL:
+				return false
+		var pots: Array = []
+		if typeof(l.get("pots")) != TYPE_ARRAY or typeof(l.get("reason")) != TYPE_STRING:
+			return false
+		for v: Variant in l.pots:
+			var id := _whole(v)
+			if id < 1 or id >= Sim.COUNT:
+				return false
+			pots.append(id)
+		var who := _whole(l.get("player"))
+		var penalty := _whole(l.get("penalty"))
+		var scored := _whole(l.get("scored"))
+		var nominated := _whole(l.get("nominated"), -2)
+		if not (who == 0 or who == 1) or penalty < 0 or scored < 0 or nominated < -1 or nominated >= Sim.COUNT:
+			return false
+		if l.reason != "" and not ["SNK_FOUL_MISS", "SNK_FOUL_FIRST", "SNK_FOUL_POT", "SNK_FOUL_IN_OFF"].has(l.reason):
+			return false
+		the_last = {"foul": l.foul, "penalty": penalty, "scored": scored, "pots": pots, "cue_in": l.cue_in,
+			"free_ball": l.free_ball, "nominated": nominated, "reason": String(l.reason),
+			"player": who ^ a, "free_next": l.free_next}
+	turn = ints.turn ^ a
+	scores = pairs.scores
+	phase = d.phase
+	in_hand = d.in_hand
+	free_ball = d.free_ball
+	breaks = pairs.breaks
+	high_break = pairs.high
+	over = d.over
+	winner = ints.winner if ints.winner < 0 else ints.winner ^ a
+	respotted_black = d.respot
+	breaker = ints.breaker ^ a
+	last = the_last
+	return true
+
+## A whole number out of JSON (which hands every number back as a float), or
+## `bad` for anything else.
+static func _whole(v: Variant, bad := -9) -> int:
+	if typeof(v) == TYPE_INT:
+		return v
+	if typeof(v) == TYPE_FLOAT and is_finite(v) and v == floorf(v) and absf(v) < 1e6:
+		return int(v)
+	return bad
+
 ## The balls that are on right now.
 func balls_on() -> Array[int]:
 	var out: Array[int] = []

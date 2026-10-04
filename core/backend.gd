@@ -81,6 +81,16 @@ static func stop() -> void:
 static func uid() -> String:
 	return _uid
 
+## A live id token for a caller that speaks to Firebase itself (core/live.gd
+## puts it in `?auth=`), or "" when there is none to be had. `fresh` renews
+## it even if it looks good, for a server that has just said it is not.
+static func token(fresh := false) -> String:
+	if not started():
+		return ""
+	if fresh:
+		_expires_at = 0.0
+	return _id_token if await _ensure_token() else ""
+
 # --- hosts ---
 
 ## The project the URLs address. An environment override exists so the probe
@@ -109,18 +119,24 @@ static func _docs() -> String:
 
 # --- identity ---
 
+## Where the identity is kept. BACKEND_PLAYER (environment) names another
+## file, so two processes on one Mac are two players: the online probes.
+static func _player_path() -> String:
+	var from_env := OS.get_environment("BACKEND_PLAYER").strip_edges()
+	return from_env if not from_env.is_empty() else PLAYER_PATH
+
 static func _load_player() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load(PLAYER_PATH)  # a missing file is fine
+	cfg.load(_player_path())  # a missing file is fine
 	_uid = str(cfg.get_value("player", "uid", ""))
 	_refresh_token = str(cfg.get_value("player", "refresh_token", ""))
 
 static func _save_player() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load(PLAYER_PATH)
+	cfg.load(_player_path())
 	cfg.set_value("player", "uid", _uid)
 	cfg.set_value("player", "refresh_token", _refresh_token)
-	cfg.save(PLAYER_PATH)
+	cfg.save(_player_path())
 
 ## A live id token, signing up or refreshing as needed. False means the game
 ## runs offline this launch and tries again on the next.
@@ -133,7 +149,10 @@ static func _ensure_token() -> bool:
 	var ok := false
 	if not _refresh_token.is_empty():
 		ok = await _refresh()
-	if not ok:
+	# Only a player with no identity signs up. A refresh that merely failed to
+	# arrive keeps its token (_refresh), and signing up over it would hand the
+	# player a new uid in the middle of an online game.
+	if not ok and _refresh_token.is_empty():
 		ok = await _sign_up()
 	_signing_in = false
 	return ok
@@ -172,8 +191,11 @@ static func _refresh() -> bool:
 	var d = JSON.parse_string(str(res.body))
 	if not res.ok or typeof(d) != TYPE_DICTIONARY:
 		# A rejected refresh token is dead; drop it so the next call signs up.
-		_refresh_token = ""
-		_save_player()
+		# One that got no answer (no network, a timeout) may be perfectly
+		# good, and is kept.
+		if int(res.code) >= 400 and int(res.code) < 500:
+			_refresh_token = ""
+			_save_player()
 		return false
 	_uid = str(d.get("user_id", _uid))
 	_refresh_token = str(d.get("refresh_token", _refresh_token))

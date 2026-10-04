@@ -1,9 +1,13 @@
 extends RefCounted
 
-## Frames won and lost against the computer, per game and level, kept on the
-## device (user://versus.cfg). Nothing here is sent anywhere.
+## Frames won and lost, per game and level, kept on the device
+## (user://versus.cfg). Levels 0 to 2 are the computer's; level 3 is Online,
+## a stranger, and its record sits beside theirs under the same kind of key
+## ("chess_3"). Nothing here is sent anywhere.
 
 const PATH := "user://versus.cfg"
+## The fourth chip on the Versus tab: a live game against another player.
+const ONLINE := 3
 
 static func _load() -> ConfigFile:
 	var cfg := ConfigFile.new()
@@ -28,8 +32,22 @@ static func last_level(game: String) -> int:
 
 static func set_last_level(game: String, level: int) -> void:
 	var cfg := _load()
+	# The computer's level is kept apart, so picking Online does not forget it
+	# (a save from before Online has only `last`, which is carried over).
+	if level < ONLINE:
+		cfg.set_value("last_bot", game, level)
+	elif not cfg.has_section_key("last_bot", game):
+		cfg.set_value("last_bot", game, clampi(int(cfg.get_value("last", game, 1)), 0, ONLINE - 1))
 	cfg.set_value("last", game, level)
 	cfg.save(PATH)
+
+## The level last picked against the computer, 0 to 2: what the lobby's
+## "Play the computer" starts when nobody is around. `last_level` cannot
+## answer that, since picking Online is what brought the player there.
+static func last_bot_level(game: String) -> int:
+	var cfg := _load()
+	var last := int(cfg.get_value("last", game, 1))
+	return clampi(int(cfg.get_value("last_bot", game, last if last < ONLINE else 1)), 0, ONLINE - 1)
 
 ## Drawn games, for a game that can draw (chess).
 static func add_draw(game: String, level: int) -> void:

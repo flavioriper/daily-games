@@ -140,7 +140,6 @@ VS_SNOOKER_BLURB,"A frame against the computer: pot a red, then a colour, then c
 VS_RECORD,Won %d · Lost %d,Venceu %d · Perdeu %d,Ganadas %d · Perdidas %d
 VS_PLAY,Play,Jogar,Jugar
 VS_SOON,More duels soon,Mais duelos em breve,Más duelos pronto
-VS_SOON_LINE,Playing friends online is on the way.,Jogar online com amigos está a caminho.,Jugar en línea con amigos está en camino.
 SNK_MOTTO,"POT A RED, THEN A COLOUR","UMA VERMELHA, DEPOIS UMA COR","UNA ROJA, LUEGO UN COLOR"
 SNK_YOU,You,Você,Tú
 SNK_BOT,Bot,Bot,Bot
@@ -151,6 +150,7 @@ SNK_LEFT,%d on the table,%d na mesa,%d en la mesa
 SNK_SPIN,SPIN,EFEITO,EFECTO
 SNK_YOUR_TURN,"Your shot: aim on the table, then drag the cue back and let go","Sua vez: mire na mesa, depois puxe o taco para trás e solte","Tu turno: apunta en la mesa, luego tira del taco hacia atrás y suéltalo"
 SNK_BOT_TURN,Bot is lining up…,O bot está mirando…,El bot está apuntando…
+SNK_RIVAL_TURN,%s is lining up…,%s está mirando…,%s está apuntando…
 SNK_IN_HAND,"Ball in hand: drag it anywhere in the D","Bola na mão: arraste-a para qualquer lugar do D","Bola en mano: arrástrala a cualquier lugar de la D"
 SNK_FREE,"Free ball: any ball counts as the ball on","Bola livre: qualquer bola vale como a bola da vez","Bola libre: cualquier bola cuenta como la bola en juego"
 SNK_FOUL_MISS,Foul: nothing was hit,Falta: não acertou nenhuma bola,Falta: no tocó ninguna bola
@@ -833,3 +833,41 @@ TUT_PEAPOD_M_HEAD,The head,A cabeça,La cabeza
 TUT_PEAPOD_M_HEAD_LINE,Squash it and every plate left goes with it.,Esmague a cabeça e as placas que restam vão junto.,Aplasta la cabeza y las placas que quedan se van con ella.
 TUT_PEAPOD_HUD_RESET,Starts a new run from the first wave.,"Começa uma nova partida, da primeira onda.","Empieza una partida nueva, desde la primera oleada."
 TUT_PEAPOD_HUD_PAUSE,"Settings pauses the run, and so does this card. Tap the garden to go on.","As configurações pausam a partida, e este cartão também. Toque no jardim para continuar.","Los ajustes pausan la partida, y esta tarjeta también. Toca el jardín para seguir."
+VS_NAME_BERRY,Berry,Frutinha,Baya
+VS_NAME_ACORN,Acorn,Bolota,Bellota
+VS_NAME_CLOUD,Cloud,Nuvem,Nube
+VS_NAME_LEAF,Leaf,Folha,Hoja
+VS_NAME_FLOWER,Flower,Flor,Flor
+VS_NAME_PEAR,Pear,Pera,Pera
+VS_NAME_PUMPKIN,Pumpkin,Abóbora,Calabaza
+VS_NAME_MUSHROOM,Mushroom,Cogumelo,Seta
+VS_NAME_HEDGEHOG,Hedgehog,Ouriço,Erizo
+VS_ONLINE,Online,Online,Online
+VS_ONLINE_MOTTO,A MINUTE A MOVE,UM MINUTO POR JOGADA,UN MINUTO POR JUGADA
+VS_ONLINE_BLURB,"A live game against another player, with a minute for every turn.","Uma partida ao vivo contra outro jogador, com um minuto para cada jogada.","Una partida en vivo contra otro jugador, con un minuto para cada jugada."
+VS_LOOKING,Looking for a player…,Procurando um jogador…,Buscando un jugador…
+VS_LOOKING_BODY,The game starts as soon as someone turns up.,A partida começa assim que alguém aparecer.,La partida empieza en cuanto aparezca alguien.
+VS_CANCEL,Cancel,Cancelar,Cancelar
+VS_NOBODY,Nobody around right now,Ninguém por aqui agora,No hay nadie ahora
+VS_NOBODY_BODY,You can keep looking or play the computer instead.,Você pode continuar procurando ou jogar contra o computador.,Puedes seguir buscando o jugar contra el ordenador.
+VS_KEEP_LOOKING,Keep looking,Continuar procurando,Seguir buscando
+VS_PLAY_COMPUTER,Play the computer,Jogar contra o bot,Jugar contra el bot
+VS_OFFLINE,No connection,Sem conexão,Sin conexión
+VS_OFFLINE_BODY,Playing online needs the internet. The computer is always here.,Jogar online precisa de internet. O computador está sempre aqui.,Jugar en línea necesita internet. El ordenador siempre está aquí.
+VS_FOUND,Player found!,Jogador encontrado!,¡Jugador encontrado!
+VS_FOUND_FIRST,You play first,Você começa,Empiezas tú
+VS_FOUND_SECOND,%s plays first,%s começa,Empieza %s
+VS_RESIGN_TITLE,Leave the game?,Sair da partida?,¿Salir de la partida?
+VS_RESIGN_BODY,Leaving now gives %s the win.,Sair agora dá a vitória a %s.,Salir ahora le da la victoria a %s.
+VS_RESIGN_STAY,Keep playing,Continuar jogando,Seguir jugando
+VS_RESIGN_GO,Resign,Desistir,Rendirse
+VS_FIND_ANOTHER,Find another,Procurar outro,Buscar otro
+VS_END_WON,You win!,Você venceu!,¡Ganaste!
+VS_END_LOST,You lost,Você perdeu,Perdiste
+VS_END_DRAW,A draw,Empate,Empate
+VS_END_RESIGN,%s resigned,%s desistiu,%s se rindió
+VS_END_RESIGN_YOU,You resigned,Você desistiu,Te rendiste
+VS_END_TIMEOUT,%s ran out of time,O tempo de %s acabou,A %s se le acabó el tiempo
+VS_END_TIMEOUT_YOU,You ran out of time,Seu tempo acabou,Se te acabó el tiempo
+VS_END_LEFT,%s left the game,%s saiu da partida,%s salió de la partida
+VS_END_LEFT_YOU,You were away too long,Você ficou fora por muito tempo,Estuviste fuera demasiado tiempo
