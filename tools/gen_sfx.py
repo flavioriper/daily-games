@@ -1362,6 +1362,12 @@ SETS = {
         "start":     ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
         "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
         "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        # the second pass (2026-10-04): an iron crate, a pod, the frost, the shove, a rotten gift
+        "clank":     ("a tiny soft dull metal 'tink' of a dried pea bouncing off a small iron box, very short", 0.5, -17, CARTOON),
+        "pod":       ("a bright punchy three-note rising power-up blip with a little 'shing', a new weapon loaded, short", 0.7, -6, ARCADE),
+        "frost":     ("a soft icy crystalline shimmer falling into a gentle freeze, everything slowing down, short", 0.9, -7, ARCADE),
+        "shove":     ("a big soft cartoon whoosh and a springy 'boing' push, everything shoved back, playful, short", 0.8, -6, CARTOON),
+        "rot":       ("a soft squelchy cartoon 'blegh' splat with a short descending two-note blip, something rotten caught, gentle", 0.7, -7, CARTOON),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.

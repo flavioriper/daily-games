@@ -14,11 +14,21 @@ extends RefCounted
 ## Two waves of crates in a wall, five across, then one of a millipede
 ## winding down a path -- every plate a number, the head worth six of them,
 ## and a plate shot off knocks the whole of it back.
+##
+## The second pass (2026-10-04): three pods held for a while (a fan of peas,
+## a pea that goes through three, a pea that bursts on its neighbours),
+## three more gifts (a magnet for the gifts, a frost on whatever is coming,
+## a shove back up), a rotten gift to keep out from under, and an iron crate
+## that takes one a pea whatever the pea weighs. The helper is a short one
+## now, and the millipede quickens as it shortens.
 
 enum Phase { READY, PLAY, OVER }
 enum Wave { WALL, MILLI }
-## What a crate or a plate is. PEA to TWIN are the gifts.
-enum Kind { CRATE, GOLD, BOMB, PEA, RATE, POWER, TWIN, HEAD }
+## What a crate or a plate is. PEA to TWIN and FAN to ROT hold a token
+## (`holds_token`); FAN, PIERCE and BURST are the pods.
+enum Kind { CRATE, GOLD, BOMB, PEA, RATE, POWER, TWIN, HEAD, FAN, PIERCE, BURST, MAGNET, FROST, SHOVE, ROT, IRON }
+## How a pea in flight looks and lands.
+enum Shot { PEA, PIERCE, BURST }
 
 const DT := 1.0 / 60.0
 const W := 300.0
@@ -39,10 +49,23 @@ const PEA_SPEED := 540.0
 const PEA_GAP := 7.5
 const MAX_PEAS := 5
 const MAX_RATE := 8
-const TWIN_TIME := 12.0
+const TWIN_TIME := 6.0
 const TWIN_OFF := 58.0
 const TOKEN_FALL := 120.0
 const CATCH := 30.0
+## A token dropped past the cart's reach (the millipede comes in from off
+## the left edge) drifts in to where the cart can stand under it.
+const TOKEN_DRIFT := 80.0
+const POD_TIME := 10.0
+const MAGNET_TIME := 10.0
+const MAGNET_PULL := 300.0
+const FROST_TIME := 5.0
+const FROST := 0.35
+const SHOVE_WALL := 60.0
+const SHOVE_MILLI := 200.0
+## The fan's two side peas lean this far off straight up (as vx).
+const FAN_VX := 135.0
+const PIERCES := 3
 ## A wall still high up comes down quickly, so a cleared sky never waits.
 const RUSH_Y := 150.0
 const RUSH := 5.0
@@ -60,7 +83,9 @@ const SPACING := 31.0
 const SEG_R := 15.0
 const HEAD_R := 19.0
 const HEAD_WORTH := 6
-const KNOCK := 16.0
+const KNOCK := 9.0
+## With every plate gone but the head it runs this much quicker.
+const MILLI_HURRY := 0.6
 const CATCH_UP := 5.0
 ## Kills this close together are one streak.
 const STREAK_GAP := 0.7
@@ -85,6 +110,12 @@ var rate_lv := 0
 var power := 1
 var twin_t := 0.0
 var twin_x := W * 0.5
+## The pod held (0: none, else Kind.FAN, PIERCE or BURST) and its seconds
+## left; the magnet's and the frost's.
+var pod := 0
+var pod_t := 0.0
+var magnet_t := 0.0
+var frost_t := 0.0
 var _cool := 0.0
 var shots: Array = []
 ## Falling gifts: {kind, x, y, vy, id}.
@@ -97,7 +128,15 @@ var wall_speed := 8.0
 ## The millipede, head first: {kind, hp, max, s, id, dying}.
 var segs: Array = []
 var milli_speed := 24.0
+var milli_n := 1
 var _push := 0.0
+## Where each plate is, worked out once a step and again when one goes: a
+## pea asking the path for every plate it passed was most of a step.
+var _seg_pos := PackedVector2Array()
+var _seg_dirty := true
+var _seg_top := 0.0
+var _seg_low := 0.0
+var _twin_wave := -9
 var events: Array = []
 var kills := 0
 var caught := 0
@@ -125,6 +164,13 @@ func rate() -> float:
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
 	return 2.4 * pow(1.45, mini(w, 10) - 1) * pow(1.25, maxi(0, w - 10))
+
+static func holds_token(kind: int) -> bool:
+	return (kind >= Kind.PEA and kind <= Kind.TWIN) or (kind >= Kind.FAN and kind <= Kind.ROT)
+
+## An iron crate's number: the peas it takes, whatever they weigh.
+static func iron_hp(w: int) -> int:
+	return 10 + 4 * w
 
 static func path_len() -> float:
 	return (X1 - PATH_FROM) + (PATH_ROWS - 1) * (PI * TURN_R + X1 - X0)
@@ -178,6 +224,7 @@ func step() -> void:
 		Phase.PLAY:
 			t += DT
 			_move()
+			_tick_gifts()
 			_fire()
 			_step_shots()
 			_step_tokens()
@@ -222,59 +269,155 @@ func _move() -> void:
 			twin_t = 0.0
 			events.append({"type": "twin_off", "x": twin_x})
 
+## The pod, the magnet and the frost run down.
+func _tick_gifts() -> void:
+	if pod_t > 0.0:
+		pod_t -= DT
+		if pod_t <= 0.0:
+			pod_t = 0.0
+			pod = 0
+			events.append({"type": "pod_off"})
+	if magnet_t > 0.0:
+		magnet_t = maxf(0.0, magnet_t - DT)
+	if frost_t > 0.0:
+		frost_t -= DT
+		if frost_t <= 0.0:
+			frost_t = 0.0
+			events.append({"type": "frost_off"})
+
+## What the frost leaves of a speed.
+func _slow() -> float:
+	return FROST if frost_t > 0.0 else 1.0
+
 func _fire() -> void:
 	_cool -= DT
 	if _cool > 0.0:
 		return
 	_cool += 1.0 / rate()
-	_volley(x)
+	_volley(x, peas, pod)
 	events.append({"type": "shot", "x": x, "n": peas})
 	if twin_t > 0.0:
-		_volley(twin_x)
+		# the helper's is a plain pea, one at a time
+		_volley(twin_x, 1, 0)
 	fired += 1
 
-func _volley(from: float) -> void:
-	for i in peas:
-		shots.append({"x": from + (i - (peas - 1) * 0.5) * PEA_GAP, "y": CART_Y - 34.0})
+func _volley(from: float, n: int, held: int) -> void:
+	var look := Shot.PEA
+	var left := 0
+	if held == Kind.PIERCE:
+		look = Shot.PIERCE
+		left = PIERCES - 1
+	elif held == Kind.BURST:
+		look = Shot.BURST
+	for i in n:
+		shots.append({"x": from + (i - (n - 1) * 0.5) * PEA_GAP, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": left, "last": -1})
+	if held == Kind.FAN:
+		for side in [-1.0, 1.0]:
+			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": Shot.PEA, "left": 0, "last": -1})
 
 func _step_shots() -> void:
 	var keep: Array = []
+	_seg_dirty = true
+	var live := phase == Phase.PLAY and gap_t <= 0.0
 	for p: Dictionary in shots:
 		p.y -= PEA_SPEED * DT
 		if p.y < -8.0:
 			continue
-		if phase == Phase.PLAY and gap_t <= 0.0 and _strike(p):
+		if p.vx != 0.0:
+			p.x += float(p.vx) * DT
+			if p.x < -6.0 or p.x > W + 6.0:
+				continue
+		if live and _strike(p):
 			continue
 		keep.append(p)
 	shots = keep
 
-## A pea against whatever is over it. True when it landed.
+## Where every plate is, and the band of the field they are in.
+func _place_segs() -> void:
+	_seg_dirty = false
+	var n := segs.size()
+	_seg_pos.resize(n)
+	_seg_top = INF
+	_seg_low = -INF
+	for i in n:
+		var at := path_at(segs[i].s)
+		_seg_pos[i] = at
+		_seg_top = minf(_seg_top, at.y)
+		_seg_low = maxf(_seg_low, at.y)
+
+## A pea against whatever is over it. True when it is spent.
 func _strike(p: Dictionary) -> bool:
+	var px: float = p.x
+	var py: float = p.y
 	if wave_kind == Wave.WALL:
-		if p.y > wall_y or rows.is_empty():
+		if py > wall_y or rows.is_empty() or px < 0.0 or px >= W:
 			return false
-		var r := int((wall_y - float(p.y)) / CELL_H)
-		var c := clampi(int(float(p.x) / CELL_W), 0, COLS - 1)
+		var r := int((wall_y - py) / CELL_H)
+		var c := clampi(int(px / CELL_W), 0, COLS - 1)
 		if r >= rows.size() or rows[r][c] == null:
 			return false
-		_hurt_cell(r, c, power, Vector2(p.x, wall_y - r * CELL_H))
-		return true
+		var cell: Dictionary = rows[r][c]
+		if int(cell.id) == int(p.last):
+			return false
+		_hurt_cell(r, c, power, Vector2(px, wall_y - r * CELL_H))
+		if int(p.k) == Shot.BURST:
+			var half := maxi(1, int(power / 2.0))
+			for d: Vector2i in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0)]:
+				var rr: int = r + d.x
+				var cc: int = c + d.y
+				if rr < rows.size() and cc >= 0 and cc < COLS and rows[rr][cc] != null:
+					_hurt_cell(rr, cc, half, cell_pos(rr, cc), false, true)
+		return _spent(p, int(cell.id))
+	if _seg_dirty:
+		_place_segs()
+	if py < _seg_top - HEAD_R - 2.0 or py > _seg_low + HEAD_R + 2.0:
+		return false
 	for i in segs.size():
 		var sg: Dictionary = segs[i]
 		if sg.dying >= 0.0 or float(sg.s) < 0.0:
 			continue
-		var at := path_at(sg.s)
+		var at := _seg_pos[i]
 		var rad := (HEAD_R if sg.kind == Kind.HEAD else SEG_R) + 2.0
-		if absf(at.x - float(p.x)) < rad and absf(at.y - float(p.y)) < rad:
-			_hurt_seg(i, power, Vector2(p.x, at.y + rad * 0.7))
-			return true
+		if absf(at.x - px) < rad and absf(at.y - py) < rad:
+			var id: int = sg.id
+			if id == int(p.last):
+				continue
+			var beside: Array = []
+			if int(p.k) == Shot.BURST:
+				for j in [i - 1, i + 1]:
+					if j >= 0 and j < segs.size():
+						beside.append(segs[j].id)
+			_hurt_seg(i, power, Vector2(px, at.y + rad * 0.7))
+			for other: int in beside:
+				var j := _seg_index(other)
+				if j >= 0 and float(segs[j].dying) < 0.0 and float(segs[j].s) >= 0.0:
+					_hurt_seg(j, maxi(1, int(power / 2.0)), path_at(segs[j].s), true)
+			return _spent(p, id)
 	return false
 
-func _hurt_cell(r: int, c: int, dmg: int, at: Vector2) -> void:
+## A pea that has landed on `id`: a piercing one with targets left goes on.
+func _spent(p: Dictionary, id: int) -> bool:
+	if int(p.left) <= 0:
+		return true
+	p.left = int(p.left) - 1
+	p.last = id
+	return false
+
+func _seg_index(id: int) -> int:
+	for i in segs.size():
+		if int(segs[i].id) == id:
+			return i
+	return -1
+
+## `whole` is a firecracker's (iron takes it whole); `quiet` a burst's
+## splash, which lands without a sound of its own.
+func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, whole := false, quiet := false) -> void:
 	var cell: Dictionary = rows[r][c]
+	if cell.kind == Kind.IRON and not whole:
+		dmg = 1
 	cell.hp = int(cell.hp) - dmg
 	if cell.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind})
+		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "quiet": quiet})
 		return
 	var pos := cell_pos(r, c)
 	rows[r][c] = null
@@ -287,14 +430,17 @@ func _hurt_cell(r: int, c: int, dmg: int, at: Vector2) -> void:
 				var rr: int = r + dr
 				var cc: int = c + dc
 				if rr >= 0 and rr < rows.size() and cc >= 0 and cc < COLS and rows[rr][cc] != null:
-					_hurt_cell(rr, cc, blast, cell_pos(rr, cc))
+					_hurt_cell(rr, cc, blast, cell_pos(rr, cc), true)
 
-func _hurt_seg(i: int, dmg: int, at: Vector2) -> void:
+func _hurt_seg(i: int, dmg: int, at: Vector2, quiet := false) -> void:
 	var sg: Dictionary = segs[i]
+	if sg.kind == Kind.IRON:
+		dmg = 1
 	sg.hp = int(sg.hp) - dmg
 	if sg.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind})
+		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "quiet": quiet})
 		return
+	_seg_dirty = true
 	var pos := path_at(sg.s)
 	if sg.kind == Kind.HEAD:
 		# the head gone, the rest goes off plate by plate
@@ -321,7 +467,7 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	_streak_t = STREAK_GAP
 	events.append({"type": "kill", "pos": pos, "kind": kind, "points": worth, "max": cell.max, "id": cell.id,
 		"streak": streak, "popped": popped})
-	if kind >= Kind.PEA and kind <= Kind.TWIN:
+	if holds_token(kind):
 		var tk := {"kind": kind, "x": pos.x, "y": pos.y, "vy": -90.0, "id": _next_id}
 		_next_id += 1
 		tokens.append(tk)
@@ -332,6 +478,13 @@ func _step_tokens() -> void:
 	for tk: Dictionary in tokens:
 		tk.vy = minf(float(tk.vy) + 420.0 * DT, TOKEN_FALL)
 		tk.y = float(tk.y) + float(tk.vy) * DT
+		if magnet_t > 0.0 and int(tk.kind) != Kind.ROT:
+			var to := x
+			if twin_t > 0.0 and absf(twin_x - float(tk.x)) < absf(x - float(tk.x)):
+				to = twin_x
+			tk.x = move_toward(float(tk.x), to, MAGNET_PULL * DT)
+		else:
+			tk.x = move_toward(float(tk.x), clampf(float(tk.x), CART_HALF, W - CART_HALF), TOKEN_DRIFT * DT)
 		var near_cart := absf(float(tk.x) - x) < CATCH or (twin_t > 0.0 and absf(float(tk.x) - twin_x) < CATCH)
 		if float(tk.y) > CART_Y - 34.0 and near_cart:
 			_take(int(tk.kind), Vector2(tk.x, tk.y))
@@ -342,11 +495,34 @@ func _step_tokens() -> void:
 		keep.append(tk)
 	tokens = keep
 
-## A gift caught. One already at its most is a heavier pea instead.
+## A gift caught. One already at its most is a heavier pea instead; a
+## rotten one takes a pea off the volley, or a step off the rate.
 func _take(kind: int, at: Vector2) -> void:
+	if kind == Kind.ROT:
+		var lost := -1
+		if peas > 1:
+			peas -= 1
+			lost = Kind.PEA
+		elif rate_lv > 0:
+			rate_lv -= 1
+			lost = Kind.RATE
+		elif power > 1:
+			power -= 1
+			lost = Kind.POWER
+		events.append({"type": "catch", "pos": at, "kind": kind, "got": kind, "lost": lost})
+		return
 	caught += 1
 	var got := kind
 	match kind:
+		Kind.FAN, Kind.PIERCE, Kind.BURST:
+			pod = kind
+			pod_t = POD_TIME
+		Kind.MAGNET:
+			magnet_t = MAGNET_TIME
+		Kind.FROST:
+			frost_t = FROST_TIME
+		Kind.SHOVE:
+			_shove()
 		Kind.PEA:
 			if peas < MAX_PEAS:
 				peas += 1
@@ -364,6 +540,17 @@ func _take(kind: int, at: Vector2) -> void:
 	if got == Kind.POWER:
 		power += 1
 	events.append({"type": "catch", "pos": at, "kind": kind, "got": got})
+
+## Everything coming goes back a way: the wall up, the millipede along
+## its path.
+func _shove() -> void:
+	if wave_kind == Wave.WALL:
+		wall_y = maxf(wall_y - SHOVE_WALL, minf(wall_y, RUSH_Y))
+	elif not segs.is_empty() and segs[0].kind == Kind.HEAD:
+		var s: float = segs[0].s
+		segs[0].s = maxf(s - SHOVE_MILLI, minf(s, 260.0))
+		for i in range(1, segs.size()):
+			segs[i].s = minf(float(segs[i].s), float(segs[i - 1].s) - SPACING)
 
 # --- the waves ---
 
@@ -384,9 +571,26 @@ func _gift() -> int:
 		bag.append_array([Kind.PEA, Kind.PEA, Kind.PEA])
 	if rate_lv < MAX_RATE:
 		bag.append_array([Kind.RATE, Kind.RATE, Kind.RATE])
-	if wave >= 2:
-		bag.append(Kind.TWIN)
-	return bag[rng.randi_range(0, bag.size() - 1)]
+	if wave >= 3:
+		bag.append_array([Kind.FAN, Kind.PIERCE, Kind.BURST, Kind.MAGNET])
+	if wave >= 4:
+		bag.append(Kind.FROST)
+		# one helper at most every other wave
+		if wave - _twin_wave >= 2:
+			bag.append(Kind.TWIN)
+	if wave >= 5:
+		bag.append(Kind.SHOVE)
+	var got: int = bag[rng.randi_range(0, bag.size() - 1)]
+	if got == Kind.TWIN:
+		_twin_wave = wave
+	return got
+
+## How many rotten gifts and iron crates wave `w` holds.
+static func rot_count(w: int) -> int:
+	return 0 if w < 3 else (1 if w < 8 else (2 if w < 14 else 3))
+
+static func iron_count(w: int) -> int:
+	return 0 if w < 5 else mini(1 + int((w - 5) / 4.0), 4)
 
 func _cell(kind: int, hp: int) -> Dictionary:
 	_next_id += 1
@@ -416,6 +620,8 @@ func _deal_wall() -> void:
 		_scatter(1 + int(wave >= 9), n, func(r: int) -> Dictionary: return _cell(Kind.BOMB, roundi(base * (0.8 + 0.2 * r))))
 	if wave >= 2 and rng.randf() < 0.6:
 		_scatter(1, n, func(r: int) -> Dictionary: return _cell(Kind.GOLD, roundi(base * (1.6 + 0.3 * r))))
+	_scatter(rot_count(wave), n, func(r: int) -> Dictionary: return _cell(Kind.ROT, roundi(base * (0.5 + 0.12 * r))))
+	_scatter(iron_count(wave), n, func(_r: int) -> Dictionary: return _cell(Kind.IRON, iron_hp(wave)))
 	wall_y = 0.0
 	wall_speed = 6.5 + 0.45 * mini(wave, 20)
 
@@ -438,7 +644,7 @@ func _step_wall() -> void:
 	if rows.is_empty():
 		_cleared()
 		return
-	wall_y += wall_speed * (RUSH if wall_y < RUSH_Y else 1.0) * DT
+	wall_y += wall_speed * (RUSH if wall_y < RUSH_Y else _slow()) * DT
 	if wall_y >= DANGER:
 		_end("wall")
 
@@ -464,11 +670,18 @@ func _deal_milli() -> void:
 			kind = _gift()
 		elif i % 7 == 5:
 			kind = Kind.GOLD
-		var hp := base * rng.randf_range(0.7, 1.3) * (0.5 if kind >= Kind.PEA else (1.6 if kind == Kind.GOLD else 1.0))
+		elif i % 9 == 4 and wave >= 3:
+			kind = Kind.ROT
+		elif i % 5 == 3 and wave >= 9:
+			kind = Kind.IRON
+		var hp := base * rng.randf_range(0.7, 1.3) * (0.5 if holds_token(kind) else (1.6 if kind == Kind.GOLD else 1.0))
+		if kind == Kind.IRON:
+			hp = iron_hp(wave) * 0.5
 		var sg := _cell(kind, roundi(hp))
 		sg.s = -(i + 1) * SPACING
 		sg.dying = -1.0
 		segs.append(sg)
+	milli_n = n
 	milli_speed = 20.0 + 0.7 * mini(wave, 24)
 
 func _step_milli() -> void:
@@ -488,7 +701,9 @@ func _step_milli() -> void:
 				i += 1
 		return
 	var head: Dictionary = segs[0]
-	var speed := milli_speed * (RUSH if float(head.s) < 260.0 else 1.0)
+	# the shorter it is, the quicker it runs
+	var hurry := 1.0 + MILLI_HURRY * (1.0 - float(segs.size() - 1) / maxf(1.0, milli_n))
+	var speed := milli_speed * (RUSH if float(head.s) < 260.0 else hurry * _slow())
 	var back := minf(_push, 150.0 * DT)
 	_push -= back
 	head.s = maxf(0.0, float(head.s) + speed * DT - back)

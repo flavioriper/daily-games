@@ -38,7 +38,13 @@ const PAINT := [Color("8cc36b"), Color("5fc1ad"), Color("6fb0de"), Color("7d8fd9
 	Color("a8505e"), Color("5a4a5e")]
 ## A gift's tile, by Sim.Kind.
 const GIFT := {Sim.Kind.PEA: Color("7fc8ee"), Sim.Kind.RATE: Color("f08fb0"), Sim.Kind.POWER: Color("f5a44a"),
-	Sim.Kind.TWIN: Color("b6d957")}
+	Sim.Kind.TWIN: Color("b6d957"), Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"),
+	Sim.Kind.BURST: Color("d665c8"), Sim.Kind.MAGNET: Color("5a8fe0"), Sim.Kind.FROST: Color("bfeaf7"),
+	Sim.Kind.SHOVE: Color("5fbf8a"), Sim.Kind.ROT: Color("8a7358")}
+const IRON := Color("8b94a3")
+const ROT_INK := Color("4a2f4c")
+const DART := Color("ffe66b")
+const BERRY := Color("f0705a")
 
 static var _cache := {}
 
@@ -63,6 +69,8 @@ static func colour(kind: int, hp: int) -> Color:
 			return CRACKER
 		Sim.Kind.HEAD:
 			return HEAD
+		Sim.Kind.IRON:
+			return IRON
 	if GIFT.has(kind):
 		return GIFT[kind]
 	return PAINT[tier_of(hp)]
@@ -99,6 +107,12 @@ static func crate(kind: int, tier: int, u: float) -> ArrayMesh:
 			b.stroke(PackedVector2Array([Vector2(at.x + 3.0 * u, y), Vector2(at.x + w - 3.0 * u, y)]), maxf(1.0, 0.7 * u), Color(deep, 0.3))
 		for sx in [-1.0, 1.0]:
 			b.disc(Vector2(sx * (w * 0.5 - 4.5 * u), at.y + (h - lip) * 0.5), 1.1 * u, Color(deep, 0.5))
+	elif kind == Sim.Kind.IRON:
+		# a strap down each side and a rivet in every corner
+		for sx in [-1.0, 1.0]:
+			b.fan(Face.Builder.round_rect(Vector2(sx * (w * 0.5 - 6.5 * u) - 2.5 * u, at.y + 1.0 * u), Vector2(5.0 * u, h - lip - 2.0 * u), 1.5 * u), Color(deep, 0.55))
+			for sy in [0.0, 1.0]:
+				b.disc(Vector2(sx * (w * 0.5 - 6.5 * u), at.y + 5.0 * u + sy * (h - lip - 10.0 * u)), 1.7 * u, base.lightened(0.45))
 	else:
 		# a paler panel the icon sits on, and a glint in the corner
 		b.fan(Face.Builder.round_rect(at + Vector2(4.0, 5.5) * u, Vector2(w - 8.0 * u, h - lip - 9.0 * u), r * 0.6), base.lightened(0.22))
@@ -130,7 +144,10 @@ static func plate(kind: int, tier: int, u: float) -> ArrayMesh:
 	b.polygon(_octagon(Vector2(0, -1.2 * u), r * 0.9), base)
 	b.polygon(_octagon(Vector2(0, -1.2 * u), r * 0.72), base.lightened(0.14))
 	b.stroke(Face.Builder.arc_points(Vector2(0, -1.2 * u), r * 0.74, -PI * 0.82, -PI * 0.55), maxf(1.0, 1.2 * u), Color(1, 1, 1, 0.45))
-	if kind != Sim.Kind.CRATE and kind != Sim.Kind.GOLD:
+	if kind == Sim.Kind.IRON:
+		for k in 4:
+			b.disc(Vector2(0, -1.2 * u) + Vector2.from_angle(TAU * (k + 0.5) / 4.0) * r * 0.74, 1.5 * u, base.lightened(0.45))
+	elif kind != Sim.Kind.CRATE and kind != Sim.Kind.GOLD:
 		icon(b, kind, Vector2(0, -1.2 * u), r * 1.15)
 	elif kind == Sim.Kind.GOLD:
 		_twinkle(b, Vector2(r * 0.5, -r * 0.55), 2.6 * u, Color(1, 1, 1, 0.9))
@@ -201,6 +218,53 @@ static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 			for sx in [-1.0, 1.0]:
 				b.disc(at + Vector2(sx * 12, 0) * k, 8 * k, TYRE)
 				b.disc(at + Vector2(sx * 12, 0) * k, 3.4 * k, HUB)
+		Sim.Kind.FAN:
+			# three peas flung apart from one mouth
+			for k in [-1.0, 0.0, 1.0]:
+				var d := Vector2.from_angle(-PI * 0.5 + k * 0.62)
+				b.stroke(PackedVector2Array([c + Vector2(0, s * 0.36), c + Vector2(0, s * 0.36) + d * s * 0.42]), s * 0.07, Color(PAPER, 0.8))
+				pea(b, c + Vector2(0, s * 0.36) + d * s * 0.58, s * 0.17)
+		Sim.Kind.PIERCE:
+			# a dart up through two slats
+			for k in 2:
+				b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.4, -s * 0.2 + s * 0.3 * k), Vector2(s * 0.8, s * 0.11), s * 0.05), Color(INK, 0.4))
+			b.stroke(PackedVector2Array([c + Vector2(0, s * 0.44), c + Vector2(0, -s * 0.2)]), s * 0.13, PAPER)
+			b.polygon(PackedVector2Array([c + Vector2(-s * 0.24, -s * 0.16), c + Vector2(0, -s * 0.5), c + Vector2(s * 0.24, -s * 0.16)]), PAPER)
+		Sim.Kind.BURST:
+			# a berry going off: three peas out of it
+			for k in 3:
+				var d := Vector2.from_angle(-PI * 0.5 + TAU * k / 3.0)
+				pea(b, c + d * s * 0.38, s * 0.13)
+			b.disc(c, s * 0.24, PAPER)
+			b.disc(c, s * 0.18, BERRY)
+		Sim.Kind.MAGNET:
+			# a horseshoe, mouth up, with pale tips
+			var arc := Face.Builder.arc_points(c + Vector2(0, -s * 0.02), s * 0.27, 0.0, PI)
+			b.stroke(arc, s * 0.2, Color("e8584f"))
+			for sx in [-1.0, 1.0]:
+				b.fan(Face.Builder.round_rect(c + Vector2(sx * s * 0.27 - s * 0.1, -s * 0.36), Vector2(s * 0.2, s * 0.36), s * 0.02), Color("e8584f"))
+				b.fan(Face.Builder.round_rect(c + Vector2(sx * s * 0.27 - s * 0.1, -s * 0.44), Vector2(s * 0.2, s * 0.16), s * 0.02), PAPER)
+		Sim.Kind.FROST:
+			# a snowflake
+			for k in 3:
+				var d := Vector2.from_angle(PI * 0.5 + PI * k / 3.0)
+				b.stroke(PackedVector2Array([c - d * s * 0.42, c + d * s * 0.42]), s * 0.1, Color("4f9fc8"))
+				for end in [-1.0, 1.0]:
+					b.disc(c + d * s * 0.42 * end, s * 0.07, Color("4f9fc8"))
+			b.disc(c, s * 0.11, PAPER)
+		Sim.Kind.SHOVE:
+			# a fat arrow up off a bar
+			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.36, s * 0.3), Vector2(s * 0.72, s * 0.13), s * 0.06), PAPER)
+			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.1, -s * 0.1), Vector2(s * 0.2, s * 0.32), s * 0.03), PAPER)
+			b.polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.06), c + Vector2(0, -s * 0.46), c + Vector2(s * 0.3, -s * 0.06)]), PAPER)
+		Sim.Kind.ROT:
+			# a pea gone off, with a minus beside it
+			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.5, -s * 0.07), Vector2(s * 0.3, s * 0.14), s * 0.05), PAPER)
+			b.disc(c + Vector2(s * 0.16, s * 0.03), s * 0.3, ROT_INK)
+			b.disc(c + Vector2(s * 0.16, 0), s * 0.27, Color("9aa04a"))
+			for spot: Vector2 in [Vector2(0.06, -0.08), Vector2(0.26, 0.06), Vector2(0.12, 0.14)]:
+				b.disc(c + spot * s, s * 0.06, ROT_INK)
+			b.stroke(Face.Builder.bezier2(c + Vector2(s * 0.2, -s * 0.26), c + Vector2(s * 0.3, -s * 0.44), c + Vector2(s * 0.42, -s * 0.38), 5), s * 0.05, ROT_INK)
 		Sim.Kind.BOMB:
 			# a firecracker: a banded stick with a lit fuse
 			var k := s / 60.0
@@ -240,7 +304,7 @@ static func token(kind: int, u: float) -> ArrayMesh:
 	var base: Color = GIFT.get(kind, GOLD)
 	b.disc(Vector2.ZERO, r * 1.35, Color(1, 1, 0.8, 0.22))
 	b.disc(Vector2(0, 1.4 * u), r, base.darkened(0.3))
-	b.disc(Vector2.ZERO, r, PAPER)
+	b.disc(Vector2.ZERO, r, ROT_INK if kind == Sim.Kind.ROT else PAPER)
 	b.disc(Vector2.ZERO, r * 0.86, base)
 	b.stroke(Face.Builder.arc_points(Vector2.ZERO, r * 0.7, -PI * 0.85, -PI * 0.5), maxf(1.0, 1.2 * u), Color(1, 1, 1, 0.55))
 	icon(b, kind, Vector2.ZERO, r * 1.25)
@@ -309,6 +373,41 @@ static func barrel(u: float, helper := false) -> ArrayMesh:
 	# a tendril curling off the foot
 	b.stroke(Face.Builder.bezier3(Vector2(8, -6) * u, Vector2(15, -8) * u, Vector2(16, -15) * u, Vector2(12, -14) * u, 10), maxf(1.0, 1.1 * u), deep)
 	return _keep(key, b.mesh())
+
+## A pea in flight by its look (Sim.Shot), centred, flying up: a pea, a
+## dart that goes through, a berry that bursts. One mesh a look, drawn for
+## every pea in the air by a MultiMesh.
+static func shot(look: int, u: float) -> ArrayMesh:
+	var key := _key("s", look, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := 3.3 * u
+	match look:
+		Sim.Shot.PIERCE:
+			b.polygon(PackedVector2Array([Vector2(-r * 0.9, r * 1.2), Vector2(0, -r * 2.6), Vector2(r * 0.9, r * 1.2)]), DART.darkened(0.25))
+			b.polygon(PackedVector2Array([Vector2(-r * 0.55, r * 0.9), Vector2(0, -r * 2.2), Vector2(r * 0.55, r * 0.9)]), DART)
+			b.disc(Vector2(0, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.8))
+		Sim.Shot.BURST:
+			var pts := PackedVector2Array()
+			for k in 12:
+				pts.append(Vector2.from_angle(TAU * k / 12.0) * r * (1.35 if k % 2 == 0 else 0.95))
+			b.polygon(pts, BERRY.darkened(0.25))
+			b.disc(Vector2.ZERO, r * 0.9, BERRY)
+			b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.6))
+		_:
+			pea(b, Vector2.ZERO, r)
+	return _keep(key, b.mesh())
+
+## A four-pointed spark one unit long, white: scaled and tinted by its draw.
+static func spark() -> ArrayMesh:
+	if _cache.has("spark"):
+		return _cache["spark"]
+	var b := Face.Builder.new()
+	for q in 4:
+		var d := Vector2.from_angle(TAU * q / 4.0)
+		b.fan(PackedVector2Array([d.orthogonal() * 0.12, d, -d.orthogonal() * 0.12]), Color.WHITE)
+	return _keep("spark", b.mesh())
 
 ## The number on a crate or a plate, lettered in paper with an ink outline,
 ## centred on `c`; `s` is the height of what it sits on.

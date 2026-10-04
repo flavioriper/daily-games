@@ -5,8 +5,8 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peapod.gd -- <outdir> [reduce]
 ##
 ## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 4 the whole cast
-## in a wall (forced: every paint, every gift, the firecracker, the golden
-## crate, the helper, gifts falling), 5 a real slide through the viewport
+## in a wall (forced: every paint, every gift and pod, the firecracker, the
+## golden, iron and rotten crates, the helper, a pod held, gifts falling), 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
 ## score to user://arcade.cfg, so the file this machine had is put back on
@@ -147,16 +147,22 @@ func _process(delta: float) -> bool:
 					row.append(_cell(Sim.Kind.CRATE, hps[r][c]))
 				sim.rows.append(row)
 			sim.rows.append([_cell(Sim.Kind.PEA, 3), _cell(Sim.Kind.RATE, 3), _cell(Sim.Kind.POWER, 3), _cell(Sim.Kind.TWIN, 3), _cell(Sim.Kind.BOMB, 9)])
-			sim.rows.append([_cell(Sim.Kind.GOLD, 77), null, _cell(Sim.Kind.CRATE, 1), null, _cell(Sim.Kind.GOLD, 4)])
-			sim.wall_y = 250.0
+			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.ROT, 4), _cell(Sim.Kind.GOLD, 4)])
+			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.MAGNET, 3), _cell(Sim.Kind.FROST, 3)])
+			sim.rows.append([_cell(Sim.Kind.SHOVE, 3), null, null, null, null])
+			sim.wall_y = 290.0
 			sim.wall_speed = 0.0
-			sim.twin_t = 10.0
+			sim.pod = Sim.Kind.PIERCE
+			sim.pod_t = 8.0
+			sim.magnet_t = 6.0
+			sim.frost_t = 4.0
+			sim.twin_t = 5.0
 			sim.twin_x = 80.0
 			sim.peas = 3
 			sim.power = 1
 			sim.shots.clear()
 			sim.tokens = [{"kind": Sim.Kind.PEA, "x": 40.0, "y": 300.0, "vy": 0.0, "id": 1}, {"kind": Sim.Kind.RATE, "x": 100.0, "y": 330.0, "vy": 0.0, "id": 2},
-				{"kind": Sim.Kind.POWER, "x": 200.0, "y": 290.0, "vy": 0.0, "id": 3}, {"kind": Sim.Kind.TWIN, "x": 260.0, "y": 320.0, "vy": 0.0, "id": 4}]
+				{"kind": Sim.Kind.ROT, "x": 200.0, "y": 310.0, "vy": 0.0, "id": 3}, {"kind": Sim.Kind.BURST, "x": 260.0, "y": 330.0, "vy": 0.0, "id": 4}]
 			sim.target_x = 150.0
 			_hand = 150.0
 			_at = _t
@@ -164,6 +170,9 @@ func _process(delta: float) -> bool:
 		5:
 			for tk: Dictionary in _s.sim.tokens:
 				tk.vy = 0.0
+				tk.y = minf(float(tk.y), 340.0)
+			_s.sim.magnet_t = 6.0
+			_s.sim.frost_t = 4.0
 			if _t > _at + 0.25:
 				_shot("4_cast")
 				# a real slide, through the viewport: press, drag right, let go
