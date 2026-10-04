@@ -882,3 +882,41 @@ VS_FRIEND_GONE_UNFRIEND,You and %s are not friends any more.,Você e %s não sã
 VS_FRIEND_ASK_AGAIN,Ask again,Convidar de novo,Invitar de nuevo
 VS_FRIEND_REMATCH,Rematch,Revanche,Revancha
 VS_FRIEND_RECORD,Friend,Amigo,Amigo
+FRIENDS_TITLE,Friends,Amigos,Amigos
+FRIENDS_ROW_NONE,Play with someone you know,Jogue com quem você conhece,Juega con quien conoces
+FRIENDS_ROW_AWAY,Nobody online right now,Ninguém online agora,Nadie en línea ahora
+FRIENDS_ONLINE_ONE,%d online,%d online,%d en línea
+FRIENDS_ONLINE_N,%d online,%d online,%d en línea
+FRIENDS_COUNT_ONE,%d friend,%d amigo,%d amigo
+FRIENDS_COUNT_N,%d friends,%d amigos,%d amigos
+FRIENDS_INVITE,Invite a friend,Convidar um amigo,Invitar a un amigo
+FRIENDS_INVITE_TEXT,"Play me at snooker, chess or checkers on Peeplet Daily: %s","Jogue sinuca, xadrez ou damas comigo no Peeplet Daily: %s","Juega conmigo al snooker, al ajedrez o a las damas en Peeplet Daily: %s"
+FRIENDS_LINK_COPIED,Link copied,Link copiado,Enlace copiado
+FRIENDS_CODE_COPIED,Code copied,Código copiado,Código copiado
+FRIENDS_YOUR_CODE,Your code,Seu código,Tu código
+FRIENDS_ENTER_CODE,Enter a code,Digitar um código,Introducir un código
+FRIENDS_CODE_HINT,A friend's code is 8 letters and numbers.,O código de um amigo tem 8 letras e números.,El código de un amigo tiene 8 letras y números.
+FRIENDS_PASTE,Paste,Colar,Pegar
+FRIENDS_ADD,Add,Adicionar,Añadir
+FRIENDS_ADDED,You and %s are friends now.,Você e %s agora são amigos.,Tú y %s ahora son amigos.
+FRIENDS_ADD_OFFLINE,No connection. Try again in a moment.,Sem conexão. Tente de novo daqui a pouco.,Sin conexión. Inténtalo de nuevo en un momento.
+FRIENDS_ADD_UNKNOWN,Nobody has this code. Check it and try again.,Ninguém tem esse código. Confira e tente de novo.,Nadie tiene ese código. Revísalo e inténtalo de nuevo.
+FRIENDS_ADD_SELF,That is your own code.,Esse é o seu próprio código.,Ese es tu propio código.
+FRIENDS_ADD_ALREADY,You and %s are already friends.,Você e %s já são amigos.,Tú y %s ya son amigos.
+FRIENDS_ADD_NO_CODE,There is no code in what you copied.,Não há um código no que você copiou.,No hay un código en lo que copiaste.
+FRIENDS_STATUS_ONLINE,Online,Online,En línea
+FRIENDS_STATUS_AWAY,Away,Ausente,Ausente
+FRIENDS_EMPTY,No friends yet. Send your link: whoever opens it is your friend.,Nenhum amigo ainda. Envie seu link: quem abrir vira seu amigo.,Aún no tienes amigos. Envía tu enlace: quien lo abra será tu amigo.
+FRIENDS_OFFLINE,Friends need the internet. Check your connection and try again.,Os amigos precisam de internet. Confira sua conexão e tente de novo.,Los amigos necesitan internet. Revisa tu conexión e inténtalo de nuevo.
+FRIENDS_RETRY,Try again,Tentar de novo,Reintentar
+FRIENDS_PICK_TITLE,Pick a game,Escolha um jogo,Elige un juego
+FRIENDS_PICK_BODY,%s gets an invitation.,%s vai receber um convite.,%s recibirá una invitación.
+FRIENDS_REMOVE_TITLE,Remove friend?,Remover amizade?,¿Eliminar amistad?
+FRIENDS_REMOVE_BODY,You and %s stop being friends. A link makes you friends again.,Você e %s deixam de ser amigos. Um link refaz a amizade.,Tú y %s dejan de ser amigos. Un enlace rehace la amistad.
+FRIENDS_REMOVE,Remove,Remover,Eliminar
+FRIENDS_KEEP,Keep,Manter,Conservar
+FRIENDS_INVITED_TITLE,Invitation,Convite,Invitación
+FRIENDS_INVITED_BODY,wants to play %s,quer jogar %s,quiere jugar %s
+FRIENDS_NOT_NOW,Not now,Agora não,Ahora no
+FRIENDS_NEW_TITLE,New friend,Nova amizade,Nueva amistad
+FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são amigos. Chame para jogar quando quiser.,Ahora son amigos. Invita a jugar cuando quieras.

@@ -9,7 +9,8 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"pipe_straight", "pipe_elbow", "pipe_tee", "pipe_pump", "turn", "eye", "tree", "cross", "minus", "plus",
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
-	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad"]
+	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
+	"friends", "copy", "share"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -147,7 +148,30 @@ static func shape(name: String) -> Dictionary:
 			return {"polys": [], "lines": [
 				PackedVector2Array([Vector2(0.18, 0.3), Vector2(0.82, 0.3), Vector2(0.82, 0.7), Vector2(0.18, 0.7), Vector2(0.18, 0.3)]),
 				PackedVector2Array([Vector2(0.22, 0.82), Vector2(0.78, 0.18)])]}
+		"friends":
+			# Two figures side by side, the nearer one a little bigger.
+			return {"polys": [circle(Vector2(0.33, 0.33), 0.16), _shoulders(0.33, 0.25, 0.86, 0.3),
+				circle(Vector2(0.74, 0.4), 0.125), _shoulders(0.76, 0.18, 0.86, 0.24)], "lines": []}
+		"copy":
+			# A sheet over the corner of the one it was copied from.
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.36, 0.36), Vector2(0.84, 0.36), Vector2(0.84, 0.86), Vector2(0.36, 0.86), Vector2(0.36, 0.36)]),
+				PackedVector2Array([Vector2(0.64, 0.22), Vector2(0.64, 0.14), Vector2(0.16, 0.14), Vector2(0.16, 0.64), Vector2(0.24, 0.64)])]}
+		"share":
+			# An arrow up out of a tray.
+			return {"polys": [], "lines": [
+				PackedVector2Array([Vector2(0.2, 0.54), Vector2(0.2, 0.84), Vector2(0.8, 0.84), Vector2(0.8, 0.54)]),
+				PackedVector2Array([Vector2(0.5, 0.64), Vector2(0.5, 0.14)]),
+				PackedVector2Array([Vector2(0.32, 0.32), Vector2(0.5, 0.14), Vector2(0.68, 0.32)])]}
 	return {"polys": [], "lines": []}
+
+## A figure's shoulders: the top half of an ellipse standing on `foot`.
+static func _shoulders(x: float, half: float, foot: float, rise: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in 17:
+		var a := PI + PI * i / 16.0
+		out.append(Vector2(x + cos(a) * half, foot + sin(a) * rise))
+	return out
 
 ## Draws `name` into `rect` on `ci` in `colour`. Call only from `ci`'s draw
 ## callback. `hole`, when opaque, fills the shape's hole polygon on top (the
