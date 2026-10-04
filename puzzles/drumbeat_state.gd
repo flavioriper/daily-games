@@ -66,7 +66,7 @@ const CLEAR := 80.0
 ## The combo is lettered at these counts, and every hundred past the last.
 const COMBO_CALLS := [10, 25, 50, 100]
 ## Hearts by difficulty, and the misses in a row that break one.
-const HEARTS := [0, 0, 3, 2]
+const HEARTS := [0, 0, 0, 2]
 const MISS_RUN := 3
 
 var song: Dictionary

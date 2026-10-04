@@ -29,7 +29,7 @@ const HINTS := 3
 const HINTS_BY_BAND := [3, 3, 1, 0]
 ## Hard and Insane judge every number as it lands; a wrong one costs a heart
 ## (spec 2026-09-30-sudoku-polish-design.md, section 1). Nothing else does.
-const HEARTS := [0, 0, 3, 2]
+const HEARTS := [0, 0, 0, 2]
 
 ## Why a tap was turned down.
 const OK := 0

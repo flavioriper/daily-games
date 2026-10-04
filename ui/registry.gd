@@ -287,11 +287,11 @@ const PUZZLES := [
 		"short": "QN_SHORT",
 		"motto": "QN_MOTTO",
 		"footer": "Seat · Cross · Reign",
-		# Two chips, the queen bee and a cross, so it asks for the tile tray
-		# with the queen set.
+		# No tray: a tap cycles a cell blank -> cross -> queen and a drag lays
+		# crosses, so there is nothing to pick.
 		"script": "res://puzzles/queens2d.gd",
 		"shell": "flat",
-		"tray": "queens",
+		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court, or
 		# Insane's 10 by 10 in the morning mist (2026-09-30), and each is its

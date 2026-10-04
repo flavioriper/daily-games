@@ -26,7 +26,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## The polish of 2026-09-30 (spec 2026-09-30-mushroom-polish-design.md):
 ## Hard and Insane judge every mushroom as she is planted, and a wrong one
 ## costs a heart; a board's own hints thin out as the bands climb.
-const HEARTS := [0, 0, 3, 2]
+const HEARTS := [0, 0, 0, 2]
 const HINTS_BY_BAND := [3, 3, 1, 0]
 
 ## What the player has said about a covered cell.

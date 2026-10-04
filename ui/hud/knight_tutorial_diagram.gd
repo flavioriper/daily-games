@@ -307,7 +307,7 @@ func _start() -> void:
 		return
 	_loop = create_tween().set_loops()
 	_loop.tween_interval(1.6)
-	var judged := band >= 2
+	var judged := band >= 3
 	match lesson:
 		Lesson.HOP:
 			_tap(11, "HTP_KN_TAP_CAP", "HTP_KN_L_CAP")

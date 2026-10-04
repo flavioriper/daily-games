@@ -29,7 +29,7 @@ extends RefCounted
 const BANDS := [
 	{"kinds": 3, "fruit": 6, "reach": 3, "max_w": 5},
 	{"kinds": 4, "fruit": 8, "reach": 4, "max_w": 7},
-	{"kinds": 5, "fruit": 8, "reach": 4, "max_w": 9, "seed_pins": 1, "sun": 10, "hour": 4},
+	{"kinds": 5, "fruit": 8, "reach": 4, "max_w": 9, "seed_pins": 1},
 	{"kinds": 5, "fruit": 9, "reach": 5, "max_w": 12, "seed_pins": 2, "sun": 8, "hour": 3, "boing": true, "min_loose": 4},
 ]
 ## The most the glass reads either way; a heavier lean is the bale.

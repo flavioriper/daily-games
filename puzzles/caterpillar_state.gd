@@ -22,7 +22,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## a square (Hard) or leaves the garden unfinishable (Insane) costs a heart
 ## and is taken back. Spec: docs/superpowers/specs/2026-10-01-caterpillar-polish-design.md.
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 
 ## How far a hint grows the answer past the last square that agrees with it:
 ## to the next leaf, and never more than this many squares.

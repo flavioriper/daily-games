@@ -36,7 +36,7 @@ const HINTS := 3
 ## Hints and hearts by band: Hard trades a hint for hearts, Insane has
 ## neither hints nor Check -- only the iron judges.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 const WINDBLOWN := 3
 ## `locked` holds HINTED for a peg a hint put right, FUSED for one an iron
 ## fused with its plate; Try again keeps a hint's and melts the rest.

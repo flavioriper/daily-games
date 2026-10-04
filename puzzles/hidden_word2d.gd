@@ -480,6 +480,8 @@ func rules() -> String:
 	var out := tr("HW_RULES")
 	if state.strict:
 		out += "\n\n" + tr("HW_RULES_STRICT")
+	if state.keeps_rows:
+		out += "\n\n" + tr("HW_RULES_INK")
 	if state.snail:
 		out += "\n\n" + tr("HW_RULES_SNAIL")
 	return out

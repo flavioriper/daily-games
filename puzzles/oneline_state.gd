@@ -27,7 +27,7 @@ const HINTS := 3
 ## Hints a board gets per band, and hearts: Hard and Insane can be failed
 ## (docs/superpowers/specs/2026-09-30-oneline-polish-design.md, section 1).
 const HINTS_BY_BAND := [3, 3, 3, 1]
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## The lattice and its fill per difficulty: the island's own ladder
 ## (puzzles/oneline3d.gd). Measured over 200 generated boards a step: easy is
 ## about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 15.4 over

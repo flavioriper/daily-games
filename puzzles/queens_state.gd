@@ -41,7 +41,7 @@ const HINTS := 3
 const HINTS_BY_BAND := [3, 3, 3, 1]
 ## Hard and Insane can be failed: a queen seated where the answer has none
 ## costs one.
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## The ladder: easy, medium, hard, insane. The menu opens medium. Hard and
 ## Insane are read from banks mined on the Mac (content/insane/queens_hard.json
 ## and queens.json); these sizes are what an empty bank falls back to.

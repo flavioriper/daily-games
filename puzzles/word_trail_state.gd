@@ -24,7 +24,7 @@ const BANDS := [[3, 4, 5, 6], [3, 4, 4, 5, 6, 7], [4, 5, 6, 7, 8, 8], [6, 7, 8, 
 ## wish when it could have been a word -- as long as some unfound word -- and
 ## has not been tried before, so a slip, a stray tap or a second try of the
 ## same trail is free.
-const WISHES := [0, 0, 7, 5]
+const WISHES := [0, 0, 0, 5]
 ## What one more wish (the out card's video) gives back.
 const WISH_BACK := 3
 ## Night Walk (Insane): the field is dark but for the lantern at the finger.

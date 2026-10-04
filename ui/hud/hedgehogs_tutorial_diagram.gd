@@ -261,7 +261,7 @@ func _start() -> void:
 		return
 	_loop = create_tween().set_loops()
 	_loop.tween_interval(1.6)
-	var judged := band >= 2
+	var judged := band >= 3
 	match lesson:
 		Lesson.RAKE:
 			_tap(13, "HTP_HH_TAP_CAP", "HTP_HH_COUNT_CAP", 2.2)
@@ -379,7 +379,7 @@ func _still() -> void:
 			_say("HTP_HH_CHORD_CAP")
 		Lesson.WOKE:
 			_tap_now(GUESS)
-			_say("HTP_HH_WOKE_HEART_CAP" if band >= 2 else "HTP_HH_WOKE_CAP")
+			_say("HTP_HH_WOKE_HEART_CAP" if band >= 3 else "HTP_HH_WOKE_CAP")
 		Lesson.WALK:
 			for c: int in WALK_LINE:
 				_tap_now(c)

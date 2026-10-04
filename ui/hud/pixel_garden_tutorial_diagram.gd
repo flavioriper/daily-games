@@ -300,7 +300,7 @@ func _start() -> void:
 		return
 	_loop = create_tween().set_loops()
 	_loop.tween_interval(1.6)
-	var judged := band >= 2
+	var judged := band >= 3
 	match lesson:
 		Lesson.SEAT:
 			_tap_at(func() -> Vector2: return _art.chip("pink"), "HTP_PG_PICK_CAP", "", 1.0)

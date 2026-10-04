@@ -110,6 +110,9 @@ const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## Three met islets in five play a gag, by the islet's hash.
 const GAG_ODDS := 5
@@ -3530,7 +3533,7 @@ func _wave_steps() -> Dictionary:
 func _pick_coach() -> void:
 	_coach_lane = ""
 	_coach_from = State.NOWHERE
-	if state.band >= 2 or Motion.reduce or state.answer.is_empty():
+	if state.judged() or Motion.reduce or state.answer.is_empty():
 		return
 	var keys: Array = state.answer.keys()
 	keys.sort()
@@ -3882,7 +3885,7 @@ func _tick_layers(now: float) -> void:
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
 			or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
 		_heart_layer.queue_redraw()
-	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
 	var alive := _tick_life(now)
 	if alive or _life_alive:
@@ -3977,6 +3980,8 @@ func _draw_combo() -> void:
 	var now := _now()
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:

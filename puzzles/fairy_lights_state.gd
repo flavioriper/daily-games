@@ -43,7 +43,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## Per band, Easy .. Insane: the hints a garden starts with, and its hearts
 ## (0 is a band that cannot be lost).
 const HINTS := [3, 3, 1, 0]
-const HEARTS := [0, 0, 3, 2]
+const HEARTS := [0, 0, 0, 2]
 
 ## What a turn did, or why it was turned down.
 const OK := 0

@@ -91,3 +91,13 @@ without supposing).
   one seating.
 - `QN_TIP_MIST_2` told the player to seat a queen in her head and follow
   her; it now says no guessing and points at counting rows.
+
+### The queen / cross chips go (2026-10-04)
+
+The user: no choosing between queen and X, a tap always goes X then queen.
+The board already played that way (`_tap_cycle`: blank -> cross -> queen ->
+blank, a drag lays crosses) and ignored the armed chip, so the tray was a
+selector that selected nothing. The registry asks for `"tray": "none"` now
+and the board's `brush` / `set_brush` stub is deleted. `TileTray.QUEENS` and
+the host's `"queens"` case are left in place, unused. Shot at rest on Easy:
+no bottom row, board in the same place, 87 draw calls.

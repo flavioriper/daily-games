@@ -372,3 +372,46 @@ pointing `seed_as` at them. Specs:
   arrived. It showed on a rendered frame and in no test.
 
 Per-board entries (Queens through Shikaku) are in `docs/agents/boards/`.
+
+### The streak's bubble goes after showing (2026-10-04)
+
+The `xN` bubble twenty boards share (`_draw_combo`, One Line's first) used to
+stand over the board until the streak broke, in the way of the next move. It
+now shows for `COMBO_HOLD` (1.2 s from `_combo_at`) and deflates on its own
+with the same `COMBO_DEFLATE` a broken streak plays; `_streak` runs on, so the
+next right move pops it back in with the next number (a move inside the hold
+still bumps it). `_draw_combo` starts the deflate itself, and each board's
+tick keeps the layer drawing through the hold. Under `Motion.reduce` it
+vanishes at the hold's end. Checked on Sudoku with a throwaway probe: four
+right numbers, gone 1.45 s after the last, back at x5 on the fifth.
+
+### Only Insane can be lost (2026-10-04)
+
+The user: remove the hearts for Hard, keep only Insane possible to lose.
+Every hearts table (`HEARTS`, `HEARTS_BY`, Binairo's `HEART_COUNTS`; 24
+boards, Drumbeat among them) reads `[0, 0, 0, n]` now, so Hard plays as
+Medium does on a bigger board: no pill, no judging of a move as it lands, no
+out-of-hearts card, and Check back where a judged band had lost it (Binairo,
+Pixel Garden; Sudoku and Bridges already asked `max_hearts`). The places
+that said `band >= 2` instead of asking the table follow it: Rings' and
+Pinwheel's `judged`, Quilt's and Bridges' coach, Trestle's and Pixel
+Garden's rules, and the tutorial diagrams of Quilt, Hedgehogs, Knight, Pixel
+Garden and Marigold. Hard's hint counts are as they were.
+
+**Sunbeam is the exception**: its snails are Hard's own content, so the rule
+stays without the price -- the light let go on a snail wakes it and the piece
+slides back, no heart (`_misstep`'s `costs`), and `SB_RULES_SNAILS` /
+`HTP_SB_SNAILS_BODY` lost their `%d`.
+
+Each board's own notes and the comments over the tables still say "Hard and
+Insane"; read them as Insane. Not touched: the Hard bands that end some other
+way (Balance's sunset, Untangle's thread, Hidden Word's rows).
+
+The same day, on the user's yes, the Hard bands that ended some other way
+went to Insane only as well: Balance's sunset (`Gen.BANDS[2]` lost `sun` and
+`hour`), Untangle's thread (`slack` 0 on Hard, `SPOOL_BY_BAND`), Word
+Trail's wishes (`WISHES`), and the ink rows of Hidden Word and Code Break
+(`keeps_rows` from band 3; Hidden Word's Hard keeps its strict clue rule,
+and the ink sentence moved out of `HW_RULES_STRICT` into `HW_RULES_INK`).
+Those two still run out of rows on every band, as Easy and Medium always
+did: one more row, see the word, or Reset.

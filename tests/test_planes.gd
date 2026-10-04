@@ -233,7 +233,7 @@ static func _test_windy_deal(t) -> void:
 	t.check(dealt.windy() and dealt.banked, "Insane deals a banked Windy Day sky")
 	t.check(dealt.judged and not dealt.undo_allowed, "judged, and no undo")
 	t.eq(State.hints_for(3), 0, "no hints on Insane")
-	t.eq(State.hearts_for(2), 3, "three hearts on Hard")
+	t.eq(State.hearts_for(2), 0, "no hearts on Hard")
 	t.check(not _built(5, 1).judged, "Medium is not judged")
 	for s in range(1, 11):
 		var st := State.new()

@@ -348,7 +348,7 @@ func _run(gen: int, fresh: bool) -> void:
 			Lesson.OUT:
 				ok = await _shot(OUT_SHOT, "HTP_MG_LAST_CAP", "", gen)
 				if ok:
-					_say("HTP_MG_OUT_HEART_CAP" if band >= 2 else "HTP_MG_OUT_CAP")
+					_say("HTP_MG_OUT_HEART_CAP" if band >= 3 else "HTP_MG_OUT_CAP")
 					ok = await _settle(gen)
 				if ok:
 					_say("HTP_MG_REGROW_CAP")
@@ -363,7 +363,7 @@ func _run(gen: int, fresh: bool) -> void:
 			Lesson.UNDO:
 				ok = await _shot(AIM_SHOT, "HTP_MG_AIM_CAP", "", gen)
 				if ok:
-					_say("HTP_MG_UNDO_HEART_CAP" if band >= 2 else "HTP_MG_UNDO_CAP")
+					_say("HTP_MG_UNDO_HEART_CAP" if band >= 3 else "HTP_MG_UNDO_CAP")
 					ok = await _wait(0.9, gen)
 				if ok:
 					_art.undo()
@@ -371,7 +371,7 @@ func _run(gen: int, fresh: bool) -> void:
 				if ok:
 					ok = await _shot(UNDO_AGAIN, "", "", gen)
 				if ok:
-					_say("HTP_MG_RESET_HEART_CAP" if band >= 2 else "HTP_MG_RESET_CAP")
+					_say("HTP_MG_RESET_HEART_CAP" if band >= 3 else "HTP_MG_RESET_CAP")
 					ok = await _wait(0.9, gen)
 				if ok:
 					# Insane's two hearts are spent by Undo and this Reset: the

@@ -109,7 +109,7 @@ const FAIL_HOLD := 2.0
 const WIN_HOLD := 3.0
 ## Hints and hearts by band: Hard and Insane can be lost.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 ## The hearts' sign under the strip, and how a heart splits and comes back.
 const SIGN_H := 92.0
 const HEART_R := 30.0
@@ -375,7 +375,7 @@ func title() -> String: return "Trestle"
 
 func rules() -> String:
 	var out := tr("TR_RULES")
-	if _difficulty >= 2:
+	if HEARTS_BY[clampi(_difficulty, 0, 3)] > 0:
 		out += "\n\n" + tr("TR_RULES_HEARTS")
 	if _difficulty >= 3:
 		out += "\n\n" + tr("TR_RULES_TEA")

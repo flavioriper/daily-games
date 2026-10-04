@@ -51,7 +51,7 @@ var walks := 0
 
 ## Hints and hearts by level: Hard and Insane can be failed.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 
 static func hints_for(d: int) -> int: return HINTS_BY[clampi(d, 0, 3)]
 static func hearts_for(d: int) -> int: return HEARTS_BY[clampi(d, 0, 3)]

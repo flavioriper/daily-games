@@ -259,6 +259,9 @@ const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [4, 7]
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## Three patches in five play a gag, by the patch's hash: love hearts, a
 ## button sewn on its middle, or a boing.
@@ -521,7 +524,7 @@ func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/quilt_tutorial_diagram.gd")
 	var band: int = _state.band
 	var hints: int = int(State.HINTS[band])
-	var judged := band >= 2
+	var judged := State.hearts_for(band) > 0
 	var steps := [
 		[Diagram.Lesson.FILL, "HTP_QL_FILL", tr("HTP_QL_FILL_BODY")],
 		[Diagram.Lesson.FIT, "HTP_QL_FIT", tr("HTP_QL_FIT_BODY")],
@@ -3504,7 +3507,7 @@ func _pick_coach() -> void:
 	_coach_off = false
 	_rest_at = _opened + Motion.ENTER_DELAY + Motion.ENTER_POP \
 		+ Motion.stagger(maxi(_state.shapes.size() - 1, 0), Motion.ENTER_STAGGER)
-	if _state.band >= 2 or Motion.reduce:
+	if _state.judged() or Motion.reduce:
 		return
 	var fewest := 1 << 30
 	for p in _state.shapes.size():
@@ -3607,7 +3610,7 @@ func _tick_life(now: float) -> bool:
 		return true
 	return not _love.is_empty() or not _rows.is_empty() \
 		or float(_coach_at(now).get("alpha", 0.0)) > 0.01 \
-		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)) \
 		or _bunting_running(now) \
 		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
 
@@ -3690,6 +3693,8 @@ func _draw_combo(now: float, shown: Array) -> void:
 		return
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:

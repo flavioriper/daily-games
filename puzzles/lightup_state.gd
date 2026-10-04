@@ -39,7 +39,7 @@ const HINTS_BY_BAND := [3, 3, 3, 1]
 ## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
 ## Insane (Tents' and Shikaku's counts). A heart goes on a lamp the board
 ## cannot fault (`lamp_fair`) that is not the answer's.
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## The four ways out of a cell, and the ladder: width, height and how much of
 ## the court is sown with blocks. The island's own numbers.
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]

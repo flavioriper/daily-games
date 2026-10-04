@@ -45,7 +45,7 @@ const Gen = preload("res://puzzles/pinwheel_gen.gd")
 ## bands that judge a tap (`hints_for`, `hearts_for`).
 const HINTS := 3
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 ## The share's squares, one per `Pal.CLOTH` index.
 ##
 ## A share is only ever taken from a **solved** frame, where by definition no
@@ -139,7 +139,7 @@ func take(out: Dictionary, d: int) -> void:
 	cloth = out.cloth
 	ok = bool(out.unique)
 	ribbons = (out.get("ribbons", []) as Array).duplicate(true)
-	judged = difficulty >= 2 and ok
+	judged = hearts_for(difficulty) > 0 and ok
 	undo_allowed = difficulty < 3
 	if cols <= 0 or rows <= 0 or shapes.is_empty():
 		push_warning("Pinwheel: no frame could be grown for this seed")

@@ -155,7 +155,7 @@ class Desk extends "res://puzzles/hidden_word2d.gd":
 		st.tries = 2
 		st.hints_left = State.HINTS
 		st.no_hints = false
-		st.keeps_rows = band >= 2
+		st.keeps_rows = band >= 3
 		st.strict = band >= 2
 		st.snail = band >= 3
 		for word: String in pre:

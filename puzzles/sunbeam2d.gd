@@ -159,7 +159,7 @@ const SWAY_STEPS := 8.0
 
 const TIP_CYCLE := 8.0
 const TIPS := ["SB_TIP_DRAG", "SB_TIP_GOAL", "SB_TIP_CUP", "SB_TIP_MIRROR", "SB_TIP_STOP"]
-const TIPS_SNAILS := ["SB_TIP_DRAG", "SB_TIP_SNAIL", "SB_TIP_HOLD", "SB_TIP_ORDER", "SB_TIP_HEARTS"]
+const TIPS_SNAILS := ["SB_TIP_DRAG", "SB_TIP_SNAIL", "SB_TIP_HOLD", "SB_TIP_ORDER"]
 const TIPS_SHY := ["SB_TIP_SHY", "SB_TIP_HOLD", "SB_TIP_CURTAIN", "SB_TIP_ONCE", "SB_TIP_HEARTS"]
 
 # --- hearts (Hard and Insane) ---
@@ -204,6 +204,9 @@ const COMBO_FROM := 3
 const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## Gags on one newly lit drop in GAG_ODDS: a rainbow arcs over it, love
 ## hearts float off it, or a butterfly visits.
@@ -388,8 +391,8 @@ func rules() -> String:
 	var out := tr("SB_RULES")
 	if _state.shy():
 		out += "\n\n" + tr("SB_RULES_SHY") % max_hearts
-	elif max_hearts > 0:
-		out += "\n\n" + tr("SB_RULES_SNAILS") % max_hearts
+	elif not _state.snails().is_empty():
+		out += "\n\n" + tr("SB_RULES_SNAILS")
 	else:
 		out += "\n\n" + tr("SB_RULES_SAFE")
 	return out
@@ -410,8 +413,8 @@ func tutorial_pages() -> Array:
 	steps.append([Diagram.Lesson.CUP, "HTP_SB_CUP", tr("HTP_SB_CUP_BODY")])
 	if band >= 3:
 		steps.append([Diagram.Lesson.SHY, "SB_SHY_SEAL", tr("HTP_SB_SHY_BODY") % hearts_n])
-	elif hearts_n > 0:
-		steps.append([Diagram.Lesson.SNAILS, "HTP_SB_SNAILS", tr("HTP_SB_SNAILS_BODY") % hearts_n])
+	elif not _state.snails().is_empty():
+		steps.append([Diagram.Lesson.SNAILS, "HTP_SB_SNAILS", tr("HTP_SB_SNAILS_BODY")])
 	var undo_body := "HTP_SB_UNDO_BODY"
 	if band >= 3:
 		undo_body = "HTP_SB_RESET_BODY"
@@ -2124,8 +2127,6 @@ func restore_completed_board() -> void:
 ## Whether a move just let go is wrong -- the light rests on a snail, or on
 ## Shy Dew on a drop -- and if so plays it out (`_misstep`).
 func _judged_wrong(p: int, before: PackedInt32Array, t: float) -> bool:
-	if max_hearts <= 0:
-		return false
 	var kind: String = _state.judge()
 	if kind.is_empty():
 		return false
@@ -2137,20 +2138,22 @@ func _judged_wrong(p: int, before: PackedInt32Array, t: float) -> bool:
 ## dry in a puff of steam), a heart splits on the pill, and EJECT_AFTER later
 ## the piece slides back where it was. Input, Undo, Hint and Reset wait.
 func _misstep(p: int, before: PackedInt32Array, kind: String, t: float) -> void:
-	_lost_ever = true
+	var costs := max_hearts > 0
 	_break_streak()
 	_clear_gags()
 	var cells: PackedInt32Array = _state.woken()
-	hearts = maxi(0, hearts - 1)
-	_split_index = hearts
 	var lands := 0.0 if Motion.reduce else SNAP_TIME
-	_split_at = t + lands
+	if costs:
+		_lost_ever = true
+		hearts = maxi(0, hearts - 1)
+		_split_index = hearts
+		_split_at = t + lands
 	_wrong = {"at": t, "p": p, "kind": kind, "cells": cells}
 	var eject := Motion.REDUCED_TIME if Motion.reduce else EJECT_AFTER
 	_busy_until = t + eject + (0.0 if Motion.reduce else SNAP_TIME) + 0.05
 	_was_busy = true
 	_busy_for(maxf(DRY_TIME, eject + SNAP_TIME) + 0.1)
-	if hearts <= 0:
+	if costs and hearts <= 0:
 		out_of_hearts = true
 	_after(lands, func() -> void:
 		var now := _now()
@@ -2162,12 +2165,15 @@ func _misstep(p: int, before: PackedInt32Array, kind: String, t: float) -> void:
 				if not Motion.reduce:
 					fx.puff(_centre(c) - Vector2(0.0, _cell() * 0.15), Pal.SURFACE, 7)
 		fx.cue("wake" if kind == "snail" else "sizzle")
-		fx.cue("heart_lost")
+		if costs:
+			fx.cue("heart_lost")
 		_heart_layer.queue_redraw()
 		_refresh())
 	var line := "SB_WOKE" if kind == "snail" else "SB_DRIED"
-	_say(tr(line) + " " + (tr("SB_HEARTS_ONE") if hearts == 1 else (tr("SB_HEARTS_N") % hearts if hearts > 1 else "")),
-		Face.Expr.WORRIED)
+	var left := ""
+	if costs:
+		left = " " + (tr("SB_HEARTS_ONE") if hearts == 1 else (tr("SB_HEARTS_N") % hearts if hearts > 1 else ""))
+	_say(tr(line) + left, Face.Expr.WORRIED)
 	_heart_layer.queue_redraw()
 	moved.emit()
 	_after(eject, _slide_back.bind(before))
@@ -2734,7 +2740,7 @@ func _tick_life(now: float) -> bool:
 	_flies = _flies.filter(func(f): return now < float(f.t) + FLY_IN + FLY_SIT + FLY_OUT)
 	var party := not Motion.reduce and now >= _party_at - 0.05 and now < _party_at + PARTY_TIME + 0.5
 	return not (_love.is_empty() and _bows.is_empty() and _flies.is_empty()) or party \
-		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)) \
 		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
 
 ## Each thing one cached mesh through a transform where it can be: love
@@ -2902,6 +2908,8 @@ func _draw_combo(now: float, shown: Array) -> void:
 		return
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:

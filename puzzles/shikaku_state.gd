@@ -28,7 +28,7 @@ const HINTS_BY_BAND := [3, 3, 3, 1]
 ## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
 ## Insane (Binairo's count). A heart goes on a plot that fits its sign but is
 ## not the answer.
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## Width, height and the generator's area cap, per difficulty.
 # Insane's provisional band: Hard's own 7x9 frame with MAX_AREA_INSANE's
 # bigger plots -- 8x10 (either area cap) missed the 194 ms gate (worst

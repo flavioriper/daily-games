@@ -366,10 +366,10 @@ func tutorial_pages() -> Array:
 	var hints: int = State.HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
 	if hints > 0:
 		var body := tr("HTP_UT_HINT_BODY_ONE") if hints == 1 else tr("HTP_UT_HINT_BODY_N") % hints
-		if _difficulty >= 2:
+		if _difficulty >= 3:
 			body += " " + tr("HTP_UT_HINT_THREAD")
 		steps.append([Diagram.Lesson.HINT, "HTP_UT_HINT", body])
-	if _difficulty >= 2:
+	if _difficulty >= 3:
 		steps.append([Diagram.Lesson.THREAD, "HTP_UT_THREAD", tr("HTP_UT_THREAD_BODY")])
 	if _difficulty >= 3:
 		steps.append([Diagram.Lesson.CAT, "HTP_UT_CAT", tr("HTP_UT_CAT_BODY")])
@@ -2565,7 +2565,7 @@ func _use_stitch(when: float) -> void:
 			_needle_dip = _now()
 			fx.cue("stitch", 1.0, -14.0)
 			var left := state.thread_left()
-			if left == LOW_THREAD and _difficulty >= 2:
+			if left == LOW_THREAD and _difficulty >= 3:
 				fx.cue("thread_low", 1.0, -8.0)
 				_tell("UT_THREAD_LOW", Face.Expr.WORRIED)
 			_dirty = true)

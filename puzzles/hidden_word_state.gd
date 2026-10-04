@@ -131,7 +131,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "") -> void:
 	tries = ROWS
 	hints_left = HINTS_BY_BAND[clampi(difficulty, 0, HINTS_BY_BAND.size() - 1)]
 	no_hints = difficulty >= 3
-	keeps_rows = difficulty >= 2
+	keeps_rows = difficulty >= 3
 	strict = difficulty >= 2
 	snail = difficulty >= 3
 	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()

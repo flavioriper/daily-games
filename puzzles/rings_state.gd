@@ -39,7 +39,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Hints and hearts by band (Easy, Medium, Hard, Insane).
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 ## Kept for the old suite's name: Easy's hints.
 const HINTS := 3
 
@@ -97,7 +97,7 @@ func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
 	for s in pegs:
 		deal.append((s as Array).duplicate())
 	colours = int(Gen.BANDS[difficulty]["colours"])
-	judged = difficulty >= 2
+	judged = hearts_for(difficulty) > 0
 	undo_allowed = difficulty < 3
 	log = []
 	held = -1
@@ -122,7 +122,7 @@ func take(given: Array, band: int, count: int) -> void:
 		pegs.append(peg)
 		deal.append(peg.duplicate())
 	colours = count
-	judged = difficulty >= 2
+	judged = hearts_for(difficulty) > 0
 	undo_allowed = difficulty < 3
 	log = []
 	held = -1

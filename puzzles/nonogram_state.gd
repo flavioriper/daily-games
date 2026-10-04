@@ -29,7 +29,7 @@ const HINTS := 3
 ## Hints a board gets per band, and hearts: Hard and Insane can be failed
 ## (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md, section 1).
 const HINTS_BY_BAND := [3, 3, 3, 1]
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## The square each band falls back to when its drawn shape (Gen.SHAPES)
 ## will not line-solve. Insane is read from the bank
 ## (content/insane/nonogram.json, tools/insane/nonogram_ladder.gd); 10 is its

@@ -324,7 +324,7 @@ func title() -> String: return "Balance"
 
 func rules() -> String:
 	var out := tr("BAL_RULES")
-	if _difficulty >= 2:
+	if _difficulty >= 3:
 		out += "\n\n" + tr("BAL_RULES_SUN")
 	if _difficulty >= 3:
 		out += "\n\n" + tr("BAL_RULES_BOING")
@@ -342,10 +342,10 @@ func tutorial_pages() -> Array:
 	var hints: int = HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
 	if hints > 0:
 		var body := tr("HTP_BAL_HINT_BODY_ONE") if hints == 1 else tr("HTP_BAL_HINT_BODY_N") % hints
-		if _difficulty >= 2:
+		if _difficulty >= 3:
 			body += " " + tr("HTP_BAL_HINT_SUN")
 		steps.append([Diagram.Lesson.HINT, "HTP_BAL_HINT", body])
-	if _difficulty >= 2:
+	if _difficulty >= 3:
 		steps.append([Diagram.Lesson.SUN, "HTP_BAL_SUN", tr("HTP_BAL_SUN_BODY")])
 	if _difficulty >= 3:
 		steps.append([Diagram.Lesson.BALES, "HTP_BAL_BALES", tr("HTP_BAL_BALES_BODY")])

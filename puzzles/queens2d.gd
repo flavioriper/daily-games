@@ -164,6 +164,9 @@ const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## Gags, three of every GAG_ODDS right seats by the seat's own hash.
 const GAG_ODDS := 5
@@ -247,10 +250,6 @@ const TIPS := ["QN_TIP_ONE_EACH", "QN_TIP_SEES", "QN_TIP_TOUCH"]
 signal leave
 
 var state = State.new()
-## Kept for the shared tray contract. Queens input is gesture-driven now: taps
-## cycle the cell and drags always lay crosses, regardless of this value.
-var brush: int = State.QUEEN
-
 ## The court's size, the name the win harness reads.
 var n: int:
 	get: return state.n
@@ -474,7 +473,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_pick_blooms()
 	_mist_in_at = -INF
 	_mist_out_at = INF
-	brush = State.QUEEN
 	_cross_in = {}
 	_cross_out = []
 	_wash = {}
@@ -691,7 +689,7 @@ func _process(delta: float) -> void:
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
 		_heart_layer.queue_redraw()
-	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
 	# One more redraw once the life goes quiet, so its last frame is not left
 	# standing.
@@ -1634,10 +1632,6 @@ func _clear_gesture() -> void:
 	_pending = []
 	_last_paint = Vector2i(-1, -1)
 
-## The tray armed a chip.
-func set_brush(v: int) -> void:
-	brush = v
-
 # --- the sprout's line ---
 
 ## What the tip card says: the rules while the court is bare, then how many
@@ -2313,6 +2307,8 @@ func _draw_combo() -> void:
 	var now := _now()
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:

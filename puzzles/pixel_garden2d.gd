@@ -369,7 +369,7 @@ func title() -> String: return "Pixel Garden"
 
 func rules() -> String:
 	var out := tr("PG_RULES") + "\n\n" + tr("PG_RULES_PLATES")
-	if _state.band == 2:
+	if max_hearts > 0 and not _state.windblown():
 		out += "\n\n" + tr("PG_RULES_HEARTS")
 	elif _state.windblown():
 		out += "\n\n" + tr("PG_RULES_WIND")
@@ -414,7 +414,6 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	match _state.band:
 		3: return ["undo"]
-		2: return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 func _ready() -> void:
@@ -2140,7 +2139,7 @@ func hint() -> bool:
 ## Every bead that is not where the picture wants it gets a rose halo and a
 ## shake, held until the next move. Counts a check. Easy and Medium only.
 func check() -> int:
-	if _blocked() or _state.band >= 2:
+	if _blocked() or _state.band >= 3:
 		return 0
 	checks += 1
 	var wrong: PackedInt32Array = _state.wrong()

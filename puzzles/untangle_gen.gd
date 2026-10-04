@@ -46,7 +46,7 @@ extends RefCounted
 const BANDS := [
 	{"holes": 10, "ropes": 4, "moves": 3, "cross": 2, "par": 3, "wrap": 1, "knots": 0, "most": 6, "extra": 9, "min_reach": 1.0, "slack": 0, "cat": false},
 	{"holes": 13, "ropes": 6, "moves": 5, "cross": 4, "par": 5, "wrap": 2, "knots": 1, "most": 10, "extra": 3, "min_reach": 0.6, "slack": 0, "cat": false},
-	{"holes": 17, "ropes": 8, "moves": 6, "cross": 7, "par": 6, "wrap": 2, "knots": 2, "most": 13, "extra": 2, "min_reach": 0.5, "slack": 4, "cat": false},
+	{"holes": 17, "ropes": 8, "moves": 6, "cross": 7, "par": 6, "wrap": 2, "knots": 2, "most": 13, "extra": 2, "min_reach": 0.5, "slack": 0, "cat": false},
 	{"holes": 19, "ropes": 9, "moves": 8, "cross": 8, "par": 8, "wrap": 3, "knots": 3, "most": 16, "extra": 2, "min_reach": 0.5, "slack": 3, "cat": true},
 ]
 ## A dealt rope is wrapped round two others at most: more and it is a snarl

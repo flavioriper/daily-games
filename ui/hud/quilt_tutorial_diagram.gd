@@ -340,7 +340,7 @@ func _start() -> void:
 	_loop.tween_callback(_reset)
 
 func _judged() -> bool:
-	return band >= 2
+	return band >= 3
 
 ## The caption turned to `key` for `hold`.
 func _say_for(key: String, hold: float) -> void:

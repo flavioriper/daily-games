@@ -71,7 +71,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_: length = 5; palette_size = 7; repeats = true; tries = 7
 	var band := clampi(difficulty, 0, 3)
 	hints = HINTS_BY_BAND[band]
-	keeps_rows = band >= 2
+	keeps_rows = band >= 3
 	shell = band == 3
 	code = Gen.make_code(rng, length, palette_size, repeats)
 	code0 = code.duplicate()

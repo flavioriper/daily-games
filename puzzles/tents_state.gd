@@ -30,7 +30,7 @@ const HINTS_BY_BAND := [3, 3, 3, 1]
 ## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
 ## Insane (Binairo's and Shikaku's counts). A heart goes on a tent that breaks
 ## no rule the board can show and is not the answer's.
-const HEARTS := [0, 0, 3, 1]
+const HEARTS := [0, 0, 0, 1]
 ## Width, height and tents per difficulty: the island's ladder exactly.
 ## Insane reads the Old Oaks bank (content/insane/tents.json); this band is
 ## only its fallback when the bank is empty.

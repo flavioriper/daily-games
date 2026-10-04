@@ -65,7 +65,7 @@ const LEFT_BONUS := 10000
 
 ## Hints and hearts by band: Hard and Insane can be lost.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 
 const BANDS := [
 	{"pegs": 54, "orange": 12, "seeds": 10, "pot": 17.0, "green": 2},

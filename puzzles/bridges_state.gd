@@ -28,7 +28,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 const MAX_PLANKS := Gen.MAX_PLANKS
 ## Hearts and hints by band (the polish): Easy and Medium cannot be lost;
 ## Hard and Insane judge every plank as it lands.
-const HEARTS := [0, 0, 3, 2]
+const HEARTS := [0, 0, 0, 2]
 const HINTS := [3, 3, 1, 0]
 ## What a judged plank came to (`add`).
 enum Judged { BLOCKED, RIGHT, WRONG, FULL, RULED }

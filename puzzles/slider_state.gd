@@ -23,7 +23,7 @@ extends RefCounted
 const Gen = preload("res://puzzles/slider_gen.gd")
 
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 
 var difficulty := 0
 ## Insane's rule: the big block never steps up.

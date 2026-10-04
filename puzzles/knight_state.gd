@@ -18,7 +18,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Per band: hints and hearts (0 = nothing can be lost).
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 3, 2]
+const HEARTS_BY := [0, 0, 0, 2]
 ## `lost()`'s search budget: a position whose proof needs more than this is
 ## taken to be alive (measured: a live Hard position proves in a few hundred).
 const LOST_NODES := 6000

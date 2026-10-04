@@ -314,6 +314,9 @@ const COMBO_FROM := 3
 const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## Gags: one launch in GAG_ODDS, the kind the plane's own (any GAG_SPAN
 ## planes share the four kinds evenly), one at a time.
@@ -3664,7 +3667,7 @@ func _tick_life(now: float) -> bool:
 	_birds = _birds.filter(func(b): return now < float(b.t) + float(b.end))
 	var party := not Motion.reduce and now >= _party_at - 0.05 and now < _party_at + PARTY_TIME + 0.5
 	return not (_love.is_empty() and _birds.is_empty()) or party \
-		or (_combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF)) \
+		or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)) \
 		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
 
 ## The life over the sky, each thing one cached mesh through a transform:
@@ -3811,6 +3814,8 @@ func _draw_combo(now: float, shown: Array) -> void:
 		return
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:

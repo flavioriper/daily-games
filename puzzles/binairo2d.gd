@@ -101,7 +101,7 @@ const LEVELS := [
 	{"size": 10, "min_clues": 0, "signs": 12, "tier": Gen.LINES},
 ]
 ## Hearts per difficulty: none on Easy and Medium, three on Hard, one on Insane.
-const HEART_COUNTS := [0, 0, 3, 1]
+const HEART_COUNTS := [0, 0, 0, 1]
 ## The strip kept over the grid for the hearts on a board that has them, and
 ## a heart's half-width and the air between two.
 const HEART_ROW := 64.0
@@ -194,6 +194,9 @@ const HAPTICS := {
 }
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
+## The bubble shows its number this long, then deflates on its own; the
+## streak itself runs on, and the next right move pops it back in.
+const COMBO_HOLD := 1.2
 const COMBO_FONT := 44
 ## The silly line moments: the gag's punchline lands SILLY_AT after the hop
 ## starts, and `line_silly` with it, a beat after `line` rather than on top.
@@ -392,8 +395,6 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if _level >= 3:
 		return ["undo"]
-	if _level == 2:
-		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 func _ready() -> void:
@@ -1302,6 +1303,8 @@ func _draw_combo() -> void:
 	var now := _now()
 	var k := 1.0
 	var alpha := 1.0
+	if _combo_out_at == -INF and now - _combo_at >= COMBO_HOLD:
+		_combo_out_at = now
 	if _combo_out_at > -INF:
 		var u := (now - _combo_out_at) / COMBO_DEFLATE
 		if u >= 1.0 or Motion.reduce:
@@ -1597,7 +1600,7 @@ func _process(delta: float) -> void:
 		_heart_layer.queue_redraw()
 	if _unmask_i >= 0 and now - _unmask_at < UNMASK_TIME + 0.1:
 		_sign_layer.queue_redraw()
-	if _combo_n >= COMBO_FROM and (now - _combo_at < Motion.POP_IN + 0.1 or _combo_out_at > -INF):
+	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
 
 ## A MultiMesh of 2D transforms with a colour each.

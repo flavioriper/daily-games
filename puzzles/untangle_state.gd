@@ -16,7 +16,7 @@ const Gen = preload("res://puzzles/untangle_gen.gd")
 ## Hints a day starts with, by band; a video's come on top (and cost thread).
 const HINTS_BY_BAND := [3, 3, 1, 0]
 ## Thread a rewarded "one more spool" gives, by band.
-const SPOOL_BY_BAND := [0, 0, 4, 3]
+const SPOOL_BY_BAND := [0, 0, 0, 3]
 
 var band := 0
 var holes := 10
