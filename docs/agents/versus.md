@@ -466,7 +466,7 @@ rules or `Match`'s clocks.
   own device shows what it wrote.
 
 - Never run on two devices, and never against the real project: the
-  database instance does not exist yet and the rules are not deployed
+  database instance exists since 2026-10-04 but the rules are not deployed
   (`turns-and-backend.md`). Everything above was seen against the emulator,
   two processes on one Mac.
 - No sweep: finished matches stay in `/matches` for good; stale tickets go

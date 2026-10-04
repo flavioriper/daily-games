@@ -296,17 +296,17 @@ every 30 s. `tests/_probe_live_rules.sh` reads `FIREBASE_EMULATOR` and
 **Not yet done on the live project** (2026-10-04) -- online play works
 against the emulator and nowhere else:
 
-- **The Realtime Database instance does not exist.** It is created once by
-  hand (Firebase console, Build > Realtime Database, United States).
-- **`Live.HOST` assumes us-central1**:
-  `https://daily-games-420bf-default-rtdb.firebaseio.com`. An instance in
-  any other region has another host
-  (`<name>.<region>.firebasedatabase.app`) and the const must say so; it is
-  spelled out, not built from the project id, for that reason.
+- **The Realtime Database instance exists since 2026-10-04** (created in
+  the Firebase console, us-central1, locked mode: every read and write is
+  refused until the rules are deployed). Its host is the one `Live.HOST`
+  spells out, `https://daily-games-420bf-default-rtdb.firebaseio.com`
+  (seen: `/.json` answers 401 "Permission denied", where it answered 404
+  before).
 - **`tools/deploy_live.sh` is run by a person** (`firebase deploy --only
   database --project daily-games-420bf`), like `tools/deploy_functions.sh`.
   It has not been run.
 - **Nothing has been verified against production**: not the 307, not
   `auth_revoked`, not the rules as deployed, not two real devices. Until
-  the instance exists a player who picks Online with the network up will
-  fail to write a ticket and see the No connection card.
+  the rules are deployed a player who picks Online with the network up will
+  fail to write a ticket and see the No connection card, and Friends says
+  it is offline.
