@@ -57,6 +57,12 @@ const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
 const Streak = preload("res://core/streak.gd")
+const FriendsSheet = preload("res://ui/menu/friends_sheet.gd")
+const InviteCard = preload("res://ui/menu/invite_card.gd")
+const Social = preload("res://core/social.gd")
+const Online = preload("res://versus/online/online.gd")
+const Record = preload("res://versus/versus_record.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 const MARGIN := 40
 const GAP := 20
@@ -173,6 +179,14 @@ const PAGE_EDGE := 0.3
 ## PAGE_SLIDE_MIN).
 const PAGE_SLIDE := 0.34
 const PAGE_SLIDE_MIN := 0.14
+## Where a friend's card is drawn: over any sheet (10) and a sheet's own
+## dialog (12 more).
+const CARD_Z := 30
+## The line friend_link_failed says: its slot's height, the text's width and
+## how long it stands.
+const WORD_H := 150.0
+const WORD_W := 720.0
+const WORD_TIME := 4.0
 
 var settings_sheet: Control
 ## The purchase sheet: the header's remove-ads button, settings' row and
@@ -182,6 +196,16 @@ var difficulty_sheet: Control
 ## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
 var shop_sheet: Control
+## Friends (spec 2026-10-04-friends-design.md): the sheet behind the Versus
+## tab's row, and the one card a friend raises over whatever is open -- an
+## invite to a game or a new friend (ui/menu/invite_card.gd). The card is
+## built when there is something to say and freed after, and is this node's
+## last child while it lives, over a host.
+var friends_sheet: Control
+var friend_card: Control
+## Set while open_friend_game closes what is open, so a screen's `closed`
+## neither shows the list nor offers an interstitial on the way to the game.
+var _switching := false
 var cards: Array = []
 ## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
 ## see _build_page().
@@ -272,6 +296,15 @@ func _ready() -> void:
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
 	add_child(difficulty_sheet)
+	friends_sheet = FriendsSheet.new()
+	friends_sheet.name = "FriendsSheet"
+	friends_sheet.play.connect(func(game: String, uid: String) -> void: open_friend_game(game, uid, false))
+	add_child(friends_sheet)
+	versus_tab.friends.connect(func() -> void: friends_sheet.open())
+	var hub := Social.hub()
+	hub.invited.connect(_on_invited)
+	hub.withdrawn.connect(_on_withdrawn)
+	hub.befriended.connect(_on_befriended)
 	# A menu left open across 00:00 UTC catches up within a minute.
 	var day_timer := Timer.new()
 	day_timer.name = "DayTimer"
@@ -1121,9 +1154,9 @@ func _open_versus(game: String, level: int) -> void:
 			return
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		_show_list("versus")
-		Ads.leaving_game())
+		_left_game("versus"))
 	add_child(screen)
+	_raise_card()
 	# Not over a game online (level 3): the lobby is up, and then a stranger's
 	# clock is running. The screen opens it itself if the player takes the
 	# computer instead.
@@ -1158,9 +1191,9 @@ func _open_arcade(game: String) -> void:
 			return
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		_show_list("arcade")
-		Ads.leaving_game())
+		_left_game("arcade"))
 	add_child(screen)
+	_raise_card()
 	screen.tutor.first_play()
 	_list_root.visible = false
 
@@ -1175,10 +1208,171 @@ func _mount_host(host: Control) -> void:
 			_open_at(host._entry, difficulty))
 	host.closed.connect(func() -> void:
 		host.queue_free()
-		_show_list()
-		Ads.leaving_game())
+		_left_game("home"))
 	add_child(host)
+	_raise_card()
 	_list_root.visible = false
+
+## A board or a game has closed: back to the list on its tab, and the moment
+## an interstitial may be shown. Neither while open_friend_game is closing it
+## to open a friend's game in its place.
+func _left_game(tab: String) -> void:
+	if _switching:
+		return
+	_show_list(tab)
+	Ads.leaving_game()
+
+# --- friends ---
+
+## Opens `game` (snooker, chess, checkers) against the friend `uid`: asking
+## them (`accept` false: the lobby waits on their answer) or taking the
+## invite they sent (`accept` true). Whatever is open goes first -- a board,
+## an Arcade or Versus screen, any sheet, a card -- with no interstitial in
+## between, and the game closes back to the Versus tab. False if `game` is
+## not one of the three, or a live game online is on (Social.in_game): that
+## one is not walked out of for another.
+func open_friend_game(game: String, uid: String, accept: bool) -> bool:
+	if not VersusTab.GAMES.has(game) or uid.is_empty() or Social.in_game:
+		return false
+	_switching = true
+	if is_instance_valid(friend_card):
+		friend_card.leave()
+	for node in find_children("*", "", true, false):
+		if node.has_method("is_open") and node.is_open():
+			node.close()
+	for child in get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child.is_in_group("versus_host") or child is FlatHost:
+			# Its own way out, so a game left half played is still counted as
+			# abandoned; a screen that would ask first (a game online that is
+			# not live any more) is simply closed.
+			if child.get("online") != null:
+				child.closed.emit()
+			else:
+				child._on_back()
+			if not child.is_queued_for_deletion():
+				child.queue_free()
+	_switching = false
+	Online.with_friend = {"uid": uid, "accept": accept}
+	_open_versus(game, Record.ONLINE)
+	return true
+
+## A friend asks for a game: their card, over whatever is open. Social never
+## says this during a live game online (it declines for the player). One card
+## at a time: an invite that arrives under another waits its turn (_next_ask).
+func _on_invited(from: String, game: String) -> void:
+	if Social.in_game or get_node_or_null("../AgeScreen") != null:
+		return
+	if is_instance_valid(friend_card) and friend_card.is_open():
+		# A new friend's card gives way to someone asking for a game.
+		if friend_card.kind == InviteCard.Kind.INVITE:
+			return
+		friend_card.leave()
+	var card := InviteCard.invite(from, game)
+	card.play.connect(func(g: String) -> void:
+		Analytics.track("versus_friend_answer", {"game": g, "choice": "play"})
+		open_friend_game(g, from, true))
+	card.dismissed.connect(func() -> void:
+		Analytics.track("versus_friend_answer", {"game": game, "choice": "not_now"})
+		Social.decline(from)
+		_next_ask.call_deferred(from))
+	_show_card(card)
+	Haptics.play(Haptics.GOOD)
+
+## The invite went before it was answered: its card goes with it.
+func _on_withdrawn(from: String) -> void:
+	if is_instance_valid(friend_card) and friend_card.is_open() \
+			and friend_card.kind == InviteCard.Kind.INVITE and friend_card.uid == from:
+		Analytics.track("versus_friend_answer", {"game": friend_card.game, "choice": "expired"})
+		friend_card.leave()
+		_next_ask.call_deferred(from)
+
+## Another friend may have been asking under the card that just went.
+func _next_ask(not_from: String) -> void:
+	for uid in Social.friends():
+		if uid == not_from:
+			continue
+		var game := Social.invite_from(uid)
+		if not game.is_empty():
+			_on_invited(uid, game)
+			return
+
+## Someone opened this player's link, or this player theirs: the new friend's
+## card, with Play (which asks which game) and Close. Not over the code
+## dialog, which says who was added itself; not over an invite.
+func _on_befriended(uid: String) -> void:
+	if friends_sheet.adding() or get_node_or_null("../AgeScreen") != null:
+		return
+	if is_instance_valid(friend_card) and friend_card.is_open():
+		return
+	var card := InviteCard.friend(uid)
+	# No Play while a live game online is on: it would mean walking out of it.
+	card.can_play = not Social.in_game
+	# versus_friend_invite is Online's, sent as the asking begins.
+	card.play.connect(func(game: String) -> void: open_friend_game(game, uid, false))
+	_show_card(card)
+	Haptics.play(Haptics.GOOD)
+
+## An invite link that made no friend (world/main.gd, from Social.add's
+## answer): `why` is "self", "unknown" or "offline". One line over whatever
+## is open, gone by itself; a link that worked needs no word, the new
+## friend's card is it.
+func friend_link_failed(why: String) -> void:
+	var key: String = {"self": "FRIENDS_ADD_SELF", "unknown": "FRIENDS_ADD_UNKNOWN"}.get(why, "FRIENDS_ADD_OFFLINE")
+	var old := get_node_or_null("FriendWord")
+	if old != null:
+		old.name = "FriendWordOld"
+		old.queue_free()
+	var word := CenterContainer.new()
+	word.name = "FriendWord"
+	word.z_index = CARD_Z
+	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	word.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	word.offset_left = MARGIN
+	word.offset_right = -MARGIN
+	word.offset_bottom = -TOAST_OVER - SafeArea.insets(self).y
+	word.offset_top = word.offset_bottom - WORD_H
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var paper := CozyTheme.lifted(Pal.SURFACE, 30, 22)
+	paper.content_margin_left = 36
+	paper.content_margin_right = 36
+	pill.add_theme_stylebox_override("panel", paper)
+	word.add_child(pill)
+	var line := Label.new()
+	line.text = key
+	line.theme_type_variation = "CardBody"
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = WORD_W
+	pill.add_child(line)
+	add_child(word)
+	Haptics.play(Haptics.WARN)
+	Motion.appear(word, 0.0, 1.0, TOAST_FADE)
+	get_tree().create_timer(WORD_TIME).timeout.connect(func() -> void:
+		if not is_instance_valid(word):
+			return
+		var tw := Motion.appear(word, word.modulate.a, 0.0, TOAST_FADE)
+		if tw == null:
+			word.queue_free()
+		else:
+			tw.finished.connect(word.queue_free))
+
+func _show_card(card: Control) -> void:
+	friend_card = card
+	# Over a sheet and over a card of the sheet's own (each a z step up).
+	card.z_index = CARD_Z
+	add_child(card)
+
+## The card stays over a host mounted after it: a later sibling takes the
+## taps, whatever z_index draws.
+func _raise_card() -> void:
+	if is_instance_valid(friend_card) and friend_card.get_parent() == self:
+		move_child(friend_card, -1)
+	var word := get_node_or_null("FriendWord")
+	if word != null:
+		move_child(word, -1)
 
 ## Marks the day the board was dealt on. A board dealt yesterday and solved
 ## after 00:00 UTC completes yesterday's card, so today's stays open.
