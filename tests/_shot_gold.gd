@@ -39,6 +39,8 @@ var _had_arcade := false
 var _wallet_tmp := ""
 
 func _initialize() -> void:
+	# The first play's tutorial card would stand over the run and eat the taps.
+	load("res://ui/hud/screen_tutor.gd").no_first_play = true
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
 		_out = args[0]

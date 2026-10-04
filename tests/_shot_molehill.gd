@@ -24,6 +24,8 @@ var _busy := 0.0
 const PATH := "user://arcade.cfg"
 
 func _initialize() -> void:
+	# The first play's tutorial card would stand over the run and eat the taps.
+	load("res://ui/hud/screen_tutor.gd").no_first_play = true
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)

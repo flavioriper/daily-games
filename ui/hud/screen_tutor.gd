@@ -13,6 +13,10 @@ const HowToPlay = preload("res://ui/hud/how_to_play.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 
+## A harness that opens a screen through the menu sets this, so the first
+## play's card never stands over the run it came to drive.
+static var no_first_play := false
+
 var _screen: Control
 var _id := ""
 var _title := ""
@@ -35,7 +39,7 @@ func wire(top_bar: Control, settings_sheet: Control) -> void:
 
 ## The card on a first play, once.
 func first_play() -> void:
-	if not Progress.tutorial_seen(_id):
+	if not no_first_play and not Progress.tutorial_seen(_id):
 		show()
 
 func open() -> void:
