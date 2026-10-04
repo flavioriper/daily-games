@@ -334,3 +334,11 @@ at once when the skin exists and the board lost a draw per stone (peak 174).
 The chain is a white-rimmed ribbon of the paint with a lit upper edge, a deep
 lower one and a white-rimmed pad under every stone; the frame is a StyleBox
 with a thick lower lip, no grain.
+
+**Nothing but a falling stone is cut by the tray's edge** (2026-10-04, user
+request). `field` no longer clips. Its drawing is three layers kept in step by
+`_redraw()`: the field itself (sand, the chain's ribbon and pads), `_stones`
+inside `_clip` (the only clipped layer, opened `CLIP_PAD` past the field at
+the sides and foot and 14 px above, so a waiting stone stays hidden) and
+`_top` (glints, the badge of what the chain makes, pops); `_fx` sits above
+them. Ask for a redraw through `_redraw()`, never `field.queue_redraw()`.

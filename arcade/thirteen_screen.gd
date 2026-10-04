@@ -72,6 +72,9 @@ const HIT := 0.42
 const HINT_AFTER := 7.0
 ## How far a pebble taken into the chain is held up off the sand, in cells.
 const LIFT := 0.08
+## How far the stones' window opens past the field: wide at the sides and
+## the foot, a little above (the frame's own margin).
+const CLIP_PAD := Vector2(80, 14)
 const FLIGHT_T := 0.6
 ## How long a new number's reveal holds before it flies to the plate, and
 ## the flight.
@@ -126,6 +129,9 @@ var _clock := 0.0
 ## Pixels a cell, and the tray's top-left in `field`.
 var _u := 100.0
 var _origin := Vector2.ZERO
+var _clip: Control
+var _stones: Control
+var _top: Control
 var _bed: ArrayMesh
 ## The lit sand (shaders/sand_bake_2d.gdshader), baked for the field's size;
 ## null until it is, and the flat `_bed` is drawn meanwhile.
@@ -209,7 +215,7 @@ func _ready() -> void:
 	theme = CozyTheme.make()
 	_build()
 	Art.ensure_skin(self, func() -> void:
-		field.queue_redraw()
+		_redraw()
 		_air.queue_redraw())
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
@@ -269,13 +275,28 @@ func _build() -> void:
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
-	field.clip_contents = true
 	field.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	field.mouse_filter = Control.MOUSE_FILTER_STOP
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
 	frame.add_child(field)
+	# the stones' window: open wide at the sides and the foot, shut just
+	# above the tray, where a new stone waits to fall in
+	_clip = Control.new()
+	_clip.clip_contents = true
+	_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.add_child(_clip)
+	_stones = Control.new()
+	_stones.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stones.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_stones.draw.connect(_draw_stones)
+	_clip.add_child(_stones)
+	_top = Control.new()
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_top.draw.connect(_draw_top)
+	field.add_child(_top)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
@@ -502,12 +523,17 @@ func _layout_field() -> void:
 	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5) - (Sim.ROWS - _rows()) * _u)
 	_bed = _build_bed()
 	_bake_bed()
+	_clip.position = -CLIP_PAD
+	_clip.size = s + CLIP_PAD + Vector2(CLIP_PAD.x, CLIP_PAD.x)
+	_stones.position = CLIP_PAD
+	_stones.size = s
+	_top.size = s
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(24, s.y * 0.3)
 	box.size = Vector2(s.x - 48, 0)
 	_stuck_box.size = Vector2(s.x - 120, 0)
 	_stuck_box.position = Vector2(60, s.y * 0.5 - _stuck_box.get_combined_minimum_size().y * 0.5)
-	field.queue_redraw()
+	_redraw()
 
 ## Bake the lit sand for this size of field; the last one asked for wins.
 func _bake_bed() -> void:
@@ -525,7 +551,7 @@ func _bake_bed() -> void:
 	var tex: ImageTexture = await Art.bake(self, [[Rect2(Vector2.ZERO, s), m]], Vector2i(s))
 	if tex != null and _bed_for == s:
 		_bed_tex = tex
-		field.queue_redraw()
+		_redraw()
 
 ## The centre of a cell, in the field's pixels (fractions allowed).
 func px(c: float, r: float) -> Vector2:
@@ -652,7 +678,7 @@ func _process(delta: float) -> void:
 	_refresh_hud(delta)
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
-	field.queue_redraw()
+	_redraw()
 	_air.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
@@ -1522,6 +1548,12 @@ static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
 	b.tri(i0, i1, i2)
 	b.tri(i0, i2, i3)
 
+## The field and the two layers over it are one drawing.
+func _redraw() -> void:
+	field.queue_redraw()
+	_stones.queue_redraw()
+	_top.queue_redraw()
+
 func _draw_field() -> void:
 	if _bed == null:
 		_layout_field()
@@ -1545,6 +1577,20 @@ func _draw_field() -> void:
 	if not under.verts.is_empty():
 		_live = under.mesh()
 		field.draw_mesh(_live, null, Transform2D(0.0, _shake_off))
+
+## The stones themselves, on a layer of their own: it alone is clipped (a
+## stone falls in from above the tray), so the chain's pads below and the
+## badge, pops and sparks above may run over the tray's rim.
+func _draw_stones() -> void:
+	if sim == null or _u <= 0.0:
+		return
+	var font := Art.font()
+	var s := _u * 0.86
+	var picked := {}
+	for p: Vector2i in sim.path:
+		picked[p] = true
+	var chain_v: int = sim.value(sim.path[0]) if not sim.path.is_empty() else 0
+	var stuck: bool = _stuck_box.visible
 	# the pebbles rolling along the chain into the one they joined
 	for j: Dictionary in _joins:
 		if j.t < 0.0:
@@ -1553,10 +1599,10 @@ func _draw_field() -> void:
 		var p := _along(j.path, int(j.from), k * k)
 		var sc := lerpf(1.0, 0.7, k)
 		var ja := 1.0 - k * 0.5
-		field.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
-		field.draw_mesh(Art.pebble(j.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, ja))
+		_stones.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
+		_stones.draw_mesh(Art.pebble(j.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, ja))
 		Art.number(field, font, Vector2.ZERO, j.v, s, ja)
-	field.draw_set_transform(Vector2.ZERO)
+	_stones.draw_set_transform(Vector2.ZERO)
 	# the pebbles in the tray (but for the ones at rest over a page's top edge)
 	var top := Sim.ROWS - _rows()
 	for id in _vis:
@@ -1590,20 +1636,39 @@ func _draw_field() -> void:
 			a = 0.72 if vis.v == chain_v else 0.45
 		elif stuck:
 			a = 0.55
-		field.draw_set_transform(c, rot, sc)
-		field.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
+		_stones.draw_set_transform(c, rot, sc)
+		_stones.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
 		Art.number(field, font, Vector2.ZERO, vis.v, s, a)
-	field.draw_set_transform(Vector2.ZERO)
+	_stones.draw_set_transform(Vector2.ZERO)
+	# pebbles plucked out or tumbling at the end
+	for d: Dictionary in _debris:
+		var a := 1.0 - clampf((d.t - 1.0) / 0.6, 0.0, 1.0)
+		_stones.draw_set_transform(d.pos + _shake_off, d.rot, Vector2.ONE)
+		_stones.draw_mesh(Art.pebble(d.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
+		Art.number(field, font, Vector2.ZERO, d.v, s, a)
+	_stones.draw_set_transform(Vector2.ZERO)
+
+## What lies over the stones, unclipped.
+func _draw_top() -> void:
+	if sim == null or _u <= 0.0:
+		return
+	var font := Art.font()
+	var s := _u * 0.86
+	var picked := {}
+	for p: Vector2i in sim.path:
+		picked[p] = true
+	var chain_v: int = sim.value(sim.path[0]) if not sim.path.is_empty() else 0
+	var stuck: bool = _stuck_box.visible
 	# glints running over pebbles at rest, and the tether to the finger
 	var over := Face.Builder.new()
 	_draw_over(over, s)
 	if not over.verts.is_empty():
 		_live_over = over.mesh()
-		field.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
+		_top.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
 	if _flash > 0.0:
-		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
+		_top.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
 	if stuck:
-		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(0.25, 0.16, 0.08, 0.28))
+		_top.draw_rect(Rect2(Vector2.ZERO, field.size), Color(0.25, 0.16, 0.08, 0.28))
 	# what the chain will make, over its last pebble
 	if sim.path.size() >= Sim.MIN_CHAIN:
 		var last: Vector2i = sim.path[-1]
@@ -1615,8 +1680,8 @@ func _draw_field() -> void:
 		if not Motion.reduce:
 			bc.y += sin(_clock * 3.0) * _u * 0.02
 			grow *= 1.0 + 0.04 * minf(8.0, sim.path.size() - Sim.MIN_CHAIN)
-		field.draw_set_transform(bc, tilt, Vector2(grow, grow))
-		field.draw_mesh(Art.pebble(nv, bs), Art.skin(), Transform2D.IDENTITY)
+		_top.draw_set_transform(bc, tilt, Vector2(grow, grow))
+		_top.draw_mesh(Art.pebble(nv, bs), Art.skin(), Transform2D.IDENTITY)
 		Art.number(field, font, Vector2.ZERO, nv, bs)
 		# four or more: how long the chain is, in the colour of its tier
 		if sim.path.size() >= 4:
@@ -1631,17 +1696,10 @@ func _draw_field() -> void:
 					ti = TIERS.find(t)
 			var tc: Color = STICKER_COLS[ti % STICKER_COLS.size()]
 			var o := Vector2(-w * 0.5, bs * 0.5 + fs * 0.95)
-			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
-			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, tc.darkened(0.5))
-			field.draw_string(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
-		field.draw_set_transform(Vector2.ZERO)
-	# pebbles plucked out or tumbling at the end
-	for d: Dictionary in _debris:
-		var a := 1.0 - clampf((d.t - 1.0) / 0.6, 0.0, 1.0)
-		field.draw_set_transform(d.pos + _shake_off, d.rot, Vector2.ONE)
-		field.draw_mesh(Art.pebble(d.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
-		Art.number(field, font, Vector2.ZERO, d.v, s, a)
-	field.draw_set_transform(Vector2.ZERO)
+			_top.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
+			_top.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, tc.darkened(0.5))
+			_top.draw_string(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
+		_top.draw_set_transform(Vector2.ZERO)
 	_draw_pops()
 
 ## A point `k` of the way along the chain from pebble `from` to its end.
@@ -1998,9 +2056,9 @@ func _draw_pops() -> void:
 		var fs := full if Motion.reduce else maxi(8, int(lerpf(14.0, full * 1.0, Motion.back_out(minf(1.0, p.t / 0.24)))))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var o := at + Vector2(-w * 0.5, 0)
-		field.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
-		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
-		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
+		_top.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
+		_top.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
+		_top.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
 
 func _pop(cell: Vector2, text: String, col: Color, big: bool) -> void:
 	_pops.append({"pos": cell, "text": text, "t": -JOIN_T, "col": col, "big": big})
