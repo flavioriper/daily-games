@@ -302,7 +302,7 @@ func _start() -> void:
 			_say_for("HTP_SB_DONE_CAP", 3.0)
 		Lesson.SHY:
 			_slide(0, 2, 0, "HTP_SB_SHY_CAP", {}, 0.9)
-			_say_for("HTP_SB_DRIED_CAP", 2.2)
+			_say_for("HTP_SB_DRIED_BACK_CAP", 2.2)
 			_slide(1, 0, 1, "HTP_SB_FIRST_CAP")
 			_loop.tween_interval(0.6)
 			_slide(0, 2, 0, "HTP_SB_ONCE_CAP")

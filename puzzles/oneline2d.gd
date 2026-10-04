@@ -52,6 +52,10 @@ const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the field ---
 ## The card's inset around the figure.
@@ -261,6 +265,12 @@ var _split_index := -1
 var _split_at := -INF
 var _back_index := -1
 var _back_at := -INF
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_layer: Control
 var _hearts_shown: ArrayMesh
 var _dusk_tw: Tween
@@ -397,34 +407,40 @@ func rules() -> String:
 	var out := tr("OL_RULES")
 	if state.has_sun():
 		out += "\n\n" + tr("OL_RULES_SUN")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("OL_RULES_MOVES") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + (tr("OL_RULES_HEARTS_1") if max_hearts == 1 else tr("OL_RULES_HEARTS_N") % max_hearts)
 	return out
 
-## The lines the sprout cycles: a sunny figure leads with the sun's two.
+## The lines the sprout cycles: a counted figure leads with the counter, a
+## sunny one with the sun's two.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if state.has_sun():
-		return ["OL_TIP_SUN", "OL_TIP_POSTS"] + TIPS
-	return TIPS
+		return lead + ["OL_TIP_SUN", "OL_TIP_POSTS"] + TIPS
+	return lead + TIPS
 
 ## The tutorial, a page a rule, each a little house walked by the board
 ## itself (ui/hud/oneline_tutorial_diagram.gd): one stroke, the green posts,
-## never twice, stranding (with hearts on Hard and Insane), the hint, then
-## Sunny Spells on Insane.
+## never twice, stranding, the hint, then Sunny Spells and the move counter
+## on Insane -- which has no stranding page (nothing there says a line is
+## stranded, and its Undo is gone) and no hint.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/oneline_tutorial_diagram.gd")
 	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
 	var steps := [
 		[Diagram.Lesson.TRACE, "HTP_OL_TRACE", tr("HTP_OL_TRACE_BODY")],
 		[Diagram.Lesson.START, "HTP_OL_START", tr("HTP_OL_START_BODY")],
-		[Diagram.Lesson.ONCE, "HTP_OL_ONCE", tr("HTP_OL_ONCE_BODY")]]
+		[Diagram.Lesson.ONCE, "HTP_OL_ONCE", tr("HTP_OL_ONCE_BODY_MOVES" if max_moves > 0 else "HTP_OL_ONCE_BODY")]]
 	if max_hearts > 0:
 		steps.append([Diagram.Lesson.STRAND, "HTP_TN_HEARTS",
 			tr("OL_RULES_HEARTS_1") if max_hearts == 1 else tr("OL_RULES_HEARTS_N") % max_hearts])
-	else:
+	elif max_moves <= 0:
 		steps.append([Diagram.Lesson.STRAND, "HTP_OL_STRAND", tr("HTP_OL_STRAND_BODY")])
-	steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
-		tr("HTP_OL_HINT_BODY_ONE") if hints == 1 else tr("HTP_OL_HINT_BODY_N") % hints])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_OL_HINT_BODY_ONE") if hints == 1 else tr("HTP_OL_HINT_BODY_N") % hints])
 	if state.has_sun():
 		steps.append([Diagram.Lesson.SUN, "OL_SUN_SEAL", tr("OL_RULES_SUN")])
 	var pages := []
@@ -433,9 +449,19 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.hearts = max_hearts
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		# The shared page, in lines: a step back costs one too.
+		var page: Dictionary = MovesDiagram.page(self, max_moves)
+		page["body"] = tr("HTP_OL_MOVES_BODY") % max_moves
+		pages.append(page)
 	return pages
 
+## Insane counts moves: no Undo (stepping back onto the post she came from is
+## the take-back, and it costs one), no hint and no Check, which would each
+## say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). The walker
@@ -511,6 +537,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -541,6 +568,7 @@ func _deal() -> void:
 	_slot = {}
 	_looks = {}
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -616,7 +644,7 @@ func _step_for(available: float) -> float:
 
 ## The strip the hearts take over the figure, on a board that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The host cuts its card to the figure and centres it, which is what these
 ## two say.
@@ -671,7 +699,8 @@ func _process(delta: float) -> void:
 		_settling = now < _anim_until
 		_refresh()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or (max_moves > 0 and _moves_pill.animating(now - 0.1)):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
@@ -743,7 +772,7 @@ func _place_walker(t: float) -> void:
 		snail.expression = Face.Expr.SLEEPY
 	elif _worried:
 		snail.expression = Face.Expr.WORRIED
-	elif not state.stranded().is_empty():
+	elif max_moves <= 0 and not state.stranded().is_empty():
 		snail.expression = Face.Expr.STRAIN
 	else:
 		snail.expression = Face.Expr.HAPPY
@@ -852,8 +881,9 @@ func _cast_figure(t: float) -> void:
 	for i in lines:
 		var pose: Array = lines[i]
 		_show(PIECE_FORD, i, pose[1], _build_ford.bind(i, pose[1]), pose[0])
+	# (Insane counts moves and says nothing of a stranded line: none greys.)
 	var lost: Dictionary = {}
-	for e in state.stranded():
+	for e in (state.stranded() if max_moves <= 0 else []):
 		lost[e] = true
 	var refused := _refused_now(t)
 	for i in lines:
@@ -1563,14 +1593,25 @@ func _begin(n: int) -> void:
 ## the rest of the figure unwalkable (stranded on Hard, or on Insane with no
 ## walk that keeps the sun apart) costs a heart, and its plank comes back up.
 ## Anything else is right, and builds the streak.
+##
+## Since 2026-10-04 no band has hearts, so that judgment is dormant. Insane
+## counts moves (`counted`): no step is asked whether it leaves a finish --
+## every line laid is a plain plank that builds the streak, so the streak
+## says nothing -- each costs a move, and stepping back onto the post she
+## came from takes the last line up again for another.
 func _walk_to(n: int, judged := true) -> void:
 	var t := _now()
 	var from: int = state.current
+	var counted := max_moves > 0
+	if counted and state.came_from(n):
+		if _take_back():
+			_spend(1, t + (0.0 if Motion.reduce else LAY_TIME))
+		return
 	var to_cap := _cap_of(n)
 	var was_dry: bool = state.dry()
-	var finishes: bool = state.may_step(n) and state.step_leaves_finish(n)
+	var finishes: bool = counted or (state.may_step(n) and state.step_leaves_finish(n))
 	# (Easy and Medium: whether a line was out of reach before this step)
-	var was_lost: bool = max_hearts == 0 and not state.stranded().is_empty()
+	var was_lost: bool = max_hearts == 0 and not counted and not state.stranded().is_empty()
 	match state.step(n):
 		State.STEP_WALKED:
 			_refuse(n)
@@ -1609,11 +1650,12 @@ func _walk_to(n: int, judged := true) -> void:
 			_speak()
 			_refresh()
 			note_move()
-			if is_done():
+			_spend(1, land)
+			if is_done() or out_of_hearts:
 				return
 			# The step that strands a line is felt once, as it is taken; the
 			# steps after it on the same lost figure are plain planks.
-			if max_hearts == 0 and not was_lost and not state.stranded().is_empty():
+			if max_hearts == 0 and not counted and not was_lost and not state.stranded().is_empty():
 				fx.buzz(Haptics.WARN)
 			if finishes:
 				_on_right_step(e, n, judged and max_hearts > 0)
@@ -1636,7 +1678,7 @@ func _drink(n: int) -> void:
 	if not Motion.reduce:
 		fx.puff(node_to_local(n) - Vector2(0.0, _step * POST_LIFT), Pal.DEW, 5)
 	fx.cue("dew")
-	if not _worried and state.stranded().is_empty():
+	if not _worried and (max_moves > 0 or state.stranded().is_empty()):
 		_say(tr("OL_DEW"), Face.Expr.HAPPY)
 
 ## Posts in `posts` with no line left to walk open a daisy at `at`.
@@ -1666,7 +1708,7 @@ func _unbloom() -> void:
 func _speak(undone := false) -> void:
 	if is_done():
 		return
-	var lost := state.stranded()
+	var lost: Array[int] = state.stranded() if max_moves <= 0 else ([] as Array[int])
 	if not lost.is_empty():
 		if undone:
 			_say(tr("OL_STILL_ONE") if lost.size() == 1
@@ -1701,8 +1743,11 @@ func tip_line() -> Dictionary:
 
 # --- the HUD's actions ---
 
+## No Undo where moves are counted (Insane): a line is taken up by stepping
+## back over it, at a move.
 func can_undo() -> bool:
-	return not is_done() and not out_of_hearts and not _ejecting and not state.trail.is_empty()
+	return not is_done() and not out_of_hearts and not _ejecting and not state.trail.is_empty() \
+		and max_moves <= 0
 
 ## The host holds its hint video while a wrong step is being taken back.
 func busy() -> bool:
@@ -1712,6 +1757,12 @@ func busy() -> bool:
 ## steps back onto the post it came from, which hops as it lands. Counts no
 ## move, as on the island.
 func undo() -> bool:
+	if not can_undo():
+		return false
+	return _take_back()
+
+## The last line taken up, by Undo or by Insane's step back over it.
+func _take_back() -> bool:
 	if is_done() or out_of_hearts or _ejecting or state.trail.is_empty():
 		return false
 	var caps := _snapshot_caps()
@@ -1796,7 +1847,7 @@ func _ring_at(n: int) -> void:
 ## sprout says how many. That is the only way to lose One Line, and it is the
 ## one thing this board will not draw in advance.
 func check() -> int:
-	if is_done() or out_of_hearts or _ejecting:
+	if is_done() or out_of_hearts or _ejecting or max_moves > 0:
 		return 0
 	checks += 1
 	var t := _now()
@@ -1827,6 +1878,9 @@ func reset_board() -> void:
 		return
 	_clear_figure()
 	_break_streak()
+	# An empty figure is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	fx.cue("reset")
 	_refresh()
 
@@ -1982,7 +2036,7 @@ func _on_solved() -> void:
 		for n in state.nodes:
 			_warm[n] = t
 	_busy_for(last + maxf(Motion.SOLVE_TIME, BRIGHT_TIME))
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 		_combo_layer.queue_redraw()
@@ -2030,6 +2084,25 @@ func _break_streak() -> void:
 	else:
 		_combo_n = 0
 
+## `cost` moves go off Insane's counter. The last one gone with a line still
+## unwalked ends the board once the step has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_drawing = false
+	_release_post()
+	moved.emit()
+	_after(maxf(0.0, land - _now()), _run_out)
+
+## (Dormant since 2026-10-04: no band has hearts.)
 ## A wrong step on Hard or Insane: a heart goes (its halves fall), the snail
 ## lands worried, the plank she laid blushes and on Hard the lines it
 ## stranded wobble rose, and EJECT_AFTER later the plank comes back up under
@@ -2131,7 +2204,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["OL_OUT_BODY", "OL_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["OL_OUT_BODY", "OL_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2170,9 +2244,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2204,6 +2282,10 @@ func _close_card() -> void:
 ## ghost where one was, the lost one's halves falling apart, and one coming
 ## back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _step > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _card.position.y + 12.0 + HEART_ROW * 0.5),
+			moves_left, _now())
+		return
 	if max_hearts <= 0 or _step <= 0.0:
 		return
 	var b := Face.Builder.new()

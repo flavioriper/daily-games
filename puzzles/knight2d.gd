@@ -11,12 +11,14 @@ extends "res://core/puzzle_base.gd"
 ## no Check, no tray and no actions row: Undo, Reset and Hint ride in the
 ## top bar -- Pinwheel's shape.
 ##
-## The polish (2026-10-01, spec 2026-10-01-knight-polish-design.md): on Hard
-## and Insane a catch costs a heart, and out of hearts the garden dozes off
-## and the card offers Try again. Insane is Brambles: every square you hop
-## off grows a bramble that nothing lands on again, and a rose knight fenced
-## in by them naps for good; a hop that leaves you boxed in (no hop that is
-## not a catch) costs a heart and the brambles wither back to the opening.
+## The polish (2026-10-01, spec 2026-10-01-knight-polish-design.md): Insane
+## is Brambles: every square you hop off grows a bramble that nothing lands
+## on again, and a rose knight fenced in by them naps for good. Until
+## 2026-10-04 a catch and being boxed in (no hop that is not a catch) each
+## cost a heart there; that code is still here and dormant (no band has
+## hearts). Insane counts moves instead (`_spend`): every hop costs one, a
+## caught one too, and out of moves the garden dozes off and the card offers
+## Try again. Boxed in brings up Start over, as a lost position does below.
 ## On every other band a position with no way left to the king is told at
 ## once, and a Start over button comes up under the board (players got stuck
 ## with no idea the day was lost). Rewards: a streak of safe hops, gags (a
@@ -148,6 +150,8 @@ const TIP_CYCLE := 8.0
 const TIPS := ["KN_TIP_TAP", "KN_TIP_GOAL", "KN_TIP_ANSWER", "KN_TIP_CORNERS", "KN_TIP_TAKE"]
 const TIPS_HEARTS := ["KN_TIP_TAP", "KN_TIP_CORNERS", "KN_TIP_HEARTS", "KN_TIP_ANSWER", "KN_TIP_STUCK"]
 const TIPS_BRAMBLES := ["KN_TIP_BRAMBLE", "KN_TIP_FENCE", "KN_TIP_NAP", "KN_TIP_CORNERS", "KN_TIP_HEARTS"]
+## Brambles since 2026-10-04, when it counts moves and has no hearts.
+const TIPS_MOVES := ["TIP_MOVES_SEQ", "KN_TIP_BRAMBLE", "KN_TIP_FENCE", "KN_TIP_NAP", "KN_TIP_CORNERS"]
 ## A press on a square you can hop to: your knight crouches this deep, ready,
 ## and the dot swells, until the finger lets go.
 const PRESS_SQUASH := 0.07
@@ -195,6 +199,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 const AGO := -1.0e9
 
 # --- the streak and the gags ---
@@ -337,6 +345,12 @@ var _split_index := -1
 var _split_at := AGO
 var _back_index := -1
 var _back_at := AGO
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_layer: Control
 var _hearts_shown: ArrayMesh
 var _dusk_tw: Tween
@@ -372,11 +386,15 @@ var _cat_curled := false
 func puzzle_id() -> String: return "knight"
 func title() -> String: return "Knight"
 
-## The rules, then the band's own closing: nothing can be lost (Easy,
-## Medium), hearts (Hard), or Brambles (Insane).
+## The rules, then the band's own closing: nothing can be lost (Easy to
+## Hard), or Brambles and its move counter (Insane).
 func rules() -> String:
 	var out := tr("KN_RULES")
-	if _state.brambles():
+	if max_moves > 0:
+		if _state.brambles():
+			out += "\n\n" + tr("KN_RULES_BRAMBLES_MOVES")
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
+	elif _state.brambles():
 		out += "\n\n" + tr("KN_RULES_BRAMBLES") % max_hearts
 	elif max_hearts > 0:
 		out += "\n\n" + tr("KN_RULES_HEARTS") % max_hearts
@@ -403,12 +421,13 @@ func tutorial_pages() -> Array:
 	steps.append([Diagram.Lesson.TAKE, "HTP_KN_TAKE", tr("HTP_KN_TAKE_BODY")])
 	if band >= 3:
 		steps.append([Diagram.Lesson.BRAMBLES, "KN_BRAMBLE_SEAL", tr("HTP_KN_BRAMBLES_BODY")])
-		steps.append([Diagram.Lesson.STUCK, "HTP_KN_BOXED", tr("HTP_KN_BOXED_BODY") % hearts_n])
+		steps.append([Diagram.Lesson.STUCK, "HTP_KN_BOXED",
+			tr("HTP_KN_BOXED_BODY") % hearts_n if hearts_n > 0 else tr("HTP_KN_BOXED_BODY_MOVES")])
 	else:
 		steps.append([Diagram.Lesson.STUCK, "HTP_KN_STUCK", tr("HTP_KN_STUCK_BODY")])
 	var undo_body := "HTP_KN_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_KN_RESET_BODY"
+		undo_body = "HTP_KN_RESET_BODY_MOVES" if max_moves > 0 else "HTP_KN_RESET_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_KN_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -421,9 +440,16 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		# The shared page, in hops: there are no pieces to put down here.
+		var page: Dictionary = MovesDiagram.page(self, max_moves)
+		page["body"] = tr("HTP_KN_MOVES_BODY") % max_moves
+		pages.append(page)
 	return pages
 
 func _tips() -> Array:
+	if max_moves > 0:
+		return TIPS_MOVES if _state.brambles() else ["TIP_MOVES_SEQ"] + TIPS
 	if _state.brambles():
 		return TIPS_BRAMBLES
 	if max_hearts > 0:
@@ -431,10 +457,10 @@ func _tips() -> Array:
 	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: a catch is the check.
-## Insane has neither undo nor hint: can_undo() and hints_left() say so.
+## Insane counts moves and has neither Undo nor hint.
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A hop taps
@@ -504,6 +530,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(difficulty)
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_undo_ever = false
@@ -527,6 +554,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 func _deal() -> void:
 	_turn += 1
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -582,9 +610,9 @@ func _cell() -> float:
 func _inset() -> float:
 	return INSET
 
-## The room the hearts' pill takes over the board on Hard and Insane.
+## The room the hearts' pill (or Insane's move counter) takes over the board.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 func _grid_size() -> Vector2:
 	return Vector2.ONE * float(_state.w) * _cell()
@@ -698,10 +726,11 @@ func _kick_dust(c: int, at: float) -> void:
 		_dust.append({"pos": _centre(c), "at": at})
 
 ## One hop of yours and the rose side's answer, animated. A catch holds, then
-## everything slides back; the state never kept it. On Hard and Insane it
-## costs a heart. A kept hop grows the streak (and maybe a gag), grows a
-## bramble on Insane, and once everything is still the position is checked:
-## lost on Easy to Hard (the Start over button), boxed in on Insane.
+## everything slides back; the state never kept it. A kept hop grows the
+## streak (and maybe a gag), grows a bramble on Insane, and once everything
+## is still the position is checked: lost on Easy to Hard, boxed in on
+## Insane (the Start over button either way). On Insane every hop of yours,
+## kept or caught, takes a move off the counter (`_spend`).
 func _play(to: int, from_hint := false) -> void:
 	var t := _now()
 	if is_done() or out_of_hearts or t < _busy_until:
@@ -771,6 +800,7 @@ func _play(to: int, from_hint := false) -> void:
 		_busy_until = land
 		_busy_for(land - t)
 		note_move()
+		_spend(1, land)
 		return
 	if caught:
 		var knock := -1.0 if catcher >= 0 and _centre(catcher).x > _centre(to).x else 1.0
@@ -801,6 +831,7 @@ func _play(to: int, from_hint := false) -> void:
 					_later(SLIDE_BACK, _run_out))
 		_refresh()
 		moved.emit()
+		_spend(1, _busy_until)
 		return
 	var napped: Array = r.get("napped", [])
 	for i: int in napped:
@@ -819,7 +850,7 @@ func _play(to: int, from_hint := false) -> void:
 	# shown once everything is still. Boxed in holds input until it plays.
 	var boxed: bool = _state.brambles() and _state.trapped()
 	var lost: bool = not _state.brambles() and _state.lost()
-	_busy_until = last + (100.0 if boxed else 0.0)
+	_busy_until = last + (100.0 if boxed and max_hearts > 0 else 0.0)
 	_busy_for(last - t + MARK_FADE)
 	_hop_id += 1
 	var hop_id := _hop_id
@@ -838,16 +869,27 @@ func _play(to: int, from_hint := false) -> void:
 		if hop_id == _hop_id:
 			_show_stuck(boxed, lost))
 	_refresh()
+	if not from_hint:
+		_spend(1, last)
 
 ## Once a kept hop has settled: on Brambles, boxed in (no hop that is not a
-## catch) costs a heart and the board withers back to the opening; on every
-## other band a position with no way left to the king says so and brings up
-## the Start over button.
+## catch) says so and brings up the Start over button -- it only reads the
+## corners and thorns already on the board, and nothing is withered back for
+## the player (with hearts, before 2026-10-04, it cost one and withered: the
+## dormant `_boxed_in`); on every other band a position with no way left to
+## the king says so and brings up the same button.
 func _show_stuck(boxed: bool, lost: bool) -> void:
 	if is_done() or out_of_hearts:
 		return
-	if boxed:
+	if boxed and max_hearts > 0:
 		_boxed_in()
+		return
+	if boxed:
+		var stood := _lost
+		_set_lost(true)
+		if not stood:
+			_tell("KN_BOXED_MOVES", Face.Expr.STRAIN)
+			fx.cue("stuck")
 		return
 	if _state.brambles():
 		return
@@ -977,8 +1019,8 @@ func _process(delta: float) -> void:
 		_life_layer.queue_redraw()
 	if t >= _cat_at and not _cat_curled:
 		_place_cat(t)
-	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
-			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+	if (max_hearts > 0 or max_moves > 0) and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1 or _moves_pill.animating(t - 0.1)):
 		_heart_layer.queue_redraw()
 	if _animating(t):
 		_refresh()
@@ -1818,7 +1860,8 @@ func hint() -> bool:
 func can_reset() -> bool:
 	return not (is_done() or out_of_hearts or busy())
 
-## Back to the opening, the brambles withering away. Hearts lost stay lost.
+## Back to the opening, the brambles withering away. Hearts lost stay lost;
+## Insane's moves all come back, the opening being the board from the top.
 func reset_board() -> void:
 	if not can_reset():
 		return
@@ -1832,6 +1875,8 @@ func reset_board() -> void:
 	_toast = ""
 	_toast_at = -100.0
 	moves = 0
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2008,7 +2053,25 @@ func _dizzy_stars(b: Face.Builder, at: Vector2, s: float, e: float, alpha: float
 		var p := at + Vector2(cos(a) * s * 0.22, sin(a) * s * 0.07)
 		b.polygon(Seal.star(p, s * 0.06), Color(Pal.CROWN, alpha * (0.6 + 0.4 * sin(a))))
 
-# --- hearts ---
+# --- the move counter (Insane) ---
+
+## `cost` moves go off Insane's counter. The last one gone with the king
+## still standing ends the board once the hop has played out (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_set_lost(false)
+	moved.emit()
+	_after(maxf(0.0, land - _now()), _run_out)
+
+# --- hearts (dormant since 2026-10-04: no band has any) ---
 
 ## A heart splits off the pill at `at`; the last one sets out_of_hearts.
 func _lose_heart(at: float) -> void:
@@ -2022,6 +2085,11 @@ func _lose_heart(at: float) -> void:
 	_heart_layer.queue_redraw()
 
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		if Motion.reduce or Motion.pop_in_scale(_now() - _opened - Motion.ENTER_DELAY).x > 0.0:
+			_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+				_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2130,7 +2198,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["KN_OUT_BODY", "KN_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["KN_OUT_BODY", "KN_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2188,15 +2257,22 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
 	fx.cue("heart_back")
 	_dusk_toward(Color.WHITE)
-	if _state.brambles() and _state.trapped():
+	if max_moves > 0:
+		# Nothing is withered back for the player: boxed in, Start over is up.
+		_set_lost(_state.brambles() and _state.trapped())
+	elif _state.brambles() and _state.trapped():
 		_state.reset_board()
 		_slide_to_state(now, Motion.RESET_STAGGER)
 	elif not _state.brambles():
@@ -2377,7 +2453,7 @@ func _on_solved() -> void:
 	_set_lost(false)
 	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
 	# Undo on Easy and Medium.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 	_streak_gen += 1

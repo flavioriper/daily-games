@@ -85,3 +85,18 @@ those.
   is 32 ms mean, 55 worst.
 - Easy to Hard deal the fields they dealt before. A banked Insane day
   finished earlier restores a different field. No tip mentioned supposing.
+
+- **Insane counts moves** (2026-10-04, `docs/agents/flat-screens.md`,
+  "Insane counts moves"). `State.HEARTS` is `[0, 0, 0, 0]`, so `judged()` is
+  false on every band: no mushroom wilts, no pebble is laid for the player
+  (`reveal` and `shown` stay in the file, never reached) and Check points
+  again on Hard. Fairy Rings hands out `mushrooms.size() + 3` moves
+  (`State.MOVES_SLACK`, `moves_budget()`; 17 for a field of 14): a mushroom
+  planted costs one, one pulled up costs one (`move_cost`), pebbles and
+  sweeps are free. `_spend` takes them off in `_tap`; out of moves is the old
+  dusk and the card with `MOVES_BONUS`. No Undo, hint or Check on Insane, and
+  its tutorial drops the Undo page (it taught Undo and Check) for the shared
+  moves page. What stays is what Medium shows from the player's own marks:
+  the count wash, the flowers on finished numbers, the streak (a plant that
+  sends no number over), `MP_MISPLACED`. The tutorial diagram's HEARTS lesson
+  is no longer reached by any band.

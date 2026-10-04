@@ -27,7 +27,15 @@ const Gen = preload("res://puzzles/sunbeam_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+## No band has hearts since 2026-10-04. The sleepers' rule stays on both
+## bands that have it (a move let go on one is still taken back); Insane
+## counts moves instead.
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the shortest way home (`moves_budget`): a
+## quarter of it again, and never fewer than this. Every piece let go on
+## another peg costs one, a move the sleepers send back included; a peek
+## (holding a piece) and a tap the rails refuse cost nothing.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 var difficulty := 0
 
@@ -73,6 +81,30 @@ func setup() -> void:
 	history.clear()
 	pinned = {}
 	retrace()
+
+## The fewest moves home from the opening. A banked Shy Dew floor carries
+## the miner's exact count (`dark`, breadth first over every arrangement,
+## never letting go on a drop); a live floor has the pieces that open off
+## home, each slid straight there -- the way `Gen.lay_snails` keeps clear.
+func shortest_solve() -> int:
+	var dark := int(g.get("dark", 0))
+	if dark > 0:
+		return dark
+	var out := 0
+	for p in start.size():
+		if start[p] != home(p):
+			out += 1
+	return out
+
+## The moves a band hands out: the shortest way home and its slack (a
+## quarter of it, rounded up, three at least), or 0 on a band that does not
+## count.
+func moves_budget() -> int:
+	var band := clampi(difficulty, 0, MOVES_SLACK.size() - 1)
+	if MOVES_SLACK[band] <= 0:
+		return 0
+	var par := shortest_solve()
+	return par + maxi(int(MOVES_SLACK[band]), ceili(par / 4.0))
 
 func shy() -> bool:
 	return bool(g.get("shy", false))

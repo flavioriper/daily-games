@@ -22,8 +22,9 @@ extends Control
 ## - BRAMBLES (Insane): a bramble grows on the square you leave, and a rose
 ##   knight left nowhere to hop naps.
 ## - STUCK: a hop into the corner leaves no way to the king: Start over comes
-##   up and is tapped (Easy to Hard); on Insane it is boxed in, a heart, and
-##   the brambles wither back. Then the way that works.
+##   up and is tapped; on Insane it is boxed in, and Start over comes up
+##   the same (a heart and the brambles withering back until 2026-10-04,
+##   when Insane began counting moves). Then the way that works.
 ## - UNDO: a hop, Undo takes it back; Reset puts every piece back (Reset alone
 ##   on Insane, which has no Undo).
 ## - HINT: the bulb hops for you, twice, onto the king.
@@ -33,6 +34,7 @@ extends Control
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
+const KnightState = preload("res://puzzles/knight_state.gd")
 
 enum Lesson { HOP, ANSWER, TAKE, BRAMBLES, STUCK, UNDO, HINT }
 
@@ -231,7 +233,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	_art = Board.new()
-	_art.side = lesson == Lesson.STUCK and band < 3
+	_art.side = lesson == Lesson.STUCK and (band < 3 or KnightState.hearts_for(band) <= 0)
 	add_child(_art)
 	_over = Control.new()
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -307,7 +309,7 @@ func _start() -> void:
 		return
 	_loop = create_tween().set_loops()
 	_loop.tween_interval(1.6)
-	var judged := band >= 3
+	var judged: bool = KnightState.hearts_for(band) > 0
 	match lesson:
 		Lesson.HOP:
 			_tap(11, "HTP_KN_TAP_CAP", "HTP_KN_L_CAP")
@@ -330,10 +332,10 @@ func _start() -> void:
 			_tap(NAP_LINE[2], "HTP_KN_KING_CAP", "")
 			_say_for("HTP_KN_DONE_CAP", 3.2)
 		Lesson.STUCK:
-			if band >= 3:
+			if band >= 3 and judged:
 				_tap(DEAD_END, "HTP_KN_CORNER_CAP", "HTP_KN_BOXED_CAP", 2.8)
 			else:
-				_tap(DEAD_END, "HTP_KN_CORNER_CAP", "HTP_KN_LOST_CAP", 1.8)
+				_tap(DEAD_END, "HTP_KN_CORNER_CAP", "HTP_KN_BOXED_MOVES_CAP" if band >= 3 else "HTP_KN_LOST_CAP", 1.8)
 				_loop.tween_callback(_say.bind("HTP_KN_OVER_CAP"))
 				_loop.tween_callback(func() -> void: _point_at(_art.stuck_mid()))
 				_loop.tween_interval(0.5)
@@ -415,11 +417,11 @@ func _still() -> void:
 			_tap_now(NAP_LINE[0])
 			_say("HTP_KN_NAP_CAP")
 		Lesson.STUCK:
-			if band >= 3:
+			if band >= 3 and KnightState.hearts_for(band) > 0:
 				_say("HTP_KN_CORNER_CAP")
 			else:
 				_tap_now(DEAD_END)
-				_say("HTP_KN_LOST_CAP")
+				_say("HTP_KN_BOXED_MOVES_CAP" if band >= 3 else "HTP_KN_LOST_CAP")
 		Lesson.UNDO:
 			_tap_now(11)
 			_say("HTP_KN_UNDO_CAP" if band < 3 else "HTP_KN_RESET_CAP")

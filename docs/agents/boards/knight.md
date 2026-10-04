@@ -52,3 +52,26 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   positions; the board gained `_inset()`, `_hearts_at()`, `_stuck_width()`
   and `_stuck_spot()` for it. Peak draw calls 111 (out of hearts, was 105).
 
+- **Insane counts moves (2026-10-04)** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"): `HEARTS_BY` is all zero, so a catch and being
+  boxed in cost no heart anywhere (`_lose_heart`, `_boxed_in` are dormant).
+  **The budget** is the bank's line -- the shortest, re-checked against
+  `Gen.solve` -- plus a quarter, three at least (`State.moves_budget()`:
+  20 + 5 = 25, 14 + 3 = 17; not the state's old `budget()`/`moves_left()`,
+  which are the 2026-09 Insane's cap and still read 0). Every hop costs one
+  (`_spend`), **a caught hop too**: the catch still shows and slides back,
+  as on Medium, since the rose corners already said it. **Boxed in no
+  longer withers the board back by itself**: it brings up Start over (the
+  lost-position button of the other bands, with `KN_BOXED_MOVES`), because
+  `trapped()` reads only the corners and thorns on the board; the search
+  that proves a position lost (`State.lost()`) is still never run on
+  Brambles. Reset, Start over and Try again hand the whole budget back; the
+  card's video buys `MOVES_BONUS` from where the knight stands. No Undo, no
+  hint (`capabilities()` is empty on Insane). The tutorial's STUCK page on
+  Insane now plays the Start over column like the other bands
+  (`knight_tutorial_diagram.gd`: `judged` reads the hearts table), and the
+  shared moves page closes it. New lines at the end of `locale/boards.csv`:
+  `KN_RULES_BRAMBLES_MOVES`, `KN_BOXED_MOVES`, `HTP_KN_BOXED_BODY_MOVES`,
+  `HTP_KN_RESET_BODY_MOVES`, `HTP_KN_MOVES_BODY`, `HTP_KN_BOXED_MOVES_CAP`;
+  the rules close on the shared `RULES_MOVES_SEQ`. Not seen on a screen yet
+  (`tests/_probe_moves.gd -- id=knight`).

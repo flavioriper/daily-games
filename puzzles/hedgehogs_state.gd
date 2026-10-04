@@ -10,8 +10,10 @@ extends RefCounted
 ## flags and woken hedgehogs match it rakes its other neighbours (a chord).
 ## Done when every bare cell is raked; flags are never needed.
 ##
-## Hard and Insane can be failed: a wake costs the board a heart (the board
-## keeps the hearts; HEARTS_BY says how many). Insane is **Sleepwalkers**:
+## No band has hearts since 2026-10-04 (HEARTS_BY is all nought): a wake is
+## what it is on Medium, a hedgehog shown and the day going on. Insane counts
+## moves instead (`moves_budget`): every pile cleared costs one, whatever
+## was under it. Insane is **Sleepwalkers**:
 ## every Gen.WALK_EVERY rakes the bell rings and one sleeping hedgehog not
 ## under a flag steps to a covered pile beside it (`walk`). Only a step
 ## after which logic still plays the lawn out from what the player can see
@@ -49,9 +51,19 @@ var bell := 0
 var last_walk := Vector2i(-1, -1)
 var walks := 0
 
-## Hints and hearts by level: Hard and Insane can be failed.
+## Hints and hearts by level. No level has hearts since 2026-10-04: a wake
+## costs nothing but the move that made it.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the lawn's own piles (`moves_budget`): every
+## pile cleared costs one -- raked by hand, blown off by a nought or raked
+## round a number -- and so does a pile with a hedgehog under it, which
+## clears nothing. Flags are free. Three is three wakes and no more.
+const MOVES_SLACK := [0, 0, 0, 3]
+## The bare piles still covered at the opening: what a clean solve clears,
+## whatever its order and wherever the sleepwalkers go (a walk is between
+## covered piles, so it never changes the count). 0 on a hand-made lawn.
+var to_clear := 0
 
 static func hints_for(d: int) -> int: return HINTS_BY[clampi(d, 0, 3)]
 static func hearts_for(d: int) -> int: return HEARTS_BY[clampi(d, 0, 3)]
@@ -70,6 +82,19 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		a.fill(0)
 	woken = 0
 	restart()
+	to_clear = 0
+	for c in n:
+		if g.hog[c] == 0 and open[c] == 0:
+			to_clear += 1
+
+## The moves a level hands out: a move for every bare pile the opening left
+## covered and the slack, or 0 on a level that does not count them (and on a
+## hand-made lawn, which has no `to_clear`).
+func moves_budget() -> int:
+	var slack: int = MOVES_SLACK[clampi(difficulty, 0, MOVES_SLACK.size() - 1)]
+	if slack <= 0 or to_clear <= 0:
+		return 0
+	return to_clear + slack
 
 ## Whether the hedgehogs sleepwalk (Insane).
 func walkers() -> bool:
@@ -217,11 +242,13 @@ func _rake_from(c: int, ring0: int, out_cells: PackedInt32Array, out_rings: Pack
 		out_cells.append(p.x)
 		out_rings.append(p.y + ring0)
 
-## A tap with the rake on `c`. {"kind", "cells", "rings", "from"}, `kind`
-## one of "raked", "woke", "refused_flag", "refused_pin", "none"; a raked
-## number forwards to chord().
+## A tap with the rake on `c`. {"kind", "cells", "rings", "from", "cost"},
+## `kind` one of "raked", "woke", "refused_flag", "refused_pin", "none"; a
+## raked number forwards to chord(). `cost` is Insane's moves: the piles
+## cleared, or one for a hedgehog woken.
 func rake(c: int) -> Dictionary:
-	var res := {"kind": "none", "cells": PackedInt32Array(), "rings": PackedInt32Array(), "from": c}
+	var res := {"kind": "none", "cells": PackedInt32Array(), "rings": PackedInt32Array(), "from": c,
+		"cost": 0}
 	if is_solved():
 		return res
 	if open[c] == 1:
@@ -236,6 +263,7 @@ func rake(c: int) -> Dictionary:
 		woke[c] = 1
 		woken += 1
 		res.kind = "woke"
+		res.cost = 1
 		res.cells.append(c)
 		res.rings.append(0)
 		res["walk"] = _tick()
@@ -245,6 +273,7 @@ func rake(c: int) -> Dictionary:
 	_rake_from(c, 0, cells, rings)
 	history.append({"raked": cells, "flags": []})
 	res.kind = "raked"
+	res.cost = cells.size()
 	res.cells = cells
 	res.rings = rings
 	res["walk"] = _tick()
@@ -253,11 +282,12 @@ func rake(c: int) -> Dictionary:
 ## A tap on a raked number: if its flags and woken hedgehogs match it, every
 ## other covered neighbour is raked (a wrong flag among them can wake one).
 ## {"kind" ("chord", "too_few", "too_many", "none"), "cells", "rings",
-## "woke" (PackedInt32Array), "from"}; rings count from the number, so its
-## neighbours are ring 1.
+## "woke" (PackedInt32Array), "from", "cost"}; rings count from the number,
+## so its neighbours are ring 1. `cost` is the piles cleared and one for
+## each hedgehog woken.
 func chord(c: int) -> Dictionary:
 	var res := {"kind": "none", "cells": PackedInt32Array(), "rings": PackedInt32Array(),
-		"woke": PackedInt32Array(), "from": c}
+		"woke": PackedInt32Array(), "from": c, "cost": 0}
 	if open[c] == 0 or is_solved():
 		return res
 	var v := number(c)
@@ -288,6 +318,7 @@ func chord(c: int) -> Dictionary:
 	if not cells.is_empty():
 		history.append({"raked": cells, "flags": []})
 	res.kind = "chord"
+	res.cost = cells.size() + res.woke.size()
 	res.cells = cells
 	res.rings = rings
 	res["walk"] = _tick()

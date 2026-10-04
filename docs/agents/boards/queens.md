@@ -101,3 +101,20 @@ selector that selected nothing. The registry asks for `"tray": "none"` now
 and the board's `brush` / `set_brush` stub is deleted. `TileTray.QUEENS` and
 the host's `"queens"` case are left in place, unused. Shot at rest on Easy:
 no bottom row, board in the same place, 87 draw calls.
+
+### Insane counts moves (2026-10-04)
+
+- **Insane counts moves, and no band has hearts** (2026-10-04,
+  `docs/agents/flat-screens.md`, "Insane counts moves"). `State.HEARTS` is
+  `[0, 0, 0, 0]` and `HINTS_BY_BAND` `[3, 3, 3, 0]`: no seat is checked
+  against the answer, no bee buzzes off and no cross is ever `shown`; that
+  code stays, unreached. Budget: `State.moves_budget()` = a queen a row + 3
+  (Morning Mist's 10x10 is 13). A queen seated costs one, a queen lifted
+  costs one, crosses (tapped or swept) are free (`move_cost`). No Undo, hint
+  or Check on Insane; the tutorial drops the bulb's page there. **Kept, as
+  on Medium, because it is the rule and not the answer**: a seat a queen
+  sees is refused (free), and her crosses and a full misty patch's are laid
+  for the player. So on this board the counter only bites a queen seated
+  legally in the wrong place: finding out costs nothing until a row runs
+  out of seats, and mending it is a lift and a seat. Rules end on
+  `QN_RULES_MOVES`.

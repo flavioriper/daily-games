@@ -120,3 +120,38 @@ Board 8 of the per-board checkup (`docs/agents/checkup.md`).
   out-of-hearts card). `State.load_figure()` deals it a figure by hand.
 - Undo, Hint, Check, Reset and the shared ? were already on every band.
   Suite 122403 passed, 0 failed; `tests/_win.gd -- oneline` PASS.
+
+### Insane counts moves (2026-10-04)
+
+`docs/agents/flat-screens.md`, "Insane counts moves".
+
+- `HEARTS` is all zero and Insane's hint count is 0: no step is asked
+  `step_leaves_finish` on a counted board, so the wrong-step blush, the
+  heart and the eject are dormant (`_wrong_step`, `_eject`), and the
+  Sunny Spells search no longer runs per step (~2.5 ms a step saved).
+- **The budget** is one move a line plus a quarter, three at least
+  (`State.moves_budget()`: 46 lines -> 57, 39 -> 48). Any finished stroke
+  is exactly as long as the figure, so the base is exact.
+- **Surprise: without a way back the counter could never run out** -- a
+  stroke cannot be longer than the figure. Insane has no Undo, so the
+  take-back is by hand: **stepping back onto the post she just came from
+  takes the last line up** (`State.came_from`, `_take_back`, the Undo
+  animation) and costs a move, as walking it did. On the other bands that
+  gesture is still the "already walked" shiver. `REACH` (0.42 of a step)
+  leaves a dead band between two posts, so a finger resting between them
+  does not flip back and forth.
+- **What Insane no longer shows**, because each was the board working the
+  figure out for the player: stranded lines turning grey (`_cast_figure`'s
+  `lost`), the strained snail and the sprout's stranded lines, the warning
+  buzz, Check, and a streak that grew only on steps a walk still finished
+  from. The streak, the gags and the daisies now come on every line laid,
+  so they say nothing; no ladybug (it marked a judged step). Kept: the
+  "already walked" shiver and Sunny Spells' own refusal and faded lines,
+  which are the rule.
+- No STRAND and no HINT page in Insane's tutorial; the ONCE page reads
+  `HTP_OL_ONCE_BODY_MOVES`, and the shared moves page closes it with
+  `HTP_OL_MOVES_BODY`. The rules close on `OL_RULES_MOVES` (the shared
+  `RULES_MOVES_SEQ` says there is no taking a move back). All three are at
+  the end of `locale/boards.csv`.
+- Not seen on a screen yet (`tests/_probe_moves.gd -- id=oneline`);
+  `tests/_shot_oneline.gd`'s `wrong` mode describes the old behaviour.

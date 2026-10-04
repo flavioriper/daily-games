@@ -59,6 +59,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 ## The out-of-hearts card's Back to camp.
 signal leave
@@ -615,6 +619,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _sinking_busy := false
@@ -670,12 +680,14 @@ func puzzle_id() -> String: return "bridges"
 func title() -> String: return "Bridges"
 
 ## The rules in plain words, connectivity last and underlined, then the
-## night's two clues on Insane and what a heart is for on Hard and Insane.
+## night's two clues on Insane and what its moves are for.
 func rules() -> String:
 	var out: String = tr("BR_RULES")
 	if not state.lanterns.is_empty():
 		out += "\n\n" + tr("BR_RULES_LANTERNS")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("BR_RULES_MOVES") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + tr("BR_RULES_HEARTS") % max_hearts
 	else:
 		out += "\n\n" + tr("BR_RULES_SAFE")
@@ -683,9 +695,9 @@ func rules() -> String:
 
 ## The tutorial, a page a rule, each played on a little sea of its own
 ## (`ui/hud/bridges_tutorial_diagram.gd`): planks to a number, no crossing,
-## one network, then what a mistake does on this band -- rose and Check on
-## Easy and Medium, a heart and a buoy on Hard and Insane -- Lantern Night's
-## lanterns, Undo and Reset, and the bulb on a band that has hints.
+## one network, then what a mistake does (rose and Check), Lantern Night's
+## lanterns, Undo and Reset, and the bulb on a band that has hints. Insane
+## has no Check, Undo or hint to teach: its last page is the move counter.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/bridges_tutorial_diagram.gd")
 	var hints: int = int(State.HINTS[state.band]) if state != null else 0
@@ -695,14 +707,13 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.CROSS, "HTP_BR_CROSS", tr("HTP_BR_CROSS_BODY")],
 		[Diagram.Lesson.NETWORK, "HTP_BR_NET", tr("HTP_BR_NET_BODY")],
 	]
-	if max_hearts > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("BR_RULES_HEARTS") % max_hearts])
-	else:
+	if max_moves <= 0:
 		steps.append([Diagram.Lesson.OVER, "HTP_BR_OVER", tr("HTP_BR_OVER_BODY")])
 	if state != null and not state.lanterns.is_empty():
 		steps.append([Diagram.Lesson.LANTERNS, "HTP_BR_LANTERN", tr("BR_RULES_LANTERNS")])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
-		tr("HTP_BR_UNDO_BODY_JUDGED") if max_hearts > 0 else tr("HTP_BR_UNDO_BODY")])
+	if max_moves <= 0:
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+			tr("HTP_BR_UNDO_BODY_JUDGED") if max_hearts > 0 else tr("HTP_BR_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_BR_HINT_BODY_ONE") if hints == 1 else tr("HTP_BR_HINT_BODY_N") % hints])
@@ -713,23 +724,25 @@ func tutorial_pages() -> Array:
 		d.band = state.band if state != null else 0
 		d.hearts = max_hearts
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Undo, Hint and Check on Easy and Medium. Hard and Insane judge every plank
-## as it lands, so no wrong one can stand and Check has nothing to find.
+## Undo, Hint and Check below Insane. Insane counts moves: no Undo (going
+## round a lane's cycle is the take-back, and it costs), no hint and no
+## Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
-	if max_hearts > 0:
-		return ["undo", "hint"]
+	if state != null and state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
-## The lines the tips cycle: Lantern Night leads with its two, a judged board
-## with the hearts'.
+## The lines the tips cycle: a counted board leads with the moves', Lantern
+## Night with its two.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if not state.lanterns.is_empty():
-		return ["BR_TIP_LANTERN", "BR_TIP_LANTERN_2", "BR_TIP_HEARTS"] + TIPS
-	if max_hearts > 0:
-		return ["BR_TIP_HEARTS"] + TIPS
-	return TIPS
+		return lead + ["BR_TIP_LANTERN", "BR_TIP_LANTERN_2"] + TIPS
+	return lead + TIPS
 
 ## What the phone does under each cue (docs/agents/haptics.md). A plank laid
 ## taps (right or not: on Hard and Insane the heart says so as it lands) and
@@ -791,6 +804,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state = State.new()
 	state.build(rng, difficulty, bank_step)
 	max_hearts = int(State.HEARTS[state.band])
+	max_moves = state.moves_budget()
 	_begin()
 
 ## Everything a newly dealt `state` starts from, and its entrance: what
@@ -840,6 +854,7 @@ func _begin() -> void:
 ## the day's light, nothing judged, no streak, pennant or party.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_sinking_busy = false
@@ -881,7 +896,7 @@ func _pool() -> Rect2:
 ## pool is taller than the lattice at every band, so it comes out of the
 ## pool's slack and the cell does not shrink.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## Where the hearts' pill is centred: in the strip over the pool.
 func _hearts_y() -> float:
@@ -2829,6 +2844,11 @@ func _move(key: String, from: Vector2i) -> void:
 	if state.judged():
 		_judged_move(key, from)
 		return
+	# Insane counts moves: a step the budget cannot pay for is not taken.
+	var cost: int = state.move_cost(key) if max_moves > 0 else 0
+	if cost > moves_left:
+		_refresh()
+		return
 	var before: int = state.planks(key)
 	var snap := _snapshot()
 	if state.cycle(key) == before:
@@ -2846,6 +2866,7 @@ func _move(key: String, from: Vector2i) -> void:
 		_on_right(key)
 	else:
 		_break_streak()
+	_spend(cost, _now() + (0.0 if Motion.reduce else LAY_TIME))
 
 ## Whether either end of `key` now stands over its number.
 func _pushed_over(key: String) -> bool:
@@ -3226,6 +3247,10 @@ func reset_board() -> void:
 		return
 	_wipe()
 	_break_streak()
+	# Bare water is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
 	_running = true
 
 ## Reset's half that Try again shares: every plank carried off in a wave from
@@ -3348,7 +3373,7 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_after(_land_lag(), fx.buzz.bind(Haptics.WIN))
 	_tip_timer.stop()
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	_combo_out_at = _now() if _combo_n >= COMBO_FROM else -INF
 	for cell in state.islets:
 		if not _flag.has(cell) or not bool(_flag[cell].open):
@@ -3529,11 +3554,12 @@ func _wave_steps() -> Dictionary:
 ## On Easy and Medium, until the first plank, a ghost finger shows the drag
 ## on a lane the answer lays: from one islet to the one facing it, a faint
 ## plank following. It goes the moment anything is laid, and it never runs on
-## a judged board or under reduce motion.
+## a judged board, on Insane (the lane is one of the answer's, and nothing
+## there is laid or shown for the player) or under reduce motion.
 func _pick_coach() -> void:
 	_coach_lane = ""
 	_coach_from = State.NOWHERE
-	if state.judged() or Motion.reduce or state.answer.is_empty():
+	if state.judged() or state.band >= 3 or Motion.reduce or state.answer.is_empty():
 		return
 	var keys: Array = state.answer.keys()
 	keys.sort()
@@ -3668,6 +3694,22 @@ func _gag(cell: Vector2i) -> void:
 
 # --- failing ---
 
+## `cost` moves go off Insane's counter. The last one gone with the islets
+## not yet one network of met numbers ends the board once the plank has
+## landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()), _run_out)
+
 ## A plank the answer does not lay there, on Hard or Insane: it rolls out and
 ## lands like any other, then its islets worry and a heart splits, and
 ## CRACK_AFTER later it cracks in two and sinks. The state never kept it; the
@@ -3741,7 +3783,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["BR_OUT_BODY", "BR_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["BR_OUT_BODY", "BR_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -3782,9 +3825,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -3883,6 +3930,7 @@ func _tick_layers(now: float) -> void:
 		return
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1) \
 			or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
@@ -3896,6 +3944,9 @@ func _tick_layers(now: float) -> void:
 ## a small face and a leaf, a faint ghost where one was, the lost one's halves
 ## falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y()), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()

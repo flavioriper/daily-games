@@ -138,3 +138,15 @@ Board 7 of the per-board checkup (`docs/agents/checkup.md`).
   must put the cats' scale back, which `_reset(fresh)` does.
 - Undo, Hint, Check, Reset and the shared ? were already on every band.
   Suite 122403 passed, 0 failed; `tests/_win.gd -- lightup` PASS.
+- **Insane counts moves (2026-10-04)** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS` is all zero, so `_judge` never calls
+  `_wrong_lamp`: no lamp gutters or is taken up for the player, and with
+  `_judged` empty no lamp goes JOY, flares or draws a moth before the party
+  (all three hung on `max_hearts > 0`); the HEARTS lesson is unreachable.
+  That code is left in place, dormant. Cat Naps hands out
+  `solution.size() + 3` moves (`State.moves_budget`, `move_cost`; 23 on a
+  20-lamp court): a lamp set down or taken up is one, chips and sweeps are
+  free. `_spend` runs the old `_run_out` (dusk, the nap, the card). No Undo,
+  Hint (`HINTS_BY_BAND[3]` is 0) or Check. What Insane still shows is
+  Medium's: rose beams between lamps in sight, blocks and cats met or over,
+  and the streak counting fair lamps.

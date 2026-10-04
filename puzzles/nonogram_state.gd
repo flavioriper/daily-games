@@ -28,8 +28,15 @@ const MARK := 2
 const HINTS := 3
 ## Hints a board gets per band, and hearts: Hard and Insane can be failed
 ## (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md, section 1).
-const HINTS_BY_BAND := [3, 3, 3, 1]
-const HEARTS := [0, 0, 0, 1]
+const HINTS_BY_BAND := [3, 3, 3, 0]
+## No band has hearts since 2026-10-04: nothing is judged as it lands, so
+## `judged()` is false everywhere and the pebbles a wrong tile or a finished
+## line used to lay are never laid. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the picture's own tiles (`moves_budget`): a
+## tile laid or rubbed out costs one, a cross costs nothing. Three is one
+## slip mended (off and on) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## The square each band falls back to when its drawn shape (Gen.SHAPES)
 ## will not line-solve. Insane is read from the bank
 ## (content/insane/nonogram.json, tools/insane/nonogram_ladder.gd); 10 is its
@@ -175,6 +182,17 @@ func cross_count() -> int:
 		if int(marks[cell]) == MARK:
 			n += 1
 	return n
+
+## The moves a band hands out: the picture's tiles and its slack, or 0 on a
+## band that does not count them.
+func moves_budget() -> int:
+	return target + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What putting `to` on `cell` costs: one for a tile laid or a tile taken
+## off, nothing for a cross or a blank over a cross.
+func move_cost(cell: Vector2i, to: int) -> int:
+	var was := mark_at(cell)
+	return 1 if was != to and (was == FILL or to == FILL) else 0
 
 func tiles_left() -> int:
 	return target - filled_count()

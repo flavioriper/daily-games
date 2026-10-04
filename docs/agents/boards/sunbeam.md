@@ -53,3 +53,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   rooms of their own. A board tutorial `ui/hud/sunbeam_tutorial_diagram.gd`
   plays a quietened `Floor` on hand-made floors; the board gained the
   `_inset()` and `_hearts_at()` hooks for it.
+- **Insane counts moves (2026-10-04,** `docs/agents/flat-screens.md`,
+  "Insane counts moves"**).** `State.HEARTS_BY` is `[0, 0, 0, 0]`. Shy Dew's
+  own rule stays as Hard's snails did: a move let go with the light on a
+  drop still dries it and slides back (`_misstep`, `costs` false, the hearts
+  code dormant) -- it is read off the floor, not off the answer, and holding
+  a piece is still the free peek. What it costs now is **a move, like any
+  other let-go**: `_spend(1, ...)` from `_release` for a move that stands
+  and from `_misstep` for one sent back. `State.moves_budget()` =
+  `shortest_solve()` + max(3, a quarter of it, rounded up); the shortest
+  solve is the bank's `dark` (the miner's exact breadth-first count of the
+  way home that never lets go on a drop; 8-11 over the 200 floors, so
+  budgets 11-14), or on the live fallback (Hard's floor on band 3) the
+  pieces that open off home. Out of moves is `out_of_hearts` and the old
+  dusk; the card takes `MOVES_BONUS` (5); Reset and Try again hand the
+  budget back; `capabilities()` is empty on Insane (it used to list an Undo
+  that `can_undo()` refused). New keys at the end of `locale/boards.csv`:
+  `SB_RULES_SHY_MOVES`, `HTP_SB_SHY_MOVES_BODY`, `HTP_SB_RESET_MOVES_BODY`,
+  `HTP_SB_DRIED_BACK_CAP` (the tutorial's SHY page no longer says "a
+  heart"). `SB_SHY_WARN` (said once, mid-drag) stays: it restates the rule.
+  Surprising: the budget is tight in absolute terms -- three spare moves on
+  eight -- because the formula's quarter rounds under its floor here.

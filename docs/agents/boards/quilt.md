@@ -212,3 +212,26 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   patch above the thumb.
 - **`-INF` sentinel**: not needed here -- the restore leaves `_solved_at` at
   -1 and its stamps (`t - 10`, `t - 100`) are only ever subtracted.
+
+## Insane counts moves (2026-10-04, `docs/agents/flat-screens.md`)
+
+- **Scrap Basket hands out moves, not hearts.** `State.HEARTS` is all zero,
+  so `judged()` is false on every band and WRONG, RULED and STAYS, the chalk
+  and the peel lie dormant. Insane now takes any patch that fits, a scrap
+  included, and lets it be dragged off again, as Medium does. The budget is
+  `quilt_patches + 3` (`State.moves_budget`; 12 on every banked board: nine
+  and three): a patch sewn on, taken off or slid to another spot is one
+  (`move_cost`), one put back where it was lifted from is free. No Undo, no
+  Hint; Reset and Try again hand the budget back. What went with the
+  judging, on Insane only (`max_moves > 0`): **the dead end** (`QL_STUCK`
+  and its pulse were the board saying a patch is wrong), **the streak**
+  (nobody knows a drop was good; the gags and the row glints stay), and
+  **the ghost finger** (it dragged a patch to its answer place; it had never
+  shown on Insane, which was judged, and would have begun to). Surprising:
+  a sewn patch let go over the quilt where it will not fit used to fly home
+  to the rack; on Insane it goes back down where it was sewn, since a
+  refused drop must cost nothing and a patch in the rack would be a move.
+  And nine patches can now sit on the quilt with a gap showing, so
+  `_left_line` says `QL_WIN` only when the quilt is solved. The pill is in
+  the hearts' strip; `completion_record` keeps `moves`. `QL_LVL_2` still
+  reads "three hearts" (Hard's, stale since ce192ab).

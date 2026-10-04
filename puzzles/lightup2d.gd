@@ -66,6 +66,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the court ---
 const PAD := 34.0
@@ -352,6 +356,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _ejecting := false
@@ -560,16 +570,18 @@ func rules() -> String:
 	var out := tr("LU_RULES")
 	if state.has_cats():
 		out += "\n\n" + tr("LU_RULES_CAT")
-	if max_hearts > 0:
-		out += "\n\n" + (tr("LU_RULES_HEARTS_1") if max_hearts == 1 else tr("LU_RULES_HEARTS_N") % max_hearts)
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES") % max_moves
 	return out
 
 ## The lines the sprout cycles: a court with cats leads with the question
-## the napping cat asks.
+## the napping cat asks, and a counted one with its moves before that.
 func _tips() -> Array:
 	var out: Array = TIPS
 	if state.has_cats():
 		out = ["LU_TIP_CAT"] + out
+	if max_moves > 0:
+		out = ["TIP_MOVES"] + out
 	return out
 
 ## The tutorial, a page a rule, each a small court played by the board itself
@@ -582,12 +594,10 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.LIGHT, "HTP_LU_LIGHT", tr("HTP_LU_LIGHT_BODY")],
 		[Diagram.Lesson.SEE, "HTP_LU_SEE", tr("HTP_LU_SEE_BODY")],
 		[Diagram.Lesson.NUMBERS, "HTP_LU_NUMBERS", tr("HTP_LU_NUMBERS_BODY")],
-		[Diagram.Lesson.CHIPS, "HTP_LU_CHIPS", tr("HTP_LU_CHIPS_BODY")],
-		[Diagram.Lesson.HINT, "HTP_TN_HINT",
-			tr("HTP_LU_HINT_BODY_ONE") if hints == 1 else tr("HTP_LU_HINT_BODY_N") % hints]]
-	if max_hearts > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
-			tr("LU_RULES_HEARTS_1") if max_hearts == 1 else tr("LU_RULES_HEARTS_N") % max_hearts])
+		[Diagram.Lesson.CHIPS, "HTP_LU_CHIPS", tr("HTP_LU_CHIPS_BODY")]]
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_LU_HINT_BODY_ONE") if hints == 1 else tr("HTP_LU_HINT_BODY_N") % hints])
 	if state.has_cats():
 		steps.append([Diagram.Lesson.CATS, "LU_CAT_SEAL", tr("LU_RULES_CAT")])
 	var pages := []
@@ -596,9 +606,15 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.hearts = maxi(1, max_hearts)
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
+## Insane counts moves: no Undo (taking a lamp up is the take-back, and it
+## costs one), no hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A lamp set
@@ -663,6 +679,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -692,6 +709,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## the day's light, nothing judged or going out.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -965,7 +983,7 @@ func _cell_for(available: float) -> float:
 
 ## The strip the hearts stand in over the court, on a board with hearts.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The host cuts its card to the court and centres it, which is what these two
 ## say. A board that wants neither says nothing and fills the slot.
@@ -2006,6 +2024,15 @@ func _release() -> void:
 		_end_sinks(now)
 		_redraw()
 		return
+	# Insane counts moves: a lamp set down or taken up is one, a chip taken
+	# up is free, and a tap the budget cannot pay for is not a move.
+	var cost := 0
+	if max_moves > 0:
+		cost = state.move_cost(cell, State.LAMP if state.mark_at(cell) == State.BLANK else State.BLANK)
+		if cost > moves_left:
+			_end_sinks(now)
+			_redraw()
+			return
 	var before: Dictionary = state.marks.duplicate()
 	_by_hand = true
 	var arrivals := _commit(before, state.tap(cell), now, 0.0, cell)
@@ -2013,6 +2040,7 @@ func _release() -> void:
 	_end_sinks(now, arrivals)
 	if state.mark_at(cell) == State.LAMP:
 		_judge(cell)
+	_spend(cost, now)
 	_redraw()
 
 ## Puts the stones `changed` by a move on the screen (see _transition), sends
@@ -2372,6 +2400,9 @@ func reset_board() -> void:
 	_break_streak()
 	_clear_court()
 	moves = 0
+	# A cleared court is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_refresh_faces()
 	_say(tr("LU_RESET"),
@@ -2512,7 +2543,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	_solved_at = now
 	_glance(Vector2i(-1, -1))
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = now
 		_combo_layer.queue_redraw()
@@ -2657,6 +2688,21 @@ func _flare_lamp(cell: Vector2i) -> void:
 	_flare_at(cell, _now() + Motion.POP_IN * 0.5)
 	_after(Motion.POP_IN * 0.5, fx.sparkle.bind(cell_to_local(cell.y, cell.x) - Vector2(0.0, _cell * 0.3), Pal.SUN_RAY))
 
+## `cost` moves go off Insane's counter. The last one gone with the court
+## unfinished ends the board once the lamp has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
+
 ## A wrong lamp: a heart goes (its halves fall), the lamp worries and sags,
 ## its flame gutters while its light draws back along the beam toward it,
 ## its stone blushes, and after EJECT_AFTER it is taken up as though never
@@ -2763,7 +2809,8 @@ func _nod_all() -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"] if state.has_cats() else ["LU_OUT_BODY_LAMPS", "LU_OUT_REST_LAMPS"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["LU_OUT_BODY", "LU_OUT_REST"] if state.has_cats() else ["LU_OUT_BODY_LAMPS", "LU_OUT_REST_LAMPS"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2807,9 +2854,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2838,6 +2889,10 @@ func _close_card() -> void:
 ## and Binairo's: pink with a small face and a leaf, a faint ghost where one
 ## was, the lost one's halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _grid.y - MORTAR - HEART_ROW * 0.5 - 4.0),
+			moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -3579,7 +3634,8 @@ func _process(delta: float) -> void:
 		_place_light(now)
 		queue_redraw()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()

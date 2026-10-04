@@ -309,6 +309,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a garden.
+const MOVES_BONUS := 5
 ## The dark pulled back to the post never takes longer than this, however
 ## deep the garden: the far end goes first and the post's own cell last.
 const DARK_SPAN := 0.8
@@ -469,7 +473,7 @@ const TIPS := [
 	"FL_TIP_DONE",
 ]
 const TIPS_HEARTS := ["FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_POST", "FL_TIP_WARM", "FL_TIP_DONE"]
-const TIPS_TAGS := ["FL_TIP_TAGS", "FL_TIP_TAGS_2", "FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_WARM"]
+const TIPS_TAGS := ["FL_TIP_TAGS", "FL_TIP_TAGS_2", "FL_TIP_TAP", "FL_TIP_WARM"]
 
 ## The out-of-hearts card's Back: the host takes the board away.
 signal leave
@@ -582,6 +586,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 ## Whether a fuse has ever blown on this deal (the seal reads it).
 var _lost_ever := false
 var _asleep := false
@@ -670,7 +680,9 @@ func rules() -> String:
 	var out := tr("FL_RULES")
 	if state.wish_tags():
 		out += "\n\n" + tr("FL_RULES_TAGS")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + tr("FL_RULES_HEARTS") % max_hearts
 	else:
 		out += "\n\n" + tr("FL_RULES_SAFE")
@@ -679,8 +691,11 @@ func rules() -> String:
 ## The lines the tips cycle: Wish Tags leads with the tags' two and the
 ## hearts', a judged garden with the hearts'.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if state.wish_tags():
-		return TIPS_TAGS
+		return lead + TIPS_TAGS
+	if max_moves > 0:
+		return lead + TIPS
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
@@ -704,8 +719,10 @@ func tutorial_pages() -> Array:
 			tr("FL_RULES_HEARTS") % State.hearts_for(band)])
 	if band == 3:
 		steps.append([Diagram.Lesson.TAGS, "HTP_FL_TAGS", tr("FL_RULES_TAGS")])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
-		tr("HTP_FL_UNDO_BODY_JUDGED") if judged else tr("HTP_FL_UNDO_BODY")])
+	# A band that counts moves has no Undo to teach.
+	if max_moves <= 0:
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+			tr("HTP_FL_UNDO_BODY_JUDGED") if judged else tr("HTP_FL_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_FL_HINT_BODY_ONE") if hints == 1 else tr("HTP_FL_HINT_BODY_N") % hints])
@@ -716,13 +733,19 @@ func tutorial_pages() -> Array:
 		d.band = band
 		d.hearts = State.hearts_for(band)
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can exist on this board: a garden is unfinished or it is done. So the
 ## registry drops the actions row and Reset rides up into the top bar --
 ## Untangle's and Word Trail's shape, reached by a third route.
+##
+## Insane counts moves: no Undo and no hint, a turn spent is spent.
 func capabilities() -> Array[String]:
+	if max_moves > 0:
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A piece
@@ -795,6 +818,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
 	state.start(rng, difficulty, bank_step)
+	# Read here and not in _dealt(): the tutorial's hand-dealt gardens count
+	# nothing.
+	max_moves = state.moves_budget()
 	_dealt()
 	_enter()
 	_tip_idx = 0
@@ -826,6 +852,7 @@ func _dealt() -> void:
 ## day's light, nothing splitting and no card.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -943,7 +970,7 @@ func card_height(available: float) -> float:
 
 ## The strip the hearts take over the frame, on a garden that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The air between the card's edge and the grid, the frame inside it. A
 ## hook for the tutorial's page, which has less of it to spare.
@@ -1046,7 +1073,8 @@ func _process(delta: float) -> void:
 	# The pill pops in with the grid, then stands until a heart moves.
 	if (_split_index >= 0 and t - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and t - _back_at < HEART_BACK_TIME + 0.1) \
-			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1 \
+			or _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 	if _fuse_cell >= 0 and t - _fuse_at < FUSE_SPARK + SPARK_TIME + 0.1:
 		_spark_layer.queue_redraw()
@@ -2440,6 +2468,9 @@ func _turn(i: int) -> void:
 	# note_move() counts the turn and ends the board if that was the last
 	# loose end; the host raises the win screen after win_delay().
 	note_move()
+	# Insane counts every turn; the last one gone ends the garden once the
+	# piece has landed and its wash has run.
+	_spend(1, now + _lag())
 
 ## A move the rules will not take: the piece shivers where it stands and the
 ## sprout says why, because a refusal is never a silence.
@@ -2452,6 +2483,22 @@ func _refuse(i: int, now: float, line: String) -> void:
 	_busy_for(Motion.SHIVER_TIME)
 
 # --- the fuse, and running out ---
+
+## `cost` moves go off Insane's counter. The last one gone with the garden
+## unwired ends the board once the turn has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
 
 ## A tap on a piece that was already right, on Hard or Insane (the state has
 ## clipped it and changed nothing else): the piece starts its quarter turn,
@@ -2552,7 +2599,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["FL_OUT_BODY", "FL_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["FL_OUT_BODY", "FL_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2608,9 +2656,13 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2624,7 +2676,7 @@ func heart_back() -> void:
 	_settle(dark, now + (0.0 if Motion.reduce else ENTER_WASH))
 	_dress(now)
 	_refresh()
-	_say(tr("FL_HEART_BACK"), Face.Expr.HAPPY)
+	_say(tr("PS_MORE_MOVES") % MOVES_BONUS if max_moves > 0 else tr("FL_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 
@@ -3288,6 +3340,9 @@ func _draw_stamp(now: float, shown: Array) -> void:
 ## Patch's): pink with a small face and a leaf, a faint ghost where one was,
 ## the lost one's halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, _hearts_at(), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -3411,13 +3466,13 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return not is_done() and not out_of_hearts and not _fusing() and not state.history.is_empty()
+	return max_moves <= 0 and not is_done() and not out_of_hearts and not _fusing() and not state.history.is_empty()
 
 ## Turns the last tapped piece back a quarter turn, in tap order. Counts no
 ## move, and the wash comes back with it for free -- live is derived, so
 ## there is no highlight to put back.
 func undo() -> bool:
-	if is_done() or out_of_hearts or _fusing() or state.history.is_empty():
+	if max_moves > 0 or is_done() or out_of_hearts or _fusing() or state.history.is_empty():
 		return false
 	_release_press()
 	_break_streak()
@@ -3499,6 +3554,9 @@ func reset_board() -> void:
 	var now := _now()
 	_reset_spins(grid_before, now)
 	moves = 0
+	# The deal again is the garden from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_settle(before, now + _lag())
 	_dress(now)
@@ -3539,6 +3597,7 @@ func restore_completed_board() -> void:
 	state.history = PackedInt32Array()
 	_deal()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	moves_left = clampi(int(completed_record.get("moves_left", max_moves)), 0, max_moves)
 	_clear_clocks()
 	# Every cell seen lit and every lantern long since woken.
 	_live_at.fill(AGO)
@@ -3588,7 +3647,7 @@ func completion_record() -> Dictionary:
 	for i in state.clipped.size():
 		if state.clipped[i] == 1:
 			clips.append(i)
-	return {"hearts": hearts, "clips": clips, "flawless": _flawless}
+	return {"hearts": hearts, "moves_left": moves_left, "clips": clips, "flawless": _flawless}
 
 ## One glyph a lantern, so a shared board shows how big the garden was and
 ## never how it was wired; then the seal's words on a line of their own:
@@ -3651,7 +3710,7 @@ func _on_solved() -> void:
 		+ Motion.FLASH_IN + Motion.FLASH_OUT + Motion.BUMP_TIME)
 	# Flawless: no hint, and no fuse on a judged garden, or on Easy and Medium
 	# never an undo. The streak's bubble goes; the party takes over.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _now()
 	_streak_gen += 1

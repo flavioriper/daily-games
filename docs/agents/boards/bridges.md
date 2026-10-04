@@ -134,3 +134,19 @@ lit best first to *find* boards needing suppositions.
   through `from_bank` and counted to one answer.
 - No tip told the player to suppose; nothing on screen changed. Medium, Hard
   and banked Insane days finished earlier restore a different board.
+
+- **Insane counts moves** (2026-10-04, `docs/agents/flat-screens.md`,
+  "Insane counts moves"). `State.HEARTS` is `[0, 0, 0, 0]`, so every band
+  lays planks through `cycle` (0-1-2-0): nothing cracks and sinks, no lane is
+  `ruled`, no buoy (`add`, `_judged_move` and `_wrong_plank` stay, never
+  reached). Lantern Night hands out the answer's planks + **4**
+  (`MOVES_SLACK`, `moves_budget()`; 49 for 45 planks): every step of a lane's
+  cycle costs one, the lift included. Four and not the family's three because
+  a plank only comes off by going round, so one slip is three moves to mend;
+  three would leave nothing to spare. `BR_RULES_MOVES` says so in the board's
+  words (the shared sentence speaks of taking a piece back). No Undo, hint or
+  Check on Insane; its tutorial drops the OVER page (it teaches Check) and
+  the Undo page for the shared moves page. **The ghost finger is off on
+  Insane** (`_pick_coach`): with `judged()` false it would have started
+  showing a lane of the answer there. What stays is Medium's: an islet over
+  its number in rose, the two refusals, the named near-miss.

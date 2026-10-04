@@ -56,6 +56,10 @@ const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the floor ---
 const PAD := 30.0
@@ -267,6 +271,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _ejecting := false
@@ -388,17 +398,16 @@ func rules() -> String:
 	var out := tr("NG_RULES")
 	if state.has_leaves():
 		out += "\n\n" + tr("NG_RULES_LEAF")
-	if max_hearts > 0:
-		out += "\n\n" + (tr("NG_RULES_HEARTS_1") if max_hearts == 1 else tr("NG_RULES_HEARTS_N") % max_hearts)
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES") % max_moves
 	return out
 
 ## The lines the sprout cycles: a leafy board leads with the wind's two.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES"] if max_moves > 0 else []
 	if state.has_leaves():
-		return ["NG_TIP_LEAF", "NG_TIP_LEAF_2"] + TIPS
-	if max_hearts > 0:
-		return ["NG_TIP_HEARTS"] + TIPS
-	return TIPS
+		return lead + ["NG_TIP_LEAF", "NG_TIP_LEAF_2"] + TIPS
+	return lead + TIPS
 
 ## The tutorial, a page a rule, each a little house painted by the board
 ## itself (ui/hud/nonogram_tutorial_diagram.gd): the runs, their order and
@@ -410,12 +419,10 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.RUNS, "HTP_NG_RUNS", tr("HTP_NG_RUNS_BODY")],
 		[Diagram.Lesson.ORDER, "HTP_NG_ORDER", tr("HTP_NG_ORDER_BODY")],
-		[Diagram.Lesson.CROSS, "HTP_NG_CROSS", tr("HTP_NG_CROSS_BODY")],
-		[Diagram.Lesson.HINT, "HTP_TN_HINT",
-			tr("HTP_NG_HINT_BODY_ONE") if hints == 1 else tr("HTP_NG_HINT_BODY_N") % hints]]
-	if max_hearts > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
-			tr("HTP_NG_HEARTS_BODY_1") if max_hearts == 1 else tr("HTP_NG_HEARTS_BODY_N") % max_hearts])
+		[Diagram.Lesson.CROSS, "HTP_NG_CROSS", tr("HTP_NG_CROSS_BODY")]]
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_NG_HINT_BODY_ONE") if hints == 1 else tr("HTP_NG_HINT_BODY_N") % hints])
 	if state.has_leaves():
 		steps.append([Diagram.Lesson.LEAVES, "NG_LEAF_SEAL", tr("NG_RULES_LEAF")])
 	var pages := []
@@ -424,9 +431,15 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.hearts = maxi(1, max_hearts)
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
+## Insane counts moves: no Undo (rubbing a tile out is the take-back, and it
+## costs one), no hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A stroke
@@ -496,6 +509,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -524,6 +538,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## day's light, nothing judged, blooming or partying.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -586,7 +601,7 @@ func _layout() -> void:
 
 ## The strip the hearts take over the floor, on a board that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The cell a slot of `available` height holds, capped by the width. The bands
 ## are measured from the puzzle in hand -- as the island measures its margin
@@ -633,7 +648,8 @@ func _process(delta: float) -> void:
 	if now < _anim_until:
 		_refresh()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
@@ -1557,6 +1573,17 @@ func _release() -> void:
 					break
 				kept.append(c)
 			pending = kept
+		# Insane counts moves: the stroke stops where the budget does.
+		var cost := 0
+		if max_moves > 0:
+			var afford: Array = []
+			for c in pending:
+				var one: int = state.move_cost(c.cell, int(c.to))
+				if cost + one > moves_left:
+					break
+				cost += one
+				afford.append(c)
+			pending = afford
 		var settled := state.settled_lines()
 		var ok_before := _ok_lines()
 		var before: Dictionary = state.marks.duplicate()
@@ -1568,6 +1595,8 @@ func _release() -> void:
 		# single tap puffs and leans the neighbours.
 		var arrivals := _commit(before, changed, now, per, Vector2i(-1, -1) if was_drag else cell)
 		_knock(changed, ok_before)
+		if cost > 0:
+			_spend(cost, now + (0.0 if Motion.reduce else Motion.stagger(changed.size(), per)))
 		if bad.x >= 0:
 			var land := now + (0.0 if Motion.reduce else Motion.stagger(changed.size(), per))
 			# A run painted one cell too far still finishes its line.
@@ -1780,6 +1809,9 @@ func reset_board() -> void:
 	if out_of_hearts or _ejecting:
 		return
 	_clear_floor()
+	# A cleared floor is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_break_streak()
 	_say(tr("NG_RESET"),
 		Face.Expr.HAPPY)
@@ -1903,7 +1935,7 @@ func _on_solved() -> void:
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))
 	_busy_for(WIN_GLINT_AT + (state.w + state.h) * WIN_GLINT_STEP + WIN_GLINT_TIME)
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = now
 		_combo_layer.queue_redraw()
@@ -2222,6 +2254,21 @@ func _break_streak() -> void:
 
 # --- failing ---
 
+## `cost` moves go off Insane's counter. The last one gone with the picture
+## unfinished ends the board once the stroke has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
+
 ## A tile the picture does not want, on Hard or Insane: it lands like any
 ## other, blushing, a heart goes (its halves fall), and EJECT_AFTER later the
 ## tile turns out of its socket and a pebble drops in where it was, for good.
@@ -2308,7 +2355,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["NG_OUT_BODY", "NG_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["NG_OUT_BODY", "NG_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2346,9 +2394,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2377,6 +2429,10 @@ func _close_card() -> void:
 ## with a small face and a leaf, a faint ghost where one was, the lost one's
 ## halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _card.position.y + 12.0 + HEART_ROW * 0.5),
+			moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()

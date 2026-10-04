@@ -75,3 +75,21 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   was already stale (five Hard-hearts checks, since hearts went to Insane
   only); its "plate 0 ironed by the moved bead" and "not flawless" checks
   now fail too, by design.
+- **Insane counts moves (2026-10-04, `docs/agents/flat-screens.md`).**
+  `HEARTS_BY` is all zero. Windblown hands out `target + 3` moves
+  (`State.moves_budget`; 105 to 171 over the ten banked pictures): a bead
+  seated or lifted is one (`move_cost`), a refused put (fixed, taken, colour
+  used up) is free, and a run stops where the budget does (`_paint` spends
+  bead by bead; the last move gone unsolved ends the stroke in hand). **No
+  plate is ironed on Windblown** (`_maybe_iron` returns when `max_moves >
+  0`): a verdict on a plate was the answer, and the beads it sent home were
+  moves made for the player. A full board that is not the picture just sits
+  there, its bar gold; the iron comes only for the win. No Undo, Hint or
+  Check; Reset and Try again hand the budget back. The kit running out
+  (`PG_NONE_LEFT`) stays: it is the rule, and Medium shows it. The pill is
+  drawn in `_draw_head_text` at the right end of the name's line, where the
+  hearts sat (not in the lid's mesh: one more draw call). The tutorial
+  drops PLATE and UNDO on Insane and ends on the moves page; the rules drop
+  `PG_RULES_PLATES`, and "Check rings..." left `PG_RULES` for its own key,
+  `PG_RULES_CHECK`, read only on a band with Check. `PG_LVL_2` still reads
+  "three hearts" (Hard's, stale since ce192ab). Not seen rendered.

@@ -218,7 +218,7 @@ const TIPS := [
 ]
 ## Hard leads with what a heart is for; Windy Day with the wind's two lines.
 const TIPS_HEARTS := ["PP_TIP_HEARTS", "PP_TIP_TAP", "PP_TIP_LANE", "PP_TIP_FRONT"]
-const TIPS_WIND := ["PP_TIP_WIND", "PP_TIP_WIND_2", "PP_TIP_HEARTS", "PP_TIP_FRONT"]
+const TIPS_WIND := ["PP_TIP_WIND", "PP_TIP_WIND_2", "PP_TIP_FRONT"]
 
 ## A moment far enough in the future never to arrive, and one far enough in
 ## the past that every curve reader is already past the end of it.
@@ -259,6 +259,10 @@ const STILL_PLANE := 1
 ## Where the trails-alone shapes' ids start (a plane's index on top).
 const TRAIL_SHAPES := 1000000
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a sky.
+const MOVES_BONUS := 5
 
 # --- the crash (polish section 1), on its own clock from the tap ---
 ## Cells a second the plane rushes up its lane at (slower than a launch, so
@@ -522,6 +526,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 ## Whether a heart has ever been spent on this deal, by a crash or a gust
 ## (the seal reads it in the rewards pass).
 var _lost_ever := false
@@ -653,20 +663,23 @@ func title() -> String: return "Paper Planes"
 func rules() -> String:
 	var out := tr("PP_RULES")
 	if _state.windy():
-		out += "\n\n" + tr("PP_RULES_WIND") % max_hearts
+		out += "\n\n" + tr("PP_RULES_WIND_MOVES")
 	elif max_hearts > 0:
 		out += "\n\n" + tr("PP_RULES_HEARTS") % max_hearts
-	else:
+	elif max_moves <= 0:
 		out += "\n\n" + tr("PP_RULES_SAFE")
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
 
 ## The lines the tips cycle, by band.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if _state.windy():
-		return TIPS_WIND
+		return lead + TIPS_WIND
 	if max_hearts > 0:
 		return TIPS_HEARTS
-	return TIPS
+	return lead + TIPS
 
 ## The tutorial, a page a rule, each played on a little sky of its own
 ## (`ui/hud/planes_tutorial_diagram.gd`): a tap launches a plane whose lane
@@ -687,7 +700,7 @@ func tutorial_pages() -> Array:
 	else:
 		steps.append([Diagram.Lesson.REFUSE, "HTP_PP_ORDER", tr("HTP_PP_REFUSE_BODY")])
 	if band == 3:
-		steps.append([Diagram.Lesson.WIND, "PP_WINDY_SEAL", tr("PP_RULES_WIND") % hearts_n])
+		steps.append([Diagram.Lesson.WIND, "PP_WINDY_SEAL", tr("PP_RULES_WIND_MOVES")])
 	steps.append([Diagram.Lesson.DONE, "HTP_PP_DONE", tr("HTP_PP_DONE_BODY")])
 	var undo_body := "HTP_PP_UNDO_BODY"
 	if band == 3:
@@ -705,12 +718,18 @@ func tutorial_pages() -> Array:
 		d.band = band
 		d.hearts = hearts_n
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 ## Undo and Hint, and nothing else. There is no Check because nothing wrong
 ## can ever be sitting on the board: a launch only empties cells, so the
 ## registry drops the actions row and Reset rides up into the top bar.
+##
+## Insane counts moves: no Undo and no hint, a launch spent is spent.
 func capabilities() -> Array[String]:
+	if max_moves > 0:
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A plane sent
@@ -788,6 +807,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(_state.difficulty) if _state.judged else 0
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_undo_ever = false
@@ -810,6 +830,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## day's light, no crash, the clouds where the clock says.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -879,7 +900,7 @@ func _layout() -> void:
 
 ## The strip the hearts take over the panel, on a sky that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The card this board wants: every pixel it is given. The grid is taller
 ## than it is wide in a slot that is taller than it is wide, so the height
@@ -948,6 +969,8 @@ func _process(delta: float) -> void:
 			or (_back_index >= 0 and t - _back_at < HEART_BACK_TIME + 0.1)
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1
 			or _pill_breathing()):
+		_heart_layer.queue_redraw()
+	if max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 	# The sky: the sock sways for ever on a windy day (one transform, no
 	# rebuild), and a glide or a bump moves the clouds.
@@ -2055,7 +2078,7 @@ func _target_at(local: Vector2) -> int:
 	var cell := _cell_at(local)
 	if cell.x < 0:
 		return NO_TARGET
-	if _state.windy() and _state.stuck() and _state.cloud_at(cell) and hearts > 0:
+	if _state.windy() and _state.stuck() and _state.cloud_at(cell) and _gust_left():
 		return GUST_TARGET
 	var i := _state.plane_at(cell)
 	return i if i >= 0 else NO_TARGET
@@ -2155,6 +2178,9 @@ func _tap(i: int) -> void:
 	# note_move() counts the move and ends the puzzle if that was the last
 	# plane; the host raises the win screen after win_delay().
 	note_move()
+	# Insane counts every launch; the last move gone with planes still on the
+	# field ends the sky once the clouds have settled.
+	_spend(1, t + (0.0 if Motion.reduce else GLIDE))
 	if _state.windy() and not is_done():
 		# The clouds may have closed in. Said once they have settled, so the
 		# sound lands on the picture.
@@ -2269,15 +2295,19 @@ func _cloud_index(cell: Vector2i) -> int:
 ## is stuck again with none left, or a plane crashes with none left (a
 ## decision, recorded in the spec's section 8 -- otherwise One more heart on a
 ## stuck sky would be spent before it could be used).
+##
+## On a sky that counts moves (Insane since 2026-10-04) the gust costs a
+## move instead, as a launch does.
 func _gust() -> void:
-	if not _state.windy() or not _state.stuck() or hearts <= 0 or busy() or is_done():
+	if not _state.windy() or not _state.stuck() or not _gust_left() or busy() or is_done():
 		return
 	if not _state.gust():
 		return
 	var t := _now()
-	hearts -= 1
-	_split_index = hearts
-	_split_at = t
+	if max_moves <= 0:
+		hearts -= 1
+		_split_index = hearts
+		_split_at = t
 	_lost_ever = true
 	_break_streak()
 	for k in _state.clouds.size():
@@ -2285,12 +2315,37 @@ func _gust() -> void:
 	_hint_lit = -1
 	_glide(t)
 	fx.cue("gust")
-	_after(SPLIT_LAG, func() -> void: fx.cue("heart_lost"))
+	if max_moves <= 0:
+		_after(SPLIT_LAG, func() -> void: fx.cue("heart_lost"))
 	_say(tr("PP_GUST"), Face.Expr.HAPPY)
 	_heart_layer.queue_redraw()
 	_stuck_told = -1
 	moved.emit()
+	_spend(1, t + (0.0 if Motion.reduce else GLIDE))
 	_after(0.0 if Motion.reduce else GLIDE, _check_stuck)
+
+## Whether there is something left to pay for a gust with: a move on a sky
+## that counts them, a heart otherwise.
+func _gust_left() -> bool:
+	return moves_left > 0 if max_moves > 0 else hearts > 0
+
+## `cost` moves go off Insane's counter. The last one gone with planes still
+## on the field ends the sky once the move has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	# No gag sound still to come plays over the moves running out.
+	_gag_gen += 1
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
 
 ## The clouds have settled: if they have closed in, say so -- `stuck` once a
 ## count, the tip, and the pill breathes (`_pill_breathing`) -- or, with no
@@ -2305,7 +2360,7 @@ func _check_stuck() -> void:
 	_stuck_told = _state.count()
 	fx.cue("stuck")
 	_break_streak()
-	if hearts <= 0:
+	if not _gust_left():
 		out_of_hearts = true
 		_running = false
 		_gag_gen += 1
@@ -2313,7 +2368,7 @@ func _check_stuck() -> void:
 		moved.emit()
 		_after(0.35, _run_out)
 		return
-	_say(tr("PP_TIP_STUCK"), Face.Expr.PUZZLED)
+	_say(tr("PP_TIP_STUCK_MOVES" if max_moves > 0 else "PP_TIP_STUCK"), Face.Expr.PUZZLED)
 	if not known:
 		fx.buzz(Haptics.WARN)
 	_heart_layer.queue_redraw()
@@ -2587,6 +2642,9 @@ func reset_board() -> void:
 	_refuse = {}
 	_solved_at = -1.0
 	moves = 0
+	# Every plane back is the sky from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr("PP_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2640,6 +2698,7 @@ func restore_completed_board() -> void:
 	_deal()
 	_reset_rewards()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	moves_left = clampi(int(completed_record.get("moves_left", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
 	# The party's leavings and none of its motion: the cat asleep on the
 	# panel's foot, the seal when the solve earned one, and on Windy Day the
@@ -2665,7 +2724,7 @@ func restore_completed_board() -> void:
 ## What a reopened daily needs to look as it was left: the hearts kept and
 ## whether it was flawless. Plain values only (it goes through a ConfigFile).
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless}
+	return {"hearts": hearts, "moves_left": moves_left, "flawless": _flawless}
 
 ## No glyphs of its own (a sky of planes says nothing about how it was
 ## played), only the seal's words: `🌬️ Windy Day` for any Insane sky (and
@@ -2724,7 +2783,7 @@ func _on_solved() -> void:
 	_refresh()
 	# Flawless: no hint, and no crash or gust on a judged sky, or on Easy and
 	# Medium never an undo (spec section 4; the seal is the rewards pass's).
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	# The streak's bubble goes; the party takes over.
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
@@ -3030,6 +3089,9 @@ func _build_sock() -> ArrayMesh:
 ## the lost one's halves falling apart, one coming back popping in, and the
 ## whole pill breathing while the clouds have closed in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -3144,7 +3206,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["PP_OUT_BODY", "PP_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["PP_OUT_BODY", "PP_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -3193,9 +3256,13 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -3206,7 +3273,7 @@ func heart_back() -> void:
 	_refresh_all()
 	_heart_layer.queue_redraw()
 	_sky_layer.queue_redraw()
-	_say(tr("PP_HEART_BACK"), Face.Expr.HAPPY)
+	_say(tr("PS_MORE_MOVES") % MOVES_BONUS if max_moves > 0 else tr("PP_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 	if _state.windy() and _state.stuck():

@@ -25,12 +25,17 @@ const BLANK := 0
 const TENT := 1
 const GRASS := 2
 const HINTS := 3
-## Hints per difficulty: Insane has one.
-const HINTS_BY_BAND := [3, 3, 3, 1]
-## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
-## Insane (Binairo's and Shikaku's counts). A heart goes on a tent that breaks
-## no rule the board can show and is not the answer's.
-const HEARTS := [0, 0, 0, 1]
+## Hints per difficulty: Insane has none (it counts moves, and a hint is a
+## tent of the answer for free).
+const HINTS_BY_BAND := [3, 3, 3, 0]
+## No band has hearts since 2026-10-04: a heart went on a tent that broke no
+## rule the board can show and was not the answer's, which is the answer with
+## a price on it. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the meadow's own tents (`moves_budget`): a tent
+## pitched or struck costs one, a cairn costs nothing. Three is one slip
+## mended (struck and pitched again) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## Width, height and tents per difficulty: the island's ladder exactly.
 ## Insane reads the Old Oaks bank (content/insane/tents.json); this band is
 ## only its fallback when the bank is empty.
@@ -164,6 +169,17 @@ func tents_wanted() -> int:
 
 func tents_left() -> int:
 	return tents_wanted() - tents().size()
+
+## The moves a band hands out: the tents the meadow wants and its slack, or
+## 0 on a band that does not count them.
+func moves_budget() -> int:
+	return tents_wanted() + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What putting `to` on `cell` costs: one for a tent pitched or a tent
+## struck, nothing for a cairn or bare ground over a cairn.
+func move_cost(cell: Vector2i, to: int) -> int:
+	var was := mark_at(cell)
+	return 1 if was != to and (was == TENT or to == TENT) else 0
 
 ## How many tents `tree` wants beside it.
 func need(tree: Vector2i) -> int:

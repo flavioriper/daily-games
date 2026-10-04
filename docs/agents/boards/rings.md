@@ -73,3 +73,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `_min_h` overridden, dealt with `State.take`). `tests/_probe_perf.gd`
   plays the solver's line (a lift tap and a drop tap a move) and
   `x=rg_count` times every station's rebuild and the ring in hand.
+- **Insane counts moves again, 2026-10-04** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS_BY` is all zero, so `judged` is false on
+  every band: no dead-end verdict, no wobble and hop home, no heart, and the
+  worker judge never starts (`would_doom`, `prejudge`, `_doom` and the hearts
+  are left in place, asleep). Tumble stays and gets the budget back, on the
+  shared pill where the hearts sat: `State.moves_budget()` = the deal's
+  **shortest** solve + max(3, a quarter of it, rounded up), a drop on another
+  peg costing one and a put-back none (`_spend`). The shortest solve is
+  `grade.par` in `content/insane/rings.json`, written by a breadth-first pass
+  added to `tools/insane/rings_tumble_mine.py` (the same 180 deals, re-run
+  in 70 s; a Tumble deal's whole graph is only 400-3500 positions, so the
+  optimum is cheap, unlike the plain deals' of 2026-09-24). Par runs 19-46
+  (mean 30) against the DFS line's 19-70, budgets 24-58. Without the bank
+  the budget stands on the DFS line, a known solve and not the shortest. No
+  Undo, Hint or Check on Insane (`capabilities()` is empty); Reset and Try
+  again hand the whole budget back, the card's video five moves. A dead end
+  is now the player's to notice: the stuck toast still shows when nothing
+  can move (it reads the pegs, as on Medium), and its words still offer an
+  Undo that Insane does not have. Not updated: `RG_LVL_3` ("two hearts") on
+  the level picker, `tests/_shot_rings.gd`, the tutorial diagram's dormant
+  HEARTS lesson. Not seen on screen: only headless checks were run.

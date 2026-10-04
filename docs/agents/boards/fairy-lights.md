@@ -104,3 +104,28 @@ one at a time.
   piece round to its answer; `x=fl_count` times a rest-mesh build, a handed-
   back build, the still mesh and the lantern paint; `x=fl_lanterns` hides
   every lantern.
+- **Insane counts moves (2026-10-04,** `docs/agents/flat-screens.md`,
+  "Insane counts moves"**).** `State.HEARTS` is `[0, 0, 0, 0]`, so `judged`
+  is false on every band: a turn of a piece that is already right is a turn
+  like any other (no RIGHT, no fuse, no clip, no heart -- the fuse was the
+  answer with a price on it). The fuse, the clips and the hearts' drawing
+  are left in place, dormant. Wish Tags hands out
+  `State.moves_budget()` = `shortest_solve()` + max(3, a quarter of it,
+  rounded up), where the shortest solve is the sum over pieces of the
+  quarter turns clockwise from the deal to the answer -- a true optimum (one
+  answer, a turn moves one piece one way). Over the bank's 150 gardens that
+  is 70-111 turns (median 87), budgets 88-139. Every turn costs one
+  (`_spend(1, ...)` after `note_move()`); a cross or a pinned piece refused
+  costs nothing. Out of moves is `out_of_hearts` and the old dark ending;
+  the card is opened with `MOVES_BONUS` (5). Reset and Try again hand the
+  budget back. No Undo and no hint on Insane (`capabilities()` is empty,
+  `can_undo()` false), the tutorial drops its UNDO page there and ends on
+  `MovesDiagram.page`; the completion record keeps `moves_left`. Kept: the
+  gold wire, the loose round tips and the tags' tick or rose number, all read
+  off the wire as it stands and never off `sol`. `max_moves` is read in
+  `build()`, not `_dealt()`, so the tutorial's hand-dealt gardens count
+  nothing. Surprising: a clockwise-only turn makes one overshoot cost four
+  moves (the wrong one and three to come round), so the slack of ~22 is five
+  slips, not twenty-two. Not updated: `FL_LVL_3` still says "two hearts",
+  and `tests/_shot_fairylights.gd`'s `fuse` and `out` modes have no fuse to
+  shoot.

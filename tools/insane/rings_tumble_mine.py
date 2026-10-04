@@ -8,7 +8,10 @@ four rings dealt over seven pegs, six of the rings two-tone (their unders a
 derangement of their tops, so every colour still has four tops and four
 unders). A deal is kept only once the board's own depth-first search
 (puzzles/rings_gen.gd, the same moves in the same order) sorts it within
-PROOF nodes, and it opens with no peg already home.
+PROOF nodes, and it opens with no peg already home. Its grade also holds
+`par`, the shortest solve there is (breadth-first over the same moves, a
+few thousand positions a deal): Insane's move counter is dealt from it
+(puzzles/rings_state.gd, `moves_budget`).
 
 Live dealing would cost ~48 tries a day at up to PROOF nodes each in GDScript,
 so the deals are mined here and shipped, as the old move-budget bank was.
@@ -77,6 +80,30 @@ def solve(P, budget):
     return (path if dfs() else None), n[0]
 
 
+def par(P):
+    """The shortest solve, in moves: breadth-first over canonical positions."""
+    start = tuple(sorted(tuple(p) for p in P))
+    seen, front, depth = {start}, [start], 0
+    while front:
+        depth += 1
+        nxt = []
+        for s in front:
+            Q = [list(p) for p in s]
+            for i, j in moves(Q):
+                r = Q[i].pop()
+                Q[j].append(flip(r))
+                if solved(Q):
+                    return depth
+                k = tuple(sorted(tuple(p) for p in Q))
+                if k not in seen:
+                    seen.add(k)
+                    nxt.append(k)
+                Q[j].pop()
+                Q[i].append(r)
+        front = nxt
+    return 0
+
+
 def deal(rng):
     tops = [c for c in range(COLOURS) for _ in range(CAP)]
     rng.shuffle(tops)
@@ -107,14 +134,14 @@ def mine(seed):
             continue
         path, n = solve(P, PROOF)
         if path and n >= 200:
-            return {"pegs": P, "grade": {"work": n, "line": len(path)}}
+            return {"pegs": P, "grade": {"work": n, "line": len(path), "par": par(P)}}
 
 
 if __name__ == "__main__":
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 120
     with Pool() as pool:
         boards = pool.map(mine, range(1000, 1000 + count))
-    doc = {"version": 2, "note": "Rings Insane: Tumble deals (top | (under + 1) << 3, plain rings 0-5), six two-tone rings over seven pegs, proved by the board's DFS within %d nodes. tools/insane/rings_tumble_mine.py" % PROOF, "boards": boards}
+    doc = {"version": 2, "note": "Rings Insane: Tumble deals (top | (under + 1) << 3, plain rings 0-5), six two-tone rings over seven pegs, proved by the board's DFS within %d nodes; grade.par is the shortest solve, in moves. tools/insane/rings_tumble_mine.py" % PROOF, "boards": boards}
     with open("content/insane/rings.json", "w") as f:
         json.dump(doc, f, indent=1)
     print("mined", len(boards))

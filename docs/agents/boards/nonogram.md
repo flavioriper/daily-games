@@ -79,3 +79,11 @@ of the grid open (0 of the 160 finished on line logic).
   `from_bank`.
 - `NG_TIP_LEAF_2` told the player to suppose a cell; it now says no guessing.
 - A banked day finished before this restores a different picture.
+- **Insane counts moves (2026-10-04)**, the reference for
+  `docs/agents/flat-screens.md`'s rule. `HEARTS` is all zero, so `judged()`
+  is false on every band: no wrong tile is turned out, no finished line lays
+  its pebbles, and the HEARTS tutorial lesson is unreachable. Leaf Fall
+  hands out `target + 3` moves (`State.moves_budget`, `move_cost`): a tile
+  laid or rubbed out is one, a cross is free, and a stroke stops where the
+  budget does (`_release`). No Undo, Hint (`HINTS_BY_BAND[3]` is 0) or Check.
+  Clues still go green and rose as on Medium.

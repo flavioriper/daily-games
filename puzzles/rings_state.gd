@@ -30,6 +30,11 @@ extends RefCounted
 ## the bank deals six two-tone rings, and `lift()` turns a ring over (Gen.flip)
 ## so what is in the hand is what it will land as; `put_back()` and `undo()`
 ## turn it back. No undo and no hints there.
+## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero, `judged`
+## false everywhere; `would_doom` and the worker are left in place, asleep).
+## Insane counts moves instead: `moves_budget()` is the deal's shortest solve
+## (`par`, the bank's `grade.par`) and a quarter more, and a dead end is the
+## player's to notice (docs/agents/flat-screens.md, "Insane counts moves").
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-rings-polish-design.md.
 ## Concept page: docs/brainstorm/concepts.html#rings.
@@ -39,7 +44,11 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Hints and hearts by band (Easy, Medium, Hard, Insane).
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the shortest solve (`moves_budget`): a quarter of
+## it, and never fewer than this. 0 on a band that does not count.
+const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SHARE := 0.25
 ## Kept for the old suite's name: Easy's hints.
 const HINTS := 3
 
@@ -49,6 +58,10 @@ var log: Array[Vector2i] = []
 var held := -1
 var held_from := -1
 var colours := 6
+## The fewest moves the deal can be sorted in, from the bank (`grade.par`,
+## breadth-first in tools/insane/rings_tumble_mine.py). Without one, the
+## solver's own line: a way home, not the shortest. 0 on a hand-made deal.
+var par := 0
 var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
@@ -81,8 +94,11 @@ static func hearts_for(band: int) -> int:
 func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
 	tumble = false
+	par = 0
 	var banked: Dictionary = InsaneBank.pick("rings", bank_step) if difficulty == 3 else {}
 	if banked.get("pegs") is Array:
+		var grade: Dictionary = banked.get("grade", {})
+		par = int(grade.get("par", grade.get("line", 0)))
 		pegs = []
 		for s in banked["pegs"]:
 			var peg: Array = []
@@ -93,6 +109,8 @@ func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
 			pegs.append(peg)
 	else:
 		pegs = Gen.deal(rng, difficulty)
+	if MOVES_SLACK[difficulty] > 0 and par <= 0:
+		par = Gen.solve(pegs).size()
 	deal = []
 	for s in pegs:
 		deal.append((s as Array).duplicate())
@@ -111,6 +129,7 @@ func take(given: Array, band: int, count: int) -> void:
 	settle_judge()
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
 	tumble = false
+	par = 0
 	pegs = []
 	deal = []
 	for s in given:
@@ -129,6 +148,15 @@ func take(given: Array, band: int, count: int) -> void:
 	held_from = -1
 	hints_used = 0
 	hints_extra = 0
+
+## Insane's moves for this deal: the shortest solve and a quarter more (three
+## at least), every drop on another peg costing one. 0 on a band that does
+## not count, and on a deal with no known solve.
+func moves_budget() -> int:
+	var least: int = MOVES_SLACK[difficulty]
+	if least <= 0 or par <= 0:
+		return 0
+	return par + maxi(least, int(ceil(par * MOVES_SHARE)))
 
 ## A peg nothing comes off again: full and all one colour.
 func locked(i: int) -> bool:

@@ -14,7 +14,19 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 
+## Insane's spare moves over the tiles the deal leaves empty (`moves_budget`):
+## a tile set, changed or cleared costs one. Three is one slip mended with
+## two to spare. Since 2026-10-04 no band has hearts: nothing is judged
+## against the solution as it lands (docs/agents/flat-screens.md, "Insane
+## counts moves").
+const MOVES_SLACK := [0, 0, 0, 3]
+
 var n: int = 0
+## The difficulty (0 Easy to 3 Insane), set by the board before setup(): only
+## the move budget reads it.
+var band: int = 0
+## The tiles the deal leaves for the player to set.
+var target: int = 0
 var grid: Array = []       # [r][c] -> int
 var given: Array = []      # [r][c] -> bool: a clue, or a cell a hint filled
 var hinted: Array = []     # [r][c] -> bool: filled by a hint, so a reset gives it back
@@ -61,9 +73,24 @@ func setup(out: Dictionary) -> void:
 		given.append(given_row)
 		hinted.append(hinted_row)
 	history = []
+	target = 0
+	for r in n:
+		target += (grid[r] as Array).count(-1)
 	refresh_bad()
 
 # --- moves ---
+
+## The moves a band hands out: the tiles the deal left empty and its slack,
+## or 0 on a band that does not count them.
+func moves_budget() -> int:
+	return target + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What leaving a tile showing `now` costs when it showed `was` before the
+## player began on it: one for a tile set, changed or cleared, nothing for a
+## tile cycled back round to what it was. A sun tapped through on the way to
+## a moon is never counted: only where the tile ends up is.
+static func move_cost(was: int, now: int) -> int:
+	return 1 if was != now else 0
 
 ## The tap: empty -> sun -> moon -> empty. A given does not turn; false says
 ## nothing changed, so the board can answer with the locked cell's dip.
