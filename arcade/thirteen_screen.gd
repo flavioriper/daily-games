@@ -4,8 +4,10 @@ extends Control
 ## by drawing chains (spec
 ## docs/superpowers/specs/2026-09-27-arcade-thirteen-design.md). The flat
 ## boards' top bar (back, the title in ink, restart, settings), a paper row
-## with the score, the best and the biggest pebble, the tray in the
-## Arcade's wooden frame, and under it the clovers and the five tools.
+## with the score, the best and the biggest pebble, the tray on a paper card
+## like Binairo's, and under it the clovers and the five tools. A pebble is
+## drawn as a rounded pastel tile (arcade/thirteen_art.gd); the code keeps
+## the old word.
 ##
 ## Play: press on a pebble and drag through three or more touching pebbles
 ## of its number (diagonals count; drag back to take the last one off), then
@@ -13,9 +15,9 @@ extends Control
 ## arcade/thirteen_sim.gd, which resolves a move at once; this screen draws
 ## the tray settling after it and plays its events.
 ##
-## Drawing: the raked sand is one still mesh built on resize; every pebble
-## is one cached mesh moved by the transform with its number lettered over
-## it; the chain, the halos and the sparks are one live mesh.
+## Drawing: the seats are one still mesh built on resize; every pebble is
+## one cached quad of the baked atlas moved by the transform; the chain, its
+## pads and the sparks are one live mesh.
 
 signal closed
 
@@ -71,17 +73,20 @@ const HIT := 0.42
 const HINT_AFTER := 7.0
 ## How far a pebble taken into the chain is held up off the sand, in cells.
 const LIFT := 0.08
+## How far the stones' window opens past the field: wide at the sides and
+## the foot, a little above (the frame's own margin).
+const CLIP_PAD := Vector2(80, 14)
 const FLIGHT_T := 0.6
 ## How long a new number's reveal holds before it flies to the plate, and
 ## the flight.
 const REVEAL_HOLD := 0.75
 const REVEAL_FLY := 0.42
-const CONFETTI := [Color("f2b632"), Color("ec7f8c"), Color("6fb4e2"), Color("5fae5a"), Color("c98ac6")]
+const CONFETTI := [Color("f6cb5e"), Color("f3a9af"), Color("9fcbe8"), Color("b9d996"), Color("dbaed6")]
 ## A long chain's word, by the chain's length, longest first.
 const WORDS := [[10, "LT_WORD_5"], [8, "LT_WORD_4"], [6, "LT_WORD_3"], [5, "LT_WORD_2"], [4, "LT_WORD_1"]]
 ## The lengths a chain being drawn rings out at.
 const TIERS := [4, 5, 6, 8, 10]
-const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+const STICKER_COLS := [Color("f08a80"), Color("f6b866"), Color("f0d36a"), Color("9ed48a"), Color("86c2ee"), Color("c19be0")]
 ## The most bits alive in one layer at once.
 const MAX_BITS := 420
 
@@ -125,7 +130,12 @@ var _clock := 0.0
 ## Pixels a cell, and the tray's top-left in `field`.
 var _u := 100.0
 var _origin := Vector2.ZERO
+var _clip: Control
+var _stones: Control
+var _top: Control
 var _bed: ArrayMesh
+## The tray's wash, drawn over the tiles: a merge's flash, the stuck veil.
+var _wash := StyleBoxFlat.new()
 var _live: ArrayMesh
 ## One a pebble in the tray: id -> {pos: Vector2 (column, row, in cells),
 ## v, vel, hold: seconds before it may move, squash, amt, bump, pop,
@@ -203,6 +213,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = CozyTheme.make()
 	_build()
+	Art.ensure_skin(self, func() -> void:
+		_redraw()
+		_air.queue_redraw())
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
@@ -245,25 +258,38 @@ func _build() -> void:
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
 	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
-	box.shadow_offset = Vector2(0, 6)
+	# the flat boards' card (ui/flat/flat_host.gd): parchment, a hairline, a
+	# soft shadow
+	var box := CozyTheme.lifted(Pal.PARCHMENT, 36, FRAME)
+	box.set_border_width_all(2)
+	box.border_color = Color(Pal.LINE, 0.35)
 	frame.add_theme_stylebox_override("panel", box)
+	_wash.set_corner_radius_all(36 - FRAME)
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
-	field.clip_contents = true
+	field.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	field.mouse_filter = Control.MOUSE_FILTER_STOP
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
 	frame.add_child(field)
+	# the stones' window: open wide at the sides and the foot, shut just
+	# above the tray, where a new stone waits to fall in
+	_clip = Control.new()
+	_clip.clip_contents = true
+	_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.add_child(_clip)
+	_stones = Control.new()
+	_stones.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stones.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_stones.draw.connect(_draw_stones)
+	_clip.add_child(_stones)
+	_top = Control.new()
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_top.draw.connect(_draw_top)
+	field.add_child(_top)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
@@ -303,6 +329,7 @@ func _build() -> void:
 
 	col.add_child(_build_tools())
 	_air = Control.new()
+	_air.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_air.name = "Air"
 	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -349,6 +376,7 @@ func _build_hud() -> Control:
 	# the biggest pebble so far, drawn beside its kicker
 	var parts := _plate("LT_BIGGEST", 0.8)
 	_big_view = Control.new()
+	_big_view.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_big_view.custom_minimum_size = Vector2(0, 60)
 	_big_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_big_view.draw.connect(_draw_biggest)
@@ -487,12 +515,17 @@ func _layout_field() -> void:
 	var board := Vector2(Sim.COLS, _rows()) * _u
 	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5) - (Sim.ROWS - _rows()) * _u)
 	_bed = _build_bed()
+	_clip.position = -CLIP_PAD
+	_clip.size = s + CLIP_PAD + Vector2(CLIP_PAD.x, CLIP_PAD.x)
+	_stones.position = CLIP_PAD
+	_stones.size = s
+	_top.size = s
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(24, s.y * 0.3)
 	box.size = Vector2(s.x - 48, 0)
 	_stuck_box.size = Vector2(s.x - 120, 0)
 	_stuck_box.position = Vector2(60, s.y * 0.5 - _stuck_box.get_combined_minimum_size().y * 0.5)
-	field.queue_redraw()
+	_redraw()
 
 ## The centre of a cell, in the field's pixels (fractions allowed).
 func px(c: float, r: float) -> Vector2:
@@ -619,7 +652,7 @@ func _process(delta: float) -> void:
 	_refresh_hud(delta)
 	if _seat != null and is_instance_valid(_seat):
 		_seat.queue_redraw()
-	field.queue_redraw()
+	_redraw()
 	_air.queue_redraw()
 	if _end_score != null and is_instance_valid(_end_score):
 		_count_end()
@@ -1410,76 +1443,13 @@ func _refresh_hud(delta := 0.0) -> void:
 ## The tray's bed: fine sand raked in rows round a hollow for every pebble,
 ## with moss in the corners and a few clover leaves and daisies.
 func _build_bed() -> ArrayMesh:
+	# a seat under every tile, a shade deeper than the card: what shows while
+	# the tiles above are still falling in
 	var b := Face.Builder.new()
-	var s := field.size
-	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)], [Art.SAND.lightened(0.05), Art.SAND.lightened(0.05), Art.SAND.darkened(0.03), Art.SAND.darkened(0.03)])
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 13
-	# the rake's lines, gently waved, across the whole bed
-	var y := 14.0
-	while y < s.y:
-		var pts := PackedVector2Array()
-		for i in 25:
-			var t := i / 24.0
-			pts.append(Vector2(lerpf(-10.0, s.x + 10.0, t), y + sin(t * TAU * 1.5 + y * 0.02) * 6.0))
-		b.stroke(pts, 3.0, Color(Art.SAND_DEEP, 0.45))
-		var hi := PackedVector2Array()
-		for p in pts:
-			hi.append(p + Vector2(0, 3.5))
-		b.stroke(hi, 1.5, Color(1, 1, 1, 0.35))
-		y += 26.0
-	# sunlight falling in from the top left
-	for k in 3:
-		var x0 := s.x * (0.02 + 0.32 * k)
-		_quad(b, [Vector2(x0, 0), Vector2(x0 + s.x * 0.14, 0), Vector2(x0 + s.x * 0.14 + s.y * 0.3, s.y), Vector2(x0 + s.y * 0.3, s.y)],
-			[Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.0), Color(1, 1, 0.92, 0.0)])
-	# a hollow under every pebble, the rake's lines curving round it
 	for c in Sim.COLS:
 		for r in range(Sim.ROWS - _rows(), Sim.ROWS):
-			var at := px(c, r)
-			var rr := _u * 0.47
-			b.stroke(Face.Builder.ring(at, rr * 1.08, rr * 1.08), 2.0, Color(Art.SAND_DEEP, 0.55), true)
-			b.disc(at, rr, Color(Art.SAND_DEEP, 0.55))
-			b.disc(at + Vector2(-rr * 0.05, -rr * 0.07), rr * 0.9, Color(Art.SAND_DEEP.darkened(0.08), 0.5))
-			b.stroke(Face.Builder.arc_points(at, rr * 0.98, PI * 0.1, PI * 0.9), 2.0, Color(1, 1, 1, 0.4))
-	# moss creeping in at the corners, with a clover leaf or two and daisies
-	for corner in [Vector2(0, 0), Vector2(s.x, 0), Vector2(0, s.y), Vector2(s.x, s.y)]:
-		for i in 9:
-			var p: Vector2 = corner + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * _u * 0.35
-			var rr := _u * rng.randf_range(0.08, 0.16)
-			b.disc(p, rr, Art.MOSS_DEEP if i % 3 == 0 else Art.MOSS)
-		for i in 2:
-			var p: Vector2 = corner.lerp(s * 0.5, 0.04 + 0.03 * i) + Vector2(rng.randf_range(-12.0, 12.0), rng.randf_range(-12.0, 12.0))
-			b.disc(p, _u * 0.045, Color("fffaf0"))
-			for k in 6:
-				b.disc(p + Vector2.from_angle(TAU * k / 6.0) * _u * 0.05, _u * 0.03, Color("fffaf0"))
-			b.disc(p, _u * 0.025, Color("f2c14e"))
-	# a few shells and grit washed into the sand between the hollows
-	for k in 7:
-		var c := rng.randi_range(0, Sim.COLS - 2)
-		var r := rng.randi_range(0, Sim.ROWS - 2)
-		var p := px(c + 0.5, r + 0.5) + Vector2(rng.randf_range(-0.08, 0.08), rng.randf_range(-0.08, 0.08)) * _u
-		if k % 2 == 0:
-			_shell(b, p, _u * rng.randf_range(0.11, 0.15), rng.randf_range(-0.8, 0.8))
-		else:
-			for q in 3:
-				var g := p + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * _u * 0.06
-				b.disc(g, _u * rng.randf_range(0.012, 0.022), Color(Art.SAND_DEEP.darkened(0.2), 0.7))
+			b.polygon(Art.tile_outline(px(c, r), _u * 0.86), Color(Pal.STONE_GIVEN, 0.4))
 	return b.mesh()
-
-## A little scallop shell lying in the sand, ribbed, its hinge down.
-func _shell(b: Face.Builder, at: Vector2, r: float, turn: float) -> void:
-	var fan := PackedVector2Array()
-	fan.append(at + Vector2(0, r * 0.55).rotated(turn))
-	for i in 11:
-		var a := lerpf(PI * 1.12, PI * 1.88, i / 10.0)
-		var bump := 1.0 + 0.06 * (1 if i % 2 == 0 else -1)
-		fan.append(at + Vector2.from_angle(a).rotated(turn) * r * bump)
-	b.polygon(fan, Color("f6d9c4"))
-	for i in 5:
-		var a := lerpf(PI * 1.22, PI * 1.78, i / 4.0)
-		b.stroke(PackedVector2Array([fan[0], at + Vector2.from_angle(a).rotated(turn) * r * 0.92]), maxf(1.0, r * 0.07), Color("d9a88c", 0.8))
-	b.ellipse(fan[0], r * 0.22, r * 0.12, Color("e8bea4"))
 
 static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
 	var i0 := b.vertex(p[0], c[0])
@@ -1488,6 +1458,12 @@ static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
 	var i3 := b.vertex(p[3], c[3])
 	b.tri(i0, i1, i2)
 	b.tri(i0, i2, i3)
+
+## The field and the two layers over it are one drawing.
+func _redraw() -> void:
+	field.queue_redraw()
+	_stones.queue_redraw()
+	_top.queue_redraw()
 
 func _draw_field() -> void:
 	if _bed == null:
@@ -1509,6 +1485,18 @@ func _draw_field() -> void:
 	if not under.verts.is_empty():
 		_live = under.mesh()
 		field.draw_mesh(_live, null, Transform2D(0.0, _shake_off))
+
+## The stones themselves, on a layer of their own: it alone is clipped (a
+## stone falls in from above the tray), so the chain's pads below and the
+## badge, pops and sparks above may run over the tray's rim.
+func _draw_stones() -> void:
+	if sim == null or _u <= 0.0:
+		return
+	var font := Art.font()
+	var s := _u * 0.86
+	var picked := {}
+	for p: Vector2i in sim.path:
+		picked[p] = true
 	# the pebbles rolling along the chain into the one they joined
 	for j: Dictionary in _joins:
 		if j.t < 0.0:
@@ -1517,10 +1505,10 @@ func _draw_field() -> void:
 		var p := _along(j.path, int(j.from), k * k)
 		var sc := lerpf(1.0, 0.7, k)
 		var ja := 1.0 - k * 0.5
-		field.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
-		field.draw_mesh(Art.pebble(j.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, ja))
+		_stones.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
+		_stones.draw_mesh(Art.pebble(j.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, ja))
 		Art.number(field, font, Vector2.ZERO, j.v, s, ja)
-	field.draw_set_transform(Vector2.ZERO)
+	_stones.draw_set_transform(Vector2.ZERO)
 	# the pebbles in the tray (but for the ones at rest over a page's top edge)
 	var top := Sim.ROWS - _rows()
 	for id in _vis:
@@ -1535,7 +1523,7 @@ func _draw_field() -> void:
 			rot = 0.14 * exp(-float(vis.wig) * 5.0) * sin(float(vis.wig) * 22.0)
 		var lifted: bool = picked.has(cell) and vis.pos == Vector2(cell)
 		if lifted:
-			# the chain is held up off the sand; the newest hops, the rest bob
+			# the chain is held up off the tray; the newest hops, the rest bob
 			# in a wave down the chain
 			var lift := LIFT
 			if not Motion.reduce:
@@ -1548,26 +1536,43 @@ func _draw_field() -> void:
 		elif not _hint.is_empty() and _hint.has(cell) and not Motion.reduce:
 			var k := 0.5 + 0.5 * sin(_clock * 5.0 - _hint.find(cell) * 0.6)
 			sc *= 1.0 + 0.05 * k
-		# while a chain is drawn, the pebbles it cannot take step back
-		var a := 1.0
-		if not picked.is_empty() and not lifted:
-			a = 0.72 if vis.v == chain_v else 0.45
-		elif stuck:
-			a = 0.55
-		field.draw_set_transform(c, rot, sc)
-		field.draw_mesh(Art.pebble(vis.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, a))
-		Art.number(field, font, Vector2.ZERO, vis.v, s, a)
-	field.draw_set_transform(Vector2.ZERO)
+		# no tile fades for a chain: its lift and the paper under it say it
+		_stones.draw_set_transform(c, rot, sc)
+		_stones.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY)
+		Art.number(field, font, Vector2.ZERO, vis.v, s)
+	_stones.draw_set_transform(Vector2.ZERO)
+	# pebbles plucked out or tumbling at the end
+	for d: Dictionary in _debris:
+		var a := 1.0 - clampf((d.t - 1.0) / 0.6, 0.0, 1.0)
+		_stones.draw_set_transform(d.pos + _shake_off, d.rot, Vector2.ONE)
+		_stones.draw_mesh(Art.pebble(d.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
+		Art.number(field, font, Vector2.ZERO, d.v, s, a)
+	_stones.draw_set_transform(Vector2.ZERO)
+
+## What lies over the stones, unclipped.
+func _draw_top() -> void:
+	if sim == null or _u <= 0.0:
+		return
+	var font := Art.font()
+	var s := _u * 0.86
+	var picked := {}
+	for p: Vector2i in sim.path:
+		picked[p] = true
+	var chain_v: int = sim.value(sim.path[0]) if not sim.path.is_empty() else 0
+	var stuck: bool = _stuck_box.visible
 	# glints running over pebbles at rest, and the tether to the finger
 	var over := Face.Builder.new()
 	_draw_over(over, s)
 	if not over.verts.is_empty():
 		_live_over = over.mesh()
-		field.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
+		_top.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
 	if _flash > 0.0:
-		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
+		_wash.bg_color = Color(_flash_col, _flash * 0.5)
+		_top.draw_style_box(_wash, Rect2(Vector2.ZERO, field.size))
 	if stuck:
-		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(0.25, 0.16, 0.08, 0.28))
+		# a stuck tray goes pale under a veil of the card's own paper
+		_wash.bg_color = Color(Pal.PARCHMENT, 0.55)
+		_top.draw_style_box(_wash, Rect2(Vector2.ZERO, field.size))
 	# what the chain will make, over its last pebble
 	if sim.path.size() >= Sim.MIN_CHAIN:
 		var last: Vector2i = sim.path[-1]
@@ -1579,8 +1584,8 @@ func _draw_field() -> void:
 		if not Motion.reduce:
 			bc.y += sin(_clock * 3.0) * _u * 0.02
 			grow *= 1.0 + 0.04 * minf(8.0, sim.path.size() - Sim.MIN_CHAIN)
-		field.draw_set_transform(bc, tilt, Vector2(grow, grow))
-		field.draw_mesh(Art.pebble(nv, bs), null, Transform2D.IDENTITY)
+		_top.draw_set_transform(bc, tilt, Vector2(grow, grow))
+		_top.draw_mesh(Art.pebble(nv, bs), Art.skin(), Transform2D.IDENTITY)
 		Art.number(field, font, Vector2.ZERO, nv, bs)
 		# four or more: how long the chain is, in the colour of its tier
 		if sim.path.size() >= 4:
@@ -1595,17 +1600,10 @@ func _draw_field() -> void:
 					ti = TIERS.find(t)
 			var tc: Color = STICKER_COLS[ti % STICKER_COLS.size()]
 			var o := Vector2(-w * 0.5, bs * 0.5 + fs * 0.95)
-			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
-			field.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, tc.darkened(0.5))
-			field.draw_string(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
-		field.draw_set_transform(Vector2.ZERO)
-	# pebbles plucked out or tumbling at the end
-	for d: Dictionary in _debris:
-		var a := 1.0 - clampf((d.t - 1.0) / 0.6, 0.0, 1.0)
-		field.draw_set_transform(d.pos + _shake_off, d.rot, Vector2.ONE)
-		field.draw_mesh(Art.pebble(d.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, a))
-		Art.number(field, font, Vector2.ZERO, d.v, s, a)
-	field.draw_set_transform(Vector2.ZERO)
+			_top.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Color("fffaf0"))
+			_top.draw_string_outline(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, tc.darkened(0.5))
+			_top.draw_string(tf, o, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
+		_top.draw_set_transform(Vector2.ZERO)
 	_draw_pops()
 
 ## A point `k` of the way along the chain from pebble `from` to its end.
@@ -1617,9 +1615,9 @@ func _along(chain: Array, from: int, k: float) -> Vector2:
 	var i := mini(int(floorf(f)), legs - 1)
 	return (chain[from + i] as Vector2).lerp(chain[from + i + 1], f - i)
 
-## The chain being drawn: a soft halo under every picked pebble and a
-## ribbon through them in their paint, lit down the middle; the hint's
-## glow; the swap's first pick.
+## The chain being drawn: paper under every picked pebble and a band
+## through them with their paint down its middle; the hint's glow; the
+## swap's first pick.
 func _draw_chain(b: Face.Builder, s: float) -> void:
 	# the trails the merged pebbles leave as they roll into the last
 	for jn: Dictionary in _joins:
@@ -1639,16 +1637,24 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		var pts := PackedVector2Array()
 		for p: Vector2i in sim.path:
 			pts.append(px(p.x, p.y) - Vector2(0, _u * LIFT))
-		# the sand under each lifted pebble keeps its shadow and a glow
-		for p: Vector2i in sim.path:
-			var ground := px(p.x, p.y)
-			b.disc(ground, s * 0.62, Color(col.lightened(0.45), 0.4))
-			b.ellipse(ground + Vector2(0, s * 0.12), s * 0.42, s * 0.3, Color(0.3, 0.2, 0.08, 0.2))
+		# the chain is one piece of paper slid under the tiles it holds: a
+		# pad under each, a band between them with the tiles' paint down its
+		# middle, and a soft shadow under the lot
+		var paper := Color("fffaf0")
+		var w := _u * 0.3
+		var rim := maxf(4.0, s * 0.055)
+		var pad := s * 1.05 + rim * 2.0
+		var down := Vector2(0, rim * 1.2)
+		var shade := Color(0.36, 0.24, 0.14, 0.16)
 		for p in pts:
-			b.stroke(Face.Builder.ring(p, s * 0.58, s * 0.58), maxf(2.0, s * 0.035), Color("fffaf0", 0.9), true)
+			b.polygon(Art.tile_outline(p + down, pad), shade)
 		if pts.size() >= 2:
-			b.stroke(pts, _u * 0.26, Color(col.darkened(0.25), 0.92))
-			b.stroke(pts, _u * 0.14, Color(col.lightened(0.45), 0.97))
+			b.stroke(Transform2D(0.0, down) * pts, w + rim * 2.0, shade)
+		for p in pts:
+			b.polygon(Art.tile_outline(p, pad), paper)
+		if pts.size() >= 2:
+			b.stroke(pts, w + rim * 2.0, paper)
+			b.stroke(pts, w, col)
 			# beads of light flowing down the ribbon toward its end
 			if not Motion.reduce:
 				var total := 0.0
@@ -1666,11 +1672,11 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		if pts.size() >= Sim.MIN_CHAIN:
 			var tip: Vector2 = pts[-1]
 			var br := 1.0 if Motion.reduce else 1.0 + 0.04 * sin(_clock * 7.0)
-			b.stroke(Face.Builder.ring(tip, s * 0.64 * br, s * 0.64 * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
+			b.stroke(Art.tile_outline(tip, (s * 1.05 + maxf(4.0, s * 0.055) * 2.0) * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
 	if not _hint.is_empty():
-		var a := 0.12 + 0.1 * sin(_clock * 5.0)
+		var a := 0.3 + 0.15 * sin(_clock * 5.0)
 		for p: Vector2i in _hint:
-			b.disc(px(p.x, p.y), s * 0.62, Color("fffaf0", a))
+			b.polygon(Art.tile_outline(px(p.x, p.y), s * 1.14), Color(Pal.SUN, a))
 	# an armed tool lights the pebbles it may be used on
 	if _armed >= 0 and not busy():
 		var pulse := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 5.0)
@@ -1681,11 +1687,11 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 					continue
 				var ok: bool = sim.can_target(_armed, _swap_a, cell) if _armed == Sim.Tool.SWAP and _swap_a.x >= 0 else sim.can_target(_armed, cell)
 				if ok:
-					b.stroke(Face.Builder.ring(px(c, r), s * 0.57, s * 0.57), maxf(2.0, s * 0.03), Color(Pal.SUN, 0.35 + 0.35 * pulse), true)
+					b.stroke(Art.tile_outline(px(c, r), s * 1.06), maxf(2.0, s * 0.03), Color(Pal.SUN, 0.35 + 0.35 * pulse), true)
 	if _swap_a.x >= 0:
 		var at := px(_swap_a.x, _swap_a.y)
-		b.disc(at, s * 0.62, Color(Pal.SUN, 0.25))
-		b.stroke(Face.Builder.ring(at, s * 0.6, s * 0.6), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
+		b.polygon(Art.tile_outline(at, s * 1.14), Color(Pal.SUN, 0.25))
+		b.stroke(Art.tile_outline(at, s * 1.1), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
 
 ## A point `d` pixels along a polyline.
 func _point_on(pts: PackedVector2Array, d: float) -> Vector2:
@@ -1798,7 +1804,7 @@ func _draw_air() -> void:
 func _draw_heat(b: Face.Builder) -> void:
 	var s := field.size
 	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
-	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var tint := Color("f6c477").lerp(Color("f2a48d"), _heat)
 	var edge := Color(tint, (0.25 + 0.2 * beat) * _heat)
 	var none := Color(tint, 0.0)
 	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)
@@ -1908,7 +1914,7 @@ func _draw_reveal() -> void:
 		_air.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-_clock * 0.4, Vector2(rs, rs) * 0.7 / 512.0, 0.0, at))
 	var tilt := sin(t * 3.0) * 0.06 if t < hold else 0.0
 	_air.draw_set_transform(at, tilt, Vector2(size, size) / 200.0)
-	_air.draw_mesh(Art.pebble(v, 200.0), null, Transform2D.IDENTITY)
+	_air.draw_mesh(Art.pebble(v, 200.0), Art.skin(), Transform2D.IDENTITY)
 	Art.number(_air, Art.font(), Vector2.ZERO, v, 200.0)
 	_air.draw_set_transform(Vector2.ZERO)
 	# the line under it while it holds
@@ -1945,9 +1951,9 @@ func _draw_pops() -> void:
 		var fs := full if Motion.reduce else maxi(8, int(lerpf(14.0, full * 1.0, Motion.back_out(minf(1.0, p.t / 0.24)))))
 		var w := font.get_string_size(p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var o := at + Vector2(-w * 0.5, 0)
-		field.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
-		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
-		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
+		_top.draw_string_outline(font, o + Vector2(0, 4), p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(0.2, 0.12, 0.05, 0.35 * a))
+		_top.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 12, Color(Art.INK, a))
+		_top.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(p.col, a))
 
 func _pop(cell: Vector2, text: String, col: Color, big: bool) -> void:
 	_pops.append({"pos": cell, "text": text, "t": -JOIN_T, "col": col, "big": big})
@@ -1962,7 +1968,7 @@ func _draw_biggest() -> void:
 	var k := 1.0 if Motion.reduce else clampf(_big_t / 0.4, 0.0, 1.0)
 	var sc := Motion.back_out(k)
 	_big_view.draw_set_transform(c, 0.0, Vector2(sc, sc))
-	_big_view.draw_mesh(Art.pebble(shown, s), null, Transform2D.IDENTITY)
+	_big_view.draw_mesh(Art.pebble(shown, s), Art.skin(), Transform2D.IDENTITY)
 	Art.number(_big_view, Art.font(), Vector2.ZERO, shown, s)
 	_big_view.draw_set_transform(Vector2.ZERO)
 
@@ -2023,6 +2029,7 @@ func _build_end(better: bool) -> Control:
 	# the biggest pebble of the game dropping into a hollow between the two
 	# below it, bobbing
 	var seat := Control.new()
+	seat.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	seat.custom_minimum_size = Vector2(0, 250)
 	var biggest: int = sim.max_v
 	var shown_at := _clock
@@ -2035,7 +2042,7 @@ func _build_end(better: bool) -> Control:
 		var under := [maxi(1, biggest - 2), maxi(1, biggest - 1)]
 		for k in 2:
 			var c := mid + Vector2((k - 0.5) * s * 1.05, -s * 0.45)
-			seat.draw_mesh(Art.pebble(under[k], s), null, Transform2D(0.0, c))
+			seat.draw_mesh(Art.pebble(under[k], s), Art.skin(), Transform2D(0.0, c))
 			Art.number(seat, font, c, under[k], s)
 		var fall := clampf((since - 0.25) / 0.3, 0.0, 1.0)
 		var land := 1.0 if Motion.reduce else fall * fall
@@ -2054,7 +2061,7 @@ func _build_end(better: bool) -> Control:
 			seat.draw_mesh(Art.rays(512.0, rc, 14), null, Transform2D(t * 0.5, Vector2(rs, rs), 0.0, top))
 			seat.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-t * 0.3, Vector2(rs, rs) * 0.7, 0.0, top))
 		seat.draw_set_transform(top, sin(t * 1.5) * 0.05, sq)
-		seat.draw_mesh(Art.pebble(biggest, s * 1.15), null, Transform2D.IDENTITY)
+		seat.draw_mesh(Art.pebble(biggest, s * 1.15), Art.skin(), Transform2D.IDENTITY)
 		Art.number(seat, font, Vector2.ZERO, biggest, s * 1.15, 1.0 if since > 0.3 or Motion.reduce else 0.0)
 		seat.draw_set_transform(Vector2.ZERO))
 	col.add_child(seat)

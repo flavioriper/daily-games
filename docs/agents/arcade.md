@@ -304,3 +304,77 @@ under the card. **A new Arcade game needs both**, and
 `top_bar.refresh(self)` in `_ready` before `_ask(false)`, or Undo and the
 bulb show behind the boost card. A harness that opens a screen through the
 menu sets `ScreenTutor.no_first_play`.
+
+**Lucky Thirteen's lit stones and sand** (2026-10-04, `feat/thirteen-painted`).
+The pebbles and the tray's sand are no longer flat fills: each is a height
+field in a canvas shader (`shaders/pebble_bake_2d.gdshader`,
+`shaders/sand_bake_2d.gdshader`), lit by one shared light from the upper left
+(`SUN`; `LIGHT` is a canvas built-in and will not compile as a constant).
+Neither shader is ever on screen. `Art.bake()` draws them once into a
+SubViewport and keeps the picture: the sixteen stones as a 1280x1280 atlas
+(`Art.ensure_skin`, `Art.skin()`), the sand at the field's size
+(`_bake_bed`). `Art.pebble(v, s)` then returns a textured quad instead of the
+flat mesh and every call site passes `Art.skin()` as `draw_mesh`'s texture, so
+the draw calls are what they were (peak 237 in the shot harness, ANGLE too).
+Until the bake lands, and for good under `--headless`, `skin()` is null and
+the old flat pebble and `_build_bed()` mesh are drawn. Both shaders write
+straight alpha with `blend_disabled`, or the atlas would carry a dark fringe.
+No image file was added: a generated picture cannot be re-posed, a height
+field can. The frame wears `CozyTheme.wood_grain(13.0)`.
+
+**The same day, restyled to the soft cel look** (the user found the lit clay
+"poorly drawn"; the reference was a clean casual board: chunky tokens, one
+line weight, flat tones). The bake stays, the shaders changed: a stone is a
+token with a thick side under its face, a line of its own paint deepened
+(`Art.line_colour`, the shader's `deepen()`), a bevelled rim and three eased
+bands, no gloss or grit; the sand is two flat tones with a pressed seat under
+each stone. The number is lettered into the atlas by Labels in the bake
+viewport (paper, lined in the stone's deep colour), so `Art.number()` returns
+at once when the skin exists and the board lost a draw per stone (peak 174).
+The chain is a white-rimmed ribbon of the paint with a lit upper edge, a deep
+lower one and a white-rimmed pad under every stone; the frame is a StyleBox
+with a thick lower lip, no grain.
+
+**Nothing but a falling stone is cut by the tray's edge** (2026-10-04, user
+request). `field` no longer clips. Its drawing is three layers kept in step by
+`_redraw()`: the field itself (sand, the chain's ribbon and pads), `_stones`
+inside `_clip` (the only clipped layer, opened `CLIP_PAD` past the field at
+the sides and foot and 14 px above, so a waiting stone stays hidden) and
+`_top` (glints, the badge of what the chain makes, pops); `_fx` sits above
+them. Ask for a redraw through `_redraw()`, never `field.queue_redraw()`.
+
+**Redrawn after Binairo, cozy and soft** (2026-10-04, user request: "based
+on binairo... cozy and soft"; the user chose rounded-square tiles over round
+pebbles). What the paragraphs above say of the stones' look, the sand and
+the wooden frame describes what was; the bake, the atlas and the three layers
+stand.
+- **A piece is a tile** (`shaders/tile_bake_2d.gdshader`, was
+  `pebble_bake_2d`): a rounded square of one flat pastel with a thin lip of
+  the same colour deepened under its foot (`Art.ROUND`, `Art.LIP`, the
+  shader's constants of the same names), a faint ground shadow, no line, no
+  gloss, no bevel. `PAINT` keeps its hues pulled toward paper, so every
+  effect that asks `Art.paint()` softened with it. The number is one Label in
+  ink warmed with the tile's lip (`number_colour`), paper on 14-16. A paler
+  stitch inside the edge from 10, a gold one past 13; 13 keeps its clover.
+  The code still says pebble (`Art.pebble`, `_vis`); the screen says tile
+  (`peça`, `ficha`) in ten strings, and `LT_WORD_4` lost its rock pun.
+  Strings changed in `locale/ui.csv` show only after `godot --headless
+  --path . --import` (the `.translation` files are ignored by git).
+- **The tray is the flat boards' card** (`CozyTheme.lifted(Pal.PARCHMENT,
+  36, ...)` with the hairline, as `ui/flat/flat_host.gd` builds it).
+  `sand_bake_2d.gdshader`, `_bake_bed`, the rake, moss and shells are gone;
+  `_bed` is one mesh of seats, a shade deeper than the card, seen only while
+  tiles are falling in.
+- **Nothing fades for a chain** (the rule on pieces coloured by index): the
+  picked tiles lift and a sheet of paper lies under them -- a pad a tile, a
+  band between with the paint down its middle, a soft shadow -- ending in a
+  sun ring cut to the tile's shape. Hint, armed tool and the swap's first
+  pick are the same rounded square in `Pal.SUN`. A stuck tray goes pale
+  under a veil of the card's paper (`_wash`, a StyleBoxFlat so the flash and
+  the veil keep the card's corners) instead of a brown one.
+- `tests/_shot_thirteen.gd`, second reading on `opengl3_angle`: 105 at rest,
+  139 on the 13's reveal, 154 after the bot's play (187 on the first
+  reading; 220 before the change), 256 on the tab.
+- `tests/_shot_howto_screen.gd -- thirteen` prints `Parameter "mesh" is
+  null` every frame; it did before this pass too (the same with the change
+  stashed) and the pages draw. Not looked into.
