@@ -9,6 +9,88 @@ Read `docs/agents/versus.md` ("Online") and
 
 ### Screens
 
+(2026-10-04; spec section 4.)
+
+- **The Versus tab's row** (`ui/menu/versus_tab.gd`, `_friends_row`): a
+  Button drawn by its children above the three cards -- plaque, Friends, a
+  line (`FRIENDS_ROW_NONE` with no friends, `FRIENDS_ROW_AWAY`, or a filled
+  dot and `FRIENDS_ONLINE_ONE/_N`), a chevron. Signal `friends`. Presence is
+  read as the tab comes up (`_read_friends`, only for a player who has
+  friends) and the line repaints on the hub's `changed`. It is one more child
+  of the tab's column, so `_fit` counts it: **at 1080x1920 the cards now give
+  up the lines under their names** (level 1 of `_compact`; the Online blurb
+  with them) and the pictures stand at 167.
+- **`ui/menu/friends_sheet.gd`**, a house `Sheet` (`menu.friends_sheet`).
+  `_on_open` calls `Social.enable()`, awaits `Social.my_code()` and paints one
+  of three states: `LOADING` (the body with the buttons off), `READY`,
+  `OFFLINE` (Social not started, or no code: the sleepy moon, a line and Try
+  again, nothing else). `READY` is Invite a friend (`Share.text` of
+  `FRIENDS_INVITE_TEXT % Social.link(code)`; when it answers false the button
+  reads Link copied for 2 s), the code on a tile with a copy button (the
+  caption reads Code copied), Enter a code, the sprout, then the list:
+  a count line and a row a friend -- face (sleepy when away), name, a filled
+  dot and Online or a ring and Away, Play (the sun when online, paper when
+  away; both work) and a round remove. Past 5.5 rows the list scrolls.
+  Presence: `refresh_presence()` as it opens and every `REFRESH` 15 s. Signal
+  `play(game, uid)`, said after the sheet has closed. `adding()` is true
+  while the code dialog is up.
+- **`ui/menu/code_dialog.gd`**: the card stands 300 under the top so the
+  keyboard comes up under it. The field keeps itself to `Social.ALPHABET`,
+  upper case, 8 (`_on_typed`; a whole link typed in is cut to its code), and
+  takes the caret on a touch by `edit()` (a touch is not a click here).
+  Paste reads the clipboard through `Social.code_in`. One line under the
+  field per answer: `FRIENDS_ADDED` (green; Add becomes Close, Paste goes),
+  `FRIENDS_ADD_UNKNOWN / _SELF / _ALREADY / _OFFLINE`, `FRIENDS_ADD_NO_CODE`
+  for a paste with no code in it.
+- **`ui/menu/invite_card.gd`**, one card for four things: `invite(uid,
+  game)` (Play / Not now), `friend(uid)` (Play / Close; Play turns it into
+  the picker; `can_play = false` leaves only Close), `pick(uid)` (the three
+  games, Cancel), `remove(uid)` (Keep is the sun button, Remove the pill).
+  Signals `play(game)`, `confirmed`, `dismissed`; `leave()` goes without a
+  word. It knows no Social.
+- **The menu's side** (`ui/menu.gd`, "# --- friends ---"):
+  - `open_friend_game(game, uid, accept) -> bool`: leaves the card, closes
+    every sheet, sends every host out by its own `_on_back` (so an abandon is
+    still counted) with `_switching` set, which makes `_left_game` skip both
+    the list and `Ads.leaving_game()`; then `Online.with_friend = {uid,
+    accept}` and `_open_versus(game, Record.ONLINE)`. False while
+    `Social.in_game`.
+  - `invited` -> the invite card (`friend_card`, the menu's last child while
+    it lives, z 30; `_raise_card` keeps it last when a host is mounted under
+    it). Play accepts; Not now and Android's back `Social.decline`;
+    `withdrawn` takes the card down. One card at a time: `_next_ask` looks
+    for another friend's fresh invite when one goes.
+  - `befriended` -> the new friend card, unless the code dialog is up (it
+    says so itself) or a card already is; no Play while `Social.in_game`.
+  - `friend_link_failed(why)`: a line on a pill for 4 s, for
+    `world/main.gd` when a link made no friend (`self`, `unknown`, else the
+    offline line).
+  - `go_back` needed no change: every card and dialog has `is_open()` and
+    `close()`, and the newest is found first.
+- **Analytics from here**: `friends_invite_shared`, `friends_added` (via
+  code), `friends_removed`, `versus_friend_answer` (play, not_now, and
+  expired when the card is up as the invite goes). `versus_friend_invite` is
+  `Online`'s, not the picker's.
+- **Shots**: `caffeinate -d -i -u godot --path . --resolution 810x1440
+  --always-on-top --script res://tests/_shot_friends.gd -- <outdir>
+  [lang=en|pt|es] [rm]` -- 27 shots and 17 checks, `Social.fake`,
+  `tests/_fake_match.gd`, `tests/_offline_main.gd`; it pokes
+  `Social._faked`, `_friends` and `_invites` for the offline sheet and the
+  invites, and puts the clipboard, `versus.cfg` and `friends.cfg` back.
+  Without `lang=` it runs in this Mac's saved language.
+- **Draw calls** (810x1440, the same en, pt, es and rm): the tab 163 (150
+  before the row); the sheet with five friends 301, empty 212, offline 188;
+  the picker over the sheet 324, the remove question 329; the code dialog
+  251-254; the invite card over the tab 189, over a board 135; the new
+  friend card 186, its picker 195; the lobby's friend states 152-160.
+- **Open**: nothing here was touched on a phone -- the field taking the
+  caret and the keyboard on a touch, a drag on a row scrolling the list
+  (rows pass the event; a drag begun on Play or the remove does not scroll),
+  Android's share sheet. `Social.add` answering `already` with no `uid`
+  would print the line with a hole. A new friend who arrives while an invite
+  card is up gets no card (they are in the list). The pt and es strings want
+  a native eye.
+
 ### The link
 
 **The forms.** `https://daily-games-420bf.web.app/f/<CODE>` is what is
