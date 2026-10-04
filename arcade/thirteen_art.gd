@@ -2,8 +2,8 @@ extends RefCounted
 
 ## Lucky Thirteen's drawings (spec
 ## docs/superpowers/specs/2026-09-27-arcade-thirteen-design.md): the pieces,
-## one pastel a number -- rounded paper tiles with a thin lip, after
-## Binairo's (the code still calls one a pebble) -- the gold thirteen with
+## one pastel a number -- round paper discs with a thin lip, in Binairo's
+## paper look (the code still calls one a pebble) -- the gold thirteen with
 ## its four-leaf clover, the clover the tools are bought with, and the five
 ## tools' pictures. Each is built once per look and size, its origin at the
 ## centre, and moved by the draw transform; shared with the Arcade tab's
@@ -51,9 +51,10 @@ const PAINT := [
 ## by ensure_skin(); null until then and for good where nothing renders, and
 ## pebble() falls back to its mesh.
 const PEBBLE_SHADER = preload("res://shaders/tile_bake_2d.gdshader")
-## The tile's corner and lip, in halves of its side (the shader's ROUND, LIP).
-const ROUND := 0.36
+## The piece's lip, in halves of its width (the shader's LIP), and how far a
+## cell's side it is across.
 const LIP := 0.11
+const PIECE := 0.88
 const SKIN_CELL := 320
 const SKIN_SIDE := 4
 const SKIN_SPAN := 1.3
@@ -67,9 +68,10 @@ static func line_colour(v: int) -> Color:
 	var c := paint(v)
 	return c.lerp(Color(c.r * c.r * 0.86, c.g * c.g * 0.80, c.b * c.b * 0.90), 0.6)
 
-## A rounded square `side` across centred on `c`, cornered as a tile is.
+## A circle `side` across centred on `c`: the piece's shape, for what is
+## drawn round or under one.
 static func tile_outline(c: Vector2, side: float) -> PackedVector2Array:
-	return Face.Builder.round_rect(c - Vector2(side, side) * 0.5, Vector2(side, side), side * 0.5 * ROUND)
+	return Face.Builder.ring(c, side * 0.5, side * 0.5)
 
 ## The atlas pebble()'s quads are cut from; pass it as draw_mesh's texture.
 static func skin() -> Texture2D:
@@ -119,14 +121,15 @@ static func ensure_skin(host: Node, done := Callable()) -> void:
 			var cell := Rect2(Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE) * SKIN_CELL, Vector2(SKIN_CELL, SKIN_CELL))
 			items.append([cell, m])
 			# the number, lettered into the picture in ink, no line round it
+			# (the thirteen's a little higher, over its clover)
 			var word := Label.new()
 			word.text = str(v)
 			word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			word.add_theme_font_override("font", font())
-			word.add_theme_font_size_override("font_size", int(SKIN_CELL * (0.4 if v < 10 else 0.33)))
+			word.add_theme_font_size_override("font_size", int(SKIN_CELL * (0.4 if v < 10 else 0.3 if v == 13 else 0.33)))
 			word.add_theme_color_override("font_color", number_colour(v))
-			items.append([Rect2(cell.position + Vector2(0, -SKIN_CELL * 0.034), cell.size), word])
+			items.append([Rect2(cell.position + Vector2(0, -SKIN_CELL * (0.075 if v == 13 else 0.034)), cell.size), word])
 		var side := SKIN_CELL * SKIN_SIDE
 		_skin = await bake(host, items, Vector2i(side, side), true)
 		_skin_busy = false
@@ -161,7 +164,7 @@ static func number_colour(v: int) -> Color:
 
 ## The tile of number `v`, `s` pixels across, centred on the origin: the
 ## baked picture's quad, or until it is baked (and for good headless) the
-## same tile as a mesh -- the lip, the face, a stitch from 10, the clover.
+## same piece as a mesh -- the lip, the face, a ring from 10, the clover.
 static func pebble(v: int, s: float) -> ArrayMesh:
 	var key := "p%d_%d" % [v, roundi(s)]
 	if _cache.has(key):
@@ -175,19 +178,20 @@ static func pebble(v: int, s: float) -> ArrayMesh:
 	_tile(b, Vector2.ZERO, s * 0.97, v)
 	var r := s * 0.5
 	if v >= 10:
-		b.stroke(tile_outline(Vector2(0, -r * LIP * 0.5), s * 0.82), maxf(1.5, s * 0.02), Color(GOLD.lightened(0.3) if v > 13 else paint(v).lerp(Color("fffaf0"), 0.55), 0.85), true)
+		b.stroke(tile_outline(Vector2(0, -r * LIP * 0.5), s * 0.74), maxf(1.5, s * 0.02), Color(GOLD.lightened(0.3) if v > 13 else paint(v).lerp(Color("fffaf0"), 0.55), 0.85), true)
 	if v == 13:
-		_clover(b, Vector2(r * 0.5, r * 0.44), r * 0.26, 0.4)
+		_clover(b, Vector2(0, r * 0.4), r * 0.2, 0.4)
 	var m := b.mesh()
 	_cache[key] = m
 	return m
 
-## A tile laid into a builder: the lip and the face, `side` across at `c`.
+## A piece laid into a builder, `side` across at `c`: the face a circle, the
+## lip the same circle a little lower.
 static func _tile(b: Face.Builder, c: Vector2, side: float, v: int) -> void:
 	var lip := side * 0.5 * LIP
-	var rr := side * 0.5 * ROUND
-	b.polygon(tile_outline(c, side), line_colour(v))
-	b.polygon(Face.Builder.round_rect(c - Vector2(side, side) * 0.5, Vector2(side, side - lip), rr), paint(v))
+	var r := (side - lip) * 0.5
+	b.disc(c + Vector2(0, lip * 0.5), r, line_colour(v))
+	b.disc(c - Vector2(0, lip * 0.5), r, paint(v))
 
 ## The chain's soft glow under a picked pebble: a ring of its own paint.
 static func halo(v: int, s: float) -> ArrayMesh:
@@ -363,7 +367,7 @@ static func number(ci: CanvasItem, font: Font, c: Vector2, v: int, s: float, alp
 	var fs := int(s * (0.46 if text.length() == 1 else 0.4))
 	var col := number_colour(v)
 	var size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	var at := c + Vector2(-size.x * 0.5 - s * 0.012, (font.get_ascent(fs) - font.get_descent(fs)) * 0.5 - s * 0.05)
+	var at := c + Vector2(-size.x * 0.5 - s * 0.012, (font.get_ascent(fs) - font.get_descent(fs)) * 0.5 - s * (0.1 if v == 13 else 0.05))
 	var drop := Color(0.2, 0.12, 0.05, 0.25 * alpha) if col == INK else Color(0.15, 0.08, 0.05, 0.4 * alpha)
 	ci.draw_string(font, at + Vector2(0, s * 0.025), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, drop)
 	ci.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(col, alpha))

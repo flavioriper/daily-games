@@ -378,3 +378,36 @@ stand.
 - `tests/_shot_howto_screen.gd -- thirteen` prints `Parameter "mesh" is
   null` every frame; it did before this pass too (the same with the change
   stashed) and the pages draw. Not looked into.
+
+**Round, and moved more quietly** (2026-10-04, later the same day, user
+request: "smoother and elegant animations, and circle items instead of
+squares"; this replaces the rounded square chosen that morning). The bake,
+the atlas, the three layers and every string stand.
+- **A piece is a disc**: the face a circle, the lip the same circle swept
+  `LIP` down (the shader's `pill()`), `Art.PIECE` (0.88) of a cell across.
+  `Art.tile_outline` kept its name and returns a circle, so the seats, the
+  pads, the sun ring, the hint, the armed tool, the swap's pick, the tool
+  icons, the tutorial pages and the tab's banner turned round with it. The
+  thirteen's clover sits under its number, which is lettered higher and a
+  size smaller.
+- **Nothing snaps.** A picked piece rides a spring (`_lift_to`, `LIFT_K`,
+  `LIFT_DAMP`: up a tenth past and home) and comes down on it; its pad grows
+  out from under it and the band reaches the newest piece over `SEG_T`. A
+  merged piece eases along the chain, shrinks and fades into the last
+  (`JOIN_T` 0.26; one still waiting its turn is drawn where it stood -- it
+  used to vanish for a frame or two), a long chain's pieces all arriving
+  within two `JOIN_STEP`s. The grown piece swells once (`BUMP_T`); a landing
+  gives once and comes back, the fall's stretch let go softly; a merge's
+  neighbours go out and back the once.
+- **A tool's move is a glide** (`_glide`): eased at both ends and bowed to
+  one hand, so two swapped pieces pass each other, straight down included
+  (`vis.glide`, set by Swap, Shuffle and Undo; a gap closing is still a
+  fall). Shuffle no longer jitters the tray first; a plucked piece's gap
+  closes after 0.06 s, not a merge's wait.
+- **A disc is never turned**: the lip and the shadow would turn with it. The
+  idle wiggle is a small swell. Only a piece knocked out tumbles.
+- **The tray shakes for the thirteen only**, half as far and slower. The
+  end's tumble goes from the foot up, a row after a row.
+- Second reading on `opengl3_angle`: 105 at rest, 145 on the 13's reveal,
+  129 after the bot's play, 256 on the tab; 153-199 on the tutorial card.
+  Shots and frame strips on this Mac only, nothing run on a phone.
