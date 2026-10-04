@@ -4,7 +4,9 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peapod.gd -- <outdir> [reduce]
 ##
-## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 4 the whole cast
+## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 3b a wave
+## cleared (printed: its stars, the flowers up, whether the pod is crowned
+## for the best passed), 3c a gift caught and flying to the grass, 4 the whole cast
 ## in a wall (forced: every paint, every gift and pod, the firecracker, the
 ## golden, iron and rotten crates, the helper, a pod held, gifts falling), 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
@@ -24,6 +26,7 @@ var _before := ""
 var _had := false
 var _hand := 150.0
 var _x0 := 0.0
+var _reduce := false
 const PATH := "user://arcade.cfg"
 
 func _initialize() -> void:
@@ -35,8 +38,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_out = args[0]
-	if args.has("reduce"):
-		load("res://core/motion.gd").reduce = true
+	_reduce = args.has("reduce")
 	# A throwaway wallet, so a run never spends or earns this Mac's gold.
 	var wallet: Node = root.get_node("Wallet")
 	var wallet_tmp := OS.get_user_data_dir() + "/_shot_wallet.cfg"
@@ -123,6 +125,10 @@ func _process(delta: float) -> bool:
 		1:
 			if _t > 1.8:
 				_shot("1_tab")
+				# set right before the screen opens: the menu loads the settings
+				# file on its way up and would put it back
+				if _reduce:
+					load("res://core/motion.gd").reduce = true
 				_menu._open_arcade("peapod")
 				_s = _menu.get_node("Peapod")
 				_step = 2
@@ -134,6 +140,43 @@ func _process(delta: float) -> bool:
 			_bot(delta)
 			if _t > 12.0:
 				_shot("3_play")
+				# a wave about to be cleared, well off the line, and the best
+				# about to be passed by its bonus
+				var sim = _s.sim
+				sim.wave_kind = Sim.Wave.WALL
+				sim.gap_t = 0.0
+				sim.segs.clear()
+				sim.rows = [[_cell(Sim.Kind.CRATE, 1), null, _cell(Sim.Kind.CRATE, 1), null, null]]
+				sim.wall_y = 200.0
+				sim.wall_speed = 0.0
+				_s._wave_peak = 0.0
+				_s._best = sim.score + 3
+				_s._beat_best = false
+				_at = _t
+				_step = 30
+		30:
+			_bot(delta)
+			if not _s._clear.is_empty() and _s._clock - float(_s._clear.at) > 1.05:
+				_shot("3b_clear")
+				print("stars=%d blooms=%d crowned=%s" % [int(_s._clear.stars), _s._blooms.size(), _s._crown_at >= 0.0])
+				# a gift dropped just over the cart
+				var sim = _s.sim
+				sim.tokens = [{"kind": Sim.Kind.RATE, "x": sim.x, "y": Sim.CART_Y - 40.0, "vy": 0.0, "id": 77}]
+				_at = _t
+				_step = 31
+			elif _t > _at + 8.0:
+				print("the wave was never cleared")
+				_step = 4
+		31:
+			if _reduce and _s.sim.tokens.is_empty():
+				# nothing flies when motion is reduced: the gift is on the grass at once
+				_shot("3c_flight")
+				_step = 4
+			elif not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2:
+				_shot("3c_flight")
+				_step = 4
+			elif _t > _at + 3.0:
+				print("no gift flew")
 				_step = 4
 		4:
 			# the cast, forced: a wall of every paint and every kind

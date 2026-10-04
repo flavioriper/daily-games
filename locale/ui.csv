@@ -573,6 +573,7 @@ PP_ROT_PEA,-1 pea,-1 ervilha,-1 guisante
 PP_ROT_RATE,Slower!,Mais lento!,¡Más lento!
 PP_ROT_POWER,Lighter!,Mais fraco!,¡Más débil!
 PP_ROT_NONE,Yuck!,Eca!,¡Puaj!
+PP_STREAK,Streak x%d,Sequência x%d,Racha x%d
 PP_WORD_1,Nice!,Boa!,¡Bien!
 PP_WORD_2,Great!,Ótimo!,¡Genial!
 PP_WORD_3,Pea-fect!,Perfeito!,¡Perfecto!

@@ -296,6 +296,48 @@ chalk line ends the run. Its "furthest" is the wave.
   - Five more sounds (`clank` through `_quiet`, `pod`, `frost`, `shove`,
     `rot`), unheard by the user like the rest.
 
+- **The soft pass (2026-10-04, the spec's section 7)**, screen and art only:
+  Lucky Thirteen's pastel pieces and Posy's card and hedges, the animations
+  eased, the rewards made more of. The sim is untouched.
+  - **The look**: the parchment card (no wooden frame), a pale sky and soft
+    hills, a crate a rounded pastel tile with a lip and its number in ink
+    (one text draw a crate, not two), a gift crate a cream parcel showing
+    its token's medallion (`Art.medal`), the millipede round paper discs
+    behind a plum head, paper pills for the gun's line. `Art.number()` takes
+    the kind last, for the ink (`number_colour`).
+  - **The sky and the land are two meshes** (`_scene`, `_land`) with the sun
+    (`ui/faces/sun_face.gd`) between them, so it comes up from behind the
+    far hills; `_land` is the first thing `_draw_over` draws, unshaken. A
+    tutorial page has no sun node and gets a plain pale disc.
+  - **A MultiMesh holds one buffer**: the same mesh gathered twice in a
+    frame from one MultiMesh showed the second draw's copies both times (a
+    gift flying home took the medallion off its own pill). `_cast_add`
+    gathers into the frame's current draw (`_casts[_cast_turn]`) and
+    `_cast_draw` moves on, so it is called the same number of times every
+    frame whether or not anything was gathered.
+  - **A pea landing is a white blink over the piece** (`Art.blank`, in a
+    draw of its own after the pieces') and a swell of its number, never a
+    brighter paint. The swell and the score pops are `draw_set_transform`
+    over one size of letter, so no glyph is cut at a new size mid-run.
+  - **Gold thinned over the pale sky goes to mud**: the clear's stars leave
+    by shrinking, not by alpha.
+  - **The rewards**: the streak's pill (count and the time left, from 5),
+    one to three stars a cleared wave by how near the line was let
+    (`STAR_PEAKS`) and a flower up along the grass for each (`_blooms`, kept
+    for the run, shown on the end card), the pod crowned and the sun in a
+    party hat once the best is passed, a gift flying to its place on the
+    grass (`_flights`), the cart's hop, the big moments held a beat
+    (`_hold`, off under reduce motion). The stars tick (`Haptics.TICK`).
+  - 64 draw calls at rest, 73-84 in play, 116-120 with the whole cast, 77 on
+    a full wall and on a 24-plate millipede (126 at the head's end), 112-122
+    on the end card, ANGLE agreeing. `tests/_shot_peapod.gd` shoots the
+    clear (3b: prints stars, flowers, the crown) and a gift in flight (3c);
+    its `reduce` is set right before the screen opens, or the menu's
+    settings load puts it back.
+  - `tests/_probe_arcade_buzz.gd -- peapod` plays the run but fails at its
+    end-card step (`_s._end` is null after three seconds); it fails the same
+    on the commit before this pass.
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

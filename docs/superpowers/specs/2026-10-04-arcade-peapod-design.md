@@ -99,3 +99,54 @@ Frost, Shove) joined the four; a rotten gift and an iron crate came in; the
 millipede knocks back less and quickens as it shortens; a token drifts into
 the cart's reach. The lag was script, not draws. The detail and the numbers
 are in `docs/agents/arcade.md`.
+
+## 7. The soft pass (2026-10-04, the user: "redesign based on Posy's style and Lucky Thirteen's, polish the animations, more visual rewards even if silly, always elegant")
+
+Screen, art and the tutorial's rim only; the sim is untouched, so the bots'
+figures stand.
+
+**The look.** The wooden frame and the saturated sky with its blue peaks are
+gone. The garden sits on the flat boards' parchment card (Lucky Thirteen's),
+Posy's hedges round its foot. Inside it: a pale sky going to cream, three
+rows of soft hills, round trees and daisied bushes, pastel grass with a
+scalloped edge. A crate is a rounded pastel tile with a thin lip in its own
+paint deepened and its number in ink (paper on the dusk tier), no line round
+it; the eight paints are Lucky Thirteen's pastels. A gift crate is a cream
+parcel showing the medallion of the token it holds, so the crate and what
+drops out of it are one picture. The millipede is a row of round paper discs
+(Lucky Thirteen's piece, with legs) behind a plum head seen from above; its
+number rides a paper tag. The cart is pale wood, the pod pale green; a pea
+trails a wake. The gun's line is three paper pills on the grass, the running
+gifts paper seats with a ring of their own colour. Banners are stickers with
+their line on a paper pill; the stickers wear pastel letters
+(`Rewards.sticker_cols`).
+
+**The sun** (`ui/faces/sun_face.gd`, the game's own) comes up from behind
+the far hills on the right, clear of the sky the crates come down. It
+watches the cart, beams through a streak and a cleared wave, frets as the
+line is neared, and puts a party hat on when the best is passed.
+
+**Motion.** A crate gone leaves its shape swelling away; a pea landing is a
+white blink laid over the piece and a swell of its number (never a shade of
+its paint); a parcel sways and breathes; the plates waddle; the muzzle is a
+pale ring; the cart hops as a gift is caught and bounces twice on a clear;
+dust off the wheels of a cart rolled hard; a gift caught flies in an arc to
+its place on the grass, which swells as it lands; clouds drift. The big
+moments are held a beat (`_hold`: the head shot off, a clear, a firecracker,
+the end), the run slowed and eased back. None of it under reduce motion.
+
+**Rewards.**
+- A streak of five or more is counted on a paper pill at the top, the time
+  it has left running down under the count.
+- A wave cleared is stamped one to three stars by how near the line was let
+  (`STAR_PEAKS`: under 0.2 of `danger()` three, under 0.65 two), each a note
+  higher, and **a flower comes up along the grass for each**: the run's
+  garden, kept to its end and shown either side of the cart on the end card.
+- The pod lets off a volley of confetti on a clear.
+- The best passed mid-run **crowns the pod** for the rest of the run (and on
+  the end card).
+
+**Not done.** No new sounds: the stars reuse `catch` pitched up, a gift
+landing `hit`. Nothing was run on a phone. The stars change nothing in the
+score.
+

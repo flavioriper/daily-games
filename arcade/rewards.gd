@@ -49,6 +49,9 @@ var stickers: Array = []
 var _rain := 0.0
 var _rain_kinds: Array = ["confetti"]
 var _rain_cols: Array = CONFETTI
+## A rainbow sticker's letters, one after another: a screen in softer paint
+## hands its own (Peapod's pastels).
+var sticker_cols: Array = STICKER_COLS
 ## Where stickers must stay inside, in this layer's pixels; empty = anywhere.
 var bounds := Rect2()
 var _clock := 0.0
@@ -466,7 +469,7 @@ func _draw_stickers() -> void:
 			var hop := 0.0 if Motion.reduce else -sin(st.t * 8.0 - i * 0.55) * fs * 0.09 * exp(-st.t * 1.4)
 			var centre: Vector2 = base + (Vector2(x + adv * 0.5, hop) * swell).rotated(tilt)
 			var rock := 0.0 if Motion.reduce else sin(st.t * 7.0 + i) * 0.08 * exp(-st.t * 1.2)
-			var col: Color = STICKER_COLS[i % STICKER_COLS.size()] if st.rainbow else st.col
+			var col: Color = sticker_cols[i % sticker_cols.size()] if st.rainbow else st.col
 			letters.append([centre, tilt + rock, Vector2(sc, sc) * swell, Vector2(-adv * 0.5, fs * 0.36), ch, col])
 			x += adv
 		for pass_ in 4:
