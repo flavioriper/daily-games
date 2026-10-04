@@ -180,6 +180,28 @@ var _end_at := 0.0
 func puzzle_id() -> String:
 	return GAME
 
+## The tutorial's pages, each a slice of this garden played by a finger
+## (ui/hud/peapod_tutorial_diagram.gd): the slide, the numbers and the line,
+## the gifts, the pods, the special crates, the millipede, and the boosters
+## and the top bar.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/peapod_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.SLIDE, "TUT_PEAPOD_SLIDE", tr("TUT_PEAPOD_SLIDE_BODY")],
+		[Diagram.Lesson.CRATES, "TUT_PEAPOD_CRATES", tr("TUT_PEAPOD_CRATES_BODY")],
+		[Diagram.Lesson.GIFTS, "TUT_PEAPOD_GIFTS", tr("TUT_PEAPOD_GIFTS_BODY")],
+		[Diagram.Lesson.PODS, "TUT_PEAPOD_PODS", tr("TUT_PEAPOD_PODS_BODY") % int(Sim.POD_TIME)],
+		[Diagram.Lesson.SPECIAL, "TUT_PEAPOD_SPECIAL", tr("TUT_PEAPOD_SPECIAL_BODY")],
+		[Diagram.Lesson.MILLI, "TUT_PEAPOD_MILLI", tr("TUT_PEAPOD_MILLI_BODY")],
+		[Diagram.Lesson.HUD, "TUT_PEAPOD_HUD", tr("TUT_PEAPOD_HUD_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _ready() -> void:
 	add_to_group("versus_host")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -339,8 +361,7 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf(s.x / Sim.W, s.y / Sim.H)
-	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
+	_fit(s)
 	_scene = _build_scene()
 	_cast.clear()
 	_dashes = _build_dashes()
@@ -350,6 +371,12 @@ func _layout_field() -> void:
 	box.position = Vector2(0, s.y * 0.36)
 	box.size.x = s.x
 	_redraw_all()
+
+## The field's unit and origin in a room `s` (a tutorial page stands a slice
+## of the garden in its own: ui/hud/peapod_tutorial_diagram.gd).
+func _fit(s: Vector2) -> void:
+	_u = minf(s.x / Sim.W, s.y / Sim.H)
+	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
 
 func px(p: Vector2) -> Vector2:
 	return _origin + p * _u

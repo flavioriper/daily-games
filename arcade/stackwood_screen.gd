@@ -204,6 +204,8 @@ func _ready() -> void:
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
+	# before a run too (the boost card is up): no Undo, no bulb
+	top_bar.refresh(self)
 	_ask(false)
 
 func _notification(what: int) -> void:
@@ -243,16 +245,7 @@ func _build() -> void:
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
 	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
-	box.shadow_offset = Vector2(0, 6)
-	frame.add_theme_stylebox_override("panel", box)
+	frame.add_theme_stylebox_override("panel", _frame_box())
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
@@ -300,6 +293,19 @@ func _build() -> void:
 	_air_fx = Fx2D.new()
 	_air.add_child(_air_fx)
 	_apply_insets()
+
+## The wooden frame round the shelf.
+func _frame_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("6e4a2f")
+	box.set_corner_radius_all(36)
+	box.border_color = Color("9c6b45")
+	box.set_border_width_all(6)
+	box.set_content_margin_all(FRAME)
+	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
+	box.shadow_size = 10
+	box.shadow_offset = Vector2(0, 6)
+	return box
 
 func _plate(key: String, ratio: float) -> Array:
 	var plate := PanelContainer.new()
@@ -424,6 +430,14 @@ func _apply_insets() -> void:
 	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
+## The shelf's size in cells. A tutorial page stands a smaller shelf
+## (ui/hud/stackwood_tutorial_diagram.gd).
+func _cols() -> int:
+	return Sim.COLS
+
+func _rows() -> int:
+	return Sim.ROWS
+
 ## The shelf is COLS cells wide and ROWS + 1 tall (the top one the lane a
 ## block falls in from), with a plank under it; scaled to the room and
 ## centred.
@@ -431,8 +445,8 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = floorf(minf((s.x - 24.0) / Sim.COLS, (s.y - 40.0) / (Sim.ROWS + 1.35)))
-	var board := Vector2(Sim.COLS, Sim.ROWS + 1) * _u
+	_u = floorf(minf((s.x - 24.0) / _cols(), (s.y - 40.0) / (_rows() + 1.35)))
+	var board := Vector2(_cols(), _rows() + 1) * _u
 	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y - 0.35 * _u) * 0.5))
 	_wall = _build_wall()
 	var box: Control = _banner.get_meta("box")
@@ -443,10 +457,10 @@ func _layout_field() -> void:
 ## The centre of a cell, in the field's pixels: column `c`, row `r` up from
 ## the floor (fractions allowed).
 func px(c: float, r: float) -> Vector2:
-	return _origin + Vector2((c + 0.5) * _u, (Sim.ROWS + 0.5 - r) * _u)
+	return _origin + Vector2((c + 0.5) * _u, (_rows() + 0.5 - r) * _u)
 
 func _column_at(x: float) -> int:
-	return clampi(int(floorf((x - _origin.x) / _u)), 0, Sim.COLS - 1)
+	return clampi(int(floorf((x - _origin.x) / _u)), 0, _cols() - 1)
 
 # --- the game ---
 
@@ -459,6 +473,20 @@ func _new_game() -> void:
 	_boosted = not _boosts.is_empty()
 	_chance_used = false
 	_run_gold = 0
+	_clear_show()
+	_best = Record.best(GAME)
+	_shown_score = -1
+	_started_at = Time.get_ticks_msec()
+	if _pause_card != null:
+		_pause_card.queue_free()
+		_pause_card = null
+	_refresh_hud()
+	top_bar.refresh(self)
+	_fx.cue("start")
+	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+
+## Everything the screen was showing of the last run, gone.
+func _clear_show() -> void:
 	_acc = 0.0
 	_paused = false
 	_vis.clear()
@@ -489,16 +517,6 @@ func _new_game() -> void:
 	_danger = false
 	_dragging = false
 	_lane = -1
-	_best = Record.best(GAME)
-	_shown_score = -1
-	_started_at = Time.get_ticks_msec()
-	if _pause_card != null:
-		_pause_card.queue_free()
-		_pause_card = null
-	_refresh_hud()
-	top_bar.refresh(self)
-	_fx.cue("start")
-	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
 
 func capabilities() -> Array:
 	return []
@@ -548,7 +566,7 @@ func _knock_now() -> void:
 ## so the shelf's first round will merge it.
 func _will_merge(c: int, row: int, v: int) -> bool:
 	for n: Vector2i in [Vector2i(c - 1, row), Vector2i(c + 1, row), Vector2i(c, row - 1)]:
-		if n.x < 0 or n.x >= Sim.COLS or n.y < 0 or n.y >= sim.height(n.x):
+		if n.x < 0 or n.x >= _cols() or n.y < 0 or n.y >= sim.height(n.x):
 			continue
 		if int(sim.cols[n.x][n.y].v) == v:
 			return true
@@ -557,7 +575,7 @@ func _will_merge(c: int, row: int, v: int) -> bool:
 func _animate(delta: float) -> void:
 	# every block on the shelf settles toward its cell
 	var seen := {}
-	for c in Sim.COLS:
+	for c in _cols():
 		var col: Array = sim.cols[c]
 		for i in col.size():
 			var bl: Dictionary = col[i]
@@ -616,8 +634,8 @@ func _animate(delta: float) -> void:
 	else:
 		_shake_off = Vector2.ZERO
 	var danger := false
-	for c in Sim.COLS:
-		if sim.height(c) >= Sim.ROWS - 1:
+	for c in _cols():
+		if sim.height(c) >= _rows() - 1:
 			danger = true
 	if danger and not _danger and not sim.is_over():
 		_fx.cue("warn")
@@ -819,7 +837,7 @@ func _play_events() -> void:
 				# fell by itself says nothing.
 				_answered = false
 				_by_hand = bool(ev.get("dropped", false))
-				if _by_hand and int(ev.row) < Sim.ROWS and not _will_merge(int(ev.col), int(ev.row), int(ev.v)):
+				if _by_hand and int(ev.row) < _rows() and not _will_merge(int(ev.col), int(ev.row), int(ev.v)):
 					_feel(Haptics.TAP)
 				if _was_dropping:
 					_spray(_bits, px(ev.col, ev.row - 0.45), Art.WOOD_HI, 5, 260.0, "splinter", _u / 150.0)
@@ -1237,12 +1255,12 @@ func _build_wall() -> ArrayMesh:
 		_quad(b, [Vector2(x0, 0), Vector2(x0 + s.x * 0.12, 0), Vector2(x0 + s.x * 0.12 + s.y * 0.35, s.y), Vector2(x0 + s.y * 0.35, s.y)],
 			[Color(1, 1, 0.9, 0.16), Color(1, 1, 0.9, 0.16), Color(1, 1, 0.9, 0.0), Color(1, 1, 0.9, 0.0)])
 	var o := _origin
-	var board := Vector2(Sim.COLS, Sim.ROWS + 1) * _u
+	var board := Vector2(_cols(), _rows() + 1) * _u
 	var foot := o.y + board.y
 	# the cabinet's shadow on the glass, then its back, in boards
 	b.fan(Face.Builder.round_rect(o + Vector2(-8, 4), board + Vector2(28, 10), 22.0), Color(0.25, 0.15, 0.05, 0.12))
 	b.fan(Face.Builder.round_rect(o - Vector2(4, 4), board + Vector2(8, 4), 18.0), WALL)
-	for c in Sim.COLS:
+	for c in _cols():
 		var x := o.x + c * _u
 		if c % 2 == 1:
 			b.fan(PackedVector2Array([Vector2(x, o.y + _u), Vector2(x + _u, o.y + _u), Vector2(x + _u, foot), Vector2(x, foot)]), Color(WALL_DEEP, 0.35))
@@ -1384,7 +1402,7 @@ func _draw_field() -> void:
 		var c := px(vis.pos.x, vis.pos.y)
 		# squashed about its foot, so it stays standing on what is under it
 		c.y += (1.0 - sc.y) * s * 0.5
-		var hot: bool = _danger and sim.height(int(roundf(vis.pos.x))) >= Sim.ROWS - 1 and vis.pos.y >= Sim.ROWS - 2
+		var hot: bool = _danger and sim.height(int(roundf(vis.pos.x))) >= _rows() - 1 and vis.pos.y >= _rows() - 2
 		var tint := Color.WHITE
 		if hot and not Motion.reduce:
 			var beat := 0.5 + 0.5 * sin(_clock * 9.0)
@@ -1511,7 +1529,7 @@ func _draw_streaks(b: Face.Builder, s: float) -> void:
 
 ## Bunting strung across the top of the shelf, swaying a little.
 func _draw_bunting(b: Face.Builder) -> void:
-	var board := Vector2(Sim.COLS, Sim.ROWS + 1) * _u
+	var board := Vector2(_cols(), _rows() + 1) * _u
 	var a := _origin + Vector2(-8.0, 4.0)
 	var z := _origin + Vector2(board.x + 8.0, 4.0)
 	var sag := _u * 0.22
@@ -1653,7 +1671,7 @@ func _draw_lane(b: Face.Builder) -> void:
 		return
 	var c: int = sim.piece.col
 	var land: int = sim.landing(c)
-	var top := px(c, Sim.ROWS) - Vector2(_u * 0.5, _u * 0.5)
+	var top := px(c, _rows()) - Vector2(_u * 0.5, _u * 0.5)
 	var bottom := px(c, land) + Vector2(_u * 0.5, -_u * 0.5)
 	if bottom.y <= top.y:
 		return
@@ -1665,10 +1683,10 @@ func _draw_danger(b: Face.Builder) -> void:
 	if not _danger:
 		return
 	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 7.0)
-	for c in Sim.COLS:
-		if sim.height(c) < Sim.ROWS - 1:
+	for c in _cols():
+		if sim.height(c) < _rows() - 1:
 			continue
-		var top := px(c, Sim.ROWS) + Vector2(-_u * 0.5, _u * 0.5)
+		var top := px(c, _rows()) + Vector2(-_u * 0.5, _u * 0.5)
 		var edge := Color(DANGER, 0.3 + 0.25 * beat)
 		var none := Color(DANGER, 0.0)
 		_quad(b, [top, top + Vector2(_u, 0), top + Vector2(_u, _u * 1.2), top + Vector2(0, _u * 1.2)], [edge, edge, none, none])
@@ -1763,6 +1781,12 @@ func _topple() -> void:
 		"seconds": secs, "drops": sim.drops, "merges": sim.merges, "chain": sim.best_chain,
 		"tools": sim.tools_used, "best": better})
 	Ads.note_finished()
+	_tumble()
+	top_bar.refresh(self)
+	get_tree().create_timer(1.5).timeout.connect(_show_end.bind(better))
+
+## Every block flies off the shelf.
+func _tumble() -> void:
 	_fx.cue("topple")
 	_show_banner(tr("SW_TOPPLED"), "", 1.0)
 	_shake = 1.0
@@ -1774,10 +1798,8 @@ func _topple() -> void:
 	_streak = 0
 	# the blocks are gone from the drawing, not from the sim; keep them from
 	# coming back on the next frame's settle
-	for c in Sim.COLS:
+	for c in _cols():
 		(sim.cols[c] as Array).clear()
-	top_bar.refresh(self)
-	get_tree().create_timer(1.5).timeout.connect(_show_end.bind(better))
 
 func _show_end(better: bool) -> void:
 	if sim == null or not sim.is_over() or _end != null:
@@ -1942,6 +1964,31 @@ func _celebrate(better: bool) -> void:
 		t.timeout.connect(func() -> void:
 			if is_instance_valid(fx):
 				fx.puff(at, CONFETTI[k % CONFETTI.size()], 12))
+
+# --- the tutorial ---
+
+## The card's pages (ui/hud/how_to_play.gd), each a small shelf of the real
+## blocks played by this screen itself with a finger steering it
+## (ui/hud/stackwood_tutorial_diagram.gd): the slide and the drop, the merge,
+## the chain, the line, the acorns and the rainbow block, the zap and the
+## bomb, and the top bar with the boosters.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/stackwood_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.STEER, "TUT_STACKWOOD_STEER", tr("TUT_STACKWOOD_STEER_BODY")],
+		[Diagram.Lesson.MERGE, "TUT_STACKWOOD_MERGE", tr("TUT_STACKWOOD_MERGE_BODY")],
+		[Diagram.Lesson.CHAIN, "TUT_STACKWOOD_CHAIN", tr("TUT_STACKWOOD_CHAIN_BODY")],
+		[Diagram.Lesson.LINE, "TUT_STACKWOOD_LINE", tr("TUT_STACKWOOD_LINE_BODY")],
+		[Diagram.Lesson.RAINBOW, "TUT_STACKWOOD_RAINBOW", tr("TUT_STACKWOOD_RAINBOW_BODY") % int(Sim.COSTS[Sim.Tool.WILD])],
+		[Diagram.Lesson.BLAST, "TUT_STACKWOOD_BLAST", tr("TUT_STACKWOOD_BLAST_BODY") % [int(Sim.COSTS[Sim.Tool.ZAP]), int(Sim.COSTS[Sim.Tool.BOMB])]],
+		[Diagram.Lesson.HUD, "TUT_STACKWOOD_HUD", tr("TUT_STACKWOOD_HUD_BODY")],
+	]
+	var pages := []
+	for st: Array in steps:
+		var d: Control = Diagram.new()
+		d.lesson = st[0]
+		pages.append({"diagram": d, "title": st[1], "body": st[2]})
+	return pages
 
 # --- chrome ---
 

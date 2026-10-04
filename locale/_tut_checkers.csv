@@ -1,2 +1,34 @@
 keys,en,pt,es
-TUT_CHECKERS_SEED,x,x,x
+TUT_CHECKERS_MOVE,One step forward,Um passo à frente,Un paso adelante
+TUT_CHECKERS_MOVE_BODY,"Play stays on the green squares. A man steps one square diagonally forward. Tap one of yours, then where it lands, or drag it there. Yours are the pieces at the bottom.","O jogo fica nas casas verdes. Uma pedra anda uma casa na diagonal, para a frente. Toque numa das suas e depois onde ela para, ou arraste. As suas são as de baixo.","Se juega en las casillas verdes. Un peón avanza una casilla en diagonal. Toca uno de los tuyos y luego dónde cae, o arrástralo. Los tuyos son los de abajo."
+TUT_CHECKERS_MOVE_CAP_TAP,Tap a piece: the dots are where it can go,Toque numa peça: os pontos são aonde ela vai,Toca una pieza: los puntos son adónde va
+TUT_CHECKERS_MOVE_CAP_REPLY,The bot answers,O bot responde,El bot responde
+TUT_CHECKERS_MOVE_CAP_DRAG,Or drag it there,Ou arraste até lá,O arrástrala hasta allí
+TUT_CHECKERS_JUMP,Jump to take,Pule para capturar,Salta para capturar
+TUT_CHECKERS_JUMP_BODY,"A piece takes by jumping a neighbour and landing on the empty square behind it. Men take backward too, and go on jumping while there is more to take.","Uma peça captura pulando a vizinha e caindo na casa vazia logo atrás. As pedras também capturam para trás, e seguem pulando enquanto houver o que capturar.","Una pieza captura saltando sobre la vecina y cayendo en la casilla vacía de detrás. Los peones también capturan hacia atrás, y siguen saltando mientras haya qué capturar."
+TUT_CHECKERS_JUMP_CAP_RING,A gold ring: this piece can take,Anel dourado: esta peça pode capturar,Anillo dorado: esta pieza puede capturar
+TUT_CHECKERS_JUMP_CAP_ROUTE,Tap it: its route and what it takes,Toque nela: o caminho e o que captura,Tócala: su ruta y lo que captura
+TUT_CHECKERS_JUMP_CAP_DONE,"Forward, then backward: two taken","Para a frente, depois para trás: duas","Adelante, luego atrás: dos capturadas"
+TUT_CHECKERS_MUST,Taking is a must,Capturar é obrigatório,Capturar es obligatorio
+TUT_CHECKERS_MUST_BODY,"If you can take, you have to: any other piece just shivers. And only the move that takes the most pieces is allowed. The pieces that may take wear a gold ring.","Se dá para capturar, é obrigatório: as outras peças só tremem. E só vale o lance que captura mais peças. As peças que podem capturar ganham um anel dourado.","Si puedes capturar, es obligatorio: las demás piezas solo tiemblan. Y solo vale la jugada que captura más piezas. Las que pueden capturar llevan un anillo dorado."
+TUT_CHECKERS_MUST_CAP_RING,Only the ringed piece may move,Só a peça com anel pode jogar,Solo la pieza con anillo puede jugar
+TUT_CHECKERS_MUST_CAP_NO,Not this one: a capture comes first,Esta não: a captura vem primeiro,Esta no: la captura va primero
+TUT_CHECKERS_MUST_CAP_ONE,Nor this one: it would take only one,Nem esta: ela capturaria só uma,Tampoco esta: capturaría solo una
+TUT_CHECKERS_MUST_CAP_MOST,This one takes two: the most,Esta captura duas: o máximo,Esta captura dos: el máximo
+TUT_CHECKERS_KING,A crown at the far row,Coroa na última fileira,Corona en la última fila
+TUT_CHECKERS_KING_BODY,"A man that ends its move on the far row is crowned a king. A king flies any distance along a diagonal, forward or back, and takes from afar, landing anywhere empty behind the piece.","A pedra que termina o lance na última fileira vira dama. A dama anda quantas casas quiser na diagonal, para a frente ou para trás, e captura de longe, parando em qualquer casa vazia atrás da peça.","El peón que termina su jugada en la última fila se corona dama. La dama recorre las casillas que quiera en diagonal, adelante o atrás, y captura de lejos, parando en cualquier casilla vacía tras la pieza."
+TUT_CHECKERS_KING_CAP_ROW,Reach the far row...,Chegue à última fileira...,Llega a la última fila...
+TUT_CHECKERS_KING_CAP_CROWN,...and the man is crowned a king,...e a pedra vira dama,...y el peón se corona dama
+TUT_CHECKERS_KING_CAP_FLY,A king takes from far away,A dama captura de longe,La dama captura de lejos
+TUT_CHECKERS_END,How it ends,Como termina,Cómo termina
+TUT_CHECKERS_END_BODY,"Take every piece, or leave the other side with no move, and you win. It is a draw after twenty moves each of kings alone with nothing taken, or when a position comes up three times.","Capture todas as peças, ou deixe o outro lado sem lance, e você vence. Dá empate após vinte lances de cada lado só de damas e sem captura, ou quando a mesma posição aparece três vezes.","Captura todas las piezas, o deja al otro lado sin jugada, y ganas. Hay empate tras veinte jugadas de cada lado solo de damas y sin captura, o cuando la misma posición aparece tres veces."
+TUT_CHECKERS_END_CAP_LAST,Take the last piece...,Capture a última peça...,Captura la última pieza...
+TUT_CHECKERS_END_CAP_WON,None left: you win,Não sobrou nenhuma: você vence,No queda ninguna: ganas
+TUT_CHECKERS_END_CAP_BLOCK,...or box it in,...ou deixe-a sem saída,...o déjala sin salida
+TUT_CHECKERS_END_CAP_STUCK,No move left: you win,Sem lance: você vence,Sin jugada: ganas
+TUT_CHECKERS_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
+TUT_CHECKERS_BAR_BODY_ONE,"Undo takes back your move and the bot's answer. Reset starts a new game. The bulb shows a good move, once a game. Sound and this guide are under the gear.","Desfazer volta o seu lance e a resposta do bot. Recomeçar inicia uma partida nova. A lâmpada mostra um bom lance, uma vez por partida. O som e este guia ficam na engrenagem.","Deshacer retira tu jugada y la respuesta del bot. Reiniciar empieza una partida nueva. La bombilla muestra una buena jugada, una vez por partida. El sonido y esta guía están en el engranaje."
+TUT_CHECKERS_BAR_BODY_N,"Undo takes back your move and the bot's answer. Reset starts a new game. The bulb shows a good move, %d times a game. Sound and this guide are under the gear.","Desfazer volta o seu lance e a resposta do bot. Recomeçar inicia uma partida nova. A lâmpada mostra um bom lance, %d vezes por partida. O som e este guia ficam na engrenagem.","Deshacer retira tu jugada y la respuesta del bot. Reiniciar empieza una partida nueva. La bombilla muestra una buena jugada, %d veces por partida. El sonido y esta guía están en el engranaje."
+TUT_CHECKERS_BAR_CAP_HINT,The bulb shows a good move,A lâmpada mostra um bom lance,La bombilla muestra una buena jugada
+TUT_CHECKERS_BAR_CAP_UNDO,Undo: your move and its answer come back,Desfazer: seu lance e a resposta voltam,Deshacer: tu jugada y la respuesta vuelven
+TUT_CHECKERS_BAR_CAP_RESET,Reset: a new game,Recomeçar: partida nova,Reiniciar: partida nueva

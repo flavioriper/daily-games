@@ -400,6 +400,30 @@ func _move_number() -> int:
 func hints_left() -> int:
 	return _hints if _state == State.YOURS else 0
 
+## The How to play card's pages (ui/hud/how_to_play.gd): one lesson a rule,
+## each played on the board itself by ui/hud/checkers_tutorial_diagram.gd.
+## The level only changes how well the computer plays, so the pages are the
+## same on all three.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/checkers_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.MOVE, "TUT_CHECKERS_MOVE", tr("TUT_CHECKERS_MOVE_BODY")],
+		[Diagram.Lesson.JUMP, "TUT_CHECKERS_JUMP", tr("TUT_CHECKERS_JUMP_BODY")],
+		[Diagram.Lesson.MUST, "TUT_CHECKERS_MUST", tr("TUT_CHECKERS_MUST_BODY")],
+		[Diagram.Lesson.KING, "TUT_CHECKERS_KING", tr("TUT_CHECKERS_KING_BODY")],
+		[Diagram.Lesson.END, "TUT_CHECKERS_END", tr("TUT_CHECKERS_END_BODY")],
+		[Diagram.Lesson.BAR, "TUT_CHECKERS_BAR",
+			tr("TUT_CHECKERS_BAR_BODY_ONE") if HINTS == 1 else tr("TUT_CHECKERS_BAR_BODY_N") % HINTS],
+	]
+	var pages := []
+	for step: Array in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.skin_id = board.skin.id()
+		d.hints = HINTS
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 # --- the game ---
 
 func _new_game() -> void:

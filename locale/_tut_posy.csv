@@ -1,2 +1,33 @@
 keys,en,pt,es
-TUT_POSY_SEED,x,x,x
+TUT_POSY_SWAP,Swap to line up three,Troque e alinhe três,Cambia y alinea tres
+TUT_POSY_SWAP_BODY,"Drag a tile onto its neighbour, or tap one and then the other. Three alike in a line are picked and more fall in. A swap that lines nothing up slides back, free.","Arraste uma peça até a vizinha, ou toque em uma e depois na outra. Três iguais em linha são colhidas e outras caem. Uma troca que não alinha nada volta, sem custo.","Arrastra una pieza hasta su vecina, o toca una y luego la otra. Tres iguales en línea se recogen y caen más. Un cambio que no alinea nada vuelve, sin costo."
+TUT_POSY_GOALS,The day's goals,As metas do dia,Las metas del día
+TUT_POSY_GOALS_BODY,"Each day asks for so many of two or three kinds within its moves: day one, %d of each of two in %d. Spare moves bloom for points, then the next day is dealt.","Cada dia pede tantas peças de dois ou três tipos dentro dos movimentos: no dia um, %d de cada um de dois em %d. Os que sobram florescem em pontos, e vem o dia seguinte.","Cada día pide tantas piezas de dos o tres tipos dentro de sus movimientos: el día uno, %d de cada uno de dos en %d. Los que sobran florecen en puntos y llega el día siguiente."
+TUT_POSY_SPECIALS,Specials,Especiais,Especiales
+TUT_POSY_SPECIALS_BODY,"Four in a line leave a breeze, an L or a T a seed bomb, five a rainbow posy, a square of four a bee. Tap one to set it off where it stands: that is a move too.","Quatro em linha deixam uma brisa, um L ou T uma bomba de sementes, cinco um buquê arco-íris, um quadrado de quatro uma abelha. Toque numa para dispará-la: também custa um movimento.","Cuatro en línea dejan una brisa, una L o una T una bomba de semillas, cinco un ramillete arcoíris, un cuadrado de cuatro una abeja. Toca una para activarla: también cuesta un movimiento."
+TUT_POSY_CAP_BREEZE,Four in a line leave a breeze,Quatro em linha deixam uma brisa,Cuatro en línea dejan una brisa
+TUT_POSY_CAP_BREEZE_GO,It sweeps a whole row or column,Ela varre uma fileira ou coluna inteira,Barre una fila o columna entera
+TUT_POSY_CAP_BOMB,An L or a T leaves a seed bomb,Um L ou T deixa uma bomba de sementes,Una L o una T deja una bomba de semillas
+TUT_POSY_CAP_BOMB_GO,It goes off twice,Ela explode duas vezes,Estalla dos veces
+TUT_POSY_CAP_RAINBOW,Five in a line leave a rainbow posy,Cinco em linha deixam um buquê arco-íris,Cinco en línea dejan un ramillete arcoíris
+TUT_POSY_CAP_RAINBOW_GO,Swap it with a tile to pick every one alike,Troque-o com uma peça: colhe todas as iguais,Cámbialo con una pieza: recoge todas las iguales
+TUT_POSY_CAP_BEE,A square of four leaves a bee,Um quadrado de quatro deixa uma abelha,Un cuadrado de cuatro deja una abeja
+TUT_POSY_CAP_BEE_GO,It flies to what the goals want most,Ela voa até o que as metas mais pedem,Vuela hacia lo que más piden las metas
+TUT_POSY_CAP_STILL,"A breeze, a seed bomb, a rainbow posy, a bee","Brisa, bomba de sementes, buquê arco-íris, abelha","Brisa, bomba de semillas, ramillete arcoíris, abeja"
+TUT_POSY_BLOCKERS,"Weeds, stones and moss","Ervas, pedras e musgo","Hierbas, piedras y musgo"
+TUT_POSY_BLOCKERS_BODY,"From day %d the bed grows weeds, stones or moss, a kind a day, and a goal asks for them gone. A blast clears them too. From day %d some beds change shape.","A partir do dia %d o canteiro traz ervas daninhas, pedras ou musgo, um tipo por dia, e uma meta pede que sumam. Explosões também os limpam. A partir do dia %d alguns canteiros mudam de formato.","Desde el día %d el cantero trae malas hierbas, piedras o musgo, un tipo por día, y una meta pide quitarlos. Las explosiones también los quitan. Desde el día %d algunos canteros cambian de forma."
+TUT_POSY_CAP_WEED,Weeds: pick the tiles over them,Ervas: colha as peças sobre elas,Hierbas: recoge las piezas de encima
+TUT_POSY_CAP_STONE,Stones: line up three beside one,Pedras: alinhe três ao lado de uma,Piedras: alinea tres junto a una
+TUT_POSY_CAP_MOSS,Moss left alone for a move creeps,Musgo deixado de lado se espalha,El musgo que dejas en paz se extiende
+TUT_POSY_CAP_MOSS_GO,Line up three beside it to clear it,Alinhe três ao lado para limpá-lo,Alinea tres al lado para quitarlo
+TUT_POSY_CAP_STILL_BLOCK,"Weeds under the tiles, stones, moss","Ervas sob as peças, pedras, musgo","Hierbas bajo las piezas, piedras, musgo"
+TUT_POSY_MOVES,Out of moves,Sem movimentos,Sin movimientos
+TUT_POSY_MOVES_BODY,A day that runs out of moves short of its goals ends the game. Once a game you are offered %d more moves to finish the day.,"Se os movimentos acabam antes das metas do dia, o jogo termina. Uma vez por jogo você recebe a oferta de mais %d movimentos para completar o dia.","Si los movimientos se acaban antes de las metas del día, la partida termina. Una vez por partida se te ofrecen %d movimientos más para completar el día."
+TUT_POSY_TOOLS,The tools,As ferramentas,Las herramientas
+TUT_POSY_TOOLS_BODY,"%d of each to start, free of a move: the trowel digs up a tile, the swap trades any two neighbours, the bomb picks three by three, the seed makes a rainbow posy. Each day done gifts one more.","Você começa com %d de cada, sem gastar movimento: a pá arranca uma peça, a troca inverte duas vizinhas, a bomba colhe três por três, a semente cria um buquê arco-íris. Cada dia completo dá mais uma.","Tienes %d de cada una y no gastan movimiento: la pala arranca una pieza, el cambio invierte dos vecinas, la bomba recoge tres por tres, la semilla crea un ramillete arcoíris. Cada día da una más."
+TUT_POSY_BUTTONS,Buttons and boosters,Botões e reforços,Botones y refuerzos
+TUT_POSY_BUTTONS_BODY,Posy has no Undo: a move made stays made. Boosters and the Second chance are bought with gold in the shop.,"Posy não tem Desfazer: jogada feita, está feita. Os reforços e a Segunda chance se compram com ouro na loja.","Posy no tiene Deshacer: jugada hecha, hecha está. Los refuerzos y la Segunda oportunidad se compran con oro en la tienda."
+TUT_POSY_HUD_RESET,A new game from day one,Um novo jogo desde o dia um,Una partida nueva desde el día uno
+TUT_POSY_HUD_HELP,This guide again,Este guia de novo,Esta guía otra vez
+TUT_POSY_HUD_BOOST,"Before a run: one more of each tool, or a breeze and a seed bomb to start","Antes da partida: mais uma de cada ferramenta, ou uma brisa e uma bomba para começar","Antes de la partida: una más de cada herramienta, o una brisa y una bomba para empezar"
+TUT_POSY_HUD_CHANCE,Second chance: %d more moves when the game ends,Segunda chance: mais %d movimentos quando o jogo acaba,Segunda oportunidad: %d movimientos más al terminar la partida

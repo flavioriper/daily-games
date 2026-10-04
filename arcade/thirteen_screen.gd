@@ -209,6 +209,9 @@ func _ready() -> void:
 	tutor = ScreenTutor.new(self, puzzle_id(), "Lucky Thirteen")
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
+	# the bar wears only this game's buttons from the start: with the boost
+	# card up there is no game yet to refresh it
+	top_bar.refresh(self)
 	top_bar.enter(0.0)
 	_ask(false)
 
@@ -469,14 +472,20 @@ func _apply_insets() -> void:
 	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
+## How many of the tray's rows are on show, counted up from the bottom: all
+## of them. A tutorial page (ui/hud/thirteen_tutorial_diagram.gd) shows the
+## last few, bigger; the rest wait over the top edge, as new pebbles do.
+func _rows() -> int:
+	return Sim.ROWS
+
 ## The tray is COLS by ROWS cells, scaled to the room and centred.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = floorf(minf((s.x - 36.0) / Sim.COLS, (s.y - 36.0) / Sim.ROWS))
-	var board := Vector2(Sim.COLS, Sim.ROWS) * _u
-	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5))
+	_u = floorf(minf((s.x - 36.0) / Sim.COLS, (s.y - 36.0) / _rows()))
+	var board := Vector2(Sim.COLS, _rows()) * _u
+	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5) - (Sim.ROWS - _rows()) * _u)
 	_bed = _build_bed()
 	var box: Control = _banner.get_meta("box")
 	box.position = Vector2(24, s.y * 0.3)
@@ -512,6 +521,26 @@ func _new_game() -> void:
 	_boosted = not _boosts.is_empty()
 	_chance_used = false
 	_run_gold = 0
+	_wipe()
+	_best = Record.best(GAME)
+	_started_at = Time.get_ticks_msec()
+	# the opening tray rolls in, a column at a time
+	for c in Sim.COLS:
+		for r in Sim.ROWS:
+			var cell: Dictionary = sim.grid[c][r]
+			var vis := _new_vis(Vector2(c, r - Sim.ROWS - 0.5), int(cell.v))
+			vis.hold = 0.0 if Motion.reduce else 0.05 * c + 0.03 * (Sim.ROWS - r)
+			_vis[cell.id] = vis
+	_refresh_hud()
+	top_bar.refresh(self)
+	_fx.cue("start")
+	_play_events()
+	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+
+## Everything the tray before left on the screen, gone: its pebbles, what was
+## in the air, a tool armed, the stuck card. (A tutorial page lays its own
+## tray after this.)
+func _wipe() -> void:
 	_vis.clear()
 	_joins.clear()
 	_debris.clear()
@@ -544,24 +573,31 @@ func _new_game() -> void:
 	_end_score = null
 	for tool: int in _tool_buttons:
 		_style_chip(_tool_buttons[tool], false)
-	_best = Record.best(GAME)
 	_shown_score = -1
-	_started_at = Time.get_ticks_msec()
-	# the opening tray rolls in, a column at a time
-	for c in Sim.COLS:
-		for r in Sim.ROWS:
-			var cell: Dictionary = sim.grid[c][r]
-			var vis := _new_vis(Vector2(c, r - Sim.ROWS - 0.5), int(cell.v))
-			vis.hold = 0.0 if Motion.reduce else 0.05 * c + 0.03 * (Sim.ROWS - r)
-			_vis[cell.id] = vis
-	_refresh_hud()
-	top_bar.refresh(self)
-	_fx.cue("start")
-	_play_events()
-	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
 
 func capabilities() -> Array:
 	return []
+
+## The tutorial (ui/hud/how_to_play.gd through ui/hud/screen_tutor.gd): a
+## lesson a rule, each played on a small tray by this screen itself
+## (ui/hud/thirteen_tutorial_diagram.gd), and a last page for Restart, the
+## boosters and the Second chance.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/thirteen_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.CHAIN, "TUT_THIRTEEN_CHAIN", tr("TUT_THIRTEEN_CHAIN_BODY")],
+		[Diagram.Lesson.LAST, "TUT_THIRTEEN_LAST", tr("TUT_THIRTEEN_LAST_BODY")],
+		[Diagram.Lesson.GOAL, "TUT_THIRTEEN_GOAL", tr("TUT_THIRTEEN_GOAL_BODY") % Sim.GOAL],
+		[Diagram.Lesson.STUCK, "TUT_THIRTEEN_STUCK", tr("TUT_THIRTEEN_STUCK_BODY")],
+		[Diagram.Lesson.TOOLS, "TUT_THIRTEEN_TOOLS", tr("TUT_THIRTEEN_TOOLS_BODY")],
+		[Diagram.Lesson.HUD, "TUT_THIRTEEN_HUD", tr("TUT_THIRTEEN_HUD_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func is_done() -> bool:
 	return sim != null and sim.is_over()
@@ -1006,6 +1042,8 @@ func _on_tool(tool: int) -> void:
 	if tool in Sim.TARGETED:
 		_armed = tool
 		_swap_a = Vector2i(-1, -1)
+		# the stuck card stands over the pebbles the tool is to be used on
+		_stuck_box.visible = false
 		_style_chip(_tool_buttons[tool], true)
 		_fx.cue("arm")
 		var lines := {Sim.Tool.SWAP: "LT_SWAP_LINE", Sim.Tool.PLUCK: "LT_PLUCK_LINE", Sim.Tool.LIFT: "LT_LIFT_LINE"}
@@ -1017,6 +1055,10 @@ func _on_tool(tool: int) -> void:
 func _disarm() -> void:
 	if _armed >= 0:
 		_style_chip(_tool_buttons[_armed], false)
+		# back over a tray still stuck; a tool used takes it down again
+		# (`_play_events`)
+		if sim != null and sim.phase == Sim.Phase.STUCK and _stuck_said:
+			_stuck_box.visible = true
 	_armed = -1
 	_swap_a = Vector2i(-1, -1)
 
@@ -1393,7 +1435,7 @@ func _build_bed() -> ArrayMesh:
 			[Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.0), Color(1, 1, 0.92, 0.0)])
 	# a hollow under every pebble, the rake's lines curving round it
 	for c in Sim.COLS:
-		for r in Sim.ROWS:
+		for r in range(Sim.ROWS - _rows(), Sim.ROWS):
 			var at := px(c, r)
 			var rr := _u * 0.47
 			b.stroke(Face.Builder.ring(at, rr * 1.08, rr * 1.08), 2.0, Color(Art.SAND_DEEP, 0.55), true)
@@ -1479,9 +1521,12 @@ func _draw_field() -> void:
 		field.draw_mesh(Art.pebble(j.v, s), null, Transform2D.IDENTITY, Color(1, 1, 1, ja))
 		Art.number(field, font, Vector2.ZERO, j.v, s, ja)
 	field.draw_set_transform(Vector2.ZERO)
-	# the pebbles in the tray
+	# the pebbles in the tray (but for the ones at rest over a page's top edge)
+	var top := Sim.ROWS - _rows()
 	for id in _vis:
 		var vis: Dictionary = _vis[id]
+		if top > 0 and vis.pos.y <= top - 1.0:
+			continue
 		var cell := Vector2i(roundi(vis.pos.x), roundi(vis.pos.y))
 		var sc := _scale(vis)
 		var c := px(vis.pos.x, vis.pos.y) + _shake_off + _nudge(vis) * _u
@@ -1630,7 +1675,7 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 	if _armed >= 0 and not busy():
 		var pulse := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 5.0)
 		for c in Sim.COLS:
-			for r in Sim.ROWS:
+			for r in range(Sim.ROWS - _rows(), Sim.ROWS):
 				var cell := Vector2i(c, r)
 				if cell == _swap_a or sim.at(cell).is_empty():
 					continue
