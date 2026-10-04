@@ -57,11 +57,17 @@ static var _cache := {}
 static var _skin: ImageTexture
 static var _skin_busy := false
 
+## A stone's line: its own paint deepened and cooled (the shader's deepen()).
+static func line_colour(v: int) -> Color:
+	var c := paint(v)
+	return c.lerp(Color(c.r * c.r * 0.72, c.g * c.g * 0.66, c.b * c.b * 0.86), 0.92)
+
 ## The atlas pebble()'s quads are cut from; pass it as draw_mesh's texture.
 static func skin() -> Texture2D:
 	return _skin
 
-## Draw `items` ([Rect2, Material] each) into a picture `size` pixels, once,
+## Draw `items` ([Rect2, Material] each, or [Rect2, Control] for a node laid
+## over them) into a picture `size` pixels, once,
 ## off screen. Null where nothing renders (headless) or `host` left the tree.
 static func bake(host: Node, items: Array, size: Vector2i, mipmaps := false) -> ImageTexture:
 	if DisplayServer.get_name() == "headless" or not host.is_inside_tree():
@@ -72,10 +78,11 @@ static func bake(host: Node, items: Array, size: Vector2i, mipmaps := false) -> 
 	vp.disable_3d = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	for it: Array in items:
-		var rect := ColorRect.new()
+		var rect: Control = ColorRect.new() if it[1] is Material else it[1]
 		rect.position = it[0].position
 		rect.size = it[0].size
-		rect.material = it[1]
+		if it[1] is Material:
+			rect.material = it[1]
 		vp.add_child(rect)
 	host.add_child(vp)
 	await RenderingServer.frame_post_draw
@@ -100,7 +107,23 @@ static func ensure_skin(host: Node, done := Callable()) -> void:
 			m.set_shader_parameter("value", float(v))
 			m.set_shader_parameter("base", PAINT[v])
 			m.set_shader_parameter("px", 2.0 * SKIN_SPAN / SKIN_CELL)
-			items.append([Rect2(Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE) * SKIN_CELL, Vector2(SKIN_CELL, SKIN_CELL)), m])
+			var cell := Rect2(Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE) * SKIN_CELL, Vector2(SKIN_CELL, SKIN_CELL))
+			items.append([cell, m])
+			# the number, lettered into the picture: paper, lined in the
+			# stone's own deep colour, with the line's lip under it
+			var deep := line_colour(v)
+			for k in 2:
+				var word := Label.new()
+				word.text = str(v)
+				word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				word.add_theme_font_override("font", font())
+				word.add_theme_font_size_override("font_size", int(SKIN_CELL * (0.37 if v < 10 else 0.31)))
+				word.add_theme_color_override("font_color", deep if k == 0 else Color("fffaf0"))
+				word.add_theme_color_override("font_outline_color", deep)
+				word.add_theme_constant_override("outline_size", int(SKIN_CELL * 0.075))
+				var lift := SKIN_CELL * (-0.048 + (0.022 if k == 0 else 0.0))
+				items.append([Rect2(cell.position + Vector2(0, lift), cell.size), word])
 		var side := SKIN_CELL * SKIN_SIDE
 		_skin = await bake(host, items, Vector2i(side, side), true)
 		_skin_busy = false
@@ -225,9 +248,8 @@ static func halo(v: int, s: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var r := s * 0.5
 	var c := paint(v).lightened(0.35)
-	b.disc(Vector2.ZERO, r * 1.2, Color(c, 0.18))
-	b.disc(Vector2.ZERO, r * 1.08, Color(c, 0.3))
-	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.06, r * 1.06), maxf(2.0, s * 0.035), Color("fffaf0", 0.9), true)
+	b.disc(Vector2.ZERO, r * 1.2, Color("fffaf0"))
+	b.disc(Vector2.ZERO, r * 1.2 - maxf(3.0, s * 0.05), Color(c, 1.0).lerp(Color("fffaf0"), 0.25))
 	var m := b.mesh()
 	_cache[key] = m
 	return m
@@ -389,6 +411,8 @@ static func _mini(b: Face.Builder, c: Vector2, r: float, v: int) -> void:
 
 ## The number on a pebble, lettered centred on `c` with a soft drop.
 static func number(ci: CanvasItem, font: Font, c: Vector2, v: int, s: float, alpha := 1.0) -> void:
+	if _skin != null and v >= 1 and v < PAINT.size():
+		return
 	var text := str(v)
 	var fs := int(s * (0.46 if text.length() == 1 else 0.4))
 	var col := number_colour(v)

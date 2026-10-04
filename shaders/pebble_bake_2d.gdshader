@@ -1,22 +1,15 @@
 shader_type canvas_item;
 render_mode blend_disabled, unshaded;
 
-// Lucky Thirteen's pebble, as a lit stone rather than flat fills. It is never
-// on screen: arcade/thirteen_art.gd draws one rect per number into a
-// SubViewport once, keeps the picture as an atlas, and the board draws
-// textured quads from it. So the cost here is paid once, not per frame, and
-// the board's draw calls stay what they were.
+// Lucky Thirteen's stone, in the soft cel look (docs/art/shading-direction.md):
+// a chunky token with a thick side under its face, a line of its own colour
+// deepened, a bevelled rim, and a face in three eased bands of its paint --
+// no gloss, no grit. It is never on screen: arcade/thirteen_art.gd draws one
+// rect per number into a SubViewport once, letters the number over it, keeps
+// the picture as an atlas, and the board draws textured quads from it.
 //
-// The stone is a height field (a flattened dome inside the number's own
-// outline, with a little grit on it); the normal comes off that, and one
-// light from the upper left -- the same for every pebble and for the sand
-// (shaders/sand_bake_2d.gdshader) -- gives the lit crown, the cool shade, the
-// warm bounce off the sand, the wet highlight and the shadow on the ground.
-// The paint, speckles, bands, gold flecks and 13's clover are drawn into the
-// albedo and lit with the rest.
-//
-// The rect covers -SPAN..SPAN, the stone has radius 1. Blending is off: the
-// picture is written with straight alpha, so the atlas has no dark fringe.
+// The rect covers -SPAN..SPAN and the stone has radius 1. Blending is off:
+// the picture is written with straight alpha, so the atlas has no dark fringe.
 
 uniform float value = 1.0;
 uniform vec4 base : source_color = vec4(0.93, 0.5, 0.55, 1.0);
@@ -24,7 +17,11 @@ uniform float px = 0.008; // one pixel, in stone radii
 
 const float SPAN = 1.3;
 const vec3 SUN = vec3(-0.50, -0.62, 0.60);
-const vec3 GOLD = vec3(0.95, 0.71, 0.20);
+const vec2 FACE = vec2(0.0, -0.09);  // the face's centre; the side hangs below
+const float RADIUS = 0.90;
+const float SIDE = 0.17;
+const float LINE = 0.05;
+const float RIM = 0.80;              // where the bevel starts, in face radii
 
 float hash(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -39,126 +36,101 @@ float noise(vec2 p) {
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-float fbm(vec2 p) {
-	float a = 0.5;
-	float s = 0.0;
-	for (int i = 0; i < 4; i++) {
-		s += a * noise(p);
-		p = p * 2.03 + 17.0;
-		a *= 0.5;
-	}
-	return s;
+// The layer's own colour, deepened and cooled: the line and the shade.
+vec3 deepen(vec3 c, float k) {
+	return mix(c, c * c * vec3(0.72, 0.66, 0.86), k);
 }
 
-// 0 at the middle, 1 on the outline: a circle pressed a little out of round,
-// each number its own way (thirteen_art.gd's _outline).
-float rho(vec2 p) {
-	float a = atan(p.y, p.x);
-	float ph = value * 1.7;
-	float k = 1.0 + 0.035 * sin(a * 2.0 + ph) + 0.02 * sin(a * 3.0 + ph * 1.3);
-	return length(p / vec2(1.03, 0.97)) / k;
-}
-
-float height(vec2 p) {
-	float r = min(rho(p), 1.0);
-	float dome = pow(1.0 - pow(r, 2.8), 0.62);
-	return 0.46 * dome + 0.006 * fbm(p * 7.0 + value * 7.3) + 0.002 * noise(p * 26.0 + value);
+vec3 lighten(vec3 c, float k) {
+	return mix(c, vec3(1.0, 0.98, 0.93), k);
 }
 
 // A four-leaf clover's signed distance, `s` across.
 float clover(vec2 p, float s, float turn) {
 	float c = cos(turn);
 	float sn = sin(turn);
-	p = vec2(c * p.x + sn * p.y, -sn * p.x + c * p.y) / s;
-	p = abs(p);
+	p = abs(vec2(c * p.x + sn * p.y, -sn * p.x + c * p.y) / s);
 	if (p.y > p.x) {
 		p = p.yx;
 	}
-	// one leaf along +x: a heart of two discs
 	float d = min(length(p - vec2(0.54, 0.15)), length(p - vec2(0.54, -0.15))) - 0.23;
-	d = min(d, length(p - vec2(0.27, 0.0)) - 0.2);
-	return d * s;
+	return min(d, length(p - vec2(0.27, 0.0)) - 0.2) * s;
 }
 
 void fragment() {
 	vec2 p = (UV * 2.0 - 1.0) * SPAN;
-	float seed = value * 13.7;
-	float r = rho(p);
-	float e = 0.012;
-	float hx = height(p + vec2(e, 0.0)) - height(p - vec2(e, 0.0));
-	float hy = height(p + vec2(0.0, e)) - height(p - vec2(0.0, e));
-	vec3 n = normalize(vec3(-hx, -hy, 2.0 * e));
-	vec3 l = normalize(SUN);
+	float aa = 1.5 * px;
+	vec2 q = (p - FACE) / RADIUS;
+	float rq = length(q);
+	// the body: the face and the side under it, one capsule
+	float d_face = (rq - 1.0) * RADIUS;
+	float d_body = length(p - FACE - vec2(0.0, clamp(p.y - FACE.y, 0.0, SIDE))) - RADIUS;
 
 	bool gilt = value > 12.5 && value < 13.5;
-	vec3 deep = base.rgb * 0.62;
-	vec3 pale = mix(base.rgb, vec3(1.0), 0.42);
-	// the paint: brushed unevenly, a darker mottle in patches
-	vec3 alb = base.rgb * (0.93 + 0.14 * fbm(p * 2.3 + seed));
-	alb = mix(alb, deep, 0.28 * smoothstep(0.52, 0.72, fbm(p * 3.1 - seed)));
-	// speckles, a few to a stone
-	vec2 g = p * 6.5 + seed;
-	vec2 gi = floor(g);
-	float pick = hash(gi + 3.1);
-	vec2 gc = gi + 0.25 + 0.5 * vec2(hash(gi), hash(gi + 9.7));
-	float dot_r = mix(0.08, 0.2, hash(gi + 5.3));
-	float speck = smoothstep(dot_r, dot_r * 0.55, length(g - gc)) * step(pick, 0.34);
-	alb = mix(alb, pick < 0.17 ? deep : pale, 0.55 * speck);
-	// a stone dresses up as it grows: a painted band from 5, a second from 9,
-	// gold flecks from 10, a gold line past 13
-	float metal = gilt ? 1.0 : 0.0;
-	vec2 q = p + vec2(0.025, 0.05);
-	float rq = rho(q);
+	vec3 paint = base.rgb;
+	vec3 line = deepen(paint, 0.92);
+	vec3 side = deepen(paint, 0.5);
+	vec3 l = normalize(SUN);
+	vec2 dir = q / max(rq, 1e-4);
+	float toward = dot(dir, normalize(l.xy));
+
+	// the face: three eased bands over a shallow dome, and a slow wash
+	vec3 n = normalize(vec3(q * 0.9, sqrt(max(0.0, 1.0 - rq * rq * 0.8))));
+	float d = dot(n, l);
+	vec3 col = paint;
+	col = mix(col, lighten(paint, 0.2), smoothstep(0.80, 0.88, d));
+	col = mix(col, deepen(paint, 0.22), smoothstep(0.42, 0.33, d));
+	// the bevel round it: lit where it faces the light, deep where it turns away
+	vec3 bevel = mix(deepen(paint, 0.42), lighten(paint, 0.34), smoothstep(-0.55, 0.75, toward));
+	col = mix(col, bevel, smoothstep(RIM - 0.012, RIM + 0.012, rq));
+	col = mix(col, lighten(paint, 0.5), 0.55 * smoothstep(0.022, 0.008, abs(rq - RIM)) * smoothstep(0.0, 0.8, toward));
+	// a stone dresses up as it grows: an inlaid ring from 5, a second from 9,
+	// gold studs on the rim from 10, a gold rim past 13
+	vec3 gold = vec3(0.98, 0.76, 0.26);
 	if (value > 4.5 && value < 12.5) {
-		float w = 0.035 + 0.012 * noise(q * 5.0 + seed);
-		alb = mix(alb, pale, 0.62 * smoothstep(w, w * 0.45, abs(rq - 0.76)));
+		col = mix(col, lighten(paint, 0.42), 0.7 * smoothstep(0.024, 0.012, abs(rq - 0.68)));
 		if (value > 8.5) {
-			alb = mix(alb, deep, 0.5 * smoothstep(0.016, 0.006, abs(rq - 0.655)));
+			col = mix(col, deepen(paint, 0.4), 0.7 * smoothstep(0.014, 0.006, abs(rq - 0.61)));
 		}
 		if (value > 9.5) {
-			for (int i = 0; i < 5; i++) {
-				vec2 at = 0.76 * vec2(cos(6.2832 * (float(i) + 0.3) / 5.0 + value), sin(6.2832 * (float(i) + 0.3) / 5.0 + value));
-				float f = smoothstep(0.055, 0.035, length(q - at));
-				alb = mix(alb, GOLD, f);
-				metal = max(metal, f);
+			for (int i = 0; i < 6; i++) {
+				float a = 6.2832 * (float(i) + 0.5) / 6.0;
+				vec2 at = 0.9 * vec2(cos(a), sin(a));
+				float f = length(q - at);
+				col = mix(col, deepen(gold, 0.7), smoothstep(0.075, 0.065, f));
+				col = mix(col, gold, smoothstep(0.052, 0.042, f));
 			}
 		}
 	} else if (value > 13.5) {
-		float f = smoothstep(0.024, 0.01, abs(rq - 0.84));
-		alb = mix(alb, GOLD, f);
-		metal = max(metal, f);
+		col = mix(col, gold, smoothstep(0.03, 0.02, abs(rq - 0.895)));
 	}
 	if (gilt) {
-		alb = mix(vec3(0.93, 0.66, 0.16), vec3(1.0, 0.80, 0.30), fbm(p * 2.0 + 3.0));
-		alb = mix(alb, vec3(1.0, 0.93, 0.66), 0.7 * smoothstep(0.02, 0.008, abs(rq - 0.86)));
-		float cd = clover(p - vec2(0.5, 0.46), 0.30, 0.4);
-		vec3 leaf = mix(vec3(0.20, 0.46, 0.24), vec3(0.45, 0.75, 0.38), smoothstep(0.0, -0.05, cd));
-		float on = smoothstep(0.012, -0.004, cd);
-		alb = mix(alb, leaf, on);
-		metal *= 1.0 - on;
+		float cd = clover(q - vec2(0.50, 0.50), 0.27, 0.4);
+		col = mix(col, vec3(0.16, 0.36, 0.2), smoothstep(0.035, 0.025, cd));
+		col = mix(col, mix(vec3(0.33, 0.62, 0.32), vec3(0.50, 0.78, 0.40), smoothstep(-0.02, -0.07, cd)), smoothstep(0.004, -0.006, cd));
 	}
+	// the one soft glint, up where the light comes from
+	vec2 g = q - vec2(-0.40, -0.50);
+	g = vec2(0.77 * g.x - 0.64 * g.y, 0.64 * g.x + 0.77 * g.y);
+	col = mix(col, vec3(1.0), 0.5 * smoothstep(1.0, 0.7, length(g / vec2(0.2, 0.075))));
+	col *= 0.975 + 0.05 * noise(p * 1.6 + value * 3.7);
 
-	// the light: a wrapped diffuse from warm lit to cool shade, the sand's
-	// warm bounce on the lower right, sky on the upper rim, a wet highlight
-	float d = dot(n, l);
-	float lit = smoothstep(-0.45, 0.85, d);
-	vec3 shade = mix(vec3(0.50, 0.43, 0.60), vec3(0.50, 0.33, 0.20), metal);
-	vec3 col = alb * mix(shade, vec3(1.12, 1.07, 0.98), lit);
-	float bounce = smoothstep(0.25, 0.95, dot(n, normalize(vec3(0.45, 0.75, 0.15))));
-	col += alb * vec3(1.0, 0.78, 0.5) * 0.22 * bounce;
-	col *= 1.0 - 0.22 * pow(r, 7.0) * smoothstep(-0.3, 0.6, -d);
-	vec3 h = normalize(l + vec3(0.0, 0.0, 1.0));
-	float nh = max(dot(n, h), 0.0);
-	float gloss = pow(nh, 70.0) * 0.6 + pow(nh, 14.0) * 0.14;
-	col += mix(vec3(1.0), vec3(1.0, 0.9, 0.62), metal) * gloss * (1.0 + 0.9 * metal);
-	float rim = pow(1.0 - n.z, 2.5) * smoothstep(0.0, 0.9, dot(normalize(n.xy + 1e-5), normalize(l.xy)));
-	col += vec3(1.0, 0.98, 0.92) * 0.28 * rim;
+	// the side under the face: darker toward its foot
+	vec3 wall = mix(side, deepen(side, 0.3), smoothstep(-0.2, 0.9, p.y - FACE.y));
+	wall = mix(wall, lighten(side, 0.25), 0.5 * smoothstep(0.5, 1.0, -dir.x) * smoothstep(0.3, 0.0, abs(p.y - FACE.y - SIDE * 0.5)));
 
-	// the stone over its shadow on the sand, written with straight alpha
-	float body = smoothstep(1.0, 1.0 - 2.0 * px, r);
-	float cast = 0.40 * smoothstep(1.17, 0.78, rho(p - vec2(0.075, 0.14)));
-	cast = max(cast, 0.34 * smoothstep(1.07, 0.97, rho(p - vec2(0.02, 0.045))));
-	float a = body + (1.0 - body) * cast;
-	vec3 ground = vec3(0.27, 0.16, 0.08);
-	COLOR = vec4(a > 0.001 ? (col * body + ground * cast * (1.0 - body)) / a : col, a);
+	// ground shadow, line, side, face: straight alpha out
+	float a_shadow = 0.24 * smoothstep(0.16, -0.10, length(p - FACE - vec2(0.03, SIDE + 0.07)) - RADIUS);
+	float a_line = smoothstep(LINE + aa, LINE - aa, d_body);
+	float a_body = smoothstep(aa, -aa, d_body);
+	float a_face = smoothstep(aa, -aa, d_face);
+	vec3 rgb = vec3(0.36, 0.22, 0.20) * a_shadow;
+	float a = a_shadow;
+	rgb = mix(rgb, line, a_line);
+	a = mix(a, 1.0, a_line);
+	rgb = mix(rgb, wall, a_body);
+	// the line between the face and its side
+	rgb = mix(rgb, line, 0.55 * a_body * smoothstep(0.03 + aa, 0.03 - aa, abs(d_face)));
+	rgb = mix(rgb, col, a_face);
+	COLOR = vec4(a > 0.001 ? rgb / a : line, a);
 }

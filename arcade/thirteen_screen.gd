@@ -254,16 +254,18 @@ func _build() -> void:
 	frame.name = "Frame"
 	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
+	# a chunky wooden rim: the face, its own deepened line, a thick lip below
+	box.bg_color = Color("d9a56e")
+	box.set_corner_radius_all(44)
+	box.border_color = Color("a06a3e")
+	box.set_border_width_all(5)
+	box.border_width_bottom = 16
+	box.set_content_margin_all(FRAME + 2)
+	box.content_margin_bottom = FRAME + 13
+	box.shadow_color = Color(0.36, 0.22, 0.2, 0.18)
+	box.shadow_size = 8
 	box.shadow_offset = Vector2(0, 6)
 	frame.add_theme_stylebox_override("panel", box)
-	frame.material = CozyTheme.wood_grain(13.0)
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
@@ -1673,16 +1675,33 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		var pts := PackedVector2Array()
 		for p: Vector2i in sim.path:
 			pts.append(px(p.x, p.y) - Vector2(0, _u * LIFT))
-		# the sand under each lifted pebble keeps its shadow and a glow
-		for p: Vector2i in sim.path:
-			var ground := px(p.x, p.y)
-			b.disc(ground, s * 0.62, Color(col.lightened(0.45), 0.4))
-			b.ellipse(ground + Vector2(0, s * 0.12), s * 0.42, s * 0.3, Color(0.3, 0.2, 0.08, 0.2))
+		# the chain is one piece: a white-rimmed ribbon of the stones' paint
+		# with a lit upper edge and a deep lower one, widening into a white-
+		# rimmed pad under every stone it holds
+		var paper := Color("fffaf0")
+		var deep := Art.line_colour(v)
+		var fill := col.lerp(paper, 0.3)
+		var w := _u * 0.34
+		var rim := maxf(4.0, s * 0.05)
+		var pad := s * 0.6
+		var down := Vector2(0, rim * 1.6)
+		# the lip it stands on, the rim, the body
 		for p in pts:
-			b.stroke(Face.Builder.ring(p, s * 0.58, s * 0.58), maxf(2.0, s * 0.035), Color("fffaf0", 0.9), true)
+			b.disc(p + down, pad + rim, Color(deep, 0.5))
 		if pts.size() >= 2:
-			b.stroke(pts, _u * 0.26, Color(col.darkened(0.25), 0.92))
-			b.stroke(pts, _u * 0.14, Color(col.lightened(0.45), 0.97))
+			b.stroke(Transform2D(0.0, down) * pts, w + rim * 2.0, Color(deep, 0.5))
+		for p in pts:
+			b.disc(p, pad + rim, paper)
+		if pts.size() >= 2:
+			b.stroke(pts, w + rim * 2.0, paper)
+		for p in pts:
+			b.disc(p, pad, fill)
+		if pts.size() >= 2:
+			b.stroke(pts, w, col)
+			b.stroke(Transform2D(0.0, Vector2(0, w * 0.27)) * pts, w * 0.3, Color(deep, 0.45))
+			b.stroke(Transform2D(0.0, Vector2(0, -w * 0.25)) * pts, w * 0.2, Color(col.lerp(paper, 0.6), 0.9))
+			for p in pts:
+				b.disc(p, pad, fill)
 			# beads of light flowing down the ribbon toward its end
 			if not Motion.reduce:
 				var total := 0.0

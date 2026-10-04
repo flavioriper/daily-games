@@ -321,3 +321,16 @@ the old flat pebble and `_build_bed()` mesh are drawn. Both shaders write
 straight alpha with `blend_disabled`, or the atlas would carry a dark fringe.
 No image file was added: a generated picture cannot be re-posed, a height
 field can. The frame wears `CozyTheme.wood_grain(13.0)`.
+
+**The same day, restyled to the soft cel look** (the user found the lit clay
+"poorly drawn"; the reference was a clean casual board: chunky tokens, one
+line weight, flat tones). The bake stays, the shaders changed: a stone is a
+token with a thick side under its face, a line of its own paint deepened
+(`Art.line_colour`, the shader's `deepen()`), a bevelled rim and three eased
+bands, no gloss or grit; the sand is two flat tones with a pressed seat under
+each stone. The number is lettered into the atlas by Labels in the bake
+viewport (paper, lined in the stone's deep colour), so `Art.number()` returns
+at once when the skin exists and the board lost a draw per stone (peak 174).
+The chain is a white-rimmed ribbon of the paint with a lit upper edge, a deep
+lower one and a white-rimmed pad under every stone; the frame is a StyleBox
+with a thick lower lip, no grain.
