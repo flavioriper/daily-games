@@ -5,7 +5,7 @@ extends SceneTree
 ## and says what this harness tells it to. No network, no Backend.
 ##
 ##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top \
-##         --script res://tests/_shot_online.gd -- <outdir> [lang=pt|es] [rm] [tab] [checkers]
+##         --script res://tests/_shot_online.gd -- <outdir> [lang=pt|es] [rm] [tab] [checkers] [snooker]
 ##
 ## 01 the tab with chess on its Online chip, 02 looking, 03 nobody around,
 ## 04 no connection, 05 found, 06 the board mid-game with the clock quiet,
@@ -17,12 +17,22 @@ extends SceneTree
 ## board mid-game after a capture each way with the clock quiet on your move,
 ## c07 after your man has taken two and been crowned, the clock warning on the
 ## other player's move, c09 the end card for a player who left, c12 a loss by
-## resignation with the other player's face. `rm` is reduce motion. Prints the draw calls at each
+## resignation with the other player's face. Then snooker (`snooker` alone skips
+## the other two; `checkers` alone stops before it): s02 looking over the racked
+## table, s05 the other player aiming their break with their clock, s06 the cue
+## showing their shot, s07 your turn with the clock quiet after their table has
+## been taken, s08 the clock warning, s09 the end card for a player who left,
+## s12 a loss by resignation. The other player's shot is the computer's break,
+## rolled here on a copy and refereed there, as their end would.
+## `rm` is reduce motion. Prints the draw calls at each
 ## shot. user://versus.cfg is put back at the end.
 
 const Rules = preload("res://versus/chess_rules.gd")
 const Fake = preload("res://tests/_fake_match.gd")
 const Record = preload("res://versus/versus_record.gd")
+const Sim = preload("res://versus/snooker_sim.gd")
+const SnRules = preload("res://versus/snooker_rules.gd")
+const SnAI = preload("res://versus/snooker_ai.gd")
 
 const RIVAL := "shot-rival-uid-7"
 ## Checkers' line, as tests/_probe_online.gd plays it: this seat opens.
@@ -38,6 +48,9 @@ var _out := "/tmp"
 var _lang := ""
 var _tab_only := false
 var _ck_only := false
+var _sn_only := false
+## The table the other player's end sends once its shot has stopped.
+var _their_table := {}
 var _ply := 0
 var _rm := false
 var _quiet := false
@@ -61,6 +74,8 @@ func _initialize() -> void:
 			_tab_only = true
 		elif a == "checkers":
 			_ck_only = true
+		elif a == "snooker":
+			_sn_only = true
 		else:
 			_out = a
 	if _lang != "":
@@ -127,7 +142,7 @@ func _process(delta: float) -> bool:
 		0:
 			if _t > 0.8:
 				_menu._show_tab("versus")
-				_step = 30 if _ck_only else 1
+				_step = 40 if _sn_only else (30 if _ck_only else 1)
 				_wait = _t + 0.6
 		1:
 			if _beat(0.6, func() -> void: _menu.versus_tab._pick("chess", Record.ONLINE), "01_tab"):
@@ -262,6 +277,57 @@ func _process(delta: float) -> bool:
 				_fake().say_ended(1, "resign")
 		37:
 			if _beat(3.4, func() -> void: pass, "c12_end_resign_lost"):
+				_step = 99 if _ck_only else 40
+		40:
+			if is_instance_valid(_s):
+				_s.closed.emit()
+			_step = 41
+			_wait = _t + 0.4
+		41:
+			if _beat(0.7, func() -> void:
+					_menu._open_versus("snooker", Record.ONLINE)
+					_s = _menu.get_node("Snooker"), "s02_looking"):
+				# The other player opens: this end watches the break.
+				_fake().say_found(0, 1, RIVAL)
+				_step = 42
+		42:
+			if _s._state == _s.State.THINK:
+				if _beat(0.5, func() -> void:
+						_say_quiet()
+						_fake().say_clock(37), "s05_rival_aiming"):
+					_step = 43
+		43:
+			if _beat(1.0, _their_shot, "s06_rival_shot"):
+				_step = 44
+		44:
+			if _s._state == _s.State.SETTLE:
+				_fake().say_move(_their_table)
+				_step = 45
+		45:
+			if _s._state == _s.State.AIM:
+				if _beat(1.0, func() -> void: _fake().say_clock(42), "s07_your_turn"):
+					print("snooker: %d shots, score %s, their roll here ended %.6f mm from theirs (%d slid)" % [
+						_s._shots, _s.rules.scores, float(_s.drift.worst) * 1000.0, int(_s.drift.moved)])
+					_step = 46
+			elif _s._state == _s.State.THINK:
+				print("snooker: the break kept the other player at the table; no turn of yours to shoot")
+				_step = 47
+		46:
+			if _beat(0.5, func() -> void: _fake().say_clock(9), "s08_your_turn_warning"):
+				_step = 47
+		47:
+			if _beat(1.0, func() -> void: _fake().say_ended(0, "left"), "s09_end_left"):
+				_step = 48
+		48:
+			_press(_s._end, 0)
+			_fake().say_found(0, 0, RIVAL)
+			_step = 49
+		49:
+			if _s._state == _s.State.AIM:
+				_step = 50
+				_wait = _t + 0.6
+		50:
+			if _beat(1.0, func() -> void: _fake().say_ended(1, "resign"), "s12_end_resign_lost"):
 				_step = 99
 		99:
 			_done()
@@ -272,6 +338,26 @@ func _say_quiet() -> void:
 	print("reduce motion %s, backend started %s, analytics started %s" % [
 		load("res://core/motion.gd").reduce, load("res://core/backend.gd").started(),
 		load("res://core/analytics.gd").started()])
+
+## The other player's break: the computer's, sent as their end sends a shot,
+## and the table their end will send after it -- the same shot rolled on a
+## copy and refereed from their side.
+func _their_shot() -> void:
+	var sim: RefCounted = _s.sim
+	var plan: Dictionary = SnAI.plan(sim, {"phase": _s.rules.phase, "free_ball": false, "in_hand": true, "break_off": true}, 2)
+	var cue: Vector2 = plan.get("cue_at", sim.pos[Sim.CUE])
+	var packed := Sim.pack(PackedFloat32Array([plan.dir.x, plan.dir.y, float(plan.speed), plan.tip.x, plan.tip.y, cue.x, cue.y]))
+	var f := Sim.unpack(packed, 7)
+	var theirs: RefCounted = sim.copy()
+	theirs.pos[Sim.CUE] = Vector2(f[5], f[6])
+	theirs.strike(Vector2(f[0], f[1]), f[2], Vector2(f[3], f[4]))
+	theirs.settle()
+	var referee := SnRules.new(theirs, 0)
+	referee.from_dict(_s.rules.to_dict(), true)
+	referee.judge()
+	_their_table = {"table": theirs.snapshot(), "rules": referee.to_dict()}
+	_fake().say_move({"shot": packed})
+	_fake().to_act = 1  # the shot keeps the turn; their table passes it
 
 ## Plays checkers' line up to ply `until`, this seat's moves as if tapped and
 ## the other's as the match hands them on; true once the board has them all.

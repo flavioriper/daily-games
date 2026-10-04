@@ -7,7 +7,7 @@ extends SceneTree
 ##     firebase emulators:start --only auth,database --project demo-peeplet
 ##   FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet \
 ##     godot --headless --path . --script res://tests/_probe_online.gd -- chess
-##   (or `-- checkers`)
+##   (or `-- checkers`, or `-- snooker`)
 ##
 ## Run with only the game's name, it is the conductor: for each of three
 ## games it starts **two more processes** of itself (`-- chess play <who>
@@ -32,7 +32,20 @@ extends SceneTree
 ## 4. **A foul.** One sends a move no rule allows, past its own screen; the
 ##    other must walk away with `left`, a win.
 ##
-## SPEED (Engine.time_scale, 4), SEED. user://versus.cfg is put back by the
+## **Snooker** (`-- snooker`) is the same four, and what it is really for is
+## the first: two phones cannot be trusted to roll a shot alike, so the
+## shooter's table is the one that counts, and after EVERY shot both ends must
+## hold the same table and the same referee's state. Each seat is played by
+## versus/snooker_ai.gd (level 1 against level 0) through the screen's own
+## release; each end hashes its table and referee's state (seen from seat 0)
+## as every shot settles, and the conductor compares the lists, and prints how
+## many shots that was and how far the watcher's own roll had drifted from the
+## shooter's before it took theirs. Then **a nudge**: one end moves a ball on
+## its own copy a few millimetres (NUDGE, metres, 0.004) before every roll it
+## watches, so its roll does differ, and the lists must still agree. The foul
+## is tried twice: a shot that is not one, and a table one ball short.
+##
+## SPEED (Engine.time_scale, 4; snooker 8), SEED. user://versus.cfg is put back by the
 ## conductor on every way out (the players share it, so they leave it alone).
 ## Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 5.
 
@@ -42,6 +55,8 @@ const AI = preload("res://versus/chess_ai.gd")
 const CkRules = preload("res://versus/checkers_rules.gd")
 const CkAI = preload("res://versus/checkers_ai.gd")
 const Record = preload("res://versus/versus_record.gd")
+const Sim = preload("res://versus/snooker_sim.gd")
+const SnAI = preload("res://versus/snooker_ai.gd")
 
 const CFG := "user://versus.cfg"
 ## The opening both ends play, a ply each in turn: from, to, promotion.
@@ -60,7 +75,7 @@ const CK_LINE := [
 ## A game this long is given up by whoever is to move, the real way.
 const LONG := 110
 
-## "chess" or "checkers".
+## "chess", "checkers" or "snooker".
 var _game := "chess"
 var _begun := false
 var _fails := 0
@@ -86,10 +101,10 @@ func _process(delta: float) -> bool:
 	if not _begun:
 		_begun = true
 		var args := OS.get_cmdline_user_args()
-		if args.size() >= 1 and args[0] in ["chess", "checkers"]:
+		if args.size() >= 1 and args[0] in ["chess", "checkers", "snooker"]:
 			_game = args[0]
 		else:
-			print("usage: -- chess|checkers   (snooker is not built yet)")
+			print("usage: -- chess|checkers|snooker")
 			quit(2)
 			return false
 		if args.size() >= 5 and args[1] == "play":
@@ -101,7 +116,10 @@ func _process(delta: float) -> bool:
 			_conduct()
 		return false
 	if _s != null:
-		_drive(delta / maxf(Engine.time_scale, 0.01))
+		if _game == "snooker":
+			_drive_snooker(delta / maxf(Engine.time_scale, 0.01))
+		else:
+			_drive(delta / maxf(Engine.time_scale, 0.01))
 	return false
 
 func _say(text: String) -> void:
@@ -158,6 +176,9 @@ func _conduct() -> void:
 	_had = FileAccess.file_exists(CFG)
 	if _had:
 		_saved = FileAccess.get_file_as_string(CFG)
+	if _game == "snooker":
+		await _conduct_snooker()
+		return
 
 	print("-- a whole game")
 	var before := _online_record()
@@ -232,6 +253,98 @@ func _conduct() -> void:
 	_restore()
 	quit(0 if _fails == 0 else 1)
 
+## Snooker's five: a whole frame, a frame with one end's rolls nudged, a
+## kill, a resignation and two fouls.
+func _conduct_snooker() -> void:
+	print("-- a whole frame")
+	var before := _online_record()
+	var seen: Array = await _pair("game", "game", [0, 1], 1500.0)
+	var a: Dictionary = seen[0]
+	var b: Dictionary = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if not a.is_empty() and not b.is_empty():
+		_check("they are two players in one match", a.uid != b.uid and a.opponent == b.uid and b.opponent == a.uid)
+		_check("in different seats, the opener breaking off", int(a.seat) + int(b.seat) == 1 \
+			and int(a.first) == int(b.first) and bool(a.broke) != bool(b.broke) \
+			and bool(a.broke) == (int(a.seat) == int(a.first)))
+		_check("each drew the other's name on its scoreboard", a.rival == b.me and b.rival == a.me,
+			"%s against %s" % [a.me, b.me])
+		_same_shots(a, b)
+		_check("the frame ended on the table, one result at both ends",
+			bool(a.over) and bool(b.over) and int(a.winner) == int(b.winner) and a.why == "end" and b.why == "end",
+			"winner seat %d, why %s" % [int(a.winner), a.why])
+		_check("and each end's card agrees with it", {"won": "lost", "lost": "won"}.get(a.outcome, "") == b.outcome \
+			and (a.outcome == "won") == (int(a.winner) == int(a.seat)) and a.card == a.outcome and b.card == b.outcome \
+			and int(a.scores[0]) == int(b.scores[1]) and int(a.scores[1]) == int(b.scores[0]),
+			"a %s %d-%d, b %s %d-%d" % [a.outcome, int(a.scores[0]), int(a.scores[1]), b.outcome, int(b.scores[0]), int(b.scores[1])])
+		_check("the bulb and reset were off", not bool(a.tools) and not bool(b.tools))
+		_check("the end card's button is Find another", a.again == b.again and not str(a.again).is_empty(), str(a.again))
+		var after := _online_record()
+		_say("      record at level 3: won %d lost %d -> won %d lost %d" % [before.x, before.y, after.x, after.y])
+
+	print("-- a nudge: one end's copy of a ball moved before every roll it watches")
+	seen = await _pair("nudge", "stay", [0, 1], 400.0)
+	a = seen[0]
+	b = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if not a.is_empty() and not b.is_empty():
+		_check("the nudged rolls did end somewhere else", int(a.nudges) > 0 and float(a.drift.worst) > 0.0 and int(a.drift.moved) > 0,
+			"%d nudges" % int(a.nudges))
+		_same_shots(a, b)
+
+	print("-- a kill (the other waits about 22 s)")
+	before = _online_record()
+	seen = await _pair("die", "stay", [1], 180.0)
+	b = seen[1]
+	_check("the one left alone finished", not b.is_empty(), "%.0f s" % seen[2])
+	if not b.is_empty():
+		_check("it ended with left, a win", b.why == "left" and b.outcome == "won" and int(b.winner) == int(b.seat),
+			"why %s, %s after %d shots; card says: %s" % [b.why, b.outcome, int(b.shots), b.said])
+		var after := _online_record()
+		_check("and a win was counted at level 3", after == before + Vector3i(1, 0, 0),
+			"won %d -> %d" % [before.x, after.x])
+
+	print("-- a resignation")
+	seen = await _pair("resign", "stay", [0, 1], 180.0)
+	a = seen[0]
+	b = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if not a.is_empty() and not b.is_empty():
+		_check("Back asked first, and Resign closed the screen", bool(a.asked) and bool(a.closed))
+		_check("no end card on the way out", str(a.again).is_empty())
+		_check("the other ended with resign, a win", b.why == "resign" and b.outcome == "won" \
+			and int(b.winner) == int(b.seat), "card says: %s" % b.said)
+
+	for mode: String in ["cheat", "cheat_table"]:
+		print("-- a foul: %s" % ("a shot that is not one" if mode == "cheat" else "a table one ball short"))
+		seen = await _pair(mode, "stay", [1], 120.0)
+		b = seen[1]
+		_check("the one fouled finished", not b.is_empty(), "%.0f s" % seen[2])
+		if not b.is_empty():
+			_check("it ended with left, a win", b.why == "left" and b.outcome == "won", "card says: %s" % b.said)
+
+	print("-- %s" % ("all passed" if _fails == 0 else "%d FAILED" % _fails))
+	_restore()
+	quit(0 if _fails == 0 else 1)
+
+## Both ends' hashes of the table and the referee's state, shot by shot: the
+## ones both have must be the same (an end that left early has fewer).
+func _same_shots(a: Dictionary, b: Dictionary) -> void:
+	var ha: Array = a.hashes
+	var hb: Array = b.hashes
+	var n := mini(ha.size(), hb.size())
+	var bad := -1
+	for i in n:
+		if ha[i] != hb[i] and bad < 0:
+			bad = i
+	var whole: bool = ha.size() == hb.size() or not (bool(a.over) and bool(b.over))
+	_check("after every shot, one table and one referee's state at both ends", n > 0 and bad < 0 and whole,
+		"%d shots compared (a saw %d, b %d)%s" % [n, ha.size(), hb.size(), "" if bad < 0 else "; the first to differ is shot %d" % (bad + 1)])
+	for who: Array in [["a", a], ["b", b]]:
+		var d: Dictionary = who[1].drift
+		_say("      %s watched %d shots; its own roll, before it took the shooter's table: worst %.6f mm off, %d balls slid, %d on one table and off the other" % [
+			who[0], int(d.shots), float(d.worst) * 1000.0, int(d.moved), int(d.pots)])
+
 func _restore() -> void:
 	if _had:
 		var f := FileAccess.open(CFG, FileAccess.WRITE)
@@ -246,7 +359,7 @@ func _play() -> void:
 	var host := Node.new()
 	root.add_child(host)
 	await Backend.start(host)
-	Engine.time_scale = float(_env("SPEED", 4))
+	Engine.time_scale = float(_env("SPEED", 8 if _game == "snooker" else 4))
 	# load(), not preload: the screen names the Ads autoload, which is not
 	# there yet when this script compiles.
 	var screen: GDScript = load("res://versus/%s_screen.gd" % _game)
@@ -321,6 +434,145 @@ func _drive(real: float) -> void:
 		_say("STUCK in state %d" % st)
 		_write(false)
 
+# --- snooker's player ---
+
+var _hashes: Array = []
+var _hashed := 0
+var _nudges := 0
+var _nudged_at := -1
+var _sn_rng := RandomNumberGenerator.new()
+
+## One table and one referee's state as text, the same at both ends when they
+## agree: the referee's seen from seat 0.
+func _table_hash() -> String:
+	return JSON.stringify([_s.sim.snapshot(), _s.rules.to_dict(int(_s.online.seat) == 1)]).md5_text()
+
+func _drive_snooker(real: float) -> void:
+	if _reported or not _s.is_inside_tree():
+		return
+	var st: int = _s._state
+	var states: Dictionary = _s.State
+	if st != _last_state:
+		_last_state = st
+		_idle_t = 0.0
+	_idle_t += real
+	# Every shot, as it settles at this end: its own once judged, the other
+	# player's once their table has been taken.
+	if st != states.LOBBY and int(_s._shots) > _hashed:
+		_hashed = int(_s._shots)
+		_hashes.append(_table_hash())
+	if st == states.OVER:
+		_over_t += real
+		if is_instance_valid(_s._end) and (not _s.online.result.is_empty() or _over_t > 8.0):
+			_write_snooker(false)
+		return
+	if st == states.AI_AIM and _mode == "nudge" and _nudged_at != int(_s._shots):
+		# The other player's shot is about to be rolled here: this copy of the
+		# table is made wrong first.
+		_nudged_at = int(_s._shots)
+		var by := float(OS.get_environment("NUDGE")) if OS.has_environment("NUDGE") else 0.004
+		for id in range(1, Sim.COUNT):
+			var to: Vector2 = _s.sim.pos[id] + Vector2(by, by * 0.75)
+			if _s.sim.on[id] and _s.sim.free_at(to, id) and to.x > Sim.R and to.x < Sim.W - Sim.R and to.y > Sim.R:
+				_s.sim.pos[id] = to
+				_nudges += 1
+				break
+	if st == states.AIM:
+		_tools = _tools or _s.can_reset() or _s.hints_left() > 0 or _s.hints_held() > 0
+		if _acted:
+			return
+		if _mode == "die" and _mine >= 3:
+			_say("killing itself")
+			OS.kill(OS.get_process_id())
+			return
+		if (_mode == "resign" and _mine >= 3) or (_mode == "nudge" and int(_s._shots) >= 24) or int(_s._shots) > 400:
+			_acted = true
+			_resign()
+			return
+		if _mode == "cheat" and _mine >= 3:
+			_acted = true
+			_say("sending a shot that is not one")
+			_s.online.send({"shot": Sim.pack(PackedFloat32Array([0.0, -1.0, 2.0]))}, true)
+			return
+		if _mode == "cheat_table" and _mine >= 3:
+			# A real shot, and then -- before this table has stopped -- a table
+			# with a ball missing from it, sent as the screen sends its own.
+			_say("sending a table one ball short")
+			var flat := PackedFloat32Array()
+			for i in Sim.COUNT - 1:
+				flat.append_array(PackedFloat32Array([_s.sim.pos[i].x, _s.sim.pos[i].y]))
+			_shoot_snooker()
+			_acted = true
+			_s.online.send({"table": {"p": Sim.pack(flat), "on": (1 << Sim.COUNT) - 1}, "rules": _s.rules.to_dict()}, true)
+			return
+		_shoot_snooker()
+	elif _idle_t > 150.0 and st != states.LOBBY:
+		_say("STUCK in state %d" % st)
+		_write_snooker(false)
+
+## This seat's shot: the computer's plan, delivered with its arm's wobble, and
+## played through the screen's own release (the cue ball put where the plan
+## wants it first, as a finger would carry it round the D).
+func _shoot_snooker() -> void:
+	var lv := 1 if int(_s.online.seat) == 0 else 0
+	if _mine == 0:
+		_sn_rng.seed = _env("SEED", 1) * 2 + int(_s.online.seat)
+	var r: RefCounted = _s.rules
+	var state := {"phase": r.phase, "free_ball": r.free_ball, "in_hand": r.in_hand, "break_off": _s._break_off}
+	var plan: Dictionary = SnAI.plan(_s.sim, state, lv)
+	if plan.is_empty():
+		_say("the computer has no shot")
+		return
+	var shot: Dictionary = SnAI.deliver(plan, lv, _sn_rng)
+	if (r.in_hand or _s._break_off) and plan.has("cue_at"):
+		_s.sim.pos[Sim.CUE] = plan.cue_at
+	_s.table.aim_dir = shot.dir
+	_s.spin_pad.set_tip(shot.tip)
+	_mine += 1
+	_s._on_release(_s._power_for(float(shot.speed)))
+
+func _write_snooker(closed: bool) -> void:
+	if _reported:
+		return
+	_reported = true
+	var on: Node = _s.online
+	var r: RefCounted = _s.rules
+	var said := ""
+	var again := ""
+	var card := ""
+	if is_instance_valid(_s._end):
+		for l in _s._end.find_children("*", "Label", true, false):
+			var label := l as Label
+			if label.visible and label.theme_type_variation == "SheetBody":
+				said = label.text
+			if label.theme_type_variation == "WellDone":
+				card = "won" if label.text == on.head("won") else ("lost" if label.text == on.head("lost") else label.text)
+		var buttons: Node = _s._end.find_child("Buttons", true, false)
+		if buttons != null:
+			again = buttons.get_child(0).label_text
+	var winner := int(on.result.get("winner", -9))
+	var saw := {
+		"uid": Backend.uid(), "me": load("res://versus/online/names.gd").name_of(Backend.uid()),
+		"opponent": on.opponent, "rival": _s._names[1].text,
+		"seat": on.seat, "first": on.first, "broke": int(_s._breaker) == 0,
+		"winner": winner, "why": str(on.result.get("why", "")),
+		"outcome": "lost" if closed else ("won" if winner == int(on.seat) else "lost"),
+		"card": card, "over": bool(r.over), "scores": [r.scores[0], r.scores[1]],
+		"shots": int(_s._shots), "mine": _mine, "hashes": _hashes, "drift": _s.drift, "nudges": _nudges,
+		"tools": _tools, "said": said, "again": again, "asked": _asked, "closed": closed,
+	}
+	_say("%s by %s (winner seat %d), %d-%d after %d shots (%d its own), table %s" % [
+		saw.outcome, saw.why, winner, int(r.scores[0]), int(r.scores[1]), int(_s._shots), _mine,
+		"-" if _hashes.is_empty() else str(_hashes[-1]).left(8)])
+	if closed:
+		_s.queue_free()
+		_s = null
+		await create_timer(1.5, true, false, true).timeout
+	var f := FileAccess.open(_file, FileAccess.WRITE)
+	f.store_string(JSON.stringify(saw))
+	f.close()
+	quit(0)
+
 ## The move number the screen shows.
 func _moves() -> int:
 	return int(_s.rules.fullmove) if _game == "chess" else int(_s._move_number())
@@ -333,7 +585,10 @@ func _resign() -> void:
 	_asked = ask != null
 	if ask == null:
 		_say("no dialog came up")
-		_write(false)
+		if _game == "snooker":
+			_write_snooker(false)
+		else:
+			_write(false)
 		return
 	var go: Button = ask.find_child("Buttons", true, false).get_child(1)
 	go.pressed.emit()
@@ -345,7 +600,10 @@ func _on_closed() -> void:
 	if _reported:
 		return
 	_say("the screen closed")
-	_write(true)
+	if _game == "snooker":
+		_write_snooker(true)
+	else:
+		_write(true)
 
 func _write(closed: bool) -> void:
 	if _reported:
