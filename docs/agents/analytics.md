@@ -87,4 +87,6 @@ see "Ads and the purchase" below.
   (`game`, `choice`: `play` and `not_now` from the invite card in
   `ui/menu.gd`, Android's back counting as `not_now`; `expired` from the
   menu when the invite goes with its card up, and from `Online` when Play
-  was pressed on one already gone).
+  was pressed on one already gone). A friend's game then sends
+  `versus_online_found` and `versus_online_end` as a stranger's does, and
+  no `versus_online_seek` or `versus_online_nobody`.

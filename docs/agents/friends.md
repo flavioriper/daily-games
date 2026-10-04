@@ -7,6 +7,131 @@ Read `docs/agents/versus.md` ("Online") and
 
 ### Server, Social and the match
 
+Where the spec and the code differ the code is right; the differences are
+listed at the end of this section.
+
+- **The server is rules, as it is for Versus online**
+  (`server/database.rules.json`; the paths and what each rule holds are in
+  `docs/agents/turns-and-backend.md`, "Friends on the Realtime Database").
+  Nothing is deployed: the emulator only.
+- **`core/social.gd` (`Social`)** is static like `Backend`, started only by
+  `world/main.gd` (`Social.start(host)`), and unstarted it answers offline
+  without a byte sent. Started, it **sleeps until `enable()`** (the Friends
+  sheet opened, a link shared or opened; kept in `user://friends.cfg` with
+  the code and the uid the code belongs to), so a puzzle-only player holds
+  no stream. `my_code()` and `add()` call `enable()` themselves.
+  - API: `start`, `started`, `enable`, `my_code` (await; made on the first
+    ask, up to six tries against a collision; once a session a code from
+    the file is looked up and written again if the server has lost it),
+    `link(code)`, `code_in(text)` (a link, `peepletdaily://f/…`, or typed
+    text with spaces or dashes; "" for anything else), `add(code)` (await;
+    `{ok, uid, why}`, why `offline`/`unknown`/`self`/`already`),
+    `remove(uid)` (await), `friends()` (oldest first), `is_friend`,
+    `loaded`, `refresh_presence()` (await), `is_online(uid)`,
+    `invite_from(uid)`, `decline(from)`, `busy_with`, `in_game`, and
+    `hub()` -- a Node that is there from the first ask (so a screen
+    connects before anything is started) with `changed`, `befriended(uid)`,
+    `invited(from, game)`, `withdrawn(from)`, `matched(from, game)`.
+  - **It follows state**, with `Match._apply`: one `Live.Stream` on
+    `social/{uid}` (a child of the hub), the document kept in `_doc`, and
+    after every event `_digest` says what it implies that has not been
+    said. A reopened stream sends the whole again; there is no reconnect
+    code and none should be added.
+  - **`add` waits for the identity** (`await Backend.token()`): on a cold
+    start from a link `world/main.gd` calls it on the frame `Backend.start`
+    was called, before there is a uid. `offline` is only an unstarted
+    Backend or no token to be had.
+  - **`befriended` is said from `add`'s own write**, not from the stream:
+    a link opened as the game starts lands before the first whole read, and
+    a friend that is in the first read is not news. `_known` keeps each
+    said once. At the other end it comes off the stream.
+  - **Invites are judged against the server's clock** once a second
+    (`_judge`): fresh under 10 s (`Live.server_now()`), `invited` once as
+    one turns fresh, `withdrawn` as it goes, goes stale, gains `match`, or
+    asks for another game (then `invited` again). One 61 s stale is deleted,
+    only once the clock has been read off a stamped write (`Live.clocked()`:
+    presence's first beat). An invite from someone not in the list is not
+    said.
+  - **`in_game` declines at once** (the invite is deleted; the one asking
+    sees "can't play right now"). **`busy_with == from`** makes it
+    `matched` in place of `invited`.
+  - **Presence**: `presence/{uid}` is written every 20 s while enabled and
+    the application has focus (`NOTIFICATION_APPLICATION_FOCUS_*` and
+    `PAUSED`/`RESUMED` on the hub; a paused tree does not tick it), and at
+    once on focus coming back. Each beat also reads every friend's
+    (`refresh_presence`, in parallel), so the tab's count moves without the
+    screens asking; `changed` only when someone came or went. Online is a
+    heartbeat under 50 s old.
+  - **`Social.fake(state)`** (`{code, friends, online, codes, invites}`)
+    makes it started with no network for a harness; the harness says the
+    hub's signals itself. Under `BACKEND_PLAYER` the cfg is beside that
+    identity (`<player>_friends.cfg`), so two processes are two players.
+- **`Match`** gains `invite(game, uid)`, `accept(game, uid)` and
+  `gone(why)`. The ticket of an invite is `social/{uid}/invites/{me}`
+  (`{game, at}`), written and kept fresh by the code that keeps a queue
+  ticket (`_seek`, `_write_ticket`, the 4 s heartbeat); the queue is never
+  read (`_friend` is set). `match` on it -> `_join(mid, 0)`; the ticket
+  gone under it -> `gone("declined")`; the write refused by the rules ->
+  `gone("unfriend")`; `nobody` after `wait` and the asking goes on.
+  `accept` is the claim in one PATCH (the match with `p0` the friend, `p1`
+  this player, and `match` on their invite): yes -> `_join(mid, 1)`,
+  refused -> `gone("expired")`, no answer -> `offline`; abandoned with the
+  claim on its way, a match that was made is resigned, as in `_scan`.
+  **`_reseek` is `gone("void")` with a friend**: void, a `cancel` on the
+  match stream, or a result before both were seen. From JOINING on nothing
+  is different. The stranger path is untouched: `seek` clears `_friend`.
+- **`Online`**: `Online.with_friend = {uid, accept}` is read and cleared in
+  `_init`; `online.friend` is the uid. `open()` asks (or, the first time
+  with `accept`, takes the invite; **or takes an invite to this game that
+  is already here**, because two invites that crossed a while apart would
+  only wait on each other). `Match.gone` raises the lobby's gone card and
+  never the queue; a match given up inside the found beat is `gone("void")`
+  with a friend. `Social.matched` while the lobby waits and the game is the
+  same: the end with the smaller uid calls `accept` (which drops its own
+  invite), the other goes on waiting and is taken. `matched` when this end
+  is not asking (the end card, the gone card) or for another game is said
+  again as `invited` on the hub, so the menu's card comes up. `_tell` sets
+  `Social.busy_with` and `in_game` (a stranger's game sets `in_game` too)
+  and an Online on its way out only clears them if it was the last to set
+  them (`_teller`). `again_button()` reads Rematch. The record and
+  `versus_online_found`/`versus_online_end` are the stranger's. No screen
+  changed.
+- **The lobby**: `show_waiting(uid)`, `show_no_answer(uid)` (Keep waiting
+  is `keep`, Back is `cancel`), `show_gone(uid, why)` (`declined`,
+  `expired`, `void`; Ask again is the new signal `again`; `unfriend` has
+  Back only -- `Online` turns any `gone` into it when the friend is no
+  longer in the list). States `WAITING`, `NO_ANSWER`, `GONE`. Keys
+  `VS_FRIEND_*` in `locale/ui.csv`, after the `VS_END_` block.
+- **The wire**: a friendship is one root PATCH
+  `{social/A/friends/B: {at, via: CODE}, social/B/friends/A: {at}}` by B;
+  removing is one root PATCH of both halves and both invites to null; an
+  invite is a PUT of `{game, at}` and a PATCH of `{at}` every 4 s; the
+  accept is `{matches/ID: {...}, social/me/invites/them/match: ID}`.
+- **Probes** (emulators up: `cd server && PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+  firebase emulators:start --only auth,database --project demo-peeplet`):
+  - `tests/_probe_live_rules.sh` (65 s; `QUICK=1` 12 s): 120 cases, 62 of
+    them friends' -- every rule and each way to cheat it.
+  - `FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet godot
+    --headless --path . --script res://tests/_probe_friends.gd` (about
+    70 s): three processes, three new identities. b's first call is `add`
+    on the frame Backend starts (the cold link); both lists, `befriended`,
+    presence; then a asks b through a real `Online` on a bare Control:
+    declined, withdrawn, accepted and six moves to `end`, both pressing
+    Rematch on one tick (`matched`), a resignation, b removes a and a's next
+    asking is `unfriend`. The conductor is a third player whose invite to a
+    in the middle of the first game must be deleted unseen. It refuses to
+    run without `FIREBASE_EMULATOR` and puts `user://versus.cfg` back.
+  - `tests/_probe_match.gd` and `tests/_probe_online.gd -- chess` still
+    pass unchanged.
+- **Where it is not the spec**: both halves of a friendship must be in the
+  one write, the opener's half too (the spec let the other's half land
+  alone), and **a deletion must take both halves** (one half alone would
+  leave a friend in one list who can neither be asked nor seen). `match` on
+  an invite is refused from the one who asked (the spec's rule let either
+  writer of the invite set it; nobody would have said Play).
+  `gone("unfriend")` and the lobby's fourth gone card are not in the spec.
+  `open()` taking an invite already here is not in the spec.
+
 ### Screens
 
 (2026-10-04; spec section 4.)
@@ -218,3 +343,15 @@ no universal link, no share sheet): the page shows the code and the player
 types it; `Share.text` copies the link.
 
 ### Open
+
+- **Server side** (2026-10-04): the rules are not deployed
+  (`tools/deploy_live.sh`, by a person) and nothing of friends has met the
+  live database or two phones. No game through a real board with a friend
+  was probed (the probe's moves are bare; the screens did not change, and
+  `_probe_online.gd` proves them against a stranger). Not probed: the 61 s
+  sweep of a stale invite, an accept abandoned mid-claim, `matched` for a
+  different game, presence stopping on focus lost, a code collision. Codes
+  are never deleted and a player with a new identity leaves the old one's
+  friendships behind in the other lists. An invite reaches a friend only
+  while their game is open and focused enough to hold its stream; there is
+  no push.
