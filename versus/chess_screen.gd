@@ -510,8 +510,10 @@ func _start_turn() -> void:
 		return
 	var mine: bool = rules.turn == player
 	if online != null and _online_end != "" and (mine or _inbox.is_empty()):
-		# The other seat said the game is over and this board does not see it.
-		_conclude(_online_end, "", -1, "end")
+		# The other seat said the game is over, every move it sent has been
+		# played, and by this board's rules -- the same rules -- it is not.
+		_online_end = ""
+		online.foul()
 		return
 	if mine:
 		_state = State.YOURS
@@ -746,9 +748,13 @@ func _take_online() -> void:
 	_bot_moves(m)
 
 ## The match ended without this board ending it. A resignation, a clock or a
-## player gone ends the game where it stands; "end" is the other seat's word
-## that the board is finished, which this board reaches by itself once the
-## last move has been played -- `_start_turn` holds it to that.
+## player gone ends the game where it stands. "end" is the other seat's word
+## that the game finished on the board, and it is not taken on trust: the
+## rules let the seat that moved last write it with any winner, but both ends
+## run the same rules, so a real ending is one this board reaches by itself
+## once the last move has been played (`_start_turn` finishes on its own
+## status, and the result shown is this board's). An "end" this board does
+## not reach, with nothing left to play, is a foul.
 func _on_online_over(outcome: String, why: String) -> void:
 	if _state == State.OVER:
 		return
@@ -757,7 +763,8 @@ func _on_online_over(outcome: String, why: String) -> void:
 		return
 	_online_end = outcome
 	if _state == State.YOURS or (_state == State.THINK and _inbox.is_empty()):
-		_conclude(outcome, "", -1, why)
+		_online_end = ""
+		online.foul()
 
 func _on_online_ticked() -> void:
 	if _state != State.OVER and _state != State.WAIT:

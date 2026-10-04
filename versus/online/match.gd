@@ -105,6 +105,13 @@ var _last_clock := Vector2i(-1, -1)
 ## something already abandoned is dropped.
 var _gen := 0
 
+## The seat this player takes in the match it is joining, known from how it
+## got there (the claimed ticket's owner is p0, the claimer p1) before the
+## document has said so: walking away in that gap is still a resignation.
+var _sits := -1
+## The match a claim on its way would make, for a probe to see the moment.
+var _claim_mid := ""
+
 var _ticket_stream: Live.Stream
 var _stream: Live.Stream
 
@@ -165,10 +172,11 @@ func leave() -> void:
 	if phase == Phase.SEEKING and not _ticket.is_empty():
 		@warning_ignore("return_value_discarded")
 		Live.remove(_ticket)  # deliberately not awaited
-	elif (phase == Phase.JOINING or phase == Phase.PLAYING) and seat >= 0 \
-			and not _m.has("result"):
-		@warning_ignore("return_value_discarded")
-		Live.write(_path + "/result", {"winner": 1 - seat, "why": "resign"})
+	elif (phase == Phase.JOINING or phase == Phase.PLAYING) and not _m.has("result"):
+		var mine := seat if seat >= 0 else _sits
+		if mine >= 0:
+			@warning_ignore("return_value_discarded")
+			Live.write(_path + "/result", {"winner": 1 - mine, "why": "resign"})
 	_stop()
 
 ## Seconds left to the seat to act, by this end's estimate; 0 outside a game.
@@ -196,6 +204,7 @@ func _stop() -> void:
 	_handed = 0
 	id = ""
 	seat = -1
+	_sits = -1
 	opponent = ""
 	_last_clock = Vector2i(-1, -1)
 
@@ -291,7 +300,7 @@ func _scan() -> void:
 		_write_ticket()
 		return
 	if mine.has("match"):
-		_join(str(mine.match))  # the stream should have said so; this is the net under it
+		_join(str(mine.match), 0)  # the stream should have said so; this is the net under it
 		return
 	var now := Live.server_now()
 	var best := ""
@@ -323,6 +332,7 @@ func _scan() -> void:
 	var mid := "%08x%08x%08x" % [randi(), randi(), Time.get_ticks_usec() & 0xffffffff]
 	var first := randi() % 2
 	_scanning = true
+	_claim_mid = mid
 	var claim := await Live.patch("", {
 		"matches/%s" % mid: {
 			"game": game, "p0": best, "p1": _uid,
@@ -332,24 +342,34 @@ func _scan() -> void:
 		"queue/%s/%s/match" % [game, best]: mid,
 		"queue/%s/%s/match" % [game, _uid]: mid,
 	})
+	_claim_mid = ""
 	if gen != _gen:
+		# Abandoned while the claim was on its way. If it landed all the same
+		# there is a match the other player is being sent to: it is resigned at
+		# once (the claimer is p1), so they go back to looking now and not when
+		# the void clock runs out. Unless the stream said so first and this is
+		# the match already joined.
+		if claim.ok and id != mid:
+			@warning_ignore("return_value_discarded")
+			Live.write("matches/%s/result" % mid, {"winner": 0, "why": "resign"})
 		return
 	_scanning = false
 	if claim.ok:
-		_join(mid)
+		_join(mid, 1)
 
 func _on_ticket(kind: String, path: String, data: Variant) -> void:
 	if phase != Phase.SEEKING or kind == "cancel":
 		return
 	_t = _apply(_t, kind, path, data)
 	if typeof(_t) == TYPE_DICTIONARY and _t.has("match"):
-		_join(str(_t.match))
+		# This player's own claim is heard of here too, and sometimes first.
+		_join(str(_t.match), 1 if str(_t.match) == _claim_mid else 0)
 
 # --- joining ---
 
 ## A match names this player. The ticket has done its work and goes; the
 ## match is listened to, and is a game once both have been seen in it.
-func _join(mid: String) -> void:
+func _join(mid: String, sits: int) -> void:
 	if phase != Phase.SEEKING:
 		return
 	_gen += 1
@@ -365,6 +385,7 @@ func _join(mid: String) -> void:
 	_t = null
 	_handed = 0
 	seat = -1
+	_sits = sits
 	_seen_t = SEEN_BEAT  # the first heartbeat goes as soon as the seat is known
 	_join_t = 0.0
 	_quiet = 0.0
@@ -499,6 +520,13 @@ func _claim(result: Dictionary) -> void:
 ## moves/{n}, n, turn and turnAt together; what the server answered is applied
 ## here at once, so a second move right behind it counts from the right n
 ## without waiting for the stream to say so.
+##
+## A move keeps the `n` it was first sent at. Anything but a yes -- no answer,
+## or a refusal -- is settled by reading moves/{n}: the PATCH may have landed
+## with its answer lost, and the same thing sent again is then refused because
+## it is already there (or, had `n` been counted afresh from a stream that has
+## caught up, would go in twice). If the move is there it was sent, and what is
+## queued behind it goes out one further on.
 func _pump() -> void:
 	if _sending:
 		return
@@ -520,7 +548,9 @@ func _pump() -> void:
 		else:
 			# _handed too: a stream that reopens may hand over a copy taken
 			# just before this end's last move, and n steps back for a moment.
-			var n := maxi(int(_m.get("n", 0)), _handed)
+			if not item.has("n"):
+				item["n"] = maxi(int(_m.get("n", 0)), _handed)
+			var n: int = item.n
 			var body := {
 				"moves/%d" % n: {"s": seat, "d": item.d},
 				"n": n + 1, "turn": item.turn, "turnAt": Live.STAMP,
@@ -528,22 +558,28 @@ func _pump() -> void:
 			var res := await Live.patch(_path, body)
 			if gen != _gen:
 				return
-			if not res.ok and res.code != 401:
-				# No answer is not a no: the move may have landed. Look before
-				# sending it again, or it would go in twice.
+			var echo: Variant = res.data if res.ok else null
+			var settled: bool = res.ok
+			if not res.ok:
 				var there := await Live.read("%s/moves/%d" % [_path, n])
 				if gen != _gen:
 					return
 				if there.ok and typeof(there.data) == TYPE_DICTIONARY \
 						and int(there.data.get("s", -1)) == seat and str(there.data.get("d", "")) == item.d:
 					body.erase("turnAt")  # the stream brings the real one
-					res = {"ok": true, "code": 200, "data": body}
-			if res.ok or res.code == 401:
-				# Refused is final here too: the game is over, or this end is
-				# out of step, and the clock settles it.
+					echo = body
+					settled = true
+				elif res.code == 401 and (there.ok or there.code == 401):
+					# Refused, and not there: final. The game is over, or this end
+					# is out of step, and the clock settles it.
+					settled = true
+			if settled:
 				_outbox.pop_front()
-				if res.ok and typeof(res.data) == TYPE_DICTIONARY:
-					_on_match("patch", "/", res.data)
+				# The stream may have said all this already, and the answer to it
+				# too: an echo behind what the copy holds would roll n, the turn
+				# and its clock back.
+				if typeof(echo) == TYPE_DICTIONARY and int(_m.get("n", 0)) <= n:
+					_on_match("patch", "/", echo)
 				continue
 		# The network did not answer. The same thing again, a little later.
 		await get_tree().create_timer(RETRY).timeout

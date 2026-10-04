@@ -12,6 +12,7 @@ extends Node
 ##     online = Online.new(self, GAME)   # then connect, then add_child
 ##     online.open()                     # `seeking`: lay the board idle
 ##     ... `started`                     # seat, first, match_seed, opponent are set
+##                                       # (nothing of the game is said before it)
 ##     online.send(d)                    # this seat's move, as it is played
 ##     ... `move(d)`                     # the other seat's, in order
 ##     online.foul()                     # ... if that move was not legal
@@ -28,11 +29,15 @@ extends Node
 signal seeking
 ## A player was found and the beat that shows them is over: start the game.
 signal started
-## The other seat's move, each one once and in order.
+## The other seat's move, each one once and in order, and never before
+## `started`: one that lands inside the found beat is held until the screen
+## has laid its board.
 signal move(d: Dictionary)
 ## The match has a result this screen did not write: "won", "lost" or "draw",
 ## and why -- "resign", "timeout", "left", or "end" when the other seat said
-## the game ended on the board.
+## the game ended on the board. Never before `started` either: a match given
+## up inside the found beat with no move made never began, and this goes back
+## to looking without a word.
 signal over(outcome: String, why: String)
 ## The lobby's "Play the computer".
 signal computer
@@ -83,6 +88,13 @@ var _keep_t := -1.0
 var _warned := false
 var _bumped := -1
 var _settled := false
+## `started` has been said for this match. Until then the other seat's moves
+## wait in `_held` and a result in `_held_end`.
+var _begun := false
+var _held: Array[Dictionary] = []
+var _held_end := {}
+## Moves made in this match, by either seat.
+var _plies := 0
 
 func _init(screen: Control, the_game: String) -> void:
 	name = "Online"
@@ -95,7 +107,7 @@ func _ready() -> void:
 	_match.found.connect(_on_found)
 	_match.nobody.connect(_on_nobody)
 	_match.offline.connect(_on_offline)
-	_match.move.connect(func(d: Dictionary) -> void: move.emit(d))
+	_match.move.connect(_on_move)
 	_match.ended.connect(_on_ended)
 	_match.clock.connect(_on_clock)
 	add_child(_match)
@@ -110,6 +122,10 @@ func open() -> void:
 	opponent = ""
 	result = {}
 	_settled = false
+	_begun = false
+	_held.clear()
+	_held_end = {}
+	_plies = 0
 	_warned = false
 	_keep_t = -1.0
 	_close_ask()
@@ -185,10 +201,30 @@ func _on_found(the_seat: int, the_first: int, the_seed: int, uid: String) -> voi
 		if run != _run or not is_inside_tree():
 			return
 		_drop_lobby()
-		# A game given up inside the beat is over before it began: `over` has
-		# said so, and the screen shows its card on the idle board.
-		if result.is_empty():
-			started.emit())
+		_begin())
+
+## The beat is over: the screen lays its board for the game, and only then
+## hears what the other seat did meanwhile -- its moves in order, and after
+## them a result if there is one. (A screen clears what it holds as it lays
+## the board, so a move handed over sooner would be thrown away, and the
+## board would wait out its clock for a move it had been given.)
+func _begin() -> void:
+	var run := _run
+	_begun = true
+	started.emit()
+	while run == _run and result.is_empty() and not _held.is_empty():
+		move.emit(_held.pop_front())
+	_held.clear()
+	if run == _run and result.is_empty() and not _held_end.is_empty():
+		_on_ended(int(_held_end.winner), str(_held_end.why))
+	_held_end = {}
+
+func _on_move(d: Dictionary) -> void:
+	_plies += 1
+	if _begun:
+		move.emit(d)
+	else:
+		_held.append(d)
 
 ## True when this seat makes the first move.
 func opens() -> bool:
@@ -207,13 +243,16 @@ func in_lobby() -> bool:
 ## This seat's move. `keeps_turn` for a move after which the same seat acts
 ## again (snooker's shot before its table).
 func send(d: Dictionary, keeps_turn := false) -> void:
+	_plies += 1
 	_match.send(d, seat if keeps_turn else 1 - seat)
 
-## The other seat's move was not one the game's rules allow. Nothing on the
-## server knows the rules, so this end walks away and counts it as the other
-## having left.
+## The other seat's move was not one the game's rules allow -- or its word
+## that the game ended on the board (`over(..., "end")`) was not true of this
+## board. Nothing on the server knows the rules, so this end walks away and
+## counts it as the other having left.
 func foul() -> void:
-	if not live():
+	var their_end: bool = str(result.get("why", "")) == "end" and not _settled
+	if not live() and not their_end:
 		return
 	result = {"winner": seat, "why": "left"}
 	_match.leave()
@@ -234,7 +273,10 @@ func settle(outcome: String, why: String, moves: int, mine_last := false) -> voi
 		if mine_last and result.is_empty():
 			_match.end(seat if outcome == "won" else (1 - seat if outcome == "lost" else -1))
 		why = "end"
-	if outcome == "draw":
+	# A game in which nobody moved was never played: no record of it.
+	if _plies == 0:
+		pass
+	elif outcome == "draw":
 		Record.add_draw(game, Record.ONLINE)
 	else:
 		Record.add(game, Record.ONLINE, outcome == "won")
@@ -243,6 +285,14 @@ func settle(outcome: String, why: String, moves: int, mine_last := false) -> voi
 
 func _on_ended(winner: int, why: String) -> void:
 	if not result.is_empty():
+		return
+	if not _begun:
+		if _held.is_empty():
+			# Given up inside the found beat, before a move: it never began.
+			# Nothing is counted and nothing is shown; back to looking.
+			open()
+		else:
+			_held_end = {"winner": winner, "why": why}
 		return
 	result = {"winner": winner, "why": why}
 	_close_ask()
@@ -352,6 +402,13 @@ func again_button() -> Button:
 ## count so far, for the analytics.
 func ask_leave(moves: int) -> void:
 	if is_instance_valid(_ask) or not live():
+		return
+	if not _begun:
+		# Inside the found beat there is no game to resign: this end just goes
+		# (the match is told, so the other goes back to looking), uncounted.
+		_run += 1
+		_match.cancel()
+		closed.emit()
 		return
 	_ask = Dialog.scrim()
 	_ask.name = "Leave"

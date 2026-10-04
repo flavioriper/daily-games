@@ -825,6 +825,13 @@ func _judge() -> void:
 	_break_off = false
 	var res: Dictionary = rules.judge()
 	if online != null:
+		# The referee puts a cue ball in hand on one spot in the D whatever
+		# stands there, and `_start_turn` moves it somewhere free only after the
+		# beat. The table goes out before that, and a cue ball on top of another
+		# ball is a table the other end refuses ("two balls in one place": a
+		# foul, and a legal frame forfeited). So it is seated first.
+		if rules.in_hand:
+			_seat_cue_ball()
 		# The table and the referee's whole state, for the other end to take as
 		# they are; a ball at rest is put exactly at rest here too, so both
 		# tables start the next shot the same to the bit. The turn stays with

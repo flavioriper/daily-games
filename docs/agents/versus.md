@@ -169,6 +169,24 @@ rules or `Match`'s clocks.
   `ask_leave(moves)` (the house dialog; a yes settles `lost`/`resign`,
   resigns and emits `closed`), `back()` (Android's back: true when it closed
   the dialog or gave up from the lobby; the found card just waits).
+- **Nothing of the game is said before `started`** (review fix, 2026-10-04).
+  `Match` hands a move over the moment the match is PLAYING, which is 1.6 s
+  before a screen lays its board, and a screen clears its inbox as it lays
+  it (`_lay`): a move that reached it inside the found beat was thrown away
+  and the board lost on time waiting for it. So `Online` holds the other
+  seat's moves (`_held`) and a result (`_held_end`) until `_begin()` has
+  emitted `started`, then emits them in order, the result last. Do not
+  connect a screen to `Match.move` directly.
+- **A game that never began is not a game.** A result that arrives inside
+  the found beat with no move held (the other end pressed Back, or its
+  screen went) is not said at all: `Online` calls `open()` and looks again,
+  no card, no `settle`. Back inside the beat at this end (`ask_leave` before
+  `started`) asks nothing: `Match.cancel()` (which tells the match) and
+  `closed`. And `settle` counts no record for a match in which neither seat
+  moved (`_plies == 0`: `send` and every move heard add one) -- two ends
+  with beats of different length (reduce motion halves it) would otherwise
+  disagree on whether a walk-out in the first second was a game. It still
+  sends `versus_online_end`.
 - **`settle` is the only place the online record and `versus_online_end`
   are written**, once (`_settled`), and it is the screen that calls it, from
   `_conclude`. With `why == ""` the game ended on the board: `settle` writes
@@ -189,9 +207,16 @@ rules or `Match`'s clocks.
   air; the player's own move is `online.send` as it is played; `can_undo`,
   `hints_left` and `can_reset` answer no, so undo, the bulb and Reset stay
   on the bar greyed; `_finish` is split into `_conclude(outcome, ..., why)`
-  so a game can end off the board; `_online_end` holds an `end` that arrived
-  before this board got there by its own rules, and `_start_turn` concludes
-  on it once the inbox is empty; the end card's head is `online.head`, its
+  so a game can end off the board; **chess and checkers do not take the other
+  seat's `end` on trust** (the rules let whoever moved last write it with
+  any winner): `_online_end` only notes that it was said, the board finishes
+  on its own `rules.status()` once the last move has been played (the two
+  can arrive in either order), and an `end` this board does not reach with
+  nothing left to play is `online.foul()` -- from `_on_online_over` when the
+  board is already waiting (`YOURS`, or `THINK` with an empty inbox), else
+  from `_start_turn`. Snooker is different by design: the shooter's table
+  says the frame is over and the watcher takes it (`_take_online` concludes
+  on `_online_end` only when no table is coming). The end card's head is `online.head`, its
   line `online.why_line`, a loss shows the other player's face, its button
   is `online.again_button()`; Back asks through `online.ask_leave` and sends
   no `versus_abandon`; `go_back()` (Android's back) tries `online.back()`
@@ -221,17 +246,37 @@ rules or `Match`'s clocks.
   - **`leave()` resigns** a game that has no result (JOINING too), takes a
     ticket out of the queue, shuts both streams and emits nothing.
     `cancel()` is `leave()`, `seek()` begins with one, and so does
-    `_exit_tree`: freeing a live Match is a resignation.
+    `_exit_tree`: freeing a live Match is a resignation. In JOINING the seat
+    is known before the document says so (`_sits`: the claimed ticket's
+    owner is p0, the claimer p1), so walking away in that gap resigns too.
+  - **A seek cancelled while its claim is on the way** (`_scan`): if the
+    claim landed all the same, the match it made is resigned at once
+    (`winner: 0`, the claimer is p1; the rules allow a resignation to either
+    player at any time), so the player claimed re-seeks in about a second
+    instead of waiting 11.5 s for void. Not when the ticket stream already
+    said so and this is the match joined (`id == mid`). On one Mac the
+    ticket's delete usually overtakes the claim and the rules refuse the
+    claim; both ways are right.
   - **It is a follower of state**: it keeps the match document (`_m`),
     applies each stream event by path (`_apply`; arrays turned back into
     keyed objects, `_keyed`, because the database hands `moves` and `seen`
     back as arrays), and hands out the other seat's moves from `_handed` up
     to `n`. A reopened stream sends the whole document again, so
     reconnecting has no code of its own. Do not add a "reconnected" path.
-  - **Moves go out one at a time and in order** (`_outbox`, `_pump`). A
-    PATCH that got no answer is looked for (`moves/{n}`) before it is sent
-    again; a 401 is final (the game is over, or this end is out of step and
-    the clock settles it).
+  - **Moves go out one at a time and in order** (`_outbox`, `_pump`). **A
+    move keeps the `n` it was first sent at** (`item.n`), and anything but a
+    yes -- no answer, or a 401 -- is settled by reading `moves/{n}`: if it
+    is this seat's with this `d` the move was sent (the PATCH landed and its
+    answer was lost) and what is queued behind goes out at `n + 1`; a 401
+    with the move not there is final (the game is over, or this end is out
+    of step and the clock settles it); a read that does not answer means try
+    again. Before this a lost answer followed by a lost read sent the move
+    again at an `n` counted afresh: twice when the stream had caught up (a
+    snooker shot twice is a foul at the other end), or refused and dropped
+    with the message behind it when it had not. **The PATCH's echo is applied
+    only when the copy is not already past it** (`_m.n <= n`): the stream may
+    have brought the move and the reply first, and a late echo rolled `n`,
+    `turn` and `turnAt` back.
   - **Claim margins.** The rules' clocks are 10 s (a ticket's heartbeat, and
     void), 20 s (left) and 60 s (a move). This end claims on its estimate of
     the server's clock (`Live.server_now()`) `GRACE_MS` 1.5 s late, asks
@@ -272,7 +317,11 @@ rules or `Match`'s clocks.
     that stopped elsewhere to its place in `SLIDE` 0.15 s
     (`snooker_table.slide`; snapped under reduce motion). The shooter also
     restores its own table from its own snapshot, so both start the next
-    shot the same to the bit.
+    shot the same to the bit. **A cue ball in hand is seated before the
+    snapshot** (`_judge` calls `_seat_cue_ball()` when `rules.in_hand`): the
+    referee puts it on one spot in the D whatever stands there, and a table
+    sent with it on top of another ball is one `Sim.read` refuses -- a foul
+    on a legal frame.
   - **Each end is player 0.** `to_dict` writes the state as its owner sees
     it and the receiver reads it with `flip` (`turn`, `scores`, `breaks`,
     `high`, `winner`, `breaker`, `last.player` swap). The same holds one
@@ -284,9 +333,11 @@ rules or `Match`'s clocks.
 - **A foul** is a message this end's rules could not have produced; nothing
   on the server knows the games. `online.foul()` sets the result to a win
   with why `left`, calls `Match.leave()` and emits `over("won", "left")`.
-  Chess: `m` not a number, or not in `rules.legal_moves()`. Checkers: `m`
-  not an array of numbers, or not equal to a listed move whole (so the most
-  pieces are taken). Snooker's shot: more than the one key, not seven finite
+  `foul()` also works on a result of `end` not yet settled, which is how a
+  forged ending is refused. Chess: `m` not a number, or not in
+  `rules.legal_moves()`. Checkers: `m` not an array of numbers, or not equal
+  to a listed move whole (so the most pieces are taken). Both: an `end` from
+  the other seat that this board's own rules do not reach. Snooker's shot: more than the one key, not seven finite
   floats, a line not of length 1, a pace of 0 or over `Sim.MAX_SPEED`, a tip
   past `Sim.MAX_TIP`, a cue ball that is not where this table has it (or,
   in hand, not in the D or on another ball). Snooker's table: more than the
@@ -322,7 +373,16 @@ rules or `Match`'s clocks.
     lone seeker hears `nobody` and leaves no ticket; two processes trade ten
     bare moves to one result, one of them cutting its own stream so a move
     is made while it is not listening; with `clocks`, void, left and timeout
-    are claimed for real. Run it after touching `Match` or `Live`.
+    are claimed for real. Run it after touching `Match` or `Live`. Also:
+    **lost answers** (`Live.lose = 2` -- a seam like `Stream.drop()`: the
+    next two requests land and their answers are thrown away) on a move of
+    two messages, the first keeping the turn, and on a move whose reply
+    arrives before it is settled: the first goes in once, the one behind it
+    goes, the count never steps back; and **a seek cancelled mid-claim**
+    (`Match._claim_mid` names the claim in flight), once as it falls and
+    once with the ticket's delete held back so the claim lands: the match is
+    resigned at once and the one claimed is looking again in 1.3 s. Every
+    mode, the children's too, refuses to run without `FIREBASE_EMULATOR`.
   - `... --script res://tests/_probe_online.gd -- chess|checkers|snooker`:
     two processes, the real screen at level 3, each seat played by the
     game's computer (level 1 against level 0) as if tapped. Four cases: a
@@ -340,7 +400,17 @@ rules or `Match`'s clocks.
     its copy (`NUDGE`, metres, 0.004) before every roll it watches, its
     rolls end up to half a metre off, and the hashes must still agree.
     Snooker's foul is tried twice (a shot that is not one, a table one ball
-    short). `SPEED` (4; snooker 8), `SEED`.
+    short). `SPEED` (4; snooker 8), `SEED`. Four more since the review:
+    **a forged end** (chess, checkers: a move, then `end` written won with
+    the game on; the other ends `left`, a win, no loss counted); **a move
+    inside the found beat** (all three: the opener starts with no beat and
+    moves at once, the other holds the message until its board is laid and
+    the game goes on to a resignation); **Back inside the found beat** (all
+    three: one closes, the other looks again with no card, no record
+    moves); **an in-off with a ball on the cue ball's spot** (snooker: a
+    shot stopped mid-roll with the cue ball potted and a red on the spot;
+    the cue ball is seated clear, every hash agrees, no foul). Every mode
+    refuses to run without `FIREBASE_EMULATOR`.
   - `tests/_probe_snooker_frame.gd` also checks, after every shot, that
     `{table, rules}` comes back through JSON exactly, flipped and not, and
     prints the longest message.
@@ -353,11 +423,17 @@ rules or `Match`'s clocks.
     the dialog, the end cards, Play the computer, Cancel; `checkers` or
     `snooker` alone skips what comes before it. Prints draw calls a shot.
 - **Harness hygiene, online's own.**
-  - **A harness that instantiates `world/main.tscn` must stop `Backend` and
-    `Analytics` on its first frame, not in `_initialize`**: the main scene
-    enters the tree only once the loop starts, and it is what starts both.
-    `_shot_online.gd` does it at the top of `_process` (`_quiet`). Early
-    runs of it reached the live project.
+  - **A harness that instantiates `world/main.tscn` puts
+    `tests/_offline_main.gd` on it before it enters the tree**
+    (`main.set_script(load(...))`): `world/main.gd` without its `_ready`,
+    which is what starts `Analytics`, `Backend` and `Ads` -- against the
+    live project, since nothing names an emulator. `_shot_online.gd` does,
+    prints `first frame: backend started false, analytics started false,
+    ads started false`, and quits if one is true. What it did before
+    (stopping both at the top of its first `_process`) was measured: by
+    that frame both were started, `game_open` had been handed to an
+    HTTPRequest and a sign-in begun, and only the frame's end took them
+    back. `Ads.start()` does nothing off a phone.
   - `Online.stand_in` (a static `GDScript`) is what `Online._ready` builds
     in place of `Match`; set it before the screen opens and reach the fake
     as `screen.online._match`. A stand-in must have `wait`, `seek`,
@@ -374,6 +450,20 @@ rules or `Match`'s clocks.
     the offline card, not a game: that is the design, not a bug.
 
 **Online: open** (2026-10-04)
+
+- **Every other harness that builds `world/main.tscn` starts `Backend` (and
+  `Analytics`, when `res://analytics_secret.cfg` or `GA_API_SECRET` is
+  there) against the live project and never stops it**: fifty-odd
+  `tests/_shot_*.gd`, `_tap*.gd`, `_probe_*.gd` (`grep -L "stop()" $(grep -l
+  world/main.tscn tests/*.gd)`); the few that call `stop()` do it after the
+  start. `tests/_offline_main.gd` is the fix and only `_shot_online.gd`
+  uses it yet. `CLAUDE.md`'s "tests and harnesses stay offline" is true of
+  the ones that build a screen themselves.
+- The lost-answer and mid-claim fixes were seen with the stream up (one Mac,
+  the emulator). A PATCH that lands with its answer lost *and* the stream
+  down was not staged; the same read of `moves/{n}` settles it.
+- A foul on a forged `end` is a win by `left` at the honest end; the forger's
+  own device shows what it wrote.
 
 - Never run on two devices, and never against the real project: the
   database instance does not exist yet and the rules are not deployed

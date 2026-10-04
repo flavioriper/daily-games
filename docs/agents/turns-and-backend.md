@@ -206,7 +206,10 @@ last stamped write's answer, at the middle of the round trip) and
 `Live.clocked()`. **Unstarted `Backend` means offline here too**: every verb
 answers `{ok = false, code = 0}` and a stream stays shut, without touching
 the network. A 401 is retried once with a fresh token unless the body says
-"Permission denied": a rule's refusal is an answer.
+"Permission denied": a rule's refusal is an answer. `Live.lose` (an int, for
+a probe, as `Stream.drop()` is): the next that many requests are made and
+land, and answer `{ok = false, code = 0}` -- a network that went quiet
+mid-request.
 
 `Live.Stream` is a `Node` holding one `HTTPClient`: `open(path)`, `close()`,
 `is_open()`, `drop()` (cuts it as a bad network would, for a probe),

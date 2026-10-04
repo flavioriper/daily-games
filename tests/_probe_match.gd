@@ -19,6 +19,19 @@ extends SceneTree
 ## open cuts its own stream the moment move 2 arrives and answers at once, so
 ## move 4 is made while it is not listening: it has to turn up anyway.
 ##
+## Two of the opener's moves go out over a network that eats answers
+## (`Live.lose`: the request lands, the answer does not come back, twice
+## running -- the PATCH's, then the look for it). Move 6 is two messages, the
+## first keeping the turn as snooker's shot does: the one behind it must still
+## go, once, and the first must not go in twice. Move 8's answer is settled a
+## second late, after the stream has brought both it and the reply: the late
+## echo must not step the opener's copy of the match back.
+##
+## Then **a seek cancelled mid-claim**: one more process sits in checkers'
+## queue, this one claims it and cancels while the claim is on its way. The
+## match the claim made is resigned at once, and the one claimed is looking
+## again in a second or two, not after the 10 s void clock.
+##
 ## With `-- clocks` after the script it goes on to the three clocks Match
 ## claims on, waited out for real (about 65 s), each against one more process
 ## that seeks and then only sits (`-- sit <who> <file> <game>`): a ticket
@@ -43,6 +56,12 @@ func _process(_delta: float) -> bool:
 	if not _begun:
 		_begun = true
 		var args := OS.get_cmdline_user_args()
+		# Every mode, the players' too: Backend.start with no emulator named
+		# is the live project.
+		if OS.get_environment("FIREBASE_EMULATOR").strip_edges().is_empty():
+			print("FIREBASE_EMULATOR is not set; this probe only ever talks to the emulator")
+			quit(2)
+			return false
 		if args.size() >= 3 and args[0] == "play":
 			_tag = "[%s] " % args[1]
 			_play(args[1], args[2], "chess", true)
@@ -83,10 +102,6 @@ func _report(file: String) -> Dictionary:
 	return d if typeof(d) == TYPE_DICTIONARY else {}
 
 func _conduct(clocks: bool) -> void:
-	if OS.get_environment("FIREBASE_EMULATOR").is_empty():
-		print("FIREBASE_EMULATOR is not set; this probe only ever talks to the emulator")
-		quit(2)
-		return
 	# Unstarted: offline, and not a byte sent.
 	var cold := _new_match()
 	var heard := [false]
@@ -170,11 +185,93 @@ func _conduct(clocks: bool) -> void:
 		_check("the opener resigned and the other won",
 			a.why == "resign" and int(a.winner) == int(other.seat))
 		_check("both heard the clock", int(a.clocks) > 0 and int(b.clocks) > 0)
+		_check("lost answers: four were eaten, on the opener's moves 6 and 8", int(opener.lost) == 4,
+			"%d" % int(opener.lost))
+		_check("lost answers: the message that kept the turn went in once, and the one behind it went",
+			str(other.heads) == str([6.0]) and str(other.got).count("6") == 1,
+			"the other got heads %s and moves %s" % [other.heads, other.got])
+		_check("lost answers: a late echo did not step the opener's match back", int(opener.n_back) == 0 \
+			and int(opener.late_echo) >= 1,
+			"n went back %d times; %d echo arrived behind the copy" % [int(opener.n_back), int(opener.late_echo)])
+	await _cancel_mid_claim(false, true)
+	await _cancel_mid_claim(true, clocks)
 	if clocks:
 		await _clocks()
 	print("-- %s" % ("all passed" if _fails == 0 else "%d FAILED" % _fails))
 	Backend.stop()
 	quit(0 if _fails == 0 else 1)
+
+## A seek cancelled while its claim is on the way: the match it made is
+## resigned at once and the player claimed goes straight back to looking.
+func _cancel_mid_claim(held: bool, wait_after: bool) -> void:
+	var tag := ", its delete late" if held else ""
+	print("-- a seek cancelled mid-claim%s" % tag)
+	var me := Backend.uid()
+	var f := _spawn("sit", "g" if held else "f", "checkers")
+	var them := ""
+	var t0 := Time.get_ticks_msec()
+	while them.is_empty() and Time.get_ticks_msec() - t0 < 15000:
+		await create_timer(0.25).timeout
+		var q := await Live.read("queue/checkers")
+		if typeof(q.data) == TYPE_DICTIONARY:
+			for u in q.data:
+				if str(u) != me and not q.data[u].has("match") \
+						and Live.server_now() - float(q.data[u].get("at", 0.0)) < 6000.0:
+					them = str(u)
+	_check("mid-claim%s: the other player is in the queue" % tag, not them.is_empty(), them)
+	var c := _new_match()
+	var found := [false]
+	c.found.connect(func(_s: int, _f: int, _d: int, _o: String) -> void: found[0] = true)
+	c.seek("checkers")
+	var mid := ""
+	t0 = Time.get_ticks_msec()
+	while mid.is_empty() and Time.get_ticks_msec() - t0 < 10000:
+		await process_frame
+		if not c._claim_mid.is_empty():
+			mid = c._claim_mid
+			# The ticket's delete is held back until the claim has had time to
+			# land (it is sent below): on one Mac the delete overtakes the claim
+			# and the rules then refuse the claim, which is the easy case.
+			if held:
+				c._ticket = ""
+			c.cancel()
+	var cancelled := Time.get_ticks_msec()
+	_check("mid-claim%s: cancelled with the claim on its way" % tag, not mid.is_empty(), mid)
+	await create_timer(1.0).timeout
+	if held:
+		await Live.remove("queue/checkers/%s" % me)
+	var made := await Live.read("matches/%s" % mid)
+	var landed: bool = made.ok and typeof(made.data) == TYPE_DICTIONARY
+	if not held:
+		# Either is right: refused (the delete got there first) and no match, or
+		# landed and resigned.
+		_say("      the claim %s" % ("landed" if landed else "was refused: the delete got there first (HTTP %d)" % int(made.code)))
+	else:
+		_check("mid-claim%s: the claim landed all the same" % tag, landed and str(made.data.get("p0", "")) == them \
+			and str(made.data.get("p1", "")) == me)
+	var res: Variant = made.data.get("result") if landed else null
+	if landed:
+		_check("mid-claim%s: and its match was resigned at once, to the one claimed" % tag,
+			typeof(res) == TYPE_DICTIONARY and str(res.get("why", "")) == "resign" and int(res.get("winner", -9)) == 0,
+			str(res))
+	_check("mid-claim%s: the canceller heard nothing and is idle" % tag, not found[0] and c.phase == Match.Phase.IDLE)
+	var back_ms := -1
+	while back_ms < 0 and Time.get_ticks_msec() - cancelled < 14000:
+		await create_timer(0.2).timeout
+		var q := await Live.read("queue/checkers/%s" % them)
+		if typeof(q.data) == TYPE_DICTIONARY and not q.data.has("match"):
+			back_ms = Time.get_ticks_msec() - cancelled
+	_check("mid-claim%s: the one claimed is looking again, without waiting for void" % tag, back_ms >= 0 and back_ms < 5000,
+		"%.1f s after the cancel (void is 11.5 s)" % (back_ms / 1000.0))
+	var mine := await Live.read("queue/checkers/%s" % me)
+	_check("mid-claim%s: the canceller left no ticket" % tag, mine.ok and mine.data == null)
+	c.free()
+	if OS.is_process_running(f[1]):
+		OS.kill(f[1])
+	if wait_after:
+		# The killed sitter's ticket is fresh for 8.5 s more, and the clocks'
+		# timeout case seeks in the same queue.
+		await create_timer(9.0).timeout
 
 ## The three clocks, side by side in three queues, this process the bad
 ## opponent in each.
@@ -257,10 +354,29 @@ func _play(who: String, file: String, game: String, moving: bool) -> void:
 	var saw := {
 		"uid": Backend.uid(), "id": "", "seat": -1, "first": -1, "seed": -1, "opponent": "",
 		"sent": [], "got": [], "winner": -9, "why": "", "drops": 0, "opens": 0, "clocks": 0,
-		"reopened_at_n": -1,
+		"reopened_at_n": -1, "heads": [], "lost": 0, "n_back": 0, "late_echo": 0,
 	}
+	# The opener's copy of the match, frame by frame: its count of moves must
+	# never go down.
+	var top := [0]
+	process_frame.connect(func() -> void:
+		if not is_instance_valid(m):
+			return
+		var n := int(m._m.get("n", 0))
+		if m.phase == Match.Phase.PLAYING and n < top[0]:
+			saw.n_back += 1
+		top[0] = maxi(top[0], n))
 	var push := func(i: int) -> void:
 		saw.sent.append(i)
+		if i == 6 or i == 8:
+			# The network eats the next two answers: this move's, and the look
+			# for it. No heartbeat in between to take one of them.
+			Live.lose = 2
+			saw.lost += 2
+			m._seen_t = 0.0
+		if i == 6:
+			# Two messages, the first keeping the turn, as snooker's shot and table.
+			m.send({"i": i, "by": who, "head": true}, m.seat)
 		m.send({"i": i, "by": who}, 1 - m.seat)
 	m.offline.connect(func() -> void: _say("offline"))
 	m.nobody.connect(func() -> void: _say("nobody yet"))
@@ -285,6 +401,15 @@ func _play(who: String, file: String, game: String, moving: bool) -> void:
 			push.call(0))
 	m.move.connect(func(d: Dictionary) -> void:
 		var i := int(d.get("i", -1))
+		if d.has("head"):
+			saw.heads.append(i)
+			_say("move %d's first half from %s" % [i, d.get("by", "?")])
+			return
+		if Live.lose == 0 and m._sending and not m._outbox.is_empty() and m._outbox[0].has("n") \
+				and int(m._m.get("n", 0)) > int(m._outbox[0].n) + 1:
+			# The reply to a move whose own answer has not been settled yet: when
+			# it is, its echo will be behind this copy.
+			saw.late_echo += 1
 		saw.got.append(i)
 		_say("move %d from %s" % [i, d.get("by", "?")])
 		if i == 2:
@@ -297,6 +422,7 @@ func _play(who: String, file: String, game: String, moving: bool) -> void:
 		saw.winner = winner
 		saw.why = why
 		saw.opens = m._stream.opens
+		saw.lost -= Live.lose
 		_say("ended: winner seat %d, why %s" % [winner, why])
 		var f := FileAccess.open(file, FileAccess.WRITE)
 		f.store_string(JSON.stringify(saw))

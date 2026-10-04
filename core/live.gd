@@ -26,6 +26,10 @@ const STAMP := {".sv": "timestamp"}
 ## The server's clock minus this device's, in ms, from the last stamped write.
 static var _offset_ms := 0.0
 static var _clocked := false
+## For a probe, as Stream.drop() is: the next `lose` requests are made and
+## land, and their answers are thrown away -- {ok = false, code = 0}, what a
+## network that went quiet mid-request looks like from here.
+static var lose := 0
 
 static func online() -> bool:
 	return Backend.started()
@@ -65,6 +69,9 @@ static func _call(method: int, path: String, value: Variant, has_body: bool,
 		query: Dictionary) -> Dictionary:
 	if not online():
 		return {"ok": false, "code": 0, "data": null}
+	var lost := lose > 0
+	if lost:
+		lose -= 1
 	var res := {}
 	# Twice at most: a token the server calls stale is renewed once. A rule's
 	# refusal is a 401 too, and that one is an answer, not a reason to retry.
@@ -81,6 +88,8 @@ static func _call(method: int, path: String, value: Variant, has_body: bool,
 				var back := Time.get_unix_time_from_system()
 				_read_stamp(value, JSON.parse_string(str(res.body)), (sent + back) * 500.0)
 			break
+	if lost:
+		return {"ok": false, "code": 0, "data": null}
 	var text := str(res.body)
 	return {
 		"ok": bool(res.ok),

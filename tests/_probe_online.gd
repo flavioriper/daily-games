@@ -45,6 +45,27 @@ extends SceneTree
 ## watches, so its roll does differ, and the lists must still agree. The foul
 ## is tried twice: a shot that is not one, and a table one ball short.
 ##
+## And four more, each a defect a review found (2026-10-04):
+##
+## 5. **A forged end** (chess, checkers). One plays a move and writes `end`
+##    with itself the winner -- the rules take that from whoever moved last --
+##    while the game is still on. The other plays the move, sees its own
+##    rules say the game is not over, and calls a foul: `left`, a win, and
+##    no loss counted.
+## 6. **A move inside the found beat.** The seat that opens starts its game
+##    the moment it is found (no beat, reduce motion) and moves at once, so
+##    its move reaches the other end while that end's found card is still up.
+##    The other must play it when its board is laid, and the game go on to a
+##    resignation; before the fix it threw the move away and lost on time.
+## 7. **Back inside the found beat.** One presses Back the moment it is found:
+##    its screen closes; the other goes back to looking with no card; nobody's
+##    record moves.
+## 8. **An in-off with a ball on the cue ball's spot** (snooker). One end's
+##    shot is stopped mid-roll with the cue ball down a pocket and a red
+##    standing where the referee puts a cue ball in hand. The table it sends
+##    must be one the other end takes (the cue ball seated somewhere free
+##    first), every hash agreeing, and the frame go on.
+##
 ## SPEED (Engine.time_scale, 4; snooker 8), SEED. user://versus.cfg is put back by the
 ## conductor on every way out (the players share it, so they leave it alone).
 ## Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 5.
@@ -105,6 +126,12 @@ func _process(delta: float) -> bool:
 			_game = args[0]
 		else:
 			print("usage: -- chess|checkers|snooker")
+			quit(2)
+			return false
+		# Every mode, the players' too: Backend.start with no emulator named
+		# is the live project.
+		if OS.get_environment("FIREBASE_EMULATOR").strip_edges().is_empty():
+			print("FIREBASE_EMULATOR is not set; this probe only ever talks to the emulator")
 			quit(2)
 			return false
 		if args.size() >= 5 and args[1] == "play":
@@ -169,10 +196,6 @@ func _online_record() -> Vector3i:
 	return Vector3i(r.x, r.y, Record.get_draws(_game, Record.ONLINE))
 
 func _conduct() -> void:
-	if OS.get_environment("FIREBASE_EMULATOR").is_empty():
-		print("FIREBASE_EMULATOR is not set; this probe only ever talks to the emulator")
-		quit(2)
-		return
 	_had = FileAccess.file_exists(CFG)
 	if _had:
 		_saved = FileAccess.get_file_as_string(CFG)
@@ -249,9 +272,69 @@ func _conduct() -> void:
 	if not b.is_empty():
 		_check("it ended with left, a win", b.why == "left" and b.outcome == "won", "card says: %s" % b.said)
 
+	print("-- a forged end: a move, and `end` written with the game still on")
+	before = _online_record()
+	seen = await _pair("cheat_end", "stay", [1], 60.0)
+	b = seen[1]
+	_check("the one lied to finished", not b.is_empty(), "%.0f s" % seen[2])
+	if not b.is_empty():
+		_check("its own rules said the game was on, and it called a foul: left, a win",
+			b.why == "left" and b.outcome == "won" and int(b.status) == 0,
+			"why %s, %s, status %d after %d plies; card says: %s" % [b.why, b.outcome, int(b.status), int(b.plies), b.said])
+		var after := _online_record()
+		_check("a win was counted and no loss", after == before + Vector3i(1, 0, 0),
+			"won %d -> %d, lost %d -> %d" % [before.x, after.x, before.y, after.y])
+
+	await _early_case(180.0)
+	await _beat_case()
+
 	print("-- %s" % ("all passed" if _fails == 0 else "%d FAILED" % _fails))
 	_restore()
 	quit(0 if _fails == 0 else 1)
+
+## A move that reaches the other end inside its found beat is played, not
+## thrown away.
+func _early_case(deadline: float) -> void:
+	print("-- a move inside the found beat")
+	var seen: Array = await _pair("early", "early", [0, 1], deadline)
+	var a: Dictionary = seen[0]
+	var b: Dictionary = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if a.is_empty() or b.is_empty():
+		return
+	var late: Dictionary = b if int(a.seat) == int(a.first) else a
+	var stayed: Dictionary = b if bool(a.closed) else a
+	_check("the opener's first move landed while the other's found card was up", int(late.early) >= 1,
+		"%d message held until its board was laid" % int(late.early))
+	if _game == "snooker":
+		_same_shots(a, b)
+		_check("and the frame went on to a resignation, not a clock",
+			bool(a.closed) != bool(b.closed) and stayed.why == "resign" and stayed.outcome == "won" and int(stayed.shots) >= 6,
+			"why %s after %d shots" % [stayed.why, int(stayed.shots)])
+	else:
+		_check("and the game went on to the opener's resignation, not a clock",
+			stayed == late and late.why == "resign" and late.outcome == "won" and int(late.plies) >= 6,
+			"why %s after %d plies; card says: %s" % [late.why, int(late.plies), late.said])
+
+## Back inside the found beat: a game that never began. Nothing is counted at
+## either end, one closes and the other looks again.
+func _beat_case() -> void:
+	print("-- Back inside the found beat")
+	var before := _online_record()
+	var seen: Array = await _pair("beat_quit", "beat_stay", [0, 1], 60.0)
+	var a: Dictionary = seen[0]
+	var b: Dictionary = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if a.is_empty() or b.is_empty():
+		return
+	_check("the one who pressed Back closed, with no dialog and no card",
+		bool(a.closed) and not bool(a.card) and not bool(a.asked) and int(a.founds) == 1)
+	_check("the other was found once and is looking again, with no card",
+		int(b.founds) == 1 and bool(b.looking) and not bool(b.card) and not bool(b.settled),
+		"state %d" % int(b.state))
+	var after := _online_record()
+	_check("nobody's record moved", after == before,
+		"won %d lost %d drawn %d -> won %d lost %d drawn %d" % [before.x, before.y, before.z, after.x, after.y, after.z])
 
 ## Snooker's five: a whole frame, a frame with one end's rolls nudged, a
 ## kill, a resignation and two fouls.
@@ -323,6 +406,24 @@ func _conduct_snooker() -> void:
 		if not b.is_empty():
 			_check("it ended with left, a win", b.why == "left" and b.outcome == "won", "card says: %s" % b.said)
 
+	print("-- an in-off with a ball on the cue ball's spot")
+	seen = await _pair("inoff", "stay", [0, 1], 400.0)
+	a = seen[0]
+	b = seen[1]
+	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
+	if not a.is_empty() and not b.is_empty():
+		_check("the shot went in-off with a red on the spot, and the cue ball was seated clear of it",
+			bool(a.inoff) and float(a.red_gap) < 0.0001 and float(a.cue_gap) >= 2.0 * Sim.R and bool(a.cue_free),
+			"the red %.1f mm from the spot, the cue ball %.1f mm (a ball is %.1f mm across)" % [
+				float(a.red_gap) * 1000.0, float(a.cue_gap) * 1000.0, 2000.0 * Sim.R])
+		_same_shots(a, b)
+		_check("no foul was called: the frame went on to a resignation",
+			bool(a.closed) and b.why == "resign" and b.outcome == "won" and int(b.shots) >= int(a.inoff_shot) + 4,
+			"why %s after %d shots (the in-off was shot %d); card says: %s" % [b.why, int(b.shots), int(a.inoff_shot), b.said])
+
+	await _early_case(400.0)
+	await _beat_case()
+
 	print("-- %s" % ("all passed" if _fails == 0 else "%d FAILED" % _fails))
 	_restore()
 	quit(0 if _fails == 0 else 1)
@@ -366,7 +467,56 @@ func _play() -> void:
 	_s = screen.new(Record.ONLINE)
 	_s.closed.connect(_on_closed)
 	root.add_child(_s)
+	# After Online's own handlers, so these see what it made of each.
+	var mt: Node = _s.online._match
+	mt.move.connect(func(_d: Dictionary) -> void:
+		if not _s.online._begun:
+			_early += 1)
+	mt.found.connect(_on_found)
 	_say("%s is looking" % load("res://versus/online/names.gd").name_of(Backend.uid()))
+
+var _early := 0
+var _founds := 0
+
+func _on_found(seat: int, first: int, _seed: int, _opponent: String) -> void:
+	_founds += 1
+	if _mode == "beat_quit":
+		_say("Back, inside the found beat")
+		_s._on_back()
+	elif _mode == "early" and seat == first:
+		# The opener's game starts now -- no beat, nothing dealt in -- so its
+		# first move is on its way while the other end's found card is up.
+		(func() -> void:
+			load("res://core/motion.gd").reduce = true
+			_s.online._run += 1
+			_s.online._drop_lobby()
+			_s.online._begin()).call_deferred()
+
+## Found once, and back to looking under the lobby with no card: what the end
+## left in the found beat has come to.
+func _beat_watch() -> void:
+	if _reported or _founds < 1 or int(_s.online.seat) != -1 or not _s.online.in_lobby():
+		return
+	_write_beat(false)
+
+func _write_beat(closed: bool) -> void:
+	if _reported:
+		return
+	_reported = true
+	var saw := {
+		"uid": Backend.uid(), "founds": _founds, "closed": closed, "asked": _s.get_node_or_null("Leave") != null,
+		"looking": not closed and _s.online.in_lobby() and int(_s.online.seat) == -1,
+		"card": is_instance_valid(_s._end), "settled": bool(_s.online._settled), "state": int(_s._state),
+	}
+	_say("%s after being found %d time" % ["closed" if closed else "looking again", _founds])
+	if closed:
+		_s.queue_free()
+		_s = null
+		await create_timer(1.5, true, false, true).timeout
+	var f := FileAccess.open(_file, FileAccess.WRITE)
+	f.store_string(JSON.stringify(saw))
+	f.close()
+	quit(0)
 
 func _sq(n: String) -> int:
 	return "abcdefgh".find(n[0]) + (int(n[1]) - 1) * 8
@@ -396,6 +546,9 @@ func _choose() -> Variant:
 func _drive(real: float) -> void:
 	if _reported or not _s.is_inside_tree():
 		return
+	if _mode == "beat_stay":
+		_beat_watch()
+		return
 	var st: int = _s._state
 	if st != _last_state:
 		_last_state = st
@@ -414,7 +567,8 @@ func _drive(real: float) -> void:
 			_say("killing itself")
 			OS.kill(OS.get_process_id())
 			return
-		if (_mode == "resign" and _mine >= 3) or _moves() > LONG:
+		if (_mode == "resign" and _mine >= 3) or (_mode == "early" and _s.online.opens() and _mine >= 3) \
+				or _moves() > LONG:
 			_acted = true
 			_resign()
 			return
@@ -427,6 +581,15 @@ func _drive(real: float) -> void:
 				_s.online.send({"m": [0, 1, 63]})
 			else:
 				_s.online.send({"m": Rules.mv(_s.rules.kings[_s.player], 36)})
+			return
+		if _mode == "cheat_end" and _mine >= 3:
+			# A real move, and then the match is told the game ended on the board
+			# and this seat won it: the rules take `end` from whoever moved last.
+			_acted = true
+			_say("playing a move and writing end, won, with the game still on")
+			_s.online._settled = true  # this end counts nothing: the record read is the other's
+			_s._on_chosen(_choose())
+			_s.online._match.end(int(_s.online.seat))
 			return
 		_mine += 1
 		_s._on_chosen(_choose())
@@ -441,6 +604,12 @@ var _hashed := 0
 var _nudges := 0
 var _nudged_at := -1
 var _sn_rng := RandomNumberGenerator.new()
+var _inoff := false
+var _inoff_shot := -1
+var _inoff_red := -1
+var _cue_gap := -1.0
+var _red_gap := -1.0
+var _cue_free := false
 
 ## One table and one referee's state as text, the same at both ends when they
 ## agree: the referee's seen from seat 0.
@@ -450,12 +619,46 @@ func _table_hash() -> String:
 func _drive_snooker(real: float) -> void:
 	if _reported or not _s.is_inside_tree():
 		return
+	if _mode == "beat_stay":
+		_beat_watch()
+		return
 	var st: int = _s._state
 	var states: Dictionary = _s.State
 	if st != _last_state:
 		_last_state = st
 		_idle_t = 0.0
 	_idle_t += real
+	var spot := Sim.D_CENTRE + Vector2(0.0, Sim.D_R * 0.5)
+	if _mode == "inoff" and not _inoff and st == states.ROLL and int(_s.rules.turn) == 0 and _mine >= 2:
+		# This seat's own shot, stopped where it is: the cue ball down a pocket
+		# and a red standing on the spot the referee puts a cue ball in hand.
+		var sim: RefCounted = _s.sim
+		for id in range(1, Sim.REDS + 1):
+			if not sim.on[id] or sim.potted.has(id):
+				continue
+			var clear := true
+			for j in range(1, Sim.COUNT):
+				clear = clear and (j == id or not sim.on[j] or sim.pos[j].distance_to(spot) > 2.0 * Sim.R * 1.01)
+			if not clear:
+				break
+			for i in Sim.COUNT:
+				sim.vel[i] = Vector2.ZERO
+				sim.roll[i] = Vector2.ZERO
+				sim.side[i] = 0.0
+			sim.pos[id] = spot
+			sim.on[Sim.CUE] = false
+			if not sim.potted.has(Sim.CUE):
+				sim.potted.append(Sim.CUE)
+			_inoff = true
+			_inoff_red = id
+			_inoff_shot = int(_s._shots) + 1
+			_say("shot %d stopped: the cue ball in a pocket, red %d on the spot in the D" % [_inoff_shot, id])
+			break
+	if _inoff and _cue_gap < 0.0 and int(_s._shots) >= _inoff_shot:
+		# Judged and sent: where the cue ball in hand was put.
+		_cue_gap = _s.sim.pos[Sim.CUE].distance_to(spot)
+		_red_gap = _s.sim.pos[_inoff_red].distance_to(spot)
+		_cue_free = _s.sim.on[Sim.CUE] and _s.sim.free_at(_s.sim.pos[Sim.CUE], Sim.CUE)
 	# Every shot, as it settles at this end: its own once judged, the other
 	# player's once their table has been taken.
 	if st != states.LOBBY and int(_s._shots) > _hashed:
@@ -485,7 +688,9 @@ func _drive_snooker(real: float) -> void:
 			_say("killing itself")
 			OS.kill(OS.get_process_id())
 			return
-		if (_mode == "resign" and _mine >= 3) or (_mode == "nudge" and int(_s._shots) >= 24) or int(_s._shots) > 400:
+		if (_mode == "resign" and _mine >= 3) or (_mode == "nudge" and int(_s._shots) >= 24) or int(_s._shots) > 400 \
+				or (_mode == "early" and int(_s._shots) >= 6) \
+				or (_mode == "inoff" and ((_inoff and int(_s._shots) >= _inoff_shot + 4) or int(_s._shots) > 60)):
 			_acted = true
 			_resign()
 			return
@@ -560,6 +765,8 @@ func _write_snooker(closed: bool) -> void:
 		"card": card, "over": bool(r.over), "scores": [r.scores[0], r.scores[1]],
 		"shots": int(_s._shots), "mine": _mine, "hashes": _hashes, "drift": _s.drift, "nudges": _nudges,
 		"tools": _tools, "said": said, "again": again, "asked": _asked, "closed": closed,
+		"early": _early, "inoff": _inoff, "inoff_shot": _inoff_shot, "cue_gap": _cue_gap, "red_gap": _red_gap,
+		"cue_free": _cue_free,
 	}
 	_say("%s by %s (winner seat %d), %d-%d after %d shots (%d its own), table %s" % [
 		saw.outcome, saw.why, winner, int(r.scores[0]), int(r.scores[1]), int(_s._shots), _mine,
@@ -600,7 +807,9 @@ func _on_closed() -> void:
 	if _reported:
 		return
 	_say("the screen closed")
-	if _game == "snooker":
+	if _mode == "beat_quit":
+		_write_beat(true)
+	elif _game == "snooker":
 		_write_snooker(true)
 	else:
 		_write(true)
@@ -665,7 +874,7 @@ func _write(closed: bool) -> void:
 		"chain": chain, "longest": longest, "crown": crown, "takes": takes,
 		"ep": ep, "promo": promo, "castle": castle, "b8": b8, "specials": ", ".join(specials),
 		"tools": _tools,
-		"said": said, "again": again, "asked": _asked, "closed": closed,
+		"said": said, "again": again, "asked": _asked, "closed": closed, "early": _early,
 	}
 	_say("%s by %s (winner seat %d), status %d on move %d, position %s" % [
 		saw.outcome, saw.why, saw.winner, saw.status, saw.fullmove, saw.position])

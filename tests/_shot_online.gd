@@ -2,7 +2,10 @@ extends SceneTree
 
 ## Versus online, shot with nobody on the other end: the Match is
 ## tests/_fake_match.gd, handed to versus/online/online.gd as its stand-in,
-## and says what this harness tells it to. No network, no Backend.
+## and says what this harness tells it to. No network, no Backend: the main
+## scene is built with tests/_offline_main.gd on it, so Analytics, Backend and
+## Ads are never started (the first frame prints that they are not, and the
+## harness quits there if one is).
 ##
 ##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top \
 ##         --script res://tests/_shot_online.gd -- <outdir> [lang=pt|es] [rm] [tab] [checkers] [snooker]
@@ -84,6 +87,9 @@ func _initialize() -> void:
 		load("res://core/locale.gd")._current = _lang
 	load("res://versus/online/online.gd").stand_in = Fake
 	var main: Node = load("res://world/main.tscn").instantiate()
+	# world/main.gd's _ready is what starts Analytics, Backend and Ads, and
+	# against the live project: this is main without it.
+	main.set_script(load("res://tests/_offline_main.gd"))
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
 
@@ -129,10 +135,17 @@ func _beat(hold: float, poke: Callable, name: String) -> bool:
 func _process(delta: float) -> bool:
 	if not _quiet:
 		# Here and not in _initialize: the main scene enters the tree only once
-		# the loop starts, and it is what starts these and loads the settings.
+		# the loop starts, and it is what loads the settings. By now its _ready
+		# has run; nothing may have been started by it.
 		_quiet = true
-		load("res://core/backend.gd").stop()
-		load("res://core/analytics.gd").stop()
+		var live := _started()
+		print("first frame: backend started %s, analytics started %s, ads started %s" % live)
+		if live.has(true):
+			print("FAILED: the main scene started the network; stopping and quitting")
+			load("res://core/backend.gd").stop()
+			load("res://core/analytics.gd").stop()
+			_done()
+			return true
 		if _rm:
 			load("res://core/motion.gd").reduce = true
 	_t += delta
@@ -335,9 +348,13 @@ func _process(delta: float) -> bool:
 	return false
 
 func _say_quiet() -> void:
-	print("reduce motion %s, backend started %s, analytics started %s" % [
-		load("res://core/motion.gd").reduce, load("res://core/backend.gd").started(),
-		load("res://core/analytics.gd").started()])
+	print("reduce motion %s, backend started %s, analytics started %s, ads started %s" % ([
+		load("res://core/motion.gd").reduce] + _started()))
+
+## Whether Backend, Analytics and the Ads autoload have been started.
+func _started() -> Array:
+	return [load("res://core/backend.gd").started(), load("res://core/analytics.gd").started(),
+		bool(root.get_node("Ads")._started)]
 
 ## The other player's break: the computer's, sent as their end sends a shot,
 ## and the table their end will send after it -- the same shot rolled on a
