@@ -474,6 +474,36 @@ The rule, as each board applies it:
   alone (a clue going green, two pieces visibly clashing). What came from
   the answer is gone.
 
+Twenty-two boards are on it. Where one departs from the two formulas:
+
+- **Bridges** has slack 4: a plank only comes off round the 0-1-2-0 cycle,
+  so one slip costs three moves to mend.
+- **Hedgehogs** counts piles cleared, not taps (a flood takes its size off
+  the counter at once): the walks move the noughts, so taps vary 0.7-1.8x
+  between clean plays of the same night and piles do not.
+- **Paper Planes** has a flat slack of 3: every plane flies once, so the
+  spare moves can only be gusts.
+- **Marigold**'s counter is its seeds (the proof's shots + 3, one garden
+  where there were two tries); a pot or a big shot still gives seeds back,
+  and the video buys 3.
+- **One Line** takes a line back by stepping onto the post just left, on
+  Insane only, for a move; without it the counter could never run out.
+- **Sunbeam**'s Shy Dew slide-back stays (the band's rule, read off the
+  floor) and costs a move. **Knight**'s caught hop costs a move too.
+- **Binairo** charges a tile once for where it ends up, at its `_commit`.
+- Sequence and path boards say `TIP_MOVES_SEQ` and pass `seq` to
+  `MovesDiagram.page` (or their own body key); the shared placing lines are
+  untrue of them.
+- **Trestle keeps its two hearts**: they are spent only on a Go the player
+  watches fail, and a count that stands still while members are laid would
+  not be a move counter.
+
+Not seen on screen beyond the pill, the card and Try again: no board was
+played through by hand on Insane, and the pt/es lines are unreviewed. The
+old `_shot_*` and `_probe_*` harnesses still drive hearts on Insane and are
+stale. The level labels lost their hearts (`*_LVL_2`) or read "counted
+moves" (`*_LVL_3`).
+
 Nonogram is the reference (`git log --grep "move counter"`). Left as they
 were, because their limit was never a judgement: Balance's sunset, Untangle's
 thread, Word Trail's wishes, the rows of Hidden Word and Code Break, and
