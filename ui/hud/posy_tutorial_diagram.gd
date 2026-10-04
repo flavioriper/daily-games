@@ -667,7 +667,7 @@ func _draw() -> void:
 	for k in rows.size():
 		var r: Rect2 = rects[k]
 		if String(rows[k][0]) != "":
-			Icons.paint(self, String(rows[k][0]), Rect2(r.get_center() - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT)
+			Icons.paint(self, String(rows[k][0]), Rect2(r.get_center() - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT, Pal.SURFACE)
 		var line := String(rows[k][1])
 		var lines := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, size.x - tx - 24.0, 28)
 		draw_multiline_string(font, Vector2(tx, r.get_center().y - lines.y * 0.5 + 28.0 * 0.82), line, HORIZONTAL_ALIGNMENT_LEFT, size.x - tx - 24.0, 28, -1, Pal.TEXT)

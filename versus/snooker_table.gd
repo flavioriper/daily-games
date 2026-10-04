@@ -568,7 +568,7 @@ func _build_live() -> ArrayMesh:
 	for i in _trails:
 		_trail(b, i, r)
 	if interactive and not targets.is_empty() and show_guide:
-		var glow := 0.5 + 0.5 * sin(_time * 3.2)
+		var glow := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_time * 3.2)
 		for id in targets:
 			if sim.on[id]:
 				b.stroke(Face.Builder.ring(px(sim.pos[id]), r * 1.32, r * 1.32), 2.5,

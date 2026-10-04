@@ -80,6 +80,8 @@ var _hints := HINTS
 ## shows it again and spends nothing.
 var _hint_move := -1
 var _undos := 0
+## True while the tutorial card is over the board.
+var _held := false
 var _game := 0
 var _task := -1
 var _box: Array = []
@@ -114,7 +116,7 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
-	tutor = ScreenTutor.new(self, puzzle_id(), "Chess")
+	tutor = ScreenTutor.new(self, puzzle_id(), "Chess", _hold)
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	player = Rules.WHITE if Record.last_colour(GAME) == Rules.WHITE else Rules.BLACK
@@ -396,6 +398,10 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return _hints if _state == State.YOURS else 0
 
+## The bulb's badge: the count stays up while the bulb waits its turn.
+func hints_held() -> int:
+	return _hints
+
 ## Reset waits out a move in the air, as `_on_reset` does.
 func can_reset() -> bool:
 	return _state != State.ANIM and _state != State.REWIND
@@ -530,7 +536,13 @@ func _react(p: int, expr: int) -> void:
 # --- thinking, for the computer and the hint ---
 
 func _process(_delta: float) -> void:
-	_poll_think()
+	# The computer's answer waits while the tutorial card is up, so no move
+	# is played (or heard) behind a page.
+	if not _held:
+		_poll_think()
+
+func _hold(on: bool) -> void:
+	_held = on
 
 func _think(kind: String) -> void:
 	if _task != -1:

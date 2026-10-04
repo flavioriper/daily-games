@@ -121,3 +121,10 @@ for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
 to move. `tests/_probe_versus_buzz.gd -- snooker|chess|checkers [rm]` reads the trace through
 the real screen (headless; `LEVEL`, `YOU`, `SHOTS`, `SPEED`) and puts
 `user://versus.cfg` back.
+
+**Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
+screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
+pages played by the real table or board (`ui/hud/snooker_tutorial_diagram.gd`,
+`chess_`, `checkers_`). The computer's answer waits while the card is up
+(`_held`). A harness that opens a screen through the menu sets
+`ScreenTutor.no_first_play`.

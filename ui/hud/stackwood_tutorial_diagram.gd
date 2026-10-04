@@ -541,7 +541,7 @@ func _draw() -> void:
 	draw_mesh(_hud_shown, null)
 	for m: Array in marks:
 		var r: Rect2 = m[1]
-		Icons.paint(self, m[0], Rect2(r.get_center() - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT)
+		Icons.paint(self, m[0], Rect2(r.get_center() - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT, Pal.SURFACE)
 	var font: Font = CozyTheme.display(700)
 	var tx := x0 + slot + 26.0
 	var room := size.x - tx - 20.0

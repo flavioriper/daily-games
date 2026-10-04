@@ -219,7 +219,9 @@ func refresh(puzzle) -> void:
 		and (puzzle == null or not puzzle.has_method("can_reset") or puzzle.can_reset()))
 	var left: int = puzzle.hints_left() if puzzle != null else 0
 	hint_button.set_enabled((left > 0 or hint_offer) and not done)
-	hint_button.badge = left
+	# A screen whose bulb waits its turn (Versus) says what it still holds, so
+	# the count does not blink out while the other side moves.
+	hint_button.badge = puzzle.hints_held() if puzzle != null and puzzle.has_method("hints_held") else left
 	hint_button.badge_glyph = "play" if left <= 0 and hint_offer and not done else ""
 	_set_bounce(hint_button.visible and left > 0 and not done)
 

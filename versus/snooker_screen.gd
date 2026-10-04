@@ -514,6 +514,10 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return _hints if _state == State.AIM else 0
 
+## The bulb's badge: the count stays up while the bulb waits its turn.
+func hints_held() -> int:
+	return _hints
+
 # --- the frame ---
 
 func _new_frame() -> void:

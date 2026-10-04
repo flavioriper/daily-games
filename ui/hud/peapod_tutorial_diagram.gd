@@ -623,7 +623,7 @@ func _draw_hud() -> void:
 	for k in rows.size():
 		var cy := row_h * (k + 0.5)
 		if k < 2:
-			Icons.paint(self, String(rows[k][0]), Rect2(Vector2(x0 + chip * 0.5, cy) - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT)
+			Icons.paint(self, String(rows[k][0]), Rect2(Vector2(x0 + chip * 0.5, cy) - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT, Pal.SURFACE)
 		var text := String(rows[k][1])
 		var lines := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs)
 		draw_multiline_string(font, Vector2(tx, cy - lines.y * 0.5 + fs * 0.82), text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs, -1, Pal.TEXT)
