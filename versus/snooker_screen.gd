@@ -28,6 +28,7 @@ const Controls = preload("res://versus/snooker_controls.gd")
 const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -70,6 +71,9 @@ var table: Control
 var top_bar: Control
 var spin_pad: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var _state := State.WAIT
 var _acc := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -135,6 +139,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Snooker")
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	_breaker = 0
 	_new_frame()
@@ -929,6 +935,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

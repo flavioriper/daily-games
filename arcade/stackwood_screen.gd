@@ -22,6 +22,7 @@ const Art = preload("res://arcade/stackwood_art.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -91,6 +92,9 @@ var _chance_used := false
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var field: Control
 var _fx: Node2D
 var _backdrop: ColorRect
@@ -196,6 +200,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Stackwood", _tutor_hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
 	_ask(false)
@@ -728,6 +734,11 @@ func _on_tool(tool: int) -> void:
 		return
 	sim.use(tool)
 	_play_events()
+
+## The tutorial card stops the run and leaves it paused, a tap from going on.
+func _tutor_hold(on: bool) -> void:
+	if on and sim != null and not sim.is_over() and _end == null:
+		_pause(true)
 
 func _pause(on: bool) -> void:
 	if on == _paused:
@@ -1946,6 +1957,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

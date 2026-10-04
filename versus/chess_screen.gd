@@ -22,6 +22,7 @@ const ChessSkin = preload("res://versus/chess_skin.gd")
 const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -66,6 +67,9 @@ var _deck_mesh: ArrayMesh
 var _deck_key := Rect2()
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 ## The colour the player moves this game.
 var player := Rules.WHITE
 var _state := State.ENTER
@@ -107,6 +111,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Chess")
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	player = Rules.WHITE if Record.last_colour(GAME) == Rules.WHITE else Rules.BLACK
 	_new_game()
@@ -727,6 +733,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

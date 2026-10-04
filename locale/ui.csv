@@ -337,7 +337,6 @@ MH_OOPS,Oops!,Opa!,¡Uy!
 MH_TOO_SLOW,Too slow!,Lento demais!,¡Muy lento!
 MH_POINTS_X,Points x%d,Pontos x%d,Puntos x%d
 MH_STAT_AIM,on target,de acerto,de acierto
-HH_MOTTO,Treat the hens well,Trate bem as galinhas,Cuida bien a las gallinas
 HH_TAB_FARM,Farm,Fazenda,Granja
 HH_TAB_FACTORY,Barn,Celeiro,Granero
 HH_I_HEN,Hen,Galinha,Gallina
@@ -549,7 +548,7 @@ TIP_MOVES_SEQ,Every move counts here. Think it through before you make it.,Aqui 
 HTP_MOVES_SEQ_BODY,"You have %d moves and nobody checks your work. Every move costs one, and there is no taking one back. When they are gone the board is lost.","Você tem %d jogadas e ninguém confere seu trabalho. Cada movimento custa uma, e não dá para voltar atrás. Quando acabarem, o tabuleiro está perdido.","Tienes %d jugadas y nadie revisa tu trabajo. Cada movimiento cuesta una, y no hay vuelta atrás. Cuando se acaben, el tablero está perdido."
 ARC_PEAPOD_BLURB,"Slide the pea cannon under the crates and shoot them down before they reach you. Catch the gifts.","Deslize o canhão de ervilhas sob as caixas e derrube-as antes que cheguem até você. Pegue os presentes.","Desliza el cañón de guisantes bajo las cajas y derríbalas antes de que te alcancen. Atrapa los regalos."
 ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
-PP_MOTTO,Hold the line,Segure a linha,Mantén la línea
+PEAPOD_MOTTO,Hold the line,Segure a linha,Mantén la línea
 PP_WAVE,WAVE,ONDA,OLEADA
 PP_READY,Ready?,Pronto?,¿Listo?
 PP_READY_LINE,Slide to aim. Catch the gifts.,Deslize para mirar. Pegue os presentes.,Desliza para apuntar. Atrapa los regalos.

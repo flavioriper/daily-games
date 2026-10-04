@@ -63,4 +63,6 @@ func _modal_open(root: Node) -> bool:
 	for node in root.find_children("*", "", true, false):
 		if node.has_method("is_open") and node.is_open():
 			return true
-	return root.get_node_or_null("HowToPlay") != null
+	# A board's host carries the card itself; a Versus or Arcade screen under
+	# the menu carries its own.
+	return root.find_child("HowToPlay", true, false) != null

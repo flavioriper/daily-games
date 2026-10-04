@@ -1124,6 +1124,7 @@ func _open_versus(game: String, level: int) -> void:
 		_show_list("versus")
 		Ads.leaving_game())
 	add_child(screen)
+	screen.tutor.first_play()
 	_list_root.visible = false
 
 ## A game on the Arcade tab: its own screen over the list, and back to the
@@ -1156,6 +1157,7 @@ func _open_arcade(game: String) -> void:
 		_show_list("arcade")
 		Ads.leaving_game())
 	add_child(screen)
+	screen.tutor.first_play()
 	_list_root.visible = false
 
 func _mount_host(host: Control) -> void:

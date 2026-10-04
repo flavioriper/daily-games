@@ -45,6 +45,13 @@ signal rules
 signal remove_ads
 
 var with_new := true
+## How to play without New puzzle: a Versus or Arcade screen, which has a
+## tutorial and no day to deal again (ui/hud/screen_tutor.gd sets it).
+var with_rules := false:
+	set(on):
+		with_rules = on
+		if _buttons != null:
+			_pack_buttons()
 var toggle: CheckButton
 var sound_toggle: CheckButton
 var haptics_toggle: CheckButton
@@ -129,7 +136,9 @@ func _pack_buttons() -> void:
 	var shown: Array[Button] = []
 	for b: Button in [rules_button, new_button, ads_button, privacy_button, credits_button]:
 		var on := b.visible
-		if b == rules_button or b == new_button:
+		if b == rules_button:
+			on = with_new or with_rules
+		elif b == new_button:
 			on = with_new
 		elif b == privacy_button:
 			on = _privacy
