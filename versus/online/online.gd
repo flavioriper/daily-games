@@ -67,6 +67,9 @@ const FOUND_BEAT := 1.6
 ## A harness's scripted Match (tests/_fake_match.gd): same signals and
 ## methods, no network.
 static var stand_in: GDScript = null
+## The friend the next screen at level 3 plays, set by the menu before it
+## builds the screen: {uid, accept}. Read and cleared in _init.
+static var with_friend := {}
 
 var game := ""
 ## This end's seat, the seat that opens, the number both ends share and the
@@ -75,6 +78,8 @@ var seat := -1
 var first := -1
 var match_seed := 0
 var opponent := ""
+## The friend this game is with; "" against a stranger.
+var friend := ""
 ## The match's result once it has one: {winner, why}.
 var result := {}
 

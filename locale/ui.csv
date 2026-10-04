@@ -871,3 +871,14 @@ VS_END_TIMEOUT,%s ran out of time,O tempo de %s acabou,A %s se le acabó el tiem
 VS_END_TIMEOUT_YOU,You ran out of time,Seu tempo acabou,Se te acabó el tiempo
 VS_END_LEFT,%s left the game,%s saiu da partida,%s salió de la partida
 VS_END_LEFT_YOU,You were away too long,Você ficou fora por muito tempo,Estuviste fuera demasiado tiempo
+VS_FRIEND_TITLE,Playing a friend,Jogando com amigo,Jugando con amigo
+VS_FRIEND_WAITING,Waiting for %s…,Esperando %s…,Esperando a %s…
+VS_FRIEND_NO_ANSWER,%s hasn't answered yet. They only see it with the game open.,%s ainda não respondeu. O convite só aparece com o jogo aberto.,%s aún no responde. La invitación solo aparece con el juego abierto.
+VS_FRIEND_KEEP,Keep waiting,Continuar esperando,Seguir esperando
+VS_FRIEND_GONE_DECLINED,%s can't play right now.,%s não pode jogar agora.,%s no puede jugar ahora.
+VS_FRIEND_GONE_EXPIRED,%s is no longer waiting.,%s não está mais esperando.,%s ya no está esperando.
+VS_FRIEND_GONE_VOID,%s didn't make it to the game.,%s não chegou à partida.,%s no llegó a la partida.
+VS_FRIEND_GONE_UNFRIEND,You and %s are not friends any more.,Você e %s não são mais amigos.,Tú y %s ya no son amigos.
+VS_FRIEND_ASK_AGAIN,Ask again,Convidar de novo,Invitar de nuevo
+VS_FRIEND_REMATCH,Rematch,Revanche,Revancha
+VS_FRIEND_RECORD,Friend,Amigo,Amigo
