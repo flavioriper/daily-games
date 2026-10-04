@@ -80,7 +80,7 @@ func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 		if g.is_empty():
 			if InsaneBank.size("bridges") > 0:
 				push_warning("Bridges: a banked board did not hold together; dealing a live one")
-			g = Gen.generate_lanterns(rng, true)
+			g = Gen.generate_lanterns(rng)
 	if g.is_empty():
 		g = Gen.generate(rng, difficulty)
 	var b: Dictionary = Gen.band(difficulty)

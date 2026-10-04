@@ -23,13 +23,13 @@ extends RefCounted
 ## Mushrooms grow in rings, and on Insane some numbers are *fairy rings*: they
 ## count the sixteen cells two steps out (the ring round the eight touching
 ## cells) and say nothing at all about the eight that touch them. Which
-## numbers are rings is part of the board (`rings`). The field is carved
-## first with the subsets solver, then carved again with the **deep** one,
-## which may suppose a cell, follow the rules to a contradiction and take the
-## other answer -- so a banked Insane field needs at least one supposition
-## a player has to hold in their head. That is mined on the Mac
-## (tools/insane/mushroom_ladder.gd, content/insane/mushroom.json); an empty
-## bank falls back to a live ring field carved without the deep pass.
+## numbers are rings is part of the board (`rings`). The field is carved with
+## the subsets solver like Hard's, and that is the whole proof: the second
+## carve that let the solver suppose a cell and follow it to a contradiction
+## went on 2026-10-04 (the user: "fully solvable from deduction, no guess").
+## The hardest are mined on the Mac (tools/insane/mushroom_ladder.gd,
+## content/insane/mushroom.json); an empty bank falls back to a live ring
+## field carved the same way.
 ##
 ## Seeded only by the `rng` handed in, so a day is the same patch on every
 ## phone. Spec: docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md,
@@ -76,17 +76,10 @@ static func reach(cell: Vector2i, n: int, is_ring: bool) -> Array[Vector2i]:
 
 ## Whether `given` decides every covered cell by logic alone. Two rule
 ## families, the global count, and -- when `subsets` -- subtraction between
-## overlapping numbers; with `deep`, suppositions too. It never guesses and
-## never backtracks past one supposition: a field it cannot finish is a field
-## with a guess in it.
+## overlapping numbers. It never guesses and never supposes: a field it
+## cannot finish is a field with a guess in it.
 static func solvable(given: Dictionary, n: int, k: int, subsets: bool,
-		rings: Dictionary = {}, deep := false) -> bool:
-	return bool(solve(given, n, k, subsets, rings, deep).ok)
-
-## The solve itself: {"ok", "supposed": how many cells needed a supposition,
-## "probes": how many suppositions were tried}.
-static func solve(given: Dictionary, n: int, k: int, subsets: bool,
-		rings: Dictionary = {}, deep := false) -> Dictionary:
+		rings: Dictionary = {}) -> bool:
 	var cons: Array = []               # [{"cells": covered cells it counts, "v": its number}]
 	for g in given:
 		var open: Array[Vector2i] = []
@@ -95,49 +88,13 @@ static func solve(given: Dictionary, n: int, k: int, subsets: bool,
 				open.append(p)
 		cons.append({"cells": open, "v": int(given[g])})
 	var unknown: Array[Vector2i] = []
-	var framed := {}                   # covered cells some number counts
-	for c in cons:
-		for p in c.cells:
-			framed[p] = true
 	for y in n:
 		for x in n:
 			var c := Vector2i(x, y)
 			if not given.has(c):
 				unknown.append(c)
 	var st := {}                       # covered cell -> true mushroom, false bare
-	var out := {"ok": false, "supposed": 0, "probes": 0}
-	if not _propagate(cons, unknown, st, k, subsets):
-		return out
-	while deep and st.size() < unknown.size():
-		# Framed cells first: a supposition on a cell no number counts can
-		# only ever break the global count.
-		var order: Array[Vector2i] = []
-		for p in unknown:
-			if not st.has(p) and framed.has(p):
-				order.append(p)
-		for p in unknown:
-			if not st.has(p) and not framed.has(p):
-				order.append(p)
-		var found := false
-		for p in order:
-			for v in [true, false]:
-				var trial := st.duplicate()
-				trial[p] = v
-				out.probes += 1
-				if _propagate(cons, unknown, trial, k, subsets):
-					continue
-				st[p] = not v
-				out.supposed += 1
-				if not _propagate(cons, unknown, st, k, subsets):
-					return out
-				found = true
-				break
-			if found:
-				break
-		if not found:
-			break
-	out.ok = st.size() == unknown.size()
-	return out
+	return _propagate(cons, unknown, st, k, subsets) and st.size() == unknown.size()
 
 ## The plain rules (and subsets) run on `st` until they stop deciding
 ## anything. False when `st` breaks a number or the global count.
@@ -232,9 +189,9 @@ static func _subtract(cons: Array) -> Array:
 	return done
 
 ## `ring_share` of the turned-over cells count their fairy ring instead of
-## their eight; `deep` carves a second time with suppositions allowed.
+## their eight.
 static func generate(rng: RandomNumberGenerator, n: int, k: int,
-		subsets: bool, give_back: float, ring_share := 0.0, deep := false) -> Dictionary:
+		subsets: bool, give_back: float, ring_share := 0.0) -> Dictionary:
 	var cells: Array[Vector2i] = []
 	for y in n:
 		for x in n:
@@ -270,19 +227,6 @@ static func generate(rng: RandomNumberGenerator, n: int, k: int,
 			dropped.append(g)
 		else:
 			given[g] = v
-	if deep:
-		# The second carve: what the subsets solver needed, tried again with
-		# suppositions allowed.
-		var left: Array[Vector2i] = []
-		left.assign(given.keys())
-		_shuffle(left, rng)
-		for g in left:
-			var v: int = given[g]
-			given.erase(g)
-			if solvable(given, n, k, subsets, rings, true):
-				dropped.append(g)
-			else:
-				given[g] = v
 	_shuffle(dropped, rng)
 	for i in int(round(dropped.size() * give_back)):
 		given[dropped[i]] = num[dropped[i]]
@@ -291,7 +235,7 @@ static func generate(rng: RandomNumberGenerator, n: int, k: int,
 		if given.has(g):
 			kept_rings[g] = true
 	return {"n": n, "k": k, "mushrooms": mushrooms, "given": given, "rings": kept_rings,
-		"ok": solvable(given, n, k, subsets, kept_rings, deep)}
+		"ok": solvable(given, n, k, subsets, kept_rings)}
 
 # --- the bank (content/insane/mushroom.json) ---
 
@@ -315,10 +259,9 @@ static func to_bank(out: Dictionary) -> Dictionary:
 
 ## The bank's field back as generate() hands one over; {} for an entry that
 ## is not a field. `ok` checks every number is its field's own count; with
-## `prove` the deep solver re-proves the whole field too. The game does not
-## prove: a deep solve is 72 ms on the Mac (138 worst over twenty), close to
-## a second on a phone as the card opens, and every banked field was proved
-## by the miner and is re-proved by the ladder's grade (Queens' precedent).
+## `prove` the subsets solver re-proves the whole field too. The game does
+## not prove: every banked field was proved by the miner and is re-proved by
+## the ladder's grade (Queens' precedent).
 static func from_bank(board: Dictionary, prove := false) -> Dictionary:
 	if board.is_empty() or not board.has("field") or not board.has("n"):
 		return {}
@@ -349,7 +292,7 @@ static func from_bank(board: Dictionary, prove := false) -> Dictionary:
 		if m != int(given[g]):
 			return {"n": n, "k": k, "mushrooms": mushrooms, "given": given, "rings": rings, "ok": false}
 	return {"n": n, "k": k, "mushrooms": mushrooms, "given": given, "rings": rings,
-		"ok": solvable(given, n, k, true, rings, true) if prove else k > 0}
+		"ok": solvable(given, n, k, true, rings) if prove else k > 0}
 
 ## Fisher-Yates, seeded only by `rng`.
 static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:

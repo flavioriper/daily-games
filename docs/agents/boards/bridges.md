@@ -112,3 +112,25 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   deal) and plays them through `_gui_input`; its seas have no ripple dashes,
   which are spaced in pixels for a full-size pool and bunch up on a page.
 
+### Solved by the four rules, no guess (2026-10-04)
+
+The user, after Nonogram, Sudoku and Queens: "include them both in this new
+rules" (Bridges and Mushroom Patch). Only Easy asked for a board propagation
+finishes; Medium and Hard asked for one answer, and Lantern Night's bank was
+lit best first to *find* boards needing suppositions.
+
+- `BANDS[].guess_free` is true on every band: `generate` regrows until the
+  four rules (`_propagate`) pin every lane. With two planks that costs
+  nothing: 60 seeds a band, 1.9 / 2.2 / 2.9 attempts mean (worst 11), 1-2 ms
+  mean, worst 10 ms.
+- `Gen.reasoned(n, islets, need, lanes, lanterns)` is the proof: propagate,
+  every lane pinned, the board legal. `solve_logic`, `_pinned_wrong` and
+  `_open_after` are gone.
+- `generate_lanterns(rng)` (no `quick`) lights islets in one shuffled walk
+  while `reasoned` holds; the base board is `reasoned` too. 30 of 30 seeds
+  kept `LANTERN_MIN`, 21 ms mean, so the live fallback is the same deal.
+- The ladder's rung is the lanterns kept (gate `LANTERN_MIN`). Re-mined:
+  3000 of 3000 passed, the 150 kept carry 12 to 15 lanterns, all re-proved
+  through `from_bank` and counted to one answer.
+- No tip told the player to suppose; nothing on screen changed. Medium, Hard
+  and banked Insane days finished earlier restore a different board.

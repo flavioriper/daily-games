@@ -65,3 +65,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   quietened, on a fixed 5x5 of five mushrooms, through the layout hooks
   `_pad()` and `_tally_h()` (no card air, no tally strip on the page), with a
   drawn chip tray the finger taps to switch chips.
+
+### Fairy Rings without suppositions (2026-10-04)
+
+The user, after Nonogram, Sudoku and Queens: "include them both in this new
+rules" (Bridges and Mushroom Patch). Easy to Hard were already carved by a
+solver that never supposes. Insane's second carve let it suppose a cell and
+follow it to a contradiction, and the bank kept fields needing 13 to 29 of
+those.
+
+- `Gen.solvable(given, n, k, subsets, rings)` is the only solver; `solve`,
+  `deep`, `supposed` and `probes` are gone, and `generate` lost its `deep`
+  argument and the second carve. `from_bank(board, true)` re-proves with the
+  subsets solver.
+- The ladder keeps a field the subsets solver finishes and the plain rules do
+  not, with at least `RINGS_MIN` (6) rings left after the carve; the rung is
+  the cells without a number. Re-mined: 2719 of 3000 passed, the 240 kept
+  show 14 to 19 numbers and 6 to 14 rings, all re-proved. A live ring field
+  is 32 ms mean, 55 worst.
+- Easy to Hard deal the fields they dealt before. A banked Insane day
+  finished earlier restores a different field. No tip mentioned supposing.
