@@ -431,3 +431,51 @@ Trail's wishes (`WISHES`), and the ink rows of Hidden Word and Code Break
 and the ink sentence moved out of `HW_RULES_STRICT` into `HW_RULES_INK`).
 Those two still run out of rows on every band, as Easy and Medium always
 did: one more row, see the word, or Reset.
+
+### Insane counts moves (2026-10-04)
+
+The user, the same day: a heart was a poor way to make a board hard, because
+the judgement that cost it was also the answer (Nonogram turned the wrong
+tile into a pebble, Caterpillar refused the wrong step). The bands now read:
+
+- **Hard cannot be lost**; its difficulty is more to handle (size, colours).
+- **Insane** keeps its own rule (Leaf Fall, Peckish, Tumble...) and adds a
+  limit the player spends by choice: **a move counter**. Nothing is judged
+  as it lands, nothing is filled in for the player, and there is no Undo,
+  Hint or Check (each would say what is wrong).
+
+The rule, as each board applies it:
+
+- Every hearts table reads `[0, 0, 0, 0]`. The hearts code is left in place
+  and dormant (`max_hearts == 0` everywhere), not deleted.
+- The state class owns the budget: `MOVES_SLACK := [0, 0, 0, n]` and
+  `moves_budget()` (0 on a band that does not count).
+  - A board solved by placing pieces: the pieces the answer holds + slack 3.
+    A piece put down costs one and a piece taken off costs one; notes
+    (crosses, pencil marks, flags) are free. Three is one slip mended with
+    one to spare; zero slack was rejected, a mis-tap on a phone must not
+    lose the day.
+  - A board solved by a sequence of moves: the shortest solve the board can
+    know (a bank's `par`, the miner's line) + max(3, a quarter of it).
+    Every move costs one.
+- The screen holds `max_moves`, `moves_left` and `_spend(cost, land)`; out
+  of moves unsolved sets **`out_of_hearts`** (the name the host and the card
+  already read) and runs the board's old out-of-hearts ending.
+- `ui/flat/moves_pill.gd` draws "N moves left" where the hearts sat (one
+  mesh, one string; rose from 3 down). `ui/hud/out_of_hearts.gd` takes a
+  third argument, the moves its video buys (`MOVES_BONUS`, 5), and then
+  reads Out of moves. `ui/hud/moves_tutorial_diagram.gd` is the shared
+  tutorial page (`MovesDiagram.page(self, max_moves)`), in place of each
+  board's HEARTS lesson. Shared lines are in `locale/ui.csv`: `RULES_MOVES`,
+  `RULES_MOVES_SEQ`, `TIP_MOVES`, `HTP_MOVES`, `OUT_MOVES_*`, `MOVES_LEFT_*`.
+- Reset and Try again hand the whole budget back: both are the board from
+  the top.
+- What a board still shows on Insane is what Medium shows from the rules
+  alone (a clue going green, two pieces visibly clashing). What came from
+  the answer is gone.
+
+Nonogram is the reference (`git log --grep "move counter"`). Left as they
+were, because their limit was never a judgement: Balance's sunset, Untangle's
+thread, Word Trail's wishes, the rows of Hidden Word and Code Break, and
+Drumbeat's misses. `tests/_probe_moves.gd -- id=<board>` opens any board on
+Insane, shoots the pill, spends the budget and shoots the card.
