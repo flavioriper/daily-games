@@ -18,11 +18,16 @@ extends RefCounted
 const Gen = preload("res://puzzles/caterpillar_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
-## Hints and hearts by band. Hard and Insane are judged: a step that strands
-## a square (Hard) or leaves the garden unfinishable (Insane) costs a heart
-## and is taken back. Spec: docs/superpowers/specs/2026-10-01-caterpillar-polish-design.md.
+## Hints and hearts by band. No band has hearts since 2026-10-04: nothing is
+## judged as it lands, so `judged()` is false everywhere and `judge()` prices
+## no step (it told the player which step was wrong). Insane counts moves
+## instead. Spec: docs/superpowers/specs/2026-10-01-caterpillar-polish-design.md.
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the walk's own steps (`moves_budget`): a square
+## crawled onto costs one and a square backed off costs one. The spare is a
+## quarter of the walk, and never less than this.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 ## How far a hint grows the answer past the last square that agrees with it:
 ## to the next leaf, and never more than this many squares.
@@ -95,6 +100,22 @@ func peckish() -> bool:
 
 func judged() -> bool:
 	return hearts_for(difficulty) > 0
+
+## The moves a band hands out: the steps of the one walk (setting the
+## caterpillar down on leaf 1 is free) and its slack, or 0 on a band that
+## does not count them.
+func moves_budget() -> int:
+	var slack: int = MOVES_SLACK[clampi(difficulty, 0, MOVES_SLACK.size() - 1)]
+	if slack <= 0:
+		return 0
+	var steps := maxi(size() - 1, 0)
+	return steps + maxi(slack, steps / 4)
+
+## What cutting the body back so `c` is its head costs: one a square taken
+## off. 0 when `c` is the head or not on the body.
+func cut_cost(c: int) -> int:
+	var at := body.find(c)
+	return body.size() - 1 - at if at >= 0 else 0
 
 func size() -> int:
 	return cols * rows

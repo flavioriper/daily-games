@@ -23,12 +23,17 @@ const MAX_AREA := 9
 const MAX_AREA_INSANE := 12
 const MIN_AREA := 3
 const HINTS := 3
-## Hints per difficulty: Insane has one.
-const HINTS_BY_BAND := [3, 3, 3, 1]
-## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
-## Insane (Binairo's count). A heart goes on a plot that fits its sign but is
-## not the answer.
-const HEARTS := [0, 0, 0, 1]
+## Hints per difficulty: Insane has none (it counts moves, and a hint is a
+## bed of the answer for free).
+const HINTS_BY_BAND := [3, 3, 3, 0]
+## No band has hearts since 2026-10-04: a heart went on a plot that fitted
+## its sign but was not the answer, which is the answer with a price on it.
+## Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the answer's own beds (`moves_budget`): a bed
+## fenced or cleared costs one, so a bed redrawn costs two. Three is one
+## slip mended (a redraw) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## Width, height and the generator's area cap, per difficulty.
 # Insane's provisional band: Hard's own 7x9 frame with MAX_AREA_INSANE's
 # bigger plots -- 8x10 (either area cap) missed the 194 ms gate (worst
@@ -229,6 +234,23 @@ func is_solved() -> bool:
 		if Gen.crow_of(clues[i]) >= 0 and not clue_ok(i):
 			return false
 	return true
+
+## The moves a band hands out: one a bed of the answer (one a sign) and its
+## slack, or 0 on a band that does not count them.
+func moves_budget() -> int:
+	return clues.size() + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What `commit(rect, own)` would cost: one for a bed cleared (a tap inside
+## one), one for a bed fenced on open ground, two for a bed redrawn from
+## inside `own` (it comes off and a new one goes down), nothing for a redraw
+## that lands on the bed it started from. A refused drag is never charged:
+## the board asks before the commit and spends only on a plot or a clear.
+func move_cost(rect: Rect2i, own := -1) -> int:
+	if rect.size == Vector2i(1, 1) and owner_at(rect.position.y, rect.position.x) >= 0:
+		return 1
+	if own < 0 or own >= rects.size():
+		return 1
+	return 0 if rects[own] == rect else 2
 
 ## Whether any clue on this board carries a shape.
 func has_shapes() -> bool:

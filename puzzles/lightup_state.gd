@@ -34,12 +34,17 @@ const BLANK := 0
 const LAMP := 1
 const CHIP := 2
 const HINTS := 3
-## Hints per difficulty: Insane has one.
-const HINTS_BY_BAND := [3, 3, 3, 1]
-## Hearts per difficulty: none on Easy and Medium, three on Hard, one on
-## Insane (Tents' and Shikaku's counts). A heart goes on a lamp the board
-## cannot fault (`lamp_fair`) that is not the answer's.
-const HEARTS := [0, 0, 0, 1]
+## Hints per difficulty: Insane has none (it counts moves, and a hint is a
+## lamp of the answer for free).
+const HINTS_BY_BAND := [3, 3, 3, 0]
+## No band has hearts since 2026-10-04: a heart went on a lamp the board
+## could not fault (`lamp_fair`) that was not the answer's, which is the
+## answer with a price on it. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the answer's own lamps (`moves_budget`): a lamp
+## set down or taken up costs one, a chip costs nothing. Three is one slip
+## mended (up and down again) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## The four ways out of a cell, and the ladder: width, height and how much of
 ## the court is sown with blocks. The island's own numbers.
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
@@ -239,6 +244,17 @@ func lamp_fair(cell: Vector2i) -> bool:
 				return false
 			p += d
 	return true
+
+## The moves a band hands out: the answer's lamps and its slack, or 0 on a
+## band that does not count them.
+func moves_budget() -> int:
+	return solution.size() + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What putting `to` on `cell` costs: one for a lamp set down or a lamp taken
+## up, nothing for a chip or a bare stone over a chip.
+func move_cost(cell: Vector2i, to: int) -> int:
+	var was := mark_at(cell)
+	return 1 if was != to and (was == LAMP or to == LAMP) else 0
 
 func is_answer(cell: Vector2i) -> bool:
 	return solution.has(cell)

@@ -6,8 +6,8 @@ extends RefCounted
 ## One move: hop your knight in an L. Landing on the king wins at once; land
 ## on a rose knight and it is taken; then the rose knights answer
 ## (knight_gen.gd's `step`). **A catch is never kept**: the position stays
-## where it was and the board shows the catch and slides back. On Hard and
-## Insane a catch costs a heart (the board keeps the hearts).
+## where it was and the board shows the catch and slides back. No band has
+## hearts since 2026-10-04; Insane counts moves instead (`moves_budget`).
 ## Insane is Brambles: every square you hop off grows a bramble (`mask`) and
 ## a rose knight fenced in by them naps.
 ## Spec: docs/superpowers/specs/2026-09-26-knight-flat-design.md, section 6,
@@ -16,9 +16,14 @@ extends RefCounted
 const Gen = preload("res://puzzles/knight_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
-## Per band: hints and hearts (0 = nothing can be lost).
+## Per band: hints and hearts (0 = nothing can be lost). No band has hearts
+## since 2026-10-04: a catch and being boxed in cost nothing of their own.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the board's shortest line (`moves_budget`):
+## every hop costs one, a caught one too. The spare is a quarter of the
+## line, and never less than this.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## `lost()`'s search budget: a position whose proof needs more than this is
 ## taken to be alive (measured: a live Hard position proves in a few hundred).
 const LOST_NODES := 6000
@@ -70,6 +75,15 @@ func opt() -> int:
 
 func budget() -> int:
 	return int(g.get("budget", 0))
+
+## The moves a band hands out: the shortest line (the bank's, which the
+## miner proved shortest; `opt`) and its slack, or 0 on a band that does not
+## count them. Not `budget()`, the old Insane's hard cap inside the state.
+func moves_budget() -> int:
+	var slack: int = MOVES_SLACK[clampi(difficulty, 0, MOVES_SLACK.size() - 1)]
+	if slack <= 0 or opt() <= 0:
+		return 0
+	return opt() + maxi(slack, opt() / 4)
 
 ## Moves left under a budget, or -1 on a level with none (every level now:
 ## the old Insane's budget gave way to Brambles).

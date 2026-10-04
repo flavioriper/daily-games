@@ -26,6 +26,11 @@ extends "res://core/puzzle_base.gd"
 ## ui/hud/out_of_hearts.gd. Insane was a 10x10 whose one sign lied until
 ## 2026-10-03; the unmasking code is still here and never runs.
 ##
+## Insane counts moves (2026-10-04, docs/agents/flat-screens.md): no band has
+## hearts now and nothing above runs. Insane hands out the empty tiles + 3
+## moves; a tile costs one for where it ends up once the player has moved on
+## (`_commit`), so tapping through a sun to a moon is one move, not two.
+##
 ## Motion and rewards (2026-09-29, the same spec's section 2): a change of
 ## symbol turns the tile like a coin (each tile is a slot for the hops and
 ## the press with a coin inside it for the turn), faces near a tap glance at
@@ -48,6 +53,10 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 ## Layout, in the board card's inner pixels (spec section 4).
 const PAD := 28.0
@@ -100,8 +109,11 @@ const LEVELS := [
 	{"size": 8, "min_clues": 12, "signs": 10, "tier": Gen.LINES},
 	{"size": 10, "min_clues": 0, "signs": 12, "tier": Gen.LINES},
 ]
-## Hearts per difficulty: none on Easy and Medium, three on Hard, one on Insane.
-const HEART_COUNTS := [0, 0, 0, 1]
+## Hearts per difficulty: none on any band since 2026-10-04 (Hard lost its
+## three on 2026-10-03). No tile is judged against the solution as it lands;
+## Insane counts moves instead (State.MOVES_SLACK). The hearts' code below is
+## left in place and never runs.
+const HEART_COUNTS := [0, 0, 0, 0]
 ## The strip kept over the grid for the hearts on a board that has them, and
 ## a heart's half-width and the air between two.
 const HEART_ROW := 64.0
@@ -240,6 +252,18 @@ var hearts := 0
 var max_hearts := 0
 ## Whether the board has run out: input stops until Try again or a heart.
 var out_of_hearts := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
+## What the held tile showed before the player began cycling it: its move is
+## charged at `_commit`, for where it ended up against this.
+var _held_from := -1
+## Whether `_spend` is settling a move the pill already shows (`_owed`), so
+## it does not bump a second time.
+var _settling := false
 ## The last tapped cell as (col, row); (-1, -1) before the first tap.
 var focus_cell := Vector2i(-1, -1)
 
@@ -366,11 +390,14 @@ func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
 func rules() -> String:
-	return tr("BN_RULES")
+	var out := tr("BN_RULES")
+	if max_moves > 0:
+		out += "\n\n" + tr("BN_RULES_MOVES") % max_moves
+	return out
 
 ## The tutorial's pages, for this board's level (ui/hud/how_to_play.gd):
-## how a tap works, the three rules, the signs, and on Hard and Insane what a
-## wrong tile costs.
+## how a tap works, the three rules, the signs, and on Insane the move
+## counter (the HEART page is for a board with hearts, and none has them).
 func tutorial_pages() -> Array:
 	const Diagram = preload("res://ui/hud/binairo_tutorial_diagram.gd")
 	var pages := []
@@ -385,16 +412,16 @@ func tutorial_pages() -> Array:
 		var d := Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": tr(step[2])})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Hard drops Check (a wrong tile says so itself); Insane drops Hint too.
-## Insane kept no Undo until the checkup of 2026-10-01; it gives nothing
-## away -- a wrong tile is charged after its grace whatever happens -- and
-## a player wants to take back a slip. The host reads this after start(),
-## so _level is the built one.
+## Insane counts moves: no Undo (changing a tile back is the take-back, and
+## it costs one), no Hint and no Check, which would each say what is wrong.
+## The host reads this after start(), so _level is the built one.
 func capabilities() -> Array[String]:
 	if _level >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint", "check"]
 
 func _ready() -> void:
@@ -449,9 +476,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var data: Dictionary = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
 	_data = data
 	max_hearts = HEART_COUNTS[_level]
+	state.band = _level
+	_heart_used = false
 	_setup_board()
 
-## Deals `_data` onto a fresh board with every heart: the build, and Try again.
+## Deals `_data` onto a fresh board with every heart and every move: the
+## build, and Try again.
 func _setup_board() -> void:
 	_gen += 1
 	hearts = max_hearts
@@ -468,6 +498,8 @@ func _setup_board() -> void:
 	_acting = {}
 	_held = Vector2i(-1, -1)
 	state.setup(_data)
+	max_moves = state.moves_budget()
+	moves_left = max_moves
 	brush = -2
 	focus_cell = Vector2i(-1, -1)
 	_build_tiles()
@@ -603,11 +635,12 @@ func _nulls() -> Array:
 	return row
 
 ## The grid is the square of the shorter side less the padding, centred. A
-## board with hearts keeps HEART_ROW over it for them first.
+## board with hearts, or with Insane's move counter, keeps HEART_ROW over it
+## for them first.
 func _layout() -> void:
 	if _tiles.is_empty():
 		return
-	var top := HEART_ROW if max_hearts > 0 else 0.0
+	var top := HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 	var g := minf(size.x, size.y - top) - 2.0 * PAD
 	_tile = (g - (n - 1) * GAP) / n
 	if _tile <= 0.0:
@@ -1222,6 +1255,7 @@ func _tap(r: int, c: int) -> void:
 	# A brush paints its symbol; on a tile that already shows it, the tap
 	# cycles on, so a second tap on a sun makes a moon whatever is armed.
 	var changed := false
+	var was: int = state.grid[r][c]
 	if brush != -2 and not (brush != -1 and state.grid[r][c] == brush):
 		changed = state.place(r, c, brush)
 	else:
@@ -1239,8 +1273,17 @@ func _tap(r: int, c: int) -> void:
 	_focus(r, c)
 	_after_change(r, c, true)
 	# Every tap is on its way somewhere: a sun to a moon, a moon to empty.
-	# So the tile is held, whatever set it.
+	# So the tile is held, whatever set it. Insane's move is counted for
+	# where the tile ends up against what it showed when the hold began; the
+	# pill shows it owed at once (_owed) and _commit takes it.
+	if _held != Vector2i(c, r):
+		_held_from = was
+	var owed := _owed()
 	_held = Vector2i(c, r)
+	if max_moves > 0:
+		if _owed() != owed:
+			_moves_pill.bump(_now())
+		_heart_layer.queue_redraw()
 	# Scored before the move is counted, since the move may solve: the
 	# streak's pluck and confetti belong to the tap, not after the party.
 	if v != -1:
@@ -1358,11 +1401,18 @@ func _judge(r: int, c: int) -> void:
 ## The player has moved on from the tile they were cycling (another tile,
 ## Undo, Hint, Check -- not a brush picked, which changes no tile): what it shows now is what they meant. Wrong
 ## costs a heart on a board with hearts; a blush ends the streak on one
-## without.
+## without. On Insane this is where the tile's move is spent.
 func _commit() -> void:
 	var cell := _held
+	var cost := _owed()
 	_held = Vector2i(-1, -1)
-	if cell.x < 0 or is_done() or out_of_hearts:
+	if cell.x < 0 or out_of_hearts:
+		return
+	if cost > 0:
+		_settling = true
+		_spend(cost, _now())
+		_settling = false
+	if is_done():
 		return
 	var r := cell.y
 	var c := cell.x
@@ -1376,6 +1426,33 @@ func _commit() -> void:
 	# Moved on: whatever the tile broke shows now.
 	if _shown_bad != state.bad:
 		_recolour()
+
+## The move the held tile will cost when the player moves on from it: one
+## when it shows something other than what it did before they began.
+func _owed() -> int:
+	if max_moves <= 0 or _held.x < 0:
+		return 0
+	return State.move_cost(_held_from, state.grid[_held.y][_held.x])
+
+## `cost` moves go off Insane's counter. The last one gone with the board
+## unsolved ends it at `land`: the faces nod off and the card comes up, as
+## they did for the last heart.
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	if not _settling:
+		_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_held = Vector2i(-1, -1)
+	_break_streak()
+	moved.emit()
+	_later(maxf(0.0, land - _now()), _run_out)
 
 ## `f` after `t` seconds, unless the board has been rebuilt or freed since.
 func _later(t: float, f: Callable) -> void:
@@ -1500,7 +1577,9 @@ func _run_out() -> void:
 	if _asleep:
 		return
 	_asleep = true
-	_sweep_wrong()
+	# Out of moves nothing is swept: which tiles are wrong is the answer.
+	if max_hearts > 0:
+		_sweep_wrong()
 	_focus_clear()
 	fx.cue("out_of_hearts")
 	for r in n:
@@ -1523,7 +1602,8 @@ func _nod(r: int, c: int) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used)
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used)
 	_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -1557,14 +1637,19 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
 	_running = true
-	_sweep_wrong()
+	if max_hearts > 0:
+		_sweep_wrong()
 	fx.cue("heart_back")
 	for r in n:
 		for c in n:
@@ -1596,7 +1681,8 @@ func _process(delta: float) -> void:
 	_sync_under()
 	var now := _now()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _unmask_i >= 0 and now - _unmask_at < UNMASK_TIME + 0.1:
 		_sign_layer.queue_redraw()
@@ -1732,6 +1818,11 @@ func _hand(mm: MultiMesh, buf: PackedFloat32Array, count: int, shown := -1) -> v
 ## with a small face; a faint ghost of the halves where one was, the lost one's halves
 ## falling apart (they are the same halves), and a heart coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _tile > 0.0:
+		# Insane's counter, less the move the held tile already owes.
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _origin.y - HEART_ROW * 0.5),
+			maxi(0, moves_left - _owed()), _now())
+		return
 	if max_hearts <= 0 or _tile <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -1931,6 +2022,9 @@ func reset_board() -> void:
 				unlocked.append(Vector2i(c, r))
 	state.reset()
 	_held = Vector2i(-1, -1)
+	# A cleared board is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	for r in n:
 		for c in n:
 			_pending[r][c] += 1
@@ -2001,7 +2095,7 @@ func _on_solved() -> void:
 	brush_changed.emit()
 	_break_streak()
 	_look_ahead()
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	_lead = 0.0
 	if state.liar >= 0:
 		_unmask()

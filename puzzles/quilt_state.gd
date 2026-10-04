@@ -22,7 +22,10 @@ extends RefCounted
 ## patches are scraps that belong nowhere, so a covered quilt leaves them in
 ## the basket, and the covered quilt is still the whole of the rule.
 ##
-## **Hard and Insane judge every drop** (the polish, 2026-09-30). The tiling
+## **No band judges a drop since 2026-10-04** (`HEARTS` is all zero, so
+## `judged()` is false everywhere and what follows lies dormant): Insane
+## counts moves instead (`moves_budget`, `move_cost`), and a patch sewn
+## wrong is the player's to find. What the judging was, 2026-09-30: the tiling
 ## is proved unique, so a patch sewn anywhere but an answer place is wrong by
 ## proof: `drop` refuses it with `WRONG` and rules that spot for that shape
 ## for good (`ruled`), and a right patch stays where it went (`STAYS`). The
@@ -49,7 +52,14 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## cannot be lost; Hard gets one hint and three hearts, Insane none and two.
 ## The hearts are the board's to count -- see `judged()`.
 const HINTS := [3, 3, 1, 0]
-const HEARTS := [0, 0, 0, 2]
+## No band has hearts since 2026-10-04: nothing is judged as it lands, so
+## `judged()` is false everywhere and no drop comes back WRONG, RULED or
+## STAYS. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the quilt's own patches (`moves_budget`): a
+## patch sewn on, taken off or slid along costs one. Three is one slip
+## mended (off and on) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## Why a drop or a lift was turned down.
 const OK := 0
 ## A cell of the patch falls off the quilt.
@@ -251,6 +261,18 @@ static func hints_for(b: int) -> int:
 ## The hearts a band starts with; 0 is a band that cannot be lost.
 static func hearts_for(b: int) -> int:
 	return int(HEARTS[clampi(b, 0, HEARTS.size() - 1)])
+
+## The moves a band hands out: the patches the quilt takes (never the
+## scraps) and its slack, or 0 on a band that does not count them.
+func moves_budget() -> int:
+	return quilt_patches + int(MOVES_SLACK[band]) if int(MOVES_SLACK[band]) > 0 else 0
+
+## What a gesture that took a patch from `from` and left it at `to` costs
+## (origins, -1 the rack): one when the patch ended somewhere else, nothing
+## when it went back where it was or never left the rack. A drop the quilt
+## refuses never gets this far.
+func move_cost(from: int, to: int) -> int:
+	return 0 if maxi(from, -1) == maxi(to, -1) else 1
 
 ## The scraps: the patches the answer leaves out (answer -1). Empty on every
 ## band but Scrap Basket.

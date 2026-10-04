@@ -24,10 +24,16 @@ const Gen = preload("res://puzzles/oneline_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
 const HINTS := 3
-## Hints a board gets per band, and hearts: Hard and Insane can be failed
+## Hints a board gets per band, and hearts
 ## (docs/superpowers/specs/2026-09-30-oneline-polish-design.md, section 1).
-const HINTS_BY_BAND := [3, 3, 3, 1]
-const HEARTS := [0, 0, 0, 1]
+## No band has hearts since 2026-10-04: no step is judged as it lands.
+## Insane counts moves instead, and has no hint.
+const HINTS_BY_BAND := [3, 3, 3, 0]
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the figure's own lines (`moves_budget`): a line
+## walked costs one and a line stepped back over costs one. The spare is a
+## quarter of the figure, and never less than this.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## The lattice and its fill per difficulty: the island's own ladder
 ## (puzzles/oneline3d.gd). Measured over 200 generated boards a step: easy is
 ## about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 15.4 over
@@ -261,6 +267,19 @@ func walkable_from(rest: Array[int], v: int) -> bool:
 	if odd.is_empty():
 		return true
 	return odd.size() == 2 and odd.has(v)
+
+## The moves a band hands out: one a line (any finished stroke is exactly
+## that long) and its slack, or 0 on a band that does not count them.
+func moves_budget() -> int:
+	var slack: int = MOVES_SLACK[band]
+	if slack <= 0:
+		return 0
+	return edges.size() + maxi(slack, edges.size() / 4)
+
+## Whether `n` is the post the last line was walked from: stepping back onto
+## it is how Insane, which has no Undo, takes a line up again.
+func came_from(n: int) -> bool:
+	return walk.size() >= 2 and walk[-2] == n
 
 ## Unwalked lines that can no longer be reached from where the stroke stands.
 ## Before it begins nothing is stranded -- the figure is still whole and every

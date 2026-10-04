@@ -87,3 +87,15 @@ Go tap, the test is silent, its verdict is the one knock (`_failed`,
 `_lose_heart`, `_crossed`, `solved`). Probe: `tests/_probe_perf.gd --
 trestle d=<n> x=buzz` (`_buzz_trestle` plays the whole board itself: fails
 tests to the last heart, lays the proof, wins and sends the convoy).
+
+**Left as it was on 2026-10-04** (`docs/agents/flat-screens.md`, "Insane
+counts moves"). A heart here goes only when a test the player sent fails in
+the sim, by snapping or spilling in plain sight: nothing is compared with
+the proof as a member is laid, and nothing is refused but what every band
+refuses. It is Drumbeat's case, a budget of attempts. It was not re-dressed
+as the pill either: "2 moves left" would stand still through a dozen
+members laid and drop only at a failed Go, and the shared lines (a piece
+put down costs one) are untrue of it. `HEARTS_BY` stays `[0, 0, 0, 2]`,
+Insane already has no hint, and Undo only takes back a member. A real move
+counter here (a member down or off costs one, tests free) would be a new
+design with a re-mined bank, not a conversion.

@@ -57,3 +57,25 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (`ui/hud/slider_tutorial_diagram.gd`) plays the real board on crowded
   hand-made trays -- keep any new one crowded, an open tray's graph takes
   seconds to solve.
+- **Insane counts moves, 2026-10-04** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS_BY` is all zero: no move costs a heart or
+  slides back, on any band (`_verdict`, `_cost`, the fret and the hearts are
+  left in place, asleep). Homesick stays -- the big block still refuses to
+  step up, which is the rule and not a verdict -- and a tray it is stranded
+  in is the player's to notice; Reset is the way back. The budget, on the
+  shared pill over the count line: `State.moves_budget()` = `par` + max(3, a
+  quarter of it, rounded up), a drag that moves a block costing one
+  (`_spend`). `par` is the bank's `p`, the miner's breadth-first optimum
+  under Homesick, so it is a true shortest: 50-112 across the bank, budgets
+  63-140. **An Insane tray starts no solver**: nothing reads the graph there
+  any more (no hint, no verdict), so `State.build` skips `solve_async` when
+  the band counts and `dist_of` answers -2. **The nearer-streak, the latch
+  one move from home and the halfway sparkle are off on Insane** -- each was
+  the solver saying what a move was worth. The count line still reads "N
+  moves · shortest P". No Undo or Hint (`capabilities()` is empty); Reset
+  and Try again hand the budget back, the card's video five moves. The
+  tutorial's HOMESICK page (`ui/hud/slider_tutorial_diagram.gd`, which still
+  solves its own hand-made tray) now strands the block, says nothing says
+  so, and presses Reset before the move that makes room. Not updated:
+  `tests/_shot_slider.gd` and `_probe_perf.gd`'s slider walk, which read
+  `dist_of` on Insane. Not seen on screen: only headless checks were run.

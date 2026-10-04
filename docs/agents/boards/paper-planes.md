@@ -228,3 +228,25 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 - Probe: `tests/_probe_perf.gd -- planes d=<0..3> [fill]` taps the deal's
   own order, each plane on its head; `x=pp_count` times a field and a still
   build every 1.5 s, with the dots', leaves', contrails' and planes' share.
+- **Insane counts moves (2026-10-04,** `docs/agents/flat-screens.md`,
+  "Insane counts moves"**).** `State.HEARTS` is `[0, 0, 0, 0]`, so `judged`
+  is false on every band: a tap on a blocked plane is Easy's refusal (the
+  lane flashes, nothing is spent) on Windy Day too, and the crash, the
+  hearts and their pill are left in place, dormant. Windy Day hands out
+  `State.moves_budget()` = `shortest_solve()` + max(3, a quarter of it,
+  rounded up); the shortest solve is the plane count, a true optimum (a
+  launch a plane, and the stored `order` replays with no gust): 19-28
+  planes over the bank, budgets 24-35. A launch costs one and **a gust
+  costs one** (it cost a heart; `_gust_left()` asks for a move where it
+  asked for a heart, and `PP_TIP_STUCK_MOVES` says so). Since every plane
+  flies exactly once, **the slack is only ever spent on gusts** -- five to
+  seven of them, where two hearts bought two gusts or crashes; say if a flat
+  slack of three reads better. Out of moves is `out_of_hearts` and the old
+  droop; the card takes `MOVES_BONUS` (5); Reset and Try again hand the
+  budget back; `capabilities()` is empty on Insane; the tutorial shows
+  REFUSE in place of ORDER + HEARTS on every band and ends on
+  `MovesDiagram.page`; the completion record keeps `moves_left`. New keys
+  at the end of `locale/boards.csv`: `PP_RULES_WIND_MOVES`,
+  `PP_TIP_STUCK_MOVES`. Kept: the refusal's lane flash, the dotted rings
+  where the clouds go next and the stuck line, all read off the sky. Not
+  updated: `PP_LVL_3` still says "two hearts".

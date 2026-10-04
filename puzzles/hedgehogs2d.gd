@@ -158,7 +158,7 @@ const TOAST_MARGIN := 40.0
 const TIP_CYCLE := 8.0
 const TIPS := ["HH_TIP_RAKE", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD", "HH_TIP_WOKE"]
 const TIPS_HEARTS := ["HH_TIP_RAKE", "HH_TIP_HEARTS", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD"]
-const TIPS_WALK := ["HH_TIP_WALK", "HH_TIP_RUSTLE", "HH_TIP_TUCK", "HH_TIP_BELL", "HH_TIP_HEARTS"]
+const TIPS_WALK := ["HH_TIP_WALK", "HH_TIP_RUSTLE", "HH_TIP_TUCK", "HH_TIP_BELL"]
 
 # --- the press ---
 ## A pile under a finger sinks into the lawn over PRESS_IN and springs back
@@ -198,6 +198,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.2
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 const AGO := -1.0e9
 
 # --- the rewards ---
@@ -357,6 +361,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _flawless := false
 var _asleep := false
@@ -400,11 +410,13 @@ var _cat_curled := false
 func puzzle_id() -> String: return "hedgehogs"
 func title() -> String: return "Hedgehogs"
 
-## The rules, then the band's own closing: nothing is lost (Easy, Medium),
-## hearts (Hard), or Sleepwalkers (Insane).
+## The rules, then the band's own closing: nothing is lost (Easy to Hard),
+## or Sleepwalkers and its moves (Insane).
 func rules() -> String:
 	var out := tr("HH_RULES")
-	if _state.walkers():
+	if _state.walkers() and max_moves > 0:
+		out += "\n\n" + tr("HH_RULES_WALKERS_MOVES") % max_moves
+	elif _state.walkers():
 		out += "\n\n" + tr("HH_RULES_WALKERS") % max_hearts
 	elif max_hearts > 0:
 		out += "\n\n" + tr("HH_RULES_HEARTS") % max_hearts
@@ -414,8 +426,9 @@ func rules() -> String:
 
 ## The how-to-play card's pages, the band's own: raking and what a number
 ## counts, flagging a sleeper, raking round a number, a guess that wakes a
-## hedgehog (a heart on Hard and Insane), Sleepwalkers (Insane), Undo and
-## Reset (Reset alone on Insane), and the bulb (bands with hints). Each page
+## hedgehog (a move spent for nothing on Insane), Sleepwalkers (Insane), Undo
+## and Reset (Reset alone on Insane), the bulb (bands with hints) and
+## Insane's move counter. Each page
 ## is the board itself on one hand-made 5x4 lawn, playing the lesson
 ## (ui/hud/hedgehogs_tutorial_diagram.gd).
 func tutorial_pages() -> Array:
@@ -426,7 +439,9 @@ func tutorial_pages() -> Array:
 	var steps := [[Diagram.Lesson.RAKE, "HTP_HH_RAKE", tr("HTP_HH_RAKE_BODY")],
 		[Diagram.Lesson.FLAG, "HTP_HH_FLAG", tr("HTP_HH_FLAG_BODY")],
 		[Diagram.Lesson.CHORD, "HTP_HH_CHORD", tr("HTP_HH_CHORD_BODY")]]
-	if hearts_n > 0:
+	if max_moves > 0:
+		steps.append([Diagram.Lesson.WOKE, "HTP_HH_WOKE", tr("HTP_HH_WOKE_BODY_MOVES")])
+	elif hearts_n > 0:
 		steps.append([Diagram.Lesson.WOKE, "HTP_HH_WOKE", tr("HTP_HH_WOKE_BODY_HEARTS") % hearts_n])
 	else:
 		steps.append([Diagram.Lesson.WOKE, "HTP_HH_WOKE", tr("HTP_HH_WOKE_BODY")])
@@ -434,7 +449,7 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.WALK, "HH_WALK_SEAL", tr("HTP_HH_WALK_BODY")])
 	var undo_body := "HTP_HH_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_HH_RESET_BODY"
+		undo_body = "HTP_HH_RESET_BODY_MOVES" if max_moves > 0 else "HTP_HH_RESET_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_HH_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -447,19 +462,21 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
 func _tips() -> Array:
 	if _state.walkers():
-		return TIPS_WALK
+		return (["TIP_MOVES_SEQ"] if max_moves > 0 else []) + TIPS_WALK
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
 
-## Sleepwalkers has no hint, no Check, and an Undo that stays grey.
+## Sleepwalkers counts moves: no Undo, no hint and no Check.
 func capabilities() -> Array[String]:
 	if _state.walkers():
-		return ["undo"]
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A rake or a
@@ -525,6 +542,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# A new lawn takes its reference layout afresh (its cell may be smaller
 	# than the last deal's).
 	_ref_cell = 0.0
+	# Only a dealt lawn counts moves: the tutorial's hand-made ones come in
+	# through _dealt() and have none.
+	max_moves = _state.moves_budget()
 	_dealt()
 
 ## Everything a new lawn starts from, once the state holds it: build()'s,
@@ -588,6 +608,7 @@ func _dealt() -> void:
 ## Every heart back and the morning light: a new deal and Try again.
 func _deal_hearts() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -622,10 +643,10 @@ func _cell_for(available: float) -> float:
 func _pad() -> float:
 	return PAD
 
-## The strip over the lawn: the tally, and on Hard and Insane the hearts'
-## pill over it.
+## The strip over the lawn: the tally, and over it the hearts' pill on a
+## band that has them or Insane's moves.
 func _top_h() -> float:
-	return TALLY + (HEART_ROW if max_hearts > 0 else 0.0)
+	return TALLY + (HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0)
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
@@ -959,8 +980,9 @@ func _show_chord(r: Dictionary, c: int) -> void:
 		"too_many":
 			_refuse(c, "HH_CHORD_MANY")
 
-## What a rake gesture brings beyond its gust: a wake costs a heart on Hard
-## and Insane; a safe one (not a hint's) grows the streak and may play a gag;
+## What a rake gesture brings beyond its gust: on Insane its piles come off
+## the moves (a wake is one, for nothing); a safe one (not a hint's) grows
+## the streak and may play a gag;
 ## a big flood says Whoosh; on Sleepwalkers the bell counts it, and when it
 ## rings a hedgehog walks once the gust is under way. The numbers shown wait
 ## for the walk.
@@ -985,6 +1007,8 @@ func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> 
 				_later(lead + 0.9, _run_out)
 	elif not cells.is_empty() and not _hinting:
 		_on_safe_rake(c, lands)
+	if not _hinting:
+		_spend(int(r.get("cost", 0)), lands + (0.0 if Motion.reduce else 0.9))
 	if cells.size() >= BIG_GUST and not Motion.reduce:
 		_later(lead + 0.15, func():
 			fx.sparkle(_centre(c), Pal.SUN)
@@ -1084,6 +1108,8 @@ func _process(delta: float) -> void:
 		_place_cat(t)
 	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
+	elif max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 	# A band a frame while the card is still hidden before its entrance, so
 	# the first frame it shows does not pay for a hundred piles at once.
@@ -1995,6 +2021,9 @@ func reset_board() -> void:
 			_touch(c, t + FLAG_OUT)
 	_last = start
 	moves = 0
+	# The night from the top is the board from the top: the moves come back.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_tell("HH_NIGHT_RESET" if night else "HH_RESET", Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2240,8 +2269,28 @@ func _tell_hearts(key: String) -> void:
 	if hearts > 0:
 		_say(tr(key) + " " + (tr("SB_HEARTS_ONE") if hearts == 1 else tr("SB_HEARTS_N") % hearts), Face.Expr.WORRIED)
 
+## `cost` moves go off Insane's counter: the piles a gesture cleared, or one
+## for a hedgehog it woke. The last one gone with bare piles still covered
+## ends the board once the gust has landed (`land`). A flood bigger than
+## what is left is still taken whole: it cannot be cut short.
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_later(maxf(0.0, land - _now()), _run_out)
+
 ## The hearts' pill over the tally: Knight's, heart for heart.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, _hearts_at(Vector2.ZERO), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2345,7 +2394,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["HH_OUT_BODY", "HH_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["HH_OUT_BODY", "HH_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2405,9 +2455,13 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -2417,7 +2471,7 @@ func heart_back() -> void:
 	_dusk_toward(Color.WHITE)
 	_heart_layer.queue_redraw()
 	_refresh()
-	_say(tr("HH_HEART_BACK"), Face.Expr.HAPPY)
+	_say(tr("HH_MOVES_BACK") if max_moves > 0 else tr("HH_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 

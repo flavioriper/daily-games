@@ -26,10 +26,17 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## The cycle's top: a third drag wraps a full run back to nothing. Two since
 ## the polish (2026-09-30), as every other telling of the puzzle has it.
 const MAX_PLANKS := Gen.MAX_PLANKS
-## Hearts and hints by band (the polish): Easy and Medium cannot be lost;
-## Hard and Insane judge every plank as it lands.
-const HEARTS := [0, 0, 0, 2]
+## Hearts and hints by band. The polish judged every plank as it landed on
+## Hard and Insane; no band has hearts since 2026-10-04, so `judged()` is
+## false everywhere, every band lays planks through `cycle` and no lane is
+## ever `ruled`. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
 const HINTS := [3, 3, 1, 0]
+## Insane's spare moves over the answer's own planks (`moves_budget`). Every
+## step of a lane's cycle costs one, the step that lifts the run too, so a
+## plank laid by mistake is three moves to mend (it only comes off by going
+## round). Four is one slip mended with one to spare.
+const MOVES_SLACK := [0, 0, 0, 4]
 ## What a judged plank came to (`add`).
 enum Judged { BLOCKED, RIGHT, WRONG, FULL, RULED }
 ## Neither end of a lane, for a walk that met the edge instead of an islet.
@@ -104,6 +111,21 @@ func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 		_seat[cell] = true
 	runs = {}
 	history = []
+
+## The moves a band hands out: a move for every plank the answer lays and
+## its slack, or 0 on a band that does not count them.
+func moves_budget() -> int:
+	if int(MOVES_SLACK[band]) <= 0:
+		return 0
+	var total := 0
+	for key in answer:
+		total += int(answer[key])
+	return total + int(MOVES_SLACK[band])
+
+## What cycle(key) would cost: one for a step it takes (a plank laid or the
+## run lifted), nothing for one it refuses.
+func move_cost(key: String) -> int:
+	return 1 if lanes.has(key) and blocked_by(key) == "" else 0
 
 # --- reading the water ---
 

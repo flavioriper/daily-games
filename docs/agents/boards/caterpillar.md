@@ -96,3 +96,37 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (`tests/_probe_cat_perf.gd`, Insane): 0.7-1.4 ms before, 0.85-1.7 ms after
   (built with the builder they were 2.3-2.8). Draw calls unchanged (108 peak
   on the Insane solve, ANGLE).
+
+## Insane counts moves (2026-10-04)
+
+- **Peckish prices no step any more** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"): `HEARTS_BY` is all zero, so `judged()` is false on
+  every band and `judge()` answers "" -- the refused step off the one walk,
+  the blush on the stranded squares, the worry and the scoot home are all
+  dormant (`_misstep`, `_slip_back`, `_wrong` are still in the file). A step
+  the rules allow is simply taken. What still refuses is what Medium refuses
+  from the rules alone: a fence, the star too soon, and Peckish's empty
+  tummy (`why()`).
+  **The budget** is the walk's own steps plus a quarter, three at least
+  (`State.moves_budget()`: 63 + 15 = 78 on the banked 8x8; setting the
+  caterpillar down on leaf 1 is free). A square crawled onto costs one and
+  a square backed off costs one (`State.cut_cost`, `_spend`); a cut the
+  counter cannot pay for is not made. The pill (`_draw_moves`) sits where
+  the hearts sat with the tummy still beside it, laid out for the full
+  count's width so the tummy does not shift as the count loses a digit.
+  No Undo, no hint (`capabilities()` is empty on Insane); Reset and Try
+  again hand the whole budget back; the card's video buys `MOVES_BONUS`.
+  Two things changed about the drag where moves are counted, both so a
+  slip is not priced: **a cut corner is stepped through only when the
+  rules leave it one side** (with both open the head waits for the finger
+  to come round; before, the judge picked the side on the answer, which
+  was help), and **a drag that strays over the body further back cuts
+  nothing** -- only the square just behind the head is a step back, a
+  longer cut is a press on the body. Easy to Hard drag as before.
+  New lines at the end of `locale/boards.csv`: `CP_RULES_PECKISH_MOVES`,
+  `CP_RULES_MOVES`, `HTP_CP_RESET_BODY_MOVES`, `HTP_CP_MOVES_BODY` (the
+  shared `RULES_MOVES_SEQ` says no move is taken back, which is not true of
+  a walk). The tutorial drops the HEARTS page and ends on the shared moves
+  page. Not seen on a screen yet: `tests/_probe_moves.gd -- id=caterpillar`;
+  `tests/_probe_cat_judge.gd` and `_shot_caterpillar.gd`'s wrong-step modes
+  describe the old behaviour.

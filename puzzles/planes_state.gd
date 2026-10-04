@@ -35,7 +35,14 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## Per band, Easy .. Insane: the hints a sky starts with, and its hearts (0 is
 ## a band that cannot be lost). Polish spec section 1.
 const HINTS := [3, 3, 1, 0]
-const HEARTS := [0, 0, 0, 2]
+## No band has hearts since 2026-10-04: `judged` is false everywhere, so a
+## tap on a blocked plane is refused for free on every band, as the rules
+## refuse it on Easy. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the sky's own planes (`moves_budget`): three
+## gusts. A launch costs one and so does a gust; a tap the lane refuses
+## costs nothing.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 ## What `blocker()` returns when the first thing in a lane is a cloud (a
 ## plane is its index, a clear lane -1).
@@ -252,6 +259,22 @@ func launch(i: int) -> bool:
 		_occupant.erase(c)
 	_history.append(i)
 	return true
+
+## The fewest moves that clear the sky from the deal: a launch a plane. A
+## true optimum on a Windy Day sky too, whose stored `order` replays without
+## a gust.
+func shortest_solve() -> int:
+	return planes.size()
+
+## The moves a band hands out: the shortest solve and its slack, or 0 on a
+## band that does not count.
+func moves_budget() -> int:
+	if MOVES_SLACK[difficulty] <= 0:
+		return 0
+	var par := shortest_solve()
+	# Every plane flies once, so the spare moves are gusts and nothing else:
+	# the flat slack, not a quarter of the sky.
+	return par + int(MOVES_SLACK[difficulty])
 
 ## Planes are left and none can fly. Only a Windy Day sky can get here.
 func stuck() -> bool:

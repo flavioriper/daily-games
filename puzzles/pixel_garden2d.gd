@@ -21,6 +21,11 @@ extends "res://core/puzzle_base.gd"
 ## about, each turned: their clips' colours and pips name the plates and
 ## point to each one's top.
 ##
+## Since 2026-10-04 no band has hearts. Windblown counts moves instead (a
+## bead seated or lifted is one; the pill sits where the hearts did) and no
+## plate is ironed there until the picture is right: a verdict on a plate
+## was the answer (docs/agents/flat-screens.md, "Insane counts moves").
+##
 ## **The iron is this board's signature.** On the solve the beads hop in the
 ## family's wave, then the iron crosses the whole board along the diagonal
 ## in a warm band, each bead's hole closing to a dimple under it with a gloss
@@ -162,6 +167,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 0.9
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a picture.
+const MOVES_BONUS := 5
 
 # --- the rewards ---
 ## Words that pop over the board: Perfect plate!, N in a row!, Steady hand!
@@ -317,6 +326,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Windblown's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a
+## band that does not count. Out of moves unsolved is `out_of_hearts`, the
+## name the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _flawless := false
 var _asleep := false
@@ -367,18 +382,27 @@ var _toast_mesh_for := ""
 func puzzle_id() -> String: return "pixelgarden"
 func title() -> String: return "Pixel Garden"
 
+## A band that counts moves has no Check and no iron on a plate, so it reads
+## neither of those lines.
 func rules() -> String:
-	var out := tr("PG_RULES") + "\n\n" + tr("PG_RULES_PLATES")
+	var out := tr("PG_RULES")
+	if "check" in capabilities():
+		out += " " + tr("PG_RULES_CHECK")
+	if max_moves <= 0:
+		out += "\n\n" + tr("PG_RULES_PLATES")
 	if max_hearts > 0 and not _state.windblown():
 		out += "\n\n" + tr("PG_RULES_HEARTS")
 	elif _state.windblown():
 		out += "\n\n" + tr("PG_RULES_WIND")
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES") % max_moves
 	return out
 
 ## The tutorial, one lesson a page (the board checkup, 2026-10-03): pick
-## and seat, the kit running out, the plates and the iron (a heart on Hard
-## and Insane), the picture held big, Windblown (Insane), Check (Easy and
-## Medium), Undo and Reset, and the bulb (bands with hints). Each page is the
+## and seat, the kit running out, the plates and the iron (not on a band
+## that counts moves, where no plate is ironed), the picture held big,
+## Windblown (Insane), Check, Undo and Reset (bands that have them), the
+## bulb (bands with hints) and the move counter (Insane). Each page is the
 ## board itself on a hand-made 6x6 tulip, playing the lesson
 ## (ui/hud/pixel_garden_tutorial_diagram.gd).
 func tutorial_pages() -> Array:
@@ -390,14 +414,15 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.KIT, "HTP_PG_KIT", tr("HTP_PG_KIT_BODY")]]
 	if hearts_n > 0:
 		steps.append([Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_PG_PLATE_BODY_HEARTS") % hearts_n])
-	else:
+	elif max_moves <= 0:
 		steps.append([Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_PG_PLATE_BODY")])
 	steps.append([Diagram.Lesson.PEEK, "HTP_PG_PEEK", tr("HTP_PG_PEEK_BODY")])
 	if _state.windblown():
 		steps.append([Diagram.Lesson.WIND, "HTP_PG_WIND", tr("HTP_PG_WIND_BODY")])
 	if "check" in capabilities():
 		steps.append([Diagram.Lesson.CHECK, "HTP_PG_CHECK", tr("HTP_PG_CHECK_BODY")])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_PG_UNDO_BODY")])
+	if "undo" in capabilities():
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_PG_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_PG_HINT_BODY_ONE") if hints == 1 else tr("HTP_PG_HINT_BODY_N") % hints])
@@ -407,13 +432,16 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Easy and Medium keep Check and three hints; Hard has two hints and no
-## Check (the iron is the judge); Windblown has neither.
+## Easy, Medium and Hard keep Undo, Check and their hints. Windblown counts
+## moves: no Undo (lifting a bead is the take-back, and it costs one), no
+## hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
 	match _state.band:
-		3: return ["undo"]
+		3: return []
 	return ["undo", "hint", "check"]
 
 func _ready() -> void:
@@ -431,6 +459,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	max_hearts = State.hearts_for(difficulty)
 	hearts = max_hearts
+	max_moves = _state.moves_budget()
+	moves_left = max_moves
 	out_of_hearts = false
 	_heart_used = false
 	_lost_ever = false
@@ -1221,8 +1251,12 @@ func _iron_px() -> float:
 ## (2026-10-04). The state judges at once (a wrong plate's beads astray are
 ## back in the kit); the board shows it as the iron gets there, and holds
 ## input until it has. One pass costs one heart at most, on its first wrong
-## plate, however many are wrong.
+## plate, however many are wrong. Never on a band that counts moves: there
+## a verdict on a plate would be the answer, and the beads it sent home
+## would be moves made for the player.
 func _maybe_iron() -> void:
+	if max_moves > 0:
+		return
 	var full: PackedInt32Array = _state.plates_due()
 	if full.is_empty():
 		return
@@ -1737,6 +1771,12 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 	var font: Font = CozyTheme.display(700)
 	var name := tr(_state.pic_name)
 	var hearts_w := 0.0 if max_hearts <= 0 else max_hearts * (2.0 * HEART_R + HEART_GAP) + 8.0
+	# The moves' pill where the hearts sat: the right end of the name's line.
+	var pill_w := 0.0
+	if max_moves > 0:
+		pill_w = font.get_string_size(MovesPill.line(self, moves_left), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
+			MovesPill.FONT).x + 2.0 * MovesPill.PAD
+		hearts_w = pill_w + 12.0
 	draw_string(font, Vector2(_right.position.x + 4.0, _right.position.y + font.get_ascent(NAME_SIZE)),
 		name, HORIZONTAL_ALIGNMENT_LEFT, _right.size.x - 8.0 - hearts_w, NAME_SIZE, Color(Pal.TEXT, seen))
 	for i in _chip_rects.size():
@@ -1754,6 +1794,9 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 	draw_string(font, Vector2(_right.end.x - tw, bar_y + font.get_ascent(NAME_SIZE) * 0.38), tally,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, NAME_SIZE, Color(Pal.TEXT, seen))
 	draw_set_transform(Vector2.ZERO)
+	if max_moves > 0 and seen >= 1.0:
+		_moves_pill.draw(self, xf * Vector2(_right.end.x - pill_w * 0.5 - 4.0, _right.position.y + 17.0),
+			moves_left, t)
 	if _thumb_mesh != null:
 		draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
 
@@ -1945,7 +1988,13 @@ func _paint(c: int) -> void:
 	# Lifting only ever lifts the chosen colour.
 	if _erase and had != brush:
 		return
-	var r: String = _state.put(c, State.EMPTY if _erase else brush)
+	var to: int = State.EMPTY if _erase else brush
+	# Windblown counts moves: a bead seated or lifted is one, and the stroke
+	# stops where the budget does.
+	var cost: int = _state.move_cost(c, to) if max_moves > 0 else 0
+	if cost > moves_left:
+		return
+	var r: String = _state.put(c, to)
 	var t := _now()
 	match r:
 		"put":
@@ -1972,6 +2021,7 @@ func _paint(c: int) -> void:
 			_busy_for(FLY_TIME + SEAT_TIME)
 			_bar_bump = t
 			_busy_for(Motion.BUMP_TIME)
+			_spend(cost, t + (0.0 if Motion.reduce else FLY_TIME + SEAT_TIME))
 		"locked":
 			_shake_at[c] = t
 			_touch(c, t + Motion.SHIVER_TIME)
@@ -2063,12 +2113,13 @@ func set_brush(v: int) -> void:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return _state.can_undo() and not _blocked()
+	return max_moves <= 0 and _state.can_undo() and not _blocked()
 
 ## Takes back the last stroke: its beads pop back off (or back on), last
-## first. Putting beads back can fill a plate, and the iron comes.
+## first. Putting beads back can fill a plate, and the iron comes. Never on
+## a band that counts moves.
 func undo() -> bool:
-	if _blocked() or _stroking:
+	if max_moves > 0 or _blocked() or _stroking:
 		return false
 	var before: PackedInt32Array = _state.beads.duplicate()
 	var pegs: PackedInt32Array = _state.undo()
@@ -2171,10 +2222,12 @@ func check() -> int:
 	return wrong.size()
 
 ## Every bead back in its compartment but the ones a hint or an iron fixed,
-## flying home in a wave from the far corner.
+## flying home in a wave from the far corner. A bare board is the picture
+## from the top, so the moves come back too.
 func reset_board() -> void:
 	if _blocked():
 		return
+	moves_left = max_moves
 	var before: PackedInt32Array = _state.beads.duplicate()
 	var pegs: PackedInt32Array = _state.reset()
 	_send_home(before, pegs)
@@ -2217,6 +2270,27 @@ func share_glyphs() -> String:
 
 # --- hearts ---
 
+## `cost` moves go off Windblown's counter. The last one gone with the
+## picture unfinished ends the board once the bead has landed (`land`); a
+## stroke in hand ends where it is.
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_busy_for(Motion.BUMP_TIME)
+	queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	if _stroking:
+		_state.end_stroke()
+		_clear_gesture()
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else 0.3), _run_out)
+
 func _lose_heart() -> void:
 	hearts = maxi(0, hearts - 1)
 	_split_index = hearts
@@ -2253,7 +2327,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["PG_OUT_BODY", "PG_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["PG_OUT_BODY", "PG_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2265,7 +2340,8 @@ func _open_card() -> void:
 		get_tree().root.add_child(card)
 
 ## Try again: the same picture on a bare board (a hint's pegs kept), every
-## heart back, the clock and the moves from zero. Hints spent stay spent.
+## heart and the whole budget of moves back, the clock and the moves made
+## from zero. Hints spent stay spent.
 func try_again() -> void:
 	if is_done():
 		return
@@ -2280,6 +2356,7 @@ func try_again() -> void:
 			pegs.append(c)
 	_send_home(before, pegs)
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -2299,16 +2376,21 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	out_of_hearts = false
 	_asleep = false
 	_running = true
 	fx.cue("heart_back")
 	_dusk_toward(Color.WHITE)
-	_tell("PG_HEART_BACK")
-	_busy_for(HEART_BACK_TIME)
+	if max_moves <= 0:
+		_tell("PG_HEART_BACK")
+	_busy_for(maxf(HEART_BACK_TIME, Motion.BUMP_TIME))
 	_refresh()
 	moved.emit()
 
@@ -2357,7 +2439,7 @@ func _on_solved() -> void:
 	_refresh()
 
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless}
+	return {"hearts": hearts, "flawless": _flawless, "moves": moves_left}
 
 ## A reopened daily that was already solved: the whole picture seated and
 ## fused, the bare pegs gone, the cat asleep on the pattern card and the
@@ -2368,6 +2450,7 @@ func restore_completed_board() -> void:
 	_state.fill()
 	_reset_looks()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	moves_left = clampi(int(completed_record.get("moves", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
 	out_of_hearts = false
 	modulate = Color.WHITE

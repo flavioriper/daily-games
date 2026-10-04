@@ -25,6 +25,11 @@ extends RefCounted
 ## Windblown, the pattern card's four squares have blown about: each shows
 ## somewhere else, turned (`perm`, `turn`), and the board must still be the
 ## true picture.
+##
+## **No band has hearts since 2026-10-04**, and Windblown counts moves
+## instead (`moves_budget`, `move_cost`): there the board never calls the
+## iron on a plate, so nothing says which bead is astray and nothing is
+## taken off for the player. The iron still closes a picture that is right.
 ## Spec: docs/superpowers/specs/2026-09-27-pixel-garden-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-pixel-garden-polish-design.md.
 
@@ -36,7 +41,11 @@ const HINTS := 3
 ## Hints and hearts by band: Hard trades a hint for hearts, Insane has
 ## neither hints nor Check -- only the iron judges.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Windblown's spare moves over the picture's own beads (`moves_budget`): a
+## bead seated or lifted costs one. Three is one slip mended (off and on)
+## with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 const WINDBLOWN := 3
 ## `locked` holds HINTED for a peg a hint put right, FUSED for one an iron
 ## fused with its plate; Try again keeps a hint's and melts the rest.
@@ -349,6 +358,21 @@ func wrong() -> PackedInt32Array:
 
 func can_undo() -> bool:
 	return not history.is_empty()
+
+## The moves a band hands out: the picture's beads and its slack, or 0 on a
+## band that does not count them.
+func moves_budget() -> int:
+	return target + int(MOVES_SLACK[band]) if int(MOVES_SLACK[band]) > 0 else 0
+
+## What `put(c, to)` would cost: one for a bead it would seat or lift,
+## nothing for a put it would refuse (the same bead, a fixed peg, a peg
+## holding another colour, a colour used up).
+func move_cost(c: int, to: int) -> int:
+	if beads[c] == to or locked[c] != 0:
+		return 0
+	if to != EMPTY and (beads[c] != EMPTY or left(to) <= 0):
+		return 0
+	return 1
 
 # --- moves ---
 

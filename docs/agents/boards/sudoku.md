@@ -144,3 +144,22 @@ Insane's bank was graded with suppositions (0 of 200 finished without one).
   cell one step of reasoning fills (Binairo's does).
 - Easy to Hard deal different grids than before; a day finished earlier
   restores another.
+
+### Insane counts moves (2026-10-04)
+
+- **Insane counts moves, and no band has hearts** (2026-10-04,
+  `docs/agents/flat-screens.md`, "Insane counts moves"). `State.HEARTS` is
+  `[0, 0, 0, 0]`, so `judged()` is false everywhere: no number tumbles off,
+  none is ruled out of a cell (`RULED`) and a right one is no longer kept
+  (`KEPT`); that code stays, unreached. Hilltops plays as Medium does on
+  feedback -- a clash turns rose, a finished unit waves, a hill that comes
+  true turns gold, all read off the player's own numbers. Budget:
+  `State.moves_budget()` = the grid's empty cells + 3 (15 givens is 69). A
+  number written costs one (over a blank or over another number), a number
+  tapped back out or taken by the cross costs one, pencil marks and rubbing
+  them out are free (`move_cost`, `erase_cost`). No Undo, hint or Check on
+  Insane, so the tutorial drops its Undo page there and the slip page reads
+  `HTP_SD_MISTAKE_BODY_MOVES`; rules end on `SD_RULES_MOVES`.
+  `completion_record` keeps `moves` beside `hearts`. **Still wrong and not
+  this pass's to fix**: `SD_RULES` ends on a sentence about Check, which
+  Insane does not have (it was already untrue on a judged band).

@@ -9,10 +9,13 @@ extends "res://core/puzzle_base.gd"
 ##
 ## After the reference the user asked for (the Xbox classic of pegs, a
 ## launcher and a sliding bucket), re-dressed as a garden. Out of seeds with
-## a marigold left, the garden grows back for another try; on Hard and
-## Insane that try costs a heart, and out of hearts the day can be lost.
-## Insane is Sweethearts: the marigolds come in pairs tied by a ribbon, and a
-## marigold blooms for good only in the same shot as its sweetheart.
+## a marigold left, the garden grows back for another try. Insane is
+## Sweethearts: the marigolds come in pairs tied by a ribbon, and a marigold
+## blooms for good only in the same shot as its sweetheart. Since 2026-10-04
+## Insane counts moves, and here the seeds always were the moves: one garden,
+## the proof's shots and three over, no Undo, and out of seeds with a
+## marigold up is the loss (the hearts that bought a second garden are
+## dormant).
 ##
 ## How it is drawn. Meshes, most of them cached:
 ##   still -- the card, the dusk garden and the arbor, on a relayout only;
@@ -48,6 +51,8 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the counts take, the
@@ -205,6 +210,10 @@ const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const TIPS_HEARTS := ["MG_TIP_AIM", "MG_TIP_HEARTS", "MG_TIP_POT"]
 const TIPS_SWEET := ["MG_TIP_SWEET", "MG_TIP_SWEET_PLAN", "MG_TIP_SWEET_HEARTS"]
+## Insane's lines since it counts moves, and the seeds the card's video buys.
+const TIPS_MOVES := ["MG_TIP_SEEDS", "MG_TIP_AIM", "MG_TIP_POT"]
+const TIPS_SWEET_MOVES := ["MG_TIP_SEEDS", "MG_TIP_SWEET", "MG_TIP_SWEET_PLAN"]
+const MOVES_BONUS := 3
 ## Sweethearts: a marigold left alone folds back into a bud over FOLD_TIME
 ## when the shot ends; each pair's ribbon has its own colour.
 const FOLD_TIME := 0.5
@@ -367,6 +376,13 @@ var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
 var _lost_ever := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. The moves are the seeds in the state's trough, so
+## `moves_left` only follows them (`_count_moves`): a shot costs one, and a
+## seed the pot catches or a big shot earns comes back.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 ## Undo: the garden before each shot of this try (the state's snapshot with
 ## the board's log and streak), and whether Undo was ever used (no
 ## flawless seal then).
@@ -486,11 +502,15 @@ var _tip_mood := Face.Expr.HAPPY
 func puzzle_id() -> String: return "marigold"
 func title() -> String: return "Marigold"
 
-## The rules, then the band's own closing: hearts (Hard), Sweethearts
-## (Insane).
+## The rules, then the band's own closing: Sweethearts and the count of
+## seeds (Insane).
 func rules() -> String:
 	var out := tr("MG_RULES")
-	if _state.sweethearts:
+	if max_moves > 0:
+		if _state.sweethearts:
+			out += "\n\n" + tr("MG_RULES_SWEET_PAIRS")
+		out += "\n\n" + tr("MG_RULES_SEEDS") % max_moves
+	elif _state.sweethearts:
 		out += "\n\n" + tr("MG_RULES_SWEET") % max_hearts
 	elif max_hearts > 0:
 		out += "\n\n" + tr("MG_RULES_HEARTS") % max_hearts
@@ -507,17 +527,21 @@ func tutorial_pages() -> Array:
 	var band: int = _state.band
 	var hints: int = State.hints_for(band)
 	var hearts_n: int = State.hearts_for(band)
+	var counted: int = _state.moves_budget()
 	var steps := [[Diagram.Lesson.AIM, "HTP_MG_AIM", tr("HTP_MG_AIM_BODY")],
 		[Diagram.Lesson.GOAL, "HTP_MG_GOAL", tr("HTP_MG_GOAL_BODY")],
 		[Diagram.Lesson.CLOVER, "HTP_MG_CLOVER", tr("HTP_MG_CLOVER_BODY")],
 		[Diagram.Lesson.POT, "HTP_MG_POT", tr("HTP_MG_POT_BODY")]]
+	# a band that counts moves has no second garden and no Undo to teach:
+	# its last page is the counter
 	if hearts_n > 0:
 		steps.append([Diagram.Lesson.OUT, "HTP_MG_OUT", tr("HTP_MG_OUT_BODY_HEARTS") % hearts_n])
-	else:
+	elif counted <= 0:
 		steps.append([Diagram.Lesson.OUT, "HTP_MG_OUT", tr("HTP_MG_OUT_BODY")])
 	if band >= 3:
 		steps.append([Diagram.Lesson.SWEET, "HTP_MG_SWEET", tr("HTP_MG_SWEET_BODY")])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_MG_UNDO_BODY_HEARTS" if hearts_n > 0 else "HTP_MG_UNDO_BODY")])
+	if counted <= 0:
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_MG_UNDO_BODY_HEARTS" if hearts_n > 0 else "HTP_MG_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_MG_HINT_BODY_ONE") if hints == 1 else tr("HTP_MG_HINT_BODY_N") % hints])
@@ -527,19 +551,28 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if counted > 0:
+		# the shared page with this board's own words: its moves are seeds,
+		# and the pot gives one back
+		var page: Dictionary = MovesDiagram.page(self, counted)
+		page["body"] = tr("HTP_MG_MOVES_BODY") % counted
+		pages.append(page)
 	return pages
 
 func _tips() -> Array:
+	if max_moves > 0:
+		return TIPS_SWEET_MOVES if _state.sweethearts else TIPS_MOVES
 	if _state.sweethearts:
 		return TIPS_SWEET
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
 
-## Undo takes the last shot back; Reset is the host's. Insane has no hint.
+## Undo takes the last shot back; Reset is the host's. Insane has neither
+## hint nor Undo: a shot taken back would be a seed back in the count.
 func capabilities() -> Array[String]:
 	if _state.band >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 ## Undo waits for the shot to be over; on Hard and Insane it costs a heart,
@@ -547,7 +580,7 @@ func capabilities() -> Array[String]:
 ## sleep.
 func can_undo() -> bool:
 	return not _undo.is_empty() and _phase == "aim" and _think.is_empty() and not is_done() \
-		and not out_of_hearts and (max_hearts <= 0 or hearts > 1)
+		and not out_of_hearts and (max_hearts <= 0 or hearts > 1) and max_moves <= 0
 
 ## The last shot taken back: the seed back in the trough, every bud it
 ## bloomed up again, the violet back where it stood, the score as it was.
@@ -633,6 +666,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_looks = null
 	max_hearts = State.hearts_for(difficulty)
 	hearts = max_hearts
+	max_moves = _state.moves_budget()
+	moves_left = _state.seeds if max_moves > 0 else 0
 	out_of_hearts = false
 	_heart_used = false
 	_lost_ever = false
@@ -803,6 +838,7 @@ func _process(delta: float) -> void:
 			_end_shot(t)
 	elif not _done and _phase != "asleep":
 		_state.step_pot(sd)
+	_count_moves(t)
 	_aim_shown = _aim if Motion.reduce else lerp_angle(_aim_shown, _aim, 1.0 - exp(-AIM_RATE * delta))
 	_camera(t, delta)
 	_tick_rewards(t, delta)
@@ -1229,6 +1265,11 @@ func _out_of_seeds(t: float) -> void:
 	_mood(Face.Expr.WORRIED, OUT_WAIT)
 	_phase = "out"
 	_out_at = t
+	if max_moves > 0:
+		_count_moves(t)
+		_moves_out()
+		_run_out()
+		return
 	if max_hearts > 0:
 		_lose_heart(t)
 		if out_of_hearts:
@@ -1783,6 +1824,43 @@ func _duck_look(b: Face.Builder, mother: bool, fade: float) -> void:
 		Color(Color("f2a23a"), fade))
 	b.disc(p.call(head + Vector2(r * 0.15, -r * 0.12)), r * 0.09 * s + 1.0, Color(Pal.TEXT, fade))
 
+# --- Insane's moves ---
+
+## The pill follows the trough: bumps when the seeds in it change.
+func _count_moves(t: float) -> void:
+	if max_moves <= 0 or moves_left == _state.seeds:
+		return
+	moves_left = _state.seeds
+	_moves_pill.bump(t)
+
+## `cost` seeds go out of Insane's trough. A shot takes its own (State.fire)
+## and the garden ends itself when the last one has landed (_out_of_seeds);
+## this is the door for anything else that spends one. The last seed gone
+## with a marigold up and none in flight ends the garden at `land`.
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	_state.seeds = maxi(0, _state.seeds - cost)
+	_count_moves(_now())
+	if moves_left > 0 or is_done() or _state.is_solved() or out_of_hearts or _phase != "aim":
+		return
+	_moves_out()
+	var wait := land - _now()
+	if wait <= 0.0:
+		_run_out()
+		return
+	get_tree().create_timer(wait).timeout.connect(func():
+		if is_inside_tree() and out_of_hearts and _phase == "aim" and not is_done():
+			_run_out())
+
+## Out of moves with a marigold up: the garden is lost (`out_of_hearts` is
+## the name the host and the card read).
+func _moves_out() -> void:
+	_lost_ever = true
+	out_of_hearts = true
+	_streak = 0
+	_log += "💔"
+
 # --- hearts ---
 
 func _lose_heart(t: float) -> void:
@@ -1887,7 +1965,7 @@ func _run_out() -> void:
 	_shades_until = _now()
 	fx.cue("out_of_hearts")
 	_mood(Face.Expr.SLEEPY, 1.0e6)
-	_say(tr("MG_ASLEEP"), Face.Expr.SLEEPY)
+	_say(tr("MG_ASLEEP_SEEDS" if max_moves > 0 else "MG_ASLEEP"), Face.Expr.SLEEPY)
 	_dusk_toward(DUSK)
 	get_tree().create_timer(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER).timeout.connect(_open_card)
 
@@ -1902,7 +1980,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not is_inside_tree() or not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["MG_OUT_BODY", "MG_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["MG_OUT_BODY", "MG_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -1921,6 +2000,7 @@ func try_again() -> void:
 	_close_card()
 	_state.restart()
 	hearts = max_hearts
+	moves_left = _state.seeds if max_moves > 0 else 0
 	out_of_hearts = false
 	_split_index = -1
 	_back_index = -1
@@ -1949,6 +2029,9 @@ func heart_back() -> void:
 	_close_card()
 	var t := _now()
 	_heart_used = true
+	if max_moves > 0:
+		_seeds_back(t)
+		return
 	hearts = 1
 	_back_index = 0
 	_back_at = t
@@ -1962,6 +2045,30 @@ func heart_back() -> void:
 	fx.cue("heart_back")
 	_dusk_toward(Color.WHITE)
 	_say(tr("MG_HEART_BACK"), Face.Expr.HAPPY)
+	moved.emit()
+
+## The card's video on a band that counts moves: MOVES_BONUS seeds in the
+## trough and the garden as it stands, every bloom picked so far kept.
+func _seeds_back(t: float) -> void:
+	_state.seeds = MOVES_BONUS
+	_seeds_start = _state.seeds
+	_count_moves(t)
+	out_of_hearts = false
+	_running = true
+	_phase = "aim"
+	_out_at = -100.0
+	_aiming = false
+	_shot_oranges = 0
+	_shot_pairs = 0
+	_shot_pot = false
+	_guide = null
+	_hud = null
+	_undo = []
+	_log += "·"
+	_mood(Face.Expr.HAPPY, 0.0)
+	fx.cue("heart_back")
+	_dusk_toward(Color.WHITE)
+	_say(tr("MG_SEEDS_BACK") % MOVES_BONUS, Face.Expr.HAPPY)
 	moved.emit()
 
 func _leave_board() -> void:
@@ -2196,6 +2303,12 @@ func _draw() -> void:
 	_draw_hud(t, hud, tint, shown)
 	if max_hearts > 0:
 		_draw_hearts(t, hud, tint, shown)
+	if max_moves > 0 and not is_done():
+		# where the hearts' sign hung, kept inside the arbor's left post
+		var wide := CozyTheme.display(700).get_string_size(MovesPill.line(self, moves_left),
+			HORIZONTAL_ALIGNMENT_LEFT, -1.0, MovesPill.FONT).x + 2.0 * MovesPill.PAD
+		var at := Vector2(maxf(_pt(SIGN_AT).x, _origin().x + 10.0 + wide * 0.5), _pt(SIGN_AT).y)
+		_moves_pill.draw(self, hud * at, moves_left, t)
 	if not Motion.reduce:
 		_live = _build_live(t)
 		_put(_live, xf, tint, shown)
@@ -3651,8 +3764,9 @@ func hint() -> bool:
 	queue_redraw()
 	return true
 
-## Reset grows the garden back. On Hard and Insane, once a seed of this try
-## has flown, giving the garden up costs a heart, as running out would.
+## Reset grows the garden back, and on Insane hands the whole count of seeds
+## back with it. (With hearts, once a seed of this try had flown, giving the
+## garden up cost one, as running out would.)
 func reset_board() -> void:
 	if out_of_hearts or _phase == "asleep" or _phase in ["shot", "pick", "out"]:
 		return
@@ -3666,7 +3780,15 @@ func reset_board() -> void:
 			_run_out()
 			return
 	_state.balls = []
-	_state.regrow()
+	if max_moves > 0:
+		# the garden from the top, the violet where the proof met it; given
+		# up after a shot it is no flawless garden any more
+		if _state.shots > 0:
+			_undo_ever = true
+		_state.restart()
+		moves_left = _state.seeds
+	else:
+		_state.regrow()
 	_fresh(t)
 	_log += "·"
 	moves = 0
@@ -3706,9 +3828,9 @@ func win_delay() -> float:
 func _on_solved() -> void:
 	_solved_at = _now()
 	_won = true
-	# Flawless: no hint, and no heart lost on Hard and Insane, or the first
-	# try on Easy and Medium.
-	_flawless = hints_used == 0 and not _undo_ever and (not _lost_ever if max_hearts > 0 else _state.tries == 1)
+	# Flawless: no hint, no Undo and the first try (on Insane, never out of
+	# seeds either; with hearts, none lost).
+	_flawless = hints_used == 0 and not _undo_ever and (not _lost_ever if max_hearts > 0 else _state.tries == 1 and not _lost_ever)
 	_mood(Face.Expr.JOY, 100.0)
 	fx.cue("solved")
 	if not Motion.reduce:
@@ -3729,7 +3851,7 @@ func _on_solved() -> void:
 
 func completion_record() -> Dictionary:
 	return {"score": _state.score, "shots": _state.shots, "tries": _state.tries, "log": _log,
-		"hearts": hearts, "flawless": _flawless}
+		"hearts": hearts, "moves_left": moves_left, "flawless": _flawless}
 
 ## A reopened daily that was already solved: every marigold picked, the
 ## rainbow up, the score as it was. Never check_solved(): `solved` must not
@@ -3744,6 +3866,9 @@ func restore_completed_board() -> void:
 	_state.shots = int(completed_record.get("shots", 0))
 	_log = String(completed_record.get("log", ""))
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	if max_moves > 0:
+		moves_left = maxi(0, int(completed_record.get("moves_left", 0)))
+		_state.seeds = moves_left
 	_flawless = bool(completed_record.get("flawless", false))
 	# the clocks are pushed back; _won, not the clock's sign, says it is won
 	# (Super Slider's restore bug: under 100 s after launch they go negative)

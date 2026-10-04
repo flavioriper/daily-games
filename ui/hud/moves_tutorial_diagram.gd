@@ -21,11 +21,12 @@ var _left := 0
 var _since := 0.0
 var _clock := 0.0
 
-## The page a board appends: {diagram, title, body}.
-static func page(on: Control, budget: int) -> Dictionary:
+## The page a board appends: {diagram, title, body}. A board whose moves are
+## a sequence (nothing put down, nothing taken back) passes `seq`.
+static func page(on: Control, budget: int, seq := false) -> Dictionary:
 	var d: Control = load("res://ui/hud/moves_tutorial_diagram.gd").new()
 	d.moves = budget
-	return {"diagram": d, "title": "HTP_MOVES", "body": on.tr("HTP_MOVES_BODY") % budget}
+	return {"diagram": d, "title": "HTP_MOVES", "body": on.tr("HTP_MOVES_SEQ_BODY" if seq else "HTP_MOVES_BODY") % budget}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

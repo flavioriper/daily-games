@@ -70,6 +70,10 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the patch ---
 ## The card's inset round the field.
@@ -342,6 +346,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _ejecting := false
@@ -445,26 +455,27 @@ func rules() -> String:
 	var out := tr("MP_RULES")
 	if not state.rings.is_empty():
 		out += "\n\n" + tr("MP_RULES_RINGS")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + tr("MP_RULES_HEARTS") % _word(max_hearts)
 	else:
 		out += " " + tr("MP_RULES_SAFE")
 	return out
 
-## The lines the sprout cycles: Fairy Rings leads with the rings' two, a
-## judged patch with the hearts'.
+## The lines the sprout cycles: a counted patch leads with the moves', Fairy
+## Rings with the rings' two.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES"] if max_moves > 0 else []
 	if not state.rings.is_empty():
-		return ["MP_TIP_RINGS", "MP_TIP_RINGS_2", "MP_TIP_HEARTS"] + TIPS
-	if max_hearts > 0:
-		return ["MP_TIP_HEARTS"] + TIPS
-	return TIPS
+		return lead + ["MP_TIP_RINGS", "MP_TIP_RINGS_2"] + TIPS
+	return lead + TIPS
 
 ## The tutorial (the board checkup, 2026-10-02): one lesson a page, each
 ## played by a real, quietened board on a 5 by 5 patch
 ## (ui/hud/mushroom_tutorial_diagram.gd), the pages this band needs: Fairy
-## Rings on Insane, the hearts on a judged band, the bulb while the band has
-## hints.
+## Rings on Insane and its move counter (which has no Undo or Check to
+## teach), the bulb while the band has hints.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/mushroom_tutorial_diagram.gd")
 	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
@@ -473,11 +484,9 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.PEBBLE, "HTP_MP_PEBBLE", tr("HTP_MP_PEBBLE_BODY")]]
 	if not state.rings.is_empty():
 		steps.append([Diagram.Lesson.RINGS, "MP_RINGS_SEAL", tr("MP_RULES_RINGS")])
-	if max_hearts > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
-			tr("HTP_MP_HEARTS_BODY_ONE") if max_hearts == 1 else tr("HTP_MP_HEARTS_BODY_N") % max_hearts])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
-		tr("HTP_MP_UNDO_BODY_JUDGED") if state.judged() else tr("HTP_MP_UNDO_BODY")])
+	if max_moves <= 0:
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+			tr("HTP_MP_UNDO_BODY_JUDGED") if state.judged() else tr("HTP_MP_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_MP_HINT_BODY_ONE") if hints == 1 else tr("HTP_MP_HINT_BODY_N") % hints])
@@ -487,9 +496,15 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.hearts = maxi(1, max_hearts)
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
+## Insane counts moves: no Undo (pulling a mushroom up is the take-back, and
+## it costs one), no hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A mushroom
@@ -560,6 +575,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -592,6 +608,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## day's light, nothing judged, blooming or partying.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -740,7 +757,7 @@ func _tally_h() -> float:
 
 ## The strip the hearts take over the tally, on a patch that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## Seats `face` `px` square about `centre`: her slot takes the place, and her
 ## own place inside it is left to the motion. She turns and scales about the
@@ -805,6 +822,7 @@ func _process(delta: float) -> void:
 		# The pill pops in with the tally, then stands until a heart moves.
 		if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 				or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+				or _moves_pill.animating(now - 0.1) \
 				or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
 			_heart_layer.queue_redraw()
 		if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
@@ -1963,6 +1981,10 @@ func _release(at_cell: Vector2i) -> void:
 ## move.
 func _tap(cell: Vector2i, now: float) -> void:
 	var before := _snapshot()
+	# Insane counts moves: a mushroom the budget cannot pay for is not planted.
+	var cost: int = state.move_cost(cell, brush) if max_moves > 0 else 0
+	if cost > moves_left:
+		return
 	var why: int = state.place(cell, brush)
 	match why:
 		State.GIVEN:
@@ -1984,6 +2006,7 @@ func _tap(cell: Vector2i, now: float) -> void:
 	# A mark on a covered cell throws its sod off in a puff of turf.
 	var dug: bool = int(before.get(cell, State.BLANK)) == State.BLANK
 	var land := 0.0 if Motion.reduce else SPROUT_LAG + SPROUT_PUSH + SPROUT_OPEN
+	_spend(cost, now + (land if mark == State.FOUND else 0.0))
 	if mark == State.FOUND:
 		fx.ring(at, _cell * RING_R, Pal.SUN_RAY)
 		fx.puff(at, Pal.TURF if dug else Pal.LEAF)
@@ -2176,6 +2199,9 @@ func reset_board() -> void:
 	_shiver = {}
 	_wobble = {}
 	moves = 0
+	# A cleared patch is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr("MP_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2236,7 +2262,7 @@ func _on_solved() -> void:
 	_say(tr("MP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
 	_busy_for(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME)
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = now
 		_combo_layer.queue_redraw()
@@ -2534,6 +2560,21 @@ func _break_streak() -> void:
 
 # --- failing ---
 
+## `cost` moves go off Insane's counter. The last one gone with the patch
+## unfinished ends the board once the mushroom has opened (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()), _run_out)
+
 ## A mushroom the answer does not grow there, on Hard or Insane: she sprouts
 ## like any other, then goes WORRIED as her cell blushes and a heart splits,
 ## and EJECT_AFTER later she wilts back into the soil and a pebble drops in
@@ -2655,7 +2696,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["MP_OUT_BODY", "MP_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["MP_OUT_BODY", "MP_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2707,9 +2749,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2739,6 +2785,9 @@ func _close_card() -> void:
 ## a small face and a leaf, a faint ghost where one was, the lost one's halves
 ## falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()

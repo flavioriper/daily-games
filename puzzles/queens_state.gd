@@ -36,12 +36,17 @@ const BLANK := 0
 const QUEEN := 1
 const CROSS := 2
 const AUTO := 3
-## Three a board, as every flat board gives; Insane one.
+## Three a board, as every flat board gives; Insane none.
 const HINTS := 3
-const HINTS_BY_BAND := [3, 3, 3, 1]
-## Hard and Insane can be failed: a queen seated where the answer has none
-## costs one.
-const HEARTS := [0, 0, 0, 1]
+const HINTS_BY_BAND := [3, 3, 3, 0]
+## No band has hearts since 2026-10-04: no seat is judged against the answer,
+## so `judged()` is false everywhere and no cross is ever `shown`. Insane
+## counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the court's own queens (`moves_budget`): a queen
+## seated or lifted costs one, a cross costs nothing. Three is one slip
+## mended (lifted, seated again) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 ## The ladder: easy, medium, hard, insane. The menu opens medium. Hard and
 ## Insane are read from banks mined on the Mac (content/insane/queens_hard.json
 ## and queens.json); these sizes are what an empty bank falls back to.
@@ -110,6 +115,17 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 ## Hearts on this band: Hard and Insane judge every seat.
 func judged() -> bool:
 	return HEARTS[band] > 0
+
+## The moves a band hands out: a queen for every row and its slack, or 0 on
+## a band that does not count them.
+func moves_budget() -> int:
+	return n + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What a tap that leaves `cell` holding `to` costs: one for a queen seated
+## or lifted, nothing for a cross laid or picked up.
+func move_cost(cell: Vector2i, to: int) -> int:
+	var was := mark_at(cell)
+	return 1 if was != to and (was == QUEEN or to == QUEEN) else 0
 
 func has_mist() -> bool:
 	return not mist.is_empty()

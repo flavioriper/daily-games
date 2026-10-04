@@ -160,7 +160,7 @@ const SWAY_STEPS := 8.0
 const TIP_CYCLE := 8.0
 const TIPS := ["SB_TIP_DRAG", "SB_TIP_GOAL", "SB_TIP_CUP", "SB_TIP_MIRROR", "SB_TIP_STOP"]
 const TIPS_SNAILS := ["SB_TIP_DRAG", "SB_TIP_SNAIL", "SB_TIP_HOLD", "SB_TIP_ORDER"]
-const TIPS_SHY := ["SB_TIP_SHY", "SB_TIP_HOLD", "SB_TIP_CURTAIN", "SB_TIP_ONCE", "SB_TIP_HEARTS"]
+const TIPS_SHY := ["SB_TIP_SHY", "SB_TIP_HOLD", "SB_TIP_CURTAIN", "SB_TIP_ONCE"]
 
 # --- hearts (Hard and Insane) ---
 ## A wrong move stands EJECT_AFTER, then slides back over SNAP_TIME. The pill
@@ -182,6 +182,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a floor.
+const MOVES_BONUS := 5
 const AGO := -1.0e9
 ## A snail, as a share of a cell; how high it jumps when woken, and its
 ## sleepy z's: one every Z_EVERY seconds, rising Z_RISE cells over Z_LIFE.
@@ -328,6 +332,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _undo_ever := false
 var _flawless := false
@@ -390,11 +400,13 @@ func title() -> String: return "Sunbeam"
 func rules() -> String:
 	var out := tr("SB_RULES")
 	if _state.shy():
-		out += "\n\n" + tr("SB_RULES_SHY") % max_hearts
+		out += "\n\n" + tr("SB_RULES_SHY_MOVES")
 	elif not _state.snails().is_empty():
 		out += "\n\n" + tr("SB_RULES_SNAILS")
-	else:
+	elif max_moves <= 0:
 		out += "\n\n" + tr("SB_RULES_SAFE")
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
 
 ## The how-to-play card's pages, the band's own: bending the light, every
@@ -412,12 +424,12 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.GOAL, "HTP_SB_GOAL", tr("HTP_SB_GOAL_BODY")])
 	steps.append([Diagram.Lesson.CUP, "HTP_SB_CUP", tr("HTP_SB_CUP_BODY")])
 	if band >= 3:
-		steps.append([Diagram.Lesson.SHY, "SB_SHY_SEAL", tr("HTP_SB_SHY_BODY") % hearts_n])
+		steps.append([Diagram.Lesson.SHY, "SB_SHY_SEAL", tr("HTP_SB_SHY_MOVES_BODY")])
 	elif not _state.snails().is_empty():
 		steps.append([Diagram.Lesson.SNAILS, "HTP_SB_SNAILS", tr("HTP_SB_SNAILS_BODY")])
 	var undo_body := "HTP_SB_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_SB_RESET_BODY"
+		undo_body = "HTP_SB_RESET_MOVES_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_SB_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -430,20 +442,23 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if _state.shy():
-		return TIPS_SHY
+		return lead + TIPS_SHY
 	if not _state.snails().is_empty():
-		return TIPS_SNAILS
-	return TIPS
+		return lead + TIPS_SNAILS
+	return lead + TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: the beam is the check.
-## Insane has neither undo nor hint: can_undo() and hints_left() say so.
+## Insane counts moves and has neither: a slide let go is spent.
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). The move is
@@ -512,6 +527,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(difficulty)
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_undo_ever = false
@@ -531,6 +547,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## the day's light, the pieces where they opened.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -580,7 +597,7 @@ func _inset() -> float:
 
 ## The strip the hearts take over the floor, on a band that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 func _grid_size() -> Vector2:
 	return Vector2(_state.cols, _state.rows) * _cell()
@@ -956,6 +973,8 @@ func _process(delta: float) -> void:
 		_place_cat(t)
 	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
+	if max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 
 ## The light reaching things: a drop it has just wet rings and chimes (not
@@ -1848,6 +1867,7 @@ func _release(local: Vector2) -> void:
 				fx.cue("slide")
 				note_move()
 				_after_move(before)
+				_spend(1, t + SNAP_TIME + LAND_TIME)
 		else:
 			fx.cue("drop")
 		_refresh()
@@ -1878,6 +1898,7 @@ func _release(local: Vector2) -> void:
 			fx.cue("slide")
 			note_move()
 			_after_move(before)
+			_spend(1, t + SNAP_TIME + LAND_TIME)
 		_refresh()
 
 ## A little puff off the rail where piece `p` lands, as it lands.
@@ -2004,6 +2025,9 @@ func reset_board() -> void:
 	_solved_at = AGO
 	_bloom_at = AGO
 	moves = 0
+	# The opening again is the floor from the top, so the moves come back.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2024,7 +2048,7 @@ func share_glyphs() -> String:
 
 ## What a reopened daily needs: the hearts kept and whether it was flawless.
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless}
+	return {"hearts": hearts, "moves_left": moves_left, "flawless": _flawless}
 
 # --- the win ---
 
@@ -2049,7 +2073,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
 	# Undo on Easy and Medium.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 	_streak_gen += 1
@@ -2096,6 +2120,7 @@ func restore_completed_board() -> void:
 	_reset_rewards()
 	_make_snails()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
+	moves_left = clampi(int(completed_record.get("moves_left", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
 	_state.pos = _state.home_pos()
 	_state.retrace()
@@ -2176,6 +2201,8 @@ func _misstep(p: int, before: PackedInt32Array, kind: String, t: float) -> void:
 	_say(tr(line) + left, Face.Expr.WORRIED)
 	_heart_layer.queue_redraw()
 	moved.emit()
+	# Let go is let go: on Insane the move sent back is still a move spent.
+	_spend(1, t + eject + (0.0 if Motion.reduce else SNAP_TIME))
 	_after(eject, _slide_back.bind(before))
 
 ## The take-back: every piece the wrong move shifted slides home again.
@@ -2189,6 +2216,22 @@ func _slide_back(before: PackedInt32Array) -> void:
 	_refresh()
 	if out_of_hearts:
 		_after(SNAP_TIME, _run_out)
+
+## `cost` moves go off Insane's counter. The last one gone with the bud
+## still shut ends the floor once the piece has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
 
 ## Whether a wrong move is still playing out: input, Undo, Hint and Reset
 ## wait, and the host holds its hint video.
@@ -2279,6 +2322,10 @@ func _zs(b: Face.Builder, t: float) -> void:
 # --- hearts ---
 
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		_moves_pill.draw(_heart_layer, _hearts_at(Vector2.ZERO, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+			_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2386,7 +2433,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["SB_OUT_BODY", "SB_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["SB_OUT_BODY", "SB_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2432,9 +2480,13 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -2442,7 +2494,7 @@ func heart_back() -> void:
 	_dusk_toward(Color.WHITE)
 	_heart_layer.queue_redraw()
 	_refresh()
-	_say(tr("SB_HEART_BACK"), Face.Expr.HAPPY)
+	_say(tr("PS_MORE_MOVES") % MOVES_BONUS if max_moves > 0 else tr("SB_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 

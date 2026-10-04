@@ -19,8 +19,9 @@ extends Control
 ## - HEARTS (Hard): a bar held over the gate's way and the red block
 ##   sweats; let go, a heart and it slides back; then the way out.
 ## - HOMESICK (Insane): the red block dragged up shakes its head; brought
-##   down a cell too soon it can never get home: a heart, and it slides back.
-##   Then a move that makes room.
+##   down a cell too soon it can never get home, and since 2026-10-04 nothing
+##   says so (no heart, no slide back): Reset puts the tray back. Then a
+##   move that makes room.
 ## - UNDO: a slide, Undo takes it back, Reset puts every block back (Reset
 ##   alone on Insane, which has no Undo).
 ## - HINT: the bulb slides the next block of the shortest way, three times,
@@ -317,7 +318,14 @@ func _run() -> void:
 			_say_for("HTP_SL_OUT_CAP", WIN_WAIT)
 		Lesson.HOMESICK:
 			_drag([HOME_RED, HOME_RED - Gen.COLS], "HTP_SL_UP_CAP", "HTP_SL_NEVER_CAP", 1.4, 0.5)
-			_drag(HOME_DOWN, "HTP_SL_SOON_CAP", "HTP_SL_STUCK_CAP", 2.6)
+			if _art.max_hearts > 0:
+				_drag(HOME_DOWN, "HTP_SL_SOON_CAP", "HTP_SL_STUCK_CAP", 2.6)
+			else:
+				_drag(HOME_DOWN, "HTP_SL_SOON_CAP", "HTP_SL_STRANDED_CAP", 2.2)
+				_loop.tween_callback(_say.bind("HTP_SL_RESET_CAP"))
+				_loop.tween_interval(0.6)
+				_loop.tween_callback(func() -> void: _art.reset_board())
+				_loop.tween_interval(1.4)
 			_loop.tween_callback(_say.bind("HTP_SL_ROOM_CAP"))
 			_loop.tween_callback(_drag_hint)
 			_loop.tween_interval(_hint_time())

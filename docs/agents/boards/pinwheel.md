@@ -153,3 +153,25 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   input. `_solved_at` is `-INF` until a solve, not `-1`: a day restored in
   the first ten seconds after launch stamped it negative and lost its warm
   edges.
+- **Insane counts moves, 2026-10-04** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS_BY` is all zero, so `judged` is false on
+  every band: nothing snags, no heart goes and no gold button is sewn by one
+  (`would_snag`, `_snag`, the tacks and the hearts are left in place,
+  asleep; Hard's hint is the only thing that could still sew, and it only
+  did so on a judged board). Ribbons stays and gets a budget on the shared
+  pill: `State.moves_budget()` = `par` + max(3, a quarter of it, rounded
+  up), a tap that turns a piece costing one and a pinned-fast refusal none
+  (`_spend`). **`par` is exact and costs nothing to find**: the ribbons are
+  a forest and a tug is additive, so `_least_taps` walks each tree once,
+  for every way the piece above may have turned modulo 12 (every cycle
+  length divides it). It can beat the dealer's top-down `turns` in
+  principle (extra taps on a two-way pin shift a four-way piece below it),
+  though eight sampled deals all came out equal: par 26-31, budgets 33-39.
+  The streak stays on Insane -- it counts the bare and stained squares the
+  frame shows, never the answer. `capabilities()` is empty on Insane; Reset
+  and Try again hand the budget back, the card's video five moves. The
+  tutorial's frames go through `take()` and `_dealt()` but never `build()`,
+  which is the only place `max_moves` is set, so a page shows no pill. Not
+  updated: `PW_LVL_3` ("two hearts") on the level picker and
+  `tests/_shot_pinwheel.gd`. Not seen on screen: only headless checks were
+  run.

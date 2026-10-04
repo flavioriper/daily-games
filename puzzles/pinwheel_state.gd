@@ -36,6 +36,13 @@ extends RefCounted
 ## home and pushes **one** entry carrying the whole journey, so it costs one
 ## press to take back however many quarters it spent, and `hints_used` is not
 ## refunded when it is: a hint that has been seen has been spent.
+##
+## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero, `judged`
+## false everywhere; `would_snag` and the tacks are left in place, asleep).
+## Insane counts moves instead: `moves_budget()` is the fewest taps that turn
+## every piece home from the opening (`par`, worked out exactly over the
+## ribbons' forest in `_least_taps`) and a quarter more
+## (docs/agents/flat-screens.md, "Insane counts moves").
 ## Spec: docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 6.
 
 const Gen = preload("res://puzzles/pinwheel_gen.gd")
@@ -45,7 +52,15 @@ const Gen = preload("res://puzzles/pinwheel_gen.gd")
 ## bands that judge a tap (`hints_for`, `hearts_for`).
 const HINTS := 3
 const HINTS_BY := [3, 3, 1, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare taps over the fewest that solve the frame (`moves_budget`):
+## a quarter of them, and never fewer than this. 0 on a band that does not
+## count.
+const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SHARE := 0.25
+## Every cycle a piece can have (one to four ways to lie) divides this, so
+## a count of quarter turns is only ever needed modulo it.
+const TURN_CYCLE := 12
 ## The share's squares, one per `Pal.CLOTH` index.
 ##
 ## A share is only ever taken from a **solved** frame, where by definition no
@@ -75,6 +90,9 @@ var cloth := PackedInt32Array()
 ## Whether the generator proved the tiling the only one. False is playable;
 ## see `hint()` for the one place it is read.
 var ok := true
+## The fewest taps that bring every piece from `start` to `answer`
+## (`_least_taps`), dealt once.
+var par := 0
 ## Per piece: the orientation it is on now.
 var turned := PackedInt32Array()
 ## One entry a move, newest last: {"piece": int, "from": int, "to": int}.
@@ -166,7 +184,60 @@ func take(out: Dictionary, d: int) -> void:
 		var b := int(r["to"])
 		if a >= 0 and a < shapes.size() and b >= 0 and b < shapes.size():
 			(_kids[a] as Array).append([b, int(r.get("sign", 1))])
+	par = _least_taps()
 	recompute()
+
+## Insane's moves for this frame: the fewest taps that solve it and a quarter
+## more (three at least), every tap that turns a piece costing one. 0 on a
+## band that does not count.
+func moves_budget() -> int:
+	var least: int = MOVES_SLACK[clampi(difficulty, 0, MOVES_SLACK.size() - 1)]
+	if least <= 0 or par <= 0:
+		return 0
+	return par + maxi(least, int(ceil(par * MOVES_SHARE)))
+
+## The fewest taps from the opening to the stored answer, exactly. A tap on a
+## pin turns its piece one step and tugs everything tied below, so a piece's
+## steps are its own taps plus (signed) every step of the piece it hangs
+## from, and all that matters of either is the count modulo the piece's
+## cycle. The ribbons are a forest, so each tree is one walk down: for every
+## way its parent may have turned (modulo TURN_CYCLE), the cheapest taps on
+## the piece and on everything below it. Not always the dealer's top-down
+## route: a few taps more on a short-cycled pin can save more below it.
+func _least_taps() -> int:
+	var child := {}
+	for kids: Array in _kids:
+		for k: Array in kids:
+			child[int(k[0])] = true
+	var memo := {}
+	var total := 0
+	for p in shapes.size():
+		if not child.has(p):
+			total += _taps_below(p, 0, memo)
+	return total
+
+## The fewest taps on `p` and everything tied below it that bring them all
+## home, `pulled` being the steps the ribbon above has already turned `p`.
+func _taps_below(p: int, pulled: int, memo: Dictionary) -> int:
+	var m: int = (shapes[p] as Array).size()
+	if m <= 1:
+		return 0
+	var at := p * TURN_CYCLE + pulled
+	if memo.has(at):
+		return memo[at]
+	var need := posmod(int(answer[p]) - int(start[p]), m)
+	var best := -1
+	for taps in TURN_CYCLE:
+		var steps := pulled + taps
+		if posmod(steps, m) != need:
+			continue
+		var cost := taps
+		for k: Array in (_kids[p] as Array):
+			cost += _taps_below(int(k[0]), posmod(steps * int(k[1]), TURN_CYCLE), memo)
+		if best < 0 or cost < best:
+			best = cost
+	memo[at] = best
+	return best
 
 # ------------------------------------------------------------- reading it
 

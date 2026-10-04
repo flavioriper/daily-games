@@ -82,3 +82,15 @@ morning.
   hearts on Hard and Insane (HEARTS: two layouts with the same counts, so
   the wrong one breaks no visible rule) and Insane's oak with hidden counts
   (OAK). Reduce motion shows each lesson's answer.
+- **Insane counts moves (2026-10-04)** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS` is all zero, so `_judge` never calls
+  `_wrong_tent`: no tent wilts or is struck for the player, no lamp lights
+  on a right one (`_judged` stays empty) and the HEARTS lesson is
+  unreachable; that code is left in place, dormant. Old Oaks hands out
+  `tents_wanted() + 3` moves (`State.moves_budget`, `move_cost`; 19 on a
+  16-tent meadow): a tent pitched or struck is one, cairns and sweeps are
+  free. `_spend` runs the old `_run_out` once the budget is gone. No Undo,
+  Hint (`HINTS_BY_BAND[3]` is 0) or Check. What Insane still shows is
+  Medium's: a tent in trouble strains, a tree with its tents beams, a chip
+  goes green or rose (a "?" chip says nothing), and the streak counts fair
+  tents, not the answer's.

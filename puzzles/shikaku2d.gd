@@ -58,6 +58,10 @@ const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 ## Layout, in the board card's inner pixels (spec section 5).
 const PAD := 34.0
@@ -292,6 +296,12 @@ var max_hearts := 0
 ## Whether the board has run out: input stops until Try again or a heart.
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 ## A heart lost on this board ever (Try again keeps it), and whether the
 ## solve was flawless.
 var _lost_ever := false
@@ -461,18 +471,21 @@ func rules() -> String:
 		out += "\n\n" + tr("SK_RULES_SHAPE")
 	if state.has_crows():
 		out += "\n\n" + tr("SK_RULES_CROW")
-	if max_hearts > 0:
-		out += "\n\n" + (tr("SK_RULES_HEARTS_1") if max_hearts == 1 else tr("SK_RULES_HEARTS_N") % max_hearts)
+	if max_moves > 0:
+		out += "\n\n" + tr("SK_RULES_MOVES") % max_moves
 	return out
 
 ## The lines the sprout cycles: a board with scarecrows leads with them, a
-## board with shaped signs with the shapes.
+## board with shaped signs with the shapes, and a counted one with its moves
+## before either.
 func _tips() -> Array:
 	var out: Array = TIPS
 	if state.has_shapes():
 		out = ["SK_TIP_SHAPE"] + out
 	if state.has_crows():
 		out = ["SK_TIP_CROW"] + out
+	if max_moves > 0:
+		out = ["TIP_MOVES"] + out
 	return out
 
 ## The tutorial, a page a rule (ui/hud/shikaku_tutorial_diagram.gd, the
@@ -487,11 +500,9 @@ func tutorial_pages() -> Array:
 	if state.band >= 1:
 		steps.append([Diagram.Lesson.SHAPES, "HTP_SK_SHAPES", tr("HTP_SK_SHAPES_BODY")])
 	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
-	steps.append([Diagram.Lesson.HINT, "HTP_SK_HINT",
-		tr("HTP_SK_HINT_BODY_ONE") if hints == 1 else tr("HTP_SK_HINT_BODY_N") % hints])
-	if max_hearts > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_SK_HEARTS",
-			tr("SK_RULES_HEARTS_1") if max_hearts == 1 else tr("SK_RULES_HEARTS_N") % max_hearts])
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_SK_HINT",
+			tr("HTP_SK_HINT_BODY_ONE") if hints == 1 else tr("HTP_SK_HINT_BODY_N") % hints])
 	if state.has_crows():
 		steps.append([Diagram.Lesson.CROW, "HTP_SK_CROW", tr("SK_RULES_CROW")])
 	var pages := []
@@ -500,10 +511,16 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.hearts = maxi(1, max_hearts)
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Undo, Hint and Check on every band; Reset is the host's.
+## Undo, Hint and Check up to Hard; Reset is the host's. Insane counts moves:
+## no Undo (clearing a bed is the take-back, and it costs one), no hint and
+## no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A bed
@@ -572,6 +589,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -588,6 +606,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## heart, nothing growing, nothing in flight.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -703,8 +722,9 @@ func _expression(i: int) -> int:
 func _layout() -> void:
 	if state.clues.is_empty():
 		return
-	# A board with hearts keeps HEART_ROW over the field for them.
-	var top := HEART_ROW if max_hearts > 0 else 0.0
+	# A board with hearts, or with Insane's move counter, keeps HEART_ROW
+	# over the field for the pill.
+	var top := HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 	_cell = minf((size.x - 2.0 * PAD) / w, (size.y - 2.0 * PAD - top) / h)
 	if _cell <= 0.0:
 		return
@@ -1592,6 +1612,15 @@ func _release() -> void:
 	if pend.size == Vector2i.ONE and own < 0:
 		_redraw()
 		return
+	# Insane counts moves: a bed fenced or cleared is one, a redraw two, and
+	# a drag the budget cannot pay for is not a move.
+	var cost := 0
+	if max_moves > 0:
+		cost = state.move_cost(pend, own)
+		if cost > moves_left:
+			_refuse(own, tr("SK_MOVES_SHORT"))
+			_redraw()
+			return
 	var before := _snapshot()
 	var out: Dictionary = state.commit(pend, own)
 	match String(out.get("kind", "none")):
@@ -1610,11 +1639,13 @@ func _release() -> void:
 			fx.cue("plot")
 			_after_move(start)
 			_judge(rect)
+			_spend(cost, _now())
 		"clear":
 			_leave_missing(before, _now())
 			_hop_inside(out.rect, Motion.HOP, Motion.HOP_TIME)
 			fx.cue("clear")
 			_after_move(Vector2(out.rect.position) + Vector2(out.rect.size) * 0.5)
+			_spend(cost, _now())
 	_redraw()
 
 ## A drag that wanders off the field holds its far corner on the edge cell,
@@ -1795,6 +1826,21 @@ func _break_streak() -> void:
 	else:
 		_combo_n = 0
 
+## `cost` moves go off Insane's counter. The last one gone with the field
+## unfinished ends the board once the bed has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else Motion.DROP_TIME), _run_out)
+
 ## A wrong bed: a heart goes (its halves fall), the bed wilts under a worried
 ## sign, and after EJECT_AFTER it is taken back as though never drawn.
 func _wrong_bed(rect: Rect2i, clue: int) -> void:
@@ -1893,7 +1939,8 @@ func _nod(i: int) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["SK_OUT_BODY", "SK_OUT_BODY_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["SK_OUT_BODY", "SK_OUT_BODY_REST"])
 	_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -1940,9 +1987,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -1972,6 +2023,9 @@ func _close_card() -> void:
 ## pink with a small face and a leaf, a faint ghost where one was, the lost
 ## one's halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _origin.y - HEART_ROW * 0.5), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2464,6 +2518,9 @@ func reset_board() -> void:
 		_hop(i, Motion.RESET_HOP, Motion.HOP_TIME,
 			Motion.stagger((h - 1 - at.y) + (w - 1 - at.x), Motion.RESET_STAGGER))
 	moves = 0
+	# A cleared field is the board from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	# The fence comes down stretch by stretch on the beds' own wave, from the
 	# far corner.
 	_fence_sync(Vector2(w, h))
@@ -2556,7 +2613,7 @@ func _on_solved() -> void:
 	_blooms = {}
 	_clear_drag()
 	_tip_timer.stop()
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _now()
 		_combo_layer.queue_redraw()
@@ -2713,7 +2770,8 @@ func _process(delta: float) -> void:
 	if now < _anim_until:
 		_redraw()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()

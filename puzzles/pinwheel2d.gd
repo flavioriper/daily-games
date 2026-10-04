@@ -39,6 +39,15 @@ extends "res://core/puzzle_base.gd"
 ## together with **ribbons**, so a tap tugs the pieces tied below it round
 ## too; a streak, three gags and a party with a kite and the nap cat.
 ##
+## **Since 2026-10-04 nothing is judged** (docs/agents/flat-screens.md,
+## "Insane counts moves"): no band has hearts, so nothing snags and nothing
+## is sewn down by one; `_snag` and the hearts are left in place, asleep.
+## Ribbons counts moves instead -- `max_moves` off the state's
+## `moves_budget()`, "N moves left" on the pill where the hearts sat, one off
+## for every tap that turns a piece (`_spend`), and out of moves is the old
+## out-of-hearts ending. The streak stays: it reads the bare and stained
+## squares the frame shows, never the answer.
+##
 ## Spec: docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 7.
 ## Ported from the canvas mock at docs/brainstorm/concepts.html#pinwheel,
 ## which is the reference for every measure here.
@@ -206,7 +215,7 @@ const TIPS := [
 ]
 ## Hard leads with the hearts; Insane with the ribbons.
 const TIPS_HEARTS := ["PW_TIP_HEARTS", "PW_TIP_TAP", "PW_TIP_DARK", "PW_TIP_SEWN"]
-const TIPS_RIBBONS := ["PW_TIP_RIBBON", "PW_TIP_CROSSED", "PW_TIP_TOP", "PW_TIP_HEARTS"]
+const TIPS_RIBBONS := ["TIP_MOVES_SEQ", "PW_TIP_RIBBON", "PW_TIP_CROSSED", "PW_TIP_TOP"]
 
 ## A moment far enough in the past that every curve reader is past its end.
 const AGO := -1.0e9
@@ -229,6 +238,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys.
+const MOVES_BONUS := 5
 
 # --- the snag (polish section 1) ---
 ## A tap on a piece already home: it starts its quarter, catches on its own
@@ -437,6 +450,13 @@ var _ccw: Array = []
 var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
+## Insane's move counter (ui/flat/moves_pill.gd), since 2026-10-04 in place
+## of the hearts: `max_moves` is 0 on a band that does not count (and on the
+## tutorial's frames, which `build` never deals). Out of moves with the frame
+## unfinished sets `out_of_hearts`.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_used := false
 var _lost_ever := false
 var _undo_ever := false
@@ -504,15 +524,18 @@ func puzzle_id() -> String: return "pinwheel"
 func title() -> String: return "Pinwheel"
 
 ## What a piece and a tap are, then the band's own closing: nothing can be
-## lost (Easy, Medium), what a heart is for (Hard), or the ribbons (Insane).
+## lost (Easy to Hard), or the ribbons and the move counter (Insane). The
+## hearts' line is asleep with the hearts.
 func rules() -> String:
 	var out := tr("PW_RULES")
 	if _state.ribboned():
-		out += "\n\n" + tr("PW_RULES_RIBBONS") % max_hearts
+		out += "\n\n" + tr("PW_RULES_RIBBONS_MOVES")
 	elif max_hearts > 0:
 		out += "\n\n" + tr("PW_RULES_HEARTS") % max_hearts
-	else:
+	elif max_moves <= 0:
 		out += "\n\n" + tr("PW_RULES_SAFE")
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
 
 ## The tutorial, a page a rule, each played on a little frame of its own
@@ -536,7 +559,7 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.RIBBONS, "PW_RIBBONS_SEAL", tr("HTP_PW_RIBBONS_BODY")])
 	var undo_body := "HTP_PW_UNDO_BODY"
 	if band == 3:
-		undo_body = "HTP_PW_RESET_BODY"
+		undo_body = "HTP_PW_RESET_BODY_MOVES" if max_moves > 0 else "HTP_PW_RESET_BODY"
 	elif judged:
 		undo_body = "HTP_PW_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -550,6 +573,8 @@ func tutorial_pages() -> Array:
 		d.band = band
 		d.hearts = hearts_n
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 ## The lines the tips cycle, by band.
@@ -563,7 +588,10 @@ func _tips() -> Array:
 ## Undo and Hint, and nothing else. There is no Check because nothing is
 ## hidden: a bare cell is drawn bare and a stained cell is drawn stained. So
 ## the registry drops the actions row and Reset rides up into the top bar.
+## Insane counts moves and has neither (either would say what was wrong).
 func capabilities() -> Array[String]:
+	if _state.difficulty >= 3:
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A piece
@@ -621,6 +649,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
 	_state.setup(rng, difficulty)
+	max_moves = _state.moves_budget()
 	_dealt()
 
 ## Everything a new frame starts from once the state holds it: the hearts,
@@ -667,9 +696,10 @@ func _dealt() -> void:
 	_tip_timer.start()
 
 ## The frame as it is dealt, and as Try again deals it back: every heart,
-## the day's light, nothing snagging.
+## the whole move budget, the day's light, nothing snagging.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -777,9 +807,10 @@ func _cell() -> float:
 	return minf((size.x - 2.0 * INSET) / float(_state.cols),
 		(size.y - _heart_row() - 2.0 * INSET) / float(_state.rows))
 
-## The strip the hearts take over the frame, on a band that has them.
+## The strip the pill takes over the frame: the hearts on a band that has
+## them, the move counter on Insane.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## The top-left of the grid, centred in the card both ways (under the
 ## hearts' strip when there is one).
@@ -930,6 +961,8 @@ func _process(delta: float) -> void:
 		_place_cat(t)
 	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
+	elif max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 
 ## Every ring and sparkle whose moment has come.
@@ -1871,9 +1904,10 @@ func _let_go() -> void:
 func busy() -> bool:
 	return _now() < _busy_until
 
-## A tap on a pin. A piece turns (and on Insane tugs what is tied below it);
-## on Hard and Insane a piece **already home** snags instead and costs a
-## heart; a sewn-down or pinned-fast piece is refused for free.
+## A tap on a pin. A piece turns (and on Insane tugs what is tied below it,
+## and costs a move: `_spend`); on a judged band (none since 2026-10-04) a
+## piece **already home** snags instead and costs a heart; a sewn-down or
+## pinned-fast piece is refused for free.
 func _tap(at: Vector2i) -> void:
 	if busy() or out_of_hearts:
 		return
@@ -1921,6 +1955,7 @@ func _tap(at: Vector2i) -> void:
 		_speak()
 		_refresh()
 		note_move()
+		_spend(1, t + _swing_time(q) + TUG_LAG * float(deepest))
 		return
 	if p >= 0:
 		# The board's one refusal: a piece with a single in-frame orientation.
@@ -2118,6 +2153,11 @@ func can_reset() -> bool:
 func reset_board() -> void:
 	if not can_reset():
 		return
+	# Insane's moves all come back: a reset is the frame from the top.
+	if max_moves > 0:
+		moves_left = max_moves
+		_moves_pill.bump(_now())
+		_heart_layer.queue_redraw()
 	_wave_home(true)
 	moves = 0
 	_running = true
@@ -2244,9 +2284,9 @@ func _on_solved() -> void:
 	_solved_at = _now()
 	_tip_timer.stop()
 	_let_go()
-	# Flawless: no hint, and no snag on a judged board, or on Easy and Medium
-	# never an undo.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	# Flawless: no hint, and never out of moves on Insane (no snag on a judged
+	# board), or where nothing can be lost never an undo.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _solved_at
 	_streak_gen += 1
@@ -2268,9 +2308,27 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_refresh()
 
+# --- the move counter ---
+
+## `cost` moves go off Insane's counter. The last one gone with the frame
+## unfinished ends the board once the last tugged piece has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else 0.1), _run_out)
+
 # --- the snag (polish section 1) ---
 
-## A tap on a piece already home, on Hard or Insane: **the snag**. The piece
+## A tap on a piece already home, on a judged band: **the snag**. The piece
 ## starts its quarter, catches on its own thread, strains, and springs back
 ## home; a heart splits on the pill as it catches, and a gold button is sewn
 ## onto it for good -- the heart bought the knowledge that it is home. The
@@ -2359,6 +2417,9 @@ func _sparkle_cleared(before: PackedInt32Array, t: float) -> void:
 ## pink with a small face and a leaf, a faint ghost where one was, the lost
 ## one's halves falling apart, one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		_moves_pill.draw(_heart_layer, _hearts_at(), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2475,7 +2536,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["PW_OUT_BODY", "PW_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["PW_OUT_BODY", "PW_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2514,17 +2576,21 @@ func try_again() -> void:
 	fx.cue("reset")
 	moved.emit()
 
-## One more heart (the card's video): once a frame. The day comes back and
-## the breeze with it.
+## One more heart, or MOVES_BONUS more moves (the card's video): once a
+## frame. The day comes back and the breeze with it.
 func heart_back() -> void:
 	if is_done() or not out_of_hearts:
 		return
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -2532,7 +2598,7 @@ func heart_back() -> void:
 	_dusk_toward(Color.WHITE)
 	_heart_layer.queue_redraw()
 	_refresh()
-	_say(tr("PW_HEART_BACK"), Face.Expr.HAPPY)
+	_say(MovesPill.line(self, moves_left) if max_moves > 0 else tr("PW_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 

@@ -65,7 +65,11 @@ const LEFT_BONUS := 10000
 
 ## Hints and hearts by band: Hard and Insane can be lost.
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane counts moves (docs/agents/flat-screens.md): the seeds are the
+## counter, one garden and no second try. The handful is the proof's shots
+## and this much over, or a quarter of them if that is more.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 const BANDS := [
 	{"pegs": 54, "orange": 12, "seeds": 10, "pot": 17.0, "green": 2},
@@ -118,6 +122,17 @@ static func hints_for(b: int) -> int:
 
 static func hearts_for(b: int) -> int:
 	return HEARTS_BY[clampi(b, 0, HEARTS_BY.size() - 1)]
+
+## The seeds a band that counts moves hands out, 0 on one that does not: the
+## shots of the garden's proof and the slack; a garden dealt without a proof
+## keeps the band's handful.
+func moves_budget() -> int:
+	var slack: int = MOVES_SLACK[clampi(band, 0, MOVES_SLACK.size() - 1)]
+	if slack <= 0:
+		return 0
+	if proof.is_empty():
+		return int(BANDS[band].seeds)
+	return proof.size() + maxi(slack, proof.size() / 4)
 
 # --- the garden ---
 
@@ -205,7 +220,7 @@ func _begin() -> void:
 		if k == ORANGE:
 			orange_total += 1
 	oranges_left = orange_total
-	seeds = int(BANDS[band].seeds)
+	seeds = moves_budget() if moves_budget() > 0 else int(BANDS[band].seeds)
 	score = 0
 	shots = 0
 	fever = false

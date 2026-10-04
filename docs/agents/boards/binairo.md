@@ -267,3 +267,24 @@ This replaces the hold rules of the two sections above where they differ.
   keeps three hearts, a second tap makes the moon, a wrong sun left 1.3 s
   costs one; Medium, a third sun in a row shows no blush at once, none when
   tapped on to a moon at 0.5 s, and blushes when left 1.3 s.
+
+### Insane counts moves (2026-10-04)
+
+- **Insane counts moves, and no band has hearts** (2026-10-04,
+  `docs/agents/flat-screens.md`, "Insane counts moves"). `HEART_COUNTS` is
+  `[0, 0, 0, 0]`; the crack, the eject, `_sweep_wrong` and the hearts' pill
+  are left in place and never run, so Insane plays as Medium does: a broken
+  rule blushes after the grace, the streak counts tiles that break no rule,
+  and a wrong tile that breaks nothing just stands. Budget:
+  `State.moves_budget()` = the tiles the deal leaves empty + 3
+  (`MOVES_SLACK`; a 10x10 with 10 clues is 93). **A tile is charged for
+  where it ends up, not per tap**: `_held_from` keeps what the held tile
+  showed before the player began on it, `_owed()` is 1 when it shows
+  something else, the pill draws `moves_left - _owed()` at once, and
+  `_commit` (the same moving-on or 1 s that used to judge it) spends it
+  through `_spend`. So a sun tapped through to a moon is one move, a tile
+  cycled round to what it was is none, and a sun changed to a moon later is
+  one. A tile left standing over a second and then tapped again is a new
+  move, as it was a new judgement before. Out of moves nothing is swept off
+  the board (which tiles are wrong is the answer). No Undo, Hint or Check on
+  Insane; `BN_RULES_MOVES` is the board's own sentence because of the cycle.

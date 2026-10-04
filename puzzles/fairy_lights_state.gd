@@ -41,9 +41,17 @@ const Gen = preload("res://puzzles/fairy_lights_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Per band, Easy .. Insane: the hints a garden starts with, and its hearts
-## (0 is a band that cannot be lost).
+## (0 is a band that cannot be lost). No band has hearts since 2026-10-04:
+## `judged` is false everywhere, so a turn of a piece that is already right
+## is a turn like any other (no RIGHT, no clip, no fuse). Insane counts
+## moves instead.
 const HINTS := [3, 3, 1, 0]
-const HEARTS := [0, 0, 0, 2]
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare turns over the fewest the garden can be wired in
+## (`moves_budget`): a quarter of that again, and never fewer than this.
+## Every turn costs one; a tap the rules refuse on every band (a cross, a
+## pinned piece) costs nothing.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 ## What a turn did, or why it was turned down.
 const OK := 0
@@ -247,6 +255,29 @@ func lanterns() -> PackedInt32Array:
 		if Gen.degree(sol[i]) == 1:
 			out.append(i)
 	return out
+
+## The fewest taps that wire the garden from its deal: for each piece, the
+## quarter turns clockwise from where it was dealt to its answer. A true
+## optimum -- the answer is the one arrangement that solves the garden, a
+## turn moves one piece and only goes one way round.
+func shortest_solve() -> int:
+	var out := 0
+	for i in n * n:
+		var m: int = deal[i]
+		for q in 4:
+			if m == sol[i]:
+				out += q
+				break
+			m = Gen.cw(m)
+	return out
+
+## The moves a band hands out: the shortest solve and its slack (a quarter
+## of it, rounded up, three at least), or 0 on a band that does not count.
+func moves_budget() -> int:
+	if MOVES_SLACK[band] <= 0:
+		return 0
+	var par := shortest_solve()
+	return par + maxi(int(MOVES_SLACK[band]), ceili(par / 4.0))
 
 # --- the moves ---
 

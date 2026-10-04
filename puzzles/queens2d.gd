@@ -39,6 +39,12 @@ extends "res://core/puzzle_base.gd"
 ## a patch that has its queens opens flowers; right seats build a streak and
 ## now and then a gag; and the win turns the court into a meadow, the bees
 ## dance, and the queens issue a royal decree.
+##
+## Insane counts moves (2026-10-04, docs/agents/flat-screens.md): no band is
+## judged now, so the hearts' code below never runs. Morning Mist hands out a
+## queen a row + 3 moves; a queen seated or lifted costs one, a cross nothing,
+## and there is no Undo, hint or Check there. A seat a queen sees is still
+## refused, free: that is the rule, on every band.
 
 const State = preload("res://puzzles/queens_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -53,6 +59,10 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the court ---
 ## The card's inset round the court.
@@ -313,6 +323,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _ejecting := false
@@ -365,31 +381,36 @@ func rules() -> String:
 	var out := tr("QN_RULES")
 	if state.has_mist():
 		out += "\n\n" + tr("QN_RULES_MIST")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("QN_RULES_MOVES") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + (tr("QN_RULES_HEARTS_1") if max_hearts == 1 else tr("QN_RULES_HEARTS_N") % max_hearts)
 	return out
 
-## The lines the sprout cycles: a misty court leads with the mist's two, a
-## judged one with the hearts'.
+## The lines the sprout cycles: a court that counts moves leads with that, a
+## misty one with the mist's two, a judged one with the hearts'.
 func _tips() -> Array:
-	if state.has_mist():
-		return ["QN_TIP_MIST", "QN_TIP_MIST_2", "QN_TIP_HEARTS"] + TIPS
+	var lead: Array = ["TIP_MOVES"] if max_moves > 0 else []
 	if max_hearts > 0:
-		return ["QN_TIP_HEARTS"] + TIPS
-	return TIPS
+		lead.append("QN_TIP_HEARTS")
+	if state.has_mist():
+		return lead + ["QN_TIP_MIST", "QN_TIP_MIST_2"] + TIPS
+	return lead + TIPS
 
 ## The tutorial (the board checkup, 2026-10-02): one page a rule, each a
 ## little court played by the board itself (ui/hud/queens_tutorial_diagram.gd),
-## with the hearts page on a judged band and Morning Mist's on Insane.
+## the bulb's while the band has hints, Morning Mist's and the move counter's
+## on Insane (the HEARTS page is for a judged band, and none is).
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/queens_tutorial_diagram.gd")
 	var hints: int = State.HINTS_BY_BAND[clampi(state.band, 0, 3)]
 	var steps := [
 		[Diagram.Lesson.SEAT, "HTP_QN_SEAT", tr("HTP_QN_SEAT_BODY")],
 		[Diagram.Lesson.TOUCH, "HTP_QN_TOUCH", tr("HTP_QN_TOUCH_BODY")],
-		[Diagram.Lesson.CROSS, "HTP_QN_CROSS", tr("HTP_QN_CROSS_BODY")],
-		[Diagram.Lesson.HINT, "HTP_TN_HINT",
-			tr("HTP_QN_HINT_BODY_ONE") if hints == 1 else tr("HTP_QN_HINT_BODY_N") % hints]]
+		[Diagram.Lesson.CROSS, "HTP_QN_CROSS", tr("HTP_QN_CROSS_BODY")]]
+	if hints > 0:
+		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
+			tr("HTP_QN_HINT_BODY_ONE") if hints == 1 else tr("HTP_QN_HINT_BODY_N") % hints])
 	if max_hearts > 0:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
 			tr("HTP_QN_HEARTS_BODY_1") if max_hearts == 1 else tr("HTP_QN_HEARTS_BODY_N") % max_hearts])
@@ -399,11 +420,18 @@ func tutorial_pages() -> Array:
 	for step in steps:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
-		d.hearts = maxi(1, max_hearts)
+		# No band has hearts now, so the Mist page's court shows none either.
+		d.hearts = max_hearts
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
+## Insane counts moves: no Undo (lifting a queen is the take-back, and it
+## costs one), no hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
+	if state.band >= 3:
+		return []
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). `place` and
@@ -467,6 +495,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = State.HEARTS[state.band]
+	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_deal()
@@ -490,10 +519,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
-## The court as it is dealt, and as Try again deals it back: every heart, the
-## day's light, nothing judged, blooming or partying.
+## The court as it is dealt, and as Try again deals it back: every heart and
+## every move, the day's light, nothing judged, blooming or partying.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_ejecting = false
@@ -631,9 +661,10 @@ func _layout() -> void:
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		layer.queue_redraw()
 
-## The strip the hearts take over the court, on a board that has them.
+## The strip the hearts take over the court, on a board that has them, or
+## Insane's move counter.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## Seats `bee` `px` square about `centre`: her slot takes the place, and her
 ## own place inside it is left to the motion.
@@ -687,7 +718,8 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0:
 		return
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
-			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1):
+			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
@@ -1555,6 +1587,7 @@ func _release(at_cell: Vector2i) -> void:
 func _tap_queen(cell: Vector2i, now: float) -> void:
 	var before := _snapshot()
 	if state.queens.has(cell):
+		var lift_cost: int = state.move_cost(cell, State.BLANK)
 		var lifted: Dictionary = state.lift(cell)
 		if not lifted.ok:
 			if int(lifted.why) == State.PINNED:
@@ -1569,7 +1602,10 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 		_update_blooms()
 		_speak()
 		note_move()
+		# Insane counts moves: a queen lifted is one.
+		_spend(lift_cost, now)
 		return
+	var seat_cost: int = state.move_cost(cell, State.QUEEN)
 	var seated: Dictionary = state.seat(cell)
 	if not seated.ok:
 		if int(seated.why) == State.SEEN:
@@ -1601,6 +1637,8 @@ func _tap_queen(cell: Vector2i, now: float) -> void:
 			fx.buzz(Haptics.BUMP)
 	note_move()
 	_on_right_seat(cell, 0.0 if Motion.reduce else Motion.POP_IN * 0.5)
+	# And so is a queen seated; the last one gone ends the court as she lands.
+	_spend(seat_cost, now + (0.0 if Motion.reduce else Motion.POP_IN))
 
 ## One tap advances the player's mark. Cross -> queen deliberately uses the
 ## normal seating rules, so an already-seen cell still refuses the queen.
@@ -1794,6 +1832,9 @@ func reset_board() -> void:
 	_shiver = {}
 	_update_blooms()
 	moves = 0
+	# A cleared court is the court from the top, so the moves come back too.
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr("QN_RESET"), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -1902,7 +1943,7 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_busy_for(maxf(_solve_delay(Vector2i(state.n, state.n)) + Motion.SOLVE_TIME,
 		CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME))
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else checks == 0)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = now
 		_combo_layer.queue_redraw()
@@ -2021,6 +2062,22 @@ func _break_streak() -> void:
 		_combo_n = 0
 
 # --- failing ---
+
+## `cost` moves go off Insane's counter. The last one gone with the court
+## unfinished ends the board once the queen has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()), _run_out)
 
 ## A queen the answer does not seat there, on Hard or Insane: she lands like
 ## any other, then goes WORRIED as her cell blushes, a heart goes (its halves
@@ -2142,7 +2199,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["QN_OUT_BODY", "QN_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["QN_OUT_BODY", "QN_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2193,9 +2251,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -2225,6 +2287,10 @@ func _close_card() -> void:
 ## with a small face and a leaf, a faint ghost where one was, the lost one's
 ## halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _card.position.y + 12.0 + HEART_ROW * 0.5),
+			moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
 	var b := Face.Builder.new()

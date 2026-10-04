@@ -23,11 +23,18 @@ extends RefCounted
 const Gen = preload("res://puzzles/mushroom_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
-## The polish of 2026-09-30 (spec 2026-09-30-mushroom-polish-design.md):
-## Hard and Insane judge every mushroom as she is planted, and a wrong one
-## costs a heart; a board's own hints thin out as the bands climb.
-const HEARTS := [0, 0, 0, 2]
+## The polish of 2026-09-30 (spec 2026-09-30-mushroom-polish-design.md)
+## judged every mushroom as she was planted on Hard and Insane, a wrong one
+## costing a heart. No band has hearts since 2026-10-04: `judged()` is false
+## everywhere, so no mushroom wilts and no pebble is laid for the player
+## (`reveal` is never called). Insane counts moves instead. A board's own
+## hints thin out as the bands climb.
+const HEARTS := [0, 0, 0, 0]
 const HINTS_BY_BAND := [3, 3, 1, 0]
+## Insane's spare moves over the answer's own mushrooms (`moves_budget`): a
+## mushroom planted or pulled up costs one, a pebble costs nothing. Three is
+## one slip mended (up and down again) with one to spare.
+const MOVES_SLACK := [0, 0, 0, 3]
 
 ## What the player has said about a covered cell.
 const BLANK := 0
@@ -120,6 +127,18 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 ## Whether this band judges a mushroom as she lands (Hard and Insane).
 func judged() -> bool:
 	return HEARTS[band] > 0
+
+## The moves a band hands out: a mushroom for every one the answer grows and
+## its slack, or 0 on a band that does not count them.
+func moves_budget() -> int:
+	return mushrooms.size() + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What place(cell, v) would cost: one for a mushroom planted or pulled up,
+## nothing for a pebble or for a move place() would turn down.
+func move_cost(cell: Vector2i, v: int) -> int:
+	if v != FOUND or given.has(cell) or shown.has(cell) or pinned.has(cell):
+		return 0
+	return 1
 
 # --- reading the field ---
 

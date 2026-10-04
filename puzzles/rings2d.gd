@@ -80,6 +80,13 @@ extends "res://core/puzzle_base.gd"
 ## hoop rolling across the terrace, the nap cat, the seal and a bit of ring
 ## wisdom. A press dips the peg under the finger.
 ##
+## **Since 2026-10-04 nothing is judged** (docs/agents/flat-screens.md,
+## "Insane counts moves"): no band has hearts and no drop is called a dead
+## end; `_doom` and the hearts are left in place, asleep. Tumble counts moves
+## instead -- `max_moves` off the state's `moves_budget()`, "N moves left" on
+## the pill where the hearts sat, one off for every drop on another peg
+## (`_spend`), and out of moves unsolved is the old out-of-hearts ending.
+##
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md (the 2026-09-25
 ## and 2026-09-26 amendments are this drawing). `ui/menu/card_art.gd`'s "rings" branch calls
 ## `_append_peg` and `RING_COLOURS` on purpose: one ring shape, not two, so a
@@ -200,7 +207,7 @@ const TIPS := [
 	"RG_TIP_UNDO",
 ]
 const TIPS_HEARTS := ["RG_TIP_HEARTS", "RG_TIP_LANDS", "RG_TIP_AHEAD", "RG_TIP_LOCKS"]
-const TIPS_TUMBLE := ["RG_TIP_TUMBLE", "RG_TIP_UNDER", "RG_TIP_NO_UNDO", "RG_TIP_HEARTS"]
+const TIPS_TUMBLE := ["TIP_MOVES_SEQ", "RG_TIP_TUMBLE", "RG_TIP_UNDER", "RG_TIP_NO_UNDO"]
 
 const STUCK_MSG := "RG_STUCK"
 
@@ -222,6 +229,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys.
+const MOVES_BONUS := 5
 
 # --- the doomed drop: lands, wobbles, hops back ---
 ## How long the ring rocks on the stack it would have doomed, how far, and
@@ -381,6 +392,11 @@ var _hop_at: Dictionary = {}
 var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved sets `out_of_hearts`.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_used := false
 var _lost_ever := false
 var _undo_ever := false
@@ -435,23 +451,25 @@ var _cat_curled := false
 func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
 
-## What a move is, then the band's own closing: nothing can be lost (Easy,
-## Medium), what a heart is for (Hard), or Tumble (Insane).
+## What a move is, then the band's own closing: nothing can be lost (Easy to
+## Hard), or Tumble and its move counter (Insane).
 func rules() -> String:
 	var line := tr("RG_RULES")
 	if _state.tumble:
-		line += "\n\n" + tr("RG_RULES_TUMBLE") % max_hearts
+		line += "\n\n" + tr("RG_RULES_TUMBLE_MOVES")
 	elif max_hearts > 0:
 		line += "\n\n" + tr("RG_RULES_HEARTS") % max_hearts
-	else:
+	elif max_moves <= 0:
 		line += "\n\n" + tr("RG_RULES_SAFE")
+	if max_moves > 0:
+		line += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return line
 
 ## The tutorial, a page a rule, each played on a row of pegs of its own
 ## (`ui/hud/rings_tutorial_diagram.gd`): a lift and a drop, four of a colour
-## locking a peg and the board done, what a dead end costs on a judged band,
-## Tumble's two-tone rings, Undo and Reset, and the bulb on a band that has
-## hints.
+## locking a peg and the board done, Tumble's two-tone rings, Undo and Reset,
+## the bulb on a band that has hints, and Insane's move counter (the shared
+## page). The HEARTS lesson is asleep with the hearts.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/rings_tutorial_diagram.gd")
 	var band: int = _state.difficulty
@@ -467,7 +485,7 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.TUMBLE, "RG_TUMBLE_SEAL", tr("HTP_RG_TUMBLE_BODY")])
 	var undo_body := "HTP_RG_UNDO_BODY"
 	if band == 3:
-		undo_body = "HTP_RG_RESET_BODY"
+		undo_body = "HTP_RG_RESET_BODY_MOVES" if max_moves > 0 else "HTP_RG_RESET_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_RG_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -480,6 +498,8 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 func _tips() -> Array:
@@ -489,10 +509,11 @@ func _tips() -> Array:
 		return TIPS_HEARTS
 	return TIPS
 
-## No hint on Insane (Tumble), and no undo there either: can_undo() says so.
+## Insane counts moves: no Undo and no Hint there (either would say what was
+## wrong).
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 func can_undo() -> bool:
@@ -593,6 +614,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 func _dealt() -> void:
 	max_hearts = State.hearts_for(_state.difficulty)
 	hearts = max_hearts
+	max_moves = _state.moves_budget()
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_heart_used = false
@@ -684,9 +707,10 @@ func _layout() -> void:
 		_heart_layer.queue_redraw()
 	_refresh()
 
-## The heart pill's strip off the top of the design box on a judged band.
+## The pill's strip off the top of the design box: the hearts on a judged
+## band, the move counter on Insane.
 func _top_pad() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## Where peg `i` stands, in design pixels: a short row is centred.
 func _station(i: int) -> Dictionary:
@@ -761,9 +785,10 @@ func _gui_input(event: InputEvent) -> void:
 
 ## The one tap gesture this board takes: lift an empty hand's ring off peg
 ## `i`, put a held ring back where it came from, or drop it on `i` -- the
-## only place state.drop() is ever called. On Hard and Insane a drop that
-## would doom the pegs never lands for good: it wobbles and hops back
-## (`_doom`) and costs a heart.
+## only place state.drop() is ever called. On a judged band (none since
+## 2026-10-04) a drop that would doom the pegs never lands for good: it
+## wobbles and hops back (`_doom`) and costs a heart. On Insane a drop that
+## lands costs a move (`_spend`); a ring put back on its own peg costs none.
 func _tap(i: int) -> void:
 	if is_done() or out_of_hearts or busy():
 		return
@@ -825,7 +850,24 @@ func _tap(i: int) -> void:
 			_by_hand = false
 			note_move()
 			_on_dropped(i, onto)
+			_spend(1, _now() + (0.0 if Motion.reduce else ARC_TIME + THREAD_TIME))
 	_refresh()
+
+## `cost` moves go off Insane's counter. The last one gone with the pegs
+## unsorted ends the board once the ring has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else _LAND_SQUASH_TIME), _run_out)
 
 ## A drop that would leave the pegs unsortable, on Hard or Insane. The ring
 ## is put back in the state at once -- the pegs never stand doomed -- and the
@@ -989,7 +1031,7 @@ func _settle(j: int, at: float) -> void:
 	else:
 		_say(_left_line(), Face.Expr.HAPPY)
 	if not _state.is_solved() and _state.is_stuck():
-		_toast = STUCK_MSG
+		_toast = "RG_STUCK_MOVES" if max_moves > 0 else STUCK_MSG
 		_toast_at = at
 		if _by_hand:
 			fx.buzz(Haptics.WARN)
@@ -1063,7 +1105,7 @@ func hint() -> bool:
 	var m: Vector2i = _state.hint()
 	if m.x < 0:
 		if _state.is_stuck():
-			_toast = STUCK_MSG
+			_toast = "RG_STUCK_MOVES" if max_moves > 0 else STUCK_MSG
 			_toast_at = _now()
 		_refresh()
 		return false
@@ -1079,11 +1121,16 @@ func hint() -> bool:
 	return true
 
 ## Back to the dealt position in one step. Hints spent are not refunded, and
-## the hearts are not given back (Try again is that).
+## the hearts are not given back (Try again is that). Insane's moves are: a
+## reset is the board from the top.
 func reset_board() -> void:
 	if not can_reset():
 		return
 	_state.reset_board()
+	if max_moves > 0:
+		moves_left = max_moves
+		_moves_pill.bump(_now())
+		_heart_layer.queue_redraw()
 	_lock_at = {}
 	_hop_at = {}
 	_shake_at = {}
@@ -1139,6 +1186,8 @@ func _process(delta: float) -> void:
 	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
 		_heart_layer.queue_redraw()
+	elif max_moves > 0 and _moves_pill.animating(t - 0.1):
+		_heart_layer.queue_redraw()
 
 ## The ring in hand breathes and the ring in flight flies: the small mesh.
 func _ring_moving() -> bool:
@@ -1189,9 +1238,9 @@ func _on_solved() -> void:
 		land = float(_flight["at"]) + float(_flight["dur"])
 	_solved_at = land + (0.0 if Motion.reduce else float(Gen.CAP) * Motion.WAVE_STEP)
 	_tip_timer.stop()
-	# Flawless: no hint, and no heart lost on a judged band, or on Easy and
-	# Medium never an undo.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	# Flawless: no hint, and never out of moves on Insane (no heart lost on a
+	# judged band), or where nothing can be lost never an undo.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _now()
 	_streak_gen += 1
@@ -2363,6 +2412,9 @@ func _now() -> float:
 ## halves falling apart, one coming back popping in. In the strip _top_pad()
 ## keeps clear at the top of the card.
 func _draw_hearts() -> void:
+	if max_moves > 0 and not _state.pegs.is_empty():
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, HEART_ROW * 0.55 * _s), moves_left, _now())
+		return
 	if max_hearts <= 0 or _state.pegs.is_empty():
 		return
 	var b := Face.Builder.new()
@@ -2470,7 +2522,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["RG_OUT_BODY", "RG_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["RG_OUT_BODY", "RG_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2481,14 +2534,15 @@ func _open_card() -> void:
 	else:
 		get_tree().root.add_child(card)
 
-## Try again: the same deal back in Reset's wave, every heart back, the clock
-## and the moves from zero. Hints spent stay spent.
+## Try again: the same deal back in Reset's wave, every heart and the whole
+## move budget back, the clock and the moves from zero. Hints spent stay spent.
 func try_again() -> void:
 	if is_done():
 		return
 	_close_card()
 	_gen += 1
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -2518,15 +2572,20 @@ func try_again() -> void:
 	fx.cue("reset")
 	moved.emit()
 
-## One more heart (the card's video): once a board. The sun comes back.
+## One more heart, or MOVES_BONUS more moves (the card's video): once a
+## board. The sun comes back.
 func heart_back() -> void:
 	if is_done() or not out_of_hearts:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -2534,7 +2593,7 @@ func heart_back() -> void:
 	_dusk_toward(Color.WHITE)
 	_heart_layer.queue_redraw()
 	_refresh()
-	_say(tr("RG_HEART_BACK"), Face.Expr.HAPPY)
+	_say(MovesPill.line(self, moves_left) if max_moves > 0 else tr("RG_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 

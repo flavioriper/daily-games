@@ -62,3 +62,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   2310537765 makes the board's own walk, after rakes 10, 15, 16 with 11 and
   12 flagged, send 19 to 18 -- found by a throwaway search over seeds; a
   change to `State.walk()`'s order would need a new seed.
+
+- **Insane counts moves** (2026-10-04, `docs/agents/flat-screens.md`,
+  "Insane counts moves"). `State.HEARTS_BY` is `[0, 0, 0, 0]`: a wake is
+  Medium's on every band (the hedgehog shown on its rose patch, the day
+  going on). Sleepwalkers hands out **one move for every bare pile the
+  opening left covered, + 3** (`State.to_clear`, `moves_budget()`; 63 to 77
+  over 25 nights), and **every pile cleared costs one**: raked by hand,
+  blown off by a nought, raked round a number. A hedgehog raked awake costs
+  one and clears nothing, so three wakes are the slack; flags are free. It
+  is the placing boards' formula, a flood priced like a Nonogram stroke, tile
+  by tile. **Counting gestures or hand-raked piles was tried and dropped**:
+  the walks move the noughts, so the same night played by logic alone in
+  eight orders cost anywhere from 0.7 to 1.8 of the dealt lawn's own proof,
+  and any budget off it was either unfair or never reached. Piles cleared
+  is the one count a walk cannot change (it is between covered piles), so a
+  clean night costs exactly `to_clear` in any order (75 plays checked). A
+  flood bigger than the moves left is taken whole and the count stops at
+  nought. `max_moves` is set in `build()` only: the tutorial's lawns come in
+  through `_dealt()` and count nothing. No Undo (it was greyed), hint or
+  Check; Reset hands the budget back. New lines: `HH_RULES_WALKERS_MOVES`,
+  `HTP_HH_WOKE_BODY_MOVES`, `HTP_HH_RESET_BODY_MOVES`, `HH_MOVES_BACK`.

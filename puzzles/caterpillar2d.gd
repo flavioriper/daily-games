@@ -11,11 +11,14 @@ extends "res://core/puzzle_base.gd"
 ## the last leaf too soon are refused at the step, with the head shivering,
 ## so the only way to be wrong is to be stuck: no Check, no tray and no
 ## actions row. Undo, Reset and Hint ride in the top bar -- Pinwheel's shape.
-## On Hard and Insane a legal step can still cost a heart (the polish of
-## 2026-10-01): one that strands a square, and on Insane any step off the
-## garden's one walk. The caterpillar steps there, worries, the stranded
-## squares blush, a heart splits, and it scoots back. Insane is Peckish: the
-## middle leaves carry no number and the tummy holds five bare squares.
+## Until 2026-10-04 a legal step could still cost a heart on Insane (the
+## polish of 2026-10-01): one that strands a square, or any step off the
+## garden's one walk. The caterpillar stepped there, worried, the stranded
+## squares blushed, a heart split, and it scooted back -- which told the
+## player the step was wrong. That code is still here and dormant (no band
+## has hearts). Insane is Peckish: the middle leaves carry no number and the
+## tummy holds five bare squares; it counts moves instead (`_spend`), a
+## square crawled onto or backed off costing one, and judges nothing.
 ##
 ## How it is drawn. **A frame must not cost more as the body grows** -- the
 ## first cut rebuilt every leaf, fence and segment every frame of a drag, 8 ms
@@ -56,6 +59,10 @@ const Haptics = preload("res://core/haptics.gd")
 ## shared so the two terraces grow the same plants.
 const Rings = preload("res://puzzles/rings2d.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a garden.
+const MOVES_BONUS := 5
 
 # --- the screen, measured ---
 ## The card's inset, the largest cell any band asks for, the card's corner the
@@ -262,6 +269,8 @@ const TIP_CYCLE := 8.0
 const TIPS := ["CP_TIP_START", "CP_TIP_ORDER", "CP_TIP_FILL", "CP_TIP_BACK", "CP_TIP_FENCE"]
 const TIPS_HEARTS := ["CP_TIP_START", "CP_TIP_STRAND", "CP_TIP_HEARTS", "CP_TIP_BACK"]
 const TIPS_PECKISH := ["CP_TIP_PECKISH", "CP_TIP_TUMMY", "CP_TIP_ANY", "CP_TIP_HEARTS"]
+## Peckish since 2026-10-04, when it counts moves and has no hearts.
+const TIPS_MOVES := ["TIP_MOVES_SEQ", "CP_TIP_PECKISH", "CP_TIP_TUMMY", "CP_TIP_ANY"]
 
 ## The out-of-hearts card's Back: the board ends unsolved and the host
 ## leaves.
@@ -399,6 +408,12 @@ var _split_index := -1
 var _split_at := AGO
 var _back_index := -1
 var _back_at := AGO
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_layer: Control
 var _hearts_shown: ArrayMesh
 ## The pill as it stood ([hearts, tummy room, worried, place]) -> its mesh:
@@ -447,11 +462,15 @@ var _cat_curled := false
 func puzzle_id() -> String: return "caterpillar"
 func title() -> String: return "Caterpillar"
 
-## The rules, then the band's own closing: nothing can be lost (Easy,
-## Medium), what a heart is for (Hard), or Peckish (Insane).
+## The rules, then the band's own closing: nothing can be lost (Easy to
+## Hard), or Peckish and its move counter (Insane).
 func rules() -> String:
 	var out := tr("CP_RULES")
-	if _state.peckish():
+	if max_moves > 0:
+		if _state.peckish():
+			out += "\n\n" + tr("CP_RULES_PECKISH_MOVES") % _state.hunger
+		out += "\n\n" + tr("CP_RULES_MOVES") % max_moves
+	elif _state.peckish():
 		out += "\n\n" + tr("CP_RULES_PECKISH") % [_state.hunger, max_hearts]
 	elif max_hearts > 0:
 		out += "\n\n" + tr("CP_RULES_HEARTS") % max_hearts
@@ -484,7 +503,7 @@ func tutorial_pages() -> Array:
 			tr("HTP_CP_PECKISH_BODY") % maxi(_state.hunger, 1)])
 	var undo_body := "HTP_CP_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_CP_RESET_BODY"
+		undo_body = "HTP_CP_RESET_BODY_MOVES" if max_moves > 0 else "HTP_CP_RESET_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_CP_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -497,9 +516,16 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		# The shared page, in the walk's own words: a step back costs one too.
+		var page: Dictionary = MovesDiagram.page(self, max_moves)
+		page["body"] = tr("HTP_CP_MOVES_BODY") % max_moves
+		pages.append(page)
 	return pages
 
 func _tips() -> Array:
+	if max_moves > 0:
+		return TIPS_MOVES if _state.peckish() else ["TIP_MOVES_SEQ"] + TIPS
 	if _state.peckish():
 		return TIPS_PECKISH
 	if max_hearts > 0:
@@ -507,10 +533,11 @@ func _tips() -> Array:
 	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
-## No hint on Insane (Peckish), and no undo there either: can_undo() says so.
+## Insane counts moves: no Undo (backing up along the body is the take-back,
+## and it costs a move a square) and no hint.
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). The walk is
@@ -579,6 +606,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(difficulty)
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_undo_ever = false
@@ -599,6 +627,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## the day's light, an empty bed.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -638,9 +667,10 @@ func _cell() -> float:
 func _inset() -> float:
 	return INSET
 
-## The strip the hearts take over the bed, on a band that has them.
+## The strip the hearts (or Insane's move counter) take over the bed, on a
+## band that has them.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 func _grid_size() -> Vector2:
 	return Vector2(_state.cols, _state.rows) * _cell()
@@ -833,8 +863,9 @@ func _process(delta: float) -> void:
 		_life_layer.queue_redraw()
 	if t >= _cat_at and not _cat_curled:
 		_place_cat(t)
-	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
-			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1 or t - _hungry_at < Motion.SHIVER_TIME * 2.0 + 0.1):
+	if (max_hearts > 0 or max_moves > 0) and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
+			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1 or t - _hungry_at < Motion.SHIVER_TIME * 2.0 + 0.1 \
+			or _moves_pill.animating(t - 0.1)):
 		_heart_layer.queue_redraw()
 
 func _entrance() -> float:
@@ -1902,9 +1933,17 @@ func _drag_to(to: Vector2) -> void:
 ## of the two the board allows **and the judge prices at nothing**. A finger crossing a corner has not said which side it
 ## meant, so that gesture never costs a heart: when both sides would, the
 ## head simply waits for the finger to come round.
+##
+## Where moves are counted (Insane) the same holds for a move: a corner is
+## stepped through only when the rules leave it one side, and with both open
+## the head waits rather than spend a move on a guess. And a drag that
+## strays over the body further back cuts nothing there -- only the square
+## just behind the head is a step back; a longer cut is a press.
 func _follow(c: int, p: Vector2) -> void:
 	var h: int = _state.head()
 	if c == h or h < 0:
+		return
+	if max_moves > 0 and _state.body.has(c) and _state.cut_cost(c) > 1:
 		return
 	if _state.body.has(c) or _state.adjacent(h, c):
 		_step(c)
@@ -1917,6 +1956,11 @@ func _follow(c: int, p: Vector2) -> void:
 	sides.sort_custom(func(a, b): return _centre(a).distance_to(p) < _centre(b).distance_to(p))
 	if sides[1] == _via:
 		sides.reverse()
+	if max_moves > 0:
+		var open: Array = sides.filter(func(m: int) -> bool:
+			return not _state.body.has(m) and _state.why(m) == "")
+		if open.size() != 1 or moves_left < 2:
+			return
 	for m: int in sides:
 		if not _state.body.has(m) and _state.why(m) == "" and _state.judge(m) == "":
 			_step(m)
@@ -1998,6 +2042,7 @@ func _step(c: int) -> void:
 			_heart_layer.queue_redraw()
 	_rows_filled(c, t)
 	_refresh()
+	_spend(1, t + SLIDE_TIME)
 	if _state.is_solved():
 		_release()
 
@@ -2039,6 +2084,13 @@ func _crawl(t: float) -> void:
 	_busy_for(float(RIPPLE_REACH) * RIPPLE_STEP + RIPPLE_TIME)
 
 func _cut(c: int, t: float) -> void:
+	# Insane counts moves: a square backed off costs one, and a cut the
+	# counter cannot pay for is not made.
+	var cost: int = _state.cut_cost(c) if max_moves > 0 else 0
+	if cost > moves_left:
+		if int(_refused["cell"]) != c or t - float(_refused["at"]) > REFUSE_QUIET:
+			_refuse("moves", c, t)
+		return
 	_busy_for(Motion.POP_IN)
 	var old: PackedInt32Array = _state.body.duplicate()
 	var leaves_before: int = _state.eaten()
@@ -2059,6 +2111,7 @@ func _cut(c: int, t: float) -> void:
 	fx.cue("step")
 	_heart_layer.queue_redraw()
 	_dirty()
+	_spend(cost, _walked_at if not Motion.reduce else t)
 
 func _refuse(kind: String, c: int, t: float) -> void:
 	_refused = {"at": t, "cell": c, "kind": kind}
@@ -2099,7 +2152,25 @@ func _drop_rings(t: float) -> void:
 			keep.append(r)
 	_rings = keep
 
-# --- the wrong step (Hard and Insane) ---
+# --- the move counter (Insane) ---
+
+## `cost` moves go off Insane's counter. The last one gone with the garden
+## unfinished ends the board once the step has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	_release()
+	out_of_hearts = true
+	moved.emit()
+	_after(maxf(0.0, land - _now()), _run_out)
+
+# --- the wrong step (dormant since 2026-10-04: no band is judged) ---
 
 ## A legal step the judge says costs a heart: the stroke so far is kept as
 ## its own move, the caterpillar steps onto `c` and worries, the squares it
@@ -2327,6 +2398,8 @@ func reset_board() -> void:
 		return
 	_wave_home()
 	moves = 0
+	# An empty garden is the board from the top, so the moves come back too.
+	moves_left = max_moves
 	_running = true
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	fx.cue("reset")
@@ -2367,6 +2440,9 @@ func share_glyphs() -> String:
 # --- hearts ---
 
 func _draw_hearts() -> void:
+	if max_moves > 0:
+		_draw_moves()
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var now := _now()
@@ -2425,27 +2501,68 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	if _state.peckish():
-		# The tummy: a leaf pip for every bare square it still has room for.
-		var e := now - _hungry_at
-		var shake := Motion.shiver_offset(e) * 3.0 if e < Motion.SHIVER_TIME * 2.0 else 0.0
-		var tc := Vector2(left + pill.x + PILL_GAP + shake, y - tummy_pill.y * 0.5)
-		b.polygon(Face.Builder.round_rect(tc - rim, tummy_pill + 2.0 * rim, tummy_pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
-		b.polygon(Face.Builder.round_rect(tc, tummy_pill, tummy_pill.y * 0.5), Pal.SURFACE)
-		var room: int = _state.tummy() if not _state.body.is_empty() else _state.hunger
-		if _misstepped() >= 0:
-			room = int(_wrong["room"])
-		var low: bool = room <= 1 and not _state.body.is_empty()
-		for i in _state.hunger:
-			var at := Vector2(tc.x + HEART_PILL_PAD.x + PIP_R + pip_step * i, y)
-			var full: bool = i < room
-			var col: Color = (Pal.FLOWER if low else Pal.LEAF) if full else Color(Pal.LEAF, 0.2)
-			_pip(b, at, PIP_R, col, Pal.LEAF_DEEP if full else Color(Pal.LEAF_DEEP, 0.15))
+		_tummy_into(b, left + pill.x + PILL_GAP, y, now)
 	_hearts_shown = b.mesh()
 	if still:
 		if _hearts_cache.size() > 64:
 			_hearts_cache = {}
 		_hearts_cache[key] = _hearts_shown
 	_put_hearts(now)
+
+## The tummy's pill from `left`, centred on `y`: a leaf pip for every bare
+## square it still has room for.
+func _tummy_into(b, left: float, y: float, now: float) -> void:
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var pip_step := 2.0 * PIP_R + PIP_GAP
+	var tummy_pill := Vector2(pip_step * (_state.hunger - 1) + 2.0 * PIP_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var e := now - _hungry_at
+	var shake := Motion.shiver_offset(e) * 3.0 if e < Motion.SHIVER_TIME * 2.0 else 0.0
+	var tc := Vector2(left + shake, y - tummy_pill.y * 0.5)
+	b.polygon(Face.Builder.round_rect(tc - rim, tummy_pill + 2.0 * rim, tummy_pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(tc, tummy_pill, tummy_pill.y * 0.5), Pal.SURFACE)
+	var room: int = _state.tummy() if not _state.body.is_empty() else _state.hunger
+	if _misstepped() >= 0:
+		room = int(_wrong["room"])
+	var low: bool = room <= 1 and not _state.body.is_empty()
+	for i in _state.hunger:
+		var at := Vector2(tc.x + HEART_PILL_PAD.x + PIP_R + pip_step * i, y)
+		var full: bool = i < room
+		var col: Color = (Pal.FLOWER if low else Pal.LEAF) if full else Color(Pal.LEAF, 0.2)
+		_pip(b, at, PIP_R, col, Pal.LEAF_DEEP if full else Color(Pal.LEAF_DEEP, 0.15))
+
+## Insane's strip: the move counter where the hearts sat, and Peckish's
+## tummy still beside it (its own mesh, cached by what it shows). The strip
+## is laid out for the full count's width, so it does not shift as the
+## count loses a digit.
+func _draw_moves() -> void:
+	if _cell() <= 0.0:
+		return
+	var now := _now()
+	if Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x <= 0.0:
+		return
+	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+		_origin().y - GROUND_PAD - FRAME - HEART_PILL_PAD.y - HEART_R - 8.0)
+	var wide := CozyTheme.display(700).get_string_size(MovesPill.line(self, max_moves),
+		HORIZONTAL_ALIGNMENT_LEFT, -1.0, MovesPill.FONT).x + 2.0 * MovesPill.PAD
+	var peck: bool = _state.peckish()
+	var tummy_wide: float = (2.0 * PIP_R + PIP_GAP) * (_state.hunger - 1) + 2.0 * PIP_R + 2.0 * HEART_PILL_PAD.x
+	var left: float = size.x * 0.5 - (wide + ((PILL_GAP + tummy_wide) if peck else 0.0)) * 0.5
+	if peck:
+		var still := now - _hungry_at >= Motion.SHIVER_TIME * 2.0
+		var room: int = _state.tummy() if not _state.body.is_empty() else _state.hunger
+		var key := ["m", room, not _state.body.is_empty(), size.x, _origin().y]
+		var hit: ArrayMesh = _hearts_cache.get(key) if still else null
+		if hit == null:
+			var b := Face.Builder.new()
+			_tummy_into(b, left + wide + PILL_GAP, y, now)
+			hit = b.mesh()
+			if still:
+				if _hearts_cache.size() > 64:
+					_hearts_cache = {}
+				_hearts_cache[key] = hit
+		_hearts_shown = hit
+		_put_hearts(now)
+	_moves_pill.draw(_heart_layer, Vector2(left + wide * 0.5, y), moves_left, now)
 
 ## The pill's mesh, popped in with the entrance about its centre.
 func _put_hearts(now: float) -> void:
@@ -2525,7 +2642,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["CP_OUT_BODY", "CP_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["CP_OUT_BODY", "CP_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -2565,9 +2683,13 @@ func heart_back() -> void:
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -2755,7 +2877,7 @@ func _on_solved() -> void:
 	_tip_timer.stop()
 	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
 	# Undo on Easy and Medium.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 	_streak_gen += 1

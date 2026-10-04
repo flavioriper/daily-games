@@ -92,3 +92,17 @@ unattended on `feat/shikaku-polish`.
   Insane (HEARTS: a fitting bed that is not the answer wilts) and Insane's
   scarecrows (CROW: its neighbours counted). Reduce motion shows each
   lesson's answer.
+- **Insane counts moves (2026-10-04)** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). `HEARTS` is all zero, so `_judge` never calls
+  `_wrong_bed` and `_settle` sprouts any bed whose sign is met, as on
+  Medium (it used to hold the shoots back for the answer's beds); the
+  HEARTS lesson is unreachable. That code is left in place, dormant.
+  Scarecrows hands out `clues.size() + 3` moves (`State.moves_budget`; 21
+  on an 18-sign field). `State.move_cost(rect, own)`: a bed fenced is one,
+  a bed cleared is one, **a redraw from inside a bed is two** (one off, one
+  down; a redraw landing on the same bed is free), and a refused drag
+  (overlap) costs nothing. A redraw with one move left is refused with
+  `SK_MOVES_SHORT`. The rules sentence is the board's own, `SK_RULES_MOVES`,
+  because the shared one does not say what a redraw costs. No Undo, Hint
+  (`HINTS_BY_BAND[3]` is 0) or Check. Signs still beam, strain and puzzle,
+  and a scarecrow still counts its neighbours.

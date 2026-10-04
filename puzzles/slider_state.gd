@@ -19,11 +19,22 @@ extends RefCounted
 ## solver's distances (`dist_of`). Insane is **Homesick**: the big block
 ## never steps back up, so a tray can be lost; its trays are mined
 ## (content/insane/slider.json).
+##
+## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero). Insane
+## counts moves instead: `moves_budget()` is the tray's shortest way home
+## (`par`, the miner's breadth-first optimum under Homesick) and a quarter
+## more. Nothing reads the graph there -- no hint, no verdict, no streak --
+## so an Insane tray starts no solver (docs/agents/flat-screens.md, "Insane
+## counts moves").
 
 const Gen = preload("res://puzzles/slider_gen.gd")
 
 const HINTS_BY := [3, 3, 2, 0]
-const HEARTS_BY := [0, 0, 0, 2]
+const HEARTS_BY := [0, 0, 0, 0]
+## Insane's spare moves over the shortest way home (`moves_budget`): a
+## quarter of it, and never fewer than this. 0 on a band that does not count.
+const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SHARE := 0.25
 
 var difficulty := 0
 ## Insane's rule: the big block never steps up.
@@ -73,7 +84,21 @@ func build(rng: RandomNumberGenerator, level: int, bank_step := 0) -> void:
 	start_blocks = blocks.duplicate(true)
 	key = start_key
 	history.clear()
-	solve_async()
+	# A band that counts moves judges nothing and hints nothing: no graph.
+	if moves_budget() > 0:
+		abandon()
+		_box = {}
+	else:
+		solve_async()
+
+## Insane's moves for this tray: the shortest way home and a quarter more
+## (three at least), every drag that moves a block costing one. 0 on a band
+## that does not count.
+func moves_budget() -> int:
+	var least: int = MOVES_SLACK[clampi(difficulty, 0, MOVES_SLACK.size() - 1)]
+	if least <= 0 or par <= 0:
+		return 0
+	return par + maxi(least, int(ceil(par * MOVES_SHARE)))
 
 ## Starts the one breadth-first run a day's hints read, on a worker thread so
 ## the tray opens at once. Moves reverse, so the opening's graph is every

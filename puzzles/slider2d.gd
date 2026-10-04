@@ -27,6 +27,15 @@ extends "res://core/puzzle_base.gd"
 ##     it gets one move from home, and the party -- confetti, the nap cat,
 ##     the seal and a bit of sliding wisdom.
 ##
+## **Since 2026-10-04 nothing is judged** (docs/agents/flat-screens.md,
+## "Insane counts moves"): no band has hearts, so no move costs one or slides
+## back and the big block never frets; that code is left in place, asleep.
+## Homesick counts moves instead -- `max_moves` off the state's
+## `moves_budget()`, "N moves left" on the pill where the hearts sat, one off
+## for every drag that moves a block (`_spend`), no streak (nearer is the
+## solver's word), and out of moves is the old out-of-hearts ending. A
+## stranded big block is the player's to notice; Reset is the way back.
+##
 ## How it is drawn. Three meshes:
 ##   still -- the lawn, the path out of the gate and the tray, rebuilt only on
 ##            a relayout;
@@ -120,7 +129,7 @@ const TOAST_MARGIN := 66.0
 const TIP_CYCLE := 8.0
 const TIPS := ["SL_TIP_DRAG", "SL_TIP_GOAL", "SL_TIP_CORNER"]
 const TIPS_HEARTS := ["SL_TIP_DRAG", "SL_TIP_FRET", "SL_TIP_HEARTS", "SL_TIP_CORNER"]
-const TIPS_HOME := ["SL_TIP_HOME", "SL_TIP_HOME_PLAN", "SL_TIP_HOME_HEARTS", "SL_TIP_CORNER"]
+const TIPS_HOME := ["TIP_MOVES_SEQ", "SL_TIP_HOME", "SL_TIP_HOME_PLAN", "SL_TIP_CORNER"]
 
 # --- hearts (Knight's, measure for measure) ---
 ## A move that costs a heart lands, holds SLIP_HOLD with the big block upset,
@@ -142,6 +151,10 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 0.9
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys.
+const MOVES_BONUS := 5
 const AGO := -1.0e9
 ## A refused upward step on Homesick: the big block shakes its head, rigid,
 ## SHAKE of a cell over SHAKE_TIME.
@@ -251,6 +264,12 @@ var _gen := 0
 var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
+## Insane's move counter (ui/flat/moves_pill.gd), since 2026-10-04 in place
+## of the hearts: `max_moves` is 0 on a band that does not count. Out of
+## moves with the big block still in the tray sets `out_of_hearts`.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _heart_used := false
 var _lost_ever := false
 var _undo_ever := false
@@ -310,21 +329,23 @@ var _cat_curled := false
 func puzzle_id() -> String: return "slider"
 func title() -> String: return "Super Slider"
 
-## The rules, then the band's own closing: nothing can be lost (Easy,
-## Medium), hearts (Hard), or Homesick (Insane).
+## The rules, then the band's own closing: Homesick and its move counter
+## (Insane); the hearts' line is asleep with the hearts.
 func rules() -> String:
 	var out := tr("SL_RULES")
 	if _state.homesick:
-		out += "\n\n" + tr("SL_RULES_HOME") % max_hearts
+		out += "\n\n" + tr("SL_RULES_HOME_MOVES")
 	elif max_hearts > 0:
 		out += "\n\n" + tr("SL_RULES_HEARTS") % max_hearts
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
 
 ## The tutorial, a page a rule, each the board itself on a hand-made tray
 ## playing the lesson (ui/hud/slider_tutorial_diagram.gd): slide a block and
 ## bring the red one out, round a corner in one move, then the band's own --
-## hearts (Hard) or Homesick (Insane) --, Undo and Reset, and the bulb (bands
-## with hints).
+## Homesick (Insane) --, Undo and Reset, the bulb (bands with hints), and
+## Insane's move counter (the shared page).
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/slider_tutorial_diagram.gd")
 	var band: int = _state.difficulty
@@ -333,12 +354,13 @@ func tutorial_pages() -> Array:
 	var steps := [[Diagram.Lesson.SLIDE, "HTP_SL_SLIDE", tr("HTP_SL_SLIDE_BODY")],
 		[Diagram.Lesson.CORNER, "HTP_SL_CORNER", tr("HTP_SL_CORNER_BODY")]]
 	if band >= 3:
-		steps.append([Diagram.Lesson.HOMESICK, "HTP_SL_HOMESICK", tr("HTP_SL_HOMESICK_BODY") % hearts_n])
+		steps.append([Diagram.Lesson.HOMESICK, "HTP_SL_HOMESICK", tr("HTP_SL_HOMESICK_BODY_MOVES")
+			if hearts_n <= 0 else tr("HTP_SL_HOMESICK_BODY") % hearts_n])
 	elif hearts_n > 0:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_SL_HEARTS", tr("HTP_SL_HEARTS_BODY") % hearts_n])
 	var undo_body := "HTP_SL_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_SL_RESET_BODY"
+		undo_body = "HTP_SL_RESET_BODY_MOVES" if max_moves > 0 else "HTP_SL_RESET_BODY"
 	elif hearts_n > 0:
 		undo_body = "HTP_SL_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -351,6 +373,8 @@ func tutorial_pages() -> Array:
 		d.lesson = step[0]
 		d.band = band
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
 func _tips() -> Array:
@@ -361,10 +385,10 @@ func _tips() -> Array:
 	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
-## Insane has neither undo nor hint: can_undo() says so, and no hint button.
+## Insane counts moves and has neither.
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return ["undo"]
+		return []
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A block is
@@ -430,6 +454,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(difficulty)
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_undo_ever = false
@@ -449,10 +474,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 
 ## The tray as it is dealt, and as Try again deals it back: every heart,
-## every block still, nothing moving.
+## the whole move budget, every block still, nothing moving.
 func _deal() -> void:
 	_gen += 1
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -488,10 +514,10 @@ func _still_at(p: int) -> Dictionary:
 
 # --- layout ---
 
-## The band over the tray: the count line, and the hearts' pill over it on
-## Hard and Insane.
+## The band over the tray: the count line, and over it the pill -- the
+## hearts on a judged band, the move counter on Insane.
 func _top_band() -> float:
-	return COUNT_BAND + (HEART_ROW if max_hearts > 0 else 0.0)
+	return COUNT_BAND + (HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0)
 
 func _cell() -> float:
 	var w := float(Gen.COLS) + 2.0 * Block.FRAME
@@ -722,6 +748,8 @@ func _process(delta: float) -> void:
 		_place_cat(t)
 	if max_hearts > 0 and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
+	elif max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
 	_ease_gaze(t, delta)
 	if not Motion.reduce and not _won and t > _blink_at + Face.BLINK_TIME:
@@ -1426,7 +1454,9 @@ func _release() -> void:
 	_judge(p, before, before_key, t)
 
 ## A move let go: kept (the streak, the sounds, the count) or, when it costs
-## a heart, sent back.
+## a heart, sent back. On Insane it is kept whatever it does, costs a move
+## (`_spend`) and earns no streak: nearer and farther are the solver's to
+## know, and nothing there says what a move was worth.
 func _judge(p: int, before: Array, before_key: int, t: float) -> void:
 	var d0: int = _state.dist_of(before_key)
 	var d1: int = _state.dist_of(_state.key)
@@ -1438,13 +1468,30 @@ func _judge(p: int, before: Array, before_key: int, t: float) -> void:
 	_state.commit(before)
 	_land_puff(p, maxf(0.0, t + SNAP_TIME - _now()))
 	fx.cue("slide")
-	if d0 >= 0 and d1 >= 0:
+	if max_moves <= 0 and d0 >= 0 and d1 >= 0:
 		if d1 < d0:
 			_on_nearer(p, maxf(t + SNAP_TIME, _now()), d1)
 		elif d1 > d0:
 			_break_streak()
 	_refresh()
 	note_move()
+	_spend(1, t + SNAP_TIME)
+
+## `cost` moves go off Insane's counter. The last one gone with the big block
+## still in the tray ends the board once the block has landed (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	moved.emit()
+	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else 0.1), _run_out)
 
 ## The move waiting for the solver, judged as soon as it is done.
 func _settle_pending() -> void:
@@ -1671,10 +1718,15 @@ func hint() -> bool:
 func can_reset() -> bool:
 	return not (is_done() or out_of_hearts or busy())
 
-## Back to the opening. Hearts lost stay lost.
+## Back to the opening. Hearts lost stay lost; Insane's moves all come back
+## (a reset is the tray from the top).
 func reset_board() -> void:
 	if not can_reset():
 		return
+	if max_moves > 0:
+		moves_left = max_moves
+		_moves_pill.bump(_now())
+		_heart_layer.queue_redraw()
 	var before: Array = _state.snapshot()
 	_drag = {}
 	_trail = {}
@@ -1724,6 +1776,9 @@ func _lose_heart(at: float) -> void:
 	_heart_layer.queue_redraw()
 
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		_moves_pill.draw(_heart_layer, _hearts_mid(Vector2.ZERO), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -1829,7 +1884,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["SL_OUT_BODY", "SL_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["SL_OUT_BODY", "SL_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -1865,17 +1921,22 @@ func try_again() -> void:
 	_refresh()
 	moved.emit()
 
-## One more heart (the card's video): once a tray. Morning comes back; the
-## tray is as it was before the move that cost the last heart.
+## One more heart, or MOVES_BONUS more moves (the card's video): once a tray.
+## Morning comes back; the tray is as it was before the move that cost the
+## last heart, or as the last move left it.
 func heart_back() -> void:
 	if is_done() or not out_of_hearts:
 		return
 	_close_card()
 	var now := _now()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = now
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(now)
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = now
 	out_of_hearts = false
 	_asleep = false
 	_running = true
@@ -1883,7 +1944,7 @@ func heart_back() -> void:
 	_dusk_toward(Color.WHITE)
 	_heart_layer.queue_redraw()
 	_refresh()
-	_say(tr("SL_HEART_BACK"), Face.Expr.HAPPY)
+	_say(MovesPill.line(self, moves_left) if max_moves > 0 else tr("SL_HEART_BACK"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	moved.emit()
 
@@ -2072,9 +2133,9 @@ func _on_solved() -> void:
 	_won = true
 	_solved_at = t + (0.0 if Motion.reduce else maxf(0.0, float(d.at) + float(d.dur) - t) + 0.06)
 	_tip_timer.stop()
-	# Flawless: no hint, and no heart lost on Hard and Insane, or never an
-	# Undo on Easy and Medium.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _undo_ever)
+	# Flawless: no hint, and never out of moves on Insane (no heart lost on a
+	# judged band), or never an Undo where nothing can be lost.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _undo_ever)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 	_streak_gen += 1

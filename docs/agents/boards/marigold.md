@@ -85,3 +85,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   board zoomed onto hand-made staggered rows, each shot an exact angle found
   by `tests/_mg_tut_search.gd` (the garden is chaotic: re-run it if the
   physics or the gardens change).
+  **Insane counts moves since 2026-10-04** (`docs/agents/flat-screens.md`,
+  "Insane counts moves"). No heart here was ever a judgement (one went when
+  a garden ran out of seeds, on Reset after a shot, on Undo), and the board
+  already had a move counter: the seeds. So the hearts, which only bought a
+  second garden, are dormant (`HEARTS_BY` all zero) and the seeds are the
+  count: `State.moves_budget()` is the proof's six shots + 3 = **9 seeds**
+  (was 8 a try, two tries), one garden, and out of seeds with a marigold up
+  is the loss (`_out_of_seeds` -> `_moves_out` -> the old `_run_out`).
+  `moves_left` only follows `_state.seeds` (`_count_moves`), so the pot's
+  catch and a big shot's seeds still come back; `_spend` is the door for
+  anything else (the probe). The pill sits where the hearts' sign hung,
+  beside the trough it repeats. No Undo on Insane (a shot back is a seed
+  back); Reset is free and is `State.restart()` there, not `regrow()`,
+  because a new try moves the violet and the proof was mined against the
+  first one's; it costs the flawless seal once a seed has flown. The card's
+  video gives `MOVES_BONUS` 3 seeds on the garden as it stands, not a regrown
+  one. Sweethearts' fold-back stays: it is the band's rule, seen on the
+  field, never the answer. The tutorial drops OUT and UNDO on Insane and
+  ends on the shared moves page with `HTP_MG_MOVES_BODY`. Not seen on a
+  screen: the pill's place, and the new locale rows wait for an import.

@@ -27,9 +27,15 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## a video hint is still offered once they are spent.
 const HINTS := 3
 const HINTS_BY_BAND := [3, 3, 1, 0]
-## Hard and Insane judge every number as it lands; a wrong one costs a heart
-## (spec 2026-09-30-sudoku-polish-design.md, section 1). Nothing else does.
-const HEARTS := [0, 0, 0, 2]
+## No band has hearts since 2026-10-04: nothing is judged as it lands, so
+## `judged()` is false everywhere, no number is ruled out of a cell and no
+## right one is kept there. Insane counts moves instead.
+const HEARTS := [0, 0, 0, 0]
+## Insane's spare moves over the grid's own empty cells (`moves_budget`): a
+## number written or taken out costs one, a pencil mark costs nothing. Three
+## is one slip mended with two to spare (a number written over a wrong one
+## is one move).
+const MOVES_SLACK := [0, 0, 0, 3]
 
 ## Why a tap was turned down.
 const OK := 0
@@ -50,6 +56,8 @@ var history: Array = []
 var hints_left := HINTS
 ## Easy 0 to Insane 3.
 var band := 0
+## The cells the deal leaves for the player to fill.
+var target := 0
 ## Insane's hills, one int a cell: -1 for none, else how many of the four
 ## cells beside it hold a smaller number (Gen's Hilltops). Empty elsewhere.
 var hills := PackedInt32Array()
@@ -88,6 +96,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	sol = out.solution
 	given = out.puzzle
 	grid = out.puzzle.duplicate()
+	target = given.count(0)
 	notes = PackedInt32Array()
 	notes.resize(Gen.CELLS)
 	history = []
@@ -96,6 +105,21 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 ## Whether this band judges every number as it lands.
 func judged() -> bool:
 	return int(HEARTS[band]) > 0
+
+## The moves a band hands out: the grid's empty cells and its slack, or 0 on
+## a band that does not count them.
+func moves_budget() -> int:
+	return target + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
+
+## What the pad's number on `i` costs: one for a number written (over a
+## blank or over another) or tapped back out, nothing for a pencil mark.
+func move_cost(_i: int, pencil: bool) -> int:
+	return 0 if pencil else 1
+
+## What the remove chip costs on `i`: one for a number taken out, nothing
+## for pencil marks rubbed off.
+func erase_cost(i: int) -> int:
+	return 1 if grid[i] > 0 else 0
 
 func has_hill(i: int) -> bool:
 	return not hills.is_empty() and hills[i] >= 0

@@ -34,6 +34,11 @@ extends "res://core/puzzle_base.gd"
 ## Controls, the hearts' pill and the life (the ghost finger, and the
 ## rewards'), each one mesh.
 ##
+## Since 2026-10-04 no band judges a drop (the hearts lie dormant): Scrap
+## Basket counts moves instead, takes any patch that fits, names no dead
+## end and shows no ghost finger (docs/agents/flat-screens.md, "Insane
+## counts moves").
+##
 ## Spec: docs/superpowers/specs/2026-09-20-quilt-flat-design.md, sections 6
 ## and 7, and 2026-09-30-quilt-polish-design.md, sections 1 to 5. Ported from the canvas mock at
 ## docs/brainstorm/concepts.html#quilt, which is the reference for every
@@ -57,6 +62,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+## The moves the out-of-moves card's video buys, once a board.
+const MOVES_BONUS := 5
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset, all round.
@@ -173,7 +182,7 @@ const TIPS := ["QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_OFF", "QL_T
 ## A judged board: a patch taken off cannot be, and every patch does fit
 ## somewhere only on a board without scraps.
 const TIPS_HEARTS := ["QL_TIP_HEARTS", "QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_ALL"]
-const TIPS_SCRAPS := ["QL_TIP_SCRAPS", "QL_TIP_SCRAPS_2", "QL_TIP_HEARTS", "QL_TIP_TURN", "QL_TIP_GHOST"]
+const TIPS_SCRAPS := ["QL_TIP_SCRAPS", "QL_TIP_SCRAPS_2", "QL_TIP_OFF", "QL_TIP_TURN", "QL_TIP_GHOST"]
 ## A tap: a press let go without the finger ever moving TAP_PX from where it
 ## went down, **however long it was held**. It wiggles the patch where it
 ## lies rather than lifting it. One rule, and distance alone: a patch is not
@@ -425,6 +434,12 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
+## that does not count. Out of moves unsolved is `out_of_hearts`, the name
+## the host and the card already know.
+var moves_left := 0
+var max_moves := 0
+var _moves_pill := MovesPill.new()
 var _lost_ever := false
 var _asleep := false
 var _heart_card: Control
@@ -502,13 +517,15 @@ func puzzle_id() -> String: return "quilt"
 func title() -> String: return "Quilt"
 
 ## The rules in plain words, then the band's own closing: the basket's
-## scraps on Insane, and either what a heart is for or that nothing here can
-## be lost.
+## scraps on Insane, and either what the moves are for or that nothing here
+## can be lost.
 func rules() -> String:
 	var out: String = tr("QL_RULES")
 	if not _state.scraps().is_empty():
 		out += "\n\n" + tr("QL_RULES_SCRAPS")
-	if max_hearts > 0:
+	if max_moves > 0:
+		out += "\n\n" + tr("RULES_MOVES") % max_moves
+	elif max_hearts > 0:
 		out += "\n\n" + tr("QL_RULES_HEARTS") % max_hearts
 	else:
 		out += "\n\n" + tr("QL_RULES_SAFE")
@@ -517,9 +534,9 @@ func rules() -> String:
 ## The tutorial, a page a rule, each played on a little quilt of its own
 ## (`ui/hud/quilt_tutorial_diagram.gd`): dragging patches on until every
 ## square is covered, where a patch fits (never over another, never turned),
-## then what a mistake does on this band -- taken off on Easy and Medium, a
-## heart and the chalk on Hard and Insane -- Scrap Basket's scraps, Undo and
-## Reset, and the bulb on a band that has hints.
+## then how a patch is taken off again, Scrap Basket's scraps, Undo and Reset
+## on a band that has Undo, the bulb on a band that has hints, and the move
+## counter on Insane. (The HEARTS lesson is unreachable: no band is judged.)
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/quilt_tutorial_diagram.gd")
 	var band: int = _state.band
@@ -533,11 +550,13 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
 			tr("QL_RULES_HEARTS") % State.hearts_for(band)])
 	else:
-		steps.append([Diagram.Lesson.OFF, "HTP_QL_OFF", tr("HTP_QL_OFF_BODY")])
+		steps.append([Diagram.Lesson.OFF, "HTP_QL_OFF",
+			tr("HTP_QL_OFF_BODY_MOVES") if max_moves > 0 else tr("HTP_QL_OFF_BODY")])
 	if band == 3:
 		steps.append([Diagram.Lesson.SCRAPS, "HTP_QL_SCRAPS", tr("HTP_QL_SCRAPS_BODY")])
-	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
-		tr("HTP_QL_UNDO_BODY_JUDGED") if judged else tr("HTP_QL_UNDO_BODY")])
+	if max_moves <= 0:
+		steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO",
+			tr("HTP_QL_UNDO_BODY_JUDGED") if judged else tr("HTP_QL_UNDO_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
 			tr("HTP_QL_HINT_BODY_ONE") if hints == 1 else tr("HTP_QL_HINT_BODY_N") % hints])
@@ -548,20 +567,28 @@ func tutorial_pages() -> Array:
 		d.band = band
 		d.hearts = State.hearts_for(band) if judged else 0
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	if max_moves > 0:
+		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Undo and Hint, and nothing else. There is no Check because nothing wrong
-## can be sitting on the quilt to check: an illegal drop is never taken, and
-## on Hard and Insane a wrong one is judged as it lands. So the registry
-## drops the actions row and Reset rides up into the top bar.
+## Undo and Hint, and nothing else. There is no Check because an illegal
+## drop is never taken and a quilt wholly covered is the solve. So the
+## registry drops the actions row and Reset rides up into the top bar.
+## Insane counts moves: no Undo (dragging a patch off is the take-back, and
+## it costs one) and no hint.
 func capabilities() -> Array[String]:
+	if _state.band >= 3:
+		return []
 	return ["undo", "hint"]
 
-## The lines the tips cycle: Scrap Basket leads with its two, a judged board
-## with the hearts'.
+## The lines the tips cycle: a board that counts moves leads with that,
+## Scrap Basket with its two, a judged board with the hearts'.
 func _tips() -> Array:
+	var lead: Array = ["TIP_MOVES"] if max_moves > 0 else []
 	if not _state.scraps().is_empty():
-		return TIPS_SCRAPS
+		return lead + TIPS_SCRAPS
+	if max_moves > 0:
+		return lead + TIPS
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
@@ -622,6 +649,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_state.setup(rng, difficulty, bank_step)
 	max_hearts = State.hearts_for(_state.band) if _state.judged() else 0
+	max_moves = _state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
 	_stuck_ever = false
@@ -649,6 +677,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## the day's light, nothing peeling, pulsing or wiggling.
 func _deal() -> void:
 	hearts = max_hearts
+	moves_left = max_moves
 	out_of_hearts = false
 	_asleep = false
 	_split_index = -1
@@ -716,9 +745,10 @@ func _field_box() -> Rect2:
 	return Rect2(box.position + Vector2(0.0, row),
 		Vector2(box.size.x, maxf(0.0, box.size.y * FIELD_SHARE - row)))
 
-## The strip the hearts take over the field, on a board that has them.
+## The strip the hearts take over the field, on a board that has them, and
+## the moves' pill on one that counts.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
 
 ## Where the hearts' pill is centred: in the strip over the field.
 func _hearts_y() -> float:
@@ -2362,6 +2392,20 @@ func _release() -> void:
 				_break_streak()
 				_refresh()
 				return
+	if max_moves > 0 and from >= 0 and hold != CLEAR:
+		# A board that counts moves: a drop the quilt refuses costs nothing,
+		# so a sewn patch let go where it will not fit goes back down where it
+		# was sewn, not home to the rack (which would be a move).
+		_state.drop(p, from, from)
+		_landed[p] = _now()
+		_glide[p] = hand
+		_lifted.erase(p)
+		_refused = {"patch": p, "at": _now()}
+		_busy_for(LAND_TIME + maxf(SEW_TIME, _seam_span(p)))
+		fx.cue("refused")
+		_speak(_reason(State.OFF if raw < 0 else _state.fits(p, raw)), Face.Expr.WORRIED)
+		_refresh()
+		return
 	_state.drop(p, -1, from)
 	_fly_home(p, hand)
 	_dead = {}
@@ -2383,6 +2427,7 @@ func _release() -> void:
 		# It was on the quilt and is not any more, which is a move whichever
 		# way the drop was judged.
 		note_move()
+		_spend(_state.move_cost(from, -1), _now() + (0.0 if Motion.reduce else FLY_TIME))
 
 ## A tap on a patch: nothing was lifted, so it simply wiggles where it lies,
 ## and the line says what to do with it (how a sewn one comes off, on Easy
@@ -2396,8 +2441,9 @@ func _tapped(p: int, from: int) -> void:
 	_refresh()
 
 ## A patch sewn on at `origin`: it glides down out of the hand and sews its
-## seams, the ghost finger retires, and on Easy and Medium the board asks
-## whether what is left can still finish the quilt.
+## seams, the ghost finger retires, and on Easy, Medium and Hard the board
+## asks whether what is left can still finish the quilt. A board that counts
+## moves does not ask: a dead end named is a patch judged.
 func _sewn(p: int, origin: int, from: int, hand: Vector2) -> void:
 	_landed[p] = _now()
 	_glide[p] = hand
@@ -2411,7 +2457,8 @@ func _sewn(p: int, origin: int, from: int, hand: Vector2) -> void:
 		# and nothing is counted.
 		_refresh()
 		return
-	var stuck := not _state.judged() and not _state.is_solved() and not _state.finishable()
+	var stuck := not _state.judged() and max_moves <= 0 and not _state.is_solved() \
+		and not _state.finishable()
 	if stuck:
 		_dead_end()
 	else:
@@ -2422,6 +2469,7 @@ func _sewn(p: int, origin: int, from: int, hand: Vector2) -> void:
 	# note_move() counts the move and ends the puzzle if that was the
 	# last patch; the host raises the win screen after win_delay().
 	note_move()
+	_spend(_state.move_cost(from, origin), _now() + (0.0 if Motion.reduce else LAND_TIME * LAND_GLIDE))
 
 ## Easy and Medium: the patches left can no longer cover the bare squares.
 ## The line says so, and every bare cell nothing left can reach pulses rose
@@ -2473,7 +2521,9 @@ func _left_line() -> String:
 			on += 1
 	var left := maxi(0, _state.quilt_patches - on)
 	if left <= 0:
-		return tr("QL_WIN")
+		# Scrap Basket can hold nine patches and still show a gap: the label
+		# counts the squares, and the line has nothing to add.
+		return tr("QL_WIN") if _state.is_solved() else _tip(_tip_idx)
 	return tr("QL_ONE_LEFT") if left == 1 else tr("QL_N_LEFT") % left
 
 func _speak_left() -> void:
@@ -2551,14 +2601,15 @@ func _settle(before: Array, t: float) -> void:
 			_fly_home(i, _corner_of(was))
 
 func can_undo() -> bool:
-	return not is_done() and not out_of_hearts and _peel.is_empty() and _state.can_undo()
+	return max_moves <= 0 and not is_done() and not out_of_hearts and _peel.is_empty() \
+		and _state.can_undo()
 
 ## Reverses the last gesture -- a patch sewn on, a patch taken off, or a
 ## hint with everything it displaced. Counts no move. Easy and Medium only:
 ## on Hard and Insane every patch on the quilt is right and stays, so the
-## state has nothing to take back.
+## state has nothing to take back. Never on a board that counts moves.
 func undo() -> bool:
-	if is_done() or out_of_hearts or not _peel.is_empty():
+	if max_moves > 0 or is_done() or out_of_hearts or not _peel.is_empty():
 		return false
 	# A patch still in the hand goes back where it came from first, so the
 	# state is whole before the history is unwound.
@@ -2630,11 +2681,14 @@ func hint() -> bool:
 ## Every patch the player laid comes home in a wave from the far corner.
 ## What a hint gave stays given: it keeps its place, and the hints spent are
 ## not refunded. The hearts and the chalk marks stay as they are -- only Try
-## again gives those back.
+## again gives those back. The moves do come back: a bare backing is the
+## board from the top.
 func reset_board() -> void:
 	if out_of_hearts or not _peel.is_empty():
 		return
 	_wipe()
+	moves_left = max_moves
+	_heart_layer.queue_redraw()
 	_break_streak()
 	_speak(tr("QL_CLEAN") + " " + _left_line(), Face.Expr.HAPPY)
 
@@ -2710,6 +2764,8 @@ func restore_completed_board() -> void:
 	_flawless = bool(rec.get("flawless", false))
 	if rec.has("hearts") and max_hearts > 0:
 		hearts = clampi(int(rec.hearts), 0, max_hearts)
+	if rec.has("moves") and max_moves > 0:
+		moves_left = clampi(int(rec.moves), 0, max_moves)
 	_tag_count = -1
 	# The party's leavings and none of its motion: the cat asleep on the
 	# quilt, the seal when the solve earned one, and on Scrap Basket the
@@ -2742,9 +2798,9 @@ func share_glyphs() -> String:
 	return out.strip_edges(false, true) + "\n" + seal
 
 ## Whether the solve was flawless, so a reopened daily keeps its seal, and
-## how many hearts it kept.
+## how many hearts and moves it kept.
 func completion_record() -> Dictionary:
-	return {"flawless": _flawless, "hearts": hearts}
+	return {"flawless": _flawless, "hearts": hearts, "moves": moves_left}
 
 # --- the win ---
 
@@ -2765,9 +2821,10 @@ func _on_solved() -> void:
 	_drag = {}
 	_dead = {}
 	_tip_timer.stop()
-	# Flawless: no hint, and no heart lost on a judged board, or on Easy and
-	# Medium never a dead end. The seal is the rewards' to stamp.
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else not _stuck_ever)
+	# Flawless: no hint, and no heart lost on a judged board, the moves never
+	# run out on one that counts them, or on the rest never a dead end. The
+	# seal is the rewards' to stamp.
+	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else not _stuck_ever)
 	# Gold on each patch as the hop reaches it, and no ring: eight rings over
 	# a finished quilt is a firework, where the hem's stitch is the point.
 	for p in _state.shapes.size():
@@ -2817,12 +2874,15 @@ func _reset_rewards() -> void:
 ## from the second, the bubble from the third, confetti at four and seven --
 ## plays the patch's gag, and runs a glint along any row or column it
 ## finished. The solving drop does none of it: the party is about to start.
+## On a board that counts moves nobody knows a drop was good, so there is no
+## streak; the gag and the glint are the patch's and the row's own.
 func _on_good_drop(p: int) -> void:
 	if is_done() or _state.is_solved():
 		return
 	var land := 0.0 if Motion.reduce else LAND_TIME * LAND_GLIDE
 	var mid := _origin() + _centroid(p) * _cell()
-	_streak += 1
+	if max_moves <= 0:
+		_streak += 1
 	if _streak >= 2:
 		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
 		_after(land, func() -> void:
@@ -3269,7 +3329,7 @@ func _twine(x: float) -> Vector2:
 ## Where a pennant hangs along the twine. The middle of the card is the
 ## hearts' pill on a judged board, so the scraps hang either side of it.
 func _bunt_x(k: float) -> float:
-	return [0.17, 0.33, 0.81][clampi(int(k * 3.0), 0, 2)] if max_hearts > 0 and _bunting.size() == 3 else k
+	return [0.17, 0.33, 0.81][clampi(int(k * 3.0), 0, 2)] if (max_hearts > 0 or max_moves > 0) and _bunting.size() == 3 else k
 
 func _bunting_running(now: float) -> bool:
 	if _bunting.is_empty() or Motion.reduce or now < _bunt_at:
@@ -3330,6 +3390,22 @@ func _draw_bunting(now: float, shown: Array) -> void:
 		shown.append(mesh)
 
 # --- failing ---
+
+## `cost` moves go off Insane's counter. The last one gone with the quilt
+## still showing a gap ends the board once the patch has landed or flown
+## home (`land`).
+func _spend(cost: int, land: float) -> void:
+	if max_moves <= 0 or cost <= 0:
+		return
+	moves_left = maxi(0, moves_left - cost)
+	_moves_pill.bump(_now())
+	_heart_layer.queue_redraw()
+	if moves_left > 0 or is_done() or _state.is_solved():
+		return
+	_lost_ever = true
+	out_of_hearts = true
+	_running = false
+	_after(maxf(0.0, land - _now()), _run_out)
 
 ## A patch the answer has no place for there, on Hard or Insane (the state
 ## has already ruled the spot and left the patch in the rack): it lands like
@@ -3416,7 +3492,8 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["QL_OUT_BODY", "QL_OUT_REST"])
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+		else load(OUT_OF_HEARTS).new(_heart_used, ["QL_OUT_BODY", "QL_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
 	card.one_more_heart.connect(heart_back)
@@ -3428,7 +3505,7 @@ func _open_card() -> void:
 		get_tree().root.add_child(card)
 
 ## Try again: the same quilt from a bare backing in Reset's wave, every heart
-## back and the chalk marks gone, the day's light, the clock and the moves
+## and every move back and the chalk marks gone, the day's light, the clock and the moves
 ## from zero; hints spent stay spent.
 func try_again() -> void:
 	if is_done():
@@ -3456,9 +3533,13 @@ func heart_back() -> void:
 		return
 	_close_card()
 	_heart_used = true
-	hearts = 1
-	_back_index = 0
-	_back_at = _now()
+	if max_moves > 0:
+		moves_left = MOVES_BONUS
+		_moves_pill.bump(_now())
+	else:
+		hearts = 1
+		_back_index = 0
+		_back_at = _now()
 	_heart_layer.queue_redraw()
 	out_of_hearts = false
 	_asleep = false
@@ -3500,14 +3581,15 @@ func _after(delay: float, what: Callable) -> void:
 
 ## On Easy and Medium, until the first patch lands, a ghost finger drags the
 ## patch with the fewest legal spots from the rack to its answer place. Never
-## on a judged board or under reduce motion.
+## on a judged board, on one that counts moves (it would hand over a patch of
+## the answer) or under reduce motion.
 func _pick_coach() -> void:
 	_coach_patch = -1
 	_coach_origin = -1
 	_coach_off = false
 	_rest_at = _opened + Motion.ENTER_DELAY + Motion.ENTER_POP \
 		+ Motion.stagger(maxi(_state.shapes.size() - 1, 0), Motion.ENTER_STAGGER)
-	if _state.judged() or Motion.reduce:
+	if _state.judged() or max_moves > 0 or Motion.reduce:
 		return
 	var fewest := 1 << 30
 	for p in _state.shapes.size():
@@ -3591,6 +3673,7 @@ func _tick_layers(now: float) -> void:
 		return
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
+			or _moves_pill.animating(now - 0.1) \
 			or now - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1:
 		_heart_layer.queue_redraw()
 	var alive := _tick_life(now)
@@ -3771,6 +3854,9 @@ func _draw_stamp(now: float, shown: Array) -> void:
 ## Bridges'): pink with a small face and a leaf, a faint ghost where one was,
 ## the lost one's halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if max_moves > 0 and _cell() > 0.0:
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y()), moves_left, _now())
+		return
 	if max_hearts <= 0 or _cell() <= 0.0:
 		return
 	var b := Face.Builder.new()
