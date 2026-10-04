@@ -5,7 +5,7 @@ extends SceneTree
 ## and says what this harness tells it to. No network, no Backend.
 ##
 ##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top \
-##         --script res://tests/_shot_online.gd -- <outdir> [lang=pt|es] [rm] [tab]
+##         --script res://tests/_shot_online.gd -- <outdir> [lang=pt|es] [rm] [tab] [checkers]
 ##
 ## 01 the tab with chess on its Online chip, 02 looking, 03 nobody around,
 ## 04 no connection, 05 found, 06 the board mid-game with the clock quiet,
@@ -13,7 +13,11 @@ extends SceneTree
 ## timeout, 10 for a player who left, 11 for a resignation, 12 a loss on the
 ## clock, 13 the computer's game after the offline card's Play the computer;
 ## then it checks that Cancel while looking closes the screen. `tab` stops
-## after 01. `rm` is reduce motion. Prints the draw calls at each
+## after 01. Then checkers (`checkers` alone skips chess): c02 looking, c06 the
+## board mid-game after a capture each way with the clock quiet on your move,
+## c07 after your man has taken two and been crowned, the clock warning on the
+## other player's move, c09 the end card for a player who left, c12 a loss by
+## resignation with the other player's face. `rm` is reduce motion. Prints the draw calls at each
 ## shot. user://versus.cfg is put back at the end.
 
 const Rules = preload("res://versus/chess_rules.gd")
@@ -21,6 +25,11 @@ const Fake = preload("res://tests/_fake_match.gd")
 const Record = preload("res://versus/versus_record.gd")
 
 const RIVAL := "shot-rival-uid-7"
+## Checkers' line, as tests/_probe_online.gd plays it: this seat opens.
+const CK_LINE := [
+	[18, 1, 25], [43, 1, 34], [25, 1, 43, 34], [50, 1, 36, 43],
+	[20, 1, 29], [57, 1, 50], [29, 2, 43, 57, 36, 50],
+]
 
 var _menu: Node
 var _s: Node
@@ -28,6 +37,8 @@ var _t := 0.0
 var _out := "/tmp"
 var _lang := ""
 var _tab_only := false
+var _ck_only := false
+var _ply := 0
 var _rm := false
 var _quiet := false
 var _step := 0
@@ -48,6 +59,8 @@ func _initialize() -> void:
 			_rm = true
 		elif a == "tab":
 			_tab_only = true
+		elif a == "checkers":
+			_ck_only = true
 		else:
 			_out = a
 	if _lang != "":
@@ -114,7 +127,7 @@ func _process(delta: float) -> bool:
 		0:
 			if _t > 0.8:
 				_menu._show_tab("versus")
-				_step = 1
+				_step = 30 if _ck_only else 1
 				_wait = _t + 0.6
 		1:
 			if _beat(0.6, func() -> void: _menu.versus_tab._pick("chess", Record.ONLINE), "01_tab"):
@@ -138,9 +151,7 @@ func _process(delta: float) -> bool:
 				_step = 6
 		6:
 			if _s._state == _s.State.YOURS:
-				print("reduce motion %s, backend started %s, analytics started %s" % [
-					load("res://core/motion.gd").reduce, load("res://core/backend.gd").started(),
-					load("res://core/analytics.gd").started()])
+				_say_quiet()
 				_s._on_chosen(find("e2", "e4"))
 				_step = 7
 		7:
@@ -218,10 +229,65 @@ func _process(delta: float) -> bool:
 		24:
 			print("cancel: %s" % ("ok" if not is_instance_valid(_s) and _menu.get_node_or_null("Chess") == null \
 				and _menu.versus_tab.is_visible_in_tree() else "FAILED"))
-			_step = 99
+			_step = 30
+		30:
+			if _beat(0.7, func() -> void:
+					_menu._open_versus("checkers", Record.ONLINE)
+					_s = _menu.get_node("Checkers")
+					_ply = 0, "c02_looking"):
+				_fake().say_found(0, 0, RIVAL)
+				_step = 31
+		31:
+			# The line's first four plies: a capture each way.
+			if _ck_line(4):
+				_say_quiet()
+				_step = 32
+		32:
+			if _beat(2.6, func() -> void: _fake().say_clock(42), "c06_board_quiet"):
+				_step = 33
+		33:
+			# On to the seventh: this seat's man takes two and is crowned.
+			if _ck_line(7):
+				_step = 34
+		34:
+			if _s._state == _s.State.THINK and not _s.board.is_busy():
+				if _beat(1.2, func() -> void: _fake().say_clock(9), "c07_board_crowned_warning"):
+					print("checkers sent: %s" % [_fake().sent])
+					_step = 35
+		35:
+			if _beat(3.4, func() -> void: _fake().say_ended(0, "left"), "c09_end_left"):
+				_step = 36
+		36:
+			if _again(37):
+				_fake().say_ended(1, "resign")
+		37:
+			if _beat(3.4, func() -> void: pass, "c12_end_resign_lost"):
+				_step = 99
 		99:
 			_done()
 			_step = 100
+	return false
+
+func _say_quiet() -> void:
+	print("reduce motion %s, backend started %s, analytics started %s" % [
+		load("res://core/motion.gd").reduce, load("res://core/backend.gd").started(),
+		load("res://core/analytics.gd").started()])
+
+## Plays checkers' line up to ply `until`, this seat's moves as if tapped and
+## the other's as the match hands them on; true once the board has them all.
+func _ck_line(until: int) -> bool:
+	if _s.board.is_busy():
+		return false
+	if _ply >= until:
+		return _s._history.size() >= until and _s._state != _s.State.ANIM
+	if _s._history.size() != _ply:
+		return false
+	if _s._state == _s.State.YOURS and _ply % 2 == 0:
+		_s._on_chosen(PackedInt32Array(CK_LINE[_ply]))
+		_ply += 1
+	elif _s._state == _s.State.THINK and _ply % 2 == 1:
+		_fake().say_move({"m": CK_LINE[_ply]})
+		_ply += 1
 	return false
 
 ## Presses button `i` of a card's stack (Dialog.buttons).

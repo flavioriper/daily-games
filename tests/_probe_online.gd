@@ -7,6 +7,7 @@ extends SceneTree
 ##     firebase emulators:start --only auth,database --project demo-peeplet
 ##   FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet \
 ##     godot --headless --path . --script res://tests/_probe_online.gd -- chess
+##   (or `-- checkers`)
 ##
 ## Run with only the game's name, it is the conductor: for each of three
 ## games it starts **two more processes** of itself (`-- chess play <who>
@@ -20,7 +21,9 @@ extends SceneTree
 ##    an underpromotion (to a knight) and a castle on each side, so all three
 ##    are known to travel in the move, then the computer plays on (level 1
 ##    against level 0) to a mate or a draw. Both ends must print one result
-##    and one final position.
+##    and one final position. Checkers' line is seven plies: a capture each
+##    way, then a man that takes two in one move and is crowned where it
+##    lands, so a chain and a crowning are known to travel in the array.
 ## 2. **A kill.** One process kills itself (SIGKILL) on its fourth move; the
 ##    other must end with `left`, a win.
 ## 3. **A resignation.** One presses Back and the dialog's Resign; the other
@@ -36,6 +39,8 @@ extends SceneTree
 const Backend = preload("res://core/backend.gd")
 const Rules = preload("res://versus/chess_rules.gd")
 const AI = preload("res://versus/chess_ai.gd")
+const CkRules = preload("res://versus/checkers_rules.gd")
+const CkAI = preload("res://versus/checkers_ai.gd")
 const Record = preload("res://versus/versus_record.gd")
 
 const CFG := "user://versus.cfg"
@@ -46,9 +51,17 @@ const LINE := [
 	["c7", "b8", Rules.KNIGHT], ["g7", "g6", 0], ["g1", "f3", 0], ["f8", "g7", 0],
 	["f1", "e2", 0], ["g8", "f6", 0], ["e1", "g1", 0], ["e8", "g8", 0],
 ]
+## Checkers' opening, whole moves as the rules make them: [from, n, the
+## landings, the pieces taken]. The seventh takes 36 and 50 and is crowned on 57.
+const CK_LINE := [
+	[18, 1, 25], [43, 1, 34], [25, 1, 43, 34], [50, 1, 36, 43],
+	[20, 1, 29], [57, 1, 50], [29, 2, 43, 57, 36, 50],
+]
 ## A game this long is given up by whoever is to move, the real way.
 const LONG := 110
 
+## "chess" or "checkers".
+var _game := "chess"
 var _begun := false
 var _fails := 0
 var _tag := ""
@@ -73,16 +86,19 @@ func _process(delta: float) -> bool:
 	if not _begun:
 		_begun = true
 		var args := OS.get_cmdline_user_args()
+		if args.size() >= 1 and args[0] in ["chess", "checkers"]:
+			_game = args[0]
+		else:
+			print("usage: -- chess|checkers   (snooker is not built yet)")
+			quit(2)
+			return false
 		if args.size() >= 5 and args[1] == "play":
 			_tag = "[%s] " % args[2]
 			_file = args[3]
 			_mode = args[4]
 			_play()
-		elif args.size() >= 1 and args[0] == "chess":
-			_conduct()
 		else:
-			print("usage: -- chess   (checkers and snooker are not built yet)")
-			quit(2)
+			_conduct()
 		return false
 	if _s != null:
 		_drive(delta / maxf(Engine.time_scale, 0.01))
@@ -103,7 +119,7 @@ func _spawn(who: String, mode: String) -> Array:
 	DirAccess.remove_absolute(file)
 	OS.set_environment("BACKEND_PLAYER", "user://probe_player_%s.cfg" % who)
 	var args := ["--headless", "--path", ProjectSettings.globalize_path("res://"),
-		"--script", "res://tests/_probe_online.gd", "--", "chess", "play", who, file, mode]
+		"--script", "res://tests/_probe_online.gd", "--", _game, "play", who, file, mode]
 	return [file, OS.create_process(OS.get_executable_path(), args)]
 
 func _report(file: String) -> Dictionary:
@@ -131,8 +147,8 @@ func _pair(mode_a: String, mode_b: String, need: Array, deadline: float) -> Arra
 	return out
 
 func _online_record() -> Vector3i:
-	var r := Record.get_record("chess", Record.ONLINE)
-	return Vector3i(r.x, r.y, Record.get_draws("chess", Record.ONLINE))
+	var r := Record.get_record(_game, Record.ONLINE)
+	return Vector3i(r.x, r.y, Record.get_draws(_game, Record.ONLINE))
 
 func _conduct() -> void:
 	if OS.get_environment("FIREBASE_EMULATOR").is_empty():
@@ -151,7 +167,7 @@ func _conduct() -> void:
 	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
 	if not a.is_empty() and not b.is_empty():
 		_check("they are two players in one match", a.uid != b.uid and a.opponent == b.uid and b.opponent == a.uid)
-		_check("in different seats, the opener white", int(a.seat) + int(b.seat) == 1 \
+		_check("in different seats, the opener %s" % ("white" if _game == "chess" else "light"), int(a.seat) + int(b.seat) == 1 \
 			and int(a.first) == int(b.first) and bool(a.white) != bool(b.white) \
 			and bool(a.white) == (int(a.seat) == int(a.first)))
 		_check("each drew the other's name on its scoreboard", a.rival == b.me and b.rival == a.me,
@@ -165,10 +181,17 @@ func _conduct() -> void:
 			"a %s, b %s; status %d, move %d" % [a.outcome, b.outcome, int(a.status), int(a.fullmove)])
 		_check("the same final position", a.position == b.position and int(a.plies) == int(b.plies),
 			"%s after %d plies" % [a.position, int(a.plies)])
-		_check("an en passant, a promotion and two castles travelled",
-			int(a.ep) == 1 and int(b.ep) == 1 and int(a.promo) >= 1 and int(b.promo) >= 1 \
-			and int(a.castle) >= 2 and int(b.castle) >= 2 and a.specials == b.specials,
-			"ep %d, promotions %d, castles %d; b8 was made a %s" % [int(a.ep), int(a.promo), int(a.castle), a.b8])
+		if _game == "chess":
+			_check("an en passant, a promotion and two castles travelled",
+				int(a.ep) == 1 and int(b.ep) == 1 and int(a.promo) >= 1 and int(b.promo) >= 1 \
+				and int(a.castle) >= 2 and int(b.castle) >= 2 and a.specials == b.specials,
+				"ep %d, promotions %d, castles %d; b8 was made a %s" % [int(a.ep), int(a.promo), int(a.castle), a.b8])
+		else:
+			_check("a chain and a crowning travelled",
+				int(a.chain) >= 1 and int(b.chain) >= 1 and int(a.crown) >= 1 and int(b.crown) >= 1 \
+				and a.specials == b.specials and str(a.specials).begins_with("2 take 1, 3 take 1, 6 take 2 crown"),
+				"chains %d (the longest took %d), crownings %d, captures %d; the line: %s" % [
+					int(a.chain), int(a.longest), int(a.crown), int(a.takes), str(a.specials).left(34)])
 		_check("undo, reset and the bulb were off", not bool(a.tools) and not bool(b.tools))
 		_check("the end card's button is Find another", a.again == b.again and not str(a.again).is_empty(), str(a.again))
 		var after := _online_record()
@@ -226,7 +249,7 @@ func _play() -> void:
 	Engine.time_scale = float(_env("SPEED", 4))
 	# load(), not preload: the screen names the Ads autoload, which is not
 	# there yet when this script compiles.
-	var screen: GDScript = load("res://versus/chess_screen.gd")
+	var screen: GDScript = load("res://versus/%s_screen.gd" % _game)
 	_s = screen.new(Record.ONLINE)
 	_s.closed.connect(_on_closed)
 	root.add_child(_s)
@@ -237,9 +260,17 @@ func _sq(n: String) -> int:
 
 ## The move this seat makes now: the line's while it lasts and is legal,
 ## then the computer's.
-func _choose() -> int:
+func _choose() -> Variant:
 	var g: RefCounted = _s.rules
 	var ply: int = _s._history.size()
+	if _game == "checkers":
+		if ply < CK_LINE.size():
+			var want := PackedInt32Array(CK_LINE[ply])
+			for m: PackedInt32Array in g.legal_moves():
+				if m == want:
+					return m
+			_say("the line's ply %d is not legal here" % ply)
+		return CkAI.new().plan(g.copy(), 1 if _s.player == CkRules.LIGHT else 0, _env("SEED", 1) + ply, 150)
 	if ply < LINE.size():
 		var want: Array = LINE[ply]
 		for m in g.legal_moves():
@@ -270,7 +301,7 @@ func _drive(real: float) -> void:
 			_say("killing itself")
 			OS.kill(OS.get_process_id())
 			return
-		if (_mode == "resign" and _mine >= 3) or _s.rules.fullmove > LONG:
+		if (_mode == "resign" and _mine >= 3) or _moves() > LONG:
 			_acted = true
 			_resign()
 			return
@@ -278,13 +309,21 @@ func _drive(real: float) -> void:
 			# A king's leap across the board, sent as the screen sends a move.
 			_acted = true
 			_say("sending a move that is not one")
-			_s.online.send({"m": Rules.mv(_s.rules.kings[_s.player], 36)})
+			if _game == "checkers":
+				# A man's leap from one corner to the other.
+				_s.online.send({"m": [0, 1, 63]})
+			else:
+				_s.online.send({"m": Rules.mv(_s.rules.kings[_s.player], 36)})
 			return
 		_mine += 1
 		_s._on_chosen(_choose())
 	elif _idle_t > 150.0 and st != _s.State.WAIT:
 		_say("STUCK in state %d" % st)
 		_write(false)
+
+## The move number the screen shows.
+func _moves() -> int:
+	return int(_s.rules.fullmove) if _game == "chess" else int(_s._move_number())
 
 ## Back, as the top bar's arrow does it, and then the dialog's Resign.
 func _resign() -> void:
@@ -318,9 +357,23 @@ func _write(closed: bool) -> void:
 	var promo := 0
 	var castle := 0
 	var b8 := ""
+	var chain := 0
+	var longest := 0
+	var crown := 0
+	var takes := 0
 	var specials: Array = []
 	for i in _s._history.size():
 		var d: Dictionary = _s._history[i]
+		if _game == "checkers":
+			var n: int = (d.caps as Array).size()
+			if n == 0 and not bool(d.crown):
+				continue
+			takes += 1 if n > 0 else 0
+			chain += 1 if n >= 2 else 0
+			longest = maxi(longest, n)
+			crown += 1 if bool(d.crown) else 0
+			specials.append("%d%s%s" % [i, " take %d" % n if n > 0 else "", " crown" if bool(d.crown) else ""])
+			continue
 		if int(d.rook_from) >= 0:
 			castle += 1
 			specials.append("%d castle" % i)
@@ -344,11 +397,14 @@ func _write(closed: bool) -> void:
 	var saw := {
 		"uid": Backend.uid(), "me": load("res://versus/online/names.gd").name_of(Backend.uid()),
 		"opponent": on.opponent, "rival": _s._names[1].text,
-		"seat": on.seat, "first": on.first, "white": _s.player == Rules.WHITE,
+		"seat": on.seat, "first": on.first,
+		"white": _s.player == (Rules.WHITE if _game == "chess" else CkRules.LIGHT),
 		"winner": int(on.result.get("winner", -9)), "why": str(on.result.get("why", "")),
-		"outcome": "lost" if closed else str(_s.board._mood), "status": g.status(), "fullmove": g.fullmove,
+		"outcome": "lost" if closed else str(_s.board._mood), "status": g.status(), "fullmove": _moves(),
 		"plies": _s._history.size(),
-		"position": ("%s %d %d %d" % [g.board, g.turn, g.castling, g.ep]).md5_text(),
+		"position": (("%s %d %d %d" % [g.board, g.turn, g.castling, g.ep]) if _game == "chess" \
+			else ("%s %d %d" % [g.board, g.turn, g.quiet])).md5_text(),
+		"chain": chain, "longest": longest, "crown": crown, "takes": takes,
 		"ep": ep, "promo": promo, "castle": castle, "b8": b8, "specials": ", ".join(specials),
 		"tools": _tools,
 		"said": said, "again": again, "asked": _asked, "closed": closed,

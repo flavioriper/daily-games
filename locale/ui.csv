@@ -842,6 +842,7 @@ VS_NAME_PUMPKIN,Pumpkin,Abóbora,Calabaza
 VS_NAME_MUSHROOM,Mushroom,Cogumelo,Seta
 VS_NAME_HEDGEHOG,Hedgehog,Ouriço,Erizo
 VS_ONLINE,Online,Online,Online
+VS_ONLINE_MOTTO,A MINUTE A MOVE,UM MINUTO POR JOGADA,UN MINUTO POR JUGADA
 VS_ONLINE_BLURB,"A live game against another player, with a minute for every turn.","Uma partida ao vivo contra outro jogador, com um minuto para cada jogada.","Una partida en vivo contra otro jugador, con un minuto para cada jugada."
 VS_LOOKING,Looking for a player…,Procurando um jogador…,Buscando un jugador…
 VS_LOOKING_BODY,The game starts as soon as someone turns up.,A partida começa assim que alguém aparecer.,La partida empieza en cuanto aparezca alguien.

@@ -173,7 +173,8 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", GAP)
 	_margins.add_child(col)
 
-	top_bar = FlatTopBar.new("Chess", tr("CHS_MOTTO"), true)
+	# The motto names the moon: a game online has its own.
+	top_bar = FlatTopBar.new("Chess", tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "CHS_MOTTO"), true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)
@@ -771,6 +772,7 @@ func _play_computer() -> void:
 	_seat_rival("")
 	for l in _status:
 		l.remove_theme_color_override("font_color")
+	top_bar.set_motto(tr("CHS_MOTTO"))
 	Analytics.track("versus_start", {"game": GAME, "level": level})
 	_new_game()
 	tutor.first_play()
