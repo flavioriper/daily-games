@@ -11,6 +11,8 @@ const Haptics = preload("res://core/haptics.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
+const Social = preload("res://core/social.gd")
+const DeepLink = preload("res://core/deep_link.gd")
 const Locale = preload("res://core/locale.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const AgeGate = preload("res://core/age_gate.gd")
@@ -33,6 +35,9 @@ func _ready() -> void:
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)  # first: Ads.start() reads remote config through it
+	# Friends ride on the backend's identity. Started is not connected: it
+	# holds no stream until the player has social (core/social.gd).
+	Social.start(self)
 	if AgeScreen.wanted():
 		var age := AgeScreen.new()
 		age.name = "AgeScreen"
@@ -44,6 +49,38 @@ func _ready() -> void:
 	else:
 		Ads.start()
 	$UI/BannerHost.tapped.connect(_open_store)
+	_take_link()
+
+## The game brought back to the front: a friend link tapped while it was
+## open arrives as a new intent and a resume, with no second _ready.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
+		_take_link()
+
+## A friend link the game was opened with (core/deep_link.gd hands each out
+## once): whoever opens it is the sender's friend from here on, with nothing
+## to confirm. The new friend card is the menu's, raised by the hub's
+## `befriended`, so a success says nothing here. Does nothing while Social is
+## unstarted, and leaves the link untaken, so tests/_offline_main.gd can
+## call it and stay offline -- and a harness that has given the game a
+## Social.fake can open a link with `-- --link=`.
+func _take_link() -> void:
+	if not Social.started():
+		return
+	var code := Social.code_in(DeepLink.take())
+	if code == "":
+		return
+	Social.enable()
+	var res: Dictionary = await Social.add(code)
+	if res.get("ok", false):
+		Analytics.track("friends_added", {"via": "link"})
+		return
+	# "already" needs no word; "self", "unknown" and "offline" do, and the
+	# word is the menu's to say.
+	var why := str(res.get("why", ""))
+	var menu := get_node_or_null("UI/Menu")
+	if why != "already" and menu != null and menu.has_method("friend_link_failed"):
+		menu.friend_link_failed(why)
 
 ## The banner's "Remove ads" tab: the purchase sheet over whatever is up --
 ## the open board's own, else the menu's. BannerHost stands last under UI, so
