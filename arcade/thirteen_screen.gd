@@ -6,7 +6,7 @@ extends Control
 ## boards' top bar (back, the title in ink, restart, settings), a paper row
 ## with the score, the best and the biggest pebble, the tray on a paper card
 ## like Binairo's, and under it the clovers and the five tools. A pebble is
-## drawn as a rounded pastel tile (arcade/thirteen_art.gd); the code keeps
+## drawn as a round pastel disc (arcade/thirteen_art.gd); the code keeps
 ## the old word.
 ##
 ## Play: press on a pebble and drag through three or more touching pebbles
@@ -56,15 +56,31 @@ const HUD_H := 110.0
 const TOOLS_H := 150.0
 const FRAME := 16
 const BACKDROP_BLEED := 90.0
-## Cells a second a pebble slides at when a tool moves it, and the pull a
-## pebble falls into a gap with (cells a second squared), from this pace.
-const SLIDE_V := 9.0
+## How long a pebble a tool moved takes to glide to its cell (and how much
+## longer a cell of the way, up to the most), and how far it bows off the
+## straight line, in cells: two that trade places pass each other.
+const GLIDE_T := 0.22
+const GLIDE_PER := 0.05
+const GLIDE_MAX := 0.42
+const GLIDE_BOW := 0.2
+## The pull a pebble falls into a gap with (cells a second squared), from
+## this pace.
 const GRAVITY := 70.0
 const FALL_V0 := 3.0
 ## How long a merged-away pebble takes to roll along the chain into the one
-## it joined, and how much later each one after it sets off.
-const JOIN_T := 0.2
-const JOIN_STEP := 0.025
+## it joined, and how much later each one after it sets off (a long chain's
+## share the wait of three).
+const JOIN_T := 0.26
+const JOIN_STEP := 0.03
+## The gulp of a pebble taking its new number.
+const BUMP_T := 0.36
+## A picked pebble rides a spring up off the tray and back: its stiffness
+## and its drag (a tenth past, then home), and how big it is held.
+const LIFT_K := 676.0
+const LIFT_DAMP := 32.0
+const LIFT_SCALE := 1.06
+## How long the chain's band takes to reach a pebble just taken.
+const SEG_T := 0.14
 ## How far from a pebble's centre a finger has to come to take it into the
 ## chain, in cells: under half, so a diagonal drag does not catch the
 ## pebbles beside the corner it cuts.
@@ -139,7 +155,9 @@ var _wash := StyleBoxFlat.new()
 var _live: ArrayMesh
 ## One a pebble in the tray: id -> {pos: Vector2 (column, row, in cells),
 ## v, vel, hold: seconds before it may move, squash, amt, bump, pop,
-## pending (the number it takes once the chain has rolled in), pend_t}.
+## pending (the number it takes once the chain has rolled in), pend_t,
+## lift and lift_v (the spring it is picked up on), stretch, glide (a tool
+## moved it: it glides, even straight down), from, to, slide_t, slide_d}.
 var _vis := {}
 ## Pebbles rolling along the chain into the one they joined:
 ## {v, path: Array of cells, from: index on it, t}.
@@ -162,10 +180,10 @@ var _swap_a := Vector2i(-1, -1)
 var _idle := 0.0
 var _hint: Array = []
 var _big_t := 1.0
-## Seconds since the chain last changed, for its pebbles' little hop.
+## Seconds since the chain last changed, for the badge's pop, and since it
+## last grew, for the band reaching the new pebble.
 var _chain_t := 0.0
-## The last pebble taken into the chain, the one that hops.
-var _newest := Vector2i(-1, -1)
+var _seg_t := 1.0
 ## The finger over the field while a chain is drawn, for the tether.
 var _finger := Vector2.INF
 ## The live layer over the pebbles (glints), kept until the next replaces it.
@@ -592,7 +610,6 @@ func _wipe() -> void:
 	_glints.clear()
 	_reveal = {}
 	_finger = Vector2.INF
-	_newest = Vector2i(-1, -1)
 	_stuck_box.visible = false
 	_stuck_said = true
 	_bits.clear()
@@ -659,12 +676,16 @@ func _process(delta: float) -> void:
 
 func _new_vis(pos: Vector2, v: int) -> Dictionary:
 	return {"pos": pos, "v": v, "vel": 0.0, "hold": 0.0, "squash": -1.0, "amt": 0.0, "bump": -1.0, "pop": -1.0, "pending": 0, "pend_t": 0.0,
-		"nudge": Vector2.ZERO, "nudge_t": -1.0, "wig": -1.0}
+		"nudge": Vector2.ZERO, "nudge_t": -1.0, "wig": -1.0, "lift": 0.0, "lift_v": 0.0, "stretch": 0.0,
+		"glide": false, "from": pos, "to": pos, "slide_t": -1.0, "slide_d": 0.0}
 
 func _animate(delta: float) -> void:
 	# every pebble in the tray settles toward its cell: down a gap under
-	# gravity, sideways (a swap, a shuffle, an undo) at a slide
+	# gravity, anywhere a tool sent it (a swap, a shuffle, an undo) on a glide
 	var seen := {}
+	var picked := {}
+	for p: Vector2i in sim.path:
+		picked[p] = true
 	for c in Sim.COLS:
 		for r in Sim.ROWS:
 			var cell: Dictionary = sim.grid[c][r]
@@ -690,17 +711,22 @@ func _animate(delta: float) -> void:
 				vis.hold -= delta
 			elif Motion.reduce:
 				vis.pos = want
-			elif vis.pos.y < want.y - 0.001 and absf(vis.pos.x - want.x) < 0.001:
+				vis.slide_t = -1.0
+				vis.glide = false
+			elif vis.slide_t >= 0.0 or (vis.pos != want and (vis.glide or vis.pos.y > want.y or absf(vis.pos.x - want.x) >= 0.001)):
+				_glide(vis, want, delta)
+			elif vis.pos != want:
 				vis.vel = maxf(float(vis.vel), FALL_V0) + GRAVITY * delta
 				vis.pos.y = minf(want.y, vis.pos.y + vis.vel * delta)
 				if vis.pos.y >= want.y:
-					_squash(vis, clampf(float(vis.vel) * 0.012, 0.05, 0.15))
+					_squash(vis, clampf(float(vis.vel) * 0.007, 0.03, 0.09))
 					vis.vel = 0.0
 					_fx.cue("land", randf_range(0.9, 1.15), -4.0)
-			elif vis.pos != want:
-				vis.pos = vis.pos.move_toward(want, SLIDE_V * delta)
-				if vis.pos == want:
-					_squash(vis, 0.06)
+			else:
+				vis.glide = false
+			# a falling pebble stretches, and lets go of it as softly
+			vis.stretch = lerpf(float(vis.stretch), minf(0.1, float(vis.vel) * 0.005), 1.0 - exp(-delta * 26.0))
+			_lift_to(vis, 1.0 if picked.has(Vector2i(c, r)) and vis.pos == want else 0.0, delta)
 			if vis.squash >= 0.0:
 				vis.squash += delta
 			if vis.bump >= 0.0:
@@ -723,6 +749,8 @@ func _animate(delta: float) -> void:
 	_joins = _joins.filter(func(j: Dictionary) -> bool: return j.t < JOIN_T)
 	for d: Dictionary in _debris:
 		d.t += delta
+		if d.t < 0.0:
+			continue
 		d.vel.y += 2600.0 * delta
 		d.pos += d.vel * delta
 		d.rot += d.spin * delta
@@ -732,11 +760,12 @@ func _animate(delta: float) -> void:
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 0.9)
 	_big_t += delta
 	_chain_t += delta
+	_seg_t += delta
 	_fly(delta)
 	_shake = maxf(0.0, _shake - delta * 3.0)
 	if _shake > 0.0 and not Motion.reduce:
-		var amp := 12.0 * _shake * _shake
-		_shake_off = Vector2(sin(_clock * 71.0), cos(_clock * 57.0)) * amp
+		var amp := 6.0 * _shake * _shake
+		_shake_off = Vector2(sin(_clock * 37.0), cos(_clock * 31.0)) * amp
 	else:
 		_shake_off = Vector2.ZERO
 	# a tray left alone shows a move
@@ -798,8 +827,52 @@ func _squash(vis: Dictionary, amt: float) -> void:
 	vis.squash = 0.0
 	vis.amt = amt
 
-## Now and then a pebble at rest glints and another gives a little wiggle;
-## a thirteen or past it glints more often.
+## A pebble a tool moved glides to `want`: eased at both ends and bowed off
+## the straight line, always to the same hand, so two that trade places pass.
+func _glide(vis: Dictionary, want: Vector2, delta: float) -> void:
+	if vis.slide_t < 0.0 or vis.to != want:
+		vis.from = vis.pos
+		vis.to = want
+		vis.slide_t = 0.0
+		vis.slide_d = clampf(GLIDE_T + GLIDE_PER * (want - (vis.pos as Vector2)).length(), GLIDE_T, GLIDE_MAX)
+	vis.slide_t += delta
+	var k := clampf(float(vis.slide_t) / float(vis.slide_d), 0.0, 1.0)
+	if k >= 1.0:
+		vis.pos = want
+		vis.slide_t = -1.0
+		vis.glide = false
+		_squash(vis, 0.03)
+		return
+	var e := smoothstep(0.0, 1.0, k)
+	var leg: Vector2 = vis.to - vis.from
+	var bow := leg.orthogonal().normalized() * minf(GLIDE_BOW, 0.14 * leg.length()) * sin(e * PI)
+	vis.pos = (vis.from as Vector2).lerp(vis.to, e) + bow
+
+## A pebble's lift follows `up` (1 in the chain, 0 at rest) on a spring: it
+## glides up a tenth past and settles, and comes down the same way.
+func _lift_to(vis: Dictionary, up: float, delta: float) -> void:
+	if Motion.reduce or (absf(up - float(vis.lift)) < 0.001 and absf(float(vis.lift_v)) < 0.01):
+		vis.lift = up
+		vis.lift_v = 0.0
+		return
+	var left := minf(delta, 0.1)
+	while left > 0.0:
+		var dt := minf(left, 1.0 / 120.0)
+		vis.lift_v += (LIFT_K * (up - float(vis.lift)) - LIFT_DAMP * float(vis.lift_v)) * dt
+		vis.lift += float(vis.lift_v) * dt
+		left -= dt
+
+## How far up a cell's pebble is held, 0 to 1 (and a little past).
+func _lift_of(cell: Vector2i) -> float:
+	var held: Dictionary = sim.at(cell)
+	return float(_vis[held.id].lift) if not held.is_empty() and _vis.has(held.id) else 1.0
+
+## How far along its way a pebble rolling into a merge is, eased at both ends.
+static func _join_ease(k: float) -> float:
+	return smoothstep(0.0, 1.0, k)
+
+## Now and then a pebble at rest glints and another swells a little; a
+## thirteen or past it glints more often.
 func _twinkle(delta: float) -> void:
 	for g: Dictionary in _glints:
 		g.t += delta
@@ -1009,11 +1082,7 @@ func _on_field_input(event: InputEvent) -> void:
 	if released:
 		_dragging = false
 		_finger = Vector2.INF
-		# every pebble of the chain drops back into its hollow
-		for p: Vector2i in sim.path:
-			var held: Dictionary = sim.at(p)
-			if not held.is_empty() and _vis.has(held.id):
-				_squash(_vis[held.id], 0.07)
+		# every pebble of the chain settles back into its seat on its spring
 		sim.commit()
 		_play_events()
 		return
@@ -1104,7 +1173,7 @@ func _play_events() -> void:
 				_show_banner(tr("FF_READY"), tr("LT_READY_LINE"), 1.2)
 			"select":
 				_chain_t = 0.0
-				_newest = ev.cell
+				_seg_t = 0.0 if int(ev.n) >= 2 else 1.0
 				_fx.cue("select", minf(0.9 + 0.07 * (int(ev.n) - 1), 1.9))
 				if int(ev.n) == 1:
 					_tier = 0
@@ -1116,10 +1185,7 @@ func _play_events() -> void:
 					if sim.path.size() >= t:
 						_tier = t
 				_chain_t = 0.0
-				_newest = sim.path[-1] if not sim.path.is_empty() else Vector2i(-1, -1)
-				var gone: Dictionary = sim.at(ev.cell)
-				if not gone.is_empty() and _vis.has(gone.id):
-					_squash(_vis[gone.id], 0.1)
+				_seg_t = 1.0
 				_fx.cue("unselect", minf(0.9 + 0.07 * int(ev.n), 1.9))
 			"short":
 				if int(ev.n) >= 2:
@@ -1128,7 +1194,9 @@ func _play_events() -> void:
 			"merge":
 				_on_merge(ev)
 			"settle":
-				var wait := 0.0 if Motion.reduce else JOIN_T + JOIN_STEP * 2.0
+				# the tray waits for a chain to roll in; a plucked pebble's gap
+				# closes after a beat
+				var wait := 0.0 if Motion.reduce else (0.06 if _joins.is_empty() else JOIN_T + JOIN_STEP * 2.0)
 				for f: Dictionary in ev.falls:
 					if _vis.has(f.id):
 						_vis[f.id].hold = maxf(float(_vis[f.id].hold), wait)
@@ -1177,8 +1245,10 @@ func _on_merge(ev: Dictionary) -> void:
 		chain.append(Vector2(g.cell))
 	chain.append(Vector2(into))
 	if not Motion.reduce:
-		for k in (ev.gone as Array).size():
-			_joins.append({"v": old_v, "path": chain, "from": k, "t": -JOIN_STEP * ((ev.gone as Array).size() - 1 - k)})
+		var gone: int = (ev.gone as Array).size()
+		var step := JOIN_STEP * minf(1.0, 2.0 / maxf(1.0, gone - 1.0))
+		for k in gone:
+			_joins.append({"v": old_v, "path": chain, "from": k, "t": -step * (gone - 1 - k)})
 	for g: Dictionary in ev.gone:
 		_vis.erase(g.id)
 	if _vis.has(ev.id):
@@ -1205,7 +1275,7 @@ func _on_merge(ev: Dictionary) -> void:
 		_fx.puff(at, Art.paint(int(ev.v)), 6)
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
 		_fx.cue("merge", clampf(0.85 + 0.05 * int(ev.v), 0.85, 1.6))
-		_knock(into, 0.05 + 0.012 * n)
+		_knock(into, 0.04 + 0.008 * n)
 		_merge_burst(ev, at)
 		if bool(ev.get("new_max", false)):
 			_fx.sparkle(at, Color("fffaf0"))
@@ -1226,7 +1296,6 @@ func _on_merge(ev: Dictionary) -> void:
 	_streak = _streak + 1 if n >= 4 else 0
 	if n >= 6:
 		_kick(_score_k, 0.3, 0.35)
-		_shake = maxf(_shake, 0.1 + 0.02 * n)
 
 ## The pebbles round a merge are knocked outward by it and rock back.
 func _knock(at: Vector2i, amt: float) -> void:
@@ -1302,13 +1371,17 @@ func _on_tool_event(ev: Dictionary) -> void:
 		"undo":
 			_fx.cue("undo")
 			_joins.clear()
-			# every pebble the undo brought back pops in where it stands
+			# every pebble the undo brought back pops in where it stands;
+			# the rest glide home
 			for id in _vis:
 				_vis[id].hold = 0.0
 				_vis[id].pend_t = 0.0
 				_vis[id].pending = 0
+				_vis[id].glide = true
 		"swap":
 			_fx.cue("swap")
+			for id in _vis:
+				_vis[id].glide = true
 		"pluck":
 			_fx.cue("pluck")
 			var cell: Vector2i = ev.cell
@@ -1318,12 +1391,12 @@ func _on_tool_event(ev: Dictionary) -> void:
 			_vis.erase(ev.id)
 		"shuffle":
 			_fx.cue("shuffle")
-			_shake = maxf(_shake, 0.45)
-			# the pebbles are shaken up before they slide to their new places
-			if not Motion.reduce:
-				for id in _vis:
-					var vis: Dictionary = _vis[id]
-					vis.pos += Vector2(randf_range(-0.25, 0.25), randf_range(-0.25, 0.25))
+			# the pebbles set off a moment apart and swirl to their new places
+			for id in _vis:
+				var vis: Dictionary = _vis[id]
+				vis.glide = true
+				if not Motion.reduce:
+					vis.hold = randf_range(0.0, 0.1)
 		"lift":
 			_fx.cue("lift")
 			var cell: Vector2i = ev.cell
@@ -1371,10 +1444,11 @@ func _confetti() -> void:
 			if is_instance_valid(_fx):
 				_fx.puff(at, CONFETTI[k % CONFETTI.size()], 10))
 
-## A pebble knocked out of the tray: it flies out, spinning, and falls away.
-func _fling(v: int, at: Vector2) -> void:
+## A pebble knocked out of the tray: after `wait` it flies out, spinning, and
+## falls away.
+func _fling(v: int, at: Vector2, wait := 0.0) -> void:
 	var dir := Vector2(randf_range(-1.0, 1.0), randf_range(-1.4, -0.6)).normalized()
-	_debris.append({"v": v, "pos": at, "vel": dir * randf_range(500.0, 900.0), "spin": randf_range(-8.0, 8.0), "rot": 0.0, "t": 0.0})
+	_debris.append({"v": v, "pos": at, "vel": dir * randf_range(500.0, 900.0), "spin": randf_range(-8.0, 8.0), "rot": 0.0, "t": -wait})
 
 func _show_banner(text: String, sub: String, hold: float) -> void:
 	_banner.text = text
@@ -1448,7 +1522,7 @@ func _build_bed() -> ArrayMesh:
 	var b := Face.Builder.new()
 	for c in Sim.COLS:
 		for r in range(Sim.ROWS - _rows(), Sim.ROWS):
-			b.polygon(Art.tile_outline(px(c, r), _u * 0.86), Color(Pal.STONE_GIVEN, 0.4))
+			b.polygon(Art.tile_outline(px(c, r), _u * Art.PIECE), Color(Pal.STONE_GIVEN, 0.4))
 	return b.mesh()
 
 static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
@@ -1472,7 +1546,7 @@ func _draw_field() -> void:
 		return
 	field.draw_mesh(_bed, null)
 	var font := Art.font()
-	var s := _u * 0.86
+	var s := _u * Art.PIECE
 	var picked := {}
 	for p: Vector2i in sim.path:
 		picked[p] = true
@@ -1493,19 +1567,20 @@ func _draw_stones() -> void:
 	if sim == null or _u <= 0.0:
 		return
 	var font := Art.font()
-	var s := _u * 0.86
+	var s := _u * Art.PIECE
 	var picked := {}
 	for p: Vector2i in sim.path:
 		picked[p] = true
 	# the pebbles rolling along the chain into the one they joined
 	for j: Dictionary in _joins:
-		if j.t < 0.0:
-			continue
-		var k: float = j.t / JOIN_T
-		var p := _along(j.path, int(j.from), k * k)
-		var sc := lerpf(1.0, 0.7, k)
-		var ja := 1.0 - k * 0.5
-		_stones.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * 0.1 * (1.0 - k)), 0.0, Vector2(sc, sc))
+		# held as the chain was (one still waiting its turn stands where it
+		# was), it eases along it, shrinking, and melts into the last over
+		# the end of the way
+		var k: float = maxf(0.0, j.t) / JOIN_T
+		var p := _along(j.path, int(j.from), _join_ease(k))
+		var sc := lerpf(LIFT_SCALE, 0.5, k * k)
+		var ja := 1.0 - smoothstep(0.55, 1.0, k)
+		_stones.draw_set_transform(px(p.x, p.y) + _shake_off + Vector2(0, -_u * LIFT * (1.0 - k)), 0.0, Vector2(sc, sc))
 		_stones.draw_mesh(Art.pebble(j.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, ja))
 		Art.number(field, font, Vector2.ZERO, j.v, s, ja)
 	_stones.draw_set_transform(Vector2.ZERO)
@@ -1518,26 +1593,22 @@ func _draw_stones() -> void:
 		var cell := Vector2i(roundi(vis.pos.x), roundi(vis.pos.y))
 		var sc := _scale(vis)
 		var c := px(vis.pos.x, vis.pos.y) + _shake_off + _nudge(vis) * _u
-		var rot := 0.0
 		if vis.wig >= 0.0 and not Motion.reduce:
-			rot = 0.14 * exp(-float(vis.wig) * 5.0) * sin(float(vis.wig) * 22.0)
-		var lifted: bool = picked.has(cell) and vis.pos == Vector2(cell)
-		if lifted:
-			# the chain is held up off the tray; the newest hops, the rest bob
-			# in a wave down the chain
-			var lift := LIFT
-			if not Motion.reduce:
-				if cell == _newest:
-					lift += sin(minf(1.0, _chain_t / 0.2) * PI) * 0.1
-				else:
-					lift += 0.02 * sin(_clock * 6.0 - sim.path.find(cell) * 0.8)
-			sc *= 1.08
-			c.y -= _u * lift
+			sc *= 1.0 + 0.04 * sin(float(vis.wig) / 0.8 * PI)
+		var lift: float = vis.lift
+		if absf(lift) > 0.001:
+			# the chain is held up off the tray on its springs, bobbing in a
+			# slow wave down it
+			var up := LIFT * lift
+			if picked.has(cell) and not Motion.reduce:
+				up += 0.015 * lift * sin(_clock * 4.0 - sim.path.find(cell) * 0.8)
+			sc *= 1.0 + (LIFT_SCALE - 1.0) * lift
+			c.y -= _u * up
 		elif not _hint.is_empty() and _hint.has(cell) and not Motion.reduce:
-			var k := 0.5 + 0.5 * sin(_clock * 5.0 - _hint.find(cell) * 0.6)
-			sc *= 1.0 + 0.05 * k
+			var k := 0.5 + 0.5 * sin(_clock * 3.2 - _hint.find(cell) * 0.6)
+			sc *= 1.0 + 0.04 * k
 		# no tile fades for a chain: its lift and the paper under it say it
-		_stones.draw_set_transform(c, rot, sc)
+		_stones.draw_set_transform(c, 0.0, sc)
 		_stones.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY)
 		Art.number(field, font, Vector2.ZERO, vis.v, s)
 	_stones.draw_set_transform(Vector2.ZERO)
@@ -1554,7 +1625,7 @@ func _draw_top() -> void:
 	if sim == null or _u <= 0.0:
 		return
 	var font := Art.font()
-	var s := _u * 0.86
+	var s := _u * Art.PIECE
 	var picked := {}
 	for p: Vector2i in sim.path:
 		picked[p] = true
@@ -1580,7 +1651,7 @@ func _draw_top() -> void:
 		var bs := s * 0.46
 		var bc := px(last.x, last.y) + Vector2(_u * 0.38, -_u * (0.42 + LIFT)) + _shake_off
 		var grow := 1.0 if Motion.reduce else Motion.back_out(minf(1.0, _chain_t / 0.2))
-		var tilt := 0.0 if Motion.reduce else 0.08 * sin(_clock * 4.0)
+		var tilt := 0.0 if Motion.reduce else 0.05 * sin(_clock * 2.6)
 		if not Motion.reduce:
 			bc.y += sin(_clock * 3.0) * _u * 0.02
 			grow *= 1.0 + 0.04 * minf(8.0, sim.path.size() - Sim.MIN_CHAIN)
@@ -1627,16 +1698,24 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		var tail := PackedVector2Array()
 		for q in 6:
 			var e := maxf(0.0, k - q * 0.07)
-			var at := _along(jn.path, int(jn.from), e * e)
+			var at := _along(jn.path, int(jn.from), _join_ease(e))
 			tail.append(px(at.x, at.y))
 		b.stroke(tail, s * 0.34, Color(Art.paint(int(jn.v)).lightened(0.3), 0.35 * (1.0 - k)))
 	if not sim.path.is_empty():
 		var v: int = sim.value(sim.path[0])
 		var col := Art.paint(v)
 		var long: bool = sim.path.size() >= 5
+		# every pad rides up with its tile, and the band reaches the tile
+		# just taken from the one before it
 		var pts := PackedVector2Array()
+		var ups := PackedFloat32Array()
 		for p: Vector2i in sim.path:
-			pts.append(px(p.x, p.y) - Vector2(0, _u * LIFT))
+			var up := _lift_of(p)
+			ups.append(clampf(up, 0.0, 1.08))
+			pts.append(px(p.x, p.y) - Vector2(0, _u * LIFT * up))
+		var band := pts.duplicate()
+		if band.size() >= 2 and not Motion.reduce:
+			band[band.size() - 1] = pts[pts.size() - 2].lerp(pts[pts.size() - 1], smoothstep(0.0, 1.0, _seg_t / SEG_T))
 		# the chain is one piece of paper slid under the tiles it holds: a
 		# pad under each, a band between them with the tiles' paint down its
 		# middle, and a soft shadow under the lot
@@ -1646,40 +1725,43 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		var pad := s * 1.05 + rim * 2.0
 		var down := Vector2(0, rim * 1.2)
 		var shade := Color(0.36, 0.24, 0.14, 0.16)
-		for p in pts:
-			b.polygon(Art.tile_outline(p + down, pad), shade)
-		if pts.size() >= 2:
-			b.stroke(Transform2D(0.0, down) * pts, w + rim * 2.0, shade)
-		for p in pts:
-			b.polygon(Art.tile_outline(p, pad), paper)
-		if pts.size() >= 2:
-			b.stroke(pts, w + rim * 2.0, paper)
-			b.stroke(pts, w, col)
+		for i in pts.size():
+			if ups[i] > 0.05:
+				b.polygon(Art.tile_outline(pts[i] + down, pad * ups[i]), shade)
+		if band.size() >= 2:
+			b.stroke(Transform2D(0.0, down) * band, w + rim * 2.0, shade)
+		for i in pts.size():
+			if ups[i] > 0.05:
+				b.polygon(Art.tile_outline(pts[i], pad * ups[i]), paper)
+		if band.size() >= 2:
+			b.stroke(band, w + rim * 2.0, paper)
+			b.stroke(band, w, col)
 			# beads of light flowing down the ribbon toward its end
 			if not Motion.reduce:
 				var total := 0.0
-				for q in range(1, pts.size()):
-					total += pts[q - 1].distance_to(pts[q])
+				for q in range(1, band.size()):
+					total += band[q - 1].distance_to(band[q])
 				var gap := _u * 0.34
 				var off := fmod(_clock * _u * 1.6, gap)
 				var d := off
 				while d < total:
-					var at := _point_on(pts, d)
+					var at := _point_on(band, d)
 					b.disc(at, _u * (0.035 if not long else 0.045), Color(Pal.SUN.lightened(0.3) if long else Color("fffaf0"), 0.95))
 					d += gap
 		# three or more: the ribbon ends in a sun ring over the last pebble,
 		# breathing
 		if pts.size() >= Sim.MIN_CHAIN:
 			var tip: Vector2 = pts[-1]
-			var br := 1.0 if Motion.reduce else 1.0 + 0.04 * sin(_clock * 7.0)
-			b.stroke(Art.tile_outline(tip, (s * 1.05 + maxf(4.0, s * 0.055) * 2.0) * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
+			var br := 1.0 if Motion.reduce else 1.0 + 0.03 * sin(_clock * 3.5)
+			if ups[-1] > 0.05:
+				b.stroke(Art.tile_outline(tip, pad * ups[-1] * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
 	if not _hint.is_empty():
-		var a := 0.3 + 0.15 * sin(_clock * 5.0)
+		var a := 0.3 + 0.15 * sin(_clock * 3.2)
 		for p: Vector2i in _hint:
 			b.polygon(Art.tile_outline(px(p.x, p.y), s * 1.14), Color(Pal.SUN, a))
 	# an armed tool lights the pebbles it may be used on
 	if _armed >= 0 and not busy():
-		var pulse := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 5.0)
+		var pulse := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 3.2)
 		for c in Sim.COLS:
 			for r in range(Sim.ROWS - _rows(), Sim.ROWS):
 				var cell := Vector2i(c, r)
@@ -1734,8 +1816,9 @@ func _draw_over(b: Face.Builder, s: float) -> void:
 func _nudge(vis: Dictionary) -> Vector2:
 	if vis.nudge_t < 0.0:
 		return Vector2.ZERO
+	# out at once, and back the once
 	var t: float = vis.nudge_t
-	return (vis.nudge as Vector2) * sin(minf(t / 0.06, 1.0) * PI * 0.5) * exp(-t * 7.0) * cos(maxf(0.0, t - 0.06) * 18.0)
+	return (vis.nudge as Vector2) * sin(minf(t / 0.08, 1.0) * PI * 0.5) * (0.5 + 0.5 * cos(clampf((t - 0.08) / 0.36, 0.0, 1.0) * PI))
 
 ## How a pebble is scaled this frame: popping in, the gulp when it grows,
 ## the squash when it lands.
@@ -1745,16 +1828,16 @@ func _scale(vis: Dictionary) -> Vector2:
 	var sc := Vector2.ONE
 	if vis.pop >= 0.0 and vis.pop < 0.4:
 		sc *= Motion.back_out(clampf(vis.pop / 0.3, 0.0, 1.0))
-	if vis.bump >= 0.0:
-		var k := clampf(vis.bump / 0.32, 0.0, 1.0)
-		var w := sin(k * PI) * (1.0 - k * 0.4)
-		sc *= Vector2(1.0 + 0.24 * w - 0.08 * sin(k * TAU), 1.0 + 0.18 * w + 0.08 * sin(k * TAU))
-	if float(vis.vel) > 0.0:
-		var st := minf(0.14, float(vis.vel) * 0.006)
+	if vis.bump >= 0.0 and vis.bump < BUMP_T:
+		# one swell, quick up and slow home
+		sc *= 1.0 + 0.16 * (0.5 - 0.5 * cos(TAU * pow(float(vis.bump) / BUMP_T, 0.6)))
+	if vis.stretch > 0.002:
+		var st: float = vis.stretch
 		sc *= Vector2(1.0 - st * 0.6, 1.0 + st)
-	if vis.squash >= 0.0 and vis.squash < 0.6:
+	if vis.squash >= 0.0 and vis.squash < 0.5:
+		# it gives as it lands and comes back up the once
 		var t: float = vis.squash
-		var q := float(vis.amt) * exp(-t * 11.0) * cos(t * 30.0)
+		var q := float(vis.amt) * 2.2 * sin(t * 20.0) * exp(-t * 12.0)
 		sc *= Vector2(1.0 + q * 0.75, 1.0 - q)
 	return sc
 
@@ -1893,12 +1976,12 @@ func _draw_reveal() -> void:
 	var burst := 0.0
 	if t < 0.32:
 		var k := Motion.back_out(t / 0.32)
-		at = (_reveal.from as Vector2).lerp(mid, minf(1.0, t / 0.26))
-		size = lerpf(_u * 0.86, big, k)
+		at = (_reveal.from as Vector2).lerp(mid, 1.0 - pow(1.0 - t / 0.32, 3.0))
+		size = lerpf(_u * Art.PIECE, big, k)
 		burst = clampf(t / 0.32, 0.0, 1.0)
 	elif t < hold:
-		at = mid + Vector2(0, sin((t - 0.32) * 4.0) * 6.0)
-		size = big * (1.0 + 0.03 * sin((t - 0.32) * 7.0))
+		at = mid + Vector2(0, sin((t - 0.32) * 2.6) * 5.0)
+		size = big * (1.0 + 0.02 * sin((t - 0.32) * 3.5))
 		burst = 1.0
 	else:
 		var k := clampf((t - hold) / REVEAL_FLY, 0.0, 1.0)
@@ -1912,7 +1995,7 @@ func _draw_reveal() -> void:
 		var rs := big * 2.6 * burst
 		_air.draw_mesh(Art.rays(512.0, rc, 16 if gold else 12), null, Transform2D(_clock * 0.7, Vector2(rs, rs) / 512.0, 0.0, at))
 		_air.draw_mesh(Art.rays(512.0, Color("fffaf0"), 8), null, Transform2D(-_clock * 0.4, Vector2(rs, rs) * 0.7 / 512.0, 0.0, at))
-	var tilt := sin(t * 3.0) * 0.06 if t < hold else 0.0
+	var tilt := sin(t * 2.4) * 0.035 if t < hold else 0.0
 	_air.draw_set_transform(at, tilt, Vector2(size, size) / 200.0)
 	_air.draw_mesh(Art.pebble(v, 200.0), Art.skin(), Transform2D.IDENTITY)
 	Art.number(_air, Art.font(), Vector2.ZERO, v, 200.0)
@@ -1990,10 +2073,11 @@ func _game_over() -> void:
 	Ads.note_finished()
 	_fx.cue("tumble")
 	_show_banner(tr("LT_OVER"), "", 1.0)
-	_shake = 0.8
+	# from the foot up, a row after a row
 	for id in _vis.keys():
 		var vis: Dictionary = _vis[id]
-		_fling(int(vis.v), px(vis.pos.x, vis.pos.y))
+		var wait: float = 0.0 if Motion.reduce else 0.035 * (Sim.ROWS - 1 - vis.pos.y) + 0.012 * vis.pos.x
+		_fling(int(vis.v), px(vis.pos.x, vis.pos.y), maxf(0.0, wait))
 	_vis.clear()
 	# the pebbles are gone from the drawing, not from the sim; keep them from
 	# coming back on the next frame's settle
