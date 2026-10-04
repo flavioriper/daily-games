@@ -444,23 +444,17 @@ class ThirteenBanner extends Control:
 		var mid := size * Vector2(0.5, 0.56)
 		var font := PebbleArt.font()
 		var b := Face.Builder.new()
-		b.fan(PackedVector2Array([Vector2(0, mid.y - s * 0.8), Vector2(size.x, mid.y - s * 0.8), size, Vector2(0, size.y)]), Color(PebbleArt.SAND, 0.85))
-		var y := mid.y - s * 0.6
-		while y < size.y:
-			var pts := PackedVector2Array()
-			for i in 17:
-				var t := i / 16.0
-				pts.append(Vector2(size.x * t, y + sin(t * TAU * 1.5) * 4.0))
-			b.stroke(pts, 2.0, Color(PebbleArt.SAND_DEEP, 0.6))
-			y += 16.0
-		# the chain through the three sixes
+		b.fan(PackedVector2Array([Vector2(0, mid.y - s * 0.8), Vector2(size.x, mid.y - s * 0.8), size, Vector2(0, size.y)]), Color(Pal.PARCHMENT, 0.9))
+		# the chain through the three sixes: paper slid under them
 		var row := [3, 6, 6, 6, 9, 13]
 		var at: Array = []
 		for k in row.size():
 			at.append(mid + Vector2((k - 2.5) * s * 1.12, (0.18 if k % 2 == 0 else -0.14) * s))
 		var chain := PackedVector2Array([at[1], at[2], at[3]])
-		b.stroke(chain, s * 0.26, Color(PebbleArt.paint(6).darkened(0.2), 0.9))
-		b.stroke(chain, s * 0.13, Color(PebbleArt.paint(6).lightened(0.45), 0.95))
+		for p in chain:
+			b.polygon(PebbleArt.tile_outline(p, s * 1.2), Color("fffaf0"))
+		b.stroke(chain, s * 0.46, Color("fffaf0"))
+		b.stroke(chain, s * 0.3, PebbleArt.paint(6))
 		var ground := b.mesh()
 		_keep.append(ground)
 		draw_mesh(ground, null)

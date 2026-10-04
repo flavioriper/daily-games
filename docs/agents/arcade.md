@@ -342,3 +342,39 @@ inside `_clip` (the only clipped layer, opened `CLIP_PAD` past the field at
 the sides and foot and 14 px above, so a waiting stone stays hidden) and
 `_top` (glints, the badge of what the chain makes, pops); `_fx` sits above
 them. Ask for a redraw through `_redraw()`, never `field.queue_redraw()`.
+
+**Redrawn after Binairo, cozy and soft** (2026-10-04, user request: "based
+on binairo... cozy and soft"; the user chose rounded-square tiles over round
+pebbles). What the paragraphs above say of the stones' look, the sand and
+the wooden frame describes what was; the bake, the atlas and the three layers
+stand.
+- **A piece is a tile** (`shaders/tile_bake_2d.gdshader`, was
+  `pebble_bake_2d`): a rounded square of one flat pastel with a thin lip of
+  the same colour deepened under its foot (`Art.ROUND`, `Art.LIP`, the
+  shader's constants of the same names), a faint ground shadow, no line, no
+  gloss, no bevel. `PAINT` keeps its hues pulled toward paper, so every
+  effect that asks `Art.paint()` softened with it. The number is one Label in
+  ink warmed with the tile's lip (`number_colour`), paper on 14-16. A paler
+  stitch inside the edge from 10, a gold one past 13; 13 keeps its clover.
+  The code still says pebble (`Art.pebble`, `_vis`); the screen says tile
+  (`peça`, `ficha`) in ten strings, and `LT_WORD_4` lost its rock pun.
+  Strings changed in `locale/ui.csv` show only after `godot --headless
+  --path . --import` (the `.translation` files are ignored by git).
+- **The tray is the flat boards' card** (`CozyTheme.lifted(Pal.PARCHMENT,
+  36, ...)` with the hairline, as `ui/flat/flat_host.gd` builds it).
+  `sand_bake_2d.gdshader`, `_bake_bed`, the rake, moss and shells are gone;
+  `_bed` is one mesh of seats, a shade deeper than the card, seen only while
+  tiles are falling in.
+- **Nothing fades for a chain** (the rule on pieces coloured by index): the
+  picked tiles lift and a sheet of paper lies under them -- a pad a tile, a
+  band between with the paint down its middle, a soft shadow -- ending in a
+  sun ring cut to the tile's shape. Hint, armed tool and the swap's first
+  pick are the same rounded square in `Pal.SUN`. A stuck tray goes pale
+  under a veil of the card's paper (`_wash`, a StyleBoxFlat so the flash and
+  the veil keep the card's corners) instead of a brown one.
+- `tests/_shot_thirteen.gd`, second reading on `opengl3_angle`: 105 at rest,
+  139 on the 13's reveal, 154 after the bot's play (187 on the first
+  reading; 220 before the change), 256 on the tab.
+- `tests/_shot_howto_screen.gd -- thirteen` prints `Parameter "mesh" is
+  null` every frame; it did before this pass too (the same with the change
+  stashed) and the pages draw. Not looked into.

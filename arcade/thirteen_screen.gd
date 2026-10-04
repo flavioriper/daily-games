@@ -4,8 +4,10 @@ extends Control
 ## by drawing chains (spec
 ## docs/superpowers/specs/2026-09-27-arcade-thirteen-design.md). The flat
 ## boards' top bar (back, the title in ink, restart, settings), a paper row
-## with the score, the best and the biggest pebble, the tray in the
-## Arcade's wooden frame, and under it the clovers and the five tools.
+## with the score, the best and the biggest pebble, the tray on a paper card
+## like Binairo's, and under it the clovers and the five tools. A pebble is
+## drawn as a rounded pastel tile (arcade/thirteen_art.gd); the code keeps
+## the old word.
 ##
 ## Play: press on a pebble and drag through three or more touching pebbles
 ## of its number (diagonals count; drag back to take the last one off), then
@@ -13,15 +15,14 @@ extends Control
 ## arcade/thirteen_sim.gd, which resolves a move at once; this screen draws
 ## the tray settling after it and plays its events.
 ##
-## Drawing: the raked sand is one still mesh built on resize; every pebble
-## is one cached mesh moved by the transform with its number lettered over
-## it; the chain, the halos and the sparks are one live mesh.
+## Drawing: the seats are one still mesh built on resize; every pebble is
+## one cached quad of the baked atlas moved by the transform; the chain, its
+## pads and the sparks are one live mesh.
 
 signal closed
 
 const Sim = preload("res://arcade/thirteen_sim.gd")
 const Art = preload("res://arcade/thirteen_art.gd")
-const SAND_SHADER = preload("res://shaders/sand_bake_2d.gdshader")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
@@ -80,12 +81,12 @@ const FLIGHT_T := 0.6
 ## the flight.
 const REVEAL_HOLD := 0.75
 const REVEAL_FLY := 0.42
-const CONFETTI := [Color("f2b632"), Color("ec7f8c"), Color("6fb4e2"), Color("5fae5a"), Color("c98ac6")]
+const CONFETTI := [Color("f6cb5e"), Color("f3a9af"), Color("9fcbe8"), Color("b9d996"), Color("dbaed6")]
 ## A long chain's word, by the chain's length, longest first.
 const WORDS := [[10, "LT_WORD_5"], [8, "LT_WORD_4"], [6, "LT_WORD_3"], [5, "LT_WORD_2"], [4, "LT_WORD_1"]]
 ## The lengths a chain being drawn rings out at.
 const TIERS := [4, 5, 6, 8, 10]
-const STICKER_COLS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
+const STICKER_COLS := [Color("f08a80"), Color("f6b866"), Color("f0d36a"), Color("9ed48a"), Color("86c2ee"), Color("c19be0")]
 ## The most bits alive in one layer at once.
 const MAX_BITS := 420
 
@@ -133,10 +134,8 @@ var _clip: Control
 var _stones: Control
 var _top: Control
 var _bed: ArrayMesh
-## The lit sand (shaders/sand_bake_2d.gdshader), baked for the field's size;
-## null until it is, and the flat `_bed` is drawn meanwhile.
-var _bed_tex: ImageTexture
-var _bed_for := Vector2.ZERO
+## The tray's wash, drawn over the tiles: a merge's flash, the stuck veil.
+var _wash := StyleBoxFlat.new()
 var _live: ArrayMesh
 ## One a pebble in the tray: id -> {pos: Vector2 (column, row, in cells),
 ## v, vel, hold: seconds before it may move, squash, amt, bump, pop,
@@ -259,19 +258,13 @@ func _build() -> void:
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
 	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	# a chunky wooden rim: the face, its own deepened line, a thick lip below
-	box.bg_color = Color("d9a56e")
-	box.set_corner_radius_all(44)
-	box.border_color = Color("a06a3e")
-	box.set_border_width_all(5)
-	box.border_width_bottom = 16
-	box.set_content_margin_all(FRAME + 2)
-	box.content_margin_bottom = FRAME + 13
-	box.shadow_color = Color(0.36, 0.22, 0.2, 0.18)
-	box.shadow_size = 8
-	box.shadow_offset = Vector2(0, 6)
+	# the flat boards' card (ui/flat/flat_host.gd): parchment, a hairline, a
+	# soft shadow
+	var box := CozyTheme.lifted(Pal.PARCHMENT, 36, FRAME)
+	box.set_border_width_all(2)
+	box.border_color = Color(Pal.LINE, 0.35)
 	frame.add_theme_stylebox_override("panel", box)
+	_wash.set_corner_radius_all(36 - FRAME)
 	col.add_child(frame)
 	field = Control.new()
 	field.name = "Field"
@@ -522,7 +515,6 @@ func _layout_field() -> void:
 	var board := Vector2(Sim.COLS, _rows()) * _u
 	_origin = Vector2(floorf((s.x - board.x) * 0.5), floorf((s.y - board.y) * 0.5) - (Sim.ROWS - _rows()) * _u)
 	_bed = _build_bed()
-	_bake_bed()
 	_clip.position = -CLIP_PAD
 	_clip.size = s + CLIP_PAD + Vector2(CLIP_PAD.x, CLIP_PAD.x)
 	_stones.position = CLIP_PAD
@@ -534,24 +526,6 @@ func _layout_field() -> void:
 	_stuck_box.size = Vector2(s.x - 120, 0)
 	_stuck_box.position = Vector2(60, s.y * 0.5 - _stuck_box.get_combined_minimum_size().y * 0.5)
 	_redraw()
-
-## Bake the lit sand for this size of field; the last one asked for wins.
-func _bake_bed() -> void:
-	var s := field.size
-	if s == _bed_for:
-		return
-	_bed_for = s
-	var m := ShaderMaterial.new()
-	m.shader = SAND_SHADER
-	m.set_shader_parameter("size", s)
-	m.set_shader_parameter("origin", _origin)
-	m.set_shader_parameter("unit", _u)
-	m.set_shader_parameter("cells", Vector2(Sim.COLS, Sim.ROWS))
-	m.set_shader_parameter("first_row", float(Sim.ROWS - _rows()))
-	var tex: ImageTexture = await Art.bake(self, [[Rect2(Vector2.ZERO, s), m]], Vector2i(s))
-	if tex != null and _bed_for == s:
-		_bed_tex = tex
-		_redraw()
 
 ## The centre of a cell, in the field's pixels (fractions allowed).
 func px(c: float, r: float) -> Vector2:
@@ -1469,76 +1443,13 @@ func _refresh_hud(delta := 0.0) -> void:
 ## The tray's bed: fine sand raked in rows round a hollow for every pebble,
 ## with moss in the corners and a few clover leaves and daisies.
 func _build_bed() -> ArrayMesh:
+	# a seat under every tile, a shade deeper than the card: what shows while
+	# the tiles above are still falling in
 	var b := Face.Builder.new()
-	var s := field.size
-	_quad(b, [Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)], [Art.SAND.lightened(0.05), Art.SAND.lightened(0.05), Art.SAND.darkened(0.03), Art.SAND.darkened(0.03)])
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 13
-	# the rake's lines, gently waved, across the whole bed
-	var y := 14.0
-	while y < s.y:
-		var pts := PackedVector2Array()
-		for i in 25:
-			var t := i / 24.0
-			pts.append(Vector2(lerpf(-10.0, s.x + 10.0, t), y + sin(t * TAU * 1.5 + y * 0.02) * 6.0))
-		b.stroke(pts, 3.0, Color(Art.SAND_DEEP, 0.45))
-		var hi := PackedVector2Array()
-		for p in pts:
-			hi.append(p + Vector2(0, 3.5))
-		b.stroke(hi, 1.5, Color(1, 1, 1, 0.35))
-		y += 26.0
-	# sunlight falling in from the top left
-	for k in 3:
-		var x0 := s.x * (0.02 + 0.32 * k)
-		_quad(b, [Vector2(x0, 0), Vector2(x0 + s.x * 0.14, 0), Vector2(x0 + s.x * 0.14 + s.y * 0.3, s.y), Vector2(x0 + s.y * 0.3, s.y)],
-			[Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.16), Color(1, 1, 0.92, 0.0), Color(1, 1, 0.92, 0.0)])
-	# a hollow under every pebble, the rake's lines curving round it
 	for c in Sim.COLS:
 		for r in range(Sim.ROWS - _rows(), Sim.ROWS):
-			var at := px(c, r)
-			var rr := _u * 0.47
-			b.stroke(Face.Builder.ring(at, rr * 1.08, rr * 1.08), 2.0, Color(Art.SAND_DEEP, 0.55), true)
-			b.disc(at, rr, Color(Art.SAND_DEEP, 0.55))
-			b.disc(at + Vector2(-rr * 0.05, -rr * 0.07), rr * 0.9, Color(Art.SAND_DEEP.darkened(0.08), 0.5))
-			b.stroke(Face.Builder.arc_points(at, rr * 0.98, PI * 0.1, PI * 0.9), 2.0, Color(1, 1, 1, 0.4))
-	# moss creeping in at the corners, with a clover leaf or two and daisies
-	for corner in [Vector2(0, 0), Vector2(s.x, 0), Vector2(0, s.y), Vector2(s.x, s.y)]:
-		for i in 9:
-			var p: Vector2 = corner + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * _u * 0.35
-			var rr := _u * rng.randf_range(0.08, 0.16)
-			b.disc(p, rr, Art.MOSS_DEEP if i % 3 == 0 else Art.MOSS)
-		for i in 2:
-			var p: Vector2 = corner.lerp(s * 0.5, 0.04 + 0.03 * i) + Vector2(rng.randf_range(-12.0, 12.0), rng.randf_range(-12.0, 12.0))
-			b.disc(p, _u * 0.045, Color("fffaf0"))
-			for k in 6:
-				b.disc(p + Vector2.from_angle(TAU * k / 6.0) * _u * 0.05, _u * 0.03, Color("fffaf0"))
-			b.disc(p, _u * 0.025, Color("f2c14e"))
-	# a few shells and grit washed into the sand between the hollows
-	for k in 7:
-		var c := rng.randi_range(0, Sim.COLS - 2)
-		var r := rng.randi_range(0, Sim.ROWS - 2)
-		var p := px(c + 0.5, r + 0.5) + Vector2(rng.randf_range(-0.08, 0.08), rng.randf_range(-0.08, 0.08)) * _u
-		if k % 2 == 0:
-			_shell(b, p, _u * rng.randf_range(0.11, 0.15), rng.randf_range(-0.8, 0.8))
-		else:
-			for q in 3:
-				var g := p + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * _u * 0.06
-				b.disc(g, _u * rng.randf_range(0.012, 0.022), Color(Art.SAND_DEEP.darkened(0.2), 0.7))
+			b.polygon(Art.tile_outline(px(c, r), _u * 0.86), Color(Pal.STONE_GIVEN, 0.4))
 	return b.mesh()
-
-## A little scallop shell lying in the sand, ribbed, its hinge down.
-func _shell(b: Face.Builder, at: Vector2, r: float, turn: float) -> void:
-	var fan := PackedVector2Array()
-	fan.append(at + Vector2(0, r * 0.55).rotated(turn))
-	for i in 11:
-		var a := lerpf(PI * 1.12, PI * 1.88, i / 10.0)
-		var bump := 1.0 + 0.06 * (1 if i % 2 == 0 else -1)
-		fan.append(at + Vector2.from_angle(a).rotated(turn) * r * bump)
-	b.polygon(fan, Color("f6d9c4"))
-	for i in 5:
-		var a := lerpf(PI * 1.22, PI * 1.78, i / 4.0)
-		b.stroke(PackedVector2Array([fan[0], at + Vector2.from_angle(a).rotated(turn) * r * 0.92]), maxf(1.0, r * 0.07), Color("d9a88c", 0.8))
-	b.ellipse(fan[0], r * 0.22, r * 0.12, Color("e8bea4"))
 
 static func _quad(b: Face.Builder, p: Array, c: Array) -> void:
 	var i0 := b.vertex(p[0], c[0])
@@ -1559,10 +1470,7 @@ func _draw_field() -> void:
 		_layout_field()
 	if _bed == null or sim == null:
 		return
-	if _bed_tex != null:
-		field.draw_texture_rect(_bed_tex, Rect2(Vector2.ZERO, field.size), false)
-	else:
-		field.draw_mesh(_bed, null)
+	field.draw_mesh(_bed, null)
 	var font := Art.font()
 	var s := _u * 0.86
 	var picked := {}
@@ -1589,8 +1497,6 @@ func _draw_stones() -> void:
 	var picked := {}
 	for p: Vector2i in sim.path:
 		picked[p] = true
-	var chain_v: int = sim.value(sim.path[0]) if not sim.path.is_empty() else 0
-	var stuck: bool = _stuck_box.visible
 	# the pebbles rolling along the chain into the one they joined
 	for j: Dictionary in _joins:
 		if j.t < 0.0:
@@ -1617,7 +1523,7 @@ func _draw_stones() -> void:
 			rot = 0.14 * exp(-float(vis.wig) * 5.0) * sin(float(vis.wig) * 22.0)
 		var lifted: bool = picked.has(cell) and vis.pos == Vector2(cell)
 		if lifted:
-			# the chain is held up off the sand; the newest hops, the rest bob
+			# the chain is held up off the tray; the newest hops, the rest bob
 			# in a wave down the chain
 			var lift := LIFT
 			if not Motion.reduce:
@@ -1630,15 +1536,10 @@ func _draw_stones() -> void:
 		elif not _hint.is_empty() and _hint.has(cell) and not Motion.reduce:
 			var k := 0.5 + 0.5 * sin(_clock * 5.0 - _hint.find(cell) * 0.6)
 			sc *= 1.0 + 0.05 * k
-		# while a chain is drawn, the pebbles it cannot take step back
-		var a := 1.0
-		if not picked.is_empty() and not lifted:
-			a = 0.72 if vis.v == chain_v else 0.45
-		elif stuck:
-			a = 0.55
+		# no tile fades for a chain: its lift and the paper under it say it
 		_stones.draw_set_transform(c, rot, sc)
-		_stones.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY, Color(1, 1, 1, a))
-		Art.number(field, font, Vector2.ZERO, vis.v, s, a)
+		_stones.draw_mesh(Art.pebble(vis.v, s), Art.skin(), Transform2D.IDENTITY)
+		Art.number(field, font, Vector2.ZERO, vis.v, s)
 	_stones.draw_set_transform(Vector2.ZERO)
 	# pebbles plucked out or tumbling at the end
 	for d: Dictionary in _debris:
@@ -1666,9 +1567,12 @@ func _draw_top() -> void:
 		_live_over = over.mesh()
 		_top.draw_mesh(_live_over, null, Transform2D(0.0, _shake_off))
 	if _flash > 0.0:
-		_top.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.5))
+		_wash.bg_color = Color(_flash_col, _flash * 0.5)
+		_top.draw_style_box(_wash, Rect2(Vector2.ZERO, field.size))
 	if stuck:
-		_top.draw_rect(Rect2(Vector2.ZERO, field.size), Color(0.25, 0.16, 0.08, 0.28))
+		# a stuck tray goes pale under a veil of the card's own paper
+		_wash.bg_color = Color(Pal.PARCHMENT, 0.55)
+		_top.draw_style_box(_wash, Rect2(Vector2.ZERO, field.size))
 	# what the chain will make, over its last pebble
 	if sim.path.size() >= Sim.MIN_CHAIN:
 		var last: Vector2i = sim.path[-1]
@@ -1711,9 +1615,9 @@ func _along(chain: Array, from: int, k: float) -> Vector2:
 	var i := mini(int(floorf(f)), legs - 1)
 	return (chain[from + i] as Vector2).lerp(chain[from + i + 1], f - i)
 
-## The chain being drawn: a soft halo under every picked pebble and a
-## ribbon through them in their paint, lit down the middle; the hint's
-## glow; the swap's first pick.
+## The chain being drawn: paper under every picked pebble and a band
+## through them with their paint down its middle; the hint's glow; the
+## swap's first pick.
 func _draw_chain(b: Face.Builder, s: float) -> void:
 	# the trails the merged pebbles leave as they roll into the last
 	for jn: Dictionary in _joins:
@@ -1733,33 +1637,24 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		var pts := PackedVector2Array()
 		for p: Vector2i in sim.path:
 			pts.append(px(p.x, p.y) - Vector2(0, _u * LIFT))
-		# the chain is one piece: a white-rimmed ribbon of the stones' paint
-		# with a lit upper edge and a deep lower one, widening into a white-
-		# rimmed pad under every stone it holds
+		# the chain is one piece of paper slid under the tiles it holds: a
+		# pad under each, a band between them with the tiles' paint down its
+		# middle, and a soft shadow under the lot
 		var paper := Color("fffaf0")
-		var deep := Art.line_colour(v)
-		var fill := col.lerp(paper, 0.3)
-		var w := _u * 0.34
-		var rim := maxf(4.0, s * 0.05)
-		var pad := s * 0.6
-		var down := Vector2(0, rim * 1.6)
-		# the lip it stands on, the rim, the body
+		var w := _u * 0.3
+		var rim := maxf(4.0, s * 0.055)
+		var pad := s * 1.05 + rim * 2.0
+		var down := Vector2(0, rim * 1.2)
+		var shade := Color(0.36, 0.24, 0.14, 0.16)
 		for p in pts:
-			b.disc(p + down, pad + rim, Color(deep, 0.5))
+			b.polygon(Art.tile_outline(p + down, pad), shade)
 		if pts.size() >= 2:
-			b.stroke(Transform2D(0.0, down) * pts, w + rim * 2.0, Color(deep, 0.5))
+			b.stroke(Transform2D(0.0, down) * pts, w + rim * 2.0, shade)
 		for p in pts:
-			b.disc(p, pad + rim, paper)
+			b.polygon(Art.tile_outline(p, pad), paper)
 		if pts.size() >= 2:
 			b.stroke(pts, w + rim * 2.0, paper)
-		for p in pts:
-			b.disc(p, pad, fill)
-		if pts.size() >= 2:
 			b.stroke(pts, w, col)
-			b.stroke(Transform2D(0.0, Vector2(0, w * 0.27)) * pts, w * 0.3, Color(deep, 0.45))
-			b.stroke(Transform2D(0.0, Vector2(0, -w * 0.25)) * pts, w * 0.2, Color(col.lerp(paper, 0.6), 0.9))
-			for p in pts:
-				b.disc(p, pad, fill)
 			# beads of light flowing down the ribbon toward its end
 			if not Motion.reduce:
 				var total := 0.0
@@ -1777,11 +1672,11 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 		if pts.size() >= Sim.MIN_CHAIN:
 			var tip: Vector2 = pts[-1]
 			var br := 1.0 if Motion.reduce else 1.0 + 0.04 * sin(_clock * 7.0)
-			b.stroke(Face.Builder.ring(tip, s * 0.64 * br, s * 0.64 * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
+			b.stroke(Art.tile_outline(tip, (s * 1.05 + maxf(4.0, s * 0.055) * 2.0) * br), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
 	if not _hint.is_empty():
-		var a := 0.12 + 0.1 * sin(_clock * 5.0)
+		var a := 0.3 + 0.15 * sin(_clock * 5.0)
 		for p: Vector2i in _hint:
-			b.disc(px(p.x, p.y), s * 0.62, Color("fffaf0", a))
+			b.polygon(Art.tile_outline(px(p.x, p.y), s * 1.14), Color(Pal.SUN, a))
 	# an armed tool lights the pebbles it may be used on
 	if _armed >= 0 and not busy():
 		var pulse := 0.5 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 5.0)
@@ -1792,11 +1687,11 @@ func _draw_chain(b: Face.Builder, s: float) -> void:
 					continue
 				var ok: bool = sim.can_target(_armed, _swap_a, cell) if _armed == Sim.Tool.SWAP and _swap_a.x >= 0 else sim.can_target(_armed, cell)
 				if ok:
-					b.stroke(Face.Builder.ring(px(c, r), s * 0.57, s * 0.57), maxf(2.0, s * 0.03), Color(Pal.SUN, 0.35 + 0.35 * pulse), true)
+					b.stroke(Art.tile_outline(px(c, r), s * 1.06), maxf(2.0, s * 0.03), Color(Pal.SUN, 0.35 + 0.35 * pulse), true)
 	if _swap_a.x >= 0:
 		var at := px(_swap_a.x, _swap_a.y)
-		b.disc(at, s * 0.62, Color(Pal.SUN, 0.25))
-		b.stroke(Face.Builder.ring(at, s * 0.6, s * 0.6), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
+		b.polygon(Art.tile_outline(at, s * 1.14), Color(Pal.SUN, 0.25))
+		b.stroke(Art.tile_outline(at, s * 1.1), maxf(3.0, s * 0.05), Color(Pal.SUN, 0.95), true)
 
 ## A point `d` pixels along a polyline.
 func _point_on(pts: PackedVector2Array, d: float) -> Vector2:
@@ -1909,7 +1804,7 @@ func _draw_air() -> void:
 func _draw_heat(b: Face.Builder) -> void:
 	var s := field.size
 	var beat := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
-	var tint := Color("ffb03b").lerp(Color("ff6f61"), _heat)
+	var tint := Color("f6c477").lerp(Color("f2a48d"), _heat)
 	var edge := Color(tint, (0.25 + 0.2 * beat) * _heat)
 	var none := Color(tint, 0.0)
 	var w := (70.0 + 40.0 * beat) * (0.6 + 0.4 * _heat)

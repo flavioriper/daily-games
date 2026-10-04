@@ -1,9 +1,10 @@
 extends RefCounted
 
 ## Lucky Thirteen's drawings (spec
-## docs/superpowers/specs/2026-09-27-arcade-thirteen-design.md): painted
-## river pebbles, one colour a number, the gold thirteen with its
-## four-leaf clover, the clover the tools are bought with, and the five
+## docs/superpowers/specs/2026-09-27-arcade-thirteen-design.md): the pieces,
+## one pastel a number -- rounded paper tiles with a thin lip, after
+## Binairo's (the code still calls one a pebble) -- the gold thirteen with
+## its four-leaf clover, the clover the tools are bought with, and the five
 ## tools' pictures. Each is built once per look and size, its origin at the
 ## centre, and moved by the draw transform; shared with the Arcade tab's
 ## banner. The number is lettered over the mesh by the caller (`number()`),
@@ -23,32 +24,36 @@ const GOLD := Color("f2b632")
 const WOOD := Color("c89664")
 const WOOD_DEEP := Color("9c6b45")
 
-## A number's paint: 1 rose and 2 sky as the reference has them, round the
-## wheel to 12's deep teal, 13 gold, and the dark stones past it.
+## A number's paint, every one pulled toward paper: 1 rose and 2 sky as the
+## reference has them, round the wheel to 12's dusty teal, 13 gold, and the
+## dusky tiles past it.
 const PAINT := [
 	Color("efe6d8"),  # 0 (unused)
-	Color("ec7f8c"),  # 1
-	Color("6fb4e2"),  # 2
-	Color("98c96c"),  # 3
-	Color("f5b77e"),  # 4
-	Color("c98ac6"),  # 5
-	Color("5fc1ad"),  # 6
-	Color("ee8d6e"),  # 7
-	Color("9391dc"),  # 8
-	Color("c9c052"),  # 9
-	Color("d9774a"),  # 10
-	Color("8a5a9e"),  # 11
-	Color("3f7f8c"),  # 12
-	Color("f2b632"),  # 13
-	Color("4a4250"),  # 14
-	Color("a8455a"),  # 15
-	Color("2f3a4a"),  # 16
+	Color("f3a9af"),  # 1
+	Color("9fcbe8"),  # 2
+	Color("b9d996"),  # 3
+	Color("f8cfa4"),  # 4
+	Color("dbaed6"),  # 5
+	Color("93d4c3"),  # 6
+	Color("f2a48d"),  # 7
+	Color("b5b3e4"),  # 8
+	Color("dbd487"),  # 9
+	Color("d98d6a"),  # 10
+	Color("a98bba"),  # 11
+	Color("7aa8b1"),  # 12
+	Color("f6cb5e"),  # 13
+	Color("7c7386"),  # 14
+	Color("b8697b"),  # 15
+	Color("66728a"),  # 16
 ]
 
-## The lit stones (shaders/pebble_bake_2d.gdshader), one cell a number, baked
-## once by ensure_skin(); null until then and for good where nothing renders,
-## and pebble() falls back to its flat drawing.
-const PEBBLE_SHADER = preload("res://shaders/pebble_bake_2d.gdshader")
+## The tiles (shaders/tile_bake_2d.gdshader), one cell a number, baked once
+## by ensure_skin(); null until then and for good where nothing renders, and
+## pebble() falls back to its mesh.
+const PEBBLE_SHADER = preload("res://shaders/tile_bake_2d.gdshader")
+## The tile's corner and lip, in halves of its side (the shader's ROUND, LIP).
+const ROUND := 0.36
+const LIP := 0.11
 const SKIN_CELL := 320
 const SKIN_SIDE := 4
 const SKIN_SPAN := 1.3
@@ -57,10 +62,14 @@ static var _cache := {}
 static var _skin: ImageTexture
 static var _skin_busy := false
 
-## A stone's line: its own paint deepened and cooled (the shader's deepen()).
+## A tile's lip: its own paint deepened (the shader's deepen()).
 static func line_colour(v: int) -> Color:
 	var c := paint(v)
-	return c.lerp(Color(c.r * c.r * 0.72, c.g * c.g * 0.66, c.b * c.b * 0.86), 0.92)
+	return c.lerp(Color(c.r * c.r * 0.86, c.g * c.g * 0.80, c.b * c.b * 0.90), 0.6)
+
+## A rounded square `side` across centred on `c`, cornered as a tile is.
+static func tile_outline(c: Vector2, side: float) -> PackedVector2Array:
+	return Face.Builder.round_rect(c - Vector2(side, side) * 0.5, Vector2(side, side), side * 0.5 * ROUND)
 
 ## The atlas pebble()'s quads are cut from; pass it as draw_mesh's texture.
 static func skin() -> Texture2D:
@@ -109,21 +118,15 @@ static func ensure_skin(host: Node, done := Callable()) -> void:
 			m.set_shader_parameter("px", 2.0 * SKIN_SPAN / SKIN_CELL)
 			var cell := Rect2(Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE) * SKIN_CELL, Vector2(SKIN_CELL, SKIN_CELL))
 			items.append([cell, m])
-			# the number, lettered into the picture: paper, lined in the
-			# stone's own deep colour, with the line's lip under it
-			var deep := line_colour(v)
-			for k in 2:
-				var word := Label.new()
-				word.text = str(v)
-				word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				word.add_theme_font_override("font", font())
-				word.add_theme_font_size_override("font_size", int(SKIN_CELL * (0.37 if v < 10 else 0.31)))
-				word.add_theme_color_override("font_color", deep if k == 0 else Color("fffaf0"))
-				word.add_theme_color_override("font_outline_color", deep)
-				word.add_theme_constant_override("outline_size", int(SKIN_CELL * 0.075))
-				var lift := SKIN_CELL * (-0.048 + (0.022 if k == 0 else 0.0))
-				items.append([Rect2(cell.position + Vector2(0, lift), cell.size), word])
+			# the number, lettered into the picture in ink, no line round it
+			var word := Label.new()
+			word.text = str(v)
+			word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			word.add_theme_font_override("font", font())
+			word.add_theme_font_size_override("font_size", int(SKIN_CELL * (0.4 if v < 10 else 0.33)))
+			word.add_theme_color_override("font_color", number_colour(v))
+			items.append([Rect2(cell.position + Vector2(0, -SKIN_CELL * 0.034), cell.size), word])
 		var side := SKIN_CELL * SKIN_SIDE
 		_skin = await bake(host, items, Vector2i(side, side), true)
 		_skin_busy = false
@@ -133,8 +136,8 @@ static func ensure_skin(host: Node, done := Callable()) -> void:
 	if _skin != null and done.is_valid():
 		done.call()
 
-## The quad a baked stone is drawn on: its cell of the atlas, `s` across the
-## stone itself (the cell is wider, for the shadow).
+## The quad a baked tile is drawn on: its cell of the atlas, `s` across the
+## tile itself (the cell is wider, for the shadow).
 static func _skin_quad(v: int, s: float) -> ArrayMesh:
 	var half := s * 0.5 * SKIN_SPAN
 	var cell := Vector2((v - 1) % SKIN_SIDE, (v - 1) / SKIN_SIDE)
@@ -150,27 +153,15 @@ static func _skin_quad(v: int, s: float) -> ArrayMesh:
 static func paint(v: int) -> Color:
 	return PAINT[clampi(v, 0, PAINT.size() - 1)]
 
-## Ink or paper, whichever reads on the pebble's paint.
+## Paper on a dusky tile; on the rest ink, warmed with the tile's own lip.
 static func number_colour(v: int) -> Color:
 	if v == 13:
 		return Color("7a4a10")
-	return Color("fffaf0") if paint(v).get_luminance() < 0.56 else INK
+	return Color("fffaf0") if paint(v).get_luminance() < 0.56 else INK.lerp(line_colour(v), 0.3)
 
-## The pebble's outline: a circle pressed a little out of round, each number
-## its own way, so a tray of them reads as stones and not as buttons.
-static func _outline(v: int, r: float) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	var n := 40
-	var ph := float(v) * 1.7
-	for i in n:
-		var a := TAU * i / n
-		var k := 1.0 + 0.035 * sin(a * 2.0 + ph) + 0.02 * sin(a * 3.0 + ph * 1.3)
-		pts.append(Vector2(cos(a) * r * k * 1.03, sin(a) * r * k * 0.97))
-	return pts
-
-## A pebble of number `v`, `s` pixels across, centred on the origin: a soft
-## shadow, a darker underside, the painted face lit from the top left, a
-## few speckles and a sheen. 13 is gold with a clover in its lap.
+## The tile of number `v`, `s` pixels across, centred on the origin: the
+## baked picture's quad, or until it is baked (and for good headless) the
+## same tile as a mesh -- the lip, the face, a stitch from 10, the clover.
 static func pebble(v: int, s: float) -> ArrayMesh:
 	var key := "p%d_%d" % [v, roundi(s)]
 	if _cache.has(key):
@@ -181,64 +172,22 @@ static func pebble(v: int, s: float) -> ArrayMesh:
 		_cache[key] = _skin_quad(v, s)
 		return _cache[key]
 	var b := Face.Builder.new()
+	_tile(b, Vector2.ZERO, s * 0.97, v)
 	var r := s * 0.5
-	var base := paint(v)
-	var deep := base.darkened(0.3)
-	# the shadow it casts on the sand, down and to the right
-	var shadow := _outline(v, r * 0.98)
-	for i in shadow.size():
-		shadow[i] = shadow[i] + Vector2(r * 0.06, r * 0.12)
-	b.fan(shadow, Color(0.3, 0.2, 0.08, 0.2))
-	# the underside, then the face lifted off it
-	b.fan(_outline(v, r), deep)
-	var face := _outline(v, r * 0.93)
-	for i in face.size():
-		face[i] = face[i] + Vector2(-r * 0.025, -r * 0.05)
-	b.fan(face, base)
-	# the lit crown, a paler oval up and to the left
-	b.ellipse(Vector2(-r * 0.12, -r * 0.2), r * 0.66, r * 0.56, base.lightened(0.1))
-	# the shade round the lower right, a crescent inside the rim
-	var shade := PackedVector2Array()
-	for i in 17:
-		shade.append(Vector2.from_angle(lerpf(-0.25, PI * 0.95, i / 16.0)) * r * 0.88 + Vector2(-r * 0.02, -r * 0.04))
-	for i in 17:
-		shade.append(Vector2.from_angle(lerpf(PI * 0.95, -0.25, i / 16.0)) * r * 0.7 + Vector2(-r * 0.12, -r * 0.14))
-	b.polygon(shade, Color(deep, 0.35))
-	# speckles, seeded by the number so every 5 wears the same ones
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 900 + v
-	for i in 7:
-		var p := Vector2.from_angle(rng.randf() * TAU) * r * rng.randf_range(0.2, 0.75)
-		b.disc(p, r * rng.randf_range(0.018, 0.035), Color(deep if i % 2 == 0 else base.lightened(0.3), 0.45))
-	# a stone dresses up as it grows: a painted band round it from 5, a
-	# second one from 9, and flecks of gold from 10
-	if v >= 5 and v < 13:
-		var band := _outline(v, r * 0.74)
-		for i in band.size():
-			band[i] = band[i] + Vector2(-r * 0.025, -r * 0.05)
-		b.stroke(band, maxf(1.5, s * 0.03), Color(base.lightened(0.42), 0.55), true)
-		if v >= 9:
-			var inner := _outline(v, r * 0.64)
-			for i in inner.size():
-				inner[i] = inner[i] + Vector2(-r * 0.025, -r * 0.05)
-			b.stroke(inner, maxf(1.0, s * 0.014), Color(base.darkened(0.2), 0.45), true)
-		if v >= 10:
-			for i in 5:
-				var a := TAU * (i + 0.3) / 5.0 + float(v)
-				b.disc(Vector2.from_angle(a) * r * 0.74 + Vector2(-r * 0.025, -r * 0.05), maxf(1.2, r * 0.035), Color(GOLD.lightened(0.2), 0.9))
-	# the rim light along the upper left edge, and the sheen
-	b.stroke(Face.Builder.arc_points(Vector2(-r * 0.025, -r * 0.05), r * 0.86, PI * 1.02, PI * 1.62), maxf(1.5, s * 0.022), Color(1, 1, 1, 0.3))
-	b.ellipse(Vector2(-r * 0.36, -r * 0.46), r * 0.2, r * 0.1, Color(1, 1, 1, 0.55))
-	b.disc(Vector2(-r * 0.12, -r * 0.6), r * 0.045, Color(1, 1, 1, 0.5))
+	if v >= 10:
+		b.stroke(tile_outline(Vector2(0, -r * LIP * 0.5), s * 0.82), maxf(1.5, s * 0.02), Color(GOLD.lightened(0.3) if v > 13 else paint(v).lerp(Color("fffaf0"), 0.55), 0.85), true)
 	if v == 13:
-		# gilt: a bright rim and a clover tucked at the lower right
-		b.stroke(_outline(v, r * 0.86), maxf(1.5, s * 0.02), Color("fff1b8", 0.8), true)
-		_clover(b, Vector2(r * 0.5, r * 0.46), r * 0.26, 0.4)
-	elif v > 13:
-		b.stroke(_outline(v, r * 0.86), maxf(1.5, s * 0.02), Color(GOLD, 0.7), true)
+		_clover(b, Vector2(r * 0.5, r * 0.44), r * 0.26, 0.4)
 	var m := b.mesh()
 	_cache[key] = m
 	return m
+
+## A tile laid into a builder: the lip and the face, `side` across at `c`.
+static func _tile(b: Face.Builder, c: Vector2, side: float, v: int) -> void:
+	var lip := side * 0.5 * LIP
+	var rr := side * 0.5 * ROUND
+	b.polygon(tile_outline(c, side), line_colour(v))
+	b.polygon(Face.Builder.round_rect(c - Vector2(side, side) * 0.5, Vector2(side, side - lip), rr), paint(v))
 
 ## The chain's soft glow under a picked pebble: a ring of its own paint.
 static func halo(v: int, s: float) -> ArrayMesh:
@@ -402,12 +351,9 @@ static func tool_icon(tool: String, s: float) -> ArrayMesh:
 	_cache[key] = m
 	return m
 
-## A plain little pebble for a picture: no speckles, no number.
+## A plain little tile for a picture: no number.
 static func _mini(b: Face.Builder, c: Vector2, r: float, v: int) -> void:
-	b.disc(c + Vector2(r * 0.06, r * 0.1), r, Color(0.3, 0.2, 0.08, 0.18))
-	b.disc(c, r, paint(v).darkened(0.25))
-	b.disc(c + Vector2(-r * 0.04, -r * 0.06), r * 0.9, paint(v))
-	b.ellipse(c + Vector2(-r * 0.34, -r * 0.42), r * 0.22, r * 0.11, Color(1, 1, 1, 0.5))
+	_tile(b, c, r * 1.8, v)
 
 ## The number on a pebble, lettered centred on `c` with a soft drop.
 static func number(ci: CanvasItem, font: Font, c: Vector2, v: int, s: float, alpha := 1.0) -> void:
