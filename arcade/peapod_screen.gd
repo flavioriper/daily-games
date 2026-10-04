@@ -54,7 +54,7 @@ const HUD_H := 110.0
 const FRAME := 16
 const BACKDROP_BLEED := 90.0
 ## The most sim steps one frame may run, so a stall never fast-forwards.
-const MAX_STEPS := 12
+const MAX_STEPS := 4
 ## The finger's slide, times this, is the cart's.
 const GAIN := 1.35
 ## Where the grass begins, in field units: under the cart's wheels.
@@ -72,7 +72,14 @@ const ALARM := Color("ff6f61")
 const HEAT := Color("ffb03b")
 ## A streak's word, by its length, loudest first.
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
-const GOT := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER", Sim.Kind.TWIN: "PP_GOT_TWIN"}
+const GOT := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER", Sim.Kind.TWIN: "PP_GOT_TWIN",
+	Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.MAGNET: "PP_GOT_MAGNET",
+	Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
+## What a rotten gift took, by the gift it undid (-1: nothing left to take).
+const ROT := {Sim.Kind.PEA: "PP_ROT_PEA", Sim.Kind.RATE: "PP_ROT_RATE", Sim.Kind.POWER: "PP_ROT_POWER", -1: "PP_ROT_NONE"}
+## The sound a gift is caught with, where it has one of its own.
+const CATCH_CUE := {Sim.Kind.TWIN: "twin", Sim.Kind.FAN: "pod", Sim.Kind.PIERCE: "pod", Sim.Kind.BURST: "pod", Sim.Kind.FROST: "frost",
+	Sim.Kind.SHOVE: "shove"}
 const MAX_POPS := 12
 const MAX_SPARKS := 40
 
@@ -115,8 +122,22 @@ var _knock := -1
 var _u := 2.4
 var _origin := Vector2.ZERO
 var _scene: ArrayMesh
-var _live: ArrayMesh
 var _live_top: ArrayMesh
+## Built with the garden and only moved or tinted after: the chalk line's
+## dashes and the plates under the gun's three numbers.
+var _dashes: ArrayMesh
+var _chips: ArrayMesh
+## Every pea in the air is one draw a look, every spark one more (checkup,
+## 2026-10-04: a pea laid into a mesh in script each frame was most of a
+## frame once the gun was full and a millipede let the peas fly far).
+var _pea_mm: Array = []
+var _pea_buf: Array = []
+var _spark_mm: MultiMesh
+## The crates and the plates the same way, one draw a look of them: a wall
+## of forty-five was forty-five draws, and the phone pays by the draw.
+## ArrayMesh -> [MultiMesh, its buffer, how many this frame].
+var _cast: Dictionary = {}
+var _spark_buf := PackedFloat32Array()
 ## The screen's own clock, for motion the sim does not own; it stops with
 ## the pause.
 var _clock := 0.0
@@ -315,6 +336,9 @@ func _layout_field() -> void:
 	_u = minf(s.x / Sim.W, s.y / Sim.H)
 	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
 	_scene = _build_scene()
+	_cast.clear()
+	_dashes = _build_dashes()
+	_chips = _build_chips()
 	var box: Control = _banner.get_meta("box")
 	box.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	box.position = Vector2(0, s.y * 0.36)
@@ -558,12 +582,16 @@ func _play_events() -> void:
 				_quiet.cue("shot", randf_range(0.94, 1.08), -4.0)
 			"hit":
 				_hit_at[ev.id] = _clock
-				_spark(pos, Color("fffaf0"))
-				_quiet.cue("hit", randf_range(0.9, 1.15), -6.0)
+				if not ev.quiet:
+					_spark(pos, Color("fffaf0"))
+					if ev.kind == Sim.Kind.IRON:
+						_quiet.cue("clank", randf_range(0.92, 1.1), -6.0)
+					else:
+						_quiet.cue("hit", randf_range(0.9, 1.15), -6.0)
 			"kill":
 				_on_kill(ev)
 			"token":
-				_fx.cue("gift", randf_range(0.96, 1.06))
+				_fx.cue("gift", 0.7 if ev.kind == Sim.Kind.ROT else randf_range(0.96, 1.06))
 				_rw.ring(_in_rw(pos), 26.0 * _u, Color(Art.colour(ev.kind, 1), 0.9))
 			"catch":
 				_on_catch(ev)
@@ -585,6 +613,8 @@ func _play_events() -> void:
 			"twin_off":
 				_fx.cue("twin_off", 1.0, -4.0)
 				_fx.puff(px(Vector2(ev.x, Sim.CART_Y - 10.0)), Pal.PEAR, 7)
+			"pod_off":
+				_fx.cue("twin_off", 1.25, -8.0)
 			"clear":
 				_on_clear(ev)
 			"warn":
@@ -667,8 +697,20 @@ func _on_catch(ev: Dictionary) -> void:
 	var got: int = ev.got
 	var at := _in_rw(Vector2(sim.x, Sim.CART_Y - 44.0))
 	var col: Color = Art.GIFT[got]
-	_fx.cue("twin" if got == Sim.Kind.TWIN else "catch", 1.0 + 0.04 * (sim.peas + sim.rate_lv))
+	if got == Sim.Kind.ROT:
+		# a rotten one: what it took, lettered in its own murk, and a shudder
+		_fx.cue("rot")
+		_feel(Haptics.WARN)
+		_shake = maxf(_shake, 0.4)
+		_flash_now(Art.ROT_INK, 0.35)
+		_rw.sticker(tr(ROT[int(ev.lost)]), at + Vector2(0, -30.0), 58, 1.1, false, Color("d9c7e0"), false, "got", 34.0)
+		_rw.spray(at, Art.ROT_INK, 8, 420.0, "shard", 0.9)
+		return
+	_fx.cue(CATCH_CUE.get(got, "catch"), 1.0 + 0.04 * (sim.peas + sim.rate_lv))
 	_feel(Haptics.GOOD)
+	if got == Sim.Kind.SHOVE:
+		_rw.ring(_in_rw(Vector2(Sim.W * 0.5, Sim.CART_Y - 60.0)), 200.0 * _u, Color(col, 0.9))
+		_shake = maxf(_shake, 0.3)
 	_rw.sticker(tr(GOT[got]), at + Vector2(0, -30.0), 58, 1.1, false, col.lightened(0.25), false, "got", 34.0)
 	_rw.ring(_in_rw(Vector2(sim.x, Sim.CART_Y - 14.0)), 40.0 * _u, Color(col, 0.9))
 	_rw.spray(at, col, 8, 520.0, "star", 0.9)
@@ -832,22 +874,21 @@ func _draw_over() -> void:
 		return
 	_over.draw_set_transform(_shake_off)
 	var font := Art.font()
-	var b := Face.Builder.new()
-	_draw_line(b)
-	if not b.verts.is_empty():
-		_live = b.mesh()
-		_over.draw_mesh(_live, null)
+	if sim.frost_t > 0.0:
+		# the frost: a pale wash over the garden, going as it runs out
+		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(Art.GIFT[Sim.Kind.FROST], 0.2 * minf(1.0, sim.frost_t)))
+	_draw_line()
 	var top := Face.Builder.new()
 	_head_tag = []
 	if sim.wave_kind == Sim.Wave.WALL:
 		_draw_wall(font)
 	else:
 		_draw_milli(font, top)
-	for p: Dictionary in sim.shots:
-		Art.pea(top, px(Vector2(p.x, p.y)), 3.3 * _u)
-	_draw_sparks(top)
+	_draw_peas()
+	_draw_sparks()
 	_draw_muzzle(top)
-	_draw_gun_line(top)
+	var timed := _timed()
+	_draw_timed_rings(top, timed)
 	if _heat > 0.01:
 		var hb := 0.6 if Motion.reduce else 0.5 + 0.5 * sin(_clock * 9.0)
 		Rewards.edge_glow(top, Rect2(Vector2.ZERO, field.size), HEAT.lerp(ALARM, _heat), _heat, hb)
@@ -857,6 +898,11 @@ func _draw_over() -> void:
 	if not top.verts.is_empty():
 		_live_top = top.mesh()
 		_over.draw_mesh(_live_top, null)
+	if _chips != null:
+		_over.draw_mesh(_chips, null)
+	for k in timed.size():
+		var blink: bool = float(timed[k][1]) < 0.2 and fmod(_clock, 0.3) < 0.12 and not Motion.reduce
+		_over.draw_mesh(Art.token(timed[k][0], _u), null, Transform2D(0.0, Vector2(0.6, 0.6), 0.0, _timed_at(k)), Color(1, 1, 1, 0.45 if blink else 1.0))
 	if not _head_tag.is_empty():
 		Art.number(_over, font, px(_head_tag[0]), _head_tag[1], Sim.SEG_R * 1.25 * _u)
 	for tk: Dictionary in sim.tokens:
@@ -873,16 +919,64 @@ func _draw_over() -> void:
 		_over.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.4))
 
 ## The line nothing may reach: chalk dashes across the garden, turning red
-## and running as something nears it.
-func _draw_line(b: Face.Builder) -> void:
+## and running as something nears it. The dashes are one mesh built with
+## the garden; the run is its transform and the red its tint.
+func _build_dashes() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var dash := 9.0 * _u
+	var x := -dash * 2.0
+	while x < field.size.x + dash * 2.0:
+		b.fan(Face.Builder.round_rect(Vector2(x, -1.2 * _u), Vector2(dash, 2.4 * _u), 1.2 * _u), Color.WHITE)
+		x += dash * 2.0
+	return b.mesh()
+
+func _draw_line() -> void:
+	if _dashes == null:
+		return
 	var y := px(Vector2(0, Sim.DANGER + 6.0)).y
 	var col := Color("fffaf0", 0.4).lerp(Color(ALARM, 0.9), _alarm)
 	var dash := 9.0 * _u
 	var run := 0.0 if Motion.reduce else fmod(_clock * 30.0 * _alarm, dash * 2.0)
-	var x := -dash * 2.0 + run
-	while x < field.size.x:
-		b.fan(Face.Builder.round_rect(Vector2(x, y - 1.2 * _u), Vector2(dash, 2.4 * _u), 1.2 * _u), col)
-		x += dash * 2.0
+	_over.draw_mesh(_dashes, null, Transform2D(0.0, Vector2(run - dash * 2.0, y)), col)
+
+## One MultiMesh a look of pea, as many shown as are in the air.
+func _draw_peas() -> void:
+	var looks := 3
+	if _pea_mm.is_empty():
+		for k in looks:
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_2D
+			_pea_mm.append(mm)
+			_pea_buf.append(PackedFloat32Array())
+	var counts := [0, 0, 0]
+	var u := _u
+	var ox := _origin.x
+	var oy := _origin.y
+	for p: Dictionary in sim.shots:
+		var k: int = p.k
+		var buf: PackedFloat32Array = _pea_buf[k]
+		var o: int = counts[k] * 8
+		if o + 8 > buf.size():
+			buf.resize(o + 8 * 64)
+		buf[o] = 1.0
+		buf[o + 3] = ox + float(p.x) * u
+		buf[o + 5] = 1.0
+		buf[o + 7] = oy + float(p.y) * u
+		_pea_buf[k] = buf
+		counts[k] += 1
+	for k in looks:
+		if counts[k] == 0:
+			continue
+		var mm: MultiMesh = _pea_mm[k]
+		var buf: PackedFloat32Array = _pea_buf[k]
+		var mesh := Art.shot(k, _u)
+		if mm.mesh != mesh:
+			mm.mesh = mesh
+		if mm.instance_count * 8 != buf.size():
+			mm.instance_count = buf.size() / 8
+		mm.visible_instance_count = counts[k]
+		mm.buffer = buf
+		_over.draw_multimesh(mm, null)
 
 ## How a crate or a plate sits this frame: knocked by the pea that just
 ## landed (a squeeze and a white flash), else as it is.
@@ -893,6 +987,49 @@ func _knocked(id: int) -> Array:
 	var k := 1.0 - since / 0.1
 	var sc := Vector2.ONE if Motion.reduce else Vector2(1.0 + 0.07 * k, 1.0 - 0.09 * k)
 	return [sc, Color(1.0 + 0.22 * k, 1.0 + 0.22 * k, 1.0 + 0.22 * k)]
+
+## One more of `mesh` this frame, under `xf` and tinted `col`.
+func _cast_add(mesh: ArrayMesh, xf: Transform2D, col: Color) -> void:
+	var g: Array = _cast.get(mesh, [])
+	if g.is_empty():
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_2D
+		mm.use_colors = true
+		mm.mesh = mesh
+		g = [mm, PackedFloat32Array(), 0]
+		_cast[mesh] = g
+	var buf: PackedFloat32Array = g[1]
+	var o: int = int(g[2]) * 12
+	if o + 12 > buf.size():
+		buf.resize(o + 12 * 8)
+	buf[o] = xf.x.x
+	buf[o + 1] = xf.y.x
+	buf[o + 3] = xf.origin.x
+	buf[o + 4] = xf.x.y
+	buf[o + 5] = xf.y.y
+	buf[o + 7] = xf.origin.y
+	buf[o + 8] = col.r
+	buf[o + 9] = col.g
+	buf[o + 10] = col.b
+	buf[o + 11] = col.a
+	g[1] = buf
+	g[2] = int(g[2]) + 1
+
+## Draws what `_cast_add` gathered and empties it for the next frame.
+func _cast_draw() -> void:
+	for mesh in _cast:
+		var g: Array = _cast[mesh]
+		var n: int = g[2]
+		if n == 0:
+			continue
+		var mm: MultiMesh = g[0]
+		var buf: PackedFloat32Array = g[1]
+		if mm.instance_count * 12 != buf.size():
+			mm.instance_count = buf.size() / 12
+		mm.visible_instance_count = n
+		mm.buffer = buf
+		_over.draw_multimesh(mm, null)
+		g[2] = 0
 
 func _draw_wall(font: Font) -> void:
 	var numbered: Array = []
@@ -909,16 +1046,18 @@ func _draw_wall(font: Font) -> void:
 			var kind: int = cell.kind
 			var tier := Art.tier_of(cell.hp) if kind == Sim.Kind.CRATE else 0
 			var sway := 0.0
-			if kind >= Sim.Kind.PEA and not Motion.reduce:
+			if Sim.holds_token(kind) and not Motion.reduce:
 				sway = sin(_clock * 5.0 + c * 1.7 + r) * 0.04
-			_over.draw_mesh(Art.crate(kind, tier, _u), null, Transform2D(sway, kn[0], 0.0, px(at)), kn[1])
-			if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD:
+			_cast_add(Art.crate(kind, tier, _u), Transform2D(sway, kn[0], 0.0, px(at)), kn[1])
+			if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
 				numbered.append([at, cell.hp])
+	_cast_draw()
 	for n: Array in numbered:
 		Art.number(_over, font, px(n[0] + Vector2(0, -2.2)), n[1], (Sim.CELL_H - 3.0) * _u)
 
 func _draw_milli(font: Font, top: Face.Builder) -> void:
 	var numbered: Array = []
+	var head_at: Array = []
 	# tail first, so each plate laps the one behind it and the head laps all
 	for i in range(sim.segs.size() - 1, -1, -1):
 		var sg: Dictionary = sim.segs[i]
@@ -938,7 +1077,7 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 			var ahead: Vector2 = Sim.path_at(s + 3.0) - at
 			var ang := ahead.angle() if ahead.length_squared() > 0.0001 else 0.0
 			var cross: bool = sim.danger() > 0.35 or sim.is_over()
-			_over.draw_mesh(Art.head(_u, cross), null, Transform2D(ang, sc, 0.0, px(at)), kn[1])
+			head_at = [Art.head(_u, cross), Transform2D(ang, sc, 0.0, px(at)), kn[1]]
 			# the pupils, turned with the head and watching the cart
 			var look := (Vector2(sim.x, Sim.CART_Y) - at).normalized()
 			var r := Sim.HEAD_R * _u
@@ -953,20 +1092,48 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 			continue
 		var kind: int = sg.kind
 		var tier := Art.tier_of(sg.hp) if kind == Sim.Kind.CRATE else 0
-		_over.draw_mesh(Art.plate(kind, tier, _u), null, Transform2D(0.0, sc, 0.0, px(at + jitter)), kn[1])
-		if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD:
+		_cast_add(Art.plate(kind, tier, _u), Transform2D(0.0, sc, 0.0, px(at + jitter)), kn[1])
+		if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
 			numbered.append([at + Vector2(0, -0.6), sg.hp, 1.0])
+	_cast_draw()
+	if not head_at.is_empty():
+		_over.draw_mesh(head_at[0], null, head_at[1], head_at[2])
 	for n: Array in numbered:
 		Art.number(_over, font, px(n[0]), n[1], Sim.SEG_R * 1.7 * _u * float(n[2]))
 
-func _draw_sparks(b: Face.Builder) -> void:
-	for sp: Dictionary in _sparks:
+func _draw_sparks() -> void:
+	if _sparks.is_empty():
+		return
+	if _spark_mm == null:
+		_spark_mm = MultiMesh.new()
+		_spark_mm.transform_format = MultiMesh.TRANSFORM_2D
+		_spark_mm.use_colors = true
+		_spark_mm.mesh = Art.spark()
+		_spark_mm.instance_count = MAX_SPARKS
+		_spark_buf.resize(MAX_SPARKS * 12)
+	var n := mini(_sparks.size(), MAX_SPARKS)
+	for i in n:
+		var sp: Dictionary = _sparks[i]
 		var k: float = sp.t / 0.22
 		var c := px(sp.pos)
 		var r := (4.0 + 7.0 * k) * _u
-		for q in 4:
-			var d := Vector2.from_angle(float(sp.turn) + TAU * q / 4.0)
-			b.fan(PackedVector2Array([c + d.orthogonal() * 0.9 * _u, c + d * r, c - d.orthogonal() * 0.9 * _u]), Color(sp.col, 1.0 - k))
+		var ca := cos(float(sp.turn)) * r
+		var sa := sin(float(sp.turn)) * r
+		var col: Color = sp.col
+		var o := i * 12
+		_spark_buf[o] = ca
+		_spark_buf[o + 1] = -sa
+		_spark_buf[o + 3] = c.x
+		_spark_buf[o + 4] = sa
+		_spark_buf[o + 5] = ca
+		_spark_buf[o + 7] = c.y
+		_spark_buf[o + 8] = col.r
+		_spark_buf[o + 9] = col.g
+		_spark_buf[o + 10] = col.b
+		_spark_buf[o + 11] = 1.0 - k
+	_spark_mm.visible_instance_count = n
+	_spark_mm.buffer = _spark_buf
+	_over.draw_multimesh(_spark_mm, null)
 
 ## The flash at each pod's mouth just after a volley.
 func _draw_muzzle(b: Face.Builder) -> void:
@@ -1008,7 +1175,8 @@ func _draw_cart(x: float, helper: bool) -> void:
 func _gun_chip(k: int) -> Vector2:
 	return px(Vector2(18.0 + 56.0 * k, Sim.H - 13.0))
 
-func _draw_gun_line(b: Face.Builder) -> void:
+func _build_chips() -> ArrayMesh:
+	var b := Face.Builder.new()
 	var kinds := [Sim.Kind.PEA, Sim.Kind.RATE, Sim.Kind.POWER]
 	for k in 3:
 		var c := _gun_chip(k)
@@ -1018,6 +1186,33 @@ func _draw_gun_line(b: Face.Builder) -> void:
 			Art.pea(b, c, 4.0 * _u)
 		else:
 			Art.icon(b, kinds[k], c, 13.0 * _u)
+	return b.mesh()
+
+## What is running down, as [kind, the part of it left]: the pod held, the
+## magnet, the frost and the helper, lettered from the right of the grass.
+func _timed() -> Array:
+	var out: Array = []
+	if sim.pod_t > 0.0:
+		out.append([sim.pod, sim.pod_t / Sim.POD_TIME])
+	if sim.magnet_t > 0.0:
+		out.append([Sim.Kind.MAGNET, sim.magnet_t / Sim.MAGNET_TIME])
+	if sim.frost_t > 0.0:
+		out.append([Sim.Kind.FROST, sim.frost_t / Sim.FROST_TIME])
+	if sim.twin_t > 0.0:
+		out.append([Sim.Kind.TWIN, sim.twin_t / Sim.TWIN_TIME])
+	return out
+
+func _timed_at(k: int) -> Vector2:
+	return px(Vector2(Sim.W - 14.0 - 24.0 * k, Sim.H - 13.0))
+
+## Under each: a dark plate and a pale ring that runs down with it.
+func _draw_timed_rings(b: Face.Builder, timed: Array) -> void:
+	for k in timed.size():
+		var c := _timed_at(k)
+		b.disc(c, 10.5 * _u, Color(0.12, 0.25, 0.06, 0.45))
+		var part := clampf(float(timed[k][1]), 0.0, 1.0)
+		if part > 0.02:
+			b.stroke(Face.Builder.arc_points(c, 9.4 * _u, -PI * 0.5, -PI * 0.5 + TAU * part), 1.8 * _u, Color("fffaf0"))
 
 func _draw_gun_words(font: Font) -> void:
 	var values := [sim.peas, sim.rate_lv + 1, sim.power]

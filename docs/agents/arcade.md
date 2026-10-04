@@ -257,3 +257,41 @@ chalk line ends the run. Its "furthest" is the wave.
   the user's listen. `tests/_shot_peapod.gd` shoots every beat, slides the
   cart through the viewport (prints whether it rolled) and puts
   `user://arcade.cfg` back on every way out, a timeout included.
+- **The second pass (2026-10-04, the user's play: lag on the millipede and
+  on big walls, a gift at the edge out of reach, too easy with the helper,
+  more shots and gifts wanted).**
+  - **Where the lag was** (`tests/_perf_peapod.gd`, `_probe_peapod_perf.gd`):
+    not the draw calls (164 on a full wall) but script. Every pea was laid
+    into a mesh in script each frame, the chalk line's dashes rebuilt each
+    frame (0.6 ms of nothing), and on a millipede every pea asked the path
+    for every plate it passed (506 usec a step with a full gun against 21
+    on a wall). Now: peas, sparks, crates and plates are MultiMeshes (one
+    draw a look), the dashes and the gun's plates are meshes built with the
+    garden, plate positions are worked out once a step (`_place_segs`, 53
+    usec), and a slow frame catches up four steps at most, not twelve.
+    Script a frame on this Mac went from 2.3-4.7 ms to under 1; draws 126
+    on a full wall, 100 on a 24-plate millipede. The numbers are still two
+    text draws a crate. **Not measured on a phone.**
+  - **A token drifts in** to where the cart can stand (`TOKEN_DRIFT`): the
+    millipede comes in from x = -26 and the cart stops at 22 with a reach
+    of 30, so a gift plate shot on the way in could never be caught.
+  - **Three pods**, held ten seconds, one at a time (`sim.pod`): Fan (two
+    more peas, leaning out), Dart (a pea goes through three, `left`/`last`
+    on the shot), Berry (a pea's neighbours take half, quietly). **Three
+    gifts**: Magnet (gifts fly to the cart ten seconds; never the rotten
+    one), Frost (whatever is coming at 0.35 for five), Shove (the wall up
+    60, the millipede 200 back). What is running shows on the right of the
+    grass, each with a ring that runs down.
+  - **Harder**: the helper is six seconds, one plain pea, from wave 4 and
+    every other wave at most; a **rotten gift** (from wave 3) drops a token
+    to keep out from under -- it takes a pea, else a rate step; an **iron
+    crate** (from wave 5; plates from 9) takes one a pea whatever the pea
+    weighs, a firecracker takes it whole; the millipede's knock is 9, not
+    16, and it runs up to 1.6 times quicker as it shortens. The numbers'
+    curve was left alone: the wider gift bag thins the peas and rate, and
+    that was enough. Bots now: skill 0 wave 4-7 (two to three minutes),
+    skills 1 and 2 wave 10-17 (four to six).
+  - `Sim.holds_token(kind)` is the test for a gift, not `kind >= PEA`: the
+    new kinds sit after `HEAD` so the old numbers stand.
+  - Five more sounds (`clank` through `_quiet`, `pod`, `frost`, `shove`,
+    `rot`), unheard by the user like the rest.

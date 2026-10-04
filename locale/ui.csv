@@ -564,6 +564,16 @@ PP_GOT_PEA,+1 pea,+1 ervilha,+1 guisante
 PP_GOT_RATE,Quicker!,Mais rápido!,¡Más rápido!
 PP_GOT_POWER,Heavier!,Mais forte!,¡Más fuerte!
 PP_GOT_TWIN,A helper!,Um ajudante!,¡Un ayudante!
+PP_GOT_FAN,Fan pod!,Vagem leque!,¡Vaina abanico!
+PP_GOT_PIERCE,Dart pod!,Vagem dardo!,¡Vaina dardo!
+PP_GOT_BURST,Berry pod!,Vagem estouro!,¡Vaina estallido!
+PP_GOT_MAGNET,Magnet!,Ímã!,¡Imán!
+PP_GOT_FROST,Frost!,Geada!,¡Helada!
+PP_GOT_SHOVE,Shove!,Empurrão!,¡Empujón!
+PP_ROT_PEA,-1 pea,-1 ervilha,-1 guisante
+PP_ROT_RATE,Slower!,Mais lento!,¡Más lento!
+PP_ROT_POWER,Lighter!,Mais fraco!,¡Más débil!
+PP_ROT_NONE,Yuck!,Eca!,¡Puaj!
 PP_WORD_1,Nice!,Boa!,¡Bien!
 PP_WORD_2,Great!,Ótimo!,¡Genial!
 PP_WORD_3,Pea-fect!,Perfeito!,¡Perfecto!

@@ -90,3 +90,12 @@ a half rows back up, or the millipede 700 units back along its path.
 No tutorial page (no Arcade game has one; the ready line says "Slide to aim.
 Catch the gifts."). The sounds are one take each and unheard by the user.
 The balance is a bot's, not a hand's.
+
+## 6. The second pass (same day)
+
+After the user played it: the helper is six seconds and one pea, not twelve
+and a full volley; three pods (Fan, Dart, Berry) and three gifts (Magnet,
+Frost, Shove) joined the four; a rotten gift and an iron crate came in; the
+millipede knocks back less and quickens as it shortens; a token drifts into
+the cart's reach. The lag was script, not draws. The detail and the numbers
+are in `docs/agents/arcade.md`.

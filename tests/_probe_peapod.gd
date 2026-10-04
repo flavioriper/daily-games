@@ -13,6 +13,11 @@ func _target(sim: RefCounted, skill: int) -> float:
 	# a gift on its way down, if there is time to get under it
 	if skill >= 1:
 		for tk: Dictionary in sim.tokens:
+			if int(tk.kind) == Sim.Kind.ROT:
+				# out from under a rotten one that is nearly down
+				if float(tk.y) > 300.0 and absf(float(tk.x) - sim.x) < Sim.CATCH + 8.0:
+					return float(tk.x) + (60.0 if float(tk.x) < Sim.W * 0.5 else -60.0)
+				continue
 			if float(tk.y) > 150.0:
 				return float(tk.x)
 	if sim.wave_kind == Sim.Wave.WALL:
@@ -24,7 +29,7 @@ func _target(sim: RefCounted, skill: int) -> float:
 				if cell == null:
 					continue
 				# gifts first, then the weakest of the lowest row
-				var w: int = int(cell.hp) - (1000 if int(cell.kind) >= Sim.Kind.PEA and skill >= 1 else 0)
+				var w: int = int(cell.hp) - (1000 if Sim.holds_token(int(cell.kind)) and int(cell.kind) != Sim.Kind.ROT and skill >= 1 else 0)
 				if w < low:
 					low = w
 					best = c
