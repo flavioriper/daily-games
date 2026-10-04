@@ -28,6 +28,7 @@ const Controls = preload("res://versus/snooker_controls.gd")
 const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -70,6 +71,12 @@ var table: Control
 var top_bar: Control
 var spin_pad: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
+## The card is up: the balls, the computer's arm and its thinking wait under
+## it, so no shot is played (or heard) behind a page.
+var _held := false
 var _state := State.WAIT
 var _acc := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -135,6 +142,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Snooker", _hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	_breaker = 0
 	_new_frame()
@@ -145,6 +154,38 @@ func _exit_tree() -> void:
 	if _task != -1:
 		WorkerThreadPool.wait_for_task_completion(_task)
 		_task = -1
+
+## The tutorial, a page a lesson, each played by the table itself on a few
+## hand-placed balls (ui/hud/snooker_tutorial_diagram.gd). The same on every
+## level: the level is only how steady the computer's arm is.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/snooker_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.AIM, "TUT_SNOOKER_AIM", tr("TUT_SNOOKER_AIM_BODY")],
+		[Diagram.Lesson.ORDER, "TUT_SNOOKER_ORDER", tr("TUT_SNOOKER_ORDER_BODY")],
+		[Diagram.Lesson.WORTH, "TUT_SNOOKER_WORTH", tr("TUT_SNOOKER_WORTH_BODY")],
+		[Diagram.Lesson.FOUL, "TUT_SNOOKER_FOUL", tr("TUT_SNOOKER_FOUL_BODY")],
+		[Diagram.Lesson.SPIN, "TUT_SNOOKER_SPIN", tr("TUT_SNOOKER_SPIN_BODY")],
+		[Diagram.Lesson.HINT, "TUT_SNOOKER_HINT", tr("TUT_SNOOKER_HINT_BODY") % HINTS],
+		[Diagram.Lesson.HUD, "TUT_SNOOKER_HUD", tr("TUT_SNOOKER_HUD_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.pace = _speed_for
+		d.hints = HINTS
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
+## The card going up (true) or leaving: see `_held`.
+func _hold(on: bool) -> void:
+	_held = on
+	if _ai_tw != null and _ai_tw.is_valid():
+		if on:
+			_ai_tw.pause()
+		else:
+			_ai_tw.play()
 
 # --- building ---
 
@@ -473,6 +514,10 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return _hints if _state == State.AIM else 0
 
+## The bulb's badge: the count stays up while the bulb waits its turn.
+func hints_held() -> int:
+	return _hints
+
 # --- the frame ---
 
 func _new_frame() -> void:
@@ -612,6 +657,9 @@ func _shoot(dir: Vector2, speed: float, tip: Vector2) -> void:
 		_acc = 0.0)
 
 func _process(delta: float) -> void:
+	if _held:
+		_roll_sound(delta)
+		return
 	match _state:
 		State.ROLL:
 			_acc += minf(delta, 0.05)
@@ -638,7 +686,7 @@ func _roll_sound(delta: float) -> void:
 	if _roll == null or _roll.stream == null:
 		return
 	var run := 0.0
-	if _state == State.ROLL:
+	if _state == State.ROLL and not _held:
 		for i in Sim.COUNT:
 			if sim.on[i]:
 				run += sim.vel[i].length()
@@ -929,6 +977,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

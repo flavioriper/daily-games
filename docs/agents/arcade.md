@@ -295,3 +295,12 @@ chalk line ends the run. Its "furthest" is the wave.
     new kinds sit after `HEAD` so the old numbers stand.
   - Five more sounds (`clank` through `_quiet`, `pod`, `frost`, `shove`,
     `rot`), unheard by the user like the rest.
+
+**Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
+screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
+pages played by a quiet subclass of the screen over a hand-laid sim
+(`ui/hud/<game>_tutorial_diagram.gd`). A run with a clock is left paused
+under the card. **A new Arcade game needs both**, and
+`top_bar.refresh(self)` in `_ready` before `_ask(false)`, or Undo and the
+bulb show behind the boost card. A harness that opens a screen through the
+menu sets `ScreenTutor.no_first_play`.

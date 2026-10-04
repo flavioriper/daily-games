@@ -25,6 +25,7 @@ const Art = preload("res://arcade/peapod_art.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -93,6 +94,9 @@ var _chance_used := false
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var field: Control
 var _fx: Node2D
 ## The gun's own voice: the shots and the peas landing, which nothing knocks
@@ -176,6 +180,28 @@ var _end_at := 0.0
 func puzzle_id() -> String:
 	return GAME
 
+## The tutorial's pages, each a slice of this garden played by a finger
+## (ui/hud/peapod_tutorial_diagram.gd): the slide, the numbers and the line,
+## the gifts, the pods, the special crates, the millipede, and the boosters
+## and the top bar.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/peapod_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.SLIDE, "TUT_PEAPOD_SLIDE", tr("TUT_PEAPOD_SLIDE_BODY")],
+		[Diagram.Lesson.CRATES, "TUT_PEAPOD_CRATES", tr("TUT_PEAPOD_CRATES_BODY")],
+		[Diagram.Lesson.GIFTS, "TUT_PEAPOD_GIFTS", tr("TUT_PEAPOD_GIFTS_BODY")],
+		[Diagram.Lesson.PODS, "TUT_PEAPOD_PODS", tr("TUT_PEAPOD_PODS_BODY") % int(Sim.POD_TIME)],
+		[Diagram.Lesson.SPECIAL, "TUT_PEAPOD_SPECIAL", tr("TUT_PEAPOD_SPECIAL_BODY")],
+		[Diagram.Lesson.MILLI, "TUT_PEAPOD_MILLI", tr("TUT_PEAPOD_MILLI_BODY")],
+		[Diagram.Lesson.HUD, "TUT_PEAPOD_HUD", tr("TUT_PEAPOD_HUD_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _ready() -> void:
 	add_to_group("versus_host")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -184,6 +210,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Peapod", _tutor_hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
 	# before the boost card, so the bar behind it is already this game's
@@ -214,7 +242,7 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", GAP)
 	_margins.add_child(col)
 
-	top_bar = FlatTopBar.new("Peapod", tr("PP_MOTTO"), true)
+	top_bar = FlatTopBar.new("Peapod", tr("PEAPOD_MOTTO"), true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.reset.connect(_on_reset)
@@ -333,8 +361,7 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf(s.x / Sim.W, s.y / Sim.H)
-	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
+	_fit(s)
 	_scene = _build_scene()
 	_cast.clear()
 	_dashes = _build_dashes()
@@ -344,6 +371,12 @@ func _layout_field() -> void:
 	box.position = Vector2(0, s.y * 0.36)
 	box.size.x = s.x
 	_redraw_all()
+
+## The field's unit and origin in a room `s` (a tutorial page stands a slice
+## of the garden in its own: ui/hud/peapod_tutorial_diagram.gd).
+func _fit(s: Vector2) -> void:
+	_u = minf(s.x / Sim.W, s.y / Sim.H)
+	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
 
 func px(p: Vector2) -> Vector2:
 	return _origin + p * _u
@@ -519,6 +552,11 @@ func _slide(at: Vector2) -> void:
 		sim.target_x = clampf(sim.target_x, lo, hi)
 		_touch_from = at
 		_cart_from = sim.target_x
+
+## The tutorial card stops the run and leaves it paused, a tap from going on.
+func _tutor_hold(on: bool) -> void:
+	if on and sim != null and not sim.is_over() and _end == null:
+		_pause(true)
 
 func _pause(on: bool) -> void:
 	if on == _paused:
@@ -1449,6 +1487,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

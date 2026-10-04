@@ -58,6 +58,10 @@ var best_chain := 0
 var max_v := 2
 var tools_used := 0
 var events: Array = []
+## The shelf's size, in columns and rows: the game's is COLS by ROWS; a
+## tutorial page stands a smaller one (ui/hud/stackwood_tutorial_diagram.gd).
+var wide := COLS
+var high := ROWS
 ## The smallest number still dealt; it rises as the shelf's best block grows.
 var low_exp := 1
 ## Blocks still to deal small (Low start, arcade/boosters.gd): 2s and 4s.
@@ -69,12 +73,14 @@ var _round_t := 0.0
 ## Whether the resolve was started by a zap, so the piece keeps falling after.
 var _resume := false
 
-func _init(seed_value := -1) -> void:
+func _init(seed_value := -1, w := COLS, h := ROWS) -> void:
+	wide = w
+	high = h
 	if seed_value >= 0:
 		rng.seed = seed_value
 	else:
 		rng.randomize()
-	for c in COLS:
+	for c in wide:
 		cols.append([])
 	queue.append(_spawn_value())
 	queue.append(_spawn_value())
@@ -98,7 +104,7 @@ func landing(c: int) -> int:
 
 ## Where a block is on the shelf, or (-1, -1).
 func find(id: int) -> Vector2i:
-	for c in COLS:
+	for c in wide:
 		var col: Array = cols[c]
 		for i in col.size():
 			if int(col[i].id) == id:
@@ -129,10 +135,10 @@ func _set_phase(p: int) -> void:
 func _next_piece() -> void:
 	var v: int = queue.pop_front()
 	queue.append(_spawn_value())
-	var col := COLS / 2
+	var col := wide / 2
 	if not piece.is_empty():
 		col = int(piece.col)
-	piece = {"kind": Piece.BLOCK, "v": v, "col": col, "y": float(ROWS), "dropping": false, "hold": HOLD, "id": _new_id()}
+	piece = {"kind": Piece.BLOCK, "v": v, "col": col, "y": float(high), "dropping": false, "hold": HOLD, "id": _new_id()}
 	events.append({"type": "spawn", "v": v})
 
 ## The number the next block carries: a power of two from `low_exp` up to a
@@ -169,7 +175,7 @@ func _new_id() -> int:
 func aim(c: int) -> void:
 	if phase != Phase.FALL or piece.is_empty() or piece.dropping:
 		return
-	c = clampi(c, 0, COLS - 1)
+	c = clampi(c, 0, wide - 1)
 	var at: int = piece.col
 	while at != c:
 		var nxt := at + signi(c - at)
@@ -212,7 +218,7 @@ func _land() -> void:
 		var gone: Array = []
 		for dc in [-1, 0, 1]:
 			var cc: int = c + dc
-			if cc < 0 or cc >= COLS:
+			if cc < 0 or cc >= wide:
 				continue
 			var col: Array = cols[cc]
 			for i in range(col.size() - 1, -1, -1):
@@ -242,7 +248,7 @@ func _land() -> void:
 	_start_resolve(false)
 
 func _at(p: Vector2i) -> Dictionary:
-	if p.x < 0 or p.x >= COLS or p.y < 0:
+	if p.x < 0 or p.x >= wide or p.y < 0:
 		return {}
 	var col: Array = cols[p.x]
 	return col[p.y] if p.y < col.size() else {}
@@ -254,7 +260,7 @@ func _start_resolve(resume: bool) -> void:
 
 ## Every block at or above `row` in columns c0..c1 has fallen, and may merge.
 func _mark_fallen(c0: int, c1: int, row: int) -> void:
-	for c in range(maxi(0, c0), mini(COLS - 1, c1) + 1):
+	for c in range(maxi(0, c0), mini(wide - 1, c1) + 1):
 		var col: Array = cols[c]
 		for i in range(maxi(0, row), col.size()):
 			if not _active.has(col[i].id):
@@ -333,8 +339,8 @@ func _finish_resolve() -> void:
 	_active.clear()
 	if chain >= 2:
 		events.append({"type": "chain_end", "chain": chain})
-	for c in COLS:
-		if height(c) > ROWS:
+	for c in wide:
+		if height(c) > high:
 			_set_phase(Phase.OVER)
 			events.append({"type": "over", "col": c})
 			return
@@ -356,10 +362,10 @@ func revive() -> void:
 	if phase != Phase.OVER:
 		return
 	var gone: Array = []
-	for c in COLS:
+	for c in wide:
 		var col: Array = cols[c]
 		for i in range(col.size() - 1, -1, -1):
-			if i >= ROWS - 2:
+			if i >= high - 2:
 				gone.append({"id": col[i].id, "v": col[i].v, "col": c, "row": i})
 				col.remove_at(i)
 	events.append({"type": "blast", "blocks": gone})
@@ -398,7 +404,7 @@ func use(tool: int) -> bool:
 		Tool.ZAP:
 			var low := _smallest()
 			var gone: Array = []
-			for c in COLS:
+			for c in wide:
 				var col: Array = cols[c]
 				for i in range(col.size() - 1, -1, -1):
 					if int(col[i].v) == low:

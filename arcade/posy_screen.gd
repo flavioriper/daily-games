@@ -27,6 +27,7 @@ const Art = preload("res://arcade/posy_art.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -98,6 +99,9 @@ var _chance_used := false
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var field: Control
 var _fx: Node2D
 var _backdrop: ColorRect
@@ -218,6 +222,36 @@ var _bumped := false
 func puzzle_id() -> String:
 	return GAME
 
+## The tutorial's pages, each a small bed played by the game itself
+## (ui/hud/posy_tutorial_diagram.gd): the swap, the day's goals, the
+## specials, the weeds, stones and moss, the offer when the moves run out,
+## the tools, and the buttons and boosters. Every number is the sim's.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/posy_tutorial_diagram.gd")
+	var one := Sim.day_plan(1)
+	var blocked := 1
+	while String(Sim.day_plan(blocked).obstacle) == "":
+		blocked += 1
+	var shaped := 1
+	while not bool(Sim.day_plan(shaped).shape):
+		shaped += 1
+	var L = Diagram.Lesson
+	var steps := [
+		[L.SWAP, "TUT_POSY_SWAP", tr("TUT_POSY_SWAP_BODY")],
+		[L.GOALS, "TUT_POSY_GOALS", tr("TUT_POSY_GOALS_BODY") % [int(one.need), int(one.moves)]],
+		[L.SPECIALS, "TUT_POSY_SPECIALS", tr("TUT_POSY_SPECIALS_BODY")],
+		[L.BLOCKERS, "TUT_POSY_BLOCKERS", tr("TUT_POSY_BLOCKERS_BODY") % [blocked, shaped]],
+		[L.MOVES, "TUT_POSY_MOVES", tr("TUT_POSY_MOVES_BODY") % Sim.MORE_MOVES],
+		[L.TOOLS, "TUT_POSY_TOOLS", tr("TUT_POSY_TOOLS_BODY") % Sim.START_TOOLS],
+		[L.BUTTONS, "TUT_POSY_BUTTONS", tr("TUT_POSY_BUTTONS_BODY")],
+	]
+	var pages := []
+	for step: Array in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 func _ready() -> void:
 	add_to_group("versus_host")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -226,8 +260,13 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Posy")
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
+	# Before any run: the boost card can stand here first, and the bar would
+	# wear an Undo and a bulb this game has not got.
+	top_bar.refresh(self)
 	_ask(false)
 
 # --- building ---
@@ -289,6 +328,23 @@ func _build() -> void:
 		_frame.position = Vector2(0, floorf((room.size.y - side) * 0.5)))
 	room.add_child(_frame)
 	col.add_child(room)
+	_frame.add_child(_build_field())
+
+	col.add_child(_build_tools())
+	_air = Control.new()
+	_air.name = "Air"
+	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_air.draw.connect(_draw_air)
+	add_child(_air)
+	_air_fx = Fx2D.new()
+	_air.add_child(_air_fx)
+	_apply_insets()
+
+## The bed's field: what draws it and takes the finger, its particles and
+## the banner over it. The tutorial's bed (ui/hud/posy_tutorial_diagram.gd)
+## stands one of these in a page.
+func _build_field() -> Control:
 	field = Control.new()
 	field.name = "Field"
 	field.clip_contents = true
@@ -296,7 +352,6 @@ func _build() -> void:
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
-	_frame.add_child(field)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
@@ -329,17 +384,7 @@ func _build() -> void:
 	_sub_pill.add_child(_sub)
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
-
-	col.add_child(_build_tools())
-	_air = Control.new()
-	_air.name = "Air"
-	_air.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_air.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_air.draw.connect(_draw_air)
-	add_child(_air)
-	_air_fx = Fx2D.new()
-	_air.add_child(_air_fx)
-	_apply_insets()
+	return field
 
 func _paper() -> PanelContainer:
 	var plate := PanelContainer.new()
@@ -2527,6 +2572,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

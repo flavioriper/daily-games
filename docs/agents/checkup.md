@@ -445,3 +445,82 @@ once a second and says nothing about one frame.
 
 **The checkup is complete**: all twenty-nine rows are dated. "Next game on
 the list" now means the first row again (Binairo), for a second pass.
+
+## The tutorials of the nine games off the registry (2026-10-04)
+
+The user asked that every game have "a proper tutorial and HUD UI buttons
+pattern". A headless walk of the registry (every board, every level) found
+the twenty-nine boards whole: the ? showing, 3-7 pages each, Reset on the
+bar or the actions row at every level. The **Versus and Arcade screens**
+were not: they wear `FlatTopBar`, whose ? is always showing, and nothing
+was connected to it; no card on a first play; no How to play in their
+settings.
+
+- **`ui/hud/screen_tutor.gd`** is the host's part for a screen that is its
+  own host: `tutor = ScreenTutor.new(self, puzzle_id(), "Title", hold)` then
+  `tutor.wire(top_bar, settings_sheet)`. It mounts the boards' own card
+  (`ui/hud/how_to_play.gd`) over the screen for the ?, for the settings'
+  How to play (`SettingsSheet.with_rules`, shown without New puzzle) and for
+  the first play. **Only `ui/menu.gd` asks for the first play's card**
+  (`screen.tutor.first_play()` in `_open_versus`/`_open_arcade`); a harness
+  that opens a screen through the menu sets `ScreenTutor.no_first_play`, or
+  the card stands over the run and takes its clicks (thirteen harnesses do).
+  `go_back()` closes the card first. `hold` is called as the card goes up
+  and as it leaves: a run with a clock is paused and left paused, a tap from
+  going on (Firefly, Molehill, Stackwood, Peapod); the Versus screens hold
+  the computer's answer (`_held`: no move played or heard behind a page).
+- **The pages are the screen's `tutorial_pages()`**, a diagram a game in
+  `ui/hud/<game>_tutorial_diagram.gd`, each played by the real thing on a
+  hand-made position: the Versus diagrams hold the board node quietened by a
+  subclass (chess, checkers: a clipped window four or five ranks deep;
+  snooker: the top end of the table, its referee judging each shot), the
+  Arcade diagrams a quiet subclass of the screen with only its field (and
+  the plates or tool row a lesson needs) over a subclass of the sim with a
+  hand-laid deal. A finger goes through the screen's own input. The screens
+  gained small hooks for it and nothing else: `_build_frame`/`_build_field`
+  lifted out of `_build`, `_unit`/`_fit` for the slice shown, `_rows()`,
+  `_cols()`, `_hill_count()`; Stackwood's sim takes its width and height
+  (`wide`, `high`, the constants by default: the bot probe prints the same
+  run on two seeds before and after).
+- Text is `TUT_<GAME>_*` in `locale/ui.csv`, en/pt/es. Name the settings
+  sheet as its own title does (`SETTINGS_TITLE`: Configurações, Ajustes).
+- `tests/_shot_howto_screen.gd -- <game> <outdir> [lang=] [level=] [secs=]
+  [every=] [reduce]` shoots any of the nine screens' pages as they play and
+  prints body lines against the room (`OVERFLOWS`) and draw calls; the card
+  is freed, not continued, so the progress file is not marked.
+- **A second locale key of the same name wins or loses by load order**:
+  Peapod wore Paper Planes' motto (`PP_MOTTO` in both `ui.csv` and
+  `boards.csv`; Peapod's is `PEAPOD_MOTTO` now) and a Henhouse leftover
+  shadowed Hedgehogs' `HH_MOTTO`. A new game's prefix is checked against
+  both files.
+
+| Game | Pages | What they play |
+|---|---|---|
+| snooker | 7 | aim, draw back, let go; a red then a colour (the referee's own verdicts); what each ball is worth; two fouls; the spin pad; the bulb's gold line and notch; the buttons |
+| chess | 7 | tap or drag; rook, bishop, queen; knight, king, pawn; check and mate; castling, en passant, promotion; stalemate and the draws; Undo, bulb, Reset |
+| checkers | 6 | a step; a jump, backwards too; taking is a must, the most first; the crown and the flying king; how it ends; Undo, Reset, bulb |
+| firefly | 7 | slide and hold; the swarm's worth; dives and seeds; a moth's escorts; the silk beam and the rescue; the flyby; lanterns and buttons |
+| molehill | 7 | a whack and the quick bonus; gold and flowerpots; the rabbit; the streak; the last ten seconds; boosters; the buttons |
+| stackwood | 7 | slide and let go; merges; chains; the line; acorns and the rainbow block; zap and bomb; the bar and boosters |
+| thirteen | 6 | a chain; the last one grows; the 13; a stuck tray and Swap; the five tools and their climbing prices; Restart and boosters |
+| posy | 7 | a swap; the day's goals and spare moves; the four specials; weeds, stones, moss; out of moves and the +5; the tools; buttons and boosters |
+| peapod | 7 | the cart; numbers, paints and the line; gifts and the rotten one; the three pods; golden, iron, firecracker; the millipede; boosters and buttons |
+
+None is level-aware: Versus levels change only how well the computer plays,
+and the Arcade has none. Draw calls with a page up: 140-230 a frame.
+
+**The buttons, fixed on the way**: Undo and the bulb showed on Firefly,
+Molehill, Stackwood, Lucky Thirteen and Posy while the boost card stood
+before a run (the bar was first refreshed by `_new_game`; `_ready` does it
+now); Firefly's Reset greys while there is no run; chess and checkers grey
+Reset while a move is in the air (`can_reset()`) and a second press of the
+bulb shows the same hint again and spends nothing (`_hint_move`); the
+bulb's badge keeps its count while the bulb waits its turn (`hints_held()`,
+read by `FlatTopBar.refresh`); Lucky Thirteen's stuck card steps aside while
+a tool is armed (it stood over the pebbles Swap, Pluck and Lift are used
+on); the snooker table's balls-on rings stand still under reduce motion.
+**Left as they are**: a new Stackwood block always appears over the middle
+column (`_next_piece` reads `piece.col` after the piece is cleared, so "keep
+the last column" never runs); the first play's card opens over the boost
+card when one is due, and Continue leaves the boost card; none of the nine
+was heard, felt or run on a phone or under `opengl3_angle`.

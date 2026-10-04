@@ -25,6 +25,8 @@ var _record_before := ""
 var _had_record := false
 
 func _initialize() -> void:
+	# The first play's tutorial card would stand over the run and eat the taps.
+	load("res://ui/hud/screen_tutor.gd").no_first_play = true
 	_had_record = FileAccess.file_exists("user://versus.cfg")
 	if _had_record:
 		_record_before = FileAccess.get_file_as_string("user://versus.cfg")

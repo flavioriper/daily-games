@@ -20,6 +20,7 @@ const Art = preload("res://arcade/firefly_art.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -83,6 +84,9 @@ var _chance_used := false
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var field: Control
 var _fx: Node2D
 var _backdrop: ColorRect
@@ -174,8 +178,12 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Firefly", _tutor_hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
+	# Before the first run (the boost card may be up): no Undo, no bulb.
+	top_bar.refresh(self)
 	_ask(false)
 
 func _notification(what: int) -> void:
@@ -319,7 +327,7 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf(s.x / Sim.W, s.y / Sim.H)
+	_u = _unit(s)
 	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
 	_sky = _build_sky()
 	var box: Control = _banner.get_meta("box")
@@ -327,6 +335,11 @@ func _layout_field() -> void:
 	box.position = Vector2(0, s.y * 0.34)
 	box.size.x = s.x
 	field.queue_redraw()
+
+## Pixels a field unit in a field of `s`: the whole field in view. The
+## tutorial's garden shows only the field's foot, larger.
+func _unit(s: Vector2) -> float:
+	return minf(s.x / Sim.W, s.y / Sim.H)
 
 func px(p: Vector2) -> Vector2:
 	return _origin + p * _u
@@ -386,8 +399,27 @@ func is_solved() -> bool:
 func can_undo() -> bool:
 	return false
 
+## Reset restarts a run: with none yet (the boost card is up) it is greyed.
+func can_reset() -> bool:
+	return sim != null
+
 func hints_left() -> int:
 	return 0
+
+## The tutorial's pages (ui/hud/screen_tutor.gd): a lesson a page, each
+## played by the game itself in a small garden
+## (ui/hud/firefly_tutorial_diagram.gd).
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/firefly_tutorial_diagram.gd")
+	var pages := []
+	for step in [[Diagram.Lesson.MOVE, "TUT_FIREFLY_MOVE"], [Diagram.Lesson.SWARM, "TUT_FIREFLY_SWARM"],
+			[Diagram.Lesson.DIVE, "TUT_FIREFLY_DIVE"], [Diagram.Lesson.ESCORT, "TUT_FIREFLY_ESCORT"],
+			[Diagram.Lesson.BEAM, "TUT_FIREFLY_BEAM"], [Diagram.Lesson.FLYBY, "TUT_FIREFLY_FLYBY"],
+			[Diagram.Lesson.HUD, "TUT_FIREFLY_HUD"]]:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": tr(String(step[1]) + "_BODY")})
+	return pages
 
 func _process(delta: float) -> void:
 	if sim == null:
@@ -513,6 +545,11 @@ func _slide(at: Vector2) -> void:
 		sim.target_x = clampf(sim.target_x, lo, hi)
 		_touch_from = at
 		_ship_from = sim.target_x
+
+## The tutorial card stops the run and leaves it paused, a tap from going on.
+func _tutor_hold(on: bool) -> void:
+	if on and sim != null and not sim.is_over() and _end == null:
+		_pause(true)
 
 func _pause(on: bool) -> void:
 	if on == _paused:
@@ -1557,6 +1594,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
@@ -1581,6 +1620,7 @@ func _ask(by_hand := true) -> void:
 		return
 	if sim != null and not sim.is_over():
 		sim = null
+		top_bar.refresh(self)
 	var card := BoostCard.new(GAME)
 	card.name = "BoostCard"
 	card.play.connect(func(ids: Array) -> void:

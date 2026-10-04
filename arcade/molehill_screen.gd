@@ -26,6 +26,7 @@ const Art = preload("res://arcade/molehill_art.gd")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -98,6 +99,9 @@ var _chance_used := false
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 var field: Control
 var _fx: Node2D
 var _backdrop: ColorRect
@@ -174,8 +178,13 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Molehill", _tutor_hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
+	# before any round: the boost card may stand first, and the bar would wear
+	# the Undo and the bulb this game has not got until Play
+	top_bar.refresh(self)
 	_ask(false)
 
 func _notification(what: int) -> void:
@@ -212,51 +221,7 @@ func _build() -> void:
 	col.add_child(top_bar)
 	col.add_child(_build_hud())
 
-	var frame := PanelContainer.new()
-	frame.name = "Frame"
-	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
-	box.shadow_offset = Vector2(0, 6)
-	frame.add_theme_stylebox_override("panel", box)
-	col.add_child(frame)
-	field = Control.new()
-	field.name = "Field"
-	field.clip_contents = true
-	field.mouse_filter = Control.MOUSE_FILTER_STOP
-	field.draw.connect(_draw_field)
-	field.resized.connect(_layout_field)
-	field.gui_input.connect(_on_field_input)
-	frame.add_child(field)
-	for i in Sim.HILLS:
-		var clip := Control.new()
-		clip.name = "Hill%d" % i
-		clip.clip_contents = true
-		clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		clip.draw.connect(_draw_mole.bind(i))
-		field.add_child(clip)
-		var lip := Control.new()
-		lip.name = "Lip%d" % i
-		lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lip.draw.connect(_draw_lip.bind(i))
-		field.add_child(lip)
-		_views.append({"clip": clip, "lip": lip})
-		_hit_at.append(-10.0)
-	_over = Control.new()
-	_over.name = "Over"
-	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_over.draw.connect(_draw_over)
-	field.add_child(_over)
-	_fx = Fx2D.new()
-	_fx.haptics = HAPTICS
-	field.add_child(_fx)
+	col.add_child(_build_frame())
 
 	var over := VBoxContainer.new()
 	over.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -284,6 +249,57 @@ func _build() -> void:
 	_rw = Rewards.new()
 	add_child(_rw)
 	_apply_insets()
+
+## The wooden frame with the lawn in it: the field, a clip and a lip for each
+## hill, the live layer and the effects. The tutorial's small lawn
+## (ui/hud/molehill_tutorial_diagram.gd) is this and the plates, nothing else.
+func _build_frame() -> PanelContainer:
+	var frame := PanelContainer.new()
+	frame.name = "Frame"
+	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("6e4a2f")
+	box.set_corner_radius_all(36)
+	box.border_color = Color("9c6b45")
+	box.set_border_width_all(6)
+	box.set_content_margin_all(FRAME)
+	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
+	box.shadow_size = 10
+	box.shadow_offset = Vector2(0, 6)
+	frame.add_theme_stylebox_override("panel", box)
+	field = Control.new()
+	field.name = "Field"
+	field.clip_contents = true
+	field.mouse_filter = Control.MOUSE_FILTER_STOP
+	field.draw.connect(_draw_field)
+	field.resized.connect(_layout_field)
+	field.gui_input.connect(_on_field_input)
+	frame.add_child(field)
+	for i in _hill_count():
+		var clip := Control.new()
+		clip.name = "Hill%d" % i
+		clip.clip_contents = true
+		clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip.draw.connect(_draw_mole.bind(i))
+		field.add_child(clip)
+		var lip := Control.new()
+		lip.name = "Lip%d" % i
+		lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lip.draw.connect(_draw_lip.bind(i))
+		field.add_child(lip)
+		_views.append({"clip": clip, "lip": lip})
+		_hit_at.append(-10.0)
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_over.draw.connect(_draw_over)
+	field.add_child(_over)
+	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
+	field.add_child(_fx)
+
+	return frame
 
 func _build_hud() -> Control:
 	var row := HBoxContainer.new()
@@ -333,14 +349,15 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf(s.x / Sim.W, s.y / Sim.H)
-	_origin = Vector2((s.x - Sim.W * _u) * 0.5, (s.y - Sim.H * _u) * 0.5)
+	var units := _field_units()
+	_u = minf(s.x / units.x, s.y / units.y)
+	_origin = Vector2((s.x - units.x * _u) * 0.5, (s.y - units.y * _u) * 0.5)
 	_lawn = _build_lawn()
 	var lb := Face.Builder.new()
 	Art.mound_front(lb, Vector2.ZERO, _u)
 	_lip = lb.mesh()
-	for i in Sim.HILLS:
-		var h := px(Sim.hill_pos(i))
+	for i in _hill_count():
+		var h := px(_hill_pos(i))
 		var clip: Control = _views[i].clip
 		var half := Sim.W / Sim.COLS * 0.5 * _u
 		clip.position = Vector2(h.x - half, h.y - 110.0 * _u)
@@ -348,11 +365,24 @@ func _layout_field() -> void:
 		var lip: Control = _views[i].lip
 		lip.position = h
 		lip.size = Vector2.ZERO
-	var box: Control = _banner.get_meta("box")
-	box.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	box.position = Vector2(0, s.y * 0.36)
-	box.size.x = s.x
+	if _banner != null:
+		var box: Control = _banner.get_meta("box")
+		box.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		box.position = Vector2(0, s.y * 0.36)
+		box.size.x = s.x
 	_redraw_all()
+
+## The hills this lawn shows, where each one's hole is and the field they
+## stand in, in field units: the sim's twelve, three across and four down. A
+## tutorial page stands a single row of them.
+func _hill_count() -> int:
+	return Sim.HILLS
+
+func _hill_pos(i: int) -> Vector2:
+	return Sim.hill_pos(i)
+
+func _field_units() -> Vector2:
+	return Vector2(Sim.W, Sim.H)
 
 func px(p: Vector2) -> Vector2:
 	return _origin + p * _u
@@ -401,6 +431,28 @@ func _new_game() -> void:
 	top_bar.refresh(self)
 	_fx.cue("start")
 	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+
+## The tutorial card's pages (ui/hud/screen_tutor.gd), each a small lawn
+## played by this screen and the sim (ui/hud/molehill_tutorial_diagram.gd).
+## Every number in the text is the sim's own.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/molehill_tutorial_diagram.gd")
+	var pts: Dictionary = Sim.POINTS
+	var steps := [
+		[Diagram.Lesson.WHACK, "TUT_MOLEHILL_WHACK", tr("TUT_MOLEHILL_WHACK_BODY") % [pts[Sim.Kind.MOLE], Sim.QUICK]],
+		[Diagram.Lesson.CAST, "TUT_MOLEHILL_CAST", tr("TUT_MOLEHILL_CAST_BODY") % [pts[Sim.Kind.GOLD], pts[Sim.Kind.POT]]],
+		[Diagram.Lesson.RABBIT, "TUT_MOLEHILL_RABBIT", tr("TUT_MOLEHILL_RABBIT_BODY") % Sim.BUNNY_COST],
+		[Diagram.Lesson.STREAK, "TUT_MOLEHILL_STREAK", tr("TUT_MOLEHILL_STREAK_BODY") % Sim.STEPS],
+		[Diagram.Lesson.FRENZY, "TUT_MOLEHILL_FRENZY", tr("TUT_MOLEHILL_FRENZY_BODY") % [int(Sim.ROUND), int(Sim.FRENZY)]],
+		[Diagram.Lesson.BOOSTS, "TUT_MOLEHILL_BOOSTS", tr("TUT_MOLEHILL_BOOSTS_BODY")],
+		[Diagram.Lesson.HUD, "TUT_MOLEHILL_HUD", tr("TUT_MOLEHILL_HUD_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
 
 func capabilities() -> Array:
 	return []
@@ -497,17 +549,25 @@ func _on_field_input(event: InputEvent) -> void:
 func tap(p: Vector2) -> void:
 	if sim == null or sim.phase != Sim.Phase.PLAY:
 		return
-	var i: int = Sim.hill_at(p)
+	swing(Sim.hill_at(p), p)
+
+## The mallet down at `p` on hill `i` (-1: on no hill).
+func swing(i: int, p: Vector2) -> void:
 	var got: String = sim.whack(i)
 	var where := p
 	if got != "miss" and i >= 0:
-		where = Sim.hill_pos(i) + Vector2(0, -44.0)
-	var ground := Sim.hill_pos(i) if got != "miss" and i >= 0 else p
+		where = _hill_pos(i) + Vector2(0, -44.0)
+	var ground := _hill_pos(i) if got != "miss" and i >= 0 else p
 	_mallets.append({"pos": where, "ground": ground, "t": 0.0, "hit": got != "miss"})
 	if got == "miss" and i < 0:
 		_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
 		_burst(p, LAWN_DEEP, false)
 	_play_events()
+
+## The tutorial card stops the run and leaves it paused, a tap from going on.
+func _tutor_hold(on: bool) -> void:
+	if on and sim != null and not sim.is_over() and _end == null:
+		_pause(true)
 
 func _pause(on: bool) -> void:
 	if on == _paused:
@@ -550,7 +610,7 @@ func _build_pause() -> Control:
 func _play_events() -> void:
 	for ev: Dictionary in sim.events:
 		var hill: int = ev.get("hill", -1)
-		var top := Sim.hill_pos(hill) + Vector2(0, -44.0) if hill >= 0 else Vector2.ZERO
+		var top := _hill_pos(hill) + Vector2(0, -44.0) if hill >= 0 else Vector2.ZERO
 		match String(ev.type):
 			"ready":
 				_show_banner(tr("MH_READY"), tr("MH_READY_LINE"), 1.1)
@@ -559,13 +619,13 @@ func _play_events() -> void:
 				_fx.cue("go")
 			"up":
 				_fx.cue("pop_up", randf_range(0.92, 1.12), -8.0)
-				_burst(Sim.hill_pos(hill) + Vector2(0, -3.0), Art.SOIL_HI, false, 0.6)
+				_burst(_hill_pos(hill) + Vector2(0, -3.0), Art.SOIL_HI, false, 0.6)
 			"hit":
 				_hit_at[hill] = _clock
 				var kind: int = ev.kind
 				var gold := kind == Sim.Kind.GOLD
 				_fx.cue("whack_gold" if gold else ("crack" if kind == Sim.Kind.POT else "whack"), randf_range(0.94, 1.08))
-				_burst(Sim.hill_pos(hill) + Vector2(0, -6.0), Art.SOIL_HI, gold or kind == Sim.Kind.POT)
+				_burst(_hill_pos(hill) + Vector2(0, -6.0), Art.SOIL_HI, gold or kind == Sim.Kind.POT)
 				if gold:
 					_fx.sparkle(px(top), Art.GOLD)
 				if kind == Sim.Kind.POT:
@@ -601,7 +661,7 @@ func _play_events() -> void:
 				_flash_now(Color("f4a7a0"), 0.35)
 			"miss":
 				_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
-				_burst(Sim.hill_pos(hill) + Vector2(0, 2.0), Art.SOIL, false)
+				_burst(_hill_pos(hill) + Vector2(0, 2.0), Art.SOIL, false)
 			"escape":
 				_fx.cue("escape", randf_range(0.95, 1.08), -6.0)
 				# the raspberry it blows on its way down
@@ -761,8 +821,8 @@ func _build_lawn() -> ArrayMesh:
 	for i in 60:
 		var p := Vector2(rng.randf() * s.x, rng.randf_range(hedge_h + 20.0, s.y))
 		var near := false
-		for h in Sim.HILLS:
-			var d := (p - px(Sim.hill_pos(h))) / _u
+		for h in _hill_count():
+			var d := (p - px(_hill_pos(h))) / _u
 			if absf(d.x) < 52.0 and d.y > -22.0 and d.y < 30.0:
 				near = true
 		if near:
@@ -781,8 +841,8 @@ func _build_lawn() -> ArrayMesh:
 	_quad(b, [Vector2(0, s.y), Vector2(e, s.y - e), Vector2(s.x - e, s.y - e), s], [dim, clear, clear, dim])
 	_quad(b, [Vector2(0, hedge_h), Vector2(e, hedge_h), Vector2(e, s.y - e), Vector2(0, s.y)], [dim, clear, clear, dim])
 	_quad(b, [Vector2(s.x, hedge_h), Vector2(s.x, s.y), Vector2(s.x - e, s.y - e), Vector2(s.x - e, hedge_h)], [dim, dim, clear, clear])
-	for h in Sim.HILLS:
-		Art.mound_back(b, px(Sim.hill_pos(h)), _u)
+	for h in _hill_count():
+		Art.mound_back(b, px(_hill_pos(h)), _u)
 	return b.mesh()
 
 func _draw_field() -> void:
@@ -1101,11 +1161,11 @@ static func _burst_star(b: Face.Builder, c: Vector2, r: float, col: Color, inner
 
 ## Stars circling a dizzy head.
 func _draw_stars(b: Face.Builder) -> void:
-	for i in Sim.HILLS:
+	for i in _hill_count():
 		var h: Dictionary = sim.hills[i]
 		if h.st != Sim.St.BONKED:
 			continue
-		var c := px(Sim.hill_pos(i) + Vector2(0, -62.0)) + _shake_off
+		var c := px(_hill_pos(i) + Vector2(0, -62.0)) + _shake_off
 		var spin := 0.0 if Motion.reduce else _clock * 6.0
 		for k in 3:
 			var a := spin + TAU * k / 3.0
@@ -1212,8 +1272,8 @@ func _plate_at(l: Label) -> Vector2:
 ## breaks into shards; a quick one sparks gold. Whacks close together are a
 ## flurry (Double!, Triple!), and a streak's steps are worded.
 func _on_hit(hill: int, kind: int, quick: bool) -> void:
-	var head := _in_rw(Sim.hill_pos(hill) + Vector2(0, -50.0))
-	var hole := _in_rw(Sim.hill_pos(hill) + Vector2(0, -4.0))
+	var head := _in_rw(_hill_pos(hill) + Vector2(0, -50.0))
+	var hole := _in_rw(_hill_pos(hill) + Vector2(0, -4.0))
 	var k := _u / 3.0
 	_rw.spray(hole, Art.SOIL_HI, 6, 420.0, "clod", 0.9 * k)
 	_rw.spray(head, Color("fffaf0"), 4, 420.0, "spark", 0.9 * k)
@@ -1224,18 +1284,18 @@ func _on_hit(hill: int, kind: int, quick: bool) -> void:
 			_rw.spray(head, Art.GOLD, 16, 760.0, "coin", 1.0 * k)
 			_rw.spray(head, Pal.SUN, 4, 520.0, "star", 0.8, 0.1, _plate_at(_score_l))
 			_rw.ring(head, 48.0 * _u, Color(Art.GOLD, 0.9))
-			_rw.sticker(tr("MH_GOLDEN"), _in_rw(Sim.hill_pos(hill) + Vector2(0, -80.0)), 60, 1.2, true, Color.WHITE, true, "gold%d" % hill, 30.0)
+			_rw.sticker(tr("MH_GOLDEN"), _in_rw(_hill_pos(hill) + Vector2(0, -80.0)), 60, 1.2, true, Color.WHITE, true, "gold%d" % hill, 30.0)
 			_flash_now(Art.GOLD, 0.35)
 		Sim.Kind.POT:
 			_rw.spray(head, SHARD, 12, 640.0, "shard", 1.1 * k)
 			_rw.spray(head, Art.POT_BAND, 5, 520.0, "shard", 0.8 * k)
-			_rw.sticker(tr("MH_SMASH"), _in_rw(Sim.hill_pos(hill) + Vector2(0, -80.0)), 56, 1.0, false, Art.POT_RIM, false, "smash%d" % hill, 30.0)
+			_rw.sticker(tr("MH_SMASH"), _in_rw(_hill_pos(hill) + Vector2(0, -80.0)), 56, 1.0, false, Art.POT_RIM, false, "smash%d" % hill, 30.0)
 	# the flurry
 	_flurry = _flurry + 1 if _clock - _last_whack <= FLURRY_GAP else 1
 	_last_whack = _clock
 	if _flurry >= 2:
 		var word: String = FLURRY[mini(_flurry, FLURRY.size() - 1)]
-		_rw.sticker(tr(word), _in_rw(Sim.hill_pos(hill) + Vector2(0, -100.0)), 58 + 6 * mini(_flurry, 4), 1.0, true, Color.WHITE, _flurry >= 3, "flurry", 30.0)
+		_rw.sticker(tr(word), _in_rw(_hill_pos(hill) + Vector2(0, -100.0)), 58 + 6 * mini(_flurry, 4), 1.0, true, Color.WHITE, _flurry >= 3, "flurry", 30.0)
 		_rw.spray(head, Pal.SUN, 3 * _flurry, 600.0, "star", 0.9)
 	# the streak's steps
 	for i in WORDS.size():
@@ -1260,7 +1320,7 @@ func _on_combo(hill: int, mult: int) -> void:
 	_rw.sticker(tr("MH_COMBO") % mult, at, 110 + 14 * (mult - 2), 1.4, true, Color.WHITE, true, "combo")
 	_rw.sticker(tr("MH_POINTS_X") % mult, at + Vector2(0, 100.0 + 10.0 * (mult - 2)), 42, 1.4, false, Pal.SUN, false, "combo_line")
 	_rw.spray(at, Pal.SUN, 10 + 4 * mult, 820.0, "star", 1.1)
-	_rw.spray(_in_rw(Sim.hill_pos(hill) + Vector2(0, -50.0)), Pal.SUN, 3 + mult, 520.0, "star", 0.8, 0.15, _plate_at(_score_l))
+	_rw.spray(_in_rw(_hill_pos(hill) + Vector2(0, -50.0)), Pal.SUN, 3 + mult, 520.0, "star", 0.8, 0.15, _plate_at(_score_l))
 	_rw.ring(at, 260.0, Color(Pal.SUN, 0.9))
 	_rw.ring(at, 180.0, Color("fffaf0", 0.9), 0.08)
 	_flash_now(Pal.SUN, 0.3 + 0.08 * mult)
@@ -1497,6 +1557,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return

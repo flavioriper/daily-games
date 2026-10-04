@@ -22,6 +22,7 @@ const ChessSkin = preload("res://versus/chess_skin.gd")
 const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
@@ -66,13 +67,21 @@ var _deck_mesh: ArrayMesh
 var _deck_key := Rect2()
 var top_bar: Control
 var settings_sheet: Control
+## The tutorial card: the top bar's ?, the settings' How to play and the
+## first play (ui/hud/screen_tutor.gd).
+var tutor: RefCounted
 ## The colour the player moves this game.
 var player := Rules.WHITE
 var _state := State.ENTER
 var _history: Array = []
 var _rewinds := 0
 var _hints := HINTS
+## The move the bulb is showing, -1 when none: asking again while it is up
+## shows it again and spends nothing.
+var _hint_move := -1
 var _undos := 0
+## True while the tutorial card is over the board.
+var _held := false
 var _game := 0
 var _task := -1
 var _box: Array = []
@@ -107,6 +116,8 @@ func _ready() -> void:
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Chess", _hold)
+	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	player = Rules.WHITE if Record.last_colour(GAME) == Rules.WHITE else Rules.BLACK
 	_new_game()
@@ -387,6 +398,37 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return _hints if _state == State.YOURS else 0
 
+## The bulb's badge: the count stays up while the bulb waits its turn.
+func hints_held() -> int:
+	return _hints
+
+## Reset waits out a move in the air, as `_on_reset` does.
+func can_reset() -> bool:
+	return _state != State.ANIM and _state != State.REWIND
+
+## The card's pages (ui/hud/chess_tutorial_diagram.gd): the board itself on
+## a few pieces. The levels change only how well the computer plays, so the
+## pages are the same on all three.
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/chess_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.MOVE, "TUT_CHESS_MOVE", tr("TUT_CHESS_MOVE_BODY")],
+		[Diagram.Lesson.LINES, "TUT_CHESS_LINES", tr("TUT_CHESS_LINES_BODY")],
+		[Diagram.Lesson.STEPS, "TUT_CHESS_STEPS", tr("TUT_CHESS_STEPS_BODY")],
+		[Diagram.Lesson.CHECK, "TUT_CHESS_CHECK", tr("TUT_CHESS_CHECK_BODY")],
+		[Diagram.Lesson.SPECIAL, "TUT_CHESS_SPECIAL", tr("TUT_CHESS_SPECIAL_BODY")],
+		[Diagram.Lesson.DRAW, "TUT_CHESS_DRAW", tr("TUT_CHESS_DRAW_BODY")],
+		[Diagram.Lesson.BAR, "TUT_CHESS_BAR", tr("TUT_CHESS_BAR_BODY") % HINTS],
+	]
+	var pages := []
+	for step: Array in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		d.skin = board.skin
+		d.hints = HINTS
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
 # --- the game ---
 
 func _new_game() -> void:
@@ -394,6 +436,7 @@ func _new_game() -> void:
 	rules = Rules.new()
 	_history.clear()
 	_hints = HINTS
+	_hint_move = -1
 	_undos = 0
 	_state = State.ENTER
 	if _end != null:
@@ -458,6 +501,7 @@ func _play(m: int) -> void:
 	_state = State.ANIM
 	board.interactive = false
 	board.set_hint(-1)
+	_hint_move = -1
 	_hush()
 	board.play(d)
 	_refresh_board()
@@ -492,7 +536,13 @@ func _react(p: int, expr: int) -> void:
 # --- thinking, for the computer and the hint ---
 
 func _process(_delta: float) -> void:
-	_poll_think()
+	# The computer's answer waits while the tutorial card is up, so no move
+	# is played (or heard) behind a page.
+	if not _held:
+		_poll_think()
+
+func _hold(on: bool) -> void:
+	_held = on
 
 func _think(kind: String) -> void:
 	if _task != -1:
@@ -521,6 +571,7 @@ func _poll_think() -> void:
 		_bot_moves(m)
 		return
 	if kind == "hint" and _task_game == _game and _state == State.YOURS and m >= 0:
+		_hint_move = m
 		board.set_hint(m)
 		_fx.cue("hint")
 		_say(tr("CHS_HINT_LINE"))
@@ -540,7 +591,13 @@ func _bot_moves(m: int) -> void:
 		_play(m))
 
 func _on_hint() -> void:
-	if _state != State.YOURS or _hints <= 0 or _task != -1:
+	if _state != State.YOURS or _task != -1:
+		return
+	if _hint_move >= 0:
+		board.set_hint(_hint_move)
+		_say(tr("CHS_HINT_LINE"))
+		return
+	if _hints <= 0:
 		return
 	_hints -= 1
 	top_bar.refresh(self)
@@ -560,6 +617,7 @@ func _on_undo() -> void:
 	_fx.buzz(Haptics.TICK)
 	board.interactive = false
 	board.set_hint(-1)
+	_hint_move = -1
 	_hush()
 	_rewind_one()
 	Analytics.track("undo_used", {"puzzle_id": GAME, "undos": _undos})
@@ -727,6 +785,8 @@ func _on_back() -> void:
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
+	if tutor.close():
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
