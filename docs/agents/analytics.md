@@ -59,3 +59,21 @@ see "Ads and the purchase" below.
   then sends one DebugView-tagged event, so the wiring is visible rather than
   assumed. GA4's collect endpoint answers 204 to everything, so DebugView is
   the only proof a secret actually works.
+- **Versus online** (2026-10-04, level 3; all four from
+  `versus/online/online.gd`, every one with `game`):
+  `versus_online_seek` (each look: the screen opening, and every Find
+  another); `versus_online_found` (`wait_s`, whole seconds from the seek);
+  `versus_online_nobody` (`choice`: `keep` and `computer` off the nobody
+  card, `offline` for Play the computer off the No connection card, `cancel`
+  for Cancel or Android's back while looking or on the nobody card -- so it
+  also fires for a player who cancels before the card ever said nobody; Back
+  on the No connection card sends nothing); `versus_online_end` (`why`:
+  `end` on the board, `resign`, `timeout`, `left`; `won`; `result`
+  won/lost/draw; `moves` -- chess's fullmove, checkers' move number,
+  snooker's shots), once a game, from `settle`. **A game online fires
+  `versus_online_end`, never `versus_end`**, and a resignation through Back
+  is a `versus_online_end` with `why: resign`, never a `versus_abandon`. A
+  foul (the other end's move was not legal) is `why: left`, won.
+  `versus_start` still fires with `level: 3` as an online screen opens,
+  before anyone is found, and again with the computer's level when Play the
+  computer is taken; count games online from `versus_online_found`.
