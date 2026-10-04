@@ -9,8 +9,8 @@ extends SceneTree
 ##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
 ##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy"]
-const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod"]
+const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod"}
 
 var _menu: Node
 var _t := 0.0
@@ -74,6 +74,8 @@ func _force_over(g: String, s: Node) -> void:
 			s._play_events()
 		"posy":
 			sim.give_up()
+		"peapod":
+			sim.wall_y = 1000.0
 
 func _finish(code: int) -> void:
 	if _had:

@@ -82,6 +82,8 @@ const CARDS := {
 	"thirteen": ["beach", 1.5, Vector2(0.5, 0.65)],
 	# Posy's bed lies in the meadow vista's garden.
 	"posy": ["meadow", 1.5, Vector2(0.5, 0.6)],
+	# Peapod's cart stands on the meadow's grass, under its hills.
+	"peapod": ["meadow", 1.6, Vector2(0.7, 0.55)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

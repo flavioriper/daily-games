@@ -54,6 +54,7 @@ const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
 const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
+const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
 const Streak = preload("res://core/streak.gd")
 
@@ -1145,6 +1146,9 @@ func _open_arcade(game: String) -> void:
 		"posy":
 			screen = PosyScreen.new()
 			screen.name = "Posy"
+		"peapod":
+			screen = PeapodScreen.new()
+			screen.name = "Peapod"
 		_:
 			return
 	screen.closed.connect(func() -> void:

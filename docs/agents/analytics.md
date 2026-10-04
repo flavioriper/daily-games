@@ -34,7 +34,8 @@ see "Ads and the purchase" below.
   and bunnies; Stackwood sends stage as the biggest
   block, and drops, merges, chain and tools; Lucky Thirteen stage as the
   biggest number, and moves, merges, chain, tools and reached; Posy stage
-  as the day, and moves, made, cascade, picked and tools) and `arcade_abandon`; snooker's hint and reset
+  as the day, and moves, made, cascade, picked and tools; Peapod stage as
+  the wave, and kills, caught, fired, peas, rate and power) and `arcade_abandon`; snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

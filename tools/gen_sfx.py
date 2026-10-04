@@ -1335,6 +1335,34 @@ SETS = {
         "offer":        ("a gentle hopeful two-note question chime, so close, not sad", 0.8, -7, ARCADE),
         "more_moves":   ("a bright cheerful rising sparkle, extra moves granted, short", 0.8, -6, ARCADE),
     },
+    # Peapod (Arcade, arcade/peapod_screen.gd): a pea cannon against numbered
+    # crates. The gun never stops, so shot and hit sit very low and are
+    # played through an Fx2D that knocks for nothing; pop is pitched up a
+    # streak by the screen.
+    "peapod": {
+        "shot":      ("a tiny soft airy 'pft' of a pea blown out of a toy pea shooter, very short and light", 0.5, -20, CARTOON),
+        "hit":       ("a tiny soft wooden 'tick' of a dried pea bouncing off a wooden crate, very short", 0.5, -18, CARTOON),
+        "pop":       ("a small wooden crate bursting apart with a soft round 'pop' and a light clatter of slats, very short", 0.5, -8, CARTOON),
+        "pop_gold":  ("a wooden crate bursting with a bright jingle of coins and a sparkle, a golden prize, short", 0.8, -5, CARTOON),
+        "gift":      ("a soft bright rising 'bloop' with a tiny sparkle, a present popping out of a box, very short", 0.5, -8, ARCADE),
+        "catch":     ("a bright happy two-note power-up chime, rising, a gift caught, short", 0.6, -6, ARCADE),
+        "twin":      ("a cheerful bouncy three-note power-up jingle, a little helper joining in, short", 0.8, -5, ARCADE),
+        "twin_off":  ("a short soft descending two-note blip with a little puff, a helper leaving, gentle", 0.5, -10, ARCADE),
+        "lost":      ("a tiny soft 'plip' of something small dropping into grass, a gift missed, very short", 0.5, -12, CARTOON),
+        "boom":      ("a soft round cartoon firecracker 'bang' with wooden crates scattering, playful, not harsh, short", 0.9, -5, CARTOON),
+        "knock":     ("a soft springy cartoon 'boing' thump, something pushed back, very short", 0.5, -9, CARTOON),
+        "head":      ("a big soft cartoon 'splat' pop followed by a bright sparkling chime burst, a boss beaten, satisfying, short", 0.9, -5, CARTOON),
+        "wave":      ("a short bright two-note fanfare blip, a new wave beginning", 0.7, -7, ARCADE),
+        "milli":     ("a short playful low marching synth riff of four quick notes, a big bug arriving, not scary", 1.0, -7, ARCADE),
+        "clear":     ("a quick happy rising chime run with a sparkle, a wave cleared", 1.0, -6, ARCADE),
+        "word":      ("a bright rising three-note chime with a sparkle, a combo streak, short", 0.7, -6, ARCADE),
+        "warn":      ("a soft worried two-note warning blip, something getting too close, gentle not alarming", 0.6, -8, ARCADE),
+        "over":      ("a soft low cartoon 'thud' with a wooden clatter and a sad little slide whistle down, short", 0.9, -6, CARTOON),
+        "go":        ("a short bright cheerful 'go' horn blip of two rising notes, a round starts", 0.6, -5, ARCADE),
+        "start":     ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
+        "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
+        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+    },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
     "rings": {

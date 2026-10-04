@@ -218,3 +218,42 @@ bloom as breezes, then the next day is dealt. Its "furthest" is the day.
   are still landing, with a tap hurrying the rest. A harness laying tiles by
   hand (`_put`) must skip cells with no tile: a stone's `{}` written into
   becomes a half tile the sim then trips on.
+
+**Peapod is the sixth** (2026-10-04, spec
+`2026-10-04-arcade-peapod-design.md`): a pea cannon against numbered crates,
+after the cannon-and-numbers phone shooters the spec names once to forbid;
+**it is called Peapod**. The cart only slides and never stops firing; a
+crate takes as many peas as its number; gift crates drop a token that must
+be caught (a pea more a volley, a quicker gun, a heavier pea, a helper cart
+for twelve seconds); a firecracker takes its neighbours, a golden crate pays
+five times. Two waves of a wall five across, then one of a millipede winding
+down a path, whose plates shot off knock it back. Whatever reaches the
+chalk line ends the run. Its "furthest" is the wave.
+
+- **The game is pure data** (`arcade/peapod_sim.gd`, fixed 1/60 s, field
+  units, `target_x` or `axis` in, `events` out). `tests/_probe_peapod.gd --
+  [seed] [skill 0-2] [games]` plays it with a bot; run it after touching
+  `hp_base()`, the gifts or the speeds. Skill 0 ends on wave 5-10, skills 1
+  and 2 near wave 20-23 in about six minutes.
+- **The gun is heard and never felt**: `shot` and `hit` fire several times a
+  second and play through `_quiet`, a second `Fx2D` with `buzzes` off, so
+  no ECHO rides on them. The next game with a constant sound can do the
+  same.
+- **A crate's paint is its number's weight** (`Art.tier_of`, a step each
+  time it trebles) and is read off the hp it has left, so a crate changes
+  colour as it is worn down. The hit flash is a small one (1.22 on the
+  modulate, a tenth of a second): at 1.7 a volley of three landing made a
+  blue plate read as a cyan one, a colour of its own.
+- **The millipede head's number is lettered last**, on a dark plate over
+  the head: lettered with the plates' numbers it ran into the plate behind
+  it on every turn of the path.
+- A harness ends a run with `sim.wall_y = 1000.0` (a wall) or
+  `sim.segs[0].s = Sim.path_len()` (the millipede). `revive()` measures its
+  shove from the line, not from where the wall was, or a wall forced far
+  past the line comes back still past it.
+- 262 draw calls on the tab with six cards, 52 at rest, 73-85 in play, ~124
+  with a wall of fifteen and four gifts falling, 105-118 on the end card,
+  ANGLE agreeing. 22 sounds (`CARTOON` crates, `ARCADE` jingles), awaiting
+  the user's listen. `tests/_shot_peapod.gd` shoots every beat, slides the
+  cart through the viewport (prints whether it rolled) and puts
+  `user://arcade.cfg` back on every way out, a timeout included.
