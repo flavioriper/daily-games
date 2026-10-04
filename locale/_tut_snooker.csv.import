@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dvgukhj4admfu"
+
+[deps]
+
+files=["res://locale/_tut_snooker.en.translation", "res://locale/_tut_snooker.pt.translation", "res://locale/_tut_snooker.es.translation"]
+
+source_file="res://locale/_tut_snooker.csv"
+dest_files=["res://locale/_tut_snooker.en.translation", "res://locale/_tut_snooker.pt.translation", "res://locale/_tut_snooker.es.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

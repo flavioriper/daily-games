@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cnuhbj0wix2qo"
+
+[deps]
+
+files=["res://locale/_tut_peapod.en.translation", "res://locale/_tut_peapod.pt.translation", "res://locale/_tut_peapod.es.translation"]
+
+source_file="res://locale/_tut_peapod.csv"
+dest_files=["res://locale/_tut_peapod.en.translation", "res://locale/_tut_peapod.pt.translation", "res://locale/_tut_peapod.es.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

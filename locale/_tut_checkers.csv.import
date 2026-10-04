@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://d322vkvf23un6"
+
+[deps]
+
+files=["res://locale/_tut_checkers.en.translation", "res://locale/_tut_checkers.pt.translation", "res://locale/_tut_checkers.es.translation"]
+
+source_file="res://locale/_tut_checkers.csv"
+dest_files=["res://locale/_tut_checkers.en.translation", "res://locale/_tut_checkers.pt.translation", "res://locale/_tut_checkers.es.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
