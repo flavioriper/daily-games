@@ -147,6 +147,11 @@ var _cue_slide := 0.0
 var _follow_t := -1.0
 var _struck_at := Vector2.ZERO
 var _cue_tw: Tween
+## Balls on their way to where they belong (`slide`): ball id to where it is
+## drawn from, metres, and how far along it is, 0..1.
+var _slides := {}
+var _slide_u := 1.0
+var _slide_tw: Tween
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still else Control.MOUSE_FILTER_STOP
@@ -278,6 +283,27 @@ func play_stroke(done: Callable) -> void:
 	_stroke_from = power
 	_stroke_t = 0.0
 	_stroke_done = done
+
+## Balls already standing where they belong are drawn sliding there from
+## `from` (ball id to a place in metres) over `seconds`: the table online
+## taking the other player's, which stopped a hair away. Empty stops it.
+func slide(from: Dictionary, seconds: float) -> void:
+	if _slide_tw != null and _slide_tw.is_valid():
+		_slide_tw.kill()
+	_slides = from
+	_slide_u = 0.0
+	if from.is_empty() or seconds <= 0.0:
+		_slides = {}
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_property(self, "_slide_u", 1.0, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_slide_tw.tween_callback(func() -> void: _slides = {})
+
+## Where ball `i` is drawn, metres: where it is, unless it is sliding there.
+func _at(i: int) -> Vector2:
+	if _slides.has(i):
+		return (_slides[i] as Vector2).lerp(sim.pos[i], _slide_u)
+	return sim.pos[i]
 
 ## A potted ball drops into its pocket rather than vanishing.
 func sink(id: int, at: Vector2, pocket: Vector2) -> void:
@@ -543,7 +569,7 @@ func _build_live() -> ArrayMesh:
 	# Shadows first, so no ball's shadow lies over its neighbour.
 	for i in Sim.COUNT:
 		if sim.on[i]:
-			var c := px(sim.pos[i]) + Vector2(r * 0.28, r * 0.36)
+			var c := px(_at(i)) + Vector2(r * 0.28, r * 0.36)
 			b.ellipse(c, r * 1.02, r * 0.92, SHADOW)
 	if in_hand and interactive:
 		# The D, lit while the cue ball may be carried round it.
@@ -575,7 +601,7 @@ func _build_live() -> ArrayMesh:
 					Color(1.0, 0.97, 0.8, 0.25 + 0.25 * glow), true)
 	for i in Sim.COUNT:
 		if sim.on[i]:
-			_ball(b, i, px(sim.pos[i]), r, 1.0)
+			_ball(b, i, px(_at(i)), r, 1.0)
 	for f in _flashes:
 		if f.kind == "ball":
 			var u: float = f.t / FLASH

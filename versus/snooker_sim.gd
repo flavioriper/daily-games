@@ -163,6 +163,90 @@ func copy() -> RefCounted:
 	c.log_events = false
 	return c
 
+# --- the table as something to send (a game online) ---
+
+## Floats as text that loses nothing: each as its 32 bits, little end first,
+## in base64. JSON prints a float to so many decimals and a ball's place must
+## come back to the bit, so nothing here travels as a JSON number.
+static func pack(values: PackedFloat32Array) -> String:
+	var bytes := PackedByteArray()
+	bytes.resize(values.size() * 4)
+	for i in values.size():
+		bytes.encode_float(i * 4, values[i])
+	return Marshalls.raw_to_base64(bytes)
+
+## `n` floats back out of `pack`'s text; empty when the text is not that, or
+## any of them is not a number.
+static func unpack(text: Variant, n: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	@warning_ignore("integer_division")
+	var want := (n * 4 + 2) / 3 * 4
+	if typeof(text) != TYPE_STRING or (text as String).length() != want:
+		return out
+	for i in want:
+		var c: int = (text as String).unicode_at(i)
+		var ok := (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or (c >= 48 and c <= 57) \
+			or c == 43 or c == 47 or (c == 61 and i >= want - 2)
+		if not ok:
+			return out
+	var bytes := Marshalls.base64_to_raw(text)
+	if bytes.size() != n * 4:
+		return out
+	for i in n:
+		var f := bytes.decode_float(i * 4)
+		if not is_finite(f):
+			return PackedFloat32Array()
+		out.append(f)
+	return out
+
+## The table at rest: where every ball is (`p`, see `pack`) and which are on
+## it (`on`, a bit a ball). Nothing is moving, so that is all of it.
+func snapshot() -> Dictionary:
+	var flat := PackedFloat32Array()
+	var mask := 0
+	for i in COUNT:
+		flat.append(pos[i].x)
+		flat.append(pos[i].y)
+		if on[i]:
+			mask |= 1 << i
+	return {"p": pack(flat), "on": mask}
+
+## A snapshot read: {"pos": PackedVector2Array, "on": Array[bool]}, or empty
+## when it is not a table -- the wrong count of balls, a place that is not a
+## number or is off the table, no cue ball, or two balls in one place.
+static func read(d: Variant) -> Dictionary:
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var flat := unpack(d.get("p"), COUNT * 2)
+	var m: Variant = d.get("on")
+	if flat.is_empty() or not (typeof(m) == TYPE_INT or (typeof(m) == TYPE_FLOAT and is_finite(m) and m == floorf(m))):
+		return {}
+	var mask := int(m)
+	if mask < 0 or mask >= (1 << COUNT) or (mask & 1) == 0:
+		return {}
+	var p := PackedVector2Array()
+	var there: Array[bool] = []
+	for i in COUNT:
+		p.append(Vector2(flat[i * 2], flat[i * 2 + 1]))
+		there.append((mask >> i) & 1 == 1)
+		if there[i] and (p[i].x < -JAW or p[i].x > W + JAW or p[i].y < -JAW or p[i].y > L + JAW):
+			return {}
+	for i in COUNT:
+		for j in range(i + 1, COUNT):
+			if there[i] and there[j] and p[i].distance_to(p[j]) < 2.0 * R * 0.9:
+				return {}
+	return {"pos": p, "on": there}
+
+## Takes a table `read` made: every ball where it says, and still.
+func restore(t: Dictionary) -> void:
+	pos = (t.pos as PackedVector2Array).duplicate()
+	on = (t.on as Array[bool]).duplicate()
+	for i in COUNT:
+		vel[i] = Vector2.ZERO
+		roll[i] = Vector2.ZERO
+		side[i] = 0.0
+	begin_shot()
+
 ## The cue ball struck along `dir` at `speed` m/s, the tip `tip.x` of a
 ## radius right of centre (side) and `tip.y` above it (top; negative is
 ## screw). A tip at 0.4 above centre sends the ball off already rolling.
