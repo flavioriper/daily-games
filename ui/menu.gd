@@ -1098,7 +1098,9 @@ func go_back() -> void:
 	var nodes := find_children("*", "", true, false)
 	nodes.reverse()
 	for node in nodes:
-		if node.has_method("is_open") and node.is_open():
+		# A Live.Stream answers is_open() too and is no card: closing one
+		# would leave a game online deaf.
+		if node is CanvasItem and node.has_method("is_open") and node.is_open():
 			node.close()
 			return
 	var host: Node = null
@@ -1238,7 +1240,7 @@ func open_friend_game(game: String, uid: String, accept: bool) -> bool:
 	if is_instance_valid(friend_card):
 		friend_card.leave()
 	for node in find_children("*", "", true, false):
-		if node.has_method("is_open") and node.is_open():
+		if node is CanvasItem and node.has_method("is_open") and node.is_open():
 			node.close()
 	for child in get_children():
 		if child.is_queued_for_deletion():
@@ -1272,7 +1274,8 @@ func _on_invited(from: String, game: String) -> void:
 	var card := InviteCard.invite(from, game)
 	card.play.connect(func(g: String) -> void:
 		Analytics.track("versus_friend_answer", {"game": g, "choice": "play"})
-		open_friend_game(g, from, true))
+		if not open_friend_game(g, from, true):
+			Social.decline(from))
 	card.dismissed.connect(func() -> void:
 		Analytics.track("versus_friend_answer", {"game": game, "choice": "not_now"})
 		Social.decline(from)

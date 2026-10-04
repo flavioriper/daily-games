@@ -27,6 +27,9 @@ const ARG := "--link="
 static var _taken := ""
 static var _arg_read := false
 
+## Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY.
+const FROM_HISTORY := 0x00100000
+
 static func take() -> String:
 	if OS.get_name() == "Android":
 		return _from_intent()
@@ -49,6 +52,10 @@ static func _from_intent() -> String:
 		return ""
 	var intent: Variant = activity.getIntent()
 	if intent == null:
+		return ""
+	# A task brought back from Recents is handed the intent it began with: a
+	# link already acted on, perhaps for a friend since removed.
+	if intent.has_java_method("getFlags") and (int(intent.getFlags()) & FROM_HISTORY) != 0:
 		return ""
 	var data: Variant = intent.getDataString()
 	if not (data is String) or data == "":

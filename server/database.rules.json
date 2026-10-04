@@ -118,7 +118,7 @@
               ".validate": "newData.val() === now"
             },
             "via": {
-              ".validate": "newData.isString()"
+              ".validate": "newData.isString() && newData.val().length === 8"
             },
             "$x": {
               ".validate": false

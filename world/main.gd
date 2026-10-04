@@ -44,7 +44,8 @@ func _ready() -> void:
 		age.answered.connect(func(year: int) -> void:
 			AgeGate.set_birth_year(year)
 			Analytics.track("age_answered", {"band": AgeGate.band_name(AgeGate.band())})
-			Ads.start())
+			Ads.start()
+			_take_link.call_deferred())
 		$UI.add_child(age)
 	else:
 		Ads.start()
@@ -54,7 +55,7 @@ func _ready() -> void:
 ## The game brought back to the front: a friend link tapped while it was
 ## open arrives as a new intent and a resume, with no second _ready.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_RESUMED:
+	if what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
 		_take_link()
 
 ## A friend link the game was opened with (core/deep_link.gd hands each out
@@ -65,7 +66,9 @@ func _notification(what: int) -> void:
 ## call it and stay offline -- and a harness that has given the game a
 ## Social.fake can open a link with `-- --link=`.
 func _take_link() -> void:
-	if not Social.started():
+	# Not over the age question: the link waits, untaken, for its answer.
+	var age := get_node_or_null("UI/AgeScreen")
+	if not Social.started() or (age != null and not age.is_queued_for_deletion()):
 		return
 	var code := Social.code_in(DeepLink.take())
 	if code == "":
@@ -98,7 +101,7 @@ func _open_store() -> void:
 
 func _modal_open(root: Node) -> bool:
 	for node in root.find_children("*", "", true, false):
-		if node.has_method("is_open") and node.is_open():
+		if node is CanvasItem and node.has_method("is_open") and node.is_open():
 			return true
 	# A board's host carries the card itself; a Versus or Arcade screen under
 	# the menu carries its own.

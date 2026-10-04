@@ -100,6 +100,7 @@ static var _uid := ""
 static var _code := ""
 ## The code in the file has been looked up on the server this session.
 static var _code_checked := false
+static var _coding := false
 ## social/{uid} as last known.
 static var _doc: Variant = null
 static var _loaded := false
@@ -235,6 +236,15 @@ static func my_code() -> String:
 	if not _started:
 		return ""
 	enable()
+	# One ask at a time: two at once would each deal a code.
+	while _coding:
+		await hub().get_tree().process_frame
+	_coding = true
+	var code := await _my_code()
+	_coding = false
+	return code
+
+static func _my_code() -> String:
 	var uid := await _me()
 	if uid.is_empty():
 		return ""
@@ -370,7 +380,25 @@ static func remove(uid: String) -> bool:
 	_doc = Match._apply(_doc, "put", "/friends/%s" % uid, null)
 	_doc = Match._apply(_doc, "put", "/invites/%s" % uid, null)
 	_digest(false)
+	@warning_ignore("return_value_discarded")
+	new_code()  # deliberately not awaited
 	return true
+
+## A new code in place of this player's, and the old one gone: every link
+## sent before stops working. remove() ends with it, since a code is all it
+## takes to be a friend and the one removed still holds it. Await it for the
+## new code; "" when it could not be done (the old one then stands).
+static func new_code() -> String:
+	if _faked or not _started or _code.is_empty():
+		return _code
+	var old := _code
+	var gone := await Live.remove("codes/%s" % old)
+	if not gone.ok or _code != old:
+		return ""
+	_code = ""
+	_code_checked = false
+	_save()
+	return await my_code()
 
 ## Their uids, the oldest friendship first.
 static func friends() -> Array[String]:
@@ -455,13 +483,15 @@ static func _on_event(kind: String, path: String, data: Variant) -> void:
 	if kind == "cancel" or not _opened:
 		return
 	_doc = Match._apply(_doc, kind, path, data)
+	# The first whole read is the list as it was, not news.
+	var first := not _loaded
 	_loaded = true
-	_digest(false)
+	_digest(false, first)
 
 ## Everything the document implies that has not been said yet. `mine` when
 ## the change is this player's own write (add): its friend is news even if
 ## the list has never been read.
-static func _digest(mine: bool) -> void:
+static func _digest(mine: bool, first := false) -> void:
 	var doc: Dictionary = _doc if typeof(_doc) == TYPE_DICTIONARY else {}
 	var entries: Variant = doc.get("friends")
 	var by_uid: Dictionary = entries if typeof(entries) == TYPE_DICTIONARY else {}
@@ -478,7 +508,7 @@ static func _digest(mine: bool) -> void:
 			_known[uid] = true
 			# Before the first whole read nothing is news but what this player
 			# has just done.
-			if _loaded or mine:
+			if (_loaded and not first) or mine:
 				news.append(uid)
 	for uid in _known.keys():
 		if not by_uid.has(uid):

@@ -342,6 +342,38 @@ take a GDScript String, `Share.text` falls to the clipboard on its own.
 no universal link, no share sheet): the page shows the code and the player
 types it; `Share.text` copies the link.
 
+### After the review (2026-10-04)
+
+- **The first whole read is not news.** `_on_event` used to set `_loaded`
+  before `_digest`, so every friend already had was said `befriended` at
+  each launch and the menu raised the New friend card for the oldest one.
+  `_digest(mine, first)` now keeps the first read quiet; a friend made by
+  this player's own `add` before that read is still news.
+- **Removing a friend deals a new code** (`Social.new_code()`, which
+  `remove()` ends with, not awaited). A code is all it takes to be a
+  friend, and the one removed still holds it: without this they are back
+  with one tap. The cost: every link this player sent before stops working,
+  redeemed or not. There is no button for a new code on its own, and no
+  block list; both are open.
+- **`my_code()` is one ask at a time** (`_coding`): two at once each dealt
+  a code and the loser stayed in `/codes` as a working orphan.
+- **The one who accepts does not delete the invite** (`Match._join`): the
+  asker (p0) does. An asker whose ticket stream reopened in that gap read
+  nothing there and called it declined, with a match naming them made.
+- **Android's back, `open_friend_game` and `world/main.gd`'s `_modal_open`
+  only count a `CanvasItem` that answers `is_open()`.** `Live.Stream` has
+  `is_open()` and `close()` too and sits under an online screen: back
+  closed the ticket or match stream and the game went deaf. This was on
+  `main` for a stranger's game as well.
+- **A link waits for the age question** (`_take_link` returns, link
+  untaken, while `UI/AgeScreen` is up; the answer calls it again).
+- **An invite whose Play could not open the game is declined**, so the one
+  who asked hears no in place of waiting out "no answer".
+- **`DeepLink` ignores an intent flagged `LAUNCHED_FROM_HISTORY`** (a task
+  relaunched from Recents carries the link it began with). Not run on a
+  phone, like the rest of the Android half.
+- Rules: `via` is a string of 8.
+
 ### Open
 
 - **Server side** (2026-10-04): the rules are not deployed

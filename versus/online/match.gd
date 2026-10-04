@@ -475,8 +475,12 @@ func _join(mid: String, sits: int) -> void:
 	_gen += 1
 	phase = Phase.JOINING
 	_ticket_stream.close()
-	@warning_ignore("return_value_discarded")
-	Live.remove(_ticket)  # deliberately not awaited
+	# A friend's invite is taken away by the one who asked (p0): were the one
+	# who accepted to delete it, an asker whose stream reopened just then would
+	# read nothing there and call it declined. `match` on it keeps it quiet.
+	if not _ticket.is_empty() and (_friend.is_empty() or sits == 0):
+		@warning_ignore("return_value_discarded")
+		Live.remove(_ticket)  # deliberately not awaited
 	_scanning = false
 	_ticketing = false
 	id = mid
