@@ -17,6 +17,8 @@ signal cancel
 signal keep
 ## "Play the computer", when nobody is around or there is no network.
 signal computer
+## "Ask again", when a friend did not come.
+signal again
 
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Names = preload("res://versus/online/names.gd")
@@ -24,7 +26,7 @@ const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 
-enum State { NONE, LOOKING, NOBODY, OFFLINE, FOUND }
+enum State { NONE, LOOKING, NOBODY, OFFLINE, FOUND, WAITING, NO_ANSWER, GONE }
 
 const WIDTH := 820.0
 const FACE := 170.0
@@ -53,7 +55,7 @@ func _init() -> void:
 func _ready() -> void:
 	Motion.appear(self, 0.0, 1.0, 0.2)
 
-# --- the four states ---
+# --- a stranger ---
 
 func show_looking() -> void:
 	_cast = randi() % Names.CAST.size()
@@ -88,6 +90,45 @@ func show_found(uid: String, line: String) -> void:
 	if not Motion.reduce:
 		_seat.pivot_offset = Vector2(_seat.size.x * 0.5, FACE * 0.5)
 		Motion.bump(_seat, 0.18, 0.4)
+
+# --- a friend ---
+
+## A friend has been asked and has not answered yet: their face, and Cancel.
+func show_waiting(uid: String) -> void:
+	_lay(State.WAITING, "VS_FRIEND_TITLE", Names.face_of(uid), Names.name_of(uid),
+		tr("VS_FRIEND_WAITING") % Names.name_of(uid))
+	Dialog.buttons(_col, Dialog.secondary("cross", tr("VS_CANCEL")))
+	_wire(0, cancel)
+
+## They have not answered for a while. The asking goes on behind this.
+func show_no_answer(uid: String) -> void:
+	var face := Names.face_of(uid)
+	face.expression = Face.Expr.SLEEPY
+	_lay(State.NO_ANSWER, "VS_FRIEND_TITLE", face, Names.name_of(uid),
+		tr("VS_FRIEND_NO_ANSWER") % Names.name_of(uid))
+	Dialog.buttons(_col, Dialog.primary("globe", tr("VS_FRIEND_KEEP")),
+		Dialog.secondary("chevron_left", tr("SNK_BACK")))
+	_wire(0, keep)
+	_wire(1, cancel)
+
+## There will be no game from this asking: `why` is "declined" (they said not
+## now, or took their own invite back), "expired" (the invite was gone by the
+## time Play was pressed), "void" (they never arrived) or "unfriend" (the two
+## are not friends any more, and there is nobody to ask again).
+func show_gone(uid: String, why: String) -> void:
+	var face := Names.face_of(uid)
+	face.expression = Face.Expr.SLEEPY
+	var key: String = {"declined": "VS_FRIEND_GONE_DECLINED", "expired": "VS_FRIEND_GONE_EXPIRED",
+		"unfriend": "VS_FRIEND_GONE_UNFRIEND"}.get(why, "VS_FRIEND_GONE_VOID")
+	_lay(State.GONE, "VS_FRIEND_TITLE", face, Names.name_of(uid), tr(key) % Names.name_of(uid))
+	if why == "unfriend":
+		Dialog.buttons(_col, Dialog.secondary("chevron_left", tr("SNK_BACK")))
+		_wire(0, cancel)
+		return
+	Dialog.buttons(_col, Dialog.primary("globe", tr("VS_FRIEND_ASK_AGAIN")),
+		Dialog.secondary("chevron_left", tr("SNK_BACK")))
+	_wire(0, again)
+	_wire(1, cancel)
 
 ## Fades out and goes.
 func leave() -> void:

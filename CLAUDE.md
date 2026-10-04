@@ -26,6 +26,7 @@ that area**, and add new history there rather than here.
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
 | One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |
 | Versus (snooker, chess, checkers) | `docs/agents/versus.md` |
+| Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod) | `docs/agents/arcade.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |

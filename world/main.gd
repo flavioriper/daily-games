@@ -11,6 +11,8 @@ const Haptics = preload("res://core/haptics.gd")
 const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
+const Social = preload("res://core/social.gd")
+const DeepLink = preload("res://core/deep_link.gd")
 const Locale = preload("res://core/locale.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const AgeGate = preload("res://core/age_gate.gd")
@@ -33,17 +35,55 @@ func _ready() -> void:
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)  # first: Ads.start() reads remote config through it
+	# Friends ride on the backend's identity. Started is not connected: it
+	# holds no stream until the player has social (core/social.gd).
+	Social.start(self)
 	if AgeScreen.wanted():
 		var age := AgeScreen.new()
 		age.name = "AgeScreen"
 		age.answered.connect(func(year: int) -> void:
 			AgeGate.set_birth_year(year)
 			Analytics.track("age_answered", {"band": AgeGate.band_name(AgeGate.band())})
-			Ads.start())
+			Ads.start()
+			_take_link.call_deferred())
 		$UI.add_child(age)
 	else:
 		Ads.start()
 	$UI/BannerHost.tapped.connect(_open_store)
+	_take_link()
+
+## The game brought back to the front: a friend link tapped while it was
+## open arrives as a new intent and a resume, with no second _ready.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
+		_take_link()
+
+## A friend link the game was opened with (core/deep_link.gd hands each out
+## once): whoever opens it is the sender's friend from here on, with nothing
+## to confirm. The new friend card is the menu's, raised by the hub's
+## `befriended`, so a success says nothing here. Does nothing while Social is
+## unstarted, and leaves the link untaken, so tests/_offline_main.gd can
+## call it and stay offline -- and a harness that has given the game a
+## Social.fake can open a link with `-- --link=`.
+func _take_link() -> void:
+	# Not over the age question: the link waits, untaken, for its answer.
+	var age := get_node_or_null("UI/AgeScreen")
+	if not Social.started() or (age != null and not age.is_queued_for_deletion()):
+		return
+	var code := Social.code_in(DeepLink.take())
+	if code == "":
+		return
+	Social.enable()
+	var res: Dictionary = await Social.add(code)
+	if res.get("ok", false):
+		Analytics.track("friends_added", {"via": "link"})
+		return
+	# "already" needs no word; "self", "unknown" and "offline" do, and the
+	# word is the menu's to say.
+	var why := str(res.get("why", ""))
+	var menu := get_node_or_null("UI/Menu")
+	if why != "already" and menu != null and menu.has_method("friend_link_failed"):
+		menu.friend_link_failed(why)
 
 ## The banner's "Remove ads" tab: the purchase sheet over whatever is up --
 ## the open board's own, else the menu's. BannerHost stands last under UI, so
@@ -61,7 +101,7 @@ func _open_store() -> void:
 
 func _modal_open(root: Node) -> bool:
 	for node in root.find_children("*", "", true, false):
-		if node.has_method("is_open") and node.is_open():
+		if node is CanvasItem and node.has_method("is_open") and node.is_open():
 			return true
 	# A board's host carries the card itself; a Versus or Arcade screen under
 	# the menu carries its own.

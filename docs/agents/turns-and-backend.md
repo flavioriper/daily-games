@@ -197,6 +197,45 @@ seat or -1. What the rules hold, in the order a game meets them:
   `STALE_MS`) and `versus/online/online.gd` (`LIMIT`): change them together.
 - There is no sweep. Finished matches stay.
 
+**Friends on the Realtime Database** (2026-10-04, spec
+`2026-10-04-friends-design.md`; the client is in `docs/agents/friends.md`).
+Four more paths, rules alone again:
+
+```
+/codes/{code}                     uid
+/social/{uid}/friends/{other}     { at, via? }
+/social/{uid}/invites/{from}      { game, at, match? }
+/presence/{uid}                   { at }
+```
+
+- **A code** is eight of `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (the rule's
+  regex). Written only where there is none, with the writer's uid; deleted
+  only by its owner; read one at a time by anyone signed in; `/codes` is
+  not readable, so they cannot be listed.
+- **A friendship is two entries made in one root PATCH** by the one who
+  opened the link. `social/$uid/friends/$other` is created only with the
+  other half in the same write, by `$uid`, or by `$other` with `via` a code
+  whose value is `$uid` -- so knowing the code is the whole permission and
+  one half never stands alone. `at` is `now`. Never `$uid === $other`, no
+  update, and **deleted only with the other half gone in the same write**,
+  by either of the two.
+- **`/social/{uid}` is read by `uid` alone**: one stream carries friends
+  and invites.
+- **An invite** `social/{to}/invites/{from}` is written by `from` while
+  `social/{to}/friends/{from}` exists (`game` one of the three, `at` `now`
+  or unchanged), read by `from` too, deleted by either. **`match` is set
+  once, by `to` only**, while `at` is under 10 s old, to a match that does
+  not exist and that the same write makes with `p0 === from`, `p1 === to`
+  and the invite's `game`.
+- **A match is created one of two ways**: both queue tickets pointing at
+  it, or `social/{p1}/invites/{p0}/match === $id` with the same `game`.
+  Everything after creation is the same rule as before.
+- **Presence** `presence/{uid}` is `{at: now}`, written by `uid`, read by
+  `uid` and by anyone in `social/{uid}/friends`.
+- The 10 s here is `Social.FRESH_MS` and the rules'; the invite's
+  heartbeat is `Match.TICKET_BEAT`. Change them together.
+- No sweep: codes, friendships and presence stay.
+
 **`core/live.gd`** (`Live`) is static like `Backend` and rides on its
 identity. `Live.read(path, query)`, `write(path, value)` (PUT),
 `patch(path, changes)` (a key may be a path, "moves/3"), `remove(path)`,
@@ -257,17 +296,17 @@ every 30 s. `tests/_probe_live_rules.sh` reads `FIREBASE_EMULATOR` and
 **Not yet done on the live project** (2026-10-04) -- online play works
 against the emulator and nowhere else:
 
-- **The Realtime Database instance does not exist.** It is created once by
-  hand (Firebase console, Build > Realtime Database, United States).
-- **`Live.HOST` assumes us-central1**:
-  `https://daily-games-420bf-default-rtdb.firebaseio.com`. An instance in
-  any other region has another host
-  (`<name>.<region>.firebasedatabase.app`) and the const must say so; it is
-  spelled out, not built from the project id, for that reason.
+- **The Realtime Database instance exists since 2026-10-04** (created in
+  the Firebase console, us-central1, locked mode: every read and write is
+  refused until the rules are deployed). Its host is the one `Live.HOST`
+  spells out, `https://daily-games-420bf-default-rtdb.firebaseio.com`
+  (seen: `/.json` answers 401 "Permission denied", where it answered 404
+  before).
 - **`tools/deploy_live.sh` is run by a person** (`firebase deploy --only
   database --project daily-games-420bf`), like `tools/deploy_functions.sh`.
   It has not been run.
 - **Nothing has been verified against production**: not the 307, not
   `auth_revoked`, not the rules as deployed, not two real devices. Until
-  the instance exists a player who picks Online with the network up will
-  fail to write a ticket and see the No connection card.
+  the rules are deployed a player who picks Online with the network up will
+  fail to write a ticket and see the No connection card, and Friends says
+  it is offline.

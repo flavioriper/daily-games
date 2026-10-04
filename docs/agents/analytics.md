@@ -77,3 +77,16 @@ see "Ads and the purchase" below.
   `versus_start` still fires with `level: 3` as an online screen opens,
   before anyone is found, and again with the computer's level when Play the
   computer is taken; count games online from `versus_online_found`.
+- **Friends** (2026-10-04): `friends_invite_shared` (`how`: `sheet` when
+  the phone's share sheet took the link, `copy` when it went to the
+  clipboard, and for the code's copy button; `ui/menu/friends_sheet.gd`);
+  `friends_added` (`via`: `code` from `ui/menu/code_dialog.gd`, `link` from
+  `world/main.gd`); `friends_removed` (the sheet, once the remove landed);
+  `versus_friend_invite` (`game`; `versus/online/online.gd`, as the asking
+  begins, so Rematch and Ask again count too); `versus_friend_answer`
+  (`game`, `choice`: `play` and `not_now` from the invite card in
+  `ui/menu.gd`, Android's back counting as `not_now`; `expired` from the
+  menu when the invite goes with its card up, and from `Online` when Play
+  was pressed on one already gone). A friend's game then sends
+  `versus_online_found` and `versus_online_end` as a stranger's does, and
+  no `versus_online_seek` or `versus_online_nobody`.

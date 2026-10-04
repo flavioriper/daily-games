@@ -13,12 +13,19 @@ extends VBoxContainer
 ## record at the chip picked, a line, and the four chips beside Play.
 ## Each game remembers its own chip.
 ##
+## Above the cards, one row: Friends, with how many of them are online now.
+## It opens the Friends sheet (ui/menu/friends_sheet.gd, through `friends`),
+## where a friend is asked to one of these three games. The row is one more
+## child of this column, so its height comes out of the room _fit measures.
+##
 ## Three cards are more than a short screen holds once an ad banner takes
 ## its share, so the tab measures the room the menu's column leaves it
 ## (_fit) and gives up, in turn, the lines under the names and then some of
 ## the pictures' height, rather than push the bar off the screen.
 
 signal play(game: String, level: int)
+## The Friends row was pressed.
+signal friends
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -34,6 +41,9 @@ const CheckersSkin = preload("res://versus/checkers_skin.gd")
 const CheckersRules = preload("res://versus/checkers_rules.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const Social = preload("res://core/social.gd")
+const SheetParts = preload("res://ui/hud/sheet_parts.gd")
+const Icons = preload("res://ui/icons.gd")
 
 const GAP := 20
 const PAD := 24
@@ -49,6 +59,11 @@ const GAMES := ["snooker", "chess", "checkers"]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers"}
 const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB"}
 const FILL := Color("fcf7ef")
+## The Friends row: its height, the plaque on it and the plaque's tint.
+const FRIENDS_H := 108.0
+const FRIENDS_PLAQUE := 72.0
+const FRIENDS_TINT := Color("f4b8a4")
+const ONLINE_INK := Color("4f8a31")
 static var PLAIN := CanvasItemMaterial.new()
 
 var _level := {}
@@ -59,11 +74,17 @@ var _table: Control
 var _blurbs: Array[Label] = []
 var _blurb := {}
 var _arts: Array[Control] = []
+var friends_row: Button
+var _friends_sub: Label
+var _friends_dot: Control
+## How many friends the row last counted online.
+var _friends_on := 0
 
 func _init() -> void:
 	add_theme_constant_override("separation", GAP)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_friends_row())
 	for game: String in GAMES:
 		_level[game] = clampi(Record.last_level(game), 0, LEVELS.size() - 1)
 		add_child(_game_card(game))
@@ -141,6 +162,99 @@ func _game_card(game: String) -> Control:
 	_paint_chips(game)
 	return card
 
+## The row above the cards: a plaque, Friends over a line that counts who is
+## online, and a chevron. A Button whose face is drawn by its children, the
+## way the settings rows are.
+func _friends_row() -> Button:
+	var row := Button.new()
+	row.name = "Friends"
+	row.focus_mode = Control.FOCUS_NONE
+	row.custom_minimum_size.y = FRIENDS_H
+	row.material = PLAIN
+	var up := CozyTheme.soft_button(FILL, RADIUS, false, 0)
+	var down := CozyTheme.soft_button(FILL, RADIUS, true, 0)
+	for st in ["normal", "hover", "focus"]:
+		row.add_theme_stylebox_override(st, up)
+	for st in ["pressed", "hover_pressed"]:
+		row.add_theme_stylebox_override(st, down)
+	row.pressed.connect(func() -> void: friends.emit())
+	var line := HBoxContainer.new()
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	line.offset_left = PAD
+	line.offset_right = -PAD
+	line.add_theme_constant_override("separation", 22)
+	row.add_child(line)
+	line.add_child(SheetParts.Plaque.new("friends", FRIENDS_TINT, FRIENDS_PLAQUE))
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -6)
+	line.add_child(words)
+	var title := Label.new()
+	title.text = "FRIENDS_TITLE"
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_override("font", CozyTheme.display(700))
+	title.add_theme_font_size_override("font_size", 38)
+	title.add_theme_color_override("font_color", Pal.TEXT)
+	words.add_child(title)
+	var sub := HBoxContainer.new()
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sub.add_theme_constant_override("separation", 10)
+	words.add_child(sub)
+	# A filled dot beside the count, so "2 online" is not said by a colour.
+	_friends_dot = Control.new()
+	_friends_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_friends_dot.custom_minimum_size = Vector2(16, 16)
+	_friends_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_friends_dot.draw.connect(func() -> void:
+		_friends_dot.draw_circle(_friends_dot.size * 0.5, 7.0, Pal.GOOD, true, -1.0, true))
+	sub.add_child(_friends_dot)
+	_friends_sub = Label.new()
+	_friends_sub.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_friends_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_friends_sub.theme_type_variation = "CardBlurb"
+	_friends_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_friends_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_friends_sub.clip_text = true
+	sub.add_child(_friends_sub)
+	var chevron := Control.new()
+	chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chevron.custom_minimum_size = Vector2(36, 36)
+	chevron.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chevron.draw.connect(func() -> void:
+		Icons.paint(chevron, "chevron_right", Rect2(Vector2.ZERO, chevron.size), Pal.TEXT_DIM))
+	line.add_child(chevron)
+	friends_row = row
+	return row
+
+## The row's line: how many friends are online, by the last read of their
+## presence; what to do with the row when there is nobody to count.
+func _paint_friends() -> void:
+	var all := Social.friends()
+	_friends_on = 0
+	for uid in all:
+		if Social.is_online(uid):
+			_friends_on += 1
+	_friends_dot.visible = _friends_on > 0
+	if all.is_empty():
+		_friends_sub.text = tr("FRIENDS_ROW_NONE")
+	elif _friends_on == 0:
+		_friends_sub.text = tr("FRIENDS_ROW_AWAY")
+	else:
+		_friends_sub.text = tr("FRIENDS_ONLINE_ONE" if _friends_on == 1 else "FRIENDS_ONLINE_N") % _friends_on
+	_friends_sub.add_theme_color_override("font_color", ONLINE_INK if _friends_on > 0 else Pal.TEXT_DIM)
+
+## Reads the friends' presence, for a player who has friends: as the tab
+## comes up, not on a clock (the sheet keeps its own while it is open).
+func _read_friends() -> void:
+	if not Social.started() or Social.friends().is_empty():
+		return
+	@warning_ignore("redundant_await")
+	await Social.refresh_presence()
+	_paint_friends()
+
 func _snooker_banner(art: Control) -> void:
 	_snooker_art = art
 	var sim := Sim.new()
@@ -188,6 +302,7 @@ func refresh() -> void:
 	for game: String in GAMES:
 		if _record.has(game):
 			(_record[game] as Label).text = Record.record_line(game, _level[game])
+	_paint_friends()
 	_fit.call_deferred()
 
 func _ready() -> void:
@@ -195,10 +310,14 @@ func _ready() -> void:
 	var outer := _outer()
 	if outer != null:
 		outer.resized.connect(_fit)
+	Social.hub().changed.connect(_paint_friends)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree():
 		_fit.call_deferred()
+		_read_friends()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED and _friends_sub != null:
+		_paint_friends()
 
 ## What does not grow when the column overflows: the menu's column sits in
 ## a margin container on the full-screen list, so that is what is measured

@@ -12,7 +12,10 @@
 #
 # The waits are real. Five matches are made at the start so the four clocks
 # (void 10 s, left 20 s, timeout 60 s, stale ticket 60 s) run side by side.
-# Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 2.
+# Friends' rules (codes, friendships, presence, invites, the private claim)
+# are in the middle, with every way to cheat them that was thought of.
+# Spec: docs/superpowers/specs/2026-10-04-versus-online-design.md, section 2,
+# and 2026-10-04-friends-design.md, section 1.
 set -uo pipefail
 
 EMU="${FIREBASE_EMULATOR:-127.0.0.1}"
@@ -66,11 +69,26 @@ match() { ticket "$2"; ticket "$3"; code "$3" PATCH "" "$(claim_body "$1" "$2" "
 # move_body <index> <seat> <n after> <turn after>
 move_body() { printf '{"moves/%s":{"s":%s,"d":"{}"},"n":%s,"turn":%s,"turnAt":%s}' "$1" "$2" "$3" "$4" "$NOW"; }
 
+# A code nobody has: eight of the alphabet the rules allow.
+newcode() { LC_ALL=C tr -dc 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' </dev/urandom | head -c 8; }
+# both_halves <opener> <owner> [via]: the one PATCH that makes two friends
+both_halves() {
+	local via=""
+	[ $# -ge 3 ] && via=",\"via\":\"$3\""
+	printf '{"social/%s/friends/%s":{"at":%s%s},"social/%s/friends/%s":{"at":%s}}' \
+		"$(uid "$2")" "$(uid "$1")" "$NOW" "$via" "$(uid "$1")" "$(uid "$2")" "$NOW"
+}
+# accept_body <id> <p0> <p1> <invited> <inviter> [game]: the private claim
+accept_body() {
+	printf '{"matches/%s":{"game":"%s","p0":"%s","p1":"%s","first":0,"seed":7,"at":%s,"n":0,"turn":0,"turnAt":%s},"social/%s/invites/%s/match":"%s"}' \
+		"$1" "${6:-chess}" "$(uid "$2")" "$(uid "$3")" "$NOW" "$NOW" "$(uid "$4")" "$(uid "$5")" "$1"
+}
+
 if [ "$(curl -s -o /dev/null -w '%{http_code}' "$DB/.json?ns=$NS")" = 000 ]; then
 	echo "no database emulator at $DB"; exit 2
 fi
 
-for u in A B C D E F G H I J K L; do user "$u"; done
+for u in A B C D E F G H I J K L P Q R; do user "$u"; done
 M1="$RUN-1"; M2="$RUN-2"; M3="$RUN-3"; M4="$RUN-4"; M5="$RUN-5"
 t0=$(date +%s)
 # wait_until <seconds after t0>
@@ -147,6 +165,82 @@ check "end before any move is refused" no K PUT "matches/$M5/result" '{"winner":
 code K PATCH "matches/$M5" "$(move_body 0 0 1 1)" >/dev/null
 check "end by the seat that moved last is accepted" ok K PUT "matches/$M5/result" '{"winner":-1,"why":"end"}'
 
+# Friends (docs/superpowers/specs/2026-10-04-friends-design.md, section 1).
+# P has a code, Q opens P's link, R is a stranger to both.
+CP=$(newcode); CQ=$(newcode); CR=$(newcode)
+INV="social/$(uid Q)/invites/$(uid P)"   # P asks Q
+F1="$RUN-f1"
+
+echo "-- codes"
+check "a code is made by its owner" ok P PUT "codes/$CP" "\"$(uid P)\""
+check "a code naming someone else is refused" no Q PUT "codes/$CQ" "\"$(uid P)\""
+check "a code outside the alphabet is refused" no Q PUT "codes/ABCDEFG1" "\"$(uid Q)\""
+check "a short code is refused" no Q PUT "codes/ABCDEFG" "\"$(uid Q)\""
+check "a code is not overwritten by another player" no Q PUT "codes/$CP" "\"$(uid Q)\""
+check "nor repointed by its owner" no P PUT "codes/$CP" "\"$(uid Q)\""
+check "nor deleted by another player" no Q DELETE "codes/$CP"
+check "one code is read by anyone signed in" ok R GET "codes/$CP"
+check "the codes are not listed" no R GET "codes"
+code Q PUT "codes/$CQ" "\"$(uid Q)\"" >/dev/null
+code R PUT "codes/$CR" "\"$(uid R)\"" >/dev/null
+check "a code is deleted by its owner" ok R DELETE "codes/$CR"
+
+echo "-- friendships (Q opens P's link)"
+check "a friendship without the code is refused" no Q PATCH "" "$(both_halves Q P)"
+check "with the opener's own code" no Q PATCH "" "$(both_halves Q P "$CQ")"
+check "with a code nobody has" no Q PATCH "" "$(both_halves Q P "$CR")"
+check "their half alone" no Q PUT "social/$(uid P)/friends/$(uid Q)" "{\"at\":$NOW,\"via\":\"$CP\"}"
+check "this player's half alone" no Q PUT "social/$(uid Q)/friends/$(uid P)" "{\"at\":$NOW}"
+check "a friend of oneself" no P PUT "social/$(uid P)/friends/$(uid P)" "{\"at\":$NOW,\"via\":\"$CP\"}"
+check "a made-up date" no Q PATCH "" "{\"social/$(uid P)/friends/$(uid Q)\":{\"at\":5,\"via\":\"$CP\"},\"social/$(uid Q)/friends/$(uid P)\":{\"at\":5}}"
+check "two others made friends by a third who knows the code" no R PATCH "" "$(both_halves Q P "$CP")"
+check "a friendship made with the code, both halves at once" ok Q PATCH "" "$(both_halves Q P "$CP")"
+check "a friendship is not written twice" no Q PATCH "" "$(both_halves Q P "$CP")"
+check "nor one half touched after" no P PUT "social/$(uid P)/friends/$(uid Q)" "{\"at\":$NOW}"
+check "one half is not deleted alone" no Q DELETE "social/$(uid Q)/friends/$(uid P)"
+check "a stranger does not end a friendship" no R PATCH "" "{\"social/$(uid P)/friends/$(uid Q)\":null,\"social/$(uid Q)/friends/$(uid P)\":null}"
+check "a player reads their own social" ok P GET "social/$(uid P)"
+check "a friend does not read it" no Q GET "social/$(uid P)"
+check "a stranger does not read it" no R GET "social/$(uid P)"
+check "anything else under social is refused" no P PUT "social/$(uid P)/note" '"x"'
+
+echo "-- presence"
+check "presence is written by its player" ok P PUT "presence/$(uid P)" "{\"at\":$NOW}"
+check "presence cannot be made up" no P PUT "presence/$(uid P)" '{"at":5}'
+check "nor written for another" no Q PUT "presence/$(uid P)" "{\"at\":$NOW}"
+check "a friend reads it" ok Q GET "presence/$(uid P)"
+check "a stranger does not" no R GET "presence/$(uid P)"
+
+echo "-- invites (P asks Q)"
+check "an invite from a player who is no friend is refused" no R PUT "social/$(uid Q)/invites/$(uid R)" "{\"game\":\"chess\",\"at\":$NOW}"
+check "an invite written in another's name" no Q PUT "$INV" "{\"game\":\"chess\",\"at\":$NOW}"
+check "an invite to a game that is not one" no P PUT "$INV" "{\"game\":\"ludo\",\"at\":$NOW}"
+check "an invite with a made-up clock" no P PUT "$INV" '{"game":"chess","at":5}'
+check "an invite from a friend" ok P PUT "$INV" "{\"game\":\"chess\",\"at\":$NOW}"
+check "its heartbeat moves at" ok P PATCH "$INV" "{\"at\":$NOW}"
+check "the one who asked reads it" ok P GET "$INV"
+check "a stranger does not" no R GET "$INV"
+check "a stranger does not delete it" no R DELETE "$INV"
+check "match set with no match made is refused" no Q PUT "$INV/match" "\"$F1\""
+check "a private match with no invite pointing at it" no Q PUT "matches/$F1" "{\"game\":\"chess\",\"p0\":\"$(uid P)\",\"p1\":\"$(uid Q)\",\"first\":0,\"seed\":7,\"at\":$NOW,\"n\":0,\"turn\":0,\"turnAt\":$NOW}"
+check "match set by the one who asked (nobody said Play)" no P PATCH "" "$(accept_body "$F1" P Q Q P)"
+check "match set by a stranger" no R PATCH "" "$(accept_body "$F1" P Q Q P)"
+check "a match naming another in the inviter's seat" no Q PATCH "" "$(accept_body "$F1" R Q Q P)"
+check "a match naming another in the invited seat" no Q PATCH "" "$(accept_body "$F1" P R Q P)"
+check "a match with the seats the wrong way round" no Q PATCH "" "$(accept_body "$F1" Q P Q P)"
+check "a match of another game than was asked" no Q PATCH "" "$(accept_body "$F1" P Q Q P checkers)"
+check "a match with a stranger, on an invite that is not there" no Q PATCH "" "$(accept_body "$F1" R Q Q R)"
+check "the invited player says Play: the match and the invite's match together" ok Q PATCH "" "$(accept_body "$F1" P Q Q P)"
+check "an invite is taken once" no Q PATCH "" "$(accept_body "$RUN-f2" P Q Q P)"
+check "the one who asked reads the match" ok P GET "matches/$F1"
+check "a stranger does not" no R GET "matches/$F1"
+check "a move in it, as in any match" ok P PATCH "matches/$F1" "$(move_body 0 0 1 1)"
+check "the one who asked takes the invite back" ok P DELETE "$INV"
+code Q PUT "social/$(uid P)/invites/$(uid Q)" "{\"game\":\"snooker\",\"at\":$NOW}" >/dev/null
+check "the one asked declines (deletes it)" ok P DELETE "social/$(uid P)/invites/$(uid Q)"
+# Left without a heartbeat, for the 10 s clock below.
+code P PUT "$INV" "{\"game\":\"chess\",\"at\":$NOW}" >/dev/null
+
 check "an early void is refused" no G PUT "matches/$M4/result" '{"winner":-1,"why":"void"}'
 echo "   (waiting for the 10 s clocks)"
 wait_until 12
@@ -154,6 +248,10 @@ check "void by the one who never showed is refused" no H PUT "matches/$M4/result
 check "void after 10 s unseen is accepted" ok G PUT "matches/$M4/result" '{"winner":-1,"why":"void"}'
 ticket J
 check "a ticket 10 s without a heartbeat cannot be claimed" no J PATCH "" "$(claim_body "$RUN-6" I J)"
+check "an invite 10 s without a heartbeat cannot be taken" no Q PATCH "" "$(accept_body "$RUN-f3" P Q Q P)"
+check "a friendship is ended by either, both halves at once" ok P PATCH "" "{\"social/$(uid P)/friends/$(uid Q)\":null,\"social/$(uid Q)/friends/$(uid P)\":null,\"$INV\":null}"
+check "after it, an invite is refused" no P PUT "$INV" "{\"game\":\"chess\",\"at\":$NOW}"
+check "and presence is closed" no Q GET "presence/$(uid P)"
 check "left before 20 s is refused" no F PUT "matches/$M3/result" '{"winner":1,"why":"left"}'
 
 if [ -n "${QUICK:-}" ]; then
