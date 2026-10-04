@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.peeplet.daily",
+      "sha256_cert_fingerprints": [
+        "73:2D:29:9E:A4:2D:43:CD:4A:74:B2:C0:38:A5:94:EA:C3:27:C2:F8:36:DA:EF:18:94:91:D3:C1:23:45:6C:74",
+        "C3:CD:C0:FE:BF:4D:02:54:65:05:0F:DC:43:DE:F9:C9:1B:17:90:67:A1:23:96:FC:50:A2:C3:AC:44:27:0C:B4"
+      ]
+    }
+  }
+]

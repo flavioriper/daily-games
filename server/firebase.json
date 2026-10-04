@@ -3,10 +3,28 @@
     "public": "site",
     "ignore": [
       ".gdignore",
-      "**/.*"
+      "**/.gdignore",
+      "**/.DS_Store"
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "rewrites": [
+      {
+        "source": "/f/**",
+        "destination": "/f/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",

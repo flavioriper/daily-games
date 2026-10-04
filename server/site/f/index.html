@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peeplet Daily Puzzles - A friend wants to play</title>
+<meta name="description" content="Open the link to become friends in Peeplet Daily Puzzles and play snooker, chess or checkers together.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Peeplet Daily Puzzles">
+<meta property="og:title" content="A friend wants to play">
+<meta property="og:description" content="Open the link to become friends in Peeplet Daily Puzzles and play snooker, chess or checkers together.">
+<meta name="twitter:card" content="summary">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f6efe3">
+<!--
+  The friend link's page (docs/agents/friends.md, "The link"): every
+  /f/<CODE> is rewritten to this one file by server/firebase.json. It makes
+  no request and keeps nothing: the code is read off the address, and the
+  button hands it to the game. ?c=<CODE> is the same thing for a plain file
+  server, where there is no rewrite.
+-->
+<style>
+  :root { --ink: #3b3028; --dim: #8a7b6b; --paper: #f6efe3; --card: #fffdf8; --line: #e3d6c0; --sun: #f5a623; --sun-deep: #d88a12; --ray: #f9c04a; --tile: #fff1d6; --on-sun: #3b3028; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #efe6d8; --dim: #b3a595; --paper: #1f1b17; --card: #29241f; --line: #3d352d; --tile: #3a3023; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; }
+  main { width: 100%; max-width: 420px; padding: 24px 16px 40px; text-align: center; }
+  .sun { width: 112px; height: 112px; display: block; margin: 0 auto 8px; }
+  .game { margin: 0; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  h1 { margin: 4px 0 20px; font-size: 1.7rem; line-height: 1.2; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px 20px; }
+  .open { display: block; width: 100%; padding: 15px 18px; border: 0; border-radius: 16px; background: var(--sun); color: var(--on-sun); font: inherit; font-size: 1.15rem; font-weight: 800; text-decoration: none; box-shadow: 0 5px 0 var(--sun-deep); }
+  .open:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sun-deep); }
+  .label { margin: 26px 0 8px; color: var(--dim); font-size: 0.95rem; }
+  .code { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .code b { font: 800 1.9rem/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.12em; background: var(--tile); border-radius: 12px; padding: 12px 8px 12px 14px; }
+  .copy { padding: 10px 16px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; font-weight: 700; }
+  .hand { margin: 22px 0 0; color: var(--dim); font-size: 0.95rem; }
+  .hand strong { color: var(--ink); }
+  .bad p { margin: 0; }
+  .bad p + p { margin-top: 10px; color: var(--dim); font-size: 0.95rem; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <svg class="sun" viewBox="0 0 112 112" aria-hidden="true">
+    <g stroke="#f9c04a" stroke-width="7" stroke-linecap="round">
+      <path d="M56 8v12M56 92v12M8 56h12M92 56h12M22 22l9 9M81 81l9 9M22 90l9-9M81 31l9-9"/>
+    </g>
+    <circle cx="56" cy="56" r="27" fill="#f5a623"/>
+    <circle cx="47" cy="53" r="3.2" fill="#3b3028"/>
+    <circle cx="65" cy="53" r="3.2" fill="#3b3028"/>
+    <path d="M47 62q9 8 18 0" fill="none" stroke="#3b3028" stroke-width="3.2" stroke-linecap="round"/>
+  </svg>
+  <p class="game">Peeplet Daily Puzzles</p>
+  <h1 data-t="title">A friend wants to play</h1>
+
+  <div class="card" id="ok" hidden>
+    <a class="open" id="open" href="#" data-t="open">Open the game</a>
+    <p class="label" data-t="label">Your friend's code</p>
+    <div class="code"><b id="code"></b><button class="copy" id="copy" type="button" data-t="copy">Copy</button></div>
+    <p class="hand" data-t="hand"></p>
+  </div>
+
+  <div class="card bad" id="bad" hidden>
+    <p data-t="bad">This link is not complete.</p>
+    <p data-t="bad2">Ask your friend to send it again.</p>
+  </div>
+  <noscript><div class="card bad"><p>Open Peeplet Daily Puzzles, then Versus &rsaquo; Friends &rsaquo; Enter a code, and type the 8 characters at the end of this link.</p></div></noscript>
+</main>
+<script>
+(function () {
+  var T = {
+    en: {
+      title: "A friend wants to play", open: "Open the game", label: "Your friend's code",
+      copy: "Copy", copied: "Copied",
+      hand: "The game did not open? In the game, go to <strong>Versus › Friends › Enter a code</strong> and type it in.",
+      bad: "This link is not complete.", bad2: "Ask your friend to send it again."
+    },
+    pt: {
+      title: "Um amigo quer jogar", open: "Abrir o jogo", label: "O código do seu amigo",
+      copy: "Copiar", copied: "Copiado",
+      hand: "O jogo não abriu? No jogo, vá em <strong>Versus › Amigos › Digitar um código</strong> e digite o código.",
+      bad: "Este link não está completo.", bad2: "Peça para seu amigo enviar de novo."
+    },
+    es: {
+      title: "Un amigo quiere jugar", open: "Abrir el juego", label: "El código de tu amigo",
+      copy: "Copiar", copied: "Copiado",
+      hand: "¿No se abrió el juego? En el juego, ve a <strong>Versus › Amigos › Introducir un código</strong> y escríbelo.",
+      bad: "Este enlace no está completo.", bad2: "Pídele a tu amigo que lo envíe otra vez."
+    }
+  };
+  var lang = (navigator.language || "en").slice(0, 2).toLowerCase();
+  var t = T[lang] || T.en;
+  document.documentElement.lang = T[lang] ? lang : "en";
+  document.title = "Peeplet Daily Puzzles - " + t.title;
+  var nodes = document.querySelectorAll("[data-t]");
+  for (var i = 0; i < nodes.length; i++) nodes[i].innerHTML = t[nodes[i].getAttribute("data-t")];
+
+  // The code: the address's last piece, or ?c= on a server with no rewrite.
+  // Eight of the game's alphabet (no I, L, O, 0 or 1), upper-cased.
+  var parts = location.pathname.split("/").filter(Boolean);
+  var raw = new URLSearchParams(location.search).get("c") || parts[parts.length - 1] || "";
+  var code = raw.toUpperCase();
+  if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/.test(code)) {
+    document.getElementById("bad").hidden = false;
+    return;
+  }
+
+  // Android's own form names the package, so a phone without the game goes
+  // to the store; everything else gets the game's scheme.
+  var android = /Android/i.test(navigator.userAgent);
+  document.getElementById("open").href = android
+    ? "intent://f/" + code + "#Intent;scheme=peepletdaily;package=com.peeplet.daily;end"
+    : "peepletdaily://f/" + code;
+  document.getElementById("code").textContent = code;
+  document.getElementById("ok").hidden = false;
+
+  var copy = document.getElementById("copy");
+  copy.addEventListener("click", function () {
+    var done = function () {
+      copy.textContent = t.copied;
+      setTimeout(function () { copy.textContent = t.copy; }, 1600);
+    };
+    var old = function () {
+      var box = document.createElement("textarea");
+      box.value = code;
+      box.style.position = "fixed";
+      box.style.opacity = "0";
+      document.body.appendChild(box);
+      box.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+      document.body.removeChild(box);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, old);
+    else old();
+  });
+})();
+</script>
+</body>
+</html>
