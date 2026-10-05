@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- [d=0..3] [day=N] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the board as dealt), `carry` (a peg carried over ropes in
+## Modes: `back` (the answer but for its last move, then Undo and Reset: the
+## ropes that left come back), `rest` (the board as dealt), `carry` (a peg carried over ropes in
 ## steps, a frame each, then `_folds` -- any rope line turning back on
 ## itself), `hold` (a peg lifted over a glowing
 ## hole), `taut` (a peg dragged past what its rope reaches), `plan` (the
@@ -113,6 +114,8 @@ func _at(t: float, what: Callable) -> void:
 ## between neighbouring pieces): what tears the ribbon into shards.
 func _folds() -> void:
 	for r in _puzzle._ropes.size():
+		if _puzzle._away[r]:
+			continue
 		var line: PackedVector2Array = _puzzle._ropes[r].polyline()
 		var n := 0
 		var worst := 0.0
@@ -125,14 +128,7 @@ func _folds() -> void:
 			worst = maxf(worst, ang)
 			if ang > 100.0:
 				n += 1
-		var cn := 0
-		var ch: PackedVector2Array = _puzzle._ropes[r].p
-		for i in range(1, ch.size() - 1):
-			var e0 := ch[i] - ch[i - 1]
-			var e1 := ch[i + 1] - ch[i]
-			if e0.length() > 0.01 and e1.length() > 0.01 and absf(e0.angle_to(e1)) > deg_to_rad(100.0):
-				cn += 1
-		print("rope ", r, " chain folds ", cn, " pts ", line.size(), " folds ", n, " worst turn ", snappedf(worst, 1.0), " wiggles ", _puzzle._ropes[r].wiggles.size())
+		print("rope ", r, " pts ", line.size(), " folds ", n, " worst turn ", snappedf(worst, 1.0), " knotted ", _puzzle._ropes[r].knotted())
 
 func _shot(tag := "") -> void:
 	RenderingServer.force_draw()
@@ -187,6 +183,8 @@ func _free_move() -> Array:
 
 func _script() -> void:
 	_ms_from = 1.5
+	# The real pointer hovering over the window would carry a held peg off.
+	_puzzle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	match _mode:
 		"rest":
 			_end = 3.0
@@ -266,7 +264,7 @@ func _script() -> void:
 			_at(2.4, func() -> void: _release(far))
 			_at(2.6, _shot)
 		"plan":
-			_plan_script(1.2, 2.7 if _level == 3 else 1.1)
+			_plan_script(1.2, 2.9 if _level == 3 else 1.7)
 		"wrong":
 			_wrong_script(false)
 		"answer":
@@ -283,7 +281,7 @@ func _script() -> void:
 					_motion(_puzzle._c + Vector2.from_angle(a) * _puzzle._ro * 0.45))
 			_at(5.3, func() -> void: _release(_puzzle._c))
 		"restore":
-			# A daily solved earlier, reopened: the answer laid down, hats, seal.
+			# A daily solved earlier, reopened: the ring empty under its seal.
 			_end = 3.0
 			_ms_from = 9.0
 			_at(0.5, func() -> void:
@@ -323,9 +321,10 @@ func _script() -> void:
 						_press(pz._c + Vector2(rng.randf_range(-300, 300), rng.randf_range(-300, 300)))
 						_release(pz._c)
 					else:
-						var chain: PackedVector2Array = pz._ropes[rng.randi() % st.ropes].p
-						_press(chain[chain.size() / 2])
-						_release(chain[chain.size() / 2]))
+						var chain: PackedVector2Array = pz._ropes[rng.randi() % st.ropes].polyline()
+						if not chain.is_empty():
+							_press(chain[chain.size() / 2])
+							_release(chain[chain.size() / 2]))
 			_at(44.0, func() -> void:
 				var pz = _puzzle
 				print("soak: done=", pz.is_done(), " solved=", pz.state.is_solved(), " held=", pz._held, " sel=", pz._sel, " settled=", pz._settled(pz._now()), " out=", pz.out_of_hearts, " crossings=", pz.state.crossings(), " spent=", pz.state.spent, "/", pz.state.budget))
@@ -369,7 +368,7 @@ func _script() -> void:
 				_release(_puzzle._kitten_at))
 			_at(1.25, _shot)
 			_at(1.8, func() -> void:
-				var chain: PackedVector2Array = _puzzle._ropes[0].p
+				var chain: PackedVector2Array = _puzzle._ropes[0].polyline()
 				var mid: Vector2 = chain[chain.size() / 2]
 				_press(mid)
 				_release(mid))
@@ -394,7 +393,7 @@ func _script() -> void:
 			_at(4.9, func() -> void:
 				var pz = _puzzle
 				print("HUD after a settled move: undo disabled=", _host.top_bar.undo_button.disabled, " reset disabled=", _host.top_bar.reset_button.disabled)
-				print("animating=", pz._animating(pz._now()), " calm=", pz._calm, " held=", pz._held, " sel=", pz._sel, " dirty=", pz._dirty, " busy_left=", pz._busy_until - pz._now()))
+				print("animating=", pz._animating(pz._now()), " held=", pz._held, " sel=", pz._sel, " dirty=", pz._dirty, " busy_left=", pz._busy_until - pz._now()))
 		"out":
 			# The thread poked down to one stitch, then one bad move.
 			_end = 7.0
@@ -422,9 +421,25 @@ func _script() -> void:
 			_at(2.5, func() -> void: _host.top_bar.undo_button.pressed.emit())
 			_at(2.7, _shot)
 			_at(3.6, _shot)
+		"back":
+			# The answer but for its last move (ropes have left by then), then
+			# Undo -- the last rope set free comes back -- and Reset: all do.
+			var n: int = _puzzle.state.plan.size() - 1
+			_plan_script(1.0, 1.7, n)
+			var t1 := 1.0 + 1.7 * n + 0.6
+			_at(t1, func() -> void: _host.top_bar.undo_button.pressed.emit())
+			_at(t1 + 0.12, _shot)
+			_at(t1 + 0.8, _shot)
+			_at(t1 + 1.0, func() -> void: _host.top_bar.reset_button.pressed.emit())
+			_at(t1 + 1.12, _shot)
+			_at(t1 + 2.2, _shot)
+			_at(t1 + 2.3, func() -> void:
+				var st = _puzzle.state
+				print("after reset: at == start ", st.at == st.start_at, " tw == start ", st.tw == st.start_tw, " away ", _puzzle._away))
+			_end = t1 + 2.6
 		"reset":
 			_end = 7.0
-			_plan_script(1.0, 0.9, 2)
+			_plan_script(1.0, 1.7, 2)
 			_at(5.2, func() -> void: _host.top_bar.reset_button.pressed.emit())
 			_at(5.5, _shot)
 			_at(6.4, _shot)
@@ -466,8 +481,10 @@ func _plan_script(t0: float, gap: float, only := -1) -> void:
 		_at(t0 + gap * k + 0.35, func() -> void:
 			_release(_puzzle.hole_to_local(int(_puzzle.state.plan[step][2]))))
 		_at(t0 + gap * k + 0.6, _shot)
+		# A rope the move set free, on its way off the ring.
+		_at(t0 + gap * k + 1.05, _shot)
 		if cat and (step + 1) % 3 == 0:
-			_at(t0 + gap * k + 1.0, _shot)
+			_at(t0 + gap * k + 1.6, _shot)
 	if only < 0:
 		for k in 5:
 			_at(t0 + gap * count + 0.6 + k * 1.0, _shot)

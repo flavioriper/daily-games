@@ -29,6 +29,20 @@ static func run(t) -> void:
 	t.eq(Gen.apply(at, tw, 2, 2, 1), -1, "rope 1 lifted back off")
 	t.check(Gen.is_solved(tw), "and nothing crosses")
 
+	# A rope that crosses nothing leaves the ring, and nothing is carried over it again.
+	# Rope 0 (0-6) lies over rope 1 (3-9), which crosses rope 2 (8-10).
+	var at2 := PackedInt32Array([0, 6, 3, 9, 8, 10])
+	var tw2 := Gen.empty_tangle(3)
+	tw2[Gen.pair_index(0, 1, 3)] = 3
+	tw2[Gen.pair_index(1, 2, 3)] = 2
+	t.eq(Gen.retire(at2, tw2, 3), [], "every rope in a crossing stays")
+	t.eq(Gen.apply(at2, tw2, 3, 1, 2), -1, "rope 0 lifted off rope 1")
+	t.eq(Gen.retire(at2, tw2, 3), [0], "rope 0 crosses nothing now and leaves; ropes 1 and 2 still cross")
+	t.check(Gen.gone(at2, 0) and not Gen.gone(at2, 1), "its pegs are off the ring")
+	t.eq(Gen.occupancy(at2, 12)[0], -1, "its holes stand empty")
+	t.eq(Gen.apply(at2, tw2, 3, 2, 1), 0, "a peg carried across where it lay crosses nothing")
+	t.eq(Gen.cat_peg(at2, 0), 2, "the kitten takes the next peg round when hers has left")
+
 	# Random walks: a move made back restores everything, and a pair's count is
 	# odd exactly when its pegs interleave.
 	var rng := RandomNumberGenerator.new()
@@ -75,26 +89,20 @@ static func run(t) -> void:
 			t.check(Gen.crossing_count(out.tw) <= int(cfg.most), name + " stays readable")
 			t.check(Gen.most_wraps(out.tw, out.ropes) <= Gen.WRAPS_PER_ROPE, name + " no rope wrapped round more than two")
 			var seen := {}
+			var dealt := 0
 			for h in start:
-				seen[h] = true
-			t.eq(seen.size(), start.size(), name + " no two pegs in a hole")
-			# The answer replays, kitten included, and ends untangled.
-			var here := start.duplicate()
-			var knots: PackedInt32Array = out.tw.duplicate()
-			var reach: PackedInt32Array = out.reach
-			var ok := true
-			for j in out.plan.size():
-				var m: Array = out.plan[j]
-				if not Gen.fits(here, out.holes, reach, m[0], m[2], Gen.occupancy(here, out.holes)):
-					ok = false
-					break
-				Gen.apply(here, knots, out.ropes, m[0], m[2])
-				if out.cat and (j + 1) % Gen.CAT_EVERY == 0 and not Gen.is_solved(knots):
-					var peg: int = out.swipes.get(j + 1, Gen.swipe_fallback(j + 1, here.size()))
-					var to := Gen.cat_hole(here, out.holes, reach, peg)
-					if to >= 0:
-						Gen.apply(here, knots, out.ropes, peg, to)
-			t.check(ok and Gen.is_solved(knots), name + " the dealer's answer wins")
+				if h >= 0:
+					seen[h] = true
+					dealt += 1
+			t.eq(seen.size(), dealt, name + " no two pegs in a hole")
+			# The answer replays, ropes leaving and kitten included, and empties the ring.
+			var replayed = Gen._replay(start, out.tw, out.plan, cfg, out.reach, out.swipes)
+			t.check(replayed != null and replayed.size() == out.plan.size(), name + " the dealer's answer wins")
+			for idle in out.ropes:
+				if start[2 * idle] < 0:
+					for other in out.ropes:
+						if other != idle:
+							t.eq(Gen.count(out.tw, Gen.pair_index(idle, other, out.ropes)), 0, name + " a rope not dealt crosses nothing")
 			if band >= 3:
 				t.check(out.budget >= out.par, name + " the thread covers the answer")
 
@@ -138,7 +146,7 @@ static func run(t) -> void:
 			t.eq(won_at, sb.plan.size() - 1, name + " wins on its last step")
 			if sb.has_thread():
 				t.check(sb.spent <= sb.budget, name + " inside the thread")
-			t.check(sb.at == sb.goal_at, name + " ends on the deal's layout")
+			t.eq(Gen.ropes_left(sb.at), 0, name + " ends with every rope gone")
 
 	# The fallback board is a real one: distinct holes, tangled, and its answer wins.
 	for i in 30:
@@ -146,12 +154,12 @@ static func run(t) -> void:
 		r3.seed = 77 + i
 		var fb: Dictionary = Gen._fallback(r3)
 		var seen := {}
+		var dealt := 0
 		for h in fb.start:
-			seen[h] = true
-		t.eq(seen.size(), fb.start.size(), "fallback %d has distinct holes" % i)
+			if h >= 0:
+				seen[h] = true
+				dealt += 1
+		t.eq(seen.size(), dealt, "fallback %d has distinct holes" % i)
 		t.check(not Gen.is_solved(fb.tw), "fallback %d starts tangled" % i)
-		var here: PackedInt32Array = fb.start.duplicate()
-		var knots: PackedInt32Array = fb.tw.duplicate()
-		for m in fb.plan:
-			Gen.apply(here, knots, fb.ropes, m[0], m[2])
-		t.check(Gen.is_solved(knots), "fallback %d answer wins" % i)
+		var won = Gen._replay(fb.start, fb.tw, fb.plan, {"holes": fb.holes, "ropes": fb.ropes, "cat": false}, fb.reach, {})
+		t.check(won != null and won.size() == fb.plan.size(), "fallback %d answer wins" % i)

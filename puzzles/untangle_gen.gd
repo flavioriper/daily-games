@@ -19,8 +19,12 @@ extends RefCounted
 ## So lifting the cord on top untangles and pulling the one underneath knots
 ## it tighter. Two ropes with an even count are wrapped round each other
 ## without their pegs interleaving; an odd count always interleaves (the
-## count's parity is the old rule, which it still obeys). The board is undone
-## when no pair crosses at all.
+## count's parity is the old rule, which it still obeys).
+##
+## A rope that crosses nothing has come free: it leaves the ring with both its
+## pegs (`retire`), its holes stand empty and nothing can be carried over it
+## again. Its pegs read -1 in `at`. The board is undone when every rope has
+## left, which is the same as no pair crossing at all.
 ##
 ## The rule lives on plain int arrays: `at[peg]` = hole (peg = 2 * rope + end)
 ## and `tw[pair]` = n * 2 + t, where for the pair (A, B), A < B, `t` is 1 when
@@ -31,8 +35,13 @@ extends RefCounted
 ## Solvable by construction: a move undone is the same kind of move made back
 ## (`apply` of the reverse restores `at` and `tw` exactly), so a board dealt by
 ## a walk away from a crossing-free layout has that walk backwards as a way
-## home. The way home is then *measured*: a beam search finds a short answer,
-## and its length is the board's par.
+## home -- and still has with ropes leaving, since a pair's crossings depend on
+## those two ropes' moves alone: the walk less the moves of ropes already gone
+## undoes the rest (`_replay`). The way home is then *measured*: a beam search
+## that plays the leaving in finds a short answer, and its length is the
+## board's par. Insane's kitten is the exception (a rope leaving changes which
+## hole she bats a peg into), so her deals are kept only when an answer is
+## found with the leaving played in.
 ##
 ## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
 
@@ -54,14 +63,20 @@ const BANDS := [
 const WRAPS_PER_ROPE := 2
 ## The kitten swipes after every this many of the player's moves.
 const CAT_EVERY := 3
-## A deal tries this many walks at most, then keeps the best. A count, not a
-## clock: the same day has to deal the same board on a slow phone and a fast one.
+## A deal searches this many walks at most for their par, then keeps the
+## best, and makes `WALKS` walks at most looking for ones worth the search (a
+## walk is cheap, the search is not). Counts, not a clock: the same day has to
+## deal the same board on a slow phone and a fast one.
 const TRIES := 14
+const WALKS := 70
 ## The beam search's width and how deep it goes.
 const BEAM := 30
 const BEAM_DEPTH := 20
 ## A hint's search is narrower: a first step, not a par.
 const HINT_BEAM := 18
+## The last walks of a deal take a board with a rope that starts free, or one
+## whose walk backwards no longer plays forwards.
+const SPARE_WALKS := 12
 
 # --- the rule ---
 
@@ -154,7 +169,7 @@ static func apply_toward(at: PackedInt32Array, tw: PackedInt32Array, ropes: int,
 	var other := float(at[peg ^ 1])
 	var delta := 0
 	for y in ropes:
-		if y == x or (over >= 0 and (over >> y) & 1 == 0):
+		if y == x or at[2 * y] < 0 or (over >= 0 and (over >> y) & 1 == 0):
 			continue
 		var y0 := float(at[2 * y])
 		var y1 := float(at[2 * y + 1])
@@ -244,6 +259,36 @@ static func is_solved(tw: PackedInt32Array) -> bool:
 			return false
 	return true
 
+## True when rope `r` has left the ring.
+static func gone(at: PackedInt32Array, r: int) -> bool:
+	return at[2 * r] < 0
+
+## Every rope still on the ring that crosses nothing leaves it: its pegs go
+## to -1 in `at`. Returns the ropes that left, lowest first.
+static func retire(at: PackedInt32Array, tw: PackedInt32Array, ropes: int) -> Array:
+	var busy := 0
+	var k := 0
+	for r in ropes:
+		for s in range(r + 1, ropes):
+			if tw[k] != 0:
+				busy |= (1 << r) | (1 << s)
+			k += 1
+	var out: Array = []
+	for r in ropes:
+		if at[2 * r] >= 0 and (busy >> r) & 1 == 0:
+			at[2 * r] = -1
+			at[2 * r + 1] = -1
+			out.append(r)
+	return out
+
+## How many ropes are still on the ring.
+static func ropes_left(at: PackedInt32Array) -> int:
+	var n := 0
+	for r in at.size() / 2:
+		if at[2 * r] >= 0:
+			n += 1
+	return n
+
 ## Every pair that crosses, as rope indices low first.
 static func crossing_pairs(tw: PackedInt32Array, ropes: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
@@ -291,19 +336,22 @@ static func occupancy(at: PackedInt32Array, holes: int) -> PackedInt32Array:
 	occ.resize(holes)
 	occ.fill(-1)
 	for p in at.size():
-		occ[at[p]] = p
+		if at[p] >= 0:
+			occ[at[p]] = p
 	return occ
 
 ## Whether peg `p` may be dropped in `hole`: the hole is free and the rope it
 ## is on can span it.
 static func fits(at: PackedInt32Array, holes: int, reach: PackedInt32Array, p: int, hole: int, occ: PackedInt32Array) -> bool:
-	return hole != at[p] and occ[hole] < 0 and chord(holes, hole, at[p ^ 1]) <= reach[p >> 1]
+	return at[p] >= 0 and hole != at[p] and occ[hole] < 0 and chord(holes, hole, at[p ^ 1]) <= reach[p >> 1]
 
 ## Every legal move from `at` as [peg, hole].
 static func legal_moves(at: PackedInt32Array, holes: int, reach: PackedInt32Array) -> Array:
 	var occ := occupancy(at, holes)
 	var out: Array = []
 	for p in at.size():
+		if at[p] < 0:
+			continue
 		for h in holes:
 			if occ[h] < 0 and h != at[p] and chord(holes, h, at[p ^ 1]) <= reach[p >> 1]:
 				out.append([p, h])
@@ -313,6 +361,8 @@ static func legal_moves(at: PackedInt32Array, holes: int, reach: PackedInt32Arra
 ## ring (clockwise first) that its rope can span; -1 when there is none and
 ## she naps.
 static func cat_hole(at: PackedInt32Array, holes: int, reach: PackedInt32Array, p: int) -> int:
+	if p < 0 or at[p] < 0:
+		return -1
 	var occ := occupancy(at, holes)
 	var here := at[p]
 	for d in range(1, holes / 2 + 1):
@@ -322,6 +372,16 @@ static func cat_hole(at: PackedInt32Array, holes: int, reach: PackedInt32Array, 
 		var ccw := (here - d + holes) % holes
 		if fits(at, holes, reach, p, ccw, occ):
 			return ccw
+	return -1
+
+## The peg she really bats when her schedule names `p`: `p` itself, or when
+## its rope has left the ring the next peg round that is still there; -1 when
+## none is.
+static func cat_peg(at: PackedInt32Array, p: int) -> int:
+	for i in at.size():
+		var q := (p + i) % at.size()
+		if at[q] >= 0:
+			return q
 	return -1
 
 # --- a short way home ---
@@ -336,8 +396,8 @@ static func swipe_fallback(j: int, pegs: int) -> int:
 static func score(tw: PackedInt32Array, ropes: int) -> int:
 	return min_cover(tw, ropes) * 300 + deepest(tw) * 300 + crossing_count(tw) * 40
 
-## A beam search from (`at`, `tw`) to any crossing-free layout: each depth
-## keeps the `width` layouts that look nearest home. Not the shortest answer
+## A beam search from (`at`, `tw`) to an empty ring, ropes leaving as they come
+## free: each depth keeps the `width` layouts that look nearest home. Not the shortest answer
 ## for certain, but always a real one. Returns the moves [[peg, from, to], ...]
 ## ([] when already solved), or null when none was found within `depth` moves.
 ## With the kitten loose (`every` > 0) she swipes after every `every`th move
@@ -347,41 +407,70 @@ static func way_home(at: PackedInt32Array, tw: PackedInt32Array, holes: int, rop
 		swipes := {}, every := 0, moves0 := 0) -> Variant:
 	if is_solved(tw):
 		return []
+	# A layout's score depends on its tangle alone, and most moves leave the
+	# tangle as it was: kept per tangle for the length of the search.
+	var scores := {}
 	var seen := {_key(at, tw, every, moves0): true}
-	# Each entry: [score, at, tw, path].
-	var beam: Array = [[0, at, tw, []]]
+	# Each entry: [at, tw, the entry it came from (or null), the move made].
+	var beam: Array = [[at, tw, null, []]]
 	for d in depth:
 		var next: Array = []
+		# Each new layout's score and its place in `next`, as one int, so the
+		# sort is the engine's own.
+		var ranked := PackedInt64Array()
 		var j := moves0 + d + 1
+		var last := d == depth - 1
 		for entry in beam:
-			var here: PackedInt32Array = entry[1]
-			var here_tw: PackedInt32Array = entry[2]
+			var here: PackedInt32Array = entry[0]
+			var here_tw: PackedInt32Array = entry[1]
 			for m in legal_moves(here, holes, reach):
 				var nxt := here.duplicate()
 				var nxt_tw := here_tw.duplicate()
 				apply(nxt, nxt_tw, ropes, m[0], m[1])
-				var path: Array = (entry[3] as Array).duplicate()
-				path.append([m[0], here[m[0]], m[1]])
-				if is_solved(nxt_tw):
-					return path
+				var step: Array = [m[0], here[m[0]], m[1]]
+				# Only a move that changed the tangle can have set a rope free.
+				if nxt_tw != here_tw:
+					if is_solved(nxt_tw):
+						return _path(entry, step)
+					retire(nxt, nxt_tw, ropes)
 				if every > 0 and j % every == 0:
-					var p: int = swipes.get(j, swipe_fallback(j, nxt.size()))
+					var p := cat_peg(nxt, swipes.get(j, swipe_fallback(j, nxt.size())))
 					var to := cat_hole(nxt, holes, reach, p)
 					if to >= 0:
 						apply(nxt, nxt_tw, ropes, p, to)
 						if is_solved(nxt_tw):
-							return path
+							return _path(entry, step)
+						retire(nxt, nxt_tw, ropes)
+				# The deepest layer is only asked whether it wins.
+				if last:
+					continue
 				var key := _key(nxt, nxt_tw, every, j)
 				if seen.has(key):
 					continue
 				seen[key] = true
 				var jitter := rng.randi_range(0, 9) if rng != null else 0
-				next.append([score(nxt_tw, ropes) + jitter, nxt, nxt_tw, path])
+				var sc = scores.get(nxt_tw)
+				if sc == null:
+					sc = score(nxt_tw, ropes)
+					scores[nxt_tw] = sc
+				ranked.append((int(sc) + jitter) * 65536 + next.size())
+				next.append([nxt, nxt_tw, entry, step])
 		if next.is_empty():
 			return null
-		next.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-		beam = next.slice(0, width)
+		ranked.sort()
+		beam = []
+		for i in mini(width, ranked.size()):
+			beam.append(next[ranked[i] & 65535])
 	return null
+
+## The moves that led to `entry`, oldest first, and `step` after them.
+static func _path(entry: Array, step: Array) -> Array:
+	var out: Array = [step]
+	var e = entry
+	while e != null and not (e[3] as Array).is_empty():
+		out.push_front(e[3])
+		e = e[2]
+	return out
 
 ## A layout as a dictionary key; with the kitten loose it carries where the
 ## count stands in her cycle, since the same layout plays out differently
@@ -568,48 +657,40 @@ static func _cat_deal(rng: RandomNumberGenerator, goal: Dictionary, cfg: Diction
 				return {}
 	return {"start": at, "tw": tw, "plan": plan, "swipes": swipes}
 
-## `plan` played forward from the start, her swipes included, to the layout
-## it ends in: [at, tw].
-static func play(start: PackedInt32Array, start_tw: PackedInt32Array, plan: Array, cfg: Dictionary,
-		reach: PackedInt32Array, swipes: Dictionary) -> Array:
-	var at := start.duplicate()
-	var tw := start_tw.duplicate()
-	for j in plan.size():
-		apply(at, tw, cfg.ropes, plan[j][0], plan[j][2])
-		if is_solved(tw):
-			break
-		if cfg.cat and (j + 1) % CAT_EVERY == 0:
-			var p: int = swipes.get(j + 1, swipe_fallback(j + 1, at.size()))
-			var to := cat_hole(at, cfg.holes, reach, p)
-			if to >= 0:
-				apply(at, tw, cfg.ropes, p, to)
-				if is_solved(tw):
-					break
-	return [at, tw]
-
-## Plays the answer forward with the kitten, from the start, and says whether
-## it ends solved after exactly the planned number of moves, and not before.
-static func _replays(start: PackedInt32Array, start_tw: PackedInt32Array, reach: PackedInt32Array, cfg: Dictionary, deal: Dictionary) -> bool:
+## `plan` played forward from the start with ropes leaving as they come free
+## and her swipes played in: the moves really made ([peg, from, to], a move of
+## a rope already gone is skipped) when that empties the ring, null when it
+## does not or a move does not fit.
+static func _replay(start: PackedInt32Array, start_tw: PackedInt32Array, plan: Array, cfg: Dictionary,
+		reach: PackedInt32Array, swipes: Dictionary) -> Variant:
 	var holes: int = cfg.holes
 	var ropes: int = cfg.ropes
 	var at := start.duplicate()
 	var tw := start_tw.duplicate()
-	var plan: Array = deal.plan
-	var swipes: Dictionary = deal.swipes
-	for j in plan.size():
-		var m: Array = plan[j]
-		if not fits(at, holes, reach, m[0], m[2], occupancy(at, holes)):
-			return false
-		apply(at, tw, ropes, m[0], m[2])
+	var out: Array = []
+	if is_solved(tw):
+		return out
+	for m in plan:
+		var p: int = m[0]
+		if at[p] < 0:
+			continue
+		if not fits(at, holes, reach, p, m[2], occupancy(at, holes)):
+			return null
+		out.append([p, at[p], m[2]])
+		apply(at, tw, ropes, p, m[2])
 		if is_solved(tw):
-			return j == plan.size() - 1
-		var done := j + 1
-		if swipes.has(done):
-			var to := cat_hole(at, holes, reach, swipes[done])
-			if to < 0:
-				return false
-			apply(at, tw, ropes, swipes[done], to)
-	return is_solved(tw)
+			return out
+		retire(at, tw, ropes)
+		var done := out.size()
+		if cfg.cat and done % CAT_EVERY == 0:
+			var q := cat_peg(at, swipes.get(done, swipe_fallback(done, at.size())))
+			var to := cat_hole(at, holes, reach, q)
+			if to >= 0:
+				apply(at, tw, ropes, q, to)
+				if is_solved(tw):
+					return out
+				retire(at, tw, ropes)
+	return null
 
 ## The board dealt when every walk of a band was a dud: a band-0 walk that is
 ## really tangled and, failing even that, two ropes that cross once.
@@ -620,25 +701,29 @@ static func _fallback(rng: RandomNumberGenerator) -> Dictionary:
 		var deal := _scramble(rng, goal, easy)
 		if deal.is_empty() or crossing_count(deal.tw) < 1:
 			continue
-		var plan = way_home(deal.start, deal.tw, easy.holes, easy.ropes, goal.reach)
+		var start: PackedInt32Array = deal.start
+		retire(start, deal.tw, easy.ropes)
+		var plan = way_home(start, deal.tw, easy.holes, easy.ropes, goal.reach)
 		if plan == null:
 			continue
-		var end := play(deal.start, deal.tw, plan, easy, goal.reach, {})
-		return {"holes": easy.holes, "ropes": easy.ropes, "start": deal.start, "tw": deal.tw, "goal": end[0],
+		return {"holes": easy.holes, "ropes": easy.ropes, "start": start, "tw": deal.tw,
 			"reach": goal.reach, "plan": plan, "par": plan.size(), "budget": 0, "cat": false, "swipes": {}}
 	var at := PackedInt32Array([0, 2, 1, 3])
-	return {"holes": 10, "ropes": 2, "start": at, "tw": plain_tangle(at, 2), "goal": PackedInt32Array([0, 2, 4, 3]),
+	return {"holes": 10, "ropes": 2, "start": at, "tw": plain_tangle(at, 2),
 		"reach": PackedInt32Array([5, 5]), "plan": [[2, 1, 4]], "par": 1, "budget": 0, "cat": false, "swipes": {}}
 
-## One full board for `band`: {"holes", "ropes", "start", "tw", "goal",
-## "reach", "plan", "par", "budget", "cat", "swipes", "order"}. `plan` is an
-## answer, as [peg, from, to] moves.
+## One full board for `band`: {"holes", "ropes", "start", "tw", "reach",
+## "plan", "par", "budget", "cat", "swipes", "order"}. `plan` is an answer, as
+## [peg, from, to] moves. A rope the walk left crossing nothing is not dealt
+## at all (its pegs are -1 in `start`); a deal with one is passed over while
+## there are walks to spare, so most days every rope is in the tangle.
 static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 	var cfg: Dictionary = BANDS[clampi(band, 0, BANDS.size() - 1)]
 	var ropes: int = cfg.ropes
 	var best: Dictionary = {}
 	var best_par := -1
-	for attempt in TRIES:
+	var searched := 0
+	for walk in WALKS:
 		var goal := _goal(rng, cfg)
 		var deal: Dictionary = _cat_deal(rng, goal, cfg) if cfg.cat else _scramble(rng, goal, cfg)
 		if deal.is_empty():
@@ -647,35 +732,46 @@ static func generate(rng: RandomNumberGenerator, band: int) -> Dictionary:
 		var start_tw: PackedInt32Array = deal.tw
 		if crossing_count(start_tw) < int(cfg.cross):
 			continue
-		var plan: Array
+		var spare := walk >= WALKS - SPARE_WALKS
+		var idle := retire(start, start_tw, ropes).size()
+		if idle > 0 and not spare:
+			continue
 		var swipes: Dictionary = deal.get("swipes", {})
-		if cfg.cat:
-			if not _replays(start, start_tw, goal.reach, cfg, deal):
-				continue
-			plan = deal.plan
-			# The deal's own answer is only one way; the search, with her
-			# swipes played in, may find a shorter one, and that is what par
-			# and the thread are measured against.
-			var found = way_home(start, start_tw, cfg.holes, ropes, goal.reach, BEAM_DEPTH, BEAM, rng, swipes, CAT_EVERY, 0)
-			if found != null and found.size() < plan.size():
+		# The walk backwards is one answer (less the moves of ropes that have
+		# left by then). With the kitten loose it may no longer hold -- a rope
+		# leaving changes where she bats a peg -- and such a deal, like one
+		# whose walk is already shorter than the band's par, is passed over
+		# while there are walks to spare.
+		var plan = _replay(start, start_tw, deal.plan, cfg, goal.reach, swipes)
+		if not spare and (plan == null or plan.size() < int(cfg.par)):
+			continue
+		# The search may find a shorter answer, and that is what par and the
+		# thread are measured against: it looks only as deep as would beat
+		# the walk.
+		var depth: int = BEAM_DEPTH if plan == null else plan.size() - 1
+		if depth > 0:
+			var found = way_home(start, start_tw, cfg.holes, ropes, goal.reach, depth, BEAM, rng,
+				swipes if cfg.cat else {}, CAT_EVERY if cfg.cat else 0, 0)
+			if found != null:
 				plan = found
-		else:
-			plan = deal.plan
-			var found = way_home(start, start_tw, cfg.holes, ropes, goal.reach, BEAM_DEPTH, BEAM, rng)
-			if found != null and found.size() < plan.size():
-				plan = found
-		var par := plan.size()
-		if par > best_par:
+		searched += 1
+		if plan == null:
+			continue
+		var par: int = plan.size()
+		var better := par > best_par
+		if not best.is_empty() and idle != int(best.idle):
+			better = idle < int(best.idle)
+		if better:
 			best_par = par
-			var end := play(start, start_tw, plan, cfg, goal.reach, swipes)
-			best = {"holes": cfg.holes, "ropes": ropes, "start": start, "tw": start_tw, "goal": end[0],
+			best = {"holes": cfg.holes, "ropes": ropes, "start": start, "tw": start_tw,
 				"reach": goal.reach, "plan": plan, "par": par,
 				"budget": (par + int(cfg.slack)) if int(cfg.slack) > 0 else 0,
-				"cat": cfg.cat, "swipes": swipes}
-		if par >= int(cfg.par):
+				"cat": cfg.cat, "swipes": swipes, "idle": idle}
+		if (par >= int(cfg.par) and idle == 0) or searched >= TRIES:
 			break
 	if best.is_empty():
 		best = _fallback(rng)
+	best.erase("idle")
 	# The stack the ropes lie in, bottom to top, where no crossing says
 	# otherwise.
 	var order: Array = range(best.ropes)

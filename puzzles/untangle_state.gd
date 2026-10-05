@@ -7,7 +7,9 @@ extends RefCounted
 ## (puzzles/untangle2d.gd) draws this and nothing else.
 ##
 ## A peg is numbered 2 * rope + end. `at[peg]` is its hole and `occ[hole]` the
-## peg in it (-1 when empty). The rule itself lives in untangle_gen.gd so the
+## peg in it (-1 when empty). A rope that crosses nothing leaves the ring with
+## its pegs (`at` reads -1 for both) and its holes stand empty; the day is won
+## when the last has left. The rule itself lives in untangle_gen.gd so the
 ## dealer and the player read one definition of a crossing.
 ## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
 
@@ -27,9 +29,6 @@ var start_at := PackedInt32Array()
 ## Per pair of ropes, how they cross (Gen: n * 2 + who is on top).
 var tw := PackedInt32Array()
 var start_tw := PackedInt32Array()
-## The layout the dealer's answer ends in, which is what "Show the answer"
-## walks the pegs to.
-var goal_at := PackedInt32Array()
 ## Per rope, the widest span (in holes) it can reach.
 var reach := PackedInt32Array()
 ## The stack the ropes lie in, bottom to top: the rope moved last lies on top.
@@ -64,7 +63,6 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	ropes = out.ropes
 	start_at = out.start
 	start_tw = out.tw
-	goal_at = out.goal
 	reach = out.reach
 	plan = out.plan
 	par = out.par
@@ -119,6 +117,14 @@ func preview(peg: int, hole: int) -> Array:
 func is_solved() -> bool:
 	return pairs.is_empty()
 
+## True when rope `r` has come free and left the ring.
+func is_gone(r: int) -> bool:
+	return at[2 * r] < 0
+
+## How many ropes the day was dealt (a rope the dealer left free is not).
+func ropes_dealt() -> int:
+	return Gen.ropes_left(start_at)
+
 func rope_of(peg: int) -> int:
 	return peg >> 1
 
@@ -129,7 +135,7 @@ func span_if(peg: int, hole: int) -> int:
 ## 0 when `peg` may be dropped in `hole`; 1 when the hole is taken or is its
 ## own; 2 when the rope is too short to reach it.
 func drop_check(peg: int, hole: int) -> int:
-	if hole == at[peg] or occ[hole] >= 0:
+	if at[peg] < 0 or hole == at[peg] or occ[hole] >= 0:
 		return 1
 	if span_if(peg, hole) > reach[peg >> 1]:
 		return 2
@@ -147,6 +153,8 @@ func stuck() -> bool:
 
 ## True when the peg has anywhere to go at all.
 func can_go(peg: int) -> bool:
+	if at[peg] < 0:
+		return false
 	for h in holes:
 		if drop_check(peg, h) == 0:
 			return true
@@ -177,12 +185,16 @@ func swipe_peg(j: int) -> int:
 	return Gen.swipe_fallback(j, at.size())
 
 ## What she will do next: {"peg", "in"} (moves until she pounces), {} when the
-## kitten is not loose.
+## kitten is not loose. The peg is the one her schedule names, or when its rope
+## has left the ring the next peg round that is still there.
 func cat_next() -> Dictionary:
 	if not cat:
 		return {}
 	var due := (moves_here / Gen.CAT_EVERY + 1) * Gen.CAT_EVERY
-	return {"peg": swipe_peg(due), "in": due - moves_here}
+	var peg := Gen.cat_peg(at, swipe_peg(due))
+	if peg < 0:
+		return {}
+	return {"peg": peg, "in": due - moves_here}
 
 ## Where she would put her peg if the player's move `peg` -> `hole` were made
 ## now and she pounced straight after, [] when that is not her move to make
@@ -196,10 +208,12 @@ func foresee(peg: int, hole: int) -> Array:
 	Gen.apply(moved, moved_tw, ropes, peg, hole)
 	if Gen.is_solved(moved_tw):
 		return []
-	var target := Gen.cat_hole(moved, holes, reach, int(nxt.peg))
+	Gen.retire(moved, moved_tw, ropes)
+	var hers := Gen.cat_peg(moved, swipe_peg(moves_here + 1))
+	var target := Gen.cat_hole(moved, holes, reach, hers)
 	if target < 0:
 		return []
-	return [int(nxt.peg), moved[int(nxt.peg)], target]
+	return [hers, moved[hers], target]
 
 # --- moves ---
 
@@ -208,9 +222,10 @@ func foresee(peg: int, hole: int) -> Array:
 ## not solve the board -- the kitten pounces. Returns {"peg", "from", "to",
 ## "cleared" (crossings this move undid, negative when it made some: the
 ## player's move alone, before any swipe), "left" (crossings after the move,
-## before any swipe), "freed" (ropes it left with no crossing at all that had
-## some), "unwound" (pairs that were wrapped, two or more times round, and
-## now cross no more than once), "wrapped" (pairs it wrapped tighter), "cat",
+## before any swipe), "gone" (ropes it left crossing nothing, which leave the
+## ring), "unwound" (pairs that were wrapped, two or more times round, and
+## now cross no more than once), "wrapped" (pairs it wrapped tighter), "cat"
+## ({} or {"peg", "from", "to", "gone": the ropes her swipe set free}),
 ## "tw_mid" (the tangle after the player's move, before any swipe)};
 ## {} when the drop is not allowed.
 func move(peg: int, hole: int) -> Dictionary:
@@ -220,8 +235,8 @@ func move(peg: int, hole: int) -> Dictionary:
 	var entry := {"peg": peg, "from": at[peg], "to": hole, "order": order.duplicate(),
 		"at": at.duplicate(), "tw": tw.duplicate(), "cat": {}}
 	var was_tw := tw.duplicate()
-	var was_bad := bad.duplicate()
 	Gen.apply(at, tw, ropes, peg, hole)
+	var gone: Array = Gen.retire(at, tw, ropes)
 	_raise(peg >> 1)
 	moves_here += 1
 	spent += 1
@@ -237,21 +252,18 @@ func move(peg: int, hole: int) -> Dictionary:
 		if now > was and was > 0:
 			wrapped += 1
 	var mid := tw.duplicate()
-	var freed: Array[int] = []
-	for r in was_bad:
-		if not bad.has(r):
-			freed.append(int(r))
 	if cat and not is_solved() and moves_here % Gen.CAT_EVERY == 0:
-		var p := swipe_peg(moves_here)
+		var p := Gen.cat_peg(at, swipe_peg(moves_here))
 		var to := Gen.cat_hole(at, holes, reach, p)
 		if to >= 0:
 			entry["cat"] = {"peg": p, "from": at[p], "to": to}
 			Gen.apply(at, tw, ropes, p, to)
+			entry.cat["gone"] = Gen.retire(at, tw, ropes)
 			_raise(p >> 1)
 			scan()
 	history.append(entry)
 	return {"peg": peg, "from": entry.from, "to": hole, "cleared": before - after_move, "left": after_move,
-		"freed": freed, "unwound": unwound, "wrapped": wrapped, "cat": entry.cat, "tw_mid": mid}
+		"gone": gone, "unwound": unwound, "wrapped": wrapped, "cat": entry.cat, "tw_mid": mid}
 
 func _raise(rope: int) -> void:
 	order.erase(rope)
@@ -261,18 +273,23 @@ func can_undo() -> bool:
 	return not history.is_empty() and not cat and not out_of_thread()
 
 ## Takes the last move back (a stitch, like any move) and says which peg went
-## where; {} when there is nothing to undo.
+## where and which ropes came back to the ring with it ("back"); {} when
+## there is nothing to undo.
 func undo() -> Dictionary:
 	if history.is_empty():
 		return {}
 	var last: Dictionary = history.pop_back()
+	var back: Array = []
+	for r in ropes:
+		if at[2 * r] < 0 and int(last.at[2 * r]) >= 0:
+			back.append(r)
 	at = (last.at as PackedInt32Array).duplicate()
 	tw = (last.tw as PackedInt32Array).duplicate()
 	order = last.order
 	moves_here = maxi(0, moves_here - 1)
 	spent += 1
 	scan()
-	return {"peg": int(last.peg), "from": int(last.to), "to": int(last.from)}
+	return {"peg": int(last.peg), "from": int(last.to), "to": int(last.from), "back": back}
 
 ## The next step of a short way home from where the pegs are now, as
 ## [peg, from, to]; [] when there is none to give. The search plays the
@@ -313,7 +330,8 @@ func hint_step() -> Array:
 
 ## Back to the tangle the player was given. The thread stays spent (the
 ## board reads what came back), the kitten's schedule starts over. Returns the
-## pegs that have somewhere to walk to, in order.
+## pegs that have somewhere to walk to, in order (a peg whose rope had left
+## among them: it comes back).
 func reset() -> Array[int]:
 	var walking: Array[int] = []
 	for p in at.size():
@@ -327,17 +345,17 @@ func reset() -> Array[int]:
 	scan()
 	return walking
 
-## Lays the dealer's untangled layout down, and says which pegs walked.
+## Every rope still on the ring comes free and leaves it; says which did.
 func show_answer() -> Array[int]:
-	var walking: Array[int] = []
-	for p in at.size():
-		if at[p] != goal_at[p]:
-			walking.append(p)
-	at = goal_at.duplicate()
+	var leaving: Array[int] = []
+	for r in ropes:
+		if at[2 * r] >= 0:
+			leaving.append(r)
+	at.fill(-1)
 	tw = Gen.empty_tangle(ropes)
 	history = []
 	scan()
-	return walking
+	return leaving
 
 func share_glyphs() -> String:
-	return tr("UT_SHARE") % [holes, ropes]
+	return tr("UT_SHARE") % [holes, ropes_dealt()]

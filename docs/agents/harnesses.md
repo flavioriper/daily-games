@@ -51,8 +51,13 @@ draw-call count, a budget figure or a design-space constant is fine.
 
     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_untangle.gd -- d=0..3 <mode> [rm]
 
-Modes: `rest hold taut plan wrong answer out hint undo reset perf idle enter
-restore howto toys`. `plan` plays the dealer's answer (kitten included on
+Modes: `rest hold taut carry plan back wrong answer out hint undo reset perf
+idle enter restore howto toys soak`. `back` plays the answer but for its last
+move, then Undo and Reset (ropes that left the ring come back). The harness
+sets the board's `mouse_filter` to ignore: it feeds `_gui_input` itself, and
+the real pointer hovering over the always-on-top window was carrying a held
+peg off mid-run (a board whose harness calls `_gui_input` directly wants the
+same). `plan` plays the dealer's answer (kitten included on
 `d=3`, at 2.7 s a move, because she holds input for a second); `out` pokes the
 thread to one stitch and makes one bad move; `perf` and `idle` print the mean
 frame time and peak draw calls over a window with no screenshots (a

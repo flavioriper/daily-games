@@ -3,14 +3,17 @@ extends "res://core/puzzle_base.gd"
 ## Untangle as a wooden ring: pegs in a ring of holes, a thick twisted rope
 ## from each peg to its twin, and the job of lifting pegs into the empty holes
 ## until no two ropes cross. The rules live in puzzles/untangle_state.gd (and
-## the dealer in untangle_gen.gd); each rope is a Verlet chain in
-## puzzles/untangle_rope.gd; this only draws them and takes the player's
-## fingers.
+## the dealer in untangle_gen.gd); each rope's line and its look are in
+## puzzles/untangle_rope.gd; this lays the ropes out, draws them and takes the
+## player's fingers.
 ##
-## The ropes lie over and under each other as the tangle says: a pair wrapped
-## round each other is held to a braid the two share (they swing across each
-## other as many times as they cross), and wherever a rope drawn earlier lies
-## on top, a short piece of it is laid back over the other (_build_patches).
+## The ropes are pulled tight. A pair wrapped round each other meets in one
+## short knot (where two ropes hooked together would pull each other to), and
+## each runs straight from its peg to its knots and on (_lay_all). They lie
+## over and under each other as the tangle says: wherever a rope drawn
+## earlier lies on top, a short piece of it is laid back over the other
+## (_build_patches). A rope that crosses nothing has come free: one of its
+## pegs is reeled across to the other and both pop off the ring (_send_off).
 ##
 ## What is on the cloth. The ring, its holes and the embroidery round it are
 ## one static mesh; everything that moves -- the target glows, every rope in
@@ -18,11 +21,12 @@ extends "res://core/puzzle_base.gd"
 ## more, rebuilt only on the frames something is moving. So the board costs two
 ## draw commands at rest plus the kitten's face and the rewards layer.
 ##
-## How it moves. Pegs and ropes are integrated in _process against a clock,
+## How it moves. Pegs and ropes are placed in _process against a clock,
 ## never tweened: a peg is on the finger, or on a scripted flight (a drop, a
-## return, a hint, the kitten's swipe, reset's walk home), or in its hole, and
-## the rope hangs from wherever the peg is drawn. The paper-side polish
-## (pops, squashes, faces, hats) is the family's vocabulary (core/motion.gd).
+## return, a hint, the kitten's swipe, reset's walk home, a free rope reeled
+## in), or in its hole, and the rope runs from wherever the peg is drawn. The
+## paper-side polish (pops, squashes, faces) is the family's vocabulary
+## (core/motion.gd).
 ##
 ## Hard and Insane run on thread (a stitch a move) and can be lost; Insane also
 ## has the kitten, who bats the marked peg after every third move.
@@ -112,13 +116,7 @@ const PEG_LIFT_SCALE := 1.16
 const WHIP_DROP := 5.5
 const WHIP_PICK := 2.2
 const WHIP_HOME := 3.0
-const SLACK_DROP := 0.022
 const IDLE_WHIP_EVERY := 7.0
-const SLEEP_ENERGY := 0.2
-const SLEEP_STEPS := 24
-## Seconds of nothing touching the ring before a rope still moving is damped
-## down to rest.
-const QUIET_AFTER := 1.2
 
 # --- flights, in seconds ---
 const FLY_MIN := 0.22
@@ -133,59 +131,41 @@ const ENTER_LAG := 0.12
 const KNOT_FADE := 14.0
 const KNOT_SPAN := 5.0
 
-## A braid is a coil: the shorter rope of a wrapped pair (the winder) winds
-## round the longer (the core), which runs straight through it. Rope widths
-## along the core per crossing, how far the winder swings off the core's line
-## (in widths: a full width, so it clears the core at each turn), how hard a
-## rope's points are held to the braid per step, and how fast one cinches and
-## lets go (s).
-const BRAID_PITCH := 2.1
-## A coil's turns begin and end this far (radians of its swing) before the
-## winder's first crossing and after its last: it comes in off its own side
-## already heading across the core, and the crossings stay clear of the ends.
-const BRAID_LEAD := PI / 3.0
-const BRAID_SIDE := 1.0
-const BRAID_PULL := 0.32
-## How gently a wrapped rope's legs are held to the straight way between.
-const BRAID_LEG := 0.05
-const BRAID_CINCH := 0.34
-const BRAID_LET_GO := 0.3
-## The way a wrapped rope may be sent round a braid, peg to braid to peg, as
-## a share of the rope's own length.
-const BRAID_WAY_OF_LENGTH := 0.85
-## The tightest a coil is ever drawn, rope widths per crossing: a core with
-## no room for every turn at this pitch shows fewer turns (two at a time, so
-## the winder still leaves on the right side) and the count beside it,
-## rather than turns squeezed into a scribble.
-const BRAID_PITCH_MIN := 1.75
-## The core of a pair changes hands only when the other rope is this much
-## tauter, so a carry does not flip a coil back and forth.
-const BRAID_CORE_KEEP := 1.15
-## How far out from the core (rope widths) a winder goes round a coil's end
-## when it has to come at it from the far side.
-const BRAID_ROUND := 1.7
-## The clear stretch of core kept either side of a coil, in rope widths.
-const BRAID_GAP := 0.9
+## The way a rope may be sent round its knots, peg to knot to peg, as a share
+## of the rope's own length.
+const KNOT_WAY := 0.9
+## Two knots keep this far apart, in rope widths, beyond their own lengths.
+const KNOT_GAP := 1.2
+const KNOT_GAP_SHARED := 1.4
+## A knot keeps this many peg radii clear of the pegs of its own two ropes.
+const KNOT_OFF_PEG := 1.5
 ## The dark a rope lying on top leaves on the one under it, beside it.
 const CROSS_SHADE := Color(0.23, 0.18, 0.14, 0.26)
-## How far (radians) a braid's twist turns as it cinches in or lets go. A
-## quarter turn: more crams turns into the coil that its pitch has no room
-## for, and for a third of a second the rope is drawn torn.
-const BRAID_SPIN := 0.5 * PI
 ## A piece laid back over a lone crossing reaches this many rope widths either
-## way (in a braid, halfway to the next crossing).
+## way (in a knot, halfway to the next crossing).
 const PATCH_HALF := 0.9
+## ...and past the edge of the rope under it by this much, no more: where a
+## third rope lies by, whatever of the piece is not over its own crossing
+## shows as a cut end.
+const PATCH_OVER := 0.16
+
+# --- a rope leaving ---
+## Seconds: the grin before a free rope goes, one peg reeled across to the
+## other, the two popping away, the beat between ropes that leave on one
+## move, and a rope popping back in (an undo, a reset).
+const LEAVE_WAIT := 0.24
+const LEAVE_REEL := 0.3
+const LEAVE_POP := 0.16
+const LEAVE_STEP := 0.12
+const BACK_POP := 0.24
 
 # --- rewards ---
 const STAMP_STEPS := [0, 1, 3, 6]
 const STAMP_R := 150.0
 const WIN_HOLD := 2.6
-const HAT_AT := 0.9
+const PARTY_AT := 0.9
 const STAMP_AT := 1.7
-const WAVE_STEP := 0.09
 const STREAK_AT := 3
-## How long a rope left with no crossings grins.
-const FREE_JOY := 1.1
 
 # --- the thread ---
 const STITCH_W := 27.0
@@ -233,7 +213,12 @@ var _yarn_at := Vector2.ZERO
 
 # the rope and peg cast
 var _ropes: Array = []                       # [r] -> Rope
-var _calm := PackedInt32Array()              # [r] -> consecutive still steps
+## Per rope, as drawn: off the ring (it came free and has left, or was never
+## dealt), the leaving it is in the middle of ({"t0", "stay", "go", "sent",
+## "pop"} or null), and when it last came back.
+var _away: Array[bool] = []
+var _leave: Array = []
+var _back_at := PackedFloat32Array()
 var _mv: Array = []                          # [peg] -> {"from","to","t0","dur","arc"} or null
 var _peg_px := PackedVector2Array()          # [peg] -> where it is drawn (on the cloth)
 var _lift := PackedFloat32Array()            # [peg] -> how high it is held, 0..1
@@ -241,8 +226,6 @@ var _sq_at := PackedFloat32Array()           # [peg] -> when it last landed
 var _shake_at := PackedFloat32Array()        # [peg] -> when it last refused
 var _face := PackedInt32Array()              # [peg] -> 0 blank, 1 joy, 2 asleep, 3 strained
 var _face_at := PackedFloat32Array()
-var _hat_at := PackedFloat32Array()
-var _accum := 0.0
 
 # the hand
 var _held := -1
@@ -302,21 +285,25 @@ var _rest_for: Array = []                    # what _rest_mesh was baked from
 var _shown: Array = []
 var _knot_alpha := 0.0
 var _tw_px := PackedInt32Array()
-var _wraps := {}
-## Per rope, whether its way leaves the straight line between its pegs: it
-## winds round another, or is the core of a coil pulled off its line.
+## The knots as laid by `_lay_all`: pair -> its knot (`Rope.lay_knot`). What
+## the ropes run through, and what the crossings and the rewards read.
+var _knots := {}
+## Per rope, whether its way leaves the straight line between its pegs.
 var _bent: Array[bool] = []
-## The braids as last laid by `_bind_all`, spaced along their ropes: pair ->
-## `_braid` entry. What the crossing search and the rewards read.
-var _laid := {}
+## Where the knots that have come undone under the hand lay, since the peg
+## was picked up (a put-back, an undo and a reset add to it too, which is why
+## a pick-up and a drop with no carry start it empty).
+var _undone: Array = []
+## What the ropes were last laid from, and whether they go to their lines at
+## once (a board laid out, restored or snapped) and not on a glide.
+var _laid_for: Array = []
+var _snap := true
 var _cross: Array = []
 var _cross_kept := {}            # pair -> [what it was found from, its crossings]
 var _stack: Array = []
 var _look: Array = []                         # [r] -> what its mesh was drawn with
 var _patch_mesh: ArrayMesh
 var _over_for: Array = []
-var _bound_for: Array = []
-var _stir_at := 0.0
 var _lines_moved := true
 var _cross_for := PackedInt32Array()
 var _hot_preview: Array = []                  # [crossing change, wraps] for the hole under the peg
@@ -385,9 +372,10 @@ func tutorial_pages() -> Array:
 ## peg the hand let go knocks from `_landed` (a tap, or a bump when a rope
 ## comes free or two crossings go at once). The rope going taut in the hand
 ## ticks once (`_update_held`), which is the reach rule felt, and the pluck
-## that shares its cue does not. The win knocks on `solved`, which waits for
-## the last peg to land; the seal thuds as it lands (`_stamp_down`). A peg
-## lifted, put back or selected, a hole hovered, a braid cinching under the
+## that shares its cue does not. A rope that came free ticks as it pops off
+## the ring (`_update_leaving`). The win knocks on `solved`, which waits for
+## the last rope to go; the seal thuds as it lands (`_stamp_down`). A peg
+## lifted, put back or selected, a hole hovered, a knot cinching under the
 ## hand, a refused peg, a stitch sewn, the kitten petted or swatting and the
 ## shown answer say nothing.
 const HAPTICS := {
@@ -429,12 +417,14 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_difficulty = clampi(difficulty, 0, Gen.BANDS.size() - 1)
 	state.setup(rng, _difficulty)
 	_tw_px = state.tw.duplicate()
-	_wraps = {}
+	_knots = {}
+	_undone = []
+	_laid_for = []
+	_snap = true
 	_cross = []
 	_cross_kept = {}
 	_hot_preview = []
 	_over_for = []
-	_bound_for = []
 	_stop_all()
 	_close_card()
 	_clear_stamp()
@@ -468,14 +458,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_shake_at = PackedFloat32Array(); _shake_at.resize(pegs); _shake_at.fill(-100.0)
 	_face = PackedInt32Array(); _face.resize(pegs)
 	_face_at = PackedFloat32Array(); _face_at.resize(pegs); _face_at.fill(-100.0)
-	_hat_at = PackedFloat32Array(); _hat_at.resize(pegs); _hat_at.fill(-100.0)
 	_peg_px = PackedVector2Array(); _peg_px.resize(pegs)
 	for i in pegs:
 		_mv.append(null)
 	_ropes = []
-	_calm = PackedInt32Array(); _calm.resize(state.ropes)
+	_away = []
+	_leave = []
+	_back_at = PackedFloat32Array(); _back_at.resize(state.ropes); _back_at.fill(-100.0)
 	for r in state.ropes:
 		_ropes.append(Rope.new())
+		# A rope the dealer left free is not on the ring at all.
+		_away.append(state.is_gone(r))
+		_leave.append(null)
 	_stitch_at = PackedFloat32Array(); _stitch_at.resize(maxi(state.budget, 0)); _stitch_at.fill(-100.0)
 	_spent_shown = 0
 	_needle_x = 0.0
@@ -521,16 +515,20 @@ func _layout() -> void:
 	_kitten.pivot_offset = _kitten.size * 0.5
 	_yarn_at = _kitten_at + Vector2(-KITTEN_SIZE * 0.98, KITTEN_SIZE * 0.2)
 	_place_stamp()
-	# A flight is in the old geometry's pixels: the pegs settle where they belong.
+	# A flight is in the old geometry's pixels: the pegs settle where they
+	# belong, and a rope on its way off the ring is off it.
+	for r in state.ropes:
+		_away[r] = state.is_gone(r)
+		_leave[r] = null
 	for p in state.at.size():
 		_mv[p] = null
 		_peg_px[p] = _peg_home(p)
 	_paw = {}
 	for r in state.ropes:
-		var rope: Rope = _ropes[r]
-		rope.setup(_peg_px[2 * r], _peg_px[2 * r + 1], _span_px(state.reach[r]) * LENGTH_OVER, (6.0 if r % 2 == 0 else -6.0))
+		if not _away[r]:
+			_set_up_rope(r)
 	_set_shown(_tw_px if _tw_px.size() == Gen.pair_count(state.ropes) else state.tw, true)
-	_settle_ropes(70)
+	_rest_ropes()
 	_ring_mesh = _build_ring()
 	_build_peg_meshes()
 	_rope_sig = []
@@ -549,8 +547,13 @@ func _span_px(holes_apart: int) -> float:
 func _hole_px(h: int) -> Vector2:
 	return _c + Vector2.from_angle(TAU * float(h) / state.holes - PI * 0.5) * _rh
 
+## Where peg `p` sits: its hole, or where it is drawn when its rope has come
+## free (it has no hole then, and is on its way off the ring).
 func _peg_home(p: int) -> Vector2:
-	return _hole_px(state.at[p])
+	return _hole_px(state.at[p]) if state.at[p] >= 0 else _peg_px[p]
+
+func _set_up_rope(r: int) -> void:
+	(_ropes[r] as Rope).setup(_peg_px[2 * r], _peg_px[2 * r + 1], _span_px(state.reach[r]) * LENGTH_OVER, _wd)
 
 ## Board-local centre of the peg in `p`'s hole (the win harness drags between
 ## these), and of hole `h`.
@@ -646,9 +649,9 @@ func _process(delta: float) -> void:
 	if _rw != null:
 		_rw.step(dt)
 	_run_later(t)
+	_update_leaving(t)
 	_update_pegs(t, dt)
-	_update_wraps(dt)
-	var moving := _step_ropes(dt, t)
+	var moving := _step_ropes(dt)
 	_idle_whip(t)
 	if moving or _animating(t):
 		_dirty = true
@@ -708,12 +711,15 @@ func _animating(t: float) -> bool:
 		return true
 	if t < _needle_dip + 0.5 or t < _kitten_mood_until:
 		return true
+	for r in _leave.size():
+		if _leave[r] != null or t < _back_at[r] + BACK_POP + 0.1:
+			return true
 	for p in _mv.size():
 		if _mv[p] != null:
 			return true
 		if absf(_lift[p] - _lift_goal(p)) > 0.001:
 			return true
-		if t < _sq_at[p] + LAND_SQUASH + 0.1 or t < _shake_at[p] + 0.5 or t < _face_at[p] + 0.5 or t < _hat_at[p] + 0.6:
+		if t < _sq_at[p] + LAND_SQUASH + 0.1 or t < _shake_at[p] + 0.5 or t < _face_at[p] + 0.5:
 			return true
 	for s in _stitch_at.size():
 		if t < _stitch_at[s] + 0.5:
@@ -741,6 +747,8 @@ func _update_pegs(t: float, dt: float) -> void:
 		_held_pos = _held_want if Motion.reduce else _held_pos.lerp(_held_want, 1.0 - exp(-dt * 38.0))
 		_carry_tangle()
 	for p in _peg_px.size():
+		if _away[p >> 1]:
+			continue
 		var goal := _lift_goal(p)
 		_lift[p] = goal if Motion.reduce else move_toward(_lift[p], goal, dt / LIFT_TIME)
 		if p == _held:
@@ -776,7 +784,7 @@ func _carry_tangle() -> void:
 	if d.length_squared() > 1.0:
 		var over := 0
 		for y in state.ropes:
-			if y == p >> 1:
+			if y == p >> 1 or state.is_gone(y):
 				continue
 			if Geometry2D.segment_intersects_segment(a, pt, _hole_px(state.at[2 * y]), _hole_px(state.at[2 * y + 1])) != null:
 				over |= 1 << y
@@ -827,80 +835,47 @@ func _arc_lift(p: int, t: float) -> float:
 
 # --- ropes ---
 
-## Steps every rope that is awake, at the fixed rate; returns whether any is.
-func _step_ropes(dt: float, t: float) -> bool:
-	var awake := false
-	# The braids are laid out again only when a peg or a braid has moved.
-	var key := [_peg_px, _wraps.hash()]
-	if key != _bound_for:
-		_bound_for = key.duplicate(true)
-		_bind_all()
-		_stir_at = t
+## Lays the ropes out again when a peg or the tangle has moved, and steps the
+## swing and the glide of every rope that has one; returns whether any has.
+func _step_ropes(dt: float) -> bool:
+	var key := [_peg_px, _tw_px, _away]
+	if key != _laid_for:
+		_laid_for = key.duplicate(true)
+		_lay_all()
 		_lines_moved = true
-	if Motion.reduce:
-		# No swing: the ropes go straight to where they hang, a few still
-		# steps a frame while anything is moving.
-		var busy := _held >= 0
-		for p in _mv.size():
-			busy = busy or _mv[p] != null
-		if busy or _dirty:
-			_settle_ropes(6)
-		return false
-	_accum += dt
-	var steps := 0
-	while _accum >= Rope.SIM_DT and steps < 8:
-		_accum -= Rope.SIM_DT
-		steps += 1
+	if _snap or Motion.reduce:
+		# No swing and no glide: the ropes are on their lines at once.
+		_snap = false
 		for r in _ropes.size():
-			var rope: Rope = _ropes[r]
-			if _calm[r] >= SLEEP_STEPS and not _pegs_moved(r):
-				continue
-			rope.extra = maxf(0.0, rope.extra - rope.extra * Rope.SIM_DT / 0.28 - 0.0004 * Rope.SIM_DT)
-			if t - _stir_at > QUIET_AFTER:
-				# Nothing has touched the ring for a while: a rope still
-				# humming (three wrapped round each other can pull in a
-				# circle) is let down to rest.
-				for i in Rope.SEGS:
-					rope.q[i] = rope.q[i].lerp(rope.p[i], 0.5)
-			rope.step(_peg_px[2 * r], _peg_px[2 * r + 1])
-			_lines_moved = true
-			if rope.energy() < SLEEP_ENERGY and rope.extra < 0.0005:
-				_calm[r] += 1
-			else:
-				_calm[r] = 0
-	_accum = minf(_accum, Rope.SIM_DT * 2.0)
-	for r in _ropes.size():
-		if _calm[r] < SLEEP_STEPS:
-			awake = true
-	return awake
-
-## Steps every rope `steps` times with no speed kept: the shape it hangs in,
-## at once (a new layout, reduce-motion).
-func _settle_ropes(steps: int) -> void:
-	_bind_all()
-	_bound_for = []
+			if not _away[r] and (_ropes[r] as Rope).moving():
+				(_ropes[r] as Rope).rest()
+				_lines_moved = true
+		return false
+	var awake := false
 	for r in _ropes.size():
 		var rope: Rope = _ropes[r]
-		for i in steps:
-			rope.q = rope.p.duplicate()
-			rope.step(_peg_px[2 * r], _peg_px[2 * r + 1])
-		rope.q = rope.p.duplicate()
-		rope.extra = 0.0
+		if _away[r] or not rope.moving():
+			continue
+		rope.step(dt)
+		_lines_moved = true
+		awake = true
+	return awake
+
+## Every rope on its line and still, at once: a new layout, a board restored.
+func _rest_ropes() -> void:
+	_laid_for = []
+	_lay_all()
+	for r in _ropes.size():
+		if not _away[r]:
+			(_ropes[r] as Rope).rest()
+	_snap = false
 	_lines_moved = true
 
-func _pegs_moved(r: int) -> bool:
-	return _held >= 0 and (_held >> 1) == r or _mv[2 * r] != null or _mv[2 * r + 1] != null
-
-func _wake(r: int) -> void:
-	_calm[r] = 0
-	_stir_at = _now()
-
-## A rope kicked sideways (`amp` px a step), given a little slack to swing.
-func _whip(r: int, amp: float, slack := 0.0) -> void:
-	if Motion.reduce:
+## A rope kicked sideways: it swings and settles.
+func _whip(r: int, amp: float) -> void:
+	if Motion.reduce or _away[r]:
 		return
-	(_ropes[r] as Rope).kick(amp, slack)
-	_wake(r)
+	(_ropes[r] as Rope).kick(amp)
 
 ## Every so often one rope stirs a little, so a board left alone still
 ## breathes.
@@ -908,9 +883,12 @@ func _idle_whip(t: float) -> void:
 	if Motion.reduce or t < _idle_at or _held >= 0 or is_done():
 		return
 	_idle_at = t + IDLE_WHIP_EVERY * randf_range(0.7, 1.3)
-	if state.ropes > 0:
-		var r := randi() % state.ropes
-		_whip(r, randf_range(-1.6, 1.6), 0.006)
+	var here: Array = []
+	for r in state.ropes:
+		if not _away[r]:
+			here.append(r)
+	if not here.is_empty():
+		_whip(here[randi() % here.size()], randf_range(-1.6, 1.6))
 
 # --- the picture ---
 
@@ -1010,7 +988,7 @@ func _draw_zzz(t: float) -> void:
 	var font: Font = CozyTheme.display(700)
 	var fs := int(_peg_r * 0.9)
 	for p in _peg_px.size():
-		if p % 2 != 0 or _face[p] != 2:
+		if p % 2 != 0 or _face[p] != 2 or _away[p >> 1]:
 			continue
 		var phase := fposmod(t * 0.55 + p * 0.37, 1.0)
 		var a := sin(PI * phase)
@@ -1046,7 +1024,7 @@ func _rope_stack() -> Array:
 
 ## Rebuilds what changed: the glow under the holes, each rope that moved (a
 ## rope at rest keeps the mesh it has), the crossing marks with the thread and
-## the kitten's yarn, the faces and hats on the pegs, and the paw.
+## the kitten's yarn, the faces on the pegs, and the paw.
 func _rebuild(t: float) -> void:
 	# The crossings are found again only when a rope's line has moved (or
 	# the tangle drawn has changed); a frame that only beats a glow keeps them.
@@ -1100,13 +1078,27 @@ func _over_key(t: float) -> Array:
 func _enter_u(p: int, t: float) -> float:
 	return _dec((t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
 
+## How much of a rope and its pegs is there: 1 on the ring, falling to 0 as
+## the two pop away once one has been reeled across to the other.
+func _leave_k(r: int, t: float) -> float:
+	if _away[r]:
+		return 0.0
+	var lv = _leave[r]
+	if lv == null:
+		return 1.0
+	return 1.0 - _dec((t - float(lv.t0) - LEAVE_REEL) / LEAVE_POP)
+
+## A rope popping back onto the ring: 0 to 1.
+func _back_k(r: int, t: float) -> float:
+	return _dec((t - _back_at[r]) / BACK_POP)
+
 ## Rope `r`'s mesh, rebuilt only when what it is drawn from has changed: its
-## pegs, how far it is lifted or faded in, the light on it, or the rope itself
-## still swinging.
+## line, how far it is lifted or faded in, or the light on it.
 func _refresh_rope(r: int, t: float) -> void:
 	var col: Array = _rope_col(r)
 	# The ropes come in a beat after the pegs they hang from.
 	var alpha := minf(_enter_u(2 * r, t - ENTER_LAG - 0.08), _enter_u(2 * r + 1, t - ENTER_LAG - 0.08))
+	alpha *= _leave_k(r, t) * _back_k(r, t)
 	if alpha <= 0.0:
 		_rope_mesh[r] = null
 		_rope_sig[r] = null
@@ -1118,19 +1110,20 @@ func _refresh_rope(r: int, t: float) -> void:
 		lift = maxf(_lift[2 * r], _lift[2 * r + 1])
 	var flying := maxf(_arc_lift(2 * r, t), _arc_lift(2 * r + 1, t))
 	lift = maxf(lift, clampf(flying / (_peg_r * FLY_ARC), 0.0, 1.0) * 0.8)
+	# A rope that has come free shines end to end before it goes.
 	var glow := Color(0, 0, 0, 0)
 	var from := 0.0
 	var to := 0.0
-	if _solved_at > -INF:
-		var since := t - _solved_at - Motion.SOLVE_DELAY - WAVE_STEP * float(state.order.find(r))
+	var lv = _leave[r]
+	if lv != null:
+		var since := (t - float(lv.shine)) / maxf(float(lv.t0) + LEAVE_REEL - float(lv.shine), 0.01)
 		if since > 0.0 and since < 1.0:
-			glow = Color(Color("fff2b8"), 0.6 * sin(PI * since))
-			from = clampf(since * 1.2 - 0.2, 0.0, 1.0)
-			to = clampf(since * 1.2 + 0.2, 0.0, 1.0)
+			glow = Color(Color("fff2b8"), 0.42 * sin(PI * since))
+			to = 1.0
 	var tight := clampf((rope.taut(_peg_px[2 * r], _peg_px[2 * r + 1]) - 0.965) / 0.035, 0.0, 1.0)
 	_look[r] = [lift, alpha, glow, from, to, tight]
-	var sig := [_peg_px[2 * r], _peg_px[2 * r + 1], lift, alpha, glow.a, from, to, tight]
-	if _calm[r] >= SLEEP_STEPS and _rope_sig[r] == sig and _rope_mesh[r] != null:
+	var sig := [rope.ver, lift, alpha, glow.a, from, to, tight]
+	if _rope_sig[r] == sig and _rope_mesh[r] != null:
 		return
 	_rope_sig[r] = sig
 	var b := Face.Builder.new()
@@ -1140,324 +1133,196 @@ func _refresh_rope(r: int, t: float) -> void:
 # --- how the ropes lie round each other ---
 
 ## The tangle as drawn. It follows state.tw, but a move's change lands with
-## its peg (and the kitten's with her swat), so a wrap cinches as the peg
-## drops in, not while it is still in the air.
+## its peg (and the kitten's with her swat), so a knot cinches as the peg
+## drops in, not while it is still in the air. `instant` puts the ropes on
+## their new lines at once, with no glide.
 func _set_shown(tw: PackedInt32Array, instant := false) -> void:
 	_tw_px = tw.duplicate()
-	for k in _tw_px.size():
-		var n := _tw_px[k] >> 1
-		if n >= 2:
-			var e: Dictionary = _wraps.get(k, {"n": n, "w": 0.0, "goal": 1.0})
-			if n > int(e.n):
-				# Once more round: the braid lets go a little and cinches again.
-				e.w = minf(float(e.w), 0.45)
-			e.n = n
-			e.goal = 1.0
-			if instant or Motion.reduce:
-				e.w = 1.0
-			_wraps[k] = e
-			_wake_pair(k)
-		elif _wraps.has(k):
-			if instant or Motion.reduce:
-				_wraps.erase(k)
-			else:
-				_wraps[k].goal = 0.0
-			_wake_pair(k)
+	_laid_for = []
+	if instant:
+		_snap = true
 	_dirty = true
 
-func _wake_pair(k: int) -> void:
-	var pr := Gen.pair_of(k, state.ropes)
-	if pr.y < _calm.size():
-		_calm[pr.x] = 0
-		_calm[pr.y] = 0
-
-## Braids cinch in and let go on their own clock.
-func _update_wraps(dt: float) -> void:
-	var gone: Array = []
-	for k in _wraps:
-		var e: Dictionary = _wraps[k]
-		var goal: float = e.goal
-		if absf(float(e.w) - goal) > 0.0001:
-			var rate := BRAID_CINCH if goal > float(e.w) else BRAID_LET_GO
-			e.w = goal if Motion.reduce else move_toward(float(e.w), goal, dt / rate)
-			_wake_pair(k)
-		if goal <= 0.0 and float(e.w) <= 0.0:
-			gone.append(k)
-	for k in gone:
-		_wraps.erase(k)
-
-## Where a wrapped pair's braid lies: where two ropes pulled tight round each
-## other meet, the point nearest all four pegs -- the crossing of the lines
-## between them (where the pegs interleave, the ropes' own crossing; side by
-## side, where the diagonals of the four pegs cross) -- along the way both run,
-## as long as its turns need. {"c", "axis", "perp", "len", "n", "sb" (+1 when
-## the second rope runs the same way as the first), "a", "b", "w"}.
-func _braid(k: int) -> Dictionary:
-	var pr := Gen.pair_of(k, state.ropes)
-	var e: Dictionary = _wraps[k]
-	var n: int = e.n
-	var a0 := _peg_px[2 * pr.x]
-	var a1 := _peg_px[2 * pr.x + 1]
-	var b0 := _peg_px[2 * pr.y]
-	var b1 := _peg_px[2 * pr.y + 1]
-	var a_core := core_is_a(a0, a1, b0, b1, (_ropes[pr.x] as Rope).length, (_ropes[pr.y] as Rope).length, e.get("core"))
-	e["core"] = a_core
-	var br := lay_braid(a0, a1, b0, b1, n, _wd, a_core)
-	br["a"] = pr.x
-	br["b"] = pr.y
-	br["w"] = float(e.w)
-	br["k"] = k
-	var c: Vector2 = br.c
-	# A wrap takes no rope further than it reaches: the core's line can be
-	# out of a short winder's way (its pegs side by side, the core across the
-	# ring). The braid is pulled toward the rope that is too short instead,
-	# and the core bends to meet it.
-	for r in [pr.x, pr.y]:
-		var p0 := _peg_px[2 * r]
-		var p1 := _peg_px[2 * r + 1]
-		var most: float = (_ropes[r] as Rope).length * BRAID_WAY_OF_LENGTH
-		if p0.distance_to(c) + c.distance_to(p1) <= most:
-			continue
-		var mid := (p0 + p1) * 0.5
-		var lo := 0.0
-		var hi := 1.0
-		for it in 12:
-			var m := (lo + hi) * 0.5
-			var q := c.lerp(mid, m)
-			if p0.distance_to(q) + q.distance_to(p1) > most:
-				lo = m
-			else:
-				hi = m
-		c = c.lerp(mid, hi)
-	br.c = c
-	_keep_in(br)
-	return br
-
-## Which rope of a pair is the core of its coil: the tauter one, its pegs
-## further apart for the rope it has (`len_a`, `len_b`: the ropes' lengths).
-## The slacker rope has the rope to wind with, and a taut one would not bend
-## out of its line to do it. `was` is what it was, kept unless the other is
-## clearly tauter now.
-static func core_is_a(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2, len_a: float, len_b: float, was = null) -> bool:
-	var la := a0.distance_to(a1) / maxf(len_a, 1.0)
-	var lb := b0.distance_to(b1) / maxf(len_b, 1.0)
-	if was == null:
-		return la >= lb
-	if bool(was):
-		return la * BRAID_CORE_KEEP >= lb
-	return la > lb * BRAID_CORE_KEEP
-
-## A pair's coil from its four pegs: on the core's line where the winder
-## crosses it (or, side by side, where the two pull each other to), running the
-## core's way, `n` crossings long. {"c", "axis", "perp" (the side the winder
-## comes in on), "len", "n" (turns drawn), "of" (turns there are), "side_a",
-## "side_b" (1 for the winder, 0 for the core), "dir_a", "dir_b" (+1 when
-## that rope runs the axis's way)}.
-static func lay_braid(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2, n: int, wd: float, a_core: bool) -> Dictionary:
-	var k0 := a0 if a_core else b0
-	var k1 := a1 if a_core else b1
-	var w0 := b0 if a_core else a0
-	var w1 := b1 if a_core else a1
-	var span := k0.distance_to(k1)
-	var axis := (k1 - k0) / span if span > 0.001 else Vector2.RIGHT
-	var c: Vector2
+## Where a pair's knot lies with its four pegs at `a0`, `a1` (one rope) and
+## `b0`, `b1` (the other): where two ropes pulled tight round each other meet,
+## the point with the shortest way to all four. Where the pegs interleave that
+## is the ropes' own crossing; side by side, where the diagonals of the four
+## cross; and with one peg inside the other three (a peg in the hand, just
+## carried over the other rope) it is at that peg, which is why a knot forms
+## and comes undone under the hand without a jump.
+static func knot_centre(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) -> Vector2:
 	var hit = Geometry2D.segment_intersects_segment(a0, a1, b0, b1)
+	if hit == null:
+		hit = Geometry2D.segment_intersects_segment(a0, b0, a1, b1)
+	if hit == null:
+		hit = Geometry2D.segment_intersects_segment(a0, b1, a1, b0)
 	if hit != null:
-		c = hit
-	else:
-		# Side by side, two ropes hooked round each other pull each other
-		# in: they meet where the diagonals of the four pegs cross, and both
-		# bend to get there.
-		var dirs := 1.0 if (w1 - w0).dot(axis) >= 0.0 else -1.0
-		var mid = Geometry2D.segment_intersects_segment(k0, w1 if dirs > 0.0 else w0, k1, w0 if dirs > 0.0 else w1)
-		c = mid if mid != null else (a0 + a1 + b0 + b1) * 0.25
-	var dirw := 1.0 if (w1 - w0).dot(axis) >= 0.0 else -1.0
-	var perp := axis.orthogonal()
-	if (w0 - c).dot(perp) < 0.0:
-		perp = -perp
-	# Fewer turns drawn before any is squeezed: the core has only so much
-	# room between its pegs.
-	var room := span * 0.8
-	var shown := n
-	while shown - 2 >= 2 and braid_waves(shown) * BRAID_PITCH_MIN * wd > room:
-		shown -= 2
-	var L := clampf(room, braid_waves(shown) * BRAID_PITCH_MIN * wd, braid_waves(shown) * BRAID_PITCH * wd)
-	# Two short ropes hooked together: the coil still ends between its
-	# core's pegs, squeezed as it must be.
-	L = minf(L, maxf(span * 0.9, wd))
-	return {"c": c, "axis": axis, "perp": perp, "len": L, "n": shown, "of": n,
-		"p0": BRAID_LEAD, "p1": BRAID_LEAD + braid_waves(shown) * PI,
-		"side_a": 0.0 if a_core else 1.0, "side_b": 1.0 if a_core else 0.0,
-		"dir_a": 1.0 if a_core else dirw, "dir_b": dirw if a_core else 1.0}
+		return hit
+	var pts := [a0, a1, b0, b1]
+	for i in 4:
+		if Geometry2D.point_is_inside_triangle(pts[i], pts[(i + 1) % 4], pts[(i + 2) % 4], pts[(i + 3) % 4]):
+			return pts[i]
+	return (a0 + a1 + b0 + b1) * 0.25
 
-## How many swings across (half waves) a coil of `n` crossings is long: one
-## between each two crossings and the lead in and out.
-static func braid_waves(n: int) -> float:
-	return float(n - 1) + BRAID_LEAD / PI
+## Half the length of a knot of `n` crossings as drawn.
+func _knot_half(n: int) -> float:
+	return Rope.knot_half(n, _wd)
 
-## A point of a braid for a rope going through it: `side` 1 for the winder, 0
-## for the core, `dir` +1 when the rope travels the axis's way, `u` from 0 to
-## 1 as the rope travels. The winder comes in on `perp`'s side whichever way
-## it travels, and swings across the core `n` times.
-static func braid_point(br: Dictionary, wd: float, side: float, dir: float, u: float) -> Vector2:
-	return (br.c as Vector2) + (br.axis as Vector2) * (u - 0.5) * dir * float(br.len) \
-		+ (br.perp as Vector2) * side * BRAID_SIDE * wd * cos(lerpf(float(br.p0), float(br.p1), u))
+## A knot lies on the cloth inside the ring, never over the wood.
+func _keep_in(c: Vector2, half: float) -> Vector2:
+	var room := maxf(_ri - _wd * 1.1 - half, 0.0)
+	return _c + (c - _c).limit_length(room)
 
-## Every rope's way round the braids it is in: pulled tight, a wrapped rope
-## runs straight from its peg into the first braid, along it, straight on to
-## the next and so to its other peg. The chain is held to that way -- firmly
-## along a braid, gently along the legs, so it still swings when it is kicked
-## and a braid cinches and lets go -- and its rest length is the way's.
-func _bind_all() -> void:
-	_laid = {}
-	for k in _wraps:
-		if float(_wraps[k].w) > 0.001:
-			_laid[k] = _braid(k)
-	_space_braids(_laid)
+## Every rope's way: pulled tight, a rope runs straight from its peg into the
+## first knot it is in, through it, straight on to the next and so to its
+## other peg. The knots are placed first -- each where its two ropes meet,
+## clear of its own pegs, of the other knots and of the ring, and no further
+## off a rope's line than that rope reaches -- then each is laid from the way
+## its ropes come to it and leave (`Rope.lay_knot`), and each rope through its
+## knots (`Rope.lay`).
+func _lay_all() -> void:
+	var at := {}          # pair -> where its knot is
+	var deep := {}        # pair -> its crossings
+	for k in _tw_px.size():
+		var n := _tw_px[k] >> 1
+		if n < 2:
+			continue
+		var pr := Gen.pair_of(k, state.ropes)
+		if _away[pr.x] or _away[pr.y]:
+			continue
+		var ends := [_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1]]
+		var c := knot_centre(ends[0], ends[1], ends[2], ends[3])
+		var clear := _knot_half(n) + _peg_r * KNOT_OFF_PEG
+		for i in 4:
+			var e: Vector2 = ends[i]
+			if c.distance_to(e) < clear:
+				var rest: Vector2 = (ends[0] + ends[1] + ends[2] + ends[3] - e) / 3.0
+				c = e + (rest - e).limit_length(clear)
+		at[k] = _keep_in(c, _knot_half(n))
+		deep[k] = n
+	for k in _knots:
+		if not at.has(k):
+			_undone.append(_knots[k].c)
+	var keys: Array = at.keys()
+	keys.sort()
+	# Each rope's knots in the order it meets them.
 	var per_rope := {}
-	for k in _laid:
-		var br: Dictionary = _laid[k]
-		for which in 2:
-			var r: int = br.a if which == 0 else br.b
-			var side := float(br.side_a if which == 0 else br.side_b)
-			var dir := float(br.dir_a if which == 0 else br.dir_b)
-			var a := _peg_px[2 * r]
-			var b := _peg_px[2 * r + 1]
-			var ab := b - a
-			var u := clampf((br.c - a).dot(ab) / maxf(ab.length_squared(), 1.0), 0.05, 0.95)
+	for k in keys:
+		var pr := Gen.pair_of(k, state.ropes)
+		for r in [pr.x, pr.y]:
 			if not per_rope.has(r):
 				per_rope[r] = []
-			per_rope[r].append([u, br, side, dir])
+			per_rope[r].append(k)
+	for r in per_rope:
+		var a := _peg_px[2 * r]
+		var ab := _peg_px[2 * r + 1] - a
+		var list: Array = per_rope[r]
+		list.sort_custom(func(x: int, y: int) -> bool:
+			return ((at[x] as Vector2) - a).dot(ab) < ((at[y] as Vector2) - a).dot(ab))
+		per_rope[r] = _shortest_round(list, at, a, a + ab)
+	# A wrap takes no rope further than it reaches: a rope whose way round its
+	# knots is longer than it is has them pulled in toward its own line, and
+	# the ropes it is knotted with bend to meet it there.
+	for it in 2:
+		for r in per_rope:
+			var a := _peg_px[2 * r]
+			var b := _peg_px[2 * r + 1]
+			var list: Array = per_rope[r]
+			var most: float = (_ropes[r] as Rope).length * KNOT_WAY
+			for k in list:
+				most -= _knot_half(deep[k]) * 0.7
+			var near: Array = []
+			for k in list:
+				near.append(Geometry2D.get_closest_point_to_segment(at[k], a, b))
+			var lo := 0.0
+			var hi := 0.0
+			for step in 12:
+				var f := hi if step == 0 else (lo + hi) * 0.5
+				var way := 0.0
+				var last := a
+				for i in list.size():
+					var c: Vector2 = (at[list[i]] as Vector2).lerp(near[i], f)
+					way += last.distance_to(c)
+					last = c
+				way += last.distance_to(b)
+				if step == 0:
+					if way <= most:
+						break
+					hi = 1.0
+				elif way > most:
+					lo = f
+				else:
+					hi = f
+			if hi > 0.0:
+				for i in list.size():
+					at[list[i]] = (at[list[i]] as Vector2).lerp(near[i], hi)
+	# On the cloth inside the ring whatever a short rope asks: a knot pulled
+	# out to a peg would sit on the wood, and the rope is drawn a little long.
+	for k in keys:
+		at[k] = _keep_in(at[k], _knot_half(deep[k]))
+	# Apart: two knots in one spot are one snarl.
+	for it in 4:
+		var moved := false
+		for i in keys.size():
+			for j in range(i + 1, keys.size()):
+				var need := (_knot_half(deep[keys[i]]) + _knot_half(deep[keys[j]])) * 0.8 + _wd * KNOT_GAP
+				# Two knots on one rope need room for it to leave the one and
+				# come into the other.
+				var pi := Gen.pair_of(keys[i], state.ropes)
+				var pj := Gen.pair_of(keys[j], state.ropes)
+				if pi.x == pj.x or pi.x == pj.y or pi.y == pj.x or pi.y == pj.y:
+					need += _wd * KNOT_GAP_SHARED
+				var d: Vector2 = at[keys[j]] - at[keys[i]]
+				var gap := d.length()
+				if gap >= need:
+					continue
+				var dir := d / gap if gap > 0.01 else Vector2.from_angle(float(keys[i]) * 2.4)
+				at[keys[i]] = _keep_in(at[keys[i]] - dir * (need - gap) * 0.5, _knot_half(deep[keys[i]]))
+				at[keys[j]] = _keep_in(at[keys[j]] + dir * (need - gap) * 0.5, _knot_half(deep[keys[j]]))
+				moved = true
+		if not moved:
+			break
+	# The knots, each from the way its two ropes come to it and go on.
+	var laid := {}
+	for k in keys:
+		var pr := Gen.pair_of(k, state.ropes)
+		var legs: Array = []
+		for r in [pr.x, pr.y]:
+			var list: Array = per_rope[r]
+			var i := list.find(k)
+			legs.append(at[list[i - 1]] if i > 0 else _peg_px[2 * r])
+			legs.append(at[list[i + 1]] if i + 1 < list.size() else _peg_px[2 * r + 1])
+		laid[k] = Rope.lay_knot(k, at[k], deep[k], _wd, legs[0], legs[1], legs[2], legs[3], _knots.get(k, {}))
+	_knots = laid
 	_bent.resize(_ropes.size())
 	for r in _ropes.size():
-		var rope: Rope = _ropes[r]
-		_bent[r] = false
-		if not per_rope.has(r):
-			if rope.set_binds(PackedInt32Array(), PackedVector2Array(), PackedFloat32Array(), [], 0.0):
-				_calm[r] = 0
+		_bent[r] = per_rope.has(r)
+		if _away[r]:
 			continue
-		var bi := PackedInt32Array()
-		var bat := PackedVector2Array()
-		var bk := PackedFloat32Array()
-		var wg: Array = []
-		var list: Array = per_rope[r]
-		list.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
-		var a := _peg_px[2 * r]
-		var b := _peg_px[2 * r + 1]
-		list = _shortest_round(list, a, b)
-		# The way: corners, and which stretches of it are braids.
-		var way := PackedVector2Array([a])
-		var firm: Array[bool] = [false]
-		# Where in the way each braid's stretch begins.
-		var first := PackedInt32Array()
-		var most := 0.0
-		for m in list.size():
-			var item: Array = list[m]
-			var br: Dictionary = item[1]
-			var dir: float = item[3]
-			if float(item[2]) != 0.0 or absf(((br.c as Vector2) - a).dot((b - a).orthogonal().normalized())) > 2.0:
-				_bent[r] = true
-			if float(item[2]) != 0.0:
-				# The winder comes into the coil from the side it is on (it
-				# may come from another braid, not its peg), and goes through
-				# whichever way is the shorter from where it comes to where
-				# it goes next, so it never doubles back to reach the far end.
-				var prev: Vector2 = way[way.size() - 1]
-				var next: Vector2 = (list[m + 1][1].c as Vector2) if m + 1 < list.size() else b
-				if (prev - (br.c as Vector2)).dot(br.perp as Vector2) < 0.0:
-					item[2] = -1.0
-				var best := INF
-				for d in [dir, -dir]:
-					var cost := prev.distance_to(braid_point(br, _wd, float(item[2]), d, 0.0)) + next.distance_to(braid_point(br, _wd, float(item[2]), d, 1.0))
-					if cost < best - 1.0:
-						best = cost
-						dir = d
-			# The core runs straight through. The winder comes in on its own
-			# side of the core and leaves on the side its turns bring it to;
-			# the turns between are drawn (Rope._twist).
-			var enter := braid_point(br, _wd, float(item[2]), dir, 0.0)
-			var leave := braid_point(br, _wd, float(item[2]), dir, 1.0)
-			if float(item[2]) != 0.0:
-				# A winder that comes from beyond the coil's far end (or goes
-				# back past its near end) would turn on a point where it
-				# meets the coil. It is sent round instead: out past the end
-				# on its own side of the core, and in from there.
-				var side: float = item[2]
-				var ax: Vector2 = (br.axis as Vector2) * dir
-				var pp: Vector2 = (br.perp as Vector2) * side
-				var prev: Vector2 = way[way.size() - 1]
-				if (enter - prev).dot(ax) < 0.0:
-					way.append(enter + pp * _wd * BRAID_ROUND - ax * _wd * 0.4)
-					firm.append(false)
-				way.append(enter)
-				firm.append(false)
-				first.append(way.size() - 1)
-				way.append(leave)
-				firm.append(true)
-				var next: Vector2 = (list[m + 1][1].c as Vector2) if m + 1 < list.size() else b
-				if (next - leave).dot(ax) < 0.0:
-					var out_side := 1.0 if cos(float(br.p1)) >= 0.0 else -1.0
-					way.append(leave + pp * out_side * _wd * BRAID_ROUND + ax * _wd * 0.4)
-					firm.append(false)
-			else:
-				way.append(enter)
-				firm.append(false)
-				first.append(way.size() - 1)
-				way.append(leave)
-				firm.append(true)
-			most = maxf(most, float(br.w))
-			var turn := (1.0 - float(br.w)) * BRAID_SPIN * (1.0 if float(_wraps[br.k].goal) > 0.0 else -1.0)
-			wg.append({"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
-				"p0": br.p0, "p1": br.p1, "side": item[2], "dir": dir, "w": br.w, "swing": BRAID_SIDE * _wd, "spin": turn})
-		way.append(b)
-		firm.append(false)
-		var cum := Rope.lengths(way)
-		var total: float = cum[cum.size() - 1]
-		var way_len := lerpf(a.distance_to(b), total, most)
-		var seg := 1
-		for i in range(1, Rope.SEGS - 1):
-			var s := total * float(i) / float(Rope.SEGS - 1)
-			while seg < cum.size() - 1 and cum[seg] < s:
-				seg += 1
-			var span := cum[seg] - cum[seg - 1]
-			var u := (s - cum[seg - 1]) / span if span > 0.0 else 0.0
-			var at := way[seg - 1].lerp(way[seg], u)
-			var k := BRAID_PULL if firm[seg] else BRAID_LEG
-			if firm[seg]:
-				k *= 0.35 + 0.65 * smoothstep(0.0, 0.25, u) * smoothstep(1.0, 0.75, u)
-			bi.append(i)
-			bat.append(at)
-			bk.append(k * most)
-		# Each braid's twist is laid only on the stretch of chain held to it
-		# (`first`: its enter in the way, its leave the next), so a twist
-		# never reaches into the next braid's stretch or the legs.
-		for m in list.size():
-			var per := float(Rope.SEGS - 1) / maxf(total, 1.0)
-			wg[m]["i0"] = cum[first[m]] * per
-			wg[m]["i1"] = cum[first[m] + 1] * per
-		# A rope whose way has changed is stepped to it: a coil slides when a
-		# third rope's peg lands by it, and a rope left asleep would keep its
-		# old chain under the new twist -- drawn torn, with pieces missing.
-		if rope.set_binds(bi, bat, bk, wg, way_len):
-			_calm[r] = 0
+		var stops: Array = []
+		if per_rope.has(r):
+			for k in per_rope[r]:
+				stops.append([laid[k], 0 if Gen.pair_of(k, state.ropes).x == r else 1])
+		(_ropes[r] as Rope).lay(_peg_px[2 * r], _peg_px[2 * r + 1], stops, _wd)
 
-## A rope's braids in the order that makes its way round them shortest, peg
-## to peg. Along its own line is right for braids that lie on it, but a slack
-## rope hooked on ropes across the ring would run out, back and out again.
-func _shortest_round(list: Array, a: Vector2, b: Vector2) -> Array:
+## A rope's knots (`list`, pairs; `at` where each lies) in the order that
+## makes its way round them shortest, peg to peg. Along its own line is right
+## for knots that lie on it, but a slack rope hooked on ropes across the ring
+## would run out, back and out again.
+func _shortest_round(list: Array, at: Dictionary, a: Vector2, b: Vector2) -> Array:
 	var n := list.size()
 	if n < 3 or n > 4:
 		return list
 	var best: Array = []
 	var best_len := INF
 	for perm in _perms(n):
-		var at := a
+		var here := a
 		var total := 0.0
 		for i in perm:
-			var c: Vector2 = list[i][1].c
-			total += at.distance_to(c)
-			at = c
-		total += at.distance_to(b)
+			var c: Vector2 = at[list[i]]
+			total += here.distance_to(c)
+			here = c
+		total += here.distance_to(b)
 		# The order along the rope's line wins a near tie, so it does not
 		# flicker between two ways as a peg is carried.
 		if total < best_len - _wd:
@@ -1483,160 +1348,23 @@ static func _perms(n: int) -> Array:
 	_perm_kept[n] = out
 	return out
 
-## A braid laid out now, spaced along its ropes when `_bind_all` has laid it.
-func _braid_laid(k: int) -> Dictionary:
-	return _laid[k] if _laid.has(k) else _braid(k)
-
-## Coils keep clear of each other and of the ropes that only pass by. Each
-## is slid along its core's line to the free stretch nearest where it would
-## lie: free of the other coils its core is in (a rope's braids come one after
-## another along it, never overlapping -- that folded the way back on itself)
-## and of the places a third rope crosses the core, so three ropes never knot
-## in one spot. Laid in pair order, each seeing those laid before it.
-func _space_braids(brs: Dictionary) -> void:
-	var keys: Array = brs.keys()
-	keys.sort()
-	# A core with no room for all its coils has the longest drawn tighter,
-	# then with fewer turns, until they fit.
-	var on_core := {}
-	for k in keys:
-		var core: int = brs[k].a if float(brs[k].side_a) == 0.0 else brs[k].b
-		if not on_core.has(core):
-			on_core[core] = []
-		on_core[core].append(k)
-	for core in on_core:
-		var list: Array = on_core[core]
-		if list.size() < 2:
-			continue
-		var avail := _peg_px[2 * core].distance_to(_peg_px[2 * core + 1]) - _peg_r * 1.2
-		for it in 12:
-			var need := 0.0
-			var longest = list[0]
-			for k in list:
-				need += float(brs[k].len) + BRAID_GAP * _wd * 2.0
-				if float(brs[k].len) > float(brs[longest].len):
-					longest = k
-			if need <= avail:
-				break
-			var br: Dictionary = brs[longest]
-			var tight := braid_waves(int(br.n)) * BRAID_PITCH_MIN * _wd
-			if float(br.len) > tight + 0.5:
-				br.len = tight
-			elif int(br.n) - 2 >= 2:
-				br.n = int(br.n) - 2
-				br.p1 = BRAID_LEAD + braid_waves(int(br.n)) * PI
-				br.len = braid_waves(int(br.n)) * BRAID_PITCH_MIN * _wd
-			else:
-				break
-	var placed: Array = []
-	var in_hand := _held >> 1 if _held >= 0 else -1
-	for k in keys:
-		var br: Dictionary = brs[k]
-		var core: int = br.a if float(br.side_a) == 0.0 else br.b
-		var winder: int = br.b if core == int(br.a) else br.a
-		var k0 := _peg_px[2 * core]
-		var k1 := _peg_px[2 * core + 1]
-		var axis: Vector2 = br.axis
-		var span := k0.distance_to(k1)
-		var half := float(br.len) * 0.5 + BRAID_GAP * _wd
-		var lo := half + _peg_r * 0.6
-		var hi := span - half - _peg_r * 0.6
-		var want := ((br.c as Vector2) - k0).dot(axis)
-		var off := (br.c as Vector2) - (k0 + axis * want)
-		if lo < hi:
-			# Stretches of the core that are taken: [from, to] for the coil's
-			# middle. The other coils first, then the ropes passing by.
-			var taken: Array = []
-			for j in placed:
-				var o: Dictionary = brs[j]
-				if int(o.a) != core and int(o.b) != core:
-					# The winder's other coils count too where they lie by
-					# this core: two of its coils in one spot would have it
-					# run into one, back out and into the other.
-					if int(o.a) != winder and int(o.b) != winder:
-						continue
-					if absf(((o.c as Vector2) - (br.c as Vector2)).dot(axis.orthogonal())) > float(o.len) * 0.5 + _wd * 3.0:
-						continue
-				var t := ((o.c as Vector2) - k0).dot(axis)
-				var reach := float(o.len) * 0.5 * absf((o.axis as Vector2).dot(axis)) + BRAID_SIDE * _wd * absf((o.perp as Vector2).dot(axis))
-				taken.append([t - reach - half, t + reach + half])
-			var coils := taken.size()
-			for r in state.ropes:
-				# The rope in the hand is in the air: a coil does not slide
-				# out of its way, or every knot would shuffle as it is carried.
-				if r == core or r == winder or r == in_hand:
-					continue
-				var hit = Geometry2D.segment_intersects_segment(k0, k1, _peg_px[2 * r], _peg_px[2 * r + 1])
-				if hit != null:
-					var t := k0.distance_to(hit)
-					taken.append([t - half - _wd * 0.6, t + half + _wd * 0.6])
-			# Clear of everything if it can be; of the other coils at least;
-			# and with no room even for that, as little into them as it goes.
-			var best := clampf(want, lo, hi)
-			var found := false
-			for count in [taken.size(), coils]:
-				var best_cost := INF
-				var tries: Array = [clampf(want, lo, hi), lo, hi]
-				for i in count:
-					tries.append(float(taken[i][0]))
-					tries.append(float(taken[i][1]))
-				for t in tries:
-					var at: float = t
-					if at < lo - 0.01 or at > hi + 0.01:
-						continue
-					var inside := false
-					for i in count:
-						if at > float(taken[i][0]) + 0.01 and at < float(taken[i][1]) - 0.01:
-							inside = true
-							break
-					if not inside and absf(at - want) < best_cost:
-						best_cost = absf(at - want)
-						best = at
-						found = true
-				if found:
-					break
-			if not found and coils > 0:
-				var least := INF
-				for at in [lo, hi, clampf(want, lo, hi)]:
-					var deep := 0.0
-					for i in coils:
-						deep = maxf(deep, minf(float(at) - float(taken[i][0]), float(taken[i][1]) - float(at)))
-					if deep < least:
-						least = deep
-						best = at
-			br.c = k0 + axis * best + off
-		placed.append(k)
-		_keep_in(br)
-
-## A braid lies on the cloth inside the ring, never over the wood: its middle
-## is kept far enough in that both its ends are.
-func _keep_in(br: Dictionary) -> void:
-	var c: Vector2 = br.c
-	var axis: Vector2 = br.axis
-	var out := (c - _c).normalized() if c.distance_to(_c) > 0.001 else Vector2.RIGHT
-	var room := _ri - _wd * 1.1 - absf(axis.dot(out)) * float(br.len) * 0.5
-	if c.distance_to(_c) > room:
-		br.c = _c + out * maxf(room, 0.0)
-
-## Every crossing as it is drawn, off the ropes as they hang: for each pair
-## that crosses, where their lines meet, and at each meeting which of the two
-## the tangle says is on top (a wrapped pair's alternate along the first
-## rope). [over rope, under rope, s on over, s on under, point].
+## Every crossing as it is drawn: for each pair that crosses, where their
+## lines meet, and at each meeting which of the two the tangle says is on top
+## (a wrapped pair's alternate along the first rope).
+## [over rope, under rope, s on over, s on under, point, the patch's reach].
 func _find_crossings() -> void:
 	_cross = []
 	var cache := {}
 	for k in _tw_px.size():
 		if _tw_px[k] >> 1 == 0:
 			continue
-		# A pair is searched again only when either rope's line (its `ver`),
-		# its pegs, the tangle or its braid has changed: carrying one peg
-		# moves one rope, and the other pairs keep what they had.
 		var pr := Gen.pair_of(k, state.ropes)
-		var key := [(_ropes[pr.x] as Rope).ver, (_ropes[pr.y] as Rope).ver, _tw_px[k],
-			_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1]]
-		if _wraps.has(k):
-			var br := _braid_laid(k)
-			key.append_array([float(_wraps[k].w) > 0.3, br.c, br.len])
+		if _away[pr.x] or _away[pr.y]:
+			continue
+		# A pair is found again only when either rope's line (its `ver`) or
+		# the tangle has changed: carrying one peg moves one rope and the
+		# ropes knotted with it, and the other pairs keep what they had.
+		var key := [(_ropes[pr.x] as Rope).ver, (_ropes[pr.y] as Rope).ver, _tw_px[k]]
 		var kept = _cross_kept.get(k)
 		if kept != null and kept[0] == key:
 			_cross.append_array(kept[1])
@@ -1649,58 +1377,58 @@ func _find_crossings() -> void:
 
 ## Pair `k`'s crossings appended to _cross.
 func _pair_crossings(k: int, pr: Vector2i) -> void:
-	var near: Vector2
-	var radius: float
-	if _wraps.has(k) and float(_wraps[k].w) > 0.3:
-		var br := _braid_laid(k)
-		near = br.c
-		radius = float(br.len) * 0.55 + _wd * (1.2 + BRAID_SIDE)
-	else:
-		var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
-		var bent := _bent[pr.x] or _bent[pr.y]
-		if bent:
-			# A rope bent round a braid of its own crosses this one
-			# somewhere else than the pegs' lines say (two to nine widths
-			# off, measured): search wide, and keep the meeting nearest
-			# where the lines cross.
-			var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
-			var all: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], aim, _wd * 10.0, BRAID_SIDE * _wd * 1.5)
-			if all.is_empty():
-				return
-			var best: Array = all[0]
-			for h in all:
-				if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
-					best = h
-			var top := _tw_px[k] & 1
-			var reach := _across(pr, best, _wd * PATCH_HALF * 2.0)
-			if top == 1:
-				_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
-			else:
-				_cross.append([pr.y, pr.x, best[1], best[0], best[2], reach])
-			return
-		if hit == null:
-			return
-		near = hit
-		radius = _wd * 1.8
-	var hs: Array = (_ropes[pr.x] as Rope).hits(_ropes[pr.y], near, radius, BRAID_SIDE * _wd * 1.5 if _wraps.has(k) else 2.0)
+	var ra: Rope = _ropes[pr.x]
+	var rb: Rope = _ropes[pr.y]
 	var t0 := _tw_px[k] & 1
-	for i in hs.size():
-		var top := t0 if i % 2 == 0 else 1 - t0
-		var h: Array = hs[i]
-		# A piece laid back reaches halfway to the pair's next crossing
-		# (in a braid, where the two have swung furthest apart), so it
-		# never ends where the other still lies over it.
-		var reach := _wd * PATCH_HALF * 2.0
-		var here: float = h[0] if top == 1 else h[1]
-		for j in [i - 1, i + 1]:
-			if j >= 0 and j < hs.size():
-				var there: float = hs[j][0] if top == 1 else hs[j][1]
-				reach = minf(reach, absf(there - here) * 0.5)
-		reach = maxf(_across(pr, h, reach), _wd * 0.55)
-		if top == 1:
-			_cross.append([pr.x, pr.y, h[0], h[1], h[2], reach])
-		else:
-			_cross.append([pr.y, pr.x, h[1], h[0], h[2], reach])
+	if _knots.has(k):
+		# A knot's crossings are where the two ropes were laid across each
+		# other: read off the ropes, not searched for.
+		var ia: PackedInt32Array = ra.marks.get(k, PackedInt32Array())
+		var ib: PackedInt32Array = rb.marks.get(k, PackedInt32Array())
+		var m := ia.size()
+		if m == 0 or ib.size() != m:
+			return
+		var la := ra.polyline()
+		var ca := ra.cum()
+		var cb := rb.cum()
+		var same := int(_knots[k].dir_b) > 0
+		for i in m:
+			var sa: float = ca[ia[i]]
+			var sb: float = cb[ib[i if same else m - 1 - i]]
+			# A piece laid back reaches halfway to the pair's next crossing,
+			# where the two have swung furthest apart, so it never ends where
+			# the other still lies over it.
+			var reach := _wd * PATCH_HALF * 2.0
+			if i > 0:
+				reach = minf(reach, (sa - ca[ia[i - 1]]) * 0.5)
+			if i < m - 1:
+				reach = minf(reach, (ca[ia[i + 1]] - sa) * 0.5)
+			reach = maxf(_across(pr, [sa, sb], reach), _wd * 0.55)
+			if (t0 if i % 2 == 0 else 1 - t0) == 1:
+				_cross.append([pr.x, pr.y, sa, sb, la[ia[i]], reach])
+			else:
+				_cross.append([pr.y, pr.x, sb, sa, la[ia[i]], reach])
+		return
+	# A lone crossing: where the two lines meet. A rope bent round a knot of
+	# its own crosses this one somewhere else than the pegs' lines say:
+	# searched wide, and the meeting nearest where those lines cross is kept.
+	var hit = Geometry2D.segment_intersects_segment(_peg_px[2 * pr.x], _peg_px[2 * pr.x + 1], _peg_px[2 * pr.y], _peg_px[2 * pr.y + 1])
+	var bent := _bent[pr.x] or _bent[pr.y]
+	if hit == null and not bent:
+		return
+	var aim: Vector2 = hit if hit != null else (_peg_px[2 * pr.x] + _peg_px[2 * pr.x + 1] + _peg_px[2 * pr.y] + _peg_px[2 * pr.y + 1]) * 0.25
+	var all: Array = ra.hits(rb, aim, _wd * (10.0 if bent else 1.8))
+	if all.is_empty():
+		return
+	var best: Array = all[0]
+	for h in all:
+		if (h[2] as Vector2).distance_to(aim) < (best[2] as Vector2).distance_to(aim):
+			best = h
+	var reach := _across(pr, best, _wd * PATCH_HALF * 2.0)
+	if t0 == 1:
+		_cross.append([pr.x, pr.y, best[0], best[1], best[2], reach])
+	else:
+		_cross.append([pr.y, pr.x, best[1], best[0], best[2], reach])
 
 ## How far a piece laid back over the crossing `h` (from `Rope.hits`) of the
 ## pair `pr` has to reach either way to cover the rope under it: that rope's
@@ -1712,7 +1440,7 @@ func _across(pr: Vector2i, h: Array, most: float) -> float:
 	var da: Vector2 = Rope.at(ra.polyline(), ra.cum(), float(h[0]))[1]
 	var db: Vector2 = Rope.at(rb.polyline(), rb.cum(), float(h[1]))[1]
 	var sin_a := maxf(absf(da.cross(db)), 0.2)
-	return minf(most, _wd * (0.5 / sin_a + 0.35))
+	return minf(most, _wd * (0.5 / sin_a + PATCH_OVER))
 
 ## A soft coral halo under each crossing, once few enough remain to read, so
 ## what is left to undo shows round the ropes without covering which lies on
@@ -1729,16 +1457,38 @@ func _draw_knots(b: Face.Builder, t: float) -> void:
 
 ## The short pieces of rope laid back over the ropes they cross on top of,
 ## where the stack has them under: a crossing's own over and under, whatever
-## order the ropes are drawn in.
+## order the ropes are drawn in. A piece laid back is on top of everything
+## there, so where a third rope lies over the piece's own rope close by, that
+## rope's piece is laid back after it (and so on), or the piece would show a
+## cut end across a rope that lies over it.
 func _build_patches(b: Face.Builder) -> void:
 	var rank := {}
 	for i in _stack.size():
 		rank[int(_stack[i])] = i
-	for c in _cross:
+	var lay: Array = []
+	var laid := {}
+	for i in _cross.size():
+		var c: Array = _cross[i]
+		if int(rank.get(int(c[0]), 0)) > int(rank.get(int(c[1]), 0)):
+			continue
+		lay.append(i)
+		laid[i] = true
+	var most := lay.size() * 3 + 6
+	var at := 0
+	while at < lay.size() and lay.size() < most:
+		var c: Array = _cross[lay[at]]
+		at += 1
+		for j in _cross.size():
+			if laid.has(j) or int(_cross[j][1]) != int(c[0]):
+				continue
+			if (_cross[j][4] as Vector2).distance_to(c[4]) < float(c[5]) + _wd * 1.1:
+				lay.append(j)
+				laid[j] = true
+	for i in lay:
+		var c: Array = _cross[i]
 		var half: float = c[5]
 		var o: int = c[0]
-		var u: int = c[1]
-		if int(rank.get(o, 0)) > int(rank.get(u, 0)) or o >= _look.size() or _look[o] == null:
+		if o >= _look.size() or _look[o] == null:
 			continue
 		var look: Array = _look[o]
 		var col: Array = _rope_col(o)
@@ -1825,6 +1575,21 @@ func _build_peg_meshes() -> void:
 func _peg_height(p: int, t: float) -> float:
 	return _lift[p] + _arc_lift(p, t) / maxf(_peg_r, 1.0)
 
+## A peg's scale as it pops in (the day opening, its rope coming back) and
+## pops away with a rope that has come free.
+func _pop(p: int, t: float) -> Vector2:
+	if Motion.reduce:
+		return Vector2.ONE * (1.0 if _leave_k(p >> 1, t) > 0.0 else 0.0)
+	var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
+	var r := p >> 1
+	if t < _back_at[r] + BACK_POP:
+		pop *= Motion.back_out(_back_k(r, t))
+	var k := _leave_k(r, t)
+	if k < 1.0:
+		# A little swell, then gone.
+		pop *= k * (1.0 + 0.5 * sin(PI * k))
+	return pop
+
 ## Every peg, held and flying ones last so they ride over the rest: its shadow
 ## (the family's soft disc, parted from it while it is lifted) and its cap.
 ## The pegs sitting still in their holes -- all of them, most of the time --
@@ -1843,9 +1608,9 @@ func _draw_peg_meshes(t: float, shown: Array) -> void:
 	var still: Array = []
 	var moving: Array = []
 	for p in order:
-		var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
-		if Motion.reduce:
-			pop = Vector2.ONE
+		if _away[p >> 1]:
+			continue
+		var pop := _pop(p, t)
 		if _enter_u(p, t) <= 0.0 and t < _opened + Motion.ENTER_DELAY + 0.2:
 			continue
 		var up := _peg_height(p, t)
@@ -1912,24 +1677,23 @@ static func _append_arrays(b: Face.Builder, a: Array, xf: Transform2D, tint: Col
 	for i in ix:
 		b.idx.append(base + i)
 
-## Faces, hats and the kitten's paw print, over the caps: everything on a peg
-## that is not the cap.
+## Faces and the kitten's paw print, over the caps: everything on a peg that
+## is not the cap.
 func _build_extras(b: Face.Builder, t: float) -> void:
 	if _peg_px.is_empty():
 		return
 	var order: Array = range(_peg_px.size())
 	var target := _target_peg()
 	for p in order:
+		if _away[p >> 1]:
+			continue
 		var mode: int = _face[p]
-		var hat: bool = _hat_at[p] > -50.0
 		var paw: bool = state.cat and mode == 0 and target == p and not is_done() and not _out_card
-		if mode == 0 and not hat and not paw:
+		if mode == 0 and not paw:
 			continue
 		var R := _peg_r
 		var up := _peg_height(p, t)
-		var pop := Motion.pop_in_scale(maxf(0.0, t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER) - ENTER_LAG), Motion.POP_IN)
-		if Motion.reduce:
-			pop = Vector2.ONE
+		var pop := _pop(p, t)
 		var scale := 1.0 + (PEG_LIFT_SCALE - 1.0) * clampf(up, 0.0, 1.6)
 		var shake := 0.0
 		var sh := t - _shake_at[p]
@@ -1938,8 +1702,6 @@ func _build_extras(b: Face.Builder, t: float) -> void:
 		var at: Vector2 = _peg_px[p] + Vector2(shake, -(HOLD_LIFT * R * _lift[p] + _arc_lift(p, t)))
 		if mode != 0:
 			_draw_face(b, at, R * Vector2(scale * pop.x, scale * pop.y), p, mode, t)
-		if hat:
-			_draw_hat(b, at, R * scale, p, t)
 		if paw:
 			_paw_glyph(b, at + Vector2(0.0, R * 0.02), R * 0.5, Color(PAW, 0.95))
 
@@ -1960,25 +1722,6 @@ func _draw_face(b: Face.Builder, at: Vector2, R: Vector2, p: int, mode: int, t: 
 	var eye := 0.3 if mode == 2 else 1.0
 	var r := R.x * 0.82 * clampf(grow, 0.0, 1.3)
 	Face.face_parts(b, r, at + Vector2(0.0, R.y * 0.0), Pal.TEXT, eye, expr)
-
-## A party hat on a peg's cap.
-func _draw_hat(b: Face.Builder, at: Vector2, R: float, p: int, t: float) -> void:
-	var grow := Motion.back_out(_dec((t - _hat_at[p]) / 0.34))
-	if grow <= 0.0:
-		return
-	var hb := Face.Builder.new()
-	var style := p % 3
-	Face._build_hat(hb, R * 1.0, Face.HAT_STYLES[style])
-	_append(b, hb, at + Vector2(0.0, -R * 0.48), grow)
-
-## Copies `src` into `dst`, scaled by `k` about the origin and moved to `at`.
-func _append(dst: Face.Builder, src: Face.Builder, at: Vector2, k: float) -> void:
-	var base := dst.verts.size()
-	for i in src.verts.size():
-		dst.verts.append(src.verts[i] * k + at)
-		dst.cols.append(src.cols[i])
-	for i in src.idx.size():
-		dst.idx.append(base + src.idx[i])
 
 ## A paw print: a pad and four toes.
 func _paw_glyph(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:
@@ -2087,6 +1830,8 @@ func _draw_numbers() -> void:
 	if not state.cat or is_done() or _out_card or _peg_px.is_empty():
 		return
 	var nxt: Dictionary = state.cat_next()
+	if nxt.is_empty():
+		return
 	var font: Font = CozyTheme.display(700)
 	var fs := int(KITTEN_SIZE * 0.22)
 	var text := str(int(nxt["in"]))
@@ -2095,20 +1840,23 @@ func _draw_numbers() -> void:
 	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.3), Color(Pal.TEXT, 0.85))
 	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))
 
-## Beside a coil with more turns than its core has room to show, how many
-## there are.
+## Beside a knot wrapped deeper than it is drawn, how many times round it is.
 func _draw_turns() -> void:
 	if is_done() or _out_card:
 		return
 	var font: Font = CozyTheme.display(700)
 	var fs := int(_wd * 0.95)
-	for k in _laid:
-		var br: Dictionary = _laid[k]
-		if int(br.of) <= int(br.n) or float(br.w) < 0.6:
+	for k in _knots:
+		var kn: Dictionary = _knots[k]
+		if int(kn.of) <= int(kn.m):
 			continue
-		var text := "\u00d7%d" % int(br.of)
+		var text := "\u00d7%d" % int(kn.of)
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var at := (br.c as Vector2) - (br.perp as Vector2) * _wd * (BRAID_SIDE + 1.5)
+		# On the side of the knot with more cloth: toward the ring's middle.
+		var out: Vector2 = kn.y
+		if out.dot(_c - (kn.c as Vector2)) < 0.0:
+			out = -out
+		var at := (kn.c as Vector2) + out * _wd * (Rope.KNOT_SIDE + 1.6)
 		var base := at + Vector2(-w * 0.5, fs * 0.36)
 		draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.34), Color("fffaf0"))
 		draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, KNOT_HALO)
@@ -2183,6 +1931,8 @@ func _nearest_peg(at: Vector2) -> int:
 	var best := -1
 	var closest := _peg_r * GRAB_R
 	for p in _peg_px.size():
+		if state.at[p] < 0:
+			continue
 		var d := at.distance_to(_peg_px[p])
 		if d < closest:
 			closest = d
@@ -2231,14 +1981,14 @@ func _press(at: Vector2) -> void:
 		_refuse(p, "UT_STUCK")
 		return
 	_held = p
+	_undone = []
 	_grab = _peg_px[p] - at
 	_held_pos = _peg_px[p]
 	_held_want = _peg_px[p]
 	_hot = -1
 	_hot_far = -1
 	_taut_sent = false
-	_wake(p >> 1)
-	_whip(p >> 1, WHIP_PICK, 0.012)
+	_whip(p >> 1, WHIP_PICK)
 	fx.cue("pick")
 	_dirty = true
 
@@ -2274,7 +2024,7 @@ func _update_held() -> void:
 		_taut_sent = true
 		fx.cue("taut")
 		Haptics.play(Haptics.TICK)
-		_whip(p >> 1, -WHIP_PICK, 0.0)
+		_whip(p >> 1, -WHIP_PICK)
 	elif strain <= 0.0:
 		_taut_sent = false
 	if strain > 0.35 and _face[p] != 3:
@@ -2343,6 +2093,7 @@ func _release() -> void:
 			var code := state.drop_check(p, h)
 			if code == 0:
 				_sel = -1
+				_undone = []
 				_drop(p, h, _peg_px[p] + Vector2(0.0, -_peg_r * HOLD_LIFT))
 				return
 			if code == 2:
@@ -2369,6 +2120,10 @@ func settle_now() -> void:
 	for entry in pending:
 		if int(entry[2]) == _gen:
 			(entry[1] as Callable).call()
+	for r in _leave.size():
+		if _leave[r] != null:
+			_gone_now(r)
+	_busy_until = 0.0
 	_set_shown(state.tw, true)
 	_dirty = true
 
@@ -2378,7 +2133,7 @@ func _go_home(p: int, refused: bool) -> void:
 	# Put back: whatever the hand wrapped or slid off on the way comes undone.
 	_set_shown(state.tw)
 	_fly(p, _peg_px[p], to, 0.0, HOME_TIME)
-	_whip(p >> 1, WHIP_HOME, 0.01)
+	_whip(p >> 1, WHIP_HOME)
 	if refused:
 		_shake_at[p] = _now()
 		fx.cue("refused")
@@ -2410,9 +2165,10 @@ func _drop(p: int, hole: int, from: Vector2, hint := false) -> void:
 	var dur := _fly_time(from, to)
 	var arc := _peg_r * (0.6 if hint else 0.25)
 	_fly(p, from, to, 0.0, dur, arc)
-	_busy_until = maxf(_busy_until, t + dur * 0.5)
-	var rope := p >> 1
-	_wake(rope)
+	# Held until the peg has landed: `_landed` is what sends a freed rope off,
+	# and an Undo or a win slipped in before it (reduce motion ends the flight
+	# at once) would leave that rope sent off a ring it is back on.
+	_busy_until = maxf(_busy_until, t + dur * 0.85 + 0.02)
 	_later_call(dur * 0.85, func() -> void:
 		_landed(p, hole, res, hint))
 	# Thread: a stitch is used.
@@ -2437,18 +2193,26 @@ func _landed(p: int, hole: int, res: Dictionary, hint: bool) -> void:
 	# A peg carried by hand has already wrapped and slid off on the way (and
 	# creaked as it did); a hint's or a tapped drop's lands here.
 	var fresh: bool = _tw_px != res.tw_mid
+	# Where the knots this move undid lay: those that went under the hand on
+	# the way (`_undone`), and those still drawn that the landing undoes.
+	var undone: Array = _undone.duplicate()
+	var mid: PackedInt32Array = res.tw_mid
+	for k in _knots:
+		if (mid[k] >> 1) < 2:
+			undone.append(_knots[k].c)
+	_undone = []
 	_set_shown(res.tw_mid)
 	if fresh and int(res.wrapped) > 0:
-		# Round the other rope once more: the braid cinches with a creak.
+		# Round the other rope once more: the knot cinches with a creak.
 		fx.cue("cinch", 1.0 + 0.05 * randf(), -4.0)
 	if fresh and int(res.unwound) > 0:
 		_later_call(0.12, fx.cue.bind("unwind", 1.0, -3.0))
-	_whip(p >> 1, WHIP_DROP * (1.0 if p % 2 == 0 else -1.0), SLACK_DROP)
+	_whip(p >> 1, WHIP_DROP * (1.0 if p % 2 == 0 else -1.0))
 	fx.cue("drop")
 	if not hint:
 		# The hand's peg is home: a bump when that freed a rope or undid two
 		# crossings at once (the sticker's moments), a tap otherwise.
-		Haptics.play(Haptics.BUMP if cleared >= 2 or not (res.freed as Array).is_empty() else Haptics.TAP)
+		Haptics.play(Haptics.BUMP if cleared >= 2 or not (res.gone as Array).is_empty() else Haptics.TAP)
 	fx.puff(at + Vector2(0.0, _peg_r * 0.4), Pal.WOOD, 3)
 	if hint:
 		fx.ring(at, _peg_r * 1.4, Pal.SUN)
@@ -2461,7 +2225,8 @@ func _landed(p: int, hole: int, res: Dictionary, hint: bool) -> void:
 	if _solved_at == -INF and left > 0:
 		_speak(cleared, left)
 	_rewards(p, cleared, left)
-	_rewards_knots(p, res)
+	_rewards_knots(res, undone)
+	_send_off(res.gone, p)
 	_dirty = true
 
 func _streak_update(cleared: int) -> void:
@@ -2485,61 +2250,125 @@ func _rewards(p: int, cleared: int, left: int) -> void:
 			key = "UT_W_3"
 		_rw.sticker(tr(key), mid, 84, 1.3, true, Color.WHITE, cleared >= 4, "untie", 20.0)
 		if not Motion.reduce:
-			_rw.spray(_hole_px(state.at[p]), Pal.GOOD, 8 + cleared * 2, 640.0, "star", 1.0)
-			_rw.spray(_hole_px(state.at[p]), Color("fffaf0"), 6, 560.0, "spark", 1.2)
+			_rw.spray(_peg_px[p], Pal.GOOD, 8 + cleared * 2, 640.0, "star", 1.0)
+			_rw.spray(_peg_px[p], Color("fffaf0"), 6, 560.0, "spark", 1.2)
 		fx.cue("combo")
 	elif cleared <= -3:
 		_rw.sticker(tr("UT_W_OOPS"), mid + Vector2(0.0, _ro * 0.3), 52, 1.1, false, KNOT_HALO, false, "oops", 10.0)
 		fx.cue("oops")
 		if not Motion.reduce:
-			fx.puff(_hole_px(state.at[p]), Color("f6efe3"), 4)
+			fx.puff(_peg_px[p], Color("f6efe3"), 4)
 	if _streak >= STREAK_AT and cleared > 0:
 		_rw.sticker(tr("UT_W_STREAK"), mid + Vector2(0.0, -_ro * 0.36), 60, 1.2, false, Pal.SUN_DEEP, false, "streak", 14.0)
 		_streak = 0
 	if left == 1 and cleared > 0:
 		_rw.sticker(tr("UT_W_LAST"), mid + Vector2(0.0, _ro * 0.36), 50, 1.2, false, Pal.GOOD, false, "last", 12.0)
 
-## The knot's own rewards: a wrap undone spins free with a sticker and a puff
-## of hearts where the braid was; a rope left with no crossing at all does a
-## happy wiggle, its pegs grin for a moment and it shines end to end; a wrap
+## The knot's own rewards: a wrap undone gets a sticker and a puff of hearts
+## where the knot was; a rope left with no crossing at all has come free (its
+## pegs grin and it shines before `_send_off` takes it off the ring); a wrap
 ## made tighter gets a sheepish "wrapped!".
-func _rewards_knots(p: int, res: Dictionary) -> void:
-	if _rw == null or is_done() or state.is_solved():
+func _rewards_knots(res: Dictionary, undone: Array) -> void:
+	if _rw == null or is_done():
 		return
 	var mid := _c + Vector2(0.0, -_ro * 0.05)
-	var t := _now()
-	if int(res.unwound) > 0 and int(res.cleared) < 4:
+	var last: bool = state.is_solved()
+	if int(res.unwound) > 0 and int(res.cleared) < 4 and not last:
 		_rw.sticker(tr("UT_W_UNWOUND"), mid + Vector2(0.0, -_ro * 0.2), 64, 1.2, true, Color.WHITE, false, "unwound", 16.0)
 		if not Motion.reduce:
-			for k in _wraps:
-				if float(_wraps[k].goal) <= 0.0:
-					var at: Vector2 = _braid_laid(k).c
-					_rw.spray(at, Color("f2a7a0"), 7, 380.0, "heart", 1.0)
-					fx.ring(at, _wd * 2.2, Pal.GOOD)
-	for r in res.freed:
-		var rr: int = r
-		for e in 2:
-			var pp := 2 * rr + e
-			if _face[pp] == 0:
-				_face[pp] = 1
-				_face_at[pp] = t + 0.1 * e
-		_whip(rr, 4.5 * (1.0 if rr % 2 == 0 else -1.0), 0.02)
-		if not Motion.reduce:
-			var a := _peg_px[2 * rr]
-			var b := _peg_px[2 * rr + 1]
-			for i in 5:
-				fx.sparkle(a.lerp(b, (i + 0.5) / 5.0), (_rope_col(rr)[0] as Color).lightened(0.3))
-		_later_call(FREE_JOY, func() -> void:
-			for e in 2:
-				var pp := 2 * rr + e
-				if _face[pp] == 1 and not state.is_solved() and not is_done():
-					_face[pp] = 0
-			_dirty = true)
-	if not res.freed.is_empty() and int(res.cleared) < 2 and int(res.unwound) == 0:
+			for at in undone:
+				_rw.spray(at, Color("f2a7a0"), 7, 380.0, "heart", 1.0)
+				fx.ring(at, _wd * 2.2, Pal.GOOD)
+	if not res.gone.is_empty() and int(res.cleared) < 2 and int(res.unwound) == 0 and not last:
 		_rw.sticker(tr("UT_W_FREE"), mid + Vector2(0.0, _ro * 0.2), 48, 1.0, false, Pal.GOOD, false, "free", 10.0)
-		fx.cue("free", 1.0 + 0.04 * float(res.freed.size()), -6.0)
 	if int(res.wrapped) > 0 and int(res.cleared) > -3:
 		_rw.sticker(tr("UT_W_WRAPPED"), mid + Vector2(0.0, _ro * 0.3), 46, 1.0, false, KNOT_HALO, false, "wrapped", -8.0)
+
+# --- a rope leaving ---
+
+## Ropes that have come free leave the ring, one after another: its pegs grin
+## and the rope shines, then one peg is reeled across to the other, the rope
+## shortening between them, and the two pop away and leave their holes empty.
+## The peg just dropped (`by`) is the one that stays put. The board holds
+## still until the last has gone; returns when that is.
+func _send_off(ropes: Array, by := -1) -> float:
+	var t := _now()
+	var end := t
+	var n := 0
+	for r in ropes:
+		var rr: int = r
+		if _away[rr] or _leave[rr] != null:
+			continue
+		var stay := 2 * rr
+		if by >= 0 and (by >> 1) == rr:
+			stay = by
+		var wait := 0.0 if Motion.reduce else LEAVE_WAIT + LEAVE_STEP * n
+		_leave[rr] = {"shine": t, "t0": t + wait, "stay": stay, "go": stay ^ 1, "sent": false, "pop": false}
+		for e in 2:
+			_face[2 * rr + e] = 1
+			_face_at[2 * rr + e] = t + 0.08 * e
+		_whip(rr, 4.5 * (1.0 if rr % 2 == 0 else -1.0))
+		end = t + wait + LEAVE_REEL + LEAVE_POP
+		n += 1
+	if n > 0:
+		_busy_until = maxf(_busy_until, end + 0.05)
+		_dirty = true
+	return end
+
+## Each leaving on its own clock: the reel, the pop, and gone.
+func _update_leaving(t: float) -> void:
+	for r in _leave.size():
+		var lv = _leave[r]
+		if lv == null:
+			continue
+		var go: int = lv.go
+		var stay: int = lv.stay
+		if not lv.sent and t >= float(lv.t0):
+			lv.sent = true
+			_fly(go, _peg_px[go], _peg_px[stay], 0.0, LEAVE_REEL, _peg_r * 0.35)
+			fx.cue("free", 1.0 + 0.05 * float(r % 4), -6.0)
+		if lv.sent and not lv.pop and t >= float(lv.t0) + LEAVE_REEL:
+			lv.pop = true
+			var at := _peg_px[stay]
+			var col: Array = _rope_col(r)
+			fx.ring(at, _peg_r * 1.9, (col[0] as Color).lightened(0.2))
+			fx.sparkle(at, (col[0] as Color).lightened(0.35))
+			fx.puff(at, (col[2] as Color), 5)
+			if not Motion.reduce:
+				_rw.spray(at, col[0], 6, 420.0, "star", 0.9)
+			Haptics.play(Haptics.TICK)
+		if t >= float(lv.t0) + LEAVE_REEL + LEAVE_POP:
+			_gone_now(r)
+
+## Rope `r` is off the ring, as drawn.
+func _gone_now(r: int) -> void:
+	_leave[r] = null
+	_away[r] = true
+	for e in 2:
+		var p := 2 * r + e
+		_mv[p] = null
+		_face[p] = 0
+		_lift[p] = 0.0
+	# A board restored before its first layout has no meshes yet.
+	if r < _rope_mesh.size():
+		_rope_mesh[r] = null
+		_rope_sig[r] = null
+		_look[r] = null
+	_dirty = true
+
+## Rope `r` is back on the ring (an undo, a reset): its pegs pop in where
+## they were.
+func _bring_back(r: int) -> void:
+	_leave[r] = null
+	_away[r] = false
+	_back_at[r] = _now()
+	for e in 2:
+		var p := 2 * r + e
+		_mv[p] = null
+		_face[p] = 0
+		_peg_px[p] = _peg_home(p)
+	_set_up_rope(r)
+	_dirty = true
 
 ## The words on the sprout's line.
 func _speak(gone: int, left: int) -> void:
@@ -2595,7 +2424,7 @@ func _schedule_swipe(entry: Dictionary, at_time: float) -> void:
 	_later_call(delay, func() -> void:
 		_pounce(p, from_px, to_px))
 	_later_call(delay + 0.22 + POUNCE_FLY * 0.9, func() -> void:
-		_swiped(p, int(entry.to)))
+		_swiped(p, int(entry.to), entry.get("gone", [])))
 
 ## A tap on the kitten: she squints with joy and purrs, hearts float up.
 func _pet_kitten() -> void:
@@ -2617,7 +2446,9 @@ func _pluck_at(at: Vector2) -> void:
 	var best := -1
 	var closest := _wd * 0.9
 	for r in _ropes.size():
-		var chain: PackedVector2Array = (_ropes[r] as Rope).p
+		if _away[r]:
+			continue
+		var chain: PackedVector2Array = (_ropes[r] as Rope).polyline()
 		for i in chain.size() - 1:
 			var d := Geometry2D.get_closest_point_to_segment(at, chain[i], chain[i + 1]).distance_to(at)
 			if d < closest:
@@ -2625,7 +2456,7 @@ func _pluck_at(at: Vector2) -> void:
 				best = r
 	if best < 0:
 		return
-	_whip(best, 6.0 * (1.0 if at.x < _c.x else -1.0), 0.012)
+	_whip(best, 6.0 * (1.0 if at.x < _c.x else -1.0))
 	fx.cue("taut", 1.1, -10.0)
 	_dirty = true
 
@@ -2645,10 +2476,13 @@ func _pounce(p: int, from_px: Vector2, _to_px: Vector2) -> void:
 	_say(tr("UT_CAT_SWIPE"), Face.Expr.HAPPY)
 	_dirty = true
 
-func _swiped(p: int, hole: int) -> void:
+func _swiped(p: int, hole: int, gone: Array) -> void:
 	_sq_at[p] = _now()
 	_set_shown(state.tw)
-	_whip(p >> 1, WHIP_DROP, SLACK_DROP * 1.4)
+	_undone = []
+	# She can knock a rope free by accident, and it leaves like any other.
+	_send_off(gone, p)
+	_whip(p >> 1, WHIP_DROP)
 	fx.cue("drop")
 	fx.ring(_hole_px(hole), _peg_r * 1.5, KittenFace.FUR_DEEP)
 	fx.puff(_hole_px(hole) + Vector2(0.0, _peg_r * 0.4), Pal.WOOD, 3)
@@ -2756,8 +2590,8 @@ func spool_back() -> void:
 	moved.emit()
 	_dirty = true
 
-## Show the answer: the pegs walk to a layout where no rope crosses, and the
-## day ends unsolved.
+## Show the answer: every rope still on the ring comes free and leaves it,
+## and the day ends unsolved.
 func show_answer() -> void:
 	if is_done():
 		return
@@ -2765,21 +2599,14 @@ func show_answer() -> void:
 	out_of_hearts = false
 	_shown_answer = true
 	var t := _now()
-	var walking: Array[int] = state.show_answer()
+	var leaving: Array[int] = state.show_answer()
 	_set_shown(state.tw)
-	var k := 0
-	for p in walking:
-		_fly(p, _peg_px[p], _hole_px(state.at[p]), Motion.stagger(k, 0.1, 1.2), 0.42, _peg_r * 0.5)
-		var pp: int = p
-		_later_call(Motion.stagger(k, 0.1, 1.2) + 0.42, func() -> void:
-			_sq_at[pp] = _now()
-			_whip(pp >> 1, WHIP_DROP, SLACK_DROP))
-		k += 1
 	for p in _face.size():
 		_face[p] = 0
+	var end := _send_off(leaving)
 	fx.cue("reveal")
 	_tell("UT_SHOWN")
-	_busy_until = t + 1.6
+	_busy_until = maxf(end, t + 0.6)
 	finish_unsolved()
 	_dirty = true
 
@@ -2796,7 +2623,7 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_say(tr("UT_WIN"), Face.Expr.JOY)
 	_busy_until = t + WIN_HOLD
-	_later_call(0.0 if Motion.reduce else HAT_AT, _party_on)
+	_later_call(0.0 if Motion.reduce else PARTY_AT, _party_on)
 	_later_call(0.0 if Motion.reduce else STAMP_AT, _stamp_down)
 	var mid := _c
 	_rw.sticker(tr("UT_W_WIN"), mid + Vector2(0.0, -_ro * 0.1), 112, WIN_HOLD + 0.3, true, Color.WHITE, true, "win")
@@ -2810,37 +2637,14 @@ func _on_solved() -> void:
 		_rw.spray(mid, Pal.SUN, 18, 900.0, "star", 1.2)
 		_rw.spray(mid, Color("fffaf0"), 12, 760.0, "spark", 1.3)
 		_rw.rain(2.6, ["confetti", "star", "confetti"], Rewards.CONFETTI)
-		# Every peg wakes with a grin, in the order the ropes lie.
-		for p in _face.size():
-			var wait := Motion.SOLVE_DELAY + WAVE_STEP * float(state.order.find(p >> 1))
-			var pp: int = p
-			_later_call(wait, func() -> void:
-				_face[pp] = 1
-				_face_at[pp] = _now()
-				_sq_at[pp] = _now()
-				var at := _peg_px[pp]
-				_rw.spray(at, (_rope_col(pp >> 1)[0] as Color), 6, 560.0, "confetti", 1.0)
-				fx.sparkle(at, Pal.SUN)
-				_dirty = true)
-		for r in state.ropes:
-			_whip(r, 4.0 * (1.0 if r % 2 == 0 else -1.0), 0.02)
-	else:
-		for p in _face.size():
-			_face[p] = 1
-			_face_at[p] = t
 	_kitten.expression = Face.Expr.JOY
 	_dirty = true
 
-func _party_on(quiet := false) -> void:
+## The ring is empty: confetti over it.
+func _party_on() -> void:
 	if _party or not state.is_solved():
 		return
 	_party = true
-	var t := _now()
-	for p in _hat_at.size():
-		_hat_at[p] = t + (0.0 if quiet or Motion.reduce else Motion.stagger(state.order.find(p >> 1), 0.07, 0.8)) - (10.0 if quiet else 0.0)
-	if quiet:
-		_dirty = true
-		return
 	fx.cue("party")
 	if not Motion.reduce:
 		fx.confetti(_c + Vector2(0.0, -_ro * 0.7), 44, _ro * 1.6)
@@ -2925,31 +2729,25 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD + 0.6
 
-## A completed daily reopens with the answer laid down, pegs grinning under
-## party hats and the seal on the ring.
+## A completed daily reopens as it was left: the ring empty, every rope gone,
+## and the seal on it.
 func restore_completed_board() -> void:
 	var t := _now()
 	_restored = true
 	_stop_all()
 	state.show_answer()
+	for r in state.ropes:
+		_gone_now(r)
 	_set_shown(state.tw, true)
-	for p in _peg_px.size():
-		_mv[p] = null
-		_peg_px[p] = _peg_home(p)
-		_face[p] = 1
-		_face_at[p] = t - 10.0
-	if _ro > 0.0:
-		_settle_ropes(50)
 	_solved_at = t - 100.0
 	_opened = t - 10.0
 	_held = -1
-	_party = false
-	_party_on(true)
+	_party = true
 	_stamp_down(true)
 	_dirty = true
 
 func share_glyphs() -> String:
-	var out := "🧶 " + tr("UT_SHARE") % [state.holes, state.ropes]
+	var out := "🧶 " + tr("UT_SHARE") % [state.holes, state.ropes_dealt()]
 	if state.is_solved() and not _shown_answer and stamp_key() != "":
 		var word: String = tr(stamp_key())
 		out += "\n" + (("🌙 %s · %s" % [tr("UT_CAT_SEAL"), word]) if state.cat else ("🏅 " + word))
@@ -2972,10 +2770,14 @@ func undo() -> bool:
 		return false
 	_set_shown(state.tw)
 	var p: int = back.peg
-	_fly(p, _peg_px[p], _hole_px(int(back.to)), 0.0, 0.3, _peg_r * 0.5)
-	_whip(p >> 1, WHIP_DROP, SLACK_DROP)
-	_later_call(0.3, func() -> void:
-		_sq_at[p] = _now())
+	# A rope the move had set free comes back to the ring with it.
+	for r in back.back:
+		_bring_back(int(r))
+	if not (back.back as Array).has(p >> 1):
+		_fly(p, _peg_px[p], _hole_px(int(back.to)), 0.0, 0.3, _peg_r * 0.5)
+		_whip(p >> 1, WHIP_DROP)
+		_later_call(0.3, func() -> void:
+			_sq_at[p] = _now())
 	if state.budget > 0:
 		_use_stitch(t + 0.15)
 	_streak = 0
@@ -3020,6 +2822,7 @@ func hint() -> bool:
 	var p: int = step[0]
 	fx.cue("hint")
 	_say(tr("UT_HINT"), Face.Expr.HAPPY)
+	_undone = []
 	_drop(p, int(step[2]), _peg_px[p], true)
 	return true
 
@@ -3038,11 +2841,17 @@ func reset_board() -> void:
 	_set_shown(state.tw)
 	var k := 0
 	for p in walking:
+		# A rope that had left pops back in where it began; the rest walk.
+		if _away[p >> 1] or _leave[p >> 1] != null:
+			_bring_back(p >> 1)
+			continue
+		if _peg_px[p].distance_to(_peg_home(p)) < 1.0:
+			continue
 		_fly(p, _peg_px[p], _peg_home(p), Motion.stagger(k, WALK_STEP, 1.0), 0.32, _peg_r * 0.3)
 		var pp: int = p
 		_later_call(Motion.stagger(k, WALK_STEP, 1.0) + 0.32, func() -> void:
 			_sq_at[pp] = _now()
-			_whip(pp >> 1, WHIP_HOME, 0.01))
+			_whip(pp >> 1, WHIP_HOME))
 		k += 1
 	_solved_at = -INF
 	_streak = 0

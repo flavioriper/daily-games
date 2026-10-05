@@ -1,5 +1,97 @@
 # Untangle
 
+**Tight knots, and free ropes leave (2026-10-05)**, after the user: a
+reference of taut ropes meeting in compact knots that "keep persistent no
+matter how you change it", against a shot of ours torn into arrowheads and
+scribbles; and "the rope retreat and disappear after knot is untangled".
+Everything below this section about coils, braids, cores, winders, binds and
+the Verlet chain is history: none of it is in the code any more.
+
+- **The rope is a line worked out, not a chain stepped.** `Rope.lay(a, b,
+  stops, wd)` builds it from its pegs and the knots it runs through: straight
+  to each knot, through it, straight on. Nothing is ever "on its way", which
+  is what used to be drawn torn. `Rope.step(dt)` only advances what is laid
+  on top: a swing on the straight stretches (two damped springs, `kick`) and
+  a 0.22 s glide from the old line when the *knots* change (`MORPH`; pegs and
+  knots moving are followed at once).
+- **A knot is one short twist** (`Rope.lay_knot`): both ropes swing across its
+  axis, `KNOT_PITCH` 1.4 widths a crossing, `KNOT_SIDE` 0.52 either side, with
+  a lead of 0.3 pitch at each end so a rope comes in already heading across
+  (a hooked rope dips in and out in a V). Of the four ways it can lie (which
+  of B's legs at which end, which side A comes in on) it takes the one its
+  four legs turn least to leave by, sticky against the last frame. At most
+  `KNOT_MOST` (6) crossings are drawn; deeper shows `×n` beside it.
+- **Leaving a knot** is an arc of `FILLET` 0.8 widths tangent to the knot's
+  heading and to the straight that follows (`_fillet`; two knots in a row
+  settle their common tangent in three rounds). With no room it is tried at
+  0.55 and 0.3 of that, and last of all one cubic curve from heading to
+  heading. Never a corner: a corner is what draws as a spike.
+- **The ribbon cannot fold.** `Rope._ribbon` stops the band's inner side at
+  the point the line turns about wherever it turns tighter than the band is
+  wide. This is the guard under everything else; keep it.
+- **Where a knot lies** (`_lay_all`, board): `knot_centre` is the point with
+  the shortest way to the pair's four pegs (the ropes' crossing; side by
+  side, the diagonals' crossing; a peg in the hand just over the other rope,
+  at that peg -- which is why a knot forms under the hand without a jump);
+  then clear of its own pegs, pulled toward a rope too short to reach it
+  (`KNOT_WAY`), apart from other knots (`KNOT_GAP`, more when they share a
+  rope), and last of all inside the ring. The ring wins: a short rope is
+  drawn a little long rather than a knot on the wood.
+- **Crossings in a knot are read, not searched**: `Rope.marks[pair]` are the
+  line indices where the weave crosses the axis, alternating from the
+  tangle's top bit; a lone crossing still uses `Rope.hits`. The over-piece
+  reaches only `PATCH_OVER` 0.16 past the rope under it: a longer piece shows
+  its cut end where a third rope lies by.
+- **The rule: a rope that crosses nothing leaves** (`Gen.retire`). Its pegs
+  read -1 in `at`, its holes are free, nothing is carried over it again, and
+  the day is won when the ring is empty. `State.move` returns `gone`, the
+  kitten's entry carries her own `gone`, `undo` returns `back`, `reset` walks
+  them home. A rope the walk left free at the deal is never dealt
+  (`State.ropes_dealt()`), and the dealer passes such walks over while it
+  has walks to spare.
+- **Why the dealt answer still holds**: a pair's crossings depend on those
+  two ropes' moves alone, so the walk backwards less the moves of ropes
+  already gone clears the rest (`Gen._replay`). Not with the kitten -- a rope
+  leaving changes which hole she bats a peg into -- so an Insane deal stands
+  only on a replay that still wins. Her schedule's peg, when its rope has
+  left, is the next peg round still there (`Gen.cat_peg`, one definition for
+  the state, the search and the replay).
+- **The dealer** makes up to `WALKS` 70 cheap walks and searches at most
+  `TRIES` 14: a walk with a free rope, a failed replay or an answer already
+  shorter than the band's par is passed over before the search, and the
+  search only looks as deep as would beat the walk. `way_home` keeps a score
+  per tangle and sorts ints. Measured (this Mac, 60 seeds a band, mean /
+  worst): Easy 1.7 / 2.5 ms, Medium 11 / 24, Hard 31 / 52, **Insane 161 /
+  611** (was 71 / 155: more free holes mean more moves a layout, and four
+  walks in ten have a shorter answer and are searched for nothing). Par is
+  the band's on every one of them, and no deal of 240 had a free rope.
+- **On screen** (`_send_off`, `_update_leaving`): the rope's pegs grin and it
+  shines (`LEAVE_WAIT` 0.24 s), one peg is reeled across to the other
+  (`LEAVE_REEL` 0.3 s, the rope shortening between them, the `free` cue), and
+  both pop away with a ring, a sparkle and a tick (`LEAVE_POP` 0.16 s). The
+  peg just dropped is the one that stays put. The board holds input until the
+  last has gone. `_away[r]` is the rope off the ring *as drawn*; `_peg_home`
+  of a peg with no hole is where it is drawn.
+- **The win is an empty ring**: no pegs are left to grin or wear hats (that
+  code is gone), so it is the stickers, the confetti and the seal; a restored
+  day is the empty ring under its seal; Show the answer sends every rope off.
+  The tutorial's LIFT and HINT pages end with the ropes leaving
+  (`HTP_UT_GONE_CAP`), and THREAD's and CAT's moves now cross nothing so no
+  rope leaves in the middle of what they show.
+- **Measured** (ANGLE, 810x1440, Insane, second of two): idle 95 draws,
+  ~9.2 ms; carrying ~10.4 ms, 108 draws at the peak (was 95 / ~8.4 and
+  ~11.9). `hint_step` is still 50-90 ms a press.
+- **Harness**: `tests/_shot_untangle.gd` has a `back` mode (the answer but
+  for its last move, then Undo and Reset: the ropes that left come back) and
+  now sets the board's `mouse_filter` to ignore -- the real pointer hovering
+  over the always-on-top window was carrying the held peg off mid-run.
+  `day=N` opens a finished day and always has; it shows nothing of a deal.
+- **Not done**: no phone; nothing heard (the `free` cue is the old one,
+  played at the reel); a rope hooked on three others in a small space still
+  curls between its knots (clean, but busy); two ropes that do not cross but
+  are pulled over each other by their knots are drawn in stack order, which
+  looks like a crossing that is not one.
+
 **Coils, not twists (2026-10-03)**, after the user: "untangle cords knots are
 extremely weird still" (a rope with both pegs on one side made a hairpin loop
 through the twist; squeezed twists read as curls; nothing showed which rope

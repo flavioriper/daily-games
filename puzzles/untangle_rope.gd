@@ -1,334 +1,485 @@
 extends RefCounted
 
-## One rope of the Untangle ring: a chain of points pinned at both pegs,
-## stepped as a Verlet rope (each point keeps its own velocity, a few passes
-## pull neighbours back to their spacing) and drawn as a thick laid cotton
-## cord -- a soft shadow, a dark rim, the round body with its shade and its
-## light, and the slanted strands of a three-strand rope.
+## One rope of the Untangle ring, drawn as a thick laid cotton cord -- a soft
+## shadow, a dark rim, the round body with its shade and its light, and the
+## slanted strands of a three-strand rope.
 ##
-## What the physics is for. A rope on its own lies nearly straight between its
-## pegs (its rest length follows the gap, plus a hair of slack). Where it is
-## wrapped round another rope the board *binds* a run of its points to the
-## line of a braid the two share (`bind`), and the rest length grows to the
-## way round; the chain does the rest, so a wrap pulls both ropes in towards
-## each other, a new one cinches, and one let go springs apart. The coil
-## itself -- the shorter rope swinging across the longer, turn by turn, while
-## the longer runs straight through -- is laid on
-## the drawn line (`wiggles`), not the chain, so it stays round however coarse
-## the chain. A peg let go kicks the chain sideways and it whips and settles.
-## Nothing here is a tween.
+## The rope is pulled tight. It runs straight from its peg to each knot it is
+## in, through the knot and straight on to the next, and its line is worked
+## out from where those are and nothing else (`lay`): no chain of points on
+## its way somewhere, so nothing can be drawn half arrived. A knot is two
+## ropes twisted round each other in one short tight twist (`lay_knot`): along
+## its axis each swings across the other once a crossing, and each leaves its
+## end of the twist round a bend of its own width toward where it goes next,
+## whatever way that is -- so the knot holds its shape however the pegs are
+## moved. What moves is laid on top of that line: a swing on each straight
+## stretch when the rope is kicked (two damped springs, `kick` and `step`),
+## and, when the knots it is in change, a short glide from the line it had
+## to the line it has (`MORPH`).
 ##
 ## Drawing takes any stretch of the rope by length (`draw`'s `s0`, `s1`), with
 ## the strands laid by length from the rope's start, so the board can lay a
 ## short piece of one rope back over another where it crosses on top and the
 ## piece meets the rope under it without a seam.
 ##
-## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md, section 2.
+## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md, section 2
+## and the 2026-10-05 amendment.
 
 const Face = preload("res://ui/faces/face.gd")
 
-## Points along the rope, ends included.
-const SEGS := 37
+## A knot, in rope widths: from one crossing to the next along it, and how far
+## each rope swings either side of its axis.
+const KNOT_PITCH := 1.4
+const KNOT_SIDE := 0.52
+## The most crossings a knot is drawn with; a deeper wrap shows its count.
+const KNOT_MOST := 6
+## Pieces of line from one crossing to the next.
+const KNOT_STEPS := 8
+## How far a knot runs on past its first and last crossings, as a share of
+## the pitch, and the pieces of line that takes. Short of half: a rope comes
+## into the knot already heading across the other, so one hooked round
+## another dips in and out in a V and need not turn along the knot first.
+const KNOT_LEAD := 0.3
+const KNOT_LEAD_STEPS := 3
+## The bend a rope leaves a knot round, in rope widths, and the angle a piece
+## of that bend covers.
+const FILLET := 0.8
+const FILLET_STEP := 0.18
+## A straight stretch is cut into pieces about this long, in rope widths.
+const LEG_PIECE := 1.3
+const LEG_MOST := 14
+## Seconds a rope takes from the line it had to a new one when its knots change.
+const MORPH := 0.22
+## The swing: px a second a kick of 1 gives, the slowest and fastest it beats
+## (a long rope swings slowly), the px of rope a 1 Hz swing would have, and
+## how fast it dies.
+const KICK := 52.0
+const SWING_SLOW := 2.4
+const SWING_FAST := 6.5
+const SWING_SPAN := 1500.0
+const SWING_DAMP := 0.2
+## The second way it swings, an S, against the first: how fast and how much.
+const SWING_TWO := 2.1
+const SWING_TWO_KICK := 0.6
 const SIM_DT := 1.0 / 120.0
-## Fraction of speed a point keeps each step: the cloth it lies on drags it.
-const DAMP := 0.968
-const ITERS := 8
-## Passes after the binds, so the chain stays joined round them.
-const ITERS_AFTER := 3
-## How hard a point is pulled toward the line through its neighbours.
-const BEND := 0.22
-## Slack over the way between the pegs, at rest, as a fraction of it.
-const SLACK := 0.006
-## How fast the rest length follows its target.
-const FOLLOW := 0.3
 ## The light falls from the top left, onto the cloth.
 const LIGHT := Vector2(-0.55, -0.83)
 
-var p := PackedVector2Array()
-var q := PackedVector2Array()
-## The length the chain is asked to keep, in px, and the extra slack a kick
-## has added on top of SLACK (a fraction, decaying).
-var rest := 0.0
-var extra := 0.0
 ## The rope's own length: the farthest its pegs can be, in px.
 var length := 0.0
-## The way the rope has to go between its pegs, round the wraps it is in, in
-## px; 0 means the straight gap.
-var route := 0.0
-## Points held to the braids this rope is wrapped in: index, where, how hard.
-var bind_i := PackedInt32Array()
-var bind_at := PackedVector2Array()
-var bind_k := PackedFloat32Array()
-## Per point, how firmly it is held (0 free): a held point keeps less speed.
-var _held := PackedFloat32Array()
-## The braids this rope is twisted in, laid on its drawn line: each
-## {"c", "axis", "perp", "len", "n", "side" (+1 or -1), "w", "swing" (px),
-## "spin" (radians the twist is turned by while it cinches or lets go),
-## "dir" (+1 when the rope travels the axis's way, -1 against it)}.
-var wiggles: Array = []
-
-## Its drawn line and the length along it, built on demand after each step.
-var _line := PackedVector2Array()
-var _cum := PackedFloat32Array()
-var _line_ok := false
 ## Goes up every time the drawn line may have changed: what a caller keeps
 ## worked out from the line (the board's crossings) is good while it holds.
 var ver := 0
-## Where each chain span starts in the drawn line: a span is one piece where
-## the rope runs straight, three where it bends or twists.
-var _span_at := PackedInt32Array()
-## The box round each span as drawn (twists included): x0, x1, y0, y1 a span.
-var _box := PackedFloat32Array()
+## Per knot this rope is in (its key), where its crossings are in the drawn
+## line, in the order the rope meets them.
+var marks := {}
 
-func setup(a: Vector2, b: Vector2, max_length: float, bow: float) -> void:
+## The line the rope lies in at rest, and per point the way it swings (a unit
+## sideways) and how far each of the two swings carries it (0 where it is held:
+## in a knot, on a bend).
+var _base := PackedVector2Array()
+var _nrm := PackedVector2Array()
+var _sh1 := PackedFloat32Array()
+var _sh2 := PackedFloat32Array()
+## What that line was laid from, and the knots alone (a change of those glides).
+var _sig: Array = []
+var _shape: Array = []
+var _a1 := 0.0
+var _v1 := 0.0
+var _a2 := 0.0
+var _v2 := 0.0
+var _hz := SWING_SLOW
+var _old := PackedVector2Array()
+var _old_cum := PackedFloat32Array()
+var _morph := 1.0
+var _accum := 0.0
+## Its drawn line and the length along it, built on demand.
+var _line := PackedVector2Array()
+var _cum := PackedFloat32Array()
+var _line_ok := false
+
+func setup(a: Vector2, b: Vector2, max_length: float, wd := 1.0) -> void:
 	length = max_length
-	p.resize(SEGS)
-	q.resize(SEGS)
-	rest = a.distance_to(b) * (1.0 + SLACK)
-	var n := (b - a).orthogonal().normalized()
-	for i in SEGS:
-		var u := float(i) / (SEGS - 1)
-		p[i] = a.lerp(b, u) + n * bow * sin(PI * u)
-		q[i] = p[i]
-	_line_ok = false
-	ver += 1
+	_sig = []
+	_shape = []
+	_base = PackedVector2Array()
+	lay(a, b, [], wd)
+	rest()
 
-## Straight and still between two points, no physics: a board that has just
-## been laid out, a rope restored. Binds still apply, so a wrap is drawn.
-func snap(a: Vector2, b: Vector2) -> void:
-	rest = maxf(a.distance_to(b), route) * (1.0 + SLACK)
-	for i in SEGS:
-		p[i] = a.lerp(b, float(i) / (SEGS - 1))
-	for k in bind_i.size():
-		p[bind_i[k]] = bind_at[k]
-	for i in SEGS:
-		q[i] = p[i]
-	extra = 0.0
-	_line_ok = false
-	ver += 1
-
-func clear_binds() -> void:
-	bind_i.resize(0)
-	bind_at.resize(0)
-	bind_k.resize(0)
-	_held.resize(SEGS)
-	_held.fill(0.0)
-	wiggles = []
-	_line_ok = false
-	ver += 1
-
-## Every bind, the braids' twists and the route at once, from a caller that
-## lays them all out again whenever anything moves: a rope whose binds come
-## out the same keeps its line (and `ver`), so what was worked out from it
-## still holds. Returns whether anything changed: the chain has to be stepped
-## to its new way, so the caller wakes the rope.
-func set_binds(bi: PackedInt32Array, bat: PackedVector2Array, bk: PackedFloat32Array, wg: Array, way: float) -> bool:
-	if bi == bind_i and bat == bind_at and bk == bind_k and way == route and wg == wiggles:
+## Lays the rope from `a` to `b` through `stops`, in order: each [knot (from
+## `lay_knot`), 0 when this rope is the knot's first, 1 its second]. Returns
+## whether its line changed. A change of the knots themselves is glided to;
+## the pegs or a knot moving is followed at once.
+func lay(a: Vector2, b: Vector2, stops: Array, wd: float) -> bool:
+	var sig: Array = [a, b, wd]
+	var shape: Array = []
+	for st in stops:
+		var kn: Dictionary = st[0]
+		sig.append_array([kn.k, kn.c, kn.x, kn.m, kn.side, kn.dir_b, st[1]])
+		shape.append_array([kn.k, kn.m, kn.side, kn.dir_b])
+	if sig == _sig:
 		return false
-	clear_binds()
-	route = way
-	for n in bi.size():
-		bind(bi[n], bat[n], bk[n])
-	wiggles = wg
+	if shape != _shape and _base.size() >= 2:
+		_old = polyline().duplicate()
+		_old_cum = lengths(_old)
+		_morph = 0.0
+	_sig = sig
+	_shape = shape
+	_build(a, b, stops, wd)
+	_line_ok = false
+	ver += 1
 	return true
 
-func bind(i: int, at: Vector2, k: float) -> void:
-	bind_i.append(i)
-	bind_at.append(at)
-	bind_k.append(k)
-	if _held.size() == SEGS:
-		_held[i] = maxf(_held[i], k)
+## True when the rope goes through a knot.
+func knotted() -> bool:
+	return not _shape.is_empty()
 
-## One fixed step with the pegs at `a` and `b`.
-func step(a: Vector2, b: Vector2) -> void:
-	var gap := a.distance_to(b)
-	var target := maxf(gap, route) * (1.0 + SLACK + extra)
-	rest = lerpf(rest, target, FOLLOW)
-	var seg := rest / (SEGS - 1)
-	var held := _held.size() == SEGS
-	for i in range(1, SEGS - 1):
-		var v := (p[i] - q[i]) * DAMP
-		if held:
-			# A rope held to a braid lies in a groove: it keeps less speed,
-			# and a point held firmly almost none.
-			v *= 0.88 * (1.0 - minf(0.9, _held[i] * 2.5))
-		q[i] = p[i]
-		p[i] += v
-	p[0] = a
-	p[SEGS - 1] = b
-	q[0] = a
-	q[SEGS - 1] = b
-	_relax(seg, ITERS)
-	if not bind_i.is_empty():
-		for k in bind_i.size():
-			var i := bind_i[k]
-			p[i] = p[i].lerp(bind_at[k], bind_k[k])
-		_relax(seg, ITERS_AFTER)
-	for pass_i in 2:
-		for i in range(1, SEGS - 1):
-			p[i] += ((p[i - 1] + p[i + 1]) * 0.5 - p[i]) * BEND
+## Still, on its line: no swing and no glide left to run.
+func rest() -> void:
+	_a1 = 0.0
+	_v1 = 0.0
+	_a2 = 0.0
+	_v2 = 0.0
+	_morph = 1.0
 	_line_ok = false
 	ver += 1
 
-func _relax(seg: float, passes: int) -> void:
-	for it in passes:
-		for i in SEGS - 1:
-			var d := p[i + 1] - p[i]
-			var len := d.length()
-			if len < 0.0001:
-				continue
-			var diff := (len - seg) / len
-			if i == 0:
-				p[i + 1] -= d * diff
-			elif i == SEGS - 2:
-				p[i] += d * diff
-			else:
-				p[i] += d * diff * 0.5
-				p[i + 1] -= d * diff * 0.5
+## A whip: the rope is sent swinging sideways, `amp` one way or the other.
+func kick(amp: float) -> void:
+	_v1 += amp * KICK
+	_v2 -= amp * KICK * SWING_TWO_KICK
 
-## A whip: the middle of the rope is sent sideways by `amp` px per step
-## (positive one way, negative the other) and the rope is given `slack` more
-## to swing with.
-func kick(amp: float, slack := 0.0) -> void:
-	var n := (p[SEGS - 1] - p[0]).orthogonal().normalized()
-	for i in range(1, SEGS - 1):
-		q[i] -= n * amp * sin(PI * float(i) / (SEGS - 1))
-	extra = maxf(extra, slack)
-
-## Sum of the points' speeds, per step: what says the rope has come to rest.
+## What is left of the swing, in px: what says the rope has come to rest.
 func energy() -> float:
-	var e := 0.0
-	for i in range(1, SEGS - 1):
-		e += (p[i] - q[i]).length()
-	return e
+	return absf(_a1) + absf(_a2) + (absf(_v1) + absf(_v2)) * 0.02
+
+## True while the rope is swinging or gliding to a new line.
+func moving() -> bool:
+	return _morph < 1.0 or energy() > 0.06
+
+## `dt` seconds of the swing and the glide.
+func step(dt: float) -> void:
+	if not moving():
+		if _a1 != 0.0 or _a2 != 0.0:
+			rest()
+		return
+	if _morph < 1.0:
+		_morph = minf(1.0, _morph + dt / MORPH)
+	_accum += dt
+	var w1 := TAU * _hz
+	var w2 := w1 * SWING_TWO
+	var steps := 0
+	while _accum >= SIM_DT and steps < 8:
+		_accum -= SIM_DT
+		steps += 1
+		_v1 += (-w1 * w1 * _a1 - 2.0 * SWING_DAMP * w1 * _v1) * SIM_DT
+		_a1 += _v1 * SIM_DT
+		_v2 += (-w2 * w2 * _a2 - 2.0 * SWING_DAMP * w2 * _v2) * SIM_DT
+		_a2 += _v2 * SIM_DT
+	_accum = minf(_accum, SIM_DT * 2.0)
+	_line_ok = false
+	ver += 1
 
 ## Straight-line gap ratio: 1 when the pegs are as far as the rope goes.
 func taut(a: Vector2, b: Vector2) -> float:
 	return clampf(a.distance_to(b) / maxf(length, 1.0), 0.0, 1.0)
 
-## The chain smoothed with a Catmull-Rom through its points -- three pieces
-## to a span where it bends or where a braid twists it, one where it runs
-## straight -- so a whipping rope bends round instead of kinking; then each
-## braid's twist laid on it: along the braid the rope swings `swing` px to its
-## side and back, crossing its partner `n` times, easing in and out at the ends.
+# --- a knot ---
+
+## Two ropes twisted round each other `n` times at `c`, as one tight twist:
+## rope A comes from `a_in` and goes on to `a_out`, rope B from `b_in` to
+## `b_out` (pegs, or the knots they come from and go to). The twist lies along
+## the way the four pull it, and of the ways it can lie there -- which of B's
+## legs is at which end, which side of it A comes in on -- it takes the one
+## its four legs have to turn least to leave by, so a rope hooked on another
+## dips in and out of the knot and does not curl round to reach it. `was` is
+## the knot as it was last laid (or {}): it keeps the way it lay unless
+## another is clearly better, so a knot does not turn over as a peg is
+## carried past.
+##
+## {"k" (`key`), "c", "x" (the axis, the way A runs through), "y", "m"
+## (crossings drawn), "of" (crossings there are), "half" (half its length),
+## "side" (+1 when A comes in on the `y` side), "dir_b" (+1 when B runs
+## through the same way as A)}.
+static func lay_knot(key: Variant, c: Vector2, n: int, wd: float, a_in: Vector2, a_out: Vector2,
+		b_in: Vector2, b_out: Vector2, was := {}) -> Dictionary:
+	var m := knot_shown(n)
+	var ua0 := (a_in - c).normalized()
+	var ua1 := (a_out - c).normalized()
+	var ub0 := (b_in - c).normalized()
+	var ub1 := (b_out - c).normalized()
+	var half := knot_half(n, wd)
+	var best := {}
+	var least := INF
+	for dir_b in [1, -1]:
+		var bl := ub0 if dir_b > 0 else ub1
+		var br := ub1 if dir_b > 0 else ub0
+		var pull: Vector2 = (ua1 + br) - (ua0 + bl)
+		var x := pull.normalized()
+		if pull.length() < 0.001:
+			x = (ua1 - ua0).normalized() if (ua1 - ua0).length() > 0.001 else Vector2.RIGHT
+		var y := Vector2(-x.y, x.x)
+		for side in [1, -1]:
+			var kn := {"k": key, "c": c, "x": x, "y": y, "m": m, "of": n, "half": half, "side": side, "dir_b": dir_b}
+			# How far each leg turns between the way it comes and the way
+			# the knot has it heading, at all four ends.
+			var cost := 0.0
+			for who in 2:
+				var d := 1.0 if who == 0 else float(dir_b)
+				var from: Vector2 = a_in if who == 0 else b_in
+				var to: Vector2 = a_out if who == 0 else b_out
+				var come: Vector2 = c - x * half * d + y * knot_off(kn, who, -half * d, wd)
+				var leave: Vector2 = c + x * half * d + y * knot_off(kn, who, half * d, wd)
+				var run_in: Vector2 = ((x + y * knot_slope(kn, who, -half * d, wd)) * d).normalized()
+				var run_out: Vector2 = ((x + y * knot_slope(kn, who, half * d, wd)) * d).normalized()
+				cost += 1.0 - run_in.dot((come - from).normalized())
+				cost += 1.0 - run_out.dot((to - leave).normalized())
+			if not was.is_empty() and int(was.dir_b) == dir_b and int(was.side) == side:
+				cost = cost * 0.8 - 0.15
+			if cost < least:
+				least = cost
+				best = kn
+	return best
+
+## How many of a knot's `n` crossings are drawn: all of them up to
+## `KNOT_MOST`, and past it the most that are odd or even as `n` is (a rope
+## has to leave the knot on the side its crossings put it).
+static func knot_shown(n: int) -> int:
+	if n <= KNOT_MOST:
+		return n
+	return KNOT_MOST if n % 2 == KNOT_MOST % 2 else KNOT_MOST - 1
+
+## Half the length of a knot of `n` crossings as drawn.
+static func knot_half(n: int, wd: float) -> float:
+	return (float(knot_shown(n) - 1) * 0.5 + KNOT_LEAD) * KNOT_PITCH * wd
+
+## The way rope `who` heads at `along` the knot, for a rope running the
+## axis's way (px sideways per px along).
+static func knot_slope(kn: Dictionary, who: int, along: float, wd: float) -> float:
+	var pitch := KNOT_PITCH * wd
+	var first := -float(int(kn.m) - 1) * pitch * 0.5
+	var slope := -float(kn.side) * KNOT_SIDE * wd * PI / pitch * cos(PI * (first - along) / pitch)
+	return slope if who == 0 else -slope
+
+## How far off the knot's axis rope `who` (0 the first, 1 the second) lies at
+## `along` it (px from its middle, the axis's way).
+static func knot_off(kn: Dictionary, who: int, along: float, wd: float) -> float:
+	var pitch := KNOT_PITCH * wd
+	var first := -float(int(kn.m) - 1) * pitch * 0.5
+	var off := float(kn.side) * KNOT_SIDE * wd * sin(PI * (first - along) / pitch)
+	return off if who == 0 else -off
+
+## The bend a rope takes from `e`, heading `t`, to run on straight at `w`: an
+## arc `rho` round, tangent to both, as points after `e` up to where it
+## straightens. Empty when it runs straight on, or `w` is too near to bend to.
+static func _fillet(e: Vector2, t: Vector2, w: Vector2, rho: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var to := w - e
+	var cr := t.cross(to)
+	if absf(cr) < 0.5 and t.dot(to) > 0.0:
+		return out
+	var s := 1.0 if cr >= 0.0 else -1.0
+	var o := e + Vector2(-t.y, t.x) * s * rho
+	var d := o.distance_to(w)
+	if d <= rho * 1.02:
+		return out
+	var from := (e - o).angle()
+	var sweep := fposmod(s * ((w - o).angle() - s * acos(rho / d) - from), TAU)
+	if sweep < 0.02 or sweep > PI * 1.7:
+		return out
+	var steps := int(ceil(sweep / FILLET_STEP))
+	for j in range(1, steps + 1):
+		out.append(o + Vector2.from_angle(from + s * sweep * float(j) / float(steps)) * rho)
+	return out
+
+func _build(a: Vector2, b: Vector2, stops: Array, wd: float) -> void:
+	var n := stops.size()
+	# Where the rope comes into each knot and leaves it, and the way it runs
+	# through.
+	var come := PackedVector2Array()
+	var leave := PackedVector2Array()
+	var run_in := PackedVector2Array()
+	var run_out := PackedVector2Array()
+	for st in stops:
+		var kn: Dictionary = st[0]
+		var who: int = st[1]
+		var d := 1.0 if who == 0 else float(kn.dir_b)
+		var x: Vector2 = kn.x
+		var y: Vector2 = kn.y
+		var half: float = kn.half
+		come.append((kn.c as Vector2) - x * half * d + y * knot_off(kn, who, -half * d, wd))
+		leave.append((kn.c as Vector2) + x * half * d + y * knot_off(kn, who, half * d, wd))
+		# The rope's heading at each end: along the axis its way, and across
+		# as the swing has it there.
+		run_in.append(((x + y * knot_slope(kn, who, -half * d, wd)) * d).normalized())
+		run_out.append(((x + y * knot_slope(kn, who, half * d, wd)) * d).normalized())
+	var pts := PackedVector2Array([a])
+	var nrm := PackedVector2Array([Vector2.ZERO])
+	var sh1 := PackedFloat32Array([0.0])
+	var sh2 := PackedFloat32Array([0.0])
+	marks = {}
+	var way := 0.0
+	for i in n + 1:
+		var from: Vector2 = a if i == 0 else leave[i - 1]
+		var to: Vector2 = b if i == n else come[i]
+		# The bend out of the last knot and the bend into this one, each
+		# aimed at where the other straightens (three rounds settle it).
+		# Bend, straight, bend is only right when the straight runs on from
+		# the one bend and into the other; with too little room for that the
+		# bends are tried tighter.
+		var out_of := PackedVector2Array()
+		var into := PackedVector2Array()
+		var p0 := from
+		var p1 := to
+		var gap := 0.0
+		var along := Vector2.ZERO
+		var fits := false
+		for tighter in [1.0, 0.55, 0.3]:
+			var rho: float = FILLET * wd * tighter
+			out_of = PackedVector2Array()
+			into = PackedVector2Array()
+			p0 = from
+			p1 = to
+			for it in 3:
+				if i > 0:
+					out_of = _fillet(from, run_out[i - 1], p1, rho)
+					p0 = out_of[out_of.size() - 1] if not out_of.is_empty() else from
+				if i < n:
+					into = _fillet(to, -run_in[i], p0, rho)
+					p1 = into[into.size() - 1] if not into.is_empty() else to
+				if i == 0 or i == n:
+					break
+			gap = p0.distance_to(p1)
+			along = (p1 - p0) / gap if gap > 0.01 else Vector2.ZERO
+			fits = gap > 0.01
+			if fits and i > 0:
+				var before: Vector2 = out_of[out_of.size() - 2] if out_of.size() >= 2 else from
+				var heading: Vector2 = (p0 - before).normalized() if not out_of.is_empty() else run_out[i - 1]
+				fits = heading.dot(along) > 0.93
+			if fits and i < n:
+				var after: Vector2 = into[into.size() - 2] if into.size() >= 2 else to
+				var heading: Vector2 = (after - p1).normalized() if not into.is_empty() else run_in[i]
+				fits = heading.dot(along) > 0.93
+			if fits:
+				break
+		# With no room even so (two knots almost touching, a knot at its peg)
+		# the rope takes one smooth curve from the heading it leaves with to
+		# the heading it arrives with: a corner there would be drawn as a
+		# spike.
+		if not fits and (i > 0 or i < n):
+			var span := from.distance_to(to)
+			var reach := clampf(span * 0.42, 0.2 * wd, 2.6 * wd)
+			var c0: Vector2 = from + (run_out[i - 1] * reach if i > 0 else (to - from) * 0.3)
+			var c1: Vector2 = to - (run_in[i] * reach if i < n else (to - from) * 0.3)
+			var cuts := clampi(int(ceil(span / (0.22 * wd))), 8, 24)
+			for j in range(1, cuts + 1):
+				var u := float(j) / float(cuts)
+				var v := 1.0 - u
+				pts.append(from * v * v * v + c0 * 3.0 * v * v * u + c1 * 3.0 * v * u * u + to * u * u * u)
+				nrm.append(Vector2.ZERO)
+				sh1.append(0.0)
+				sh2.append(0.0)
+		else:
+			for v in out_of:
+				pts.append(v)
+				nrm.append(Vector2.ZERO)
+				sh1.append(0.0)
+				sh2.append(0.0)
+			# The straight stretch, which is what swings.
+			var pieces := clampi(int(ceil(gap / (LEG_PIECE * wd))), 1, LEG_MOST)
+			var side := Vector2(-along.y, along.x)
+			var much := clampf(gap / (7.0 * wd), 0.0, 1.0)
+			for j in range(1, pieces):
+				var u := float(j) / float(pieces)
+				pts.append(p0.lerp(p1, u))
+				nrm.append(side)
+				sh1.append(sin(PI * u) * much)
+				sh2.append(sin(TAU * u) * much)
+			for j in range(into.size() - 1, -1, -1):
+				pts.append(into[j])
+				nrm.append(Vector2.ZERO)
+				sh1.append(0.0)
+				sh2.append(0.0)
+			pts.append(to)
+			nrm.append(Vector2.ZERO)
+			sh1.append(0.0)
+			sh2.append(0.0)
+		way += gap
+		if i == n:
+			break
+		# Through the knot: the lead in, across the axis and back from
+		# crossing to crossing, and the lead out.
+		var kn: Dictionary = stops[i][0]
+		var who: int = stops[i][1]
+		var d := 1.0 if who == 0 else float(kn.dir_b)
+		var half: float = kn.half
+		var pitch := KNOT_PITCH * wd
+		var lead := KNOT_LEAD * pitch
+		var m: int = kn.m
+		var offs := PackedFloat32Array()
+		for j in range(1, KNOT_LEAD_STEPS):
+			offs.append(-half + lead * float(j) / float(KNOT_LEAD_STEPS))
+		var at := PackedInt32Array()
+		for q in m:
+			at.append(pts.size() + offs.size())
+			var cross := -half + lead + float(q) * pitch
+			offs.append(cross)
+			if q < m - 1:
+				for j in range(1, KNOT_STEPS):
+					offs.append(cross + pitch * float(j) / float(KNOT_STEPS))
+		for j in range(1, KNOT_LEAD_STEPS + 1):
+			offs.append(half - lead + lead * float(j) / float(KNOT_LEAD_STEPS))
+		for v in offs:
+			pts.append((kn.c as Vector2) + (kn.x as Vector2) * v * d + (kn.y as Vector2) * knot_off(kn, who, v * d, wd))
+			nrm.append(Vector2.ZERO)
+			sh1.append(0.0)
+			sh2.append(0.0)
+		marks[kn.k] = at
+		way += 2.0 * half
+	_base = pts
+	_nrm = nrm
+	_sh1 = sh1
+	_sh2 = sh2
+	_hz = clampf(SWING_SPAN / maxf(way, 1.0), SWING_SLOW, SWING_FAST)
+
+## The line as drawn: where the rope lies, the swing laid on its straight
+## stretches, and while its knots have just changed, the way from the line it
+## had (point for point by how far along each lies).
 func polyline() -> PackedVector2Array:
 	if not _line_ok:
-		_line = PackedVector2Array()
-		_span_at.resize(SEGS)
-		_line.append(p[0])
-		for i in SEGS - 1:
-			_span_at[i] = _line.size() - 1
-			var p0 := p[maxi(i - 1, 0)]
-			var p1 := p[i]
-			var p2 := p[i + 1]
-			var p3 := p[mini(i + 2, SEGS - 1)]
-			if _fine(i, p0, p1, p2, p3):
-				_line.append(_cr(p0, p1, p2, p3, 1.0 / 3.0))
-				_line.append(_cr(p0, p1, p2, p3, 2.0 / 3.0))
-			_line.append(p2)
-		_span_at[SEGS - 1] = _line.size() - 1
-		for wg in wiggles:
-			_twist(wg)
+		_line = _base.duplicate()
+		if _a1 != 0.0 or _a2 != 0.0:
+			for i in _line.size():
+				var by := _a1 * _sh1[i] + _a2 * _sh2[i]
+				if by != 0.0:
+					_line[i] += _nrm[i] * by
+		if _morph < 1.0 and _old.size() >= 2 and _line.size() >= 2:
+			# Eased with a little spring, so a knot cinches in.
+			var u := _morph - 1.0
+			var e := 1.0 + 1.9 * u * u * u + 0.9 * u * u
+			var here := lengths(_line)
+			var total: float = here[here.size() - 1]
+			var old_total: float = _old_cum[_old_cum.size() - 1]
+			var k := 1
+			for i in _line.size():
+				var s := here[i] / maxf(total, 1.0) * old_total
+				while k < _old_cum.size() - 1 and _old_cum[k] < s:
+					k += 1
+				var seg := _old_cum[k] - _old_cum[k - 1]
+				var f := clampf((s - _old_cum[k - 1]) / seg, 0.0, 1.0) if seg > 0.0 else 0.0
+				_line[i] = _old[k - 1].lerp(_old[k], f).lerp(_line[i], e)
+			# Half way between two lines is neither: whatever corners the
+			# blend has are rounded off while it lasts.
+			var soft := sin(PI * _morph) * 0.5
+			for it in 2:
+				var last := _line[0]
+				for i in range(1, _line.size() - 1):
+					var was := _line[i]
+					_line[i] = was.lerp((last + _line[i + 1]) * 0.5, soft)
+					last = was
 		_cum = lengths(_line)
-		# The box round each span's drawn pieces, for `hits`.
-		_box.resize((SEGS - 1) * 4)
-		for i in SEGS - 1:
-			var x0 := INF
-			var x1 := -INF
-			var y0 := INF
-			var y1 := -INF
-			for j in range(_span_at[i], _span_at[i + 1] + 1):
-				var v := _line[j]
-				x0 = minf(x0, v.x)
-				x1 = maxf(x1, v.x)
-				y0 = minf(y0, v.y)
-				y1 = maxf(y1, v.y)
-			_box[i * 4] = x0
-			_box[i * 4 + 1] = x1
-			_box[i * 4 + 2] = y0
-			_box[i * 4 + 3] = y1
 		_line_ok = true
 	return _line
-
-## Whether span `i` needs smoothing: it bends (the chain turns at either end
-## by more than a few degrees) or lies in reach of a braid.
-func _fine(i: int, p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2) -> bool:
-	var d1 := p2 - p1
-	if (p1 - p0).length_squared() > 0.0 and d1.length_squared() > 0.0:
-		if (p1 - p0).normalized().dot(d1.normalized()) < 0.996:
-			return true
-	if (p3 - p2).length_squared() > 0.0 and d1.length_squared() > 0.0:
-		if d1.normalized().dot((p3 - p2).normalized()) < 0.996:
-			return true
-	for wg in wiggles:
-		var L: float = wg.len
-		var reach := L * 0.8 + absf(float(wg.swing)) * 3.0
-		var c: Vector2 = wg.c
-		if p1.distance_squared_to(c) < reach * reach or p2.distance_squared_to(c) < reach * reach:
-			return true
-	return false
-
-func _twist(wg: Dictionary) -> void:
-	var c: Vector2 = wg.c
-	var axis: Vector2 = wg.axis
-	var perp: Vector2 = wg.perp
-	var L: float = wg.len
-	var n: float = wg.n
-	var swing: float = float(wg.swing) * float(wg.side)
-	var w: float = wg.w
-	# A braid cinching in or letting go turns as it does: its crossings run
-	# along it, so an unwind reads as a spin and not a fade.
-	var spin: float = float(wg.get("spin", 0.0))
-	var near: float = absf(float(wg.swing)) * 3.0 + 4.0
-	# The chain already runs from its side at one end to its side at the
-	# other (straight between): what is laid on is the swing across and back
-	# less that straight run, so nothing moves at the ends.
-	# The swing runs from phase `p0` to `p1` along the braid (a full swing
-	# across and back every two pi).
-	var p0: float = float(wg.get("p0", 0.0))
-	var p1: float = float(wg.get("p1", PI * n))
-	var from_side := cos(p0)
-	var end_side := cos(p1)
-	if wg.has("i0"):
-		# The stretch of chain held to the braid, by length along the line.
-		var j0 := _span_at[clampi(int(floor(float(wg.i0))), 0, SEGS - 1)]
-		var j1 := _span_at[clampi(int(ceil(float(wg.i1))), 0, SEGS - 1)]
-		if j1 - j0 < 2:
-			return
-		var along := PackedFloat32Array()
-		along.resize(j1 - j0 + 1)
-		for j in range(j0 + 1, j1 + 1):
-			along[j - j0] = along[j - j0 - 1] + _line[j - 1].distance_to(_line[j])
-		var span := along[along.size() - 1]
-		if span <= 0.0:
-			return
-		# Inside the stretch the line is laid where the braid *is* -- the
-		# core dead straight, the winder on its turns -- and only eased onto
-		# the chain at the two ends. Laid as a swing off the chain alone, a
-		# chain still on its way there (bunched, bowed, mid-whip) folded the
-		# turns into torn arrowheads.
-		var dir: float = float(wg.get("dir", 0.0))
-		for j in range(j0 + 1, j1):
-			var u := along[j - j0] / span
-			var turn := cos(lerpf(p0, p1, u) + spin * sin(PI * u))
-			var loose := _line[j] + perp * swing * (turn - lerpf(from_side, end_side, u)) * w
-			if dir == 0.0:
-				_line[j] = loose
-				continue
-			var laid := c + axis * (u - 0.5) * dir * L + perp * swing * turn
-			var hold := w * smoothstep(0.0, 0.2, u) * smoothstep(1.0, 0.8, u)
-			_line[j] = loose.lerp(laid, hold)
-		return
-	# The core of a coil runs straight through it.
-	if swing == 0.0:
-		return
-	for i in range(1, _line.size() - 1):
-		var d := _line[i] - c
-		var u := d.dot(axis) / L + 0.5
-		if u <= 0.0 or u >= 1.0 or absf(d.dot(perp)) > near:
-			continue
-		var shape := cos(lerpf(p0, p1, u) + spin * sin(PI * u)) - lerpf(from_side, end_side, u)
-		_line[i] += perp * swing * shape * w
 
 func cum() -> PackedFloat32Array:
 	polyline()
@@ -337,11 +488,6 @@ func cum() -> PackedFloat32Array:
 func total() -> float:
 	var c := cum()
 	return c[c.size() - 1]
-
-static func _cr(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: float) -> Vector2:
-	var t2 := t * t
-	var t3 := t2 * t
-	return 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
 
 static func lengths(line: PackedVector2Array) -> PackedFloat32Array:
 	var c := PackedFloat32Array()
@@ -371,46 +517,28 @@ static func slice(line: PackedVector2Array, c: PackedFloat32Array, s0: float, s1
 
 ## Every place this rope's drawn line crosses `other`'s within `radius` of
 ## `near`, as [s along this, s along other, point], in order along this one.
-## Two stages: the chains' spans near `near` (within `radius` plus `margin`,
-## the most a twist moves the drawn line off its chain) whose drawn boxes
-## overlap, and then only the drawn pieces of those spans, exactly.
-func hits(other, near: Vector2, radius: float, margin := 0.0) -> Array:
+func hits(other, near: Vector2, radius: float) -> Array:
 	var la := polyline()
 	var ca := cum()
 	var lb: PackedVector2Array = other.polyline()
 	var cb: PackedFloat32Array = other.cum()
-	var pb: PackedVector2Array = other.p
 	var out: Array = []
-	var r2 := (radius + margin) * (radius + margin)
-	var ia := PackedInt32Array()
-	for i in SEGS - 1:
-		if p[i].distance_squared_to(near) <= r2 or p[i + 1].distance_squared_to(near) <= r2:
-			ia.append(i)
-	if ia.is_empty():
-		return out
+	var r2 := radius * radius
 	var ib := PackedInt32Array()
-	for j in SEGS - 1:
-		if pb[j].distance_squared_to(near) <= r2 or pb[j + 1].distance_squared_to(near) <= r2:
-			ib.append(j)
+	for v in lb.size() - 1:
+		if Geometry2D.get_closest_point_to_segment(near, lb[v], lb[v + 1]).distance_squared_to(near) <= r2:
+			ib.append(v)
 	if ib.is_empty():
 		return out
-	var bb: PackedFloat32Array = other._box
-	for i in ia:
-		var x0 := _box[i * 4] - 1.0
-		var x1 := _box[i * 4 + 1] + 1.0
-		var y0 := _box[i * 4 + 2] - 1.0
-		var y1 := _box[i * 4 + 3] + 1.0
-		for j in ib:
-			if bb[j * 4 + 1] < x0 or bb[j * 4] > x1 or bb[j * 4 + 3] < y0 or bb[j * 4 + 2] > y1:
+	for u in la.size() - 1:
+		if Geometry2D.get_closest_point_to_segment(near, la[u], la[u + 1]).distance_squared_to(near) > r2:
+			continue
+		for v in ib:
+			var hit = Geometry2D.segment_intersects_segment(la[u], la[u + 1], lb[v], lb[v + 1])
+			if hit == null:
 				continue
-			var sb: PackedInt32Array = other._span_at
-			for u in range(_span_at[i], _span_at[i + 1]):
-				for v in range(sb[j], sb[j + 1]):
-					var hit = Geometry2D.segment_intersects_segment(la[u], la[u + 1], lb[v], lb[v + 1])
-					if hit == null:
-						continue
-					var pt: Vector2 = hit
-					out.append([ca[u] + la[u].distance_to(pt), cb[v] + lb[v].distance_to(pt), pt])
+			var pt: Vector2 = hit
+			out.append([ca[u] + la[u].distance_to(pt), cb[v] + lb[v].distance_to(pt), pt])
 	out.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	return out
 
@@ -551,11 +679,27 @@ static func _ribbon(b: Face.Builder, line: PackedVector2Array, off: Vector2, hal
 		if prev != Vector2.ZERO and nm.dot(prev) < 0.0:
 			nm = -nm
 		prev = nm
+		# Where the line turns tighter than the band is wide, the band's inner
+		# side stops at the point the line turns about: drawn its full width
+		# there it would cross itself and show as a torn fold.
+		var most := INF
+		var inner := 0.0
+		if i > 0 and i < n - 1:
+			var d1 := line[i] - line[i - 1]
+			var d2 := line[i + 1] - line[i]
+			var cr := d1.cross(d2)
+			var dot := d1.dot(d2)
+			if absf(cr) > 0.05 * absf(dot) or dot < 0.0:
+				most = 0.46 * (d1.length() + d2.length()) / absf(atan2(cr, dot))
+				inner = signf(cr) * signf(nm.dot(Vector2(-t.y, t.x)))
 		# 0: nm points away from the light (the stops as given), 1: toward it.
 		var flip := smoothstep(-0.35, 0.35, nm.dot(LIGHT))
 		var at := line[i] + off
 		for j in m:
-			vs[w] = at + nm * wide[j]
+			var out := wide[j]
+			if out * inner > most:
+				out = most * inner
+			vs[w] = at + nm * out
 			cs[w] = given[j].lerp(mirror[j], flip)
 			w += 1
 	b.verts.append_array(vs)
@@ -601,19 +745,6 @@ static func _sample(across: PackedFloat32Array, cols: Array, a: float) -> Color:
 			var u := (a - across[j - 1]) / span if span > 0.0 else 0.0
 			return (cols[j - 1] as Color).lerp(cols[j], u)
 	return cols[m - 1]
-
-## `line` moved sideways by `d`: away from the light when `away`, toward it
-## otherwise.
-static func _offset(line: PackedVector2Array, d: float, away: bool) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	out.resize(line.size())
-	for i in line.size():
-		var t := (line[mini(i + 1, line.size() - 1)] - line[maxi(i - 1, 0)])
-		var n := t.orthogonal().normalized() if t.length_squared() > 0.0 else Vector2.UP
-		if n.dot(LIGHT) > 0.0:
-			n = -n
-		out[i] = line[i] + (n if away else -n) * d
-	return out
 
 ## The laid rope's strands: every `w * 0.62` along it a slanted groove, dark,
 ## bowed like the edge of a round strand, with the strand's lit ridge beside

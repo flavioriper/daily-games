@@ -190,3 +190,32 @@ behind a drop, a relayout mid-flight and `settle_now`) found, and this fixed:
   a wrapped pair's first crossing is read off the ring, so carrying a peg past
   its own rope's other peg (crossing nothing) can turn a side-by-side braid
   round -- the tangle stays consistent and reversible, the preview shows it.
+
+## Amendment (2026-10-05): tight knots, and a free rope leaves
+
+Asked for by the user against a reference of taut ropes meeting in compact
+knots, and a shot of this board's coils torn into arrowheads.
+
+- **Section 2 is replaced.** A rope is no longer a Verlet chain held to a
+  braid. Its line is worked out from its pegs and its knots (`Rope.lay`):
+  straight, knot, straight. A knot is one short twist both ropes swing
+  through (`Rope.lay_knot`), oriented by which of its four ways turns its
+  legs least; a rope leaves it round an arc of its own width, tighter when
+  there is no room, a single smooth curve when there is none at all. The
+  ribbon's inner side stops at the centre of any turn tighter than the rope
+  is wide, so nothing can fold. The swing and the glide between lines are
+  laid on top of the line and cannot break it.
+- **New rule.** A rope that crosses nothing leaves the ring with both pegs;
+  its holes are free and nothing is carried over it again. The day is won
+  when the ring is empty. The dealer, par, the hint's search and the
+  kitten's schedule all play it (`Gen.retire`, `Gen.cat_peg`, `Gen._replay`).
+- **What it costs.** Insane deals in about 160 ms on the Mac the earlier
+  figures were taken on (70 before). Insane is easier than it was: a freed
+  rope cannot be tangled again and leaves two holes behind. The thread is
+  still par + 3, with par measured under the new rule.
+- **Decided without the user**: every band plays the leaving rule; a rope
+  free at the deal is not dealt; the peg just dropped stays and its twin is
+  reeled to it; pegs leave with their rope, so the win is an empty ring and
+  the hats are gone; Show the answer sends every rope off instead of walking
+  pegs to a solved layout.
+

@@ -2,21 +2,23 @@ extends Control
 
 ## One page of Untangle's tutorial: the board's wooden ring in little -- its
 ## holes, capped pegs and thick laid ropes (the board's own Rope, so they
-## swing, wrap and lie over and under as they do on the board) -- with one
+## swing, knot and lie over and under as they do on the board) -- with one
 ## move played on a loop over a caption that says what it means. `lesson`
 ## picks the page (set before it enters the tree):
 ##
 ## - LIFT: a peg is carried from its hole into an empty one over the rope it
-##   lies on top of; the crossing slides off and both ropes are free.
+##   lies on top of; the crossing slides off, and both ropes, free, are
+##   reeled in and leave the ring.
 ## - WRAP: the same carry, but the rope moved lies underneath: it wraps round
-##   the other once more (a braid cinches in); Undo takes it back.
+##   the other once more (a knot cinches in); Undo takes it back.
 ## - REACH: a short rope's peg is lifted (the holes it reaches glow), pulled
 ##   toward a far hole until the rope goes tight, and put back; then dropped
 ##   in a hole it reaches.
-## - HINT: a peg flies to its hole by itself.
+## - HINT: a peg flies to its hole by itself, and the ropes it frees leave.
 ## - THREAD: every move, an undo too, uses a stitch from the row of thread.
 ## - CAT: the kitten's yarn counts down; after the move she bats the marked
-##   peg into the nearest empty hole.
+##   peg into the nearest empty hole. (THREAD's and CAT's moves cross
+##   nothing, so no rope leaves in the middle of what they show.)
 ##
 ## Performance checkup, 2026-10-01: the one generic card became these pages.
 
@@ -46,7 +48,6 @@ var _clock := 0.0
 var _loop := 0.0
 var _script: Array = []
 var _next := 0
-var _accum := 0.0
 
 # geometry, as the board's _layout makes it
 var _c := Vector2.ZERO
@@ -70,9 +71,12 @@ var _col: Array = []                     # [rope] -> colour index into UT.ROPES
 var _len := PackedFloat32Array()         # [rope] -> how far it reaches, px
 var _order: Array = []                   # ropes bottom to top
 var _glow := -10.0                       # when the ropes were last set free
+var _reeled := false                     # ...and whether they have been reeled in since
 ## Pairs that cross: Vector2i(a, b) -> {"n", "t" (1: a on top at the first
-## crossing along a), "w" (how far a braid is cinched), "goal"}.
+## crossing along a)}.
 var _pairs := {}
+## The knot of a pair wrapped twice round or more, as last laid.
+var _knots := {}
 var _marked := -1
 var _cat_in := 0
 var _paw_t := -10.0
@@ -150,9 +154,10 @@ func _start() -> void:
 func _scene() -> void:
 	_clock = 0.0
 	_next = 0
-	_accum = 0.0
 	_script = []
 	_pairs = {}
+	_knots = {}
+	_reeled = false
 	_marked = -1
 	_cat_in = 0
 	_paw_t = -10.0
@@ -177,7 +182,7 @@ func _scene() -> void:
 			# A on top in LIFT and HINT (a move off the top slides it off);
 			# underneath in WRAP (it wraps tighter); THREAD and CAT play LIFT's.
 			_deal([[2, 1, 5, 4], [1, 2, 6, 4]])
-			_pairs[Vector2i(0, 1)] = {"n": 1, "t": 0 if lesson == Lesson.WRAP else 1, "w": 0.0, "goal": 0.0}
+			_pairs[Vector2i(0, 1)] = {"n": 1, "t": 0 if lesson == Lesson.WRAP else 1}
 			_order = [0, 1] if lesson == Lesson.WRAP else [1, 0]
 	match lesson:
 		Lesson.LIFT:
@@ -187,7 +192,8 @@ func _scene() -> void:
 			_at(0.6 + CARRY + 0.1, func() -> void:
 				_free()
 				_say_now("HTP_UT_FREE_CAP"))
-			_loop = 4.6
+			_at(0.6 + CARRY + 1.3, func() -> void: _say_now("HTP_UT_GONE_CAP"))
+			_loop = 5.4
 		Lesson.WRAP:
 			_say(0.0, "HTP_UT_UNDER_CAP")
 			_at(0.6, func() -> void: _carry(1, 7, CARRY))
@@ -207,24 +213,19 @@ func _scene() -> void:
 			_loop = 4.4
 		Lesson.THREAD:
 			_say(0.0, "HTP_UT_STITCH_CAP")
-			_at(0.6, func() -> void: _carry(1, 7, CARRY))
-			_at(0.6 + CARRY * 0.55, func() -> void: _cross_off())
+			_at(0.6, func() -> void: _carry(1, 4, CARRY))
 			_at(0.6 + CARRY * 0.5, func() -> void: _stitch())
 			_at(2.6, func() -> void:
 				_say_now("HTP_UT_UNDO_STITCH_CAP")
 				_fly_to(1, 5, 0.32, 0.0)
 				_stitch())
-			_at(2.6 + 0.16, func() -> void:
-				_pairs[Vector2i(0, 1)] = {"n": 1, "t": 1, "w": 0.0, "goal": 0.0})
 			_at(4.4, func() -> void: _say_now("HTP_UT_OUT_CAP"))
 			_loop = 6.6
 		Lesson.CAT:
 			_marked = 2
 			_cat_in = 1
 			_say(0.0, "HTP_UT_CAT_CAP")
-			_at(0.8, func() -> void: _carry(1, 7, CARRY))
-			_at(0.8 + CARRY * 0.55, func() -> void: _cross_off())
-			_at(0.8 + CARRY + 0.05, func() -> void: _free())
+			_at(0.8, func() -> void: _carry(1, 4, CARRY))
 			_at(2.5, func() -> void:
 				_say_now("HTP_UT_SWAT_CAP")
 				_paw_t = _clock
@@ -249,7 +250,7 @@ func _still() -> void:
 			cap = "HTP_UT_FREE_CAP" if lesson == Lesson.LIFT else "HTP_UT_HINT_CAP"
 		Lesson.WRAP:
 			_place(1, 7)
-			_pairs[Vector2i(0, 1)] = {"n": 2, "t": 0, "w": 1.0, "goal": 1.0}
+			_pairs[Vector2i(0, 1)] = {"n": 2, "t": 0}
 			cap = "HTP_UT_WRAPPED_CAP"
 		Lesson.REACH:
 			_place(3, 6)
@@ -258,14 +259,13 @@ func _still() -> void:
 			_spent = 2
 			cap = "HTP_UT_STITCH_CAP"
 		Lesson.CAT:
-			_place(1, 7)
-			_pairs = {}
+			_place(1, 4)
 			cap = "HTP_UT_CAT_CAP"
 	_caption.text = tr(cap)
 	# Laid again from where the pegs now sit, straight, as the board lays a
 	# restored day.
 	for r in _ropes.size():
-		(_ropes[r] as Rope).setup(_pos[2 * r], _pos[2 * r + 1], _len[r], 0.0)
+		(_ropes[r] as Rope).setup(_pos[2 * r], _pos[2 * r + 1], _len[r], _wd)
 
 ## Ropes as [colour, hole, hole, reach in holes], one after another.
 func _deal(ropes: Array) -> void:
@@ -288,7 +288,7 @@ func _deal(ropes: Array) -> void:
 			_pos[2 * r + e] = _hole_px(int(d[1 + e]))
 		_len[r] = 2.0 * _rh * sin(PI * float(d[3]) / HOLES) * UT.LENGTH_OVER
 		var rope := Rope.new()
-		rope.setup(_pos[2 * r], _pos[2 * r + 1], _len[r], 6.0 if r % 2 == 0 else -6.0)
+		rope.setup(_pos[2 * r], _pos[2 * r + 1], _len[r], _wd)
 		_ropes.append(rope)
 
 func _place(p: int, h: int) -> void:
@@ -323,18 +323,34 @@ func _cross_off() -> void:
 
 ## The rope underneath carried over the other: it wraps round once more.
 func _wrap_on(n: int) -> void:
-	var e: Dictionary = _pairs.get(Vector2i(0, 1), {"n": 1, "t": 0, "w": 0.0, "goal": 0.0})
+	var e: Dictionary = _pairs.get(Vector2i(0, 1), {"n": 1, "t": 0})
 	e.n = n
-	e.goal = 1.0 if n >= 2 else 0.0
-	if n >= 2:
-		e.w = minf(float(e.w), 0.45)
 	_pairs[Vector2i(0, 1)] = e
 
-## No two ropes cross: they light up and the pegs grin.
+## No rope crosses another: they light up, the pegs grin, and each is reeled
+## in and leaves the ring (`_leaving`).
 func _free() -> void:
 	_glow = _clock
+	_reeled = false
 	for p in _face.size():
 		_face[p] = 1
+
+## How much of the ropes and pegs is there: 1 until the free ropes have been
+## reeled in, then falling to 0 as they pop away.
+func _left() -> float:
+	if _glow < 0.0:
+		return 1.0
+	return 1.0 - clampf((_clock - _glow - UT.LEAVE_WAIT * 2.0 - UT.LEAVE_REEL) / UT.LEAVE_POP, 0.0, 1.0)
+
+## The free ropes' leaving: after the grin, each rope's second peg is reeled
+## across to its first.
+func _leaving() -> void:
+	if _glow < 0.0 or _reeled or _clock < _glow + UT.LEAVE_WAIT * 2.0:
+		return
+	_reeled = true
+	for r in _ropes.size():
+		_fly[2 * r + 1] = {"from": _pos[2 * r + 1], "to": _pos[2 * r], "t0": _clock, "dur": UT.LEAVE_REEL,
+			"arc": _peg_r * 0.35, "held": false, "hole": _hole[2 * r], "back": false}
 
 func _stitch() -> void:
 	_stitch_t.append(_clock)
@@ -353,24 +369,11 @@ func _process(delta: float) -> void:
 	if _clock >= _loop:
 		_scene()
 		return
+	_leaving()
 	_move_pegs(delta)
-	for k in _pairs:
-		var e: Dictionary = _pairs[k]
-		var rate := UT.BRAID_CINCH if float(e.goal) > float(e.w) else UT.BRAID_LET_GO
-		e.w = move_toward(float(e.w), float(e.goal), delta / rate)
-	if _clock - _glow > UT.FREE_JOY:
-		for p in _face.size():
-			if _face[p] == 1:
-				_face[p] = 0
-	_bind()
-	_accum += delta
-	var steps := 0
-	while _accum >= Rope.SIM_DT and steps < 8:
-		_accum -= Rope.SIM_DT
-		steps += 1
-		for r in _ropes.size():
-			(_ropes[r] as Rope).step(_pos[2 * r], _pos[2 * r + 1])
-	_accum = minf(_accum, Rope.SIM_DT * 2.0)
+	_lay()
+	for r in _ropes.size():
+		(_ropes[r] as Rope).step(delta)
 	_rebuild()
 	queue_redraw()
 
@@ -423,80 +426,55 @@ func _preview_for(p: int, at: Vector2) -> void:
 		return
 	_preview = "−1" if lesson != Lesson.WRAP else "+1"
 
-func _settle(steps: int) -> void:
-	_bind()
+func _settle(_steps: int) -> void:
+	_lay()
 	for r in _ropes.size():
-		var rope: Rope = _ropes[r]
-		for i in steps:
-			rope.q = rope.p.duplicate()
-			rope.step(_pos[2 * r], _pos[2 * r + 1])
-		rope.q = rope.p.duplicate()
+		(_ropes[r] as Rope).rest()
 
-# --- braids, as the board lays them (untangle2d.gd _braid, _bind_all) ---
+# --- knots, as the board lays them (untangle2d.gd _lay_all) ---
 
-func _braid(k: Vector2i, e: Dictionary) -> Dictionary:
-	var a0 := _pos[2 * k.x]
-	var a1 := _pos[2 * k.x + 1]
-	var b0 := _pos[2 * k.y]
-	var b1 := _pos[2 * k.y + 1]
-	var a_core := UT.core_is_a(a0, a1, b0, b1, (_ropes[k.x] as Rope).length, (_ropes[k.y] as Rope).length, e.get("core"))
-	e["core"] = a_core
-	var br := UT.lay_braid(a0, a1, b0, b1, int(e.n), _wd, a_core)
-	var c: Vector2 = br.c
-	var out := (c - _c).normalized() if c.distance_to(_c) > 0.001 else Vector2.RIGHT
-	var room := _ri - _wd * 1.1 - absf((br.axis as Vector2).dot(out)) * float(br.len) * 0.5
-	if c.distance_to(_c) > room:
-		br.c = _c + out * maxf(room, 0.0)
-	br["w"] = float(e.w)
-	return br
-
-## Each rope held to the braid it is in, or to nothing.
-func _bind() -> void:
-	var bound := {}
+## Each rope laid through the knot it is in, or straight.
+func _lay() -> void:
+	var stops := {}
+	var laid := {}
 	for k: Vector2i in _pairs:
-		var e: Dictionary = _pairs[k]
-		if float(e.w) <= 0.001:
+		var n: int = _pairs[k].n
+		if n < 2:
 			continue
-		var br := _braid(k, e)
-		for which in 2:
-			var r: int = k.x if which == 0 else k.y
-			var side := float(br.side_a if which == 0 else br.side_b)
-			var dir := float(br.dir_a if which == 0 else br.dir_b)
-			var a := _pos[2 * r]
-			var b := _pos[2 * r + 1]
-			var way := PackedVector2Array([a, UT.braid_point(br, _wd, side, dir, 0.0),
-				UT.braid_point(br, _wd, side, dir, 1.0), b])
-			var firm: Array[bool] = [false, false, true, false]
-			var most: float = br.w
-			var turn := (1.0 - most) * UT.BRAID_SPIN * (1.0 if float(e.goal) > 0.0 else -1.0)
-			var wg: Array = [{"c": br.c, "axis": br.axis, "perp": br.perp, "len": br.len, "n": br.n,
-				"p0": br.p0, "p1": br.p1, "side": side, "dir": dir, "w": most, "swing": UT.BRAID_SIDE * _wd, "spin": turn}]
-			var cum := Rope.lengths(way)
-			var total: float = cum[cum.size() - 1]
-			var bi := PackedInt32Array()
-			var bat := PackedVector2Array()
-			var bk := PackedFloat32Array()
-			var seg := 1
-			for i in range(1, Rope.SEGS - 1):
-				var s := total * float(i) / float(Rope.SEGS - 1)
-				while seg < cum.size() - 1 and cum[seg] < s:
-					seg += 1
-				var span := cum[seg] - cum[seg - 1]
-				var u := (s - cum[seg - 1]) / span if span > 0.0 else 0.0
-				var kk := UT.BRAID_PULL if firm[seg] else UT.BRAID_LEG
-				if firm[seg]:
-					kk *= 0.35 + 0.65 * smoothstep(0.0, 0.25, u) * smoothstep(1.0, 0.75, u)
-				bi.append(i)
-				bat.append(way[seg - 1].lerp(way[seg], u))
-				bk.append(kk * most)
-			var per := float(Rope.SEGS - 1) / maxf(total, 1.0)
-			wg[0]["i0"] = cum[1] * per
-			wg[0]["i1"] = cum[2] * per
-			(_ropes[r] as Rope).set_binds(bi, bat, bk, wg, lerpf(a.distance_to(b), total, most))
-			bound[r] = true
+		var a0 := _pos[2 * k.x]
+		var a1 := _pos[2 * k.x + 1]
+		var b0 := _pos[2 * k.y]
+		var b1 := _pos[2 * k.y + 1]
+		var half := Rope.knot_half(n, _wd)
+		var c := UT.knot_centre(a0, a1, b0, b1)
+		var clear := half + _peg_r * UT.KNOT_OFF_PEG
+		for e: Vector2 in [a0, a1, b0, b1]:
+			if c.distance_to(e) < clear:
+				c = e + ((a0 + a1 + b0 + b1 - e) / 3.0 - e).limit_length(clear)
+		c = _c + (c - _c).limit_length(maxf(_ri - _wd * 1.1 - half, 0.0))
+		# No further off a rope's line than that rope reaches.
+		for r in [k.x, k.y]:
+			var p0 := _pos[2 * r]
+			var p1 := _pos[2 * r + 1]
+			var most: float = _len[r] * UT.KNOT_WAY - half * 0.7
+			var near := Geometry2D.get_closest_point_to_segment(c, p0, p1)
+			var lo := 0.0
+			var hi := 0.0 if p0.distance_to(c) + c.distance_to(p1) <= most else 1.0
+			for it in 12 if hi > 0.0 else 0:
+				var f := (lo + hi) * 0.5
+				var q := c.lerp(near, f)
+				if p0.distance_to(q) + q.distance_to(p1) > most:
+					lo = f
+				else:
+					hi = f
+			c = c.lerp(near, hi)
+		var kn := Rope.lay_knot(k, c, n, _wd, a0, a1, b0, b1, _knots.get(k, {}))
+		laid[k] = kn
+		stops[k.x] = [[kn, 0]]
+		stops[k.y] = [[kn, 1]]
+	_knots = laid
 	for r in _ropes.size():
-		if not bound.has(r):
-			(_ropes[r] as Rope).set_binds(PackedInt32Array(), PackedVector2Array(), PackedFloat32Array(), [], 0.0)
+		(_ropes[r] as Rope).lay(_pos[2 * r], _pos[2 * r + 1], stops.get(r, []), _wd)
 
 ## Where each crossing pair crosses as drawn, and which lies on top there:
 ## [over, under, s on over, s on under] (untangle2d.gd _pair_crossings).
@@ -506,24 +484,21 @@ func _crossings() -> Array:
 		var e: Dictionary = _pairs[k]
 		var ra: Rope = _ropes[k.x]
 		var rb: Rope = _ropes[k.y]
-		var near: Vector2
-		var radius: float
-		var margin := 2.0
-		if float(e.w) > 0.3:
-			var br := _braid(k, e)
-			near = br.c
-			radius = float(br.len) * 0.55 + _wd * (1.2 + UT.BRAID_SIDE)
-			margin = UT.BRAID_SIDE * _wd * 2.0
+		var t0: int = e.t
+		var hs: Array = []
+		if _knots.has(k):
+			var ia: PackedInt32Array = ra.marks.get(k, PackedInt32Array())
+			var ib: PackedInt32Array = rb.marks.get(k, PackedInt32Array())
+			if ia.size() != ib.size():
+				continue
+			var same := int(_knots[k].dir_b) > 0
+			for i in ia.size():
+				hs.append([ra.cum()[ia[i]], rb.cum()[ib[i if same else ia.size() - 1 - i]]])
 		else:
 			var hit = Geometry2D.segment_intersects_segment(_pos[2 * k.x], _pos[2 * k.x + 1], _pos[2 * k.y], _pos[2 * k.y + 1])
-			var bent := not ra.wiggles.is_empty() or not rb.wiggles.is_empty()
-			if hit == null and not bent:
+			if hit == null:
 				continue
-			near = hit if hit != null else (_pos[2 * k.x] + _pos[2 * k.x + 1] + _pos[2 * k.y] + _pos[2 * k.y + 1]) * 0.25
-			radius = _wd * (10.0 if bent else 1.8)
-			margin = UT.BRAID_SIDE * _wd * 2.0 if bent else 2.0
-		var hs: Array = ra.hits(rb, near, radius, margin)
-		var t0: int = e.t
+			hs = ra.hits(rb, hit, _wd * 1.8).slice(0, 1)
 		for i in hs.size():
 			var top := t0 if i % 2 == 0 else 1 - t0
 			var h: Array = hs[i]
@@ -565,13 +540,13 @@ func _rebuild() -> void:
 	for r in _ropes.size():
 		lift[r] = maxf(_lift[2 * r], _lift[2 * r + 1])
 	var since := _clock - _glow
+	var left := _left()
 	for r in _order:
 		var col: Array = UT.ROPES[_col[r]]
 		var glow := Color(0, 0, 0, 0)
 		if since > 0.0 and since < 1.0:
 			glow = Color(Color("fff2b8"), 0.6 * sin(PI * since))
-		(_ropes[r] as Rope).draw(b, _wd, col[0], col[1], col[2], lift[r], 1.0, glow,
-			clampf(since * 1.2 - 0.2, 0.0, 1.0), clampf(since * 1.2 + 0.2, 0.0, 1.0))
+		(_ropes[r] as Rope).draw(b, _wd, col[0], col[1], col[2], lift[r], left, glow, 0.0, 1.0)
 	# A piece of the rope on top laid back where it was drawn first.
 	var rank := {}
 	for i in _order.size():
@@ -582,12 +557,13 @@ func _rebuild() -> void:
 			continue
 		var col: Array = UT.ROPES[_col[o]]
 		var half := _wd * UT.PATCH_HALF
-		(_ropes[o] as Rope).draw(b, _wd, col[0], col[1], col[2], lift[o], 1.0, Color(0, 0, 0, 0), 0.0, 0.0, 0.0,
+		(_ropes[o] as Rope).draw(b, _wd, col[0], col[1], col[2], lift[o], left, Color(0, 0, 0, 0), 0.0, 0.0, 0.0,
 			float(c[2]) - half, float(c[2]) + half, 0.85)
 	var order: Array = range(_pos.size())
 	order.sort_custom(func(a: int, c: int) -> bool: return _lift[a] < _lift[c])
-	for p in order:
-		_draw_peg(b, p)
+	if left > 0.0:
+		for p in order:
+			_draw_peg(b, p, left * (1.0 + 0.5 * sin(PI * left)) if left < 1.0 else 1.0)
 	_draw_hand(b)
 	_draw_thread(b)
 	_draw_cat(b)
@@ -631,8 +607,8 @@ func _arc(p: int) -> float:
 
 ## A peg as the board draws one: its soft shadow, parted from it as it is
 ## lifted, and the cap with its inlay in the rope's colour (or a face).
-func _draw_peg(b: Face.Builder, p: int) -> void:
-	var R := _peg_r
+func _draw_peg(b: Face.Builder, p: int, pop := 1.0) -> void:
+	var R := _peg_r * pop
 	var up := _lift[p] + _arc(p) / maxf(R, 1.0)
 	var lift_px := UT.HOLD_LIFT * R * _lift[p] + _arc(p)
 	var c := _pos[p]

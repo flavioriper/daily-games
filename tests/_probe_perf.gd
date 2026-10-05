@@ -1635,7 +1635,7 @@ func _buzz_untangle() -> void:
 	_click(_puzzle._peg_px[free])
 	await create_timer(0.3).timeout
 	_buzzed("tapped again: let go")
-	var chain: PackedVector2Array = _puzzle._ropes[0].p
+	var chain: PackedVector2Array = _puzzle._ropes[0].polyline()
 	_click(chain[chain.size() / 2])
 	await create_timer(0.3).timeout
 	_buzzed("a rope plucked")
