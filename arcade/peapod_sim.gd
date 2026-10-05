@@ -417,7 +417,7 @@ func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, whole := false, quiet := 
 		dmg = 1
 	cell.hp = int(cell.hp) - dmg
 	if cell.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "quiet": quiet})
+		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": cell.hp, "quiet": quiet})
 		return
 	var pos := cell_pos(r, c)
 	rows[r][c] = null
@@ -438,7 +438,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, quiet := false) -> void:
 		dmg = 1
 	sg.hp = int(sg.hp) - dmg
 	if sg.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "quiet": quiet})
+		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": sg.hp, "quiet": quiet})
 		return
 	_seg_dirty = true
 	var pos := path_at(sg.s)

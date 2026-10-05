@@ -453,3 +453,33 @@ the atlas, the three layers and every string stand.
 - Second reading on `opengl3_angle`: 105 at rest, 145 on the 13's reveal,
   129 after the bot's play, 256 on the tab; 153-199 on the tutorial card.
   Shots and frame strips on this Mac only, nothing run on a phone.
+
+**The Arcade's sounds left the chiptune on 2026-10-05** (the user: cozy,
+never synth). `ARCADE` in `tools/gen_sfx.py` is a real kalimba, music box,
+tongue drum and hand bells now, and all 86 cues under it were re-prompted
+and re-taken across the six games; Firefly's shot, pop, dive and beam take
+the new `NIGHT` foley. Every note above that says "`ARCADE` jingles" or
+"soft 8-bit synth" describes the sets before that day. The `CARTOON` cues
+are the old takes. Lengths and levels are unchanged, so no screen was
+touched; none judged by ear. `docs/art/sound-direction.md`, "No synth".
+
+**Peapod's and Lucky Thirteen's sounds were hated on 2026-10-05** ("i
+really really hate peapod and lucky 13 sounds so much, it's annoying"), and
+both sets were redone whole, the screens with them, under the rule the user
+gave on the second go: **what repeats a lot is a click, never a bell or a
+ring, and a constant action keeps a faint click rather than silence.**
+Peapod: every shot is a 50 ms click at -24 dBFS, the peas landing are heard
+once in `HIT_GAP` **and pitched by the number left on what they hit**
+(`_hit_pitch`, off the `hp` the sim's `hit` event now carries: a damped
+wooden tock on the note of the crate's paint, `HIT_NOTES` by
+`Art.tier_of`, a major pentatonic, the user's ask and Peggle's trick), `pop` climbs to 1.25
+and no further, and the crates are `PEAPATCH` foley. Lucky Thirteen: `select` is its first take, a pebble
+click, 5% higher a pebble up to 1.5 (`_chain_pitch`; a kalimba up the
+pentatonic was tried and turned down), `merge` is a clack with no chime,
+`land` is heard once in `LAND_GAP`, the end card counts on `unselect`, and
+the pebbles are `RIVERBED` foley. Firefly's `shoot` and `pop` and Posy's
+`collect` are dry clicks for the same reason. The haptics follow the cues
+as before; fewer landings are felt because fewer are heard.
+`tests/_probe_arcade_buzz.gd` ran both games to their end cards; its
+365,000 "Drawing is only allowed" lines on thirteen are there without this
+change too. `docs/art/sound-direction.md`, the last section.

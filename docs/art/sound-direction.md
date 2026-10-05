@@ -212,3 +212,115 @@ Also new: `combo`, `confetti`, `cool`, `puff`, `snail`, `heart_lost`,
 `out_of_hearts`, `heart_back`, `stamp`, `party` and `lanterns` (the sky
 lanterns rising). All 21 came from the fallback key; none judged by ear.
 Spec: `docs/superpowers/specs/2026-09-30-lightup-polish-design.md`.
+
+## No synth (2026-10-05)
+
+The user, after an audit of where every file comes from: **"we need cozy
+sounds, to avoid synth (not usually cozy)"**, Drumbeat set aside for now.
+Two things in the game were synth, and both went:
+
+- **The Arcade tab's `ARCADE` style asked ElevenLabs for a "soft warm 8-bit
+  chiptune synth"** -- all 22 of Firefly's cues and the jingles of the other
+  five (86 files). The constant keeps its name and now reads like the
+  polished boards' `*_TUNE` strings (a real kalimba, music box, tongue drum
+  and hand bells, "no synth, no electronic tones, no beeps"), and every
+  prompt under it was rewritten: a retro jingle is a tune on a kalimba and a
+  music box, a blip is a note, a low "bonk" blip is one damped tongue-drum
+  note, a horn is two music box notes. Firefly's four sounds that are not
+  notes (`shoot`, `pop`, `dive`, the looped `beam`) take a new foley style,
+  `NIGHT`: a puff and a glass tink, a paper fan's swoop, a singing glass rim
+  under tiny bells where the tractor beam hummed. Seconds and peaks are the
+  old ones, so nothing in the screens moved.
+- **Marigold's `music.ogg` was summed sines** (`tools/gen_marigold_music.py`).
+  It is still sequenced, because the tune has to be exact, but from three
+  recorded notes; see `docs/agents/boards/marigold.md`.
+
+Swept up with them: the four house-set `undo` cues still prompted as
+"rewinding a tiny tape" (Binairo, Code Break, Balance, Untangle -- the sound
+every polish since Shikaku's has thrown out) are a felt brush and a kalimba
+note gliding down, and Peapod's `rot` lost its "blip".
+
+Left alone: the `CARTOON` cues (mallets, blocks, pebbles, crates -- comic,
+but things, not synth; Peapod's and Lucky Thirteen's went the same morning,
+next section) and **Drumbeat's songs, leads, drums and calibration
+clicks, which are still synthesised** by `tools/gen_drumbeat.py`.
+
+One take each on the main key (592 credits), none judged by ear; two came
+back near-empty and were taken again (Untangle's `undo`, 0.21 s at -42 dB
+RMS, and Binairo's, -36). Marigold's tune was measured instead of heard:
+its 62 melody notes sit a median 3 cents off the score.
+
+## Peapod and Lucky Thirteen, hated (2026-10-05)
+
+Minutes after the pass above the user: **"i really really hate peapod and
+lucky 13 sounds so much, it's annoying"**. Both sets were redone whole, in
+two goes, and the second go is the rule to keep:
+
+> "it's important to avoid bell or ring sounds for something that repeat a
+> lot, so use something more like a 'click', previous selection sound were
+> in the right direction. Also, on peapod, we need a really subtle click
+> sound for every shoot"
+
+**A sound that repeats a lot is a click: short, dry, no note, no ring.**
+Kalimba, music box and bells are for what happens now and then (a reward,
+a wave, a win). And a constant action still wants its sound -- a faint
+click, not silence. The first go got both wrong: it made Lucky Thirteen's
+`select` a kalimba note climbing the pentatonic, and took Peapod's `shot`
+away altogether.
+
+Where the two games stand:
+
+- **Peapod.** `shot` is one click cut to its first 50 ms at -24 dBFS, the
+  quietest file in the game, on every volley (it had been an airy
+  half-second "pft" centred at 5.5 kHz, five to ten a second). `hit` and
+  `clank`, the peas landing, are heard at most once in `HIT_GAP` (0.07 s:
+  a volley's peas as one, every volley of the quickest gun; `CUE_GAP`
+  alone let sixteen a second through). **A hit sounds by the number left
+  on the crate** (the user's third note that morning: "add a subtle sound
+  as the block on peapod is hitted based on the number on it"): 1.4x on
+  its last pea, 0.12 lower each time the number trebles, no lower than
+  0.7 (`_hit_pitch`), so a big crate is a dull knock that rises as it is
+  worn down. The sim's `hit` event carries `hp` for it.
+  Levels by the user's ear, heard in play: "the block break is too loud,
+  and the block shoot hit is too low" at `pop` -8 and `hit` -18; they are
+  -14 and -10 now (`pop_gold` -9, `clank` -11), the same takes.
+  **Then "more cozy, to make user feel good when hitting multiple
+  different sizing blocks. Check on web how they do it."** What the web
+  says, and what was taken from it: Peggle plays every peg hit as the next
+  note of a scale in key with its music, so a run of hits is a phrase
+  (Audiokinetic's write-up of Peggle Blast); a pentatonic scale is the
+  usual choice because any of its notes sit together in any order;
+  Unpacking recorded real materials and kept its pick-ups "tight so it
+  felt responsive and tactile"; Dorfromantik gives the one thing the
+  player does most a soft pop and lets nothing else disturb it; every
+  guide on repeated sounds says small random pitch and level so no two
+  are the same. So `hit` is a damped wooden tock (a felt mallet on a
+  block: a note's worth of pitch, no ring, 40 ms of body), **each of the
+  eight paints has its note** (`HIT_NOTES` by `Art.tier_of`, down the
+  major pentatonic as the number trebles: 9, 7, 4, 2, 0, -3, -5, -8
+  semitones), with 1.2% of pitch and 2 dB of level at random. A crate
+  steps up a note as it is worn down a colour, and a wall of mixed
+  crates plays a handful of notes that agree. The take landed 60 ms
+  behind a breath of room noise, hence `tools/gen_sfx.py`'s `"tight"`
+  flag. The tap the user had said "I like it" to is kept at
+  `build/sfx_raw/peapod/hit_liked_0859.mp3` (ignored by git).
+  `pop` climbs 1.25% a kill to 1.25x, where it went 2.5% to 1.5x and
+  stayed. The other `CARTOON` cues are `PEAPATCH` foley: no boing, slide
+  whistle, 'blegh' or firecracker bang.
+- **Lucky Thirteen.** `select` is the first take of all again (a 0.07 s
+  pebble click), 5% higher a pebble up to 1.5x where it went 7% to 1.9x.
+  `merge`, every move's, is three pebbles clacking with no chime. `land`
+  is heard once in `LAND_GAP` (0.09 s), `merge` climbs 0.9 to 1.3 where it
+  reached 1.6, the end card counts on `unselect`. The rest is `RIVERBED`
+  foley.
+- **The same rule, applied to that morning's own takes**: Firefly's
+  `shoot` (several a second) and `pop` had been given a glass tink and
+  Posy's `collect` a music box note; all three are dry clicks now, cut to
+  60-150 ms.
+
+**Low is not cozy on a phone.** Takes prompted "low and muffled" came back
+as 80 Hz thumps: measured above 400 Hz, where a phone's speaker starts,
+Peapod's `knock` sat at -58 dB. Ask for wood (a knuckle on a crate), not a
+thump, and check a new set with a high-pass in mind, not only its peak.
+
+None of it heard by anyone but for the user's verdict on the first go.
