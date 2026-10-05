@@ -81,13 +81,16 @@ const MAX_RATE := 8
 const CRIT_STEP := 0.1
 const CRIT_MAX := 5
 const CRIT_MULT := 3
-## Energy: what a crate pays (a golden one GOLD_WORTH times), and what a
-## level of the Energy card adds to it.
-const ENERGY_CRATE := 10
+## Energy is counted in orbs, ORBS of them to one energy: a crate drops an
+## orb for every quarter of what it is worth, so one worth 1.5 drops six.
+## A crate is worth ENERGY_CRATE (a golden one GOLD_WORTH times), and a
+## level of the Energy card adds ENERGY_STEP of that.
+const ORBS := 4
+const ENERGY_CRATE := 1.0
 const ENERGY_STEP := 0.1
-## A card's price on wave 1 with none bought, and how much of that each one
-## bought adds.
-const PRICE := [110, 90, 90, 120]
+## A card's price in energy on wave 1 with none bought, and how much of that
+## each one bought adds.
+const PRICE := [11, 9, 9, 12]
 const PRICE_STEP := [0.3, 0.3, 0.3, 0.4]
 ## The beat between the shop closing and the next wave.
 const SHOP_GAP := 0.5
@@ -161,9 +164,11 @@ var rate_lv := 0
 var crit_lv := 0
 var energy_lv := 0
 var bought := [0, 0, 0, 0]
-## Energy held, and all the run has made.
+## Energy held and all the run has made, both in orbs (`ORBS` to one
+## energy), and the part of an orb the crates so far have left over.
 var energy := 0
 var earned := 0
+var _orb_part := 0.0
 ## The pod held (0: none, else a pod's Kind) and its seconds left; the
 ## frost's.
 var pod := 0
@@ -240,11 +245,12 @@ static func wave_crates(w: int) -> float:
 
 # --- the shop ---
 
-## What `card` costs now: more for each one bought, and as much more as the
-## walls have grown, so a wave's energy buys the same on any wave.
+## What `card` costs now, in orbs (a whole number of energy): more for each
+## one bought, and as much more as the walls have grown, so a wave's energy
+## buys the same on any wave.
 func price(card: int) -> int:
 	var p: float = PRICE[card] * (1.0 + PRICE_STEP[card] * int(bought[card])) * wave_crates(wave) / wave_crates(1)
-	return int(roundf(p / 5.0)) * 5
+	return maxi(1, roundi(p)) * ORBS
 
 ## A card at its most is not sold.
 func maxed(card: int) -> bool:
@@ -698,7 +704,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false) ->
 func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	var kind: int = cell.kind
 	var worth: int = int(cell.max)
-	var pay := float(ENERGY_CRATE)
+	var pay := ENERGY_CRATE
 	if kind == Kind.GOLD:
 		worth *= GOLD_WORTH
 		pay *= GOLD_WORTH
@@ -706,7 +712,10 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 		# a millipede is fewer plates than a wall is crates: its head makes
 		# the wave up to a wall's worth
 		pay *= maxf(1.0, wave_crates(wave) - milli_n)
-	var got := roundi(pay * (1.0 + ENERGY_STEP * energy_lv))
+	# in orbs; what is short of one is kept for the next crate
+	_orb_part += pay * (1.0 + ENERGY_STEP * energy_lv) * ORBS
+	var got := int(_orb_part)
+	_orb_part -= got
 	energy += got
 	earned += got
 	score += worth

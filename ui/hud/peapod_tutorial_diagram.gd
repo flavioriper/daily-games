@@ -146,6 +146,7 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_sparks.clear()
 		_pops.clear()
 		_nums.clear()
+		_orbs.clear()
 		_crumbs.clear()
 		_bolts.clear()
 		_ghosts.clear()

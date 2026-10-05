@@ -51,7 +51,11 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 	Sim.Kind.SHOVE: Color("5fbf8a")}
 ## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
 ## the crit and the energy.
-const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("b6d957")]
+const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f")]
+## An energy orb: its glow and body, and its bright heart.
+const ORB := Color("3fc8ff")
+const ORB_HI := Color("e6fbff")
+const ORB_DEEP := Color("1f8fd0")
 const BOLT := Color("ffe37a")
 const EMBER := Color("f28c4f")
 const IRON := Color("b7c0cc")
@@ -328,12 +332,13 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 			b.disc(c, s * 0.15, PAPER)
 			_twinkle(b, c + Vector2(s * 0.3, -s * 0.3), s * 0.24, Color("fff1a8"))
 		Sim.Card.ENERGY:
-			# a little sun: energy is what the garden grows on
-			for k in 8:
-				var d := Vector2.from_angle(TAU * k / 8.0)
-				b.stroke(PackedVector2Array([c + d * s * 0.36, c + d * s * 0.5]), s * 0.1, PAPER)
-			b.disc(c + Vector2(0, s * 0.03), s * 0.26, Color(INK, 0.2))
-			b.disc(c, s * 0.26, Color("fff1a8"))
+			# an energy orb, as a crate drops them, and a glint off it
+			b.disc(c, s * 0.46, Color(ORB, 0.3))
+			b.disc(c, s * 0.34, ORB_DEEP)
+			b.disc(c, s * 0.29, ORB)
+			b.disc(c, s * 0.18, ORB_HI)
+			b.disc(c + Vector2(-s * 0.1, -s * 0.12), s * 0.08, Color(1, 1, 1, 0.9))
+			_twinkle(b, c + Vector2(s * 0.32, -s * 0.32), s * 0.2, Color(1, 1, 1, 0.9))
 
 ## A shop card's medallion of radius `r`, ringed in paper.
 static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float) -> void:
@@ -366,6 +371,28 @@ static func fire(u: float) -> ArrayMesh:
 	_flame(b, Vector2(0, 1.0 * u), 17.0 * u, Color(INK, 0.16), Color(INK, 0.0))
 	_flame(b, Vector2.ZERO, 16.0 * u, EMBER, BOLT)
 	return _keep(key, b.mesh())
+
+## An energy orb, centred, its glow ORB_R in radius (built that big so its
+## discs are round, and scaled down by its draw): a wide soft glow, the orb
+## and its bright heart, with a comet's tail back along -x (its draw turns
+## it the way it flies and stretches it by how fast).
+const ORB_R := 64.0
+static func orb() -> ArrayMesh:
+	if _cache.has("orb"):
+		return _cache["orb"]
+	var b := Face.Builder.new()
+	var r := ORB_R
+	var i0 := b.vertex(Vector2(0, -0.36 * r), Color(ORB, 0.55))
+	var i1 := b.vertex(Vector2(0, 0.36 * r), Color(ORB, 0.55))
+	var i2 := b.vertex(Vector2(-1.6 * r, 0), Color(ORB, 0.0))
+	b.tri(i0, i1, i2)
+	b.disc(Vector2.ZERO, r, Color(ORB, 0.14))
+	b.disc(Vector2.ZERO, 0.72 * r, Color(ORB, 0.26))
+	b.disc(Vector2.ZERO, 0.5 * r, ORB_DEEP)
+	b.disc(Vector2.ZERO, 0.43 * r, ORB)
+	b.disc(Vector2(-0.07, -0.08) * r, 0.2 * r, ORB_HI)
+	b.disc(Vector2(-0.14, -0.16) * r, 0.09 * r, Color.WHITE)
+	return _keep("orb", b.mesh())
 
 ## A spent pea, centred, with no wake: what tumbles off a crate it landed on.
 static func crumb(u: float) -> ArrayMesh:

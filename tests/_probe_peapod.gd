@@ -110,12 +110,12 @@ func _initialize() -> void:
 			for ev: Dictionary in sim.events:
 				tally[ev.type] = int(tally.get(ev.type, 0)) + 1
 				if ev.type == "wave":
-					log += " %d@%ds(d%d r%d c%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, sim.energy]
+					log += " %d@%ds(d%d r%d c%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, sim.energy / Sim.ORBS]
 			sim.events.clear()
 		waves.append(sim.wave)
 		print("seed %d skill %d shopper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d energy %d  dps %.0f  kills %d  gifts %d  earned %d  held %d  shots %d" % [
 			seed_v + g, skill, shopper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, _dps(sim),
-			sim.kills, sim.caught, sim.earned, sim.energy, most])
+			sim.kills, sim.caught, sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
 		if g == 0:
 			print(log)
 			print(tally)

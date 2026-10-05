@@ -140,6 +140,11 @@ func _process(delta: float) -> bool:
 				_step = 3
 		3:
 			_bot(delta)
+			# the energy orbs, some just out of a crate and some on their way in
+			if not has_meta("orbs") and _s._orbs.size() >= 7 and _t > 5.0:
+				set_meta("orbs", true)
+				_shot("3a_orbs")
+				print("orbs in the air=%d, the plate shows %s of %d" % [_s._orbs.size(), _s._energy_l.text, _s.sim.energy / Sim.ORBS])
 			if _t > 12.0:
 				_shot("3_play")
 				# a wave about to be cleared, well off the line, and the best
@@ -162,7 +167,7 @@ func _process(delta: float) -> bool:
 				_shot("3b_clear")
 				print("stars=%d blooms=%d crowned=%s" % [int(_s._clear.stars), _s._blooms.size(), _s._crown_at >= 0.0])
 				# energy for two of the shop's cards and not the rest
-				_s.sim.energy = 230
+				_s.sim.energy = 23 * Sim.ORBS
 				_at = _t
 				_step = 31
 			elif _t > _at + 8.0:
@@ -174,8 +179,8 @@ func _process(delta: float) -> bool:
 				var sim = _s.sim
 				var before: int = sim.energy
 				_s._buy(Sim.Card.DAMAGE)
-				print("shop: damage bought=%s energy %d -> %d, next costs %d, speed can be bought=%s" % [sim.power == 2, before, sim.energy,
-					sim.price(Sim.Card.DAMAGE), sim.can_buy(Sim.Card.SPEED)])
+				print("shop: damage bought=%s energy %d -> %d, next costs %d, speed can be bought=%s" % [sim.power == 2, before / Sim.ORBS, sim.energy / Sim.ORBS,
+					sim.price(Sim.Card.DAMAGE) / Sim.ORBS, sim.can_buy(Sim.Card.SPEED)])
 				_at = _t
 				_step = 32
 			elif _t > _at + 6.0:

@@ -125,6 +125,16 @@ const MAX_CRUMBS := 20
 const CRUMB_T := 0.42
 const BOLT_T := 0.14
 const MAX_BOLTS := 6
+## The energy orbs a crate drops: thrown out of it and slowing for ORB_OUT
+## (and as long again at most), then drawn in to the energy plate, slowly
+## and then quick, round a bend of their own, one after another. So many at
+## once at most (what is over is counted at once), and so many a crate (a
+## millipede's head is worth a hundred: its orbs are fewer and fatter).
+const MAX_ORBS := 150
+const ORBS_A_CRATE := 28
+const ORB_OUT := 0.26
+const ORB_IN := 0.5
+const ORB_GAP := 0.028
 const SHOP_NAMES := ["PP_CARD_DAMAGE", "PP_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD_ENERGY"]
 const MAX_POPS := 12
 const MAX_SPARKS := 40
@@ -155,6 +165,18 @@ var _best_l: Label
 var _wave_l: Label
 var _energy_l: Label
 var _shown_energy := -1
+## The orbs on their way to the energy plate, drawn over the whole screen:
+## {pos, vel, t, out, from, bend, val, size}. `_orb_due` is what they carry
+## that the plate does not show yet, `_orb_note` the run of notes they land
+## on and `_orb_heard` when the last one was heard.
+var _orbs: Array = []
+var _orb_layer: Control
+var _orb_mm: MultiMesh
+var _orb_buf := PackedFloat32Array()
+var _orb_due := 0.0
+var _orb_note := 0
+var _orb_heard := -10.0
+var _orb_pulse := -10.0
 var _sub: Label
 var _sub_pill: PanelContainer
 var _banner_tw: Tween
@@ -425,6 +447,12 @@ func _build() -> void:
 	_sub.add_theme_color_override("font_color", Art.INK)
 	_sub_pill.add_child(_sub)
 	_sub_pill.modulate.a = 0.0
+	_orb_layer = Control.new()
+	_orb_layer.name = "Orbs"
+	_orb_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_orb_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_orb_layer.draw.connect(_draw_orbs)
+	add_child(_orb_layer)
 	_rw = Rewards.new()
 	_rw.sticker_cols = STICKER_COLS
 	add_child(_rw)
@@ -545,6 +573,8 @@ func _new_game() -> void:
 	_nums.clear()
 	_crumbs.clear()
 	_bolts.clear()
+	_orbs.clear()
+	_orb_due = 0.0
 	_shown_energy = -1
 	if _shop != null:
 		_shop.queue_free()
@@ -627,6 +657,8 @@ func _knock_now() -> void:
 func _redraw_all() -> void:
 	field.queue_redraw()
 	_over.queue_redraw()
+	if _orb_layer != null:
+		_orb_layer.queue_redraw()
 
 func _animate(delta: float) -> void:
 	for sp: Dictionary in _sparks:
@@ -649,6 +681,7 @@ func _animate(delta: float) -> void:
 		for bo: Dictionary in _bolts:
 			bo.t += delta
 		_bolts = _bolts.filter(func(bo: Dictionary) -> bool: return bo.t < BOLT_T)
+	_step_orbs(delta)
 	if _hit_at.size() > 240:
 		_hit_at.clear()
 	# the wheels turn as far as the cart rolled, and it leans into the roll
@@ -975,9 +1008,7 @@ func _on_kill(ev: Dictionary) -> void:
 		_pops.pop_front()
 	_pops.append({"pos": pos, "text": "+" + Art.short(int(ev.points)), "t": 0.0, "col": Color("fff1c2") if gold or head else Color("fffaf0"),
 		"rim": Art.GOLD_INK if gold else Art.deepen(col).darkened(0.3), "big": gold or head, "drift": randf_range(-1.0, 1.0)})
-	# its energy, home to the plate
-	var motes := 1 if int(ev.energy) < Sim.ENERGY_CRATE * 3 else 5
-	_rw.spray(at, Art.CARD[Sim.Card.ENERGY], motes, 520.0, "mote", 0.9, 0.0, _plate_at(_energy_l))
+	_drop_orbs(pos, int(ev.energy))
 	var streak: int = ev.streak
 	if head:
 		_fx.cue("head")
@@ -1136,9 +1167,11 @@ func _refresh_hud(delta := 0.0) -> void:
 	var wave := str(maxi(1, sim.wave))
 	if _wave_l.text != wave:
 		_wave_l.text = wave
-	if sim.energy != _shown_energy:
-		_shown_energy = sim.energy
-		_energy_l.text = Record.grouped(sim.energy)
+	# the plate counts what has landed on it, not what is still in the air
+	var held := int((sim.energy - _orb_due) / Sim.ORBS + 0.001)
+	if held != _shown_energy:
+		_shown_energy = held
+		_energy_l.text = Record.grouped(held)
 
 # --- drawing ---
 
@@ -1928,6 +1961,132 @@ func _draw_nums(font: Font) -> void:
 		var a := 1.0 - clampf((float(n.t) - NUM_T * 0.6) / (NUM_T * 0.4), 0.0, 1.0)
 		_over.draw_string(font, at[i], n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(NUM_COLS[int(n.look)], a))
 
+# --- the energy orbs ---
+
+## A point of the garden, in field units, in the orbs' layer.
+func _in_orbs(p: Vector2) -> Vector2:
+	return _orb_layer.get_global_transform().affine_inverse() * (field.get_global_transform() * (px(p) + _shake_off))
+
+## A crate worth `n` orbs is gone at `at`: they burst out of it, every way
+## and a little up, each to hang a moment before it is drawn in.
+func _drop_orbs(at: Vector2, n: int) -> void:
+	if n <= 0 or _orb_layer == null:
+		return
+	if Motion.reduce:
+		_orb_pulse = _clock
+		return
+	var shown := mini(mini(n, ORBS_A_CRATE), MAX_ORBS - _orbs.size())
+	if shown <= 0:
+		return
+	var from := _in_orbs(at)
+	var each := float(n) / shown
+	var fat := sqrt(each)
+	for i in shown:
+		var way := Vector2.from_angle(randf() * TAU)
+		var speed := randf_range(150.0, 520.0) * _u / 2.4 * (1.0 + 0.012 * shown)
+		_orbs.append({"pos": from + way * 6.0 * _u, "vel": way * speed + Vector2(0, -150.0 * _u / 2.4), "t": -ORB_GAP * 0.4 * i,
+			"out": ORB_OUT * randf_range(1.0, 1.6) + ORB_GAP * i, "from": from, "bend": randf_range(-1.0, 1.0), "val": each,
+			"size": randf_range(0.82, 1.15) * fat, "turn": way.angle(), "long": 0.0})
+	_orb_due += n
+
+## Each orb: thrown out and slowing, bobbing where it stops, then round its
+## bend to the plate, slow and then quick. One that lands is counted, heard
+## as the next note up a short run, and felt on the plate.
+func _step_orbs(delta: float) -> void:
+	if _orbs.is_empty():
+		_orb_due = 0.0
+		return
+	var to := _orb_layer.get_global_transform().affine_inverse() * (_energy_l.get_global_transform() * (_energy_l.size * 0.5))
+	var landed := 0
+	for o: Dictionary in _orbs:
+		o.t += delta
+		var t: float = o.t
+		if t < 0.0:
+			continue
+		var was: Vector2 = o.pos
+		if t < float(o.out):
+			var v: Vector2 = o.vel
+			v *= exp(-7.0 * delta)
+			v.y += 520.0 * _u / 2.4 * delta
+			o.vel = v
+			o.pos = was + v * delta
+			o.from = o.pos
+		else:
+			var k := clampf((t - float(o.out)) / ORB_IN, 0.0, 1.0)
+			var e := k * k * k
+			var from: Vector2 = o.from
+			var side := (to - from).orthogonal() * 0.28 * float(o.bend)
+			var mid := from.lerp(to, 0.4) + side
+			o.pos = from.lerp(mid, e).lerp(mid.lerp(to, e), e)
+			if k >= 1.0:
+				o.t = INF
+				landed += 1
+				_orb_due -= float(o.val)
+		var step: Vector2 = o.pos - was
+		if step.length_squared() > 0.01:
+			o.turn = step.angle()
+		o.long = step.length() / maxf(delta, 0.001)
+	if landed > 0:
+		_orbs = _orbs.filter(func(o: Dictionary) -> bool: return o.t != INF)
+		_orb_pulse = _clock
+		if _clock - _orb_heard >= 0.045:
+			# a run of notes up the scale while they keep landing
+			_orb_note = _orb_note + 1 if _clock - _orb_heard < 0.3 else 0
+			_orb_heard = _clock
+			_quiet.cue("hit", 1.5 * pow(2.0, mini(_orb_note, 14) / 12.0), -13.0)
+		if _energy_l.scale.x <= 1.01:
+			_energy_l.pivot_offset = _energy_l.size * 0.5
+			Motion.bump(_energy_l, 0.16, 0.16)
+
+## Nothing is left in the air: the shop counts what there is.
+func _land_orbs() -> void:
+	_orbs.clear()
+	_orb_due = 0.0
+
+func _draw_orbs() -> void:
+	if _orbs.is_empty():
+		return
+	if _orb_mm == null:
+		_orb_mm = MultiMesh.new()
+		_orb_mm.transform_format = MultiMesh.TRANSFORM_2D
+		_orb_mm.use_colors = true
+		_orb_mm.mesh = Art.orb()
+		_orb_mm.instance_count = MAX_ORBS
+		_orb_buf.resize(MAX_ORBS * 12)
+	var n := 0
+	var base := 9.0 * _u / Art.ORB_R
+	for o: Dictionary in _orbs:
+		var t: float = o.t
+		if t < 0.0 or n >= MAX_ORBS:
+			continue
+		# it pops out of the crate, throbs as it hangs, and is pulled long
+		# and thin by its speed
+		var pop := Motion.back_out(minf(1.0, t / 0.12))
+		var throb := 1.0 + 0.1 * sin(_clock * 13.0 + float(o.bend) * 9.0)
+		var long := clampf(float(o.long) / (900.0 * _u / 2.4), 0.0, 1.0)
+		var s: float = base * float(o.size) * pop * throb
+		var sx := s * (1.0 + 0.9 * long)
+		var sy := s * (1.0 - 0.3 * long)
+		var a: float = o.turn
+		var at: Vector2 = o.pos
+		var i := n * 12
+		_orb_buf[i] = cos(a) * sx
+		_orb_buf[i + 1] = -sin(a) * sy
+		_orb_buf[i + 3] = at.x
+		_orb_buf[i + 4] = sin(a) * sx
+		_orb_buf[i + 5] = cos(a) * sy
+		_orb_buf[i + 7] = at.y
+		_orb_buf[i + 8] = 1.0
+		_orb_buf[i + 9] = 1.0
+		_orb_buf[i + 10] = 1.0
+		_orb_buf[i + 11] = 1.0
+		n += 1
+	if n == 0:
+		return
+	_orb_mm.visible_instance_count = n
+	_orb_mm.buffer = _orb_buf
+	_orb_layer.draw_multimesh(_orb_mm, null)
+
 # --- the shop ---
 
 ## A wave is cleared and there is energy for something: the shop's card over
@@ -1938,6 +2097,7 @@ func _open_shop() -> void:
 	_touch = -1
 	_mouse = false
 	sim.target_x = NAN
+	_land_orbs()
 	_shop = _build_shop()
 	add_child(_shop)
 	_refresh_shop()
@@ -1972,7 +2132,7 @@ func _build_shop() -> Control:
 	var held := HBoxContainer.new()
 	held.add_theme_constant_override("separation", 10)
 	pill.add_child(held)
-	held.add_child(_card_icon(Sim.Card.ENERGY, 52.0))
+	held.add_child(_orb_icon(46.0))
 	_shop_energy = Label.new()
 	_shop_energy.theme_type_variation = "SheetTitle"
 	held.add_child(_shop_energy)
@@ -2001,6 +2161,17 @@ func _card_icon(card: int, side: float) -> Control:
 		icon.draw_mesh(Art.card_token(card, side / 27.0), null, Transform2D(0.0, icon.size * 0.5)))
 	return icon
 
+## An energy orb, `side` pixels square: what a price is counted in.
+func _orb_icon(side: float) -> Control:
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		var sc := side * 0.62 / Art.ORB_R
+		icon.draw_mesh(Art.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
+	return icon
+
 ## One card of the shop: the whole row is the button. Its medallion, its
 ## name over what it is now and what one more makes it, and its price.
 func _shop_row(card: int) -> Button:
@@ -2013,7 +2184,7 @@ func _shop_row(card: int) -> Button:
 	b.add_theme_stylebox_override("pressed", Dialog.tile(Pal.SURFACE.darkened(0.06), 16))
 	b.add_theme_stylebox_override("disabled", Dialog.tile(Color(Pal.SURFACE, 0.5), 16))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
 	row.anchor_right = 1.0
@@ -2038,11 +2209,11 @@ func _shop_row(card: int) -> Button:
 	value.clip_text = true
 	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	words.add_child(value)
-	row.add_child(_card_icon(Sim.Card.ENERGY, 40.0))
+	row.add_child(_orb_icon(34.0))
 	var cost := Label.new()
 	cost.theme_type_variation = "SheetTitle"
 	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	cost.custom_minimum_size.x = 96
+	cost.custom_minimum_size.x = 62
 	row.add_child(cost)
 	b.pressed.connect(_buy.bind(card))
 	_shop_rows.append({"card": card, "button": b, "value": value, "price": cost, "row": row})
@@ -2062,12 +2233,12 @@ func _card_value(card: int) -> String:
 	return tr("PP_CARD_ENERGY_LINE") % [roundi(sim.energy_lv * Sim.ENERGY_STEP * 100.0), roundi((sim.energy_lv + 1) * Sim.ENERGY_STEP * 100.0)]
 
 func _refresh_shop() -> void:
-	_shop_energy.text = Record.grouped(sim.energy)
+	_shop_energy.text = Record.grouped(int(sim.energy / Sim.ORBS))
 	for r: Dictionary in _shop_rows:
 		var card: int = r.card
 		var open: bool = sim.can_buy(card)
 		(r.value as Label).text = _card_value(card)
-		(r.price as Label).text = "" if sim.maxed(card) else Record.grouped(sim.price(card))
+		(r.price as Label).text = "" if sim.maxed(card) else Record.grouped(int(sim.price(card) / Sim.ORBS))
 		(r.button as Button).disabled = not open
 		(r.row as Control).modulate.a = 1.0 if open else 0.45
 
@@ -2126,7 +2297,7 @@ func _game_over() -> void:
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.wave,
 		"seconds": secs, "kills": sim.kills, "caught": sim.caught, "fired": sim.fired,
-		"rate": sim.rate_lv, "power": sim.power, "crit": sim.crit_lv, "energy": sim.earned, "best": better})
+		"rate": sim.rate_lv, "power": sim.power, "crit": sim.crit_lv, "energy": int(sim.earned / Sim.ORBS), "best": better})
 	Ads.note_finished()
 	_show_banner(tr("FF_GAME_OVER"), "", 1.2)
 	top_bar.refresh(self)
