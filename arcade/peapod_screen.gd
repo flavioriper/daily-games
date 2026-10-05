@@ -1522,7 +1522,7 @@ func _draw_over() -> void:
 		_cast_add(Art.card_token(GUN[k], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _gun_chip(k)), Color.WHITE)
 	for k in timed.size():
 		var blink: bool = float(timed[k][1]) < 0.2 and fmod(_clock, 0.3) < 0.12 and not Motion.reduce
-		var sc := 0.6 * _bump(timed[k][0])
+		var sc := 0.56 * _bump(timed[k][0])
 		_cast_add(Art.token(timed[k][0], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _timed_at(k)), Color(1, 1, 1, 0.45 if blink else 1.0))
 	_draw_slot_tokens()
 	_draw_blooms()
@@ -1970,18 +1970,18 @@ func _timed() -> Array:
 	return out
 
 func _timed_at(k: int) -> Vector2:
-	return px(Vector2(Sim.W - 79.0 - 22.0 * k, Sim.H - 13.0))
+	return px(Vector2(Sim.W - 77.5 - 20.5 * k, Sim.H - 13.0))
 
 ## Under each: a paper seat and a ring of its own colour that runs down
 ## with it.
 func _draw_timed_seats(b: Face.Builder, timed: Array) -> void:
 	for k in timed.size():
 		var c := _timed_at(k)
-		b.disc(c + Vector2(0, 1.8 * _u), 10.8 * _u, Color(0.2, 0.32, 0.1, 0.2))
-		b.disc(c, 10.8 * _u, Art.CREAM)
+		b.disc(c + Vector2(0, 1.8 * _u), 10.0 * _u, Color(0.2, 0.32, 0.1, 0.2))
+		b.disc(c, 10.0 * _u, Art.CREAM)
 		var part := clampf(float(timed[k][1]), 0.0, 1.0)
 		if part > 0.02:
-			b.stroke(Face.Builder.arc_points(c, 9.2 * _u, -PI * 0.5, -PI * 0.5 + TAU * part), 1.9 * _u, Art.deepen(Art.GIFT[int(timed[k][0])]))
+			b.stroke(Face.Builder.arc_points(c, 8.5 * _u, -PI * 0.5, -PI * 0.5 + TAU * part), 1.9 * _u, Art.deepen(Art.GIFT[int(timed[k][0])]))
 
 func _draw_gun_words(font: Font) -> void:
 	var values := ["x%s" % Art.short(sim.power), "x%d" % (sim.rate_lv + 1), "%d%%" % roundi(sim.crit() * 100.0)]
@@ -2081,7 +2081,7 @@ func _draw_flights() -> void:
 		# up and round from a crate; a short hop from a button to its ring
 		var bow := from.lerp(to, 0.35) + Vector2(0, (-48.0 if held else -22.0) * _u)
 		var at := from.lerp(bow, e).lerp(bow.lerp(to, e), e)
-		var sc := (lerpf(1.0, 0.9, e) if held else lerpf(0.9, 0.6, e)) * (1.0 + 0.25 * sin(e * PI))
+		var sc := (lerpf(1.0, 0.9, e) if held else lerpf(0.9, 0.56, e)) * (1.0 + 0.25 * sin(e * PI))
 		_cast_add(Art.token(f.kind, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, at), Color.WHITE)
 		if int(f.t * 60.0) % 3 == 0:
 			_spark((at - _origin) / _u, (Art.GIFT[int(f.kind)] as Color).lerp(Color("fffaf0"), 0.4))
