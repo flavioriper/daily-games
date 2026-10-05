@@ -232,6 +232,10 @@ var element_t := 0.0
 var frost_t := 0.0
 var _cool := 0.0
 var shots: Array = []
+## How much sky the screen shows over the field's top, in field units (a
+## phone is taller than the field): a pea flies on to the top of it, and
+## lands on whatever of a wall it meets up there.
+var sky := 0.0
 ## Seconds until the last thing lit has burnt out.
 var _burning := 0.0
 var _shopped := false
@@ -527,7 +531,7 @@ func _step_shots() -> void:
 	var live := phase == Phase.PLAY and gap_t <= 0.0
 	for p: Dictionary in shots:
 		p.y -= PEA_SPEED * DT
-		if p.y < -8.0:
+		if p.y < -sky - 8.0:
 			continue
 		if p.vx != 0.0:
 			p.x += float(p.vx) * DT
@@ -641,7 +645,7 @@ func _zap_wall(r: int, c: int, dmg: int) -> void:
 		var near := ZAP_REACH * ZAP_REACH
 		for rr in rows.size():
 			# nothing still up over the top of the sky is reached
-			if wall_y - (rr + 0.5) * CELL_H < 0.0:
+			if wall_y - (rr + 0.5) * CELL_H < -sky:
 				break
 			for cc in COLS:
 				if rows[rr][cc] == null or done.has(Vector2i(rr, cc)):

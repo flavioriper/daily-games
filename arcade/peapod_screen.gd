@@ -571,6 +571,8 @@ func _layout_field() -> void:
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
 	_fit(s)
+	if sim != null:
+		sim.sky = _sky()
 	_scene = _build_scene()
 	_land = _build_land()
 	_casts.clear()
@@ -607,6 +609,11 @@ static func _seven(v: Variant) -> Array:
 func px(p: Vector2) -> Vector2:
 	return _origin + p * _u
 
+## The sky over the field's top, in field units: the peas fly to the top of
+## it (the sim's `sky`), not to where the field ends in mid air.
+func _sky() -> float:
+	return maxf(0.0, _origin.y / _u)
+
 # --- the game ---
 
 func _new_game() -> void:
@@ -614,6 +621,7 @@ func _new_game() -> void:
 		_end.queue_free()
 		_end = null
 	sim = Sim.new()
+	sim.sky = _sky()
 	Boosters.apply(GAME, sim, _boosts)
 	_boosted = not _boosts.is_empty()
 	_chance_used = false

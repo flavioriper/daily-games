@@ -669,6 +669,18 @@ chalk line ends the run. Its "furthest" is the wave.
     heard, and `tests/_probe_arcade_buzz.gd -- peapod` was only brought up
     to the new names, not run.**
 
+  - **A pea flies to the top of the sky, not of the field** (the user, the
+    same day: "shoot must go to the end of screen at top, it's disappearing
+    midair"). The garden stands on its bottom edge and a phone is taller
+    than the field, so there is sky over y = 0, and more of it since the
+    rack made the garden smaller; a pea was dropped at y = -8, in the middle
+    of it. The screen tells the sim how much there is (`sim.sky`, `_sky()`),
+    and a pea lives to the top of that **and lands on whatever of a wall it
+    meets up there** (lightning reaches as high): a pea through a crate one
+    can see was the other choice and looked broken. So a taller phone
+    reaches a few rows further up through an empty column; the bots and the
+    tutorial run with `sky` 0, as before.
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim
