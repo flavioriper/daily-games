@@ -527,7 +527,7 @@ class PeapodBanner extends Control:
 		var ground := b.mesh()
 		_keep.append(ground)
 		draw_mesh(ground, null)
-		var crates := [[-2, 0, PeaSim.Kind.CRATE, 35], [-1, 0, PeaSim.Kind.PEA, 0], [0, 0, PeaSim.Kind.CRATE, 120], [1, 0, PeaSim.Kind.CRATE, 8],
+		var crates := [[-2, 0, PeaSim.Kind.CRATE, 35], [-1, 0, PeaSim.Kind.FAN, 0], [0, 0, PeaSim.Kind.CRATE, 120], [1, 0, PeaSim.Kind.CRATE, 8],
 			[2, 0, PeaSim.Kind.GOLD, 60], [-2, 1, PeaSim.Kind.CRATE, 3], [-1, 1, PeaSim.Kind.CRATE, 17], [2, 1, PeaSim.Kind.BOMB, 0]]
 		var font := PeaArt.font()
 		var top := 6.0 * u + (PeaSim.CELL_H - 3.0) * u * 0.5
@@ -542,4 +542,4 @@ class PeapodBanner extends Control:
 		draw_mesh(PeaArt.cart(u), null, Transform2D(0.0, foot))
 		for side in [-1.0, 1.0]:
 			draw_mesh(PeaArt.wheel(u), null, Transform2D(0.4, foot + Vector2(side * 13.0 * u, 0)))
-		draw_mesh(PeaArt.token(PeaSim.Kind.RATE, u), null, Transform2D(-0.15, Vector2(mid - 60.0 * u, turf - 30.0 * u)))
+		draw_mesh(PeaArt.token(PeaSim.Kind.FLAME, u), null, Transform2D(-0.15, Vector2(mid - 60.0 * u, turf - 30.0 * u)))

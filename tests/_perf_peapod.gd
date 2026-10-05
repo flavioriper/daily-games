@@ -1,7 +1,9 @@
 extends SceneTree
 
 ## Peapod under its heaviest loads, measured: a full wall and a long
-## millipede under a full gun, then the millipede's head shot off.
+## millipede under a full gun, then the millipede's head shot off, and the
+## wall again under the two pods that land the most numbers (lightning's
+## jumps, the flame's burns).
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_perf_peapod.gd -- [outdir]
 ##
@@ -10,7 +12,7 @@ extends SceneTree
 
 const Sim = preload("res://arcade/peapod_sim.gd")
 const PATH := "user://arcade.cfg"
-const LOADS := ["rest", "wall", "milli", "head"]
+const LOADS := ["rest", "wall", "milli", "head", "zap", "flame"]
 
 var _menu: Node
 var _s: Node
@@ -58,21 +60,24 @@ func _skip_gold() -> void:
 
 func _full_gun() -> void:
 	var sim = _s.sim
-	sim.peas = Sim.MAX_PEAS
 	sim.rate_lv = Sim.MAX_RATE
-	sim.twin_t = 1000.0
+	sim.crit_lv = Sim.CRIT_MAX
+	sim.power = 9
+	sim.pod = Sim.Kind.FAN
+	sim.pod_t = 1000.0
 
 func _lay(load_name: String) -> void:
 	var sim = _s.sim
 	sim.rows.clear()
 	sim.segs.clear()
-	sim.tokens.clear()
 	sim.gap_t = 0.0
 	_full_gun()
 	match load_name:
 		"rest":
 			sim.gap_t = 1000.0
-		"wall":
+		"wall", "zap", "flame":
+			if load_name != "wall":
+				sim.pod = Sim.Kind.ZAP if load_name == "zap" else Sim.Kind.FLAME
 			sim.wave = 19
 			sim._deal()
 			sim.wall_y = 330.0

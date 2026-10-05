@@ -6,9 +6,11 @@ extends SceneTree
 ##
 ## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 3b a wave
 ## cleared (printed: its stars, the flowers up, whether the pod is crowned
-## for the best passed), 3c a gift caught and flying to the grass, 4 the whole cast
-## in a wall (forced: every paint, every gift and pod, the firecracker, the
-## golden and iron crates, the helper, a pod held, gifts falling), 5 a real slide through the viewport
+## for the best passed), 3c the shop open on what the wave paid, 3d a card
+## bought, 3e a gift crate broken and its gift flying to the grass, 4 the
+## whole cast in a wall (forced: every paint, every gift and pod, the
+## firecracker, the golden and iron crates, lightning held, crates alight, a
+## crit's number), 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
 ## score to user://arcade.cfg, so the file this machine had is put back on
@@ -62,14 +64,14 @@ func _shot(name: String) -> void:
 	print("shot %s at %.1f draws=%d score=%d wave=%d" % [name, _t, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		_s.sim.score if _s != null and _s.sim != null else 0, _s.sim.wave if _s != null and _s.sim != null else 0])
 
-## Rolls under a falling gift, else under the lowest crate or the plate
-## furthest along.
+## Rolls under the lowest crate or the plate furthest along; a shop that
+## opens when no shot is wanted of it is shut.
 func _bot(delta: float) -> void:
 	var sim = _s.sim
+	if sim.phase == Sim.Phase.SHOP and _s._shop != null:
+		_s._close_shop()
 	var want: float = sim.x
-	if not sim.tokens.is_empty():
-		want = sim.tokens[0].x
-	elif sim.wave_kind == Sim.Wave.WALL:
+	if sim.wave_kind == Sim.Wave.WALL:
 		for r in sim.rows.size():
 			var found := false
 			for c in Sim.COLS:
@@ -85,7 +87,7 @@ func _bot(delta: float) -> void:
 	sim.target_x = _hand
 
 func _cell(kind: int, hp: int) -> Dictionary:
-	return {"kind": kind, "hp": hp, "max": hp, "id": 9000 + randi() % 9000}
+	return {"kind": kind, "hp": hp, "max": hp, "id": 9000 + randi() % 9000, "burn_t": 0.0, "burn_c": 0.0, "burn": 0}
 
 ## A fresh wallet holds boosters, so the boost card stands before every run
 ## and Second chance before every end card: play with none, and decline.
@@ -159,24 +161,51 @@ func _process(delta: float) -> bool:
 			if not _s._clear.is_empty() and _s._clock - float(_s._clear.at) > 1.05:
 				_shot("3b_clear")
 				print("stars=%d blooms=%d crowned=%s" % [int(_s._clear.stars), _s._blooms.size(), _s._crown_at >= 0.0])
-				# a gift dropped just over the cart
-				var sim = _s.sim
-				sim.tokens = [{"kind": Sim.Kind.RATE, "x": sim.x, "y": Sim.CART_Y - 40.0, "vy": 0.0, "id": 77}]
+				# energy for two of the shop's cards and not the rest
+				_s.sim.energy = 230
 				_at = _t
 				_step = 31
 			elif _t > _at + 8.0:
 				print("the wave was never cleared")
 				_step = 4
 		31:
-			if _reduce and _s.sim.tokens.is_empty():
-				# nothing flies when motion is reduced: the gift is on the grass at once
-				_shot("3c_flight")
+			if _s._shop != null and _t > _at + 1.2:
+				_shot("3c_shop")
+				var sim = _s.sim
+				var before: int = sim.energy
+				_s._buy(Sim.Card.DAMAGE)
+				print("shop: damage bought=%s energy %d -> %d, next costs %d, speed can be bought=%s" % [sim.power == 2, before, sim.energy,
+					sim.price(Sim.Card.DAMAGE), sim.can_buy(Sim.Card.SPEED)])
+				_at = _t
+				_step = 32
+			elif _t > _at + 6.0:
+				print("the shop never opened")
 				_step = 4
-			elif not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2:
-				_shot("3c_flight")
+		32:
+			if _t > _at + 0.4:
+				_shot("3d_bought")
+				_s._close_shop()
+				print("shop shut: phase is play=%s" % (_s.sim.phase == Sim.Phase.PLAY))
+				# a gift crate over the cart, a pea from breaking
+				var sim = _s.sim
+				sim.wave_kind = Sim.Wave.WALL
+				sim.gap_t = 0.0
+				sim._shopped = false
+				sim.rows = [[null, null, null, null, null]]
+				sim.rows[0][clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)] = _cell(Sim.Kind.FLAME, 1)
+				sim.wall_y = 250.0
+				sim.wall_speed = 0.0
+				_at = _t
+				_step = 33
+		33:
+			_s.sim.gap_t = 0.0 if _s.sim.pod == 0 else 1000.0
+			if _s.sim.pod == Sim.Kind.FLAME and (_reduce or (not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2)):
+				# nothing flies when motion is reduced: the gift is on the grass at once
+				_shot("3e_gift")
+				print("gift had as its crate broke: pod=%d caught=%d" % [_s.sim.pod, _s.sim.caught])
 				_step = 4
 			elif _t > _at + 3.0:
-				print("no gift flew")
+				print("no gift was had")
 				_step = 4
 		4:
 			# the cast, forced: a wall of every paint and every kind
@@ -191,35 +220,33 @@ func _process(delta: float) -> bool:
 				for c in Sim.COLS:
 					row.append(_cell(Sim.Kind.CRATE, hps[r][c]))
 				sim.rows.append(row)
-			sim.rows.append([_cell(Sim.Kind.PEA, 3), _cell(Sim.Kind.RATE, 3), _cell(Sim.Kind.POWER, 3), _cell(Sim.Kind.TWIN, 3), _cell(Sim.Kind.BOMB, 9)])
-			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.FROST, 4), _cell(Sim.Kind.GOLD, 4)])
-			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.MAGNET, 3), _cell(Sim.Kind.FROST, 3)])
-			sim.rows.append([_cell(Sim.Kind.SHOVE, 3), null, null, null, null])
+			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.BOMB, 9), _cell(Sim.Kind.GOLD, 4)])
+			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.ZAP, 3), _cell(Sim.Kind.FLAME, 3)])
+			sim.rows.append([_cell(Sim.Kind.FROST, 3), _cell(Sim.Kind.SHOVE, 3), null, null, null])
+			for c in [0, 3]:
+				sim.rows[1][c].burn_t = 30.0
+				sim.rows[1][c].burn_c = 0.3
+				sim.rows[1][c].burn = 3
+			sim._burning = 30.0
 			sim.wall_y = 290.0
 			sim.wall_speed = 0.0
-			sim.pod = Sim.Kind.PIERCE
+			sim.gap_t = 0.0
+			sim.pod = Sim.Kind.ZAP
 			sim.pod_t = 8.0
-			sim.magnet_t = 6.0
 			sim.frost_t = 4.0
-			sim.twin_t = 5.0
-			sim.twin_x = 80.0
-			sim.peas = 3
-			sim.power = 1
+			sim.power = 3
+			sim.rate_lv = 4
+			sim.crit_lv = Sim.CRIT_MAX
 			sim.shots.clear()
-			sim.tokens = [{"kind": Sim.Kind.PEA, "x": 40.0, "y": 300.0, "vy": 0.0, "id": 1}, {"kind": Sim.Kind.RATE, "x": 100.0, "y": 330.0, "vy": 0.0, "id": 2},
-				{"kind": Sim.Kind.SHOVE, "x": 200.0, "y": 310.0, "vy": 0.0, "id": 3}, {"kind": Sim.Kind.BURST, "x": 260.0, "y": 330.0, "vy": 0.0, "id": 4}]
 			sim.target_x = 150.0
 			_hand = 150.0
 			_at = _t
 			_step = 5
 		5:
-			for tk: Dictionary in _s.sim.tokens:
-				tk.vy = 0.0
-				tk.y = minf(float(tk.y), 340.0)
-			_s.sim.magnet_t = 6.0
 			_s.sim.frost_t = 4.0
-			if _t > _at + 0.25:
+			if _t > _at + 0.7:
 				_shot("4_cast")
+				print("cast: numbers=%d bolts=%d crumbs=%d" % [_s._nums.size(), _s._bolts.size(), _s._crumbs.size()])
 				# a real slide, through the viewport: press, drag right, let go
 				var f: Control = _s.field
 				var from: Vector2 = f.get_global_transform_with_canvas() * (f.size * Vector2(0.4, 0.8))
@@ -242,14 +269,20 @@ func _process(delta: float) -> bool:
 				# on to a millipede
 				var sim = _s.sim
 				sim.rows.clear()
-				sim.tokens.clear()
+				sim._shopped = true
+				# the gun it began with, or the millipede is gone before its shot
+				sim.power = 2
+				sim.rate_lv = 0
+				sim.crit_lv = 0
+				sim.pod = 0
+				sim.pod_t = 0.0
 				sim.wave = 5
 				sim.gap_t = 0.01
 				_at = _t
 				_step = 7
 		7:
 			_bot(delta)
-			if _t > _at + 7.0:
+			if _t > _at + 7.0 and _s.sim.wave_kind == Sim.Wave.MILLI and not _s.sim.segs.is_empty():
 				_shot("6_milli")
 				# and its head near the end of the path
 				_s.sim.segs[0].s = Sim.path_len() - 150.0 if not _s.sim.segs.is_empty() and _s.sim.segs[0].kind == Sim.Kind.HEAD else 0.0

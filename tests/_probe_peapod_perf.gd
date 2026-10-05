@@ -10,9 +10,11 @@ func _run(wave: int, label: String) -> void:
 	for i in 120:
 		sim.step()
 	sim.events.clear()
-	sim.peas = Sim.MAX_PEAS
 	sim.rate_lv = Sim.MAX_RATE
-	sim.twin_t = 1000.0
+	sim.crit_lv = Sim.CRIT_MAX
+	sim.power = 9
+	sim.pod = Sim.Kind.ZAP
+	sim.pod_t = 1000.0
 	sim.rows.clear()
 	sim.segs.clear()
 	sim.wave = wave - 1

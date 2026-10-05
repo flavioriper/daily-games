@@ -25,7 +25,7 @@ const QUIET := {
 	"stackwood": ["spawn", "move"],
 	"thirteen": ["select", "unselect", "settle", "merge"],
 	"posy": ["fall", "unswap", "goal_done", "convert", "offer", "over"],
-	"peapod": ["shot", "hit", "token", "knock"],
+	"peapod": ["shot", "hit", "zap", "knock"],
 }
 
 var _game := "firefly"
@@ -155,9 +155,9 @@ func _report() -> void:
 		if n == "pop":
 			n = "pop %s%s" % [["gnat", "beetle", "moth", "rogue"][int(ev.kind)] if _game == "firefly" else "", " rammed" if bool(ev.get("rammed", false)) else ""]
 		if _game == "peapod" and n == "kill":
-			n = "kill %s%s" % [["crate", "gold", "firecracker", "gift", "gift", "gift", "gift", "head", "gift", "gift", "gift", "gift", "gift", "gift", "iron"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
-		if _game == "peapod" and n == "catch":
-			n = "catch %s" % ["", "", "", "pea", "rate", "power", "twin", "", "fan", "pierce", "burst", "magnet", "frost", "shove"][int(ev.got)]
+			n = "kill %s%s" % [["crate", "gold", "firecracker", "head", "gift", "gift", "gift", "gift", "gift", "gift", "gift", "iron"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
+		if _game == "peapod" and n == "gift":
+			n = "gift %s" % ["", "", "", "", "fan", "pierce", "burst", "zap", "flame", "frost", "shove"][int(ev.kind)]
 		if _game == "molehill" and n == "hit":
 			n = "hit %s%s" % [["mole", "gold", "pot", "bunny"][int(ev.kind)], ""]
 		if _game == "molehill" and (n == "streak_lost" or n == "forgiven"):
@@ -349,17 +349,25 @@ func _molehill() -> void:
 
 # --- peapod ---
 
-## Rolls under a falling gift, else under the lowest crate or the plate
-## furthest along, at a hand's pace.
+## Rolls under the lowest crate or the plate furthest along, at a hand's
+## pace, and in the shop buys what it can, the heavier pea first, and goes on.
 func _peapod_bot() -> void:
 	var sim: RefCounted = _s.sim
 	var Sim: GDScript = _s.Sim
+	if sim.phase == Sim.Phase.SHOP and _s._shop != null:
+		for card in Sim.Card.size():
+			if sim.can_buy(card):
+				_do("the shop: card %d bought" % card)
+				_s._buy(card)
+				_say()
+		_do("the shop: Go")
+		_s._close_shop()
+		_say()
+		return
 	if sim.phase != Sim.Phase.PLAY:
 		return
 	var want: float = sim.x
-	if not sim.tokens.is_empty():
-		want = sim.tokens[0].x
-	elif sim.wave_kind == Sim.Wave.WALL:
+	if sim.wave_kind == Sim.Wave.WALL:
 		for r in sim.rows.size():
 			var found := false
 			for c in Sim.COLS:

@@ -150,7 +150,7 @@ func _process(_d: float) -> bool:
 
 	var pp = load("res://arcade/peapod_sim.gd").new(3)
 	Boosters.apply("peapod", pp, ["pp_pea", "pp_quick"])
-	_check(pp.peas == 2 and pp.rate_lv == 2, "peapod: two peas, a quicker gun")
+	_check(pp.power == 2 and pp.rate_lv == 1, "peapod: a heavier pea, a quicker gun")
 	for i in 60 * 3:
 		pp.step()
 	pp.wall_y = 1000.0
