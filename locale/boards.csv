@@ -2575,3 +2575,81 @@ HTP_HH_WOKE_BODY_MOVES,"Rake a pile no number proves bare and you may wake a hed
 HTP_HH_RESET_BODY_MOVES,"There is no Undo on Sleepwalkers. Reset starts the night over: every hedgehog back home and asleep, the moon's dots out and every move back.","Não há Desfazer nos Sonâmbulos. Recomeçar começa a noite de novo: todo ouriço de volta para casa e dormindo, os pontinhos da lua apagados e todas as jogadas de volta.","No hay Deshacer en Sonámbulos. Reiniciar empieza la noche de nuevo: cada erizo de vuelta a casa y dormido, los puntitos de la luna apagados y todas las jugadas de vuelta."
 HH_MOVES_BACK,"A few more moves. Count twice, rake once.","Mais algumas jogadas. Conte duas vezes, rastele uma.","Unas jugadas más. Cuenta dos veces, rastrilla una."
 RG_STUCK_MOVES,Nothing can move. Start again.,Nada se move. Recomece.,Nada se puede mover. Empieza de nuevo.
+GF_BLURB,Putt the ball round the day's course in as few strokes as you can.,Leve a bola pelo campo do dia com o mínimo de tacadas.,Lleva la bola por el campo del día con los menos golpes posibles.
+GF_SHORT,"Pull back, putt,\nsink every hole.","Puxe, solte,\nacerte o buraco.","Tira, suelta,\nemboca la bola."
+GF_MOTTO,Fewest strokes wins,"Menos tacadas, melhor","Menos golpes, mejor"
+GF_LVL_0,3 holes · kerbs and blocks,3 buracos · bordas e blocos,3 hoyos · bordes y bloques
+GF_LVL_1,4 holes · sand and bumpers,4 buracos · areia e pinos,4 hoyos · arena y postes
+GF_LVL_2,5 holes · ponds and slopes,5 buracos · lagos e rampas,5 hoyos · estanques y pendientes
+GF_LVL_3,"Swing Gates: 5 holes, counted strokes","Portões: 5 buracos, tacadas contadas","Cancelas: 5 hoyos, golpes contados"
+GF_RULES,"Drag back anywhere on the card and let go to putt: the ball rolls the other way, harder the further you pull. The dots show where it will go first. Bank it off the kerbs to get round a corner.\n\nSink the ball in every hole of the day's course. Each putt is a stroke on your card, and par is the score a steady hand makes: finish at par or under for a clean card. Reset plays the course again from the first tee.","Arraste para trás em qualquer lugar do cartão e solte para dar a tacada: a bola rola para o outro lado, mais forte quanto mais você puxa. Os pontinhos mostram por onde ela vai primeiro. Rebata nas bordas para dobrar uma esquina.\n\nAcerte a bola em todos os buracos do campo do dia. Cada tacada vai para o seu cartão, e o par é o que uma mão firme faz: termine no par ou abaixo para um cartão limpo. Recomeçar joga o campo de novo desde a primeira saída.","Arrastra hacia atrás en cualquier parte de la tarjeta y suelta para golpear: la bola rueda hacia el otro lado, más fuerte cuanto más tiras. Los puntitos muestran por dónde irá primero. Rebótala en los bordes para doblar una esquina.\n\nEmboca la bola en todos los hoyos del campo del día. Cada golpe va a tu tarjeta, y el par es lo que hace una mano firme: termina en el par o por debajo para una tarjeta limpia. Reiniciar juega el campo otra vez desde la primera salida."
+GF_RULES_SAND,Sand drags the ball almost to a stop. A bumper post kicks it away.,A areia freia a bola quase até parar. Um pino a rebate para longe.,La arena frena la bola casi hasta pararla. Un poste la rebota lejos.
+GF_RULES_WATER,"A ball in a pond is fished out and put back where you struck it; the stroke still counts. A square with arrows is a slope: it pushes the ball the way they point, and the ball never rests on one.","Uma bola no lago é pescada e volta para onde você bateu; a tacada continua valendo. Um quadrado com setas é uma rampa: empurra a bola para onde elas apontam, e a bola nunca para em cima dela.","Una bola en el estanque se pesca y vuelve a donde la golpeaste; el golpe sigue contando. Un cuadro con flechas es una pendiente: empuja la bola hacia donde apuntan, y la bola nunca se queda quieta en ella."
+GF_RULES_GATES,"Swing Gates: a gate is shut on every other putt. When the ball stops, every gate swaps: the shut ones open and the open ones shut. What you see while you aim is what the putt will meet.","Portões: cada portão fica fechado tacada sim, tacada não. Quando a bola para, todos trocam: os fechados abrem e os abertos fecham. O que você vê ao mirar é o que a tacada vai encontrar.","Cancelas: cada cancela está cerrada un golpe sí y otro no. Cuando la bola se detiene, todas cambian: las cerradas se abren y las abiertas se cierran. Lo que ves al apuntar es lo que el golpe va a encontrar."
+GF_RULES_STROKES,You have %d strokes for the whole course. Every putt costs one and there is no taking one back. Run out before the last cup and the course is lost.,"Você tem %d tacadas para o campo inteiro. Cada tacada custa uma e não dá para voltar atrás. Se acabarem antes do último buraco, o campo está perdido.","Tienes %d golpes para todo el campo. Cada golpe cuesta uno y no hay vuelta atrás. Si se acaban antes del último hoyo, el campo está perdido."
+GF_TIP_AIM,Drag back and let go to putt.,Arraste para trás e solte para dar a tacada.,Arrastra hacia atrás y suelta para golpear.
+GF_TIP_BANK,Bank the ball off a kerb to turn a corner.,Rebata a bola numa borda para dobrar a esquina.,Rebota la bola en un borde para doblar la esquina.
+GF_TIP_PAR,Par is the target. Fewer strokes is better.,"O par é a meta. Menos tacadas, melhor.","El par es la meta. Menos golpes, mejor."
+GF_TIP_SAND,Sand slows the ball; a bumper kicks it away.,A areia freia a bola; um pino a rebate.,La arena frena la bola; un poste la rebota.
+GF_TIP_WATER,"A ball in the pond comes back, and the stroke counts.","Bola no lago volta, e a tacada conta.","La bola en el estanque vuelve, y el golpe cuenta."
+GF_TIP_SLOPE,The arrows on a slope show where it pushes.,As setas da rampa mostram para onde ela empurra.,Las flechas de la pendiente muestran hacia dónde empuja.
+GF_TIP_STROKES,Every stroke counts here. Plan the hole before you putt.,Aqui cada tacada conta. Planeje o buraco antes de bater.,Aquí cada golpe cuenta. Planea el hoyo antes de golpear.
+GF_TIP_GATES,The gates swap after every putt.,Os portões trocam depois de cada tacada.,Las cancelas cambian después de cada golpe.
+GF_LIP,Rimmed out!,Na beirada!,¡Por el borde!
+GF_WET,Splash! The ball is back where you struck it.,Tchibum! A bola voltou para onde você bateu.,¡Chof! La bola volvió a donde la golpeaste.
+GF_IN,In the cup,No buraco,Embocada
+GF_ACE,Hole in one!,Hole-in-one!,¡Hoyo en uno!
+GF_EAGLE,Eagle!,Eagle!,¡Eagle!
+GF_BIRDIE,Birdie!,Birdie!,¡Birdie!
+GF_PAR,Par!,Par!,¡Par!
+GF_BOGEY,Bogey,Bogey,Bogey
+GF_DOUBLE,Double bogey,Duplo bogey,Doble bogey
+GF_NEXT,Hole %d. Par %d.,Buraco %d. Par %d.,Hoyo %d. Par %d.
+GF_ASLEEP,Out of strokes. The course closes for the day.,Acabaram as tacadas. O campo fechou por hoje.,Se acabaron los golpes. El campo cierra por hoy.
+GF_GATES_SEAL,Swing Gates,Portões,Cancelas
+GF_EVEN,Even,No par,En par
+GF_LINE_0,Hole %d · Par %d,Buraco %d · Par %d,Hoyo %d · Par %d
+GF_LINE_ONE,Hole %d · Par %d · 1 stroke,Buraco %d · Par %d · 1 tacada,Hoyo %d · Par %d · 1 golpe
+GF_LINE_N,Hole %d · Par %d · %d strokes,Buraco %d · Par %d · %d tacadas,Hoyo %d · Par %d · %d golpes
+GF_HINT,The bulb found a steady line. Pull back until your dots turn gold.,A lâmpada achou uma linha segura. Puxe até os seus pontinhos ficarem dourados.,La bombilla encontró una línea segura. Tira hasta que tus puntitos se pongan dorados.
+GF_RESET,Back to the first tee. A fresh card.,De volta à primeira saída. Cartão novo.,De vuelta a la primera salida. Tarjeta nueva.
+GF_WIN_EVEN,%d strokes: right on par.,%d tacadas: bem no par.,%d golpes: justo en el par.
+GF_WIN_UNDER,%d strokes: %d under par!,%d tacadas: %d abaixo do par!,%d golpes: ¡%d bajo par!
+GF_WIN_OVER,%d strokes: %d over par.,%d tacadas: %d acima do par.,%d golpes: %d sobre par.
+GF_DONE,The course is played. The card is in.,O campo está jogado. O cartão foi entregue.,El campo está jugado. La tarjeta está entregada.
+GF_CHEER_0,Clubhouse wisdom: the kerb is a friend with good angles.,Sabedoria do clube: a borda é uma amiga com bons ângulos.,Sabiduría del club: el borde es un amigo con buenos ángulos.
+GF_CHEER_1,"Clubhouse wisdom: a soft putt forgives, a hard one remembers.","Sabedoria do clube: a tacada leve perdoa, a forte não esquece.","Sabiduría del club: el golpe suave perdona, el fuerte no olvida."
+GF_CHEER_2,Clubhouse wisdom: the cat only naps on finished courses.,Sabedoria do clube: a gata só cochila em campo terminado.,Sabiduría del club: la gata solo duerme en campos terminados.
+GF_CHEER_3,"Clubhouse wisdom: read the green, then trust the dots.","Sabedoria do clube: leia o gramado, depois confie nos pontinhos.",Sabiduría del club: lee el green y luego confía en los puntitos.
+GF_CHEER_4,Clubhouse wisdom: every pond was once somebody's shortcut.,Sabedoria do clube: todo lago já foi o atalho de alguém.,Sabiduría del club: todo estanque fue alguna vez el atajo de alguien.
+GF_CHEER_5,Clubhouse wisdom: the flag waves for everyone who gets there.,Sabedoria do clube: a bandeira acena para todo mundo que chega lá.,Sabiduría del club: la bandera saluda a todo el que llega.
+HTP_GF_PUTT,"Pull back, let go",Puxe e solte,Tira y suelta
+HTP_GF_PUTT_BODY,"Drag back anywhere on the card: the ball will roll the other way, and the further you pull, the harder the putt. The dots show where it goes first. Let go to putt; put the pull back to change your mind.","Arraste para trás em qualquer lugar do cartão: a bola vai rolar para o outro lado, e quanto mais você puxa, mais forte a tacada. Os pontinhos mostram por onde ela vai primeiro. Solte para bater; desfaça o puxão para mudar de ideia.","Arrastra hacia atrás en cualquier parte de la tarjeta: la bola rodará hacia el otro lado, y cuanto más tires, más fuerte el golpe. Los puntitos muestran por dónde va primero. Suelta para golpear; deshaz el tirón para cambiar de idea."
+HTP_GF_BANK,Use the kerbs,Use as bordas,Usa los bordes
+HTP_GF_BANK_BODY,"The ball bounces off the wooden kerbs and the cut corners. When the cup is round a bend, aim at a kerb and let the dots show you the bounce.","A bola quica nas bordas de madeira e nos cantos cortados. Quando o buraco está depois de uma curva, mire numa borda e deixe os pontinhos mostrarem o rebote.","La bola rebota en los bordes de madera y en las esquinas cortadas. Cuando el hoyo está tras una curva, apunta a un borde y deja que los puntitos te muestren el rebote."
+HTP_GF_CARD,Keep your card low,Mantenha o cartão baixo,Mantén la tarjeta baja
+HTP_GF_CARD_BODY,"Every putt is a stroke on your card, and every hole has a par: the strokes a steady hand takes. The day is done when the last cup is filled, however many it took. Reset starts the course again.","Cada tacada vai para o seu cartão, e cada buraco tem um par: as tacadas que uma mão firme faz. O dia termina quando a bola cai no último buraco, não importa quantas foram. Recomeçar joga o campo de novo.","Cada golpe va a tu tarjeta, y cada hoyo tiene un par: los golpes que hace una mano firme. El día termina cuando la bola cae en el último hoyo, sin importar cuántos fueron. Reiniciar empieza el campo otra vez."
+HTP_GF_SAND,Sand and bumpers,Areia e pinos,Arena y postes
+HTP_GF_SAND_BODY,"Sand drags the ball almost to a stop, so go round it or hit harder. A bumper post kicks the ball away faster than it came.","A areia freia a bola quase até parar, então desvie ou bata mais forte. Um pino rebate a bola mais rápido do que ela chegou.","La arena frena la bola casi hasta pararla, así que rodéala o golpea más fuerte. Un poste rebota la bola más rápido de lo que llegó."
+HTP_GF_WATER,Ponds and slopes,Lagos e rampas,Estanques y pendientes
+HTP_GF_WATER_BODY,"A ball in a pond is put back where you struck it, and the stroke still counts. A square with arrows is a slope: it pushes the ball the way they point.","Uma bola no lago volta para onde você bateu, e a tacada continua valendo. Um quadrado com setas é uma rampa: empurra a bola para onde elas apontam.","Una bola en el estanque vuelve a donde la golpeaste, y el golpe sigue contando. Un cuadro con flechas es una pendiente: empuja la bola hacia donde apuntan."
+HTP_GF_GATES,Swing Gates,Portões,Cancelas
+HTP_GF_GATES_BODY,"A gate is shut on every other putt. Each time the ball stops, every gate swaps. What you see while you aim is what your putt will meet, so sometimes the right putt is the one that waits.","Cada portão fica fechado tacada sim, tacada não. Sempre que a bola para, todos trocam. O que você vê ao mirar é o que a tacada vai encontrar, então às vezes a tacada certa é a que espera.","Cada cancela está cerrada un golpe sí y otro no. Cada vez que la bola se detiene, todas cambian. Lo que ves al apuntar es lo que el golpe va a encontrar, así que a veces el golpe correcto es el que espera."
+HTP_GF_HINT_BODY_ONE,"The bulb plays every putt out on a copy of the hole and draws the steadiest good one in gold, the whole way. Pull back until your own dots turn gold, then let go. You have one hint.","A lâmpada testa cada tacada numa cópia do buraco e desenha a melhor e mais segura em dourado, até o fim. Puxe até os seus pontinhos ficarem dourados e solte. Você tem uma dica.","La bombilla prueba cada golpe en una copia del hoyo y dibuja el mejor y más seguro en dorado, hasta el final. Tira hasta que tus puntitos se pongan dorados y suelta. Tienes una pista."
+HTP_GF_HINT_BODY_N,"The bulb plays every putt out on a copy of the hole and draws the steadiest good one in gold, the whole way. Pull back until your own dots turn gold, then let go. You have %d hints.","A lâmpada testa cada tacada numa cópia do buraco e desenha a melhor e mais segura em dourado, até o fim. Puxe até os seus pontinhos ficarem dourados e solte. Você tem %d dicas.","La bombilla prueba cada golpe en una copia del hoyo y dibuja el mejor y más seguro en dorado, hasta el final. Tira hasta que tus puntitos se pongan dorados y suelta. Tienes %d pistas."
+HTP_GF_MOVES_BODY,"You have %d strokes for the whole course and nobody gives one back. Every putt costs one, even one that ends in a pond. When they are gone before the last cup, the course is lost.","Você tem %d tacadas para o campo inteiro e ninguém devolve nenhuma. Cada tacada custa uma, até a que termina no lago. Se acabarem antes do último buraco, o campo está perdido.","Tienes %d golpes para todo el campo y nadie devuelve ninguno. Cada golpe cuesta uno, incluso el que acaba en el estanque. Si se acaban antes del último hoyo, el campo está perdido."
+HTP_GF_PUTT_CAP,"Drag back, then let go",Arraste para trás e solte,Arrastra hacia atrás y suelta
+HTP_GF_BANK_CAP,Off the kerb and round the corner,Na borda e depois da esquina,Al borde y tras la esquina
+HTP_GF_CARD_CAP,Each putt is a stroke on the card,Cada tacada vai para o cartão,Cada golpe va a la tarjeta
+HTP_GF_GATES_CAP,The gates swap after every putt,Os portões trocam a cada tacada,Las cancelas cambian con cada golpe
+HTP_GF_HINT_CAP,The bulb draws a line in gold,A lâmpada desenha uma linha dourada,La bombilla dibuja una línea dorada
+HTP_GF_DROP_CAP,Down it goes,Lá vai ela,Allá va
+HTP_GF_PIP_CAP,Two strokes on the card,Duas tacadas no cartão,Dos golpes en la tarjeta
+HTP_GF_SAND_CAP,The sand stops it short,A areia freia a bola,La arena la frena
+HTP_GF_HARDER_CAP,Out of the sand takes a harder putt,"Para sair da areia, bata mais forte","Para salir de la arena, golpea más fuerte"
+HTP_GF_WATER_CAP,Into the pond...,No lago...,Al estanque...
+HTP_GF_BACK_CAP,...and back where it was struck,...e de volta para onde você bateu,...y de vuelta a donde la golpeaste
+HTP_GF_SLOPE_CAP,"Round it, and the slope helps","Desvie, e a rampa ajuda","Rodéalo, y la pendiente ayuda"
+HTP_GF_SHUT_CAP,This gate is shut for this putt,Este portão está fechado nesta tacada,Esta cancela está cerrada en este golpe
+HTP_GF_OPEN_CAP,Now it is open: through,Agora abriu: passe,Ahora está abierta: pasa
+HTP_GF_GOLD_CAP,Pull until your dots turn gold,Puxe até os pontinhos ficarem dourados,Tira hasta que los puntitos se pongan dorados

@@ -4598,3 +4598,84 @@ func _tr_lay(a: Vector2i, b: Vector2i, m: int) -> void:
 	_ut_button(_puzzle.point_to_local(a), true)
 	_ut_motion(_puzzle.point_to_local(b))
 	_ut_button(_puzzle.point_to_local(b), false)
+
+## Mini Golf's are putts: whenever the ball is at rest, the steady putt
+## from there (Sim.best_shot, a tenth of a second here: the probe's cost),
+## pulled back and let go through the board's own input, so `to=40` plays
+## the course through its swaps to the win.
+func _moves_minigolf() -> Array:
+	if _exp == "gf_hud":
+		return []
+	var plan := {}
+	plan["do"] = func() -> void:
+		if _puzzle.is_done() or _puzzle.out_of_hearts:
+			return
+		_moves.push_front(plan)
+		if _puzzle.busy() or _puzzle._phase != "aim":
+			return
+		var shot: Dictionary = _puzzle._state.sim.best_shot()
+		_gf_putt(float(shot.a), float(shot.u))
+	_keep = 0
+	return [plan]
+
+## A press mid-card, the pull for (a, u), the release.
+func _gf_putt(a: float, u: float, go := true) -> void:
+	var from: Vector2 = _puzzle.size * Vector2(0.5, 0.6)
+	var to: Vector2 = _puzzle.pull_for(from, a, u)
+	_ut_button(from, true)
+	_ut_motion(from.lerp(to, 0.5))
+	_ut_motion(to)
+	if go:
+		_ut_button(to, false)
+
+## Mini Golf's buzzes: a pull held and put back down, a soft putt that
+## stays on the green, a hint and the aim brought onto its line, the steady
+## putt (a kerb or the cup), Reset. The plain run then plays the course to
+## the win (a bump a cup, the win on the last, the seal when it is earned).
+func _buzz_minigolf() -> void:
+	var st = _puzzle._state
+	_buzz_more = 60.0
+	var settle := func() -> void:
+		await create_timer(0.3).timeout
+		while _puzzle.busy():
+			await create_timer(0.2).timeout
+		await create_timer(0.6).timeout
+	_buzz_seen = Haptics.trace.size()
+	var from: Vector2 = _puzzle.size * Vector2(0.5, 0.6)
+	_ut_button(from, true)
+	_ut_motion(from + Vector2(40.0, 120.0))
+	await create_timer(0.3).timeout
+	_buzzed("a pull held (the dots)")
+	_ut_motion(from + Vector2(4.0, 6.0))
+	_ut_button(from + Vector2(4.0, 6.0), false)
+	await create_timer(0.4).timeout
+	_buzzed("the pull put back down (no putt)")
+	var away: float = (st.sim.cup - st.sim.p).angle() + PI
+	_gf_putt(away, 0.05)
+	await create_timer(0.1).timeout
+	_buzzed("a soft putt: let go")
+	await settle.call()
+	_buzzed("  its roll (strokes %d)" % st.sim.strokes)
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_host._on_hint()
+		await create_timer(1.6).timeout
+		_buzzed("hint")
+		var g: Dictionary = _puzzle._ghost
+		if not g.is_empty():
+			_gf_putt(float(g.a) + 0.15, float(g.u), false)
+			await create_timer(0.2).timeout
+			_ut_motion(_puzzle.pull_for(from, float(g.a) + 0.02, float(g.u)))
+			await create_timer(0.3).timeout
+			_buzzed("the aim brought onto the bulb's line")
+			_ut_button(_puzzle.pull_for(from, float(g.a), float(g.u)), false)
+			await create_timer(0.1).timeout
+			_buzzed("the bulb's putt: let go")
+			await settle.call()
+			_buzzed("  its roll (hole %d, strokes %d)" % [st.index + 1, st.sim.strokes])
+	else:
+		print("  buzz (no bulb here)")
+	if _puzzle.can_reset():
+		_host._on_reset()
+		await create_timer(1.2).timeout
+		_buzzed("reset")
+	_moves = _moves_minigolf()
