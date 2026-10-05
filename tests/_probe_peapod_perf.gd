@@ -14,8 +14,7 @@ func _run(wave: int, label: String) -> void:
 	sim.crit_lv = 5
 	sim.peas = 1 + Sim.MAX_SHOTS
 	sim.power = 9
-	sim.shape = Sim.Kind.FAN
-	sim.shape_t = 1000.0
+	sim.shape_t = [1000.0, 0.0, 0.0]
 	sim.element = Sim.Kind.ZAP
 	sim.element_t = 1000.0
 	sim.rows.clear()

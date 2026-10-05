@@ -111,7 +111,7 @@ func _use(sim: RefCounted, keeper: int) -> void:
 			if sim.danger() > 0.45:
 				sim.use(slot)
 		elif Sim.is_shape(kind):
-			if sim.shape == 0:
+			if not sim.has_shape(kind):
 				sim.use(slot)
 		elif Sim.is_element(kind):
 			if sim.element == 0:

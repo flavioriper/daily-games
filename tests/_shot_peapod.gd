@@ -205,7 +205,7 @@ func _process(delta: float) -> bool:
 				var col := clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)
 				sim.rows[0][col] = _cell(Sim.Kind.FLAME, 1)
 				sim.rows[0][(col + 2) % Sim.COLS] = _cell(Sim.Kind.CRATE, 90000)
-				sim.held = [0, Sim.Kind.FROST]
+				sim.held = [Sim.Kind.FROST, 0]
 				sim.queue.clear()
 				sim.wall_y = 250.0
 				sim.wall_speed = 0.0
@@ -225,8 +225,7 @@ func _process(delta: float) -> bool:
 		34:
 			if _t > _at + 0.8:
 				# two more had with both buttons full: they wait up the chute
-				_s.sim._take(Sim.Kind.SHOVE, Vector2(150.0, 200.0))
-				_s.sim._take(Sim.Kind.FAN, Vector2(150.0, 200.0))
+				_s.sim.queue = [Sim.Kind.SHOVE, Sim.Kind.FAN]
 				_at = _t
 				_step = 341
 		341:
@@ -274,8 +273,7 @@ func _process(delta: float) -> bool:
 			sim.wall_y = 290.0
 			sim.wall_speed = 0.0
 			sim.gap_t = 0.0
-			sim.shape = Sim.Kind.FAN
-			sim.shape_t = 6.0
+			sim.shape_t = [6.0, 0.0, 9.0]
 			sim.element = Sim.Kind.ZAP
 			sim.element_t = 8.0
 			sim.frost_t = 4.0
@@ -323,8 +321,7 @@ func _process(delta: float) -> bool:
 				sim.rate_lv = 0
 				sim.crit_lv = 0
 				sim.peas = 1
-				sim.shape = 0
-				sim.shape_t = 0.0
+				sim.shape_t = [0.0, 0.0, 0.0]
 				sim.element = 0
 				sim.element_t = 0.0
 				sim.wave = 5

@@ -58,6 +58,8 @@ const ORB_HI := Color("e6fbff")
 const ORB_DEEP := Color("1f8fd0")
 const BOLT := Color("ffe37a")
 const EMBER := Color("f28c4f")
+## A pea of the flame.
+const FIRE := Color("ef5b4a")
 const IRON := Color("b7c0cc")
 const DART := Color("ffe08a")
 const BERRY := Color("f2907c")
@@ -511,40 +513,47 @@ static func barrel(u: float, helper := false) -> ArrayMesh:
 	b.stroke(Face.Builder.bezier3(Vector2(8, -6) * u, Vector2(15, -8) * u, Vector2(16, -15) * u, Vector2(12, -14) * u, 10), maxf(1.0, 1.1 * u), deep)
 	return _keep(key, b.mesh())
 
-## A pea in flight by its look (Sim.Shot), centred, flying up, a pale wake
-## fading behind it: a pea, a dart that goes through, a berry that bursts, a
-## bolt that jumps on and an ember that sets alight.
+## A pea in flight by its shape (Sim.Shot) and its element (`el`: 0, or
+## Sim.Kind.ZAP or FLAME), centred, flying up, a pale wake fading behind it:
+## a pea, a dart that goes through or a berry that bursts, in its own colour
+## or, of an element, in the element's (lightning's yellow, the flame's
+## red). The shape never changes for the element.
 ## One mesh a look, drawn for every pea in the air by a MultiMesh.
-static func shot(look: int, u: float) -> ArrayMesh:
-	var key := _key("s", look, 0, u)
+static func shot(look: int, u: float, el := 0) -> ArrayMesh:
+	var key := _key("s", look, el, u)
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := 3.3 * u
-	var wake: Color = ([PEA, DART, BERRY, BOLT, EMBER][clampi(look, 0, 4)] as Color).lerp(PAPER, 0.5)
+	var col: Color = [PEA, DART, BERRY][clampi(look, 0, 2)]
+	if el == Sim.Kind.ZAP:
+		col = BOLT
+	elif el == Sim.Kind.FLAME:
+		col = FIRE
+	var wake := col.lerp(PAPER, 0.5)
 	var i0 := b.vertex(Vector2(-r * 0.7, 0), Color(wake, 0.5))
 	var i1 := b.vertex(Vector2(r * 0.7, 0), Color(wake, 0.5))
 	var i2 := b.vertex(Vector2(0, r * 6.5), Color(wake, 0.0))
 	b.tri(i0, i1, i2)
 	match look:
 		Sim.Shot.PIERCE:
-			b.polygon(PackedVector2Array([Vector2(-r * 0.9, r * 1.2), Vector2(0, -r * 2.6), Vector2(r * 0.9, r * 1.2)]), deepen(DART))
-			b.polygon(PackedVector2Array([Vector2(-r * 0.55, r * 0.9), Vector2(0, -r * 2.2), Vector2(r * 0.55, r * 0.9)]), DART)
+			b.polygon(PackedVector2Array([Vector2(-r * 0.9, r * 1.2), Vector2(0, -r * 2.6), Vector2(r * 0.9, r * 1.2)]), deepen(col))
+			b.polygon(PackedVector2Array([Vector2(-r * 0.55, r * 0.9), Vector2(0, -r * 2.2), Vector2(r * 0.55, r * 0.9)]), col)
 			b.disc(Vector2(0, -r * 0.2), r * 0.3, Color(1, 1, 1, 0.8))
 		Sim.Shot.BURST:
 			var pts := PackedVector2Array()
 			for k in 12:
 				pts.append(Vector2.from_angle(TAU * k / 12.0) * r * (1.35 if k % 2 == 0 else 0.95))
-			b.polygon(pts, deepen(BERRY))
-			b.disc(Vector2.ZERO, r * 0.9, BERRY)
+			b.polygon(pts, deepen(col))
+			b.disc(Vector2.ZERO, r * 0.9, col)
 			b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.6))
-		Sim.Shot.ZAP:
-			_bolt(b, Vector2.ZERO, r * 2.1, deepen(BOLT))
-			_bolt(b, Vector2(0, -r * 0.2), r * 1.7, BOLT)
-		Sim.Shot.FLAME:
-			_flame(b, Vector2(0, r * 1.5), r * 3.6, EMBER, BOLT)
 		_:
-			pea(b, Vector2.ZERO, r)
+			if el == 0:
+				pea(b, Vector2.ZERO, r)
+			else:
+				b.disc(Vector2(0, r * 0.14), r, deepen(col))
+				b.disc(Vector2.ZERO, r * 0.9, col)
+				b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.65))
 	return _keep(key, b.mesh())
 
 ## A four-pointed spark one unit long, white: scaled and tinted by its draw.

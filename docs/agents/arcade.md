@@ -560,6 +560,46 @@ chalk line ends the run. Its "furthest" is the wave.
     drivers and under reduce motion. **Not done: the tutorial's shop page
     with its fifth row (not shot), a phone, and nothing heard.**
 
+- **The seventh pass (2026-10-05, the user, after playing the sixth: "the
+  price increase should only be applied when player buy it", "elemental
+  shoots should change the pea color (red, yellow, etc), instead of
+  replacing it to the element", "only elemental should not stack, if I have
+  fire shot and get a burst buff, it should keep the fire shot", "new buffs
+  always enter as the first in queue, not last").** What the passes above
+  say of a price growing with the walls, of one shape at a time
+  (`sim.shape`), of a pea drawn as its element and of the oldest gift first
+  is history.
+  - **A price moves only when its card is bought** (`price`): the walls'
+    size is out of it. A wave's energy still grows with its wall (27 crates
+    on wave 1, 54 from wave 12), so the climb a purchase is steeper to keep
+    the runs where they were: `PRICE_STEP` is 0.7, 0.9, 0.9, 0.6 and 1.5
+    (the extra pea is 80, 200, 320). With the sixth pass's steps the bots
+    ran to wave 25.
+  - **The shapes all run together**, each with its own ten seconds
+    (`shape_t`, by `kind - Kind.FAN`; `has_shape`); a shape started again
+    begins its time again. **Only an element takes an element's place.** A
+    pea that is both a Dart and a Berry goes through three and bursts on
+    each; the Fan's side peas are still plain ones of the element.
+  - **An element is a pea's colour, not its shape** (`Art.shot(look, u,
+    el)`): lightning's peas are yellow (`BOLT`), the flame's red (`FIRE`),
+    as a pea, a dart or a berry. `Sim.Shot` is the three shapes only; the
+    screen keeps a MultiMesh a shape and element (nine, the empty ones not
+    drawn).
+  - **A new gift goes in at the head of the line** (`_take`: always `slot`
+    0), the rest moving back one, the second button's into the chute. The
+    line rolls back from the first button (`_roll_way` -1) and forward on a
+    gift started (1).
+  - **The rings are up to five** (three shapes, an element, the frost): past
+    three they close up and overlap (`_timed_at`), and the gun's pills are
+    52 apart (were 56) to leave them room.
+  - **The bots**, eight runs, skill 2: gifts started at once wave 14-17,
+    kept for their match 19-20, at random 11-19. The same as the sixth pass.
+  - 158-160 draw calls on the shot harness's cast, 73-86 with the chute in
+    use. Suite 249790/0. Two tutorial lines rewritten in three languages
+    (`TUT_PEAPOD_PODS_BODY`, `TUT_PEAPOD_SHOP_BODY`). The shot harness on both drivers and under
+    reduce motion. **Not done: the tutorial's pages (not shot), a phone, and
+    nothing heard.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

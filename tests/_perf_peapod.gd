@@ -64,8 +64,7 @@ func _full_gun() -> void:
 	sim.crit_lv = 5
 	sim.peas = 1 + Sim.MAX_SHOTS
 	sim.power = 9
-	sim.shape = Sim.Kind.FAN
-	sim.shape_t = 1000.0
+	sim.shape_t = [1000.0, 0.0, 0.0]
 	sim.element = 0
 	sim.element_t = 0.0
 

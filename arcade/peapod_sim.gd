@@ -61,6 +61,14 @@ extends RefCounted
 ## And no gift is lost to a newer one: past the two places a gift waits its
 ## turn (`queue`), first in first out: the two places are the head of one
 ## line, and a gift started lets everything behind it move up one.
+##
+## The seventh pass (2026-10-05, the user's four asks). A price climbs only
+## with each one bought, no longer with the walls ("the price increase should
+## only be applied when the player buys it"). The shapes run all together,
+## each with its own time, and only the elements take each other's place
+## ("only elemental should not stack"). A pea of an element is the same pea in
+## the element's colour (the screen's). And a new gift goes to the head of the
+## line, not its end.
 
 ## SHOP: a wave is cleared and the shop is open; nothing moves until
 ## `leave_shop()`.
@@ -70,8 +78,8 @@ enum Wave { WALL, MILLI }
 ## to FLAME are the pods (`is_pod`): FAN to BURST are how the peas go
 ## (`is_shape`), ZAP and FLAME what they are made of (`is_element`).
 enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, FROST, SHOVE, IRON }
-## How a pea in flight looks.
-enum Shot { PEA, PIERCE, BURST, ZAP, FLAME }
+## How a pea in flight is shaped; its element (`el`) is its colour.
+enum Shot { PEA, PIERCE, BURST }
 ## What the shop sells.
 enum Card { DAMAGE, SPEED, CRIT, ENERGY, SHOTS }
 ## What a number came off by: the pea itself, a splash or a jump of it, a
@@ -121,10 +129,10 @@ const SEQ_GAP := 0.06
 const ORBS := 4
 const ENERGY_CRATE := 1.0
 const ENERGY_STEP := 0.1
-## A card's price in energy on wave 1 with none bought, and how much of that
-## each one bought adds.
+## A card's price in energy with none bought, and how much of that each one
+## bought adds. Nothing else moves a price.
 const PRICE := [11, 14, 14, 12, 80]
-const PRICE_STEP := [0.3, 0.4, 0.4, 0.4, 1.0]
+const PRICE_STEP := [0.7, 0.9, 0.9, 0.6, 1.5]
 ## The beat between the shop closing and the next wave.
 const SHOP_GAP := 0.5
 ## The gifts had and not yet used: so many places to start one from; the
@@ -206,17 +214,16 @@ var bought := [0, 0, 0, 0, 0]
 var energy := 0
 var earned := 0
 var _orb_part := 0.0
-## The gifts had and not yet used, oldest first, in one line: its head is
+## The gifts had and not yet used, newest first, in one line: its head is
 ## `held`, a place each (0: empty, else a Kind, and never a gap before a
-## gift), and the rest wait in `queue`. A gift started, all behind it move
-## up one.
+## gift), and the rest wait in `queue`. A new gift goes in at the head and
+## the rest move back one; a gift started, all behind it move up one.
 var held: Array = [0, 0]
 var queue: Array = []
-## What is running: a shape (0: none, else FAN, PIERCE or BURST) and an
-## element (ZAP or FLAME), one of each at once, with their seconds left; the
-## frost's.
-var shape := 0
-var shape_t := 0.0
+## What is running: the seconds left of each shape (FAN, PIERCE, BURST, in
+## that order: `has_shape`), all of which run together; one element (0:
+## none, else ZAP or FLAME) and its seconds; the frost's.
+var shape_t: Array = [0.0, 0.0, 0.0]
 var element := 0
 var element_t := 0.0
 var frost_t := 0.0
@@ -300,6 +307,10 @@ static func is_pod(kind: int) -> bool:
 static func is_shape(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.BURST
 
+## Whether shape `kind` (FAN, PIERCE or BURST) is running.
+func has_shape(kind: int) -> bool:
+	return float(shape_t[kind - Kind.FAN]) > 0.0
+
 static func is_element(kind: int) -> bool:
 	return kind == Kind.ZAP or kind == Kind.FLAME
 
@@ -311,10 +322,10 @@ static func wave_crates(w: int) -> float:
 # --- the shop ---
 
 ## What `card` costs now, in orbs (a whole number of energy): more for each
-## one bought, and as much more as the walls have grown, so a wave's energy
-## buys the same on any wave.
+## one bought and for nothing else, so a card not bought costs on wave 10
+## what it did on wave 1.
 func price(card: int) -> int:
-	var p: float = PRICE[card] * (1.0 + PRICE_STEP[card] * int(bought[card])) * wave_crates(wave) / wave_crates(1)
+	var p: float = PRICE[card] * (1.0 + PRICE_STEP[card] * int(bought[card]))
 	return maxi(1, roundi(p)) * ORBS
 
 ## A card at its most is not sold.
@@ -456,12 +467,12 @@ func _move() -> void:
 
 ## The shape, the element and the frost run down.
 func _tick_gifts() -> void:
-	if shape_t > 0.0:
-		shape_t -= DT
-		if shape_t <= 0.0:
-			shape_t = 0.0
-			events.append({"type": "pod_off", "kind": shape})
-			shape = 0
+	for i in shape_t.size():
+		if float(shape_t[i]) > 0.0:
+			shape_t[i] = float(shape_t[i]) - DT
+			if float(shape_t[i]) <= 0.0:
+				shape_t[i] = 0.0
+				events.append({"type": "pod_off", "kind": Kind.FAN + i})
 	if element_t > 0.0:
 		element_t -= DT
 		if element_t <= 0.0:
@@ -501,31 +512,18 @@ func _fire() -> void:
 func _seq_gap() -> float:
 	return minf(SEQ_GAP, 1.0 / (rate() * peas))
 
-## A volley as the shape and the element running make it. A pea carries how
-## it lands (`left` targets to go through, `burst`, `el`: its element) and
-## is drawn as its element when it has one (`k`), else as its shape; the
-## Fan's side peas are made of the same.
+## A volley as the shapes and the element running make it. A pea carries
+## how it lands (`left` targets to go through, `burst`, `el`: its element);
+## `k` is its shape (Shot), a berry before a dart when it is both. The Fan's
+## side peas are plain ones of the same element.
 func _volley(from: float) -> void:
-	var plain := Shot.PEA
-	match element:
-		Kind.ZAP:
-			plain = Shot.ZAP
-		Kind.FLAME:
-			plain = Shot.FLAME
-	var look := plain
-	var left := 0
-	if element == 0:
-		match shape:
-			Kind.PIERCE:
-				look = Shot.PIERCE
-			Kind.BURST:
-				look = Shot.BURST
-	if shape == Kind.PIERCE:
-		left = PIERCES - 1
-	shots.append({"x": from, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": left, "last": -1, "burst": shape == Kind.BURST, "el": element})
-	if shape == Kind.FAN:
+	var burst := has_shape(Kind.BURST)
+	var pierce := has_shape(Kind.PIERCE)
+	var look := Shot.BURST if burst else (Shot.PIERCE if pierce else Shot.PEA)
+	shots.append({"x": from, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element})
+	if has_shape(Kind.FAN):
 		for side in [-1.0, 1.0]:
-			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": plain, "left": 0, "last": -1, "burst": false, "el": element})
+			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": Shot.PEA, "left": 0, "last": -1, "burst": false, "el": element})
 
 func _step_shots() -> void:
 	var keep: Array = []
@@ -823,26 +821,28 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	if holds_gift(kind):
 		_take(kind, pos)
 
-## A gift crate broken: its gift goes to an empty place (`slot`), or with
-## both full to the end of the queue (`slot` -1; `waiting` is how many wait
-## now). Nothing starts until `use()`, and nothing is lost.
+## A gift crate broken: its gift goes to the head of the line, and every
+## gift had before it moves back one, the last of the places into the queue
+## (`waiting` is how many wait now). Nothing starts until `use()`, and
+## nothing is lost.
 func _take(kind: int, at: Vector2) -> void:
 	caught += 1
-	var slot := held.find(0)
-	if slot >= 0:
-		held[slot] = kind
-	else:
-		queue.append(kind)
-	events.append({"type": "gift", "pos": at, "kind": kind, "slot": slot, "waiting": queue.size()})
+	var back: int = held[TRAY - 1]
+	for i in range(TRAY - 1, 0, -1):
+		held[i] = held[i - 1]
+	held[0] = kind
+	if back != 0:
+		queue.push_front(back)
+	events.append({"type": "gift", "pos": at, "kind": kind, "slot": 0, "waiting": queue.size()})
 
 ## Whether the gift in `slot` can be started now: there is one, and a wave
 ## is on to use it against.
 func can_use(slot: int) -> bool:
 	return phase == Phase.PLAY and gap_t <= 0.0 and slot >= 0 and slot < TRAY and int(held[slot]) != 0
 
-## Starts the gift in `slot`. A shape takes the place of the shape running
-## and an element of the element, each with its own time; a shape and an
-## element run together. Every gift behind it moves up one place, the one
+## Starts the gift in `slot`. A shape runs with whatever else is running,
+## its own time begun again if it already was; an element takes the place
+## of the element running. Every gift behind it moves up one place, the one
 ## that has waited longest into the last (`next`, 0 when none waits).
 func use(slot: int) -> bool:
 	if not can_use(slot):
@@ -862,8 +862,7 @@ func use(slot: int) -> bool:
 			element = kind
 			element_t = POD_TIME
 		_:
-			shape = kind
-			shape_t = POD_TIME
+			shape_t[kind - Kind.FAN] = POD_TIME
 	events.append({"type": "use", "kind": kind, "slot": slot, "next": next, "waiting": queue.size()})
 	return true
 
