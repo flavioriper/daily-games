@@ -421,6 +421,9 @@ func _peapod() -> void:
 		_bot = false
 		if _s.sim.wave_kind == Sim.Wave.WALL:
 			_s.sim.wall_y = 1000.0
+		elif _s.sim.segs.is_empty():
+			# the beat between a millipede gone and the next wave
+			_s.sim._end("milli")
 		else:
 			_s.sim.segs[0].s = Sim.path_len()
 	if not _s.sim.is_over():
