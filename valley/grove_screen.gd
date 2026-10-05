@@ -36,7 +36,7 @@ const MARGIN := 40
 const GAP := 20
 const HUD_H := 96.0
 const INFO_H := 48.0
-const TILE_H := 232.0
+const TILE_H := 264.0
 const TILE_GAP := 16
 const FILL := Color("fcf7ef")
 ## The land keeps this much water round it, and more under its earth edge.
@@ -255,7 +255,7 @@ func _tile(tile: String) -> Control:
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(col)
 	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(0, 92)
+	icon.custom_minimum_size = Vector2(0, 108)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.draw.connect(_draw_tile_icon.bind(icon, tile))
 	col.add_child(icon)
@@ -268,7 +268,7 @@ func _tile(tile: String) -> Control:
 	effect.theme_type_variation = "CardBlurb"
 	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	effect.clip_text = true
-	effect.add_theme_font_size_override("font_size", 22)
+	effect.add_theme_font_size_override("font_size", 24)
 	col.add_child(effect)
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 6
@@ -277,7 +277,7 @@ func _tile(tile: String) -> Control:
 	var pill := PanelContainer.new()
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	pill.custom_minimum_size = Vector2(200, 46)
+	pill.custom_minimum_size = Vector2(210, 52)
 	col.add_child(pill)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -293,7 +293,7 @@ func _tile(tile: String) -> Control:
 	row.add_child(spark)
 	var cost := Label.new()
 	cost.theme_type_variation = "CardTitle"
-	cost.add_theme_font_size_override("font_size", 32)
+	cost.add_theme_font_size_override("font_size", 34)
 	row.add_child(cost)
 	# the level, on the tile's corner once there is one
 	var badge := PanelContainer.new()
@@ -321,9 +321,9 @@ func _tile(tile: String) -> Control:
 func _draw_tile_icon(icon: Control, tile: String) -> void:
 	var c := icon.size * 0.5
 	var done: bool = sim.is_done(tile)
-	icon.draw_circle(c, 46.0, Pal.LEAF_TILE if done else Pal.PARCHMENT, true, -1.0, true)
+	icon.draw_circle(c, 52.0, Pal.LEAF_TILE if done else Pal.PARCHMENT, true, -1.0, true)
 	var look: int = Sim.look_of(int(sim.lv.seeds) + 1)
-	icon.draw_mesh(Art.icon(tile, look), null, Transform2D(0.0, Vector2(0.78, 0.78), 0.0, c))
+	icon.draw_mesh(Art.icon(tile, look), null, Transform2D(0.0, Vector2(0.88, 0.88), 0.0, c))
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -500,7 +500,7 @@ func _refresh_tiles() -> void:
 		(t.cost as Label).text = Art.short(sim.cost(tile))
 		var box := StyleBoxFlat.new()
 		box.bg_color = Pal.SUN if can else Color("e6dccb")
-		box.set_corner_radius_all(23)
+		box.set_corner_radius_all(26)
 		box.content_margin_left = 16.0
 		box.content_margin_right = 20.0
 		(t.pill as Control).add_theme_stylebox_override("panel", box)
@@ -518,12 +518,16 @@ func _effect(tile: String) -> String:
 		"reach":
 			return tr("GROVE_FX_REACH")
 		"swing":
-			return tr("GROVE_FX_SWING") % [sim.swing_time(), sim.swing_time() * Sim.SWING_STEP]
+			return _decimal(tr("GROVE_FX_SWING") % [sim.swing_time(), sim.swing_time() * Sim.SWING_STEP])
 		"sprout":
-			return tr("GROVE_FX_SPROUT") % [sim.spawn_time(), sim.spawn_time() * Sim.SPROUT_STEP]
+			return _decimal(tr("GROVE_FX_SPROUT") % [sim.spawn_time(), sim.spawn_time() * Sim.SPROUT_STEP])
 		"room":
 			return tr("GROVE_FX_ROOM") % [sim.room(), sim.room() + 1]
 	return tr("GROVE_FX_SEEDS") % tree_name(int(sim.lv.seeds) + 1)
+
+## Seconds are written 0,47 where the language writes them so (pt, es).
+static func _decimal(text: String) -> String:
+	return text if TranslationServer.get_locale().begins_with("en") else text.replace(".", ",")
 
 ## A tier's tree by name; the second time the looks come round it is
 ## "Birch II", then "Birch III" (the fonts carry no star).

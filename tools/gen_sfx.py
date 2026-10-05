@@ -72,6 +72,14 @@ RIVERBED = ("close-mic foley of smooth round river pebbles on damp sand and "
             "acoustic, low, soft and warm, muffled, rounded, never sharp, no "
             "synth, no electronic tones, no beeps, no music, no voice")
 
+# The Grove's pond-side clearing (2026-10-05): chopping goes on for as long
+# as a finger is held, so what repeats is a dry click of wood and nothing
+# rings; a tree down is a soft crack and a hush of leaves.
+GROVE = ("close-mic foley recorded in a quiet woodland clearing, real small "
+         "green wood, twigs, bark and leaves, natural and acoustic, soft and "
+         "warm, rounded, never sharp, no synth, no electronic tones, no beeps, "
+         "no music, no voice")
+
 # Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
 # kalimba in place of the house marimba, which turns a lantern into a woodblock.
 DUSK = ("cozy casual mobile puzzle game sound, soft warm glass chimes, music "
@@ -1573,6 +1581,16 @@ SETS = {
         "buy":      ("a few small gold coins dropped onto a wooden counter with a soft happy chime, short", 0.7, -7),
         "coin":     ("a single tiny soft gold coin clink, very short", 0.5, -14),
         "refused":  ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -10),
+    },
+    # The Grove (valley/grove_screen.gd, 2026-10-05). `chop` plays on every
+    # swing that hits for as long as a finger is held, twice a second at the
+    # start and six times late on: a click, cut short and the quietest file
+    # of the set. A tree down and a tile bought happen now and then.
+    "grove": {
+        "chop": ("one small dry knock of a little hatchet biting into a thin green sapling, a short soft wooden tick, very short and quiet", 0.5, -18, GROVE, "warm:6000", "cut:0.09"),
+        "fell": ("a thin young tree coming down: one soft green-wood crack and a short hush of leaves settling on grass, gentle, short", 0.7, -11, GROVE),
+        "buy":  ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
+        "no":   ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, GROVE),
     },
 }
 

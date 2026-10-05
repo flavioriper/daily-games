@@ -28,6 +28,7 @@ that area**, and add new history there rather than here.
 | Versus (snooker, chess, checkers) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod) | `docs/agents/arcade.md` |
+| Valley: the shared inventory (`Stock`) and the Grove | `docs/agents/valley.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
 | Haptics: the kinds, the rules and the per-game list | `docs/agents/haptics.md` |
@@ -63,7 +64,7 @@ that area**, and add new history there rather than here.
   code, comments, commits or on screen (Code Break, Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
   Hedgehogs, Marigold, Drumbeat, Trestle, Firefly, Molehill, Stackwood, Lucky
-  Thirteen, Posy, Peapod). The spec names the original once, to forbid it.
+  Thirteen, Posy, Peapod, Grove). The spec names the original once, to forbid it.
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,

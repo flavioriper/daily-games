@@ -64,9 +64,9 @@ static func _tree_into(b: Face.Builder, look: int, r: float) -> void:
 			_tier(b, r, -r * 1.85, r * 0.58, r * 0.95, Color("52966c"))
 		_:
 			var trunk := Color("f3eee2") if look == 1 else Color("8a5c3a")
-			var deep := Color("9ccb5c")
-			var mid := Color("a9d46a")
-			var hi := Color("c4e486")
+			var deep := Color("7fb548")
+			var mid := Color("93c657")
+			var hi := Color("bfe27f")
 			if look == 2:
 				deep = Color("559238")
 				mid = Color("5f9c3e")
@@ -111,8 +111,17 @@ static func ground(size: Vector2, land: Rect2) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261005
 	var u := land.size.x / Sim.LAND.x
-	b.polygon(Face.Builder.round_rect(Vector2.ZERO, size, 36.0), WATER)
-	b.polygon(Face.Builder.round_rect(Vector2(0.0, size.y * 0.5), Vector2(size.x, size.y * 0.5), 36.0), WATER_DEEP.lerp(WATER, 0.5))
+	# the pond deepens toward the foot: a band of the two colours run together
+	# between a pale top and a deep bottom
+	b.polygon(Face.Builder.round_rect(Vector2.ZERO, size, 36.0), WATER_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2.ZERO, Vector2(size.x, minf(size.y, 90.0)), 36.0), WATER)
+	if size.y > 100.0:
+		var v0 := b.vertex(Vector2(0.0, 40.0), WATER)
+		var v1 := b.vertex(Vector2(size.x, 40.0), WATER)
+		var v2 := b.vertex(Vector2(size.x, size.y - 40.0), WATER_DEEP)
+		var v3 := b.vertex(Vector2(0.0, size.y - 40.0), WATER_DEEP)
+		b.tri(v0, v1, v2)
+		b.tri(v0, v2, v3)
 	for i in 12:
 		var at := Vector2(rng.randf_range(30.0, size.x - 90.0), rng.randf_range(24.0, size.y - 24.0))
 		if land.grow(10.0).has_point(at) or land.grow(10.0).has_point(at + Vector2(50.0, 0.0)):
