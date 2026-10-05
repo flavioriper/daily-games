@@ -8,7 +8,8 @@ extends SceneTree
 ## cleared (printed: its stars, the flowers up, whether the pod is crowned
 ## for the best passed), 3c the shop open on what the wave paid, 3d a card
 ## bought, 3e a gift crate broken and its gift flying to its button on the
-## grass, 3f the gift waiting there, 3g the button pressed through the
+## grass, 3f the gift waiting there with two more behind the count (printed:
+## the buttons and the queue), 3g the button pressed through the
 ## viewport and the gift started (printed: whether it was kept, and whether
 ## the press started it and left the cart alone), 4 the whole cast in a wall
 ## (forced: every paint, every gift and pod, the firecracker, the golden and
@@ -204,7 +205,8 @@ func _process(delta: float) -> bool:
 				var col := clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)
 				sim.rows[0][col] = _cell(Sim.Kind.FLAME, 1)
 				sim.rows[0][(col + 2) % Sim.COLS] = _cell(Sim.Kind.CRATE, 90000)
-				sim.held = [0, 0]
+				sim.held = [0, Sim.Kind.FROST]
+				sim.queue.clear()
 				sim.wall_y = 250.0
 				sim.wall_speed = 0.0
 				sim.target_x = sim.x
@@ -222,7 +224,15 @@ func _process(delta: float) -> bool:
 				_step = 4
 		34:
 			if _t > _at + 0.8:
+				# two more had with both buttons full: they wait up the chute
+				_s.sim._take(Sim.Kind.SHOVE, Vector2(150.0, 200.0))
+				_s.sim._take(Sim.Kind.FAN, Vector2(150.0, 200.0))
+				_at = _t
+				_step = 341
+		341:
+			if _t > _at + 0.9:
 				_shot("3f_held")
+				print("two more wait their turn: held=%s queue=%s" % [_s.sim.held, _s.sim.queue])
 				# a real press on its button, through the viewport
 				var f: Control = _s.field
 				var slot: int = _s.sim.held.find(Sim.Kind.FLAME)
@@ -234,11 +244,11 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 35
 		35:
-			if _t > _at + 0.25:
+			if _t > _at + 0.17:
 				_mouse(false, get_meta("win"))
 				_shot("3g_used")
-				print("the press started it: %s (element=%d held=%s), cart left alone: %s" % [_s.sim.element == Sim.Kind.FLAME, _s.sim.element,
-					_s.sim.held, is_equal_approx(_s.sim.x, _x0) and not _s._mouse])
+				print("the press started it: %s (element=%d held=%s queue=%s), cart left alone: %s" % [_s.sim.element == Sim.Kind.FLAME, _s.sim.element,
+					_s.sim.held, _s.sim.queue, is_equal_approx(_s.sim.x, _x0) and not _s._mouse])
 				_step = 4
 		4:
 			# the cast, forced: a wall of every paint and every kind
@@ -270,9 +280,11 @@ func _process(delta: float) -> bool:
 			sim.element_t = 8.0
 			sim.frost_t = 4.0
 			sim.held = [Sim.Kind.BURST, Sim.Kind.SHOVE]
+			sim.queue = [Sim.Kind.FLAME, Sim.Kind.FROST, Sim.Kind.FAN]
+			sim.peas = 3
 			sim.power = 3
 			sim.rate_lv = 4
-			sim.crit_lv = Sim.CRIT_MAX
+			sim.crit_lv = 5
 			sim.shots.clear()
 			sim.target_x = 150.0
 			_hand = 150.0
@@ -310,6 +322,7 @@ func _process(delta: float) -> bool:
 				sim.power = 2
 				sim.rate_lv = 0
 				sim.crit_lv = 0
+				sim.peas = 1
 				sim.shape = 0
 				sim.shape_t = 0.0
 				sim.element = 0

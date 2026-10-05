@@ -508,6 +508,58 @@ chalk line ends the run. Its "furthest" is the wave.
     is had. **Nothing was run on a phone (two thumbs at once least of all),
     nothing was heard, and no person has played with the tray.**
 
+- **The sixth pass (2026-10-05, the user: "add +1 shoot on shop, but make it
+  expensive", "instead of crit being the change, we make chance fixed but
+  increase crit damage", "send it in sequence instead of parallel", "make
+  crit upgrade expensiver along with speed one", "an infinite queue, as
+  fifo", and then, on seeing a "+N" badge: "show it like a bingo ball with
+  two slots going outside screen, when player use one, another ball roll
+  in").** What the fifth pass says of a newer gift taking the older one's
+  place, of a place that never moves and of `lost` is history.
+  - **A pea more a volley** (`Card.SHOTS`, `sim.peas`, three levels,
+    `MAX_SHOTS`): the peas of a volley leave one after another from wherever
+    the cart is by then (`_seq`, `SEQ_GAP` 0.06 s, less when the gun is too
+    quick for it), never side by side. A `shot` event says `more` for the
+    ones behind the first; the screen plays the click once a volley. The
+    card is appended to `Card`, so the old numbers stand; the shop lays its
+    rows by `SHOP_ORDER`. **80 on wave 1 and as much again each time**
+    (`PRICE`, `PRICE_STEP` 1.0): at 45 the bots ran six waves further.
+  - **The crit is how hard, not how often**: none before the first level;
+    from it `CRIT_CHANCE` (one pea in ten) lands `crit_mult(lv)` times (x3,
+    one more a level), and the chance goes up 5% every fifth level
+    (`crit_chance`, 50% at most). No cap on the level. The grass's third
+    pill shows the multiplier ("-" with none bought).
+  - **Dearer**: the quicker gun and the crit are 14 with a step of 0.4 (were
+    9 and 0.3).
+  - **The gifts are one line** (`held` its first two, `queue` the rest,
+    oldest first, nothing lost): a gift started, everything behind it moves
+    up one (`use` says `next`). On the grass a chute runs from the two
+    buttons off the garden's right side, the next in turn half in at its
+    mouth (`_slot_px(TRAY)`), and the line rolls along a place
+    (`_slot_roll`, `_rolled`); a gift still flying goes to where its place
+    now is. The buttons moved 9 units left and are 31 apart to show the
+    mouth; the rings start at `W - 84`, 20 apart, and three of them touch
+    the crit's pill.
+  - **`Motion.bump` on a label compounds**: it swells from whatever scale
+    the node has, so a bump begun inside the last one left the score a
+    tenth bigger each time and a streak blew it up over its plate (the
+    user's screenshot). The screen's labels beat through `_beat`, which
+    stops the last tween and starts from one. Any other screen bumping a
+    label on every kill has the same bug.
+  - **The numbers**: `hp_base` is 1.30 a wave after wave 10 (was 1.27).
+    `tests/_probe_peapod.gd` (shopper 6: as 0 but never the extra pea).
+    Eight runs, skill 2: gifts started at once wave 13-17 (was 13-19),
+    kept for their match 19-20 (was 14-19, most on 17), no extra pea 16-19,
+    at random 11-16. **The keeping bot's runs are about nine minutes, not
+    six**: with nothing lost it has a frost or a shove for every close
+    call. Whether a person plays that way is not known.
+  - 80-87 draw calls with the chute full, 170 on the shot harness's cast,
+    133 at worst under four peas a volley at full rate with a Fan of
+    lightning; the sim 256 usec a step on a 24-plate millipede with 83 peas
+    in the air (`tests/_probe_peapod_perf.gd`). Suite 249790/0, the shot harness on both
+    drivers and under reduce motion. **Not done: the tutorial's shop page
+    with its fifth row (not shot), a phone, and nothing heard.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

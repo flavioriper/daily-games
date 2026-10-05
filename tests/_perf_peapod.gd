@@ -61,7 +61,8 @@ func _skip_gold() -> void:
 func _full_gun() -> void:
 	var sim = _s.sim
 	sim.rate_lv = Sim.MAX_RATE
-	sim.crit_lv = Sim.CRIT_MAX
+	sim.crit_lv = 5
+	sim.peas = 1 + Sim.MAX_SHOTS
 	sim.power = 9
 	sim.shape = Sim.Kind.FAN
 	sim.shape_t = 1000.0

@@ -684,11 +684,12 @@ func _draw_hud() -> void:
 		var lines := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs)
 		draw_multiline_string(font, Vector2(tx, cy - lines.y * 0.5 + fs * 0.82), text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs, -1, Pal.TEXT)
 
-## The shop's page: its four cards, each medallion beside its name and what
-## one more of it does.
+## The shop's page: its five cards in the shop's order, each medallion
+## (Sim.Card) beside its name and what one more of it does.
 func _draw_shop() -> void:
-	var rows := [["PP_CARD_DAMAGE", tr("TUT_PEAPOD_C_DAMAGE")], ["PP_CARD_SPEED", tr("TUT_PEAPOD_C_SPEED")],
-		["PP_CARD_CRIT", tr("TUT_PEAPOD_C_CRIT") % Sim.CRIT_MULT], ["PP_CARD_ENERGY", tr("TUT_PEAPOD_C_ENERGY")]]
+	var rows := [["PP_CARD_DAMAGE", tr("TUT_PEAPOD_C_DAMAGE"), Sim.Card.DAMAGE], ["PP_CARD_SPEED", tr("TUT_PEAPOD_C_SPEED"), Sim.Card.SPEED],
+		["PP_CARD_SHOTS", tr("TUT_PEAPOD_C_SHOTS"), Sim.Card.SHOTS], ["PP_CARD_CRIT", tr("TUT_PEAPOD_C_CRIT"), Sim.Card.CRIT],
+		["PP_CARD_ENERGY", tr("TUT_PEAPOD_C_ENERGY"), Sim.Card.ENERGY]]
 	var row_h := size.y / rows.size()
 	var chip := minf(84.0, row_h * 0.8)
 	var font: Font = CozyTheme.display(700)
@@ -697,7 +698,7 @@ func _draw_shop() -> void:
 	var wide := size.x - tx - 20.0
 	for k in rows.size():
 		var cy := row_h * (k + 0.5)
-		draw_mesh(Art.card_token(k, chip / 27.0), null, Transform2D(0.0, Vector2(HUD_X + chip * 0.5, cy)))
+		draw_mesh(Art.card_token(int(rows[k][2]), chip / 27.0), null, Transform2D(0.0, Vector2(HUD_X + chip * 0.5, cy)))
 	for k in rows.size():
 		var cy := row_h * (k + 0.5)
 		var text := "%s: %s" % [tr(rows[k][0]), rows[k][1]]

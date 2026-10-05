@@ -51,6 +51,16 @@ extends RefCounted
 ## are made of (`element`: lightning, flame), one of each at once, each with
 ## its own ten seconds. A wave's second pod is of the other kind than its
 ## first.
+##
+## The sixth pass (2026-10-05, the user's four asks). The shop sells a pea
+## more a volley, dear (`Card.SHOTS`), and a volley's peas leave one after
+## another up the same lane, never side by side. The crit's chance no longer
+## grows a level: it is CRIT_CHANCE from the first one bought (none before)
+## and a level makes the crit land harder (`crit_mult`), the chance going up
+## a little every CRIT_EVERY levels. The crit and the quicker gun cost more.
+## And no gift is lost to a newer one: past the two places a gift waits its
+## turn (`queue`), first in first out: the two places are the head of one
+## line, and a gift started lets everything behind it move up one.
 
 ## SHOP: a wave is cleared and the shop is open; nothing moves until
 ## `leave_shop()`.
@@ -63,7 +73,7 @@ enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, FROST, SHOV
 ## How a pea in flight looks.
 enum Shot { PEA, PIERCE, BURST, ZAP, FLAME }
 ## What the shop sells.
-enum Card { DAMAGE, SPEED, CRIT, ENERGY }
+enum Card { DAMAGE, SPEED, CRIT, ENERGY, SHOTS }
 ## What a number came off by: the pea itself, a splash or a jump of it, a
 ## firecracker, a burn.
 enum Hit { PEA, SIDE, BOOM, BURN }
@@ -89,10 +99,21 @@ const PEA_SPEED := 540.0
 const RATE_BASE := 5.0
 const RATE_STEP := 1.0
 const MAX_RATE := 8
-## A level of crit is this much chance of a pea landing CRIT_MULT times.
-const CRIT_STEP := 0.1
-const CRIT_MAX := 5
+## The crit: with none bought no pea is lucky. From the first level a pea
+## has CRIT_CHANCE of landing CRIT_MULT times as hard, and every level after
+## adds CRIT_MULT_STEP to that; the chance itself only goes up CRIT_CHANCE_STEP
+## every CRIT_EVERY levels, to CRIT_CHANCE_MAX.
+const CRIT_CHANCE := 0.1
+const CRIT_CHANCE_STEP := 0.05
+const CRIT_CHANCE_MAX := 0.5
+const CRIT_EVERY := 5
 const CRIT_MULT := 3
+const CRIT_MULT_STEP := 1
+## The peas more a volley the shop sells at most, and the gap from one pea
+## of a volley to the next (less when the gun is too quick for it: a volley
+## is out before the next begins).
+const MAX_SHOTS := 3
+const SEQ_GAP := 0.06
 ## Energy is counted in orbs, ORBS of them to one energy: a crate drops an
 ## orb for every quarter of what it is worth, so one worth 1.5 drops six.
 ## A crate is worth ENERGY_CRATE (a golden one GOLD_WORTH times), and a
@@ -102,12 +123,12 @@ const ENERGY_CRATE := 1.0
 const ENERGY_STEP := 0.1
 ## A card's price in energy on wave 1 with none bought, and how much of that
 ## each one bought adds.
-const PRICE := [11, 9, 9, 12]
-const PRICE_STEP := [0.3, 0.3, 0.3, 0.4]
+const PRICE := [11, 14, 14, 12, 80]
+const PRICE_STEP := [0.3, 0.4, 0.4, 0.4, 1.0]
 ## The beat between the shop closing and the next wave.
 const SHOP_GAP := 0.5
-## The gifts had and not yet used: so many places, and a newer gift takes
-## the older one's.
+## The gifts had and not yet used: so many places to start one from; the
+## gifts past them wait their turn (`queue`).
 const TRAY := 2
 const POD_TIME := 10.0
 ## Lightning: the jumps on from what a pea hit, and how far one reaches.
@@ -171,25 +192,26 @@ var x := W * 0.5
 ## Where the finger wants the cart (NAN: where it is), or the keys' axis.
 var target_x := NAN
 var axis := 0.0
-## The gun: a pea's weight, the rate's level and the crit's, and the level
-## of the Energy card. `bought` is how many of each card the shop has sold
+## The gun: a pea's weight, the rate's level and the crit's, the peas a
+## volley (one, and one more a SHOTS card) and the level of the Energy card. `bought` is how many of each card the shop has sold
 ## (a booster's head start is not one of them, so it does not raise a price).
 var power := 1
 var rate_lv := 0
 var crit_lv := 0
+var peas := 1
 var energy_lv := 0
-var bought := [0, 0, 0, 0]
+var bought := [0, 0, 0, 0, 0]
 ## Energy held and all the run has made, both in orbs (`ORBS` to one
 ## energy), and the part of an orb the crates so far have left over.
 var energy := 0
 var earned := 0
 var _orb_part := 0.0
-## The gifts had and not yet used, a place each (0: empty, else a Kind), and
-## when each was had. A place keeps its gift until `use()` or until a newer
-## gift takes it.
+## The gifts had and not yet used, oldest first, in one line: its head is
+## `held`, a place each (0: empty, else a Kind, and never a gap before a
+## gift), and the rest wait in `queue`. A gift started, all behind it move
+## up one.
 var held: Array = [0, 0]
-var _held_at: Array = [0, 0]
-var _had := 0
+var queue: Array = []
 ## What is running: a shape (0: none, else FAN, PIERCE or BURST) and an
 ## element (ZAP or FLAME), one of each at once, with their seconds left; the
 ## frost's.
@@ -199,6 +221,9 @@ var element := 0
 var element_t := 0.0
 var frost_t := 0.0
 var _cool := 0.0
+## The peas of the volley begun still to leave, and the seconds to the next.
+var _seq := 0
+var _seq_t := 0.0
 var shots: Array = []
 ## Seconds until the last thing lit has burnt out.
 var _burning := 0.0
@@ -249,13 +274,22 @@ func is_over() -> bool:
 func rate() -> float:
 	return RATE_BASE + RATE_STEP * rate_lv
 
-## The chance a pea lands CRIT_MULT times as hard.
+## The chance a pea is lucky, at crit level `lv`: none before the first.
+static func crit_chance(lv: int) -> float:
+	if lv <= 0:
+		return 0.0
+	return minf(CRIT_CHANCE + CRIT_CHANCE_STEP * int(lv / float(CRIT_EVERY)), CRIT_CHANCE_MAX)
+
+## How many times as hard a lucky pea lands, at crit level `lv`.
+static func crit_mult(lv: int) -> int:
+	return CRIT_MULT + CRIT_MULT_STEP * maxi(0, lv - 1)
+
 func crit() -> float:
-	return CRIT_STEP * crit_lv
+	return crit_chance(crit_lv)
 
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
-	return 2.4 * pow(1.32, mini(w, 10) - 1) * pow(1.27, maxi(0, w - 10))
+	return 2.4 * pow(1.32, mini(w, 10) - 1) * pow(1.3, maxi(0, w - 10))
 
 static func holds_gift(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.SHOVE
@@ -285,7 +319,7 @@ func price(card: int) -> int:
 
 ## A card at its most is not sold.
 func maxed(card: int) -> bool:
-	return (card == Card.SPEED and rate_lv >= MAX_RATE) or (card == Card.CRIT and crit_lv >= CRIT_MAX)
+	return (card == Card.SPEED and rate_lv >= MAX_RATE) or (card == Card.SHOTS and peas > MAX_SHOTS)
 
 func can_buy(card: int) -> bool:
 	return not maxed(card) and energy >= price(card)
@@ -304,6 +338,8 @@ func buy(card: int) -> bool:
 			crit_lv += 1
 		Card.ENERGY:
 			energy_lv += 1
+		Card.SHOTS:
+			peas += 1
 	events.append({"type": "buy", "card": card})
 	return true
 
@@ -442,14 +478,28 @@ func _tick_gifts() -> void:
 func _slow() -> float:
 	return FROST if frost_t > 0.0 else 1.0
 
+## A volley's peas leave one after another from wherever the cart is by
+## then: the first says `shot`, the ones behind it `shot` with `more`.
 func _fire() -> void:
+	if _seq > 0:
+		_seq_t -= DT
+		if _seq_t <= 0.0:
+			_seq -= 1
+			_seq_t += _seq_gap()
+			_volley(x)
+			events.append({"type": "shot", "x": x, "more": true})
 	_cool -= DT
 	if _cool > 0.0:
 		return
 	_cool += 1.0 / rate()
 	_volley(x)
-	events.append({"type": "shot", "x": x})
+	events.append({"type": "shot", "x": x, "more": false})
 	fired += 1
+	_seq = peas - 1
+	_seq_t = _seq_gap()
+
+func _seq_gap() -> float:
+	return minf(SEQ_GAP, 1.0 / (rate() * peas))
 
 ## A volley as the shape and the element running make it. A pea carries how
 ## it lands (`left` targets to go through, `burst`, `el`: its element) and
@@ -524,7 +574,7 @@ func _strike(p: Dictionary) -> bool:
 		if int(cell.id) == int(p.last):
 			return false
 		var lucky := _lucky()
-		var dmg := power * (CRIT_MULT if lucky else 1)
+		var dmg := power * (crit_mult(crit_lv) if lucky else 1)
 		var half := maxi(1, int(dmg / 2.0))
 		_hurt_cell(r, c, dmg, Vector2(px, wall_y - r * CELL_H), Hit.PEA, lucky)
 		if bool(p.burst):
@@ -554,7 +604,7 @@ func _strike(p: Dictionary) -> bool:
 			if id == int(p.last):
 				continue
 			var lucky := _lucky()
-			var dmg := power * (CRIT_MULT if lucky else 1)
+			var dmg := power * (crit_mult(crit_lv) if lucky else 1)
 			var half := maxi(1, int(dmg / 2.0))
 			var beside: Array = []
 			if bool(p.burst):
@@ -773,23 +823,17 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	if holds_gift(kind):
 		_take(kind, pos)
 
-## A gift crate broken: its gift goes to an empty place, or takes the place
-## of the gift had longest (`lost`, 0 when the place was empty). Nothing
-## starts until `use()`.
+## A gift crate broken: its gift goes to an empty place (`slot`), or with
+## both full to the end of the queue (`slot` -1; `waiting` is how many wait
+## now). Nothing starts until `use()`, and nothing is lost.
 func _take(kind: int, at: Vector2) -> void:
 	caught += 1
-	var slot := 0
-	for i in TRAY:
-		if int(held[i]) == 0:
-			slot = i
-			break
-		if int(_held_at[i]) < int(_held_at[slot]):
-			slot = i
-	var lost: int = held[slot]
-	_had += 1
-	held[slot] = kind
-	_held_at[slot] = _had
-	events.append({"type": "gift", "pos": at, "kind": kind, "slot": slot, "lost": lost})
+	var slot := held.find(0)
+	if slot >= 0:
+		held[slot] = kind
+	else:
+		queue.append(kind)
+	events.append({"type": "gift", "pos": at, "kind": kind, "slot": slot, "waiting": queue.size()})
 
 ## Whether the gift in `slot` can be started now: there is one, and a wave
 ## is on to use it against.
@@ -798,12 +842,16 @@ func can_use(slot: int) -> bool:
 
 ## Starts the gift in `slot`. A shape takes the place of the shape running
 ## and an element of the element, each with its own time; a shape and an
-## element run together.
+## element run together. Every gift behind it moves up one place, the one
+## that has waited longest into the last (`next`, 0 when none waits).
 func use(slot: int) -> bool:
 	if not can_use(slot):
 		return false
 	var kind: int = held[slot]
-	held[slot] = 0
+	var next: int = 0 if queue.is_empty() else int(queue.pop_front())
+	for i in range(slot, TRAY - 1):
+		held[i] = held[i + 1]
+	held[TRAY - 1] = next
 	used += 1
 	match kind:
 		Kind.FROST:
@@ -816,7 +864,7 @@ func use(slot: int) -> bool:
 		_:
 			shape = kind
 			shape_t = POD_TIME
-	events.append({"type": "use", "kind": kind, "slot": slot})
+	events.append({"type": "use", "kind": kind, "slot": slot, "next": next, "waiting": queue.size()})
 	return true
 
 ## Everything coming goes back a way: the wall up, the millipede along

@@ -2,13 +2,14 @@ extends SceneTree
 
 ## Plays Peapod's sim headless with a bot and prints how far each run went.
 ## Run after touching arcade/peapod_sim.gd.
-##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-5] [keeper 0-1]
+##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-6] [keeper 0-1]
 ## Skill 0 wanders under whatever is lowest, slowly; 1 aims at the lowest
 ## thing, gift crates first; 2 does the same at a quick finger's pace.
 ## The shopper is how the bot spends its energy between waves: 0 the card
 ## that adds most to the gun for its price, 1 only the heavier pea, 2 only
 ## the quicker gun, 3 only the crit, 4 two Energy cards first and then as 0,
-## 5 whatever it can afford, at random. A price is tuned when 0 goes a
+## 5 whatever it can afford, at random, 6 as 0 but never the pea more a
+## volley. A price is tuned when 0 goes a
 ## little further than 1, 2 and 3, and 4 is ahead on a long run only.
 ## The keeper is what the bot does with a gift it holds: 0 starts it at
 ## once, 1 keeps a pod until it holds one that runs with it (a shape and an
@@ -44,7 +45,11 @@ func _target(sim: RefCounted, skill: int) -> float:
 
 ## The gun's worth: what it takes off a second.
 func _dps(sim: RefCounted) -> float:
-	return sim.power * sim.rate() * (1.0 + (Sim.CRIT_MULT - 1) * sim.crit())
+	return sim.power * sim.rate() * sim.peas * _luck(sim.crit_lv)
+
+## What the crit makes of a pea on average, at level `lv`.
+func _luck(lv: int) -> float:
+	return 1.0 + (Sim.crit_mult(lv) - 1) * Sim.crit_chance(lv)
 
 ## How much more the gun would take off with one more of `card`, as a share.
 func _gain(sim: RefCounted, card: int) -> float:
@@ -54,7 +59,9 @@ func _gain(sim: RefCounted, card: int) -> float:
 		Sim.Card.SPEED:
 			return Sim.RATE_STEP / sim.rate()
 		Sim.Card.CRIT:
-			return (Sim.CRIT_MULT - 1) * Sim.CRIT_STEP / (1.0 + (Sim.CRIT_MULT - 1) * sim.crit())
+			return _luck(sim.crit_lv + 1) / _luck(sim.crit_lv) - 1.0
+		Sim.Card.SHOTS:
+			return 1.0 / sim.peas
 	return 0.0
 
 func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
@@ -75,8 +82,8 @@ func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
 					pick = Sim.Card.ENERGY
 				else:
 					var best := 0.0
-					for card in [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.CRIT]:
-						if sim.maxed(card):
+					for card in [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.CRIT, Sim.Card.SHOTS]:
+						if sim.maxed(card) or (shopper == 6 and card == Sim.Card.SHOTS):
 							continue
 						var worth: float = _gain(sim, card) / sim.price(card)
 						if worth > best:
@@ -140,12 +147,12 @@ func _initialize() -> void:
 			for ev: Dictionary in sim.events:
 				tally[ev.type] = int(tally.get(ev.type, 0)) + 1
 				if ev.type == "wave":
-					log += " %d@%ds(d%d r%d c%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, sim.energy / Sim.ORBS]
+					log += " %d@%ds(d%d r%d c%d p%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.peas, sim.energy_lv, sim.energy / Sim.ORBS]
 			sim.events.clear()
 		waves.append(sim.wave)
-		print("seed %d skill %d shopper %d keeper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d energy %d  dps %.0f  kills %d  gifts %d used %d  earned %d  held %d  shots %d" % [
-			seed_v + g, skill, shopper, keeper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, _dps(sim),
-			sim.kills, sim.caught, sim.used, sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
+		print("seed %d skill %d shopper %d keeper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d peas %d energy %d  dps %.0f  kills %d  gifts %d used %d waiting %d  earned %d  held %d  shots %d" % [
+			seed_v + g, skill, shopper, keeper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.peas, sim.energy_lv, _dps(sim),
+			sim.kills, sim.caught, sim.used, sim.queue.size(), sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
 		if g == 0:
 			print(log)
 			print(tally)

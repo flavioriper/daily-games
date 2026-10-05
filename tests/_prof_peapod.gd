@@ -108,7 +108,7 @@ func _process(delta: float) -> bool:
 				# the gun a balanced run holds on this wave, and the wave itself
 				sim.power = 1 + int(_wave * 0.55)
 				sim.rate_lv = mini(Sim.MAX_RATE, int(_wave * 0.5))
-				sim.crit_lv = mini(Sim.CRIT_MAX, int(_wave * 0.45))
+				sim.crit_lv = mini(5, int(_wave * 0.45))
 				sim.rows.clear()
 				sim.segs.clear()
 				sim.wave = _wave - 1

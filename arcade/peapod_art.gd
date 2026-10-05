@@ -51,7 +51,7 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 	Sim.Kind.SHOVE: Color("5fbf8a")}
 ## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
 ## the crit and the energy.
-const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f")]
+const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
 ## An energy orb: its glow and body, and its bright heart.
 const ORB := Color("3fc8ff")
 const ORB_HI := Color("e6fbff")
@@ -331,6 +331,10 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 			b.disc(c, s * 0.3, Color("f08a80"))
 			b.disc(c, s * 0.15, PAPER)
 			_twinkle(b, c + Vector2(s * 0.3, -s * 0.3), s * 0.24, Color("fff1a8"))
+		Sim.Card.SHOTS:
+			# three peas in a line, one behind the other
+			for k in 3:
+				pea(b, c + Vector2(0, s * (0.3 - 0.3 * k)), s * (0.13 + 0.035 * k))
 		Sim.Card.ENERGY:
 			# an energy orb, as a crate drops them, and a glint off it
 			b.disc(c, s * 0.46, Color(ORB, 0.3))
