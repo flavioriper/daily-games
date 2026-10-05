@@ -155,26 +155,44 @@ func _plugin_present() -> bool:
 func _consent() -> void:
 	var request := ConsentRequestParameters.new()
 	request.tag_for_under_age_of_consent = AgeGate.band() != AgeGate.ADULT
-	UserMessagingPlatform.consent_information.update(request, _on_consent_updated, func(error: FormError) -> void:
-		Analytics.track("consent_failed", {"error": error.message if error else ""})
-		_init_ads())
+	UserMessagingPlatform.consent_information.update(request, _on_consent_updated, _on_consent_failed)
 
+# Everything handed to the plugin from here to _on_ads_ready is a method, never
+# a lambda: the plugin keeps these in static variables, which outlive this
+# node and this script. A lambda that reads `self` points back at its script
+# without holding it, and freeing one after the script is gone aborts: on
+# iOS, where closing the app runs the engine's whole cleanup, every close was
+# reported as a crash (TestFlight, builds 991 and 1000). A method Callable is
+# an object id and a name, and frees to nothing.
 func _on_consent_updated() -> void:
 	var info := UserMessagingPlatform.consent_information
 	if info.get_consent_status() == info.ConsentStatus.REQUIRED and info.get_is_consent_form_available():
-		UserMessagingPlatform.load_consent_form(func(form: ConsentForm) -> void:
-			form.show(func(_error: FormError) -> void: _init_ads()),
-			func(_error: FormError) -> void: _init_ads())
+		UserMessagingPlatform.load_consent_form(_on_consent_form, _on_consent_done)
 	else:
 		_init_ads()
 
+func _on_consent_failed(error: FormError) -> void:
+	Analytics.track("consent_failed", {"error": error.message if error else ""})
+	_init_ads()
+
+func _on_consent_form(form: ConsentForm) -> void:
+	form.show(_on_consent_done)
+
+func _on_consent_done(_error: FormError) -> void:
+	_init_ads()
+
+func _on_privacy_options_closed(_error: FormError) -> void:
+	pass
+
 func _init_ads() -> void:
 	var listener := OnInitializationCompleteListener.new()
-	listener.on_initialization_complete = func(_status: InitializationStatus) -> void:
-		_load_banner()
-		_load_interstitial()
-		_load_rewarded()
+	listener.on_initialization_complete = _on_ads_ready
 	MobileAds.initialize(listener)
+
+func _on_ads_ready(_status: InitializationStatus) -> void:
+	_load_banner()
+	_load_interstitial()
+	_load_rewarded()
 
 func _load_banner() -> void:
 	if _removed:
@@ -230,7 +248,7 @@ func privacy_options_required() -> bool:
 
 func show_privacy_options() -> void:
 	if privacy_options_required():
-		UserMessagingPlatform.show_privacy_options_form(func(_error: FormError) -> void: pass)
+		UserMessagingPlatform.show_privacy_options_form(_on_privacy_options_closed)
 
 func is_banner_visible() -> bool:
 	return _banner_visible

@@ -118,9 +118,16 @@ func solve_async() -> void:
 	_task = _start(start_key, _box, homesick)
 	_pending.append(_task)
 
-## The task, from a static function so the lambda holds no tray at all.
+## The task, a static method and not a lambda, so it holds no tray and no
+## script: a closed tray's task is only collected by the next tray, so the last
+## one is still on the pool's books when the app closes, and a lambda freed
+## there, after the scripts are gone, crashed the close on iOS (TestFlight,
+## build 766).
 static func _start(from: int, box: Dictionary, one_way: bool) -> int:
-	return WorkerThreadPool.add_task(func(): box["r"] = Gen.distances(from, 0, box, one_way))
+	return WorkerThreadPool.add_task(_run.bind(from, box, one_way))
+
+static func _run(from: int, box: Dictionary, one_way: bool) -> void:
+	box["r"] = Gen.distances(from, 0, box, one_way)
 
 ## Waits for the worker, if one is running.
 func finish() -> void:
