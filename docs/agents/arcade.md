@@ -648,20 +648,32 @@ chalk line ends the run. Its "furthest" is the wave.
     and springing back, a ring and stars off the mouth) and wears it from
     then (`_looks_at`); the sim has it from the press. Under reduce motion
     nothing flies and the pod is dressed at once.
-  - **Energy is a spark** (`Art.orb`, `glow`, `spark4`): a soft light with
-    four thin rays edged in deep blue round a white heart, no rim and no
-    shine, which were what made it a ball. It snaps out of the crate and
-    stops short (no gravity: falling was the balloon), flashes as it comes,
-    trembles where it hangs with its rays beating one against the other,
-    lightning between sparks hanging near each other (`_arc`, seven at most,
-    its dice thrown again every blink), and is pulled into a streak on its
-    way to the plate, where each landing throws two sparks. The shop's
-    energy medallion and its prices are the same spark (`Art.orb(false)`).
+  - **Energy is motes of light** (`Art.orb`, `Art.glow`, `_draw_orbs`). The
+    ball went first (a rim and a shine made it one, and falling made it a
+    balloon); what replaced it the same day was four sharp rays with
+    lightning between them, and the user hated it ("you just changed shape
+    to be lightning shape. I want something that look more like a cozy
+    energy (light particles) effect"). **Cozy light has no shape**: looked
+    up, the recipe everywhere is a round falloff from a bright heart to
+    nothing, added to what is under it, drifting and breathing. So a mote is
+    three glows and a white heart with no edge anywhere (`glow` is rings
+    whose alpha falls along a curve, not a cone), it drifts out of the crate
+    and lifts a little, breathes where it hangs (each to its own time), and
+    stays round on its way to the plate, leaving a dust of smaller lights
+    behind it (`_dust`, a packed ring of four numbers a speck) and a soft
+    glow on the plate as it lands. **The light it throws is a second layer
+    with `BLEND_MODE_ADD`** (`_orb_light`, the same buffer again under
+    `Art.orb_light`): a blend is a canvas item's, not a draw's. Added alone
+    it is nothing on a pale sky, which is why the mote itself is ordinary
+    alpha in a deeper blue; the added layer is what lights a crate behind
+    it. Renders the same under `opengl3_angle`. The shop's energy medallion
+    and its prices are the same mote.
   - 78 draw calls at rest, 106-124 on a full wall, 138-144 under four peas a
     volley with a Fan of lightning or of flame (`tests/_perf_peapod.gd`),
     150-184 on the shot harness's cast with every dressing on, both drivers
-    agreeing. Suite 249790/0; the shot harness on both drivers and under
-    reduce motion (3a is four frames of the sparks, 3h the pod wearing a
+    agreeing (two more with the motes' light: 79 at rest, 145 at worst).
+    Suite 249790/0; the shot harness on both drivers and under
+    reduce motion (3a is four frames of the energy, 3h the pod wearing a
     gift, 4b four pods under all three shapes and the flame); the tutorial's
     eight pages shot and their bodies fitted in three languages (the pods'
     line was 5 px over in Spanish since the seventh pass). **Not done: a

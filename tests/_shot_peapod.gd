@@ -151,7 +151,7 @@ func _process(delta: float) -> bool:
 				set_meta("orbs", _t)
 				_shot("3a_orbs")
 				print("orbs in the air=%d, the plate shows %s of %d" % [_s._orbs.size(), _s._energy_l.text, _s.sim.energy / Sim.ORBS])
-			# and the same sparks three more times, a tenth of a second apart
+			# and the same motes three more times, a tenth of a second apart
 			for k in [1, 2, 3]:
 				if has_meta("orbs") and not has_meta("orbs%d" % k) and _t > float(get_meta("orbs")) + 0.1 * k:
 					set_meta("orbs%d" % k, true)

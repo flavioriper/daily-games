@@ -52,8 +52,8 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 ## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
 ## the crit and the energy.
 const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
-## Energy: a spark's light, its white-hot heart and the deep blue that
-## edges it on a pale sky.
+## Energy: a mote of light, its pale heart and the deeper blue its glow
+## thins out through, so it reads on a pale sky.
 const ORB := Color("3fc8ff")
 const ORB_HI := Color("e6fbff")
 const ORB_DEEP := Color("1f8fd0")
@@ -343,11 +343,12 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 			for k in [-1.0, 1.0, 0.0]:
 				pea(b, c + Vector2(s * 0.3 * k, s * (0.1 if k != 0.0 else -0.08)), s * (0.17 if k != 0.0 else 0.2))
 		Sim.Card.ENERGY:
-			# a spark of energy, as a crate drops them
-			glow(b, c, s * 0.52, Color(ORB_HI, 0.7))
-			spark4(b, c, s * 0.5, s * 0.5, s * 0.1, ORB_HI)
-			spark4(b, c, s * 0.36, s * 0.36, s * 0.06, Color.WHITE)
-			b.disc(c, s * 0.1, Color.WHITE)
+			# motes of light, as a crate lets them go: one near, two further off
+			for m: Array in [[Vector2(0.27, -0.27), 0.26], [Vector2(-0.3, 0.27), 0.2], [Vector2(-0.03, -0.02), 0.56]]:
+				var at: Vector2 = c + m[0] * s
+				glow(b, at, s * float(m[1]), Color(ORB, 1.0), 1.1)
+				glow(b, at, s * float(m[1]) * 0.7, Color(ORB_HI, 1.0), 1.0)
+				glow(b, at, s * float(m[1]) * 0.42, Color.WHITE, 0.7)
 
 ## A shop card's medallion of radius `r`, ringed in paper.
 static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float) -> void:
@@ -382,51 +383,53 @@ static func fire(u: float) -> ArrayMesh:
 	return _keep(key, b.mesh())
 
 ## A soft light laid into a builder: `col` at `c`, thinning to nothing at
-## `r`.
-static func glow(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
-	var rim := Face.Builder.ring(c, r, r)
+## `r` along a curve (`fall`: the higher, the smaller its bright heart), so
+## it has no edge to see.
+const GLOW_RINGS := 5
+const GLOW_SIDES := 28
+static func glow(b: Face.Builder, c: Vector2, r: float, col: Color, fall := 2.0) -> void:
 	var mid := b.vertex(c, col)
 	var first := b.verts.size()
-	for p in rim:
-		b.vertex(p, Color(col, 0.0))
-	for i in rim.size():
-		b.tri(mid, first + i, first + (i + 1) % rim.size())
+	for ring in GLOW_RINGS:
+		var t := float(ring + 1) / GLOW_RINGS
+		var tint := Color(col, col.a * pow(1.0 - t, fall))
+		for k in GLOW_SIDES:
+			b.vertex(c + Vector2.from_angle(TAU * k / GLOW_SIDES) * r * t, tint)
+	for k in GLOW_SIDES:
+		var next := (k + 1) % GLOW_SIDES
+		b.tri(mid, first + k, first + next)
+		for ring in GLOW_RINGS - 1:
+			var a := first + ring * GLOW_SIDES
+			var o := a + GLOW_SIDES
+			b.tri(a + k, o + k, o + next)
+			b.tri(a + k, o + next, a + next)
 
-## A spark of four rays about `c`: `rx` long along x, `ry` along y, pinched
-## to `waist` between them.
-static func spark4(b: Face.Builder, c: Vector2, rx: float, ry: float, waist: float, col: Color) -> void:
-	b.polygon(PackedVector2Array([c + Vector2(rx, 0), c + Vector2(waist, waist), c + Vector2(0, ry), c + Vector2(-waist, waist),
-		c + Vector2(-rx, 0), c + Vector2(-waist, -waist), c + Vector2(0, -ry), c + Vector2(waist, -waist)]), col)
-
-## A spark of energy, centred, its light ORB_R in radius (built that big so
-## its rays are sharp, and scaled down by its draw): a soft light, and in it
-## four thin rays edged in deep blue round a white-hot heart, the longest
-## along x. With `tail`, a streak of light back along -x: its draw turns it
-## the way it flies and pulls it long by how fast. Nothing of it is a ball:
-## no rim, no shine.
+## A mote of energy, centred, its glow ORB_R in radius (built that big so it
+## is smooth, and scaled down by its draw): nothing but light. A wide blue
+## glow thinning to nothing, a paler one in it and a white heart, each with
+## no edge. No rim, no shine and no rays: a rim and a shine made it a ball,
+## rays made it lightning.
 const ORB_R := 64.0
-static func orb(tail := true) -> ArrayMesh:
-	var key := "orb" if tail else "orb_still"
-	if _cache.has(key):
-		return _cache[key]
+static func orb() -> ArrayMesh:
+	if _cache.has("orb"):
+		return _cache["orb"]
 	var b := Face.Builder.new()
 	var r := ORB_R
-	if tail:
-		var i0 := b.vertex(Vector2(0, -0.3 * r), Color(ORB, 0.62))
-		var i1 := b.vertex(Vector2(0, 0.3 * r), Color(ORB, 0.62))
-		var i2 := b.vertex(Vector2(-1.8 * r, 0), Color(ORB, 0.0))
-		b.tri(i0, i1, i2)
-		var j0 := b.vertex(Vector2(0, -0.12 * r), Color(1, 1, 1, 0.9))
-		var j1 := b.vertex(Vector2(0, 0.12 * r), Color(1, 1, 1, 0.9))
-		var j2 := b.vertex(Vector2(-1.1 * r, 0), Color(ORB_HI, 0.0))
-		b.tri(j0, j1, j2)
-	glow(b, Vector2.ZERO, r, Color(ORB, 0.55))
-	spark4(b, Vector2.ZERO, 1.0 * r, 0.72 * r, 0.26 * r, ORB_DEEP)
-	spark4(b, Vector2.ZERO, 0.88 * r, 0.6 * r, 0.2 * r, ORB)
-	glow(b, Vector2.ZERO, 0.5 * r, Color(1, 1, 1, 0.95))
-	spark4(b, Vector2.ZERO, 0.62 * r, 0.4 * r, 0.13 * r, Color.WHITE)
-	b.disc(Vector2.ZERO, 0.18 * r, Color.WHITE)
-	return _keep(key, b.mesh())
+	glow(b, Vector2.ZERO, r, Color(ORB_DEEP, 0.62), 1.5)
+	glow(b, Vector2.ZERO, 0.62 * r, Color(ORB, 0.95), 1.4)
+	glow(b, Vector2.ZERO, 0.4 * r, Color(ORB_HI, 1.0), 1.2)
+	glow(b, Vector2.ZERO, 0.26 * r, Color.WHITE, 0.9)
+	return _keep("orb", b.mesh())
+
+## The light a mote throws round itself, centred and ORB_R in radius: drawn
+## over the motes and added to what is under it, so a crate behind a mote is
+## lit by it.
+static func orb_light() -> ArrayMesh:
+	if _cache.has("orb_light"):
+		return _cache["orb_light"]
+	var b := Face.Builder.new()
+	glow(b, Vector2.ZERO, ORB_R, Color(0.3, 0.62, 1.0, 0.42), 1.8)
+	return _keep("orb_light", b.mesh())
 
 ## A spent pea, centred, with no wake: what tumbles off a crate it landed on.
 static func crumb(u: float) -> ArrayMesh:

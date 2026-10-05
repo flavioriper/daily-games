@@ -34,7 +34,7 @@ extends Control
 ## (`_draw_cart`); a gift started flies to the pod, which swallows it and
 ## wears it: the element's colour, the Fan's side pods, the Dart's nozzle,
 ## the Berry's bunches, lightning or a pilot flame at the mouth. And energy
-## is a spark, not a ball (`Art.orb`, `_draw_orbs`).
+## is motes of light, not balls (`Art.orb`, `_draw_orbs`).
 ##
 ## Drawing: the garden (sky, hills, grass) is one still mesh, built on
 ## resize. Everything that moves is drawn by one Control over it: a cached
@@ -158,21 +158,22 @@ const MAX_CRUMBS := 20
 const CRUMB_T := 0.42
 const BOLT_T := 0.14
 const MAX_BOLTS := 6
-## The energy a crate lets go: sparks snapped out of it and stopped short
-## in ORB_OUT (and as long again at most), trembling where they hang with
-## lightning between them, then drawn in to the energy plate as streaks,
-## slowly and then quick, round a bend of their own, one after another. So
+## The energy a crate lets go: motes of light drifting out of it for
+## ORB_OUT (and as long again at most), hanging there breathing, then drawn
+## in to the energy plate, slowly and then quick, round a bend of their own,
+## one after another, each leaving a dust of smaller lights behind it. So
 ## many at once at most (what is over is counted at once), and so many a
-## crate (a millipede's head is worth a hundred: its sparks are fewer and
-## bigger). ORB_ARCS is the most lightning at once, ORB_NEAR how near two
-## sparks hang to be joined.
+## crate (a millipede's head is worth a hundred: its motes are fewer and
+## bigger). The dust: so many specks at most, how long one glows, and how
+## far a mote flies between two.
 const MAX_ORBS := 150
 const ORBS_A_CRATE := 28
-const ORB_OUT := 0.2
-const ORB_IN := 0.42
-const ORB_GAP := 0.024
-const ORB_ARCS := 7
-const ORB_NEAR := 30.0
+const ORB_OUT := 0.34
+const ORB_IN := 0.55
+const ORB_GAP := 0.03
+const MAX_DUST := 150
+const DUST_T := 0.42
+const DUST_STEP := 8.0
 const SHOP_NAMES := ["PP_CARD_DAMAGE", "PP_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD_ENERGY", "PP_CARD_SHOTS"]
 ## The shop's cards, top to bottom: the gun's four and then the energy.
 const SHOP_ORDER := [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.SHOTS, Sim.Card.CRIT, Sim.Card.ENERGY]
@@ -205,22 +206,28 @@ var _best_l: Label
 var _wave_l: Label
 var _energy_l: Label
 var _shown_energy := -1
-## The orbs on their way to the energy plate, drawn over the whole screen:
-## {pos, vel, t, out, from, bend, val, size}. `_orb_due` is what they carry
+## The motes on their way to the energy plate, drawn over the whole screen:
+## {pos, vel, t, out, from, bend, val, size, seed, gone}. `_orb_due` is what they carry
 ## that the plate does not show yet, `_orb_note` the run of notes they land
 ## on and `_orb_heard` when the last one was heard.
 var _orbs: Array = []
 var _orb_layer: Control
 var _orb_mm: MultiMesh
 var _orb_buf := PackedFloat32Array()
+var _orb_count := 0
 var _orb_due := 0.0
 var _orb_note := 0
 var _orb_heard := -10.0
 var _orb_pulse := -10.0
-## The lightning between the sparks hanging: this frame's mesh, and its dice
-## (thrown again every blink, not every frame).
-var _orb_arcs: ArrayMesh
-var _arc_rng := RandomNumberGenerator.new()
+## The light the motes throw, added to what is under them: a layer of its
+## own over the motes' (a blend is a canvas item's, not a draw's).
+var _orb_light: Control
+var _orb_light_mm: MultiMesh
+## The dust the motes leave on their way in, oldest first, four numbers a
+## speck (x, y, when it was left, its size); `_dust_from` is the first that
+## still glows.
+var _dust := PackedFloat32Array()
+var _dust_from := 0
 var _sub: Label
 var _sub_pill: PanelContainer
 var _banner_tw: Tween
@@ -517,6 +524,15 @@ func _build() -> void:
 	_orb_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_orb_layer.draw.connect(_draw_orbs)
 	add_child(_orb_layer)
+	_orb_light = Control.new()
+	_orb_light.name = "OrbLight"
+	_orb_light.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_orb_light.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_orb_light.material = add
+	_orb_light.draw.connect(_draw_orb_light)
+	_orb_layer.add_child(_orb_light)
 	_rw = Rewards.new()
 	_rw.sticker_cols = STICKER_COLS
 	add_child(_rw)
@@ -659,8 +675,7 @@ func _new_game() -> void:
 	_nums.clear()
 	_crumbs.clear()
 	_bolts.clear()
-	_orbs.clear()
-	_orb_due = 0.0
+	_land_orbs()
 	_shown_energy = -1
 	if _shop != null:
 		_shop.queue_free()
@@ -745,6 +760,7 @@ func _redraw_all() -> void:
 	_over.queue_redraw()
 	if _orb_layer != null:
 		_orb_layer.queue_redraw()
+		_orb_light.queue_redraw()
 
 func _animate(delta: float) -> void:
 	for sp: Dictionary in _sparks:
@@ -2318,8 +2334,8 @@ func _draw_nums(font: Font) -> void:
 func _in_orbs(p: Vector2) -> Vector2:
 	return _orb_layer.get_global_transform().affine_inverse() * (field.get_global_transform() * (px(p) + _shake_off))
 
-## A crate worth `n` orbs is gone at `at`: its energy snaps out of it every
-## way, each spark to hang a moment before it is drawn in.
+## A crate worth `n` orbs is gone at `at`: its energy drifts out of it every
+## way, each mote to hang a moment before it is drawn in.
 func _drop_orbs(at: Vector2, n: int) -> void:
 	if n <= 0 or _orb_layer == null:
 		return
@@ -2334,23 +2350,25 @@ func _drop_orbs(at: Vector2, n: int) -> void:
 	var fat := sqrt(each)
 	for i in shown:
 		var way := Vector2.from_angle(randf() * TAU)
-		var speed := randf_range(260.0, 780.0) * _u / 2.4 * (1.0 + 0.012 * shown)
+		var speed := randf_range(110.0, 380.0) * _u / 2.4 * (1.0 + 0.012 * shown)
 		_orbs.append({"pos": from + way * 5.0 * _u, "vel": way * speed, "t": -ORB_GAP * 0.4 * i,
 			"out": ORB_OUT * randf_range(1.0, 1.7) + ORB_GAP * i, "from": from, "bend": randf_range(-1.0, 1.0), "val": each,
-			"size": randf_range(0.8, 1.15) * fat, "turn": way.angle(), "long": 0.0, "seed": randf() * 100.0})
+			"size": randf_range(0.7, 1.2) * fat, "seed": randf() * 100.0, "gone": 0.0})
 	_orb_due += n
 
-## Each spark: snapped out and stopped short (nothing of it falls or
-## floats), then round its bend to the plate, slow and then quick. One that
-## lands is counted, heard as the next note up a short run, and seen and
-## felt on the plate.
+## Each mote: let go and slowing, lifting a little as warm light does, then
+## round its bend to the plate, slow and then quick, a speck of dust left
+## every DUST_STEP of the way. One that lands is counted, heard as the next
+## note up a short run, and seen as a glow on the plate.
 func _step_orbs(delta: float) -> void:
 	if _orbs.is_empty():
 		_orb_due = 0.0
 		return
 	var to := _orb_layer.get_global_transform().affine_inverse() * (_energy_l.get_global_transform() * (_energy_l.size * 0.5))
 	var landed := 0
-	var stop := exp(-11.0 * delta)
+	var slow := exp(-5.5 * delta)
+	var lift := 26.0 * _u / 2.4 * delta
+	var stride := DUST_STEP * _u
 	for o: Dictionary in _orbs:
 		o.t += delta
 		var t: float = o.t
@@ -2359,25 +2377,25 @@ func _step_orbs(delta: float) -> void:
 		var was: Vector2 = o.pos
 		if t < float(o.out):
 			var v: Vector2 = o.vel
-			v *= stop
+			v *= slow
 			o.vel = v
-			o.pos = was + v * delta
+			o.pos = was + v * delta + Vector2(0, -lift)
 			o.from = o.pos
 		else:
 			var k := clampf((t - float(o.out)) / ORB_IN, 0.0, 1.0)
-			var e := k * k * k
+			var e := k * k * (0.35 + 0.65 * k)
 			var from: Vector2 = o.from
 			var side := (to - from).orthogonal() * 0.28 * float(o.bend)
 			var mid := from.lerp(to, 0.4) + side
 			o.pos = from.lerp(mid, e).lerp(mid.lerp(to, e), e)
+			o.gone = float(o.gone) + was.distance_to(o.pos)
+			if float(o.gone) >= stride:
+				o.gone = 0.0
+				_leave_dust(was, float(o.size))
 			if k >= 1.0:
 				o.t = INF
 				landed += 1
 				_orb_due -= float(o.val)
-		var step: Vector2 = o.pos - was
-		if step.length_squared() > 0.01:
-			o.turn = step.angle()
-		o.long = step.length() / maxf(delta, 0.001)
 	if landed > 0:
 		_orbs = _orbs.filter(func(o: Dictionary) -> bool: return o.t != INF)
 		_orb_pulse = _clock
@@ -2386,88 +2404,108 @@ func _step_orbs(delta: float) -> void:
 			_orb_note = _orb_note + 1 if _clock - _orb_heard < 0.3 else 0
 			_orb_heard = _clock
 			_quiet.cue("hit", 1.5 * pow(2.0, mini(_orb_note, 14) / 12.0), -13.0)
-			_rw.spray(_plate_at(_energy_l), Art.ORB, 2, 240.0, "spark", 0.7)
 		if _energy_l.scale.x <= 1.01:
 			_energy_l.pivot_offset = _energy_l.size * 0.5
 			_beat(_energy_l, 0.16, 0.16)
+
+## A speck of light left where a mote just was, a little off its line.
+func _leave_dust(at: Vector2, size: float) -> void:
+	if (_dust.size() >> 2) - _dust_from >= MAX_DUST:
+		return
+	if _dust_from > 256:
+		_dust = _dust.slice(_dust_from * 4)
+		_dust_from = 0
+	_dust.append(at.x + randf_range(-2.0, 2.0) * _u)
+	_dust.append(at.y + randf_range(-2.0, 2.0) * _u)
+	_dust.append(_clock)
+	_dust.append(size * randf_range(0.26, 0.46))
 
 ## Nothing is left in the air: the shop counts what there is.
 func _land_orbs() -> void:
 	_orbs.clear()
 	_orb_due = 0.0
+	_dust.clear()
+	_dust_from = 0
 
-## The sparks: each flashes out of its crate, trembles where it hangs with
-## its rays beating one against the other, and is pulled into a streak by
-## its speed. Under them the lightning between those hanging near each other.
+## The motes, their dust under them and the glow on the plate as one lands,
+## all one mesh: a mote swells out of its crate, breathes where it hangs
+## (each to its own time) and stays round on its way in, dimming a little as
+## it nears the plate; a speck of dust shrinks and goes out.
 func _draw_orbs() -> void:
-	if _orbs.is_empty():
+	var glow := 0.0 if Motion.reduce else clampf(1.0 - (_clock - _orb_pulse) / 0.3, 0.0, 1.0)
+	if _orbs.is_empty() and (_dust.size() >> 2) <= _dust_from and glow <= 0.0:
+		_orb_count = 0
 		return
+	var most := MAX_ORBS + MAX_DUST + 1
 	if _orb_mm == null:
 		_orb_mm = MultiMesh.new()
 		_orb_mm.transform_format = MultiMesh.TRANSFORM_2D
 		_orb_mm.use_colors = true
 		_orb_mm.mesh = Art.orb()
-		_orb_mm.instance_count = MAX_ORBS
-		_orb_buf.resize(MAX_ORBS * 12)
+		_orb_mm.instance_count = most
+		_orb_light_mm = MultiMesh.new()
+		_orb_light_mm.transform_format = MultiMesh.TRANSFORM_2D
+		_orb_light_mm.use_colors = true
+		_orb_light_mm.mesh = Art.orb_light()
+		_orb_light_mm.instance_count = most
+		_orb_buf.resize(most * 12)
 	var n := 0
-	var base := 11.0 * _u / Art.ORB_R
-	var fast := 800.0 * _u / 2.4
-	var near := ORB_NEAR * _u
-	# the lightning's dice are thrown again every blink, not every frame
-	_arc_rng.seed = int(_clock * 18.0)
-	var arcs := Face.Builder.new()
-	var arced := 0
-	var last := Vector2.INF
+	var base := 11.5 * _u / Art.ORB_R
+	# the dust first, under the motes; what has gone out is passed over for good
+	var specks := _dust.size() >> 2
+	while _dust_from < specks and _clock - _dust[_dust_from * 4 + 2] >= DUST_T:
+		_dust_from += 1
+	for d in range(_dust_from, specks):
+		var age := (_clock - _dust[d * 4 + 2]) / DUST_T
+		n = _orb_put(n, Vector2(_dust[d * 4], _dust[d * 4 + 1] - 7.0 * _u * age), base * _dust[d * 4 + 3] * (1.0 - 0.5 * age), 1.0 - age * age)
+	if glow > 0.0:
+		var plate := _orb_layer.get_global_transform().affine_inverse() * (_energy_l.get_global_transform() * (_energy_l.size * 0.5))
+		n = _orb_put(n, plate, base * (2.2 + 1.6 * (1.0 - glow)), 0.55 * glow * glow)
 	for o: Dictionary in _orbs:
 		var t: float = o.t
-		if t < 0.0 or n >= MAX_ORBS:
+		if t < 0.0 or n >= most:
 			continue
 		var seed: float = o.seed
-		var long := clampf(float(o.long) / fast, 0.0, 1.0)
-		var still := 1.0 - long
-		var flash := 1.0 + 0.9 * maxf(0.0, 1.0 - t / 0.09)
-		var beat := 0.24 * sin(_clock * 23.0 + seed) * still
-		var s: float = base * float(o.size) * flash
-		var sx := s * (1.0 + beat + 0.8 * long)
-		var sy := s * (1.0 - beat - 0.3 * long)
-		# it points the way it flies; hanging, it turns slowly on itself
-		var a: float = float(o.turn) if long > 0.06 else seed + _clock * 2.4
+		var out: float = o.out
+		var swell := 1.0 - pow(1.0 - minf(1.0, t / 0.22), 3.0)
+		var breath := 1.0 + 0.13 * sin(_clock * 4.6 + seed)
+		var near := clampf((t - out) / ORB_IN, 0.0, 1.0)
+		var s: float = base * float(o.size) * swell * breath * (1.0 - 0.3 * near * near)
 		var at: Vector2 = o.pos
-		at += Vector2(sin(_clock * 61.0 + seed), cos(_clock * 53.0 + seed * 1.7)) * 1.1 * _u * still
-		var hanging := t < float(o.out) + 0.06 and long < 0.3
-		if hanging and arced < ORB_ARCS and last != Vector2.INF and last.distance_squared_to(at) < near * near and _arc_rng.randf() < 0.45:
-			_arc(arcs, last, at)
-			arced += 1
-		last = at if hanging else Vector2.INF
-		var i := n * 12
-		_orb_buf[i] = cos(a) * sx
-		_orb_buf[i + 1] = -sin(a) * sy
-		_orb_buf[i + 3] = at.x
-		_orb_buf[i + 4] = sin(a) * sx
-		_orb_buf[i + 5] = cos(a) * sy
-		_orb_buf[i + 7] = at.y
-		_orb_buf[i + 8] = 1.0
-		_orb_buf[i + 9] = 1.0
-		_orb_buf[i + 10] = 1.0
-		_orb_buf[i + 11] = 0.86 + 0.14 * sin(_clock * 37.0 + seed * 3.0)
-		n += 1
+		# hanging, it wanders a little on the air
+		at += Vector2(sin(_clock * 2.3 + seed), cos(_clock * 1.9 + seed * 1.7)) * 1.6 * _u * (1.0 - near)
+		n = _orb_put(n, at, s, 0.84 + 0.16 * sin(_clock * 6.1 + seed * 3.0))
+	_orb_count = n
 	if n == 0:
 		return
-	if arced > 0:
-		_orb_arcs = arcs.mesh()
-		_orb_layer.draw_mesh(_orb_arcs, null)
 	_orb_mm.visible_instance_count = n
 	_orb_mm.buffer = _orb_buf
 	_orb_layer.draw_multimesh(_orb_mm, null)
 
-## A thread of lightning from one spark to another: two kinks on the way, a
-## white core in a blue one.
-func _arc(b: Face.Builder, from: Vector2, to: Vector2) -> void:
-	var side := (to - from).orthogonal() * 0.22
-	var line := PackedVector2Array([from, from.lerp(to, 0.34) + side * _arc_rng.randf_range(-1.0, 1.0),
-		from.lerp(to, 0.67) + side * _arc_rng.randf_range(-1.0, 1.0), to])
-	b.stroke(line, 2.6 * _u, Color(Art.ORB, 0.5), false, false)
-	b.stroke(line, 0.9 * _u, Color(1, 1, 1, 0.95), false, false)
+## One more light this frame: at `at`, `s` times the mesh, `a` of its glow.
+func _orb_put(n: int, at: Vector2, s: float, a: float) -> int:
+	var i := n * 12
+	_orb_buf[i] = s
+	_orb_buf[i + 1] = 0.0
+	_orb_buf[i + 3] = at.x
+	_orb_buf[i + 4] = 0.0
+	_orb_buf[i + 5] = s
+	_orb_buf[i + 7] = at.y
+	_orb_buf[i + 8] = 1.0
+	_orb_buf[i + 9] = 1.0
+	_orb_buf[i + 10] = 1.0
+	_orb_buf[i + 11] = a
+	return n + 1
+
+## The light the motes throw: the same lights again, added to what is under
+## them. Drawn after `_draw_orbs` (its layer is that one's child), off the
+## buffer that filled.
+func _draw_orb_light() -> void:
+	if _orb_count == 0 or _orb_light_mm == null:
+		return
+	_orb_light_mm.visible_instance_count = _orb_count
+	_orb_light_mm.buffer = _orb_buf
+	_orb_light.draw_multimesh(_orb_light_mm, null)
 
 # --- the shop ---
 
@@ -2543,15 +2581,15 @@ func _card_icon(card: int, side: float) -> Control:
 		icon.draw_mesh(Art.card_token(card, side / 27.0), null, Transform2D(0.0, icon.size * 0.5)))
 	return icon
 
-## A spark of energy, `side` pixels square: what a price is counted in.
+## A mote of energy, `side` pixels square: what a price is counted in.
 func _orb_icon(side: float) -> Control:
 	var icon := Control.new()
 	icon.custom_minimum_size = Vector2(side, side)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.draw.connect(func() -> void:
-		var sc := side * 0.56 / Art.ORB_R
-		icon.draw_mesh(Art.orb(false), null, Transform2D(PI * 0.25, Vector2(sc, sc), 0.0, icon.size * 0.5)))
+		var sc := side * 0.9 / Art.ORB_R
+		icon.draw_mesh(Art.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
 	return icon
 
 ## One card of the shop: the whole row is the button. Its medallion, its
