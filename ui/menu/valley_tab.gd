@@ -1,0 +1,215 @@
+extends VBoxContainer
+
+## The Valley tab: slow places that feed each other through one shared
+## inventory (core/stock.gd), with no last level and no finish. Only the
+## first is here, the Grove (valley/grove_screen.gd); the others are still
+## to be planned, so the tab holds one card and the wood. Its body takes the
+## day row's and the grid's room, as Versus, Arcade, Stats and Streak do.
+## Spec docs/superpowers/specs/2026-10-05-valley-grove-design.md, section 1.
+##
+## The card's picture is the land as it stands: the grove is read from its
+## file when the tab is shown and goes on growing in front of you, so the
+## tab alone says whether a visit is worth it. Pressing Play writes it back
+## first, and the screen opens on the very trees the card was showing.
+
+signal play(place: String)
+
+const Pal = preload("res://core/palette.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
+const Motion = preload("res://core/motion.gd")
+const Sim = preload("res://valley/grove_sim.gd")
+const Art = preload("res://valley/grove_art.gd")
+
+const GAP := 20
+const PAD := 24
+const RADIUS := 36
+const PILL_H := 84.0
+const ART_H_MIN := 260.0
+const BAR_H := 22.0
+const FILL := Color("fcf7ef")
+## The land keeps this much water round it on the card.
+const SHORE := 22.0
+const SHORE_FOOT := 50.0
+
+var _sim: RefCounted
+var _wood_l: Label
+var _art: Control
+var _ground: ArrayMesh
+var _u := 1.0
+var _origin := Vector2.ZERO
+var _line: Label
+var _count: Label
+var _bar: Control
+
+func _init() -> void:
+	add_theme_constant_override("separation", GAP)
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var strip := HBoxContainer.new()
+	strip.name = "StockStrip"
+	strip.add_child(_wood_pill())
+	add_child(strip)
+	add_child(_grove_card())
+	var rest := Control.new()
+	rest.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rest.size_flags_stretch_ratio = 0.35
+	rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rest)
+	set_process(false)
+
+func _ready() -> void:
+	Stock.changed.connect(_write_wood)
+	visibility_changed.connect(func() -> void: set_process(is_visible_in_tree()))
+	_write_wood()
+
+## The wood held for the whole valley, as the Arcade tab shows the gold.
+func _wood_pill() -> Control:
+	var pill := PanelContainer.new()
+	pill.name = "Wood"
+	pill.custom_minimum_size = Vector2(240, PILL_H)
+	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, int(PILL_H * 0.5), 8))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	pill.add_child(row)
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(76, 60)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		icon.draw_mesh(Art.icon("wood"), null, Transform2D(-0.3, Vector2(0.8, 0.8), 0.0, icon.size * 0.5 + Vector2(6.0, 0.0))))
+	row.add_child(icon)
+	_wood_l = Label.new()
+	_wood_l.theme_type_variation = "SheetTitle"
+	_wood_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_wood_l)
+	var kicker := Label.new()
+	kicker.text = "GROVE_WOOD"
+	kicker.theme_type_variation = "MenuKicker"
+	kicker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(kicker)
+	var tail := Control.new()
+	tail.custom_minimum_size.x = 14
+	row.add_child(tail)
+	return pill
+
+func _grove_card() -> Control:
+	var card := PanelContainer.new()
+	card.name = "Grove"
+	card.add_theme_stylebox_override("panel", CozyTheme.lifted(FILL, RADIUS, PAD))
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	card.add_child(col)
+	_art = Control.new()
+	_art.name = "Art"
+	_art.custom_minimum_size.y = ART_H_MIN
+	_art.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art.resized.connect(_layout_art)
+	_art.draw.connect(_draw_art)
+	col.add_child(_art)
+	var name_l := Label.new()
+	name_l.text = "Grove"
+	name_l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	name_l.theme_type_variation = "CardName"
+	col.add_child(name_l)
+	_line = Label.new()
+	_line.text = "VALLEY_GROVE_BLURB"
+	_line.theme_type_variation = "CardBlurb"
+	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(_line)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", GAP)
+	col.add_child(row)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.alignment = BoxContainer.ALIGNMENT_CENTER
+	left.add_theme_constant_override("separation", 6)
+	row.add_child(left)
+	_bar = Control.new()
+	_bar.custom_minimum_size.y = BAR_H
+	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bar.draw.connect(_draw_bar)
+	left.add_child(_bar)
+	_count = Label.new()
+	_count.theme_type_variation = "CardBlurb"
+	left.add_child(_count)
+	var go := IconButton.new("play", "VS_PLAY", "SunButton")
+	go.name = "Play"
+	go.custom_minimum_size = Vector2(260, 96)
+	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	go.pressed.connect(_on_play)
+	row.add_child(go)
+	return card
+
+## Called as the tab is shown: the grove as it stands now.
+func refresh() -> void:
+	_sim = Sim.load_saved(Time.get_unix_time_from_system())
+	_write_wood()
+	_write_count()
+	_art.queue_redraw()
+
+func _on_play() -> void:
+	# the screen reads the grove from its file: hand it the one on the card
+	if _sim != null:
+		_sim.save(Time.get_unix_time_from_system())
+	play.emit("grove")
+
+func _process(delta: float) -> void:
+	if _sim == null:
+		return
+	var before: int = _sim.trees.size()
+	_sim.step(delta)
+	_sim.events.clear()
+	if _sim.trees.size() != before:
+		_write_count()
+	_art.queue_redraw()
+
+func _write_wood() -> void:
+	if _wood_l != null:
+		_wood_l.text = Art.short(Stock.count("wood"))
+
+func _write_count() -> void:
+	if _sim == null:
+		return
+	var full: bool = _sim.trees.size() >= _sim.room()
+	_count.text = tr("VALLEY_FULL") if full else tr("GROVE_TREES") % [_sim.trees.size(), _sim.room()]
+	_bar.queue_redraw()
+
+func _draw_bar() -> void:
+	var s := _bar.size
+	var back := StyleBoxFlat.new()
+	back.bg_color = Pal.SURFACE_HI
+	back.set_corner_radius_all(int(s.y * 0.5))
+	_bar.draw_style_box(back, Rect2(Vector2.ZERO, s))
+	if _sim == null or _sim.trees.is_empty():
+		return
+	var part: float = clampf(float(_sim.trees.size()) / _sim.room(), 0.0, 1.0)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Pal.SUN if part >= 1.0 else Pal.GOOD
+	fill.set_corner_radius_all(int(s.y * 0.5))
+	_bar.draw_style_box(fill, Rect2(Vector2.ZERO, Vector2(maxf(s.y, s.x * part), s.y)))
+
+## The whole land, as big as the picture's room lets it be, water all round.
+func _layout_art() -> void:
+	var s := _art.size
+	if s.x <= 0.0 or s.y <= 0.0:
+		return
+	_u = minf((s.x - SHORE * 2.0) / Sim.LAND.x, (s.y - SHORE - SHORE_FOOT) / Sim.LAND.y)
+	_origin = Vector2((s.x - Sim.LAND.x * _u) * 0.5, SHORE + (s.y - SHORE - SHORE_FOOT - Sim.LAND.y * _u) * 0.5)
+	_ground = Art.ground(s, Rect2(_origin, Sim.LAND * _u))
+	_art.queue_redraw()
+
+func _draw_art() -> void:
+	if _ground == null:
+		return
+	_art.draw_mesh(_ground, null)
+	if _sim == null:
+		return
+	var standing: Array = _sim.trees.duplicate()
+	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
+	for tree: Dictionary in standing:
+		var grown := 1.0 if Motion.reduce else clampf((_sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
+		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u
+		_art.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null, Transform2D(0.0, Vector2(size, size), 0.0, _origin + tree.pos * _u))

@@ -926,3 +926,36 @@ FRIENDS_INVITED_BODY,wants to play %s,quer jogar %s,quiere jugar %s
 FRIENDS_NOT_NOW,Not now,Agora não,Ahora no
 FRIENDS_NEW_TITLE,New friend,Nova amizade,Nueva amistad
 FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são amigos. Chame para jogar quando quiser.,Ahora son amigos. Invita a jugar cuando quieras.
+BAR_VALLEY,Valley,Vale,Valle
+VALLEY_GROVE_BLURB,"Trees come up by themselves. Chop them for wood, and for the energy that makes the grove better.","As árvores nascem sozinhas. Corte-as para ter madeira e a energia que melhora o bosque.","Los árboles brotan solos. Tálalos para conseguir madera y la energía que mejora el bosque."
+VALLEY_FULL,The land is full,A terra está cheia,La tierra está llena
+GROVE_MOTTO,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
+GROVE_ENERGY,Energy,Energia,Energía
+GROVE_WOOD,Wood,Madeira,Madera
+GROVE_HINT,Hold the land to chop,Segure na terra para cortar,Mantén pulsada la tierra para talar
+GROVE_TREES,Trees %d / %d,Árvores %d / %d,Árboles %d / %d
+GROVE_AXE,Axe,Machado,Hacha
+GROVE_REACH,Reach,Alcance,Alcance
+GROVE_SWING,Swing,Ritmo,Ritmo
+GROVE_SPROUT,Sprout,Broto,Brote
+GROVE_ROOM,Room,Espaço,Espacio
+GROVE_SEEDS,Seeds,Sementes,Semillas
+GROVE_FX_AXE,"chop %d, then %d","corte %d, depois %d","tala %d, luego %d"
+GROVE_FX_REACH,a wider circle,um círculo maior,un círculo mayor
+GROVE_FX_SWING,"%.2f s, then %.2f","%.2f s, depois %.2f","%.2f s, luego %.2f"
+GROVE_FX_SPROUT,"every %.1f s, then %.1f","a cada %.1f s, depois %.1f","cada %.1f s, luego %.1f"
+GROVE_FX_ROOM,"room for %d, then %d","espaço para %d, depois %d","espacio para %d, luego %d"
+GROVE_FX_SEEDS,%s grows too,%s também cresce,%s también crece
+GROVE_DONE,all done,completo,completo
+GROVE_MAX,max,máx,máx
+GROVE_TREE_0,Sapling,Muda,Retoño
+GROVE_TREE_1,Birch,Bétula,Abedul
+GROVE_TREE_2,Oak,Carvalho,Roble
+GROVE_TREE_3,Pine,Pinheiro,Pino
+GROVE_TREE_4,Blossom,Cerejeira,Cerezo
+TUT_GROVE_CHOP,Chop inside the circle,Corte dentro do círculo,Tala dentro del círculo
+TUT_GROVE_CHOP_BODY,"Hold a finger on the land. Every tree inside the circle is chopped, again and again, and the circle follows your finger. The first trees take %d chops.","Segure um dedo na terra. Toda árvore dentro do círculo é cortada, de novo e de novo, e o círculo segue o seu dedo. As primeiras árvores levam %d cortes.","Mantén un dedo sobre la tierra. Cada árbol dentro del círculo se tala, una y otra vez, y el círculo sigue a tu dedo. Los primeros árboles necesitan %d golpes."
+TUT_GROVE_GIFTS,Wood and energy,Madeira e energia,Madera y energía
+TUT_GROVE_GIFTS_BODY,"A felled tree leaves wood and energy. Wood is kept for the whole valley. Energy stays in the grove and buys the tiles under the land: a stronger axe, a wider circle, more trees.","Uma árvore cortada deixa madeira e energia. A madeira fica guardada para o vale inteiro. A energia fica no bosque e compra as peças abaixo da terra: um machado mais forte, um círculo maior, mais árvores.","Un árbol talado deja madera y energía. La madera se guarda para todo el valle. La energía se queda en el bosque y compra las piezas bajo la tierra: un hacha más fuerte, un círculo mayor, más árboles."
+TUT_GROVE_WAIT,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
+TUT_GROVE_WAIT_BODY,"New trees come up by themselves, also while you are away, until the land is full. There is no hurry and nothing is lost: come back when it has filled.","Novas árvores nascem sozinhas, mesmo quando você está fora, até a terra encher. Não há pressa e nada se perde: volte quando ela estiver cheia.","Los árboles nuevos brotan solos, también cuando no estás, hasta que la tierra se llena. No hay prisa y no se pierde nada: vuelve cuando se haya llenado."

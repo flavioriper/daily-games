@@ -56,6 +56,8 @@ const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
+const ValleyTab = preload("res://ui/menu/valley_tab.gd")
+const GroveScreen = preload("res://valley/grove_screen.gd")
 const Streak = preload("res://core/streak.gd")
 const FriendsSheet = preload("res://ui/menu/friends_sheet.gd")
 const InviteCard = preload("res://ui/menu/invite_card.gd")
@@ -217,6 +219,7 @@ var streak_tab: Control
 var stats_tab: Control
 var versus_tab: Control
 var arcade_tab: Control
+var valley_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -446,6 +449,11 @@ func _build_list() -> void:
 	arcade_tab.visible = false
 	arcade_tab.play.connect(_open_arcade)
 	root.add_child(arcade_tab)
+	valley_tab = ValleyTab.new()
+	valley_tab.name = "ValleyTab"
+	valley_tab.visible = false
+	valley_tab.play.connect(_open_valley)
+	root.add_child(valley_tab)
 
 	bar = BottomBar.new()
 	bar.name = "BottomBar"
@@ -1068,6 +1076,7 @@ func _show_tab(key: String) -> void:
 	stats_tab.visible = key == "stats"
 	versus_tab.visible = key == "versus"
 	arcade_tab.visible = key == "arcade"
+	valley_tab.visible = key == "valley"
 	Motion.stop(_tab_tw)
 	if home:
 		_set_pager(_page, _pages())
@@ -1078,7 +1087,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab, "arcade": arcade_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab, "arcade": arcade_tab, "valley": valley_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
@@ -1194,6 +1203,24 @@ func _open_arcade(game: String) -> void:
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
 		_left_game("arcade"))
+	add_child(screen)
+	_raise_card()
+	screen.tutor.first_play()
+	_list_root.visible = false
+
+## A place on the Valley tab: its own screen over the list, and back to the
+## Valley tab when it closes. A place is looked in on many times a day for a
+## minute, so leaving one is not a moment for an interstitial, as leaving a
+## board or an Arcade run is (`_left_game`).
+func _open_valley(place: String) -> void:
+	if place != "grove":
+		return
+	var screen: Control = GroveScreen.new()
+	screen.name = "Grove"
+	screen.closed.connect(func() -> void:
+		screen.queue_free()
+		if not _switching:
+			_show_list("valley"))
 	add_child(screen)
 	_raise_card()
 	screen.tutor.first_play()
