@@ -103,8 +103,6 @@ const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "P
 const GOT := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER", Sim.Kind.TWIN: "PP_GOT_TWIN",
 	Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.MAGNET: "PP_GOT_MAGNET",
 	Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
-## What a rotten gift took, by the gift it undid (-1: nothing left to take).
-const ROT := {Sim.Kind.PEA: "PP_ROT_PEA", Sim.Kind.RATE: "PP_ROT_RATE", Sim.Kind.POWER: "PP_ROT_POWER", -1: "PP_ROT_NONE"}
 ## The sound a gift is caught with, where it has one of its own.
 const CATCH_CUE := {Sim.Kind.TWIN: "twin", Sim.Kind.FAN: "pod", Sim.Kind.PIERCE: "pod", Sim.Kind.BURST: "pod", Sim.Kind.FROST: "frost",
 	Sim.Kind.SHOVE: "shove"}
@@ -196,6 +194,25 @@ var _sparks: Array = []
 ## Numbers rising off a crate gone: {pos, text, t, col, big}.
 var _pops: Array = []
 var _shot_at := -10.0
+## The gun's sound (2026-10-05, the user hated the set): every shot is the
+## faintest click (the user asked for one; silence was tried and was wrong)
+## and the peas landing are heard at most once in HIT_GAP seconds -- a
+## volley's peas as one, every volley of the quickest gun (0.102 s apart)
+## -- so a full gun is a soft patter and not a rattle of sixteen ticks a
+## second.
+const HIT_GAP := 0.07
+var _hit_heard := -10.0
+## A pea landing sounds by the number left on what it hit (the user,
+## 2026-10-05), and each paint has its note: HIT_NOTES by `Art.tier_of`, in
+## semitones from the take, down the major pentatonic as the number trebles.
+## So a wall of mixed crates is a handful of woody notes that always sit
+## together, whichever order the peas find them in, and a crate steps up a
+## note each time it is worn down a colour. The sound itself is a damped
+## wooden tock, never a ringing one; HIT_DRIFT of pitch and HIT_SOFT dB of
+## level at random keep two alike from being the same sound twice.
+const HIT_NOTES := [9, 7, 4, 2, 0, -3, -5, -8]
+const HIT_DRIFT := 0.012
+const HIT_SOFT := 2.0
 var _wheel := 0.0
 var _last_x := 0.0
 var _lean := 0.0
@@ -469,6 +486,7 @@ func _new_game() -> void:
 	_sparks.clear()
 	_pops.clear()
 	_shot_at = -10.0
+	_hit_heard = -10.0
 	_last_x = sim.x
 	_lean = 0.0
 	_shake = 0.0
@@ -639,7 +657,7 @@ func _step_flights(delta: float) -> void:
 		f.t += delta
 		if f.t >= FLIGHT_T:
 			_chip_at[int(f.kind)] = _clock
-			_quiet.cue("hit", 1.5, -7.0)
+			_quiet.cue("hit", 1.25, -7.0)
 			_rw.ring(_rw.at(field, _home_of(f.kind) + _shake_off), 15.0 * _u, Color(Art.GIFT[int(f.kind)], 0.9), 0.0, 0.3)
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT_T)
 
@@ -803,6 +821,11 @@ func _build_pause() -> Control:
 
 # --- events ---
 
+## The pitch a pea lands at on a crate or a plate with `hp` left.
+func _hit_pitch(hp: int) -> float:
+	var note: int = HIT_NOTES[mini(Art.tier_of(hp), HIT_NOTES.size() - 1)]
+	return pow(2.0, note / 12.0) * randf_range(1.0 - HIT_DRIFT, 1.0 + HIT_DRIFT)
+
 func _play_events() -> void:
 	for ev: Dictionary in sim.events:
 		var pos: Vector2 = ev.get("pos", Vector2.ZERO)
@@ -826,14 +849,13 @@ func _play_events() -> void:
 				_hit_at[ev.id] = _clock
 				if not ev.quiet:
 					_spark(pos, Art.colour(ev.kind, 1).lerp(Color("fffaf0"), 0.6) if Sim.holds_token(ev.kind) else Color("fffaf0"))
-					if ev.kind == Sim.Kind.IRON:
-						_quiet.cue("clank", randf_range(0.92, 1.1), -6.0)
-					else:
-						_quiet.cue("hit", randf_range(0.9, 1.15), -6.0)
+					if _clock - _hit_heard >= HIT_GAP:
+						_hit_heard = _clock
+						_quiet.cue("clank" if ev.kind == Sim.Kind.IRON else "hit", _hit_pitch(int(ev.hp)), -6.0 - randf() * HIT_SOFT)
 			"kill":
 				_on_kill(ev)
 			"token":
-				_fx.cue("gift", 0.7 if ev.kind == Sim.Kind.ROT else randf_range(0.96, 1.06))
+				_fx.cue("gift", randf_range(0.96, 1.06))
 				_rw.ring(_in_rw(pos), 26.0 * _u, Color(Art.colour(ev.kind, 1), 0.9))
 			"catch":
 				_on_catch(ev)
@@ -921,7 +943,7 @@ func _on_kill(ev: Dictionary) -> void:
 		_rw.ring(at, 44.0 * _u, Color(Art.GOLD, 0.9))
 		_rw.sticker(tr("PP_GOLDEN"), _in_rw(pos + Vector2(0, -28.0)), 58, 1.1, true, Color.WHITE, true, "gold", 30.0)
 	else:
-		_fx.cue("pop", minf(1.5, 1.0 + 0.025 * streak), -8.0 if popped else 0.0)
+		_fx.cue("pop", minf(1.25, 1.0 + 0.0125 * streak), -8.0 if popped else 0.0)
 		_feel(Haptics.TICK if popped else Haptics.TAP)
 		_shake = maxf(_shake, 0.12)
 	for i in WORDS.size():
@@ -944,15 +966,6 @@ func _on_catch(ev: Dictionary) -> void:
 	var got: int = ev.got
 	var at := _in_rw(Vector2(sim.x, Sim.CART_Y - 44.0))
 	var col: Color = Art.GIFT[got]
-	if got == Sim.Kind.ROT:
-		# a rotten one: what it took, lettered in its own murk, and a shudder
-		_fx.cue("rot")
-		_feel(Haptics.WARN)
-		_shake = maxf(_shake, 0.4)
-		_flash_now(Art.ROT_INK, 0.35)
-		_rw.sticker(tr(ROT[int(ev.lost)]), at + Vector2(0, -30.0), 58, 1.1, false, Color("d9c7e0"), false, "got", 34.0)
-		_rw.spray(at, Art.ROT_INK, 8, 420.0, "shard", 0.9)
-		return
 	_fx.cue(CATCH_CUE.get(got, "catch"), 1.0 + 0.04 * (sim.peas + sim.rate_lv))
 	_feel(Haptics.GOOD)
 	_hop = {"at": _clock, "tall": 3.5, "time": 0.22, "twice": false}
@@ -1956,7 +1969,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_quiet.cue("hit", 0.9 + 0.8 * k, -8.0)
+			_quiet.cue("hit", 0.95 + 0.3 * k, -8.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		Motion.bump(_end_score, 0.25, 0.4)

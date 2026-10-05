@@ -505,7 +505,7 @@ settings.
 | stackwood | 7 | slide and let go; merges; chains; the line; acorns and the rainbow block; zap and bomb; the bar and boosters |
 | thirteen | 6 | a chain; the last one grows; the 13; a stuck tray and Swap; the five tools and their climbing prices; Restart and boosters |
 | posy | 7 | a swap; the day's goals and spare moves; the four specials; weeds, stones, moss; out of moves and the +5; the tools; buttons and boosters |
-| peapod | 7 | the cart; numbers, paints and the line; gifts and the rotten one; the three pods; golden, iron, firecracker; the millipede; boosters and buttons |
+| peapod | 7 | the cart; numbers, paints and the line; two gifts caught (the rotten one went on 2026-10-05); the three pods; golden, iron, firecracker; the millipede; boosters and buttons |
 
 None is level-aware: Versus levels change only how well the computer plays,
 and the Arcade has none. Draw calls with a page up: 140-230 a frame.

@@ -18,15 +18,21 @@ extends RefCounted
 ## The second pass (2026-10-04): three pods held for a while (a fan of peas,
 ## a pea that goes through three, a pea that bursts on its neighbours),
 ## three more gifts (a magnet for the gifts, a frost on whatever is coming,
-## a shove back up), a rotten gift to keep out from under, and an iron crate
-## that takes one a pea whatever the pea weighs. The helper is a short one
-## now, and the millipede quickens as it shortens.
+## a shove back up) and an iron crate that takes one a pea whatever the pea
+## weighs. The helper is a short one now, and the millipede quickens as it
+## shortens.
+##
+## The third pass (2026-10-05): the rotten gift is gone (a gift that took
+## something back made no sense). A wave holds more gifts and more crates,
+## and its gifts are planned together (`_plan_gifts`), not drawn one by one:
+## the gun's own come first and are half of them at least, and a magnet
+## only comes with gifts right behind it to pull.
 
 enum Phase { READY, PLAY, OVER }
 enum Wave { WALL, MILLI }
-## What a crate or a plate is. PEA to TWIN and FAN to ROT hold a token
+## What a crate or a plate is. PEA to TWIN and FAN to SHOVE hold a token
 ## (`holds_token`); FAN, PIERCE and BURST are the pods.
-enum Kind { CRATE, GOLD, BOMB, PEA, RATE, POWER, TWIN, HEAD, FAN, PIERCE, BURST, MAGNET, FROST, SHOVE, ROT, IRON }
+enum Kind { CRATE, GOLD, BOMB, PEA, RATE, POWER, TWIN, HEAD, FAN, PIERCE, BURST, MAGNET, FROST, SHOVE, IRON }
 ## How a pea in flight looks and lands.
 enum Shot { PEA, PIERCE, BURST }
 
@@ -83,6 +89,19 @@ const SPACING := 31.0
 const SEG_R := 15.0
 const HEAD_R := 19.0
 const HEAD_WORTH := 6
+## A wall's rows on wave 1 (one more every other wave) and at its most, the
+## chance a cell is left empty (the lowest row's is its own), and a
+## millipede's plates before the wave's number is added.
+const WALL_ROWS := 6
+const WALL_ROWS_MAX := 12
+const WALL_GAP := 0.1
+const WALL_GAP_LOW := 0.25
+const MILLI_PLATES := 9
+const MILLI_PLATES_MAX := 26
+## The gun's gifts a wave never holds fewer of, and the gifts that come
+## right behind a magnet.
+const GUN_GIFTS := 2
+const MAGNET_PULLS := 2
 const KNOCK := 9.0
 ## With every plate gone but the head it runs this much quicker.
 const MILLI_HURRY := 0.6
@@ -163,10 +182,10 @@ func rate() -> float:
 
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
-	return 2.4 * pow(1.45, mini(w, 10) - 1) * pow(1.25, maxi(0, w - 10))
+	return 2.4 * pow(1.46, mini(w, 10) - 1) * pow(1.38, maxi(0, w - 10))
 
 static func holds_token(kind: int) -> bool:
-	return (kind >= Kind.PEA and kind <= Kind.TWIN) or (kind >= Kind.FAN and kind <= Kind.ROT)
+	return (kind >= Kind.PEA and kind <= Kind.TWIN) or (kind >= Kind.FAN and kind <= Kind.SHOVE)
 
 ## An iron crate's number: the peas it takes, whatever they weigh.
 static func iron_hp(w: int) -> int:
@@ -417,7 +436,7 @@ func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, whole := false, quiet := 
 		dmg = 1
 	cell.hp = int(cell.hp) - dmg
 	if cell.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "quiet": quiet})
+		events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": cell.hp, "quiet": quiet})
 		return
 	var pos := cell_pos(r, c)
 	rows[r][c] = null
@@ -438,7 +457,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, quiet := false) -> void:
 		dmg = 1
 	sg.hp = int(sg.hp) - dmg
 	if sg.hp > 0:
-		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "quiet": quiet})
+		events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": sg.hp, "quiet": quiet})
 		return
 	_seg_dirty = true
 	var pos := path_at(sg.s)
@@ -478,7 +497,7 @@ func _step_tokens() -> void:
 	for tk: Dictionary in tokens:
 		tk.vy = minf(float(tk.vy) + 420.0 * DT, TOKEN_FALL)
 		tk.y = float(tk.y) + float(tk.vy) * DT
-		if magnet_t > 0.0 and int(tk.kind) != Kind.ROT:
+		if magnet_t > 0.0:
 			var to := x
 			if twin_t > 0.0 and absf(twin_x - float(tk.x)) < absf(x - float(tk.x)):
 				to = twin_x
@@ -495,22 +514,8 @@ func _step_tokens() -> void:
 		keep.append(tk)
 	tokens = keep
 
-## A gift caught. One already at its most is a heavier pea instead; a
-## rotten one takes a pea off the volley, or a step off the rate.
+## A gift caught. One already at its most is a heavier pea instead.
 func _take(kind: int, at: Vector2) -> void:
-	if kind == Kind.ROT:
-		var lost := -1
-		if peas > 1:
-			peas -= 1
-			lost = Kind.PEA
-		elif rate_lv > 0:
-			rate_lv -= 1
-			lost = Kind.RATE
-		elif power > 1:
-			power -= 1
-			lost = Kind.POWER
-		events.append({"type": "catch", "pos": at, "kind": kind, "got": kind, "lost": lost})
-		return
 	caught += 1
 	var got := kind
 	match kind:
@@ -563,32 +568,91 @@ func _deal() -> void:
 		_deal_milli()
 	events.append({"type": "wave", "wave": wave, "kind": wave_kind})
 
-## Which gift a gift crate holds: more peas and a quicker gun while there is
-## room for them, a heavier pea always, the helper now and then.
-func _gift() -> int:
-	var bag: Array = [Kind.POWER, Kind.POWER]
-	if peas < MAX_PEAS:
+## How many gift crates (or plates) wave `w` holds.
+static func gift_count(w: int) -> int:
+	return mini(3 + int(w / 3.0), 6)
+
+## A gift for the gun, with `p` peas a volley and the rate at `r`: more peas
+## and a quicker gun while there is room for them, a heavier pea always.
+## `last` is the one drawn before it in the wave, left out while there is
+## another to give, so a wave's are not all the one gift.
+func _gun_gift(p: int, r: int, last := -1) -> int:
+	var bag: Array = []
+	if p < MAX_PEAS and last != Kind.PEA:
 		bag.append_array([Kind.PEA, Kind.PEA, Kind.PEA])
-	if rate_lv < MAX_RATE:
+	if r < MAX_RATE and last != Kind.RATE:
 		bag.append_array([Kind.RATE, Kind.RATE, Kind.RATE])
+	if last != Kind.POWER or bag.is_empty():
+		bag.append_array([Kind.POWER, Kind.POWER])
+	return bag[rng.randi_range(0, bag.size() - 1)]
+
+func _shuffle(a: Array) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var held = a[i]
+		a[i] = a[j]
+		a[j] = held
+
+## What a wave's `count` gifts are, in the order they are met. Drawn one by
+## one a wave could hold a magnet and a frost and nothing for the gun, and
+## the next wave's numbers were past it. So the gun's gifts are half of them
+## at least (never fewer than two) and the first met is one of them; the
+## rest are one each at most of a pod, the magnet, the frost, the helper and
+## the shove. A magnet only comes to a wave of four or more, with two gifts
+## still to come after it.
+func _plan_gifts(count: int) -> Array:
+	var extras: Array = []
 	if wave >= 3:
-		bag.append_array([Kind.FAN, Kind.PIERCE, Kind.BURST, Kind.MAGNET])
+		extras.append([Kind.FAN, Kind.PIERCE, Kind.BURST][rng.randi_range(0, 2)])
+		if count >= 4:
+			extras.append(Kind.MAGNET)
 	if wave >= 4:
-		bag.append(Kind.FROST)
+		extras.append(Kind.FROST)
 		# one helper at most every other wave
 		if wave - _twin_wave >= 2:
-			bag.append(Kind.TWIN)
+			extras.append(Kind.TWIN)
 	if wave >= 5:
-		bag.append(Kind.SHOVE)
-	var got: int = bag[rng.randi_range(0, bag.size() - 1)]
-	if got == Kind.TWIN:
+		extras.append(Kind.SHOVE)
+	_shuffle(extras)
+	var guns := maxi(GUN_GIFTS, int(ceil(count * 0.5)))
+	extras.resize(clampi(count - guns, 0, extras.size()))
+	if extras.has(Kind.TWIN):
 		_twin_wave = wave
-	return got
+	var p := peas
+	var r := rate_lv
+	var plan: Array = []
+	for i in count - extras.size():
+		var got := _gun_gift(p, r, -1 if plan.is_empty() else int(plan.back()))
+		p += int(got == Kind.PEA)
+		r += int(got == Kind.RATE)
+		plan.append(got)
+	var first: int = plan.pop_back()
+	plan.append_array(extras)
+	_shuffle(plan)
+	plan.push_front(first)
+	var m := plan.find(Kind.MAGNET)
+	if m > count - 1 - MAGNET_PULLS:
+		var to := count - 1 - MAGNET_PULLS
+		plan[m] = plan[to]
+		plan[to] = Kind.MAGNET
+	return plan
 
-## How many rotten gifts and iron crates wave `w` holds.
-static func rot_count(w: int) -> int:
-	return 0 if w < 3 else (1 if w < 8 else (2 if w < 14 else 3))
+## Where a wave's gifts go among `n` places (a wall's rows over the lowest,
+## a millipede's plates), in the order they are met: spread along them, each
+## on a place of its own, and the ones a magnet is to pull right behind it.
+func _gift_places(plan: Array, n: int) -> Array:
+	var count := plan.size()
+	var m := plan.find(Kind.MAGNET)
+	var places: Array = []
+	for i in count:
+		var at := int((i + rng.randf()) * n / count)
+		if m >= 0 and i > m and i <= m + MAGNET_PULLS:
+			at = 0
+		var low: int = 0 if i == 0 else int(places[i - 1]) + 1
+		places.append(clampi(at, low, n - count + i))
+	return places
 
+## How many iron crates wave `w` holds.
 static func iron_count(w: int) -> int:
 	return 0 if w < 5 else mini(1 + int((w - 5) / 4.0), 4)
 
@@ -596,16 +660,16 @@ func _cell(kind: int, hp: int) -> Dictionary:
 	_next_id += 1
 	return {"kind": kind, "hp": maxi(1, hp), "max": maxi(1, hp), "id": _next_id - 1}
 
-## A wall: rows of crates, the higher the heavier, with gaps, two or three
-## gifts, a firecracker from wave four and a golden crate now and then.
+## A wall: rows of crates, the higher the heavier, with gaps, three to six
+## gifts up it, a firecracker from wave four and a golden crate now and then.
 func _deal_wall() -> void:
 	rows.clear()
-	var n := mini(4 + int(wave / 2.0), 9)
+	var n := mini(WALL_ROWS + int(wave / 2.0), WALL_ROWS_MAX)
 	var base := hp_base(wave)
 	for r in n:
 		var row: Array = []
 		for c in COLS:
-			var gap := 0.14 if r > 0 else 0.3
+			var gap := WALL_GAP if r > 0 else WALL_GAP_LOW
 			if rng.randf() < gap:
 				row.append(null)
 				continue
@@ -614,13 +678,15 @@ func _deal_wall() -> void:
 				hp *= 2.0
 			row.append(_cell(Kind.CRATE, roundi(hp)))
 		rows.append(row)
-	var gifts := 2 + (1 if wave % 4 == 0 else 0)
-	_scatter(gifts, n, func(r: int) -> Dictionary: return _cell(_gift(), roundi(base * (0.5 + 0.12 * r))))
+	var plan := _plan_gifts(gift_count(wave))
+	var at := _gift_places(plan, n - 1)
+	for i in plan.size():
+		var r: int = int(at[i]) + 1
+		rows[r][rng.randi_range(0, COLS - 1)] = _cell(plan[i], roundi(base * (0.5 + 0.12 * r)))
 	if wave >= 4:
 		_scatter(1 + int(wave >= 9), n, func(r: int) -> Dictionary: return _cell(Kind.BOMB, roundi(base * (0.8 + 0.2 * r))))
 	if wave >= 2 and rng.randf() < 0.6:
 		_scatter(1, n, func(r: int) -> Dictionary: return _cell(Kind.GOLD, roundi(base * (1.6 + 0.3 * r))))
-	_scatter(rot_count(wave), n, func(r: int) -> Dictionary: return _cell(Kind.ROT, roundi(base * (0.5 + 0.12 * r))))
 	_scatter(iron_count(wave), n, func(_r: int) -> Dictionary: return _cell(Kind.IRON, iron_hp(wave)))
 	wall_y = 0.0
 	wall_speed = 6.5 + 0.45 * mini(wave, 20)
@@ -654,11 +720,14 @@ static func _row_empty(row: Array) -> bool:
 			return false
 	return true
 
-## The millipede: a head and so many plates behind it, a gift every few.
+## The millipede: a head and so many plates behind it, its gifts spread
+## down its length.
 func _deal_milli() -> void:
 	segs.clear()
 	_push = 0.0
-	var n := mini(7 + int(wave * 0.8), 24)
+	var n := mini(MILLI_PLATES + wave, MILLI_PLATES_MAX)
+	var plan := _plan_gifts(gift_count(wave))
+	var at := _gift_places(plan, n)
 	var base := hp_base(wave) * 1.5
 	var head := _cell(Kind.HEAD, roundi(base * HEAD_WORTH))
 	head.s = 0.0
@@ -666,12 +735,10 @@ func _deal_milli() -> void:
 	segs.append(head)
 	for i in n:
 		var kind := Kind.CRATE
-		if i % 6 == 2:
-			kind = _gift()
+		if at.has(i):
+			kind = plan[at.find(i)]
 		elif i % 7 == 5:
 			kind = Kind.GOLD
-		elif i % 9 == 4 and wave >= 3:
-			kind = Kind.ROT
 		elif i % 5 == 3 and wave >= 9:
 			kind = Kind.IRON
 		var hp := base * rng.randf_range(0.7, 1.3) * (0.5 if holds_token(kind) else (1.6 if kind == Kind.GOLD else 1.0))

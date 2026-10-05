@@ -8,7 +8,7 @@ extends SceneTree
 ## cleared (printed: its stars, the flowers up, whether the pod is crowned
 ## for the best passed), 3c a gift caught and flying to the grass, 4 the whole cast
 ## in a wall (forced: every paint, every gift and pod, the firecracker, the
-## golden, iron and rotten crates, the helper, a pod held, gifts falling), 5 a real slide through the viewport
+## golden and iron crates, the helper, a pod held, gifts falling), 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
 ## score to user://arcade.cfg, so the file this machine had is put back on
@@ -192,7 +192,7 @@ func _process(delta: float) -> bool:
 					row.append(_cell(Sim.Kind.CRATE, hps[r][c]))
 				sim.rows.append(row)
 			sim.rows.append([_cell(Sim.Kind.PEA, 3), _cell(Sim.Kind.RATE, 3), _cell(Sim.Kind.POWER, 3), _cell(Sim.Kind.TWIN, 3), _cell(Sim.Kind.BOMB, 9)])
-			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.ROT, 4), _cell(Sim.Kind.GOLD, 4)])
+			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.FROST, 4), _cell(Sim.Kind.GOLD, 4)])
 			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.MAGNET, 3), _cell(Sim.Kind.FROST, 3)])
 			sim.rows.append([_cell(Sim.Kind.SHOVE, 3), null, null, null, null])
 			sim.wall_y = 290.0
@@ -207,7 +207,7 @@ func _process(delta: float) -> bool:
 			sim.power = 1
 			sim.shots.clear()
 			sim.tokens = [{"kind": Sim.Kind.PEA, "x": 40.0, "y": 300.0, "vy": 0.0, "id": 1}, {"kind": Sim.Kind.RATE, "x": 100.0, "y": 330.0, "vy": 0.0, "id": 2},
-				{"kind": Sim.Kind.ROT, "x": 200.0, "y": 310.0, "vy": 0.0, "id": 3}, {"kind": Sim.Kind.BURST, "x": 260.0, "y": 330.0, "vy": 0.0, "id": 4}]
+				{"kind": Sim.Kind.SHOVE, "x": 200.0, "y": 310.0, "vy": 0.0, "id": 3}, {"kind": Sim.Kind.BURST, "x": 260.0, "y": 330.0, "vy": 0.0, "id": 4}]
 			sim.target_x = 150.0
 			_hand = 150.0
 			_at = _t

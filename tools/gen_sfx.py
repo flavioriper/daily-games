@@ -29,11 +29,23 @@ STYLE = ("cozy casual mobile puzzle game UI sound, soft warm wooden and "
 # a soft wooden boop.
 FOLEY = "realistic foley recording, dry, no music, no voice"
 
-# The Arcade tab's games: a soft retro arcade voice rather than the house
-# marimba, because a shooter's zaps and pops want a synth -- but warm and
-# rounded, so it still sits beside the rest of the game.
-ARCADE = ("retro arcade video game sound effect, soft warm 8-bit chiptune "
-          "synth, rounded, gentle, not harsh, clean, dry, no music bed, no voice")
+# The Arcade tab's jingles and chimes. Until 2026-10-05 this was a soft
+# 8-bit chiptune synth ("a shooter's zaps and pops want a synth"); the user
+# asked for cozy and never synth, so every one of them is a real kalimba,
+# music box, tongue drum or hand bell now, the family the polished boards
+# share, and no prompt under it says retro, blip, zap or synth.
+ARCADE = ("real acoustic kalimba, wooden music box, wooden tongue drum and "
+          "small hand bells recorded close in a warm quiet room, natural, "
+          "soft, rounded, gentle, cozy, no synth, no electronic tones, no "
+          "beeps, no music bed, no voice")
+
+# Firefly's night garden (2026-10-05): what is not a note in a shooter --
+# the shot, a pop, a dive, the silk beam -- is close-mic foley of glass,
+# paper and air, in place of the chiptune's pews and tractor beam.
+NIGHT = ("close-mic foley recorded in a quiet garden on a warm summer night, "
+         "real small glass jars and glass bells, paper, silk and soft leaves, "
+         "natural and acoustic, soft and warm, rounded, no synth, no "
+         "electronic tones, no beeps, no music, no voice")
 
 # Molehill's whacks: a cartoon's bonks and squeaks, because a mallet on a
 # mole wants a comic thump more than a synth -- its jingles stay ARCADE.
@@ -44,6 +56,21 @@ CARTOON = ("cute cartoon comedy sound effect, playful, rounded, soft, not harsh,
 # house marimba turned a paper swish into a tonal whine the user heard as
 # robotic, and plain foley still came back thin.
 COZY = "cozy, warm, soft, intimate, close mic, quiet room, no music, no voice"
+
+# Peapod's vegetable patch and Lucky Thirteen's riverbed (2026-10-05): the
+# user "really really hates" both games' sounds, "it's annoying". What they
+# had was CARTOON bonks, boings and a slide whistle under a gun that never
+# stops, so everything that is a thing is close-mic foley, low and muffled,
+# and what is a note is ARCADE's kalimba and music box.
+PEAPATCH = ("close-mic foley of a small vegetable patch on a quiet sunny "
+            "afternoon, real dried peas, small soft pine crates, straw, "
+            "canvas and felt, natural and acoustic, soft and warm, rounded, "
+            "never sharp, no synth, no electronic tones, no beeps, no music, "
+            "no voice")
+RIVERBED = ("close-mic foley of smooth round river pebbles on damp sand and "
+            "in a shallow wooden tray, recorded in a quiet room, natural and "
+            "acoustic, low, soft and warm, muffled, rounded, never sharp, no "
+            "synth, no electronic tones, no beeps, no music, no voice")
 
 # Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
 # kalimba in place of the house marimba, which turns a lantern into a woodblock.
@@ -194,7 +221,10 @@ LINKS_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
 #                                     | "warm:<Hz>": rolled off above <Hz> and eased in
 #                                       over 4 ms, for a take that came back scratchy
 #                                     | "cut:<s>": only the take's first <s> seconds, for a
-#                                       tick the API keeps doubling (Marigold's wall, pop)]])
+#                                       tick the API keeps doubling (Marigold's wall, pop)
+#                                     | "tight": the lead-in trimmed at -36 dB, not -60, for
+#                                       a tap that must land on its frame (Peapod's hit came
+#                                       back 60 ms behind a breath of room noise)]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -205,7 +235,7 @@ SETS = {
         "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),
         "clear":    ("a very short soft downward whoosh-pop, a small token lifted off a wooden board", 0.5, -9),
         "brush":    ("a tiny soft paper click, selecting a pencil, very short and quiet", 0.5, -12),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         # check and blush_in re-prompted 2026-09-29 (insane polish): the low
         # marimba boops and the wooden "bonk" read as a scold, not a shrug.
@@ -236,7 +266,7 @@ SETS = {
         # the wooden bumps and boops read as a scold, as Binairo's did.
         "full":     ("a tiny soft felt pat, a gentle muffled 'hmm, all full', a small cushion being patted twice, warm and quiet, very short", 0.5, -13),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "score":    ("a soft cloth pouch settling on a wooden table, a tiny muffled flop, cozy and quiet", 0.6, -10),
@@ -270,7 +300,7 @@ SETS = {
         "step":     ("a tiny soft felt thump, a small round fruit settling into a little wooden cup, cozy and quiet, very short", 0.5, -11),
         "level":    ("a soft bright two-note kalimba chime going up, a hanging scale settling perfectly level", 0.7, -6),
         "refused":  ("a tiny soft felt pat with a gentle little kalimba wobble, a kind 'this one stays put', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         "reset":    ("a quick soft run of little fruit hopping back into a wicker basket, gentle bumps and a light rustle", 1.0, -8),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
@@ -318,7 +348,7 @@ SETS = {
         "untie":    ("a tiny bright kalimba pluck going up with a soft rope loosening rustle, a knot coming undone, very short", 0.6, -8),
         "combo":    ("two or three soft rising kalimba and glockenspiel notes, a cheerful cozy little fanfare", 0.9, -7),
         "oops":     ("two soft wobbly descending marimba notes with a tiny cartoon slide, a gentle comic oops, not harsh", 0.7, -10),
-        "undo":     ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -9),
+        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
         "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
         "reset":    ("many small wooden pegs and soft ropes sliding back into place, gentle clicks and a cloth rustle, close mic", 1.0, -9, FOLEY, "warm:4200"),
         "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
@@ -1130,6 +1160,13 @@ SETS = {
         "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, POND_TUNE, "warm:7000"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -5, POND_TUNE, "warm:7000"),
         "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # 2026-10-05: the three instruments of the full bloom's tune, one note
+        # each. tools/gen_marigold_music.py plays them at pitch into music.ogg
+        # (the tune has to be exact, so it is sequenced, never prompted); the
+        # board itself never cues them.
+        "note_kalimba": ("one single clear note plucked once on a real kalimba and left to ring out, only one note, nothing else", 1.5, -6, POND_TUNE, "warm:7000"),
+        "note_box":     ("one single bright delicate note plucked once on the comb of a real wooden music box and left to ring out, only one note, nothing else", 1.5, -6, POND_TUNE, "warm:7000"),
+        "note_low":     ("one single low warm round note plucked once on a real bass kalimba and left to ring out, deep and soft, only one note, nothing else", 1.5, -6, POND_TUNE, "warm:7000"),
     },
     # Pixel Garden: copy a little picture onto a pegboard in beads; a full
     # plate is ironed. Re-recorded 2026-10-01 (the polish) as BEADBOX: real
@@ -1205,29 +1242,31 @@ SETS = {
     # Firefly (Arcade, arcade/firefly_screen.gd): a formation shooter in a
     # night garden. `shoot` fires several times a second, so it is short
     # and quiet; `beam` is the moth's silk beam, looped while it is open.
+    # Re-recorded 2026-10-05 off the chiptune: NIGHT foley for the shot, the
+    # pop, the dive and the beam, ARCADE's kalimba and music box for the rest.
     "firefly": {
-        "shoot":    ("a tiny soft bright 'pew', a small glowing spark shot upward, very short and light", 0.5, -14, ARCADE),
-        "pop":      ("a small soft bubbly pop with a tiny sparkle, a little bug zapped, very short", 0.5, -9, ARCADE),
-        "pop_moth": ("a bigger round pop with a bright sparkling chime burst, a big moth defeated, short and satisfying", 0.7, -6, ARCADE),
-        "hurt":     ("a short hollow metallic 'donk', an armoured bug hit but not beaten yet, very short", 0.5, -9, ARCADE),
-        "dive":     ("a descending soft whistling swoop, a bug diving down to attack, quick", 0.8, -13, ARCADE),
-        "beam_open":("a rising shimmering sweep opening up, a tractor beam of light switching on, sci-fi but gentle", 0.8, -8, ARCADE),
-        "beam":     ("a steady soft wavering shimmering hum, a tractor beam of light, continuous, even, no ending", 3.0, -12, ARCADE, "loop"),
-        "captured": ("a sad wobbling descending warble, a little ship caught and pulled up into a beam", 1.2, -7, ARCADE),
-        "carried":  ("a short low minor two-note chime, a ship lost", 0.8, -9, ARCADE),
-        "rescue":   ("a bright happy rising arpeggio with sparkles, a friend set free", 1.0, -5, ARCADE),
-        "docked":   ("a cheerful double chime click, two ships joining together, power up", 0.7, -5, ARCADE),
-        "rogue":    ("an ominous short low synth warble, something turning against you", 0.8, -9, ARCADE),
-        "ship_pop": ("a soft crunchy explosion burst fading into falling sparkles, the player's ship destroyed, not too loud", 1.2, -5, ARCADE),
-        "start":    ("a short cheerful retro arcade game start jingle, a bouncy rising melody, about three seconds", 3.0, -4, ARCADE),
-        "stage":    ("a short bright three-note fanfare, a new stage beginning", 1.2, -6, ARCADE),
-        "clear":    ("a quick happy rising chime run, a wave cleared", 1.0, -6, ARCADE),
-        "flyby":    ("a playful bouncy retro jingle, a bonus round starting", 1.8, -5, ARCADE),
-        "result":   ("a short friendly score tally jingle, counting points up", 1.2, -6, ARCADE),
-        "perfect":  ("a triumphant sparkling retro fanfare, a perfect bonus round, joyful", 2.2, -4, ARCADE),
-        "extra":    ("a bright retro one-up jingle, an extra life earned, rising notes", 1.0, -5, ARCADE),
-        "game_over":("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best": ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "shoot":    ("one tiny soft dry click of a fingertip flicking a small seed off a leaf, very short and quiet", 0.5, -14, NIGHT, "warm:6000", "cut:0.08"),
+        "pop":      ("one single small soft round pop of a cork pulled from a tiny bottle, dry, no ringing, very short", 0.5, -9, NIGHT, "warm:6000", "cut:0.15"),
+        "pop_moth": ("a bigger round soft pop followed by a bright sprinkle of small hand bells and music box notes, a big moth sent off, short and satisfying", 0.7, -6, ARCADE),
+        "hurt":     ("one short low hollow note on a wooden tongue drum, damped at once, an armoured ladybird hit but not beaten yet, very short", 0.5, -9, ARCADE),
+        "dive":     ("a quick soft breathy swoop of a paper fan swept down through the air, falling, a bug diving, quick", 0.8, -13, NIGHT),
+        "beam_open":("a soft rising run on a real music box with a shimmer of tiny hand bells opening up, a ribbon of silk light unrolling, gentle", 0.8, -8, ARCADE),
+        "beam":     ("a steady soft shimmering tremolo of tiny hand bells over a gently singing glass rim, a ribbon of silk light, continuous, even, no accents, no ending", 3.0, -12, NIGHT, "loop"),
+        "captured": ("a sad little wobbling slide down on a real kalimba, a few notes bending lower, a little friend caught and carried up, gentle", 1.2, -7, ARCADE),
+        "carried":  ("a short low minor two-note fall on a real kalimba, a friend lost, soft", 0.8, -9, ARCADE),
+        "rescue":   ("a bright happy rising run on a real kalimba with a music box sparkle on top, a friend set free", 1.0, -5, ARCADE),
+        "docked":   ("a cheerful quick pair of music box notes with a soft wooden click, two friends joining up, stronger together", 0.7, -5, ARCADE),
+        "rogue":    ("a short low uneasy two-note wobble on a wooden tongue drum, something turning against you, soft, not scary", 0.8, -9, ARCADE),
+        "ship_pop": ("a soft round paper-bag 'poof' fading into a falling sprinkle of tiny hand bells, a little firefly's light going out, not too loud", 1.2, -5, ARCADE),
+        "start":    ("a short cheerful opening tune on a real kalimba and music box, a bouncy rising melody with a hand bell on top, a game beginning, about three seconds", 3.0, -4, ARCADE),
+        "stage":    ("a short bright three-note fanfare on a real music box and hand bells, a new stage beginning", 1.2, -6, ARCADE),
+        "clear":    ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -6, ARCADE),
+        "flyby":    ("a playful bouncy little tune on a real kalimba and a wooden tongue drum, a bonus round starting", 1.8, -5, ARCADE),
+        "result":   ("a short friendly run of music box notes counting up one by one, a score being tallied", 1.2, -6, ARCADE),
+        "perfect":  ("a triumphant sparkling fanfare on a real kalimba, music box and hand bells, a perfect bonus round, joyful", 2.2, -4, ARCADE),
+        "extra":    ("three bright rising notes on a real music box with a hand bell sparkle, an extra life earned", 1.0, -5, ARCADE),
+        "game_over":("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best": ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
     },
     # Molehill (Arcade, arcade/molehill_screen.gd): whack-a-mole on a lawn.
     # The whacks are cartoon bonks; pop_up and escape fire constantly, so
@@ -1241,67 +1280,72 @@ SETS = {
         "bunny":       ("a startled little cartoon rabbit squeak and a soft 'boing', oops, not hurt, short", 0.6, -6, CARTOON),
         "miss":        ("a soft dull thud of a wooden mallet on grass and soil, a miss, very short", 0.5, -10, CARTOON),
         "escape":      ("a tiny cheeky cartoon raspberry giggle of a little mole ducking back down a hole, very short", 0.5, -14, CARTOON),
-        "combo":       ("a bright rising three-note chime with a sparkle, a combo multiplier going up, short", 0.7, -6, ARCADE),
-        "streak_lost": ("a short soft descending two-note blip, a streak broken, gentle", 0.5, -10, ARCADE),
-        "go":          ("a short bright cheerful 'go' horn blip of two rising notes, a round starts", 0.6, -5, ARCADE),
+        "combo":       ("a bright rising three-note run on a real kalimba with a hand bell sparkle, a combo multiplier going up, short", 0.7, -6, ARCADE),
+        "streak_lost": ("a short soft two-note fall on a real kalimba, a streak broken, gentle", 0.5, -10, ARCADE),
+        "go":          ("two short bright rising notes on a real music box with a little hand bell on top, a round starts, cheerful", 0.6, -5, ARCADE),
         "tick":        ("a single soft wooden clock tick with a tiny bell, a countdown second, very short", 0.5, -9, ARCADE),
-        "frenzy":      ("an excited quick rising retro arpeggio with a drum roll, the last ten seconds, double points", 1.2, -5, ARCADE),
+        "frenzy":      ("an excited quick rising run on a real kalimba over a soft roll of fingers drumming on a wooden box, the last ten seconds, double points", 1.2, -5, ARCADE),
         "time_up":     ("a cheerful alarm clock 'brring' bell, very short, time is up", 0.8, -6, CARTOON),
-        "start":       ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
-        "game_over":   ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":    ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "start":       ("a short cheerful opening tune on a real kalimba and music box, a bouncy garden melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
+        "game_over":   ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best":    ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
     },
     # Stackwood (Arcade, arcade/stackwood_screen.gd): numbered wooden toy
     # blocks that fall and merge. The blocks are CARTOON wood; the jingles
-    # ARCADE. move and land fire on every block, so they sit low; merge is
-    # pitched up the chain by the screen.
+    # ARCADE (a kalimba and music box since 2026-10-05). move and land fire
+    # on every block, so they sit low; merge is pitched up the chain by the
+    # screen.
     "stackwood": {
         "move":      ("a tiny soft wooden tick, a toy block nudged one step sideways, very short", 0.5, -18, CARTOON),
         "drop":      ("a quick soft airy whoosh of a small wooden block dropping, very short", 0.5, -14, CARTOON),
         "land":      ("a soft hollow wooden toy block landing on a stack of blocks, a warm 'tock', very short", 0.5, -9, CARTOON),
         "merge":     ("two wooden toy blocks clicking together into one with a bright soft chime, satisfying, very short", 0.5, -6, CARTOON),
-        "chain":     ("a quick bright rising three-note chime with a sparkle, a chain combo, short", 0.7, -6, ARCADE),
-        "big":       ("a bright happy sparkling two-note chime, a new biggest block made, short", 0.8, -5, ARCADE),
-        "milestone": ("a joyful triumphant retro fanfare with sparkles, the 2048 block reached, about two seconds", 2.2, -4, ARCADE),
-        "wild":      ("a shimmering magical rainbow sparkle swirl, soft and bright, short", 0.8, -7, ARCADE),
-        "buy":       ("a cheerful two-note purchase chime with a tiny coin, a power-up bought, short", 0.6, -7, ARCADE),
+        "chain":     ("a quick bright rising three-note run on a real kalimba with a hand bell sparkle, a chain combo, short", 0.7, -6, ARCADE),
+        "big":       ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest block made, short", 0.8, -5, ARCADE),
+        "milestone": ("a joyful triumphant fanfare on a real kalimba, music box and hand bells, a great block reached at last, about two seconds", 2.2, -4, ARCADE),
+        "wild":      ("a soft swirling run of tiny hand bells and music box notes, a rainbow shimmer, magical, soft and bright, short", 0.8, -7, ARCADE),
+        "buy":       ("a cheerful two-note music box chime with a tiny coin clink, a power-up bought, short", 0.6, -7, ARCADE),
         "fuse":      ("a short soft cartoon fuse hiss and crackle, a little bomb lit, short", 0.7, -10, CARTOON),
         "bomb":      ("a soft round cartoon 'boom' with wooden blocks scattering, playful, not harsh, short", 0.9, -5, CARTOON),
-        "zap":       ("a soft bright electric zap crackle, a playful lightning bolt, short", 0.7, -7, ARCADE),
-        "refused":   ("a soft low short 'bonk' blip, not enough acorns, gentle, not harsh", 0.5, -10, ARCADE),
-        "warn":      ("a soft worried two-note warning blip, a stack near the top, gentle not alarming", 0.6, -9, ARCADE),
-        "retired":   ("a soft pop and a small descending sparkle, the smallest blocks retired, short", 0.6, -8, ARCADE),
+        "zap":       ("a quick soft crackle of a dry twig snapping with a bright sprinkle of tiny hand bells, a playful little lightning bolt, short", 0.7, -7, ARCADE),
+        "refused":   ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough acorns, gentle, very short", 0.5, -10, ARCADE),
+        "warn":      ("two soft worried notes on a real kalimba, the second a little lower, a stack near the top, gentle, not alarming", 0.6, -9, ARCADE),
+        "retired":   ("a soft pop and a small falling sprinkle of music box notes, the smallest blocks put away, short", 0.6, -8, ARCADE),
         "topple":    ("a tall stack of wooden toy blocks toppling and tumbling down, a cascade of hollow wooden clatters, about a second and a half", 1.5, -5, CARTOON),
-        "go":        ("a short bright cheerful 'go' blip of two rising notes, a game starts", 0.6, -5, ARCADE),
-        "start":     ("a short cheerful retro arcade game start jingle, a bouncy toy-box tune, about two seconds", 2.2, -4, ARCADE),
-        "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "go":        ("two short bright rising notes on a real music box with a little hand bell on top, a game starts, cheerful", 0.6, -5, ARCADE),
+        "start":     ("a short cheerful opening tune on a real kalimba and music box, a bouncy toy-box melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
+        "game_over": ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
     },
     # Lucky Thirteen (Arcade, arcade/thirteen_screen.gd): numbered river
-    # pebbles merged by drawing chains. The pebbles are CARTOON stone; the
-    # jingles ARCADE. select fires on every pebble a chain takes and is
-    # pitched up the chain by the screen, so it sits low; merge is pitched
-    # up the numbers.
+    # pebbles merged by drawing chains. Re-recorded 2026-10-05 as RIVERBED
+    # foley (the user hated the set). select fires on every pebble a chain
+    # takes and is pitched up the chain by the screen, a little. **It is a
+    # click, and the first take of all**: for an hour it was a kalimba note
+    # up the pentatonic, and the user: "it's important to avoid bell or
+    # ring sounds for something that repeat a lot, so use something more
+    # like a click, previous selection sound were in the right direction".
+    # merge is every move's, so it is a clack with no note either.
     "thirteen": {
         "select":     ("a single tiny soft click of a smooth river pebble tapped, bright and clean, very short", 0.5, -14, CARTOON),
-        "unselect":   ("a tiny soft low tick, a small pebble set back down, very short", 0.5, -18, CARTOON),
-        "short":      ("a soft low short 'bonk' blip, not enough pebbles, gentle, not harsh", 0.5, -10, ARCADE),
-        "merge":      ("a few smooth pebbles clicking together into one with a bright soft chime, satisfying, very short", 0.6, -6, CARTOON),
-        "land":       ("a tiny soft stone 'tock' of a pebble settling onto sand, very short", 0.5, -16, CARTOON),
-        "new_number": ("a bright happy sparkling two-note chime, a new biggest number made, short", 0.8, -5, ARCADE),
-        "goal":       ("a joyful triumphant retro fanfare with sparkles and a lucky chime, the number thirteen reached, about two seconds", 2.4, -4, ARCADE),
-        "stuck":      ("a soft worried descending two-note blip, no moves left, gentle not alarming", 0.7, -8, ARCADE),
-        "arm":        ("a soft quick click and a tiny rising blip, a tool picked up, short", 0.5, -10, ARCADE),
-        "undo":       ("a short soft reverse swish, like rewinding a tiny tape, playful", 0.6, -8, ARCADE),
-        "swap":       ("two small smooth pebbles swishing past each other and trading places, a quick airy double whoosh, short", 0.6, -8, CARTOON),
-        "pluck":      ("a soft cartoon 'pop' of a small pebble plucked out of sand, short", 0.5, -7, CARTOON),
-        "shuffle":    ("a handful of smooth pebbles rattled and shaken in a wooden tray, a quick rolling clatter, about a second", 1.0, -7, CARTOON),
-        "lift":       ("a soft rising magical bloop with a sparkle, a pebble raised up one, short", 0.6, -7, ARCADE),
-        "refused":    ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
-        "tumble":     ("a trayful of smooth pebbles tipped out and tumbling, a cascade of soft stone clatters, about a second and a half", 1.5, -6, CARTOON),
-        "start":      ("a short cheerful retro arcade game start jingle, a bouncy lucky little tune, about two seconds", 2.2, -4, ARCADE),
-        "game_over":  ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":   ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "unselect":   ("a tiny soft low 'tok' of one smooth pebble set back down on damp sand, muffled, very short", 0.5, -18, RIVERBED, "warm:5000"),
+        "short":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough pebbles, gentle, very short", 0.5, -10, ARCADE),
+        "merge":      ("three smooth river pebbles clicking softly together one after another, a little satisfying clack, dry, no ringing, very short", 0.6, -6, RIVERBED, "warm:6000"),
+        "land":       ("a tiny soft low 'tup' of one smooth pebble settling onto damp sand, muffled, very short", 0.5, -16, RIVERBED, "warm:5000"),
+        "new_number": ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest number made, short", 0.8, -5, ARCADE),
+        "goal":       ("a joyful triumphant fanfare on a real kalimba, music box and hand bells with one lucky bell ringing on top, the number thirteen reached, about two seconds", 2.4, -4, ARCADE),
+        "stuck":      ("two soft worried notes falling on a real kalimba, no moves left, gentle, not alarming", 0.7, -8, ARCADE),
+        "arm":        ("a soft quick wooden click and one tiny rising kalimba note, a tool picked up, short", 0.5, -10, ARCADE),
+        "undo":       ("a short soft brush of a hand over sand with one small kalimba note gliding gently down, a kind 'take that back', short", 0.6, -8, ARCADE),
+        "swap":       ("two smooth river pebbles sliding past each other over damp sand, a soft double hush, short", 0.6, -8, RIVERBED, "warm:6000"),
+        "pluck":      ("one smooth pebble lifted out of damp sand with a soft low 'thup', short", 0.5, -7, RIVERBED, "warm:6000"),
+        "shuffle":    ("a handful of smooth river pebbles rolled gently round a shallow wooden tray, a soft low rolling clatter, about a second", 1.0, -7, RIVERBED, "warm:6000"),
+        "lift":       ("a soft rising pair of kalimba notes with a hand bell sparkle, a pebble raised up one, short", 0.6, -7, ARCADE),
+        "refused":    ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not allowed, gentle, very short", 0.5, -10, ARCADE),
+        "tumble":     ("a trayful of smooth river pebbles tipped slowly out onto sand, a soft low cascade of stone clicks, about a second and a half", 1.5, -6, RIVERBED, "warm:6000"),
+        "start":      ("a short cheerful opening tune on a real kalimba and music box, a bouncy lucky little melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
+        "game_over":  ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best":   ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
     },
     # Posy (Arcade, arcade/posy_screen.gd): a swap-three garden of flowers,
     # leaves, drops, mushrooms, berries and acorns. The garden's touches are
@@ -1314,27 +1358,27 @@ SETS = {
         "bad_swap":     ("a soft springy boing back, two tiles bumping and sliding back to where they were, gentle, short", 0.6, -10, CARTOON),
         "match":        ("a soft bubbly pop of three little flowers plucked at once, satisfying, very short", 0.5, -6, CARTOON),
         "land":         ("a tiny soft patter of small tiles settling into place, very short and quiet", 0.5, -18, CARTOON),
-        "collect":      ("a tiny soft bright tick, a petal landing in a basket, very short", 0.5, -18, ARCADE),
-        "made_breeze":  ("a soft rising whoosh with a bright shimmer, a magical breeze being made, short", 0.6, -8, ARCADE),
-        "made_bomb":    ("a soft rising sparkle and a small warm hum, a seed bomb being made, short", 0.7, -8, ARCADE),
-        "made_rainbow": ("a bright magical rising arpeggio shimmer, a rainbow flower appearing, about a second", 1.0, -6, ARCADE),
+        "collect":      ("one single tiny soft dry wooden tick, very short and quiet", 0.5, -18, COZY, "warm:6000", "cut:0.06"),
+        "made_breeze":  ("a soft rising breath of air through leaves with a shimmer of tiny hand bells, a magical breeze being made, short", 0.6, -8, ARCADE),
+        "made_bomb":    ("a soft rising sprinkle of music box notes over one warm low kalimba note, a seed pod swelling up, short", 0.7, -8, ARCADE),
+        "made_rainbow": ("a bright rising run on a real music box and kalimba with shimmering hand bells, a rainbow flower appearing, about a second", 1.0, -6, ARCADE),
         "breeze":       ("a quick gust of wind sweeping across a garden, a clean whoosh with leaves rustling, short", 0.7, -6, CARTOON),
         "bomb":         ("a soft cartoon poof blast, a burst of seeds and petals, round and gentle not harsh, short", 0.7, -5, CARTOON),
-        "rainbow":      ("a sparkling magical sweep, a shower of chimes flying out in every direction, about a second", 1.1, -5, ARCADE),
-        "goal":         ("a bright happy two-note chime, a goal completed, short", 0.7, -6, ARCADE),
-        "cheer":        ("a short joyful bright sparkle flourish, a big cascade, happy", 0.8, -7, ARCADE),
-        "day_done":     ("a joyful short garden fanfare with sparkles, a day's goals completed, about two seconds", 2.0, -4, ARCADE),
+        "rainbow":      ("a sweeping shower of hand bells and music box notes scattering in every direction, sparkling and magical, about a second", 1.1, -5, ARCADE),
+        "goal":         ("two bright happy notes on a real music box, a goal completed, short", 0.7, -6, ARCADE),
+        "cheer":        ("a short joyful flourish on a real kalimba with a hand bell sparkle, a big cascade, happy", 0.8, -7, ARCADE),
+        "day_done":     ("a joyful short garden fanfare on a real kalimba, music box and hand bells, a day's goals completed, about two seconds", 2.0, -4, ARCADE),
         "deal":         ("a soft airy cascade of many small tiles tumbling into a wooden tray, about a second", 1.0, -9, CARTOON),
         "shuffle":      ("a handful of small wooden tiles shaken and rattled in a tray, a quick rolling clatter, about a second", 1.0, -8, CARTOON),
-        "convert":      ("a soft magical twinkle, a tile turning special, short", 0.6, -9, ARCADE),
-        "gift":         ("a cheerful little present chime with a sparkle, a tool earned, short", 0.8, -7, ARCADE),
+        "convert":      ("a soft twinkle of two tiny music box notes, a tile turning special, short", 0.6, -9, ARCADE),
+        "gift":         ("a cheerful little rising music box phrase with a hand bell sparkle, a present, a tool earned, short", 0.8, -7, ARCADE),
         "trowel":       ("a small garden trowel digging into soft soil, a quick scoop and a soft pop, short", 0.6, -7, CARTOON),
-        "arm":          ("a soft quick click and a tiny rising blip, a tool picked up, short", 0.5, -10, ARCADE),
-        "refused":      ("a soft low short 'bonk' blip, not allowed, gentle, not harsh", 0.5, -10, ARCADE),
+        "arm":          ("a soft quick wooden click and one tiny rising kalimba note, a tool picked up, short", 0.5, -10, ARCADE),
+        "refused":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not allowed, gentle, very short", 0.5, -10, ARCADE),
         "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -7, CARTOON),
-        "start":        ("a short cheerful retro arcade game start jingle, a bouncy flowery little tune, about two seconds", 2.2, -4, ARCADE),
-        "game_over":    ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":     ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
+        "start":        ("a short cheerful opening tune on a real kalimba and music box, a bouncy flowery little melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
+        "game_over":    ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best":     ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
         # the genre pass (2026-09-28): the bee, the bed's ground, the offer
         "made_bee":     ("a soft cheerful buzzy little trill, a tiny bee appearing, playful, short", 0.6, -8, CARTOON),
         "bee":          ("a quick soft cartoon bee buzz zipping away, playful, short", 0.6, -8, CARTOON),
@@ -1344,42 +1388,53 @@ SETS = {
         "stone_break":  ("a soft cartoon garden stone crumbling apart into pebbles, round not harsh, short", 0.7, -7, CARTOON),
         "moss":         ("a soft squishy creeping sound, moss spreading over a tile, gentle and slightly sneaky, short", 0.6, -10, CARTOON),
         "moss_clear":   ("a soft fluffy poof, a clump of moss plucked away, short", 0.5, -9, CARTOON),
-        "offer":        ("a gentle hopeful two-note question chime, so close, not sad", 0.8, -7, ARCADE),
-        "more_moves":   ("a bright cheerful rising sparkle, extra moves granted, short", 0.8, -6, ARCADE),
+        "offer":        ("a gentle hopeful two-note question on a real kalimba, the second note rising, so close, not sad", 0.8, -7, ARCADE),
+        "more_moves":   ("a bright cheerful rising sprinkle of music box notes and a hand bell, extra moves granted, short", 0.8, -6, ARCADE),
     },
     # Peapod (Arcade, arcade/peapod_screen.gd): a pea cannon against numbered
-    # crates. The gun never stops, so shot and hit sit very low and are
-    # played through an Fx2D that knocks for nothing; pop is pitched up a
-    # streak by the screen.
+    # crates. The gun never stops, so a shot is the faintest click and a pea
+    # landing a soft woody one, thinned by the screen, both played through
+    # an Fx2D that knocks for nothing; pop is pitched up a streak, a little.
+    # Levels by the user's ear (2026-10-05): "the block break is too loud,
+    # and the block shoot hit is too low" at pop -8 and hit -18, so pop -14
+    # (the golden one -9) and hit -10 (iron's clank -11). The hit since then
+    # is a wooden tock with more body in it, 3 dB louder at the same peak,
+    # so it sits at -13 to be as loud as the tap the user said yes to.
+    # Re-recorded 2026-10-05 as PEAPATCH foley (the user hated the set).
     "peapod": {
-        "shot":      ("a tiny soft airy 'pft' of a pea blown out of a toy pea shooter, very short and light", 0.5, -20, CARTOON),
-        "hit":       ("a tiny soft wooden 'tick' of a dried pea bouncing off a wooden crate, very short", 0.5, -18, CARTOON),
-        "pop":       ("a small wooden crate bursting apart with a soft round 'pop' and a light clatter of slats, very short", 0.5, -8, CARTOON),
-        "pop_gold":  ("a wooden crate bursting with a bright jingle of coins and a sparkle, a golden prize, short", 0.8, -5, CARTOON),
-        "gift":      ("a soft bright rising 'bloop' with a tiny sparkle, a present popping out of a box, very short", 0.5, -8, ARCADE),
-        "catch":     ("a bright happy two-note power-up chime, rising, a gift caught, short", 0.6, -6, ARCADE),
-        "twin":      ("a cheerful bouncy three-note power-up jingle, a little helper joining in, short", 0.8, -5, ARCADE),
-        "twin_off":  ("a short soft descending two-note blip with a little puff, a helper leaving, gentle", 0.5, -10, ARCADE),
-        "lost":      ("a tiny soft 'plip' of something small dropping into grass, a gift missed, very short", 0.5, -12, CARTOON),
-        "boom":      ("a soft round cartoon firecracker 'bang' with wooden crates scattering, playful, not harsh, short", 0.9, -5, CARTOON),
-        "knock":     ("a soft springy cartoon 'boing' thump, something pushed back, very short", 0.5, -9, CARTOON),
-        "head":      ("a big soft cartoon 'splat' pop followed by a bright sparkling chime burst, a boss beaten, satisfying, short", 0.9, -5, CARTOON),
-        "wave":      ("a short bright two-note fanfare blip, a new wave beginning", 0.7, -7, ARCADE),
-        "milli":     ("a short playful low marching synth riff of four quick notes, a big bug arriving, not scary", 1.0, -7, ARCADE),
-        "clear":     ("a quick happy rising chime run with a sparkle, a wave cleared", 1.0, -6, ARCADE),
-        "word":      ("a bright rising three-note chime with a sparkle, a combo streak, short", 0.7, -6, ARCADE),
-        "warn":      ("a soft worried two-note warning blip, something getting too close, gentle not alarming", 0.6, -8, ARCADE),
-        "over":      ("a soft low cartoon 'thud' with a wooden clatter and a sad little slide whistle down, short", 0.9, -6, CARTOON),
-        "go":        ("a short bright cheerful 'go' horn blip of two rising notes, a round starts", 0.6, -5, ARCADE),
-        "start":     ("a short cheerful retro arcade game start jingle, a bouncy garden tune, about two seconds", 2.2, -4, ARCADE),
-        "game_over": ("a gentle slow descending retro melody, game over, soft and kind not sad", 2.2, -5, ARCADE),
-        "new_best":  ("a joyful celebratory retro fanfare with sparkles, a new high score", 2.4, -4, ARCADE),
-        # the second pass (2026-10-04): an iron crate, a pod, the frost, the shove, a rotten gift
-        "clank":     ("a tiny soft dull metal 'tink' of a dried pea bouncing off a small iron box, very short", 0.5, -17, CARTOON),
-        "pod":       ("a bright punchy three-note rising power-up blip with a little 'shing', a new weapon loaded, short", 0.7, -6, ARCADE),
-        "frost":     ("a soft icy crystalline shimmer falling into a gentle freeze, everything slowing down, short", 0.9, -7, ARCADE),
-        "shove":     ("a big soft cartoon whoosh and a springy 'boing' push, everything shoved back, playful, short", 0.8, -6, CARTOON),
-        "rot":       ("a soft squelchy cartoon 'blegh' splat with a short descending two-note blip, something rotten caught, gentle", 0.7, -7, CARTOON),
+        # 2026-10-05: the gun fires five to ten times a second for the whole
+        # run. Its first sound was an airy half-second 'pft'; taking it away
+        # altogether was wrong too -- the user: "we need a really subtle
+        # click sound for every shoot". So a click, cut to its first 50 ms
+        # and the quietest file in the game.
+        "shot":      ("one tiny soft dry click of a small wooden toy pea shooter's catch, very short and quiet", 0.5, -24, PEAPATCH, "warm:6000", "cut:0.05"),
+        "hit":       ("one single soft dry 'tock' on a small hollow wooden block tapped with a felt mallet, warm and round, damped at once, no ring, very short", 0.5, -13, PEAPATCH, "warm:6000", "cut:0.12", "tight"),
+        "pop":       ("a small soft pine crate coming apart with one round low cork 'pop' and a light tumble of thin slats, gentle, very short", 0.5, -14, PEAPATCH, "warm:6000"),
+        "pop_gold":  ("a small pine crate coming apart with a soft pop and a warm little spill of coins onto a wooden table, a golden prize, short", 0.8, -9, PEAPATCH, "warm:7000"),
+        "gift":      ("one soft bright rising kalimba pluck with a tiny hand bell, a present popping out of a box, very short", 0.5, -8, ARCADE),
+        "catch":     ("two bright happy rising notes on a real music box, a gift caught, short", 0.6, -6, ARCADE),
+        "twin":      ("a cheerful bouncy three-note phrase on a real kalimba, a little helper joining in, short", 0.8, -5, ARCADE),
+        "twin_off":  ("a short soft two-note fall on a real kalimba with a little puff of air, a helper leaving, gentle", 0.5, -10, ARCADE),
+        "lost":      ("a tiny soft 'plip' of something small dropping into long grass, a gift missed, very short", 0.5, -12, PEAPATCH, "warm:6000"),
+        "boom":      ("a soft round muffled 'whump' of a paper party popper going off under a blanket, with a few small pine crates tumbling over, playful, low, short", 0.9, -5, PEAPATCH, "warm:6000"),
+        "knock":     ("a soft hollow knock of knuckles on a small empty pine crate, woody and gentle, very short", 0.5, -9, PEAPATCH, "warm:6000"),
+        "head":      ("a big soft round pop of a paper bag followed by a bright sprinkle of small hand bells and music box notes, a big bug sent off, satisfying, short", 0.9, -5, ARCADE),
+        "wave":      ("a short bright two-note fanfare on a real music box and a hand bell, a new wave beginning", 0.7, -7, ARCADE),
+        "milli":     ("a short playful low marching riff of four quick notes on a wooden tongue drum, a big bug arriving on many little feet, not scary", 1.0, -7, ARCADE),
+        "clear":     ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -6, ARCADE),
+        "word":      ("a bright rising three-note run on a real kalimba with a hand bell sparkle, a combo streak, short", 0.7, -6, ARCADE),
+        "warn":      ("two soft worried notes on a real kalimba, the second a little lower, something getting too close, gentle, not alarming", 0.6, -8, ARCADE),
+        "over":      ("a soft thud and a light clatter of small wooden crates settling, then two clear gentle kalimba notes stepping down, kind and calm, never sad", 0.9, -6, ARCADE),
+        "go":        ("two short bright rising notes on a real music box with a little hand bell on top, a round starts, cheerful", 0.6, -5, ARCADE),
+        "start":     ("a short cheerful opening tune on a real kalimba and music box, a bouncy garden melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
+        "game_over": ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
+        "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
+        # the second pass (2026-10-04): an iron crate, a pod, the frost, the shove (the rotten
+        # gift and its sound went on 2026-10-05)
+        "clank":     ("a tiny soft dull 'tink' of one dried pea on a small tin watering can, damped at once, not ringing, very short", 0.5, -11, PEAPATCH, "warm:6000"),
+        "pod":       ("three bright rising notes on a real kalimba with a soft wooden click, a new pod loaded, lively, short", 0.7, -6, ARCADE),
+        "frost":     ("a soft falling shimmer of tiny glass bells and music box notes slowing down, a gentle frost settling over everything, short", 0.9, -7, ARCADE),
+        "shove":     ("a big soft whoosh of a canvas sheet flapped once and a padded woody thump, everything pushed back, short", 0.8, -6, PEAPATCH, "warm:6000"),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.
@@ -1569,7 +1624,7 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         sys.exit(f"ElevenLabs answered {e.code}: {detail}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0, tight: bool = False) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -1584,6 +1639,7 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     # in 16-bit and reads anything over full scale as exactly 0 dB.
     # A loop keeps every sample: a trim or a fade would put a gap in its seam.
     trim = "anull" if loop else "silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01"
+    head = "silenceremove=start_periods=1:start_threshold=-36dB:start_silence=0.004" if tight and not loop else trim
     # Warm (2026-09-29, Untangle): a take whose hiss or scratch sits above the
     # cozy family is rolled off -- two gentle low-pass poles and a high shelf
     # -- and eased in so its first transient is a touch rather than a click.
@@ -1593,7 +1649,7 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     with tempfile.TemporaryDirectory() as tmp:
         mono = pathlib.Path(tmp) / "mono.wav"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
-                        "-af", f"{trim},areverse,{trim},areverse{soft}",
+                        "-af", f"{head},areverse,{trim},areverse{soft}",
                         "-ac", "1", "-c:a", "pcm_f32le", str(mono)], check=True)
         probe = subprocess.run(["ffmpeg", "-i", str(mono), "-af",
                                 "astats=measure_overall=Peak_level:measure_perchannel=none",
@@ -1644,7 +1700,7 @@ def main() -> None:
         out = out_dir / f"{cue}.ogg"
         if "fall" in rest[1:]:
             raw = fall(raw)
-        to_ogg(raw, out, peak, loop, warm, cut)
+        to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:])
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

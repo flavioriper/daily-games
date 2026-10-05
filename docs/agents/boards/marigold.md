@@ -35,7 +35,14 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   while the seed falls, under Ode to Joy arranged in the house instruments.
   The arrangement is synthesised by `tools/gen_marigold_music.py`, the one
   sound in the game not made by ElevenLabs, because the tune has to be
-  exact. The view is `_cam`; the HUD never goes through it. 91 in the full
+  exact. **Not synthesised since 2026-10-05** (the user: cozy, never
+  synth): the script still sequences the tune, since it has to be exact,
+  but every note is now a recorded one -- three ElevenLabs takes in the
+  board's own POND_TUNE family (`note_kalimba`, `note_box`, `note_low`,
+  `tools/gen_sfx.py marigold`), each measured for its pitch and resampled
+  to the score, the way a sampler plays. The parts move by octaves to sit
+  near the note each instrument was recorded at; the timpani and the
+  glockenspiel are gone. The board never cues the three notes. The view is `_cam`; the HUD never goes through it. 91 in the full
   bloom, unchanged.
   **Rewards made loud on 2026-09-27** (the spec's third amendment):
   Stackwood's sticker and bits kit -- petals, sparks and stars off every

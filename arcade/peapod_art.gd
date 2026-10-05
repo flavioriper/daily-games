@@ -49,9 +49,8 @@ const PAINT := [Color("b9d996"), Color("93d4c3"), Color("9fcbe8"), Color("b5b3e4
 const GIFT := {Sim.Kind.PEA: Color("7fc8ee"), Sim.Kind.RATE: Color("f08fb0"), Sim.Kind.POWER: Color("f5a44a"),
 	Sim.Kind.TWIN: Color("b6d957"), Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"),
 	Sim.Kind.BURST: Color("d665c8"), Sim.Kind.MAGNET: Color("5a8fe0"), Sim.Kind.FROST: Color("a9dff2"),
-	Sim.Kind.SHOVE: Color("5fbf8a"), Sim.Kind.ROT: Color("8a7358")}
+	Sim.Kind.SHOVE: Color("5fbf8a")}
 const IRON := Color("b7c0cc")
-const ROT_INK := Color("4a2f4c")
 const DART := Color("ffe08a")
 const BERRY := Color("f2907c")
 ## The flowers a cleared wave leaves on the grass: petals and eye.
@@ -299,14 +298,6 @@ static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.36, s * 0.3), Vector2(s * 0.72, s * 0.13), s * 0.06), PAPER)
 			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.1, -s * 0.1), Vector2(s * 0.2, s * 0.32), s * 0.03), PAPER)
 			b.polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.06), c + Vector2(0, -s * 0.46), c + Vector2(s * 0.3, -s * 0.06)]), PAPER)
-		Sim.Kind.ROT:
-			# a pea gone off, with a minus beside it
-			b.fan(Face.Builder.round_rect(c + Vector2(-s * 0.5, -s * 0.07), Vector2(s * 0.3, s * 0.14), s * 0.05), PAPER)
-			b.disc(c + Vector2(s * 0.16, s * 0.03), s * 0.3, ROT_INK)
-			b.disc(c + Vector2(s * 0.16, 0), s * 0.27, Color("9aa04a"))
-			for spot: Vector2 in [Vector2(0.06, -0.08), Vector2(0.26, 0.06), Vector2(0.12, 0.14)]:
-				b.disc(c + spot * s, s * 0.06, ROT_INK)
-			b.stroke(Face.Builder.bezier2(c + Vector2(s * 0.2, -s * 0.26), c + Vector2(s * 0.3, -s * 0.44), c + Vector2(s * 0.42, -s * 0.38), 5), s * 0.05, ROT_INK)
 		Sim.Kind.BOMB:
 			# a firecracker: a banded stick with a lit fuse
 			var k := s / 60.0
@@ -342,10 +333,9 @@ static func _twinkle(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
 ## out of its parcel.
 static func medal(b: Face.Builder, kind: int, c: Vector2, r: float, rim := true) -> void:
 	var base: Color = GIFT.get(kind, GOLD)
-	var rot := kind == Sim.Kind.ROT
-	b.disc(c + Vector2(0, r * 0.12), r, ROT_INK if rot else deepen(base))
+	b.disc(c + Vector2(0, r * 0.12), r, deepen(base))
 	if rim:
-		b.disc(c, r, ROT_INK if rot else PAPER)
+		b.disc(c, r, PAPER)
 		b.disc(c, r * 0.85, base)
 	else:
 		b.disc(c - Vector2(0, r * 0.06), r * 0.95, base)

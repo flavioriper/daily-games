@@ -217,6 +217,17 @@ var _heat := 0.0
 var _rain := 0.0
 ## The longest tier the chain being drawn has rung out at.
 var _tier := 0
+## A chain's clicks (2026-10-05): each pebble it takes plays `select` a
+## little higher, CHAIN_STEP a pebble up to CHAIN_TOP. It was 7% a pebble up
+## to 1.9, a squeak by the end of a long chain. The sound is a click and
+## stays one: a kalimba note up the pentatonic was tried the same morning
+## and the user turned it down -- nothing that repeats this much may ring.
+const CHAIN_STEP := 0.05
+const CHAIN_TOP := 1.5
+## Pebbles falling together land as one soft patter, not a rattle: `land`
+## is heard at most once in LAND_GAP seconds.
+const LAND_GAP := 0.09
+var _land_heard := -10.0
 var _air_live: ArrayMesh
 var _end_score: Label
 var _end_at := 0.0
@@ -721,7 +732,9 @@ func _animate(delta: float) -> void:
 				if vis.pos.y >= want.y:
 					_squash(vis, clampf(float(vis.vel) * 0.007, 0.03, 0.09))
 					vis.vel = 0.0
-					_fx.cue("land", randf_range(0.9, 1.15), -4.0)
+					if _clock - _land_heard >= LAND_GAP:
+						_land_heard = _clock
+						_fx.cue("land", randf_range(0.94, 1.06), -4.0)
 			else:
 				vis.glide = false
 			# a falling pebble stretches, and lets go of it as softly
@@ -1166,6 +1179,10 @@ func _disarm() -> void:
 
 # --- events ---
 
+## The pitch of the chain's pebble `i` (0 the first).
+func _chain_pitch(i: int) -> float:
+	return minf(0.9 + CHAIN_STEP * maxi(i, 0), CHAIN_TOP)
+
 func _play_events() -> void:
 	for ev: Dictionary in sim.events:
 		match String(ev.type):
@@ -1174,7 +1191,7 @@ func _play_events() -> void:
 			"select":
 				_chain_t = 0.0
 				_seg_t = 0.0 if int(ev.n) >= 2 else 1.0
-				_fx.cue("select", minf(0.9 + 0.07 * (int(ev.n) - 1), 1.9))
+				_fx.cue("select", _chain_pitch(int(ev.n) - 1))
 				if int(ev.n) == 1:
 					_tier = 0
 				_ring_tier(ev.cell, int(ev.n))
@@ -1186,7 +1203,7 @@ func _play_events() -> void:
 						_tier = t
 				_chain_t = 0.0
 				_seg_t = 1.0
-				_fx.cue("unselect", minf(0.9 + 0.07 * int(ev.n), 1.9))
+				_fx.cue("unselect", _chain_pitch(int(ev.n)))
 			"short":
 				if int(ev.n) >= 2:
 					_fx.cue("short")
@@ -1274,7 +1291,7 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.buzz(feel)
 		_fx.puff(at, Art.paint(int(ev.v)), 6)
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
-		_fx.cue("merge", clampf(0.85 + 0.05 * int(ev.v), 0.85, 1.6))
+		_fx.cue("merge", clampf(0.9 + 0.03 * int(ev.v), 0.9, 1.3))
 		_knock(into, 0.04 + 0.008 * n)
 		_merge_burst(ev, at)
 		if bool(ev.get("new_max", false)):
@@ -2215,7 +2232,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("select", 0.9 + 0.8 * k, -12.0)
+			_fx.cue("unselect", 0.95 + 0.3 * k, -6.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		_kick(_end_score, 0.25, 0.4)

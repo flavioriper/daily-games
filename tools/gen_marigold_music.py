@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Marigold's full-bloom music: Beethoven's Ode to Joy (public domain),
-arranged in the house's own instruments and synthesised here, note by note.
+"""Marigold's full-bloom music: Beethoven's Ode to Joy (public domain), played
+on a real kalimba, a music box and a bass kalimba.
 
+    python3 tools/gen_sfx.py marigold note_kalimba note_box note_low   # once
     python3 tools/gen_marigold_music.py
 
 Writes assets/sfx/marigold/music.ogg, which puzzles/marigold2d.gd plays once
-when the last marigold blooms. Melody on marimba doubled by a glockenspiel an
-octave up, kalimba chords on the off-beats, a plucked bass on the beats, a
-soft timpani roll into the first bar and a held chord at the end, through a
-small room. Needs numpy and ffmpeg on the PATH.
+when the last marigold blooms. The tune has to be exact, so it is sequenced
+here rather than prompted -- but nothing is synthesised (2026-10-05; until
+then every note was a sum of sines): each instrument is one recorded note
+from ElevenLabs (assets/sfx/marigold/note_*.ogg, the same POND_TUNE family as
+the board's cues), its pitch measured and the note played at each pitch of
+the score by resampling, the way a sampler does. Melody on the kalimba
+doubled by the music box above, kalimba chords on the off-beats, the bass
+kalimba on the beats, a music box run up into the first bar and a held chord
+at the end, through a small room. Needs numpy and ffmpeg on the PATH.
 """
 import pathlib, subprocess, tempfile, wave
 import numpy as np
@@ -37,7 +43,7 @@ CHORDS_2 = [D, D, D, Aa, D, Aa, Aa, D]
 CHORDS_B = [Aa, D, Aa, D, Aa, E, Aa, Aa]
 CHORDS = CHORDS_1 + CHORDS_2 + CHORDS_B + CHORDS_2
 
-INTRO = 2.0  # beats: the timpani roll and a glockenspiel run up into bar one
+INTRO = 2.0  # beats: a low note and a music box run up into bar one
 OUTRO = 6.0  # beats: the last chord ringing out
 
 
@@ -45,70 +51,63 @@ def hz(m):
     return 440.0 * 2.0 ** ((m - 69) / 12.0)
 
 
-def env(n, attack, decay):
-    t = np.arange(n) / SR
-    a = np.minimum(1.0, t / attack) if attack > 0 else 1.0
-    return a * np.exp(-t / decay)
+def midi(f):
+    return 69.0 + 12.0 * np.log2(f / 440.0)
 
 
-def marimba(m, dur, vel=1.0):
-    f = hz(m)
-    n = int(SR * (dur + 1.2))
-    t = np.arange(n) / SR
-    # a marimba bar: the fundamental, its tuned fourth partial, a whisper of the tenth
-    y = (np.sin(2 * np.pi * f * t) * env(n, 0.003, 0.55 if f < 300 else 0.4)
-         + 0.28 * np.sin(2 * np.pi * f * 3.93 * t) * env(n, 0.001, 0.06)
-         + 0.06 * np.sin(2 * np.pi * f * 9.2 * t) * env(n, 0.001, 0.02))
-    # the mallet's soft knock
-    k = int(SR * 0.012)
-    y[:k] += 0.15 * np.random.default_rng(m).standard_normal(k) * np.linspace(1, 0, k)
+def load(name):
+    """One recorded note as mono float samples, cut to a single note if the
+    take came back with two, and the pitch it sounds at."""
+    path = ROOT / f"assets/sfx/marigold/{name}.ogg"
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le",
+                          "-ac", "1", "-ar", str(SR), "-"], capture_output=True, check=True).stdout
+    y = np.frombuffer(raw, dtype=np.float32).astype(np.float64)
+    y /= np.max(np.abs(y))
+    # from the pluck itself: the silence left before it would be stretched
+    # with the note, and a low part would come in late
+    y = y[max(0, int(np.argmax(np.abs(y) > 0.05)) - int(SR * 0.002)):]
+    # a second onset: the level climbing 9 dB back out of its own decay
+    hop = int(SR * 0.005)
+    level = np.array([np.sqrt(np.mean(y[i:i + hop] ** 2)) for i in range(0, len(y) - hop, hop)])
+    db = 20 * np.log10(level + 1e-9)
+    onsets = [k for k in range(24, len(db)) if db[k] > -30 and db[k] - np.min(db[k - 8:k]) > 9]
+    if onsets:
+        cut = onsets[0] * hop - int(SR * 0.01)
+        y = y[:cut].copy()
+        fade = int(SR * 0.03)
+        y[-fade:] *= np.linspace(1, 0, fade)
+    # the pitch: the lowest strong peak of the ring, past the pluck's knock
+    seg = y[int(SR * 0.03):int(SR * 0.45)]
+    size = 1 << 18
+    mag = np.abs(np.fft.rfft(seg * np.hanning(len(seg)), size))
+    freq = np.fft.rfftfreq(size, 1 / SR)
+    band = (freq > 60) & (freq < 3000)
+    floor = 0.35 * np.max(mag[band])
+    peaks = [i for i in np.nonzero(band)[0][1:-1] if mag[i] >= floor and mag[i] > mag[i - 1] and mag[i] >= mag[i + 1]]
+    i = peaks[0]
+    a, b, c = mag[i - 1], mag[i], mag[i + 1]
+    f0 = (i + 0.5 * (a - c) / (a - 2 * b + c)) * SR / size
+    return {"name": name, "y": y, "f0": f0, "cut": bool(onsets)}
+
+
+def play(inst, m, dur, vel=1.0, ring=0.6):
+    """The instrument's one note resampled to MIDI pitch `m`, held `dur`
+    seconds and let ring `ring` more before it is faded."""
+    ratio = hz(m) / inst["f0"]
+    src = inst["y"]
+    n = min(int(len(src) / ratio), int(SR * (dur + ring)))
+    y = np.interp(np.arange(n) * ratio, np.arange(len(src)), src)
+    fade = min(n, int(SR * 0.12))
+    y[-fade:] *= np.linspace(1, 0, fade)
     return vel * y
 
 
-def glock(m, dur, vel=1.0):
-    f = hz(m)
-    n = int(SR * (dur + 2.0))
-    t = np.arange(n) / SR
-    y = (np.sin(2 * np.pi * f * t) * env(n, 0.001, 0.9)
-         + 0.35 * np.sin(2 * np.pi * f * 2.76 * t) * env(n, 0.001, 0.25)
-         + 0.12 * np.sin(2 * np.pi * f * 5.40 * t) * env(n, 0.001, 0.08))
-    return vel * y
-
-
-def kalimba(m, dur, vel=1.0):
-    f = hz(m)
-    n = int(SR * (dur + 0.8))
-    t = np.arange(n) / SR
-    y = (np.sin(2 * np.pi * f * t) * env(n, 0.002, 0.35)
-         + 0.2 * np.sin(2 * np.pi * f * 5.95 * t) * env(n, 0.001, 0.03))
-    return vel * y
-
-
-def bass(m, dur, vel=1.0):
-    f = hz(m)
-    n = int(SR * (dur + 0.5))
-    t = np.arange(n) / SR
-    y = (np.sin(2 * np.pi * f * t) + 0.35 * np.sin(2 * np.pi * 2 * f * t)
-         + 0.1 * np.sin(2 * np.pi * 3 * f * t)) * env(n, 0.004, 0.32)
-    return vel * y
-
-
-def timpani(m, dur, vel=1.0, roll=0.0):
-    f = hz(m)
-    n = int(SR * (dur + 1.5))
-    t = np.arange(n) / SR
-    body = np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * f * 1.5 * t) + 0.25 * np.sin(2 * np.pi * f * 1.99 * t)
-    if roll > 0:
-        # a soft felt roll swelling for `roll` seconds, then the stroke
-        rng = np.random.default_rng(7)
-        shiver = 0.75 + 0.25 * np.abs(np.sin(2 * np.pi * 14.0 * t))
-        grow = np.clip(t / roll, 0, 1) ** 1.6
-        y = body * shiver * grow * (t < roll) * 0.8
-        y += 0.06 * rng.standard_normal(n) * grow * (t < roll)
-        k = t >= roll
-        y[k] += body[k] * np.exp(-(t[k] - roll) / 0.7)
-        return vel * y
-    return vel * body * env(n, 0.005, 0.7)
+def near(inst, m, lo, hi):
+    """`m` moved by octaves to sit as close to the instrument's own note as
+    [lo, hi] allows, so a note is bent as little as it can be."""
+    own = midi(inst["f0"])
+    best = min((m + 12 * k for k in range(-4, 5) if lo <= m + 12 * k <= hi), key=lambda x: abs(x - own))
+    return best
 
 
 def place(buf, y, at):
@@ -132,43 +131,52 @@ def room(x):
 
 
 def render():
+    kal, box, low = load("note_kalimba"), load("note_box"), load("note_low")
+    for i in (kal, box, low):
+        print(f"{i['name']:13s} sounds at {i['f0']:7.1f} Hz (MIDI {midi(i['f0']):5.2f}), {len(i['y']) / SR:.2f} s"
+              + (", cut to its first note" if i["cut"] else ""))
+    # Each part in the octave its instrument was recorded nearest to: the
+    # tune's middle is F#4 (66), the bass under it, the music box over it.
+    up = near(kal, 66, 60, 84) - 66
+    over = near(box, 66 + up + 12, 66 + up + 12, 96) - 66
+    under = near(low, 50, 36, 66 + up - 12) - 50
+    print(f"melody {up:+d}, music box {over:+d}, bass {under:+d} semitones from the score")
+
     total = sum(d for _, d in TUNE)
     length = (INTRO + total + OUTRO) * BEAT + 2.0
     L = np.zeros(int(SR * length))
+    rng = np.random.default_rng(5)
 
-    # the intro: a timpani roll on A up into the downbeat, a glockenspiel run
-    place(L, timpani(45, 0.5, 0.55, roll=INTRO * BEAT), 0.0)
+    # the intro: a low A, and a music box run up into the downbeat
+    place(L, play(low, 45 + under, INTRO * BEAT, 0.5), 0.0)
     run = [62, 64, 66, 67, 69, 71, 73, 74]
     for k, m in enumerate(run):
-        place(L, glock(m + 12, 0.2, 0.25 + 0.03 * k), (INTRO - 1.0) * BEAT + k * BEAT / len(run))
+        place(L, play(box, m + over, 0.2, 0.25 + 0.03 * k), (INTRO - 1.0) * BEAT + k * BEAT / len(run))
 
     start = INTRO * BEAT
     at = start
     for k, (m, d) in enumerate(TUNE):
-        vel = 1.0 if (at - start) / BEAT % 4 == 0 else 0.85
-        place(L, marimba(m, d * BEAT, 0.55 * vel), at)
-        place(L, glock(m + 12, d * BEAT, 0.16 * vel), at)
+        vel = (1.0 if (at - start) / BEAT % 4 == 0 else 0.85) * rng.uniform(0.94, 1.0)
+        hand = rng.uniform(0.0, 0.006)  # a finger is never on the grid
+        place(L, play(kal, m + up, d * BEAT, 0.6 * vel), at + hand)
+        place(L, play(box, m + over, d * BEAT, 0.2 * vel), at + hand + 0.004)
         at += d * BEAT
 
     for k, (root, triad) in enumerate(CHORDS):
         t0 = start + k * 2 * BEAT
-        place(L, bass(root - 12 if root > 50 else root, BEAT, 0.5), t0)
-        place(L, bass(root - 12 if root > 50 else root, BEAT, 0.35), t0 + BEAT)
+        place(L, play(low, root + under, BEAT, 0.5 if k % 8 else 0.62, ring=0.3), t0)
+        place(L, play(low, root + under, BEAT, 0.35, ring=0.3), t0 + BEAT)
         for off in (0.5, 1.5):
-            for m in triad:
-                place(L, kalimba(m, 0.4 * BEAT, 0.12), t0 + off * BEAT)
-        if k % 8 == 0:
-            place(L, timpani(root - 12 if root > 50 else root, BEAT, 0.3), t0)
+            for j, m in enumerate(triad):
+                place(L, play(kal, m + up, 0.4 * BEAT, 0.11, ring=0.25), t0 + off * BEAT + 0.008 * j)
 
-    # the end: the tonic, rung out on everything, with a last glockenspiel sparkle
+    # the end: the tonic, rung out on everything, with a last music box sparkle
     end = start + total * BEAT
-    place(L, timpani(38, 2 * BEAT, 0.55), end)
-    place(L, bass(38, 3 * BEAT, 0.6), end)
-    for m in [62, 66, 69, 74]:
-        place(L, marimba(m, 3 * BEAT, 0.3), end)
-        place(L, kalimba(m + 12, 2 * BEAT, 0.12), end + 0.03)
+    place(L, play(low, 38 + 12 + under, 3 * BEAT, 0.6, ring=2.0), end)
+    for j, m in enumerate([62, 66, 69, 74]):
+        place(L, play(kal, m + up, 3 * BEAT, 0.3, ring=2.0), end + 0.02 * j)
     for k, m in enumerate([74, 78, 81, 86]):
-        place(L, glock(m, BEAT, 0.14), end + 0.25 * BEAT + k * 0.07)
+        place(L, play(box, m + over - 12, BEAT, 0.16, ring=2.0), end + 0.25 * BEAT + k * 0.07)
 
     y = room(L)
     # fade the ring-out to silence
