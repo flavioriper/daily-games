@@ -1,13 +1,15 @@
 extends "res://ui/hud/panel.gd"
 
-## The first screen's bottom bar: Puzzles, Versus, Arcade, Stats, Streak.
+## The first screen's bottom bar: Puzzles, Versus, Arcade, Valley, Stats,
+## Streak.
 ##
 ## The first tab was Home until 2026-09-26, when the daily grid became
 ## Puzzles and Versus joined beside it for the games played against someone
 ## (snooker first, against the computer; versus/snooker_screen.gd). The key
 ## stays "home": it is still the screen the app opens on. Arcade joined on
 ## 2026-09-27 for games played alone for a score (Firefly first;
-## arcade/firefly_screen.gd).
+## arcade/firefly_screen.gd). Valley joined on 2026-10-05 for the slow places
+## that share one inventory (the Grove first; valley/grove_screen.gd).
 ##
 ## More left with the 3D game on 2026-09-24 (settings has its own button in
 ## the header). Home is the screen you are on. **All three tabs are real
@@ -45,6 +47,7 @@ const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
 	{"key": "versus", "label": "BAR_VERSUS", "icon": "swords", "live": true},
 	{"key": "arcade", "label": "BAR_ARCADE", "icon": "gamepad", "live": true},
+	{"key": "valley", "label": "BAR_VALLEY", "icon": "tree", "live": true},
 	{"key": "stats", "label": "BAR_STATS", "icon": "bars", "live": true},
 	{"key": "streak", "label": "BAR_STREAK", "icon": "flame", "live": true},
 ]
