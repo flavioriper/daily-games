@@ -945,6 +945,7 @@ func _press_slot(slot: int) -> void:
 		_slot_at[slot] = _clock
 	else:
 		_slot_no[slot] = _clock
+		_feel(Haptics.TICK)
 
 ## How far down button `k` is, 1 just pressed to 0, and its shake when it
 ## refuses.
@@ -1221,7 +1222,7 @@ func _on_use(ev: Dictionary) -> void:
 	var from := _slot_px(slot)
 	var at := _rw.at(field, from + _shake_off)
 	_fx.cue(CATCH_CUE.get(kind, "catch"))
-	_feel(Haptics.GOOD)
+	_feel(Haptics.BUMP)
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return int(f.slot) != slot)
 	if kind == Sim.Kind.SHOVE:
 		_rw.ring(_in_rw(Vector2(Sim.W * 0.5, Sim.CART_Y - 60.0)), 200.0 * _u, Color(col, 0.9))
@@ -2467,7 +2468,7 @@ func _game_over() -> void:
 	_run_gold = Wallet.pay_run(better)
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.wave,
-		"seconds": secs, "kills": sim.kills, "caught": sim.caught, "fired": sim.fired,
+		"seconds": secs, "kills": sim.kills, "caught": sim.caught, "used": sim.used, "fired": sim.fired,
 		"rate": sim.rate_lv, "power": sim.power, "crit": sim.crit_lv, "energy": int(sim.earned / Sim.ORBS), "best": better})
 	Ads.note_finished()
 	_show_banner(tr("FF_GAME_OVER"), "", 1.2)

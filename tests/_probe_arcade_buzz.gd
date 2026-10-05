@@ -156,8 +156,8 @@ func _report() -> void:
 			n = "pop %s%s" % [["gnat", "beetle", "moth", "rogue"][int(ev.kind)] if _game == "firefly" else "", " rammed" if bool(ev.get("rammed", false)) else ""]
 		if _game == "peapod" and n == "kill":
 			n = "kill %s%s" % [["crate", "gold", "firecracker", "head", "gift", "gift", "gift", "gift", "gift", "gift", "gift", "iron"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
-		if _game == "peapod" and n == "gift":
-			n = "gift %s" % ["", "", "", "", "fan", "pierce", "burst", "zap", "flame", "frost", "shove"][int(ev.kind)]
+		if _game == "peapod" and (n == "gift" or n == "use" or n == "pod_off"):
+			n = "%s %s" % [n, ["", "", "", "", "fan", "pierce", "burst", "zap", "flame", "frost", "shove"][int(ev.kind)]]
 		if _game == "molehill" and n == "hit":
 			n = "hit %s%s" % [["mole", "gold", "pot", "bunny"][int(ev.kind)], ""]
 		if _game == "molehill" and (n == "streak_lost" or n == "forgiven"):
@@ -381,6 +381,10 @@ func _peapod_bot() -> void:
 		want = Sim.path_at(float(sim.segs[0].s) + 8.0).x
 	_pp_hand = move_toward(_pp_hand, want, 300.0 * root.get_process_delta_time())
 	sim.target_x = _pp_hand
+	# a gift is started a second after it is had, by the screen's own press
+	for k in Sim.TRAY:
+		if int(sim.held[k]) != 0 and sim.can_use(k) and _s._clock - float(_s._chip_at.get(_s.SLOT + k, -10.0)) > 1.0 and not _s._slot_awaits(k):
+			_s._press_slot(k)
 
 func _peapod() -> void:
 	var field: Control = _s.field
