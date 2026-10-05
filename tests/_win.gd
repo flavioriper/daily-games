@@ -159,6 +159,9 @@ func _note(id: String) -> String:
 		"trestle": return "gap %d, cost %d of %d, %d members, %d tests, hints=%d, board fit=%s, hud=%s" % [
 			int(_puzzle.state.level.w), _puzzle.state.cost(), _puzzle.state.budget, _puzzle.state.design.size(),
 			_puzzle.checks, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"minigolf": return "band %d, %d holes, par %d, card %s, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle._state.band, _puzzle._state.holes.size(), _puzzle._state.par_total(), str(_puzzle._state.card),
+			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -195,6 +198,7 @@ func _solve(id: String) -> void:
 		"slider": _solve_slider()
 		"pixelgarden": _solve_pixelgarden()
 		"trestle": _solve_trestle()
+		"minigolf": _solve_minigolf()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -434,6 +438,25 @@ func _solve_slider() -> void:
 		for c: int in m.path:
 			pts.append(_puzzle.cell_to_local(c / 4, c % 4))
 		_drag_path_local(pts)
+
+## Mini Golf: the bulb pressed once, then the steady putt from every lie,
+## each a press, a pull back and a release, the roll played out at once
+## (settle_now: a putt takes seconds this harness does not have).
+func _solve_minigolf() -> void:
+	var st = _puzzle._state
+	_fit_ok = Rect2(Vector2.ZERO, _puzzle.size).has_point(_puzzle.ball_at())
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	_puzzle._drop_think()
+	for i in 80:
+		if st.is_solved():
+			break
+		var shot: Dictionary = st.sim.best_shot()
+		var from: Vector2 = _puzzle.size * Vector2(0.5, 0.6)
+		var to: Vector2 = _puzzle.pull_for(from, float(shot.a), float(shot.u))
+		var pts: Array[Vector2] = [from, from.lerp(to, 0.5), to]
+		_drag_path_local(pts)
+		_puzzle.settle_now()
 
 func _solve_sunbeam() -> void:
 	var st = _puzzle._state

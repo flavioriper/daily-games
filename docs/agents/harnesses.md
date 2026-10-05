@@ -148,3 +148,21 @@ landed), then plays the board to its win and prints the whole trace under
 `haptics:`. A board without a `_buzz_<id>` errors: write one with its
 checkup row (`docs/agents/haptics.md`). `tests/_shot_sheets.gd` is stale
 (it takes the last child of the menu for the host and finds a Timer).
+
+## Mini Golf's harness (2026-10-05)
+
+`tests/_shot_minigolf.gd` plays the course through the board's real input
+path (a press, the pull back, the release) and shoots numbered frames
+(`out=<dir>`):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_minigolf.gd -- d=0..3 <mode> [rm] [hole=<n>]
+
+Modes: `rest aim putt hint solve out reset restore holes`. `solve` and
+`out` play on by themselves: a steady putt (`Sim.best_shot`, a tenth of a
+second, on the frame) whenever the ball is at rest, or on `out` a tap of a
+putt that wastes a stroke. `tests/_probe_perf.gd -- minigolf` plays the same
+steady putts (`to=40` reaches the win on Easy; Hard and Insane want `to=70`),
+and `tests/_win.gd -- minigolf` needs the board's `settle_now()` between
+putts (a roll is on a clock). `tests/_probe_minigolf_bank.gd` (headless)
+re-proves `content/minigolf.json`; `tests/_gf_tut_search.gd` (headless)
+prints the tutorial's putts.

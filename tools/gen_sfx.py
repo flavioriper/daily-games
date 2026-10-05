@@ -176,6 +176,18 @@ WORKSHOP_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
                  "gentle, cozy, no synth, no electronic tones, no beeps, no music "
                  "bed, no voice")
 
+# Mini Golf's course on a garden lawn (2026-10-05): a real ball, a putter, a
+# wooden kerb and a plastic cup, with the garden family's kalimba, music box
+# and hand bells for what the card says.
+LINKS = ("close-mic foley of a small garden mini golf course on a quiet sunny "
+         "lawn, a real golf ball, a putter, wooden kerbs, felt, sand and a "
+         "plastic cup, natural and acoustic, soft and warm, rounded, no synth, "
+         "no electronic tones, no beeps, no music, no voice")
+LINKS_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+              "recorded close in a warm quiet room, natural, soft, rounded, "
+              "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+              "bed, no voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1470,6 +1482,33 @@ SETS = {
         "scorecard":     ("a small wooden paddle sign flipped up with a soft wooden clack and a tiny bright music box ting, proud and funny, short", 0.8, -9, WORKSHOP_TUNE, "warm:7000"),
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, WORKSHOP_TUNE, "warm:7000"),
         "quack":         ("a mother duck giving two soft friendly quacks and tiny ducklings peeping, by a calm stream, gentle", 1.2, -12, WORKSHOP),
+        "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+    },
+    # Mini Golf (puzzles/minigolf2d.gd): a ball putted round a felt green
+    # inside a wooden kerb, into a cup with a flag in it; the card's words
+    # (hole in one, birdie, par, bogey) each have their own short phrase.
+    "minigolf": {
+        "enter":         ("a few garden birds chirping softly and one golf ball set down on felt with a small soft tap, a calm sunny lawn", 1.3, -11, LINKS, "warm:7000"),
+        "putt":          ("a putter striking a golf ball once, a single soft rounded tock, very short", 0.5, -7, LINKS, "cut:0.3"),
+        "wall":          ("a golf ball knocking once against a wooden board, a single soft hollow wooden knock, very short", 0.5, -9, LINKS, "cut:0.25"),
+        "post":          ("a golf ball bouncing off a rubber bumper with one soft springy boing, playful, very short", 0.5, -8, LINKS, "cut:0.35"),
+        "sand":          ("a golf ball rolling into fine dry sand and stopping, a short soft hiss of sand", 0.6, -11, LINKS),
+        "splash":        ("a golf ball dropping into a small garden pond with one round soft plop and a few bubbles, short", 0.9, -7, LINKS),
+        "lip":           ("a golf ball rattling round the rim of a plastic cup and rolling away, a short hollow rattle", 0.6, -9, LINKS, "cut:0.45"),
+        "sink":          ("a golf ball dropping into a plastic mini golf cup with a hollow rattle at the bottom, satisfying, short", 0.7, -6, LINKS),
+        "ace":           ("a bright joyful rising flourish on a real music box and hand bells, five quick notes ending on a high ringing bell, a little triumph", 1.6, -5, LINKS_TUNE, "warm:7000"),
+        "birdie":        ("three quick bright rising notes on a real kalimba with a tiny hand bell on the last, happy, short", 0.9, -7, LINKS_TUNE, "warm:7000"),
+        "par":           ("two soft warm rising notes on a real kalimba, content, short", 0.7, -9, LINKS_TUNE, "warm:7000"),
+        "bogey":         ("two soft notes on a real kalimba, the second a little lower, a gentle never mind, short", 0.7, -10, LINKS_TUNE, "warm:7000"),
+        "next":          ("a small cloth flag fluttering once in a light breeze, one soft airy whoosh, short", 0.7, -12, LINKS),
+        "gate":          ("a small wooden garden gate swinging on its hinge with a soft creak and a little latch click, short", 0.7, -10, LINKS),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, LINKS_TUNE, "warm:7000"),
+        "reset":         ("a paper scorecard flipped over and a small pencil tapped on it twice, soft, short", 0.8, -10, LINKS),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful", 1.8, -9, LINKS_TUNE, "warm:7000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, LINKS_TUNE, "warm:7000"),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy", 2.0, -5, LINKS_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, LINKS_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, LINKS_TUNE, "warm:7000"),
         "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed

@@ -65,6 +65,8 @@ const CARDS := {
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
+	# Mini Golf's course is laid out on the meadow, under its cottages.
+	"minigolf": ["meadow", 1.5, Vector2(0.75, 0.35)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

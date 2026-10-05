@@ -832,6 +832,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "TR_LVL_3"},
 		],
 	},
+	{
+		"id": "minigolf",
+		"kind": "puzzle",
+		"title": "Mini Golf",
+		"blurb": "GF_BLURB",
+		"short": "GF_SHORT",
+		"motto": "GF_MOTTO",
+		"footer": "Aim · Putt · Sink",
+		# The green is the board: a putt is a drag on the card itself, so no
+		# tray and no actions row, and no Undo -- a stroke played is on the
+		# card. Hint and Reset ride in the top bar -- Marigold's shape.
+		"script": "res://puzzles/minigolf2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each course (minigolf_gen.gd's BANDS, holes mined
+		# into content/minigolf.json) is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "GF_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "GF_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "GF_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "GF_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

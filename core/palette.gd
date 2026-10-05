@@ -512,6 +512,40 @@ const KNIGHT_REACH := Color("d9606e")   # a square a rose knight reaches
 const CROWN        := Color("f2c04e")
 const CROWN_DEEP   := Color("c8912a")
 
+# --- Mini Golf (puzzles/minigolf2d.gd, ui/faces/minigolf_parts.gd): a felt
+# green inside a wooden kerb on a mown lawn, a white ball, a coral flag ---
+const GF_LAWN        := Color("c3dba3")   # the card round the green
+const GF_LAWN_DEEP   := Color("a5c486")   # its tufts and mown stripes
+const GF_BUSH        := Color("8cb46e")   # the hedges at the card's corners
+const GF_BUSH_HI     := Color("a9ca86")
+const GF_BUSH_DEEP   := Color("739a5b")
+const GF_FELT        := Color("63b97d")   # the green
+const GF_FELT_ALT    := Color("6fc389")   # its lighter mown squares
+const GF_FELT_DEEP   := Color("4fa26a")   # the shade the kerb throws on it
+const GF_FELT_HI     := Color("a9e6b4")   # a slope's arrows
+const GF_KERB        := Color("c9996a")   # the wooden kerb, the blocks
+const GF_KERB_HI     := Color("e3bd90")   # its lit top edge
+const GF_KERB_DEEP   := Color("96683f")   # its shaded side
+const GF_SAND        := Color("f3e2b3")
+const GF_SAND_DEEP   := Color("dcc68d")   # its rim and its grains
+const GF_WATER       := Color("83c9ee")
+const GF_WATER_HI    := Color("c3e8fa")   # ripples, the splash
+const GF_WATER_DEEP  := Color("5ea9d8")   # the pond's rim
+const GF_CUP         := Color("33281f")   # the hole
+const GF_CUP_RIM     := Color("e9f5e4")   # its pale lip
+const GF_BALL        := Color("fffdf8")
+const GF_BALL_SHADE  := Color("d7d2c6")   # the ball's lower edge and dimples
+const GF_FLAG        := Color("f0705a")   # the pennant
+const GF_FLAG_DEEP   := Color("cc5140")
+const GF_POLE        := Color("fbf3df")
+const GF_POST        := Color("f6b25e")   # a bumper post
+const GF_POST_HI     := Color("fbd9a0")
+const GF_POST_DEEP   := Color("d08a37")
+const GF_GATE        := Color("fbf1d8")   # a gate's pickets
+const GF_GATE_DEEP   := Color("d9c49a")
+const GF_GUIDE       := Color("fffdf8")   # the dotted aim
+const GF_HINT        := Color("f9c04a")   # the bulb's line
+
 # Categorical ramp, same order as before so boards keep their index meaning:
 # teal, terracotta, sage, lavender, rose, sky, mustard, stone.
 const CAT := [

@@ -58,6 +58,8 @@ const ChessPiece = preload("res://ui/faces/chess_piece.gd")
 const SlideBlock = preload("res://ui/faces/slider_block.gd")
 const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
+const GolfParts = preload("res://ui/faces/minigolf_parts.gd")
+const GolfSim = preload("res://puzzles/minigolf_sim.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -214,6 +216,8 @@ var _marigold_mesh: ArrayMesh
 var _pixelgarden_mesh: ArrayMesh
 var _drumbeat_keep: Array = []
 var _trestle_keep: Array = []
+## Mini Golf's lane, held for the same RID reason as `_band_mesh`.
+var _minigolf_mesh: ArrayMesh
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -402,6 +406,7 @@ func _draw() -> void:
 		"pixelgarden": _draw_pixelgarden()
 		"drumbeat": _draw_drumbeat()
 		"trestle": _draw_trestle()
+		"minigolf": _draw_minigolf()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1486,3 +1491,26 @@ func _draw_trestle() -> void:
 	_trestle_keep.append(wm)
 	for w in TrParts.wheel_at(u, 1):
 		draw_mesh(wm, null, Transform2D(0.4, road_top + w))
+
+## Mini Golf's card: one lane of the board lying along the box -- the ball
+## on its tee, the dotted aim threading between a sand trap and a bumper
+## post, and the flag in the cup at the far end -- drawn with the board's
+## own pieces (`ui/faces/minigolf_parts.gd`) from a hand-made hole, so the
+## card and the green are the same drawing.
+const GF_HOLE := {"cells": [8, 9, 10, 11], "cuts": [32, 46], "tee": [13.0, 49.0], "cup": [66.0, 48.0],
+	"sand": [[39.0, 45.2, 5.6, 3.2]], "posts": [[52.0, 54.0, 2.3]]}
+
+func _draw_minigolf() -> void:
+	var sim := GolfSim.new()
+	sim.setup(GF_HOLE)
+	var s := 3.86 * _u
+	var o := _c - Vector2(41.0, 49.6) * s
+	var b := Face.Builder.new()
+	GolfParts.hole(b, sim, o, s)
+	for k in 9:
+		var u := float(k) / 8.0
+		b.disc(o + Vector2(lerpf(18.5, 59.5, u), lerpf(49.0, 48.1, u)) * s, (0.8 - 0.3 * u) * s, Color(Pal.GF_GUIDE, 0.95 - 0.35 * u))
+	GolfParts.ball(b, o + sim.tee * s, GolfSim.BALL_R * 1.15 * s)
+	GolfParts.flag(b, o + sim.cup * s, 11.0 * s, 0.6)
+	_minigolf_mesh = b.mesh()
+	draw_mesh(_minigolf_mesh, null)
