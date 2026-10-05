@@ -4,17 +4,19 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peapod.gd -- <outdir> [reduce]
 ##
-## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 3b a wave
+## 1 the Arcade tab, 2 the ready banner, 3 play with a bot (3a the energy
+## out of a crate, and three more frames of it a tenth of a second apart), 3b a wave
 ## cleared (printed: its stars, the flowers up, whether the pod is crowned
 ## for the best passed), 3c the shop open on what the wave paid, 3d a card
 ## bought, 3e a gift crate broken and its gift flying to its button on the
-## grass, 3f the gift waiting there with two more behind the count (printed:
-## the buttons and the queue), 3g the button pressed through the
-## viewport and the gift started (printed: whether it was kept, and whether
-## the press started it and left the cart alone), 4 the whole cast in a wall
+## rack, 3f the rack with more had (printed: how many of each), 3g its
+## button pressed through the viewport and the gift on its way to the pod
+## (printed: whether it was kept, and whether the press started it and left
+## the cart alone), 3h the pod wearing it, 4 the whole cast in a wall
 ## (forced: every paint, every gift and pod, the firecracker, the golden and
-## iron crates, a fan of lightning under the frost with two gifts kept,
-## crates alight, a crit's number), 5 a real slide through the viewport
+## iron crates, three peas a volley in a fan of lightning under the frost,
+## crates alight, a crit's number), 4b four peas a volley under all three
+## shapes and the flame, 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
 ## score to user://arcade.cfg, so the file this machine had is put back on
@@ -146,9 +148,14 @@ func _process(delta: float) -> bool:
 			_bot(delta)
 			# the energy orbs, some just out of a crate and some on their way in
 			if not has_meta("orbs") and _s._orbs.size() >= 7 and _t > 5.0:
-				set_meta("orbs", true)
+				set_meta("orbs", _t)
 				_shot("3a_orbs")
 				print("orbs in the air=%d, the plate shows %s of %d" % [_s._orbs.size(), _s._energy_l.text, _s.sim.energy / Sim.ORBS])
+			# and the same sparks three more times, a tenth of a second apart
+			for k in [1, 2, 3]:
+				if has_meta("orbs") and not has_meta("orbs%d" % k) and _t > float(get_meta("orbs")) + 0.1 * k:
+					set_meta("orbs%d" % k, true)
+					_shot("3a_orbs_%d" % k)
 			if _t > 12.0:
 				_shot("3_play")
 				# a wave about to be cleared, well off the line, and the best
@@ -205,18 +212,17 @@ func _process(delta: float) -> bool:
 				var col := clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)
 				sim.rows[0][col] = _cell(Sim.Kind.FLAME, 1)
 				sim.rows[0][(col + 2) % Sim.COLS] = _cell(Sim.Kind.CRATE, 90000)
-				sim.held = [Sim.Kind.FROST, 0]
-				sim.queue.clear()
+				sim.stock = [0, 0, 0, 0, 0, 1, 0]
 				sim.wall_y = 250.0
 				sim.wall_speed = 0.0
 				sim.target_x = sim.x
 				_at = _t
 				_step = 33
 		33:
-			if _s.sim.held.has(Sim.Kind.FLAME) and (_reduce or (not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2)):
+			if _s.sim.has(Sim.Kind.FLAME) > 0 and (_reduce or (not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2)):
 				# nothing flies when motion is reduced: the gift is on its button at once
 				_shot("3e_gift")
-				print("gift kept as its crate broke: held=%s element=%d caught=%d" % [_s.sim.held, _s.sim.element, _s.sim.caught])
+				print("gift kept as its crate broke: stock=%s element=%d caught=%d" % [_s.sim.stock, _s.sim.element, _s.sim.caught])
 				_at = _t
 				_step = 34
 			elif _t > _at + 3.0:
@@ -224,18 +230,18 @@ func _process(delta: float) -> bool:
 				_step = 4
 		34:
 			if _t > _at + 0.8:
-				# two more had with both buttons full: they wait up the chute
-				_s.sim.queue = [Sim.Kind.SHOVE, Sim.Kind.FAN]
+				# more had: two Fans and a shove
+				_s.sim.stock[Sim.Kind.FAN - Sim.Kind.FAN] = 2
+				_s.sim.stock[Sim.Kind.SHOVE - Sim.Kind.FAN] = 1
 				_at = _t
 				_step = 341
 		341:
 			if _t > _at + 0.9:
 				_shot("3f_held")
-				print("two more wait their turn: held=%s queue=%s" % [_s.sim.held, _s.sim.queue])
+				print("the rack counts them: stock=%s" % [_s.sim.stock])
 				# a real press on its button, through the viewport
 				var f: Control = _s.field
-				var slot: int = _s.sim.held.find(Sim.Kind.FLAME)
-				var from: Vector2 = f.get_global_transform_with_canvas() * _s._slot_px(slot)
+				var from: Vector2 = f.get_global_transform_with_canvas() * _s._rack_px(Sim.Kind.FLAME)
 				var win: Vector2 = root.get_final_transform() * from
 				_x0 = _s.sim.x
 				set_meta("win", win)
@@ -246,8 +252,14 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.17:
 				_mouse(false, get_meta("win"))
 				_shot("3g_used")
-				print("the press started it: %s (element=%d held=%s queue=%s), cart left alone: %s" % [_s.sim.element == Sim.Kind.FLAME, _s.sim.element,
-					_s.sim.held, _s.sim.queue, is_equal_approx(_s.sim.x, _x0) and not _s._mouse])
+				print("the press started it: %s (element=%d stock=%s), cart left alone: %s" % [_s.sim.element == Sim.Kind.FLAME, _s.sim.element,
+					_s.sim.stock, is_equal_approx(_s.sim.x, _x0) and not _s._mouse])
+				_at = _t
+				_step = 351
+		351:
+			if _t > _at + 0.55:
+				_shot("3h_worn")
+				print("the pod wears it: painted=%d flights=%d" % [_s._pod_el, _s._flights.size()])
 				_step = 4
 		4:
 			# the cast, forced: a wall of every paint and every kind
@@ -277,8 +289,7 @@ func _process(delta: float) -> bool:
 			sim.element = Sim.Kind.ZAP
 			sim.element_t = 8.0
 			sim.frost_t = 4.0
-			sim.held = [Sim.Kind.BURST, Sim.Kind.SHOVE]
-			sim.queue = [Sim.Kind.FLAME, Sim.Kind.FROST, Sim.Kind.FAN]
+			sim.stock = [2, 0, 1, 3, 1, 12, 0]
 			sim.peas = 3
 			sim.power = 3
 			sim.rate_lv = 4
@@ -293,6 +304,17 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.7:
 				_shot("4_cast")
 				print("cast: numbers=%d bolts=%d crumbs=%d" % [_s._nums.size(), _s._bolts.size(), _s._crumbs.size()])
+				# every dressing at once: four peas a volley, the three shapes, the flame
+				_s.sim.peas = 1 + Sim.MAX_SHOTS
+				_s.sim.shape_t = [9.0, 9.0, 9.0]
+				_s.sim.element = Sim.Kind.FLAME
+				_s.sim.element_t = 9.0
+				_at = _t
+				_step = 51
+		51:
+			_s.sim.frost_t = 4.0
+			if _t > _at + 0.7:
+				_shot("4b_dressed")
 				# a real slide, through the viewport: press, drag right, let go
 				var f: Control = _s.field
 				var from: Vector2 = f.get_global_transform_with_canvas() * (f.size * Vector2(0.4, 0.8))

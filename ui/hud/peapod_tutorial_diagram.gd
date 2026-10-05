@@ -8,9 +8,10 @@ extends Control
 ## small hand-made wave, and a finger sliding the cart through the screen's
 ## own grab and slide, and pressing the screen's own buttons. So the pod
 ## never stops firing, a crate's number runs down, a gift flies to its
-## button as its crate breaks and starts when the finger presses it, a pod's
-## ring runs down on the grass, a firecracker takes its neighbours, a plate shot off knocks the
-## millipede back, exactly as in a run. Beside the garden a page names what
+## button on the rack as its crate breaks and starts when the finger presses
+## it, a pod's time runs down round its button, a firecracker takes its
+## neighbours, a plate shot off knocks the millipede back, exactly as in a
+## run. Beside the garden a page names what
 ## is in play with its own picture. `lesson` picks the page (set before it
 ## enters the tree):
 ##
@@ -18,11 +19,12 @@ extends Control
 ##   while.
 ## - CRATES: a crate takes its number in peas, its paint is the number's
 ##   weight, and what reaches the chalk line ends the run.
-## - GIFTS: a gift crate is broken, its gift waits on a button and the
-##   finger starts it, then another's: the frost and the shove, in turn.
+## - GIFTS: a gift crate is broken, its gift is counted on its button of the
+##   rack and the finger starts it, then another's: the frost and the shove,
+##   in turn.
 ## - PODS: a pod that changes how the peas go and then one that changes what
-##   they are made of, both running, their rings on the grass; the three and
-##   the two take turns.
+##   they are made of, both running, the pod wearing both; the three and the
+##   two take turns.
 ## - SHOP: the four cards the shop sells, each beside what one more does.
 ## - SPECIAL: the golden crate, the iron crate and the firecracker.
 ## - MILLI: plates shot off the millipede, then its head.
@@ -78,7 +80,7 @@ var _icon: Array = []
 ## The finger: down or not, where it is in the garden's pixels, and where
 ## the cart was when it came down.
 var _down := false
-## Down on one of the tray's buttons, not on the slide.
+## Down on one of the rack's buttons, not on the slide.
 var _tapping := false
 var _finger := Vector2.ZERO
 var _from := 0.0
@@ -101,6 +103,10 @@ class Garden extends "res://arcade/peapod_screen.gd":
 	## own clock.
 	var drive := Callable()
 	var _still := false
+	## Whether the page's garden has the gifts' rack: only a page with a gift
+	## on it. A slice has no strip to spare, so the rack stands over the
+	## garden's right side, which such a page keeps clear.
+	var rack := false
 
 	## The rewards with only the lettering a slice has room for, smaller.
 	class Quiet extends "res://arcade/rewards.gd":
@@ -146,6 +152,12 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_u = s.y / (VIEW + FOOT)
 		_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - (Sim.H + FOOT) * _u)
 
+	func _rack_on() -> bool:
+		return rack
+
+	func _rack_x() -> float:
+		return Sim.W - RACK_W * 0.5
+
 	## A hand-made run: `s` is the sim, already in play.
 	func lay(s: RefCounted) -> void:
 		sim = s
@@ -161,7 +173,7 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_ghosts.clear()
 		_flights.clear()
 		_chip_at.clear()
-		_clear_slots()
+		_clear_rack()
 		_streak_n = 0
 		_streak_in = 0.0
 		_clear = {}
@@ -236,9 +248,9 @@ class Garden extends "res://arcade/peapod_screen.gd":
 	func lift() -> void:
 		sim.target_x = NAN
 
-	## The finger down on the tray's button `slot`.
-	func tap(slot: int) -> void:
-		_press_slot(slot)
+	## The finger down on the rack's button of gift `kind`.
+	func tap(kind: int) -> void:
+		_press_gift(kind)
 
 	func _keys() -> void:
 		pass
@@ -270,6 +282,7 @@ func _ready() -> void:
 	else:
 		_art = Garden.new()
 		_art.drive = _drive
+		_art.rack = lesson == Lesson.GIFTS or lesson == Lesson.PODS
 		add_child(_art)
 		_name = Label.new()
 		_name.theme_type_variation = "CardTitle"
@@ -424,8 +437,8 @@ static func _milli(sim: RefCounted, head: int, plates: Array, at: float, speed: 
 ## A lesson: `lay` deals its wave into a fresh sim, the cart starts at `x`,
 ## the finger comes down at the first of `keys` ([time, where the cart is
 ## wanted]) and lifts at `up`, `says` ([time, what]) names what is in play,
-## and it starts again after `length`. `taps` ([time, button]) are the
-## presses on the tray's buttons: the finger leaves the slide for each.
+## and it starts again after `length`. `taps` ([time, gift]) are the presses
+## on the rack's buttons: the finger leaves the slide for each.
 ## `still` is its telling moment, for a page that stands still.
 static func plan(which: int, turn: int) -> Dictionary:
 	var K := Sim.Kind
@@ -447,7 +460,7 @@ static func plan(which: int, turn: int) -> Dictionary:
 			return {"x": 30.0, "up": 8.6, "length": 9.0, "still": 1.6,
 				"says": [[0.0, _gift_word(a)], [4.0, _gift_word(b)]],
 				"keys": [[0.6, 30.0], [3.3, 30.0], [4.1, 150.0], [8.6, 150.0]],
-				"taps": [[2.2, 0], [6.2, 0]],
+				"taps": [[2.2, a], [6.2, b]],
 				"lay": func(sim: RefCounted) -> void:
 					_wall(sim, [[[a, 2], null, [b, 2], null, null], [null, 5, null, 6, null]], 262.0, 5.0)}
 		Lesson.PODS:
@@ -456,9 +469,10 @@ static func plan(which: int, turn: int) -> Dictionary:
 			return {"x": 90.0, "up": 9.0, "length": 9.4, "still": 6.4,
 				"says": [[0.0, _gift_word(shape)], [3.4, _gift_word(element)]],
 				"keys": [[0.6, 90.0], [2.9, 90.0], [3.6, 150.0], [5.6, 150.0], [6.2, 120.0], [7.4, 120.0], [8.0, 180.0], [9.0, 180.0]],
-				"taps": [[1.7, 0], [4.9, 0]],
+				"taps": [[1.7, shape], [4.9, element]],
 				"lay": func(sim: RefCounted) -> void:
-					_wall(sim, [[null, [shape, 1], [element, 1], null, null], [9, 12, 12, 12, 9], [14, 14, 14, 14, 14]], 262.0, 5.0)}
+					# the right of the garden is the rack's on a page
+					_wall(sim, [[null, [shape, 1], [element, 1], null, null], [9, 12, 12, 12, null], [14, 14, 14, 14, null]], 262.0, 5.0)}
 		Lesson.SPECIAL:
 			return {"x": 210.0, "up": 6.4, "length": 7.0, "still": 3.0,
 				"says": [[0.0, {"icon": ["crate", K.GOLD], "title": _t("TUT_PEAPOD_S_GOLD"), "line": _t("TUT_PEAPOD_S_GOLD_LINE") % Sim.GOLD_WORTH}],
@@ -536,7 +550,7 @@ func _drive() -> void:
 		var since := t - float(tap[0])
 		if since < -TAP_IN or since >= TAP_OUT:
 			continue
-		var button: Vector2 = _art._slot_px(int(tap[1]))
+		var button: Vector2 = _art._rack_px(int(tap[1]))
 		if since < 0.0:
 			if _down:
 				_down = false

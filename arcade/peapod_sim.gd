@@ -54,7 +54,7 @@ extends RefCounted
 ##
 ## The sixth pass (2026-10-05, the user's four asks). The shop sells a pea
 ## more a volley, dear (`Card.SHOTS`), and a volley's peas leave one after
-## another up the same lane, never side by side. The crit's chance no longer
+## another up the same lane (side by side since the eighth). The crit's chance no longer
 ## grows a level: it is CRIT_CHANCE from the first one bought (none before)
 ## and a level makes the crit land harder (`crit_mult`), the chance going up
 ## a little every CRIT_EVERY levels. The crit and the quicker gun cost more.
@@ -69,6 +69,14 @@ extends RefCounted
 ## ("only elemental should not stack"). A pea of an element is the same pea in
 ## the element's colour (the screen's). And a new gift goes to the head of the
 ## line, not its end.
+##
+## The eighth pass (2026-10-05, the user: "instead of buffs being a queue,
+## make them available at screen since beginning but as 0", and "change +1
+## pea to be parallel instead of sequential"). There is no line of gifts: the
+## run counts how many of each it has (`stock`), every one of the seven there
+## from the start at none, and `use(kind)` starts one of a kind. A gift
+## started while its like is running adds its time to what is left. And a
+## volley's peas leave together, side by side.
 
 ## SHOP: a wave is cleared and the shop is open; nothing moves until
 ## `leave_shop()`.
@@ -117,11 +125,10 @@ const CRIT_CHANCE_MAX := 0.5
 const CRIT_EVERY := 5
 const CRIT_MULT := 3
 const CRIT_MULT_STEP := 1
-## The peas more a volley the shop sells at most, and the gap from one pea
-## of a volley to the next (less when the gun is too quick for it: a volley
-## is out before the next begins).
+## The peas more a volley the shop sells at most, and how far apart the
+## peas of a volley leave, side by side.
 const MAX_SHOTS := 3
-const SEQ_GAP := 0.06
+const PEA_GAP := 10.0
 ## Energy is counted in orbs, ORBS of them to one energy: a crate drops an
 ## orb for every quarter of what it is worth, so one worth 1.5 drops six.
 ## A crate is worth ENERGY_CRATE (a golden one GOLD_WORTH times), and a
@@ -135,9 +142,8 @@ const PRICE := [11, 14, 14, 12, 80]
 const PRICE_STEP := [0.7, 0.9, 0.9, 0.6, 1.5]
 ## The beat between the shop closing and the next wave.
 const SHOP_GAP := 0.5
-## The gifts had and not yet used: so many places to start one from; the
-## gifts past them wait their turn (`queue`).
-const TRAY := 2
+## The gifts there are, FAN to SHOVE: `stock` counts each.
+const GIFTS := 7
 const POD_TIME := 10.0
 ## Lightning: the jumps on from what a pea hit, and how far one reaches.
 const ZAP_JUMPS := 4
@@ -214,12 +220,9 @@ var bought := [0, 0, 0, 0, 0]
 var energy := 0
 var earned := 0
 var _orb_part := 0.0
-## The gifts had and not yet used, newest first, in one line: its head is
-## `held`, a place each (0: empty, else a Kind, and never a gap before a
-## gift), and the rest wait in `queue`. A new gift goes in at the head and
-## the rest move back one; a gift started, all behind it move up one.
-var held: Array = [0, 0]
-var queue: Array = []
+## The gifts had and not yet used: how many of each, by `kind - Kind.FAN`
+## (`has`). All seven are there from the start, at none.
+var stock: Array = [0, 0, 0, 0, 0, 0, 0]
 ## What is running: the seconds left of each shape (FAN, PIERCE, BURST, in
 ## that order: `has_shape`), all of which run together; one element (0:
 ## none, else ZAP or FLAME) and its seconds; the frost's.
@@ -228,9 +231,6 @@ var element := 0
 var element_t := 0.0
 var frost_t := 0.0
 var _cool := 0.0
-## The peas of the volley begun still to leave, and the seconds to the next.
-var _seq := 0
-var _seq_t := 0.0
 var shots: Array = []
 ## Seconds until the last thing lit has burnt out.
 var _burning := 0.0
@@ -489,41 +489,37 @@ func _tick_gifts() -> void:
 func _slow() -> float:
 	return FROST if frost_t > 0.0 else 1.0
 
-## A volley's peas leave one after another from wherever the cart is by
-## then: the first says `shot`, the ones behind it `shot` with `more`.
+## A volley leaves all at once, from wherever the cart is.
 func _fire() -> void:
-	if _seq > 0:
-		_seq_t -= DT
-		if _seq_t <= 0.0:
-			_seq -= 1
-			_seq_t += _seq_gap()
-			_volley(x)
-			events.append({"type": "shot", "x": x, "more": true})
 	_cool -= DT
 	if _cool > 0.0:
 		return
 	_cool += 1.0 / rate()
 	_volley(x)
-	events.append({"type": "shot", "x": x, "more": false})
+	events.append({"type": "shot", "x": x})
 	fired += 1
-	_seq = peas - 1
-	_seq_t = _seq_gap()
 
-func _seq_gap() -> float:
-	return minf(SEQ_GAP, 1.0 / (rate() * peas))
+## How far off the cart's middle pea `i` of a volley of `n` leaves: side by
+## side, PEA_GAP apart, the volley's middle over the cart's.
+static func pea_off(i: int, n: int) -> float:
+	return (i - (n - 1) * 0.5) * PEA_GAP
 
-## A volley as the shapes and the element running make it. A pea carries
-## how it lands (`left` targets to go through, `burst`, `el`: its element);
-## `k` is its shape (Shot), a berry before a dart when it is both. The Fan's
-## side peas are plain ones of the same element.
+## A volley as the shapes and the element running make it: its peas side by
+## side, straight up. A pea carries how it lands (`left` targets to go
+## through, `burst`, `el`: its element); `k` is its shape (Shot), a berry
+## before a dart when it is both. The Fan's side peas are plain ones of the
+## same element, flung out from either end of the row.
 func _volley(from: float) -> void:
 	var burst := has_shape(Kind.BURST)
 	var pierce := has_shape(Kind.PIERCE)
 	var look := Shot.BURST if burst else (Shot.PIERCE if pierce else Shot.PEA)
-	shots.append({"x": from, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element})
+	for i in peas:
+		shots.append({"x": clampf(from + pea_off(i, peas), 3.0, W - 3.0), "y": CART_Y - 34.0, "vx": 0.0, "k": look,
+			"left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element})
 	if has_shape(Kind.FAN):
+		var out := pea_off(peas - 1, peas) + 6.0
 		for side in [-1.0, 1.0]:
-			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": Shot.PEA, "left": 0, "last": -1, "burst": false, "el": element})
+			shots.append({"x": clampf(from + side * out, 3.0, W - 3.0), "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": Shot.PEA, "left": 0, "last": -1, "burst": false, "el": element})
 
 func _step_shots() -> void:
 	var keep: Array = []
@@ -792,8 +788,8 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false) ->
 	_push += KNOCK
 	events.append({"type": "knock"})
 
-## A crate or a plate gone: the score, the streak, its energy, and a gift
-## crate's gift, kept for when it is wanted.
+## A crate or a plate gone: the score, the streak, its energy, and one more
+## of a gift crate's gift, kept for when it is wanted.
 func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	var kind: int = cell.kind
 	var worth: int = int(cell.max)
@@ -821,49 +817,42 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	if holds_gift(kind):
 		_take(kind, pos)
 
-## A gift crate broken: its gift goes to the head of the line, and every
-## gift had before it moves back one, the last of the places into the queue
-## (`waiting` is how many wait now). Nothing starts until `use()`, and
-## nothing is lost.
+## A gift crate broken: one more of its gift is had (`count`: how many
+## now). Nothing starts until `use()`.
 func _take(kind: int, at: Vector2) -> void:
 	caught += 1
-	var back: int = held[TRAY - 1]
-	for i in range(TRAY - 1, 0, -1):
-		held[i] = held[i - 1]
-	held[0] = kind
-	if back != 0:
-		queue.push_front(back)
-	events.append({"type": "gift", "pos": at, "kind": kind, "slot": 0, "waiting": queue.size()})
+	stock[kind - Kind.FAN] = int(stock[kind - Kind.FAN]) + 1
+	events.append({"type": "gift", "pos": at, "kind": kind, "count": has(kind)})
 
-## Whether the gift in `slot` can be started now: there is one, and a wave
-## is on to use it against.
-func can_use(slot: int) -> bool:
-	return phase == Phase.PLAY and gap_t <= 0.0 and slot >= 0 and slot < TRAY and int(held[slot]) != 0
+## How many of gift `kind` are had and not used.
+func has(kind: int) -> int:
+	return int(stock[kind - Kind.FAN]) if holds_gift(kind) else 0
 
-## Starts the gift in `slot`. A shape runs with whatever else is running,
-## its own time begun again if it already was; an element takes the place
-## of the element running. Every gift behind it moves up one place, the one
-## that has waited longest into the last (`next`, 0 when none waits).
-func use(slot: int) -> bool:
-	if not can_use(slot):
+## Whether a gift of `kind` can be started now: there is one, and a wave is
+## on to use it against.
+func can_use(kind: int) -> bool:
+	return phase == Phase.PLAY and gap_t <= 0.0 and has(kind) > 0
+
+## Starts one gift of `kind` (`left`: how many are still had). A shape runs
+## with whatever else is running; an element takes the place of the other
+## element. One started while its like is running adds its time to what is
+## left, so none is ever spent for nothing.
+func use(kind: int) -> bool:
+	if not can_use(kind):
 		return false
-	var kind: int = held[slot]
-	var next: int = 0 if queue.is_empty() else int(queue.pop_front())
-	for i in range(slot, TRAY - 1):
-		held[i] = held[i + 1]
-	held[TRAY - 1] = next
+	stock[kind - Kind.FAN] = int(stock[kind - Kind.FAN]) - 1
 	used += 1
 	match kind:
 		Kind.FROST:
-			frost_t = FROST_TIME
+			frost_t += FROST_TIME
 		Kind.SHOVE:
 			_shove()
 		Kind.ZAP, Kind.FLAME:
+			element_t = element_t + POD_TIME if element == kind else POD_TIME
 			element = kind
-			element_t = POD_TIME
 		_:
-			shape_t[kind - Kind.FAN] = POD_TIME
-	events.append({"type": "use", "kind": kind, "slot": slot, "next": next, "waiting": queue.size()})
+			shape_t[kind - Kind.FAN] = float(shape_t[kind - Kind.FAN]) + POD_TIME
+	events.append({"type": "use", "kind": kind, "left": has(kind)})
 	return true
 
 ## Everything coming goes back a way: the wall up, the millipede along

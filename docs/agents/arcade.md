@@ -600,6 +600,75 @@ chalk line ends the run. Its "furthest" is the wave.
     reduce motion. **Not done: the tutorial's pages (not shot), a phone, and
     nothing heard.**
 
+- **The eighth pass (2026-10-05, the user: "instead of buffs being a queue,
+  let's make them available at screen since beggining but as 0, show them at
+  the right edge, one after another vertically", "change +1 pea to be
+  parallel instead of sequential", "add some animation and different looking
+  to the canon as the buff activate", "polish the energy animation to look
+  more like energy and less like a baloon").** What the passes above say of
+  `held`, `queue`, `TRAY`, the two buttons, the chute, the rings on the
+  grass (`_timed`), `_seq` and a volley's peas one behind another is history.
+  - **The gifts are counted, not lined up** (`sim.stock`, by `kind -
+    Kind.FAN`; `has`, `can_use(kind)`, `use(kind)`; the `gift` event says
+    `count`, `use` says `left`). All seven are there from the start at none.
+    **A gift started while its like is running adds its time** (a shape's,
+    an element's own, the frost's), so a second press is never a gift spent
+    for nothing; the other element still takes an element's place. Nobody
+    asked for that: it came with the counts, and it is one line in `use`.
+  - **The rack** (`_rack_px`, `_draw_rack_seats/_tokens/_pips/_counts`): the
+    seven one under another down the right side, the Fan at the top and the
+    frost and the shove at the foot, nearest the thumb; a pip at each
+    button's corner letters how many (a nought, pale, with none; the count
+    goes up as the gift lands, `_counted`). What is running runs down round
+    its own button's rim, so the grass holds only the gun's three pills.
+    Keys 1 to 7. A press with none had shakes the button's head, like one
+    between waves.
+  - **The garden is fitted beside the rack** (`_fit`: `RACK_W` 30 units more
+    than the field's 300), so no button is ever over a crate or under the
+    cart: over the garden the seven hid half of the right column's numbers.
+    Everything is 9% smaller at 810 wide for it (`_u` 2.42 to 2.2). What is
+    lettered over the garden stands on the garden's middle (`_mid`), not the
+    card's. **A tutorial page has no strip to spare**: its rack stands over
+    the garden's right side (`Garden._rack_x`), only on the two pages with a
+    gift (`rack`), whose walls keep that column clear.
+  - **A volley leaves side by side** (`Sim.pea_off`, `PEA_GAP` 10 units): four
+    peas are 30 units of a 60-unit column, so a cart on a column's middle
+    still lands all four on it and one on a seam splits them. The Fan's two
+    go out from the row's ends. The bots end where they did (eight runs,
+    skill 2: gifts started at once wave 14-17, kept 19-20).
+  - **The cart wears what is running** (`_draw_cart`, `_dress`, `_pod_el`): a
+    pod a pea, side by side and leaning apart, each mouth under its pea
+    (`POD_SIZE`); the pods the element's colour (`Art.barrel(u, helper, el)`,
+    `POD_OF`), with lightning playing round the mouth (`Art.crackle`, a new
+    one of four every blink) or a pilot flame on each lip; the Fan two small
+    pods leaning out from behind, the Dart a brass nozzle on each mouth
+    (`Art.nozzle`), the Berry a bunch either side of the cradle
+    (`Art.berries`). **A gift started flies from its button into the pod's
+    mouth** (`USE_T` 0.3 s) and the pod swallows it (`_gulp`: wide and short
+    and springing back, a ring and stars off the mouth) and wears it from
+    then (`_looks_at`); the sim has it from the press. Under reduce motion
+    nothing flies and the pod is dressed at once.
+  - **Energy is a spark** (`Art.orb`, `glow`, `spark4`): a soft light with
+    four thin rays edged in deep blue round a white heart, no rim and no
+    shine, which were what made it a ball. It snaps out of the crate and
+    stops short (no gravity: falling was the balloon), flashes as it comes,
+    trembles where it hangs with its rays beating one against the other,
+    lightning between sparks hanging near each other (`_arc`, seven at most,
+    its dice thrown again every blink), and is pulled into a streak on its
+    way to the plate, where each landing throws two sparks. The shop's
+    energy medallion and its prices are the same spark (`Art.orb(false)`).
+  - 78 draw calls at rest, 106-124 on a full wall, 138-144 under four peas a
+    volley with a Fan of lightning or of flame (`tests/_perf_peapod.gd`),
+    150-184 on the shot harness's cast with every dressing on, both drivers
+    agreeing. Suite 249790/0; the shot harness on both drivers and under
+    reduce motion (3a is four frames of the sparks, 3h the pod wearing a
+    gift, 4b four pods under all three shapes and the flame); the tutorial's
+    eight pages shot and their bodies fitted in three languages (the pods'
+    line was 5 px over in Spanish since the seventh pass). **Not done: a
+    phone (seven buttons 32 units apart under a thumb least of all), nothing
+    heard, and `tests/_probe_arcade_buzz.gd -- peapod` was only brought up
+    to the new names, not run.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

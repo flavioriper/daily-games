@@ -93,29 +93,23 @@ func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
 			break
 	sim.leave_shop()
 
-## Starts what the bot holds, by its keeper.
+## Starts what the bot has, by its keeper: 0 starts every gift at once; 1
+## keeps the frost and the shove for when the line is near, starts a shape
+## that is not running, and an element only when none is.
 func _use(sim: RefCounted, keeper: int) -> void:
-	if keeper == 0:
-		for slot in Sim.TRAY:
-			sim.use(slot)
-		return
-	var a: int = sim.held[0]
-	var b: int = sim.held[1]
-	if Sim.is_pod(a) and Sim.is_pod(b) and Sim.is_shape(a) != Sim.is_shape(b):
-		sim.use(0)
-		sim.use(1)
-		return
-	for slot in Sim.TRAY:
-		var kind: int = sim.held[slot]
-		if kind == Sim.Kind.FROST or kind == Sim.Kind.SHOVE:
-			if sim.danger() > 0.45:
-				sim.use(slot)
+	for kind in range(Sim.Kind.FAN, Sim.Kind.SHOVE + 1):
+		if sim.has(kind) == 0:
+			continue
+		if keeper == 0:
+			sim.use(kind)
+		elif kind == Sim.Kind.FROST or kind == Sim.Kind.SHOVE:
+			if sim.danger() > 0.45 and (kind == Sim.Kind.SHOVE or sim.frost_t <= 0.0):
+				sim.use(kind)
 		elif Sim.is_shape(kind):
 			if not sim.has_shape(kind):
-				sim.use(slot)
-		elif Sim.is_element(kind):
-			if sim.element == 0:
-				sim.use(slot)
+				sim.use(kind)
+		elif sim.element == 0:
+			sim.use(kind)
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -152,7 +146,7 @@ func _initialize() -> void:
 		waves.append(sim.wave)
 		print("seed %d skill %d shopper %d keeper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d peas %d energy %d  dps %.0f  kills %d  gifts %d used %d waiting %d  earned %d  held %d  shots %d" % [
 			seed_v + g, skill, shopper, keeper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.peas, sim.energy_lv, _dps(sim),
-			sim.kills, sim.caught, sim.used, sim.queue.size(), sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
+			sim.kills, sim.caught, sim.used, sim.stock.reduce(func(a: int, b: int) -> int: return a + b, 0), sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
 		if g == 0:
 			print(log)
 			print(tally)

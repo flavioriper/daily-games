@@ -52,10 +52,15 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 ## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
 ## the crit and the energy.
 const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
-## An energy orb: its glow and body, and its bright heart.
+## Energy: a spark's light, its white-hot heart and the deep blue that
+## edges it on a pale sky.
 const ORB := Color("3fc8ff")
 const ORB_HI := Color("e6fbff")
 const ORB_DEEP := Color("1f8fd0")
+## The pod as the barrel of an element, by Sim.Kind: its skin, its shade,
+## its light and the dark of its mouth.
+const POD_OF := {Sim.Kind.ZAP: [Color("f3df78"), Color("cfa93a"), Color("fff6c8"), Color("8a6a1c")],
+	Sim.Kind.FLAME: [Color("f39176"), Color("cf5a44"), Color("ffd0bb"), Color("7c2e20")]}
 const BOLT := Color("ffe37a")
 const EMBER := Color("f28c4f")
 ## A pea of the flame.
@@ -334,17 +339,15 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 			b.disc(c, s * 0.15, PAPER)
 			_twinkle(b, c + Vector2(s * 0.3, -s * 0.3), s * 0.24, Color("fff1a8"))
 		Sim.Card.SHOTS:
-			# three peas in a line, one behind the other
-			for k in 3:
-				pea(b, c + Vector2(0, s * (0.3 - 0.3 * k)), s * (0.13 + 0.035 * k))
+			# three peas side by side, leaving together
+			for k in [-1.0, 1.0, 0.0]:
+				pea(b, c + Vector2(s * 0.3 * k, s * (0.1 if k != 0.0 else -0.08)), s * (0.17 if k != 0.0 else 0.2))
 		Sim.Card.ENERGY:
-			# an energy orb, as a crate drops them, and a glint off it
-			b.disc(c, s * 0.46, Color(ORB, 0.3))
-			b.disc(c, s * 0.34, ORB_DEEP)
-			b.disc(c, s * 0.29, ORB)
-			b.disc(c, s * 0.18, ORB_HI)
-			b.disc(c + Vector2(-s * 0.1, -s * 0.12), s * 0.08, Color(1, 1, 1, 0.9))
-			_twinkle(b, c + Vector2(s * 0.32, -s * 0.32), s * 0.2, Color(1, 1, 1, 0.9))
+			# a spark of energy, as a crate drops them
+			glow(b, c, s * 0.52, Color(ORB_HI, 0.7))
+			spark4(b, c, s * 0.5, s * 0.5, s * 0.1, ORB_HI)
+			spark4(b, c, s * 0.36, s * 0.36, s * 0.06, Color.WHITE)
+			b.disc(c, s * 0.1, Color.WHITE)
 
 ## A shop card's medallion of radius `r`, ringed in paper.
 static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float) -> void:
@@ -378,27 +381,52 @@ static func fire(u: float) -> ArrayMesh:
 	_flame(b, Vector2.ZERO, 16.0 * u, EMBER, BOLT)
 	return _keep(key, b.mesh())
 
-## An energy orb, centred, its glow ORB_R in radius (built that big so its
-## discs are round, and scaled down by its draw): a wide soft glow, the orb
-## and its bright heart, with a comet's tail back along -x (its draw turns
-## it the way it flies and stretches it by how fast).
+## A soft light laid into a builder: `col` at `c`, thinning to nothing at
+## `r`.
+static func glow(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+	var rim := Face.Builder.ring(c, r, r)
+	var mid := b.vertex(c, col)
+	var first := b.verts.size()
+	for p in rim:
+		b.vertex(p, Color(col, 0.0))
+	for i in rim.size():
+		b.tri(mid, first + i, first + (i + 1) % rim.size())
+
+## A spark of four rays about `c`: `rx` long along x, `ry` along y, pinched
+## to `waist` between them.
+static func spark4(b: Face.Builder, c: Vector2, rx: float, ry: float, waist: float, col: Color) -> void:
+	b.polygon(PackedVector2Array([c + Vector2(rx, 0), c + Vector2(waist, waist), c + Vector2(0, ry), c + Vector2(-waist, waist),
+		c + Vector2(-rx, 0), c + Vector2(-waist, -waist), c + Vector2(0, -ry), c + Vector2(waist, -waist)]), col)
+
+## A spark of energy, centred, its light ORB_R in radius (built that big so
+## its rays are sharp, and scaled down by its draw): a soft light, and in it
+## four thin rays edged in deep blue round a white-hot heart, the longest
+## along x. With `tail`, a streak of light back along -x: its draw turns it
+## the way it flies and pulls it long by how fast. Nothing of it is a ball:
+## no rim, no shine.
 const ORB_R := 64.0
-static func orb() -> ArrayMesh:
-	if _cache.has("orb"):
-		return _cache["orb"]
+static func orb(tail := true) -> ArrayMesh:
+	var key := "orb" if tail else "orb_still"
+	if _cache.has(key):
+		return _cache[key]
 	var b := Face.Builder.new()
 	var r := ORB_R
-	var i0 := b.vertex(Vector2(0, -0.36 * r), Color(ORB, 0.55))
-	var i1 := b.vertex(Vector2(0, 0.36 * r), Color(ORB, 0.55))
-	var i2 := b.vertex(Vector2(-1.6 * r, 0), Color(ORB, 0.0))
-	b.tri(i0, i1, i2)
-	b.disc(Vector2.ZERO, r, Color(ORB, 0.14))
-	b.disc(Vector2.ZERO, 0.72 * r, Color(ORB, 0.26))
-	b.disc(Vector2.ZERO, 0.5 * r, ORB_DEEP)
-	b.disc(Vector2.ZERO, 0.43 * r, ORB)
-	b.disc(Vector2(-0.07, -0.08) * r, 0.2 * r, ORB_HI)
-	b.disc(Vector2(-0.14, -0.16) * r, 0.09 * r, Color.WHITE)
-	return _keep("orb", b.mesh())
+	if tail:
+		var i0 := b.vertex(Vector2(0, -0.3 * r), Color(ORB, 0.62))
+		var i1 := b.vertex(Vector2(0, 0.3 * r), Color(ORB, 0.62))
+		var i2 := b.vertex(Vector2(-1.8 * r, 0), Color(ORB, 0.0))
+		b.tri(i0, i1, i2)
+		var j0 := b.vertex(Vector2(0, -0.12 * r), Color(1, 1, 1, 0.9))
+		var j1 := b.vertex(Vector2(0, 0.12 * r), Color(1, 1, 1, 0.9))
+		var j2 := b.vertex(Vector2(-1.1 * r, 0), Color(ORB_HI, 0.0))
+		b.tri(j0, j1, j2)
+	glow(b, Vector2.ZERO, r, Color(ORB, 0.55))
+	spark4(b, Vector2.ZERO, 1.0 * r, 0.72 * r, 0.26 * r, ORB_DEEP)
+	spark4(b, Vector2.ZERO, 0.88 * r, 0.6 * r, 0.2 * r, ORB)
+	glow(b, Vector2.ZERO, 0.5 * r, Color(1, 1, 1, 0.95))
+	spark4(b, Vector2.ZERO, 0.62 * r, 0.4 * r, 0.13 * r, Color.WHITE)
+	b.disc(Vector2.ZERO, 0.18 * r, Color.WHITE)
+	return _keep(key, b.mesh())
 
 ## A spent pea, centred, with no wake: what tumbles off a crate it landed on.
 static func crumb(u: float) -> ArrayMesh:
@@ -447,6 +475,30 @@ static func token(kind: int, u: float) -> ArrayMesh:
 	medal(b, kind, Vector2.ZERO, r)
 	return _keep(key, b.mesh())
 
+## A gift on the rack, centred, RACK_R across at `u`: its medallion alone,
+## for the seat it sits on is the screen's.
+const BUTTON_R := 10.4
+static func button(kind: int, u: float) -> ArrayMesh:
+	var key := _key("bt", kind, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	medal(b, kind, Vector2.ZERO, BUTTON_R * u)
+	return _keep(key, b.mesh())
+
+## The paper pip a rack button's count is lettered on, centred.
+const PIP_R := 6.2
+static func pip(u: float) -> ArrayMesh:
+	var key := _key("pip", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := PIP_R * u
+	b.disc(Vector2(0, 0.9 * u), r, Color(0.3, 0.2, 0.08, 0.22))
+	b.disc(Vector2.ZERO, r, CREAM_DEEP)
+	b.disc(Vector2.ZERO, r - 0.9 * u, PAPER)
+	return _keep(key, b.mesh())
+
 ## The cart, its axle's middle on the origin: a pale plank box between where
 ## the wheels go, with a cradle for the pod. `helper` is the helper's, paler.
 static func cart(u: float, helper := false) -> ArrayMesh:
@@ -484,14 +536,23 @@ static func wheel(u: float) -> ArrayMesh:
 	return _keep(key, b.mesh())
 
 ## The pea pod that is the barrel, its foot on the origin, mouth up: a fat
-## pale pod with a seam, a lit belly, a rolled lip and a tendril.
-static func barrel(u: float, helper := false) -> ArrayMesh:
-	var key := _key("b", int(helper), 0, u)
+## pale pod with a seam, a lit belly, a rolled lip and a tendril. With an
+## element running (`el`: Sim.Kind.ZAP or FLAME) it is the element's colour,
+## as its peas are.
+static func barrel(u: float, helper := false, el := 0) -> ArrayMesh:
+	var key := _key("b", int(helper), el, u)
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var pod := POD if not helper else Color("d3da8a")
 	var deep := POD_DEEP if not helper else Color("aab45c")
+	var hi := POD_HI
+	var mouth := POD_MOUTH
+	if POD_OF.has(el):
+		pod = POD_OF[el][0]
+		deep = POD_OF[el][1]
+		hi = POD_OF[el][2]
+		mouth = POD_OF[el][3]
 	var tall := 30.0 * u
 	var body := PackedVector2Array()
 	var left := Face.Builder.bezier3(Vector2(-6, 0) * u, Vector2(-12, -8) * u, Vector2(-10, -22) * u, Vector2(-8, -30) * u, 10)
@@ -503,14 +564,68 @@ static func barrel(u: float, helper := false) -> ArrayMesh:
 	for p in body:
 		inner.append(Vector2(p.x * 0.84 - 0.8 * u, p.y * 0.97 - 0.4 * u))
 	b.polygon(inner, pod)
-	b.ellipse(Vector2(-4.0 * u, -tall * 0.5), 2.0 * u, tall * 0.3, Color(POD_HI, 0.8))
+	b.ellipse(Vector2(-4.0 * u, -tall * 0.5), 2.0 * u, tall * 0.3, Color(hi, 0.8))
 	b.stroke(PackedVector2Array([Vector2(3.5 * u, -3.0 * u), Vector2(4.5 * u, -tall * 0.55), Vector2(3.5 * u, -tall + 4.0 * u)]), maxf(1.0, 0.9 * u), Color(deep, 0.6))
 	# the lip round the mouth, and the dark of the mouth in it
 	b.ellipse(Vector2(0, -tall + 0.6 * u), 10.0 * u, 4.2 * u, deep)
 	b.ellipse(Vector2(0, -tall - 0.6 * u), 9.4 * u, 3.4 * u, pod.lightened(0.25))
-	b.ellipse(Vector2(0, -tall - 0.4 * u), 6.4 * u, 2.0 * u, POD_MOUTH)
+	b.ellipse(Vector2(0, -tall - 0.4 * u), 6.4 * u, 2.0 * u, mouth)
 	# a tendril curling off the foot
 	b.stroke(Face.Builder.bezier3(Vector2(8, -6) * u, Vector2(15, -8) * u, Vector2(16, -15) * u, Vector2(12, -14) * u, 10), maxf(1.0, 1.1 * u), deep)
+	return _keep(key, b.mesh())
+
+## What the pod wears while the Dart runs, the middle of its mouth on the
+## origin: a brass nozzle that narrows the mouth to a point.
+static func nozzle(u: float) -> ArrayMesh:
+	var key := _key("nz", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.polygon(PackedVector2Array([Vector2(-7.4, -0.6) * u, Vector2(-3.6, -7.6) * u, Vector2(3.6, -7.6) * u, Vector2(7.4, -0.6) * u]), GOLD_DEEP)
+	b.polygon(PackedVector2Array([Vector2(-6.2, -1.0) * u, Vector2(-2.8, -6.8) * u, Vector2(2.8, -6.8) * u, Vector2(6.2, -1.0) * u]), DART)
+	b.fan(Face.Builder.round_rect(Vector2(-9.8, -1.6) * u, Vector2(19.6, 4.6) * u, 2.2 * u), GOLD_DEEP)
+	b.fan(Face.Builder.round_rect(Vector2(-9.8, -2.2) * u, Vector2(19.6, 3.6) * u, 1.8 * u), DART)
+	b.stroke(PackedVector2Array([Vector2(-3.2, -2.8) * u, Vector2(-2.0, -5.6) * u]), maxf(1.0, 1.1 * u), Color(1, 1, 1, 0.7))
+	b.ellipse(Vector2(0, -7.5 * u), 3.2 * u, 1.1 * u, GOLD_INK)
+	return _keep(key, b.mesh())
+
+## What the cart wears while the Berry runs, the cradle's middle on the
+## origin: a bunch of berries either side of the pod's foot, on two leaves.
+static func berries(u: float) -> ArrayMesh:
+	var key := _key("br", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for side in [-1.0, 1.0]:
+		b.ellipse(Vector2(side * 15.5, -2.0) * u, 5.0 * u, 2.4 * u, POD_DEEP)
+		for at: Vector2 in [Vector2(12.0, 1.4), Vector2(16.6, -0.6), Vector2(13.6, -3.4)]:
+			var c := Vector2(side * at.x, at.y) * u
+			b.disc(c + Vector2(0, 0.5 * u), 3.3 * u, deepen(BERRY))
+			b.disc(c, 3.0 * u, BERRY)
+			b.disc(c + Vector2(-0.9, -1.0) * u, 0.9 * u, Color(1, 1, 1, 0.7))
+	return _keep(key, b.mesh())
+
+## Lightning playing round the pod's mouth while the bolt runs, the mouth's
+## middle on the origin: one of `CRACKLES` looks, a new one every blink.
+const CRACKLES := 4
+static func crackle(look: int, u: float) -> ArrayMesh:
+	var key := _key("ck", look, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 40 + look
+	for arc in 3:
+		var a := rng.randf_range(-PI, 0.0)
+		var from := Vector2.from_angle(a) * rng.randf_range(7.0, 10.0) * u
+		var to := Vector2.from_angle(a + rng.randf_range(0.7, 1.5) * (1.0 if rng.randf() < 0.5 else -1.0)) * rng.randf_range(11.0, 17.0) * u
+		var side := (to - from).orthogonal().normalized()
+		var line := PackedVector2Array([from])
+		for j in [1, 2, 3]:
+			line.append(from.lerp(to, j / 4.0) + side * rng.randf_range(-3.2, 3.2) * u)
+		line.append(to)
+		b.stroke(line, 2.6 * u, Color(BOLT, 0.75))
+		b.stroke(line, 1.0 * u, Color.WHITE)
 	return _keep(key, b.mesh())
 
 ## A pea in flight by its shape (Sim.Shot) and its element (`el`: 0, or

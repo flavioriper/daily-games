@@ -382,9 +382,9 @@ func _peapod_bot() -> void:
 	_pp_hand = move_toward(_pp_hand, want, 300.0 * root.get_process_delta_time())
 	sim.target_x = _pp_hand
 	# a gift is started a second after it is had, by the screen's own press
-	for k in Sim.TRAY:
-		if int(sim.held[k]) != 0 and sim.can_use(k) and _s._clock - float(_s._chip_at.get(_s.SLOT + k, -10.0)) > 1.0 and not _s._slot_awaits(k):
-			_s._press_slot(k)
+	for kind in range(Sim.Kind.FAN, Sim.Kind.SHOVE + 1):
+		if _s._counted(kind) > 0 and sim.can_use(kind) and _s._clock - float(_s._chip_at.get(kind, -10.0)) > 1.0:
+			_s._press_gift(kind)
 
 func _peapod() -> void:
 	var field: Control = _s.field
