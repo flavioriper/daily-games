@@ -2,21 +2,20 @@ extends SceneTree
 
 ## Plays Peapod's sim headless with a bot and prints how far each run went.
 ## Run after touching arcade/peapod_sim.gd.
-##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games]
+##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [miss 0-100]
 ## Skill 0 wanders under whatever is lowest, slowly, and lets gifts fall;
 ## 1 aims at the lowest thing and goes for a gift it can reach; 2 does both
-## at a quick finger's pace.
+## at a quick finger's pace. `miss` is the share of gifts a skilled bot does
+## not go for (a hand that is busy elsewhere): a wave's gifts are dealt
+## together, and a bot that catches every one says little about a person.
 
 const Sim = preload("res://arcade/peapod_sim.gd")
 
-func _target(sim: RefCounted, skill: int) -> float:
+func _target(sim: RefCounted, skill: int, miss: int) -> float:
 	# a gift on its way down, if there is time to get under it
 	if skill >= 1:
 		for tk: Dictionary in sim.tokens:
-			if int(tk.kind) == Sim.Kind.ROT:
-				# out from under a rotten one that is nearly down
-				if float(tk.y) > 300.0 and absf(float(tk.x) - sim.x) < Sim.CATCH + 8.0:
-					return float(tk.x) + (60.0 if float(tk.x) < Sim.W * 0.5 else -60.0)
+			if int(tk.id) * 37 % 100 < miss:
 				continue
 			if float(tk.y) > 150.0:
 				return float(tk.x)
@@ -29,7 +28,7 @@ func _target(sim: RefCounted, skill: int) -> float:
 				if cell == null:
 					continue
 				# gifts first, then the weakest of the lowest row
-				var w: int = int(cell.hp) - (1000 if Sim.holds_token(int(cell.kind)) and int(cell.kind) != Sim.Kind.ROT and skill >= 1 else 0)
+				var w: int = int(cell.hp) - (1000 if Sim.holds_token(int(cell.kind)) and skill >= 1 else 0)
 				if w < low:
 					low = w
 					best = c
@@ -49,6 +48,7 @@ func _initialize() -> void:
 	var seed_v := int(args[0]) if args.size() > 0 else 7
 	var skill := int(args[1]) if args.size() > 1 else 1
 	var games := int(args[2]) if args.size() > 2 else 5
+	var miss := int(args[3]) if args.size() > 3 else 0
 	var speed: float = [110.0, 240.0, 520.0][clampi(skill, 0, 2)]
 	var waves: Array = []
 	for g in games:
@@ -59,7 +59,7 @@ func _initialize() -> void:
 		var log := ""
 		while not sim.is_over() and guard < 60 * 60 * 30:
 			guard += 1
-			hand = move_toward(hand, _target(sim, skill), speed * Sim.DT)
+			hand = move_toward(hand, _target(sim, skill, miss), speed * Sim.DT)
 			sim.target_x = hand
 			sim.step()
 			for ev: Dictionary in sim.events:

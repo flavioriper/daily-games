@@ -155,9 +155,9 @@ func _report() -> void:
 		if n == "pop":
 			n = "pop %s%s" % [["gnat", "beetle", "moth", "rogue"][int(ev.kind)] if _game == "firefly" else "", " rammed" if bool(ev.get("rammed", false)) else ""]
 		if _game == "peapod" and n == "kill":
-			n = "kill %s%s" % [["crate", "gold", "firecracker", "gift", "gift", "gift", "gift", "head", "gift", "gift", "gift", "gift", "gift", "gift", "rotten", "iron"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
+			n = "kill %s%s" % [["crate", "gold", "firecracker", "gift", "gift", "gift", "gift", "head", "gift", "gift", "gift", "gift", "gift", "gift", "iron"][int(ev.kind)], " (tail)" if bool(ev.popped) else ""]
 		if _game == "peapod" and n == "catch":
-			n = "catch %s" % ["", "", "", "pea", "rate", "power", "twin", "", "fan", "pierce", "burst", "magnet", "frost", "shove", "rotten"][int(ev.got)]
+			n = "catch %s" % ["", "", "", "pea", "rate", "power", "twin", "", "fan", "pierce", "burst", "magnet", "frost", "shove"][int(ev.got)]
 		if _game == "molehill" and n == "hit":
 			n = "hit %s%s" % [["mole", "gold", "pot", "bunny"][int(ev.kind)], ""]
 		if _game == "molehill" and (n == "streak_lost" or n == "forgiven"):

@@ -238,7 +238,8 @@ Two things in the game were synth, and both went:
 Swept up with them: the four house-set `undo` cues still prompted as
 "rewinding a tiny tape" (Binairo, Code Break, Balance, Untangle -- the sound
 every polish since Shikaku's has thrown out) are a felt brush and a kalimba
-note gliding down, and Peapod's `rot` lost its "blip".
+note gliding down, and Peapod's `rot` lost its "blip" (the
+rotten gift and `rot.ogg` were removed on 2026-10-05).
 
 Left alone: the `CARTOON` cues (mallets, blocks, pebbles, crates -- comic,
 but things, not synth; Peapod's and Lucky Thirteen's went the same morning,

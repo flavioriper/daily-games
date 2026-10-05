@@ -1429,12 +1429,12 @@ SETS = {
         "start":     ("a short cheerful opening tune on a real kalimba and music box, a bouncy garden melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
         "game_over": ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
         "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
-        # the second pass (2026-10-04): an iron crate, a pod, the frost, the shove, a rotten gift
+        # the second pass (2026-10-04): an iron crate, a pod, the frost, the shove (the rotten
+        # gift and its sound went on 2026-10-05)
         "clank":     ("a tiny soft dull 'tink' of one dried pea on a small tin watering can, damped at once, not ringing, very short", 0.5, -11, PEAPATCH, "warm:6000"),
         "pod":       ("three bright rising notes on a real kalimba with a soft wooden click, a new pod loaded, lively, short", 0.7, -6, ARCADE),
         "frost":     ("a soft falling shimmer of tiny glass bells and music box notes slowing down, a gentle frost settling over everything, short", 0.9, -7, ARCADE),
         "shove":     ("a big soft whoosh of a canvas sheet flapped once and a padded woody thump, everything pushed back, short", 0.8, -6, PEAPATCH, "warm:6000"),
-        "rot":       ("a soft wet squish of an overripe plum dropped in the grass with a short two-note fall on a kalimba, something rotten caught, gentle", 0.7, -7, ARCADE),
     },
     # Rings: lift the top ring off a wooden peg and drop it on an empty peg
     # or on its own colour; four of a colour fill a peg and lock it.

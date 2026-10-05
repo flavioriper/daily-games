@@ -103,8 +103,6 @@ const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "P
 const GOT := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER", Sim.Kind.TWIN: "PP_GOT_TWIN",
 	Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.MAGNET: "PP_GOT_MAGNET",
 	Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
-## What a rotten gift took, by the gift it undid (-1: nothing left to take).
-const ROT := {Sim.Kind.PEA: "PP_ROT_PEA", Sim.Kind.RATE: "PP_ROT_RATE", Sim.Kind.POWER: "PP_ROT_POWER", -1: "PP_ROT_NONE"}
 ## The sound a gift is caught with, where it has one of its own.
 const CATCH_CUE := {Sim.Kind.TWIN: "twin", Sim.Kind.FAN: "pod", Sim.Kind.PIERCE: "pod", Sim.Kind.BURST: "pod", Sim.Kind.FROST: "frost",
 	Sim.Kind.SHOVE: "shove"}
@@ -857,7 +855,7 @@ func _play_events() -> void:
 			"kill":
 				_on_kill(ev)
 			"token":
-				_fx.cue("gift", 0.7 if ev.kind == Sim.Kind.ROT else randf_range(0.96, 1.06))
+				_fx.cue("gift", randf_range(0.96, 1.06))
 				_rw.ring(_in_rw(pos), 26.0 * _u, Color(Art.colour(ev.kind, 1), 0.9))
 			"catch":
 				_on_catch(ev)
@@ -968,15 +966,6 @@ func _on_catch(ev: Dictionary) -> void:
 	var got: int = ev.got
 	var at := _in_rw(Vector2(sim.x, Sim.CART_Y - 44.0))
 	var col: Color = Art.GIFT[got]
-	if got == Sim.Kind.ROT:
-		# a rotten one: what it took, lettered in its own murk, and a shudder
-		_fx.cue("rot")
-		_feel(Haptics.WARN)
-		_shake = maxf(_shake, 0.4)
-		_flash_now(Art.ROT_INK, 0.35)
-		_rw.sticker(tr(ROT[int(ev.lost)]), at + Vector2(0, -30.0), 58, 1.1, false, Color("d9c7e0"), false, "got", 34.0)
-		_rw.spray(at, Art.ROT_INK, 8, 420.0, "shard", 0.9)
-		return
 	_fx.cue(CATCH_CUE.get(got, "catch"), 1.0 + 0.04 * (sim.peas + sim.rate_lv))
 	_feel(Haptics.GOOD)
 	_hop = {"at": _clock, "tall": 3.5, "time": 0.22, "twice": false}

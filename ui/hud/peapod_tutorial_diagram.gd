@@ -17,8 +17,8 @@ extends Control
 ##   while.
 ## - CRATES: a crate takes its number in peas, its paint is the number's
 ##   weight, and what reaches the chalk line ends the run.
-## - GIFTS: a gift crate's token is caught, a rotten one is left to fall; a
-##   different pair of gifts each time round.
+## - GIFTS: a gift crate's token is caught, then another's; a different
+##   pair of gifts each time round.
 ## - PODS: the Fan, the Dart and the Berry in turn, their ring on the grass.
 ## - SPECIAL: the golden crate, the iron crate and the firecracker.
 ## - MILLI: plates shot off the millipede, then its head.
@@ -347,8 +347,6 @@ static func _gift_word(kind: int) -> Dictionary:
 			line = _t("TUT_PEAPOD_P_PIERCE") % Sim.PIERCES
 		Sim.Kind.BURST:
 			line = _t("TUT_PEAPOD_P_BURST")
-		Sim.Kind.ROT:
-			return {"icon": ["token", kind], "title": _t("TUT_PEAPOD_ROT"), "line": _t("TUT_PEAPOD_ROT_LINE")}
 	var names := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER",
 		Sim.Kind.TWIN: "PP_GOT_TWIN", Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE",
 		Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.MAGNET: "PP_GOT_MAGNET", Sim.Kind.FROST: "PP_GOT_FROST",
@@ -422,10 +420,10 @@ static func plan(which: int, turn: int) -> Dictionary:
 			var a := gift_a(turn)
 			var b := gift_b(turn)
 			return {"x": 30.0, "up": 8.2, "length": 8.6, "still": 1.7,
-				"says": [[0.0, _gift_word(a)], [3.2, _gift_word(K.ROT)], [4.0, _gift_word(b)]],
-				"keys": [[0.6, 30.0], [2.7, 30.0], [3.1, 150.0], [3.5, 150.0], [3.9, 270.0], [8.2, 270.0]],
+				"says": [[0.0, _gift_word(a)], [3.6, _gift_word(b)]],
+				"keys": [[0.6, 30.0], [2.9, 30.0], [3.7, 270.0], [8.2, 270.0]],
 				"lay": func(sim: RefCounted) -> void:
-					_wall(sim, [[[a, 2], null, [K.ROT, 1], null, [b, 2]], [null, 5, null, 6, null]], 262.0, 5.0)}
+					_wall(sim, [[[a, 2], null, null, null, [b, 2]], [null, 5, null, 6, null]], 262.0, 5.0)}
 		Lesson.PODS:
 			var pod := pod_of(turn)
 			return {"x": 150.0, "up": 7.6, "length": 8.2, "still": 2.8, "says": [[0.0, _gift_word(pod)]],

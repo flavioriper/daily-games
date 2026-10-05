@@ -338,6 +338,43 @@ chalk line ends the run. Its "furthest" is the wave.
     end-card step (`_s._end` is null after three seconds); it fails the same
     on the commit before this pass.
 
+- **The third pass (2026-10-05, the user: "remove the debuff, it make no
+  sense", more rewards and more blocks, and no wave whose gifts are useless
+  -- "a magnet as reward in a wave where there is no shoot buff")**, the sim
+  and what named the rotten gift.
+  - **The rotten gift is gone**: `Kind.ROT`, its crate, token, medallion,
+    `rot.ogg`, its warn, its lines and its place on the tutorial's gifts
+    page (two gifts caught now). **`Kind.IRON` is 14, not 15**: nothing
+    stores a kind, but a harness's list by kind had to lose a name.
+  - **A wave's gifts are planned together** (`_plan_gifts`, then
+    `_gift_places`), not drawn crate by crate. Drawn one by one a wave could
+    hold a magnet and a frost and nothing for the gun, and the next wave's
+    numbers were past it. The rules, which `gift_count` and the constants
+    carry: three gifts a wave, one more every third wave, six at most; the
+    gun's (pea, rate, weight) are half of them at least and never fewer
+    than two, never the same one twice running, and the first met is one of
+    them; the rest are one each at most of a pod, the magnet, the frost,
+    the helper and the shove. **A magnet only comes to a wave of four or
+    more, and the two gifts after it sit on the next two rows up (the next
+    two plates)**, since it holds ten seconds. Gifts are spread up the wall
+    one to a row, clear of the lowest, and down the millipede's length.
+  - **More to shoot**: a wall is six rows on wave 1 and twelve at most (was
+    four and nine), a cell is left empty one time in ten (was one in
+    seven), a millipede is `9 + wave` plates, 26 at most (was 24). About 27
+    crates on wave 1, 36 on wave 4.
+  - **The numbers climb faster to meet the fatter gun**: `hp_base` is 1.46 a
+    wave to wave 10 and 1.38 after (was 1.45 and 1.25). With the old curve
+    the aiming bots ran to wave 23 on a pea worth 60.
+  - **The bots** (`tests/_probe_peapod.gd`, which takes a fourth argument
+    now, the share of gifts a skilled bot does not go for): skill 0 wave
+    4-10 (was 4-7), skill 1 missing six in ten wave 11-16, skill 2 wave
+    17-19 in five to six minutes (was 10-17). The spread between runs is
+    much narrower than it was: that was the luck of the gifts.
+  - 75-85 draw calls on a twelve-row wall and a 26-plate millipede, 97-124
+    as the head goes, ANGLE agreeing (`tests/_perf_peapod.gd`). The shot
+    harness and the tutorial's seven pages were shot. **Nothing was run on
+    a phone, and no person has played the new curve.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

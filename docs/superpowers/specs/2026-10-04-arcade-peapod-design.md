@@ -150,3 +150,19 @@ the end), the run slowed and eased back. None of it under reduce motion.
 landing `hit`. Nothing was run on a phone. The stars change nothing in the
 score.
 
+## 8. The third pass (2026-10-05, the user: "remove the debuff, it make no sense. Also, increase the number of rewards but also the blocks", and no wave whose gifts are useless)
+
+The rotten gift is removed outright. A wave holds three to six gifts (three,
+one more every third wave) and they are planned as a set: at least half are
+the gun's own (pea, rate, weight), never fewer than two, the first one met
+is one of them, and each of the others (a pod, the magnet, the frost, the
+helper, the shove) comes once a wave at most. A magnet needs a wave of four
+gifts and is laid with two of them right behind it. Walls are six to twelve
+rows with fewer gaps, the millipede `9 + wave` plates up to 26, and the
+numbers climb 1.46 a wave to wave 10 and 1.38 after, tuned on the bots
+until the aiming ones ended where they used to (wave 17-19, five to six
+minutes) and the careless one a little further (4-10). The detail is in
+`docs/agents/arcade.md`.
+
+**Not done.** Nothing was run on a phone and nobody has played the new
+curve; the bots catch more gifts than a hand does.
