@@ -63,8 +63,10 @@ func _full_gun() -> void:
 	sim.rate_lv = Sim.MAX_RATE
 	sim.crit_lv = Sim.CRIT_MAX
 	sim.power = 9
-	sim.pod = Sim.Kind.FAN
-	sim.pod_t = 1000.0
+	sim.shape = Sim.Kind.FAN
+	sim.shape_t = 1000.0
+	sim.element = 0
+	sim.element_t = 0.0
 
 func _lay(load_name: String) -> void:
 	var sim = _s.sim
@@ -77,7 +79,9 @@ func _lay(load_name: String) -> void:
 			sim.gap_t = 1000.0
 		"wall", "zap", "flame":
 			if load_name != "wall":
-				sim.pod = Sim.Kind.ZAP if load_name == "zap" else Sim.Kind.FLAME
+				# on top of the Fan: three peas a volley, each of them lightning or flame
+				sim.element = Sim.Kind.ZAP if load_name == "zap" else Sim.Kind.FLAME
+				sim.element_t = 1000.0
 			sim.wave = 19
 			sim._deal()
 			sim.wall_y = 330.0

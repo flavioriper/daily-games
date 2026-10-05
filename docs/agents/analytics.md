@@ -35,7 +35,7 @@ see "Ads and the purchase" below.
   block, and drops, merges, chain and tools; Lucky Thirteen stage as the
   biggest number, and moves, merges, chain, tools and reached; Posy stage
   as the day, and moves, made, cascade, picked and tools; Peapod stage as
-  the wave, and kills, caught (gift crates broken), fired, rate, power, crit and energy (all the run made)) and `arcade_abandon`; since 2026-10-05 (Valley): `valley_enter` (place, trees standing, room), `valley_leave` (place, seconds, felled) and `grove_upgrade` (tile, level, energy paid); snooker's hint and reset
+  the wave, and kills, caught (gift crates broken), used (gifts started from the tray, since 2026-10-05), fired, rate, power, crit and energy (all the run made)) and `arcade_abandon`; since 2026-10-05 (Valley): `valley_enter` (place, trees standing, room), `valley_leave` (place, seconds, felled) and `grove_upgrade` (tile, level, energy paid); snooker's hint and reset
   send the boards' `hint_used` and `board_reset` with `puzzle_id` snooker.
 - **`puzzle_complete` carries a `solved` boolean**, added when Hidden Word
   landed (2026-09-19): until then `done` implied solved, so the event had

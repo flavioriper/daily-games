@@ -449,6 +449,65 @@ chalk line ends the run. Its "furthest" is the wave.
     nothing was heard, and no person has played the new curve or the
     shop's prices.**
 
+- **The fifth pass (2026-10-05, the user: "since upgrades don't stack, a
+  wave with a eletric shot + burst make user one of them useless", and
+  "instead of auto activate the buff, let's keep the last 2 buffs on screen
+  so user can activate anytime, and new buffs replace the old one").** What
+  the fourth pass says of a gift starting as its crate breaks and of one pod
+  at a time is history.
+  - **A gift is kept, not started** (`_take`): it goes to one of two places
+    (`sim.held`, `TRAY`), an empty one first, else the place of the gift had
+    longest (the `gift` event's `slot` and `lost`). A place never moves, so
+    a button is the same button until it is used. `use(slot)` starts it
+    (the `use` event) and is refused in the beat between waves (`can_use`):
+    there is nothing to use it against. The frost and the shove are kept
+    like the pods. The tray lives through the shop and a Second chance.
+  - **Two kinds of pod run together**: how the peas go (`shape`: Fan, Dart,
+    Burst; `is_shape`) and what they are made of (`element`: lightning,
+    flame; `is_element`), one of each at once, each with its own ten
+    seconds; a second of a kind takes the first's place. `sim.pod`/`pod_t`
+    are gone. A pea carries how it lands (`left`, `burst`, `el`) and is
+    drawn as its element when it has one (`k`), so there is no new pea to
+    draw; the Fan's side peas are made of the same, and each of a Dart's
+    three landings jumps or lights. `pod_off` says which `kind` ran out.
+  - **A wave's second pod is of the other kind than its first**
+    (`_a_match`), so two pods in a wave always run together.
+  - **The buttons** (`_slot_px`, `_draw_slot_seats`, `_draw_slot_tokens`):
+    two paper seats on the right of the grass, 28 units across, an empty one
+    hollow, a kept gift breathing on it and pale while it cannot be started.
+    The gift flies from its crate to its button (`_flights` with a `slot`),
+    a gift pushed out tumbles off (`_slot_out`), and one started hops from
+    its button to its ring. **A press that lands on a button is never the
+    cart's** (`_slot_hit`: a thumb's width round each and down to the foot of
+    the field, an empty button too), whichever finger it is, so one thumb
+    slides while the other presses; the keys 1 and 2 do the same. A touch is
+    also sent as a mouse press: `_press_slot` takes one a frame a button.
+  - **The rings** (`_timed`) are up to three now (shape, element, frost),
+    laid leftwards from beside the buttons and a size down (10 units, 20.5
+    apart) to clear the crit's pill.
+  - **Sound and feel**: a gift kept plays `catch` and knocks good; one
+    started plays what starting played (`pod`, `frost`, `shove`) and knocks
+    bump; a refused press ticks and the button shakes its head. No new sound.
+  - **The tutorial**: the gifts page's finger leaves the slide, goes to the
+    button and presses it (`taps` in a lesson's plan, `Garden.tap`); the
+    pods page breaks a shape and then an element and runs both. Three lines
+    rewritten in three languages (`PP_READY_LINE`, `TUT_PEAPOD_GIFTS*`,
+    `TUT_PEAPOD_PODS_BODY`); a body is 188 px of 230 at its longest.
+  - **The bots** (`tests/_probe_peapod.gd`, a fifth argument, the keeper: 0
+    starts a gift at once, 1 keeps a pod for its match and the frost and the
+    shove for when the line is near). Eight runs, shopper 0, before: wave
+    13-17, most on 16. Keeper 0: 13-19, most on 16. Keeper 1: 14-19, most on
+    17. About a wave further; `hp_base` was left alone. On paper a Fan or a
+    Dart of lightning is nine plain peas against three for either alone.
+  - 77-86 draw calls with a gift kept, pressed and started, 119 (124 at
+    worst) on a wave-19 wall under a full gun's Fan of lightning or of flame,
+    164 on the shot harness's cast, both drivers agreeing. `_shot_peapod.gd`
+    presses the button through the viewport (3e-3g: prints whether the gift
+    was kept, whether the press started it and whether the cart was left
+    alone); `_probe_arcade_buzz.gd`'s bot presses a gift a second after it
+    is had. **Nothing was run on a phone (two thumbs at once least of all),
+    nothing was heard, and no person has played with the tray.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

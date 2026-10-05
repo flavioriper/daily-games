@@ -40,15 +40,27 @@ extends RefCounted
 ## time like the rest: lightning that jumps on from what it hit, and a flame
 ## that leaves it burning. A hit says what it took (`dmg`, `crit`, `how`),
 ## for the numbers the screen floats off it.
+##
+## The fifth pass (2026-10-05, the user: "since upgrades don't stack, a wave
+## with an electric shot and a burst makes one of them useless", and "instead
+## of auto activate the buff, keep the last two on screen so the user can
+## activate anytime, and new buffs replace the old one"). A gift is kept, not
+## started: it goes to one of two places (`held`), a newer gift taking the
+## older one's, and `use(slot)` starts it. And the pods are two kinds that
+## run together: how the peas go (`shape`: Fan, Dart, Burst) and what they
+## are made of (`element`: lightning, flame), one of each at once, each with
+## its own ten seconds. A wave's second pod is of the other kind than its
+## first.
 
 ## SHOP: a wave is cleared and the shop is open; nothing moves until
 ## `leave_shop()`.
 enum Phase { READY, PLAY, OVER, SHOP }
 enum Wave { WALL, MILLI }
 ## What a crate or a plate is. FAN to SHOVE hold a gift (`holds_gift`); FAN
-## to FLAME are the pods (`is_pod`).
+## to FLAME are the pods (`is_pod`): FAN to BURST are how the peas go
+## (`is_shape`), ZAP and FLAME what they are made of (`is_element`).
 enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, FROST, SHOVE, IRON }
-## How a pea in flight looks and lands.
+## How a pea in flight looks.
 enum Shot { PEA, PIERCE, BURST, ZAP, FLAME }
 ## What the shop sells.
 enum Card { DAMAGE, SPEED, CRIT, ENERGY }
@@ -94,6 +106,9 @@ const PRICE := [11, 9, 9, 12]
 const PRICE_STEP := [0.3, 0.3, 0.3, 0.4]
 ## The beat between the shop closing and the next wave.
 const SHOP_GAP := 0.5
+## The gifts had and not yet used: so many places, and a newer gift takes
+## the older one's.
+const TRAY := 2
 const POD_TIME := 10.0
 ## Lightning: the jumps on from what a pea hit, and how far one reaches.
 const ZAP_JUMPS := 4
@@ -169,10 +184,19 @@ var bought := [0, 0, 0, 0]
 var energy := 0
 var earned := 0
 var _orb_part := 0.0
-## The pod held (0: none, else a pod's Kind) and its seconds left; the
+## The gifts had and not yet used, a place each (0: empty, else a Kind), and
+## when each was had. A place keeps its gift until `use()` or until a newer
+## gift takes it.
+var held: Array = [0, 0]
+var _held_at: Array = [0, 0]
+var _had := 0
+## What is running: a shape (0: none, else FAN, PIERCE or BURST) and an
+## element (ZAP or FLAME), one of each at once, with their seconds left; the
 ## frost's.
-var pod := 0
-var pod_t := 0.0
+var shape := 0
+var shape_t := 0.0
+var element := 0
+var element_t := 0.0
 var frost_t := 0.0
 var _cool := 0.0
 var shots: Array = []
@@ -200,8 +224,9 @@ var _seg_top := 0.0
 var _seg_low := 0.0
 var events: Array = []
 var kills := 0
-## Gift crates broken.
+## Gift crates broken, and gifts used.
 var caught := 0
+var used := 0
 var fired := 0
 var streak := 0
 var best_streak := 0
@@ -237,6 +262,12 @@ static func holds_gift(kind: int) -> bool:
 
 static func is_pod(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.FLAME
+
+static func is_shape(kind: int) -> bool:
+	return kind >= Kind.FAN and kind <= Kind.BURST
+
+static func is_element(kind: int) -> bool:
+	return kind == Kind.ZAP or kind == Kind.FLAME
 
 ## About how many crates wave `w`'s wall holds: what a wave pays is this
 ## many crates' worth, a millipede's too (its head pays the difference).
@@ -387,14 +418,20 @@ func _move() -> void:
 		want = x + axis * 260.0 * DT
 	x = move_toward(x, clampf(want, CART_HALF, W - CART_HALF), CART_SPEED * DT)
 
-## The pod and the frost run down.
+## The shape, the element and the frost run down.
 func _tick_gifts() -> void:
-	if pod_t > 0.0:
-		pod_t -= DT
-		if pod_t <= 0.0:
-			pod_t = 0.0
-			pod = 0
-			events.append({"type": "pod_off"})
+	if shape_t > 0.0:
+		shape_t -= DT
+		if shape_t <= 0.0:
+			shape_t = 0.0
+			events.append({"type": "pod_off", "kind": shape})
+			shape = 0
+	if element_t > 0.0:
+		element_t -= DT
+		if element_t <= 0.0:
+			element_t = 0.0
+			events.append({"type": "pod_off", "kind": element})
+			element = 0
 	if frost_t > 0.0:
 		frost_t -= DT
 		if frost_t <= 0.0:
@@ -410,27 +447,35 @@ func _fire() -> void:
 	if _cool > 0.0:
 		return
 	_cool += 1.0 / rate()
-	_volley(x, pod)
+	_volley(x)
 	events.append({"type": "shot", "x": x})
 	fired += 1
 
-func _volley(from: float, held: int) -> void:
-	var look := Shot.PEA
-	var left := 0
-	match held:
-		Kind.PIERCE:
-			look = Shot.PIERCE
-			left = PIERCES - 1
-		Kind.BURST:
-			look = Shot.BURST
+## A volley as the shape and the element running make it. A pea carries how
+## it lands (`left` targets to go through, `burst`, `el`: its element) and
+## is drawn as its element when it has one (`k`), else as its shape; the
+## Fan's side peas are made of the same.
+func _volley(from: float) -> void:
+	var plain := Shot.PEA
+	match element:
 		Kind.ZAP:
-			look = Shot.ZAP
+			plain = Shot.ZAP
 		Kind.FLAME:
-			look = Shot.FLAME
-	shots.append({"x": from, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": left, "last": -1})
-	if held == Kind.FAN:
+			plain = Shot.FLAME
+	var look := plain
+	var left := 0
+	if element == 0:
+		match shape:
+			Kind.PIERCE:
+				look = Shot.PIERCE
+			Kind.BURST:
+				look = Shot.BURST
+	if shape == Kind.PIERCE:
+		left = PIERCES - 1
+	shots.append({"x": from, "y": CART_Y - 34.0, "vx": 0.0, "k": look, "left": left, "last": -1, "burst": shape == Kind.BURST, "el": element})
+	if shape == Kind.FAN:
 		for side in [-1.0, 1.0]:
-			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": Shot.PEA, "left": 0, "last": -1})
+			shots.append({"x": from + side * 6.0, "y": CART_Y - 34.0, "vx": side * FAN_VX, "k": plain, "left": 0, "last": -1, "burst": false, "el": element})
 
 func _step_shots() -> void:
 	var keep: Array = []
@@ -482,16 +527,16 @@ func _strike(p: Dictionary) -> bool:
 		var dmg := power * (CRIT_MULT if lucky else 1)
 		var half := maxi(1, int(dmg / 2.0))
 		_hurt_cell(r, c, dmg, Vector2(px, wall_y - r * CELL_H), Hit.PEA, lucky)
-		match int(p.k):
-			Shot.BURST:
-				for d: Vector2i in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0)]:
-					var rr: int = r + d.x
-					var cc: int = c + d.y
-					if rr < rows.size() and cc >= 0 and cc < COLS and rows[rr][cc] != null:
-						_hurt_cell(rr, cc, half, cell_pos(rr, cc), Hit.SIDE)
-			Shot.ZAP:
+		if bool(p.burst):
+			for d: Vector2i in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0)]:
+				var rr: int = r + d.x
+				var cc: int = c + d.y
+				if rr < rows.size() and cc >= 0 and cc < COLS and rows[rr][cc] != null:
+					_hurt_cell(rr, cc, half, cell_pos(rr, cc), Hit.SIDE)
+		match int(p.el):
+			Kind.ZAP:
 				_zap_wall(r, c, half)
-			Shot.FLAME:
+			Kind.FLAME:
 				_light(rows[r][c])
 		return _spent(p, int(cell.id))
 	if _seg_dirty:
@@ -512,7 +557,7 @@ func _strike(p: Dictionary) -> bool:
 			var dmg := power * (CRIT_MULT if lucky else 1)
 			var half := maxi(1, int(dmg / 2.0))
 			var beside: Array = []
-			if int(p.k) == Shot.BURST:
+			if bool(p.burst):
 				for j in [i - 1, i + 1]:
 					if j >= 0 and j < segs.size():
 						beside.append(segs[j].id)
@@ -521,9 +566,9 @@ func _strike(p: Dictionary) -> bool:
 				var j := _seg_index(other)
 				if j >= 0 and float(segs[j].dying) < 0.0 and float(segs[j].s) >= 0.0:
 					_hurt_seg(j, half, path_at(segs[j].s), Hit.SIDE)
-			if int(p.k) == Shot.ZAP:
+			if int(p.el) == Kind.ZAP:
 				_zap_milli(id, at, half)
-			elif int(p.k) == Shot.FLAME:
+			elif int(p.el) == Kind.FLAME:
 				var lit := _seg_index(id)
 				if lit >= 0:
 					_light(segs[lit])
@@ -700,7 +745,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false) ->
 	events.append({"type": "knock"})
 
 ## A crate or a plate gone: the score, the streak, its energy, and a gift
-## crate's gift, had there and then.
+## crate's gift, kept for when it is wanted.
 func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	var kind: int = cell.kind
 	var worth: int = int(cell.max)
@@ -728,18 +773,51 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	if holds_gift(kind):
 		_take(kind, pos)
 
-## A gift crate broken: its gift starts now.
+## A gift crate broken: its gift goes to an empty place, or takes the place
+## of the gift had longest (`lost`, 0 when the place was empty). Nothing
+## starts until `use()`.
 func _take(kind: int, at: Vector2) -> void:
 	caught += 1
+	var slot := 0
+	for i in TRAY:
+		if int(held[i]) == 0:
+			slot = i
+			break
+		if int(_held_at[i]) < int(_held_at[slot]):
+			slot = i
+	var lost: int = held[slot]
+	_had += 1
+	held[slot] = kind
+	_held_at[slot] = _had
+	events.append({"type": "gift", "pos": at, "kind": kind, "slot": slot, "lost": lost})
+
+## Whether the gift in `slot` can be started now: there is one, and a wave
+## is on to use it against.
+func can_use(slot: int) -> bool:
+	return phase == Phase.PLAY and gap_t <= 0.0 and slot >= 0 and slot < TRAY and int(held[slot]) != 0
+
+## Starts the gift in `slot`. A shape takes the place of the shape running
+## and an element of the element, each with its own time; a shape and an
+## element run together.
+func use(slot: int) -> bool:
+	if not can_use(slot):
+		return false
+	var kind: int = held[slot]
+	held[slot] = 0
+	used += 1
 	match kind:
 		Kind.FROST:
 			frost_t = FROST_TIME
 		Kind.SHOVE:
 			_shove()
+		Kind.ZAP, Kind.FLAME:
+			element = kind
+			element_t = POD_TIME
 		_:
-			pod = kind
-			pod_t = POD_TIME
-	events.append({"type": "gift", "pos": at, "kind": kind})
+			shape = kind
+			shape_t = POD_TIME
+	events.append({"type": "use", "kind": kind, "slot": slot})
+	return true
 
 ## Everything coming goes back a way: the wall up, the millipede along
 ## its path.
@@ -780,13 +858,21 @@ func _a_pod(last: int) -> int:
 	pods.erase(last)
 	return pods[rng.randi_range(0, pods.size() - 1)]
 
+## A pod that runs together with `pod`: an element for a shape, a shape for
+## an element.
+func _a_match(pod: int) -> int:
+	var pods := [Kind.ZAP, Kind.FLAME] if is_shape(pod) else [Kind.FAN, Kind.PIERCE, Kind.BURST]
+	return pods[rng.randi_range(0, pods.size() - 1)]
+
 ## What a wave's `count` gifts are, in the order they are met: a pod first,
 ## never the one the wave before began with, and after it the frost (from
-## wave 3), the shove (from wave 4) and one more pod, in any order.
+## wave 3), the shove (from wave 4) and one more pod, in any order. The
+## second pod is one that runs together with the first, so no wave holds two
+## pods of which one is wasted.
 func _plan_gifts(count: int) -> Array:
 	var first := _a_pod(_last_pod)
 	_last_pod = first
-	var extras: Array = [_a_pod(first)]
+	var extras: Array = [_a_match(first)]
 	if wave >= 3:
 		extras.append(Kind.FROST)
 	if wave >= 4:

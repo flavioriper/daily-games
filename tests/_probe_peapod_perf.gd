@@ -13,8 +13,10 @@ func _run(wave: int, label: String) -> void:
 	sim.rate_lv = Sim.MAX_RATE
 	sim.crit_lv = Sim.CRIT_MAX
 	sim.power = 9
-	sim.pod = Sim.Kind.ZAP
-	sim.pod_t = 1000.0
+	sim.shape = Sim.Kind.FAN
+	sim.shape_t = 1000.0
+	sim.element = Sim.Kind.ZAP
+	sim.element_t = 1000.0
 	sim.rows.clear()
 	sim.segs.clear()
 	sim.wave = wave - 1
