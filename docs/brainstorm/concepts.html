@@ -18,9 +18,10 @@ header{background:linear-gradient(180deg,var(--sky-dk),var(--sky));color:#fff;pa
 header .brand{display:flex;align-items:baseline;gap:14px}
 header h1{margin:0;font-size:22px;letter-spacing:.5px}
 header .brand span{opacity:.8;font-size:14px}
-nav.tabs{display:flex;gap:6px;margin-top:16px}
-nav.tabs button{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;
-  padding:10px 18px;border-radius:12px 12px 0 0;font-size:15px;font-weight:600;cursor:pointer}
+nav.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;padding-bottom:16px}
+nav.tabs button{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;white-space:nowrap;
+  padding:7px 13px;border-radius:999px;font-size:14px;font-weight:600;cursor:pointer}
+nav.tabs button:hover{background:rgba(255,255,255,.26)}
 nav.tabs button.active{background:var(--cream);color:var(--ink)}
 main{max-width:1120px;margin:0 auto;padding:28px 24px 80px}
 .tab-panel{display:none}
@@ -360,6 +361,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="hedgehogs">Hedgehogs &middot; flat</button>
     <button data-tab="drumbeat">Drumbeat &middot; one road</button>
     <button data-tab="knots">Untangle &middot; knots</button>
+    <button data-tab="valley">Valley &middot; grove</button>
   </nav>
 </header>
 
@@ -3757,6 +3759,100 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Do the bands read as a rope wound round another</b>, or as a mark painted on it? They are the whole count: 3 is one band, 5 is two.</li>
     <li><b>Is the hook a knot at a glance?</b> It is the one place two ropes still bend, and a deep hook across the ring crosses the ropes between (drawn over or under both legs alike, so it reads as lying on them, not tied to them).</li>
     <li><b>A rope's reach is not in this mock.</b> On the board a hooked rope must still fit its own length; the hook would sit nearer the shorter rope, as the braid does today.</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-valley">
+  <h2>Valley &middot; connected places, the Grove first <span class="pill blue">concept &middot; 2026-10-05, fourth pass</span></h2>
+  <p class="lede">A sixth tab of slow games that will feed each other through <b>one shared inventory</b>, with no last level and no finish. Only the first is planned and shown: the <b>Grove</b>: a piece of land in the water where trees come up at random spots, and <b>you chop whatever stands in a circle round your finger</b>. Nothing chops for you yet. A felled tree leaves two things: <b>wood</b>, which goes to the shared inventory and is never spent here, and <b>energy</b>, which stays in the Grove and pays for its upgrades. The Grove follows the gathering zone of <i>Tiny Biomes: Cozy Idle</i>, named here once and nowhere in the game.</p>
+
+  <div class="hero">
+    <div class="noref">
+      <p><b>Playing it here.</b> The phone opens on the tab. Tap the Grove's card to go in, the arrow to come back. In the grove, <b>press and hold on the land</b>: the circle chops everything inside it, again and again, and follows the pointer as you drag. A tap is one chop. The first tree takes four. <b>Tap a tile</b> to buy it with energy. The numbers on this page are the slow ones proposed for the game, so the buttons under the phone are how to see further: fill the land as coming back later would, run time ten times faster, or hand over 1,000 energy.</p>
+      <table>
+        <tr><th>Choice</th><th>Where it stands</th></tr>
+        <tr><td class="k">Home</td><td><span class="pill">decided</span> A new tab in Daily, beside Puzzles, Versus and Arcade.</td></tr>
+        <tr><td class="k">The screen</td><td><span class="pill">decided</span> A piece of land seen from above, trees coming up at random spots, chopped in an area round the touch. No automation yet.</td></tr>
+        <tr><td class="k">The start</td><td><span class="pill">decided</span> Very small, and every tree starts at 4: four hits for the first wood.</td></tr>
+        <tr><td class="k">Two yields</td><td><span class="pill">decided</span> Energy upgrades the Grove. Wood is shared with the other games and the Grove never spends it.</td></tr>
+        <tr><td class="k">Pace</td><td><span class="pill">decided</span> Really slow, and endless. Not something finished in two hours, or at all.</td></tr>
+        <tr><td class="k">Inventory</td><td><span class="pill blue">proposed</span> One store of named resources that every place reads and writes. Energy is not in it: each place keeps its own.</td></tr>
+        <tr><td class="k">Time away</td><td><span class="pill blue">proposed</span> Trees keep coming up while you are gone, until the land is full.</td></tr>
+        <tr><td class="k">Names</td><td><span class="pill blue">proposed</span> Valley, Grove.</td></tr>
+      </table>
+      <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?view=grove</code>, <code>?lv=0|1|2</code> for a start, middle or late grove, <code>?t=</code> seconds in, <code>?hold=540,650</code> to hold the circle at a point of the 1080-wide screen, <code>?rm=1</code>; pick the tab with <code>#valley</code>.</p>
+    </div>
+
+    <div class="demo">
+      <div class="phone" style="background:#f6efe3">
+        <canvas id="vg" width="390" height="720" style="touch-action:none;cursor:pointer"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="vg-away">Come back later</button>
+        <button id="vg-speed">Time &times;1</button>
+        <button id="vg-gift">+1,000 energy</button>
+        <button id="vg-reset">Start over</button>
+        <button id="vg-rm">Reduce motion: off</button>
+      </div>
+      <p class="lbl" id="vg-caption" style="font-size:13.5px;color:var(--muted);text-align:center;max-width:390px"></p>
+    </div>
+  </div>
+
+  <h3>1. The Grove's rules <span class="pill blue">proposed</span></h3>
+  <ul>
+    <li><b>The land</b> holds a set number of trees. While there is room, a new one comes up at a random free spot, after a wait that is itself a little random (0.6 to 1.4 times the Sprout time). When the land is full it waits.</li>
+    <li><b>The circle</b> is there while a finger is down and moves with it. On every swing, each tree inside it takes the axe's strength, and the number pops over it. Holding and tapping chop at the same pace.</li>
+    <li><b>A felled tree</b> gives wood to the shared inventory and the same amount of energy to the Grove. Its spot is free again.</li>
+    <li><b>While you are away</b> the land goes on filling, up to its room, and no further.</li>
+  </ul>
+  <table>
+    <tr><th>Tree</th><th>To fell</th><th>Wood and energy, each</th><th>Comes with</th></tr>
+    <tr><td class="k">Sapling</td><td>4</td><td>1</td><td>the start</td></tr>
+    <tr><td class="k">Birch</td><td>10</td><td>2</td><td>Seeds 1</td></tr>
+    <tr><td class="k">Oak</td><td>27</td><td>4</td><td>Seeds 2</td></tr>
+    <tr><td class="k">Pine</td><td>70</td><td>8</td><td>Seeds 3</td></tr>
+    <tr><td class="k">Blossom</td><td>183</td><td>16</td><td>Seeds 4</td></tr>
+    <tr><td class="k">and on</td><td>&times;2.6 a tier</td><td>&times;2 a tier</td><td>every Seeds after, with no last one</td></tr>
+  </table>
+  <p>A richer tree asks for more than it pays, so Seeds only helps once the axe has caught up. A new tree is the best tier opened a little over half the time, the one below it three times in ten, the one below that for the rest.</p>
+  <table>
+    <tr><th>Tile</th><th>Each level</th><th>Start</th><th>Levels</th><th>Energy</th></tr>
+    <tr><td class="k">Axe</td><td>+1 to every chop</td><td>1</td><td>no end</td><td>10, then &times;1.38</td></tr>
+    <tr><td class="k">Reach</td><td>a circle 8% wider</td><td>180 across, of a land 810 wide</td><td>12</td><td>40, then &times;2.1</td></tr>
+    <tr><td class="k">Swing</td><td>7% less time between chops</td><td>0.5 s</td><td>15</td><td>30, then &times;1.9</td></tr>
+    <tr><td class="k">Sprout</td><td>trees come 7% sooner</td><td>about one every 6 s</td><td>20</td><td>15, then &times;1.65</td></tr>
+    <tr><td class="k">Room</td><td>one more tree on the land</td><td>3</td><td>27</td><td>12, then &times;1.5</td></tr>
+    <tr><td class="k">Seeds</td><td>the next tier of tree</td><td>saplings only</td><td>no end</td><td>120, then &times;7</td></tr>
+  </table>
+
+  <h3>2. How slow that is <span class="pill blue">an estimate</span></h3>
+  <p>A rough model of these numbers, with a player who always buys the cheapest tile. It is arithmetic, not a played game: the real figures come from a headless probe on the built sim.</p>
+  <table>
+    <tr><th>Player</th><th>First Birch</th><th>First Oak</th><th>First Pine</th><th>After 30 days</th><th>After 90 days</th></tr>
+    <tr><td class="k">Eight visits a day, two minutes each</td><td>day 5</td><td>day 22</td><td>day 61</td><td>Axe 16, Room 13 of 27, Seeds 2</td><td>Axe 23, Room 18 of 27, Seeds 3</td></tr>
+    <tr><td class="k">Six visits a day, ten minutes each</td><td>day 2</td><td>day 7</td><td>day 20</td><td>Axe 23, Room 18 of 27, Seeds 3</td><td>&ndash;</td></tr>
+    <tr><td class="k">Two hours without stopping</td><td>at 1 h 40</td><td>not reached</td><td>not reached</td><td colspan="2">ends at Axe 9, Room 7 of 27, Seeds 1, about 1,700 wood</td></tr>
+  </table>
+
+  <h3>3. The shared inventory <span class="pill blue">proposed</span></h3>
+  <table>
+    <tr><td class="k">One store</td><td>A new autoload beside <code>Wallet</code>, with its own file. It holds a count for each named resource (<code>wood</code> now, more as the other games are planned) and answers four things: how much, add, can this cost be paid, pay it. It says <code>changed</code>, so a pill anywhere follows. Gold and boosters stay in <code>Wallet</code>.</td></tr>
+    <tr><td class="k">A place</td><td>Owns its own save: its levels, its energy, what stands on its land, when it was last seen. It reads and writes the store and nothing else, so the next place can be built without opening the Grove's code.</td></tr>
+    <tr><td class="k">Away</td><td>Worked out when a place is next looked at, from the seconds since it was left. Nothing runs in the background. A clock set forwards fills the land once.</td></tr>
+    <tr><td class="k">Kept on</td><td>The device, like gold. A reinstall starts the valley again.</td></tr>
+  </table>
+
+  <h3>Calls this page is for</h3>
+  <ul>
+    <li><b>The word energy.</b> It is the Grove's own currency, drawn as a green spark. You also described a later game that makes power for the others, and the two words are close. If every place gets its own upgrade currency, should each have its own name?</li>
+    <li><b>Is this slow enough, or too slow?</b> The table above is the proposal: a first new tree inside the first week for a light player, an Oak after about three weeks.</li>
+    <li><b>Four tiles end, two do not.</b> Axe and Seeds go on for ever. Reach, Swing, Sprout and Room stop, because a circle cannot outgrow the land and a land cannot hold more than about thirty trees. What goes on for ever after them is the race between the axe and richer trees.</li>
+    <li><b>Past Blossom</b> the five looks come round again with a gold mark under the tree. Is that enough, or does every tier need its own tree?</li>
+    <li><b>The feel of the circle</b> on a phone, where the finger covers its middle.</li>
+    <li><b>No timer.</b> The reference chops in short timed days. Here the land is always open and the wait for trees is what ends a visit.</li>
+    <li><b>Six tiles, not a skill tree.</b></li>
+    <li><b>A sixth tab</b> called Valley, between Arcade and Stats.</li>
+    <li><b>Left out of the first build:</b> every other place (the tab holds the Grove alone until the next one is planned), automation, the reference's chests and critical hits, any ad, and a growing land.</li>
   </ul>
 </section>
 </main>
@@ -21856,6 +21952,321 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   const pn=MINE?parseInt(Q.get('n')||'0')||0:0;
   if(pn>=1&&pn<=6) setPreset(pn); else deal();
   labels(); caption(); draw(performance.now());
+})();
+
+/* ---------- the valley mock: connected places, the grove first ---------- */
+(function(){
+  const cv=document.getElementById('vg'); if(!cv) return;
+  const panel=document.getElementById('tab-valley');
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const MINE=location.hash==='#valley';
+  const T0=MINE?parseFloat(Q.get('t')||'0')||0:0;
+  let RM=MINE&&Q.get('rm')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+
+  const C={paper:'#f6efe3',surface:'#fffdf8',surfaceHi:'#f1e6d2',line:'#b8a892',text:'#3b3028',dim:'#8a7b6b',
+    sun:'#f5a623',sunDeep:'#d88a12',cream:'#fff6e6',accent:'#4c9a94',good:'#7cb06b',
+    bark:'#9c6b45',barkDeep:'#6e4a2f',pith:'#f0d9ae',plank:'#b5825a',
+    water:'#8fd9d2',waterDeep:'#7ccbc6',grass:'#a9d66b',grassHi:'#b9e07c',grassDeep:'#8cc152',cliff:'#c9853f',cliffDeep:'#a96a2c',
+    pill:'#ffe6bd',pillRim:'#f4c98a',idle:'#6e6057'};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  // ---- the rule ----
+  // What the land can grow: chops to fell, wood given, and its size on the
+  // land. Seeds opens the next kind. Placeholder numbers, fast on purpose.
+  const LOOK=[{name:'Sapling',r:24},{name:'Birch',r:34},{name:'Oak',r:44},{name:'Pine',r:42},{name:'Blossom',r:52}];
+  // A tree's tier is the Seeds level it came with. The first is four chops
+  // for one wood and one energy; every tier after is 2.6 times the chops for
+  // twice the yield, with no last one. Past Blossom the looks come round again.
+  const lookOf=t=>t<5?t:1+(t-5)%4, hpOf=t=>Math.round(4*Math.pow(2.6,t)), giveOf=t=>Math.round(Math.pow(2,t));
+  const nameOf=t=>LOOK[lookOf(t)].name+(t>=5?' '+'\u2605'.repeat(1+Math.floor((t-5)/4)):'');
+  const kind=t=>({hp:hpOf(t),give:giveOf(t),r:LOOK[lookOf(t)].r});
+  // Paid in energy, never in wood. Axe and Seeds have no last level.
+  const UPS=[
+    {id:'axe',name:'Axe',cost:l=>10*Math.pow(1.38,l),max:Infinity},
+    {id:'reach',name:'Reach',cost:l=>40*Math.pow(2.1,l),max:12},
+    {id:'swing',name:'Swing',cost:l=>30*Math.pow(1.9,l),max:15},
+    {id:'sprout',name:'Sprout',cost:l=>15*Math.pow(1.65,l),max:20},
+    {id:'room',name:'Room',cost:l=>12*Math.pow(1.5,l),max:27},
+    {id:'seeds',name:'Seeds',cost:l=>120*Math.pow(7,l),max:Infinity}];
+  const LAND={x:135,y:262,w:810,h:800},GROW=1.6,FALL=0.4,SCENE_TOP=150,SCENE_BOT=1180;
+  const maxOf=u=>Array.isArray(u.cost)?u.cost.length:u.max;
+  const costOf=(u,l)=>Math.round(Array.isArray(u.cost)?u.cost[l]:u.cost(l));
+
+  let lv={},wood=0,shown=0,energy=0,shownE=0,clock=0,view='tab',speed=1,nextId=1,spawnAcc=0,gap=6;
+  let trees=[],falls=[],nums=[],flies=[],pillAt=-9,epillAt=-9;
+  let hold=null,lastChop=-9,chopAt=-9;
+  const tileAt={};
+
+  const power=()=>1+lv.axe, reach=()=>90*Math.pow(1.08,lv.reach), swingT=()=>0.5*Math.pow(0.93,lv.swing),
+    spawnT=()=>6*Math.pow(0.93,lv.sprout), room=()=>3+lv.room;
+
+  function spawn(grown){
+    if(trees.length>=room()) return false;
+    const id=nextId++; let x=0,y=0;
+    for(let a=0;a<24;a++){x=LAND.x+70+Math.random()*(LAND.w-140); y=LAND.y+120+Math.random()*(LAND.h-170);
+      let ok=true; for(const t of trees) if(Math.hypot(t.x-x,t.y-y)<(a<16?96:70)){ok=false; break;} if(ok) break;}
+    const top=lv.seeds,r=Math.random(),k=Math.max(0,r<0.55?top:r<0.85?top-1:top-2);
+    trees.push({id,k,x,y,hp:hpOf(k),born:grown?clock-9*speed:clock,hitAt:-9});
+    return true;}
+  function reset(preset){
+    lv=Object.assign({},[{axe:0,reach:0,swing:0,sprout:0,room:0,seeds:0},{axe:6,reach:2,swing:2,sprout:4,room:5,seeds:1},{axe:60,reach:10,swing:12,sprout:16,room:24,seeds:4}][preset||0]);
+    wood=[0,900,250000][preset||0]; shown=wood; energy=[0,160,90000][preset||0]; shownE=energy; clock=0; spawnAcc=0; gap=spawnT(); trees=[]; falls=[]; nums=[]; flies=[]; hold=null;
+    const n=[1,6,room()][preset||0]; for(let i=0;i<n;i++) spawn(true);}
+
+  // ---- the sim ----
+  function fell(tr){
+    trees.splice(trees.indexOf(tr),1); falls.push({tr,at:clock,dir:hash(tr.id,3)<0.5?-1:1});
+    const K=kind(tr.k),n=K.give; wood+=n; energy+=n;
+    nums.push({x:tr.x,y:tr.y-K.r*2.6,text:'+'+fmt(n),at:clock,gold:true});
+    if(!RM) for(let j=0;j<Math.min(6,2*n);j++) flies.push({x:tr.x+(hash(tr.id,j)-0.5)*70,y:tr.y-40+(hash(tr.id,j+9)-0.5)*40,at:clock+j*0.04*speed,e:j%2===1});}
+  // One chop: everything standing inside the circle takes the axe.
+  function chop(){
+    lastChop=clock; chopAt=clock; const R=reach();
+    for(const tr of trees.slice()){const K=kind(tr.k);
+      if(Math.hypot(tr.x-hold.x,tr.y-K.r-hold.y)>R+K.r*0.6) continue;
+      tr.hp-=power(); tr.hitAt=clock;
+      nums.push({x:tr.x+(hash(tr.id,Math.floor(clock*50))-0.5)*30,y:tr.y-K.r*2.2,text:fmt(power()),at:clock});
+      if(tr.hp<=0) fell(tr);}}
+  function step(dt){
+    clock+=dt;
+    if(trees.length<room()){spawnAcc+=dt; if(spawnAcc>=gap){spawnAcc=0; gap=spawnT()*(0.6+0.8*Math.random()); spawn(false);}} else spawnAcc=Math.min(spawnAcc+dt,gap);
+    if(hold&&view==='grove'&&clock-lastChop>=swingT()) chop();
+    falls=falls.filter(f=>clock-f.at<FALL*speed); nums=nums.filter(n=>clock-n.at<0.7*speed);
+    flies=flies.filter(f=>{if(clock-f.at>=0.5*speed){if(f.e) epillAt=performance.now()/1000; else pillAt=performance.now()/1000; return false;} return true;});}
+  function buy(u){
+    const l=lv[u.id]; if(l>=maxOf(u)) return;
+    const c=costOf(u,l); if(energy<c){tileAt[u.id]={at:performance.now()/1000,no:true}; return;}
+    energy-=c; lv[u.id]=l+1; tileAt[u.id]={at:performance.now()/1000,no:false};}
+  function goAway(){while(spawn(true)){} spawnAcc=0;}
+
+  // ---- canvas helpers ----
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function txt(s,x,y,size,col,align,font,weight){ctx.font=(weight||600)+' '+size+'px '+(font||FD);ctx.fillStyle=col;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(s,x,y);}
+  function disc(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=col;ctx.fill();}
+  function oval(x,y,rx,ry,col,rot){ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot||0,0,7);ctx.fillStyle=col;ctx.fill();}
+  function fmt(n){n=Math.floor(n); if(n<1000) return ''+n; let i=0; while(n>=1000&&i<5){n/=1000; i++;} return n.toFixed(n<10?2:n<100?1:0).replace(/\.0+$|(\.\d*[1-9])0+$/,'$1')+' KMBTQ'[i];}
+
+  function logIcon(x,y,s,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot==null?-0.3:rot);
+    rr(-s*0.62,-s*0.3,s*1.24,s*0.6,s*0.3);ctx.fillStyle=C.bark;ctx.fill();
+    oval(s*0.4,0,s*0.2,s*0.3,C.pith);
+    ctx.beginPath();ctx.ellipse(s*0.4,0,s*0.09,s*0.14,0,0,7);ctx.strokeStyle=C.bark;ctx.lineWidth=s*0.05;ctx.stroke();
+    ctx.restore();}
+  // A tree seen from a little above, standing on (0,0), its crown K.r wide.
+  function tree(t,x,y,sx,sy,rot,a){const k=lookOf(t),r=LOOK[k].r;
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.scale(sx,sy);ctx.globalAlpha=a;
+    if(k===0){ctx.strokeStyle='#6f9f3e';ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-r*1.2);ctx.stroke();
+      oval(-r*0.5,-r*1.2,r*0.55,r*0.3,'#8cc763',0.5);oval(r*0.5,-r*1.4,r*0.55,r*0.3,'#8cc763',-0.5);disc(0,-r*1.8,r*0.5,'#a6d96e');}
+    else if(k===3){rr(-r*0.16,-r*0.7,r*0.32,r*0.7,4);ctx.fillStyle='#7a5236';ctx.fill();
+      const tier=(yb,w,h,col)=>{ctx.beginPath();ctx.moveTo(-w,yb);ctx.quadraticCurveTo(0,yb+r*0.22,w,yb);ctx.lineTo(r*0.1,yb-h);ctx.quadraticCurveTo(0,yb-h-6,-r*0.1,yb-h);ctx.closePath();ctx.fillStyle=col;ctx.fill();};
+      tier(-r*0.45,r*1.0,r*1.1,'#3f7f5a');tier(-r*1.2,r*0.8,r*1.0,'#488a63');tier(-r*1.85,r*0.58,r*0.95,'#52966c');}
+    else{const P=[null,['#f3eee2','#9ccb5c','#a9d46a','#c4e486'],['#8a5c3a','#559238','#5f9c3e','#8cc763'],null,['#8a5c3a','#e58fb5','#f0a6c6','#fbd0e2']][k];
+      rr(-r*0.2,-r*1.1,r*0.4,r*1.1,r*0.14);ctx.fillStyle=P[0];ctx.fill();
+      if(k===1){ctx.fillStyle='#6e6057';rr(-r*0.2,-r*0.5,r*0.22,4,2);ctx.fill();rr(0,-r*0.82,r*0.2,4,2);ctx.fill();}
+      disc(-r*0.62,-r*1.35,r*0.66,P[1]);disc(r*0.64,-r*1.3,r*0.64,P[1]);disc(0,-r*1.75,r*0.86,P[2]);disc(-r*0.24,-r*2.0,r*0.32,P[3]);
+      if(k===4){for(const o of [[-0.7,-1.2],[0.5,-1.6],[0.1,-2.1],[0.75,-1.1]]) disc(o[0]*r,o[1]*r,r*0.09,'#fff6e6');}}
+    ctx.restore();}
+  function lily(x,y,r,a){ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,0.35,6.0);ctx.closePath();ctx.fillStyle='#63b56a';ctx.fill();
+    ctx.beginPath();ctx.arc(0,0,r*0.62,0.6,5.6);ctx.strokeStyle='#7cc983';ctx.lineWidth=3;ctx.stroke();ctx.restore();}
+
+  // The grove's scene, in the screen's own coordinates (y 150 to 1180).
+  function scene(now,live){
+    let g=ctx.createLinearGradient(0,SCENE_TOP,0,SCENE_BOT);g.addColorStop(0,C.water);g.addColorStop(1,C.waterDeep);
+    ctx.fillStyle=g;ctx.fillRect(0,SCENE_TOP,W,SCENE_BOT-SCENE_TOP);
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=4;ctx.lineCap='round';
+    for(let i=0;i<14;i++){const x=hash(i,31)*W,y=SCENE_TOP+30+hash(i,32)*(SCENE_BOT-SCENE_TOP-60),d=RM?0:Math.sin(now*0.8+i)*8;
+      ctx.beginPath();ctx.moveTo(x+d,y);ctx.lineTo(x+d+26+hash(i,33)*30,y);ctx.stroke();}
+    for(const p of [[60,330,30,0.4],[1012,470,34,2.2],[70,860,34,4],[1015,960,28,1.2],[330,1130,30,3],[800,1128,26,5.2],[520,200,26,0.9],[905,208,22,2.8]]) lily(p[0],p[1]+(RM?0:Math.sin(now*0.7+p[0])*3),p[2],p[3]);
+    for(const p of [[70,560],[1010,720],[200,200]]){oval(p[0],p[1]+10,36,12,'rgba(40,110,110,0.2)');oval(p[0],p[1],32,22,'#b9ab92');oval(p[0]-8,p[1]-7,14,8,'#d2c6ae');}
+    // the land: its shade on the water, the earth edge, the grass
+    rr(LAND.x-8,LAND.y+40,LAND.w+16,LAND.h+18,64);ctx.fillStyle='rgba(40,110,110,0.22)';ctx.fill();
+    rr(LAND.x,LAND.y+30,LAND.w,LAND.h+6,60);ctx.fillStyle=C.cliffDeep;ctx.fill();
+    rr(LAND.x,LAND.y+18,LAND.w,LAND.h+6,60);ctx.fillStyle=C.cliff;ctx.fill();
+    rr(LAND.x,LAND.y,LAND.w,LAND.h,60);ctx.fillStyle=C.grassDeep;ctx.fill();
+    rr(LAND.x+10,LAND.y+10,LAND.w-20,LAND.h-24,52);ctx.fillStyle=C.grass;ctx.fill();
+    for(let i=0;i<9;i++) oval(LAND.x+110+hash(i,41)*(LAND.w-220),LAND.y+100+hash(i,42)*(LAND.h-200),60+hash(i,43)*40,30+hash(i,44)*22,C.grassHi);
+    ctx.strokeStyle='#86bb4d';ctx.lineWidth=4;
+    for(let i=0;i<40;i++){const x=LAND.x+40+hash(i,1)*(LAND.w-80),y=LAND.y+50+hash(i,2)*(LAND.h-90);ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-9,y-12);ctx.moveTo(x+2,y);ctx.lineTo(x+4,y-15);ctx.stroke();}
+    for(let i=0;i<10;i++){const x=LAND.x+50+hash(i,11)*(LAND.w-100),y=LAND.y+60+hash(i,12)*(LAND.h-110); disc(x,y,6,i%3?'#fff6e6':'#f4a7a0'); disc(x,y,2.4,'#f5a623');}
+    const list=[];
+    for(const tr of trees) list.push({y:tr.y,f:()=>{const K=kind(tr.k);
+      const u=RM?1:clamp((clock-tr.born)/(GROW*speed)),sc=0.15+0.85*backOut(u),d=(clock-tr.hitAt)/speed;
+      const sq=RM||d>0.16?0:Math.sin(d/0.16*Math.PI)*0.16,sway=RM?0:Math.sin(now*1.4+tr.id)*0.02;
+      oval(tr.x,tr.y+2,K.r*1.05*sc,K.r*0.34*sc,'rgba(50,90,30,0.25)');
+      tree(tr.k,tr.x,tr.y,sc*(1+sq),sc*(1-sq),sway,1);
+      if(tr.k>=5){const m=1+Math.floor((tr.k-5)/4);for(let i=0;i<m;i++) disc(tr.x-(m-1)*9+i*18,tr.y-4,7,'#ffd66b');}
+      if(tr.hp<K.hp){const w=Math.max(54,K.r*1.6);rr(tr.x-w/2,tr.y+12,w,12,6);ctx.fillStyle='rgba(59,48,40,0.35)';ctx.fill();
+        rr(tr.x-w/2,tr.y+12,Math.max(12,w*tr.hp/K.hp),12,6);ctx.fillStyle=C.cream;ctx.fill();}}});
+    for(const f of falls) list.push({y:f.tr.y,f:()=>{const u=(clock-f.at)/(FALL*speed);
+      tree(f.tr.k,f.tr.x,f.tr.y,1,1,RM?0:f.dir*u*u*1.3,1-u*u);}});
+    list.sort((a,b)=>a.y-b.y); for(const d of list) d.f();
+    if(!live) return;
+    if(hold){const R=reach(),d=(clock-chopAt)/speed,p=RM?0:Math.max(0,1-d/0.18);
+      disc(hold.x,hold.y,R,'rgba(255,255,255,'+(0.22+p*0.2)+')');
+      ctx.beginPath();ctx.arc(hold.x,hold.y,R+p*8,0,7);ctx.strokeStyle='rgba(59,48,40,0.75)';ctx.lineWidth=5;ctx.stroke();
+      ctx.beginPath();ctx.arc(hold.x,hold.y,R-5,0,7);ctx.strokeStyle='rgba(255,255,255,0.8)';ctx.lineWidth=3;ctx.stroke();}
+    for(const n of nums){const u=(clock-n.at)/(0.7*speed),y=n.y-(RM?0:u*56),sz=n.gold?50:40;ctx.globalAlpha=1-u*u*u;
+      ctx.lineWidth=8;ctx.lineJoin='round';ctx.strokeStyle='rgba(59,48,40,0.7)';ctx.font='700 '+sz+'px '+FD;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeText(n.text,n.x,y);
+      txt(n.text,n.x,y,sz,n.gold?'#ffd66b':'#fff','center',FD,700);}
+    ctx.globalAlpha=1;}
+
+  const PILL={x:812,y:42,w:228,h:84},EPILL={x:564,y:42,w:228,h:84};
+  // Energy: what a felled tree leaves for the grove itself. A green spark,
+  // nothing like the bolt of the valley's power.
+  function spark(x,y,s){ctx.beginPath();for(let i=0;i<8;i++){const a=i/8*6.283-1.571,r=i%2?s*0.36:s;ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}ctx.closePath();
+    ctx.fillStyle='#7fbf3f';ctx.fill();disc(x,y,s*0.3,'#d9f09a');}
+  function pill(P,pn,at,icon,value){
+    const pop=RM?0:Math.max(0,1-(pn-at)/0.22);
+    ctx.save();ctx.translate(P.x+P.w/2,P.y+P.h/2);ctx.scale(1+pop*0.08,1+pop*0.08);
+    rr(-P.w/2,-P.h/2,P.w,P.h,42);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.line;ctx.lineWidth=3;ctx.stroke();
+    icon(-P.w/2+48,0); txt(fmt(value),P.w/2-26,2,42,C.text,'right',FD,600);
+    ctx.restore();}
+
+  // ---- the grove screen ----
+  const TILE={x:40,y:1296,w:(W-80-48)/3,h:(H-40-1296-24)/2,gap:24};
+  const tileRect=i=>({x:TILE.x+(i%3)*(TILE.w+TILE.gap),y:TILE.y+Math.floor(i/3)*(TILE.h+TILE.gap),w:TILE.w,h:TILE.h});
+  function upIcon(id,x,y){
+    if(id==='axe'){ctx.save();ctx.translate(x,y);ctx.rotate(0.6);rr(-6,-44,12,92,6);ctx.fillStyle=C.bark;ctx.fill();
+      ctx.beginPath();ctx.moveTo(-6,-40);ctx.quadraticCurveTo(-46,-46,-48,-8);ctx.quadraticCurveTo(-26,-16,-6,-10);ctx.closePath();ctx.fillStyle='#9ba5ad';ctx.fill();
+      ctx.beginPath();ctx.moveTo(-40,-40);ctx.quadraticCurveTo(-50,-26,-48,-8);ctx.lineWidth=5;ctx.strokeStyle='#d5dde3';ctx.stroke();ctx.restore();}
+    else if(id==='reach'){ctx.save();ctx.setLineDash([10,9]);ctx.beginPath();ctx.arc(x,y,42,0,7);ctx.strokeStyle=C.dim;ctx.lineWidth=5;ctx.stroke();ctx.restore();
+      disc(x,y,20,'rgba(245,166,35,0.35)');ctx.beginPath();ctx.arc(x,y,20,0,7);ctx.strokeStyle=C.sun;ctx.lineWidth=5;ctx.stroke();}
+    else if(id==='swing'){ctx.strokeStyle=C.sun;ctx.lineWidth=7;ctx.lineCap='round';for(const r of [20,34,48]){ctx.beginPath();ctx.arc(x-18,y+16,r,-1.5,-0.1);ctx.stroke();}}
+    else if(id==='sprout'){oval(x,y+30,44,13,'#8f6b47');tree(0,x,y+28,1.5,1.5,0,1);}
+    else if(id==='room'){tree(1,x-30,y+34,0.62,0.62,0,1);tree(1,x+30,y+34,0.62,0.62,0,1);tree(1,x,y+44,0.78,0.78,0,1);}
+    else{const k=lv.seeds+1,s=40/LOOK[lookOf(k)].r;tree(k,x,y+44,s,s,0,1);}}
+  function effect(u){
+    if(u.id==='axe') return 'chop '+power()+' → '+(power()+1);
+    if(u.id==='reach') return 'a wider circle';
+    if(u.id==='swing') return swingT().toFixed(2)+' → '+(swingT()*0.93).toFixed(2)+' s a chop';
+    if(u.id==='sprout') return 'one every '+spawnT().toFixed(1)+' → '+(spawnT()*0.93).toFixed(1)+' s';
+    if(u.id==='room') return 'room for '+room()+' → '+(room()+1);
+    return nameOf(lv.seeds+1)+' grows too';}
+  function grove(now,pn){
+    ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);
+    scene(now,true);
+    ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,SCENE_TOP);ctx.fillRect(0,SCENE_BOT,W,H-SCENE_BOT);
+    disc(90,84,44,C.surface);ctx.strokeStyle=C.line;ctx.lineWidth=3;ctx.beginPath();ctx.arc(90,84,44,0,7);ctx.stroke();
+    ctx.strokeStyle=C.text;ctx.lineWidth=7;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(100,62);ctx.lineTo(78,84);ctx.lineTo(100,106);ctx.stroke();
+    txt('Grove',166,86,54,C.text,'left',FD,600);
+    pill(EPILL,pn,epillAt,(x,y)=>spark(x,y,26),shownE);
+    pill(PILL,pn,pillAt,(x,y)=>logIcon(x,y,42),shown);
+    txt(trees.length+' / '+room()+' trees',40,1238,44,C.text,'left',FD,600);
+    txt('hold the land to chop',W-40,1240,34,C.dim,'right',FB,700);
+    UPS.forEach((u,i)=>{
+      const r=tileRect(i),l=lv[u.id],done=l>=maxOf(u),c=done?0:costOf(u,l),can=!done&&energy>=c;
+      const a=tileAt[u.id],d=a?pn-a.at:9;
+      const pop=RM||!a||a.no?0:Math.max(0,1-d/0.25)*0.05,shake=RM||!a||!a.no?0:Math.sin(d*50)*8*Math.max(0,1-d/0.3);
+      ctx.save();ctx.translate(r.x+r.w/2+shake,r.y+r.h/2);ctx.scale(1+pop,1+pop);ctx.translate(-r.w/2,-r.h/2);
+      rr(0,6,r.w,r.h,36);ctx.fillStyle=C.surfaceHi;ctx.fill();
+      rr(0,0,r.w,r.h-6,36);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=can?C.pillRim:'rgba(184,168,146,0.6)';ctx.lineWidth=3;ctx.stroke();
+      ctx.globalAlpha=done||can?1:0.72;
+      disc(r.w/2,84,60,done?'#e6f0da':'#f3e9d2'); if(!(done&&u.id==='seeds')) upIcon(u.id,r.w/2,84); else tree(4,r.w/2,128,0.77,0.77,0,1);
+      txt(u.name,r.w/2,178,40,C.text,'center',FD,600);
+      txt(done?'all done':effect(u),r.w/2,222,27,C.dim,'center',FB,700);
+      if(l>0){rr(r.w-92,16,76,40,20);ctx.fillStyle=C.accent;ctx.fill();txt(done?'max':''+l,r.w-54,37,28,'#fff','center',FD,600);}
+      ctx.globalAlpha=1;
+      if(!done){rr(28,r.h-74,r.w-56,56,28);ctx.fillStyle=can?C.sun:'#e6dccb';ctx.fill();
+        const s=fmt(c);ctx.font='600 36px '+FD;const tw=ctx.measureText(s).width;
+        spark(r.w/2-tw/2-10,r.h-46,19); txt(s,r.w/2+20,r.h-44,36,can?'#fff':C.dim,'center',FD,600);}
+      ctx.restore();});
+    for(const f of flies){const u=clamp((clock-f.at)/(0.5*speed)); if(u<=0) continue;
+      const P=f.e?EPILL:PILL,e=u*u,tx=P.x+48,ty=P.y+P.h/2,x=lerp(f.x,tx,e),y=lerp(f.y,ty,e)-Math.sin(u*Math.PI)*110;
+      if(f.e) spark(x,y,20); else logIcon(x,y,34,-0.3+u*4);}}
+
+  // ---- the tab ----
+  const CARD={x:60,y:372,w:960,h:660},THUMB_H=444;
+  function chip(x,w,label,value,icon,dim){
+    rr(x,196,w,128,34);ctx.fillStyle=dim?C.surfaceHi:C.surface;ctx.fill();ctx.strokeStyle='rgba(184,168,146,0.6)';ctx.lineWidth=3;ctx.stroke();
+    ctx.globalAlpha=dim?0.55:1; icon(x+62,260);
+    txt(value,x+116,246,42,C.text,'left',FD,600); txt(label,x+116,290,28,C.dim,'left',FB,700); ctx.globalAlpha=1;}
+  function tab(now,pn){
+    ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);
+    txt('Valley',60,92,76,C.text,'left',FD,600);
+    txt('Places that feed each other',60,154,34,C.dim,'left',FB,700);
+    const cw=(W-120-40)/3;
+    chip(60,cw,'Wood',fmt(shown),(x,y)=>logIcon(x,y,46),false);
+    // the grove's card: a window on the land as it stands, and how full it is
+    rr(CARD.x,CARD.y+8,CARD.w,CARD.h,44);ctx.fillStyle=C.surfaceHi;ctx.fill();
+    rr(CARD.x,CARD.y,CARD.w,CARD.h,44);ctx.fillStyle=C.surface;ctx.fill();
+    const k=(CARD.w-40)/W,full=trees.length>=room();
+    ctx.save();rr(CARD.x+20,CARD.y+20,CARD.w-40,THUMB_H,30);ctx.clip();
+    ctx.translate(CARD.x+20,CARD.y+20-420*k);ctx.scale(k,k);scene(now,false);ctx.restore();
+    rr(CARD.x+20,CARD.y+20,CARD.w-40,THUMB_H,30);ctx.strokeStyle=C.surface;ctx.lineWidth=4;ctx.stroke();
+    const ty=CARD.y+20+THUMB_H;
+    txt('Grove',CARD.x+40,ty+56,52,C.text,'left',FD,600);
+    txt('A new tree about every '+spawnT().toFixed(1)+' s',CARD.x+40,ty+108,32,C.dim,'left',FB,700);
+    rr(CARD.x+40,ty+140,560,22,11);ctx.fillStyle=C.surfaceHi;ctx.fill();
+    if(trees.length>0){rr(CARD.x+40,ty+140,Math.max(22,560*trees.length/room()),22,11);ctx.fillStyle=full?C.sun:C.good;ctx.fill();}
+    txt(full?'The land is full':'Growing',CARD.x+40,ty+182,26,C.dim,'left',FB,700);
+    txt(trees.length+' / '+room()+' trees',CARD.x+600,ty+182,28,C.text,'right',FD,600);
+    rr(CARD.x+CARD.w-300,ty+66,260,104,52);ctx.fillStyle=C.sunDeep;ctx.fill(); rr(CARD.x+CARD.w-300,ty+58,260,104,52);ctx.fillStyle=C.sun;ctx.fill();
+    txt('Open',CARD.x+CARD.w-170,ty+112,48,'#fff','center',FD,600);
+    // the bottom bar, with the sixth tab
+    const by=H-190; ctx.fillStyle=C.surface;ctx.fillRect(0,by,W,190);ctx.fillStyle='rgba(184,168,146,0.5)';ctx.fillRect(0,by,W,3);
+    const names=['Puzzles','Versus','Arcade','Valley','Stats','Streak'],tw=W/6;
+    names.forEach((n,i)=>{const cx=tw*(i+0.5),on=i===3,col=on?C.text:C.idle;
+      if(on){rr(cx-74,by+18,148,84,42);ctx.fillStyle=C.pill;ctx.fill();ctx.strokeStyle=C.pillRim;ctx.lineWidth=3;ctx.stroke();}
+      const y=by+60; ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=6;ctx.lineCap='round';
+      if(i===0){rr(cx-20,y-20,40,40,9);ctx.fill();disc(cx+22,y,9,col);}
+      else if(i===1){ctx.beginPath();ctx.moveTo(cx-20,y-20);ctx.lineTo(cx+20,y+20);ctx.moveTo(cx+20,y-20);ctx.lineTo(cx-20,y+20);ctx.stroke();}
+      else if(i===2){rr(cx-28,y-16,56,32,16);ctx.fill();disc(cx-12,y,5,on?C.pill:C.surface);disc(cx+12,y,5,on?C.pill:C.surface);}
+      else if(i===3){rr(cx-4,y+4,8,20,3);ctx.fillStyle=C.bark;ctx.fill();ctx.beginPath();ctx.moveTo(cx,y-28);ctx.lineTo(cx+22,y+8);ctx.lineTo(cx-22,y+8);ctx.closePath();ctx.fillStyle='#5f9c3e';ctx.fill();}
+      else if(i===4){for(let b=0;b<3;b++){rr(cx-24+b*18,y+20-(14+b*13),12,14+b*13,4);ctx.fill();}}
+      else{ctx.beginPath();ctx.moveTo(cx,y-26);ctx.quadraticCurveTo(cx+26,y+2,cx,y+22);ctx.quadraticCurveTo(cx-26,y+2,cx,y-26);ctx.fill();}
+      txt(n,cx,by+134,28,col,'center',FB,on?800:700);});}
+
+  // ---- the frame ----
+  let last=performance.now(),capAt=0;
+  function caption(){const el=document.getElementById('vg-caption'); if(!el) return;
+    el.textContent='chop '+power()+' every '+swingT().toFixed(2)+' s · a circle '+Math.round(reach()*2)+' across, of a land 810 wide · a tree about every '+spawnT().toFixed(1)+' s, '+room()+' at most · grows up to '+nameOf(lv.seeds)+' ('+fmt(hpOf(lv.seeds))+' to fell, '+fmt(giveOf(lv.seeds))+' wood and energy)';}
+  function frame(pn){
+    requestAnimationFrame(frame);
+    const dt=Math.min(0.1,(pn-last)/1000); last=pn;
+    if(!panel.classList.contains('active')) return;
+    let left=dt*speed; while(left>1e-6){const s=Math.min(0.04,left); step(s); left-=s;}
+    shown=RM?wood:(Math.abs(wood-shown)<0.6?wood:lerp(shown,wood,Math.min(1,dt*10)));
+    shownE=RM?energy:(Math.abs(energy-shownE)<0.6?energy:lerp(shownE,energy,Math.min(1,dt*10)));
+    if(pn-capAt>400){capAt=pn; caption();}
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    if(view==='tab') tab(clock/speed,pn/1000); else grove(clock/speed,pn/1000);}
+
+  // ---- the hand ----
+  const inside=(p,r)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
+  const at=e=>{const b=cv.getBoundingClientRect();return {x:(e.clientX-b.left)/b.width*W,y:(e.clientY-b.top)/b.height*H};};
+  cv.addEventListener('pointerdown',e=>{
+    const p=at(e);
+    if(view==='tab'){
+      if(inside(p,CARD)) view='grove';
+      return;}
+    if(Math.hypot(p.x-90,p.y-84)<60){view='tab'; hold=null; return;}
+    for(let i=0;i<UPS.length;i++) if(inside(p,tileRect(i))){buy(UPS[i]); return;}
+    if(p.y>SCENE_TOP&&p.y<SCENE_BOT){hold=p; try{cv.setPointerCapture(e.pointerId);}catch(_){}}});
+  cv.addEventListener('pointermove',e=>{if(hold){const p=at(e); hold={x:p.x,y:Math.max(SCENE_TOP,Math.min(SCENE_BOT,p.y))};}});
+  for(const n of ['pointerup','pointercancel']) cv.addEventListener(n,()=>{hold=null;});
+  const btn=(id,f)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{f(el); labels();});};
+  function labels(){const a=document.getElementById('vg-speed'),b=document.getElementById('vg-rm');
+    if(a){a.textContent='Time ×'+speed; a.classList.toggle('on',speed>1);} if(b){b.textContent='Reduce motion: '+(RM?'on':'off'); b.classList.toggle('on',RM);}}
+  btn('vg-away',()=>goAway());
+  btn('vg-speed',()=>{speed=speed===1?10:1;});
+  btn('vg-gift',()=>{energy+=1000;});
+  btn('vg-reset',()=>{const v=view; reset(0); view=v;});
+  btn('vg-rm',()=>{RM=!RM;});
+
+  reset(MINE?Math.max(0,Math.min(2,parseInt(Q.get('lv')||'0')||0)):0);
+  if(MINE&&Q.get('view')==='grove') view='grove';
+  const hq=MINE&&Q.get('hold'); if(hq){const a=hq.split(',').map(Number); if(a.length===2) hold={x:a[0],y:a[1]};}
+  for(let t=0;t<T0;t+=0.04) step(0.04);
+  labels(); caption(); requestAnimationFrame(frame);
 })();
 
 </script>
