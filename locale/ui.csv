@@ -550,8 +550,9 @@ ARC_PEAPOD_BLURB,"Slide the pea cannon under the crates and shoot them down befo
 ARC_BEST_WAVE,Furthest: wave %d,Mais longe: onda %d,Más lejos: oleada %d
 PEAPOD_MOTTO,Hold the line,Segure a linha,Mantén la línea
 PP_WAVE,WAVE,ONDA,OLEADA
+PP_ENERGY,ENERGY,ENERGIA,ENERGÍA
 PP_READY,Ready?,Pronto?,¿Listo?
-PP_READY_LINE,Slide to aim. Catch the gifts.,Deslize para mirar. Pegue os presentes.,Desliza para apuntar. Atrapa los regalos.
+PP_READY_LINE,Slide to aim. Break the gift crates.,Deslize para mirar. Quebre as caixas de presente.,Desliza para apuntar. Rompe las cajas de regalo.
 PP_WAVE_N,Wave %d,Onda %d,Oleada %d
 PP_MILLI_LINE,Stop the millipede,Detenha a centopeia,Detén al milpiés
 PP_CLEARED,Cleared!,Limpo!,¡Despejado!
@@ -559,14 +560,11 @@ PP_CAREFUL,Too close!,Perto demais!,¡Muy cerca!
 PP_BOOM,Boom!,Bum!,¡Bum!
 PP_GOLDEN,Golden!,Dourada!,¡Dorada!
 PP_SQUASHED,Squashed!,Esmagada!,¡Aplastado!
-PP_GOT_PEA,+1 pea,+1 ervilha,+1 guisante
-PP_GOT_RATE,Quicker!,Mais rápido!,¡Más rápido!
-PP_GOT_POWER,Heavier!,Mais forte!,¡Más fuerte!
-PP_GOT_TWIN,A helper!,Um ajudante!,¡Un ayudante!
 PP_GOT_FAN,Fan pod!,Vagem leque!,¡Vaina abanico!
 PP_GOT_PIERCE,Dart pod!,Vagem dardo!,¡Vaina dardo!
 PP_GOT_BURST,Berry pod!,Vagem estouro!,¡Vaina estallido!
-PP_GOT_MAGNET,Magnet!,Ímã!,¡Imán!
+PP_GOT_ZAP,Bolt pod!,Vagem raio!,¡Vaina rayo!
+PP_GOT_FLAME,Ember pod!,Vagem brasa!,¡Vaina brasa!
 PP_GOT_FROST,Frost!,Geada!,¡Helada!
 PP_GOT_SHOVE,Shove!,Empurrão!,¡Empujón!
 PP_STREAK,Streak x%d,Sequência x%d,Racha x%d
@@ -578,9 +576,20 @@ PP_WORD_5,Legendary!,Lendário!,¡Legendario!
 PP_END_CARD,The crates got through,As caixas passaram,Las cajas pasaron
 PP_STAT_WAVE,wave,onda,oleada
 PP_STAT_CRATES,shot down,derrubadas,derribadas
-PP_STAT_GIFTS,gifts caught,presentes pegos,regalos atrapados
-BST_PP_PEA,Second pea,Segunda ervilha,Segundo guisante
-BST_PP_PEA_LINE,Start with two peas a shot,Comece com duas ervilhas por tiro,Empieza con dos guisantes por disparo
+PP_STAT_GIFTS,gifts,presentes,regalos
+PP_SHOP,Shop,Loja,Tienda
+PP_SHOP_LINE,Wave %d cleared. Spend your energy on the pod.,Onda %d limpa. Gaste sua energia na vagem.,Oleada %d despejada. Gasta tu energía en la vaina.
+PP_SHOP_GO,Next wave,Próxima onda,Siguiente oleada
+PP_CARD_DAMAGE,Heavier pea,Ervilha mais forte,Guisante más fuerte
+PP_CARD_SPEED,Quicker pod,Vagem mais rápida,Vaina más rápida
+PP_CARD_CRIT,Lucky pea,Ervilha de sorte,Guisante de suerte
+PP_CARD_ENERGY,More energy,Mais energia,Más energía
+PP_CARD_MAX,At its most,No máximo,Al máximo
+PP_CARD_SPEED_LINE,%d  >  %d shots a second,%d  >  %d tiros por segundo,%d  >  %d disparos por segundo
+PP_CARD_CRIT_LINE,%d%%  >  %d%% chance of x%d,%d%%  >  %d%% de chance de x%d,%d%%  >  %d%% de golpes x%d
+PP_CARD_ENERGY_LINE,+%d%%  >  +%d%% energy,+%d%%  >  +%d%% de energia,+%d%%  >  +%d%% de energía
+BST_PP_PEA,Heavy pea,Ervilha pesada,Guisante pesado
+BST_PP_PEA_LINE,Start with a heavier pea,Comece com uma ervilha mais forte,Empieza con un guisante más fuerte
 BST_PP_QUICK,Quick pod,Vagem veloz,Vaina veloz
 BST_PP_QUICK_LINE,Start with a quicker cannon,Comece com um canhão mais rápido,Empieza con un cañón más rápido
 BST_CHANCE_PEAPOD,Everything is pushed well back from the line.,Tudo é empurrado para bem longe da linha.,Todo se aleja bastante de la línea.
@@ -796,26 +805,29 @@ TUT_PEAPOD_SLIDE,Slide to roll the cart,Deslize para rolar o carrinho,Desliza pa
 TUT_PEAPOD_SLIDE_BODY,"Slide a finger anywhere and the cart rolls with it, a little further than the finger went. The pod never stops firing.","Deslize o dedo em qualquer lugar e o carrinho vai junto, um pouco mais longe que o dedo. A vagem nunca para de atirar.","Desliza el dedo por cualquier parte y el carro va con él, un poco más lejos que el dedo. La vaina nunca deja de disparar."
 TUT_PEAPOD_CRATES,Numbers and the line,Os números e a linha,Los números y la línea
 TUT_PEAPOD_CRATES_BODY,"A crate takes as many peas as its number, and its paint tells how heavy the number is. Whatever reaches the chalk line ends the run.","Uma caixa aguenta tantas ervilhas quanto o seu número, e a cor mostra o peso dele. O que chegar à linha de giz encerra a partida.","Una caja aguanta tantos guisantes como su número, y su color dice cuánto pesa. Lo que llegue a la línea de tiza termina la partida."
-TUT_PEAPOD_GIFTS,Catch the gifts,Pegue os presentes,Atrapa los regalos
-TUT_PEAPOD_GIFTS_BODY,"A gift crate drops what it holds: roll under it to catch it. Every wave brings something for the pod.","Uma caixa de presente solta o que guarda: fique embaixo para pegar. Toda onda traz algo para a vagem.","Una caja de regalo suelta lo que guarda: ponte debajo para atraparlo. Cada oleada trae algo para la vaina."
-TUT_PEAPOD_PODS,Three pods,Três vagens,Tres vainas
-TUT_PEAPOD_PODS_BODY,"The Fan, the Dart and the Berry change the peas for %d seconds. The rings on the grass show what is running and how long is left.","O Leque, o Dardo e o Estouro mudam as ervilhas por %d segundos. Os anéis na grama mostram o que está valendo e quanto tempo resta.","El Abanico, el Dardo y el Estallido cambian los guisantes durante %d segundos. Los anillos de la hierba muestran qué está activo y cuánto le queda."
+TUT_PEAPOD_GIFTS,Break the gift crates,Quebre as caixas de presente,Rompe las cajas de regalo
+TUT_PEAPOD_GIFTS_BODY,"A gift crate's gift starts the moment the crate breaks. Nothing has to be caught.","O presente de uma caixa começa a valer assim que ela quebra. Não é preciso pegar nada.","El regalo de una caja empieza en cuanto se rompe. No hay que atrapar nada."
+TUT_PEAPOD_PODS,Five pods,Cinco vagens,Cinco vainas
+TUT_PEAPOD_PODS_BODY,"A pod changes the peas for %d seconds, one pod at a time. The ring on the grass shows which is running and how long is left.","Uma vagem muda as ervilhas por %d segundos, uma de cada vez. O anel na grama mostra qual está valendo e quanto tempo resta.","Una vaina cambia los guisantes durante %d segundos, de una en una. El anillo en la hierba muestra cuál está activa y cuánto tiempo queda."
+TUT_PEAPOD_SHOP,The shop,A loja,La tienda
+TUT_PEAPOD_SHOP_BODY,"Every crate drops energy. After a wave, spend it on the pod. A price rises with each one bought and as the walls grow.","Cada caixa solta energia. Depois de uma onda, gaste-a na vagem. O preço sobe a cada compra e conforme as paredes crescem.","Cada caja suelta energía. Tras una oleada, gástala en la vaina. El precio sube con cada compra y a medida que crecen los muros."
+TUT_PEAPOD_C_DAMAGE,Every pea counts for one more.,Cada ervilha vale um a mais.,Cada guisante vale uno más.
+TUT_PEAPOD_C_SPEED,One more shot every second.,Mais um tiro a cada segundo.,Un disparo más cada segundo.
+TUT_PEAPOD_C_CRIT,One pea in ten more lands %d times as hard.,Mais uma ervilha em cada dez acerta %d vezes mais forte.,Un guisante más de cada diez golpea %d veces más fuerte.
+TUT_PEAPOD_C_ENERGY,Every crate drops a tenth more energy.,Cada caixa solta um décimo a mais de energia.,Cada caja suelta una décima parte más de energía.
 TUT_PEAPOD_SPECIAL,Special crates,Caixas especiais,Cajas especiales
 TUT_PEAPOD_SPECIAL_BODY,"Three crates are not like the rest: the golden one, the iron one and the firecracker.","Três caixas não são como as outras: a dourada, a de ferro e o rojão.","Tres cajas no son como las demás: la dorada, la de hierro y el petardo."
 TUT_PEAPOD_MILLI,The millipede,A centopeia,El milpiés
 TUT_PEAPOD_MILLI_BODY,"Every third wave is a millipede winding down to the line. Each plate has a number, and the head a bigger one.","A cada três ondas vem uma centopeia, descendo em curvas até a linha. Cada placa tem um número, e a cabeça tem um maior.","Cada tres oleadas llega un milpiés que baja serpenteando hasta la línea. Cada placa tiene un número, y la cabeza uno mayor."
 TUT_PEAPOD_HUD,Boosters and buttons,Reforços e botões,Refuerzos y botones
 TUT_PEAPOD_HUD_BODY,"Boosters are picked before a run and bought with gold. The Second chance is offered once, when a run ends.","Os reforços são escolhidos antes da partida e comprados com ouro. A Segunda chance é oferecida uma vez, quando a partida acaba.","Los refuerzos se eligen antes de la partida y se compran con oro. La Segunda oportunidad se ofrece una vez, cuando la partida termina."
-TUT_PEAPOD_G_PEA,"One more pea in every shot, up to %d.","Mais uma ervilha a cada tiro, até %d.","Un guisante más en cada disparo, hasta %d."
-TUT_PEAPOD_G_RATE,The pod fires quicker.,A vagem atira mais rápido.,La vaina dispara más rápido.
-TUT_PEAPOD_G_POWER,Every pea counts for one more.,Cada ervilha vale um a mais.,Cada guisante vale uno más.
-TUT_PEAPOD_G_TWIN,A small cart fires beside yours for %d seconds.,Um carrinho pequeno atira ao seu lado por %d segundos.,Un carro pequeño dispara a tu lado durante %d segundos.
-TUT_PEAPOD_G_MAGNET,Gifts fly to the cart for %d seconds.,Os presentes voam até o carrinho por %d segundos.,Los regalos vuelan hacia el carro durante %d segundos.
 TUT_PEAPOD_G_FROST,Everything coming slows for %d seconds.,Tudo o que vem descendo fica lento por %d segundos.,Todo lo que baja va más lento durante %d segundos.
 TUT_PEAPOD_G_SHOVE,Everything coming is pushed back up.,Tudo o que vem descendo é empurrado de volta.,Todo lo que baja es empujado hacia arriba.
 TUT_PEAPOD_P_FAN,Two more peas fly out to the sides.,Mais duas ervilhas saem para os lados.,Dos guisantes más salen hacia los lados.
 TUT_PEAPOD_P_PIERCE,Every pea goes through %d crates.,Cada ervilha atravessa %d caixas.,Cada guisante atraviesa %d cajas.
 TUT_PEAPOD_P_BURST,Every pea also hits the crates beside and above.,Cada ervilha também acerta as caixas ao lado e acima.,Cada guisante también golpea las cajas de al lado y de arriba.
+TUT_PEAPOD_P_ZAP,Lightning jumps on to %d more crates.,O raio salta para mais %d caixas.,El rayo salta a %d cajas más.
+TUT_PEAPOD_P_FLAME,Whatever a pea hits burns for %d seconds.,O que a ervilha acerta queima por %d segundos.,Lo que golpea el guisante arde durante %d segundos.
 TUT_PEAPOD_S_GOLD,Golden crate,Caixa dourada,Caja dorada
 TUT_PEAPOD_S_GOLD_LINE,Worth %d times its number.,Vale %d vezes o seu número.,Vale %d veces su número.
 TUT_PEAPOD_S_IRON,Iron crate,Caixa de ferro,Caja de hierro

@@ -37,8 +37,8 @@ const SW_ACORNS := 200
 const SW_SMALL := 10
 const LT_CLOVERS := 40
 const PO_CHANCE_MOVES := 5
-const PP_PEAS := 1
-const PP_RATE := 2
+const PP_POWER := 1
+const PP_RATE := 1
 
 static func of(game: String) -> Array:
 	var out := []
@@ -103,7 +103,7 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 			"po_bloom":
 				sim.opening_bloom()
 			"pp_pea":
-				sim.peas += PP_PEAS
+				sim.power += PP_POWER
 			"pp_quick":
 				sim.rate_lv += PP_RATE
 

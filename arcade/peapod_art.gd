@@ -46,10 +46,18 @@ const FEELER := Color("5e4a6b")
 const PAINT := [Color("b9d996"), Color("93d4c3"), Color("9fcbe8"), Color("b5b3e4"), Color("dbaed6"), Color("f3a9af"),
 	Color("d98d6a"), Color("7c7386")]
 ## A gift's medallion, by Sim.Kind.
-const GIFT := {Sim.Kind.PEA: Color("7fc8ee"), Sim.Kind.RATE: Color("f08fb0"), Sim.Kind.POWER: Color("f5a44a"),
-	Sim.Kind.TWIN: Color("b6d957"), Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"),
-	Sim.Kind.BURST: Color("d665c8"), Sim.Kind.MAGNET: Color("5a8fe0"), Sim.Kind.FROST: Color("a9dff2"),
+const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), Sim.Kind.BURST: Color("d665c8"),
+	Sim.Kind.ZAP: Color("5a8fe0"), Sim.Kind.FLAME: Color("ee7f5a"), Sim.Kind.FROST: Color("a9dff2"),
 	Sim.Kind.SHOVE: Color("5fbf8a")}
+## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
+## the crit and the energy.
+const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f")]
+## An energy orb: its glow and body, and its bright heart.
+const ORB := Color("3fc8ff")
+const ORB_HI := Color("e6fbff")
+const ORB_DEEP := Color("1f8fd0")
+const BOLT := Color("ffe37a")
+const EMBER := Color("f28c4f")
 const IRON := Color("b7c0cc")
 const DART := Color("ffe08a")
 const BERRY := Color("f2907c")
@@ -232,33 +240,6 @@ static func head(u: float, cross := false) -> ArrayMesh:
 ## A gift's picture, `s` tall about `c`, laid into a builder.
 static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 	match kind:
-		Sim.Kind.PEA:
-			_plus(b, c + Vector2(-s * 0.36, 0), s * 0.2)
-			pea(b, c + Vector2(s * 0.2, 0), s * 0.3)
-		Sim.Kind.RATE:
-			# two chevrons, up: the gun quickens
-			for k in 2:
-				var y := c.y + s * (0.2 - 0.34 * k)
-				for pass_ in 2:
-					var o := Vector2(0, s * 0.05) if pass_ == 0 else Vector2.ZERO
-					b.stroke(PackedVector2Array([Vector2(c.x - s * 0.3, y + s * 0.14) + o, Vector2(c.x, y - s * 0.14) + o, Vector2(c.x + s * 0.3, y + s * 0.14) + o]),
-						s * 0.15, Color(INK, 0.25) if pass_ == 0 else PAPER)
-		Sim.Kind.POWER:
-			# a heavy pea in a burst
-			var pts := PackedVector2Array()
-			for k in 16:
-				pts.append(c + Vector2.from_angle(TAU * k / 16.0) * s * (0.5 if k % 2 == 0 else 0.34))
-			b.polygon(pts, Color("fff1a8"))
-			pea(b, c, s * 0.3)
-		Sim.Kind.TWIN:
-			_plus(b, c + Vector2(-s * 0.4, -s * 0.05), s * 0.18)
-			var k := s / 60.0
-			var at := c + Vector2(s * 0.16, s * 0.22)
-			b.fan(Face.Builder.round_rect(at + Vector2(-9, -36) * k, Vector2(18, 28) * k, 7 * k), POD_DEEP)
-			b.fan(Face.Builder.round_rect(at + Vector2(-17, -16) * k, Vector2(34, 14) * k, 4 * k), WOOD_DEEP)
-			for sx in [-1.0, 1.0]:
-				b.disc(at + Vector2(sx * 12, 0) * k, 8 * k, TYRE)
-				b.disc(at + Vector2(sx * 12, 0) * k, 3.4 * k, HUB)
 		Sim.Kind.FAN:
 			# three peas flung apart from one mouth
 			for k in [-1.0, 0.0, 1.0]:
@@ -278,13 +259,11 @@ static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 				pea(b, c + d * s * 0.38, s * 0.13)
 			b.disc(c, s * 0.24, PAPER)
 			b.disc(c, s * 0.18, BERRY)
-		Sim.Kind.MAGNET:
-			# a horseshoe, mouth up, with pale tips
-			var arc := Face.Builder.arc_points(c + Vector2(0, -s * 0.02), s * 0.27, 0.0, PI)
-			b.stroke(arc, s * 0.2, Color("f08a80"))
-			for sx in [-1.0, 1.0]:
-				b.fan(Face.Builder.round_rect(c + Vector2(sx * s * 0.27 - s * 0.1, -s * 0.36), Vector2(s * 0.2, s * 0.36), s * 0.02), Color("f08a80"))
-				b.fan(Face.Builder.round_rect(c + Vector2(sx * s * 0.27 - s * 0.1, -s * 0.44), Vector2(s * 0.2, s * 0.16), s * 0.02), PAPER)
+		Sim.Kind.ZAP:
+			_bolt(b, c + Vector2(0, s * 0.04), s * 0.5, Color(INK, 0.25))
+			_bolt(b, c, s * 0.5, BOLT)
+		Sim.Kind.FLAME:
+			_flame(b, c + Vector2(0, s * 0.42), s * 0.86, PAPER, BOLT)
 		Sim.Kind.FROST:
 			# a snowflake
 			for k in 3:
@@ -308,13 +287,121 @@ static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 			b.stroke(Face.Builder.bezier2(c + Vector2(0, -16) * k, c + Vector2(4, -28) * k, c + Vector2(12, -26) * k, 6), 3 * k, WOOD_DEEP)
 			_twinkle(b, c + Vector2(13, -27) * k, 9 * k, Color("f6b866"))
 
-static func _plus(b: Face.Builder, c: Vector2, r: float) -> void:
-	var t := r * 0.36
+## A jagged bolt `r` tall either way of `c`.
+static func _bolt(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+	b.polygon(PackedVector2Array([c + Vector2(r * 0.2, -r), c + Vector2(-r * 0.5, r * 0.12), c + Vector2(-r * 0.04, r * 0.12),
+		c + Vector2(-r * 0.24, r), c + Vector2(r * 0.52, -r * 0.2), c + Vector2(r * 0.06, -r * 0.2)]), col)
+
+## A flame `tall` high, its foot on `foot`: a teardrop leaning a little, a
+## paler one inside it.
+static func _flame(b: Face.Builder, foot: Vector2, tall: float, col: Color, core: Color) -> void:
 	for pass_ in 2:
-		var o := Vector2(0, r * 0.22) if pass_ == 0 else Vector2.ZERO
-		var col := Color(INK, 0.25) if pass_ == 0 else PAPER
-		b.fan(Face.Builder.round_rect(c + o + Vector2(-r, -t), Vector2(r * 2.0, t * 2.0), t * 0.6), col)
-		b.fan(Face.Builder.round_rect(c + o + Vector2(-t, -r), Vector2(t * 2.0, r * 2.0), t * 0.6), col)
+		var k := 1.0 if pass_ == 0 else 0.55
+		var w := tall * 0.36 * k
+		var h := tall * k
+		var at := foot + Vector2(0, -tall * 0.04 * pass_)
+		var pts := PackedVector2Array()
+		pts.append_array(Face.Builder.bezier3(at + Vector2(0, -h), at + Vector2(w * 0.3, -h * 0.6), at + Vector2(w * 1.3, -h * 0.4), at + Vector2(w * 0.7, -h * 0.06), 8))
+		pts.append_array(Face.Builder.bezier3(at + Vector2(w * 0.7, -h * 0.06), at + Vector2(w * 0.2, h * 0.08), at + Vector2(-w * 0.9, h * 0.06), at + Vector2(-w * 0.9, -h * 0.26), 8))
+		pts.append_array(Face.Builder.bezier3(at + Vector2(-w * 0.9, -h * 0.26), at + Vector2(-w * 0.9, -h * 0.6), at + Vector2(-w * 0.3, -h * 0.66), at + Vector2(0, -h), 8))
+		b.polygon(pts, col if pass_ == 0 else core)
+
+## A shop card's picture (Sim.Card), `s` tall about `c`.
+static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
+	match card:
+		Sim.Card.DAMAGE:
+			# a heavy pea in a burst
+			var pts := PackedVector2Array()
+			for k in 16:
+				pts.append(c + Vector2.from_angle(TAU * k / 16.0) * s * (0.5 if k % 2 == 0 else 0.34))
+			b.polygon(pts, Color("fff1a8"))
+			pea(b, c, s * 0.3)
+		Sim.Card.SPEED:
+			# two chevrons, up: the gun quickens
+			for k in 2:
+				var y := c.y + s * (0.2 - 0.34 * k)
+				for pass_ in 2:
+					var o := Vector2(0, s * 0.05) if pass_ == 0 else Vector2.ZERO
+					b.stroke(PackedVector2Array([Vector2(c.x - s * 0.3, y + s * 0.14) + o, Vector2(c.x, y - s * 0.14) + o, Vector2(c.x + s * 0.3, y + s * 0.14) + o]),
+						s * 0.15, Color(INK, 0.25) if pass_ == 0 else PAPER)
+		Sim.Card.CRIT:
+			# a bull's eye with a glint on it
+			b.disc(c + Vector2(0, s * 0.04), s * 0.44, Color(INK, 0.2))
+			b.disc(c, s * 0.44, PAPER)
+			b.disc(c, s * 0.3, Color("f08a80"))
+			b.disc(c, s * 0.15, PAPER)
+			_twinkle(b, c + Vector2(s * 0.3, -s * 0.3), s * 0.24, Color("fff1a8"))
+		Sim.Card.ENERGY:
+			# an energy orb, as a crate drops them, and a glint off it
+			b.disc(c, s * 0.46, Color(ORB, 0.3))
+			b.disc(c, s * 0.34, ORB_DEEP)
+			b.disc(c, s * 0.29, ORB)
+			b.disc(c, s * 0.18, ORB_HI)
+			b.disc(c + Vector2(-s * 0.1, -s * 0.12), s * 0.08, Color(1, 1, 1, 0.9))
+			_twinkle(b, c + Vector2(s * 0.32, -s * 0.32), s * 0.2, Color(1, 1, 1, 0.9))
+
+## A shop card's medallion of radius `r`, ringed in paper.
+static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float) -> void:
+	var base: Color = CARD[card]
+	b.disc(c + Vector2(0, r * 0.12), r, deepen(base))
+	b.disc(c, r, PAPER)
+	b.disc(c, r * 0.85, base)
+	b.stroke(Face.Builder.arc_points(c, r * 0.68, -PI * 0.85, -PI * 0.5), maxf(1.0, r * 0.09), Color(1, 1, 1, 0.5))
+	card_icon(b, card, c, r * 1.25)
+
+## The same as a mesh, centred, 12.5 units across at `u`: on the gun's line
+## along the grass, and bigger in the shop.
+static func card_token(card: int, u: float) -> ArrayMesh:
+	var key := _key("ct", card, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := 12.5 * u
+	b.disc(Vector2(0, 2.4 * u), r, Color(0.3, 0.2, 0.08, 0.12))
+	card_medal(b, card, Vector2.ZERO, r)
+	return _keep(key, b.mesh())
+
+## The flame on a crate or a plate alight, its foot on the origin: swayed by
+## its draw.
+static func fire(u: float) -> ArrayMesh:
+	var key := _key("fi", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	_flame(b, Vector2(0, 1.0 * u), 17.0 * u, Color(INK, 0.16), Color(INK, 0.0))
+	_flame(b, Vector2.ZERO, 16.0 * u, EMBER, BOLT)
+	return _keep(key, b.mesh())
+
+## An energy orb, centred, its glow ORB_R in radius (built that big so its
+## discs are round, and scaled down by its draw): a wide soft glow, the orb
+## and its bright heart, with a comet's tail back along -x (its draw turns
+## it the way it flies and stretches it by how fast).
+const ORB_R := 64.0
+static func orb() -> ArrayMesh:
+	if _cache.has("orb"):
+		return _cache["orb"]
+	var b := Face.Builder.new()
+	var r := ORB_R
+	var i0 := b.vertex(Vector2(0, -0.36 * r), Color(ORB, 0.55))
+	var i1 := b.vertex(Vector2(0, 0.36 * r), Color(ORB, 0.55))
+	var i2 := b.vertex(Vector2(-1.6 * r, 0), Color(ORB, 0.0))
+	b.tri(i0, i1, i2)
+	b.disc(Vector2.ZERO, r, Color(ORB, 0.14))
+	b.disc(Vector2.ZERO, 0.72 * r, Color(ORB, 0.26))
+	b.disc(Vector2.ZERO, 0.5 * r, ORB_DEEP)
+	b.disc(Vector2.ZERO, 0.43 * r, ORB)
+	b.disc(Vector2(-0.07, -0.08) * r, 0.2 * r, ORB_HI)
+	b.disc(Vector2(-0.14, -0.16) * r, 0.09 * r, Color.WHITE)
+	return _keep("orb", b.mesh())
+
+## A spent pea, centred, with no wake: what tumbles off a crate it landed on.
+static func crumb(u: float) -> ArrayMesh:
+	var key := _key("cb", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	pea(b, Vector2.ZERO, 2.6 * u)
+	return _keep(key, b.mesh())
 
 ## A pea of radius `r` laid into a builder.
 static func pea(b: Face.Builder, c: Vector2, r: float, a := 1.0) -> void:
@@ -342,7 +429,7 @@ static func medal(b: Face.Builder, kind: int, c: Vector2, r: float, rim := true)
 	b.stroke(Face.Builder.arc_points(c, r * 0.68, -PI * 0.85, -PI * 0.5), maxf(1.0, r * 0.09), Color(1, 1, 1, 0.5))
 	icon(b, kind, c, r * 1.25)
 
-## A falling gift: its medallion ringed in paper, on a pale glow.
+## A gift out of its parcel: its medallion ringed in paper, on a pale glow.
 static func token(kind: int, u: float) -> ArrayMesh:
 	var key := _key("t", kind, 0, u)
 	if _cache.has(key):
@@ -421,7 +508,8 @@ static func barrel(u: float, helper := false) -> ArrayMesh:
 	return _keep(key, b.mesh())
 
 ## A pea in flight by its look (Sim.Shot), centred, flying up, a pale wake
-## fading behind it: a pea, a dart that goes through, a berry that bursts.
+## fading behind it: a pea, a dart that goes through, a berry that bursts, a
+## bolt that jumps on and an ember that sets alight.
 ## One mesh a look, drawn for every pea in the air by a MultiMesh.
 static func shot(look: int, u: float) -> ArrayMesh:
 	var key := _key("s", look, 0, u)
@@ -429,7 +517,7 @@ static func shot(look: int, u: float) -> ArrayMesh:
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := 3.3 * u
-	var wake: Color = ([PEA, DART, BERRY][clampi(look, 0, 2)] as Color).lerp(PAPER, 0.5)
+	var wake: Color = ([PEA, DART, BERRY, BOLT, EMBER][clampi(look, 0, 4)] as Color).lerp(PAPER, 0.5)
 	var i0 := b.vertex(Vector2(-r * 0.7, 0), Color(wake, 0.5))
 	var i1 := b.vertex(Vector2(r * 0.7, 0), Color(wake, 0.5))
 	var i2 := b.vertex(Vector2(0, r * 6.5), Color(wake, 0.0))
@@ -446,6 +534,11 @@ static func shot(look: int, u: float) -> ArrayMesh:
 			b.polygon(pts, deepen(BERRY))
 			b.disc(Vector2.ZERO, r * 0.9, BERRY)
 			b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.6))
+		Sim.Shot.ZAP:
+			_bolt(b, Vector2.ZERO, r * 2.1, deepen(BOLT))
+			_bolt(b, Vector2(0, -r * 0.2), r * 1.7, BOLT)
+		Sim.Shot.FLAME:
+			_flame(b, Vector2(0, r * 1.5), r * 3.6, EMBER, BOLT)
 		_:
 			pea(b, Vector2.ZERO, r)
 	return _keep(key, b.mesh())

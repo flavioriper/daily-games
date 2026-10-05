@@ -7,7 +7,7 @@ extends Control
 ## line under it -- running the game's own sim (arcade/peapod_sim.gd) on a
 ## small hand-made wave, and a finger sliding the cart through the screen's
 ## own grab and slide. So the pod never stops firing, a crate's number runs
-## down, a gift's token falls and is caught, a pod's ring runs down on the
+## down, a gift starts as its crate breaks, a pod's ring runs down on the
 ## grass, a firecracker takes its neighbours, a plate shot off knocks the
 ## millipede back, exactly as in a run. Beside the garden a page names what
 ## is in play with its own picture. `lesson` picks the page (set before it
@@ -17,9 +17,10 @@ extends Control
 ##   while.
 ## - CRATES: a crate takes its number in peas, its paint is the number's
 ##   weight, and what reaches the chalk line ends the run.
-## - GIFTS: a gift crate's token is caught, then another's; a different
-##   pair of gifts each time round.
-## - PODS: the Fan, the Dart and the Berry in turn, their ring on the grass.
+## - GIFTS: a gift crate is broken and its gift starts, then another's: the
+##   frost and the shove, in turn.
+## - PODS: the five pods in turn, their ring on the grass.
+## - SHOP: the four cards the shop sells, each beside what one more does.
 ## - SPECIAL: the golden crate, the iron crate and the firecracker.
 ## - MILLI: plates shot off the millipede, then its head.
 ## - HUD: the top bar's Reset and settings, the two boosters and the Second
@@ -35,7 +36,7 @@ const Art = preload("res://arcade/peapod_art.gd")
 const Boosters = preload("res://arcade/boosters.gd")
 const BoosterIcon = preload("res://arcade/booster_icon.gd")
 
-enum Lesson { SLIDE, CRATES, GIFTS, PODS, SPECIAL, MILLI, HUD }
+enum Lesson { SLIDE, CRATES, GIFTS, PODS, SPECIAL, MILLI, HUD, SHOP }
 
 ## The card's rim round the garden, and the gap to what is said beside it.
 const RIM := 8.0
@@ -144,6 +145,10 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_hit_at.clear()
 		_sparks.clear()
 		_pops.clear()
+		_nums.clear()
+		_orbs.clear()
+		_crumbs.clear()
+		_bolts.clear()
 		_ghosts.clear()
 		_flights.clear()
 		_chip_at.clear()
@@ -200,6 +205,8 @@ class Garden extends "res://arcade/peapod_screen.gd":
 			match String(ev.type):
 				"ready", "go", "wave", "clear", "revive":
 					pass
+				"shop":
+					sim.leave_shop()
 				"over":
 					_shake = maxf(_shake, 0.9)
 					_flash_now(ALARM, 0.5)
@@ -244,6 +251,8 @@ func _ready() -> void:
 			var badge := BoosterIcon.new(id, 76.0)
 			add_child(badge)
 			_badges.append(badge)
+	elif lesson == Lesson.SHOP:
+		pass
 	else:
 		_art = Garden.new()
 		_art.drive = _drive
@@ -275,11 +284,15 @@ func _enter_tree() -> void:
 	if _begun:
 		call_deferred("_reset")
 
+## A page that is a list and not a garden.
+func _listed() -> bool:
+	return lesson == Lesson.HUD or lesson == Lesson.SHOP
+
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 	queue_redraw()
-	if lesson == Lesson.HUD:
+	if _listed():
 		for k in _badges.size():
 			var badge: Control = _badges[k]
 			badge.size = Vector2(_hud_chip(), _hud_chip())
@@ -314,29 +327,19 @@ static func _t(key: String) -> String:
 
 ## The gifts and the pods take turns, one a time round.
 static func gift_a(turn: int) -> int:
-	return [Sim.Kind.PEA, Sim.Kind.RATE, Sim.Kind.POWER][turn % 3]
+	return [Sim.Kind.FROST, Sim.Kind.SHOVE][turn % 2]
 
 static func gift_b(turn: int) -> int:
-	return [Sim.Kind.TWIN, Sim.Kind.MAGNET, Sim.Kind.FROST, Sim.Kind.SHOVE][turn % 4]
+	return [Sim.Kind.SHOVE, Sim.Kind.FROST][turn % 2]
 
 static func pod_of(turn: int) -> int:
-	return [Sim.Kind.FAN, Sim.Kind.PIERCE, Sim.Kind.BURST][turn % 3]
+	return [Sim.Kind.FAN, Sim.Kind.PIERCE, Sim.Kind.BURST, Sim.Kind.ZAP, Sim.Kind.FLAME][turn % 5]
 
-## What is said beside the garden of a gift or a pod: its token, the name the
-## run letters when it is caught, and what it does.
+## What is said beside the garden of a gift or a pod: its medallion, the
+## name the run letters when its crate breaks, and what it does.
 static func _gift_word(kind: int) -> Dictionary:
 	var line := ""
 	match kind:
-		Sim.Kind.PEA:
-			line = _t("TUT_PEAPOD_G_PEA") % Sim.MAX_PEAS
-		Sim.Kind.RATE:
-			line = _t("TUT_PEAPOD_G_RATE")
-		Sim.Kind.POWER:
-			line = _t("TUT_PEAPOD_G_POWER")
-		Sim.Kind.TWIN:
-			line = _t("TUT_PEAPOD_G_TWIN") % int(Sim.TWIN_TIME)
-		Sim.Kind.MAGNET:
-			line = _t("TUT_PEAPOD_G_MAGNET") % int(Sim.MAGNET_TIME)
 		Sim.Kind.FROST:
 			line = _t("TUT_PEAPOD_G_FROST") % int(Sim.FROST_TIME)
 		Sim.Kind.SHOVE:
@@ -347,10 +350,12 @@ static func _gift_word(kind: int) -> Dictionary:
 			line = _t("TUT_PEAPOD_P_PIERCE") % Sim.PIERCES
 		Sim.Kind.BURST:
 			line = _t("TUT_PEAPOD_P_BURST")
-	var names := {Sim.Kind.PEA: "PP_GOT_PEA", Sim.Kind.RATE: "PP_GOT_RATE", Sim.Kind.POWER: "PP_GOT_POWER",
-		Sim.Kind.TWIN: "PP_GOT_TWIN", Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE",
-		Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.MAGNET: "PP_GOT_MAGNET", Sim.Kind.FROST: "PP_GOT_FROST",
-		Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
+		Sim.Kind.ZAP:
+			line = _t("TUT_PEAPOD_P_ZAP") % Sim.ZAP_JUMPS
+		Sim.Kind.FLAME:
+			line = _t("TUT_PEAPOD_P_FLAME") % int(Sim.BURN_TIME)
+	var names := {Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.ZAP: "PP_GOT_ZAP",
+		Sim.Kind.FLAME: "PP_GOT_FLAME", Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
 	return {"icon": ["token", kind], "title": _t(names[kind]), "line": line}
 
 ## A run already in play, with nothing dealt.
@@ -446,7 +451,7 @@ static func plan(which: int, turn: int) -> Dictionary:
 					[3.3, {"icon": ["head", 0], "title": _t("TUT_PEAPOD_M_HEAD"), "line": _t("TUT_PEAPOD_M_HEAD_LINE")}]],
 				"keys": [[0.5, 245.0], [3.1, 245.0], [3.8, 95.0], [4.3, 70.0], [4.8, 45.0], [5.2, 32.0], [6.4, 32.0]],
 				"lay": func(sim: RefCounted) -> void:
-					sim.peas = 2
+					sim.power = 2
 					_milli(sim, 20, [6, 6, 6, 6, 6, 6], 1580.0, 34.0)}
 
 ## Where `keys` want the cart at `t`: eased from one to the next.
@@ -461,7 +466,7 @@ static func cart_at(keys: Array, t: float) -> float:
 
 ## The lesson from its top: its wave dealt, the finger up.
 func _reset() -> void:
-	if lesson == Lesson.HUD or not is_inside_tree() or size.x <= 0.0:
+	if _listed() or not is_inside_tree() or size.x <= 0.0:
 		return
 	_plan = plan(lesson, _round)
 	_tick = 0
@@ -481,7 +486,7 @@ func _reset() -> void:
 	_over.queue_redraw()
 
 func _process(_delta: float) -> void:
-	if lesson == Lesson.HUD or not _begun or Motion.reduce:
+	if _listed() or not _begun or Motion.reduce:
 		return
 	if _tick * Sim.DT >= float(_plan.length):
 		_round += 1
@@ -545,6 +550,9 @@ func _draw() -> void:
 		return
 	if lesson == Lesson.HUD:
 		_draw_hud()
+		return
+	if lesson == Lesson.SHOP:
+		_draw_shop()
 		return
 	if _art == null or _art.size.x <= 0.0:
 		return
@@ -626,5 +634,25 @@ func _draw_hud() -> void:
 		if k < 2:
 			Icons.paint(self, String(rows[k][0]), Rect2(Vector2(x0 + chip * 0.5, cy) - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54), Pal.TEXT, Pal.SURFACE)
 		var text := String(rows[k][1])
+		var lines := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs)
+		draw_multiline_string(font, Vector2(tx, cy - lines.y * 0.5 + fs * 0.82), text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs, -1, Pal.TEXT)
+
+## The shop's page: its four cards, each medallion beside its name and what
+## one more of it does.
+func _draw_shop() -> void:
+	var rows := [["PP_CARD_DAMAGE", tr("TUT_PEAPOD_C_DAMAGE")], ["PP_CARD_SPEED", tr("TUT_PEAPOD_C_SPEED")],
+		["PP_CARD_CRIT", tr("TUT_PEAPOD_C_CRIT") % Sim.CRIT_MULT], ["PP_CARD_ENERGY", tr("TUT_PEAPOD_C_ENERGY")]]
+	var row_h := size.y / rows.size()
+	var chip := minf(84.0, row_h * 0.8)
+	var font: Font = CozyTheme.display(700)
+	var fs := 28
+	var tx := HUD_X + chip + 26.0
+	var wide := size.x - tx - 20.0
+	for k in rows.size():
+		var cy := row_h * (k + 0.5)
+		draw_mesh(Art.card_token(k, chip / 27.0), null, Transform2D(0.0, Vector2(HUD_X + chip * 0.5, cy)))
+	for k in rows.size():
+		var cy := row_h * (k + 0.5)
+		var text := "%s: %s" % [tr(rows[k][0]), rows[k][1]]
 		var lines := font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs)
 		draw_multiline_string(font, Vector2(tx, cy - lines.y * 0.5 + fs * 0.82), text, HORIZONTAL_ALIGNMENT_LEFT, wide, fs, -1, Pal.TEXT)

@@ -375,6 +375,80 @@ chalk line ends the run. Its "furthest" is the wave.
     harness and the tutorial's seven pages were shot. **Nothing was run on
     a phone, and no person has played the new curve.**
 
+- **The fourth pass (2026-10-05, the user's design, talked through in
+  chat): nothing is caught, and the gun grows in a shop.** What the lines
+  above say of tokens, the magnet, the helper, the gun's three gifts and
+  "peas a volley" is history.
+  - **A gift is had as its crate breaks** (`_killed` -> `_take`, the `gift`
+    event). `tokens`, `Kind.MAGNET`, `Kind.TWIN`, `Kind.PEA/RATE/POWER`,
+    `peas`, `twin_t` and their events are gone; **`Kind` is renumbered**
+    (`CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, FROST, SHOVE,
+    IRON`; `holds_gift`, `is_pod`). The extra pea went because it was the
+    heavier pea under another name (both +1 on a factor of the same
+    product), fifty numbers a second cannot be read, and the shots in the
+    air were the lag.
+  - **Energy and the shop.** Energy is counted in orbs, `ORBS` (4) to one
+    energy: a crate is worth 1, a golden one 5, and a millipede's head makes
+    its wave up to a wall's worth (`wave_crates`). A wave cleared, its beat
+    over, the sim goes to `Phase.SHOP` if anything can be bought and waits
+    for `leave_shop()`; the screen's card (`_open_shop`) sells `Card.DAMAGE`
+    (+1), `SPEED` (+1 volley a second, 8 levels), `CRIT` (+10% of a pea
+    landing three times, 5 levels) and `ENERGY` (+0.1 of a crate's worth, no
+    cap). **A price is `PRICE` x (1 + `PRICE_STEP` x bought) x the wall's
+    size over wave 1's**, so a wave's energy buys the same on any wave and a
+    card left for later is never cheaper; `bought` is the shop's count, so a
+    booster's head start raises no price. Unspent energy is kept, and a
+    Second chance keeps everything.
+  - **Two more pods**, held one at a time like the rest: `ZAP` (lightning on
+    from what the pea hit to the nearest thing in `ZAP_REACH`, four jumps,
+    half the pea each) and `FLAME` (what a pea lands on burns three seconds,
+    bitten every half second for the weight of the pea that lit it, not
+    stacking: it rewards sweeping). A thing alight wears a drawn flame at
+    its corner, never a tint: its paint is its number. A wave holds one to
+    four gifts (`gift_count`), a pod first and never the one the wave before
+    began with, then the frost (wave 3), the shove (wave 4) and a second pod.
+  - **Every hit says what it took** (`dmg`, `crit`, `how`: `Hit.PEA`, `SIDE`,
+    `BOOM`, `BURN`), and a `hit` now comes for the blow that breaks a thing
+    too (the screen plays its spark and sound only while `hp > 0`). The
+    screen floats the number (`_nums`, 26 at most): a pea's hops down out
+    from under the crate, clear of the crate's own number, a crit's bigger
+    and gold with a "!", a splash's, a jump's and a burn's small at the
+    thing's corner. No transform of their own and one size a look, so they
+    batch. The spent pea tumbles off (`_crumbs`), a heavier pea is drawn
+    bigger (`fat`), and the Fan's side peas come back off the garden's sides
+    (the sim's, real).
+  - **The orbs** (`_drop_orbs`, `_step_orbs`, `_draw_orbs`, on `Orbs`, a
+    layer over the whole screen, one MultiMesh): one a quarter energy, thrown
+    out of the crate and slowing, hanging a beat, then round a bend of their
+    own into the ENERGY plate, slow and then quick, one after another,
+    pulled long by their speed. The plate counts what has landed
+    (`_orb_due`), each landing a click a semitone up a short run (`hit`
+    through `_quiet`). 28 a crate and 150 at once at most; the shop opening
+    lands whatever is in the air. Under reduce motion none fly.
+  - **The numbers**: `hp_base` is 1.32 a wave to wave 10 and 1.27 after (was
+    1.46 and 1.38), tuned on `tests/_probe_peapod.gd`, whose fourth argument
+    is now the shopper (0 the best worth for its price, 1-3 one card only, 4
+    two Energy first, 5 at random). Shopper 0 ends on wave 13-17 in about six
+    minutes, 4 on 14-17, 5 on 11-17, damage only on 10-13, speed only on
+    7-8, crit only on 7. **A hand's speed no longer tells the bots apart**
+    (nothing is caught): what a run is worth is what it bought.
+  - **The boosters**: `pp_pea` is a heavier pea from the start (it was a
+    second pea), `pp_quick` one level of the rate (it was two of the old,
+    smaller ones).
+  - **No new sound was made**: a gift starting plays the pods' `pod`, `frost`
+    or `shove`, the shop opening `gift`, a card bought `catch`, Go `go`, an
+    orb landing `hit`. `lost.ogg` and `twin.ogg` are unused; `twin_off` is
+    still a pod running out. Lightning and the flame have no sound of their
+    own.
+  - 97-124 draw calls under a full gun on a twelve-row wall, a 26-plate
+    millipede and the wall again under lightning and under the flame, 131 at
+    worst as the head goes, both drivers agreeing (`tests/_perf_peapod.gd`,
+    two more loads); 113 with the shop up. Suite, the shot harness on both
+    drivers and under reduce motion, the tutorial's eight pages (a page for
+    the shop), the haptics and wallet probes. **Nothing was run on a phone,
+    nothing was heard, and no person has played the new curve or the
+    shop's prices.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim
