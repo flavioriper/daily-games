@@ -7,10 +7,13 @@ extends SceneTree
 ## 1 the Arcade tab, 2 the ready banner, 3 play with a bot, 3b a wave
 ## cleared (printed: its stars, the flowers up, whether the pod is crowned
 ## for the best passed), 3c the shop open on what the wave paid, 3d a card
-## bought, 3e a gift crate broken and its gift flying to the grass, 4 the
-## whole cast in a wall (forced: every paint, every gift and pod, the
-## firecracker, the golden and iron crates, lightning held, crates alight, a
-## crit's number), 5 a real slide through the viewport
+## bought, 3e a gift crate broken and its gift flying to its button on the
+## grass, 3f the gift waiting there, 3g the button pressed through the
+## viewport and the gift started (printed: whether it was kept, and whether
+## the press started it and left the cart alone), 4 the whole cast in a wall
+## (forced: every paint, every gift and pod, the firecracker, the golden and
+## iron crates, a fan of lightning under the frost with two gifts kept,
+## crates alight, a crit's number), 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
 ## score to user://arcade.cfg, so the file this machine had is put back on
@@ -196,21 +199,46 @@ func _process(delta: float) -> bool:
 				sim.wave_kind = Sim.Wave.WALL
 				sim.gap_t = 0.0
 				sim._shopped = false
+				# and a crate that outlasts it, so the wave stays on for the gift
 				sim.rows = [[null, null, null, null, null]]
-				sim.rows[0][clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)] = _cell(Sim.Kind.FLAME, 1)
+				var col := clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)
+				sim.rows[0][col] = _cell(Sim.Kind.FLAME, 1)
+				sim.rows[0][(col + 2) % Sim.COLS] = _cell(Sim.Kind.CRATE, 90000)
+				sim.held = [0, 0]
 				sim.wall_y = 250.0
 				sim.wall_speed = 0.0
+				sim.target_x = sim.x
 				_at = _t
 				_step = 33
 		33:
-			_s.sim.gap_t = 0.0 if _s.sim.pod == 0 else 1000.0
-			if _s.sim.pod == Sim.Kind.FLAME and (_reduce or (not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2)):
-				# nothing flies when motion is reduced: the gift is on the grass at once
+			if _s.sim.held.has(Sim.Kind.FLAME) and (_reduce or (not _s._flights.is_empty() and float(_s._flights[0].t) > 0.2)):
+				# nothing flies when motion is reduced: the gift is on its button at once
 				_shot("3e_gift")
-				print("gift had as its crate broke: pod=%d caught=%d" % [_s.sim.pod, _s.sim.caught])
-				_step = 4
+				print("gift kept as its crate broke: held=%s element=%d caught=%d" % [_s.sim.held, _s.sim.element, _s.sim.caught])
+				_at = _t
+				_step = 34
 			elif _t > _at + 3.0:
 				print("no gift was had")
+				_step = 4
+		34:
+			if _t > _at + 0.8:
+				_shot("3f_held")
+				# a real press on its button, through the viewport
+				var f: Control = _s.field
+				var slot: int = _s.sim.held.find(Sim.Kind.FLAME)
+				var from: Vector2 = f.get_global_transform_with_canvas() * _s._slot_px(slot)
+				var win: Vector2 = root.get_final_transform() * from
+				_x0 = _s.sim.x
+				set_meta("win", win)
+				_mouse(true, win)
+				_at = _t
+				_step = 35
+		35:
+			if _t > _at + 0.25:
+				_mouse(false, get_meta("win"))
+				_shot("3g_used")
+				print("the press started it: %s (element=%d held=%s), cart left alone: %s" % [_s.sim.element == Sim.Kind.FLAME, _s.sim.element,
+					_s.sim.held, is_equal_approx(_s.sim.x, _x0) and not _s._mouse])
 				_step = 4
 		4:
 			# the cast, forced: a wall of every paint and every kind
@@ -236,9 +264,12 @@ func _process(delta: float) -> bool:
 			sim.wall_y = 290.0
 			sim.wall_speed = 0.0
 			sim.gap_t = 0.0
-			sim.pod = Sim.Kind.ZAP
-			sim.pod_t = 8.0
+			sim.shape = Sim.Kind.FAN
+			sim.shape_t = 6.0
+			sim.element = Sim.Kind.ZAP
+			sim.element_t = 8.0
 			sim.frost_t = 4.0
+			sim.held = [Sim.Kind.BURST, Sim.Kind.SHOVE]
 			sim.power = 3
 			sim.rate_lv = 4
 			sim.crit_lv = Sim.CRIT_MAX
@@ -279,8 +310,10 @@ func _process(delta: float) -> bool:
 				sim.power = 2
 				sim.rate_lv = 0
 				sim.crit_lv = 0
-				sim.pod = 0
-				sim.pod_t = 0.0
+				sim.shape = 0
+				sim.shape_t = 0.0
+				sim.element = 0
+				sim.element_t = 0.0
 				sim.wave = 5
 				sim.gap_t = 0.01
 				_at = _t

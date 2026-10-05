@@ -6,9 +6,10 @@ extends Control
 ## left is the sky over the chalk line, the cart on the grass and the gun's
 ## line under it -- running the game's own sim (arcade/peapod_sim.gd) on a
 ## small hand-made wave, and a finger sliding the cart through the screen's
-## own grab and slide. So the pod never stops firing, a crate's number runs
-## down, a gift starts as its crate breaks, a pod's ring runs down on the
-## grass, a firecracker takes its neighbours, a plate shot off knocks the
+## own grab and slide, and pressing the screen's own buttons. So the pod
+## never stops firing, a crate's number runs down, a gift flies to its
+## button as its crate breaks and starts when the finger presses it, a pod's
+## ring runs down on the grass, a firecracker takes its neighbours, a plate shot off knocks the
 ## millipede back, exactly as in a run. Beside the garden a page names what
 ## is in play with its own picture. `lesson` picks the page (set before it
 ## enters the tree):
@@ -17,9 +18,11 @@ extends Control
 ##   while.
 ## - CRATES: a crate takes its number in peas, its paint is the number's
 ##   weight, and what reaches the chalk line ends the run.
-## - GIFTS: a gift crate is broken and its gift starts, then another's: the
-##   frost and the shove, in turn.
-## - PODS: the five pods in turn, their ring on the grass.
+## - GIFTS: a gift crate is broken, its gift waits on a button and the
+##   finger starts it, then another's: the frost and the shove, in turn.
+## - PODS: a pod that changes how the peas go and then one that changes what
+##   they are made of, both running, their rings on the grass; the three and
+##   the two take turns.
 ## - SHOP: the four cards the shop sells, each beside what one more does.
 ## - SPECIAL: the golden crate, the iron crate and the firecracker.
 ## - MILLI: plates shot off the millipede, then its head.
@@ -42,6 +45,10 @@ enum Lesson { SLIDE, CRATES, GIFTS, PODS, SPECIAL, MILLI, HUD, SHOP }
 const RIM := 8.0
 const SIDE_GAP := 22.0
 const FINGER_ALPHA := 0.16
+## A tap on a button: the finger leaves the slide this long before it and
+## is back this long after.
+const TAP_IN := 0.45
+const TAP_OUT := 0.3
 ## The finger's slide, times this, is the cart's (the screen's own).
 const GAIN := 1.35
 ## The paint ladder beside the numbers' page: one number of each weight.
@@ -71,6 +78,8 @@ var _icon: Array = []
 ## The finger: down or not, where it is in the garden's pixels, and where
 ## the cart was when it came down.
 var _down := false
+## Down on one of the tray's buttons, not on the slide.
+var _tapping := false
 var _finger := Vector2.ZERO
 var _from := 0.0
 var _side := Rect2()
@@ -152,6 +161,7 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		_ghosts.clear()
 		_flights.clear()
 		_chip_at.clear()
+		_clear_slots()
 		_streak_n = 0
 		_streak_in = 0.0
 		_clear = {}
@@ -225,6 +235,10 @@ class Garden extends "res://arcade/peapod_screen.gd":
 
 	func lift() -> void:
 		sim.target_x = NAN
+
+	## The finger down on the tray's button `slot`.
+	func tap(slot: int) -> void:
+		_press_slot(slot)
 
 	func _keys() -> void:
 		pass
@@ -332,8 +346,13 @@ static func gift_a(turn: int) -> int:
 static func gift_b(turn: int) -> int:
 	return [Sim.Kind.SHOVE, Sim.Kind.FROST][turn % 2]
 
-static func pod_of(turn: int) -> int:
-	return [Sim.Kind.FAN, Sim.Kind.PIERCE, Sim.Kind.BURST, Sim.Kind.ZAP, Sim.Kind.FLAME][turn % 5]
+## A pod's page shows two that run together: how the peas go, and what they
+## are made of.
+static func shape_of(turn: int) -> int:
+	return [Sim.Kind.FAN, Sim.Kind.PIERCE, Sim.Kind.BURST][turn % 3]
+
+static func element_of(turn: int) -> int:
+	return [Sim.Kind.ZAP, Sim.Kind.FLAME][turn % 2]
 
 ## What is said beside the garden of a gift or a pod: its medallion, the
 ## name the run letters when its crate breaks, and what it does.
@@ -405,8 +424,9 @@ static func _milli(sim: RefCounted, head: int, plates: Array, at: float, speed: 
 ## A lesson: `lay` deals its wave into a fresh sim, the cart starts at `x`,
 ## the finger comes down at the first of `keys` ([time, where the cart is
 ## wanted]) and lifts at `up`, `says` ([time, what]) names what is in play,
-## and it starts again after `length`. `still` is its telling moment, for a
-## page that stands still.
+## and it starts again after `length`. `taps` ([time, button]) are the
+## presses on the tray's buttons: the finger leaves the slide for each.
+## `still` is its telling moment, for a page that stands still.
 static func plan(which: int, turn: int) -> Dictionary:
 	var K := Sim.Kind
 	match which:
@@ -424,17 +444,21 @@ static func plan(which: int, turn: int) -> Dictionary:
 		Lesson.GIFTS:
 			var a := gift_a(turn)
 			var b := gift_b(turn)
-			return {"x": 30.0, "up": 8.2, "length": 8.6, "still": 1.7,
-				"says": [[0.0, _gift_word(a)], [3.6, _gift_word(b)]],
-				"keys": [[0.6, 30.0], [2.9, 30.0], [3.7, 270.0], [8.2, 270.0]],
+			return {"x": 30.0, "up": 8.6, "length": 9.0, "still": 1.6,
+				"says": [[0.0, _gift_word(a)], [4.0, _gift_word(b)]],
+				"keys": [[0.6, 30.0], [3.3, 30.0], [4.1, 150.0], [8.6, 150.0]],
+				"taps": [[2.2, 0], [6.2, 0]],
 				"lay": func(sim: RefCounted) -> void:
-					_wall(sim, [[[a, 2], null, null, null, [b, 2]], [null, 5, null, 6, null]], 262.0, 5.0)}
+					_wall(sim, [[[a, 2], null, [b, 2], null, null], [null, 5, null, 6, null]], 262.0, 5.0)}
 		Lesson.PODS:
-			var pod := pod_of(turn)
-			return {"x": 150.0, "up": 7.6, "length": 8.2, "still": 2.8, "says": [[0.0, _gift_word(pod)]],
-				"keys": [[0.6, 150.0], [2.6, 150.0], [3.2, 120.0], [4.6, 120.0], [5.2, 180.0], [7.6, 180.0]],
+			var shape := shape_of(turn)
+			var element := element_of(turn)
+			return {"x": 90.0, "up": 9.0, "length": 9.4, "still": 6.4,
+				"says": [[0.0, _gift_word(shape)], [3.4, _gift_word(element)]],
+				"keys": [[0.6, 90.0], [2.9, 90.0], [3.6, 150.0], [5.6, 150.0], [6.2, 120.0], [7.4, 120.0], [8.0, 180.0], [9.0, 180.0]],
+				"taps": [[1.7, 0], [4.9, 0]],
 				"lay": func(sim: RefCounted) -> void:
-					_wall(sim, [[null, null, [pod, 1], null, null], [4, 5, 4, 5, 4], [6, 5, 6, 5, 6]], 262.0, 6.0)}
+					_wall(sim, [[null, [shape, 1], [element, 1], null, null], [9, 12, 12, 12, 9], [14, 14, 14, 14, 14]], 262.0, 5.0)}
 		Lesson.SPECIAL:
 			return {"x": 210.0, "up": 6.4, "length": 7.0, "still": 3.0,
 				"says": [[0.0, {"icon": ["crate", K.GOLD], "title": _t("TUT_PEAPOD_S_GOLD"), "line": _t("TUT_PEAPOD_S_GOLD_LINE") % Sim.GOLD_WORTH}],
@@ -472,6 +496,7 @@ func _reset() -> void:
 	_tick = 0
 	_said = -1
 	_down = false
+	_tapping = false
 	var sim := fresh()
 	sim.x = float(_plan.x)
 	_plan.lay.call(sim)
@@ -506,6 +531,28 @@ func _drive() -> void:
 	if sim.gap_t > 0.0:
 		sim.gap_t = Sim.GAP_TIME
 	var keys: Array = _plan.keys
+	# a tap on a button: off the slide, over to the button, down on it, back
+	for tap: Array in _plan.get("taps", []):
+		var since := t - float(tap[0])
+		if since < -TAP_IN or since >= TAP_OUT:
+			continue
+		var button: Vector2 = _art._slot_px(int(tap[1]))
+		if since < 0.0:
+			if _down:
+				_down = false
+				_art.lift()
+			_finger = _finger.lerp(button, minf(1.0, Sim.DT / maxf(Sim.DT, -since) * 3.0))
+		else:
+			_finger = button
+			if not _down:
+				_down = true
+				_tapping = true
+				_art.tap(int(tap[1]))
+		return
+	if _tapping:
+		# up off the button; the slide takes the cart again from where it is
+		_tapping = false
+		_down = false
 	if t < float(keys[0][0]) or t >= float(_plan.up):
 		if _down:
 			_down = false

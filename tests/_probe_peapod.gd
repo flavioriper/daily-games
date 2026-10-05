@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Plays Peapod's sim headless with a bot and prints how far each run went.
 ## Run after touching arcade/peapod_sim.gd.
-##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-5]
+##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-5] [keeper 0-1]
 ## Skill 0 wanders under whatever is lowest, slowly; 1 aims at the lowest
 ## thing, gift crates first; 2 does the same at a quick finger's pace.
 ## The shopper is how the bot spends its energy between waves: 0 the card
@@ -10,6 +10,10 @@ extends SceneTree
 ## the quicker gun, 3 only the crit, 4 two Energy cards first and then as 0,
 ## 5 whatever it can afford, at random. A price is tuned when 0 goes a
 ## little further than 1, 2 and 3, and 4 is ahead on a long run only.
+## The keeper is what the bot does with a gift it holds: 0 starts it at
+## once, 1 keeps a pod until it holds one that runs with it (a shape and an
+## element) and starts both, a lone pod when nothing of its kind is running,
+## and keeps the frost and the shove for when the line is near.
 
 const Sim = preload("res://arcade/peapod_sim.gd")
 
@@ -82,12 +86,37 @@ func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
 			break
 	sim.leave_shop()
 
+## Starts what the bot holds, by its keeper.
+func _use(sim: RefCounted, keeper: int) -> void:
+	if keeper == 0:
+		for slot in Sim.TRAY:
+			sim.use(slot)
+		return
+	var a: int = sim.held[0]
+	var b: int = sim.held[1]
+	if Sim.is_pod(a) and Sim.is_pod(b) and Sim.is_shape(a) != Sim.is_shape(b):
+		sim.use(0)
+		sim.use(1)
+		return
+	for slot in Sim.TRAY:
+		var kind: int = sim.held[slot]
+		if kind == Sim.Kind.FROST or kind == Sim.Kind.SHOVE:
+			if sim.danger() > 0.45:
+				sim.use(slot)
+		elif Sim.is_shape(kind):
+			if sim.shape == 0:
+				sim.use(slot)
+		elif Sim.is_element(kind):
+			if sim.element == 0:
+				sim.use(slot)
+
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var seed_v := int(args[0]) if args.size() > 0 else 7
 	var skill := int(args[1]) if args.size() > 1 else 1
 	var games := int(args[2]) if args.size() > 2 else 5
 	var shopper := int(args[3]) if args.size() > 3 else 0
+	var keeper := int(args[4]) if args.size() > 4 else 0
 	var speed: float = [110.0, 240.0, 520.0][clampi(skill, 0, 2)]
 	var waves: Array = []
 	var rng := RandomNumberGenerator.new()
@@ -103,6 +132,7 @@ func _initialize() -> void:
 			guard += 1
 			if sim.phase == Sim.Phase.SHOP:
 				_shop(sim, shopper, rng)
+			_use(sim, keeper)
 			hand = move_toward(hand, _target(sim, skill), speed * Sim.DT)
 			sim.target_x = hand
 			sim.step()
@@ -113,9 +143,9 @@ func _initialize() -> void:
 					log += " %d@%ds(d%d r%d c%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, sim.energy / Sim.ORBS]
 			sim.events.clear()
 		waves.append(sim.wave)
-		print("seed %d skill %d shopper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d energy %d  dps %.0f  kills %d  gifts %d  earned %d  held %d  shots %d" % [
-			seed_v + g, skill, shopper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, _dps(sim),
-			sim.kills, sim.caught, sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
+		print("seed %d skill %d shopper %d keeper %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d energy %d  dps %.0f  kills %d  gifts %d used %d  earned %d  held %d  shots %d" % [
+			seed_v + g, skill, shopper, keeper, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.energy_lv, _dps(sim),
+			sim.kills, sim.caught, sim.used, sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
 		if g == 0:
 			print(log)
 			print(tally)

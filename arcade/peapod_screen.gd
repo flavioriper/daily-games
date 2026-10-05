@@ -19,6 +19,13 @@ extends Control
 ## took off (`_nums`), a crit's bigger and gold, and leaves the pea itself
 ## tumbling away (`_crumbs`).
 ##
+## The fifth pass (2026-10-05): a gift is kept, not started. It flies to one
+## of two buttons on the right of the grass (the sim's `held`), a newer gift
+## taking the older one's, and a press on a button (`_press_slot`, the keys
+## 1 and 2) starts it; a press that lands on a button never takes the cart.
+## A shape and an element run together, so up to three rings run down beside
+## the buttons (`_timed`).
+##
 ## Drawing: the garden (sky, hills, grass) is one still mesh, built on
 ## resize. Everything that moves is drawn by one Control over it: a cached
 ## mesh a crate, a plate, a token and a part of the cart, moved by the
@@ -111,6 +118,17 @@ const ROUND := 22.0
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
 const GOT := {Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.ZAP: "PP_GOT_ZAP",
 	Sim.Kind.FLAME: "PP_GOT_FLAME", Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
+## The tray's buttons on the grass: a button's size, the gap from one to the
+## next, how far over its middle a press is still its (it is its all the way
+## down to the foot of the field), its key among the things that bump, and
+## how long a press shows.
+const SLOT_R := 14.0
+const SLOT_STEP := 33.0
+const SLOT_REACH := 22.0
+const SLOT := 200
+const SLOT_PRESS := 0.14
+const SLOT_NO := 0.3
+const SLOT_OUT := 0.32
 ## The sound a gift starts with, where it has one of its own.
 const CATCH_CUE := {Sim.Kind.FAN: "pod", Sim.Kind.PIERCE: "pod", Sim.Kind.BURST: "pod", Sim.Kind.ZAP: "pod", Sim.Kind.FLAME: "pod",
 	Sim.Kind.FROST: "frost", Sim.Kind.SHOVE: "shove"}
@@ -279,6 +297,15 @@ var _end_at := 0.0
 var _ghosts: Array = []
 ## Gifts flying to their place on the grass: {kind, from, t}.
 var _flights: Array = []
+## The tray's buttons: when each was last pressed and when it last refused
+## (a gift held with no wave on to use it against), the frame of its last
+## press (a touch is also sent as a mouse press), whether its key is down,
+## and the gifts a newer one pushed out, on their way off.
+var _slot_at := [-10.0, -10.0]
+var _slot_no := [-10.0, -10.0]
+var _slot_frame := [-1, -1]
+var _slot_key := [false, false]
+var _slot_out: Array = []
 ## When each of the gun's three numbers, and each running gift, last took
 ## one in (by chip 0..2, and by Sim.Kind), for the bump.
 var _chip_at := {}
@@ -562,6 +589,7 @@ func _new_game() -> void:
 	_ghosts.clear()
 	_flights.clear()
 	_chip_at.clear()
+	_clear_slots()
 	_streak_n = 0
 	_streak_in = 0.0
 	_wave_peak = 0.0
@@ -707,6 +735,10 @@ func _animate(delta: float) -> void:
 		g.t += delta
 	_ghosts = _ghosts.filter(func(g: Dictionary) -> bool: return g.t < GHOST_T)
 	_step_flights(delta)
+	if not _slot_out.is_empty():
+		for o: Dictionary in _slot_out:
+			o.t += delta
+		_slot_out = _slot_out.filter(func(o: Dictionary) -> bool: return o.t < SLOT_OUT)
 	# the streak's pill: in while a streak of five or more runs, out after
 	var live: bool = playing and sim.streak >= STREAK_FROM
 	if live:
@@ -746,12 +778,17 @@ func _step_flights(delta: float) -> void:
 	for f: Dictionary in _flights:
 		f.t += delta
 		if f.t >= FLIGHT_T:
-			_chip_at[int(f.kind)] = _clock
+			_chip_at[SLOT + int(f.slot) if int(f.slot) >= 0 else int(f.kind)] = _clock
 			_quiet.cue("hit", 1.25, -7.0)
-			_rw.ring(_rw.at(field, _home_of(f.kind) + _shake_off), 15.0 * _u, Color(Art.GIFT[int(f.kind)], 0.9), 0.0, 0.3)
+			_rw.ring(_rw.at(field, _flight_home(f) + _shake_off), 15.0 * _u, Color(Art.GIFT[int(f.kind)], 0.9), 0.0, 0.3)
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT_T)
 
-## Where a gift flies to: its ring on the right of the grass.
+## Where a flight ends: a gift had goes to its button (`slot`), a gift
+## started from its button to its ring.
+func _flight_home(f: Dictionary) -> Vector2:
+	return _slot_px(int(f.slot)) if int(f.slot) >= 0 else _home_of(f.kind)
+
+## Where a gift running has its ring, left of the buttons.
 func _home_of(kind: int) -> Vector2:
 	var timed := _timed()
 	for i in timed.size():
@@ -812,6 +849,11 @@ func _keys() -> void:
 	if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D):
 		axis += 1.0
 	sim.axis = axis
+	for k in Sim.TRAY:
+		var down := Input.is_key_pressed(KEY_1 + k)
+		if down and not _slot_key[k]:
+			_press_slot(k)
+		_slot_key[k] = down
 
 func _on_field_input(event: InputEvent) -> void:
 	if _paused:
@@ -823,7 +865,10 @@ func _on_field_input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
-		if t.pressed and _touch == -1:
+		if t.pressed and _slot_hit(t.position) >= 0:
+			# a button's press is not the cart's, whichever finger it is
+			_press_slot(_slot_hit(t.position))
+		elif t.pressed and _touch == -1:
 			_touch = t.index
 			_grab(t.position)
 		elif not t.pressed and t.index == _touch:
@@ -835,6 +880,9 @@ func _on_field_input(event: InputEvent) -> void:
 			_slide(d.position)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		var m := event as InputEventMouseButton
+		if m.pressed and _slot_hit(m.position) >= 0:
+			_press_slot(_slot_hit(m.position))
+			return
 		_mouse = m.pressed and _touch == -1
 		if _mouse:
 			_grab(m.position)
@@ -859,6 +907,96 @@ func _slide(at: Vector2) -> void:
 		sim.target_x = clampf(sim.target_x, lo, hi)
 		_touch_from = at
 		_cart_from = sim.target_x
+
+# --- the tray ---
+
+func _clear_slots() -> void:
+	_slot_at = [-10.0, -10.0]
+	_slot_no = [-10.0, -10.0]
+	_slot_frame = [-1, -1]
+	_slot_out.clear()
+
+## The tray's buttons, on the right of the grass: button 0 and, right of
+## it, button 1.
+func _slot_px(k: int) -> Vector2:
+	return px(Vector2(Sim.W - 18.0 - SLOT_STEP * (Sim.TRAY - 1 - k), Sim.H - 15.5))
+
+## The button a press at `at` (the field's pixels) is on, -1 for none: a
+## thumb's width round each, and all the way down to the foot of the field.
+func _slot_hit(at: Vector2) -> int:
+	if sim == null:
+		return -1
+	var first := _slot_px(0)
+	var left := first.x - SLOT_STEP * 0.5 * _u
+	if at.x < left or at.y < first.y - SLOT_REACH * _u:
+		return -1
+	return clampi(int((at.x - left) / (SLOT_STEP * _u)), 0, Sim.TRAY - 1)
+
+## A press on button `slot`: its gift starts, or (no wave on to use it
+## against) the button shakes its head. An empty button does nothing.
+func _press_slot(slot: int) -> void:
+	if sim == null or _paused or int(sim.held[slot]) == 0:
+		return
+	var frame := Engine.get_process_frames()
+	if frame == int(_slot_frame[slot]):
+		return
+	_slot_frame[slot] = frame
+	if sim.use(slot):
+		_slot_at[slot] = _clock
+	else:
+		_slot_no[slot] = _clock
+
+## How far down button `k` is, 1 just pressed to 0, and its shake when it
+## refuses.
+func _slot_down(k: int) -> float:
+	return clampf(1.0 - (_clock - float(_slot_at[k])) / SLOT_PRESS, 0.0, 1.0)
+
+func _slot_shift(k: int) -> Vector2:
+	var off := Vector2(0, 1.8 * _u * _slot_down(k))
+	var since: float = _clock - float(_slot_no[k])
+	if since < SLOT_NO and not Motion.reduce:
+		off.x += sin(since * 42.0) * 2.4 * _u * (1.0 - since / SLOT_NO)
+	return off
+
+## True while a gift is still on its way to button `k`.
+func _slot_awaits(k: int) -> bool:
+	for f: Dictionary in _flights:
+		if int(f.slot) == k:
+			return true
+	return false
+
+## Under each button: its shadow on the grass, a paper seat that goes down
+## and darker under a press, and a hollow in it while it is empty.
+func _draw_slot_seats(b: Face.Builder) -> void:
+	var r := SLOT_R * _u
+	for k in Sim.TRAY:
+		var c := _slot_px(k)
+		var down := _slot_down(k)
+		b.disc(c + Vector2(0, 2.6 * _u), r, Color(0.2, 0.32, 0.1, 0.26))
+		c += _slot_shift(k)
+		b.disc(c, r, Art.CREAM.darkened(0.1 * down))
+		if int(sim.held[k]) == 0 or _slot_awaits(k):
+			b.disc(c + Vector2(0, 0.8 * _u), r * 0.7, Color(Art.CREAM_DEEP, 0.6))
+			b.disc(c + Vector2(0, 1.9 * _u), r * 0.66, Art.CREAM.darkened(0.04))
+
+## On each button the gift it holds, breathing while it can be started and
+## pale while it cannot; and a gift pushed out by a newer one, tumbling off.
+func _draw_slot_tokens() -> void:
+	for k in Sim.TRAY:
+		var kind := int(sim.held[k])
+		if kind == 0 or _slot_awaits(k):
+			continue
+		var ready: bool = sim.can_use(k)
+		var sc := 0.9 * _bump(SLOT + k)
+		if ready and not Motion.reduce:
+			sc *= 1.0 + 0.04 * sin(_clock * 4.2 + k * 1.7)
+		_cast_add(Art.token(kind, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _slot_px(k) + _slot_shift(k)), Color(1, 1, 1, 1.0 if ready else 0.55))
+	for o: Dictionary in _slot_out:
+		var e := clampf(float(o.t) / SLOT_OUT, 0.0, 1.0)
+		var side := -1.0 if int(o.slot) == 0 else 1.0
+		var at := _slot_px(int(o.slot)) + Vector2(side * 16.0 * e, -30.0 * e + 34.0 * e * e) * _u
+		var sc := 0.9 * (1.0 - 0.5 * e)
+		_cast_add(Art.token(int(o.kind), _u), Transform2D(side * 2.2 * e, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, 1.0 - e * e))
 
 ## The tutorial card stops the run and leaves it paused, a tap from going on.
 func _tutor_hold(on: bool) -> void:
@@ -945,6 +1083,8 @@ func _play_events() -> void:
 				_on_kill(ev)
 			"gift":
 				_on_gift(ev)
+			"use":
+				_on_use(ev)
 			"zap":
 				if _bolts.size() >= MAX_BOLTS:
 					_bolts.pop_front()
@@ -1053,21 +1193,45 @@ func _on_gift(ev: Dictionary) -> void:
 	var kind: int = ev.kind
 	var pos: Vector2 = ev.pos
 	var at := _in_rw(pos)
+	var slot: int = ev.slot
 	var col: Color = Art.GIFT[kind]
-	_fx.cue(CATCH_CUE.get(kind, "catch"))
+	_fx.cue("catch")
 	_feel(Haptics.GOOD)
 	_hop = {"at": _clock, "tall": 3.5, "time": 0.22, "twice": false}
-	if kind == Sim.Kind.SHOVE:
-		_rw.ring(_in_rw(Vector2(Sim.W * 0.5, Sim.CART_Y - 60.0)), 200.0 * _u, Color(col, 0.9))
-		_shake = maxf(_shake, 0.3)
-	elif not Motion.reduce:
-		_flights.append({"kind": kind, "from": px(pos), "t": 0.0})
+	# whatever was still on its way to this button never lands
+	_flights = _flights.filter(func(f: Dictionary) -> bool: return int(f.slot) != slot)
+	if not Motion.reduce:
+		_flights.append({"kind": kind, "from": px(pos), "slot": slot, "t": 0.0})
+		if int(ev.lost) != 0:
+			_slot_out.append({"kind": int(ev.lost), "slot": slot, "t": 0.0})
 	else:
-		_chip_at[kind] = _clock
+		_chip_at[SLOT + slot] = _clock
 	_rw.sticker(tr(GOT[kind]), at + Vector2(0, -30.0), 58, 1.1, false, col.lightened(0.25), false, "got", 34.0)
 	_rw.ring(at, 40.0 * _u, Color(col, 0.9))
 	_rw.spray(at, col, 8, 520.0, "star", 0.9)
 	_rw.spray(at, Color("fffaf0"), 6, 460.0, "spark", 1.0)
+
+## A gift started from its button: its sound, a ring off the button, and
+## the gift on its way to the ring it runs down in (the shove has none: it
+## is the whole garden's).
+func _on_use(ev: Dictionary) -> void:
+	var kind: int = ev.kind
+	var slot: int = ev.slot
+	var col: Color = Art.GIFT[kind]
+	var from := _slot_px(slot)
+	var at := _rw.at(field, from + _shake_off)
+	_fx.cue(CATCH_CUE.get(kind, "catch"))
+	_feel(Haptics.GOOD)
+	_flights = _flights.filter(func(f: Dictionary) -> bool: return int(f.slot) != slot)
+	if kind == Sim.Kind.SHOVE:
+		_rw.ring(_in_rw(Vector2(Sim.W * 0.5, Sim.CART_Y - 60.0)), 200.0 * _u, Color(col, 0.9))
+		_shake = maxf(_shake, 0.3)
+	elif not Motion.reduce:
+		_flights.append({"kind": kind, "from": from, "slot": -1, "t": 0.0})
+	else:
+		_chip_at[kind] = _clock
+	_rw.ring(at, 34.0 * _u, Color(col, 0.9))
+	_rw.spray(at, col, 7, 480.0, "star", 0.8)
 	_flash_now(col, 0.16)
 
 ## What a pea landing took off, bounced off where it landed: a small hop to
@@ -1306,8 +1470,8 @@ func _draw_field() -> void:
 ## Over the sky and the sun the land, and then everything that moves, back
 ## to front: the clouds (under the land), the line, the crates
 ## or the millipede and their numbers, the peas and the sparks, what is
-## laid fresh (the streak's pill, the stars, the glows), the gun's line and
-## what is running down, the flowers, the gifts on their way down, the
+## laid fresh (the streak's pill, the stars, the glows), the gun's line,
+## what is running down and the tray's two buttons, the flowers, the gifts on their way down, the
 ## carts, the gifts flying home and the numbers going up.
 func _draw_over() -> void:
 	if sim == null:
@@ -1336,6 +1500,7 @@ func _draw_over() -> void:
 	_draw_muzzle(top)
 	var timed := _timed()
 	_draw_timed_seats(top, timed)
+	_draw_slot_seats(top)
 	_draw_streak_pill(top)
 	_draw_stars(top)
 	if sim.frost_t > 0.0:
@@ -1359,6 +1524,7 @@ func _draw_over() -> void:
 		var blink: bool = float(timed[k][1]) < 0.2 and fmod(_clock, 0.3) < 0.12 and not Motion.reduce
 		var sc := 0.6 * _bump(timed[k][0])
 		_cast_add(Art.token(timed[k][0], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, _timed_at(k)), Color(1, 1, 1, 0.45 if blink else 1.0))
+	_draw_slot_tokens()
 	_draw_blooms()
 	for c: Dictionary in _crumbs:
 		var k: float = float(c.t) / CRUMB_T
@@ -1791,18 +1957,20 @@ func _build_chips() -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(at, size, 9.5 * _u), Art.CREAM)
 	return b.mesh()
 
-## What is running down, as [kind, the part of it left]: the pod held and
-## the frost, lettered from the right of the grass.
+## What is running down, as [kind, the part of it left]: the shape, the
+## element and the frost, laid leftwards from beside the tray's buttons.
 func _timed() -> Array:
 	var out: Array = []
-	if sim.pod_t > 0.0:
-		out.append([sim.pod, sim.pod_t / Sim.POD_TIME])
+	if sim.shape_t > 0.0:
+		out.append([sim.shape, sim.shape_t / Sim.POD_TIME])
+	if sim.element_t > 0.0:
+		out.append([sim.element, sim.element_t / Sim.POD_TIME])
 	if sim.frost_t > 0.0:
 		out.append([Sim.Kind.FROST, sim.frost_t / Sim.FROST_TIME])
 	return out
 
 func _timed_at(k: int) -> Vector2:
-	return px(Vector2(Sim.W - 14.0 - 24.0 * k, Sim.H - 13.0))
+	return px(Vector2(Sim.W - 79.0 - 22.0 * k, Sim.H - 13.0))
 
 ## Under each: a paper seat and a ring of its own colour that runs down
 ## with it.
@@ -1900,17 +2068,20 @@ func _draw_stars(b: Face.Builder) -> void:
 			var turn := 0.0 if Motion.reduce else 0.5 * exp(-t * 6.0) * cos(t * 14.0)
 			Rewards.star(b, c, 14.0 * _u * sc * out, Art.GOLD, turn)
 
-## The gifts flying to their place on the grass: up off the cart and round
-## in an arc, shrinking to the size they sit at.
+## The gifts flying to their place on the grass: up off the crate and round
+## in an arc to a button, or from a button to its ring, shrinking to the
+## size they sit at.
 func _draw_flights() -> void:
 	for f: Dictionary in _flights:
 		var k := clampf(float(f.t) / FLIGHT_T, 0.0, 1.0)
 		var e := k * k * (3.0 - 2.0 * k)
 		var from: Vector2 = f.from
-		var to := _home_of(f.kind)
-		var bow := from.lerp(to, 0.35) + Vector2(0, -48.0 * _u)
+		var held: bool = int(f.slot) >= 0
+		var to := _flight_home(f)
+		# up and round from a crate; a short hop from a button to its ring
+		var bow := from.lerp(to, 0.35) + Vector2(0, (-48.0 if held else -22.0) * _u)
 		var at := from.lerp(bow, e).lerp(bow.lerp(to, e), e)
-		var sc := lerpf(1.0, 0.62, e) * (1.0 + 0.25 * sin(e * PI))
+		var sc := (lerpf(1.0, 0.9, e) if held else lerpf(0.9, 0.6, e)) * (1.0 + 0.25 * sin(e * PI))
 		_cast_add(Art.token(f.kind, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, at), Color.WHITE)
 		if int(f.t * 60.0) % 3 == 0:
 			_spark((at - _origin) / _u, (Art.GIFT[int(f.kind)] as Color).lerp(Color("fffaf0"), 0.4))
