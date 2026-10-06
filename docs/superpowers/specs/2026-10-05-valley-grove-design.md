@@ -104,11 +104,12 @@ at 1 h 42 with Axe 9 and Room 7. The bot chops one tree at a time, so it
 does not say what a wider-spread land is to a person sweeping the circle
 over several.
 
-**2026-10-06, the land in isometric** (149 tiles in three steps holding the
-same ground; the circle measured where the eye sees it, and a tree chopped
-along the line it stands on): Birch on day 5 and Oak on day 21 for the
-eight visits of two minutes, as before. `docs/agents/valley.md` has the
-land's rules.
+**2026-10-06, the land in isometric**: one flat square of ground seen
+corner on, about half the ground of the rectangle (a tree chopped along the
+line it stands on). Birch on day 5 and Oak on day 21 for the eight visits of
+two minutes, as before; day 2, 7 and 20 for the six of ten minutes; Birch at
+1 h 42. `docs/agents/valley.md` has the land's rules and what the bot does
+not measure.
 
 ## 5. The screens
 

@@ -70,7 +70,7 @@ func _check_sim() -> void:
 	_ok("a new grove is one sapling", sim.trees.size() == 1 and int(sim.trees[0].tier) == 0)
 	_ok("a sapling starts at four", Sim.hp_of(0) == 4 and int(sim.trees[0].hp) == 4)
 	_ok("room for three, one every six seconds, half a second a chop", sim.room() == 3 and is_equal_approx(sim.spawn_time(), 6.0) and is_equal_approx(sim.swing_time(), 0.5))
-	var at: Vector2 = Sim.seen(sim.trees[0].pos) + Vector2(0.0, -Sim.RADIUS[0])
+	var at: Vector2 = sim.trees[0].pos + Vector2(0.0, -Sim.RADIUS[0])
 	var swings := 0
 	var fell := 0
 	var t := 0.0
@@ -170,7 +170,7 @@ func _pace(visits: int, secs: float, days: int) -> void:
 				var hold: bool = rest <= 0.0 and not sim.trees.is_empty()
 				var at := Vector2.ZERO
 				if hold:
-					at = Sim.seen(sim.trees[0].pos) + Vector2(0.0, -Sim.radius_of(sim.trees[0].tier))
+					at = sim.trees[0].pos + Vector2(0.0, -Sim.radius_of(sim.trees[0].tier))
 				sim.step(DT, hold, at)
 				rest -= DT
 				t += DT

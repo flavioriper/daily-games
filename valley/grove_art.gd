@@ -18,29 +18,33 @@ const Motes = preload("res://ui/motes.gd")
 const Motion = preload("res://core/motion.gd")
 const WIND := preload("res://shaders/wind_2d.gdshader")
 
-## The painted land (2026-10-06, the isometric pass): the pond hazy far off
+## The painted land (2026-10-06, the isometric pass): a pond pale far off
 ## and deep at the foot, grass in forest greens under a wash of warm light
 ## and cool shade, earth warm where it looks at the sun (upper left) and
 ## cool where it looks away, and a shadow that is a colour, never a grey.
-const WATER_FAR := Color("a2ded6")
-const WATER := Color("6cbfc0")
-const WATER_DEEP := Color("3f97a3")
+const WATER_FAR := Color("b9e8e0")
+const WATER := Color("7fd0cc")
+const WATER_DEEP := Color("4ba9b3")
 const RIPPLE := Color(1.0, 1.0, 1.0, 0.42)
 const LILY := Color("4f9f63")
 const LILY_HI := Color("74c07e")
-const GRASS_LIT := Color("98c862")
-const GRASS_LOW := Color("5f9c55")
+const GRASS := Color("82b95b")
+const GRASS_LIT := Color("a3cf66")
+const GRASS_DEEP := Color("5f9c55")
 const WASH_WARM := Color("deec8a")
-const WASH_COOL := Color("2c7060")
+const WASH_COOL := Color("4c8f58")
 const LIP := Color("4d8748")
-const LIP_LIT := Color("5f9d4d")
-const EARTH := [Color("d2a56c"), Color("b17f4e")]
-const EARTH_SHADE := [Color("93684a"), Color("74503c")]
-const SEAM := Color(0.34, 0.2, 0.13, 0.26)
+const LIP_LIT := Color("67a650")
+## The earth under the turf, top and foot, and the clay under that; each
+## lit and in shade.
+const EARTH := [Color("d8ad75"), Color("c2925e")]
+const EARTH_SHADE := [Color("96694a"), Color("7f573f")]
+const CLAY := [Color("b68253"), Color("966642")]
+const CLAY_SHADE := [Color("76503b"), Color("5f4133")]
+const SEAM := Color(0.34, 0.2, 0.13, 0.3)
 const STONE := Color("e0cfae")
 const STONE_SHADE := Color("a98f76")
 const SHADE := Color(0.09, 0.27, 0.34, 0.26)
-const MIRROR := Color(0.08, 0.29, 0.35, 0.2)
 ## A tuft's greens: most deeper than the grass, one in four lit.
 const TUFTS := [Color("4f8f4c"), Color("5a964a"), Color("63a04e"), Color("b9da74")]
 ## What a flower's petals are tinted (its stem with them, so all pale).
@@ -67,12 +71,14 @@ const LOG := 48.0
 const ICON := 56.0
 
 ## How the land is seen: a point of the ground lands across as it is and
-## half as deep, lifted LIFT for every step it is on, in view units (land
-## units as the screen lays them: a screen scales and places them). DEPTH is
-## the earth showing over the water and VIEW the box the whole land takes.
-const LIFT := Sim.RISE
-const DEPTH := 68.0
-const VIEW := Rect2(0.0, -96.0, 720.0, 1064.0)
+## DEEP as deep, in view units (land units as the screen lays them: a screen
+## scales and places them). DEPTH is the earth showing over the water, ROUND
+## how far a corner of the land is rounded off, and VIEW the box the land
+## and its earth take.
+const DEEP := Sim.DEEP
+const DEPTH := 116.0
+const ROUND := 96.0
+const VIEW := Rect2(0.0, 0.0, 1040.0, 802.4)
 ## A tree is drawn this much over its footprint: seen from the side of the
 ## land, a crown only overlaps what is behind it.
 const TREE := 1.25
@@ -84,7 +90,7 @@ static var _tuft: ArrayMesh
 static var _flower: ArrayMesh
 static var _leaf_mesh: ArrayMesh
 static var _winds := {}
-static var _wash: Array = []
+static var _outline := PackedVector2Array()
 
 ## A tree of `look` (0 sapling, 1 birch, 2 oak, 3 pine, 4 blossom) standing
 ## on (0, 0), its shade on the grass under it, in land units. Redrawn on
@@ -272,21 +278,19 @@ static func leaf() -> ArrayMesh:
 	return _leaf_mesh
 
 ## The grass that stands on the land seen from `origin` at `u` pixels a
-## unit: its tufts and its flowers, a MultiMesh each, for a Control wearing
-## `wind(true)` to draw over the ground. The same on the same tiles every time.
+## unit: its tufts, and its flowers in a few drifts, a MultiMesh each, for a
+## Control wearing `wind(true)` to draw over the ground. The same every time.
 static func grass(origin: Vector2, u: float) -> Array[MultiMesh]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261006
-	var land := Sim.land()
 	var spots := [[], []]
-	for t: Vector2i in _back_to_front():
-		for kind in 2:
-			for i in (2 if kind == 0 else 1):
-				if rng.randf() > (0.42 if kind == 0 else 0.2):
-					continue
-				var dx := rng.randf_range(-0.5, 0.5) * Sim.TILE_HALF
-				var dy := rng.randf_range(-0.5, 0.5) * (Sim.TILE_HALF - absf(dx))
-				spots[kind].append(_put(Sim.centre_of(t) + Vector2(dx, dy), int(land[t]), origin, u))
+	while spots[0].size() < 84:
+		var p := _on_land(rng, 34.0)
+		spots[0].append(origin + see(p) * u)
+	for drift in 8:
+		var c := _on_land(rng, 90.0)
+		for i in rng.randi_range(3, 5):
+			spots[1].append(origin + see(c + Vector2(rng.randf_range(-52.0, 52.0), rng.randf_range(-52.0, 52.0))) * u)
 	var out: Array[MultiMesh] = []
 	for kind in 2:
 		var mm := MultiMesh.new()
@@ -312,59 +316,103 @@ static func height(look: int) -> float:
 
 ## A point of the ground, in view units.
 static func see(p: Vector2) -> Vector2:
-	return Vector2(p.x, p.y * 0.5 - maxi(0, Sim.step_at(p)) * LIFT)
+	return Vector2(p.x, p.y * DEEP)
 
 ## The circle, `r` pixels across its half, about `c` on a screen: one lying
-## on the ground, so half as tall as it is wide.
+## on the ground, so as much flatter than wide as the ground is seen deep.
 static func oval(c: Vector2, r: float, n := 72) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	pts.resize(n)
 	for i in n:
 		var a := TAU * i / n
-		pts[i] = c + Vector2(cos(a) * r, sin(a) * r * 0.5)
+		pts[i] = c + Vector2(cos(a) * r, sin(a) * r * DEEP)
 	return pts
 
-## A point of a tile on `step`, in a screen's pixels. A tile's corner is
-## four tiles' corner, so the step is said, not looked up.
-static func _put(p: Vector2, step: int, origin: Vector2, u: float, down := 0.0) -> Vector2:
-	return origin + Vector2(p.x, p.y * 0.5 - step * LIFT + down) * u
+## The land's edge in view units, clockwise from its back corner: a square
+## of ground seen corner on, each corner rounded off.
+static func outline() -> PackedVector2Array:
+	if _outline.is_empty():
+		var h := Sim.HALF
+		var corners := [see(Vector2(h, 0.0)), see(Vector2(h * 2.0, h)), see(Vector2(h, h * 2.0)), see(Vector2(0.0, h))]
+		for i in 4:
+			var c: Vector2 = corners[i]
+			var r := ROUND * (1.0 if i % 2 == 1 else 1.5)
+			var from := c + ((corners[(i + 3) % 4] as Vector2) - c).normalized() * r
+			var to := c + ((corners[(i + 1) % 4] as Vector2) - c).normalized() * r
+			_outline.append_array(Face.Builder.bezier2(from, c, to, 14))
+			_outline.append(to)
+	return _outline
 
-static func _back_to_front() -> Array:
-	var tiles := Sim.land().keys()
-	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y < b.y or (a.y == b.y and a.x < b.x))
-	return tiles
+## The edge the earth shows under, from the land's right corner round its
+## front to its left, and how far each point of it looks away from the sun
+## (0 lit, 1 in shade): a face that looks left is lit, the corner between
+## goes over from one to the other.
+static func _front() -> Array:
+	var o := outline()
+	var n := o.size()
+	var hi := 0
+	var lo := 0
+	for i in n:
+		if o[i].x > o[hi].x:
+			hi = i
+		if o[i].x < o[lo].x:
+			lo = i
+	var pts := PackedVector2Array()
+	var shade := PackedFloat32Array()
+	var i := hi
+	while true:
+		pts.append(o[i])
+		var d := (o[(i + 1) % n] - o[(i + n - 1) % n]).normalized()
+		shade.append(smoothstep(0.0, 1.0, clampf(0.5 + d.y * 1.4, 0.0, 1.0)))
+		if i == lo:
+			break
+		i = (i + 1) % n
+	return [pts, shade]
+
+## A point of the ground at least `inside` from the land's edge.
+static func _on_land(rng: RandomNumberGenerator, inside: float) -> Vector2:
+	var h := Sim.HALF
+	var most := h - inside * sqrt(2.0)
+	for attempt in 40:
+		var d := Vector2(rng.randf_range(-most, most), rng.randf_range(-most, most))
+		if absf(d.x) + absf(d.y) <= most and maxf(absf(d.x), absf(d.y)) <= h - inside - 80.0:
+			return Vector2(h, h) + d
+	return Vector2(h, h)
 
 ## Whether a point of the view is open water: no grass and no earth there,
 ## nor the land's mirror under its foot.
 static func _wet(v: Vector2) -> bool:
-	for step in Sim.STEPS:
-		var y := v.y - DEPTH - 40.0
-		while y <= v.y + step * LIFT:
-			if Sim.step_at(Vector2(v.x, (y + step * LIFT) * 2.0)) == step:
-				return false
-			y += 14.0
+	var o := outline()
+	for k in 6:
+		if Geometry2D.is_point_in_polygon(v - Vector2(0.0, (DEPTH + 56.0) * k / 5.0), o):
+			return false
 	return true
 
-## The grass's green at a point of the ground on `step`: lighter toward the
-## sun and on a higher step, under a wash of warm and cool patches that
-## takes no notice of the tiles. Tiles share their corners' colours, so the
-## wash crosses them without a seam.
-static func _tone(p: Vector2, step: int) -> Color:
-	if _wash.is_empty():
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 20261007
-		for i in 24:
-			_wash.append([Vector2(rng.randf_range(-40.0, Sim.LAND.x + 40.0), rng.randf_range(0.0, Sim.LAND.y)),
-				rng.randf_range(120.0, 270.0), i % 5 < 3])
-	var sun := 0.55 - (p.x / Sim.LAND.x - 0.5) * 0.55 - (p.y / Sim.LAND.y - 0.5) * 0.5 + step * 0.07
-	var c := GRASS_LOW.lerp(GRASS_LIT, clampf(0.24 + 0.6 * sun, 0.0, 1.0))
-	for w: Array in _wash:
-		var d := p.distance_to(w[0]) / float(w[1])
-		if d >= 1.0:
-			continue
-		var f := pow(1.0 - d, 1.5)
-		c = c.lerp(WASH_WARM, 0.6 * f) if w[2] else c.lerp(WASH_COOL, 0.4 * f)
-	return c
+## A patch of soft colour: `alpha` at its middle, nothing at its edge.
+static func _glow(b: Face.Builder, c: Vector2, rx: float, ry: float, colour: Color, alpha: float) -> void:
+	var n := 28
+	var mid := b.vertex(c, Color(colour, alpha))
+	var first := b.verts.size()
+	for ring: Array in [[0.55, alpha * 0.48], [1.0, 0.0]]:
+		for i in n:
+			var a := TAU * i / n
+			b.vertex(c + Vector2(cos(a) * rx, sin(a) * ry) * float(ring[0]), Color(colour, ring[1]))
+	for i in n:
+		var j := (i + 1) % n
+		b.tri(mid, first + i, first + j)
+		b.tri(first + i, first + n + i, first + n + j)
+		b.tri(first + i, first + n + j, first + j)
+
+## A band between two rows of points, each point with its own colours.
+static func _band(b: Face.Builder, top: PackedVector2Array, foot: PackedVector2Array, top_c: PackedColorArray, foot_c: PackedColorArray) -> void:
+	var first := b.verts.size()
+	for i in top.size():
+		b.vertex(top[i], top_c[i])
+		b.vertex(foot[i], foot_c[i])
+	for i in top.size() - 1:
+		var k := first + i * 2
+		b.tri(k, k + 2, k + 3)
+		b.tri(k, k + 3, k + 1)
 
 ## The pond and the land in it, for a field of `size` with the view's (0, 0)
 ## at `origin` and `u` pixels a unit: the still part of the screen, one mesh.
@@ -376,14 +424,14 @@ static func ground(size: Vector2, origin: Vector2, u: float) -> ArrayMesh:
 	_land_into(b, origin, u, rng)
 	return b.mesh()
 
-## The pond: pale and hazy at the top of the field, deep at its foot, with
-## the clouds of a slow sky lying on it, lilies flat on the water, a stone
-## or two and the light catching a ripple.
+## The pond: pale at the top of the field, deep at its foot, the clouds of a
+## slow sky lying soft on it, the light on a ripple here and there, lilies
+## in twos and threes flat on the water, one of them in flower, and a stone.
 static func _water_into(b: Face.Builder, size: Vector2, origin: Vector2, u: float, rng: RandomNumberGenerator) -> void:
 	b.polygon(Face.Builder.round_rect(Vector2.ZERO, size, 36.0), WATER_DEEP)
 	b.polygon(Face.Builder.round_rect(Vector2.ZERO, Vector2(size.x, minf(size.y, 90.0)), 36.0), WATER_FAR)
 	if size.y > 100.0:
-		var rows := [[40.0, WATER_FAR], [lerpf(40.0, size.y - 40.0, 0.45), WATER], [size.y - 40.0, WATER_DEEP]]
+		var rows := [[40.0, WATER_FAR], [lerpf(40.0, size.y - 40.0, 0.5), WATER], [size.y - 40.0, WATER_DEEP]]
 		for i in 2:
 			var v0 := b.vertex(Vector2(0.0, rows[i][0]), rows[i][1])
 			var v1 := b.vertex(Vector2(size.x, rows[i][0]), rows[i][1])
@@ -392,158 +440,161 @@ static func _water_into(b: Face.Builder, size: Vector2, origin: Vector2, u: floa
 			b.tri(v0, v1, v2)
 			b.tri(v0, v2, v3)
 	var open := func(at: Vector2, wide: float) -> bool:
-		for dx: float in [-wide, 0.0, wide]:
-			var p := at + Vector2(dx, 0.0)
-			if p.x < 20.0 or p.x > size.x - 20.0 or not _wet((p - origin) / u):
+		for o: Vector2 in [Vector2(-wide, 0.0), Vector2.ZERO, Vector2(wide, 0.0), Vector2(0.0, -wide * 0.5), Vector2(0.0, wide * 0.5)]:
+			var p := at + o
+			if p.x < 16.0 or p.x > size.x - 16.0 or p.y < 16.0 or p.y > size.y - 16.0 or not _wet((p - origin) / u):
 				return false
 		return true
-	# clouds: a few pale ovals run together, anywhere, the land over them
-	for i in 6:
-		var at := Vector2(rng.randf_range(0.0, size.x), rng.randf_range(60.0, maxf(70.0, size.y - 120.0)))
-		var s := rng.randf_range(0.6, 1.3) * u
-		for o: Array in [[0, 0, 150, 34], [-110, 10, 100, 24], [120, 12, 110, 26], [30, -18, 90, 26], [-40, 18, 130, 22]]:
-			var c := at + Vector2(o[0], o[1]) * s
-			var rx: float = minf(float(o[2]) * s, minf(c.x, size.x - c.x) - 4.0)
-			if rx > 20.0 and c.y - float(o[3]) * s > 4.0 and c.y + float(o[3]) * s < size.y - 4.0:
-				b.ellipse(c, rx, float(o[3]) * s, Color(1.0, 1.0, 1.0, 0.085))
-	for i in 26:
+	for i in 7:
+		var at := Vector2(rng.randf_range(size.x * 0.1, size.x * 0.9), rng.randf_range(size.y * 0.06, size.y * 0.94))
+		var s := rng.randf_range(0.7, 1.3) * u
+		for o: Array in [[0, 0, 190, 44], [-120, 12, 130, 30], [130, 14, 140, 32], [30, -20, 110, 30]]:
+			_glow(b, at + Vector2(o[0], o[1]) * s, float(o[2]) * s, float(o[3]) * s, Color.WHITE, 0.15)
+	for i in 30:
 		var at := Vector2(rng.randf_range(30.0, size.x - 90.0), rng.randf_range(24.0, size.y - 24.0))
-		var long := rng.randf_range(22.0, 50.0)
-		if open.call(at + Vector2(long * 0.5, 0.0), long * 0.5 + 10.0):
-			b.stroke(PackedVector2Array([at, at + Vector2(long, 0.0)]), 3.6, Color(RIPPLE, rng.randf_range(0.2, 0.5)))
-	var laid := 0
-	for i in 60:
-		if laid >= 9:
+		var long := rng.randf_range(18.0, 46.0)
+		if open.call(at + Vector2(long * 0.5, 0.0), long * 0.5 + 12.0):
+			b.stroke(PackedVector2Array([at, at + Vector2(long, 0.0)]), 3.2, Color(RIPPLE, rng.randf_range(0.22, 0.55)))
+	var groups := 0
+	for attempt in 80:
+		if groups >= 5:
 			break
-		var at := Vector2(rng.randf_range(34.0, size.x - 34.0), rng.randf_range(30.0, size.y - 30.0))
-		var r := rng.randf_range(22.0, 32.0) * u
-		if not open.call(at, r + 8.0):
+		var at := Vector2(rng.randf_range(40.0, size.x - 40.0), rng.randf_range(40.0, size.y - 40.0))
+		if not open.call(at, 74.0 * u):
 			continue
-		if laid % 5 == 4:
-			b.ellipse(at + Vector2(5.0, 10.0) * u, 30.0 * u, 9.0 * u, SHADE)
-			b.ellipse(at, 26.0 * u, 15.0 * u, Pal.ROCK)
-			b.ellipse(at + Vector2(-7.0, -5.0) * u, 12.0 * u, 6.0 * u, Color("d2c6ae"))
-		else:
-			_lily(b, at, r, rng.randf_range(0.0, TAU))
-		laid += 1
+		groups += 1
+		if groups == 3:
+			b.ellipse(at + Vector2(6.0, 12.0) * u, 34.0 * u, 10.0 * u, SHADE)
+			b.ellipse(at, 30.0 * u, 18.0 * u, Pal.ROCK)
+			b.ellipse(at + Vector2(-8.0, -6.0) * u, 14.0 * u, 7.0 * u, Color("d8cdb6"))
+			b.ellipse(at + Vector2(34.0, 10.0) * u, 13.0 * u, 8.0 * u, Pal.ROCK)
+			continue
+		var pads := rng.randi_range(2, 3)
+		for i in pads:
+			var c := at + Vector2.from_angle(TAU * i / pads + rng.randf()) * Vector2(58.0, 34.0) * u * (0.0 if i == 0 else 1.0)
+			var r := rng.randf_range(28.0, 38.0) * u * (1.0 if i == 0 else 0.74)
+			_lily(b, c, r, rng.randf_range(0.0, TAU))
+			if i == 0 and groups % 2 == 1:
+				for k in 6:
+					b.ellipse(c + Vector2(cos(TAU * k / 6.0) * 6.0, sin(TAU * k / 6.0) * 3.4 - 4.0) * u, 5.4 * u, 3.6 * u, Color("fbd0e2"))
+				b.ellipse(c + Vector2(0.0, -4.5) * u, 3.6 * u, 2.6 * u, Color("fff0b8"))
 
-## The land, tile by tile from the back: the pond's mirror under its foot,
-## each top with the earth it shows (left faces lit, right ones in shade, a
-## seam and a stone in them, turf hanging over, a pale line where they meet
-## the water), the shadow a step throws on the one below, and dabs of
-## lighter grass.
+## The land: its mirror on the pond, the earth and the clay under it from
+## the lit left round to the shaded right, a pale line and rings where they
+## meet the water, turf hanging over, then the grass in one piece with a
+## wash of warm and cool on it, the sun on its near edges, and the small
+## things: combed strokes, pale dabs, a pebble.
 static func _land_into(b: Face.Builder, origin: Vector2, u: float, rng: RandomNumberGenerator) -> void:
-	var land := Sim.land()
-	var tiles := _back_to_front()
-	var a := Sim.TILE_HALF
-	var px := u / 1.34   # the concept page's pixels
-	var drop := func(step: int, t: Vector2i) -> float:
-		return (step - int(land[t])) * LIFT if land.has(t) else DEPTH + step * LIFT
-	for t: Vector2i in tiles:
-		var step: int = land[t]
-		var c := Sim.centre_of(t)
-		for side: int in [-1, 1]:
-			var n := t + Vector2i(side, 1)
-			if land.has(n):
-				continue
-			var d: float = drop.call(step, n)
-			var p0 := _put(c + Vector2(side * a, 0.0), step, origin, u, d)
-			var p1 := _put(c + Vector2(0.0, a), step, origin, u, d)
-			b.polygon(PackedVector2Array([p0, p1, p1 + Vector2(0.0, 33.0 * u), p0 + Vector2(0.0, 33.0 * u)]), Color(MIRROR, 0.2 if side < 0 else 0.26))
-	for t: Vector2i in tiles:
-		var step: int = land[t]
-		var c := Sim.centre_of(t)
-		var corners := [c + Vector2(0.0, -a), c + Vector2(a, 0.0), c + Vector2(0.0, a), c + Vector2(-a, 0.0)]
-		var mid := b.vertex(_put(c, step, origin, u), _tone(c, step))
-		var first := b.verts.size()
-		for p: Vector2 in corners:
-			b.vertex(_put(p, step, origin, u), _tone(p, step))
-		for i in 4:
-			b.tri(mid, first + i, first + (i + 1) % 4)
-		# where the land ends behind a tile nothing covers its edge: soften it
-		for side: int in [-1, 1]:
-			if not land.has(t + Vector2i(side, -1)):
-				var e: Vector2 = corners[1] if side > 0 else corners[3]
-				b.stroke(PackedVector2Array([_put(corners[0], step, origin, u), _put(e, step, origin, u)]), 1.6, _tone((corners[0] + e) * 0.5, step))
-		for side: int in [-1, 1]:
-			var n := t + Vector2i(side, 1)
-			var d: float = drop.call(step, n)
-			if d <= 0.0:
-				continue
-			var lit := side < 0
-			var wet := not land.has(n)
-			var p0 := _put(c + Vector2(side * a, 0.0), step, origin, u)
-			var p1 := _put(corners[2], step, origin, u)
-			var down := Vector2(0.0, d * u)
-			var tones: Array = EARTH if lit else EARTH_SHADE
-			var v0 := b.vertex(p0, tones[0])
-			var v1 := b.vertex(p1, tones[0])
-			var v2 := b.vertex(p1 + down, tones[1])
-			var v3 := b.vertex(p0 + down, tones[1])
-			b.tri(v0, v1, v2)
-			b.tri(v0, v2, v3)
-			var k := rng.randf_range(0.42, 0.6)
-			b.stroke(PackedVector2Array([p0.lerp(p1, 0.06) + down * k, p1.lerp(p0, 0.06) + down * k]), 3.0 * px, SEAM)
-			if d > 100.0:
-				b.stroke(PackedVector2Array([p0.lerp(p1, 0.06) + down * (k + 0.3), p1.lerp(p0, 0.06) + down * (k + 0.3)]), 3.0 * px, SEAM)
-			if rng.randf() < 0.5:
-				var at := p0.lerp(p1, rng.randf_range(0.25, 0.75)) + down * rng.randf_range(0.62, 0.82)
-				b.ellipse(at, 11.0 * px, 7.0 * px, STONE if lit else STONE_SHADE)
-				if lit:
-					b.ellipse(at + Vector2(-3.0, -2.0) * px, 5.0 * px, 3.0 * px, Color("f1e6cf"))
-			if wet:
-				b.polygon(PackedVector2Array([p0 + down - Vector2(0.0, 16.0 * px), p1 + down - Vector2(0.0, 16.0 * px), p1 + down, p0 + down]), Color(0.12, 0.24, 0.26, 0.22))
-				b.stroke(PackedVector2Array([p0.lerp(p1, 0.04) + down, p1.lerp(p0, 0.04) + down]), 4.0 * px, Color(1.0, 1.0, 1.0, 0.6))
-			# the turf hanging over the earth
-			var lip: Color = LIP_LIT if lit else LIP
-			b.polygon(PackedVector2Array([p0 - Vector2(0.0, 1.0), p1 - Vector2(0.0, 1.0), p1 + Vector2(0.0, 10.0 * px), p0 + Vector2(0.0, 10.0 * px)]), lip)
-			for i in 4:
-				b.disc(p0.lerp(p1, (i + 0.5) / 4.0) + Vector2(0.0, 9.0 * px), rng.randf_range(6.0, 11.0) * px, lip)
-			if lit:
-				b.stroke(PackedVector2Array([p0.lerp(p1, 0.12) - Vector2(0.0, 4.0 * px), p1.lerp(p0, 0.08) - Vector2(0.0, 5.0 * px)]), 4.0 * px, Color(0.94, 0.97, 0.69, 0.5))
-	for t: Vector2i in tiles:
-		var step: int = land[t]
-		var n := t + Vector2i(1, 1)
-		if not land.has(n) or int(land[n]) >= step:
-			continue
-		var c := Sim.centre_of(t)
-		var low: int = land[n]
-		var p0 := _put(c + Vector2(0.0, a), low, origin, u)
-		var p1 := _put(c + Vector2(a, 0.0), low, origin, u)
-		var over := Vector2(a, a * 0.5) * 0.42 * u
-		b.polygon(PackedVector2Array([p0, p1, p1 + over, p0 + over]), SHADE)
-	for t: Vector2i in tiles:
-		var step: int = land[t]
-		for i in 2:
-			if rng.randf() < 0.45:
-				continue
-			var off := Vector2(rng.randf_range(-0.35, 0.35), rng.randf_range(-0.35, 0.35)) * a
-			off.y *= 1.0 - absf(off.x) / a
-			var s := rng.randf_range(0.22, 0.4)
-			b.ellipse(_put(Sim.centre_of(t) + off, step, origin, u), a * s * u, a * s * 0.5 * u, Color(WASH_WARM.lerp(GRASS_LIT, rng.randf()), 0.4))
+	var front: Array = _front()
+	var edge: PackedVector2Array = front[0]
+	var shade: PackedFloat32Array = front[1]
+	var n := edge.size()
+	var row := func(down: float, wave := 0.0) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		pts.resize(n)
+		for i in n:
+			pts[i] = origin + (edge[i] + Vector2(0.0, down + wave * (sin(i * 0.9) + 0.6 * sin(i * 0.37 + 1.0)))) * u
+		return pts
+	var tint := func(lit: Color, dark: Color, alpha := 1.0) -> PackedColorArray:
+		var cs := PackedColorArray()
+		cs.resize(n)
+		for i in n:
+			cs[i] = Color(lit.lerp(dark, shade[i]), alpha)
+		return cs
+	var dark := Color(0.07, 0.27, 0.33)
+	_band(b, row.call(DEPTH - 2.0), row.call(DEPTH + 58.0), tint.call(dark, dark, 0.34), tint.call(dark, dark, 0.0))
+	var waist: PackedVector2Array = row.call(DEPTH * 0.5, DEPTH * 0.05)
+	_band(b, row.call(0.0), waist, tint.call(EARTH[0], EARTH_SHADE[0]), tint.call(EARTH[1], EARTH_SHADE[1]))
+	_band(b, waist, row.call(DEPTH), tint.call(CLAY[0], CLAY_SHADE[0]), tint.call(CLAY[1], CLAY_SHADE[1]))
+	b.stroke(waist.slice(1, n - 1), 3.0 * u, SEAM)
+	for i in 14:
+		var k := rng.randi_range(3, n - 5)
+		var at: Vector2 = origin + (edge[k] + Vector2(0.0, DEPTH * rng.randf_range(0.16, 0.36))) * u
+		b.stroke(PackedVector2Array([at, origin + (edge[k + 1] + Vector2(0.0, at.y / u - origin.y / u - edge[k].y)) * u]), 2.4 * u, Color(SEAM, 0.2))
+	for i in 9:
+		var k := rng.randi_range(2, n - 3)
+		var at: Vector2 = origin + (edge[k] + Vector2(0.0, DEPTH * rng.randf_range(0.6, 0.8))) * u
+		var s := rng.randf_range(0.8, 1.3) * u
+		b.ellipse(at, 11.0 * s, 7.0 * s, STONE.lerp(STONE_SHADE, shade[k]))
+		if shade[k] < 0.5:
+			b.ellipse(at + Vector2(-3.0, -2.0) * s, 5.0 * s, 3.0 * s, Color("f1e6cf"))
+	_band(b, row.call(DEPTH - 20.0), row.call(DEPTH), tint.call(dark, dark, 0.0), tint.call(dark, dark, 0.3))
+	b.stroke(row.call(DEPTH).slice(1, n - 1), 3.6 * u, Color(1.0, 1.0, 1.0, 0.72))
+	# rings going out from the foot, broken
+	var middle := see(Sim.LAND * 0.5)
+	for ring in 2:
+		var i := rng.randi_range(1, 4)
+		while i < n - 3:
+			var long := rng.randi_range(3, 6)
+			var dash := PackedVector2Array()
+			for k in range(i, mini(n - 1, i + long)):
+				dash.append(origin + (middle + (edge[k] - middle) * (1.035 + 0.04 * ring) + Vector2(0.0, DEPTH + 5.0 + 3.0 * ring)) * u)
+			if dash.size() > 1:
+				b.stroke(dash, 2.6 * u, Color(1.0, 1.0, 1.0, 0.3 - 0.13 * ring))
+			i += long + rng.randi_range(4, 9)
+	# the turf, hanging over the earth in scallops
+	_band(b, row.call(-1.0), row.call(12.0), tint.call(LIP_LIT, LIP), tint.call(LIP_LIT, LIP))
+	for i in n - 1:
+		var steps := maxi(1, int(edge[i].distance_to(edge[i + 1]) / 13.0))
+		for k in steps:
+			var t := float(k) / steps
+			var at: Vector2 = origin + (edge[i].lerp(edge[i + 1], t) + Vector2(0.0, 11.0)) * u
+			b.disc(at, rng.randf_range(6.5, 11.0) * u, LIP_LIT.lerp(LIP, lerpf(shade[i], shade[i + 1], t)))
+	var top := PackedVector2Array()
+	for p in outline():
+		top.append(origin + p * u)
+	b.polygon(top, GRASS)
+	# the wash: warm toward the sun, cool away from it, and patches of both
+	var h := Sim.HALF
+	_glow(b, origin + see(Vector2(h - 105.0, h - 105.0)) * u, 215.0 * u, 215.0 * DEEP * u, WASH_WARM, 0.5)
+	_glow(b, origin + see(Vector2(h + 110.0, h + 110.0)) * u, 205.0 * u, 205.0 * DEEP * u, WASH_COOL, 0.34)
+	for i in 16:
+		var r := rng.randf_range(90.0, 190.0)
+		var p := _on_land(rng, r * 1.06)
+		var sunny := (2.0 * h - p.x - p.y) / h
+		if rng.randf() < 0.5 + 0.4 * sunny:
+			_glow(b, origin + see(p) * u, r * u, r * DEEP * u, WASH_WARM, rng.randf_range(0.3, 0.5))
+		else:
+			_glow(b, origin + see(p) * u, r * u, r * DEEP * u, WASH_COOL, rng.randf_range(0.2, 0.34))
+	# the sun on the near edge it looks at, and along the back of the land
+	var lit := PackedVector2Array()
+	for i in n:
+		if shade[i] < 0.3 and i > 2:
+			lit.append(origin + (edge[i] + Vector2(0.0, -4.0)) * u)
+	if lit.size() > 3:
+		b.stroke(lit.slice(0, lit.size() - 2), 3.4 * u, Color(0.94, 0.97, 0.7, 0.5))
+	var o := outline()
+	var back := PackedVector2Array()
+	for i in o.size():
+		if o[i].x < h * 0.92 and o[i].y < h * DEEP - 30.0:
+			back.append(origin + (o[i] + Vector2(1.0, 2.5)) * u)
+	if back.size() > 2:
+		b.stroke(back, 2.6 * u, Color(0.9, 0.96, 0.66, 0.42))
+	for i in 80:
+		var at := origin + see(_on_land(rng, 30.0)) * u
+		var long := rng.randf_range(8.0, 17.0) * u
+		b.stroke(PackedVector2Array([at, at + Vector2(long, -long * 0.2)]), 2.6 * u, Color(GRASS_LIT, 0.6) if i % 2 else Color(GRASS_DEEP, 0.5))
+	for i in 18:
+		var r := rng.randf_range(22.0, 46.0)
+		_glow(b, origin + see(_on_land(rng, r + 20.0)) * u, r * u, r * DEEP * u, WASH_WARM.lerp(GRASS_LIT, rng.randf()), 0.42)
+	for i in 6:
+		var at := origin + see(_on_land(rng, 40.0)) * u
+		b.ellipse(at + Vector2(2.0, 3.0) * u, 9.0 * u, 4.6 * u, SHADE)
+		b.ellipse(at, 8.0 * u, 5.4 * u, Pal.ROCK)
+		b.ellipse(at + Vector2(-2.0, -1.8) * u, 3.6 * u, 2.2 * u, Color("d8cdb6"))
 
 ## What lies over the land and its trees: warm light from where the sun is,
-## and the frame falling away toward its edges into the pond's deep colour.
-## One mesh for a field of `size`.
+## and the frame falling away a little toward its edges. One mesh for a
+## field of `size`.
 static func light(size: Vector2) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var sun := Vector2(size.x * 0.12, 60.0)
-	var far := size.length() * 0.9
-	var mid := b.vertex(sun, Color(1.0, 0.9, 0.65, 0.2))
-	var n := 20
-	var first := b.verts.size()
-	for i in n:
-		var a := TAU * i / n
-		var p := sun + Vector2(cos(a), sin(a)) * far
-		b.vertex(Vector2(clampf(p.x, 0.0, size.x), clampf(p.y, 0.0, size.y)), Color(1.0, 0.9, 0.65, 0.0))
-	for i in n:
-		b.tri(mid, first + i, first + (i + 1) % n)
+	_glow(b, Vector2(size.x * 0.14, size.y * 0.08), size.length() * 0.8, size.length() * 0.8, Color(1.0, 0.9, 0.64), 0.2)
 	var rim := Face.Builder.round_rect(Vector2.ZERO, size, 36.0)
 	var centre := size * 0.5
 	var start := b.verts.size()
 	for p: Vector2 in rim:
-		b.vertex(p, Color(0.07, 0.26, 0.33, 0.28))
-		b.vertex(centre + (p - centre) * 0.62, Color(0.07, 0.26, 0.33, 0.0))
+		b.vertex(p, Color(0.07, 0.26, 0.33, 0.15))
+		b.vertex(centre + (p - centre) * 0.66, Color(0.07, 0.26, 0.33, 0.0))
 	var m := rim.size()
 	for i in m:
 		var j := (i + 1) % m
@@ -551,13 +602,14 @@ static func light(size: Vector2) -> ArrayMesh:
 		b.tri(start + i * 2, start + j * 2 + 1, start + i * 2 + 1)
 	return b.mesh()
 
-## A lily pad lying flat on the pond: half as deep as it is wide.
+## A lily pad lying flat on the pond, its shade on the water under it.
 static func _lily(b: Face.Builder, at: Vector2, r: float, turn: float) -> void:
-	var flat := Transform2D(0.0, Vector2(1.0, 0.5), 0.0, at)
+	var flat := Transform2D(0.0, Vector2(1.0, DEEP), 0.0, at)
 	var pts := Face.Builder.arc_points(Vector2.ZERO, r, turn + 0.35, turn + 6.0)
 	pts.append(Vector2.ZERO)
+	b.polygon(Transform2D(0.0, Vector2(1.0, DEEP), 0.0, at + Vector2(1.0, 4.0)) * pts, Color(SHADE, 0.2))
 	b.polygon(flat * pts, LILY)
-	b.stroke(flat * Face.Builder.arc_points(Vector2.ZERO, r * 0.62, turn + 0.7, turn + 5.5), 3.0, LILY_HI)
+	b.stroke(flat * Face.Builder.arc_points(Vector2.ZERO, r * 0.6, turn + 0.9, turn + 5.2), maxf(1.6, r * 0.09), LILY_HI)
 
 ## A log lying across (0, 0), LOG long: wood, on its way to the inventory.
 static func log_mesh() -> ArrayMesh:

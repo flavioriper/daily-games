@@ -74,67 +74,66 @@ the card was 1020 wide over a column of 1000. Now (`_tile`,
 - **Not done: a phone**, and the user has not seen it.
 
 **The land is seen in isometric since 2026-10-06** (the user: "redesign
-grove game to have a isometric view, with a studio ... looking like", then,
-on the concept tab's fifth pass, "just do it, no need for all planning").
-The look is the game's soft painted one (`docs/art/shading-direction.md`);
-the studio is named nowhere. The rules, the numbers, the six tiles and the
-shop's card are untouched. Concept: `docs/brainstorm/concepts.html#valley`,
-section 0 (the long island and the three steps were its recommendations;
-its diamond and its flat ground were not built).
-- **The land is tiles** (`Sim.land()`: (column, row) -> step, 149 of them,
-  52/52/45 a step). A tile is a square of ground 120 across its diagonal
-  (`TILE_HALF` 60), a diamond twice as wide as tall on the screen. The
-  island runs away up the screen, its sides ragged by a hash that is the
-  same on every phone, in **three steps that are higher only further back**
-  (a step's edge wanders at most one tile between neighbouring columns, or
-  a step would stand in front of a lower one and hide ground). It holds the
-  ground the 810 by 1300 rectangle did (1.07 M against 1.05 M), so trees
-  are as far apart; `Sim.LAND` (720 by 1800) is only the box it lies in.
-- **A tree stands `EDGE` (26) inside its own step** (`Sim.stands`): never on
-  a lip or at the land's edge. `_spot()` is where one comes up. **A grove
-  kept on the rectangle has its trees planted again** (the file's `land`
-  key, `KEPT_ON` 2); nothing else in the file changed.
-- **Two spaces besides the ground.** `Art.see(p)` is the view: across as it
-  is, half as deep, lifted `LIFT` (`Sim.RISE`, 48) a step; a screen scales
-  and places it (`px`), and `Art.VIEW` is the box the land takes there.
-  `Sim.seen(p)` is the same thing with the depth left whole, and **the
-  circle is measured there**: it is an oval the eye draws under the finger
-  (`Art.oval`, half as tall as wide), and what stands inside it on the
-  screen is chopped, on any step. A first build measured on the ground and
-  draped the ring over the steps: it grew a tail at every edge and was
-  dropped. `sim.step`'s `at` is a `seen` point, so a harness or a bot passes
-  `Sim.seen(tree.pos)`, not the tree's position.
-- **A tree is chopped along the line it stands on**, from its foot to under
-  its crown's middle (`Sim.STAND` 4.25 of its radius, in `seen` units): the
-  finger goes to the tree, and the foot of a blossom is 150 px under its
-  crown.
+grove game to have a isometric view, with a studio ... looking like"). The
+look is the game's soft painted one (`docs/art/shading-direction.md`); the
+studio is named nowhere. The rules, the numbers, the six tiles and the
+shop's card are untouched.
+- **It is one flat piece of land.** The first build was the concept tab's
+  recommendation, a long island of 149 tiles in three steps with ragged
+  sides, and the user on seeing it: "it's terrible, make a single land
+  piece, no need for aclive, declive". So: **no tiles, no steps, no ragged
+  edge**, and nothing that brings them back without being asked. The land
+  is one square of ground seen corner on, a diamond with its corners
+  rounded, on one block of earth. (`docs/brainstorm/concepts.html#valley`
+  section 0 still shows the island and the steps; it is the record of what
+  was turned down.)
+- **The ground** (`Sim.HALF` 520, `Sim.LAND` 1040 square): x runs across
+  the screen and y from the back corner to the front one, so the land is
+  the points within `HALF` of the middle, across and deep added.
+  `Sim.stands(p)` is where a tree may come up: `EDGE` (44) inside the edge
+  and `TIP` (120) from the four corners. It is about half the ground the
+  810 by 1300 rectangle was (541 k against 1.05 M), near the first build's
+  810 by 800, because a diamond as wide as the screen is that big at the
+  size the trees are drawn. **A grove kept on any earlier land has its
+  trees planted again** (the file's `land` key, `KEPT_ON` 3).
+- **The view** (`Art.see`): across as it is, `Sim.DEEP` (0.66) as deep.
+  `Art.VIEW` is the box the land and its earth take; a screen scales and
+  places it (`px`, and `unit` back). The land is as wide as the field, so
+  it takes about half the field's height with pond over and under it:
+  **that is what a diamond costs on a portrait screen**, and the user chose
+  the single piece knowing the island filled it.
+- **The circle is an oval** (`Art.oval`, `DEEP` as tall as wide): a circle
+  on the ground, measured on the ground, as it always was.
+- **A tree is chopped along the line it stands on**, from its foot back to
+  under its crown's middle (`Sim.STAND`, about 3.2 of its radius): the
+  finger goes to the tree, and a blossom's foot is well under its crown.
 - **Trees are drawn `Art.TREE` (1.25) over their footprint**, the meshes of
-  this morning, each throwing its shadow to its right. They are sorted by
-  the ground's depth, as before.
-- **The ground is still one mesh** (`Art.ground(size, origin, u)`): the
-  pond (pale far off, deep at the foot, clouds lying on it, lilies flat),
-  then tile by tile from the back the mirror under the land's foot, each
-  top, the earth it shows (left faces lit, right ones in shade, a seam, a
-  stone, turf hanging over, a pale line at the water), the shadow a step
-  throws on the one below, and dabs of lighter grass. **The wash of warm
-  and cool on the grass is in the tiles' corner colours** (`Art._tone`), so
-  it crosses them without a seam; tops are raw triangles for that, and only
-  the land's back edge is stroked to soften it. Tufts and flowers are the
-  two MultiMeshes, sown a tile at a time.
+  this morning, each throwing its shadow to its right, sorted by depth.
+- **The ground is still one mesh** (`Art.ground(size, origin, u)`). The
+  pond: pale at the top, deep at the foot, soft clouds lying on it
+  (`_glow`, a patch with nothing at its edge), lilies in twos and threes,
+  one in flower, a stone. The land (`_land_into`): its mirror on the water,
+  the earth and the clay under it as two bands along the front edge
+  (`_front`, each point with how far it looks from the sun, so the lit left
+  goes over to the shaded right round the front corner), a pale line and
+  broken rings at the water, turf hanging over in scallops, then the grass
+  as one polygon under a wash of warm and cool glows, the sun on the near
+  left edge and along the back, combed strokes, pale dabs, pebbles. Tufts
+  and flowers (in drifts) are the two MultiMeshes.
 - **`Art.light(size)`** is one more mesh over the trees (the Top layer's
-  first draw, and the tab card's last): warm from the upper left, the frame
-  falling away into the pond's colour toward its edges. No motes of light
-  hang in the air as the concept had them: here a mote is energy.
-- The field clips its children now, so a crown at the back of the land
-  stops at the pond's edge (`SHORE_TOP` 150 is the room it has).
-- **Measured** (810x1440, 2026-10-06): 49 draw calls on a new grove, 150 on
-  the land of thirty at rest, 198 under the circle, 270 with the shop open,
-  about 190 under the tutorial; 49, 191 and 253 on `opengl3_angle` under
-  reduce motion. The probe's 33 checks pass and its pace run reads as it
-  did: Birch on day 5, Oak on day 21 (eight visits of two minutes).
-- **Not done**: a phone; nobody has held the oval under a thumb (it is half
-  as tall as the circle was); the tutorial's words still say circle; the
-  user has seen only the concept tab, not this.
+  first draw, the tab card's last): warm from the upper left, the frame a
+  little darker at its edges. No motes hang in the air: a mote is energy.
+- The field clips its children, so a crown never leaves the pond.
+- **Measured** (810x1440, 2026-10-06): 49 draw calls on a new grove, 154 on
+  the land of thirty at rest, 242 under the oval, 302 with the shop open,
+  about 200 under the tutorial; 49, 253 and 283 on `opengl3_angle` under
+  reduce motion. The probe's 33 checks pass. The pace bot: Birch day 5 and
+  Oak day 21 for eight visits of two minutes, as before; day 2, 7 and 20
+  for six of ten minutes (was 2, 8, 21); Birch at 1 h 42 of two hours. It
+  chops one tree at a time: **on half the ground a swept oval catches about
+  twice the trees late on**, which no bot here measures.
+- **Not done**: a phone; nobody has held the oval under a thumb; the
+  tutorial's words still say circle; the pace of a person sweeping.
 
 The tab's card takes the whole tab for the tall picture. **It is called the Grove and nothing else**: the game it
 follows is named once, in the spec.

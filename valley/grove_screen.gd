@@ -69,7 +69,7 @@ const FILL := Color("fcf7ef")
 const SHORE := 26.0
 const SHORE_FOOT := 64.0
 ## And this much over the land's back edge, for the crowns that stand there.
-const SHORE_TOP := 150.0
+const SHORE_TOP := 110.0
 ## Seconds: a hit tree's squash, a felled one's fall, a number's rise, a log's
 ## flight, and how long the circle's rim swells on a chop.
 const SQUASH := 0.16
@@ -532,15 +532,14 @@ func _layout_field() -> void:
 	_grass_l.queue_redraw()
 
 ## A point of the land, in the field's pixels: the land is seen in
-## isometric (Art.see), each step lifted over the one in front.
+## isometric (Art.see), across as it is and Art.DEEP as deep.
 func px(p: Vector2) -> Vector2:
 	return _origin + Art.see(p) * _u
 
-## Where the finger is on the land as it is seen (Sim.seen): the circle is
-## the eye's, and chops what stands inside it on the screen.
-func _seen(at: Vector2) -> Vector2:
+## The point of the land under a point of the field.
+func unit(at: Vector2) -> Vector2:
 	var v := (at - _origin) / _u
-	return Vector2(v.x, v.y * 2.0)
+	return Vector2(v.x, v.y / Art.DEEP)
 
 ## A point of the view (what Art.see gives), in the field's pixels.
 func _at(v: Vector2) -> Vector2:
@@ -587,7 +586,7 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	var holding: bool = _hold and not _held_back and not _shop.visible and not settings_sheet.is_open()
-	sim.step(delta, holding, _seen(_hold_at))
+	sim.step(delta, holding, unit(_hold_at))
 	_since_chop += delta
 	_play_events()
 	for id in _hit.keys():
@@ -875,7 +874,7 @@ func _draw_leaves() -> void:
 
 ## What the wind leaves alone, over the trees: the light, a lap's gold marks
 ## at a foot, a hurt tree's bar, the circle and the numbers. The circle is
-## one on the ground, so the screen sees it half as tall as it is wide.
+## one on the ground, so the screen sees it flatter than it is wide.
 func _draw_top() -> void:
 	if _light != null:
 		_top.draw_mesh(_light, null)

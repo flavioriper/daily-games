@@ -26,9 +26,11 @@ enum Lesson { CHOP, GIFTS, WAIT }
 ## Seconds a page plays before it starts over, and where a still page stands.
 const LENGTH := {Lesson.CHOP: 4.2, Lesson.GIFTS: 3.8, Lesson.WAIT: 6.0}
 const STILL := {Lesson.CHOP: 1.2, Lesson.GIFTS: 2.5, Lesson.WAIT: 5.0}
-## Where the lesson's trees stand, in land units: five places on the middle
-## step of the land, which the picture is centred on (the first of them).
-const SPOTS := [Vector2(360, 800), Vector2(170, 640), Vector2(560, 700), Vector2(260, 1040), Vector2(500, 1060)]
+## Where the lesson's trees stand, in land units: five places about the
+## middle of the land, which the picture is centred on (the first of them),
+## and how much of the land's width the picture shows.
+const SPOTS := [Vector2(520, 520), Vector2(330, 360), Vector2(720, 420), Vector2(420, 760), Vector2(660, 780)]
+const ACROSS := 700.0
 const PLATE := Vector2(250, 92)
 const NUM := 0.7
 const FLIGHT := 0.9
@@ -96,8 +98,8 @@ func _layout() -> void:
 	var top := PLATE.y + 16.0 if lesson == Lesson.GIFTS else 0.0
 	_pond.position = Vector2(0.0, top)
 	_pond.size = size - Vector2(0.0, top)
-	_u = (_pond.size.x - 70.0) / Art.VIEW.size.x
-	_origin = Vector2((_pond.size.x - Art.VIEW.size.x * _u) * 0.5, _pond.size.y * 0.5 - (Art.see(SPOTS[0]).y - 20.0) * _u)
+	_u = _pond.size.x / ACROSS
+	_origin = _pond.size * 0.5 - (Art.see(SPOTS[0]) + Vector2(0.0, -20.0)) * _u
 	_ground = Art.ground(_pond.size, _origin, _u)
 	_grass = Art.grass(_origin, _u)
 	# a still page's motes hang where the last size put them: play it again
@@ -147,10 +149,10 @@ func _advance(delta: float) -> void:
 func _holding() -> bool:
 	return lesson != Lesson.WAIT and _t > 0.4 and _fell_at < 0.0
 
-## The circle's centre, on the land as it is seen (Sim.seen): on the first
-## tree, a little up from its foot.
+## The circle's centre, in land units: on the first tree, a little up from
+## its foot as the land is seen.
 func _finger() -> Vector2:
-	return Sim.seen(SPOTS[0]) + Vector2(0.0, -Sim.RADIUS[0] * 1.6)
+	return (SPOTS[0] as Vector2) + Vector2(0.0, -Sim.RADIUS[0] * 1.4)
 
 func _px(p: Vector2) -> Vector2:
 	return _origin + Art.see(p) * _u
@@ -173,9 +175,9 @@ func _draw_pond() -> void:
 			_pond.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
 			_pond.draw_rect(Rect2(bar.position, Vector2(w * float(tree.hp) / Sim.hp_of(0), bar.size.y)), Color("fff6e6"))
 	if _holding():
-		# a circle on the ground: half as tall as it is wide from here
+		# a circle on the ground: flatter than it is wide from here
 		var r: float = _sim.reach() * _u
-		var c := _origin + _finger() * Vector2(1.0, 0.5) * _u
+		var c := _px(_finger())
 		_pond.draw_colored_polygon(Art.oval(c, r), Color(1.0, 1.0, 1.0, 0.26))
 		for line: Array in [[r, Color(0.23, 0.19, 0.16, 0.75), 5.0], [r - 5.0, Color(1.0, 1.0, 1.0, 0.8), 3.0]]:
 			var edge := Art.oval(c, line[0])
