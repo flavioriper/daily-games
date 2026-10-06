@@ -176,3 +176,47 @@ no pouch a sky could be parked full of them. Bodies meeting are found on a
 grid now: with every pair tried, a sky of 160 cost 2 ms a tick; it costs
 0.27.
 
+### 2026-10-06, later the same day: no shadows, and the tide
+
+**Nothing throws a shadow.** "Remove the ground shadow, they are on space it
+should have no ground shadow." Every body had a dark wedge lying away from
+the star, on the dust its light fell on; the layer, its MultiMesh and its
+mesh are gone. A body's far side is still dark, in the shader, and that is
+the only dark thing left.
+
+**The star tears what comes too close.** "I want you to do add a more
+realistic gravity to the bodies, something orbiting sun too close should rip
+apart into smaller pieces." The star's pull is `GM / r^2` at a body's
+middle and more on its near side than its far one, by `GM x radius / r^3`.
+Against that a big body has its own weight, which also goes by its radius,
+so it is torn at one distance whatever its size: `ROCHE` = 3 of the star's
+radii. A small one is a stone and held by that too, more the smaller it is,
+so it gets nearer:
+
+    torn inside  star_r x ROCHE x (1 + CORE x core)^(1/3) / (1 + (HOLD / radius)^2)^(1/3)
+
+with `HOLD` = 14 px. On a new star (46 px, haze to 230) a planetoid of 8 is
+torn at 128 px, a rock at 114, a thrown meteor at 87. A torn body goes in
+two to four pieces (`PIECES`), sharing its mass and its unshed light
+unevenly, each a little off the body's middle and with **the body's own
+velocity and the turn of its tumbling, nothing else**: no push. The nearer
+pieces are pulled harder, and that alone draws them out round the star: a
+planetoid's are 234 px apart along the path and 66 across it a second and a
+half on. A piece is torn again deeper in, down to `CRUMB` = 0.3 of a thrown
+meteor; a meteor so comes apart once, in three. Inside the Roche radius
+nothing gathers either (`_merge` passes it by), which is why the pieces stay
+a stream. Before it is torn a body is drawn up to 1.4 times as long toward
+the star and as much thinner (not under reduce motion), and where it tears
+its dust is one small puff of light.
+
+Mass and light are the star's as before: the pieces weigh what the body did
+and the drag pays by mass. A torn body's pieces fall on slightly different
+paths, so a spiral that paid 1.25 light a mass pays 1.15. The bot's lives
+are 5.9, 4.4 and 4.2 minutes at a throw every 0.45 s (5.9, 4.6, 4.1 before).
+
+Mine, not asked for: the size rule (the user said "too close"; that small
+things get nearer is the stone's strength, and it is what makes a planetoid
+crumble in steps), the three pieces of a meteor, no tearing while the sky
+holds `FULL` = 300 bodies, the stretch and the puff. **Bodies still do not
+pull each other**: only the star does.
+

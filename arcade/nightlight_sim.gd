@@ -16,6 +16,11 @@ extends RefCounted
 ## given off as light. That one thing is the capture, the spiral and the
 ## income; the speeding up is not animated, it falls out of the law.
 ##
+## The star's pull is also uneven across a body, harder on its near side
+## than its far one, and close enough that tide is more than what holds the
+## body together: it comes apart, and the pieces draw out along the path by
+## themselves (`_tear`).
+##
 ## Nothing here draws or reads the clock. The screen
 ## (arcade/nightlight_screen.gd) calls `advance`, drains `events` and keeps
 ## the file; `tests/_probe_nightlight.gd` plays it with a bot. Lengths are
@@ -94,6 +99,25 @@ const TRAIL := 24
 ## Two bodies meet when their middles are this share of their radii apart.
 const TOUCH := 0.8
 
+## The tide (the user, 2026-10-06: "something orbiting sun too close should
+## rip apart into smaller pieces"). The star pulls a body's near side harder
+## than its far side, by GM x its radius / r^3. A big body is held by its own
+## weight, which also goes by its radius, so it is torn at one distance
+## whatever its size: ROCHE of the star's radii. A small one is a stone and
+## held by that too, the more the smaller it is, so it gets nearer: a body
+## HOLD px in radius is as much stone as weight, and torn the cube root of
+## two nearer. A denser star (the Core perk) tears from further out.
+const ROCHE := 3.0
+const HOLD := 14.0
+## Nothing is torn lighter than twice this share of a thrown meteor (which
+## so comes apart once, in three), a body goes in PIECES at most at a time,
+## and nothing is torn while the sky holds FULL bodies.
+const CRUMB := 0.3
+const PIECES := 4
+const FULL := 300
+## A piece starts this share of its body's radius from the body's middle.
+const APART := 0.55
+
 const TILES := ["meteor", "haze", "glow", "sky"]
 ## A tile's first price in light, what each level multiplies it by, and its
 ## last level (0: it has none).
@@ -149,7 +173,8 @@ var perk := {"core": 0, "disc": 0, "hand": 0, "crowd": 0, "ember": 0}
 var bodies: Array[Body] = []
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
-## {kind: "eat", at, m}, {kind: "shed", at, e}, {kind: "merge", at}.
+## {kind: "eat", at, m}, {kind: "shed", at, e}, {kind: "merge", at},
+## {kind: "tear", at, m}.
 var events: Array[Dictionary] = []
 ## Everything this star and the ones before it ate, for the record.
 var eaten := 0.0
@@ -209,6 +234,22 @@ func rich() -> float:
 
 static func body_r(m: float) -> float:
 	return BODY_R * pow(m, 1.0 / 3.0)
+
+## Inside this nothing big holds together, and nothing gathers.
+func roche_r() -> float:
+	return star_r() * ROCHE * pow(1.0 + CORE * int(perk.core), 1.0 / 3.0)
+
+## The lightest piece the tide leaves.
+func grain() -> float:
+	return meteor_mass() * CRUMB
+
+## How near the star a body of `m` gets before the tide has it in pieces; 0
+## for one too small to be torn.
+func tear_r(m: float) -> float:
+	if m < grain() * 2.0:
+		return 0.0
+	var h := HOLD / body_r(m)
+	return roche_r() / pow(1.0 + h * h, 1.0 / 3.0)
 
 ## Seconds a circle at `r` takes to go round.
 func turn_time(r: float) -> float:
@@ -337,7 +378,46 @@ func _passer() -> void:
 	var spare := SPARE / z
 	add(kind, MASS[kind] * rich() * _rng.randf_range(0.8, 1.2), pos, aim * sqrt(spare * spare + 2.0 * gm() / out))
 
-## Two bodies that touch become one, and keep their momentum. The sky is
+## The tide has the body at `at`: it is gone and its pieces are in its place,
+## sharing its mass and its light unevenly, the heaviest first and still the
+## body it was (its id, its trail). Each keeps the body's own motion and what
+## its tumbling gave the place it was cut from, and nothing else: no push.
+## The star pulls the nearer pieces harder, and that draws them out into a
+## line along the path.
+func _tear(at: int) -> void:
+	var b := bodies[at]
+	var n := clampi(int(b.m / grain()), 2, PIECES)
+	var shares := PackedFloat32Array()
+	var total := 0.0
+	for k in n:
+		shares.append(_rng.randf_range(0.6, 1.4))
+		total += shares[k]
+	shares.sort()
+	shares.reverse()
+	var reach := body_r(b.m) * APART
+	var first := _rng.randf() * TAU
+	var offs := PackedVector2Array()
+	var mid := Vector2.ZERO
+	for k in n:
+		var off := Vector2.from_angle(first + TAU * (k + _rng.randf_range(-0.25, 0.25)) / n) * reach * _rng.randf_range(0.7, 1.0)
+		offs.append(off)
+		mid += off * (shares[k] / total)
+	bodies.remove_at(at)
+	events.append({"kind": "tear", "at": b.pos, "m": b.m})
+	for k in n:
+		var off := offs[k] - mid
+		var share := shares[k] / total
+		var piece := add(b.kind, b.m * share, b.pos + off, b.vel - off.orthogonal() * b.turn)
+		piece.e = b.e * share
+		piece.heat = b.heat
+		if k == 0:
+			piece.id = b.id
+			piece.spin = b.spin
+			piece.trail = b.trail
+
+## Two bodies that touch become one, and keep their momentum. Inside the
+## star's Roche radius nothing does: what the tide pulls apart it does not
+## let gather. The sky is
 ## laid on a grid as wide as the biggest body's reach, and a body is tried
 ## only against what is already in the nine cells round its own: with every
 ## pair tried, a sky of 160 was 2 ms a tick.
@@ -351,7 +431,11 @@ func _merge() -> void:
 	var cell := maxf(1.0, body_r(most) * 2.0 * TOUCH)
 	var grid := {}
 	var gone := false
+	var roche := roche_r()
+	var inside := roche * roche
 	for a in bodies:
+		if a.pos.length_squared() < inside:
+			continue
 		var ra := body_r(a.m)
 		var cx := int(floor(a.pos.x / cell))
 		var cy := int(floor(a.pos.y / cell))
@@ -425,6 +509,9 @@ func tick() -> void:
 	var far := FAR / zoom()
 	var bind := pull / (2.0 * rw)
 	var gl := glow()
+	var roche := roche_r()
+	var roche3 := roche * roche * roche
+	var torn := grain() * 2.0
 	var mark := _tick % TRAIL_EVERY == 0
 	var i := bodies.size() - 1
 	while i >= 0:
@@ -444,6 +531,13 @@ func tick() -> void:
 			bodies.remove_at(i)
 			i -= 1
 			continue
+		if r < roche and b.m >= torn and bodies.size() < FULL:
+			# tear_r, without its cube root
+			var h := HOLD / body_r(b.m)
+			if r2 * r * (1.0 + h * h) < roche3:
+				_tear(i)
+				i -= 1
+				continue
 		var acc := p * (-pull / (r2 * r))
 		b.heat = 0.0
 		if r < rh:
@@ -544,7 +638,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	sim.bought = maxi(0, int(cfg.get_value("star", "bought", 0)))
 	sim.eaten = maxf(0.0, float(cfg.get_value("star", "eaten", 0.0)))
 	for row in cfg.get_value("star", "bodies", []):
-		if not (row is Array) or (row as Array).size() < 6 or sim.bodies.size() >= 200:
+		if not (row is Array) or (row as Array).size() < 6 or sim.bodies.size() >= FULL:
 			continue
 		var m := float(row[1])
 		var pos := Vector2(float(row[2]), float(row[3]))

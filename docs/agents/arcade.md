@@ -1141,8 +1141,34 @@ supernovas (`Sim.kept()`), not a best.
   2 ms a tick at 160 bodies, the grid is 0.27. The pace is the hand's now:
   the bot at a throw every 0.45 s reaches the mark in 5.9, 4.6 and 4.1
   minutes, at one every 0.2 s in 3.2, 2.2 and 1.7.
+- **Later the same day: no shadows, and the tide** (the user: "remove the
+  ground shadow, they are on space it should have no ground shadow"; "add a
+  more realistic gravity to the bodies, something orbiting sun too close
+  should rip apart into smaller pieces"). The sky has six layers and no
+  shadow batch; do not bring a cast shadow back. **A body inside its own
+  `tear_r(m)` is torn** (`Sim._tear`): `ROCHE` (3) star radii for a big
+  body, nearer for a small one (`HOLD`), nothing lighter than twice
+  `grain()` (0.3 of a thrown meteor), nothing while the sky holds `FULL`
+  (300). **The pieces get the body's velocity and its tumbling and no
+  push**: the stream round the star is the star's uneven pull, so a kick
+  added "to help them apart" would undo the one honest thing about it.
+  **Nothing merges inside `roche_r()`**, or the pieces would be one body
+  again two ticks later. The first piece keeps the body's id and trail,
+  which is what the probe follows. A body near its distance is drawn pulled
+  toward the star (`Batch.put_pulled`, a world-space stretch under the
+  spin); `SMALL` scales down to half for a piece lighter than a meteor.
+  `tests/_probe_nightlight.gd` has 35 checks (eleven on the tide);
+  `tests/_shot_nightlight.gd` has three more beats (4b a torn planetoid, 4c
+  its stream, 4d sixty rocks torn at once). 116-124 draw calls on a torn
+  planetoid, **367 with the sky full at 301 bodies** (a trail is a draw
+  each), the rest as above within a few; 55-85 us a tick in the bot's runs,
+  which now reach 302 bodies. A spiral pays 1.15 light a mass where it paid
+  1.25 (pieces take shorter ways in); the bot's lives are 5.9, 4.4, 4.2 min.
+  The tutorial's pages throw meteors of 1.0, so they show the tide too.
 - **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
-  and `nova` are felt), nothing run on a phone, no person has thrown a
-  meteor or played the pace, Spanish was not shot, a perk's worth was not
-  tuned one against another, and nothing happens while the game is closed.
+  and `nova` are felt; a tear is neither heard nor felt), nothing run on a
+  phone, no person has thrown a meteor or played the pace, Spanish was not
+  shot, a perk's worth was not tuned one against another, nothing happens
+  while the game is closed, the tutorial does not say a body is torn, and
+  bodies do not pull each other.
 

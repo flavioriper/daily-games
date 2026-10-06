@@ -97,6 +97,8 @@ func _step(delta: float) -> void:
 			_sky.ate(float(e.m))
 		elif e.kind == "merge":
 			_sky.met(e.at)
+		elif e.kind == "tear":
+			_sky.tore(e.at, float(e.m))
 	_sim.events.clear()
 	# a page's star stays the small one it began as
 	if lesson != Lesson.NOVA:

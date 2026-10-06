@@ -33,7 +33,6 @@ const TEMPS := [[1.0, Color("ff9660")], [2.0, Color("ffca7a")], [3.0, Color("ffe
 const CLOUDS := [Color("ec96aa"), Color("96aaf0"), Color("82d2c8"), Color("f0be82")]
 const WARM := Color("ffb060")
 const COOL := Color("d6dcff")
-const SHADOW := Color("0e0a26")
 const TAIL := Color("c8f6ec")
 const VEIL := Color("fff4de")
 ## A mote of light: gold where the other games' energy is blue.
@@ -42,15 +41,9 @@ const ORB := Color("ffc94d")
 const ORB_HI := Color("fff0c2")
 ## How many lumps there are to be: a body takes one by its id.
 const LUMPS := 3
-## A shadow, in its body's radii: how far it reaches, and how wide it starts
-## and ends.
-const SHADOW_LONG := 9.0
-const SHADOW_NEAR := 0.85
-const SHADOW_FAR := 1.6
 
 static var _lumps: Array[ArrayMesh] = []
 static var _glows := {}
-static var _shadow: ArrayMesh
 static var _dot: ArrayMesh
 static var _star: ArrayMesh
 static var _core: ArrayMesh
@@ -130,29 +123,6 @@ static func glow(fall := 2.0) -> ArrayMesh:
 		Motes.glow(b, Vector2.ZERO, R, Color.WHITE, fall)
 		_glows[fall] = b.mesh()
 	return _glows[fall]
-
-## A body's shadow, lying along +x from its middle, for a body R in radius:
-## dark at the body and gone at its end, soft along both sides.
-static func shadow() -> ArrayMesh:
-	if _shadow == null:
-		var b := Face.Builder.new()
-		var soft := 0.4 * R
-		var first := b.verts.size()
-		for station: Array in [[0.0, SHADOW_NEAR * R, 1.0], [SHADOW_LONG * R * 0.4, lerpf(SHADOW_NEAR, SHADOW_FAR, 0.4) * R, 0.42], [SHADOW_LONG * R, SHADOW_FAR * R, 0.0]]:
-			var x: float = station[0]
-			var w: float = station[1]
-			var a: float = station[2]
-			b.vertex(Vector2(x, -w - soft), Color(SHADOW, 0.0))
-			b.vertex(Vector2(x, -w), Color(SHADOW, a))
-			b.vertex(Vector2(x, w), Color(SHADOW, a))
-			b.vertex(Vector2(x, w + soft), Color(SHADOW, 0.0))
-		for s in 2:
-			for k in 3:
-				var i := first + s * 4 + k
-				b.tri(i, i + 1, i + 5)
-				b.tri(i, i + 5, i + 4)
-		_shadow = b.mesh()
-	return _shadow
 
 ## A white disc, for the dots of a throw's path.
 static func dot() -> ArrayMesh:

@@ -6,7 +6,9 @@ extends SceneTree
 ##
 ## 1 the Arcade tab with its card, 2 a new star, 3 a throw being aimed (the
 ## finger down and dragged, as a phone sends it), 4 the meteor winding in,
-## 5 a sky a steady hand has been throwing into for a minute and a half,
+## 4b a planetoid the tide has just torn and 4c its pieces drawn out round the
+## star, 4d as full a sky as the tide makes (sixty rocks torn at once, up to
+## Sim.FULL bodies: the draw calls' worst), 5 a sky a steady hand has been throwing into for a minute and a half,
 ## 6 a heavy star, 7 the shop with a tile just bought, 8 the question before
 ## the supernova, 9 the star swelling, 10 the light thinning, 11 the perks,
 ## 12 one drawn, 13 the new star among its ashes, 14-16 the tutorial's three
@@ -22,18 +24,20 @@ const STEPS := [
 	[2.9, "open"], [3.9, "shot", "2_start"],
 	[4.0, "press", Vector2(250, 760)], [4.1, "drag", Vector2(290, 880)], [4.6, "shot", "3_aim"],
 	[4.7, "let_go"], [8.2, "shot", "4_winding"],
-	[8.3, "run", 90.0], [9.3, "shot", "5_busy"],
-	[9.4, "heavy"], [9.5, "run", 20.0], [10.6, "shot", "6_heavy"],
-	[10.7, "shop"], [10.8, "buy"], [11.3, "shot", "7_shop"],
-	[11.4, "shop_x"], [11.5, "ask"], [12.0, "shot", "8_ask"],
-	[12.1, "go"], [12.65, "shot", "9_swell"], [13.4, "shot", "10_thin"],
-	[14.6, "shot", "11_perks"], [14.7, "perk"], [15.1, "shot", "12_perk"],
-	[15.2, "perks_x"], [18.2, "shot", "13_ashes"],
-	[18.3, "tutor"], [21.3, "shot", "14_tut_throw"],
-	[21.4, "page", 1], [26.0, "shot", "15_tut_light"],
-	[26.1, "page", 2], [28.5, "shot", "16_tut_nova"],
-	[28.6, "leave"], [29.8, "shot", "17_tab_after"],
-	[29.9, "quit"],
+	[8.3, "planet"], [11.0, "shot", "4b_torn"], [13.4, "shot", "4c_stream"],
+	[13.5, "crowd"], [15.1, "shot", "4d_full"],
+	[15.3, "run", 90.0], [16.3, "shot", "5_busy"],
+	[16.4, "heavy"], [16.5, "run", 20.0], [17.6, "shot", "6_heavy"],
+	[17.7, "shop"], [17.8, "buy"], [18.3, "shot", "7_shop"],
+	[18.4, "shop_x"], [18.5, "ask"], [19.0, "shot", "8_ask"],
+	[19.1, "go"], [19.65, "shot", "9_swell"], [20.4, "shot", "10_thin"],
+	[21.6, "shot", "11_perks"], [21.7, "perk"], [22.1, "shot", "12_perk"],
+	[22.2, "perks_x"], [25.2, "shot", "13_ashes"],
+	[25.3, "tutor"], [28.3, "shot", "14_tut_throw"],
+	[28.4, "page", 1], [33.0, "shot", "15_tut_light"],
+	[33.1, "page", 2], [35.5, "shot", "16_tut_nova"],
+	[35.6, "leave"], [36.8, "shot", "17_tab_after"],
+	[36.9, "quit"],
 ]
 
 var _menu: Node
@@ -150,6 +154,15 @@ func _process(delta: float) -> bool:
 				_touch(Vector2.ZERO, false)
 				print("thrown: bodies %d, mass %.2f, speed %.0f" % [_s.sim.bodies.size(), _s.sim.bodies[0].m if not _s.sim.bodies.is_empty() else -1.0,
 					_s.sim.bodies[0].vel.length() if not _s.sim.bodies.is_empty() else -1.0])
+			"planet":
+				# on a circle in the haze, a little outside where the tide tears it
+				var far: float = _s.sim.tear_r(8.0) * 1.1
+				_s.sim.add(Sim.Kind.PLANET, 8.0, Vector2(0.0, -far), Vector2(sqrt(_s.sim.gm() / far), 0.0))
+			"crowd":
+				for k in 60:
+					var far: float = _s.sim.tear_r(1.5) * (1.02 + 0.003 * k)
+					var way := Vector2.from_angle(TAU * k / 60.0)
+					_s.sim.add(Sim.Kind.ROCK, 1.5, way * far, way.orthogonal() * -sqrt(_s.sim.gm() / far))
 			"run":
 				_run(float(step[2]))
 			"heavy":

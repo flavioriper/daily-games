@@ -704,6 +704,8 @@ func _play_events() -> void:
 				_motes.drop(origin * sky.px(e.at), float(e.e) * ORBS, 1)
 			"merge":
 				sky.met(e.at)
+			"tear":
+				sky.tore(e.at, float(e.m))
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()

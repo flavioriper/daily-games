@@ -1,8 +1,8 @@
 extends Control
 
 ## Nightlight's sky, drawn off a sim (arcade/nightlight_sim.gd): the night,
-## the star's light on the dust round it, the bodies with their shadows,
-## trails and warmth, and the star. The haze that drags them is not drawn:
+## the star's light on the dust round it, the bodies with their trails and
+## warmth, and the star. The haze that drags them is not drawn:
 ## it had a ring at its edge and grains in orbit inside it until the user
 ## asked for them gone (2026-10-06: "remove this visual indicator of the
 ## orbit, keep only the star at center"). The
@@ -10,21 +10,30 @@ extends Control
 ## Arcade card's picture, so the three cannot drift apart.
 ##
 ## The owner sets `sim`, calls `refresh` once a frame after stepping it, and
-## tells it what the sim's events were (`ate`, `met`). Seven layers, about
-## twelve draws and one more for each trail: the bodies are three
-## MultiMeshes lit by one shader, their shadows one, every warm light one.
-## Light is added and has no shape; a shadow is the only dark thing.
+## tells it what the sim's events were (`ate`, `met`, `tore`). Six layers,
+## about eleven draws and one more for each trail: the bodies are three
+## MultiMeshes lit by one shader, every warm light one. Light is added and
+## has no shape. **Nothing throws a shadow**: the bodies had one each, lying
+## away from the star, until the user saw them (2026-10-06: "remove the
+## ground shadow, they are on space it should have no ground shadow"). A
+## body's own far side is dark, in the shader, and that is all.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 const Art = preload("res://arcade/nightlight_art.gd")
 const Motion = preload("res://core/motion.gd")
 
-## The most bodies drawn, and dots of a throw's path.
-const MOST := 200
+## The most bodies drawn (the sim tears nothing past Sim.FULL, and a last
+## tear may add three), and dots of a throw's path.
+const MOST := 320
 const DOTS := 64
-## No body is drawn smaller than this, in the design's pixels: a thrown
-## meteor is small, and still has a lit side.
+## No body as heavy as a thrown meteor is drawn smaller than this, in the
+## design's pixels: it is small, and still has a lit side. A piece of one is
+## drawn smaller by its radius, down to half, or three pieces would look
+## like three meteors.
 const SMALL := 6.0
+## The tide pulls a body this much longer toward the star before it tears
+## it, and as much thinner as keeps its size.
+const PULLED := 0.4
 ## The star's light reaches this many of its radii, a quarter of it left
 ## there.
 const REACH := 9.0
@@ -58,12 +67,10 @@ var _corners: ArrayMesh
 var _puffs: Array = []               # {at, t}: the sim's units
 var _body_mat: ShaderMaterial
 var _light_l: Control
-var _shade_l: Control
 var _warm_l: Control
 var _body_l: Control
 var _star_l: Control
 var _top_l: Control
-var _shades: Batch
 var _warms: Batch
 var _dots: Batch
 var _lumps: Array[Batch] = []
@@ -102,6 +109,30 @@ class Batch:
 		buf[i + 11] = col.a
 		n += 1
 
+	## The same, drawn out `k` times as long along `along` (a unit vector)
+	## and as much thinner across it, whichever way the mesh is turned.
+	func put_pulled(at: Vector2, turn: float, s: float, along: Vector2, k: float, col: Color) -> void:
+		if n >= mm.instance_count:
+			return
+		var x := Vector2(cos(turn), sin(turn)) * s
+		var y := Vector2(-x.y, x.x)
+		var across := Vector2(-along.y, along.x)
+		var q := 1.0 / sqrt(k)
+		x = along * (k * along.dot(x)) + across * (q * across.dot(x))
+		y = along * (k * along.dot(y)) + across * (q * across.dot(y))
+		var i := n * 12
+		buf[i] = x.x
+		buf[i + 1] = y.x
+		buf[i + 3] = at.x
+		buf[i + 4] = x.y
+		buf[i + 5] = y.y
+		buf[i + 7] = at.y
+		buf[i + 8] = col.r
+		buf[i + 9] = col.g
+		buf[i + 10] = col.b
+		buf[i + 11] = col.a
+		n += 1
+
 	func send() -> void:
 		mm.visible_instance_count = n
 		if n > 0:
@@ -118,12 +149,10 @@ func _init() -> void:
 	resized.connect(_on_resized)
 	_body_mat = Art.body_material()
 	_light_l = _layer("Light", _draw_light, Art.adding())
-	_shade_l = _layer("Shade", _draw_shade, null)
 	_warm_l = _layer("Warm", _draw_warm, Art.adding())
 	_body_l = _layer("Bodies", _draw_bodies, _body_mat)
 	_star_l = _layer("Star", _draw_star, null)
 	_top_l = _layer("Top", _draw_top, null)
-	_shades = Batch.new(Art.shadow(), MOST)
 	_warms = Batch.new(Art.glow(2.0), MOST * 2)
 	_dots = Batch.new(Art.dot(), DOTS)
 	for v in Art.LUMPS:
@@ -165,7 +194,13 @@ func ate(m: float) -> void:
 ## Two bodies met at `at`.
 func met(at: Vector2) -> void:
 	if not Motion.reduce and _puffs.size() < 30:
-		_puffs.append({"at": at, "t": 0.0})
+		_puffs.append({"at": at, "t": 0.0, "s": 1.0})
+
+## The tide tore a body of `m` at `at`: its dust catches the light, a small
+## puff for a meteor and a larger one for a planetoid.
+func tore(at: Vector2, m: float) -> void:
+	if not Motion.reduce and _puffs.size() < 30:
+		_puffs.append({"at": at, "t": 0.0, "s": clampf(Sim.body_r(m) / 26.0, 0.3, 1.5)})
 
 ## A frame: `delta` of the sim's time has passed (0 while it is held).
 func refresh(delta: float) -> void:
@@ -183,7 +218,7 @@ func refresh(delta: float) -> void:
 		_sky = Art.sky(size, sim.novas)
 		_corners = Art.corners(size, corner * u, paper) if paper.a > 0.0 else null
 		queue_redraw()
-	for layer: Control in [_light_l, _shade_l, _warm_l, _body_l, _star_l, _top_l]:
+	for layer: Control in [_light_l, _warm_l, _body_l, _star_l, _top_l]:
 		layer.queue_redraw()
 
 func _breath() -> float:
@@ -191,26 +226,27 @@ func _breath() -> float:
 
 ## Every buffer for this frame, off where the bodies are now.
 func _fill() -> void:
-	var batches: Array[Batch] = [_shades, _warms, _dots]
+	var batches: Array[Batch] = [_warms, _dots]
 	batches.append_array(_lumps)
 	for batch in batches:
 		batch.n = 0
 	var z: float = sim.zoom() * u
 	var col := Art.star_col(sim.mass)
 	var rh: float = sim.haze_r()
+	var roche: float = sim.roche_r()
 	var reach := star_px() * REACH
+	var meteor := Sim.body_r(Sim.METEOR)
 	for b: Sim.Body in sim.bodies:
 		var far := b.pos.length()
 		if far < 1.0:
 			continue
 		var away := b.pos / far
 		var at := centre + b.pos * z
-		var r := maxf(SMALL * u, Sim.body_r(b.m) * z)
+		var rb := Sim.body_r(b.m)
+		var r := maxf(SMALL * u * clampf(rb / meteor, 0.5, 1.0), rb * z)
 		var k := far * z / reach
 		var lit := 1.0 / (1.0 + 3.0 * k * k)
 		var s := r / Art.R
-		if lit >= 0.1:
-			_shades.put(at, away.angle(), s, s, Color(1, 1, 1, 0.5 * lit))
 		# the haze warms what it drags; an ash is still warm from the star it left
 		var warm := maxf(0.3, b.heat) if b.kind == Sim.Kind.ASH else b.heat
 		if warm > 0.0:
@@ -220,10 +256,15 @@ func _fill() -> void:
 		if b.kind == Sim.Kind.COMET and lit > 0.12:
 			var long := s * (3.0 + 10.0 * lit)
 			_warms.put(at + away * long * Art.R * 0.5, away.angle(), long * 0.5, s * 0.9, Color(Art.TAIL, 0.4 * lit))
-		_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, Art.PAINT[b.kind])
+		# the tide draws a body out toward the star before it has it in pieces
+		var strain: float = sim.tear_r(b.m) / far if far < roche else 0.0
+		if strain > 0.5 and not Motion.reduce:
+			_lumps[b.id % Art.LUMPS].put_pulled(at, b.spin, s, away, 1.0 + PULLED * smoothstep(0.5, 1.0, strain), Art.PAINT[b.kind])
+		else:
+			_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, Art.PAINT[b.kind])
 	for p: Dictionary in _puffs:
 		var k: float = p.t / PUFF
-		var s := (30.0 + 60.0 * k) * u / Art.R
+		var s := (30.0 + 60.0 * k) * float(p.s) * u / Art.R
 		_warms.put(centre + (p.at as Vector2) * z, 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
 	if not aim.is_empty():
 		var pts: PackedVector2Array = aim.pts
@@ -254,10 +295,6 @@ func _draw_light() -> void:
 	var col := Art.star_col(sim.mass)
 	var r := star_px() * REACH * _breath() * (1.0 + _pulse * 0.25)
 	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, centre), Color(col, 0.5))
-
-## Shadows, thrown straight away from the star: seen where its light lies.
-func _draw_shade() -> void:
-	_shades.show(_shade_l)
 
 ## Where each body has been (the spiral is read off these), then its warmth.
 func _draw_warm() -> void:
