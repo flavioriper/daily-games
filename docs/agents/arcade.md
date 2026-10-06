@@ -1220,6 +1220,40 @@ supernovas (`Sim.kept()`), not a best.
   Probe 53 checks, suite 249790/0, shots on both drivers, reduce motion,
   en/pt/es. The bot's first supernova: 4.1-5.0 min at 0.45 s a throw
   (3.9-4.0), 2.9 at 0.2 (2.1).
+- **A sixth time the same day: a press throws, nothing is aimed** (the
+  user: "when user click on screen to throw bodies make them spawn insta in
+  orbit where user click, so he can keep clicking and sending without
+  needing to aim"). **What this bullet says replaces every mention of
+  aiming, the drag, the dotted line and `predict` above.** A press sets a
+  meteor going at once where the finger is (`Sim.place_at`, the screen's
+  `_throw`), sideways, the way most passers go round; every finger that
+  comes down throws, the first held one is the one Stream follows, and
+  Stream throws from wherever that finger is now. Gone: the drag, the tap
+  that let a meteor fall, the sky's `aim` with its line, dots and `_dots`
+  batch, `Art.dot`, `Sim.predict`, `throw_at`, `throw_speed`, the screen's
+  `SLACK`/`FULL`/`MOST`. **A throw outside the haze is not a circle**
+  (`Sim.throw_vel`, `LOW` 0.8): a circle out there never comes down, and on
+  a new star the haze's ring is 13% of the field (and the star's own
+  disc, where no throw starts, 4%), so a hand that does not aim would park
+  five throws in six. Inside 0.8 of the haze it is the
+  circle; farther out it leaves slower, on a longer round whose nearest
+  point is `LOW * haze * sqrt(LOW * haze / distance)`, deeper the farther
+  off. Measured on a meteor of 1.0: 6 s from 0.5 of the haze (light 0.54),
+  29 s from 0.8 (1.90), 36 s from the edge (2.24), 43 s from 1.5 (2.52),
+  51 s from twice (2.73), 54 s from three times (2.39). **A deep throw
+  pays least**, the old drop's lesson in a smaller way. `sky.set_down` is a
+  small puff where the finger was (the finger hides a 6 px meteor; nothing
+  under reduce motion). `bot_throw` does not aim either: anywhere from 0.5
+  to 1.5 of the haze; the first supernova at 4.9 min on seeds 1, 2 and 3
+  (4.2, 4.1, 5.0). The tutorial's THROW page is three taps, LIGHT two
+  circles at 0.6 and 0.5 of the haze; `NL_HINT`, `TUT_NL_THROW*` and
+  `TUT_NL_LIGHT_BODY` were rewritten in en, pt and es. Probe 55 checks,
+  suite 249790/0; the harness presses with two fingers (beats `3_set`, `4`,
+  `5d`), on both drivers, reduce motion, pt and en: 89 draw calls on a new
+  star, 92 with one meteor set, 407-426 with the sky full at 302.
+  **Mine, not asked for**: the dipping path outside the haze (asked for
+  was "in orbit"), `LOW`, the puff, two thumbs, Stream following the
+  finger, the bot's range.
 - **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
   and `nova` are felt; a tear, the star going dim and lighting again are
   neither heard nor felt), nothing run on a phone, no person has played

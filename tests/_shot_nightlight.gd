@@ -4,14 +4,15 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]
 ##
-## 1 the Arcade tab with its card, 2 a new star, 3 a throw being aimed (the
-## finger down and dragged, as a phone sends it), 4 the meteor winding in,
+## 1 the Arcade tab with its card, 2 a new star, 3 a meteor just set going
+## (a finger down, as a phone sends it) and two more from a second finger and
+## the first again, 4 the three winding in,
 ## 4b a planetoid the tide has just torn and 4c its pieces drawn out round the
 ## star, 4d as full a sky as the tide makes (sixty rocks torn at once, up to
 ## Sim.FULL bodies: the draw calls' worst), 5a the two powers offered at two
 ## Suns (the card comes up by itself), 5b one picked and on its disc, 5c the
 ## star out of hydrogen and dim, 5 a sky a steady hand has been throwing into
-## for a minute and a half, 5d a finger held down with Stream and Volley,
+## for a minute and a half, 5d a finger held down and moved with Stream and Volley,
 ## 6 a heavy star with every pick made, 6b the powers it holds, 7 the shop
 ## with a tile just bought, 8 the question before the supernova, 9 the star
 ## swelling, 10 the light thinning, 11 the perks, 12 one drawn, 13 the new
@@ -19,15 +20,16 @@ extends SceneTree
 ## star's, dim and lit again), 17 the tab again with the star on its card. Prints the draw calls
 ## at each shot and the frames since the last with their mean and longest
 ## gap. The star and the wallet are throwaway files; the field's own mouse
-## filter is set to ignore, so the real pointer over the window cannot aim.
+## filter is set to ignore, so the real pointer over the window cannot throw.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 
 const STEPS := [
 	[1.6, "tab"], [2.8, "shot", "1_tab"],
 	[2.9, "open"], [3.9, "shot", "2_start"],
-	[4.0, "press", Vector2(250, 760)], [4.1, "drag", Vector2(290, 880)], [4.6, "shot", "3_aim"],
-	[4.7, "let_go"], [9.2, "shot", "4_winding"],
+	[4.0, "press", Vector2(250, 760)], [4.1, "shot", "3_set"],
+	[4.3, "second", Vector2(640, 420)], [4.5, "let_go"], [4.6, "press", Vector2(420, 780)], [4.7, "let_go"],
+	[9.2, "shot", "4_winding"],
 	[12.8, "planet"], [19.8, "shot", "4b_torn"], [24.8, "shot", "4c_stream"],
 	[24.9, "crowd"], [25.6, "shot", "4d_full"],
 	[29.5, "grow", 2.2], [30.9, "shot", "5a_pick"], [31.0, "pick", 0], [31.6, "shot", "5b_picked"],
@@ -92,9 +94,9 @@ func _finish() -> void:
 	print("throwaway files removed")
 
 ## A finger, as a phone sends it (the project has mouse-from-touch off).
-func _touch(at: Vector2, down: bool) -> void:
+func _touch(at: Vector2, down: bool, finger := 0) -> void:
 	var ev := InputEventScreenTouch.new()
-	ev.index = 0
+	ev.index = finger
 	ev.pressed = down
 	ev.position = at
 	_s._on_field_input(ev)
@@ -159,12 +161,16 @@ func _process(delta: float) -> bool:
 			"press":
 				print("star open: mass %.1f, field %s, u %.3f, the star at %s, %d px" % [_s.sim.mass, _s.sky.size, _s.sky.u, _s.sky.centre, _s.sky.star_px()])
 				_touch(step[2], true)
-			"drag":
-				_drag(step[2])
+				print("pressed: bodies %d, the last of them %.2f mass at %.0f px/s, %.0f px from the star (a circle there is %.0f px/s)" % [_s.sim.bodies.size(), _s.sim.bodies[-1].m,
+					_s.sim.bodies[-1].vel.length(), _s.sim.bodies[-1].pos.length(), sqrt(_s.sim.gm() / _s.sim.bodies[-1].pos.length())])
+			"second":
+				# another finger while the first is down throws too
+				_touch(step[2], true, 1)
+				_touch(step[2], false, 1)
+				print("a second finger: bodies %d" % _s.sim.bodies.size())
 			"let_go":
 				_touch(Vector2.ZERO, false)
-				print("let go: bodies %d, the last of them %.2f mass at %.0f px/s" % [_s.sim.bodies.size(), _s.sim.bodies[-1].m if not _s.sim.bodies.is_empty() else -1.0,
-					_s.sim.bodies[-1].vel.length() if not _s.sim.bodies.is_empty() else -1.0])
+				print("let go: bodies %d, holding %s" % [_s.sim.bodies.size(), _s._holding])
 			"planet":
 				# on a circle in the haze, a little outside where the tide tears it
 				var far: float = _s.sim.tear_r(8.0) * 1.1
@@ -206,7 +212,7 @@ func _process(delta: float) -> bool:
 				_s.sim.fuel = _s.sim.mass * 0.5
 				_s.sim.passing = true
 			"hold":
-				# a finger down and dragged, and kept there: with Stream it goes on throwing
+				# a finger down, moved and kept there: with Stream it goes on throwing from where it is
 				_s.sim.lv.stream = maxi(4, int(_s.sim.lv.stream))
 				_s.sim.lv.volley = maxi(2, int(_s.sim.lv.volley))
 				var before: int = _s.sim.bodies.size()

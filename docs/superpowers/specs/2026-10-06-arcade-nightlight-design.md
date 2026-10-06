@@ -346,3 +346,33 @@ and the ashes moved to keep their pixels; the tutorial's pages retimed
 less slow, or it met the star first time round; the circle at 0.6 of the
 haze, the comet at 0.5). The Solar wind's 0.012 is unchanged: a circle at
 one and a half of the haze comes down in 67 s (52).
+
+### 2026-10-06, a sixth time: a press throws, nothing is aimed
+
+The user: "on nightlight, when user click on screen to throw bodies make
+them spawn insta in orbit where user click, so he can keep clicking and
+sending without needing to aim".
+
+**A press on the sky is a throw.** The meteor is there at once, under the
+finger, already going round the star the way most passers do. There is no
+drag, no dotted line, and no tap that lets a meteor fall: section 4, The
+hand, is replaced by this. Every finger that comes down throws;
+with Stream the first finger held keeps throwing from wherever it is now.
+A small puff of light marks where it was set, since the finger hides it.
+
+**Inside 0.8 of the haze the path is a circle.** Farther out a circle
+would never come down (nothing spirals without the haze), and the haze is
+13% of a new star's field, so the meteor leaves slower than a circle and
+its path is a longer round that dips into the haze, deeper the farther off
+it began (`Sim.throw_vel`, `LOW`). Every throw from anywhere on the screen
+is the star's inside a minute: 29 s from 0.8 of the haze, 36 from its
+edge, 51 from twice as far, paying 1.9 to 2.7 light on a meteor of 1.0. A
+throw at half the haze is down in 6 s and pays 0.54.
+
+**Measured.** The bot now throws anywhere from 0.5 to 1.5 of the haze and
+reaches the first supernova in 4.9 min on three seeds (4.2, 4.1, 5.0
+before, aiming into the outer haze).
+
+Mine, not asked for: the dipping path outside the haze and its 0.8, the
+puff, two fingers, Stream following the finger, the tutorial's first two
+pages redrawn and reworded (three taps; two circles in the haze).

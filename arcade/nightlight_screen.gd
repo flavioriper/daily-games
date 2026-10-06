@@ -2,8 +2,10 @@ extends Control
 
 ## Nightlight: the seventh game on the Arcade tab, and the one that is kept.
 ## A small star in the middle of a night sky; the player never moves and only
-## throws meteors at it (press on the sky, drag the way it should go, let
-## go). The star pulls as hard as it is heavy, bodies cross the sky on their
+## throws meteors at it (a press on the sky sets one going round the star,
+## there and at once: the user, 2026-10-06, "make them spawn insta in orbit
+## where user click, so he can keep clicking and sending without needing to
+## aim"). The star pulls as hard as it is heavy, bodies cross the sky on their
 ## own, and a caught one circles, closes in and turns faster and faster until
 ## the star has it. Mass grows the star, counted in Suns (a new star is
 ## one); it burns the hydrogen in what it eats and goes dim without any;
@@ -67,13 +69,6 @@ const PRICE_OFF := Color("ede4d3")
 const FILL := Color("fcf7ef")
 ## The star stands a little above the field's middle.
 const STAR_AT := 0.47
-## A throw: under SLACK pixels of drag (the design's) it is a tap and the
-## meteor is let go where it is; FULL of them is the speed of a circle at
-## the bare haze's edge, whatever the star weighs, so the hand learns one
-## gesture; past MOST a longer drag is no faster.
-const SLACK := 24.0
-const FULL := 200.0
-const MOST := 520.0
 ## No throw starts this near the star, in its own radii.
 const CLEAR := 1.2
 ## Light is motes, the other games' energy in gold: `ORBS` to one light.
@@ -134,7 +129,6 @@ var _pick_wait := 0.0
 var _powers: Control
 var _powers_list: VBoxContainer
 var _stream_t := 0.0
-var _streamed := false
 var _felt_at := -1000
 var _shown := {"mass": 0.0, "light": 0.0}
 var _bump := {}
@@ -154,10 +148,9 @@ var _perks: Control
 var _perk_dust: Label
 var _perk_buy: Button
 var _perk_tiles := {}   # perk -> {panel, count}
-var _aiming := false
+var _holding := false
 var _finger := -1
-var _aim_from := Vector2.ZERO
-var _aim_to := Vector2.ZERO
+var _hold_at := Vector2.ZERO
 var _held_back := false
 var _nova_t := -1.0
 var _nova_done := false
@@ -193,7 +186,7 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		_aiming = false
+		_holding = false
 		_finger = -1
 		_save()
 	elif what == NOTIFICATION_EXIT_TREE:
@@ -218,7 +211,7 @@ func _build() -> void:
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.settings.connect(func() -> void:
-		_aiming = false
+		_holding = false
 		settings_sheet.open())
 	col.add_child(top_bar)
 
@@ -520,7 +513,7 @@ func _build_shop() -> Control:
 func open_shop() -> void:
 	if _shop.visible or _nova_t >= 0.0:
 		return
-	_aiming = false
+	_holding = false
 	_refresh_tiles()
 	_shop.visible = true
 	Motion.appear(_shop, 0.0, 1.0, 0.2)
@@ -646,7 +639,7 @@ func _build_ask() -> Control:
 func open_ask() -> void:
 	if _ask.visible or _nova_t >= 0.0 or not sim.can_nova():
 		return
-	_aiming = false
+	_holding = false
 	_ask_body.text = _count("NL_NOVA_ASK", sim.dust_for())
 	_ask.visible = true
 	Motion.appear(_ask, 0.0, 1.0, 0.2)
@@ -719,7 +712,7 @@ func _perk_tile(which: String) -> Control:
 func open_perks() -> void:
 	if _perks.visible or _nova_t >= 0.0:
 		return
-	_aiming = false
+	_holding = false
 	_refresh_perks()
 	_perks.visible = true
 	Motion.appear(_perks, 0.0, 1.0, 0.2)
@@ -859,7 +852,7 @@ func open_pick() -> void:
 	var two: Array = sim.offering()
 	if two.is_empty() or _pick.visible:
 		return
-	_aiming = false
+	_holding = false
 	_finger = -1
 	_pick_now = two
 	_pick_title.text = tr("NL_PICK_TITLE") % Art.short(Sim.mile(sim.picks), _comma())
@@ -911,7 +904,7 @@ func _build_powers() -> Control:
 func open_powers() -> void:
 	if _powers.visible or _nova_t >= 0.0:
 		return
-	_aiming = false
+	_holding = false
 	for old in _powers_list.get_children():
 		_powers_list.remove_child(old)
 		old.queue_free()
@@ -1006,7 +999,7 @@ func hints_left() -> int:
 func _tutor_hold(on: bool) -> void:
 	_held_back = on
 	if on:
-		_aiming = false
+		_holding = false
 
 # --- time ---
 
@@ -1020,7 +1013,6 @@ func _process(delta: float) -> void:
 	_play_events()
 	_offer(delta)
 	_step_nova(delta)
-	sky.aim = _aim()
 	sky.refresh(0.0 if waits else delta)
 	_refresh_hud(delta)
 	_nova_line.queue_redraw()
@@ -1029,17 +1021,16 @@ func _process(delta: float) -> void:
 		if _since_save >= SAVE_GAP:
 			_save()
 
-## With Stream, meteors keep leaving while the finger is down, the way it is
-## dragged now.
+## With Stream, meteors keep leaving while the finger is down, from under
+## wherever it is now.
 func _stream(delta: float) -> void:
 	var gap: float = sim.stream_gap()
-	if not _aiming or gap <= 0.0:
+	if not _holding or gap <= 0.0:
 		return
 	_stream_t += delta
 	if _stream_t >= gap:
 		_stream_t = 0.0
-		_streamed = true
-		_throw()
+		_throw(_hold_at)
 
 ## A pick the star has grown past comes up by itself, a moment later and
 ## never over another card.
@@ -1112,7 +1103,7 @@ func _go_nova() -> void:
 	close_ask()
 	if not sim.can_nova() or _nova_t >= 0.0:
 		return
-	_aiming = false
+	_holding = false
 	_nova_t = 0.0
 	_nova_done = false
 	_fx.cue("nova")
@@ -1314,74 +1305,52 @@ func _on_tile(tile: String) -> void:
 
 ## A finger is a ScreenTouch and never a mouse button (the project has
 ## mouse-from-touch off, and the Grove shipped unable to be chopped on a
-## phone for reading the mouse alone). One finger aims; a second is left
-## alone. The mouse is for this Mac.
+## phone for reading the mouse alone). Every finger that comes down throws,
+## so two thumbs can; the first is the one Stream follows. The mouse is for
+## this Mac.
 func _on_field_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
-		if t.pressed and _finger == -1:
-			if _aim_start(t.position):
-				_finger = t.index
-		elif not t.pressed and t.index == _finger:
+		if t.pressed:
+			if _throw(t.position) and not _holding:
+				_hold(t.position, t.index)
+		elif t.index == _finger:
 			_finger = -1
-			_aim_end()
+			_holding = false
 	elif event is InputEventScreenDrag:
-		if (event as InputEventScreenDrag).index == _finger and _aiming:
-			_aim_to = (event as InputEventScreenDrag).position
+		if (event as InputEventScreenDrag).index == _finger and _holding:
+			_hold_at = (event as InputEventScreenDrag).position
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		if (event as InputEventMouseButton).pressed:
-			_aim_start((event as InputEventMouseButton).position)
-		else:
-			_aim_end()
-	elif event is InputEventMouseMotion and _aiming and _finger == -1:
-		_aim_to = (event as InputEventMouseMotion).position
+		if not (event as InputEventMouseButton).pressed:
+			_holding = false
+		elif _throw((event as InputEventMouseButton).position):
+			_hold((event as InputEventMouseButton).position, -1)
+	elif event is InputEventMouseMotion and _holding and _finger == -1:
+		_hold_at = (event as InputEventMouseMotion).position
 
-## A meteor waits under the finger at `at`. False where none can: on the
-## star, under a card, during the supernova.
-func _aim_start(at: Vector2) -> bool:
+## `finger` (-1 the mouse) stays down at `at`: where Stream throws from.
+func _hold(at: Vector2, finger: int) -> void:
+	_holding = true
+	_finger = finger
+	_hold_at = at
+	_stream_t = 0.0
+
+## A throw at `at`, the moment it is pressed: one meteor going round the
+## star (Sim.throw_vel), or a volley. Nothing is aimed. Felt, though not every one of a
+## stream. False where none can be: on the star, under a card, during the
+## supernova.
+func _throw(at: Vector2) -> bool:
 	if _held_back or _nova_t >= 0.0 or at.distance_to(sky.centre) < sky.star_px() * CLEAR:
 		return false
-	_aiming = true
-	_aim_from = at
-	_aim_to = at
-	_stream_t = 0.0
-	_streamed = false
-	return true
-
-## Letting go throws, unless the stream has only just let one go.
-func _aim_end() -> void:
-	if not _aiming:
-		return
-	_aiming = false
-	if not _streamed or _stream_t >= sim.stream_gap() * 0.5:
-		_throw()
-
-## A throw from where the finger went down, the way it is dragged now: one
-## meteor, or a volley. Felt, though not every one of a stream.
-func _throw() -> void:
-	sim.throw_at(sky.unit(_aim_from), _aim_vel())
+	var pos: Vector2 = sky.unit(at)
+	sim.place_at(pos)
+	sky.set_down(pos)
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
 		_fx.cue("throw")
 	_dirty = true
-
-## The speed a throw would leave with, in the sim's units: the way the
-## finger was dragged, as fast as the drag is long.
-func _aim_vel() -> Vector2:
-	var drag: Vector2 = (_aim_to - _aim_from) / sky.u
-	var far := drag.length()
-	if far < SLACK:
-		return Vector2.ZERO
-	return drag / far * (minf(far, MOST) / FULL * sim.throw_speed())
-
-## What the sky draws of a throw being aimed: the meteor under the finger,
-## the line of the drag, and the dots of where it would really go.
-func _aim() -> Dictionary:
-	if not _aiming:
-		return {}
-	var where: Dictionary = sim.predict(sky.unit(_aim_from), _aim_vel())
-	return {"from": _aim_from, "to": _aim_to, "pts": where.pts, "hit": where.hit}
+	return true
 
 # --- drawing ---
 

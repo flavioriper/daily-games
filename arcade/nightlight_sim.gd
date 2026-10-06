@@ -105,6 +105,9 @@ const GAP_MAX := 1.4
 ## The most bodies in the sky. A throw past it takes the oldest meteor still
 ## up, so a sky parked full of circles outside the haze cannot grow for ever.
 const MOST := 160
+## A throw nearer than this share of the haze's radius is a circle; one
+## farther off dips at least this deep (`throw_vel`).
+const LOW := 0.8
 ## Light is let go in pieces of a quarter of a body's mass, and never less
 ## than this.
 const PIECE := 0.05
@@ -414,9 +417,27 @@ func tear_r(m: float) -> float:
 func turn_time(r: float) -> float:
 	return TAU * sqrt(r * r * r / gm())
 
-## The speed of a circle at the bare haze's edge: what a throw is measured in.
-func throw_speed() -> float:
-	return sqrt(gm() / (HAZE * star_r()))
+## The velocity of a circle round the star through `pos`, the way most of
+## what passes goes round.
+func circle_vel(pos: Vector2) -> Vector2:
+	return pos.orthogonal().normalized() * -sqrt(gm() / pos.length())
+
+## The velocity a throw at `pos` leaves with: sideways, as a circle's is.
+## Inside `LOW` of the haze it is the circle's own. Farther out it is slower,
+## so the path is a longer round whose nearest point is in the haze, and the
+## deeper the farther off it began (LOW of the haze times the root of
+## LOW of the haze over the distance): a circle out there would never come
+## down, and with nothing to aim every throw has to. From anywhere on the
+## screen a meteor is the star's inside a minute (29 s from LOW of the haze,
+## 51 from twice the haze) and pays what a circle at LOW does or up to four
+## tenths more.
+func throw_vel(pos: Vector2) -> Vector2:
+	var far := pos.length()
+	var low := haze_r() * LOW
+	if far <= low:
+		return circle_vel(pos)
+	var near := low * sqrt(low / far)
+	return circle_vel(pos) * sqrt(2.0 * near / (far + near))
 
 ## The light a perfect spiral from the haze's edge pays for each of a body's
 ## mass.
@@ -575,19 +596,22 @@ func add(kind: Kind, m: float, pos: Vector2, vel: Vector2) -> Body:
 	bodies.append(b)
 	return b
 
-## A throw, let go at `pos` with `vel`: one meteor, or with Volley several
-## side by side across the way they go. Nothing limits a throw.
-func throw_at(pos: Vector2, vel: Vector2) -> void:
+## A throw: a meteor set going at `pos` round the star (`throw_vel`), or with
+## Volley several side by side across the way they go, each on its own
+## path. Nothing limits a throw: past the sky's most the oldest meteor goes
+## up.
+func place_at(pos: Vector2) -> void:
 	var n := volley()
 	var m := meteor_mass()
-	var side := (vel if vel != Vector2.ZERO else pos).orthogonal().normalized() * body_r(m) * 2.4
+	var side := pos.normalized() * body_r(m) * 2.4
 	for k in n:
 		if bodies.size() >= MOST:
 			for i in bodies.size():
 				if bodies[i].kind == Kind.METEOR:
 					bodies.remove_at(i)
 					break
-		add(Kind.METEOR, m, pos + side * (k - (n - 1) * 0.5), vel).h = meteor_h()
+		var at := pos + side * (k - (n - 1) * 0.5)
+		add(Kind.METEOR, m, at, throw_vel(at)).h = meteor_h()
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -827,41 +851,10 @@ func _burn() -> void:
 		awake = true
 	lit = move_toward(lit, 1.0 if awake else 0.0, STEP / DIM)
 
-## Where a throw from `pos` with `vel` would go: a point every `every` ticks
-## for `ticks` of them (seven seconds), stopping at the star. `hit` is
-## whether it got there.
-func predict(pos: Vector2, vel: Vector2, ticks := 840, every := 14) -> Dictionary:
-	var pts := PackedVector2Array()
-	var pull := gm()
-	var eat := star_r() * EAT
-	var rh := haze_r()
-	var rwind := wind_r()
-	var blow := WIND * on("wind")
-	var hit := false
-	for i in ticks:
-		var r2 := pos.length_squared()
-		var r := sqrt(r2)
-		if r < eat:
-			hit = true
-			break
-		var acc := pos * (-pull / (r2 * r))
-		if r < rh:
-			var d := 1.0 - r / rh
-			acc -= vel * (DRAG * d * d)
-		elif r < rwind:
-			acc -= vel * blow
-		vel += acc * STEP
-		pos += vel * STEP
-		if i % every == every - 1:
-			pts.append(pos)
-	return {"pts": pts, "hit": hit}
-
-## A steady hand, for the probe and the tutorial's page: a meteor into the
-## outer haze, a little under the speed of a circle there.
+## A hand that does not aim, for the probe and the harness: a throw
+## somewhere round the star, in the haze or half as far again.
 func bot_throw() -> void:
-	var r := haze_r() * _rng.randf_range(0.55, 0.9)
-	var way := Vector2.from_angle(_rng.randf() * TAU)
-	throw_at(way * r, way.orthogonal() * -sqrt(gm() / r) * _rng.randf_range(0.8, 1.05))
+	place_at(Vector2.from_angle(_rng.randf() * TAU) * haze_r() * _rng.randf_range(0.5, 1.5))
 
 # --- keeping ---
 

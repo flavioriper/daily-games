@@ -88,8 +88,26 @@ func _check_physics() -> void:
 	_ok("and ends half again as fast as it began, under 250 px/s", ring.fastest >= v0 * 1.45 and ring.fastest < 250.0)
 	_ok("a straight drop goes round not at all", drop.turns < 0.1)
 	_ok("a spiral pays ten times the light of a drop", ring.light >= drop.light * 10.0 and ring.light > 1.0)
-	var where: Dictionary = sim.predict(Vector2(r, 0.0), Vector2(0.0, v0), 4500)
-	_ok("the dotted line ends at the star, as the meteor does", where.hit)
+	# a throw is a meteor set going where the finger is: a circle in the
+	# haze, and from farther off a longer round that dips into it
+	var set_down: RefCounted = Sim.new(7)
+	set_down.passing = false
+	var where := Vector2(-rh * 0.4, rh * 0.5)
+	set_down.place_at(where)
+	_ok("a throw in the haze is one meteor on a circle where it is pressed", set_down.bodies.size() == 1 and set_down.bodies[0].pos == where
+		and set_down.bodies[0].vel.is_equal_approx(set_down.circle_vel(where)))
+	_ok("the speed of a throw does not jump where the circles end", set_down.throw_vel(Vector2(rh * Sim.LOW * 1.0001, 0.0)).distance_to(set_down.circle_vel(Vector2(rh * Sim.LOW, 0.0))) < 0.05)
+	print("a throw from")
+	var slowest := 0.0
+	var least := 1e9
+	for share: float in [0.5, 0.8, 1.0, 1.5, 2.0, 3.0]:
+		var at := Vector2(0.0, -rh * share)
+		var thrown := _one(at, sim.throw_vel(at))
+		print("  %.1f of the haze: eaten after %.1f s, %.1f turns, light %.2f" % [share, thrown.seconds, thrown.turns, thrown.light])
+		if share >= 0.8:
+			slowest = maxf(slowest, thrown.seconds)
+			least = minf(least, thrown.light)
+	_ok("a throw from anywhere is the star's inside a minute and pays as a spiral does", slowest < 60.0 and least >= ring.light * 0.85)
 	# a body on a circle outside the haze never comes down
 	var out := _one(Vector2(rh * 1.5, 0.0), Vector2(0.0, sqrt(sim.gm() / (rh * 1.5))))
 	_ok("a circle outside the haze is still up after five minutes", out.seconds >= 300.0 and is_equal_approx(out.mass, Sim.START))
@@ -250,11 +268,13 @@ func _check_star() -> void:
 	hand.lv.volley = 2
 	hand.lv.stream = 3
 	hand.lv.ice = 6
-	hand.throw_at(Vector2(200.0, 0.0), Vector2(0.0, 200.0))
+	hand.place_at(Vector2(400.0, 0.0))
 	var across := 0.0
+	var round := true
 	for b: Sim.Body in hand.bodies:
-		across = maxf(across, absf(b.pos.x - 200.0))
-	_ok("a volley of three goes side by side, icy", hand.bodies.size() == 3 and across > 10.0 and is_equal_approx(hand.bodies[0].h, 0.9) and hand.is_done("ice"))
+		across = maxf(across, absf(b.pos.x - 400.0))
+		round = round and b.pos.y == 0.0 and b.vel.is_equal_approx(hand.throw_vel(b.pos))
+	_ok("a volley of three goes side by side, each on its own path, icy", hand.bodies.size() == 3 and across > 5.0 and round and is_equal_approx(hand.bodies[0].h, 0.9) and hand.is_done("ice"))
 	_ok("a stream lets one go every 0.43 s", absf(hand.stream_gap() - 0.6 * 0.85 * 0.85) < 0.001)
 
 func _check_rules() -> void:
@@ -273,7 +293,7 @@ func _check_rules() -> void:
 	park.passing = false
 	for i in 300:
 		var at: Vector2 = Vector2.from_angle(i * 0.37) * (park.haze_r() * (1.3 + 0.004 * i))
-		park.throw_at(at, at.orthogonal().normalized() * -sqrt(park.gm() / at.length()))
+		park.place_at(at)
 	_ok("a throw is never refused, and the sky holds %d at most" % Sim.MOST, park.bodies.size() == Sim.MOST)
 	var began := Time.get_ticks_usec()
 	for i in 240:

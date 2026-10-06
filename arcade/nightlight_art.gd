@@ -49,7 +49,6 @@ const LUMPS := 3
 
 static var _lumps: Array[ArrayMesh] = []
 static var _glows := {}
-static var _dot: ArrayMesh
 static var _star: ArrayMesh
 static var _core: ArrayMesh
 static var _orb: ArrayMesh
@@ -140,14 +139,6 @@ static func glow(fall := 2.0) -> ArrayMesh:
 		Motes.glow(b, Vector2.ZERO, R, Color.WHITE, fall)
 		_glows[fall] = b.mesh()
 	return _glows[fall]
-
-## A white disc, for the dots of a throw's path.
-static func dot() -> ArrayMesh:
-	if _dot == null:
-		var b := Face.Builder.new()
-		b.disc(Vector2.ZERO, R, Color.WHITE)
-		_dot = b.mesh()
-	return _dot
 
 ## Rings of colour about the middle: `stops` are [share of `r`, colour], the
 ## first at the middle itself.

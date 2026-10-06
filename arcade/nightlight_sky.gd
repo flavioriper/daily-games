@@ -10,7 +10,8 @@ extends Control
 ## Arcade card's picture, so the three cannot drift apart.
 ##
 ## The owner sets `sim`, calls `refresh` once a frame after stepping it, and
-## tells it what the sim's events were (`ate`, `met`, `tore`). Six layers,
+## tells it what the sim's events were (`ate`, `met`, `tore`) and where a
+## meteor was set down (`set_down`). Six layers,
 ## about eleven draws and one more for each trail: the bodies are three
 ## MultiMeshes lit by one shader, every warm light one. Light is added and
 ## has no shape. **Nothing throws a shadow**: the bodies had one each, lying
@@ -23,9 +24,8 @@ const Art = preload("res://arcade/nightlight_art.gd")
 const Motion = preload("res://core/motion.gd")
 
 ## The most bodies drawn (the sim tears nothing past Sim.FULL, and a last
-## tear may add three), and dots of a throw's path.
+## tear may add three).
 const MOST := 320
-const DOTS := 64
 ## No body as heavy as a thrown meteor is drawn smaller than this, in the
 ## design's pixels: it is small, and still has a lit side. A piece of one is
 ## drawn smaller by its radius, down to half, or three pieces would look
@@ -51,9 +51,6 @@ var centre := Vector2.ZERO
 ## The corners are rounded off in this colour, `corner` pixels of the design.
 var paper := Color.TRANSPARENT
 var corner := 44.0
-## A throw being aimed: {from, to} in this control's pixels, {pts, hit} from
-## Sim.predict. Empty when none is.
-var aim := {}
 ## The supernova: how far the star has swollen into a light that takes the
 ## sky, and how much of the sky that light still covers, both 0 to 1.
 var swell := 0.0
@@ -72,7 +69,6 @@ var _body_l: Control
 var _star_l: Control
 var _top_l: Control
 var _warms: Batch
-var _dots: Batch
 var _lumps: Array[Batch] = []
 
 ## One MultiMesh and the buffer that fills it each frame.
@@ -154,7 +150,6 @@ func _init() -> void:
 	_star_l = _layer("Star", _draw_star, null)
 	_top_l = _layer("Top", _draw_top, null)
 	_warms = Batch.new(Art.glow(2.0), MOST * 2)
-	_dots = Batch.new(Art.dot(), DOTS)
 	for v in Art.LUMPS:
 		_lumps.append(Batch.new(Art.lump(v), MOST))
 	_on_resized()
@@ -191,6 +186,12 @@ func ate(m: float) -> void:
 	if not Motion.reduce:
 		_pulse = minf(1.5, _pulse + 0.2 + 2.0 * m / sim.mass)
 
+## A meteor was set going at `at`: a small light where the finger was, since
+## the finger hides the meteor.
+func set_down(at: Vector2) -> void:
+	if not Motion.reduce and _puffs.size() < 30:
+		_puffs.append({"at": at, "t": 0.0, "s": 0.4})
+
 ## Two bodies met at `at`.
 func met(at: Vector2) -> void:
 	if not Motion.reduce and _puffs.size() < 30:
@@ -226,7 +227,7 @@ func _breath() -> float:
 
 ## Every buffer for this frame, off where the bodies are now.
 func _fill() -> void:
-	var batches: Array[Batch] = [_warms, _dots]
+	var batches: Array[Batch] = [_warms]
 	batches.append_array(_lumps)
 	for batch in batches:
 		batch.n = 0
@@ -268,13 +269,6 @@ func _fill() -> void:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * float(p.s) * u / Art.R
 		_warms.put(centre + (p.at as Vector2) * z, 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
-	if not aim.is_empty():
-		var pts: PackedVector2Array = aim.pts
-		var n := mini(pts.size(), DOTS)
-		for i in n:
-			var k := float(i) / n
-			var s := (5.5 - 2.5 * k) * u / Art.R
-			_dots.put(centre + pts[i] * z, 0.0, s, s, Color(1.0, 0.965, 0.9, 0.8 * (1.0 - k) + 0.08))
 	for batch in batches:
 		batch.send()
 	var origin := get_global_transform()
@@ -332,21 +326,10 @@ func _draw_star() -> void:
 	_star_l.draw_mesh(Art.star(), null, at, Art.burning_col(sim.mass, sim.lit))
 	_star_l.draw_mesh(Art.core(), null, at, Color(1, 1, 1, lerpf(0.25, 1.0, sim.lit)))
 
-## Over everything: a throw being aimed, the supernova's light, the corners.
+## Over everything: the supernova's light, the corners.
 func _draw_top() -> void:
 	if sim == null:
 		return
-	if not aim.is_empty():
-		var cream := Color(1.0, 0.965, 0.9)
-		var from: Vector2 = aim.from
-		var r := maxf(SMALL * u, Sim.body_r(sim.meteor_mass()) * sim.zoom() * u)
-		_dots.show(_top_l)
-		if aim.hit:
-			_top_l.draw_arc(centre, star_px() * 1.35, 0.0, TAU, 64, Color(cream, 0.6), 5.0 * u, true)
-		_top_l.draw_line(from, aim.to, Color(cream, 0.45), 6.0 * u, true)
-		_top_l.draw_circle(aim.to, 9.0 * u, Color(cream, 0.7), true, -1.0, true)
-		_top_l.draw_circle(from, r + 4.0 * u, Color(cream, 0.9), true, -1.0, true)
-		_top_l.draw_circle(from, r, Art.paint_of(Sim.Kind.METEOR, sim.meteor_h()), true, -1.0, true)
 	if veil > 0.0:
 		_top_l.draw_rect(Rect2(Vector2.ZERO, size), Color(Art.VEIL, clampf(veil, 0.0, 1.0)))
 	if _corners != null:

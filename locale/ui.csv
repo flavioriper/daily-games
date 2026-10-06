@@ -1018,7 +1018,7 @@ NL_HYDROGEN,Hydrogen,Hidrogênio,Hidrógeno
 NL_HELIUM,Helium,Hélio,Helio
 NL_ROCK,Rock,Rocha,Roca
 NL_LIGHT,Light,Luz,Luz
-NL_HINT,"Drag to throw, tap to let go","Arraste para lançar, toque para soltar","Arrastra para lanzar, toca para soltar"
+NL_HINT,Tap the sky to throw a meteor,Toque no céu para lançar um meteoro,Toca el cielo para lanzar un meteoro
 NL_NOVA,Supernova,Supernova,Supernova
 NL_NOVA_AT,Next power at %s× · Supernova at %s×,Próximo poder com %s× · Supernova com %s×,Próximo poder con %s× · Supernova con %s×
 NL_NOVA_READY,"+%d stardust now, +%d at %s× · power at %s×","+%d de poeira estelar agora, +%d com %s× · poder com %s×","+%d de polvo estelar ahora, +%d con %s× · poder con %s×"
@@ -1073,10 +1073,10 @@ NL_POW_FUSION,Fusion,Fusão,Fusión
 NL_POW_FUSION_FX,The star's own burning makes much more light.,A queima da própria estrela faz muito mais luz.,La combustión de la estrella da mucha más luz.
 NL_POW_THRIFT,Slow burn,Queima lenta,Combustión lenta
 NL_POW_THRIFT_FX,The star and its powers burn 30% less hydrogen.,A estrela e seus poderes queimam 30% menos hidrogênio.,La estrella y sus poderes queman 30% menos hidrógeno.
-TUT_NL_THROW,Throw a meteor,Lance um meteoro,Lanza un meteoro
-TUT_NL_THROW_BODY,Press on the sky and drag the way the meteor should go. The dots show its real path. Let go to throw. A tap with no drag lets it fall.,Toque no céu e arraste para onde o meteoro deve ir. Os pontos mostram o caminho real. Solte para lançar. Um toque sem arrastar deixa-o cair.,Toca el cielo y arrastra hacia donde debe ir el meteoro. Los puntos muestran su camino real. Suelta para lanzar. Un toque sin arrastrar lo deja caer.
+TUT_NL_THROW,Tap the sky,Toque no céu,Toca el cielo
+TUT_NL_THROW_BODY,Tap the sky and a meteor starts circling the star from right there. Keep tapping to send more.,Toque no céu e um meteoro começa a girar em volta da estrela a partir dali. Continue tocando para mandar mais.,Toca el cielo y un meteoro empieza a girar alrededor de la estrella desde ahí. Sigue tocando para enviar más.
 TUT_NL_LIGHT,A spiral makes light,A espiral faz luz,La espiral da luz
-TUT_NL_LIGHT_BODY,"The star's haze slows whatever is inside it, and what it takes becomes light. A meteor that circles in pays twenty times the light of one dropped straight in. Light buys upgrades in the shop.","A névoa da estrela freia o que está dentro dela, e o que ela tira vira luz. Um meteoro que entra girando rende vinte vezes a luz de um que cai direto. A luz compra melhorias na loja.","La bruma de la estrella frena lo que hay dentro, y lo que le quita se vuelve luz. Un meteoro que entra girando da veinte veces la luz de uno que cae directo. La luz compra mejoras en la tienda."
+TUT_NL_LIGHT_BODY,"The star's haze slows whatever is inside it, and what it takes becomes light. A meteor winds in, faster and faster, and pays light all the way down. Light buys upgrades in the shop.","A névoa da estrela freia o que está dentro dela, e o que ela tira vira luz. Um meteoro desce girando, cada vez mais rápido, e rende luz o caminho todo. A luz compra melhorias na loja.","La bruma de la estrella frena lo que hay dentro, y lo que le quita se vuelve luz. Un meteoro baja girando, cada vez más rápido, y da luz todo el camino. La luz compra mejoras en la tienda."
 TUT_NL_STAR,The star burns,A estrela queima,La estrella arde
 TUT_NL_STAR_BODY,"The star burns hydrogen to shine, and that makes light too. Comets and icy meteors bring the most. With none left it goes dim until it is fed. As it grows, it offers you a power to pick.","A estrela queima hidrogênio para brilhar, e isso também faz luz. Cometas e meteoros gelados trazem mais. Sem hidrogênio ela escurece até ser alimentada. Conforme cresce, ela oferece um poder para você escolher.","La estrella quema hidrógeno para brillar, y eso también da luz. Los cometas y los meteoros helados traen más. Sin hidrógeno se apaga hasta que la alimentes. Al crecer, te ofrece un poder para elegir."
 TUT_NL_NOVA,Supernova,Supernova,Supernova
