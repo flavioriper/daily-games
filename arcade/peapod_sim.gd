@@ -77,6 +77,10 @@ extends RefCounted
 ## from the start at none, and `use(kind)` starts one of a kind. A gift
 ## started while its like is running adds its time to what is left. And a
 ## volley's peas leave together, side by side.
+##
+## The ninth pass (2026-10-06, the user: "nearly impossible to beat after
+## wave 17, where crates start getting 2k hp"). The numbers climb 1.16 a wave
+## after wave 10, not 1.3 (`HP_LATE`).
 
 ## SHOP: a wave is cleared and the shop is open; nothing moves until
 ## `leave_shop()`.
@@ -190,6 +194,13 @@ const KNOCK := 9.0
 ## With every plate gone but the head it runs this much quicker.
 const MILLI_HURRY := 0.6
 const CATCH_UP := 5.0
+## A crate's number grows HP_EARLY a wave to wave HP_TURN and HP_LATE after.
+## Past the turn the gun is mostly bought (a wave's energy is about one card,
+## a tenth more gun), so HP_LATE over that is how steeply a run closes: at
+## 1.3 every run ended on the same wave, whatever was done.
+const HP_EARLY := 1.32
+const HP_LATE := 1.16
+const HP_TURN := 10
 ## Kills this close together are one streak.
 const STREAK_GAP := 0.7
 
@@ -300,7 +311,7 @@ func crit() -> float:
 
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
-	return 2.4 * pow(1.32, mini(w, 10) - 1) * pow(1.3, maxi(0, w - 10))
+	return 2.4 * pow(HP_EARLY, mini(w, HP_TURN) - 1) * pow(HP_LATE, maxi(0, w - HP_TURN))
 
 static func holds_gift(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.SHOVE

@@ -234,7 +234,8 @@ chalk line ends the run. Its "furthest" is the wave.
   units, `target_x` or `axis` in, `events` out). `tests/_probe_peapod.gd --
   [seed] [skill 0-2] [games]` plays it with a bot; run it after touching
   `hp_base()`, the gifts or the speeds. Skill 0 ends on wave 5-10, skills 1
-  and 2 near wave 20-23 in about six minutes.
+  and 2 near wave 20-23 in about six minutes (the first pass's numbers:
+  where they end now is in the last pass below).
 - **The gun is heard and never felt**: `shot` and `hit` fire several times a
   second and play through `_quiet`, a second `Fx2D` with `buzzes` off, so
   no ECHO rides on them. The next game with a constant sound can do the
@@ -725,6 +726,29 @@ chalk line ends the run. Its "furthest" is the wave.
     worst on the perf harness, 197 on the shot harness's cast with most of
     the wall cracked; both drivers and reduce motion; suite 249790/0; the
     two gift pages of the tutorial shot. **Not on a phone.**
+- **The ninth pass (2026-10-06, the user's play: "nearly impossible to beat
+  after wave 17, where crates start getting 2k hp"; said as wave 9 first).**
+  - **Why every run ended on the same wave**: past wave 10 a crate's number
+    grew 1.3 a wave, and the gun is mostly bought by then: a wave's energy
+    is about one card, a tenth more gun (the best-buying bot goes from 166
+    a second on wave 12 to 302 on wave 17, the numbers from 49 to 183). So
+    nothing a player did moved the end: eight runs, 14 or 17, never
+    another wave. The bots had been tuned to end there on purpose.
+  - **`HP_LATE` is 1.16** (`HP_EARLY` 1.32 to wave `HP_TURN` 10, as it
+    was). Eight runs, skill 1: gifts started at once wave 20-28 in six and a
+    half to ten minutes (was 14-17 in four to six and a half), kept for their match 32-35 in
+    about fifteen (was 19-20 in nine), at random 13-23, no extra pea 13-16,
+    damage only 8-13. Swept: 1.22 ends on 16-20, 1.1 on 35-49 and the
+    keeping bot on 59 after 27 minutes. The heaviest crate of wave 17 is
+    about 920 now, not 2050; 2k comes on wave 22-23. **Unconfirmed by the
+    user**: where a good run should end is one number, and nobody asked
+    for fifteen-minute runs.
+  - **`tests/_watch_peapod.gd -- [seed] [speed]`** plays a game on the real
+    screen with the probe's bot (skill 1, best buy, gifts at once), buying
+    in the shop one card every third of a second, and prints the gun at
+    every wave: for showing a person what the bots do. It was stopped on
+    wave 11 when the user corrected the wave, so it has never run to an end
+    card. Suite 249790/0.
 
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
