@@ -77,9 +77,12 @@ func _finish() -> void:
 		DirAccess.remove_absolute(p)
 	print("throwaway files removed")
 
+## A finger, as a phone sends it: the project has mouse-from-touch off, and
+## this harness pressing with a mouse button is how the Grove shipped unable
+## to be chopped on a phone (2026-10-06).
 func _press(at: Vector2, down: bool) -> void:
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
+	var ev := InputEventScreenTouch.new()
+	ev.index = 0
 	ev.pressed = down
 	ev.position = at
 	_s._on_field_input(ev)

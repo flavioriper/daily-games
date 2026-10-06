@@ -134,6 +134,18 @@ shop's card are untouched.
   twice the trees late on**, which no bot here measures.
 - **Not done**: a phone; nobody has held the oval under a thumb; the
   tutorial's words still say circle; the pace of a person sweeping.
+- **A finger is a `ScreenTouch`, never a mouse button.** The project has
+  `emulate_mouse_from_touch` off (b707b9a, 2026-09-22). The field read the
+  mouse alone from the day it was built, so **on a phone nothing could be
+  chopped** (the user, 2026-10-06: "the click is not working (can't farm)
+  on device"), and a tap on the shop's scrim did not close it; buttons
+  worked, being Godot's own. `_on_field_input` takes `ScreenTouch` and
+  `ScreenDrag` now (one finger holds the circle, `_finger`), beside the
+  mouse for the desktop. It was missed because every check pressed with a
+  mouse button: `tests/_shot_grove.gd` presses with a `ScreenTouch` now.
+  Proved by a throwaway run sending `ScreenTouch` through
+  `Input.parse_input_event`: before, held 2.6 s, nothing felled; after, the
+  sapling felled and the scrim closed. A drag was not driven.
 
 The tab's card takes the whole tab for the tall picture. **It is called the Grove and nothing else**: the game it
 follows is named once, in the spec.

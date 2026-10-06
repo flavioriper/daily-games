@@ -139,6 +139,7 @@ var _wind := 0.0
 var _u := 1.0
 var _origin := Vector2.ZERO
 var _hold := false
+var _finger := -1   # the touch that holds the circle
 var _hold_at := Vector2.ZERO
 var _held_back := false
 var _since_chop := 10.0
@@ -181,6 +182,7 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		_hold = false
+		_finger = -1
 		_save()
 	elif what == NOTIFICATION_EXIT_TREE:
 		_save()
@@ -290,7 +292,7 @@ func _build_shop() -> Control:
 	scrim.name = "Shop"
 	scrim.visible = false
 	scrim.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
 			close_shop())
 	var center := CenterContainer.new()
 	center.name = "Center"
@@ -811,8 +813,26 @@ func _on_tile(tile: String) -> void:
 
 # --- the hand ---
 
+## A finger is a ScreenTouch and never a mouse button: the project turned
+## mouse-from-touch off on 2026-09-22 (b707b9a, doubled taps on Android). The
+## screen read the mouse alone until 2026-10-06, so on a phone the circle
+## never came up and nothing could be chopped (the user: "the click is not
+## working (can't farm) on device"). One finger holds the circle; a second
+## is left alone.
 func _on_field_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventScreenTouch:
+		var t := event as InputEventScreenTouch
+		if t.pressed and (_finger == -1 or not _hold):
+			_finger = t.index
+			_hold = not _held_back
+			_hold_at = t.position
+		elif not t.pressed and t.index == _finger:
+			_finger = -1
+			_hold = false
+	elif event is InputEventScreenDrag:
+		if (event as InputEventScreenDrag).index == _finger and _hold:
+			_hold_at = (event as InputEventScreenDrag).position
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_hold = (event as InputEventMouseButton).pressed and not _held_back
 		_hold_at = (event as InputEventMouseButton).position
 	elif event is InputEventMouseMotion and _hold:
