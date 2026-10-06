@@ -104,6 +104,12 @@ at 1 h 42 with Axe 9 and Room 7. The bot chops one tree at a time, so it
 does not say what a wider-spread land is to a person sweeping the circle
 over several.
 
+**2026-10-06, the land in isometric** (149 tiles in three steps holding the
+same ground; the circle measured where the eye sees it, and a tree chopped
+along the line it stands on): Birch on day 5 and Oak on day 21 for the
+eight visits of two minutes, as before. `docs/agents/valley.md` has the
+land's rules.
+
 ## 5. The screens
 
 - **The tab** (`ui/menu/valley_tab.gd`): the wood pill and the Grove's card,

@@ -26,10 +26,9 @@ enum Lesson { CHOP, GIFTS, WAIT }
 ## Seconds a page plays before it starts over, and where a still page stands.
 const LENGTH := {Lesson.CHOP: 4.2, Lesson.GIFTS: 3.8, Lesson.WAIT: 6.0}
 const STILL := {Lesson.CHOP: 1.2, Lesson.GIFTS: 2.5, Lesson.WAIT: 5.0}
-## Where the lesson's trees stand, in land units, and the height of the land
-## the picture is centred on.
-const SPOTS := [Vector2(405, 520), Vector2(210, 440), Vector2(610, 470), Vector2(300, 640), Vector2(540, 650)]
-const MIDDLE := 500.0
+## Where the lesson's trees stand, in land units: five places on the middle
+## step of the land, which the picture is centred on (the first of them).
+const SPOTS := [Vector2(360, 800), Vector2(170, 640), Vector2(560, 700), Vector2(260, 1040), Vector2(500, 1060)]
 const PLATE := Vector2(250, 92)
 const NUM := 0.7
 const FLIGHT := 0.9
@@ -97,10 +96,10 @@ func _layout() -> void:
 	var top := PLATE.y + 16.0 if lesson == Lesson.GIFTS else 0.0
 	_pond.position = Vector2(0.0, top)
 	_pond.size = size - Vector2(0.0, top)
-	_u = (_pond.size.x - 70.0) / Sim.LAND.x
-	_origin = Vector2((_pond.size.x - Sim.LAND.x * _u) * 0.5, _pond.size.y * 0.5 - MIDDLE * _u)
-	_ground = Art.ground(_pond.size, Rect2(_origin, Sim.LAND * _u))
-	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
+	_u = (_pond.size.x - 70.0) / Art.VIEW.size.x
+	_origin = Vector2((_pond.size.x - Art.VIEW.size.x * _u) * 0.5, _pond.size.y * 0.5 - (Art.see(SPOTS[0]).y - 20.0) * _u)
+	_ground = Art.ground(_pond.size, _origin, _u)
+	_grass = Art.grass(_origin, _u)
 	# a still page's motes hang where the last size put them: play it again
 	if _motes != null and not is_processing():
 		_start()
@@ -133,13 +132,13 @@ func _advance(delta: float) -> void:
 			_sim.step(dt, _holding(), _finger())
 		for e: Dictionary in _sim.events:
 			if e.kind == "hit":
-				_nums.append({"at": e.tree.pos + Vector2(0.0, -Art.height(0) * 0.9), "text": str(e.amount), "t": 0.0})
+				_nums.append({"at": Art.see(e.tree.pos) + Vector2(0.0, -Art.height(0) * 0.9 * Art.TREE), "text": str(e.amount), "t": 0.0})
 			elif e.kind == "fell":
 				_fell_at = _t
 				if _motes != null:
 					_motes.u = size.x / 810.0 * 2.2
 					_motes.to = Vector2(size.x * 0.5 - 10.0 - PLATE.x + 56.0, PLATE.y * 0.5)
-					_motes.drop(get_global_transform() * (_pond.position + _px(e.tree.pos + Vector2(0.0, -Sim.radius_of(0)))), 4.0, 4)
+					_motes.drop(get_global_transform() * (_pond.position + _px(e.tree.pos) + Vector2(0.0, -Sim.radius_of(0) * 1.7 * Art.TREE * _u)), 4.0, 4)
 		_sim.events.clear()
 		if _motes != null:
 			_motes.step(dt)
@@ -148,12 +147,13 @@ func _advance(delta: float) -> void:
 func _holding() -> bool:
 	return lesson != Lesson.WAIT and _t > 0.4 and _fell_at < 0.0
 
-## The circle's centre, in land units: on the first tree's crown.
+## The circle's centre, on the land as it is seen (Sim.seen): on the first
+## tree, a little up from its foot.
 func _finger() -> Vector2:
-	return (SPOTS[0] as Vector2) + Vector2(0.0, -Sim.RADIUS[0])
+	return Sim.seen(SPOTS[0]) + Vector2(0.0, -Sim.RADIUS[0] * 1.6)
 
 func _px(p: Vector2) -> Vector2:
-	return _origin + p * _u
+	return _origin + Art.see(p) * _u
 
 func _draw_pond() -> void:
 	if _ground == null:
@@ -165,7 +165,7 @@ func _draw_pond() -> void:
 	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
 	for tree: Dictionary in standing:
 		var grown := clampf((_sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
-		var s := (0.15 + 0.85 * Motion.back_out(grown)) * _u
+		var s := (0.15 + 0.85 * Motion.back_out(grown)) * _u * Art.TREE
 		_pond.draw_mesh(Art.tree(0), null, Transform2D(0.0, Vector2(s, s), 0.0, _px(tree.pos)))
 		if int(tree.hp) < Sim.hp_of(0):
 			var w := 54.0 * _u
@@ -173,17 +173,20 @@ func _draw_pond() -> void:
 			_pond.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
 			_pond.draw_rect(Rect2(bar.position, Vector2(w * float(tree.hp) / Sim.hp_of(0), bar.size.y)), Color("fff6e6"))
 	if _holding():
-		var c := _px(_finger())
+		# a circle on the ground: half as tall as it is wide from here
 		var r: float = _sim.reach() * _u
-		_pond.draw_circle(c, r, Color(1.0, 1.0, 1.0, 0.26), true, -1.0, true)
-		_pond.draw_arc(c, r, 0.0, TAU, 64, Color(0.23, 0.19, 0.16, 0.75), 5.0, true)
-		_pond.draw_arc(c, r - 5.0, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.8), 3.0, true)
+		var c := _origin + _finger() * Vector2(1.0, 0.5) * _u
+		_pond.draw_colored_polygon(Art.oval(c, r), Color(1.0, 1.0, 1.0, 0.26))
+		for line: Array in [[r, Color(0.23, 0.19, 0.16, 0.75), 5.0], [r - 5.0, Color(1.0, 1.0, 1.0, 0.8), 3.0]]:
+			var edge := Art.oval(c, line[0])
+			edge.append(edge[0])
+			_pond.draw_polyline(edge, line[1], line[2], true)
 	var font := get_theme_font("font", "SheetTitle")
 	for n: Dictionary in _nums:
 		var k: float = n.t / NUM
 		var fs := int(40.0 * _u)
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var at := _px(n.at) + Vector2(-w * 0.5, -k * 56.0 * _u)
+		var at := _origin + (n.at as Vector2) * _u + Vector2(-w * 0.5, -k * 56.0 * _u)
 		_pond.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * (1.0 - k * k * k)))
 		_pond.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 1.0, 1.0, 1.0 - k * k * k))
 
@@ -207,7 +210,7 @@ func _draw_gifts() -> void:
 	var k := clampf((_t - _fell_at) / FLIGHT, 0.0, 1.0)
 	if k >= 1.0:
 		return
-	var from := _pond.position + _px(SPOTS[0]) + Vector2(0.0, -40.0 * _u)
+	var from := _pond.position + _px(SPOTS[0]) + Vector2(0.0, -50.0 * _u)
 	var to := right.position + Vector2(56.0, PLATE.y * 0.5)
 	var at := from.lerp(to, k * k) + Vector2(0.0, -sin(k * PI) * 50.0)
 	_over.draw_mesh(Art.log_mesh(), null, Transform2D(k * 3.0, Vector2(0.9, 0.9), 0.0, at))

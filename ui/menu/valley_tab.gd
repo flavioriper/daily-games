@@ -31,11 +31,14 @@ const FILL := Color("fcf7ef")
 ## The land keeps this much water round it on the card.
 const SHORE := 22.0
 const SHORE_FOOT := 50.0
+## And over its back edge, for the crowns that stand there.
+const SHORE_TOP := 96.0
 
 var _sim: RefCounted
 var _wood_l: Label
 var _art: Control
 var _ground: ArrayMesh
+var _light: ArrayMesh
 var _grass: Array[MultiMesh] = []
 var _u := 1.0
 var _origin := Vector2.ZERO
@@ -106,6 +109,7 @@ func _grove_card() -> Control:
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.resized.connect(_layout_art)
 	_art.draw.connect(_draw_art)
+	_art.clip_contents = true
 	# the land's own wind: only what stands on a foot of its own leans
 	_art.material = Art.wind()
 	col.add_child(_art)
@@ -197,10 +201,12 @@ func _layout_art() -> void:
 	var s := _art.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf((s.x - SHORE * 2.0) / Sim.LAND.x, (s.y - SHORE - SHORE_FOOT) / Sim.LAND.y)
-	_origin = Vector2((s.x - Sim.LAND.x * _u) * 0.5, SHORE + (s.y - SHORE - SHORE_FOOT - Sim.LAND.y * _u) * 0.5)
-	_ground = Art.ground(s, Rect2(_origin, Sim.LAND * _u))
-	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
+	var view: Rect2 = Art.VIEW
+	_u = minf((s.x - SHORE * 2.0) / view.size.x, (s.y - SHORE_TOP - SHORE_FOOT) / view.size.y)
+	_origin = Vector2((s.x - view.size.x * _u) * 0.5, SHORE_TOP + (s.y - SHORE_TOP - SHORE_FOOT - view.size.y * _u) * 0.5) - view.position * _u
+	_ground = Art.ground(s, _origin, _u)
+	_grass = Art.grass(_origin, _u)
+	_light = Art.light(s)
 	_art.queue_redraw()
 
 func _draw_art() -> void:
@@ -215,5 +221,7 @@ func _draw_art() -> void:
 	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
 	for tree: Dictionary in standing:
 		var grown := 1.0 if Motion.reduce else clampf((_sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
-		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u
-		_art.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null, Transform2D(0.0, Vector2(size, size), 0.0, _origin + tree.pos * _u))
+		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u * Art.TREE
+		_art.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null, Transform2D(0.0, Vector2(size, size), 0.0, _origin + Art.see(tree.pos) * _u))
+	# drawn where it lies, so the wind the trees wear leaves it alone
+	_art.draw_mesh(_light, null)

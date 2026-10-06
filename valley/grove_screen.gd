@@ -68,6 +68,8 @@ const FILL := Color("fcf7ef")
 ## The land keeps this much water round it, and more under its earth edge.
 const SHORE := 26.0
 const SHORE_FOOT := 64.0
+## And this much over the land's back edge, for the crowns that stand there.
+const SHORE_TOP := 150.0
 ## Seconds: a hit tree's squash, a felled one's fall, a number's rise, a log's
 ## flight, and how long the circle's rim swells on a chop.
 const SQUASH := 0.16
@@ -120,6 +122,7 @@ var _shown := {"energy": 0.0, "wood": 0.0}
 var _tiles := {}    # tile -> {button, icon, effect, pill, cost, mote, tick, badge, level}
 var _tiles_for := ""
 var _ground: ArrayMesh
+var _light: ArrayMesh
 ## What stands on the land, in layers over the ground (the field's own
 ## draw): the grass and the trees each under their wind (`Art.wind`), the
 ## leaves it carries, and over them what is not blown about (the bars, the
@@ -129,7 +132,7 @@ var _grass_l: Control
 var _trees_l: Control
 var _leaves_l: Control
 var _top: Control
-var _leaves: Array = []   # {pos, vel, t, turn, spin, seed, col}: land units
+var _leaves: Array = []   # {pos, vel, t, turn, spin, seed, col}: view units (Art.see)
 var _leaf_mm: MultiMesh
 var _leaf_wait := 1.0
 var _wind := 0.0
@@ -141,7 +144,7 @@ var _held_back := false
 var _since_chop := 10.0
 var _hit := {}      # tree id -> seconds since it was last hit
 var _falls: Array = []   # {tree, t, dir}
-var _nums: Array = []    # {at, text, t, gold}
+var _nums: Array = []    # {at, text, t, gold}: `at` in view units
 var _flies: Array = []   # {from, to, t}: logs on their way to the wood plate
 var _bump := {}     # plate -> its running bump
 var _dirty := false
@@ -220,6 +223,8 @@ func _build() -> void:
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
+	# a crown at the back of the land stops at the pond's edge
+	field.clip_contents = true
 	col.add_child(field)
 	_grass_l = _layer("Grass", _draw_grass)
 	_grass_l.material = Art.wind(true)
@@ -517,19 +522,29 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = minf((s.x - SHORE * 2.0) / Sim.LAND.x, (s.y - SHORE - SHORE_FOOT) / Sim.LAND.y)
-	_origin = Vector2((s.x - Sim.LAND.x * _u) * 0.5, SHORE + (s.y - SHORE - SHORE_FOOT - Sim.LAND.y * _u) * 0.5)
-	_ground = Art.ground(s, Rect2(_origin, Sim.LAND * _u))
-	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
+	var view: Rect2 = Art.VIEW
+	_u = minf((s.x - SHORE * 2.0) / view.size.x, (s.y - SHORE_TOP - SHORE_FOOT) / view.size.y)
+	_origin = Vector2((s.x - view.size.x * _u) * 0.5, SHORE_TOP + (s.y - SHORE_TOP - SHORE_FOOT - view.size.y * _u) * 0.5) - view.position * _u
+	_ground = Art.ground(s, _origin, _u)
+	_grass = Art.grass(_origin, _u)
+	_light = Art.light(s)
 	field.queue_redraw()
 	_grass_l.queue_redraw()
 
-## A point of the land, in the field's pixels, and back.
+## A point of the land, in the field's pixels: the land is seen in
+## isometric (Art.see), each step lifted over the one in front.
 func px(p: Vector2) -> Vector2:
-	return _origin + p * _u
+	return _origin + Art.see(p) * _u
 
-func unit(at: Vector2) -> Vector2:
-	return (at - _origin) / _u
+## Where the finger is on the land as it is seen (Sim.seen): the circle is
+## the eye's, and chops what stands inside it on the screen.
+func _seen(at: Vector2) -> Vector2:
+	var v := (at - _origin) / _u
+	return Vector2(v.x, v.y * 2.0)
+
+## A point of the view (what Art.see gives), in the field's pixels.
+func _at(v: Vector2) -> Vector2:
+	return _origin + v * _u
 
 # --- what the top bar and the tutorial ask ---
 
@@ -572,7 +587,7 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	var holding: bool = _hold and not _held_back and not _shop.visible and not settings_sheet.is_open()
-	sim.step(delta, holding, unit(_hold_at))
+	sim.step(delta, holding, _seen(_hold_at))
 	_since_chop += delta
 	_play_events()
 	for id in _hit.keys():
@@ -620,18 +635,18 @@ func _step_leaves(delta: float) -> void:
 			_leaf_wait = LEAF_GAP * _rng.randf_range(0.6, 1.4)
 			var tree: Dictionary = sim.trees[_rng.randi() % n]
 			var r: float = Sim.radius_of(tree.tier)
-			_leaves.append({"pos": tree.pos + Vector2(_rng.randf_range(-0.6, 0.6) * r, -r * _rng.randf_range(1.3, 2.3)),
+			_leaves.append({"pos": Art.see(tree.pos) + Vector2(_rng.randf_range(-0.6, 0.6) * r, -r * _rng.randf_range(1.3, 2.3)) * Art.TREE,
 				"vel": Vector2(20.0, -10.0), "t": 0.0, "turn": _rng.randf() * TAU, "spin": _rng.randf_range(-5.0, 5.0),
 				"seed": _rng.randf() * 100.0, "col": Art.LEAF[Sim.look_of(tree.tier)]})
 	for l: Dictionary in _leaves:
 		l.t += delta
 		var at: Vector2 = l.pos
-		var g: float = Art.gust(across + px(at).x, _wind)
+		var g: float = Art.gust(across + _at(at).x, _wind)
 		var want := Vector2(50.0 + 170.0 * g, 22.0 + 20.0 * sin(float(l.t) * 4.4 + float(l.seed)))
 		l.vel = (l.vel as Vector2).lerp(want, minf(1.0, delta * 2.2))
 		l.pos = at + (l.vel as Vector2) * delta
 		l.turn = float(l.turn) + float(l.spin) * (0.4 + g) * delta
-	_leaves = _leaves.filter(func(l: Dictionary) -> bool: return l.t < LEAF_LIFE and l.pos.x < Sim.LAND.x + 30.0)
+	_leaves = _leaves.filter(func(l: Dictionary) -> bool: return l.t < LEAF_LIFE and l.pos.x < Art.VIEW.end.x + 30.0)
 
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
@@ -639,13 +654,13 @@ func _play_events() -> void:
 			"hit":
 				var tree: Dictionary = e.tree
 				_hit[tree.id] = 0.0
-				_nums.append({"at": tree.pos + Vector2(_rng.randf_range(-16.0, 16.0), -Art.height(Sim.look_of(tree.tier)) * 0.86),
+				_nums.append({"at": Art.see(tree.pos) + Vector2(_rng.randf_range(-16.0, 16.0), -Art.height(Sim.look_of(tree.tier)) * 0.86 * Art.TREE),
 					"text": Art.short(int(e.amount)), "t": 0.0, "gold": false})
 			"fell":
 				var tree: Dictionary = e.tree
 				var give := int(e.give)
 				_falls.append({"tree": tree, "t": 0.0, "dir": -1.0 if _rng.randf() < 0.5 else 1.0})
-				_nums.append({"at": tree.pos + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) - 18.0),
+				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0),
 					"text": "+" + Art.short(give), "t": 0.0, "gold": true})
 				Stock.add("wood", give, GAME)
 				_throw(tree, give)
@@ -665,7 +680,7 @@ func _play_events() -> void:
 func _throw(tree: Dictionary, give: int) -> void:
 	if Motion.reduce:
 		return
-	var from: Vector2 = field.get_global_transform() * px(tree.pos + Vector2(0.0, -Sim.radius_of(tree.tier)))
+	var from: Vector2 = field.get_global_transform() * (px(tree.pos) + Vector2(0.0, -Sim.radius_of(tree.tier) * 1.7 * Art.TREE * _u))
 	var inv := _over.get_global_transform().affine_inverse()
 	var icon: Control = _plates.wood.icon
 	var to: Vector2 = inv * (icon.get_global_transform() * (icon.size * 0.5))
@@ -825,11 +840,11 @@ func _draw_trees() -> void:
 		var tree: Dictionary = f.tree
 		var k: float = f.t / FALL
 		_trees_l.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
-			Transform2D(0.0 if Motion.reduce else float(f.dir) * k * k * 1.3, Vector2(_u, _u), 0.0, px(tree.pos)),
+			Transform2D(0.0 if Motion.reduce else float(f.dir) * k * k * 1.3, Vector2(_u, _u) * Art.TREE, 0.0, px(tree.pos)),
 			Color(1.0, 1.0, 1.0, 1.0 - k * k))
 	for tree: Dictionary in standing:
 		var grown := 1.0 if Motion.reduce else clampf((sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
-		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u
+		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u * Art.TREE
 		var squash := 0.0
 		if _hit.has(tree.id) and not Motion.reduce:
 			squash = sin(float(_hit[tree.id]) / SQUASH * PI) * 0.16
@@ -852,15 +867,18 @@ func _draw_leaves() -> void:
 		var t: float = l.t
 		var a := minf(1.0, t / 0.25) * clampf((LEAF_LIFE - t) / 0.7, 0.0, 1.0)
 		var flat := 0.35 + 0.65 * absf(cos(t * 5.0 + float(l.seed)))
-		_leaf_mm.set_instance_transform_2d(n, Transform2D(float(l.turn), Vector2(_u, _u * flat), 0.0, px(l.pos)))
+		_leaf_mm.set_instance_transform_2d(n, Transform2D(float(l.turn), Vector2(_u, _u * flat), 0.0, _at(l.pos)))
 		_leaf_mm.set_instance_color(n, Color(l.col as Color, a))
 		n += 1
 	_leaf_mm.visible_instance_count = n
 	_leaves_l.draw_multimesh(_leaf_mm, null)
 
-## What the wind leaves alone, over the trees: a lap's gold marks at a foot,
-## a hurt tree's bar, the circle and the numbers.
+## What the wind leaves alone, over the trees: the light, a lap's gold marks
+## at a foot, a hurt tree's bar, the circle and the numbers. The circle is
+## one on the ground, so the screen sees it half as tall as it is wide.
 func _draw_top() -> void:
+	if _light != null:
+		_top.draw_mesh(_light, null)
 	for tree: Dictionary in sim.trees:
 		var at := px(tree.pos)
 		var laps: int = Sim.lap_of(tree.tier)
@@ -875,15 +893,17 @@ func _draw_top() -> void:
 	if _hold and not _held_back:
 		var r: float = sim.reach() * _u
 		var swell := 0.0 if Motion.reduce else maxf(0.0, 1.0 - _since_chop / SWELL)
-		_top.draw_circle(_hold_at, r, Color(1.0, 1.0, 1.0, 0.22 + swell * 0.2), true, -1.0, true)
-		_top.draw_arc(_hold_at, r + swell * 8.0, 0.0, TAU, 72, Color(0.23, 0.19, 0.16, 0.75), 5.0, true)
-		_top.draw_arc(_hold_at, r - 5.0, 0.0, TAU, 72, Color(1.0, 1.0, 1.0, 0.8), 3.0, true)
+		_top.draw_colored_polygon(Art.oval(_hold_at, r), Color(1.0, 1.0, 1.0, 0.22 + swell * 0.2))
+		for line: Array in [[r + swell * 8.0, Color(0.23, 0.19, 0.16, 0.75), 5.0], [r - 5.0, Color(1.0, 1.0, 1.0, 0.8), 3.0]]:
+			var edge := Art.oval(_hold_at, line[0])
+			edge.append(edge[0])
+			_top.draw_polyline(edge, line[1], line[2], true)
 	var font := get_theme_font("font", "SheetTitle")
 	for n: Dictionary in _nums:
 		var k: float = n.t / NUM
 		var fs := int((50.0 if n.gold else 40.0) * _u)
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var at := px(n.at) + Vector2(-w * 0.5, 0.0 if Motion.reduce else -k * 56.0 * _u)
+		var at := _at(n.at) + Vector2(-w * 0.5, 0.0 if Motion.reduce else -k * 56.0 * _u)
 		var a := 1.0 - k * k * k
 		_top.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
 		_top.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Art.MARK if n.gold else Color.WHITE, a))

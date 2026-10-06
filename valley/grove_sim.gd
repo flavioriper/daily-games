@@ -12,18 +12,35 @@ extends RefCounted
 ## Nothing here draws, reads the clock or touches the shared inventory. The
 ## screen (valley/grove_screen.gd) steps it, drains `events` and hands the
 ## wood of each felled tree to Stock; `tests/_probe_grove.gd` plays it with a
-## bot. Positions are in land units: (0, 0) is the land's top left corner,
-## LAND its size, and a tree's position is where its trunk meets the grass.
+## bot. Positions are in land units, on the ground: x across, y away from
+## the back of the land toward the front, LAND the box the land lies in, and
+## a tree's position is where its trunk meets the grass.
 
-## The land, and how far a trunk keeps from its sides: more at the top, where
-## the crown would otherwise hang over the water. It was 800 tall until
-## 2026-10-06, when the tiles left the screen for the shop's card and the
-## land took their room (the user: "game should take most of screen"); a
-## grove kept from before has its trees in the top of this one.
-const LAND := Vector2(810.0, 1300.0)
-const EDGE := 70.0
-const EDGE_TOP := 150.0
-const EDGE_BOTTOM := 40.0
+## The land is seen in isometric since 2026-10-06 (the user: "redesign grove
+## game to have a isometric view"): squares of ground, each a diamond on the
+## screen, two across to one deep. A tile is (column, row), the two of one
+## parity, its middle at ((column + SPAN + 1), (row + 1)) * TILE_HALF. The
+## land is a long island of them running away up the screen, its sides
+## stepped along the tiles, in three steps that are higher only further
+## back: no ground hides any other, so a point of the screen is one point of
+## the land. The tiles hold about the ground the rectangle before them did
+## (810 by 1300), so trees stand as far apart and a circle catches as many.
+const TILE_HALF := 60.0
+const SPAN := 5
+const ROWS := 29
+const STEPS := 3
+const LAND := Vector2(720.0, 1800.0)
+## A trunk keeps this far inside its own step: nothing comes up on the lip
+## of one or at the land's edge.
+const EDGE := 26.0
+## A step stands this far up the screen over the one in front of it, in the
+## units the land is seen in: across as it is, half as deep.
+const RISE := 48.0
+## A tree is chopped along the line it stands on as the land is seen, from
+## its foot back to under its crown's middle: this many of its radius (the
+## crown is 1.7 up, drawn a quarter over, and a pixel up the screen is two
+## of the land going back). The finger goes to the tree, not to its foot.
+const STAND := 4.25
 ## Trunks keep this far apart while the land has the room, then SPACE_TIGHT.
 const SPACE := 96.0
 const SPACE_TIGHT := 66.0
@@ -72,6 +89,11 @@ const GROW := 1.6
 
 ## Where the grove is kept. A harness points this elsewhere.
 static var path := "user://grove.cfg"
+## What a kept grove's positions are on: 2 is the island of tiles. A grove
+## kept on the rectangle has its trees planted again.
+const KEPT_ON := 2
+
+static var _land := {}
 
 var lv := {"axe": 0, "reach": 0, "swing": 0, "sprout": 0, "room": 0, "seeds": 0}
 var energy := 0
@@ -99,6 +121,67 @@ func _init(rng_seed := 0) -> void:
 		_rng.randomize()
 	_gap = spawn_time()
 	_plant(true)
+
+# --- the land ---
+
+## Every tile of the land, (column, row) -> its step: 0 at the front, the
+## lowest. The same land on every phone: its ragged sides are a hash's.
+static func land() -> Dictionary:
+	if _land.is_empty():
+		for r in ROWS:
+			for c in range(-SPAN, SPAN + 1):
+				if posmod(c + r, 2) == 1:
+					continue
+				var side := absi(c) == SPAN
+				if side and (r < 2 or r > ROWS - 3):
+					continue
+				if side and _chance(c + 9, r + 3) < 0.24:
+					continue
+				if (r == 0 or r == ROWS - 1) and absi(c) >= 3 and _chance(c + 5, r + 7) < 0.5:
+					continue
+				# a step's edge wanders a tile either way across the land, never
+				# by more than one between neighbours, or a step would stand in
+				# front of a lower one
+				var back := maxi(0, ROWS - 1 - r + roundi(1.3 * sin(c * 0.7 + 0.6)))
+				@warning_ignore("integer_division")
+				_land[Vector2i(c, r)] = mini(STEPS - 1, back * STEPS / ROWS)
+	return _land
+
+static func _chance(a: int, b: int) -> float:
+	var n := ((a * 73856093) ^ (b * 19349663)) & 0x7fffffff
+	n = ((n ^ (n >> 13)) * 1274126177) & 0x7fffffff
+	return float((n ^ (n >> 16)) & 0xffff) / 65536.0
+
+static func tile_at(p: Vector2) -> Vector2i:
+	var x := p.x - (SPAN + 1) * TILE_HALF
+	var y := p.y - TILE_HALF
+	var i := roundi((x + y) / (2.0 * TILE_HALF))
+	var j := roundi((y - x) / (2.0 * TILE_HALF))
+	return Vector2i(i - j, i + j)
+
+static func centre_of(tile: Vector2i) -> Vector2:
+	return Vector2(tile.x + SPAN + 1, tile.y + 1) * TILE_HALF
+
+## The step the land is on at `p`, or -1 where there is no land.
+static func step_at(p: Vector2) -> int:
+	return int(land().get(tile_at(p), -1))
+
+## A point of the ground where the eye has it: every step is seen further
+## back by what it is lifted. The circle is one the eye draws, so what it
+## chops is measured here, and whatever stands inside it on the screen is
+## inside it, on any step.
+static func seen(p: Vector2) -> Vector2:
+	return Vector2(p.x, p.y - 2.0 * RISE * maxi(0, step_at(p)))
+
+## Whether a tree can stand at `p`: on the land, EDGE inside its own step.
+static func stands(p: Vector2) -> bool:
+	var step := step_at(p)
+	if step < 0:
+		return false
+	for o: Vector2 in [Vector2(EDGE, 0.0), Vector2(-EDGE, 0.0), Vector2(0.0, EDGE), Vector2(0.0, -EDGE)]:
+		if step_at(p + o) != step:
+			return false
+	return true
 
 # --- what the tiles are worth ---
 
@@ -155,7 +238,8 @@ func buy(tile: String) -> bool:
 
 # --- time ---
 
-## `dt` seconds pass; `holding` with the circle's centre `at` in land units.
+## `dt` seconds pass; `holding` with the circle's centre `at`, a point of
+## the land as it is seen (`seen`).
 func step(dt: float, holding := false, at := Vector2.ZERO) -> void:
 	clock += dt
 	if trees.size() < room():
@@ -189,22 +273,32 @@ func _plant(grown: bool) -> void:
 	var top := int(lv.seeds)
 	var r := _rng.randf()
 	var tier := maxi(0, top if r < MIX[0] else (top - 1 if r < MIX[1] else top - 2))
-	var pos := Vector2.ZERO
-	for attempt in 24:
-		pos = Vector2(_rng.randf_range(EDGE, LAND.x - EDGE), _rng.randf_range(EDGE_TOP, LAND.y - EDGE_BOTTOM))
-		var space := SPACE if attempt < 16 else SPACE_TIGHT
-		var free := true
-		for t in trees:
-			if (t.pos as Vector2).distance_to(pos) < space:
-				free = false
-				break
-		if free:
-			break
+	var pos := _spot()
 	var tree := {"id": _next_id, "tier": tier, "pos": pos, "hp": hp_of(tier),
 		"born": clock - GROW if grown else clock}
 	_next_id += 1
 	trees.append(tree)
 	events.append({"kind": "spawn", "tree": tree})
+
+## A free place for a trunk: somewhere a tree can stand, SPACE from every
+## other while the land has the room, then SPACE_TIGHT, then anywhere.
+func _spot() -> Vector2:
+	@warning_ignore("integer_division")
+	var pos := centre_of(Vector2i(0, ROWS / 2 - (ROWS / 2) % 2))
+	for attempt in 80:
+		var at := Vector2(_rng.randf_range(0.0, LAND.x), _rng.randf_range(0.0, LAND.y))
+		if not stands(at):
+			continue
+		pos = at
+		var space := SPACE if attempt < 50 else SPACE_TIGHT
+		var free := true
+		for t in trees:
+			if (t.pos as Vector2).distance_to(at) < space:
+				free = false
+				break
+		if free:
+			break
+	return pos
 
 ## One chop: everything standing in the circle takes the axe.
 func _chop(at: Vector2) -> void:
@@ -212,7 +306,9 @@ func _chop(at: Vector2) -> void:
 	var hits := 0
 	for tree: Dictionary in trees.duplicate():
 		var r := radius_of(tree.tier)
-		if (tree.pos + Vector2(0.0, -r)).distance_to(at) > reach() + r * 0.6:
+		var foot := seen(tree.pos)
+		var near := Geometry2D.get_closest_point_to_segment(at, foot, foot + Vector2(0.0, -r * STAND))
+		if near.distance_to(at) > reach() + r * 0.6:
 			continue
 		hits += 1
 		tree.hp = int(tree.hp) - power()
@@ -238,6 +334,7 @@ func save(now: float) -> void:
 	cfg.set_value("grove", "felled", felled)
 	cfg.set_value("grove", "seen", now)
 	cfg.set_value("grove", "wait", _wait)
+	cfg.set_value("grove", "land", KEPT_ON)
 	var kept := []
 	for t in trees:
 		kept.append([int(t.tier), (t.pos as Vector2).x, (t.pos as Vector2).y, int(t.hp)])
@@ -258,11 +355,14 @@ static func load_saved(now: float) -> RefCounted:
 	sim.wood_made = maxi(0, int(cfg.get_value("grove", "wood_made", 0)))
 	sim.felled = maxi(0, int(cfg.get_value("grove", "felled", 0)))
 	sim.trees.clear()
+	var same_land := int(cfg.get_value("grove", "land", 1)) == KEPT_ON
 	for row in cfg.get_value("grove", "trees", []):
 		if not (row is Array) or (row as Array).size() < 4 or sim.trees.size() >= sim.room():
 			continue
 		var tier := maxi(0, int(row[0]))
-		var pos := Vector2(clampf(float(row[1]), EDGE, LAND.x - EDGE), clampf(float(row[2]), EDGE_TOP, LAND.y - EDGE_BOTTOM))
+		var pos := Vector2(float(row[1]), float(row[2]))
+		if not same_land or not stands(pos):
+			pos = sim._spot()
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
 			"hp": clampi(int(row[3]), 1, hp_of(tier)), "born": -GROW})
 		sim._next_id += 1
