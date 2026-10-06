@@ -38,6 +38,7 @@ func _process(_dt: float) -> bool:
 			ads.pacing = ads.AdPacing.new()
 			ads.reload_state()
 			ads._fake_full = "1"
+			ads.post_play = true
 			ads.leaving_game()
 			_check("1 leaving with nothing finished shows nothing", _fake_layers() == 0 and not AudioServer.is_bus_mute(0))
 			_check("2a can_reward with the fake", ads.can_reward("hint"))

@@ -60,6 +60,10 @@ var _loading_interstitial := false
 var _loading_rewarded := false
 var _finished_pending := false
 var _fake_full := ""   # "", "1" (always earns) or "skip" (never earns)
+## The ad after a finished game is out for now (the user, 2026-10-06): none is
+## loaded and none shown, whatever config/ads says. The pacing still counts
+## games, so turning this on is the whole way back; the probes do.
+var post_play := false
 var _retry: Timer
 
 func _ready() -> void:
@@ -281,7 +285,7 @@ func _retry_soon() -> void:
 		_retry.start()
 
 func _load_interstitial() -> void:
-	if _removed or _interstitial != null or _loading_interstitial or AgeGate.band() == AgeGate.CHILD:
+	if not post_play or _removed or _interstitial != null or _loading_interstitial or AgeGate.band() == AgeGate.CHILD:
 		return
 	var unit := _unit("interstitial")
 	if unit.is_empty():
@@ -327,7 +331,7 @@ func leaving_game() -> void:
 	if not _finished_pending:
 		return
 	_finished_pending = false
-	if _removed:
+	if _removed or not post_play:
 		return
 	var now := Time.get_unix_time_from_system()
 	var today := Daily.date_key()

@@ -35,6 +35,7 @@ func _initialize() -> void:
 	for f in _files:
 		DirAccess.remove_absolute(f)
 	ads.reload_state()
+	ads.post_play = true
 	ads.pacing.merge({"grace_days": 0, "after_hearts": 0, "min_games_today": 1,
 		"minutes_between": 0, "games_between": 1})
 	var reg = load("res://ui/registry.gd")

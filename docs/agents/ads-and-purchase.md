@@ -134,6 +134,17 @@ stated before the 3D game left.
   AdMob's maximum content rating set to PG, the Play target-audience and
   App Store age-rating answers, and a Brazilian lawyer's word on whether a
   self-declared year meets ECA Digital's "reliable" standard.
+- **The ad after a finished game is out since 2026-10-06** (the user: "let's
+  remove the post play ads for now"). `Ads.post_play` is false:
+  `_load_interstitial()` asks for nothing and `leaving_game()` shows nothing
+  and tracks nothing, whatever `config/ads` says -- `interstitial_on` there
+  cannot bring it back, only a build with `post_play` true does. Everything
+  else stands: the pacing still counts finished games, the banner, the three
+  rewarded videos and the purchase are untouched, and the sheet's words ("no
+  banner and no full-screen ads") were left as they are. `_probe_ads_flow`
+  and `_probe_ads_slots` set `post_play` themselves. `_probe_ads_slots`
+  fails its 2c and 5 with or without this: they still expect a hint video
+  to count toward the day's ten, which it stopped doing on 2026-09-29.
 - **The purchase sheet has three doors**: a paper "Remove ads" tab
   (`Ads.TAB_H` 56) `ui/ads/banner_host.gd` stands on the banner's top edge,
   a third header icon button, and a Remove ads row in settings (Restore
