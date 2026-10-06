@@ -34,6 +34,11 @@ const CLOUDS := [Color("ec96aa"), Color("96aaf0"), Color("82d2c8"), Color("f0be8
 const WARM := Color("ffb060")
 const COOL := Color("d6dcff")
 const TAIL := Color("c8f6ec")
+## A thrown meteor that is all ice (the Ice tile), and a star out of hydrogen.
+const ICE := Color("c4ece2")
+const DIMMED := Color("a8483a")
+## What the star is made of, on its bar: hydrogen, helium, rock.
+const MADE := [Color("f2b441"), Color("c3b2e6"), Color("b49a86")]
 const VEIL := Color("fff4de")
 ## A mote of light: gold where the other games' energy is blue.
 const ORB_DEEP := Color("e08a1e")
@@ -61,6 +66,18 @@ static func star_col(mass: float) -> Color:
 			var from: float = TEMPS[i - 1][0]
 			return (TEMPS[i - 1][1] as Color).lerp(TEMPS[i][1], (l - from) / (float(TEMPS[i][0]) - from))
 	return TEMPS[TEMPS.size() - 1][1]
+
+## The star's colour as it burns: its mass's while lit (`lit` 1), a dull
+## ember with no hydrogen left (0).
+static func burning_col(mass: float, lit_k: float) -> Color:
+	return DIMMED.lerp(star_col(mass), lit_k)
+
+## A body's paint: its kind's, and a thrown meteor's paler the icier it is.
+static func paint_of(kind: int, h: float) -> Color:
+	if kind != Sim.Kind.METEOR:
+		return PAINT[kind]
+	var base: float = Sim.HYDROGEN[Sim.Kind.METEOR]
+	return (PAINT[kind] as Color).lerp(ICE, clampf((h - base) / (0.9 - base), 0.0, 1.0))
 
 ## A number in a few characters: 0.5, 12.4, 999, 1.23K, 45.6K, 1.2M and on
 ## through B, T and Q. The star has no last mass.
@@ -274,7 +291,8 @@ static func lay_star(b: Face.Builder, at: Vector2, r: float, col: Color) -> void
 	_radial(b, at, r * 1.14, [[0.0, Color.WHITE], [0.4, col.lerp(Color.WHITE, 0.55)], [0.72, col], [0.816, Color(col, 0.85)], [1.0, Color(col, 0.0)]])
 
 ## A picture R in radius or less about (0, 0): "mass" and "light" for the
-## plates, "dust" for stardust, and one for each tile.
+## plates, "dust" for stardust, one for each of the hand's tiles and one for
+## each of the star's powers.
 static func icon(what: String) -> ArrayMesh:
 	if not _icons.has(what):
 		var b := Face.Builder.new()
@@ -289,12 +307,49 @@ static func icon(what: String) -> ArrayMesh:
 					_lay_orb(b, (mote[0] as Vector2) * R, float(mote[1]) * R)
 			"meteor":
 				lit(b, Vector2.ZERO, R * 0.6, PAINT[Sim.Kind.METEOR], sun)
+			"volley":
+				for k in 3:
+					lit(b, Vector2(-0.52 + 0.52 * k, 0.26 - 0.26 * k) * R, R * 0.3, PAINT[Sim.Kind.METEOR], sun)
+			"stream":
+				# one after another down the same way, the last still faint
+				for k in 3:
+					var at := Vector2(0.5 - 0.5 * k, 0.5 - 0.5 * k) * R
+					if k < 2:
+						Motes.glow(b, at, R * 0.3, Color(COOL, 0.3 - 0.1 * k), 1.4)
+					lit(b, at, R * (0.34 - 0.07 * k), PAINT[Sim.Kind.METEOR], sun)
+			"ice":
+				Motes.glow(b, Vector2.ZERO, R * 0.95, Color(TAIL, 0.35), 1.6)
+				lit(b, Vector2.ZERO, R * 0.56, ICE, sun, Color.WHITE)
 			"haze":
 				Motes.glow(b, Vector2.ZERO, R, Color(TEMPS[1][1], 0.55), 0.9)
 				lay_star(b, Vector2.ZERO, R * 0.22, TEMPS[1][1])
-			"sky":
+			"sky", "beacon":
 				var head := Vector2(-0.3, 0.3) * R
 				b.polygon(PackedVector2Array([head + Vector2(-0.2, -0.26) * R, Vector2(0.86, -0.82) * R, head + Vector2(0.26, 0.2) * R]), Color(TAIL, 0.45))
 				lit(b, head, R * 0.36, PAINT[Sim.Kind.COMET], Vector2(-1.0, 1.0))
+			"radiance":
+				_lay_orb(b, Vector2.ZERO, R)
+			"wind":
+				# the star, and what it blows on winding in toward it
+				lay_star(b, Vector2.ZERO, R * 0.2, TEMPS[1][1])
+				for k in 7:
+					var a := -0.4 + 0.72 * k
+					var far := R * (0.42 + 0.075 * k)
+					Motes.glow(b, Vector2.from_angle(a) * far, R * (0.09 + 0.022 * k), Color(COOL, 0.35 + 0.08 * k), 1.2)
+				var end := Vector2.from_angle(-0.4 + 0.72 * 7.0)
+				lit(b, end * R * 0.78, R * 0.17, PAINT[Sim.Kind.ROCK], -end)
+			"furnace":
+				# a body in pieces, warm where it broke
+				Motes.glow(b, Vector2.ZERO, R * 0.9, Color(WARM, 0.5), 1.3)
+				for piece: Array in [[Vector2(-0.34, -0.2), 0.3], [Vector2(0.3, -0.3), 0.22], [Vector2(0.1, 0.34), 0.26], [Vector2(-0.38, 0.36), 0.14]]:
+					lit(b, (piece[0] as Vector2) * R, float(piece[1]) * R, PAINT[Sim.Kind.PLANET], -(piece[0] as Vector2))
+			"fusion":
+				# two lights becoming one
+				_lay_orb(b, Vector2(-0.3, 0.0) * R, R * 0.62)
+				_lay_orb(b, Vector2(0.3, 0.0) * R, R * 0.62)
+				Motes.glow(b, Vector2.ZERO, R * 0.3, Color.WHITE, 0.9)
+			"thrift":
+				# a small ember that lasts
+				lay_star(b, Vector2.ZERO, R * 0.26, TEMPS[0][1])
 		_icons[what] = b.mesh()
 	return _icons[what]

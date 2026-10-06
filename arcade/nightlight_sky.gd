@@ -231,7 +231,7 @@ func _fill() -> void:
 	for batch in batches:
 		batch.n = 0
 	var z: float = sim.zoom() * u
-	var col := Art.star_col(sim.mass)
+	var col := Art.burning_col(sim.mass, sim.lit)
 	var rh: float = sim.haze_r()
 	var roche: float = sim.roche_r()
 	var reach := star_px() * REACH
@@ -252,16 +252,18 @@ func _fill() -> void:
 		if warm > 0.0:
 			var w := s * (2.2 + b.heat * 1.8)
 			_warms.put(at, 0.0, w, w, Color(Art.WARM, warm * 0.6))
-		# a comet's tail lies away from the star, whichever way it flies
-		if b.kind == Sim.Kind.COMET and lit > 0.12:
+		# a comet's tail lies away from the star, whichever way it flies. Not
+		# inside the Roche radius: a torn comet is a ring of pieces, and a
+		# tail on each was a burst of rays round the star
+		if b.kind == Sim.Kind.COMET and lit > 0.12 and far >= roche:
 			var long := s * (3.0 + 10.0 * lit)
 			_warms.put(at + away * long * Art.R * 0.5, away.angle(), long * 0.5, s * 0.9, Color(Art.TAIL, 0.4 * lit))
 		# the tide draws a body out toward the star before it has it in pieces
 		var strain: float = sim.tear_r(b.m) / far if far < roche else 0.0
 		if strain > 0.5 and not Motion.reduce:
-			_lumps[b.id % Art.LUMPS].put_pulled(at, b.spin, s, away, 1.0 + PULLED * smoothstep(0.5, 1.0, strain), Art.PAINT[b.kind])
+			_lumps[b.id % Art.LUMPS].put_pulled(at, b.spin, s, away, 1.0 + PULLED * smoothstep(0.5, 1.0, strain), Art.paint_of(b.kind, b.h))
 		else:
-			_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, Art.PAINT[b.kind])
+			_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, Art.paint_of(b.kind, b.h))
 	for p: Dictionary in _puffs:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * float(p.s) * u / Art.R
@@ -292,9 +294,10 @@ func _draw() -> void:
 func _draw_light() -> void:
 	if sim == null:
 		return
-	var col := Art.star_col(sim.mass)
-	var r := star_px() * REACH * _breath() * (1.0 + _pulse * 0.25)
-	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, centre), Color(col, 0.5))
+	# a star out of hydrogen lights half as far, and dully
+	var col := Art.burning_col(sim.mass, sim.lit)
+	var r := star_px() * REACH * _breath() * (1.0 + _pulse * 0.25) * lerpf(0.45, 1.0, sim.lit)
+	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, centre), Color(col, lerpf(0.3, 0.5, sim.lit)))
 
 ## Where each body has been (the spiral is read off these), then its warmth.
 func _draw_warm() -> void:
@@ -312,7 +315,7 @@ func _draw_warm() -> void:
 	_warm_l.draw_set_transform(Vector2.ZERO)
 	_warms.show(_warm_l)
 	var sr := star_px() * _breath() * (1.0 + _pulse * 0.12)
-	_warm_l.draw_mesh(Art.glow(2.0), null, Transform2D(0.0, Vector2(sr, sr) * 2.4 / Art.R, 0.0, centre), Color(Art.star_col(sim.mass), 0.4 + 0.2 * minf(1.0, _pulse)))
+	_warm_l.draw_mesh(Art.glow(2.0), null, Transform2D(0.0, Vector2(sr, sr) * 2.4 / Art.R, 0.0, centre), Color(Art.burning_col(sim.mass, sim.lit), (0.4 + 0.2 * minf(1.0, _pulse)) * lerpf(0.4, 1.0, sim.lit)))
 	if swell > 0.0:
 		var big := sr + 1500.0 * u * pow(swell, 1.5)
 		_warm_l.draw_mesh(Art.glow(1.2), null, Transform2D(0.0, Vector2(big, big) / Art.R, 0.0, centre), Art.VEIL)
@@ -326,8 +329,8 @@ func _draw_star() -> void:
 		return
 	var sr := star_px() * _breath() * (1.0 + _pulse * 0.12) / Art.R
 	var at := Transform2D(0.0, Vector2(sr, sr), 0.0, centre)
-	_star_l.draw_mesh(Art.star(), null, at, Art.star_col(sim.mass))
-	_star_l.draw_mesh(Art.core(), null, at)
+	_star_l.draw_mesh(Art.star(), null, at, Art.burning_col(sim.mass, sim.lit))
+	_star_l.draw_mesh(Art.core(), null, at, Color(1, 1, 1, lerpf(0.25, 1.0, sim.lit)))
 
 ## Over everything: a throw being aimed, the supernova's light, the corners.
 func _draw_top() -> void:
@@ -343,7 +346,7 @@ func _draw_top() -> void:
 		_top_l.draw_line(from, aim.to, Color(cream, 0.45), 6.0 * u, true)
 		_top_l.draw_circle(aim.to, 9.0 * u, Color(cream, 0.7), true, -1.0, true)
 		_top_l.draw_circle(from, r + 4.0 * u, Color(cream, 0.9), true, -1.0, true)
-		_top_l.draw_circle(from, r, Art.PAINT[Sim.Kind.METEOR], true, -1.0, true)
+		_top_l.draw_circle(from, r, Art.paint_of(Sim.Kind.METEOR, sim.meteor_h()), true, -1.0, true)
 	if veil > 0.0:
 		_top_l.draw_rect(Rect2(Vector2.ZERO, size), Color(Art.VEIL, clampf(veil, 0.0, 1.0)))
 	if _corners != null:

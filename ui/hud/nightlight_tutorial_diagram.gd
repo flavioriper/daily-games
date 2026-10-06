@@ -4,8 +4,10 @@ extends Control
 ## over a sim of its own with nothing crossing it, so a page is the game and
 ## cannot drift from it. THROW aims a meteor across the star with the dotted
 ## line, lets it go and watches it wind in, on a loop. LIGHT lets one fall
-## straight and sets one on a circle in the haze, side by side. NOVA is the
-## sky a supernova leaves: a small star among its ashes.
+## straight and sets one on a circle in the haze, side by side. FUEL is a star
+## out of hydrogen, dim, and a comet that winds in and lights it again. NOVA
+## is the sky a supernova leaves: a small star among its ashes. Only FUEL's
+## star burns anything, so no other page's goes dim while it is read.
 ##
 ## Under reduce motion a page stands still a few seconds in.
 
@@ -14,7 +16,7 @@ const NightSky = preload("res://arcade/nightlight_sky.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 
-enum Lesson { THROW, LIGHT, NOVA }
+enum Lesson { THROW, LIGHT, NOVA, FUEL }
 
 ## Seconds of a page's loop, and how long THROW aims before it lets go.
 const LOOP := 9.0
@@ -40,6 +42,11 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_sim = Sim.new(21 + lesson)
 	_sim.passing = false
+	_sim.burning = lesson == Lesson.FUEL
+	if lesson == Lesson.FUEL:
+		_sim.fuel = 0.0
+		_sim.awake = false
+		_sim.lit = 0.0
 	if lesson == Lesson.NOVA:
 		_sim.mass = Sim.NOVA
 		_sim.nova()
@@ -72,6 +79,8 @@ func _step(delta: float) -> void:
 		_t = 0.0
 		_thrown = false
 		_sim.bodies.clear()
+		if lesson == Lesson.FUEL:
+			_sim.fuel = 0.0
 	_sky.aim = {}
 	var vel := FROM.orthogonal().normalized() * -sqrt(_sim.gm() / FROM.length()) * SLOW
 	match lesson:
@@ -91,6 +100,11 @@ func _step(delta: float) -> void:
 				var r: float = _sim.haze_r() * 0.8
 				_sim.add(Sim.Kind.METEOR, 1.0, Vector2(-330.0, -150.0), Vector2.ZERO)
 				_sim.add(Sim.Kind.METEOR, 1.0, Vector2(r, 0.0), Vector2(0.0, sqrt(_sim.gm() / r)))
+		Lesson.FUEL:
+			if not _thrown and _t >= 0.8:
+				_thrown = true
+				var r: float = _sim.haze_r() * 0.45
+				_sim.add(Sim.Kind.COMET, 3.0, Vector2(-r, 0.0), Vector2(0.0, -sqrt(_sim.gm() / r)))
 	_sim.advance(delta)
 	for e: Dictionary in _sim.events:
 		if e.kind == "eat":

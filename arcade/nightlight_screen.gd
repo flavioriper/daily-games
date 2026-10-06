@@ -5,11 +5,13 @@ extends Control
 ## throws meteors at it (press on the sky, drag the way it should go, let
 ## go). The star pulls as hard as it is heavy, bodies cross the sky on their
 ## own, and a caught one circles, closes in and turns faster and faster until
-## the star has it. Mass grows the star; light, which the haze makes of
-## whatever it drags, buys the four tiles; at 1,000 mass the star can go
-## supernova, which gives everything back to the sky, leaves a small star
-## among the ashes and pays stardust for a perk that lasts (the user's
-## design, 2026-10-06). Spec
+## the star has it. Mass grows the star, counted in Suns (a new star is
+## one); it burns the hydrogen in what it eats and goes dim without any;
+## light, which the haze makes of whatever it drags and the star of what it
+## burns, buys the hand's four tiles; as it grows it is offered two powers
+## and one is picked; at 100 Suns it can go supernova, which gives
+## everything back to the sky, leaves a small star among the ashes and pays
+## stardust for a perk that lasts (the user's design, 2026-10-06). Spec
 ## docs/superpowers/specs/2026-10-06-arcade-nightlight-design.md; the rules
 ## and every number are arcade/nightlight_sim.gd's, the sky is
 ## arcade/nightlight_sky.gd's, the drawings nightlight_art.gd's.
@@ -86,7 +88,25 @@ const SAVE_GAP := 5.0
 ## A throw is a piece set down; a tile bought is something finished; one
 ## that cannot be is a not yet; the supernova is the heaviest thing here.
 const HAPTICS := {"throw": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "nova": Haptics.THUD}
-const TILE_NAMES := {"meteor": "NL_METEOR", "haze": "NL_HAZE", "glow": "NL_GLOW", "sky": "NL_SKY"}
+const TILE_NAMES := {"meteor": "NL_METEOR", "volley": "NL_VOLLEY", "stream": "NL_STREAM", "ice": "NL_ICE"}
+const POWER_NAMES := {"wind": "NL_POW_WIND", "haze": "NL_POW_HAZE", "beacon": "NL_POW_BEACON", "radiance": "NL_POW_RADIANCE",
+	"furnace": "NL_POW_FURNACE", "fusion": "NL_POW_FUSION", "thrift": "NL_POW_THRIFT"}
+const MADE_NAMES := ["NL_HYDROGEN", "NL_HELIUM", "NL_ROCK"]
+## The light's plate, beside the shop that spends it.
+const LIGHT_W := 250.0
+## What the star is made of: its bar's height.
+const MADE_H := 14.0
+## A pick's tile, and the seconds the star has grown past a pick before the
+## card comes up over a throw.
+const PICK_H := 440.0
+const PICK_WAIT := 0.6
+## A power held, on a disc in the sky's corner.
+const CHIP := 68.0
+const CHIP_GAP := 10.0
+## Under the stream a throw is felt this often at most, in seconds.
+const FELT := 0.2
+## The fuel's clock reddens under this many seconds.
+const LOW := 10.0
 const PERK_NAMES := {"core": "NL_PERK_CORE", "disc": "NL_PERK_DISC", "hand": "NL_PERK_HAND", "crowd": "NL_PERK_CROWD",
 	"ember": "NL_PERK_EMBER"}
 
@@ -98,7 +118,24 @@ var sky: Control
 var _fx: Node2D
 var _motes: Control
 var _margins: MarginContainer
-var _plates := {}   # "mass" / "light" -> {panel, icon, label}
+var _plates := {}   # "light" -> {panel, icon, label}
+var _cells := {}    # "mass" / "temp" / "fuel" -> Label
+var _made: Control
+var _made_l: Array[Label] = []
+var _fuel_low := false
+var _hint: Label
+var _chips: Button
+var _chips_for := ""
+var _pick: Control
+var _pick_title: Label
+var _pick_tiles: Array = []   # {button, icon, name, effect, cost, badge, level}
+var _pick_now: Array = []
+var _pick_wait := 0.0
+var _powers: Control
+var _powers_list: VBoxContainer
+var _stream_t := 0.0
+var _streamed := false
+var _felt_at := -1000
 var _shown := {"mass": 0.0, "light": 0.0}
 var _bump := {}
 var _dust_b: Button
@@ -185,16 +222,10 @@ func _build() -> void:
 		settings_sheet.open())
 	col.add_child(top_bar)
 
-	var hud := HBoxContainer.new()
-	hud.name = "Hud"
-	hud.custom_minimum_size.y = HUD_H
-	hud.add_theme_constant_override("separation", TILE_GAP)
-	hud.add_child(_plate("mass", "NL_MASS"))
-	hud.add_child(_plate("light", "NL_LIGHT"))
-	hud.add_child(_dust_plate())
-	col.add_child(hud)
+	col.add_child(_star_panel())
 
-	# the way to the supernova: a bar, and what it would pay
+	# the way to the next power and to the supernova: a bar, and what it
+	# would pay
 	_nova_line = Control.new()
 	_nova_line.name = "NovaLine"
 	_nova_line.custom_minimum_size.y = NOVA_H
@@ -227,6 +258,17 @@ func _build() -> void:
 	_nova_b.visible = false
 	_nova_b.pressed.connect(open_ask)
 	sky.add_child(_nova_b)
+	# the powers held, down the sky's left edge: pressed, they say what they do
+	_chips = Button.new()
+	_chips.name = "Powers"
+	_chips.focus_mode = Control.FOCUS_NONE
+	_chips.position = Vector2(22.0, 22.0)
+	_chips.visible = false
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		_chips.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_chips.draw.connect(_draw_chips)
+	_chips.pressed.connect(open_powers)
+	sky.add_child(_chips)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	sky.add_child(_fx)
@@ -234,6 +276,7 @@ func _build() -> void:
 	var info := HBoxContainer.new()
 	info.name = "Info"
 	info.custom_minimum_size.y = INFO_H
+	info.add_theme_constant_override("separation", TILE_GAP)
 	_shop_b = IconButton.new("trend", tr("SHOP_TITLE"), "PrimaryButton")
 	_shop_b.name = "Shop"
 	_shop_b.custom_minimum_size = Vector2(SHOP_W, INFO_H)
@@ -241,13 +284,21 @@ func _build() -> void:
 	_shop_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_shop_b.pressed.connect(open_shop)
 	info.add_child(_shop_b)
+	var light := _plate("light", "NL_LIGHT")
+	light.custom_minimum_size = Vector2(LIGHT_W, HUD_H)
+	light.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	light.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	info.add_child(light)
+	info.add_child(_dust_plate())
 	var hint := Label.new()
 	hint.text = "NL_HINT"
 	hint.theme_type_variation = "CardBlurb"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	info.add_child(hint)
+	_hint = hint
 	col.add_child(info)
 
 	_motes = Motes.new()
@@ -262,7 +313,77 @@ func _build() -> void:
 	add_child(_ask)
 	_perks = _build_perks()
 	add_child(_perks)
+	_powers = _build_powers()
+	add_child(_powers)
+	_pick = _build_pick()
+	add_child(_pick)
 	_apply_insets()
+
+## The star, on a paper plate: how many Suns it weighs, how hot it is and how
+## long its hydrogen lasts, and under them what it is made of on a bar, with
+## each share named (the user, 2026-10-06: "show mass compared to the sun
+## ... show also temperature, composition and how much fuel it has to burn").
+func _star_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "Star"
+	panel.add_theme_stylebox_override("panel", CozyTheme.lifted(FILL, 30, 8))
+	var inset := MarginContainer.new()
+	inset.add_theme_constant_override("margin_left", 18)
+	inset.add_theme_constant_override("margin_right", 18)
+	inset.add_theme_constant_override("margin_top", 2)
+	inset.add_theme_constant_override("margin_bottom", 6)
+	panel.add_child(inset)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	inset.add_child(col)
+	var row := HBoxContainer.new()
+	col.add_child(row)
+	for cell: Array in [["mass", "NL_MASS"], ["temp", "NL_TEMP"], ["fuel", "NL_FUEL"]]:
+		var words := VBoxContainer.new()
+		words.name = String(cell[0]).capitalize()
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_theme_constant_override("separation", -8)
+		row.add_child(words)
+		var kicker := Label.new()
+		kicker.text = cell[1]
+		kicker.theme_type_variation = "MenuKicker"
+		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(kicker)
+		var value := Label.new()
+		value.name = "Value"
+		value.theme_type_variation = "SheetTitle"
+		value.add_theme_font_size_override("font_size", 46)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(value)
+		_cells[cell[0]] = value
+	_made = Control.new()
+	_made.name = "Made"
+	_made.custom_minimum_size.y = MADE_H
+	_made.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_made.draw.connect(_draw_made)
+	col.add_child(_made)
+	var legend := HBoxContainer.new()
+	legend.alignment = BoxContainer.ALIGNMENT_CENTER
+	legend.add_theme_constant_override("separation", 30)
+	col.add_child(legend)
+	for i in 3:
+		var item := HBoxContainer.new()
+		item.add_theme_constant_override("separation", 8)
+		legend.add_child(item)
+		var dot := Panel.new()
+		dot.custom_minimum_size = Vector2(16, 16)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var box := StyleBoxFlat.new()
+		box.bg_color = Art.MADE[i]
+		box.set_corner_radius_all(8)
+		dot.add_theme_stylebox_override("panel", box)
+		item.add_child(dot)
+		var share := Label.new()
+		share.theme_type_variation = "CardBlurb"
+		share.add_theme_font_size_override("font_size", 22)
+		item.add_child(share)
+		_made_l.append(share)
+	return panel
 
 ## What is held, on a paper plate: its picture, its name and the count.
 func _plate(what: String, key: String) -> Control:
@@ -299,7 +420,8 @@ func _dust_plate() -> Control:
 	_dust_b = Button.new()
 	_dust_b.name = "Dust"
 	_dust_b.focus_mode = Control.FOCUS_NONE
-	_dust_b.custom_minimum_size.x = DUST_W
+	_dust_b.custom_minimum_size = Vector2(DUST_W, HUD_H)
+	_dust_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_dust_b.visible = false
 	CozyTheme.lift_button(_dust_b, FILL, 30, 8)
 	_dust_b.pressed.connect(open_perks)
@@ -362,8 +484,8 @@ func _held_pill(what: String, label: Label) -> Control:
 	held.add_child(label)
 	return pill
 
-## The shop: the four tiles on a card over the sky, the light held on a pill
-## at its head and an X beside it. The sky goes on behind it.
+## The shop: the hand's four tiles on a card over the sky, the light held on
+## a pill at its head and an X beside it. The sky goes on behind it.
 func _build_shop() -> Control:
 	var made := _dialog("Shop", CARD_W, close_shop)
 	var col: VBoxContainer = made[1]
@@ -626,6 +748,217 @@ func _on_perk() -> void:
 	Analytics.track("nightlight_perk", {"perk": which, "count": int(sim.perk[which]), "dust": sim.perk_cost() - 1})
 	_save()
 
+## A pick: the star has grown past one of Sim.MILES and offers two powers
+## that go different ways. One is taken; the card has no way out but that,
+## and the sky waits behind it. A power already held says its level.
+func _build_pick() -> Control:
+	var made := _dialog("Pick", CARD_W, func() -> void: pass)
+	var col: VBoxContainer = made[1]
+	var head := Dialog.head("", "sparkle")
+	_pick_title = head.get_child(1) as Label
+	col.add_child(head)
+	var body := Label.new()
+	body.text = "NL_PICK_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var two := HBoxContainer.new()
+	two.name = "Two"
+	two.add_theme_constant_override("separation", TILE_GAP)
+	col.add_child(two)
+	for i in 2:
+		two.add_child(_pick_tile(i))
+	return made[0]
+
+func _pick_tile(i: int) -> Control:
+	var b := Button.new()
+	b.name = "Pick%d" % i
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size.y = PICK_H
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	CozyTheme.lift_button(b, FILL, 30, 8)
+	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
+	b.pressed.connect(_on_pick.bind(i))
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_top = 26.0
+	col.offset_bottom = -TILE_PAD - 2.0
+	col.offset_left = TILE_PAD + 6.0
+	col.offset_right = -TILE_PAD - 6.0
+	col.add_theme_constant_override("separation", 8)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(col)
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(0, 168.0)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		if i >= _pick_now.size():
+			return
+		var c := icon.size * 0.5
+		icon.draw_circle(c, 84.0, Art.SKY[1], true, -1.0, true)
+		var s := 84.0 * 0.78 / Art.R
+		icon.draw_mesh(Art.icon(_pick_now[i]), null, Transform2D(0.0, Vector2(s, s), 0.0, c)))
+	col.add_child(icon)
+	var name_l := Label.new()
+	name_l.theme_type_variation = "CardTitle"
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.clip_text = true
+	col.add_child(name_l)
+	var effect := Label.new()
+	effect.theme_type_variation = "CardBlurb"
+	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	effect.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	effect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(effect)
+	# what it costs: the hydrogen it burns, on the bar a price would be on
+	var pill := PanelContainer.new()
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.custom_minimum_size.y = PRICE_H
+	var box := StyleBoxFlat.new()
+	box.bg_color = Pal.SUN
+	box.set_corner_radius_all(PRICE_R)
+	box.border_width_bottom = 5
+	box.border_color = Pal.SUN_DEEP
+	pill.add_theme_stylebox_override("panel", box)
+	col.add_child(pill)
+	var cost := Label.new()
+	cost.theme_type_variation = "CardTitle"
+	cost.add_theme_font_size_override("font_size", 30)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pill.add_child(cost)
+	var badge := PanelContainer.new()
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	badge.offset_top = 12.0
+	badge.offset_right = -12.0
+	var bb := StyleBoxFlat.new()
+	bb.bg_color = Pal.ACCENT
+	bb.set_corner_radius_all(18)
+	bb.content_margin_left = 14.0
+	bb.content_margin_right = 14.0
+	bb.content_margin_top = 0.0
+	bb.content_margin_bottom = 2.0
+	badge.add_theme_stylebox_override("panel", bb)
+	var level := Label.new()
+	level.theme_type_variation = "Badge"
+	badge.add_child(level)
+	b.add_child(badge)
+	_pick_tiles.append({"button": b, "icon": icon, "name": name_l, "effect": effect, "cost": cost, "badge": badge, "level": level})
+	return b
+
+## What a power burns, in its own words.
+func _burns(which: String) -> String:
+	if which == "thrift":
+		return tr("NL_POW_SAVE")
+	return tr("NL_POW_BURN") % int(round(float(Sim.COST[which]) * 100.0))
+
+func open_pick() -> void:
+	var two: Array = sim.offering()
+	if two.is_empty() or _pick.visible:
+		return
+	_aiming = false
+	_finger = -1
+	_pick_now = two
+	_pick_title.text = tr("NL_PICK_TITLE") % Art.short(Sim.mile(sim.picks), _comma())
+	for i in 2:
+		var t: Dictionary = _pick_tiles[i]
+		var which: String = two[i]
+		var held := int(sim.power[which])
+		(t.name as Label).text = POWER_NAMES[which]
+		(t.effect as Label).text = POWER_NAMES[which] + "_FX"
+		(t.cost as Label).text = _burns(which)
+		(t.badge as Control).visible = held > 0
+		(t.level as Label).text = str(held)
+		(t.icon as Control).queue_redraw()
+	_pick.visible = true
+	Motion.appear(_pick, 0.0, 1.0, 0.2)
+
+func _on_pick(i: int) -> void:
+	var which: String = sim.pick(i)
+	if which == "":
+		_pick.visible = false
+		return
+	_fx.cue("perk")
+	Analytics.track("nightlight_power", {"power": which, "level": int(sim.power[which]), "suns": int(Sim.mile(sim.picks - 1))})
+	_pick.visible = false
+	_pick_wait = 0.0
+	_save()
+
+## The powers held: what each does, how many times it was picked and what it
+## burns.
+func _build_powers() -> Control:
+	var made := _dialog("PowersCard", CARD_W, close_powers)
+	var col: VBoxContainer = made[1]
+	col.add_child(Dialog.head("NL_POWERS", "sparkle"))
+	var body := Label.new()
+	body.text = "NL_POWERS_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	_powers_list = VBoxContainer.new()
+	_powers_list.name = "List"
+	_powers_list.add_theme_constant_override("separation", 12)
+	col.add_child(_powers_list)
+	var back := Dialog.secondary("chevron_left", tr("NL_PERKS_BACK"))
+	back.name = "Back"
+	back.pressed.connect(close_powers)
+	Dialog.buttons(col, back)
+	return made[0]
+
+func open_powers() -> void:
+	if _powers.visible or _nova_t >= 0.0:
+		return
+	_aiming = false
+	for old in _powers_list.get_children():
+		_powers_list.remove_child(old)
+		old.queue_free()
+	for which: String in Sim.POWERS:
+		var held := int(sim.power[which])
+		if held <= 0:
+			continue
+		var panel := PanelContainer.new()
+		panel.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		panel.add_child(row)
+		var icon := Control.new()
+		icon.custom_minimum_size = Vector2(72, 72)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.draw.connect(func() -> void:
+			icon.draw_circle(icon.size * 0.5, 36.0, Art.SKY[1], true, -1.0, true)
+			var s := 36.0 * 0.78 / Art.R
+			icon.draw_mesh(Art.icon(which), null, Transform2D(0.0, Vector2(s, s), 0.0, icon.size * 0.5)))
+		row.add_child(icon)
+		var words := VBoxContainer.new()
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_theme_constant_override("separation", -4)
+		row.add_child(words)
+		var name_l := Label.new()
+		name_l.text = POWER_NAMES[which]
+		name_l.theme_type_variation = "CardTitle"
+		words.add_child(name_l)
+		var effect := Label.new()
+		effect.text = "%s %s" % [tr(POWER_NAMES[which] + "_FX"), tr("NL_POW_EACH") % _burns(which)]
+		effect.theme_type_variation = "CardBlurb"
+		effect.add_theme_font_size_override("font_size", 24)
+		effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_child(effect)
+		var count := Label.new()
+		count.text = "×%d" % held
+		count.theme_type_variation = "CardTitle"
+		count.add_theme_color_override("font_color", Pal.SUN_DEEP)
+		count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(count)
+		_powers_list.add_child(panel)
+	_powers.visible = true
+	Motion.appear(_powers, 0.0, 1.0, 0.2)
+
+func close_powers() -> void:
+	_powers.visible = false
+
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
 	_margins.add_theme_constant_override("margin_left", MARGIN)
@@ -647,7 +980,8 @@ func tutorial_pages() -> Array:
 	for step: Array in [
 			[Diagram.Lesson.THROW, "TUT_NL_THROW", tr("TUT_NL_THROW_BODY")],
 			[Diagram.Lesson.LIGHT, "TUT_NL_LIGHT", tr("TUT_NL_LIGHT_BODY")],
-			[Diagram.Lesson.NOVA, "TUT_NL_NOVA", tr("TUT_NL_NOVA_BODY") % Art.short(Sim.NOVA, _comma())]]:
+			[Diagram.Lesson.FUEL, "TUT_NL_STAR", tr("TUT_NL_STAR_BODY")],
+			[Diagram.Lesson.NOVA, "TUT_NL_NOVA", tr("TUT_NL_NOVA_BODY") % Art.short(Sim.NOVA / Sim.START, _comma())]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
@@ -679,10 +1013,12 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
-	var waits: bool = _held_back or settings_sheet.is_open() or (_nova_t >= 0.0 and not _nova_done)
+	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or (_nova_t >= 0.0 and not _nova_done)
 	if not waits:
+		_stream(delta)
 		sim.advance(delta)
 	_play_events()
+	_offer(delta)
 	_step_nova(delta)
 	sky.aim = _aim()
 	sky.refresh(0.0 if waits else delta)
@@ -692,6 +1028,33 @@ func _process(delta: float) -> void:
 		_since_save += delta
 		if _since_save >= SAVE_GAP:
 			_save()
+
+## With Stream, meteors keep leaving while the finger is down, the way it is
+## dragged now.
+func _stream(delta: float) -> void:
+	var gap: float = sim.stream_gap()
+	if not _aiming or gap <= 0.0:
+		return
+	_stream_t += delta
+	if _stream_t >= gap:
+		_stream_t = 0.0
+		_streamed = true
+		_throw()
+
+## A pick the star has grown past comes up by itself, a moment later and
+## never over another card.
+func _offer(delta: float) -> void:
+	if sim.owed() <= 0 or _pick.visible:
+		_pick_wait = 0.0
+		# a card with nothing left to offer is not left up
+		if _pick.visible and sim.owed() <= 0:
+			_pick.visible = false
+		return
+	if _held_back or _nova_t >= 0.0 or settings_sheet.is_open() or _shop.visible or _ask.visible or _perks.visible or _powers.visible:
+		return
+	_pick_wait += delta
+	if _pick_wait >= PICK_WAIT:
+		open_pick()
 
 func _play_events() -> void:
 	var origin: Transform2D = sky.get_global_transform()
@@ -706,6 +1069,10 @@ func _play_events() -> void:
 				sky.met(e.at)
 			"tear":
 				sky.tore(e.at, float(e.m))
+			"shine":
+				# the star's own light, off its own face
+				_motes.drop(origin * sky.centre, float(e.e) * ORBS, 1)
+				_dirty = true
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
@@ -775,17 +1142,89 @@ func _refresh_hud(delta: float) -> void:
 		else:
 			s = lerpf(s, held, minf(1.0, delta * 10.0))
 		_shown[kind] = s
-	(_plates.mass.label as Label).text = Art.short(_shown.mass, _comma())
-	(_plates.light.label as Label).text = Art.short(floorf(_shown.light), _comma())
+	var c := _comma()
+	(_cells.mass as Label).text = Art.short(_shown.mass / Sim.START, c) + "×"
+	(_cells.temp as Label).text = _kelvin(sim.temp())
+	var fuel_l: Label = _cells.fuel
+	var lasts: float = sim.fuel_time()
+	fuel_l.text = _clock(lasts) if sim.awake else tr("NL_FUEL_OUT")
+	var low: bool = not sim.awake or lasts < LOW
+	if low != _fuel_low:
+		_fuel_low = low
+		if low:
+			fuel_l.add_theme_color_override("font_color", Pal.HEART)
+		else:
+			fuel_l.remove_theme_color_override("font_color")
+	var h := int(round(100.0 * sim.fuel / sim.mass))
+	var he := mini(100 - h, int(round(100.0 * sim.spent / sim.mass)))
+	var shares := [h, he, 100 - h - he]
+	for i in 3:
+		_made_l[i].text = "%s %d%%" % [tr(MADE_NAMES[i]), shares[i]]
+	_made.queue_redraw()
+	_refresh_chips()
+	(_plates.light.label as Label).text = Art.short(floorf(_shown.light), c)
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas > 0 or sim.dust > 0
+	# with stardust on the row there is no room for the hint, and whoever has
+	# been through a supernova has thrown a meteor
+	_hint.visible = not _dust_b.visible
 	_dust_l.text = str(sim.dust)
 	var ready: bool = sim.can_nova() and _nova_t < 0.0
 	_nova_b.visible = ready
 	if ready:
-		_nova_l.text = tr("NL_NOVA_READY") % [sim.dust_for(), sim.dust_for() + 1, Art.short(sim.next_dust_mass(), _comma())]
+		_nova_l.text = tr("NL_NOVA_READY") % [sim.dust_for(), sim.dust_for() + 1, Art.short(sim.next_dust_mass() / Sim.START, c), Art.short(sim.next_pick(), c)]
 	else:
-		_nova_l.text = tr("NL_NOVA_AT") % Art.short(Sim.NOVA, _comma())
+		_nova_l.text = tr("NL_NOVA_AT") % [Art.short(sim.next_pick(), c), Art.short(Sim.NOVA / Sim.START, c)]
+
+## Kelvin, to the nearest ten (a hundred past ten thousand), with the
+## language's own mark between the thousands.
+func _kelvin(v: float) -> String:
+	var k := int(round(v / 100.0)) * 100 if v >= 10000.0 else int(round(v / 10.0)) * 10
+	var text := str(k)
+	if k >= 1000:
+		text = "%d%s%03d" % [k / 1000, "." if _comma() else ",", k % 1000]
+	return text + " K"
+
+## Seconds as minutes and seconds: 7:48, and no more than 99:59.
+func _clock(seconds: float) -> String:
+	var t := mini(int(seconds), 99 * 60 + 59)
+	return "%d:%02d" % [t / 60, t % 60]
+
+## The discs of the powers held are drawn again only when one changes.
+func _refresh_chips() -> void:
+	var key := "y" if sim.awake else "n"
+	var held := 0
+	for which: String in Sim.POWERS:
+		key += str(int(sim.power[which]))
+		if int(sim.power[which]) > 0:
+			held += 1
+	if key == _chips_for:
+		return
+	_chips_for = key
+	_chips.visible = held > 0
+	_chips.size = Vector2(CHIP, held * (CHIP + CHIP_GAP))
+	_chips.queue_redraw()
+
+## A disc for each power held, its level on it past the first; all of them
+## faint while the star is dim and they sleep.
+func _draw_chips() -> void:
+	var font := get_theme_font("font", "Badge")
+	var faint := 1.0 if sim.awake else 0.4
+	var y := 0.0
+	for which: String in Sim.POWERS:
+		var held := int(sim.power[which])
+		if held <= 0:
+			continue
+		var c := Vector2(CHIP * 0.5, y + CHIP * 0.5)
+		_chips.draw_circle(c, CHIP * 0.5, Color(Pal.PAPER, 0.85 * faint), true, -1.0, true)
+		_chips.draw_circle(c, CHIP * 0.5 - 4.0, Color(Art.SKY[1], faint), true, -1.0, true)
+		var s := (CHIP * 0.5 - 4.0) * 0.8 / Art.R
+		_chips.draw_mesh(Art.icon(which), null, Transform2D(0.0, Vector2(s, s), 0.0, c), Color(1, 1, 1, faint))
+		if held > 1:
+			var at := c + Vector2(CHIP * 0.3, CHIP * 0.3)
+			_chips.draw_circle(at, 15.0, Color(Pal.ACCENT, faint), true, -1.0, true)
+			_chips.draw_string(font, at + Vector2(-15.0, 8.0), str(held), HORIZONTAL_ALIGNMENT_CENTER, 30.0, 22, Color(Pal.SURFACE, faint))
+		y += CHIP + CHIP_GAP
 
 # --- the tiles ---
 
@@ -833,17 +1272,22 @@ func _effect(tile: String) -> String:
 	var c := _comma()
 	match tile:
 		"meteor":
-			var hand: float = Sim.METEOR * (1.0 + Sim.HAND * int(sim.perk.hand))
-			return tr("NL_FX_METEOR") % [Art.short(sim.meteor_mass(), c), Art.short(sim.meteor_mass() + hand, c)]
-		"haze":
-			return tr("NL_FX_HAZE")
-		"glow":
-			return tr("NL_FX_GLOW") % [_times(sim.glow()), _times(sim.glow() * (1.0 + Sim.GLOW_STEP * (int(sim.lv.glow) + 1)) / (1.0 + Sim.GLOW_STEP * int(sim.lv.glow)))]
-	return tr("NL_FX_SKY")
+			# against a first meteor, since the star's own mass is in Suns
+			var level := int(sim.lv.meteor)
+			return tr("NL_FX_METEOR") % [Art.short(level + 1.0, c), Art.short(level + 2.0, c)]
+		"volley":
+			return tr("NL_FX_VOLLEY") % [sim.volley(), sim.volley() + 1]
+		"stream":
+			var gap: float = sim.stream_gap()
+			if gap <= 0.0:
+				return tr("NL_FX_STREAM_NEW")
+			return tr("NL_FX_STREAM") % [_hundredths(gap), _hundredths(maxf(Sim.STREAM_LEAST, gap * Sim.STREAM_STEP))]
+	var h: float = sim.meteor_h()
+	return tr("NL_FX_ICE") % [int(round(h * 100.0)), int(round(minf(0.9, h + Sim.ICE_STEP) * 100.0))]
 
-## A multiplier to one decimal: 1.2, or 1,2 where the language writes it so.
-func _times(v: float) -> String:
-	var text := "%.1f" % v
+## Seconds to two decimals: 0.43, or 0,43 where the language writes it so.
+func _hundredths(v: float) -> String:
+	var text := "%.2f" % v
 	return text.replace(".", ",") if _comma() else text
 
 static func _comma() -> bool:
@@ -900,14 +1344,26 @@ func _aim_start(at: Vector2) -> bool:
 	_aiming = true
 	_aim_from = at
 	_aim_to = at
+	_stream_t = 0.0
+	_streamed = false
 	return true
 
+## Letting go throws, unless the stream has only just let one go.
 func _aim_end() -> void:
 	if not _aiming:
 		return
 	_aiming = false
+	if not _streamed or _stream_t >= sim.stream_gap() * 0.5:
+		_throw()
+
+## A throw from where the finger went down, the way it is dragged now: one
+## meteor, or a volley. Felt, though not every one of a stream.
+func _throw() -> void:
 	sim.throw_at(sky.unit(_aim_from), _aim_vel())
-	_fx.cue("throw")
+	var now := Time.get_ticks_msec()
+	if now - _felt_at >= int(FELT * 1000.0):
+		_felt_at = now
+		_fx.cue("throw")
 	_dirty = true
 
 ## The speed a throw would leave with, in the sim's units: the way the
@@ -929,22 +1385,40 @@ func _aim() -> Dictionary:
 
 # --- drawing ---
 
-## The bar toward the supernova, and past it toward one more stardust.
+## The bar toward the supernova, by the logarithm of the star's Suns (each
+## doubling as long as the last) with a notch at every pick on the way; past
+## the supernova's mark, toward one more stardust.
 func _draw_nova_line() -> void:
 	var w := _nova_line.size.x
 	var h := 12.0
-	var share: float = sim.mass / Sim.NOVA
+	var top := log(Sim.NOVA / Sim.START)
+	var share: float = log(maxf(1.0, sim.suns())) / top
 	if sim.can_nova():
 		var from: float = Sim.NOVA * pow(sim.dust_for() / Sim.DUST, 2.0)
 		share = (sim.mass - from) / maxf(1.0, sim.next_dust_mass() - from)
-	_bar(Rect2(0.0, 0.0, w, h), Pal.SURFACE_HI)
-	_bar(Rect2(0.0, 0.0, maxf(h, w * clampf(share, 0.0, 1.0)), h), Pal.SUN if sim.can_nova() else Pal.SUN_RAY)
+	_bar(_nova_line, Rect2(0.0, 0.0, w, h), Pal.SURFACE_HI)
+	_bar(_nova_line, Rect2(0.0, 0.0, maxf(h, w * clampf(share, 0.0, 1.0)), h), Pal.SUN if sim.can_nova() else Pal.SUN_RAY)
+	if not sim.can_nova():
+		for at: float in Sim.MILES:
+			_nova_line.draw_rect(Rect2(w * log(at) / top - 2.0, 0.0, 4.0, h), Pal.PAPER)
 
-func _bar(rect: Rect2, col: Color) -> void:
+## What the star is made of: hydrogen from the left, then helium, then rock.
+func _draw_made() -> void:
+	var w := _made.size.x
+	var h := _made.size.y
+	_bar(_made, Rect2(0.0, 0.0, w, h), Art.MADE[2])
+	var burnt: float = clampf((sim.fuel + sim.spent) / sim.mass, 0.0, 1.0)
+	if burnt > 0.0:
+		_bar(_made, Rect2(0.0, 0.0, maxf(h, w * burnt), h), Art.MADE[1])
+	var left: float = clampf(sim.fuel / sim.mass, 0.0, 1.0)
+	if left > 0.005:
+		_bar(_made, Rect2(0.0, 0.0, maxf(h, w * left), h), Art.MADE[0])
+
+func _bar(on: Control, rect: Rect2, col: Color) -> void:
 	var r := rect.size.y * 0.5
-	_nova_line.draw_rect(Rect2(rect.position + Vector2(r, 0.0), rect.size - Vector2(r * 2.0, 0.0)), col)
-	_nova_line.draw_circle(rect.position + Vector2(r, r), r, col, true, -1.0, true)
-	_nova_line.draw_circle(rect.position + Vector2(rect.size.x - r, r), r, col, true, -1.0, true)
+	on.draw_rect(Rect2(rect.position + Vector2(r, 0.0), rect.size - Vector2(r * 2.0, 0.0)), col)
+	on.draw_circle(rect.position + Vector2(r, r), r, col, true, -1.0, true)
+	on.draw_circle(rect.position + Vector2(rect.size.x - r, r), r, col, true, -1.0, true)
 
 # --- leaving ---
 
@@ -968,7 +1442,7 @@ func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
-	for card: Control in [_shop, _ask, _perks]:
+	for card: Control in [_shop, _ask, _perks, _powers]:
 		if card.visible:
 			card.visible = false
 			return

@@ -1,9 +1,10 @@
 extends RefCounted
 
 ## Nightlight, as pure data: a small star in the middle of a night sky, the
-## meteors thrown at it, the bodies that cross the sky on their own, four
-## tiles bought with light, and the supernova that gives everything back and
-## starts a small star again among its ashes. Kept and without an end (the
+## meteors thrown at it, the bodies that cross the sky on their own, what the
+## star is made of and the hydrogen it burns, four tiles for the hand bought
+## with light, the powers the star is offered as it grows, and the supernova
+## that gives everything back and starts a small star again among its ashes. Kept and without an end (the
 ## user, 2026-10-06: "the run never ends, but player can rebirth star to buy
 ## some new perks that make journey faster and faster").
 ## Spec docs/superpowers/specs/2026-10-06-arcade-nightlight-design.md.
@@ -29,13 +30,14 @@ extends RefCounted
 
 enum Kind { METEOR, PEBBLE, ROCK, COMET, PLANET, ASH }
 
-## One body in the sky. `e` is the light the haze has made of it and not yet
-## let go; `heat` how deep in the haze it is, 0 outside; `trail` where it
-## has been, oldest first.
+## One body in the sky. `h` is the share of it that is hydrogen; `e` is the
+## light the haze has made of it and not yet let go; `heat` how deep in the
+## haze it is, 0 outside; `trail` where it has been, oldest first.
 class Body:
 	var id := 0
 	var kind := Kind.METEOR
 	var m := 1.0
+	var h := 0.0
 	var pos := Vector2.ZERO
 	var vel := Vector2.ZERO
 	var spin := 0.0
@@ -62,7 +64,6 @@ const SEEN_LOG := 24.0
 const EAT := 0.92
 ## The haze is this many of the star's radii wide, before the Haze tile.
 const HAZE := 5.0
-const HAZE_STEP := 1.08
 ## A body's radius is the cube root of its mass times this.
 const BODY_R := 14.0
 ## A thrown meteor, before the Meteor tile: a fifth of what it was while the
@@ -118,19 +119,80 @@ const FULL := 300
 ## A piece starts this share of its body's radius from the body's middle.
 const APART := 0.55
 
-const TILES := ["meteor", "haze", "glow", "sky"]
+## What the star is made of (the user, 2026-10-06: "show mass compared to
+## the sun ... show also temperature, composition and how much fuel it has to
+## burn"). A new star is one Sun: `suns()` is its mass over START. STAR_H of
+## it is hydrogen and STAR_HE helium, the rest rock. The share of a body of
+## each Kind that is hydrogen: a comet is ice, a planetoid half gas, an ash
+## what a star has already burnt.
+const STAR_H := 0.7
+const STAR_HE := 0.28
+const HYDROGEN := [0.3, 0.2, 0.15, 0.9, 0.6, 0.1]
+## A star of one Sun burns BURN of its own mass a second, hydrogen into
+## helium, and a heavier one more of itself, by its Suns to the power HOT (a
+## real star's is 2.5, and a heavy one is gone in no time). A mass burnt is
+## SHINE light. With none left it goes dim: its powers sleep, nothing burns
+## and nothing is lost, and it lights again once WAKE of its mass is
+## hydrogen. DIM seconds from lit to dim and back.
+const BURN := 0.0015
+const HOT := 0.25
+const SHINE := 2.0
+const WAKE := 0.03
+const DIM := 1.5
+## Its temperature, in kelvin, by the logarithm of its mass; a dim star is
+## COLD of that.
+const TEMP := [[1.0, 3000.0], [2.0, 5800.0], [3.0, 9500.0], [4.5, 28000.0]]
+const COLD := 0.55
+
+## The shop is the hand's (the user, 2026-10-06: "the shop should be related
+## to what player can do, for example bigger or faster bodies manual send"):
+## a heavier meteor, one more of them a throw, meteors that keep leaving
+## while the finger is down, and icier ones that bring more hydrogen.
+const TILES := ["meteor", "volley", "stream", "ice"]
 ## A tile's first price in light, what each level multiplies it by, and its
 ## last level (0: it has none).
 const TILE := {
 	"meteor": [10.0, 1.5, 0],
-	"haze": [25.0, 1.7, 10],
-	"glow": [20.0, 1.6, 0],
-	"sky": [30.0, 1.65, 0],
+	"volley": [60.0, 2.6, 0],
+	"stream": [30.0, 1.8, 0],
+	"ice": [20.0, 1.7, 6],
 }
-## What a level of each tile does.
-const GLOW_STEP := 0.2
-const SKY_SOON := 0.92
-const SKY_RICH := 1.2
+## Stream's first level lets a meteor go every STREAM seconds while the
+## finger is down, each level after STREAM_STEP of that, never under
+## STREAM_LEAST. A level of Ice is ICE_STEP more of a meteor in hydrogen.
+const STREAM := 0.6
+const STREAM_STEP := 0.85
+const STREAM_LEAST := 0.08
+const ICE_STEP := 0.1
+
+## The star's powers (the user, 2026-10-06: "the sun powerup come as it grow,
+## giving user powerup decisions to pick ... a powerup to use more fuel to
+## create a solar wind that interfer in surrounding bodies orbit to make them
+## start fall, or a another powerup that goes into a different direction").
+## At each of MILES Suns, and every doubling after the last, two are offered
+## that go different ways (WAY: 0 catches more, 1 makes more light, 2 saves
+## hydrogen) and one is picked. A power is always on while the star is lit,
+## burns COST of the star's plain burning more for each level, and goes with
+## the star at a supernova.
+const POWERS := ["wind", "haze", "beacon", "radiance", "furnace", "fusion", "thrift"]
+const WAY := {"wind": 0, "haze": 0, "beacon": 0, "radiance": 1, "furnace": 1, "fusion": 1, "thrift": 2}
+const COST := {"wind": 0.4, "haze": 0.25, "beacon": 0.3, "radiance": 0.3, "furnace": 0.25, "fusion": 0.2, "thrift": 0.0}
+const MILES := [2.0, 4.0, 8.0, 15.0, 30.0, 60.0]
+## Solar wind: a drag of WIND a level on what is outside the haze, out to
+## WIND_REACH of the haze's radius, so a circle parked there comes down. It
+## makes no light. Wide haze: HAZE_STEP wider a level. Beacon: bodies pass
+## BEACON_SOON sooner and BEACON_RICH heavier. Radiance: RADIANCE more light
+## from the haze. Tidal furnace: a torn body pays FURNACE light a mass.
+## Fusion: the star's own burning pays one SHINE more a level. Thrift: it
+## burns THRIFT as much.
+const WIND := 0.012
+const WIND_REACH := 3.0
+const HAZE_STEP := 1.15
+const BEACON_SOON := 0.8
+const BEACON_RICH := 1.2
+const RADIANCE := 0.3
+const FURNACE := 0.15
+const THRIFT := 0.7
 
 ## The star can go supernova from this mass on, for DUST stardust; a heavier
 ## star pays more, by the square root. The mark does not rise: each life is
@@ -168,18 +230,31 @@ var light := 0.0
 var dust := 0
 var novas := 0
 var bought := 0
-var lv := {"meteor": 0, "haze": 0, "glow": 0, "sky": 0}
+var lv := {"meteor": 0, "volley": 0, "stream": 0, "ice": 0}
 var perk := {"core": 0, "disc": 0, "hand": 0, "crowd": 0, "ember": 0}
+## The hydrogen left to burn and the helium it has made, both in mass; the
+## rest of the star is rock.
+var fuel := START * STAR_H
+var spent := START * STAR_HE
+## False while the star is out of hydrogen; `lit` follows it, 0 to 1.
+var awake := true
+var lit := 1.0
+var power := {"wind": 0, "haze": 0, "beacon": 0, "radiance": 0, "furnace": 0, "fusion": 0, "thrift": 0}
+## The powers picked this life, and the two on offer (empty when none is).
+var picks := 0
+var offer: Array = []
 var bodies: Array[Body] = []
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
 ## {kind: "eat", at, m}, {kind: "shed", at, e}, {kind: "merge", at},
-## {kind: "tear", at, m}.
+## {kind: "tear", at, m}, {kind: "shine", e}.
 var events: Array[Dictionary] = []
 ## Everything this star and the ones before it ate, for the record.
 var eaten := 0.0
-## False for a sky with nothing crossing it (a tutorial's page).
+## False for a sky with nothing crossing it (a tutorial's page), and for a
+## star that burns nothing (the same).
 var passing := true
+var burning := true
 
 var _rng := RandomNumberGenerator.new()
 var _next_id := 1
@@ -187,6 +262,7 @@ var _tick := 0
 var _acc := 0.0
 var _pass_wait := 0.0
 var _pass_gap := 2.0
+var _shine := 0.0
 
 func _init(rng_seed := 0) -> void:
 	if rng_seed != 0:
@@ -209,9 +285,57 @@ func seen_r() -> float:
 func zoom() -> float:
 	return seen_r() / star_r()
 
+## A new star is one Sun.
+func suns() -> float:
+	return mass / START
+
+func rock() -> float:
+	return maxf(0.0, mass - fuel - spent)
+
+## The levels of a power that are doing something: none while the star is dim.
+func on(which: String) -> int:
+	return int(power[which]) if awake else 0
+
+## The hydrogen the star burns a second while it is lit: its plain burning,
+## and what its powers add.
+func burn_rate() -> float:
+	return _plain_burn() * (1.0 + _more())
+
+func _plain_burn() -> float:
+	return BURN * mass * pow(suns(), HOT) * pow(THRIFT, int(power.thrift))
+
+## What the powers burn, as a share of the plain burning.
+func _more() -> float:
+	var more := 0.0
+	for which: String in POWERS:
+		more += float(COST[which]) * int(power[which])
+	return more
+
+## Seconds the hydrogen lasts as the star burns now, with nothing more eaten.
+func fuel_time() -> float:
+	return fuel / burn_rate()
+
+## The star's temperature, in kelvin: hotter the heavier, and cold while dim.
+func temp() -> float:
+	var l := log(maxf(1.0, mass)) / log(10.0)
+	var k: float = TEMP[TEMP.size() - 1][1]
+	if l <= float(TEMP[0][0]):
+		k = TEMP[0][1]
+	else:
+		for i in range(1, TEMP.size()):
+			if l <= float(TEMP[i][0]):
+				var from: float = TEMP[i - 1][0]
+				k = lerpf(TEMP[i - 1][1], TEMP[i][1], (l - from) / (float(TEMP[i][0]) - from))
+				break
+	return k * lerpf(COLD, 1.0, lit)
+
 ## The haze's width, in the star's own radii.
 func haze_wide() -> float:
-	return HAZE * pow(HAZE_STEP, int(lv.haze))
+	return HAZE * pow(HAZE_STEP, on("haze"))
+
+## How far the solar wind reaches; 0 with none.
+func wind_r() -> float:
+	return haze_r() * WIND_REACH if on("wind") > 0 else 0.0
 
 func haze_r() -> float:
 	return star_r() * haze_wide()
@@ -220,17 +344,31 @@ func gm() -> float:
 	return G * (1.0 + CORE * int(perk.core)) * mass
 
 func glow() -> float:
-	return (1.0 + GLOW_STEP * int(lv.glow)) * (1.0 + DISC * int(perk.disc))
+	return (1.0 + RADIANCE * on("radiance")) * (1.0 + DISC * int(perk.disc))
 
 func meteor_mass() -> float:
 	return METEOR * (1.0 + int(lv.meteor)) * (1.0 + HAND * int(perk.hand))
 
+## The share of a thrown meteor that is hydrogen.
+func meteor_h() -> float:
+	return minf(0.9, float(HYDROGEN[Kind.METEOR]) + ICE_STEP * int(lv.ice))
+
+## How many meteors a throw lets go.
+func volley() -> int:
+	return 1 + int(lv.volley)
+
+## Seconds between meteors while the finger is held down; 0 with no Stream.
+func stream_gap() -> float:
+	if int(lv.stream) <= 0:
+		return 0.0
+	return maxf(STREAM_LEAST, STREAM * pow(STREAM_STEP, int(lv.stream) - 1))
+
 func pass_time() -> float:
-	return PASS * pow(SKY_SOON, int(lv.sky)) * pow(CROWD, int(perk.crowd))
+	return PASS * pow(BEACON_SOON, on("beacon")) * pow(CROWD, int(perk.crowd))
 
 ## How heavy what passes is, against a first sky's.
 func rich() -> float:
-	return pow(SKY_RICH, int(lv.sky)) * (1.0 + RICHER * novas)
+	return pow(BEACON_RICH, on("beacon")) * (1.0 + RICHER * novas)
 
 static func body_r(m: float) -> float:
 	return BODY_R * pow(m, 1.0 / 3.0)
@@ -283,6 +421,55 @@ func buy(tile: String) -> bool:
 	lv[tile] = int(lv[tile]) + 1
 	return true
 
+# --- the powers ---
+
+## The Suns the star weighs at its `i`th pick: MILES, then twice the last
+## for each one after.
+static func mile(i: int) -> float:
+	if i < MILES.size():
+		return MILES[i]
+	return float(MILES[MILES.size() - 1]) * pow(2.0, i - MILES.size() + 1)
+
+## How many picks the star has grown past.
+func passed() -> int:
+	var n := 0
+	var now := suns()
+	while now >= mile(n):
+		n += 1
+	return n
+
+## Picks it has earned and not made.
+func owed() -> int:
+	return passed() - picks
+
+## The Suns at which the next pick comes.
+func next_pick() -> float:
+	return mile(passed())
+
+## The two powers on offer, or none. Drawn once and kept, so leaving and
+## coming back does not draw again. They go different ways, and Thrift is
+## not a first pick: there is nothing yet for it to save.
+func offering() -> Array:
+	if owed() <= 0:
+		return []
+	if offer.size() != 2:
+		var pool: Array = POWERS.filter(func(w: String) -> bool: return picks > 0 or w != "thrift")
+		var a: String = pool[_rng.randi() % pool.size()]
+		var rest: Array = pool.filter(func(w: String) -> bool: return WAY[w] != WAY[a])
+		offer = [a, rest[_rng.randi() % rest.size()]]
+	return offer
+
+## Takes the `i`th of the two on offer. Returns it, or "" if none is owed.
+func pick(i: int) -> String:
+	var two := offering()
+	if two.is_empty():
+		return ""
+	var which: String = two[clampi(i, 0, 1)]
+	power[which] = int(power[which]) + 1
+	picks += 1
+	offer = []
+	return which
+
 # --- the supernova ---
 
 func can_nova() -> bool:
@@ -301,8 +488,8 @@ func next_dust_mass() -> float:
 func perk_cost() -> int:
 	return PERK + bought
 
-## The star gives back what it ate. Its mass, its light and the tiles go;
-## stardust, the perks and a richer sky stay. The ashes are left on closed
+## The star gives back what it ate. Its mass, its light, the tiles and its
+## powers go; stardust, the perks and a richer sky stay. The ashes are left on closed
 ## paths round the new star, all turning the same way, the nearest of them
 ## already brushing its haze. Returns the stardust paid, 0 if it cannot yet.
 func nova() -> int:
@@ -314,8 +501,17 @@ func nova() -> int:
 	novas += 1
 	mass = START * pow(EMBER, int(perk.ember))
 	light = 0.0
+	fuel = mass * STAR_H
+	spent = mass * STAR_HE
+	awake = true
+	lit = 1.0
+	_shine = 0.0
+	picks = 0
+	offer = []
 	for tile: String in TILES:
 		lv[tile] = 0
+	for which: String in POWERS:
+		power[which] = 0
 	bodies.clear()
 	events.clear()
 	_pass_wait = 0.0
@@ -349,6 +545,7 @@ func add(kind: Kind, m: float, pos: Vector2, vel: Vector2) -> Body:
 	_next_id += 1
 	b.kind = kind
 	b.m = m
+	b.h = HYDROGEN[kind]
 	b.pos = pos
 	b.vel = vel
 	b.spin = _rng.randf() * TAU
@@ -356,14 +553,19 @@ func add(kind: Kind, m: float, pos: Vector2, vel: Vector2) -> Body:
 	bodies.append(b)
 	return b
 
-## A meteor, let go at `pos` with `vel`. Nothing limits a throw.
+## A throw, let go at `pos` with `vel`: one meteor, or with Volley several
+## side by side across the way they go. Nothing limits a throw.
 func throw_at(pos: Vector2, vel: Vector2) -> void:
-	if bodies.size() >= MOST:
-		for i in bodies.size():
-			if bodies[i].kind == Kind.METEOR:
-				bodies.remove_at(i)
-				break
-	add(Kind.METEOR, meteor_mass(), pos, vel)
+	var n := volley()
+	var m := meteor_mass()
+	var side := (vel if vel != Vector2.ZERO else pos).orthogonal().normalized() * body_r(m) * 2.4
+	for k in n:
+		if bodies.size() >= MOST:
+			for i in bodies.size():
+				if bodies[i].kind == Kind.METEOR:
+					bodies.remove_at(i)
+					break
+		add(Kind.METEOR, m, pos + side * (k - (n - 1) * 0.5), vel).h = meteor_h()
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -404,11 +606,16 @@ func _tear(at: int) -> void:
 		mid += off * (shares[k] / total)
 	bodies.remove_at(at)
 	events.append({"kind": "tear", "at": b.pos, "m": b.m})
+	if on("furnace") > 0:
+		var paid := FURNACE * on("furnace") * b.m
+		light += paid
+		events.append({"kind": "shed", "at": b.pos, "e": paid})
 	for k in n:
 		var off := offs[k] - mid
 		var share := shares[k] / total
 		var piece := add(b.kind, b.m * share, b.pos + off, b.vel - off.orthogonal() * b.turn)
 		piece.e = b.e * share
+		piece.h = b.h
 		piece.heat = b.heat
 		if k == 0:
 			piece.id = b.id
@@ -461,6 +668,7 @@ func _merge() -> void:
 						b.trail = a.trail
 					b.vel = (a.vel * a.m + b.vel * b.m) / m
 					b.pos = (a.pos * a.m + b.pos * b.m) / m
+					b.h = (a.h * a.m + b.h * b.m) / m
 					b.e += a.e
 					b.m = m
 					a.m = 0.0
@@ -505,6 +713,8 @@ func tick() -> void:
 	var pull := gm()
 	var rw := star_r()
 	var rh := haze_r()
+	var rwind := wind_r()
+	var blow := WIND * on("wind")
 	var eat := rw * EAT
 	var far := FAR / zoom()
 	var bind := pull / (2.0 * rw)
@@ -522,6 +732,7 @@ func tick() -> void:
 		if r < eat:
 			mass += b.m
 			eaten += b.m
+			fuel += b.m * b.h
 			light += b.e
 			events.append({"kind": "eat", "at": p, "m": b.m})
 			bodies.remove_at(i)
@@ -555,6 +766,8 @@ func tick() -> void:
 				b.e -= q
 				light += q
 				events.append({"kind": "shed", "at": p, "e": q})
+		elif r < rwind:
+			acc -= b.vel * blow
 		b.vel += acc * STEP
 		b.pos = p + b.vel * STEP
 		b.spin += b.turn * STEP
@@ -565,6 +778,32 @@ func tick() -> void:
 		i -= 1
 	if _tick % 2 == 0:
 		_merge()
+	if burning:
+		_burn()
+
+## A tick of the star's own burning: hydrogen into helium, its plain share
+## of that into light, let go a mote at a time. Out of hydrogen it sleeps,
+## and wakes with WAKE of its mass in hydrogen again.
+func _burn() -> void:
+	if awake:
+		var rate := _plain_burn()
+		var plain := rate * STEP
+		var use := plain * (1.0 + _more())
+		if use >= fuel:
+			plain *= fuel / use
+			use = fuel
+			awake = false
+		fuel -= use
+		spent += use
+		_shine += plain * SHINE * (1.0 + int(power.fusion))
+		var q := maxf(0.25, rate * SHINE * 0.6)
+		if _shine >= q:
+			_shine -= q
+			light += q
+			events.append({"kind": "shine", "e": q})
+	elif fuel >= WAKE * mass:
+		awake = true
+	lit = move_toward(lit, 1.0 if awake else 0.0, STEP / DIM)
 
 ## Where a throw from `pos` with `vel` would go: a point every `every` ticks
 ## for `ticks` of them, stopping at the star. `hit` is whether it got there.
@@ -573,6 +812,8 @@ func predict(pos: Vector2, vel: Vector2, ticks := 420, every := 7) -> Dictionary
 	var pull := gm()
 	var eat := star_r() * EAT
 	var rh := haze_r()
+	var rwind := wind_r()
+	var blow := WIND * on("wind")
 	var hit := false
 	for i in ticks:
 		var r2 := pos.length_squared()
@@ -584,6 +825,8 @@ func predict(pos: Vector2, vel: Vector2, ticks := 420, every := 7) -> Dictionary
 		if r < rh:
 			var d := 1.0 - r / rh
 			acc -= vel * (DRAG * d * d)
+		elif r < rwind:
+			acc -= vel * blow
 		vel += acc * STEP
 		pos += vel * STEP
 		if i % every == every - 1:
@@ -606,6 +849,12 @@ func save() -> void:
 		cfg.set_value("lv", tile, int(lv[tile]))
 	for which: String in PERKS:
 		cfg.set_value("perk", which, int(perk[which]))
+	for which: String in POWERS:
+		cfg.set_value("power", which, int(power[which]))
+	cfg.set_value("star", "fuel", fuel)
+	cfg.set_value("star", "spent", spent)
+	cfg.set_value("star", "picks", picks)
+	cfg.set_value("star", "offer", offer)
 	cfg.set_value("star", "mass", mass)
 	cfg.set_value("star", "light", light)
 	cfg.set_value("star", "dust", dust)
@@ -614,7 +863,7 @@ func save() -> void:
 	cfg.set_value("star", "eaten", eaten)
 	var kept := []
 	for b in bodies:
-		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y])
+		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h])
 	cfg.set_value("star", "bodies", kept)
 	cfg.save(path)
 
@@ -637,6 +886,19 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	sim.novas = maxi(0, int(cfg.get_value("star", "novas", 0)))
 	sim.bought = maxi(0, int(cfg.get_value("star", "bought", 0)))
 	sim.eaten = maxf(0.0, float(cfg.get_value("star", "eaten", 0.0)))
+	# a star kept before it burnt anything: as much hydrogen as what it ate
+	# would have left it
+	sim.fuel = clampf(float(cfg.get_value("star", "fuel", sim.mass * 0.3)), 0.0, sim.mass)
+	sim.spent = clampf(float(cfg.get_value("star", "spent", sim.mass * 0.3)), 0.0, sim.mass - sim.fuel)
+	sim.awake = sim.fuel > 0.0
+	sim.lit = 1.0 if sim.awake else 0.0
+	for which: String in POWERS:
+		sim.power[which] = maxi(0, int(cfg.get_value("power", which, 0)))
+	# a star kept before there were powers has every pick it grew past to make
+	sim.picks = clampi(int(cfg.get_value("star", "picks", 0)), 0, sim.passed())
+	var two = cfg.get_value("star", "offer", [])
+	if two is Array and (two as Array).size() == 2 and POWERS.has(two[0]) and POWERS.has(two[1]):
+		sim.offer = [String(two[0]), String(two[1])]
 	for row in cfg.get_value("star", "bodies", []):
 		if not (row is Array) or (row as Array).size() < 6 or sim.bodies.size() >= FULL:
 			continue
@@ -644,7 +906,9 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		var pos := Vector2(float(row[2]), float(row[3]))
 		if m <= 0.0 or not pos.is_finite() or pos.length() < 1.0:
 			continue
-		sim.add(clampi(int(row[0]), 0, Kind.size() - 1) as Kind, m, pos, Vector2(float(row[4]), float(row[5])))
+		var b: Body = sim.add(clampi(int(row[0]), 0, Kind.size() - 1) as Kind, m, pos, Vector2(float(row[4]), float(row[5])))
+		if (row as Array).size() > 6:
+			b.h = clampf(float(row[6]), 0.0, 1.0)
 	return sim
 
 ## What the Arcade tab says of the kept star without building it: its mass

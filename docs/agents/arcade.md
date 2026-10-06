@@ -1165,10 +1165,41 @@ supernovas (`Sim.kept()`), not a best.
   which now reach 302 bodies. A spiral pays 1.15 light a mass where it paid
   1.25 (pieces take shorter ways in); the bot's lives are 5.9, 4.4, 4.2 min.
   The tutorial's pages throw meteors of 1.0, so they show the tide too.
+- **Later again the same day: Suns, fuel, the hand's shop, powers to pick**
+  (the user's words and the four answers are in the spec's last amendment).
+  The mass is shown in Suns (`Sim.suns()`, a new star is one; the mark is
+  100) everywhere a player reads it, the Arcade card included; the sim
+  still counts in its own mass. **The star burns** (`Sim._burn`): `fuel`
+  is hydrogen, `spent` helium, the rest rock; a body's `h` is its share of
+  hydrogen (by Kind, a thrown meteor's by the Ice tile, kept through a tear
+  and a merge and in the file's seventh column). Out of hydrogen the star
+  is `awake == false`: `on(power)` is 0, so **every power is read through
+  `on()`, never `power[...]`**, or it would work while dim. `lit` eases
+  between and is what the sky and `temp()` read. A tutorial page sets
+  `burning = false` or its star dims while the page is read (the FUEL page
+  alone burns). **The tiles are the hand's**: meteor, volley, stream, ice;
+  Haze, Glow and Sky are powers now (`Sim.POWERS`, `COST`, `WAY`).
+  **`owed()` picks are offered by the screen itself** (`_offer`: 0.6 s
+  after, never over another card, the sky waiting behind); `offer` is kept
+  in the file. A harness that grows the star behind the screen's back must
+  pick with `sim.pick` until `owed()` is 0 or the card stays up over every
+  later shot. **Stream** is the screen's (`_stream`): the sim only knows
+  the gap. The light's plate is on the foot row beside the shop, the hint
+  hides once there is stardust there. **A comet's tail is not drawn inside
+  the Roche radius**: a torn comet's pieces each had one and the star wore
+  a burst of rays. The locale's `.translation` files are built by `godot
+  --headless --path . --import`; a harness run before that formats the old
+  strings and throws. Probe 53 checks; `-- pace [min] [seed] [gap]
+  [first|second|random]` says how long the star was dim. Draw calls: 89 on
+  a new star (64 before the plate), 113-125 with the pick card, 264-275 on
+  a heavy star with 130 bodies, 315-342 with a card over that, **395-397
+  with the sky full at 300**. The harness has eight more beats (5a-5d, 6b,
+  15b, 15c).
 - **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
-  and `nova` are felt; a tear is neither heard nor felt), nothing run on a
-  phone, no person has thrown a meteor or played the pace, Spanish was not
-  shot, a perk's worth was not tuned one against another, nothing happens
-  while the game is closed, the tutorial does not say a body is torn, and
-  bodies do not pull each other.
+  and `nova` are felt; a tear, the star going dim and lighting again are
+  neither heard nor felt), nothing run on a phone, no person has played
+  the pace, the fuel or a single power, no power's worth was tuned against
+  another's, the wind has nothing drawn for it, nothing happens while the
+  game is closed, the tutorial does not say a body is torn, and bodies do
+  not pull each other.
 

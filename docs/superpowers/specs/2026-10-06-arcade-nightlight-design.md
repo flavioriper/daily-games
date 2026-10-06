@@ -220,3 +220,78 @@ crumble in steps), the three pieces of a meteor, no tearing while the sky
 holds `FULL` = 300 bodies, the stretch and the puff. **Bodies still do not
 pull each other**: only the star does.
 
+### 2026-10-06, later again: the star's own numbers, the hand's shop, powers to pick
+
+The user: "show mass compared to the sun, for example we start as 1x, and
+grow bigger, show also temperature, composition and how much fuel it has to
+burn. The shop should be related to what player can do, for example bigger
+or faster bodies manual send, things like that. And the sun powerup come as
+it grow, giving user powerup decisions to pick. For example, after reaching
+some Nx sun mass, we could show to player a powerup to use more fuel to
+create a solar wind that interfer in surrounding bodies orbit to make them
+start fall, or a another powerup that goes into a different direction (user
+pick which one)." Asked, they chose: fuel burns to shine and an empty star
+dims (nothing lost); a picked power is always on; picks go with the star at
+a supernova and stardust still buys the lasting perks; straight to Godot.
+
+**The star.** A new star is one Sun (`suns()` = mass / 10); the supernova's
+mark is 100 Suns. It is 70% hydrogen, 28% helium and 2% rock. A body brings
+hydrogen by its kind: a thrown meteor 30%, a pebble 20%, a rock 15%, a
+comet 90%, a planetoid 60%, an ash 10%; the rest of it is rock. The star
+burns hydrogen into helium at `BURN` (0.0015) of its mass a second times its
+Suns to the power `HOT` (0.25: a heavier star burns more of itself), and a
+mass burnt is `SHINE` (2) light, let go as motes off its own face. Its
+temperature is read off its mass: 3,000 K at one Sun, 5,800 at ten, 9,500
+at a hundred, 28,000 past three thousand. With no hydrogen it is **dim**: a
+dull ember at 55% of its temperature, its powers asleep, nothing burnt and
+nothing lost; it lights again once 3% of it is hydrogen.
+
+The screen's plate says the three: Sun masses, temperature, and fuel as the
+time it lasts at the present burning (red under ten seconds, "Empty" when
+dim), over a bar of what it is made of with each share named.
+
+**The shop is the hand's**, bought with light, gone at a supernova:
+
+| Tile | Each level | Levels | Light |
+|---|---|---|---|
+| Meteor | a thrown meteor one first-meteor heavier | no end | 10, then x1.5 |
+| Volley | one more meteor a throw, side by side | no end | 60, then x2.6 |
+| Stream | meteors keep leaving while the finger is down: every 0.6 s, then 15% sooner a level, 0.08 s at the least | no end | 30, then x1.8 |
+| Ice | 10% more of a meteor is hydrogen, up to 90% | 6 | 20, then x1.7 |
+
+Haze, Glow and Sky are no longer tiles: they are powers.
+
+**Powers.** At 2, 4, 8, 15, 30 and 60 Suns, and at every doubling after
+(120, 240, ...), a card comes up by itself with two powers that go different
+ways (catching, light, saving), and the sky waits until one is taken. A
+power is always on while the star is lit, stacks if picked again, and burns
+more hydrogen, as a share of the star's plain burning:
+
+| Power | Does | Burns |
+|---|---|---|
+| Solar wind | a drag of 0.012 a level on what is outside the haze, out to three of its radii: a parked circle comes down in under a minute | +40% |
+| Wide haze | the haze 15% wider | +25% |
+| Beacon | bodies pass 20% sooner and 20% heavier | +30% |
+| Radiance | 30% more light from the haze | +30% |
+| Tidal furnace | a torn body pays 0.15 light a mass as it breaks | +25% |
+| Fusion | the star's own burning pays one `SHINE` more | +20% |
+| Slow burn | everything burns 30% less | none |
+
+Slow burn is never the first offer. The two on offer are kept in the file,
+so leaving and coming back does not draw again. A star kept from before has
+every pick it grew past to make.
+
+**The pace, by the bot** (a throw every 0.45 s or as fast as Stream lets
+it, cheapest tile first, either power at random): the first supernova at
+3.9 to 4.0 min (5.9 before: Volley and Stream are worth more than the three
+tiles they replaced), then lives of 2.1 to 4.2 min. The star ends a life
+between 2% and 48% hydrogen and was dim in one life of twelve, for 29 s,
+with a build of heavy burners and no Slow burn; a hand that never buys Ice
+would be dim far more.
+
+Mine, not asked for: every number above; hydrogen/helium/rock as the three
+shares; fuel shown as time; the shares by kind; Volley, Stream and Ice as
+the other three tiles; the six powers besides the wind; the card coming up
+by itself and pausing the sky; meteors paler the icier they are; a comet's
+tail not drawn inside the Roche radius (a torn comet was a burst of rays).
+

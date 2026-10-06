@@ -204,7 +204,7 @@ func refresh() -> void:
 		if game == "nightlight":
 			var star: Dictionary = NightSim.kept()
 			var novas := int(star.novas)
-			(_best[game] as Label).text = tr("NL_CARD_MASS") % NightArt.short(star.mass, Locale.current() != "en") if star.mass > 0.0 else tr("NL_CARD_NEW")
+			(_best[game] as Label).text = tr("NL_CARD_MASS") % NightArt.short(star.mass / NightSim.START, Locale.current() != "en") if star.mass > 0.0 else tr("NL_CARD_NEW")
 			(_stage[game] as Label).text = "" if novas == 0 else "· " + (tr("NL_CARD_NOVAS_ONE") if novas == 1 else tr("NL_CARD_NOVAS_N") % novas)
 			continue
 		var best := Record.best(game)
