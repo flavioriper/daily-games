@@ -1,7 +1,8 @@
 extends RefCounted
 
 ## The Grove's drawings: the pond and the land seen in isometric (`see`,
-## `ground`, `light`), the five trees, the log, and
+## `ground`, `light`), the five trees, the shadow each throws (`shade`,
+## `cast`) and the stump it leaves, the log, and
 ## a picture for each tile. Energy is a mote of light, Peapod's own
 ## (ui/motes.gd), and has no drawing here. Every one is built once into a
 ## mesh and kept, so the screen pays one draw_mesh a tree and one for the
@@ -83,7 +84,16 @@ const VIEW := Rect2(0.0, 0.0, 1040.0, 802.4)
 ## land, a crown only overlaps what is behind it.
 const TREE := 1.25
 
+## A shadow's tone, and how a standing drawing is laid on the ground to be
+## one (`cast`): where a unit of its width goes, and a unit of its height.
+const CAST := Color(0.09, 0.27, 0.34, 0.24)
+const CAST_ACROSS := Vector2(-0.16, 0.44)
+const CAST_ALONG := Vector2(0.8, 0.14)
+
 static var _trees := {}
+static var _shades := {}
+static var _stumps := {}
+static var _shade_winds: Array[WeakRef] = []
 static var _icons := {}
 static var _log: ArrayMesh
 static var _tuft: ArrayMesh
@@ -93,22 +103,154 @@ static var _winds := {}
 static var _outline := PackedVector2Array()
 
 ## A tree of `look` (0 sapling, 1 birch, 2 oak, 3 pine, 4 blossom) standing
-## on (0, 0), its shade on the grass under it, in land units. Redrawn on
+## on (0, 0), in land units. Redrawn on
 ## 2026-10-06 (the user: "polish design of trees, grass, add some wind
 ## movement"): lit from the upper left, so a crown is a shade under it, a
 ## body, a lit side and a few bright clumps, with loose leaves dabbed across
 ## the tones, and a trunk flares at its foot and is darker down its right.
+## The shadow it throws is not in it (it was, an oval, and turned over with
+## a falling tree): that is `shade`, laid on the ground by `cast`.
 static func tree(look: int) -> ArrayMesh:
 	if not _trees.has(look):
 		var b := Face.Builder.new()
-		var r: float = Sim.RADIUS[look]
-		# the shadow it throws to its right, the sun being upper left, and a
-		# darker foot under the trunk
-		b.ellipse(Vector2(r * 0.5, r * 0.1), r * 1.2, r * 0.4, SHADE)
-		b.ellipse(Vector2(r * 0.08, 1.0), r * 0.46, r * 0.16, Color(SHADE, 0.2))
-		_tree_into(b, look, r)
+		_tree_into(b, look, Sim.RADIUS[look])
 		_trees[look] = b.mesh()
 	return _trees[look]
+
+# --- the shadow a tree throws ---
+
+## Collects what a drawing is made of as outlines, the colours dropped: a
+## tree drawn into one gives the shape its shadow has.
+class Outline extends Face.Builder:
+	var shapes: Array[PackedVector2Array] = []
+
+	func fan(points: PackedVector2Array, _colour: Color) -> void:
+		shapes.append(points)
+
+	func polygon(points: PackedVector2Array, _colour: Color) -> void:
+		shapes.append(points)
+
+	func stroke(points: PackedVector2Array, width: float, _colour: Color, _closed := false, _caps := true) -> void:
+		for poly: PackedVector2Array in Geometry2D.offset_polyline(points, width * 0.5, Geometry2D.JOIN_ROUND, Geometry2D.END_ROUND):
+			shapes.append(poly)
+
+	## Every shape melted into the others it touches, so nothing lies over
+	## anything: a shadow drawn of overlapping pieces is darker where they do.
+	func melted() -> Array[PackedVector2Array]:
+		var acc: Array[PackedVector2Array] = []
+		for shape in shapes:
+			var top := 0.0
+			for p in shape:
+				top = minf(top, p.y)
+			if top > -1.0:
+				continue   # what lies on the ground (a dropped petal) throws none
+			var cur := shape
+			if Geometry2D.is_polygon_clockwise(cur):
+				cur = cur.duplicate()
+				cur.reverse()
+			var again := true
+			while again:
+				again = false
+				var rest: Array[PackedVector2Array] = []
+				for q in acc:
+					var outer: Array[PackedVector2Array] = []
+					for m: PackedVector2Array in Geometry2D.merge_polygons(cur, q):
+						if not Geometry2D.is_polygon_clockwise(m):
+							outer.append(m)
+					if outer.size() == 1:
+						cur = outer[0]
+						again = true
+					else:
+						rest.append(q)
+				acc = rest
+			acc.append(cur)
+		return acc
+
+## The shadow of a tree of `look`: its own outline in one piece and one
+## tone, still standing on (0, 0). `cast` lays it on the ground; drawn
+## under `shade_wind` it moves as its tree does.
+static func shade(look: int) -> ArrayMesh:
+	if not _shades.has(look):
+		var o := Outline.new()
+		_tree_into(o, look, Sim.RADIUS[look])
+		var b := Face.Builder.new()
+		for shape in o.melted():
+			b.polygon(shape, CAST)
+		_shades[look] = b.mesh()
+	return _shades[look]
+
+## Lays a standing drawing on the ground as the shadow of what stands at
+## `at`, the sun upper left and behind: a tree's width goes back into the
+## land (CAST_ACROSS a unit) and its height off to the right (CAST_ALONG).
+## `lean` is how far the tree has turned over, in radians, to the right when
+## over 0: its shadow does not turn with it but runs out along the ground
+## and ends lying under it.
+static func cast(at: Vector2, scale: Vector2, lean := 0.0) -> Transform2D:
+	var along := CAST_ALONG * cos(lean) + Vector2(sin(lean), 0.05 * absf(sin(lean)))
+	return Transform2D(CAST_ACROSS * scale.x, -along * scale.y, at)
+
+## A material for a Control that draws shadows: the trees' own wind, turned
+## into the way a shadow goes when its crown leans. A new one each call,
+## since each holder keeps its shadows to its own land (`keep_to`); `blow`
+## winds them all.
+static func shade_wind() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = WIND
+	m.set_shader_parameter("tall", 120.0)
+	m.set_shader_parameter("reach", 9.0)
+	m.set_shader_parameter("rustle", 0.5)
+	m.set_shader_parameter("droop", 0.0)
+	m.set_shader_parameter("along", Transform2D(CAST_ACROSS, -CAST_ALONG, Vector2.ZERO).affine_inverse().basis_xform(Vector2.RIGHT))
+	_shade_winds.append(weakref(m))
+	return m
+
+## Keeps what `m` draws to the land, as it lies for a Control whose own
+## place on the screen is `xf`, the view's (0, 0) at `origin` in it and `u`
+## pixels a unit.
+static func keep_to(m: ShaderMaterial, xf: Transform2D, origin: Vector2, u: float) -> void:
+	m.set_shader_parameter("land_half", Sim.HALF)
+	m.set_shader_parameter("land_at", xf * (origin + see(Sim.LAND * 0.5) * u))
+	m.set_shader_parameter("land_u", u * xf.get_scale().x)
+	m.set_shader_parameter("land_deep", DEEP)
+
+## What a felled tree leaves standing a moment: its foot, gnawed to a point,
+## the pale wood showing. A sapling leaves none.
+static func stump(look: int) -> ArrayMesh:
+	if look == 0:
+		return null
+	if not _stumps.has(look):
+		var b := Face.Builder.new()
+		var r: float = Sim.RADIUS[look]
+		var tones: Array = [Color("7a5236"), Color("63412a")] if look == 3 else TRUNK[look]
+		var w := r * (0.16 if look == 3 else 0.13 * (0.82 if look == 1 else (1.25 if look == 2 else 1.0)))
+		var flare := 1.0 if look == 3 else 2.3
+		var waist := -r * 0.2
+		var tip := Vector2(w * 0.15, -r * 0.4)
+		var left := Face.Builder.bezier2(Vector2(-w * flare, 0.0), Vector2(-w * 1.05, -r * 0.05), Vector2(-w, waist), 6)
+		var right := Face.Builder.bezier2(Vector2(w, waist), Vector2(w * 1.05, -r * 0.05), Vector2(w * flare, 0.0), 6)
+		var pts := left.duplicate()
+		pts.append_array([Vector2(-w, waist), Vector2(w, waist)])
+		pts.append_array(right)
+		pts.append(Vector2(w * flare, 0.0))
+		b.polygon(pts, tones[0])
+		var dark := PackedVector2Array([Vector2(w * 0.25, waist)])
+		dark.append_array(right)
+		dark.append_array([Vector2(w * flare, 0.0), Vector2(w * 0.8, 0.0)])
+		b.polygon(dark, tones[1])
+		b.polygon(PackedVector2Array([Vector2(-w, waist), tip, Vector2(w, waist)]), PITH)
+		b.polygon(PackedVector2Array([Vector2(w * 0.3, waist), tip, Vector2(w, waist)]), PITH.darkened(0.12))
+		_stumps[look] = b.mesh()
+	return _stumps[look]
+
+## Half a trunk's width where a beaver bites it, as the tree is drawn.
+static func girth(look: int) -> float:
+	var r: float = Sim.RADIUS[look]
+	match look:
+		0:
+			return 3.0 * TREE
+		3:
+			return r * 0.16 * TREE
+	return r * 0.13 * (0.82 if look == 1 else (1.25 if look == 2 else 1.0)) * 1.2 * TREE
 
 static func _tree_into(b: Face.Builder, look: int, r: float) -> void:
 	match look:
@@ -229,8 +371,15 @@ static func wind(grass := false) -> ShaderMaterial:
 ## of it under reduce motion. Returns the clock, for `gust`.
 static func blow() -> float:
 	var t := Time.get_ticks_msec() / 1000.0
-	for grass: bool in [false, true]:
-		var m := wind(grass)
+	var all: Array = [wind(false), wind(true)]
+	var live: Array[WeakRef] = []
+	for ref in _shade_winds:
+		var m: ShaderMaterial = ref.get_ref()
+		if m != null:
+			all.append(m)
+			live.append(ref)
+	_shade_winds = live
+	for m: ShaderMaterial in all:
 		m.set_shader_parameter("clock", t)
 		m.set_shader_parameter("amp", 0.0 if Motion.reduce else 1.0)
 	return t
@@ -670,11 +819,9 @@ static func icon(tile: String, look := 1) -> ArrayMesh:
 	_icons[key] = b.mesh()
 	return _icons[key]
 
-## A tree without its shade, for a picture.
+## A tree for a picture.
 static func _bare(look: int) -> ArrayMesh:
-	var b := Face.Builder.new()
-	_tree_into(b, look, Sim.RADIUS[look])
-	return b.mesh()
+	return tree(look)
 
 ## A count in a few characters: 999, 1.23K, 45.6K, 789K, 1.2M, and on
 ## through B, T and Q. Trees and tiles have no last level, so every number

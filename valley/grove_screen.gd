@@ -2,7 +2,8 @@ extends Control
 
 ## The Grove: the first place on the Valley tab. A piece of land in a pond,
 ## trees coming up on it at random spots, and a circle that follows the
-## finger and chops whatever stands inside it; nothing chops by itself yet
+## finger and chops whatever stands inside it, a beaver coming to bite each
+## tree it takes; nothing chops by itself yet
 ## (the user's design, 2026-10-05). A felled tree leaves wood, which goes to
 ## the shared inventory (core/stock.gd) and is never spent here, and energy,
 ## which stays and buys the six tiles. The land takes the screen and the
@@ -23,6 +24,7 @@ signal closed
 
 const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
+const Life = preload("res://valley/grove_life.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
@@ -70,10 +72,9 @@ const SHORE := 26.0
 const SHORE_FOOT := 64.0
 ## And this much over the land's back edge, for the crowns that stand there.
 const SHORE_TOP := 110.0
-## Seconds: a hit tree's squash, a felled one's fall, a number's rise, a log's
-## flight, and how long the circle's rim swells on a chop.
-const SQUASH := 0.16
-const FALL := 0.4
+## Seconds: a number's rise, a log's flight, and how long the circle's rim
+## swells on a chop. A hit tree's squash and a felled one's fall are
+## valley/grove_life.gd's.
 const NUM := 0.7
 const FLIGHT := 0.5
 const SWELL := 0.18
@@ -124,11 +125,15 @@ var _tiles_for := ""
 var _ground: ArrayMesh
 var _light: ArrayMesh
 ## What stands on the land, in layers over the ground (the field's own
-## draw): the grass and the trees each under their wind (`Art.wind`), the
+## draw): the grass, the trees' shadows and the trees each under their wind
+## (`Art.wind`, `Life.shade`), the
 ## leaves it carries, and over them what is not blown about (the bars, the
-## circle, the numbers).
+## circle, the numbers). The trees, their shadows, the beavers and the falls
+## are `_life`'s (valley/grove_life.gd).
+var _life: RefCounted
 var _grass: Array[MultiMesh] = []
 var _grass_l: Control
+var _shade_l: Control
 var _trees_l: Control
 var _leaves_l: Control
 var _top: Control
@@ -143,10 +148,11 @@ var _finger := -1   # the touch that holds the circle
 var _hold_at := Vector2.ZERO
 var _held_back := false
 var _since_chop := 10.0
-var _hit := {}      # tree id -> seconds since it was last hit
-var _falls: Array = []   # {tree, t, dir}
 var _nums: Array = []    # {at, text, t, gold}: `at` in view units
-var _flies: Array = []   # {from, to, t}: logs on their way to the wood plate
+var _flies: Array = []   # {from, to, t, give}: logs on their way to the wood plate
+## Wood of trees still coming down or still in the air: the plate counts it
+## as it lands.
+var _wood_air := 0
 var _bump := {}     # plate -> its running bump
 var _dirty := false
 var _since_save := 0.0
@@ -228,8 +234,13 @@ func _build() -> void:
 	# a crown at the back of the land stops at the pond's edge
 	field.clip_contents = true
 	col.add_child(field)
+	_life = Life.new()
+	_life.landed.connect(_on_landed)
+	_life.gave.connect(_on_gave)
 	_grass_l = _layer("Grass", _draw_grass)
 	_grass_l.material = Art.wind(true)
+	_shade_l = _layer("Shade", func() -> void: _life.draw_shade(_shade_l, sim))
+	_shade_l.material = _life.shade
 	_trees_l = _layer("Trees", _draw_trees)
 	_trees_l.material = Art.wind()
 	_leaves_l = _layer("Leaves", _draw_leaves)
@@ -530,6 +541,7 @@ func _layout_field() -> void:
 	_ground = Art.ground(s, _origin, _u)
 	_grass = Art.grass(_origin, _u)
 	_light = Art.light(s)
+	_life.place(_origin, _u, field.get_global_transform())
 	field.queue_redraw()
 	_grass_l.queue_redraw()
 
@@ -590,21 +602,20 @@ func _process(delta: float) -> void:
 	var holding: bool = _hold and not _held_back and not _shop.visible and not settings_sheet.is_open()
 	sim.step(delta, holding, unit(_hold_at))
 	_since_chop += delta
+	# the land may have moved on the screen (an inset, the banner): the
+	# shadows are kept to where it is now
+	_life.place(_origin, _u, field.get_global_transform())
+	_life.step(delta, sim, holding, unit(_hold_at))
 	_play_events()
-	for id in _hit.keys():
-		_hit[id] += delta
-		if _hit[id] > SQUASH:
-			_hit.erase(id)
-	for list: Array in [_falls, _nums]:
-		for item: Dictionary in list:
-			item.t += delta
-	_falls = _falls.filter(func(f: Dictionary) -> bool: return f.t < FALL)
+	for item: Dictionary in _nums:
+		item.t += delta
 	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
 	var landed := false
 	for f: Dictionary in _flies:
 		f.t += delta
 		if f.t >= FLIGHT:
 			landed = true
+			_wood_air = maxi(0, _wood_air - int(f.give))
 			_kick("wood")
 	if landed:
 		_flies = _flies.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT)
@@ -616,6 +627,7 @@ func _process(delta: float) -> void:
 	_wind = Art.blow()
 	_step_leaves(delta)
 	# the ground and the grass are drawn once: the wind moves the grass
+	_shade_l.queue_redraw()
 	_trees_l.queue_redraw()
 	_leaves_l.queue_redraw()
 	_top.queue_redraw()
@@ -654,17 +666,17 @@ func _play_events() -> void:
 		match String(e.kind):
 			"hit":
 				var tree: Dictionary = e.tree
-				_hit[tree.id] = 0.0
+				_life.hit(tree)
 				_nums.append({"at": Art.see(tree.pos) + Vector2(_rng.randf_range(-16.0, 16.0), -Art.height(Sim.look_of(tree.tier)) * 0.86 * Art.TREE),
 					"text": Art.short(int(e.amount)), "t": 0.0, "gold": false})
 			"fell":
 				var tree: Dictionary = e.tree
 				var give := int(e.give)
-				_falls.append({"tree": tree, "t": 0.0, "dir": -1.0 if _rng.randf() < 0.5 else 1.0})
+				_wood_air += give
+				_life.fell(tree, give)
 				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0),
 					"text": "+" + Art.short(give), "t": 0.0, "gold": true})
 				Stock.add("wood", give, GAME)
-				_throw(tree, give)
 				_fx.cue("fell")
 				_dirty = true
 			"swing":
@@ -675,19 +687,27 @@ func _play_events() -> void:
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
 
-## A felled tree throws its logs at the wood plate and lets its energy go
+## A tree's crown has come down at `at` (view units): dust off the grass.
+func _on_landed(tree: Dictionary, at: Vector2) -> void:
+	_fx.puff(_at(at) + Vector2(0.0, Sim.radius_of(tree.tier) * 0.5 * _u), Color("f3ecd2"), 5)
+
+## A felled tree, lying with its crown at `at` (view units), goes into what
+## it gives: it throws its logs at the wood plate and lets its energy go
 ## as motes of light, which drift out of its crown, hang a moment and are
 ## drawn in to the energy plate; the counts roll up as they land.
-func _throw(tree: Dictionary, give: int) -> void:
+func _on_gave(tree: Dictionary, give: int, at: Vector2) -> void:
 	if Motion.reduce:
+		_wood_air = maxi(0, _wood_air - give)
 		return
-	var from: Vector2 = field.get_global_transform() * (px(tree.pos) + Vector2(0.0, -Sim.radius_of(tree.tier) * 1.7 * Art.TREE * _u))
+	var from: Vector2 = field.get_global_transform() * _at(at)
 	var inv := _over.get_global_transform().affine_inverse()
 	var icon: Control = _plates.wood.icon
 	var to: Vector2 = inv * (icon.get_global_transform() * (icon.size * 0.5))
-	for i in mini(THROWN, give):
+	var logs := mini(THROWN, give)
+	for i in logs:
+		# the last to land brings the tree's wood onto the plate
 		_flies.append({"from": inv * from + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-20.0, 20.0)),
-			"to": to, "t": -0.05 * i})
+			"to": to, "t": -0.05 * i, "give": give if i == logs - 1 else 0})
 	_motes.u = size.x / 810.0 * 2.2
 	_motes.drop(from, float(give) * ORBS, mini(MOTES + MOTES_STEP * int(tree.tier), MOTES_MOST))
 
@@ -709,7 +729,7 @@ func _kick(kind: String) -> void:
 
 func _refresh_hud(delta: float) -> void:
 	# the energy plate counts what has landed, not what is still in the air
-	var want := {"energy": float(sim.energy - ceili(_motes.due / ORBS - 0.001)), "wood": float(Stock.count("wood"))}
+	var want := {"energy": float(sim.energy - ceili(_motes.due / ORBS - 0.001)), "wood": float(Stock.count("wood") - _wood_air)}
 	for kind: String in want:
 		var held: float = want[kind]
 		var s: float = _shown[kind]
@@ -848,27 +868,11 @@ func _draw_grass() -> void:
 	for mm: MultiMesh in _grass:
 		_grass_l.draw_multimesh(mm, null)
 
-## The trees, the ones coming down under the ones standing, from the back of
-## the land to the front. The wind leans them in the layer's material; this
-## only puts each where it is, as big as it has grown and as squashed as it
-## was just hit.
+## The trees, the ones coming down, their stumps and the beavers at them,
+## from the back of the land to the front (valley/grove_life.gd). The wind
+## leans them in the layer's material.
 func _draw_trees() -> void:
-	var standing: Array = sim.trees.duplicate()
-	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
-	for f: Dictionary in _falls:
-		var tree: Dictionary = f.tree
-		var k: float = f.t / FALL
-		_trees_l.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
-			Transform2D(0.0 if Motion.reduce else float(f.dir) * k * k * 1.3, Vector2(_u, _u) * Art.TREE, 0.0, px(tree.pos)),
-			Color(1.0, 1.0, 1.0, 1.0 - k * k))
-	for tree: Dictionary in standing:
-		var grown := 1.0 if Motion.reduce else clampf((sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
-		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u * Art.TREE
-		var squash := 0.0
-		if _hit.has(tree.id) and not Motion.reduce:
-			squash = sin(float(_hit[tree.id]) / SQUASH * PI) * 0.16
-		_trees_l.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
-			Transform2D(0.0, Vector2(size * (1.0 + squash), size * (1.0 - squash)), 0.0, px(tree.pos)))
+	_life.draw(_trees_l, sim)
 
 ## The loose leaves, one MultiMesh: each turning over as it goes (its width
 ## closing and opening), in and out of sight at its ends.

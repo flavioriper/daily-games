@@ -147,6 +147,73 @@ shop's card are untouched.
   `Input.parse_input_event`: before, held 2.6 s, nothing felled; after, the
   sapling felled and the scrim closed. A drag was not driven.
 
+**Beavers, cast shadows and a real fall (2026-10-06)**, the user: "polish
+the grove animation, for each chop show a beaver that bite the tree, also
+improve the falling animation to something better animated, right now even
+shadow rotate. I would love to see some subtle lightning shadows casted upon
+trees dynamic instead of a round". Read as: tree-shaped shadows thrown by the
+trees, moving with them, in place of the oval. **Shadows falling on other
+trees' crowns were not built**; if that was the wish, it is still owed.
+- **`valley/grove_life.gd` holds what stands and moves on the land** for all
+  three holders (the screen, the tab's card, the tutorial's pages): trees,
+  shadows, beavers, falls, stumps, chips and burst leaves. A holder calls
+  `place(origin, u, its global transform)`, `step` after the sim's own,
+  `hit` / `fell` for the sim's events, `draw_shade` on a Control wearing
+  `life.shade` and `draw` on one wearing `Art.wind()`. The screen's `_hit`,
+  `_falls`, `SQUASH` and `FALL` went there. **A new look for the land goes
+  in Life, not in three files.**
+- **A shadow is not in the tree's mesh any more** (it was an oval baked in,
+  so it turned over with a falling tree). `Art.shade(look)` is the tree's
+  own outline in one piece: the tree drawn into an `Outline` builder and its
+  shapes melted with `Geometry2D.merge_polygons`, **so nothing overlaps and
+  no part of one shadow is darker** (two trees' shadows still add where
+  they cross, as the ovals did). `Art.cast(at, scale, lean)` is the
+  transform that lays it on the ground: width back into the land
+  (`CAST_ACROSS`), height off to the right (`CAST_ALONG`), tone `CAST`
+  (alpha 0.24). `lean` is how far the tree has turned over: **the shadow
+  never turns, it runs out along the ground and ends under the lying tree.**
+- **Shadows move with the wind and stop at the turf.** `Art.shade_wind()` is
+  a third material off `wind_2d.gdshader` (one each holder, `blow()` winds
+  them all): the vertex still has the tree's height, so it leans on its own
+  tree's gust, and `along` turns the lean the way a shadow goes. The shader
+  has a fragment stage now: `land_half` over 0 fades what is drawn outside
+  the land's diamond (corners cut as the land's are rounded; `Art.keep_to`
+  sets where the land is on the screen, every frame, since a card slides).
+  Trees and grass leave `land_half` at 0 and are untouched.
+- **The beaver is `ui/faces/beaver.gd`**: three kept meshes (tail about its
+  joint, body, head about its neck, open-mouthed or biting), three draws a
+  beaver, mirrored to face its trunk and so lit from no side. One comes to
+  every tree the circle takes (`Sim.reaches`, split out of `_chop`) and
+  stays `LINGER` after; it rears back as the next chop comes due and its
+  teeth are in on the frame the sim says `hit`, two chips flying. Left of an
+  even tree id, right of an odd; **the tree comes down away from it**, and
+  it hops twice (`CHEER`) before it goes. **The Axe tile, the word chop and
+  the `chop` sound are unchanged**: nobody asked, and the sound is a dry
+  tick that passes for a bite.
+- **A fall is four beats, 0.9 s** (`CREAK` 0.1 back, `DROP` 0.42 over as a
+  falling thing goes, `SETTLE` 0.18 one bounce with a burst of its leaves,
+  `GONE` 0.2 drawn in toward its crown), and a gnawed stump (`Art.stump`,
+  none for a sapling) stays `STUMP` 0.5 more. `landed` is the screen's dust
+  (`Fx2D.puff`); `gave` is when the logs and the motes leave, **from where
+  the crown lies, 0.7 s after the last bite**. The wood plate counts a
+  tree's wood when its last log lands (`_wood_air`), as the energy plate
+  counts motes. The sim, Stock and the `fell` sound are still at the event.
+- **Reduce motion**: a beaver is there or not and only changes its face, a
+  felled tree fades where it stands, both signals come at once, shadows
+  stand still.
+- **Measured** (810x1440, 2026-10-06): 50 draw calls on a new grove, 64 with
+  a beaver at its sapling, 178 on the land of thirty at rest (was 152), 287
+  under the oval with a dozen beavers (was 233), 337 with the shop open, 220
+  to 230 under the tutorial, the tab 110 and 168; `opengl3_angle` under
+  reduce motion 50, 181-188, 284 and 338. Frame gaps as before on both
+  drivers (ANGLE reads 19-23 ms on this Mac with or without the change).
+  Suite 249790/0; the probe's 33 checks.
+- **Not done**: a phone (the fragment stage and the melted outlines have
+  only run on this Mac's two drivers); nobody has watched it at speed, every
+  judgement was made on frames stepped a sixtieth apart; a fall behind a
+  front tree's crown is mostly hidden (it is sorted by its foot); a late
+  grove sweeping many trees a second was not looked at.
+
 The tab's card takes the whole tab for the tall picture. **It is called the Grove and nothing else**: the game it
 follows is named once, in the spec.
 

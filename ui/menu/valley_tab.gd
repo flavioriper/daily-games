@@ -18,9 +18,9 @@ signal play(place: String)
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
-const Motion = preload("res://core/motion.gd")
 const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
+const Life = preload("res://valley/grove_life.gd")
 
 const GAP := 20
 const PAD := 24
@@ -40,6 +40,11 @@ var _sim: RefCounted
 var _wood_l: Label
 var _rate: Label
 var _art: Control
+## The trees and their shadows, as the screen shows them
+## (valley/grove_life.gd), on two layers over the picture's ground.
+var _life: RefCounted = Life.new()
+var _shade: Control
+var _stand: Control
 var _ground: ArrayMesh
 var _light: ArrayMesh
 var _grass: Array[MultiMesh] = []
@@ -116,6 +121,12 @@ func _grove_card() -> Control:
 	# the land's own wind: only what stands on a foot of its own leans
 	_art.material = Art.wind()
 	col.add_child(_art)
+	_shade = _art_layer(func() -> void:
+		if _sim != null:
+			_life.draw_shade(_shade, _sim))
+	_shade.material = _life.shade
+	_stand = _art_layer(_draw_stand)
+	_stand.material = Art.wind()
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", GAP)
 	col.add_child(head)
@@ -204,13 +215,26 @@ func _makes_chip() -> Control:
 	_write_rate()
 	return chip
 
+func _art_layer(draws: Callable) -> Control:
+	var layer := Control.new()
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draws)
+	_art.add_child(layer)
+	return layer
+
 ## Called as the tab is shown: the grove as it stands now.
 func refresh() -> void:
 	_sim = Sim.load_saved(Time.get_unix_time_from_system())
 	_write_wood()
 	_write_count()
 	_write_rate()
+	_redraw_art()
+
+func _redraw_art() -> void:
 	_art.queue_redraw()
+	_shade.queue_redraw()
+	_stand.queue_redraw()
 
 func _on_play() -> void:
 	# the screen reads the grove from its file: hand it the one on the card
@@ -227,7 +251,11 @@ func _process(delta: float) -> void:
 	if _sim.trees.size() != before:
 		_write_count()
 	Art.blow()
-	_art.queue_redraw()
+	# the tab slides and the list scrolls: the shadows are kept to where the
+	# land is now
+	_life.place(_origin, _u, _art.get_global_transform())
+	_shade.queue_redraw()
+	_stand.queue_redraw()
 
 func _write_wood() -> void:
 	if _wood_l != null:
@@ -276,7 +304,8 @@ func _layout_art() -> void:
 	_ground = Art.ground(s, _origin, _u)
 	_grass = Art.grass(_origin, _u)
 	_light = Art.light(s)
-	_art.queue_redraw()
+	_life.place(_origin, _u, _art.get_global_transform())
+	_redraw_art()
 
 func _draw_art() -> void:
 	if _ground == null:
@@ -284,13 +313,11 @@ func _draw_art() -> void:
 	_art.draw_mesh(_ground, null)
 	for mm: MultiMesh in _grass:
 		_art.draw_multimesh(mm, null)
-	if _sim == null:
+
+func _draw_stand() -> void:
+	if _ground == null:
 		return
-	var standing: Array = _sim.trees.duplicate()
-	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
-	for tree: Dictionary in standing:
-		var grown := 1.0 if Motion.reduce else clampf((_sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
-		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u * Art.TREE
-		_art.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null, Transform2D(0.0, Vector2(size, size), 0.0, _origin + Art.see(tree.pos) * _u))
+	if _sim != null:
+		_life.draw(_stand, _sim)
 	# drawn where it lies, so the wind the trees wear leaves it alone
-	_art.draw_mesh(_light, null)
+	_stand.draw_mesh(_light, null)

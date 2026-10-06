@@ -245,15 +245,20 @@ func _spot() -> Vector2:
 func wood_per_min() -> float:
 	return 0.0
 
+## Whether the circle about `at` takes `tree`: it is chopped along the line
+## it stands on, from its foot back to under its crown's middle.
+func reaches(tree: Dictionary, at: Vector2) -> bool:
+	var r := radius_of(tree.tier)
+	var foot: Vector2 = tree.pos
+	var near := Geometry2D.get_closest_point_to_segment(at, foot, foot + Vector2(0.0, -r * STAND))
+	return near.distance_to(at) <= reach() + r * 0.6
+
 ## One chop: everything standing in the circle takes the axe.
 func _chop(at: Vector2) -> void:
 	_last_chop = clock
 	var hits := 0
 	for tree: Dictionary in trees.duplicate():
-		var r := radius_of(tree.tier)
-		var foot: Vector2 = tree.pos
-		var near := Geometry2D.get_closest_point_to_segment(at, foot, foot + Vector2(0.0, -r * STAND))
-		if near.distance_to(at) > reach() + r * 0.6:
+		if not reaches(tree, at):
 			continue
 		hits += 1
 		tree.hp = int(tree.hp) - power()
