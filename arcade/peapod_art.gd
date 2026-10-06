@@ -14,6 +14,7 @@ extends RefCounted
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Motes = preload("res://ui/motes.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Sim = preload("res://arcade/peapod_sim.gd")
 
@@ -54,9 +55,9 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
 ## Energy: a mote of light, its pale heart and the deeper blue its glow
 ## thins out through, so it reads on a pale sky.
-const ORB := Color("3fc8ff")
-const ORB_HI := Color("e6fbff")
-const ORB_DEEP := Color("1f8fd0")
+const ORB := Motes.ORB
+const ORB_HI := Motes.ORB_HI
+const ORB_DEEP := Motes.ORB_DEEP
 ## The pod as the barrel of an element, by Sim.Kind: its skin, its shade,
 ## its light and the dark of its mouth.
 const POD_OF := {Sim.Kind.ZAP: [Color("f3df78"), Color("cfa93a"), Color("fff6c8"), Color("8a6a1c")],
@@ -382,54 +383,17 @@ static func fire(u: float) -> ArrayMesh:
 	_flame(b, Vector2.ZERO, 16.0 * u, EMBER, BOLT)
 	return _keep(key, b.mesh())
 
-## A soft light laid into a builder: `col` at `c`, thinning to nothing at
-## `r` along a curve (`fall`: the higher, the smaller its bright heart), so
-## it has no edge to see.
-const GLOW_RINGS := 5
-const GLOW_SIDES := 28
+## The mote of energy and the soft light it is made of are ui/motes.gd's,
+## since 2026-10-06: the Grove's energy is the same mote.
+const ORB_R := Motes.ORB_R
 static func glow(b: Face.Builder, c: Vector2, r: float, col: Color, fall := 2.0) -> void:
-	var mid := b.vertex(c, col)
-	var first := b.verts.size()
-	for ring in GLOW_RINGS:
-		var t := float(ring + 1) / GLOW_RINGS
-		var tint := Color(col, col.a * pow(1.0 - t, fall))
-		for k in GLOW_SIDES:
-			b.vertex(c + Vector2.from_angle(TAU * k / GLOW_SIDES) * r * t, tint)
-	for k in GLOW_SIDES:
-		var next := (k + 1) % GLOW_SIDES
-		b.tri(mid, first + k, first + next)
-		for ring in GLOW_RINGS - 1:
-			var a := first + ring * GLOW_SIDES
-			var o := a + GLOW_SIDES
-			b.tri(a + k, o + k, o + next)
-			b.tri(a + k, o + next, a + next)
+	Motes.glow(b, c, r, col, fall)
 
-## A mote of energy, centred, its glow ORB_R in radius (built that big so it
-## is smooth, and scaled down by its draw): nothing but light. A wide blue
-## glow thinning to nothing, a paler one in it and a white heart, each with
-## no edge. No rim, no shine and no rays: a rim and a shine made it a ball,
-## rays made it lightning.
-const ORB_R := 64.0
 static func orb() -> ArrayMesh:
-	if _cache.has("orb"):
-		return _cache["orb"]
-	var b := Face.Builder.new()
-	var r := ORB_R
-	glow(b, Vector2.ZERO, r, Color(ORB_DEEP, 0.62), 1.5)
-	glow(b, Vector2.ZERO, 0.62 * r, Color(ORB, 0.95), 1.4)
-	glow(b, Vector2.ZERO, 0.4 * r, Color(ORB_HI, 1.0), 1.2)
-	glow(b, Vector2.ZERO, 0.26 * r, Color.WHITE, 0.9)
-	return _keep("orb", b.mesh())
+	return Motes.orb()
 
-## The light a mote throws round itself, centred and ORB_R in radius: drawn
-## over the motes and added to what is under it, so a crate behind a mote is
-## lit by it.
 static func orb_light() -> ArrayMesh:
-	if _cache.has("orb_light"):
-		return _cache["orb_light"]
-	var b := Face.Builder.new()
-	glow(b, Vector2.ZERO, ORB_R, Color(0.3, 0.62, 1.0, 0.42), 1.8)
-	return _keep("orb_light", b.mesh())
+	return Motes.orb_light()
 
 ## A spent pea, centred, with no wake: what tumbles off a crate it landed on.
 static func crumb(u: float) -> ArrayMesh:

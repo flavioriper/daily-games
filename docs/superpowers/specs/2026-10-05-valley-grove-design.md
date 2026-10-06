@@ -97,6 +97,13 @@ the circle on the oldest tree and buys the cheapest tile it can (2026-10-05):
 | 6 visits a day of 10 minutes | day 2 | day 8 | day 21 | day 21: Axe 20, Room 16 of 27 |
 | 2 hours without stopping | at 1 h 42 | no | no | Axe 9, Room 7 of 27, 1,726 wood |
 
+**2026-10-06, the land 1300 tall instead of 800** (the tiles went into the
+shop's card and the land took their room): the same three runs read the
+same, Birch on day 5, Oak on day 21, Pine on day 59; day 2, 8 and 21; Birch
+at 1 h 42 with Axe 9 and Room 7. The bot chops one tree at a time, so it
+does not say what a wider-spread land is to a person sweeping the circle
+over several.
+
 ## 5. The screens
 
 - **The tab** (`ui/menu/valley_tab.gd`): the wood pill and the Grove's card,
@@ -104,7 +111,8 @@ the circle on the oldest tree and buys the cheapest tile it can (2026-10-05):
   front of you, with a bar of trees over room. Play writes the grove back
   first, so the screen opens on the trees the card was showing.
 - **The Grove** (`valley/grove_screen.gd`): the top bar, two plates (energy,
-  wood), the pond with the land in it, the count, six tiles. Its own host
+  wood), the pond with the land in it, the count, six tiles (since
+  2026-10-06 on a card of their own, behind a Shop button). Its own host
   like an Arcade screen. Drawn flat in our palette, not the reference's
   pixels; trees have no faces. A tutorial of three pages (chop, wood and
   energy, trees take their time).
@@ -118,7 +126,9 @@ grows; cloud save (the valley is on the device, like gold).
 
 ## 7. Open
 
-- **Energy** is the Grove's word and its picture is a green spark. The user
+- **Energy** is the Grove's word and its picture was a green spark; since
+  2026-10-06 it is Peapod's mote of light (`ui/motes.gd`), by the user's
+  word, the number still the Grove's own. The user
   also described a later game that makes *power* for the others; the words
   are close and nothing here settles what the next place calls its own.
 - **Past Blossom** the looks repeat (Birch II, with one gold mark). Whether

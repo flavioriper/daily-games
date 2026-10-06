@@ -7,8 +7,9 @@ extends Control
 ## picks the page (set before it enters the tree):
 ##
 ## - CHOP: the circle on a sapling, a number a chop, and the tree comes down.
-## - GIFTS: what a felled tree leaves: a log for the shared wood, a spark for
-##   the grove's own energy, each to its plate.
+## - GIFTS: what a felled tree leaves: a log for the shared wood, motes of
+##   light for the grove's own energy (ui/motes.gd, the screen's own layer
+##   stepped by this page), each to its plate.
 ## - WAIT: an empty land filling up by itself, a tree at a time.
 ##
 ## Under reduce motion each page stands still at its telling moment.
@@ -18,12 +19,13 @@ const Art = preload("res://valley/grove_art.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Motes = preload("res://ui/motes.gd")
 
 enum Lesson { CHOP, GIFTS, WAIT }
 
 ## Seconds a page plays before it starts over, and where a still page stands.
-const LENGTH := {Lesson.CHOP: 4.2, Lesson.GIFTS: 3.2, Lesson.WAIT: 6.0}
-const STILL := {Lesson.CHOP: 1.2, Lesson.GIFTS: 2.2, Lesson.WAIT: 5.0}
+const LENGTH := {Lesson.CHOP: 4.2, Lesson.GIFTS: 3.8, Lesson.WAIT: 6.0}
+const STILL := {Lesson.CHOP: 1.2, Lesson.GIFTS: 2.5, Lesson.WAIT: 5.0}
 ## Where the lesson's trees stand, in land units, and the height of the land
 ## the picture is centred on.
 const SPOTS := [Vector2(405, 520), Vector2(210, 440), Vector2(610, 470), Vector2(300, 640), Vector2(540, 650)]
@@ -39,10 +41,12 @@ var _t := 0.0
 var _pond: Control
 var _over: Control
 var _ground: ArrayMesh
+var _grass: Array[MultiMesh] = []
 var _u := 1.0
 var _origin := Vector2.ZERO
 var _nums: Array = []
 var _fell_at := -1.0
+var _motes: Control
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -50,15 +54,23 @@ func _ready() -> void:
 	_pond.clip_contents = true
 	_pond.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pond.draw.connect(_draw_pond)
+	# the land's own wind: only what stands on a foot of its own leans
+	_pond.material = Art.wind()
 	add_child(_pond)
 	_over = Control.new()
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_over.draw.connect(_draw_gifts)
 	add_child(_over)
+	if lesson == Lesson.GIFTS:
+		_motes = Motes.new()
+		_motes.auto = false
+		_motes.always = true
+		add_child(_motes)
 	resized.connect(_layout)
 	_start()
 	_layout()
+	Art.blow()
 	if Motion.reduce:
 		_advance(float(STILL[lesson]))
 		set_process(false)
@@ -67,6 +79,9 @@ func _start() -> void:
 	_t = 0.0
 	_nums.clear()
 	_fell_at = -1.0
+	if _motes != null:
+		_motes.clear()
+		_motes.rng.seed = 11
 	_sim = Sim.new(11)
 	_sim.trees.clear()
 	_sim.events.clear()
@@ -85,11 +100,17 @@ func _layout() -> void:
 	_u = (_pond.size.x - 70.0) / Sim.LAND.x
 	_origin = Vector2((_pond.size.x - Sim.LAND.x * _u) * 0.5, _pond.size.y * 0.5 - MIDDLE * _u)
 	_ground = Art.ground(_pond.size, Rect2(_origin, Sim.LAND * _u))
+	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
+	# a still page's motes hang where the last size put them: play it again
+	if _motes != null and not is_processing():
+		_start()
+		_advance(float(STILL[lesson]))
 	_pond.queue_redraw()
 	_over.queue_redraw()
 
 func _process(delta: float) -> void:
 	_advance(delta)
+	Art.blow()
 	if _t >= float(LENGTH[lesson]):
 		_start()
 	_pond.queue_redraw()
@@ -115,7 +136,13 @@ func _advance(delta: float) -> void:
 				_nums.append({"at": e.tree.pos + Vector2(0.0, -Art.height(0) * 0.9), "text": str(e.amount), "t": 0.0})
 			elif e.kind == "fell":
 				_fell_at = _t
+				if _motes != null:
+					_motes.u = size.x / 810.0 * 2.2
+					_motes.to = Vector2(size.x * 0.5 - 10.0 - PLATE.x + 56.0, PLATE.y * 0.5)
+					_motes.drop(get_global_transform() * (_pond.position + _px(e.tree.pos + Vector2(0.0, -Sim.radius_of(0)))), 4.0, 4)
 		_sim.events.clear()
+		if _motes != null:
+			_motes.step(dt)
 		_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
 
 func _holding() -> bool:
@@ -132,6 +159,8 @@ func _draw_pond() -> void:
 	if _ground == null:
 		return
 	_pond.draw_mesh(_ground, null)
+	for mm: MultiMesh in _grass:
+		_pond.draw_multimesh(mm, null)
 	var standing: Array = _sim.trees.duplicate()
 	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
 	for tree: Dictionary in standing:
@@ -158,7 +187,8 @@ func _draw_pond() -> void:
 		_pond.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * (1.0 - k * k * k)))
 		_pond.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 1.0, 1.0, 1.0 - k * k * k))
 
-## The two plates over the pond, and the spark and the log on their way.
+## The two plates over the pond, and the log on its way (the motes are their
+## own layer's).
 func _draw_gifts() -> void:
 	if lesson != Lesson.GIFTS:
 		return
@@ -178,7 +208,6 @@ func _draw_gifts() -> void:
 	if k >= 1.0:
 		return
 	var from := _pond.position + _px(SPOTS[0]) + Vector2(0.0, -40.0 * _u)
-	for row: Array in [[left, Art.spark(), 1.0], [right, Art.log_mesh(), 0.9]]:
-		var to: Vector2 = (row[0] as Rect2).position + Vector2(56.0, PLATE.y * 0.5)
-		var at := from.lerp(to, k * k) + Vector2(0.0, -sin(k * PI) * 50.0)
-		_over.draw_mesh(row[1], null, Transform2D(k * 3.0, Vector2(row[2], row[2]), 0.0, at))
+	var to := right.position + Vector2(56.0, PLATE.y * 0.5)
+	var at := from.lerp(to, k * k) + Vector2(0.0, -sin(k * PI) * 50.0)
+	_over.draw_mesh(Art.log_mesh(), null, Transform2D(k * 3.0, Vector2(0.9, 0.9), 0.0, at))

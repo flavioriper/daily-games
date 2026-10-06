@@ -36,6 +36,7 @@ var _sim: RefCounted
 var _wood_l: Label
 var _art: Control
 var _ground: ArrayMesh
+var _grass: Array[MultiMesh] = []
 var _u := 1.0
 var _origin := Vector2.ZERO
 var _line: Label
@@ -50,12 +51,9 @@ func _init() -> void:
 	strip.name = "StockStrip"
 	strip.add_child(_wood_pill())
 	add_child(strip)
+	# the card takes the tab: the land is taller than it is wide since
+	# 2026-10-06, and its picture wants the height
 	add_child(_grove_card())
-	var rest := Control.new()
-	rest.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rest.size_flags_stretch_ratio = 0.35
-	rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(rest)
 	set_process(false)
 
 func _ready() -> void:
@@ -108,6 +106,8 @@ func _grove_card() -> Control:
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.resized.connect(_layout_art)
 	_art.draw.connect(_draw_art)
+	# the land's own wind: only what stands on a foot of its own leans
+	_art.material = Art.wind()
 	col.add_child(_art)
 	var name_l := Label.new()
 	name_l.text = "Grove"
@@ -164,6 +164,7 @@ func _process(delta: float) -> void:
 	_sim.events.clear()
 	if _sim.trees.size() != before:
 		_write_count()
+	Art.blow()
 	_art.queue_redraw()
 
 func _write_wood() -> void:
@@ -199,12 +200,15 @@ func _layout_art() -> void:
 	_u = minf((s.x - SHORE * 2.0) / Sim.LAND.x, (s.y - SHORE - SHORE_FOOT) / Sim.LAND.y)
 	_origin = Vector2((s.x - Sim.LAND.x * _u) * 0.5, SHORE + (s.y - SHORE - SHORE_FOOT - Sim.LAND.y * _u) * 0.5)
 	_ground = Art.ground(s, Rect2(_origin, Sim.LAND * _u))
+	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
 	_art.queue_redraw()
 
 func _draw_art() -> void:
 	if _ground == null:
 		return
 	_art.draw_mesh(_ground, null)
+	for mm: MultiMesh in _grass:
+		_art.draw_multimesh(mm, null)
 	if _sim == null:
 		return
 	var standing: Array = _sim.trees.duplicate()

@@ -5,7 +5,10 @@ extends Control
 ## finger and chops whatever stands inside it; nothing chops by itself yet
 ## (the user's design, 2026-10-05). A felled tree leaves wood, which goes to
 ## the shared inventory (core/stock.gd) and is never spent here, and energy,
-## which stays and buys the six tiles under the land.
+## which stays and buys the six tiles. The land takes the screen and the
+## tiles are a card over it, opened by the Shop button under the land's left
+## (the user, 2026-10-06: "game should take most of screen, and shop should
+## be a dialog inside the game that opens by clicking a button").
 ## Spec docs/superpowers/specs/2026-10-05-valley-grove-design.md; the rules
 ## and every number are valley/grove_sim.gd's, the drawings grove_art.gd's.
 ##
@@ -23,6 +26,9 @@ const Art = preload("res://valley/grove_art.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
+const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -30,14 +36,34 @@ const SafeArea = preload("res://ui/safe_area.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const Analytics = preload("res://core/analytics.gd")
+const Motes = preload("res://ui/motes.gd")
 
 const GAME := "grove"
 const MARGIN := 40
 const GAP := 20
 const HUD_H := 96.0
-const INFO_H := 48.0
-const TILE_H := 264.0
+const INFO_H := 104.0
+const SHOP_W := 330.0
+## A tile of the shop, top to bottom: its picture on a disc, its name over
+## what the next level does, and its price on a bar along its foot. TILE_H
+## leaves air round each, so nothing sits on the tile's edge.
+const TILE_H := 344.0
+const TILE_PAD := 14.0
+const DISC_R := 60.0
+## How much of the disc's width a picture may take: a big one (a tree) is
+## brought down to it, a small one (Swing's three arcs) grown by DISC_GROW at
+## most, or its strokes come out twice as thick as its neighbours'.
+const DISC_FIT := 0.78
+const DISC_GROW := 1.3
+const PRICE_H := 64.0
+const PRICE_R := 20
+## The shop's card: as wide as the screen's own column (the plates, the pond),
+## thinly lined.
+const CARD_W := 1000.0
+const CARD_INSET := 26
+const X_SIZE := 84.0
 const TILE_GAP := 16
+const PRICE_OFF := Color("ede4d3")
 const FILL := Color("fcf7ef")
 ## The land keeps this much water round it, and more under its earth edge.
 const SHORE := 26.0
@@ -49,8 +75,21 @@ const FALL := 0.4
 const NUM := 0.7
 const FLIGHT := 0.5
 const SWELL := 0.18
-## Logs and sparks thrown by one tree, at most, each.
+## Logs thrown by one tree, at most.
 const THROWN := 3
+## Energy is motes of light, Peapod's own (ui/motes.gd): `ORBS` to one energy,
+## as there; a sapling lets go MOTES of them and each tier after MOTES_STEP
+## more, up to MOTES_MOST.
+const ORBS := 4
+const MOTES := 4
+const MOTES_STEP := 2
+const MOTES_MOST := 12
+## The wind takes a leaf off a tree now and then and carries it across the
+## land: the most in the air, the seconds one lasts, and the seconds between
+## two on a land of one tree in a full gust (more trees, more leaves).
+const LEAVES := 14
+const LEAF_LIFE := 3.2
+const LEAF_GAP := 2.6
 const SAVE_GAP := 5.0
 ## A chop that hits is heard a little higher or lower each time, so a held
 ## finger is not one sample on a loop.
@@ -67,14 +106,33 @@ var settings_sheet: Control
 var tutor: RefCounted
 var field: Control
 var _fx: Node2D
+## The motes land on a click of their own, too many and too close to be felt.
+var _quiet: Node2D
+var _motes: Control
 var _margins: MarginContainer
 var _over: Control
 var _count_l: Label
+var _shop_b: Button
+var _shop: Control
+var _shop_energy: Label
 var _plates := {}   # "energy" / "wood" -> {panel, icon, label}
 var _shown := {"energy": 0.0, "wood": 0.0}
-var _tiles := {}    # tile -> {button, icon, effect, pill, cost, badge, level}
+var _tiles := {}    # tile -> {button, icon, effect, pill, cost, mote, tick, badge, level}
 var _tiles_for := ""
 var _ground: ArrayMesh
+## What stands on the land, in layers over the ground (the field's own
+## draw): the grass and the trees each under their wind (`Art.wind`), the
+## leaves it carries, and over them what is not blown about (the bars, the
+## circle, the numbers).
+var _grass: Array[MultiMesh] = []
+var _grass_l: Control
+var _trees_l: Control
+var _leaves_l: Control
+var _top: Control
+var _leaves: Array = []   # {pos, vel, t, turn, spin, seed, col}: land units
+var _leaf_mm: MultiMesh
+var _leaf_wait := 1.0
+var _wind := 0.0
 var _u := 1.0
 var _origin := Vector2.ZERO
 var _hold := false
@@ -84,7 +142,7 @@ var _since_chop := 10.0
 var _hit := {}      # tree id -> seconds since it was last hit
 var _falls: Array = []   # {tree, t, dir}
 var _nums: Array = []    # {at, text, t, gold}
-var _flies: Array = []   # {from, to, t, kind}
+var _flies: Array = []   # {from, to, t}: logs on their way to the wood plate
 var _bump := {}     # plate -> its running bump
 var _dirty := false
 var _since_save := 0.0
@@ -163,24 +221,110 @@ func _build() -> void:
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
 	col.add_child(field)
+	_grass_l = _layer("Grass", _draw_grass)
+	_grass_l.material = Art.wind(true)
+	_trees_l = _layer("Trees", _draw_trees)
+	_trees_l.material = Art.wind()
+	_leaves_l = _layer("Leaves", _draw_leaves)
+	_top = _layer("Top", _draw_top)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
+	_quiet = Fx2D.new()
+	_quiet.buzzes = false
+	field.add_child(_quiet)
 
+	# under the land: the shop's button on the left, clear of the thumb that
+	# chops, and the count and the hint on the right
 	var info := HBoxContainer.new()
+	info.name = "Info"
 	info.custom_minimum_size.y = INFO_H
+	_shop_b = IconButton.new("trend", tr("GROVE_SHOP"), "PrimaryButton")
+	_shop_b.name = "Shop"
+	_shop_b.custom_minimum_size = Vector2(SHOP_W, INFO_H)
+	_shop_b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_shop_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shop_b.pressed.connect(open_shop)
+	info.add_child(_shop_b)
+	var words := VBoxContainer.new()
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", 0)
+	info.add_child(words)
 	_count_l = Label.new()
 	_count_l.name = "Count"
 	_count_l.theme_type_variation = "CardTitle"
-	_count_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.add_child(_count_l)
+	_count_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	words.add_child(_count_l)
 	var hint := Label.new()
 	hint.text = "GROVE_HINT"
 	hint.theme_type_variation = "CardBlurb"
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	info.add_child(hint)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	words.add_child(hint)
 	col.add_child(info)
 
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_over.draw.connect(_draw_over)
+	add_child(_over)
+	_motes = Motes.new()
+	_motes.target = _plates.energy.icon
+	_motes.landed.connect(_on_motes_landed)
+	add_child(_motes)
+	_shop = _build_shop()
+	add_child(_shop)
+	_apply_insets()
+
+## The shop: the six tiles on a card over the grove, the energy held on a
+## pill at its head and an X beside it. Built once and shown; the grove goes
+## on behind it (trees come up, motes land), but nothing is chopped.
+func _build_shop() -> Control:
+	var scrim := Dialog.scrim()
+	scrim.name = "Shop"
+	scrim.visible = false
+	scrim.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			close_shop())
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(CARD_W, CARD_INSET)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 20)
+	card.add_child(col)
+	var trailing := HBoxContainer.new()
+	trailing.add_theme_constant_override("separation", 16)
+	var pill := PanelContainer.new()
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
+	var held := HBoxContainer.new()
+	held.add_theme_constant_override("separation", 10)
+	pill.add_child(held)
+	held.add_child(_mote_icon(46.0))
+	_shop_energy = Label.new()
+	_shop_energy.name = "Energy"
+	_shop_energy.theme_type_variation = "SheetTitle"
+	held.add_child(_shop_energy)
+	trailing.add_child(pill)
+	var x := IconButton.new("cross", "", "IconButton")
+	x.name = "Close"
+	x.custom_minimum_size = Vector2(X_SIZE, X_SIZE)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var r := int(X_SIZE * 0.5)
+	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
+	for st in ["normal", "hover", "disabled"]:
+		x.add_theme_stylebox_override(st, up)
+	x.add_theme_stylebox_override("pressed", down)
+	x.pressed.connect(close_shop)
+	trailing.add_child(x)
+	col.add_child(Dialog.head("GROVE_SHOP", "trend", trailing))
 	var grid := GridContainer.new()
 	grid.name = "Tiles"
 	grid.columns = 3
@@ -189,14 +333,39 @@ func _build() -> void:
 	for tile: String in Sim.TILES:
 		grid.add_child(_tile(tile))
 	col.add_child(grid)
+	return scrim
 
-	_over = Control.new()
-	_over.name = "Over"
-	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_over.draw.connect(_draw_over)
-	add_child(_over)
-	_apply_insets()
+func open_shop() -> void:
+	if _shop.visible:
+		return
+	_hold = false
+	_refresh_tiles()
+	_shop.visible = true
+	Motion.appear(_shop, 0.0, 1.0, 0.2)
+
+func close_shop() -> void:
+	_shop.visible = false
+
+## A mote of energy, `side` pixels square: what a price is counted in.
+func _mote_icon(side: float) -> Control:
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		var sc := Motes.icon_scale(side)
+		icon.draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
+	return icon
+
+## One layer of the land, over the ground and as big as the field.
+func _layer(called: String, draws: Callable) -> Control:
+	var layer := Control.new()
+	layer.name = called
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.draw.connect(draws)
+	field.add_child(layer)
+	return layer
 
 ## What is held, on a paper plate: its picture, its name and the count.
 func _plate(what: String, key: String) -> Control:
@@ -232,9 +401,9 @@ func _plate(what: String, key: String) -> Control:
 	_plates[what] = {"panel": plate, "icon": icon, "label": value}
 	return plate
 
-## One of the six: its picture, its name, what the next level does, and the
-## energy it asks. A tile that cannot be bought yet is still pressed: it
-## shakes its head.
+## One of the six, on the shop's card: its picture, its name, what the next
+## level does, and the energy it asks on a bar along its foot. A tile that
+## cannot be bought yet is still pressed: it shakes its head.
 func _tile(tile: String) -> Control:
 	var b := Button.new()
 	b.name = tile.capitalize()
@@ -246,62 +415,68 @@ func _tile(tile: String) -> Control:
 	b.pressed.connect(_on_tile.bind(tile))
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_top = 12.0
-	col.offset_bottom = -16.0
-	col.offset_left = 10.0
-	col.offset_right = -10.0
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.offset_top = 22.0
+	col.offset_bottom = -TILE_PAD - 2.0
+	col.offset_left = TILE_PAD
+	col.offset_right = -TILE_PAD
 	col.add_theme_constant_override("separation", 0)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(col)
 	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(0, 108)
+	icon.custom_minimum_size = Vector2(0, DISC_R * 2.0)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.draw.connect(_draw_tile_icon.bind(icon, tile))
 	col.add_child(icon)
+	# the words take what is left between the picture and the price, and
+	# stand in the middle of it
+	var words := VBoxContainer.new()
+	words.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -4)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(words)
 	var name_l := Label.new()
 	name_l.text = TILE_NAMES[tile]
 	name_l.theme_type_variation = "CardTitle"
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(name_l)
+	name_l.clip_text = true
+	words.add_child(name_l)
 	var effect := Label.new()
 	effect.theme_type_variation = "CardBlurb"
 	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	effect.clip_text = true
 	effect.add_theme_font_size_override("font_size", 24)
-	col.add_child(effect)
-	var gap := Control.new()
-	gap.custom_minimum_size.y = 6
-	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(gap)
+	words.add_child(effect)
 	var pill := PanelContainer.new()
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	pill.custom_minimum_size = Vector2(210, 52)
+	pill.custom_minimum_size.y = PRICE_H
 	col.add_child(pill)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill.add_child(row)
-	var spark := Control.new()
-	spark.custom_minimum_size = Vector2(34, 34)
-	spark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	spark.draw.connect(func() -> void:
-		spark.draw_mesh(Art.spark(), null, Transform2D(0.0, Vector2(0.72, 0.72), 0.0, spark.size * 0.5)))
-	row.add_child(spark)
+	var mote := _mote_icon(38.0)
+	row.add_child(mote)
+	# a tile with no level left wears a tick where its price was
+	var tick := Control.new()
+	tick.custom_minimum_size = Vector2(34, 34)
+	tick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tick.draw.connect(func() -> void:
+		Icons.paint(tick, "check", Rect2(Vector2.ZERO, tick.size), Pal.LEAF_DEEP))
+	row.add_child(tick)
 	var cost := Label.new()
 	cost.theme_type_variation = "CardTitle"
-	cost.add_theme_font_size_override("font_size", 34)
+	cost.add_theme_font_size_override("font_size", 38)
 	row.add_child(cost)
 	# the level, on the tile's corner once there is one
 	var badge := PanelContainer.new()
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	badge.offset_top = 10.0
-	badge.offset_right = -10.0
+	badge.offset_top = 12.0
+	badge.offset_right = -12.0
 	var bb := StyleBoxFlat.new()
 	bb.bg_color = Pal.ACCENT
 	bb.set_corner_radius_all(18)
@@ -315,15 +490,19 @@ func _tile(tile: String) -> Control:
 	badge.add_child(level)
 	b.add_child(badge)
 	_tiles[tile] = {"button": b, "icon": icon, "effect": effect, "pill": pill, "cost": cost,
-		"spark": spark, "badge": badge, "level": level}
+		"mote": mote, "tick": tick, "badge": badge, "level": level}
 	return b
 
+## A tile's picture, fitted to its disc: a tree and an axe take the same room.
 func _draw_tile_icon(icon: Control, tile: String) -> void:
 	var c := icon.size * 0.5
 	var done: bool = sim.is_done(tile)
-	icon.draw_circle(c, 52.0, Pal.LEAF_TILE if done else Pal.PARCHMENT, true, -1.0, true)
-	var look: int = Sim.look_of(int(sim.lv.seeds) + 1)
-	icon.draw_mesh(Art.icon(tile, look), null, Transform2D(0.0, Vector2(0.88, 0.88), 0.0, c))
+	icon.draw_circle(c, DISC_R, Pal.LEAF_TILE if done else Pal.PARCHMENT, true, -1.0, true)
+	var mesh := Art.icon(tile, Sim.look_of(int(sim.lv.seeds) + 1))
+	var box := mesh.get_aabb()
+	var fit := minf(DISC_GROW, DISC_R * 2.0 * DISC_FIT / maxf(1.0, maxf(box.size.x, box.size.y)))
+	var mid := Vector2(box.get_center().x, box.get_center().y)
+	icon.draw_mesh(mesh, null, Transform2D(0.0, Vector2(fit, fit), 0.0, c - mid * fit))
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -341,7 +520,9 @@ func _layout_field() -> void:
 	_u = minf((s.x - SHORE * 2.0) / Sim.LAND.x, (s.y - SHORE - SHORE_FOOT) / Sim.LAND.y)
 	_origin = Vector2((s.x - Sim.LAND.x * _u) * 0.5, SHORE + (s.y - SHORE - SHORE_FOOT - Sim.LAND.y * _u) * 0.5)
 	_ground = Art.ground(s, Rect2(_origin, Sim.LAND * _u))
+	_grass = Art.grass(Rect2(_origin, Sim.LAND * _u))
 	field.queue_redraw()
+	_grass_l.queue_redraw()
 
 ## A point of the land, in the field's pixels, and back.
 func px(p: Vector2) -> Vector2:
@@ -390,7 +571,7 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
-	var holding: bool = _hold and not _held_back and not settings_sheet.is_open()
+	var holding: bool = _hold and not _held_back and not _shop.visible and not settings_sheet.is_open()
 	sim.step(delta, holding, unit(_hold_at))
 	_since_chop += delta
 	_play_events()
@@ -408,7 +589,7 @@ func _process(delta: float) -> void:
 		f.t += delta
 		if f.t >= FLIGHT:
 			landed = true
-			_kick(String(f.kind))
+			_kick("wood")
 	if landed:
 		_flies = _flies.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT)
 	_refresh_hud(delta)
@@ -416,8 +597,41 @@ func _process(delta: float) -> void:
 		_since_save += delta
 		if _since_save >= SAVE_GAP:
 			_save()
-	field.queue_redraw()
+	_wind = Art.blow()
+	_step_leaves(delta)
+	# the ground and the grass are drawn once: the wind moves the grass
+	_trees_l.queue_redraw()
+	_leaves_l.queue_redraw()
+	_top.queue_redraw()
 	_over.queue_redraw()
+
+## The wind takes a leaf off a tree, sooner in a gust and on a fuller land,
+## and carries it off to the right, sinking and turning over, until it is
+## gone or past the land's edge.
+func _step_leaves(delta: float) -> void:
+	if Motion.reduce:
+		_leaves.clear()
+		return
+	var across := field.get_global_transform().origin.x
+	var n: int = sim.trees.size()
+	if n > 0:
+		_leaf_wait -= delta * (0.25 + 0.75 * Art.gust(across + field.size.x * 0.5, _wind)) * sqrt(float(n))
+		if _leaf_wait <= 0.0 and _leaves.size() < LEAVES:
+			_leaf_wait = LEAF_GAP * _rng.randf_range(0.6, 1.4)
+			var tree: Dictionary = sim.trees[_rng.randi() % n]
+			var r: float = Sim.radius_of(tree.tier)
+			_leaves.append({"pos": tree.pos + Vector2(_rng.randf_range(-0.6, 0.6) * r, -r * _rng.randf_range(1.3, 2.3)),
+				"vel": Vector2(20.0, -10.0), "t": 0.0, "turn": _rng.randf() * TAU, "spin": _rng.randf_range(-5.0, 5.0),
+				"seed": _rng.randf() * 100.0, "col": Art.LEAF[Sim.look_of(tree.tier)]})
+	for l: Dictionary in _leaves:
+		l.t += delta
+		var at: Vector2 = l.pos
+		var g: float = Art.gust(across + px(at).x, _wind)
+		var want := Vector2(50.0 + 170.0 * g, 22.0 + 20.0 * sin(float(l.t) * 4.4 + float(l.seed)))
+		l.vel = (l.vel as Vector2).lerp(want, minf(1.0, delta * 2.2))
+		l.pos = at + (l.vel as Vector2) * delta
+		l.turn = float(l.turn) + float(l.spin) * (0.4 + g) * delta
+	_leaves = _leaves.filter(func(l: Dictionary) -> bool: return l.t < LEAF_LIFE and l.pos.x < Sim.LAND.x + 30.0)
 
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
@@ -445,19 +659,29 @@ func _play_events() -> void:
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
 
-## A felled tree throws its logs at the wood plate and its sparks at the
-## energy plate; the counts roll up as they land.
+## A felled tree throws its logs at the wood plate and lets its energy go
+## as motes of light, which drift out of its crown, hang a moment and are
+## drawn in to the energy plate; the counts roll up as they land.
 func _throw(tree: Dictionary, give: int) -> void:
 	if Motion.reduce:
 		return
 	var from: Vector2 = field.get_global_transform() * px(tree.pos + Vector2(0.0, -Sim.radius_of(tree.tier)))
 	var inv := _over.get_global_transform().affine_inverse()
-	for kind: String in ["wood", "energy"]:
-		var icon: Control = _plates[kind].icon
-		var to: Vector2 = inv * (icon.get_global_transform() * (icon.size * 0.5))
-		for i in mini(THROWN, give):
-			_flies.append({"from": inv * from + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-20.0, 20.0)),
-				"to": to, "t": -0.05 * i - (0.04 if kind == "energy" else 0.0), "kind": kind})
+	var icon: Control = _plates.wood.icon
+	var to: Vector2 = inv * (icon.get_global_transform() * (icon.size * 0.5))
+	for i in mini(THROWN, give):
+		_flies.append({"from": inv * from + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-20.0, 20.0)),
+			"to": to, "t": -0.05 * i})
+	_motes.u = size.x / 810.0 * 2.2
+	_motes.drop(from, float(give) * ORBS, mini(MOTES + MOTES_STEP * int(tree.tier), MOTES_MOST))
+
+## Motes came down on the energy plate: it swells, unless it still is from
+## the one before, and a click is heard, each a semitone up a short run.
+func _on_motes_landed(_count: int, note: int) -> void:
+	if (_plates.energy.panel as Control).scale.x <= 1.01:
+		_kick("energy")
+	if note >= 0:
+		_quiet.cue("chop", 1.5 * pow(2.0, mini(note, 14) / 12.0), -13.0)
 
 ## A plate swells as something lands on it. Each kick ends the last, or
 ## landings a moment apart would leave it stuck big (ui/menu/gold_pill.gd).
@@ -468,7 +692,8 @@ func _kick(kind: String) -> void:
 	_bump[kind] = Motion.bump(panel, 0.06, 0.18)
 
 func _refresh_hud(delta: float) -> void:
-	var want := {"energy": float(sim.energy), "wood": float(Stock.count("wood"))}
+	# the energy plate counts what has landed, not what is still in the air
+	var want := {"energy": float(sim.energy - ceili(_motes.due / ORBS - 0.001)), "wood": float(Stock.count("wood"))}
 	for kind: String in want:
 		var held: float = want[kind]
 		var s: float = _shown[kind]
@@ -478,6 +703,7 @@ func _refresh_hud(delta: float) -> void:
 			s = lerpf(s, held, minf(1.0, delta * 10.0))
 		_shown[kind] = s
 		(_plates[kind].label as Label).text = Art.short(int(round(s)))
+	_shop_energy.text = (_plates.energy.label as Label).text
 	_count_l.text = tr("GROVE_TREES") % [sim.trees.size(), sim.room()]
 
 # --- the tiles ---
@@ -490,24 +716,36 @@ func _tiles_key() -> String:
 
 func _refresh_tiles() -> void:
 	_tiles_for = _tiles_key()
+	# the shop's button says how many tiles the energy reaches
+	var reach := 0
+	for tile: String in Sim.TILES:
+		if sim.can_buy(tile):
+			reach += 1
+	(_shop_b as IconButton).badge = reach
 	for tile: String in Sim.TILES:
 		var t: Dictionary = _tiles[tile]
 		var done: bool = sim.is_done(tile)
 		var can: bool = sim.can_buy(tile)
 		var level := int(sim.lv[tile])
 		(t.effect as Label).text = tr("GROVE_DONE") if done else _effect(tile)
-		(t.pill as Control).visible = not done
-		(t.cost as Label).text = Art.short(sim.cost(tile))
+		(t.cost as Label).text = tr("GROVE_MAX") if done else Art.short(sim.cost(tile))
+		(t.mote as Control).visible = not done
+		(t.tick as Control).visible = done
+		# the price's bar: the sun button's own when the energy reaches it,
+		# paper when it does not, a leaf when there is nothing left to buy
 		var box := StyleBoxFlat.new()
-		box.bg_color = Pal.SUN if can else Color("e6dccb")
-		box.set_corner_radius_all(26)
-		box.content_margin_left = 16.0
-		box.content_margin_right = 20.0
+		box.bg_color = Pal.LEAF_TILE if done else (Pal.SUN if can else PRICE_OFF)
+		box.set_corner_radius_all(PRICE_R)
+		box.content_margin_left = 12.0
+		box.content_margin_right = 16.0
+		if can:
+			box.border_width_bottom = 5
+			box.border_color = Pal.SUN_DEEP
 		(t.pill as Control).add_theme_stylebox_override("panel", box)
-		(t.cost as Label).add_theme_color_override("font_color", Pal.SURFACE if can else Pal.TEXT_DIM)
+		(t.cost as Label).add_theme_color_override("font_color",
+			Pal.LEAF_DEEP if done else (Pal.TEXT if can else Pal.TEXT_DIM))
 		(t.badge as Control).visible = level > 0
-		(t.level as Label).text = tr("GROVE_MAX") if done else str(level)
-		(t.button as Control).modulate.a = 1.0 if can or done else 0.78
+		(t.level as Label).text = str(level)
 		(t.icon as Control).queue_redraw()
 
 ## What the next level of `tile` does, in the tile's own words.
@@ -569,42 +807,77 @@ func _on_field_input(event: InputEvent) -> void:
 # --- drawing ---
 
 func _draw_field() -> void:
-	if _ground == null:
-		return
-	field.draw_mesh(_ground, null)
+	if _ground != null:
+		field.draw_mesh(_ground, null)
+
+func _draw_grass() -> void:
+	for mm: MultiMesh in _grass:
+		_grass_l.draw_multimesh(mm, null)
+
+## The trees, the ones coming down under the ones standing, from the back of
+## the land to the front. The wind leans them in the layer's material; this
+## only puts each where it is, as big as it has grown and as squashed as it
+## was just hit.
+func _draw_trees() -> void:
 	var standing: Array = sim.trees.duplicate()
 	standing.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.pos.y < b.pos.y)
-	var now := Time.get_ticks_msec() / 1000.0
 	for f: Dictionary in _falls:
 		var tree: Dictionary = f.tree
 		var k: float = f.t / FALL
-		field.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
+		_trees_l.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
 			Transform2D(0.0 if Motion.reduce else float(f.dir) * k * k * 1.3, Vector2(_u, _u), 0.0, px(tree.pos)),
 			Color(1.0, 1.0, 1.0, 1.0 - k * k))
 	for tree: Dictionary in standing:
-		var look: int = Sim.look_of(tree.tier)
 		var grown := 1.0 if Motion.reduce else clampf((sim.clock - float(tree.born)) / Sim.GROW, 0.0, 1.0)
 		var size := (0.15 + 0.85 * Motion.back_out(grown)) * _u
 		var squash := 0.0
 		if _hit.has(tree.id) and not Motion.reduce:
 			squash = sin(float(_hit[tree.id]) / SQUASH * PI) * 0.16
-		var sway := 0.0 if Motion.reduce else sin(now * 1.4 + float(tree.id)) * 0.02
+		_trees_l.draw_mesh(Art.tree(Sim.look_of(tree.tier)), null,
+			Transform2D(0.0, Vector2(size * (1.0 + squash), size * (1.0 - squash)), 0.0, px(tree.pos)))
+
+## The loose leaves, one MultiMesh: each turning over as it goes (its width
+## closing and opening), in and out of sight at its ends.
+func _draw_leaves() -> void:
+	if _leaves.is_empty():
+		return
+	if _leaf_mm == null:
+		_leaf_mm = MultiMesh.new()
+		_leaf_mm.transform_format = MultiMesh.TRANSFORM_2D
+		_leaf_mm.use_colors = true
+		_leaf_mm.mesh = Art.leaf()
+		_leaf_mm.instance_count = LEAVES
+	var n := 0
+	for l: Dictionary in _leaves:
+		var t: float = l.t
+		var a := minf(1.0, t / 0.25) * clampf((LEAF_LIFE - t) / 0.7, 0.0, 1.0)
+		var flat := 0.35 + 0.65 * absf(cos(t * 5.0 + float(l.seed)))
+		_leaf_mm.set_instance_transform_2d(n, Transform2D(float(l.turn), Vector2(_u, _u * flat), 0.0, px(l.pos)))
+		_leaf_mm.set_instance_color(n, Color(l.col as Color, a))
+		n += 1
+	_leaf_mm.visible_instance_count = n
+	_leaves_l.draw_multimesh(_leaf_mm, null)
+
+## What the wind leaves alone, over the trees: a lap's gold marks at a foot,
+## a hurt tree's bar, the circle and the numbers.
+func _draw_top() -> void:
+	for tree: Dictionary in sim.trees:
 		var at := px(tree.pos)
-		field.draw_mesh(Art.tree(look), null, Transform2D(sway, Vector2(size * (1.0 + squash), size * (1.0 - squash)), 0.0, at))
-		for i in Sim.lap_of(tree.tier):
-			field.draw_circle(at + Vector2((i - (Sim.lap_of(tree.tier) - 1) * 0.5) * 18.0, -4.0) * _u, 7.0 * _u, Art.MARK, true, -1.0, true)
+		var laps: int = Sim.lap_of(tree.tier)
+		for i in laps:
+			_top.draw_circle(at + Vector2((i - (laps - 1) * 0.5) * 18.0, -4.0) * _u, 7.0 * _u, Art.MARK, true, -1.0, true)
 		var full: int = Sim.hp_of(tree.tier)
 		if int(tree.hp) < full:
 			var w := maxf(54.0, Sim.radius_of(tree.tier) * 1.6) * _u
 			var bar := Rect2(at + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))
-			field.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
-			field.draw_rect(Rect2(bar.position, Vector2(maxf(4.0, w * float(tree.hp) / full), bar.size.y)), Color("fff6e6"))
+			_top.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
+			_top.draw_rect(Rect2(bar.position, Vector2(maxf(4.0, w * float(tree.hp) / full), bar.size.y)), Color("fff6e6"))
 	if _hold and not _held_back:
 		var r: float = sim.reach() * _u
 		var swell := 0.0 if Motion.reduce else maxf(0.0, 1.0 - _since_chop / SWELL)
-		field.draw_circle(_hold_at, r, Color(1.0, 1.0, 1.0, 0.22 + swell * 0.2), true, -1.0, true)
-		field.draw_arc(_hold_at, r + swell * 8.0, 0.0, TAU, 72, Color(0.23, 0.19, 0.16, 0.75), 5.0, true)
-		field.draw_arc(_hold_at, r - 5.0, 0.0, TAU, 72, Color(1.0, 1.0, 1.0, 0.8), 3.0, true)
+		_top.draw_circle(_hold_at, r, Color(1.0, 1.0, 1.0, 0.22 + swell * 0.2), true, -1.0, true)
+		_top.draw_arc(_hold_at, r + swell * 8.0, 0.0, TAU, 72, Color(0.23, 0.19, 0.16, 0.75), 5.0, true)
+		_top.draw_arc(_hold_at, r - 5.0, 0.0, TAU, 72, Color(1.0, 1.0, 1.0, 0.8), 3.0, true)
 	var font := get_theme_font("font", "SheetTitle")
 	for n: Dictionary in _nums:
 		var k: float = n.t / NUM
@@ -612,20 +885,17 @@ func _draw_field() -> void:
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var at := px(n.at) + Vector2(-w * 0.5, 0.0 if Motion.reduce else -k * 56.0 * _u)
 		var a := 1.0 - k * k * k
-		field.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
-		field.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Art.MARK if n.gold else Color.WHITE, a))
+		_top.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
+		_top.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Art.MARK if n.gold else Color.WHITE, a))
 
-## Logs and sparks in the air, over everything, on their way to the plates.
+## Logs in the air, over everything, on their way to the wood plate.
 func _draw_over() -> void:
 	for f: Dictionary in _flies:
 		if f.t <= 0.0:
 			continue
 		var k := clampf(f.t / FLIGHT, 0.0, 1.0)
 		var at: Vector2 = (f.from as Vector2).lerp(f.to, k * k) + Vector2(0.0, -sin(k * PI) * 110.0)
-		if f.kind == "wood":
-			_over.draw_mesh(Art.log_mesh(), null, Transform2D(-0.3 + k * 4.0, Vector2(0.7, 0.7), 0.0, at))
-		else:
-			_over.draw_mesh(Art.spark(), null, Transform2D(k * 3.0, Vector2(0.9, 0.9), 0.0, at))
+		_over.draw_mesh(Art.log_mesh(), null, Transform2D(-0.3 + k * 4.0, Vector2(0.7, 0.7), 0.0, at))
 
 # --- leaving ---
 
@@ -649,5 +919,8 @@ func go_back() -> void:
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
+		return
+	if _shop.visible:
+		close_shop()
 		return
 	_on_back()

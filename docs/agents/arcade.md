@@ -668,7 +668,13 @@ chalk line ends the run. Its "furthest" is the wave.
     it is nothing on a pale sky, which is why the mote itself is ordinary
     alpha in a deeper blue; the added layer is what lights a crate behind
     it. Renders the same under `opengl3_angle`. The shop's energy medallion
-    and its prices are the same mote.
+    and its prices are the same mote. **Since 2026-10-06 the mote's look
+    (`glow`, `orb`, `orb_light`, the three blues) is `ui/motes.gd`'s**, which
+    `Art` hands on, because the Grove's energy is the same one
+    (docs/agents/valley.md). That file is also this flight as a layer of
+    its own, with these numbers; Peapod's screen still runs the code it was
+    copied from, so **a change to how a mote flies is made in both** until
+    this screen is moved onto the layer.
   - 78 draw calls at rest, 106-124 on a full wall, 138-144 under four peas a
     volley with a Fan of lightning or of flame (`tests/_perf_peapod.gd`),
     150-184 on the shot harness's cast with every dressing on, both drivers

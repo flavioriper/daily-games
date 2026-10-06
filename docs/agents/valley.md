@@ -30,11 +30,58 @@ shot or a demo easier: change the harness's preset instead.
 A piece of land in a pond; trees come up at random spots; a circle follows
 the finger and chops what is inside it; nothing chops by itself. A felled
 tree gives wood (to Stock) and the same energy (the Grove's own), and energy
-buys six tiles. **It is called the Grove and nothing else**: the game it
+buys six tiles.
+
+**The land takes the screen and the tiles are a card over it** (the user,
+2026-10-06: "game should take most of screen, and shop should be a dialog
+inside the game that opens by clicking a button"). Under the two plates the
+pond runs down to one row: the **Shop** button on the left (the sun button,
+`trend`, its badge the number of tiles the energy reaches; left because the
+thumb that chops rests on the right) and the count and the hint on the
+right. `open_shop` shows a card built once (`_build_shop`: `Dialog.card`,
+the energy held on a pill, a round X, the six tiles three to a row as they
+were); the X, a press on the scrim and Android's back close it. The grove
+goes on behind it, but nothing is chopped.
+
+**The card's layout was polished the same day** (the user, on a shot of it:
+"polish shop layout"). What was wrong: a tile was 264 tall for 276 of
+content, so the picture touched its top and the price sat on its bottom
+edge; a tile the energy did not reach was the whole button at 0.78 alpha,
+so the card's sprigs showed through five of the six on a new grove; a tree
+stood out of its disc and hid it while Swing's arcs were small in theirs;
+the card was 1020 wide over a column of 1000. Now (`_tile`,
+`_draw_tile_icon`, `_refresh_tiles`):
+- **A tile is 344 tall** (`TILE_H`), the card 1000 by 868: the picture on a
+  disc of `DISC_R` 60, the name and the effect centred in what is left, and
+  the price on a bar along the tile's foot (`PRICE_H` 64, as wide as the
+  tile less `TILE_PAD`).
+- **The price bar alone says whether the energy reaches**: the sun button's
+  own (ink on `SUN`, a `SUN_DEEP` lip) when it does, paper (`PRICE_OFF`) and
+  dim figures when it does not. **No tile is faded**: the picture, the name
+  and the effect of what is being saved for stay as sharp as the rest.
+- **A tile with no level left keeps its bar**, a leaf one with a tick and
+  `GROVE_MAX`, so six bars line up; its corner chip goes on saying its
+  level (it said "max").
+- **Every picture is fitted to its disc** by its mesh's own box
+  (`DISC_FIT` 0.78 of the width; a small one grown `DISC_GROW` 1.3 at most,
+  or Swing's strokes come out twice as thick as the axe's).
+- The effect line is still 24 px on one line: the longest it gets
+  ("Bétula XI também cresce") is 273 of the 277 there are, and at 26 a
+  line of the first grove wraps in Portuguese. **A new effect string is
+  measured in pt and es before it ships.**
+- Draw calls where they were: 131 on a new grove with the card open, 232-262
+  on the land of thirty (810x1440, and 810x1755 on `opengl3_angle`).
+- **Not done: a phone**, and the user has not seen it.
+
+**`Sim.LAND` is 810 by 1300**
+(was 800 tall), so the land fills a 9:16 card top to bottom with a strip of
+water each side and a taller phone side to side; a grove saved before has
+its trees in the top of it. The pace bot reads the same on it (below). The
+tab's card takes the whole tab for the taller picture. **It is called the Grove and nothing else**: the game it
 follows is named once, in the spec.
 
 - **The game is pure data** (`valley/grove_sim.gd`): land units (810 by
-  800), `step(dt, holding, at)`, `events` for the screen to drain, `buy`,
+  1300), `step(dt, holding, at)`, `events` for the screen to drain, `buy`,
   and its own keeping (`save(now)`, `load_saved(now)`, `Sim.path`). It never
   touches Stock: the screen hands each felled tree's wood over.
   `tests/_probe_grove.gd` checks the arithmetic (33 checks) and
@@ -48,11 +95,75 @@ follows is named once, in the spec.
   and steps it for the card's picture; **Play saves that sim first**, so the
   screen opens on the same trees.
 - **One mesh a tree** (`valley/grove_art.gd`, cached per look), one for the
-  whole pond and land (`Art.ground`, rebuilt on resize only), a draw a
-  number. 92 draw calls on a new grove, 246-286 on a land of thirty with a
+  whole pond and land (`Art.ground`, rebuilt on resize only), one MultiMesh
+  for the tufts and one for the flowers, a draw a number. 92 draw calls on a new grove, 246-286 on a land of thirty with a
   circle over a dozen trees and their numbers, about 230 under the tutorial
   card (810x1440, 2026-10-05; the same on `opengl3_angle`, 92 and 275).
   Frames came 8 to 10 ms apart through the whole harness run on both.
+  **With the tiles off the screen (2026-10-06): 46 on a new grove, 176-201
+  on the land of thirty under the circle, 246-265 with the shop's card
+  open, about 180 under the tutorial card**, both drivers.
+- **Energy is Peapod's motes of light** (`ui/motes.gd`; the user,
+  2026-10-06: "use the same energy as the peapod game (not shared energy
+  but same pattern and animations)"). The green eight-pointed spark is gone
+  from the plate, the six prices, the air and the tutorial's page. A felled
+  tree lets go 4 motes (a sapling) to 12 (two more a tier), `ORBS` (4) to
+  one energy as in Peapod, out of its crown: they drift, lift, hang
+  breathing, and go round a bend to the energy plate leaving dust, the
+  plate glowing and swelling as they land and **counting only what has
+  landed** (`_motes.due`). Each landing is `chop` again, quiet and a
+  semitone up a short run, through `_quiet` (no buzz, like Peapod's). The
+  energy itself is still the Grove's own number in the Grove's own save.
+  The wood's logs fly as they did. Under reduce motion nothing flies and
+  the count is there at once. The tutorial's gifts page steps a layer of
+  its own (`auto` off, `always` on, seeded), played again on a resize when
+  it stands still. Two draws more while motes are up (107 with a sapling's
+  four in the air, 304 on the late grove's shot; 810x1440, 2026-10-06).
+  **Not done: a phone, and the landing clicks are unheard.**
+- **The trees and the grass were redrawn and the wind blows over them**
+  (the user, 2026-10-06: "polish design of trees, grass, add some wind
+  movement").
+  - **Trees** (`Art._tree_into`, `_trunk`, `_crown`, `_tier`), lit from the
+    upper left: a crown is four tones (its shade showing under it, a body,
+    the lit side, a few bright clumps) with loose leaves of one tone dabbed
+    over another; a trunk flares at its foot, forks under the crown and is
+    darker down its right; the pine's skirts hang in scallops with a lit
+    left side and a shadow under each; the sapling's leaves have a lit half
+    and a rib; the blossom has dropped petals at its foot. Still one cached
+    mesh a look, the same sizes as before (`height`, `RADIUS`).
+  - **Grass**: the ground (still one mesh) has soft hollows and rises,
+    short combed strokes of both, pebbles, layers in the earth edge and the
+    turf hanging over it in scallops. **The tufts and the flowers left the
+    ground mesh**: `Art.grass(land)` is a MultiMesh of each (one tuft and
+    one flower mesh, tinted an instance), so they can lean.
+  - **Wind is a vertex shader, nothing is rebuilt**
+    (`shaders/wind_2d.gdshader`, `Art.wind()` for trees, `Art.wind(true)`
+    for grass: two materials off one file, no instance uniform). A mesh
+    standing on its own (0, 0) leans more the higher a vertex is above its
+    foot; the gust is a slow wave crossing from the left with a quicker
+    sway on it, read from the model matrix's origin (a draw's transform and
+    a MultiMesh instance's alike), and a crown's vertices shiver each on
+    their own time. **What is drawn where it lies (y >= 0 in its item: the
+    ground, a bar, a circle, text) does not move**, which is why the tab's
+    card and the tutorial's pond wear the tree material on the one item
+    that draws everything. `Art.blow()` is called every frame by whatever
+    shows the land: it sets the clock, and `amp` 0 under reduce motion (two
+    frames 1.5 s apart are pixel-identical). `Art.gust` is the same wave in
+    script.
+  - **The screen's field is layers now**: the field draws the ground once;
+    `Grass` (drawn once, moved by its material), `Trees`, `Leaves`, `Top`
+    (lap marks, bars, the circle, the numbers: over every tree, not
+    between them). **Loose leaves** (`_step_leaves`, one MultiMesh, 14 at
+    most): the wind takes one off a standing tree now and then, sooner in
+    a gust and on a fuller land, in that tree's colour (a petal off a
+    blossom), and carries it right, sinking and turning over. None under
+    reduce motion.
+  - 48 draw calls on a new grove, 147-149 on the land of thirty at rest,
+    194-210 under the circle, about 250 with the shop open (810x1440,
+    2026-10-06); 145 and 199 on `opengl3_angle`, where it leans the same.
+  - **Not done: a phone** (the shader has only run on this Mac's two
+    drivers), and nobody has watched it move: every judgement was made on
+    stills a third of a second apart.
 - **The fonts have no arrow and no star.** A tile says "chop 1, then 2" and
   a tree past the fifth tier is "Birch II" (`tree_name`).
 - **Sounds** (`assets/sfx/grove/`, `tools/gen_sfx.py grove`): `chop` is a 90
@@ -63,8 +174,9 @@ follows is named once, in the spec.
   echo.
 - **Analytics**: `valley_enter` (place, trees, room), `valley_leave` (place,
   seconds, felled), `grove_upgrade` (tile, level, energy).
-- `tests/_shot_grove.gd` shoots the tab, a new grove, a chop, a fell, a
-  middle and a late grove, a tile bought, the tutorial's three pages and the
+- `tests/_shot_grove.gd` shoots the tab, a new grove, a chop, a fell (and
+  two frames of its motes), a middle and a late grove, the shop opened by
+  its button with a tile bought and closed by its X, the tutorial's three pages and the
   tab again, on throwaway files. It prints frames and their mean gap between
   shots; `Performance.TIME_PROCESS` read 100 ms on frames 9 ms apart under
   `--script` and is not printed.

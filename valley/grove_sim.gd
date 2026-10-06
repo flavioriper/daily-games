@@ -16,8 +16,11 @@ extends RefCounted
 ## LAND its size, and a tree's position is where its trunk meets the grass.
 
 ## The land, and how far a trunk keeps from its sides: more at the top, where
-## the crown would otherwise hang over the water.
-const LAND := Vector2(810.0, 800.0)
+## the crown would otherwise hang over the water. It was 800 tall until
+## 2026-10-06, when the tiles left the screen for the shop's card and the
+## land took their room (the user: "game should take most of screen"); a
+## grove kept from before has its trees in the top of this one.
+const LAND := Vector2(810.0, 1300.0)
 const EDGE := 70.0
 const EDGE_TOP := 150.0
 const EDGE_BOTTOM := 40.0
