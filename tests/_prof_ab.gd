@@ -24,6 +24,8 @@ func _initialize() -> void:
 	if OS.get_cmdline_user_args().size() > 0:
 		_secs = float(OS.get_cmdline_user_args()[0])
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)

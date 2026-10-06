@@ -158,6 +158,10 @@ class Garden extends "res://arcade/peapod_screen.gd":
 	func _rack_x() -> float:
 		return RACK_W * 0.5
 
+	## Ten buttons at the screen's step are taller than the slice.
+	func _rack_step() -> float:
+		return 25.0
+
 	func _gun_from() -> float:
 		return 18.0 + (RACK_W if rack else 0.0)
 

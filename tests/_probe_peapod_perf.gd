@@ -10,9 +10,9 @@ func _run(wave: int, label: String) -> void:
 	for i in 120:
 		sim.step()
 	sim.events.clear()
-	sim.rate_lv = Sim.MAX_RATE
+	sim.rate_lv = 8
 	sim.crit_lv = 5
-	sim.peas = 1 + Sim.MAX_SHOTS
+	sim.peas = 4
 	sim.power = 9
 	sim.shape_t = [1000.0, 0.0, 0.0]
 	sim.element = Sim.Kind.ZAP

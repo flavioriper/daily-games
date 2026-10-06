@@ -37,6 +37,13 @@ extends Control
 ## the Berry's bunches, lightning or a pilot flame at the mouth. And energy
 ## is motes of light, not balls (`Art.orb`, `_draw_orbs`).
 ##
+## The tenth pass (2026-10-06): six carts, chosen on a card before the run
+## (`_build_carts`; opened by the furthest wave reached, `CART_WAVE`), each
+## with a gun and a shot of its own and one card of its own in the shop; ten
+## gifts on the rack (three more elements, each a pea's colour and a mark at
+## a corner of what it is on: `_draw_marks`); and a thing that goes while
+## alight bursts (`_on_flare`).
+##
 ## Drawing: the garden (sky, hills, grass) is one still mesh, built on
 ## resize. Everything that moves is drawn by one Control over it: a cached
 ## mesh a crate, a plate, a token and a part of the cart, moved by the
@@ -128,7 +135,8 @@ const ROUND := 22.0
 ## A streak's word, by its length, loudest first.
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
 const GOT := {Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.ZAP: "PP_GOT_ZAP",
-	Sim.Kind.FLAME: "PP_GOT_FLAME", Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
+	Sim.Kind.FLAME: "PP_GOT_FLAME", Sim.Kind.NETTLE: "PP_GOT_NETTLE", Sim.Kind.HAIL: "PP_GOT_HAIL", Sim.Kind.GUST: "PP_GOT_GUST",
+	Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
 ## The gifts' rack down the garden's left side: the strip it stands in
 ## (the garden is fitted beside it), a seat's size, the step from one button
 ## down to the next, how far up from the field's foot the lowest is, how far
@@ -147,13 +155,14 @@ const USE_T := 0.3
 const POD_SIZE := [1.0, 0.86, 0.78, 0.72]
 ## The sound a gift starts with, where it has one of its own.
 const CATCH_CUE := {Sim.Kind.FAN: "pod", Sim.Kind.PIERCE: "pod", Sim.Kind.BURST: "pod", Sim.Kind.ZAP: "pod", Sim.Kind.FLAME: "pod",
-	Sim.Kind.FROST: "frost", Sim.Kind.SHOVE: "shove"}
+	Sim.Kind.NETTLE: "pod", Sim.Kind.HAIL: "pod", Sim.Kind.GUST: "pod", Sim.Kind.FROST: "frost", Sim.Kind.SHOVE: "shove"}
 ## The numbers off a pea landing: how many at once, how long one lives, and
-## its colours by what it came off by (Sim.Hit), a crit's last.
+## its colours by what it came off by (Sim.Hit), a crit's last (NUM_CRIT).
 const MAX_NUMS := 26
 const NUM_T := 0.55
-const NUM_COLS := [Color("fffaf0"), Color("d8ecff"), Color("ffe9a8"), Color("ffc59a"), Color("ffd65c")]
-const NUM_RIMS := [Color("3b3028"), Color("3d5878"), Color("7a4a10"), Color("8a3d1c"), Color("7a4a10")]
+const NUM_COLS := [Color("fffaf0"), Color("d8ecff"), Color("ffe9a8"), Color("ffc59a"), Color("e6d2ff"), Color("ffd65c")]
+const NUM_RIMS := [Color("3b3028"), Color("3d5878"), Color("7a4a10"), Color("8a3d1c"), Color("4f3472"), Color("7a4a10")]
+const NUM_CRIT := 5
 ## The spent peas tumbling off, and a bolt's life.
 const MAX_CRUMBS := 20
 const CRUMB_T := 0.42
@@ -176,6 +185,20 @@ const MAX_DUST := 150
 const DUST_T := 0.42
 const DUST_STEP := 8.0
 const SHOP_NAMES := ["PP_CARD_DAMAGE", "PP_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD_ENERGY", "PP_CARD_SHOTS"]
+## The carts (Sim.Cart): each one's name, what it says of itself where it is
+## chosen, the card only it sells and that card's line of figures; and the
+## wave a player must have reached to roll each out (the pea gun is everyone's).
+const CART_NAMES := ["PP_CART_PEA", "PP_CART_CONKER", "PP_CART_PUMPKIN", "PP_CART_HOSE", "PP_CART_DANDELION", "PP_CART_TWINS"]
+const CART_LINES := ["PP_CART_PEA_LINE", "PP_CART_CONKER_LINE", "PP_CART_PUMPKIN_LINE", "PP_CART_HOSE_LINE", "PP_CART_DANDELION_LINE", "PP_CART_TWINS_LINE"]
+const OWN_NAMES := ["PP_CARD_SHOTS", "PP_CARD_HOPS", "PP_CARD_BLAST", "PP_CARD_JET", "PP_CARD_SEEDS", "PP_CARD_TWIN"]
+const OWN_LINES := ["PP_CARD_SHOTS_LINE", "PP_CARD_HOPS_LINE", "PP_CARD_BLAST_LINE", "PP_CARD_JET_LINE", "PP_CARD_SEEDS_LINE", "PP_CARD_TWIN_LINE"]
+const CART_WAVE := [0, 5, 8, 11, 14, 17]
+## The gun's click is heard this far apart at the closest (a hose is a
+## dozen drops a second and more), and a burst or a blast its thump.
+const SHOT_GAP := 0.07
+const THUMP_GAP := 0.09
+const MAX_PUFFS := 10
+const PUFF_T := 0.32
 ## The shop's cards, top to bottom: the gun's four and then the energy.
 const SHOP_ORDER := [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.SHOTS, Sim.Card.CRIT, Sim.Card.ENERGY]
 const MAX_POPS := 12
@@ -183,6 +206,17 @@ const MAX_SPARKS := 40
 const SunFace = preload("res://ui/faces/sun_face.gd")
 
 var sim: RefCounted
+## A harness rolls this cart out and is never asked (-1: the player's own).
+static var force_cart := -1
+## The cart this run rolls out (Sim.Cart): the player's last, kept on the
+## device (`Record.pick`), where the furthest wave reached still opens it.
+var _cart := 0
+## The carts' card, up before a run once there is more than one to choose.
+var _cart_card: Control
+var _cart_tiles: Array = []
+var _cart_line: Label
+## What the furthest wave was when this run began, for the cart it opens.
+var _stage_was := 0
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
 ## made so is marked. The Second chance is offered once a run, and the gold
 ## the run earned goes on the end card.
@@ -380,6 +414,10 @@ var _nums: Array = []
 var _crumbs: Array = []
 ## Lightning on its way along a chain: {pts, t}.
 var _bolts: Array = []
+## A gust's puffs where its shots land: {pos, t, way}.
+var _puffs: Array = []
+var _thump_at := -10.0
+var _shot_heard := -10.0
 ## The shop, open between waves: its card, and a row a card ({card, button,
 ## value, price}).
 var _shop: Control
@@ -639,8 +677,9 @@ func _new_game() -> void:
 	if _end != null:
 		_end.queue_free()
 		_end = null
-	sim = Sim.new()
+	sim = Sim.new(-1, _cart)
 	sim.sky = _sky()
+	_stage_was = Record.best_stage(GAME)
 	Boosters.apply(GAME, sim, _boosts)
 	_boosted = not _boosts.is_empty()
 	_chance_used = false
@@ -679,6 +718,7 @@ func _new_game() -> void:
 	_nums.clear()
 	_crumbs.clear()
 	_bolts.clear()
+	_puffs.clear()
 	_land_orbs()
 	_shown_energy = -1
 	if _shop != null:
@@ -697,7 +737,7 @@ func _new_game() -> void:
 	_refresh_hud()
 	top_bar.refresh(self)
 	_fx.cue("start")
-	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts), "cart": _cart})
 
 func capabilities() -> Array:
 	return []
@@ -787,6 +827,10 @@ func _animate(delta: float) -> void:
 		for bo: Dictionary in _bolts:
 			bo.t += delta
 		_bolts = _bolts.filter(func(bo: Dictionary) -> bool: return bo.t < BOLT_T)
+	if not _puffs.is_empty():
+		for pf: Dictionary in _puffs:
+			pf.t += delta
+		_puffs = _puffs.filter(func(pf: Dictionary) -> bool: return pf.t < PUFF_T)
 	_step_orbs(delta)
 	if _hit_at.size() > 240:
 		_hit_at.clear()
@@ -959,7 +1003,7 @@ func _keys() -> void:
 		axis += 1.0
 	sim.axis = axis
 	for k in Sim.GIFTS:
-		var down := Input.is_key_pressed(KEY_1 + k)
+		var down := Input.is_key_pressed(KEY_0 if k == 9 else KEY_1 + k)
 		if down and not _rack_key[k]:
 			_press_gift(Sim.Kind.FAN + k)
 		_rack_key[k] = down
@@ -1038,10 +1082,16 @@ func _rack_on() -> bool:
 func _rack_x() -> float:
 	return -RACK_W * 0.5
 
-## Where gift `kind`'s button is: the seven one under another, the Fan at
-## the top and the shove at the foot, nearest the thumb.
+## The step from one button down to the next (a tutorial page's slice is
+## shorter than ten of them, and closes them up).
+func _rack_step() -> float:
+	return RACK_STEP
+
+## Where gift `kind`'s button is: the ten one under another, the Fan at the
+## top (the shapes, then the five elements) and the frost and the shove at
+## the foot, nearest the thumb.
 func _rack_px(kind: int) -> Vector2:
-	return px(Vector2(_rack_x(), Sim.H - RACK_FOOT - RACK_STEP * (Sim.Kind.SHOVE - kind)))
+	return px(Vector2(_rack_x(), Sim.H - RACK_FOOT - _rack_step() * (Sim.Kind.SHOVE - kind)))
 
 ## The gift whose button a press at `at` (the field's pixels) is on, -1 for
 ## none: the whole of the strip beside each button, and a little of the
@@ -1049,10 +1099,10 @@ func _rack_px(kind: int) -> Vector2:
 func _rack_hit(at: Vector2) -> int:
 	if sim == null or not _rack_on():
 		return -1
-	var top := _rack_px(Sim.Kind.FAN).y - RACK_STEP * 0.5 * _u
+	var top := _rack_px(Sim.Kind.FAN).y - _rack_step() * 0.5 * _u
 	if at.x > px(Vector2(_rack_x() + RACK_W * 0.5 + RACK_REACH, 0)).x or at.y < top:
 		return -1
-	return Sim.Kind.FAN + clampi(int((at.y - top) / (RACK_STEP * _u)), 0, Sim.GIFTS - 1)
+	return Sim.Kind.FAN + clampi(int((at.y - top) / (_rack_step() * _u)), 0, Sim.GIFTS - 1)
 
 ## A press on gift `kind`'s button: one of it starts, or (none had, or no
 ## wave on to use it against) the button shakes its head.
@@ -1109,7 +1159,7 @@ func _build_rail(b: Face.Builder) -> void:
 		return
 	var first := _rack_px(Sim.Kind.FAN)
 	var w := (RACK_W - 2.6) * _u
-	var at := Vector2(first.x - w * 0.5, first.y - (RACK_STEP * 0.5 + 2.0) * _u)
+	var at := Vector2(first.x - w * 0.5, first.y - (_rack_step() * 0.5 + 2.0) * _u)
 	var size := Vector2(w, px(Vector2(0, Sim.H - 2.4)).y - at.y)
 	b.fan(Face.Builder.round_rect(at + Vector2(0, 2.0 * _u), size, w * 0.5), Color(0.2, 0.32, 0.1, 0.12))
 	b.fan(Face.Builder.round_rect(at, size, w * 0.5), Color(Art.PAPER, 0.55))
@@ -1251,10 +1301,14 @@ func _play_events() -> void:
 				_beat(_wave_l, 0.3, 0.35)
 			"shot":
 				_shot_at = _clock
-				_quiet.cue("shot", randf_range(0.94, 1.08), -4.0)
+				if _clock - _shot_heard >= SHOT_GAP:
+					_shot_heard = _clock
+					_quiet.cue("shot", randf_range(0.94, 1.08), -4.0)
 			"hit":
 				_hit_at[ev.id] = _clock
-				_number(ev)
+				# a light shot now and then takes nothing off: no number for it
+				if int(ev.dmg) > 0:
+					_number(ev)
 				_chip(ev)
 				# the pea that breaks a thing is heard and seen as the break
 				if not ev.quiet and int(ev.hp) > 0:
@@ -1273,6 +1327,15 @@ func _play_events() -> void:
 				if _bolts.size() >= MAX_BOLTS:
 					_bolts.pop_front()
 				_bolts.append({"pts": ev.pts, "t": 0.0})
+			"flare":
+				_on_flare(pos)
+			"blast":
+				_on_blast(pos, float(ev.r))
+			"gust":
+				if not Motion.reduce:
+					if _puffs.size() >= MAX_PUFFS:
+						_puffs.pop_front()
+					_puffs.append({"pos": pos + Vector2(randf_range(-8.0, 8.0), randf_range(-12.0, -2.0)), "t": 0.0, "way": 1.0 if randf() < 0.5 else -1.0})
 			"shop":
 				_open_shop()
 			"boom":
@@ -1307,6 +1370,33 @@ func _play_events() -> void:
 				_flash_now(Color("fffaf0"), 0.5)
 				_rw.ring(_in_rw(Vector2(sim.x, Sim.CART_Y)), 160.0 * _u, Color(Pal.SUN, 0.9))
 	sim.events.clear()
+
+## A thing that went while alight bursts: a ring of fire out to what is next
+## to it, embers thrown, a soft thump (one a THUMP_GAP at most: a wall going
+## up is a dozen of these on each other's heels).
+func _on_flare(pos: Vector2) -> void:
+	var at := _in_rw(pos)
+	_rw.ring(at, 50.0 * _u, Color(Art.EMBER, 0.9), 0.0, 0.26)
+	_rw.ring(at, 30.0 * _u, Color(Art.BOLT, 0.85), 0.03, 0.2)
+	_rw.spray(at, Art.EMBER, 5, 520.0, "spark", 0.9)
+	_rw.spray(at, Art.FIRE, 3, 380.0, "mote", 0.8)
+	_spark(pos, Art.BOLT)
+	_shake = maxf(_shake, 0.16)
+	if _clock - _thump_at >= THUMP_GAP:
+		_thump_at = _clock
+		_quiet.cue("knock", randf_range(0.72, 0.82), -9.0)
+
+## A shell has landed: a ring out as far as its blast reaches, and dust.
+func _on_blast(pos: Vector2, reach: float) -> void:
+	var at := _in_rw(pos)
+	_rw.ring(at, reach * _u, Color(Art.PUMPKIN.lerp(Art.PAPER, 0.35), 0.9), 0.0, 0.24)
+	_rw.ring(at, reach * 0.6 * _u, Color(Art.PAPER, 0.8), 0.03, 0.18)
+	_rw.spray(at, Art.PUMPKIN, 4, 460.0, "shard", 0.8 * _u / 2.4)
+	_rw.spray(at, Art.PAPER, 3, 320.0, "mote", 0.8)
+	_shake = maxf(_shake, 0.2)
+	if _clock - _thump_at >= THUMP_GAP:
+		_thump_at = _clock
+		_quiet.cue("knock", randf_range(0.6, 0.68), -6.0)
 
 func _spark(at: Vector2, col: Color) -> void:
 	if _sparks.size() < MAX_SPARKS:
@@ -1423,7 +1513,7 @@ func _number(ev: Dictionary) -> void:
 	# a pea's falls away under what it hit, clear of the number that is on
 	# it; any other's stands at the thing's corner
 	var from: Vector2 = ev.pos + (Vector2(0, 8.0) if how == Sim.Hit.PEA else Vector2(15.0, -11.0))
-	_nums.append({"pos": from, "text": Art.short(int(ev.dmg)) + ("!" if lucky else ""), "t": 0.0, "look": 4 if lucky else how,
+	_nums.append({"pos": from, "text": Art.short(int(ev.dmg)) + ("!" if lucky else ""), "t": 0.0, "look": NUM_CRIT if lucky else how,
 		"big": 2 if lucky else (1 if how == Sim.Hit.PEA else 0), "vx": randf_range(-34.0, 34.0), "fall": how == Sim.Hit.PEA})
 
 ## A hit that cracks a thing further (`Art.worn`) knocks chips of its paint
@@ -1726,6 +1816,9 @@ func _draw_over() -> void:
 	_draw_rack_pips()
 	if not _head_tag.is_empty():
 		Art.number(_over, font, px(_head_tag[0]), _head_tag[1], Sim.SEG_R * 1.25 * _u, 1.0, Sim.Kind.HEAD)
+	if sim.cart == Sim.Cart.TWINS:
+		# the twin, across the garden's middle from the cart
+		_draw_cart(Sim.W - sim.x, true)
 	_draw_cart(sim.x, false)
 	_draw_flights()
 	_draw_gun_words(font)
@@ -1771,12 +1864,13 @@ func _draw_line() -> void:
 	var run := 0.0 if Motion.reduce else fmod(_clock * 30.0 * _alarm, dash * 2.0)
 	_over.draw_mesh(_dashes, null, Transform2D(0.0, Vector2(run - dash * 2.0, y)), col)
 
-## One MultiMesh a look of pea, as many shown as are in the air; a pea
-## flung out by the Fan leans the way it goes.
+## One MultiMesh a look of shot, as many shown as are in the air; one
+## flung sideways (the Fan's, a seed, a conker on its hop) leans the way it
+## goes.
 func _draw_peas() -> void:
-	# a look is a shape (Sim.Shot) in an element's colour: none, lightning, flame
+	# a look is a shape (Sim.Shot) in an element's colour: none, then ZAP to GUST
 	var shapes := Sim.Shot.size()
-	var looks := shapes * 3
+	var looks := shapes * (2 + Sim.Kind.GUST - Sim.Kind.ZAP)
 	if _pea_mm.is_empty():
 		for k in looks:
 			var mm := MultiMesh.new()
@@ -1787,17 +1881,18 @@ func _draw_peas() -> void:
 	counts.resize(looks)
 	counts.fill(0)
 	# a heavier pea is a bigger one
-	var fat := minf(1.9, 1.0 + 0.2 * log(float(maxi(1, sim.power))))
+	var heavy := minf(1.9, 1.0 + 0.2 * log(float(maxi(1, sim.power))))
 	var u := _u
 	var ox := _origin.x
 	var oy := _origin.y
 	for p: Dictionary in sim.shots:
 		var el: int = p.el
-		var k: int = int(p.k) + shapes * (0 if el == 0 else (1 if el == Sim.Kind.ZAP else 2))
+		var k: int = int(p.k) + shapes * (0 if el == 0 else el - Sim.Kind.ZAP + 1)
 		var buf: PackedFloat32Array = _pea_buf[k]
 		var o: int = counts[k] * 8
 		if o + 8 > buf.size():
 			buf.resize(o + 8 * 64)
+		var fat := minf(3.0, heavy * float(p.sz))
 		var vx: float = p.vx
 		if vx == 0.0:
 			buf[o] = fat
@@ -1805,7 +1900,7 @@ func _draw_peas() -> void:
 			buf[o + 4] = 0.0
 			buf[o + 5] = fat
 		else:
-			var a := atan2(vx, Sim.PEA_SPEED)
+			var a := atan2(vx, -float(p.vy))
 			buf[o] = cos(a) * fat
 			buf[o + 1] = -sin(a) * fat
 			buf[o + 4] = sin(a) * fat
@@ -1819,7 +1914,7 @@ func _draw_peas() -> void:
 			continue
 		var mm: MultiMesh = _pea_mm[k]
 		var buf: PackedFloat32Array = _pea_buf[k]
-		var mesh := Art.shot(k % shapes, _u, [0, Sim.Kind.ZAP, Sim.Kind.FLAME][k / shapes])
+		var mesh := Art.shot(k % shapes, _u, 0 if k < shapes else Sim.Kind.ZAP + int(k / float(shapes)) - 1)
 		if mm.mesh != mesh:
 			mm.mesh = mesh
 		if mm.instance_count * 8 != buf.size():
@@ -1941,6 +2036,8 @@ func _draw_wall(font: Font) -> void:
 	var lit: Array = []
 	var cracked: Array = []
 	var alight: Array = []
+	var stung: Array = []
+	var rimed: Array = []
 	for r in sim.rows.size():
 		var row: Array = sim.rows[r]
 		for c in Sim.COLS:
@@ -1957,6 +2054,10 @@ func _draw_wall(font: Font) -> void:
 			var worn := Art.worn(cell.hp, cell.max)
 			if float(cell.burn_t) > 0.0:
 				alight.append([at + Vector2(Sim.CELL_W * 0.5 - 11.0, -Sim.CELL_H * 0.5 + 11.0), cell.id])
+			if float(cell.sting_t) > 0.0:
+				stung.append([at + Vector2(-Sim.CELL_W * 0.5 + 9.0, -Sim.CELL_H * 0.5 + 10.0), cell.id])
+			if float(cell.brittle) > sim.t:
+				rimed.append([at + Vector2(-Sim.CELL_W * 0.5 + 9.5, Sim.CELL_H * 0.5 - 12.0), cell.id])
 			if Sim.holds_gift(kind) and not Motion.reduce:
 				# a parcel sways and breathes, to be noticed
 				var ph: float = _clock * 3.2 + c * 1.7 + r
@@ -1975,12 +2076,15 @@ func _draw_wall(font: Font) -> void:
 	_draw_blinks(lit, false, cracked)
 	_letter(font, numbered, (Sim.CELL_H - 3.0) * _u)
 	_draw_fires(alight)
+	_draw_marks(stung, rimed)
 
 func _draw_milli(font: Font, top: Face.Builder) -> void:
 	var numbered: Array = []
 	var lit: Array = []
 	var cracked: Array = []
 	var alight: Array = []
+	var stung: Array = []
+	var rimed: Array = []
 	var head_at: Array = []
 	# tail first, so each plate laps the one behind it and the head laps all
 	for i in range(sim.segs.size() - 1, -1, -1):
@@ -1991,6 +2095,10 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 		var at: Vector2 = Sim.path_at(s)
 		if float(sg.burn_t) > 0.0:
 			alight.append([at + Vector2(Sim.SEG_R * 0.6, -Sim.SEG_R * 0.3), sg.id])
+		if float(sg.sting_t) > 0.0:
+			stung.append([at + Vector2(-Sim.SEG_R * 0.66, -Sim.SEG_R * 0.5), sg.id])
+		if float(sg.brittle) > sim.t:
+			rimed.append([at + Vector2(-Sim.SEG_R * 0.6, Sim.SEG_R * 0.56), sg.id])
 		var kn := _knocked(sg.id)
 		var sc: Vector2 = kn[0]
 		var jitter := Vector2.ZERO
@@ -2041,6 +2149,7 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 	_draw_blinks(lit, true, cracked)
 	_letter(font, numbered, Sim.SEG_R * 1.7 * _u)
 	_draw_fires(alight)
+	_draw_marks(stung, rimed)
 
 ## The flame on each thing alight ([where its foot is, the thing's id]),
 ## never a tint of the thing: a crate's paint is its number.
@@ -2052,6 +2161,25 @@ func _draw_fires(alight: Array) -> void:
 		if not Motion.reduce:
 			xf = Transform2D(sin(ph) * 0.14, Vector2(1.0 + 0.08 * sin(ph * 1.7), 1.0 + 0.14 * sin(ph * 1.3)), 0.0, px(a[0]))
 		_cast_add(mesh, xf, Color.WHITE)
+	_cast_draw()
+
+## The nettle's leaf on each thing stung and the hail's crystal on each left
+## brittle ([where, the thing's id]), and the gust's puffs: marks at a
+## corner, never a tint of the thing.
+func _draw_marks(stung: Array, rimed: Array) -> void:
+	var leaf := Art.sting(_u)
+	for a: Array in stung:
+		var sway := 0.0 if Motion.reduce else sin(_clock * 6.0 + float(a[1])) * 0.16
+		_cast_add(leaf, Transform2D(-0.4 + sway, px(a[0])), Color.WHITE)
+	var ice := Art.rime(_u)
+	for a: Array in rimed:
+		var sc := 1.0 if Motion.reduce else 1.0 + 0.08 * sin(_clock * 5.0 + float(a[1]))
+		_cast_add(ice, Transform2D(0.0, Vector2(sc, sc), 0.0, px(a[0])), Color.WHITE)
+	var puff := Art.puff(_u)
+	for pf: Dictionary in _puffs:
+		var k: float = float(pf.t) / PUFF_T
+		var sc := 0.6 + 0.7 * k
+		_cast_add(puff, Transform2D(0.0, Vector2(sc * float(pf.way), sc), 0.0, px(pf.pos + Vector2(0, -14.0 * k))), Color(1, 1, 1, 0.85 * (1.0 - k * k)))
 	_cast_draw()
 
 ## Lightning along each chain: a jagged line from one thing to the next, a
@@ -2115,13 +2243,18 @@ func _draw_muzzle(b: Face.Builder) -> void:
 	if since > 0.1 or Motion.reduce or sim.phase != Sim.Phase.PLAY:
 		return
 	var k := since / 0.1
-	var n := clampi(sim.peas, 1, POD_SIZE.size())
+	var n := _pods()
 	var size: float = POD_SIZE[n - 1]
 	for i in n:
 		var c := px(Vector2(sim.x + Sim.pea_off(i, n), Sim.CART_Y - 41.0))
 		var r := (5.0 + 7.0 * k) * _u * size
 		b.stroke(Face.Builder.ring(c, r, r * 0.55), (2.6 - 2.0 * k) * _u, Color(Art.PAPER, 0.9 * (1.0 - k)), true)
 		b.disc(c, 3.0 * _u * size * (1.0 - k), Color(Art.POD_HI, 0.9 * (1.0 - k)))
+
+## The pods on the cart: one a pea of the pea gun's volley, four at most
+## (the peas past that leave from the same row), and one gun on any other.
+func _pods() -> int:
+	return clampi(sim.peas, 1, POD_SIZE.size()) if sim.cart == Sim.Cart.PEA else 1
 
 ## How far the cart is off the grass this frame, in pixels: a small hop as
 ## a gift is caught, two bounces as a wave is cleared.
@@ -2158,11 +2291,11 @@ func _draw_cart(x: float, helper: bool) -> void:
 	var gulp := 0.0 if helper else _gulp_now()
 	var lean := Transform2D(_lean, foot)
 	var el := 0 if helper else _pod_el
-	var n := 1 if helper else clampi(sim.peas, 1, POD_SIZE.size())
+	var n := 1 if helper else _pods()
 	var size: float = POD_SIZE[n - 1]
 	var squash := Vector2(1.0 + 0.08 * kick + 0.22 * gulp, 1.0 - 0.12 * kick - 0.16 * gulp) * size
 	var sink := (-12.0 + 3.5 * kick) * u
-	var barrel := Art.barrel(u, helper, el)
+	var barrel := Art.barrel(u, helper, el, sim.cart)
 	var fan := 0.0 if helper else Motion.back_out(float(_dress[0]))
 	var dart := 0.0 if helper else Motion.back_out(float(_dress[1]))
 	var berry := 0.0 if helper else Motion.back_out(float(_dress[2]))
@@ -2620,7 +2753,7 @@ func _card_icon(card: int, side: float) -> Control:
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.draw.connect(func() -> void:
-		icon.draw_mesh(Art.card_token(card, side / 27.0), null, Transform2D(0.0, icon.size * 0.5)))
+		icon.draw_mesh(Art.card_token(card, side / 27.0, sim.cart), null, Transform2D(0.0, icon.size * 0.5)))
 	return icon
 
 ## A mote of energy, `side` pixels square: what a price is counted in.
@@ -2661,7 +2794,7 @@ func _shop_row(card: int) -> Button:
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(words)
 	var title := Label.new()
-	title.text = SHOP_NAMES[card]
+	title.text = OWN_NAMES[sim.cart] if card == Sim.Card.SHOTS else SHOP_NAMES[card]
 	title.theme_type_variation = "SheetTitle"
 	words.add_child(title)
 	title.clip_text = true
@@ -2689,15 +2822,35 @@ func _card_value(card: int) -> String:
 		Sim.Card.DAMAGE:
 			return "x%d  >  x%d" % [sim.power, sim.power + 1]
 		Sim.Card.SPEED:
-			return tr("PP_CARD_SPEED_LINE") % [int(sim.rate()), int(sim.rate() + Sim.RATE_STEP)]
+			return tr("PP_CARD_SPEED_LINE") % [_fig(sim.rate()), _fig(sim.rate() + sim.rate_step())]
 		Sim.Card.CRIT:
 			var lv: int = sim.crit_lv
 			var line := tr("PP_CARD_CRIT_LINE") % [Sim.crit_mult(lv), Sim.crit_mult(lv + 1), roundi(Sim.crit_chance(lv + 1) * 100.0)]
 			# with none bought there is no crit to go on from
 			return line if lv > 0 else line.substr(line.find(">") + 1).strip_edges()
 		Sim.Card.SHOTS:
-			return tr("PP_CARD_SHOTS_LINE") % [sim.peas, sim.peas + 1]
+			return _own_value()
 	return tr("PP_CARD_ENERGY_LINE") % [roundi(sim.energy_lv * Sim.ENERGY_STEP * 100.0), roundi((sim.energy_lv + 1) * Sim.ENERGY_STEP * 100.0)]
+
+## A figure as the shop letters it: whole when it is, else to a tenth.
+static func _fig(v: float) -> String:
+	return str(roundi(v)) if absf(v - roundf(v)) < 0.05 else "%.1f" % v
+
+## What the cart's own card is now and what one more makes it.
+func _own_value() -> String:
+	var line := tr(OWN_LINES[sim.cart])
+	match sim.cart:
+		Sim.Cart.CONKER:
+			return line % [sim.hops(), sim.hops() + 1]
+		Sim.Cart.PUMPKIN:
+			return line % [roundi(sim.blast_r()), roundi(sim.blast_r() + Sim.BLAST_STEP)]
+		Sim.Cart.HOSE:
+			return line % [_fig(sim.jet_cap()), _fig(sim.jet_cap() + Sim.JET_CAP_STEP)]
+		Sim.Cart.DANDELION:
+			return line % [sim.seeds(), sim.seeds() + Sim.SEED_STEP]
+		Sim.Cart.TWINS:
+			return line % [roundi(sim.twin_share() * 100.0), roundi((sim.twin_share() + Sim.TWIN_STEP) * 100.0)]
+	return line % [sim.peas, sim.peas + 1]
 
 func _refresh_shop() -> void:
 	_shop_energy.text = Record.grouped(int(sim.energy / Sim.ORBS))
@@ -2764,7 +2917,8 @@ func _game_over() -> void:
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.wave,
 		"seconds": secs, "kills": sim.kills, "caught": sim.caught, "used": sim.used, "fired": sim.fired,
-		"rate": sim.rate_lv, "power": sim.power, "crit": sim.crit_lv, "peas": sim.peas, "energy": int(sim.earned / Sim.ORBS), "best": better})
+		"rate": sim.rate_lv, "power": sim.power, "crit": sim.crit_lv, "peas": sim.peas, "energy": int(sim.earned / Sim.ORBS), "best": better,
+		"cart": sim.cart, "own": sim.special})
 	Ads.note_finished()
 	_show_banner(tr("FF_GAME_OVER"), "", 1.2)
 	top_bar.refresh(self)
@@ -2825,7 +2979,7 @@ func _build_end(better: bool) -> Control:
 		seat.draw_mesh(m, null)
 		var kick := 0.0 if Motion.reduce else maxf(0.0, 1.0 - fmod(t * 1.6, 0.25) / 0.09)
 		var foot := c + Vector2(0, 21.0 - 9.0 * u + 9.0 * u)
-		seat.draw_mesh(Art.barrel(u), null, Transform2D(0.0, Vector2(1.0 + 0.1 * kick, 1.0 - 0.14 * kick), 0.0, foot + Vector2(0, (-12.0 + 4.0 * kick) * u)))
+		seat.draw_mesh(Art.barrel(u, false, 0, sim.cart), null, Transform2D(0.0, Vector2(1.0 + 0.1 * kick, 1.0 - 0.14 * kick), 0.0, foot + Vector2(0, (-12.0 + 4.0 * kick) * u)))
 		seat.draw_mesh(Art.cart(u), null, Transform2D(0.0, foot))
 		for side in [-1.0, 1.0]:
 			seat.draw_mesh(Art.wheel(u), null, Transform2D(sin(t * 1.3) * 0.4, foot + Vector2(side * 13.0 * u, 0)))
@@ -2889,6 +3043,18 @@ func _build_end(better: bool) -> Control:
 	best_line.theme_type_variation = "SheetBodyDim"
 	best_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(best_line)
+	var news := _cart_news()
+	if news[0] != "":
+		var cart_line := Label.new()
+		cart_line.name = "CartNews"
+		cart_line.text = news[0]
+		cart_line.theme_type_variation = "SheetBody" if news[1] else "SheetBodyDim"
+		cart_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cart_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cart_line.custom_minimum_size.x = 740
+		if news[1]:
+			cart_line.add_theme_color_override("font_color", Art.GOLD_INK)
+		col.add_child(cart_line)
 	var again := Dialog.primary("reset", tr("FF_AGAIN"))
 	again.name = "Again"
 	again.pressed.connect(_ask)
@@ -2957,21 +3123,186 @@ func go_back() -> void:
 	if _shop != null:
 		_close_shop()
 		return
+	if _cart_card != null:
+		_on_back()
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
 	_on_back()
 
+# --- the carts ---
+
+## Whether cart `c` (Sim.Cart) is this player's to roll out: the furthest
+## wave reached is its mark or past it.
+static func cart_open(c: int) -> bool:
+	return Record.best_stage(GAME) >= int(CART_WAVE[c])
+
+## What the end card says of the carts, as [the line, whether it is news]:
+## the cart this run opened, else the next one and the wave it wants, else
+## nothing.
+func _cart_news() -> Array:
+	var stage := Record.best_stage(GAME)
+	for c in range(Sim.Cart.size() - 1, 0, -1):
+		if _stage_was < int(CART_WAVE[c]) and stage >= int(CART_WAVE[c]):
+			return [tr("PP_CART_NEW") % tr(CART_NAMES[c]), true]
+	for c in range(1, Sim.Cart.size()):
+		if stage < int(CART_WAVE[c]):
+			return [tr("PP_CART_NEXT") % [int(CART_WAVE[c]), tr(CART_NAMES[c])], false]
+	return ["", false]
+
+## The carts' card: a tile a cart, the open ones to be chosen (the last one
+## rolled out first), the rest showing the wave that opens them; under them
+## what the chosen one does, and Play.
+func _build_carts() -> Control:
+	var scrim := Dialog.scrim()
+	scrim.name = "CartCard"
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(900)
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 16)
+	card.add_child(col)
+	col.add_child(Dialog.head("PP_CART_PICK", "arcade"))
+	var grid := GridContainer.new()
+	grid.name = "Grid"
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	col.add_child(grid)
+	_cart_tiles.clear()
+	for c in Sim.Cart.size():
+		grid.add_child(_cart_tile(c))
+	_cart_line = Label.new()
+	_cart_line.theme_type_variation = "SheetBodyDim"
+	_cart_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cart_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cart_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_cart_line.custom_minimum_size = Vector2(800, 132)
+	col.add_child(_cart_line)
+	var go := Dialog.primary("play", tr("PP_CART_GO"))
+	go.name = "Go"
+	go.pressed.connect(_carts_done)
+	Dialog.buttons(col, go)
+	_pick_cart(_cart, false)
+	return scrim
+
+## One cart's tile: the cart itself, its name, and on one not yet opened the
+## wave that opens it. The whole tile is the button.
+func _cart_tile(c: int) -> Button:
+	var open := cart_open(c)
+	var b := Button.new()
+	b.name = "Cart%d" % c
+	b.custom_minimum_size = Vector2(264, 250)
+	b.focus_mode = Control.FOCUS_NONE
+	b.disabled = not open
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	words.offset_top = 10.0
+	words.offset_bottom = -14.0
+	words.add_theme_constant_override("separation", -4)
+	b.add_child(words)
+	var pic := Control.new()
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pic.modulate.a = 1.0 if open else 0.36
+	pic.draw.connect(func() -> void:
+		var u := 2.7
+		var foot := Vector2(pic.size.x * 0.5, pic.size.y - 9.0 * u - 4.0)
+		var carts := [[foot, u, false]]
+		if c == Sim.Cart.TWINS:
+			carts = [[foot + Vector2(-46.0, 3.0), u * 0.8, true], [foot + Vector2(30.0, 0), u, false]]
+		for k: Array in carts:
+			var at: Vector2 = k[0]
+			var ku: float = k[1]
+			pic.draw_mesh(Art.barrel(ku, k[2], 0, c), null, Transform2D(0.0, at + Vector2(0, -12.0 * ku)))
+			pic.draw_mesh(Art.cart(ku, k[2]), null, Transform2D(0.0, at))
+			for side: float in [-1.0, 1.0]:
+				pic.draw_mesh(Art.wheel(ku), null, Transform2D(0.3, at + Vector2(side * 13.0 * ku, 0))))
+	words.add_child(pic)
+	var title := Label.new()
+	title.text = CART_NAMES[c]
+	title.theme_type_variation = "SheetBody"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color(Art.INK, 1.0 if open else 0.5))
+	title.clip_text = true
+	words.add_child(title)
+	var sub := Label.new()
+	sub.text = "" if open else tr("PP_CART_LOCKED") % int(CART_WAVE[c])
+	sub.theme_type_variation = "MenuKicker"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(sub)
+	b.pressed.connect(_pick_cart.bind(c))
+	_cart_tiles.append(b)
+	return b
+
+## Cart `c` is the one chosen: its tile ringed in its own colour, and what
+## it does lettered under the tiles.
+func _pick_cart(c: int, by_hand := true) -> void:
+	_cart = c
+	for k in _cart_tiles.size():
+		var b: Button = _cart_tiles[k]
+		var box := Dialog.tile(Pal.SURFACE if cart_open(k) else Color(Pal.SURFACE, 0.5), 12)
+		if k == c:
+			box.set_border_width_all(6)
+			box.border_color = Art.deepen(Art.CART[k])
+		for st in ["normal", "hover", "pressed", "disabled"]:
+			b.add_theme_stylebox_override(st, box)
+	if _cart_line != null:
+		_cart_line.text = tr(CART_LINES[c])
+	if by_hand:
+		_fx.cue("catch", 1.0 + 0.05 * c, -4.0)
+		_fx.buzz(Haptics.TAP)
+		var b: Button = _cart_tiles[c]
+		b.pivot_offset = b.size * 0.5
+		_beat(b, 0.05, 0.2)
+
+## Play, on the carts' card: the cart is kept for next time, and the run
+## goes on to its boosters.
+func _carts_done() -> void:
+	Record.set_pick(GAME, _cart)
+	if _cart_card != null:
+		_cart_card.queue_free()
+		_cart_card = null
+	_cart_tiles.clear()
+	_cart_line = null
+	_ask_boosts(true)
+
 # --- boosters (arcade/boosters.gd) ---
 
-## Before a run: the boost card, when a booster is held or the gold for one
-## is, else straight in. A run still going when it is asked for stops there.
+## Before a run: the carts' card, once the player has more than one to
+## choose from, and then the boosters. A run still going when it is asked
+## for stops there.
 func _ask(by_hand := true) -> void:
-	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
+	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null or _cart_card != null:
 		return
 	if _end != null:
 		_end.queue_free()
 		_end = null
+	if force_cart >= 0:
+		_cart = force_cart
+	else:
+		_cart = Record.pick(GAME)
+		if _cart < 0 or _cart >= Sim.Cart.size() or not cart_open(_cart):
+			_cart = Sim.Cart.PEA
+		if cart_open(Sim.Cart.CONKER):
+			if sim != null and not sim.is_over():
+				sim = null
+			_cart_card = _build_carts()
+			add_child(_cart_card)
+			Motion.appear(_cart_card, 0.0, 1.0, 0.2)
+			return
+	_ask_boosts(by_hand)
+
+## The boost card, when a booster is held or the gold for one is, else
+## straight in.
+func _ask_boosts(by_hand := true) -> void:
+	if get_node_or_null("BoostCard") != null:
+		return
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()

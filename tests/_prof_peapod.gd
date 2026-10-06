@@ -35,6 +35,8 @@ func _initialize() -> void:
 	if args.size() > 1:
 		_secs = float(args[1])
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)
@@ -107,7 +109,7 @@ func _process(delta: float) -> bool:
 				var sim = _s.sim
 				# the gun a balanced run holds on this wave, and the wave itself
 				sim.power = 1 + int(_wave * 0.55)
-				sim.rate_lv = mini(Sim.MAX_RATE, int(_wave * 0.5))
+				sim.rate_lv = mini(8, int(_wave * 0.5))
 				sim.crit_lv = mini(5, int(_wave * 0.45))
 				sim.rows.clear()
 				sim.segs.clear()

@@ -755,6 +755,108 @@ chalk line ends the run. Its "furthest" is the wave.
     every wave: for showing a person what the bots do. It was stopped on
     wave 11 when the user corrected the wave, so it has never run to an end
     card. Suite 249790/0.
+- **The tenth pass (2026-10-06, the user: "crate on fire should explode and
+  spread fire to near crates, fire damage should increase based on shoot
+  damage", "let's create different carts other than this default with
+  different upgrades ... a bouncing canon ... a heavy canon ... give me 5
+  canons, also give me 3 more elementals"; on the design's "3 at most" and
+  "up to ten": "don't add cap", and then "no pea gun limit as well").** What
+  the passes above say of `MAX_RATE`, `MAX_SHOTS`, `maxed`, seven gifts, two
+  elements, `BURN_RATE` and a burn's weight being the pea's is history.
+  - **Fire follows the shot and bursts.** A thing is lit as hot as the
+    landing that lit it (`_light(cell, heat)`: the pea's weight times the
+    cart's share, a crit's, a hose's ramp), bitten `BURN_BITE` (0.75) of that
+    every half second, and one already alight keeps the hottest. **It is lit
+    before the blow**, so a flame shot that breaks a thing bursts it. A
+    thing that goes while alight puts a flare on a fuse (`_flares`,
+    `FLARE_FUSE` 0.09 s): the eight round it (the plates either side) catch
+    the same fire and take `FLARE_SHARE` (1.5) of that hit, and one of those
+    going bursts in its turn, so a wall goes up as a ripple and not in one
+    step. A flare's place in the wall is kept as how far up from its foot
+    (`off`), moved when a row is popped. The `flare` event is the screen's
+    ring and embers (`_on_flare`), a soft thump one a `THUMP_GAP` at most.
+  - **Six carts** (`Sim.Cart`, `sim.cart`, `Sim.new(seed, cart)`; by-cart
+    tables `CART_RATE`, `CART_RATE_STEP`, `CART_WEIGHT`, `CART_SPEED_UP`,
+    `CART_SIZE`, `CART_PRICE`, `CART_PRICE_STEP`). Each sells the four shared
+    cards and one of its own in the place of the pea more (`Card.SHOTS`,
+    `sim.special`; `peas` is still the pea gun's). **Conker**: its shot hops
+    on to the nearest thing it has not landed on (`hops`, `to`, `seen`,
+    `_home`, `HOP_KEEP` 0.7 a hop); a hop more. **Pumpkin**: 1.4 shells a
+    second at 4.2 peas, everything in `blast_r()` takes `BLAST_SHARE`, iron
+    takes a shell and its blast whole (`whole`, `Hit.BOOM`); a wider blast.
+    **Hose**: twelve drops a second at 0.68 of a pea that land harder the
+    longer they stay on one thing (`_exact`, `jet()`, `_jet_id`/`_jet_n`); a
+    card raises what that comes to and how fast. **Dandelion**: `seeds()`
+    light seeds in a cone (`SEED_VX`); two more. **Twins**: a second cart at
+    `W - x` firing with it at `twin_share()`; a bigger share. The Fan, the
+    Dart and the Berry and every element work on all six: a shot carries how
+    it lands (`_shoot`), and one landing path serves them (`_land_cell`,
+    `_land_seg`).
+  - **A light shot lands as a whole number** (`_whole`): what it is short of
+    one is kept for the next landing, so a hose at weight 1 takes off what
+    it should, some of its drops nothing. A `hit` with `dmg` 0 floats no
+    number. Iron still takes one of each.
+  - **Three more elements**, one at a time like the two there were
+    (`is_element` is `ZAP..GUST`; **`Kind` is renumbered**: `NETTLE`, `HAIL`,
+    `GUST` sit after `FLAME`, so `FROST`, `SHOVE` and `IRON` moved, and
+    `GIFTS` is 10). **Nettle**: a shot leaves as many stings as its share of
+    a pea, no most, each taking `STING_RATE` (0.5%) a second of what the
+    thing began as, all gone `STING_TIME` after the last (`Hit.STING`).
+    **Hail**: what it lands on is brittle three seconds and takes half as
+    much again of everything (`cell.brittle` is a time on the sim's clock).
+    **Gust**: while its shots keep landing whatever is coming goes back at
+    `GUST_BACK` of its own speed (`_gust_t`), no further than where it stops
+    hurrying in. Each is a pea's colour (`Art.SHOT_OF`), the pod's
+    (`POD_OF`), and a mark at a corner of the thing, never a tint: the
+    nettle's leaf top left, the hail's crystal bottom left (`_draw_marks`),
+    the gust's puffs where it lands. A shell's blast and a flare do not
+    carry a mark on.
+  - **Nothing has a most.** `maxed()` is always false; a gun fires
+    `FIRE_MOST` volleys a step at most; a volley's row of peas closes up
+    past `PEA_ROW`; the cart shows four pods at most (`_pods`). The shots'
+    click is heard one a `SHOT_GAP` at most.
+  - **The carts are opened by the furthest wave reached**
+    (`CART_WAVE` 0, 5, 8, 11, 14, 17 against `Record.best_stage`), the
+    user's choice of three. Once the conker is open the carts' card stands
+    before every run (`_ask` -> `_build_carts` -> `_carts_done` ->
+    `_ask_boosts`): six tiles, the last cart rolled out chosen
+    (`Record.pick`), one not open pale with its wave. The end card says
+    which cart the run opened, else the next and its wave (`_cart_news`).
+    **A harness sets `Screen.force_cart`** (static, like
+    `ScreenTutor.no_first_play`) or the card stands over its run, and loads
+    the screen's script with `load()` once the autoloads are up: a
+    `preload` of it in a SceneTree script fails to compile (`Ads`).
+  - **The rack is ten**, 32 units apart, from y 155 to the field's foot;
+    keys 1 to 9 and 0. A tutorial page's slice is shorter than that and
+    closes them to 25 (`_rack_step`).
+  - **The bots** (`tests/_probe_peapod.gd`, a sixth argument: the cart; it
+    prints what came off a second under each element). Eight runs, skill 1,
+    best buy, gifts at once: pea gun 23-29 (was 20-28 with its two mosts),
+    conker 19-26, pumpkin 22-32, hose 17-26, dandelion 25-28, twins 19-25;
+    the pea gun keeping gifts for their match 32-35, as before. Under an
+    element the pea gun took, against its own worth: none 1.17, lightning
+    3.05, flame 2.79, nettle 2.12, hail 1.98, gust 1.34. **The bot aims at
+    one thing and sweeps, which sells the hose and the twins short.**
+  - **Words**: the shared cards are "Heavier shot", "Quicker cart", "Lucky
+    shot" (they named the pea), the pods' page is "Eight pods", the shop
+    page's body ends on the carts; 30 new keys in three languages
+    (`PP_CART_*`, `PP_CARD_HOPS/BLAST/JET/SEEDS/TWIN`, `PP_GOT_NETTLE/HAIL/
+    GUST`). The speed line takes `%s` (a pumpkin's is 1.4).
+  - `tests/_shot_peapod_carts.gd -- <outdir> [pt|es] [reduce]` shoots the
+    carts' card, a run on each cart under an element, a cart's shop and the
+    end card. 97-162 draw calls across it on both drivers and under reduce
+    motion; `_perf_peapod.gd` 80 at rest, 148 at worst; `_shot_peapod.gd`
+    194 on its cast. Suite 249790/0; the tutorial's eight pages in three
+    languages (188 px of 230 at most). **Never pipe a windowed harness into
+    `head`**: the pipe closing kills Godot before it puts `user://arcade.cfg`
+    back (it happened here; the file was rewritten by hand from a listing).
+  - **Not done**: a phone; nothing heard (no new sound was made: a flare and
+    a blast are `knock` low and quiet, a cart chosen is `catch`); no person
+    has played any cart, and where each should end against the pea gun is
+    the user's to say; the tutorial has no page for the carts or the three
+    new pods, only a line; a flare's and a blast's rings were never caught
+    in a shot; `_probe_arcade_buzz.gd -- peapod` was only brought up to the
+    new names.
 
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the

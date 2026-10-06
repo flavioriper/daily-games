@@ -40,6 +40,8 @@ const PATH := "user://arcade.cfg"
 func _initialize() -> void:
 	# The first play's tutorial card would stand over the run and eat the taps.
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)
@@ -93,7 +95,8 @@ func _bot(delta: float) -> void:
 	sim.target_x = _hand
 
 func _cell(kind: int, hp: int) -> Dictionary:
-	return {"kind": kind, "hp": hp, "max": hp, "id": 9000 + randi() % 9000, "burn_t": 0.0, "burn_c": 0.0, "burn": 0}
+	return {"kind": kind, "hp": hp, "max": hp, "id": 9000 + randi() % 9000, "burn_t": 0.0, "burn_c": 0.0, "burn": 0.0, "burn_part": 0.0,
+		"sting": 0.0, "sting_t": 0.0, "sting_c": 0.0, "sting_part": 0.0, "brittle": 0.0}
 
 ## A fresh wallet holds boosters, so the boost card stands before every run
 ## and Second chance before every end card: play with none, and decline.
@@ -212,7 +215,7 @@ func _process(delta: float) -> bool:
 				var col := clampi(int(sim.x / Sim.CELL_W), 0, Sim.COLS - 1)
 				sim.rows[0][col] = _cell(Sim.Kind.FLAME, 1)
 				sim.rows[0][(col + 2) % Sim.COLS] = _cell(Sim.Kind.CRATE, 90000)
-				sim.stock = [0, 0, 0, 0, 0, 1, 0]
+				sim.stock = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
 				sim.wall_y = 250.0
 				sim.wall_speed = 0.0
 				sim.target_x = sim.x
@@ -276,7 +279,7 @@ func _process(delta: float) -> bool:
 				sim.rows.append(row)
 			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.BOMB, 9), _cell(Sim.Kind.GOLD, 4)])
 			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.ZAP, 3), _cell(Sim.Kind.FLAME, 3)])
-			sim.rows.append([_cell(Sim.Kind.FROST, 3), _cell(Sim.Kind.SHOVE, 3), null, null, null])
+			sim.rows.append([_cell(Sim.Kind.FROST, 3), _cell(Sim.Kind.SHOVE, 3), _cell(Sim.Kind.NETTLE, 3), _cell(Sim.Kind.HAIL, 3), _cell(Sim.Kind.GUST, 3)])
 			# most of them worn down, to every stage of the break: what each began as
 			var began := [[2, 20, 12, 60, 34], [200, 110, 800, 300, 2500], [1100, 7000, 5000, 9000, 14000], [400, 60, 1, 9, 5]]
 			for r in began.size():
@@ -294,7 +297,7 @@ func _process(delta: float) -> bool:
 			sim.element = Sim.Kind.ZAP
 			sim.element_t = 8.0
 			sim.frost_t = 4.0
-			sim.stock = [2, 0, 1, 3, 1, 12, 0]
+			sim.stock = [2, 0, 1, 3, 1, 2, 1, 4, 12, 0]
 			sim.peas = 3
 			sim.power = 3
 			sim.rate_lv = 4
@@ -310,7 +313,7 @@ func _process(delta: float) -> bool:
 				_shot("4_cast")
 				print("cast: numbers=%d bolts=%d crumbs=%d" % [_s._nums.size(), _s._bolts.size(), _s._crumbs.size()])
 				# every dressing at once: four peas a volley, the three shapes, the flame
-				_s.sim.peas = 1 + Sim.MAX_SHOTS
+				_s.sim.peas = 4
 				_s.sim.shape_t = [9.0, 9.0, 9.0]
 				_s.sim.element = Sim.Kind.FLAME
 				_s.sim.element_t = 9.0

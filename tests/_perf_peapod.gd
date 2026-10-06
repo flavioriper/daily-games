@@ -29,6 +29,8 @@ var _frames := 0
 func _initialize() -> void:
 	# The first play's tutorial card would stand over the run and eat the taps.
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)
@@ -60,9 +62,9 @@ func _skip_gold() -> void:
 
 func _full_gun() -> void:
 	var sim = _s.sim
-	sim.rate_lv = Sim.MAX_RATE
+	sim.rate_lv = 8
 	sim.crit_lv = 5
-	sim.peas = 1 + Sim.MAX_SHOTS
+	sim.peas = 4
 	sim.power = 9
 	sim.shape_t = [1000.0, 0.0, 0.0]
 	sim.element = 0

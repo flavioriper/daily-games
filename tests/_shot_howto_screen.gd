@@ -41,6 +41,8 @@ var _before := {}
 var _frames := 0
 
 func _initialize() -> void:
+	# Peapod's carts' card would stand before its run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	for path: String in SAVES:
 		if FileAccess.file_exists(path):
 			_before[path] = FileAccess.get_file_as_string(path)

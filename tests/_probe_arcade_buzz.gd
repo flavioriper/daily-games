@@ -52,6 +52,8 @@ func _env(name: String, fallback: int) -> int:
 	return int(OS.get_environment(name)) if OS.has_environment(name) else fallback
 
 func _initialize() -> void:
+	# Peapod's carts' card would stand before its run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_game = args[0]

@@ -33,6 +33,8 @@ var _over_t := 0.0
 
 func _initialize() -> void:
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists(PATH)
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)
@@ -96,7 +98,7 @@ func _gain(sim: RefCounted, card: int) -> float:
 		Sim.Card.DAMAGE:
 			return 1.0 / sim.power
 		Sim.Card.SPEED:
-			return Sim.RATE_STEP / sim.rate()
+			return sim.rate_step() / sim.rate()
 		Sim.Card.CRIT:
 			return _luck(sim.crit_lv + 1) / _luck(sim.crit_lv) - 1.0
 		Sim.Card.SHOTS:

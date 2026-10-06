@@ -28,6 +28,8 @@ var _ads_backup := PackedByteArray()
 func _initialize() -> void:
 	# The first play's tutorial card would stand over the run and eat the taps.
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	# and the carts' card would stand before every run
+	load("res://arcade/peapod_screen.gd").force_cart = 0
 	_had = FileAccess.file_exists("user://arcade.cfg")
 	if _had:
 		_backup = FileAccess.get_file_as_bytes("user://arcade.cfg")

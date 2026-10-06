@@ -48,11 +48,15 @@ const PAINT := [Color("b9d996"), Color("93d4c3"), Color("9fcbe8"), Color("b5b3e4
 	Color("d98d6a"), Color("7c7386")]
 ## A gift's medallion, by Sim.Kind.
 const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), Sim.Kind.BURST: Color("d665c8"),
-	Sim.Kind.ZAP: Color("5a8fe0"), Sim.Kind.FLAME: Color("ee7f5a"), Sim.Kind.FROST: Color("a9dff2"),
+	Sim.Kind.ZAP: Color("5a8fe0"), Sim.Kind.FLAME: Color("ee7f5a"), Sim.Kind.NETTLE: Color("8a63b8"),
+	Sim.Kind.HAIL: Color("dbe7f3"), Sim.Kind.GUST: Color("8fb7c9"), Sim.Kind.FROST: Color("a9dff2"),
 	Sim.Kind.SHOVE: Color("5fbf8a")}
 ## A shop card's medallion, by Sim.Card: the heavier pea, the quicker gun,
 ## the crit and the energy.
 const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
+## A cart's own colour, by Sim.Cart: its tile where the carts are chosen and
+## the medallion of the card only it sells.
+const CART := [Color("8fc56f"), Color("b0794a"), Color("f09a3e"), Color("58a9d6"), Color("e9c85a"), Color("7fb565")]
 ## Energy: a mote of light, its pale heart and the deeper blue its glow
 ## thins out through, so it reads on a pale sky.
 const ORB := Motes.ORB
@@ -61,11 +65,24 @@ const ORB_DEEP := Motes.ORB_DEEP
 ## The pod as the barrel of an element, by Sim.Kind: its skin, its shade,
 ## its light and the dark of its mouth.
 const POD_OF := {Sim.Kind.ZAP: [Color("f3df78"), Color("cfa93a"), Color("fff6c8"), Color("8a6a1c")],
-	Sim.Kind.FLAME: [Color("f39176"), Color("cf5a44"), Color("ffd0bb"), Color("7c2e20")]}
+	Sim.Kind.FLAME: [Color("f39176"), Color("cf5a44"), Color("ffd0bb"), Color("7c2e20")],
+	Sim.Kind.NETTLE: [Color("b996e0"), Color("8a63b8"), Color("e6d6f7"), Color("4f3472")],
+	Sim.Kind.HAIL: [Color("c9e6f6"), Color("8fbcd9"), Color("f4fbff"), Color("4f7896")],
+	Sim.Kind.GUST: [Color("e4eeea"), Color("a9c4c0"), Color("ffffff"), Color("5f7f80")]}
 const BOLT := Color("ffe37a")
 const EMBER := Color("f28c4f")
-## A pea of the flame.
+## A pea of the flame, of the nettle, of the hail and of the gust.
 const FIRE := Color("ef5b4a")
+const STING := Color("a97bd8")
+const ICE := Color("a8dcf5")
+const WIND := Color("eef5f1")
+## A shot's colour by its element (Sim.Kind).
+const SHOT_OF := {Sim.Kind.ZAP: BOLT, Sim.Kind.FLAME: FIRE, Sim.Kind.NETTLE: STING, Sim.Kind.HAIL: ICE, Sim.Kind.GUST: WIND}
+## The other carts' shots: a conker, a pumpkin, a drop of water and a seed.
+const CONKER := Color("a8683c")
+const PUMPKIN := Color("f09a3e")
+const WATER := Color("6fb8ea")
+const FLUFF := Color("fffdf6")
 const IRON := Color("b7c0cc")
 const DART := Color("ffe08a")
 const BERRY := Color("f2907c")
@@ -272,6 +289,34 @@ static func icon(b: Face.Builder, kind: int, c: Vector2, s: float) -> void:
 			_bolt(b, c, s * 0.5, BOLT)
 		Sim.Kind.FLAME:
 			_flame(b, c + Vector2(0, s * 0.42), s * 0.86, PAPER, BOLT)
+		Sim.Kind.NETTLE:
+			# a saw-edged leaf on its stalk, a sting at its tip
+			var leaf := PackedVector2Array()
+			for k in 9:
+				var f := k / 8.0
+				leaf.append(c + Vector2(-s * (0.3 if k % 2 == 1 else 0.2) * sin(f * PI), s * (0.4 - 0.84 * f)))
+			for k in 9:
+				var f := 1.0 - k / 8.0
+				leaf.append(c + Vector2(s * (0.3 if k % 2 == 1 else 0.2) * sin(f * PI), s * (0.4 - 0.84 * f)))
+			b.polygon(leaf, PAPER)
+			b.stroke(PackedVector2Array([c + Vector2(0, s * 0.48), c + Vector2(0, -s * 0.3)]), s * 0.06, Color("8a63b8"))
+		Sim.Kind.HAIL:
+			# three hailstones coming down, a streak over each
+			for st: Array in [[Vector2(-0.24, 0.16), 0.17], [Vector2(0.2, 0.26), 0.13], [Vector2(0.1, -0.2), 0.15]]:
+				var at: Vector2 = c + st[0] * s
+				var r: float = float(st[1]) * s
+				b.stroke(PackedVector2Array([at + Vector2(r * 0.9, -r * 2.4), at + Vector2(r * 0.3, -r * 0.8)]), s * 0.05, Color("7fa8c9", 0.7))
+				b.disc(at + Vector2(0, r * 0.14), r, Color("7fa8c9"))
+				b.disc(at, r * 0.92, PAPER)
+				b.disc(at + Vector2(-r * 0.3, -r * 0.3), r * 0.3, Color("cfe6f5"))
+		Sim.Kind.GUST:
+			# two curls of wind
+			for k in 2:
+				var y := c.y + s * (-0.14 + 0.3 * k)
+				var w := s * (0.34 - 0.08 * k)
+				var line := PackedVector2Array([Vector2(c.x - s * 0.42, y)])
+				line.append_array(Face.Builder.arc_points(Vector2(c.x + w - s * 0.1, y - s * 0.13), s * 0.13, PI * 0.5, -PI * 0.9))
+				b.stroke(line, s * 0.1, PAPER)
 		Sim.Kind.FROST:
 			# a snowflake
 			for k in 3:
@@ -351,26 +396,96 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 				glow(b, at, s * float(m[1]) * 0.7, Color(ORB_HI, 1.0), 1.0)
 				glow(b, at, s * float(m[1]) * 0.42, Color.WHITE, 0.7)
 
-## A shop card's medallion of radius `r`, ringed in paper.
-static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float) -> void:
-	var base: Color = CARD[card]
+## The picture of the card only cart `cart` (Sim.Cart) sells, `s` tall
+## about `c`: a conker hopping on, a blast's rings, a drop under pressure, a
+## fan of seeds, a pea and its twin. The pea gun's is `card_icon`'s.
+static func own_icon(b: Face.Builder, cart: int, c: Vector2, s: float) -> void:
+	match cart:
+		Sim.Cart.CONKER:
+			b.stroke(Face.Builder.bezier2(c + Vector2(-s * 0.34, s * 0.2), c + Vector2(-s * 0.02, -s * 0.62), c + Vector2(s * 0.3, s * 0.08), 10), s * 0.07, Color(PAPER, 0.85))
+			_conker(b, c + Vector2(-s * 0.34, s * 0.2), s * 0.15)
+			_conker(b, c + Vector2(s * 0.3, s * 0.1), s * 0.2)
+		Sim.Cart.PUMPKIN:
+			for k in 2:
+				b.stroke(Face.Builder.ring(c, s * (0.48 - 0.16 * k), s * (0.48 - 0.16 * k)), s * 0.06, Color(PAPER, 0.55 + 0.3 * k), true)
+			_pumpkin(b, c, s * 0.2)
+		Sim.Cart.HOSE:
+			_drop(b, c + Vector2(0, s * 0.12), s * 0.24, WATER)
+			for k in 2:
+				var y := c.y - s * (0.2 + 0.2 * k)
+				b.stroke(PackedVector2Array([Vector2(c.x - s * 0.2, y + s * 0.1), Vector2(c.x, y - s * 0.06), Vector2(c.x + s * 0.2, y + s * 0.1)]), s * 0.09, PAPER)
+		Sim.Cart.DANDELION:
+			for k in 5:
+				var d := Vector2.from_angle(-PI * 0.5 + (k - 2) * 0.42)
+				_seed(b, c + Vector2(0, s * 0.4) + d * s * 0.74, s * 0.13, d.angle() + PI * 0.5)
+		Sim.Cart.TWINS:
+			pea(b, c + Vector2(-s * 0.22, s * 0.04), s * 0.24)
+			pea(b, c + Vector2(s * 0.26, s * 0.1), s * 0.17)
+		_:
+			card_icon(b, Sim.Card.SHOTS, c, s)
+
+## A shop card's medallion of radius `r`, ringed in paper. `cart` is whose
+## shop it is: the cart's own card (Sim.Card.SHOTS) wears the cart's colour
+## and picture.
+static func card_medal(b: Face.Builder, card: int, c: Vector2, r: float, cart := 0) -> void:
+	var own := card == Sim.Card.SHOTS and cart != Sim.Cart.PEA
+	var base: Color = CART[cart] if own else CARD[card]
 	b.disc(c + Vector2(0, r * 0.12), r, deepen(base))
 	b.disc(c, r, PAPER)
 	b.disc(c, r * 0.85, base)
 	b.stroke(Face.Builder.arc_points(c, r * 0.68, -PI * 0.85, -PI * 0.5), maxf(1.0, r * 0.09), Color(1, 1, 1, 0.5))
-	card_icon(b, card, c, r * 1.25)
+	if own:
+		own_icon(b, cart, c, r * 1.25)
+	else:
+		card_icon(b, card, c, r * 1.25)
 
 ## The same as a mesh, centred, 12.5 units across at `u`: on the gun's line
 ## along the grass, and bigger in the shop.
-static func card_token(card: int, u: float) -> ArrayMesh:
-	var key := _key("ct", card, 0, u)
+static func card_token(card: int, u: float, cart := 0) -> ArrayMesh:
+	var key := _key("ct", card, cart, u)
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := 12.5 * u
 	b.disc(Vector2(0, 2.4 * u), r, Color(0.3, 0.2, 0.08, 0.12))
-	card_medal(b, card, Vector2.ZERO, r)
+	card_medal(b, card, Vector2.ZERO, r, cart)
 	return _keep(key, b.mesh())
+
+## A conker of radius `r`: a brown nut with its pale cap and a shine.
+static func _conker(b: Face.Builder, c: Vector2, r: float, col := CONKER) -> void:
+	b.disc(c + Vector2(0, r * 0.14), r, deepen(col))
+	b.disc(c, r * 0.92, col)
+	b.ellipse(c + Vector2(0, -r * 0.42), r * 0.56, r * 0.34, col.lerp(PAPER, 0.62))
+	b.disc(c + Vector2(-r * 0.34, r * 0.1), r * 0.18, Color(1, 1, 1, 0.5))
+
+## A pumpkin of radius `r`: three fat ribs and a stalk.
+static func _pumpkin(b: Face.Builder, c: Vector2, r: float, col := PUMPKIN) -> void:
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.12, -r * 1.2), Vector2(r * 0.24, r * 0.44), r * 0.08), POD_DEEP)
+	b.ellipse(c + Vector2(0, r * 0.12), r * 1.12, r * 0.9, deepen(col))
+	for k in [-1.0, 1.0]:
+		b.ellipse(c + Vector2(k * r * 0.5, 0), r * 0.62, r * 0.84, col)
+	b.ellipse(c, r * 0.5, r * 0.88, col.lightened(0.12))
+	b.ellipse(c + Vector2(-r * 0.5, -r * 0.3), r * 0.14, r * 0.3, Color(1, 1, 1, 0.45))
+
+## A drop of water `r` wide, its point down behind it (it flies up).
+static func _drop(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+	for pass_ in 2:
+		var k := 1.0 if pass_ == 0 else 0.84
+		var pts := PackedVector2Array([c + Vector2(0, r * 1.9 * k)])
+		pts.append_array(Face.Builder.arc_points(c, r * k, PI * 0.82, PI * 2.18))
+		b.polygon(pts, deepen(col) if pass_ == 0 else col)
+	b.disc(c + Vector2(-r * 0.3, -r * 0.24), r * 0.28, Color(1, 1, 1, 0.7))
+
+## A dandelion seed `r` big, turned `turn`: the seed, and its tuft of down
+## trailing behind.
+static func _seed(b: Face.Builder, c: Vector2, r: float, turn := 0.0, col := FLUFF) -> void:
+	var back := Vector2(0, 1).rotated(turn)
+	for k in [-1.0, 0.0, 1.0]:
+		var d := back.rotated(k * 0.5)
+		b.stroke(PackedVector2Array([c + back * r * 0.4, c + back * r * 0.4 + d * r * 1.7]), maxf(1.0, r * 0.22), Color(col, 0.9))
+		b.disc(c + back * r * 0.4 + d * r * 1.7, r * 0.32, col)
+	b.disc(c + Vector2(0, r * 0.1), r * 0.62, Color("8a6a45"))
+	b.disc(c, r * 0.52, Color("c9a172") if col == FLUFF else col)
 
 ## The flame on a crate or a plate alight, its foot on the origin: swayed by
 ## its draw.
@@ -506,7 +621,9 @@ static func wheel(u: float) -> ArrayMesh:
 ## pale pod with a seam, a lit belly, a rolled lip and a tendril. With an
 ## element running (`el`: Sim.Kind.ZAP or FLAME) it is the element's colour,
 ## as its peas are.
-static func barrel(u: float, helper := false, el := 0) -> ArrayMesh:
+static func barrel(u: float, helper := false, el := 0, cart := 0) -> ArrayMesh:
+	if cart != Sim.Cart.PEA and cart != Sim.Cart.TWINS:
+		return _gun(u, el, cart)
 	var key := _key("b", int(helper), el, u)
 	if _cache.has(key):
 		return _cache[key]
@@ -539,6 +656,89 @@ static func barrel(u: float, helper := false, el := 0) -> ArrayMesh:
 	b.ellipse(Vector2(0, -tall - 0.4 * u), 6.4 * u, 2.0 * u, mouth)
 	# a tendril curling off the foot
 	b.stroke(Face.Builder.bezier3(Vector2(8, -6) * u, Vector2(15, -8) * u, Vector2(16, -15) * u, Vector2(12, -14) * u, 10), maxf(1.0, 1.1 * u), deep)
+	return _keep(key, b.mesh())
+
+## The other carts' guns, each its foot on the origin and its mouth 30 units
+## up like the pod's, so what a gift dresses the pod in sits on any of them.
+## The conker's is a green husk split open on a nut; the pumpkin's a fat
+## pumpkin, its top cut off; the hose's a brass-nosed spout; the dandelion's
+## a stalk and a clock of down. With an element running the lip (the clock)
+## is the element's colour.
+static func _gun(u: float, el: int, cart: int) -> ArrayMesh:
+	var key := _key("g%d" % cart, 0, el, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var tall := 30.0 * u
+	var mouth := Vector2(0, -tall)
+	var trim: Color = POD_OF[el][0] if POD_OF.has(el) else Color(0, 0, 0, 0)
+	match cart:
+		Sim.Cart.CONKER:
+			var husk := Color("9cc86a")
+			var body := PackedVector2Array()
+			body.append_array(Face.Builder.bezier3(Vector2(-6, 0) * u, Vector2(-16, -8) * u, Vector2(-15, -24) * u, Vector2(-9, -30) * u, 10))
+			body.append_array(Face.Builder.bezier3(Vector2(9, -30) * u, Vector2(15, -24) * u, Vector2(16, -8) * u, Vector2(6, 0) * u, 10))
+			b.polygon(body, deepen(husk))
+			var inner := PackedVector2Array()
+			for p in body:
+				inner.append(Vector2(p.x * 0.86 - 0.8 * u, p.y * 0.97 - 0.4 * u))
+			b.polygon(inner, husk)
+			# its prickles
+			for at: Vector2 in [Vector2(-13.5, -10), Vector2(-14, -20), Vector2(13.5, -10), Vector2(14, -20), Vector2(-9, -3), Vector2(9, -3)]:
+				var out := Vector2(signf(at.x), -0.3).normalized()
+				b.polygon(PackedVector2Array([(at + out.orthogonal() * 1.6) * u, (at + out * 4.2) * u, (at - out.orthogonal() * 1.6) * u]), deepen(husk))
+			b.ellipse(Vector2(-5.0 * u, -tall * 0.5), 2.2 * u, tall * 0.26, Color(1, 1, 1, 0.3))
+			b.ellipse(mouth + Vector2(0, 0.8 * u), 10.6 * u, 4.4 * u, deepen(husk))
+			b.ellipse(mouth - Vector2(0, 0.4 * u), 10.0 * u, 3.6 * u, trim if trim.a > 0.0 else husk.lightened(0.3))
+			b.ellipse(mouth, 7.0 * u, 2.3 * u, Color("5a3a22"))
+		Sim.Cart.PUMPKIN:
+			var col := PUMPKIN
+			b.ellipse(Vector2(0, -13.0 * u), 17.5 * u, 14.6 * u, deepen(col))
+			for k in [-1.0, 1.0]:
+				b.ellipse(Vector2(k * 8.4 * u, -14.0 * u), 8.8 * u, 13.4 * u, col)
+			b.ellipse(Vector2(0, -14.0 * u), 7.4 * u, 14.2 * u, col.lightened(0.12))
+			b.ellipse(Vector2(-9.5 * u, -18.0 * u), 2.0 * u, 5.0 * u, Color(1, 1, 1, 0.4))
+			b.ellipse(mouth + Vector2(0, 2.4 * u), 11.4 * u, 4.6 * u, deepen(col))
+			b.ellipse(mouth + Vector2(0, 1.4 * u), 10.6 * u, 3.8 * u, trim if trim.a > 0.0 else col.lightened(0.3))
+			b.ellipse(mouth + Vector2(0, 1.6 * u), 7.6 * u, 2.4 * u, Color("7a3d12"))
+			b.stroke(Face.Builder.bezier3(Vector2(13, -22) * u, Vector2(20, -26) * u, Vector2(21, -33) * u, Vector2(17, -31) * u, 10), maxf(1.0, 1.2 * u), POD_DEEP)
+		Sim.Cart.HOSE:
+			var can := Color("7cc3c9")
+			b.fan(Face.Builder.round_rect(Vector2(-9, -14) * u, Vector2(18, 14) * u, 4 * u), deepen(can))
+			b.fan(Face.Builder.round_rect(Vector2(-9, -14) * u, Vector2(18, 11.6) * u, 4 * u), can)
+			b.polygon(PackedVector2Array([Vector2(-4.6, -12) * u, Vector2(-3.4, -27) * u, Vector2(3.4, -27) * u, Vector2(4.6, -12) * u]), deepen(can))
+			b.polygon(PackedVector2Array([Vector2(-4.6, -12) * u, Vector2(-3.4, -27) * u, Vector2(1.6, -27) * u, Vector2(2.4, -12) * u]), can)
+			b.ellipse(Vector2(-5.4 * u, -8.0 * u), 1.3 * u, 3.6 * u, Color(1, 1, 1, 0.45))
+			# the brass rose it sprays from
+			b.polygon(PackedVector2Array([Vector2(-4.4, -26) * u, Vector2(-8.6, -30.4) * u, Vector2(8.6, -30.4) * u, Vector2(4.4, -26) * u]), GOLD_DEEP)
+			b.ellipse(mouth + Vector2(0, 0.2 * u), 8.8 * u, 2.6 * u, GOLD_DEEP)
+			b.ellipse(mouth - Vector2(0, 0.6 * u), 8.4 * u, 2.2 * u, trim if trim.a > 0.0 else DART)
+			for k in 3:
+				b.disc(mouth + Vector2((k - 1) * 4.0 * u, -0.6 * u), 0.9 * u, GOLD_INK)
+			b.stroke(Face.Builder.bezier3(Vector2(9, -4) * u, Vector2(17, -5) * u, Vector2(17, -15) * u, Vector2(9, -13) * u, 10), maxf(1.2, 1.9 * u), deepen(can))
+		_:
+			# the dandelion: a stalk, two leaves, and its clock of down
+			b.stroke(PackedVector2Array([Vector2(0, 0), Vector2(0.8 * u, -11.0 * u), Vector2(0, -21.0 * u)]), maxf(1.6, 2.4 * u), POD_DEEP)
+			for k in [-1.0, 1.0]:
+				var leaf := PackedVector2Array()
+				for i in 9:
+					var f := i / 8.0
+					leaf.append(Vector2(k * (2.0 + 12.0 * f), -2.0 - 6.0 * f - (2.4 if i % 2 == 1 else 0.0) * sin(f * PI)) * u)
+				for i in 9:
+					var f := 1.0 - i / 8.0
+					leaf.append(Vector2(k * (2.0 + 12.0 * f), -1.0 - 3.4 * f) * u)
+				b.polygon(leaf, POD)
+			var heart := Vector2(0, -23.0 * u)
+			var down: Color = trim if trim.a > 0.0 else FLUFF
+			b.disc(heart + Vector2(0, 0.8 * u), 10.4 * u, Color(deepen(CREAM_DEEP), 0.5))
+			b.disc(heart, 10.0 * u, Color(down, 0.5))
+			for k in 14:
+				var d := Vector2.from_angle(TAU * k / 14.0 + 0.2)
+				b.stroke(PackedVector2Array([heart + d * 2.4 * u, heart + d * 8.4 * u]), maxf(1.0, 0.7 * u), Color(down.darkened(0.12), 0.9))
+				b.disc(heart + d * 8.8 * u, 1.9 * u, down)
+			for k in 7:
+				b.disc(heart + Vector2.from_angle(TAU * k / 7.0 + 0.5) * 4.8 * u, 1.6 * u, down)
+			b.disc(heart, 2.8 * u, Color("c9a172"))
 	return _keep(key, b.mesh())
 
 ## What the pod wears while the Dart runs, the middle of its mouth on the
@@ -595,28 +795,29 @@ static func crackle(look: int, u: float) -> ArrayMesh:
 		b.stroke(line, 1.0 * u, Color.WHITE)
 	return _keep(key, b.mesh())
 
-## A pea in flight by its shape (Sim.Shot) and its element (`el`: 0, or
-## Sim.Kind.ZAP or FLAME), centred, flying up, a pale wake fading behind it:
-## a pea, a dart that goes through or a berry that bursts, in its own colour
-## or, of an element, in the element's (lightning's yellow, the flame's
-## red). The shape never changes for the element.
-## One mesh a look, drawn for every pea in the air by a MultiMesh.
+## A shot in flight by its shape (Sim.Shot) and its element (`el`: 0, or
+## Sim.Kind.ZAP to GUST), centred, flying up, a pale wake fading behind it:
+## a pea, a dart that goes through, a berry that bursts, a conker, a pumpkin,
+## a drop of water or a dandelion's seed, in its own colour or, of an
+## element, in the element's (lightning's yellow, the flame's red, the
+## nettle's violet, the hail's ice, the gust's white). The shape never
+## changes for the element.
+## One mesh a look, drawn for every shot in the air by a MultiMesh.
 static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 	var key := _key("s", look, el, u)
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := 3.3 * u
-	var col: Color = [PEA, DART, BERRY][clampi(look, 0, 2)]
-	if el == Sim.Kind.ZAP:
-		col = BOLT
-	elif el == Sim.Kind.FLAME:
-		col = FIRE
+	var col: Color = [PEA, DART, BERRY, CONKER, PUMPKIN, WATER, FLUFF][clampi(look, 0, 6)]
+	if SHOT_OF.has(el):
+		col = SHOT_OF[el]
 	var wake := col.lerp(PAPER, 0.5)
-	var i0 := b.vertex(Vector2(-r * 0.7, 0), Color(wake, 0.5))
-	var i1 := b.vertex(Vector2(r * 0.7, 0), Color(wake, 0.5))
-	var i2 := b.vertex(Vector2(0, r * 6.5), Color(wake, 0.0))
-	b.tri(i0, i1, i2)
+	if look != Sim.Shot.SEED and look != Sim.Shot.DROP:
+		var i0 := b.vertex(Vector2(-r * 0.7, 0), Color(wake, 0.5))
+		var i1 := b.vertex(Vector2(r * 0.7, 0), Color(wake, 0.5))
+		var i2 := b.vertex(Vector2(0, r * 6.5), Color(wake, 0.0))
+		b.tri(i0, i1, i2)
 	match look:
 		Sim.Shot.PIERCE:
 			b.polygon(PackedVector2Array([Vector2(-r * 0.9, r * 1.2), Vector2(0, -r * 2.6), Vector2(r * 0.9, r * 1.2)]), deepen(col))
@@ -629,6 +830,14 @@ static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 			b.polygon(pts, deepen(col))
 			b.disc(Vector2.ZERO, r * 0.9, col)
 			b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.6))
+		Sim.Shot.CONKER:
+			_conker(b, Vector2.ZERO, r * 1.05, col)
+		Sim.Shot.PUMPKIN:
+			_pumpkin(b, Vector2.ZERO, r, col)
+		Sim.Shot.DROP:
+			_drop(b, Vector2.ZERO, r * 0.95, col)
+		Sim.Shot.SEED:
+			_seed(b, Vector2.ZERO, r * 0.9, 0.0, col)
 		_:
 			if el == 0:
 				pea(b, Vector2.ZERO, r)
@@ -636,6 +845,60 @@ static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 				b.disc(Vector2(0, r * 0.14), r, deepen(col))
 				b.disc(Vector2.ZERO, r * 0.9, col)
 				b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.65))
+	return _keep(key, b.mesh())
+
+## The nettle's mark on a thing stung, centred: a small violet leaf, its
+## saw edge in ink. Never a tint of the thing: a crate's paint is its number.
+static func sting(u: float) -> ArrayMesh:
+	var key := _key("stg", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for pass_ in 2:
+		var k := 1.0 if pass_ == 0 else 0.74
+		var leaf := PackedVector2Array()
+		for i in 9:
+			var f := i / 8.0
+			leaf.append(Vector2(-(3.4 if i % 2 == 1 else 2.2) * sin(f * PI) * k, 5.4 * k - 11.0 * f * k) * u)
+		for i in 9:
+			var f := 1.0 - i / 8.0
+			leaf.append(Vector2((3.4 if i % 2 == 1 else 2.2) * sin(f * PI) * k, 5.4 * k - 11.0 * f * k) * u)
+		b.polygon(leaf, Color("4f3472") if pass_ == 0 else STING)
+	b.stroke(PackedVector2Array([Vector2(0, 4.6 * u), Vector2(0, -3.4 * u)]), maxf(1.0, 0.7 * u), Color(PAPER, 0.7))
+	return _keep(key, b.mesh())
+
+## The hail's mark on a thing left brittle, centred: a six-armed crystal of
+## ice with an ink edge.
+static func rime(u: float) -> ArrayMesh:
+	var key := _key("rim", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for pass_ in 2:
+		var wide := (2.6 if pass_ == 0 else 1.3) * u
+		var col := Color("4f7896") if pass_ == 0 else Color("f4fbff")
+		for k in 3:
+			var d := Vector2.from_angle(PI * 0.5 + PI * k / 3.0)
+			b.stroke(PackedVector2Array([-d * 5.4 * u, d * 5.4 * u]), wide, col)
+			for end in [-1.0, 1.0]:
+				for side in [-1.0, 1.0]:
+					b.stroke(PackedVector2Array([d * 3.2 * u * end, d * 3.2 * u * end + d.rotated(side * 0.9) * 2.0 * u * end]), wide * 0.8, col)
+	b.disc(Vector2.ZERO, 1.4 * u, ICE)
+	return _keep(key, b.mesh())
+
+## A puff of wind where a gust's shot lands, centred, in white: two curls,
+## swelled and thinned by their draw.
+static func puff(u: float) -> ArrayMesh:
+	var key := _key("puf", 0, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for k in 2:
+		var y := (-3.0 + 6.0 * k) * u
+		var w := (9.0 - 2.4 * k) * u
+		var line := PackedVector2Array([Vector2(-10.0 * u, y)])
+		line.append_array(Face.Builder.arc_points(Vector2(w - 3.0 * u, y - 3.0 * u), 3.0 * u, PI * 0.5, -PI * 0.9))
+		b.stroke(line, 2.0 * u, Color.WHITE)
 	return _keep(key, b.mesh())
 
 ## A four-pointed spark one unit long, white: scaled and tinted by its draw.

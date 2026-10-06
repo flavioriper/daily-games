@@ -40,6 +40,16 @@ static func add(game: String, score: int, stage: int, boosted := false) -> bool:
 	cfg.save(PATH)
 	return better
 
+## What the player last chose before a run of `game` (Peapod's cart), 0
+## with nothing chosen yet.
+static func pick(game: String) -> int:
+	return int(_load().get_value(game, "pick", 0))
+
+static func set_pick(game: String, v: int) -> void:
+	var cfg := _load()
+	cfg.set_value(game, "pick", v)
+	cfg.save(PATH)
+
 ## A score as the player's language groups it: 12,340 or 12.340.
 static func grouped(n: int) -> String:
 	return Locale.number(n)
