@@ -1,7 +1,7 @@
 extends RefCounted
 
 ## Nightlight, as pure data: a small star in the middle of a night sky, the
-## meteors thrown at it, the bodies that cross the sky on their own, five
+## meteors thrown at it, the bodies that cross the sky on their own, four
 ## tiles bought with light, and the supernova that gives everything back and
 ## starts a small star again among its ashes. Kept and without an end (the
 ## user, 2026-10-06: "the run never ends, but player can rebirth star to buy
@@ -60,8 +60,12 @@ const HAZE := 5.0
 const HAZE_STEP := 1.08
 ## A body's radius is the cube root of its mass times this.
 const BODY_R := 14.0
+## A thrown meteor, before the Meteor tile: a fifth of what it was while the
+## pouch held four, since nothing limits a throw now (the user, 2026-10-06:
+## "remove the asteroid limit on throw, but make it way smaller").
+const METEOR := 0.2
 ## What a body of each Kind weighs, before the sky is any richer.
-const MASS := [1.0, 0.5, 1.5, 3.0, 8.0, 2.0]
+const MASS := [METEOR, 0.5, 1.5, 3.0, 8.0, 2.0]
 ## A passing body is a pebble this often, a rock up to the second figure, a
 ## comet up to the third, a planetoid for the rest.
 const MIX := [0.5, 0.8, 0.95]
@@ -78,27 +82,28 @@ const FAR := 2400.0
 const PASS := 3.2
 const GAP_MIN := 0.6
 const GAP_MAX := 1.4
-## The pouch: meteors held and seconds for one to come back.
-const POUCH := 4
-const REFILL := 1.5
+## The most bodies in the sky. A throw past it takes the oldest meteor still
+## up, so a sky parked full of circles outside the haze cannot grow for ever.
+const MOST := 160
+## Light is let go in pieces of a quarter of a body's mass, and never less
+## than this.
+const PIECE := 0.05
 ## Every TRAIL_EVERY ticks a body leaves a point of its trail, TRAIL at most.
 const TRAIL_EVERY := 3
 const TRAIL := 24
 ## Two bodies meet when their middles are this share of their radii apart.
 const TOUCH := 0.8
 
-const TILES := ["meteor", "pouch", "haze", "glow", "sky"]
+const TILES := ["meteor", "haze", "glow", "sky"]
 ## A tile's first price in light, what each level multiplies it by, and its
 ## last level (0: it has none).
 const TILE := {
 	"meteor": [10.0, 1.5, 0],
-	"pouch": [15.0, 1.6, 0],
 	"haze": [25.0, 1.7, 10],
 	"glow": [20.0, 1.6, 0],
 	"sky": [30.0, 1.65, 0],
 }
 ## What a level of each tile does.
-const POUCH_QUICK := 0.95
 const GLOW_STEP := 0.2
 const SKY_SOON := 0.92
 const SKY_RICH := 1.2
@@ -112,11 +117,10 @@ const NOVA := 1000.0
 const DUST := 3.0
 ## The first perk costs this much stardust, and each one after a dust more.
 const PERK := 2
-const PERKS := ["core", "disc", "hand", "deep", "crowd", "ember"]
+const PERKS := ["core", "disc", "hand", "crowd", "ember"]
 const CORE := 0.15
 const DISC := 0.25
 const HAND := 0.3
-const DEEP := 2
 const CROWD := 0.85
 const EMBER := 2.0
 ## Every supernova so far makes what passes this much heavier, for good.
@@ -140,10 +144,9 @@ var light := 0.0
 var dust := 0
 var novas := 0
 var bought := 0
-var lv := {"meteor": 0, "pouch": 0, "haze": 0, "glow": 0, "sky": 0}
-var perk := {"core": 0, "disc": 0, "hand": 0, "deep": 0, "crowd": 0, "ember": 0}
+var lv := {"meteor": 0, "haze": 0, "glow": 0, "sky": 0}
+var perk := {"core": 0, "disc": 0, "hand": 0, "crowd": 0, "ember": 0}
 var bodies: Array[Body] = []
-var pouch := POUCH
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
 ## {kind: "eat", at, m}, {kind: "shed", at, e}, {kind: "merge", at}.
@@ -157,7 +160,6 @@ var _rng := RandomNumberGenerator.new()
 var _next_id := 1
 var _tick := 0
 var _acc := 0.0
-var _refill := 0.0
 var _pass_wait := 0.0
 var _pass_gap := 2.0
 
@@ -196,17 +198,7 @@ func glow() -> float:
 	return (1.0 + GLOW_STEP * int(lv.glow)) * (1.0 + DISC * int(perk.disc))
 
 func meteor_mass() -> float:
-	return (1.0 + int(lv.meteor)) * (1.0 + HAND * int(perk.hand))
-
-func pouch_max() -> int:
-	return POUCH + int(lv.pouch) + DEEP * int(perk.deep)
-
-func refill_time() -> float:
-	return REFILL * pow(POUCH_QUICK, int(lv.pouch))
-
-## How far the next meteor is on its way back, 0 to 1.
-func refill_share() -> float:
-	return _refill / refill_time()
+	return METEOR * (1.0 + int(lv.meteor)) * (1.0 + HAND * int(perk.hand))
 
 func pass_time() -> float:
 	return PASS * pow(SKY_SOON, int(lv.sky)) * pow(CROWD, int(perk.crowd))
@@ -285,8 +277,6 @@ func nova() -> int:
 		lv[tile] = 0
 	bodies.clear()
 	events.clear()
-	pouch = pouch_max()
-	_refill = 0.0
 	_pass_wait = 0.0
 	var pull := gm()
 	for i in count:
@@ -325,13 +315,14 @@ func add(kind: Kind, m: float, pos: Vector2, vel: Vector2) -> Body:
 	bodies.append(b)
 	return b
 
-## A meteor out of the pouch, let go at `pos` with `vel`. False with none.
-func throw_at(pos: Vector2, vel: Vector2) -> bool:
-	if pouch <= 0:
-		return false
-	pouch -= 1
+## A meteor, let go at `pos` with `vel`. Nothing limits a throw.
+func throw_at(pos: Vector2, vel: Vector2) -> void:
+	if bodies.size() >= MOST:
+		for i in bodies.size():
+			if bodies[i].kind == Kind.METEOR:
+				bodies.remove_at(i)
+				break
 	add(Kind.METEOR, meteor_mass(), pos, vel)
-	return true
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -346,37 +337,62 @@ func _passer() -> void:
 	var spare := SPARE / z
 	add(kind, MASS[kind] * rich() * _rng.randf_range(0.8, 1.2), pos, aim * sqrt(spare * spare + 2.0 * gm() / out))
 
-## Two bodies that touch become one, and keep their momentum.
+## Two bodies that touch become one, and keep their momentum. The sky is
+## laid on a grid as wide as the biggest body's reach, and a body is tried
+## only against what is already in the nine cells round its own: with every
+## pair tried, a sky of 160 was 2 ms a tick.
 func _merge() -> void:
 	var n := bodies.size()
+	if n < 2:
+		return
+	var most := 0.0
+	for b in bodies:
+		most = maxf(most, b.m)
+	var cell := maxf(1.0, body_r(most) * 2.0 * TOUCH)
+	var grid := {}
 	var gone := false
-	for i in n:
-		var a := bodies[i]
-		if a.m <= 0.0:
-			continue
+	for a in bodies:
 		var ra := body_r(a.m)
-		for j in range(i + 1, n):
-			var b := bodies[j]
-			if b.m <= 0.0:
-				continue
-			var reach := (ra + body_r(b.m)) * TOUCH
-			var d := a.pos - b.pos
-			if absf(d.x) >= reach or absf(d.y) >= reach or d.length_squared() >= reach * reach:
-				continue
-			var m := a.m + b.m
-			if b.m > a.m:
-				a.kind = b.kind
-				a.id = b.id
-				a.spin = b.spin
-				a.turn = b.turn
-			a.pos = (a.pos * a.m + b.pos * b.m) / m
-			a.vel = (a.vel * a.m + b.vel * b.m) / m
-			a.e += b.e
-			a.m = m
-			ra = body_r(m)
-			b.m = 0.0
-			gone = true
-			events.append({"kind": "merge", "at": a.pos})
+		var cx := int(floor(a.pos.x / cell))
+		var cy := int(floor(a.pos.y / cell))
+		for gx in range(cx - 1, cx + 2):
+			for gy in range(cy - 1, cy + 2):
+				var there = grid.get(Vector2i(gx, gy))
+				if there == null:
+					continue
+				for b: Body in there:
+					if b.m <= 0.0:
+						continue
+					var reach := (ra + body_r(b.m)) * TOUCH
+					var d := a.pos - b.pos
+					if absf(d.x) >= reach or absf(d.y) >= reach or d.length_squared() >= reach * reach:
+						continue
+					# the one already on the grid takes the other in, where it is filed
+					var m := a.m + b.m
+					if a.m > b.m:
+						b.kind = a.kind
+						b.id = a.id
+						b.spin = a.spin
+						b.turn = a.turn
+						b.trail = a.trail
+					b.vel = (a.vel * a.m + b.vel * b.m) / m
+					b.pos = (a.pos * a.m + b.pos * b.m) / m
+					b.e += a.e
+					b.m = m
+					a.m = 0.0
+					gone = true
+					events.append({"kind": "merge", "at": b.pos})
+					break
+				if a.m <= 0.0:
+					break
+			if a.m <= 0.0:
+				break
+		if a.m > 0.0:
+			var key := Vector2i(cx, cy)
+			if grid.has(key):
+				(grid[key] as Array).append(a)
+			else:
+				grid[key] = [a]
 	if gone:
 		var left: Array[Body] = []
 		for b in bodies:
@@ -396,13 +412,6 @@ func advance(delta: float, most := 12) -> void:
 func tick() -> void:
 	clock += STEP
 	_tick += 1
-	if pouch < pouch_max():
-		_refill += STEP
-		if _refill >= refill_time():
-			_refill = 0.0
-			pouch += 1
-	else:
-		_refill = 0.0
 	if passing:
 		_pass_wait += STEP
 		if _pass_wait >= _pass_gap:
@@ -447,7 +456,7 @@ func tick() -> void:
 			acc -= b.vel * k
 			b.heat = d
 			b.e += k * b.vel.length_squared() * STEP / bind * b.m * LIGHT * gl
-			var q := maxf(0.25, b.m * 0.25)
+			var q := maxf(PIECE, b.m * 0.25)
 			if b.e >= q:
 				b.e -= q
 				light += q
@@ -489,10 +498,10 @@ func predict(pos: Vector2, vel: Vector2, ticks := 420, every := 7) -> Dictionary
 
 ## A steady hand, for the probe and the tutorial's page: a meteor into the
 ## outer haze, a little under the speed of a circle there.
-func bot_throw() -> bool:
+func bot_throw() -> void:
 	var r := haze_r() * _rng.randf_range(0.55, 0.9)
 	var way := Vector2.from_angle(_rng.randf() * TAU)
-	return throw_at(way * r, way.orthogonal() * -sqrt(gm() / r) * _rng.randf_range(0.8, 1.05))
+	throw_at(way * r, way.orthogonal() * -sqrt(gm() / r) * _rng.randf_range(0.8, 1.05))
 
 # --- keeping ---
 
@@ -509,7 +518,6 @@ func save() -> void:
 	cfg.set_value("star", "novas", novas)
 	cfg.set_value("star", "bought", bought)
 	cfg.set_value("star", "eaten", eaten)
-	cfg.set_value("star", "pouch", pouch)
 	var kept := []
 	for b in bodies:
 		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y])
@@ -535,7 +543,6 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	sim.novas = maxi(0, int(cfg.get_value("star", "novas", 0)))
 	sim.bought = maxi(0, int(cfg.get_value("star", "bought", 0)))
 	sim.eaten = maxf(0.0, float(cfg.get_value("star", "eaten", 0.0)))
-	sim.pouch = clampi(int(cfg.get_value("star", "pouch", POUCH)), 0, sim.pouch_max())
 	for row in cfg.get_value("star", "bodies", []):
 		if not (row is Array) or (row as Array).size() < 6 or sim.bodies.size() >= 200:
 			continue

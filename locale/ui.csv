@@ -1013,7 +1013,6 @@ NL_MOTTO,"A small star, and a sky to feed it",Uma estrelinha e um céu para alim
 NL_MASS,Mass,Massa,Masa
 NL_LIGHT,Light,Luz,Luz
 NL_HINT,"Drag to throw, tap to let go","Arraste para lançar, toque para soltar","Arrastra para lanzar, toca para soltar"
-NL_HELD,%d / %d meteors,%d / %d meteoros,%d / %d meteoros
 NL_NOVA,Supernova,Supernova,Supernova
 NL_NOVA_AT,Supernova at %s mass,Supernova com massa %s,Supernova con masa %s
 NL_NOVA_READY,"+%d stardust now, +%d at %s mass","+%d de poeira estelar agora, +%d com massa %s","+%d de polvo estelar ahora, +%d con masa %s"
@@ -1032,19 +1031,15 @@ NL_PERK_DISC,Bright haze,Névoa brilhante,Bruma brillante
 NL_PERK_DISC_FX,light +25%,luz +25%,luz +25%
 NL_PERK_HAND,Heavy hand,Mão pesada,Mano pesada
 NL_PERK_HAND_FX,meteors 30% heavier,meteoros 30% mais pesados,meteoros 30% más pesados
-NL_PERK_DEEP,Deep pouch,Bolsa funda,Bolsa honda
-NL_PERK_DEEP_FX,2 more meteors held,2 meteoros a mais,2 meteoros más
 NL_PERK_CROWD,Crowded sky,Céu cheio,Cielo lleno
 NL_PERK_CROWD_FX,bodies pass 15% sooner,corpos passam 15% mais cedo,pasan cuerpos 15% antes
 NL_PERK_EMBER,Ember,Brasa,Brasa
 NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o dobro,la estrella nueva empieza con el doble
 NL_METEOR,Meteor,Meteoro,Meteoro
-NL_POUCH,Pouch,Bolsa,Bolsa
 NL_HAZE,Haze,Névoa,Bruma
 NL_GLOW,Glow,Brilho,Brillo
 NL_SKY,Sky,Céu,Cielo
 NL_FX_METEOR,"mass %s, then %s","massa %s, depois %s","masa %s, luego %s"
-NL_FX_POUCH,"holds %d, then %d","guarda %d, depois %d","guarda %d, luego %d"
 NL_FX_HAZE,a wider haze,névoa mais larga,bruma más ancha
 NL_FX_GLOW,"light ×%s, then ×%s","luz ×%s, depois ×%s","luz ×%s, luego ×%s"
 NL_FX_SKY,"more bodies, heavier","mais corpos, mais peso","más cuerpos, más peso"

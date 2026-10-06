@@ -9,7 +9,7 @@ extends SceneTree
 ## The checks: a meteor on a circle in the haze goes round several times,
 ## gains speed all the way and pays far more light than one dropped straight
 ## in; a star left alone catches little; a tile costs what the table says
-## and Haze stops; a supernova pays its stardust, leaves ashes on closed
+## and Haze stops; a throw is never refused; a supernova pays its stardust, leaves ashes on closed
 ## paths and takes the tiles; a star saved and read back is the same star.
 ## `pace` plays a steady hand that throws into the outer haze, buys the
 ## cheapest tile it can and goes supernova as soon as the stardust buys a
@@ -90,14 +90,23 @@ func _check_rules() -> void:
 	sim.passing = false
 	_ok("a first Meteor costs 10 light", sim.cost("meteor") == 10 and not sim.can_buy("meteor"))
 	sim.light = 25.0
-	_ok("bought, the next is 15 and a meteor weighs 2", sim.buy("meteor") and sim.cost("meteor") == 15 and is_equal_approx(sim.meteor_mass(), 2.0) and is_equal_approx(sim.light, 15.0))
+	_ok("a meteor weighs a fifth of a mass", is_equal_approx(sim.meteor_mass(), Sim.METEOR) and is_equal_approx(Sim.METEOR, 0.2))
+	_ok("bought, the next is 15 and a meteor weighs twice that", sim.buy("meteor") and sim.cost("meteor") == 15 and is_equal_approx(sim.meteor_mass(), 0.4) and is_equal_approx(sim.light, 15.0))
 	sim.lv.haze = Sim.TILE.haze[2]
 	sim.light = 1e12
 	_ok("Haze stops at its last level", sim.is_done("haze") and not sim.buy("haze"))
-	_ok("the pouch holds four and a throw takes one", sim.pouch == 4 and sim.throw_at(Vector2(300, 0), Vector2.ZERO) and sim.pouch == 3)
-	for i in int(Sim.REFILL / Sim.STEP) + 2:
-		sim.tick()
-	_ok("and one comes back", sim.pouch == 4)
+	# nothing limits a throw: three hundred on a circle outside the haze, all
+	# let go at once, and the sky holds its most and no more
+	var park: RefCounted = Sim.new(5)
+	park.passing = false
+	for i in 300:
+		var at: Vector2 = Vector2.from_angle(i * 0.37) * (park.haze_r() * (1.3 + 0.004 * i))
+		park.throw_at(at, at.orthogonal().normalized() * -sqrt(park.gm() / at.length()))
+	_ok("a throw is never refused, and the sky holds %d at most" % Sim.MOST, park.bodies.size() == Sim.MOST)
+	var began := Time.get_ticks_usec()
+	for i in 240:
+		park.tick()
+	print("a full sky of %d: %.0f us a tick" % [park.bodies.size(), (Time.get_ticks_usec() - began) / 240.0])
 	_ok("no supernova under the mark", not sim.can_nova() and sim.nova() == 0 and sim.dust_for() == 0)
 	sim.mass = Sim.NOVA
 	_ok("at the mark it pays three, at four times the mark six", sim.dust_for() == 3 and is_equal_approx(sim.next_dust_mass(), Sim.NOVA * 16.0 / 9.0))
@@ -134,8 +143,8 @@ func _pace(minutes: float, rng_seed: int, every: float) -> void:
 		life += Sim.STEP
 		if since >= every:
 			since = 0.0
-			if sim.bot_throw():
-				thrown += 1
+			sim.bot_throw()
+			thrown += 1
 		sim.tick()
 		sim.events.clear()
 		most_bodies = maxi(most_bodies, sim.bodies.size())

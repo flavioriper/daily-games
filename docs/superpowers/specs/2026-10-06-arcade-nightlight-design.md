@@ -145,3 +145,34 @@ it is not a moment for an interstitial (`ui/menu.gd`, as for the Valley).
 A black hole and anything past a star; sounds (no file: every cue is silent,
 and only the mapped ones are felt); time away; a tab for the perks outside
 the game. The pace has been played by a bot only.
+
+## Amendments
+
+### 2026-10-06, the same day, on the first build played on the Mac
+
+**The haze is not drawn.** "Remove this visual indicator of the orbit, keep
+only the star at center": the ring at the haze's edge and the grains in
+orbit inside it are gone from the sky, the tutorial's pages and the Haze
+tile's picture. The haze still drags, catches and makes light exactly as in
+section 2; only the star, its light and the bodies show where it is.
+
+**Nothing limits a throw, and a meteor is a fifth of what it was.** "Remove
+the asteroid limit on throw, but make it way smaller." The pouch is gone
+with everything that hung on it: the four held and the 1.5 s for one to come
+back, the Pouch tile (four tiles now, two by two on the card), the Deep pouch
+perk (five perks), the dots in the sky's corner and the count under it. A
+thrown meteor weighs `METEOR` = 0.2 and each level of the Meteor tile adds
+0.2 more; it is drawn 8 px in radius, and no body under 6. Light is let go
+in pieces of 0.05 at the least, so a small meteor still sheds four or five
+motes on its way in.
+
+What takes the pouch's place as a brake is the hand. The bot throwing every
+0.45 s reaches the mark in 5.9, 4.6 and 4.1 minutes; every 0.2 s, in 3.2,
+2.2 and 1.7.
+
+**The sky holds 160 bodies at most** (`Sim.MOST`): a throw past it takes the
+oldest meteor still up. A circle outside the haze never comes down, and with
+no pouch a sky could be parked full of them. Bodies meeting are found on a
+grid now: with every pair tried, a sky of 160 cost 2 ms a tick; it costs
+0.27.
+

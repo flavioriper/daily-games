@@ -1,14 +1,17 @@
 extends Control
 
 ## Nightlight's sky, drawn off a sim (arcade/nightlight_sim.gd): the night,
-## the star's light on the dust round it, the haze's grains in their orbits,
-## the bodies with their shadows, trails and warmth, and the star. The
+## the star's light on the dust round it, the bodies with their shadows,
+## trails and warmth, and the star. The haze that drags them is not drawn:
+## it had a ring at its edge and grains in orbit inside it until the user
+## asked for them gone (2026-10-06: "remove this visual indicator of the
+## orbit, keep only the star at center"). The
 ## screen's field is one of these, and so are the tutorial's pages and the
 ## Arcade card's picture, so the three cannot drift apart.
 ##
 ## The owner sets `sim`, calls `refresh` once a frame after stepping it, and
 ## tells it what the sim's events were (`ate`, `met`). Seven layers, about
-## fourteen draws and one more for each trail: the bodies are three
+## twelve draws and one more for each trail: the bodies are three
 ## MultiMeshes lit by one shader, their shadows one, every warm light one.
 ## Light is added and has no shape; a shadow is the only dark thing.
 
@@ -16,10 +19,12 @@ const Sim = preload("res://arcade/nightlight_sim.gd")
 const Art = preload("res://arcade/nightlight_art.gd")
 const Motion = preload("res://core/motion.gd")
 
-## The most bodies drawn, grains in the haze, and dots of a throw's path.
+## The most bodies drawn, and dots of a throw's path.
 const MOST := 200
-const GRAINS := 90
 const DOTS := 64
+## No body is drawn smaller than this, in the design's pixels: a thrown
+## meteor is small, and still has a lit side.
+const SMALL := 6.0
 ## The star's light reaches this many of its radii, a quarter of it left
 ## there.
 const REACH := 9.0
@@ -38,7 +43,7 @@ var centre := Vector2.ZERO
 var paper := Color.TRANSPARENT
 var corner := 44.0
 ## A throw being aimed: {from, to} in this control's pixels, {pts, hit} from
-## Sim.predict, `held` whether the pouch holds one. Empty when none is.
+## Sim.predict. Empty when none is.
 var aim := {}
 ## The supernova: how far the star has swollen into a light that takes the
 ## sky, and how much of the sky that light still covers, both 0 to 1.
@@ -50,7 +55,6 @@ var _pulse := 0.0
 var _sky: ArrayMesh
 var _sky_for := Vector3.ZERO
 var _corners: ArrayMesh
-var _grain := PackedFloat32Array()   # share of the haze, angle, size: three a grain
 var _puffs: Array = []               # {at, t}: the sim's units
 var _body_mat: ShaderMaterial
 var _light_l: Control
@@ -59,7 +63,6 @@ var _warm_l: Control
 var _body_l: Control
 var _star_l: Control
 var _top_l: Control
-var _grains: Batch
 var _shades: Batch
 var _warms: Batch
 var _dots: Batch
@@ -113,12 +116,6 @@ class Batch:
 func _init() -> void:
 	clip_contents = true
 	resized.connect(_on_resized)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	for i in GRAINS:
-		_grain.append(0.2 + 0.8 * sqrt(rng.randf()))
-		_grain.append(rng.randf() * TAU)
-		_grain.append(1.6 + rng.randf() * 3.0)
 	_body_mat = Art.body_material()
 	_light_l = _layer("Light", _draw_light, Art.adding())
 	_shade_l = _layer("Shade", _draw_shade, null)
@@ -126,7 +123,6 @@ func _init() -> void:
 	_body_l = _layer("Bodies", _draw_bodies, _body_mat)
 	_star_l = _layer("Star", _draw_star, null)
 	_top_l = _layer("Top", _draw_top, null)
-	_grains = Batch.new(Art.glow(1.2), GRAINS)
 	_shades = Batch.new(Art.shadow(), MOST)
 	_warms = Batch.new(Art.glow(2.0), MOST * 2)
 	_dots = Batch.new(Art.dot(), DOTS)
@@ -180,7 +176,7 @@ func refresh(delta: float) -> void:
 	for p: Dictionary in _puffs:
 		p.t += delta
 	_puffs = _puffs.filter(func(p: Dictionary) -> bool: return p.t < PUFF)
-	_fill(delta)
+	_fill()
 	var want := Vector3(size.x, size.y, sim.novas)
 	if want != _sky_for and size.x > 0.0:
 		_sky_for = want
@@ -194,34 +190,22 @@ func _breath() -> float:
 	return 1.0 if Motion.reduce else 1.0 + 0.03 * sin(_clock * 1.3)
 
 ## Every buffer for this frame, off where the bodies are now.
-func _fill(delta: float) -> void:
-	var batches: Array[Batch] = [_grains, _shades, _warms, _dots]
+func _fill() -> void:
+	var batches: Array[Batch] = [_shades, _warms, _dots]
 	batches.append_array(_lumps)
 	for batch in batches:
 		batch.n = 0
 	var z: float = sim.zoom() * u
 	var col := Art.star_col(sim.mass)
-	var rw: float = sim.star_r()
 	var rh: float = sim.haze_r()
-	var pull: float = sim.gm()
 	var reach := star_px() * REACH
-	# the grains of the haze, the inner ones lapping the outer
-	var grain := col.lerp(Color.WHITE, 0.3)
-	for g in GRAINS:
-		var f := _grain[g * 3]
-		var r := f * rh
-		if r < rw * 1.05:
-			continue
-		_grain[g * 3 + 1] += sqrt(pull / (r * r * r)) * delta
-		var s := _grain[g * 3 + 2] * 2.4 * u / Art.R
-		_grains.put(centre + Vector2.from_angle(_grain[g * 3 + 1]) * r * z, 0.0, s, s, Color(grain, (1.0 - f) * 0.55 + 0.06))
 	for b: Sim.Body in sim.bodies:
 		var far := b.pos.length()
 		if far < 1.0:
 			continue
 		var away := b.pos / far
 		var at := centre + b.pos * z
-		var r := maxf(9.0 * u, Sim.body_r(b.m) * z)
+		var r := maxf(SMALL * u, Sim.body_r(b.m) * z)
 		var k := far * z / reach
 		var lit := 1.0 / (1.0 + 3.0 * k * k)
 		var s := r / Art.R
@@ -241,7 +225,7 @@ func _fill(delta: float) -> void:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * u / Art.R
 		_warms.put(centre + (p.at as Vector2) * z, 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
-	if not aim.is_empty() and aim.held:
+	if not aim.is_empty():
 		var pts: PackedVector2Array = aim.pts
 		var n := mini(pts.size(), DOTS)
 		for i in n:
@@ -263,15 +247,13 @@ func _draw() -> void:
 	if _sky != null:
 		draw_mesh(_sky, null)
 
-## The star's light, lying on the dust round it, and the haze.
+## The star's light, lying on the dust round it.
 func _draw_light() -> void:
 	if sim == null:
 		return
 	var col := Art.star_col(sim.mass)
 	var r := star_px() * REACH * _breath() * (1.0 + _pulse * 0.25)
 	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, centre), Color(col, 0.5))
-	_grains.show(_light_l)
-	_light_l.draw_arc(centre, sim.haze_r() * sim.zoom() * u, 0.0, TAU, 96, Color(col, 0.07), 4.0 * u, true)
 
 ## Shadows, thrown straight away from the star: seen where its light lies.
 func _draw_shade() -> void:
@@ -289,7 +271,7 @@ func _draw_warm() -> void:
 		if n < 2 or drawn >= MOST:
 			continue
 		drawn += 1
-		_warm_l.draw_polyline_colors(b.trail, Art.ramp(n, b.heat), maxf(9.0 * u, Sim.body_r(b.m) * z) * TRAIL_WIDE / z)
+		_warm_l.draw_polyline_colors(b.trail, Art.ramp(n, b.heat), maxf(SMALL * u, Sim.body_r(b.m) * z) * TRAIL_WIDE / z)
 	_warm_l.draw_set_transform(Vector2.ZERO)
 	_warms.show(_warm_l)
 	var sr := star_px() * _breath() * (1.0 + _pulse * 0.12)
@@ -315,18 +297,16 @@ func _draw_top() -> void:
 	if sim == null:
 		return
 	if not aim.is_empty():
-		var has: bool = aim.held
 		var cream := Color(1.0, 0.965, 0.9)
 		var from: Vector2 = aim.from
-		var r := maxf(9.0 * u, Sim.body_r(sim.meteor_mass()) * sim.zoom() * u)
-		if has:
-			_dots.show(_top_l)
-			if aim.hit:
-				_top_l.draw_arc(centre, star_px() * 1.35, 0.0, TAU, 64, Color(cream, 0.6), 5.0 * u, true)
-			_top_l.draw_line(from, aim.to, Color(cream, 0.45), 8.0 * u, true)
-			_top_l.draw_circle(aim.to, 12.0 * u, Color(cream, 0.7), true, -1.0, true)
-		_top_l.draw_circle(from, r + 5.0 * u, Color(cream, 0.9 if has else 0.3), true, -1.0, true)
-		_top_l.draw_circle(from, r, Color(Art.PAINT[Sim.Kind.METEOR], 1.0 if has else 0.4), true, -1.0, true)
+		var r := maxf(SMALL * u, Sim.body_r(sim.meteor_mass()) * sim.zoom() * u)
+		_dots.show(_top_l)
+		if aim.hit:
+			_top_l.draw_arc(centre, star_px() * 1.35, 0.0, TAU, 64, Color(cream, 0.6), 5.0 * u, true)
+		_top_l.draw_line(from, aim.to, Color(cream, 0.45), 6.0 * u, true)
+		_top_l.draw_circle(aim.to, 9.0 * u, Color(cream, 0.7), true, -1.0, true)
+		_top_l.draw_circle(from, r + 4.0 * u, Color(cream, 0.9), true, -1.0, true)
+		_top_l.draw_circle(from, r, Art.PAINT[Sim.Kind.METEOR], true, -1.0, true)
 	if veil > 0.0:
 		_top_l.draw_rect(Rect2(Vector2.ZERO, size), Color(Art.VEIL, clampf(veil, 0.0, 1.0)))
 	if _corners != null:

@@ -1111,7 +1111,7 @@ supernovas (`Sim.kept()`), not a best.
   so they cannot drift. It builds its layers in `_init`, not `_ready`, so
   what an owner adds to it (the pouch, the Supernova button) stands over the
   sky. Three MultiMeshes of bodies under one shader, one of shadows, one of
-  warm lights, one of the haze's grains, and **one `draw_polyline_colors` a
+  warm lights, and **one `draw_polyline_colors` a
   trail** in the sim's own units under a canvas transform, with cached colour
   ramps: nothing is laid into a mesh in script.
 - **The bodies are lit in the shader** (`shaders/nightlight_body_2d.gdshader`)
@@ -1124,12 +1124,23 @@ supernovas (`Sim.kept()`), not a best.
   scene is built: `TranslationServer.set_locale` in `_initialize` is
   overridden by `Locale.apply()`, and `Locale.set_current` writes the
   player's own file.
-- 266 draw calls on the tab with seven cards, 77 on a new star, 85 while
-  aiming, 90-103 in play, 117 with thirty-two ashes and their trails, 166
-  with the shop open, 140-169 on the tutorial's pages; the two drivers
-  within five of each other, on skies that differ. `tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]` shoots
+- 266 draw calls on the tab with seven cards, 64 on a new star, 72 while
+  aiming, 84-97 in play, 104 with thirty-two ashes and their trails, 162
+  with the shop open, 126-153 on the tutorial's pages; the two drivers
+  within four of each other, on skies that differ. `tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]` shoots
   seventeen beats through the real menu, aiming with a ScreenTouch and a
   ScreenDrag.
+- **The same day, played on the Mac** (the user: "remove this visual
+  indicator of the orbit, keep only the star at center"; "remove the
+  asteroid limit on throw, but make it way smaller"): the haze's ring and
+  grains are not drawn, and the pouch is gone with its tile, its perk, its
+  dots and its count. A meteor weighs `Sim.METEOR` (0.2). **With no pouch
+  the sky needs its own limit**: `Sim.MOST` (160), a throw past it taking
+  the oldest meteor up, since a circle outside the haze never comes down.
+  **Bodies meeting are found on a grid** (`_merge`): every pair tried was
+  2 ms a tick at 160 bodies, the grid is 0.27. The pace is the hand's now:
+  the bot at a throw every 0.45 s reaches the mark in 5.9, 4.6 and 4.1
+  minutes, at one every 0.2 s in 3.2, 2.2 and 1.7.
 - **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
   and `nova` are felt), nothing run on a phone, no person has thrown a
   meteor or played the pace, Spanish was not shot, a perk's worth was not

@@ -7,7 +7,7 @@ extends RefCounted
 ## **The star is the only lamp.** A body is one flat colour and a white lump;
 ## its lit side, its deep violet far side and its warmth in the haze are
 ## shaders/nightlight_body_2d.gdshader's. What is light itself (the star's
-## glow on the dust, the grains of the haze, a body's warmth, the motes) is
+## glow on the dust, a body's warmth, the motes) is
 ## a soft round falloff with no rim, no shine and no rays (ui/motes.gd:
 ## cozy light has no shape), drawn on a layer that adds.
 
@@ -319,14 +319,9 @@ static func icon(what: String) -> ArrayMesh:
 					_lay_orb(b, (mote[0] as Vector2) * R, float(mote[1]) * R)
 			"meteor":
 				lit(b, Vector2.ZERO, R * 0.6, PAINT[Sim.Kind.METEOR], sun)
-			"pouch":
-				for at: Vector2 in [Vector2(-0.52, 0.2), Vector2(0.0, -0.3), Vector2(0.52, 0.2)]:
-					lit(b, at * R, R * 0.34, PAINT[Sim.Kind.METEOR], sun)
 			"haze":
-				Motes.glow(b, Vector2.ZERO, R, Color(TEMPS[1][1], 0.4), 1.4)
-				for k in 12:
-					b.disc(Vector2.from_angle(TAU * k / 12.0) * R * 0.8, R * 0.07, Color(ORB_HI, 0.9))
-				lay_star(b, Vector2.ZERO, R * 0.26, TEMPS[1][1])
+				Motes.glow(b, Vector2.ZERO, R, Color(TEMPS[1][1], 0.55), 0.9)
+				lay_star(b, Vector2.ZERO, R * 0.22, TEMPS[1][1])
 			"sky":
 				var head := Vector2(-0.3, 0.3) * R
 				b.polygon(PackedVector2Array([head + Vector2(-0.2, -0.26) * R, Vector2(0.86, -0.82) * R, head + Vector2(0.26, 0.2) * R]), Color(TAIL, 0.45))

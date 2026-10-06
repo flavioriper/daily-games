@@ -81,7 +81,7 @@ func _step(delta: float) -> void:
 				var k := clampf(_t / (AIM * 0.7), 0.0, 1.0)
 				var where: Dictionary = _sim.predict(FROM, vel * k)
 				var from: Vector2 = _sky.px(FROM)
-				_sky.aim = {"from": from, "to": from + vel.normalized() * 150.0 * _sky.u * k, "pts": where.pts, "hit": where.hit, "held": true}
+				_sky.aim = {"from": from, "to": from + vel.normalized() * 150.0 * _sky.u * k, "pts": where.pts, "hit": where.hit}
 			elif not _thrown:
 				_thrown = true
 				_sim.add(Sim.Kind.METEOR, 1.0, FROM, vel)

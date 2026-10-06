@@ -148,7 +148,8 @@ func _process(delta: float) -> bool:
 				_drag(step[2])
 			"let_go":
 				_touch(Vector2.ZERO, false)
-				print("thrown: pouch %d, bodies %d, speed %.0f" % [_s.sim.pouch, _s.sim.bodies.size(), _s.sim.bodies[0].vel.length() if not _s.sim.bodies.is_empty() else -1.0])
+				print("thrown: bodies %d, mass %.2f, speed %.0f" % [_s.sim.bodies.size(), _s.sim.bodies[0].m if not _s.sim.bodies.is_empty() else -1.0,
+					_s.sim.bodies[0].vel.length() if not _s.sim.bodies.is_empty() else -1.0])
 			"run":
 				_run(float(step[2]))
 			"heavy":

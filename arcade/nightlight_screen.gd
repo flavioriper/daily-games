@@ -6,7 +6,7 @@ extends Control
 ## go). The star pulls as hard as it is heavy, bodies cross the sky on their
 ## own, and a caught one circles, closes in and turns faster and faster until
 ## the star has it. Mass grows the star; light, which the haze makes of
-## whatever it drags, buys the five tiles; at 1,000 mass the star can go
+## whatever it drags, buys the four tiles; at 1,000 mass the star can go
 ## supernova, which gives everything back to the sky, leaves a small star
 ## among the ashes and pays stardust for a perk that lasts (the user's
 ## design, 2026-10-06). Spec
@@ -63,7 +63,7 @@ const PRICE_H := 64.0
 const PRICE_R := 20
 const PRICE_OFF := Color("ede4d3")
 const FILL := Color("fcf7ef")
-## The star stands a little above the field's middle, clear of the pouch.
+## The star stands a little above the field's middle.
 const STAR_AT := 0.47
 ## A throw: under SLACK pixels of drag (the design's) it is a tap and the
 ## meteor is let go where it is; FULL of them is the speed of a circle at
@@ -84,12 +84,11 @@ const THIN := 1.1
 const FADE := 0.3
 const SAVE_GAP := 5.0
 ## A throw is a piece set down; a tile bought is something finished; one
-## that cannot be, or an empty pouch, is a not yet; the supernova is the
-## heaviest thing here.
+## that cannot be is a not yet; the supernova is the heaviest thing here.
 const HAPTICS := {"throw": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "nova": Haptics.THUD}
-const TILE_NAMES := {"meteor": "NL_METEOR", "pouch": "NL_POUCH", "haze": "NL_HAZE", "glow": "NL_GLOW", "sky": "NL_SKY"}
-const PERK_NAMES := {"core": "NL_PERK_CORE", "disc": "NL_PERK_DISC", "hand": "NL_PERK_HAND", "deep": "NL_PERK_DEEP",
-	"crowd": "NL_PERK_CROWD", "ember": "NL_PERK_EMBER"}
+const TILE_NAMES := {"meteor": "NL_METEOR", "haze": "NL_HAZE", "glow": "NL_GLOW", "sky": "NL_SKY"}
+const PERK_NAMES := {"core": "NL_PERK_CORE", "disc": "NL_PERK_DISC", "hand": "NL_PERK_HAND", "crowd": "NL_PERK_CROWD",
+	"ember": "NL_PERK_EMBER"}
 
 var sim: RefCounted
 var top_bar: Control
@@ -107,8 +106,6 @@ var _dust_l: Label
 var _nova_line: Control
 var _nova_l: Label
 var _nova_b: Button
-var _pouch_l: Control
-var _count_l: Label
 var _shop_b: Button
 var _shop: Control
 var _shop_light: Label
@@ -219,12 +216,6 @@ func _build() -> void:
 	sky.gui_input.connect(_on_field_input)
 	sky.resized.connect(_layout_field)
 	col.add_child(sky)
-	_pouch_l = Control.new()
-	_pouch_l.name = "Pouch"
-	_pouch_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pouch_l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_pouch_l.draw.connect(_draw_pouch)
-	sky.add_child(_pouch_l)
 	# on the left, clear of the thumb that throws
 	_nova_b = IconButton.new("sparkle", tr("NL_NOVA"), "PrimaryButton")
 	_nova_b.name = "Nova"
@@ -232,7 +223,7 @@ func _build() -> void:
 	_nova_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_nova_b.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_nova_b.offset_left = 28.0
-	_nova_b.offset_bottom = -96.0
+	_nova_b.offset_bottom = -28.0
 	_nova_b.visible = false
 	_nova_b.pressed.connect(open_ask)
 	sky.add_child(_nova_b)
@@ -250,22 +241,13 @@ func _build() -> void:
 	_shop_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_shop_b.pressed.connect(open_shop)
 	info.add_child(_shop_b)
-	var words := VBoxContainer.new()
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	words.add_theme_constant_override("separation", 0)
-	info.add_child(words)
-	_count_l = Label.new()
-	_count_l.name = "Count"
-	_count_l.theme_type_variation = "CardTitle"
-	_count_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_count_l.resized.connect(func() -> void: _count_l.pivot_offset = _count_l.size * 0.5)
-	words.add_child(_count_l)
 	var hint := Label.new()
 	hint.text = "NL_HINT"
 	hint.theme_type_variation = "CardBlurb"
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	words.add_child(hint)
+	info.add_child(hint)
 	col.add_child(info)
 
 	_motes = Motes.new()
@@ -380,7 +362,7 @@ func _held_pill(what: String, label: Label) -> Control:
 	held.add_child(label)
 	return pill
 
-## The shop: the five tiles on a card over the sky, the light held on a pill
+## The shop: the four tiles on a card over the sky, the light held on a pill
 ## at its head and an X beside it. The sky goes on behind it.
 func _build_shop() -> Control:
 	var made := _dialog("Shop", CARD_W, close_shop)
@@ -405,7 +387,7 @@ func _build_shop() -> Control:
 	col.add_child(Dialog.head("SHOP_TITLE", "trend", trailing))
 	var grid := GridContainer.new()
 	grid.name = "Tiles"
-	grid.columns = 3
+	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", TILE_GAP)
 	grid.add_theme_constant_override("v_separation", TILE_GAP)
 	for tile: String in Sim.TILES:
@@ -424,7 +406,7 @@ func open_shop() -> void:
 func close_shop() -> void:
 	_shop.visible = false
 
-## One of the five, on the shop's card: its picture on a piece of the night,
+## One of the four, on the shop's card: its picture on a piece of the night,
 ## its name, what the next level does, and the light it asks on a bar along
 ## its foot. A tile that cannot be bought yet is still pressed: it shakes
 ## its head.
@@ -550,7 +532,7 @@ func open_ask() -> void:
 func close_ask() -> void:
 	_ask.visible = false
 
-## The perks: the stardust held, the six with how many of each there are,
+## The perks: the stardust held, the five with how many of each there are,
 ## and a button that draws one at random for what the next costs.
 func _build_perks() -> Control:
 	var made := _dialog("Perks", CARD_W, close_perks)
@@ -705,7 +687,6 @@ func _process(delta: float) -> void:
 	sky.aim = _aim()
 	sky.refresh(0.0 if waits else delta)
 	_refresh_hud(delta)
-	_pouch_l.queue_redraw()
 	_nova_line.queue_redraw()
 	if _dirty:
 		_since_save += delta
@@ -797,7 +778,6 @@ func _refresh_hud(delta: float) -> void:
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas > 0 or sim.dust > 0
 	_dust_l.text = str(sim.dust)
-	_count_l.text = tr("NL_HELD") % [sim.pouch, sim.pouch_max()]
 	var ready: bool = sim.can_nova() and _nova_t < 0.0
 	_nova_b.visible = ready
 	if ready:
@@ -851,10 +831,8 @@ func _effect(tile: String) -> String:
 	var c := _comma()
 	match tile:
 		"meteor":
-			var hand: float = 1.0 + Sim.HAND * int(sim.perk.hand)
+			var hand: float = Sim.METEOR * (1.0 + Sim.HAND * int(sim.perk.hand))
 			return tr("NL_FX_METEOR") % [Art.short(sim.meteor_mass(), c), Art.short(sim.meteor_mass() + hand, c)]
-		"pouch":
-			return tr("NL_FX_POUCH") % [sim.pouch_max(), sim.pouch_max() + 1]
 		"haze":
 			return tr("NL_FX_HAZE")
 		"glow":
@@ -926,12 +904,9 @@ func _aim_end() -> void:
 	if not _aiming:
 		return
 	_aiming = false
-	if sim.throw_at(sky.unit(_aim_from), _aim_vel()):
-		_fx.cue("throw")
-		_dirty = true
-	else:
-		_fx.cue("no")
-		Motion.shiver(_count_l, 6.0)
+	sim.throw_at(sky.unit(_aim_from), _aim_vel())
+	_fx.cue("throw")
+	_dirty = true
 
 ## The speed a throw would leave with, in the sim's units: the way the
 ## finger was dragged, as fast as the drag is long.
@@ -947,11 +922,8 @@ func _aim_vel() -> Vector2:
 func _aim() -> Dictionary:
 	if not _aiming:
 		return {}
-	var held: bool = sim.pouch > 0
-	var where := {"pts": PackedVector2Array(), "hit": false}
-	if held:
-		where = sim.predict(sky.unit(_aim_from), _aim_vel())
-	return {"from": _aim_from, "to": _aim_to, "pts": where.pts, "hit": where.hit, "held": held}
+	var where: Dictionary = sim.predict(sky.unit(_aim_from), _aim_vel())
+	return {"from": _aim_from, "to": _aim_to, "pts": where.pts, "hit": where.hit}
 
 # --- drawing ---
 
@@ -971,24 +943,6 @@ func _bar(rect: Rect2, col: Color) -> void:
 	_nova_line.draw_rect(Rect2(rect.position + Vector2(r, 0.0), rect.size - Vector2(r * 2.0, 0.0)), col)
 	_nova_line.draw_circle(rect.position + Vector2(r, r), r, col, true, -1.0, true)
 	_nova_line.draw_circle(rect.position + Vector2(rect.size.x - r, r), r, col, true, -1.0, true)
-
-## The pouch, in the sky's lower left: a dot a meteor held, a ring for one
-## gone, the next one's ring closing as it comes back. Past ten the count
-## under the sky says it alone.
-func _draw_pouch() -> void:
-	var most: int = sim.pouch_max()
-	if most > 10:
-		return
-	var u: float = sky.u
-	var sand: Color = Art.PAINT[Sim.Kind.METEOR]
-	for i in most:
-		var at := Vector2((52.0 + i * 46.0) * u, _pouch_l.size.y - 48.0 * u)
-		if i < sim.pouch:
-			_pouch_l.draw_circle(at, 15.0 * u, sand, true, -1.0, true)
-		else:
-			_pouch_l.draw_arc(at, 14.0 * u, 0.0, TAU, 32, Color(1.0, 0.965, 0.9, 0.35), 3.0 * u, true)
-			if i == sim.pouch:
-				_pouch_l.draw_arc(at, 14.0 * u, -PI * 0.5, -PI * 0.5 + TAU * sim.refill_share(), 32, sand, 5.0 * u, true)
 
 # --- leaving ---
 
