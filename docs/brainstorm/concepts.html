@@ -362,6 +362,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="drumbeat">Drumbeat &middot; one road</button>
     <button data-tab="knots">Untangle &middot; knots</button>
     <button data-tab="valley">Valley &middot; grove</button>
+    <button data-tab="nightlight">Nightlight &middot; arcade</button>
   </nav>
 </header>
 
@@ -3883,6 +3884,134 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Six tiles, not a skill tree.</b></li>
     <li><b>A sixth tab</b> called Valley, between Arcade and Stats.</li>
     <li><b>Left out of the first build:</b> every other place (the tab holds the Grove alone until the next one is planned), automation, the reference's chests and critical hits, any ad, and a growing land.</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-nightlight">
+  <h2>Nightlight &middot; a small star, real gravity, a supernova <span class="pill blue">concept &middot; 2026-10-06, first pass</span></h2>
+  <p class="lede">An Arcade game that is kept and never ends. A small star sits in the middle of a night sky and <b>you never move: you only throw meteors</b>. The star pulls as hard as it is heavy, and it gets heavier with everything it eats. Bodies cross the sky on their own, and the heavier the star, the more of them it catches. Nothing drops into a hole: <b>a caught body circles, closes in and turns faster and faster until the star takes it</b>, and all of it is lit by the star. When the star is heavy enough it can go <b>supernova</b>: everything it ate is thrown back into the sky, a small new star is left among the ashes, and stardust buys a perk that lasts. It follows <i>Black Hole Idle</i>, named here once and nowhere in the game.</p>
+
+  <div class="hero">
+    <div class="noref">
+      <p><b>Playing it here.</b> <b>Press anywhere on the sky and drag</b>: a meteor waits under the pointer, the dots show where it would go, and letting go throws it. A longer drag is a faster throw. A tap with no drag lets the meteor go where it is, and it falls straight in. Try a throw across the star rather than at it, so the dots curl round it. The <b>Shop</b> spends light on five tiles. Under the phone: <b>Throw for me</b> plays a steady hand so the sky can be watched, <b>Time &times;10</b> runs it faster, and <b>Supernova now</b> shows the rebirth without the wait. Nothing is saved on this page; a reload starts over.</p>
+      <table>
+        <tr><th>Choice</th><th>Where it stands</th></tr>
+        <tr><td class="k">Home</td><td><span class="pill">decided</span> The Arcade tab, as its seventh game.</td></tr>
+        <tr><td class="k">Shape</td><td><span class="pill">decided</span> Kept and endless. No game over, no score to beat.</td></tr>
+        <tr><td class="k">The hand</td><td><span class="pill">decided</span> No movement. The player throws things at the star and nothing else.</td></tr>
+        <tr><td class="k">The physics</td><td><span class="pill">decided</span> Real: a body turns faster and faster as it closes, until it is eaten. Never a hole in the screen.</td></tr>
+        <tr><td class="k">The look</td><td><span class="pill">decided</span> Realistic light in the game's cozy style. The lighting is the point.</td></tr>
+        <tr><td class="k">The sky</td><td><span class="pill">decided</span> Bodies pass at random and gravity catches them, more of them as the star grows.</td></tr>
+        <tr><td class="k">Rebirth</td><td><span class="pill">decided</span> A supernova throws everything back out, the next star grows up among more to eat, and lasting perks, drawn at random, make each life quicker. A star only for now.</td></tr>
+        <tr><td class="k">The haze</td><td><span class="pill blue">proposed</span> The one thing added to Newton, and what makes a spiral possible at all. Section 1.</td></tr>
+        <tr><td class="k">Light as income</td><td><span class="pill blue">proposed</span> Mass grows the star, light buys the tiles, and a spiral makes twenty times the light of a straight drop. Section 3.</td></tr>
+        <tr><td class="k">Name</td><td><span class="pill blue">proposed</span> Nightlight.</td></tr>
+      </table>
+      <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?t=</code> seconds in, <code>?auto=1</code> for the steady hand, <code>?mass=5000</code>, <code>?light=400</code>, <code>?shop=1</code>, <code>?nova=1</code> for the perk card (<code>&amp;card=0</code> for the sky behind it), <code>?aim=250,1250,330,1420</code> to hold a throw from a point of the 1080-wide screen to another; pick the tab with <code>#nightlight</code>.</p>
+    </div>
+
+    <div class="demo">
+      <div class="phone" style="background:#171533">
+        <canvas id="nl" width="390" height="720" style="touch-action:none;cursor:pointer"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="nl-auto">Throw for me: off</button>
+        <button id="nl-speed">Time &times;1</button>
+        <button id="nl-light">+1,000 light</button>
+        <button id="nl-mass">Mass &times;10</button>
+        <button id="nl-nova">Supernova now</button>
+        <button id="nl-reset">Start over</button>
+      </div>
+      <p class="lbl" id="nl-caption" style="font-size:13.5px;color:var(--muted);text-align:center;max-width:390px"></p>
+    </div>
+  </div>
+
+  <h3>1. The physics <span class="pill blue">proposed</span></h3>
+  <p>Everything on the screen follows one law and one addition to it. The figures are the mock's, measured on its own rule.</p>
+  <table>
+    <tr><th>What</th><th>How it works</th></tr>
+    <tr><td class="k">Gravity</td><td>Newton's: every body is pulled toward the star by the star's mass over the square of its distance. Nothing else pulls, and bodies do not pull each other. Ten times the mass is ten times the pull, everywhere.</td></tr>
+    <tr><td class="k">The haze</td><td>In empty space an orbit never decays: a body thrown round the star would circle it for ever, and a body passing by would always leave again. So the star wears a haze of dust, five of its own radii wide. Inside it a body is dragged, hardly at all at the edge and most near the star. This is the only invented rule, and it is how real discs round stars work.</td></tr>
+    <tr><td class="k">Faster and faster</td><td>Not animated: it falls out of the law. A body that loses height gains speed. A meteor set on a circle at 0.8 of the haze starts at 248 px/s, goes round six and a half times in 13.5 s and meets the star at 517 px/s. A turn at the haze's edge takes 6.5 s; the last one, at the surface, 0.6 s. The grains of the haze itself show it: the inner ones lap the outer.</td></tr>
+    <tr><td class="k">Catching</td><td>A passing body comes from far off with speed to spare, so gravity alone bends its path and lets it go. It is caught only if its path dips deep enough into the haze to lose that spare speed, or if it meets another body. A small star catches almost nothing: left alone for five minutes it went from 10 mass to about 50. A heavy star bends far paths into its haze and catches most of what crosses the screen.</td></tr>
+    <tr><td class="k">Meeting</td><td>Two bodies that touch become one and keep their momentum. A meteor thrown against a passing rock slows it, and a slowed rock is a caught one.</td></tr>
+    <tr><td class="k">Growing</td><td>The star's size is the cube root of its mass. Past 80 px on the screen it grows only a little more and the view draws back instead, so there is always sky round it. Speeds on the screen still rise as it grows.</td></tr>
+    <tr><td class="k">The throw</td><td>The meteor starts where the finger went down and leaves the way the finger was dragged. A drag of 200 px is the speed of a circle at the haze's edge, whatever the star weighs, so the hand learns one gesture. The dotted line is the real path, three and a half seconds of it.</td></tr>
+  </table>
+
+  <h3>2. The light <span class="pill blue">proposed</span></h3>
+  <table>
+    <tr><th>What</th><th>How it is drawn</th></tr>
+    <tr><td class="k">One lamp</td><td>The star is the only light. Each body is one flat colour, bright on the side facing the star and deep violet on the other, and brighter the nearer it is. A body far out is a dim shape with a thin lit edge.</td></tr>
+    <tr><td class="k">Shadows</td><td>Each body throws a long soft shadow straight away from the star. It shows where the star's light lies on the dust, and turns with the body as it orbits.</td></tr>
+    <tr><td class="k">The star's colour</td><td>Its mass: an ember at 10, gold at 100, cream at 1,000, blue-white past 30,000. The whole sky near it takes that colour. It breathes slowly and swells a little with each thing it eats.</td></tr>
+    <tr><td class="k">Heat</td><td>The haze warms what it drags: a body glows as it sinks, and its trail turns from pale to gold. The motes of light it sheds fly to the light plate.</td></tr>
+    <tr><td class="k">Comets</td><td>A comet's tail lies away from the star whichever way the comet is flying, as a real one does.</td></tr>
+    <tr><td class="k">No shapes</td><td>Every light is a soft round glow. No rays, no flares, no lens streaks. The supernova is a warm light that takes the whole sky and thins.</td></tr>
+  </table>
+
+  <h3>3. The loop and its numbers <span class="pill blue">proposed</span></h3>
+  <ul>
+    <li><b>Mass</b> is the star. Everything eaten adds its mass, and the star never loses any until it goes supernova.</li>
+    <li><b>Light</b> is what the haze's drag takes from a body, and it pays for the tiles. A meteor on a good spiral gives 1.25 light for each of its mass. The same meteor dropped straight in gives 0.06. A body that only brushes the haze and leaves still pays for the brush.</li>
+    <li><b>The pouch</b> holds four meteors and gets one back every 1.5 s.</li>
+  </ul>
+  <table>
+    <tr><th>Body</th><th>Mass</th><th>How often</th></tr>
+    <tr><td class="k">Meteor (thrown)</td><td>1</td><td>the pouch</td></tr>
+    <tr><td class="k">Pebble</td><td>0.5</td><td>half of what passes</td></tr>
+    <tr><td class="k">Rock</td><td>1.5</td><td>three in ten</td></tr>
+    <tr><td class="k">Comet</td><td>3</td><td>three in twenty</td></tr>
+    <tr><td class="k">Planetoid</td><td>8</td><td>one in twenty</td></tr>
+  </table>
+  <p>A body passes about every 3.2 s. Three in four turn the way the haze turns.</p>
+  <table>
+    <tr><th>Tile</th><th>Each level</th><th>Levels</th><th>Light</th></tr>
+    <tr><td class="k">Meteor</td><td>a thrown meteor 1 mass heavier</td><td>no end</td><td>10, then &times;1.5</td></tr>
+    <tr><td class="k">Pouch</td><td>one more held, and they come back 5% sooner</td><td>no end</td><td>15, then &times;1.6</td></tr>
+    <tr><td class="k">Haze</td><td>a haze 8% wider</td><td>10</td><td>25, then &times;1.7</td></tr>
+    <tr><td class="k">Glow</td><td>20% more light from the haze</td><td>no end</td><td>20, then &times;1.6</td></tr>
+    <tr><td class="k">Sky</td><td>bodies pass 8% sooner and 20% heavier</td><td>no end</td><td>30, then &times;1.65</td></tr>
+  </table>
+  <table>
+    <tr><th>Supernova</th><th>Proposal</th></tr>
+    <tr><td class="k">When</td><td>The first at 1,000 mass, each one after at four times the last. It is a button, never forced: waiting pays more stardust.</td></tr>
+    <tr><td class="k">What goes</td><td>The star's mass, its light and the five tiles' levels.</td></tr>
+    <tr><td class="k">What it leaves</td><td>A new star of 10 mass. Around it, 24 ashes or more, each heavier than a meteor, on closed paths that all turn the same way, the nearest already brushing the haze. Bodies that pass are half again as heavy for every supernova so far. A soft cloud stays in the sky for each one.</td></tr>
+    <tr><td class="k">Stardust</td><td>Three at the mark, more for a heavier star (six at four times the mark). It buys a perk drawn at random from six; the first costs 2 and each one after costs 1 more. A perk drawn twice counts twice.</td></tr>
+    <tr><td class="k">The six perks</td><td>Dense core (gravity +15%), Bright haze (light +25%), Heavy hand (meteors 30% heavier), Deep pouch (2 more held), Crowded sky (bodies pass 15% sooner), Ember (a new star starts twice as heavy).</td></tr>
+  </table>
+
+  <h3>4. How fast that is <span class="pill blue">measured on the mock's rule</span></h3>
+  <p>A bot with a steady hand throws into the outer haze whenever the pouch has a meteor and buys the cheapest tile it can. Two seeds, thirty minutes each. A person aims worse and stops to look.</p>
+  <table>
+    <tr><th>Supernova</th><th>Reached at</th><th>At a mass of</th></tr>
+    <tr><td class="k">First</td><td>4 min</td><td>1,000</td></tr>
+    <tr><td class="k">Second</td><td>11 min</td><td>4,000</td></tr>
+    <tr><td class="k">Third</td><td>25 min</td><td>16,000</td></tr>
+  </table>
+  <p>Each life takes longer than the one before it. The mark rises four times and the perks do not keep up, which is the opposite of what was asked for. The numbers are there to make the mock playable, not as the proposal; the pace is the first call below.</p>
+
+  <h3>5. In the game <span class="pill blue">expected, nothing built</span></h3>
+  <table>
+    <tr><td class="k">The sim</td><td>Pure data on a fixed step, like every Arcade game: bodies, a pouch, events out. A bot probe tunes the pace as Peapod's and the Grove's do.</td></tr>
+    <tr><td class="k">The light</td><td>One shader for every body. The star never moves, so its place is one plain uniform and each body works out its lit side from where it is. No instance uniform, which Android cannot be trusted with.</td></tr>
+    <tr><td class="k">Draw calls</td><td>Bodies and their shadows as MultiMeshes, the trails as one mesh rebuilt each frame, the glows on an additive layer through <code>Art.glow</code>. Not measured.</td></tr>
+    <tr><td class="k">Kept</td><td>A file of its own on the device. Whether the sky goes on while the game is closed is a call below.</td></tr>
+    <tr><td class="k">The Arcade's own things</td><td>The other six games end and keep a record. This one has no end card, no Second chance and no boosters; its card on the tab would show the star's mass and the supernovas so far.</td></tr>
+  </table>
+
+  <h3>Calls this page is for</h3>
+  <ul>
+    <li><b>The pace.</b> Four minutes to a first supernova is quick. Should a life be ten minutes, an hour, a day? And each life should come out shorter than the last, which these numbers do not do yet.</li>
+    <li><b>Does the spiral feel right.</b> Six turns in thirteen seconds for a good throw. Less drag is more turns and a longer wait for the mass.</li>
+    <li><b>Light for the spiral.</b> It makes aiming matter, and it is true to how a disc shines. It also means a careless throw earns mass and almost nothing to spend. Too harsh?</li>
+    <li><b>The throw.</b> Drag the way it should go, with the path shown. The other way is a sling, pulled back and let go.</li>
+    <li><b>The view drawing back.</b> It keeps sky round a heavy star, and makes a meteor look small beside it.</li>
+    <li><b>Bodies do not pull each other.</b> Only the star pulls. Real moons and rings would need every body pulling every other, which is far heavier to run and hard to keep stable.</li>
+    <li><b>Away from the game.</b> Nothing is proposed. The star could go on catching what passes while the game is closed, as the Grove fills.</li>
+    <li><b>The name.</b> Nightlight. Others: Ember, Little Star, Kindle.</li>
+    <li><b>Left out of the first build:</b> a black hole and anything past a star, a tutorial, sounds and haptics, reduce motion, any ad.</li>
   </ul>
 </section>
 </main>
@@ -22485,6 +22614,458 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   if(MINE&&Q.get('shop')==='1') shop=true;
   const hq=MINE&&Q.get('circle'); if(hq){const a=hq.split(',').map(Number); if(a.length===2) hold=unP(a[0],a[1]);}
   for(let t=0;t<T0;t+=0.04) step(0.04);
+  labels(); caption(); requestAnimationFrame(frame);
+})();
+
+/* ---------- the nightlight mock: a small star, real gravity, a supernova ---------- */
+(function(){
+  const cv=document.getElementById('nl'); if(!cv) return;
+  const panel=document.getElementById('tab-nightlight');
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const MINE=location.hash==='#nightlight';
+  const T0=MINE?parseFloat(Q.get('t')||'0')||0:0;
+
+  // ---- the rule ----
+  // Lengths are the screen's own 1080-wide pixels as the game starts, measured
+  // from the star; the view draws back as the star grows (zoom()). Gravity is
+  // Newton's, GM / r^2 toward the star, and nothing else pulls. An orbit in
+  // empty space never decays, so the star wears a haze: inside it a body is
+  // dragged, most near the star, and what the drag takes from it is given off
+  // as light. That one thing is the capture, the spiral and the income.
+  const G0=1.13e6,DRAG=0.25,LIGHT=1.5,STEP=1/240;
+  const UPS=[
+    {id:'meteor',name:'Meteor',cost:l=>10*Math.pow(1.5,l),max:Infinity},
+    {id:'pouch',name:'Pouch',cost:l=>15*Math.pow(1.6,l),max:Infinity},
+    {id:'haze',name:'Haze',cost:l=>25*Math.pow(1.7,l),max:10},
+    {id:'glow',name:'Glow',cost:l=>20*Math.pow(1.6,l),max:Infinity},
+    {id:'sky',name:'Sky',cost:l=>30*Math.pow(1.65,l),max:Infinity}];
+  const PERKS=[
+    {id:'core',name:'Dense core',say:'gravity +15%'},
+    {id:'disc',name:'Bright haze',say:'light +25%'},
+    {id:'hand',name:'Heavy hand',say:'meteors 30% heavier'},
+    {id:'deep',name:'Deep pouch',say:'2 more meteors held'},
+    {id:'crowd',name:'Crowded sky',say:'bodies pass 15% sooner'},
+    {id:'ember',name:'Ember',say:'a new star starts twice as heavy'}];
+  const KINDS={pebble:0.5,rock:1.5,comet:3,planet:8};
+  let st=null;
+  function fresh(){return {M:10,light:0,dust:0,novas:0,bought:0,
+    lv:{meteor:0,pouch:0,haze:0,glow:0,sky:0},perk:{core:0,disc:0,hand:0,deep:0,crowd:0,ember:0},
+    bodies:[],pouch:4,pouchAcc:0,passAcc:0,passGap:2,clock:0,tick:0,nextId:1,events:[]};}
+  // The star as the world has it, and as the screen shows it: past 80 px it
+  // grows on the screen only by the logarithm, and the view draws back.
+  const Rw=()=>46*Math.cbrt(st.M/10);
+  const Rs=()=>{const r=Rw();return r<80?r:80+24*Math.log(r/80);};
+  const zoom=()=>Rs()/Rw();
+  const hazeW=()=>5*Math.pow(1.08,st.lv.haze);
+  const Rh=()=>Rw()*hazeW();
+  const GM=()=>G0*(1+0.15*st.perk.core)*st.M;
+  const glow=()=>(1+0.2*st.lv.glow)*(1+0.25*st.perk.disc);
+  const meteorM=()=>(1+st.lv.meteor)*(1+0.3*st.perk.hand);
+  const pouchMax=()=>4+st.lv.pouch+2*st.perk.deep;
+  const refillT=()=>1.5*Math.pow(0.95,st.lv.pouch);
+  const passT=()=>3.2*Math.pow(0.92,st.lv.sky)*Math.pow(0.85,st.perk.crowd);
+  const rich=()=>Math.pow(1.2,st.lv.sky)*(1+0.5*st.novas);
+  const need=()=>1000*Math.pow(4,st.novas);
+  const dustFor=()=>st.M<need()?0:Math.floor(3*Math.sqrt(st.M/need()));
+  const perkCost=()=>2+st.bought;
+  const bodyR=m=>14*Math.cbrt(m);
+  const turnT=r=>2*Math.PI*Math.sqrt(r*r*r/GM());
+  const costOf=u=>Math.round(u.cost(st.lv[u.id]));
+
+  function add(kind,m,x,y,vx,vy){
+    const b={id:st.nextId++,kind,m,x,y,vx,vy,spin:Math.random()*6.283,w:(Math.random()-0.5)*3,e:0,heat:0,trail:[]};
+    st.bodies.push(b); return b;}
+  // A body from far off, on an open path: it has 230 px/s to spare at any
+  // distance, so gravity alone bends it and lets it go. Three in four turn
+  // the way the haze turns.
+  function passer(){
+    const z=zoom(),R=1350/z,a=Math.random()*6.283,px=Math.cos(a)*R,py=Math.sin(a)*R;
+    const u=Math.random(),kind=u<0.5?'pebble':u<0.8?'rock':u<0.95?'comet':'planet';
+    const b=Math.random()*760/z*(Math.random()<0.75?1:-1);
+    let dx=-Math.sin(a)*b-px,dy=Math.cos(a)*b-py; const l=Math.hypot(dx,dy),vinf=230/z,v=Math.sqrt(vinf*vinf+2*GM()/R);
+    add(kind,KINDS[kind]*rich()*(0.8+Math.random()*0.4),px,py,dx/l*v,dy/l*v);}
+  function throwAt(x,y,vx,vy){
+    if(st.pouch<=0) return false;
+    st.pouch--; add('meteor',meteorM(),x,y,vx,vy); return true;}
+  // Two bodies that touch become one, and keep their momentum.
+  function merges(){
+    const B=st.bodies; let any=false;
+    for(let i=0;i<B.length;i++){const a=B[i]; if(a.dead) continue;
+      for(let j=i+1;j<B.length;j++){const b=B[j]; if(b.dead) continue;
+        const dx=a.x-b.x,dy=a.y-b.y,rr=(bodyR(a.m)+bodyR(b.m))*0.8;
+        if(dx*dx+dy*dy>=rr*rr) continue;
+        const m=a.m+b.m; if(b.m>a.m){a.kind=b.kind; a.id=b.id; a.spin=b.spin; a.w=b.w;}
+        a.x=(a.x*a.m+b.x*b.m)/m; a.y=(a.y*a.m+b.y*b.m)/m; a.vx=(a.vx*a.m+b.vx*b.m)/m; a.vy=(a.vy*a.m+b.vy*b.m)/m;
+        a.e+=b.e; a.m=m; b.dead=true; any=true; st.events.push({k:'merge',x:a.x,y:a.y});}}
+    if(any) st.bodies=B.filter(b=>!b.dead);}
+  function step(){
+    const s=st,h=STEP; s.clock+=h; s.tick++;
+    if(s.pouch<pouchMax()){s.pouchAcc+=h; if(s.pouchAcc>=refillT()){s.pouchAcc=0; s.pouch++;}} else s.pouchAcc=0;
+    s.passAcc+=h; if(s.passAcc>=s.passGap){s.passAcc=0; s.passGap=passT()*(0.6+Math.random()*0.8); passer();}
+    const gm=GM(),rw=Rw(),rh=Rh(),far=2400/zoom(),bind=gm/(2*rw),mark=s.tick%6===0,gl=glow();
+    for(let i=s.bodies.length-1;i>=0;i--){
+      const b=s.bodies[i],r2=b.x*b.x+b.y*b.y,r=Math.sqrt(r2);
+      if(r<rw*0.92){s.M+=b.m; s.light+=b.e; s.events.push({k:'eat',m:b.m,x:b.x,y:b.y}); s.bodies.splice(i,1); continue;}
+      if(r>far&&b.x*b.vx+b.y*b.vy>0){s.bodies.splice(i,1); continue;}
+      const a=gm/(r2*r); let ax=-b.x*a,ay=-b.y*a; b.heat=0;
+      if(r<rh){
+        // The drag, and the light it makes: the work done on the body, as a
+        // share of what a perfect spiral from far off down to the star's
+        // surface gives up. A body dropped straight in does almost none.
+        const d=1-r/rh,k=DRAG*d*d; ax-=b.vx*k; ay-=b.vy*k; b.heat=d;
+        b.e+=k*(b.vx*b.vx+b.vy*b.vy)*h/bind*b.m*LIGHT*gl;
+        const q=Math.max(0.25,b.m*0.25);
+        if(b.e>=q){b.e-=q; s.light+=q; s.events.push({k:'shed',x:b.x,y:b.y,e:q});}}
+      b.vx+=ax*h; b.vy+=ay*h; b.x+=b.vx*h; b.y+=b.vy*h; b.spin+=b.w*h;
+      if(mark){b.trail.push(b.x,b.y,b.heat); if(b.trail.length>72) b.trail.splice(0,3);}}
+    if(s.tick%4===0) merges();}
+  // Where a throw would go, for the dotted line under the finger.
+  function predict(x,y,vx,vy){
+    const out=[],gm=GM(),rw=Rw(),rh=Rh(),h=1/120; let hit=false;
+    for(let i=0;i<420;i++){
+      const r2=x*x+y*y,r=Math.sqrt(r2); if(r<rw*0.92){hit=true; break;}
+      const a=gm/(r2*r); let ax=-x*a,ay=-y*a;
+      if(r<rh){const d=1-r/rh,k=DRAG*d*d; ax-=vx*k; ay-=vy*k;}
+      vx+=ax*h; vy+=ay*h; x+=vx*h; y+=vy*h; if(i%7===6) out.push(x,y);}
+    return {pts:out,hit};}
+  function buy(u){
+    const l=st.lv[u.id],c=costOf(u); if(l>=u.max||st.light<c) return false;
+    st.light-=c; st.lv[u.id]=l+1; return true;}
+  // The supernova: the star gives back what it ate. Its levels and its light
+  // go; stardust, the perks and a richer sky stay. The ashes are left on
+  // closed paths round the new star, all turning the same way, the nearest
+  // of them already brushing its haze.
+  function nova(){
+    const s=st; if(s.M<need()) return 0;
+    const got=dustFor(),n=Math.min(48,Math.round(14+10*Math.log10(s.M/100)));
+    s.dust+=got; s.novas++; s.M=10*Math.pow(2,s.perk.ember); s.light=0; for(const k in s.lv) s.lv[k]=0;
+    s.bodies=[]; s.pouch=pouchMax(); s.pouchAcc=0; s.passAcc=0;
+    const gm=GM();
+    for(let i=0;i<n;i++){
+      const peri=170+Math.random()*430,apo=peri+60+Math.random()*(920-peri),a=(peri+apo)/2,th=Math.random()*6.283,v=Math.sqrt(gm*(2/apo-1/a));
+      add('ash',2*(1+0.5*s.novas)*(0.6+Math.random()*0.8),Math.cos(th)*apo,Math.sin(th)*apo,-Math.sin(th)*v,Math.cos(th)*v);}
+    return got;}
+  function buyPerk(){
+    const c=perkCost(); if(st.dust<c) return null;
+    st.dust-=c; st.bought++; const p=PERKS[Math.floor(Math.random()*PERKS.length)]; st.perk[p.id]++; return p;}
+  // A steady hand, for the page's "throw for me" and for the pace figures: a
+  // meteor into the outer haze, a little under the speed of a circle there.
+  function botThrow(){
+    if(st.pouch<=0) return false;
+    const r=Rh()*(0.55+Math.random()*0.35),a=Math.random()*6.283,v=Math.sqrt(GM()/r)*(0.8+Math.random()*0.25);
+    return throwAt(Math.cos(a)*r,Math.sin(a)*r,-Math.sin(a)*v,Math.cos(a)*v);}
+
+  // ---- canvas helpers ----
+  const CX=540,CY=950;
+  const clamp=v=>v<0?0:v>1?1:v, lerp=(a,b,u)=>a+(b-a)*u;
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const mixc=(a,b,u)=>[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u];
+  const rgb=(c,a)=>'rgba('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+','+(a==null?1:Math.max(0,a).toFixed(3))+')';
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const C={cream:[255,246,230],text:'#3b3028',dim:'#8a7b6b',sun:'#f5a623',sunDeep:'#d88a12',surface:'#fffdf8',surfaceHi:'#f1e6d2',row:'#fbf3e4'};
+  // Every body has one flat colour; the star does the rest. The unlit side is
+  // a deep violet and never a black.
+  const PAINT={pebble:[190,160,138],rock:[146,162,204],comet:[196,236,226],planet:[206,142,176],meteor:[230,190,142],ash:[236,150,116]};
+  const SHADE=[30,26,62],WHITE=[255,255,255];
+  // The star's own colour is its mass: an ember, then gold, cream, blue-white.
+  const TEMPS=[[1,[255,150,96]],[2,[255,202,122]],[3,[255,238,200]],[4.5,[222,234,255]]];
+  function starCol(){
+    const l=Math.log10(st.M); if(l<=1) return TEMPS[0][1];
+    for(let i=1;i<TEMPS.length;i++) if(l<=TEMPS[i][0]) return mixc(TEMPS[i-1][1],TEMPS[i][1],(l-TEMPS[i-1][0])/(TEMPS[i][0]-TEMPS[i-1][0]));
+    return TEMPS[3][1];}
+  function fmt(n){
+    if(n>=1e6) return (n/1e6).toFixed(n>=1e7?1:2)+'M';
+    if(n>=1e3) return (n/1e3).toFixed(n>=1e4?1:2)+'K';
+    return n>=100?''+Math.floor(n):(Math.floor(n*10)/10).toFixed(1).replace(/\.0$/,'');}
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function disc(x,y,r,col){ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=col;ctx.fill();}
+  function txt(s,x,y,size,col,align,font,weight){ctx.font=(weight||600)+' '+size+'px '+(font||FD);ctx.textAlign=align||'left';ctx.textBaseline='middle';ctx.fillStyle=col;ctx.fillText(s,x,y);}
+  // A light with no shape: a soft round mote, added to what is under it.
+  function mote(x,y,r,col,a){
+    const g=ctx.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,rgb(col,a)); g.addColorStop(0.35,rgb(col,a*0.45)); g.addColorStop(1,rgb(col,0));
+    ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); ctx.globalCompositeOperation='source-over';}
+  function lump(x,y,r,seed,spin){
+    ctx.beginPath(); if(r<7){ctx.arc(x,y,r,0,7); return;}
+    const n=9,pt=[]; for(let i=0;i<n;i++){const a=spin+i/n*6.283,k=r*(0.86+0.24*hash(seed,i)); pt.push([x+Math.cos(a)*k,y+Math.sin(a)*k]);}
+    ctx.moveTo((pt[n-1][0]+pt[0][0])/2,(pt[n-1][1]+pt[0][1])/2);
+    for(let i=0;i<n;i++){const p=pt[i],q=pt[(i+1)%n]; ctx.quadraticCurveTo(p[0],p[1],(p[0]+q[0])/2,(p[1]+q[1])/2);}
+    ctx.closePath();}
+
+  // The sky is painted once: a night that is indigo and plum, soft specks.
+  const bg=document.createElement('canvas'); bg.width=cv.width; bg.height=cv.height;
+  (function(){
+    const g=bg.getContext('2d'); g.setTransform(DPR*S,0,0,DPR*S,0,0);
+    const lg=g.createLinearGradient(0,0,0,H); lg.addColorStop(0,'#171533'); lg.addColorStop(0.55,'#241d45'); lg.addColorStop(1,'#33264c'); g.fillStyle=lg; g.fillRect(0,0,W,H);
+    const tints=[[255,246,230],[214,224,255],[255,214,220]];
+    for(let i=0;i<170;i++){
+      const x=hash(i,1)*W,y=hash(i,2)*H,r=(1.4+hash(i,3)*hash(i,4)*4.5)*2.4,a=0.18+hash(i,5)*0.5,col=tints[Math.floor(hash(i,6)*3)];
+      const rg=g.createRadialGradient(x,y,0,x,y,r); rg.addColorStop(0,rgb(col,a)); rg.addColorStop(0.4,rgb(col,a*0.5)); rg.addColorStop(1,rgb(col,0));
+      g.fillStyle=rg; g.beginPath(); g.arc(x,y,r,0,7); g.fill();}
+    const vg=g.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.62); vg.addColorStop(0,'rgba(8,6,24,0)'); vg.addColorStop(1,'rgba(8,6,24,0.5)'); g.fillStyle=vg; g.fillRect(0,0,W,H);
+  })();
+
+  let pulse=0,flies=[],puffs=[],grains=[],nebulae=[],aim=null,shop=false,card=false,won=null,wonAt=-9,speed=1,auto=false,autoAcc=0;
+  let novaAt=-1,novaDone=false,emptyAt=-9,lightAt=-9,shownM=10,shownL=0,acc=0,clockWall=0;
+  for(let i=0;i<90;i++) grains.push({f:0.2+0.8*Math.sqrt(hash(i,11)),a:hash(i,12)*6.283,r:1.6+hash(i,13)*3});
+  const MP={x:150,y:44,w:410,h:96},LP={x:580,y:44,w:440,h:96},SHOPB={x:40,y:H-164,w:300,h:112},NOVAB={x:40,y:H-456,w:470,h:128};
+  const SHEET={x:30,y:H-1020,w:1020,h:990},XB={x:SHEET.x+SHEET.w-70,y:SHEET.y+70,r:40};
+  const rowRect=i=>({x:SHEET.x+30,y:SHEET.y+150+i*164,w:SHEET.w-60,h:146});
+  const CARD={x:70,y:450,w:940,h:1100},PERKB={x:CARD.x+170,y:CARD.y+330,w:600,h:120},GOB={x:CARD.x+220,y:CARD.y+950,w:500,h:110};
+
+  // ---- the sky ----
+  function scene(pn,dt){
+    const z=zoom(),rs=Rs(),rw=Rw(),rh=Rh(),col=starCol(),gm=GM(),breath=1+0.03*Math.sin(pn*1.3),reach=rs*9;
+    ctx.drawImage(bg,0,0,W,H);
+    for(const n of nebulae){
+      const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r); g.addColorStop(0,rgb(n.c,0.2)); g.addColorStop(0.5,rgb(n.c,0.08)); g.addColorStop(1,rgb(n.c,0));
+      ctx.fillStyle=g; ctx.fillRect(n.x-n.r,n.y-n.r,n.r*2,n.r*2);}
+    // the star's light, lying on the dust round it
+    ctx.globalCompositeOperation='lighter';
+    const R=reach*breath*(1+pulse*0.25); let g=ctx.createRadialGradient(CX,CY,rs*0.8,CX,CY,R);
+    g.addColorStop(0,rgb(col,0.46)); g.addColorStop(0.22,rgb(col,0.17)); g.addColorStop(0.55,rgb(col,0.05)); g.addColorStop(1,rgb(col,0));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(CX,CY,R,0,7); ctx.fill();
+    // the haze: grains in orbit, the inner ones lapping the outer
+    const grain=mixc(col,WHITE,0.3);
+    for(const d of grains){
+      const r=d.f*rh; if(r<rw*1.05) continue; d.a+=Math.sqrt(gm/(r*r*r))*dt;
+      ctx.fillStyle=rgb(grain,(1-d.f)*0.55+0.06); ctx.beginPath(); ctx.arc(CX+Math.cos(d.a)*r*z,CY+Math.sin(d.a)*r*z,d.r,0,7); ctx.fill();}
+    ctx.strokeStyle=rgb(col,0.06); ctx.lineWidth=4; ctx.beginPath(); ctx.arc(CX,CY,rh*z,0,7); ctx.stroke();
+    ctx.globalCompositeOperation='source-over';
+
+    const B=st.bodies;
+    for(const b of B){
+      const d=Math.hypot(b.x,b.y)||1,k=d*z/reach; b.ux=b.x/d; b.uy=b.y/d; b.sx=CX+b.x*z; b.sy=CY+b.y*z;
+      b.r=Math.max(9,bodyR(b.m)*z); b.I=1/(1+3*k*k);}
+    // shadows: thrown straight away from the star, seen where its light lies
+    for(const b of B){
+      if(b.I<0.1) continue;
+      const r=b.r,L=r*9,ux=b.ux,uy=b.uy,px=-uy,py=ux,x=b.sx,y=b.sy;
+      g=ctx.createLinearGradient(x,y,x+ux*L,y+uy*L); g.addColorStop(0,'rgba(14,10,38,'+(0.5*b.I).toFixed(3)+')'); g.addColorStop(1,'rgba(14,10,38,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x+px*r*0.85,y+py*r*0.85); ctx.lineTo(x+ux*L+px*r*1.6,y+uy*L+py*r*1.6);
+      ctx.lineTo(x+ux*L-px*r*1.6,y+uy*L-py*r*1.6); ctx.lineTo(x-px*r*0.85,y-py*r*0.85); ctx.closePath(); ctx.fill();}
+    // where each has been: the spiral is read off these
+    ctx.globalCompositeOperation='lighter'; ctx.lineCap='butt';
+    for(const b of B){
+      const t=b.trail,n=t.length/3; if(n<2) continue;
+      for(let i=1;i<=n;i++){
+        const u=i/n,h=t[Math.min(i,n-1)*3+2],x1=i<n?CX+t[i*3]*z:b.sx,y1=i<n?CY+t[i*3+1]*z:b.sy;
+        ctx.strokeStyle=h>0?rgb([255,196+40*h,130+60*h],u*u*(0.22+0.45*h)):rgb([214,220,255],u*u*0.2);
+        ctx.lineWidth=b.r*(0.4+0.9*u); ctx.beginPath(); ctx.moveTo(CX+t[i*3-3]*z,CY+t[i*3-2]*z); ctx.lineTo(x1,y1); ctx.stroke();}}
+    ctx.globalCompositeOperation='source-over';
+    for(const b of B) body(b,col);
+    for(let i=puffs.length-1;i>=0;i--){
+      const p=puffs[i],u=(pn-p.at)/0.4; if(u>=1){puffs.splice(i,1); continue;}
+      mote(CX+p.x*z,CY+p.y*z,30+60*u,[255,226,190],0.5*(1-u));}
+
+    // the star
+    const sr=rs*breath*(1+pulse*0.12);
+    mote(CX,CY,sr*2.4,col,0.4+0.2*pulse);
+    g=ctx.createRadialGradient(CX,CY,0,CX,CY,sr*1.14); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.45,rgb(mixc(col,WHITE,0.55)));
+    g.addColorStop(0.82,rgb(col)); g.addColorStop(0.93,rgb(col,0.85)); g.addColorStop(1,rgb(col,0));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(CX,CY,sr*1.14,0,7); ctx.fill();
+
+    for(let i=flies.length-1;i>=0;i--){
+      const f=flies[i],u=(pn-f.at)/0.55; if(u>=1){flies.splice(i,1); lightAt=pn; continue;}
+      const e=u*u,x=lerp(f.x,LP.x+48,e),y=lerp(f.y,LP.y+LP.h/2,e)-Math.sin(u*Math.PI)*90;
+      mote(x,y,26,[255,236,170],0.9);}
+    if(aim) aiming(z,rs);}
+
+  function body(b,col){
+    const x=b.sx,y=b.sy,r=b.r,ux=b.ux,uy=b.uy,I=b.I,h=b.heat,base=PAINT[b.kind];
+    if(b.kind==='comet'&&I>0.12){   // a comet's tail lies away from the star, whichever way it flies
+      const L=r*(3+10*I),px=-uy,py=ux,g=ctx.createLinearGradient(x,y,x+ux*L,y+uy*L); g.addColorStop(0,rgb([200,246,236],0.5*I)); g.addColorStop(1,rgb([200,246,236],0));
+      ctx.globalCompositeOperation='lighter'; ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x+px*r*0.9,y+py*r*0.9);
+      ctx.quadraticCurveTo(x+ux*L*0.5+px*r*0.5,y+uy*L*0.5+py*r*0.5,x+ux*L,y+uy*L); ctx.quadraticCurveTo(x+ux*L*0.5-px*r*0.5,y+uy*L*0.5-py*r*0.5,x-px*r*0.9,y-py*r*0.9);
+      ctx.closePath(); ctx.fill(); ctx.globalCompositeOperation='source-over';}
+    // the haze warms what it drags; an ash is still warm from the star it left
+    const warm=b.kind==='ash'?Math.max(0.3,h):h;
+    if(warm>0) mote(x,y,r*(2.2+h*1.8),[255,176,96],warm*0.6);
+    const lit=mixc(mixc(SHADE,mixc(base,col,0.3),0.2+0.8*I),[255,232,190],h*0.65),dark=mixc(mixc(SHADE,base,0.16),[176,74,40],h*0.55);
+    const g=ctx.createLinearGradient(x-ux*r,y-uy*r,x+ux*r,y+uy*r);
+    g.addColorStop(0,rgb(mixc(lit,WHITE,0.25*I))); g.addColorStop(0.3,rgb(lit)); g.addColorStop(0.56,rgb(mixc(lit,dark,0.7))); g.addColorStop(0.7,rgb(dark)); g.addColorStop(1,rgb(dark));
+    lump(x,y,r,b.id,b.spin); ctx.fillStyle=g; ctx.fill();}
+
+  // ---- the hand ----
+  // A throw goes the way the finger is dragged, and as fast as the drag is
+  // long: 200 px of it is the speed of a circle at the bare haze's edge,
+  // whatever the star weighs, so the hand learns one gesture. A tap lets the
+  // meteor go where it is, and it falls.
+  function aimVel(z){
+    const dx=aim.x1-aim.x0,dy=aim.y1-aim.y0,l=Math.hypot(dx,dy); if(l<24) return [0,0];
+    const v=Math.min(l,520)/200*Math.sqrt(GM()/(5*Rw()));
+    return [dx/l*v,dy/l*v];}
+  function aiming(z,rs){
+    const has=st.pouch>0,r=Math.max(9,bodyR(meteorM())*z);
+    if(has){
+      const v=aimVel(z),p=predict((aim.x0-CX)/z,(aim.y0-CY)/z,v[0],v[1]),n=p.pts.length/2;
+      for(let i=0;i<n;i++){const u=i/n; disc(CX+p.pts[i*2]*z,CY+p.pts[i*2+1]*z,5.5-2.5*u,rgb(C.cream,0.8*(1-u)+0.08));}
+      if(p.hit){ctx.strokeStyle=rgb(C.cream,0.6); ctx.lineWidth=5; ctx.beginPath(); ctx.arc(CX,CY,rs*1.35,0,7); ctx.stroke();}
+      ctx.strokeStyle=rgb(C.cream,0.45); ctx.lineWidth=8; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(aim.x0,aim.y0); ctx.lineTo(aim.x1,aim.y1); ctx.stroke();
+      disc(aim.x1,aim.y1,12,rgb(C.cream,0.7));}
+    disc(aim.x0,aim.y0,r+5,rgb(C.cream,has?0.9:0.3)); disc(aim.x0,aim.y0,r,rgb(PAINT.meteor,has?1:0.4));}
+
+  // ---- the plates and the cards ----
+  function glass(b,r){rr(b.x,b.y,b.w,b.h,r);ctx.fillStyle=rgb(C.cream,0.11);ctx.fill();ctx.strokeStyle=rgb(C.cream,0.2);ctx.lineWidth=3;ctx.stroke();}
+  function dustIcon(x,y,s){disc(x-s*0.5,y+s*0.25,s*0.42,'#ffd98a');disc(x+s*0.45,y+s*0.4,s*0.3,'#ffe9b8');disc(x+s*0.15,y-s*0.5,s*0.34,'#fff3d6');}
+  function sunBtn(b,label,on,size){
+    rr(b.x,b.y+8,b.w,b.h,b.h/2);ctx.fillStyle=on?C.sunDeep:'#cdbfa8';ctx.fill(); rr(b.x,b.y,b.w,b.h,b.h/2);ctx.fillStyle=on?C.sun:C.surfaceHi;ctx.fill();
+    txt(label,b.x+b.w/2,b.y+b.h/2+2,size||48,on?C.text:C.dim,'center',FD,600);}
+  function hud(pn){
+    const col=starCol(),cream=rgb(C.cream),soft=rgb(C.cream,0.62),nd=need(),ready=st.M>=nd;
+    disc(84,92,44,rgb(C.cream,0.11)); ctx.strokeStyle=cream;ctx.lineWidth=7;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(94,74);ctx.lineTo(76,92);ctx.lineTo(94,110);ctx.stroke();
+    glass(MP,48); mote(MP.x+52,MP.y+48,40,col,0.8); disc(MP.x+52,MP.y+48,17,rgb(mixc(col,WHITE,0.5)));
+    txt(fmt(shownM),MP.x+98,MP.y+50,50,cream,'left',FD,600); txt('mass',MP.x+MP.w-30,MP.y+52,30,soft,'right',FB,700);
+    glass(LP,48); const lb=1+0.25*clamp(1-(pn-lightAt)/0.25); mote(LP.x+52,LP.y+48,34*lb,[255,236,170],0.95);
+    txt(fmt(shownL),LP.x+98,LP.y+50,50,cream,'left',FD,600); txt('light',LP.x+LP.w-30,LP.y+52,30,soft,'right',FB,700);
+    // the way to the supernova
+    rr(150,160,870,14,7);ctx.fillStyle=rgb(C.cream,0.13);ctx.fill();
+    rr(150,160,Math.max(14,870*clamp(st.M/nd)),14,7);ctx.fillStyle=ready?'#ffd98a':rgb(col,0.9);ctx.fill();
+    txt(ready?'It can go supernova':'Supernova at '+fmt(nd)+' mass',150,204,30,soft,'left',FB,700);
+    if(st.dust>0||st.novas>0){dustIcon(W-150,202,22); txt(''+st.dust,W-118,204,34,cream,'left',FD,600);}
+    // the pouch, the shop and the hint, on the side the thumb leaves clear
+    const pm=pouchMax(),py=H-214,shake=clamp(1-(pn-emptyAt)/0.3)*Math.sin(pn*60)*8;
+    if(pm<=10) for(let i=0;i<pm;i++){
+      const x=64+i*46+shake; if(i<st.pouch) disc(x,py,15,rgb(PAINT.meteor));
+      else{ctx.strokeStyle=rgb(C.cream,0.35);ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,py,14,0,7);ctx.stroke();
+        if(i===st.pouch){ctx.strokeStyle=rgb(PAINT.meteor);ctx.lineWidth=5;ctx.beginPath();ctx.arc(x,py,14,-1.571,-1.571+6.283*st.pouchAcc/refillT());ctx.stroke();}}}
+    else{disc(64+shake,py,15,rgb(PAINT.meteor)); txt(st.pouch+' / '+pm,92+shake,py+2,36,cream,'left',FD,600);}
+    sunBtn(SHOPB,'Shop',true,50);
+    const n=UPS.filter(u=>st.lv[u.id]<u.max&&st.light>=costOf(u)).length;
+    if(n>0){disc(SHOPB.x+SHOPB.w-18,SHOPB.y+14,30,'#4c9a94');txt(''+n,SHOPB.x+SHOPB.w-18,SHOPB.y+16,34,'#fff','center',FD,600);}
+    txt('drag to throw',W-40,SHOPB.y+34,40,cream,'right',FD,600); txt('a tap lets go',W-40,SHOPB.y+84,30,soft,'right',FB,700);
+    if(ready&&novaAt<0){
+      mote(NOVAB.x+NOVAB.w/2,NOVAB.y+NOVAB.h/2,300+20*Math.sin(pn*2),[255,214,150],0.28);
+      rr(NOVAB.x,NOVAB.y+8,NOVAB.w,NOVAB.h,NOVAB.h/2);ctx.fillStyle='#e7cfa2';ctx.fill(); rr(NOVAB.x,NOVAB.y,NOVAB.w,NOVAB.h,NOVAB.h/2);ctx.fillStyle='#fff6e6';ctx.fill();
+      txt('Supernova',NOVAB.x+44,NOVAB.y+46,48,C.text,'left',FD,600); dustIcon(NOVAB.x+62,NOVAB.y+94,16);
+      txt('+'+dustFor()+' stardust',NOVAB.x+92,NOVAB.y+96,30,C.dim,'left',FB,800);}}
+
+  const SAY={
+    meteor:()=>'a meteor of '+fmt(meteorM())+' mass',
+    pouch:()=>'holds '+pouchMax()+', one back every '+refillT().toFixed(2)+' s',
+    haze:()=>'the haze is '+hazeW().toFixed(1)+' stars wide',
+    glow:()=>'light ×'+glow().toFixed(2),
+    sky:()=>'a body about every '+passT().toFixed(1)+' s, ×'+rich().toFixed(2)+' as heavy'};
+  function sheet(){
+    ctx.fillStyle='rgba(10,8,30,0.45)';ctx.fillRect(0,0,W,H);
+    rr(SHEET.x,SHEET.y,SHEET.w,SHEET.h,56);ctx.fillStyle=C.surface;ctx.fill();
+    txt('Shop',SHEET.x+50,SHEET.y+76,64,C.text,'left',FD,600);
+    mote(SHEET.x+290,SHEET.y+78,30,[255,190,90],1); disc(SHEET.x+290,SHEET.y+78,13,'#ffcf6e'); txt(fmt(st.light),SHEET.x+322,SHEET.y+80,44,C.text,'left',FD,600);
+    disc(XB.x,XB.y,XB.r,C.surfaceHi); ctx.strokeStyle=C.dim;ctx.lineWidth=7;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(XB.x-14,XB.y-14);ctx.lineTo(XB.x+14,XB.y+14);ctx.moveTo(XB.x+14,XB.y-14);ctx.lineTo(XB.x-14,XB.y+14);ctx.stroke();
+    UPS.forEach((u,i)=>{
+      const r=rowRect(i),l=st.lv[u.id],done=l>=u.max,c=costOf(u),can=!done&&st.light>=c;
+      rr(r.x,r.y,r.w,r.h,36);ctx.fillStyle=C.row;ctx.fill();
+      txt(u.name,r.x+34,r.y+52,46,C.text,'left',FD,600); const nw=ctx.measureText(u.name).width;
+      txt('level '+l,r.x+50+nw,r.y+56,28,C.dim,'left',FB,800);
+      txt(SAY[u.id](),r.x+34,r.y+106,30,C.dim,'left',FB,700);
+      sunBtn({x:r.x+r.w-270,y:r.y+22,w:240,h:94},done?'max':fmt(c),can,42);});}
+  function perkCard(pn){
+    ctx.fillStyle='rgba(10,8,30,0.5)';ctx.fillRect(0,0,W,H);
+    rr(CARD.x,CARD.y,CARD.w,CARD.h,60);ctx.fillStyle=C.surface;ctx.fill();
+    txt('A new star',W/2,CARD.y+104,76,C.text,'center',FD,600);
+    txt('Supernova '+st.novas+' · its ashes are still in the sky',W/2,CARD.y+176,32,C.dim,'center',FB,700);
+    dustIcon(W/2-60,CARD.y+262,30); txt(''+st.dust,W/2-10,CARD.y+264,64,C.text,'left',FD,600);
+    sunBtn(PERKB,'A new perk · '+perkCost(),st.dust>=perkCost(),46);
+    PERKS.forEach((p,i)=>{
+      const x=CARD.x+40+(i%2)*440,y=CARD.y+500+Math.floor(i/2)*142,n=st.perk[p.id],fresh=won===p&&pn-wonAt<1.2;
+      rr(x,y,420,124,32);ctx.fillStyle=fresh?'#ffe6bd':C.row;ctx.fill(); if(fresh){ctx.strokeStyle=C.sun;ctx.lineWidth=4;ctx.stroke();}
+      ctx.globalAlpha=n>0?1:0.42;
+      txt(p.name,x+28,y+44,38,C.text,'left',FD,600); txt(p.say,x+28,y+88,26,C.dim,'left',FB,700);
+      if(n>0) txt('×'+n,x+392,y+46,36,C.sunDeep,'right',FD,600); ctx.globalAlpha=1;});
+    sunBtn(GOB,'Light the star',true,46);}
+
+  // ---- the frame ----
+  const NEB=[[236,150,170],[150,170,240],[130,210,200],[240,190,130]];
+  function startNova(){if(st.M<need()||novaAt>=0) return; novaAt=clockWall; novaDone=false; shop=false; aim=null;}
+  function afterNova(){
+    nebulae.push({x:CX+(Math.random()-0.5)*700,y:CY+(Math.random()-0.5)*1100,r:380+Math.random()*260,c:NEB[nebulae.length%NEB.length]});
+    nova(); flies=[]; puffs=[]; pulse=0; shownL=0;}
+  function drain(pn){
+    const z=zoom();
+    for(const e of st.events){
+      if(e.k==='eat') pulse=Math.min(1.5,pulse+0.2+2*e.m/st.M);
+      else if(e.k==='shed'){if(flies.length<50) flies.push({x:CX+e.x*z,y:CY+e.y*z,at:pn}); else lightAt=pn;}
+      else if(e.k==='merge'&&puffs.length<30) puffs.push({x:e.x,y:e.y,at:pn});}
+    st.events.length=0;}
+  let last=performance.now()/1000,capAt=0;
+  function caption(){
+    const el=document.getElementById('nl-caption'); if(!el) return;
+    el.textContent='mass '+fmt(st.M)+' · the star is '+Math.round(Rs())+' px on the screen, the view at '+zoom().toFixed(2)+' · a turn at the haze’s edge takes '+turnT(Rh()).toFixed(1)+' s, one at the surface '+turnT(Rw()).toFixed(2)+' s · '+st.bodies.length+' bodies in the sky · a perfect spiral pays '+(LIGHT*(1-1/hazeW())*glow()).toFixed(1)+' light a mass';}
+  function frame(ms){
+    requestAnimationFrame(frame);
+    const pn=ms/1000,dt=Math.min(0.1,pn-last); last=pn; clockWall=pn;
+    if(!panel.classList.contains('active')) return;
+    const held=novaAt>=0&&!novaDone;
+    if(!held){
+      acc+=dt*speed; let n=Math.floor(acc/STEP); acc-=n*STEP; if(n>3000) n=3000;
+      while(n-->0){if(auto){autoAcc+=STEP; if(autoAcc>=0.45){autoAcc=0; botThrow();}} step();}
+      drain(pn);}
+    pulse*=Math.exp(-dt*3);
+    shownM=Math.abs(st.M-shownM)<0.05?st.M:lerp(shownM,st.M,Math.min(1,dt*10));
+    shownL=Math.abs(st.light-shownL)<0.05?st.light:lerp(shownL,st.light,Math.min(1,dt*10));
+    if(pn-capAt>0.4){capAt=pn; caption();}
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    scene(pn,held?0:dt*speed);
+    hud(pn);
+    if(novaAt>=0){
+      // the star swells into a warm light that takes the whole sky, and a small one is there when it thins
+      const u=pn-novaAt; if(u>=0.8&&!novaDone){afterNova(); novaDone=true;}
+      const a=u<0.8?Math.pow(u/0.8,2):1-(u-0.8)/1.1;
+      if(u<0.8) mote(CX,CY,Rs()+1500*Math.pow(u/0.8,1.5),[255,236,200],1);
+      ctx.fillStyle=rgb([255,244,222],clamp(a)); ctx.fillRect(0,0,W,H);
+      if(u>=1.9){novaAt=-1; card=true; won=null;}}
+    if(shop) sheet();
+    if(card) perkCard(pn);}
+
+  const inside=(p,r)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
+  const at=e=>{const b=cv.getBoundingClientRect();return {x:(e.clientX-b.left)/b.width*W,y:(e.clientY-b.top)/b.height*H};};
+  cv.addEventListener('pointerdown',e=>{
+    const p=at(e); if(novaAt>=0) return;
+    if(card){
+      if(inside(p,PERKB)){const w=buyPerk(); if(w){won=w; wonAt=clockWall;}}
+      else if(inside(p,GOB)) card=false;
+      return;}
+    if(shop){
+      if(Math.hypot(p.x-XB.x,p.y-XB.y)<XB.r+12||!inside(p,SHEET)){shop=false; return;}
+      UPS.forEach((u,i)=>{const r=rowRect(i); if(inside(p,r)) buy(u);});
+      return;}
+    if(inside(p,SHOPB)){shop=true; return;}
+    if(st.M>=need()&&inside(p,NOVAB)){startNova(); return;}
+    if(p.y<230||Math.hypot(p.x-CX,p.y-CY)<Rs()*1.2) return;
+    aim={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+  cv.addEventListener('pointermove',e=>{if(aim){const p=at(e); aim.x1=p.x; aim.y1=p.y;}});
+  cv.addEventListener('pointerup',()=>{
+    if(!aim) return; const z=zoom(),v=aimVel(z);
+    if(!throwAt((aim.x0-CX)/z,(aim.y0-CY)/z,v[0],v[1])) emptyAt=clockWall;
+    aim=null;});
+  cv.addEventListener('pointercancel',()=>{aim=null;});
+  const btn=(id,f)=>{const el=document.getElementById(id); if(el) el.addEventListener('click',()=>{f(el); labels();});};
+  function labels(){
+    const a=document.getElementById('nl-speed'),b=document.getElementById('nl-auto');
+    if(a){a.textContent='Time ×'+speed; a.classList.toggle('on',speed>1);} if(b){b.textContent='Throw for me: '+(auto?'on':'off'); b.classList.toggle('on',auto);}}
+  btn('nl-auto',()=>{auto=!auto;});
+  btn('nl-speed',()=>{speed=speed===1?10:1;});
+  btn('nl-light',()=>{st.light+=1000;});
+  btn('nl-mass',()=>{st.M*=10;});
+  btn('nl-nova',()=>{if(st.M<need()) st.M=need(); startNova();});
+  btn('nl-reset',()=>{st=fresh(); nebulae=[]; flies=[]; puffs=[]; shop=false; card=false; aim=null; shownM=10; shownL=0;});
+
+  st=fresh();
+  if(MINE){
+    const m=parseFloat(Q.get('mass')||'0'); if(m>0) st.M=m;
+    auto=Q.get('auto')==='1';
+    for(let t=0;t<T0;t+=STEP){if(auto){autoAcc+=STEP; if(autoAcc>=0.45){autoAcc=0; botThrow();}} step(); st.events.length=0;}
+    const l=parseFloat(Q.get('light')||'0'); if(l>0) st.light=l;
+    if(Q.get('nova')==='1'){if(st.M<need()) st.M=need(); afterNova(); card=Q.get('card')!=='0'; for(let t=0;t<6;t+=STEP){step(); st.events.length=0;}}
+    if(Q.get('shop')==='1') shop=true;
+    const aq=Q.get('aim'); if(aq){const a=aq.split(',').map(Number); if(a.length===4) aim={x0:a[0],y0:a[1],x1:a[2],y1:a[3]};}
+    shownM=st.M; shownL=st.light;}
   labels(); caption(); requestAnimationFrame(frame);
 })();
 
