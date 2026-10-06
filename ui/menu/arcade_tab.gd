@@ -35,6 +35,8 @@ const PebbleArt = preload("res://arcade/thirteen_art.gd")
 const PosyArt = preload("res://arcade/posy_art.gd")
 const PeaArt = preload("res://arcade/peapod_art.gd")
 const PeaSim = preload("res://arcade/peapod_sim.gd")
+const NightArt = preload("res://arcade/nightlight_art.gd")
+const NightSim = preload("res://arcade/nightlight_sim.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
 
@@ -45,12 +47,13 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight"}
+const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
+	"nightlight": "ARC_NIGHTLIGHT_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -140,7 +143,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -197,6 +200,13 @@ func _game_card(game: String) -> Control:
 
 func refresh() -> void:
 	for game: String in GAMES:
+		# Nightlight is kept, not scored: its line is the star as it stands
+		if game == "nightlight":
+			var star: Dictionary = NightSim.kept()
+			var novas := int(star.novas)
+			(_best[game] as Label).text = tr("NL_CARD_MASS") % NightArt.short(star.mass, Locale.current() != "en") if star.mass > 0.0 else tr("NL_CARD_NEW")
+			(_stage[game] as Label).text = "" if novas == 0 else "· " + (tr("NL_CARD_NOVAS_ONE") if novas == 1 else tr("NL_CARD_NOVAS_N") % novas)
+			continue
 		var best := Record.best(game)
 		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
 		(_leaves[game] as Control).visible = best > 0 and Record.best_boosted(game)
@@ -543,3 +553,41 @@ class PeapodBanner extends Control:
 		for side in [-1.0, 1.0]:
 			draw_mesh(PeaArt.wheel(u), null, Transform2D(0.4, foot + Vector2(side * 13.0 * u, 0)))
 		draw_mesh(PeaArt.token(PeaSim.Kind.FLAME, u), null, Transform2D(-0.15, Vector2(mid - 60.0 * u, turf - 30.0 * u)))
+
+## Nightlight's banner: the small star in the night plate's sky with its
+## light round it, a meteor winding in on its trail and a few bodies lit on
+## the side that faces the star. Drawn once.
+class NightlightBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := minf(size.y / 110.0, size.x / 330.0)
+		var star := size * 0.5
+		var b := Face.Builder.new()
+		for k in 16:
+			b.disc(star + Vector2.from_angle(k * 2.4) * (18.0 + (k * 7) % 26) * u, 1.1 * u, Color(1.0, 0.93, 0.8, 0.5))
+		# the trail of the meteor winding in, and the meteor at its head
+		var trail := PackedVector2Array()
+		for i in 30:
+			trail.append(star + Vector2.from_angle(-0.4 + i * 0.085) * (46.0 - i * 0.75) * u)
+		b.stroke(trail, 2.2 * u, Color(1.0, 0.82, 0.56, 0.5))
+		NightArt.lay_star(b, star, 11.0 * u, NightArt.TEMPS[1][1])
+		var head := trail[trail.size() - 1]
+		NightArt.lit(b, head, 5.0 * u, NightArt.PAINT[NightSim.Kind.METEOR], star - head)
+		for body: Array in [[Vector2(-120, -22), 7.0, NightSim.Kind.ROCK], [Vector2(-70, 30), 4.5, NightSim.Kind.PEBBLE],
+				[Vector2(98, 24), 6.0, NightSim.Kind.COMET], [Vector2(138, -28), 9.0, NightSim.Kind.PLANET]]:
+			var at: Vector2 = star + (body[0] as Vector2) * u
+			if body[2] == NightSim.Kind.COMET:
+				var away := (at - star).normalized()
+				b.polygon(PackedVector2Array([at + away.orthogonal() * 5.0 * u, at + away * 34.0 * u, at - away.orthogonal() * 5.0 * u]), Color(NightArt.TAIL, 0.4))
+			NightArt.lit(b, at, float(body[1]) * u, NightArt.PAINT[body[2]], star - at)
+		var mesh := b.mesh()
+		_keep.append(mesh)
+		draw_mesh(mesh, null)

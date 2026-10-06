@@ -1086,3 +1086,52 @@ as before; fewer landings are felt because fewer are heard.
 `tests/_probe_arcade_buzz.gd` ran both games to their end cards; its
 365,000 "Drawing is only allowed" lines on thirteen are there without this
 change too. `docs/art/sound-direction.md`, the last section.
+
+**Nightlight is the seventh** (2026-10-06, spec
+`2026-10-06-arcade-nightlight-design.md`, concept tab `#nightlight`): a small
+star, meteors thrown at it and bodies that pass, after the black-hole idle
+games the spec names once to forbid; **it is called Nightlight**. It is the
+one Arcade game that is **kept**: no round, no score, no end card, no record
+in `arcade.cfg`, no boosters, no Second chance, and `_open_arcade` does not
+call `_left_game` for it. Its card's line is the star's mass and its
+supernovas (`Sim.kept()`), not a best.
+
+- **The game is pure data** (`arcade/nightlight_sim.gd`, fixed 1/120 s, the
+  star at (0, 0), lengths in the design's pixels as the game starts;
+  `advance` in, `events` out). `tests/_probe_nightlight.gd` checks the
+  physics (24 checks) and `-- pace [minutes] [seed]` plays it with a bot;
+  run it after touching `G`, `DRAG`, `LIGHT`, the tiles or the supernova.
+  25 us a tick with forty bodies on this Mac.
+- **Nothing spirals without the haze.** Gravity alone gives a closed orbit
+  or an open one. The drag inside `haze_r()` is what brings a body down, what
+  catches a passer, and what makes light (the drag's work as a share of a
+  perfect spiral's). Change `DRAG` and all three move together.
+- **The sky is one Control** (`arcade/nightlight_sky.gd`) that draws a sim:
+  the screen's field, the tutorial's three pages and nothing else build one,
+  so they cannot drift. It builds its layers in `_init`, not `_ready`, so
+  what an owner adds to it (the pouch, the Supernova button) stands over the
+  sky. Three MultiMeshes of bodies under one shader, one of shadows, one of
+  warm lights, one of the haze's grains, and **one `draw_polyline_colors` a
+  trail** in the sim's own units under a canvas transform, with cached colour
+  ramps: nothing is laid into a mesh in script.
+- **The bodies are lit in the shader** (`shaders/nightlight_body_2d.gdshader`)
+  from where the model matrix puts each instance and one `star` uniform in
+  the layer's global pixels. No per-body data, no instance uniform. The
+  instance colour is the body's paint and reaches `COLOR` in the fragment.
+- **`ui/motes.gd` takes a mesh now** (`orb_mesh`, `light_mesh`): Nightlight's
+  light is the other games' energy in gold.
+- **A harness sets the language with `Locale._current`**, before the main
+  scene is built: `TranslationServer.set_locale` in `_initialize` is
+  overridden by `Locale.apply()`, and `Locale.set_current` writes the
+  player's own file.
+- 266 draw calls on the tab with seven cards, 77 on a new star, 85 while
+  aiming, 90-103 in play, 117 with thirty-two ashes and their trails, 166
+  with the shop open, 140-169 on the tutorial's pages; the two drivers
+  within five of each other, on skies that differ. `tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]` shoots
+  seventeen beats through the real menu, aiming with a ScreenTouch and a
+  ScreenDrag.
+- **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
+  and `nova` are felt), nothing run on a phone, no person has thrown a
+  meteor or played the pace, Spanish was not shot, a perk's worth was not
+  tuned one against another, and nothing happens while the game is closed.
+

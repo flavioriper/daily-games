@@ -56,6 +56,7 @@ const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
+const NightlightScreen = preload("res://arcade/nightlight_screen.gd")
 const ValleyTab = preload("res://ui/menu/valley_tab.gd")
 const GroveScreen = preload("res://valley/grove_screen.gd")
 const Streak = preload("res://core/streak.gd")
@@ -1205,11 +1206,20 @@ func _open_arcade(game: String) -> void:
 		"peapod":
 			screen = PeapodScreen.new()
 			screen.name = "Peapod"
+		"nightlight":
+			screen = NightlightScreen.new()
+			screen.name = "Nightlight"
 		_:
 			return
+	# Nightlight is kept and has no run to finish: like a place on the Valley
+	# tab it is looked in on, so leaving it is not a moment for an
+	# interstitial.
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		_left_game("arcade"))
+		if game != "nightlight":
+			_left_game("arcade")
+		elif not _switching:
+			_show_list("arcade"))
 	add_child(screen)
 	_raise_card()
 	screen.tutor.first_play()

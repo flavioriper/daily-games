@@ -71,6 +71,11 @@ var auto := true
 var always := false
 ## What throws the motes; a page that must look the same twice seeds it.
 var rng := RandomNumberGenerator.new()
+## A mote and the light it throws, for an owner whose light is not the blue
+## one (Nightlight's is gold, arcade/nightlight_art.gd): set before the first
+## mote flies. Null is `orb()` and `orb_light()`.
+var orb_mesh: ArrayMesh
+var light_mesh: ArrayMesh
 
 ## {pos, vel, t, out, from, bend, val, size, seed, gone}
 var _orbs: Array = []
@@ -284,12 +289,12 @@ func _draw() -> void:
 		_mm = MultiMesh.new()
 		_mm.transform_format = MultiMesh.TRANSFORM_2D
 		_mm.use_colors = true
-		_mm.mesh = orb()
+		_mm.mesh = orb_mesh if orb_mesh != null else orb()
 		_mm.instance_count = most
 		_light_mm = MultiMesh.new()
 		_light_mm.transform_format = MultiMesh.TRANSFORM_2D
 		_light_mm.use_colors = true
-		_light_mm.mesh = orb_light()
+		_light_mm.mesh = light_mesh if light_mesh != null else orb_light()
 		_light_mm.instance_count = most
 		_buf.resize(most * 12)
 	var n := 0

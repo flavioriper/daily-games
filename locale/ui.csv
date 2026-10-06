@@ -1004,3 +1004,55 @@ TUT_GROVE_GIFTS,Wood and energy,Madeira e energia,Madera y energía
 TUT_GROVE_GIFTS_BODY,"A felled tree leaves wood and energy. Wood is kept for the whole valley. Energy stays in the grove and buys what the Shop sells: a stronger axe, a wider circle, more trees.","Uma árvore cortada deixa madeira e energia. A madeira fica guardada para o vale inteiro. A energia fica no bosque e compra o que a Loja vende: um machado mais forte, um círculo maior, mais árvores.","Un árbol talado deja madera y energía. La madera se guarda para todo el valle. La energía se queda en el bosque y compra lo que vende la Tienda: un hacha más fuerte, un círculo mayor, más árboles."
 TUT_GROVE_WAIT,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
 TUT_GROVE_WAIT_BODY,"New trees come up by themselves, also while you are away, until the land is full. There is no hurry and nothing is lost: come back when it has filled.","Novas árvores nascem sozinhas, mesmo quando você está fora, até a terra encher. Não há pressa e nada se perde: volte quando ela estiver cheia.","Los árboles nuevos brotan solos, también cuando no estás, hasta que la tierra se llena. No hay prisa y no se pierde nada: vuelve cuando se haya llenado."
+ARC_NIGHTLIGHT_BLURB,"Throw meteors at a small star and watch them wind in. It grows, goes supernova, and starts again in a richer sky.","Lance meteoros numa estrelinha e veja-os girar até cair. Ela cresce, vira supernova e recomeça num céu mais rico.","Lanza meteoros a una estrellita y míralos girar hasta caer. Crece, se vuelve supernova y empieza de nuevo en un cielo más rico."
+NL_CARD_MASS,Mass %s,Massa %s,Masa %s
+NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva
+NL_CARD_NOVAS_ONE,1 supernova,1 supernova,1 supernova
+NL_CARD_NOVAS_N,%d supernovas,%d supernovas,%d supernovas
+NL_MOTTO,"A small star, and a sky to feed it",Uma estrelinha e um céu para alimentá-la,Una estrellita y un cielo para alimentarla
+NL_MASS,Mass,Massa,Masa
+NL_LIGHT,Light,Luz,Luz
+NL_HINT,"Drag to throw, tap to let go","Arraste para lançar, toque para soltar","Arrastra para lanzar, toca para soltar"
+NL_HELD,%d / %d meteors,%d / %d meteoros,%d / %d meteoros
+NL_NOVA,Supernova,Supernova,Supernova
+NL_NOVA_AT,Supernova at %s mass,Supernova com massa %s,Supernova con masa %s
+NL_NOVA_READY,"+%d stardust now, +%d at %s mass","+%d de poeira estelar agora, +%d com massa %s","+%d de polvo estelar ahora, +%d con masa %s"
+NL_NOVA_ASK_ONE,"The star, its light and its upgrades go. You get 1 stardust, and a richer sky to start again in.","A estrela, sua luz e suas melhorias se vão. Você ganha 1 de poeira estelar e um céu mais rico para recomeçar.","La estrella, su luz y sus mejoras se van. Ganas 1 de polvo estelar y un cielo más rico para empezar de nuevo."
+NL_NOVA_ASK_N,"The star, its light and its upgrades go. You get %d stardust, and a richer sky to start again in.","A estrela, sua luz e suas melhorias se vão. Você ganha %d de poeira estelar e um céu mais rico para recomeçar.","La estrella, su luz y sus mejoras se van. Ganas %d de polvo estelar y un cielo más rico para empezar de nuevo."
+NL_NOVA_GO,Go supernova,Virar supernova,Volverse supernova
+NL_NOVA_STAY,Not yet,Ainda não,Todavía no
+NL_PERKS,Perks,Vantagens,Ventajas
+NL_PERKS_BODY,A supernova pays stardust. A perk is drawn at random and stays for good.,Uma supernova rende poeira estelar. A vantagem é sorteada e fica para sempre.,Una supernova da polvo estelar. La ventaja se sortea y se queda para siempre.
+NL_PERK_BUY_ONE,A new perk · 1,Nova vantagem · 1,Nueva ventaja · 1
+NL_PERK_BUY_N,A new perk · %d,Nova vantagem · %d,Nueva ventaja · %d
+NL_PERKS_BACK,Back to the star,Voltar à estrela,Volver a la estrella
+NL_PERK_CORE,Dense core,Núcleo denso,Núcleo denso
+NL_PERK_CORE_FX,gravity +15%,gravidade +15%,gravedad +15%
+NL_PERK_DISC,Bright haze,Névoa brilhante,Bruma brillante
+NL_PERK_DISC_FX,light +25%,luz +25%,luz +25%
+NL_PERK_HAND,Heavy hand,Mão pesada,Mano pesada
+NL_PERK_HAND_FX,meteors 30% heavier,meteoros 30% mais pesados,meteoros 30% más pesados
+NL_PERK_DEEP,Deep pouch,Bolsa funda,Bolsa honda
+NL_PERK_DEEP_FX,2 more meteors held,2 meteoros a mais,2 meteoros más
+NL_PERK_CROWD,Crowded sky,Céu cheio,Cielo lleno
+NL_PERK_CROWD_FX,bodies pass 15% sooner,corpos passam 15% mais cedo,pasan cuerpos 15% antes
+NL_PERK_EMBER,Ember,Brasa,Brasa
+NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o dobro,la estrella nueva empieza con el doble
+NL_METEOR,Meteor,Meteoro,Meteoro
+NL_POUCH,Pouch,Bolsa,Bolsa
+NL_HAZE,Haze,Névoa,Bruma
+NL_GLOW,Glow,Brilho,Brillo
+NL_SKY,Sky,Céu,Cielo
+NL_FX_METEOR,"mass %s, then %s","massa %s, depois %s","masa %s, luego %s"
+NL_FX_POUCH,"holds %d, then %d","guarda %d, depois %d","guarda %d, luego %d"
+NL_FX_HAZE,a wider haze,névoa mais larga,bruma más ancha
+NL_FX_GLOW,"light ×%s, then ×%s","luz ×%s, depois ×%s","luz ×%s, luego ×%s"
+NL_FX_SKY,"more bodies, heavier","mais corpos, mais peso","más cuerpos, más peso"
+NL_DONE,as wide as it gets,o mais larga possível,lo más ancha posible
+NL_MAX,Max,Máx,Máx
+TUT_NL_THROW,Throw a meteor,Lance um meteoro,Lanza un meteoro
+TUT_NL_THROW_BODY,Press on the sky and drag the way the meteor should go. The dots show its real path. Let go to throw. A tap with no drag lets it fall.,Toque no céu e arraste para onde o meteoro deve ir. Os pontos mostram o caminho real. Solte para lançar. Um toque sem arrastar deixa-o cair.,Toca el cielo y arrastra hacia donde debe ir el meteoro. Los puntos muestran su camino real. Suelta para lanzar. Un toque sin arrastrar lo deja caer.
+TUT_NL_LIGHT,A spiral makes light,A espiral faz luz,La espiral da luz
+TUT_NL_LIGHT_BODY,"The star's haze slows whatever is inside it, and what it takes becomes light. A meteor that circles in pays twenty times the light of one dropped straight in. Light buys upgrades in the shop.","A névoa da estrela freia o que está dentro dela, e o que ela tira vira luz. Um meteoro que entra girando rende vinte vezes a luz de um que cai direto. A luz compra melhorias na loja.","La bruma de la estrella frena lo que hay dentro, y lo que le quita se vuelve luz. Un meteoro que entra girando da veinte veces la luz de uno que cae directo. La luz compra mejoras en la tienda."
+TUT_NL_NOVA,Supernova,Supernova,Supernova
+TUT_NL_NOVA_BODY,"At %s mass the star can go supernova. Everything it ate is thrown back into the sky, and a small star starts again among the ashes. You keep stardust, which buys perks that last.","Com massa %s a estrela pode virar supernova. Tudo o que ela comeu volta para o céu, e uma estrelinha recomeça entre as cinzas. Você fica com poeira estelar, que compra vantagens que duram.","Con masa %s la estrella puede volverse supernova. Todo lo que comió vuelve al cielo, y una estrellita empieza de nuevo entre las cenizas. Te quedas con polvo estelar, que compra ventajas que duran."

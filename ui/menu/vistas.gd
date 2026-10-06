@@ -86,6 +86,8 @@ const CARDS := {
 	"posy": ["meadow", 1.5, Vector2(0.5, 0.6)],
 	# Peapod's cart stands on the meadow's grass, under its hills.
 	"peapod": ["meadow", 1.6, Vector2(0.7, 0.55)],
+	# Nightlight's star hangs high in the night vista's sky.
+	"nightlight": ["night", 2.2, Vector2(0.14, 0.3)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
