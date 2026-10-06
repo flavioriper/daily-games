@@ -1254,7 +1254,58 @@ supernovas (`Sim.kept()`), not a best.
   **Mine, not asked for**: the dipping path outside the haze (asked for
   was "in orbit"), `LOW`, the puff, two thumbs, Stream following the
   finger, the bot's range.
-- **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
+- **A seventh time the same day: gas, worlds, the chain, a star that ends
+  by itself** (the user's words and the three answers are in the spec's
+  last amendment). **What this bullet says replaces every meteor, throw,
+  trail, pouch, `NOVA` mark and Supernova button above; of the bullets
+  above only the disc's drag and light, the tide, Suns, `on()`, the powers,
+  the picks and the perks still stand, and their numbers are the sim's own
+  now.**
+  - **The hand is one button** (`_gas_b`, the foot row's right end): a
+    press is `Sim.pour()`, held it pours every `stream_gap()`. The sky's
+    `mouse_filter` is IGNORE and nothing reads a press on it. The button
+    reads ScreenTouch itself (`_on_gas_input`); a harness presses it with
+    one and sets the button's own filter to IGNORE.
+  - **Kinds are derived** (`Sim._sort`): GAS, then GRAIN/ROCK/COMET/PLANET/
+    GIANT by mass, `ice` and `h`. Call `_sort` after changing any of them.
+    A body's `grip` is the disc's hold on it. Solids and the star are sized
+    by one rule each (`BODY_R`, `STAR_R`); do not give a kind its own size.
+  - **`_meet` runs every `MEET_EVERY` ticks on a grid** and is the whole of
+    condensing, sweeping, gulping and merging. `SOLIDS` caps what the gas
+    makes by itself; without it and with `CRUMB` small the tide made 240
+    grains of every giant. A heavier puff carries the same dust, or
+    upgrades made giants of everything.
+  - **The sim ticks at 60 Hz** (nothing here goes 60 px/s): 220 us a tick
+    with 300 bodies.
+  - **The chain** is `fuel`, `env` (helium that came with the gas, never
+    burnt) and `made[6]`; `ignited[6]`, `h_on`, `awake`, `cold`, `swell`.
+    `made` and `ignited` are typed arrays: fill them with `.assign([...])`.
+    `layers()` is the bar; `goal()` is the line under it.
+  - **The star ends by itself**: `ending()` is "nova" or "fade", `tick`
+    does nothing while it is either, and the screen's `_step_end` plays
+    `sky.begin_end` and calls `sim.end()` at `sky.end_swap()`. A harness or
+    a bot must call `end()` itself. Closed mid-end, it plays again on
+    opening.
+  - **The sky draws no trail and no line**: gas is one MultiMesh of soft
+    lights (`_gas`, which the end's shells share), so **the sky is 90 draw
+    calls new and 94-96 with 312 bodies** (it was 400), 137-139 on a heavy
+    star with its motes, 202-204 with the shop over it, 134 through the
+    supernova, 112-119 on the tutorial's pages; the two drivers within two.
+  - **The star is a shader** (`shaders/nightlight_star_2d.gdshader`): one
+    square, `col` its temperature's colour, `clock` the sky's own seconds
+    (still under reduce motion), `fade` for an end. Its edge is low round
+    mounds: the first pass had spikes, which are the rays the user does not
+    want.
+  - `Art.star_col` takes kelvin; `Art.burning_col` takes the sim.
+  - `tests/_probe_nightlight.gd` is 46 checks and `-- pace [min] [seed]
+    [first|second|random] [share held]`: 2 Suns at 5.0 min, a supernova at
+    26.7 min (33 held two thirds of the time). **Light is the pace**: with
+    `LIGHT` 22 and the old prices a life was 9 min. `tests/_shot_nightlight.gd`
+    is 28 beats, on both drivers, reduce motion, en, pt and es. Suite 249790/0.
+  - **Not done**: no sound, nothing on a phone, no person has played it,
+    the concept tab is the first game still, nothing pulls but the star, no
+    power was retuned for gas.
+- **Not done, before the seventh pass**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
   and `nova` are felt; a tear, the star going dim and lighting again are
   neither heard nor felt), nothing run on a phone, no person has played
   the pace, the fuel or a single power, no power's worth was tuned against

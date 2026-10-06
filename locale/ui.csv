@@ -1004,80 +1004,87 @@ TUT_GROVE_GIFTS,Wood and energy,Madeira e energia,Madera y energía
 TUT_GROVE_GIFTS_BODY,"A felled tree leaves wood and energy. Wood is kept for the whole valley. Energy stays in the grove and buys what the Shop sells: a stronger axe, a wider circle, more trees.","Uma árvore cortada deixa madeira e energia. A madeira fica guardada para o vale inteiro. A energia fica no bosque e compra o que a Loja vende: um machado mais forte, um círculo maior, mais árvores.","Un árbol talado deja madera y energía. La madera se guarda para todo el valle. La energía se queda en el bosque y compra lo que vende la Tienda: un hacha más fuerte, un círculo mayor, más árboles."
 TUT_GROVE_WAIT,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
 TUT_GROVE_WAIT_BODY,"New trees come up by themselves, also while you are away, until the land is full. There is no hurry and nothing is lost: come back when it has filled.","Novas árvores nascem sozinhas, mesmo quando você está fora, até a terra encher. Não há pressa e nada se perde: volte quando ela estiver cheia.","Los árboles nuevos brotan solos, también cuando no estás, hasta que la tierra se llena. No hay prisa y no se pierde nada: vuelve cuando se haya llenado."
-ARC_NIGHTLIGHT_BLURB,"Throw meteors at a small star and watch them wind in. It grows, goes supernova, and starts again in a richer sky.","Lance meteoros numa estrelinha e veja-os girar até cair. Ela cresce, vira supernova e recomeça num céu mais rico.","Lanza meteoros a una estrellita y míralos girar hasta caer. Crece, se vuelve supernova y empieza de nuevo en un cielo más rico."
+ARC_NIGHTLIGHT_BLURB,"Feed a star with gas and watch worlds form round it. It burns its way up to iron, goes supernova, and starts again in a richer sky.","Alimente uma estrela com gás e veja mundos se formarem ao redor. Ela queima até o ferro, vira supernova e recomeça num céu mais rico.","Alimenta una estrella con gas y mira cómo se forman mundos a su alrededor. Quema hasta el hierro, se vuelve supernova y vuelve a empezar en un cielo más rico."
 NL_CARD_MASS,%s× the Sun,%s× o Sol,%s× el Sol
 NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva
 NL_CARD_NOVAS_ONE,1 supernova,1 supernova,1 supernova
 NL_CARD_NOVAS_N,%d supernovas,%d supernovas,%d supernovas
-NL_MOTTO,"A small star, and a sky to feed it",Uma estrelinha e um céu para alimentá-la,Una estrellita y un cielo para alimentarla
+NL_MOTTO,"A star, and the gas to feed it",Uma estrela e o gás para alimentá-la,Una estrella y el gas para alimentarla
 NL_MASS,Sun masses,Massas solares,Masas solares
 NL_TEMP,Temperature,Temperatura,Temperatura
 NL_FUEL,Fuel,Combustível,Combustible
 NL_FUEL_OUT,Empty,Vazio,Vacío
-NL_HYDROGEN,Hydrogen,Hidrogênio,Hidrógeno
-NL_HELIUM,Helium,Hélio,Helio
 NL_ROCK,Rock,Rocha,Roca
 NL_LIGHT,Light,Luz,Luz
-NL_HINT,Tap the sky to throw a meteor,Toque no céu para lançar um meteoro,Toca el cielo para lanzar un meteoro
-NL_NOVA,Supernova,Supernova,Supernova
-NL_NOVA_AT,Next power at %s× · Supernova at %s×,Próximo poder com %s× · Supernova com %s×,Próximo poder con %s× · Supernova con %s×
-NL_NOVA_READY,"+%d stardust now, +%d at %s× · power at %s×","+%d de poeira estelar agora, +%d com %s× · poder com %s×","+%d de polvo estelar ahora, +%d con %s× · poder con %s×"
-NL_NOVA_ASK_ONE,"The star, its light, its upgrades and its powers go. You get 1 stardust, and a richer sky to start again in.","A estrela, sua luz, suas melhorias e seus poderes se vão. Você ganha 1 de poeira estelar e um céu mais rico para recomeçar.","La estrella, su luz, sus mejoras y sus poderes se van. Ganas 1 de polvo estelar y un cielo más rico para empezar de nuevo."
-NL_NOVA_ASK_N,"The star, its light, its upgrades and its powers go. You get %d stardust, and a richer sky to start again in.","A estrela, sua luz, suas melhorias e seus poderes se vão. Você ganha %d de poeira estelar e um céu mais rico para recomeçar.","La estrella, su luz, sus mejoras y sus poderes se van. Ganas %d de polvo estelar y un cielo más rico para empezar de nuevo."
-NL_NOVA_GO,Go supernova,Virar supernova,Volverse supernova
-NL_NOVA_STAY,Not yet,Ainda não,Todavía no
+NL_HINT,Hold Gas to feed the star,Segure Gás para alimentar a estrela,Mantén Gas para alimentar la estrella
 NL_PERKS,Perks,Vantagens,Ventajas
-NL_PERKS_BODY,A supernova pays stardust. A perk is drawn at random and stays for good.,Uma supernova rende poeira estelar. A vantagem é sorteada e fica para sempre.,Una supernova da polvo estelar. La ventaja se sortea y se queda para siempre.
+NL_PERKS_BODY,"A star's end pays stardust, a supernova the most. A perk is drawn at random and stays for good.","O fim de uma estrela rende poeira estelar, e uma supernova rende mais. A vantagem é sorteada e fica para sempre.","El final de una estrella da polvo estelar, y una supernova da más. La ventaja se sortea y queda para siempre."
 NL_PERK_BUY_ONE,A new perk · 1,Nova vantagem · 1,Nueva ventaja · 1
 NL_PERK_BUY_N,A new perk · %d,Nova vantagem · %d,Nueva ventaja · %d
 NL_PERKS_BACK,Back to the star,Voltar à estrela,Volver a la estrella
 NL_PERK_CORE,Dense core,Núcleo denso,Núcleo denso
 NL_PERK_CORE_FX,gravity +15%,gravidade +15%,gravedad +15%
-NL_PERK_DISC,Bright haze,Névoa brilhante,Bruma brillante
+NL_PERK_DISC,Bright disc,Disco brilhante,Disco brillante
 NL_PERK_DISC_FX,light +25%,luz +25%,luz +25%
 NL_PERK_HAND,Heavy hand,Mão pesada,Mano pesada
-NL_PERK_HAND_FX,meteors 30% heavier,meteoros 30% mais pesados,meteoros 30% más pesados
+NL_PERK_HAND_FX,puffs 30% heavier,sopros 30% mais pesados,soplos 30% más pesados
 NL_PERK_CROWD,Crowded sky,Céu cheio,Cielo lleno
 NL_PERK_CROWD_FX,bodies pass 15% sooner,corpos passam 15% mais cedo,pasan cuerpos 15% antes
 NL_PERK_EMBER,Ember,Brasa,Brasa
 NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o dobro,la estrella nueva empieza con el doble
-NL_METEOR,Meteor,Meteoro,Meteoro
 NL_VOLLEY,Volley,Salva,Salva
-NL_STREAM,Stream,Rajada,Ráfaga
-NL_ICE,Ice,Gelo,Hielo
-NL_FX_METEOR,"weight ×%s, then ×%s","peso ×%s, depois ×%s","peso ×%s, luego ×%s"
-NL_FX_VOLLEY,"%d a throw, then %d","%d por lançamento, depois %d","%d por lanzamiento, luego %d"
-NL_FX_STREAM_NEW,hold to keep throwing,segure para lançar sem parar,mantén para lanzar sin parar
+NL_STREAM,Flow,Fluxo,Flujo
+NL_FX_VOLLEY,"%d at a time, then %d","%d por vez, depois %d","%d a la vez, luego %d"
 NL_FX_STREAM,"one every %s s, then %s s","um a cada %s s, depois %s s","uno cada %s s, luego %s s"
-NL_FX_ICE,"%d%% hydrogen, then %d%%","%d%% de hidrogênio, depois %d%%","%d%% de hidrógeno, luego %d%%"
-NL_DONE,as icy as it gets,o mais gelado possível,lo más helado posible
+NL_DONE,as pure as it gets,o mais puro possível,lo más puro posible
 NL_MAX,Max,Máx,Máx
 NL_POWERS,Star powers,Poderes da estrela,Poderes de la estrella
-NL_POWERS_BODY,"Always on while the star is lit. Each one burns more hydrogen, and they all go with the star at a supernova.","Sempre ligados enquanto a estrela está acesa. Cada um queima mais hidrogênio, e todos se vão com a estrela na supernova.","Siempre activos mientras la estrella está encendida. Cada uno quema más hidrógeno, y todos se van con la estrella en la supernova."
+NL_POWERS_BODY,"Always on while the star is lit. Each one burns more hydrogen, and they all go with the star when it ends.","Sempre ligados enquanto a estrela está acesa. Cada um queima mais hidrogênio, e todos se vão com a estrela quando ela acaba.","Siempre activos mientras la estrella está encendida. Cada uno quema más hidrógeno, y todos se van con la estrella cuando termina."
 NL_PICK_TITLE,A star of %s Suns,Uma estrela de %s sóis,Una estrella de %s soles
 NL_PICK_BODY,"Pick one power. It stays on while the star is lit, and burns more hydrogen.",Escolha um poder. Ele fica ligado enquanto a estrela está acesa e queima mais hidrogênio.,Elige un poder. Sigue activo mientras la estrella está encendida y quema más hidrógeno.
 NL_POW_BURN,burns %d%% more,queima %d%% a mais,quema %d%% más
 NL_POW_SAVE,burns 30% less,queima 30% a menos,quema 30% menos
 NL_POW_EACH,Each: %s.,Cada um: %s.,Cada uno: %s.
 NL_POW_WIND,Solar wind,Vento solar,Viento solar
-NL_POW_WIND_FX,Bodies beyond the haze slow down and start to fall.,Corpos além da névoa perdem velocidade e começam a cair.,Los cuerpos más allá de la bruma frenan y empiezan a caer.
-NL_POW_HAZE,Wide haze,Névoa larga,Bruma ancha
-NL_POW_HAZE_FX,The haze that catches bodies reaches 15% further.,A névoa que captura corpos alcança 15% mais longe.,La bruma que atrapa cuerpos llega 15% más lejos.
+NL_POW_WIND_FX,Gas and bodies beyond the disc slow down and start to fall.,Gás e corpos além do disco perdem velocidade e começam a cair.,El gas y los cuerpos más allá del disco frenan y empiezan a caer.
+NL_POW_HAZE,Wide disc,Disco largo,Disco ancho
+NL_POW_HAZE_FX,The disc that drags gas in reaches 15% further.,O disco que arrasta o gás alcança 15% mais longe.,El disco que arrastra el gas llega 15% más lejos.
 NL_POW_BEACON,Beacon,Farol,Faro
 NL_POW_BEACON_FX,"Bodies pass 20% sooner, and 20% heavier.",Corpos passam 20% mais cedo e 20% mais pesados.,Pasan cuerpos 20% antes y 20% más pesados.
 NL_POW_RADIANCE,Radiance,Radiância,Resplandor
-NL_POW_RADIANCE_FX,A body winding in makes 30% more light.,Um corpo que entra girando faz 30% mais luz.,Un cuerpo que entra girando da 30% más luz.
+NL_POW_RADIANCE_FX,Whatever winds in through the disc makes 30% more light.,O que entra girando pelo disco faz 30% mais luz.,Lo que entra girando por el disco da 30% más luz.
 NL_POW_FURNACE,Tidal furnace,Fornalha de maré,Fragua de marea
 NL_POW_FURNACE_FX,A body torn apart pays light as it breaks.,Um corpo despedaçado rende luz ao se partir.,Un cuerpo despedazado da luz al romperse.
 NL_POW_FUSION,Fusion,Fusão,Fusión
 NL_POW_FUSION_FX,The star's own burning makes much more light.,A queima da própria estrela faz muito mais luz.,La combustión de la estrella da mucha más luz.
 NL_POW_THRIFT,Slow burn,Queima lenta,Combustión lenta
 NL_POW_THRIFT_FX,The star and its powers burn 30% less hydrogen.,A estrela e seus poderes queimam 30% menos hidrogênio.,La estrella y sus poderes queman 30% menos hidrógeno.
-TUT_NL_THROW,Tap the sky,Toque no céu,Toca el cielo
-TUT_NL_THROW_BODY,Tap the sky and a meteor starts circling the star from right there. Keep tapping to send more.,Toque no céu e um meteoro começa a girar em volta da estrela a partir dali. Continue tocando para mandar mais.,Toca el cielo y un meteoro empieza a girar alrededor de la estrella desde ahí. Sigue tocando para enviar más.
-TUT_NL_LIGHT,A spiral makes light,A espiral faz luz,La espiral da luz
-TUT_NL_LIGHT_BODY,"The star's haze slows whatever is inside it, and what it takes becomes light. A meteor winds in, faster and faster, and pays light all the way down. Light buys upgrades in the shop.","A névoa da estrela freia o que está dentro dela, e o que ela tira vira luz. Um meteoro desce girando, cada vez mais rápido, e rende luz o caminho todo. A luz compra melhorias na loja.","La bruma de la estrella frena lo que hay dentro, y lo que le quita se vuelve luz. Un meteoro baja girando, cada vez más rápido, y da luz todo el camino. La luz compra mejoras en la tienda."
-TUT_NL_STAR,The star burns,A estrela queima,La estrella arde
-TUT_NL_STAR_BODY,"The star burns hydrogen to shine, and that makes light too. Comets and icy meteors bring the most. With none left it goes dim until it is fed. As it grows, it offers you a power to pick.","A estrela queima hidrogênio para brilhar, e isso também faz luz. Cometas e meteoros gelados trazem mais. Sem hidrogênio ela escurece até ser alimentada. Conforme cresce, ela oferece um poder para você escolher.","La estrella quema hidrógeno para brillar, y eso también da luz. Los cometas y los meteoros helados traen más. Sin hidrógeno se apaga hasta que la alimentes. Al crecer, te ofrece un poder para elegir."
-TUT_NL_NOVA,Supernova,Supernova,Supernova
-TUT_NL_NOVA_BODY,"At %s times the Sun's mass the star can go supernova. Everything it ate is thrown back into the sky, and a small star starts again among the ashes. You keep stardust, which buys perks that last.","Com %s vezes a massa do Sol a estrela pode virar supernova. Tudo o que ela comeu volta para o céu, e uma estrelinha recomeça entre as cinzas. Você fica com poeira estelar, que compra vantagens que duram.","Con %s veces la masa del Sol la estrella puede volverse supernova. Todo lo que comió vuelve al cielo, y una estrellita empieza de nuevo entre las cenizas. Te quedas con polvo estelar, que compra ventajas que duran."
+NL_GAS,Gas,Gás,Gas
+NL_PUFF,Puff,Sopro,Soplo
+NL_PURE,Pure gas,Gás puro,Gas puro
+NL_FX_PUFF,"weight ×%s, then ×%s","peso ×%s, depois ×%s","peso ×%s, luego ×%s"
+NL_FX_PURE,"%d%% hydrogen, then %d%%","%d%% de hidrogênio, depois %d%%","%d%% de hidrógeno, luego %d%%"
+NL_PICK_AT,Power at %s×,Poder com %s×,Poder con %s×
+NL_MILLION_K,%s million K,%s milhões de K,%s millones de K
+NL_BILLION_K,%s billion K,%s bilhões de K,%s mil millones de K
+NL_GOAL_HE,Helium core %s of %s Suns · core %s,Núcleo de hélio %s de %s sóis · núcleo a %s,Núcleo de helio %s de %s soles · núcleo a %s
+NL_GOAL_C,Carbon core %s of %s Suns · core %s,Núcleo de carbono %s de %s sóis · núcleo a %s,Núcleo de carbono %s de %s soles · núcleo a %s
+NL_GOAL_C_WAIT,Carbon lights on a star of %s× · core %s,O carbono acende numa estrela de %s× · núcleo a %s,El carbono se enciende en una estrella de %s× · núcleo a %s
+NL_GOAL_FE,Iron core %s of %s Suns · core %s,Núcleo de ferro %s de %s sóis · núcleo a %s,Núcleo de hierro %s de %s soles · núcleo a %s
+NL_GOAL_DIM,Nothing left to burn · letting go in %s,Nada mais para queimar · vai se desfazer em %s,Nada más que quemar · se deshará en %s
+NL_LIT_HE,The helium flash: helium now burns into carbon,O flash do hélio: o hélio agora vira carbono,El flash del helio: el helio ahora se vuelve carbono
+NL_LIT_C,"Carbon lights, and the star swells into a giant","O carbono acende, e a estrela incha até virar gigante","El carbono se enciende, y la estrella se hincha en gigante"
+NL_LIT_NE,Neon is burning into oxygen,O neônio está virando oxigênio,El neón se está volviendo oxígeno
+NL_LIT_O,Oxygen is burning into silicon,O oxigênio está virando silício,El oxígeno se está volviendo silicio
+NL_LIT_SI,Silicon is burning into iron. Iron is the end.,O silício está virando ferro. O ferro é o fim.,El silicio se está volviendo hierro. El hierro es el final.
+NL_DIM,"Nothing left to burn. Feed it, or it lets go.","Nada mais para queimar. Alimente-a, ou ela se desfaz.","Nada más que quemar. Aliméntala, o se deshará."
+NL_END_NOVA,The iron core gives way,O núcleo de ferro cede,El núcleo de hierro cede
+NL_END_FADE,The star lets its layers go,A estrela solta suas camadas,La estrella suelta sus capas
+TUT_NL_GAS,Feed the star,Alimente a estrela,Alimenta la estrella
+TUT_NL_GAS_BODY,"Tap Gas for a puff, or hold it for a stream. The gas joins the disc round the star and winds in, faster and faster, and pays light all the way down. Light buys upgrades in the shop.","Toque em Gás para um sopro, ou segure para um fluxo. O gás entra no disco em volta da estrela e desce girando, cada vez mais rápido, rendendo luz por todo o caminho. A luz compra melhorias na loja.","Toca Gas para un soplo, o mantenlo para un flujo. El gas entra en el disco alrededor de la estrella y baja girando, cada vez más rápido, dando luz todo el camino. La luz compra mejoras en la tienda."
+TUT_NL_WORLDS,Gas makes worlds,O gás faz mundos,El gas hace mundos
+TUT_NL_WORLDS_BODY,"Dust in the gas sticks into grains, grains gather into rocks and planets, and a heavy planet keeps the gas too. Far from the star they are ice, and ice near the star grows a tail. The bigger a body, the longer it stays. Too close, the star's pull tears it apart.","A poeira do gás gruda em grãos, os grãos se juntam em rochas e planetas, e um planeta pesado também segura o gás. Longe da estrela eles são de gelo, e gelo perto da estrela ganha cauda. Quanto maior o corpo, mais tempo ele fica. Perto demais, a atração da estrela o despedaça.","El polvo del gas se pega en granos, los granos se juntan en rocas y planetas, y un planeta pesado también retiene el gas. Lejos de la estrella son de hielo, y el hielo cerca de la estrella echa cola. Cuanto mayor el cuerpo, más tiempo se queda. Demasiado cerca, la atracción de la estrella lo despedaza."
+TUT_NL_BURN,The star burns its way up,A estrela queima degrau por degrau,La estrella quema escalón a escalón
+TUT_NL_BURN_BODY,"It fuses hydrogen into helium to shine, hotter and bluer the heavier it is. With a helium core of %s Suns the helium lights and makes carbon. A star of %s Suns goes on: neon, oxygen, silicon, iron, each quicker and paying less. As it grows it offers you a power to pick.","Ela funde hidrogênio em hélio para brilhar, mais quente e azul quanto mais pesada. Com um núcleo de hélio de %s sóis, o hélio acende e faz carbono. Uma estrela de %s sóis vai além: neônio, oxigênio, silício, ferro, cada um mais rápido e rendendo menos. Ao crescer, ela oferece um poder para você escolher.","Funde hidrógeno en helio para brillar, más caliente y azul cuanto más pesada. Con un núcleo de helio de %s soles, el helio se enciende y hace carbono. Una estrella de %s soles sigue: neón, oxígeno, silicio, hierro, cada uno más rápido y dando menos. Al crecer te ofrece un poder para elegir."
+TUT_NL_END,How a star ends,Como uma estrela acaba,Cómo termina una estrella
+TUT_NL_END_BODY,"Iron gives nothing back. At %s Suns the iron core gives way and the star throws off its layers: a supernova. A small star starts again in that gas, and you keep stardust, which buys perks that last. A star left with nothing to burn lets go quietly, for less.","O ferro não devolve nada. Com %s sóis o núcleo de ferro cede e a estrela lança fora suas camadas: uma supernova. Uma estrelinha recomeça nesse gás, e você fica com poeira estelar, que compra vantagens que duram. Uma estrela sem nada para queimar se desfaz em silêncio, por menos.","El hierro no devuelve nada. Con %s soles el núcleo de hierro cede y la estrella arroja sus capas: una supernova. Una estrellita vuelve a empezar en ese gas, y te quedas con polvo estelar, que compra ventajas que duran. Una estrella sin nada que quemar se deshace en silencio, por menos."

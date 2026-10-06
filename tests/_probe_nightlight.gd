@@ -4,23 +4,26 @@ extends SceneTree
 ## how fast the numbers are.
 ##
 ##     godot --headless --path . --script res://tests/_probe_nightlight.gd
-##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [seconds between throws] [first|second|random]
+##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the button is held]
 ##
-## The checks: a meteor on a circle in the haze goes round several times,
-## gains speed all the way and pays far more light than one dropped straight
-## in; a star left alone catches little; a tile costs what the table says
-## and Haze stops; a throw is never refused; a supernova pays its stardust, leaves ashes on closed
-## paths and takes the tiles; a star saved and read back is the same star;
-## the tide tears a body inside its own distance and not outside it, keeps
-## its mass and its momentum, draws the pieces out along the path and lets
-## nothing gather inside the Roche radius; the star burns its hydrogen into
-## helium and light, goes dim without any and lights again when fed; its
-## picks come at the Suns the table says, two that go different ways.
-## `pace` plays a steady hand that throws into the outer haze (as fast as
-## Stream lets it once it has some), buys the cheapest tile it can, takes
-## the first, the second or either of the two powers offered, and goes
-## supernova as soon as the stardust buys a perk; it prints each supernova
-## with what the star was made of and how long it had been dim. Everything runs on a throwaway file.
+## The checks: a puff of gas set on a circle in the disc winds in over a
+## minute or so, goes round more than once, speeds up and pays its light; a
+## planet beside it is still up when the puff is long gone; gas poured in
+## makes grains, the grains outside the frost line are ice, nothing forms
+## inside the Roche radius, and mass is kept through all of it; the tide
+## tears a planet inside its distance and not outside; the star burns
+## hydrogen into helium and light, the helium lights at its core mass, a
+## carbon core waits for a star of eight Suns, an iron core ends the star as
+## a supernova that pays stardust and leaves gas on closed paths, a star with
+## nothing to burn goes dim, wakes when fed and lets go after its grace; a
+## tile costs what the table says; picks come at the Suns the table says;
+## a star saved and read back is the same star, and one kept before the gas
+## comes back without its sky.
+## `pace` holds the button (as fast as the Stream tile lets it), buys the
+## cheapest tile it can, takes the first, the second or either of the two
+## powers offered, buys a perk whenever the stardust reaches, and prints
+## every milestone with what the sky held. Everything runs on a throwaway
+## file.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 
@@ -32,10 +35,11 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(Sim.path)
 	var args := OS.get_cmdline_user_args()
 	if args.has("pace"):
-		_pace(float(args[1]) if args.size() > 1 else 30.0, int(args[2]) if args.size() > 2 else 1, float(args[3]) if args.size() > 3 else 0.45,
-			String(args[4]) if args.size() > 4 else "random")
+		_pace(float(args[1]) if args.size() > 1 else 60.0, int(args[2]) if args.size() > 2 else 1,
+			String(args[3]) if args.size() > 3 else "random", float(args[4]) if args.size() > 4 else 1.0)
 	else:
-		_check_physics()
+		_check_disc()
+		_check_condensing()
 		_check_tide()
 		_check_star()
 		_check_rules()
@@ -49,329 +53,302 @@ func _ok(what: String, yes: bool) -> void:
 		_fails += 1
 		print("FAIL ", what)
 
-## One meteor alone in the sky, from `pos` with `vel`, until the star has it
-## and every piece the tide made of it: {seconds, turns, fastest, light}. The
-## turns and the speed are the meteor's own, then its heaviest piece's (a
-## torn body's first piece keeps its id).
-func _one(pos: Vector2, vel: Vector2) -> Dictionary:
-	var sim: RefCounted = Sim.new(7)
+func _quiet(rng_seed := 7) -> RefCounted:
+	var sim: RefCounted = Sim.new(rng_seed)
 	sim.passing = false
-	var id: int = sim.add(Sim.Kind.METEOR, 1.0, pos, vel).id
-	var turns := 0.0
-	var fastest := 0.0
-	var was := pos.angle()
-	while not sim.bodies.is_empty() and sim.clock < 300.0:
-		for b: Sim.Body in sim.bodies:
-			if b.id == id:
-				turns += absf(angle_difference(was, b.pos.angle()))
-				was = b.pos.angle()
-				fastest = maxf(fastest, b.vel.length())
-				break
+	sim.burning = false
+	return sim
+
+func _run(sim: RefCounted, seconds: float) -> void:
+	for i in int(seconds / Sim.STEP):
 		sim.tick()
-	return {"seconds": sim.clock, "turns": turns / TAU, "fastest": fastest, "light": sim.light, "mass": sim.mass}
 
-func _check_physics() -> void:
-	var sim: RefCounted = Sim.new(7)
-	var rh: float = sim.haze_r()
-	_ok("a new star is %d px and its haze %.1f times that" % [Sim.STAR_R, Sim.HAZE], is_equal_approx(sim.star_r(), Sim.STAR_R) and is_equal_approx(rh, Sim.STAR_R * Sim.HAZE))
-	print("a turn at the haze's edge takes %.1f s at %.0f px/s, one at the star's surface %.1f s at %.0f px/s" % [sim.turn_time(rh), sqrt(sim.gm() / rh),
-		sim.turn_time(sim.star_r()), sqrt(sim.gm() / sim.star_r())])
-	_ok("a turn at the haze's edge is slow, and one at the surface quicker and still no whirl", sim.turn_time(rh) > 12.0 and sim.turn_time(sim.star_r()) > 3.0 and sim.turn_time(sim.star_r()) < 5.0)
-	var drop := _one(Vector2(400.0, 0.0), Vector2.ZERO)
-	print("dropped at rest from 400: eaten after %.1f s, %.1f turns, up to %.0f px/s, light %.2f" % [drop.seconds, drop.turns, drop.fastest, drop.light])
-	var r := rh * 0.8
-	var v0 := sqrt(sim.gm() / r)
-	var ring := _one(Vector2(r, 0.0), Vector2(0.0, v0))
-	print("a circle at 0.8 of the haze: eaten after %.1f s, %.1f turns, %.0f -> %.0f px/s, light %.2f" % [ring.seconds, ring.turns, v0, ring.fastest, ring.light])
-	_ok("both are eaten", is_equal_approx(drop.mass, Sim.START + 1.0) and is_equal_approx(ring.mass, Sim.START + 1.0))
-	_ok("a circle in the haze goes round at least three times", ring.turns >= 3.0)
-	_ok("and ends half again as fast as it began, under 250 px/s", ring.fastest >= v0 * 1.45 and ring.fastest < 250.0)
-	_ok("a straight drop goes round not at all", drop.turns < 0.1)
-	_ok("a spiral pays ten times the light of a drop", ring.light >= drop.light * 10.0 and ring.light > 1.0)
-	# a throw is a meteor set going where the finger is: a circle in the
-	# haze, and from farther off a longer round that dips into it
-	var set_down: RefCounted = Sim.new(7)
-	set_down.passing = false
-	var where := Vector2(-rh * 0.4, rh * 0.5)
-	set_down.place_at(where)
-	_ok("a throw in the haze is one meteor on a circle where it is pressed", set_down.bodies.size() == 1 and set_down.bodies[0].pos == where
-		and set_down.bodies[0].vel.is_equal_approx(set_down.circle_vel(where)))
-	_ok("the speed of a throw does not jump where the circles end", set_down.throw_vel(Vector2(rh * Sim.LOW * 1.0001, 0.0)).distance_to(set_down.circle_vel(Vector2(rh * Sim.LOW, 0.0))) < 0.05)
-	print("a throw from")
-	var slowest := 0.0
-	var least := 1e9
-	for share: float in [0.5, 0.8, 1.0, 1.5, 2.0, 3.0]:
-		var at := Vector2(0.0, -rh * share)
-		var thrown := _one(at, sim.throw_vel(at))
-		print("  %.1f of the haze: eaten after %.1f s, %.1f turns, light %.2f" % [share, thrown.seconds, thrown.turns, thrown.light])
-		if share >= 0.8:
-			slowest = maxf(slowest, thrown.seconds)
-			least = minf(least, thrown.light)
-	_ok("a throw from anywhere is the star's inside a minute and pays as a spiral does", slowest < 60.0 and least >= ring.light * 0.85)
-	# a body on a circle outside the haze never comes down
-	var out := _one(Vector2(rh * 1.5, 0.0), Vector2(0.0, sqrt(sim.gm() / (rh * 1.5))))
-	_ok("a circle outside the haze is still up after five minutes", out.seconds >= 300.0 and is_equal_approx(out.mass, Sim.START))
-	# hands off: the sky alone
-	var idle: RefCounted = Sim.new(3)
-	for i in int(300.0 / Sim.STEP):
-		idle.tick()
-		idle.events.clear()
-	print("left alone for five minutes: mass %.1f, light %.1f, %d bodies up" % [idle.mass, idle.light, idle.bodies.size()])
-	_ok("a small star left alone catches something, and not much", idle.mass > Sim.START and idle.mass < 200.0)
-
-func _sum(sim: RefCounted) -> Dictionary:
+func _sky_mass(sim: RefCounted) -> float:
 	var m := 0.0
-	var mv := Vector2.ZERO
 	for b: Sim.Body in sim.bodies:
 		m += b.m
-		mv += b.vel * b.m
-	return {"m": m, "mv": mv}
+	return m
+
+func _check_disc() -> void:
+	var sim := _quiet()
+	var at: Vector2 = Vector2(sim.haze_r() * 0.85, 0.0)
+	var puff: Sim.Body = sim.add(Sim.Kind.GAS, Sim.PUFF, at, sim.circle_vel(at))
+	puff.h = 0.7
+	var v0 := puff.vel.length()
+	var far: Vector2 = Vector2(0.0, sim.haze_r() * 0.85)
+	var planet: Sim.Body = sim.add(Sim.Kind.PLANET, 0.01, far, sim.circle_vel(far))
+	var turns := 0.0
+	var fastest := 0.0
+	var last := puff.pos.angle()
+	var t := 0.0
+	while sim.bodies.has(puff) and t < 600.0:
+		sim.tick()
+		t += Sim.STEP
+		turns += absf(angle_difference(last, puff.pos.angle()))
+		last = puff.pos.angle()
+		fastest = maxf(fastest, puff.vel.length())
+	print("  a puff from 0.85 of the disc: %.0f s, %.1f turns, %.0f to %.0f px/s, light %.3f (a perfect spiral %.3f); a round there %.0f s, at the Roche radius %.0f s" % [
+		t, turns / TAU, v0, fastest, sim.light, sim.spiral_light() * Sim.PUFF, sim.turn_time(at.x), sim.turn_time(sim.roche_r())])
+	_ok("a puff winds in within three minutes", t > 30.0 and t < 180.0)
+	_ok("it goes round more than once", turns / TAU > 1.2)
+	_ok("it speeds up on the way down", fastest > v0 * 1.3)
+	_ok("it pays light", sim.light > 0.5 * sim.spiral_light() * Sim.PUFF)
+	_ok("the star has its mass and its hydrogen", is_equal_approx(sim.mass, Sim.START + Sim.PUFF) and is_equal_approx(sim.fuel, Sim.START * Sim.STAR_H + Sim.PUFF * 0.7))
+	_ok("the planet is still up", sim.bodies.has(planet) and planet.pos.length() > sim.haze_r() * 0.7)
+	_ok("the disc has a tenth of its hold on the planet", planet.grip > 0.05 and planet.grip < 0.2)
+	# a passer goes by and leaves
+	var lone := _quiet()
+	lone.passing = true
+	_run(lone, 240.0)
+	print("  a sky left alone four minutes: %d bodies, the star %.3f" % [lone.bodies.size(), lone.mass])
+	_ok("a star left alone barely grows", lone.mass < Sim.START * 1.02)
+
+func _check_condensing() -> void:
+	var sim := _quiet(3)
+	var poured := 0.0
+	for i in 400:
+		if i % 4 == 0 and i < 240:
+			sim.pour()
+			poured += sim.puff_mass()
+		_run(sim, 0.25)
+	var grains := 0
+	var icy := 0
+	var inside := 0
+	var biggest := 0.0
+	for b: Sim.Body in sim.bodies:
+		if b.kind == Sim.Kind.GAS:
+			continue
+		grains += 1
+		biggest = maxf(biggest, b.m)
+		if b.ice > 0.3:
+			icy += 1
+	print("  sixty puffs, a hundred seconds: %d gas, %d solids (%d icy), the biggest %.4f (%.1f px); the star ate %.3f" % [
+		sim.gas_count(), grains, icy, biggest, Sim.body_r(biggest), sim.mass - Sim.START])
+	_ok("gas condenses into solids", grains > 0)
+	_ok("some are ice", icy > 0)
+	_ok("mass is kept", absf(sim.mass - Sim.START + _sky_mass(sim) - poured) < 1e-4)
+	# two puffs inside the Roche radius stay two puffs
+	var near := _quiet()
+	var at: Vector2 = Vector2(near.roche_r() * 0.9, 0.0)
+	for k in 2:
+		var b: Sim.Body = near.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(0.0, 6.0 * k), near.circle_vel(at))
+		b.dust = Sim.DUSTY
+		b.age = Sim.COOL
+	_run(near, 1.0)
+	for b: Sim.Body in near.bodies:
+		if b.kind != Sim.Kind.GAS:
+			inside += 1
+	_ok("nothing forms inside the Roche radius", inside == 0)
+	# and outside it they make a grain, rock inside the frost line
+	var out := _quiet()
+	at = Vector2((out.roche_r() + out.frost_r()) * 0.5, 0.0)
+	for k in 2:
+		var b: Sim.Body = out.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(0.0, 6.0 * k), out.circle_vel(at))
+		b.dust = Sim.DUSTY
+		b.age = Sim.COOL
+	_run(out, 0.5)
+	var made: Sim.Body = null
+	for b: Sim.Body in out.bodies:
+		if b.kind != Sim.Kind.GAS:
+			made = b
+	_ok("two puffs make a grain of their dust", made != null and is_equal_approx(made.m, 2.0 * Sim.PUFF * Sim.DUSTY) and made.ice == 0.0)
+	# a giant keeps the gas
+	var gas := _quiet()
+	var core: Sim.Body = gas.add(Sim.Kind.PLANET, Sim.CORE_M * 1.1, at, gas.circle_vel(at))
+	var puff: Sim.Body = gas.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(0.0, 4.0), gas.circle_vel(at))
+	puff.h = 0.7
+	_run(gas, 6.0)
+	_ok("a heavy planet keeps the gas and is a giant", core.m > Sim.CORE_M * 1.5 and core.kind == Sim.Kind.GIANT)
 
 func _check_tide() -> void:
-	var sim: RefCounted = Sim.new(11)
-	sim.passing = false
-	var planet: float = sim.tear_r(8.0)
-	var meteor: float = sim.tear_r(Sim.METEOR)
-	print("the tide: Roche %.0f px (%.1f radii), a planetoid torn at %.0f, a rock at %.0f, a meteor at %.0f, the haze's edge %.0f" % [sim.roche_r(),
-		sim.roche_r() / sim.star_r(), planet, sim.tear_r(1.5), meteor, sim.haze_r()])
-	_ok("the big are torn further out than the small, all inside the Roche radius and outside the star", planet > meteor and planet < sim.roche_r() and meteor > sim.star_r())
-	_ok("a crumb is never torn", sim.tear_r(sim.grain() * 1.9) == 0.0)
-	# a meteor a little outside its distance holds, a little inside it is in three
-	var r := meteor * 1.02
-	sim.add(Sim.Kind.METEOR, Sim.METEOR, Vector2(r, 0.0), Vector2(0.0, sqrt(sim.gm() / r)))
-	sim.tick()
-	_ok("a meteor just outside its distance is whole", sim.bodies.size() == 1)
-	sim.bodies.clear()
-	sim.events.clear()
-	r = meteor * 0.98
-	var whole: Sim.Body = sim.add(Sim.Kind.METEOR, Sim.METEOR, Vector2(r, 0.0), Vector2(0.0, sqrt(sim.gm() / r)))
-	whole.e = 0.03
-	var before := _sum(sim)
-	sim.tick()
-	var after := _sum(sim)
-	var e := 0.0
-	var lightest := 1.0
-	for b: Sim.Body in sim.bodies:
-		e += b.e
-		lightest = minf(lightest, b.m)
-	_ok("just inside it, it is in three", sim.bodies.size() == 3 and sim.events.any(func(ev: Dictionary) -> bool: return ev.kind == "tear"))
-	_ok("that weigh what it did and carry its light", is_equal_approx(after.m, before.m) and absf(e - 0.03) < 0.002)
-	_ok("and its momentum, to a tick's worth of pull", (after.mv - before.mv).length() < before.mv.length() * 0.02)
-	_ok("and none of them is torn again", lightest * 3.0 > sim.grain() and sim.bodies.all(func(b: Sim.Body) -> bool: return sim.tear_r(b.m) == 0.0))
-	# a planetoid on a circle in the haze, a little outside its distance: the
-	# drag brings it in, and the tide takes it a piece at a time
-	var sky: RefCounted = Sim.new(11)
-	sky.passing = false
-	r = planet * 1.1
-	sky.add(Sim.Kind.PLANET, 8.0, Vector2(r, 0.0), Vector2(0.0, sqrt(sky.gm() / r)))
-	var first := -1.0
-	var most := 1
-	var merged := 0
-	var inside := 0
-	var drawn := Vector2.ZERO
-	while not sky.bodies.is_empty() and sky.clock < 120.0:
-		sky.tick()
-		for ev: Dictionary in sky.events:
-			if ev.kind == "merge":
-				merged += 1
-				if (ev.at as Vector2).length() < sky.roche_r() * 0.98:
-					inside += 1
-		sky.events.clear()
-		most = maxi(most, sky.bodies.size())
-		if first < 0.0 and sky.bodies.size() > 1:
-			first = sky.clock
-		if first > 0.0 and drawn == Vector2.ZERO and sky.clock >= first + 4.5 and sky.bodies.size() > 1:
-			# how far the pieces have drawn apart: round the star (the angle
-			# they span, at their middle distance), and toward it
-			var mid := Vector2.ZERO
-			for b: Sim.Body in sky.bodies:
-				mid += b.pos / sky.bodies.size()
-			var lo := Vector2(INF, INF)
-			var hi := Vector2(-INF, -INF)
-			for b: Sim.Body in sky.bodies:
-				var d := Vector2(mid.angle_to(b.pos) * mid.length(), b.pos.length())
-				lo = lo.min(d)
-				hi = hi.max(d)
-			drawn = hi - lo
-	print("a planetoid of 8 on a circle at %.0f px: first torn after %.1f s, %.0f px along the path and %.0f across it 4.5 s on, %d bodies at most, %d met again outside the Roche radius, all eaten after %.1f s, light %.2f" % [r,
-		first, drawn.x, drawn.y, most, merged, sky.clock, sky.light])
-	_ok("a planetoid in the haze is torn, and its pieces again", first > 0.0 and most >= 12)
-	_ok("the pieces draw out along the path, not across it", drawn.x > drawn.y * 2.0 and drawn.x > Sim.body_r(8.0) * 2.0)
-	_ok("nothing gathers inside the Roche radius", inside == 0)
-	_ok("and the star has all of it", sky.bodies.is_empty() and is_equal_approx(sky.mass, Sim.START + 8.0))
+	var sim := _quiet()
+	var m := 0.01
+	var hold: float = sim.tear_r(m)
+	var out: Vector2 = Vector2(hold * 1.08, 0.0)
+	sim.add(Sim.Kind.PLANET, m, out, sim.circle_vel(out))
+	_run(sim, 5.0)
+	_ok("a planet outside its distance holds", sim.bodies.size() == 1)
+	sim = _quiet()
+	var at: Vector2 = Vector2(hold * 0.97, 0.0)
+	sim.add(Sim.Kind.PLANET, m, at, sim.circle_vel(at))
+	_run(sim, 0.2)
+	_ok("inside it the tide has it in pieces", sim.bodies.size() >= 2 and sim.bodies.size() <= Sim.PIECES)
+	_ok("and they weigh what it did", is_equal_approx(_sky_mass(sim), m))
+	_ok("a grain is too small to tear", sim.tear_r(Sim.CRUMB) == 0.0)
+	print("  the Roche radius %.0f px, a planet of %.3f torn at %.0f, the frost line %.0f, the disc %.0f" % [sim.roche_r(), m, hold, sim.frost_r(), sim.haze_r()])
 
 func _check_star() -> void:
-	var sim: RefCounted = Sim.new(13)
-	sim.passing = false
-	_ok("a new star is one Sun, seven tenths hydrogen, and 3,000 K", is_equal_approx(sim.suns(), 1.0) and is_equal_approx(sim.fuel / sim.mass, Sim.STAR_H)
-		and is_equal_approx(sim.temp(), 3000.0) and sim.rock() > 0.0)
-	var had: float = sim.fuel
-	var lasts: float = sim.fuel_time()
-	for i in int(60.0 / Sim.STEP):
-		sim.tick()
-	_ok("a minute burns a minute's hydrogen into helium, and the star weighs the same", is_equal_approx(sim.mass, Sim.START)
-		and absf((had - sim.fuel) - sim.burn_rate() * 60.0) < 0.001 and absf(sim.fuel + sim.spent - Sim.START * (Sim.STAR_H + Sim.STAR_HE)) < 0.001)
-	_ok("and pays SHINE light a mass burnt", absf(sim.light + sim._shine - (had - sim.fuel) * Sim.SHINE) < 0.001 and sim.events.any(func(e: Dictionary) -> bool: return e.kind == "shine"))
-	print("a new star left alone: %.1f min of hydrogen, %.2f light a minute" % [lasts / 60.0, (had - sim.fuel) * Sim.SHINE])
-	# a comet is ice and a rock is not
-	sim.events.clear()
-	had = sim.fuel
-	sim.add(Sim.Kind.COMET, 3.0, Vector2(60.0, 0.0), Vector2.ZERO)
-	for i in 120:
-		sim.tick()
-	_ok("a comet eaten is nine tenths hydrogen", sim.bodies.is_empty() and absf(sim.fuel - had - 3.0 * 0.9) < 0.05)
-	# out of hydrogen: dim, colder, powers asleep; fed, it lights again
-	sim.power.haze = 2
-	sim.power.wind = 1
-	var wide: float = sim.haze_r()
-	_ok("a wide haze is wider, and the wind reaches past it", wide > sim.star_r() * Sim.HAZE * 1.3 and sim.wind_r() > wide * 2.0)
-	_ok("powers burn more", is_equal_approx(sim.burn_rate(), Sim.BURN * sim.mass * pow(sim.suns(), Sim.HOT) * (1.0 + 2.0 * Sim.COST.haze + Sim.COST.wind)))
-	sim.fuel = 0.001
-	var light: float = sim.light
-	for i in int(3.0 / Sim.STEP):
-		sim.tick()
-	_ok("out of hydrogen the star is dim and colder", not sim.awake and sim.lit == 0.0 and sim.fuel == 0.0 and sim.temp() < 3600.0 * 0.6)
-	_ok("its powers sleep, and it shines nothing", is_equal_approx(sim.haze_r(), sim.star_r() * Sim.HAZE) and sim.wind_r() == 0.0 and sim.light - light < 0.3)
-	sim.add(Sim.Kind.COMET, 3.0, Vector2(60.0, 0.0), Vector2.ZERO)
-	for i in int(3.0 / Sim.STEP):
-		sim.tick()
-	_ok("fed, it lights again and its powers wake", sim.awake and sim.lit == 1.0 and is_equal_approx(sim.haze_wide(), Sim.HAZE * Sim.HAZE_STEP * Sim.HAZE_STEP))
-	# the wind brings down a circle the haze does not reach
-	var calm: RefCounted = Sim.new(13)
-	calm.passing = false
-	calm.burning = false
-	var blown: RefCounted = Sim.new(13)
-	blown.passing = false
-	blown.burning = false
-	blown.power.wind = 1
-	var r: float = calm.haze_r() * 1.5
-	for one: RefCounted in [calm, blown]:
-		one.add(Sim.Kind.ROCK, 1.5, Vector2(r, 0.0), Vector2(0.0, sqrt(one.gm() / r)))
-		while not one.bodies.is_empty() and one.clock < 120.0:
-			one.tick()
-	print("a circle at one and a half of the haze: with the wind, the star has it after %.0f s" % blown.clock)
-	_ok("a circle outside the haze stays up, and the solar wind brings it down", calm.bodies.size() == 1 and blown.bodies.is_empty() and blown.mass > Sim.START)
-	# the picks
-	var grown: RefCounted = Sim.new(13)
-	_ok("no pick on a new star, the first at two Suns", grown.owed() == 0 and grown.offering().is_empty() and is_equal_approx(grown.next_pick(), 2.0))
-	grown.mass = Sim.START * 9.0
-	var two: Array = grown.offering()
-	_ok("at nine Suns three are owed, two on offer that go different ways, and the first is not Thrift", grown.owed() == 3 and two.size() == 2
-		and Sim.WAY[two[0]] != Sim.WAY[two[1]] and not two.has("thrift") and grown.offering() == two)
-	var which: String = grown.pick(1)
-	_ok("the second is taken, and two are still owed", which == two[1] and int(grown.power[which]) == 1 and grown.owed() == 2 and is_equal_approx(grown.next_pick(), 15.0))
-	_ok("past the table a pick comes at every doubling", is_equal_approx(Sim.mile(6), 120.0) and is_equal_approx(Sim.mile(8), 480.0))
-	# the hand's tiles
-	var hand: RefCounted = Sim.new(13)
-	hand.passing = false
-	_ok("no stream and one meteor a throw to begin with", hand.stream_gap() == 0.0 and hand.volley() == 1 and is_equal_approx(hand.meteor_h(), 0.3))
-	hand.lv.volley = 2
-	hand.lv.stream = 3
-	hand.lv.ice = 6
-	hand.place_at(Vector2(400.0, 0.0))
-	var across := 0.0
-	var round := true
-	for b: Sim.Body in hand.bodies:
-		across = maxf(across, absf(b.pos.x - 400.0))
-		round = round and b.pos.y == 0.0 and b.vel.is_equal_approx(hand.throw_vel(b.pos))
-	_ok("a volley of three goes side by side, each on its own path, icy", hand.bodies.size() == 3 and across > 5.0 and round and is_equal_approx(hand.bodies[0].h, 0.9) and hand.is_done("ice"))
-	_ok("a stream lets one go every 0.43 s", absf(hand.stream_gap() - 0.6 * 0.85 * 0.85) < 0.001)
-
-func _check_rules() -> void:
 	var sim: RefCounted = Sim.new(5)
 	sim.passing = false
-	_ok("a first Meteor costs 10 light", sim.cost("meteor") == 10 and not sim.can_buy("meteor"))
-	sim.light = 25.0
-	_ok("a meteor weighs a fifth of a mass", is_equal_approx(sim.meteor_mass(), Sim.METEOR) and is_equal_approx(Sim.METEOR, 0.2))
-	_ok("bought, the next is 15 and a meteor weighs twice that", sim.buy("meteor") and sim.cost("meteor") == 15 and is_equal_approx(sim.meteor_mass(), 0.4) and is_equal_approx(sim.light, 15.0))
-	sim.lv.ice = Sim.TILE.ice[2]
-	sim.light = 1e12
-	_ok("Ice stops at its last level", sim.is_done("ice") and not sim.buy("ice"))
-	# nothing limits a throw: three hundred on a circle outside the haze, all
-	# let go at once, and the sky holds its most and no more
-	var park: RefCounted = Sim.new(5)
-	park.passing = false
-	for i in 300:
-		var at: Vector2 = Vector2.from_angle(i * 0.37) * (park.haze_r() * (1.3 + 0.004 * i))
-		park.place_at(at)
-	_ok("a throw is never refused, and the sky holds %d at most" % Sim.MOST, park.bodies.size() == Sim.MOST)
-	var began := Time.get_ticks_usec()
-	for i in 240:
-		park.tick()
-	print("a full sky of %d: %.0f us a tick" % [park.bodies.size(), (Time.get_ticks_usec() - began) / 240.0])
-	_ok("no supernova under the mark", not sim.can_nova() and sim.nova() == 0 and sim.dust_for() == 0)
-	sim.mass = Sim.NOVA
-	_ok("at the mark it pays three, at four times the mark six", sim.dust_for() == 3 and is_equal_approx(sim.next_dust_mass(), Sim.NOVA * 16.0 / 9.0))
-	sim.mass = Sim.NOVA * 4.0
-	_ok("six at four times the mark", sim.dust_for() == 6)
-	var got: int = sim.nova()
-	_ok("a supernova pays, and leaves a new star with no tiles, no light, no powers and its hydrogen", got == 6 and sim.dust == 6 and sim.novas == 1 and is_equal_approx(sim.mass, Sim.START)
-		and sim.light == 0.0 and int(sim.lv.meteor) == 0 and int(sim.lv.ice) == 0 and int(sim.power.wind) == 0 and sim.picks == 0 and is_equal_approx(sim.fuel, Sim.START * Sim.STAR_H))
-	var bound := true
+	_run(sim, 60.0)
+	_ok("a minute burns hydrogen into helium", sim.fuel < Sim.START * Sim.STAR_H and is_equal_approx(sim.fuel + sim.made[0], Sim.START * Sim.STAR_H))
+	_ok("and makes light", sim.light > 0.0)
+	print("  a new star: %.0f K, the core %.0f MK, %.3f light/s of its own, hydrogen for %.0f min" % [sim.temp(), sim.core_temp(), sim.light / 60.0, sim.fuel_time() / 60.0])
+	_ok("a Sun is 5,800 K", absf(sim.temp() - 5800.0) < 1.0)
+	# the helium lights at its core mass
+	sim.made[0] = Sim.FLASH * Sim.START - 0.0001
+	sim.fuel -= sim.made[0]
+	_run(sim, 5.0)
+	_ok("helium lights at a core of 0.45 Suns", sim.ignited[1] and sim.made[1] > 0.0)
+	# carbon waits for a heavy star
+	sim.made[1] = Sim.CARBON * Sim.START + 1.0
+	_run(sim, 1.0)
+	_ok("a carbon core waits on a light star", not sim.ignited[2])
+	sim.mass = Sim.START * 9.0
+	sim.fuel = sim.mass * 0.5
+	_run(sim, 1.0)
+	_ok("and lights on one of eight Suns", sim.ignited[2])
+	var t := 0.0
+	while sim.ending() == "" and t < 3600.0:
+		sim.tick()
+		t += Sim.STEP
+	print("  from carbon to an iron core on a star of nine Suns: %.0f s, a giant %.2f, %.0f K" % [t, sim.swell, sim.temp()])
+	_ok("the chain ends in an iron core", sim.ending() == "nova" and sim.ignited[5])
+	var shares: Array = sim.layers()
+	var sum := 0.0
+	for s: float in shares:
+		sum += s
+	_ok("its layers are the whole star", shares.size() == 8 and absf(sum - 1.0) < 1e-4)
+	var clock: float = sim.clock
+	sim.tick()
+	_ok("nothing moves once it has ended", sim.clock == clock)
+	sim.lv.puff = 3
+	sim.power.wind = 1
+	var paid: int = sim.end()
+	_ok("the supernova pays stardust", paid == 3 and sim.dust == 3 and sim.novas == 1)
+	_ok("and leaves a new star with nothing bought", sim.mass == Sim.START and int(sim.lv.puff) == 0 and int(sim.power.wind) == 0 and not sim.ignited[1])
+	var closed: bool = sim.bodies.size() > 0
 	for b: Sim.Body in sim.bodies:
-		# a closed path: less speed than it takes to leave
-		if b.kind != Sim.Kind.ASH or b.vel.length_squared() >= 2.0 * sim.gm() / b.pos.length() or b.pos.cross(b.vel) <= 0.0:
-			bound = false
-	_ok("its ashes are on closed paths, all turning one way", sim.bodies.size() >= 20 and bound)
-	_ok("the sky is half again as rich", is_equal_approx(sim.rich(), 1.5))
-	var which: String = sim.buy_perk()
-	_ok("the first perk costs two", which != "" and sim.dust == 4 and int(sim.perk[which]) == 1 and sim.perk_cost() == 3)
-	sim.light = 12.5
-	sim.mass = Sim.START * 5.0
-	sim.fuel = 12.0
-	sim.spent = 20.0
-	sim.lv.stream = 2
-	var took: String = sim.pick(0)
-	var left: Array = sim.offering().duplicate()
-	sim.save()
-	var back: RefCounted = Sim.load_saved(9)
-	_ok("a star saved and read back is the same star", is_equal_approx(back.mass, sim.mass) and back.dust == 4 and back.novas == 1 and int(back.perk[which]) == 1
-		and is_equal_approx(back.light, 12.5) and back.bodies.size() == sim.bodies.size() and back.bodies[0].pos.is_equal_approx(sim.bodies[0].pos))
-	_ok("with what it is made of, its hand, its power and the two still on offer", is_equal_approx(back.fuel, 12.0) and is_equal_approx(back.spent, 20.0) and int(back.lv.stream) == 2
-		and int(back.power[took]) == 1 and back.picks == 1 and back.owed() == 1 and back.offering() == left and is_equal_approx(back.bodies[0].h, sim.bodies[0].h))
-	var kept: Dictionary = Sim.kept()
-	_ok("and the tab can read it", is_equal_approx(kept.mass, sim.mass) and kept.novas == 1)
+		# bound: slower than escape where it is
+		if b.kind != Sim.Kind.GAS or b.vel.length_squared() >= 2.0 * sim.gm() / b.pos.length():
+			closed = false
+	_ok("among gas on closed paths", closed)
+	# starving
+	var dim: RefCounted = Sim.new(5)
+	dim.passing = false
+	dim.fuel = 0.001
+	_run(dim, 3.0)
+	_ok("with nothing to burn the star is dim", not dim.awake and dim.lit < 0.01 and dim.on("wind") == 0)
+	dim.fuel = dim.mass * Sim.WAKE * 1.5
+	_run(dim, 3.0)
+	_ok("fed, it lights again", dim.awake and dim.cold == 0.0)
+	dim.fuel = 0.0
+	_run(dim, Sim.GRACE + 3.0)
+	_ok("left dim, it lets go", dim.ending() == "fade")
+	_ok("for a little stardust", dim.end() == Sim.FADE_DUST and dim.fades == 1 and dim.novas == 0)
 
-func _pace(minutes: float, rng_seed: int, every: float, takes: String) -> void:
+func _check_rules() -> void:
+	var sim := _quiet()
+	sim.light = 1000.0
+	var first: int = sim.cost("puff")
+	_ok("the first puff tile costs twelve", first == 12 and sim.buy("puff") and is_equal_approx(sim.light, 988.0))
+	_ok("and makes a puff half as heavy again", is_equal_approx(sim.puff_mass(), Sim.PUFF * 1.5))
+	_ok("the button pours without a tile", sim.stream_gap() == Sim.STREAM)
+	sim.lv.pure = 6
+	_ok("pure gas stops at six", sim.is_done("pure") and not sim.buy("pure"))
+	sim.lv.volley = 2
+	sim.pour()
+	_ok("a volley is three puffs", sim.gas_count() == 3)
+	for i in 400:
+		sim.pour()
+	_ok("the sky holds no more than its most", sim.gas_count() <= Sim.MOST)
+	_ok("and loses none of it", is_equal_approx(_sky_mass(sim), 401.0 * 3.0 * sim.puff_mass()))
+	sim.mass = Sim.START * 4.5
+	_ok("two picks by four Suns", sim.owed() == 2)
+	var two: Array = sim.offering()
+	_ok("two that go different ways", two.size() == 2 and Sim.WAY[two[0]] != Sim.WAY[two[1]])
+	_ok("a pick is taken", sim.pick(0) == two[0] and sim.owed() == 1)
+	# kept
+	sim.bodies.clear()
+	var at: Vector2 = Vector2(sim.haze_r() * 0.8, 0.0)
+	var rock: Sim.Body = sim.add(Sim.Kind.ROCK, 0.004, at, sim.circle_vel(at))
+	rock.ice = 0.5
+	sim.made[0] = 2.0
+	sim.ignited[1] = true
+	sim.save()
+	var back: RefCounted = Sim.load_saved(7)
+	_ok("a star read back is the same star", is_equal_approx(back.mass, sim.mass) and back.picks == 1 and int(back.lv.volley) == 2
+		and back.bodies.size() == 1 and is_equal_approx(back.bodies[0].ice, 0.5) and back.ignited[1] and is_equal_approx(back.made[0], 2.0))
+	# a file from before the gas
+	var cfg := ConfigFile.new()
+	cfg.set_value("star", "mass", 420.0)
+	cfg.set_value("star", "dust", 4)
+	cfg.set_value("lv", "meteor", 5)
+	cfg.set_value("star", "bodies", [[4, 8.0, 300.0, 0.0, 0.0, 90.0, 0.6]])
+	cfg.save(Sim.path)
+	var old: RefCounted = Sim.load_saved(7)
+	_ok("a star kept before the gas comes back without its sky", is_equal_approx(old.mass, 420.0) and old.dust == 4 and int(old.lv.puff) == 5 and old.bodies.is_empty())
+
+## A steady hand for `minutes`.
+func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 	var sim: RefCounted = Sim.new(rng_seed)
-	var dice := RandomNumberGenerator.new()
-	dice.seed = rng_seed + 100
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
 	var since := 0.0
-	var life := 0.0
+	var next_mark := 2.0
+	var born := 0.0
 	var dim := 0.0
-	var thrown := 0
-	var most_bodies := 0
-	var began := Time.get_ticks_usec()
+	var poured := 0.0
+	var most_ticks := 0
+	var report := 60.0
+	var t0 := Time.get_ticks_usec()
+	print("pace: %.0f min, seed %d, powers %s, the button held %.0f%% of the time" % [minutes, rng_seed, takes, held * 100.0])
 	for i in int(minutes * 60.0 / Sim.STEP):
+		var t: float = i * Sim.STEP
 		since += Sim.STEP
-		life += Sim.STEP
+		# held in spells of ten seconds
+		if since >= sim.stream_gap() and fmod(t, 10.0) < 10.0 * held:
+			since = 0.0
+			sim.pour()
+			poured += sim.puff_mass() * sim.volley()
+		sim.tick()
 		if not sim.awake:
 			dim += Sim.STEP
-		var gap: float = every if sim.stream_gap() <= 0.0 else minf(every, sim.stream_gap())
-		if since >= gap:
-			since = 0.0
-			sim.bot_throw()
-			thrown += 1
-		sim.tick()
+		for e: Dictionary in sim.events:
+			if String(e.kind) == "ignite":
+				print("  %5.1f min  %s lights at %.1f Suns" % [(t - born) / 60.0, Sim.CHAIN[int(e.stage)], sim.suns()])
 		sim.events.clear()
-		most_bodies = maxi(most_bodies, sim.bodies.size())
-		var best := ""
-		for tile: String in Sim.TILES:
-			if sim.can_buy(tile) and (best == "" or sim.cost(tile) < sim.cost(best)):
-				best = tile
-		if best != "":
-			sim.buy(best)
 		while sim.owed() > 0:
-			sim.pick(0 if takes == "first" else (1 if takes == "second" else dice.randi() % 2))
-		if sim.can_nova() and sim.dust + sim.dust_for() >= sim.perk_cost():
-			print("  supernova %d at %.1f min, after a life of %.1f min (%.0f s of it dim): %d Suns, +%d stardust, %d%% hydrogen %d%% helium %d%% rock, tiles %s, powers %s" % [sim.novas + 1,
-				sim.clock / 60.0, life / 60.0, dim, int(sim.suns()), sim.dust_for(), int(100.0 * sim.fuel / sim.mass), int(100.0 * sim.spent / sim.mass),
-				int(100.0 * sim.rock() / sim.mass), str(sim.lv), str(sim.power)])
-			sim.nova()
-			life = 0.0
-			dim = 0.0
+			sim.pick(0 if takes == "first" else (1 if takes == "second" else rng.randi() % 2))
+		var cheapest := ""
+		for tile: String in Sim.TILES:
+			if not sim.is_done(tile) and (cheapest == "" or sim.cost(tile) < sim.cost(cheapest)):
+				cheapest = tile
+		if cheapest != "":
+			sim.buy(cheapest)
+		if sim.suns() >= next_mark:
+			print("  %5.1f min  %3.0f Suns  %s" % [(t - born) / 60.0, next_mark, _sky(sim)])
+			next_mark *= 2.0
+		if t >= report:
+			report += 600.0
+			print("  %5.1f min  %.2f Suns  light %.0f (%s)  %s" % [(t - born) / 60.0, sim.suns(), sim.light, str(sim.lv), _sky(sim)])
+		most_ticks = maxi(most_ticks, sim.bodies.size())
+		var how: String = sim.ending()
+		if how != "":
+			var was: float = sim.suns()
+			var shares: Array = sim.layers()
+			var paid: int = sim.end()
+			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, poured %.1f; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
+				(t - born) / 60.0, how, was, paid, dim, poured, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, str(sim.power)])
 			while sim.buy_perk() != "":
 				pass
-	var per_tick := float(Time.get_ticks_usec() - began) / (minutes * 60.0 / Sim.STEP)
-	print("end of %.0f min: %.1f Suns, light %.0f, %d%% hydrogen (%.0f s left, %.0f s dim this life), %d supernovas, perks %s, powers %s, %d thrown, %d bodies at most, %.1f us a tick" % [minutes,
-		sim.suns(), sim.light, int(100.0 * sim.fuel / sim.mass), sim.fuel_time(), dim, sim.novas, str(sim.perk), str(sim.power), thrown, most_bodies, per_tick])
+			born = t
+			dim = 0.0
+			poured = 0.0
+			next_mark = 2.0
+	print("pace: %d supernovas, %d let go, the sky held %d at most, %.0f us a tick" % [sim.novas, sim.fades, most_ticks, float(Time.get_ticks_usec() - t0) / (minutes * 60.0 / Sim.STEP)])
+
+func _sky(sim: RefCounted) -> String:
+	var gas := 0
+	var counts := [0, 0, 0, 0, 0, 0]
+	var biggest := 0.0
+	var solid := 0.0
+	for b: Sim.Body in sim.bodies:
+		counts[b.kind] += 1
+		if b.kind == Sim.Kind.GAS:
+			gas += 1
+		else:
+			biggest = maxf(biggest, b.m)
+			solid += b.m
+	return "sky: %d gas, %d grains, %d rocks, %d comets, %d planets, %d giants, solids %.3f, biggest %.1f px" % [
+		gas, counts[1], counts[2], counts[3], counts[4], counts[5], solid, Sim.body_r(biggest)]

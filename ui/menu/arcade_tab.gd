@@ -573,20 +573,17 @@ class NightlightBanner extends Control:
 		var b := Face.Builder.new()
 		for k in 16:
 			b.disc(star + Vector2.from_angle(k * 2.4) * (18.0 + (k * 7) % 26) * u, 1.1 * u, Color(1.0, 0.93, 0.8, 0.5))
-		# the trail of the meteor winding in, and the meteor at its head
-		var trail := PackedVector2Array()
-		for i in 30:
-			trail.append(star + Vector2.from_angle(-0.4 + i * 0.085) * (46.0 - i * 0.75) * u)
-		b.stroke(trail, 2.2 * u, Color(1.0, 0.82, 0.56, 0.5))
-		NightArt.lay_star(b, star, 11.0 * u, NightArt.TEMPS[1][1])
-		var head := trail[trail.size() - 1]
-		NightArt.lit(b, head, 5.0 * u, NightArt.PAINT[NightSim.Kind.METEOR], star - head)
-		for body: Array in [[Vector2(-120, -22), 7.0, NightSim.Kind.ROCK], [Vector2(-70, 30), 4.5, NightSim.Kind.PEBBLE],
-				[Vector2(98, 24), 6.0, NightSim.Kind.COMET], [Vector2(138, -28), 9.0, NightSim.Kind.PLANET]]:
+		# the gas winding in, and what it has made on its way round
+		for i in 22:
+			var at := star + Vector2.from_angle(-0.4 + i * 0.3) * (70.0 - i * 2.0) * u
+			NightArt.lay_puff(b, at, (9.0 - i * 0.2) * u, Color(NightArt.GAS.lerp(NightArt.WARM, i / 21.0), 0.7))
+		NightArt.lay_star(b, star, 17.0 * u, NightArt.star_col(5800.0))
+		for body: Array in [[Vector2(-120, -22), 4.5, NightSim.Kind.ROCK], [Vector2(-84, 30), 2.5, NightSim.Kind.GRAIN],
+				[Vector2(98, 24), 3.5, NightSim.Kind.COMET], [Vector2(138, -28), 6.0, NightSim.Kind.GIANT]]:
 			var at: Vector2 = star + (body[0] as Vector2) * u
 			if body[2] == NightSim.Kind.COMET:
 				var away := (at - star).normalized()
-				b.polygon(PackedVector2Array([at + away.orthogonal() * 5.0 * u, at + away * 34.0 * u, at - away.orthogonal() * 5.0 * u]), Color(NightArt.TAIL, 0.4))
+				b.polygon(PackedVector2Array([at + away.orthogonal() * 3.0 * u, at + away * 26.0 * u, at - away.orthogonal() * 3.0 * u]), Color(NightArt.TAIL, 0.4))
 			NightArt.lit(b, at, float(body[1]) * u, NightArt.PAINT[body[2]], star - at)
 		var mesh := b.mesh()
 		_keep.append(mesh)

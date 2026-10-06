@@ -1,19 +1,21 @@
 extends Control
 
 ## Nightlight: the seventh game on the Arcade tab, and the one that is kept.
-## A small star in the middle of a night sky; the player never moves and only
-## throws meteors at it (a press on the sky sets one going round the star,
-## there and at once: the user, 2026-10-06, "make them spawn insta in orbit
-## where user click, so he can keep clicking and sending without needing to
-## aim"). The star pulls as hard as it is heavy, bodies cross the sky on their
-## own, and a caught one circles, closes in and turns faster and faster until
-## the star has it. Mass grows the star, counted in Suns (a new star is
-## one); it burns the hydrogen in what it eats and goes dim without any;
-## light, which the haze makes of whatever it drags and the star of what it
-## burns, buys the hand's four tiles; as it grows it is offered two powers
-## and one is picked; at 100 Suns it can go supernova, which gives
-## everything back to the sky, leaves a small star among the ashes and pays
-## stardust for a perk that lasts (the user's design, 2026-10-06). Spec
+## A star in the middle of a night sky, after a real one (the user,
+## 2026-10-06: "I want something that is closer to the star lifecycle"). The
+## player never touches the sky: one button at the foot lets gas go into the
+## disc round the star, a puff a press or a stream while it is held ("let's
+## add buttons near bottom to user click or hold"). The gas winds in and
+## feeds the star, and on its way round makes grains, rocks and planets that
+## stay; bodies cross the sky on their own and the heavier the star the more
+## of them it bends in. Mass grows the star, counted in Suns (a new star is
+## one). It burns hydrogen into helium and, as its core grows, on up the
+## chain to iron, which ends it as a supernova without being asked; a star
+## left with nothing to burn lets its layers go instead. Light, which the
+## disc makes of whatever it drags and the star of what it burns, buys the
+## hand's four tiles; as the star grows it is offered two powers and one is
+## picked; an end gives everything back to the sky, leaves a small star
+## among the gas and pays stardust for a perk that lasts. Spec
 ## docs/superpowers/specs/2026-10-06-arcade-nightlight-design.md; the rules
 ## and every number are arcade/nightlight_sim.gd's, the sky is
 ## arcade/nightlight_sky.gd's, the drawings nightlight_art.gd's.
@@ -52,8 +54,8 @@ const GAP := 20
 const HUD_H := 96.0
 const NOVA_H := 44.0
 const INFO_H := 104.0
-const SHOP_W := 330.0
-const DUST_W := 190.0
+const SHOP_W := 250.0
+const DUST_W := 170.0
 ## The shop's card and a tile of it, as the Grove's are: its picture on a
 ## disc, its name over what the next level does, its price on a bar.
 const CARD_W := 1000.0
@@ -69,26 +71,29 @@ const PRICE_OFF := Color("ede4d3")
 const FILL := Color("fcf7ef")
 ## The star stands a little above the field's middle.
 const STAR_AT := 0.47
-## No throw starts this near the star, in its own radii.
-const CLEAR := 1.2
 ## Light is motes, the other games' energy in gold: `ORBS` to one light.
 const ORBS := 4
-## The supernova: seconds the star swells into a light that takes the sky,
-## and seconds that light takes to thin over the new one. Both FADE under
-## reduce motion, with no swelling.
-const SWELL := 0.8
-const THIN := 1.1
-const FADE := 0.3
 const SAVE_GAP := 5.0
-## A throw is a piece set down; a tile bought is something finished; one
-## that cannot be is a not yet; the supernova is the heaviest thing here.
-const HAPTICS := {"throw": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "nova": Haptics.THUD}
-const TILE_NAMES := {"meteor": "NL_METEOR", "volley": "NL_VOLLEY", "stream": "NL_STREAM", "ice": "NL_ICE"}
+## A puff let go is a piece set down; a tile bought and a stage lit are
+## something finished; a tile that cannot be bought is a not yet; the
+## supernova is the heaviest thing here, and a star letting go a soft one.
+const HAPTICS := {"pour": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "ignite": Haptics.BUMP, "nova": Haptics.THUD,
+	"fade": Haptics.BUMP}
+const TILE_NAMES := {"puff": "NL_PUFF", "volley": "NL_VOLLEY", "stream": "NL_STREAM", "pure": "NL_PURE"}
 const POWER_NAMES := {"wind": "NL_POW_WIND", "haze": "NL_POW_HAZE", "beacon": "NL_POW_BEACON", "radiance": "NL_POW_RADIANCE",
 	"furnace": "NL_POW_FURNACE", "fusion": "NL_POW_FUSION", "thrift": "NL_POW_THRIFT"}
-const MADE_NAMES := ["NL_HYDROGEN", "NL_HELIUM", "NL_ROCK"]
+## What the star is made of, in Sim.CHAIN's order: the elements by their
+## symbols, which are the same in every language, and rock by its name.
+const MADE_NAMES := ["H", "He", "C", "Ne", "O", "Si", "Fe", "NL_ROCK"]
+## What the sky says as each stage of the chain lights.
+const LIT_NAMES := ["", "NL_LIT_HE", "NL_LIT_C", "NL_LIT_NE", "NL_LIT_O", "NL_LIT_SI"]
+const GOALS := {"he": "NL_GOAL_HE", "c": "NL_GOAL_C", "fe": "NL_GOAL_FE"}
+## Seconds a line stays over the sky, the last NOTE_OUT of them going.
+const NOTE := 5.0
+const NOTE_OUT := 0.6
+const GAS_W := 270.0
 ## The light's plate, beside the shop that spends it.
-const LIGHT_W := 250.0
+const LIGHT_W := 220.0
 ## What the star is made of: its bar's height.
 const MADE_H := 14.0
 ## A pick's tile, and the seconds the star has grown past a pick before the
@@ -136,24 +141,25 @@ var _dust_b: Button
 var _dust_l: Label
 var _nova_line: Control
 var _nova_l: Label
-var _nova_b: Button
+var _pick_l: Label
+var _note: Label
+var _note_t := 0.0
+var _gas_b: Button
+var _pressed_at := -1000
 var _shop_b: Button
 var _shop: Control
 var _shop_light: Label
 var _tiles := {}    # tile -> {button, icon, effect, pill, cost, mote, tick, badge, level}
 var _tiles_for := ""
-var _ask: Control
-var _ask_body: Label
 var _perks: Control
 var _perk_dust: Label
 var _perk_buy: Button
 var _perk_tiles := {}   # perk -> {panel, count}
 var _holding := false
 var _finger := -1
-var _hold_at := Vector2.ZERO
 var _held_back := false
-var _nova_t := -1.0
-var _nova_done := false
+var _end_how := ""
+var _end_done := false
 var _dirty := false
 var _since_save := 0.0
 var _opened_at := 0
@@ -186,8 +192,8 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		_holding = false
-		_finger = -1
+		if _gas_b != null:
+			_let_go()
 		_save()
 	elif what == NOTIFICATION_EXIT_TREE:
 		_save()
@@ -229,6 +235,12 @@ func _build() -> void:
 	_nova_l.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_nova_l.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_nova_line.add_child(_nova_l)
+	_pick_l = Label.new()
+	_pick_l.theme_type_variation = "CardBlurb"
+	_pick_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_pick_l.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_pick_l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_nova_line.add_child(_pick_l)
 	col.add_child(_nova_line)
 
 	sky = NightSky.new()
@@ -236,21 +248,39 @@ func _build() -> void:
 	sky.sim = sim
 	sky.paper = Pal.PAPER
 	sky.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sky.mouse_filter = Control.MOUSE_FILTER_STOP
-	sky.gui_input.connect(_on_field_input)
+	# the sky takes no press (the user, 2026-10-06: "instead of user clicking
+	# anywhere on screen to place items, let's add buttons near bottom ...
+	# right now it happens that user click on the screen to place item and
+	# click on upgrade that popup")
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sky.resized.connect(_layout_field)
 	col.add_child(sky)
-	# on the left, clear of the thumb that throws
-	_nova_b = IconButton.new("sparkle", tr("NL_NOVA"), "PrimaryButton")
-	_nova_b.name = "Nova"
-	_nova_b.custom_minimum_size = Vector2(400, 104)
-	_nova_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	_nova_b.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_nova_b.offset_left = 28.0
-	_nova_b.offset_bottom = -28.0
-	_nova_b.visible = false
-	_nova_b.pressed.connect(open_ask)
-	sky.add_child(_nova_b)
+	# what the star has just done, said once over the sky's head
+	_note = Label.new()
+	_note.name = "Note"
+	_note.theme_type_variation = "CardBlurb"
+	_note.add_theme_color_override("font_color", Art.VEIL)
+	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_note.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_note.offset_left = 120.0
+	_note.offset_right = -120.0
+	_note.offset_top = 26.0
+	_note.modulate.a = 0.0
+	sky.add_child(_note)
+	var hint := Label.new()
+	hint.name = "Hint"
+	hint.text = "NL_HINT"
+	hint.theme_type_variation = "CardBlurb"
+	hint.add_theme_color_override("font_color", Color(Art.VEIL, 0.8))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	hint.offset_bottom = -26.0
+	sky.add_child(hint)
+	_hint = hint
 	# the powers held, down the sky's left edge: pressed, they say what they do
 	_chips = Button.new()
 	_chips.name = "Powers"
@@ -283,15 +313,11 @@ func _build() -> void:
 	light.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	info.add_child(light)
 	info.add_child(_dust_plate())
-	var hint := Label.new()
-	hint.text = "NL_HINT"
-	hint.theme_type_variation = "CardBlurb"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	info.add_child(hint)
-	_hint = hint
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(gap)
+	info.add_child(_gas_button())
 	col.add_child(info)
 
 	_motes = Motes.new()
@@ -302,8 +328,6 @@ func _build() -> void:
 	add_child(_motes)
 	_shop = _build_shop()
 	add_child(_shop)
-	_ask = _build_ask()
-	add_child(_ask)
 	_perks = _build_perks()
 	add_child(_perks)
 	_powers = _build_powers()
@@ -357,9 +381,9 @@ func _star_panel() -> Control:
 	col.add_child(_made)
 	var legend := HBoxContainer.new()
 	legend.alignment = BoxContainer.ALIGNMENT_CENTER
-	legend.add_theme_constant_override("separation", 30)
+	legend.add_theme_constant_override("separation", 22)
 	col.add_child(legend)
-	for i in 3:
+	for i in MADE_NAMES.size():
 		var item := HBoxContainer.new()
 		item.add_theme_constant_override("separation", 8)
 		legend.add_child(item)
@@ -377,6 +401,33 @@ func _star_panel() -> Control:
 		item.add_child(share)
 		_made_l.append(share)
 	return panel
+
+## The hand's one button, under the right thumb: pressed it lets a puff of
+## gas go, held it keeps them going. It reads the finger itself (a
+## ScreenTouch and never a mouse button alone: the project has
+## mouse-from-touch off), so a hold is the finger that came down on it and
+## ends when that finger lifts, wherever it has wandered.
+func _gas_button() -> Control:
+	_gas_b = Button.new()
+	_gas_b.name = "Gas"
+	_gas_b.focus_mode = Control.FOCUS_NONE
+	_gas_b.theme_type_variation = "PrimaryButton"
+	_gas_b.custom_minimum_size = Vector2(GAS_W, INFO_H)
+	_gas_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_gas_b.resized.connect(func() -> void: _gas_b.pivot_offset = _gas_b.size * 0.5)
+	_gas_b.gui_input.connect(_on_gas_input)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_gas_b.add_child(row)
+	row.add_child(_picture("gas", 68.0, 0.5))
+	var label := Label.new()
+	label.text = "NL_GAS"
+	label.theme_type_variation = "SheetTitle"
+	row.add_child(label)
+	return _gas_b
 
 ## What is held, on a paper plate: its picture, its name and the count.
 func _plate(what: String, key: String) -> Control:
@@ -511,7 +562,7 @@ func _build_shop() -> Control:
 	return made[0]
 
 func open_shop() -> void:
-	if _shop.visible or _nova_t >= 0.0:
+	if _shop.visible or sky.ending():
 		return
 	_holding = false
 	_refresh_tiles()
@@ -618,35 +669,6 @@ func _tile(tile: String) -> Control:
 
 ## Before the supernova: what goes and what it pays, and a way back. It takes
 ## the tiles with it, so it is never one touch.
-func _build_ask() -> Control:
-	var made := _dialog("Ask", 860.0, close_ask)
-	var col: VBoxContainer = made[1]
-	col.add_child(Dialog.head("NL_NOVA", "sparkle"))
-	_ask_body = Label.new()
-	_ask_body.theme_type_variation = "CardBlurb"
-	_ask_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_ask_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(_ask_body)
-	var go := Dialog.primary("sparkle", tr("NL_NOVA_GO"))
-	go.name = "Go"
-	go.pressed.connect(_go_nova)
-	var stay := Dialog.secondary("chevron_left", tr("NL_NOVA_STAY"))
-	stay.name = "Stay"
-	stay.pressed.connect(close_ask)
-	Dialog.buttons(col, go, stay)
-	return made[0]
-
-func open_ask() -> void:
-	if _ask.visible or _nova_t >= 0.0 or not sim.can_nova():
-		return
-	_holding = false
-	_ask_body.text = _count("NL_NOVA_ASK", sim.dust_for())
-	_ask.visible = true
-	Motion.appear(_ask, 0.0, 1.0, 0.2)
-
-func close_ask() -> void:
-	_ask.visible = false
-
 ## The perks: the stardust held, the five with how many of each there are,
 ## and a button that draws one at random for what the next costs.
 func _build_perks() -> Control:
@@ -710,7 +732,7 @@ func _perk_tile(which: String) -> Control:
 	return panel
 
 func open_perks() -> void:
-	if _perks.visible or _nova_t >= 0.0:
+	if _perks.visible or sky.ending():
 		return
 	_holding = false
 	_refresh_perks()
@@ -902,7 +924,7 @@ func _build_powers() -> Control:
 	return made[0]
 
 func open_powers() -> void:
-	if _powers.visible or _nova_t >= 0.0:
+	if _powers.visible or sky.ending():
 		return
 	_holding = false
 	for old in _powers_list.get_children():
@@ -969,12 +991,13 @@ func _layout_field() -> void:
 
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/nightlight_tutorial_diagram.gd")
+	var c := _comma()
 	var pages := []
 	for step: Array in [
-			[Diagram.Lesson.THROW, "TUT_NL_THROW", tr("TUT_NL_THROW_BODY")],
-			[Diagram.Lesson.LIGHT, "TUT_NL_LIGHT", tr("TUT_NL_LIGHT_BODY")],
-			[Diagram.Lesson.FUEL, "TUT_NL_STAR", tr("TUT_NL_STAR_BODY")],
-			[Diagram.Lesson.NOVA, "TUT_NL_NOVA", tr("TUT_NL_NOVA_BODY") % Art.short(Sim.NOVA / Sim.START, _comma())]]:
+			[Diagram.Lesson.GAS, "TUT_NL_GAS", tr("TUT_NL_GAS_BODY")],
+			[Diagram.Lesson.WORLDS, "TUT_NL_WORLDS", tr("TUT_NL_WORLDS_BODY")],
+			[Diagram.Lesson.BURN, "TUT_NL_BURN", tr("TUT_NL_BURN_BODY") % [_hundredths(Sim.FLASH), Art.short(Sim.HEAVY, c)]],
+			[Diagram.Lesson.END, "TUT_NL_END", tr("TUT_NL_END_BODY") % Art.short(Sim.IRON, c)]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
@@ -995,7 +1018,7 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return 0
 
-## A card over the screen (the tutorial): the sky waits, and no throw.
+## A card over the screen (the tutorial): the sky waits, and no gas.
 func _tutor_hold(on: bool) -> void:
 	_held_back = on
 	if on:
@@ -1006,31 +1029,35 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
-	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or (_nova_t >= 0.0 and not _nova_done)
+	var ending: bool = sky.ending()
+	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or ending
 	if not waits:
 		_stream(delta)
 		sim.advance(delta)
 	_play_events()
 	_offer(delta)
-	_step_nova(delta)
-	sky.refresh(0.0 if waits else delta)
+	_step_end(delta)
+	# an end is the sky's own to play, whatever the sim is doing
+	sky.refresh(delta if ending else (0.0 if waits else delta))
 	_refresh_hud(delta)
 	_nova_line.queue_redraw()
+	if _note_t > 0.0:
+		_note_t -= delta
+		_note.modulate.a = clampf(_note_t / NOTE_OUT, 0.0, 1.0)
 	if _dirty:
 		_since_save += delta
 		if _since_save >= SAVE_GAP:
 			_save()
 
-## With Stream, meteors keep leaving while the finger is down, from under
-## wherever it is now.
+## Held, the button keeps letting puffs go, as fast as the Stream tile has
+## made it.
 func _stream(delta: float) -> void:
-	var gap: float = sim.stream_gap()
-	if not _holding or gap <= 0.0:
+	if not _holding:
 		return
 	_stream_t += delta
-	if _stream_t >= gap:
+	if _stream_t >= sim.stream_gap():
 		_stream_t = 0.0
-		_throw(_hold_at)
+		_pour()
 
 ## A pick the star has grown past comes up by itself, a moment later and
 ## never over another card.
@@ -1041,7 +1068,7 @@ func _offer(delta: float) -> void:
 		if _pick.visible and sim.owed() <= 0:
 			_pick.visible = false
 		return
-	if _held_back or _nova_t >= 0.0 or settings_sheet.is_open() or _shop.visible or _ask.visible or _perks.visible or _powers.visible:
+	if _held_back or sky.ending() or sim.ending() != "" or settings_sheet.is_open() or _shop.visible or _perks.visible or _powers.visible:
 		return
 	_pick_wait += delta
 	if _pick_wait >= PICK_WAIT:
@@ -1052,10 +1079,12 @@ func _play_events() -> void:
 	for e: Dictionary in sim.events:
 		match String(e.kind):
 			"eat":
-				sky.ate(float(e.m))
+				sky.ate(float(e.m), bool(e.gas))
 				_dirty = true
 			"shed":
 				_motes.drop(origin * sky.px(e.at), float(e.e) * ORBS, 1)
+			"form":
+				sky.formed(e.at)
 			"merge":
 				sky.met(e.at)
 			"tear":
@@ -1064,49 +1093,58 @@ func _play_events() -> void:
 				# the star's own light, off its own face
 				_motes.drop(origin * sky.centre, float(e.e) * ORBS, 1)
 				_dirty = true
+			"ignite":
+				sky.lit_up()
+				_say(LIT_NAMES[int(e.stage)])
+				_fx.cue("ignite")
+				Analytics.track("nightlight_ignite", {"stage": Sim.CHAIN[int(e.stage)], "suns": int(sim.suns())})
+				_save()
+			"dim":
+				_say("NL_DIM")
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
 
-## The star swells into a warm light that takes the whole sky; under it the
-## sim gives everything back and a small star is left among the ashes; the
-## light thins, and the perks are offered.
-func _step_nova(delta: float) -> void:
-	if _nova_t < 0.0:
+## A line over the sky's head, for a few seconds.
+func _say(key: String) -> void:
+	_note.text = tr(key)
+	_note_t = NOTE
+
+## The star ends by itself (the user, asked how a life ends: "the star
+## decides"): once the sim says so and no card is in the way, the sky plays
+## the layers leaving; partway through the sim gives everything back and a
+## small star is left among the gas; when the sky is done the perks are
+## offered.
+func _step_end(delta: float) -> void:
+	if not sky.ending():
+		var how: String = sim.ending()
+		if how == "" or _held_back or settings_sheet.is_open() or _pick.visible:
+			return
+		for card: Control in [_shop, _perks, _powers]:
+			card.visible = false
+		_holding = false
+		_end_how = how
+		_end_done = false
+		_say("NL_END_NOVA" if how == "nova" else "NL_END_FADE")
+		sky.begin_end(how, sim.layers())
+		_fx.cue(how)
 		return
-	_nova_t += delta
-	var up := FADE if Motion.reduce else SWELL
-	var down := FADE if Motion.reduce else THIN
-	if not _nova_done:
-		var k := minf(1.0, _nova_t / up)
-		sky.swell = 0.0 if Motion.reduce else k
-		sky.veil = k * k
-		if k >= 1.0:
-			var was := int(sim.mass)
-			var paid: int = sim.nova()
-			_nova_done = true
-			sky.swell = 0.0
+	sky.step_end(delta)
+	if not _end_done:
+		if sky.end_t() >= sky.end_swap():
+			var was := int(sim.suns())
+			var paid: int = sim.end()
+			_end_done = true
+			sky.swapped()
 			_motes.clear()
 			_shown.mass = sim.mass
 			_shown.light = 0.0
-			Analytics.track("nightlight_nova", {"n": sim.novas, "mass": was, "dust": paid})
+			Analytics.track("nightlight_nova", {"n": sim.novas, "suns": was, "dust": paid, "how": _end_how})
 			_refresh_tiles()
 			_save()
-	else:
-		var k := (_nova_t - up) / down
-		sky.veil = maxf(0.0, 1.0 - k)
-		if k >= 1.0:
-			_nova_t = -1.0
-			open_perks()
-
-func _go_nova() -> void:
-	close_ask()
-	if not sim.can_nova() or _nova_t >= 0.0:
-		return
-	_holding = false
-	_nova_t = 0.0
-	_nova_done = false
-	_fx.cue("nova")
+	elif sky.end_t() >= sky.end_time():
+		sky.finish_end()
+		open_perks()
 
 ## Motes came down on the light plate: it swells, unless it still is from
 ## the one before.
@@ -1138,34 +1176,44 @@ func _refresh_hud(delta: float) -> void:
 	(_cells.temp as Label).text = _kelvin(sim.temp())
 	var fuel_l: Label = _cells.fuel
 	var lasts: float = sim.fuel_time()
-	fuel_l.text = _clock(lasts) if sim.awake else tr("NL_FUEL_OUT")
-	var low: bool = not sim.awake or lasts < LOW
+	fuel_l.text = _clock(lasts) if sim.h_on else tr("NL_FUEL_OUT")
+	var low: bool = not sim.h_on or lasts < LOW
 	if low != _fuel_low:
 		_fuel_low = low
 		if low:
 			fuel_l.add_theme_color_override("font_color", Pal.HEART)
 		else:
 			fuel_l.remove_theme_color_override("font_color")
-	var h := int(round(100.0 * sim.fuel / sim.mass))
-	var he := mini(100 - h, int(round(100.0 * sim.spent / sim.mass)))
-	var shares := [h, he, 100 - h - he]
-	for i in 3:
-		_made_l[i].text = "%s %d%%" % [tr(MADE_NAMES[i]), shares[i]]
+	# only what there is half a hundredth of is named
+	var shares: Array = sim.layers()
+	for i in shares.size():
+		var pc := int(round(100.0 * float(shares[i])))
+		var named: String = MADE_NAMES[i]
+		(_made_l[i].get_parent() as Control).visible = pc >= 1 or i < 2
+		_made_l[i].text = "%s %d%%" % [tr(named) if named.begins_with("NL_") else named, pc]
 	_made.queue_redraw()
 	_refresh_chips()
 	(_plates.light.label as Label).text = Art.short(floorf(_shown.light), c)
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
-	_dust_b.visible = sim.novas > 0 or sim.dust > 0
-	# with stardust on the row there is no room for the hint, and whoever has
-	# been through a supernova has thrown a meteor
-	_hint.visible = not _dust_b.visible
+	_dust_b.visible = sim.novas + sim.fades > 0 or sim.dust > 0
+	# said until the star has eaten something
+	_hint.visible = sim.eaten <= 0.0 and not _holding
 	_dust_l.text = str(sim.dust)
-	var ready: bool = sim.can_nova() and _nova_t < 0.0
-	_nova_b.visible = ready
-	if ready:
-		_nova_l.text = tr("NL_NOVA_READY") % [sim.dust_for(), sim.dust_for() + 1, Art.short(sim.next_dust_mass() / Sim.START, c), Art.short(sim.next_pick(), c)]
+	var goal: Dictionary = sim.goal()
+	var core := _core_temp(sim.core_temp())
+	if String(goal.which) == "dim":
+		_nova_l.text = tr("NL_GOAL_DIM") % _clock(maxf(0.0, float(goal.need) - float(goal.have)))
+	elif not bool(goal.heavy):
+		_nova_l.text = tr("NL_GOAL_C_WAIT") % [Art.short(Sim.HEAVY, c), core]
 	else:
-		_nova_l.text = tr("NL_NOVA_AT") % [Art.short(sim.next_pick(), c), Art.short(Sim.NOVA / Sim.START, c)]
+		_nova_l.text = tr(GOALS[goal.which]) % [_hundredths(float(goal.have)), _hundredths(float(goal.need)), core]
+	_pick_l.text = tr("NL_PICK_AT") % Art.short(sim.next_pick(), c)
+
+## The core's temperature, from millions of kelvin: 15 million K, 1.2 billion K.
+func _core_temp(mk: float) -> String:
+	if mk >= 1000.0:
+		return tr("NL_BILLION_K") % Art.short(mk / 1000.0, _comma())
+	return tr("NL_MILLION_K") % Art.short(mk, _comma())
 
 ## Kelvin, to the nearest ten (a hundred past ten thousand), with the
 ## language's own mark between the thousands.
@@ -1176,9 +1224,12 @@ func _kelvin(v: float) -> String:
 		text = "%d%s%03d" % [k / 1000, "." if _comma() else ",", k % 1000]
 	return text + " K"
 
-## Seconds as minutes and seconds: 7:48, and no more than 99:59.
+## Seconds as minutes and seconds, 7:48, and past an hour as hours and
+## minutes, 2 h 40: a new star's hydrogen lasts longer than a sitting.
 func _clock(seconds: float) -> String:
-	var t := mini(int(seconds), 99 * 60 + 59)
+	var t := int(seconds)
+	if t >= 3600:
+		return "%d h %02d" % [t / 3600, (t % 3600) / 60]
 	return "%d:%02d" % [t / 60, t % 60]
 
 ## The discs of the powers held are drawn again only when one changes.
@@ -1262,19 +1313,17 @@ func _refresh_tiles() -> void:
 func _effect(tile: String) -> String:
 	var c := _comma()
 	match tile:
-		"meteor":
-			# against a first meteor, since the star's own mass is in Suns
-			var level := int(sim.lv.meteor)
-			return tr("NL_FX_METEOR") % [Art.short(level + 1.0, c), Art.short(level + 2.0, c)]
+		"puff":
+			# against a first puff, since the star's own mass is in Suns
+			var level := int(sim.lv.puff)
+			return tr("NL_FX_PUFF") % [Art.short(1.0 + Sim.PUFF_STEP * level, c), Art.short(1.0 + Sim.PUFF_STEP * (level + 1), c)]
 		"volley":
 			return tr("NL_FX_VOLLEY") % [sim.volley(), sim.volley() + 1]
 		"stream":
 			var gap: float = sim.stream_gap()
-			if gap <= 0.0:
-				return tr("NL_FX_STREAM_NEW")
 			return tr("NL_FX_STREAM") % [_hundredths(gap), _hundredths(maxf(Sim.STREAM_LEAST, gap * Sim.STREAM_STEP))]
-	var h: float = sim.meteor_h()
-	return tr("NL_FX_ICE") % [int(round(h * 100.0)), int(round(minf(0.9, h + Sim.ICE_STEP) * 100.0))]
+	var h: float = sim.puff_h()
+	return tr("NL_FX_PURE") % [int(round(h * 100.0)), int(round(minf(0.95, h + Sim.PURE_STEP) * 100.0))]
 
 ## Seconds to two decimals: 0.43, or 0,43 where the language writes it so.
 func _hundredths(v: float) -> String:
@@ -1303,85 +1352,87 @@ func _on_tile(tile: String) -> void:
 
 # --- the hand ---
 
-## A finger is a ScreenTouch and never a mouse button (the project has
-## mouse-from-touch off, and the Grove shipped unable to be chopped on a
-## phone for reading the mouse alone). Every finger that comes down throws,
-## so two thumbs can; the first is the one Stream follows. The mouse is for
-## this Mac.
-func _on_field_input(event: InputEvent) -> void:
+## The Gas button's finger. A ScreenTouch and never a mouse button alone
+## (the project has mouse-from-touch off, and the Grove shipped unable to be
+## chopped on a phone for reading the mouse alone); the mouse is for this
+## Mac. A press lets one puff go at once and starts the hold.
+func _on_gas_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
 		if t.pressed:
-			if _throw(t.position) and not _holding:
-				_hold(t.position, t.index)
+			_press(t.index)
 		elif t.index == _finger:
-			_finger = -1
-			_holding = false
-	elif event is InputEventScreenDrag:
-		if (event as InputEventScreenDrag).index == _finger and _holding:
-			_hold_at = (event as InputEventScreenDrag).position
+			_let_go()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		if not (event as InputEventMouseButton).pressed:
-			_holding = false
-		elif _throw((event as InputEventMouseButton).position):
-			_hold((event as InputEventMouseButton).position, -1)
-	elif event is InputEventMouseMotion and _holding and _finger == -1:
-		_hold_at = (event as InputEventMouseMotion).position
+		if (event as InputEventMouseButton).pressed:
+			_press(-1)
+		elif _finger == -1:
+			_let_go()
 
-## `finger` (-1 the mouse) stays down at `at`: where Stream throws from.
-func _hold(at: Vector2, finger: int) -> void:
+## `finger` (-1 the mouse) comes down on the button. A touch that also
+## arrives as a mouse press is one press.
+func _press(finger: int) -> void:
+	var now := Time.get_ticks_msec()
+	if _holding or now - _pressed_at < 60:
+		return
+	_pressed_at = now
+	if not _pour():
+		return
 	_holding = true
 	_finger = finger
-	_hold_at = at
 	_stream_t = 0.0
+	_gas_b.scale = Vector2(0.95, 0.95)
 
-## A throw at `at`, the moment it is pressed: one meteor going round the
-## star (Sim.throw_vel), or a volley. Nothing is aimed. Felt, though not every one of a
-## stream. False where none can be: on the star, under a card, during the
-## supernova.
-func _throw(at: Vector2) -> bool:
-	if _held_back or _nova_t >= 0.0 or at.distance_to(sky.centre) < sky.star_px() * CLEAR:
+func _let_go() -> void:
+	_holding = false
+	_finger = -1
+	_gas_b.scale = Vector2.ONE
+
+## A puff of gas, or a volley of them, set going at the disc's rim. Felt,
+## though not every one of a stream. False where none can be: under a card,
+## while the star ends.
+func _pour() -> bool:
+	if _held_back or sky.ending() or sim.ending() != "" or _pick.visible:
 		return false
-	var pos: Vector2 = sky.unit(at)
-	sim.place_at(pos)
-	sky.set_down(pos)
+	sim.pour()
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
-		_fx.cue("throw")
+		_fx.cue("pour")
 	_dirty = true
 	return true
 
 # --- drawing ---
 
-## The bar toward the supernova, by the logarithm of the star's Suns (each
-## doubling as long as the last) with a notch at every pick on the way; past
-## the supernova's mark, toward one more stardust.
+## The bar toward what the star is on its way to: the core it needs for the
+## next thing to light, the iron that ends it, or the seconds a dim star has
+## left.
 func _draw_nova_line() -> void:
 	var w := _nova_line.size.x
 	var h := 12.0
-	var top := log(Sim.NOVA / Sim.START)
-	var share: float = log(maxf(1.0, sim.suns())) / top
-	if sim.can_nova():
-		var from: float = Sim.NOVA * pow(sim.dust_for() / Sim.DUST, 2.0)
-		share = (sim.mass - from) / maxf(1.0, sim.next_dust_mass() - from)
+	var goal: Dictionary = sim.goal()
+	var share := clampf(float(goal.have) / float(goal.need), 0.0, 1.0)
+	var last := String(goal.which) == "fe" or String(goal.which) == "dim"
 	_bar(_nova_line, Rect2(0.0, 0.0, w, h), Pal.SURFACE_HI)
-	_bar(_nova_line, Rect2(0.0, 0.0, maxf(h, w * clampf(share, 0.0, 1.0)), h), Pal.SUN if sim.can_nova() else Pal.SUN_RAY)
-	if not sim.can_nova():
-		for at: float in Sim.MILES:
-			_nova_line.draw_rect(Rect2(w * log(at) / top - 2.0, 0.0, 4.0, h), Pal.PAPER)
+	_bar(_nova_line, Rect2(0.0, 0.0, maxf(h, w * share), h), Pal.SUN if last else Pal.SUN_RAY)
 
-## What the star is made of: hydrogen from the left, then helium, then rock.
+## What the star is made of, hydrogen from the left and on down the chain,
+## rock last: each a bar from the left as long as everything up to it, the
+## heaviest drawn first.
 func _draw_made() -> void:
 	var w := _made.size.x
 	var h := _made.size.y
-	_bar(_made, Rect2(0.0, 0.0, w, h), Art.MADE[2])
-	var burnt: float = clampf((sim.fuel + sim.spent) / sim.mass, 0.0, 1.0)
-	if burnt > 0.0:
-		_bar(_made, Rect2(0.0, 0.0, maxf(h, w * burnt), h), Art.MADE[1])
-	var left: float = clampf(sim.fuel / sim.mass, 0.0, 1.0)
-	if left > 0.005:
-		_bar(_made, Rect2(0.0, 0.0, maxf(h, w * left), h), Art.MADE[0])
+	var shares: Array = sim.layers()
+	var upto := PackedFloat32Array()
+	var sum := 0.0
+	for share: float in shares:
+		sum += share
+		upto.append(sum)
+	for i in range(shares.size() - 1, -1, -1):
+		if i == shares.size() - 1:
+			_bar(_made, Rect2(0.0, 0.0, w, h), Art.MADE[i])
+		elif float(shares[i]) > 0.002:
+			_bar(_made, Rect2(0.0, 0.0, maxf(h, w * minf(1.0, upto[i])), h), Art.MADE[i])
 
 func _bar(on: Control, rect: Rect2, col: Color) -> void:
 	var r := rect.size.y * 0.5
@@ -1411,7 +1462,7 @@ func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
-	for card: Control in [_shop, _ask, _perks, _powers]:
+	for card: Control in [_shop, _perks, _powers]:
 		if card.visible:
 			card.visible = false
 			return

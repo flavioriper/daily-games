@@ -376,3 +376,105 @@ before, aiming into the outer haze).
 Mine, not asked for: the dipping path outside the haze and its 0.8, the
 puff, two fingers, Stream following the finger, the tutorial's first two
 pages redrawn and reworded (three taps; two circles in the haze).
+
+### 2026-10-06, a seventh time: gas, worlds, the chain, and a star that ends by itself
+
+The user: "some more changes to nightlight, I want something that is
+closer to the star lifecycle, right now it's too simple. Make sun way
+bigger related to the bodies around, instead of player sending bodies he
+should send gas, and gas orbiting around gas condense into bodies just like
+real life. Check on web about how the sun behave and bodies around it,
+that's the whole idea, game is simple and cozy but should work around it.
+Movement of bodies should be slower, it should be a slower relaxing game.
+Remove the white dash behind the bodies, create it only when body has ice
+and is closer to sun, as the star grow it start to pull more objects around
+because of gravity. It should be a slower gameplay, going from 1x -> 2x sun
+is not so fast like throwing 3 bodies into it. We should also add the sun
+fusion phisic on it (check on web as well), light elements fusion into
+heavy elements." With a picture of the Sun in extreme ultraviolet: "give it
+a more space view sun". Then: "supernova animation should be more nice to
+see, not just a flash, but the layers exploding and being ejected into gas
+to the space". Then: "instead of user clicking anywhere on screen to place
+items, let's add buttons near bottom to user click or hold, right now it
+happens that user click on the screen to place item and click on upgrade
+that popup".
+
+Asked, they chose: **the star decides** how its life ends; the bodies the
+gas makes **stay as a system**; 1x to 2x takes **about five minutes**.
+
+**This replaces sections 3 to 6 and every amendment's meteors, throws and
+the 100-Sun mark.** What stands: the haze (now called the disc) and its
+light, the tide, Suns, the powers and their picks, the perks, stardust,
+the kept file.
+
+**What was looked up, and what the game does with it.**
+
+- A young star is fed by a disc of gas that loses its turn by rubbing on
+  itself and gives the fall off as light. The hand sends **gas**: a puff is
+  0.002 Suns, 70% hydrogen, 28% helium, 1% dust. It comes in at the disc's
+  rim, where a stream that goes round the star once in 200 s is now, and
+  winds in over about 80 s.
+- A disc is 99% gas and 1% dust; grains stick, pebbles gather into
+  planetesimals and planets, and beyond the frost line ice joins in. Two
+  puffs that have been up 12 s and come within 30 px drop their dust as a
+  **grain**; a grain takes the dust of every puff it crosses; solids that
+  touch become one; from 0.0012 Suns a planet keeps the gas too, up to
+  0.004 Suns. Past 2.2 of the star's radii there is twice as much ice again
+  as dust. Nothing forms inside the Roche radius (1.5 radii).
+- Small things are carried by the gas and big ones are not: the disc has
+  all its hold on a body 3 px in radius and less by the square on a bigger
+  one. A planet of a thousandth of a Sun is dragged a tenth as hard as gas.
+- Ice boils off within about 3 AU and the tail points away from the Sun.
+  **No body leaves a trail.** One that is 30% ice or more, inside the frost
+  line and outside the Roche radius, has a tail lying away from the star.
+- The Sun is 99.86% of its system and ten Jupiters wide. The star is 150 px
+  in radius, a planet of a thousandth of a Sun 9.5, a grain 3.
+- A heavier star draws passers sooner (its Suns to the 0.3) and bends more
+  of them in.
+- A star fuses hydrogen into helium; helium lights when the core of it is
+  about 0.45 Suns (the helium flash, a hundred million kelvin); carbon only
+  in stars of eight Suns and more, with a core over 1.06 Suns; then neon,
+  oxygen and silicon, each paying less and going quicker (a star of
+  twenty-five Suns has seven million years of hydrogen and a day of
+  silicon); an iron core past 1.4 Suns cannot hold itself up. The game
+  keeps those four numbers as they are. The bar on the star's plate shows
+  all of it; a line under it says which core is growing and how hot the
+  core is (15 million K to 2.7 billion).
+- A Sun is 5,800 K and a heavy star tens of thousands; a red supergiant is
+  3,600 K. The star's colour is its temperature, and burning carbon it
+  swells by 28% and goes red.
+
+**The end.** With an iron core of 1.4 Suns the star goes supernova without
+being asked: the core falls in for a second, then each thing it is made of
+leaves as a shell of gas in its own colour, hydrogen first and furthest,
+in nine fingers and not a ring; iron stays, a point of light. A new star
+of one Sun comes up among gas the old one left, which is 5% dust, so its
+planets come sooner. It pays 3 stardust, more for a heavier star (by the
+square root of its Suns over eight). A star with nothing at all to burn is
+dim, says so, and after 60 s lets its layers go the same way, slowly, for 1
+stardust. Fresh hydrogen in that minute lights it again.
+
+**The hand.** One Gas button at the foot, on the right: a press is a puff,
+held it is one every 0.6 s. The sky takes no press. The four tiles: Puff
+(half a first puff heavier a level), Volley (one more at a time), Flow
+(quicker while held), Pure gas (4% more hydrogen, six levels).
+
+**Pace, measured** (`tests/_probe_nightlight.gd -- pace`, the button held
+all the time, the cheapest tile bought as soon as it can be): 2 Suns at
+5.0 min, 4 at 10.5, 8 at 17.5, the helium flash at 15.9, carbon at 24.1, a
+supernova at 26.7 min and 21 Suns for 4 stardust. Held two thirds of the
+time: 2 Suns at 7.0, the supernova at 33 min. Later lives begin at 2 Suns
+in 3 to 4 min.
+
+Mine, not asked for: every number above but the four from the real star;
+gas coming in as a wandering stream at the rim (asked for was a button);
+the button on the right; a puff's dust staying the same when the Puff tile
+makes it heavier; the minute of grace and the 1 stardust; the giant's
+swelling; the line said over the sky as a stage lights; an old kept star
+coming back with its mass and without its sky; the tutorial's four pages.
+
+Not done: no sound, nothing on a phone, no person has played the pace, the
+concept tab is the first game still, a planet does not pull the gas or
+another planet, fuel never runs short for a hand that pours (it only
+matters to a star left alone), and no power was retuned for gas.
+

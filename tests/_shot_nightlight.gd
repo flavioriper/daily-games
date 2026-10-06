@@ -4,51 +4,45 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]
 ##
-## 1 the Arcade tab with its card, 2 a new star, 3 a meteor just set going
-## (a finger down, as a phone sends it) and two more from a second finger and
-## the first again, 4 the three winding in,
-## 4b a planetoid the tide has just torn and 4c its pieces drawn out round the
-## star, 4d as full a sky as the tide makes (sixty rocks torn at once, up to
-## Sim.FULL bodies: the draw calls' worst), 5a the two powers offered at two
-## Suns (the card comes up by itself), 5b one picked and on its disc, 5c the
-## star out of hydrogen and dim, 5 a sky a steady hand has been throwing into
-## for a minute and a half, 5d a finger held down and moved with Stream and Volley,
-## 6 a heavy star with every pick made, 6b the powers it holds, 7 the shop
-## with a tile just bought, 8 the question before the supernova, 9 the star
-## swelling, 10 the light thinning, 11 the perks, 12 one drawn, 13 the new
-## star among its ashes, 14-16 the tutorial's four pages (15b and 15c the
-## star's, dim and lit again), 17 the tab again with the star on its card. Prints the draw calls
-## at each shot and the frames since the last with their mean and longest
-## gap. The star and the wallet are throwaway files; the field's own mouse
-## filter is set to ignore, so the real pointer over the window cannot throw.
+## 1 the Arcade tab with its card, 2 a new star, 3 the Gas button held by a
+## finger (as a phone sends it) for five seconds, 4 the disc a steady hand
+## has poured into for two minutes, with what the gas has made, 4b a planet
+## the tide has torn, 4c a sky as full as it gets (the draw calls' worst),
+## 5a the two powers offered at two Suns (the card comes up by itself), 5b
+## one picked and on its disc, 5c the star with nothing to burn, dim, 6 a
+## heavy star burning carbon, a giant, 6b the powers it holds, 7 the shop
+## with a tile just bought, 8a-8e the supernova (the core falling in, the
+## layers leaving, the new star coming up), 11 the perks, 12 one drawn, 13
+## the new star among the gas, 13b-13c a star letting go, 14-16 the
+## tutorial's four pages, 17 the tab again with the star on its card.
+## Prints the draw calls at each shot and the frames since the last with
+## their mean and longest gap. The star and the wallet are throwaway files.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 
 const STEPS := [
 	[1.6, "tab"], [2.8, "shot", "1_tab"],
 	[2.9, "open"], [3.9, "shot", "2_start"],
-	[4.0, "press", Vector2(250, 760)], [4.1, "shot", "3_set"],
-	[4.3, "second", Vector2(640, 420)], [4.5, "let_go"], [4.6, "press", Vector2(420, 780)], [4.7, "let_go"],
-	[9.2, "shot", "4_winding"],
-	[12.8, "planet"], [19.8, "shot", "4b_torn"], [24.8, "shot", "4c_stream"],
-	[24.9, "crowd"], [25.6, "shot", "4d_full"],
-	[29.5, "grow", 2.2], [30.9, "shot", "5a_pick"], [31.0, "pick", 0], [31.6, "shot", "5b_picked"],
-	[31.7, "starve"], [33.9, "shot", "5c_dim"], [34.0, "feed"],
-	[34.1, "run", 90.0], [35.1, "shot", "5_busy"],
-	[35.2, "hold", Vector2(250, 760), Vector2(290, 880)], [36.9, "shot", "5d_stream"], [37.0, "let_go"],
-	[38.4, "heavy"], [38.5, "run", 20.0], [39.6, "shot", "6_heavy"],
-	[39.7, "powers"], [40.3, "shot", "6b_powers"], [40.4, "powers_x"],
-	[40.5, "shop"], [40.6, "buy"], [41.1, "shot", "7_shop"],
-	[41.2, "shop_x"], [41.3, "ask"], [41.8, "shot", "8_ask"],
-	[41.9, "go"], [42.45, "shot", "9_swell"], [43.2, "shot", "10_thin"],
-	[44.4, "shot", "11_perks"], [44.5, "perk"], [44.9, "shot", "12_perk"],
-	[45.0, "perks_x"], [50.0, "shot", "13_ashes"],
-	[50.1, "tutor"], [59.1, "shot", "14_tut_throw"],
-	[59.2, "page", 1], [66.2, "shot", "15_tut_light"],
-	[66.3, "page", 2], [68.2, "shot", "15b_tut_star_dim"], [74.3, "shot", "15c_tut_star_lit"],
-	[74.4, "page", 3], [76.8, "shot", "16_tut_nova"],
-	[76.9, "leave"], [78.1, "shot", "17_tab_after"],
-	[78.2, "quit"],
+	[4.0, "press"], [9.0, "shot", "3_pour"], [9.1, "let_go"],
+	[9.2, "run", 120.0], [11.0, "shot", "4_disc"],
+	[11.1, "planet"], [14.0, "shot", "4b_torn"],
+	[14.1, "crowd"], [15.0, "shot", "4c_full"],
+	[15.1, "grow", 2.2], [16.6, "shot", "5a_pick"], [16.7, "pick", 0], [17.3, "shot", "5b_picked"],
+	[17.4, "starve"], [20.0, "shot", "5c_dim"], [20.1, "feed"],
+	[20.2, "heavy"], [20.3, "run", 40.0], [23.5, "shot", "6_giant"],
+	[23.6, "powers"], [24.2, "shot", "6b_powers"], [24.3, "powers_x"],
+	[24.4, "shop"], [24.5, "buy"], [25.0, "shot", "7_shop"], [25.1, "shop_x"],
+	[25.2, "iron"], [26.1, "shot", "8a_fall"], [26.9, "shot", "8b_leaving"], [27.8, "shot", "8c_shells"],
+	[29.2, "shot", "8d_swap"], [31.2, "shot", "8e_rising"],
+	[33.4, "shot", "11_perks"], [33.5, "perk"], [33.9, "shot", "12_perk"],
+	[34.0, "perks_x"], [36.0, "shot", "13_new"],
+	[36.1, "let_go_star"], [39.5, "shot", "13b_letting_go"], [42.5, "shot", "13c_gone"], [46.5, "perks_x"],
+	[46.6, "tutor"], [48.6, "shot", "14_tut_gas"],
+	[48.7, "page", 1], [50.7, "shot", "15_tut_worlds"],
+	[50.8, "page", 2], [56.8, "shot", "15b_tut_burn"], [61.0, "shot", "15c_tut_burn_giant"],
+	[61.1, "page", 3], [64.2, "shot", "16_tut_end"],
+	[64.3, "leave"], [65.5, "shot", "17_tab_after"],
+	[65.6, "quit"],
 ]
 
 var _menu: Node
@@ -93,29 +87,24 @@ func _finish() -> void:
 		DirAccess.remove_absolute(p)
 	print("throwaway files removed")
 
-## A finger, as a phone sends it (the project has mouse-from-touch off).
-func _touch(at: Vector2, down: bool, finger := 0) -> void:
+## A finger on the Gas button, as a phone sends it (the project has
+## mouse-from-touch off).
+func _touch(down: bool, finger := 0) -> void:
 	var ev := InputEventScreenTouch.new()
 	ev.index = finger
 	ev.pressed = down
-	ev.position = at
-	_s._on_field_input(ev)
+	ev.position = _s._gas_b.size * 0.5
+	_s._on_gas_input(ev)
 
-func _drag(at: Vector2) -> void:
-	var ev := InputEventScreenDrag.new()
-	ev.index = 0
-	ev.position = at
-	_s._on_field_input(ev)
-
-## `seconds` of the sim at once, a steady hand throwing and buying the
+## `seconds` of the sim at once, a steady hand on the button, buying the
 ## cheapest tile it can.
 func _run(seconds: float) -> void:
 	var since := 0.0
 	for i in int(seconds / Sim.STEP):
 		since += Sim.STEP
-		if since >= 0.45:
+		if since >= _s.sim.stream_gap():
 			since = 0.0
-			_s.sim.bot_throw()
+			_s.sim.pour()
 		_s.sim.tick()
 		_s.sim.events.clear()
 		for tile: String in Sim.TILES:
@@ -124,7 +113,11 @@ func _run(seconds: float) -> void:
 		while _s.sim.owed() > 0:
 			_s.sim.pick(0)
 	_s._refresh_tiles()
-	print("ran %.0f s: mass %.1f light %.1f bodies %d lv %s" % [seconds, _s.sim.mass, _s.sim.light, _s.sim.bodies.size(), str(_s.sim.lv)])
+	var solids := 0
+	for b: Sim.Body in _s.sim.bodies:
+		if b.kind != Sim.Kind.GAS:
+			solids += 1
+	print("ran %.0f s: %.2f Suns, light %.1f, %d gas and %d solids, lv %s" % [seconds, _s.sim.suns(), _s.sim.light, _s.sim.bodies.size() - solids, solids, str(_s.sim.lv)])
 
 func _process(delta: float) -> bool:
 	_t += delta
@@ -157,39 +150,32 @@ func _process(delta: float) -> bool:
 			"open":
 				_menu._open_arcade("nightlight")
 				_s = _menu.get_node("Nightlight")
-				_s.sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				# the real pointer over the window cannot press the button
+				_s._gas_b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			"press":
-				print("star open: mass %.1f, field %s, u %.3f, the star at %s, %d px" % [_s.sim.mass, _s.sky.size, _s.sky.u, _s.sky.centre, _s.sky.star_px()])
-				_touch(step[2], true)
-				print("pressed: bodies %d, the last of them %.2f mass at %.0f px/s, %.0f px from the star (a circle there is %.0f px/s)" % [_s.sim.bodies.size(), _s.sim.bodies[-1].m,
-					_s.sim.bodies[-1].vel.length(), _s.sim.bodies[-1].pos.length(), sqrt(_s.sim.gm() / _s.sim.bodies[-1].pos.length())])
-			"second":
-				# another finger while the first is down throws too
-				_touch(step[2], true, 1)
-				_touch(step[2], false, 1)
-				print("a second finger: bodies %d" % _s.sim.bodies.size())
+				print("star open: %.2f Suns, field %s, u %.3f, the star at %s, %d px" % [_s.sim.suns(), _s.sky.size, _s.sky.u, _s.sky.centre, _s.sky.star_px()])
+				_touch(true)
+				print("pressed: %d puffs, holding %s, one every %.2f s" % [_s.sim.gas_count(), _s._holding, _s.sim.stream_gap()])
 			"let_go":
-				_touch(Vector2.ZERO, false)
-				print("let go: bodies %d, holding %s" % [_s.sim.bodies.size(), _s._holding])
+				var up: int = _s.sim.gas_count()
+				_touch(false)
+				print("let go: %d puffs after five seconds, holding %s" % [up, _s._holding])
 			"planet":
-				# on a circle in the haze, a little outside where the tide tears it
-				var far: float = _s.sim.tear_r(8.0) * 1.1
-				_s.sim.add(Sim.Kind.PLANET, 8.0, Vector2(0.0, -far), Vector2(sqrt(_s.sim.gm() / far), 0.0))
+				# on a circle a little outside where the tide tears it, and the disc brings it in
+				var far: float = _s.sim.tear_r(0.03) * 1.004
+				var b: Sim.Body = _s.sim.add(Sim.Kind.PLANET, 0.03, Vector2(0.0, -far), Vector2(sqrt(_s.sim.gm() / far), 0.0))
+				b.ice = 0.6
+				_s.sim._sort(b)
 			"crowd":
-				for k in 60:
-					var far: float = _s.sim.tear_r(1.5) * (1.02 + 0.003 * k)
-					var way := Vector2.from_angle(TAU * k / 60.0)
-					_s.sim.add(Sim.Kind.ROCK, 1.5, way * far, way.orthogonal() * -sqrt(_s.sim.gm() / far))
-				# The star is held at its mass while the tide works, or it grows
-				# over the ring before the pieces are many: this beat is the
-				# draw calls' worst, a sky at Sim.FULL.
-				var held: float = _s.sim.mass
-				for i in int(20.0 / Sim.STEP):
-					if _s.sim.bodies.size() >= Sim.FULL:
-						break
-					_s.sim.tick()
-					_s.sim.events.clear()
-					_s.sim.mass = held
+				# as full a sky as the sim lets there be
+				while _s.sim.gas_count() < Sim.MOST:
+					_s.sim.pour()
+				for k in 140:
+					var far: float = _s.sim.haze_r() * (0.55 + 0.004 * k)
+					var way := Vector2.from_angle(TAU * k * 0.381)
+					var b: Sim.Body = _s.sim.add(Sim.Kind.ROCK, 0.001 + 0.0002 * (k % 9), way * far, way.orthogonal() * -sqrt(_s.sim.gm() / far))
+					b.ice = 0.8 if k % 3 == 0 else 0.0
+					_s.sim._sort(b)
 				print("crowd: %d bodies up" % _s.sim.bodies.size())
 			"run":
 				_run(float(step[2]))
@@ -197,8 +183,8 @@ func _process(delta: float) -> bool:
 				# past the first pick: the card comes up by itself
 				_s.sim.bodies.clear()
 				_s.sim.mass = Sim.START * float(step[2])
-				_s.sim.fuel = _s.sim.mass * 0.5
-				_s.sim.spent = _s.sim.mass * 0.3
+				_s.sim.fuel = _s.sim.mass * 0.6
+				_s.sim.env = _s.sim.mass * 0.25
 			"pick":
 				print("pick open: %s, on offer %s, owed %d" % [_s._pick.visible, str(_s.sim.offer), _s.sim.owed()])
 				_s._on_pick(int(step[2]))
@@ -208,20 +194,16 @@ func _process(delta: float) -> bool:
 				_s.sim.passing = false
 				_s.sim.fuel = 0.0
 			"feed":
-				print("dim: awake %s, lit %.2f, %d K" % [_s.sim.awake, _s.sim.lit, int(_s.sim.temp())])
+				print("dim: awake %s, lit %.2f, %d K, cold %.1f s, %s" % [_s.sim.awake, _s.sim.lit, int(_s.sim.temp()), _s.sim.cold, _s._nova_l.text])
 				_s.sim.fuel = _s.sim.mass * 0.5
 				_s.sim.passing = true
-			"hold":
-				# a finger down, moved and kept there: with Stream it goes on throwing from where it is
-				_s.sim.lv.stream = maxi(4, int(_s.sim.lv.stream))
-				_s.sim.lv.volley = maxi(2, int(_s.sim.lv.volley))
-				var before: int = _s.sim.bodies.size()
-				_touch(step[2], true)
-				_drag(step[3])
-				print("held with stream %d, volley %d: a throw every %.2f s, %d bodies up" % [_s.sim.lv.stream, _s.sim.lv.volley, _s.sim.stream_gap(), before])
 			"heavy":
-				_s.sim.mass = 6000.0
-				_s.sim.fuel = 2400.0
+				# twelve Suns, most of the way up the chain
+				_s.sim.mass = Sim.START * 12.0
+				_s.sim.fuel = _s.sim.mass * 0.55
+				_s.sim.env = _s.sim.mass * 0.2
+				_s.sim.made.assign([0.05 * _s.sim.mass, 0.1 * _s.sim.mass, 0.02 * _s.sim.mass, 0.01 * _s.sim.mass, 0.01 * _s.sim.mass, 0.02 * _s.sim.mass])
+				_s.sim.ignited.assign([true, true, true, true, true, true])
 				_s.sim.light = 5000.0
 				while _s.sim.owed() > 0:
 					_s.sim.pick(_s.sim.owed() % 2)
@@ -234,23 +216,29 @@ func _process(delta: float) -> bool:
 				_s._shop_b.pressed.emit()
 				print("shop open: %s, badge %d" % [_s._shop.visible, _s._shop_b.badge])
 			"buy":
-				var before: int = mini(int(_s.sim.lv.ice), 3)
-				_s.sim.lv.ice = before
-				_s._on_tile("ice")
-				print("bought ice: %d -> %d, light %.0f" % [before, _s.sim.lv.ice, _s.sim.light])
+				var before: int = mini(int(_s.sim.lv.pure), 3)
+				_s.sim.lv.pure = before
+				_s._on_tile("pure")
+				print("bought pure gas: %d -> %d, light %.0f" % [before, _s.sim.lv.pure, _s.sim.light])
 			"shop_x":
 				_s._shop.find_child("Close", true, false).pressed.emit()
-			"ask":
-				_s._nova_b.pressed.emit()
-				print("asked: %s, would pay %d" % [_s._ask.visible, _s.sim.dust_for()])
-			"go":
-				_s._ask.find_child("Go", true, false).pressed.emit()
+			"iron":
+				print("a giant: swell %.2f, %d K, %s" % [_s.sim.swell, int(_s.sim.temp()), _s._nova_l.text])
+				_s.sim.made[5] = Sim.IRON * Sim.START
+				print("an iron core: the sim says %s, would pay %d" % [_s.sim.ending(), _s.sim.dust_for()])
 			"perk":
-				print("after the supernova: mass %.1f dust %d novas %d ashes %d, perks open %s" % [_s.sim.mass, _s.sim.dust, _s.sim.novas, _s.sim.bodies.size(), _s._perks.visible])
+				print("after the end: %.1f Suns, dust %d, novas %d, fades %d, %d puffs left, perks open %s" % [_s.sim.suns(), _s.sim.dust, _s.sim.novas, _s.sim.fades, _s.sim.bodies.size(), _s._perks.visible])
 				_s._perk_buy.pressed.emit()
 				print("perk drawn: %s, dust %d" % [str(_s.sim.perk), _s.sim.dust])
 			"perks_x":
-				_s._perks.find_child("Back", true, false).pressed.emit()
+				if _s._perks.visible:
+					_s._perks.find_child("Back", true, false).pressed.emit()
+			"let_go_star":
+				_s.sim.fuel = 0.0
+				_s.sim.h_on = false
+				_s.sim.awake = false
+				_s.sim.cold = Sim.GRACE
+				print("left dim: the sim says %s" % _s.sim.ending())
 			"tutor":
 				_s.tutor.show()
 			"page":
