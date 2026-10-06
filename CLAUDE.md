@@ -22,6 +22,7 @@ that area**, and add new history there rather than here.
 | Area | File |
 |---|---|
 | Harness flags and what they measure | `docs/agents/harnesses.md` |
+| The opening: the boot scene, the launch colours, the handover to the first screen | `docs/agents/opening.md` |
 | First screen: menu, cards, pager, header, Stats/Streak, registry | `docs/agents/first-screen.md` |
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
 | One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |

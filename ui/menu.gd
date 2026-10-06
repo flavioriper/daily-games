@@ -1011,6 +1011,13 @@ func _show_list(tab := "home") -> void:
 					and (AgeGate.known() or not OS.has_feature("mobile")):
 				gifts_sheet.open())
 
+## The opening has lifted off the first screen (world/boot.gd): the entrance
+## again from its first beat, since the one `_ready` played went by under
+## it. Nothing when a board or a screen is up over the list.
+func rise() -> void:
+	if _list_root != null and _list_root.visible:
+		_enter()
+
 func _enter() -> void:
 	header.enter(ENTER_HEADER, ENTER_FADE)
 	day_row.enter(ENTER_DAY)
