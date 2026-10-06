@@ -239,6 +239,12 @@ func _spot() -> Vector2:
 			break
 	return pos
 
+## The wood this grove makes in a minute with nobody holding the land.
+## Nothing chops by itself yet, so there is none: the Valley tab shows a rate
+## of zero as "--". Automation, when it is built, answers here.
+func wood_per_min() -> float:
+	return 0.0
+
 ## One chop: everything standing in the circle takes the axe.
 func _chop(at: Vector2) -> void:
 	_last_chop = clock

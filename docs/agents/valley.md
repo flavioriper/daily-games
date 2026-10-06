@@ -150,6 +150,19 @@ shop's card are untouched.
 The tab's card takes the whole tab for the tall picture. **It is called the Grove and nothing else**: the game it
 follows is named once, in the spec.
 
+**The card says what the place makes** (the user, 2026-10-06: "show what the
+grove game has as outcome, for example wood, so user can understand it's
+meant to farm wood. Show a wood/min rate (gonna be -- till automation is
+enabled)"). Beside the card's name, on the right, a chip
+(`valley_tab.gd` `_makes_chip`): the log of the pill above, `GROVE_WOOD`,
+and a rate with `VALLEY_PER_MIN` ("/ min" in all three languages). The rate
+is `Sim.wood_per_min()`, **0.0 until something chops by itself, and a rate
+of none is written "--", never 0** (`_write_rate`; one decimal under ten a
+minute, `Art.short` over). Automation, when it is built, answers in that
+one function and the chip follows on the tab's next `refresh()`. A second
+place gets the same chip for what it makes. Four draw calls more on the tab
+(109 and 138 against 105 and 134, 810x1440). Not seen on a phone.
+
 - **The game is pure data** (`valley/grove_sim.gd`): land units on the
   ground, `step(dt, holding, at)`, `events` for the screen to drain, `buy`,
   and its own keeping (`save(now)`, `load_saved(now)`, `Sim.path`). It never

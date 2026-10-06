@@ -962,6 +962,7 @@ FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são
 BAR_VALLEY,Valley,Vale,Valle
 VALLEY_GROVE_BLURB,"Trees come up by themselves. Chop them for wood, and for the energy that makes the grove better.","As árvores nascem sozinhas. Corte-as para ter madeira e a energia que melhora o bosque.","Los árboles brotan solos. Tálalos para conseguir madera y la energía que mejora el bosque."
 VALLEY_FULL,The land is full,A terra está cheia,La tierra está llena
+VALLEY_PER_MIN,/ min,/ min,/ min
 GROVE_MOTTO,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
 GROVE_ENERGY,Energy,Energia,Energía
 GROVE_WOOD,Wood,Madeira,Madera

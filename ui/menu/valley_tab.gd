@@ -3,7 +3,8 @@ extends VBoxContainer
 ## The Valley tab: slow places that feed each other through one shared
 ## inventory (core/stock.gd), with no last level and no finish. Only the
 ## first is here, the Grove (valley/grove_screen.gd); the others are still
-## to be planned, so the tab holds one card and the wood. Its body takes the
+## to be planned, so the tab holds one card and the wood, and the card says
+## beside its name what the place makes and how much a minute. Its body takes the
 ## day row's and the grid's room, as Versus, Arcade, Stats and Streak do.
 ## Spec docs/superpowers/specs/2026-10-05-valley-grove-design.md, section 1.
 ##
@@ -27,6 +28,7 @@ const RADIUS := 36
 const PILL_H := 84.0
 const ART_H_MIN := 260.0
 const BAR_H := 22.0
+const CHIP_H := 52.0
 const FILL := Color("fcf7ef")
 ## The land keeps this much water round it on the card.
 const SHORE := 22.0
@@ -36,6 +38,7 @@ const SHORE_TOP := 96.0
 
 var _sim: RefCounted
 var _wood_l: Label
+var _rate: Label
 var _art: Control
 var _ground: ArrayMesh
 var _light: ArrayMesh
@@ -113,11 +116,16 @@ func _grove_card() -> Control:
 	# the land's own wind: only what stands on a foot of its own leans
 	_art.material = Art.wind()
 	col.add_child(_art)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", GAP)
+	col.add_child(head)
 	var name_l := Label.new()
 	name_l.text = "Grove"
 	name_l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	name_l.theme_type_variation = "CardName"
-	col.add_child(name_l)
+	name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(name_l)
+	head.add_child(_makes_chip())
 	_line = Label.new()
 	_line.text = "VALLEY_GROVE_BLURB"
 	_line.theme_type_variation = "CardBlurb"
@@ -147,11 +155,61 @@ func _grove_card() -> Control:
 	row.add_child(go)
 	return card
 
+## What the place makes, beside its name: the log of the pill above, the
+## word, and how much of it a minute comes in by itself (the user,
+## 2026-10-06: "show what the grove game has as outcome ... so user can
+## understand it's meant to farm wood. Show a wood/min rate"). Nothing chops
+## by itself yet, so the rate reads "--" (`_write_rate`).
+func _makes_chip() -> Control:
+	var chip := PanelContainer.new()
+	chip.name = "Makes"
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Pal.SURFACE_HI
+	sb.set_corner_radius_all(int(CHIP_H * 0.5))
+	sb.content_margin_left = 10
+	sb.content_margin_right = 22
+	chip.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	chip.add_child(row)
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(56, CHIP_H)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		icon.draw_mesh(Art.icon("wood"), null, Transform2D(-0.3, Vector2(0.6, 0.6), 0.0, icon.size * 0.5 + Vector2(4.0, 0.0))))
+	row.add_child(icon)
+	var what := Label.new()
+	what.text = "GROVE_WOOD"
+	what.theme_type_variation = "MenuKicker"
+	what.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(what)
+	var gap := Control.new()
+	gap.custom_minimum_size.x = 6
+	row.add_child(gap)
+	_rate = Label.new()
+	_rate.name = "Rate"
+	_rate.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_rate.theme_type_variation = "Badge"
+	_rate.add_theme_font_size_override("font_size", 30)
+	_rate.add_theme_color_override("font_color", Pal.TEXT)
+	_rate.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_rate)
+	var per := Label.new()
+	per.text = "VALLEY_PER_MIN"
+	per.theme_type_variation = "CardBlurb"
+	per.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(per)
+	_write_rate()
+	return chip
+
 ## Called as the tab is shown: the grove as it stands now.
 func refresh() -> void:
 	_sim = Sim.load_saved(Time.get_unix_time_from_system())
 	_write_wood()
 	_write_count()
+	_write_rate()
 	_art.queue_redraw()
 
 func _on_play() -> void:
@@ -174,6 +232,17 @@ func _process(delta: float) -> void:
 func _write_wood() -> void:
 	if _wood_l != null:
 		_wood_l.text = Art.short(Stock.count("wood"))
+
+## A rate of none is "--", not 0: there is nothing to count until something
+## chops by itself. Under ten a minute it keeps one decimal.
+func _write_rate() -> void:
+	var rate: float = 0.0 if _sim == null else _sim.wood_per_min()
+	if rate <= 0.0:
+		_rate.text = "--"
+	elif rate < 10.0:
+		_rate.text = ("%.1f" % rate).trim_suffix(".0")
+	else:
+		_rate.text = Art.short(roundi(rate))
 
 func _write_count() -> void:
 	if _sim == null:
