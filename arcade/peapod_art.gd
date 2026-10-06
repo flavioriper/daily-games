@@ -699,6 +699,223 @@ static func blank(round: bool, u: float) -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5, -h * 0.5), Vector2(w, h), ROUND * u), Color.WHITE)
 	return _keep(key, b.mesh())
 
+## How worn a crate or a plate with `hp` left of `most` is, 0 (whole) to
+## WORN (about to break): the cracks it shows.
+const WORN := 3
+static func worn(hp: int, most: int) -> int:
+	if hp >= most or most <= 1:
+		return 0
+	var left := float(hp) / most
+	return 3 if left <= 0.25 else (2 if left <= 0.5 else (1 if left <= 0.8 else 0))
+
+## Whether `p` (field units, a piece's own middle the origin) is on the face
+## of a crate (its round corners kept) or, `round`, of a plate.
+static func _on_face(p: Vector2, round: bool) -> bool:
+	if round:
+		return p.distance_to(Vector2(0, -Sim.SEG_R * 0.09)) < Sim.SEG_R * 0.9
+	var half := Vector2((Sim.CELL_W - 3.0) * 0.5 - 0.6, (Sim.CELL_H - 3.0 - LIP) * 0.5 - 0.5)
+	var q := (p - Vector2(0, -LIP * 0.5)).abs() - half + Vector2(ROUND, ROUND)
+	return Vector2(maxf(q.x, 0.0), maxf(q.y, 0.0)).length() + minf(maxf(q.x, q.y), 0.0) - ROUND < 0.0
+
+## `pts` as far as `part` of its length.
+static func _cut(pts: PackedVector2Array, part: float) -> PackedVector2Array:
+	if part >= 1.0 or pts.size() < 2:
+		return pts
+	var whole := 0.0
+	for i in pts.size() - 1:
+		whole += pts[i].distance_to(pts[i + 1])
+	var left := whole * part
+	var out := PackedVector2Array([pts[0]])
+	for i in pts.size() - 1:
+		var seg := pts[i].distance_to(pts[i + 1])
+		if seg >= left:
+			out.append(pts[i].lerp(pts[i + 1], left / maxf(seg, 0.001)))
+			break
+		out.append(pts[i + 1])
+		left -= seg
+	return out
+
+## A line through `pts` (pixels) that thins from `w0` wide to `w1` at its
+## tip, soft-edged, laid into a builder: one run of triangles, so nothing
+## laps and beads where it bends.
+static func _ribbon(b: Face.Builder, pts: PackedVector2Array, w0: float, w1: float, col: Color) -> void:
+	var n := pts.size()
+	if n < 2:
+		return
+	var clear := Color(col, 0.0)
+	var base := b.verts.size()
+	for i in n:
+		var t := (pts[mini(i + 1, n - 1)] - pts[maxi(i - 1, 0)]).normalized()
+		var nrm := Vector2(-t.y, t.x)
+		var half := lerpf(w0, w1, float(i) / (n - 1)) * 0.5
+		b.vertex(pts[i] - nrm * (half + 0.7), clear)
+		b.vertex(pts[i] - nrm * half, col)
+		b.vertex(pts[i] + nrm * half, col)
+		b.vertex(pts[i] + nrm * (half + 0.7), clear)
+	for i in n - 1:
+		var p := base + i * 4
+		var q := p + 4
+		for k in 3:
+			b.tri(p + k, q + k, q + k + 1)
+			b.tri(p + k, q + k + 1, p + k + 1)
+
+## A crack through `pts` (field units) into a builder at `u`: a pale edge
+## under a dark hairline, so it is a split in the thing and not a line drawn
+## on it, and reads on any paint (the dark on a pale one, the pale on a dark
+## one). `wide` at its start, a hair at its tip.
+static func _crack_line(b: Face.Builder, pts: PackedVector2Array, u: float, wide: float) -> void:
+	var at := PackedVector2Array()
+	var lit := PackedVector2Array()
+	for p in pts:
+		at.append(p * u)
+		lit.append(p * u + Vector2(0.45, 0.6) * u)
+	_ribbon(b, lit, wide * u, 0.3 * u, Color(1, 1, 1, 0.34))
+	_ribbon(b, at, wide * u, 0.22 * u, Color(INK, 0.66))
+
+## The break in a crate's face (or, `round`, a plate's), centred like it:
+## where it was struck, a little pit, and hairline cracks running out from
+## it to the edges, straight for a way and then kinked, each its own
+## length. `stage` (1..WORN) is how far it has gone: two short cracks; then
+## four, longer, one forking, and a shard between two of them sunk a shade;
+## then every one out to the edge, forked, joined across into shards (some
+## sunk, some lifted to the light), with a bite out of the edge where a
+## crack ends on it. A later stage only adds to an earlier one, so a
+## crate's cracks grow and never jump. `look` is one of CRACK_LOOKS breaks,
+## none like another: where it was struck, how many cracks, which way and
+## how far each goes are all thrown for it.
+const CRACK_LOOKS := 6
+static func cracks(round: bool, look: int, stage: int, u: float) -> ArrayMesh:
+	var key := _key("cr%d" % int(round), look, stage, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7919 * (look + 1) + (31 if round else 0)
+	stage = clampi(stage, 1, WORN)
+	var mid := Vector2(0, -Sim.SEG_R * 0.09) if round else Vector2(0, -LIP * 0.5)
+	var span := Vector2(Sim.SEG_R, Sim.SEG_R) * 0.5 if round else Vector2(Sim.CELL_W * 0.36, Sim.CELL_H * 0.27)
+	# where it was struck: off the middle, clear of most of its number
+	var hit := mid + Vector2(rng.randf_range(0.45, 1.0) * (1.0 if rng.randf() < 0.5 else -1.0), rng.randf_range(-1.0, 1.0)) * span
+	var stride := 0.6 if round else 1.0
+	var n := 5 + rng.randi() % 3
+	var turn := rng.randf() * TAU
+	var lines: Array = []
+	var reached: Array = []
+	for k in n:
+		var out := turn + TAU * k / n + rng.randf_range(-0.4, 0.4)
+		var way := Vector2.from_angle(out)
+		var pts := PackedVector2Array([hit])
+		var at_edge := false
+		for i in 12:
+			# straight for a way, and now and then a sharp kink
+			var bend := rng.randf_range(-0.22, 0.22)
+			if rng.randf() < 0.35:
+				bend = rng.randf_range(0.55, 1.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+			way = (way.rotated(bend) * 0.74 + Vector2.from_angle(out) * 0.26).normalized()
+			var from := pts[pts.size() - 1]
+			var to := from + way * rng.randf_range(3.5, 9.0) * stride
+			if not _on_face(to, round):
+				# as far as the edge, and no further
+				var lo := 0.0
+				var hi := 1.0
+				for step in 7:
+					var m := (lo + hi) * 0.5
+					if _on_face(from.lerp(to, m), round):
+						lo = m
+					else:
+						hi = m
+				pts.append(from.lerp(to, lo))
+				at_edge = true
+				break
+			pts.append(to)
+		lines.append(pts)
+		reached.append(at_edge)
+	# the order they open in, and how far each has got at the first stages
+	var order: Array = range(n)
+	for i in range(n - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var held: int = order[i]
+		order[i] = order[j]
+		order[j] = held
+	var open: int = [2, 4, n][stage - 1]
+	var wide: float = [0.95, 1.1, 1.25][stage - 1]
+	var shown: Array = []
+	shown.resize(n)
+	for q in n:
+		var k: int = order[q]
+		var grown := rng.randf_range(0.35, 0.55)
+		var part := 0.0
+		if q < open:
+			part = 1.0 if stage == WORN else (grown if stage == 1 or q >= 2 else minf(1.0, grown + 0.45))
+		shown[k] = _cut(lines[k], part) if part > 0.0 else PackedVector2Array()
+	# a shard between two cracks side by side, sunk a shade or lifted to the light
+	var tints := [Color(INK, 0.1), Color(1, 1, 1, 0.16), Color(INK, 0.07)]
+	var shards := 0
+	for k in n:
+		var here: PackedVector2Array = shown[k]
+		var next: PackedVector2Array = shown[(k + 1) % n]
+		var want := rng.randf() < 0.55
+		if not want or here.size() < 2 or next.size() < 2 or shards >= [0, 1, 3][stage - 1]:
+			continue
+		var edge := PackedVector2Array()
+		for p in here:
+			edge.append(p * u)
+		for i in range(next.size() - 1, 0, -1):
+			edge.append(next[i] * u)
+		if Geometry2D.triangulate_polygon(edge).is_empty():
+			continue
+		b.polygon(edge, tints[shards % tints.size()])
+		shards += 1
+	for q in mini(open, n):
+		var k: int = order[q]
+		var pts: PackedVector2Array = shown[k]
+		var fork_at := rng.randi_range(1, 3)
+		var fork_turn := rng.randf_range(0.6, 1.1) * (1.0 if rng.randf() < 0.5 else -1.0)
+		var fork_long := rng.randf_range(4.0, 8.0) * stride
+		var kink := rng.randf_range(-0.7, 0.7)
+		_crack_line(b, pts, u, wide)
+		# a fork off it, once it has grown past where the fork leaves
+		if stage >= 2 and (stage == WORN or q == 0) and fork_at < pts.size() - 1:
+			var from := pts[fork_at]
+			var way := (pts[fork_at] - pts[fork_at - 1]).normalized().rotated(fork_turn)
+			var bend := from + way * fork_long * 0.6
+			var tip := bend + way.rotated(kink) * fork_long * 0.4
+			if _on_face(bend, round) and _on_face(tip, round):
+				_crack_line(b, PackedVector2Array([from, bend, tip]), u, wide * 0.6)
+	if stage == WORN:
+		# joined across, from one crack to the next round
+		for k in n:
+			var a: PackedVector2Array = lines[k]
+			var c: PackedVector2Array = lines[(k + 1) % n]
+			var keep := rng.randf() < 0.5
+			# near where it was struck, as a struck thing rings: never a long
+			# line from one far end to another
+			var ia := rng.randi_range(1, clampi(a.size() - 1, 1, 2))
+			var ic := rng.randi_range(1, clampi(c.size() - 1, 1, 2))
+			if not keep or a[ia].distance_to(c[ic]) > 15.0 * stride:
+				continue
+			_crack_line(b, PackedVector2Array([a[ia], c[ic]]), u, 0.6)
+		# a bite out of the edge where a crack ends on it
+		var bites := 0
+		for k in n:
+			if not reached[k] or bites >= 2:
+				continue
+			var pts: PackedVector2Array = lines[k]
+			var end := pts[pts.size() - 1]
+			var back := (pts[pts.size() - 2] - end).normalized()
+			var side := back.orthogonal()
+			var wide_b := rng.randf_range(1.6, 2.6) * stride
+			var deep := rng.randf_range(1.6, 2.6) * stride
+			b.polygon(PackedVector2Array([(end + side * wide_b) * u, (end + back * deep + side * 0.3) * u, (end - side * wide_b * 0.8) * u]), Color(INK, 0.45))
+			bites += 1
+	# the pit where it was struck, ragged and bigger each time
+	var pit := PackedVector2Array()
+	var r: float = [0.7, 1.0, 1.4][stage - 1] * (0.8 if round else 1.0)
+	for k in 6:
+		pit.append((hit + Vector2.from_angle(TAU * k / 6.0 + rng.randf_range(-0.3, 0.3)) * r * rng.randf_range(0.6, 1.25)) * u)
+	b.polygon(pit, Color(INK, 0.6))
+	return _keep(key, b.mesh())
+
 ## A flower a cleared wave leaves on the grass, its foot on the origin: a
 ## stem with a leaf, five petals round an eye. `look` picks BLOOM's colours.
 static func flower(look: int, u: float) -> ArrayMesh:

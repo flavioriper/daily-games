@@ -693,6 +693,39 @@ chalk line ends the run. Its "furthest" is the wave.
     reaches a few rows further up through an empty column; the bots and the
     tutorial run with `sky` 0, as before.
 
+  - **The rack is on the left** (the user, 2026-10-06: "move the powerups to
+    left side (users use thumb to play so it stays above powerup at right
+    side)"). What the bullets above say of the right side is history:
+    `_fit` puts the strip left of the garden, `_rack_x()` is `-RACK_W / 2`,
+    a button's pip is at its right corner, and a press is the rack's from
+    the card's left edge to `RACK_REACH` into the garden. The millipede
+    still comes in from x = -26, which is the strip now: it shows over the
+    top of it, above the highest button. On a tutorial page the rack stands
+    over the garden's left (the two gift pages were laid the other way
+    round for it) and the gun's line begins past it (`_gun_from`).
+  - **A crate cracks as it is worn down** (the same message: "some cracks as
+    user hit crates and they about to break"), `Art.worn` and `Art.cracks`,
+    drawn with the blinks, over the piece and under its number. Three
+    stages by what is left of what it began as (0.8, 0.5, 0.25): two short
+    cracks from where it was struck; four, longer, one forking, a shard
+    between two sunk a shade; every one out to the edge, joined near the
+    strike, shards sunk and lifted, a bite out of the edge, and the crate
+    trembling. A hit that cracks it further knocks chips off (`_chip`; the
+    `hit` event says `max`). **The first try was hated** ("look too fake,
+    make something more random, a more break look"): three cracks from fixed
+    sides of the edge, each four even steps of round-capped strokes. What
+    read as a break: a point it was struck at with cracks out every way,
+    their number, turn and length all thrown (`CRACK_LOOKS` six, each
+    turned round for every other id); **hairlines that run straight and
+    then kink** (even wiggles were worms); one ribbon a crack, thinning to
+    its tip (`_ribbon`: strokes laid end to end beaded at every joint); a
+    pale edge under the dark line; and shards shaded, which says pieces
+    more than any line does. Ink and paper only, never a shade of the paint.
+    Plates crack too; the head does not. 77 draw calls at rest, 143 at
+    worst on the perf harness, 197 on the shot harness's cast with most of
+    the wall cracked; both drivers and reduce motion; suite 249790/0; the
+    two gift pages of the tutorial shot. **Not on a phone.**
+
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
 pages played by a quiet subclass of the screen over a hand-laid sim

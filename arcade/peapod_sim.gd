@@ -751,7 +751,7 @@ func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := 
 		dmg = 1
 	cell.hp = int(cell.hp) - dmg
 	var quiet := how == Hit.SIDE or how == Hit.BURN
-	events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": maxi(0, cell.hp), "quiet": quiet,
+	events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": maxi(0, cell.hp), "max": cell.max, "quiet": quiet,
 		"dmg": dmg, "crit": lucky, "how": how})
 	if cell.hp > 0:
 		return
@@ -774,7 +774,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false) ->
 		dmg = 1
 	sg.hp = int(sg.hp) - dmg
 	var quiet := how == Hit.SIDE or how == Hit.BURN
-	events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": maxi(0, sg.hp), "quiet": quiet,
+	events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": maxi(0, sg.hp), "max": sg.max, "quiet": quiet,
 		"dmg": dmg, "crit": lucky, "how": how})
 	if sg.hp > 0:
 		return

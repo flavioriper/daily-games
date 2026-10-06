@@ -25,7 +25,8 @@ extends Control
 ## the chute behind them and the rings beside them went with the eighth.)
 ##
 ## The eighth pass (2026-10-05): the line of gifts is gone. All seven gifts
-## stand from the start on a rack down the garden's right side, one under
+## stand from the start on a rack down the garden's left side (the right
+## was tried first: the thumb that slides the cart rests there, over it), one under
 ## another, each with how many are had lettered on a pip (none at first); a
 ## gift crate's gift flies to its own button, a press starts one (the keys 1
 ## to 7), and what is running runs down round its own button's rim. The
@@ -128,7 +129,7 @@ const ROUND := 22.0
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
 const GOT := {Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.ZAP: "PP_GOT_ZAP",
 	Sim.Kind.FLAME: "PP_GOT_FLAME", Sim.Kind.FROST: "PP_GOT_FROST", Sim.Kind.SHOVE: "PP_GOT_SHOVE"}
-## The gifts' rack down the garden's right side: the strip it stands in
+## The gifts' rack down the garden's left side: the strip it stands in
 ## (the garden is fitted beside it), a seat's size, the step from one button
 ## down to the next, how far up from the field's foot the lowest is, how far
 ## into the garden a press is still the rack's, and how long a press and a
@@ -282,8 +283,10 @@ var _touch := -1
 var _mouse := false
 var _touch_from := Vector2.ZERO
 var _cart_from := 0.0
-## When each crate or plate last took a pea, by its id, for the flash.
+## When each crate or plate last took a pea, by its id, for the flash, and
+## how cracked each was at its last hit (`Art.worn`), for the chips.
 var _hit_at := {}
+var _worn_of := {}
 ## Sparks where a pea lands: {pos, t, col}.
 var _sparks: Array = []
 ## Numbers rising off a crate gone: {pos, text, t, col, big}.
@@ -605,14 +608,14 @@ func _layout_field() -> void:
 
 ## The field's unit and origin in a room `s` (a tutorial page stands a slice
 ## of the garden in its own: ui/hud/peapod_tutorial_diagram.gd).
-## The garden stands beside the gifts' rack, which has the strip on its right.
+## The garden stands beside the gifts' rack, which has the strip on its left.
 func _fit(s: Vector2) -> void:
 	var wide := Sim.W + RACK_W
 	_u = minf(s.x / wide, s.y / Sim.H)
-	_origin = Vector2((s.x - wide * _u) * 0.5, s.y - Sim.H * _u)
+	_origin = Vector2((s.x - wide * _u) * 0.5 + RACK_W * _u, s.y - Sim.H * _u)
 
 ## The garden's middle, `part` of the way down the field: where what is
-## lettered over the garden stands (the rack is off to its right).
+## lettered over the garden stands (the rack is off to its left).
 func _mid(part: float) -> Vector2:
 	return Vector2(px(Vector2(Sim.W * 0.5, 0)).x, field.size.y * part)
 
@@ -647,6 +650,7 @@ func _new_game() -> void:
 	_touch = -1
 	_mouse = false
 	_hit_at.clear()
+	_worn_of.clear()
 	_sparks.clear()
 	_pops.clear()
 	_shot_at = -10.0
@@ -786,6 +790,7 @@ func _animate(delta: float) -> void:
 	_step_orbs(delta)
 	if _hit_at.size() > 240:
 		_hit_at.clear()
+		_worn_of.clear()
 	# the wheels turn as far as the cart rolled, and it leans into the roll
 	var moved: float = sim.x - _last_x
 	_last_x = sim.x
@@ -1028,9 +1033,10 @@ func _clear_rack() -> void:
 func _rack_on() -> bool:
 	return true
 
-## The middle of the rack's strip, in field units: right of the garden.
+## The middle of the rack's strip, in field units: left of the garden, away
+## from the thumb that slides the cart.
 func _rack_x() -> float:
-	return Sim.W + RACK_W * 0.5
+	return -RACK_W * 0.5
 
 ## Where gift `kind`'s button is: the seven one under another, the Fan at
 ## the top and the shove at the foot, nearest the thumb.
@@ -1044,7 +1050,7 @@ func _rack_hit(at: Vector2) -> int:
 	if sim == null or not _rack_on():
 		return -1
 	var top := _rack_px(Sim.Kind.FAN).y - RACK_STEP * 0.5 * _u
-	if at.x < px(Vector2(_rack_x() - RACK_W * 0.5 - RACK_REACH, 0)).x or at.y < top:
+	if at.x > px(Vector2(_rack_x() + RACK_W * 0.5 + RACK_REACH, 0)).x or at.y < top:
 		return -1
 	return Sim.Kind.FAN + clampi(int((at.y - top) / (RACK_STEP * _u)), 0, Sim.GIFTS - 1)
 
@@ -1097,7 +1103,7 @@ func _counted(kind: int) -> int:
 	return maxi(0, n)
 
 ## The rack's strip, built with the land: a pale paper shelf down the
-## garden's right side, from over the highest button to the field's foot.
+## garden's left side, from over the highest button to the field's foot.
 func _build_rail(b: Face.Builder) -> void:
 	if not _rack_on():
 		return
@@ -1145,7 +1151,7 @@ func _draw_rack_tokens() -> void:
 ## Where button `k`'s count is lettered: on a pip at its corner, the
 ## garden's side.
 func _pip_px(kind: int) -> Vector2:
-	return _rack_px(kind) + _rack_shift(kind - Sim.Kind.FAN) + Vector2(-8.2, 8.0) * _u
+	return _rack_px(kind) + _rack_shift(kind - Sim.Kind.FAN) + Vector2(8.2, 8.0) * _u
 
 ## The pips, over the gifts: a draw of their own, every frame.
 func _draw_rack_pips() -> void:
@@ -1249,6 +1255,7 @@ func _play_events() -> void:
 			"hit":
 				_hit_at[ev.id] = _clock
 				_number(ev)
+				_chip(ev)
 				# the pea that breaks a thing is heard and seen as the break
 				if not ev.quiet and int(ev.hp) > 0:
 					_spark(pos, Art.colour(ev.kind, 1).lerp(Color("fffaf0"), 0.6) if Sim.holds_gift(ev.kind) else Color("fffaf0"))
@@ -1418,6 +1425,17 @@ func _number(ev: Dictionary) -> void:
 	var from: Vector2 = ev.pos + (Vector2(0, 8.0) if how == Sim.Hit.PEA else Vector2(15.0, -11.0))
 	_nums.append({"pos": from, "text": Art.short(int(ev.dmg)) + ("!" if lucky else ""), "t": 0.0, "look": 4 if lucky else how,
 		"big": 2 if lucky else (1 if how == Sim.Hit.PEA else 0), "vx": randf_range(-34.0, 34.0), "fall": how == Sim.Hit.PEA})
+
+## A hit that cracks a thing further (`Art.worn`) knocks chips of its paint
+## off it, more of them the nearer it is to breaking.
+func _chip(ev: Dictionary) -> void:
+	var worn := Art.worn(int(ev.hp), int(ev.max))
+	if int(ev.hp) <= 0 or worn <= int(_worn_of.get(ev.id, 0)):
+		return
+	_worn_of[ev.id] = worn
+	var col := Art.colour(ev.kind, int(ev.hp))
+	_rw.spray(_in_rw(ev.pos), col, 1 + worn, 300.0, "shard", 0.6 * _u / 2.4)
+	_rw.spray(_in_rw(ev.pos), col.lerp(Color("fffaf0"), 0.6), worn, 240.0, "mote", 0.6)
 
 ## The pea itself, knocked off what it hit and tumbling down.
 func _crumb(at: Vector2) -> void:
@@ -1888,9 +1906,17 @@ func _draw_ghosts() -> void:
 		var col: Color = g.col
 		_cast_add(Art.blank(g.round, _u), Transform2D(0.0, Vector2(sc, sc), 0.0, px(g.pos)), Color(col, 0.7 * (1.0 - k)))
 
-## The white blink over each piece a pea just landed on (`lit`: [where it
-## is drawn, how fresh the knock is]).
-func _draw_blinks(lit: Array, round: bool) -> void:
+## Over the pieces and under their numbers: the break in each one worn
+## down (`cracked`: [where it is drawn, how worn 1..Art.WORN, its id]) --
+## one of Art.CRACK_LOOKS breaks by its id, turned the other way round for
+## every other, in ink with a pale edge, never a shade of its paint -- and
+## the white blink over each a pea just landed on (`lit`: [where it is
+## drawn, how fresh the knock is]).
+func _draw_blinks(lit: Array, round: bool, cracked: Array = []) -> void:
+	for c: Array in cracked:
+		var id: int = c[2]
+		var flip := Transform2D(0.0, Vector2(-1.0 if int(id / float(Art.CRACK_LOOKS)) % 2 == 1 else 1.0, 1.0), 0.0, Vector2.ZERO)
+		_cast_add(Art.cracks(round, id % Art.CRACK_LOOKS, int(c[1]), _u), (c[0] as Transform2D) * flip, Color.WHITE)
 	var blank := Art.blank(round, _u)
 	for l: Array in lit:
 		_cast_add(blank, l[0], Color(1, 1, 1, 0.55 * float(l[1])))
@@ -1913,6 +1939,7 @@ func _letter(font: Font, numbered: Array, s: float) -> void:
 func _draw_wall(font: Font) -> void:
 	var numbered: Array = []
 	var lit: Array = []
+	var cracked: Array = []
 	var alight: Array = []
 	for r in sim.rows.size():
 		var row: Array = sim.rows[r]
@@ -1927,25 +1954,32 @@ func _draw_wall(font: Font) -> void:
 			var kind: int = cell.kind
 			var tier := Art.tier_of(cell.hp) if kind == Sim.Kind.CRATE else 0
 			var xf := Transform2D(0.0, kn[0], 0.0, px(at))
+			var worn := Art.worn(cell.hp, cell.max)
 			if float(cell.burn_t) > 0.0:
 				alight.append([at + Vector2(Sim.CELL_W * 0.5 - 11.0, -Sim.CELL_H * 0.5 + 11.0), cell.id])
 			if Sim.holds_gift(kind) and not Motion.reduce:
 				# a parcel sways and breathes, to be noticed
 				var ph: float = _clock * 3.2 + c * 1.7 + r
 				xf = Transform2D(sin(ph) * 0.04, kn[0] * (1.0 + 0.025 * sin(ph * 1.3)), 0.0, px(at))
+			elif worn == Art.WORN and not Motion.reduce:
+				# one about to break trembles
+				xf = Transform2D(sin(_clock * 34.0 + float(cell.id)) * 0.014, kn[0], 0.0, px(at))
 			_cast_add(Art.crate(kind, tier, _u), xf, Color.WHITE)
+			if worn > 0:
+				cracked.append([xf, worn, cell.id])
 			if float(kn[1]) > 0.0:
 				lit.append([xf, kn[1]])
 			if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
 				numbered.append([at + Vector2(0, -Art.LIP * 0.5), cell.hp, kind, kn[1]])
 	_cast_draw()
-	_draw_blinks(lit, false)
+	_draw_blinks(lit, false, cracked)
 	_letter(font, numbered, (Sim.CELL_H - 3.0) * _u)
 	_draw_fires(alight)
 
 func _draw_milli(font: Font, top: Face.Builder) -> void:
 	var numbered: Array = []
 	var lit: Array = []
+	var cracked: Array = []
 	var alight: Array = []
 	var head_at: Array = []
 	# tail first, so each plate laps the one behind it and the head laps all
@@ -1994,6 +2028,9 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 		var tier := Art.tier_of(sg.hp) if kind == Sim.Kind.CRATE else 0
 		var xf := Transform2D(waddle, sc, 0.0, px(at + jitter))
 		_cast_add(Art.plate(kind, tier, _u), xf, Color.WHITE)
+		var worn := Art.worn(sg.hp, sg.max)
+		if worn > 0:
+			cracked.append([xf, worn, sg.id])
 		if float(kn[1]) > 0.0:
 			lit.append([xf, kn[1]])
 		if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
@@ -2001,7 +2038,7 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 	_cast_draw()
 	if not head_at.is_empty():
 		_over.draw_mesh(head_at[0], null, head_at[1])
-	_draw_blinks(lit, true)
+	_draw_blinks(lit, true, cracked)
 	_letter(font, numbered, Sim.SEG_R * 1.7 * _u)
 	_draw_fires(alight)
 
@@ -2170,7 +2207,12 @@ func _draw_cart(x: float, helper: bool) -> void:
 ## The gun's line on the grass: a paper pill each for the pea's weight, the
 ## rate and the crit, a medallion on it and its number beside that.
 func _gun_chip(k: int) -> Vector2:
-	return px(Vector2(18.0 + 52.0 * k, Sim.H - 13.0))
+	return px(Vector2(_gun_from() + 52.0 * k, Sim.H - 13.0))
+
+## Where the gun's line begins, in field units (a tutorial page's rack
+## stands over the garden's left, and the line begins past it).
+func _gun_from() -> float:
+	return 18.0
 
 func _build_chips() -> ArrayMesh:
 	var b := Face.Builder.new()

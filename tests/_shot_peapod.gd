@@ -15,7 +15,7 @@ extends SceneTree
 ## the cart alone), 3h the pod wearing it, 4 the whole cast in a wall
 ## (forced: every paint, every gift and pod, the firecracker, the golden and
 ## iron crates, three peas a volley in a fan of lightning under the frost,
-## crates alight, a crit's number), 4b four peas a volley under all three
+## crates alight and crates broken to each stage, a crit's number), 4b four peas a volley under all three
 ## shapes and the flame, 5 a real slide through the viewport
 ## (printed: whether the cart rolled), 6 the millipede, 7 the line neared,
 ## 8 the end card. Prints the draw calls at each shot. The end writes a
@@ -277,6 +277,11 @@ func _process(delta: float) -> bool:
 			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.BOMB, 9), _cell(Sim.Kind.GOLD, 4)])
 			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.ZAP, 3), _cell(Sim.Kind.FLAME, 3)])
 			sim.rows.append([_cell(Sim.Kind.FROST, 3), _cell(Sim.Kind.SHOVE, 3), null, null, null])
+			# most of them worn down, to every stage of the break: what each began as
+			var began := [[2, 20, 12, 60, 34], [200, 110, 800, 300, 2500], [1100, 7000, 5000, 9000, 14000], [400, 60, 1, 9, 5]]
+			for r in began.size():
+				for c in Sim.COLS:
+					sim.rows[r][c].max = began[r][c]
 			for c in [0, 3]:
 				sim.rows[1][c].burn_t = 30.0
 				sim.rows[1][c].burn_c = 0.3

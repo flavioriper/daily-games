@@ -105,7 +105,7 @@ class Garden extends "res://arcade/peapod_screen.gd":
 	var _still := false
 	## Whether the page's garden has the gifts' rack: only a page with a gift
 	## on it. A slice has no strip to spare, so the rack stands over the
-	## garden's right side, which such a page keeps clear.
+	## garden's left side, which such a page keeps clear.
 	var rack := false
 
 	## The rewards with only the lettering a slice has room for, smaller.
@@ -156,7 +156,10 @@ class Garden extends "res://arcade/peapod_screen.gd":
 		return rack
 
 	func _rack_x() -> float:
-		return Sim.W - RACK_W * 0.5
+		return RACK_W * 0.5
+
+	func _gun_from() -> float:
+		return 18.0 + (RACK_W if rack else 0.0)
 
 	## A hand-made run: `s` is the sim, already in play.
 	func lay(s: RefCounted) -> void:
@@ -457,22 +460,23 @@ static func plan(which: int, turn: int) -> Dictionary:
 		Lesson.GIFTS:
 			var a := gift_a(turn)
 			var b := gift_b(turn)
-			return {"x": 30.0, "up": 8.6, "length": 9.0, "still": 1.6,
+			return {"x": 270.0, "up": 8.6, "length": 9.0, "still": 1.6,
 				"says": [[0.0, _gift_word(a)], [4.0, _gift_word(b)]],
-				"keys": [[0.6, 30.0], [3.3, 30.0], [4.1, 150.0], [8.6, 150.0]],
+				"keys": [[0.6, 270.0], [3.3, 270.0], [4.1, 150.0], [8.6, 150.0]],
 				"taps": [[2.2, a], [6.2, b]],
 				"lay": func(sim: RefCounted) -> void:
-					_wall(sim, [[[a, 2], null, [b, 2], null, null], [null, 5, null, 6, null]], 262.0, 5.0)}
+					# the left of the garden is the rack's on a page
+					_wall(sim, [[null, null, [b, 2], null, [a, 2]], [null, 6, null, 5, null]], 262.0, 5.0)}
 		Lesson.PODS:
 			var shape := shape_of(turn)
 			var element := element_of(turn)
-			return {"x": 90.0, "up": 9.0, "length": 9.4, "still": 6.4,
+			return {"x": 210.0, "up": 9.0, "length": 9.4, "still": 6.4,
 				"says": [[0.0, _gift_word(shape)], [3.4, _gift_word(element)]],
-				"keys": [[0.6, 90.0], [2.9, 90.0], [3.6, 150.0], [5.6, 150.0], [6.2, 120.0], [7.4, 120.0], [8.0, 180.0], [9.0, 180.0]],
+				"keys": [[0.6, 210.0], [2.9, 210.0], [3.6, 150.0], [5.6, 150.0], [6.2, 180.0], [7.4, 180.0], [8.0, 120.0], [9.0, 120.0]],
 				"taps": [[1.7, shape], [4.9, element]],
 				"lay": func(sim: RefCounted) -> void:
-					# the right of the garden is the rack's on a page
-					_wall(sim, [[null, [shape, 1], [element, 1], null, null], [9, 12, 12, 12, null], [14, 14, 14, 14, null]], 262.0, 5.0)}
+					# the left of the garden is the rack's on a page
+					_wall(sim, [[null, null, [element, 1], [shape, 1], null], [null, 12, 12, 12, 9], [null, 14, 14, 14, 14]], 262.0, 5.0)}
 		Lesson.SPECIAL:
 			return {"x": 210.0, "up": 6.4, "length": 7.0, "still": 3.0,
 				"says": [[0.0, {"icon": ["crate", K.GOLD], "title": _t("TUT_PEAPOD_S_GOLD"), "line": _t("TUT_PEAPOD_S_GOLD_LINE") % Sim.GOLD_WORTH}],
