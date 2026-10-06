@@ -240,6 +240,16 @@ place gets the same chip for what it makes. Four draw calls more on the tab
   spec's section 4.
 - **Every tree starts at 4** (`Sim.HP`; the user: "each tree start as 4hp").
   Axe and Seeds have no last level; Reach, Swing, Sprout and Room stop.
+- **A level of the Axe adds half a point** (`Sim.AXE_STEP` 0.5, 2026-10-06;
+  it added one, and the user: "it's too fast at start going from 1 -> 2,
+  let's do 1 -> 1.5"). `power()` is a float and so is a tree's `hp` after a
+  chop (the file keeps it as one; a grove kept with whole numbers reads the
+  same). **A chop's figure goes through `Art.amount`** (1, 1.5, 31.5, then
+  `Art.short` past a thousand), with a comma in pt and es: the hit numbers
+  and the Axe tile's line (`GROVE_FX_AXE` takes two `%s`). Its price is
+  unchanged. The pace bot reads within half a percent before and after
+  (Pine one day later for the ten-minute player): its grove waits on trees
+  coming up, not on the axe (the spec's section 4).
 - **Away is worked out, never run**: `load_saved` adds the trees that came
   up since `seen`, up to the room. The tab keeps its own sim from the file
   and steps it for the card's picture; **Play saves that sim first**, so the

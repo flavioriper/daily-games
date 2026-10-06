@@ -170,7 +170,7 @@ func _advance(delta: float) -> void:
 		for e: Dictionary in _sim.events:
 			if e.kind == "hit":
 				_life.hit(e.tree)
-				_nums.append({"at": Art.see(e.tree.pos) + Vector2(0.0, -Art.height(0) * 0.9 * Art.TREE), "text": str(e.amount), "t": 0.0})
+				_nums.append({"at": Art.see(e.tree.pos) + Vector2(0.0, -Art.height(0) * 0.9 * Art.TREE), "text": Art.amount(float(e.amount)), "t": 0.0})
 			elif e.kind == "fell":
 				_fell_at = _t
 				_life.fell(e.tree, int(e.give))
@@ -214,7 +214,7 @@ func _draw_stand() -> void:
 		return
 	_life.draw(_stand, _sim)
 	for tree: Dictionary in _sim.trees:
-		if int(tree.hp) < Sim.hp_of(0):
+		if float(tree.hp) < Sim.hp_of(0):
 			var w := 54.0 * _u
 			var bar := Rect2(_px(tree.pos) + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))
 			_stand.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))

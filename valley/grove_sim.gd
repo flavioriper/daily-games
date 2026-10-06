@@ -56,6 +56,11 @@ const TILE := {
 ## tree start as 4hp"). Every tier after: HP_STEP times the chops, GIVE_STEP
 ## times the yield.
 const HP := 4.0
+## What a level of the Axe adds to a chop. It was a whole one, so the first
+## level halved the work at a stroke (the user, 2026-10-06: "it's too fast at
+## start going from 1 -> 2, let's do 1 -> 1.5"). A tree's hp is a fraction
+## from then on: a sapling takes three chops of 1.5, the last finding 1 left.
+const AXE_STEP := 0.5
 const HP_STEP := 2.6
 const GIVE_STEP := 2.0
 ## The circle's radius, the seconds between chops, the seconds between
@@ -91,7 +96,8 @@ const KEPT_ON := 3
 
 var lv := {"axe": 0, "reach": 0, "swing": 0, "sprout": 0, "room": 0, "seeds": 0}
 var energy := 0
-## Trees standing: {id, tier, pos, hp, born} with `born` on this sim's clock.
+## Trees standing: {id, tier, pos, hp, born} with `born` on this sim's clock;
+## `hp` is whole on a new tree and may be a half after a chop.
 var trees: Array[Dictionary] = []
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
@@ -126,8 +132,9 @@ static func stands(p: Vector2) -> bool:
 
 # --- what the tiles are worth ---
 
-func power() -> int:
-	return 1 + int(lv.axe)
+## What a chop takes off a tree: one, and AXE_STEP more a level of the Axe.
+func power() -> float:
+	return 1.0 + AXE_STEP * int(lv.axe)
 
 func reach() -> float:
 	return REACH * pow(REACH_STEP, int(lv.reach))
@@ -261,7 +268,7 @@ func _chop(at: Vector2) -> void:
 		if not reaches(tree, at):
 			continue
 		hits += 1
-		tree.hp = int(tree.hp) - power()
+		tree.hp = float(tree.hp) - power()
 		events.append({"kind": "hit", "tree": tree, "amount": power()})
 		if tree.hp <= 0:
 			trees.erase(tree)
@@ -287,7 +294,7 @@ func save(now: float) -> void:
 	cfg.set_value("grove", "land", KEPT_ON)
 	var kept := []
 	for t in trees:
-		kept.append([int(t.tier), (t.pos as Vector2).x, (t.pos as Vector2).y, int(t.hp)])
+		kept.append([int(t.tier), (t.pos as Vector2).x, (t.pos as Vector2).y, float(t.hp)])
 	cfg.set_value("grove", "trees", kept)
 	cfg.save(path)
 
@@ -314,7 +321,7 @@ static func load_saved(now: float) -> RefCounted:
 		if not same_land or not stands(pos):
 			pos = sim._spot()
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
-			"hp": clampi(int(row[3]), 1, hp_of(tier)), "born": -GROW})
+			"hp": clampf(float(row[3]), 0.5, float(hp_of(tier))), "born": -GROW})
 		sim._next_id += 1
 	sim._gap = sim.spawn_time()
 	sim._wait = clampf(float(cfg.get_value("grove", "wait", 0.0)), 0.0, sim._gap)

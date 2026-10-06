@@ -111,6 +111,17 @@ two minutes, as before; day 2, 7 and 20 for the six of ten minutes; Birch at
 1 h 42. `docs/agents/valley.md` has the land's rules and what the bot does
 not measure.
 
+**2026-10-06, a level of the Axe adds half a point** (`Sim.AXE_STEP` 0.5;
+it added one, and the user: "it's too fast at start going from 1 -> 2, let's
+do 1 -> 1.5"). A tree's hp may be a half after a chop. The three runs,
+each taken before and after: Birch on day 5, Oak on day 21, Pine on day 59
+with Axe 20 and Room 16 on day 60 both times (70,311 wood against 70,651);
+day 2, 7 and 21 (Pine was day 20: 20.1 hours played against 20.0); Birch at
+1 h 42 with Axe 9 and Room 7 and 1,697 wood both times. **The bot's grove
+waits on trees coming up, not on the axe**, so halving what a level adds
+changes how many chops a tree takes and hardly how long the grove takes; a
+person sweeping a full late land is the case it does not measure.
+
 ## 5. The screens
 
 - **The tab** (`ui/menu/valley_tab.gd`): the wood pill and the Grove's card,

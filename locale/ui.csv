@@ -975,7 +975,7 @@ GROVE_SWING,Swing,Ritmo,Ritmo
 GROVE_SPROUT,Sprout,Broto,Brote
 GROVE_ROOM,Room,Espaço,Espacio
 GROVE_SEEDS,Seeds,Sementes,Semillas
-GROVE_FX_AXE,"chop %d, then %d","corte %d, depois %d","tala %d, luego %d"
+GROVE_FX_AXE,"chop %s, then %s","corte %s, depois %s","tala %s, luego %s"
 GROVE_FX_REACH,a wider circle,um círculo maior,un círculo mayor
 GROVE_FX_SWING,"%.2f s, then %.2f","%.2f s, depois %.2f","%.2f s, luego %.2f"
 GROVE_FX_SPROUT,"every %.1f s, then %.1f","a cada %.1f s, depois %.1f","cada %.1f s, luego %.1f"

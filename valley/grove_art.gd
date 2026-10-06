@@ -823,6 +823,14 @@ static func icon(tile: String, look := 1) -> ArrayMesh:
 static func _bare(look: int) -> ArrayMesh:
 	return tree(look)
 
+## What a chop takes, which may be a half: 1, 1.5, 2, 31.5, and past a
+## thousand as `short` writes it. `comma` for a language that writes 1,5.
+static func amount(v: float, comma := false) -> String:
+	if v >= 1000.0 or is_equal_approx(v, roundf(v)):
+		return short(roundi(v))
+	var text := "%.1f" % v
+	return text.replace(".", ",") if comma else text
+
 ## A count in a few characters: 999, 1.23K, 45.6K, 789K, 1.2M, and on
 ## through B, T and Q. Trees and tiles have no last level, so every number
 ## on the screen goes through here.

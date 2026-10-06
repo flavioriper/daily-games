@@ -668,7 +668,7 @@ func _play_events() -> void:
 				var tree: Dictionary = e.tree
 				_life.hit(tree)
 				_nums.append({"at": Art.see(tree.pos) + Vector2(_rng.randf_range(-16.0, 16.0), -Art.height(Sim.look_of(tree.tier)) * 0.86 * Art.TREE),
-					"text": Art.short(int(e.amount)), "t": 0.0, "gold": false})
+					"text": Art.amount(float(e.amount), _comma()), "t": 0.0, "gold": false})
 			"fell":
 				var tree: Dictionary = e.tree
 				var give := int(e.give)
@@ -788,7 +788,7 @@ func _refresh_tiles() -> void:
 func _effect(tile: String) -> String:
 	match tile:
 		"axe":
-			return tr("GROVE_FX_AXE") % [sim.power(), sim.power() + 1]
+			return tr("GROVE_FX_AXE") % [Art.amount(sim.power(), _comma()), Art.amount(sim.power() + Sim.AXE_STEP, _comma())]
 		"reach":
 			return tr("GROVE_FX_REACH")
 		"swing":
@@ -801,7 +801,10 @@ func _effect(tile: String) -> String:
 
 ## Seconds are written 0,47 where the language writes them so (pt, es).
 static func _decimal(text: String) -> String:
-	return text if TranslationServer.get_locale().begins_with("en") else text.replace(".", ",")
+	return text.replace(".", ",") if _comma() else text
+
+static func _comma() -> bool:
+	return not TranslationServer.get_locale().begins_with("en")
 
 ## A tier's tree by name; the second time the looks come round it is
 ## "Birch II", then "Birch III" (the fonts carry no star).
@@ -908,7 +911,7 @@ func _draw_top() -> void:
 		for i in laps:
 			_top.draw_circle(at + Vector2((i - (laps - 1) * 0.5) * 18.0, -4.0) * _u, 7.0 * _u, Art.MARK, true, -1.0, true)
 		var full: int = Sim.hp_of(tree.tier)
-		if int(tree.hp) < full:
+		if float(tree.hp) < full:
 			var w := maxf(54.0, Sim.radius_of(tree.tier) * 1.6) * _u
 			var bar := Rect2(at + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))
 			_top.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))

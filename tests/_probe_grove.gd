@@ -91,7 +91,7 @@ func _check_sim() -> void:
 		_ok("%s starts at its first price" % tile, sim.cost(tile) == int(round(float(row[0]))))
 	_ok("a tile is not bought on credit", not sim.buy("axe") and int(sim.lv.axe) == 0)
 	sim.energy = 10
-	_ok("ten energy buys the first axe", sim.buy("axe") and sim.energy == 0 and sim.power() == 2)
+	_ok("ten energy buys the first axe", sim.buy("axe") and sim.energy == 0 and is_equal_approx(sim.power(), 1.5))
 	_ok("and the next costs more", sim.cost("axe") == int(round(10.0 * 1.38)))
 	sim.energy = 1 << 60
 	while sim.buy("room"):
@@ -117,7 +117,7 @@ func _check_sim() -> void:
 	_ok("a grove read back is the grove kept", b.energy == 77 and int(b.lv.axe) == 4 and b.trees.size() == stood and b.room() == a.room())
 	var same := true
 	for i in stood:
-		same = same and (b.trees[i].pos as Vector2).is_equal_approx(a.trees[i].pos) and int(b.trees[i].tier) == int(a.trees[i].tier) and int(b.trees[i].hp) == int(a.trees[i].hp)
+		same = same and (b.trees[i].pos as Vector2).is_equal_approx(a.trees[i].pos) and int(b.trees[i].tier) == int(a.trees[i].tier) and is_equal_approx(float(b.trees[i].hp), float(a.trees[i].hp))
 	_ok("tree for tree", same)
 	# away
 	var c: RefCounted = Sim.new(5)
