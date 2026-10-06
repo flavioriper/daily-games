@@ -906,9 +906,22 @@ func _posy() -> void:
 # --- firefly ---
 
 ## Sits under the lowest bug, sidesteps bullets coming down on it; the
-## finger is already down, so it fires.
+## finger is already down, so it fires. In the shop it buys what it can, the
+## heavier shot first, goes on, and puts the finger down again (the card
+## took it off the field).
 func _firefly_bot() -> void:
 	var sim: RefCounted = _s.sim
+	if sim.phase == _s.Sim.Phase.SHOP and _s._shop != null:
+		for card in _s.Sim.Card.size():
+			if sim.can_buy(card):
+				_do("the shop: card %d bought" % card)
+				_s._buy(card)
+				_say()
+		_do("the shop: Go")
+		_s._close_shop()
+		_say()
+		_press(_s.field, _s.field.size * Vector2(0.5, 0.8), true)
+		return
 	var aim: float = sim.px
 	var best := -1.0
 	for e: Dictionary in sim.enemies:

@@ -211,6 +211,11 @@ FF_MOTTO,Keep the garden lit,Mantenha o jardim aceso,Mantén el jardín encendid
 FF_SCORE,SCORE,PONTOS,PUNTOS
 FF_BEST,BEST,RECORDE,RÉCORD
 FF_STAGE,STAGE,FASE,FASE
+FF_SHOP_LINE,Stage %d done. Spend your energy on the firefly.,Fase %d concluída. Gaste sua energia no vaga-lume.,Fase %d superada. Gasta tu energía en la luciérnaga.
+FF_SHOP_GO,Next stage,Próxima fase,Siguiente fase
+FF_CARD_SPEED,Quicker gun,Arma mais rápida,Arma más rápida
+FF_CARD_SHOTS,One more shot,Mais um tiro,Un disparo más
+FF_CARD_SHOTS_LINE,%d  >  %d shots a volley,%d  >  %d tiros por vez,%d  >  %d disparos a la vez
 FF_STAGE_N,Stage %d,Fase %d,Fase %d
 FF_READY,Ready,Pronto,Listo
 FF_FLYBY,Flyby!,Revoada!,¡Desfile!
@@ -731,9 +736,9 @@ TUT_CHECKERS_BAR_CAP_HINT,The bulb shows a good move,A lâmpada mostra um bom la
 TUT_CHECKERS_BAR_CAP_UNDO,Undo: your move and its answer come back,Desfazer: seu lance e a resposta voltam,Deshacer: tu jugada y la respuesta vuelven
 TUT_CHECKERS_BAR_CAP_RESET,Reset: a new game,Recomeçar: partida nova,Reiniciar: partida nueva
 TUT_FIREFLY_MOVE,"Slide to fly, hold to fire","Deslize para voar, segure para atirar","Desliza para volar, mantén para disparar"
-TUT_FIREFLY_MOVE_BODY,"Put a finger anywhere and slide: the firefly follows the slide, so your thumb never hides it. It fires while you hold, two volleys in the air at most.","Ponha o dedo em qualquer lugar e deslize: o vaga-lume segue o movimento, e o dedo nunca o esconde. Ele atira enquanto você segura, no máximo dois tiros no ar.","Pon el dedo donde quieras y desliza: la luciérnaga sigue el movimiento, y el dedo nunca la tapa. Dispara mientras lo mantienes, con dos tiros en el aire como máximo."
+TUT_FIREFLY_MOVE_BODY,"Put a finger anywhere and slide: the firefly follows the slide, so your thumb never hides it. It fires for as long as you hold.","Ponha o dedo em qualquer lugar e deslize: o vaga-lume segue o movimento, e o dedo nunca o esconde. Ele atira enquanto você segura.","Pon el dedo donde quieras y desliza: la luciérnaga sigue el movimiento, y el pulgar nunca la tapa. Dispara mientras mantienes el dedo."
 TUT_FIREFLY_SWARM,The swarm,O enxame,El enjambre
-TUT_FIREFLY_SWARM_BODY,"A gnat is worth 50, a ladybird 80 and a moth 150. A moth takes two hits and blushes at the first. Clear the whole swarm to reach the next stage.","Um mosquito vale 50, uma joaninha 80 e uma mariposa 150. A mariposa aguenta dois tiros e fica rosa no primeiro. Acabe com o enxame para passar de fase.","Un mosquito vale 50, una mariquita 80 y una polilla 150. La polilla aguanta dos tiros y se pone rosa con el primero. Acaba con el enjambre para pasar de fase."
+TUT_FIREFLY_SWARM_BODY,"A gnat is worth 50, a ladybird 80 and a moth 150. A moth takes the most shots and blushes when half gone, and every stage the swarm takes more. Clear it all to reach the next stage.","Um mosquito vale 50, uma joaninha 80 e uma mariposa 150. A mariposa aguenta mais tiros e fica rosa na metade, e a cada fase o enxame aguenta mais. Acabe com ele para passar de fase.","Un mosquito vale 50, una mariquita 80 y una polilla 150. La polilla aguanta más disparos y se sonroja a la mitad, y en cada fase el enjambre aguanta más. Acaba con él para pasar de fase."
 TUT_FIREFLY_DIVE,Dives,Mergulhos,Picados
 TUT_FIREFLY_DIVE_BODY,"Bugs peel off and dive at you: shot on the way down they are worth double. Slide clear of their seeds: a seed or a bug that touches the firefly costs you one.","Os insetos saem do enxame e mergulham: atingidos na descida, valem o dobro. Desvie das sementes: uma semente ou um inseto que toca o vaga-lume custa um deles.","Los bichos salen del enjambre y se lanzan en picado: alcanzados al bajar valen el doble. Esquiva las semillas: una semilla o un bicho que toca la luciérnaga te cuesta una."
 TUT_FIREFLY_ESCORT,A moth and its escorts,A mariposa e sua escolta,La polilla y su escolta
@@ -742,6 +747,11 @@ TUT_FIREFLY_BEAM,The silk beam,O raio de seda,El rayo de seda
 TUT_FIREFLY_BEAM_BODY,"A lone moth may stop and spin a beam: a firefly caught in it is carried off. Shoot that moth in its dive, not in its seat, and yours flies back beside you: two shots at once.","Uma mariposa sozinha pode parar e soltar um raio: o vaga-lume pego é levado embora. Acerte essa mariposa no mergulho, não no enxame, e ele volta para o seu lado: dois tiros de uma vez.","Una polilla sola puede parar y soltar un rayo: la luciérnaga atrapada se va con ella. Dale a esa polilla en picado, no en el enjambre, y vuelve a tu lado: dos disparos a la vez."
 TUT_FIREFLY_FLYBY,The flyby,A revoada,El desfile
 TUT_FIREFLY_FLYBY_BODY,"Stage 3 and every fourth after it is a flyby: the bugs pass through and never fire. Each is worth 100, and catching all forty earns 10,000.","A fase 3 e cada quarta fase depois dela é uma revoada: os insetos só passam e nunca atiram. Cada um vale 100, e pegar os quarenta rende 10.000.","La fase 3 y cada cuarta fase después es un desfile: los bichos solo pasan y nunca disparan. Cada uno vale 100, y atrapar los cuarenta da 10.000."
+TUT_FIREFLY_SHOP,Energy and the shop,Energia e a loja,Energía y la tienda
+TUT_FIREFLY_SHOP_BODY,"Bugs take more shots every stage, so the gun has to grow with them. Energy you do not spend is kept for the next shop.","Os insetos aguentam mais tiros a cada fase, então a arma precisa crescer com eles. A energia que você não gasta fica para a próxima loja.","Los bichos aguantan más disparos en cada fase, así que el arma tiene que crecer con ellos. La energía que no gastas queda para la próxima tienda."
+TUT_FIREFLY_SHOP_ENERGY,Every bug you shoot down drops energy. After a stage the shop opens.,Cada inseto abatido solta energia. Depois de uma fase a loja abre.,Cada bicho derribado suelta energía. Tras una fase se abre la tienda.
+TUT_FIREFLY_SHOP_GUN,"A heavier shot, a quicker gun, one more shot a volley.","Tiro mais forte, arma mais rápida, mais um tiro por vez.","Disparo más fuerte, arma más rápida, un disparo más a la vez."
+TUT_FIREFLY_SHOP_MORE,A lucky shot lands many times as hard. More energy a bug. A price only rises when you buy that card.,Um tiro de sorte acerta várias vezes mais forte. Mais energia por inseto. O preço só sobe quando você compra aquela carta.,Un disparo de suerte pega varias veces más fuerte. Más energía por bicho. El precio solo sube cuando compras esa carta.
 TUT_FIREFLY_HUD,Lanterns and buttons,Lanternas e botões,Faroles y botones
 TUT_FIREFLY_HUD_BODY,"The lanterns in the field's corner are the fireflies you have left. You earn one more at 20,000 points, at 90,000 and every 70,000 after.","As lanternas no canto do campo são os vaga-lumes que restam. Você ganha mais um com 20.000 pontos, com 90.000 e a cada 70.000 depois.","Los faroles en la esquina del campo son las luciérnagas que te quedan. Ganas una más con 20.000 puntos, con 90.000 y cada 70.000 después."
 TUT_FIREFLY_HUD_RESET,Starts a new run. The one in play is not counted.,Começa uma partida nova. A que está em jogo não conta.,Empieza una partida nueva. La que está en juego no cuenta.

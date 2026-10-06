@@ -23,6 +23,8 @@ extends Control
 ## - BEAM: a moth's beam carries the firefly off; shot in its next dive, the
 ##   firefly comes back and the two fire together.
 ## - FLYBY: a stream passes through without firing and is caught whole.
+## - SHOP: no garden: the mote a bug drops and the shop's five cards, drawn
+##   as they are beside what each is.
 ## - HUD: the top bar's Reset, the gear and the ?, and the boosters, drawn as
 ##   they are beside what each does.
 
@@ -33,8 +35,11 @@ const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Sim = preload("res://arcade/firefly_sim.gd")
 const BoosterIcon = preload("res://arcade/booster_icon.gd")
+const Art = preload("res://arcade/firefly_art.gd")
+const Motes = preload("res://ui/motes.gd")
 
-enum Lesson { MOVE, SWARM, DIVE, ESCORT, BEAM, FLYBY, HUD }
+## SHOP is last so the old numbers stand; the screen lays it before HUD.
+enum Lesson { MOVE, SWARM, DIVE, ESCORT, BEAM, FLYBY, HUD, SHOP }
 
 ## The wooden frame round the garden, as the field's own.
 const FRAME := 10.0
@@ -104,6 +109,15 @@ class Night extends "res://arcade/firefly_sim.gd":
 	func _attack() -> void:
 		pass
 
+	## A lesson's bugs are the first stage's: one shot, a moth two and
+	## blushing at the first, whatever stage the page says it is.
+	func hp_of(kind: int) -> int:
+		return 2 if kind == Kind.MOTH else 1
+
+	## No shop on a page.
+	func _after_stage() -> void:
+		_start_stage()
+
 	## Only a flyby is tallied: a lesson's last bug is not a stage cleared.
 	func _check_clear() -> void:
 		if _challenge:
@@ -152,6 +166,7 @@ class Night extends "res://arcade/firefly_sim.gd":
 		for i in n:
 			var e := _spawn(kinds[i % kinds.size()], Vector2i(-1, -1), path, St.FLYBY)
 			e.hp = 1
+			e.max = 1
 			e.delay = first + i * gap
 			enemies.append(e)
 			flyby_total += 1
@@ -294,18 +309,22 @@ class Garden extends "res://arcade/firefly_screen.gd":
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
-	if lesson != Lesson.HUD:
+	if not _drawn():
 		_garden = Garden.new()
 		add_child(_garden)
 		_over = Control.new()
 		_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_over.draw.connect(_draw_finger)
 		add_child(_over)
-	else:
+	elif lesson == Lesson.HUD:
 		for id: String in ["ff_spare", "ff_twin", "second_chance"]:
 			add_child(BoosterIcon.new(id))
 	resized.connect(_layout)
 	call_deferred("_layout")
+
+## A page with no garden: drawn, standing still.
+func _drawn() -> bool:
+	return lesson == Lesson.HUD or lesson == Lesson.SHOP
 
 func _enter_tree() -> void:
 	# A page turned back to starts its lesson again.
@@ -326,6 +345,8 @@ func _layout() -> void:
 				(c as Control).size = Vector2(disc, disc)
 				(c as Control).position = Vector2(HUD_X + n * (disc + HUD_GAP), size.y * 5.0 / 6.0 - disc * 0.5)
 				n += 1
+		return
+	if lesson == Lesson.SHOP:
 		return
 	var u := minf((size.x - FRAME * 2.0) / Sim.W, (size.y - FRAME * 2.0) / Garden.VIEW)
 	_garden.size = Vector2(Sim.W * u, Garden.VIEW * u).floor()
@@ -411,7 +432,7 @@ func _plan() -> void:
 
 ## The lesson from its top.
 func _reset() -> void:
-	if lesson == Lesson.HUD or not is_inside_tree() or size.x <= 0.0:
+	if _drawn() or not is_inside_tree() or size.x <= 0.0:
 		return
 	_plan()
 	_next = 0
@@ -433,7 +454,7 @@ func _reset() -> void:
 		_over.queue_redraw()
 
 func _process(delta: float) -> void:
-	if lesson == Lesson.HUD or not _begun or Motion.reduce:
+	if _drawn() or not _begun or Motion.reduce:
 		return
 	_drive(delta)
 	_over.queue_redraw()
@@ -564,6 +585,9 @@ func _draw() -> void:
 	if lesson == Lesson.HUD:
 		_draw_hud()
 		return
+	if lesson == Lesson.SHOP:
+		_draw_shop()
+		return
 	# the garden's wooden frame
 	var b := Face.Builder.new()
 	var at := _garden.position - Vector2(FRAME, FRAME)
@@ -607,6 +631,40 @@ func _draw_hud() -> void:
 		Icons.paint(self, String(m[0]), Rect2(r.get_center() - r.size * 0.27, r.size * 0.54), Pal.TEXT, Pal.SURFACE)
 	var font: Font = CozyTheme.display(700)
 	var tx := x0 + col + 28.0
+	var room := size.x - tx - 24.0
+	for k in rows.size():
+		var line := tr(String(rows[k][1]))
+		var tall := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, room, 30).y
+		draw_multiline_string(font, Vector2(tx, row_h * (k + 0.5) - tall * 0.5 + 30.0 * 0.82), line, HORIZONTAL_ALIGNMENT_LEFT, room, 30, -1, Pal.TEXT)
+
+## The shop's page, laid as the HUD's: the mote a bug drops, the gun's three
+## cards and the other two, each row beside what it is.
+func _draw_shop() -> void:
+	var C := Sim.Card
+	var rows := [[[-1], "TUT_FIREFLY_SHOP_ENERGY"], [[C.DAMAGE, C.SPEED, C.SHOTS], "TUT_FIREFLY_SHOP_GUN"],
+		[[C.CRIT, C.ENERGY], "TUT_FIREFLY_SHOP_MORE"]]
+	var row_h := size.y / rows.size()
+	var disc := minf(84.0, row_h * 0.6)
+	var gap := 8.0
+	var col := disc * 3.0 + gap * 2.0
+	for k in rows.size():
+		var cy := row_h * (k + 0.5)
+		var icons: Array = rows[k][0]
+		var wide := icons.size() * disc + (icons.size() - 1) * gap
+		for i in icons.size():
+			var c := Vector2(HUD_X + (col - wide) * 0.5 + i * (disc + gap) + disc * 0.5, cy)
+			if int(icons[i]) < 0:
+				# a mote, on a slip of the night it is seen against
+				var b := Face.Builder.new()
+				b.disc(c, disc * 0.5, Color("2a2c5a"))
+				_hud_shown = b.mesh()
+				draw_mesh(_hud_shown, null)
+				var sc := Motes.icon_scale(disc * 0.8)
+				draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, c))
+			else:
+				draw_mesh(Art.card_token(int(icons[i]), disc), null, Transform2D(0.0, c))
+	var font: Font = CozyTheme.display(700)
+	var tx := HUD_X + col + 28.0
 	var room := size.x - tx - 24.0
 	for k in rows.size():
 		var line := tr(String(rows[k][1]))

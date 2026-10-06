@@ -8,9 +8,9 @@ extends RefCounted
 ## reads `events` after every step for sounds and bursts.
 ##
 ## Field units, not pixels: the field is W by H with y down, and the screen
-## scales it to fit. The cast: the firefly (you), gnats (one hit, 50 in the
-## swarm and 100 diving), beetles (one hit, 80 and 160) and moths (two
-## hits, 150 in the swarm, 400 diving and doubled for each escort shot down
+## scales it to fit. The cast: the firefly (you), gnats (50 in the swarm and
+## 100 diving), beetles (twice a gnat's shots, 80 and 160) and moths (four
+## times, 150 in the swarm, 400 diving and doubled for each escort shot down
 ## before them). A moth may dive alone and spin a silk beam: a firefly
 ## caught in it is carried up and lost, and hangs under the moth in the
 ## swarm; shoot that moth while it is diving and the firefly comes back and
@@ -18,6 +18,16 @@ extends RefCounted
 ## the captive turns rogue. Every fourth stage from the third is a flyby:
 ## forty bugs pass through without firing, 100 each, and all forty earn a
 ## 10,000 bonus.
+##
+## The shop (2026-10-06, the user: "implement same upgrades and energy logic
+## from peapod into firefly"; arcade/peapod_sim.gd's, with its numbers). A
+## bug takes more than one shot now, and more each stage (`hp_of`); every
+## bug shot down pays energy, counted in orbs, ORBS to one; and a stage
+## cleared, its beat over, the game waits in Phase.SHOP for `leave_shop()`
+## while energy buys the gun: a heavier shot, a quicker gun, a lucky shot,
+## more energy a bug, one more shot a volley. No card has a most, a price
+## moves only when its card is bought, and the two volleys in the air at
+## most are gone: the gun fires `rate()` volleys a second.
 
 const W := 240.0
 const H := 372.0
@@ -30,9 +40,16 @@ const PLAYER_R := 6.0
 const PAIR := 8.0
 const SHOT_SPEED := 420.0
 const SHOT_R := 2.0
-## Volleys in the air at once; a pair's volley is two shots.
-const MAX_VOLLEYS := 2
-const FIRE_GAP := 0.14
+## Volleys a second with nothing bought (about what two volleys in the air
+## at most came to), and what a level of the quicker gun adds.
+const RATE := 3.0
+const RATE_STEP := 0.5
+## The most volleys one step lets go, however quick the gun.
+const FIRE_MOST := 2
+## How far apart a volley's shots leave, side by side, and how wide the row
+## is at its most.
+const SHOT_GAP := 5.0
+const SHOT_ROW := 18.0
 const ENEMY_R := 7.0
 const BULLET_R := 2.0
 const BULLET_SPEED := 150.0
@@ -51,10 +68,43 @@ const EXTRA_EVERY := 70000
 enum Kind { GNAT, BEETLE, MOTH, ROGUE }
 enum St { WAIT, ENTER, FORM, DIVE, RETURN, BEAM, FLYBY, DEAD }
 enum Ship { ALIVE, DEAD, CAPTURED }
-enum Phase { INTRO, PLAY, CLEAR, RESULT, OVER }
+enum Phase { INTRO, PLAY, CLEAR, RESULT, OVER, SHOP }
+## The shop's cards, as Peapod's.
+enum Card { DAMAGE, SPEED, CRIT, ENERGY, SHOTS }
 
 const POINTS_FORM := {Kind.GNAT: 50, Kind.BEETLE: 80, Kind.MOTH: 150, Kind.ROGUE: 500}
 const POINTS_DIVE := {Kind.GNAT: 100, Kind.BEETLE: 160, Kind.MOTH: 400, Kind.ROGUE: 1000}
+
+## The shots a bug takes, by kind, before `hp_base` of the stage: a beetle
+## twice a gnat's and a moth four times. HP_START holds the first stage to
+## what it always was (one, one and a moth's two), so a run opens as the
+## game did before the shop; from there a level is HP_EARLY times the last
+## to level HP_TURN and HP_LATE after. A flyby's bugs take one. Tuned on
+## tests/_probe_firefly.gd; Peapod's are 1.32 and 1.16 from 1.
+const HP := {Kind.GNAT: 1.0, Kind.BEETLE: 2.0, Kind.MOTH: 4.0, Kind.ROGUE: 2.0}
+const HP_START := 0.6
+const HP_EARLY := 1.4
+const HP_LATE := 1.16
+const HP_TURN := 10
+## The crit, as Peapod's: none before the first level; from it a shot has
+## CRIT_CHANCE of landing CRIT_MULT times as hard, a level adds
+## CRIT_MULT_STEP to that, and the chance goes up CRIT_CHANCE_STEP every
+## CRIT_EVERY levels, to CRIT_CHANCE_MAX.
+const CRIT_CHANCE := 0.1
+const CRIT_CHANCE_STEP := 0.05
+const CRIT_CHANCE_MAX := 0.5
+const CRIT_EVERY := 5
+const CRIT_MULT := 3
+const CRIT_MULT_STEP := 1
+## Energy is counted in orbs, ORBS of them to one energy. What a bug pays,
+## by kind, and what a level of the Energy card adds of that.
+const ORBS := 4
+const ENERGY := {Kind.GNAT: 1.0, Kind.BEETLE: 1.0, Kind.MOTH: 2.0, Kind.ROGUE: 2.0}
+const ENERGY_STEP := 0.1
+## A card's price in energy with none bought, and how much of that each one
+## bought adds. Nothing else moves a price.
+const PRICE := [11, 14, 14, 12, 80]
+const PRICE_STEP := [0.7, 0.9, 0.9, 0.6, 1.5]
 
 ## Entrance paths, in fractions of the field; each ends where the bug turns
 ## for its seat and flies home. "mirror" flips them across the middle.
@@ -98,6 +148,24 @@ var axis := 0.0
 var fire := false
 var _fire_cd := 0.0
 
+# --- the gun and the shop ---
+## What a shot takes off, the levels of the quicker gun and of the crit, the
+## shots a volley, and the levels of the Energy card.
+var power := 1
+var rate_lv := 0
+var crit_lv := 0
+var volley := 1
+var energy_lv := 0
+## How many of each card the shop has sold.
+var bought := [0, 0, 0, 0, 0]
+## Energy held and earned over the run, in orbs; what is short of one orb is
+## kept for the next bug.
+var energy := 0
+var earned := 0
+var _orb_part := 0.0
+## The crit's own dice, so a lucky shot does not move the swarm's.
+var _luck := RandomNumberGenerator.new()
+
 var shots: Array = []     # {pos: Vector2}
 var bullets: Array = []   # {pos: Vector2, vel: Vector2}
 var enemies: Array = []   # see _spawn
@@ -122,7 +190,82 @@ func _init(the_seed := 0) -> void:
 		rng.randomize()
 	else:
 		rng.seed = the_seed
+	_luck.seed = rng.randi()
 	_start_stage()
+
+# --- the gun and the shop ---
+
+## Volleys a second.
+func rate() -> float:
+	return RATE + RATE_STEP * rate_lv
+
+## The chance a shot is lucky, at crit level `lv`: none before the first.
+static func crit_chance(lv: int) -> float:
+	if lv <= 0:
+		return 0.0
+	return minf(CRIT_CHANCE + CRIT_CHANCE_STEP * int(lv / float(CRIT_EVERY)), CRIT_CHANCE_MAX)
+
+## How many times as hard a lucky shot lands, at crit level `lv`.
+static func crit_mult(lv: int) -> int:
+	return CRIT_MULT + CRIT_MULT_STEP * maxi(0, lv - 1)
+
+## How much a bug's shots have grown by level `lv` (`level()`).
+static func hp_base(lv: int) -> float:
+	return HP_START * pow(HP_EARLY, mini(lv, HP_TURN) - 1) * pow(HP_LATE, maxi(0, lv - HP_TURN))
+
+## The shots at the gun's first weight a bug of `kind` takes on this stage.
+func hp_of(kind: int) -> int:
+	return maxi(1, roundi(float(HP[kind]) * hp_base(level())))
+
+## What `card` costs now, in orbs (a whole number of energy): more for each
+## one bought and for nothing else.
+func price(card: int) -> int:
+	return maxi(1, roundi(float(PRICE[card]) * (1.0 + float(PRICE_STEP[card]) * int(bought[card])))) * ORBS
+
+func can_buy(card: int) -> bool:
+	return energy >= price(card)
+
+func buy(card: int) -> bool:
+	if not can_buy(card):
+		return false
+	energy -= price(card)
+	bought[card] = int(bought[card]) + 1
+	match card:
+		Card.DAMAGE:
+			power += 1
+		Card.SPEED:
+			rate_lv += 1
+		Card.CRIT:
+			crit_lv += 1
+		Card.ENERGY:
+			energy_lv += 1
+		Card.SHOTS:
+			volley += 1
+	events.append({"type": "buy", "card": card})
+	return true
+
+## A stage's beat is over: the shop, when there is energy for anything in
+## it, and then the next stage.
+func _after_stage() -> void:
+	for card in Card.size():
+		if can_buy(card):
+			phase = Phase.SHOP
+			phase_t = 0.0
+			events.append({"type": "shop"})
+			return
+	_start_stage()
+
+## The shop is shut and the next stage begins.
+func leave_shop() -> void:
+	if phase != Phase.SHOP:
+		return
+	_start_stage()
+
+## Where shot `i` of a volley of `n` leaves, left or right of the firefly.
+static func shot_off(i: int, n: int) -> float:
+	if n <= 1:
+		return 0.0
+	return (i - (n - 1) * 0.5) * minf(SHOT_GAP, SHOT_ROW / (n - 1))
 
 # --- stages ---
 
@@ -196,12 +339,14 @@ func _plan_flyby() -> void:
 				var kind: int = looks[w][(i + m) % 2]
 				var e := _spawn(kind, Vector2i(-1, -1), path, St.FLYBY)
 				e.hp = 1
+				e.max = 1
 				e.delay = 1.8 + w * 3.4 + i * 0.16
 				enemies.append(e)
 				flyby_total += 1
 
 func _spawn(kind: int, slot: Vector2i, path: PackedVector2Array, st: int) -> Dictionary:
-	return {"kind": kind, "slot": slot, "hp": 2 if kind == Kind.MOTH else 1, "st": St.WAIT, "next": st,
+	var hp := hp_of(kind)
+	return {"kind": kind, "slot": slot, "hp": hp, "max": hp, "st": St.WAIT, "next": st,
 		"pos": path[0], "heading": PI * 0.5, "path": path, "pd": 0.0, "pi": 0, "pbase": 0.0, "delay": 0.0,
 		"speed": 120.0 * _pace(), "fire_left": 0, "fire_at": [], "captive": false,
 		"leader": -1, "escorts_down": 0, "beam": 0.0, "beam_t": 0.0, "flash": 0.0,
@@ -244,6 +389,9 @@ func home(slot: Vector2i) -> Vector2:
 # --- the step ---
 
 func step() -> void:
+	# the shop's card is up: the night stands still behind it
+	if phase == Phase.SHOP:
+		return
 	t += DT
 	phase_t += DT
 	match phase:
@@ -253,10 +401,10 @@ func step() -> void:
 				phase_t = 0.0
 		Phase.CLEAR:
 			if phase_t > 1.6:
-				_start_stage()
+				_after_stage()
 		Phase.RESULT:
 			if phase_t > 3.2:
-				_start_stage()
+				_after_stage()
 		Phase.OVER:
 			pass
 	_swarm()
@@ -294,16 +442,17 @@ func _player() -> void:
 	if absf(axis) > 0.01:
 		want = px + axis * 1000.0
 	px = move_toward(px, clampf(want, lo, hi), PLAYER_SPEED * (1.6 if not is_nan(target_x) else 1.0) * DT)
-	_fire_cd -= DT
-	if fire and _fire_cd <= 0.0 and phase != Phase.INTRO:
-		if shots.size() < MAX_VOLLEYS * (2 if pair else 1):
-			_fire_cd = FIRE_GAP
-			fired += 1
-			if pair:
-				shots.append({"pos": Vector2(px - PAIR, PLAYER_Y - 8.0)})
-				shots.append({"pos": Vector2(px + PAIR, PLAYER_Y - 8.0)})
-			else:
-				shots.append({"pos": Vector2(px, PLAYER_Y - 8.0)})
+	_fire_cd = maxf(_fire_cd - DT, -DT)
+	if fire and phase != Phase.INTRO:
+		var gap := 1.0 / rate()
+		for k in FIRE_MOST:
+			if _fire_cd > 0.0:
+				break
+			_fire_cd += gap
+			for x: float in _ship_xs():
+				for i in volley:
+					shots.append({"pos": Vector2(x + shot_off(i, volley), PLAYER_Y - 8.0)})
+					fired += 1
 			events.append({"type": "shoot", "pos": Vector2(px, PLAYER_Y)})
 
 func _shots() -> void:
@@ -602,7 +751,7 @@ func _collide() -> void:
 				hit = true
 				break
 			if (s.pos as Vector2).distance_to(e.pos) < ENEMY_R + SHOT_R:
-				_hurt(e)
+				_hurt(e, s.pos)
 				hit = true
 				break
 		if hit:
@@ -642,16 +791,24 @@ func ship_xs() -> Array:
 func _ship_xs() -> Array:
 	return [px - PAIR, px + PAIR] if pair else [px]
 
-func _hurt(e: Dictionary) -> void:
-	e.hp -= 1
+## A shot lands on `e` at `at`: the gun's weight off it, a lucky shot's
+## many times over. `hurt` says what it took (`dmg`, `crit`) and `half` on
+## the blow that leaves it with half or less, which is when it shows it; the
+## blow that ends it is a `pop` saying the same.
+func _hurt(e: Dictionary, at: Vector2) -> void:
+	var lucky := crit_lv > 0 and _luck.randf() < crit_chance(crit_lv)
+	var dmg := power * (crit_mult(crit_lv) if lucky else 1)
+	e.hp -= dmg
 	e.flash = 0.12
 	if e.hp > 0:
-		e.hurt = true
-		events.append({"type": "hurt", "pos": e.pos, "kind": e.kind})
+		var half: bool = not e.hurt and int(e.hp) * 2 <= int(e.max)
+		if half:
+			e.hurt = true
+		events.append({"type": "hurt", "pos": e.pos, "at": at, "kind": e.kind, "dmg": dmg, "crit": lucky, "half": half})
 		return
-	_kill(e, false)
+	_kill(e, false, dmg, lucky)
 
-func _kill(e: Dictionary, rammed: bool) -> void:
+func _kill(e: Dictionary, rammed: bool, dmg := 0, lucky := false) -> void:
 	var diving: bool = e.st != St.FORM
 	var hang: Vector2 = e.pos + _captive_offset(e)
 	e.st = St.DEAD
@@ -670,7 +827,14 @@ func _kill(e: Dictionary, rammed: bool) -> void:
 			if m.id == e.leader and m.st != St.DEAD:
 				m.escorts_down += 1
 	_add(pts)
-	events.append({"type": "pop", "pos": e.pos, "kind": e.kind, "points": pts, "rammed": rammed})
+	# in orbs; what is short of one is kept for the next bug
+	_orb_part += float(ENERGY[e.kind]) * (1.0 + ENERGY_STEP * energy_lv) * ORBS
+	var got := int(_orb_part)
+	_orb_part -= got
+	energy += got
+	earned += got
+	events.append({"type": "pop", "pos": e.pos, "kind": e.kind, "points": pts, "rammed": rammed,
+		"energy": got, "dmg": dmg, "crit": lucky})
 	if e.captive:
 		if diving:
 			freed = {"pos": hang, "spin": 0.0}

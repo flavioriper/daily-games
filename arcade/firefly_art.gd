@@ -13,6 +13,7 @@ extends RefCounted
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Motes = preload("res://ui/motes.gd")
 
 enum Look { FIREFLY, GNAT, BEETLE, MOTH, MOTH_HURT, ROGUE, CAPTIVE }
 
@@ -33,6 +34,11 @@ const MOTH_HURT_DEEP := Color("c26b93")
 const MOTH_FUR := Color("f6ecd9")
 const ROGUE_BODY := Color("b8577a")
 const SILK := Color(1.0, 1.0, 1.0, 0.75)
+
+## The shop's cards, by arcade/firefly_sim.gd's Card: Peapod's colours, so a
+## card is the same colour in both shops.
+const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
+const PAPER := Color("fcf7ef")
 
 static var _cache := {}
 
@@ -193,3 +199,69 @@ static func moth(b: Face.Builder, u: float, frame: int, hurt: bool) -> void:
 			b.stroke(PackedVector2Array([p, p + Vector2(side * 0.5 * s, -0.9 * s)]), 0.3 * s, deep.darkened(0.2))
 	_eyes(b, Vector2(0, -3.6 * s), 1.2 * s, 0.62 * s)
 	_cheeks(b, Vector2(0, -2.5 * s), 2.0 * s, 0.55 * s)
+
+# --- the shop ---
+
+## A shot of the lantern's light, `r` wide, flying up.
+static func _shot(b: Face.Builder, c: Vector2, r: float) -> void:
+	b.ellipse(c + Vector2(0, r * 0.2), r * 1.25, r * 2.3, Color(INK, 0.18))
+	b.ellipse(c, r, r * 2.1, GLOW)
+	b.ellipse(c + Vector2(0, -r * 0.3), r * 0.5, r * 1.2, Color.WHITE)
+
+static func _twinkle(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for k in 8:
+		pts.append(c + Vector2.from_angle(-PI * 0.5 + TAU * k / 8.0) * (r if k % 2 == 0 else r * 0.32))
+	b.polygon(pts, col)
+
+## A shop card's medallion, centred, `side` pixels across: its colour on a
+## paper-ringed disc and its picture on that. A heavier shot is one in a
+## burst, a quicker gun two chevrons, the lucky shot a bull's eye with a
+## glint, more energy three motes, one more shot three side by side.
+static func card_token(card: int, side: float) -> ArrayMesh:
+	var key := "ct/%d/%.1f" % [card, side]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := side * 0.46
+	var c := Vector2.ZERO
+	var base: Color = CARD[card]
+	b.disc(c + Vector2(0, r * 0.2), r, Color(0.3, 0.2, 0.08, 0.12))
+	b.disc(c + Vector2(0, r * 0.12), r, base.darkened(0.22))
+	b.disc(c, r, PAPER)
+	b.disc(c, r * 0.85, base)
+	b.stroke(Face.Builder.arc_points(c, r * 0.68, -PI * 0.85, -PI * 0.5), maxf(1.0, r * 0.09), Color(1, 1, 1, 0.5))
+	var s := r * 1.25
+	# Sim.Card: DAMAGE, SPEED, CRIT, ENERGY, SHOTS
+	match card:
+		0:
+			var pts := PackedVector2Array()
+			for k in 16:
+				pts.append(c + Vector2.from_angle(TAU * k / 16.0) * s * (0.5 if k % 2 == 0 else 0.34))
+			b.polygon(pts, GLOW_HOT)
+			_shot(b, c, s * 0.15)
+		1:
+			for k in 2:
+				var y := c.y + s * (0.2 - 0.34 * k)
+				for pass_ in 2:
+					var o := Vector2(0, s * 0.05) if pass_ == 0 else Vector2.ZERO
+					b.stroke(PackedVector2Array([Vector2(c.x - s * 0.3, y + s * 0.14) + o, Vector2(c.x, y - s * 0.14) + o,
+						Vector2(c.x + s * 0.3, y + s * 0.14) + o]), s * 0.15, Color(INK, 0.25) if pass_ == 0 else PAPER)
+		2:
+			b.disc(c + Vector2(0, s * 0.04), s * 0.44, Color(INK, 0.2))
+			b.disc(c, s * 0.44, PAPER)
+			b.disc(c, s * 0.3, Color("f08a80"))
+			b.disc(c, s * 0.15, PAPER)
+			_twinkle(b, c + Vector2(s * 0.3, -s * 0.3), s * 0.24, GLOW)
+		3:
+			for m: Array in [[Vector2(0.27, -0.27), 0.26], [Vector2(-0.3, 0.27), 0.2], [Vector2(-0.03, -0.02), 0.56]]:
+				var at: Vector2 = c + m[0] * s
+				Motes.glow(b, at, s * float(m[1]), Color(Motes.ORB, 1.0), 1.1)
+				Motes.glow(b, at, s * float(m[1]) * 0.7, Color(Motes.ORB_HI, 1.0), 1.0)
+				Motes.glow(b, at, s * float(m[1]) * 0.42, Color.WHITE, 0.7)
+		4:
+			for k in [-1.0, 1.0, 0.0]:
+				_shot(b, c + Vector2(s * 0.3 * k, s * (0.1 if k != 0.0 else -0.06)), s * (0.11 if k != 0.0 else 0.13))
+	var m := b.mesh()
+	_cache[key] = m
+	return m

@@ -12,6 +12,13 @@ extends Control
 ## and fires while the finger is down. On a keyboard, the arrows or A and D
 ## move and space fires. The game is arcade/firefly_sim.gd, stepped at its
 ## fixed DT; this screen draws it and plays its events.
+##
+## Energy and the shop (2026-10-06, Peapod's, docs/agents/arcade.md): a bug
+## shot down lets go motes of light that fly to the ENERGY plate
+## (ui/motes.gd, the layer Peapod's flight was lifted into), and a stage
+## cleared opens the shop's card (`_open_shop`) where energy buys the gun.
+## A bug takes more than one shot now: a hit floats what it took (`_nums`)
+## and a wounded bug wears a thin bar under it (`_draw_bars`).
 
 signal closed
 
@@ -42,6 +49,7 @@ const BoostCard = preload("res://arcade/boost_card.gd")
 const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
+const Motes = preload("res://ui/motes.gd")
 
 const GAME := "firefly"
 const MARGIN := 40
@@ -73,6 +81,16 @@ const WORDS := [[40, "FF_WORD_5"], [30, "FF_WORD_4"], [20, "FF_WORD_3"], [12, "F
 const HEAT := Color("ffb03b")
 ## Every this many points the score is lettered over the field.
 const MILESTONE := 10000
+## The shop's rows, top to bottom, and each card's name (by Sim.Card).
+const SHOP_ORDER := [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.SHOTS, Sim.Card.CRIT, Sim.Card.ENERGY]
+const SHOP_NAMES := ["PP_CARD_DAMAGE", "FF_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD_ENERGY", "FF_CARD_SHOTS"]
+## The most hit numbers afloat at once, the seconds one lasts, and the least
+## seconds between two volleys heard.
+const NUMS_MOST := 24
+const NUM_LIFE := 0.6
+const SHOT_HEARD := 0.09
+## The most motes one bug lets go.
+const MOTES_A_BUG := 10
 
 var sim: RefCounted
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
@@ -166,6 +184,23 @@ var _flash_col := Color.WHITE
 var _next_milestone := MILESTONE
 var _end_score: Label
 var _end_at := 0.0
+## Energy: the plate's count and its mote, the motes in flight to it, and a
+## second voice that is heard and never felt, for their landing.
+var _energy_l: Label
+var _energy_icon: Control
+var _motes: Control
+var _quiet: Node2D
+## The shop's card while it is up, its rows ({card, button, value, price,
+## row}) and the energy lettered at its head.
+var _shop: Control
+var _shop_rows: Array = []
+var _shop_energy: Label
+## What the hits took, afloat: {pos (field units), text, t, crit, side}.
+var _nums: Array = []
+var _shot_heard := -10.0
+## A label's beat, by label: each ends the last (a bump begun inside
+## another compounds).
+var _beats := {}
 
 func puzzle_id() -> String:
 	return GAME
@@ -188,7 +223,7 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		if sim != null and not sim.is_over() and _end == null:
+		if sim != null and not sim.is_over() and _end == null and _shop == null:
 			_pause(true)
 
 # --- building ---
@@ -245,6 +280,9 @@ func _build() -> void:
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
+	_quiet = Fx2D.new()
+	_quiet.buzzes = false
+	field.add_child(_quiet)
 
 	var over := VBoxContainer.new()
 	over.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -279,6 +317,12 @@ func _build() -> void:
 	_rw = Rewards.new()
 	_rw.set_additive(true)
 	add_child(_rw)
+	# stepped with the screen's own clock, so a pause holds them in the air
+	_motes = Motes.new()
+	_motes.auto = false
+	_motes.target = _energy_icon
+	_motes.landed.connect(_on_motes_landed)
+	add_child(_motes)
 	_apply_insets()
 
 func _build_hud() -> Control:
@@ -286,10 +330,11 @@ func _build_hud() -> Control:
 	row.custom_minimum_size.y = HUD_H
 	row.add_theme_constant_override("separation", 16)
 	var made := []
-	for key in ["FF_SCORE", "FF_BEST", "FF_STAGE"]:
+	# the energy on the left: the thumb that plays hides the right
+	for key in ["PP_ENERGY", "FF_SCORE", "FF_BEST", "FF_STAGE"]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plate.size_flags_stretch_ratio = 1.25 if key == "FF_SCORE" else 1.0
+		plate.size_flags_stretch_ratio = {"FF_SCORE": 1.25, "FF_STAGE": 0.8}.get(key, 1.0)
 		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 8))
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -304,12 +349,23 @@ func _build_hud() -> Control:
 		value.text = "0"
 		value.theme_type_variation = "SheetTitle"
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		words.add_child(value)
+		if key == "PP_ENERGY":
+			# the mote the count is of, beside it: where the motes fly to
+			var held := HBoxContainer.new()
+			held.alignment = BoxContainer.ALIGNMENT_CENTER
+			held.add_theme_constant_override("separation", 6)
+			_energy_icon = _orb_icon(34.0)
+			held.add_child(_energy_icon)
+			held.add_child(value)
+			words.add_child(held)
+		else:
+			words.add_child(value)
 		row.add_child(plate)
 		made.append(value)
-	_score_l = made[0]
-	_best_l = made[1]
-	_stage_l = made[2]
+	_energy_l = made[0]
+	_score_l = made[1]
+	_best_l = made[2]
+	_stage_l = made[3]
 	return row
 
 func _apply_insets() -> void:
@@ -329,6 +385,8 @@ func _layout_field() -> void:
 		return
 	_u = _unit(s)
 	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
+	if _motes != null:
+		_motes.u = size.x / 810.0 * 2.2
 	_sky = _build_sky()
 	var box: Control = _banner.get_meta("box")
 	box.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -350,6 +408,9 @@ func _new_game() -> void:
 	if _end != null:
 		_end.queue_free()
 		_end = null
+	_drop_shop()
+	_motes.clear()
+	_nums.clear()
 	sim = Sim.new()
 	Boosters.apply(GAME, sim, _boosts)
 	_boosted = not _boosts.is_empty()
@@ -415,7 +476,7 @@ func tutorial_pages() -> Array:
 	for step in [[Diagram.Lesson.MOVE, "TUT_FIREFLY_MOVE"], [Diagram.Lesson.SWARM, "TUT_FIREFLY_SWARM"],
 			[Diagram.Lesson.DIVE, "TUT_FIREFLY_DIVE"], [Diagram.Lesson.ESCORT, "TUT_FIREFLY_ESCORT"],
 			[Diagram.Lesson.BEAM, "TUT_FIREFLY_BEAM"], [Diagram.Lesson.FLYBY, "TUT_FIREFLY_FLYBY"],
-			[Diagram.Lesson.HUD, "TUT_FIREFLY_HUD"]]:
+			[Diagram.Lesson.SHOP, "TUT_FIREFLY_SHOP"], [Diagram.Lesson.HUD, "TUT_FIREFLY_HUD"]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": tr(String(step[1]) + "_BODY")})
@@ -451,6 +512,12 @@ func _animate(delta: float) -> void:
 	for p: Dictionary in _pops:
 		p.t += delta
 	_pops = _pops.filter(func(p: Dictionary) -> bool: return p.t < 0.9)
+	if not _nums.is_empty():
+		for n: Dictionary in _nums:
+			n.t += delta
+		_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM_LIFE)
+	if _motes != null:
+		_motes.step(delta)
 	for bu: Dictionary in _bursts:
 		bu.t += delta
 	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return bu.t < (0.9 if bu.big else 0.55))
@@ -599,7 +666,10 @@ func _play_events() -> void:
 		var at := px(ev.get("pos", Vector2.ZERO))
 		match String(ev.type):
 			"shoot":
-				_fx.cue("shoot", randf_range(0.96, 1.06), -4.0)
+				# a quick gun is heard one volley a SHOT_HEARD at most
+				if _clock - _shot_heard >= SHOT_HEARD:
+					_shot_heard = _clock
+					_fx.cue("shoot", randf_range(0.96, 1.06), -4.0)
 				_muzzle = 0.09
 			"pop":
 				var kind: int = ev.kind
@@ -617,11 +687,21 @@ func _play_events() -> void:
 				# the firefly is the pop's knock, not a kill.
 				if not bool(ev.get("rammed", false)):
 					_feel(Haptics.BUMP if big else Haptics.TAP)
+				if bool(ev.get("crit", false)):
+					_num(ev.pos + Vector2(0, 9.0), int(ev.dmg), true)
+				_drop_energy(ev.pos, int(ev.get("energy", 0)))
 				_on_kill(ev, colour)
 			"hurt":
-				_fx.cue("hurt")
-				_feel(Haptics.TAP)
-				_fx.sparkle(at, Art.MOTH_HURT)
+				# every hit floats what it took; it is heard and felt when
+				# the bug shows it (half gone) and when the shot was lucky
+				_num(ev.get("at", ev.pos), int(ev.get("dmg", 1)), bool(ev.get("crit", false)))
+				if bool(ev.get("half", true)):
+					_fx.cue("hurt")
+					_feel(Haptics.TAP)
+					_fx.sparkle(at, Art.MOTH_HURT)
+				elif bool(ev.get("crit", false)):
+					_fx.cue("hurt", 1.3, -4.0)
+					_feel(Haptics.TAP)
 			"dive":
 				if int(ev.kind) == Sim.Kind.MOTH or randf() < 0.5:
 					_fx.cue("dive", randf_range(0.95, 1.05), -6.0)
@@ -703,6 +783,8 @@ func _play_events() -> void:
 				_fx.cue("extra")
 				_feel(Haptics.GOOD)
 				_extra_ship()
+			"shop":
+				_open_shop()
 			"game_over":
 				# The last firefly's knock is the lose.
 				_feel(Haptics.LOSE)
@@ -890,13 +972,15 @@ func _refresh_hud(delta := 0.0) -> void:
 		return
 	if sim.score != _shown_score:
 		if sim.score > _shown_score and _shown_score >= 0:
+			# through `_beat`: a bump begun inside the last one compounds,
+			# and a quick gun's kills blew the score up over its plate
 			_score_l.pivot_offset = _score_l.size * 0.5
-			Motion.bump(_score_l, 0.14, 0.26)
+			_beat(_score_l, 0.14, 0.26)
 		_shown_score = sim.score
 		if not _beat_best and _best > 0 and sim.score > _best:
 			_beat_best = true
 			_best_l.pivot_offset = _best_l.size * 0.5
-			Motion.bump(_best_l, 0.3, 0.4)
+			_beat(_best_l, 0.3, 0.4)
 			_new_best_passed()
 		_score_moments()
 	if Motion.reduce or sim.score < _roll:
@@ -908,6 +992,10 @@ func _refresh_hud(delta := 0.0) -> void:
 		_score_l.text = shown
 		_best_l.text = Record.grouped(maxi(_best, int(_roll)))
 	_stage_l.text = str(sim.stage)
+	# the plate counts what has landed, not what is still in the air
+	var held := Record.grouped(maxi(0, int((sim.energy - ceili(_motes.due - 0.001)) / float(Sim.ORBS))))
+	if _energy_l.text != held:
+		_energy_l.text = held
 
 # --- drawing ---
 
@@ -1104,12 +1192,14 @@ func _draw_field() -> void:
 		field.draw_mesh(Art.mesh(look, f, _u), null, xf, tint)
 	_draw_player(frame)
 	var o := Face.Builder.new()
+	_draw_bars(o)
 	_draw_bursts(o)
 	_draw_muzzle(o)
 	if not o.verts.is_empty():
 		_over = o.mesh()
 		field.draw_mesh(_over, null)
 	_draw_pops()
+	_draw_nums()
 	field.draw_set_transform(Vector2.ZERO)
 	if _flash > 0.0:
 		field.draw_rect(Rect2(Vector2.ZERO, field.size), Color(_flash_col, _flash * 0.35))
@@ -1302,12 +1392,17 @@ func _draw_halos(b: Face.Builder) -> void:
 		b.disc(c, 7.0 * _u, Color(Art.GLOW, 0.1 + 0.05 * pulse))
 
 func _draw_shots(b: Face.Builder) -> void:
+	# a big gun's sky is full of them: past a couple of dozen each is its
+	# streak and its heart only
+	var plain: bool = sim.shots.size() > 24
 	for s: Dictionary in sim.shots:
 		var at := px(s.pos)
 		_streak(b, at, at + Vector2(0, 11.0 * _u), 2.6 * _u, Color(Art.GLOW, 0.55))
-		b.ellipse(at, 2.4 * _u, 3.8 * _u, Color(Art.GLOW, 0.22))
+		if not plain:
+			b.ellipse(at, 2.4 * _u, 3.8 * _u, Color(Art.GLOW, 0.22))
 		b.ellipse(at, 0.9 * _u, 2.4 * _u, SHOT)
-		b.ellipse(at + Vector2(0, -0.4 * _u), 0.45 * _u, 1.4 * _u, Color.WHITE)
+		if not plain:
+			b.ellipse(at + Vector2(0, -0.4 * _u), 0.45 * _u, 1.4 * _u, Color.WHITE)
 	for bl: Dictionary in sim.bullets:
 		var at := px(bl.pos)
 		var vel: Vector2 = bl.vel
@@ -1383,6 +1478,54 @@ func _draw_pops() -> void:
 		field.draw_string_outline(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 8, Color(0.16, 0.12, 0.3, 0.9 * a))
 		field.draw_string(font, o, p.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, a))
 
+## A wounded bug's bar under it: what it has left of what it began with, in
+## the lantern's light on a dark slip. Level whichever way the bug is turned.
+func _draw_bars(b: Face.Builder) -> void:
+	var w := 11.0 * _u
+	var h := 1.5 * _u
+	var lip := 0.6 * _u
+	for e: Dictionary in sim.enemies:
+		if int(e.hp) >= int(e.max) or e.st == Sim.St.WAIT or e.st == Sim.St.DEAD:
+			continue
+		var at := px(e.pos + Vector2(0, Sim.ENEMY_R + 2.6)) - Vector2(w * 0.5, h * 0.5)
+		b.fan(Face.Builder.round_rect(at - Vector2(lip, lip), Vector2(w, h) + Vector2(lip, lip) * 2.0, h * 0.5 + lip), Color(0.1, 0.08, 0.2, 0.75))
+		var left := maxf(h, w * clampf(float(e.hp) / float(e.max), 0.0, 1.0))
+		b.fan(Face.Builder.round_rect(at, Vector2(left, h), h * 0.5), Art.GLOW_HOT)
+
+## A hit's number: `dmg` afloat from `at` (field units), a lucky one bigger,
+## gold and with a "!". The oldest plain one makes room past NUMS_MOST.
+func _num(at: Vector2, dmg: int, crit: bool) -> void:
+	if dmg <= 0:
+		return
+	if _nums.size() >= NUMS_MOST:
+		if not crit:
+			return
+		_nums.pop_front()
+	# thrown a little apart, or a volley on one bug letters one blot
+	_nums.append({"pos": at + Vector2(randf_range(-6.0, 6.0), randf_range(-3.0, 2.0)), "text": ("%d!" % dmg) if crit else str(dmg),
+		"t": 0.0, "crit": crit, "side": randf_range(-1.0, 1.0)})
+
+## The hits' numbers hop up and out from where the shot landed and fade.
+## One size a look and no transform of their own, so they batch: the dark
+## under every one first, then the light.
+func _draw_nums() -> void:
+	if _nums.is_empty():
+		return
+	var font := get_theme_font("font", "SheetTitle")
+	var laid: Array = []
+	for n: Dictionary in _nums:
+		var u: float = n.t / NUM_LIFE
+		var crit: bool = n.crit
+		var size := 40 if crit else 26
+		var rise := (30.0 if crit else 22.0) * (1.0 - pow(1.0 - u, 2.0))
+		var at := px(n.pos) + Vector2(float(n.side) * 14.0 * u, -rise - 6.0)
+		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		laid.append([at + Vector2(-w * 0.5, 0), n.text, size, 1.0 - clampf((u - 0.6) / 0.4, 0.0, 1.0), crit])
+	for l: Array in laid:
+		field.draw_string_outline(font, l[0], l[1], HORIZONTAL_ALIGNMENT_LEFT, -1, l[2], 8, Color(0.16, 0.12, 0.3, 0.85 * float(l[3])))
+	for l: Array in laid:
+		field.draw_string(font, l[0], l[1], HORIZONTAL_ALIGNMENT_LEFT, -1, l[2], Color(Pal.SUN if l[4] else Color("fffaf0"), l[3]))
+
 ## The ships in reserve as small lanterns in the bottom-left corner, each
 ## breathing its glow, and a flag a stage in the bottom-right, waving.
 func _draw_ships_left(b: Face.Builder) -> void:
@@ -1411,6 +1554,211 @@ func _draw_ships_left(b: Face.Builder) -> void:
 		b.fan(PackedVector2Array([foot + Vector2(-1.0, -h), foot + Vector2(-w, -h + 7.0 + flap),
 			foot + Vector2(-1.0, -h + 15.0)]), cloth)
 		x -= 27.0 if big else 22.0
+
+# --- energy and the shop ---
+
+## A bug gone at `at` (field units): its `orbs` of energy drift out of it as
+## motes and fly to the plate.
+func _drop_energy(at: Vector2, orbs: int) -> void:
+	if orbs <= 0 or _motes == null:
+		return
+	_motes.drop(field.get_global_transform() * (px(at) + _shake_off), float(orbs), mini(orbs, MOTES_A_BUG))
+
+## Motes came down on the plate: its count swells, and each landing is a
+## dry click a semitone up a short run, heard and never felt.
+func _on_motes_landed(_count: int, note: int) -> void:
+	if _energy_l.scale.x <= 1.01:
+		_energy_l.pivot_offset = _energy_l.size * 0.5
+		_beat(_energy_l, 0.16, 0.16)
+	if note >= 0:
+		_quiet.cue("shoot", 1.5 * pow(2.0, mini(note, 14) / 12.0), -9.0)
+
+## A beat on `node` that ends the last one on it.
+func _beat(node: Control, amount: float, time: float) -> void:
+	Motion.stop(_beats.get(node))
+	node.scale = Vector2.ONE
+	_beats[node] = Motion.bump(node, amount, time)
+
+## A stage is over and there is energy for something: the shop's card over
+## the night, the run waiting behind it until Go.
+func _open_shop() -> void:
+	if _shop != null:
+		return
+	_touch = -1
+	_mouse = false
+	sim.target_x = NAN
+	# whatever is in the air is counted before the card letters it
+	_motes.clear()
+	_shop = _build_shop()
+	add_child(_shop)
+	_refresh_shop()
+	Motion.appear(_shop, 0.0, 1.0, 0.2)
+	_fx.cue("extra", 0.9, -5.0)
+
+func _close_shop() -> void:
+	if _shop == null:
+		return
+	_drop_shop()
+	sim.leave_shop()
+	_play_events()
+	_fx.buzz(Haptics.TAP)
+
+func _drop_shop() -> void:
+	if _shop != null:
+		_shop.queue_free()
+		_shop = null
+	_shop_rows.clear()
+
+func _build_shop() -> Control:
+	var scrim := Dialog.scrim()
+	scrim.name = "Shop"
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(820)
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 16)
+	card.add_child(col)
+	# the energy held, on a pill at the head's right
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
+	var held := HBoxContainer.new()
+	held.add_theme_constant_override("separation", 10)
+	pill.add_child(held)
+	held.add_child(_orb_icon(46.0))
+	_shop_energy = Label.new()
+	_shop_energy.theme_type_variation = "SheetTitle"
+	held.add_child(_shop_energy)
+	col.add_child(Dialog.head("PP_SHOP", "trend", pill))
+	var line := Label.new()
+	line.text = tr("FF_SHOP_LINE") % sim.stage
+	line.theme_type_variation = "SheetBodyDim"
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(line)
+	_shop_rows.clear()
+	for card_id: int in SHOP_ORDER:
+		col.add_child(_shop_row(card_id))
+	var go := Dialog.primary("play", tr("FF_SHOP_GO"))
+	go.name = "Go"
+	go.pressed.connect(_close_shop)
+	Dialog.buttons(col, go)
+	return scrim
+
+## A shop card's medallion, `side` pixels square.
+func _card_icon(card: int, side: float) -> Control:
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		icon.draw_mesh(Art.card_token(card, side), null, Transform2D(0.0, icon.size * 0.5)))
+	return icon
+
+## A mote of energy, `side` pixels square: what a price is counted in.
+func _orb_icon(side: float) -> Control:
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(side, side)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		var sc := Motes.icon_scale(side)
+		icon.draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
+	return icon
+
+## One card of the shop: the whole row is the button. Its medallion, its
+## name over what it is now and what one more makes it, and its price.
+func _shop_row(card: int) -> Button:
+	var b := Button.new()
+	b.name = "Card%d" % card
+	b.custom_minimum_size = Vector2(0, 132)
+	b.focus_mode = Control.FOCUS_NONE
+	for st in ["normal", "hover"]:
+		b.add_theme_stylebox_override(st, Dialog.tile(Pal.SURFACE, 16))
+	b.add_theme_stylebox_override("pressed", Dialog.tile(Pal.SURFACE.darkened(0.06), 16))
+	b.add_theme_stylebox_override("disabled", Dialog.tile(Color(Pal.SURFACE, 0.5), 16))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	row.anchor_right = 1.0
+	row.anchor_bottom = 1.0
+	row.offset_left = 22.0
+	row.offset_right = -26.0
+	row.add_child(_card_icon(card, 88.0))
+	var words := VBoxContainer.new()
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -4)
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(words)
+	var title := Label.new()
+	title.text = SHOP_NAMES[card]
+	title.theme_type_variation = "SheetTitle"
+	title.clip_text = true
+	words.add_child(title)
+	var value := Label.new()
+	value.theme_type_variation = "SheetBodyDim"
+	# a long language's line is cut, never the price pushed off the card
+	value.clip_text = true
+	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	words.add_child(value)
+	row.add_child(_orb_icon(34.0))
+	var cost := Label.new()
+	cost.theme_type_variation = "SheetTitle"
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cost.custom_minimum_size.x = 62
+	row.add_child(cost)
+	b.pressed.connect(_buy.bind(card))
+	_shop_rows.append({"card": card, "button": b, "value": value, "price": cost, "row": row})
+	return b
+
+## What `card` is now and what one more makes it, in figures only.
+func _card_value(card: int) -> String:
+	match card:
+		Sim.Card.DAMAGE:
+			return "x%d  >  x%d" % [sim.power, sim.power + 1]
+		Sim.Card.SPEED:
+			return tr("PP_CARD_SPEED_LINE") % [_fig(sim.rate()), _fig(sim.rate() + Sim.RATE_STEP)]
+		Sim.Card.CRIT:
+			var lv: int = sim.crit_lv
+			var line := tr("PP_CARD_CRIT_LINE") % [Sim.crit_mult(lv), Sim.crit_mult(lv + 1), roundi(Sim.crit_chance(lv + 1) * 100.0)]
+			# with none bought there is no crit to go on from
+			return line if lv > 0 else line.substr(line.find(">") + 1).strip_edges()
+		Sim.Card.SHOTS:
+			return tr("FF_CARD_SHOTS_LINE") % [sim.volley, sim.volley + 1]
+	return tr("PP_CARD_ENERGY_LINE") % [roundi(sim.energy_lv * Sim.ENERGY_STEP * 100.0), roundi((sim.energy_lv + 1) * Sim.ENERGY_STEP * 100.0)]
+
+## A figure as the shop letters it: whole when it is, else to a tenth, with
+## a comma where the language writes one.
+static func _fig(v: float) -> String:
+	if absf(v - roundf(v)) < 0.05:
+		return str(roundi(v))
+	var text := "%.1f" % v
+	return text if TranslationServer.get_locale().begins_with("en") else text.replace(".", ",")
+
+func _refresh_shop() -> void:
+	_shop_energy.text = Record.grouped(int(sim.energy / float(Sim.ORBS)))
+	for r: Dictionary in _shop_rows:
+		var card: int = r.card
+		var open: bool = sim.can_buy(card)
+		(r.value as Label).text = _card_value(card)
+		(r.price as Label).text = Record.grouped(int(sim.price(card) / float(Sim.ORBS)))
+		(r.button as Button).disabled = not open
+		(r.row as Control).modulate.a = 1.0 if open else 0.45
+
+func _buy(card: int) -> void:
+	if not sim.buy(card):
+		return
+	_fx.cue("docked", 1.0 + 0.04 * int(sim.bought[card]), -4.0)
+	_fx.buzz(Haptics.TAP)
+	for r: Dictionary in _shop_rows:
+		if int(r.card) == card:
+			var b: Button = r.button
+			b.pivot_offset = b.size * 0.5
+			_beat(b, 0.05, 0.2)
+	_refresh_shop()
 
 # --- the end ---
 
@@ -1596,6 +1944,9 @@ func _on_back() -> void:
 func go_back() -> void:
 	if tutor.close():
 		return
+	if _shop != null:
+		_close_shop()
+		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
@@ -1611,6 +1962,7 @@ func _ask(by_hand := true) -> void:
 	if _end != null:
 		_end.queue_free()
 		_end = null
+	_drop_shop()
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()

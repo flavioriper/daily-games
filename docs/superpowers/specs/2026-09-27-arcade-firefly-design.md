@@ -206,3 +206,15 @@ Reduce motion keeps the words (still) and drops the bits, rays, rain,
 flash, glow and count. Draw calls at 810x1440: unchanged at rest (62 on
 the banner), 93-156 in ordinary play, ~420 with a forced pile of moments
 at once (a whole stage killed in a frame), 82-88 on the end card.
+
+## 10. Amendment: energy and the shop (2026-10-06)
+
+The user: "implement same upgrades and energy logic from peapod into
+firefly". Section 2's two volleys in the air and its one-shot gnats and
+beetles are replaced: a bug takes more shots each stage, every bug shot
+down pays energy, and a stage cleared opens Peapod's shop (a heavier shot,
+a quicker gun, a lucky shot, more energy, one more shot a volley; no card
+has a most, a price moves only when its card is bought). Stage 1 is the
+game as section 2 wrote it. Peapod's pods and rack did not come over. The
+numbers, the bots and what is not done are in `docs/agents/arcade.md`,
+under Firefly.

@@ -30,7 +30,9 @@ which the spec names once to forbid; **it is called Firefly and nothing
 else**. A firefly against gnats, ladybirds and moths in a night garden,
 with the arcade's rules kept (two volleys, looping entrances, escorted
 dives, a moth's silk beam that carries your ship off and a rescue that
-makes a pair, a flyby bonus stage third and every fourth after).
+makes a pair, a flyby bonus stage third and every fourth after). **Since
+2026-10-06 it has Peapod's energy and shop** (the last bullet): the two
+volleys and the one-shot bugs are history.
 
 - **The game is pure data** (`arcade/firefly_sim.gd`, field units, fixed
   1/120 s). `tests/_probe_firefly.gd -- [seed] [minutes] [skill]` plays it
@@ -69,6 +71,87 @@ makes a pair, a flyby bonus stage third and every fourth after).
 - Sounds take a new style in `tools/gen_sfx.py`, `ARCADE` (soft 8-bit
   synth), awaiting the user's listen. `tests/_shot_firefly.gd` shoots every
   beat and puts `user://arcade.cfg` back.
+- **Energy and the shop (2026-10-06, the user: "implement same upgrades and
+  energy logic from peapod into firefly"; asked, they chose bugs whose
+  shots grow over a shop of other cards, and the shop without Peapod's pods
+  and rack).** Peapod's rules and numbers, in `arcade/firefly_sim.gd`.
+  - **A bug takes more shots each stage** (`hp_of`, `hp_base(level())`, so
+    a flyby does not count and its bugs take one): a beetle twice a gnat's,
+    a moth four times. `HP_START` 0.6 holds stage 1 to what it always was
+    (1, 1 and a moth's 2), then 1.4 a level to level 10 and 1.16 after
+    (gnat 2, beetle 3, moth 7 on stage 5; 12, 25, 50 on stage 13; 41, 81,
+    163 on stage 24). A bug carries `max`; `hurt` is set when it is left
+    with half or less, which is when a moth blushes. **A harness that
+    wants a bug to go in one shot sets `e.hp` to no more than `sim.power`,
+    and `e.max` with it** or the bug wears a bar.
+  - **The gun** (`power`, `rate_lv`, `crit_lv`, `volley`, `energy_lv`): the
+    two volleys in the air at most are gone and it fires `rate()` volleys a
+    second, 3 with nothing bought (what the old limit came to on the bot)
+    and half a volley more a level, `FIRE_MOST` a step. A volley's shots
+    leave side by side (`shot_off`, `SHOT_GAP` 5, the row closing up past
+    `SHOT_ROW`), a pair's from both. The crit is Peapod's (none before the
+    first level, one in ten at x3, one more a level, 5% more every fifth)
+    and rolls on dice of its own (`_luck`), so a lucky shot does not move
+    the swarm's. **`fired` counts shots now, not volleys**: a pair's
+    accuracy used to pass 100%.
+  - **Energy** in orbs, `ORBS` (4) to one: a bug pays 1, a moth or a rogue
+    2 (`ENERGY`), a tenth more a level of the Energy card; the `pop` says
+    `energy`. 44 a stage, the same every stage (Peapod's walls grow).
+  - **The shop**: a stage's beat over (a flyby's result too),
+    `_after_stage` goes to `Phase.SHOP` if anything can be bought and
+    `step()` returns at once until `leave_shop()`. `Card.DAMAGE`, `SPEED`,
+    `CRIT`, `ENERGY`, `SHOTS` at Peapod's `PRICE` and `PRICE_STEP` (11, 14,
+    14, 12, 80); a price moves only when its card is bought, **no card has
+    a most**, unspent energy is kept and a Second chance keeps everything.
+    The boosters are as they were.
+  - **The screen**: an ENERGY plate on the left of the paper row (the
+    thumb that plays hides the right), the motes through `ui/motes.gd`
+    (`_drop_energy`, stepped by the screen so a pause holds them; the
+    shop opening counts whatever is in the air), each landing Firefly's
+    own `shoot` click a semitone up through `_quiet`. The card is Peapod's
+    (`_build_shop`, five rows, `Art.card_token` in Peapod's card colours),
+    **built again here, not shared**: a change to the shop's card is made
+    in both. A hit floats what it took (`_nums`, 24 at most, a lucky one
+    gold with a "!"; every dark under first and then every light, so they
+    batch) and a wounded bug wears a thin bar under it (`_draw_bars`, in
+    the `_over` mesh). `hurt` is heard and felt only on the blow that
+    leaves a bug half gone and on a lucky one; the volley's click is heard
+    one a `SHOT_HEARD` at most. Past two dozen shots in the air each is
+    drawn as its streak and heart only.
+  - **The score's bump compounded** (Peapod's sixth pass warned of it): a
+    quick gun's kills blew the score up over its plate. Its labels beat
+    through `_beat` now.
+  - **The tutorial**: an eighth page, Energy and the shop, drawn like the
+    HUD page (`Lesson.SHOP`: a mote and the five medallions beside what
+    each is); two bodies reworded in three languages (no "two volleys", no
+    "two hits"). A page's `Night` keeps stage 1's bugs whatever its stage
+    and never opens a shop.
+  - **The bots** (`tests/_probe_firefly.gd -- [seed] [minutes] [skill]
+    [shopper]`: 0 the best worth for its price, 1-5 one card only, 6 two
+    Energy first, 7 at random, 8 nothing; it prints the gun after every
+    shop). Four seeds, skill 1. Before the shop: stage 13-20 in five to
+    eight minutes. Now: best buy 21-25 in seven and a half to nine, at
+    random 10-14, the heavier shot only 10-12, nothing bought 4-5. Skill
+    0.6, eight seeds, best buy: 2-9 (before, four seeds: 2-8). Swept:
+    Peapod's own curve from 1 ends the best buyer on 18-25 but the weak
+    hand on stage 2 half the time (stage 1 was 68 shots, not 44); from 0.6
+    at Peapod's 1.32 it runs to stage 32-38 in thirteen minutes. **The bot
+    sits under the lowest bug and never tires; where a person's run ends
+    is not known.**
+  - 132-138 draw calls with hits landing and motes flying, 121-123 with
+    the shop up, 78-108 under a gun far past what a run buys (six shots a
+    volley, ten volleys a second, a pair: about 90 shots in the air),
+    111 on the end card, ANGLE agreeing; 118 with hits landing under
+    reduce motion, where no mote flies. `tests/_shot_firefly.gd -- <outdir>
+    [pt|es|en] [reduce]` shoots them (6a, 6b, 6c, 7b), buys through the
+    card's own buttons and leaves by its Go; its end step now takes the
+    pair away first (a pair only lost its twin and the end card was never
+    shot). `_probe_arcade_buzz.gd -- firefly` buys and goes on. Suite
+    249790/0. **Not done: a phone; nothing heard (no new sound: the shop
+    opening is `extra` low and quiet, a card bought `docked`, a mote
+    landing `shoot`); no person has played the curve or the prices; the
+    end card says nothing of the gun; `arcade_end` carries nothing of what
+    was bought.**
 
 **Molehill is the second** (2026-09-27, spec
 `2026-09-27-arcade-molehill-design.md`): whack-a-mole after the boardwalk
