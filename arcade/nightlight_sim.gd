@@ -50,22 +50,36 @@ const STEP := 1.0 / 120.0
 ## Gravity for a star of one mass, the haze's drag at the star's surface (a
 ## share of a body's speed a second) and the light a perfect spiral from far
 ## off pays for each of a body's mass.
-const G := 1.13e6
-const DRAG := 0.25
-const LIGHT := 1.5
+##
+## Everything moves at half the speed it first had (the user, 2026-10-06:
+## "we need to reduce bodies movement speed, it's way too fast"): G is a
+## quarter of the first 1.13e6, and SPARE and a body's tumbling half, so
+## every path is the shape it was and takes twice as long. DRAG is two
+## fifths of the first 0.25, not half: a spiral is slower in seconds than it
+## was, and still goes round a few times on the way down.
+const G := 2.8e5
+const DRAG := 0.1
+const LIGHT := 2.1
 ## A new star's mass and its radius; the radius is the cube root of the mass.
+## The star is a little over twice as wide as it first was (46 px) and the
+## bodies two thirds (BODY_R was 14), the same day: "let's try to get
+## somewhere closer to real sizings ... right now it look way too small
+## compared to the bodies around". A planetoid is under a fifth of a new
+## star across where it was three fifths, a thrown meteor a twentieth. The
+## haze and the Roche radius are about where they were in pixels, so fewer
+## of the star's radii (they were 5 and 3).
 const START := 10.0
-const STAR_R := 46.0
+const STAR_R := 100.0
 ## Past SEEN pixels on the screen the star grows only by the logarithm and
 ## the view draws back instead.
-const SEEN := 80.0
-const SEEN_LOG := 24.0
+const SEEN := 130.0
+const SEEN_LOG := 36.0
 ## A body is eaten this far inside the star's edge.
 const EAT := 0.92
 ## The haze is this many of the star's radii wide, before the Haze tile.
-const HAZE := 5.0
+const HAZE := 2.6
 ## A body's radius is the cube root of its mass times this.
-const BODY_R := 14.0
+const BODY_R := 9.0
 ## A thrown meteor, before the Meteor tile: a fifth of what it was while the
 ## pouch held four, since nothing limits a throw now (the user, 2026-10-06:
 ## "remove the asteroid limit on throw, but make it way smaller").
@@ -81,7 +95,7 @@ const MIX := [0.5, 0.8, 0.95]
 ## the haze turns. Past FAR and leaving, a body is gone.
 const SPAWN := 1350.0
 const MISS := 760.0
-const SPARE := 230.0
+const SPARE := 115.0
 const PROGRADE := 0.75
 const FAR := 2400.0
 ## Seconds between passers, and the wait is that times something in here.
@@ -94,8 +108,9 @@ const MOST := 160
 ## Light is let go in pieces of a quarter of a body's mass, and never less
 ## than this.
 const PIECE := 0.05
-## Every TRAIL_EVERY ticks a body leaves a point of its trail, TRAIL at most.
-const TRAIL_EVERY := 3
+## Every TRAIL_EVERY ticks a body leaves a point of its trail, TRAIL at most:
+## 1.2 s of where it has been.
+const TRAIL_EVERY := 6
 const TRAIL := 24
 ## Two bodies meet when their middles are this share of their radii apart.
 const TOUCH := 0.8
@@ -104,12 +119,13 @@ const TOUCH := 0.8
 ## rip apart into smaller pieces"). The star pulls a body's near side harder
 ## than its far side, by GM x its radius / r^3. A big body is held by its own
 ## weight, which also goes by its radius, so it is torn at one distance
-## whatever its size: ROCHE of the star's radii. A small one is a stone and
+## whatever its size: ROCHE of the star's radii (a real star as dense as the
+## Sun tears a loose rock at 1.9 of its own). A small one is a stone and
 ## held by that too, the more the smaller it is, so it gets nearer: a body
 ## HOLD px in radius is as much stone as weight, and torn the cube root of
 ## two nearer. A denser star (the Core perk) tears from further out.
-const ROCHE := 3.0
-const HOLD := 14.0
+const ROCHE := 1.8
+const HOLD := 9.0
 ## Nothing is torn lighter than twice this share of a thrown meteor (which
 ## so comes apart once, in three), a body goes in PIECES at most at a time,
 ## and nothing is torn while the sky holds FULL bodies.
@@ -213,14 +229,19 @@ const EMBER := 2.0
 const RICHER := 0.5
 ## The ashes a supernova leaves: ASHES and ASHES_LOG more for every tenfold
 ## of the star's mass over a hundred, ASHES_MOST at most, each on a closed
-## path whose nearest point to the star is within these bounds and whose
-## furthest is inside ASH_FAR.
+## path whose nearest point to the star is ASH_NEAR to ASH_NEAR + ASH_REACH
+## of the new star's radii (the nearest a little outside its Roche radius)
+## and whose furthest is inside ASH_FAR of them. In its radii and not in
+## pixels: a new star the Ember perk has made heavier is wider too, and
+## would have its nearest ashes inside it.
 const ASHES := 14.0
 const ASHES_LOG := 10.0
 const ASHES_MOST := 48
-const ASH_NEAR := 170.0
-const ASH_REACH := 430.0
-const ASH_FAR := 980.0
+const ASH_NEAR := 1.9
+const ASH_REACH := 4.1
+const ASH_FAR := 9.8
+## A body tumbles up to this many radians a second, either way.
+const TUMBLE := 0.75
 
 ## Where the star is kept. A harness points this elsewhere.
 static var path := "user://nightlight.cfg"
@@ -516,9 +537,10 @@ func nova() -> int:
 	events.clear()
 	_pass_wait = 0.0
 	var pull := gm()
+	var rw := star_r()
 	for i in count:
-		var near := ASH_NEAR + _rng.randf() * ASH_REACH
-		var far := near + 60.0 + _rng.randf() * (ASH_FAR - 60.0 - near)
+		var near := (ASH_NEAR + _rng.randf() * ASH_REACH) * rw
+		var far := near + 0.6 * rw + _rng.randf() * ((ASH_FAR - 0.6) * rw - near)
 		var way := Vector2.from_angle(_rng.randf() * TAU)
 		# let go at its furthest point, where it is slowest
 		var v := sqrt(pull * (2.0 / far - 2.0 / (near + far)))
@@ -549,7 +571,7 @@ func add(kind: Kind, m: float, pos: Vector2, vel: Vector2) -> Body:
 	b.pos = pos
 	b.vel = vel
 	b.spin = _rng.randf() * TAU
-	b.turn = _rng.randf_range(-1.5, 1.5)
+	b.turn = _rng.randf_range(-TUMBLE, TUMBLE)
 	bodies.append(b)
 	return b
 
@@ -806,8 +828,9 @@ func _burn() -> void:
 	lit = move_toward(lit, 1.0 if awake else 0.0, STEP / DIM)
 
 ## Where a throw from `pos` with `vel` would go: a point every `every` ticks
-## for `ticks` of them, stopping at the star. `hit` is whether it got there.
-func predict(pos: Vector2, vel: Vector2, ticks := 420, every := 7) -> Dictionary:
+## for `ticks` of them (seven seconds), stopping at the star. `hit` is
+## whether it got there.
+func predict(pos: Vector2, vel: Vector2, ticks := 840, every := 14) -> Dictionary:
 	var pts := PackedVector2Array()
 	var pull := gm()
 	var eat := star_r() * EAT

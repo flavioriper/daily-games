@@ -35,8 +35,8 @@ const SMALL := 6.0
 ## it, and as much thinner as keeps its size.
 const PULLED := 0.4
 ## The star's light reaches this many of its radii, a quarter of it left
-## there.
-const REACH := 9.0
+## there (nine of them while the star was under half as wide).
+const REACH := 4.5
 ## Seconds a puff lasts where two bodies met.
 const PUFF := 0.4
 ## A trail is this much of its body's radius wide: a line behind it, not a
@@ -194,13 +194,13 @@ func ate(m: float) -> void:
 ## Two bodies met at `at`.
 func met(at: Vector2) -> void:
 	if not Motion.reduce and _puffs.size() < 30:
-		_puffs.append({"at": at, "t": 0.0, "s": 1.0})
+		_puffs.append({"at": at, "t": 0.0, "s": 0.65})
 
 ## The tide tore a body of `m` at `at`: its dust catches the light, a small
 ## puff for a meteor and a larger one for a planetoid.
 func tore(at: Vector2, m: float) -> void:
 	if not Motion.reduce and _puffs.size() < 30:
-		_puffs.append({"at": at, "t": 0.0, "s": clampf(Sim.body_r(m) / 26.0, 0.3, 1.5)})
+		_puffs.append({"at": at, "t": 0.0, "s": clampf(Sim.body_r(m) / 17.0, 0.3, 1.5)})
 
 ## A frame: `delta` of the sim's time has passed (0 while it is held).
 func refresh(delta: float) -> void:

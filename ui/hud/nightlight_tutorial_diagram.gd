@@ -18,13 +18,20 @@ const Motion = preload("res://core/motion.gd")
 
 enum Lesson { THROW, LIGHT, NOVA, FUEL }
 
-## Seconds of a page's loop, and how long THROW aims before it lets go.
-const LOOP := 9.0
+## Seconds of each page's loop, by Lesson (NOVA has none): as long as its
+## bodies take to reach the star, and a moment more. How long THROW aims
+## before it lets go, and how far in a page stands under reduce motion.
+const LOOP := [22.0, 14.0, 0.0, 12.0]
 const AIM := 1.6
+const STILL := 6.0
 ## THROW's meteor: where it waits, and its speed as a share of a circle's
-## there. Slow enough that its path dips deep into the haze.
-const FROM := Vector2(-330.0, 70.0)
-const SLOW := 0.62
+## there. Slow enough that its path dips deep into the haze, and not so slow
+## that it meets the star the first time round. LIGHT's circle and FUEL's
+## comet, as shares of the haze's radius.
+const FROM := Vector2(-270.0, 60.0)
+const SLOW := 0.78
+const RING := 0.6
+const COMET := 0.5
 ## The design's pixels the page is tall: the haze with room round it, and
 ## for NOVA most of the ashes' paths.
 const TALL := 760.0
@@ -60,7 +67,7 @@ func _ready() -> void:
 	_fit()
 	if Motion.reduce:
 		_t = AIM
-		for i in int(3.0 / Sim.STEP):
+		for i in int(STILL / Sim.STEP):
 			_step(Sim.STEP)
 		set_process(false)
 
@@ -75,7 +82,7 @@ func _process(delta: float) -> void:
 
 func _step(delta: float) -> void:
 	_t += delta
-	if _t >= LOOP and lesson != Lesson.NOVA:
+	if lesson != Lesson.NOVA and _t >= float(LOOP[lesson]):
 		_t = 0.0
 		_thrown = false
 		_sim.bodies.clear()
@@ -97,13 +104,13 @@ func _step(delta: float) -> void:
 		Lesson.LIGHT:
 			if not _thrown and _t >= 0.5:
 				_thrown = true
-				var r: float = _sim.haze_r() * 0.8
+				var r: float = _sim.haze_r() * RING
 				_sim.add(Sim.Kind.METEOR, 1.0, Vector2(-330.0, -150.0), Vector2.ZERO)
 				_sim.add(Sim.Kind.METEOR, 1.0, Vector2(r, 0.0), Vector2(0.0, sqrt(_sim.gm() / r)))
 		Lesson.FUEL:
 			if not _thrown and _t >= 0.8:
 				_thrown = true
-				var r: float = _sim.haze_r() * 0.45
+				var r: float = _sim.haze_r() * COMET
 				_sim.add(Sim.Kind.COMET, 3.0, Vector2(-r, 0.0), Vector2(0.0, -sqrt(_sim.gm() / r)))
 	_sim.advance(delta)
 	for e: Dictionary in _sim.events:

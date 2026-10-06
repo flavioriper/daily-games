@@ -27,26 +27,26 @@ const STEPS := [
 	[1.6, "tab"], [2.8, "shot", "1_tab"],
 	[2.9, "open"], [3.9, "shot", "2_start"],
 	[4.0, "press", Vector2(250, 760)], [4.1, "drag", Vector2(290, 880)], [4.6, "shot", "3_aim"],
-	[4.7, "let_go"], [8.2, "shot", "4_winding"],
-	[8.3, "planet"], [11.0, "shot", "4b_torn"], [13.4, "shot", "4c_stream"],
-	[13.5, "crowd"], [15.1, "shot", "4d_full"],
-	[15.2, "grow", 2.2], [16.6, "shot", "5a_pick"], [16.7, "pick", 0], [17.3, "shot", "5b_picked"],
-	[17.4, "starve"], [19.6, "shot", "5c_dim"], [19.7, "feed"],
-	[19.8, "run", 90.0], [20.8, "shot", "5_busy"],
-	[20.9, "hold", Vector2(250, 760), Vector2(290, 880)], [22.4, "shot", "5d_stream"], [22.5, "let_go"],
-	[22.6, "heavy"], [22.7, "run", 20.0], [23.8, "shot", "6_heavy"],
-	[23.9, "powers"], [24.5, "shot", "6b_powers"], [24.6, "powers_x"],
-	[24.7, "shop"], [24.8, "buy"], [25.3, "shot", "7_shop"],
-	[25.4, "shop_x"], [25.5, "ask"], [26.0, "shot", "8_ask"],
-	[26.1, "go"], [26.65, "shot", "9_swell"], [27.4, "shot", "10_thin"],
-	[28.6, "shot", "11_perks"], [28.7, "perk"], [29.1, "shot", "12_perk"],
-	[29.2, "perks_x"], [32.2, "shot", "13_ashes"],
-	[32.3, "tutor"], [35.3, "shot", "14_tut_throw"],
-	[35.4, "page", 1], [40.0, "shot", "15_tut_light"],
-	[40.1, "page", 2], [42.0, "shot", "15b_tut_star_dim"], [47.6, "shot", "15c_tut_star_lit"],
-	[47.7, "page", 3], [50.1, "shot", "16_tut_nova"],
-	[50.2, "leave"], [51.4, "shot", "17_tab_after"],
-	[51.5, "quit"],
+	[4.7, "let_go"], [9.2, "shot", "4_winding"],
+	[12.8, "planet"], [19.8, "shot", "4b_torn"], [24.8, "shot", "4c_stream"],
+	[24.9, "crowd"], [25.6, "shot", "4d_full"],
+	[29.5, "grow", 2.2], [30.9, "shot", "5a_pick"], [31.0, "pick", 0], [31.6, "shot", "5b_picked"],
+	[31.7, "starve"], [33.9, "shot", "5c_dim"], [34.0, "feed"],
+	[34.1, "run", 90.0], [35.1, "shot", "5_busy"],
+	[35.2, "hold", Vector2(250, 760), Vector2(290, 880)], [36.9, "shot", "5d_stream"], [37.0, "let_go"],
+	[38.4, "heavy"], [38.5, "run", 20.0], [39.6, "shot", "6_heavy"],
+	[39.7, "powers"], [40.3, "shot", "6b_powers"], [40.4, "powers_x"],
+	[40.5, "shop"], [40.6, "buy"], [41.1, "shot", "7_shop"],
+	[41.2, "shop_x"], [41.3, "ask"], [41.8, "shot", "8_ask"],
+	[41.9, "go"], [42.45, "shot", "9_swell"], [43.2, "shot", "10_thin"],
+	[44.4, "shot", "11_perks"], [44.5, "perk"], [44.9, "shot", "12_perk"],
+	[45.0, "perks_x"], [50.0, "shot", "13_ashes"],
+	[50.1, "tutor"], [59.1, "shot", "14_tut_throw"],
+	[59.2, "page", 1], [66.2, "shot", "15_tut_light"],
+	[66.3, "page", 2], [68.2, "shot", "15b_tut_star_dim"], [74.3, "shot", "15c_tut_star_lit"],
+	[74.4, "page", 3], [76.8, "shot", "16_tut_nova"],
+	[76.9, "leave"], [78.1, "shot", "17_tab_after"],
+	[78.2, "quit"],
 ]
 
 var _menu: Node
@@ -129,7 +129,7 @@ func _process(delta: float) -> bool:
 	_frames += 1
 	_gap_sum += delta
 	_gap_max = maxf(_gap_max, delta)
-	if _t > 90.0:
+	if _t > 120.0:
 		_finish()
 		return true
 	while _i < STEPS.size() and _t >= float(STEPS[_i][0]):
@@ -174,6 +174,17 @@ func _process(delta: float) -> bool:
 					var far: float = _s.sim.tear_r(1.5) * (1.02 + 0.003 * k)
 					var way := Vector2.from_angle(TAU * k / 60.0)
 					_s.sim.add(Sim.Kind.ROCK, 1.5, way * far, way.orthogonal() * -sqrt(_s.sim.gm() / far))
+				# The star is held at its mass while the tide works, or it grows
+				# over the ring before the pieces are many: this beat is the
+				# draw calls' worst, a sky at Sim.FULL.
+				var held: float = _s.sim.mass
+				for i in int(20.0 / Sim.STEP):
+					if _s.sim.bodies.size() >= Sim.FULL:
+						break
+					_s.sim.tick()
+					_s.sim.events.clear()
+					_s.sim.mass = held
+				print("crowd: %d bodies up" % _s.sim.bodies.size())
 			"run":
 				_run(float(step[2]))
 			"grow":

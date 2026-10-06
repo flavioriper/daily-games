@@ -73,8 +73,10 @@ func _one(pos: Vector2, vel: Vector2) -> Dictionary:
 func _check_physics() -> void:
 	var sim: RefCounted = Sim.new(7)
 	var rh: float = sim.haze_r()
-	_ok("a new star is %d px and its haze five times that" % Sim.STAR_R, is_equal_approx(sim.star_r(), Sim.STAR_R) and is_equal_approx(rh, Sim.STAR_R * Sim.HAZE))
-	_ok("a turn at the haze's edge is slow and one at the surface quick", sim.turn_time(rh) > 6.0 and sim.turn_time(sim.star_r()) < 0.7)
+	_ok("a new star is %d px and its haze %.1f times that" % [Sim.STAR_R, Sim.HAZE], is_equal_approx(sim.star_r(), Sim.STAR_R) and is_equal_approx(rh, Sim.STAR_R * Sim.HAZE))
+	print("a turn at the haze's edge takes %.1f s at %.0f px/s, one at the star's surface %.1f s at %.0f px/s" % [sim.turn_time(rh), sqrt(sim.gm() / rh),
+		sim.turn_time(sim.star_r()), sqrt(sim.gm() / sim.star_r())])
+	_ok("a turn at the haze's edge is slow, and one at the surface quicker and still no whirl", sim.turn_time(rh) > 12.0 and sim.turn_time(sim.star_r()) > 3.0 and sim.turn_time(sim.star_r()) < 5.0)
 	var drop := _one(Vector2(400.0, 0.0), Vector2.ZERO)
 	print("dropped at rest from 400: eaten after %.1f s, %.1f turns, up to %.0f px/s, light %.2f" % [drop.seconds, drop.turns, drop.fastest, drop.light])
 	var r := rh * 0.8
@@ -82,11 +84,11 @@ func _check_physics() -> void:
 	var ring := _one(Vector2(r, 0.0), Vector2(0.0, v0))
 	print("a circle at 0.8 of the haze: eaten after %.1f s, %.1f turns, %.0f -> %.0f px/s, light %.2f" % [ring.seconds, ring.turns, v0, ring.fastest, ring.light])
 	_ok("both are eaten", is_equal_approx(drop.mass, Sim.START + 1.0) and is_equal_approx(ring.mass, Sim.START + 1.0))
-	_ok("a circle in the haze goes round at least four times", ring.turns >= 4.0)
-	_ok("and ends at twice the speed it began", ring.fastest >= v0 * 1.9)
+	_ok("a circle in the haze goes round at least three times", ring.turns >= 3.0)
+	_ok("and ends half again as fast as it began, under 250 px/s", ring.fastest >= v0 * 1.45 and ring.fastest < 250.0)
 	_ok("a straight drop goes round not at all", drop.turns < 0.1)
 	_ok("a spiral pays ten times the light of a drop", ring.light >= drop.light * 10.0 and ring.light > 1.0)
-	var where: Dictionary = sim.predict(Vector2(r, 0.0), Vector2(0.0, v0), 3000)
+	var where: Dictionary = sim.predict(Vector2(r, 0.0), Vector2(0.0, v0), 4500)
 	_ok("the dotted line ends at the star, as the meteor does", where.hit)
 	# a body on a circle outside the haze never comes down
 	var out := _one(Vector2(rh * 1.5, 0.0), Vector2(0.0, sqrt(sim.gm() / (rh * 1.5))))
@@ -160,7 +162,7 @@ func _check_tide() -> void:
 		most = maxi(most, sky.bodies.size())
 		if first < 0.0 and sky.bodies.size() > 1:
 			first = sky.clock
-		if first > 0.0 and drawn == Vector2.ZERO and sky.clock >= first + 1.5 and sky.bodies.size() > 1:
+		if first > 0.0 and drawn == Vector2.ZERO and sky.clock >= first + 4.5 and sky.bodies.size() > 1:
 			# how far the pieces have drawn apart: round the star (the angle
 			# they span, at their middle distance), and toward it
 			var mid := Vector2.ZERO
@@ -173,7 +175,7 @@ func _check_tide() -> void:
 				lo = lo.min(d)
 				hi = hi.max(d)
 			drawn = hi - lo
-	print("a planetoid of 8 on a circle at %.0f px: first torn after %.1f s, %.0f px along the path and %.0f across it 1.5 s on, %d bodies at most, %d met again outside the Roche radius, all eaten after %.1f s, light %.2f" % [r,
+	print("a planetoid of 8 on a circle at %.0f px: first torn after %.1f s, %.0f px along the path and %.0f across it 4.5 s on, %d bodies at most, %d met again outside the Roche radius, all eaten after %.1f s, light %.2f" % [r,
 		first, drawn.x, drawn.y, most, merged, sky.clock, sky.light])
 	_ok("a planetoid in the haze is torn, and its pieces again", first > 0.0 and most >= 12)
 	_ok("the pieces draw out along the path, not across it", drawn.x > drawn.y * 2.0 and drawn.x > Sim.body_r(8.0) * 2.0)

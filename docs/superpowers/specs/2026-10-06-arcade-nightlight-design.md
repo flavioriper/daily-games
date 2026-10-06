@@ -295,3 +295,54 @@ the other three tiles; the six powers besides the wind; the card coming up
 by itself and pausing the sky; meteors paler the icier they are; a comet's
 tail not drawn inside the Roche radius (a torn comet was a burst of rays).
 
+### 2026-10-06, a fifth time: half the speed, and a star nearer its real size
+
+The user, on the build: "we need to reduce bodies movement speed, it's way
+too fast. Also, let's try to get somewhere closer to real sizings, I know
+sun is too big to be in real size, but let's try to make it bigger, right
+now it look way too small compared to the bodies around". Straight to
+Godot, no questions asked.
+
+**Everything moves at half the speed.** `G` is 2.8e5 (a quarter of
+1.13e6), a passer's `SPARE` 115 px/s and a body's tumbling half what they
+were, so every path gravity draws is the shape it was and takes twice as
+long. `DRAG` is 0.1 (0.25 before), two fifths and not half, so a spiral
+still goes round. A trail is a point every six ticks (1.2 s of path, the
+length on the screen it had), and the dotted line of a throw looks seven
+seconds ahead.
+
+**The star is 100 px, the bodies two thirds of what they were.** `STAR_R`
+100 (46), `BODY_R` 9 (14): a planetoid is 18 px against the star's 100
+where it was 28 against 46, a thrown meteor 6 (the least drawn). The view
+draws back from 130 px on the screen (`SEEN`, `SEEN_LOG` 36): 176 px at
+100 Suns, 203 at 1,000. The haze and the Roche radius stay about where
+they were in pixels, so they are fewer of the star's radii: `HAZE` 2.6
+(260 px on a new star, 230 before), `ROCHE` 1.8 (180 px, 138 before; a
+real star as dense as the Sun tears a loose rock at about 1.9), `HOLD` 9.
+`LIGHT` is 2.1 (1.5): the haze is a shorter way down, and a spiral pays
+what it did. The ashes' paths are in the new star's radii (`ASH_NEAR` 1.9,
+`ASH_REACH` 4.1, `ASH_FAR` 9.8: the same pixels on a first star), or an
+Ember star would be born over its nearest ashes. The star's light on the
+dust reaches 4.5 of its radii (9).
+
+**Measured** (the probe; before in brackets): a turn at the haze's edge
+15.7 s at 104 px/s, at the star's surface 3.8 s at 167 px/s (6.5 s at
+221, 0.6 s at 495); a circle at 0.8 of the haze is eaten after 28.6 s and
+3.7 turns, 116 to 176 px/s (14.3 s, 6.0 turns, 248 to 530); a drop at
+rest from 400 px takes 5.1 s and reaches 216 px/s (2.6 s, 703). A
+planetoid's pieces are 222 px along the path 4.5 s after it is torn (234
+after 1.5 s).
+
+**The price is the pace.** A body is up twice as long, so the light and
+the hydrogen come later and a fast hand fills the sky sooner. The bot at a
+throw every 0.45 s reaches the first supernova in 4.2, 4.1 and 5.0 min
+(3.9, 4.0, 3.9 before; in the third the star was dim 44 s); at one every
+0.2 s in 2.9 min (2.1).
+
+Mine, not asked for: half, and not some other share; the star's 100 px and
+the bodies' two thirds; `DRAG` at two fifths; the haze, the Roche radius
+and the ashes moved to keep their pixels; the tutorial's pages retimed
+(loops of 22, 14 and 12 s where each was 9; its meteor from nearer and
+less slow, or it met the star first time round; the circle at 0.6 of the
+haze, the comet at 0.5). The Solar wind's 0.012 is unchanged: a circle at
+one and a half of the haze comes down in 67 s (52).

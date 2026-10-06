@@ -1195,6 +1195,31 @@ supernovas (`Sim.kept()`), not a best.
   a heavy star with 130 bodies, 315-342 with a card over that, **395-397
   with the sky full at 300**. The harness has eight more beats (5a-5d, 6b,
   15b, 15c).
+- **A fifth time the same day: half the speed, a star of 100 px** (the
+  user: "we need to reduce bodies movement speed, it's way too fast";
+  "closer to real sizings ... right now it look way too small compared to
+  the bodies around"). **The numbers quoted above this bullet are the
+  earlier ones**: `G` 2.8e5, `DRAG` 0.1, `LIGHT` 2.1, `SPARE` 115,
+  `STAR_R` 100, `BODY_R` 9, `SEEN` 130/36, `HAZE` 2.6, `ROCHE` 1.8, `HOLD`
+  9. **To change the speed and keep every path's shape, move `G` by the
+  square and `SPARE`, `TUMBLE` and the drags by the factor itself**; `DRAG`
+  was moved less than that on purpose (a spiral that still goes round:
+  3.7 turns in 28.6 s from 0.8 of the haze). **A bigger star with the
+  haze where it was in pixels is a shorter spiral**: fewer turns, the top
+  speed cut (the 0.6 s whirl at the old surface is inside the star now),
+  less of the way down to pay light on, so `LIGHT` went up to pay the
+  same. **Lengths that must clear the star are in its radii** (the ashes'
+  `ASH_*`): the Ember perk makes a new star wider. The sky's `REACH` is
+  4.5 radii, a trail a point every six ticks, `predict` seven seconds. A
+  body is up twice as long, so **the sky holds more**: 170-216 bodies on
+  the harness's heavy star (126-145), 302-413 draw calls there with a card
+  up, 396-400 with the sky full at 300-302. The harness's crowd beat holds the
+  star's mass while the tide fills the sky: left to grow, the star now
+  covers the ring before the pieces are many. The tutorial's loops are per
+  lesson (`LOOP`), its page stands `STILL` 6 s in under reduce motion.
+  Probe 53 checks, suite 249790/0, shots on both drivers, reduce motion,
+  en/pt/es. The bot's first supernova: 4.1-5.0 min at 0.45 s a throw
+  (3.9-4.0), 2.9 at 0.2 (2.1).
 - **Not done**: no sound (every cue is silent; `throw`, `buy`, `perk`, `no`
   and `nova` are felt; a tear, the star going dim and lighting again are
   neither heard nor felt), nothing run on a phone, no person has played
