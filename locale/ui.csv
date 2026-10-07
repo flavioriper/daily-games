@@ -1076,7 +1076,7 @@ NL_MILLION_K,%s million K,%s milhões de K,%s millones de K
 NL_BILLION_K,%s billion K,%s bilhões de K,%s mil millones de K
 NL_GOAL_HE,Helium core %s of %s Suns · core %s,Núcleo de hélio %s de %s sóis · núcleo a %s,Núcleo de helio %s de %s soles · núcleo a %s
 NL_GOAL_C,Carbon core %s of %s Suns · core %s,Núcleo de carbono %s de %s sóis · núcleo a %s,Núcleo de carbono %s de %s soles · núcleo a %s
-NL_GOAL_C_WAIT,Carbon lights at %s× · sheds at %s Suns · core %s,Carbono acende a %s× · solta a %s sóis · núcleo a %s,El carbono pide %s× · suelta a %s soles · núcleo a %s
+NL_GOAL_C_WAIT,Carbon core %s · sheds unless %s× · core %s,Núcleo de carbono %s · se desfaz sem %s× · a %s,Núcleo de carbono %s · se deshace sin %s× · a %s
 NL_GOAL_FE,Iron core %s of %s Suns · core %s,Núcleo de ferro %s de %s sóis · núcleo a %s,Núcleo de hierro %s de %s soles · núcleo a %s
 NL_GOAL_DIM,Nothing left to burn · letting go in %s,Nada mais para queimar · vai se desfazer em %s,Nada más que quemar · se deshará en %s
 NL_LIT_HE,The helium flash: helium now burns into carbon,O flash do hélio: o hélio agora vira carbono,El flash del helio: el helio ahora se vuelve carbono

@@ -91,7 +91,8 @@ const TAIL_NEAR := 64.0
 ## star that lets go has no fall. A shell's puff lives LIFE seconds and gets
 ## FLY pixels of the design away, the outermost. From the swap the camera
 ## pulls back for PULL_BACK seconds until the dead star's place and the
-## birthplace both fit, pans to the new star for PAN, and closes in for
+## birthplace both fit, the middle of them under `centre`, pans to the new
+## star for PAN, and closes in for
 ## CLOSE while the new star condenses out of its gas. A first star (and a
 ## Start over) plays the close alone: "birth". `end_time()` adds them up.
 const END := {"nova": {"fall": 1.1, "swap": 3.6, "life": 5.6, "fly": 1250.0, "veil": 0.3, "pull_back": 1.2, "pan": 3.0, "close": 4.0},
@@ -102,10 +103,11 @@ const END := {"nova": {"fall": 1.1, "swap": 3.6, "life": 5.6, "fly": 1250.0, "ve
 ## star fades in over REDUCED_RISE seconds; the end is over at swap + CLOSE
 ## (a birth at REDUCED_RISE), the shells left to come and go.
 const REDUCED_RISE := 2.0
-## The pull back shows the birthplace D away in this share of the sky's
-## height, and never zooms out past VIEW_LEAST. It starts from the old
-## star's own scale, so it may close in rather than out.
-const FIT := 0.7
+## The pull back shows the dead star's place and the birthplace, D apart,
+## across at most this share of the sky's shorter side (a phone's width),
+## and never zooms out past VIEW_LEAST. It starts from the old star's own
+## scale, so it may close in rather than out.
+const FIT := 0.45
 const VIEW_LEAST := 0.3
 ## A shell has this many lobes: it leaves in fingers, not as a ring. A
 ## nebula's has LOBES_NEBULA soft ones, a round shell more than fingers.
@@ -155,7 +157,8 @@ var _holes: Batch
 var _far: ArrayMesh
 var _lumps: Array[Batch] = []
 ## The end being played, or empty: {how, t, col, r, zoom, shells, swapped,
-## remnant, birth, view0, fit}. `r` is the old star's size in pixels and
+## remnant, birth, view0, fit}; a birth has no view0 or fit (it only
+## closes in, from 1). `r` is the old star's size in pixels and
 ## `zoom` the sim's zoom as it began, so its shells keep their scale when
 ## the sim becomes the new star.
 var _end := {}
@@ -315,7 +318,14 @@ func begin_end(how: String, shares: Array, remnant: int) -> void:
 	var shells := []
 	if how == "nebula":
 		_nebula_shells(rng, shares, shells)
-	var last := 0 if how == "nebula" else shares.size() - (2 if how == "nova" else 1)
+	else:
+		_layer_shells(rng, shares, shells, shares.size() - (2 if how == "nova" else 1))
+	_end = {"how": how, "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": shells, "swapped": false, "remnant": remnant}
+	_puffs.clear()
+
+## A shell for each of the first `last` layers, in nine fingers, the
+## outermost first and furthest.
+func _layer_shells(rng: RandomNumberGenerator, shares: Array, shells: Array, last: int) -> void:
 	for i in last:
 		var share := float(shares[i])
 		if share < 0.004:
@@ -330,8 +340,6 @@ func begin_end(how: String, shares: Array, remnant: int) -> void:
 			var lobe := rng.randi() % LOBES
 			shells.append({"a": turn + TAU * lobe / LOBES + rng.randfn(0.0, 0.17), "v": lerpf(1.0, 0.34, depth) * lobes[lobe] * rng.randf_range(0.82, 1.1),
 				"s": rng.randf_range(0.7, 1.3), "wait": depth * 0.9 + rng.randf() * 0.3, "col": Art.MADE[i]})
-	_end = {"how": how, "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": shells, "swapped": false, "remnant": remnant}
-	_puffs.clear()
 
 func _nebula_shells(rng: RandomNumberGenerator, shares: Array, shells: Array) -> void:
 	var turn := rng.randf() * TAU
@@ -353,7 +361,7 @@ func _nebula_shells(rng: RandomNumberGenerator, shares: Array, shells: Array) ->
 ## calls `finish_end` at `end_time()`.
 func begin_birth() -> void:
 	_end = {"how": "birth", "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": [], "swapped": true,
-		"remnant": -1, "birth": {"from": Vector2.ZERO, "d": 0.0}, "view0": 1.0, "fit": 1.0}
+		"remnant": -1, "birth": {"from": Vector2.ZERO, "d": 0.0}}
 	shift = Vector2.ZERO
 	view = 1.0
 	_rise = 0.0
@@ -385,8 +393,9 @@ func end_time() -> float:
 ## The sim has been ended: what is drawn from here on is the new star, and
 ## `birth` (Sim.last_birth) is where the old one was in its frame and how far.
 ## The camera holds the old star's place under `centre` at the scale it had
-## (`view` makes up for the new star's zoom), then pulls back, pans and
-## closes in; under reduce motion it cuts to the new star.
+## (`view` makes up for the new star's zoom), then pulls back until both
+## places are in the frame with their middle under `centre`, pans to the new
+## star and closes in; under reduce motion it cuts to the new star.
 func swapped(birth: Dictionary) -> void:
 	if _end.is_empty():
 		return
@@ -395,8 +404,9 @@ func swapped(birth: Dictionary) -> void:
 	var d := float(_end.birth.d)
 	var view0 := clampf(float(_end.zoom) / sim.zoom(), VIEW_LEAST, 1.0)
 	var fit := 1.0
-	if d > 0.0 and size.y > 0.0:
-		fit = clampf(FIT * size.y / (d * sim.zoom() * u), VIEW_LEAST, 1.0)
+	var short := minf(size.x, size.y)
+	if d > 0.0 and short > 0.0:
+		fit = clampf(FIT * short / (d * sim.zoom() * u), VIEW_LEAST, 1.0)
 	_end.view0 = view0
 	_end.fit = fit
 	_rise = 0.0
@@ -426,14 +436,18 @@ func _camera() -> void:
 		return
 	var pb: float = at.pull_back
 	var pan: float = at.pan
-	var fit: float = _end.fit
+	var fit: float = _end.get("fit", 1.0)
+	# `held` of the way from the new star to the dead star's place is under
+	# `centre`: all of it at the swap, half (their middle) after the pull
+	# back, none after the pan
 	if s < pb:
-		view = lerpf(float(_end.view0), fit, ease(s / pb, -1.8))
-		shift = -from * (sim.zoom() * view * u)
+		var k := ease(s / pb, -1.8)
+		view = lerpf(float(_end.view0), fit, k)
+		shift = -from * (sim.zoom() * view * u) * (1.0 - 0.5 * k)
 		_rise = 0.0
 	elif s < pb + pan:
 		view = fit
-		shift = -from * (sim.zoom() * view * u) * (1.0 - ease((s - pb) / pan, -1.8))
+		shift = -from * (sim.zoom() * view * u) * 0.5 * (1.0 - ease((s - pb) / pan, -1.8))
 		_rise = 0.0
 	else:
 		var c := clampf((s - pb - pan) / float(at.close), 0.0, 1.0)
@@ -557,7 +571,7 @@ func _fill() -> void:
 				_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, paint)
 	# the dead stars and the neighbours are the sky, not the star: they stay
 	# through an end (the dead star it leaves is drawn from the swap on)
-	_fill_relics(z, 1.0)
+	_fill_relics(z)
 	for p: Dictionary in _puffs:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * float(p.s) * view * u / Art.R
@@ -578,7 +592,7 @@ func _fill() -> void:
 ## are a light and a white heart (the neutron star's light pulses, still
 ## under reduce motion); a black hole is a dark disc (drawn on top, unlit)
 ## in a warm ring.
-func _fill_relics(z: float, seen: float) -> void:
+func _fill_relics(z: float) -> void:
 	for i in sim.relics.size():
 		var rel: Dictionary = sim.relics[i]
 		var at := world(rel.pos as Vector2)
@@ -588,7 +602,7 @@ func _fill_relics(z: float, seen: float) -> void:
 		rng.seed = 500 + int(rel.novas) * 7 + int(rel.kind)
 		var age := minf(1.0, float(rel.age) / NEBULA_LIFE)
 		var spread := lerpf(1.5, NEBULA_FAR, 1.0 - pow(1.0 - age, 2.0)) * NEBULA_R * z * 0.3
-		var a := lerpf(0.22, 0.06, age) * seen
+		var a := lerpf(0.22, 0.06, age)
 		var layers: Array = rel.layers
 		for k in NEBULA_PUFFS:
 			# every puff draws its numbers whether it is shown or not, so a
@@ -603,26 +617,26 @@ func _fill_relics(z: float, seen: float) -> void:
 		match int(rel.kind):
 			Sim.Relic.WD:
 				var r := maxf(4.0 * u, rr)
-				_warms.put(at, 0.0, r * 5.0 / Art.R, r * 5.0 / Art.R, Color(Art.WD, 0.35 * seen))
-				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95 * seen))
+				_warms.put(at, 0.0, r * 5.0 / Art.R, r * 5.0 / Art.R, Color(Art.WD, 0.35))
+				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95))
 			Sim.Relic.NS:
 				var r := maxf(3.0 * u, rr)
 				var pulse := 1.0 if Motion.reduce else 1.0 + 0.12 * sin(_clock * 2.6)
-				_warms.put(at, 0.0, r * 4.0 * pulse / Art.R, r * 4.0 * pulse / Art.R, Color(Art.NS, 0.4 * seen))
-				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95 * seen))
+				_warms.put(at, 0.0, r * 4.0 * pulse / Art.R, r * 4.0 * pulse / Art.R, Color(Art.NS, 0.4))
+				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95))
 			_:
 				# a warm ring round the dark disc: a wide soft light and a
 				# brighter one hugging its edge, both cut by the disc
 				var r := maxf(10.0 * u, rr)
-				_warms.put(at, 0.0, r * 2.6 / Art.R, r * 2.6 / Art.R, Color(Art.WARM, 0.5 * seen))
-				_warms.put(at, 0.0, r * 1.9 / Art.R, r * 1.9 / Art.R, Color(Art.WARM, 0.5 * seen))
-				_holes.put(at, 0.0, r / Art.R, r / Art.R, Color(Art.SHADE, seen))
+				_warms.put(at, 0.0, r * 2.6 / Art.R, r * 2.6 / Art.R, Color(Art.WARM, 0.5))
+				_warms.put(at, 0.0, r * 1.9 / Art.R, r * 1.9 / Art.R, Color(Art.WARM, 0.5))
+				_holes.put(at, 0.0, r / Art.R, r / Art.R, Art.SHADE)
 	for p: Vector2 in sim.far:
 		var at := world(p)
 		if Rect2(Vector2.ZERO, size).grow(40.0).has_point(at):
 			var r := 4.0 * u
-			_warms.put(at, 0.0, r * 6.0 / Art.R, r * 6.0 / Art.R, Color(Art.COOL, 0.3 * seen))
-			_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.9 * seen))
+			_warms.put(at, 0.0, r * 6.0 / Art.R, r * 6.0 / Art.R, Color(Art.COOL, 0.3))
+			_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.9))
 
 ## The shells of an end, each puff where its own speed has taken it: quick
 ## at first and slowing, wider and thinner as it goes. Under reduce motion

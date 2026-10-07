@@ -18,7 +18,7 @@ extends SceneTree
 ## panning to the new star, the new star condensing), 11 the perks, 12 one
 ## drawn, 13 the new star among the gas, 9a-9b a star of four Suns whose
 ## carbon core cannot light letting its layers go as a nebula (9c the camera
-## between the white dwarf and the birthplace, 9b the white dwarf after),
+## between the white dwarf and the birthplace, 9b the new star after),
 ## 13b-13c a star letting go, 14-16 the tutorial's four pages (16b the END
 ## page's camera), 17 the tab again with the star and its relics on its card.
 ## Every run but `fresh` opens a kept star (a first cloud saved before the
@@ -46,13 +46,13 @@ const STEPS := [
 	# the supernova: swap at 28.8, the pull back to 30.0, the pan to 33.0,
 	# the close to 37.0 and the perks (reduce motion: over at 32.8)
 	[25.2, "iron"], [26.1, "shot", "8a_fall"], [26.9, "shot", "8b_leaving"], [27.8, "shot", "8c_shells"],
-	[29.3, "shot", "8d_pull_back"], [31.0, "shot", "8e_pan"], [34.0, "shot", "8f_rising"],
+	[29.3, "shot", "8d_pull_back"], [29.31, "where"], [30.1, "where"], [31.0, "shot", "8e_pan"], [31.01, "where"], [34.0, "shot", "8f_rising"],
 	[37.8, "shot", "11_perks"], [37.9, "perk"], [38.3, "shot", "12_perk"],
 	[38.4, "perks_x"], [40.4, "shot", "13_new"],
 	# the nebula: swap at 44.7, the pull back to 45.9, the pan to 48.9, the
 	# close to 52.9 and the perks (reduce motion: over at 48.7)
 	[40.5, "nebula"], [43.0, "shot", "9a_nebula_leaving"], [47.4, "shot", "9c_nebula_pan"],
-	[53.1, "perks_x"], [53.4, "shot", "9b_relic_wd"],
+	[53.1, "perks_x"], [53.4, "shot", "9b_after_nebula"],
 	# the fade: swap at 58.5, over at 66.7 (reduce motion: 62.5)
 	[53.5, "let_go_star"], [56.9, "shot", "13b_letting_go"], [59.9, "shot", "13c_gone"], [67.2, "perks_x"],
 	[67.3, "tutor"], [69.3, "shot", "14_tut_gas"],
@@ -281,6 +281,13 @@ func _process(delta: float) -> bool:
 			"perks_x":
 				if _s._perks.visible:
 					_s._perks.find_child("Back", true, false).pressed.emit()
+			"where":
+				# where the camera has the dead star and the new one, in the field's pixels
+				var rel: Dictionary = _s.sim.relics[-1]
+				var dead: Vector2 = _s.sky.world(rel.pos as Vector2)
+				var star: Vector2 = _s.sky.world(Vector2.ZERO)
+				var field := Rect2(Vector2.ZERO, _s.sky.size)
+				print("camera at %.2f s: view %.3f, shift %s, the dead star at %s (in frame %s), the new star at %s (in frame %s), field %s" % [_s.sky.end_t(), _s.sky.view, _s.sky.shift, dead, field.has_point(dead), star, field.has_point(star), _s.sky.size])
 			"nebula":
 				# four Suns, helium lit, a carbon core of CARBON Suns it cannot light
 				_s.sim.mass = Sim.START * 4.0

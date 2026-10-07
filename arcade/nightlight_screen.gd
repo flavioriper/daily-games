@@ -1075,7 +1075,6 @@ func _on_reset() -> void:
 func _begin_birth() -> void:
 	sky.begin_birth()
 	_birth = true
-	_fx.cue("born")
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -1259,9 +1258,12 @@ func _step_end(delta: float) -> void:
 		if _end_cued:
 			_fx.cue("fade")
 		return
-	# a first star's birth waits behind the first play's card, to be seen
+	# a first star's birth waits behind the first play's card, to be seen,
+	# and is heard as it starts
 	if _birth and _held_back:
 		return
+	if _birth and sky.end_t() <= 0.0:
+		_fx.cue("born")
 	sky.step_end(delta)
 	if _birth:
 		if sky.end_t() >= sky.end_time():
@@ -1341,14 +1343,14 @@ func _refresh_hud(delta: float) -> void:
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas + sim.fades > 0 or sim.dust > 0
 	# said until the star has eaten something
-	_hint.visible = sim.eaten <= 0.0 and not _holding
+	_hint.visible = sim.eaten <= 0.0 and not _holding and not sky.ending()
 	_dust_l.text = str(sim.dust)
 	var goal: Dictionary = sim.goal()
 	var core := _core_temp(sim.core_temp())
 	if String(goal.which) == "dim":
 		_nova_l.text = tr("NL_GOAL_DIM") % _clock(maxf(0.0, float(goal.need) - float(goal.have)))
 	elif not bool(goal.heavy):
-		_nova_l.text = tr("NL_GOAL_C_WAIT") % [Art.short(Sim.HEAVY, c), _hundredths(Sim.CARBON), core]
+		_nova_l.text = tr("NL_GOAL_C_WAIT") % [_hundredths(float(goal.have)), Art.short(Sim.HEAVY, c), core]
 	else:
 		_nova_l.text = tr(GOALS[goal.which]) % [_hundredths(float(goal.have)), _hundredths(float(goal.need)), core]
 	_pick_l.text = tr("NL_PICK_AT") % Art.short(sim.next_pick(), c)
