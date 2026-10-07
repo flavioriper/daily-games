@@ -2,7 +2,7 @@
 
 **A sixth tab since 2026-10-05**, between Arcade and Stats: slow places
 that share one inventory and have no finish (spec
-`2026-10-05-valley-grove-design.md`; the concept and its four passes are
+`2026-10-05-valley-grove-design.md`; the concept and its five passes are
 `docs/brainstorm/concepts.html#valley`; since 2026-10-07 the Grove's tree
 and jetty have a spec of their own,
 `2026-10-07-grove-tree-and-jetty-design.md`, and the concept a sixth
@@ -558,7 +558,7 @@ the card).
   tag under it while it has none), a ring under the chosen one, and
   `_frame` over it all. Never a Button a node. The grid is `CELL` 236 by
   216 with `PLATE` 128 (`cell(id)`, `spot(id)`). A kind wears `Art.tree`,
-  the other nodes `Art.icon(id)` (`_node_into`). The mote beside a price
+  the other nodes `Art.icon(id)` (`_picture`). The mote beside a price
   is `Motes.icon(side)` and the paper of a price the energy does not reach
   is `Art.PRICE_OFF`, both the shop's too.
 - **The hand on it.** The field pans up and down under a finger
@@ -603,7 +603,7 @@ the card).
   5. The raft (`RAFT` 12 s there and back, one bundle before Load): home
      with a bundle waiting it takes what it carries and goes, **lands its
      wood at half its time** (`owed`, `wood_sent`) and is home at the whole.
-  Steps 3 to 5 are `_send(dt)`, which moves by what happens next and never
+  Steps 4 and 5 are `_send(dt)`, which moves by what happens next and never
   by the second, so a frame and three days away cost the same.
 - **The chain counts piles, not wood**, so it is measured in the unit the
   axe is, trees a minute, and a richer kind sends more wood through the
@@ -698,10 +698,10 @@ holds it for the screen, the tab's card and the tutorial alike).
   raft the next. The pond keeps its lilies and ripples clear (`_berth`);
   one lily group moved on the tab's card.
 - **Life draws the wood**: stacks sorted in with the trees by depth
-  (`Art.pile(n, lucky)`: five heaps by `heap_of(n)`, a lucky stack with a
+  (`Art.pile(n, lucky, planks)`: five heaps by `heap_of(n)`, a lucky stack with a
   small twin baked in, one draw whatever it holds, and its count over it
   from two piles up where the holder has `counts` on); the loose heap on
-  the jetty (`Art.jetty()`); up to `BUNDLES` 6 bundles (`Art.slot(i)`),
+  the jetty (`Art.pile(loose, false, true)`, set at `Art.jetty()`); up to `BUNDLES` 6 bundles (`Art.slot(i)`),
   then a count; the raft (`Art.raft(aboard)`, up to four bundles baked in,
   rocking at home by its transform, getting away as `k^2.2`, not drawn
   past the holder's left edge). A pile is not seen until its tree has
@@ -906,9 +906,9 @@ table and every beat).
 
   The highest reading of any run is 471, the fix pass's own on the worst
   land; that is 55% of the budget. Frames, for what one Mac's milliseconds
-  are worth (the frame that saved the shot before left out): 2.5 ms apart
+  are worth (the frame that saved the shot before left out): 3.3 ms apart
   on a new grove, 7 on the late land at rest, 9.4 on the worst land on the
-  default driver; 8, 17 and 30 on `opengl3_angle`, where the notes of
+  default driver; 9, 17 and 30 on `opengl3_angle`, where the notes of
   2026-10-06 read 19 to 23 on that day's late land. Nobody has timed a
   phone.
 
