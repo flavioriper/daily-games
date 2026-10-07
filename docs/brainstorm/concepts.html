@@ -3835,29 +3835,29 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><th>Root</th><th>Node</th><th>Each level</th><th>Start</th><th>Last level</th><th>Energy</th></tr>
     <tr><td class="k">Land</td><td>Room</td><td>one more tree</td><td>3</td><td>27</td><td>12, then &times;1.5</td></tr>
     <tr><td class="k">Land</td><td>Sprout</td><td>trees 7% sooner</td><td>6 s</td><td>20</td><td>15, then &times;1.65</td></tr>
-    <tr><td class="k">Jetty</td><td>Raft</td><td>there and back 8% sooner</td><td>24 s</td><td>15</td><td>50, then &times;1.7</td></tr>
-    <tr><td class="k">Jetty</td><td>Jetty</td><td>room for 2 more piles</td><td>6</td><td>20</td><td>20, then &times;1.45</td></tr>
-    <tr><td class="k">Jetty</td><td>Bundle</td><td>one more pile a bundle</td><td>3</td><td>7</td><td>60, then &times;2.2</td></tr>
-    <tr><td class="k">Jetty</td><td>Tying</td><td>a bundle 10% sooner</td><td>12 s</td><td>15</td><td>40, then &times;1.7</td></tr>
-    <tr><td class="k">Jetty</td><td>Load</td><td>one more bundle aboard</td><td>1</td><td>5</td><td>300, then &times;3</td></tr>
+    <tr><td class="k">Jetty</td><td>Raft</td><td>there and back 8% sooner</td><td>12 s</td><td>15</td><td>50, then &times;1.7</td></tr>
+    <tr><td class="k">Jetty</td><td>Jetty</td><td>room for 3 more piles</td><td>8</td><td>20</td><td>20, then &times;1.45</td></tr>
+    <tr><td class="k">Jetty</td><td>Bundle</td><td>one more pile a bundle</td><td>4</td><td>7</td><td>60, then &times;2.2</td></tr>
+    <tr><td class="k">Jetty</td><td>Tying</td><td>a bundle 10% sooner</td><td>6 s</td><td>15</td><td>40, then &times;1.7</td></tr>
+    <tr><td class="k">Jetty</td><td>Load</td><td>one more bundle aboard</td><td>1</td><td>3</td><td>300, then &times;3</td></tr>
     <tr><td class="k">Beavers</td><td>Beavers</td><td>one more beaver</td><td>none</td><td>5</td><td>250, then &times;4</td></tr>
     <tr><td class="k">Beavers</td><td>Teeth</td><td>a bite 10 points nearer a chop</td><td>50% of a chop</td><td>5</td><td>500, then &times;2.4</td></tr>
     <tr><td class="k">Fortune</td><td>Keen edge</td><td>5 points more chance of a keen chop</td><td>0%</td><td>10</td><td>80, then &times;1.8</td></tr>
     <tr><td class="k">Fortune</td><td>Heavy blow</td><td>a keen chop counts half a chop more</td><td>2 chops</td><td>6</td><td>150, then &times;2</td></tr>
     <tr><td class="k">Fortune</td><td>Lucky wood</td><td>4 points more chance of a double pile</td><td>0%</td><td>10</td><td>100, then &times;1.8</td></tr>
     <tr><td class="k">Fortune</td><td>Crates</td><td>the first: a crate every 180 s; then 10% sooner</td><td>none</td><td>10</td><td>200, then &times;1.9</td></tr>
-    <tr><td class="k">Fortune</td><td>Full crates</td><td>a crate holds a fifth more</td><td>15 of the best tree</td><td>10</td><td>250, then &times;1.9</td></tr>
+    <tr><td class="k">Fortune</td><td>Full crates</td><td>a crate holds a fifth more</td><td>15 times the best kind's yield, before its Rich bough</td><td>10</td><td>250, then &times;1.9</td></tr>
   </table>
   <p>Room and Sprout keep the prices and the last levels they had as tiles, and a kept grove keeps its levels of both. The shop is Axe, Reach and Swing on one row, at the prices in section 1.</p>
   <h3>The jetty</h3>
   <ul>
     <li><b>A felled tree</b> gives its energy at once, as before. Its wood is <b>a pile</b> lying where it stood. A pile that comes down within 70 of another joins it, and the stack shows its count.</li>
     <li><b>The circle gathers.</b> On each swing, every pile under the circle that has lain 0.9 s goes to the jetty, as many of a stack as the jetty has room for. <b>A full jetty takes none</b>: piles lie, never rot, and trees go on coming up.</li>
-    <li><b>The jetty</b> holds six piles before any node: loose ones, and the ones in bundles waiting for the raft.</li>
-    <li><b>Tying.</b> While a whole bundle's worth of loose piles is there (three, before any node) a bundle is being tied, and takes them after 12 s. Fewer are tied only when the raft is home and nothing is waiting for it, so no pile is ever stranded and a short bundle never takes a place aboard that a whole one wanted.</li>
-    <li><b>The raft</b>, home and with a bundle waiting, takes one and goes: half its 24 s out, half back. Its wood is counted when it gets there, and that is seen: the wood plate swells and &ldquo;+N&rdquo; rises by it in gold. The far side is the edge of the screen and nothing is drawn of it.</li>
+    <li><b>The jetty</b> holds eight piles before any node: loose ones, and the ones in bundles waiting for the raft.</li>
+    <li><b>Tying.</b> While a whole bundle's worth of loose piles is there (four, before any node) a bundle is being tied, and takes them after 6 s. Fewer are tied only when the raft is home and nothing is waiting for it, so no pile is ever stranded and a short bundle never takes a place aboard that a whole one wanted.</li>
+    <li><b>The raft</b>, home and with a bundle waiting, takes one and goes: half its 12 s out, half back. Its wood is counted when it gets there, and that is seen: the wood plate swells and &ldquo;+N&rdquo; rises by it in gold. The far side is the edge of the screen and nothing is drawn of it.</li>
     <li><b>Away</b>, the tying and the raft are worked out for what was on the jetty, and then they stop. Nothing gathers for you.</li>
-    <li><b>Piles, not wood.</b> Before any node the raft carries seven and a half piles a minute and the tying does fifteen, against about ten trees a minute felled on a new grove: the raft is the neck of it, gentle on the first day and tighter as Room, Sprout and the axe grow.</li>
+    <li><b>Piles, not wood.</b> Before any node the raft carries twenty piles a minute and the tying does forty, against about ten trees a minute felled on a new grove: there is no neck in the first minutes, and one by the end of the first day, when Room and Sprout have the land felling seventy.</li>
   </ul>
   <h3>The four skills</h3>
   <ul>
@@ -3869,7 +3869,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   <h3>How slow, and what the mock's own figures are worth</h3>
   <p><b>Every pace figure this page shows is a sketch</b>: the &ldquo;wood a minute&rdquo; under the phone and on the tab's chip, and the figures below, come from the mock's own arithmetic. The real table comes from the game's own bot, <code>tests/_probe_grove.gd -- pace</code>, run on the built sim after each stage, with the wood that reached the inventory beside the wood felled. The rule it is tuned to: the tree must not bring Birch, Oak or Pine sooner than the grove as shipped does, for a bot that buys the cheapest thing it can anywhere.</p>
   <h3>What playing it changed</h3>
-  <p>A bot played this page before the chain was built: it chops a new grove without stopping and gathers whenever the jetty has room. Four of the first figures and rules did not survive it, and the mock above now plays the rules as they were changed. <b>Short bundles made the first levels of Jetty send less wood, not more</b>: tying took whatever was loose, so a bundle of two took a place on the raft, and the bot landed 60 piles in twenty minutes with room for 6, 54 with room for 8 and 52 with room for 10. A bundle is now tied only when a whole one is there, unless the raft is home with nothing waiting. <b>The neck slammed shut in the first minute</b>: 31% of the wood felled was landed, the first wood was counted 52 s in, and the jetty was full 90% of the time. Tying started at 20 s and the raft at 60 s; they start at 6 s and 24 s. <b>Beavers were dead on arrival</b>: they rested while as many piles lay as the land had room for trees, and piles never rot, so one beaver rested 94% of twenty minutes. They never rest now, and what bounds them is the size of their share away. <b>The boughs of a kind gone from the land had no sign</b>: they are faded now and cannot be bought.</p>
+  <p>A bot played this page before the chain was built: it chops a new grove without stopping and gathers whenever the jetty has room. Four of the first figures and rules did not survive it, and the mock above now plays the rules as they were changed. <b>Short bundles made the first levels of Jetty send less wood, not more</b>: tying took whatever was loose, so a bundle of two took a place on the raft, and the bot landed 60 piles in twenty minutes with room for 6, 54 with room for 8 and 52 with room for 10. A bundle is now tied only when a whole one is there, unless the raft is home with nothing waiting. <b>The neck slammed shut in the first minute</b>: 31% of the wood felled was landed, the first wood was counted 52 s in, and the jetty was full 90% of the time. Tying started at 20 s and the raft at 60 s; they were moved to 6 s and 24 s. <b>Beavers were dead on arrival</b>: they rested while as many piles lay as the land had room for trees, and piles never rot, so one beaver rested 94% of twenty minutes. They never rest now, and what bounds them is the size of their share away. <b>The boughs of a kind gone from the land had no sign</b>: they are faded now and cannot be bought.</p>
   <table>
     <tr><th>The same bot, nothing bought but what is named</th><th>First rules</th><th>As changed</th></tr>
     <tr><td class="k">Piles landed in twenty minutes, jetty with room for 6</td><td>60</td><td>148</td></tr>
@@ -3884,9 +3884,9 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><td class="k">One beaver and nobody chopping, twenty minutes</td><td>not run</td><td>biting 87%, walking 12%; 65 trees felled, 65 piles lying, none landed</td></tr>
   </table>
   <p>These are this page's own arithmetic, a sketch like every pace figure here.</p>
-  <p><b>A second run</b>, on the rules as changed, moved three more things, and the mock plays them too. <b>Every size of jetty landed the same 148 piles</b>: the raft was the neck whatever the room, so room on the jetty changed only how soon it was full (54 s, then 104, 151 and 197 s) and how much was left for the chain to finish once you leave. The Jetty root now runs Raft, Jetty, Bundle, Tying, Load, so its first node is the one that widens the neck. <b>Tying was four times quicker than the raft</b>, thirty piles a minute against seven and a half, and would not have been felt until Raft and Load were far up; it starts at 12 s now, twice the raft's pace, and comes fourth. <b>A beaver's share away was three trees, and its bite went unseen</b>: on a new land &ldquo;the land once over&rdquo; was room for three however long you were gone, and beside the bot's finger a quarter of a chop a second never finished a tree. Each beaver now fells the land once over, and a bite starts at half a chop.</p>
+  <p><b>A second run</b>, on the rules as changed, moved three more things, and the mock plays them too. <b>Every size of jetty landed the same 148 piles</b>: the raft was the neck whatever the room, so room on the jetty changed only how soon it was full (54 s, then 104, 151 and 197 s) and how much was left for the chain to finish once you leave. The Jetty root now runs Raft, Jetty, Bundle, Tying, Load, so its first node is the one that widens the neck. <b>Tying was four times quicker than the raft</b>, thirty piles a minute against seven and a half, and would not have been felt until Raft and Load were far up; it was moved to 12 s, twice the raft's pace, and put fourth. <b>A beaver's share away was three trees, and its bite went unseen</b>: on a new land &ldquo;the land once over&rdquo; was room for three however long you were gone, and beside the bot's finger a quarter of a chop a second never finished a tree. Each beaver now fells the land once over, and a bite starts at half a chop.</p>
   <table>
-    <tr><th>The same bot, on the rules as they stand</th><th>Second rules</th><th>As they stand</th></tr>
+    <tr><th>The same bot, on the third round's rules (a raft of 24 s, tying 12 s)</th><th>Second rules</th><th>Third rules</th></tr>
     <tr><td class="k">A new grove, ten minutes: wood landed of wood felled</td><td>73 of 97, 75%</td><td>71 of 103, 69%</td></tr>
     <tr><td class="k">The first wood counted</td><td>21 s in</td><td>27 s in</td></tr>
     <tr><td class="k">Piles landed in twenty minutes, nothing bought</td><td>148</td><td>146 of 203 felled</td></tr>
@@ -3895,13 +3895,17 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <tr><td class="k">One beaver beside the bot's finger, twenty minutes, land with room for 3</td><td>biting 1%</td><td>biting 1%, walking 27%, no tree left for it 73%</td></tr>
     <tr><td class="k">One beaver and nobody chopping, twenty minutes</td><td>65 trees felled</td><td>114 trees felled, biting 76%</td></tr>
   </table>
-  <p>Read with the same caution. Two things the last column says: four levels of Raft, 525 energy, are enough for the raft to keep up with a new grove's axe, and the neck comes back as Room, Sprout and the axe grow; and the stronger bite shows when the beaver is alone, not beside a finger that fells a land of three trees before the beaver has walked to one.</p>
+  <p>Read with the same caution. Two things the last column said, on that round's figures: four levels of Raft, 525 energy, were enough for the raft to keep up with a new grove's axe, and the neck comes back as Room, Sprout and the axe grow; and the stronger bite shows when the beaver is alone, not beside a finger that fells a land of three trees before the beaver has walked to one.</p>
+  <p><b>Then the game's own bot</b> played the built sim (<code>tests/_probe_grove.gd -- pace</code>), and it fells far more than this page's bot did on its new grove: 77 trees a minute over the first day, once Room and Sprout are bought. On the second run's figures its eight visits of two minutes a day landed 14% of the first day's wood, and 91,169 piles lay on day 30. So the chain was widened to the figures in the root table above, which the mock now plays: the raft 12 s there and back, a bundle of 4, tying 6 s, a jetty of 8 with 3 more a level, and Load stopping at 3. On the figures as built the same eight visits land a third of the first day's wood, 57% by day 5, 77% by day 10 and all of it by day 30, with the piles lying peaking near 6,000; and the neck opens for good once the Jetty root is bought out, about six to eight hours of play in. <b>The two tables above are this page's own bot on the earlier rounds and were not run again</b>; the game's table is in section 10 of <code>docs/superpowers/specs/2026-10-07-grove-tree-and-jetty-design.md</code>.</p>
   <h3>Calls this pass is for</h3>
   <ul>
-    <li><b>The backlog has no end.</b> <span class="pill blue">left for you to judge</span> Piles never rot and only the finger gathers, so on a land chopped harder than the raft carries, what is left over stays for ever and the wood is the raft's rate. Under the first rules 228 piles lay after thirty minutes of the bot buying the cheapest thing; as changed, 18 lie after ten minutes and 46 after twenty with nothing bought, and it still only grows.</li>
+    <li><b>The neck opens for good.</b> <span class="pill blue">left for you to judge</span> Once the Jetty root is bought out, about six to eight hours of play in, the raft carries more than the land fells. Jetty nodes with no last level, as the Axe has none, would keep the neck.</li>
+    <li><b>Piles never rot.</b> <span class="pill blue">left for you to judge</span> While the land fells more than the raft carries they pile up: the game's bot peaked near 6,000 lying and had them all sent by day 30.</li>
+    <li><b>Fortune slows the trunk.</b> <span class="pill blue">left for you to judge</span> A player who never buys Fortune reaches Oak on day 3 and Pine on day 8, where everything bought cheapest-first reads day 4 and day 10.</li>
+    <li><b>The tab's chip.</b> <span class="pill blue">left for you to judge</span> It shows the most the chain can send (&ldquo;20 / min&rdquo; on a new grove), where nothing arrives without a finger.</li>
+    <li><b>The jetty on tall posts.</b> <span class="pill blue">left for you to judge</span> In the built game it stands level with the turf, on posts the whole way down to the pond, with the raft far below its end. The mock's deck is one tile a little under the turf, on the fifth pass's island, where there is little water left at the front.</li>
     <li><b>Crates is the fourth node of its root.</b> <span class="pill blue">left for you to judge</span> Keen edge, Heavy blow and Lucky wood each need a level before it opens.</li>
     <li><b>The words.</b> Skills for the button; Soft and Rich for the boughs; Land, Jetty, Beavers, Fortune for the roots; Keen edge, Heavy blow, Lucky wood, Crates, Full crates.</li>
-    <li><b>A jetty this small.</b> On the fifth pass's island there is little water left at the front, so the deck is one tile and the raft's whole trip is the corner of the screen. On the built Grove's flat land there is room for more.</li>
   </ul>
 
   <h3>0. The fifth pass: the land in isometric <span class="pill blue">proposed</span></h3>
@@ -22273,7 +22277,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   const NODE={
     room:{name:'Room',base:12,mul:1.5,max:27},sprout:{name:'Sprout',base:15,mul:1.65,max:20},
     jetty:{name:'Jetty',base:20,mul:1.45,max:20},tying:{name:'Tying',base:40,mul:1.7,max:15},bundle:{name:'Bundle',base:60,mul:2.2,max:7},
-    raft:{name:'Raft',base:50,mul:1.7,max:15},load:{name:'Load',base:300,mul:3,max:5},
+    raft:{name:'Raft',base:50,mul:1.7,max:15},load:{name:'Load',base:300,mul:3,max:3},
     beaver:{name:'Beavers',base:250,mul:4,max:5},teeth:{name:'Teeth',base:500,mul:2.4,max:5},
     crit:{name:'Keen edge',base:80,mul:1.8,max:10},critsize:{name:'Heavy blow',base:150,mul:2,max:6},luck:{name:'Lucky wood',base:100,mul:1.8,max:10},
     crate:{name:'Crates',base:200,mul:1.9,max:10},cratesize:{name:'Full crates',base:250,mul:1.9,max:10}};
@@ -22370,12 +22374,12 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   // its bundles and its raft. felled and sent are wood_made and wood_sent.
   let skills=false,chosen=null,pan=0,drag=null,shownNodes=[];
   let piles=[],jet=null,felled=0,sent=0,crate=null,crateAcc=0,beavers=[],jetNoAt=-9,tieAt=-9,landings=[];
-  const jettyRoom=()=>6+2*L('jetty'),tieT=()=>12*Math.pow(0.9,L('tying')),bundleOf=()=>3+L('bundle'),
-    raftT=()=>24*Math.pow(0.92,L('raft')),loadOf=()=>1+L('load'),
+  const jettyRoom=()=>8+3*L('jetty'),tieT=()=>6*Math.pow(0.9,L('tying')),bundleOf=()=>4+L('bundle'),
+    raftT=()=>12*Math.pow(0.92,L('raft')),loadOf=()=>1+L('load'),
     held=()=>jet.loose.length+jet.bundles.reduce((s,b)=>s+b.n,0),lying=()=>piles.reduce((s,q)=>s+q.ws.length,0),
     grows=t=>t>=lv.seeds-2,
     keenP=()=>0.05*L('crit'),keenOf=()=>2+0.5*L('critsize'),luckP=()=>0.04*L('luck'),biteOf=()=>0.5+0.1*L('teeth'),
-    crateT=()=>180*Math.pow(0.9,Math.max(0,L('crate')-1)),crateOf=l=>Math.round(15*(1+0.2*l)*give(lv.seeds));
+    crateT=()=>180*Math.pow(0.9,Math.max(0,L('crate')-1)),crateOf=l=>Math.round(15*(1+0.2*l)*giveOf(lv.seeds));   // the best kind's yield before its Rich bough
   // The most the chain can send in a minute: the slower of tying and rafting,
   // in piles, times what a pile of the land's mix is worth.
   function woodPerMin(){const top=lv.seeds,b=bundleOf(),per=Math.min(b/tieT(),loadOf()*b/raftT())*60;
@@ -22897,7 +22901,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     switch(id){
       case 'room': return ['room for '+plural(room(),'tree'),''+(room()+1)];
       case 'sprout': return ['a tree every '+sec(spawnT())+' s',sec(spawnT()*0.93)];
-      case 'jetty': return ['room for '+jettyRoom()+' piles',''+(jettyRoom()+2)];
+      case 'jetty': return ['room for '+jettyRoom()+' piles',''+(jettyRoom()+3)];
       case 'tying': return ['a bundle every '+sec(tieT())+' s',sec(tieT()*0.9)];
       case 'bundle': return [bundleOf()+' piles a bundle',''+(bundleOf()+1)];
       case 'raft': return ['there and back in '+sec(raftT())+' s',sec(raftT()*0.92)];
