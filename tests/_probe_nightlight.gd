@@ -715,6 +715,32 @@ func _check_worlds() -> void:
 	var mid: Sim.Body = tiers.add(Sim.Kind.ROCK, Sim.CORE_M * 1.5, at, Vector2.ZERO)
 	var top: Sim.Body = tiers.add(Sim.Kind.ROCK, Sim.GIANT_MOST, at, Vector2.ZERO)
 	_ok("a world holds gas from CORE_M up to GIANT_MOST and no other", not Sim.holds(lo) and Sim.holds(mid) and not Sim.holds(top))
+	# a relic pulls a body by its tide in the star's frame: a circle at the
+	# ring's middle with a relic of 6 at its birth distance is still a circle
+	var tide := _quiet(22)
+	var ring_mid: float = (tide.ring.x + tide.ring.y) * 0.5
+	var mid_at := Vector2(ring_mid, 0.0)
+	var circ: Sim.Body = tide.add(Sim.Kind.GAS, 0.05, mid_at, tide.circle_vel(mid_at))
+	circ.dust = 0.0
+	tide.add_relic(Sim.Relic.WD, 6.0, Vector2(Sim.LOBE * tide.ring.y * (1.0 + sqrt(6.0 / tide.mass)), 0.0), tide.layers())
+	_run(tide, tide.turn_time(ring_mid) * 5.0)
+	_ok("beside a relic at its birth distance a circle in the ring stays a circle", tide.bodies.has(circ) and circ.pos.length() > ring_mid * 0.9 and circ.pos.length() < ring_mid * 1.1)
+	# gas feels a world only if the world holds it, and inside its Hill radius;
+	# a solid feels it out to six
+	var skip := _quiet(23)
+	var twin := _quiet(23)
+	var rock_w: Sim.Body = skip.add(Sim.Kind.ROCK, Sim.PLANET_M * 1.1, at, skip.circle_vel(at))
+	var apart := Vector2(0.0, skip.hill_r(rock_w) * 3.0)
+	var g1: Sim.Body = skip.add(Sim.Kind.GAS, 0.02, at + apart, skip.circle_vel(at + apart))
+	var g0: Sim.Body = twin.add(Sim.Kind.GAS, 0.02, at + apart, twin.circle_vel(at + apart))
+	var s1: Sim.Body = skip.add(Sim.Kind.GRAIN, 0.0005, at - apart, skip.circle_vel(at - apart))
+	var s0: Sim.Body = twin.add(Sim.Kind.GRAIN, 0.0005, at - apart, twin.circle_vel(at - apart))
+	g1.dust = 0.0
+	g0.dust = 0.0
+	_run(skip, 20.0)
+	_run(twin, 20.0)
+	_ok("gas three Hill radii from a planet that holds nothing moves as it does without the planet", g1.pos.distance_to(g0.pos) < 0.001)
+	_ok("while a grain in the same place is turned by it", s1.pos.distance_to(s0.pos) > 1.0)
 	# a ring beside a relic at its birth distance keeps its puffs
 	for case: Array in [[1.2, false, "a dwarf"], [25.0, true, "a hole"]]:
 		var dead := _quiet(19)

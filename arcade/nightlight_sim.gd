@@ -225,7 +225,7 @@ const PAY_WORLD := 25.0
 ## Worlds pull what is near them: the WORLDS heaviest solids from PLANET_M up
 ## do, to PULL_REACH of their Hill radii, and gas inside HILL_HOLD of one that
 ## can gulp it eases toward its speed MOON_DRAG a second.
-const WORLDS := 6
+const WORLDS := 8
 const PULL_REACH := 6.0
 const HILL_HOLD := 0.5
 const MOON_DRAG := 0.05
@@ -1347,6 +1347,7 @@ func tick() -> void:
 	var pull_gm := PackedFloat64Array()
 	var pull_in := PackedFloat64Array()
 	var pull_of := PackedInt32Array()
+	var tide := Vector2.ZERO
 	for k in relics.size():
 		var rel := relics[k]
 		if (rel.pos as Vector2).length() <= RELIC_REACH:
@@ -1355,6 +1356,12 @@ func tick() -> void:
 			pull_gm.append(G * float(rel.m))
 			pull_in.append(rr * rr)
 			pull_of.append(k)
+			# the star is never moved, so a relic's pull at the star is taken off every
+			# body: what a body feels of a relic is its tide in the star's frame
+			var rp: Vector2 = rel.pos
+			var rp2 := rp.length_squared()
+			if rp2 > 1.0:
+				tide += rp * (G * float(rel.m) / (rp2 * sqrt(rp2)))
 	# the WORLDS heaviest solids from PLANET_M up, as they are now: copied
 	# values only, so one eaten, torn or merged later in the tick is not read
 	# again. Held in order, heaviest first, by one pass and no sort.
@@ -1365,6 +1372,7 @@ func tick() -> void:
 	var w_soft := PackedFloat64Array()
 	var w_reach := PackedFloat64Array()
 	var w_hold := PackedFloat64Array()
+	var w_gas := PackedFloat64Array()
 	var w_id := PackedInt32Array()
 	for b in bodies:
 		if b.kind == Kind.GAS or b.m < PLANET_M or (w_m.size() >= WORLDS and b.m <= w_m[WORLDS - 1]):
@@ -1381,6 +1389,7 @@ func tick() -> void:
 		w_soft.insert(slot, sr * sr)
 		w_reach.insert(slot, pow(PULL_REACH * hill, 2.0))
 		w_hold.insert(slot, pow(HILL_HOLD * hill, 2.0) if holds(b) else -1.0)
+		w_gas.insert(slot, hill * hill if holds(b) else -1.0)
 		w_id.insert(slot, b.id)
 		if w_m.size() > WORLDS:
 			w_m.resize(WORLDS)
@@ -1390,7 +1399,11 @@ func tick() -> void:
 			w_soft.resize(WORLDS)
 			w_reach.resize(WORLDS)
 			w_hold.resize(WORLDS)
+			w_gas.resize(WORLDS)
 			w_id.resize(WORLDS)
+	var w_holder := false
+	for k in w_gas.size():
+		w_holder = w_holder or w_gas[k] > 0.0
 	var i := bodies.size() - 1
 	while i >= 0:
 		var b := bodies[i]
@@ -1446,19 +1459,21 @@ func tick() -> void:
 				_tear(i)
 				i -= 1
 				continue
-		# the worlds pull what is near them, one another included, never
-		# themselves; gas close to one that can gulp it is eased toward its speed
-		for k in w_at.size():
-			var to := w_at[k] - p
-			var d2 := to.length_squared()
-			if d2 >= w_reach[k] or w_id[k] == b.id:
-				continue
-			var soft := d2 + w_soft[k]
-			acc_rel += to * (w_gm[k] / (soft * sqrt(soft)))
-			if gas and d2 < w_hold[k]:
-				b.vel += (w_vel[k] - b.vel) * (MOON_DRAG * STEP)
+		# the worlds pull the solids within their reach, one another included,
+		# never themselves; gas feels only a world that holds it, inside its
+		# Hill radius, and is eased toward that world's speed inside half of it
+		if not gas or w_holder:
+			for k in w_at.size():
+				var to := w_at[k] - p
+				var d2 := to.length_squared()
+				if d2 >= (w_gas[k] if gas else w_reach[k]) or w_id[k] == b.id:
+					continue
+				var soft := d2 + w_soft[k]
+				acc_rel += to * (w_gm[k] / (soft * sqrt(soft)))
+				if gas and d2 < w_hold[k]:
+					b.vel += (w_vel[k] - b.vel) * (MOON_DRAG * STEP)
 		var acc := p * (-pull / (r2 * r))
-		acc += acc_rel
+		acc += acc_rel - tide
 		b.heat = 0.0
 		if b.sink > 0.0:
 			b.sink = maxf(0.0, b.sink - STEP / FLUSH)
