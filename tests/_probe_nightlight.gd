@@ -18,7 +18,10 @@ extends SceneTree
 ## nothing to burn goes dim, wakes when fed and lets go after its grace; a
 ## tile costs what the table says; picks come at the Suns the table says;
 ## a star saved and read back is the same star, and one kept before the gas
-## comes back without its sky.
+## comes back without its sky; a light star with a carbon core sheds a
+## nebula and leaves a white dwarf, a supernova a neutron star (a black hole
+## from twenty Suns), and the next star is born away from the relics, its
+## gas dusty with what the last one made.
 ## `pace` holds the button (as fast as the Stream tile lets it), buys the
 ## cheapest tile it can, takes the first, the second or either of the two
 ## powers offered, buys a perk whenever the stardust reaches, and prints
@@ -327,8 +330,10 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 		var how: String = sim.ending()
 		if how != "":
 			var was: float = sim.suns()
+			var left: String = ["wd", "ns", "bh"][sim.remnant()]
 			var shares: Array = sim.layers()
 			var paid: int = sim.end()
+			print("  end: %s remnant: %s at %.1f min, %.1f Suns" % [how, left, (t - born) / 60.0, was])
 			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, poured %.1f; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
 				(t - born) / 60.0, how, was, paid, dim, poured, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, str(sim.power)])
 			while sim.buy_perk() != "":
@@ -338,6 +343,19 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 			poured = 0.0
 			next_mark = 2.0
 	print("pace: %d supernovas, %d let go, the sky held %d at most, %.0f us a tick" % [sim.novas, sim.fades, most_ticks, float(Time.get_ticks_usec() - t0) / (minutes * 60.0 / Sim.STEP)])
+	# the dearest sky: 300 bodies and the most relics, in a ring
+	var crowd: RefCounted = Sim.new(rng_seed)
+	crowd.passing = false
+	crowd.burning = false
+	for k in Sim.RELICS_MOST:
+		crowd.add_relic(k % 3, Sim.START * 2.0, Vector2.from_angle(TAU * k / Sim.RELICS_MOST) * 2000.0, crowd.layers())
+	for k in Sim.FULL:
+		var at: Vector2 = Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(crowd.haze_r() * 1.2, 1500.0)
+		crowd.add(Sim.Kind.ROCK, 0.003, at, crowd.circle_vel(at))
+	var t1 := Time.get_ticks_usec()
+	for k in 600:
+		crowd.tick()
+	print("pace: 300 bodies and %d relics, %d bodies left, %.0f us a tick" % [crowd.relics.size(), crowd.bodies.size(), float(Time.get_ticks_usec() - t1) / 600.0])
 
 func _sky(sim: RefCounted) -> String:
 	var gas := 0
@@ -392,3 +410,74 @@ func _check_relics() -> void:
 	cfg.save(Sim.path)
 	var older: RefCounted = Sim.load_saved()
 	_ok("old file clean", older.relics.is_empty() and older.far.size() == Sim.NEIGHBOURS and older.drift == Vector2.ZERO and older.bodies.size() > 0)
+
+func _check_ends() -> void:
+	# a 4-Sun star whose helium core reaches 1.06 Suns sheds a nebula and leaves a white dwarf
+	var sim := _quiet()
+	sim.mass = Sim.START * 4.0
+	sim.fuel = sim.mass * 0.5
+	sim.ignited[1] = true
+	sim.made[0] = Sim.CARBON * Sim.START
+	sim.made[1] = Sim.CARBON * Sim.START
+	_ok("nebula end", sim.ending() == "nebula" and sim.remnant() == Sim.Relic.WD)
+	_ok("dwarf mass", is_equal_approx(sim.remnant_mass(), (Sim.WD_M + Sim.WD_M_PER * 3.0) * Sim.START))
+	var dust_was: int = sim.dust
+	var paid: int = sim.end()
+	_ok("nebula pays", paid == Sim.NEBULA_DUST and sim.dust == dust_was + Sim.NEBULA_DUST)
+	_ok("one relic", sim.relics.size() == 1 and int(sim.relics[0].kind) == Sim.Relic.WD)
+	var d: float = sim.last_birth.d
+	var from: Vector2 = sim.last_birth.from
+	_ok("lobe rule", is_equal_approx(d, Sim.LOBE * sim.haze_r() * (1.0 + sqrt(float(sim.relics[0].m) / sim.mass))) and is_equal_approx(from.length(), d))
+	_ok("disc inside lobe", d / (1.0 + sqrt(float(sim.relics[0].m) / sim.mass)) >= sim.haze_r() * Sim.LOBE * 0.999)
+	_ok("drift moved", is_equal_approx(sim.drift.length(), d) and sim.far.size() == Sim.NEIGHBOURS)
+	_ok("first end has a direction", from.is_finite() and from.length() > 1.0)
+	_ok("the relic is where the birth says", (sim.relics[0].pos as Vector2).is_equal_approx(from))
+	# a heavy enough star is no nebula: carbon lights for it instead
+	var heavy := _quiet()
+	heavy.mass = Sim.START * 9.0
+	heavy.ignited[1] = true
+	heavy.made[1] = Sim.CARBON * Sim.START
+	_ok("no nebula from a heavy star", heavy.ending() == "")
+	# a 10-Sun supernova leaves a neutron star, a 25-Sun one a black hole of 5 Suns; the relics shift
+	var big := _quiet(3)
+	big.mass = Sim.START * 10.0
+	big.made[5] = Sim.IRON * Sim.START
+	_ok("neutron star", big.ending() == "nova" and big.remnant() == Sim.Relic.NS and is_equal_approx(big.remnant_mass(), Sim.IRON * Sim.START))
+	big.end()
+	var first: Vector2 = big.relics[0].pos
+	big.mass = Sim.START * 25.0
+	big.made[5] = Sim.IRON * Sim.START
+	_ok("black hole", big.remnant() == Sim.Relic.BH and is_equal_approx(big.remnant_mass(), 5.0 * Sim.START))
+	big.end()
+	_ok("relics shift", big.relics.size() == 2 and big.relics[0].pos != first and (big.relics[1].pos as Vector2).length() > (big.relics[0].pos as Vector2).length() * 0.5)
+	# a supernova's gas is dusty, and the grain it makes is iron-dark
+	var dusty := 0.0
+	for b: Sim.Body in big.bodies:
+		dusty = maxf(dusty, b.dust)
+	_ok("metal-rich ashes", dusty > 0.1)
+	var grain := _quiet(5)
+	var at := Vector2(grain.haze_r() * 0.9, 0.0)
+	var p1: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at, grain.circle_vel(at))
+	var p2: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), grain.circle_vel(at))
+	for p in [p1, p2]:
+		p.dust = 0.15
+		p.age = Sim.COOL + 1.0
+	_run(grain, 1.0)
+	_ok("iron grain", grain.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > Sim.IRONY))
+	# a young sky's grain is not
+	var young := _quiet(5)
+	for p in [young.add(Sim.Kind.GAS, Sim.PUFF, at, young.circle_vel(at)), young.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), young.circle_vel(at))]:
+		p.dust = Sim.DUSTY
+		p.age = Sim.COOL + 1.0
+	_run(young, 1.0)
+	_ok("plain grain", young.bodies.any(func(x): return x.kind != Sim.Kind.GAS) and not young.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > Sim.IRONY))
+	# a first game is born in gas, and flags it; a file that is there is not
+	var first_game := _quiet(9)
+	first_game.born()
+	_ok("first cloud", first_game.gas_count() == Sim.FIRST_CLOUD and first_game.relics.is_empty() and first_game.fresh)
+	DirAccess.remove_absolute(Sim.path)
+	var none: RefCounted = Sim.load_saved(9)
+	_ok("no file is a first game", none.fresh and none.gas_count() == Sim.FIRST_CLOUD)
+	none.save()
+	var again: RefCounted = Sim.load_saved(9)
+	_ok("a kept star is not born again", not again.fresh)

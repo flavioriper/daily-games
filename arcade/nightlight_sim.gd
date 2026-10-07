@@ -364,6 +364,14 @@ const RELIC_REACH := 6000.0
 const NEIGHBOURS := 5
 const FAR_NEAR := 2500.0
 const FAR_FAR := 5000.0
+## A planetary nebula pays this; the new disc sits inside the new star's lobe by LOBE.
+const NEBULA_DUST := 2
+const LOBE := 1.6
+## The dead star's silicon, iron and rock become dust in the gas it leaves; a solid from gas this dusty is iron-dark.
+const METAL := 2.5
+const IRONY := 0.08
+## A first star is born in this many puffs of gas.
+const FIRST_CLOUD := 36
 
 var mass := START
 var light := 0.0
@@ -402,6 +410,13 @@ var relics: Array[Dictionary] = []
 var far: Array[Vector2] = []
 ## How far the sky has been carried from where the live star stands.
 var drift := Vector2.ZERO
+## Where the last end put the dead star, in the new star's frame, and how far
+## that is: {from, d}, empty before any end. The screen plays the sky's slide
+## from it.
+var last_birth := {}
+## True for a star that has just been born in its first cloud (`born`), so the
+## screen plays it.
+var fresh := false
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
 ## {kind: "eat", at, m, gas}, {kind: "shed", at, e}, {kind: "form", at},
@@ -706,12 +721,16 @@ func pick(i: int) -> String:
 # --- the end ---
 
 ## How the star's life is ending, if it is: "nova" with an iron core too
-## heavy to hold itself up, "fade" after GRACE seconds with nothing left to
-## burn, "" otherwise. Nothing moves once it is; the screen plays it and
-## calls `end` (the user, asked how a life ends: "the star decides").
+## heavy to hold itself up, "nebula" when a star too light for carbon has made
+## a carbon core and has nothing more to burn, "fade" after GRACE seconds with
+## nothing to burn at all, "" otherwise. Nothing moves once it is; the screen
+## plays it and calls `end` (the user, asked how a life ends: "the star
+## decides").
 func ending() -> String:
 	if made[5] >= IRON * START:
 		return "nova"
+	if ignited[1] and not ignited[2] and suns() < HEAVY and made[1] >= CARBON * START:
+		return "nebula"
 	if cold >= GRACE:
 		return "fade"
 	return ""
@@ -720,20 +739,36 @@ func ending() -> String:
 func dust_for() -> int:
 	return maxi(int(DUST), int(floor(DUST * sqrt(suns() / HEAVY))))
 
+## What the end now due leaves: a black hole from COLLAPSE Suns, a neutron
+## star for any other supernova, a white dwarf otherwise.
+func remnant() -> int:
+	if ending() == "nova":
+		return Relic.BH if suns() >= COLLAPSE else Relic.NS
+	return Relic.WD
+
+## Its mass: a dwarf grows with the star it came from, up to a limit under
+## Chandrasekhar; a neutron star is the iron core; a hole is a share of it.
+func remnant_mass() -> float:
+	match remnant():
+		Relic.NS: return IRON * START
+		Relic.BH: return maxf(BH_LEAST, BH_SHARE * suns()) * START
+	return minf(WD_MOST, WD_M + WD_M_PER * (suns() - 1.0)) * START
+
 func perk_cost() -> int:
 	return PERK + bought
 
 ## The star gives back what it is made of. Its mass, its light, the tiles
 ## and its powers go; stardust, the perks and a richer sky stay. What it
 ## threw off is left as gas on closed paths round the new star, all turning
-## the same way, the nearest of it already in the disc. Returns the stardust
-## paid, 0 if no end has come.
+## the same way, the nearest of it already in the disc. The dead star stays as
+## a relic, and the new one is born away from the relics there are (see
+## `last_birth`). Returns the stardust paid, 0 if no end has come.
 func end() -> int:
 	var how := ending()
 	if how == "":
 		return 0
 	var nova := how == "nova"
-	var got := dust_for() if nova else FADE_DUST
+	var got := dust_for() if nova else (NEBULA_DUST if how == "nebula" else FADE_DUST)
 	var count := FADE_ASHES
 	if nova:
 		count = mini(ASHES_MOST, roundi(ASHES + ASHES_LOG * log(suns()) / log(10.0)))
@@ -741,6 +776,10 @@ func end() -> int:
 	else:
 		fades += 1
 	dust += got
+	# what the dead star was, before anything is reset
+	var was_layers := layers()
+	var kind := remnant()
+	var rm := remnant_mass()
 	mass = START * pow(EMBER, int(perk.ember))
 	light = 0.0
 	fuel = mass * STAR_H
@@ -763,19 +802,47 @@ func end() -> int:
 	bodies.clear()
 	events.clear()
 	_pass_wait = 0.0
+	# its silicon, iron and rock go out as dust in its gas
+	var ash_dust := minf(0.3, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
+	_lay_gas(count, PUFF * ASH_M * (1.0 + RICHER * novas), ASH_H, ash_dust)
+	# where the next star is born: away from the relics there are, far enough that its disc is its own
+	var mean := Vector2.ZERO
+	for rel in relics:
+		mean += rel.pos as Vector2
+	var away := Vector2.from_angle(_rng.randf() * TAU) if relics.is_empty() else (-mean).normalized().rotated(_rng.randf_range(-0.7, 0.7))
+	if not away.is_finite() or away.length() < 0.5:
+		away = Vector2.from_angle(_rng.randf() * TAU)
+	# the new star's disc, not the old one's: it is the one that must not touch the relic
+	var d := LOBE * haze_r() * (1.0 + sqrt(rm / mass))
+	for rel in relics:
+		rel.pos = (rel.pos as Vector2) - away * d
+	for i in far.size():
+		far[i] -= away * d
+	drift += away * d
+	add_relic(kind, rm, -away * d, was_layers)
+	last_birth = {"from": -away * d, "d": d}
+	return got
+
+## A first star comes up in a cloud of its own: gas already falling in, no relic.
+func born() -> void:
+	_lay_gas(FIRST_CLOUD, PUFF * ASH_M, STAR_H, 0.02)
+	fresh = true
+
+## `count` puffs of gas of `m_each` (give or take) on closed paths round the
+## star, nearest of them already in the disc: each is let go at its furthest
+## point, where it is slowest, and they all turn the same way.
+func _lay_gas(count: int, m_each: float, h: float, dust_share: float) -> void:
 	var pull := gm()
 	var rw := main_r()
 	for i in count:
 		var near := (ASH_NEAR + _rng.randf() * ASH_REACH) * rw
 		var apo := near + 0.4 * rw + _rng.randf() * ((ASH_FAR - 0.4) * rw - near)
 		var way := Vector2.from_angle(_rng.randf() * TAU)
-		# let go at its furthest point, where it is slowest
 		var v := sqrt(pull * (2.0 / apo - 2.0 / (near + apo)))
-		var b := add(Kind.GAS, PUFF * ASH_M * (1.0 + RICHER * novas) * _rng.randf_range(0.6, 1.4), way * apo, way.orthogonal() * -v)
-		b.h = ASH_H
-		b.dust = ASH_DUST
+		var b := add(Kind.GAS, m_each * _rng.randf_range(0.6, 1.4), way * apo, way.orthogonal() * -v)
+		b.h = h
+		b.dust = dust_share
 		b.age = COOL
-	return got
 
 ## A perk drawn at random for what the next one costs, or "" if the stardust
 ## does not reach. A perk drawn twice counts twice.
@@ -909,6 +976,7 @@ func _tear(at: int) -> void:
 		piece.e = b.e * share
 		piece.h = b.h
 		piece.ice = b.ice
+		piece.metal = b.metal
 		piece.heat = b.heat
 		_sort(piece)
 		if k == 0:
@@ -990,6 +1058,7 @@ func _meet() -> void:
 						b.pos = (a.pos * a.m + b.pos * b.m) / m
 						b.h = (a.h * a.m + b.h * b.m) / m
 						b.ice = (a.ice * a.m + b.ice * b.m) / m
+						b.metal = (a.metal * a.m + b.metal * b.m) / m
 						b.e += a.e
 						b.m = m
 						a.m = 0.0
@@ -1018,6 +1087,7 @@ func _meet() -> void:
 	for row in born:
 		var grain := add(Kind.GRAIN, float(row.m), row.pos, row.vel)
 		grain.ice = float(row.ice)
+		grain.metal = float(row.metal)
 		grain.h = grain.ice * ICE_H
 		_sort(grain)
 		events.append({"kind": "form", "at": grain.pos})
@@ -1033,19 +1103,27 @@ func _solids(g: Body, frost: float) -> Vector2:
 
 ## The dust of two puffs sticks: the grain it makes, to be set between them.
 func _condense(a: Body, b: Body, frost: float) -> Dictionary:
+	var metal := _metal((a.dust * a.m + b.dust * b.m) / (a.m + b.m))
 	var from_a := _solids(a, frost)
 	var from_b := _solids(b, frost)
 	var ma := from_a.x + from_a.y
 	var mb := from_b.x + from_b.y
 	var m := ma + mb
-	return {"m": m, "ice": (from_a.y + from_b.y) / m, "pos": (a.pos * ma + b.pos * mb) / m, "vel": (a.vel * ma + b.vel * mb) / m}
+	return {"m": m, "ice": (from_a.y + from_b.y) / m, "metal": metal, "pos": (a.pos * ma + b.pos * mb) / m, "vel": (a.vel * ma + b.vel * mb) / m}
+
+## How iron-dark the solid a puff's dust makes is: 0 from the 1% of a young
+## sky, nearly 1 from a supernova's gas.
+func _metal(dust_share: float) -> float:
+	return clampf(dust_share / (2.0 * IRONY), 0.0, 1.0)
 
 ## A solid sweeps up a puff's dust.
 func _sweep(s: Body, g: Body, frost: float) -> void:
+	var metal := _metal(g.dust)
 	var got := _solids(g, frost)
 	var m := s.m + got.x + got.y
 	s.vel = (s.vel * s.m + g.vel * (got.x + got.y)) / m
 	s.ice = (s.ice * s.m + got.y) / m
+	s.metal = (s.metal * s.m + metal * (got.x + got.y)) / m
 	s.h = (s.h * s.m + got.y * ICE_H) / m
 	s.m = m
 	_sort(s)
@@ -1097,12 +1175,18 @@ func tick() -> void:
 	var roche3 := roche * roche * roche
 	var torn := CRUMB * 2.0
 	# the relics near enough to pull: position, GM and the radius squared inside which they eat
-	var pulls: Array = []
+	var pull_at := PackedVector2Array()
+	var pull_gm := PackedFloat64Array()
+	var pull_in := PackedFloat64Array()
+	var pull_of := PackedInt32Array()
 	for k in relics.size():
 		var rel := relics[k]
 		if (rel.pos as Vector2).length() <= RELIC_REACH:
 			var rr := relic_r(rel)
-			pulls.append([rel.pos, G * float(rel.m), rr * rr, k])
+			pull_at.append(rel.pos)
+			pull_gm.append(G * float(rel.m))
+			pull_in.append(rr * rr)
+			pull_of.append(k)
 	var i := bodies.size() - 1
 	while i >= 0:
 		var b := bodies[i]
@@ -1129,19 +1213,18 @@ func tick() -> void:
 		# divided by) and pulls what does not; a black hole weighs what it ate
 		var acc_rel := Vector2.ZERO
 		var lost := false
-		for k in pulls.size():
-			var rel: Array = pulls[k]
-			var to: Vector2 = (rel[0] as Vector2) - p
+		for k in pull_at.size():
+			var to := pull_at[k] - p
 			var d2 := to.length_squared()
-			if d2 <= float(rel[2]):
-				var which: int = rel[3]
+			if d2 <= pull_in[k]:
+				var which := pull_of[k]
 				if int(relics[which].kind) == Relic.BH:
 					relics[which].m = float(relics[which].m) + b.m
 				events.append({"kind": "lost", "at": p, "m": b.m, "relic": which})
 				bodies.remove_at(i)
 				lost = true
 				break
-			acc_rel += to * (float(rel[1]) / (d2 * sqrt(d2)))
+			acc_rel += to * (pull_gm[k] / (d2 * sqrt(d2)))
 		if lost:
 			i -= 1
 			continue
@@ -1284,7 +1367,10 @@ func save() -> void:
 static func load_saved(rng_seed := 0) -> RefCounted:
 	var sim: RefCounted = (load("res://arcade/nightlight_sim.gd") as GDScript).new(rng_seed)
 	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK or not cfg.has_section_key("star", "mass"):
+	if cfg.load(path) != OK:
+		sim.born()
+		return sim
+	if not cfg.has_section_key("star", "mass"):
 		return sim
 	var ver := int(cfg.get_value("star", "kept", 1))
 	var pre_gas := ver < 2
