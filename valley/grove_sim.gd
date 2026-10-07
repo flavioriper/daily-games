@@ -587,7 +587,12 @@ func value(id: String, at := -1) -> float:
 ## for its card's picture with nobody in it, and there the beavers do not
 ## bite (trees come up and the jetty's chain runs all the same). Their share
 ## of such seconds is the one time away has, worked out by `catch_up` when
-## the grove is next read from its file.
+## the grove is next read from its file, and only for the seconds since that
+## file was kept: the tab keeps it on every landing and as Play is pressed,
+## and each stamps `seen`, so the seconds the tab was shown before that
+## stamp are the beavers' loss. A holder never steps by more than STEP_MOST:
+## an app back from the background asks `catch_up` for its seconds away (the
+## screen) or reads the file again (the tab).
 func step(dt: float, holding := false, at := Vector2.ZERO, here := true) -> void:
 	clock += dt
 	_grow(dt, false)
@@ -1036,8 +1041,9 @@ func save(now: float) -> void:
 ## The most a count in a file may be: past it a float is not a whole number
 ## any more, and a few hundred of them add up to more than an int holds.
 const MOST := 1 << 53
-## The stacks, and the bundles, read from a file at most. The land has room
-## for about a hundred stacks MERGE apart.
+## The stacks, and the bundles, read from a file at most. Piles coming down
+## where trees stood jam the land at sixty-odd stacks MERGE apart (68 is the
+## most a played land was seen to hold); laid in rows it has room for 98.
 const ROWS := 256
 
 ## A count: a whole number from none to MOST, and none for anything else.
@@ -1174,8 +1180,12 @@ static func load_saved(now: float) -> RefCounted:
 		var pos := Vector2(float(row[1]), float(row[2]))
 		if not same_land or not stands(pos):
 			pos = sim._spot()
+		# a figure that is not a number would stay one through the clamp, and
+		# its tree never fall: such a tree is whole
+		var most: float = sim.hp(tier)
+		var left := float(row[3])
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
-			"hp": clampf(float(row[3]), DOWN, sim.hp(tier)), "born": -GROW})
+			"hp": clampf(left, DOWN, most) if is_finite(left) else most, "born": -GROW})
 		sim._next_id += 1
 	sim._due.clear()
 	var every: float = sim.spawn_time()

@@ -169,11 +169,10 @@ var _ground: ArrayMesh
 var _light: ArrayMesh
 ## What stands on the land, in layers over the ground (the field's own
 ## draw): the grass, the trees' shadows and the trees each under their wind
-## (`Art.wind`, `Life.shade`), the
-## leaves it carries, and over them what is not blown about (the bars, the
-## circle, the numbers). The trees, their shadows, the beavers, the falls,
-## the piles lying, what is on the jetty and the raft are `_life`'s
-## (valley/grove_life.gd).
+## (`Art.wind`, `Life.shade`), the leaves it carries, and over them what is
+## not blown about (the bars, the circle, the numbers). The trees, their
+## shadows, the beavers, the falls, the piles lying, what is on the jetty
+## and the raft are `_life`'s (valley/grove_life.gd).
 var _life: RefCounted
 var _grass: Array[MultiMesh] = []
 var _grass_l: Control
@@ -564,12 +563,12 @@ func _tile(tile: String) -> Control:
 		"mote": mote, "tick": tick, "badge": badge, "level": level}
 	return b
 
-## A tile's picture, fitted to its disc: a tree and an axe take the same room.
+## A tile's picture, fitted to its disc: each takes the same room.
 func _draw_tile_icon(icon: Control, tile: String) -> void:
 	var c := icon.size * 0.5
 	var done: bool = sim.is_done(tile)
 	icon.draw_circle(c, DISC_R, Pal.LEAF_TILE if done else Pal.PARCHMENT, true, -1.0, true)
-	var mesh := Art.icon(tile, Sim.look_of(int(sim.lv.seeds) + 1))
+	var mesh := Art.icon(tile)
 	var box := mesh.get_aabb()
 	var fit := minf(DISC_GROW, DISC_R * 2.0 * DISC_FIT / maxf(1.0, maxf(box.size.x, box.size.y)))
 	var mid := Vector2(box.get_center().x, box.get_center().y)
@@ -679,6 +678,7 @@ func _process(delta: float) -> void:
 	if not _rings.is_empty():
 		for i in _rings.size():
 			_rings[i] += delta
+		# Fx2D.ring's own lifetime (its default `time`): the two must stay equal
 		_rings = _rings.filter(func(age: float) -> bool: return age < Motion.RING_TIME)
 	# the land may have moved on the screen (an inset, the banner): the
 	# shadows are kept to where it is now
@@ -794,6 +794,10 @@ func _play_events() -> void:
 				_life.left(e.log)
 			"gather":
 				_life.gather(e.pos, int(e.n))
+				# nothing is thrown under reduce motion, so no log lands to be
+				# heard (`carried`): the same quiet click, once for the gather
+				if Motion.reduce:
+					_on_carried()
 				_dirty = true
 			"full":
 				# a swing over a ripe pile the jetty had no room for
@@ -1049,8 +1053,9 @@ func _draw_leaves() -> void:
 	_leaves_l.draw_multimesh(_leaf_mm, null)
 
 ## What the wind leaves alone, over the trees: the light, a lap's gold marks
-## at a foot, a hurt tree's bar, the jetty's plate, the circle and the numbers. The circle is
-## one on the ground, so the screen sees it flatter than it is wide.
+## at a foot, a hurt tree's bar, the jetty's plate, the circle and the
+## numbers. The circle is one on the ground, so the screen sees it flatter
+## than it is wide.
 func _draw_top() -> void:
 	if _light != null:
 		_top.draw_mesh(_light, null)

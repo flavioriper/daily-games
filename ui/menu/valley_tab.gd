@@ -55,6 +55,8 @@ var _count: Label
 var _bar: Control
 
 func _init() -> void:
+	# a stack's count is the screen's to say: at the card's size they are noise
+	_life.counts = false
 	add_theme_constant_override("separation", GAP)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -175,11 +177,12 @@ func _grove_card() -> Control:
 	return card
 
 ## What the place makes, beside its name: the log of the pill above, the
-## word, and how much of it a minute comes in by itself (the user,
-## 2026-10-06: "show what the grove game has as outcome ... so user can
-## understand it's meant to farm wood. Show a wood/min rate"). The rate is
-## the most the grove's jetty can send in a minute at its levels
-## (`Sim.wood_per_min`, written by `_write_rate`).
+## word, and how much of it a minute (the user, 2026-10-06: "show what the
+## grove game has as outcome ... so user can understand it's meant to farm
+## wood. Show a wood/min rate"). The rate is the most the grove's jetty can
+## send in a minute at its levels (`Sim.wood_per_min`, written by
+## `_write_rate`): a ceiling, not what comes in by itself, since the jetty
+## sends only the piles a finger has gathered to it.
 func _makes_chip() -> Control:
 	var chip := PanelContainer.new()
 	chip.name = "Makes"

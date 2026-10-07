@@ -2,16 +2,17 @@ extends RefCounted
 
 ## The Grove's drawings: the pond and the land seen in isometric (`see`,
 ## `ground`, `light`), the five trees, the shadow each throws (`shade`,
-## `cast`) and the stump it leaves, the log, the jetty in the pond with what
-## lies on it and the raft at its end (`deck`, `pile`, `bundle`, `raft`), a
-## crate washed up (`crate`), and a picture for each tile. Energy is a mote of light, Peapod's own
-## (ui/motes.gd), and has no drawing here. Every one is built once into a
-## mesh and kept, so the screen pays one draw_mesh a tree and one for the
-## whole ground (CLAUDE.md, the 855 budget). The grass's tufts and flowers
-## are a MultiMesh each (`grass`), and what stands leans in the wind in the
-## vertex stage (`wind`, shaders/wind_2d.gdshader), with nothing rebuilt. Trees have no faces: they are
-## what is chopped. Shared by the screen (valley/grove_screen.gd), the tab's
-## card (ui/menu/valley_tab.gd) and the tutorial's pages.
+## `cast`) and the stump it leaves, the jetty in the pond with what lies on
+## it and the raft at its end (`deck`, `pile`, `bundle`, `raft`), a crate
+## washed up (`crate`), and a picture for each tile and each node of the
+## tree (`icon`). Energy is a mote of light, Peapod's own (ui/motes.gd), and
+## has no drawing here. Every one is built once into a mesh and kept, so the
+## screen pays one draw_mesh a tree and one for the whole ground (CLAUDE.md,
+## the 855 budget). The grass's tufts and flowers are a MultiMesh each
+## (`grass`), and what stands leans in the wind in the vertex stage (`wind`,
+## shaders/wind_2d.gdshader), with nothing rebuilt. Trees have no faces:
+## they are what is chopped. Shared by the screen (valley/grove_screen.gd),
+## the tab's card (ui/menu/valley_tab.gd) and the tutorial's pages.
 
 const Face = preload("res://ui/faces/face.gd")
 const Sim = preload("res://valley/grove_sim.gd")
@@ -68,8 +69,6 @@ const LEAF := [Color("a6d96e"), Color("b5dd74"), Color("7fbb55"), Color("5fa377"
 const BARK := Color("9c6b45")
 const PITH := Color("f0d9ae")
 const MARK := Color("ffd66b")
-## The log's length as built; the screen scales it.
-const LOG := 48.0
 ## A tile's picture is drawn about its middle, inside this half width.
 const ICON := 56.0
 ## The paper a price lies on while the energy does not reach it: the shop's
@@ -151,7 +150,6 @@ static var _shades := {}
 static var _stumps := {}
 static var _shade_winds: Array[WeakRef] = []
 static var _icons := {}
-static var _log: ArrayMesh
 static var _piles := {}
 static var _bundle: ArrayMesh
 static var _rafts := {}
@@ -844,14 +842,7 @@ static func _lily(b: Face.Builder, at: Vector2, r: float, turn: float) -> void:
 	b.polygon(flat * pts, LILY)
 	b.stroke(flat * Face.Builder.arc_points(Vector2.ZERO, r * 0.6, turn + 0.9, turn + 5.2), maxf(1.6, r * 0.09), LILY_HI)
 
-## A log lying across (0, 0), LOG long: wood, on its way to the inventory.
-static func log_mesh() -> ArrayMesh:
-	if _log == null:
-		var b := Face.Builder.new()
-		_log_into(b, Vector2.ZERO, LOG)
-		_log = b.mesh()
-	return _log
-
+## A log lying across `at`, `long` long: the picture of wood (`icon`).
 static func _log_into(b: Face.Builder, at: Vector2, long: float) -> void:
 	var s := long / 1.24
 	b.polygon(Face.Builder.round_rect(at + Vector2(-s * 0.62, -s * 0.3), Vector2(s * 1.24, s * 0.6), s * 0.3), BARK)
@@ -1198,14 +1189,14 @@ static func _post(b: Face.Builder, top: Vector2, u: float, rise: float, head := 
 		var lap := Face.Builder.ring(foot, w * 1.0, w * 0.42)
 		b.stroke(lap.slice(0, lap.size() / 2 + 1), 2.2 * u, Color(1.0, 1.0, 1.0, 0.6))
 
-## A tile's picture, about (0, 0). Seeds shows the tree its next level opens,
-## so it takes that tree's `look`. Energy's is the mote itself.
-static func icon(tile: String, look := 1) -> ArrayMesh:
+## A tile's picture, about (0, 0), or wood's, or a node of the tree's
+## (`_node_into`). Energy's is the mote itself. A kind's node wears the tree
+## (`tree`), not a picture from here.
+static func icon(tile: String) -> ArrayMesh:
 	if tile == "energy":
 		return Motes.orb()
-	var key := "%s%d" % [tile, look if tile == "seeds" else 0]
-	if _icons.has(key):
-		return _icons[key]
+	if _icons.has(tile):
+		return _icons[tile]
 	var b := Face.Builder.new()
 	match tile:
 		"axe":
@@ -1235,15 +1226,12 @@ static func icon(tile: String, look := 1) -> ArrayMesh:
 			b.append(_bare(1), Transform2D(0.0, Vector2(0.62, 0.62), 0.0, Vector2(-30.0, 34.0)))
 			b.append(_bare(1), Transform2D(0.0, Vector2(0.62, 0.62), 0.0, Vector2(30.0, 34.0)))
 			b.append(_bare(1), Transform2D(0.0, Vector2(0.78, 0.78), 0.0, Vector2(0.0, 44.0)))
-		"seeds":
-			var s: float = 40.0 / Sim.RADIUS[look]
-			b.append(_bare(look), Transform2D(0.0, Vector2(s, s), 0.0, Vector2(0.0, 44.0)))
 		"wood":
 			_log_into(b, Vector2.ZERO, 64.0)
 		_:
 			_node_into(b, tile)
-	_icons[key] = b.mesh()
-	return _icons[key]
+	_icons[tile] = b.mesh()
+	return _icons[tile]
 
 ## The pictures of the tree's nodes (valley/grove_tree.gd), each about (0, 0)
 ## inside ICON like a tile's: the two boughs every kind has (`soft`, `rich`)

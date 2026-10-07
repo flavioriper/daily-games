@@ -32,7 +32,8 @@ extends RefCounted
 ##
 ## - **The wood on its way** (2026-10-07, the jetty): the piles lying on the
 ##   land, sorted in with the trees, a stack as one heap that grows in a few
-##   steps and says its count; on the jetty the loose piles as a heap and the
+##   steps and says its count (where the holder has `counts` on: the tab's
+##   card has not); on the jetty the loose piles as a heap and the
 ##   bundles waiting (six drawn, then a count); the raft at the jetty's end,
 ##   rocking, or on its way off the field's left edge with its bundles and
 ##   back without. All of it read off the sim each frame; none of it sways
@@ -56,8 +57,8 @@ extends RefCounted
 ##
 ## Under reduce motion a beaver is there or not and only changes its face, a
 ## felled tree fades where it stands, both signals come at once, a pile is
-## there with them, nothing is thrown, the raft lies still and a crate is
-## there or gone.
+## there with them, nothing is thrown (so `carried` never comes: the holder
+## says the gather itself), the raft lies still and a crate is there or gone.
 
 signal landed(tree: Dictionary, at: Vector2)
 signal gave(tree: Dictionary, give: int, at: Vector2)
@@ -142,6 +143,9 @@ var origin := Vector2.ZERO
 var u := 1.0
 ## The material for the Control `draw_shade` draws on.
 var shade: ShaderMaterial
+## Whether a stack says how many piles it is. Not on the tab's card: a late
+## land is forty-odd figures there, at a size nobody reads.
+var counts := true
 
 var _hit := {}        # tree id -> seconds since it was hit
 var _falls: Array = []    # {tree, give, t, dir, down, given}
@@ -551,7 +555,7 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 				var pile: Dictionary = item[2]
 				var n := int(pile.n) - int(_owed.get(pile.id, 0))
 				ci.draw_mesh(Art.pile(n, pile.lucky), null, Art.still(_px(pile.pos), one))
-				if n > 1:
+				if counts and n > 1:
 					_marks.append([Art.see(pile.pos) + Vector2(0.0, -Art.heap_tall(n) - 6.0), Art.short(n)])
 			4:
 				var d: Dictionary = item[2]

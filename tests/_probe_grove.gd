@@ -621,6 +621,15 @@ func _check_kept() -> void:
 	var odd: RefCounted = Sim.load_saved(100.0)
 	_ok("a file with nonsense in the jetty's keys loads, and makes no wood", odd != null and odd.energy == 40 and odd.lying() == 0 and odd.jetty_held() == 0 and odd.owed == 0
 		and odd.wood_sent == 0 and int(odd.raft.n) == 0 and int(odd.raft.wood) == 0 and odd.tie_t == 0.0 and odd.crate.is_empty())
+	# a tree whose hp is not a number is a whole tree, and can be felled
+	old.set_value("grove", "trees", [[0, 520.0, 520.0, NAN], [0, 420.0, 520.0, INF], [0, 620.0, 520.0, "x"]])
+	old.save(Sim.path)
+	var numb: RefCounted = Sim.load_saved(100.0)
+	_ok("a tree kept with an hp that is no number is whole (%s)" % [numb.trees.map(func(t: Dictionary) -> float: return t.hp)],
+		numb.trees.size() == 3 and numb.trees.all(func(t: Dictionary) -> bool: return is_finite(float(t.hp)) and float(t.hp) > 0.0 and float(t.hp) <= numb.hp(0))
+		and is_equal_approx(float(numb.trees[0].hp), numb.hp(0)))
+	old.set_value("grove", "trees", [[0, 520.0, 520.0, 4.0]])
+	old.save(Sim.path)
 	var odd_later: RefCounted = Sim.load_saved(100.0 + 86400.0)
 	_ok("nor a day later", odd_later.lying() == 0 and odd_later.jetty_held() == 0 and odd_later.owed == 0 and odd_later.wood_sent == 0 and not odd_later.raft.away)
 	old.set_value("jetty", "logs", 12)
