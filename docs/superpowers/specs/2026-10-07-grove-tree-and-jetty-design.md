@@ -108,13 +108,13 @@ has caught up, and now once the new kind's boughs are bought.
 |---|---|---|---|---|---|---|
 | Land | Room | `room` | one more tree | 3 | 27 | 12, x1.5 |
 | Land | Sprout | `sprout` | trees 7% sooner | 6 s | 20 | 15, x1.65 |
-| Jetty | Jetty | `jetty` | room for 2 more piles | 6 | 20 | 20, x1.45 |
-| Jetty | Tying | `tying` | a bundle 10% sooner | 6 s | 15 | 40, x1.7 |
-| Jetty | Bundle | `bundle` | one more pile a bundle | 3 | 7 | 60, x2.2 |
 | Jetty | Raft | `raft` | there and back 8% sooner | 24 s | 15 | 50, x1.7 |
+| Jetty | Jetty | `jetty` | room for 2 more piles | 6 | 20 | 20, x1.45 |
+| Jetty | Bundle | `bundle` | one more pile a bundle | 3 | 7 | 60, x2.2 |
+| Jetty | Tying | `tying` | a bundle 10% sooner | 12 s | 15 | 40, x1.7 |
 | Jetty | Load | `load` | one more bundle aboard | 1 | 5 | 300, x3 |
 | Beavers | Beavers | `beaver` | one more beaver | none | 5 | 250, x4 |
-| Beavers | Teeth | `teeth` | a bite 15 points nearer a chop | 25% of a chop | 5 | 500, x2.4 |
+| Beavers | Teeth | `teeth` | a bite 10 points nearer a chop | 50% of a chop | 5 | 500, x2.4 |
 | Fortune | Keen edge | `crit` | 5 points more chance of a keen chop | 0% | 10 | 80, x1.8 |
 | Fortune | Heavy blow | `critsize` | a keen chop counts half a chop more | 2 chops | 6 | 150, x2 |
 | Fortune | Lucky wood | `luck` | 4 points more chance of a double pile | 0% | 10 | 100, x1.8 |
@@ -178,7 +178,7 @@ the grove goes on behind, nothing is chopped).
 The chain counts **piles, not wood**, so it is measured in the unit the axe
 is, trees a minute, and a richer kind sends more wood through the same raft.
 Before any node the raft carries seven and a half piles a minute and the
-tying thirty: a new grove fells about ten trees a minute, so the neck is
+tying fifteen: a new grove fells about ten trees a minute, so the neck is
 gentle on the first day and tightens as Room, Sprout and the axe grow.
 
 `wood_per_min()` is the most the chain can send in a minute at its levels
@@ -202,10 +202,10 @@ plate at the top counts `Stock` and swells when the raft lands.
   standing tree no other beaver has and bites it once a second for a share
   of the axe's chop. Its tree falls as any does: energy at once, a pile
   lying. **A beaver gathers nothing.** With someone there it never rests.
-  **Away, the beavers fell the land once over at most**: as many trees as
-  the land has room for, fewer if the seconds gone were too few, worked
-  out, and their piles are lying there on the return. (Trees away fill the
-  land once and no further; the beavers' share is the same size.) It is drawn as the beaver that comes to a
+  **Away, each beaver fells the land once over at most**: as many trees as
+  the land has room for, a beaver, fewer if the seconds gone were too few,
+  worked out, and their piles are lying there on the return. (Trees away
+  fill the land once and no further; a beaver's share is the same size.) It is drawn as the beaver that comes to a
   chopped tree is (`ui/faces/beaver.gd`).
 - **Keen edge** (`crit`, `critsize`): each chop on each tree has the chance
   to count for more. Its number comes up large with a ring. A beaver's bite
@@ -266,12 +266,25 @@ figures and rules did not survive it:
   bundle of two took a place on the raft. Hence the rule in section 4.4.
 - **The neck slammed shut in the first minute**: a jetty full 90% of the
   time, 31% of the wood landed, the first wood 52 s in. Tying started at
-  20 s and the raft at 60 s; they start at 6 s and 24 s.
+  20 s and the raft at 60 s; they start at 12 s and 24 s.
 - **Beavers were dead on arrival**: they rested while as many piles lay as
   the land had room for trees, and piles never rot, so one beaver rested
   94% of twenty minutes. They never rest now, and what bounds them is the
   size of their share away.
 - **Boughs of a kind gone from the land had no sign.** Hence `grows`.
+
+A second run, on those rules, moved three more things:
+
+- **The Jetty root opened with two nodes nobody could feel**: every jetty
+  size landed the same 148 piles in twenty minutes, the raft's rate, and
+  tying (then 6 s) was four times quicker than the raft. The root now opens
+  with the Raft, then the Jetty's room (felt as "full" coming later and more
+  sent while away), Bundle, Tying, Load; and tying starts at 12 s, twice the
+  raft's rate, so it becomes the neck after a few levels of Raft and Bundle.
+- **A beaver's share away was three trees** on a new grove for 250 energy.
+  It is the land once over for each beaver.
+- **A beaver's bite was a quarter of a chop**, and beside a finger it did
+  nothing seen. It starts at half.
 
 Left as they are, and the user's to judge: piles never rot, so on a land
 chopped harder than the raft carries the backlog has no end and the wood is
