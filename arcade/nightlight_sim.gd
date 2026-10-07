@@ -69,6 +69,11 @@ class Body:
 	## 1 when a press has just braked it, 0 again FLUSH seconds on; drawn, not
 	## saved.
 	var sink := 0.0
+	## The mass of the biggest solid this body is or has been part of; 0 for
+	## gas. What it pays for its mass goes by this (`pay`).
+	var rank := 0.0
+	## The light it has let go so far.
+	var paid := 0.0
 
 const STEP := 1.0 / 60.0
 ## Gravity for a star of one mass, the disc's drag at the star's surface (a
@@ -209,6 +214,21 @@ const GAP_MAX := 1.4
 const DRAWN := 0.3
 ## Light is let go in pieces, never less than this.
 const PIECE := 0.05
+
+## What a thing's mass pays against gas, by the biggest solid it is or was
+## part of.
+const PAY_GAS := 1.0
+const PAY_GRAIN := 4.0
+const PAY_ROCK := 10.0
+const PAY_WORLD := 25.0
+
+## Worlds pull what is near them: the WORLDS heaviest solids from PLANET_M up
+## do, to PULL_REACH of their Hill radii, and gas inside HILL_HOLD of one that
+## can gulp it eases toward its speed MOON_DRAG a second.
+const WORLDS := 6
+const PULL_REACH := 6.0
+const HILL_HOLD := 0.5
+const MOON_DRAG := 0.05
 
 ## The tide (the user, 2026-10-06: "something orbiting sun too close should
 ## rip apart into smaller pieces"). The star pulls a body's near side harder
@@ -646,6 +666,36 @@ func rich() -> float:
 static func body_r(m: float) -> float:
 	return BODY_R * pow(m, 1.0 / 3.0)
 
+## What a mass pays against gas, by the biggest solid it is or was part of
+## (0 for gas).
+static func pay(rank: float) -> float:
+	if rank <= 0.0:
+		return PAY_GAS
+	if rank < GRAIN_M:
+		return PAY_GRAIN
+	return PAY_ROCK if rank < PLANET_M else PAY_WORLD
+
+## True for a solid that keeps some of the gas it meets: a core, up to a
+## giant that is full. `_meet` gulps by this, and a world holds gas by it.
+static func holds(b: Body) -> bool:
+	return b.m >= CORE_M and b.m < GIANT_MOST
+
+## How far a world's own pull beats the star's tide, where it is now.
+func hill_r(b: Body) -> float:
+	return b.pos.length() * pow(b.m / (3.0 * mass), 1.0 / 3.0)
+
+## What circles the star, for the screen and the Arcade card: grains are dust
+## and are not counted.
+func system() -> Dictionary:
+	var n := {"planets": 0, "giants": 0, "comets": 0, "rocks": 0}
+	for b in bodies:
+		match b.kind:
+			Kind.PLANET: n.planets += 1
+			Kind.GIANT: n.giants += 1
+			Kind.COMET: n.comets += 1
+			Kind.ROCK: n.rocks += 1
+	return n
+
 ## How far apart two puffs make a grain.
 func gas_r() -> float:
 	return MEET * main_r() / STAR_R
@@ -933,6 +983,7 @@ func _sort(b: Body) -> void:
 	if b.kind == Kind.GAS:
 		b.grip = 1.0
 		return
+	b.rank = maxf(b.rank, b.m)
 	if b.h >= GASSY and b.m >= CORE_M:
 		b.kind = Kind.GIANT
 	elif b.ice >= ICE_LOOK and b.m < PLANET_M:
@@ -1086,6 +1137,8 @@ func _tear(at: int) -> void:
 		piece.ice = b.ice
 		piece.metal = b.metal
 		piece.heat = b.heat
+		piece.rank = b.rank
+		piece.paid = b.paid * share
 		_sort(piece)
 		if k == 0:
 			piece.id = b.id
@@ -1147,7 +1200,7 @@ func _meet() -> void:
 							continue
 						if g.dust > 0.0 and g.age >= COOL:
 							_sweep(s, g, frost)
-						if s.m >= CORE_M and s.m < GIANT_MOST:
+						if holds(s):
 							_gulp(s, g)
 						if g.m <= 0.0:
 							gone = true
@@ -1168,6 +1221,8 @@ func _meet() -> void:
 						b.ice = (a.ice * a.m + b.ice * b.m) / m
 						b.metal = (a.metal * a.m + b.metal * b.m) / m
 						b.e += a.e
+						b.rank = maxf(a.rank, b.rank)
+						b.paid += a.paid
 						b.m = m
 						a.m = 0.0
 						_sort(b)
@@ -1246,6 +1301,8 @@ func _gulp(s: Body, g: Body) -> void:
 	s.ice = s.ice * s.m / m
 	s.e += g.e * take / g.m
 	g.e -= g.e * take / g.m
+	s.paid += g.paid * take / g.m
+	g.paid -= g.paid * take / g.m
 	s.m = m
 	g.m -= take
 	_sort(s)
@@ -1298,6 +1355,42 @@ func tick() -> void:
 			pull_gm.append(G * float(rel.m))
 			pull_in.append(rr * rr)
 			pull_of.append(k)
+	# the WORLDS heaviest solids from PLANET_M up, as they are now: copied
+	# values only, so one eaten, torn or merged later in the tick is not read
+	# again. Held in order, heaviest first, by one pass and no sort.
+	var w_m := PackedFloat64Array()
+	var w_at := PackedVector2Array()
+	var w_vel := PackedVector2Array()
+	var w_gm := PackedFloat64Array()
+	var w_soft := PackedFloat64Array()
+	var w_reach := PackedFloat64Array()
+	var w_hold := PackedFloat64Array()
+	var w_id := PackedInt32Array()
+	for b in bodies:
+		if b.kind == Kind.GAS or b.m < PLANET_M or (w_m.size() >= WORLDS and b.m <= w_m[WORLDS - 1]):
+			continue
+		var slot := w_m.size()
+		while slot > 0 and w_m[slot - 1] < b.m:
+			slot -= 1
+		var hill := hill_r(b)
+		var sr := body_r(b.m)
+		w_m.insert(slot, b.m)
+		w_at.insert(slot, b.pos)
+		w_vel.insert(slot, b.vel)
+		w_gm.insert(slot, G * b.m)
+		w_soft.insert(slot, sr * sr)
+		w_reach.insert(slot, pow(PULL_REACH * hill, 2.0))
+		w_hold.insert(slot, pow(HILL_HOLD * hill, 2.0) if holds(b) else -1.0)
+		w_id.insert(slot, b.id)
+		if w_m.size() > WORLDS:
+			w_m.resize(WORLDS)
+			w_at.resize(WORLDS)
+			w_vel.resize(WORLDS)
+			w_gm.resize(WORLDS)
+			w_soft.resize(WORLDS)
+			w_reach.resize(WORLDS)
+			w_hold.resize(WORLDS)
+			w_id.resize(WORLDS)
 	var i := bodies.size() - 1
 	while i >= 0:
 		var b := bodies[i]
@@ -1312,6 +1405,13 @@ func tick() -> void:
 			if gas:
 				env += b.m * (1.0 - b.h - b.dust) * GAS_HE
 			light += b.e
+			if not gas:
+				# a solid pays in full, whatever its path: what a perfect spiral
+				# would have, by its rank, less what it has let go already
+				var rest := b.m * spiral_light() * pay(b.rank) - b.paid - b.e
+				if rest > 0.0:
+					light += rest
+					events.append({"kind": "shed", "at": p, "e": rest})
 			events.append({"kind": "eat", "at": p, "m": b.m, "gas": gas})
 			bodies.remove_at(i)
 			i -= 1
@@ -1346,6 +1446,17 @@ func tick() -> void:
 				_tear(i)
 				i -= 1
 				continue
+		# the worlds pull what is near them, one another included, never
+		# themselves; gas close to one that can gulp it is eased toward its speed
+		for k in w_at.size():
+			var to := w_at[k] - p
+			var d2 := to.length_squared()
+			if d2 >= w_reach[k] or w_id[k] == b.id:
+				continue
+			var soft := d2 + w_soft[k]
+			acc_rel += to * (w_gm[k] / (soft * sqrt(soft)))
+			if gas and d2 < w_hold[k]:
+				b.vel += (w_vel[k] - b.vel) * (MOON_DRAG * STEP)
 		var acc := p * (-pull / (r2 * r))
 		acc += acc_rel
 		b.heat = 0.0
@@ -1360,10 +1471,11 @@ func tick() -> void:
 			var k := DRAG * (THIN + (1.0 - THIN) * d) * b.grip
 			acc -= b.vel * k
 			b.heat = d
-			b.e += k * b.vel.length_squared() * STEP / bind * b.m * LIGHT * gl
+			b.e += k * b.vel.length_squared() * STEP / bind * b.m * LIGHT * gl * pay(b.rank)
 			var q := maxf(PIECE, b.m * LIGHT * 0.2)
 			if b.e >= q:
 				b.e -= q
+				b.paid += q
 				light += q
 				events.append({"kind": "shed", "at": p, "e": q})
 		elif r < rwind:
@@ -1467,7 +1579,7 @@ func save() -> void:
 	cfg.set_value("star", "eaten", eaten)
 	var kept := []
 	for b in bodies:
-		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal])
+		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal, b.rank, b.paid])
 	cfg.set_value("star", "bodies", kept)
 	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers), int(r.fades)]))
 	cfg.set_value("star", "far", far.map(func(p): return [p.x, p.y]))
@@ -1475,6 +1587,8 @@ func save() -> void:
 	cfg.set_value("star", "ring", [ring.x, ring.y])
 	cfg.set_value("star", "frost", frost)
 	cfg.set_value("star", "dusty", dusty)
+	var n := system()
+	cfg.set_value("star", "worlds", int(n.planets) + int(n.giants))
 	cfg.save(path)
 
 ## The star as it was left, with its sky. A first visit, or a file that
@@ -1558,6 +1672,11 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		b.dust = clampf(float(row[7]), 0.0, 1.0)
 		b.ice = clampf(float(row[8]), 0.0, 1.0)
 		b.metal = clampf(float(row[9]), 0.0, 1.0) if row.size() >= 10 else 0.0
+		# twelve columns carry the rank and what was paid; an older row's rank is
+		# its mass, which `_sort` gives a solid, and gas has none
+		var had := (row as Array).size() >= 12 and is_finite(float(row[10])) and is_finite(float(row[11]))
+		b.rank = maxf(0.0, float(row[10])) if had and b.kind != Kind.GAS else 0.0
+		b.paid = maxf(0.0, float(row[11])) if had else 0.0
 		b.age = COOL
 		sim._sort(b)
 	if ver >= 3:
@@ -1618,6 +1737,6 @@ func _load_sky(cfg: ConfigFile) -> void:
 static func kept() -> Dictionary:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK or not cfg.has_section_key("star", "mass"):
-		return {"mass": 0.0, "novas": 0, "relics": 0}
+		return {"mass": 0.0, "novas": 0, "relics": 0, "worlds": 0}
 	var dead = cfg.get_value("star", "relics", [])
-	return {"mass": float(cfg.get_value("star", "mass", 0.0)), "novas": int(cfg.get_value("star", "novas", 0)), "relics": (dead as Array).size() if dead is Array else 0}
+	return {"mass": float(cfg.get_value("star", "mass", 0.0)), "novas": int(cfg.get_value("star", "novas", 0)), "relics": (dead as Array).size() if dead is Array else 0, "worlds": maxi(0, int(cfg.get_value("star", "worlds", 0)))}

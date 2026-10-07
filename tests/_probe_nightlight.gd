@@ -52,6 +52,8 @@ func _initialize() -> void:
 		_check_giant()
 		_check_ring()
 		_check_frost()
+		_check_pay()
+		_check_worlds()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -605,6 +607,148 @@ func _check_frost() -> void:
 	_ok("outside it a pair makes ice as well", outer != null and outer.ice > 0.0)
 	sim.swell = 1.0
 	_ok("a giant thaws the line outward", is_equal_approx(sim.frost_r(), sim.frost * (1.0 + Sim.GIANT)))
+
+func _check_pay() -> void:
+	_ok("gas pays 1, a grain 4, a rock 10, a world 25", Sim.pay(0.0) == Sim.PAY_GAS and Sim.pay(Sim.GRAIN_M * 0.5) == Sim.PAY_GRAIN and Sim.pay(Sim.PLANET_M * 0.5) == Sim.PAY_ROCK and Sim.pay(Sim.PLANET_M) == Sim.PAY_WORLD)
+	# a solid pays in full when eaten, whatever its path
+	for way: Array in [["dropped straight in", 0.0], ["on a grazing path", 0.55]]:
+		var sim := _quiet(12)
+		var at := Vector2(300.0, 0.0)
+		var p: Sim.Body = sim.add(Sim.Kind.ROCK, 0.01, at, sim.circle_vel(at) * float(way[1]))
+		sim._sort(p)
+		var owed: float = p.m * sim.spiral_light() * Sim.PAY_WORLD
+		_ok("a planet's rank is its mass", is_equal_approx(p.rank, 0.01))
+		var t := 0.0
+		while sim.mass < Sim.START + 0.0099 and t < 900.0:
+			sim.tick()
+			t += Sim.STEP
+		var got: float = sim.light
+		for b: Sim.Body in sim.bodies:
+			got += b.e
+		_ok("a planet %s is eaten" % way[0], sim.mass >= Sim.START + 0.0099)
+		_ok("and pays 25 times its mass of spiral light (%s)" % way[0], absf(got - owed) < owed * 0.05)
+	# gas dropped straight in still pays almost nothing
+	var gas := _quiet(12)
+	var g: Sim.Body = gas.add(Sim.Kind.GAS, 0.05, Vector2(300.0, 0.0), Vector2.ZERO)
+	g.dust = 0.0
+	_run(gas, 60.0)
+	_ok("gas dropped straight in pays under a tenth of a spiral", gas.bodies.is_empty() and gas.light < 0.05 * gas.spiral_light() * 0.1)
+	# torn pieces keep the whole body's rank, and what it had paid is shared out
+	var torn := _quiet(13)
+	var q: Sim.Body = torn.add(Sim.Kind.ROCK, 0.02, Vector2(torn.roche_r() * 0.9, 0.0), Vector2.ZERO)
+	torn._sort(q)
+	q.paid = 0.3
+	torn._tear(0)
+	var ranks := true
+	var shared := 0.0
+	for piece: Sim.Body in torn.bodies:
+		ranks = ranks and is_equal_approx(piece.rank, 0.02)
+		shared += piece.paid
+	_ok("a torn planet's pieces keep its rank", ranks and torn.bodies.size() >= 2)
+	_ok("and share what it had paid", is_equal_approx(shared, 0.3))
+	# nothing pays a negative amount: a body that has already paid more than it owes
+	var over := _quiet(14)
+	var o: Sim.Body = over.add(Sim.Kind.ROCK, 0.001, Vector2(145.0, 0.0), Vector2.ZERO)
+	over._sort(o)
+	o.paid = 99.0
+	_run(over, 5.0)
+	_ok("a body that has paid its worth pays no more", over.bodies.is_empty() and over.light >= 0.0 and over.light < 0.001)
+	# the file keeps rank and paid; an old row is its own mass
+	var keep := _quiet(15)
+	var k: Sim.Body = keep.add(Sim.Kind.ROCK, 0.004, Vector2(700.0, 0.0), keep.circle_vel(Vector2(700.0, 0.0)))
+	keep._sort(k)
+	k.rank = 0.02
+	k.paid = 0.11
+	keep.save()
+	var back: RefCounted = Sim.load_saved(1)
+	_ok("a body read back keeps its rank and what it paid", back.bodies.size() == 1 and is_equal_approx(back.bodies[0].rank, 0.02) and is_equal_approx(back.bodies[0].paid, 0.11))
+	var cfg := ConfigFile.new()
+	cfg.load(Sim.path)
+	var rows: Array = cfg.get_value("star", "bodies", [])
+	rows[0] = (rows[0] as Array).slice(0, 10)
+	cfg.set_value("star", "bodies", rows)
+	cfg.save(Sim.path)
+	var old: RefCounted = Sim.load_saved(1)
+	_ok("a ten-column row's rank is its mass", is_equal_approx(old.bodies[0].rank, 0.004) and old.bodies[0].paid == 0.0)
+
+func _check_worlds() -> void:
+	var sim := _quiet(16)
+	var at := Vector2(655.0, 0.0)
+	var w: Sim.Body = sim.add(Sim.Kind.ROCK, 0.02, at, sim.circle_vel(at))
+	sim._sort(w)
+	var hill: float = sim.hill_r(w)
+	_ok("a world of 0.02 at 655 px has a Hill radius of about 57 px", absf(hill - 655.0 * pow(0.02 / 30.0, 1.0 / 3.0)) < 0.5)
+	# a grain beside it is turned by it; one past the reach is not
+	var near_at := at + Vector2(0.0, hill * 0.5)
+	var far_at := Vector2(-655.0, 0.0)
+	var a: Sim.Body = sim.add(Sim.Kind.GRAIN, 0.0005, near_at, sim.circle_vel(near_at))
+	var b: Sim.Body = sim.add(Sim.Kind.GRAIN, 0.0005, far_at, sim.circle_vel(far_at))
+	var alone := _quiet(16)
+	var a0: Sim.Body = alone.add(Sim.Kind.GRAIN, 0.0005, near_at, alone.circle_vel(near_at))
+	var b0: Sim.Body = alone.add(Sim.Kind.GRAIN, 0.0005, far_at, alone.circle_vel(far_at))
+	_run(sim, 20.0)
+	_run(alone, 20.0)
+	_ok("a world turns what is near it", a.pos.distance_to(a0.pos) > 1.0)
+	_ok("and not what is past its reach", b.pos.distance_to(b0.pos) < 0.01)
+	_ok("a world on top of a body divides by nothing", is_finite(w.pos.x) and is_finite(a.pos.x))
+	# only the heaviest WORLDS pull, and a planet under PLANET_M does not
+	var small := _quiet(17)
+	var s: Sim.Body = small.add(Sim.Kind.ROCK, Sim.PLANET_M * 0.5, at, small.circle_vel(at))
+	small._sort(s)
+	var c: Sim.Body = small.add(Sim.Kind.GRAIN, 0.0005, near_at, small.circle_vel(near_at))
+	_run(small, 20.0)
+	_ok("a rock pulls nothing", c.pos.distance_to(a0.pos) < 0.01)
+	# gas inside half a Hill radius of a core stays with it or is gulped by it
+	var held := _quiet(18)
+	var core: Sim.Body = held.add(Sim.Kind.ROCK, Sim.CORE_M * 1.5, at, held.circle_vel(at))
+	core.h = 0.5
+	held._sort(core)
+	var puff_at := at + Vector2(held.hill_r(core) * 0.3, 0.0)
+	var puff: Sim.Body = held.add(Sim.Kind.GAS, 0.02, puff_at, held.circle_vel(puff_at))
+	puff.dust = 0.0
+	puff.age = 0.0
+	_run(held, held.turn_time(655.0) * 2.0)
+	_ok("gas inside half a Hill radius stays with a core", puff.m <= 0.0 or not held.bodies.has(puff) or puff.pos.distance_to(core.pos) < held.hill_r(core))
+	# who holds gas is who can gulp it: a core, not a small planet and not a full giant
+	var tiers := _quiet(18)
+	var lo: Sim.Body = tiers.add(Sim.Kind.ROCK, Sim.PLANET_M * 1.1, at, Vector2.ZERO)
+	var mid: Sim.Body = tiers.add(Sim.Kind.ROCK, Sim.CORE_M * 1.5, at, Vector2.ZERO)
+	var top: Sim.Body = tiers.add(Sim.Kind.ROCK, Sim.GIANT_MOST, at, Vector2.ZERO)
+	_ok("a world holds gas from CORE_M up to GIANT_MOST and no other", not Sim.holds(lo) and Sim.holds(mid) and not Sim.holds(top))
+	# a ring beside a relic at its birth distance keeps its puffs
+	for case: Array in [[1.2, false, "a dwarf"], [25.0, true, "a hole"]]:
+		var dead := _quiet(19)
+		dead.mass = Sim.START * float(case[0])
+		if case[1]:
+			dead.made[5] = Sim.IRON * Sim.START
+		else:
+			dead.cold = Sim.GRACE
+		dead.end()
+		var before: int = dead.gas_count()
+		_run(dead, 600.0)
+		var left := 0
+		for p: Sim.Body in dead.bodies:
+			if p.pos.length() < dead.ring.y * 1.3:
+				left += 1
+		_ok("a ring beside %s keeps nine in ten for ten minutes" % case[2], left >= int(before * 0.9) - Sim.RING_FALLING)
+	# Wind leans the ring in; it does not empty it
+	var wind := _quiet(20)
+	wind.power.wind = 1
+	var wp: Sim.Body = wind.add(Sim.Kind.GAS, 0.05, at, wind.circle_vel(at))
+	wp.dust = 0.0
+	_run(wind, 300.0)
+	_ok("with Wind a ring circle is still 0.8 of its radius after five minutes", wp.pos.length() > 655.0 * 0.8 and wp.pos.length() < 655.0)
+	# the count
+	var sys := _quiet(21)
+	for row: Array in [[0.02, 0.0, 0.0], [0.02, 0.0, 0.6], [0.004, 0.0, 0.0], [0.004, 0.5, 0.0], [0.0005, 0.0, 0.0]]:
+		var body: Sim.Body = sys.add(Sim.Kind.ROCK, row[0], Vector2(700.0, 0.0), Vector2.ZERO)
+		body.ice = row[1]
+		body.h = row[2]
+		sys._sort(body)
+	var count: Dictionary = sys.system()
+	_ok("the system counts planets, giants, rocks and comets, not grains", int(count.planets) == 1 and int(count.giants) == 1 and int(count.rocks) == 1 and int(count.comets) == 1)
+	sys.save()
+	_ok("the file keeps the worlds, and the card reads them", int(Sim.kept().worlds) == 2)
 
 func _check_relics() -> void:
 	var sim := _quiet()
