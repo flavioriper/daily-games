@@ -1070,7 +1070,7 @@ NL_PERK_CORE_FX,gravity +15%,gravidade +15%,gravedad +15%
 NL_PERK_DISC,Bright disc,Disco brilhante,Disco brillante
 NL_PERK_DISC_FX,light +25%,luz +25%,luz +25%
 NL_PERK_HAND,Heavy hand,Mão pesada,Mano pesada
-NL_PERK_HAND_FX,puffs 30% heavier,sopros 30% mais pesados,soplos 30% más pesados
+NL_PERK_HAND_FX,30% more gas drifts in,chega 30% mais gás,llega 30% más gas
 NL_PERK_CROWD,Crowded sky,Céu cheio,Cielo lleno
 NL_PERK_CROWD_FX,bodies pass 15% sooner,corpos passam 15% mais cedo,pasan cuerpos 15% antes
 NL_PERK_EMBER,Ember,Brasa,Brasa
@@ -1078,7 +1078,7 @@ NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o d
 NL_VOLLEY,Volley,Salva,Salva
 NL_STREAM,Flow,Fluxo,Flujo
 NL_FX_VOLLEY,"%d at a time, then %d","%d por vez, depois %d","%d a la vez, luego %d"
-NL_FX_STREAM,"one every %s s, then %s s","um a cada %s s, depois %s s","uno cada %s s, luego %s s"
+NL_FX_STREAM,"slows every %s s, then %s s","freia a cada %s s, depois %s s","frena cada %s s, luego %s s"
 NL_DONE,as pure as it gets,o mais puro possível,lo más puro posible
 NL_MAX,Max,Máx,Máx
 NL_POWERS,Star powers,Poderes da estrela,Poderes de la estrella
@@ -1105,7 +1105,11 @@ NL_POW_THRIFT_FX,The star and its powers burn 30% less hydrogen.,A estrela e seu
 NL_GAS,Gas,Gás,Gas
 NL_PUFF,Puff,Sopro,Soplo
 NL_PURE,Pure gas,Gás puro,Gas puro
+NL_REACH,Reach,Alcance,Alcance
+NL_RICH,Rich sky,Céu farto,Cielo rico
 NL_FX_PUFF,"weight ×%s, then ×%s","peso ×%s, depois ×%s","peso ×%s, luego ×%s"
+NL_FX_REACH,"reach ×%s, then ×%s","alcance ×%s, depois ×%s","alcance ×%s, luego ×%s"
+NL_FX_RICH,"gas ×%s, then ×%s","gás ×%s, depois ×%s","gas ×%s, luego ×%s"
 NL_FX_PURE,"%d%% hydrogen, then %d%%","%d%% de hidrogênio, depois %d%%","%d%% de hidrógeno, luego %d%%"
 NL_PICK_AT,Power at %s×,Poder com %s×,Poder con %s×
 NL_MILLION_K,%s million K,%s milhões de K,%s millones de K

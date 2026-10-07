@@ -96,7 +96,7 @@ const TEAR_GAP := 0.3
 const NOVA_LEAD := 0.65
 const HAPTICS := {"pour": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "ignite": Haptics.BUMP, "nova": Haptics.THUD,
 	"fade": Haptics.BUMP}
-const TILE_NAMES := {"puff": "NL_PUFF", "volley": "NL_VOLLEY", "stream": "NL_STREAM", "pure": "NL_PURE"}
+const TILE_NAMES := {"reach": "NL_REACH", "flow": "NL_STREAM", "rich": "NL_RICH", "pure": "NL_PURE"}
 const POWER_NAMES := {"wind": "NL_POW_WIND", "haze": "NL_POW_HAZE", "beacon": "NL_POW_BEACON", "radiance": "NL_POW_RADIANCE",
 	"furnace": "NL_POW_FURNACE", "fusion": "NL_POW_FUSION", "thrift": "NL_POW_THRIFT"}
 ## What the star is made of, in Sim.CHAIN's order: the elements by their
@@ -1459,15 +1459,15 @@ func _refresh_tiles() -> void:
 func _effect(tile: String) -> String:
 	var c := _comma()
 	match tile:
-		"puff":
-			# against a first puff, since the star's own mass is in Suns
-			var level := int(sim.lv.puff)
-			return tr("NL_FX_PUFF") % [Art.short(1.0 + Sim.PUFF_STEP * level, c), Art.short(1.0 + Sim.PUFF_STEP * (level + 1), c)]
-		"volley":
-			return tr("NL_FX_VOLLEY") % [sim.volley(), sim.volley() + 1]
-		"stream":
-			var gap: float = sim.stream_gap()
-			return tr("NL_FX_STREAM") % [_hundredths(gap), _hundredths(maxf(Sim.STREAM_LEAST, gap * Sim.STREAM_STEP))]
+		"reach":
+			var level := int(sim.lv.reach)
+			return tr("NL_FX_REACH") % [Art.short(1.0 + Sim.REACH_STEP * level, c), Art.short(1.0 + Sim.REACH_STEP * (level + 1), c)]
+		"flow":
+			var gap: float = sim.flow_gap()
+			return tr("NL_FX_STREAM") % [_hundredths(gap), _hundredths(maxf(Sim.FLOW_LEAST, gap * Sim.FLOW_STEP))]
+		"rich":
+			var level := int(sim.lv.rich)
+			return tr("NL_FX_RICH") % [Art.short(1.0 + Sim.RICH_STEP * level, c), Art.short(1.0 + Sim.RICH_STEP * (level + 1), c)]
 	var h: float = sim.puff_h()
 	return tr("NL_FX_PURE") % [int(round(h * 100.0)), int(round(minf(0.95, h + Sim.PURE_STEP) * 100.0))]
 

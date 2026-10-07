@@ -4,7 +4,7 @@ extends SceneTree
 ## how fast the numbers are.
 ##
 ##     godot --headless --path . --script res://tests/_probe_nightlight.gd
-##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the button is held]
+##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the finger is down] [gas|worlds]
 ##
 ## The checks: a puff of gas set on a circle in the disc winds in over a
 ## minute or so, goes round more than once, speeds up and pays its light; a
@@ -22,8 +22,8 @@ extends SceneTree
 ## nebula and leaves a white dwarf, a supernova a neutron star (a black hole
 ## from twenty Suns), and the next star is born away from the relics, its
 ## gas dusty with what the last one made.
-## `pace` holds the button (as fast as the Stream tile lets it), buys the
-## cheapest tile it can, takes the first, the second or either of the two
+## `pace` holds a finger on the ring (braking as fast as the Flow tile lets
+## it), buys the cheapest tile it can, takes the first, the second or either of the two
 ## powers offered, buys a perk whenever the stardust reaches, and prints
 ## every milestone with what the sky held. Everything runs on a throwaway
 ## file.
@@ -39,7 +39,8 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.has("pace"):
 		_pace(float(args[1]) if args.size() > 1 else 60.0, int(args[2]) if args.size() > 2 else 1,
-			String(args[3]) if args.size() > 3 else "random", float(args[4]) if args.size() > 4 else 1.0)
+			String(args[3]) if args.size() > 3 else "random", float(args[4]) if args.size() > 4 else 1.0,
+			String(args[5]) if args.size() > 5 else "gas")
 	else:
 		_check_disc()
 		_check_condensing()
@@ -49,6 +50,7 @@ func _initialize() -> void:
 		_check_relics()
 		_check_ends()
 		_check_giant()
+		_check_ring()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -74,6 +76,15 @@ func _sky_mass(sim: RefCounted) -> float:
 	for b: Sim.Body in sim.bodies:
 		m += b.m
 	return m
+
+## A puff set on a circle just inside the disc's rim, as the old button did:
+## the older checks' way of putting gas in.
+func _puff(sim: RefCounted, m := Sim.PUFF) -> Sim.Body:
+	var pos: Vector2 = Vector2.from_angle(sim._rng.randf() * TAU) * sim.haze_r() * sim._rng.randf_range(0.7, 0.97)
+	var b: Sim.Body = sim.add(Sim.Kind.GAS, m, pos, sim.circle_vel(pos) * sim._rng.randf_range(0.97, 1.0))
+	b.h = sim.puff_h()
+	b.dust = Sim.DUSTY * Sim.PUFF / m
+	return b
 
 func _check_disc() -> void:
 	var sim := _quiet()
@@ -111,11 +122,13 @@ func _check_disc() -> void:
 
 func _check_condensing() -> void:
 	var sim := _quiet(3)
+	# the ring's frost line is the ring's middle; this check is about the old one, 2.2 radii
+	sim.frost = sim.star_r() * 2.2
 	var poured := 0.0
 	for i in 400:
 		if i % 4 == 0 and i < 240:
-			sim.pour()
-			poured += sim.puff_mass()
+			_puff(sim)
+			poured += Sim.PUFF
 		_run(sim, 0.25)
 	var grains := 0
 	var icy := 0
@@ -218,11 +231,11 @@ func _check_star() -> void:
 	var clock: float = sim.clock
 	sim.tick()
 	_ok("nothing moves once it has ended", sim.clock == clock)
-	sim.lv.puff = 3
+	sim.lv.rich = 3
 	sim.power.wind = 1
 	var paid: int = sim.end()
 	_ok("the supernova pays stardust", paid == 3 and sim.dust == 3 and sim.novas == 1)
-	_ok("and leaves a new star with nothing bought", sim.mass == Sim.START and int(sim.lv.puff) == 0 and int(sim.power.wind) == 0 and not sim.ignited[1])
+	_ok("and leaves a new star with nothing bought", sim.mass == Sim.START and int(sim.lv.rich) == 0 and int(sim.power.wind) == 0 and not sim.ignited[1])
 	var closed: bool = sim.bodies.size() > 0
 	for b: Sim.Body in sim.bodies:
 		# bound: slower than escape where it is
@@ -246,19 +259,25 @@ func _check_star() -> void:
 func _check_rules() -> void:
 	var sim := _quiet()
 	sim.light = 1000.0
-	var first: int = sim.cost("puff")
-	_ok("the first puff tile costs twelve", first == 12 and sim.buy("puff") and is_equal_approx(sim.light, 988.0))
-	_ok("and makes a puff half as heavy again", is_equal_approx(sim.puff_mass(), Sim.PUFF * 1.5))
-	_ok("the button pours without a tile", sim.stream_gap() == Sim.STREAM)
+	var first: int = sim.cost("rich")
+	_ok("the first rich-sky tile costs twelve", first == 12 and sim.buy("rich") and is_equal_approx(sim.light, 988.0))
+	_ok("the finger brakes as often as the Flow tile lets it", is_equal_approx(sim.flow_gap(), Sim.FLOW) and sim.stream_gap() == sim.flow_gap())
+	sim.lv.flow = 3
+	_ok("and a level of it brakes sooner", is_equal_approx(sim.flow_gap(), Sim.FLOW * pow(Sim.FLOW_STEP, 3.0)))
 	sim.lv.pure = 6
 	_ok("pure gas stops at six", sim.is_done("pure") and not sim.buy("pure"))
-	sim.lv.volley = 2
-	sim.pour()
-	_ok("a volley is three puffs", sim.gas_count() == 3)
-	for i in 400:
-		sim.pour()
-	_ok("the sky holds no more than its most", sim.gas_count() <= Sim.MOST)
-	_ok("and loses none of it", is_equal_approx(_sky_mass(sim), 401.0 * 3.0 * sim.puff_mass()))
+	# the trickle holds the sky to its most and loses none of what drifts in
+	var full := _quiet(13)
+	full.passing = true
+	full._pass_gap = 1e9
+	# a full sky of puffs on circles in the ring, which the star does not eat
+	for k in Sim.MOST:
+		var at: Vector2 = Vector2.from_angle(TAU * k / Sim.MOST) * full.ring.y
+		full.add(Sim.Kind.GAS, Sim.PUFF, at, full.circle_vel(at)).h = full.puff_h()
+	var held: float = _sky_mass(full)
+	_run(full, 60.0)
+	_ok("the sky holds no more than its most", full.gas_count() <= Sim.MOST)
+	_ok("and loses none of what drifted in", absf(_sky_mass(full) - held + full._owed_gas - Sim.TRICKLE * 60.0) < 0.001 and is_equal_approx(full.mass, Sim.START))
 	sim.mass = Sim.START * 4.5
 	_ok("two picks by four Suns", sim.owed() == 2)
 	var two: Array = sim.offering()
@@ -273,7 +292,7 @@ func _check_rules() -> void:
 	sim.ignited[1] = true
 	sim.save()
 	var back: RefCounted = Sim.load_saved(7)
-	_ok("a star read back is the same star", is_equal_approx(back.mass, sim.mass) and back.picks == 1 and int(back.lv.volley) == 2
+	_ok("a star read back is the same star", is_equal_approx(back.mass, sim.mass) and back.picks == 1 and int(back.lv.flow) == 3
 		and back.bodies.size() == 1 and is_equal_approx(back.bodies[0].ice, 0.5) and back.ignited[1] and is_equal_approx(back.made[0], 2.0))
 	# a file from before the gas
 	var cfg := ConfigFile.new()
@@ -283,30 +302,39 @@ func _check_rules() -> void:
 	cfg.set_value("star", "bodies", [[4, 8.0, 300.0, 0.0, 0.0, 90.0, 0.6]])
 	cfg.save(Sim.path)
 	var old: RefCounted = Sim.load_saved(7)
-	_ok("a star kept before the gas comes back without its sky", is_equal_approx(old.mass, 420.0) and old.dust == 4 and int(old.lv.puff) == 5 and old.bodies.is_empty())
+	_ok("a star kept before the gas comes back without its sky", is_equal_approx(old.mass, 420.0) and old.dust == 4 and int(old.lv.rich) == 5 and old.bodies.is_empty())
 
-## A steady hand for `minutes`.
-func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
+## A steady hand for `minutes`: a finger down `held` of every ten seconds,
+## braking every `flow_gap()` where `_spot` says.
+func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: String) -> void:
 	var sim: RefCounted = Sim.new(rng_seed)
+	sim.born()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
 	var since := 0.0
 	var next_mark := 2.0
 	var born := 0.0
 	var dim := 0.0
-	var poured := 0.0
+	var pressed := 0
+	var last_hit := 0.0
+	var spot := Vector2.ZERO
+	var spot_t := -100.0
 	var most_ticks := 0
 	var report := 60.0
 	var t0 := Time.get_ticks_usec()
-	print("pace: %.0f min, seed %d, powers %s, the button held %.0f%% of the time" % [minutes, rng_seed, takes, held * 100.0])
+	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s" % [minutes, rng_seed, takes, held * 100.0, sends])
 	for i in int(minutes * 60.0 / Sim.STEP):
 		var t: float = i * Sim.STEP
 		since += Sim.STEP
-		# held in spells of ten seconds
-		if since >= sim.stream_gap() and fmod(t, 10.0) < 10.0 * held:
+		# the spot is chosen every three seconds; the finger is down in spells of ten seconds
+		if t - spot_t >= 3.0:
+			spot_t = t
+			spot = _spot(sim, sends == "worlds")
+		if since >= sim.flow_gap() and fmod(t, 10.0) < 10.0 * held:
 			since = 0.0
-			sim.pour()
-			poured += sim.puff_mass() * sim.volley()
+			if sim.brake(spot, sim.press_r()) > 0:
+				pressed += 1
+				last_hit = t
 		sim.tick()
 		if not sim.awake:
 			dim += Sim.STEP
@@ -323,11 +351,11 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 		if cheapest != "":
 			sim.buy(cheapest)
 		if sim.suns() >= next_mark:
-			print("  %5.1f min  %3.0f Suns  %s" % [(t - born) / 60.0, next_mark, _sky(sim)])
+			print("  %5.1f min  %3.0f Suns  %s  %s" % [(t - born) / 60.0, next_mark, _sky(sim), _outside(sim, t - last_hit)])
 			next_mark *= 2.0
 		if t >= report:
 			report += 600.0
-			print("  %5.1f min  %.2f Suns  light %.0f (%s)  %s" % [(t - born) / 60.0, sim.suns(), sim.light, str(sim.lv), _sky(sim)])
+			print("  %5.1f min  %.2f Suns  light %.0f (%s)  %s  %s" % [(t - born) / 60.0, sim.suns(), sim.light, str(sim.lv), _sky(sim), _outside(sim, t - last_hit)])
 		most_ticks = maxi(most_ticks, sim.bodies.size())
 		var how: String = sim.ending()
 		if how != "":
@@ -336,13 +364,13 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 			var shares: Array = sim.layers()
 			var paid: int = sim.end()
 			print("  end: %s remnant: %s at %.1f min, %.1f Suns" % [how, left, (t - born) / 60.0, was])
-			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, poured %.1f; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
-				(t - born) / 60.0, how, was, paid, dim, poured, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, str(sim.power)])
+			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, %d presses braked something; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
+				(t - born) / 60.0, how, was, paid, dim, pressed, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, str(sim.power)])
 			while sim.buy_perk() != "":
 				pass
 			born = t
 			dim = 0.0
-			poured = 0.0
+			pressed = 0
 			next_mark = 2.0
 	print("pace: %d supernovas, %d let go, the sky held %d at most, %.0f us a tick" % [sim.novas, sim.fades, most_ticks, float(Time.get_ticks_usec() - t0) / (minutes * 60.0 / Sim.STEP)])
 	# the dearest sky: 300 bodies and the most relics, in a ring
@@ -359,6 +387,43 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float) -> void:
 		crowd.tick()
 	print("pace: 300 bodies and %d relics, %d bodies left, %.0f us a tick" % [crowd.relics.size(), crowd.bodies.size(), float(Time.get_ticks_usec() - t1) / 600.0])
 
+## Where the bot presses: the heaviest solid outside the disc if it sends
+## worlds, else the middle of the fullest of 24 slices of the ring outside it.
+func _spot(sim: RefCounted, worlds: bool) -> Vector2:
+	var rh: float = sim.haze_r()
+	var best: Sim.Body = null
+	var slices := PackedFloat32Array()
+	slices.resize(24)
+	var sum: Array[Vector2] = []
+	sum.resize(24)
+	sum.fill(Vector2.ZERO)
+	for b: Sim.Body in sim.bodies:
+		if b.pos.length() <= rh:
+			continue
+		if b.kind != Sim.Kind.GAS and (best == null or b.m > best.m):
+			best = b
+		var k := int(fposmod(b.pos.angle(), TAU) / TAU * 24.0) % 24
+		slices[k] += b.m
+		sum[k] += b.pos * b.m
+	if worlds and best != null and best.m >= Sim.GRAIN_M:
+		return best.pos
+	var top := 0
+	for k in 24:
+		if slices[k] > slices[top]:
+			top = k
+	return sum[top] / slices[top] if slices[top] > 0.0 else Vector2.ZERO
+
+## The gas left outside the disc, in puffs and Suns, and how long since a press braked anything.
+func _outside(sim: RefCounted, since_hit: float) -> String:
+	var n := 0
+	var m := 0.0
+	var rh: float = sim.haze_r()
+	for b: Sim.Body in sim.bodies:
+		if b.kind == Sim.Kind.GAS and b.pos.length() > rh:
+			n += 1
+			m += b.m
+	return "outside the disc: %d gas, %.2f Suns; last braked %.0f s ago" % [n, m / Sim.START, since_hit]
+
 func _sky(sim: RefCounted) -> String:
 	var gas := 0
 	var counts := [0, 0, 0, 0, 0, 0]
@@ -373,6 +438,126 @@ func _sky(sim: RefCounted) -> String:
 			solid += b.m
 	return "sky: %d gas, %d grains, %d rocks, %d comets, %d planets, %d giants, solids %.3f, biggest %.1f px" % [
 		gas, counts[1], counts[2], counts[3], counts[4], counts[5], solid, Sim.body_r(biggest)]
+
+func _check_ring() -> void:
+	var sim := _quiet(11)
+	sim.born()
+	var rh: float = sim.haze_r()
+	_ok("the ring is laid from 1.15 to 1.75 of the newborn disc", is_equal_approx(sim.ring.x, rh * Sim.RING_IN) and is_equal_approx(sim.ring.y, rh * Sim.RING_OUT))
+	_ok("the frost line is the ring's middle", is_equal_approx(sim.frost_r(), (sim.ring.x + sim.ring.y) * 0.5))
+	_ok("it is RING puffs", sim.bodies.size() == Sim.RING)
+	var ids := {}
+	var one_way := true
+	var mass := 0.0
+	for b: Sim.Body in sim.bodies:
+		mass += b.m
+		one_way = one_way and b.pos.cross(b.vel) * sim.bodies[0].pos.cross(sim.bodies[0].vel) > 0.0
+		if b.pos.length() >= sim.ring.x * 0.999:
+			ids[b.id] = true
+	_ok("all turning one way", one_way)
+	# the falling few start at their far point, which may be past the ring's inner edge
+	_ok("all but the falling few are in the ring", ids.size() >= Sim.RING - Sim.RING_FALLING)
+	_ok("it weighs RING_M", absf(mass - Sim.RING_M) < Sim.RING_M * 0.1)
+	_run(sim, 300.0)
+	var held := 0
+	for b: Sim.Body in sim.bodies:
+		if ids.has(b.id) and b.kind == Sim.Kind.GAS and b.pos.length() > rh:
+			held += 1
+	_ok("left alone, the ring does not come down", held >= Sim.RING - Sim.RING_FALLING)
+	_ok("the view shows the ring's edge at FRAME", is_equal_approx(sim.zoom() * sim.ring.y, Sim.FRAME))
+	sim.mass = Sim.START * 20.0
+	var wide: float = sim.press_r() * sim.zoom()
+	sim.mass = Sim.START
+	_ok("the press is the same under the finger at 1 and 20 Suns", is_equal_approx(wide, sim.press_r() * sim.zoom()) and is_equal_approx(wide, Sim.PRESS_R))
+	# the brake: a body at R slowed by f comes down to R f^2 / (2 - f^2)
+	var one := _quiet(3)
+	var at := Vector2(655.0, 0.0)
+	var b: Sim.Body = one.add(Sim.Kind.GAS, 0.05, at, one.circle_vel(at))
+	var v0: float = b.vel.length()
+	_ok("a press brakes what is under it", one.brake(at + Vector2(75.0, 0.0), 100.0) == 1 and is_equal_approx(b.vel.length(), v0 * 0.95) and b.sink == 1.0)
+	_ok("and nothing past its edge", one.brake(at + Vector2(0.0, 5000.0), 100.0) == 0)
+	_ok("a press on the star itself throws nothing", one.brake(Vector2.ZERO, 100.0) == 0)
+	var near := 655.0
+	for i in int(200.0 / Sim.STEP):
+		one.tick()
+		near = minf(near, b.pos.length())
+	_ok("its nearest point is R f^2 / (2 - f^2)", absf(near - 655.0 * 0.9025 / 1.0975) < 655.0 * 0.02)
+	# once, it winds in and pays; three times, it drops in and pays little
+	var paid := []
+	for presses: int in [1, 3]:
+		var s := _quiet(5)
+		var g: Sim.Body = s.add(Sim.Kind.GAS, 0.05, at, s.circle_vel(at))
+		g.dust = 0.0
+		for k in presses:
+			s.brake(at, 100.0)
+		var t := 0.0
+		while s.bodies.size() > 0 and t < 600.0:
+			s.tick()
+			t += Sim.STEP
+		_ok("pressed %d times it is eaten" % presses, s.bodies.is_empty())
+		paid.append(s.light)
+	_ok("a gentle brake pays light", paid[0] > 0.0)
+	_ok("a long hold pays under a third of it", paid[1] < paid[0] / 3.0)
+	# the trickle
+	var far := _quiet(9)
+	far.passing = true
+	far._pass_gap = 1e9
+	var was: float = far.trickle_rate()
+	far.mass = Sim.START * 4.0
+	_ok("the trickle grows with the star", is_equal_approx(far.trickle_rate(), was * pow(4.0, Sim.TRICKLE_UP)))
+	far.mass = Sim.START
+	_run(far, 120.0)
+	var got := _sky_mass(far)
+	_ok("two minutes of it is two tenths of a Sun", absf(got - Sim.TRICKLE * 120.0) < Sim.RING_M / Sim.RING * 1.5)
+	var outer := true
+	for p: Sim.Body in far.bodies:
+		outer = outer and p.pos.length() > far.ring.y * 0.85
+	_ok("it arrives at the ring's outer edge", outer)
+	# a sim whose ring was cleared (a tutorial page) still works
+	var bare := _quiet(2)
+	bare.ring = Vector2.ZERO
+	bare.passing = true
+	bare._pass_gap = 1e9
+	_run(bare, 5.0)
+	_ok("no ring: the old view, and no trickle", is_equal_approx(bare.zoom(), 1.0) and is_finite(bare.press_r()) and bare.bodies.is_empty())
+	# a new star is born clear of its ring
+	for case: Array in [[1.2, false], [25.0, true]]:
+		var dead := _quiet(4)
+		dead.mass = Sim.START * float(case[0])
+		if case[1]:
+			dead.made[5] = Sim.IRON * Sim.START
+		else:
+			dead.cold = Sim.GRACE
+		dead.end()
+		var rel: Dictionary = dead.relics[0]
+		var d: float = (rel.pos as Vector2).length()
+		var lobe: float = d * pow(dead.mass / (3.0 * float(rel.m)), 1.0 / 3.0)
+		_ok("the ring is inside half the new star's lobe (%s Suns)" % case[0], dead.ring.y < lobe * 0.5 + 1.0)
+		_ok("and the new star has a ring", dead.gas_count() == Sim.RING)
+	# the file
+	var keep := _quiet(6)
+	keep.born()
+	keep.lv.reach = 2
+	keep.dusty = 0.2
+	keep.save()
+	var back: RefCounted = Sim.load_saved(1)
+	_ok("a star saved and read back keeps its ring", back.ring.is_equal_approx(keep.ring) and is_equal_approx(back.frost, keep.frost) and is_equal_approx(back.dusty, 0.2) and int(back.lv.reach) == 2 and back.bodies.size() == keep.bodies.size())
+	var old := ConfigFile.new()
+	old.load(Sim.path)
+	old.set_value("star", "kept", 3)
+	for key in ["ring", "frost", "dusty"]:
+		old.erase_section_key("star", key)
+	old.erase_section("lv")
+	old.set_value("lv", "puff", 3)
+	old.set_value("lv", "volley", 9)
+	old.set_value("lv", "stream", 4)
+	old.set_value("lv", "pure", 2)
+	old.set_value("star", "mass", Sim.START * 3.0)
+	old.set_value("star", "bodies", [])
+	old.save(Sim.path)
+	var kept3: RefCounted = Sim.load_saved(1)
+	_ok("a KEPT 3 star's tiles carry over", int(kept3.lv.rich) == 3 and int(kept3.lv.reach) == 6 and int(kept3.lv.flow) == 4 and int(kept3.lv.pure) == 2)
+	_ok("and it is given a newborn's ring", is_equal_approx(kept3.ring.y, Sim.STAR_R * Sim.HAZE * Sim.RING_OUT) and kept3.gas_count() == Sim.RING)
 
 func _check_relics() -> void:
 	var sim := _quiet()
@@ -448,8 +633,8 @@ func _check_ends() -> void:
 	_ok("one relic", sim.relics.size() == 1 and int(sim.relics[0].kind) == Sim.Relic.WD)
 	var d: float = sim.last_birth.d
 	var from: Vector2 = sim.last_birth.from
-	_ok("lobe rule", is_equal_approx(d, Sim.LOBE * sim.haze_r() * (1.0 + sqrt(float(sim.relics[0].m) / sim.mass))) and is_equal_approx(from.length(), d))
-	_ok("disc inside lobe", d / (1.0 + sqrt(float(sim.relics[0].m) / sim.mass)) >= sim.haze_r() * Sim.LOBE * 0.999)
+	_ok("lobe rule", is_equal_approx(d, Sim.LOBE * sim.ring.y * (1.0 + sqrt(float(sim.relics[0].m) / sim.mass))) and is_equal_approx(from.length(), d))
+	_ok("disc inside lobe", d / (1.0 + sqrt(float(sim.relics[0].m) / sim.mass)) >= sim.ring.y * Sim.LOBE * 0.999)
 	_ok("drift moved", is_equal_approx(sim.drift.length(), d) and sim.far.size() == Sim.NEIGHBOURS)
 	_ok("first end has a direction", from.is_finite() and from.length() > 1.0)
 	_ok("the relic is where the birth says", (sim.relics[0].pos as Vector2).is_equal_approx(from))
@@ -495,10 +680,10 @@ func _check_ends() -> void:
 	# a first game is born in gas, and flags it; a file that is there is not
 	var first_game := _quiet(9)
 	first_game.born()
-	_ok("first cloud", first_game.gas_count() == Sim.FIRST_CLOUD and first_game.relics.is_empty() and first_game.fresh)
+	_ok("first cloud", first_game.gas_count() == Sim.RING and first_game.relics.is_empty() and first_game.fresh)
 	DirAccess.remove_absolute(Sim.path)
 	var none: RefCounted = Sim.load_saved(9)
-	_ok("no file is a first game", none.fresh and none.gas_count() == Sim.FIRST_CLOUD)
+	_ok("no file is a first game", none.fresh and none.gas_count() == Sim.RING)
 	none.save()
 	var again: RefCounted = Sim.load_saved(9)
 	_ok("a kept star is not born again", not again.fresh)
@@ -506,10 +691,6 @@ func _check_ends() -> void:
 func _check_giant() -> void:
 	var sim := _quiet()
 	var plain: float = sim.haze_r()
-	# the pour is at the disc's rim, so a puff never lands inside the star, giant or not
-	for sw in [0.0, 1.0, Sim.SUPER]:
-		sim.swell = sw
-		_ok("puff lands outside the star at swell %s" % sw, sim.pour_r() * Sim.IN_NEAR > sim.star_r() * Sim.EAT)
 	sim.swell = 1.0
 	_ok("giant disc", is_equal_approx(sim.haze_r(), plain * (1.0 + Sim.GIANT)))
 	# and a giant's puff pays light near a plain star's. Not within a quarter:
@@ -522,7 +703,7 @@ func _check_giant() -> void:
 	for sw in [0.0, 1.0, Sim.SUPER]:
 		var one := _quiet(11)
 		one.swell = sw
-		one.pour()
+		_puff(one)
 		_run(one, 200.0)
 		paid.append(float(one.light))
 	print("  light from one puff: plain %.4f, giant %.4f, supergiant %.4f" % paid)

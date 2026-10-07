@@ -324,12 +324,12 @@ static func icon(what: String) -> ArrayMesh:
 				# on the sun-coloured button: pale, so it reads as a small cloud
 				for puff: Array in [[Vector2(-0.34, 0.16), 0.62], [Vector2(0.3, 0.24), 0.52], [Vector2(0.06, -0.3), 0.56]]:
 					Motes.glow(b, (puff[0] as Vector2) * R, float(puff[1]) * R, Color(1.0, 0.99, 0.95, 0.95), 0.9)
-			"puff":
+			"rich":
 				lay_puff(b, Vector2.ZERO, R * 0.95, GAS)
-			"volley":
+			"reach":
 				for k in 3:
 					lay_puff(b, Vector2(-0.46 + 0.46 * k, 0.24 - 0.24 * k) * R, R * 0.52, GAS)
-			"stream":
+			"flow":
 				# one after another down the same way, the last still faint
 				for k in 4:
 					lay_puff(b, Vector2(0.54 - 0.36 * k, 0.54 - 0.36 * k) * R, R * (0.5 - 0.07 * k), Color(GAS, 1.0 - 0.2 * k))

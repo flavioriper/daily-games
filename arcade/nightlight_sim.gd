@@ -1,11 +1,12 @@
 extends RefCounted
 
-## Nightlight, as pure data: a star in the middle of a night sky, the gas
-## poured into the disc round it, the bodies that gas condenses into, what
-## passes on its own, the chain of elements the star burns through, four
-## tiles for the hand bought with light, the powers the star is offered as it
-## grows, and the two ways its life ends, each of which leaves a small star
-## again among the gas the last one threw off. Kept and without an end (the
+## Nightlight, as pure data: a star in the middle of a night sky, the ring of
+## gas it is born with and the gas that drifts in from the far sky, the
+## bodies that gas condenses into, what passes on its own, the chain of
+## elements the star burns through, four tiles for the hand bought with
+## light, the powers the star is offered as it grows, and the ways its life
+## ends, each of which leaves a small star again with a ring of the gas the
+## last one threw off. Kept and without an end (the
 ## user, 2026-10-06: "the run never ends, but player can rebirth star to buy
 ## some new perks that make journey faster and faster").
 ## Spec docs/superpowers/specs/2026-10-06-arcade-nightlight-design.md.
@@ -65,6 +66,9 @@ class Body:
 	## The dust share of the gas a solid came from, 0 to 1: what a dead star
 	## made of it will leave behind.
 	var metal := 0.0
+	## 1 when a press has just braked it, 0 again FLUSH seconds on; drawn, not
+	## saved.
+	var sink := 0.0
 
 const STEP := 1.0 / 60.0
 ## Gravity for a star of one mass, the disc's drag at the star's surface (a
@@ -97,34 +101,55 @@ const SEEN_LOG := 70.0
 const EAT := 0.94
 ## The disc is this many of the star's radii wide, before the Wide haze.
 const HAZE := 3.0
-## Past this many of the star's radii water is ice.
-const FROST := 2.2
 ## A solid's radius is the cube root of its mass times this: rock is denser
 ## than a star.
 const BODY_R := 44.0
 
-## A puff of gas, before the Puff tile: two thousandths of a Sun (the user:
-## "going from 1x -> 2x sun is not so fast like throwing 3 bodies into it").
-## H of it is hydrogen, DUSTY of it dust, and GAS_HE of the rest helium. A
-## heavier puff (the tile, the perk) is more gas and the same dust: what the
-## hand is worth feeds the star, and the planets come at their own pace.
+## The unit of gas and of dust: two thousandths of a Sun (the user: "going
+## from 1x -> 2x sun is not so fast like throwing 3 bodies into it"). A ring's
+## puff is RING_M / RING, heavier, with the dust of a PUFF * ASH_M one (see
+## `dust_of`). H of a puff is hydrogen, DUSTY of it dust, and GAS_HE of the
+## rest helium. What the hand is worth feeds the star, and the planets come at
+## their own pace.
 const PUFF := 0.02
 const PUFF_H := 0.7
 const DUSTY := 0.01
 const GAS_HE := 0.93
-## Gas comes in at the disc's rim, between IN_NEAR and IN_FAR of its radius
-## and within IN_WIDE radians of a place that goes round the star once in
-## IN_TURN seconds, so it arrives as a stream and meets itself.
-const IN_NEAR := 0.7
-const IN_FAR := 0.97
-const IN_WIDE := 0.5
-const IN_TURN := 200.0
-## The most puffs in the sky; one more is poured into the last.
-const MOST := 150
+## The most puffs in the sky; the trickle adds to the last one past it.
+const MOST := 260
 ## The most solids the gas makes by itself.
-const SOLIDS := 24
+const SOLIDS := 40
 ## Nothing is torn, and nothing more is let in, while the sky holds FULL.
-const FULL := 300
+const FULL := 400
+
+## The ring a star is born with: its inner and outer edge in the newborn's
+## plain disc, how many puffs, what they weigh together, and how many of
+## them are already falling so a new star has something winding in.
+const RING_IN := 1.15
+const RING_OUT := 1.75
+const RING := 180
+const RING_M := 15.0
+const RING_FALLING := 6
+## The ring's outer edge is this far from the star on the screen, of the
+## design's 1080 across.
+const FRAME := 500.0
+## A press: the share of its speed a body under the finger's middle loses,
+## the finger's reach in the design's pixels and what a level of Reach adds,
+## the seconds between brakes while it is held, and how long what it braked
+## is drawn warm.
+const BRAKE := 0.2
+const PRESS_R := 95.0
+const REACH_STEP := 0.25
+const FLOW := 0.6
+const FLOW_STEP := 0.88
+const FLOW_LEAST := 0.15
+const FLUSH := 6.0
+## Gas from the far sky: mass a second at one Sun (a tenth of a Sun a
+## minute), the power of the star's Suns it grows by (Bondi's is 2, which
+## runs away), and what a level of Rich adds.
+const TRICKLE := 0.017
+const TRICKLE_UP := 1.0
+const RICH_STEP := 0.5
 
 ## Condensing. A puff has to be up COOL seconds before its dust falls out.
 ## Two that are MEET px apart (as the game starts; it widens with the star)
@@ -257,25 +282,18 @@ const TEMP := [[1.0, 5800.0], [2.0, 9000.0], [4.0, 14000.0], [8.0, 22000.0], [16
 const COLD := 0.5
 
 ## The shop is the hand's (the user, 2026-10-06: "the shop should be related
-## to what player can do"): a heavier puff, one more of them at a time, a
-## quicker flow while the button is held, and gas with more hydrogen in it.
-const TILES := ["puff", "volley", "stream", "pure"]
+## to what player can do"): a wider press, a quicker one while the finger is
+## held, a richer sky and gas with more hydrogen in it.
+const TILES := ["reach", "flow", "rich", "pure"]
 ## A tile's first price in light, what each level multiplies it by, and its
 ## last level (0: it has none).
 const TILE := {
-	"puff": [12.0, 1.8, 0],
-	"volley": [150.0, 3.5, 0],
-	"stream": [30.0, 2.0, 0],
+	"reach": [40.0, 2.2, 6],
+	"flow": [30.0, 2.0, 0],
+	"rich": [12.0, 1.8, 0],
 	"pure": [20.0, 1.9, 6],
 }
-## A level of the Puff tile is PUFF_STEP of a first puff more. Held, the
-## button lets a puff go every STREAM seconds, each level of the tile
-## STREAM_STEP of that, never under STREAM_LEAST. A level of Pure is
-## PURE_STEP more of a puff in hydrogen.
-const PUFF_STEP := 0.5
-const STREAM := 0.6
-const STREAM_STEP := 0.88
-const STREAM_LEAST := 0.08
+## A level of Pure is PURE_STEP more of a puff in hydrogen.
 const PURE_STEP := 0.04
 
 ## The star's powers (the user, 2026-10-06: "the sun powerup come as it grow,
@@ -298,7 +316,7 @@ const MILES := [2.0, 4.0, 8.0, 15.0, 30.0, 60.0]
 ## disc. Tidal furnace: a torn body pays FURNACE light a mass. Fusion: the
 ## star's own burning pays one SHINE more a level. Thrift: it burns THRIFT as
 ## much.
-const WIND := 0.006
+const WIND := 0.0003
 const WIND_REACH := 3.0
 const HAZE_STEP := 1.15
 const BEACON_SOON := 0.8
@@ -321,16 +339,12 @@ const CROWD := 0.85
 const EMBER := 2.0
 ## Every supernova so far makes what passes this much heavier, for good.
 const RICHER := 0.5
-## What a star leaves: ASHES puffs of gas and ASHES_LOG more for every
-## tenfold of its Suns, ASHES_MOST at most (FADE_ASHES when it only let go),
-## each ASH_M puffs heavy and ASH_DUST of it dust, since it is what a star
-## made: the next star's planets come quicker. Each is on a closed path
-## whose nearest point to the new star is ASH_NEAR to ASH_NEAR + ASH_REACH
-## of its radii and whose furthest is inside ASH_FAR of them.
-const ASHES := 14.0
-const ASHES_LOG := 10.0
-const ASHES_MOST := 40
-const FADE_ASHES := 8
+## What a star leaves is a ring (RING_M, times 1 + RICHER a supernova so far)
+## whose puffs are ASH_M puffs of dust-carrying gas apiece (a puff's dust is
+## absolute, `dust_of`), ASH_DUST of it dust, since it is what a star made:
+## the next star's planets come quicker. The falling few are each on a closed
+## path whose nearest point to the new star is ASH_NEAR to ASH_NEAR +
+## ASH_REACH of its radii and whose furthest is inside ASH_FAR of them.
 const ASH_M := 3.0
 const ASH_DUST := 0.05
 const ASH_H := 0.5
@@ -343,7 +357,7 @@ const TUMBLE := 0.3
 ## Where the star is kept, and which way of keeping it this is. A harness
 ## points `path` elsewhere.
 static var path := "user://nightlight.cfg"
-const KEPT := 3
+const KEPT := 4
 
 # --- relics: what a dead star leaves, in the live star's frame ---
 enum Relic { WD, NS, BH }
@@ -367,14 +381,12 @@ const RELIC_REACH := 6000.0
 const NEIGHBOURS := 5
 const FAR_NEAR := 2500.0
 const FAR_FAR := 5000.0
-## A planetary nebula pays this; the new disc sits inside the new star's lobe by LOBE.
+## A planetary nebula pays this; the new star's ring sits inside its lobe by LOBE.
 const NEBULA_DUST := 2
 const LOBE := 1.6
 ## The dead star's silicon, iron and rock become dust in the gas it leaves; a solid from gas this dusty is iron-dark.
 const METAL := 2.5
 const IRONY := 0.08
-## A first star is born in this many puffs of gas.
-const FIRST_CLOUD := 36
 
 var mass := START
 var light := 0.0
@@ -382,7 +394,7 @@ var dust := 0
 var novas := 0
 var fades := 0
 var bought := 0
-var lv := {"puff": 0, "volley": 0, "stream": 0, "pure": 0}
+var lv := {"reach": 0, "flow": 0, "rich": 0, "pure": 0}
 var perk := {"core": 0, "disc": 0, "hand": 0, "crowd": 0, "ember": 0}
 ## The hydrogen left to burn, and the helium that came with the gas and lies
 ## over the core, both in mass.
@@ -441,14 +453,21 @@ var _acc := 0.0
 var _pass_wait := 0.0
 var _pass_gap := 4.0
 var _shine := 0.0
-var _inlet := 0.0
+
+## The ring's inner and outer edge, fixed when the star is born; the frost
+## line, at its middle; and the dust share of the gas this star was born in,
+## which what drifts in later shares.
+var ring := Vector2.ZERO
+var frost := 0.0
+var dusty := 0.02
+var _owed_gas := 0.0
 
 func _init(rng_seed := 0) -> void:
 	if rng_seed != 0:
 		_rng.seed = rng_seed
 	else:
 		_rng.randomize()
-	_inlet = _rng.randf() * TAU
+	_set_ring()
 	for i in NEIGHBOURS:
 		far.append(Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(FAR_NEAR, FAR_FAR))
 
@@ -465,12 +484,14 @@ func star_r() -> float:
 
 ## The star as the screen shows it.
 func seen_r() -> float:
-	var r := star_r()
-	return r if r < SEEN else SEEN + SEEN_LOG * log(r / SEEN)
+	return star_r() * zoom()
 
-## Screen pixels to one of the world's.
+## Screen pixels to one of the world's: the star's own log rule, or less
+## where the ring would not fit.
 func zoom() -> float:
-	return seen_r() / star_r()
+	var r := star_r()
+	var plain := 1.0 if r < SEEN else (SEEN + SEEN_LOG * log(r / SEEN)) / r
+	return minf(plain, FRAME / ring.y) if ring.y > 0.0 else plain
 
 ## A new star is one Sun.
 func suns() -> float:
@@ -590,17 +611,10 @@ func wind_r() -> float:
 func haze_r() -> float:
 	return star_r() * haze_wide()
 
-## Where the hand's gas comes in: the disc's rim, whatever the star is. A
-## giant's rim is wider by as much as the star is, so a puff always lands
-## outside the star and spirals in (at the plain disc's rim a giant ate it at
-## once and a supergiant whole, and neither paid light); `tick`'s `bind` is on
-## the real surface too, so a giant's puff pays what a plain star's does.
-func pour_r() -> float:
-	return haze_r()
-
-## Past this, water is ice.
+## Past this, water is ice: the ring's middle for the star's whole life, and
+## a giant thaws it. A sim with no ring has the old line, 2.2 radii.
 func frost_r() -> float:
-	return star_r() * FROST
+	return frost * (1.0 + GIANT * swell) if frost > 0.0 else star_r() * 2.2
 
 ## How much of a giant the star is for its colour and the sky: a supergiant
 ## is no redder than a giant.
@@ -613,20 +627,14 @@ func gm() -> float:
 func glow() -> float:
 	return (1.0 + RADIANCE * on("radiance")) * (1.0 + DISC * int(perk.disc))
 
-func puff_mass() -> float:
-	return PUFF * (1.0 + PUFF_STEP * int(lv.puff)) * (1.0 + HAND * int(perk.hand))
-
 ## The share of a puff that is hydrogen.
 func puff_h() -> float:
 	return minf(0.95, PUFF_H + PURE_STEP * int(lv.pure))
 
-## How many puffs the button lets go at a time.
-func volley() -> int:
-	return 1 + int(lv.volley)
-
-## Seconds between puffs while the button is held.
+## Seconds between brakes while a finger is held. Kept for the screen's
+## button until it is a finger.
 func stream_gap() -> float:
-	return maxf(STREAM_LEAST, STREAM * pow(STREAM_STEP, int(lv.stream)))
+	return flow_gap()
 
 func pass_time() -> float:
 	return PASS * pow(suns(), -DRAWN) * pow(BEACON_SOON, on("beacon")) * pow(CROWD, int(perk.crowd))
@@ -777,8 +785,8 @@ func perk_cost() -> int:
 
 ## The star gives back what it is made of. Its mass, its light, the tiles
 ## and its powers go; stardust, the perks and a richer sky stay. What it
-## threw off is left as gas on closed paths round the new star, all turning
-## the same way, the nearest of it already in the disc. The dead star stays as
+## threw off is the new star's ring, on closed paths all turning the same
+## way, a few puffs of it already falling. The dead star stays as
 ## a relic, and the new one is born away from the relics there are (see
 ## `last_birth`). Returns the stardust paid, 0 if no end has come.
 func end() -> int:
@@ -787,9 +795,7 @@ func end() -> int:
 		return 0
 	var nova := how == "nova"
 	var got := dust_for() if nova else (NEBULA_DUST if how == "nebula" else FADE_DUST)
-	var count := FADE_ASHES
 	if nova:
-		count = mini(ASHES_MOST, roundi(ASHES + ASHES_LOG * log(suns()) / log(10.0)))
 		novas += 1
 	else:
 		fades += 1
@@ -817,21 +823,22 @@ func end() -> int:
 		lv[tile] = 0
 	for which: String in POWERS:
 		power[which] = 0
+	_set_ring()
 	bodies.clear()
 	events.clear()
 	_pass_wait = 0.0
 	# its silicon, iron and rock go out as dust in its gas
 	var ash_dust := minf(0.3, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
-	_lay_gas(count, PUFF * ASH_M * (1.0 + RICHER * novas), ASH_H, ash_dust)
-	# where the next star is born: away from the relics there are, far enough that its disc is its own
+	_lay_ring(RING, RING_M * (1.0 + RICHER * novas), ASH_H, ash_dust)
+	# where the next star is born: away from the relics there are, far enough that its ring is its own
 	var mean := Vector2.ZERO
 	for rel in relics:
 		mean += rel.pos as Vector2
 	var away := Vector2.from_angle(_rng.randf() * TAU) if relics.is_empty() else (-mean).normalized().rotated(_rng.randf_range(-0.7, 0.7))
 	if not away.is_finite() or away.length() < 0.5:
 		away = Vector2.from_angle(_rng.randf() * TAU)
-	# the new star's disc, not the old one's: it is the one that must not touch the relic
-	var d := LOBE * haze_r() * (1.0 + sqrt(rm / mass))
+	# the new star's ring, not the old one's: it is the one that must not touch the relic
+	var d := LOBE * ring.y * (1.0 + sqrt(rm / mass))
 	for rel in relics:
 		rel.pos = (rel.pos as Vector2) - away * d
 	for i in far.size():
@@ -841,10 +848,38 @@ func end() -> int:
 	last_birth = {"from": -away * d, "d": d}
 	return got
 
-## A first star comes up in a cloud of its own: gas already falling in, no relic.
+## A first star comes up in a ring of its own: gas on circles, a few puffs
+## already falling in, no relic.
 func born() -> void:
-	_lay_gas(FIRST_CLOUD, PUFF * ASH_M, STAR_H, 0.02)
+	_set_ring()
+	_lay_ring(RING, RING_M, STAR_H, 0.02)
 	fresh = true
+
+## The ring and the frost line a newborn of `m` has. Powers are none on a
+## newborn, so its disc is the plain one.
+func _set_ring(m := mass) -> void:
+	var disc := STAR_R * pow(m / START, 1.0 / 3.0) * HAZE
+	ring = Vector2(RING_IN, RING_OUT) * disc
+	frost = (ring.x + ring.y) * 0.5
+
+## The dust a puff of `m` carries at `share`: what a puff of PUFF * ASH_M
+## would, whatever it weighs, or heavy puffs made a giant of every pair.
+static func dust_of(share: float, m: float) -> float:
+	return minf(0.5, share * PUFF * ASH_M / m)
+
+## `count` puffs weighing `total` between the ring's edges, on circles, all
+## turning the disc's way; the first few on the old falling paths.
+func _lay_ring(count: int, total: float, h: float, dust_share: float) -> void:
+	dusty = dust_share
+	var each := total / count
+	var falling := mini(RING_FALLING, count)
+	_lay_gas(falling, each, h, dust_share)
+	for i in count - falling:
+		var pos := Vector2.from_angle(_rng.randf() * TAU) * sqrt(lerpf(ring.x * ring.x, ring.y * ring.y, _rng.randf()))
+		var b := add(Kind.GAS, each * _rng.randf_range(0.6, 1.4), pos, circle_vel(pos) * _rng.randf_range(0.98, 1.02))
+		b.h = h
+		b.dust = dust_of(dust_share, b.m)
+		b.age = COOL
 
 ## `count` puffs of gas of `m_each` (give or take) on closed paths round the
 ## star, nearest of them already in the disc: each is let go at its furthest
@@ -859,7 +894,7 @@ func _lay_gas(count: int, m_each: float, h: float, dust_share: float) -> void:
 		var v := sqrt(pull * (2.0 / apo - 2.0 / (near + apo)))
 		var b := add(Kind.GAS, m_each * _rng.randf_range(0.6, 1.4), way * apo, way.orthogonal() * -v)
 		b.h = h
-		b.dust = dust_share
+		b.dust = dust_of(dust_share, b.m)
 		b.age = COOL
 
 ## A perk drawn at random for what the next one costs, or "" if the stardust
@@ -916,28 +951,81 @@ func gas_count() -> int:
 			n += 1
 	return n
 
-## The button: a puff of gas set going round the star at the disc's rim,
-## where the stream comes in now, or with Volley several. Past the sky's
-## most it is poured into the puff before it.
+## One puff of gas set going round the star just inside the disc's rim. Kept
+## until the screen's button is a finger; past the sky's most it is poured
+## into the puff before it.
 func pour() -> void:
-	var m := puff_mass()
-	var rh := pour_r()
-	var gas := gas_count()
-	for k in volley():
-		if gas >= MOST or bodies.size() >= FULL:
-			for i in range(bodies.size() - 1, -1, -1):
-				var last := bodies[i]
-				if last.kind == Kind.GAS:
-					last.h = (last.h * last.m + puff_h() * m) / (last.m + m)
-					last.dust = (last.dust * last.m + DUSTY * PUFF) / (last.m + m)
-					last.m += m
-					break
+	var m := RING_M / RING
+	var rh := haze_r()
+	if gas_count() >= MOST or bodies.size() >= FULL:
+		for i in range(bodies.size() - 1, -1, -1):
+			var last := bodies[i]
+			if last.kind == Kind.GAS:
+				last.h = (last.h * last.m + puff_h() * m) / (last.m + m)
+				last.dust = (last.dust * last.m + DUSTY * PUFF) / (last.m + m)
+				last.m += m
+				break
+		return
+	var pos := Vector2.from_angle(_rng.randf() * TAU) * rh * _rng.randf_range(0.7, 0.97)
+	var b := add(Kind.GAS, m, pos, circle_vel(pos) * _rng.randf_range(0.97, 1.0))
+	b.h = puff_h()
+	b.dust = DUSTY * PUFF / m
+
+## The finger: everything within `r` of `at` loses a share of its speed,
+## most under the middle, none at the edge. What follows is the orbit's own.
+## Returns how many it braked.
+func brake(at: Vector2, r: float) -> int:
+	var n := 0
+	if r <= 0.0:
+		return n
+	for b in bodies:
+		var d := b.pos.distance_to(at)
+		if d >= r:
 			continue
-		var pos := Vector2.from_angle(_inlet + _rng.randf_range(-IN_WIDE, IN_WIDE)) * rh * _rng.randf_range(IN_NEAR, IN_FAR)
-		var b := add(Kind.GAS, m, pos, circle_vel(pos) * _rng.randf_range(0.97, 1.0))
-		b.h = puff_h()
-		b.dust = DUSTY * PUFF / m
-		gas += 1
+		b.vel *= 1.0 - BRAKE * (1.0 - d / r)
+		b.sink = 1.0
+		n += 1
+	if n > 0:
+		events.append({"kind": "brake", "at": at, "n": n})
+	return n
+
+## How far the finger reaches, in the sim's pixels: the same on the screen
+## whatever the star weighs.
+func press_r() -> float:
+	return PRESS_R * (1.0 + REACH_STEP * int(lv.reach)) / zoom()
+
+## Seconds between brakes while a finger is held.
+func flow_gap() -> float:
+	return maxf(FLOW_LEAST, FLOW * pow(FLOW_STEP, int(lv.flow)))
+
+## Mass a second drifting in from the far sky.
+func trickle_rate() -> float:
+	return TRICKLE * pow(suns(), TRICKLE_UP) * (1.0 + RICH_STEP * int(lv.rich)) * (1.0 + HAND * int(perk.hand))
+
+## A puff's worth of what has drifted in is set on a circle at the ring's
+## outer edge; with the sky full it goes into the last puff there is.
+func _trickle() -> void:
+	if ring.y <= 0.0:
+		return
+	var each := RING_M / RING
+	_owed_gas = minf(_owed_gas + trickle_rate() * STEP, each * 4.0)
+	if _owed_gas < each:
+		return
+	if gas_count() >= MOST or bodies.size() >= FULL:
+		for i in range(bodies.size() - 1, -1, -1):
+			var last := bodies[i]
+			if last.kind == Kind.GAS:
+				last.h = (last.h * last.m + puff_h() * each) / (last.m + each)
+				last.dust = (last.dust * last.m + dust_of(dusty, each) * each) / (last.m + each)
+				last.m += each
+				_owed_gas -= each
+				return
+		return
+	_owed_gas -= each
+	var pos := Vector2.from_angle(_rng.randf() * TAU) * ring.y * _rng.randf_range(0.9, 1.0)
+	var b := add(Kind.GAS, each, pos, circle_vel(pos))
+	b.h = puff_h()
+	b.dust = dust_of(dusty, each)
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -1174,8 +1262,8 @@ func tick() -> void:
 		return
 	clock += STEP
 	_tick += 1
-	_inlet = fposmod(_inlet + TAU * STEP / IN_TURN, TAU)
 	if passing:
+		_trickle()
 		_pass_wait += STEP
 		if _pass_wait >= _pass_gap:
 			_pass_wait = 0.0
@@ -1259,6 +1347,8 @@ func tick() -> void:
 		var acc := p * (-pull / (r2 * r))
 		acc += acc_rel
 		b.heat = 0.0
+		if b.sink > 0.0:
+			b.sink = maxf(0.0, b.sink - STEP / FLUSH)
 		if r < rh:
 			# The drag, and the light it makes: the work done on the body, as
 			# a share of what a perfect spiral from far off down to the
@@ -1380,6 +1470,9 @@ func save() -> void:
 	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers), int(r.fades)]))
 	cfg.set_value("star", "far", far.map(func(p): return [p.x, p.y]))
 	cfg.set_value("star", "drift", [drift.x, drift.y])
+	cfg.set_value("star", "ring", [ring.x, ring.y])
+	cfg.set_value("star", "frost", frost)
+	cfg.set_value("star", "dusty", dusty)
 	cfg.save(path)
 
 ## The star as it was left, with its sky. A first visit, or a file that
@@ -1398,12 +1491,21 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		return sim
 	var ver := int(cfg.get_value("star", "kept", 1))
 	var pre_gas := ver < 2
+	# a star kept before the ring (KEPT 3 and older) has the old tiles' keys:
+	# the volley is the press's reach, the stream its flow, the puff the sky's
+	# richness
+	var was_tile := {"reach": "volley", "flow": "stream", "rich": "puff", "pure": "pure"}
 	for tile: String in TILES:
-		var was := "meteor" if tile == "puff" else ("ice" if tile == "pure" else tile)
-		var level := maxi(0, int(cfg.get_value("lv", was if pre_gas else tile, 0)))
+		var key: String = tile
+		if ver < 4:
+			key = was_tile[tile]
+			if pre_gas:
+				key = "meteor" if key == "puff" else ("ice" if key == "pure" else key)
+		var level := maxi(0, int(cfg.get_value("lv", key, 0)))
 		sim.lv[tile] = level if sim.last_level(tile) == 0 else mini(level, sim.last_level(tile))
 	for which: String in PERKS:
 		sim.perk[which] = maxi(0, int(cfg.get_value("perk", which, 0)))
+	sim._set_ring(START * pow(EMBER, int(sim.perk.ember)))
 	sim.mass = maxf(START, float(cfg.get_value("star", "mass", START)))
 	sim.light = maxf(0.0, float(cfg.get_value("star", "light", 0.0)))
 	sim.dust = maxi(0, int(cfg.get_value("star", "dust", 0)))
@@ -1458,6 +1560,15 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		sim._sort(b)
 	if ver >= 3:
 		sim._load_sky(cfg)
+	if ver >= 4:
+		var edges = cfg.get_value("star", "ring", [])
+		if edges is Array and (edges as Array).size() == 2 and is_finite(float(edges[0])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]):
+			sim.ring = Vector2(float(edges[0]), float(edges[1]))
+			sim.frost = clampf(float(cfg.get_value("star", "frost", sim.frost)), sim.ring.x, sim.ring.y)
+		sim.dusty = clampf(float(cfg.get_value("star", "dusty", 0.02)), 0.0, 0.3)
+	else:
+		# a star kept before the ring is given one: inside a heavy star's disc it simply falls
+		sim._lay_ring(RING, RING_M, ASH_H, ASH_DUST)
 	return sim
 
 ## The relics, the neighbour stars and the drift out of a file of KEPT 3 or
