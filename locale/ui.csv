@@ -112,6 +112,7 @@ SETTINGS_SOUND,Sound,Som,Sonido
 SETTINGS_HAPTICS,Vibration,Vibração,Vibración
 SETTINGS_HAPTICS_SUB,A small buzz when you play,Uma vibração leve ao jogar,Una vibración suave al jugar
 SETTINGS_CREDITS,Credits,Créditos,Créditos
+SETTINGS_START_OVER,Start over,Recomeçar,Empezar de cero
 CREDITS_TITLE,Credits,Créditos,Créditos
 CREDITS_FONTS,Typefaces,Fontes,Tipografías
 CREDITS_WORDS,Word lists,Listas de palavras,Listas de palabras
@@ -1022,6 +1023,10 @@ NL_PERKS_BODY,"A star's end pays stardust, a supernova the most. A perk is drawn
 NL_PERK_BUY_ONE,A new perk · 1,Nova vantagem · 1,Nueva ventaja · 1
 NL_PERK_BUY_N,A new perk · %d,Nova vantagem · %d,Nueva ventaja · %d
 NL_PERKS_BACK,Back to the star,Voltar à estrela,Volver a la estrella
+NL_RESET_TITLE,Start over?,Recomeçar do zero?,¿Empezar de cero?
+NL_RESET_BODY,"A new star of one Sun takes this one's place. Its light, everything bought in the shop, its powers, the stardust and the perks are gone for good.","Uma estrela nova, de uma massa solar, fica no lugar desta. A luz, tudo o que foi comprado na loja, os poderes, a poeira estelar e as vantagens se perdem de vez.","Una estrella nueva, de una masa solar, ocupa el lugar de esta. La luz, todo lo comprado en la tienda, los poderes, el polvo estelar y las ventajas se pierden para siempre."
+NL_RESET_NO,Keep my star,Manter minha estrela,Conservar mi estrella
+NL_RESET_YES,Start over,Recomeçar,Empezar de cero
 NL_PERK_CORE,Dense core,Núcleo denso,Núcleo denso
 NL_PERK_CORE_FX,gravity +15%,gravidade +15%,gravedad +15%
 NL_PERK_DISC,Bright disc,Disco brilhante,Disco brillante

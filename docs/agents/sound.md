@@ -23,6 +23,11 @@ three songs, their lead tracks, the four drums and the calibration clicks
 are still synthesised by `tools/gen_drumbeat.py` (the user: "skip drumbeat
 for now"). The pass itself: `docs/art/sound-direction.md`, its last section.
 
+**Nightlight has a set since 2026-10-06** (`HEARTH` foley and `ARCADE`
+notes, fourteen cues; `docs/agents/arcade.md`). A space game gets no pad
+and no laser. **A harness is heard on this Mac**: run one that plays a
+game with sounds under `--audio-driver Dummy`.
+
 **What repeats a lot is a click (user, 2026-10-05).** "It's important to
 avoid bell or ring sounds for something that repeat a lot, so use something
 more like a click." A chain's pebbles, a gun's shots, tiles landing: short,

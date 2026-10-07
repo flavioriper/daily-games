@@ -77,6 +77,23 @@ const SAVE_GAP := 5.0
 ## A puff let go is a piece set down; a tile bought and a stage lit are
 ## something finished; a tile that cannot be bought is a not yet; the
 ## supernova is the heaviest thing here, and a star letting go a soft one.
+##
+## The sounds (assets/sfx/nightlight, tools/gen_sfx.py nightlight; the user,
+## 2026-10-06: "generate and wire the cozy sounds to the nightlight"). What
+## goes on for as long as the game does is a click and plays through
+## `_quiet`, which knocks for nothing: a mote of light landing (`light`, a
+## short run up) and a solid falling into the star (`eat`, lower and louder
+## the bigger it was, one in EAT_GAP at most). A puff is `pour`, as often as
+## it is felt. The rest happens now and then: `tear` (one in TEAR_GAP: a
+## torn body's pieces are torn again), `ignite`, `dim`, `wake`, `pick` as
+## the two powers come up, `perk`, `buy`, `no`, `nova`, `fade`, and `born`
+## as the small star comes up after an end or a Start over. A grain forming,
+## two bodies meeting and gas eaten are silent: several a second.
+const EAT_GAP := 0.12
+const TEAR_GAP := 0.3
+## The supernova's take is a breath and then the thump: it is started this
+## long before the core has fallen in, so the thump is the layers leaving.
+const NOVA_LEAD := 0.65
 const HAPTICS := {"pour": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "ignite": Haptics.BUMP, "nova": Haptics.THUD,
 	"fade": Haptics.BUMP}
 const TILE_NAMES := {"puff": "NL_PUFF", "volley": "NL_VOLLEY", "stream": "NL_STREAM", "pure": "NL_PURE"}
@@ -116,6 +133,10 @@ var settings_sheet: Control
 var tutor: RefCounted
 var sky: Control
 var _fx: Node2D
+var _quiet: Node2D
+var _ate_at := -1000
+var _tore_at := -1000
+var _end_cued := false
 var _motes: Control
 var _margins: MarginContainer
 var _plates := {}   # "light" -> {panel, icon, label}
@@ -133,6 +154,7 @@ var _pick_now: Array = []
 var _pick_wait := 0.0
 var _powers: Control
 var _powers_list: VBoxContainer
+var _reset: Control
 var _stream_t := 0.0
 var _felt_at := -1000
 var _shown := {"mass": 0.0, "light": 0.0}
@@ -183,6 +205,8 @@ func _ready() -> void:
 	add_child(settings_sheet)
 	tutor = ScreenTutor.new(self, puzzle_id(), "Nightlight", _tutor_hold)
 	tutor.wire(top_bar, settings_sheet)
+	settings_sheet.with_reset = true
+	settings_sheet.start_over.connect(open_reset)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
 	top_bar.refresh(self)
@@ -295,6 +319,9 @@ func _build() -> void:
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	sky.add_child(_fx)
+	_quiet = Fx2D.new()
+	_quiet.buzzes = false
+	sky.add_child(_quiet)
 
 	var info := HBoxContainer.new()
 	info.name = "Info"
@@ -334,6 +361,8 @@ func _build() -> void:
 	add_child(_powers)
 	_pick = _build_pick()
 	add_child(_pick)
+	_reset = _build_reset()
+	add_child(_reset)
 	_apply_insets()
 
 ## The star, on a paper plate: how many Suns it weighs, how hot it is and how
@@ -890,6 +919,7 @@ func open_pick() -> void:
 		(t.icon as Control).queue_redraw()
 	_pick.visible = true
 	Motion.appear(_pick, 0.0, 1.0, 0.2)
+	_fx.cue("pick")
 
 func _on_pick(i: int) -> void:
 	var which: String = sim.pick(i)
@@ -974,6 +1004,62 @@ func open_powers() -> void:
 func close_powers() -> void:
 	_powers.visible = false
 
+## Start over, from the settings sheet (the user, 2026-10-06: "add a button
+## on config to reset game to 0"): a card that says what is lost and asks,
+## since nothing brings it back. The way out that keeps the star is the sun
+## button; the sky waits behind the card.
+func _build_reset() -> Control:
+	var made := _dialog("ResetCard", CARD_W, close_reset)
+	var col: VBoxContainer = made[1]
+	col.add_child(Dialog.head("NL_RESET_TITLE", "reset"))
+	var body := Label.new()
+	body.text = "NL_RESET_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var keep := Dialog.primary("check", tr("NL_RESET_NO"))
+	keep.name = "Keep"
+	keep.pressed.connect(close_reset)
+	var yes := Dialog.secondary("reset", tr("NL_RESET_YES"))
+	yes.name = "StartOver"
+	yes.pressed.connect(_on_reset)
+	Dialog.buttons(col, keep, yes)
+	return made[0]
+
+func open_reset() -> void:
+	if _reset.visible:
+		return
+	_holding = false
+	_reset.visible = true
+	Motion.appear(_reset, 0.0, 1.0, 0.2)
+
+func close_reset() -> void:
+	_reset.visible = false
+
+## A new star in place of this one, and nothing kept: its mass, its light,
+## the hand's tiles, its powers, the stardust, the perks and the clouds its
+## supernovas left in the sky. An end being played is dropped with it.
+func _on_reset() -> void:
+	Analytics.track("nightlight_reset", {"suns": int(sim.suns()), "novas": sim.novas, "fades": sim.fades, "dust": sim.dust})
+	sim = Sim.new()
+	sky.sim = sim
+	sky.finish_end()
+	sky.started()
+	_motes.clear()
+	_end_how = ""
+	_end_done = false
+	_pick_wait = 0.0
+	_eaten_at_open = 0.0
+	_shown.mass = sim.mass
+	_shown.light = sim.light
+	for card: Control in [_shop, _perks, _powers, _pick, _reset]:
+		card.visible = false
+	_let_go()
+	_refresh_tiles()
+	_refresh_hud(0.0)
+	_fx.cue("born")
+	_save()
+
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
 	_margins.add_theme_constant_override("margin_left", MARGIN)
@@ -1030,7 +1116,7 @@ func _process(delta: float) -> void:
 	if sim == null:
 		return
 	var ending: bool = sky.ending()
-	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or ending
+	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or _reset.visible or ending
 	if not waits:
 		_stream(delta)
 		sim.advance(delta)
@@ -1068,7 +1154,7 @@ func _offer(delta: float) -> void:
 		if _pick.visible and sim.owed() <= 0:
 			_pick.visible = false
 		return
-	if _held_back or sky.ending() or sim.ending() != "" or settings_sheet.is_open() or _shop.visible or _perks.visible or _powers.visible:
+	if _held_back or sky.ending() or sim.ending() != "" or settings_sheet.is_open() or _shop.visible or _perks.visible or _powers.visible or _reset.visible:
 		return
 	_pick_wait += delta
 	if _pick_wait >= PICK_WAIT:
@@ -1081,6 +1167,8 @@ func _play_events() -> void:
 			"eat":
 				sky.ate(float(e.m), bool(e.gas))
 				_dirty = true
+				if not bool(e.gas):
+					_hear_eaten(float(e.m))
 			"shed":
 				_motes.drop(origin * sky.px(e.at), float(e.e) * ORBS, 1)
 			"form":
@@ -1089,6 +1177,10 @@ func _play_events() -> void:
 				sky.met(e.at)
 			"tear":
 				sky.tore(e.at, float(e.m))
+				var now := Time.get_ticks_msec()
+				if now - _tore_at >= int(TEAR_GAP * 1000.0):
+					_tore_at = now
+					_fx.cue("tear", randf_range(0.92, 1.08))
 			"shine":
 				# the star's own light, off its own face
 				_motes.drop(origin * sky.centre, float(e.e) * ORBS, 1)
@@ -1101,9 +1193,23 @@ func _play_events() -> void:
 				_save()
 			"dim":
 				_say("NL_DIM")
+				_fx.cue("dim")
+			"wake":
+				_fx.cue("wake")
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
+
+## A solid has fallen into the star: a soft click, lower and louder the
+## bigger it was, and one in EAT_GAP at most (a torn body's pieces arrive
+## together).
+func _hear_eaten(m: float) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _ate_at < int(EAT_GAP * 1000.0):
+		return
+	_ate_at = now
+	var r := Sim.body_r(m)
+	_quiet.cue("eat", clampf(1.35 - 0.045 * r, 0.7, 1.3) * randf_range(0.97, 1.03), clampf(-9.0 + 0.7 * r, -8.0, 0.0))
 
 ## A line over the sky's head, for a few seconds.
 func _say(key: String) -> void:
@@ -1118,24 +1224,30 @@ func _say(key: String) -> void:
 func _step_end(delta: float) -> void:
 	if not sky.ending():
 		var how: String = sim.ending()
-		if how == "" or _held_back or settings_sheet.is_open() or _pick.visible:
+		if how == "" or _held_back or settings_sheet.is_open() or _pick.visible or _reset.visible:
 			return
 		for card: Control in [_shop, _perks, _powers]:
 			card.visible = false
 		_holding = false
 		_end_how = how
 		_end_done = false
+		_end_cued = how != "nova"
 		_say("NL_END_NOVA" if how == "nova" else "NL_END_FADE")
 		sky.begin_end(how, sim.layers())
-		_fx.cue(how)
+		if _end_cued:
+			_fx.cue(how)
 		return
 	sky.step_end(delta)
+	if not _end_cued and sky.end_t() >= float(NightSky.END.nova.fall) - NOVA_LEAD:
+		_end_cued = true
+		_fx.cue("nova")
 	if not _end_done:
 		if sky.end_t() >= sky.end_swap():
 			var was := int(sim.suns())
 			var paid: int = sim.end()
 			_end_done = true
 			sky.swapped()
+			_fx.cue("born")
 			_motes.clear()
 			_shown.mass = sim.mass
 			_shown.light = 0.0
@@ -1147,10 +1259,12 @@ func _step_end(delta: float) -> void:
 		open_perks()
 
 ## Motes came down on the light plate: it swells, unless it still is from
-## the one before.
-func _on_motes_landed(_n: int, _note: int) -> void:
+## the one before, and a click is heard, each a semitone up a short run.
+func _on_motes_landed(_n: int, note: int) -> void:
 	if (_plates.light.panel as Control).scale.x <= 1.01:
 		_kick("light")
+	if note >= 0:
+		_quiet.cue("light", pow(2.0, mini(note, 12) / 12.0), -3.0)
 
 ## A plate swells as something lands on it. Each kick ends the last, or
 ## landings a moment apart would leave it stuck big (ui/menu/gold_pill.gd).
@@ -1392,13 +1506,13 @@ func _let_go() -> void:
 ## though not every one of a stream. False where none can be: under a card,
 ## while the star ends.
 func _pour() -> bool:
-	if _held_back or sky.ending() or sim.ending() != "" or _pick.visible:
+	if _held_back or sky.ending() or sim.ending() != "" or _pick.visible or _reset.visible:
 		return false
 	sim.pour()
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
-		_fx.cue("pour")
+		_fx.cue("pour", randf_range(0.94, 1.08))
 	_dirty = true
 	return true
 
@@ -1462,7 +1576,7 @@ func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
-	for card: Control in [_shop, _perks, _powers]:
+	for card: Control in [_reset, _shop, _perks, _powers]:
 		if card.visible:
 			card.visible = false
 			return

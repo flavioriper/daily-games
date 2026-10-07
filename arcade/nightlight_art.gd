@@ -28,8 +28,8 @@ const SHADE := Color("1e1a3e")
 ## The night, top to foot: indigo to plum, never a black.
 const SKY := [Color("171533"), Color("241d45"), Color("33264c")]
 ## The star's own colour is its temperature, in kelvin: a red giant's
-## ember, the orange of a Sun seen from space (the user's picture,
-## 2026-10-06: "give it a more space view sun"), cream, white, blue-white.
+## ember, a Sun's orange, cream, white, blue-white. The shader paints three
+## tones out of it.
 const TEMPS := [[2600.0, Color("e2502c")], [3600.0, Color("ff7d3c")], [5800.0, Color("ffab48")], [9000.0, Color("ffdc9c")],
 	[14000.0, Color("fff3df")], [22000.0, Color("e2ecff")], [40000.0, Color("b8d0ff")]]
 ## The cloud a supernova leaves in the sky, one after another.
@@ -47,6 +47,8 @@ const DIMMED := Color("a8483a")
 ## silicon, iron, rock.
 const MADE := [Color("f2b441"), Color("c3b2e6"), Color("76c7b4"), Color("f08c8c"), Color("8fb8f0"), Color("e9dba6"), Color("c9643c"), Color("8f8078")]
 const VEIL := Color("fff4de")
+## The cream a star's heart goes toward (the shader's CREAM).
+const HEART := Color("fff6de")
 ## A mote of light: gold where the other games' energy is blue.
 const ORB_DEEP := Color("e08a1e")
 const ORB := Color("ffc94d")
@@ -266,10 +268,17 @@ static func lit(b: Face.Builder, at: Vector2, r: float, paint: Color, to_light: 
 		day.append(at + (l * -0.35 * cos(a) + p * sin(a)) * r)
 	b.polygon(day, paint.lerp(tint, 0.25).lerp(Color.WHITE, 0.1))
 
-## A small star with its light round it, `r` in radius.
+## A small star with its light round it, `r` in radius: the sky's star
+## standing still (shaders/nightlight_star_2d.gdshader), its three flat
+## tones, a deeper limb, its own colour and a pale heart of dabs run
+## together.
 static func lay_star(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:
 	Motes.glow(b, at, r * 3.2, Color(col, 0.5), 2.2)
-	_radial(b, at, r * 1.14, [[0.0, Color.WHITE], [0.4, col.lerp(Color.WHITE, 0.55)], [0.72, col], [0.816, Color(col, 0.85)], [1.0, Color(col, 0.0)]])
+	b.disc(at, r, Color(col.r * 0.92, col.g * 0.66, col.b * 0.5))
+	b.disc(at + Vector2(-0.02, -0.03) * r, r * 0.87, col)
+	var pale := col.lerp(HEART, 0.6)
+	for dab: Array in [[Vector2(-0.14, -0.12), 0.44], [Vector2(0.2, 0.06), 0.34], [Vector2(-0.04, 0.22), 0.3]]:
+		b.disc(at + (dab[0] as Vector2) * r, float(dab[1]) * r, pale)
 
 ## A puff of gas for a picture: a soft light with no edge and a paler heart.
 static func lay_puff(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:

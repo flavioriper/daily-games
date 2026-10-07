@@ -290,6 +290,13 @@ func finish_end() -> void:
 	_end = {}
 	_rise = 1.0
 
+## The owner has put another star in `sim` (the screen's Start over):
+## nothing of the old one's swelling, light or puffs is left on it.
+func started() -> void:
+	_pulse = 0.0
+	_bloom = 0.0
+	_puffs.clear()
+
 # --- a frame ---
 
 ## A frame: `delta` of the sim's time has passed (0 while it is held).

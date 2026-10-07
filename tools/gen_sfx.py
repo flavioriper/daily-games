@@ -80,6 +80,16 @@ GROVE = ("close-mic foley recorded in a quiet woodland clearing, real small "
          "warm, rounded, never sharp, no synth, no electronic tones, no beeps, "
          "no music, no voice")
 
+# Nightlight's star (2026-10-06): space tempts a synth pad and a laser, and
+# gets neither. What is a thing -- a puff of gas, a rock falling in, a body
+# coming apart -- is close-mic foley of breath, flour, sand and felt in a
+# warm room; what is a moment is ARCADE's kalimba, music box and bells.
+HEARTH = ("close-mic foley recorded in a quiet warm room at night, real soft "
+          "things, a breath of air, flour, fine dry sand, felt, wool and small "
+          "round pebbles, natural and acoustic, soft and warm, rounded, never "
+          "sharp, no synth, no electronic tones, no beeps, no science fiction, "
+          "no whoosh, no music, no voice")
+
 # Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
 # kalimba in place of the house marimba, which turns a lantern into a woodblock.
 DUSK = ("cozy casual mobile puzzle game sound, soft warm glass chimes, music "
@@ -1591,6 +1601,34 @@ SETS = {
         "fell": ("a thin young tree coming down: one soft green-wood crack and a short hush of leaves settling on grass, gentle, short", 0.7, -11, GROVE),
         "buy":  ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
         "no":   ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, GROVE),
+    },
+    # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Three cues go on
+    # for as long as the game does and are clicks, cut short, the quietest
+    # of the set and played through an Fx2D that knocks for nothing: `pour`
+    # (a puff of gas, up to five a second while the button is held), `light`
+    # (a mote of light landing on its plate, a short run up) and `eat` (a
+    # solid falling into the star). Everything else happens now and then and
+    # may be a note: a body torn, a stage of the chain lighting (five a life
+    # at most), the star going dim and waking, the two powers offered, one
+    # taken, a tile bought or refused, and the two ends with the small star
+    # that comes after. The supernova is asked for with bells on top of its
+    # thump: a low whump alone is not there on a phone's speaker. A prompt
+    # and its style together are 450 characters at most.
+    "nightlight": {
+        "pour":   ("one tiny soft dry 'pf' of a pinch of flour puffed off a fingertip, a very small breath of air, very short and quiet", 0.5, -22, HEARTH, "warm:6000", "cut:0.07", "tight"),
+        "light":  ("one tiny soft dry tick of a fingernail on a small paper lantern, very short and quiet", 0.5, -20, HEARTH, "warm:6500", "cut:0.06", "tight"),
+        "eat":    ("one small round pebble dropped into a bowl of fine dry sand, a single soft 'pft' with a tiny woody tock in it, very short", 0.5, -15, HEARTH, "warm:6000", "cut:0.16", "tight"),
+        "tear":   ("a small dry biscuit crumbling apart between two fingers, a short soft crumble of a few pieces, gentle", 0.6, -13, HEARTH, "warm:6500"),
+        "ignite": ("one warm round note on a wooden tongue drum with a single kalimba note blooming just after it and a soft hand bell shimmer on top, something lighting deep inside and glowing, about one second", 1.3, -7, ARCADE),
+        "dim":    ("two slow soft notes stepping down on a wooden tongue drum, a lamp turned low, gentle and kind, never sad", 1.0, -10, ARCADE),
+        "wake":   ("two soft rising notes on a real kalimba, a small lamp coming back on, warm, short", 0.7, -9, ARCADE),
+        "pick":   ("a gentle bright three-note rising phrase on a real music box, a choice being offered, short", 0.9, -8, ARCADE),
+        "perk":   ("one warm rising kalimba pluck with a small hand bell sparkle on top, a gift taken, short", 0.7, -7, ARCADE),
+        "buy":    ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
+        "no":     ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, ARCADE),
+        "nova":   ("a soft breath drawn in, one big round soft 'whoomp' of a heavy wool blanket shaken out, then many tiny hand bells and music box notes sprinkling down one after another for three seconds, a slow glittering shower fading away", 5.0, -4, ARCADE),
+        "fade":   ("one long slow soft exhale of air through wool, with four slow gentle kalimba notes stepping down far apart over it, something letting go, calm and kind, never sad", 5.0, -8, ARCADE),
+        "born":   ("a small warm rising three-note phrase on a real music box ending on one soft hand bell, a new little light beginning, hopeful, short", 1.4, -7, ARCADE),
     },
 }
 

@@ -1312,4 +1312,86 @@ supernovas (`Sim.kept()`), not a best.
   another's, the wind has nothing drawn for it, nothing happens while the
   game is closed, the tutorial does not say a body is torn, and bodies do
   not pull each other.
+- **The star is painted, and the game can be started over** (the user,
+  2026-10-06, on a shot of a 17-Sun star: "improve sun design, polish it,
+  cozy, soft toon shade to match rest of the app games. Add a button on
+  config to reset game to 0").
+  - **The star is three flat tones** (`shaders/nightlight_star_2d.gdshader`,
+    rewritten; `docs/art/shading-direction.md`): a pale heart, the star's
+    own colour, a deeper limb, each edge eased over about two pixels
+    (`tone`, by `fwidth`: a fixed run was a blur across half a dab where the
+    light changes slowly). The edges are not circles: a few big round dabs
+    (`dab`, `dabs` 2.3 across the radius) wander and swell slowly and are
+    **added, not laid over one another**, so two that touch run together
+    like drops and no tone has a corner (laid over, they read as a pile of
+    bubbles). Half a tone of paler dabs on the body, a wash of warm and
+    cool, a soft fuzz past the edge. **No grain, no shine, no ray, no
+    face**: the grained Sun seen from space read as a golf ball at 17 Suns,
+    where it is blue. Still one square, one draw, the same four uniforms
+    (`grains` is gone, `dabs` in its place).
+  - **The colour is still the temperature's** (`Art.TEMPS` untouched). The
+    shader takes a pale colour deeper for the body (`wan`: a cream or white
+    star had no body for the heart to stand off) and turns the limb a dusk
+    blue only on a star that is blue (`blue`, from 0.82 of blue over red: at
+    0.45 a cream star's limb was a grey mauve).
+  - **`Art.lay_star`** (the mass icon, three powers' icons, the Arcade
+    card's star) is the same three tones standing still: a limb disc, a
+    body disc, three pale discs for the heart.
+  - **Start over** is a button on the settings sheet
+    (`SettingsSheet.with_reset`, signal `start_over`, `SETTINGS_START_OVER`;
+    any kept game can ask for it, only Nightlight does). The screen asks
+    first (`_build_reset`, `open_reset`: a card saying what is lost, the sun
+    button keeps the star, the white pill starts over, the scrim and
+    Android's back keep it) and `_on_reset` puts `Sim.new()` in the star's
+    place: mass, light, the hand's tiles, powers, stardust, perks and the
+    sky's clouds, all gone, and saved at once. The sky waits behind the
+    card. `nightlight_reset` is tracked. **Nothing else of the player's is
+    touched** (gold, the Grove, records).
+  - Draw calls where they were, both drivers: 90 on a new star, 94-98 with
+    311 bodies, 137-139 on a heavy star, 202-206 with the shop, 112-117 on
+    the tutorial's pages; the confirm card 131. Suite 249790/0, the probe's
+    46 checks. Start over was driven by a throwaway harness (the sheet's
+    button, Keep, the sheet again, Start over: 17.4 Suns with 4,321 light, 7
+    stardust and 3 supernovas to 1 Sun with none, and the same on the file)
+    and is not a beat of `tests/_shot_nightlight.gd`.
+  - **Not done**: a phone (the shader uses `fwidth`, which has only run on
+    this Mac's two drivers), nobody has watched it move (judged on stills),
+    the Grove has no Start over (not asked for), and the concept tab is the
+    first game still.
+- **It has sounds** (the user, 2026-10-06: "generate and wire the cozy
+  sounds to the nightlight"): fourteen files in `assets/sfx/nightlight`,
+  `tools/gen_sfx.py nightlight`, one ElevenLabs take each (two for `nova`).
+  No pad, no laser, nothing that says space: what is a thing is `HEARTH`
+  foley (breath, flour, sand, felt), what is a moment is `ARCADE`'s
+  kalimba, music box, tongue drum and hand bells.
+  - **What goes on for as long as the game does is a click**, cut short, the
+    quietest of the set, through `_quiet` (an Fx2D that knocks for nothing):
+    `light`, a mote landing on its plate, a semitone up a short run (the
+    Grove's pattern; 60 ms, -20 dBFS), and `eat`, a solid falling into the
+    star, lower and louder the bigger it was, one in `EAT_GAP` (0.12 s) at
+    most. `pour` (70 ms, -22 dBFS) plays as often as a puff is felt, once in
+    `FELT` (0.2 s) at most, a little off pitch each time.
+  - **Now and then**: `tear` (one in `TEAR_GAP` 0.3 s: a torn body's pieces
+    are torn again), `ignite`, `dim` and `wake` (the sim's `wake` event had
+    no reader), `pick` as the two powers come up, `perk`, `buy`, `no`,
+    `nova`, `fade`, and `born` as the small star comes up after an end and
+    after Start over.
+  - **`nova` starts `NOVA_LEAD` (0.65 s) before the core has fallen in**:
+    the take is a breath and then the thump, so the thump is the layers
+    leaving. Its thud in the hand moved with it (0.45 s into the end, where
+    it was at the start).
+  - **Still silent, on purpose**: gas eaten, a grain forming, two bodies
+    meeting (several a second), and the sky itself: there is no bed.
+  - What the API gave: `fade`, `ignite` and `born` are one long note each
+    where a phrase was asked for; `nova`'s first take had no bells after
+    its thump and the second has a short sprinkle, not the long shower
+    asked for (the first is not kept). Every file reads above 400 Hz, where
+    a phone's speaker starts (`ignite` and `wake` lose 5 to 6 dB there).
+    A prompt and its style together are 450 characters at most.
+  - Checked by a throwaway run of the shot harness under `--audio-driver
+    Dummy` (a harness is heard on this Mac now without it): born, dim, fade,
+    no, nova, perk, pick, pour, tear, wake, eat and light were asked for and
+    played; `buy` and `ignite` are the calls that were there and were not
+    reached by that run. **Nobody has heard any of it**: the levels and
+    every take are mine, and the user names the ones to redo.
 

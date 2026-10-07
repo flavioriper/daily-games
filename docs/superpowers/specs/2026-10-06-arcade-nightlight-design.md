@@ -478,3 +478,36 @@ concept tab is the first game still, a planet does not pull the gas or
 another planet, fuel never runs short for a hand that pours (it only
 matters to a star left alone), and no power was retuned for gas.
 
+## Amendment, 2026-10-06: a painted star, and Start over
+
+The user, on a shot of a 17-Sun star: "improve sun design, polish it, cozy,
+soft toon shade to match rest of the app games. Add a button on config to
+reset game to 0".
+
+**The star** is drawn as the rest of the game is: three flat tones with
+eased edges (a pale heart, its own colour, a deeper limb), the edges
+scalloped by a few big soft dabs that drift, a soft fuzz past the edge. Its
+colour is still its temperature. No rule changes.
+
+**Start over** is on the settings sheet. It asks first, and then a new star
+of one Sun takes the old one's place with nothing kept: light, the hand's
+tiles, powers, stardust, perks and the clouds old supernovas left.
+
+Mine, not asked for: the dabs running together like drops, the paler dabs,
+the body taken deeper on a pale star, the icons repainted to match, the
+card's words, Keep as the sun button and Start over as the quiet one, and
+that Start over takes the stardust and the perks too ("to 0" read as
+everything).
+
+Not done: a phone, nobody has watched the star move.
+
+## Amendment, 2026-10-06: sounds
+
+The user: "generate and wire the cozy sounds to the nightlight". Fourteen
+cues, all recorded things and none a synth: clicks for what never stops (a
+puff, a mote of light landing, a solid eaten), notes for what happens now
+and then (a body torn, a stage lighting, dim and awake, the powers offered,
+one taken, a tile bought or refused, the two ends, the new star). No bed
+under the sky. Every choice of cue, take and level is mine; nobody has
+heard them. `docs/agents/arcade.md` has the list.
+

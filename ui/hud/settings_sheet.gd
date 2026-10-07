@@ -4,7 +4,9 @@ extends "res://ui/hud/sheet.gd"
 ## How to play and a New puzzle row (both only on a board; the menu leaves
 ## them out), Remove ads (the purchase sheet's door; "Ads removed" and
 ## disabled once owned -- Restore lives on that sheet, one tap away, which
-## is Apple's rule), Privacy choices (only when UMP says the region needs
+## is Apple's rule), Start over (only on a kept game that asks for it:
+## Nightlight, whose screen asks "are you sure" before anything is lost),
+## Privacy choices (only when UMP says the region needs
 ## the door), Credits and Close. How to play is the rules sheet's only door since the tip card went
 ## (1a04e0a, 2026-09-21). The sheet applies the
 ## toggle itself, persisting it and stilling the world, so the menu and the
@@ -43,6 +45,7 @@ signal reduce_changed(on: bool)
 signal new_puzzle
 signal rules
 signal remove_ads
+signal start_over
 
 var with_new := true
 ## How to play without New puzzle: a Versus or Arcade screen, which has a
@@ -50,6 +53,14 @@ var with_new := true
 var with_rules := false:
 	set(on):
 		with_rules = on
+		if _buttons != null:
+			_pack_buttons()
+## Start over: a game that is kept from one visit to the next and can be put
+## back to nothing (the user, 2026-10-06: "add a button on config to reset
+## game to 0"). The sheet only says it was pressed; the screen asks first.
+var with_reset := false:
+	set(on):
+		with_reset = on
 		if _buttons != null:
 			_pack_buttons()
 var toggle: CheckButton
@@ -62,6 +73,7 @@ var privacy_button: Button
 var credits_sheet: Control
 var rules_button: Button
 var new_button: Button
+var reset_button: Button
 var close_button: Button
 var _buttons: VBoxContainer
 ## Whether Privacy choices is showing, re-read at every open.
@@ -99,6 +111,9 @@ func _build_sheet(col: VBoxContainer) -> void:
 	new_button = _small_button("reset", "SETTINGS_NEW_PUZZLE", Pal.SURFACE)
 	new_button.pressed.connect(func() -> void:
 		close_then(new_puzzle.emit))
+	reset_button = _small_button("reset", "SETTINGS_START_OVER", Pal.SURFACE)
+	reset_button.pressed.connect(func() -> void:
+		close_then(start_over.emit))
 	ads_button = _small_button("no_ads", "ADS_TAB", ADS_TINT)
 	ads_button.pressed.connect(func() -> void: close_then(remove_ads.emit))
 	privacy_button = _small_button("eye", "SETTINGS_PRIVACY", Pal.SURFACE)
@@ -130,16 +145,19 @@ func _small_button(icon: String, key: String, fill: Color) -> Button:
 	return b
 
 ## The secondary buttons two to a row, whichever are showing (How to play
-## and New puzzle only on a board, Privacy only where UMP asks for it); a
+## and New puzzle only on a board, Start over only where a screen asks for
+## it, Privacy only where UMP asks for it); a
 ## lone last one stands centred at a row's half width.
 func _pack_buttons() -> void:
 	var shown: Array[Button] = []
-	for b: Button in [rules_button, new_button, ads_button, privacy_button, credits_button]:
+	for b: Button in [rules_button, new_button, reset_button, ads_button, privacy_button, credits_button]:
 		var on := b.visible
 		if b == rules_button:
 			on = with_new or with_rules
 		elif b == new_button:
 			on = with_new
+		elif b == reset_button:
+			on = with_reset
 		elif b == privacy_button:
 			on = _privacy
 		if b.get_parent() != null:
