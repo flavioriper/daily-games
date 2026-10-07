@@ -267,6 +267,8 @@ func _check_jetty(stock: Node) -> void:
 		and int(sim.logs[0].wood) == 1 and sim.lying() == 1 and sim.jetty_held() == 0)
 	_ok("felled by the axe, and by no luck", fells.size() == 1 and fells[0].by == "axe" and not fells[0].lucky and int(fells[0].give) == 1)
 	_ok("and Stock is not touched", stock.count("wood") == had and sim.owed == 0 and sim.wood_sent == 0)
+	# the swing that takes it is the second after the fell, a second on (a
+	# pile lies 0.9 s first), give or take a frame
 	var seen := _hold(sim, at, 1.2)
 	_ok("held a second more it is on the jetty", sim.logs.is_empty() and sim.jetty_held() == 1 and int(sim.loose.wood) == 1
 		and _of(seen, "gather").size() == 1 and stock.count("wood") == had)
