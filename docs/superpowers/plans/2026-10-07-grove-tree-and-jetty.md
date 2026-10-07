@@ -72,7 +72,7 @@ const NODE := {
 	"axe": [10.0, 1.38, 0], "reach": [40.0, 2.1, 12], "swing": [30.0, 1.9, 15],
 	"room": [12.0, 1.5, 27], "sprout": [15.0, 1.65, 20],
 	"jetty": [20.0, 1.45, 20], "tying": [40.0, 1.7, 15], "bundle": [60.0, 2.2, 7],
-	"raft": [50.0, 1.7, 15], "load": [300.0, 3.0, 5],
+	"raft": [50.0, 1.7, 15], "load": [300.0, 3.0, 3],
 	"beaver": [250.0, 4.0, 5], "teeth": [500.0, 2.4, 5],
 	"crit": [80.0, 1.8, 10], "critsize": [150.0, 2.0, 6], "luck": [100.0, 1.8, 10],
 	"crate": [200.0, 1.9, 10], "cratesize": [250.0, 1.9, 10],
@@ -172,10 +172,10 @@ static func icon(tile: String, look := 1) -> ArrayMesh   # now answers every roo
 ```gdscript
 const MERGE := 70.0      # a pile that comes down this near another joins it
 const LIES := 0.9        # seconds before a pile can be gathered (the fall)
-const JETTY := 6;  const JETTY_STEP := 2
-const TIE := 12.0; const TIE_STEP := 0.9
-const BUNDLE := 3
-const RAFT := 24.0; const RAFT_STEP := 0.92
+const JETTY := 8;  const JETTY_STEP := 3
+const TIE := 6.0;  const TIE_STEP := 0.9
+const BUNDLE := 4;  const BUNDLE_STEP := 1
+const RAFT := 12.0; const RAFT_STEP := 0.92
 const BITE_EVERY := 1.0; const BITE := 0.5; const BITE_STEP := 0.1
 const CRIT_STEP := 0.05; const CRIT_SIZE := 2.0; const CRIT_SIZE_STEP := 0.5
 const LUCK_STEP := 0.04

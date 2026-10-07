@@ -108,11 +108,11 @@ has caught up, and now once the new kind's boughs are bought.
 |---|---|---|---|---|---|---|
 | Land | Room | `room` | one more tree | 3 | 27 | 12, x1.5 |
 | Land | Sprout | `sprout` | trees 7% sooner | 6 s | 20 | 15, x1.65 |
-| Jetty | Raft | `raft` | there and back 8% sooner | 24 s | 15 | 50, x1.7 |
-| Jetty | Jetty | `jetty` | room for 2 more piles | 6 | 20 | 20, x1.45 |
-| Jetty | Bundle | `bundle` | one more pile a bundle | 3 | 7 | 60, x2.2 |
-| Jetty | Tying | `tying` | a bundle 10% sooner | 12 s | 15 | 40, x1.7 |
-| Jetty | Load | `load` | one more bundle aboard | 1 | 5 | 300, x3 |
+| Jetty | Raft | `raft` | there and back 8% sooner | 12 s | 15 | 50, x1.7 |
+| Jetty | Jetty | `jetty` | room for 3 more piles | 8 | 20 | 20, x1.45 |
+| Jetty | Bundle | `bundle` | one more pile a bundle | 4 | 7 | 60, x2.2 |
+| Jetty | Tying | `tying` | a bundle 10% sooner | 6 s | 15 | 40, x1.7 |
+| Jetty | Load | `load` | one more bundle aboard | 1 | 3 | 300, x3 |
 | Beavers | Beavers | `beaver` | one more beaver | none | 5 | 250, x4 |
 | Beavers | Teeth | `teeth` | a bite 10 points nearer a chop | 50% of a chop | 5 | 500, x2.4 |
 | Fortune | Keen edge | `crit` | 5 points more chance of a keen chop | 0% | 10 | 80, x1.8 |
@@ -161,7 +161,7 @@ the grove goes on behind, nothing is chopped).
    jetty has room for. **A full jetty takes none**: piles lie, never rot,
    and trees go on coming up.
 3. **The jetty holds piles**: loose ones and the ones in bundles waiting for
-   the raft. Six, before any node.
+   the raft. Eight, before any node.
 4. **Tying**: while a whole bundle's worth of loose piles is there, a
    bundle is being tied, and takes them when its time is up. **Fewer are
    tied only when the raft is home and nothing is waiting for it**, so no
@@ -177,9 +177,10 @@ the grove goes on behind, nothing is chopped).
 
 The chain counts **piles, not wood**, so it is measured in the unit the axe
 is, trees a minute, and a richer kind sends more wood through the same raft.
-Before any node the raft carries seven and a half piles a minute and the
-tying fifteen: a new grove fells about ten trees a minute, so the neck is
-gentle on the first day and tightens as Room, Sprout and the axe grow.
+Before any node the raft carries twenty piles a minute and the tying forty:
+a new grove fells about ten trees a minute, so there is no neck in the first
+minutes, and one by the end of the first day, when Room and Sprout have the
+land felling seventy.
 
 `wood_per_min()` is the most the chain can send in a minute at its levels
 (the slower of tying and rafting, in piles, times what a pile of the land's
@@ -286,10 +287,27 @@ A second run, on those rules, moved three more things:
 - **A beaver's bite was a quarter of a chop**, and beside a finger it did
   nothing seen. It starts at half.
 
-Left as they are, and the user's to judge: piles never rot, so on a land
-chopped harder than the raft carries the backlog has no end and the wood is
-the raft's rate (228 piles lay after thirty minutes of the bot's play);
-Crates is the fourth node of its root.
+**Then the game's own bot played the built sim** (`tests/_probe_grove.gd --
+pace`, 2026-10-07), which fells far more than the page's did: 77 trees a
+minute over the first day, once Room and Sprout are bought. On the figures
+above (a raft of 24 s, bundles of 3, tying 12 s, a jetty of 6) the eight
+visits of two minutes landed 14% of the first day's wood, the jetty was full
+97 to 99% of every day after, a third of the month's wood was landed and
+91,169 piles lay on day 30. So the chain was widened to the table's figures:
+the raft 12 s, a bundle 4, tying 6 s, the jetty 8 and 3 more a level, and
+Load stops at 3 (its last levels never bound: tying was the neck by then).
+Bundles growing by two a level were tried and opened the neck for good in a
+week. Section 10 has the tables.
+
+Left as they are, and the user's to judge: **the neck opens for good once
+the Jetty root is bought out**, about six to eight hours of play in, until
+the land fells more than 534 piles a minute (a bundle of 11 every 1.24 s);
+if the neck should never open, the root's nodes lose their last levels as
+the Axe has none. Also: piles never rot, so while the land fells more than
+the raft carries they pile up (the bot's month peaked near 6,000 lying, in
+a hundred or so stacks, and had them all sent by day 30); Crates is the
+fourth node of its root; Lucky wood and the whole Jetty root return no
+energy, by design, while nothing in the valley spends wood yet.
 
 ## 10. Measured
 
