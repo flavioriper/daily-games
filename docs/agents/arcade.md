@@ -1444,7 +1444,7 @@ supernovas (`Sim.kept()`), not a best.
     `NEIGHBOURS` 5 stars with no mass, seeded in `_init` 2,500 to 5,000 px
     (`FAR_NEAR`, `FAR_FAR`) off, shifted with the relics at each birth,
     drawn as 3 to 6 px warm points with a glow; nothing reads them but the
-    sky. `drift` is the sum of every `-D * away` so far (the far field's
+    sky. `drift` is the sum of every `+D * away` so far (the far field's
     anchor, so it is the same on reopening). The sky wraps it into
     [-3000, 3000), not [0, 6000): that halves the largest offset, so a bare
     strip never opens at the field's foot at zoom 0.6.
@@ -1562,7 +1562,7 @@ supernovas (`Sim.kept()`), not a best.
     `seen > 0` guard, so the relic an end leaves is on screen from the swap.
     `Art.sky(size, novas)` keeps its signature but draws no clouds (the
     nebulae are world-anchored); `CLOUDS` is gone. `Art.far_field(rng_seed,
-    wide)` is `FAR_STARS` 90 soft points in three tints over `FAR_WIDE` 6,000
+    wide)` is 90 soft points (a literal in `Art.far_field`) in three tints over `FAR_WIDE` 6,000
     px, one mesh, one `draw_mesh`, first in `_draw_light`, under the gas.
     **Its scale is `u * maxf(0.6, zoom * view)` and `FAR_PARALLAX` 0.25 is
     only in the offsets** (`centre + shift * FAR_PARALLAX - slid * FAR_PARALLAX
@@ -1709,6 +1709,6 @@ supernovas (`Sim.kept()`), not a best.
       a birth; the probe's boundary checks are thin (a relic exactly at
       `RELIC_REACH`, `d2 == r^2`, a malformed relic row), "giant engulfs" has
       no control, `pulls` caches a hole's mass for the tick it eats in;
-      `nightlight_sim.gd` is 1,381 lines and `nightlight_sky.gd` 763 (the
+      `nightlight_sim.gd` is 1,485 lines and `nightlight_sky.gd` 777 (the
       camera could be a helper); the nebula puffs' random numbers (about
       1,700 a frame at 12 relics) could be cached by novas and kind.

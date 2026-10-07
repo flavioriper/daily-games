@@ -352,7 +352,7 @@ measurements and the rest of what the build left.
 - **Measured against the spec's expectations.** A tick with 300 bodies and
   12 relics in reach is 608-622 us (280 with no relic, a debug build), not
   "under 60 us" for the relics: accepted. A heavy star with three relics is
-  142-146 draw calls, not about 150. The bot held two thirds of the time
+  142-146 draw calls, not about 150. The bot holding the button nonstop
   ends on seed 1 at 26.9 min and 20.9 Suns, as a black hole (25.4 min and
   23.2 Suns before the giant change, +5.9%); section 8 said the pace of a life
   was unchanged on purpose, and the giant moved it by that much.
