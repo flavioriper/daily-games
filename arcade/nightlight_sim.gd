@@ -62,6 +62,9 @@ class Body:
 	var turn := 0.0
 	var e := 0.0
 	var heat := 0.0
+	## The dust share of the gas a solid came from, 0 to 1: what a dead star
+	## made of it will leave behind.
+	var metal := 0.0
 
 const STEP := 1.0 / 60.0
 ## Gravity for a star of one mass, the disc's drag at the star's surface (a
@@ -337,7 +340,30 @@ const TUMBLE := 0.3
 ## Where the star is kept, and which way of keeping it this is. A harness
 ## points `path` elsewhere.
 static var path := "user://nightlight.cfg"
-const KEPT := 2
+const KEPT := 3
+
+# --- relics: what a dead star leaves, in the live star's frame ---
+enum Relic { WD, NS, BH }
+## A white dwarf's mass in Suns, and what each Sun of the dead star adds, up to a limit under Chandrasekhar.
+const WD_M := 0.6
+const WD_M_PER := 0.05
+const WD_MOST := 1.3
+## A black hole is this share of the star, and no less than BH_LEAST Suns; from COLLAPSE Suns a supernova leaves one.
+const BH_SHARE := 0.2
+const BH_LEAST := 3.0
+const COLLAPSE := 20.0
+## Where a body is lost to a relic, in the sim's pixels: a black hole grows by its Suns.
+const WD_R := 8.0
+const NS_R := 5.0
+const BH_R := 10.0
+const BH_R_M := 3.0
+## How many relics are kept, and past what distance one pulls nothing.
+const RELICS_MOST := 12
+const RELIC_REACH := 6000.0
+## Neighbour stars, decoration: how many and how far.
+const NEIGHBOURS := 5
+const FAR_NEAR := 2500.0
+const FAR_FAR := 5000.0
 
 var mass := START
 var light := 0.0
@@ -369,11 +395,19 @@ var power := {"wind": 0, "haze": 0, "beacon": 0, "radiance": 0, "furnace": 0, "f
 var picks := 0
 var offer: Array = []
 var bodies: Array[Body] = []
+## The dead stars left in the sky, each {kind, m, pos, layers, age, novas}:
+## point masses that pull everything and eat what comes inside their radius.
+var relics: Array[Dictionary] = []
+## Where the neighbour stars sit, only for the look of the sky.
+var far: Array[Vector2] = []
+## How far the sky has been carried from where the live star stands.
+var drift := Vector2.ZERO
 var clock := 0.0
 ## What happened since the screen last looked, oldest first:
 ## {kind: "eat", at, m, gas}, {kind: "shed", at, e}, {kind: "form", at},
 ## {kind: "merge", at}, {kind: "tear", at, m}, {kind: "shine", e},
-## {kind: "ignite", stage}, {kind: "dim"}, {kind: "wake"}.
+## {kind: "ignite", stage}, {kind: "dim"}, {kind: "wake"},
+## {kind: "lost", at, m, relic} (a body fell into relic number `relic`).
 var events: Array[Dictionary] = []
 ## Everything this star and the ones before it ate, for the record.
 var eaten := 0.0
@@ -397,6 +431,8 @@ func _init(rng_seed := 0) -> void:
 	else:
 		_rng.randomize()
 	_inlet = _rng.randf() * TAU
+	for i in NEIGHBOURS:
+		far.append(Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(FAR_NEAR, FAR_FAR))
 
 # --- what the star and the tiles are worth ---
 
@@ -421,6 +457,30 @@ func zoom() -> float:
 ## A new star is one Sun.
 func suns() -> float:
 	return mass / START
+
+## A relic's mass as Suns.
+func relic_suns(rel: Dictionary) -> float:
+	return float(rel.m) / START
+
+## Inside this a body is the relic's: a point for a dwarf or a neutron star, a black hole's horizon by its Suns.
+func relic_r(rel: Dictionary) -> float:
+	match int(rel.kind):
+		Relic.WD: return WD_R
+		Relic.NS: return NS_R
+	return BH_R + BH_R_M * relic_suns(rel)
+
+## One more relic; past RELICS_MOST the farthest goes. Hands back the one it
+## kept, so a caller can watch it grow.
+func add_relic(kind: int, m: float, pos: Vector2, layers: Array) -> Dictionary:
+	var rel := {"kind": kind, "m": m, "pos": pos, "layers": layers.duplicate(), "age": 0.0, "novas": novas}
+	relics.append(rel)
+	while relics.size() > RELICS_MOST:
+		var worst := 0
+		for i in relics.size():
+			if (relics[i].pos as Vector2).length_squared() > (relics[worst].pos as Vector2).length_squared():
+				worst = i
+		relics.remove_at(worst)
+	return rel
 
 ## All of its helium: what came with the gas and what it made.
 func helium() -> float:
@@ -707,11 +767,11 @@ func end() -> int:
 	var rw := main_r()
 	for i in count:
 		var near := (ASH_NEAR + _rng.randf() * ASH_REACH) * rw
-		var far := near + 0.4 * rw + _rng.randf() * ((ASH_FAR - 0.4) * rw - near)
+		var apo := near + 0.4 * rw + _rng.randf() * ((ASH_FAR - 0.4) * rw - near)
 		var way := Vector2.from_angle(_rng.randf() * TAU)
 		# let go at its furthest point, where it is slowest
-		var v := sqrt(pull * (2.0 / far - 2.0 / (near + far)))
-		var b := add(Kind.GAS, PUFF * ASH_M * (1.0 + RICHER * novas) * _rng.randf_range(0.6, 1.4), way * far, way.orthogonal() * -v)
+		var v := sqrt(pull * (2.0 / apo - 2.0 / (near + apo)))
+		var b := add(Kind.GAS, PUFF * ASH_M * (1.0 + RICHER * novas) * _rng.randf_range(0.6, 1.4), way * apo, way.orthogonal() * -v)
 		b.h = ASH_H
 		b.dust = ASH_DUST
 		b.age = COOL
@@ -1030,12 +1090,19 @@ func tick() -> void:
 	var rwind := wind_r()
 	var blow := WIND * on("wind")
 	var eat := star_r() * EAT
-	var far := FAR / zoom()
+	var gone := FAR / zoom()
 	var bind := pull / (2.0 * main_r())
 	var gl := glow()
 	var roche := roche_r()
 	var roche3 := roche * roche * roche
 	var torn := CRUMB * 2.0
+	# the relics near enough to pull: position, GM and the radius squared inside which they eat
+	var pulls: Array = []
+	for k in relics.size():
+		var rel := relics[k]
+		if (rel.pos as Vector2).length() <= RELIC_REACH:
+			var rr := relic_r(rel)
+			pulls.append([rel.pos, G * float(rel.m), rr * rr, k])
 	var i := bodies.size() - 1
 	while i >= 0:
 		var b := bodies[i]
@@ -1054,8 +1121,28 @@ func tick() -> void:
 			bodies.remove_at(i)
 			i -= 1
 			continue
-		if r > far and p.dot(b.vel) > 0.0:
+		if r > gone and p.dot(b.vel) > 0.0:
 			bodies.remove_at(i)
+			i -= 1
+			continue
+		# a relic takes what falls inside it (a body right on one is eaten, not
+		# divided by) and pulls what does not; a black hole weighs what it ate
+		var acc_rel := Vector2.ZERO
+		var lost := false
+		for k in pulls.size():
+			var rel: Array = pulls[k]
+			var to: Vector2 = (rel[0] as Vector2) - p
+			var d2 := to.length_squared()
+			if d2 <= float(rel[2]):
+				var which: int = rel[3]
+				if int(relics[which].kind) == Relic.BH:
+					relics[which].m = float(relics[which].m) + b.m
+				events.append({"kind": "lost", "at": p, "m": b.m, "relic": which})
+				bodies.remove_at(i)
+				lost = true
+				break
+			acc_rel += to * (float(rel[1]) / (d2 * sqrt(d2)))
+		if lost:
 			i -= 1
 			continue
 		if not gas and r < roche and b.m >= torn and bodies.size() < FULL:
@@ -1066,6 +1153,7 @@ func tick() -> void:
 				i -= 1
 				continue
 		var acc := p * (-pull / (r2 * r))
+		acc += acc_rel
 		b.heat = 0.0
 		if r < rh:
 			# The drag, and the light it makes: the work done on the body, as
@@ -1093,6 +1181,8 @@ func tick() -> void:
 		_meet()
 	if burning:
 		_burn()
+	for rel in relics:
+		rel.age = float(rel.age) + STEP
 
 ## A tick of the star's own burning. Every stage that has lit turns what it
 ## burns into the next thing, the heaviest first, so nothing is burnt twice
@@ -1178,8 +1268,11 @@ func save() -> void:
 	cfg.set_value("star", "eaten", eaten)
 	var kept := []
 	for b in bodies:
-		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice])
+		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal])
 	cfg.set_value("star", "bodies", kept)
+	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers)]))
+	cfg.set_value("star", "far", far.map(func(p): return [p.x, p.y]))
+	cfg.set_value("star", "drift", [drift.x, drift.y])
 	cfg.save(path)
 
 ## The star as it was left, with its sky. A first visit, or a file that
@@ -1193,10 +1286,11 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK or not cfg.has_section_key("star", "mass"):
 		return sim
-	var old := int(cfg.get_value("star", "kept", 1)) < KEPT
+	var ver := int(cfg.get_value("star", "kept", 1))
+	var pre_gas := ver < 2
 	for tile: String in TILES:
 		var was := "meteor" if tile == "puff" else ("ice" if tile == "pure" else tile)
-		var level := maxi(0, int(cfg.get_value("lv", was if old else tile, 0)))
+		var level := maxi(0, int(cfg.get_value("lv", was if pre_gas else tile, 0)))
 		sim.lv[tile] = level if sim.last_level(tile) == 0 else mini(level, sim.last_level(tile))
 	for which: String in PERKS:
 		sim.perk[which] = maxi(0, int(cfg.get_value("perk", which, 0)))
@@ -1212,7 +1306,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	var room: float = sim.mass - sim.fuel - sim.env
 	var was_made = cfg.get_value("star", "made", [])
 	var was_lit = cfg.get_value("star", "ignited", [])
-	if not old and was_made is Array and was_lit is Array and (was_made as Array).size() == STAGES and (was_lit as Array).size() == STAGES:
+	if not pre_gas and was_made is Array and was_lit is Array and (was_made as Array).size() == STAGES and (was_lit as Array).size() == STAGES:
 		for i in STAGES:
 			sim.made[i] = clampf(float(was_made[i]), 0.0, room)
 			room -= sim.made[i]
@@ -1227,7 +1321,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	var two = cfg.get_value("star", "offer", [])
 	if two is Array and (two as Array).size() == 2 and POWERS.has(two[0]) and POWERS.has(two[1]):
 		sim.offer = [String(two[0]), String(two[1])]
-	if old:
+	if pre_gas:
 		return sim
 	for row in cfg.get_value("star", "bodies", []):
 		if not (row is Array) or (row as Array).size() < 9 or sim.bodies.size() >= FULL:
@@ -1240,14 +1334,48 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		b.h = clampf(float(row[6]), 0.0, 1.0)
 		b.dust = clampf(float(row[7]), 0.0, 1.0)
 		b.ice = clampf(float(row[8]), 0.0, 1.0)
+		b.metal = clampf(float(row[9]), 0.0, 1.0) if row.size() >= 10 else 0.0
 		b.age = COOL
 		sim._sort(b)
+	if ver >= 3:
+		sim._load_sky(cfg)
 	return sim
 
+## The relics, the neighbour stars and the drift out of a file of KEPT 3 or
+## later; a row that is not what it should be is left out.
+func _load_sky(cfg: ConfigFile) -> void:
+	for row in cfg.get_value("star", "relics", []):
+		if not (row is Array) or (row as Array).size() != 7 or relics.size() >= RELICS_MOST or not (row[6] is Array):
+			continue
+		var pos := Vector2(float(row[2]), float(row[3]))
+		var m := float(row[1])
+		if m <= 0.0 or not is_finite(m) or not pos.is_finite() or not is_finite(float(row[4])):
+			continue
+		var layers := []
+		for share in row[6]:
+			layers.append(float(share))
+		var rel := add_relic(clampi(int(row[0]), 0, Relic.size() - 1), m, pos, layers)
+		rel.age = maxf(0.0, float(row[4]))
+		rel.novas = maxi(0, int(row[5]))
+	var seen: Array[Vector2] = []
+	for row in cfg.get_value("star", "far", []):
+		if row is Array and (row as Array).size() == 2 and seen.size() < NEIGHBOURS:
+			var at := Vector2(float(row[0]), float(row[1]))
+			if at.is_finite():
+				seen.append(at)
+	if not seen.is_empty():
+		far = seen
+	var way = cfg.get_value("star", "drift", [])
+	if way is Array and (way as Array).size() == 2:
+		var to := Vector2(float(way[0]), float(way[1]))
+		if to.is_finite():
+			drift = to
+
 ## What the Arcade tab says of the kept star without building it: its mass
-## and its supernovas, both 0 if there is none yet.
+## its supernovas and the dead stars it keeps, all 0 if there is none yet.
 static func kept() -> Dictionary:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK or not cfg.has_section_key("star", "mass"):
-		return {"mass": 0.0, "novas": 0}
-	return {"mass": float(cfg.get_value("star", "mass", 0.0)), "novas": int(cfg.get_value("star", "novas", 0))}
+		return {"mass": 0.0, "novas": 0, "relics": 0}
+	var dead = cfg.get_value("star", "relics", [])
+	return {"mass": float(cfg.get_value("star", "mass", 0.0)), "novas": int(cfg.get_value("star", "novas", 0)), "relics": (dead as Array).size() if dead is Array else 0}

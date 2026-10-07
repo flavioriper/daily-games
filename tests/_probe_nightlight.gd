@@ -43,6 +43,7 @@ func _initialize() -> void:
 		_check_tide()
 		_check_star()
 		_check_rules()
+		_check_relics()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -352,3 +353,42 @@ func _sky(sim: RefCounted) -> String:
 			solid += b.m
 	return "sky: %d gas, %d grains, %d rocks, %d comets, %d planets, %d giants, solids %.3f, biggest %.1f px" % [
 		gas, counts[1], counts[2], counts[3], counts[4], counts[5], solid, Sim.body_r(biggest)]
+
+func _check_relics() -> void:
+	var sim := _quiet()
+	# a body at rest between the star and a relic of twice its mass falls toward the relic
+	var rel: Dictionary = sim.add_relic(Sim.Relic.BH, sim.mass * 2.0, Vector2(2000.0, 0.0), sim.layers())
+	var b: Sim.Body = sim.add(Sim.Kind.ROCK, 0.003, Vector2(1000.0, 0.0), Vector2.ZERO)
+	_run(sim, 2.0)
+	_ok("relic pulls", b.pos.x > 1000.0)
+	# inside a black hole it is lost and the hole weighs more
+	var was: float = rel.m
+	var c: Sim.Body = sim.add(Sim.Kind.ROCK, 0.003, Vector2(2000.0, 0.0), Vector2.ZERO)
+	sim.tick()
+	_ok("black hole eats", not sim.bodies.has(c) and rel.m > was)
+	_ok("lost event", sim.events.any(func(e): return e.kind == "lost"))
+	# a white dwarf does not grow, and d = 0 is eaten, not divided by
+	var wd: Dictionary = sim.add_relic(Sim.Relic.WD, 6.0, Vector2(-1500.0, 0.0), sim.layers())
+	var d: Sim.Body = sim.add(Sim.Kind.GAS, Sim.PUFF, Vector2(-1500.0, 0.0), Vector2.ZERO)
+	sim.tick()
+	_ok("dwarf eats and stays", not sim.bodies.has(d) and is_equal_approx(float(wd.m), 6.0))
+	# past the cap the farthest goes
+	for k in Sim.RELICS_MOST:
+		sim.add_relic(Sim.Relic.WD, 6.0, Vector2(100.0 + k, 0.0), sim.layers())
+	_ok("relic cap", sim.relics.size() == Sim.RELICS_MOST and not sim.relics.has(rel))
+	# the file: relics, far, drift and metal round-trip; a KEPT 2 file loads clean
+	sim.drift = Vector2(300.0, -40.0)
+	var g: Sim.Body = sim.add(Sim.Kind.ROCK, 0.003, Vector2(500.0, 0.0), Vector2.ZERO)
+	g.metal = 0.3
+	sim.save()
+	var back: RefCounted = Sim.load_saved()
+	_ok("relics kept", back.relics.size() == Sim.RELICS_MOST and back.far.size() == Sim.NEIGHBOURS and back.drift == sim.drift)
+	_ok("metal kept", back.bodies.any(func(x): return is_equal_approx(x.metal, 0.3)))
+	_ok("kept counts relics", int(Sim.kept().relics) == Sim.RELICS_MOST)
+	var cfg := ConfigFile.new()
+	cfg.load(Sim.path)
+	cfg.set_value("star", "kept", 2)
+	cfg.erase_section_key("star", "relics")
+	cfg.save(Sim.path)
+	var older: RefCounted = Sim.load_saved()
+	_ok("old file clean", older.relics.is_empty() and older.far.size() == Sim.NEIGHBOURS and older.drift == Vector2.ZERO and older.bodies.size() > 0)
