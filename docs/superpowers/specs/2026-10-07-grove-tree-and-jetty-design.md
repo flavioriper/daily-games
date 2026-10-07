@@ -93,6 +93,11 @@ With P the kind's own price (20 for the Sapling):
 boughs; `sim.hp(tier)` and `sim.give(tier)` are what it is now. Buying Soft
 takes standing trees of that kind down to their new most.
 
+**A kind that no longer comes up** (the land grows the best kind and the two
+under it) keeps its boughs' levels, but they cannot be bought any more:
+`sim.grows(tier)`. Its three nodes are drawn faded and the foot card says it
+no longer grows here, so nobody pays for a bough that does nothing.
+
 A new kind still asks 2.6 times the chops for twice the yield, and comes
 with bare boughs, so the first spec's race goes on: Seeds helps once the axe
 has caught up, and now once the new kind's boughs are bought.
@@ -104,9 +109,9 @@ has caught up, and now once the new kind's boughs are bought.
 | Land | Room | `room` | one more tree | 3 | 27 | 12, x1.5 |
 | Land | Sprout | `sprout` | trees 7% sooner | 6 s | 20 | 15, x1.65 |
 | Jetty | Jetty | `jetty` | room for 2 more piles | 6 | 20 | 20, x1.45 |
-| Jetty | Tying | `tying` | a bundle 10% sooner | 20 s | 15 | 40, x1.7 |
+| Jetty | Tying | `tying` | a bundle 10% sooner | 6 s | 15 | 40, x1.7 |
 | Jetty | Bundle | `bundle` | one more pile a bundle | 3 | 7 | 60, x2.2 |
-| Jetty | Raft | `raft` | there and back 8% sooner | 60 s | 15 | 50, x1.7 |
+| Jetty | Raft | `raft` | there and back 8% sooner | 24 s | 15 | 50, x1.7 |
 | Jetty | Load | `load` | one more bundle aboard | 1 | 5 | 300, x3 |
 | Beavers | Beavers | `beaver` | one more beaver | none | 5 | 250, x4 |
 | Beavers | Teeth | `teeth` | a bite 15 points nearer a chop | 25% of a chop | 5 | 500, x2.4 |
@@ -157,9 +162,11 @@ the grove goes on behind, nothing is chopped).
    and trees go on coming up.
 3. **The jetty holds piles**: loose ones and the ones in bundles waiting for
    the raft. Six, before any node.
-4. **Tying**: while a loose pile is there, a bundle is being tied; when its
-   time is up it takes as many loose piles as a bundle holds (fewer if fewer
-   are there).
+4. **Tying**: while a whole bundle's worth of loose piles is there, a
+   bundle is being tied, and takes them when its time is up. **Fewer are
+   tied only when the raft is home and nothing is waiting for it**, so no
+   pile is ever stranded and a short bundle never takes a place on the raft
+   that a whole one wanted.
 5. **The raft**: home and with a bundle waiting, it takes as many as it
    carries and goes; half its time out, half back. **Its wood is counted
    when it gets there**: the sim holds it as `owed` and whoever holds the
@@ -170,7 +177,9 @@ the grove goes on behind, nothing is chopped).
 
 The chain counts **piles, not wood**, so it is measured in the unit the axe
 is, trees a minute, and a richer kind sends more wood through the same raft.
-Before any node the raft carries three piles a minute and the tying nine.
+Before any node the raft carries seven and a half piles a minute and the
+tying thirty: a new grove fells about ten trees a minute, so the neck is
+gentle on the first day and tightens as Room, Sprout and the axe grow.
 
 `wood_per_min()` is the most the chain can send in a minute at its levels
 (the slower of tying and rafting, in piles, times what a pile of the land's
@@ -178,7 +187,8 @@ mix is worth). The tab's chip shows it from the first day; it was "--".
 
 `wood_made` goes on counting at the fell. `wood_sent` counts what the raft
 has landed. A kept grove's wood in `Stock` is untouched and it starts with
-an empty jetty.
+an empty jetty. **A landing is seen**: the raft leaves the screen, so the
+wood plate swells and "+N" rises by it as the raft gets there.
 
 **The jetty is planks off the land's front left edge**, not a step or a
 terrace (the land is one flat piece). It is in the ground's mesh; piles,
@@ -191,11 +201,11 @@ plate at the top counts `Stock` and swells when the raft lands.
 - **A beaver of its own** (`beaver`, `teeth`). Each takes the oldest
   standing tree no other beaver has and bites it once a second for a share
   of the axe's chop. Its tree falls as any does: energy at once, a pile
-  lying. **A beaver gathers nothing**, and **takes no tree while as many
-  piles lie on the land as the land has room for trees**: a land nobody
-  sweeps fills with piles and the beavers rest. Away, they fell what that
-  leaves room for in the seconds gone, worked out, and their piles are
-  lying there on the return. It is drawn as the beaver that comes to a
+  lying. **A beaver gathers nothing.** With someone there it never rests.
+  **Away, the beavers fell the land once over at most**: as many trees as
+  the land has room for, fewer if the seconds gone were too few, worked
+  out, and their piles are lying there on the return. (Trees away fill the
+  land once and no further; the beavers' share is the same size.) It is drawn as the beaver that comes to a
   chopped tree is (`ui/faces/beaver.gd`).
 - **Keen edge** (`crit`, `critsize`): each chop on each tree has the chance
   to count for more. Its number comes up large with a ring. A beaver's bite
@@ -245,6 +255,29 @@ A beaver that carries; a second raft; anything on the far shore; a node that
 makes the land bigger; a cap on levels where the land does not ask for one
 beyond the tables above; new sounds; cloud save.
 
-## 9. Measured
+## 9. What playing the concept changed
+
+The concept page's sixth pass (`docs/brainstorm/concepts.html#valley`) was
+played by a bot before the chain was built, and four of this spec's first
+figures and rules did not survive it:
+
+- **Short bundles made the first Jetty levels send less wood**, not more
+  (room 6: 60 piles in twenty minutes; room 8: 54; room 10: 52), because a
+  bundle of two took a place on the raft. Hence the rule in section 4.4.
+- **The neck slammed shut in the first minute**: a jetty full 90% of the
+  time, 31% of the wood landed, the first wood 52 s in. Tying started at
+  20 s and the raft at 60 s; they start at 6 s and 24 s.
+- **Beavers were dead on arrival**: they rested while as many piles lay as
+  the land had room for trees, and piles never rot, so one beaver rested
+  94% of twenty minutes. They never rest now, and what bounds them is the
+  size of their share away.
+- **Boughs of a kind gone from the land had no sign.** Hence `grows`.
+
+Left as they are, and the user's to judge: piles never rot, so on a land
+chopped harder than the raft carries the backlog has no end and the wood is
+the raft's rate (228 piles lay after thirty minutes of the bot's play);
+Crates is the fourth node of its root.
+
+## 10. Measured
 
 Added by the build, stage by stage.
