@@ -96,12 +96,12 @@ const ROOT_BARE := Color("ecd9b6")
 
 ## What a node's two figures are, by id (a bough by its part): how
 ## `_figure` writes them. `sim.value` answers in these units: a count, the
-## seconds, a share of one (0.25 is 25%), points of chop, a yield.
+## seconds, a percent (25.0 is 25%), points of chop, a yield.
 const FX := {
 	"room": "count", "sprout": "secs",
 	"jetty": "count", "tying": "secs", "bundle": "count", "raft": "secs", "load": "count",
-	"beaver": "count", "teeth": "share",
-	"crit": "share", "critsize": "chops", "luck": "share", "crate": "secs", "cratesize": "count",
+	"beaver": "count", "teeth": "percent",
+	"crit": "percent", "critsize": "chops", "luck": "percent", "crate": "secs", "cratesize": "count",
 	"soft": "chops", "rich": "count",
 }
 
@@ -656,8 +656,8 @@ static func _figure(part: String, v: float) -> String:
 	match String(FX.get(part, "count")):
 		"secs":
 			return str(roundi(v)) if v >= 99.95 else Art.decimal("%.1f" % v)
-		"share":
-			return "%d%%" % roundi(v * 100.0)
+		"percent":
+			return "%d%%" % roundi(v)
 		"chops":
 			return Art.amount(v, Art.comma())
 	return Art.short(roundi(v))
