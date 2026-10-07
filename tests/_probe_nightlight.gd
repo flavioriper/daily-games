@@ -452,12 +452,15 @@ func _check_ring() -> void:
 	var ids := {}
 	var one_way := true
 	var mass := 0.0
+	var falling_m := 0.0
 	for k in sim.bodies.size():
 		var b: Sim.Body = sim.bodies[k]
 		mass += b.m
 		one_way = one_way and b.pos.cross(b.vel) * sim.bodies[0].pos.cross(sim.bodies[0].vel) > 0.0
 		# the first RING_FALLING are laid falling in; the rest start in the ring
-		if k >= Sim.RING_FALLING and b.pos.length() >= sim.ring.x * 0.999:
+		if k < Sim.RING_FALLING:
+			falling_m += b.m
+		elif b.pos.length() >= sim.ring.x * 0.999:
 			ids[b.id] = true
 	_ok("all turning one way", one_way)
 	# the falling few start at their far point, which may be past the ring's inner edge
@@ -466,9 +469,10 @@ func _check_ring() -> void:
 	_run(sim, 300.0)
 	var came := 0
 	for b: Sim.Body in sim.bodies:
-		if ids.has(b.id) and b.pos.length() < rh:
+		if ids.has(b.id) and b.pos.length() < sim.haze_r():
 			came += 1
 	_ok("left alone, nothing of the ring but the falling few is in the disc after five minutes", came == 0)
+	_ok("and the star has eaten no more than the falling few weigh (%.3f of %.3f)" % [sim.eaten, falling_m], sim.eaten <= falling_m + 1e-6)
 	_ok("the view shows the ring's edge at FRAME", is_equal_approx(sim.zoom() * sim.ring.y, Sim.FRAME))
 	sim.mass = Sim.START * 20.0
 	var wide: float = sim.press_r() * sim.zoom()
@@ -516,7 +520,7 @@ func _check_ring() -> void:
 			gro.tick()
 		eats.append(float(gro.eaten))
 	print("  a star that grows 15%% in two minutes eats %.2f of the ring's %.1f in ten more (%.0f%%); left alone, %.2f" % [eats[1], Sim.RING_M, eats[1] / Sim.RING_M * 100.0, eats[0]])
-	_ok("the star's growth brings some of the ring down (%.0f%%), and not all of it" % (eats[1] / Sim.RING_M * 100.0), eats[1] > eats[0] + Sim.RING_M * 0.05 and eats[1] < Sim.RING_M * 0.5)
+	_ok("the star's growth brings some of the ring down (%.0f%%), and not all of it" % (eats[1] / Sim.RING_M * 100.0), eats[1] > eats[0] + Sim.RING_M * 0.05 and eats[1] < Sim.RING_M * 0.5 and eats[0] < Sim.RING_M * 0.05)
 	# the trickle
 	var far := _quiet(9)
 	far.passing = true
@@ -706,7 +710,20 @@ func _check_worlds() -> void:
 	_run(alone, 20.0)
 	_ok("a world turns what is near it", a.pos.distance_to(a0.pos) > 1.0)
 	_ok("and not what is past its reach", b.pos.distance_to(b0.pos) < 0.01)
-	_ok("a world on top of a body divides by nothing", is_finite(w.pos.x) and is_finite(a.pos.x))
+	# a grain exactly on the world, and gas exactly on a core
+	var on_w: Sim.Body = sim.add(Sim.Kind.GRAIN, 0.0005, w.pos, w.vel)
+	var on_core := _quiet(16)
+	var cw: Sim.Body = on_core.add(Sim.Kind.ROCK, Sim.CORE_M * 1.5, at, on_core.circle_vel(at))
+	cw.h = 0.5
+	on_core._sort(cw)
+	var on_gas: Sim.Body = on_core.add(Sim.Kind.GAS, 0.02, cw.pos, cw.vel)
+	on_gas.dust = 0.0
+	var all_finite := true
+	for sky: RefCounted in [sim, on_core]:
+		_run(sky, 10.0)
+		for q: Sim.Body in sky.bodies:
+			all_finite = all_finite and q.pos.is_finite() and q.vel.is_finite()
+	_ok("a world on top of a body divides by nothing", is_finite(w.pos.x) and is_finite(a.pos.x) and on_w != null and all_finite)
 	# only the heaviest WORLDS pull, and a planet under PLANET_M does not
 	var small := _quiet(17)
 	var s: Sim.Body = small.add(Sim.Kind.ROCK, Sim.PLANET_M * 0.5, at, small.circle_vel(at))
@@ -739,8 +756,14 @@ func _check_worlds() -> void:
 	var circ: Sim.Body = tide.add(Sim.Kind.GAS, 0.05, mid_at, tide.circle_vel(mid_at))
 	circ.dust = 0.0
 	tide.add_relic(Sim.Relic.WD, 6.0, Vector2(Sim.LOBE * tide.ring.y * (1.0 + sqrt(6.0 / tide.mass)), 0.0), tide.layers())
-	_run(tide, tide.turn_time(ring_mid) * 5.0)
-	_ok("beside a relic at its birth distance a circle in the ring stays a circle", tide.bodies.has(circ) and circ.pos.length() > ring_mid * 0.9 and circ.pos.length() < ring_mid * 1.1)
+	var swing_lo := INF
+	var swing_hi := 0.0
+	for i in int(tide.turn_time(ring_mid) * 5.0 / Sim.STEP):
+		tide.tick()
+		swing_lo = minf(swing_lo, circ.pos.length())
+		swing_hi = maxf(swing_hi, circ.pos.length())
+	print("  a circle at %.0f px beside a relic at its birth distance, five turns: %.0f to %.0f px (%.2f to %.2f)" % [ring_mid, swing_lo, swing_hi, swing_lo / ring_mid, swing_hi / ring_mid])
+	_ok("beside a relic at its birth distance a circle in the ring stays a circle the whole way", tide.bodies.has(circ) and swing_lo > ring_mid * 0.9 and swing_hi < ring_mid * 1.1)
 	# gas feels a world only if the world holds it, and inside its Hill radius;
 	# a solid feels it out to six
 	var skip := _quiet(23)
@@ -770,9 +793,11 @@ func _check_worlds() -> void:
 		_run(dead, 600.0)
 		var left := 0
 		for p: Sim.Body in dead.bodies:
-			if p.pos.length() < dead.ring.y * 1.3:
+			if p.kind == Sim.Kind.GAS and p.pos.length() > dead.haze_r():
 				left += 1
-		_ok("a ring beside %s keeps nine in ten for ten minutes" % case[2], left >= int(before * 0.9) - Sim.RING_FALLING)
+		var need := int(float(before - Sim.RING_FALLING) * 0.9)
+		print("  a ring beside %s: %d gas puffs of %d are still outside the disc after ten minutes (need %d)" % [case[2], left, before, need])
+		_ok("a ring beside %s keeps nine in ten of its gas outside the disc for ten minutes" % case[2], left >= need)
 	# Wind leans the ring in; it does not empty it
 	var wind := _quiet(20)
 	wind.power.wind = 1

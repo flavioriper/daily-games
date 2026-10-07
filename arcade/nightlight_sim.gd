@@ -224,8 +224,10 @@ const PAY_ROCK := 10.0
 const PAY_WORLD := 25.0
 
 ## Worlds pull what is near them: the WORLDS heaviest solids from PLANET_M up
-## do, to PULL_REACH of their Hill radii, and gas inside HILL_HOLD of one that
-## can gulp it eases toward its speed MOON_DRAG a second.
+## do. A solid feels a world out to PULL_REACH of its Hill radii. Gas feels
+## only a world that holds it (`holds`: a core, not a small planet and not a
+## full giant), and only inside one Hill radius of it; inside HILL_HOLD of
+## that radius it eases toward the world's speed MOON_DRAG a second.
 const WORLDS := 8
 const PULL_REACH := 6.0
 const HILL_HOLD := 0.5
@@ -1249,8 +1251,9 @@ func _condense(a: Body, b: Body, frost: float) -> Dictionary:
 	var m := ma + mb
 	return {"m": m, "ice": (from_a.y + from_b.y) / m, "metal": metal, "pos": (a.pos * ma + b.pos * mb) / m, "vel": (a.vel * ma + b.vel * mb) / m}
 
-## How iron-dark the solid a puff's dust makes is: 0 from the 1% of a young
-## sky, nearly 1 from a supernova's gas.
+## How iron-dark the solid a puff's dust makes is, 0 to 1, full from twice
+## IRONY: about 0.16 from a first star's FIRST_DUST, 0.31 from the ASH_DUST of
+## a nebula or a fade, and 1 from a supernova's gas (up to ASH_MOST).
 func _metal(dust_share: float) -> float:
 	return clampf(dust_share / (2.0 * IRONY), 0.0, 1.0)
 
