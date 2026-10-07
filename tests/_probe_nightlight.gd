@@ -48,6 +48,7 @@ func _initialize() -> void:
 		_check_rules()
 		_check_relics()
 		_check_ends()
+		_check_giant()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -488,3 +489,31 @@ func _check_ends() -> void:
 	none.save()
 	var again: RefCounted = Sim.load_saved(9)
 	_ok("a kept star is not born again", not again.fresh)
+
+func _check_giant() -> void:
+	var sim := _quiet()
+	var plain: float = sim.haze_r()
+	var pour_was: float = sim.pour_r()
+	sim.swell = 1.0
+	_ok("giant disc", is_equal_approx(sim.haze_r(), plain * (1.0 + Sim.GIANT)))
+	_ok("pour stays", is_equal_approx(sim.pour_r(), pour_was))
+	_ok("giant on screen", sim.seen_r() > 200.0 and sim.zoom() < 0.7)
+	# a circle at 1.5 of the plain disc, parked for good on a plain star, spirals in once the star is a giant
+	var parked := _quiet(2)
+	var at := Vector2(parked.haze_r() * 1.5, 0.0)
+	var b: Sim.Body = parked.add(Sim.Kind.ROCK, 0.003, at, parked.circle_vel(at))
+	_run(parked, 60.0)
+	var still: float = b.pos.length()
+	parked.swell = 1.0
+	_run(parked, 60.0)
+	_ok("giant engulfs", not parked.bodies.has(b) or b.pos.length() < still * 0.9)
+	# the swell comes with the helium flash, and goes to SUPER with carbon
+	var lit := _quiet(4)
+	lit.burning = true
+	lit.ignited[1] = true
+	_run(lit, Sim.SWELL * 1.2)
+	_ok("flash swells", lit.swell > 0.95 and lit.swell <= 1.0)
+	lit.ignited[2] = true
+	_run(lit, Sim.SWELL * 1.2)
+	_ok("carbon supergiant", lit.swell > 1.95)
+	_ok("colour clamps", is_equal_approx(lit.giant(), 1.0))

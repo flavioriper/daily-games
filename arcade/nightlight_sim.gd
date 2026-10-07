@@ -92,7 +92,7 @@ const STAR_R := 150.0
 ## Past SEEN pixels on the screen the star grows only by the logarithm and
 ## the view draws back instead.
 const SEEN := 150.0
-const SEEN_LOG := 40.0
+const SEEN_LOG := 70.0
 ## A body is eaten this far inside the star's edge.
 const EAT := 0.94
 ## The disc is this many of the star's radii wide, before the Wide haze.
@@ -242,10 +242,13 @@ const SHINE := [30.0, 10.0, 5.0, 3.5, 3.5, 2.0]
 const WAKE := 0.02
 const GRACE := 60.0
 const DIM := 1.5
-## Burning carbon, or anything at all with its hydrogen gone, the star is a
-## giant: GIANT wider and GIANT_K at the surface whatever it weighs (a red
-## supergiant's 3,600 K), SWELL seconds getting there.
-const GIANT := 0.28
+## From the helium flash, or with its hydrogen gone, the star is a giant:
+## GIANT of its width wider again and GIANT_K at the surface whatever it
+## weighs (a red supergiant's 3,600 K), SWELL seconds getting there. Burning
+## carbon it swells on to SUPER, a supergiant, and its disc, frost line and
+## wind go out with it.
+const GIANT := 1.2
+const SUPER := 2.0
 const GIANT_K := 3600.0
 const SWELL := 30.0
 ## Its surface temperature in kelvin, by its Suns; a dim star is COLD of
@@ -559,7 +562,7 @@ func temp() -> float:
 				var from := log(float(TEMP[i - 1][0]))
 				k = lerpf(TEMP[i - 1][1], TEMP[i][1], (log(s) - from) / (log(float(TEMP[i][0])) - from))
 				break
-	return lerpf(k, GIANT_K, swell) * lerpf(COLD, 1.0, lit)
+	return lerpf(k, GIANT_K, giant()) * lerpf(COLD, 1.0, lit)
 
 ## What the star is on its way to, for the screen's line: {which: "he" / "c"
 ## / "fe" / "dim", have, need}, in Suns of core, or in seconds for a dim
@@ -582,12 +585,24 @@ func haze_wide() -> float:
 func wind_r() -> float:
 	return haze_r() * WIND_REACH if on("wind") > 0 else 0.0
 
+## The disc, as wide as the star is: a giant's reaches past what a plain
+## star's did.
 func haze_r() -> float:
+	return star_r() * haze_wide()
+
+## The plain disc's rim, where the hand's gas comes in: the giant's wider disc
+## does not move the pour.
+func pour_r() -> float:
 	return main_r() * haze_wide()
 
 ## Past this, water is ice.
 func frost_r() -> float:
-	return main_r() * FROST
+	return star_r() * FROST
+
+## How much of a giant the star is for its colour and the sky: a supergiant
+## is no redder than a giant.
+func giant() -> float:
+	return minf(1.0, swell)
 
 func gm() -> float:
 	return G * (1.0 + CORE * int(perk.core)) * mass
@@ -903,7 +918,7 @@ func gas_count() -> int:
 ## most it is poured into the puff before it.
 func pour() -> void:
 	var m := puff_mass()
-	var rh := haze_r()
+	var rh := pour_r()
 	var gas := gas_count()
 	for k in volley():
 		if gas >= MOST or bodies.size() >= FULL:
@@ -1316,7 +1331,10 @@ func _burn() -> void:
 		events.append({"kind": "wake" if any else "dim"})
 	cold = 0.0 if awake else cold + STEP
 	lit = move_toward(lit, 1.0 if awake else 0.0, STEP / DIM)
-	swell = move_toward(swell, 1.0 if awake and (ignited[2] or not h_on) else 0.0, STEP / SWELL)
+	var want := 0.0
+	if awake and (ignited[1] or not h_on):
+		want = SUPER if ignited[2] else 1.0
+	swell = move_toward(swell, want, STEP / SWELL)
 
 func _ignite(i: int) -> void:
 	ignited[i] = true
@@ -1397,7 +1415,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 			sim.made[i] = clampf(float(was_made[i]), 0.0, room)
 			room -= sim.made[i]
 			sim.ignited[i] = i == 0 or bool(was_lit[i])
-		sim.swell = clampf(float(cfg.get_value("star", "swell", 0.0)), 0.0, 1.0)
+		sim.swell = clampf(float(cfg.get_value("star", "swell", 0.0)), 0.0, SUPER)
 		sim.cold = clampf(float(cfg.get_value("star", "cold", 0.0)), 0.0, GRACE * 0.5)
 	sim.h_on = sim.fuel > 0.0
 	for which: String in POWERS:
