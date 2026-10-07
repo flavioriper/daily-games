@@ -1394,4 +1394,321 @@ supernovas (`Sim.kept()`), not a best.
     played; `buy` and `ignite` are the calls that were there and were not
     reached by that run. **Nobody has heard any of it**: the levels and
     every take are mine, and the user names the ones to redo.
-
+- **An eighth time (2026-10-07): a universe around the star** (spec
+  `2026-10-07-nightlight-universe-design.md`, built by five tasks on
+  `feat/nightlight-universe`, commits `bbf3a05d..63068a4d`). The user,
+  2026-10-07: "Let's do some polish into nightlight, i wanna reframe it a
+  little bit. Here is the flow i'm imagining, we start somewhere around a lot
+  of gas where the first star born and star pulling everything by the
+  gravity. User send gas to feed it so it grow and get more and more orbit
+  bodies attracted. After dying, it explode and eject layers becoming a
+  dwarf, while somewhere around a new star begins (camera moves to there).
+  The iron ejected start to form planets and heavy bodies, and the gameplay
+  continues. We are simulating a realistic env. [...] let's say it reach a
+  point where it become a red giant, star actually grows and user start to
+  see more around, and as the gravity increase the orbit objects start to be
+  influenced and lose to the gravity orbiting closer and closer. It should
+  feel like a real universe around, not something empty." Asked, they chose:
+  **three remnants by mass** (under 8 Suns a planetary nebula and a white
+  dwarf, no explosion; from 8 a supernova and a neutron star; past about 20
+  a supernova and a black hole, all staying in the world); **relics still
+  act** (an old star keeps its gravity, a black hole bends what passes near
+  it; over "decoration only" and "decoration, and the player can look
+  around"); **approach A with honest masses** (the sim stays centred on the
+  live star, relics are extra point masses at real-ish remnant masses, the
+  new star is born far enough that its disc is safe). **What this bullet
+  says replaces the star's two ends ("nova" and "fade") as the whole of a
+  life's close, the star reborn in place at the origin, the empty first
+  game, the clouds `Art.sky` drew after a supernova, and a giant 1.28 times
+  wide; the hand, the disc, the tide, the chain, the powers, the perks and
+  the tiles stand.**
+  - **Relics** (`arcade/nightlight_sim.gd`). A dead star stays as a
+    `Relic` (`WD`, `NS`, `BH`) in `relics: Array[Dictionary]`
+    (`{kind, m, pos, layers, age, novas}`, in the live star's frame), added
+    by `add_relic`. Every tick every body, gas too, gets `G * m / d^2`
+    toward each relic in `tick` (the star's pull is not touched, relics do
+    not pull the star, nothing is torn by one). A body within `relic_r`
+    of a relic is gone: `events` gets `{"kind": "lost", "at", "m", "relic"}`,
+    and a black hole adds the mass to its own `m`, a dwarf and a neutron
+    star do not. `relic_r`: `WD_R` 8 px, `NS_R` 5 px, `BH_R` 10 + `BH_R_M`
+    3 px a Sun of the hole's mass. Masses at death: a dwarf `WD_M` 0.6 Suns
+    + `WD_M_PER` 0.05 for every Sun above the first, never over `WD_MOST`
+    1.3 (Chandrasekhar is 1.4); a neutron star `IRON` (1.4, the core as it
+    is); a hole `BH_SHARE` 0.2 of the star, `BH_LEAST` 3 Suns, from
+    `COLLAPSE` 20 Suns. `RELICS_MOST` 12: a thirteenth drops the farthest. A
+    relic past `RELIC_REACH` 6,000 px is kept for the record and pulls
+    nothing (`tick` skips it). The pull table in `tick` is four packed arrays,
+    not an Array of Arrays (mine: 909 us became about 600 a tick with 300
+    bodies and 12 relics).
+  - **The far sky is decoration, kept in the file.** `far: Array[Vector2]`,
+    `NEIGHBOURS` 5 stars with no mass, seeded in `_init` 2,500 to 5,000 px
+    (`FAR_NEAR`, `FAR_FAR`) off, shifted with the relics at each birth,
+    drawn as 3 to 6 px warm points with a glow; nothing reads them but the
+    sky. `drift` is the sum of every `-D * away` so far (the far field's
+    anchor, so it is the same on reopening). The sky wraps it into
+    [-3000, 3000), not [0, 6000): that halves the largest offset, so a bare
+    strip never opens at the field's foot at zoom 0.6.
+  - **Three ends** (`ending()`): `"nova"` (an iron core of `IRON` Suns,
+    as before), `"nebula"` (new) and `"fade"` (`GRACE` seconds dim, as
+    before). **The nebula is the CARBON core**: `made[1]` (`made[0]` is
+    helium; the spec said "helium core" and was wrong) reaching `CARBON`
+    1.06 Suns with helium lit, carbon not lit, and the star under `HEAVY` 8
+    Suns: the star is too light to light the carbon it made, and sheds its
+    layers. `remnant()` is `BH` for a nova from `COLLAPSE` Suns, `NS` for
+    any other nova, `WD` for a nebula or a fade; `remnant_mass()` is the
+    above. The stardust: a nova `dust_for()` as before, a nebula
+    `NEBULA_DUST` 2, a fade `FADE_DUST` 1. The screen reads `remnant()` when
+    the end *begins* (`_end_rem`), because after `end()` it reads WD.
+  - **The birth** (`end()`). The dead star is turned into a relic *after*
+    `swell` is back to 0, so the lobe rule reads the new, plain disc. The
+    new star's place: direction `away` from the mean of the relics'
+    positions (a first relic takes a random direction) plus
+    `randf_range(-0.7, 0.7)` radians; distance `D = LOBE * haze_r() * (1 +
+    sqrt(rm / mass))` with `LOBE` 1.6 (mine) and `rm` the remnant's mass: the
+    new disc sits inside the new star's gravitational lobe, so the relic
+    cannot take it. Every relic and `far` shifts by `-D * away`, `drift` by
+    `+D * away`, the old star becomes a relic at `-D * away`, `last_birth =
+    {from, d}` records it. The gas it threw off is laid as before (`_lay_gas`,
+    which `born()` shares) but its dust is the old star's heavy layers:
+    `ash_dust = min(0.3, ASH_DUST + METAL * (layers[si] + layers[fe] +
+    layers[rock]))`, `METAL` 2.5. A solid made from gas with the dust share
+    over `IRONY` 0.08 is painted iron-dark: `Body.metal` (0..1, `_metal`,
+    kept through `_condense`, `_meet`, solid merges by mass and `_tear`) and
+    `Art.paint_of(kind, ice, metal)` lerping toward `Art.PAINT_IRON` (5c5a6e,
+    a cool slate) by 0.8 of it. **A first game** now opens in a cloud:
+    `born()` lays `FIRST_CLOUD` 36 puffs (`STAR_H`, 2% dust) and sets
+    `fresh`; `load_saved` with no file calls `born()`, a kept file does not,
+    and a file with no star section is still an empty sky.
+  - **The giant** (replaces the 1.28-times star). `swell` rises toward 1
+    from the helium flash (`ignited[1]`) or from starving, and toward
+    `SUPER` 2.0 once carbon burns; `GIANT` 1.2 (was 0.28), so a giant is 2.2
+    times its plain radius and a supergiant 3.4. `SEEN_LOG` 70 (was 40): a
+    1-Sun giant is bigger on screen and the view's scale falls, so the sky
+    shows more around it. **The disc follows the envelope**: `haze_r()`,
+    `frost_r()` and the eat radius are on `star_r()`, `wind_r()` follows
+    `haze_r()`, so bodies parked outside the plain disc are dragged, spiral
+    in and are swallowed whole; `roche_r()` and `LIGHT`'s `bind` stay on
+    `main_r()` (nothing is torn inside the envelope). **`pour_r()`** is the
+    plain disc (`main_r() * haze_wide()`), where the hand's gas comes in: the
+    pour does not move when the star swells. `giant()` is `minf(1, swell)`,
+    for the temperature's lerp, so a supergiant is as red, not redder. The
+    sky's `seen_r` log compression carries the 3.4.
+  - **The camera** (`arcade/nightlight_sky.gd`). `shift: Vector2` and
+    `view: float` (0 and 1 at rest) with `world(p) = centre + shift + p *
+    (zoom * view * u)`; `px()`, the star's three draws, the end's shells, the
+    impact puffs, the body shader's `star` uniform and the screen's shine
+    motes (now at `sky.world(Vector2.ZERO)`, they had dropped at `centre`)
+    all go through it. `END` entries grow `pull_back` 1.2 s, `pan` 3.0 s and
+    `close` 4.0 s (the literal `all` is gone, `end_time()` adds the phases;
+    **the nova's end went from 7.4 to 11.8 s**, every later harness beat
+    +4.4 s); `END.nebula`: `fall` 0, `swap` 4.2, `life` 6.5, `fly` 700, no
+    veil, `LOBES_NEBULA` 3 lobes at `randf_range(0.75, 1.0)` of each other,
+    only the hydrogen and helium layers, a round shell with soft lobes
+    (angle spread 0.6 rad), no fingers, the star thinning as a fade's does
+    (`_nebula_shells`, `_star_now`). `swapped(birth)` computes `view0` and
+    `fit`. **`view0 = clamp(old zoom / new zoom, 0.3, 1)`, not 1**: the
+    sim swaps a giant (zoom 0.28) for a 1-Sun star (zoom 1) at the swap, and
+    starting at 1 jumped every relic, neighbour and the far field 3.6 times
+    at once. **The pull back brings the MIDPOINT of the dead star and the
+    birthplace under `centre`** while `view` eases to `fit`, then the pan
+    goes midpoint to new star: the first build pinned the old star under
+    `centre` and measured `D` against the height, so the destination was
+    never in frame (review, Important). `fit = clamp(FIT * min(size) /
+    (D * zoom * u), VIEW_LEAST, 1)` with `FIT` 0.45 of the field's shorter
+    side (the width on a phone) and `VIEW_LEAST` 0.3. The harness's `where`
+    step printed both stars in frame at 4.10, 4.89 and 5.80 s on both
+    drivers. `close` eases `view` to 1 and `_rise` from the end's clock (not
+    from accumulated frame time). **Under `Motion.reduce` the pan is a
+    cut** and the star fades in over `REDUCED_RISE` 2 s. `finish_end()` puts
+    `shift` and `view` back.
+  - **The birth in gas.** While the camera travels the new star is a dim
+    seed (`SEED` 0.3 times the smaller of 1 and twice the share of the
+    travel done, `_found()`, so the pan has a destination), and while
+    `_rise < 1` the gas inside `BIRTH_NEAR` 0.8 of the haze is drawn at `pos
+    * (1 + BIRTH_IN * (1 - _rise))`, drifting in (`BIRTH_IN` 0.5). The shells
+    stay round the dead star's place after the swap (scaled by the camera's
+    `_cam_k()`). `begin_birth()` plays the same for a first game: `END.birth`
+    (no pull back, no pan, `close` 4.0), the screen's `_birth` flag
+    (`_step_end` steps a birth and calls `finish_end()` at `end_time()`, never
+    `sim.end()`), and `_ready` and `_on_reset` call `_begin_birth()` when
+    `sim.fresh`. Start over plays it too. A first game's birth waits behind
+    the first play's card (`_held_back`) and the `born` cue plays on the
+    birth's first step, not when the screen opens. The hint is hidden while
+    `sky.ending()`, so the birth is not under a line of text. The shop, the
+    perks and the powers stay locked for the 4 s.
+  - **The sky draws the universe** (`arcade/nightlight_sky.gd`,
+    `arcade/nightlight_art.gd`). `_fill_relics`: a dwarf is a `Art.WD`
+    (dfe8ff) point (8 px at zoom 1, never under 4 on screen) with a 40 px
+    warm glow; a neutron star an `Art.NS` (cfc4ff) 5 px point with a tighter
+    glow pulsing on `_clock` (standing still under reduce motion); a hole a dark disc
+    (`Art.SHADE`, `relic_r` in px, never under 10 on screen). **The hole's
+    ring is two warm glows, at 2.6 r and 1.9 r, alpha 0.5 each, with the
+    disc over them**: at the spec's 1.6 r almost all the ring sat under the
+    disc and the hole read as a hard dark dot (the controller's look at
+    `6c_relics`). No rays, no arcs, no beam. **The discs are drawn first in
+    `_draw_top` (`_holes`)** and not on the Bodies layer: the body shader
+    lights `COLOR`, and a `SHADE` disc there is a lit crescent; cost: a body
+    falling into a hole vanishes under the disc a frame early. **Nebulae**
+    are in the gas batch: each relic carries `NEBULA_PUFFS` 48 soft lights
+    in `Art.MADE` colours by its `layers`, on a seeded ring that grows from
+    1.5 to `NEBULA_FAR` 3.5 of `NEBULA_R` 500 px over `NEBULA_LIFE` 600 s of
+    its `age` and fades from alpha 0.22 to 0.06; each puff draws its random
+    numbers before it skips a spent layer, so a layer running out does not
+    move the others. `GAS_MOST` 480 became 1,400 (worst case: 300 gas + 12 x
+    48 nebula puffs + a fade's 7 x 72 shell puffs = 1,380; the spec said
+    1,100 and clipped the end's shells with 12 relics), `WARM_MOST` is
+    `MOST * 2 + 64` = 704 (two warm lights a body, 30 puffs, two a relic and
+    a neighbour; by sizing, not measured), and relics are drawn outside the
+    `seen > 0` guard, so the relic an end leaves is on screen from the swap.
+    `Art.sky(size, novas)` keeps its signature but draws no clouds (the
+    nebulae are world-anchored); `CLOUDS` is gone. `Art.far_field(rng_seed,
+    wide)` is `FAR_STARS` 90 soft points in three tints over `FAR_WIDE` 6,000
+    px, one mesh, one `draw_mesh`, first in `_draw_light`, under the gas.
+    **Its scale is `u * maxf(0.6, zoom * view)` and `FAR_PARALLAX` 0.25 is
+    only in the offsets** (`centre + shift * FAR_PARALLAX - slid * FAR_PARALLAX
+    * s`): as the spec wrote it, with the parallax in the scale too, the
+    mesh was 675 px wide and its stars sub-pixel. The backdrop slides by a
+    quarter of the pan and never otherwise.
+  - **The words** (`locale/ui.csv`, en/pt/es, titles English): new
+    `NL_END_NEBULA` ("The star lets its layers go · a white dwarf is left"),
+    `NL_END_NOVA_NS` and `NL_END_NOVA_BH` ("Supernova · a neutron star is
+    left" / "... a black hole is left"; `NL_END_NOVA` is gone, nothing read it),
+    `NL_CARD_RELICS_ONE`/`_N`; rewritten `NL_END_FADE` ("Nothing left to burn
+    · the star fades, a white dwarf is left"), `NL_GOAL_C_WAIT` and
+    `TUT_NL_END_BODY` (formatted with `IRON`, `HEAVY`, `COLLAPSE`: the three
+    ends and the relic that stays; it says "carbon core", not "helium").
+    **The goal line** is now "Carbon core 1.06 · sheds unless 8× · core 100
+    million K" (`[_hundredths(have), Art.short(HEAVY), core]`; the core
+    temperature stays last): the spec's "Carbon lights on a star of 8× ·
+    sheds at 1.06 Suns of helium" overflowed into "Power at 4×" on the same
+    row in pt, and `Art.short(CARBON)` printed "1". The first rewrite ("Carbon
+    lights at 8× · sheds at 1.06 Suns · core ...") was also sent back in
+    review: it dropped the element the line is about. pt and es drop the
+    second "núcleo" ("a 100 milhões de K") to fit. The row no longer shows
+    the shed threshold as a number of Suns of helium; it shows how much
+    carbon core there is.
+  - **The file and the card.** `KEPT` 3: `relics` (kind, m, pos.x, pos.y,
+    age, novas, layers[8]), `far` (x, y pairs), `drift`, and a body's `metal`
+    as its tenth column. `_load_sky` validates rows (7 and 2 columns,
+    finite, kind clamped, `m > 0`, caps); up to `NEIGHBOURS` valid `far` rows
+    replace the seeds, none keeps them. **A `KEPT` 2 file loads with no
+    relics, seeded `far`, `drift` zero and `metal` 0** (`far` and `drift` are
+    read only at `KEPT` >= 3 so an old file holding a stray key stays
+    clean). `Sim.kept()` adds `relics` (the count); the Arcade card's line
+    (`ui/menu/arcade_tab.gd`) appends ` · ` and `NL_CARD_RELICS_ONE/_N` once
+    there are any ("1× the Sun · 6 relics" in shot 17). The tutorial's END
+    page (`ui/hud/nightlight_tutorial_diagram.gd`) plays `begin_end("nova",
+    layers, remnant)` and `swapped(last_birth)`, and its `_set_up` clears the
+    relics, restores `far` from a copy taken in `_ready` and zeroes `drift`
+    so the loop does not pile up relics or wander off; the BURN and END
+    pages now draw the star 2.2 times wide (they set `swell` 1.0), against
+    frames sized for 1.28 times: the reports record 16 and 16b as looked at
+    (the body text fits in en and es, nothing breaks), not 15b and 15c.
+  - **Analytics**: `nightlight_nova` gains `remnant` ("wd", "ns", "bh") and
+    `how` is now "nova", "nebula" or "fade"; `lost` is not tracked (several a
+    minute near a hole). **Haptics and sound**: the nebula cues `fade` (the
+    slow letting-go take, a bump), as the fade does; `lost` is silent and
+    unfelt.
+  - **Measured.** Probe: 82 checks, 0 failed (46 + 9 relics, 20 ends, 7
+    giant); suite 249790/0. **Pace** (`-- pace 40 <seed> random 1.0`, the bot
+    holding the button): seed 1 ended as a supernova and a black hole at
+    25.4 min and 23.2 Suns before the giant change, 26.9 min and 20.9 Suns
+    after (+5.9%, inside the 20% line); seeds 2 and 3 were run only before it
+    (a black hole at 29.0 min, 23.8 Suns; a neutron star at 26.9 min, 19.5
+    Suns), so the pace after the giant change has one seed. Held 0.4: no end
+    in 40 min (carbon lit at 9.4 Suns at 37.6 min, 10.4 Suns by 40 min); at 70
+    min a neutron star at 42.7 min, 12.7 Suns (run before the giant change).
+    **A tick with 300 bodies and 12 relics, all in reach: 608-622 us; the
+    same sky with none, 270-290 us** (a debug build of the editor binary,
+    headless; the spec said under 60 us a tick for the relics and that
+    target cannot be met here, the 300-body sky with no relic is already
+    over it); 180 us a tick across a whole 40-minute run. **Draw calls**,
+    default driver / `opengl3_angle`, after the fix round: `2_start` 93 / 92,
+    `6_giant` 143 / 145, `6c_relics` 142 / 146, `8d_pull_back` 99 / 97,
+    `8e_pan` 96 / 98, `9b_after_nebula` 98 / 95; at the start of the branch
+    the same beats were 92 and 144 (`2_start`, `6_giant`); the far field is
+    +1 draw, a hole on screen +1; reduce motion 95, 141, 142, 95, 95 on
+    `2_start`, `6_giant`, `6c_relics`, `8e_pan`, `9b`; es within three of en.
+    The worst of the run is `7_shop` at 209-211 and the tab at 266. The
+    spec's "about 150" for a heavy star with three relics came in at 142-146.
+    The harness (`tests/_shot_nightlight.gd`) gains `6c_relics`, `8d_pull_back`,
+    `8e_pan`, `8f_rising` (`8d_swap` and `8e_rising` are gone),
+    `9a_nebula_leaving`, `9c_nebula_pan` (the only
+    frame that shows the white dwarf with the camera),
+    `9b_after_nebula` (was `9b_relic_wd`: the dwarf is off screen once the view
+    is back at 1, so the name lied), `16b_tut_end_pan`, and a
+    `fresh` mode (`-- <dir> en fresh`: it deletes the cfg and shoots
+    `0_birth` at 1.5 s and `0b_born` at 4.5 s); in the normal mode a born
+    cloud is saved before `open` so `2_start` still opens on a kept star. The
+    relics shot was retimed to 23.75 (it ran in the same frame as the shot
+    before, which takes 125 ms to save, and shot the old sky).
+  - **Mine, not asked for** (every number above; the rulings made during the
+    build, with what each costs if wrong):
+    - **`LOBE` 1.6, `METAL` 2.5, `IRONY` 0.08, `NEBULA_DUST` 2, the
+      nebula end's trigger, the relic cap and reach, the masses, the far field
+      and its parallax, `NEIGHBOURS`, the three-part camera and its seconds,
+      the first game's cloud, `GIANT` 1.2 and `SUPER` 2.0, the disc following
+      the envelope, the words.**
+    - **`COLLAPSE` stays 20**: the bot holding the button nonstop is the
+      ceiling of any hand, and seed 3 still left a neutron star, so a person
+      sees both; cost if wrong: black holes too common.
+    - **The nebula end is reached only by a hand slower than the bot at 0.4
+      held** (a star parked at 4 Suns sheds at about 45 min); kept as
+      designed, no retune of the chain, the pace being the user's call
+      (slow); cost if wrong: the white dwarf is rarely seen. A tuning
+      question for the user.
+    - **608 us a tick with 12 relics in reach is accepted** (the worst case:
+      each birth is 1,300 to 2,300 px, so the first relic leaves
+      `RELIC_REACH` after three or four lives; under a 60 Hz frame); cost if
+      wrong: a stutter on a phone at a full sky with many relics.
+    - **The lobe rule reads the new star's plain disc** (`swell` 0 before
+      `d`), else a giant's last disc would set the distance 2.2 times too far.
+    - **The camera's midpoint framing, `view0` and `fit`** (above): a pan that
+      moves twice (to the midpoint, then to the star), acceptable.
+    - **`_holes` on the top layer**, **the far field's scale**, **the black
+      hole's ring at 2.6 r in two glows**, **`GAS_MOST` 1,400**,
+      **`WARM_MOST` 704**, **the goal line's wording**, **the end's seconds**
+      (7.4 to 11.8); those that differ from the spec are in its
+      amendment.
+    - **The probe keeps its checks** though the project is on "no new
+      tests for now": they are Nightlight's own self-driven checks and every
+      pass extended them; cost: time.
+  - **Not done**: the spec's list (nothing on a phone, nobody has played it,
+    the concept tab is the first game still, relics do not tear, a relic's own
+    nebula is decoration and not the sim's gas, the player cannot look around,
+    a white dwarf never goes nova however much it eats, and the far field and
+    the neighbour stars are the only things in the universe that are not the
+    player's own doing), and what the build left:
+    - **The pull back and the pan read sparse at view 0.3**: the relic is a
+      4 px point, the gas small specks, the supernova's shells have flown to
+      the edges by the swap and a nebula's have faded. Both stars are in
+      frame, small. A larger minimum relic size while the camera is out, or
+      a longer shell life, are the next steps; nobody has watched the pan
+      move, it is judged on stills.
+    - **The nebula end** is reached in the harness by building the star, and
+      by a hand only when it is slower than the bot at 0.4 held (above).
+    - **Nothing on a phone**, no sound heard (`fade` is the take for the
+      nebula; no sound for a relic or the camera), the new words unreviewed
+      in pt and es by a person.
+    - **On a 16-Sun star the relics sit at the giant's rim** (zoom 0.275, 315
+      to 360 px from the centre against a radius of 280), so `6c_relics`
+      shows them but does not feature them; the dwarf's light is partly under
+      the star's glow. 1.5 times farther out would show them.
+    - **The far field is sparse** (90 stars in 6,000 px, 5 to 13 on screen,
+      like the sky's own specks), so the parallax is subtle; it jumps once
+      when `drift` crosses its wrap, hidden in the end's own change.
+    - **Deferred minors from the reviews**: the HUD shows the new star's
+      numbers while the field pans (4.2 s); a ~7% scale jump at a giant's swap
+      (`fit` floor 0.3 against a giant's zoom 0.28); closing the screen after
+      the swap skips the perks card (the window is 3.8 s, now 8.2 s; the dust
+      is still reachable); the birth's drift moves puffs only inside 0.8 of
+      the haze, a step at that edge; `short = minf(size.x, size.y)` is the
+      width only on a phone; `born` would cue twice on a first step with a
+      zero delta; `_sweep`'s metal weighs ice with rock and `_gulp` does not
+      dilute `metal`; a file with no star section opens as an empty sky, not
+      a birth; the probe's boundary checks are thin (a relic exactly at
+      `RELIC_REACH`, `d2 == r^2`, a malformed relic row), "giant engulfs" has
+      no control, `pulls` caches a hole's mass for the tick it eats in;
+      `nightlight_sim.gd` is 1,381 lines and `nightlight_sky.gd` 763 (the
+      camera could be a helper); the nebula puffs' random numbers (about
+      1,700 a frame at 12 relics) could be cached by novas and kind.

@@ -285,3 +285,79 @@ iron paint; the lobe rule's 1.6; the three-part camera and its seconds;
 the first game's cloud; the giant's 2.2 and the supergiant's 3.4; the disc
 following the envelope; the relic cap and reach; the far field, the
 neighbour stars and their parallax; the words.
+
+## Amendment, 2026-10-07: as built
+
+The build (`bbf3a05d..63068a4d`, five tasks, reviewed) kept the design and
+changed these. The code's values are the ones quoted; the notes in
+`docs/agents/arcade.md` (the eighth-time bullet under Nightlight) carry the
+measurements and the rest of what the build left.
+
+- **The pour stays at the plain disc** (section 6). `haze_r()`, `frost_r()`
+  and the eat radius follow `star_r()`, but the hand's gas still comes in at
+  the new `pour_r()` (`main_r() * haze_wide()`): a giant's wider disc does
+  not move where the player's gas arrives. `giant()` is `minf(1, swell)` for
+  the temperature, and `swell` runs 0..`SUPER` 2.0.
+- **"Helium core" is the carbon core** (sections 4, 8 and the words). In the
+  sim `made[0]` is helium and `made[1]` is carbon; the nebula's trigger is
+  `made[1]` reaching `CARBON` 1.06 Suns with helium lit, carbon not lit and
+  the star under `HEAVY` 8 Suns: a star too light to light the carbon it
+  made. The spec's "helium core" was wrong. The tutorial's END page says
+  "carbon core", and `NL_END_NOVA` is gone (`NL_END_NOVA_NS` and `_BH` read
+  in its place). A white dwarf's mass is `WD_M` + `WD_M_PER` for every Sun
+  *above the first* (the spec's own test, a 4-Sun star leaving 0.6 + 0.15,
+  says so; its prose said "for every Sun the star weighed").
+- **The far field's scale** (section 7). The spec put `FAR_PARALLAX` 0.25 in
+  both the scale and the offset; the mesh came out 675 px wide with
+  sub-pixel stars. The scale is `u * maxf(0.6, zoom * view)` and the
+  parallax is only in the offsets (`centre + shift * FAR_PARALLAX - slid *
+  FAR_PARALLAX * s`): the backdrop still slides a quarter of the pan and
+  never otherwise. `drift` is wrapped into [-3000, 3000), not [0, 6000), so
+  the mesh always reaches at least 2,250 scaled px from the centre.
+- **A black hole's disc is on the top layer** (section 7 said the body
+  layer). The body shader lights `COLOR`, so a `SHADE` disc there is a lit
+  crescent; the discs are one batch (`_holes`) drawn first in `_draw_top`.
+  A body falling in vanishes under the disc a frame early.
+- **The black hole's ring is at 2.6 r** (section 7 said 1.6 r): at 1.6 r
+  almost all the ring was under the disc and the hole read as a hard dark
+  dot. It is two warm glows, 2.6 r and 1.9 r, alpha 0.5 each.
+- **The camera frames the midpoint** (section 5). The pull back brings the
+  midpoint of the dead star and the birthplace under `centre` while `view`
+  eases to `fit`, and the pan goes from the midpoint to the new star; the
+  spec pinned the old star under `centre` and measured `D` against the
+  sky's height, so the birthplace was never in frame. `fit = clamp(FIT *
+  min(size) / (D * zoom * u), VIEW_LEAST, 1)` with `FIT` 0.45 of the
+  field's shorter side and `VIEW_LEAST` 0.3. `view` starts at `view0 =
+  clamp(old zoom / new zoom, 0.3, 1)`, not 1, so the frame does not jump
+  3.6 times when a giant is swapped for a young star; the pull back can
+  therefore close in. The shells stay round the dead star's place after the
+  swap, and the new star is a dim seed (`SEED` 0.3) while the camera
+  travels.
+- **`GAS_MOST` is 1,400 and `WARM_MOST` 704** (section 7 said 1,100 for the
+  gas and said nothing of the warm lights, capped at `MOST` 320): 300 gas + 12 relics x 48 nebula puffs
+  + a fade's 7 x 72 shell puffs is 1,380, and each body can take two warm
+  lights. `WARM_MOST` is `MOST * 2 + 64`, by sizing, not measurement.
+- **The goal line's wording** (section 4). The spec's "Carbon lights on a
+  star of 8× · sheds at 1.06 Suns of helium" overflowed into "Power at 4×"
+  on the same row in pt, and `Art.short(CARBON)` printed "1". The line reads
+  "Carbon core 1.06 · sheds unless 8× · core 100 million K" (pt "Núcleo de
+  carbono 1,06 · se desfaz sem 8× · a 100 milhões de K"; es has the same shape,
+  "Núcleo de carbono %s · se deshace sin %s× · a %s" in the csv); the 1.06 shown
+  is the carbon core the star has now, not the threshold.
+- **The end's seconds** (section 5). The nova's end is 11.8 s, not the
+  spec's 7.4 s plus the pan: `swap` 3.6 + `pull_back` 1.2 + `pan` 3.0 +
+  `close` 4.0, where the old tail after the swap was 3.8. Every later
+  harness beat moved +4.4 s. The `all` entry is gone; `end_time()` adds the
+  phases.
+- **Measured against the spec's expectations.** A tick with 300 bodies and
+  12 relics in reach is 608-622 us (280 with no relic, a debug build), not
+  "under 60 us" for the relics: accepted. A heavy star with three relics is
+  142-146 draw calls, not about 150. The bot held two thirds of the time
+  ends on seed 1 at 26.9 min and 20.9 Suns, as a black hole (25.4 min and
+  23.2 Suns before the giant change, +5.9%); section 8 said the pace of a life
+  was unchanged on purpose, and the giant moved it by that much.
+- **Also built, not in the spec**: the pull table in `tick` is four packed
+  arrays; `Art.sky(size, novas)` keeps its signature and `CLOUDS` is gone;
+  `REDUCED_RISE` 2 s; `END.birth`; `Sim.fresh`; the harness's `fresh` mode,
+  `9c_nebula_pan` and `16b_tut_end_pan`; `9b_relic_wd` renamed
+  `9b_after_nebula` (the dwarf is off screen at the time of the shot).
