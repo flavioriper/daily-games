@@ -169,8 +169,9 @@ func _grove_card() -> Control:
 ## What the place makes, beside its name: the log of the pill above, the
 ## word, and how much of it a minute comes in by itself (the user,
 ## 2026-10-06: "show what the grove game has as outcome ... so user can
-## understand it's meant to farm wood. Show a wood/min rate"). Nothing chops
-## by itself yet, so the rate reads "--" (`_write_rate`).
+## understand it's meant to farm wood. Show a wood/min rate"). The rate is
+## the most the grove's jetty can send in a minute at its levels
+## (`Sim.wood_per_min`, written by `_write_rate`).
 func _makes_chip() -> Control:
 	var chip := PanelContainer.new()
 	chip.name = "Makes"
@@ -246,7 +247,9 @@ func _process(delta: float) -> void:
 	if _sim == null:
 		return
 	var before: int = _sim.trees.size()
-	_sim.step(delta)
+	# nobody is in the grove while it is looked at from here: its beavers
+	# do not bite, and get these seconds as time away when it is next read
+	_sim.step(delta, false, Vector2.ZERO, false)
 	_sim.events.clear()
 	# what the raft has landed is wood in the valley now. The grove is kept
 	# at once: the tab reads it from its file each time it is shown, and one
@@ -269,8 +272,9 @@ func _write_wood() -> void:
 	if _wood_l != null:
 		_wood_l.text = Art.short(Stock.count("wood"))
 
-## A rate of none is "--", not 0: there is nothing to count until something
-## chops by itself. Under ten a minute it keeps one decimal.
+## A rate of none is "--", not 0 (the jetty always sends something, so it is
+## what a tab with no grove read yet shows). Under ten a minute it keeps one
+## decimal.
 func _write_rate() -> void:
 	var rate: float = 0.0 if _sim == null else _sim.wood_per_min()
 	if rate <= 0.0:

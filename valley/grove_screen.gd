@@ -164,6 +164,9 @@ var _nums: Array = []    # {at, text, t, gold}: `at` in view units
 var _flies: Array = []   # {from, to, t, give}: logs on their way to the wood plate
 var _bump := {}     # plate -> its running bump
 var _dirty := false
+## The screen has handed itself back (`_on_back`): the grove is kept and is
+## the tab's from here on.
+var _left := false
 var _since_save := 0.0
 var _opened_at := 0
 var _felled_at_open := 0
@@ -583,7 +586,7 @@ func _tutor_hold(on: bool) -> void:
 # --- time ---
 
 func _process(delta: float) -> void:
-	if sim == null:
+	if sim == null or _left:
 		return
 	var holding: bool = _hold and not _held_back and not _shop.visible and not _tree.is_open() and not settings_sheet.is_open()
 	sim.step(delta, holding, unit(_hold_at))
@@ -954,15 +957,23 @@ func _draw_over() -> void:
 # --- leaving ---
 
 func _save() -> void:
-	if sim == null:
+	if sim == null or _left:
 		return
 	sim.save(Time.get_unix_time_from_system())
 	Stock.flush()
 	_dirty = false
 	_since_save = 0.0
 
+## The grove is kept and the screen stops there, before it says it is closed:
+## the menu frees it at the end of the frame and shows the tab, which reads
+## the same file at once. A screen that went on stepping beside the tab
+## could see the raft land in that frame, and the tab see it too, and one
+## load would be wood twice; one that kept the grove again as it left the
+## tree would write over what the tab had kept since.
 func _on_back() -> void:
 	_save()
+	_left = true
+	set_process(false)
 	Analytics.track("valley_leave", {"place": GAME, "seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0),
 		"felled": sim.felled - _felled_at_open})
 	closed.emit()

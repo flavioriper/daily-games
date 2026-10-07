@@ -579,10 +579,16 @@ func value(id: String, at := -1) -> float:
 # --- time ---
 
 ## `dt` seconds pass; `holding` with the circle's centre `at` in land units.
-func step(dt: float, holding := false, at := Vector2.ZERO) -> void:
+## `here` is whether somebody is in the grove: the Valley tab steps a grove
+## for its card's picture with nobody in it, and there the beavers do not
+## bite (trees come up and the jetty's chain runs all the same). Their share
+## of such seconds is the one time away has, worked out by `catch_up` when
+## the grove is next read from its file.
+func step(dt: float, holding := false, at := Vector2.ZERO, here := true) -> void:
 	clock += dt
 	_grow(dt, false)
-	_gnaw(dt)
+	if here:
+		_gnaw(dt)
 	if holding and clock - _last_chop >= swing_time():
 		_chop(at)
 	_send(dt)
@@ -717,9 +723,9 @@ func _fell(tree: Dictionary, by: String) -> void:
 		if int(b.tree) == int(tree.id):
 			b.tree = 0
 			b.t = 0.0
-	var left := _leave(int(tree.tier), tree.pos)
-	events.append({"kind": "fell", "tree": tree, "give": left.give, "lucky": left.lucky, "by": by})
-	events.append({"kind": "log", "log": left.pile})
+	var gift := _leave(int(tree.tier), tree.pos)
+	events.append({"kind": "fell", "tree": tree, "give": gift.give, "lucky": gift.lucky, "by": by})
+	events.append({"kind": "log", "log": gift.pile})
 
 ## What a felled tree of a kind leaves at `pos`: its energy, and its wood as
 ## a pile, worth double when luck has it (the energy is never doubled: luck
@@ -736,10 +742,11 @@ func _leave(tier: int, pos: Vector2) -> Dictionary:
 
 # --- the jetty ---
 
-## A pile of `wood` comes down at `pos`, or on the nearest stack within MERGE
-## of it, so a land chopped for an hour is not a thousand piles. A stack has
-## lain since its last pile came down.
-func _drop(pos: Vector2, tier: int, wood: int, lucky: bool) -> Dictionary:
+## A pile of `wood` comes down at `pos` (or `n` of them holding `wood`
+## between them), or on the nearest stack within MERGE of it, so a land
+## chopped for an hour is not a thousand piles. A stack has lain since its
+## last pile came down.
+func _drop(pos: Vector2, tier: int, wood: int, lucky: bool, n := 1) -> Dictionary:
 	var onto := {}
 	var near := MERGE
 	for pile: Dictionary in logs:
@@ -751,7 +758,7 @@ func _drop(pos: Vector2, tier: int, wood: int, lucky: bool) -> Dictionary:
 		onto = {"id": _next_log, "pos": pos, "n": 0, "wood": 0, "tier": tier, "lucky": false, "born": clock}
 		_next_log += 1
 		logs.append(onto)
-	onto.n = int(onto.n) + 1
+	onto.n = int(onto.n) + n
 	onto.wood = int(onto.wood) + wood
 	onto.tier = maxi(int(onto.tier), tier)
 	onto.lucky = bool(onto.lucky) or lucky
@@ -814,8 +821,12 @@ func _send(dt: float) -> void:
 		tie_t = 0.0
 		return
 	var left := dt
-	# every turn ties, lands or brings the raft home, and the jetty holds a
-	# few dozen piles: the bound is never met
+	# every turn ties a bundle, lands the raft or brings it home, so the
+	# turns a call can take are a few for each pile on the jetty, and the
+	# jetty never holds more than its room: what gathers is refused past it
+	# and what a file claims past it is put back on the land (`_fit_jetty`).
+	# That is a few dozen piles at its last level: the bound is a guard,
+	# never met.
 	for _turn in 4096:
 		if not raft.away and not bundles.is_empty():
 			_sail()
@@ -1009,16 +1020,28 @@ func save(now: float) -> void:
 	cfg.set_value("jetty", "crate_t", _crate_t)
 	cfg.save(path)
 
-# What a kept file says is not trusted: a key that is missing (a grove kept
-# before the jetty), of the wrong kind or less than nothing reads as none, so
-# no file can raise an error or make wood.
+# What a kept file says of the jetty is not trusted. A key that is missing
+# (a grove kept before the jetty) or of the wrong kind reads as none. A count
+# that is less than nothing, not a number or past MOST reads as none; no more
+# than ROWS stacks or bundles are read; piles holding less than a wood each
+# are none; and the jetty is held to its room (`_fit_jetty`). So no file
+# raises an error, turns a count over into less than nothing or stalls the
+# chain. What it cannot know is whether figures that pass are true: a file
+# that says eight piles hold a million wood is believed.
 
-## A count: a whole number, never less than none.
+## The most a count in a file may be: past it a float is not a whole number
+## any more, and a few hundred of them add up to more than an int holds.
+const MOST := 1 << 53
+## The stacks, and the bundles, read from a file at most. The land has room
+## for about a hundred stacks MERGE apart.
+const ROWS := 256
+
+## A count: a whole number from none to MOST, and none for anything else.
 static func _count(v: Variant) -> int:
 	if v is int:
-		return maxi(0, v)
-	if v is float and is_finite(v):
-		return maxi(0, int(v))
+		return v if v >= 0 and v <= MOST else 0
+	if v is float and is_finite(v) and v >= 0.0 and v <= float(MOST):
+		return int(v)
 	return 0
 
 ## Seconds, from none to `most`.
@@ -1048,10 +1071,41 @@ static func _point(v: Variant) -> Vector2:
 			return pos
 	return Vector2.INF
 
+## Where the jetty meets the land, as far as the sim knows it: the middle of
+## the front left edge, far enough in for a pile to lie.
+static func by_jetty() -> Vector2:
+	return LAND * 0.5 + Vector2(EDGE - HALF * 0.5, HALF * 0.5 - EDGE)
+
+## The jetty holds no more than its room: the bundles that fit, in the order
+## they waited, then as many loose piles as there is room left for. What is
+## over is put back on the land, lying by the jetty's end of it with all its
+## wood, to be gathered again. Nothing the sim does fills a jetty past its
+## room; a file may say it is.
+func _fit_jetty() -> void:
+	var free := jetty_room()
+	var over := 0
+	var over_wood := 0
+	var fit: Array[Dictionary] = []
+	for b: Dictionary in bundles:
+		if int(b.n) <= free:
+			free -= int(b.n)
+			fit.append(b)
+		else:
+			over += int(b.n)
+			over_wood += int(b.wood)
+	bundles = fit
+	if int(loose.n) > free:
+		var kept := _share(int(loose.wood), free, int(loose.n))
+		over += int(loose.n) - free
+		over_wood += int(loose.wood) - kept
+		loose = {"n": free, "wood": kept}
+	if over > 0:
+		_drop(by_jetty(), int(lv.seeds), over_wood, false, over).born = clock - LIES
+
 ## The jetty as it was kept.
 func _read_jetty(cfg: ConfigFile) -> void:
 	logs.clear()
-	for row: Variant in _rows(cfg.get_value("jetty", "logs", [])):
+	for row: Variant in _rows(cfg.get_value("jetty", "logs", [])).slice(0, ROWS):
 		var held := _piles(row, 2)
 		var pos := _point(row)
 		if int(held.n) <= 0 or not pos.is_finite():
@@ -1063,10 +1117,11 @@ func _read_jetty(cfg: ConfigFile) -> void:
 		_next_log += 1
 	loose = _piles(cfg.get_value("jetty", "loose", []))
 	bundles.clear()
-	for row: Variant in _rows(cfg.get_value("jetty", "bundles", [])):
+	for row: Variant in _rows(cfg.get_value("jetty", "bundles", [])).slice(0, ROWS):
 		var b := _piles(row)
 		if int(b.n) > 0:
 			bundles.append(b)
+	_fit_jetty()
 	# a raft that is home carries nothing; one that is out is no further
 	# than its whole time
 	var kept := _rows(cfg.get_value("jetty", "raft", []))
@@ -1116,7 +1171,7 @@ static func load_saved(now: float) -> RefCounted:
 		if not same_land or not stands(pos):
 			pos = sim._spot()
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
-			"hp": clampf(float(row[3]), 0.5, sim.hp(tier)), "born": -GROW})
+			"hp": clampf(float(row[3]), DOWN, sim.hp(tier)), "born": -GROW})
 		sim._next_id += 1
 	sim._due.clear()
 	var every: float = sim.spawn_time()

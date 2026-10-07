@@ -267,24 +267,29 @@ func _check_jetty(stock: Node) -> void:
 		and int(sim.logs[0].wood) == 1 and sim.lying() == 1 and sim.jetty_held() == 0)
 	_ok("felled by the axe, and by no luck", fells.size() == 1 and fells[0].by == "axe" and not fells[0].lucky and int(fells[0].give) == 1)
 	_ok("and Stock is not touched", stock.count("wood") == had and sim.owed == 0 and sim.wood_sent == 0)
-	# the swing that takes it is the second after the fell, a second on (a
-	# pile lies 0.9 s first), give or take a frame
-	var seen := _hold(sim, at, 1.2)
-	_ok("held a second more it is on the jetty", sim.logs.is_empty() and sim.jetty_held() == 1 and int(sim.loose.wood) == 1
-		and _of(seen, "gather").size() == 1 and stock.count("wood") == had)
-	# a stack, and a jetty with room for some of it
+	# the swing that takes it is the first after it has lain LIES
+	var seen := _hold(sim, at, Sim.LIES + sim.swing_time() + 0.2)
+	var gathered := _of(seen, "gather")
+	_ok("held on, it is gathered to the jetty once it has lain", sim.logs.is_empty() and sim.lying() == 0 and gathered.size() == 1 and int(gathered[0].n) == 1
+		and int(gathered[0].wood) == 1 and sim.jetty_held() == 1 and int(sim.loose.wood) == 1 and stock.count("wood") == had)
+	# a stack one pile bigger than the jetty has room for, a lucky pile in it
 	var spot := Sim.LAND * 0.5
 	var full: RefCounted = Sim.new(32)
 	full.trees.clear()
-	for i in 7:
-		full._drop(spot, 0, 2 if i == 3 else 1, i == 3)
+	var room: int = full.jetty_room()
+	for i in room + 1:
+		full._drop(spot, 0, 2 if i == 0 else 1, i == 0)
 	full.logs[0].born = -10.0
-	_ok("seven piles on one spot are one stack of seven, holding eight with a lucky one", full.logs.size() == 1 and full.lying() == 7 and int(full.logs[0].wood) == 8)
-	_hold(full, spot, 0.6)
-	_ok("six go to a jetty of six and the seventh stays lying", full.jetty_room() == 6 and full.jetty_held() == 6 and full.lying() == 1)
-	_ok("nothing is made or lost as the stack is shared (%d and %d)" % [int(full.loose.wood), int(full.logs[0].wood)], int(full.loose.wood) + int(full.logs[0].wood) == 8)
-	seen = _hold(full, spot, 1.2)
-	_ok("a full jetty takes none, and says so", full.lying() == 1 and full.jetty_held() == 6 and _of(seen, "gather").is_empty() and not _of(seen, "full").is_empty())
+	_ok("%d piles on one spot are one stack, holding %d with a lucky one" % [room + 1, room + 2], room == Sim.JETTY and full.logs.size() == 1 and full.lying() == room + 1
+		and int(full.logs[0].wood) == room + 2)
+	_hold(full, spot, DT)
+	_ok("a jetty of %d takes %d of them and the last stays lying" % [room, room], full.jetty_held() == room and full.lying() == 1)
+	var on_land: int = int(full.logs[0].wood) if full.logs.size() == 1 else -1
+	_ok("nothing is made or lost as the stack is shared (%d and %d)" % [int(full.loose.wood), on_land], on_land >= 1 and int(full.loose.wood) + on_land == room + 2)
+	# the very next swing, before anything can be tied and leave
+	full._last_chop = -10.0
+	seen = _hold(full, spot, DT)
+	_ok("a full jetty takes none, and says so", full.lying() == 1 and full.jetty_held() == room and _of(seen, "gather").is_empty() and _of(seen, "full").size() == 1)
 	var fair := true
 	for n in range(1, 9):
 		for wood in range(n, 40):
@@ -295,61 +300,96 @@ func _check_jetty(stock: Node) -> void:
 	var pair: RefCounted = Sim.new(34)
 	pair.trees.clear()
 	for i in 2:
-		pair.trees.append({"id": 100 + i, "tier": 0, "pos": spot + Vector2(40.0 * i, 0.0), "hp": 1.0, "born": -Sim.GROW})
+		pair.trees.append({"id": 100 + i, "tier": 0, "pos": spot + Vector2(Sim.MERGE - 30.0, 0.0) * i, "hp": 1.0, "born": -Sim.GROW})
 	_hold(pair, spot + Vector2(20.0, 0.0), DT)
-	_ok("two fells 40 apart are one stack of two", pair.felled == 2 and pair.logs.size() == 1 and int(pair.logs[0].n) == 2 and int(pair.logs[0].wood) == 2)
+	_ok("two fells nearer than MERGE are one stack of two", pair.felled == 2 and pair.logs.size() == 1 and int(pair.logs[0].n) == 2 and int(pair.logs[0].wood) == 2)
 	var apart: RefCounted = Sim.new(34)
 	apart.trees.clear()
 	for i in 2:
-		apart.trees.append({"id": 100 + i, "tier": 0, "pos": spot + Vector2(80.0 * i, 0.0), "hp": 1.0, "born": -Sim.GROW})
+		apart.trees.append({"id": 100 + i, "tier": 0, "pos": spot + Vector2(Sim.MERGE + 10.0, 0.0) * i, "hp": 1.0, "born": -Sim.GROW})
 	_hold(apart, spot + Vector2(40.0, 0.0), DT)
-	_ok("and two 80 apart are two piles", apart.felled == 2 and apart.logs.size() == 2)
-	# the chain, all at once and a frame at a time
+	_ok("and two further apart are two piles", apart.felled == 2 and apart.logs.size() == 2)
+	# the chain, all at once and a frame at a time, on a full jetty
 	var once: RefCounted = Sim.new(33)
 	var slow: RefCounted = Sim.new(33)
-	once.loose = {"n": 6, "wood": 9}
-	slow.loose = {"n": 6, "wood": 9}
-	once._send(30.0)
-	for i in 900:
+	var wood: int = room + 3
+	once.loose = {"n": room, "wood": wood}
+	slow.loose = {"n": room, "wood": wood}
+	once._send(10000.0)
+	var did_once := _chain(once.events)
+	once.events.clear()
+	var did_slow: Array[String] = []
+	for i in 300000:
 		slow._send(DT)
-	_ok("thirty seconds at once are thirty a frame at a time (%d landed, %d held)" % [once.owed, once.jetty_held()], once.owed > 0 and once.owed == slow.owed
-		and once.wood_sent == slow.wood_sent and once.jetty_held() == slow.jetty_held() and once.bundles.size() == slow.bundles.size() and bool(once.raft.away) == bool(slow.raft.away))
-	once._send(9970.0)
-	for i in 299100:
-		slow._send(DT)
-	_ok("ten thousand seconds empty a full jetty into what is owed", once.owed == 9 and once.wood_sent == 9 and once.jetty_held() == 0 and not once.raft.away and once.raft_at() == 0.0)
-	_ok("and the same a frame at a time", slow.owed == 9 and slow.wood_sent == 9 and slow.jetty_held() == 0 and not slow.raft.away)
-	_ok("what is owed is taken once", once.take_owed() == 9 and once.owed == 0 and once.take_owed() == 0 and once.wood_sent == 9)
+		if not slow.events.is_empty():
+			did_slow.append_array(_chain(slow.events))
+			slow.events.clear()
+	_ok("ten thousand seconds empty a full jetty into what is owed", once.owed == wood and once.wood_sent == wood and once.jetty_held() == 0 and not once.raft.away and once.raft_at() == 0.0)
+	_ok("and the same a frame at a time", slow.owed == wood and slow.wood_sent == wood and slow.jetty_held() == 0 and not slow.raft.away)
+	_ok("bundle for bundle and landing for landing (%s)" % ", ".join(did_once), did_once.size() >= 3 and did_once == did_slow)
+	_ok("what is owed is taken once", once.take_owed() == wood and once.owed == 0 and once.take_owed() == 0 and once.wood_sent == wood)
+	# the raft: out for half its time, where its wood is counted, and back
 	var out: RefCounted = Sim.new(36)
-	out.loose = {"n": 3, "wood": 3}
-	out._send(18.0)
-	_ok("tied in twelve seconds, the raft is half way out six later", is_equal_approx(out.raft_at(), 0.5) and int(out.raft.n) == 3 and out.owed == 0)
-	out._send(6.0)
-	_ok("its wood is counted when it gets there", out.owed == 3 and int(out.raft.n) == 0 and is_equal_approx(out.raft_at(), 1.0) and bool(out.raft.away))
-	out._send(12.0)
-	_ok("and it is home twelve seconds on", not out.raft.away and out.raft_at() == 0.0)
-	# a short bundle only when the chain would stand still
-	var eight: RefCounted = Sim.new(35)
-	eight.lv.jetty = 1
-	eight.loose = {"n": 8, "wood": 8}
+	var size: int = out.bundle_size()
+	out.loose = {"n": size, "wood": size}
+	out._send(out.tie_time() * 0.5)
+	_ok("a bundle is not tied before its time", int(out.loose.n) == size and out.bundles.is_empty() and not out.raft.away)
+	out._send(out.tie_time() * 0.5 + out.raft_time() * 0.25)
+	_ok("tied, it leaves at once: the raft is half way out a quarter of its time later", is_equal_approx(out.raft_at(), 0.5) and int(out.raft.n) == size and int(out.raft.bundles) == 1
+		and out.owed == 0 and out.jetty_held() == 0)
+	out._send(out.raft_time() * 0.25)
+	_ok("its wood is counted when it gets there, at half its time", out.owed == size and out.wood_sent == size and int(out.raft.n) == 0 and is_equal_approx(out.raft_at(), 1.0) and bool(out.raft.away))
+	out._send(out.raft_time() * 0.25)
+	_ok("it is on its way back, and landed nothing twice", bool(out.raft.away) and is_equal_approx(out.raft_at(), 0.5) and out.owed == size)
+	out._send(out.raft_time() * 0.25)
+	_ok("and home at the whole of it", not out.raft.away and out.raft_at() == 0.0 and out.owed == size)
+	# whole bundles first; a short one only when the chain would stand still
+	var some: RefCounted = Sim.new(35)
+	size = some.bundle_size()
+	var piles: int = 2 * size + 1
+	while some.jetty_room() < piles:
+		some.lv.jetty = int(some.lv.jetty) + 1
+	some.loose = {"n": piles, "wood": piles}
+	var tie: float = some.tie_time()
+	var trip: float = some.raft_time()
+	# the first leaves as it is tied; the second when it is tied and the
+	# raft is back; the pile over is tied from the raft's next return
+	var second := maxf(2.0 * tie, tie + trip)
+	var want_at := [tie, second, second + trip + tie]
 	var left := []
-	var short_ok := false
+	var short_home := false
 	t = 0.0
-	while t < 120.0:
-		var home: bool = not eight.raft.away and eight.bundles.is_empty()
-		eight._send(DT)
+	while t < want_at[2] + trip + 1.0:
+		var home: bool = not some.raft.away and some.bundles.is_empty()
+		some._send(DT)
 		t += DT
-		for e: Dictionary in eight.events:
+		for e: Dictionary in some.events:
 			if e.kind == "sailed":
 				left.append([t, int(e.n)])
-			elif e.kind == "tied" and int(e.n) == 2:
-				short_ok = home
-		eight.events.clear()
-	_ok("eight piles on a jetty of eight leave as 3, 3 and 2 (%s)" % str(left), eight.jetty_room() == 8 and left.size() == 3 and left[0][1] == 3 and left[1][1] == 3 and left[2][1] == 2
-		and eight.wood_sent == 8)
-	_ok("the two only once the raft is home with nothing waiting: at 12, 36 and 72 s", left.size() == 3 and short_ok and absf(left[0][0] - 12.0) < 0.1 and absf(left[1][0] - 36.0) < 0.1 and absf(left[2][0] - 72.0) < 0.1)
+			elif e.kind == "tied" and int(e.n) < size:
+				short_home = home
+		some.events.clear()
+	_ok("%d piles leave as %d, %d and 1 (%s)" % [piles, size, size, str(left)], size > 1 and left.size() == 3 and left[0][1] == size and left[1][1] == size and left[2][1] == 1
+		and some.wood_sent == piles and some.jetty_held() == 0)
+	var on_time: bool = left.size() == 3
+	for i in mini(left.size(), 3):
+		on_time = on_time and absf(float(left[i][0]) - float(want_at[i])) < 0.1
+	_ok("the one over only once the raft is home with nothing waiting (%s s)" % str(want_at), short_home and on_time)
 	var fresh: RefCounted = Sim.new(37)
-	_ok("a new grove's jetty sends 7.5 wood a minute at most, the raft's rate (%.2f)" % fresh.wood_per_min(), is_equal_approx(fresh.wood_per_min(), 7.5))
+	var by_tying: float = 60.0 * fresh.bundle_size() / fresh.tie_time()
+	var by_raft: float = 60.0 * fresh.bundle_size() * fresh.raft_load() / fresh.raft_time()
+	_ok("a new grove's jetty sends the slower of tying (%.1f) and rafting (%.1f) piles a minute, a wood each (%.2f)" % [by_tying, by_raft, fresh.wood_per_min()], fresh.give(0) == 1
+		and is_equal_approx(fresh.wood_per_min(), minf(by_tying, by_raft)))
+	fresh.lv.luck = 5
+	_ok("and luck's doubles with it", is_equal_approx(fresh.wood_per_min(), minf(by_tying, by_raft) * (1.0 + fresh.luck_chance())) and fresh.luck_chance() > 0.0)
+
+## What the chain did, in order: "tied 4 5", "sailed 4 5", "landed 0 5".
+func _chain(events: Array[Dictionary]) -> Array[String]:
+	var out: Array[String] = []
+	for e: Dictionary in events:
+		if e.kind in ["tied", "sailed", "landed"]:
+			out.append("%s %d %d" % [e.kind, int(e.get("n", 0)), int(e.wood)])
+	return out
 
 ## Beavers, keen chops, lucky wood, crates, and kinds gone from the land.
 func _check_skills() -> void:
@@ -363,15 +403,15 @@ func _check_skills() -> void:
 		seen = _hold(b, Vector2.ZERO, DT, false)
 		fells = _of(seen, "fell")
 		t += DT
-	_ok("one beaver and nobody holding: a sapling is down in hp / (power * bite) seconds (%.2f of %.1f)" % [t, want], is_equal_approx(want, 8.0) and absf(t - want) < 0.1
-		and fells.size() == 1 and fells[0].by == "beaver")
+	_ok("one beaver and nobody holding: a sapling is down in hp / (power * bite) seconds (%.2f of %.1f)" % [t, want], absf(t - want) < 0.1 and fells.size() == 1 and fells[0].by == "beaver")
 	var bites := _of(seen, "hit")
-	_ok("its bite is half a chop and never keen", bites.size() == 1 and bites[0].by == "beaver" and not bites[0].keen and is_equal_approx(float(bites[0].amount), 0.5))
+	_ok("its bite is its share of a chop and never keen", bites.size() == 1 and bites[0].by == "beaver" and not bites[0].keen and is_equal_approx(b.bite(), Sim.BITE)
+		and is_equal_approx(float(bites[0].amount), b.power() * Sim.BITE))
 	_ok("its pile lies: a beaver gathers nothing", b.lying() == 1 and b.jetty_held() == 0 and b.energy == 1)
 	for i in 49:
 		b._drop(b.logs[0].pos, 0, 1, false)
 	var before: int = b.felled
-	_hold(b, Vector2.ZERO, 10.0, false)
+	_hold(b, Vector2.ZERO, b.spawn_time() + want + 2.0, false)
 	_ok("a beaver goes on biting with fifty piles lying (%d)" % b.lying(), b.felled > before and b.lying() > 50)
 	var both: RefCounted = Sim.new(42)
 	both.lv.beaver = 1
@@ -386,33 +426,58 @@ func _check_skills() -> void:
 	two.lv.beaver = 2
 	_hold(two, Vector2.ZERO, 0.2, false)
 	_ok("two beavers are at the two oldest trees, a tree each", two.trees.size() == 3 and int(two.gnawing[0].tree) == int(two.trees[0].id) and int(two.gnawing[1].tree) == int(two.trees[1].id))
+	# with nobody there (the Valley tab's card)
+	var tab: RefCounted = Sim.new(52)
+	tab.lv.beaver = 2
+	tab.loose = {"n": tab.bundle_size(), "wood": tab.bundle_size()}
+	var whole: float = tab.trees[0].hp
+	var bitten := 0
+	t = 0.0
+	while t < maxf(3.0 * want, tab.tie_time() + tab.raft_time()) + tab.spawn_time():
+		tab.step(DT, false, Vector2.ZERO, false)
+		t += DT
+		bitten += _of(tab.events, "hit").size()
+		tab.events.clear()
+	_ok("with nobody there the beavers do not bite", bitten == 0 and tab.felled == 0 and tab.energy == 0 and is_equal_approx(float(tab.trees[0].hp), whole) and tab.gnawing.is_empty())
+	_ok("trees come up and the raft lands all the same", tab.trees.size() == tab.room() and tab.owed == tab.bundle_size() and not tab.raft.away)
+	seen = _hold(tab, Vector2.ZERO, want + 0.5, false)
+	_ok("and they bite again with somebody back", tab.felled > 0 and not _of(seen, "hit").is_empty())
 	# away
+	var team: int = Sim.NODE.beaver[2]
 	var away: RefCounted = Sim.new(44)
-	away.lv.beaver = 5
+	away.lv.beaver = team
 	away.lv.room = 9
-	var began := Time.get_ticks_usec()
 	away.catch_up(3.0 * 86400.0)
-	var took := (Time.get_ticks_usec() - began) / 1000.0
-	_ok("three days away with five beavers fells exactly 5 * room() trees (%d)" % away.felled, away.room() == 12 and away.felled == 60 and away.lying() == 60 and away.energy == 60 and away.trees.size() == 12)
-	_ok("and returns at once (%.1f ms)" % took, took < 100.0)
+	var share: int = team * away.room()
+	_ok("three days away with %d beavers fells exactly %d * room() trees (%d)" % [team, team, away.felled], away.beavers() == team and away.felled == share and away.lying() == share
+		and away.energy == share and away.trees.size() == away.room())
 	_ok("nothing of it is on the jetty, and its events are gone", away.jetty_held() == 0 and away.owed == 0 and away.events.is_empty())
+	# time away is worked out, not run: a thousand days cost what a day does.
+	# No clock is tight here: the longer may take a few times the shorter
+	# and 50 ms more before this says anything.
+	var day_ms := _away_ms(86400.0)
+	var long_ms := _away_ms(86400.0 * 1000.0)
+	_ok("a thousand days away cost no more than one (%.2f ms against %.2f)" % [long_ms, day_ms], long_ms <= 4.0 * day_ms + 50.0)
 	var brief: RefCounted = Sim.new(45)
 	brief.lv.beaver = 1
-	brief.catch_up(20.0)
-	_ok("twenty seconds away is two saplings for one beaver, eight seconds each (%d)" % brief.felled, brief.felled == 2 and brief.lying() == 2)
+	var each: float = brief.hp(0) / (brief.power() * brief.bite() / Sim.BITE_EVERY)
+	brief.catch_up(2.5 * each)
+	_ok("time away for two saplings and a half is two saplings for one beaver (%d)" % brief.felled, brief.room() >= 2 and brief.felled == 2 and brief.lying() == 2)
 	var late: RefCounted = Sim.new(46)
-	late.lv.beaver = 5
-	late.lv.room = 27
+	late.lv.beaver = team
+	late.lv.room = Sim.NODE.room[2]
 	late.lv.seeds = 6
 	late.lv.axe = 60
-	late.lv.jetty = 20
-	late.loose = {"n": 46, "wood": 4600}
+	late.lv.jetty = Sim.NODE.jetty[2]
+	var held_wood: int = late.jetty_room() * 100
+	late.loose = {"n": late.jetty_room(), "wood": held_wood}
 	late.save(1000.0)
-	began = Time.get_ticks_usec()
 	var back: RefCounted = Sim.load_saved(1000.0 + 3.0 * 86400.0)
-	took = (Time.get_ticks_usec() - began) / 1000.0
-	_ok("a late grove three days away loads at once (%.1f ms): 150 trees felled, the jetty landed" % took, took < 250.0 and back.felled == 150 and back.lying() == 150
-		and back.owed == 4600 and back.jetty_held() == 0)
+	_ok("a late grove three days away: the land once over a beaver felled (%d), the full jetty landed" % back.felled, back.felled == team * back.room() and back.lying() == back.felled
+		and back.owed == held_wood and back.jetty_held() == 0 and not back.raft.away)
+	day_ms = _load_ms(1000.0 + 86400.0)
+	long_ms = _load_ms(1000.0 + 86400.0 * 1000.0)
+	_ok("read from its file a thousand days on it costs no more than a day on (%.2f ms against %.2f)" % [long_ms, day_ms], long_ms <= 4.0 * day_ms + 50.0)
 	# kinds gone from the land
 	var gone: RefCounted = Sim.new(47)
 	gone.energy = 1 << 40
@@ -423,42 +488,85 @@ func _check_skills() -> void:
 		and gone.level("soft:0") == 1 and gone.shown().has("soft:0") and gone.can_buy("soft:1"))
 	# fortune
 	var keen: RefCounted = Sim.new(48)
-	keen.lv.crit = 20   # past its last level: every chop is keen
-	var hits := _of(_hold(keen, keen.trees[0].pos, 0.6), "hit")
-	_ok("a keen chop counts for two: a sapling is down in two", hits.size() == 2 and hits[0].keen and hits[0].by == "axe" and is_equal_approx(float(hits[0].amount), 2.0) and keen.felled == 1)
+	keen.lv.crit = ceili(1.0 / Sim.CRIT_STEP)   # past its last level: every chop is keen
+	var chops: int = ceili(keen.hp(0) / (keen.power() * keen.crit_size()))
+	var hits := _of(_hold(keen, keen.trees[0].pos, (chops - 1) * keen.swing_time() + 0.1), "hit")
+	_ok("a keen chop counts for crit_size() chops: a sapling is down in %d" % chops, chops < ceili(keen.hp(0) / keen.power()) and hits.size() == chops and hits[0].keen and hits[0].by == "axe"
+		and is_equal_approx(float(hits[0].amount), keen.power() * Sim.CRIT_SIZE) and keen.felled == 1)
 	var lucky: RefCounted = Sim.new(49)
-	lucky.lv.luck = 25   # past its last level: every pile is lucky
+	lucky.lv.luck = ceili(1.0 / Sim.LUCK_STEP)   # past its last level: every pile is lucky
 	lucky.trees[0].hp = 1.0
 	fells = _of(_hold(lucky, lucky.trees[0].pos, DT), "fell")
 	_ok("a lucky pile is worth double and the energy is not", fells.size() == 1 and fells[0].lucky and lucky.energy == 1 and int(lucky.logs[0].n) == 1
 		and int(lucky.logs[0].wood) == 2 and bool(lucky.logs[0].lucky) and lucky.wood_made == 2)
 	var c: RefCounted = Sim.new(50)
-	_hold(c, Vector2.ZERO, 200.0, false)
+	_hold(c, Vector2.ZERO, Sim.CRATE + 20.0, false)
 	_ok("no crate without the node", c.crate.is_empty() and c.crate_time() == 0.0)
 	c.lv.crate = 1
-	seen = _hold(c, Vector2.ZERO, 180.2, false)
-	_ok("with it, one washes up after 180 s", not c.crate.is_empty() and _of(seen, "crate").size() == 1)
+	seen = _hold(c, Vector2.ZERO, c.crate_time() + 0.2, false)
+	_ok("with it, one washes up when crate_time() is up", is_equal_approx(c.crate_time(), Sim.CRATE) and not c.crate.is_empty() and _of(seen, "crate").size() == 1)
 	var p: Vector2 = c.crate.get("pos", Sim.LAND * 0.5)
 	var d := p - Sim.LAND * 0.5
-	_ok("on the land, within 140 of a front edge (%s)" % str(p), Sim.stands(p) and d.y > 0.0 and (Sim.HALF - absf(d.x) - d.y) / sqrt(2.0) <= Sim.SHORE + 0.01)
-	seen = _hold(c, Vector2.ZERO, 400.0, false)
+	_ok("on the land, within SHORE of a front edge (%s)" % str(p), Sim.stands(p) and d.y > 0.0 and (Sim.HALF - absf(d.x) - d.y) / sqrt(2.0) <= Sim.SHORE + 0.01)
+	seen = _hold(c, Vector2.ZERO, 2.2 * c.crate_time(), false)
 	_ok("one at a time", _of(seen, "crate").is_empty() and not c.crate.is_empty())
 	var held: int = c.energy
 	var opened := _of(_hold(c, p, DT), "opened")
-	_ok("a swing over it opens it for fifteen saplings' energy", c.crate.is_empty() and c.crate_give() == 15 and c.energy == held + 15 and opened.size() == 1 and int(opened[0].give) == 15)
+	var holds: int = Sim.CRATE_GIVE * Sim.give_of(0)
+	_ok("a swing over it opens it for CRATE_GIVE saplings' energy (%d)" % holds, c.crate.is_empty() and c.crate_give() == holds and c.energy == held + holds and opened.size() == 1
+		and int(opened[0].give) == holds)
 	c.catch_up(10.0 * 86400.0)
 	_ok("away the time goes on counting and one is waiting", not c.crate.is_empty())
 	# what the Skills card writes its lines from
 	var v: RefCounted = Sim.new(51)
-	_ok("the Jetty root's figures", v.value("jetty", 0) == 6.0 and v.value("jetty", 1) == 8.0 and is_equal_approx(v.value("tying", 0), 12.0) and is_equal_approx(v.value("tying", 1), 10.8)
-		and v.value("bundle", 0) == 3.0 and v.value("bundle", 7) == 10.0 and is_equal_approx(v.value("raft", 0), 24.0) and is_equal_approx(v.value("raft", 1), 22.08)
-		and v.value("load", 0) == 1.0 and v.value("load", 5) == 6.0)
-	_ok("the Beavers root's: a count and a percent", v.value("beaver", 0) == 0.0 and v.value("beaver", 2) == 2.0 and is_equal_approx(v.value("teeth", 0), 50.0) and is_equal_approx(v.value("teeth", 5), 100.0))
-	_ok("the Fortune root's: percents, chops, seconds and energy", v.value("crit", 0) == 0.0 and is_equal_approx(v.value("crit", 10), 50.0) and is_equal_approx(v.value("critsize", 0), 2.0)
-		and is_equal_approx(v.value("critsize", 6), 5.0) and is_equal_approx(v.value("luck", 10), 40.0) and v.value("crate", 0) == 0.0 and is_equal_approx(v.value("crate", 1), 180.0)
-		and is_equal_approx(v.value("crate", 2), 162.0) and is_equal_approx(v.value("cratesize", 0), 15.0) and is_equal_approx(v.value("cratesize", 1), 18.0))
-	_ok("and the land reads the same figures", v.jetty_room() == 6 and v.bundle_size() == 3 and v.raft_load() == 1 and is_equal_approx(v.bite(), 0.5) and v.crit_chance() == 0.0
-		and is_equal_approx(v.crit_size(), 2.0) and v.luck_chance() == 0.0 and v.beavers() == 0 and v.value("room") == 3.0 and is_equal_approx(v.value("sprout"), 6.0))
+	_ok("the Jetty root's figures", v.value("jetty", 0) == float(Sim.JETTY) and v.value("jetty", 1) == float(Sim.JETTY + Sim.JETTY_STEP) and is_equal_approx(v.value("tying", 0), Sim.TIE)
+		and is_equal_approx(v.value("tying", 1), Sim.TIE * Sim.TIE_STEP) and v.value("tying", 2) < v.value("tying", 1) and v.value("bundle", 0) == float(Sim.BUNDLE)
+		and v.value("bundle", 3) == float(Sim.BUNDLE + 3 * Sim.BUNDLE_STEP) and is_equal_approx(v.value("raft", 0), Sim.RAFT) and is_equal_approx(v.value("raft", 1), Sim.RAFT * Sim.RAFT_STEP)
+		and v.value("load", 0) == 1.0 and v.value("load", 2) == 3.0)
+	_ok("the Beavers root's: a count and a percent", v.value("beaver", 0) == 0.0 and v.value("beaver", 2) == 2.0 and is_equal_approx(v.value("teeth", 0), 100.0 * Sim.BITE)
+		and is_equal_approx(v.value("teeth", 2), 100.0 * (Sim.BITE + 2.0 * Sim.BITE_STEP)) and v.value("teeth", 0) > 1.0)
+	_ok("the Fortune root's: percents, chops, seconds and energy", v.value("crit", 0) == 0.0 and is_equal_approx(v.value("crit", 3), 300.0 * Sim.CRIT_STEP) and v.value("crit", 3) > 1.0
+		and is_equal_approx(v.value("critsize", 0), Sim.CRIT_SIZE) and is_equal_approx(v.value("critsize", 2), Sim.CRIT_SIZE + 2.0 * Sim.CRIT_SIZE_STEP)
+		and is_equal_approx(v.value("luck", 5), 500.0 * Sim.LUCK_STEP) and v.value("crate", 0) == 0.0 and is_equal_approx(v.value("crate", 1), Sim.CRATE)
+		and is_equal_approx(v.value("crate", 2), Sim.CRATE * Sim.CRATE_STEP) and is_equal_approx(v.value("cratesize", 0), float(Sim.CRATE_GIVE))
+		and is_equal_approx(v.value("cratesize", 1), Sim.CRATE_GIVE * (1.0 + Sim.CRATE_GIVE_STEP)))
+	_ok("and the land reads the same figures", v.jetty_room() == Sim.JETTY and v.bundle_size() == Sim.BUNDLE and v.raft_load() == 1 and is_equal_approx(v.tie_time(), Sim.TIE)
+		and is_equal_approx(v.raft_time(), Sim.RAFT) and is_equal_approx(v.bite(), Sim.BITE) and v.crit_chance() == 0.0 and is_equal_approx(v.crit_size(), Sim.CRIT_SIZE)
+		and v.luck_chance() == 0.0 and v.beavers() == 0 and v.value("room") == float(Sim.ROOM) and is_equal_approx(v.value("sprout"), Sim.SPROUT))
+	v.lv.jetty = 2
+	v.lv.tying = 3
+	v.lv.bundle = 1
+	v.lv.raft = 4
+	v.lv.load = 1
+	v.lv.teeth = 2
+	v.lv.crit = 4
+	_ok("at any level too", float(v.jetty_room()) == v.value("jetty") and is_equal_approx(v.tie_time(), v.value("tying")) and float(v.bundle_size()) == v.value("bundle")
+		and is_equal_approx(v.raft_time(), v.value("raft")) and float(v.raft_load()) == v.value("load") and is_equal_approx(v.bite() * 100.0, v.value("teeth"))
+		and is_equal_approx(v.crit_chance() * 100.0, v.value("crit")) and v.jetty_room() > Sim.JETTY and v.tie_time() < Sim.TIE)
+
+## Milliseconds `catch_up(seconds)` takes on a land of twelve with every
+## beaver, the quickest of three goes.
+func _away_ms(seconds: float) -> float:
+	var best := INF
+	for go in 3:
+		var sim: RefCounted = Sim.new(44)
+		sim.lv.beaver = Sim.NODE.beaver[2]
+		sim.lv.room = 9
+		sim.loose = {"n": sim.jetty_room(), "wood": sim.jetty_room()}
+		var began := Time.get_ticks_usec()
+		sim.catch_up(seconds)
+		best = minf(best, (Time.get_ticks_usec() - began) / 1000.0)
+	return best
+
+## Milliseconds the grove on the file takes to be read at `now`, the
+## quickest of three goes.
+func _load_ms(now: float) -> float:
+	var best := INF
+	for go in 3:
+		var began := Time.get_ticks_usec()
+		Sim.load_saved(now)
+		best = minf(best, (Time.get_ticks_usec() - began) / 1000.0)
+	return best
 
 ## The jetty is kept; a file from before it, or with nonsense in it, loads.
 func _check_kept() -> void:
@@ -466,9 +574,10 @@ func _check_kept() -> void:
 	a.lv.crate = 1
 	a._drop(Vector2(520.0, 400.0), 0, 2, true)
 	a._drop(Vector2(520.0, 600.0), 0, 1, false)
-	a.loose = {"n": 2, "wood": 3}
-	a.bundles.append({"n": 3, "wood": 4})
-	a.raft = {"n": 3, "wood": 5, "bundles": 1, "t": 4.0, "away": true}
+	a.loose = {"n": 1, "wood": 3}
+	a.bundles.append({"n": 1, "wood": 4})
+	var out_for: float = a.raft_time() * 0.25
+	a.raft = {"n": 1, "wood": 5, "bundles": 1, "t": out_for, "away": true}
 	a.owed = 7
 	a.wood_sent = 70
 	a.crate = {"pos": Vector2(520.0, 880.0)}
@@ -476,8 +585,8 @@ func _check_kept() -> void:
 	var b: RefCounted = Sim.load_saved(4000.0)
 	_ok("the piles lying are kept", b.logs.size() == 2 and b.lying() == 2 and int(b.logs[0].wood) == 2 and bool(b.logs[0].lucky) and (b.logs[0].pos as Vector2).is_equal_approx(Vector2(520.0, 400.0))
 		and int(b.logs[1].wood) == 1 and not b.logs[1].lucky)
-	_ok("and the jetty, the raft, what is owed and the crate", int(b.loose.n) == 2 and int(b.loose.wood) == 3 and b.bundles.size() == 1 and int(b.bundles[0].wood) == 4
-		and bool(b.raft.away) and int(b.raft.n) == 3 and int(b.raft.wood) == 5 and is_equal_approx(float(b.raft.t), 4.0) and b.owed == 7 and b.wood_sent == 70
+	_ok("and the jetty, the raft, what is owed and the crate", int(b.loose.n) == 1 and int(b.loose.wood) == 3 and b.bundles.size() == 1 and int(b.bundles[0].wood) == 4
+		and bool(b.raft.away) and int(b.raft.n) == 1 and int(b.raft.wood) == 5 and is_equal_approx(float(b.raft.t), out_for) and b.owed == 7 and b.wood_sent == 70
 		and (b.crate.get("pos", Vector2.ZERO) as Vector2).is_equal_approx(Vector2(520.0, 880.0)))
 	var c: RefCounted = Sim.load_saved(4000.0 + 86400.0)
 	_ok("a day on the jetty has landed, the piles still lie and no wood was made (%d owed)" % c.owed, c.owed == 7 + 5 + 4 + 3 and c.wood_sent == 70 + 12 and c.jetty_held() == 0
@@ -523,6 +632,48 @@ func _check_kept() -> void:
 	old.save(Sim.path)
 	var odder: RefCounted = Sim.load_saved(100.0 + 600.0)
 	_ok("nor another", odder.lying() == 0 and odder.jetty_held() == 0 and odder.owed == 0 and odder.wood_sent == 0 and int(odder.raft.wood) == 0)
+	# more on the jetty than it has room for: held to its room, the rest
+	# back on the land by the jetty's end of it, no wood made or lost
+	old.set_value("jetty", "logs", [])
+	old.set_value("jetty", "raft", [0, 0, 0, 0.0, false])
+	old.set_value("jetty", "owed", 0)
+	old.set_value("jetty", "sent", 0)
+	old.set_value("jetty", "crate", [])
+	old.set_value("jetty", "loose", [20, 50])
+	old.set_value("jetty", "bundles", [[4, 9]])
+	old.save(Sim.path)
+	var over: RefCounted = Sim.load_saved(100.0)
+	var room: int = over.jetty_room()
+	var on_jetty: int = int(over.loose.wood) + (int(over.bundles[0].wood) if over.bundles.size() == 1 else -1000)
+	var on_land: int = int(over.logs[0].wood) if over.logs.size() == 1 else -1000
+	_ok("a jetty kept fuller than its room is held to it (%d of %d), the rest lying by it (%d)" % [over.jetty_held(), room, over.lying()], room < 24 and over.jetty_held() == room
+		and over.lying() == 24 - room and on_jetty + on_land == 59 and over.logs.size() == 1 and (over.logs[0].pos as Vector2).is_equal_approx(Sim.by_jetty())
+		and Sim.stands(Sim.by_jetty()))
+	# figures no grove could hold
+	var many := [[1.0e300, 1.0e300]]
+	for i in 5000:
+		many.append([1, 1])
+	old.set_value("jetty", "logs", [[520.0, 520.0, 1.0e300, 1.0e300, 0, false], [520.0, 300.0, 2, 3, 0, false], [300.0, 520.0, 1 << 60, 1 << 61, 0, false]])
+	old.set_value("jetty", "loose", [1000000, 2000000])
+	old.set_value("jetty", "bundles", many)
+	old.set_value("jetty", "owed", 1.0e300)
+	old.set_value("jetty", "sent", 1 << 60)
+	old.save(Sim.path)
+	var huge: RefCounted = Sim.load_saved(100.0)
+	var read: int = Sim.ROWS - 1   # the bundles read: the first row is no count
+	_ok("a count past what a grove could hold reads as none", huge.owed == 0 and huge.wood_sent == 0)
+	_ok("five thousand bundles and a million loose piles are a jetty of %d (%d held, %d bundles)" % [room, huge.jetty_held(), huge.bundles.size()], huge.jetty_held() == room
+		and huge.bundles.size() == room and int(huge.loose.n) == 0)
+	_ok("and the rest of what was read lies on the land, counted right (%d piles)" % huge.lying(), huge.lying() == 2 + (read - room) + 1000000)
+	var huge_later: RefCounted = Sim.load_saved(100.0 + 86400.0)
+	_ok("a day on its jetty has landed and nothing has turned over", huge_later.owed == room and huge_later.wood_sent == room and huge_later.jetty_held() == 0 and not huge_later.raft.away
+		and huge_later.lying() == huge.lying())
+	# a tree a beaver had bitten keeps what it had left
+	old.set_value("grove", "trees", [[0, 520.0, 520.0, 0.4], [0, 520.0, 300.0, 0.0]])
+	old.save(Sim.path)
+	var bitten: RefCounted = Sim.load_saved(100.0)
+	_ok("a tree kept with 0.4 left has 0.4 left, and one with nothing stands on its last crumb", bitten.trees.size() >= 2 and is_equal_approx(float(bitten.trees[0].hp), 0.4)
+		and is_equal_approx(float(bitten.trees[1].hp), Sim.DOWN) and bitten.felled == 50 and bitten.energy == 40)
 	DirAccess.remove_absolute(Sim.path)
 
 ## `secs` of the grove a frame at a time, the circle held at `at` or nobody
