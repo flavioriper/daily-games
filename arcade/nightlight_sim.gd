@@ -871,6 +871,8 @@ static func dust_of(share: float, m: float) -> float:
 ## turning the disc's way; the first few on the old falling paths.
 func _lay_ring(count: int, total: float, h: float, dust_share: float) -> void:
 	dusty = dust_share
+	if count <= 0:
+		return
 	var each := total / count
 	var falling := mini(RING_FALLING, count)
 	_lay_gas(falling, each, h, dust_share)
@@ -1562,13 +1564,15 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		sim._load_sky(cfg)
 	if ver >= 4:
 		var edges = cfg.get_value("star", "ring", [])
-		if edges is Array and (edges as Array).size() == 2 and is_finite(float(edges[0])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]):
+		if edges is Array and (edges as Array).size() == 2 and (edges[0] is float or edges[0] is int) and (edges[1] is float or edges[1] is int) and is_finite(float(edges[0])) and is_finite(float(edges[1])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]):
 			sim.ring = Vector2(float(edges[0]), float(edges[1]))
 			sim.frost = clampf(float(cfg.get_value("star", "frost", sim.frost)), sim.ring.x, sim.ring.y)
 		sim.dusty = clampf(float(cfg.get_value("star", "dusty", 0.02)), 0.0, 0.3)
 	else:
-		# a star kept before the ring is given one: inside a heavy star's disc it simply falls
-		sim._lay_ring(RING, RING_M, ASH_H, ASH_DUST)
+		# a star kept before the ring is given one: inside a heavy star's disc it simply falls;
+		# a sky already full is given only what it has room for
+		var room_left := mini(RING, FULL - sim.bodies.size())
+		sim._lay_ring(room_left, RING_M * room_left / RING, ASH_H, ASH_DUST)
 	return sim
 
 ## The relics, the neighbour stars and the drift out of a file of KEPT 3 or

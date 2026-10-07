@@ -51,6 +51,7 @@ func _initialize() -> void:
 		_check_ends()
 		_check_giant()
 		_check_ring()
+		_check_frost()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -558,6 +559,52 @@ func _check_ring() -> void:
 	var kept3: RefCounted = Sim.load_saved(1)
 	_ok("a KEPT 3 star's tiles carry over", int(kept3.lv.rich) == 3 and int(kept3.lv.reach) == 6 and int(kept3.lv.flow) == 4 and int(kept3.lv.pure) == 2)
 	_ok("and it is given a newborn's ring", is_equal_approx(kept3.ring.y, Sim.STAR_R * Sim.HAZE * Sim.RING_OUT) and kept3.gas_count() == Sim.RING)
+	# a ring that is not two finite numbers in the file falls back to the newborn's
+	for bad: Variant in [[1.0, INF], [[1.0], [2.0]], ["a", "b"]]:
+		var odd := ConfigFile.new()
+		odd.load(Sim.path)
+		odd.set_value("star", "kept", 4)
+		odd.set_value("star", "ring", bad)
+		odd.save(Sim.path)
+		var fell: RefCounted = Sim.load_saved(1)
+		_ok("a bad ring in the file (%s) falls back to the newborn's" % str(bad), is_equal_approx(fell.ring.y, Sim.STAR_R * Sim.HAZE * Sim.RING_OUT) and is_finite(fell.zoom()) and fell.zoom() > 0.0)
+	# a full kept sky is given no more ring than it has room for
+	var crowd := ConfigFile.new()
+	crowd.set_value("star", "kept", 3)
+	crowd.set_value("star", "mass", Sim.START)
+	var rows := []
+	for k in Sim.FULL - 10:
+		rows.append([Sim.Kind.GAS, 0.01, 600.0 + k, 10.0, 0.0, 40.0, 0.7, 0.01, 0.0, 0.0])
+	crowd.set_value("star", "bodies", rows)
+	crowd.save(Sim.path)
+	var packed: RefCounted = Sim.load_saved(1)
+	_ok("a kept sky holding FULL - 10 is given 10 puffs and no more", packed.bodies.size() == Sim.FULL)
+
+## The frost line of a default sim is the ring's middle, not 2.2 radii: two
+## dusty pairs a hair inside it make rock, two a hair outside make ice with it.
+func _check_frost() -> void:
+	var sim := _quiet(8)
+	var fr: float = sim.frost_r()
+	_ok("a default sim's frost line is well past 2.2 radii", fr > sim.star_r() * 2.2 * 1.5)
+	for pair: Array in [[fr - 40.0, 0.0], [fr + 40.0, 1.0]]:
+		for k in 2:
+			var at := Vector2(float(pair[0]), 6.0 * k)
+			var b: Sim.Body = sim.add(Sim.Kind.GAS, Sim.PUFF, at, sim.circle_vel(at))
+			b.dust = Sim.DUSTY
+			b.age = Sim.COOL
+	_run(sim, 0.5)
+	var inner: Sim.Body = null
+	var outer: Sim.Body = null
+	for b: Sim.Body in sim.bodies:
+		if b.kind != Sim.Kind.GAS:
+			if b.pos.length() < fr:
+				inner = b
+			else:
+				outer = b
+	_ok("inside the frost line a pair makes rock", inner != null and inner.ice == 0.0)
+	_ok("outside it a pair makes ice as well", outer != null and outer.ice > 0.0)
+	sim.swell = 1.0
+	_ok("a giant thaws the line outward", is_equal_approx(sim.frost_r(), sim.frost * (1.0 + Sim.GIANT)))
 
 func _check_relics() -> void:
 	var sim := _quiet()
