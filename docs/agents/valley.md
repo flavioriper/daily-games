@@ -234,10 +234,32 @@ place gets the same chip for what it makes. Four draw calls more on the tab
   ground, `step(dt, holding, at)`, `events` for the screen to drain, `buy`,
   and its own keeping (`save(now)`, `load_saved(now)`, `Sim.path`). It never
   touches Stock: the screen hands each felled tree's wood over.
-  `tests/_probe_grove.gd` checks the arithmetic (33 checks) and
+  `tests/_probe_grove.gd` checks the arithmetic (40 checks) and
   `-- pace [visits] [seconds] [days]` or `-- marathon [hours]` plays it with
   a bot; **run `pace` after touching any number** and put the table in the
   spec's section 4.
+- **Every felled tree's place counts by itself** (the user, 2026-10-06:
+  "the count down for each tree should start moment it's cutted, not one
+  after another ... if I cut 5 tree same time, it takes 5s to respawn 5
+  trees, not 25 seconds"). `Sim._due` holds the seconds left for each empty
+  place, one a place: `_chop` starts one at `spawn_time()` as a tree comes
+  down, `_grow` takes `dt` off them all and plants where one has run out,
+  and `_owe` starts one for a place that has none (Room just bought, a tree
+  taken off the land by hand, as the tutorial and the probe do). Buying
+  Sprout shortens the ones already counting. Away, every place counts the
+  seconds gone (`catch_up`). **The wait is exactly the sprout time**: the
+  0.6 to 1.4 of it that the single wait had (`GAP_MIN`, `GAP_MAX`) is gone,
+  so five felled by one chop are back on the same frame. The file keeps
+  `due`; one kept before has `wait`, which the first empty place takes.
+  **It made the grove several times faster and nothing was retuned**: Birch
+  on day 1, Oak on day 4, Pine on day 10 for the eight visits of two
+  minutes (day 5, 21, 59 before), 40,832 wood in two hours without stopping
+  (1,697). The spec's section 4 has the table, with what a first sprout
+  time of 18 s and of 30 s would read; **the user has not said whether the
+  pace stands.** `tests/_probe_grove.gd` is 40 checks (five trees felled at
+  a stroke are all back six seconds on; one felled three seconds later is
+  three behind). Nothing is drawn for a place counting. The Sprout tile's
+  line ("every 6.0 s, then 5.6") was left as it is.
 - **Every tree starts at 4** (`Sim.HP`; the user: "each tree start as 4hp").
   Axe and Seeds have no last level; Reach, Swing, Sprout and Room stop.
 - **A level of the Axe adds half a point** (`Sim.AXE_STEP` 0.5, 2026-10-06;
@@ -250,8 +272,8 @@ place gets the same chip for what it makes. Four draw calls more on the tab
   unchanged. The pace bot reads within half a percent before and after
   (Pine one day later for the ten-minute player): its grove waits on trees
   coming up, not on the axe (the spec's section 4).
-- **Away is worked out, never run**: `load_saved` adds the trees that came
-  up since `seen`, up to the room. The tab keeps its own sim from the file
+- **Away is worked out, never run**: `load_saved` adds the trees whose
+  places finished counting since `seen`. The tab keeps its own sim from the file
   and steps it for the card's picture; **Play saves that sim first**, so the
   screen opens on the same trees.
 - **One mesh a tree** (`valley/grove_art.gd`, cached per look), one for the

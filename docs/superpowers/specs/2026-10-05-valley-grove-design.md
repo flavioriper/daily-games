@@ -44,16 +44,18 @@ gold, or random.
 "A piece of land with growing trees over time, and the user starts clicking
 to chop the area around the touch point, no automation yet."
 
-- **The land** holds `room` trees. While there is room a new tree comes up at
-  a random free spot ("trees spawn randomly, not at a fixed spot") after the
-  sprout time times 0.6 to 1.4. A full land waits.
+- **The land** holds `room` trees. Every empty place counts the sprout time
+  by itself, from the moment its tree came down, and then a new tree comes
+  up at a random free spot ("trees spawn randomly, not at a fixed spot").
+  (Until 2026-10-06 the whole land had one wait, the sprout time times 0.6
+  to 1.4, so trees came back one after another; see section 4.)
 - **The circle** is there while a finger is down and follows it. Every swing,
   each tree whose crown is inside takes the axe's strength. Holding and
   tapping chop at the same pace.
 - **A felled tree** gives the same number of wood (to Stock) and energy (to
   the Grove).
-- **Away**: when the grove is next read, trees have come up at the sprout
-  time for the seconds gone, until the land was full. A clock set back grows
+- **Away**: when the grove is next read, every empty place has counted the
+  seconds gone, and the ones that got there have their tree. A clock set back grows
   nothing; one set forward fills the land once.
 
 "Start with very very small trees and spawn time" and "each tree starts as
@@ -121,6 +123,30 @@ day 2, 7 and 21 (Pine was day 20: 20.1 hours played against 20.0); Birch at
 waits on trees coming up, not on the axe**, so halving what a level adds
 changes how many chops a tree takes and hardly how long the grove takes; a
 person sweeping a full late land is the case it does not measure.
+
+**2026-10-06, every felled tree's place counts by itself** (the user: "the
+count down for each tree should start moment it's cutted, not one after
+another. 5s of cooldown means after being cutted a tree respawn in 5s, if I
+cut 5 tree same time, it takes 5s to respawn 5 trees, not 25 seconds").
+There was one wait for the whole land, so a land of `room` trees gave one
+tree a sprout time; now it gives `room` of them. **The grove is several
+times faster, and no number was changed to pay for it**: the three runs,
+before and after, and with the first sprout time made longer (measured, not
+shipped; `Sim.SPROUT` is still 6):
+
+| Sprout time | 8 visits of 2 min: Birch, Oak, Pine | Day 30 | 2 hours without stopping |
+|---|---|---|---|
+| 6 s, one wait (before) | day 5, 21, 59 | Axe 17, Room 13, 22,729 wood | Birch at 1 h 42, Axe 9, 1,697 wood |
+| 6 s, a wait a place (shipped) | day 1, 4, 10 | Axe 26, Room 20, 425,451 wood | Birch at 0 h 18, Oak at 1 h 00, Axe 19, 40,832 wood |
+| 18 s, a wait a place | day 3, 9, 20 | Axe 24, Room 18, 179,301 wood | Birch at 0 h 48, Axe 14, 8,720 wood |
+| 30 s, a wait a place | day 5, 13, 30 | Axe 20, Room 16, 71,712 wood | Birch at 1 h 12, Axe 11, 3,443 wood |
+
+Six visits of ten minutes, shipped: Birch and Oak on day 1, Pine on day 3,
+the fifth look on day 9, the sixth on day 29 (it was day 2, 7 and 21 for the
+first three). The bot's grove no longer waits on trees coming up but on the
+axe, which is what section 3 wanted of it; **whether the grove is still
+slow enough is the user's to say**, and 30 s is the sprout time nearest the
+old early days.
 
 ## 5. The screens
 

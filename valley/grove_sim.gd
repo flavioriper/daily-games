@@ -63,8 +63,9 @@ const HP := 4.0
 const AXE_STEP := 0.5
 const HP_STEP := 2.6
 const GIVE_STEP := 2.0
-## The circle's radius, the seconds between chops, the seconds between
-## trees and the trees the land holds, before any tile.
+## The circle's radius, the seconds between chops, the seconds a felled
+## tree's place takes to grow another and the trees the land holds, before
+## any tile.
 const REACH := 90.0
 const REACH_STEP := 1.08
 const SWING := 0.5
@@ -72,9 +73,6 @@ const SWING_STEP := 0.93
 const SPROUT := 6.0
 const SPROUT_STEP := 0.93
 const ROOM := 3
-## The wait for the next tree is the sprout time times something in here.
-const GAP_MIN := 0.6
-const GAP_MAX := 1.4
 ## A new tree is the best tier opened this often, the one below it up to the
 ## second figure, the one below that for the rest.
 const MIX := [0.55, 0.85]
@@ -110,8 +108,13 @@ var felled := 0
 
 var _rng := RandomNumberGenerator.new()
 var _next_id := 1
-var _wait := 0.0
-var _gap := SPROUT
+## The seconds left until each empty place has its tree, one a place. Every
+## place counts by itself from the moment its tree came down (the user,
+## 2026-10-06: "the count down for each tree should start moment it's
+## cutted, not one after another ... if I cut 5 tree same time, it takes 5s
+## to respawn 5 trees, not 25 seconds"). There was one wait for the whole
+## land before, so five felled at a stroke came back one sprout time apart.
+var _due: Array[float] = []
 var _last_chop := -10.0
 
 func _init(rng_seed := 0) -> void:
@@ -119,8 +122,8 @@ func _init(rng_seed := 0) -> void:
 		_rng.seed = rng_seed
 	else:
 		_rng.randomize()
-	_gap = spawn_time()
 	_plant(true)
+	_owe()
 
 # --- the land ---
 
@@ -182,6 +185,11 @@ func buy(tile: String) -> bool:
 		return false
 	energy -= cost(tile)
 	lv[tile] = int(lv[tile]) + 1
+	# a place Room has just opened starts to count now, and no place waits
+	# longer than a quicker Sprout asks
+	_owe()
+	for i in _due.size():
+		_due[i] = minf(_due[i], spawn_time())
 	return true
 
 # --- time ---
@@ -189,31 +197,40 @@ func buy(tile: String) -> bool:
 ## `dt` seconds pass; `holding` with the circle's centre `at` in land units.
 func step(dt: float, holding := false, at := Vector2.ZERO) -> void:
 	clock += dt
-	if trees.size() < room():
-		_wait += dt
-		if _wait >= _gap:
-			_wait = 0.0
-			_gap = spawn_time() * _rng.randf_range(GAP_MIN, GAP_MAX)
-			_plant(false)
-	else:
-		# a full land has its next tree ready for the moment there is room
-		_wait = minf(_wait + dt, _gap)
+	_grow(dt, false)
 	if holding and clock - _last_chop >= swing_time():
 		_chop(at)
 
-## Time passed with nobody here: trees came up at the sprout time until the
-## land was full. Returns how many did.
+## Time passed with nobody here: every empty place went on counting, and
+## the ones that got there have their tree. Returns how many did.
 func catch_up(seconds: float) -> int:
 	if seconds <= 0.0:
 		return 0
-	var came := 0
-	var left := seconds + _wait
-	while trees.size() < room() and left >= spawn_time():
-		left -= spawn_time()
-		_plant(true)
-		came += 1
-	_wait = minf(left, _gap) if trees.size() < room() else _gap
+	var came := _grow(seconds, true)
 	events.clear()
+	return came
+
+## Every empty place is owed a tree: one that has no count yet (a place Room
+## opened, a tree taken off the land by hand) starts one now.
+func _owe() -> void:
+	while trees.size() + _due.size() < room():
+		_due.append(spawn_time())
+	if trees.size() + _due.size() > room():
+		_due.resize(maxi(0, room() - trees.size()))
+
+## `dt` off every empty place's count; a tree where one has run out.
+func _grow(dt: float, grown: bool) -> int:
+	_owe()
+	var came := 0
+	var i := 0
+	while i < _due.size():
+		_due[i] -= dt
+		if _due[i] <= 0.0:
+			_due.remove_at(i)
+			_plant(grown)
+			came += 1
+		else:
+			i += 1
 	return came
 
 func _plant(grown: bool) -> void:
@@ -272,6 +289,7 @@ func _chop(at: Vector2) -> void:
 		events.append({"kind": "hit", "tree": tree, "amount": power()})
 		if tree.hp <= 0:
 			trees.erase(tree)
+			_due.append(spawn_time())
 			var give := give_of(tree.tier)
 			energy += give
 			wood_made += give
@@ -290,7 +308,8 @@ func save(now: float) -> void:
 	cfg.set_value("grove", "wood_made", wood_made)
 	cfg.set_value("grove", "felled", felled)
 	cfg.set_value("grove", "seen", now)
-	cfg.set_value("grove", "wait", _wait)
+	_owe()
+	cfg.set_value("grove", "due", Array(_due))
 	cfg.set_value("grove", "land", KEPT_ON)
 	var kept := []
 	for t in trees:
@@ -323,8 +342,16 @@ static func load_saved(now: float) -> RefCounted:
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
 			"hp": clampf(float(row[3]), 0.5, float(hp_of(tier))), "born": -GROW})
 		sim._next_id += 1
-	sim._gap = sim.spawn_time()
-	sim._wait = clampf(float(cfg.get_value("grove", "wait", 0.0)), 0.0, sim._gap)
+	sim._due.clear()
+	var every: float = sim.spawn_time()
+	for left in cfg.get_value("grove", "due", []):
+		if sim.trees.size() + sim._due.size() < sim.room():
+			sim._due.append(clampf(float(left), 0.0, every))
+	# a grove kept before 2026-10-06 had one wait for the whole land: the
+	# first empty place takes what was left of it, the rest start now
+	if not cfg.has_section_key("grove", "due") and sim.trees.size() < sim.room():
+		sim._due.append(clampf(every - float(cfg.get_value("grove", "wait", 0.0)), 0.0, every))
+	sim._owe()
 	sim.events.clear()
 	# a clock set back pays nothing; one set forward fills the land, no more
 	sim.catch_up(now - float(cfg.get_value("grove", "seen", now)))

@@ -69,7 +69,7 @@ func _check_sim() -> void:
 	var sim: RefCounted = Sim.new(7)
 	_ok("a new grove is one sapling", sim.trees.size() == 1 and int(sim.trees[0].tier) == 0)
 	_ok("a sapling starts at four", Sim.hp_of(0) == 4 and int(sim.trees[0].hp) == 4)
-	_ok("room for three, one every six seconds, half a second a chop", sim.room() == 3 and is_equal_approx(sim.spawn_time(), 6.0) and is_equal_approx(sim.swing_time(), 0.5))
+	_ok("room for three, a tree back in six seconds, half a second a chop", sim.room() == 3 and is_equal_approx(sim.spawn_time(), 6.0) and is_equal_approx(sim.swing_time(), 0.5))
 	var at: Vector2 = sim.trees[0].pos + Vector2(0.0, -Sim.RADIUS[0])
 	var swings := 0
 	var fell := 0
@@ -126,14 +126,61 @@ func _check_sim() -> void:
 	c.save(5000.0)
 	var back: RefCounted = Sim.load_saved(5000.0 - 600.0)
 	_ok("a clock set back grows nothing", back.trees.size() == 0)
-	var soon: RefCounted = Sim.load_saved(5000.0 + 13.0)
-	_ok("thirteen seconds away is two trees at six seconds each", soon.trees.size() == 2)
+	var soon: RefCounted = Sim.load_saved(5000.0 + 5.0)
+	_ok("five seconds away is no tree yet", soon.trees.size() == 0)
+	var filled: RefCounted = Sim.load_saved(5000.0 + 7.0)
+	_ok("seven is all twelve: every place counted its own six seconds (%d)" % filled.trees.size(), filled.trees.size() == 12)
 	var later: RefCounted = Sim.load_saved(5000.0 + 86400.0 * 30.0)
 	_ok("a month away fills the land and no further", later.trees.size() == later.room() and later.room() == 12)
 	var gone: RefCounted = Sim.load_saved(1.0)
 	DirAccess.remove_absolute(Sim.path)
 	var fresh: RefCounted = Sim.load_saved(1.0)
 	_ok("no file is a new grove", fresh.trees.size() == 1 and fresh.energy == 0 and gone != null)
+	# every felled tree's place counts from the moment it came down
+	var d: RefCounted = Sim.new(11)
+	d.lv.room = 2
+	d.catch_up(100.0)
+	for tree: Dictionary in d.trees:
+		tree.pos = Sim.LAND * 0.5
+		tree.hp = 1.0
+	var down := 0
+	d.step(DT, true, Sim.LAND * 0.5)
+	for e: Dictionary in d.events:
+		if e.kind == "fell":
+			down += 1
+	d.events.clear()
+	_ok("five trees stood and one chop felled them all (%d)" % down, down == 5 and d.trees.is_empty())
+	var waited := 0.0
+	while waited < d.spawn_time() - 0.2:
+		d.step(DT)
+		waited += DT
+	_ok("none is back before the six seconds are up", d.trees.is_empty())
+	for i in 12:
+		d.step(DT)
+	_ok("all five are back six seconds on, not thirty (%d)" % d.trees.size(), d.trees.size() == 5)
+	# and one felled later comes back later: its own six seconds
+	var e2: RefCounted = Sim.new(12)
+	e2.catch_up(100.0)
+	e2.trees[0].hp = 1.0
+	e2.step(DT, true, e2.trees[0].pos)
+	for i in int(3.0 / DT):
+		e2.step(DT)
+	e2.trees[0].hp = 1.0
+	e2.step(DT, true, e2.trees[0].pos)
+	for i in int(3.2 / DT):
+		e2.step(DT)
+	_ok("a tree felled three seconds after another is three behind it (%d)" % e2.trees.size(), e2.trees.size() == 2)
+	for i in int(3.0 / DT):
+		e2.step(DT)
+	_ok("and back three seconds after it", e2.trees.size() == 3)
+	e2.energy = 1 << 40
+	e2.trees.clear()
+	e2.step(DT)
+	e2.buy("sprout")
+	var longest := 0.0
+	for left: float in e2._due:
+		longest = maxf(longest, left)
+	_ok("a quicker Sprout shortens the places already counting", longest <= e2.spawn_time() + 0.001)
 	var spots := {}
 	for i in 30:
 		var s: RefCounted = Sim.new()
