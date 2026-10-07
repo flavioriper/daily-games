@@ -30,11 +30,25 @@ extends RefCounted
 ##   once with a burst of its leaves (`landed`, SETTLE), and is gone into
 ##   what it gives (`gave`, GONE). Its stump stays STUMP longer.
 ##
+## - **The wood on its way** (2026-10-07, the jetty): the piles lying on the
+##   land, sorted in with the trees, a stack as one heap that grows in a few
+##   steps and says its count; on the jetty the loose piles as a heap and the
+##   bundles waiting (six drawn, then a count); the raft at the jetty's end,
+##   rocking, or on its way off the field's left edge with its bundles and
+##   back without. All of it read off the sim each frame; none of it sways
+##   (the art hangs these meshes under their own y = 0). A pile is not seen
+##   until its tree has landed (`left`, then `gave`): it drops out of the
+##   lying crown to where the sim has it. `gather` throws logs from a pile
+##   to the jetty, and the jetty's heap counts them as they land (`carried`).
+##
 ## Under reduce motion a beaver is there or not and only changes its face, a
-## felled tree fades where it stands, and both signals come at once.
+## felled tree fades where it stands, both signals come at once, a pile is
+## there with them, nothing is thrown and the raft lies still.
 
 signal landed(tree: Dictionary, at: Vector2)
 signal gave(tree: Dictionary, give: int, at: Vector2)
+## A log thrown from a gathered pile has reached the jetty.
+signal carried
 
 const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
@@ -61,6 +75,23 @@ const CHEER := 0.56
 ## Chips and burst leaves in the air at most, and how fast they come down.
 const BITS := 48
 const FALLS := 900.0
+## Seconds a pile takes out of the lying crown to where it rests: with the
+## fall's 0.7 it is there before the sim lets it be gathered (Sim.LIES).
+const DROP_IN := 0.18
+## Logs thrown by one gathered pile at most, the seconds between them, a
+## log's seconds in the air, how high it goes, and how many fly at once.
+const THROWN := 3
+const THROW_GAP := 0.06
+const FLIGHT := 0.45
+const ARC := 70.0
+const THROWS := 18
+## Bundles drawn on the jetty before the rest are a count.
+const BUNDLES := 6
+## The raft at home: how far it turns and bobs, and how fast.
+const ROCK := 0.035
+const BOB := 1.4
+## A count's size over a stack, in view units.
+const COUNT := 25.0
 
 ## The view's (0, 0) in the holder's pixels, and the pixels a unit.
 var origin := Vector2.ZERO
@@ -75,6 +106,14 @@ var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: 
 var _bit_mm: MultiMesh
 var _swing := Sim.SWING
 var _rng := RandomNumberGenerator.new()
+## Piles the sim has that are not seen yet, by their stack's id: each one's
+## tree is still coming down, or it is on its way out of the crown.
+var _owed := {}
+var _drops: Array = []    # {id, from, to, t}: a pile out of a lying crown; view units
+var _throws: Array = []   # {from, t, n, turn}: a log to the jetty, standing for `n` piles
+## Piles the sim has on the jetty whose logs are still in the air.
+var _air := 0
+var _marks: Array = []    # [at, text]: the counts of this frame's draw, view units
 
 func _init() -> void:
 	shade = Art.shade_wind()
@@ -111,6 +150,8 @@ func step(delta: float, sim: RefCounted, holding := false, at := Vector2.ZERO) -
 		if not f.given and f.t >= CREAK + DROP + SETTLE:
 			f.given = true
 			gave.emit(f.tree, int(f.give), _crown_at(f))
+		if f.given and not (f.pile as Dictionary).is_empty():
+			_let_go(f)
 	var whole := Motion.REDUCED_TIME if Motion.reduce else CREAK + DROP + SETTLE + GONE + STUMP
 	_falls = _falls.filter(func(f: Dictionary) -> bool: return f.t < whole)
 	if holding:
@@ -138,6 +179,7 @@ func step(delta: float, sim: RefCounted, holding := false, at := Vector2.ZERO) -
 		bit.pos = (bit.pos as Vector2) + vel * delta
 		bit.turn = float(bit.turn) + float(bit.spin) * delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
+	_step_wood(delta, sim)
 
 ## The sim said `hit`: the tree is squashed, and its beaver's teeth are in.
 func hit(tree: Dictionary) -> void:
@@ -159,7 +201,7 @@ func hit(tree: Dictionary) -> void:
 func fell(tree: Dictionary, give: int) -> void:
 	var b := _beaver(tree)
 	b.cheer = 0.0
-	var f := {"tree": tree, "give": give, "t": 0.0, "dir": -float(b.side), "down": false, "given": false}
+	var f := {"tree": tree, "give": give, "t": 0.0, "dir": -float(b.side), "down": false, "given": false, "pile": {}}
 	_falls.append(f)
 	if Motion.reduce:
 		f.down = true
@@ -167,6 +209,75 @@ func fell(tree: Dictionary, give: int) -> void:
 		var at := Art.see(tree.pos) + Vector2(0.0, -Sim.radius_of(tree.tier) * 1.7 * Art.TREE)
 		landed.emit(tree, at)
 		gave.emit(tree, give, at)
+
+## The sim said `log`, right after the `fell` it belongs to: `pile` is the
+## stack that tree's wood came down as, or the one it joined. One pile of it
+## is not seen until the tree has landed and gone into what it gives.
+func left(pile: Dictionary) -> void:
+	if _falls.is_empty():
+		return
+	var f: Dictionary = _falls[-1]
+	if f.given or not (f.pile as Dictionary).is_empty():
+		return
+	f.pile = pile
+	_owed[pile.id] = int(_owed.get(pile.id, 0)) + 1
+
+## The sim said `gather`: `n` piles went from the stack at `pos` (land units)
+## to the jetty. A log or three are thrown there, and the jetty's heap has
+## them when the last lands.
+func gather(pos: Vector2, n: int) -> void:
+	if Motion.reduce or n <= 0:
+		return
+	var logs := mini(mini(THROWN, n), THROWS - _throws.size())
+	for i in logs:
+		_throws.append({"from": Art.see(pos) + Vector2(_rng.randf_range(-12.0, 12.0), -8.0 - _rng.randf_range(0.0, 10.0)),
+			"t": -THROW_GAP * i, "n": n if i == logs - 1 else 0, "turn": _rng.randf_range(-1.0, 1.0)})
+	if logs > 0:
+		_air += n
+
+## A felled tree has gone into what it gives: its pile leaves the crown.
+func _let_go(f: Dictionary) -> void:
+	var pile: Dictionary = f.pile
+	f.pile = {}
+	if Motion.reduce:
+		_show(int(pile.id))
+		return
+	_drops.append({"id": int(pile.id), "from": _crown_at(f), "to": Art.see(pile.pos), "t": 0.0})
+
+## One more pile of a stack is seen.
+func _show(id: int) -> void:
+	var n := int(_owed.get(id, 0)) - 1
+	if n > 0:
+		_owed[id] = n
+	else:
+		_owed.erase(id)
+
+## The piles on their way: out of a crown to the grass, and off to the jetty.
+func _step_wood(delta: float, sim: RefCounted) -> void:
+	for d: Dictionary in _drops:
+		d.t += delta
+		if d.t >= DROP_IN:
+			_show(int(d.id))
+	_drops = _drops.filter(func(d: Dictionary) -> bool: return d.t < DROP_IN)
+	var home := false
+	for t: Dictionary in _throws:
+		t.t += delta
+		if t.t >= FLIGHT:
+			home = true
+			_air -= int(t.n)
+			carried.emit()
+	if home:
+		_throws = _throws.filter(func(t: Dictionary) -> bool: return t.t < FLIGHT)
+	if _throws.is_empty():
+		_air = 0
+	# a stack the sim no longer has owes nothing
+	if not _owed.is_empty():
+		var ids := {}
+		for pile: Dictionary in sim.logs:
+			ids[pile.id] = true
+		for id in _owed.keys():
+			if not ids.has(id):
+				_owed.erase(id)
 
 func _beaver(tree: Dictionary) -> Dictionary:
 	if not _beavers.has(tree.id):
@@ -244,8 +355,9 @@ func draw_shade(ci: CanvasItem, sim: RefCounted) -> void:
 		ci.draw_mesh(Art.shade(Sim.look_of(f.tree.tier)), null, Art.cast(_px(f.tree.pos), Vector2(size, size), pose[0]),
 			Color(1.0, 1.0, 1.0, pose[4]))
 
-## The trees, the ones coming down, their stumps and the beavers, from the
-## back of the land to the front, and over them what is in the air.
+## The trees, the ones coming down, their stumps, the beavers and the piles
+## lying among them, from the back of the land to the front; then the jetty
+## and the raft, and over them what is in the air and the stacks' counts.
 func draw(ci: CanvasItem, sim: RefCounted) -> void:
 	var list: Array = []
 	for tree: Dictionary in sim.trees:
@@ -254,7 +366,14 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 		list.append([float(f.tree.pos.y), 1, f])
 	for id in _beavers:
 		list.append([float(_beavers[id].tree.pos.y) + 2.0, 2, _beavers[id]])
+	for pile: Dictionary in sim.logs:
+		if int(pile.n) > int(_owed.get(pile.id, 0)):
+			list.append([float(pile.pos.y) + 1.0, 3, pile])
+	for d: Dictionary in _drops:
+		list.append([(d.to as Vector2).y / Art.DEEP + 1.5, 4, d])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	_marks.clear()
+	var one := Vector2(u, u)
 	for item: Array in list:
 		match int(item[1]):
 			0:
@@ -265,7 +384,73 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 				_draw_fall(ci, item[2])
 			2:
 				_draw_beaver(ci, item[2])
+			3:
+				var pile: Dictionary = item[2]
+				var n := int(pile.n) - int(_owed.get(pile.id, 0))
+				ci.draw_mesh(Art.pile(n, pile.lucky), null, Art.still(_px(pile.pos), one))
+				if n > 1:
+					_marks.append([Art.see(pile.pos) + Vector2(0.0, -Art.heap_tall(n) - 6.0), Art.short(n)])
+			4:
+				var d: Dictionary = item[2]
+				var k := clampf(float(d.t) / DROP_IN, 0.0, 1.0)
+				var at := (d.from as Vector2).lerp(d.to, k * k) + Vector2(0.0, -sin(k * PI) * 14.0)
+				ci.draw_mesh(Art.pile(1), null, Art.still(origin + at * u, one * (0.6 + 0.4 * k)))
+	_draw_jetty(ci, sim)
+	_draw_throws(ci)
+	_draw_marks(ci)
 	_draw_bits(ci)
+
+## What is on the jetty and at its end, in front of all the land: the loose
+## piles as a heap (less the ones still in the air), the bundles that wait
+## from its end back, and the raft where the sim has it, with its bundles on
+## the way out. A raft gone past the holder's left edge is not drawn.
+func _draw_jetty(ci: CanvasItem, sim: RefCounted) -> void:
+	var one := Vector2(u, u)
+	var loose := int(sim.loose.n) - _air
+	if loose > 0:
+		ci.draw_mesh(Art.pile(loose, false, true), null, Art.still(origin + Art.jetty() * u, one))
+	var waiting: int = sim.bundles.size()
+	for i in range(mini(waiting, BUNDLES) - 1, -1, -1):
+		ci.draw_mesh(Art.bundle(), null, Art.still(origin + Art.slot(i) * u, one))
+	if waiting > BUNDLES:
+		_marks.append([Art.slot(BUNDLES - 2) + Vector2(0.0, -40.0), Art.short(waiting)])
+	var at := Art.raft_at(sim.raft_at())
+	if origin.x + (at.x + Art.RAFT_LONG) * u < 0.0:
+		return
+	var turn := 0.0
+	if not Motion.reduce:
+		# it rocks where it lies and steadies as it gets under way
+		var calm := 1.0 - 0.6 * minf(1.0, sim.raft_at() * 4.0)
+		turn = ROCK * calm * sin(float(sim.clock) * 1.7)
+		at.y += BOB * sin(float(sim.clock) * 2.3 + 1.0)
+	ci.draw_mesh(Art.raft(int(sim.raft.bundles) if sim.raft.away else 0), null, Art.still(origin + at * u, one, turn))
+
+## The logs in the air between a gathered pile and the jetty.
+func _draw_throws(ci: CanvasItem) -> void:
+	var to := Art.jetty() + Vector2(0.0, -10.0)
+	for t: Dictionary in _throws:
+		if t.t <= 0.0:
+			continue
+		var k := clampf(float(t.t) / FLIGHT, 0.0, 1.0)
+		var at := (t.from as Vector2).lerp(to, k * (0.4 + 0.6 * k)) + Vector2(0.0, -sin(k * PI) * ARC)
+		ci.draw_mesh(Art.billet(), null, Art.still(origin + at * u, Vector2(u, u), float(t.turn) * (1.0 - k) * 2.4))
+
+## The counts over the stacks: every outline, then every figure, so each is
+## one run of glyphs for the renderer.
+func _draw_marks(ci: CanvasItem) -> void:
+	if _marks.is_empty():
+		return
+	var font := (ci as Control).get_theme_font("font", "SheetTitle")
+	var fs := maxi(12, int(COUNT * u))
+	var placed: Array = []
+	for m: Array in _marks:
+		var text: String = m[1]
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		placed.append([origin + (m[0] as Vector2) * u + Vector2(-w * 0.5, 0.0), text])
+	for m: Array in placed:
+		ci.draw_string_outline(font, m[0], m[1], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(4, int(7.0 * u)), Color(0.23, 0.19, 0.16, 0.7))
+	for m: Array in placed:
+		ci.draw_string(font, m[0], m[1], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 
 func _draw_fall(ci: CanvasItem, f: Dictionary) -> void:
 	var tree: Dictionary = f.tree

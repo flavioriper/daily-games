@@ -2,7 +2,8 @@ extends RefCounted
 
 ## The Grove's drawings: the pond and the land seen in isometric (`see`,
 ## `ground`, `light`), the five trees, the shadow each throws (`shade`,
-## `cast`) and the stump it leaves, the log, and
+## `cast`) and the stump it leaves, the log, the jetty in the pond with what
+## lies on it and the raft at its end (`deck`, `pile`, `bundle`, `raft`), and
 ## a picture for each tile. Energy is a mote of light, Peapod's own
 ## (ui/motes.gd), and has no drawing here. Every one is built once into a
 ## mesh and kept, so the screen pays one draw_mesh a tree and one for the
@@ -80,6 +81,8 @@ const ROPE := Color("ecd9a6")
 const ROPE_DEEP := Color("c9a968")
 const PLANK := Color("cfa26d")
 const PLANK_DEEP := Color("a57a48")
+## A shadow lying on planks or logs: warm, where one on the grass is cool.
+const PLANK_SHADE := Color(0.3, 0.17, 0.1, 0.3)
 const STEEL := Color("9ba5ad")
 const STEEL_LIT := Color("d5dde3")
 const STEEL_DEEP := Color("7d8890")
@@ -105,12 +108,50 @@ const CAST := Color(0.09, 0.27, 0.34, 0.24)
 const CAST_ACROSS := Vector2(-0.16, 0.44)
 const CAST_ALONG := Vector2(0.8, 0.14)
 
+## The jetty (2026-10-07): planks off the middle of the land's front left
+## edge, level with the turf and standing on posts in the pond (`deck`). In
+## ground units: how wide it is along the edge, how far it runs out, how far
+## its first plank lies on the grass, and how far along it the posts stand.
+const JETTY_WIDE := 144.0
+const JETTY_LONG := 196.0
+const JETTY_IN := 16.0
+const JETTY_POSTS := [0.3, 0.64, 0.96]
+## The raft lies this far past the jetty's end (ground units) and is gone at
+## this much across the view: left of any field's edge, itself and all.
+const RAFT_OUT := 62.0
+const RAFT_FAR := -190.0
+## The raft's logs: how long (ground units), how many, how far apart along
+## the ground, and half a log's thickness as it is drawn.
+const RAFT_LONG := 76.0
+const RAFT_LOGS := 6
+const RAFT_GAP := 13.5
+const RAFT_R := 6.9
+## A cut log in a pile: half its thickness, its length as it is drawn, and
+## the way its length runs back from the sawn end that looks at us.
+const LOG_R := 8.5
+const LOG_LONG := 27.0
+const LOG_BACK := Vector2(-0.835, -0.551)
+## A row of a heap lies this much of a log's half thickness over the one
+## under it, each log in the hollow between two.
+const LOG_RISE := 1.72
+## The logs in each row of a heap, from the ground up, for each of the five
+## ways a stack is drawn (`heap_of`).
+const HEAP := [[1], [2], [2, 1], [3, 2, 1], [4, 3, 2, 1]]
+## What the wind must leave alone (piles, bundles, the raft) is built this
+## far under its own (0, 0): the shader leans only what stands above it
+## (`_still`, `still`). Taller than any of them.
+const STILL := 200.0
+
 static var _trees := {}
 static var _shades := {}
 static var _stumps := {}
 static var _shade_winds: Array[WeakRef] = []
 static var _icons := {}
 static var _log: ArrayMesh
+static var _piles := {}
+static var _bundle: ArrayMesh
+static var _rafts := {}
+static var _billet: ArrayMesh
 static var _tuft: ArrayMesh
 static var _flower: ArrayMesh
 static var _leaf_mesh: ArrayMesh
@@ -585,7 +626,9 @@ static func ground(size: Vector2, origin: Vector2, u: float) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261005
 	_water_into(b, size, origin, u, rng)
+	_jetty_shade_into(b, origin, u)
 	_land_into(b, origin, u, rng)
+	_jetty_into(b, origin, u)
 	return b.mesh()
 
 ## The pond: pale at the top of the field, deep at its foot, the clouds of a
@@ -609,6 +652,14 @@ static func _water_into(b: Face.Builder, size: Vector2, origin: Vector2, u: floa
 			if p.x < 16.0 or p.x > size.x - 16.0 or p.y < 16.0 or p.y > size.y - 16.0 or not _wet((p - origin) / u):
 				return false
 		return true
+	# the jetty's own water: no ripple and no lily under its planks, where the
+	# raft lies or on its way out. Asked after `open`, so the pond everywhere
+	# else is the one it was before there was a jetty.
+	var berth := func(at: Vector2, wide: float) -> bool:
+		for o: Vector2 in [Vector2(-wide, 0.0), Vector2.ZERO, Vector2(wide, 0.0), Vector2(0.0, -wide * 0.5), Vector2(0.0, wide * 0.5)]:
+			if _berth((at + o - origin) / u):
+				return true
+		return false
 	for i in 7:
 		var at := Vector2(rng.randf_range(size.x * 0.1, size.x * 0.9), rng.randf_range(size.y * 0.06, size.y * 0.94))
 		var s := rng.randf_range(0.7, 1.3) * u
@@ -618,13 +669,15 @@ static func _water_into(b: Face.Builder, size: Vector2, origin: Vector2, u: floa
 		var at := Vector2(rng.randf_range(30.0, size.x - 90.0), rng.randf_range(24.0, size.y - 24.0))
 		var long := rng.randf_range(18.0, 46.0)
 		if open.call(at + Vector2(long * 0.5, 0.0), long * 0.5 + 12.0):
-			b.stroke(PackedVector2Array([at, at + Vector2(long, 0.0)]), 3.2, Color(RIPPLE, rng.randf_range(0.22, 0.55)))
+			var bright := rng.randf_range(0.22, 0.55)
+			if not berth.call(at + Vector2(long * 0.5, 0.0), long * 0.5 + 12.0):
+				b.stroke(PackedVector2Array([at, at + Vector2(long, 0.0)]), 3.2, Color(RIPPLE, bright))
 	var groups := 0
 	for attempt in 80:
 		if groups >= 5:
 			break
 		var at := Vector2(rng.randf_range(40.0, size.x - 40.0), rng.randf_range(40.0, size.y - 40.0))
-		if not open.call(at, 74.0 * u):
+		if not open.call(at, 74.0 * u) or berth.call(at, 74.0 * u):
 			continue
 		groups += 1
 		if groups == 3:
@@ -788,6 +841,298 @@ static func _log_into(b: Face.Builder, at: Vector2, long: float) -> void:
 	b.polygon(Face.Builder.round_rect(at + Vector2(-s * 0.62, -s * 0.3), Vector2(s * 1.24, s * 0.6), s * 0.3), BARK)
 	b.ellipse(at + Vector2(s * 0.4, 0.0), s * 0.2, s * 0.3, PITH)
 	b.stroke(Face.Builder.ring(at + Vector2(s * 0.4, 0.0), s * 0.09, s * 0.14), s * 0.05, BARK, true)
+
+# --- the jetty, and the wood on its way ---
+
+## A point of the jetty's planks, in view units: `across` from -0.5 (its far
+## side) to 0.5 (the side toward the land's front corner), `out` from 0 at
+## the land's edge to 1 at its end. The planks are level with the turf, so
+## the water under a point of them is DEPTH further down the screen.
+static func deck(across: float, out: float) -> Vector2:
+	var k := sqrt(0.5)
+	return see(Vector2(Sim.HALF * 0.5, Sim.HALF * 1.5) + Vector2(k, k) * (across * JETTY_WIDE) + Vector2(-k, k) * (out * JETTY_LONG))
+
+## Where the loose piles are stacked on the jetty, in view units: toward the
+## land, and a little to the near side, since a heap's logs run back from it.
+static func jetty() -> Vector2:
+	return deck(0.08, 0.2)
+
+## Where the `i`th bundle waits for the raft (0 the one that has waited
+## longest, nearest the jetty's end): two across, three rows of them, each
+## where its length, which runs back from it, still lies on the planks.
+static func slot(i: int) -> Vector2:
+	@warning_ignore("integer_division")
+	return deck(0.0 if i % 2 == 0 else 0.37, 0.86 - 0.18 * (i / 2))
+
+## Where the raft is, in view units, on the water: `k` as the sim's
+## `raft_at()`, 0 home at the jetty's end and 1 gone, past the left edge of
+## whatever field shows the land. It gets away slowly and is quick out there
+## (and comes in to the jetty as slowly), so half its way in time is a
+## fifth of it on the water, still in sight. Nothing is drawn where it goes.
+static func raft_at(k: float) -> Vector2:
+	var home := deck(0.0, 1.0 + RAFT_OUT / JETTY_LONG) + Vector2(0.0, DEPTH)
+	k = clampf(k, 0.0, 1.0)
+	return home.lerp(Vector2(RAFT_FAR, home.y - 28.0), pow(k, 2.2))
+
+## Whether a point of the view is the jetty's own water: under its planks and
+## their shade, where the raft lies and the lane it leaves by.
+static func _berth(v: Vector2) -> bool:
+	var far := deck(-0.5, 1.0)
+	var near := deck(0.5, 0.0)
+	var home := raft_at(0.0)
+	if v.x > far.x - 40.0 and v.x < near.x + 130.0 and v.y > deck(-0.5, 0.0).y + DEPTH - 30.0 and v.y < home.y + 70.0:
+		return true
+	return v.x < home.x + 80.0 and v.y > home.y - 80.0 and v.y < home.y + 70.0
+
+## A builder's drawing as a mesh the wind leaves alone: the shader leans
+## what stands above its item's own y = 0, so this is hung under it, STILL
+## down, and `still` puts it back where it was meant.
+static func _still(b: Face.Builder) -> ArrayMesh:
+	var lift := Vector2(0.0, STILL)
+	for i in b.verts.size():
+		b.verts[i] += lift
+		assert(b.verts[i].y >= 0.0, "a still drawing stands over STILL")
+	return b.mesh()
+
+## The transform that draws a `_still` mesh with its own (0, 0) at `at`.
+static func still(at: Vector2, scale: Vector2, turn := 0.0) -> Transform2D:
+	return Transform2D(turn, scale, 0.0, at).translated_local(Vector2(0.0, -STILL))
+
+## How a stack of `n` piles is drawn: one log, two, three, a low heap, a big
+## one. A stack may hold thousands; its count says so, not its drawing.
+static func heap_of(n: int) -> int:
+	return clampi(n, 1, 3) - 1 if n < 4 else (3 if n < 10 else 4)
+
+## How tall the heap of `n` piles stands, in view units: a log and LOG_RISE
+## of one for each row over it.
+static func heap_tall(n: int) -> float:
+	return (2.0 + LOG_RISE * ((HEAP[heap_of(n)] as Array).size() - 1)) * LOG_R
+
+## A stack of `n` piles lying with the middle of its foot on (0, 0), its
+## shadow with it: cut logs seen from their sawn ends, their lengths running
+## back to the upper left. `lucky`: a second small pile beside it. `planks`:
+## it lies on the jetty, where a shadow is warm, not on the grass. Drawn
+## through `still`.
+static func pile(n: int, lucky := false, planks := false) -> ArrayMesh:
+	var step := heap_of(n)
+	var key := step * 4 + int(lucky) * 2 + int(planks)
+	if not _piles.has(key):
+		var b := Face.Builder.new()
+		var tone := PLANK_SHADE if planks else CAST
+		if lucky:
+			var twin := mini(step, 2)
+			_pile_into(b, Vector2(LOG_R * (float(HEAP[step][0]) + float(HEAP[twin][0]) + 0.5), -7.0), twin, tone)
+		_pile_into(b, Vector2.ZERO, step, tone)
+		_piles[key] = _still(b)
+	return _piles[key]
+
+## A bundle on (0, 0): a round of logs tied twice. Drawn through `still`.
+static func bundle() -> ArrayMesh:
+	if _bundle == null:
+		var b := Face.Builder.new()
+		_bale_into(b, Vector2.ZERO, 1.0)
+		_bundle = _still(b)
+	return _bundle
+
+## The raft, the middle of it on (0, 0) on the water, with `aboard` bundles
+## (four at most): logs lashed side by side, their shade and the water at
+## their sides with them. Drawn through `still`, which may rock it.
+static func raft(aboard := 0) -> ArrayMesh:
+	aboard = clampi(aboard, 0, 4)
+	if not _rafts.has(aboard):
+		var b := Face.Builder.new()
+		var e := see(Vector2(1.0, 1.0)) * sqrt(0.5)
+		var o := see(Vector2(-1.0, 1.0)) * sqrt(0.5)
+		_raft_on_water(b, e, o)
+		var spots: Array = [[], [[0.08, 0.3]], [[-0.42, 0.2], [0.5, 0.4]], [[-0.4, -0.7], [0.5, -0.5], [0.06, 1.4]],
+			[[-0.42, -0.9], [0.5, -0.8], [-0.4, 1.3], [0.52, 1.5]]][aboard]
+		for s: Array in spots:
+			_bale_into(b, e * (RAFT_LONG * 0.5 * float(s[0])) + o * (RAFT_GAP * float(s[1])) + Vector2(0.0, -RAFT_R - 1.0), 0.8)
+		_rafts[aboard] = _still(b)
+	return _rafts[aboard]
+
+## One log about (0, 0), for what is thrown from a pile to the jetty. Drawn
+## through `still`, which may turn it.
+static func billet() -> ArrayMesh:
+	if _billet == null:
+		var b := Face.Builder.new()
+		var back := LOG_BACK * LOG_LONG
+		_log_body(b, -back * 0.5, LOG_R, back)
+		_log_face(b, -back * 0.5, LOG_R, 0)
+		_billet = _still(b)
+	return _billet
+
+## A heap of HEAP[step] with the middle of its foot at `at`, its shadow `tone`.
+static func _pile_into(b: Face.Builder, at: Vector2, step: int, tone: Color) -> void:
+	var rows: Array = HEAP[step]
+	var r := LOG_R
+	var back := LOG_BACK * LOG_LONG
+	_lie_shade(b, at, float(rows[0]) * r, back, (2.0 + LOG_RISE * (rows.size() - 1)) * r, tone)
+	# the lengths first, each row over the one under it and each log over the
+	# one to its right, then every sawn end over them
+	var ends: Array[Vector2] = []
+	for j in rows.size():
+		var m: int = rows[j]
+		for i in range(m - 1, -1, -1):
+			var c := at + Vector2((2.0 * i - (m - 1)) * r, -r - LOG_RISE * r * j)
+			_log_body(b, c, r, back * (0.9 + 0.1 * ((i + j) % 2)))
+			ends.append(c)
+	for k in ends.size():
+		_log_face(b, ends[k], r, k)
+
+## The shadow of something lying with the middle of its front at `at`, `half`
+## across and `back` deep, `high` tall: on the ground under it and out to the
+## right, as the trees throw theirs, in `tone`.
+static func _lie_shade(b: Face.Builder, at: Vector2, half: float, back: Vector2, high: float, tone: Color) -> void:
+	var reach := high * 0.5
+	var xf := Transform2D(Vector2(half + reach * 0.5 + 3.0, reach * 0.07) * 0.1, back * 0.066,
+		at + back * 0.5 + Vector2(reach * 0.5, reach * 0.07 + 1.5))
+	b.fan(xf * Face.Builder.ring(Vector2.ZERO, 10.0, 10.0), tone)
+
+## A log's length from its sawn end at `c` back along `back`: bark, lit along
+## its top and dark under it.
+static func _log_body(b: Face.Builder, c: Vector2, r: float, back: Vector2) -> void:
+	var up := Vector2(-back.y, back.x).normalized()
+	b.stroke(PackedVector2Array([c, c + back]), r * 2.0, BARK)
+	b.stroke(PackedVector2Array([c + up * r * 0.46 + back * 0.12, c + up * r * 0.46 + back * 0.96]), r * 0.5, BARK.lightened(0.17))
+	b.stroke(PackedVector2Array([c - up * r * 0.6 + back * 0.1, c - up * r * 0.6 + back * 0.9]), r * 0.5, BARK.darkened(0.14))
+
+## A log's sawn end at `c`: pale wood inside a rim of bark, a ring in it.
+static func _log_face(b: Face.Builder, c: Vector2, r: float, k: int) -> void:
+	b.ellipse(c, r * 0.9, r * 0.97, BARK.darkened(0.22))
+	b.ellipse(c, r * 0.7, r * 0.78, PITH if k % 2 == 0 else PITH.darkened(0.06))
+	b.stroke(Face.Builder.ring(c, r * 0.36, r * 0.41), r * 0.12, Color(BARK, 0.55), true)
+	b.disc(c, r * 0.1, Color(BARK, 0.6))
+
+## A bundle with the middle of its foot at `at`, `s` times its size: a round
+## of logs seen as a pile is, two turns of rope about it. It only ever lies
+## on wood (the jetty, the raft), so its shadow is the planks'.
+static func _bale_into(b: Face.Builder, at: Vector2, s: float) -> void:
+	var r := 15.0 * s
+	var back := LOG_BACK * 30.0 * s
+	var along := -back.normalized()
+	var up := Vector2(-back.y, back.x).normalized()
+	var c := at + Vector2(0.0, -r)
+	_lie_shade(b, at, r, back, r * 2.0, PLANK_SHADE)
+	b.stroke(PackedVector2Array([c, c + back]), r * 2.0, BARK.darkened(0.06))
+	b.stroke(PackedVector2Array([c + up * r * 0.52 + back * 0.1, c + up * r * 0.52 + back * 0.97]), r * 0.42, BARK.lightened(0.14))
+	b.stroke(PackedVector2Array([c - up * r * 0.62 + back * 0.08, c - up * r * 0.62 + back * 0.92]), r * 0.4, BARK.darkened(0.2))
+	b.stroke(PackedVector2Array([c + up * r * 0.04 + back * 0.2, c + up * r * 0.04 + back * 0.95]), r * 0.09, Color(BARK.darkened(0.3), 0.6))
+	for f: float in [0.36, 0.76]:
+		var turn := PackedVector2Array()
+		for i in 9:
+			var a := PI * i / 8.0
+			turn.append(c + back * f + up * (r * 1.02 * cos(a)) + along * (r * 0.34 * sin(a)))
+		b.stroke(turn, 5.2 * s, ROPE_DEEP)
+		b.stroke(turn.slice(0, 6), 2.6 * s, ROPE)
+	b.ellipse(c, r * 0.93, r * 0.98, BARK.darkened(0.28))
+	var q := r * 0.31
+	for i in 7:
+		var p := c if i == 0 else c + Vector2.from_angle(TAU * (i - 1) / 6.0 + 0.5) * r * 0.6
+		b.ellipse(p, q * 0.92, q, PITH if i % 2 == 0 else PITH.darkened(0.07))
+		b.stroke(Face.Builder.ring(p, q * 0.42, q * 0.46), q * 0.17, Color(BARK, 0.5), true)
+
+## The raft's logs about (0, 0), lying along `e` and side by side along `o`
+## (a unit of the ground each, as the view sees it): their shade on the
+## water, a pale line where it laps them, the sawn ends toward the front and
+## two lashings over them.
+static func _raft_on_water(b: Face.Builder, e: Vector2, o: Vector2) -> void:
+	var he := e * RAFT_LONG * 0.5
+	var step := o * RAFT_GAP
+	var n := RAFT_LOGS
+	var side := step * (n * 0.5)
+	var up := Vector2(e.y, -e.x).normalized()
+	var r := RAFT_R
+	var shade := PackedVector2Array()
+	for c: Vector2 in [-he - side, he - side, he + side, -he + side]:
+		shade.append(c * 1.1 + Vector2(5.0, 9.0))
+	b.polygon(shade, Color(0.07, 0.27, 0.33, 0.3))
+	b.stroke(PackedVector2Array([-he * 0.9 + side * 1.14 + Vector2(0.0, 5.0), he * 0.3 + side * 1.14 + Vector2(0.0, 5.0)]), 2.4, Color(1.0, 1.0, 1.0, 0.5))
+	b.stroke(PackedVector2Array([he * 1.08 + side * 0.1 + Vector2(4.0, 6.0), he * 1.08 + side * 0.95 + Vector2(4.0, 6.0)]), 2.4, Color(1.0, 1.0, 1.0, 0.4))
+	for j in n:
+		var c := step * (j - (n - 1) * 0.5) + Vector2(0.0, -2.5)
+		var from := c - he
+		var to := c + he
+		b.stroke(PackedVector2Array([from, to]), r * 2.0, BARK if j % 2 == 0 else BARK.darkened(0.06))
+		b.stroke(PackedVector2Array([from.lerp(to, 0.05) + up * r * 0.45, from.lerp(to, 0.95) + up * r * 0.45]), r * 0.5, BARK.lightened(0.17))
+		b.ellipse(to, r * 0.72, r * 0.86, PITH if j % 2 == 0 else PITH.darkened(0.06))
+		b.stroke(Face.Builder.ring(to, r * 0.3, r * 0.36), r * 0.13, Color(BARK, 0.5), true)
+	for f: float in [-0.5, 0.48]:
+		var from := he * f - side * 0.96 + Vector2(0.0, -2.5 - r * 0.8)
+		var to := he * f + side * 0.96 + Vector2(0.0, -2.5 - r * 0.8)
+		b.stroke(PackedVector2Array([from, to]), 3.8, ROPE_DEEP)
+		b.stroke(PackedVector2Array([from + Vector2(0.4, -0.8), to + Vector2(0.4, -0.8)]), 1.7, ROPE)
+
+## The jetty's shade on the pond, for a ground mesh: under its planks and out
+## to their right as the trees throw theirs, shorter. Drawn before the land,
+## so the earth's side hides what would fall on it.
+static func _jetty_shade_into(b: Face.Builder, origin: Vector2, u: float) -> void:
+	var throw := CAST_ALONG * DEPTH * 0.5
+	var pts := PackedVector2Array()
+	for c: Array in [[-0.5, 0.0, 0.0], [-0.5, 0.0, 1.0], [0.5, 0.0, 1.0], [0.5, 1.0, 1.0], [0.5, 1.0, 0.0], [-0.5, 1.0, 0.0]]:
+		pts.append(origin + (deck(c[0], c[1]) + Vector2(0.0, DEPTH) + throw * float(c[2])) * u)
+	b.polygon(pts, Color(SHADE, 0.3))
+
+## The jetty, for a ground mesh, over the land: planks off the middle of the
+## front left edge, level with the turf (the land has no step: the first
+## plank lies on the grass), on posts that stand in the pond, the two at its
+## end taller for the raft to tie up to.
+static func _jetty_into(b: Face.Builder, origin: Vector2, u: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261007
+	var at := func(across: float, out: float, down := 0.0) -> Vector2:
+		return origin + (deck(across, out) + Vector2(0.0, down)) * u
+	var inn := -JETTY_IN / JETTY_LONG
+	var thick := 9.0
+	for out: float in JETTY_POSTS:
+		_post(b, at.call(-0.45, out, thick * 0.5), u, 0.0)
+	# what is under the planks is in their shade
+	var dark := Color(0.16, 0.12, 0.12)
+	_band(b, PackedVector2Array([at.call(0.5, 0.0, thick), at.call(0.5, 1.0, thick), at.call(-0.5, 1.0, thick)]),
+		PackedVector2Array([at.call(0.5, 0.0, thick + 30.0), at.call(0.5, 1.0, thick + 30.0), at.call(-0.5, 1.0, thick + 30.0)]),
+		PackedColorArray([Color(dark, 0.34), Color(dark, 0.34), Color(dark, 0.34)]), PackedColorArray([Color(dark, 0.0), Color(dark, 0.0), Color(dark, 0.0)]))
+	# the planks' thickness: the side toward the front in shade, the end lit
+	b.polygon(PackedVector2Array([at.call(0.5, inn), at.call(0.5, 1.0), at.call(0.5, 1.0, thick), at.call(0.5, inn, thick)]), PLANK_DEEP.darkened(0.16))
+	b.polygon(PackedVector2Array([at.call(0.5, 1.0), at.call(-0.5, 1.0), at.call(-0.5, 1.0, thick), at.call(0.5, 1.0, thick)]), PLANK_DEEP.lightened(0.06))
+	b.polygon(PackedVector2Array([at.call(-0.5, inn), at.call(0.5, inn), at.call(0.5, 1.0), at.call(-0.5, 1.0)]), PLANK_DEEP)
+	var n := 13
+	var gap := 0.006
+	for i in n:
+		var from := lerpf(inn, 1.0, float(i) / n) + (0.0 if i == 0 else gap)
+		var to := lerpf(inn, 1.0, float(i + 1) / n) - (0.0 if i == n - 1 else gap)
+		var far := -0.5 + rng.randf_range(0.0, 0.022)
+		var near := 0.5 - rng.randf_range(0.0, 0.022)
+		var tone := PLANK.lightened(rng.randf_range(0.0, 0.12)) if rng.randf() < 0.5 else PLANK.darkened(rng.randf_range(0.0, 0.1))
+		b.polygon(PackedVector2Array([at.call(far, from), at.call(near, from), at.call(near, to), at.call(far, to)]), tone)
+		# the light on the edge of each that looks at the sun
+		b.stroke(PackedVector2Array([at.call(far + 0.03, from + 0.008), at.call(near - 0.03, from + 0.008)]), 1.6 * u, Color(1.0, 0.95, 0.8, 0.3), false, false)
+	b.stroke(PackedVector2Array([at.call(-0.5, inn), at.call(-0.5, 1.0)]), 2.4 * u, Color(1.0, 0.96, 0.8, 0.45), false, false)
+	for out: float in JETTY_POSTS:
+		_post(b, at.call(0.46, out, thick * 0.6), u, 0.0)
+	for across: float in [-0.45, 0.46]:
+		_post(b, at.call(across, JETTY_POSTS[-1]), u, 22.0, true)
+
+## A post of the jetty from `top`, where the planks are, down to the water,
+## and `rise` over them; `head` draws only what stands over the planks.
+static func _post(b: Face.Builder, top: Vector2, u: float, rise: float, head := false) -> void:
+	var w := 12.0 * u
+	var from := top - Vector2(w * 0.5, rise * u)
+	var long := (rise + 4.0) * u if head else (rise + DEPTH) * u
+	if not head:
+		# the water round its foot, behind it and then before it
+		var foot := top + Vector2(0.0, DEPTH * u)
+		var lap := Face.Builder.ring(foot, w * 1.0, w * 0.42)
+		b.stroke(lap, 2.2 * u, Color(1.0, 1.0, 1.0, 0.45), true)
+	b.polygon(Face.Builder.round_rect(from, Vector2(w, long), 3.0 * u), PLANK_DEEP)
+	b.polygon(Face.Builder.round_rect(from, Vector2(w * 0.42, long), 2.4 * u), PLANK_DEEP.lightened(0.17))
+	if head:
+		b.ellipse(from + Vector2(w * 0.5, 1.0 * u), w * 0.5, w * 0.24, PLANK.lightened(0.12))
+	else:
+		# wet where the pond reaches it
+		b.polygon(Face.Builder.round_rect(from + Vector2(0.0, long - 18.0 * u), Vector2(w, 18.0 * u), 3.0 * u), Color(0.24, 0.18, 0.16, 0.5))
+		var foot := top + Vector2(0.0, DEPTH * u)
+		var lap := Face.Builder.ring(foot, w * 1.0, w * 0.42)
+		b.stroke(lap.slice(0, lap.size() / 2 + 1), 2.2 * u, Color(1.0, 1.0, 1.0, 0.6))
 
 ## A tile's picture, about (0, 0). Seeds shows the tree its next level opens,
 ## so it takes that tree's `look`. Energy's is the mote itself.

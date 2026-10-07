@@ -3,16 +3,18 @@ extends Control
 ## The Grove: the first place on the Valley tab. A piece of land in a pond,
 ## trees coming up on it at random spots, and a circle that follows the
 ## finger and chops whatever stands inside it, a beaver coming to bite each
-## tree it takes; nothing chops by itself yet
-## (the user's design, 2026-10-05). A felled tree leaves wood, which lies
-## until the jetty's raft has landed it (the sim's `owed`) and only then goes
-## to the shared inventory (core/stock.gd), never spent here, and energy,
+## tree it takes (the user's design, 2026-10-05). A felled tree leaves energy,
 ## which stays and buys the shop's three tiles and the nodes of the tree of
-## skills. The land takes the screen and each of the two is a card over it,
-## opened by its button under the land's left (the user, 2026-10-06: "game
-## should take most of screen, and shop should be a dialog inside the game
-## that opens by clicking a button"): the shop is built here, the tree is
-## valley/grove_tree.gd.
+## skills, and wood, which lies where the tree stood as a pile: the circle
+## gathers piles to the jetty off the land's front left edge, they are tied
+## into bundles there and a raft takes them off the screen (2026-10-07, spec
+## docs/superpowers/specs/2026-10-07-grove-tree-and-jetty-design.md). Only
+## what the raft has landed (the sim's `owed`) goes to the shared inventory
+## (core/stock.gd), never spent here. The land takes the screen and the
+## shop and the tree are each a card over it, opened by its button under the
+## land's left (the user, 2026-10-06: "game should take most of screen, and
+## shop should be a dialog inside the game that opens by clicking a
+## button"): the shop is built here, the tree is valley/grove_tree.gd.
 ## Spec docs/superpowers/specs/2026-10-05-valley-grove-design.md; the rules
 ## and every number are valley/grove_sim.gd's, the drawings grove_art.gd's.
 ##
@@ -71,19 +73,29 @@ const CARD_W := 1000.0
 const CARD_INSET := 26
 const TILE_GAP := 16
 const FILL := Color("fcf7ef")
+## Where the jetty's plate is, from the near side of the jetty's end, in view
+## units: on the water under the land's front left side.
+const JETTY_PLATE := Vector2(92.0, Art.DEPTH + 28.0)
 ## The land keeps this much water round it, and more under its earth edge.
 const SHORE := 26.0
 const SHORE_FOOT := 64.0
 ## And this much over the land's back edge, for the crowns that stand there.
 const SHORE_TOP := 110.0
-## Seconds: a number's rise, a log's flight, and how long the circle's rim
-## swells on a chop. A hit tree's squash and a felled one's fall are
+## Seconds: a number's rise and how long the circle's rim swells on a chop.
+## A hit tree's squash, a felled one's fall and a gathered log's flight are
 ## valley/grove_life.gd's.
 const NUM := 0.7
-const FLIGHT := 0.5
 const SWELL := 0.18
-## Logs thrown by one tree, at most.
-const THROWN := 3
+## What the raft has landed rises beside the wood plate for this long.
+const GAIN := 1.3
+## The jetty's plate keeps the warn colour this long after a gather the full
+## jetty refused, and shivers at the first of a run of them, never sooner
+## than SHIVER_GAP after the last time: late on nearly every swing is one.
+const WARN_HOLD := 2.5
+const SHIVER_GAP := 4.0
+const SHIVER := 0.3
+## A gathered log's landing is heard this far apart at the soonest.
+const CARRY_GAP := 0.05
 ## Energy is motes of light, Peapod's own (ui/motes.gd): `ORBS` to one energy,
 ## as there; a sapling lets go MOTES of them and each tier after MOTES_STEP
 ## more, up to MOTES_MOST.
@@ -140,8 +152,9 @@ var _light: ArrayMesh
 ## draw): the grass, the trees' shadows and the trees each under their wind
 ## (`Art.wind`, `Life.shade`), the
 ## leaves it carries, and over them what is not blown about (the bars, the
-## circle, the numbers). The trees, their shadows, the beavers and the falls
-## are `_life`'s (valley/grove_life.gd).
+## circle, the numbers). The trees, their shadows, the beavers, the falls,
+## the piles lying, what is on the jetty and the raft are `_life`'s
+## (valley/grove_life.gd).
 var _life: RefCounted
 var _grass: Array[MultiMesh] = []
 var _grass_l: Control
@@ -161,7 +174,13 @@ var _hold_at := Vector2.ZERO
 var _held_back := false
 var _since_chop := 10.0
 var _nums: Array = []    # {at, text, t, gold}: `at` in view units
-var _flies: Array = []   # {from, to, t, give}: logs on their way to the wood plate
+var _gains: Array = []   # {text, t}: what the raft landed, rising beside the wood plate
+## Seconds since the full jetty last refused a gather, since its plate last
+## shivered and since a gathered log's landing was last heard.
+var _since_full := 100.0
+var _since_shiver := 100.0
+var _since_carry := 100.0
+var _jetty_box := {}   # warn or not -> the plate's paper
 var _bump := {}     # plate -> its running bump
 var _dirty := false
 ## The screen has handed itself back (`_on_back`): the grove is kept and is
@@ -250,6 +269,7 @@ func _build() -> void:
 	_life = Life.new()
 	_life.landed.connect(_on_landed)
 	_life.gave.connect(_on_gave)
+	_life.carried.connect(_on_carried)
 	_grass_l = _layer("Grass", _draw_grass)
 	_grass_l.material = Art.wind(true)
 	_shade_l = _layer("Shade", func() -> void: _life.draw_shade(_shade_l, sim))
@@ -554,13 +574,20 @@ func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/grove_tutorial_diagram.gd")
 	var pages := []
 	for step: Array in [
-			[Diagram.Lesson.CHOP, "TUT_GROVE_CHOP", tr("TUT_GROVE_CHOP_BODY") % Sim.hp_of(0)],
+			[Diagram.Lesson.CHOP, "TUT_GROVE_CHOP", _chops_line()],
 			[Diagram.Lesson.GIFTS, "TUT_GROVE_GIFTS", tr("TUT_GROVE_GIFTS_BODY")],
-			[Diagram.Lesson.WAIT, "TUT_GROVE_WAIT", tr("TUT_GROVE_WAIT_BODY")]]:
+			[Diagram.Lesson.WAIT, "TUT_GROVE_WAIT", tr("TUT_GROVE_WAIT_BODY")],
+			[Diagram.Lesson.SEND, "TUT_GROVE_SEND", tr("TUT_GROVE_SEND_BODY")]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
 	return pages
+
+## The first page's words, with the chops a sapling takes on this grove as
+## it is now: its Soft bough and the axe's levels counted, whole chops.
+func _chops_line() -> String:
+	var chops := maxi(1, ceili(sim.hp(0) / sim.power() - 0.0001))
+	return tr("TUT_GROVE_CHOP_BODY_ONE") if chops == 1 else tr("TUT_GROVE_CHOP_BODY_N") % chops
 
 func capabilities() -> Array:
 	return []
@@ -598,6 +625,9 @@ func _process(delta: float) -> void:
 		_save()
 	_since_chop += delta
 	_since_reach += delta
+	_since_full += delta
+	_since_shiver += delta
+	_since_carry += delta
 	# the land may have moved on the screen (an inset, the banner): the
 	# shadows are kept to where it is now
 	_life.place(_origin, _u, field.get_global_transform())
@@ -606,14 +636,10 @@ func _process(delta: float) -> void:
 	for item: Dictionary in _nums:
 		item.t += delta
 	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
-	var landed := false
-	for f: Dictionary in _flies:
-		f.t += delta
-		if f.t >= FLIGHT:
-			landed = true
-			_kick("wood")
-	if landed:
-		_flies = _flies.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT)
+	if not _gains.is_empty():
+		for g: Dictionary in _gains:
+			g.t += delta
+		_gains = _gains.filter(func(g: Dictionary) -> bool: return g.t < GAIN)
 	_refresh_hud(delta)
 	if _dirty:
 		_since_save += delta
@@ -676,6 +702,23 @@ func _play_events() -> void:
 				_since_chop = 0.0
 				if int(e.hits) > 0:
 					_fx.cue("chop", 1.0 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH))
+			"log":
+				# the pile that fell's wood came down as: seen when its tree has landed
+				_life.left(e.log)
+			"gather":
+				_life.gather(e.pos, int(e.n))
+				_dirty = true
+			"full":
+				# a swing over a ripe pile the jetty had no room for
+				if _since_full >= WARN_HOLD and _since_shiver >= SHIVER_GAP:
+					_since_shiver = 0.0
+				_since_full = 0.0
+			"landed":
+				# the raft is off the screen when it gets there: the wood plate
+				# is the only sign (the wood itself is `take_owed`'s, above)
+				_kick("wood")
+				_quiet.cue("fell", 1.0, -9.0)
+				_gains.append({"text": "+" + Art.short(int(e.wood)), "t": 0.0})
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
@@ -687,23 +730,24 @@ func _on_landed(tree: Dictionary, at: Vector2) -> void:
 	_fx.puff(_at(at) + Vector2(0.0, Sim.radius_of(tree.tier) * 0.5 * _u), Color("f3ecd2"), 5)
 
 ## A felled tree, lying with its crown at `at` (view units), goes into what
-## it gives: it throws its logs at the wood plate and lets its energy go
-## as motes of light, which drift out of its crown, hang a moment and are
-## drawn in to the energy plate; the counts roll up as they land.
+## it gives: its energy is let go as motes of light, which drift out of its
+## crown, hang a moment and are drawn in to the energy plate, the count
+## rolling up as they land. Its wood is the pile that drops out of the same
+## crown and lies (valley/grove_life.gd): no plate counts it yet.
 func _on_gave(tree: Dictionary, give: int, at: Vector2) -> void:
 	if Motion.reduce:
 		return
 	var from: Vector2 = field.get_global_transform() * _at(at)
-	var inv := _over.get_global_transform().affine_inverse()
-	var icon: Control = _plates.wood.icon
-	var to: Vector2 = inv * (icon.get_global_transform() * (icon.size * 0.5))
-	var logs := mini(THROWN, give)
-	for i in logs:
-		# the last to land brings the tree's wood onto the plate
-		_flies.append({"from": inv * from + Vector2(_rng.randf_range(-30.0, 30.0), _rng.randf_range(-20.0, 20.0)),
-			"to": to, "t": -0.05 * i, "give": give if i == logs - 1 else 0})
 	_motes.u = size.x / 810.0 * 2.2
 	_motes.drop(from, float(give) * ORBS, mini(MOTES + MOTES_STEP * int(tree.tier), MOTES_MOST))
+
+## A log thrown from a gathered pile has come down on the jetty: the mote's
+## own quiet click, lower, and never two closer than CARRY_GAP.
+func _on_carried() -> void:
+	if _since_carry < CARRY_GAP:
+		return
+	_since_carry = 0.0
+	_quiet.cue("chop", 0.8 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH), -11.0)
 
 ## Motes came down on the energy plate: it swells, unless it still is from
 ## the one before, and a click is heard, each a semitone up a short run.
@@ -882,9 +926,10 @@ func _draw_grass() -> void:
 	for mm: MultiMesh in _grass:
 		_grass_l.draw_multimesh(mm, null)
 
-## The trees, the ones coming down, their stumps and the beavers at them,
-## from the back of the land to the front (valley/grove_life.gd). The wind
-## leans them in the layer's material.
+## The trees, the ones coming down, their stumps, the beavers at them and
+## the piles lying among them, from the back of the land to the front, then
+## the jetty's wood and the raft (valley/grove_life.gd). The wind leans what
+## stands in the layer's material, and leaves the wood alone.
 func _draw_trees() -> void:
 	_life.draw(_trees_l, sim)
 
@@ -911,7 +956,7 @@ func _draw_leaves() -> void:
 	_leaves_l.draw_multimesh(_leaf_mm, null)
 
 ## What the wind leaves alone, over the trees: the light, a lap's gold marks
-## at a foot, a hurt tree's bar, the circle and the numbers. The circle is
+## at a foot, a hurt tree's bar, the jetty's plate, the circle and the numbers. The circle is
 ## one on the ground, so the screen sees it flatter than it is wide.
 func _draw_top() -> void:
 	if _light != null:
@@ -927,6 +972,7 @@ func _draw_top() -> void:
 			var bar := Rect2(at + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))
 			_top.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
 			_top.draw_rect(Rect2(bar.position, Vector2(maxf(4.0, w * float(tree.hp) / full), bar.size.y)), Color("fff6e6"))
+	_draw_jetty_plate()
 	if _hold and not _held_back:
 		var r: float = sim.reach() * _u
 		var swell := 0.0 if Motion.reduce else maxf(0.0, 1.0 - _since_chop / SWELL)
@@ -945,14 +991,43 @@ func _draw_top() -> void:
 		_top.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
 		_top.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Art.MARK if n.gold else Color.WHITE, a))
 
-## Logs in the air, over everything, on their way to the wood plate.
+## The jetty's plate, on the water by it: how many piles it holds of how many
+## it has room for. It wears the warn colour while a full jetty is refusing
+## what the circle gathers, and shivers as that starts.
+func _draw_jetty_plate() -> void:
+	# not on a jetty the raft has since half emptied
+	var warn: bool = _since_full < WARN_HOLD and sim.jetty_held() * 2 >= sim.jetty_room()
+	if not _jetty_box.has(warn):
+		_jetty_box[warn] = CozyTheme.lifted(Pal.BAD_TILE if warn else FILL, 22, 0)
+	var font := get_theme_font("font", "SheetTitle")
+	var fs := int(30.0 * _u)
+	var room := Art.short(sim.jetty_room())
+	var text := "%s / %s" % [Art.short(sim.jetty_held()), room]
+	# as wide as its fullest reading, so it does not breathe as piles come
+	var most := font.get_string_size("%s / %s" % [room, room], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var icon := 44.0 * _u
+	var box := Rect2(Vector2.ZERO, Vector2(most + icon + 34.0 * _u, 50.0 * _u))
+	box.position = _at(Art.deck(0.5, 0.86) + JETTY_PLATE) - box.size * 0.5 + Vector2(Motion.shiver_offset(_since_shiver, 5.0 * _u, SHIVER), 0.0)
+	_top.draw_style_box(_jetty_box[warn], box)
+	_top.draw_mesh(Art.icon("wood"), null, Transform2D(-0.3, Vector2(0.44, 0.44) * _u, 0.0, box.position + Vector2(10.0 * _u + icon * 0.5, box.size.y * 0.5)))
+	_top.draw_string(font, box.position + Vector2(icon + 16.0 * _u + (most - w) * 0.5, box.size.y * 0.5 + fs * 0.36), text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.BAD if warn else Pal.TEXT)
+
+## What the raft has landed, in gold beside the wood plate's count, over
+## everything: it rises and goes.
 func _draw_over() -> void:
-	for f: Dictionary in _flies:
-		if f.t <= 0.0:
-			continue
-		var k := clampf(f.t / FLIGHT, 0.0, 1.0)
-		var at: Vector2 = (f.from as Vector2).lerp(f.to, k * k) + Vector2(0.0, -sin(k * PI) * 110.0)
-		_over.draw_mesh(Art.log_mesh(), null, Transform2D(-0.3 + k * 4.0, Vector2(0.7, 0.7), 0.0, at))
+	if _gains.is_empty():
+		return
+	var label: Control = _plates.wood.label
+	var at: Vector2 = _over.get_global_transform().affine_inverse() * (label.get_global_transform() * Vector2(label.size.x + 18.0, label.size.y * 0.74))
+	var font := get_theme_font("font", "SheetTitle")
+	for g: Dictionary in _gains:
+		var k: float = g.t / GAIN
+		var a := minf(1.0, (1.0 - k) * 4.0)
+		var rise := 0.0 if Motion.reduce else -22.0 * (1.0 - pow(1.0 - k, 3.0))
+		_over.draw_string_outline(font, at + Vector2(0.0, rise), g.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
+		_over.draw_string(font, at + Vector2(0.0, rise), g.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color(Art.MARK, a))
 
 # --- leaving ---
 
