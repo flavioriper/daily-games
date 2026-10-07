@@ -32,8 +32,6 @@ const SKY := [Color("171533"), Color("241d45"), Color("33264c")]
 ## tones out of it.
 const TEMPS := [[2600.0, Color("e2502c")], [3600.0, Color("ff7d3c")], [5800.0, Color("ffab48")], [9000.0, Color("ffdc9c")],
 	[14000.0, Color("fff3df")], [22000.0, Color("e2ecff")], [40000.0, Color("b8d0ff")]]
-## The cloud a supernova leaves in the sky, one after another.
-const CLOUDS := [Color("ec96aa"), Color("96aaf0"), Color("82d2c8"), Color("f0be82")]
 const WARM := Color("ffb060")
 const COOL := Color("d6dcff")
 const TAIL := Color("c8f6ec")
@@ -42,6 +40,11 @@ const TAIL := Color("c8f6ec")
 const ICE := Color("c4ece2")
 const GAS := Color("a49ef0")
 const DIMMED := Color("a8483a")
+## A white dwarf's light and a neutron star's, and the dark a world takes from
+## a dead star's iron.
+const WD := Color("dfe8ff")
+const NS := Color("cfc4ff")
+const PAINT_IRON := Color("5c5a6e")
 ## What the star is made of, on its bar and in what it throws off, in
 ## Sim.CHAIN's order with rock last: hydrogen, helium, carbon, neon, oxygen,
 ## silicon, iron, rock.
@@ -78,9 +81,10 @@ static func star_col(kelvin: float) -> Color:
 static func burning_col(sim: RefCounted) -> Color:
 	return DIMMED.lerp(star_col(sim.temp()), lerpf(0.35, 1.0, sim.lit))
 
-## A solid's paint: its kind's, paler the icier it is.
-static func paint_of(kind: int, ice: float) -> Color:
-	return (PAINT[kind] as Color).lerp(ICE, clampf(ice, 0.0, 1.0) * 0.7)
+## A solid's paint: its kind's, paler the icier it is and darker the more of
+## a dead star's iron is in it.
+static func paint_of(kind: int, ice: float, metal := 0.0) -> Color:
+	return (PAINT[kind] as Color).lerp(ICE, clampf(ice, 0.0, 1.0) * 0.7).lerp(PAINT_IRON, clampf(metal, 0.0, 1.0) * 0.8)
 
 ## A number in a few characters: 0.5, 12.4, 999, 1.23K, 45.6K, 1.2M and on
 ## through B, T and Q. The star has no last mass.
@@ -208,10 +212,11 @@ static func orb_light() -> ArrayMesh:
 
 # --- the sky ---
 
-## The night for a field `size` big: its three colours top to foot, the
-## clouds `novas` supernovas have left in it, and its specks, each a small
-## soft light. One mesh, drawn once.
-static func sky(size: Vector2, novas: int) -> ArrayMesh:
+## The night for a field `size` big: its three colours top to foot and its
+## specks, each a small soft light. One mesh, drawn once. (`novas` is kept
+## for the callers: what a supernova leaves is a relic and its nebula now,
+## drawn where it is.)
+static func sky(size: Vector2, _novas: int) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var u := size.x / 1080.0
 	var ys := [0.0, size.y * 0.55, size.y]
@@ -224,10 +229,6 @@ static func sky(size: Vector2, novas: int) -> ArrayMesh:
 		b.tri(first, first + 1, first + 2)
 		b.tri(first, first + 2, first + 3)
 	var rng := RandomNumberGenerator.new()
-	for i in mini(novas, 8):
-		rng.seed = 900 + i
-		var at := size * 0.5 + Vector2(rng.randf_range(-0.33, 0.33) * size.x, rng.randf_range(-0.3, 0.3) * size.y)
-		Motes.glow(b, at, rng.randf_range(380.0, 640.0) * u, Color(CLOUDS[i % CLOUDS.size()], 0.2), 1.6)
 	rng.seed = 77
 	var tints := [Color("fff6e6"), Color("d6e0ff"), Color("ffd6dc")]
 	for i in 170:
@@ -236,6 +237,25 @@ static func sky(size: Vector2, novas: int) -> ArrayMesh:
 		var tint: Color = tints[rng.randi() % 3]
 		var a := 0.18 + rng.randf() * 0.5
 		_radial(b, at, r, [[0.0, Color(tint, a)], [0.4, Color(tint, a * 0.5)], [1.0, Color(tint, 0.0)]])
+	return b.mesh()
+
+## The stars far behind everything, over a `wide` square round the origin:
+## one mesh, slid a little with the camera.
+static func far_field(rng_seed: int, wide: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
+	var tints := [Color("fff6e6"), Color("d6e0ff"), Color("ffd6dc")]
+	for i in 90:
+		var at := Vector2(rng.randf() - 0.5, rng.randf() - 0.5) * wide
+		var r := (1.6 + rng.randf() * rng.randf() * 5.0) * 2.4
+		_radial(b, at, r, [[0.0, Color(tints[rng.randi() % 3], 0.2 + rng.randf() * 0.5)], [0.4, Color(tints[rng.randi() % 3], 0.3)], [1.0, Color(tints[0], 0.0)]])
+	return b.mesh()
+
+## A filled disc of radius R, white: a black hole's dark body, drawn scaled.
+static func disc() -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.disc(Vector2.ZERO, R, Color.WHITE)
 	return b.mesh()
 
 ## The field's four corners in `col`, to round a square sky off: what flies

@@ -26,6 +26,14 @@ extends Control
 ##   a shell of gas for each thing the star is made of, in that thing's
 ##   colour, the outermost first and fastest; the owner calls `step_end`,
 ##   ends the sim at `end_swap()` and stops at `end_time()`.
+## - **The universe round the star** (2026-10-07): each relic (sim.relics) is
+##   a soft light, or a dark disc in a warm ring for a black hole, with its
+##   nebula, a seeded ring of the dead star's layers' colours spreading and
+##   thinning over its age, in the gas batch; the five neighbour stars are
+##   two warm lights each; a far field of stars, one mesh, lies under
+##   everything and slides a little with the camera. No rays, beams or
+##   lensing arcs: cozy light has no shape. Every point of the sim goes
+##   through `world()`, which honours the camera's `shift` and `view`.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 const Art = preload("res://arcade/nightlight_art.gd")
@@ -34,7 +42,22 @@ const Motion = preload("res://core/motion.gd")
 ## The most solids and the most puffs drawn: the sim's own most, and the
 ## shells of an end.
 const MOST := 320
-const GAS_MOST := 480
+const GAS_MOST := 1100
+## Every warm light: two for a body (its heat, its tail), the puffs, two for
+## each relic and neighbour. Sized so the relics, filled last, are never the
+## ones dropped.
+const WARM_MOST := MOST * 2 + 64
+## A relic's nebula: NEBULA_PUFFS soft lights in a ring NEBULA_R of the sim's
+## pixels across, spreading from 1.5 to NEBULA_FAR of that and thinning over
+## NEBULA_LIFE seconds of the relic's age.
+const NEBULA_PUFFS := 48
+const NEBULA_R := 500.0
+const NEBULA_FAR := 3.5
+const NEBULA_LIFE := 600.0
+## The far field slides this share of what the camera and the sky's drift
+## do, and repeats every FAR_WIDE of the sim's pixels.
+const FAR_PARALLAX := 0.25
+const FAR_WIDE := 6000.0
 ## No solid is drawn smaller than this in the game, in the design's pixels.
 const SMALL := 3.0
 ## A first puff's light is this wide, in the sim's pixels, and a heavier one
@@ -77,6 +100,10 @@ var corner := 44.0
 ## No solid is drawn smaller than this, in the design's pixels: a tutorial's
 ## page, a third as big as the game, asks for more.
 var small := SMALL
+## The camera: how far the world is slid, in this control's pixels, and how
+## much it is zoomed (1 the sim's own). At rest unless an end moves it.
+var shift := Vector2.ZERO
+var view := 1.0
 
 var _clock := 0.0
 var _pulse := 0.0
@@ -94,6 +121,8 @@ var _star_l: Control
 var _top_l: Control
 var _warms: Batch
 var _gas: Batch
+var _holes: Batch
+var _far: ArrayMesh
 var _lumps: Array[Batch] = []
 ## The end being played, or empty: {how, t, col, r, shells, swapped}.
 var _end := {}
@@ -178,8 +207,9 @@ func _init() -> void:
 	_body_l = _layer("Bodies", _draw_bodies, _body_mat)
 	_star_l = _layer("Star", _draw_star, _star_mat)
 	_top_l = _layer("Top", _draw_top, null)
-	_warms = Batch.new(Art.glow(2.0), MOST)
+	_warms = Batch.new(Art.glow(2.0), WARM_MOST)
 	_gas = Batch.new(Art.glow(1.6), GAS_MOST)
+	_holes = Batch.new(Art.disc(), 16)
 	for v in Art.LUMPS:
 		_lumps.append(Batch.new(Art.lump(v), MOST))
 	_on_resized()
@@ -197,13 +227,16 @@ func _layer(called: String, draws: Callable, mat: Material) -> Control:
 func _on_resized() -> void:
 	queue_redraw()
 
-## A point of the sim, in this control's pixels.
+## A point of the sim, in this control's pixels, as the camera has it.
+func world(p: Vector2) -> Vector2:
+	return centre + shift + p * (sim.zoom() * view * u)
+
 func px(p: Vector2) -> Vector2:
-	return centre + p * (sim.zoom() * u)
+	return world(p)
 
 ## The star as it is drawn, in pixels.
 func star_px() -> float:
-	return sim.seen_r() * u
+	return sim.seen_r() * view * u
 
 # --- what the owner tells it ---
 
@@ -335,14 +368,14 @@ func _old() -> float:
 
 ## Every buffer for this frame, off where the bodies are now.
 func _fill() -> void:
-	var batches: Array[Batch] = [_warms, _gas]
+	var batches: Array[Batch] = [_warms, _gas, _holes]
 	batches.append_array(_lumps)
 	for batch in batches:
 		batch.n = 0
 	if not _end.is_empty() and _end.swapped:
 		_rise = minf(1.0, _rise + get_process_delta_time() / RISE)
 	var seen := _rise if not _end.is_empty() and _end.swapped else _old()
-	var z: float = sim.zoom() * u
+	var z: float = sim.zoom() * view * u
 	var col := Art.burning_col(sim)
 	var rh: float = sim.haze_r()
 	var roche: float = sim.roche_r()
@@ -354,7 +387,7 @@ func _fill() -> void:
 			if far < 1.0:
 				continue
 			var away := b.pos / far
-			var at := centre + b.pos * z
+			var at := world(b.pos)
 			if b.kind == Sim.Kind.GAS:
 				# cool far out, warm as the disc drags it in; thinner once its
 				# dust has fallen out
@@ -376,26 +409,76 @@ func _fill() -> void:
 				var near := 1.0 - (far - roche) / maxf(1.0, frost - roche)
 				var long := lerpf(TAIL_FAR, TAIL_NEAR, near) * u * minf(1.5, 0.6 + r / (8.0 * u))
 				_warms.put(at + away * long * 0.5, away.angle(), long * 0.5 / Art.R, r * 2.4 / Art.R, Color(Art.TAIL, (0.16 + 0.2 * near) * b.ice * seen))
-			var paint := Color(Art.paint_of(b.kind, b.ice), seen)
+			var paint := Color(Art.paint_of(b.kind, b.ice, b.metal), seen)
 			# the tide draws a body out toward the star before it has it in pieces
 			var strain: float = sim.tear_r(b.m) / far if far < roche else 0.0
 			if strain > 0.5 and not Motion.reduce:
 				_lumps[b.id % Art.LUMPS].put_pulled(at, b.spin, s, away, 1.0 + PULLED * smoothstep(0.5, 1.0, strain), paint)
 			else:
 				_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, paint)
+		_fill_relics(z, seen)
 	for p: Dictionary in _puffs:
 		var k: float = p.t / PUFF
-		var s := (30.0 + 60.0 * k) * float(p.s) * u / Art.R
-		_warms.put(centre + (p.at as Vector2) * z, 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
+		var s := (30.0 + 60.0 * k) * float(p.s) * view * u / Art.R
+		_warms.put(world(p.at as Vector2), 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
 	_fill_end()
 	for batch in batches:
 		batch.send()
 	var origin := get_global_transform()
 	var sc := origin.get_scale().x
-	_body_mat.set_shader_parameter("star", origin * centre)
+	_body_mat.set_shader_parameter("star", origin * world(Vector2.ZERO))
 	_body_mat.set_shader_parameter("reach", reach * sc)
 	_body_mat.set_shader_parameter("haze", rh * z * sc)
 	_body_mat.set_shader_parameter("star_col", Vector3(col.r, col.g, col.b))
+
+## The dead stars (sim.relics) and the neighbour stars (sim.far). A relic's
+## nebula is a seeded ring of soft lights in its layers' colours, spreading
+## and thinning over its age, in the gas; a white dwarf and a neutron star
+## are a light and a white heart (the neutron star's light pulses, still
+## under reduce motion); a black hole is a dark disc (drawn on top, unlit)
+## in a warm ring.
+func _fill_relics(z: float, seen: float) -> void:
+	for i in sim.relics.size():
+		var rel: Dictionary = sim.relics[i]
+		var at := world(rel.pos as Vector2)
+		if not Rect2(Vector2.ZERO, size).grow(NEBULA_R * NEBULA_FAR * z).has_point(at):
+			continue
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 500 + int(rel.novas) * 7 + int(rel.kind)
+		var age := minf(1.0, float(rel.age) / NEBULA_LIFE)
+		var spread := lerpf(1.5, NEBULA_FAR, 1.0 - pow(1.0 - age, 2.0)) * NEBULA_R * z * 0.3
+		var a := lerpf(0.22, 0.06, age) * seen
+		var layers: Array = rel.layers
+		for k in NEBULA_PUFFS:
+			# every puff draws its numbers whether it is shown or not, so a
+			# layer that is spent does not move the others
+			var way := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.55, 1.0)
+			var wide := rng.randf_range(0.5, 1.1) * (40.0 + 60.0 * age) * view * u / Art.R
+			var li := k % maxi(1, layers.size() - 1)
+			if li >= layers.size() or float(layers[li]) < 0.01:
+				continue
+			_gas.put(at + way * spread * (1.0 + 0.6 * li / 7.0), 0.0, wide, wide, Color(Art.MADE[li], a))
+		var rr: float = sim.relic_r(rel) * z
+		match int(rel.kind):
+			Sim.Relic.WD:
+				var r := maxf(4.0 * u, rr)
+				_warms.put(at, 0.0, r * 5.0 / Art.R, r * 5.0 / Art.R, Color(Art.WD, 0.35 * seen))
+				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95 * seen))
+			Sim.Relic.NS:
+				var r := maxf(3.0 * u, rr)
+				var pulse := 1.0 if Motion.reduce else 1.0 + 0.12 * sin(_clock * 2.6)
+				_warms.put(at, 0.0, r * 4.0 * pulse / Art.R, r * 4.0 * pulse / Art.R, Color(Art.NS, 0.4 * seen))
+				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95 * seen))
+			_:
+				var r := maxf(10.0 * u, rr)
+				_warms.put(at, 0.0, r * 1.6 / Art.R, r * 1.6 / Art.R, Color(Art.WARM, 0.5 * seen))
+				_holes.put(at, 0.0, r / Art.R, r / Art.R, Color(Art.SHADE, seen))
+	for p: Vector2 in sim.far:
+		var at := world(p)
+		if Rect2(Vector2.ZERO, size).grow(40.0).has_point(at):
+			var r := 4.0 * u
+			_warms.put(at, 0.0, r * 6.0 / Art.R, r * 6.0 / Art.R, Color(Art.COOL, 0.3 * seen))
+			_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.9 * seen))
 
 ## The shells of an end, each puff where its own speed has taken it: quick
 ## at first and slowing, wider and thinner as it goes. Under reduce motion
@@ -416,10 +499,10 @@ func _fill_end() -> void:
 		# 1 - (1 - k)^3: most of the way in the first third
 		var gone := 1.0 - pow(1.0 - shown, 3.0)
 		var way := Vector2.from_angle(float(p.a) + (0.0 if Motion.reduce else 0.25 * k * float(p.v)))
-		var far := r0 * 0.6 + float(at.fly) * u * float(p.v) * gone
-		var wide := (30.0 + 78.0 * gone) * float(p.s) * u / Art.R
+		var far := r0 * 0.6 + float(at.fly) * view * u * float(p.v) * gone
+		var wide := (30.0 + 78.0 * gone) * float(p.s) * view * u / Art.R
 		var a := minf(1.0, age / 0.35) * (1.0 - smoothstep(0.45, 1.0, k)) * 0.36
-		_gas.put(centre + way * far, 0.0, wide, wide, Color(p.col as Color, a))
+		_gas.put(world(Vector2.ZERO) + way * far, 0.0, wide, wide, Color(p.col as Color, a))
 
 # --- drawing ---
 
@@ -444,15 +527,29 @@ func _star_now() -> Vector2:
 	var thin := clampf(t / (float(at.swap) * 0.7), 0.0, 1.0)
 	return Vector2(1.0 + 0.35 * thin, 1.0 - thin * thin)
 
-## The star's light, lying on the dust round it.
+## The far field under everything, then the star's light, lying on the dust
+## round it.
 func _draw_light() -> void:
 	if sim == null:
 		return
+	_draw_far()
 	# a star with nothing to burn lights half as far, and dully
 	var now := _star_now()
 	var col := Art.burning_col(sim)
 	var r := star_px() * REACH * _breath() * (1.0 + _pulse * 0.1 + _bloom * 0.3) * lerpf(0.45, 1.0, sim.lit)
-	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, centre), Color(col, lerpf(0.3, 0.5, sim.lit) * now.y))
+	_light_l.draw_mesh(Art.glow(3.2), null, Transform2D(0.0, Vector2(r, r) / Art.R, 0.0, world(Vector2.ZERO)), Color(col, lerpf(0.3, 0.5, sim.lit) * now.y))
+
+## The stars far behind everything: one mesh, as wide as the field at the
+## smallest it is drawn, sliding FAR_PARALLAX of the camera's shift and of
+## the sky's drift. The drift is wrapped about 0 by FAR_WIDE, so the field
+## never runs out.
+func _draw_far() -> void:
+	if _far == null:
+		_far = Art.far_field(77, FAR_WIDE)
+	var s: float = u * maxf(0.6, sim.zoom() * view)
+	var half := Vector2(FAR_WIDE, FAR_WIDE) * 0.5
+	var slid: Vector2 = ((sim.drift as Vector2) + half).posmod(FAR_WIDE) - half
+	_light_l.draw_mesh(_far, null, Transform2D(0.0, Vector2(s, s), 0.0, centre + shift * FAR_PARALLAX - slid * FAR_PARALLAX * s))
 
 ## The gas and every warm light, then the star's own glow and what an end
 ## adds to it.
@@ -464,7 +561,8 @@ func _draw_warm() -> void:
 	var now := _star_now()
 	var col := Art.burning_col(sim)
 	var sr := star_px() * _breath() * (1.0 + _pulse * 0.04) * now.x
-	_warm_l.draw_mesh(Art.glow(2.0), null, Transform2D(0.0, Vector2(sr, sr) * 2.1 / Art.R, 0.0, centre), Color(col, (0.34 + 0.2 * _bloom) * lerpf(0.4, 1.0, sim.lit) * now.y))
+	var star := world(Vector2.ZERO)
+	_warm_l.draw_mesh(Art.glow(2.0), null, Transform2D(0.0, Vector2(sr, sr) * 2.1 / Art.R, 0.0, star), Color(col, (0.34 + 0.2 * _bloom) * lerpf(0.4, 1.0, sim.lit) * now.y))
 	if _end.is_empty() or _end.swapped:
 		return
 	var at: Dictionary = END[_end.how]
@@ -476,10 +574,10 @@ func _draw_warm() -> void:
 		var fall := clampf(t / float(at.fall), 0.0, 1.0)
 		var burst := exp(-maxf(0.0, since) * 1.6) if since > 0.0 else fall * fall
 		var wide := sr * (1.6 + (2.6 * minf(1.0, since * 2.0) if since > 0.0 else 0.0))
-		_warm_l.draw_mesh(Art.glow(1.6), null, Transform2D(0.0, Vector2(wide, wide) / Art.R, 0.0, centre), Color(Art.VEIL, 0.85 * burst))
+		_warm_l.draw_mesh(Art.glow(1.6), null, Transform2D(0.0, Vector2(wide, wide) / Art.R, 0.0, star), Color(Art.VEIL, 0.85 * burst))
 	if since > 0.0:
-		var left := 14.0 * u * (1.0 + 0.15 * sin(t * 9.0) * (0.0 if Motion.reduce else 1.0))
-		_warm_l.draw_mesh(Art.glow(1.2), null, Transform2D(0.0, Vector2(left, left) / Art.R, 0.0, centre), Color(1.0, 1.0, 1.0, minf(1.0, since * 2.0)))
+		var left := 14.0 * view * u * (1.0 + 0.15 * sin(t * 9.0) * (0.0 if Motion.reduce else 1.0))
+		_warm_l.draw_mesh(Art.glow(1.2), null, Transform2D(0.0, Vector2(left, left) / Art.R, 0.0, star), Color(1.0, 1.0, 1.0, minf(1.0, since * 2.0)))
 
 func _draw_bodies() -> void:
 	for batch in _lumps:
@@ -499,13 +597,15 @@ func _draw_star() -> void:
 	_star_mat.set_shader_parameter("clock", _clock)
 	_star_mat.set_shader_parameter("fade", now.y)
 	var sr := star_px() * _breath() * (1.0 + _pulse * 0.04) * now.x / Art.R
-	_star_l.draw_mesh(Art.star_quad(), null, Transform2D(0.0, Vector2(sr, sr), 0.0, centre))
+	_star_l.draw_mesh(Art.star_quad(), null, Transform2D(0.0, Vector2(sr, sr), 0.0, world(Vector2.ZERO)))
 
-## Over everything: a breath of light as a supernova's layers leave, and the
-## corners.
+## Over everything: a black hole's dark disc (here and not with the bodies,
+## whose shader would light it; over its warm ring, which it leaves a ring),
+## a breath of light as a supernova's layers leave, and the corners.
 func _draw_top() -> void:
 	if sim == null:
 		return
+	_holes.show(_top_l)
 	if not _end.is_empty() and not _end.swapped:
 		var at: Dictionary = END[_end.how]
 		var since := float(_end.t) - float(at.fall)

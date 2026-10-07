@@ -10,7 +10,9 @@ extends SceneTree
 ## the tide has torn, 4c a sky as full as it gets (the draw calls' worst),
 ## 5a the two powers offered at two Suns (the card comes up by itself), 5b
 ## one picked and on its disc, 5c the star with nothing to burn, dim, 6 a
-## heavy star burning carbon, a giant, 6b the powers it holds, 7 the shop
+## heavy star burning carbon, a giant, 6c three relics put by hand round
+## it (a white dwarf, a neutron star, an old black hole, each with its
+## nebula), 6b the powers it holds, 7 the shop
 ## with a tile just bought, 8a-8e the supernova (the core falling in, the
 ## layers leaving, the new star coming up), 11 the perks, 12 one drawn, 13
 ## the new star among the gas, 13b-13c a star letting go, 14-16 the
@@ -30,7 +32,8 @@ const STEPS := [
 	[15.1, "grow", 2.2], [16.6, "shot", "5a_pick"], [16.7, "pick", 0], [17.3, "shot", "5b_picked"],
 	[17.4, "starve"], [20.0, "shot", "5c_dim"], [20.1, "feed"],
 	[20.2, "heavy"], [20.3, "run", 40.0], [23.5, "shot", "6_giant"],
-	[23.6, "powers"], [24.2, "shot", "6b_powers"], [24.3, "powers_x"],
+	[23.55, "relics"], [23.75, "shot", "6c_relics"],
+	[23.85, "powers"], [24.2, "shot", "6b_powers"], [24.3, "powers_x"],
 	[24.4, "shop"], [24.5, "buy"], [25.0, "shot", "7_shop"], [25.1, "shop_x"],
 	[25.2, "iron"], [26.1, "shot", "8a_fall"], [26.9, "shot", "8b_leaving"], [27.8, "shot", "8c_shells"],
 	[29.2, "shot", "8d_swap"], [31.2, "shot", "8e_rising"],
@@ -207,6 +210,15 @@ func _process(delta: float) -> bool:
 				_s.sim.light = 5000.0
 				while _s.sim.owed() > 0:
 					_s.sim.pick(_s.sim.owed() % 2)
+			"relics":
+				_s.sim.add_relic(Sim.Relic.WD, 6.0, Vector2(-900, -700), _s.sim.layers())
+				_s.sim.add_relic(Sim.Relic.NS, 14.0, Vector2(1100, 300), _s.sim.layers())
+				_s.sim.add_relic(Sim.Relic.BH, 50.0, Vector2(200, 1300), _s.sim.layers())
+				_s.sim.relics[2].age = 300.0
+				var spots := []
+				for rel: Dictionary in _s.sim.relics:
+					spots.append(_s.sky.world(rel.pos as Vector2))
+				print("relics: %d, zoom %.3f, on screen at %s, field %s" % [_s.sim.relics.size(), _s.sim.zoom(), str(spots), _s.sky.size])
 			"powers":
 				_s._chips.pressed.emit()
 				print("powers held: %s, card open %s" % [str(_s.sim.power), _s._powers.visible])
