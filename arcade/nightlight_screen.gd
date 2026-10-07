@@ -182,6 +182,12 @@ var _finger := -1
 var _held_back := false
 var _end_how := ""
 var _end_done := false
+## What the end being played leaves (Sim.Relic), read as it begins: once the
+## sim has ended, `remnant()` has nothing to say.
+var _end_rem := 0
+## The sky is playing a star's birth (a first star, a Start over): it holds
+## the sim like an end, but there is nothing to end and no perks after it.
+var _birth := false
 var _dirty := false
 var _since_save := 0.0
 var _opened_at := 0
@@ -212,6 +218,9 @@ func _ready() -> void:
 	top_bar.refresh(self)
 	_refresh_tiles()
 	_refresh_hud(0.0)
+	# a first star, with no file before it, comes up out of its cloud
+	if sim.fresh:
+		_begin_birth()
 	Analytics.track("nightlight_enter", {"mass": int(sim.mass), "novas": sim.novas})
 
 func _notification(what: int) -> void:
@@ -1042,6 +1051,7 @@ func close_reset() -> void:
 func _on_reset() -> void:
 	Analytics.track("nightlight_reset", {"suns": int(sim.suns()), "novas": sim.novas, "fades": sim.fades, "dust": sim.dust})
 	sim = Sim.new()
+	sim.born()
 	sky.sim = sim
 	sky.finish_end()
 	sky.started()
@@ -1057,8 +1067,15 @@ func _on_reset() -> void:
 	_let_go()
 	_refresh_tiles()
 	_refresh_hud(0.0)
-	_fx.cue("born")
+	_begin_birth()
 	_save()
+
+## The star condenses out of the cloud round it: the close of an end alone,
+## the sim held for it (see `_step_end`).
+func _begin_birth() -> void:
+	sky.begin_birth()
+	_birth = true
+	_fx.cue("born")
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -1083,7 +1100,7 @@ func tutorial_pages() -> Array:
 			[Diagram.Lesson.GAS, "TUT_NL_GAS", tr("TUT_NL_GAS_BODY")],
 			[Diagram.Lesson.WORLDS, "TUT_NL_WORLDS", tr("TUT_NL_WORLDS_BODY")],
 			[Diagram.Lesson.BURN, "TUT_NL_BURN", tr("TUT_NL_BURN_BODY") % [_hundredths(Sim.FLASH), Art.short(Sim.HEAVY, c)]],
-			[Diagram.Lesson.END, "TUT_NL_END", tr("TUT_NL_END_BODY") % Art.short(Sim.IRON, c)]]:
+			[Diagram.Lesson.END, "TUT_NL_END", tr("TUT_NL_END_BODY") % [Art.short(Sim.IRON, c), Art.short(Sim.HEAVY, c), Art.short(Sim.COLLAPSE, c)]]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
@@ -1182,8 +1199,8 @@ func _play_events() -> void:
 					_tore_at = now
 					_fx.cue("tear", randf_range(0.92, 1.08))
 			"shine":
-				# the star's own light, off its own face
-				_motes.drop(origin * sky.centre, float(e.e) * ORBS, 1)
+				# the star's own light, off its own face, wherever the camera has it
+				_motes.drop(origin * sky.world(Vector2.ZERO), float(e.e) * ORBS, 1)
 				_dirty = true
 			"ignite":
 				sky.lit_up()
@@ -1231,13 +1248,23 @@ func _step_end(delta: float) -> void:
 		_holding = false
 		_end_how = how
 		_end_done = false
+		_end_rem = sim.remnant()
 		_end_cued = how != "nova"
-		_say("NL_END_NOVA" if how == "nova" else "NL_END_FADE")
-		sky.begin_end(how, sim.layers())
+		if how == "nova":
+			_say("NL_END_NOVA_BH" if _end_rem == Sim.Relic.BH else "NL_END_NOVA_NS")
+		else:
+			_say("NL_END_NEBULA" if how == "nebula" else "NL_END_FADE")
+		sky.begin_end(how, sim.layers(), _end_rem)
+		# a nebula lets go as slowly as a fade does, and is felt as one
 		if _end_cued:
-			_fx.cue(how)
+			_fx.cue("fade")
 		return
 	sky.step_end(delta)
+	if _birth:
+		if sky.end_t() >= sky.end_time():
+			_birth = false
+			sky.finish_end()
+		return
 	if not _end_cued and sky.end_t() >= float(NightSky.END.nova.fall) - NOVA_LEAD:
 		_end_cued = true
 		_fx.cue("nova")
@@ -1246,12 +1273,12 @@ func _step_end(delta: float) -> void:
 			var was := int(sim.suns())
 			var paid: int = sim.end()
 			_end_done = true
-			sky.swapped()
+			sky.swapped(sim.last_birth)
 			_fx.cue("born")
 			_motes.clear()
 			_shown.mass = sim.mass
 			_shown.light = 0.0
-			Analytics.track("nightlight_nova", {"n": sim.novas, "suns": was, "dust": paid, "how": _end_how})
+			Analytics.track("nightlight_nova", {"n": sim.novas, "suns": was, "dust": paid, "how": _end_how, "remnant": ["wd", "ns", "bh"][_end_rem]})
 			_refresh_tiles()
 			_save()
 	elif sky.end_t() >= sky.end_time():
@@ -1318,7 +1345,7 @@ func _refresh_hud(delta: float) -> void:
 	if String(goal.which) == "dim":
 		_nova_l.text = tr("NL_GOAL_DIM") % _clock(maxf(0.0, float(goal.need) - float(goal.have)))
 	elif not bool(goal.heavy):
-		_nova_l.text = tr("NL_GOAL_C_WAIT") % [Art.short(Sim.HEAVY, c), core]
+		_nova_l.text = tr("NL_GOAL_C_WAIT") % [Art.short(Sim.HEAVY, c), _hundredths(Sim.CARBON), core]
 	else:
 		_nova_l.text = tr(GOALS[goal.which]) % [_hundredths(float(goal.have)), _hundredths(float(goal.need)), core]
 	_pick_l.text = tr("NL_PICK_AT") % Art.short(sim.next_pick(), c)

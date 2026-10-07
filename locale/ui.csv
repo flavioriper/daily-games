@@ -1010,6 +1010,8 @@ NL_CARD_MASS,%s× the Sun,%s× o Sol,%s× el Sol
 NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva
 NL_CARD_NOVAS_ONE,1 supernova,1 supernova,1 supernova
 NL_CARD_NOVAS_N,%d supernovas,%d supernovas,%d supernovas
+NL_CARD_RELICS_ONE,1 relic,1 relíquia,1 reliquia
+NL_CARD_RELICS_N,%d relics,%d relíquias,%d reliquias
 NL_MOTTO,"A star, and the gas to feed it",Uma estrela e o gás para alimentá-la,Una estrella y el gas para alimentarla
 NL_MASS,Sun masses,Massas solares,Masas solares
 NL_TEMP,Temperature,Temperatura,Temperatura
@@ -1074,7 +1076,7 @@ NL_MILLION_K,%s million K,%s milhões de K,%s millones de K
 NL_BILLION_K,%s billion K,%s bilhões de K,%s mil millones de K
 NL_GOAL_HE,Helium core %s of %s Suns · core %s,Núcleo de hélio %s de %s sóis · núcleo a %s,Núcleo de helio %s de %s soles · núcleo a %s
 NL_GOAL_C,Carbon core %s of %s Suns · core %s,Núcleo de carbono %s de %s sóis · núcleo a %s,Núcleo de carbono %s de %s soles · núcleo a %s
-NL_GOAL_C_WAIT,Carbon lights on a star of %s× · core %s,O carbono acende numa estrela de %s× · núcleo a %s,El carbono se enciende en una estrella de %s× · núcleo a %s
+NL_GOAL_C_WAIT,Carbon lights at %s× · sheds at %s Suns · core %s,Carbono acende a %s× · solta a %s sóis · núcleo a %s,El carbono pide %s× · suelta a %s soles · núcleo a %s
 NL_GOAL_FE,Iron core %s of %s Suns · core %s,Núcleo de ferro %s de %s sóis · núcleo a %s,Núcleo de hierro %s de %s soles · núcleo a %s
 NL_GOAL_DIM,Nothing left to burn · letting go in %s,Nada mais para queimar · vai se desfazer em %s,Nada más que quemar · se deshará en %s
 NL_LIT_HE,The helium flash: helium now burns into carbon,O flash do hélio: o hélio agora vira carbono,El flash del helio: el helio ahora se vuelve carbono
@@ -1083,8 +1085,10 @@ NL_LIT_NE,Neon is burning into oxygen,O neônio está virando oxigênio,El neón
 NL_LIT_O,Oxygen is burning into silicon,O oxigênio está virando silício,El oxígeno se está volviendo silicio
 NL_LIT_SI,Silicon is burning into iron. Iron is the end.,O silício está virando ferro. O ferro é o fim.,El silicio se está volviendo hierro. El hierro es el final.
 NL_DIM,"Nothing left to burn. Feed it, or it lets go.","Nada mais para queimar. Alimente-a, ou ela se desfaz.","Nada más que quemar. Aliméntala, o se deshará."
-NL_END_NOVA,The iron core gives way,O núcleo de ferro cede,El núcleo de hierro cede
-NL_END_FADE,The star lets its layers go,A estrela solta suas camadas,La estrella suelta sus capas
+NL_END_NEBULA,The star lets its layers go · a white dwarf is left,A estrela solta suas camadas · fica uma anã branca,La estrella suelta sus capas · queda una enana blanca
+NL_END_NOVA_NS,Supernova · a neutron star is left,Supernova · fica uma estrela de nêutrons,Supernova · queda una estrella de neutrones
+NL_END_NOVA_BH,Supernova · a black hole is left,Supernova · fica um buraco negro,Supernova · queda un agujero negro
+NL_END_FADE,"Nothing left to burn · the star fades, a white dwarf is left","Nada mais a queimar · a estrela se apaga, fica uma anã branca","Nada que quemar · la estrella se apaga, queda una enana blanca"
 TUT_NL_GAS,Feed the star,Alimente a estrela,Alimenta la estrella
 TUT_NL_GAS_BODY,"Tap Gas for a puff, or hold it for a stream. The gas joins the disc round the star and winds in, faster and faster, and pays light all the way down. Light buys upgrades in the shop.","Toque em Gás para um sopro, ou segure para um fluxo. O gás entra no disco em volta da estrela e desce girando, cada vez mais rápido, rendendo luz por todo o caminho. A luz compra melhorias na loja.","Toca Gas para un soplo, o mantenlo para un flujo. El gas entra en el disco alrededor de la estrella y baja girando, cada vez más rápido, dando luz todo el camino. La luz compra mejoras en la tienda."
 TUT_NL_WORLDS,Gas makes worlds,O gás faz mundos,El gas hace mundos
@@ -1092,4 +1096,4 @@ TUT_NL_WORLDS_BODY,"Dust in the gas sticks into grains, grains gather into rocks
 TUT_NL_BURN,The star burns its way up,A estrela queima degrau por degrau,La estrella quema escalón a escalón
 TUT_NL_BURN_BODY,"It fuses hydrogen into helium to shine, hotter and bluer the heavier it is. With a helium core of %s Suns the helium lights and makes carbon. A star of %s Suns goes on: neon, oxygen, silicon, iron, each quicker and paying less. As it grows it offers you a power to pick.","Ela funde hidrogênio em hélio para brilhar, mais quente e azul quanto mais pesada. Com um núcleo de hélio de %s sóis, o hélio acende e faz carbono. Uma estrela de %s sóis vai além: neônio, oxigênio, silício, ferro, cada um mais rápido e rendendo menos. Ao crescer, ela oferece um poder para você escolher.","Funde hidrógeno en helio para brillar, más caliente y azul cuanto más pesada. Con un núcleo de helio de %s soles, el helio se enciende y hace carbono. Una estrella de %s soles sigue: neón, oxígeno, silicio, hierro, cada uno más rápido y dando menos. Al crecer te ofrece un poder para elegir."
 TUT_NL_END,How a star ends,Como uma estrela acaba,Cómo termina una estrella
-TUT_NL_END_BODY,"Iron gives nothing back. At %s Suns the iron core gives way and the star throws off its layers: a supernova. A small star starts again in that gas, and you keep stardust, which buys perks that last. A star left with nothing to burn lets go quietly, for less.","O ferro não devolve nada. Com %s sóis o núcleo de ferro cede e a estrela lança fora suas camadas: uma supernova. Uma estrelinha recomeça nesse gás, e você fica com poeira estelar, que compra vantagens que duram. Uma estrela sem nada para queimar se desfaz em silêncio, por menos.","El hierro no devuelve nada. Con %s soles el núcleo de hierro cede y la estrella arroja sus capas: una supernova. Una estrellita vuelve a empezar en ese gas, y te quedas con polvo estelar, que compra ventajas que duran. Una estrella sin nada que quemar se deshace en silencio, por menos."
+TUT_NL_END_BODY,"An iron core of %s Suns ends a star as a supernova. A star under %s× never gets there: it cannot light its carbon core, so it lets its layers go as a nebula and leaves a white dwarf, as a star with nothing left to burn does. From %s× a supernova leaves a black hole, else a neutron star. The relic stays and pulls, the next star is born in the gas, and you keep stardust for perks that last.","Um núcleo de ferro de %s sóis acaba com uma estrela numa supernova. Uma estrela abaixo de %s× não chega lá: não consegue acender o núcleo de carbono, então solta as camadas numa nebulosa e deixa uma anã branca, como faz uma estrela sem nada para queimar. A partir de %s× a supernova deixa um buraco negro; abaixo disso, uma estrela de nêutrons. A relíquia fica e atrai, a próxima estrela nasce no gás, e você guarda poeira estelar para vantagens que duram.","Un núcleo de hierro de %s soles acaba con una estrella en una supernova. Una estrella de menos de %s× no llega: no puede encender su núcleo de carbono, así que suelta sus capas en una nebulosa y deja una enana blanca, como una estrella sin nada que quemar. Desde %s× la supernova deja un agujero negro; por debajo, una estrella de neutrones. La reliquia se queda y atrae, la siguiente estrella nace en el gas, y guardas polvo estelar para ventajas que duran."

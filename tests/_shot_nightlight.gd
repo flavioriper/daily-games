@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Nightlight, shot at fixed beats through the real menu:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_nightlight.gd -- <outdir> [reduce] [en|pt|es] [fresh]
 ##
 ## 1 the Arcade tab with its card, 2 a new star, 3 the Gas button held by a
 ## finger (as a phone sends it) for five seconds, 4 the disc a steady hand
@@ -13,10 +13,18 @@ extends SceneTree
 ## heavy star burning carbon, a giant, 6c three relics put by hand round
 ## it (a white dwarf, a neutron star, an old black hole, each with its
 ## nebula), 6b the powers it holds, 7 the shop
-## with a tile just bought, 8a-8e the supernova (the core falling in, the
-## layers leaving, the new star coming up), 11 the perks, 12 one drawn, 13
-## the new star among the gas, 13b-13c a star letting go, 14-16 the
-## tutorial's four pages, 17 the tab again with the star on its card.
+## with a tile just bought, 8a-8f the supernova (the core falling in, the
+## layers leaving, the camera pulling back from the neutron star it leaves,
+## panning to the new star, the new star condensing), 11 the perks, 12 one
+## drawn, 13 the new star among the gas, 9a-9b a star of four Suns whose
+## carbon core cannot light letting its layers go as a nebula (9c the camera
+## between the white dwarf and the birthplace, 9b the white dwarf after),
+## 13b-13c a star letting go, 14-16 the tutorial's four pages (16b the END
+## page's camera), 17 the tab again with the star and its relics on its card.
+## Every run but `fresh` opens a kept star (a first cloud saved before the
+## screen opens, so nothing is born on screen); `fresh` deletes the file, so
+## the screen opens on a first star condensing out of its cloud (0 the birth,
+## 0b after it) and stops there.
 ## Prints the draw calls at each shot and the frames since the last with
 ## their mean and longest gap. The star and the wallet are throwaway files.
 
@@ -35,17 +43,30 @@ const STEPS := [
 	[23.55, "relics"], [23.75, "shot", "6c_relics"],
 	[23.85, "powers"], [24.2, "shot", "6b_powers"], [24.3, "powers_x"],
 	[24.4, "shop"], [24.5, "buy"], [25.0, "shot", "7_shop"], [25.1, "shop_x"],
+	# the supernova: swap at 28.8, the pull back to 30.0, the pan to 33.0,
+	# the close to 37.0 and the perks (reduce motion: over at 32.8)
 	[25.2, "iron"], [26.1, "shot", "8a_fall"], [26.9, "shot", "8b_leaving"], [27.8, "shot", "8c_shells"],
-	[29.2, "shot", "8d_swap"], [31.2, "shot", "8e_rising"],
-	[33.4, "shot", "11_perks"], [33.5, "perk"], [33.9, "shot", "12_perk"],
-	[34.0, "perks_x"], [36.0, "shot", "13_new"],
-	[36.1, "let_go_star"], [39.5, "shot", "13b_letting_go"], [42.5, "shot", "13c_gone"], [46.5, "perks_x"],
-	[46.6, "tutor"], [48.6, "shot", "14_tut_gas"],
-	[48.7, "page", 1], [50.7, "shot", "15_tut_worlds"],
-	[50.8, "page", 2], [56.8, "shot", "15b_tut_burn"], [61.0, "shot", "15c_tut_burn_giant"],
-	[61.1, "page", 3], [64.2, "shot", "16_tut_end"],
-	[64.3, "leave"], [65.5, "shot", "17_tab_after"],
-	[65.6, "quit"],
+	[29.3, "shot", "8d_pull_back"], [31.0, "shot", "8e_pan"], [34.0, "shot", "8f_rising"],
+	[37.8, "shot", "11_perks"], [37.9, "perk"], [38.3, "shot", "12_perk"],
+	[38.4, "perks_x"], [40.4, "shot", "13_new"],
+	# the nebula: swap at 44.7, the pull back to 45.9, the pan to 48.9, the
+	# close to 52.9 and the perks (reduce motion: over at 48.7)
+	[40.5, "nebula"], [43.0, "shot", "9a_nebula_leaving"], [47.4, "shot", "9c_nebula_pan"],
+	[53.1, "perks_x"], [53.4, "shot", "9b_relic_wd"],
+	# the fade: swap at 58.5, over at 66.7 (reduce motion: 62.5)
+	[53.5, "let_go_star"], [56.9, "shot", "13b_letting_go"], [59.9, "shot", "13c_gone"], [67.2, "perks_x"],
+	[67.3, "tutor"], [69.3, "shot", "14_tut_gas"],
+	[69.4, "page", 1], [71.4, "shot", "15_tut_worlds"],
+	[71.5, "page", 2], [77.5, "shot", "15b_tut_burn"], [81.7, "shot", "15c_tut_burn_giant"],
+	[81.8, "page", 3], [84.9, "shot", "16_tut_end"], [89.4, "shot", "16b_tut_end_pan"],
+	[89.5, "leave"], [90.7, "shot", "17_tab_after"],
+	[90.8, "quit"],
+]
+## `fresh`: no file, so the screen opens on a first star being born.
+const FRESH_STEPS := [
+	[1.6, "tab"], [2.8, "fresh"],
+	[2.9, "open"], [4.4, "shot", "0_birth"], [7.4, "shot", "0b_born"],
+	[7.5, "quit"],
 ]
 
 var _menu: Node
@@ -55,6 +76,8 @@ var _i := 0
 var _out := "/tmp"
 var _tmp: Array = []
 var _reduce := false
+var _fresh := false
+var _steps: Array = STEPS
 var _frames := 0
 var _gap_sum := 0.0
 var _gap_max := 0.0
@@ -66,6 +89,9 @@ func _initialize() -> void:
 		_out = args[0]
 	DirAccess.make_dir_recursive_absolute(_out)
 	_reduce = args.has("reduce")
+	_fresh = args.has("fresh")
+	if _fresh:
+		_steps = FRESH_STEPS
 	# the language for this run only: Locale.set_current would write it to
 	# the player's own file
 	for lang: String in ["en", "pt", "es"]:
@@ -130,8 +156,8 @@ func _process(delta: float) -> bool:
 	if _t > 120.0:
 		_finish()
 		return true
-	while _i < STEPS.size() and _t >= float(STEPS[_i][0]):
-		var step: Array = STEPS[_i]
+	while _i < _steps.size() and _t >= float(_steps[_i][0]):
+		var step: Array = _steps[_i]
 		_i += 1
 		match String(step[1]):
 			"shot":
@@ -150,11 +176,20 @@ func _process(delta: float) -> bool:
 				if _menu.gifts_sheet.is_open():
 					_menu.gifts_sheet.close()
 				_menu._show_tab("arcade")
+			"fresh":
+				DirAccess.remove_absolute(Sim.path)
+				print("fresh: the star's file is gone: %s" % (not FileAccess.file_exists(Sim.path)))
 			"open":
+				if not _fresh:
+					# a kept star: its first cloud, saved, so the screen opens on it as it stands
+					var first: RefCounted = Sim.new()
+					first.born()
+					first.save()
 				_menu._open_arcade("nightlight")
 				_s = _menu.get_node("Nightlight")
 				# the real pointer over the window cannot press the button
 				_s._gas_b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				print("opened: fresh %s, a birth playing %s, %d puffs, sky ending %s, ends in %.1f s" % [_s.sim.fresh, _s._birth, _s.sim.bodies.size(), _s.sky.ending(), _s.sky.end_time()])
 			"press":
 				print("star open: %.2f Suns, field %s, u %.3f, the star at %s, %d px" % [_s.sim.suns(), _s.sky.size, _s.sky.u, _s.sky.centre, _s.sky.star_px()])
 				_touch(true)
@@ -239,17 +274,25 @@ func _process(delta: float) -> bool:
 				_s.sim.made[5] = Sim.IRON * Sim.START
 				print("an iron core: the sim says %s, would pay %d" % [_s.sim.ending(), _s.sim.dust_for()])
 			"perk":
+				print("camera after the end: shift %s, view %.3f, sky ending %s, relics %d (kind of the last %d)" % [_s.sky.shift, _s.sky.view, _s.sky.ending(), _s.sim.relics.size(), int(_s.sim.relics[-1].kind) if not _s.sim.relics.is_empty() else -1])
 				print("after the end: %.1f Suns, dust %d, novas %d, fades %d, %d puffs left, perks open %s" % [_s.sim.suns(), _s.sim.dust, _s.sim.novas, _s.sim.fades, _s.sim.bodies.size(), _s._perks.visible])
 				_s._perk_buy.pressed.emit()
 				print("perk drawn: %s, dust %d" % [str(_s.sim.perk), _s.sim.dust])
 			"perks_x":
 				if _s._perks.visible:
 					_s._perks.find_child("Back", true, false).pressed.emit()
+			"nebula":
+				# four Suns, helium lit, a carbon core of CARBON Suns it cannot light
+				_s.sim.mass = Sim.START * 4.0
+				_s.sim.ignited[1] = true
+				_s.sim.made[1] = Sim.CARBON * Sim.START
+				print("a nebula due: the sim says %s, remnant %d, %s" % [_s.sim.ending(), _s.sim.remnant(), _s.sim.goal()])
 			"let_go_star":
 				_s.sim.fuel = 0.0
 				_s.sim.h_on = false
 				_s.sim.awake = false
 				_s.sim.cold = Sim.GRACE
+				print("before the fade: shift %s, view %.3f, relics %d, kinds %s" % [_s.sky.shift, _s.sky.view, _s.sim.relics.size(), str(_s.sim.relics.map(func(r: Dictionary) -> int: return int(r.kind)))])
 				print("left dim: the sim says %s" % _s.sim.ending())
 			"tutor":
 				_s.tutor.show()
@@ -259,7 +302,10 @@ func _process(delta: float) -> bool:
 				_s.get_node("HowToPlay")._continue()
 				_s.go_back()
 			"quit":
-				print("back on tab: %s, screen gone: %s" % [_menu._tab, _menu.get_node_or_null("Nightlight") == null or _menu.get_node("Nightlight").is_queued_for_deletion()])
+				if _fresh:
+					print("after the birth: sky ending %s, a birth %s, shift %s, view %.3f" % [_s.sky.ending(), _s._birth, _s.sky.shift, _s.sky.view])
+				else:
+					print("back on tab: %s, screen gone: %s, the card says %s" % [_menu._tab, _menu.get_node_or_null("Nightlight") == null or _menu.get_node("Nightlight").is_queued_for_deletion(), Sim.kept()])
 				_finish()
 				return true
 	return false

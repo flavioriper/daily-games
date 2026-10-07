@@ -34,15 +34,22 @@ extends Control
 ##   everything and slides a little with the camera. No rays, beams or
 ##   lensing arcs: cozy light has no shape. Every point of the sim goes
 ##   through `world()`, which honours the camera's `shift` and `view`.
+## - **The camera moves only for an end** (the same day): from the swap it
+##   holds the dead star's place under `centre`, pulls back until the
+##   birthplace fits, pans to the new star and closes in on it as it
+##   condenses out of its gas (`swapped`, `_camera`). A first star plays the
+##   close alone (`begin_birth`). Under reduce motion it is a cut.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 const Art = preload("res://arcade/nightlight_art.gd")
 const Motion = preload("res://core/motion.gd")
 
 ## The most solids and the most puffs drawn: the sim's own most, and the
-## shells of an end.
+## shells of an end. The gas batch holds the sim's gas (FULL 300 at most),
+## twelve relics' nebulae (RELICS_MOST x NEBULA_PUFFS, 576) and the worst
+## end's shells (a fade's seven layers of 72, 504): 1380.
 const MOST := 320
-const GAS_MOST := 1100
+const GAS_MOST := 1400
 ## Every warm light: two for a body (its heat, its tail), the puffs, two for
 ## each relic and neighbour. Sized so the relics, filled last, are never the
 ## ones dropped.
@@ -80,14 +87,37 @@ const TAIL_FAR := 10.0
 const TAIL_NEAR := 64.0
 
 ## The end, in seconds. A supernova: the core falls in for FALL, the layers
-## leave, and at SWAP the new star starts to show; a star that lets go has no
-## fall. A shell's puff lives LIFE seconds and gets FLY pixels of the design
-## away, the outermost; RISE seconds for the new star and its gas to come up.
-const END := {"nova": {"fall": 1.1, "swap": 3.6, "all": 7.4, "life": 5.6, "fly": 1250.0, "veil": 0.3},
-	"fade": {"fall": 0.5, "swap": 5.0, "all": 9.0, "life": 7.5, "fly": 620.0, "veil": 0.0}}
-const RISE := 2.0
-## A shell has this many lobes: it leaves in fingers, not as a ring.
+## leave, and at SWAP the sim is ended and the frame is the new star's; a
+## star that lets go has no fall. A shell's puff lives LIFE seconds and gets
+## FLY pixels of the design away, the outermost. From the swap the camera
+## pulls back for PULL_BACK seconds until the dead star's place and the
+## birthplace both fit, pans to the new star for PAN, and closes in for
+## CLOSE while the new star condenses out of its gas. A first star (and a
+## Start over) plays the close alone: "birth". `end_time()` adds them up.
+const END := {"nova": {"fall": 1.1, "swap": 3.6, "life": 5.6, "fly": 1250.0, "veil": 0.3, "pull_back": 1.2, "pan": 3.0, "close": 4.0},
+	"nebula": {"fall": 0.0, "swap": 4.2, "life": 6.5, "fly": 700.0, "veil": 0.0, "pull_back": 1.2, "pan": 3.0, "close": 4.0},
+	"fade": {"fall": 0.5, "swap": 5.0, "life": 7.5, "fly": 620.0, "veil": 0.0, "pull_back": 1.2, "pan": 3.0, "close": 4.0},
+	"birth": {"fall": 0.0, "swap": 0.0, "life": 0.0, "fly": 0.0, "veil": 0.0, "pull_back": 0.0, "pan": 0.0, "close": 4.0}}
+## Under reduce motion there is no camera: a cut at the swap, and the new
+## star fades in over REDUCED_RISE seconds; the end is over at swap + CLOSE
+## (a birth at REDUCED_RISE), the shells left to come and go.
+const REDUCED_RISE := 2.0
+## The pull back shows the birthplace D away in this share of the sky's
+## height, and never zooms out past VIEW_LEAST. It starts from the old
+## star's own scale, so it may close in rather than out.
+const FIT := 0.7
+const VIEW_LEAST := 0.3
+## A shell has this many lobes: it leaves in fingers, not as a ring. A
+## nebula's has LOBES_NEBULA soft ones, a round shell more than fingers.
 const LOBES := 9
+const LOBES_NEBULA := 3
+## Puffs of the new star's gas inside this share of its disc drift in to it
+## as it condenses, from BIRTH_IN times as far.
+const BIRTH_NEAR := 0.8
+const BIRTH_IN := 0.5
+## The new star is a dim seed this much there while the camera finds it,
+## so the pan has somewhere to go.
+const SEED := 0.3
 
 var sim: RefCounted
 ## Pixels to one of the design's 1080 across; the star's place in this
@@ -124,7 +154,10 @@ var _gas: Batch
 var _holes: Batch
 var _far: ArrayMesh
 var _lumps: Array[Batch] = []
-## The end being played, or empty: {how, t, col, r, shells, swapped}.
+## The end being played, or empty: {how, t, col, r, zoom, shells, swapped,
+## remnant, birth, view0, fit}. `r` is the old star's size in pixels and
+## `zoom` the sim's zoom as it began, so its shells keep their scale when
+## the sim becomes the new star.
 var _end := {}
 var _rise := 1.0
 
@@ -270,14 +303,19 @@ func _puff(at: Vector2, s: float) -> void:
 
 # --- the end ---
 
-## The star's life ends as `how` ("nova" or "fade"): `shares` is what it is
-## made of (Sim.layers), each of which leaves as a shell of gas in its own
-## colour. Iron does not leave a supernova: it is the core that fell in.
-func begin_end(how: String, shares: Array) -> void:
+## The star's life ends as `how` ("nova", "nebula" or "fade"): `shares` is
+## what it is made of (Sim.layers), each of which leaves as a shell of gas in
+## its own colour, and `remnant` (Sim.Relic) what is left. Iron does not
+## leave a supernova: it is the core that fell in. A nebula is only the
+## star's hydrogen and helium going, a round shell in two or three soft
+## lobes, the hydrogen first and furthest.
+func begin_end(how: String, shares: Array, remnant: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7 + sim.novas * 13 + sim.fades
 	var shells := []
-	var last := shares.size() - (2 if how == "nova" else 1)
+	if how == "nebula":
+		_nebula_shells(rng, shares, shells)
+	var last := 0 if how == "nebula" else shares.size() - (2 if how == "nova" else 1)
 	for i in last:
 		var share := float(shares[i])
 		if share < 0.004:
@@ -292,7 +330,34 @@ func begin_end(how: String, shares: Array) -> void:
 			var lobe := rng.randi() % LOBES
 			shells.append({"a": turn + TAU * lobe / LOBES + rng.randfn(0.0, 0.17), "v": lerpf(1.0, 0.34, depth) * lobes[lobe] * rng.randf_range(0.82, 1.1),
 				"s": rng.randf_range(0.7, 1.3), "wait": depth * 0.9 + rng.randf() * 0.3, "col": Art.MADE[i]})
-	_end = {"how": how, "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "shells": shells, "swapped": false}
+	_end = {"how": how, "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": shells, "swapped": false, "remnant": remnant}
+	_puffs.clear()
+
+func _nebula_shells(rng: RandomNumberGenerator, shares: Array, shells: Array) -> void:
+	var turn := rng.randf() * TAU
+	var lobes := PackedFloat32Array()
+	for k in LOBES_NEBULA:
+		lobes.append(rng.randf_range(0.75, 1.0))
+	for i in 2:
+		var share := float(shares[i])
+		if share < 0.004:
+			continue
+		for k in int(24.0 + 48.0 * sqrt(share)):
+			var lobe := rng.randi() % LOBES_NEBULA
+			shells.append({"a": turn + TAU * lobe / LOBES_NEBULA + rng.randfn(0.0, 0.6), "v": (1.0 if i == 0 else 0.6) * lobes[lobe] * rng.randf_range(0.85, 1.05),
+				"s": rng.randf_range(0.9, 1.4), "wait": 0.4 * i + rng.randf() * 0.3, "col": Art.MADE[i]})
+
+## A first star, or a Start over: the close of an end alone, the star
+## condensing out of the cloud the sim laid round it (`Sim.born`). Nothing
+## to end and no camera to move; the owner holds the sim while it plays and
+## calls `finish_end` at `end_time()`.
+func begin_birth() -> void:
+	_end = {"how": "birth", "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": [], "swapped": true,
+		"remnant": -1, "birth": {"from": Vector2.ZERO, "d": 0.0}, "view0": 1.0, "fit": 1.0}
+	shift = Vector2.ZERO
+	view = 1.0
+	_rise = 0.0
+	_pulse = 0.0
 	_puffs.clear()
 
 func ending() -> bool:
@@ -310,18 +375,83 @@ func end_swap() -> float:
 	return END[_end.how].swap if not _end.is_empty() else 0.0
 
 func end_time() -> float:
-	return END[_end.how].all if not _end.is_empty() else 0.0
+	if _end.is_empty():
+		return 0.0
+	var at: Dictionary = END[_end.how]
+	if Motion.reduce:
+		return float(at.swap) + (REDUCED_RISE if _end.how == "birth" else float(at.close))
+	return float(at.swap) + float(at.pull_back) + float(at.pan) + float(at.close)
 
-## The sim has been ended: what is drawn from here on is the new star.
-func swapped() -> void:
-	if not _end.is_empty():
-		_end.swapped = true
-		_rise = 0.0
-		_pulse = 0.0
+## The sim has been ended: what is drawn from here on is the new star, and
+## `birth` (Sim.last_birth) is where the old one was in its frame and how far.
+## The camera holds the old star's place under `centre` at the scale it had
+## (`view` makes up for the new star's zoom), then pulls back, pans and
+## closes in; under reduce motion it cuts to the new star.
+func swapped(birth: Dictionary) -> void:
+	if _end.is_empty():
+		return
+	_end.swapped = true
+	_end.birth = birth if birth.has("from") else {"from": Vector2.ZERO, "d": 0.0}
+	var d := float(_end.birth.d)
+	var view0 := clampf(float(_end.zoom) / sim.zoom(), VIEW_LEAST, 1.0)
+	var fit := 1.0
+	if d > 0.0 and size.y > 0.0:
+		fit = clampf(FIT * size.y / (d * sim.zoom() * u), VIEW_LEAST, 1.0)
+	_end.view0 = view0
+	_end.fit = fit
+	_rise = 0.0
+	_pulse = 0.0
+	_camera()
 
 func finish_end() -> void:
 	_end = {}
 	_rise = 1.0
+	shift = Vector2.ZERO
+	view = 1.0
+
+## Seconds since the swap, and the camera and the new star's rise for them.
+func _since_swap() -> float:
+	return float(_end.t) - float(END[_end.how].swap)
+
+func _camera() -> void:
+	if _end.is_empty() or not _end.swapped:
+		return
+	var at: Dictionary = END[_end.how]
+	var s := _since_swap()
+	var from: Vector2 = _end.birth.from
+	if Motion.reduce:
+		shift = Vector2.ZERO
+		view = 1.0
+		_rise = clampf(s / REDUCED_RISE, 0.0, 1.0)
+		return
+	var pb: float = at.pull_back
+	var pan: float = at.pan
+	var fit: float = _end.fit
+	if s < pb:
+		view = lerpf(float(_end.view0), fit, ease(s / pb, -1.8))
+		shift = -from * (sim.zoom() * view * u)
+		_rise = 0.0
+	elif s < pb + pan:
+		view = fit
+		shift = -from * (sim.zoom() * view * u) * (1.0 - ease((s - pb) / pan, -1.8))
+		_rise = 0.0
+	else:
+		var c := clampf((s - pb - pan) / float(at.close), 0.0, 1.0)
+		view = lerpf(fit, 1.0, ease(c, -1.8))
+		shift = Vector2.ZERO
+		_rise = c
+
+## How much of the way to the new star the camera has come: 1 for a birth,
+## which has no way to come, and under reduce motion.
+func _found() -> float:
+	var at: Dictionary = END[_end.how]
+	var travel := float(at.pull_back) + float(at.pan)
+	return 1.0 if Motion.reduce or travel <= 0.0 else clampf(_since_swap() / travel, 0.0, 1.0)
+
+## How far the camera has zoomed since the end began, the sim's change of
+## star included: what the old star's shells are scaled by.
+func _cam_k() -> float:
+	return sim.zoom() * view / float(_end.zoom) if float(_end.zoom) > 0.0 else view
 
 ## The owner has put another star in `sim` (the screen's Start over):
 ## nothing of the old one's swelling, light or puffs is left on it.
@@ -343,6 +473,7 @@ func refresh(delta: float) -> void:
 	for p: Dictionary in _puffs:
 		p.t += delta
 	_puffs = _puffs.filter(func(p: Dictionary) -> bool: return p.t < PUFF)
+	_camera()
 	_fill()
 	var want := Vector3(size.x, size.y, sim.novas)
 	if want != _sky_for and size.x > 0.0:
@@ -372,16 +503,22 @@ func _fill() -> void:
 	batches.append_array(_lumps)
 	for batch in batches:
 		batch.n = 0
-	if not _end.is_empty() and _end.swapped:
-		_rise = minf(1.0, _rise + get_process_delta_time() / RISE)
-	var seen := _rise if not _end.is_empty() and _end.swapped else _old()
+	var born: bool = not _end.is_empty() and _end.swapped
+	var seen := _rise if born else _old()
+	# the new star's gas shows dimly as the camera finds it, and comes up
+	# with the star; its nearest puffs drift in to it as it condenses
+	var gas_seen := seen
+	var drawn_in := 0.0
+	if born:
+		gas_seen = maxf(_rise, 0.5 * _found())
+		drawn_in = 0.0 if Motion.reduce else BIRTH_IN * (1.0 - _rise)
 	var z: float = sim.zoom() * view * u
 	var col := Art.burning_col(sim)
 	var rh: float = sim.haze_r()
 	var roche: float = sim.roche_r()
 	var frost: float = sim.frost_r()
 	var reach := star_px() * REACH
-	if seen > 0.0:
+	if gas_seen > 0.0:
 		for b: Sim.Body in sim.bodies:
 			var far := b.pos.length()
 			if far < 1.0:
@@ -389,10 +526,12 @@ func _fill() -> void:
 			var away := b.pos / far
 			var at := world(b.pos)
 			if b.kind == Sim.Kind.GAS:
+				if drawn_in > 0.0 and far < rh * BIRTH_NEAR:
+					at = world(b.pos * (1.0 + drawn_in))
 				# cool far out, warm as the disc drags it in; thinner once its
 				# dust has fallen out
 				var wide := GAS_R * minf(GAS_WIDE, pow(b.m / Sim.PUFF, 1.0 / 3.0)) * z / Art.R
-				var a := GAS_A * (1.0 if b.dust > 0.0 else 0.75) * minf(1.0, b.age * 2.0 + 0.2) * seen
+				var a := GAS_A * (1.0 if b.dust > 0.0 else 0.75) * minf(1.0, b.age * 2.0 + 0.2) * gas_seen
 				_gas.put(at, 0.0, wide, wide, Color(Art.GAS.lerp(Art.WARM, sqrt(b.heat)), a * (1.0 + 0.6 * b.heat)))
 				continue
 			var rb := Sim.body_r(b.m)
@@ -416,7 +555,9 @@ func _fill() -> void:
 				_lumps[b.id % Art.LUMPS].put_pulled(at, b.spin, s, away, 1.0 + PULLED * smoothstep(0.5, 1.0, strain), paint)
 			else:
 				_lumps[b.id % Art.LUMPS].put(at, b.spin, s, s, paint)
-		_fill_relics(z, seen)
+	# the dead stars and the neighbours are the sky, not the star: they stay
+	# through an end (the dead star it leaves is drawn from the swap on)
+	_fill_relics(z, 1.0)
 	for p: Dictionary in _puffs:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * float(p.s) * view * u / Art.R
@@ -470,8 +611,11 @@ func _fill_relics(z: float, seen: float) -> void:
 				_warms.put(at, 0.0, r * 4.0 * pulse / Art.R, r * 4.0 * pulse / Art.R, Color(Art.NS, 0.4 * seen))
 				_warms.put(at, 0.0, r / Art.R, r / Art.R, Color(Color.WHITE, 0.95 * seen))
 			_:
+				# a warm ring round the dark disc: a wide soft light and a
+				# brighter one hugging its edge, both cut by the disc
 				var r := maxf(10.0 * u, rr)
-				_warms.put(at, 0.0, r * 1.6 / Art.R, r * 1.6 / Art.R, Color(Art.WARM, 0.5 * seen))
+				_warms.put(at, 0.0, r * 2.6 / Art.R, r * 2.6 / Art.R, Color(Art.WARM, 0.5 * seen))
+				_warms.put(at, 0.0, r * 1.9 / Art.R, r * 1.9 / Art.R, Color(Art.WARM, 0.5 * seen))
 				_holes.put(at, 0.0, r / Art.R, r / Art.R, Color(Art.SHADE, seen))
 	for p: Vector2 in sim.far:
 		var at := world(p)
@@ -489,20 +633,24 @@ func _fill_end() -> void:
 	var at: Dictionary = END[_end.how]
 	var t: float = _end.t
 	var life: float = at.life
-	var r0: float = _end.r
+	# the old star's place and scale: where it stood, followed by the camera
+	# once the frame is the new star's
+	var k := _cam_k()
+	var r0: float = float(_end.r) * k
+	var mid := world(_end.birth.from as Vector2) if _end.swapped else world(Vector2.ZERO)
 	for p: Dictionary in _end.shells:
 		var age := t - float(at.fall) - float(p.wait)
 		if age <= 0.0 or age >= life:
 			continue
-		var k := age / life
-		var shown := 2.0 / life if Motion.reduce else k
+		var lived := age / life
+		var shown := 2.0 / life if Motion.reduce else lived
 		# 1 - (1 - k)^3: most of the way in the first third
 		var gone := 1.0 - pow(1.0 - shown, 3.0)
-		var way := Vector2.from_angle(float(p.a) + (0.0 if Motion.reduce else 0.25 * k * float(p.v)))
-		var far := r0 * 0.6 + float(at.fly) * view * u * float(p.v) * gone
-		var wide := (30.0 + 78.0 * gone) * float(p.s) * view * u / Art.R
-		var a := minf(1.0, age / 0.35) * (1.0 - smoothstep(0.45, 1.0, k)) * 0.36
-		_gas.put(world(Vector2.ZERO) + way * far, 0.0, wide, wide, Color(p.col as Color, a))
+		var way := Vector2.from_angle(float(p.a) + (0.0 if Motion.reduce else 0.25 * lived * float(p.v)))
+		var far := r0 * 0.6 + float(at.fly) * k * u * float(p.v) * gone
+		var wide := (30.0 + 78.0 * gone) * float(p.s) * k * u / Art.R
+		var a := minf(1.0, age / 0.35) * (1.0 - smoothstep(0.45, 1.0, lived)) * 0.36
+		_gas.put(mid + way * far, 0.0, wide, wide, Color(p.col as Color, a))
 
 # --- drawing ---
 
@@ -517,7 +665,7 @@ func _star_now() -> Vector2:
 	if _end.is_empty():
 		return Vector2(1.0, 1.0)
 	if _end.swapped:
-		return Vector2(lerpf(0.3, 1.0, ease(_rise, 0.4)), _rise)
+		return Vector2(lerpf(0.3, 1.0, ease(_rise, 0.4)), maxf(_rise, SEED * minf(1.0, 2.0 * _found())))
 	var at: Dictionary = END[_end.how]
 	var t: float = _end.t
 	if _end.how == "nova":

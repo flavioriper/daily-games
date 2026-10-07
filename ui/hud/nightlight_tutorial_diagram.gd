@@ -7,7 +7,8 @@ extends Control
 ## already in it: grains, a rock, a comet with its tail inside the frost
 ## line, a planet, a giant. BURN is the star alone, close, through a life:
 ## a Sun, heavier and whiter, heavier and blue, then swollen and red. END is
-## a heavy star's layers leaving and the small star they leave. No page's
+## a heavy star's layers leaving, the camera finding the small star born
+## away from the neutron star it leaves, and that star condensing. No page's
 ## star burns or grows by itself, so none changes while it is read.
 ##
 ## A page opens some way in (the gas takes a minute to reach the star), and
@@ -49,6 +50,9 @@ var _sky: Control
 var _t := 0.0
 var _since := 0.0
 var _swapped := false
+## END's neighbour stars as the page opened: every end moves them, and the
+## page puts them back with its star.
+var _far0: Array[Vector2] = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -56,6 +60,7 @@ func _ready() -> void:
 	_sim = Sim.new(21 + lesson)
 	_sim.passing = false
 	_sim.burning = false
+	_far0 = _sim.far.duplicate()
 	_sky = NightSky.new()
 	_sky.sim = _sim
 	_sky.paper = Pal.PAPER
@@ -88,6 +93,10 @@ func _set_up() -> void:
 				b.h = 0.6 if row[0] == Sim.Kind.GIANT else b.ice * Sim.ICE_H
 				_sim._sort(b)
 		Lesson.END:
+			# the dead star the last pass left, and the sky it carried, are put back
+			_sim.relics.clear()
+			_sim.far.assign(_far0)
+			_sim.drift = Vector2.ZERO
 			_sim.mass = Sim.START * END_SUNS
 			_sim.fuel = _sim.mass * 0.6
 			_sim.env = _sim.mass * 0.2
@@ -120,7 +129,7 @@ func _step(delta: float) -> void:
 		Lesson.END:
 			if not _sky.ending():
 				if not _swapped and _t >= END_AT:
-					_sky.begin_end("nova", _sim.layers())
+					_sky.begin_end("nova", _sim.layers(), _sim.remnant())
 				elif _swapped and _t >= END_REST:
 					_swapped = false
 					_t = 0.0
@@ -130,7 +139,7 @@ func _step(delta: float) -> void:
 			if not _swapped and _sky.end_t() >= _sky.end_swap():
 				_swapped = true
 				_sim.end()
-				_sky.swapped()
+				_sky.swapped(_sim.last_birth)
 			elif _swapped:
 				_sim.advance(delta)
 				_sim.mass = Sim.START
