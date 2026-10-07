@@ -216,6 +216,46 @@ field. `seen_r()` becomes `star_r() * zoom()`.
   hydrogen, dims and fades by the rule that exists; the next star gets a
   ring.
 
+## 7a. Amended while building: what really brings the ring down
+
+Found by the probe on 2026-10-07, before any screen work. Section 7's first
+bullet is wrong and this replaces it; sections 4 and 9's numbers named here
+move with it.
+
+- **The ring does not stay put.** As the star eats, its pull grows and every
+  orbit round it shrinks (a circle's radius times the star's mass stays the
+  same). The disc also widens, as the cube root of the mass. So the ring's
+  inner edge meets the disc once the star has gained 11%, half the ring is
+  inside at 30% and all of it by about half a Sun gained, whatever the hand
+  does after that. This is the user's "as the star grows, more mass start to
+  be captured by the gravity and making it faster", and it is the sim's own
+  gravity, not a rule.
+- **So a heavy ring is the runaway the user did not choose.** At 1.5 Suns
+  (2.25 after a supernova) the first tenth of a Sun eaten brought the rest
+  down by itself. `RING_M` is 3 (0.3 Suns, a real disc's share of its star
+  is a few percent to a few tenths): what the hand sends then brings about
+  half as much again, and stops. The trickle carries the rest of the life.
+  Gas that drifts in at the ring's outer edge needs the star to grow by a
+  half at one Sun, a quarter at 2 and a twelfth at 4 before it comes down
+  unaided; from 5.4 Suns it lands in the disc. That is "early on nothing
+  falls without you, by a few Suns it feeds itself", by the orbit's own rule.
+- **Dust is a plain share of a puff** (section 4's "absolute" rule made an
+  iron-rich ring half solid, 150 planets' worth, and a first ring made
+  planets inside a minute): `FIRST_DUST` 0.005 for a first star, `ASH_DUST`
+  0.01 plus `METAL` 0.25 of the dead star's heavy layers, never over
+  `ASH_MOST` 0.06, and `IRONY` 0.016 for the iron-dark paint.
+- **Relics and worlds act by their tide.** The sim keeps the star still, so
+  a relic's whole pull landed on the ring while the star felt none of it,
+  and no ring survived beside one. Each relic's pull at the star's own
+  place is now taken off every body, which is what a star-centred frame
+  owes. `LOBE` is 2.0, not 1.6: a ring at 0.35 of the way to a comparable
+  mass does not hold, at 0.28 it does. A dwarf's birth is about 2,800 px
+  off; the camera's `fit` for it is 0.27, under `VIEW_LEAST` 0.3.
+- **A world pulls solids; only a growing core pulls gas**, and only inside
+  its own Hill radius. Gas scattered like points by every planet emptied a
+  ring in five minutes; real gas is accreted or flows round. Rocks and
+  comets are still stirred and flung.
+
 ## 8. Worlds pull
 
 A solid of `PLANET_M` or more (the kinds PLANET and GIANT) pulls what is
