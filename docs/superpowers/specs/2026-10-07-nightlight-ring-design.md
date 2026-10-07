@@ -137,12 +137,15 @@ orbit's own.
 - Braked by a factor `f` on a circle at `R`, a body's nearest point becomes
   `R * f^2 / (2 - f^2)`, half a turn later and on the far side. At the
   ring's middle (655 px) the centre of a press (`f` 0.8) dips to 308 px,
-  0.68 of the disc, in 48 s; the edge of the press (`f` 0.95) dips to 539
+  0.68 of the disc: it enters the disc at 32 s, is nearest at 48 and is
+  eaten at 113 (a pour at the rim took 76); the edge of the press (`f` 0.95) dips to 539
   px and misses the disc, so a light touch only ruffles the ring.
-- A second press on the same gas (`f` 0.64) sends it to 0.26 of `R`, inside
-  the disc's heart: it is eaten after a short spiral and pays little light.
-  A gentle brake pays the most light for gas; a long hold feeds the star
-  fastest. That is the drag's own rule, not a new one.
+- Pressed again, the same gas comes down sooner and pays less (integrated
+  with the built drag from the ring's middle): once, eaten at 113 s for
+  0.61 of a perfect spiral's light; twice (`f` 0.64), 68 s and 0.38; three
+  times (`f` 0.51), straight in at 31 s for 0.08. A gentle brake pays the
+  most light for gas; a long hold feeds the star fastest. That is the
+  drag's own rule, not a new one.
 - `press_r()` is `PRESS_R` 95 of the design's pixels, times `1 + REACH_STEP
   * lv.reach`, divided by `zoom()`: the circle is the same under the finger
   whatever the star weighs.
@@ -434,8 +437,8 @@ each other.
 ## 21. The risk to judge by playing
 
 A press does not look like much for the first seconds: the glow, the
-click, the flush, and then gas that sinks 5 px in 5 s and reaches the disc
-in 48. That is the speed the user asked for on 2026-10-06 ("way too
+click, the flush, and then gas that sinks 5 px in 5 s, enters the disc at
+32 s and is eaten at 113. That is the speed the user asked for on 2026-10-06 ("way too
 fast"), and a pour took longer to pay, but a pour was not aimed. If the
 press feels dead, the first lever is the ring nearer the disc (`RING_IN`,
 `RING_OUT`), then `BRAKE`; `G` is not touched.
