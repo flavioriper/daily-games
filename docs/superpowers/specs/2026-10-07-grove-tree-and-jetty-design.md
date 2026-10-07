@@ -119,7 +119,7 @@ has caught up, and now once the new kind's boughs are bought.
 | Fortune | Heavy blow | `critsize` | a keen chop counts half a chop more | 2 chops | 6 | 150, x2 |
 | Fortune | Lucky wood | `luck` | 4 points more chance of a double pile | 0% | 10 | 100, x1.8 |
 | Fortune | Crates | `crate` | the first: a crate every 180 s; then 10% sooner | none | 10 | 200, x1.9 |
-| Fortune | Full crates | `cratesize` | a crate holds a fifth more | 15 of the best tree | 10 | 250, x1.9 |
+| Fortune | Full crates | `cratesize` | a crate holds a fifth more | 15 times the best kind's yield, before its Rich bough | 10 | 250, x1.9 |
 
 Room and Sprout keep the prices and the last levels they had as tiles, and a
 kept grove keeps its levels of both. Each root is a chain in the order
@@ -184,7 +184,8 @@ land felling seventy.
 
 `wood_per_min()` is the most the chain can send in a minute at its levels
 (the slower of tying and rafting, in piles, times what a pile of the land's
-mix is worth). The tab's chip shows it from the first day; it was "--".
+mix is worth, Lucky wood's doubles counted). The tab's chip shows it from
+the first day; it was "--".
 
 `wood_made` goes on counting at the fell. `wood_sent` counts what the raft
 has landed. A kept grove's wood in `Stock` is untouched and it starts with
@@ -239,8 +240,9 @@ felled: the gap between the two is the bottleneck the user asked for.
 - `valley/grove_tree.gd`: the card. `valley/grove_screen.gd`: the second
   button (each 320 wide: the row is the column's 1000), the count on the
   right and the hint gone from the row (it is the tutorial's first title),
-  the jetty's plate, piles flying to the jetty, keen numbers, the crate,
-  `owed` to `Stock`. `ui/menu/valley_tab.gd`: `owed` to `Stock`, the chip.
+  the jetty's plate, keen numbers, the crate's motes, `owed` to `Stock`
+  (the logs flying from a pile to the jetty are Life's, so the tutorial
+  has them too). `ui/menu/valley_tab.gd`: `owed` to `Stock`, the chip.
 - Every string is a locale key in en, pt and es; a node's effect line is
   measured in pt and es at the card's size before it ships.
 - The tutorial's second page says the wood is left lying and gathered; a
