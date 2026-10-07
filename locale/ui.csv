@@ -1018,16 +1018,20 @@ GROVE_FX_TYING,"a bundle every %s s, then %s","um fardo a cada %s s, depois %s",
 GROVE_FX_BUNDLE,"%s piles a bundle, then %s","%s pilhas por fardo, depois %s","%s pilas por fardo, luego %s"
 GROVE_FX_RAFT,"there and back in %s s, then %s","ida e volta em %s s, depois %s","ida y vuelta en %s s, luego %s"
 GROVE_FX_LOAD,"bundles aboard: %s, then %s","fardos a bordo: %s, depois %s","fardos a bordo: %s, luego %s"
+GROVE_FX_BEAVER_FIRST,a beaver of your own,um castor só seu,un castor solo para ti
 GROVE_FX_BEAVER,"beavers: %s, then %s","castores: %s, depois %s","castores: %s, luego %s"
 GROVE_FX_TEETH,"a bite is %s of a chop, then %s","mordida de %s de um corte, depois %s","mordisco del %s de un golpe, luego %s"
+GROVE_FX_CRIT_FIRST,a keen chop %s of the time,corte afiado em %s das vezes,golpe agudo el %s de las veces
 GROVE_FX_CRIT,"a keen chop %s of the time, then %s","corte afiado em %s das vezes, depois %s","golpe agudo el %s de las veces, luego %s"
 GROVE_FX_CRITSIZE,"a keen chop counts x%s, then x%s","um corte afiado vale x%s, depois x%s","un golpe agudo vale x%s, luego x%s"
+GROVE_FX_LUCK_FIRST,a double pile %s of the time,pilha em dobro em %s das vezes,pila doble el %s de las veces
 GROVE_FX_LUCK,"a double pile %s of the time, then %s","pilha em dobro em %s das vezes, depois %s","pila doble el %s de las veces, luego %s"
 GROVE_FX_CRATE_FIRST,a crate every %s s,um caixote a cada %s s,una caja cada %s s
 GROVE_FX_CRATE,"a crate every %s s, then %s","um caixote a cada %s s, depois %s","una caja cada %s s, luego %s"
 GROVE_FX_CRATESIZE,"a crate gives %s energy, then %s","um caixote dá %s de energia, depois %s","una caja da %s de energía, luego %s"
 GROVE_FX_SOFT,"%s chops, then %s","%s cortes, depois %s","%s golpes, luego %s"
 GROVE_FX_RICH,"gives %s, then %s","dá %s, depois %s","da %s, luego %s"
+GROVE_GONE,%s no longer grows here,%s não cresce mais aqui,%s ya no crece aquí
 TUT_GROVE_CHOP,Chop inside the circle,Corte dentro do círculo,Tala dentro del círculo
 TUT_GROVE_CHOP_BODY_ONE,"Hold a finger on the land. Every tree inside the circle is chopped, again and again, and the circle follows your finger. The first trees take one chop.","Segure um dedo na terra. Toda árvore dentro do círculo é cortada, de novo e de novo, e o círculo segue o seu dedo. As primeiras árvores levam um corte.","Mantén un dedo sobre la tierra. Cada árbol dentro del círculo se tala, una y otra vez, y el círculo sigue a tu dedo. Los primeros árboles necesitan un golpe."
 TUT_GROVE_CHOP_BODY_N,"Hold a finger on the land. Every tree inside the circle is chopped, again and again, and the circle follows your finger. The first trees take %d chops.","Segure um dedo na terra. Toda árvore dentro do círculo é cortada, de novo e de novo, e o círculo segue o seu dedo. As primeiras árvores levam %d cortes.","Mantén un dedo sobre la tierra. Cada árbol dentro del círculo se tala, una y otra vez, y el círculo sigue a tu dedo. Los primeros árboles necesitan %d golpes."

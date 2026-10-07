@@ -3,8 +3,8 @@ extends RefCounted
 ## The Grove's drawings: the pond and the land seen in isometric (`see`,
 ## `ground`, `light`), the five trees, the shadow each throws (`shade`,
 ## `cast`) and the stump it leaves, the log, the jetty in the pond with what
-## lies on it and the raft at its end (`deck`, `pile`, `bundle`, `raft`), and
-## a picture for each tile. Energy is a mote of light, Peapod's own
+## lies on it and the raft at its end (`deck`, `pile`, `bundle`, `raft`), a
+## crate washed up (`crate`), and a picture for each tile. Energy is a mote of light, Peapod's own
 ## (ui/motes.gd), and has no drawing here. Every one is built once into a
 ## mesh and kept, so the screen pays one draw_mesh a tree and one for the
 ## whole ground (CLAUDE.md, the 855 budget). The grass's tufts and flowers
@@ -141,6 +141,10 @@ const HEAP := [[1], [2], [2, 1], [3, 2, 1], [4, 3, 2, 1]]
 ## far under its own (0, 0): the shader leans only what stands above it
 ## (`_still`, `still`). Taller than any of them.
 const STILL := 200.0
+## A crate washed up (`crate`): half its side on the ground, and how tall it
+## stands, in view units.
+const CRATE_HALF := 18.0
+const CRATE_TALL := 29.0
 
 static var _trees := {}
 static var _shades := {}
@@ -152,6 +156,8 @@ static var _piles := {}
 static var _bundle: ArrayMesh
 static var _rafts := {}
 static var _billet: ArrayMesh
+static var _crate: ArrayMesh
+static var _board: ArrayMesh
 static var _tuft: ArrayMesh
 static var _flower: ArrayMesh
 static var _leaf_mesh: ArrayMesh
@@ -481,6 +487,16 @@ static func leaf() -> ArrayMesh:
 		b.stroke(PackedVector2Array([Vector2(-4.5, 0.0), Vector2(4.5, 0.0)]), 1.0, Color(0.82, 0.82, 0.82))
 		_leaf_mesh = b.mesh()
 	return _leaf_mesh
+
+## A board broken off a crate, about (0, 0), pale, for the instance's colour
+## to tint: what a crate bursts into.
+static func board() -> ArrayMesh:
+	if _board == null:
+		var b := Face.Builder.new()
+		b.polygon(Face.Builder.round_rect(Vector2(-8.0, -2.8), Vector2(16.0, 5.6), 1.2), Color.WHITE)
+		b.polygon(Face.Builder.round_rect(Vector2(-8.0, 0.6), Vector2(16.0, 2.2), 1.0), Color(0.8, 0.8, 0.8))
+		_board = b.mesh()
+	return _board
 
 ## The grass that stands on the land seen from `origin` at `u` pixels a
 ## unit: its tufts, and its flowers in a few drifts, a MultiMesh each, for a
@@ -962,6 +978,54 @@ static func billet() -> ArrayMesh:
 		_billet = _still(b)
 	return _billet
 
+## A crate washed up, the middle of its foot on (0, 0): a box of boards seen
+## corner on as the land is, its left side in the sun and its right in shade,
+## roped both ways with a knot on its lid, so it is never taken for a pile of
+## logs. Its shadow on the grass is in it. Drawn through `still`.
+static func crate() -> ArrayMesh:
+	if _crate == null:
+		var b := Face.Builder.new()
+		var e := see(Vector2(1.0, 1.0)) * sqrt(0.5) * CRATE_HALF
+		var o := see(Vector2(-1.0, 1.0)) * sqrt(0.5) * CRATE_HALF
+		var up := Vector2(0.0, -CRATE_TALL)
+		var front := e + o
+		var left := o - e
+		var right := e - o
+		var back := -e - o
+		# its shadow, thrown to the right as the trees throw theirs
+		var throw := CAST_ALONG * CRATE_TALL
+		var cast := Geometry2D.convex_hull(PackedVector2Array([left, front, right, back, front + throw, right + throw, back + throw]))
+		cast.remove_at(cast.size() - 1)
+		b.polygon(cast, CAST)
+		var lit := Pal.WOOD.lightened(0.08)
+		var dark := Pal.WOOD_DEEP
+		var lid := Pal.WOOD.lightened(0.24)
+		b.polygon(PackedVector2Array([left, front, front + up, left + up]), lit)
+		b.polygon(PackedVector2Array([front, right, right + up, front + up]), dark)
+		b.polygon(PackedVector2Array([left + up, front + up, right + up, back + up]), lid)
+		# the boards of each side, and the battens down its corners
+		for f: float in [0.34, 0.67]:
+			b.stroke(PackedVector2Array([left + up * f, front + up * f]), 1.8, Pal.WOOD_DEEP, false, false)
+			b.stroke(PackedVector2Array([front + up * f, right + up * f]), 1.8, dark.darkened(0.2), false, false)
+		b.stroke(PackedVector2Array([left + Vector2(2.2, 0.0), left + up + Vector2(2.2, 0.0)]), 4.4, Pal.WOOD_DEEP, false, false)
+		b.stroke(PackedVector2Array([right + Vector2(-2.2, 0.0), right + up + Vector2(-2.2, 0.0)]), 4.4, dark.darkened(0.2), false, false)
+		b.stroke(PackedVector2Array([front + Vector2(0.0, -1.0), front + up]), 4.6, dark.darkened(0.08), false, false)
+		b.stroke(PackedVector2Array([front + Vector2(-1.2, -1.0), front + up + Vector2(-1.2, 0.0)]), 2.2, Pal.WOOD_DEEP.lightened(0.12), false, false)
+		# the lid's edge, lit where it looks at the sun
+		b.stroke(PackedVector2Array([left + up, front + up, right + up]), 2.4, Pal.WOOD_DEEP, false, false)
+		b.stroke(PackedVector2Array([left + up, back + up, right + up]), 2.0, Color(1.0, 0.97, 0.86, 0.7), false, false)
+		# the rope: down each side's middle and across the lid, knotted
+		for way: Array in [[(left + front) * 0.5, (right + back) * 0.5], [(right + front) * 0.5, (left + back) * 0.5]]:
+			var foot: Vector2 = way[0]
+			var over: Vector2 = way[1]
+			var turn := PackedVector2Array([foot + Vector2(0.0, -1.0), foot + up, over + up])
+			b.stroke(turn, 4.6, ROPE_DEEP)
+			b.stroke(PackedVector2Array([foot + Vector2(-0.8, -2.0), foot + up + Vector2(-0.8, -0.6), over + up + Vector2(-0.8, -0.6)]), 2.2, ROPE)
+		b.ellipse(up, 4.6, 3.6, ROPE_DEEP)
+		b.ellipse(up + Vector2(-0.6, -0.8), 3.0, 2.2, ROPE)
+		_crate = _still(b)
+	return _crate
+
 ## A heap of HEAP[step] with the middle of its foot at `at`, its shadow `tone`.
 static func _pile_into(b: Face.Builder, at: Vector2, step: int, tone: Color) -> void:
 	var rows: Array = HEAP[step]
@@ -1260,14 +1324,12 @@ static func _node_into(b: Face.Builder, id: String) -> void:
 			b.polygon(Face.Builder.round_rect(Vector2(-14.5, 6.0), Vector2(29.0, 39.5), 6.0), Beaver.TOOTH)
 			b.stroke(PackedVector2Array([Vector2(0.0, 9.0), Vector2(0.0, 43.0)]), 2.4, Beaver.TOOTH_LINE, false, false)
 		"crit":
-			# the tile's axe turned about, its edge ground bright and a glint on it
+			# the tile's axe turned about, its edge ground bright and the light
+			# soft on it: round, with no point to it (a glint was a spark)
 			var xf := Transform2D(-0.55, Vector2(4.0, 6.0))
 			b.polygon(xf * Face.Builder.round_rect(Vector2(-7.0, -50.0), Vector2(14.0, 100.0), 7.0), BARK)
 			_blade(b, xf * Transform2D(0.0, Vector2(0.0, -12.0)), -1.0, 1.35)
-			var glint := PackedVector2Array()
-			for i in 8:
-				glint.append(xf * (Vector2(-27.0, -30.0) + Vector2.from_angle(TAU * i / 8.0) * (15.0 if i % 2 == 0 else 4.2)))
-			b.polygon(glint, Color.WHITE)
+			Motes.glow(b, xf * Vector2(-27.0, -30.0), 21.0, Color(1.0, 1.0, 1.0, 0.95), 1.3)
 		"critsize":
 			# two heads on one handle: a heavier axe
 			var xf := Transform2D(0.0, Vector2(0.0, 0.0))

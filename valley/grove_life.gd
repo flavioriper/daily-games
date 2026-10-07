@@ -41,19 +41,37 @@ extends RefCounted
 ##   lying crown to where the sim has it. `gather` throws logs from a pile
 ##   to the jetty, and the jetty's heap counts them as they land (`carried`).
 ##
+## - **The grove's own beavers** (2026-10-07, `sim.gnawing`) are the same
+##   animal at the same place: a tree one of them is at has its beaver for as
+##   long as it is gnawed, rearing as the sim's bite comes due, and the circle
+##   on that tree brings no second one. It comes to a new tree ARRIVE after it
+##   took it (it is still hopping at the one it felled), and one with no tree
+##   to go to sits at the back of the land, each at its own place.
+## - **A crate** lies where the sim has it (`sim.crate`), in with the trees by
+##   depth: a box the wind leaves alone, as it does the wood. On `washed` it
+##   bobs in on the water off the nearer front edge and is thrown up onto the
+##   grass (WASH); `opened` bursts its boards as chips.
+## - `doubled` says a lucky pile has just come to rest, for whoever writes
+##   "x2" over it.
+##
 ## Under reduce motion a beaver is there or not and only changes its face, a
 ## felled tree fades where it stands, both signals come at once, a pile is
-## there with them, nothing is thrown and the raft lies still.
+## there with them, nothing is thrown, the raft lies still and a crate is
+## there or gone.
 
 signal landed(tree: Dictionary, at: Vector2)
 signal gave(tree: Dictionary, give: int, at: Vector2)
 ## A log thrown from a gathered pile has reached the jetty.
 signal carried
+## A lucky pile has come to rest: `at` is the place over its stack, in view
+## units, for the "x2" that says so.
+signal doubled(at: Vector2)
 
 const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
 const Beaver = preload("res://ui/faces/beaver.gd")
 const Motion = preload("res://core/motion.gd")
+const Pal = preload("res://core/palette.gd")
 
 ## Seconds a hit tree's squash lasts.
 const SQUASH := 0.16
@@ -92,6 +110,32 @@ const ROCK := 0.035
 const BOB := 1.4
 ## A count's size over a stack, in view units.
 const COUNT := 25.0
+## One of the grove's own beavers is seen at the tree it has taken this long
+## after it took it (a cheer is CHEER, and it is not at two trees at once),
+## and at its resting place this long after it had no tree to go to.
+const ARRIVE := 0.6
+const REST_AFTER := 0.7
+## Where they rest: along the land's back right edge, off the jetty's side of
+## the land and where no tree stands. Ground units: how far along the edge
+## from the back corner the first sits, how far apart, how far in from the
+## edge; and how big one is drawn.
+const REST_FROM := 200.0
+const REST_GAP := 90.0
+const REST_IN := 30.0
+const REST_SIZE := 0.8
+## A crate's seconds from the water to the grass, the share of them it bobs
+## on the water before the pond throws it up, how far off the land's foot it
+## is first seen and how near it comes (ground units), and how high it is
+## thrown (view units). One that would come in under the jetty comes in
+## WASH_CLEAR to the side of its planks (ground units).
+const WASH := 0.6
+const WASH_AFLOAT := 0.4
+const WASH_FAR := 74.0
+const WASH_NEAR := 22.0
+const WASH_TOSS := 44.0
+const WASH_CLEAR := 44.0
+## The boards a crate bursts into.
+const BOARDS := 9
 
 ## The view's (0, 0) in the holder's pixels, and the pixels a unit.
 var origin := Vector2.ZERO
@@ -101,9 +145,10 @@ var shade: ShaderMaterial
 
 var _hit := {}        # tree id -> seconds since it was hit
 var _falls: Array = []    # {tree, give, t, dir, down, given}
-var _beavers := {}    # tree id -> {tree, side, show, rising, seen, bite, cheer, age}
-var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
+var _beavers := {}    # tree id -> {tree, side, show, rising, seen, bite, cheer, age, size, own}
+var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight, board}: view units
 var _bit_mm: MultiMesh
+var _board_mm: MultiMesh
 var _swing := Sim.SWING
 var _rng := RandomNumberGenerator.new()
 ## Piles the sim has that are not seen yet, by their stack's id: each one's
@@ -116,6 +161,11 @@ var _throws: Array = []   # {from, t, n, turn}: a log to the jetty, standing for
 var _air := 0
 var _heaped := false
 var _marks: Array = []    # [at, text]: the counts of this frame's draw, view units
+## The grove's own beavers, one a place of `sim.gnawing`: {idle, show, rising,
+## age}, `idle` the seconds it has had no tree.
+var _rests: Array = []
+## Seconds since the crate washed up: WASH and over, it lies on the grass.
+var _washed := WASH
 
 func _init() -> void:
 	shade = Art.shade_wind()
@@ -160,6 +210,8 @@ func step(delta: float, sim: RefCounted, holding := false, at := Vector2.ZERO) -
 		for tree: Dictionary in sim.trees:
 			if sim.reaches(tree, at):
 				_beaver(tree).seen = 0.0
+	_step_own(delta, sim)
+	_washed += delta
 	for id in _beavers.keys():
 		var b: Dictionary = _beavers[id]
 		b.seen += delta
@@ -167,7 +219,7 @@ func step(delta: float, sim: RefCounted, holding := false, at := Vector2.ZERO) -
 		b.age += delta
 		if b.cheer >= 0.0:
 			b.cheer += delta
-		var want: bool = b.seen < LINGER or (b.cheer >= 0.0 and b.cheer < CHEER)
+		var want: bool = b.seen < LINGER or float(b.own) >= 0.0 or (b.cheer >= 0.0 and b.cheer < CHEER)
 		b.rising = want
 		b.show = move_toward(float(b.show), 1.0 if want else 0.0, delta / (SHOW_IN if want else SHOW_OUT))
 		if not want and float(b.show) <= 0.0:
@@ -199,11 +251,12 @@ func hit(tree: Dictionary) -> void:
 			Art.PITH if i == 0 else Art.BARK.lightened(0.25), _rng.randf_range(0.5, 0.8), 1.0)
 
 ## The sim said `fell`: the tree starts down, away from its beaver, which
-## cheers. `give` is what it leaves, handed back with `gave`.
-func fell(tree: Dictionary, give: int) -> void:
+## cheers. `give` is what it leaves, handed back with `gave`. `lucky`: its
+## pile is a double one, and `doubled` says so as it comes to rest.
+func fell(tree: Dictionary, give: int, lucky := false) -> void:
 	var b := _beaver(tree)
 	b.cheer = 0.0
-	var f := {"tree": tree, "give": give, "t": 0.0, "dir": -float(b.side), "down": false, "given": false, "pile": {}}
+	var f := {"tree": tree, "give": give, "t": 0.0, "dir": -float(b.side), "down": false, "given": false, "pile": {}, "lucky": lucky}
 	_falls.append(f)
 	if Motion.reduce:
 		f.down = true
@@ -219,6 +272,10 @@ func left(pile: Dictionary) -> void:
 	if _falls.is_empty():
 		return
 	var f: Dictionary = _falls[-1]
+	if f.given and f.lucky:
+		# reduce motion: the pile is there at once, and so is its sign
+		f.lucky = false
+		doubled.emit(_over(pile))
 	if f.given or not (f.pile as Dictionary).is_empty():
 		return
 	f.pile = pile
@@ -243,8 +300,32 @@ func _let_go(f: Dictionary) -> void:
 	f.pile = {}
 	if Motion.reduce:
 		_show(int(pile.id))
+		if f.lucky:
+			doubled.emit(_over(pile))
 		return
-	_drops.append({"id": int(pile.id), "from": _crown_at(f), "to": Art.see(pile.pos), "t": 0.0})
+	_drops.append({"id": int(pile.id), "from": _crown_at(f), "to": Art.see(pile.pos), "t": 0.0, "pile": pile, "lucky": f.lucky})
+
+## The place over a stack where a word about it is written, in view units:
+## clear of its heap, and of its count when it has one.
+func _over(pile: Dictionary) -> Vector2:
+	var n := int(pile.n)
+	return Art.see(pile.pos) + Vector2(0.0, -Art.heap_tall(n) - (COUNT + 12.0 if n > 1 else 8.0))
+
+## The sim said `crate`: one comes in off the pond.
+func washed() -> void:
+	_washed = WASH if Motion.reduce else 0.0
+
+## The sim said `opened`: the crate that lay at `pos` (land units) is gone,
+## and its boards fly.
+func opened(pos: Vector2) -> void:
+	_washed = WASH
+	if Motion.reduce:
+		return
+	var at := Art.see(pos) + Vector2(0.0, -Art.CRATE_TALL * 0.5)
+	for i in BOARDS:
+		_bit(at + Vector2(_rng.randf_range(-14.0, 14.0), _rng.randf_range(-12.0, 10.0)),
+			Vector2(_rng.randf_range(-190.0, 190.0), -_rng.randf_range(150.0, 340.0)), _rng.randf_range(0.55, 0.85),
+			[Pal.WOOD, Pal.WOOD_DEEP, Pal.WOOD.lightened(0.2)][i % 3], _rng.randf_range(0.9, 1.35), 0.9, true)
 
 ## One more pile of a stack is seen.
 func _show(id: int) -> void:
@@ -260,6 +341,8 @@ func _step_wood(delta: float, sim: RefCounted) -> void:
 		d.t += delta
 		if d.t >= DROP_IN:
 			_show(int(d.id))
+			if d.lucky:
+				doubled.emit(_over(d.pile))
 	_drops = _drops.filter(func(d: Dictionary) -> bool: return d.t < DROP_IN)
 	var home := false
 	for t: Dictionary in _throws:
@@ -281,17 +364,86 @@ func _step_wood(delta: float, sim: RefCounted) -> void:
 			if not ids.has(id):
 				_owed.erase(id)
 
-func _beaver(tree: Dictionary) -> Dictionary:
+## The beaver a tree has, made if it has none: `seen` is how long ago the
+## circle was on the tree, for a new one (LINGER and over: it is not here for
+## the circle). `own` is how near the next bite of one of the grove's own
+## beavers at it is, 0 to 1, and under 0 when none is.
+func _beaver(tree: Dictionary, seen := 0.0) -> Dictionary:
 	if not _beavers.has(tree.id):
 		_beavers[tree.id] = {"tree": tree, "side": -1.0 if int(tree.id) % 2 == 0 else 1.0, "show": 0.0, "rising": true,
-			"seen": 0.0, "bite": 10.0, "cheer": -1.0, "age": 0.0, "size": 0.7 + 0.004 * Sim.radius_of(tree.tier)}
+			"seen": seen, "bite": 10.0, "cheer": -1.0, "age": 0.0, "size": 0.7 + 0.004 * Sim.radius_of(tree.tier), "own": -1.0}
 	return _beavers[tree.id]
 
-func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, weight: float) -> void:
+## The grove's own beavers, as the sim has them now. One at a standing tree
+## is that tree's beaver, the one the circle would bring: it is kept for as
+## long as the tree is gnawed, and comes ARRIVE after it took the tree, since
+## until then it is hopping at the one it felled. One with no tree sits at
+## its place at the back of the land once it has had none for REST_AFTER (a
+## frame without one, between two trees, is not a rest).
+func _step_own(delta: float, sim: RefCounted) -> void:
+	for id in _beavers:
+		_beavers[id].own = -1.0
+	var team: Array = sim.gnawing
+	while _rests.size() < team.size():
+		_rests.append({"idle": REST_AFTER, "show": 0.0, "rising": true, "age": 0.0})
+	_rests.resize(team.size())
+	if team.is_empty():
+		return
+	var standing := {}
+	for tree: Dictionary in sim.trees:
+		standing[int(tree.id)] = tree
+	for i in team.size():
+		var g: Dictionary = team[i]
+		var r: Dictionary = _rests[i]
+		r.age += delta
+		if standing.has(int(g.tree)):
+			r.idle = 0.0
+			var b := _beaver(standing[int(g.tree)], LINGER)
+			if float(b.show) > 0.0 or float(g.t) >= ARRIVE:
+				b.own = clampf(float(g.t) / Sim.BITE_EVERY, 0.0, 1.0)
+		else:
+			r.idle += delta
+		var want: bool = r.idle >= REST_AFTER
+		r.rising = want
+		r.show = move_toward(float(r.show), 1.0 if want else 0.0, delta / (SHOW_IN if want else SHOW_OUT))
+
+## Where the `i`th of the grove's own beavers rests, in land units: along the
+## back right edge from the back corner, REST_IN inside it.
+static func rest_at(i: int) -> Vector2:
+	var k := sqrt(0.5)
+	return Vector2(Sim.HALF, 0.0) + Vector2(k, k) * (REST_FROM + REST_GAP * i) + Vector2(-k, k) * REST_IN
+
+## A crate at `pos` (land units) on its way in, `k` of the way (0 to 1), in
+## view units, and how far it is turned: it bobs toward the land's foot on
+## the water off the nearer of the two front edges, and the pond throws it up
+## over the earth onto the grass.
+static func _wash(pos: Vector2, k: float) -> Array:
+	var d := pos - Sim.LAND * 0.5
+	var side := -1.0 if d.x < 0.0 else 1.0
+	var out := Vector2(side, 1.0) * sqrt(0.5)
+	var edge := pos + out * ((Sim.HALF - (side * d.x + d.y)) * sqrt(0.5))
+	if side < 0.0:
+		# the jetty stands off the middle of the front left edge: a crate
+		# does not float through its posts, it comes in beside them
+		var along := Vector2(1.0, 1.0) * sqrt(0.5)
+		var off := (edge - Vector2(Sim.HALF * 0.5, Sim.HALF * 1.5)).dot(along)
+		var clear := Art.JETTY_WIDE * 0.5 + WASH_CLEAR
+		if absf(off) < clear:
+			edge += along * ((clear if off >= 0.0 else -clear) - off)
+	var foot := Vector2(0.0, Art.DEPTH)
+	var near := Art.see(edge + out * WASH_NEAR) + foot
+	if k < WASH_AFLOAT:
+		var a := k / WASH_AFLOAT
+		return [(Art.see(edge + out * WASH_FAR) + foot).lerp(near, a * (2.0 - a)) + Vector2(0.0, 3.0 * sin(a * TAU)), 0.12 * side * sin(a * TAU)]
+	var b := (k - WASH_AFLOAT) / (1.0 - WASH_AFLOAT)
+	return [near.lerp(Art.see(pos), b) + Vector2(0.0, -sin(b * PI) * WASH_TOSS), -0.3 * side * sin(b * PI)]
+
+## `board`: a crate's board, not a chip or a leaf.
+func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, weight: float, board := false) -> void:
 	if _bits.size() >= BITS:
 		return
 	_bits.append({"pos": at, "vel": vel, "t": 0.0, "life": life, "turn": _rng.randf() * TAU,
-		"spin": _rng.randf_range(-9.0, 9.0), "col": colour, "size": size, "weight": weight})
+		"spin": _rng.randf_range(-9.0, 9.0), "col": colour, "size": size, "weight": weight, "board": board})
 
 ## A crown hits the ground: its leaves jump out of it.
 func _burst(f: Dictionary) -> void:
@@ -373,6 +525,15 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 			list.append([float(pile.pos.y) + 1.0, 3, pile])
 	for d: Dictionary in _drops:
 		list.append([(d.to as Vector2).y / Art.DEEP + 1.5, 4, d])
+	for i in _rests.size():
+		if float(_rests[i].show) > 0.0:
+			list.append([rest_at(i).y, 5, i])
+	# a crate ashore lies among the trees; one still coming in is over them
+	# all, since it comes from the front
+	var crate: Dictionary = sim.crate
+	var ashore: bool = _washed >= WASH or Motion.reduce
+	if not crate.is_empty() and ashore:
+		list.append([float(crate.pos.y) + 0.5, 6, crate])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	_marks.clear()
 	var one := Vector2(u, u)
@@ -397,6 +558,13 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 				var k := clampf(float(d.t) / DROP_IN, 0.0, 1.0)
 				var at := (d.from as Vector2).lerp(d.to, k * k) + Vector2(0.0, -sin(k * PI) * 14.0)
 				ci.draw_mesh(Art.pile(1), null, Art.still(origin + at * u, one * (0.6 + 0.4 * k)))
+			5:
+				_draw_rest(ci, int(item[2]))
+			6:
+				ci.draw_mesh(Art.crate(), null, Art.still(_px(item[2].pos), one))
+	if not crate.is_empty() and not ashore:
+		var way := _wash(crate.pos, _washed / WASH)
+		ci.draw_mesh(Art.crate(), null, Art.still(origin + (way[0] as Vector2) * u, one, way[1]))
 	_draw_jetty(ci, sim)
 	_draw_throws(ci)
 	_draw_marks(ci)
@@ -506,6 +674,10 @@ func _draw_beaver(ci: CanvasItem, b: Dictionary) -> void:
 			hop = Motion.hop_lift(fmod(float(b.cheer), CHEER * 0.5), -11.0, CHEER * 0.5)
 		elif float(b.seen) < 0.1:
 			rear = smoothstep(0.5, 1.0, float(b.bite) / maxf(_swing, 0.05))
+		elif float(b.own) >= 0.0:
+			# one of the grove's own, with no circle on its tree: its bite
+			# comes due on the sim's count, not on the swing
+			rear = smoothstep(0.5, 1.0, float(b.own))
 	var reach: float = Art.girth(Sim.look_of(tree.tier)) + (Beaver.NECK.x + Beaver.TEETH.x - 2.0) * float(b.size)
 	var at := _px(tree.pos) + Vector2(side * (reach - 3.0 * snap * float(b.size)), 3.0 + hop) * u
 	# it looks at the trunk: right when it sits on the left
@@ -517,24 +689,60 @@ func _draw_beaver(ci: CanvasItem, b: Dictionary) -> void:
 	var neck := Beaver.NECK + Vector2(3.0 * snap - 4.0 * rear, -2.0 * rear)
 	ci.draw_mesh(Beaver.head(float(b.bite) < BITE * 0.6), null, xf * Transform2D(nod, neck))
 
-## Chips and burst leaves, one MultiMesh.
+## One of the grove's own beavers with no tree to go to, sitting at its
+## place at the back of the land and looking into it: the same three meshes,
+## popped in, its tail and its head barely moving.
+func _draw_rest(ci: CanvasItem, i: int) -> void:
+	var r: Dictionary = _rests[i]
+	var show: float = r.show
+	var grow := 1.0
+	var wag := 0.0
+	var nod := 0.0
+	if not Motion.reduce:
+		grow = Motion.back_out(show) if r.rising else show
+		wag = 0.05 * sin(float(r.age) * 2.2 + i * 1.7)
+		nod = 0.04 * sin(float(r.age) * 1.3 + i * 2.3)
+	var s := REST_SIZE * u * grow
+	var xf := Transform2D(0.0, Vector2(-s, s), 0.0, _px(rest_at(i)))
+	ci.draw_mesh(Beaver.tail(), null, xf * Transform2D(wag, Beaver.TAIL_AT))
+	ci.draw_mesh(Beaver.body(), null, xf)
+	ci.draw_mesh(Beaver.head(false), null, xf * Transform2D(nod, Beaver.NECK))
+
+## Chips and burst leaves, one MultiMesh, and a crate's boards while any
+## fly, a second.
 func _draw_bits(ci: CanvasItem) -> void:
 	if _bits.is_empty():
 		return
 	if _bit_mm == null:
-		_bit_mm = MultiMesh.new()
-		_bit_mm.transform_format = MultiMesh.TRANSFORM_2D
-		_bit_mm.use_colors = true
-		_bit_mm.mesh = Art.leaf()
-		_bit_mm.instance_count = BITS
+		_bit_mm = _bits_of(Art.leaf())
+		_board_mm = _bits_of(Art.board())
 	var n := 0
+	var boards := 0
 	for bit: Dictionary in _bits:
 		var t: float = bit.t
 		var a := clampf((float(bit.life) - t) / 0.2, 0.0, 1.0)
 		var flat := 0.35 + 0.65 * absf(cos(t * 9.0 + float(bit.turn)))
 		var s: float = float(bit.size) * u
-		_bit_mm.set_instance_transform_2d(n, Transform2D(float(bit.turn), Vector2(s, s * flat), 0.0, origin + (bit.pos as Vector2) * u))
-		_bit_mm.set_instance_color(n, Color(bit.col as Color, a))
-		n += 1
-	_bit_mm.visible_instance_count = n
-	ci.draw_multimesh(_bit_mm, null)
+		var xf := Transform2D(float(bit.turn), Vector2(s, s * flat), 0.0, origin + (bit.pos as Vector2) * u)
+		if bit.board:
+			_board_mm.set_instance_transform_2d(boards, xf)
+			_board_mm.set_instance_color(boards, Color(bit.col as Color, a))
+			boards += 1
+		else:
+			_bit_mm.set_instance_transform_2d(n, xf)
+			_bit_mm.set_instance_color(n, Color(bit.col as Color, a))
+			n += 1
+	if n > 0:
+		_bit_mm.visible_instance_count = n
+		ci.draw_multimesh(_bit_mm, null)
+	if boards > 0:
+		_board_mm.visible_instance_count = boards
+		ci.draw_multimesh(_board_mm, null)
+
+func _bits_of(mesh: ArrayMesh) -> MultiMesh:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_2D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = BITS
+	return mm

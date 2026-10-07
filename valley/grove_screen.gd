@@ -96,6 +96,22 @@ const SHIVER_GAP := 4.0
 const SHIVER := 0.3
 ## A gathered log's landing is heard this far apart at the soonest.
 const CARRY_GAP := 0.05
+## A keen chop's figure is this many times a chop's, and at most KEEN_RINGS
+## of its rings are on the land at once: late on a swing is a dozen trees,
+## half of them keen.
+const KEEN := 1.5
+const KEEN_RINGS := 6
+## A tree one of the grove's own beavers brings down is a dry click and no
+## more, never two closer than this: five of them fell several a second with
+## nobody's hand on the land.
+const GNAW_GAP := 0.3
+## A crate lets go this many motes: more than any tree does.
+const CRATE_MOTES := 16
+## "x2" over a lucky pile stays this long: a tree's motes hang about its pile
+## for the first half of it. And a felled tree's "+N" stands this much higher
+## (view units) when the chop that felled it was keen, clear of its figure.
+const TWICE := 1.2
+const KEEN_LIFT := 30.0
 ## Energy is motes of light, Peapod's own (ui/motes.gd): `ORBS` to one energy,
 ## as there; a sapling lets go MOTES of them and each tier after MOTES_STEP
 ## more, up to MOTES_MOST.
@@ -110,6 +126,9 @@ const LEAVES := 14
 const LEAF_LIFE := 3.2
 const LEAF_GAP := 2.6
 const SAVE_GAP := 5.0
+## What only the beavers did since the grove was last kept is kept this far
+## apart: they work for as long as the screen is open.
+const SAVE_SLOW := 20.0
 ## The tree's badge is counted again this long after the last count, at the
 ## soonest: a land swept late on fells a tree a frame.
 const REACH_GAP := 0.25
@@ -173,16 +192,23 @@ var _finger := -1   # the touch that holds the circle
 var _hold_at := Vector2.ZERO
 var _held_back := false
 var _since_chop := 10.0
-var _nums: Array = []    # {at, text, t, gold}: `at` in view units
+var _nums: Array = []    # {at, text, t, gold, size, life}: `at` in view units; `size` and `life` only where they are its own
 var _gains: Array = []   # {text, t}: what the raft landed, rising beside the wood plate
 ## Seconds since the full jetty last refused a gather, since its plate last
 ## shivered and since a gathered log's landing was last heard.
 var _since_full := 100.0
 var _since_shiver := 100.0
 var _since_carry := 100.0
+## Seconds since a beaver's tree was last heard coming down, and the age of
+## each keen ring on the land.
+var _since_gnaw := 100.0
+var _rings: Array[float] = []
 var _jetty_box := {}   # warn or not -> the plate's paper
 var _bump := {}     # plate -> its running bump
 var _dirty := false
+## Something changed that only the beavers or the pond did (a tree down with
+## nobody's hand on it, a crate washed up): kept too, in less of a hurry.
+var _gnawed := false
 ## The screen has handed itself back (`_on_back`): the grove is kept and is
 ## the tab's from here on.
 var _left := false
@@ -270,6 +296,7 @@ func _build() -> void:
 	_life.landed.connect(_on_landed)
 	_life.gave.connect(_on_gave)
 	_life.carried.connect(_on_carried)
+	_life.doubled.connect(_on_doubled)
 	_grass_l = _layer("Grass", _draw_grass)
 	_grass_l.material = Art.wind(true)
 	_shade_l = _layer("Shade", func() -> void: _life.draw_shade(_shade_l, sim))
@@ -628,6 +655,11 @@ func _process(delta: float) -> void:
 	_since_full += delta
 	_since_shiver += delta
 	_since_carry += delta
+	_since_gnaw += delta
+	if not _rings.is_empty():
+		for i in _rings.size():
+			_rings[i] += delta
+		_rings = _rings.filter(func(age: float) -> bool: return age < Motion.RING_TIME)
 	# the land may have moved on the screen (an inset, the banner): the
 	# shadows are kept to where it is now
 	_life.place(_origin, _u, field.get_global_transform())
@@ -635,15 +667,15 @@ func _process(delta: float) -> void:
 	_play_events()
 	for item: Dictionary in _nums:
 		item.t += delta
-	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
+	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < float(n.get("life", NUM)))
 	if not _gains.is_empty():
 		for g: Dictionary in _gains:
 			g.t += delta
 		_gains = _gains.filter(func(g: Dictionary) -> bool: return g.t < GAIN)
 	_refresh_hud(delta)
-	if _dirty:
+	if _dirty or _gnawed:
 		_since_save += delta
-		if _since_save >= SAVE_GAP:
+		if _since_save >= (SAVE_GAP if _dirty else SAVE_SLOW):
 			_save()
 	_wind = Art.blow()
 	_step_leaves(delta)
@@ -683,20 +715,55 @@ func _step_leaves(delta: float) -> void:
 	_leaves = _leaves.filter(func(l: Dictionary) -> bool: return l.t < LEAF_LIFE and l.pos.x < Art.VIEW.end.x + 30.0)
 
 func _play_events() -> void:
+	# the tree the last keen chop landed on, for the "+N" of the fall it made
+	var keen_on := -1
 	for e: Dictionary in sim.events:
 		match String(e.kind):
 			"hit":
 				var tree: Dictionary = e.tree
 				_life.hit(tree)
-				_nums.append({"at": Art.see(tree.pos) + Vector2(_rng.randf_range(-16.0, 16.0), -Art.height(Sim.look_of(tree.tier)) * 0.86 * Art.TREE),
-					"text": Art.amount(float(e.amount), _comma()), "t": 0.0, "gold": false})
+				# a beaver's bite is seen in its teeth and says no figure
+				if String(e.get("by", "axe")) == "beaver":
+					continue
+				var tall: float = Art.height(Sim.look_of(tree.tier)) * Art.TREE
+				var keen: bool = e.get("keen", false)
+				_nums.append({"at": Art.see(tree.pos) + Vector2(_rng.randf_range(-16.0, 16.0), -tall * 0.86),
+					"text": Art.amount(float(e.amount), _comma()), "t": 0.0, "gold": keen, "size": 40.0 * (KEEN if keen else 1.0)})
+				# a keen chop: its figure large and gold, a ring going out from the tree
+				keen_on = int(tree.id) if keen else -1
+				if keen and not Motion.reduce and _rings.size() < KEEN_RINGS:
+					_rings.append(0.0)
+					_fx.ring(_at(Art.see(tree.pos) + Vector2(0.0, -tall * 0.5)), Sim.radius_of(tree.tier) * Art.TREE * 0.8 * _u, Art.MARK)
 			"fell":
 				var tree: Dictionary = e.tree
 				var give := int(e.give)
-				_life.fell(tree, give)
-				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0),
+				_life.fell(tree, give, bool(e.get("lucky", false)))
+				if String(e.get("by", "axe")) == "beaver":
+					# nobody's hand is on it: no figure, no `fell` and nothing
+					# felt. Its motes and its pile say what it left
+					if _since_gnaw >= GNAW_GAP:
+						_since_gnaw = 0.0
+						_quiet.cue("chop", 0.7 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH), -12.0)
+					_gnawed = true
+					continue
+				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0 - (KEEN_LIFT if keen_on == int(tree.id) else 0.0)),
 					"text": "+" + Art.short(give), "t": 0.0, "gold": true})
 				_fx.cue("fell")
+				_dirty = true
+			"crate":
+				_life.washed()
+				_gnawed = true
+			"opened":
+				# the crate under the circle bursts: dust and its boards, its
+				# energy let go as motes, heard and felt as a tree down is
+				var pos: Vector2 = e.pos
+				_life.opened(pos)
+				var at := _at(Art.see(pos) + Vector2(0.0, -Art.CRATE_TALL * 0.6))
+				_fx.puff(at, Color("f3ecd2"), 8)
+				_fx.cue("fell")
+				if not Motion.reduce:
+					_motes.u = size.x / 810.0 * 2.2
+					_motes.drop(field.get_global_transform() * at, float(int(e.give)) * ORBS, CRATE_MOTES)
 				_dirty = true
 			"swing":
 				_since_chop = 0.0
@@ -741,6 +808,11 @@ func _on_gave(tree: Dictionary, give: int, at: Vector2) -> void:
 	var from: Vector2 = field.get_global_transform() * _at(at)
 	_motes.u = size.x / 810.0 * 2.2
 	_motes.drop(from, float(give) * ORBS, mini(MOTES + MOTES_STEP * int(tree.tier), MOTES_MOST))
+
+## A lucky pile has come to rest: "x2" rises over it (`at`, view units) as a
+## felled tree's gold figure does over the tree.
+func _on_doubled(at: Vector2) -> void:
+	_nums.append({"at": at, "text": "x2", "t": 0.0, "gold": true, "life": TWICE})
 
 ## A log thrown from a gathered pile has come down on the jetty: the mote's
 ## own quiet click, lower, and never two closer than CARRY_GAP.
@@ -984,8 +1056,8 @@ func _draw_top() -> void:
 			_top.draw_polyline(edge, line[1], line[2], true)
 	var font := get_theme_font("font", "SheetTitle")
 	for n: Dictionary in _nums:
-		var k: float = n.t / NUM
-		var fs := int((50.0 if n.gold else 40.0) * _u)
+		var k: float = n.t / float(n.get("life", NUM))
+		var fs := int(float(n.get("size", 50.0 if n.gold else 40.0)) * _u)
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var at := _at(n.at) + Vector2(-w * 0.5, 0.0 if Motion.reduce else -k * 56.0 * _u)
 		var a := 1.0 - k * k * k
@@ -1038,6 +1110,7 @@ func _save() -> void:
 	sim.save(Time.get_unix_time_from_system())
 	Stock.flush()
 	_dirty = false
+	_gnawed = false
 	_since_save = 0.0
 
 ## The grove is kept and the screen stops there, before it says it is closed:

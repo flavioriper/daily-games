@@ -91,6 +91,12 @@ const TRUNK_SHADE := Color("865a39")
 const BARE := Color("d9c3a3")
 const ROOT := Color("7a5236")
 const ROOT_BARE := Color("ecd9b6")
+## A kind the land no longer grows: how much of its nodes' pictures is left
+## on the paper they lie on (`_faded`).
+const GONE := 0.45
+## The nodes that are nothing before their first level, so their line says
+## only what that level brings (`GROVE_FX_<ID>_FIRST`).
+const FIRSTS := ["crate", "crit", "luck", "beaver"]
 
 ## What a node's two figures are, by id (a bough by its part): how
 ## `_figure` writes them. `sim.value` answers in these units: a count, the
@@ -107,6 +113,7 @@ const NONE := -1
 const MOUSE := -2
 
 static var _plates := {}
+static var _fades := {}
 static var _ring: ArrayMesh
 
 var sim: RefCounted
@@ -384,9 +391,10 @@ func select(id: String) -> void:
 	_refresh_foot()
 	_field.queue_redraw()
 
-## The bar: buys the chosen node's next level, or shakes its head.
+## The bar: buys the chosen node's next level, or shakes its head. On a node
+## of a kind gone from the land it has no price and does nothing.
 func buy_selected() -> void:
-	if sim == null or _chosen == "":
+	if sim == null or _chosen == "" or _gone(_chosen):
 		return
 	var id := _chosen
 	var paid: int = sim.cost(id)
@@ -599,8 +607,16 @@ func _name_of(id: String) -> String:
 			return tr("GROVE_RICH") % _tree_name.call(tier)
 	return tr("GROVE_" + id.to_upper())
 
+## Whether a node is of a kind the land no longer grows (the best opened and
+## the two under it come up): the kind's own node and its two boughs. They
+## keep their levels, are drawn faded, and nothing more is bought on them.
+func _gone(id: String) -> bool:
+	return Sim.part_of(id) in ["kind", "soft", "rich"] and not sim.grows(Sim.tier_of(id))
+
 ## What the chosen node's next level does, in its own words.
 func _effect(id: String) -> String:
+	if _gone(id):
+		return tr("GROVE_GONE") % _tree_name.call(Sim.tier_of(id))
 	if Sim.part_of(id) == "kind":
 		return tr("GROVE_FX_SEEDS") % _tree_name.call(Sim.tier_of(id))
 	if sim.is_done(id):
@@ -612,12 +628,15 @@ func _effect(id: String) -> String:
 ## makes it: "room for 6 piles, then 8". Every node has its own key
 ## (`GROVE_FX_<ID>`, a bough's by its part) taking the two as text; `FX`
 ## says how each is written. A node that is nothing before its first level
-## (Crates) says only what that level brings.
+## (FIRSTS: Crates, Keen edge, Lucky wood, Beavers) says only what that level
+## brings, with its figure where the words have a place for one: "a keen chop
+## 5% of the time", not "0% of the time, then 5%".
 static func line(id: String, now: float, then: float) -> String:
 	var part := Sim.part_of(id)
 	var key := "GROVE_FX_" + part.to_upper()
-	if part == "crate" and now <= 0.0:
-		return String(TranslationServer.translate(key + "_FIRST")) % _figure(part, then)
+	if part in FIRSTS and now <= 0.0:
+		var first := String(TranslationServer.translate(key + "_FIRST"))
+		return first % _figure(part, then) if first.contains("%s") else first
 	return String(TranslationServer.translate(key)) % [_figure(part, now), _figure(part, then)]
 
 static func _figure(part: String, v: float) -> String:
@@ -640,6 +659,7 @@ func _refresh_foot() -> void:
 	if not on:
 		return
 	var id := _chosen
+	var gone := _gone(id)
 	var done: bool = sim.is_done(id)
 	var can: bool = sim.can_buy(id)
 	var level: int = sim.level(id)
@@ -647,9 +667,11 @@ func _refresh_foot() -> void:
 	_name_l.text = _name_of(id)
 	_fx_l.text = _effect(id)
 	_level_l.text = "%d / %d" % [level, last] if last > 0 else str(level)
-	_cost_l.text = tr("GROVE_MAX") if done else Art.short(sim.cost(id))
-	_mote.visible = not done
-	_tick.visible = done
+	# a kind gone from the land: the bar is there, as on every node, with no
+	# price on it and nothing to press for
+	_cost_l.text = "" if gone else (tr("GROVE_MAX") if done else Art.short(sim.cost(id)))
+	_mote.visible = not done and not gone
+	_tick.visible = done and not gone
 	# the shop's bar and its three looks: the sun button's own when the
 	# energy reaches, paper when it does not, a leaf when nothing is left
 	var up: StyleBoxFlat
@@ -659,7 +681,7 @@ func _refresh_foot() -> void:
 		down = CozyTheme.soft_button(Pal.SUN, BAR_R, true, 0)
 	else:
 		up = StyleBoxFlat.new()
-		up.bg_color = Pal.LEAF_TILE if done else Art.PRICE_OFF
+		up.bg_color = Pal.LEAF_TILE if done and not gone else Art.PRICE_OFF
 		up.set_corner_radius_all(BAR_R)
 		down = up
 	for st in ["normal", "hover", "disabled", "focus"]:
@@ -673,12 +695,13 @@ func _draw_pic() -> void:
 	if _chosen == "" or sim == null:
 		return
 	var c := _pic.size * 0.5
-	_pic.draw_circle(c, DISC_R, Pal.LEAF_TILE if sim.is_done(_chosen) else Pal.PARCHMENT, true, -1.0, true)
+	var gone := _gone(_chosen)
+	_pic.draw_circle(c, DISC_R, Pal.LEAF_TILE if sim.is_done(_chosen) and not gone else Pal.PARCHMENT, true, -1.0, true)
 	var mesh := _picture(_chosen)
 	var box := mesh.get_aabb()
 	var fit := minf(1.0, DISC_R * 2.0 * 0.76 / maxf(1.0, maxf(box.size.x, box.size.y)))
 	var mid := Vector2(box.get_center().x, box.get_center().y)
-	_pic.draw_mesh(mesh, null, Transform2D(0.0, Vector2(fit, fit), 0.0, c - mid * fit))
+	_pic.draw_mesh(_faded(mesh, Pal.PARCHMENT) if gone else mesh, null, Transform2D(0.0, Vector2(fit, fit), 0.0, c - mid * fit))
 
 # --- the drawing ---
 
@@ -694,10 +717,13 @@ static func _picture(id: String) -> ArrayMesh:
 
 ## One node, laid out: where it is, the mesh its state asks for, and its
 ## figure: the level on its chip, or its price on the tag under it while it
-## has no level. A node with nothing left wears a tick and says nothing.
+## has no level. A node with nothing left wears a tick and says nothing. One
+## of a kind gone from the land is faded: its level if it has one, in dim
+## figures, and no price, since nothing more is bought on it.
 func _lay(id: String, level: int) -> Dictionary:
 	var done: bool = sim.is_done(id)
 	var can: bool = sim.can_buy(id)
+	var gone := _gone(id)
 	var text := ""
 	var text_at := Vector2.ZERO
 	var fs := NUM_SIZE
@@ -708,6 +734,10 @@ func _lay(id: String, level: int) -> Dictionary:
 	elif level > 0:
 		text = str(level)
 		text_at = _chip_at() + Vector2(-_num.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5, _mid(fs))
+		if gone:
+			colour = Pal.TEXT_DIM
+	elif gone:
+		pass
 	else:
 		text = Art.short(sim.cost(id))
 		fs = PRICE_SIZE
@@ -716,7 +746,7 @@ func _lay(id: String, level: int) -> Dictionary:
 		wide = ceili(_num.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x / 6.0) * 6
 		text_at = Vector2(-_tag_w(wide) * 0.5 + 12.0 + TAG_ORB + 4.0, _tag_y() + _mid(fs))
 	var lap: int = Sim.lap_of(Sim.tier_of(id)) if Sim.part_of(id) == "kind" else 0
-	return {"id": id, "at": spot(id), "mesh": _plate(id, lap, level > 0, done, can, wide),
+	return {"id": id, "at": spot(id), "mesh": _plate(id, lap, level > 0, done, can, wide, gone),
 		"text": text, "text_at": text_at, "size": fs, "colour": colour}
 
 ## How far under a line's middle its baseline lies.
@@ -735,20 +765,28 @@ static func _tag_y() -> float:
 ## A node's plate and picture, one mesh, kept by picture and state: the sun
 ## button's rim where the energy reaches, paper where it does not, a leaf
 ## and a tick where nothing is left; a chip for the level it has, or the
-## price's tag (`wide` its figure's width) while it has none.
-static func _plate(id: String, lap: int, levelled: bool, done: bool, can: bool, wide: int) -> ArrayMesh:
+## price's tag (`wide` its figure's width) while it has none. `gone`: of a
+## kind the land no longer grows, so faded: the plate flat paper with no rim
+## and no lip, its picture GONE of itself on it, its chip or its tick in
+## paper tones, and no tag.
+static func _plate(id: String, lap: int, levelled: bool, done: bool, can: bool, wide: int, gone := false) -> ArrayMesh:
 	var part := Sim.part_of(id)
 	var pic := "kind%d.%d" % [Sim.look_of(Sim.tier_of(id)), lap] if part == "kind" else (part if part in ["soft", "rich"] else id)
-	var key := "%s|%d%d%d|%d" % [pic, int(levelled), int(done), int(can), wide]
+	var key := "%s|%d%d%d%d|%d" % [pic, int(levelled), int(done), int(can), int(gone), wide]
 	if _plates.has(key):
 		return _plates[key]
 	var b := Face.Builder.new()
 	var h := PLATE * 0.5
 	var box := func(grow: float, down := 0.0) -> PackedVector2Array:
 		return Face.Builder.round_rect(Vector2(-h - grow, -h - grow + down), Vector2.ONE * (PLATE + grow * 2.0), PLATE_R + grow)
-	b.polygon(box.call(2.0, 9.0), Color(SHADOW, 0.1))
-	b.polygon(box.call(0.0, 6.0), Pal.SUN_DEEP if can else SHADOW)
-	if done:
+	if gone:
+		b.polygon(box.call(0.0), Art.PRICE_OFF)
+	else:
+		b.polygon(box.call(2.0, 9.0), Color(SHADOW, 0.1))
+		b.polygon(box.call(0.0, 6.0), Pal.SUN_DEEP if can else SHADOW)
+	if gone:
+		pass
+	elif done:
 		b.polygon(box.call(0.0), LEAF_RIM)
 		b.polygon(box.call(-4.0), Pal.LEAF_TILE)
 	elif can:
@@ -764,18 +802,20 @@ static func _plate(id: String, lap: int, levelled: bool, done: bool, can: bool, 
 	var room := PIC - (14.0 if lap > 0 else 0.0)
 	var fit := minf(PIC_GROW, room / maxf(1.0, maxf(bounds.size.x, bounds.size.y)))
 	var mid := Vector2(bounds.get_center().x, bounds.get_center().y)
-	_append(b, mesh, Transform2D(0.0, Vector2(fit, fit), 0.0, Vector2(0.0, -8.0 if lap > 0 else 0.0) - mid * fit))
+	_append(b, _faded(mesh, Art.PRICE_OFF) if gone else mesh, Transform2D(0.0, Vector2(fit, fit), 0.0, Vector2(0.0, -8.0 if lap > 0 else 0.0) - mid * fit))
 	var marks := mini(lap, 5)
 	for i in marks:
-		b.disc(Vector2((i - (marks - 1) * 0.5) * 16.0, h - 18.0), 5.5, Art.MARK)
+		b.disc(Vector2((i - (marks - 1) * 0.5) * 16.0, h - 18.0), 5.5, Art.PRICE_OFF.lerp(Art.MARK, GONE) if gone else Art.MARK)
 	var corner := _chip_at()
 	if done:
 		b.disc(corner, 22.0, Pal.SURFACE)
-		b.disc(corner, 18.0, Pal.LEAF_DEEP)
+		b.disc(corner, 18.0, RIM if gone else Pal.LEAF_DEEP)
 		b.stroke(PackedVector2Array([corner + Vector2(-8.0, 0.5), corner + Vector2(-2.5, 6.5), corner + Vector2(8.5, -6.0)]), 4.6, Pal.SURFACE)
 	elif levelled:
 		b.polygon(Face.Builder.round_rect(corner - CHIP * 0.5 - Vector2(3.0, 3.0), CHIP + Vector2(6.0, 6.0), CHIP.y * 0.5 + 3.0), Pal.SURFACE)
-		b.polygon(Face.Builder.round_rect(corner - CHIP * 0.5, CHIP, CHIP.y * 0.5), Pal.ACCENT)
+		b.polygon(Face.Builder.round_rect(corner - CHIP * 0.5, CHIP, CHIP.y * 0.5), RIM if gone else Pal.ACCENT)
+	elif gone:
+		pass
 	else:
 		var w := _tag_w(wide)
 		var at := Vector2(-w * 0.5, _tag_y() - TAG_H * 0.5)
@@ -802,6 +842,25 @@ static func _append(b: Face.Builder, m: ArrayMesh, xf: Transform2D) -> void:
 	for i in ix.size():
 		out[i] = base + ix[i]
 	b.idx.append_array(out)
+
+## A picture faded for a kind gone from the land: GONE of itself on `paper`,
+## the tone it lies on. Every colour is mixed toward the paper and none is
+## made clearer: a picture is shapes laid over each other (a crown's clumps
+## over its trunk), and at 45% alpha each showed through the next. Kept by
+## picture and paper.
+static func _faded(m: ArrayMesh, paper: Color) -> ArrayMesh:
+	var key := "%d|%s" % [m.get_instance_id(), paper.to_html()]
+	if not _fades.has(key):
+		var a := m.surface_get_arrays(0)
+		var cols: PackedColorArray = (a[Mesh.ARRAY_COLOR] as PackedColorArray).duplicate()
+		for i in cols.size():
+			var c := cols[i]
+			cols[i] = Color(paper.lerp(c, GONE), c.a)
+		a[Mesh.ARRAY_COLOR] = cols
+		var out := ArrayMesh.new()
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+		_fades[key] = out
+	return _fades[key]
 
 ## The chosen node's ring, in ink on a pale line so it reads on the paper and
 ## on the earth alike.

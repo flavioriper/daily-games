@@ -20,7 +20,19 @@ extends SceneTree
 ## with a full raft on its way out, 8 the shop's card open and an Axe just
 ## bought, 9-11 and 13 the tutorial's four pages (10b the pile carried off,
 ## 13a the circle gathering, 13 a bundle tied and the raft in, 13b the raft
-## out with it, 13c the plate when it lands), 12 the tab again. Prints at
+## out with it, 13c the plate when it lands), 12 the tab again. Before 7w,
+## the four skills and the kinds gone from the land (SKILLS, 2026-10-07): s1
+## the Skills card on a grove whose trunk has reached the Blossom, the
+## Sapling's and the Birch's nodes faded and a faded bough chosen (s1b the
+## faded kind itself, s1c a node at its first level's words), s2 one of the
+## grove's own beavers reared at a tree with nobody holding (s2b its teeth
+## in), s3 five of them resting on a land with no tree, s4 a keen chop on a
+## sapling (every chop keen, by a preset past the node's last level; s4b the
+## next one felling it), s5 a lucky pile just landed under its "x2" (s5b with
+## its motes gone), s6 a crate bobbing in on the water (s6b thrown up, s6c
+## ashore, s6d ashore a second and a half on: what the wind must not move),
+## s7 the crate opened (s7b its motes hanging). The late grove has every
+## skill bought, so 7 is the land at its busiest. Prints at
 ## each shot the draw calls, the stacks lying and what the jetty holds, and
 ## the frames since the last shot with their mean and longest gap. The
 ## inventory, the grove and the wallet are throwaway files; the field's own
@@ -55,6 +67,22 @@ const STEPS := [
 	[32.90, "quit"],
 ]
 
+## The skills' beats, their seconds counted from where they are put in: before
+## STEPS' "late", every step from there on as much later as these take.
+const SKILLS := [
+	[0.00, "gone"], [0.05, "skills"], [0.30, "pick", "soft:0"], [0.75, "shot", "s1_gone"],
+	[0.80, "pick", "kind:1"], [0.95, "shot", "s1b_gone_kind"], [1.00, "pick", "crit"], [1.15, "shot", "s1c_first_level"],
+	[1.20, "skills_x"],
+	[1.25, "own"], [2.02, "shot", "s2_beaver"], [2.34, "shot", "s2b_beaver_bites"],
+	[2.45, "rest"], [3.65, "shot", "s3_rest"],
+	[3.75, "keen"], [3.80, "hold_tree"], [3.92, "shot", "s4_keen"], [4.37, "shot", "s4b_keen_fell"], [4.90, "let_go"],
+	[4.95, "lucky"], [5.00, "hold_tree"], [6.02, "shot", "s5_lucky"], [6.10, "let_go"], [6.65, "shot", "s5b_lucky_later"],
+	[7.60, "crate"], [7.70, "crate_at", Vector2(740.0, 740.0)], [7.82, "shot", "s6_crate_afloat"], [8.04, "shot", "s6b_crate_thrown"], [8.50, "shot", "s6c_crate_ashore"],
+	[10.00, "shot", "s6d_crate_ashore_later"],
+	[10.05, "hold_crate"], [10.17, "shot", "s7_crate_opened"], [10.55, "shot", "s7b_crate_motes"], [10.65, "let_go"],
+	[11.80, "calm"],
+]
+
 ## Where the jetty's beats lay their stacks, in land units, each with its
 ## piles: every way a stack is drawn, the last a lucky one.
 const STACKS := [[Vector2(300, 560), 1], [Vector2(420, 640), 2], [Vector2(540, 700), 3], [Vector2(650, 600), 6],
@@ -78,8 +106,21 @@ var _gap_max := 0.0
 ## shot's own saving can put a poke and the next shot in one frame, and a
 ## frame poked is drawn on the one after.
 var _since_poke := 10
+## STEPS with SKILLS put in.
+var _steps: Array = []
 
 func _initialize() -> void:
+	var shift := 0.0
+	for step: Array in STEPS:
+		if String(step[1]) == "late":
+			for beat: Array in SKILLS:
+				var put := beat.duplicate()
+				put[0] = float(step[0]) + float(beat[0])
+				_steps.append(put)
+			shift = float(SKILLS[-1][0]) + 0.1
+		var moved := step.duplicate()
+		moved[0] = float(step[0]) + shift
+		_steps.append(moved)
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
@@ -152,6 +193,18 @@ func _jetty(loose: int, waiting: int, out := -1.0, aboard := 0, back := false) -
 			"t": sim.raft_time() - t if back else t, "away": true}
 	print("jetty set: %d of %d held, %d lying in %d stacks, raft at %.2f" % [sim.jetty_held(), sim.jetty_room(), sim.lying(), sim.logs.size(), sim.raft_at()])
 
+## A land with none of the four skills on it, its trees grown again at the
+## levels given, nothing lying and no crate: what each skill's beat starts
+## from.
+func _calm(lv: Dictionary) -> void:
+	var sim: RefCounted = _s.sim
+	for id: String in ["beaver", "teeth", "crit", "critsize", "luck", "crate", "cratesize"]:
+		sim.lv[id] = 0
+	sim.trees.clear()
+	_preset(lv, 5000)
+	sim.logs.clear()
+	sim.crate = {}
+
 func _process(delta: float) -> bool:
 	_t += delta
 	_frames += 1
@@ -161,8 +214,8 @@ func _process(delta: float) -> bool:
 		_finish()
 		return true
 	_since_poke += 1
-	while _i < STEPS.size() and _t >= float(STEPS[_i][0]):
-		var step: Array = STEPS[_i]
+	while _i < _steps.size() and _t >= float(_steps[_i][0]):
+		var step: Array = _steps[_i]
 		if String(step[1]) == "shot" and _since_poke < 2:
 			break
 		if String(step[1]) != "shot":
@@ -209,7 +262,8 @@ func _process(delta: float) -> bool:
 				# chopped faster than its raft carries is: a stack wherever one
 				# fits, most of them hundreds of piles
 				_preset({"axe": 60, "reach": 10, "swing": 12, "sprout": 16, "room": 27, "seeds": 9,
-					"raft": 15, "jetty": 20, "bundle": 7, "tying": 15, "load": 3}, 9876543210)
+					"raft": 15, "jetty": 20, "bundle": 7, "tying": 15, "load": 3,
+					"beaver": 5, "teeth": 5, "crit": 10, "critsize": 6, "luck": 10, "crate": 10, "cratesize": 10}, 9876543210)
 				var sim: RefCounted = _s.sim
 				sim.logs.clear()
 				var rng := RandomNumberGenerator.new()
@@ -250,6 +304,61 @@ func _process(delta: float) -> bool:
 				_preset({"jetty": 12}, 37)
 				_stacks()
 				_jetty(12, 8, 0.4, 1)
+			"gone":
+				# the trunk at the Blossom: the Sapling and the Birch no longer
+				# come up. Their boughs at every level a bough can be left at,
+				# the Oak's beside them for what a living kind looks like
+				_preset({"seeds": 4}, 5000)
+				_s.sim.soft.assign([2, 1, 1, 0, 0])
+				_s.sim.rich.assign([1, 0, 1, 0, 0])
+				_s._refresh_skills()
+			"pick":
+				_s._tree.select(String(step[2]))
+				print("picked %s: \"%s\", bar \"%s\"" % [step[2], _s._tree._fx_l.text, _s._tree._cost_l.text])
+			"own":
+				# a calm young land and one beaver of the grove's own, set by
+				# hand: `_preset`'s time away would have it fell the land first
+				_calm({"axe": 2, "reach": 3, "swing": 2, "sprout": 4, "room": 3, "seeds": 1})
+				_s.sim.lv.beaver = 1
+				var tree: Dictionary = _s.sim.trees[0]
+				print("own beaver: goes to tree %d (tier %d) at %s on the field" % [tree.id, tree.tier, _s.px(tree.pos)])
+			"rest":
+				# five, and no tree on the land for any of them
+				_s.sim.lv.beaver = 5
+				_s.sim.trees.clear()
+				for i in 5:
+					print("rest %d at %s on the field" % [i, _s.px(_s._life.rest_at(i))])
+			"keen":
+				# every chop keen (past the node's last level: a preset, not a
+				# number of the game's), on saplings with no bough, so the
+				# first keen chop leaves one standing and the second fells it
+				_s.sim.soft.assign([0, 0, 0, 0, 0])
+				_calm({"axe": 0, "reach": 3, "swing": 2, "sprout": 4, "room": 6, "seeds": 0})
+				_s.sim.lv.crit = 20
+				print("keen: the circle goes to the tree at %s on the field" % _s.px(_s.sim.trees[0].pos))
+			"lucky":
+				# every pile lucky, and an axe that fells at a stroke
+				_calm({"axe": 60, "reach": 3, "swing": 2, "sprout": 4, "room": 6, "seeds": 1})
+				_s.sim.lv.luck = 25
+				print("lucky: the circle goes to the tree at %s on the field" % _s.px(_s.sim.trees[0].pos))
+			"crate":
+				# a twentieth of a second from washing up
+				_calm({"axe": 6, "reach": 3, "swing": 2, "sprout": 4, "room": 6, "seeds": 1})
+				_s._motes.clear()
+				_s.sim.lv.crate = 1
+				_s.sim._crate_t = _s.sim.crate_time() - 0.05
+			"crate_at":
+				# where it can be seen whole: the sim's own place is anywhere
+				# along the two front edges, the jetty's foot among them
+				if not _s.sim.crate.is_empty() and step.size() > 2:
+					_s.sim.crate.pos = step[2]
+				print("crate washed up: %s, at %s on the land" % [not _s.sim.crate.is_empty(), _s.sim.crate.get("pos", Vector2.ZERO)])
+			"hold_crate":
+				print("crate at %s on the field, holds %d energy; energy %d" % [_s.px(_s.sim.crate.pos), _s.sim.crate_give(), _s.sim.energy])
+				_press(_s.px(_s.sim.crate.pos), true)
+			"calm":
+				_calm({})
+				_s._motes.clear()
 			"shop":
 				_s._shop_b.pressed.emit()
 				print("shop open: %s, badge %d" % [_s._shop.visible, _s._shop_b.badge])
