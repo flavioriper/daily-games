@@ -168,6 +168,11 @@ Every other place; automation ("no automation yet"); the reference's chests,
 critical hits, timed days and skill tree; ads of any kind; a land that
 grows; cloud save (the valley is on the device, like gold).
 
+**2026-10-07**: the skill tree, automation (a beaver of its own), chests (as
+crates) and critical hits are designed in
+`2026-10-07-grove-tree-and-jetty-design.md`, with a jetty the wood has to
+leave by. Sprout, Room and Seeds are nodes of the tree from then on.
+
 ## 7. Open
 
 - **Energy** is the Grove's word and its picture was a green spark; since
