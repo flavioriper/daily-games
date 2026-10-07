@@ -111,8 +111,10 @@ var _rng := RandomNumberGenerator.new()
 var _owed := {}
 var _drops: Array = []    # {id, from, to, t}: a pile out of a lying crown; view units
 var _throws: Array = []   # {from, t, n, turn}: a log to the jetty, standing for `n` piles
-## Piles the sim has on the jetty whose logs are still in the air.
+## Piles the sim has on the jetty whose logs are still in the air, and
+## whether the jetty's heap was drawn last time.
 var _air := 0
+var _heaped := false
 var _marks: Array = []    # [at, text]: the counts of this frame's draw, view units
 
 func _init() -> void:
@@ -407,6 +409,11 @@ func draw(ci: CanvasItem, sim: RefCounted) -> void:
 func _draw_jetty(ci: CanvasItem, sim: RefCounted) -> void:
 	var one := Vector2(u, u)
 	var loose := int(sim.loose.n) - _air
+	# a bundle tied out of piles whose logs are still coming leaves fewer
+	# than are in the air: a heap that was there keeps a log, not a blink
+	if loose <= 0 and _heaped and int(sim.loose.n) > 0:
+		loose = 1
+	_heaped = loose > 0
 	if loose > 0:
 		ci.draw_mesh(Art.pile(loose, false, true), null, Art.still(origin + Art.jetty() * u, one))
 	var waiting: int = sim.bundles.size()

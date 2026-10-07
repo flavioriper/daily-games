@@ -5,8 +5,8 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_grove.gd -- <outdir> [reduce]
 ##
 ## 1 the Valley tab, 2 a new grove, 3 the circle on its sapling mid-chop,
-## 4 the tree down and its log and motes in the air (4b the motes hanging,
-## 4c on their way in), 5 a grove some days in,
+## 4 the tree down (4b its motes hanging and its pile lying, 4c the motes on
+## their way in), 5 a grove some days in,
 ## 6 the circle over several trees, 6b the Skills card opened by its button
 ## with Room chosen and a level of it just bought, j1 stacks of every size
 ## lying (the last a lucky one), j2 the circle gathering three of them (logs
@@ -14,12 +14,15 @@ extends SceneTree
 ## in, j4 the raft half its way out with a bundle, sw_0 and sw_1 the same
 ## still chain a second and a half apart (what the wind must not move), j5
 ## the jetty full and the circle refused (the plate warns), j6 the raft just
-## landed off the screen (the wood plate says what it brought), 7w six frames of
-## a grove far along, littered, with nothing but the wind on it, 7 that grove
-## (every look, a land of thirty) under the circle, 7j its jetty with more
-## bundles than are drawn and a full raft, 8 the shop's card open and an Axe
-## just bought, 9-11 and 13 the tutorial's four pages, 12 the tab again. Prints at each shot the draw calls, and the frames since the
-## last shot with their mean and longest gap. The
+## landed off the screen (the wood plate says what it brought), 7w six
+## frames of a grove far along, littered, with nothing but the wind on it, 7
+## that grove (every look, a land of thirty) under the circle, 7j its jetty
+## with a full raft on its way out, 8 the shop's card open and an Axe just
+## bought, 9-11 and 13 the tutorial's four pages (10b the pile carried off,
+## 13a the circle gathering, 13 a bundle tied and the raft in, 13b the raft
+## out with it, 13c the plate when it lands), 12 the tab again. Prints at
+## each shot the draw calls, the stacks lying and what the jetty holds, and
+## the frames since the last shot with their mean and longest gap. The
 ## inventory, the grove and the wallet are throwaway files; the field's own
 ## mouse filter is set to ignore, so the real pointer over the window cannot
 ## carry the circle off.
@@ -47,7 +50,7 @@ const STEPS := [
 	[16.23, "shop_x"], [16.25, "tutor"], [17.75, "shot", "9_tut_chop"],
 	[17.85, "page", 1], [20.10, "shot", "10_tut_gifts"], [21.35, "shot", "10b_tut_gifts_carried"],
 	[21.40, "page", 2], [24.80, "shot", "11_tut_wait"],
-	[24.90, "page", 3], [28.00, "shot", "13_tut_send"], [29.90, "shot", "13b_tut_send_out"], [31.80, "shot", "13c_tut_send_landed"],
+	[24.90, "page", 3], [25.78, "shot", "13a_tut_send_gather"], [28.00, "shot", "13_tut_send"], [29.90, "shot", "13b_tut_send_out"], [31.80, "shot", "13c_tut_send_landed"],
 	[31.90, "leave"], [32.80, "shot", "12_tab_after"],
 	[32.90, "quit"],
 ]

@@ -715,9 +715,10 @@ func _play_events() -> void:
 				_since_full = 0.0
 			"landed":
 				# the raft is off the screen when it gets there: the wood plate
-				# is the only sign (the wood itself is `take_owed`'s, above)
+				# is the only sign (the wood itself is `take_owed`'s, above).
+				# Heard low and felt as a tree down is: it is seconds apart
 				_kick("wood")
-				_quiet.cue("fell", 1.0, -9.0)
+				_fx.cue("fell", 1.0, -9.0)
 				_gains.append({"text": "+" + Art.short(int(e.wood)), "t": 0.0})
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
