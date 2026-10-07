@@ -70,6 +70,10 @@ the chain, Suns, `on()`, the powers and their picks, the perks, stardust,
 the three ends and their remnants, relics, the far sky, the camera's pull
 back and pan, the birth, Start over, the sounds, the passers.
 
+**Stands, with one number moved**: where a new star is born (section 4:
+the lobe rule reads the ring, not the disc) and the Wind power (section 7:
+`WIND` is a twentieth of what it was).
+
 **Goes**: `Sim.pour`, `pour_r`, `_inlet` and the `IN_*` constants,
 `puff_mass`, `volley`, `stream_gap`, the tiles `puff`, `volley` and
 `stream`; the screen's `_gas_b`, `_gas_button`, `_on_gas_input`, `_pour`,
@@ -106,6 +110,20 @@ turning the way the disc turns.
 - Left alone at one Sun the rest never comes down: a circle outside the
   disc is closed. The probe checks it (section 17).
 - `MOST` 150 becomes 260 puffs and `FULL` 300 becomes 400 bodies.
+- **A new star is born far enough for its ring, not only its disc.**
+  `end()`'s distance becomes `D = LOBE * ring.y * (1 + sqrt(rm / mass))`
+  with the newborn's `ring.y` (it read `haze_r()`). Left on the disc, a
+  dwarf of 0.6 Suns sat 1,280 px off and 490 px from the ring's near edge,
+  where it pulled half again as hard as the star and stripped the ring.
+  On the ring it is 2,240 px off, the star's own lobe against it is 1,840
+  px, and the ring's 788 is inside half of that, where a round holds. A
+  black hole of 3 Suns: 3,440 px off, half a lobe 830 px. The camera's
+  `fit` already follows `D`; `VIEW_LEAST` 0.3 holds a dwarf's birth (0.34)
+  and not a hole's (0.22, as today's 0.225 did not), so the harness's
+  `where` step says whether it comes down. A relic leaves `RELIC_REACH`
+  after two or three lives where it took three or four. A kept star's
+  gifted ring (section 14) may lose its near edge to a relic that was
+  placed by the old rule.
 
 ## 5. The press
 
@@ -173,9 +191,14 @@ field. `seen_r()` becomes `star_r() * zoom()`.
 - **The disc grows and the ring does not.** With no power the disc covers
   15% of the ring's area at 2 Suns, 44% at 3, 92% at 5 and all of it from
   5.4. What it covers is dragged and spirals in unaided. The Haze power
-  brings each of those sooner; the Wind power (a slow drag out to three
-  discs) already brings the whole ring down slowly at any mass. Neither
-  gets a new rule; both are checked by the bot.
+  brings each of those sooner and gets no new rule.
+- **The Wind power is cut to a twentieth**: `WIND` 0.006 becomes 0.0003.
+  It drags everything from the disc out to three discs, which was empty
+  sky and is now the whole ring: at 0.006 a circle there halves in under a
+  minute, so one pick would have emptied the ring into the star at any
+  mass, the runaway the user did not choose. At 0.0003 a level halves a
+  ring circle in 19 minutes: the ring leans in over a life and the hand
+  still matters. Its words stand ("slow down and start to fall").
 - **The trickle.** `_trickle()` adds gas at `TRICKLE * pow(suns(),
   TRICKLE_UP) * (1 + RICH_STEP * lv.rich) * (1 + HAND * perk.hand)` of mass
   a second, `TRICKLE` 0.017 (a tenth of a Sun a minute at one Sun),
@@ -202,11 +225,13 @@ near it. The `WORLDS` 8 heaviest do.
   `body_r`. A world does not pull itself, worlds pull each other, the star
   is not pulled, a world eats nothing by this rule (`_meet` still does the
   touching) and tears nothing.
-- **Gas inside half a Hill radius is held**: its velocity eases toward the
-  world's at `MOON_DRAG` 0.05 a second. Without something that takes
-  energy away nothing is ever captured; real gas loses it in shocks. So a
-  world gathers a small swirl of gas, and a core of `CORE_M` gulps it as
-  now.
+- **Gas inside half a Hill radius of a world that can gulp it is held**
+  (`CORE_M` or more and under `GIANT_MOST`, `_meet`'s own test): its
+  velocity eases toward the world's at `MOON_DRAG` 0.05 a second. Without
+  something that takes energy away nothing is ever captured; real gas
+  loses it in shocks. So a growing giant gathers a small swirl and gulps
+  it as now. A planet under `CORE_M` and a giant that is full hold
+  nothing, or the puffs would pile on them for ever.
 - Scale, from the built masses: a planet of 0.01 at 655 px round a one-Sun
   star has a Hill radius of 45 px and a round at its edge takes 86 s; a
   giant of 0.04, 72 px. Against a 10-Sun star they are 2.2 times smaller.
@@ -337,7 +362,11 @@ light; a second brake pays less; `press_r()` times `zoom()` is the same at
 whatever its path; a torn planet's pieces keep its rank; gas dropped
 straight in pays under a tenth of a spiral's; a grain set half a Hill
 radius from a planet is turned by it and one past the reach is not; gas
-inside half a Hill radius stays with the world for ten rounds; the trickle
+inside half a Hill radius of a core stays with it for ten rounds and none
+stays with a planet under `CORE_M`; an untouched ring beside a dwarf and
+beside a 3-Sun hole, each at its `D`, keeps nine puffs in ten for ten
+minutes; with Wind picked once a ring circle is no less than 0.8 of its
+radius after five minutes; the trickle
 at 4 Suns is `pow(4, TRICKLE_UP)` times the trickle at one; an untouched
 5-Sun star eats more of its ring in ten minutes than an untouched one-Sun
 star does (how much is printed, not checked); `zoom()` shows `ring.y` at 500 px; a
@@ -386,8 +415,9 @@ Every number. Also: approach A (the world as built and the camera farther
 out, over a narrower disc or a painted ring); the ring's radii fixed for a
 life; the six falling puffs; the brake acting on solids; a light touch that
 misses; three lights a puff; Bondi's direction without its exponent; the
-frost line fixed at the ring's middle; worlds as the eight heaviest, their
-reach, and the hold on gas inside half a Hill radius; `rank` passed whole
+frost line fixed at the ring's middle; the lobe rule on the ring; `WIND`
+cut to a twentieth; worlds as the eight heaviest, their reach, and the hold
+on gas inside half a Hill radius of a core; `rank` passed whole
 to torn pieces; a solid paid in full whatever its path; the steps 4, 10
 and 25; the tiles' names, prices and what the old levels become; the gift
 of a ring to a kept star; the readout's wording and place; the card's
