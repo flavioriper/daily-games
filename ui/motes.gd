@@ -166,6 +166,18 @@ static func orb_light() -> ArrayMesh:
 static func icon_scale(side: float) -> float:
 	return side * 0.9 / ORB_R
 
+## A mote of energy on a Control `side` pixels square: what a price is
+## counted in, beside its figure (the Grove's shop and its tree of skills).
+static func icon(side: float) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(side, side)
+	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(func() -> void:
+		var sc := icon_scale(side)
+		c.draw_mesh(orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, c.size * 0.5)))
+	return c
+
 # --- the flight ---
 
 ## Something worth `n` is gone at `at` (the viewport's pixels): its energy

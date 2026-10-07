@@ -1025,7 +1025,7 @@ GROVE_FX_CRITSIZE,"a keen chop counts x%s, then x%s","um corte afiado vale x%s, 
 GROVE_FX_LUCK,"a double pile %s of the time, then %s","pilha em dobro em %s das vezes, depois %s","pila doble el %s de las veces, luego %s"
 GROVE_FX_CRATE_FIRST,a crate every %s s,um caixote a cada %s s,una caja cada %s s
 GROVE_FX_CRATE,"a crate every %s s, then %s","um caixote a cada %s s, depois %s","una caja cada %s s, luego %s"
-GROVE_FX_CRATESIZE,"a crate gives %s, then %s","um caixote dá %s, depois %s","una caja da %s, luego %s"
+GROVE_FX_CRATESIZE,"a crate gives %s energy, then %s","um caixote dá %s de energia, depois %s","una caja da %s de energía, luego %s"
 GROVE_FX_SOFT,"%s chops, then %s","%s cortes, depois %s","%s golpes, luego %s"
 GROVE_FX_RICH,"gives %s, then %s","dá %s, depois %s","da %s, luego %s"
 TUT_GROVE_CHOP,Chop inside the circle,Corte dentro do círculo,Tala dentro del círculo

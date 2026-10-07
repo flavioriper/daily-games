@@ -12,6 +12,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Pal = preload("res://core/palette.gd")
 const SheetParts = preload("res://ui/hud/sheet_parts.gd")
+const Motes = preload("res://ui/motes.gd")
 
 ## The sheets' scrim (sheet.gd's _ready).
 const SCRIM := Color(0.22, 0.14, 0.08, 0.42)
@@ -22,6 +23,8 @@ const WIDE := 460.0
 const PRIMARY_H := 128.0
 const SECONDARY_H := 104.0
 const TILE_R := 28
+## The round X at a head's right (sheet.gd's own size).
+const X_SIZE := 84.0
 
 ## A full-rect scrim in the sheets' warm dim.
 static func scrim() -> ColorRect:
@@ -65,6 +68,39 @@ static func head(key: String, icon: String, trailing: Control = null) -> HBoxCon
 		trailing.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(trailing)
 	return row
+
+## The head of a card that sells for energy (the Grove's shop and its tree
+## of skills): the badge and the title, the energy held on a white pill (a
+## mote and a count), and a round X that calls `on_close`. Returns the head
+## and the count's Label, `{head, energy}`, for the owner to write.
+static func energy_head(key: String, icon: String, on_close: Callable) -> Dictionary:
+	var trailing := HBoxContainer.new()
+	trailing.add_theme_constant_override("separation", 16)
+	var pill := PanelContainer.new()
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.add_theme_stylebox_override("panel", tile(Pal.SURFACE, 14))
+	var held := HBoxContainer.new()
+	held.add_theme_constant_override("separation", 10)
+	pill.add_child(held)
+	held.add_child(Motes.icon(46.0))
+	var energy := Label.new()
+	energy.name = "Energy"
+	energy.theme_type_variation = "SheetTitle"
+	held.add_child(energy)
+	trailing.add_child(pill)
+	var x := IconButton.new("cross", "", "IconButton")
+	x.name = "Close"
+	x.custom_minimum_size = Vector2(X_SIZE, X_SIZE)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var r := int(X_SIZE * 0.5)
+	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
+	for st in ["normal", "hover", "disabled"]:
+		x.add_theme_stylebox_override(st, up)
+	x.add_theme_stylebox_override("pressed", down)
+	x.pressed.connect(on_close)
+	trailing.add_child(x)
+	return {"head": head(key, icon, trailing), "energy": energy}
 
 ## A tile on the card: white paper, lifted, the gifts' and shop's rows.
 static func tile(fill := Pal.SURFACE, margin := 12) -> StyleBoxFlat:

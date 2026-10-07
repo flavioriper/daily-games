@@ -69,9 +69,7 @@ const PRICE_R := 20
 ## thinly lined.
 const CARD_W := 1000.0
 const CARD_INSET := 26
-const X_SIZE := 84.0
 const TILE_GAP := 16
-const PRICE_OFF := Color("ede4d3")
 const FILL := Color("fcf7ef")
 ## The land keeps this much water round it, and more under its earth edge.
 const SHORE := 26.0
@@ -330,33 +328,9 @@ func _build_shop() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 20)
 	card.add_child(col)
-	var trailing := HBoxContainer.new()
-	trailing.add_theme_constant_override("separation", 16)
-	var pill := PanelContainer.new()
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
-	var held := HBoxContainer.new()
-	held.add_theme_constant_override("separation", 10)
-	pill.add_child(held)
-	held.add_child(_mote_icon(46.0))
-	_shop_energy = Label.new()
-	_shop_energy.name = "Energy"
-	_shop_energy.theme_type_variation = "SheetTitle"
-	held.add_child(_shop_energy)
-	trailing.add_child(pill)
-	var x := IconButton.new("cross", "", "IconButton")
-	x.name = "Close"
-	x.custom_minimum_size = Vector2(X_SIZE, X_SIZE)
-	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var r := int(X_SIZE * 0.5)
-	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
-	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
-	for st in ["normal", "hover", "disabled"]:
-		x.add_theme_stylebox_override(st, up)
-	x.add_theme_stylebox_override("pressed", down)
-	x.pressed.connect(close_shop)
-	trailing.add_child(x)
-	col.add_child(Dialog.head("GROVE_SHOP", "trend", trailing))
+	var head := Dialog.energy_head("GROVE_SHOP", "trend", close_shop)
+	_shop_energy = head.energy
+	col.add_child(head.head)
 	var grid := GridContainer.new()
 	grid.name = "Tiles"
 	grid.columns = 3
@@ -386,17 +360,6 @@ func open_skills() -> void:
 	_hold = false
 	_tree.held((_plates.energy.label as Label).text)
 	_tree.open()
-
-## A mote of energy, `side` pixels square: what a price is counted in.
-func _mote_icon(side: float) -> Control:
-	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(side, side)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.draw.connect(func() -> void:
-		var sc := Motes.icon_scale(side)
-		icon.draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
-	return icon
 
 ## One layer of the land, over the ground and as big as the field.
 func _layer(called: String, draws: Callable) -> Control:
@@ -497,7 +460,7 @@ func _tile(tile: String) -> Control:
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill.add_child(row)
-	var mote := _mote_icon(38.0)
+	var mote := Motes.icon(38.0)
 	row.add_child(mote)
 	# a tile with no level left wears a tick where its price was
 	var tick := Control.new()
@@ -799,7 +762,7 @@ func _refresh_tiles() -> void:
 		# the price's bar: the sun button's own when the energy reaches it,
 		# paper when it does not, a leaf when there is nothing left to buy
 		var box := StyleBoxFlat.new()
-		box.bg_color = Pal.LEAF_TILE if done else (Pal.SUN if can else PRICE_OFF)
+		box.bg_color = Pal.LEAF_TILE if done else (Pal.SUN if can else Art.PRICE_OFF)
 		box.set_corner_radius_all(PRICE_R)
 		box.content_margin_left = 12.0
 		box.content_margin_right = 16.0

@@ -71,6 +71,9 @@ const MARK := Color("ffd66b")
 const LOG := 48.0
 ## A tile's picture is drawn about its middle, inside this half width.
 const ICON := 56.0
+## The paper a price lies on while the energy does not reach it: the shop's
+## bars, and the tree's bar and tags.
+const PRICE_OFF := Color("ede4d3")
 ## What the tree's pictures are made of beside wood: rope, planks, a crate's
 ## boards, an axe's steel, a feather.
 const ROPE := Color("ecd9a6")

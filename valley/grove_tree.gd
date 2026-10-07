@@ -27,7 +27,6 @@ const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
-const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Pal = preload("res://core/palette.gd")
@@ -37,7 +36,6 @@ const Motes = preload("res://ui/motes.gd")
 ## The card is the shop's: as wide, as thinly lined, the same head.
 const CARD_W := 1000.0
 const CARD_INSET := 26
-const X_SIZE := 84.0
 ## The field is this tall where the screen lets it be, and never under
 ## FIELD_LEAST; REST is what the card's head and foot and the air over and
 ## under the card take.
@@ -63,8 +61,9 @@ const TAG_H := 44.0
 const TAG_ORB := 30.0
 const NUM_SIZE := 26
 const PRICE_SIZE := 28
-## A press that moves less than this is a tap.
-const TAP := 12.0
+## A press that moves less than this is a tap: a finger's own slop, about
+## 1.5 mm on a phone. At 12 a tap that drifted chose nothing and panned.
+const TAP := 24.0
 ## A finger let go while moving lets the field run on, at GLIDE_MOST pixels
 ## a second at the most: its speed falls away at GLIDE_STOP a second, and
 ## under GLIDE_LEAST it stands.
@@ -80,7 +79,6 @@ const BAR_R := 24
 
 const FILL := Color("fcf7ef")
 const RIM := Color("e4d7c0")
-const PRICE_OFF := Color("ede4d3")
 const LEAF_RIM := Color("b7d49c")
 const SHADOW := Color(0.33, 0.21, 0.1, 0.2)
 const HILL := Color("e3eed6")
@@ -148,6 +146,8 @@ var _finger := NONE
 var _down_at := Vector2.ZERO
 var _down_pan := 0.0
 var _moved := false
+## The press stopped a tree that was running on: its release chooses nothing.
+var _caught := false
 var _last_y := 0.0
 var _last_ms := 0
 var _chosen := ""
@@ -186,7 +186,11 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 20)
 	card.add_child(col)
-	col.add_child(_build_head())
+	# the shop's head: the badge and the title, the energy held, a round X
+	var head := Dialog.energy_head("GROVE_SKILLS", "tree", close)
+	_energy_l = head.energy
+	_energy_l.text = "0"
+	col.add_child(head.head)
 	_field = Control.new()
 	_field.name = "Field"
 	_field.clip_contents = true
@@ -200,38 +204,6 @@ func _ready() -> void:
 	resized.connect(_fit)
 	_fit()
 	set_process(false)
-
-## The shop's head: the badge and the title, the energy held on a pill, and a
-## round X.
-func _build_head() -> Control:
-	var trailing := HBoxContainer.new()
-	trailing.add_theme_constant_override("separation", 16)
-	var pill := PanelContainer.new()
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
-	var held_row := HBoxContainer.new()
-	held_row.add_theme_constant_override("separation", 10)
-	pill.add_child(held_row)
-	held_row.add_child(_mote_icon(46.0))
-	_energy_l = Label.new()
-	_energy_l.name = "Energy"
-	_energy_l.theme_type_variation = "SheetTitle"
-	_energy_l.text = "0"
-	held_row.add_child(_energy_l)
-	trailing.add_child(pill)
-	var x := IconButton.new("cross", "", "IconButton")
-	x.name = "Close"
-	x.custom_minimum_size = Vector2(X_SIZE, X_SIZE)
-	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var r := int(X_SIZE * 0.5)
-	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
-	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
-	for st in ["normal", "hover", "disabled"]:
-		x.add_theme_stylebox_override(st, up)
-	x.add_theme_stylebox_override("pressed", down)
-	x.pressed.connect(close)
-	trailing.add_child(x)
-	return Dialog.head("GROVE_SKILLS", "tree", trailing)
 
 ## The card along the foot: with nothing chosen, one line of help; with a
 ## node, its picture, its name over what the next level does, its level on a
@@ -315,7 +287,7 @@ func _build_foot() -> Control:
 	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	price.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_bar.add_child(price)
-	_mote = _mote_icon(46.0)
+	_mote = Motes.icon(46.0)
 	price.add_child(_mote)
 	_tick = Control.new()
 	_tick.custom_minimum_size = Vector2(38, 38)
@@ -330,17 +302,6 @@ func _build_foot() -> Control:
 	_cost_l.add_theme_font_size_override("font_size", 44)
 	price.add_child(_cost_l)
 	return _foot
-
-## A mote of energy, `side` pixels square: what a price is counted in.
-func _mote_icon(side: float) -> Control:
-	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(side, side)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.draw.connect(func() -> void:
-		var sc := Motes.icon_scale(side)
-		icon.draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
-	return icon
 
 ## The field takes what the screen's height leaves it.
 func _fit() -> void:
@@ -533,7 +494,8 @@ func _on_field_input(event: InputEvent) -> void:
 		if t.pressed and _finger == NONE:
 			_press(t.index, t.position)
 		elif not t.pressed and t.index == _finger:
-			_release(t.position)
+			# a touch the system took away is let go and chooses nothing
+			_release(t.position, not t.canceled)
 	elif event is InputEventScreenDrag:
 		if (event as InputEventScreenDrag).index == _finger:
 			_drag((event as InputEventScreenDrag).position)
@@ -543,7 +505,7 @@ func _on_field_input(event: InputEvent) -> void:
 			if m.pressed and _finger == NONE:
 				_press(MOUSE, m.position)
 			elif not m.pressed and _finger == MOUSE:
-				_release(m.position)
+				_release(m.position, true)
 		elif m.pressed and m.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 			_goal = NAN
 			_speed = 0.0
@@ -554,6 +516,8 @@ func _on_field_input(event: InputEvent) -> void:
 func _press(finger: int, at: Vector2) -> void:
 	_finger = finger
 	_fresh = false
+	# a finger put down on a running tree stops it, and that is all it does
+	_caught = _speed != 0.0
 	_goal = NAN
 	_speed = 0.0
 	_down_at = at
@@ -575,12 +539,15 @@ func _drag(at: Vector2) -> void:
 	_last_ms = now
 	_set_pan(_down_pan - (at.y - _down_at.y))
 
-func _release(at: Vector2) -> void:
+## `meant` is false for a touch that was canceled: the finger is let go,
+## nothing is chosen and nothing runs on.
+func _release(at: Vector2, meant: bool) -> void:
 	_finger = NONE
 	if not _moved:
 		_speed = 0.0
-		select(_node_at(at))
-	elif Motion.reduce or Time.get_ticks_msec() - _last_ms > 90 or absf(_speed) < GLIDE_LEAST * 4.0:
+		if meant and not _caught:
+			select(_node_at(at))
+	elif not meant or Motion.reduce or Time.get_ticks_msec() - _last_ms > 90 or absf(_speed) < GLIDE_LEAST * 4.0:
 		_speed = 0.0
 	else:
 		set_process(true)
@@ -588,6 +555,7 @@ func _release(at: Vector2) -> void:
 func _let_go() -> void:
 	_finger = NONE
 	_moved = false
+	_caught = false
 	_speed = 0.0
 	_goal = NAN
 
@@ -691,7 +659,7 @@ func _refresh_foot() -> void:
 		down = CozyTheme.soft_button(Pal.SUN, BAR_R, true, 0)
 	else:
 		up = StyleBoxFlat.new()
-		up.bg_color = Pal.LEAF_TILE if done else PRICE_OFF
+		up.bg_color = Pal.LEAF_TILE if done else Art.PRICE_OFF
 		up.set_corner_radius_all(BAR_R)
 		down = up
 	for st in ["normal", "hover", "disabled", "focus"]:
@@ -814,7 +782,7 @@ static func _plate(id: String, lap: int, levelled: bool, done: bool, can: bool, 
 		b.polygon(Face.Builder.round_rect(at + Vector2(0.0, 4.0), Vector2(w, TAG_H), TAG_H * 0.5), Pal.SUN_DEEP if can else SHADOW)
 		b.polygon(Face.Builder.round_rect(at, Vector2(w, TAG_H), TAG_H * 0.5), Pal.SUN if can else RIM)
 		if not can:
-			b.polygon(Face.Builder.round_rect(at + Vector2(2.5, 2.5), Vector2(w - 5.0, TAG_H - 5.0), TAG_H * 0.5), PRICE_OFF)
+			b.polygon(Face.Builder.round_rect(at + Vector2(2.5, 2.5), Vector2(w - 5.0, TAG_H - 5.0), TAG_H * 0.5), Art.PRICE_OFF)
 		var sc := Motes.icon_scale(TAG_ORB)
 		_append(b, Motes.orb(), Transform2D(0.0, Vector2(sc, sc), 0.0, at + Vector2(12.0 + TAG_ORB * 0.5, TAG_H * 0.5)))
 	_plates[key] = b.mesh()
