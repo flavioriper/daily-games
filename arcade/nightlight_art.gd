@@ -306,8 +306,8 @@ static func lay_puff(b: Face.Builder, at: Vector2, r: float, col: Color) -> void
 	Motes.glow(b, at, r * 0.5, Color(col.lerp(Color.WHITE, 0.6), 0.7 * col.a), 1.2)
 
 ## A picture R in radius or less about (0, 0): "mass" and "light" for the
-## plates, "dust" for stardust, "gas" for the hand's button, one for each
-## of the hand's tiles and one for each of the star's powers.
+## plates, "dust" for stardust, one for each of the hand's tiles and one for
+## each of the star's powers.
 static func icon(what: String) -> ArrayMesh:
 	if not _icons.has(what):
 		var b := Face.Builder.new()
@@ -320,10 +320,6 @@ static func icon(what: String) -> ArrayMesh:
 			"dust":
 				for mote: Array in [[Vector2(-0.3, 0.18), 0.5], [Vector2(0.36, 0.3), 0.36], [Vector2(0.12, -0.36), 0.42]]:
 					_lay_orb(b, (mote[0] as Vector2) * R, float(mote[1]) * R)
-			"gas":
-				# on the sun-coloured button: pale, so it reads as a small cloud
-				for puff: Array in [[Vector2(-0.34, 0.16), 0.62], [Vector2(0.3, 0.24), 0.52], [Vector2(0.06, -0.3), 0.56]]:
-					Motes.glow(b, (puff[0] as Vector2) * R, float(puff[1]) * R, Color(1.0, 0.99, 0.95, 0.95), 0.9)
 			"rich":
 				lay_puff(b, Vector2.ZERO, R * 0.95, GAS)
 			"reach":

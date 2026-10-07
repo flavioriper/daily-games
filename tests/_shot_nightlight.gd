@@ -15,8 +15,9 @@ extends SceneTree
 ## on its disc, 5e the card opened on a held finger (the log says the card
 ## stayed down while the finger did, that the finger was dropped as it
 ## opened, that a press under it braked nothing and a pick in its first
-## half second was not taken; then that after a lift it waits OFFER_CALM
-## and comes up by itself), 5c the star with nothing to burn, dim, 6 a
+## half second took nothing however late it lifted; then that after a lift
+## it waits OFFER_CALM, comes up by itself and a tile pressed after the
+## half second is taken), 5c the star with nothing to burn, dim, 6 a
 ## heavy star burning carbon, a giant, 6c three relics put by hand round
 ## it (a white dwarf, a neutron star, an old black hole, each with its
 ## nebula), 6b the powers it holds, 7 the shop
@@ -36,6 +37,11 @@ extends SceneTree
 ## 0b after it) and stops there.
 ## Prints the draw calls at each shot and the frames since the last with
 ## their mean and longest gap. The star and the wallet are throwaway files.
+## Every guard is checked (`_check`): a line that starts FAIL, and the run
+## exits 1 at its end, the rest of the beats shot all the same. A card's
+## tiles and buttons are pressed with real ScreenTouches pushed into the
+## window (a Button answers a ScreenTouch as it does a mouse button here,
+## with mouse-from-touch off), timed from the moment the card came up.
 ## The beats' clock never moves more than MOST_STEP a frame, so a step that
 ## runs the sim for seconds does not bring the next beats up with it. The
 ## sky's own filter is IGNORE for the whole run and every press goes
@@ -57,36 +63,43 @@ const STEPS := [
 	[13.1, "grow"], [14.6, "shot", "5a_pick"], [14.7, "pick", 0], [15.3, "shot", "5b_picked"],
 	# the card and the finger: held down 1.5 s past a pick (PICK_WAIT and
 	# OFFER_CALM are 1.2 together), the card opened on it, then a finger
-	# lifted and the card left to come by itself, 1.2 s on, and picked from
-	# once it has been up PICK_DEAF
-	[15.4, "hold_grow"], [16.9, "card_held"], [17.1, "shot", "5e_card_drops_finger"], [17.6, "pick", 0],
-	[17.7, "hold_grow"], [18.0, "let_go"], [18.4, "calm", false], [19.5, "calm", true], [20.0, "pick", 0],
-	[20.1, "starve"], [22.7, "shot", "5c_dim"], [22.8, "feed"],
-	[22.9, "heavy"], [23.0, "run", 40.0, true], [26.2, "shot", "6_giant"],
-	[26.25, "relics"], [26.45, "shot", "6c_relics"],
-	[26.55, "powers"], [26.9, "shot", "6b_powers"], [27.0, "powers_x"],
-	[27.1, "shop"], [27.2, "buy"], [27.7, "shot", "7_shop"], [27.8, "shop_x"],
-	# the supernova: swap at 31.5, the pull back to 32.7, the pan to 35.7,
-	# the close to 39.7 and the perks (reduce motion: over at 35.5)
-	[27.9, "iron"], [28.8, "shot", "8a_fall"], [29.6, "shot", "8b_leaving"], [30.5, "shot", "8c_shells"],
-	[32.0, "shot", "8d_pull_back"], [32.01, "where"], [32.8, "where"], [33.7, "shot", "8e_pan"], [33.71, "where"], [36.7, "shot", "8f_rising"],
-	[40.5, "shot", "11_perks"], [40.6, "perk"], [41.0, "shot", "12_perk"],
-	[41.1, "perks_x"], [43.1, "shot", "13_new"],
-	# the nebula: swap at 47.4, the pull back to 48.6, the pan to 51.6, the
-	# close to 55.6 and the perks (reduce motion: over at 51.4)
-	[43.2, "nebula"], [45.7, "shot", "9a_nebula_leaving"], [47.9, "where"], [48.7, "where"], [50.1, "shot", "9c_nebula_pan"], [50.11, "where"],
-	[55.8, "perks_x"], [56.1, "shot", "9b_after_nebula"],
-	# the fade: swap at 61.2, the pull back to 62.4, over at 69.4 (reduce
-	# motion: 65.2)
-	[56.2, "let_go_star"], [59.6, "shot", "13b_letting_go"], [61.7, "where"], [62.6, "shot", "13c_gone"], [62.61, "where"], [69.9, "perks_x"],
+	# lifted and the card left to come by itself, 1.2 s on. A real touch on
+	# a tile each time the card is up: one that lands 0.2 s after it shows
+	# and lifts at 0.8 takes nothing, one that lands at 0.7 and lifts at 0.9
+	# takes the power
+	[15.4, "hold_grow"], [16.9, "card_held"], [16.91, "press_card", "pick", "tile", 0.2, 0.8, false], [17.3, "shot", "5e_card_drops_finger"], [17.9, "pick", 0],
+	[18.0, "hold_grow"], [18.3, "let_go"], [18.31, "press_card", "pick", "tile", 0.7, 0.9, true], [18.7, "calm", "pick", false], [19.8, "calm", "pick", true], [20.58, "picked"],
+	[20.6, "starve"], [23.2, "shot", "5c_dim"], [23.3, "feed"],
+	[23.4, "heavy"], [23.5, "run", 40.0, true], [26.7, "shot", "6_giant"],
+	[26.75, "relics"], [26.95, "shot", "6c_relics"],
+	[27.05, "powers"], [27.4, "shot", "6b_powers"], [27.5, "powers_x"],
+	[27.6, "shop"], [27.7, "buy"], [28.2, "shot", "7_shop"], [28.3, "shop_x"],
+	# the supernova: swap at 32.0, the pull back to 33.2, the pan to 36.2,
+	# the close to 40.2 (reduce motion: over at 36.0). A finger is on the sky
+	# from 29.5 to 41.0, so the perks wait for it and OFFER_CALM: up at 41.6,
+	# with a touch on Buy (0.2 to 0.8 s after) and one outside the card (0.3 to
+	# 0.5) that do nothing
+	[28.4, "iron"], [29.3, "shot", "8a_fall"], [29.5, "sky_down"], [30.1, "shot", "8b_leaving"], [31.0, "shot", "8c_shells"],
+	[32.5, "shot", "8d_pull_back"], [32.51, "where"], [33.3, "where"], [34.2, "shot", "8e_pan"], [34.21, "where"], [37.2, "shot", "8f_rising"],
+	[40.9, "perks_held"], [41.0, "let_go"], [41.01, "press_card", "perks", "buy", 0.2, 0.8, false], [41.02, "press_card", "perks", "scrim", 0.3, 0.5, false],
+	[41.4, "calm", "perks", false], [42.6, "calm", "perks", true],
+	[43.3, "shot", "11_perks"], [43.4, "perk"], [43.8, "shot", "12_perk"],
+	[43.9, "perks_x"], [45.9, "shot", "13_new"],
+	# the nebula: swap at 50.2, the pull back to 51.4, the pan to 54.4, the
+	# close to 58.4 and the perks (reduce motion: over at 54.2)
+	[46.0, "nebula"], [48.5, "shot", "9a_nebula_leaving"], [50.7, "where"], [51.5, "where"], [52.9, "shot", "9c_nebula_pan"], [52.91, "where"],
+	[58.6, "perks_x"], [58.9, "shot", "9b_after_nebula"],
+	# the fade: swap at 64.0, the pull back to 65.2, over at 72.2 (reduce
+	# motion: 68.0)
+	[59.0, "let_go_star"], [62.4, "shot", "13b_letting_go"], [64.5, "where"], [65.4, "shot", "13c_gone"], [65.41, "where"], [72.7, "perks_x"],
 	# GAS presses 0.8 and 1.6 s into its page and its gas is half way in at 19
-	[70.0, "tutor"], [71.8, "shot", "14_tut_gas"], [88.0, "shot", "14b_tut_gas_in"],
-	[88.1, "page", 1], [90.1, "shot", "15_tut_worlds"],
+	[72.8, "tutor"], [74.6, "shot", "14_tut_gas"], [90.8, "shot", "14b_tut_gas_in"],
+	[90.9, "page", 1], [92.9, "shot", "15_tut_worlds"],
 	# BURN's star is a giant (swell 1, 20 Suns) from 12.0 to 13.8 s into the page
-	[90.2, "page", 2], [96.2, "shot", "15b_tut_burn"], [103.3, "shot", "15c_tut_burn_giant"],
-	[103.4, "page", 3], [106.5, "shot", "16_tut_end"], [111.0, "shot", "16b_tut_end_pan"],
-	[111.1, "leave"], [112.3, "shot", "17_tab_after"],
-	[112.4, "quit"],
+	[93.0, "page", 2], [99.0, "shot", "15b_tut_burn"], [106.1, "shot", "15c_tut_burn_giant"],
+	[106.2, "page", 3], [109.3, "shot", "16_tut_end"], [113.8, "shot", "16b_tut_end_pan"],
+	[113.9, "leave"], [115.1, "shot", "17_tab_after"],
+	[115.2, "quit"],
 ]
 ## The beats' clock moves this much a frame at most, in seconds.
 const MOST_STEP := 0.1
@@ -117,6 +130,14 @@ var _drag_all := 0.0
 var _drag_arc := 0.0
 var _drag_from := Vector2.ZERO
 var _marked: Array = []
+## The guards checked and how many failed; what is still to do at a time of
+## the clock ([msec, Callable], soonest first); and what waits for a card to
+## come up ({card, plan}: `plan` is called with the msec it came up at).
+var _checks := 0
+var _fails := 0
+var _due: Array = []
+var _watch: Array = []
+var _fingers_used := 0
 
 func _initialize() -> void:
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
@@ -151,6 +172,72 @@ func _finish() -> void:
 	for p: String in _tmp:
 		DirAccess.remove_absolute(p)
 	print("throwaway files removed")
+
+## The run's end: 1 if a guard failed or one never ran.
+func _end() -> bool:
+	_finish()
+	if not _due.is_empty() or not _watch.is_empty():
+		_fails += 1
+		print("FAIL %d timed presses never ran (%d still waiting for a card)" % [_due.size() + _watch.size(), _watch.size()])
+	print("guards: %d checked, %d failed" % [_checks, _fails])
+	if _fails > 0:
+		quit(1)
+		return false
+	return true
+
+func _check(ok: bool, what: String) -> void:
+	_checks += 1
+	if not ok:
+		_fails += 1
+	print("%s %s" % ["ok  " if ok else "FAIL", what])
+
+## `do` at `msec` of the engine's clock.
+func _at(msec: int, do: Callable) -> void:
+	_due.append([msec, do])
+	_due.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+
+## A real touch pushed into the window at `at` (the window's pixels).
+func _push(down: bool, at: Vector2, finger: int) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = finger
+	ev.pressed = down
+	ev.position = at
+	root.push_input(ev)
+
+## Where a card is pressed, in the window's pixels: a pick's first tile, the
+## perks' Buy, or the scrim outside the perks' card.
+func _target(what: String) -> Vector2:
+	var on: Control = _s._pick_tiles[0].button if what == "tile" else (_s._perk_buy if what == "buy" else _s._perks)
+	var local := Vector2(16.0, 16.0) if what == "scrim" else on.size * 0.5
+	return root.get_final_transform() * (on.get_global_transform() * local)
+
+## What that press would change: the picks taken, the perks drawn, or the
+## perks' card being up.
+func _count(what: String) -> int:
+	if what == "tile":
+		return int(_s.sim.picks)
+	return int(_s.sim.bought) if what == "buy" else int(_s._perks.visible)
+
+## A card came up at `base` msec: a touch lands on `what` of it `land`
+## seconds after and lifts `lift` seconds after, and it does something or
+## not, as `expect` says.
+func _press_plan(base: int, what: String, land: float, lift: float, expect: bool) -> void:
+	_fingers_used += 1
+	var finger := 4 + _fingers_used
+	var state := {}
+	_at(base + int(land * 1000.0), func() -> void:
+		state.at = _target(what)
+		state.before = _count(what)
+		state.landed = (Time.get_ticks_msec() - base) / 1000.0
+		_push(true, state.at, finger))
+	_at(base + int(lift * 1000.0), func() -> void:
+		state.lifted = (Time.get_ticks_msec() - base) / 1000.0
+		_push(false, state.at, finger))
+	_at(base + int(lift * 1000.0) + 80, func() -> void:
+		var did: bool = _count(what) != int(state.before)
+		var early: bool = float(state.landed) < float(_s.PICK_DEAF)
+		_check(did == expect and early != expect and float(state.lifted) >= float(_s.PICK_DEAF),
+			"a touch on the %s that landed %.2f s after the card came up and lifted at %.2f: it did something %s (%s)" % [what, state.landed, state.lifted, did, expect]))
 
 ## A finger on the sky at `spot` of the sim, as a phone sends it (the
 ## project has mouse-from-touch off): straight to the screen, in the sky's
@@ -251,8 +338,15 @@ func _process(delta: float) -> bool:
 	_gap_sum += delta
 	_gap_max = maxf(_gap_max, delta)
 	if _t > 140.0:
-		_finish()
-		return true
+		_fails += 1
+		print("FAIL the run did not reach its end")
+		return _end()
+	for w: Dictionary in _watch.duplicate():
+		if (w.card as Control).visible:
+			_watch.erase(w)
+			(w.plan as Callable).call(int(_s._raised_at))
+	while not _due.is_empty() and Time.get_ticks_msec() >= int(_due[0][0]):
+		((_due.pop_front() as Array)[1] as Callable).call()
 	if _drag_left > 0.0:
 		_drag_left = maxf(0.0, _drag_left - delta)
 		_spot_now = _drag_from.rotated(_drag_arc * (1.0 - _drag_left / _drag_all))
@@ -353,11 +447,11 @@ func _process(delta: float) -> bool:
 				_grow()
 				_spot_now = Vector2(_s.sim.ring.y * 0.8, 0.0)
 				_touch(true, _spot_now)
-				print("held and grown to %.1f Suns: owed %d, fingers %s, card up %s" % [_s.sim.suns(), _s.sim.owed(), str(_s._fingers.keys()), _s._pick.visible])
+				_check(_s.sim.owed() == 1 and _s._fingers.has(0) and not _s._pick.visible, "held and grown to %.1f Suns: owed %d, fingers %s, card up %s" % [_s.sim.suns(), _s.sim.owed(), str(_s._fingers.keys()), _s._pick.visible])
 			"card_held":
-				print("1.5 s on with the finger down: card up %s (the guard: false), fingers %s, owed %d" % [_s._pick.visible, str(_s._fingers.keys()), _s.sim.owed()])
+				_check(not _s._pick.visible and _s._fingers.has(0) and _s.sim.owed() == 1, "1.5 s on with the finger down the card is not up: card up %s, fingers %s, owed %d" % [_s._pick.visible, str(_s._fingers.keys()), _s.sim.owed()])
 				_s.open_pick()
-				print("the card opened on it: card up %s, fingers empty %s" % [_s._pick.visible, _s._fingers.is_empty()])
+				_check(_s._pick.visible and _s._fingers.is_empty(), "the card opened on it drops the finger: card up %s, fingers empty %s" % [_s._pick.visible, _s._fingers.is_empty()])
 				# gas right under a second finger, which a press would brake
 				var under: Sim.Body = _s.sim.add(Sim.Kind.GAS, Sim.PUFF, _spot_now, _s.sim.circle_vel(_spot_now))
 				var v0 := under.vel
@@ -367,17 +461,30 @@ func _process(delta: float) -> bool:
 				for e: Dictionary in _s.sim.events:
 					if String(e.kind) == "brake":
 						brakes += 1
-				print("a press under the card: %d brake events (0), the gas under it slowed %s (false), fingers empty %s" % [brakes, under.vel != v0, _s._fingers.is_empty()])
+				_check(brakes == 0 and under.vel == v0 and _s._fingers.is_empty(), "a press under the card brakes nothing: %d brake events, the gas under it slowed %s, fingers empty %s" % [brakes, under.vel != v0, _s._fingers.is_empty()])
 				_touch(false, _spot_now, 1)
-				var picks: int = _s.sim.picks
-				_s._on_pick(0)
-				print("a pick in the card's first half second: taken %s (false), card up %s (true)" % [_s.sim.picks != picks, _s._pick.visible])
+				_touch(false, _spot_now)
+			"press_card":
+				_watch.append({"card": _s._pick if String(step[2]) == "pick" else _s._perks,
+					"plan": _press_plan.bind(String(step[3]), float(step[4]), float(step[5]), bool(step[6]))})
 			"calm":
-				print("%.1f s after the finger lifted: card up %s (%s), owed %d, fingers %s" % [(Time.get_ticks_msec() - int(_s._lifted_at)) / 1000.0, _s._pick.visible, str(bool(step[2])), _s.sim.owed(), str(_s._fingers.keys())])
+				var card: Control = _s._pick if String(step[2]) == "pick" else _s._perks
+				_check(card.visible == bool(step[3]), "%.1f s after the finger lifted the %s card is %s: up %s, fingers %s, on the sky %s" % [(Time.get_ticks_msec() - int(_s._lifted_at)) / 1000.0, step[2],
+					"up" if bool(step[3]) else "not up", card.visible, str(_s._fingers.keys()), str(_s._touching.keys())])
+			"picked":
+				_check(not _s._pick.visible, "the pick taken, the card is closed: card up %s, powers %s" % [_s._pick.visible, str(_s.sim.power)])
+			"sky_down":
+				# a finger on the sky through the end: not read, and still in the perks' way
+				_spot_now = Vector2(0.0, -_s.sim.ring.y * 0.8)
+				_touch(true, _spot_now)
+				_check(_s._fingers.is_empty() and _s._touching.has(0), "a finger down while the star ends is not read but is known: fingers %s, on the sky %s" % [str(_s._fingers.keys()), str(_s._touching.keys())])
+			"perks_held":
+				_check(not _s.sky.ending() and _s._perks_due and not _s._perks.visible, "the end over and the finger still down, the perks wait: sky ending %s, perks due %s, perks up %s" % [_s.sky.ending(), _s._perks_due, _s._perks.visible])
 			"pick":
 				print("pick open: %s, on offer %s, owed %d" % [_s._pick.visible, str(_s.sim.offer), _s.sim.owed()])
+				var had: int = _s.sim.picks
 				_s._on_pick(int(step[2]))
-				print("picked: %s, card open %s" % [str(_s.sim.power), _s._pick.visible])
+				_check(_s.sim.picks == had + 1 and not _s._pick.visible, "picked: %s, card open %s" % [str(_s.sim.power), _s._pick.visible])
 			"starve":
 				# a small star again, as this beat has always been shot
 				_s.sim.mass = Sim.START * 2.2
@@ -431,8 +538,9 @@ func _process(delta: float) -> bool:
 			"perk":
 				print("camera after the end: shift %s, view %.3f, sky ending %s, relics %d (kind of the last %d)" % [_s.sky.shift, _s.sky.view, _s.sky.ending(), _s.sim.relics.size(), int(_s.sim.relics[-1].kind) if not _s.sim.relics.is_empty() else -1])
 				print("after the end: %.1f Suns, dust %d, novas %d, fades %d, %d puffs left, perks open %s" % [_s.sim.suns(), _s.sim.dust, _s.sim.novas, _s.sim.fades, _s.sim.bodies.size(), _s._perks.visible])
+				var drawn: int = _s.sim.bought
 				_s._perk_buy.pressed.emit()
-				print("perk drawn: %s, dust %d" % [str(_s.sim.perk), _s.sim.dust])
+				_check(_s.sim.bought == drawn + 1, "perk drawn: %s, dust %d" % [str(_s.sim.perk), _s.sim.dust])
 			"perks_x":
 				if _s._perks.visible:
 					_s._perks.find_child("Back", true, false).pressed.emit()
@@ -468,6 +576,5 @@ func _process(delta: float) -> bool:
 					print("after the birth: sky ending %s, a birth %s, shift %s, view %.3f" % [_s.sky.ending(), _s._birth, _s.sky.shift, _s.sky.view])
 				else:
 					print("back on tab: %s, screen gone: %s, the card says %s" % [_menu._tab, _menu.get_node_or_null("Nightlight") == null or _menu.get_node("Nightlight").is_queued_for_deletion(), Sim.kept()])
-				_finish()
-				return true
+				return _end()
 	return false

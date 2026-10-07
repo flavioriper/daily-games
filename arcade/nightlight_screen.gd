@@ -123,9 +123,11 @@ const LIGHT_W := 220.0
 ## What the star is made of: its bar's height.
 const MADE_H := 14.0
 ## A pick's tile, and the seconds the star has grown past a pick before the
-## card comes up. It never comes up under a finger: not while one is down on
-## the sky nor for OFFER_CALM seconds after the last one lifted, and once it
-## is up it reads no press for PICK_DEAF seconds.
+## card comes up. A card that comes up by itself (a pick, the perks after an
+## end) never comes up under a finger: not while one is on the sky nor for
+## OFFER_CALM seconds after the last one lifted. Once it is up, a press that
+## lands in its first PICK_DEAF seconds does nothing, whenever it lifts: a
+## tile answers as the finger lifts, and a hold is what this game teaches.
 const PICK_H := 440.0
 const PICK_WAIT := 0.6
 const OFFER_CALM := 0.6
@@ -169,7 +171,12 @@ var _pick_title: Label
 var _pick_tiles: Array = []   # {button, icon, name, effect, cost, badge, level}
 var _pick_now: Array = []
 var _pick_wait := 0.0
-var _pick_shown_at := -100000
+## The perks an end owes, until no finger is in their way.
+var _perks_due := false
+## Over every card for PICK_DEAF seconds after one came up by itself at
+## `_raised_at`: the presses that land then land on it, and their lifts too.
+var _shield: Control
+var _raised_at := -100000
 var _powers: Control
 var _powers_list: VBoxContainer
 var _reset: Control
@@ -195,6 +202,9 @@ var _perk_tiles := {}   # perk -> {panel, count}
 ## Fingers down on the sky: index (-1 the mouse) to where it is, in the sky's
 ## pixels, and the seconds since it last braked.
 var _fingers := {}
+## Every finger on the sky, read or not (under a card, through an end): what
+## a card that comes up by itself waits for.
+var _touching := {}
 var _lifted_at := -100000
 var _pressed_at := -100000
 var _pressed_mouse := false
@@ -244,6 +254,8 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		# its lift may never be told
+		_touching.clear()
 		_drop_fingers()
 		_save()
 	elif what == NOTIFICATION_EXIT_TREE:
@@ -306,8 +318,9 @@ func _build() -> void:
 	# item and click on upgrade that popup"), and the user took that back on
 	# 2026-10-07 ("user can click into regions to slow it down and make it
 	# fall"), with the pick card still coming up by itself, guarded. The
-	# guard is `_deaf()` (no press is read under a card) and `_offer` (no
-	# card comes up under a finger, and the card is deaf as it shows)
+	# guard is `_deaf()` (no press is read under a card), `_offer` (no card
+	# comes up by itself under a finger) and `_raised` (a press that lands as
+	# such a card shows does nothing, whenever it lifts)
 	sky.mouse_filter = Control.MOUSE_FILTER_STOP
 	sky.gui_input.connect(_on_sky_input)
 	sky.resized.connect(_layout_field)
@@ -391,6 +404,11 @@ func _build() -> void:
 	add_child(_pick)
 	_reset = _build_reset()
 	add_child(_reset)
+	_shield = Control.new()
+	_shield.name = "Shield"
+	_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_shield.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_shield)
 	_apply_insets()
 
 ## The star, on a paper plate: how many Suns it weighs, how hot it is and how
@@ -761,10 +779,13 @@ func _perk_tile(which: String) -> Control:
 	_perk_tiles[which] = {"panel": panel, "count": count}
 	return panel
 
-func open_perks() -> void:
+## The perks, from the stardust's plate, or `by_itself` after an end.
+func open_perks(by_itself := false) -> void:
 	if _perks.visible or sky.ending():
 		return
 	_drop_fingers()
+	if by_itself:
+		_raised()
 	_refresh_perks()
 	_perks.visible = true
 	Motion.appear(_perks, 0.0, 1.0, 0.2)
@@ -905,7 +926,7 @@ func open_pick() -> void:
 	if two.is_empty() or _pick.visible:
 		return
 	_drop_fingers()
-	_pick_shown_at = Time.get_ticks_msec()
+	_raised()
 	_pick_now = two
 	_pick_title.text = tr("NL_PICK_TITLE") % Art.short(Sim.mile(sim.picks), _comma())
 	for i in 2:
@@ -922,11 +943,7 @@ func open_pick() -> void:
 	Motion.appear(_pick, 0.0, 1.0, 0.2)
 	_fx.cue("pick")
 
-## One of the two is taken. Not in the card's first moment: a finger on its
-## way to the sky as the card came up lands on a tile.
 func _on_pick(i: int) -> void:
-	if Time.get_ticks_msec() - _pick_shown_at < int(PICK_DEAF * 1000.0):
-		return
 	var which: String = sim.pick(i)
 	if which == "":
 		_pick.visible = false
@@ -1055,6 +1072,7 @@ func _on_reset() -> void:
 	_end_how = ""
 	_end_done = false
 	_pick_wait = 0.0
+	_perks_due = false
 	_eaten_at_open = 0.0
 	_shown.mass = sim.mass
 	_shown.light = sim.light
@@ -1127,6 +1145,8 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
+	if _shield.mouse_filter == Control.MOUSE_FILTER_STOP and Time.get_ticks_msec() - _raised_at >= int(PICK_DEAF * 1000.0):
+		_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ending: bool = sky.ending()
 	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or _reset.visible or ending
 	_hold(delta)
@@ -1147,24 +1167,43 @@ func _process(delta: float) -> void:
 		if _since_save >= SAVE_GAP:
 			_save()
 
-## A pick the star has grown past comes up by itself, a moment later, never
-## over another card and never under a finger: the wait starts again while
-## one is down on the sky and for OFFER_CALM seconds after the last lifted.
+## A card comes up by itself: the perks an end owes, then a pick the star
+## has grown past, a moment later. Never over another card (`_deaf`) and
+## never under a finger (`_calm`); a pick's wait starts again while one is
+## in the way.
 func _offer(delta: float) -> void:
+	if _perks_due:
+		if not _deaf() and _calm():
+			_perks_due = false
+			open_perks(true)
+		return
 	if sim.owed() <= 0 or _pick.visible:
 		_pick_wait = 0.0
 		# a card with nothing left to offer is not left up
 		if _pick.visible and sim.owed() <= 0:
 			_pick.visible = false
 		return
-	if _held_back or sky.ending() or sim.ending() != "" or settings_sheet.is_open() or _shop.visible or _perks.visible or _powers.visible or _reset.visible:
+	if _deaf():
 		return
-	if not _fingers.is_empty() or Time.get_ticks_msec() - _lifted_at < int(OFFER_CALM * 1000.0):
+	if not _calm():
 		_pick_wait = 0.0
 		return
 	_pick_wait += delta
 	if _pick_wait >= PICK_WAIT:
 		open_pick()
+
+## No finger is on the sky, and none has been for OFFER_CALM seconds.
+func _calm() -> bool:
+	return _touching.is_empty() and _fingers.is_empty() and Time.get_ticks_msec() - _lifted_at >= int(OFFER_CALM * 1000.0)
+
+## A card has come up by itself: for PICK_DEAF seconds the shield is in
+## front of it, and of everything. A press that lands on the shield stays
+## the shield's until it lifts, however long it is held, so nothing under it
+## is pressed by a finger that was already on its way; a press that lands
+## after is the card's own.
+func _raised() -> void:
+	_raised_at = Time.get_ticks_msec()
+	_shield.mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _play_events() -> void:
 	var origin: Transform2D = sky.get_global_transform()
@@ -1278,8 +1317,9 @@ func _step_end(delta: float) -> void:
 			_refresh_tiles()
 			_save()
 	elif sky.end_t() >= sky.end_time():
+		# the perks come up by themselves, so `_offer` raises them
 		sky.finish_end()
-		open_perks()
+		_perks_due = true
 
 ## Motes came down on the light plate: it swells, unless it still is from
 ## the one before, and a click is heard, each a semitone up a short run.
@@ -1502,6 +1542,7 @@ func _on_sky_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
 		if t.pressed:
+			_touching[t.index] = true
 			_press_at(t.index, t.position)
 		else:
 			_lift(t.index)
@@ -1511,6 +1552,7 @@ func _on_sky_input(event: InputEvent) -> void:
 			_fingers[d.index].at = d.position
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		if (event as InputEventMouseButton).pressed:
+			_touching[-1] = true
 			_press_at(-1, (event as InputEventMouseButton).position)
 		else:
 			_lift(-1)
@@ -1531,11 +1573,14 @@ func _press_at(finger: int, px: Vector2) -> void:
 	_fingers[finger] = {"at": px, "t": 0.0}
 	_brake(px)
 
+## `finger` leaves the sky, whether or not its press was read.
 func _lift(finger: int) -> void:
-	if _fingers.erase(finger):
+	var was: bool = _touching.erase(finger)
+	if _fingers.erase(finger) or was:
 		_lifted_at = Time.get_ticks_msec()
 
-## Every finger is let go of: a card is coming up, or the game is left.
+## Every finger is let go of: a card is coming up, or the game is left. It
+## may still be on the sky (`_touching`); it brakes nothing more.
 func _drop_fingers() -> void:
 	if not _fingers.is_empty():
 		_fingers.clear()
