@@ -65,10 +65,12 @@ const NUM_SIZE := 26
 const PRICE_SIZE := 28
 ## A press that moves less than this is a tap.
 const TAP := 12.0
-## A finger let go while moving lets the field run on: its speed falls away
-## at GLIDE_STOP a second, and under GLIDE_LEAST it stands.
+## A finger let go while moving lets the field run on, at GLIDE_MOST pixels
+## a second at the most: its speed falls away at GLIDE_STOP a second, and
+## under GLIDE_LEAST it stands.
 const GLIDE_STOP := 4.5
 const GLIDE_LEAST := 30.0
+const GLIDE_MOST := 5000.0
 const WHEEL := 96.0
 ## The foot card: a picture on a disc, the words, and the bar that buys.
 const FOOT_H := 244.0
@@ -568,7 +570,7 @@ func _drag(at: Vector2) -> void:
 	_moved = true
 	var now := Time.get_ticks_msec()
 	var dt := maxf(0.001, (now - _last_ms) / 1000.0)
-	_speed = lerpf(_speed, -(at.y - _last_y) / dt, 0.5)
+	_speed = clampf(lerpf(_speed, -(at.y - _last_y) / dt, 0.5), -GLIDE_MOST, GLIDE_MOST)
 	_last_y = at.y
 	_last_ms = now
 	_set_pan(_down_pan - (at.y - _down_at.y))
