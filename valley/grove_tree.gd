@@ -100,13 +100,15 @@ const FIRSTS := ["crate", "crit", "luck", "beaver"]
 
 ## What a node's two figures are, by id (a bough by its part): how
 ## `_figure` writes them. `sim.value` answers in these units: a count, the
-## seconds, a percent (25.0 is 25%), points of chop, a yield.
+## seconds, a percent (25.0 is 25%), chops a keen one counts for, a yield. A
+## Soft bough's is its kind's points of chop, which no line says: `_effect`
+## makes them the whole chops they are with the axe as it is, a count.
 const FX := {
 	"room": "count", "sprout": "secs",
 	"jetty": "count", "tying": "secs", "bundle": "count", "raft": "secs", "load": "count",
 	"beaver": "count", "teeth": "percent",
 	"crit": "percent", "critsize": "chops", "luck": "percent", "crate": "secs", "cratesize": "count",
-	"soft": "chops", "rich": "count",
+	"soft": "count", "rich": "count",
 }
 
 const NONE := -1
@@ -129,6 +131,9 @@ var _fx_l: Label
 var _chip: Control
 var _level_l: Label
 var _bar: Button
+## The bar's running bump or shiver, and where it lay across when that began.
+var _bar_tw: Tween
+var _bar_x := 0.0
 var _cost_l: Label
 var _mote: Control
 var _tick: Control
@@ -404,7 +409,8 @@ func buy_selected() -> void:
 			_bumps[id] = 0.0
 			set_process(true)
 		refresh()
-		Motion.bump(_bar, 0.05, 0.2)
+		_settle_bar()
+		_bar_tw = Motion.bump(_bar, 0.05, 0.2)
 		# what it opened may lie past the field's edge: the tree comes to it
 		for other in _new:
 			if not _in_view(other):
@@ -412,8 +418,19 @@ func buy_selected() -> void:
 				break
 		bought.emit(id, paid)
 	elif not sim.is_done(id):
-		Motion.shiver(_bar, 6.0)
+		_settle_bar()
+		_bar_tw = Motion.shiver(_bar, 6.0)
 		refused.emit(id)
+
+## The bar back as it lies, before it is bumped or shaken again: both start
+## from where they find it, so a second press inside the first's fifth of a
+## second would leave it where it was caught (the screen's `_kick`).
+func _settle_bar() -> void:
+	if Motion.running(_bar_tw):
+		_bar_tw.kill()
+		_bar.scale = Vector2.ONE
+		_bar.position.x = _bar_x
+	_bar_x = _bar.position.x
 
 ## Brings a node to the middle of the field, as near as the tree's ends let.
 func pan_to(id: String) -> void:
@@ -622,7 +639,19 @@ func _effect(id: String) -> String:
 	if sim.is_done(id):
 		return tr("GROVE_DONE")
 	var level: int = sim.level(id)
-	return line(id, sim.value(id, level), sim.value(id, level + 1))
+	var now: float = sim.value(id, level)
+	var then: float = sim.value(id, level + 1)
+	if Sim.part_of(id) == "soft":
+		now = _chops(now)
+		then = _chops(then)
+	return line(id, now, then)
+
+## The whole chops a tree of `points` takes with the axe as it is now, as
+## the tutorial's first page counts a sapling's (valley/grove_screen.gd,
+## `_chops_line`). With a strong axe a bough's two figures can be the same
+## one: that is the truth about the bough then.
+func _chops(points: float) -> float:
+	return float(maxi(1, ceili(points / sim.power() - 0.0001)))
 
 ## A node's line from its two figures, what it is and what the next level
 ## makes it: "room for 6 piles, then 8". Every node has its own key
