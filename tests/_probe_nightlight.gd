@@ -47,6 +47,7 @@ func _initialize() -> void:
 		_check_star()
 		_check_rules()
 		_check_relics()
+		_check_ends()
 		print("probe_nightlight: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -415,14 +416,20 @@ func _check_ends() -> void:
 	# a 4-Sun star whose helium core reaches 1.06 Suns sheds a nebula and leaves a white dwarf
 	var sim := _quiet()
 	sim.mass = Sim.START * 4.0
-	sim.fuel = sim.mass * 0.5
+	sim.fuel = sim.mass * 0.1
 	sim.ignited[1] = true
 	sim.made[0] = Sim.CARBON * Sim.START
 	sim.made[1] = Sim.CARBON * Sim.START
+	# every kilo of the star is accounted for, so none of it counts as rock
+	sim.env = sim.mass - sim.fuel - sim.made[0] - sim.made[1]
 	_ok("nebula end", sim.ending() == "nebula" and sim.remnant() == Sim.Relic.WD)
 	_ok("dwarf mass", is_equal_approx(sim.remnant_mass(), (Sim.WD_M + Sim.WD_M_PER * 3.0) * Sim.START))
 	var dust_was: int = sim.dust
 	var paid: int = sim.end()
+	var thin := 0.0
+	for b: Sim.Body in sim.bodies:
+		thin = maxf(thin, b.dust)
+	_ok("a nebula's gas is not dusty", sim.bodies.size() > 0 and thin < 0.08)
 	_ok("nebula pays", paid == Sim.NEBULA_DUST and sim.dust == dust_was + Sim.NEBULA_DUST)
 	_ok("one relic", sim.relics.size() == 1 and int(sim.relics[0].kind) == Sim.Relic.WD)
 	var d: float = sim.last_birth.d
