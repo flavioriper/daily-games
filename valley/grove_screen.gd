@@ -212,6 +212,8 @@ var _gnawed := false
 ## The screen has handed itself back (`_on_back`): the grove is kept and is
 ## the tab's from here on.
 var _left := false
+## When the app was put in the background, in unix seconds (0.0: it is not).
+var _paused_at := 0.0
 var _since_save := 0.0
 var _opened_at := 0
 var _felled_at_open := 0
@@ -243,11 +245,26 @@ func _ready() -> void:
 	_refresh_hud(0.0)
 	Analytics.track("valley_enter", {"place": GAME, "trees": sim.trees.size(), "room": sim.room()})
 
+## The app put in the background and brought back alive is time away, as a
+## grove read from its file has it: the phone that keeps the app runs no
+## frame of it meanwhile, and the next save would stamp the hours as seen.
+## So the moment it is paused is kept, and on the way back the sim works the
+## seconds out (`catch_up`: the trees that came up, the beavers' share, what
+## was on the jetty tied and rafted, a crate). What the raft landed is handed
+## over by the next frame's own `take_owed`. Only a pause is time away: a
+## window that loses the focus on a desktop goes on running its frames.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		_hold = false
 		_finger = -1
 		_save()
+		if what == NOTIFICATION_APPLICATION_PAUSED:
+			_paused_at = Time.get_unix_time_from_system()
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		if sim != null and not _left and _paused_at > 0.0:
+			sim.catch_up(Time.get_unix_time_from_system() - _paused_at)
+			_dirty = true
+		_paused_at = 0.0
 	elif what == NOTIFICATION_EXIT_TREE:
 		_save()
 
@@ -643,7 +660,10 @@ func _process(delta: float) -> void:
 	if sim == null or _left:
 		return
 	var holding: bool = _hold and not _held_back and not _shop.visible and not _tree.is_open() and not settings_sheet.is_open()
-	sim.step(delta, holding, unit(_hold_at))
+	# a frame that long is a hitch, or the first one back from the background
+	# (whose seconds `_notification` has had worked out): not play
+	var dt := minf(delta, Sim.STEP_MOST)
+	sim.step(dt, holding, unit(_hold_at))
 	# what the raft has landed is wood in the valley now. The grove is kept
 	# with it: one kept from before the landing would land it again.
 	var landed_wood: int = sim.take_owed()
@@ -663,7 +683,7 @@ func _process(delta: float) -> void:
 	# the land may have moved on the screen (an inset, the banner): the
 	# shadows are kept to where it is now
 	_life.place(_origin, _u, field.get_global_transform())
-	_life.step(delta, sim, holding, unit(_hold_at))
+	_life.step(dt, sim, holding, unit(_hold_at))
 	_play_events()
 	for item: Dictionary in _nums:
 		item.t += delta

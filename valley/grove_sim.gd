@@ -120,6 +120,10 @@ const GROW := 1.6
 const DOWN := 0.001
 ## Two things of the jetty due this near each other happen together.
 const SOON := 0.000001
+## The longest frame a holder steps the grove by. A longer one is a hitch, or
+## the first frame of an app back from the background, and is not play: the
+## seconds an app was away are `catch_up`'s, asked for by the holder.
+const STEP_MOST := 0.25
 
 ## The jetty. A felled tree's wood lies where it stood as a pile; the circle
 ## gathers piles to the jetty, where they are tied into bundles that a raft

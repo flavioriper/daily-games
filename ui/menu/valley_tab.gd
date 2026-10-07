@@ -72,6 +72,14 @@ func _ready() -> void:
 	visibility_changed.connect(func() -> void: set_process(is_visible_in_tree()))
 	_write_wood()
 
+## The app is back from the background with the tab showing: the grove is
+## read again from its file, which works the seconds gone out as time away
+## (the phone ran no frame of them). Not on a window's focus: a desktop goes
+## on running its frames.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and is_visible_in_tree():
+		refresh()
+
 ## The wood held for the whole valley, as the Arcade tab shows the gold.
 func _wood_pill() -> Control:
 	var pill := PanelContainer.new()
@@ -248,8 +256,10 @@ func _process(delta: float) -> void:
 		return
 	var before: int = _sim.trees.size()
 	# nobody is in the grove while it is looked at from here: its beavers
-	# do not bite, and get these seconds as time away when it is next read
-	_sim.step(delta, false, Vector2.ZERO, false)
+	# do not bite, and get these seconds as time away when it is next read.
+	# A frame longer than a hitch is the first one back from the background,
+	# whose seconds the grove just read has already been given
+	_sim.step(minf(delta, Sim.STEP_MOST), false, Vector2.ZERO, false)
 	_sim.events.clear()
 	# what the raft has landed is wood in the valley now. The grove is kept
 	# at once: the tab reads it from its file each time it is shown, and one
