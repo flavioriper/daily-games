@@ -293,11 +293,20 @@ changed these. The code's values are the ones quoted; the notes in
 `docs/agents/arcade.md` (the eighth-time bullet under Nightlight) carry the
 measurements and the rest of what the build left.
 
-- **The pour stays at the plain disc** (section 6). `haze_r()`, `frost_r()`
-  and the eat radius follow `star_r()`, but the hand's gas still comes in at
-  the new `pour_r()` (`main_r() * haze_wide()`): a giant's wider disc does
-  not move where the player's gas arrives. `giant()` is `minf(1, swell)` for
-  the temperature, and `swell` runs 0..`SUPER` 2.0.
+- **The pour rides the disc's rim** (section 6; the final review reversed
+  the build's first ruling). `haze_r()`, `frost_r()` and the eat radius
+  follow `star_r()`, and so does `pour_r()`, which is `haze_r()`: at the
+  plain disc's rim (`main_r() * haze_wide()`, as first built) puffs landed at
+  2.1-2.9 plain radii while a giant eats inside 2.07 and a supergiant inside
+  3.2, so a supergiant ate every puff whole and a giant paid almost no light
+  (a giant 0.18 of a plain star's light a puff, a supergiant 0). `tick`'s
+  `bind` (the work of a spiral down to the surface) is on `star_r()` too, so
+  the light is the share of a spiral to the real surface: a giant's puff now
+  pays 0.69 of a plain star's and a supergiant's 0.88 (twenty seeds), not
+  the same, because `DRAG` is a rate and a turn at a giant's rim is three
+  times as long, so its puff goes round half a turn and falls in still
+  carrying speed. `giant()` is `minf(1, swell)` for the temperature, and
+  `swell` runs 0..`SUPER` 2.0.
 - **"Helium core" is the carbon core** (sections 4, 8 and the words). In the
   sim `made[0]` is helium and `made[1]` is carbon; the nebula's trigger is
   `made[1]` reaching `CARBON` 1.06 Suns with helium lit, carbon not lit and
@@ -340,10 +349,27 @@ measurements and the rest of what the build left.
 - **The goal line's wording** (section 4). The spec's "Carbon lights on a
   star of 8× · sheds at 1.06 Suns of helium" overflowed into "Power at 4×"
   on the same row in pt, and `Art.short(CARBON)` printed "1". The line reads
-  "Carbon core 1.06 · sheds unless 8× · core 100 million K" (pt "Núcleo de
-  carbono 1,06 · se desfaz sem 8× · a 100 milhões de K"; es has the same shape,
-  "Núcleo de carbono %s · se deshace sin %s× · a %s" in the csv); the 1.06 shown
-  is the carbon core the star has now, not the threshold.
+  "Carbon core 0.84 of 1.06 · sheds under 8× · core 100 million K" (pt
+  "Núcleo de carbono 0,84 de 1,06 · se desfaz abaixo de 8× · núcleo a 100
+  milhões de K", es "Núcleo de carbono %s de %s · se deshace bajo %s× ·
+  núcleo a %s"): the carbon core the star has, the `CARBON` line it sheds at,
+  two decimals each, `HEAVY`, the core's temperature. The final review sent
+  back the build's "Carbon core 1.06 · sheds unless 8×", which hid the
+  threshold.
+- **A star kept before the nebula end is grandfathered.** `KEPT` 2 files
+  were on testers' phones from 2026-10-06; one holding a carbon core of
+  `CARBON` Suns or more on a star under `HEAVY` would shed the moment it
+  loaded. `load_saved` brings such a core back at 0.98 of the line (the rest
+  as helium, so the mass sums), and its player reads the line first.
+- **A relic's row is eight columns** (section 8 said seven): `fades` is
+  appended, so the sky seeds a nebula with `novas + fades` and two dwarfs
+  from successive fades are two rings; `_load_sky` takes seven or eight,
+  so `KEPT` stays 3. A relic's `layers` is cut or padded to eight shares.
+- **The nebula's ring is spread at 0.3 of the spec's** (section 7): the
+  spread from 1.5 to `NEBULA_FAR` 3.5 of `NEBULA_R` is multiplied by 0.3 in
+  `_fill_relics`, a tuning by eye, not a measurement: as the constants
+  alone have it the ring runs from 750 to 1,750 px at zoom 1; with the 0.3,
+  225 to 525 px.
 - **The end's seconds** (section 5). The nova's end is 11.8 s, not the
   spec's 7.4 s plus the pan: `swap` 3.6 + `pull_back` 1.2 + `pan` 3.0 +
   `close` 4.0, where the old tail after the swap was 3.8. Every later
@@ -352,10 +378,12 @@ measurements and the rest of what the build left.
 - **Measured against the spec's expectations.** A tick with 300 bodies and
   12 relics in reach is 608-622 us (280 with no relic, a debug build), not
   "under 60 us" for the relics: accepted. A heavy star with three relics is
-  142-146 draw calls, not about 150. The bot holding the button nonstop
-  ends on seed 1 at 26.9 min and 20.9 Suns, as a black hole (25.4 min and
-  23.2 Suns before the giant change, +5.9%); section 8 said the pace of a life
-  was unchanged on purpose, and the giant moved it by that much.
+  138-146 draw calls, not about 150. The bot holding the button nonstop
+  ends on seed 1 at 27.5 min and 19.2 Suns, as a neutron star, since the
+  pour rides the giant's rim (26.9 min and 20.9 Suns, a black hole, with the
+  pour at the plain disc; 25.4 min and 23.2 Suns before the giant change);
+  section 8 said the pace of a life was unchanged on purpose, and the giant
+  moved it by +8.3% in all.
 - **Also built, not in the spec**: the pull table in `tick` is four packed
   arrays; `Art.sky(size, novas)` keeps its signature and `CLOUDS` is gone;
   `REDUCED_RISE` 2 s; `END.birth`; `Sim.fresh`; the harness's `fresh` mode,

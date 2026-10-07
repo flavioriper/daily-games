@@ -1487,10 +1487,26 @@ supernovas (`Sim.kept()`), not a best.
     shows more around it. **The disc follows the envelope**: `haze_r()`,
     `frost_r()` and the eat radius are on `star_r()`, `wind_r()` follows
     `haze_r()`, so bodies parked outside the plain disc are dragged, spiral
-    in and are swallowed whole; `roche_r()` and `LIGHT`'s `bind` stay on
-    `main_r()` (nothing is torn inside the envelope). **`pour_r()`** is the
-    plain disc (`main_r() * haze_wide()`), where the hand's gas comes in: the
-    pour does not move when the star swells. `giant()` is `minf(1, swell)`,
+    in and are swallowed whole; `roche_r()` stays on `main_r()` (nothing is
+    torn inside the envelope). **`pour_r()` is `haze_r()`, the disc's rim
+    whatever the star is, and `tick`'s `bind` is `pull / (2 * star_r())`**
+    (the final review reversed the build's ruling): the build poured at the
+    plain disc's rim (`main_r() * haze_wide()`, puffs at 2.1-2.9 plain radii)
+    while a giant eats inside 2.07 and a supergiant inside 3.2, so a
+    supergiant ate every puff whole and a giant paid 0.18 of a plain star's
+    light a puff. Now a puff always lands outside the star (the probe checks
+    `pour_r() * IN_NEAR > star_r() * EAT` at swell 0, 1 and `SUPER`) and the
+    light is the share of a spiral to the real surface: a giant's puff pays
+    0.69 of a plain star's, a supergiant's 0.88 (twenty seeds, one puff, 300
+    s). Not equal: `DRAG` is a rate, not a share of a turn, and a turn at a
+    giant's rim is three times as long, so its puff goes round 0.5 turns (a
+    plain one 2.4) and falls in at 1.18 times the circular speed squared,
+    carrying energy the drag never took; the supergiant's is so damped it
+    falls slowly again. **The trade: on a supergiant the pour lands at or
+    past the field's edge** (13 Suns at swell 2: `seen_r` 295, the rim 3
+    times that, puffs 434-602 screen px from the centre on a 750 px wide
+    field), so the hand's gas arrives off screen and is seen only as it
+    winds in. `giant()` is `minf(1, swell)`,
     for the temperature's lerp, so a supergiant is as red, not redder. The
     sky's `seen_r` log compression carries the 3.4.
   - **The camera** (`arcade/nightlight_sky.gd`). `shift: Vector2` and
@@ -1552,7 +1568,11 @@ supernovas (`Sim.kept()`), not a best.
     are in the gas batch: each relic carries `NEBULA_PUFFS` 48 soft lights
     in `Art.MADE` colours by its `layers`, on a seeded ring that grows from
     1.5 to `NEBULA_FAR` 3.5 of `NEBULA_R` 500 px over `NEBULA_LIFE` 600 s of
-    its `age` and fades from alpha 0.22 to 0.06; each puff draws its random
+    its `age`, **times 0.3 in `_fill_relics`, a tuning by eye** (the constants
+    alone put it at 750 to 1,750 px at zoom 1), and fades from alpha 0.22 to
+    0.06. It is seeded with `500 + (novas + fades) * 7 + kind` (the relic
+    keeps the `fades` it was made at; the seed was `novas` alone, so two
+    dwarfs from successive fades drew the same ring); each puff draws its random
     numbers before it skips a spent layer, so a layer running out does not
     move the others. `GAS_MOST` 480 became 1,400 (worst case: 300 gas + 12 x
     48 nebula puffs + a fade's 7 x 72 shell puffs = 1,380; the spec said
@@ -1577,52 +1597,73 @@ supernovas (`Sim.kept()`), not a best.
     · the star fades, a white dwarf is left"), `NL_GOAL_C_WAIT` and
     `TUT_NL_END_BODY` (formatted with `IRON`, `HEAVY`, `COLLAPSE`: the three
     ends and the relic that stays; it says "carbon core", not "helium").
-    **The goal line** is now "Carbon core 1.06 · sheds unless 8× · core 100
-    million K" (`[_hundredths(have), Art.short(HEAVY), core]`; the core
-    temperature stays last): the spec's "Carbon lights on a star of 8× ·
+    **The goal line** is now "Carbon core 0.84 of 1.06 · sheds under 8× ·
+    core 100 million K" (`[_hundredths(have), _hundredths(need),
+    Art.short(HEAVY), core]`; pt "Núcleo de carbono %s de %s · se desfaz
+    abaixo de %s× · núcleo a %s", es "... se deshace bajo %s× · núcleo a
+    %s"): the final review sent back the build's "Carbon core 1.06 · sheds
+    unless 8×", which hid the threshold. History: the spec's "Carbon lights on a star of 8× ·
     sheds at 1.06 Suns of helium" overflowed into "Power at 4×" on the same
     row in pt, and `Art.short(CARBON)` printed "1". The first rewrite ("Carbon
     lights at 8× · sheds at 1.06 Suns · core ...") was also sent back in
-    review: it dropped the element the line is about. pt and es drop the
-    second "núcleo" ("a 100 milhões de K") to fit. The row no longer shows
-    the shed threshold as a number of Suns of helium; it shows how much
-    carbon core there is.
+    review: it dropped the element the line is about. The next ("Carbon
+    core 1.06 · sheds unless 8×", pt and es without the second "núcleo")
+    showed the core but not the line it sheds at.
   - **The file and the card.** `KEPT` 3: `relics` (kind, m, pos.x, pos.y,
-    age, novas, layers[8]), `far` (x, y pairs), `drift`, and a body's `metal`
-    as its tenth column. `_load_sky` validates rows (7 and 2 columns,
-    finite, kind clamped, `m > 0`, caps); up to `NEIGHBOURS` valid `far` rows
+    age, novas, layers[8], fades; `fades` added by the final review),
+    `far` (x, y pairs), `drift`, and a body's `metal` as its tenth column.
+    `_load_sky` validates rows (7 or 8 and 2 columns, finite, kind clamped,
+    `m > 0`, caps; a relic's `layers` cut or padded with 0 to 8 shares, so
+    a corrupt row cannot index `Art.MADE` past its end); up to `NEIGHBOURS` valid `far` rows
     replace the seeds, none keeps them. **A `KEPT` 2 file loads with no
     relics, seeded `far`, `drift` zero and `metal` 0** (`far` and `drift` are
     read only at `KEPT` >= 3 so an old file holding a stray key stays
-    clean). `Sim.kept()` adds `relics` (the count); the Arcade card's line
+    clean). **A `KEPT` 2 star is grandfathered**: testers had `KEPT` 2 files
+    from 2026-10-06, and one with helium lit, carbon not, under `HEAVY` and a
+    carbon core at `CARBON` Suns or more would shed as it loaded, before its
+    player had seen the line; `load_saved` brings that core back at 0.98 of
+    `CARBON * START` and gives the rest to `made[0]` (the probe loads a true
+    `KEPT` 2 file, nine-column bodies and no `relics`/`far`/`drift`, then a
+    6-Sun star with a 1.3-Sun carbon core: `ending()` is ""). Pre-gas files
+    never reach it. `Sim.kept()` adds `relics` (the count); the Arcade card's line
     (`ui/menu/arcade_tab.gd`) appends ` · ` and `NL_CARD_RELICS_ONE/_N` once
     there are any ("1× the Sun · 6 relics" in shot 17). The tutorial's END
     page (`ui/hud/nightlight_tutorial_diagram.gd`) plays `begin_end("nova",
     layers, remnant)` and `swapped(last_birth)`, and its `_set_up` clears the
     relics, restores `far` from a copy taken in `_ready` and zeroes `drift`
     so the loop does not pile up relics or wander off; the BURN and END
-    pages now draw the star 2.2 times wide (they set `swell` 1.0), against
-    frames sized for 1.28 times: the reports record 16 and 16b as looked at
-    (the body text fits in en and es, nothing breaks), not 15b and 15c.
+    pages now draw the star 2.2 times wide (they set `swell` 1.0). **BURN's
+    `TALL` is 660 (was 520)**: its last step, 20 Suns at swell 1, is 550
+    design px across and overflowed 520. `15c_tut_burn_giant` is shot at 84.6
+    (13.1 s into the page, inside the 12.0-13.8 s the star is a full giant;
+    the old 81.7 caught it at swell 0.09) and every later beat moved +2.9 s;
+    in the shot the giant sits inside its frame with about 25 px to spare
+    top and bottom.
   - **Analytics**: `nightlight_nova` gains `remnant` ("wd", "ns", "bh") and
     `how` is now "nova", "nebula" or "fade"; `lost` is not tracked (several a
     minute near a hole). **Haptics and sound**: the nebula cues `fade` (the
     slow letting-go take, a bump), as the fade does; `lost` is silent and
     unfelt.
-  - **Measured.** Probe: 82 checks, 0 failed (46 + 9 relics, 20 ends, 7
-    giant); suite 249790/0. **Pace** (`-- pace 40 <seed> random 1.0`, the bot
+  - **Measured.** Probe: 86 checks, 0 failed after the final review's fix
+    wave (82 before it); suite 249790/0. **Pace** (`-- pace 40 <seed> random 1.0`, the bot
     holding the button): seed 1 ended as a supernova and a black hole at
     25.4 min and 23.2 Suns before the giant change, 26.9 min and 20.9 Suns
-    after (+5.9%, inside the 20% line); seeds 2 and 3 were run only before it
+    after (+5.9%, inside the 20% line), and **as a neutron star at 27.5 min
+    and 19.2 Suns once the pour rode the giant's rim** (+2.2% on 26.9; under
+    `COLLAPSE` 20 by 0.8 Suns, so the remnant changed); seeds 2 and 3 were run only before it
     (a black hole at 29.0 min, 23.8 Suns; a neutron star at 26.9 min, 19.5
     Suns), so the pace after the giant change has one seed. Held 0.4: no end
-    in 40 min (carbon lit at 9.4 Suns at 37.6 min, 10.4 Suns by 40 min); at 70
+    in 40 min (carbon lit at 9.2 Suns at 38.0 min with the pour on the rim;
+    9.4 Suns at 37.6 min before, 10.4 Suns by 40 min); at 70
     min a neutron star at 42.7 min, 12.7 Suns (run before the giant change).
     **A tick with 300 bodies and 12 relics, all in reach: 608-622 us; the
     same sky with none, 270-290 us** (a debug build of the editor binary,
     headless; the spec said under 60 us a tick for the relics and that
     target cannot be met here, the 300-body sky with no relic is already
-    over it); 180 us a tick across a whole 40-minute run. **Draw calls**,
+    over it); 180 us a tick across a whole 40-minute run (196 in the fix
+    wave's run). **After the fix wave**, default / `opengl3_angle`:
+    `2_start` 94 / 94, `6_giant` 138 / 140, `15c_tut_burn_giant` 115 / 115.
+    **Draw calls**,
     default driver / `opengl3_angle`, after the fix round: `2_start` 93 / 92,
     `6_giant` 143 / 145, `6c_relics` 142 / 146, `8d_pull_back` 99 / 97,
     `8e_pan` 96 / 98, `9b_after_nebula` 98 / 95; at the start of the branch
@@ -1663,6 +1704,13 @@ supernovas (`Sim.kept()`), not a best.
       wrong: a stutter on a phone at a full sky with many relics.
     - **The lobe rule reads the new star's plain disc** (`swell` 0 before
       `d`), else a giant's last disc would set the distance 2.2 times too far.
+    - **A giant's puff pays 0.69 of a plain star's light, a supergiant's
+      0.88** (the final review asked for within a quarter; not retuned).
+      Making it equal means scaling the disc's drag with the turn's length
+      (`DRAG * pow(main_r() / star_r(), 1.5)`), which would also make a
+      giant's gas take three times as long to reach it: a pace call for the
+      user. The probe checks 0.6 or more; cost if wrong: a giant phase earns
+      light a third slower than the plain star did.
     - **The camera's midpoint framing, `view0` and `fit`** (above): a pan that
       moves twice (to the midpoint, then to the star), acceptable.
     - **`_holes` on the top layer**, **the far field's scale**, **the black

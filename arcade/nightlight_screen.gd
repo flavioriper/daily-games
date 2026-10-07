@@ -1350,7 +1350,7 @@ func _refresh_hud(delta: float) -> void:
 	if String(goal.which) == "dim":
 		_nova_l.text = tr("NL_GOAL_DIM") % _clock(maxf(0.0, float(goal.need) - float(goal.have)))
 	elif not bool(goal.heavy):
-		_nova_l.text = tr("NL_GOAL_C_WAIT") % [_hundredths(float(goal.have)), Art.short(Sim.HEAVY, c), core]
+		_nova_l.text = tr("NL_GOAL_C_WAIT") % [_hundredths(float(goal.have)), _hundredths(float(goal.need)), Art.short(Sim.HEAVY, c), core]
 	else:
 		_nova_l.text = tr(GOALS[goal.which]) % [_hundredths(float(goal.have)), _hundredths(float(goal.need)), core]
 	_pick_l.text = tr("NL_PICK_AT") % Art.short(sim.next_pick(), c)

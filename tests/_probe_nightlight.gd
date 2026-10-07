@@ -405,13 +405,26 @@ func _check_relics() -> void:
 	_ok("relics kept", back.relics.size() == Sim.RELICS_MOST and back.far.size() == Sim.NEIGHBOURS and back.drift == sim.drift)
 	_ok("metal kept", back.bodies.any(func(x): return is_equal_approx(x.metal, 0.3)))
 	_ok("kept counts relics", int(Sim.kept().relics) == Sim.RELICS_MOST)
+	# a true KEPT 2 file: nine-column bodies, no relics, far or drift
 	var cfg := ConfigFile.new()
 	cfg.load(Sim.path)
 	cfg.set_value("star", "kept", 2)
-	cfg.erase_section_key("star", "relics")
+	for key in ["relics", "far", "drift"]:
+		cfg.erase_section_key("star", key)
+	cfg.set_value("star", "bodies", (cfg.get_value("star", "bodies") as Array).map(func(row): return (row as Array).slice(0, 9)))
 	cfg.save(Sim.path)
 	var older: RefCounted = Sim.load_saved()
-	_ok("old file clean", older.relics.is_empty() and older.far.size() == Sim.NEIGHBOURS and older.drift == Vector2.ZERO and older.bodies.size() > 0)
+	_ok("old file clean", older.relics.is_empty() and older.far.size() == Sim.NEIGHBOURS and older.drift == Vector2.ZERO and older.bodies.size() > 0 and older.bodies.all(func(x): return x.metal == 0.0))
+	# a 6-Sun star kept with a 1.3-Sun carbon core before the nebula end comes back just under the line
+	cfg.set_value("star", "mass", Sim.START * 6.0)
+	cfg.set_value("star", "fuel", Sim.START * 6.0 * 0.3)
+	cfg.set_value("star", "env", Sim.START * 6.0 * 0.2)
+	cfg.set_value("star", "made", [Sim.START * 1.0, Sim.START * 1.3, 0.0, 0.0, 0.0, 0.0])
+	cfg.set_value("star", "ignited", [true, true, false, false, false, false])
+	cfg.save(Sim.path)
+	var tester: RefCounted = Sim.load_saved()
+	var sums: float = tester.fuel + tester.env + tester.made[0] + tester.made[1]
+	_ok("a kept carbon core does not shed on load", tester.ending() == "" and tester.made[1] < Sim.CARBON * Sim.START and is_equal_approx(sums, Sim.START * 5.3))
 
 func _check_ends() -> void:
 	# a 4-Sun star whose helium core reaches 1.06 Suns sheds a nebula and leaves a white dwarf
@@ -493,10 +506,27 @@ func _check_ends() -> void:
 func _check_giant() -> void:
 	var sim := _quiet()
 	var plain: float = sim.haze_r()
-	var pour_was: float = sim.pour_r()
+	# the pour is at the disc's rim, so a puff never lands inside the star, giant or not
+	for sw in [0.0, 1.0, Sim.SUPER]:
+		sim.swell = sw
+		_ok("puff lands outside the star at swell %s" % sw, sim.pour_r() * Sim.IN_NEAR > sim.star_r() * Sim.EAT)
 	sim.swell = 1.0
 	_ok("giant disc", is_equal_approx(sim.haze_r(), plain * (1.0 + Sim.GIANT)))
-	_ok("pour stays", is_equal_approx(sim.pour_r(), pour_was))
+	# and a giant's puff pays light near a plain star's. Not within a quarter:
+	# measured over twenty seeds (2026-10-07) a giant's pays 0.69 of a plain
+	# star's and a supergiant's 0.88 (before the pour moved, 0.18 and 0).
+	# DRAG is a rate, not a share of a turn, and a turn at a giant's rim is
+	# three times as long, so its puff goes round half a turn (a plain one
+	# 2.4) and falls in still carrying speed the drag never took.
+	var paid: Array[float] = []
+	for sw in [0.0, 1.0, Sim.SUPER]:
+		var one := _quiet(11)
+		one.swell = sw
+		one.pour()
+		_run(one, 200.0)
+		paid.append(float(one.light))
+	print("  light from one puff: plain %.4f, giant %.4f, supergiant %.4f" % paid)
+	_ok("a giant's puff pays", paid[0] > 0.0 and paid[1] >= 0.6 * paid[0] and paid[2] >= 0.6 * paid[0])
 	_ok("giant on screen", sim.seen_r() > 200.0 and sim.zoom() < 0.7)
 	# a circle at 1.5 of the plain disc, parked for good on a plain star, spirals in once the star is a giant
 	var parked := _quiet(2)

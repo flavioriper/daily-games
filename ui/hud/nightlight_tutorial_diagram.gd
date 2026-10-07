@@ -39,7 +39,8 @@ const END_AT := 1.5
 const END_REST := 3.0
 const END_STILL := 3.0
 ## The design's pixels each page is tall, by Lesson.
-const TALL := [1060.0, 1060.0, 520.0, 1200.0]
+## BURN's is tall enough for its last step, a 20-Sun giant 550 across.
+const TALL := [1060.0, 1060.0, 660.0, 1200.0]
 ## No body on a page is drawn smaller than this, in the design's pixels.
 const SMALL := 11.0
 

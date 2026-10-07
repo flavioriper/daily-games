@@ -57,10 +57,11 @@ const STEPS := [
 	[53.5, "let_go_star"], [56.9, "shot", "13b_letting_go"], [59.9, "shot", "13c_gone"], [67.2, "perks_x"],
 	[67.3, "tutor"], [69.3, "shot", "14_tut_gas"],
 	[69.4, "page", 1], [71.4, "shot", "15_tut_worlds"],
-	[71.5, "page", 2], [77.5, "shot", "15b_tut_burn"], [81.7, "shot", "15c_tut_burn_giant"],
-	[81.8, "page", 3], [84.9, "shot", "16_tut_end"], [89.4, "shot", "16b_tut_end_pan"],
-	[89.5, "leave"], [90.7, "shot", "17_tab_after"],
-	[90.8, "quit"],
+	# BURN's star is a giant (swell 1, 20 Suns) from 12.0 to 13.8 s into the page
+	[71.5, "page", 2], [77.5, "shot", "15b_tut_burn"], [84.6, "shot", "15c_tut_burn_giant"],
+	[84.7, "page", 3], [87.8, "shot", "16_tut_end"], [92.3, "shot", "16b_tut_end_pan"],
+	[92.4, "leave"], [93.6, "shot", "17_tab_after"],
+	[93.7, "quit"],
 ]
 ## `fresh`: no file, so the screen opens on a first star being born.
 const FRESH_STEPS := [

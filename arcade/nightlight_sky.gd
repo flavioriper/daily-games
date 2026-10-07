@@ -599,8 +599,12 @@ func _fill_relics(z: float) -> void:
 		if not Rect2(Vector2.ZERO, size).grow(NEBULA_R * NEBULA_FAR * z).has_point(at):
 			continue
 		var rng := RandomNumberGenerator.new()
-		rng.seed = 500 + int(rel.novas) * 7 + int(rel.kind)
+		# the ends before it, fades as well as supernovas: two dwarfs from
+		# successive fades are two different rings
+		rng.seed = 500 + (int(rel.novas) + int(rel.get("fades", 0))) * 7 + int(rel.kind)
 		var age := minf(1.0, float(rel.age) / NEBULA_LIFE)
+		# 0.3: a tuning by eye (the constants alone put the ring at 750 to
+		# 1,750 px at zoom 1)
 		var spread := lerpf(1.5, NEBULA_FAR, 1.0 - pow(1.0 - age, 2.0)) * NEBULA_R * z * 0.3
 		var a := lerpf(0.22, 0.06, age)
 		var layers: Array = rel.layers

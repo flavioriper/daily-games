@@ -490,7 +490,7 @@ func relic_r(rel: Dictionary) -> float:
 ## One more relic; past RELICS_MOST the farthest goes. Hands back the one it
 ## kept, so a caller can watch it grow.
 func add_relic(kind: int, m: float, pos: Vector2, layers: Array) -> Dictionary:
-	var rel := {"kind": kind, "m": m, "pos": pos, "layers": layers.duplicate(), "age": 0.0, "novas": novas}
+	var rel := {"kind": kind, "m": m, "pos": pos, "layers": layers.duplicate(), "age": 0.0, "novas": novas, "fades": fades}
 	relics.append(rel)
 	while relics.size() > RELICS_MOST:
 		var worst := 0
@@ -590,10 +590,13 @@ func wind_r() -> float:
 func haze_r() -> float:
 	return star_r() * haze_wide()
 
-## The plain disc's rim, where the hand's gas comes in: the giant's wider disc
-## does not move the pour.
+## Where the hand's gas comes in: the disc's rim, whatever the star is. A
+## giant's rim is wider by as much as the star is, so a puff always lands
+## outside the star and spirals in (at the plain disc's rim a giant ate it at
+## once and a supergiant whole, and neither paid light); `tick`'s `bind` is on
+## the real surface too, so a giant's puff pays what a plain star's does.
 func pour_r() -> float:
-	return main_r() * haze_wide()
+	return haze_r()
 
 ## Past this, water is ice.
 func frost_r() -> float:
@@ -1184,7 +1187,10 @@ func tick() -> void:
 	var blow := WIND * on("wind")
 	var eat := star_r() * EAT
 	var gone := FAR / zoom()
-	var bind := pull / (2.0 * main_r())
+	# a spiral's work down to the star's real surface, a giant's wider one
+	# included: the light a body pays is the share of it the drag has done,
+	# so a puff poured at a giant's wider rim pays what a plain star's does
+	var bind := pull / (2.0 * star_r())
 	var gl := glow()
 	var roche := roche_r()
 	var roche3 := roche * roche * roche
@@ -1371,7 +1377,7 @@ func save() -> void:
 	for b in bodies:
 		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal])
 	cfg.set_value("star", "bodies", kept)
-	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers)]))
+	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers), int(r.fades)]))
 	cfg.set_value("star", "far", far.map(func(p): return [p.x, p.y]))
 	cfg.set_value("star", "drift", [drift.x, drift.y])
 	cfg.save(path)
@@ -1417,6 +1423,15 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 			sim.ignited[i] = i == 0 or bool(was_lit[i])
 		sim.swell = clampf(float(cfg.get_value("star", "swell", 0.0)), 0.0, SUPER)
 		sim.cold = clampf(float(cfg.get_value("star", "cold", 0.0)), 0.0, GRACE * 0.5)
+		# A star kept before the nebula end (KEPT 2, on testers' phones since
+		# 2026-10-06) could already hold the carbon core that now sheds it on
+		# load, before its player has seen the goal line warn of it: its core
+		# comes back just under the line, the rest of it as helium, so the
+		# mass still sums and the player gets to read the line first.
+		var line := CARBON * START
+		if ver < 3 and sim.ignited[1] and not sim.ignited[2] and sim.suns() < HEAVY and sim.made[1] >= line:
+			sim.made[0] += sim.made[1] - line * 0.98
+			sim.made[1] = line * 0.98
 	sim.h_on = sim.fuel > 0.0
 	for which: String in POWERS:
 		sim.power[which] = maxi(0, int(cfg.get_value("power", which, 0)))
@@ -1449,18 +1464,26 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 ## later; a row that is not what it should be is left out.
 func _load_sky(cfg: ConfigFile) -> void:
 	for row in cfg.get_value("star", "relics", []):
-		if not (row is Array) or (row as Array).size() != 7 or relics.size() >= RELICS_MOST or not (row[6] is Array):
+		# seven columns, or eight with the fades the sky seeds its nebula with
+		if not (row is Array) or (row as Array).size() < 7 or (row as Array).size() > 8 or relics.size() >= RELICS_MOST or not (row[6] is Array):
 			continue
 		var pos := Vector2(float(row[2]), float(row[3]))
 		var m := float(row[1])
 		if m <= 0.0 or not is_finite(m) or not pos.is_finite() or not is_finite(float(row[4])):
 			continue
+		# as many shares as `layers()` gives (hydrogen, helium, the stages, rock),
+		# no more and no fewer: the sky colours them by Art.MADE's index
 		var layers := []
 		for share in row[6]:
-			layers.append(float(share))
+			if layers.size() >= STAGES + 2:
+				break
+			layers.append(float(share) if is_finite(float(share)) else 0.0)
+		while layers.size() < STAGES + 2:
+			layers.append(0.0)
 		var rel := add_relic(clampi(int(row[0]), 0, Relic.size() - 1), m, pos, layers)
 		rel.age = maxf(0.0, float(row[4]))
 		rel.novas = maxi(0, int(row[5]))
+		rel.fades = maxi(0, int(row[7])) if row.size() == 8 else 0
 	var seen: Array[Vector2] = []
 	for row in cfg.get_value("star", "far", []):
 		if row is Array and (row as Array).size() == 2 and seen.size() < NEIGHBOURS:
