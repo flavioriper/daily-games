@@ -112,8 +112,9 @@ const BODY_R := 44.0
 
 ## The unit of gas and of dust: two thousandths of a Sun (the user: "going
 ## from 1x -> 2x sun is not so fast like throwing 3 bodies into it"). A ring's
-## puff is RING_M / RING, heavier, with the dust of a PUFF * ASH_M one (see
-## `dust_of`). H of a puff is hydrogen, DUSTY of it dust, and GAS_HE of the
+## puff is RING_M / RING, about a PUFF, and carries a plain share of its mass
+## as dust (FIRST_DUST at a first birth, ASH_DUST and up after an end). H of a
+## puff is hydrogen, DUSTY of it dust, and GAS_HE of the
 ## rest helium. What the hand is worth feeds the star, and the planets come at
 ## their own pace.
 const PUFF := 0.02
@@ -133,7 +134,7 @@ const FULL := 400
 const RING_IN := 1.15
 const RING_OUT := 1.75
 const RING := 180
-const RING_M := 15.0
+const RING_M := 3.0
 const RING_FALLING := 6
 ## The ring's outer edge is this far from the star on the screen, of the
 ## design's 1080 across.
@@ -360,13 +361,15 @@ const EMBER := 2.0
 ## Every supernova so far makes what passes this much heavier, for good.
 const RICHER := 0.5
 ## What a star leaves is a ring (RING_M, times 1 + RICHER a supernova so far)
-## whose puffs are ASH_M puffs of dust-carrying gas apiece (a puff's dust is
-## absolute, `dust_of`), ASH_DUST of it dust, since it is what a star made:
-## the next star's planets come quicker. The falling few are each on a closed
+## of puffs that are ASH_DUST of dust, and the heavy layers of the dead star
+## add METAL times their share to that, never over ASH_MOST: it is what a star
+## made, so the next star's planets come quicker. A first star's ring is
+## FIRST_DUST of dust. The falling few are each on a closed
 ## path whose nearest point to the new star is ASH_NEAR to ASH_NEAR +
 ## ASH_REACH of its radii and whose furthest is inside ASH_FAR of them.
-const ASH_M := 3.0
-const ASH_DUST := 0.05
+const FIRST_DUST := 0.005
+const ASH_DUST := 0.01
+const ASH_MOST := 0.06
 const ASH_H := 0.5
 const ASH_NEAR := 1.7
 const ASH_REACH := 1.2
@@ -403,10 +406,12 @@ const FAR_NEAR := 2500.0
 const FAR_FAR := 5000.0
 ## A planetary nebula pays this; the new star's ring sits inside its lobe by LOBE.
 const NEBULA_DUST := 2
-const LOBE := 1.6
-## The dead star's silicon, iron and rock become dust in the gas it leaves; a solid from gas this dusty is iron-dark.
-const METAL := 2.5
-const IRONY := 0.08
+const LOBE := 2.0
+## The dead star's silicon, iron and rock become dust in the gas it leaves, METAL
+## of their share of it; a solid from gas this dusty is iron-dark, fully from
+## twice IRONY.
+const METAL := 0.25
+const IRONY := 0.016
 
 var mass := START
 var light := 0.0
@@ -479,7 +484,7 @@ var _shine := 0.0
 ## which what drifts in later shares.
 var ring := Vector2.ZERO
 var frost := 0.0
-var dusty := 0.02
+var dusty := FIRST_DUST
 var _owed_gas := 0.0
 
 func _init(rng_seed := 0) -> void:
@@ -878,7 +883,7 @@ func end() -> int:
 	events.clear()
 	_pass_wait = 0.0
 	# its silicon, iron and rock go out as dust in its gas
-	var ash_dust := minf(0.3, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
+	var ash_dust := minf(ASH_MOST, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
 	_lay_ring(RING, RING_M * (1.0 + RICHER * novas), ASH_H, ash_dust)
 	# where the next star is born: away from the relics there are, far enough that its ring is its own
 	var mean := Vector2.ZERO
@@ -902,7 +907,7 @@ func end() -> int:
 ## already falling in, no relic.
 func born() -> void:
 	_set_ring()
-	_lay_ring(RING, RING_M, STAR_H, 0.02)
+	_lay_ring(RING, RING_M, STAR_H, FIRST_DUST)
 	fresh = true
 
 ## The ring and the frost line a newborn of `m` has. Powers are none on a
@@ -911,11 +916,6 @@ func _set_ring(m := mass) -> void:
 	var disc := STAR_R * pow(m / START, 1.0 / 3.0) * HAZE
 	ring = Vector2(RING_IN, RING_OUT) * disc
 	frost = (ring.x + ring.y) * 0.5
-
-## The dust a puff of `m` carries at `share`: what a puff of PUFF * ASH_M
-## would, whatever it weighs, or heavy puffs made a giant of every pair.
-static func dust_of(share: float, m: float) -> float:
-	return minf(0.5, share * PUFF * ASH_M / m)
 
 ## `count` puffs weighing `total` between the ring's edges, on circles, all
 ## turning the disc's way; the first few on the old falling paths.
@@ -930,7 +930,7 @@ func _lay_ring(count: int, total: float, h: float, dust_share: float) -> void:
 		var pos := Vector2.from_angle(_rng.randf() * TAU) * sqrt(lerpf(ring.x * ring.x, ring.y * ring.y, _rng.randf()))
 		var b := add(Kind.GAS, each * _rng.randf_range(0.6, 1.4), pos, circle_vel(pos) * _rng.randf_range(0.98, 1.02))
 		b.h = h
-		b.dust = dust_of(dust_share, b.m)
+		b.dust = dust_share
 		b.age = COOL
 
 ## `count` puffs of gas of `m_each` (give or take) on closed paths round the
@@ -946,7 +946,7 @@ func _lay_gas(count: int, m_each: float, h: float, dust_share: float) -> void:
 		var v := sqrt(pull * (2.0 / apo - 2.0 / (near + apo)))
 		var b := add(Kind.GAS, m_each * _rng.randf_range(0.6, 1.4), way * apo, way.orthogonal() * -v)
 		b.h = h
-		b.dust = dust_of(dust_share, b.m)
+		b.dust = dust_share
 		b.age = COOL
 
 ## A perk drawn at random for what the next one costs, or "" if the stardust
@@ -1069,7 +1069,7 @@ func _trickle() -> void:
 			var last := bodies[i]
 			if last.kind == Kind.GAS:
 				last.h = (last.h * last.m + puff_h() * each) / (last.m + each)
-				last.dust = (last.dust * last.m + dust_of(dusty, each) * each) / (last.m + each)
+				last.dust = (last.dust * last.m + dusty * each) / (last.m + each)
 				last.m += each
 				_owed_gas -= each
 				return
@@ -1078,7 +1078,7 @@ func _trickle() -> void:
 	var pos := Vector2.from_angle(_rng.randf() * TAU) * ring.y * _rng.randf_range(0.9, 1.0)
 	var b := add(Kind.GAS, each, pos, circle_vel(pos))
 	b.h = puff_h()
-	b.dust = dust_of(dusty, each)
+	b.dust = dusty
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -1701,7 +1701,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		if edges is Array and (edges as Array).size() == 2 and (edges[0] is float or edges[0] is int) and (edges[1] is float or edges[1] is int) and is_finite(float(edges[0])) and is_finite(float(edges[1])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]):
 			sim.ring = Vector2(float(edges[0]), float(edges[1]))
 			sim.frost = clampf(float(cfg.get_value("star", "frost", sim.frost)), sim.ring.x, sim.ring.y)
-		sim.dusty = clampf(float(cfg.get_value("star", "dusty", 0.02)), 0.0, 0.3)
+		sim.dusty = clampf(float(cfg.get_value("star", "dusty", FIRST_DUST)), 0.0, ASH_MOST)
 	else:
 		# a star kept before the ring is given one: inside a heavy star's disc it simply falls;
 		# a sky already full is given only what it has room for

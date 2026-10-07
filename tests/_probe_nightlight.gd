@@ -452,21 +452,23 @@ func _check_ring() -> void:
 	var ids := {}
 	var one_way := true
 	var mass := 0.0
-	for b: Sim.Body in sim.bodies:
+	for k in sim.bodies.size():
+		var b: Sim.Body = sim.bodies[k]
 		mass += b.m
 		one_way = one_way and b.pos.cross(b.vel) * sim.bodies[0].pos.cross(sim.bodies[0].vel) > 0.0
-		if b.pos.length() >= sim.ring.x * 0.999:
+		# the first RING_FALLING are laid falling in; the rest start in the ring
+		if k >= Sim.RING_FALLING and b.pos.length() >= sim.ring.x * 0.999:
 			ids[b.id] = true
 	_ok("all turning one way", one_way)
 	# the falling few start at their far point, which may be past the ring's inner edge
 	_ok("all but the falling few are in the ring", ids.size() >= Sim.RING - Sim.RING_FALLING)
 	_ok("it weighs RING_M", absf(mass - Sim.RING_M) < Sim.RING_M * 0.1)
 	_run(sim, 300.0)
-	var held := 0
+	var came := 0
 	for b: Sim.Body in sim.bodies:
-		if ids.has(b.id) and b.kind == Sim.Kind.GAS and b.pos.length() > rh:
-			held += 1
-	_ok("left alone, the ring does not come down", held >= Sim.RING - Sim.RING_FALLING)
+		if ids.has(b.id) and b.pos.length() < rh:
+			came += 1
+	_ok("left alone, nothing of the ring but the falling few is in the disc after five minutes", came == 0)
 	_ok("the view shows the ring's edge at FRAME", is_equal_approx(sim.zoom() * sim.ring.y, Sim.FRAME))
 	sim.mass = Sim.START * 20.0
 	var wide: float = sim.press_r() * sim.zoom()
@@ -501,6 +503,20 @@ func _check_ring() -> void:
 		paid.append(s.light)
 	_ok("a gentle brake pays light", paid[0] > 0.0)
 	_ok("a long hold pays under a third of it", paid[1] < paid[0] / 3.0)
+	# the star's growth brings some of the ring down, and not all of it
+	var eats: Array[float] = []
+	for grows: bool in [false, true]:
+		var gro := _quiet(5)
+		gro.born()
+		var each := Sim.START * 0.15 / (120.0 / Sim.STEP)
+		for i in int(720.0 / Sim.STEP):
+			if grows and i < int(120.0 / Sim.STEP):
+				gro.mass += each
+				gro.fuel += each
+			gro.tick()
+		eats.append(float(gro.eaten))
+	print("  a star that grows 15%% in two minutes eats %.2f of the ring's %.1f in ten more (%.0f%%); left alone, %.2f" % [eats[1], Sim.RING_M, eats[1] / Sim.RING_M * 100.0, eats[0]])
+	_ok("the star's growth brings some of the ring down (%.0f%%), and not all of it" % (eats[1] / Sim.RING_M * 100.0), eats[1] > eats[0] + Sim.RING_M * 0.05 and eats[1] < Sim.RING_M * 0.5)
 	# the trickle
 	var far := _quiet(9)
 	far.passing = true
@@ -541,10 +557,10 @@ func _check_ring() -> void:
 	var keep := _quiet(6)
 	keep.born()
 	keep.lv.reach = 2
-	keep.dusty = 0.2
+	keep.dusty = Sim.ASH_MOST * 0.5
 	keep.save()
 	var back: RefCounted = Sim.load_saved(1)
-	_ok("a star saved and read back keeps its ring", back.ring.is_equal_approx(keep.ring) and is_equal_approx(back.frost, keep.frost) and is_equal_approx(back.dusty, 0.2) and int(back.lv.reach) == 2 and back.bodies.size() == keep.bodies.size())
+	_ok("a star saved and read back keeps its ring", back.ring.is_equal_approx(keep.ring) and is_equal_approx(back.frost, keep.frost) and is_equal_approx(back.dusty, Sim.ASH_MOST * 0.5) and int(back.lv.reach) == 2 and back.bodies.size() == keep.bodies.size())
 	var old := ConfigFile.new()
 	old.load(Sim.path)
 	old.set_value("star", "kept", 3)
@@ -845,7 +861,7 @@ func _check_ends() -> void:
 	var thin := 0.0
 	for b: Sim.Body in sim.bodies:
 		thin = maxf(thin, b.dust)
-	_ok("a nebula's gas is not dusty", sim.bodies.size() > 0 and thin < 0.08)
+	_ok("a nebula's gas is not dusty", sim.bodies.size() > 0 and thin < Sim.ASH_DUST * 2.0)
 	_ok("nebula pays", paid == Sim.NEBULA_DUST and sim.dust == dust_was + Sim.NEBULA_DUST)
 	_ok("one relic", sim.relics.size() == 1 and int(sim.relics[0].kind) == Sim.Relic.WD)
 	var d: float = sim.last_birth.d
@@ -877,23 +893,24 @@ func _check_ends() -> void:
 	var dusty := 0.0
 	for b: Sim.Body in big.bodies:
 		dusty = maxf(dusty, b.dust)
-	_ok("metal-rich ashes", dusty > 0.1)
+	print("  a supernova's ash: dust %.3f of a puff (a first cloud %.3f, a nebula's under %.3f)" % [dusty, Sim.FIRST_DUST, Sim.ASH_DUST * 2.0])
+	_ok("metal-rich ashes", dusty > Sim.ASH_DUST * 2.0 and dusty <= Sim.ASH_MOST)
 	var grain := _quiet(5)
 	var at := Vector2(grain.haze_r() * 0.9, 0.0)
 	var p1: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at, grain.circle_vel(at))
 	var p2: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), grain.circle_vel(at))
 	for p in [p1, p2]:
-		p.dust = 0.15
+		p.dust = Sim.ASH_MOST
 		p.age = Sim.COOL + 1.0
 	_run(grain, 1.0)
-	_ok("iron grain", grain.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > Sim.IRONY))
+	_ok("iron grain", grain.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > 0.5))
 	# a young sky's grain is not
 	var young := _quiet(5)
 	for p in [young.add(Sim.Kind.GAS, Sim.PUFF, at, young.circle_vel(at)), young.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), young.circle_vel(at))]:
-		p.dust = Sim.DUSTY
+		p.dust = Sim.FIRST_DUST
 		p.age = Sim.COOL + 1.0
 	_run(young, 1.0)
-	_ok("plain grain", young.bodies.any(func(x): return x.kind != Sim.Kind.GAS) and not young.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > Sim.IRONY))
+	_ok("plain grain", young.bodies.any(func(x): return x.kind != Sim.Kind.GAS) and not young.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > 0.5))
 	# a first game is born in gas, and flags it; a file that is there is not
 	var first_game := _quiet(9)
 	first_game.born()
