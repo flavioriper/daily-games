@@ -17,6 +17,7 @@ const Sim = preload("res://valley/grove_sim.gd")
 const Pal = preload("res://core/palette.gd")
 const Motes = preload("res://ui/motes.gd")
 const Motion = preload("res://core/motion.gd")
+const Beaver = preload("res://ui/faces/beaver.gd")
 const WIND := preload("res://shaders/wind_2d.gdshader")
 
 ## The painted land (2026-10-06, the isometric pass): a pond pale far off
@@ -70,6 +71,17 @@ const MARK := Color("ffd66b")
 const LOG := 48.0
 ## A tile's picture is drawn about its middle, inside this half width.
 const ICON := 56.0
+## What the tree's pictures are made of beside wood: rope, planks, a crate's
+## boards, an axe's steel, a feather.
+const ROPE := Color("ecd9a6")
+const ROPE_DEEP := Color("c9a968")
+const PLANK := Color("cfa26d")
+const PLANK_DEEP := Color("a57a48")
+const STEEL := Color("9ba5ad")
+const STEEL_LIT := Color("d5dde3")
+const STEEL_DEEP := Color("7d8890")
+const CLOVER := Color("6fae4c")
+const CLOVER_LIT := Color("93cc66")
 
 ## How the land is seen: a point of the ground lands across as it is and
 ## DEEP as deep, in view units (land units as the screen lays them: a screen
@@ -816,12 +828,187 @@ static func icon(tile: String, look := 1) -> ArrayMesh:
 			b.append(_bare(look), Transform2D(0.0, Vector2(s, s), 0.0, Vector2(0.0, 44.0)))
 		"wood":
 			_log_into(b, Vector2.ZERO, 64.0)
+		_:
+			_node_into(b, tile)
 	_icons[key] = b.mesh()
 	return _icons[key]
+
+## The pictures of the tree's nodes (valley/grove_tree.gd), each about (0, 0)
+## inside ICON like a tile's: the two boughs every kind has (`soft`, `rich`)
+## and the roots' nodes by id. Room and Sprout are the tiles they were.
+static func _node_into(b: Face.Builder, id: String) -> void:
+	match id:
+		"soft":
+			# a feather: wood that gives way
+			var turn := Transform2D(0.62, Vector2(2.0, 4.0))
+			b.stroke(turn * PackedVector2Array([Vector2(0.0, 30.0), Vector2(0.0, 52.0)]), 5.0, Pal.CLOUD_DEEP)
+			b.fan(turn * Face.Builder.ring(Vector2(0.0, -8.0), 21.0, 44.0), Pal.CLOUD)
+			var lit := PackedVector2Array()
+			for p: Vector2 in Face.Builder.ring(Vector2(0.0, -8.0), 21.0, 44.0):
+				if p.x <= 0.5:
+					lit.append(p)
+			b.polygon(turn * lit, Pal.CLOUD_TILE)
+			b.stroke(turn * PackedVector2Array([Vector2(0.0, -46.0), Vector2(0.0, 34.0)]), 3.4, Pal.CLOUD_DEEP)
+			for y: float in [-22.0, 2.0, 22.0]:
+				b.stroke(turn * PackedVector2Array([Vector2(1.0, y), Vector2(17.0, y - 11.0)]), 2.4, Pal.CLOUD_DEEP)
+				b.stroke(turn * PackedVector2Array([Vector2(-1.0, y + 4.0), Vector2(-17.0, y - 7.0)]), 2.4, Pal.CLOUD)
+		"rich":
+			# a pile of logs and the light they hold
+			_log_end(b, Vector2(-22.0, 22.0), 21.0)
+			_log_end(b, Vector2(21.0, 22.0), 21.0)
+			_log_end(b, Vector2(-1.0, -13.0), 21.0)
+			b.append(Motes.orb(), Transform2D(0.0, Vector2(0.4, 0.4), 0.0, Vector2(32.0, -32.0)))
+		"jetty":
+			for w: Array in [[40.0, -44.0, 44.0, 6.0], [50.0, -30.0, 16.0, 4.5]]:
+				b.stroke(PackedVector2Array([Vector2(w[1], w[0]), Vector2(w[2], w[0])]), w[3], WATER)
+			for x: float in [-32.0, 28.0]:
+				b.polygon(Face.Builder.round_rect(Vector2(x - 6.0, -30.0), Vector2(13.0, 70.0), 4.0), PLANK_DEEP)
+				b.polygon(Face.Builder.round_rect(Vector2(x - 6.0, -30.0), Vector2(6.0, 70.0), 3.0), PLANK_DEEP.lightened(0.14))
+			b.polygon(Face.Builder.round_rect(Vector2(-50.0, -6.0), Vector2(100.0, 9.0), 3.0), PLANK_DEEP.darkened(0.12))
+			b.polygon(Face.Builder.round_rect(Vector2(-52.0, -22.0), Vector2(104.0, 19.0), 5.0), PLANK)
+			b.polygon(Face.Builder.round_rect(Vector2(-52.0, -22.0), Vector2(104.0, 7.0), 3.5), PLANK.lightened(0.2))
+			for x: float in [-26.0, 0.0, 26.0]:
+				b.stroke(PackedVector2Array([Vector2(x, -20.0), Vector2(x, -5.0)]), 2.4, PLANK_DEEP, false, false)
+		"tying":
+			# a bow of rope
+			for side: float in [-1.0, 1.0]:
+				b.stroke(PackedVector2Array([Vector2(0.0, 4.0), Vector2(side * 14.0, 26.0), Vector2(side * 30.0, 40.0)]), 8.0, ROPE_DEEP)
+				var loop := Transform2D(side * 0.5, Vector2(side * 25.0, -8.0)) * Face.Builder.ring(Vector2.ZERO, 22.0, 13.0)
+				b.stroke(loop, 9.0, ROPE, true)
+				b.stroke(Transform2D(side * 0.5, Vector2(side * 25.0, -8.0)) * Face.Builder.arc_points(Vector2.ZERO, 22.0, PI * 0.15, PI * 0.85), 3.0, ROPE_DEEP)
+			b.polygon(Face.Builder.round_rect(Vector2(-11.0, -11.0), Vector2(22.0, 24.0), 8.0), ROPE_DEEP)
+			b.polygon(Face.Builder.round_rect(Vector2(-11.0, -11.0), Vector2(22.0, 10.0), 6.0), ROPE)
+		"bundle":
+			_bundle_into(b, Vector2.ZERO, 1.0)
+		"raft":
+			_raft_into(b)
+			b.stroke(PackedVector2Array([Vector2(-4.0, 12.0), Vector2(-4.0, -46.0)]), 5.5, PLANK_DEEP)
+			b.polygon(PackedVector2Array([Vector2(0.0, -46.0), Vector2(38.0, -12.0), Vector2(0.0, -4.0)]), Color("fff6e6"))
+			b.polygon(PackedVector2Array([Vector2(0.0, -24.0), Vector2(38.0, -12.0), Vector2(0.0, -4.0)]), Color("eadfc8"))
+		"load":
+			_raft_into(b)
+			_bundle_into(b, Vector2(-21.0, 0.0), 0.44)
+			_bundle_into(b, Vector2(21.0, 0.0), 0.44)
+			_bundle_into(b, Vector2(0.0, -30.0), 0.44)
+		"beaver":
+			var s := 1.55
+			var foot := Vector2(-4.0, 46.0)
+			b.append(Beaver.tail(), Transform2D(-0.2, Vector2(s, s), 0.0, foot + Beaver.TAIL_AT * s))
+			b.append(Beaver.body(), Transform2D(0.0, Vector2(s, s), 0.0, foot))
+			b.append(Beaver.head(false), Transform2D(0.0, Vector2(s, s), 0.0, foot + Beaver.NECK * s))
+		"teeth":
+			# a beaver looked at from the front, all teeth
+			for side: float in [-1.0, 1.0]:
+				b.disc(Vector2(side * 33.0, -40.0), 11.0, Beaver.FUR_DEEP)
+				b.disc(Vector2(side * 33.0, -39.0), 5.5, Beaver.EAR_IN)
+			b.ellipse(Vector2(0.0, -12.0), 46.0, 38.0, Beaver.FUR)
+			for side: float in [-1.0, 1.0]:
+				b.disc(Vector2(side * 19.0, -24.0), 5.2, Beaver.NOSE)
+				b.disc(Vector2(side * 19.0 - 1.6, -25.8), 1.7, Color.WHITE)
+				b.disc(Vector2(side * 30.0, -6.0), 7.0, Color(Pal.CHEEK, 0.8))
+				b.ellipse(Vector2(side * 13.0, 2.0), 17.0, 13.0, Beaver.BELLY)
+			b.ellipse(Vector2(0.0, -9.0), 9.5, 6.5, Beaver.NOSE)
+			b.polygon(Face.Builder.round_rect(Vector2(-17.0, 6.0), Vector2(34.0, 42.0), 8.0), Beaver.TOOTH_LINE)
+			b.polygon(Face.Builder.round_rect(Vector2(-14.5, 6.0), Vector2(29.0, 39.5), 6.0), Beaver.TOOTH)
+			b.stroke(PackedVector2Array([Vector2(0.0, 9.0), Vector2(0.0, 43.0)]), 2.4, Beaver.TOOTH_LINE, false, false)
+		"crit":
+			# the tile's axe turned about, its edge ground bright and a glint on it
+			var xf := Transform2D(-0.55, Vector2(4.0, 6.0))
+			b.polygon(xf * Face.Builder.round_rect(Vector2(-7.0, -50.0), Vector2(14.0, 100.0), 7.0), BARK)
+			_blade(b, xf * Transform2D(0.0, Vector2(0.0, -12.0)), -1.0, 1.35)
+			var glint := PackedVector2Array()
+			for i in 8:
+				glint.append(xf * (Vector2(-27.0, -30.0) + Vector2.from_angle(TAU * i / 8.0) * (15.0 if i % 2 == 0 else 4.2)))
+			b.polygon(glint, Color.WHITE)
+		"critsize":
+			# two heads on one handle: a heavier axe
+			var xf := Transform2D(0.0, Vector2(0.0, 0.0))
+			b.polygon(xf * Face.Builder.round_rect(Vector2(-6.5, -46.0), Vector2(13.0, 98.0), 6.5), BARK)
+			_blade(b, Transform2D(0.0, Vector2(-19.0, 3.0)), -1.0, 0.92)
+			_blade(b, Transform2D(0.0, Vector2(19.0, 3.0)), 1.0, 0.92)
+			b.polygon(Face.Builder.round_rect(Vector2(-9.0, -33.0), Vector2(18.0, 30.0), 4.0), STEEL_DEEP)
+		"luck":
+			_log_into(b, Vector2(0.0, 34.0), 84.0)
+			b.stroke(PackedVector2Array([Vector2(2.0, -12.0), Vector2(8.0, 6.0), Vector2(4.0, 18.0)]), 5.0, CLOVER)
+			for i in 4:
+				var leaf := Transform2D(PI * 0.25 + PI * 0.5 * i, Vector2(0.0, -16.0))
+				for side: float in [-1.0, 1.0]:
+					b.disc(leaf * Vector2(side * 8.5, -15.0), 11.5, CLOVER)
+				b.polygon(leaf * PackedVector2Array([Vector2(-17.0, -10.0), Vector2(17.0, -10.0), Vector2(0.0, 0.0)]), CLOVER)
+			for i in 4:
+				var leaf := Transform2D(PI * 0.25 + PI * 0.5 * i, Vector2(0.0, -16.0))
+				b.disc(leaf * Vector2(-7.0, -17.0), 5.0, CLOVER_LIT)
+		"crate":
+			_crate_into(b, Vector2(0.0, 2.0), 1.0)
+		"cratesize":
+			for o: Array in [[-17.0, -30.0, 0.34], [15.0, -36.0, 0.4], [0.0, -18.0, 0.3]]:
+				b.append(Motes.orb(), Transform2D(0.0, Vector2(o[2], o[2]), 0.0, Vector2(o[0], o[1])))
+			_crate_into(b, Vector2(0.0, 20.0), 0.82)
+
+## The end of a log, looked at along it.
+static func _log_end(b: Face.Builder, at: Vector2, r: float) -> void:
+	b.disc(at, r, BARK)
+	b.disc(at, r * 0.76, PITH)
+	b.stroke(Face.Builder.ring(at, r * 0.4, r * 0.4), r * 0.12, Color(BARK, 0.65), true)
+	b.disc(at, r * 0.1, Color(BARK, 0.65))
+
+## Three logs lying one on another, tied round twice.
+static func _bundle_into(b: Face.Builder, at: Vector2, s: float) -> void:
+	for row: Array in [[-2.0, -26.0], [3.0, 0.0], [-3.0, 26.0]]:
+		var c := at + Vector2(row[0], row[1]) * s
+		b.polygon(Face.Builder.round_rect(c + Vector2(-46.0, -12.5) * s, Vector2(92.0, 25.0) * s, 12.5 * s), BARK)
+		b.polygon(Face.Builder.round_rect(c + Vector2(-38.0, -9.0) * s, Vector2(62.0, 6.0) * s, 3.0 * s), BARK.lightened(0.16))
+		b.ellipse(c + Vector2(37.0, 0.0) * s, 7.0 * s, 10.5 * s, PITH)
+	for x: float in [-22.0, 12.0]:
+		b.polygon(Face.Builder.round_rect(at + Vector2(x - 5.0, -42.0) * s, Vector2(10.0, 84.0) * s, 5.0 * s), ROPE_DEEP)
+		b.polygon(Face.Builder.round_rect(at + Vector2(x - 5.0, -42.0) * s, Vector2(5.0, 84.0) * s, 2.5 * s), ROPE)
+
+## A raft on the water, seen along its logs.
+static func _raft_into(b: Face.Builder) -> void:
+	b.stroke(PackedVector2Array([Vector2(-50.0, 40.0), Vector2(50.0, 40.0)]), 6.0, WATER)
+	b.stroke(PackedVector2Array([Vector2(-26.0, 50.0), Vector2(30.0, 50.0)]), 4.5, WATER)
+	for i in 5:
+		_log_end(b, Vector2(-40.0 + 20.0 * i, 26.0), 11.5)
+	b.stroke(PackedVector2Array([Vector2(-48.0, 15.0), Vector2(48.0, 15.0)]), 4.0, ROPE_DEEP)
+
+## An axe's head on a handle at x 0, its edge out to `side`, `s` times the
+## tile's.
+static func _blade(b: Face.Builder, xf: Transform2D, side: float, s: float) -> void:
+	var flip := xf * Transform2D(Vector2(-side * s, 0.0), Vector2(0.0, s), Vector2.ZERO)
+	var head := PackedVector2Array([Vector2(6.0, -30.0)])
+	head.append_array(Face.Builder.bezier2(Vector2(6.0, -30.0), Vector2(-28.0, -40.0), Vector2(-34.0, 4.0), 10))
+	head.append_array(Face.Builder.bezier2(Vector2(-34.0, 4.0), Vector2(-14.0, -4.0), Vector2(6.0, 0.0), 10))
+	head.append(Vector2(6.0, 0.0))
+	if side > 0.0:
+		head.reverse()
+	b.polygon(flip * head, STEEL)
+	var edge := Face.Builder.bezier2(Vector2(-22.0, -30.0), Vector2(-33.0, -18.0), Vector2(-34.0, 4.0), 8)
+	edge.append(Vector2(-34.0, 4.0))
+	b.stroke(flip * edge, 7.0 * s, STEEL_LIT)
+	b.stroke(flip * edge.slice(2, 7), 2.6 * s, Color.WHITE)
+
+## A crate of boards about `at`.
+static func _crate_into(b: Face.Builder, at: Vector2, s: float) -> void:
+	b.polygon(Face.Builder.round_rect(at + Vector2(-40.0, -34.0) * s, Vector2(80.0, 70.0) * s, 8.0 * s), Pal.WOOD_DEEP)
+	b.polygon(Face.Builder.round_rect(at + Vector2(-34.0, -28.0) * s, Vector2(68.0, 58.0) * s, 4.0 * s), Pal.WOOD)
+	for y: float in [-9.0, 10.0]:
+		b.stroke(PackedVector2Array([at + Vector2(-34.0, y) * s, at + Vector2(34.0, y) * s]), 2.6 * s, Pal.WOOD_DEEP, false, false)
+	b.stroke(PackedVector2Array([at + Vector2(-31.0, 26.0) * s, at + Vector2(31.0, -26.0) * s]), 9.0 * s, Pal.WOOD_DEEP, false, false)
+	b.stroke(PackedVector2Array([at + Vector2(-31.0, 26.0) * s, at + Vector2(31.0, -26.0) * s]), 4.5 * s, Pal.WOOD.lightened(0.12), false, false)
+	b.polygon(Face.Builder.round_rect(at + Vector2(-43.0, -38.0) * s, Vector2(86.0, 13.0) * s, 5.0 * s), Pal.WOOD_DEEP)
+	b.polygon(Face.Builder.round_rect(at + Vector2(-43.0, -38.0) * s, Vector2(86.0, 7.0) * s, 3.5 * s), Pal.WOOD.lightened(0.1))
 
 ## A tree for a picture.
 static func _bare(look: int) -> ArrayMesh:
 	return tree(look)
+
+## Whether the language writes 0,47 for 0.47 (pt, es), and a line of figures
+## as it does.
+static func comma() -> bool:
+	return not TranslationServer.get_locale().begins_with("en")
+
+static func decimal(text: String) -> String:
+	return text.replace(".", ",") if comma() else text
 
 ## What a chop takes, which may be a half: 1, 1.5, 2, 31.5, and past a
 ## thousand as `short` writes it. `comma` for a language that writes 1,5.

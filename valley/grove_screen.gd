@@ -6,10 +6,12 @@ extends Control
 ## tree it takes; nothing chops by itself yet
 ## (the user's design, 2026-10-05). A felled tree leaves wood, which goes to
 ## the shared inventory (core/stock.gd) and is never spent here, and energy,
-## which stays and buys the six tiles. The land takes the screen and the
-## tiles are a card over it, opened by the Shop button under the land's left
-## (the user, 2026-10-06: "game should take most of screen, and shop should
-## be a dialog inside the game that opens by clicking a button").
+## which stays and buys the shop's three tiles and the nodes of the tree of
+## skills. The land takes the screen and each of the two is a card over it,
+## opened by its button under the land's left (the user, 2026-10-06: "game
+## should take most of screen, and shop should be a dialog inside the game
+## that opens by clicking a button"): the shop is built here, the tree is
+## valley/grove_tree.gd.
 ## Spec docs/superpowers/specs/2026-10-05-valley-grove-design.md; the rules
 ## and every number are valley/grove_sim.gd's, the drawings grove_art.gd's.
 ##
@@ -25,6 +27,7 @@ signal closed
 const Sim = preload("res://valley/grove_sim.gd")
 const Art = preload("res://valley/grove_art.gd")
 const Life = preload("res://valley/grove_life.gd")
+const Skills = preload("res://valley/grove_tree.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
@@ -45,7 +48,9 @@ const MARGIN := 40
 const GAP := 20
 const HUD_H := 96.0
 const INFO_H := 104.0
-const SHOP_W := 330.0
+## The two buttons under the land, one width: the row is the column's 1000,
+## and what they leave is the count's.
+const BUTTON_W := 320.0
 ## A tile of the shop, top to bottom: its picture on a disc, its name over
 ## what the next level does, and its price on a bar along its foot. TILE_H
 ## leaves air round each, so nothing sits on the tile's edge.
@@ -94,14 +99,16 @@ const LEAVES := 14
 const LEAF_LIFE := 3.2
 const LEAF_GAP := 2.6
 const SAVE_GAP := 5.0
+## The tree's badge is counted again this long after the last count, at the
+## soonest: a land swept late on fells a tree a frame.
+const REACH_GAP := 0.25
 ## A chop that hits is heard a little higher or lower each time, so a held
 ## finger is not one sample on a loop.
 const CHOP_PITCH := 0.07
 ## The tap is a selection moved; a tree down is a piece set down; a tile
 ## bought is something finished; one that cannot be is a not yet.
 const HAPTICS := {"fell": Haptics.TAP, "buy": Haptics.BUMP, "no": Haptics.WARN}
-const TILE_NAMES := {"axe": "GROVE_AXE", "reach": "GROVE_REACH", "swing": "GROVE_SWING",
-	"sprout": "GROVE_SPROUT", "room": "GROVE_ROOM", "seeds": "GROVE_SEEDS"}
+const TILE_NAMES := {"axe": "GROVE_AXE", "reach": "GROVE_REACH", "swing": "GROVE_SWING"}
 
 var sim: RefCounted
 var top_bar: Control
@@ -118,6 +125,12 @@ var _count_l: Label
 var _shop_b: Button
 var _shop: Control
 var _shop_energy: Label
+var _skills_b: Button
+## The tree of skills on its card (valley/grove_tree.gd), and the energy its
+## button's badge was last counted for.
+var _tree: Control
+var _reach_for := -1
+var _since_reach := 0.0
 var _plates := {}   # "energy" / "wood" -> {panel, icon, label}
 var _shown := {"energy": 0.0, "wood": 0.0}
 var _tiles := {}    # tile -> {button, icon, effect, pill, cost, mote, tick, badge, level}
@@ -182,6 +195,7 @@ func _ready() -> void:
 	top_bar.enter(0.0)
 	top_bar.refresh(self)
 	_refresh_tiles()
+	_refresh_skills()
 	_refresh_hud(0.0)
 	Analytics.track("valley_enter", {"place": GAME, "trees": sim.trees.size(), "room": sim.room()})
 
@@ -252,33 +266,29 @@ func _build() -> void:
 	_quiet.buzzes = false
 	field.add_child(_quiet)
 
-	# under the land: the shop's button on the left, clear of the thumb that
-	# chops, and the count and the hint on the right
+	# under the land: the shop's button and the tree's on the left, clear of
+	# the thumb that chops, and the count on the right
 	var info := HBoxContainer.new()
 	info.name = "Info"
 	info.custom_minimum_size.y = INFO_H
+	info.add_theme_constant_override("separation", TILE_GAP)
 	_shop_b = IconButton.new("trend", tr("GROVE_SHOP"), "PrimaryButton")
 	_shop_b.name = "Shop"
-	_shop_b.custom_minimum_size = Vector2(SHOP_W, INFO_H)
-	_shop_b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_shop_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_shop_b.pressed.connect(open_shop)
-	info.add_child(_shop_b)
-	var words := VBoxContainer.new()
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	words.add_theme_constant_override("separation", 0)
-	info.add_child(words)
+	_skills_b = IconButton.new("tree", tr("GROVE_SKILLS"), "IconButton")
+	_skills_b.name = "Skills"
+	_skills_b.pressed.connect(open_skills)
+	for b: Button in [_shop_b, _skills_b]:
+		b.custom_minimum_size = Vector2(BUTTON_W, INFO_H)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		info.add_child(b)
 	_count_l = Label.new()
 	_count_l.name = "Count"
 	_count_l.theme_type_variation = "CardTitle"
+	_count_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	words.add_child(_count_l)
-	var hint := Label.new()
-	hint.text = "GROVE_HINT"
-	hint.theme_type_variation = "CardBlurb"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	words.add_child(hint)
+	info.add_child(_count_l)
 	col.add_child(info)
 
 	_over = Control.new()
@@ -293,9 +303,15 @@ func _build() -> void:
 	add_child(_motes)
 	_shop = _build_shop()
 	add_child(_shop)
+	_tree = Skills.new()
+	_tree.name = "Skills"
+	_tree.setup(sim, tree_name)
+	_tree.bought.connect(_on_node_bought)
+	_tree.refused.connect(func(_id: String) -> void: _fx.cue("no"))
+	add_child(_tree)
 	_apply_insets()
 
-## The shop: the six tiles on a card over the grove, the energy held on a
+## The shop: its three tiles on a card over the grove, the energy held on a
 ## pill at its head and an X beside it. Built once and shown; the grove goes
 ## on behind it (trees come up, motes land), but nothing is chopped.
 func _build_shop() -> Control:
@@ -364,6 +380,15 @@ func open_shop() -> void:
 func close_shop() -> void:
 	_shop.visible = false
 
+## The tree of skills, on its own card: the grove goes on behind it as it
+## does behind the shop, and nothing is chopped.
+func open_skills() -> void:
+	if _tree.is_open():
+		return
+	_hold = false
+	_tree.held((_plates.energy.label as Label).text)
+	_tree.open()
+
 ## A mote of energy, `side` pixels square: what a price is counted in.
 func _mote_icon(side: float) -> Control:
 	var icon := Control.new()
@@ -419,7 +444,7 @@ func _plate(what: String, key: String) -> Control:
 	_plates[what] = {"panel": plate, "icon": icon, "label": value}
 	return plate
 
-## One of the six, on the shop's card: its picture, its name, what the next
+## One of the three, on the shop's card: its picture, its name, what the next
 ## level does, and the energy it asks on a bar along its foot. A tile that
 ## cannot be bought yet is still pressed: it shakes its head.
 func _tile(tile: String) -> Control:
@@ -599,9 +624,10 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null:
 		return
-	var holding: bool = _hold and not _held_back and not _shop.visible and not settings_sheet.is_open()
+	var holding: bool = _hold and not _held_back and not _shop.visible and not _tree.is_open() and not settings_sheet.is_open()
 	sim.step(delta, holding, unit(_hold_at))
 	_since_chop += delta
+	_since_reach += delta
 	# the land may have moved on the screen (an inset, the banner): the
 	# shadows are kept to where it is now
 	_life.place(_origin, _u, field.get_global_transform())
@@ -686,6 +712,8 @@ func _play_events() -> void:
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
 		_refresh_tiles()
+	if _reach_for != int(sim.energy) and _since_reach >= REACH_GAP:
+		_refresh_skills()
 
 ## A tree's crown has come down at `at` (view units): dust off the grass.
 func _on_landed(tree: Dictionary, at: Vector2) -> void:
@@ -740,6 +768,7 @@ func _refresh_hud(delta: float) -> void:
 		_shown[kind] = s
 		(_plates[kind].label as Label).text = Art.short(int(round(s)))
 	_shop_energy.text = (_plates.energy.label as Label).text
+	_tree.held(_shop_energy.text)
 	_count_l.text = tr("GROVE_TREES") % [sim.trees.size(), sim.room()]
 
 # --- the tiles ---
@@ -784,7 +813,19 @@ func _refresh_tiles() -> void:
 		(t.level as Label).text = str(level)
 		(t.icon as Control).queue_redraw()
 
-## What the next level of `tile` does, in the tile's own words.
+## The tree's button says how many of its nodes the energy reaches, and the
+## tree, if it is open, takes the new energy. Counted when the energy has
+## changed and REACH_GAP apart, never a frame: `reachable` lists every node
+## shown (a quarter of a millisecond on a late grove).
+func _refresh_skills() -> void:
+	_reach_for = int(sim.energy)
+	_since_reach = 0.0
+	(_skills_b as IconButton).badge = sim.reachable()
+	if _tree.is_open():
+		_tree.refresh()
+
+## What the next level of `tile` does, in the tile's own words. A node of the
+## tree says its own on the tree's card (valley/grove_tree.gd).
 func _effect(tile: String) -> String:
 	match tile:
 		"axe":
@@ -793,18 +834,14 @@ func _effect(tile: String) -> String:
 			return tr("GROVE_FX_REACH")
 		"swing":
 			return _decimal(tr("GROVE_FX_SWING") % [sim.swing_time(), sim.swing_time() * Sim.SWING_STEP])
-		"sprout":
-			return _decimal(tr("GROVE_FX_SPROUT") % [sim.spawn_time(), sim.spawn_time() * Sim.SPROUT_STEP])
-		"room":
-			return tr("GROVE_FX_ROOM") % [sim.room(), sim.room() + 1]
-	return tr("GROVE_FX_SEEDS") % tree_name(int(sim.lv.seeds) + 1)
+	return ""
 
 ## Seconds are written 0,47 where the language writes them so (pt, es).
 static func _decimal(text: String) -> String:
-	return text.replace(".", ",") if _comma() else text
+	return Art.decimal(text)
 
 static func _comma() -> bool:
-	return not TranslationServer.get_locale().begins_with("en")
+	return Art.comma()
 
 ## A tier's tree by name; the second time the looks come round it is
 ## "Birch II", then "Birch III" (the fonts carry no star).
@@ -833,6 +870,14 @@ func _on_tile(tile: String) -> void:
 	elif not sim.is_done(tile):
 		_fx.cue("no")
 		Motion.shiver(button, 6.0)
+
+## A level of a node, bought on the tree's card.
+func _on_node_bought(id: String, paid: int) -> void:
+	_fx.cue("buy")
+	Analytics.track("grove_upgrade", {"tile": id, "level": int(sim.level(id)), "energy": paid})
+	_refresh_tiles()
+	_refresh_skills()
+	_save()
 
 # --- the hand ---
 
@@ -968,5 +1013,8 @@ func go_back() -> void:
 		return
 	if _shop.visible:
 		close_shop()
+		return
+	if _tree.is_open():
+		_tree.close()
 		return
 	_on_back()

@@ -977,7 +977,6 @@ VALLEY_PER_MIN,/ min,/ min,/ min
 GROVE_MOTTO,Trees take their time,As árvores têm seu tempo,Los árboles llevan su tiempo
 GROVE_ENERGY,Energy,Energia,Energía
 GROVE_WOOD,Wood,Madeira,Madera
-GROVE_HINT,Hold the land to chop,Segure na terra para cortar,Mantén pulsada la tierra para talar
 GROVE_SHOP,Shop,Loja,Tienda
 GROVE_TREES,Trees %d / %d,Árvores %d / %d,Árboles %d / %d
 GROVE_AXE,Axe,Machado,Hacha
@@ -985,12 +984,11 @@ GROVE_REACH,Reach,Alcance,Alcance
 GROVE_SWING,Swing,Ritmo,Ritmo
 GROVE_SPROUT,Sprout,Broto,Brote
 GROVE_ROOM,Room,Espaço,Espacio
-GROVE_SEEDS,Seeds,Sementes,Semillas
 GROVE_FX_AXE,"chop %s, then %s","corte %s, depois %s","tala %s, luego %s"
 GROVE_FX_REACH,a wider circle,um círculo maior,un círculo mayor
 GROVE_FX_SWING,"%.2f s, then %.2f","%.2f s, depois %.2f","%.2f s, luego %.2f"
-GROVE_FX_SPROUT,"every %.1f s, then %.1f","a cada %.1f s, depois %.1f","cada %.1f s, luego %.1f"
-GROVE_FX_ROOM,"room for %d, then %d","espaço para %d, depois %d","espacio para %d, luego %d"
+GROVE_FX_SPROUT,"every %s s, then %s","a cada %s s, depois %s","cada %s s, luego %s"
+GROVE_FX_ROOM,"room for %s, then %s","espaço para %s, depois %s","espacio para %s, luego %s"
 GROVE_FX_SEEDS,%s grows too,%s também cresce,%s también crece
 GROVE_DONE,all done,completo,completo
 GROVE_MAX,max,máx,máx
@@ -999,6 +997,37 @@ GROVE_TREE_1,Birch,Bétula,Abedul
 GROVE_TREE_2,Oak,Carvalho,Roble
 GROVE_TREE_3,Pine,Pinheiro,Pino
 GROVE_TREE_4,Blossom,Cerejeira,Cerezo
+GROVE_SKILLS,Skills,Habilidades,Habilidades
+GROVE_SKILLS_HELP,Tap a skill to see what it does,Toque em uma habilidade para ver o que ela faz,Toca una habilidad para ver qué hace
+GROVE_JETTY,Jetty,Cais,Muelle
+GROVE_TYING,Tying,Amarração,Atado
+GROVE_BUNDLE,Bundle,Fardo,Fardo
+GROVE_RAFT,Raft,Jangada,Balsa
+GROVE_LOAD,Load,Carga,Carga
+GROVE_BEAVER,Beavers,Castores,Castores
+GROVE_TEETH,Teeth,Dentes,Dientes
+GROVE_CRIT,Keen edge,Fio afiado,Filo agudo
+GROVE_CRITSIZE,Heavy blow,Golpe pesado,Golpe fuerte
+GROVE_LUCK,Lucky wood,Madeira da sorte,Madera de la suerte
+GROVE_CRATE,Crates,Caixotes,Cajas
+GROVE_CRATESIZE,Full crates,Caixotes cheios,Cajas llenas
+GROVE_SOFT,Soft %s,%s mole,%s blando
+GROVE_RICH,Rich %s,%s fértil,%s rico
+GROVE_FX_JETTY,"room for %s piles, then %s","espaço para %s pilhas, depois %s","espacio para %s pilas, luego %s"
+GROVE_FX_TYING,"a bundle every %s s, then %s","um fardo a cada %s s, depois %s","un fardo cada %s s, luego %s"
+GROVE_FX_BUNDLE,"%s piles a bundle, then %s","%s pilhas por fardo, depois %s","%s pilas por fardo, luego %s"
+GROVE_FX_RAFT,"there and back in %s s, then %s","ida e volta em %s s, depois %s","ida y vuelta en %s s, luego %s"
+GROVE_FX_LOAD,"bundles aboard: %s, then %s","fardos a bordo: %s, depois %s","fardos a bordo: %s, luego %s"
+GROVE_FX_BEAVER,"beavers: %s, then %s","castores: %s, depois %s","castores: %s, luego %s"
+GROVE_FX_TEETH,"a bite is %s of a chop, then %s","mordida de %s de um corte, depois %s","mordisco del %s de un golpe, luego %s"
+GROVE_FX_CRIT,"a keen chop %s of the time, then %s","corte afiado em %s das vezes, depois %s","golpe agudo el %s de las veces, luego %s"
+GROVE_FX_CRITSIZE,"a keen chop counts x%s, then x%s","um corte afiado vale x%s, depois x%s","un golpe agudo vale x%s, luego x%s"
+GROVE_FX_LUCK,"a double pile %s of the time, then %s","pilha em dobro em %s das vezes, depois %s","pila doble el %s de las veces, luego %s"
+GROVE_FX_CRATE_FIRST,a crate every %s s,um caixote a cada %s s,una caja cada %s s
+GROVE_FX_CRATE,"a crate every %s s, then %s","um caixote a cada %s s, depois %s","una caja cada %s s, luego %s"
+GROVE_FX_CRATESIZE,"a crate gives %s, then %s","um caixote dá %s, depois %s","una caja da %s, luego %s"
+GROVE_FX_SOFT,"%s chops, then %s","%s cortes, depois %s","%s golpes, luego %s"
+GROVE_FX_RICH,"gives %s, then %s","dá %s, depois %s","da %s, luego %s"
 TUT_GROVE_CHOP,Chop inside the circle,Corte dentro do círculo,Tala dentro del círculo
 TUT_GROVE_CHOP_BODY,"Hold a finger on the land. Every tree inside the circle is chopped, again and again, and the circle follows your finger. The first trees take %d chops.","Segure um dedo na terra. Toda árvore dentro do círculo é cortada, de novo e de novo, e o círculo segue o seu dedo. As primeiras árvores levam %d cortes.","Mantén un dedo sobre la tierra. Cada árbol dentro del círculo se tala, una y otra vez, y el círculo sigue a tu dedo. Los primeros árboles necesitan %d golpes."
 TUT_GROVE_GIFTS,Wood and energy,Madeira e energia,Madera y energía

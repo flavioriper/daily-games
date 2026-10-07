@@ -7,10 +7,11 @@ extends SceneTree
 ## 1 the Valley tab, 2 a new grove, 3 the circle on its sapling mid-chop,
 ## 4 the tree down and its log and motes in the air (4b the motes hanging,
 ## 4c on their way in), 5 a grove some days in,
-## 6 the circle over several trees, 7w six frames of a grove far along with
-## nothing but the wind on it, 7 that grove (every look, a land of thirty)
-## under the circle, 8 the shop's card open and a tile just bought, 9-11 the tutorial's three pages, 12 the
-## tab again. Prints at each shot the draw calls, and the frames since the
+## 6 the circle over several trees, 6b the Skills card opened by its button
+## with Room chosen and a level of it just bought, 7w six frames of a grove
+## far along with nothing but the wind on it, 7 that grove (every look, a
+## land of thirty) under the circle, 8 the shop's card open and an Axe just
+## bought, 9-11 the tutorial's three pages, 12 the tab again. Prints at each shot the draw calls, and the frames since the
 ## last shot with their mean and longest gap. The
 ## inventory, the grove and the wallet are throwaway files; the field's own
 ## mouse filter is set to ignore, so the real pointer over the window cannot
@@ -24,14 +25,15 @@ const STEPS := [
 	[3.8, "hold_tree"], [4.55, "shot", "3_chop"], [5.52, "shot", "4_fell"],
 	[5.8, "shot", "4b_motes_hang"], [6.0, "let_go"], [6.08, "shot", "4c_motes_in"], [6.1, "mid"], [6.7, "shot", "5_mid"],
 	[6.8, "hold_mid"], [7.5, "shot", "6_mid_chop"],
-	[7.9, "let_go"], [8.0, "late"], [8.2, "shot", "7w_0"], [8.5, "shot", "7w_1"], [8.8, "shot", "7w_2"], [9.1, "shot", "7w_3"], [9.4, "shot", "7w_4"], [9.7, "shot", "7w_5"],
-	[9.8, "hold_mid"], [10.5, "shot", "7_late"],
-	[10.70, "let_go"], [10.75, "shop"], [10.80, "buy"], [11.15, "shot", "8_bought"],
-	[11.18, "shop_x"], [11.20, "tutor"], [12.70, "shot", "9_tut_chop"],
-	[12.80, "page", 1], [15.05, "shot", "10_tut_gifts"],
-	[15.10, "page", 2], [18.50, "shot", "11_tut_wait"],
-	[18.60, "leave"], [19.50, "shot", "12_tab_after"],
-	[19.60, "quit"],
+	[7.9, "let_go"], [7.95, "skills"], [8.2, "skill"], [8.7, "shot", "6b_skills"], [8.75, "skills_x"],
+	[8.8, "late"], [9.0, "shot", "7w_0"], [9.3, "shot", "7w_1"], [9.6, "shot", "7w_2"], [9.9, "shot", "7w_3"], [10.2, "shot", "7w_4"], [10.5, "shot", "7w_5"],
+	[10.6, "hold_mid"], [11.3, "shot", "7_late"],
+	[11.50, "let_go"], [11.55, "shop"], [11.60, "buy"], [11.95, "shot", "8_bought"],
+	[11.98, "shop_x"], [12.00, "tutor"], [13.50, "shot", "9_tut_chop"],
+	[13.60, "page", 1], [15.85, "shot", "10_tut_gifts"],
+	[15.90, "page", 2], [19.30, "shot", "11_tut_wait"],
+	[19.40, "leave"], [20.30, "shot", "12_tab_after"],
+	[20.40, "quit"],
 ]
 
 var _menu: Node
@@ -140,7 +142,7 @@ func _process(delta: float) -> bool:
 			"mid":
 				_preset({"axe": 6, "reach": 3, "swing": 2, "sprout": 4, "room": 6, "seeds": 1}, 170)
 			"late":
-				_preset({"axe": 60, "reach": 10, "swing": 12, "sprout": 16, "room": 27, "seeds": 9}, 123456789)
+				_preset({"axe": 60, "reach": 10, "swing": 12, "sprout": 16, "room": 27, "seeds": 9}, 9876543210)
 			"shop":
 				_s._shop_b.pressed.emit()
 				print("shop open: %s, badge %d" % [_s._shop.visible, _s._shop_b.badge])
@@ -148,9 +150,20 @@ func _process(delta: float) -> bool:
 				_s._shop.get_node("Center/Card").find_child("Close", true, false).pressed.emit()
 				print("shop closed: %s" % [not _s._shop.visible])
 			"buy":
-				var before: int = _s.sim.lv.sprout
-				_s._on_tile("sprout")
-				print("bought sprout: %d -> %d, energy %d" % [before, _s.sim.lv.sprout, _s.sim.energy])
+				var before: int = _s.sim.lv.axe
+				_s._on_tile("axe")
+				print("bought axe: %d -> %d, energy %d" % [before, _s.sim.lv.axe, _s.sim.energy])
+			"skills":
+				_s._skills_b.pressed.emit()
+				print("skills open: %s, badge %d" % [_s._tree.is_open(), _s._skills_b.badge])
+			"skill":
+				var before: int = _s.sim.lv.room
+				_s._tree.select("room")
+				_s._tree.buy_selected()
+				print("bought room on the tree: %d -> %d, energy %d, badge %d" % [before, _s.sim.lv.room, _s.sim.energy, _s._skills_b.badge])
+			"skills_x":
+				_s._tree.find_child("Close", true, false).pressed.emit()
+				print("skills closed: %s" % [not _s._tree.is_open()])
 			"tutor":
 				_s.tutor.show()
 			"page":
