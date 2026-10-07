@@ -348,7 +348,7 @@ func _build_shop() -> Control:
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", TILE_GAP)
 	grid.add_theme_constant_override("v_separation", TILE_GAP)
-	for tile: String in Sim.TILES:
+	for tile: String in Sim.SHOP:
 		grid.add_child(_tile(tile))
 	col.add_child(grid)
 	return scrim
@@ -746,7 +746,7 @@ func _refresh_hud(delta: float) -> void:
 
 func _tiles_key() -> String:
 	var key := ""
-	for tile: String in Sim.TILES:
+	for tile: String in Sim.SHOP:
 		key += "%d%s" % [int(sim.lv[tile]), "y" if sim.can_buy(tile) else "n"]
 	return key
 
@@ -754,11 +754,11 @@ func _refresh_tiles() -> void:
 	_tiles_for = _tiles_key()
 	# the shop's button says how many tiles the energy reaches
 	var reach := 0
-	for tile: String in Sim.TILES:
+	for tile: String in Sim.SHOP:
 		if sim.can_buy(tile):
 			reach += 1
 	(_shop_b as IconButton).badge = reach
-	for tile: String in Sim.TILES:
+	for tile: String in Sim.SHOP:
 		var t: Dictionary = _tiles[tile]
 		var done: bool = sim.is_done(tile)
 		var can: bool = sim.can_buy(tile)
@@ -910,7 +910,7 @@ func _draw_top() -> void:
 		var laps: int = Sim.lap_of(tree.tier)
 		for i in laps:
 			_top.draw_circle(at + Vector2((i - (laps - 1) * 0.5) * 18.0, -4.0) * _u, 7.0 * _u, Art.MARK, true, -1.0, true)
-		var full: int = Sim.hp_of(tree.tier)
+		var full: float = sim.hp(tree.tier)
 		if float(tree.hp) < full:
 			var w := maxf(54.0, Sim.radius_of(tree.tier) * 1.6) * _u
 			var bar := Rect2(at + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))

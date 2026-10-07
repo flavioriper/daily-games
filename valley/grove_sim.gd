@@ -2,7 +2,9 @@ extends RefCounted
 
 ## The Grove, as pure data: a piece of land where trees come up at random
 ## spots over time, an axe that chops everything standing in a circle round
-## a point, and six tiles bought with the energy the felled trees leave.
+## a point, and a shop of three tiles and a tree of skills (a trunk of tree
+## kinds, two boughs a kind, four roots) bought with the energy the felled
+## trees leave.
 ## Slow and without an end on purpose (the user: "really slow, not something
 ## the user will nail in two hours", "infinite"): Axe and Seeds have no last
 ## level, and every richer tree asks 2.6 times the chops for twice the yield,
@@ -40,17 +42,37 @@ const STAND := 1.7 * 1.25 / DEEP
 const SPACE := 96.0
 const SPACE_TIGHT := 66.0
 
-const TILES := ["axe", "reach", "swing", "sprout", "room", "seeds"]
-## A tile's first price in energy, what each level multiplies it by, and its
-## last level (0: it has none).
-const TILE := {
-	"axe": [10.0, 1.38, 0],
-	"reach": [40.0, 2.1, 12],
-	"swing": [30.0, 1.9, 15],
-	"sprout": [15.0, 1.65, 20],
-	"room": [12.0, 1.5, 27],
-	"seeds": [120.0, 7.0, 0],
+## The shop: three tiles on one row. Everything else is a node of the tree.
+const SHOP := ["axe", "reach", "swing"]
+## The tree's four roots, left to right, and each root's nodes in the order
+## they open: a node is open once the one before it has a level.
+const ROOT_ORDER := ["land", "jetty", "beavers", "fortune"]
+const ROOTS := {
+	"land": ["room", "sprout"],
+	"jetty": ["jetty", "tying", "bundle", "raft", "load"],
+	"beavers": ["beaver", "teeth"],
+	"fortune": ["crit", "critsize", "luck", "crate", "cratesize"],
 }
+## A node's first price in energy, what each level multiplies it by, and its
+## last level (0: it has none). The trunk (`kind:N`) and the boughs (`soft:N`,
+## `rich:N`) are priced below, by the kind.
+const NODE := {
+	"axe": [10.0, 1.38, 0], "reach": [40.0, 2.1, 12], "swing": [30.0, 1.9, 15],
+	"room": [12.0, 1.5, 27], "sprout": [15.0, 1.65, 20],
+	"jetty": [20.0, 1.45, 20], "tying": [40.0, 1.7, 15], "bundle": [60.0, 2.2, 7],
+	"raft": [50.0, 1.7, 15], "load": [300.0, 3.0, 5],
+	"beaver": [250.0, 4.0, 5], "teeth": [500.0, 2.4, 5],
+	"crit": [80.0, 1.8, 10], "critsize": [150.0, 2.0, 6], "luck": [100.0, 1.8, 10],
+	"crate": [200.0, 1.9, 10], "cratesize": [250.0, 1.9, 10],
+}
+const KIND := [120.0, 7.0]        # kind:N costs 120 * 7^(N-1), N from 1
+const SAPLING := 20.0             # the Sapling's own price, for its boughs
+const SOFT_PRICE := [0.5, 1.5]    # of the kind's price, a level
+const RICH_PRICE := [0.75, 2.25]  # the Sapling's one level: 1.5
+const SOFT_STEP := 0.25           # of the kind's chops, a level
+const RICH_STEP := 0.5            # of the kind's yield, a level (the Sapling: 1.0)
+## No price reads past what an int holds.
+const PRICE_CAP := 9.0e18
 
 ## A tree of tier 0: four chops for one wood and one energy (the user: "each
 ## tree start as 4hp"). Every tier after: HP_STEP times the chops, GIVE_STEP
@@ -92,7 +114,11 @@ static var path := "user://grove.cfg"
 ## planted again.
 const KEPT_ON := 3
 
-var lv := {"axe": 0, "reach": 0, "swing": 0, "sprout": 0, "room": 0, "seeds": 0}
+## Every node's level by id, and `seeds`, the trunk's: kind:N is bought when
+## seeds has reached N. A kind's boughs are `soft` and `rich`, a level a tier.
+var lv := {}
+var soft: Array[int] = []
+var rich: Array[int] = []
 var energy := 0
 ## Trees standing: {id, tier, pos, hp, born} with `born` on this sim's clock;
 ## `hp` is whole on a new tree and may be a half after a chop.
@@ -118,6 +144,9 @@ var _due: Array[float] = []
 var _last_chop := -10.0
 
 func _init(rng_seed := 0) -> void:
+	for id: String in NODE:
+		lv[id] = 0
+	lv["seeds"] = 0
 	if rng_seed != 0:
 		_rng.seed = rng_seed
 	else:
@@ -168,29 +197,180 @@ static func lap_of(tier: int) -> int:
 static func radius_of(tier: int) -> float:
 	return RADIUS[look_of(tier)]
 
-func last_level(tile: String) -> int:
-	return int(TILE[tile][2])
+## "kind" / "soft" / "rich" for "kind:3" and the rest; any other id is itself.
+static func part_of(id: String) -> String:
+	return id.get_slice(":", 0)
 
-func is_done(tile: String) -> bool:
-	return last_level(tile) > 0 and int(lv[tile]) >= last_level(tile)
+## 3 for "soft:3"; -1 for a plain id.
+static func tier_of(id: String) -> int:
+	return int(id.get_slice(":", 1)) if id.contains(":") else -1
 
-func cost(tile: String) -> int:
-	return int(round(float(TILE[tile][0]) * pow(float(TILE[tile][1]), int(lv[tile]))))
+## What a tier's kind costs on the trunk, and what its boughs are priced by.
+static func kind_price(tier: int) -> float:
+	return SAPLING if tier <= 0 else float(KIND[0]) * pow(float(KIND[1]), tier - 1)
 
-func can_buy(tile: String) -> bool:
-	return not is_done(tile) and energy >= cost(tile)
+static func _hp_at(tier: int, soft_level: int) -> float:
+	return float(hp_of(tier)) * (1.0 - SOFT_STEP * soft_level)
 
-func buy(tile: String) -> bool:
-	if not can_buy(tile):
+static func _give_at(tier: int, rich_level: int) -> int:
+	var step := RICH_STEP * 2.0 if tier == 0 else RICH_STEP
+	return int(round(float(give_of(tier)) * (1.0 + step * rich_level)))
+
+static func _int(price: float) -> int:
+	return int(round(minf(price, PRICE_CAP)))
+
+## The trunk's next kind answers to its old name, `seeds`.
+func _named(id: String) -> String:
+	return "kind:%d" % (int(lv.seeds) + 1) if id == "seeds" else id
+
+func level(id: String) -> int:
+	var tier := tier_of(id)
+	match part_of(id):
+		"kind":
+			return 1 if int(lv.seeds) >= tier else 0
+		"soft":
+			return soft[tier] if tier < soft.size() else 0
+		"rich":
+			return rich[tier] if tier < rich.size() else 0
+	return int(lv[id])
+
+## A node's last level (0: it has none): a kind is bought once, a kind's
+## boughs twice, the Sapling's Rich bough once.
+func last_level(id: String) -> int:
+	match part_of(id):
+		"kind":
+			return 1
+		"soft":
+			return 2
+		"rich":
+			return 1 if tier_of(id) == 0 else 2
+		"seeds":
+			return 0
+	return int(NODE[id][2])
+
+func is_done(id: String) -> bool:
+	id = _named(id)
+	return last_level(id) > 0 and level(id) >= last_level(id)
+
+func cost(id: String) -> int:
+	id = _named(id)
+	var tier := tier_of(id)
+	match part_of(id):
+		"kind":
+			return _int(kind_price(tier))
+		"soft":
+			return _int(float(SOFT_PRICE[mini(level(id), 1)]) * kind_price(tier))
+		"rich":
+			var price: Array = [1.5, 1.5] if tier == 0 else RICH_PRICE
+			return _int(float(price[mini(level(id), 1)]) * kind_price(tier))
+	return _int(float(NODE[id][0]) * pow(float(NODE[id][1]), level(id)))
+
+## The node that must have a level before this one opens ("" for none).
+func before(id: String) -> String:
+	id = _named(id)
+	var tier := tier_of(id)
+	match part_of(id):
+		"kind":
+			return "" if tier <= 0 else "kind:%d" % (tier - 1)
+		"soft", "rich":
+			return "" if tier <= 0 else "kind:%d" % tier
+	for root: String in ROOT_ORDER:
+		var at: int = (ROOTS[root] as Array).find(id)
+		if at > 0:
+			return ROOTS[root][at - 1]
+	return ""
+
+## Open once the node before it has a level, or it has one itself (a kept
+## grove's Sprout stays bought whatever Room is).
+func is_open(id: String) -> bool:
+	id = _named(id)
+	var b := before(id)
+	return b == "" or level(b) > 0 or level(id) > 0
+
+func can_buy(id: String) -> bool:
+	id = _named(id)
+	return is_open(id) and not is_done(id) and energy >= cost(id)
+
+func buy(id: String) -> bool:
+	id = _named(id)
+	if not can_buy(id):
 		return false
-	energy -= cost(tile)
-	lv[tile] = int(lv[tile]) + 1
+	var tier := tier_of(id)
+	energy -= cost(id)
+	match part_of(id):
+		"kind":
+			lv.seeds = tier
+		"soft":
+			while soft.size() <= tier:
+				soft.append(0)
+			soft[tier] += 1
+			# a tree of that kind standing takes the new most
+			for tree: Dictionary in trees:
+				if int(tree.tier) == tier:
+					tree.hp = minf(float(tree.hp), hp(tier))
+		"rich":
+			while rich.size() <= tier:
+				rich.append(0)
+			rich[tier] += 1
+		_:
+			lv[id] = int(lv[id]) + 1
 	# a place Room has just opened starts to count now, and no place waits
 	# longer than a quicker Sprout asks
 	_owe()
 	for i in _due.size():
 		_due[i] = minf(_due[i], spawn_time())
 	return true
+
+## The tree's nodes to draw: every root node that has a level or is open, the
+## trunk from the Sapling to the next kind, and each owned kind's two boughs.
+## Never a shop tile.
+func shown() -> Array[String]:
+	var out: Array[String] = []
+	for tier in int(lv.seeds) + 2:
+		out.append("kind:%d" % tier)
+	for tier in int(lv.seeds) + 1:
+		out.append("soft:%d" % tier)
+		out.append("rich:%d" % tier)
+	for root: String in ROOT_ORDER:
+		for id: String in ROOTS[root]:
+			if level(id) > 0 or is_open(id):
+				out.append(id)
+	return out
+
+## How many of the tree's nodes the energy reaches now.
+func reachable() -> int:
+	var n := 0
+	for id in shown():
+		if can_buy(id):
+			n += 1
+	return n
+
+## A kind's most, with its Soft bough: a tree to fell takes this many points
+## of chop. `hp_of` is the same before the boughs.
+func hp(tier: int) -> float:
+	return _hp_at(tier, level("soft:%d" % tier))
+
+## What a felled tree of a kind gives, with its Rich bough.
+func give(tier: int) -> int:
+	return _give_at(tier, level("rich:%d" % tier))
+
+## The figure a node stands for at level `at` (-1: the level now): Room the
+## trees, Sprout the seconds, a Soft bough the chops and a Rich bough the
+## yield of its kind. 0.0 where a node has none (yet).
+func value(id: String, at := -1) -> float:
+	var n := level(id) if at < 0 else at
+	var tier := tier_of(id)
+	match part_of(id):
+		"soft":
+			return _hp_at(tier, n)
+		"rich":
+			return float(_give_at(tier, n))
+	match id:
+		"room":
+			return float(ROOM + n)
+		"sprout":
+			return SPROUT * pow(SPROUT_STEP, n)
+	return 0.0
 
 # --- time ---
 
@@ -238,7 +418,7 @@ func _plant(grown: bool) -> void:
 	var r := _rng.randf()
 	var tier := maxi(0, top if r < MIX[0] else (top - 1 if r < MIX[1] else top - 2))
 	var pos := _spot()
-	var tree := {"id": _next_id, "tier": tier, "pos": pos, "hp": hp_of(tier),
+	var tree := {"id": _next_id, "tier": tier, "pos": pos, "hp": hp(tier),
 		"born": clock - GROW if grown else clock}
 	_next_id += 1
 	trees.append(tree)
@@ -290,11 +470,11 @@ func _chop(at: Vector2) -> void:
 		if tree.hp <= 0:
 			trees.erase(tree)
 			_due.append(spawn_time())
-			var give := give_of(tree.tier)
-			energy += give
-			wood_made += give
+			var gave := give(tree.tier)
+			energy += gave
+			wood_made += gave
 			felled += 1
-			events.append({"kind": "fell", "tree": tree, "give": give})
+			events.append({"kind": "fell", "tree": tree, "give": gave})
 	events.append({"kind": "swing", "at": at, "hits": hits})
 
 # --- keeping ---
@@ -302,8 +482,10 @@ func _chop(at: Vector2) -> void:
 ## Writes the grove to `path`, stamped `now` (unix seconds).
 func save(now: float) -> void:
 	var cfg := ConfigFile.new()
-	for tile: String in TILES:
-		cfg.set_value("lv", tile, int(lv[tile]))
+	for id: String in lv:
+		cfg.set_value("lv", id, int(lv[id]))
+	cfg.set_value("tree", "soft", Array(soft))
+	cfg.set_value("tree", "rich", Array(rich))
 	cfg.set_value("grove", "energy", energy)
 	cfg.set_value("grove", "wood_made", wood_made)
 	cfg.set_value("grove", "felled", felled)
@@ -324,9 +506,15 @@ static func load_saved(now: float) -> RefCounted:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK or not cfg.has_section_key("grove", "seen"):
 		return sim
-	for tile: String in TILES:
-		var level := maxi(0, int(cfg.get_value("lv", tile, 0)))
-		sim.lv[tile] = level if sim.last_level(tile) == 0 else mini(level, sim.last_level(tile))
+	for id: String in sim.lv:
+		var kept := maxi(0, int(cfg.get_value("lv", id, 0)))
+		sim.lv[id] = kept if sim.last_level(id) == 0 else mini(kept, sim.last_level(id))
+	# a kind's boughs: a level a tier, never past the kinds the trunk has
+	for part: String in ["soft", "rich"]:
+		var rows: Array = cfg.get_value("tree", part, [])
+		var into: Array[int] = sim.soft if part == "soft" else sim.rich
+		for tier in mini(rows.size(), int(sim.lv.seeds) + 1):
+			into.append(clampi(int(rows[tier]), 0, sim.last_level("%s:%d" % [part, tier])))
 	sim.energy = maxi(0, int(cfg.get_value("grove", "energy", 0)))
 	sim.wood_made = maxi(0, int(cfg.get_value("grove", "wood_made", 0)))
 	sim.felled = maxi(0, int(cfg.get_value("grove", "felled", 0)))
@@ -340,7 +528,7 @@ static func load_saved(now: float) -> RefCounted:
 		if not same_land or not stands(pos):
 			pos = sim._spot()
 		sim.trees.append({"id": sim._next_id, "tier": tier, "pos": pos,
-			"hp": clampf(float(row[3]), 0.5, float(hp_of(tier))), "born": -GROW})
+			"hp": clampf(float(row[3]), 0.5, sim.hp(tier)), "born": -GROW})
 		sim._next_id += 1
 	sim._due.clear()
 	var every: float = sim.spawn_time()

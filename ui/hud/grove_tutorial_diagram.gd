@@ -115,7 +115,7 @@ func _start() -> void:
 	_sim.events.clear()
 	var n := 0 if lesson == Lesson.WAIT else (1 if lesson == Lesson.GIFTS else 3)
 	for i in n:
-		_sim.trees.append({"id": i + 1, "tier": 0, "pos": SPOTS[i], "hp": Sim.hp_of(0), "born": -Sim.GROW})
+		_sim.trees.append({"id": i + 1, "tier": 0, "pos": SPOTS[i], "hp": _sim.hp(0), "born": -Sim.GROW})
 
 ## The pond takes the page, under the plates on the page that has them; the
 ## land is as wide as it lets it be and runs off the top and the bottom.
@@ -162,7 +162,7 @@ func _advance(delta: float) -> void:
 		if lesson == Lesson.WAIT:
 			if _sim.trees.size() < SPOTS.size() and _t >= 0.5 + _sim.trees.size() * 1.0:
 				_sim.trees.append({"id": _sim.trees.size() + 1, "tier": 0, "pos": SPOTS[_sim.trees.size()],
-					"hp": Sim.hp_of(0), "born": _sim.clock})
+					"hp": _sim.hp(0), "born": _sim.clock})
 			_sim.clock += dt
 		else:
 			_sim.step(dt, _holding(), _finger())
@@ -214,11 +214,11 @@ func _draw_stand() -> void:
 		return
 	_life.draw(_stand, _sim)
 	for tree: Dictionary in _sim.trees:
-		if float(tree.hp) < Sim.hp_of(0):
+		if float(tree.hp) < _sim.hp(0):
 			var w := 54.0 * _u
 			var bar := Rect2(_px(tree.pos) + Vector2(-w * 0.5, 12.0 * _u), Vector2(w, 12.0 * _u))
 			_stand.draw_rect(bar, Color(0.23, 0.19, 0.16, 0.35))
-			_stand.draw_rect(Rect2(bar.position, Vector2(w * float(tree.hp) / Sim.hp_of(0), bar.size.y)), Color("fff6e6"))
+			_stand.draw_rect(Rect2(bar.position, Vector2(w * float(tree.hp) / _sim.hp(0), bar.size.y)), Color("fff6e6"))
 	if _holding():
 		# a circle on the ground: flatter than it is wide from here
 		var r: float = _sim.reach() * _u

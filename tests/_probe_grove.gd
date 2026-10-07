@@ -4,7 +4,7 @@ extends SceneTree
 ## a bot at the real sim to say how slow the numbers are.
 ##
 ##     godot --headless --path . --script res://tests/_probe_grove.gd
-##     godot --headless --path . --script res://tests/_probe_grove.gd -- pace [visits a day] [seconds a visit] [days]
+##     godot --headless --path . --script res://tests/_probe_grove.gd -- pace [visits a day] [seconds a visit] [days] [ids never bought]
 ##     godot --headless --path . --script res://tests/_probe_grove.gd -- marathon [hours]
 ##
 ## The checks: Stock adds, pays all or nothing and keeps its file; a new
@@ -12,8 +12,9 @@ extends SceneTree
 ## energy; a tile costs what the table says and a capped one stops; a grove
 ## saved and read back is the same grove; time away fills the land and no
 ## further, and a clock set back grows nothing. `pace` plays days of short
-## visits with a player who always buys the cheapest tile it can, and prints
-## where that player stands; `marathon` plays without stopping. Everything
+## visits with a player who always buys the cheapest node it can (the shop's
+## or the tree's; the optional last argument is a comma list of ids or parts,
+## `soft,rich`, that it never buys), and prints where that player stands; `marathon` plays without stopping. Everything
 ## runs on throwaway files.
 
 const Sim = preload("res://valley/grove_sim.gd")
@@ -34,9 +35,10 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(Sim.path)
 	var args := OS.get_cmdline_user_args()
 	if args.has("pace"):
-		_pace(int(args[1]) if args.size() > 1 else 8, float(args[2]) if args.size() > 2 else 120.0, int(args[3]) if args.size() > 3 else 30)
+		_pace(int(args[1]) if args.size() > 1 else 8, float(args[2]) if args.size() > 2 else 120.0, int(args[3]) if args.size() > 3 else 30,
+			(args[4] as String).split(",") if args.size() > 4 else PackedStringArray())
 	elif args.has("marathon"):
-		_pace(1, (float(args[1]) if args.size() > 1 else 2.0) * 3600.0, 1)
+		_pace(1, (float(args[1]) if args.size() > 1 else 2.0) * 3600.0, 1, PackedStringArray())
 	else:
 		_check_stock(stock)
 		_check_sim()
@@ -86,8 +88,8 @@ func _check_sim() -> void:
 	_ok("four chops fell the first tree (%d)" % swings, swings == 4)
 	_ok("it gives one wood and one energy", fell == 1 and sim.energy == 1 and sim.wood_made == 1)
 	_ok("a chop off the land hits nothing", _swing_hits(sim, Vector2(-500, -500)) == 0)
-	for tile: String in Sim.TILES:
-		var row: Array = Sim.TILE[tile]
+	for tile: String in Sim.NODE:
+		var row: Array = Sim.NODE[tile]
 		_ok("%s starts at its first price" % tile, sim.cost(tile) == int(round(float(row[0]))))
 	_ok("a tile is not bought on credit", not sim.buy("axe") and int(sim.lv.axe) == 0)
 	sim.energy = 10
@@ -186,6 +188,59 @@ func _check_sim() -> void:
 		var s: RefCounted = Sim.new()
 		spots["%d,%d" % [int(s.trees[0].pos.x), int(s.trees[0].pos.y)]] = true
 	_ok("trees come up at random spots (%d of 30)" % spots.size(), spots.size() > 20)
+	_check_tree()
+
+## The tree: nodes, the trunk and the boughs, and what is kept.
+func _check_tree() -> void:
+	# a grove kept with Sprout, Room and Seeds keeps them, and its trunk
+	var old: RefCounted = Sim.new(21)
+	old.lv.sprout = 9
+	old.lv.room = 12
+	old.lv.seeds = 3
+	old.save(2000.0)
+	var kept: RefCounted = Sim.load_saved(2000.0)
+	_ok("a kept sprout 9, room 12 and seeds 3 come back", int(kept.lv.sprout) == 9 and int(kept.lv.room) == 12 and int(kept.lv.seeds) == 3)
+	var wanted := ["kind:0", "kind:1", "kind:2", "kind:3", "kind:4"]
+	var drawn: Array[String] = kept.shown()
+	var all := true
+	for id in wanted:
+		all = all and drawn.has(id)
+	_ok("and its trunk is drawn from kind:0 to kind:4, no further", all and not drawn.has("kind:5") and not drawn.has("axe"))
+	var fresh: RefCounted = Sim.new(22)
+	_ok("Sprout is not open on a new grove", not fresh.is_open("sprout") and fresh.is_open("room"))
+	fresh.energy = 100
+	fresh.buy("room")
+	_ok("and is once Room has a level", fresh.is_open("sprout"))
+	_ok("a kept Sprout stays open whatever Room is", kept.is_open("sprout"))
+	# the boughs
+	var soft: RefCounted = Sim.new(23)
+	soft.energy = 10
+	_ok("the Sapling's Soft bough costs half its price", soft.cost("soft:0") == 10 and soft.buy("soft:0"))
+	_ok("and a sapling is three chops of one", is_equal_approx(soft.hp(0), 3.0) and is_equal_approx(float(soft.trees[0].hp), 3.0))
+	var rich: RefCounted = Sim.new(24)
+	rich.lv.seeds = 1
+	rich.energy = 1000
+	_ok("a birch gives 2, 3, then 4 with its Rich bough", rich.give(1) == 2 and rich.buy("rich:1") and rich.give(1) == 3 and rich.buy("rich:1") and rich.give(1) == 4 and not rich.can_buy("rich:1"))
+	var chosen: RefCounted = Sim.new(25)
+	chosen.energy = 1000
+	_ok("the Sapling's Rich bough is one level and doubles it", chosen.buy("rich:0") and chosen.give(0) == 2 and chosen.is_done("rich:0"))
+	var dear: RefCounted = Sim.new(26)
+	_ok("an Oak's Soft bough costs half of 840", dear.cost("soft:2") == int(round(0.5 * 840.0)))
+	# the trunk is bought in order
+	var trunk: RefCounted = Sim.new(27)
+	trunk.energy = 1 << 40
+	_ok("kind:2 cannot be bought before kind:1", not trunk.buy("kind:2") and trunk.buy("kind:1") and int(trunk.lv.seeds) == 1 and trunk.is_done("kind:1") and trunk.is_done("kind:0"))
+	_ok("and `seeds` is the next kind", trunk.cost("seeds") == 840 and trunk.buy("seeds") and int(trunk.lv.seeds) == 2)
+	_ok("a Soft bough is open once its kind is", not trunk.is_open("soft:3") and trunk.is_open("soft:2") and trunk.is_open("soft:0"))
+	# the boughs are kept
+	trunk.buy("soft:1")
+	trunk.buy("soft:1")
+	trunk.buy("rich:2")
+	trunk.buy("jetty")
+	trunk.save(3000.0)
+	var back: RefCounted = Sim.load_saved(3000.0)
+	_ok("the boughs and every node are kept", back.level("soft:1") == 2 and back.level("rich:2") == 1 and back.level("jetty") == 1 and back.level("soft:2") == 0 and is_equal_approx(back.hp(1), 5.0))
+
 
 func _swing_hits(sim: RefCounted, at: Vector2) -> int:
 	var hits := -1
@@ -201,13 +256,14 @@ func _swing_hits(sim: RefCounted, at: Vector2) -> int:
 
 ## Days of `visits` short visits, `secs` each, evenly through sixteen waking
 ## hours, by a player who holds the circle on the oldest tree and buys the
-## cheapest tile it can afford.
-func _pace(visits: int, secs: float, days: int) -> void:
+## cheapest node it can afford, in the shop or the tree, except any whose id
+## or part (`soft` of `soft:2`) is in `never`.
+func _pace(visits: int, secs: float, days: int, never: PackedStringArray) -> void:
 	var sim: RefCounted = Sim.new(1)
 	var gap := 16.0 * 3600.0 / visits
 	var played := 0.0
 	var seeds_at := []
-	print("pace: %d visits a day of %d s, %d days" % [visits, int(secs), days])
+	print("pace: %d visits a day of %d s, %d days%s" % [visits, int(secs), days, ", never " + ",".join(never) if never.size() > 0 else ""])
 	for day in days:
 		for v in visits:
 			sim.catch_up(gap if v > 0 else 8.0 * 3600.0)
@@ -227,18 +283,33 @@ func _pace(visits: int, secs: float, days: int) -> void:
 				sim.events.clear()
 				while true:
 					var best := ""
-					for tile: String in Sim.TILES:
-						if sim.can_buy(tile) and (best == "" or sim.cost(tile) < sim.cost(best)):
-							best = tile
+					var ids: Array[String] = sim.shown()
+					ids.append_array(Sim.SHOP)
+					for id: String in ids:
+						if never.has(id) or never.has(Sim.part_of(id)):
+							continue
+						if sim.can_buy(id) and (best == "" or sim.cost(id) < sim.cost(best)):
+							best = id
 					if best == "":
 						break
 					sim.buy(best)
-					if best == "seeds":
+					if Sim.part_of(best) == "kind":
 						seeds_at.append("seeds %d on day %d (%.1f h played)" % [int(sim.lv.seeds), day + 1, (played + t) / 3600.0])
 			played += secs
 		if (day + 1) in [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90] or day == days - 1:
-			print("day %d: axe %d reach %d swing %d sprout %d room %d seeds %d | wood %d energy %d | %.1f h played" % [day + 1,
+			var boughs := 0
+			for tier in sim.soft.size():
+				boughs += sim.soft[tier]
+			var rich := 0
+			for tier in sim.rich.size():
+				rich += sim.rich[tier]
+			var rest_of := ""
+			for root: String in Sim.ROOT_ORDER:
+				for id: String in Sim.ROOTS[root]:
+					if id != "room" and id != "sprout" and sim.level(id) > 0:
+						rest_of += " %s %d" % [id, sim.level(id)]
+			print("day %d: axe %d reach %d swing %d sprout %d room %d seeds %d | soft %d rich %d |%s | wood %d energy %d | %.1f h played" % [day + 1,
 				int(sim.lv.axe), int(sim.lv.reach), int(sim.lv.swing), int(sim.lv.sprout), int(sim.lv.room), int(sim.lv.seeds),
-				sim.wood_made, sim.energy, played / 3600.0])
+				boughs, rich, rest_of if rest_of != "" else " -", sim.wood_made, sim.energy, played / 3600.0])
 	for line: String in seeds_at:
 		print(line)
