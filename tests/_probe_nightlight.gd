@@ -780,24 +780,33 @@ func _check_worlds() -> void:
 	_run(twin, 20.0)
 	_ok("gas three Hill radii from a planet that holds nothing moves as it does without the planet", g1.pos.distance_to(g0.pos) < 0.001)
 	_ok("while a grain in the same place is turned by it", s1.pos.distance_to(s0.pos) > 1.0)
-	# a ring beside a relic at its birth distance keeps its puffs
+	# a ring beside a relic at its birth distance keeps its puffs: measured
+	# against the same ring with no relic, so what its own cores gulp is not
+	# charged to the relic
 	for case: Array in [[1.2, false, "a dwarf"], [25.0, true, "a hole"]]:
-		var dead := _quiet(19)
-		dead.mass = Sim.START * float(case[0])
-		if case[1]:
-			dead.made[5] = Sim.IRON * Sim.START
-		else:
-			dead.cold = Sim.GRACE
-		dead.end()
-		var before: int = dead.gas_count()
-		_run(dead, 600.0)
-		var left := 0
-		for p: Sim.Body in dead.bodies:
-			if p.kind == Sim.Kind.GAS and p.pos.length() > dead.haze_r():
-				left += 1
-		var need := int(float(before - Sim.RING_FALLING) * 0.9)
-		print("  a ring beside %s: %d gas puffs of %d are still outside the disc after ten minutes (need %d)" % [case[2], left, before, need])
-		_ok("a ring beside %s keeps nine in ten of its gas outside the disc for ten minutes" % case[2], left >= need)
+		var kept_gas: Array[int] = []
+		var before := 0
+		for with_relic: bool in [true, false]:
+			var dead := _quiet(19)
+			dead.mass = Sim.START * float(case[0])
+			if case[1]:
+				dead.made[5] = Sim.IRON * Sim.START
+			else:
+				dead.cold = Sim.GRACE
+			dead.end()
+			if not with_relic:
+				dead.relics.clear()
+			before = dead.gas_count()
+			_run(dead, 600.0)
+			var left := 0
+			for p: Sim.Body in dead.bodies:
+				if p.kind == Sim.Kind.GAS and p.pos.length() > dead.haze_r():
+					left += 1
+			kept_gas.append(left)
+		var floor_n := int(float(before - Sim.RING_FALLING) * 0.8)
+		print("  a ring beside %s: %d gas puffs at the start, %d outside the disc after ten minutes with the relic, %d without (floor %d)" % [case[2], before, kept_gas[0], kept_gas[1], floor_n])
+		_ok("a ring beside %s keeps 0.95 of what the same ring keeps with no relic (%d of %d)" % [case[2], kept_gas[0], kept_gas[1]], float(kept_gas[0]) >= 0.95 * float(kept_gas[1]))
+		_ok("and at least 0.8 of its gas outside the disc (%d of %d)" % [kept_gas[0], before], kept_gas[0] >= floor_n)
 	# Wind leans the ring in; it does not empty it
 	var wind := _quiet(20)
 	wind.power.wind = 1
