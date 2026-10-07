@@ -20,7 +20,10 @@ extends SceneTree
 ## with a full raft on its way out, 8 the shop's card open and an Axe just
 ## bought, 9-11 and 13 the tutorial's four pages (10b the pile carried off,
 ## 13a the circle gathering, 13 a bundle tied and the raft in, 13b the raft
-## out with it, 13c the plate when it lands), 12 the tab again. Before 7w,
+## out with it, 13c the plate when it lands), then the worst land (WORST,
+## 2026-10-07): w1 a late land of 68 stacks, every skill bought, under the
+## circle with a gather's logs in the air, w2 the Skills card open over it
+## with a living Soft bough chosen; 12 the tab again, on that land. Before 7w,
 ## the four skills and the kinds gone from the land (SKILLS, 2026-10-07): s1
 ## the Skills card on a grove whose trunk has reached the Blossom, the
 ## Sapling's and the Birch's nodes faded and a faded bough chosen (s1b the
@@ -31,13 +34,15 @@ extends SceneTree
 ## next one felling it), s5 a lucky pile just landed under its "x2" (s5b with
 ## its motes gone), s6 a crate bobbing in on the water (s6b thrown up, s6c
 ## ashore, s6d ashore a second and a half on: what the wind must not move),
-## s7 the crate opened (s7b its motes hanging). The late grove has every
-## skill bought, so 7 is the land at its busiest. Prints at
+## s7 the crate opened (s7b its motes hanging), s8 the Skills card with a
+## Soft bough chosen at a weak axe. The late grove has every skill bought, so
+## 7 is that land at its busiest and w1 the worst a land gets. Prints at
 ## each shot the draw calls, the stacks lying and what the jetty holds, and
 ## the frames since the last shot with their mean and longest gap. The
-## inventory, the grove and the wallet are throwaway files; the field's own
-## mouse filter is set to ignore, so the real pointer over the window cannot
-## carry the circle off.
+## inventory, the grove, the wallet and the progress file (the tutorial's
+## Continue marks it seen) are throwaway files; the field's own mouse filter
+## is set to ignore, so the real pointer over the window cannot carry the
+## circle off.
 
 const Sim = preload("res://valley/grove_sim.gd")
 
@@ -81,7 +86,29 @@ const SKILLS := [
 	[10.00, "shot", "s6d_crate_ashore_later"],
 	[10.05, "hold_crate"], [10.17, "shot", "s7_crate_opened"], [10.55, "shot", "s7b_crate_motes"], [10.65, "let_go"],
 	[11.80, "calm"],
+	[11.85, "skills"], [12.10, "pick", "soft:1"], [12.55, "shot", "s8_soft"], [12.60, "skills_x"],
 ]
+
+## The worst land's beats, counted the same way and put in before STEPS'
+## "leave": the tutorial's card let go, a late land with as many stacks as a
+## played land was seen to hold, the circle on it, then the Skills card over
+## it. The tab's last shot is of this land.
+const WORST := [
+	[0.00, "tutor_x"], [0.30, "worst"], [0.50, "hold_mid"], [0.85, "shot", "w1_worst_land"], [1.30, "let_go"],
+	[1.35, "skills"], [1.60, "pick", "soft:9"], [2.05, "shot", "w2_worst_skills"], [2.10, "skills_x"],
+]
+## The beats put in before a step of STEPS, by that step's name.
+const PUT_IN := {"late": SKILLS, "leave": WORST}
+## The most stacks a played land was seen to hold (the final review's fuzz),
+## and the piles the fewest of them holds here: more than the jetty has room
+## for, so no gather takes a stack off the land.
+const MOST_STACKS := 68
+const STACK_LEAST := 100
+## A late grove's levels: the shop far along, the chain and the four skills
+## bought out.
+const LATE := {"axe": 60, "reach": 10, "swing": 12, "sprout": 16, "room": 27, "seeds": 9,
+	"raft": 15, "jetty": 20, "bundle": 7, "tying": 15, "load": 3,
+	"beaver": 5, "teeth": 5, "crit": 10, "critsize": 6, "luck": 10, "crate": 10, "cratesize": 10}
 
 ## Where the jetty's beats lay their stacks, in land units, each with its
 ## piles: every way a stack is drawn, the last a lucky one.
@@ -106,18 +133,19 @@ var _gap_max := 0.0
 ## shot's own saving can put a poke and the next shot in one frame, and a
 ## frame poked is drawn on the one after.
 var _since_poke := 10
-## STEPS with SKILLS put in.
+## STEPS with SKILLS and WORST put in.
 var _steps: Array = []
 
 func _initialize() -> void:
 	var shift := 0.0
 	for step: Array in STEPS:
-		if String(step[1]) == "late":
-			for beat: Array in SKILLS:
-				var put := beat.duplicate()
-				put[0] = float(step[0]) + float(beat[0])
-				_steps.append(put)
-			shift = float(SKILLS[-1][0]) + 0.1
+		var beats: Array = PUT_IN.get(String(step[1]), [])
+		for beat: Array in beats:
+			var put: Array = beat.duplicate()
+			put[0] = float(step[0]) + shift + float(beat[0])
+			_steps.append(put)
+		if not beats.is_empty():
+			shift += float(beats[-1][0]) + 0.1
 		var moved := step.duplicate()
 		moved[0] = float(step[0]) + shift
 		_steps.append(moved)
@@ -137,6 +165,11 @@ func _initialize() -> void:
 	Sim.path = dir + "/_shot_grove.cfg"
 	DirAccess.remove_absolute(Sim.path)
 	_tmp.append(Sim.path)
+	# before the menu is built: it reads the day from this file, and the
+	# tutorial's Continue writes that it was seen
+	Progress.path = dir + "/_shot_progress.cfg"
+	DirAccess.remove_absolute(Progress.path)
+	_tmp.append(Progress.path)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	main.set_script(load("res://tests/_offline_main.gd"))
 	root.add_child(main)
@@ -146,6 +179,7 @@ func _finish() -> void:
 	root.get_node("Stock").flush()
 	for p: String in _tmp:
 		DirAccess.remove_absolute(p)
+	Progress.path = "user://progress.cfg"
 	print("throwaway files removed")
 
 ## A finger, as a phone sends it: the project has mouse-from-touch off, and
@@ -192,6 +226,44 @@ func _jetty(loose: int, waiting: int, out := -1.0, aboard := 0, back := false) -
 		sim.raft = {"n": 0 if back else aboard * size, "wood": 0 if back else aboard * size * worth, "bundles": 0 if back else aboard,
 			"t": sim.raft_time() - t if back else t, "away": true}
 	print("jetty set: %d of %d held, %d lying in %d stacks, raft at %.2f" % [sim.jetty_held(), sim.jetty_room(), sim.lying(), sim.logs.size(), sim.raft_at()])
+
+## `want` stacks on the land, each of STACK_LEAST piles or more of the best
+## kind and one in four a lucky one, through the sim's own `_drop`. They are
+## laid in rows, the widest apart that still gives `want`: piles dropped at
+## random jam a land short of it (62 on the seed tried), and rows no nearer
+## than stacks may be would hold 98. Rows too many by a few lose their front.
+func _litter(want: int) -> void:
+	var sim: RefCounted = _s.sim
+	var top := int(sim.lv.seeds)
+	sim.logs.clear()
+	var spots: Array[Vector2] = []
+	var pitch := 100.0
+	while pitch > Sim.MERGE + 0.5:
+		spots = _rows(pitch)
+		if spots.size() >= want:
+			break
+		pitch -= 0.5
+	spots.resize(mini(spots.size(), want))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for i in spots.size():
+		var n := rng.randi_range(STACK_LEAST, 4000)
+		sim._drop(spots[i], top, n * sim.give(top), i % 4 == 0, n).born = sim.clock - Sim.LIES
+	print("littered: %d stacks in rows %.1f apart, %d piles lying" % [sim.logs.size(), pitch, sim.lying()])
+
+## The places a tree can stand on rows `pitch` apart, every other row half a
+## step across, from the back of the land to its front.
+func _rows(pitch: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var mid := Sim.LAND * 0.5
+	var deep := pitch * sqrt(3.0) * 0.5
+	var most := int(Sim.HALF / deep) + 1
+	for j in range(-most, most + 1):
+		for i in range(-most, most + 1):
+			var at := mid + Vector2((i + (0.5 if posmod(j, 2) == 1 else 0.0)) * pitch, j * deep)
+			if Sim.stands(at):
+				out.append(at)
+	return out
 
 ## A land with none of the four skills on it, its trees grown again at the
 ## levels given, nothing lying and no crate: what each skill's beat starts
@@ -261,9 +333,7 @@ func _process(delta: float) -> bool:
 				# the chain bought out too, and the land littered as a land
 				# chopped faster than its raft carries is: a stack wherever one
 				# fits, most of them hundreds of piles
-				_preset({"axe": 60, "reach": 10, "swing": 12, "sprout": 16, "room": 27, "seeds": 9,
-					"raft": 15, "jetty": 20, "bundle": 7, "tying": 15, "load": 3,
-					"beaver": 5, "teeth": 5, "crit": 10, "critsize": 6, "luck": 10, "crate": 10, "cratesize": 10}, 9876543210)
+				_preset(LATE, 9876543210)
 				var sim: RefCounted = _s.sim
 				sim.logs.clear()
 				var rng := RandomNumberGenerator.new()
@@ -384,8 +454,17 @@ func _process(delta: float) -> bool:
 				_s.tutor.show()
 			"page":
 				_s.get_node("HowToPlay")._show_page(int(step[2]))
-			"leave":
+			"tutor_x":
 				_s.get_node("HowToPlay")._continue()
+			"worst":
+				# the late land with every stack it can come to hold, a full
+				# raft on its way out, bundles waiting and room on the jetty
+				# for one more gather
+				_preset(LATE, 9876543210)
+				_litter(MOST_STACKS)
+				_jetty(9, 4, 0.5, 4)
+				_s._motes.clear()
+			"leave":
 				_s.go_back()
 			"quit":
 				print("back on tab: %s, grove gone: %s" % [_menu._tab, _menu.get_node_or_null("Grove") == null or _menu.get_node("Grove").is_queued_for_deletion()])
