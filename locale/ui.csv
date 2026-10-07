@@ -1055,7 +1055,7 @@ NL_FUEL,Fuel,Combustível,Combustible
 NL_FUEL_OUT,Empty,Vazio,Vacío
 NL_ROCK,Rock,Rocha,Roca
 NL_LIGHT,Light,Luz,Luz
-NL_HINT,Hold Gas to feed the star,Segure Gás para alimentar a estrela,Mantén Gas para alimentar la estrella
+NL_HINT,Press the gas to slow it,Toque no gás para freá-lo,Toca el gas para frenarlo
 NL_PERKS,Perks,Vantagens,Ventajas
 NL_PERKS_BODY,"A star's end pays stardust, a supernova the most. A perk is drawn at random and stays for good.","O fim de uma estrela rende poeira estelar, e uma supernova rende mais. A vantagem é sorteada e fica para sempre.","El final de una estrella da polvo estelar, y una supernova da más. La ventaja se sortea y queda para siempre."
 NL_PERK_BUY_ONE,A new perk · 1,Nova vantagem · 1,Nueva ventaja · 1
@@ -1075,9 +1075,7 @@ NL_PERK_CROWD,Crowded sky,Céu cheio,Cielo lleno
 NL_PERK_CROWD_FX,bodies pass 15% sooner,corpos passam 15% mais cedo,pasan cuerpos 15% antes
 NL_PERK_EMBER,Ember,Brasa,Brasa
 NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o dobro,la estrella nueva empieza con el doble
-NL_VOLLEY,Volley,Salva,Salva
 NL_STREAM,Flow,Fluxo,Flujo
-NL_FX_VOLLEY,"%d at a time, then %d","%d por vez, depois %d","%d a la vez, luego %d"
 NL_FX_STREAM,"slows every %s s, then %s s","freia a cada %s s, depois %s s","frena cada %s s, luego %s s"
 NL_DONE,as pure as it gets,o mais puro possível,lo más puro posible
 NL_MAX,Max,Máx,Máx
@@ -1102,12 +1100,9 @@ NL_POW_FUSION,Fusion,Fusão,Fusión
 NL_POW_FUSION_FX,The star's own burning makes much more light.,A queima da própria estrela faz muito mais luz.,La combustión de la estrella da mucha más luz.
 NL_POW_THRIFT,Slow burn,Queima lenta,Combustión lenta
 NL_POW_THRIFT_FX,The star and its powers burn 30% less hydrogen.,A estrela e seus poderes queimam 30% menos hidrogênio.,La estrella y sus poderes queman 30% menos hidrógeno.
-NL_GAS,Gas,Gás,Gas
-NL_PUFF,Puff,Sopro,Soplo
 NL_PURE,Pure gas,Gás puro,Gas puro
 NL_REACH,Reach,Alcance,Alcance
 NL_RICH,Rich sky,Céu farto,Cielo rico
-NL_FX_PUFF,"weight ×%s, then ×%s","peso ×%s, depois ×%s","peso ×%s, luego ×%s"
 NL_FX_REACH,"reach ×%s, then ×%s","alcance ×%s, depois ×%s","alcance ×%s, luego ×%s"
 NL_FX_RICH,"gas ×%s, then ×%s","gás ×%s, depois ×%s","gas ×%s, luego ×%s"
 NL_FX_PURE,"%d%% hydrogen, then %d%%","%d%% de hidrogênio, depois %d%%","%d%% de hidrógeno, luego %d%%"
@@ -1129,8 +1124,8 @@ NL_END_NEBULA,The star lets its layers go · a white dwarf is left,A estrela sol
 NL_END_NOVA_NS,Supernova · a neutron star is left,Supernova · fica uma estrela de nêutrons,Supernova · queda una estrella de neutrones
 NL_END_NOVA_BH,Supernova · a black hole is left,Supernova · fica um buraco negro,Supernova · queda un agujero negro
 NL_END_FADE,"Nothing left to burn · the star fades, a white dwarf is left","Nada mais a queimar · a estrela se apaga, fica uma anã branca","Nada que quemar · la estrella se apaga, queda una enana blanca"
-TUT_NL_GAS,Feed the star,Alimente a estrela,Alimenta la estrella
-TUT_NL_GAS_BODY,"Tap Gas for a puff, or hold it for a stream. The gas joins the disc round the star and winds in, faster and faster, and pays light all the way down. Light buys upgrades in the shop.","Toque em Gás para um sopro, ou segure para um fluxo. O gás entra no disco em volta da estrela e desce girando, cada vez mais rápido, rendendo luz por todo o caminho. A luz compra melhorias na loja.","Toca Gas para un soplo, o mantenlo para un flujo. El gas entra en el disco alrededor de la estrella y baja girando, cada vez más rápido, dando luz todo el camino. La luz compra mejoras en la tienda."
+TUT_NL_GAS,Slow the gas,Freie o gás,Frena el gas
+TUT_NL_GAS_BODY,"Gas circles the star and never falls by itself. Press it to slow it: it drops into the disc, winds in and feeds the star. Hold to keep slowing it.","O gás gira em volta da estrela e nunca cai sozinho. Toque nele para freá-lo: ele desce até o disco, entra girando e alimenta a estrela. Segure para continuar freando.","El gas gira alrededor de la estrella y nunca cae solo. Tócalo para frenarlo: baja hasta el disco, entra girando y alimenta la estrella. Mantén para seguir frenando."
 TUT_NL_WORLDS,Gas makes worlds,O gás faz mundos,El gas hace mundos
 TUT_NL_WORLDS_BODY,"Dust in the gas sticks into grains, grains gather into rocks and planets, and a heavy planet keeps the gas too. Far from the star they are ice, and ice near the star grows a tail. The bigger a body, the longer it stays. Too close, the star's pull tears it apart.","A poeira do gás gruda em grãos, os grãos se juntam em rochas e planetas, e um planeta pesado também segura o gás. Longe da estrela eles são de gelo, e gelo perto da estrela ganha cauda. Quanto maior o corpo, mais tempo ele fica. Perto demais, a atração da estrela o despedaça.","El polvo del gas se pega en granos, los granos se juntan en rocas y planetas, y un planeta pesado también retiene el gas. Lejos de la estrella son de hielo, y el hielo cerca de la estrella echa cola. Cuanto mayor el cuerpo, más tiempo se queda. Demasiado cerca, la atracción de la estrella lo despedaza."
 TUT_NL_BURN,The star burns its way up,A estrela queima degrau por degrau,La estrella quema escalón a escalón

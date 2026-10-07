@@ -7,7 +7,8 @@ extends Control
 ##
 ## The owner sets `sim`, calls `refresh` once a frame after stepping it, and
 ## tells it what the sim's events were (`ate`, `formed`, `met`, `tore`,
-## `lit_up`). Five layers and about ten draws whatever the sky holds: the
+## `lit_up`) and where a finger pressed (`set_down`; `unworld` turns the
+## finger's place into the sim's). Five layers and about ten draws whatever the sky holds: the
 ## gas is one MultiMesh of soft lights, the solids three lit by one shader,
 ## every warm light one more, the star one square under its own shader.
 ##
@@ -81,6 +82,10 @@ const PULLED := 0.4
 const REACH := 4.5
 ## Seconds a puff of light lasts where two bodies met.
 const PUFF := 0.4
+## Seconds the light of a press lasts where the finger came down, and the
+## most of them at once.
+const DOWN := 0.5
+const DOWNS := 12
 ## A tail is this long at the frost line and TAIL_NEAR at the Roche radius,
 ## in the design's pixels.
 const TAIL_FAR := 10.0
@@ -144,6 +149,7 @@ var _sky: ArrayMesh
 var _sky_for := Vector3.ZERO
 var _corners: ArrayMesh
 var _puffs: Array = []               # {at, t, s}: the sim's units
+var _downs: Array = []               # {at, t, r}: the sim's units
 var _body_mat: ShaderMaterial
 var _star_mat: ShaderMaterial
 var _light_l: Control
@@ -270,6 +276,11 @@ func world(p: Vector2) -> Vector2:
 func px(p: Vector2) -> Vector2:
 	return world(p)
 
+## This control's pixels back to the sim's.
+func unworld(at: Vector2) -> Vector2:
+	var k: float = sim.zoom() * view * u
+	return (at - centre - shift) / k if k > 0.0 else Vector2.ZERO
+
 ## The star as it is drawn, in pixels.
 func star_px() -> float:
 	return sim.seen_r() * view * u
@@ -300,6 +311,12 @@ func lit_up() -> void:
 		_pulse = 1.5
 	_bloom = 1.0
 
+## A finger came down at `at` and braked what was within `r` of it (both in
+## the sim's units): a soft round light as wide as the press, for a moment.
+func set_down(at: Vector2, r: float) -> void:
+	if _downs.size() < DOWNS:
+		_downs.append({"at": at, "t": 0.0, "r": r})
+
 func _puff(at: Vector2, s: float) -> void:
 	if not Motion.reduce and _puffs.size() < 30:
 		_puffs.append({"at": at, "t": 0.0, "s": s})
@@ -322,6 +339,7 @@ func begin_end(how: String, shares: Array, remnant: int) -> void:
 		_layer_shells(rng, shares, shells, shares.size() - (2 if how == "nova" else 1))
 	_end = {"how": how, "t": 0.0, "col": Art.burning_col(sim), "r": star_px(), "zoom": sim.zoom(), "shells": shells, "swapped": false, "remnant": remnant}
 	_puffs.clear()
+	_downs.clear()
 
 ## A shell for each of the first `last` layers, in nine fingers, the
 ## outermost first and furthest.
@@ -367,6 +385,7 @@ func begin_birth() -> void:
 	_rise = 0.0
 	_pulse = 0.0
 	_puffs.clear()
+	_downs.clear()
 
 func ending() -> bool:
 	return not _end.is_empty()
@@ -473,6 +492,7 @@ func started() -> void:
 	_pulse = 0.0
 	_bloom = 0.0
 	_puffs.clear()
+	_downs.clear()
 
 # --- a frame ---
 
@@ -487,6 +507,9 @@ func refresh(delta: float) -> void:
 	for p: Dictionary in _puffs:
 		p.t += delta
 	_puffs = _puffs.filter(func(p: Dictionary) -> bool: return p.t < PUFF)
+	for d: Dictionary in _downs:
+		d.t += delta
+	_downs = _downs.filter(func(d: Dictionary) -> bool: return d.t < DOWN)
 	_camera()
 	_fill()
 	var want := Vector3(size.x, size.y, sim.novas)
@@ -576,6 +599,12 @@ func _fill() -> void:
 		var k: float = p.t / PUFF
 		var s := (30.0 + 60.0 * k) * float(p.s) * view * u / Art.R
 		_warms.put(world(p.at as Vector2), 0.0, s, s, Color(1.0, 0.89, 0.75, 0.5 * (1.0 - k)))
+	# a press: one soft light the press's own size, no edge to it, opening a
+	# little as it goes (it stands still under reduce motion)
+	for d: Dictionary in _downs:
+		var k: float = d.t / DOWN
+		var s := float(d.r) * z / Art.R * (1.0 if Motion.reduce else lerpf(0.7, 1.0, k))
+		_warms.put(world(d.at as Vector2), 0.0, s, s, Color(1.0, 0.89, 0.75, 0.35 * (1.0 - k)))
 	_fill_end()
 	for batch in batches:
 		batch.send()

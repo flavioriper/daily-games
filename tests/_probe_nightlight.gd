@@ -264,7 +264,7 @@ func _check_rules() -> void:
 	sim.light = 1000.0
 	var first: int = sim.cost("rich")
 	_ok("the first rich-sky tile costs twelve", first == 12 and sim.buy("rich") and is_equal_approx(sim.light, 988.0))
-	_ok("the finger brakes as often as the Flow tile lets it", is_equal_approx(sim.flow_gap(), Sim.FLOW) and sim.stream_gap() == sim.flow_gap())
+	_ok("the finger brakes as often as the Flow tile lets it", is_equal_approx(sim.flow_gap(), Sim.FLOW))
 	sim.lv.flow = 3
 	_ok("and a level of it brakes sooner", is_equal_approx(sim.flow_gap(), Sim.FLOW * pow(Sim.FLOW_STEP, 3.0)))
 	sim.lv.pure = 6

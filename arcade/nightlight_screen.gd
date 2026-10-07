@@ -3,12 +3,14 @@ extends Control
 ## Nightlight: the seventh game on the Arcade tab, and the one that is kept.
 ## A star in the middle of a night sky, after a real one (the user,
 ## 2026-10-06: "I want something that is closer to the star lifecycle"). The
-## player never touches the sky: one button at the foot lets gas go into the
-## disc round the star, a puff a press or a stream while it is held ("let's
-## add buttons near bottom to user click or hold"). The gas winds in and
-## feeds the star, and on its way round makes grains, rocks and planets that
-## stay; bodies cross the sky on their own and the heavier the star the more
-## of them it bends in. Mass grows the star, counted in Suns (a new star is
+## star is born in a ring of gas that circles it outside its disc and never
+## falls by itself, and the player's hand is on the sky: a press brakes what
+## is under the finger, held it keeps braking (2026-10-07: "user can click
+## into regions to slow it down and make it fall"), and what was braked
+## drops into the disc. The gas winds in and feeds the star, and on its way
+## round makes grains, rocks and planets that stay; bodies cross the sky on
+## their own and the heavier the star the more of them it bends in. Mass
+## grows the star, counted in Suns (a new star is
 ## one). It burns hydrogen into helium and, as its core grows, on up the
 ## chain to iron, which ends it as a supernova without being asked; a star
 ## left with nothing to burn lets its layers go instead. Light, which the
@@ -72,23 +74,31 @@ const FILL := Color("fcf7ef")
 ## The star stands a little above the field's middle.
 const STAR_AT := 0.47
 ## Light is motes, the other games' energy in gold: `ORBS` to one light.
+## What the disc drags out of a body comes a piece at a time, a mote each;
+## a solid the star eats pays all it still owes at once (a planet about one
+## light, twenty pieces' worth), and that is a mote for each orb of it,
+## SHED_ORBS at most: a handful of lights, all of it counted on the plate
+## whatever is drawn.
 const ORBS := 4
+const SHED_ORBS := 12
 const SAVE_GAP := 5.0
-## A puff let go is a piece set down; a tile bought and a stage lit are
-## something finished; a tile that cannot be bought is a not yet; the
-## supernova is the heaviest thing here, and a star letting go a soft one.
+## A press that braked something is a piece set down; a tile bought and a
+## stage lit are something finished; a tile that cannot be bought is a not
+## yet; the supernova is the heaviest thing here, and a star letting go a
+## soft one.
 ##
 ## The sounds (assets/sfx/nightlight, tools/gen_sfx.py nightlight; the user,
 ## 2026-10-06: "generate and wire the cozy sounds to the nightlight"). What
 ## goes on for as long as the game does is a click and plays through
 ## `_quiet`, which knocks for nothing: a mote of light landing (`light`, a
 ## short run up) and a solid falling into the star (`eat`, lower and louder
-## the bigger it was, one in EAT_GAP at most). A puff is `pour`, as often as
-## it is felt. The rest happens now and then: `tear` (one in TEAR_GAP: a
-## torn body's pieces are torn again), `ignite`, `dim`, `wake`, `pick` as
-## the two powers come up, `perk`, `buy`, `no`, `nova`, `fade`, and `born`
-## as the small star comes up after an end or a Start over. A grain forming,
-## two bodies meeting and gas eaten are silent: several a second.
+## the bigger it was, one in EAT_GAP at most). A press that braked something
+## is `pour`, as often as it is felt. The rest happens now and then: `tear`
+## (one in TEAR_GAP: a torn body's pieces are torn again), `ignite`, `dim`,
+## `wake`, `pick` as the two powers come up, `perk`, `buy`, `no`, `nova`,
+## `fade`, and `born` as the small star comes up after an end or a Start
+## over. A grain forming, two bodies meeting and gas eaten are silent:
+## several a second.
 const EAT_GAP := 0.12
 const TEAR_GAP := 0.3
 ## The supernova's take is a breath and then the thump: it is started this
@@ -108,20 +118,27 @@ const GOALS := {"he": "NL_GOAL_HE", "c": "NL_GOAL_C", "fe": "NL_GOAL_FE"}
 ## Seconds a line stays over the sky, the last NOTE_OUT of them going.
 const NOTE := 5.0
 const NOTE_OUT := 0.6
-const GAS_W := 270.0
 ## The light's plate, beside the shop that spends it.
 const LIGHT_W := 220.0
 ## What the star is made of: its bar's height.
 const MADE_H := 14.0
 ## A pick's tile, and the seconds the star has grown past a pick before the
-## card comes up over a throw.
+## card comes up. It never comes up under a finger: not while one is down on
+## the sky nor for OFFER_CALM seconds after the last one lifted, and once it
+## is up it reads no press for PICK_DEAF seconds.
 const PICK_H := 440.0
 const PICK_WAIT := 0.6
+const OFFER_CALM := 0.6
+const PICK_DEAF := 0.5
 ## A power held, on a disc in the sky's corner.
 const CHIP := 68.0
 const CHIP_GAP := 10.0
-## Under the stream a throw is felt this often at most, in seconds.
+## A held finger's brakes are heard and felt this often at most, in seconds.
 const FELT := 0.2
+## A touch that also arrives as a mouse press (were mouse-from-touch or
+## touch-from-mouse ever turned on) is one press: a press of the other kind
+## within this many milliseconds is dropped.
+const TWICE_MS := 60
 ## The fuel's clock reddens under this many seconds.
 const LOW := 10.0
 const PERK_NAMES := {"core": "NL_PERK_CORE", "disc": "NL_PERK_DISC", "hand": "NL_PERK_HAND", "crowd": "NL_PERK_CROWD",
@@ -152,10 +169,10 @@ var _pick_title: Label
 var _pick_tiles: Array = []   # {button, icon, name, effect, cost, badge, level}
 var _pick_now: Array = []
 var _pick_wait := 0.0
+var _pick_shown_at := -100000
 var _powers: Control
 var _powers_list: VBoxContainer
 var _reset: Control
-var _stream_t := 0.0
 var _felt_at := -1000
 var _shown := {"mass": 0.0, "light": 0.0}
 var _bump := {}
@@ -166,8 +183,6 @@ var _nova_l: Label
 var _pick_l: Label
 var _note: Label
 var _note_t := 0.0
-var _gas_b: Button
-var _pressed_at := -1000
 var _shop_b: Button
 var _shop: Control
 var _shop_light: Label
@@ -177,8 +192,12 @@ var _perks: Control
 var _perk_dust: Label
 var _perk_buy: Button
 var _perk_tiles := {}   # perk -> {panel, count}
-var _holding := false
-var _finger := -1
+## Fingers down on the sky: index (-1 the mouse) to where it is, in the sky's
+## pixels, and the seconds since it last braked.
+var _fingers := {}
+var _lifted_at := -100000
+var _pressed_at := -100000
+var _pressed_mouse := false
 var _held_back := false
 var _end_how := ""
 var _end_done := false
@@ -225,8 +244,7 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		if _gas_b != null:
-			_let_go()
+		_drop_fingers()
 		_save()
 	elif what == NOTIFICATION_EXIT_TREE:
 		_save()
@@ -250,7 +268,7 @@ func _build() -> void:
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.settings.connect(func() -> void:
-		_holding = false
+		_drop_fingers()
 		settings_sheet.open())
 	col.add_child(top_bar)
 
@@ -281,11 +299,17 @@ func _build() -> void:
 	sky.sim = sim
 	sky.paper = Pal.PAPER
 	sky.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# the sky takes no press (the user, 2026-10-06: "instead of user clicking
-	# anywhere on screen to place items, let's add buttons near bottom ...
-	# right now it happens that user click on the screen to place item and
-	# click on upgrade that popup")
-	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# the sky is the hand's: a press on it brakes what is under the finger.
+	# It took no press for a day (the user, 2026-10-06: "instead of user
+	# clicking anywhere on screen to place items, let's add buttons near
+	# bottom ... right now it happens that user click on the screen to place
+	# item and click on upgrade that popup"), and the user took that back on
+	# 2026-10-07 ("user can click into regions to slow it down and make it
+	# fall"), with the pick card still coming up by itself, guarded. The
+	# guard is `_deaf()` (no press is read under a card) and `_offer` (no
+	# card comes up under a finger, and the card is deaf as it shows)
+	sky.mouse_filter = Control.MOUSE_FILTER_STOP
+	sky.gui_input.connect(_on_sky_input)
 	sky.resized.connect(_layout_field)
 	col.add_child(sky)
 	# what the star has just done, said once over the sky's head
@@ -349,11 +373,6 @@ func _build() -> void:
 	light.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	info.add_child(light)
 	info.add_child(_dust_plate())
-	var gap := Control.new()
-	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info.add_child(gap)
-	info.add_child(_gas_button())
 	col.add_child(info)
 
 	_motes = Motes.new()
@@ -439,33 +458,6 @@ func _star_panel() -> Control:
 		item.add_child(share)
 		_made_l.append(share)
 	return panel
-
-## The hand's one button, under the right thumb: pressed it lets a puff of
-## gas go, held it keeps them going. It reads the finger itself (a
-## ScreenTouch and never a mouse button alone: the project has
-## mouse-from-touch off), so a hold is the finger that came down on it and
-## ends when that finger lifts, wherever it has wandered.
-func _gas_button() -> Control:
-	_gas_b = Button.new()
-	_gas_b.name = "Gas"
-	_gas_b.focus_mode = Control.FOCUS_NONE
-	_gas_b.theme_type_variation = "PrimaryButton"
-	_gas_b.custom_minimum_size = Vector2(GAS_W, INFO_H)
-	_gas_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_gas_b.resized.connect(func() -> void: _gas_b.pivot_offset = _gas_b.size * 0.5)
-	_gas_b.gui_input.connect(_on_gas_input)
-	var row := HBoxContainer.new()
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_gas_b.add_child(row)
-	row.add_child(_picture("gas", 68.0, 0.5))
-	var label := Label.new()
-	label.text = "NL_GAS"
-	label.theme_type_variation = "SheetTitle"
-	row.add_child(label)
-	return _gas_b
 
 ## What is held, on a paper plate: its picture, its name and the count.
 func _plate(what: String, key: String) -> Control:
@@ -602,7 +594,7 @@ func _build_shop() -> Control:
 func open_shop() -> void:
 	if _shop.visible or sky.ending():
 		return
-	_holding = false
+	_drop_fingers()
 	_refresh_tiles()
 	_shop.visible = true
 	Motion.appear(_shop, 0.0, 1.0, 0.2)
@@ -772,7 +764,7 @@ func _perk_tile(which: String) -> Control:
 func open_perks() -> void:
 	if _perks.visible or sky.ending():
 		return
-	_holding = false
+	_drop_fingers()
 	_refresh_perks()
 	_perks.visible = true
 	Motion.appear(_perks, 0.0, 1.0, 0.2)
@@ -912,8 +904,8 @@ func open_pick() -> void:
 	var two: Array = sim.offering()
 	if two.is_empty() or _pick.visible:
 		return
-	_holding = false
-	_finger = -1
+	_drop_fingers()
+	_pick_shown_at = Time.get_ticks_msec()
 	_pick_now = two
 	_pick_title.text = tr("NL_PICK_TITLE") % Art.short(Sim.mile(sim.picks), _comma())
 	for i in 2:
@@ -930,7 +922,11 @@ func open_pick() -> void:
 	Motion.appear(_pick, 0.0, 1.0, 0.2)
 	_fx.cue("pick")
 
+## One of the two is taken. Not in the card's first moment: a finger on its
+## way to the sky as the card came up lands on a tile.
 func _on_pick(i: int) -> void:
+	if Time.get_ticks_msec() - _pick_shown_at < int(PICK_DEAF * 1000.0):
+		return
 	var which: String = sim.pick(i)
 	if which == "":
 		_pick.visible = false
@@ -965,7 +961,7 @@ func _build_powers() -> Control:
 func open_powers() -> void:
 	if _powers.visible or sky.ending():
 		return
-	_holding = false
+	_drop_fingers()
 	for old in _powers_list.get_children():
 		_powers_list.remove_child(old)
 		old.queue_free()
@@ -1038,7 +1034,7 @@ func _build_reset() -> Control:
 func open_reset() -> void:
 	if _reset.visible:
 		return
-	_holding = false
+	_drop_fingers()
 	_reset.visible = true
 	Motion.appear(_reset, 0.0, 1.0, 0.2)
 
@@ -1064,7 +1060,7 @@ func _on_reset() -> void:
 	_shown.light = sim.light
 	for card: Control in [_shop, _perks, _powers, _pick, _reset]:
 		card.visible = false
-	_let_go()
+	_drop_fingers()
 	_refresh_tiles()
 	_refresh_hud(0.0)
 	_begin_birth()
@@ -1120,11 +1116,11 @@ func can_undo() -> bool:
 func hints_left() -> int:
 	return 0
 
-## A card over the screen (the tutorial): the sky waits, and no gas.
+## A card over the screen (the tutorial): the sky waits, and no press.
 func _tutor_hold(on: bool) -> void:
 	_held_back = on
 	if on:
-		_holding = false
+		_drop_fingers()
 
 # --- time ---
 
@@ -1133,8 +1129,8 @@ func _process(delta: float) -> void:
 		return
 	var ending: bool = sky.ending()
 	var waits: bool = _held_back or settings_sheet.is_open() or _pick.visible or _reset.visible or ending
+	_hold(delta)
 	if not waits:
-		_stream(delta)
 		sim.advance(delta)
 	_play_events()
 	_offer(delta)
@@ -1151,18 +1147,9 @@ func _process(delta: float) -> void:
 		if _since_save >= SAVE_GAP:
 			_save()
 
-## Held, the button keeps letting puffs go, as fast as the Stream tile has
-## made it.
-func _stream(delta: float) -> void:
-	if not _holding:
-		return
-	_stream_t += delta
-	if _stream_t >= sim.stream_gap():
-		_stream_t = 0.0
-		_pour()
-
-## A pick the star has grown past comes up by itself, a moment later and
-## never over another card.
+## A pick the star has grown past comes up by itself, a moment later, never
+## over another card and never under a finger: the wait starts again while
+## one is down on the sky and for OFFER_CALM seconds after the last lifted.
 func _offer(delta: float) -> void:
 	if sim.owed() <= 0 or _pick.visible:
 		_pick_wait = 0.0
@@ -1171,6 +1158,9 @@ func _offer(delta: float) -> void:
 			_pick.visible = false
 		return
 	if _held_back or sky.ending() or sim.ending() != "" or settings_sheet.is_open() or _shop.visible or _perks.visible or _powers.visible or _reset.visible:
+		return
+	if not _fingers.is_empty() or Time.get_ticks_msec() - _lifted_at < int(OFFER_CALM * 1000.0):
+		_pick_wait = 0.0
 		return
 	_pick_wait += delta
 	if _pick_wait >= PICK_WAIT:
@@ -1186,7 +1176,8 @@ func _play_events() -> void:
 				if not bool(e.gas):
 					_hear_eaten(float(e.m))
 			"shed":
-				_motes.drop(origin * sky.px(e.at), float(e.e) * ORBS, 1)
+				var orbs := float(e.e) * ORBS
+				_motes.drop(origin * sky.px(e.at), orbs, clampi(ceili(orbs), 1, SHED_ORBS))
 			"form":
 				sky.formed(e.at)
 			"merge":
@@ -1244,7 +1235,7 @@ func _step_end(delta: float) -> void:
 			return
 		for card: Control in [_shop, _perks, _powers]:
 			card.visible = false
-		_holding = false
+		_drop_fingers()
 		_end_how = how
 		_end_done = false
 		_end_rem = sim.remnant()
@@ -1343,7 +1334,7 @@ func _refresh_hud(delta: float) -> void:
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas + sim.fades > 0 or sim.dust > 0
 	# said until the star has eaten something
-	_hint.visible = sim.eaten <= 0.0 and not _holding and not sky.ending()
+	_hint.visible = sim.eaten <= 0.0 and _fingers.is_empty() and not sky.ending()
 	_dust_l.text = str(sim.dust)
 	var goal: Dictionary = sim.goal()
 	var core := _core_temp(sim.core_temp())
@@ -1498,55 +1489,84 @@ func _on_tile(tile: String) -> void:
 
 # --- the hand ---
 
-## The Gas button's finger. A ScreenTouch and never a mouse button alone
-## (the project has mouse-from-touch off, and the Grove shipped unable to be
-## chopped on a phone for reading the mouse alone); the mouse is for this
-## Mac. A press lets one puff go at once and starts the hold.
-func _on_gas_input(event: InputEvent) -> void:
+## No press is read under a card, while the tutorial holds the screen, or
+## while a star ends or is born.
+func _deaf() -> bool:
+	return _held_back or settings_sheet.is_open() or _pick.visible or _shop.visible or _perks.visible or _powers.visible or _reset.visible or sky.ending() or sim.ending() != ""
+
+## The sky's fingers. A ScreenTouch and a ScreenDrag, never a mouse button
+## alone (the project has mouse-from-touch off, and the Grove shipped unable
+## to be chopped on a phone for reading the mouse alone); the mouse is for
+## this Mac. Every finger that comes down brakes, and each is followed.
+func _on_sky_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
 		if t.pressed:
-			_press(t.index)
-		elif t.index == _finger:
-			_let_go()
+			_press_at(t.index, t.position)
+		else:
+			_lift(t.index)
+	elif event is InputEventScreenDrag:
+		var d := event as InputEventScreenDrag
+		if _fingers.has(d.index):
+			_fingers[d.index].at = d.position
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		if (event as InputEventMouseButton).pressed:
-			_press(-1)
-		elif _finger == -1:
-			_let_go()
+			_press_at(-1, (event as InputEventMouseButton).position)
+		else:
+			_lift(-1)
+	elif event is InputEventMouseMotion and _fingers.has(-1):
+		_fingers[-1].at = (event as InputEventMouseMotion).position
 
-## `finger` (-1 the mouse) comes down on the button. A touch that also
-## arrives as a mouse press is one press.
-func _press(finger: int) -> void:
+## `finger` (-1 the mouse) comes down at `px` of the sky: it brakes there at
+## once, and is held. A touch and a mouse press a moment apart are one press.
+func _press_at(finger: int, px: Vector2) -> void:
 	var now := Time.get_ticks_msec()
-	if _holding or now - _pressed_at < 60:
+	var mouse := finger == -1
+	if mouse != _pressed_mouse and now - _pressed_at < TWICE_MS:
 		return
 	_pressed_at = now
-	if not _pour():
+	_pressed_mouse = mouse
+	if _deaf() or _fingers.has(finger):
 		return
-	_holding = true
-	_finger = finger
-	_stream_t = 0.0
-	_gas_b.scale = Vector2(0.95, 0.95)
+	_fingers[finger] = {"at": px, "t": 0.0}
+	_brake(px)
 
-func _let_go() -> void:
-	_holding = false
-	_finger = -1
-	_gas_b.scale = Vector2.ONE
+func _lift(finger: int) -> void:
+	if _fingers.erase(finger):
+		_lifted_at = Time.get_ticks_msec()
 
-## A puff of gas, or a volley of them, set going at the disc's rim. Felt,
-## though not every one of a stream. False where none can be: under a card,
-## while the star ends.
-func _pour() -> bool:
-	if _held_back or sky.ending() or sim.ending() != "" or _pick.visible or _reset.visible:
-		return false
-	sim.pour()
+## Every finger is let go of: a card is coming up, or the game is left.
+func _drop_fingers() -> void:
+	if not _fingers.is_empty():
+		_fingers.clear()
+		_lifted_at = Time.get_ticks_msec()
+
+## One brake where a finger is. Heard and felt when it caught something,
+## though not every one of a held finger's.
+func _brake(px: Vector2) -> void:
+	var at: Vector2 = sky.unworld(px)
+	var r: float = sim.press_r()
+	sky.set_down(at, r)
+	if sim.brake(at, r) == 0:
+		return
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
 		_fx.cue("pour", randf_range(0.94, 1.08))
 	_dirty = true
-	return true
+
+## Held, a finger brakes again where it is now, as often as Flow lets it.
+func _hold(delta: float) -> void:
+	if _deaf():
+		_drop_fingers()
+		return
+	var gap: float = sim.flow_gap()
+	for finger in _fingers:
+		var f: Dictionary = _fingers[finger]
+		f.t += delta
+		if f.t >= gap:
+			f.t = 0.0
+			_brake(f.at)
 
 # --- drawing ---
 

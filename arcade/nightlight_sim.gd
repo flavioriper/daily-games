@@ -656,11 +656,6 @@ func glow() -> float:
 func puff_h() -> float:
 	return minf(0.95, PUFF_H + PURE_STEP * int(lv.pure))
 
-## Seconds between brakes while a finger is held. Kept for the screen's
-## button until it is a finger.
-func stream_gap() -> float:
-	return flow_gap()
-
 func pass_time() -> float:
 	return PASS * pow(suns(), -DRAWN) * pow(BEACON_SOON, on("beacon")) * pow(CROWD, int(perk.crowd))
 
@@ -1003,26 +998,6 @@ func gas_count() -> int:
 		if b.kind == Kind.GAS:
 			n += 1
 	return n
-
-## One puff of gas set going round the star just inside the disc's rim. Kept
-## until the screen's button is a finger; past the sky's most it is poured
-## into the puff before it.
-func pour() -> void:
-	var m := RING_M / RING
-	var rh := haze_r()
-	if gas_count() >= MOST or bodies.size() >= FULL:
-		for i in range(bodies.size() - 1, -1, -1):
-			var last := bodies[i]
-			if last.kind == Kind.GAS:
-				last.h = (last.h * last.m + puff_h() * m) / (last.m + m)
-				last.dust = (last.dust * last.m + DUSTY * PUFF) / (last.m + m)
-				last.m += m
-				break
-		return
-	var pos := Vector2.from_angle(_rng.randf() * TAU) * rh * _rng.randf_range(0.7, 0.97)
-	var b := add(Kind.GAS, m, pos, circle_vel(pos) * _rng.randf_range(0.97, 1.0))
-	b.h = puff_h()
-	b.dust = DUSTY * PUFF / m
 
 ## The finger: everything within `r` of `at` loses a share of its speed,
 ## most under the middle, none at the edge. What follows is the orbit's own.
