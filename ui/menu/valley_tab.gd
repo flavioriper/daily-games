@@ -248,6 +248,14 @@ func _process(delta: float) -> void:
 	var before: int = _sim.trees.size()
 	_sim.step(delta)
 	_sim.events.clear()
+	# what the raft has landed is wood in the valley now. The grove is kept
+	# at once: the tab reads it from its file each time it is shown, and one
+	# kept from before the landing would land the same wood again.
+	var landed: int = _sim.take_owed()
+	if landed > 0:
+		Stock.add("wood", landed, "grove")
+		_sim.save(Time.get_unix_time_from_system())
+		Stock.flush()
 	if _sim.trees.size() != before:
 		_write_count()
 	Art.blow()

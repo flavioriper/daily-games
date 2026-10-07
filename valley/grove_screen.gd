@@ -4,8 +4,9 @@ extends Control
 ## trees coming up on it at random spots, and a circle that follows the
 ## finger and chops whatever stands inside it, a beaver coming to bite each
 ## tree it takes; nothing chops by itself yet
-## (the user's design, 2026-10-05). A felled tree leaves wood, which goes to
-## the shared inventory (core/stock.gd) and is never spent here, and energy,
+## (the user's design, 2026-10-05). A felled tree leaves wood, which lies
+## until the jetty's raft has landed it (the sim's `owed`) and only then goes
+## to the shared inventory (core/stock.gd), never spent here, and energy,
 ## which stays and buys the shop's three tiles and the nodes of the tree of
 ## skills. The land takes the screen and each of the two is a card over it,
 ## opened by its button under the land's left (the user, 2026-10-06: "game
@@ -163,9 +164,6 @@ var _held_back := false
 var _since_chop := 10.0
 var _nums: Array = []    # {at, text, t, gold}: `at` in view units
 var _flies: Array = []   # {from, to, t, give}: logs on their way to the wood plate
-## Wood of trees still coming down or still in the air: the plate counts it
-## as it lands.
-var _wood_air := 0
 var _bump := {}     # plate -> its running bump
 var _dirty := false
 var _since_save := 0.0
@@ -626,6 +624,12 @@ func _process(delta: float) -> void:
 		return
 	var holding: bool = _hold and not _held_back and not _shop.visible and not _tree.is_open() and not settings_sheet.is_open()
 	sim.step(delta, holding, unit(_hold_at))
+	# what the raft has landed is wood in the valley now. The grove is kept
+	# with it: one kept from before the landing would land it again.
+	var landed_wood: int = sim.take_owed()
+	if landed_wood > 0:
+		Stock.add("wood", landed_wood, GAME)
+		_save()
 	_since_chop += delta
 	_since_reach += delta
 	# the land may have moved on the screen (an inset, the banner): the
@@ -641,7 +645,6 @@ func _process(delta: float) -> void:
 		f.t += delta
 		if f.t >= FLIGHT:
 			landed = true
-			_wood_air = maxi(0, _wood_air - int(f.give))
 			_kick("wood")
 	if landed:
 		_flies = _flies.filter(func(f: Dictionary) -> bool: return f.t < FLIGHT)
@@ -698,11 +701,9 @@ func _play_events() -> void:
 			"fell":
 				var tree: Dictionary = e.tree
 				var give := int(e.give)
-				_wood_air += give
 				_life.fell(tree, give)
 				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0),
 					"text": "+" + Art.short(give), "t": 0.0, "gold": true})
-				Stock.add("wood", give, GAME)
 				_fx.cue("fell")
 				_dirty = true
 			"swing":
@@ -725,7 +726,6 @@ func _on_landed(tree: Dictionary, at: Vector2) -> void:
 ## drawn in to the energy plate; the counts roll up as they land.
 func _on_gave(tree: Dictionary, give: int, at: Vector2) -> void:
 	if Motion.reduce:
-		_wood_air = maxi(0, _wood_air - give)
 		return
 	var from: Vector2 = field.get_global_transform() * _at(at)
 	var inv := _over.get_global_transform().affine_inverse()
@@ -757,7 +757,7 @@ func _kick(kind: String) -> void:
 
 func _refresh_hud(delta: float) -> void:
 	# the energy plate counts what has landed, not what is still in the air
-	var want := {"energy": float(sim.energy - ceili(_motes.due / ORBS - 0.001)), "wood": float(Stock.count("wood") - _wood_air)}
+	var want := {"energy": float(sim.energy - ceili(_motes.due / ORBS - 0.001)), "wood": float(Stock.count("wood"))}
 	for kind: String in want:
 		var held: float = want[kind]
 		var s: float = _shown[kind]
