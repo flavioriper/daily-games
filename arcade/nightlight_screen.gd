@@ -1259,6 +1259,9 @@ func _step_end(delta: float) -> void:
 		if _end_cued:
 			_fx.cue("fade")
 		return
+	# a first star's birth waits behind the first play's card, to be seen
+	if _birth and _held_back:
+		return
 	sky.step_end(delta)
 	if _birth:
 		if sky.end_t() >= sky.end_time():
