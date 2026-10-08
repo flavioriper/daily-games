@@ -136,6 +136,12 @@ const RING_OUT := 1.75
 const RING := 180
 const RING_M := 3.0
 const RING_FALLING := 6
+## A later star's ring is never more than this share of the newborn's own
+## mass: a heavier one all comes down by itself once the star has eaten a
+## tenth of a Sun of it (the runaway). What a richer sky has past that drifts
+## in at the ring's outer edge instead, doubling the trickle until it is all
+## in (`_late`).
+const RING_MOST := 0.3
 ## The ring's outer edge is this far from the star on the screen, of the
 ## design's 1080 across.
 const FRAME := 500.0
@@ -159,13 +165,17 @@ const RICH_STEP := 0.5
 
 ## Condensing. A puff has to be up COOL seconds before its dust falls out.
 ## Two that are MEET px apart (as the game starts; it widens with the star)
-## make a grain of their dust. Past the frost line there is ICY as much ice
-## again as dust. A solid takes the dust of a puff that comes within its own
-## radius and FEED of it more, and gathers a solid it touches or comes that
-## near. From CORE_M up it keeps GULP of the gas too, each time they are
-## looked at and never more than GULP_M at once, until it weighs GIANT_MOST.
+## make a grain of their dust, STICK of the times they are looked at and
+## found that near: dust sticks slowly, so a ring's grains gather over its
+## first minutes and not in its first second. Past the frost line there is
+## ICY as much ice again as dust. A solid takes the dust of a puff that comes
+## within its own radius and FEED of it more, and gathers a solid it touches
+## or comes that near. From CORE_M up it keeps GULP of the gas too, each time
+## they are looked at and never more than GULP_M at once, until it weighs
+## GIANT_MOST.
 const COOL := 12.0
 const MEET := 30.0
+const STICK := 0.0006
 const ICY := 2.0
 const ICE_H := 0.4
 const FEED := 0.6
@@ -362,11 +372,12 @@ const CROWD := 0.85
 const EMBER := 2.0
 ## Every supernova so far makes what passes this much heavier, for good.
 const RICHER := 0.5
-## What a star leaves is a ring (RING_M, times 1 + RICHER a supernova so far)
-## of puffs that are ASH_DUST of dust, and the heavy layers of the dead star
-## add METAL times their share to that, never over ASH_MOST: it is what a star
-## made, so the next star's planets come quicker. A first star's ring is
-## FIRST_DUST of dust. The falling few are each on a closed
+## What a star leaves is gas (RING_M, times 1 + RICHER a supernova so far): a
+## ring of it, never over RING_MOST of the newborn, and the rest drifting in
+## after (`_late`). Its puffs are ASH_DUST of dust, and the heavy layers of
+## the dead star add METAL times their share to that, never over ASH_MOST: it
+## is what a star made, so the next star's planets come quicker. A first
+## star's ring is FIRST_DUST of dust. The falling few are each on a closed
 ## path whose nearest point to the new star is ASH_NEAR to ASH_NEAR +
 ## ASH_REACH of its radii and whose furthest is inside ASH_FAR of them.
 const FIRST_DUST := 0.005
@@ -488,6 +499,9 @@ var ring := Vector2.ZERO
 var frost := 0.0
 var dusty := FIRST_DUST
 var _owed_gas := 0.0
+## The gas a dead star left that its ring could not hold: it drifts in with
+## the trickle. Like `_owed_gas`, not saved.
+var _late := 0.0
 
 func _init(rng_seed := 0) -> void:
 	if rng_seed != 0:
@@ -881,7 +895,10 @@ func end() -> int:
 	_pass_wait = 0.0
 	# its silicon, iron and rock go out as dust in its gas
 	var ash_dust := minf(ASH_MOST, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
-	_lay_ring(RING, RING_M * (1.0 + RICHER * novas), ASH_H, ash_dust)
+	var left := RING_M * (1.0 + RICHER * novas)
+	var held := minf(left, RING_MOST * mass)
+	_lay_ring(RING, held, ASH_H, ash_dust)
+	_late = left - held
 	# where the next star is born: away from the relics there are, far enough that its ring is its own
 	var mean := Vector2.ZERO
 	for rel in relics:
@@ -1038,7 +1055,11 @@ func _trickle() -> void:
 	if ring.y <= 0.0:
 		return
 	var each := RING_M / RING
-	_owed_gas = minf(_owed_gas + trickle_rate() * STEP, each * 4.0)
+	var drifts := trickle_rate() * STEP
+	# what the ring could not hold comes with it, as much again, while there is any
+	var more := minf(_late, drifts)
+	_late -= more
+	_owed_gas = minf(_owed_gas + drifts + more, each * 4.0)
 	if _owed_gas < each:
 		return
 	if gas_count() >= MOST or bodies.size() >= FULL:
@@ -1166,6 +1187,9 @@ func _meet() -> void:
 						if a.dust <= 0.0 or b.dust <= 0.0 or a.age < COOL or b.age < COOL or solids >= SOLIDS:
 							continue
 						if absf(d.x) >= rg or absf(d.y) >= rg or d.length_squared() >= rg * rg:
+							continue
+						# the die is thrown last, so a pair that could not stick draws nothing
+						if _rng.randf() >= STICK:
 							continue
 						born.append(_condense(a, b, frost))
 						solids += 1

@@ -4,7 +4,7 @@ extends SceneTree
 ## how fast the numbers are.
 ##
 ##     godot --headless --path . --script res://tests/_probe_nightlight.gd
-##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the finger is down] [gas|worlds]
+##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the finger is down] [gas|worlds] [stop=<Suns>] [novas=<n>] [perks=0]
 ##
 ## The checks: a puff of gas set on a circle in the disc winds in over a
 ## minute or so, goes round more than once, speeds up and pays its light; a
@@ -25,8 +25,12 @@ extends SceneTree
 ## `pace` holds a finger on the ring (braking as fast as the Flow tile lets
 ## it), buys the cheapest tile it can, takes the first, the second or either of the two
 ## powers offered, buys a perk whenever the stardust reaches, and prints
-## every milestone with what the sky held. Everything runs on a throwaway
-## file.
+## every milestone with what the sky held, a line a minute (the Suns, the
+## light earned in that minute and where it came from, what was eaten, the
+## system's counts, the tiles and the powers) and a sum for each life. After
+## the five: `stop=3` lifts the finger for good at three Suns, `novas=2`
+## starts on a star with two supernovas behind it, `perks=0` buys no perk.
+## Everything runs on a throwaway file.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
 
@@ -38,9 +42,16 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(Sim.path)
 	var args := OS.get_cmdline_user_args()
 	if args.has("pace"):
+		# after the five: stop=<Suns> (the finger stops for good once the star weighs that),
+		# novas=<n> (a star with that many supernovas behind it), perks=0 (no perk is bought)
+		var more := {}
+		for k in range(6, args.size()):
+			var pair := String(args[k]).split("=")
+			if pair.size() == 2:
+				more[pair[0]] = float(pair[1])
 		_pace(float(args[1]) if args.size() > 1 else 60.0, int(args[2]) if args.size() > 2 else 1,
 			String(args[3]) if args.size() > 3 else "random", float(args[4]) if args.size() > 4 else 1.0,
-			String(args[5]) if args.size() > 5 else "gas")
+			String(args[5]) if args.size() > 5 else "gas", more)
 	else:
 		_check_disc()
 		_check_condensing()
@@ -89,6 +100,31 @@ func _puff(sim: RefCounted, m := Sim.PUFF) -> Sim.Body:
 	b.dust = Sim.DUSTY * Sim.PUFF / m
 	return b
 
+## `n` pairs of cooled puffs with `dust` of dust, evenly round a circle of
+## `r`, the two of a pair 6 px apart along it and on the same circle, so they
+## stay that near. Dust sticks STICK of the times a pair is looked at: one pair
+## may wait minutes, forty of them do not.
+func _pairs(sim: RefCounted, r: float, dust: float, n := 40) -> void:
+	for k in n:
+		for j in 2:
+			var at := Vector2.from_angle(TAU * k / n + 6.0 * j / r) * r
+			var b: Sim.Body = sim.add(Sim.Kind.GAS, Sim.PUFF, at, sim.circle_vel(at))
+			b.dust = dust
+			b.age = Sim.COOL
+
+## Ticks until the sky holds a solid, `most` seconds at the longest: the
+## first there is, in the tick it formed, or null.
+func _first_solid(sim: RefCounted, most := 60.0) -> Sim.Body:
+	for i in int(most / Sim.STEP):
+		sim.tick()
+		for b: Sim.Body in sim.bodies:
+			if b.kind != Sim.Kind.GAS:
+				return b
+	return null
+
+func _solid_count(sim: RefCounted) -> int:
+	return sim.bodies.size() - sim.gas_count()
+
 func _check_disc() -> void:
 	var sim := _quiet()
 	var at: Vector2 = Vector2(sim.haze_r() * 0.85, 0.0)
@@ -124,15 +160,12 @@ func _check_disc() -> void:
 	_ok("a star left alone barely grows", lone.mass < Sim.START * 1.02)
 
 func _check_condensing() -> void:
+	# a ring left three minutes: its dust has stuck into grains, ice past the
+	# frost line, and nothing was lost on the way
 	var sim := _quiet(3)
-	# the ring's frost line is the ring's middle; this check is about the old one, 2.2 radii
-	sim.frost = sim.star_r() * 2.2
-	var poured := 0.0
-	for i in 400:
-		if i % 4 == 0 and i < 240:
-			_puff(sim)
-			poured += Sim.PUFF
-		_run(sim, 0.25)
+	sim.born()
+	var laid := _sky_mass(sim)
+	_run(sim, 180.0)
 	var grains := 0
 	var icy := 0
 	var inside := 0
@@ -144,36 +177,47 @@ func _check_condensing() -> void:
 		biggest = maxf(biggest, b.m)
 		if b.ice > 0.3:
 			icy += 1
-	print("  sixty puffs, a hundred seconds: %d gas, %d solids (%d icy), the biggest %.4f (%.1f px); the star ate %.3f" % [
+	print("  a first ring, three minutes: %d gas, %d solids (%d icy), the biggest %.4f (%.1f px); the star ate %.3f" % [
 		sim.gas_count(), grains, icy, biggest, Sim.body_r(biggest), sim.mass - Sim.START])
 	_ok("gas condenses into solids", grains > 0)
 	_ok("some are ice", icy > 0)
-	_ok("mass is kept", absf(sim.mass - Sim.START + _sky_mass(sim) - poured) < 1e-4)
-	# two puffs inside the Roche radius stay two puffs
+	_ok("mass is kept", absf(sim.mass - Sim.START + _sky_mass(sim) - laid) < 1e-4)
+	# the grains gather over minutes, not in the ring's first second: a first
+	# ring and an iron-rich one, at ten seconds, one minute, three and ten
+	for rich: bool in [false, true]:
+		var slow := _quiet(5)
+		if rich:
+			_die(slow)
+			_die(slow)
+			slow.relics.clear()
+		else:
+			slow.born()
+		var held: Array[int] = []
+		var t := 0.0
+		for mark: float in [10.0, 60.0, 180.0, 600.0]:
+			_run(slow, mark - t)
+			t = mark
+			held.append(_solid_count(slow))
+		var worlds: Dictionary = slow.system()
+		print("  %s ring (dust %.3f) left alone: %d solids at 10 s, %d at 60 s, %d at 180 s, %d at 600 s (%d planets, %d giants)" % [
+			"an iron-rich" if rich else "a first", slow.dusty, held[0], held[1], held[2], held[3], worlds.planets, worlds.giants])
+		_ok("%s ring's grains do not pop in at once (%d at ten seconds)" % ["an iron-rich" if rich else "a first", held[0]], held[0] <= Sim.SOLIDS / 6)
+		_ok("they are still gathering at a minute (%d) and many by three (%d)" % [held[1], held[2]], held[1] > held[0] and held[1] < Sim.SOLIDS * 3 / 4 and held[2] >= Sim.SOLIDS / 2)
+	# forty pairs inside the Roche radius stay puffs: were they to stick as
+	# they do outside it, half a minute would make seven grains of them
 	var near := _quiet()
-	var at: Vector2 = Vector2(near.roche_r() * 0.9, 0.0)
-	for k in 2:
-		var b: Sim.Body = near.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(0.0, 6.0 * k), near.circle_vel(at))
-		b.dust = Sim.DUSTY
-		b.age = Sim.COOL
-	_run(near, 1.0)
+	_pairs(near, near.roche_r() * 0.9, Sim.DUSTY)
+	_run(near, 30.0)
 	for b: Sim.Body in near.bodies:
 		if b.kind != Sim.Kind.GAS:
 			inside += 1
 	_ok("nothing forms inside the Roche radius", inside == 0)
 	# and outside it they make a grain, rock inside the frost line
 	var out := _quiet()
-	at = Vector2((out.roche_r() + out.frost_r()) * 0.5, 0.0)
-	for k in 2:
-		var b: Sim.Body = out.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(0.0, 6.0 * k), out.circle_vel(at))
-		b.dust = Sim.DUSTY
-		b.age = Sim.COOL
-	_run(out, 0.5)
-	var made: Sim.Body = null
-	for b: Sim.Body in out.bodies:
-		if b.kind != Sim.Kind.GAS:
-			made = b
+	_pairs(out, (out.haze_r() + out.frost_r()) * 0.5, Sim.DUSTY)
+	var made: Sim.Body = _first_solid(out)
 	_ok("two puffs make a grain of their dust", made != null and is_equal_approx(made.m, 2.0 * Sim.PUFF * Sim.DUSTY) and made.ice == 0.0)
+	var at: Vector2 = Vector2((out.roche_r() + out.frost_r()) * 0.5, 0.0)
 	# a giant keeps the gas
 	var gas := _quiet()
 	var core: Sim.Body = gas.add(Sim.Kind.PLANET, Sim.CORE_M * 1.1, at, gas.circle_vel(at))
@@ -309,9 +353,16 @@ func _check_rules() -> void:
 
 ## A steady hand for `minutes`: a finger down `held` of every ten seconds,
 ## braking every `flow_gap()` where `_spot` says.
-func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: String) -> void:
+func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: String, more := {}) -> void:
 	var sim: RefCounted = Sim.new(rng_seed)
-	sim.born()
+	var behind := int(more.get("novas", 0))
+	var stop := float(more.get("stop", 0.0))
+	var perks := float(more.get("perks", 1.0)) > 0.0
+	if behind > 0:
+		for k in behind:
+			_die(sim)
+	else:
+		sim.born()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = rng_seed
 	var since := 0.0
@@ -323,9 +374,15 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	var spot := Vector2.ZERO
 	var spot_t := -100.0
 	var most_ticks := 0
-	var report := 60.0
 	var t0 := Time.get_ticks_usec()
-	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s" % [minutes, rng_seed, takes, held * 100.0, sends])
+	# this life: the light it earned (spent or not), how much of that was the
+	# star's own burning, what it ate as gas and as solids; and this minute's
+	var life := {"n": 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0}
+	var minute := {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
+	var stopped := false
+	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s%s%s%s" % [minutes, rng_seed, takes, held * 100.0, sends,
+		", %d supernovas behind it" % behind if behind > 0 else "", ", the finger stops at %.1f Suns" % stop if stop > 0.0 else "", "" if perks else ", no perks"])
+	print("    min   Suns  +Suns  light/min  ate gas  solids | planets giants rocks comets grains | gas (outside the disc: n, Suns) | tiles | the light: its own burning, solids eaten, the Furnace, the disc | powers")
 	for i in int(minutes * 60.0 / Sim.STEP):
 		var t: float = i * Sim.STEP
 		since += Sim.STEP
@@ -333,18 +390,57 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 		if t - spot_t >= 3.0:
 			spot_t = t
 			spot = _spot(sim, sends == "worlds")
-		if since >= sim.flow_gap() and fmod(t, 10.0) < 10.0 * held:
+		if stop > 0.0 and not stopped and sim.suns() >= stop:
+			stopped = true
+			print("  %5.1f min  the finger stops at %.2f Suns  %s" % [(t - born) / 60.0, sim.suns(), _outside(sim, t - last_hit)])
+		if since >= sim.flow_gap() and fmod(t, 10.0) < 10.0 * held and not stopped:
 			since = 0.0
 			if sim.brake(spot, sim.press_r()) > 0:
 				pressed += 1
 				last_hit = t
+		var had: float = sim.light
 		sim.tick()
+		life.light += sim.light - had
+		minute.light += sim.light - had
+		if t - born < 600.0:
+			life.ten += sim.light - had
 		if not sim.awake:
 			dim += Sim.STEP
-		for e: Dictionary in sim.events:
-			if String(e.kind) == "ignite":
-				print("  %5.1f min  %s lights at %.1f Suns" % [(t - born) / 60.0, Sim.CHAIN[int(e.stage)], sim.suns()])
+		for k in sim.events.size():
+			var e: Dictionary = sim.events[k]
+			match String(e.kind):
+				"ignite":
+					print("  %5.1f min  %s lights at %.1f Suns" % [(t - born) / 60.0, Sim.CHAIN[int(e.stage)], sim.suns()])
+				"shine":
+					life.shine += float(e.e)
+					minute.shine += float(e.e)
+				"eat":
+					var what := "gas" if bool(e.gas) else "solid"
+					life[what] += float(e.m)
+					minute[what] += float(e.m)
+				"shed":
+					# a solid's worth is let go in the tick it is eaten, just before
+					# its `eat`; the Furnace's comes just after a `tear`
+					if k + 1 < sim.events.size() and String(sim.events[k + 1].kind) == "eat" and not bool(sim.events[k + 1].gas) and sim.events[k + 1].at == e.at:
+						minute.lump += float(e.e)
+						life.lump += float(e.e)
+					elif k > 0 and String(sim.events[k - 1].kind) == "tear" and sim.events[k - 1].at == e.at:
+						minute.torn += float(e.e)
+						life.torn += float(e.e)
 		sim.events.clear()
+		if t - born >= float(minute.at):
+			var n: Dictionary = sim.system()
+			var grains := 0
+			for b: Sim.Body in sim.bodies:
+				if b.kind == Sim.Kind.GRAIN:
+					grains += 1
+			var out := _outside(sim, t - last_hit)
+			print("  %5.0f  %5.2f  %+5.2f  %9.1f  %7.3f  %6.4f | %2d %2d %2d %2d %2d | %3d (%s) | %s | %.0f %.0f %.0f %.0f | %s" % [float(minute.at) / 60.0, sim.suns(), sim.suns() - float(minute.suns), minute.light,
+				float(minute.gas) / Sim.START, float(minute.solid) / Sim.START, n.planets, n.giants, n.rocks, n.comets, grains, sim.gas_count(),
+				out.substr(18, out.find(";") - 18), "%d %d %d %d" % [sim.lv.reach, sim.lv.flow, sim.lv.rich, sim.lv.pure],
+				minute.shine, minute.lump, minute.torn, float(minute.light) - float(minute.shine) - float(minute.lump) - float(minute.torn),
+				" ".join(Sim.POWERS.filter(func(w: String) -> bool: return int(sim.power[w]) > 0).map(func(w: String) -> String: return "%s %d" % [w, sim.power[w]]))])
+			minute = {"at": float(minute.at) + 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 		while sim.owed() > 0:
 			sim.pick(0 if takes == "first" else (1 if takes == "second" else rng.randi() % 2))
 		var cheapest := ""
@@ -356,25 +452,29 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 		if sim.suns() >= next_mark:
 			print("  %5.1f min  %3.0f Suns  %s  %s" % [(t - born) / 60.0, next_mark, _sky(sim), _outside(sim, t - last_hit)])
 			next_mark *= 2.0
-		if t >= report:
-			report += 600.0
-			print("  %5.1f min  %.2f Suns  light %.0f (%s)  %s  %s" % [(t - born) / 60.0, sim.suns(), sim.light, str(sim.lv), _sky(sim), _outside(sim, t - last_hit)])
 		most_ticks = maxi(most_ticks, sim.bodies.size())
 		var how: String = sim.ending()
 		if how != "":
 			var was: float = sim.suns()
 			var left: String = ["wd", "ns", "bh"][sim.remnant()]
 			var shares: Array = sim.layers()
+			var had_powers := str(sim.power)
 			var paid: int = sim.end()
 			print("  end: %s remnant: %s at %.1f min, %.1f Suns" % [how, left, (t - born) / 60.0, was])
 			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, %d presses braked something; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
-				(t - born) / 60.0, how, was, paid, dim, pressed, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, str(sim.power)])
-			while sim.buy_perk() != "":
+				(t - born) / 60.0, how, was, paid, dim, pressed, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, had_powers])
+			_life(life, (t - born) / 60.0)
+			while perks and sim.buy_perk() != "":
 				pass
 			born = t
 			dim = 0.0
 			pressed = 0
 			next_mark = 2.0
+			stopped = false
+			life = {"n": int(life.n) + 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0}
+			minute = {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
+			print("  a new star: %.1f Suns, ring %.2f Suns at %.3f dust, perks %s" % [sim.suns(), _sky_mass(sim) / Sim.START, sim.dusty, str(sim.perk)])
+	_life(life, minutes - born / 60.0)
 	print("pace: %d supernovas, %d let go, the sky held %d at most, %.0f us a tick" % [sim.novas, sim.fades, most_ticks, float(Time.get_ticks_usec() - t0) / (minutes * 60.0 / Sim.STEP)])
 	# the dearest sky: 300 bodies and the most relics, in a ring
 	var crowd: RefCounted = Sim.new(rng_seed)
@@ -389,6 +489,25 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	for k in 600:
 		crowd.tick()
 	print("pace: 300 bodies and %d relics, %d bodies left, %.0f us a tick" % [crowd.relics.size(), crowd.bodies.size(), float(Time.get_ticks_usec() - t1) / 600.0])
+
+## A life's sum: the light it earned a minute, over its first ten minutes and
+## over the whole of it, and what the star ate.
+func _life(life: Dictionary, mins: float) -> void:
+	if mins <= 0.0:
+		return
+	print("  life %d: %.1f min; light %.0f, %.1f a minute (the first ten minutes %.1f a minute; %.0f of it the star's own burning); ate %.2f Suns of gas and %.3f of solids; solids eaten paid %.0f, the Furnace %.0f, the disc %.0f" % [
+		life.n, mins, life.light, float(life.light) / mins, float(life.ten) / minf(mins, 10.0), life.shine, float(life.gas) / Sim.START, float(life.solid) / Sim.START,
+		life.lump, life.torn, float(life.light) - float(life.shine) - float(life.lump) - float(life.torn)])
+
+## The star dies as the bot's own do: a supernova at 19 Suns with an iron
+## core, a quarter of a Sun of silicon over it and the rest hydrogen and
+## helium, so the next ring's dust is what a played life leaves.
+func _die(sim: RefCounted) -> void:
+	sim.mass = Sim.START * 19.0
+	sim.made.assign([0.0, 0.0, 0.0, 0.0, Sim.NEXT * Sim.START, Sim.IRON * Sim.START])
+	sim.fuel = sim.mass * 0.4
+	sim.env = sim.mass - sim.fuel - (Sim.NEXT + Sim.IRON) * Sim.START
+	sim.end()
 
 ## Where the bot presses: the heaviest solid outside the disc if it sends
 ## worlds, else the middle of the fullest of 24 slices of the ring outside it.
@@ -521,6 +640,42 @@ func _check_ring() -> void:
 		eats.append(float(gro.eaten))
 	print("  a star that grows 15%% in two minutes eats %.2f of the ring's %.1f in ten more (%.0f%%); left alone, %.2f" % [eats[1], Sim.RING_M, eats[1] / Sim.RING_M * 100.0, eats[0]])
 	_ok("the star's growth brings some of the ring down (%.0f%%), and not all of it" % (eats[1] / Sim.RING_M * 100.0), eats[1] > eats[0] + Sim.RING_M * 0.05 and eats[1] < Sim.RING_M * 0.5 and eats[0] < Sim.RING_M * 0.05)
+	# and so does the ring a supernova leaves, however many came before it: it
+	# is held to RING_MOST of the newborn, and the rest drifts in after
+	for behind: int in [1, 2, 4]:
+		var later := _quiet(5)
+		for k in behind:
+			_die(later)
+		later.relics.clear()
+		later.eaten = 0.0
+		var ring_m := _sky_mass(later)
+		var newborn: float = later.mass
+		var step: float = newborn * 0.15 / (120.0 / Sim.STEP)
+		for i in int(720.0 / Sim.STEP):
+			if i < int(120.0 / Sim.STEP):
+				later.mass += step
+				later.fuel += step
+			later.tick()
+		print("  after %d supernovas the ring is %.2f Suns, and a star that grows 15%% in two minutes eats %.0f%% of it in ten more" % [behind, ring_m / Sim.START, later.eaten / ring_m * 100.0])
+		_ok("a ring after %d supernovas is no more than RING_MOST of the newborn (%.2f Suns)" % [behind, ring_m / Sim.START], ring_m <= Sim.RING_MOST * newborn * 1.1)
+		_ok("and under half of it comes down by itself (%.0f%%)" % (later.eaten / ring_m * 100.0), later.eaten < ring_m * 0.5)
+	# what that ring could not hold drifts in after: as much again as the
+	# trickle until it is all in, and none of it lost
+	var rich := _quiet(9)
+	_die(rich)
+	_die(rich)
+	rich.relics.clear()
+	var owed: float = rich._late
+	_ok("the gas a ring could not hold is owed (%.1f of %.1f)" % [owed, Sim.RING_M * (1.0 + Sim.RICHER * 2.0)], is_equal_approx(owed + Sim.RING_MOST * rich.mass, Sim.RING_M * (1.0 + Sim.RICHER * 2.0)))
+	rich.passing = true
+	rich._pass_gap = 1e9
+	var all0: float = _sky_mass(rich) + rich.mass
+	var pace: float = rich.trickle_rate()
+	var spell: float = owed / pace * 0.5
+	_run(rich, spell)
+	_ok("it comes with the trickle, as much again", absf(_sky_mass(rich) + rich.mass + rich._owed_gas - all0 - 2.0 * pace * spell) < 0.02 and absf(float(rich._late) - owed * 0.5) < 0.02)
+	_run(rich, spell * 1.2)
+	_ok("and then it is all in", rich._late == 0.0)
 	# the trickle
 	var far := _quiet(9)
 	far.passing = true
@@ -608,23 +763,32 @@ func _check_frost() -> void:
 	var sim := _quiet(8)
 	var fr: float = sim.frost_r()
 	_ok("a default sim's frost line is well past 2.2 radii", fr > sim.star_r() * 2.2 * 1.5)
-	for pair: Array in [[fr - 40.0, 0.0], [fr + 40.0, 1.0]]:
-		for k in 2:
-			var at := Vector2(float(pair[0]), 6.0 * k)
-			var b: Sim.Body = sim.add(Sim.Kind.GAS, Sim.PUFF, at, sim.circle_vel(at))
-			b.dust = Sim.DUSTY
-			b.age = Sim.COOL
-	_run(sim, 0.5)
-	var inner: Sim.Body = null
-	var outer: Sim.Body = null
-	for b: Sim.Body in sim.bodies:
-		if b.kind != Sim.Kind.GAS:
+	_pairs(sim, fr - 40.0, Sim.DUSTY)
+	_pairs(sim, fr + 40.0, Sim.DUSTY)
+	# until a pair has stuck on each side of the line
+	var inner := 0
+	var outer := 0
+	var rocky := true
+	var icy := true
+	for i in int(120.0 / Sim.STEP):
+		sim.tick()
+		if i % 60 != 0:
+			continue
+		inner = 0
+		outer = 0
+		for b: Sim.Body in sim.bodies:
+			if b.kind == Sim.Kind.GAS:
+				continue
 			if b.pos.length() < fr:
-				inner = b
+				inner += 1
+				rocky = rocky and b.ice == 0.0
 			else:
-				outer = b
-	_ok("inside the frost line a pair makes rock", inner != null and inner.ice == 0.0)
-	_ok("outside it a pair makes ice as well", outer != null and outer.ice > 0.0)
+				outer += 1
+				icy = icy and b.ice > 0.0
+		if inner > 0 and outer > 0:
+			break
+	_ok("inside the frost line a pair makes rock", inner > 0 and rocky)
+	_ok("outside it a pair makes ice as well", outer > 0 and icy)
 	sim.swell = 1.0
 	_ok("a giant thaws the line outward", is_equal_approx(sim.frost_r(), sim.frost * (1.0 + Sim.GIANT)))
 
@@ -930,21 +1094,14 @@ func _check_ends() -> void:
 	print("  a supernova's ash: dust %.3f of a puff (a first cloud %.3f, a nebula's under %.3f)" % [dusty, Sim.FIRST_DUST, Sim.ASH_DUST * 2.0])
 	_ok("metal-rich ashes", dusty > Sim.ASH_DUST * 2.0 and dusty <= Sim.ASH_MOST)
 	var grain := _quiet(5)
-	var at := Vector2(grain.haze_r() * 0.9, 0.0)
-	var p1: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at, grain.circle_vel(at))
-	var p2: Sim.Body = grain.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), grain.circle_vel(at))
-	for p in [p1, p2]:
-		p.dust = Sim.ASH_MOST
-		p.age = Sim.COOL + 1.0
-	_run(grain, 1.0)
-	_ok("iron grain", grain.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > 0.5))
+	_pairs(grain, grain.haze_r() * 1.2, Sim.ASH_MOST)
+	var dark: Sim.Body = _first_solid(grain)
+	_ok("iron grain", dark != null and dark.metal > 0.5)
 	# a young sky's grain is not
 	var young := _quiet(5)
-	for p in [young.add(Sim.Kind.GAS, Sim.PUFF, at, young.circle_vel(at)), young.add(Sim.Kind.GAS, Sim.PUFF, at + Vector2(10.0, 0.0), young.circle_vel(at))]:
-		p.dust = Sim.FIRST_DUST
-		p.age = Sim.COOL + 1.0
-	_run(young, 1.0)
-	_ok("plain grain", young.bodies.any(func(x): return x.kind != Sim.Kind.GAS) and not young.bodies.any(func(x): return x.kind != Sim.Kind.GAS and x.metal > 0.5))
+	_pairs(young, young.haze_r() * 1.2, Sim.FIRST_DUST)
+	var pale: Sim.Body = _first_solid(young)
+	_ok("plain grain", pale != null and pale.metal <= 0.5)
 	# a first game is born in gas, and flags it; a file that is there is not
 	var first_game := _quiet(9)
 	first_game.born()
