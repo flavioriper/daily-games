@@ -96,7 +96,7 @@ func _bot(delta: float) -> void:
 
 func _cell(kind: int, hp: int) -> Dictionary:
 	return {"kind": kind, "hp": hp, "max": hp, "id": 9000 + randi() % 9000, "burn_t": 0.0, "burn_c": 0.0, "burn": 0.0, "burn_part": 0.0,
-		"sting": 0.0, "sting_t": 0.0, "sting_c": 0.0, "sting_part": 0.0, "brittle": 0.0}
+		"sting": 0.0, "sting_t": 0.0, "sting_c": 0.0, "sting_part": 0.0, "brittle": 0.0, "plus": 0, "by": 1, "owed": 0, "gives": 40}
 
 ## A fresh wallet holds boosters, so the boost card stands before every run
 ## and Second chance before every end card: play with none, and decline.
@@ -280,6 +280,11 @@ func _process(delta: float) -> bool:
 			sim.rows.append([_cell(Sim.Kind.GOLD, 77), _cell(Sim.Kind.IRON, 38), _cell(Sim.Kind.CRATE, 1), _cell(Sim.Kind.BOMB, 9), _cell(Sim.Kind.GOLD, 4)])
 			sim.rows.append([_cell(Sim.Kind.FAN, 3), _cell(Sim.Kind.PIERCE, 3), _cell(Sim.Kind.BURST, 3), _cell(Sim.Kind.ZAP, 3), _cell(Sim.Kind.FLAME, 3)])
 			sim.rows.append([_cell(Sim.Kind.FROST, 3), _cell(Sim.Kind.SHOVE, 3), _cell(Sim.Kind.NETTLE, 3), _cell(Sim.Kind.HAIL, 3), _cell(Sim.Kind.GUST, 3)])
+			# the crates that look after others, and a plain one for them to
+			sim.rows.append([_cell(Sim.Kind.PLUS, 30), _cell(Sim.Kind.CRATE, 300), _cell(Sim.Kind.TIMES, 30), _cell(Sim.Kind.MEND, 30), _cell(Sim.Kind.WARD, 30)])
+			sim.ward = Sim.tier_of(500)
+			sim._buffs = true
+			sim._aura(true)
 			# most of them worn down, to every stage of the break: what each began as
 			var began := [[2, 20, 12, 60, 34], [200, 110, 800, 300, 2500], [1100, 7000, 5000, 9000, 14000], [400, 60, 1, 9, 5]]
 			for r in began.size():
