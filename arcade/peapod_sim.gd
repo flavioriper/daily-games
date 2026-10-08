@@ -123,7 +123,7 @@ enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, NETTLE, HAI
 ## How a shot in flight is shaped; its element (`el`) is its colour. PEA to
 ## BURST are the pea gun's and what the Dart and the Berry make of any
 ## cart's; the rest are the other carts' own.
-enum Shot { PEA, PIERCE, BURST, CONKER, PUMPKIN, DROP, SEED }
+enum Shot { PEA, PIERCE, BURST, CONKER, PUMPKIN, DROP, SEED, MAPLE }
 ## What the shop sells. SHOTS is the cart's own card: a pea more a volley on
 ## the pea gun, and on the others what `special` counts.
 enum Card { DAMAGE, SPEED, CRIT, ENERGY, SHOTS }
@@ -136,8 +136,10 @@ enum Hit { PEA, SIDE, BOOM, BURN, STING }
 ## HOSE: a stream of drops that land harder the longer they stay on one
 ## thing; a card lets them. DANDELION: a cone of light seeds, two more a
 ## card. TRAIN: a cart follows where this one was a moment ago and fires as
-## it does; a card is one more, each behind the last.
-enum Cart { PEA, CONKER, PUMPKIN, HOSE, DANDELION, TRAIN }
+## it does; a card is one more, each behind the last. MAPLE: a winged seed
+## that cuts up through everything in its lane, turns at the top of the sky
+## and cuts back down; a card is one more pass.
+enum Cart { PEA, CONKER, PUMPKIN, HOSE, DANDELION, TRAIN, MAPLE }
 
 const DT := 1.0 / 60.0
 const W := 300.0
@@ -159,8 +161,8 @@ const PEA_SPEED := 540.0
 ## levels it takes (the shots in the air are what the phone pays for).
 ## By Cart. Nothing has a most (the user, 2026-10-06): the price is the
 ## brake, and the gun fires FIRE_MOST volleys a step at most.
-const CART_RATE := [5.0, 4.5, 1.4, 12.0, 3.5, 5.0]
-const CART_RATE_STEP := [1.0, 0.9, 0.28, 2.4, 0.7, 1.0]
+const CART_RATE := [5.0, 4.5, 1.4, 12.0, 3.5, 5.0, 3.0]
+const CART_RATE_STEP := [1.0, 0.9, 0.28, 2.4, 0.7, 1.0, 0.6]
 const FIRE_MOST := 3
 ## What is in the air is what a phone pays for, so past these the gun is
 ## drawn no thicker: a quicker gun's volleys leave VOLLEY_MOST a second and a
@@ -174,11 +176,11 @@ const FAT_MOST := 1.8
 ## By Cart: the share of the pea's weight one shot lands as (what is short
 ## of a whole number is kept for the next: `_whole`), how fast it flies, how
 ## big it is drawn, and what the cart's own card costs and climbs by.
-const CART_WEIGHT := [1.0, 1.2, 4.2, 0.8, 0.36, 0.6]
-const CART_SPEED_UP := [540.0, 540.0, 400.0, 900.0, 540.0, 540.0]
-const CART_SIZE := [1.0, 1.15, 1.9, 0.72, 0.8, 1.0]
-const CART_PRICE := [80, 40, 40, 36, 44, 48]
-const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 1.5]
+const CART_WEIGHT := [1.0, 1.2, 4.2, 0.8, 0.36, 0.6, 0.45]
+const CART_SPEED_UP := [540.0, 540.0, 400.0, 900.0, 540.0, 540.0, 460.0]
+const CART_SIZE := [1.0, 1.15, 1.9, 0.72, 0.8, 1.0, 1.3]
+const CART_PRICE := [80, 40, 40, 36, 44, 48, 44]
+const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 1.5, 1.0]
 ## The conker: how far a hop reaches, and what of the shot's weight every hop
 ## lands as (the same each hop: a hop more is that much more, with no end).
 const HOP_REACH := 120.0
@@ -206,6 +208,12 @@ const JET_CAP_STEP := 0.5
 const SEEDS := 5
 const SEED_STEP := 2
 const SEED_VX := 105.0
+## The maple (the twelfth pass, off the web's list of what such games' guns
+## do: the one that comes back): its seed goes through whatever it meets, up
+## its lane and down again, PASSES times and one more a card. PASS_MOST of
+## them are flown at most, each standing for as many as it takes past that.
+const PASSES := 2
+const PASS_MOST := 4
 ## The caravan (the user, 2026-10-08: "a delayed cart that does what he does
 ## after x time, more upgrades add more carts, keep them with the same power
 ## as the first cart, a following cart follows the last delayed one"): each
@@ -493,6 +501,9 @@ func hops() -> int:
 
 func blast_r() -> float:
 	return BLAST_R + BLAST_STEP * special
+
+func passes() -> int:
+	return PASSES + special
 
 func blast_share() -> float:
 	return BLAST_SHARE + BLAST_SHARE_STEP * special
@@ -818,7 +829,7 @@ static func pea_off(i: int, n: int) -> float:
 func _volley(from: float, share: float, main: bool, many := 1.0) -> void:
 	var burst := has_shape(Kind.BURST)
 	var pierce := has_shape(Kind.PIERCE)
-	var own: int = [Shot.PEA, Shot.CONKER, Shot.PUMPKIN, Shot.DROP, Shot.SEED, Shot.PEA][cart]
+	var own: int = [Shot.PEA, Shot.CONKER, Shot.PUMPKIN, Shot.DROP, Shot.SEED, Shot.PEA, Shot.MAPLE][cart]
 	var look: int = Shot.BURST if burst else (Shot.PIERCE if pierce else own)
 	var w: float = CART_WEIGHT[cart] * share * many
 	var out := 6.0
@@ -844,12 +855,18 @@ func _volley(from: float, share: float, main: bool, many := 1.0) -> void:
 ## to, `seen`: what it has landed on), `blast` (a shell's reach); `k` is its
 ## look (Shot) and `sz` how big it is drawn.
 func _shoot(from: float, vx: float, look: int, w: float, pierce: bool, burst: bool, main: bool, many := 1.0) -> void:
+	var turns := 0
+	if cart == Cart.MAPLE:
+		# every pass past PASS_MOST is weight on the passes flown
+		turns = mini(passes(), PASS_MOST)
+		w *= passes() / float(turns)
+		many *= passes() / float(turns)
 	shots.append({"x": clampf(from, 3.0, W - 3.0), "y": CART_Y - 34.0, "vx": vx, "vy": -float(CART_SPEED_UP[cart]), "k": look,
 		"left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element, "w": w, "main": main,
 		"n": many, "sz": CART_SIZE[cart] * minf(1.0 + 0.12 * log(many) / log(2.0), FAT_MOST),
 		"hops": mini(hops(), HOP_MOST) if cart == Cart.CONKER else 0, "to": -1, "seen": [], "w0": w, "n0": many,
 		"fold": maxf(1.0, hops() / float(HOP_MOST)),
-		"blast": blast_r() if cart == Cart.PUMPKIN else 0.0})
+		"blast": blast_r() if cart == Cart.PUMPKIN else 0.0, "turns": turns - 1, "thru": cart == Cart.MAPLE})
 
 func _step_shots() -> void:
 	var keep: Array = []
@@ -862,8 +879,15 @@ func _step_shots() -> void:
 				keep.append(p)
 			continue
 		p.y += float(p.vy) * DT
-		if p.y < -sky - 8.0:
-			continue
+		if p.y < -sky - 8.0 or (float(p.vy) > 0.0 and p.y > CART_Y - 34.0):
+			# a maple's seed with a pass left turns round, at the top of the
+			# sky and over the cart; anything else is gone
+			if int(p.turns) <= 0:
+				continue
+			p.turns = int(p.turns) - 1
+			p.vy = -float(p.vy)
+			p.y = clampf(p.y, -sky - 8.0, CART_Y - 34.0)
+			p.last = -1
 		if p.vx != 0.0:
 			p.x += float(p.vx) * DT
 			# a pea flung sideways comes back off the garden's side
@@ -951,6 +975,10 @@ func _strike(p: Dictionary) -> bool:
 ## a conker with hops left turns for the next thing (`_next_hop`; HOP_KEEP of
 ## its weight each hop). True when it is spent.
 func _spent(p: Dictionary, id: int) -> bool:
+	if bool(p.thru):
+		# a maple's seed goes through everything
+		p.last = id
+		return false
 	(p.seen as Array).append(id)
 	if int(p.to) < 0 and int(p.left) > 0:
 		p.left = int(p.left) - 1

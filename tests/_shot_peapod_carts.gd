@@ -17,7 +17,7 @@ const Sim = preload("res://arcade/peapod_sim.gd")
 const PATH := "user://arcade.cfg"
 ## What each cart runs under: [element, shape (0: none)].
 const DRESS := [[Sim.Kind.NETTLE, 0], [Sim.Kind.FLAME, 0], [Sim.Kind.HAIL, 0], [0, Sim.Kind.FAN],
-	[Sim.Kind.ZAP, Sim.Kind.FAN], [Sim.Kind.GUST, Sim.Kind.PIERCE]]
+	[Sim.Kind.ZAP, Sim.Kind.FAN], [Sim.Kind.GUST, Sim.Kind.PIERCE], [Sim.Kind.FLAME, 0]]
 
 var _menu: Node
 var _s: Node
@@ -40,7 +40,7 @@ func _initialize() -> void:
 	if _had:
 		_before = FileAccess.get_file_as_string(PATH)
 	var cfg := ConfigFile.new()
-	cfg.set_value("peapod", "best_stage", 11)
+	cfg.set_value("peapod", "best_stage", 17)
 	cfg.set_value("peapod", "best", 5000)
 	cfg.set_value("peapod", "pick", Sim.Cart.PUMPKIN)
 	cfg.save(PATH)

@@ -82,6 +82,9 @@ func _volley(sim: RefCounted, special: int) -> float:
 			return w * (Sim.SEEDS + Sim.SEED_STEP * special) * 0.8
 		Sim.Cart.TRAIN:
 			return w * (2.0 + special)
+		Sim.Cart.MAPLE:
+			# about four things in its lane, each pass
+			return w * (Sim.PASSES + special) * 4.0
 	return w * (1 + special)
 
 ## What the crit makes of a pea on average, at level `lv`.

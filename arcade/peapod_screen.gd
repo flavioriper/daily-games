@@ -196,11 +196,11 @@ const SHOP_NAMES := ["PP_CARD_DAMAGE", "PP_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD
 ## The carts (Sim.Cart): each one's name, what it says of itself where it is
 ## chosen, the card only it sells and that card's line of figures; and the
 ## wave a player must have reached to roll each out (the pea gun is everyone's).
-const CART_NAMES := ["PP_CART_PEA", "PP_CART_CONKER", "PP_CART_PUMPKIN", "PP_CART_HOSE", "PP_CART_DANDELION", "PP_CART_TRAIN"]
-const CART_LINES := ["PP_CART_PEA_LINE", "PP_CART_CONKER_LINE", "PP_CART_PUMPKIN_LINE", "PP_CART_HOSE_LINE", "PP_CART_DANDELION_LINE", "PP_CART_TRAIN_LINE"]
-const OWN_NAMES := ["PP_CARD_SHOTS", "PP_CARD_HOPS", "PP_CARD_BLAST", "PP_CARD_JET", "PP_CARD_SEEDS", "PP_CARD_TRAIN"]
-const OWN_LINES := ["PP_CARD_SHOTS_LINE", "PP_CARD_HOPS_LINE", "PP_CARD_BLAST_LINE", "PP_CARD_JET_LINE", "PP_CARD_SEEDS_LINE", "PP_CARD_TRAIN_LINE"]
-const CART_WAVE := [0, 5, 8, 11, 14, 17]
+const CART_NAMES := ["PP_CART_PEA", "PP_CART_CONKER", "PP_CART_PUMPKIN", "PP_CART_HOSE", "PP_CART_DANDELION", "PP_CART_TRAIN", "PP_CART_MAPLE"]
+const CART_LINES := ["PP_CART_PEA_LINE", "PP_CART_CONKER_LINE", "PP_CART_PUMPKIN_LINE", "PP_CART_HOSE_LINE", "PP_CART_DANDELION_LINE", "PP_CART_TRAIN_LINE", "PP_CART_MAPLE_LINE"]
+const OWN_NAMES := ["PP_CARD_SHOTS", "PP_CARD_HOPS", "PP_CARD_BLAST", "PP_CARD_JET", "PP_CARD_SEEDS", "PP_CARD_TRAIN", "PP_CARD_PASS"]
+const OWN_LINES := ["PP_CARD_SHOTS_LINE", "PP_CARD_HOPS_LINE", "PP_CARD_BLAST_LINE", "PP_CARD_JET_LINE", "PP_CARD_SEEDS_LINE", "PP_CARD_TRAIN_LINE", "PP_CARD_PASS_LINE"]
+const CART_WAVE := [0, 5, 8, 11, 14, 17, 20]
 ## The gun's click is heard this far apart at the closest (a hose is a
 ## dozen drops a second and more), and a burst or a blast its thump.
 const SHOT_GAP := 0.07
@@ -1941,7 +1941,14 @@ func _draw_peas() -> void:
 			buf.resize(o + 8 * 64)
 		var fat := minf(3.0, heavy * float(p.sz))
 		var vx: float = p.vx
-		if vx == 0.0:
+		if int(p.k) == Sim.Shot.MAPLE:
+			# a winged seed whirls as it goes
+			var a := 0.0 if Motion.reduce else _clock * 17.0 + float(p.x) * 0.3
+			buf[o] = cos(a) * fat
+			buf[o + 1] = -sin(a) * fat
+			buf[o + 4] = sin(a) * fat
+			buf[o + 5] = cos(a) * fat
+		elif vx == 0.0:
 			buf[o] = fat
 			buf[o + 1] = 0.0
 			buf[o + 4] = 0.0
@@ -3031,6 +3038,8 @@ func _own_value() -> String:
 			return line % [sim.seeds(), sim.seeds() + Sim.SEED_STEP]
 		Sim.Cart.TRAIN:
 			return line % [1 + sim.followers(), 2 + sim.followers()]
+		Sim.Cart.MAPLE:
+			return line % [sim.passes(), sim.passes() + 1]
 	return line % [sim.peas, sim.peas + 1]
 
 func _refresh_shop() -> void:
@@ -3377,7 +3386,7 @@ func _cart_tile(c: int) -> Button:
 	var open := cart_open(c)
 	var b := Button.new()
 	b.name = "Cart%d" % c
-	b.custom_minimum_size = Vector2(264, 250)
+	b.custom_minimum_size = Vector2(264, 206)
 	b.focus_mode = Control.FOCUS_NONE
 	b.disabled = not open
 	var words := VBoxContainer.new()
@@ -3392,7 +3401,7 @@ func _cart_tile(c: int) -> Button:
 	pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	pic.modulate.a = 1.0 if open else 0.36
 	pic.draw.connect(func() -> void:
-		var u := 2.7
+		var u := 2.3
 		var foot := Vector2(pic.size.x * 0.5, pic.size.y - 9.0 * u - 4.0)
 		var carts := [[foot, u, false]]
 		if c == Sim.Cart.TRAIN:

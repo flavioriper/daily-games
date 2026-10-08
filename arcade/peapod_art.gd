@@ -56,7 +56,7 @@ const GIFT := {Sim.Kind.FAN: Color("a98be6"), Sim.Kind.PIERCE: Color("45c4b0"), 
 const CARD := [Color("f5a44a"), Color("f08fb0"), Color("7fc8ee"), Color("45558f"), Color("a98be0")]
 ## A cart's own colour, by Sim.Cart: its tile where the carts are chosen and
 ## the medallion of the card only it sells.
-const CART := [Color("8fc56f"), Color("b0794a"), Color("f09a3e"), Color("58a9d6"), Color("e9c85a"), Color("7fb565")]
+const CART := [Color("8fc56f"), Color("b0794a"), Color("f09a3e"), Color("58a9d6"), Color("e9c85a"), Color("7fb565"), Color("dd6f55")]
 ## Energy: a mote of light, its pale heart and the deeper blue its glow
 ## thins out through, so it reads on a pale sky.
 const ORB := Motes.ORB
@@ -84,6 +84,7 @@ const PUMPKIN := Color("f09a3e")
 const WATER := Color("6fb8ea")
 const FLUFF := Color("fffdf6")
 const IRON := Color("b7c0cc")
+const MAPLE := Color("e2714f")
 ## The crates that look after others, by Sim.Kind: the PLUS's green, the
 ## TIMES's violet, the mender's rose and the lock's brass. Their signs and
 ## the badges on what they look after are these, never a shade of a paint.
@@ -442,6 +443,14 @@ static func own_icon(b: Face.Builder, cart: int, c: Vector2, s: float) -> void:
 			for k in 5:
 				var d := Vector2.from_angle(-PI * 0.5 + (k - 2) * 0.42)
 				_seed(b, c + Vector2(0, s * 0.4) + d * s * 0.74, s * 0.13, d.angle() + PI * 0.5)
+		Sim.Cart.MAPLE:
+			# a seed, and the way it goes: up one side and down the other
+			for side: float in [-1.0, 1.0]:
+				var x := c.x + side * s * 0.34
+				b.stroke(PackedVector2Array([Vector2(x, c.y + s * 0.34), Vector2(x, c.y - s * 0.34)]), s * 0.08, Color(PAPER, 0.85))
+				var tip := Vector2(x, c.y - side * s * 0.4)
+				b.polygon(PackedVector2Array([tip + Vector2(-s * 0.13, side * s * 0.14), tip, tip + Vector2(s * 0.13, side * s * 0.14)]), PAPER)
+			_samara(b, c, s * 0.12, PAPER)
 		Sim.Cart.TRAIN:
 			for k in 2:
 				var at := c + Vector2(s * (0.2 - 0.42 * k), s * (0.06 + 0.06 * k))
@@ -506,6 +515,23 @@ static func _drop(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
 
 ## A dandelion seed `r` big, turned `turn`: the seed, and its tuft of down
 ## trailing behind.
+## A maple's winged seed about `c`: two nuts back to back and a papery wing
+## out from each, veined; the screen whirls it.
+static func _samara(b: Face.Builder, c: Vector2, r: float, col := MAPLE) -> void:
+	for side: float in [-1.0, 1.0]:
+		var wing := PackedVector2Array()
+		for p: Vector2 in [Vector2(0.2, -0.5), Vector2(1.5, -1.0), Vector2(2.7, -0.5), Vector2(2.9, 0.3), Vector2(1.6, 0.62), Vector2(0.2, 0.5)]:
+			wing.append(c + Vector2(p.x * side, p.y * side) * r)
+		b.polygon(wing, deepen(col))
+		var inner := PackedVector2Array()
+		for p: Vector2 in [Vector2(0.3, -0.34), Vector2(1.5, -0.78), Vector2(2.5, -0.38), Vector2(2.66, 0.2), Vector2(1.5, 0.42), Vector2(0.3, 0.34)]:
+			inner.append(c + Vector2(p.x * side, p.y * side) * r)
+		b.polygon(inner, col.lerp(PAPER, 0.35))
+		b.stroke(PackedVector2Array([c + Vector2(0.4 * side, 0.3 * side) * r, c + Vector2(2.4 * side, 0.1 * side) * r]), maxf(1.0, r * 0.14), Color(deepen(col), 0.8))
+	b.disc(c + Vector2(0, r * 0.1), r * 0.66, deepen(col))
+	b.disc(c, r * 0.58, col)
+	b.disc(c + Vector2(-r * 0.2, -r * 0.2), r * 0.18, Color(1, 1, 1, 0.6))
+
 static func _seed(b: Face.Builder, c: Vector2, r: float, turn := 0.0, col := FLUFF) -> void:
 	var back := Vector2(0, 1).rotated(turn)
 	for k in [-1.0, 0.0, 1.0]:
@@ -744,6 +770,27 @@ static func _gun(u: float, el: int, cart: int) -> ArrayMesh:
 			for k in 3:
 				b.disc(mouth + Vector2((k - 1) * 4.0 * u, -0.6 * u), 0.9 * u, GOLD_INK)
 			b.stroke(Face.Builder.bezier3(Vector2(9, -4) * u, Vector2(17, -5) * u, Vector2(17, -15) * u, Vector2(9, -13) * u, 10), maxf(1.2, 1.9 * u), deepen(can))
+		Sim.Cart.MAPLE:
+			# a sawn stump, its rings up, a red leaf on its side and a shoot
+			var bark := Color("b98a5e")
+			b.fan(Face.Builder.round_rect(Vector2(-10.5, -28) * u, Vector2(21, 29) * u, 4 * u), deepen(bark))
+			b.fan(Face.Builder.round_rect(Vector2(-10.5, -28) * u, Vector2(17.5, 27.4) * u, 4 * u), bark)
+			for k in 3:
+				b.stroke(PackedVector2Array([Vector2(-6.0 + 5.0 * k, -22) * u, Vector2(-6.6 + 5.0 * k, -6) * u]), maxf(1.0, 0.8 * u), Color(deepen(bark), 0.55))
+			b.ellipse(Vector2(-12.0, -1.0) * u, 4.4 * u, 2.4 * u, deepen(bark))
+			b.ellipse(Vector2(11.6, -0.6) * u, 3.8 * u, 2.2 * u, deepen(bark))
+			var leaf := PackedVector2Array()
+			for k in 10:
+				leaf.append(Vector2(13.0, -13.0) * u + Vector2.from_angle(TAU * k / 10.0 - 0.3) * (6.4 if k % 2 == 0 else 3.0) * u)
+			b.polygon(leaf, deepen(MAPLE))
+			var leaf_in := PackedVector2Array()
+			for k in 10:
+				leaf_in.append(Vector2(13.0, -13.4) * u + Vector2.from_angle(TAU * k / 10.0 - 0.3) * (5.2 if k % 2 == 0 else 2.4) * u)
+			b.polygon(leaf_in, MAPLE)
+			b.ellipse(mouth + Vector2(0, 0.8 * u), 11.0 * u, 4.2 * u, deepen(bark))
+			b.ellipse(mouth - Vector2(0, 0.4 * u), 10.4 * u, 3.5 * u, trim if trim.a > 0.0 else Color("f1dfbd"))
+			b.stroke(Face.Builder.ring(mouth - Vector2(0, 0.4 * u), 6.2 * u, 2.0 * u), maxf(1.0, 0.8 * u), Color(deepen(bark), 0.7), true)
+			b.ellipse(mouth - Vector2(0, 0.4 * u), 2.2 * u, 0.8 * u, Color(deepen(bark), 0.8))
 		_:
 			# the dandelion: a stalk, two leaves, and its clock of down
 			b.stroke(PackedVector2Array([Vector2(0, 0), Vector2(0.8 * u, -11.0 * u), Vector2(0, -21.0 * u)]), maxf(1.6, 2.4 * u), POD_DEEP)
@@ -837,11 +884,11 @@ static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := 3.3 * u
-	var col: Color = [PEA, DART, BERRY, CONKER, PUMPKIN, WATER, FLUFF][clampi(look, 0, 6)]
+	var col: Color = [PEA, DART, BERRY, CONKER, PUMPKIN, WATER, FLUFF, MAPLE][clampi(look, 0, 7)]
 	if SHOT_OF.has(el):
 		col = SHOT_OF[el]
 	var wake := col.lerp(PAPER, 0.5)
-	if look != Sim.Shot.SEED and look != Sim.Shot.DROP:
+	if look != Sim.Shot.SEED and look != Sim.Shot.DROP and look != Sim.Shot.MAPLE:
 		var i0 := b.vertex(Vector2(-r * 0.7, 0), Color(wake, 0.5))
 		var i1 := b.vertex(Vector2(r * 0.7, 0), Color(wake, 0.5))
 		var i2 := b.vertex(Vector2(0, r * 6.5), Color(wake, 0.0))
@@ -866,6 +913,8 @@ static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 			_drop(b, Vector2.ZERO, r * 0.95, col)
 		Sim.Shot.SEED:
 			_seed(b, Vector2.ZERO, r * 0.9, 0.0, col)
+		Sim.Shot.MAPLE:
+			_samara(b, Vector2.ZERO, r * 1.1, col)
 		_:
 			if el == 0:
 				pea(b, Vector2.ZERO, r)
