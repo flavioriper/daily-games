@@ -99,11 +99,10 @@ function turnDoc(day: number, game: string) {
  */
 export const publishDay = onSchedule({
   schedule: "0 3 * * *",
-  // A written day is two long answers from a model (acorn.ts): minutes, not
-  // the default's one.
+  // A written day is eight answers from a model (acorn.ts: a band written,
+  // a band reviewed): minutes, not the default's one.
   timeoutSeconds: 1500,
   memory: "512MiB",
-  secrets: ["ANTHROPIC_API_KEY"],
 }, async () => {
   await publishDays(new Date());
 });

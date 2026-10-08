@@ -20,7 +20,7 @@
   `content/acorn.json`**: m031's wrong answer "Um milhão" / "A million". That
   is the number, not the show; leave it.
 - **Its questions are written by a model, every day.** This is the first
-  board whose day comes from the backend: `publishDay` asks Claude for the
+  board whose day comes from the backend: `publishDay` asks a model on Vertex AI for the
   day, a second blind pass reviews it, and the phone reads the document
   (`docs/agents/turns-and-backend.md`, "A day written by a model", is the
   whole of that and the contract the next game follows). The board itself
@@ -129,7 +129,7 @@
 - **Not seen on a phone.** Shots and probes on this Mac only. The sounds
   are one take a cue and unheard by the user; the pt and es lines of the
   chrome and of all 144 questions are unreviewed; **the model's day has
-  never been written**, because there is no Anthropic key on this Mac (the
+  never been written**: no model could be reached from this Mac (the
   pipeline ran against a stand-in and the publish against the emulator).
 - **Calls made without the user** (2026-10-08): the name and the acorn as
   the prize; a board with four bands rather than one ladder; seven
@@ -137,6 +137,6 @@
   after the last answer; one help only (the bulb as the cards), none on the
   Climb; two hearts; Try again dealing a new Climb; no money, no clock, no
   stop-and-keep; a silent held breath in place of a drum roll; the why line
-  in berry after a wrong answer; nine subjects; the model (Claude Opus 5.5)
-  and its two passes; the bank falling in for a short or failed night; no
+  in berry after a wrong answer; nine subjects; the two passes, write and blind review (the model itself is
+  the user's choice: a cheap one on Vertex AI, default gpt-oss-120b); the bank falling in for a short or failed night; no
   score sent to the crowd.

@@ -146,15 +146,12 @@ const QUESTION_SCHEMA = {
   additionalProperties: false,
 };
 
-const DAY_SCHEMA = {
+const BAND_SCHEMA = {
   type: "object",
   properties: {
-    easy: {type: "array", items: QUESTION_SCHEMA},
-    medium: {type: "array", items: QUESTION_SCHEMA},
-    hard: {type: "array", items: QUESTION_SCHEMA},
-    climb: {type: "array", items: QUESTION_SCHEMA},
+    questions: {type: "array", items: QUESTION_SCHEMA},
   },
-  required: ["easy", "medium", "hard", "climb"],
+  required: ["questions"],
   additionalProperties: false,
 };
 
@@ -190,28 +187,25 @@ interface Draft {
   es: Wording;
 }
 
-interface DraftDay {
-  easy: Draft[];
-  medium: Draft[];
-  hard: Draft[];
-  climb: Draft[];
-}
+/** What each band is asked for. */
+const BRIEFS = [
+  (n: number) => `${n} easy questions: ones nine adults in ten and most ten-year-olds can answer.`,
+  (n: number) => `${n} medium questions of school general knowledge: about half of adults know each.`,
+  (n: number) => `${n} hard questions: ones one adult in four knows, and a keen quiz player usually does.`,
+  (n: number) => `${n} questions in rising order, a quiz show's ladder: the first three easy, ` +
+    "then steadily harder, and the last three what one adult in ten knows.",
+];
 
-function writerPrompt(day: number, recent: string[]): string {
-  const stale = recent.length === 0 ? "" :
-    `\n\nAsked in the last days, so not to be asked again nor anything close \
-to it:\n${recent.map((r) => `- ${r}`).join("\n")}`;
-  return `Write the quiz for day ${day}.
+/** A band a request: a cheap model's answer has a low ceiling, and a band
+ *  that fails costs the day one band and not four. `taken` is what the last
+ *  days asked and what today's earlier bands already have. */
+function writerPrompt(day: number, band: number, taken: string[]): string {
+  const stale = taken.length === 0 ? "" :
+    `\n\nAlready asked, so not to be asked again nor anything close to it:\n${taken.map((r) => `- ${r}`).join("\n")}`;
+  return `Write part of the quiz for day ${day}: ${BRIEFS[band](DRAFTS[band])}
 
-- easy: ${DRAFTS[0]} questions nine adults in ten and most ten-year-olds can answer.
-- medium: ${DRAFTS[1]} questions of school general knowledge; about half of adults know each.
-- hard: ${DRAFTS[2]} questions one adult in four knows; a keen quiz player usually does.
-- climb: ${DRAFTS[3]} questions in rising order, a quiz show's ladder: the \
-first three easy, then steadily harder, and the last three what one adult in \
-ten knows.
-
-Spread each list over these subjects, no more than two of a list on one: \
-${CATS.join(", ")}. No fact may be asked twice in the day.${stale}`;
+Spread them over these subjects, no more than two on one: ${CATS.join(", ")}. \
+No fact may be asked twice.${stale}`;
 }
 
 // --- the reviewer ---
@@ -331,49 +325,68 @@ export function asked(day: unknown): string[] {
   return out;
 }
 
+/** One band from the model: written, checked against the contract, then
+ *  reviewed blind. Throws when the model could not be asked. */
+async function writeBand(day: number, band: number, taken: string[]): Promise<Question[]> {
+  const draft = await ask<{questions: Draft[]}>({
+    system: WRITER,
+    prompt: writerPrompt(day, band, taken),
+    schema: BAND_SCHEMA,
+    role: "write",
+  });
+  const written = (Array.isArray(draft.questions) ? draft.questions : [])
+    .map((d, i) => ({id: `d${day}b${band}q${i}`, cat: d.cat, en: d.en, pt: d.pt, es: d.es}))
+    .filter(validQuestion);
+  if (written.length === 0) return [];
+  const review = await ask<{verdicts: Verdict[]}>({
+    system: REVIEWER,
+    prompt: reviewPrompt(written),
+    schema: REVIEW_SCHEMA,
+    role: "review",
+  });
+  return passing(written, Array.isArray(review.verdicts) ? review.verdicts : []);
+}
+
 /**
  * The day to publish. `recent` is what the last days asked (asked()). Never
- * throws: whatever goes wrong with the model, the bank answers.
+ * throws: whatever goes wrong with the model, the bank answers -- for the
+ * band that failed, and for the whole day when there is no model at all.
  */
 export async function makeDay(day: number, recent: string[] = []): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
-  let kept: Question[][];
-  try {
-    const draft = await ask<DraftDay>({
-      system: WRITER,
-      prompt: writerPrompt(day, recent),
-      schema: DAY_SCHEMA,
-    });
-    const lists = [draft.easy, draft.medium, draft.hard, draft.climb];
-    const written = lists.map((list, b) => (Array.isArray(list) ? list : [])
-      .map((d, i) => ({id: `d${day}b${b}q${i}`, ...d}))
-      .filter(validQuestion));
-    const review = await ask<{verdicts: Verdict[]}>({
-      system: REVIEWER,
-      prompt: reviewPrompt(written.flat()),
-      schema: REVIEW_SCHEMA,
-    });
-    kept = written.map((list) => passing(list, review.verdicts ?? []));
-  } catch (e) {
-    console.error("acorn: the model's day failed, publishing the bank's", e);
-    return {v: 1, source: "bank", bands: reserve};
-  }
+  const taken = recent.slice();
+  const bands: Question[][] = [];
+  const kept: number[] = [];
   let fromBank = 0;
-  const bands = kept.map((list, b) => {
+  let fromModel = 0;
+  for (let b = 0; b < ASKS.length; b++) {
     const n = ASKS[b];
-    if (list.length >= n) return b === 3 ? thinned(list, n) : list.slice(0, n);
-    // Short. The Climb has to rise, and two hands' questions spliced
-    // together would not, so a short Climb is the bank's whole; any other
-    // band takes the bank's questions for what it lacks.
-    if (b === 3) {
-      fromBank += n;
-      return reserve[b];
+    let list: Question[] = [];
+    try {
+      list = await writeBand(day, b, taken);
+    } catch (e) {
+      console.error(`acorn: band ${b} of day ${day} failed, the bank fills it`, e);
     }
-    const fill = reserve[b].slice(0, n - list.length);
-    fromBank += fill.length;
-    return [...list, ...fill];
-  });
-  console.log(`acorn: day ${day}, kept ${kept.map((l) => l.length).join("/")}, ${fromBank} from the bank`);
-  return {v: 1, source: fromBank === 0 ? "model" : "mixed", bands};
+    kept.push(list.length);
+    let band: Question[];
+    if (list.length >= n) {
+      band = b === 3 ? thinned(list, n) : list.slice(0, n);
+      fromModel += n;
+    } else if (b === 3) {
+      // The Climb has to rise, and two hands' questions spliced together
+      // would not, so a short Climb is the bank's whole.
+      band = reserve[b];
+      fromBank += n;
+    } else {
+      const fill = reserve[b].slice(0, n - list.length);
+      band = [...list, ...fill];
+      fromBank += fill.length;
+      fromModel += list.length;
+    }
+    bands.push(band);
+    for (const q of band) taken.push(`${q.en.q} (${q.en.right})`);
+  }
+  console.log(`acorn: day ${day}, kept ${kept.join("/")}, ${fromBank} from the bank`);
+  return {v: 1, source: fromBank === 0 ? "model" : fromModel === 0 ? "bank" : "mixed", bands};
 }

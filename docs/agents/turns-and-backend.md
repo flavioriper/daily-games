@@ -120,18 +120,36 @@ foundation's, unchanged. Three things changed in `index.ts`:
 - **A day already published is never made again**: `publishDays` reads the
   document first and skips. `create()` is still what writes, so two runs
   racing cannot overwrite either.
-- The schedule has `timeoutSeconds: 1500`, `memory: "512MiB"` and
-  `secrets: ["ANTHROPIC_API_KEY"]`.
+- The schedule has `timeoutSeconds: 1500` and `memory: "512MiB"`.
 
 **`server/functions/src/generate.ts` is the only place a model is called.**
-`ask<T>({system, prompt, schema, effort?})` sends one request to
-`claude-opus-5-5` through `@anthropic-ai/sdk` -- streamed (a day is a long
-answer), adaptive thinking, effort `high`, the answer held to `schema` by
-structured outputs (`output_config.format`), a classifier's decline retried
-on Anthropic's recommended model in the same call (`fallbacks: "default"`)
--- and returns the parsed JSON or throws (no key, a refusal, an answer cut
-at the token limit, text that does not parse). `available()` says whether
-there is a key at all. It knows nothing about any game.
+The model is one **Vertex AI serves from this project**, asked through
+Vertex's OpenAI-compatible chat endpoint
+(`.../locations/<region>/endpoints/openapi/chat/completions`) with a plain
+`fetch` and a Google access token (`google-auth-library`): the function
+signs in as its own identity, so **there is no key and no secret**, and the
+cost is a line on the project's Google Cloud bill. That was the user's call
+on 2026-10-08 ("i wanna use the gcloud free credits ... using some cheap
+openai model"); the first version asked Claude Opus 5.5 through Anthropic's
+SDK with a secret, and is in git history (`f7ea2a3c`).
+
+- **Which model is a name**, read from the environment: `DAILY_MODEL` (the
+  writer; default `openai/gpt-oss-120b-maas`, OpenAI's open-weight model),
+  `DAILY_REVIEW_MODEL` (the reviewer; the writer when unset),
+  `DAILY_MODEL_REGION` (`us-central1`; `global` where a model is served
+  there). The same endpoint serves Gemini (`google/gemini-2.5-flash`), so
+  changing models is a variable, not code. `DAILY_MODEL=off`, a `demo-`
+  project or the emulator's host in the environment mean no model
+  (`available()`).
+- `ask<T>({system, prompt, schema, role?})` sends one request (16,000
+  tokens at most, 240 s) and returns the parsed JSON or throws. It asks the
+  endpoint to hold the model to the schema (`response_format: json_schema`);
+  on a 400 it asks again for plain JSON (`json_object`), the schema being
+  spelled out in the system text either way, and `jsonIn` reads the object
+  out of a fenced answer. **So the schema is a request, not a guarantee**,
+  and the game's validator is what is trusted.
+- **A day is asked for in pieces**: a cheap model's answer has a low
+  ceiling, and a piece that fails costs the day that piece.
 
 **What a game's file owes** (`acorn.ts` is the model to copy):
 
@@ -152,7 +170,10 @@ there is a key at all. It knows nothing about any game.
    nothing (`passing`). Ask the writer for more than the day needs
    (`DRAFTS` 9/9/9/13 for 7/7/7/10) so the review has some to turn down.
 4. **A reserve the game ships**, and a rule for the gap: `makeDay` **never
-   throws**. No key, an error, a refusal: the day is the bank's
+   throws**. It writes and reviews **a band a request** (eight requests a
+   day), each band told what the last days and today's earlier bands asked;
+   a band whose request fails is the bank's and the others stand. No model
+   at all: the day is the bank's
    (`content/acorn.json`, copied beside the source by `npm run build` as the
    ignored `src/acorn_bank.json`). A band left short by the review is
    filled from the bank; a short Climb is the bank's whole, because two
@@ -167,23 +188,38 @@ short wait on the network, then the reserve; and `world/main.gd` fetching
 the day behind the menu at boot. A board cannot ask in `build()`: the host
 sets `daily_key` after `start()` returns.
 
-**Cost and time.** Two requests a day and game. Golden Acorn's writer
-returns about 40 questions in three languages (an estimate: some 15,000
-output tokens, and the review a few thousand more, plus thinking), so a day
-is expected to cost well under a dollar at $4 / $20 per million tokens and
-to take a few minutes. **None of that is measured**: see below.
+**Cost and credits.** A day is roughly 15,000 tokens written and as many
+read again by the review. At the prices seen on 2026-10-08 for
+`gpt-oss-120b` ($0.09-0.15 a million tokens in, $0.36-0.60 out; two sources
+disagreed and Google's own page was not read) that is **about a cent a day**.
+**Whether Google Cloud credits pay for it depends on the credit**: Google's
+free-trial page says trial credits cannot be used on partner models served
+as managed APIs, which is what gpt-oss is; Gemini is Google's own and is not
+excluded. Nobody here has seen which credits the billing account holds. If
+the bill shows gpt-oss charged to the card, set `DAILY_MODEL` to a Gemini
+model -- or leave it, at a cent a day.
 
-**By hand** (all three run by a person; the last two write to production):
+**The quality is the open question.** gpt-oss-120b is a much smaller model
+than the one this was designed around, it writes and fact-checks its own
+work unless `DAILY_REVIEW_MODEL` names another, and its Portuguese and
+Spanish are unread. The review, the validator and the bank bound the
+damage; they do not make a weak question good. Read a few days first.
 
-- `tools/acorn_day.sh [yyyymmdd]` prints the day `makeDay` would publish and
-  writes nothing: the model's with `ANTHROPIC_API_KEY` in the environment,
-  the bank's without. **Read a few of these before trusting it with a night.**
-- `cd server && firebase functions:secrets:set ANTHROPIC_API_KEY --project
-  daily-games-420bf`, once, **before** `tools/deploy_functions.sh`: a deploy
-  that names a secret that does not exist fails.
-- `tools/publish_day.sh` runs `publishDays` against the live project from
-  this Mac (application default credentials, the key in the environment):
-  the day a game ships on, which the 03:00 scheduler never reaches.
+**By hand** (run by a person; the last two change production):
+
+- `gcloud auth application-default login` as the project's owner, once, in a
+  real Terminal; then `tools/acorn_day.sh [yyyymmdd]` prints the day
+  `makeDay` would publish and writes nothing (`DAILY_MODEL=...` in front to
+  try another model, `DAILY_MODEL=off` for the bank's day). **Read a few of
+  these before trusting it with a night.**
+- `tools/vertex_identity.sh`, once: turns the Vertex AI API on and gives the
+  functions' identity `roles/aiplatform.user`. An open model may also want
+  its terms accepted once in Model Garden. Skipped, every night is the
+  bank's day and the log says why.
+- `tools/deploy_functions.sh`, then `tools/publish_day.sh` (runs
+  `publishDays` against the live project from this Mac) for the day a game
+  ships on, which the 03:00 scheduler never reaches. To pin a model on the
+  deployed function, put `DAILY_MODEL=...` in `server/functions/.env`.
 
 **Verified, and not** (2026-10-08). `npm run build` is clean. `publishDays`
 ran against the Firestore emulator (`firebase emulators:exec --only
@@ -193,10 +229,11 @@ the bank's day and left it untouched on a second run. `makeDay` ran against
 a stand-in for the model (a throwaway script that replaced `ask`): a clean
 day, a question over the limits dropped, a strict reviewer and a reviewer
 that disagreed both filled from the bank, a throwing writer gave the bank's
-day. **The real model has never been called**: there is no Anthropic key on
-this Mac. So the prompts, the schema as the API accepts it, the beta
-`fallbacks` parameter beside structured outputs on a stream, the time and
-the cost are all unproven until `tools/acorn_day.sh` is run with a key.
+day. **No model has been called** (2026-10-08): the project owner's gcloud login
+had expired on this Mac and there were no application default credentials.
+So the endpoint's path, the model's id as Vertex spells it, whether it takes
+`json_schema`, its output ceiling, the prompts, the time and the cost are
+all unproven until `tools/acorn_day.sh` answers.
 Nothing is deployed: the live `publishDay` is still the old one, and until
 the deploy every phone plays the bank.
 

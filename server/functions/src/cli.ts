@@ -4,9 +4,10 @@ import {makeDay} from "./acorn";
  * The night's work by hand (tools/acorn_day.sh, tools/publish_day.sh):
  *
  *   node lib/cli.js day [yyyymmdd]   prints the day Golden Acorn would
- *                                    publish, written by the model when
- *                                    ANTHROPIC_API_KEY is set and by the bank
- *                                    when it is not. Writes nothing.
+ *                                    publish: written by the model when
+ *                                    the credentials can reach Vertex AI,
+ *                                    by the bank when DAILY_MODEL=off or
+ *                                    the model fails. Writes nothing.
  *   node lib/cli.js publish          runs publishDays for today and tomorrow
  *                                    against whatever project the
  *                                    credentials name -- the day a game
