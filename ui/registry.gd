@@ -858,6 +858,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "GF_LVL_3"},
 		],
 	},
+	{
+		"id": "horse",
+		"kind": "puzzle",
+		"title": "Horse Pen",
+		"blurb": "HP_BLURB",
+		"short": "HP_SHORT",
+		"motto": "HP_MOTTO",
+		"footer": "Bale · Enclose · Keep",
+		# The meadow is the board: a bale is a tap on the grass itself, so no
+		# tray. The actions row stays for its third button, which here reads
+		# Submit -- the day ends on that press, not on the pen closing, so a
+		# closed pen can still be rebuilt for a bigger one.
+		"script": "res://puzzles/horse2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each field (horse_gen.gd's BANDS, meadows mined
+		# into content/horse.json) is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "HP_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HP_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HP_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HP_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.
