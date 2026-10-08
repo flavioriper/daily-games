@@ -88,7 +88,7 @@ const STEP := 1.0 / 60.0
 ## factor itself.
 const G := 4.8e4
 const DRAG := 0.011
-const LIGHT := 6.0
+const LIGHT := 13.0
 ## The drag at the disc's edge, as a share of the drag at the star: a disc
 ## flows in all the way out, or what is set down at its rim would hang there.
 const THIN := 0.3
@@ -156,9 +156,12 @@ const FLOW := 0.6
 const FLOW_STEP := 0.88
 const FLOW_LEAST := 0.15
 const FLUSH := 6.0
-## Gas from the far sky: mass a second at one Sun (a tenth of a Sun a
-## minute), the power of the star's Suns it grows by (Bondi's is 2, which
-## runs away), and what a level of Rich adds.
+## Gas from the far sky: mass a second at one Sun (0.17 Suns a minute: the
+## first minutes are the hand's, and one to two Suns in five needs that much
+## to send), the power of the star's Suns it grows by, and what a level of
+## Rich adds. Bondi's power is 2, which runs away; at 1 the star doubled every
+## two minutes from four Suns and a giant swallowed the sky, so it is the
+## fourth root: a 16-Sun star draws twice what a new one does.
 const TRICKLE := 0.028
 const TRICKLE_UP := 0.25
 const RICH_STEP := 0.5
@@ -227,11 +230,13 @@ const DRAWN := 0.3
 const PIECE := 0.05
 
 ## What a thing's mass pays against gas, by the biggest solid it is or was
-## part of.
+## part of. Low steps on purpose: a ring after a supernova turns a twentieth
+## of what the star eats into solids, and at 4, 10 and 25 a third star earned
+## five times a first one's light.
 const PAY_GAS := 1.0
-const PAY_GRAIN := 4.0
-const PAY_ROCK := 10.0
-const PAY_WORLD := 25.0
+const PAY_GRAIN := 2.0
+const PAY_ROCK := 3.0
+const PAY_WORLD := 6.0
 
 ## Worlds pull what is near them: the WORLDS heaviest solids from PLANET_M up
 ## do. A solid feels a world out to PULL_REACH of its Hill radii. Gas feels
@@ -380,9 +385,9 @@ const RICHER := 0.5
 ## star's ring is FIRST_DUST of dust. The falling few are each on a closed
 ## path whose nearest point to the new star is ASH_NEAR to ASH_NEAR +
 ## ASH_REACH of its radii and whose furthest is inside ASH_FAR of them.
-const FIRST_DUST := 0.005
+const FIRST_DUST := 0.004
 const ASH_DUST := 0.01
-const ASH_MOST := 0.06
+const ASH_MOST := 0.03
 const ASH_H := 0.5
 const ASH_NEAR := 1.7
 const ASH_REACH := 1.2
@@ -421,10 +426,11 @@ const FAR_FAR := 5000.0
 const NEBULA_DUST := 2
 const LOBE := 2.0
 ## The dead star's silicon, iron and rock become dust in the gas it leaves, METAL
-## of their share of it; a solid from gas this dusty is iron-dark, fully from
-## twice IRONY.
-const METAL := 0.25
-const IRONY := 0.016
+## of their share of it (a supernova's are a twelfth of the star, so its gas
+## is 0.016 dust: a handful of worlds by its tenth minute, where 0.032 made
+## twenty); a solid from gas this dusty is iron-dark, fully from twice IRONY.
+const METAL := 0.07
+const IRONY := 0.008
 
 var mass := START
 var light := 0.0
@@ -1276,8 +1282,9 @@ func _condense(a: Body, b: Body, frost: float) -> Dictionary:
 	return {"m": m, "ice": (from_a.y + from_b.y) / m, "metal": metal, "pos": (a.pos * ma + b.pos * mb) / m, "vel": (a.vel * ma + b.vel * mb) / m}
 
 ## How iron-dark the solid a puff's dust makes is, 0 to 1, full from twice
-## IRONY: about 0.16 from a first star's FIRST_DUST, 0.31 from the ASH_DUST of
-## a nebula or a fade, and 1 from a supernova's gas (up to ASH_MOST).
+## IRONY: a quarter from a first star's FIRST_DUST, 0.6 from the ASH_DUST of
+## a nebula or a fade, and 1 from a supernova's gas (0.016 and up, to
+## ASH_MOST).
 func _metal(dust_share: float) -> float:
 	return clampf(dust_share / (2.0 * IRONY), 0.0, 1.0)
 

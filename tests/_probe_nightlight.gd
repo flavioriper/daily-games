@@ -4,7 +4,7 @@ extends SceneTree
 ## how fast the numbers are.
 ##
 ##     godot --headless --path . --script res://tests/_probe_nightlight.gd
-##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the finger is down] [gas|worlds] [stop=<Suns>] [novas=<n>] [perks=0]
+##     godot --headless --path . --script res://tests/_probe_nightlight.gd -- pace [minutes] [seed] [first|second|random] [share of the time the finger is down] [gas|worlds] [stop=<Suns>] [novas=<n>] [perks=0] [powers=0]
 ##
 ## The checks: a puff of gas set on a circle in the disc winds in over a
 ## minute or so, goes round more than once, speeds up and pays its light; a
@@ -29,7 +29,9 @@ extends SceneTree
 ## light earned in that minute and where it came from, what was eaten, the
 ## system's counts, the tiles and the powers) and a sum for each life. After
 ## the five: `stop=3` lifts the finger for good at three Suns, `novas=2`
-## starts on a star with two supernovas behind it, `perks=0` buys no perk.
+## starts on a star with two supernovas behind it, `perks=0` buys no perk,
+## `powers=0` takes each pick and puts the power out (two hands compared on
+## the same star must not differ by the powers they drew).
 ## Everything runs on a throwaway file.
 
 const Sim = preload("res://arcade/nightlight_sim.gd")
@@ -43,7 +45,8 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.has("pace"):
 		# after the five: stop=<Suns> (the finger stops for good once the star weighs that),
-		# novas=<n> (a star with that many supernovas behind it), perks=0 (no perk is bought)
+		# novas=<n> (a star with that many supernovas behind it), perks=0 (no perk is bought),
+		# powers=0 (each pick is taken and the power put out)
 		var more := {}
 		for k in range(6, args.size()):
 			var pair := String(args[k]).split("=")
@@ -358,6 +361,7 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	var behind := int(more.get("novas", 0))
 	var stop := float(more.get("stop", 0.0))
 	var perks := float(more.get("perks", 1.0)) > 0.0
+	var powers := float(more.get("powers", 1.0)) > 0.0
 	if behind > 0:
 		for k in behind:
 			_die(sim)
@@ -381,8 +385,8 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	var minute := {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 	var stopped := false
 	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s%s%s%s" % [minutes, rng_seed, takes, held * 100.0, sends,
-		", %d supernovas behind it" % behind if behind > 0 else "", ", the finger stops at %.1f Suns" % stop if stop > 0.0 else "", "" if perks else ", no perks"])
-	print("    min   Suns  +Suns  light/min  ate gas  solids | planets giants rocks comets grains | gas (outside the disc: n, Suns) | tiles | the light: its own burning, solids eaten, the Furnace, the disc | powers")
+		", %d supernovas behind it" % behind if behind > 0 else "", ", the finger stops at %.1f Suns" % stop if stop > 0.0 else "", ("" if perks else ", no perks") + ("" if powers else ", every power picked and put out")])
+	print("    min   Suns  +Suns  light/min  ate gas  solids | planets giants rocks comets grains, worlds on closed paths | gas (outside the disc: n, Suns) | tiles | the light: its own burning, solids eaten, the Furnace, the disc | powers")
 	for i in int(minutes * 60.0 / Sim.STEP):
 		var t: float = i * Sim.STEP
 		since += Sim.STEP
@@ -431,18 +435,26 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 		if t - born >= float(minute.at):
 			var n: Dictionary = sim.system()
 			var grains := 0
+			# the worlds on closed paths: a planetoid passing through is a planet
+			# to `system()` and to the readout, and not one the ring made
+			var bound := 0
 			for b: Sim.Body in sim.bodies:
 				if b.kind == Sim.Kind.GRAIN:
 					grains += 1
+				elif (b.kind == Sim.Kind.PLANET or b.kind == Sim.Kind.GIANT) and b.vel.length_squared() < 2.0 * sim.gm() / b.pos.length():
+					bound += 1
 			var out := _outside(sim, t - last_hit)
-			print("  %5.0f  %5.2f  %+5.2f  %9.1f  %7.3f  %6.4f | %2d %2d %2d %2d %2d | %3d (%s) | %s | %.0f %.0f %.0f %.0f | %s" % [float(minute.at) / 60.0, sim.suns(), sim.suns() - float(minute.suns), minute.light,
-				float(minute.gas) / Sim.START, float(minute.solid) / Sim.START, n.planets, n.giants, n.rocks, n.comets, grains, sim.gas_count(),
+			print("  %5.0f  %5.2f  %+5.2f  %9.1f  %7.3f  %6.4f | %2d %2d %2d %2d %2d %2d | %3d (%s) | %s | %.0f %.0f %.0f %.0f | %s" % [float(minute.at) / 60.0, sim.suns(), sim.suns() - float(minute.suns), minute.light,
+				float(minute.gas) / Sim.START, float(minute.solid) / Sim.START, n.planets, n.giants, n.rocks, n.comets, grains, bound, sim.gas_count(),
 				out.substr(18, out.find(";") - 18), "%d %d %d %d" % [sim.lv.reach, sim.lv.flow, sim.lv.rich, sim.lv.pure],
 				minute.shine, minute.lump, minute.torn, float(minute.light) - float(minute.shine) - float(minute.lump) - float(minute.torn),
 				" ".join(Sim.POWERS.filter(func(w: String) -> bool: return int(sim.power[w]) > 0).map(func(w: String) -> String: return "%s %d" % [w, sim.power[w]]))])
 			minute = {"at": float(minute.at) + 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 		while sim.owed() > 0:
 			sim.pick(0 if takes == "first" else (1 if takes == "second" else rng.randi() % 2))
+			if not powers:
+				for which: String in Sim.POWERS:
+					sim.power[which] = 0
 		var cheapest := ""
 		for tile: String in Sim.TILES:
 			if not sim.is_done(tile) and (cheapest == "" or sim.cost(tile) < sim.cost(cheapest)):
@@ -810,7 +822,7 @@ func _check_frost() -> void:
 	_ok("a giant thaws the line outward", is_equal_approx(sim.frost_r(), sim.frost * (1.0 + Sim.GIANT)))
 
 func _check_pay() -> void:
-	_ok("gas pays 1, a grain 4, a rock 10, a world 25", Sim.pay(0.0) == Sim.PAY_GAS and Sim.pay(Sim.GRAIN_M * 0.5) == Sim.PAY_GRAIN and Sim.pay(Sim.PLANET_M * 0.5) == Sim.PAY_ROCK and Sim.pay(Sim.PLANET_M) == Sim.PAY_WORLD)
+	_ok("gas pays PAY_GAS, a grain PAY_GRAIN, a rock PAY_ROCK, a world PAY_WORLD, each more than the last", Sim.PAY_GAS < Sim.PAY_GRAIN and Sim.PAY_GRAIN < Sim.PAY_ROCK and Sim.PAY_ROCK < Sim.PAY_WORLD and Sim.pay(0.0) == Sim.PAY_GAS and Sim.pay(Sim.GRAIN_M * 0.5) == Sim.PAY_GRAIN and Sim.pay(Sim.PLANET_M * 0.5) == Sim.PAY_ROCK and Sim.pay(Sim.PLANET_M) == Sim.PAY_WORLD)
 	# a solid pays in full when eaten, whatever its path
 	for way: Array in [["dropped straight in", 0.0], ["on a grazing path", 0.55]]:
 		var sim := _quiet(12)
@@ -827,7 +839,7 @@ func _check_pay() -> void:
 		for b: Sim.Body in sim.bodies:
 			got += b.e
 		_ok("a planet %s is eaten" % way[0], sim.mass >= Sim.START + 0.0099)
-		_ok("and pays 25 times its mass of spiral light (%s)" % way[0], absf(got - owed) < owed * 0.05)
+		_ok("and pays PAY_WORLD times its mass of spiral light (%s)" % way[0], absf(got - owed) < owed * 0.05)
 	# gas dropped straight in still pays almost nothing
 	var gas := _quiet(12)
 	var g: Sim.Body = gas.add(Sim.Kind.GAS, 0.05, Vector2(300.0, 0.0), Vector2.ZERO)
