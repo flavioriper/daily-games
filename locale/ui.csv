@@ -1149,3 +1149,30 @@ PP_CART_MAPLE,Maple,Bordo,Arce
 PP_CART_MAPLE_LINE,A winged seed that cuts up through every crate in its lane and comes back down. Its own card: one more pass.,Uma semente alada que atravessa todas as caixas da sua faixa e volta para baixo. Carta própria: mais uma passada.,Una semilla alada que atraviesa todas las cajas de su carril y vuelve a bajar. Carta propia: una pasada más.
 PP_CARD_PASS,One more pass,Mais uma passada,Una pasada más
 PP_CARD_PASS_LINE,%d  >  %d passes,%d  >  %d passadas,%d  >  %d pasadas
+VS_HOCKEY_BLURB,First to seven: knock the puck past the other mallet and into the slot in the far rail.,"Até sete gols: mande o disco além do outro batedor, para a abertura na borda oposta.","A siete goles: mete el disco más allá del otro mazo, en la ranura del borde opuesto."
+VS_TWO,2 players,Para dois,Para dos
+VS_TWO_BLURB,"Two players on one phone: a mallet at each end, a finger each.","Dois jogadores em um celular: um batedor em cada ponta, um dedo cada.","Dos jugadores en un teléfono: un mazo en cada extremo, un dedo cada uno."
+HKY_MOTTO,INTO THE FAR GOAL,NO GOL DO OUTRO LADO,A LA PORTERÍA DE ENFRENTE
+HKY_FIRST_TO,FIRST TO %d,ATÉ %d GOLS,A %d GOLES
+HKY_SUN,Sun,Sol,Sol
+HKY_MOON,Moon,Lua,Luna
+HKY_SERVE_YOU,Your puck,O disco é seu,El disco es tuyo
+HKY_SERVE_BOT,Bot's puck,O disco é do bot,El disco es del bot
+HKY_SERVE_SUN,Sun's puck,O disco é do Sol,El disco es del Sol
+HKY_SERVE_MOON,Moon's puck,O disco é da Lua,El disco es de la Luna
+HKY_GOAL,Goal!,Gol!,¡Gol!
+HKY_MATCH_POINT,One more wins it,Mais um e acabou,Uno más y se acaba
+HKY_WIN,Match won!,Partida ganha!,¡Partido ganado!
+HKY_LOSE,Match lost,Partida perdida,Partido perdido
+HKY_WIN_SUN,Sun wins!,O Sol venceu!,¡Gana el Sol!
+HKY_WIN_MOON,Moon wins!,A Lua venceu!,¡Gana la Luna!
+TUT_HOCKEY_LEAD,Lead the mallet,Conduza o batedor,Lleva el mazo
+TUT_HOCKEY_LEAD_BODY,"Put a finger on the table and the gold mallet goes with it, riding just ahead of your thumb so you can see it. It stays in your half.","Ponha um dedo na mesa e o batedor dourado vai junto, um pouco à frente do polegar para você enxergá-lo. Ele fica na sua metade.","Pon un dedo en la mesa y el mazo dorado va con él, un poco por delante del pulgar para que lo veas. Se queda en tu mitad."
+TUT_HOCKEY_SCORE,Into the far goal,No gol do outro lado,A la portería de enfrente
+TUT_HOCKEY_SCORE_BODY,"Knock the puck into the slot in the far rail for a goal. First to %d wins, and whoever was scored on gets the puck back.","Mande o disco para a abertura na borda oposta para marcar. Quem fizer %d primeiro vence, e quem levou o gol fica com o disco.","Mete el disco en la ranura del borde opuesto para marcar. Gana quien llegue primero a %d, y quien recibe el gol se queda con el disco."
+TUT_HOCKEY_BLOCK,Guard your own,Proteja o seu,Protege la tuya
+TUT_HOCKEY_BLOCK_BODY,A still mallet stops the puck; a moving one sends it back. Come back in front of your goal after every swing.,Um batedor parado segura o disco; um em movimento o devolve. Volte para a frente do seu gol depois de cada batida.,Un mazo quieto frena el disco; uno en movimiento lo devuelve. Vuelve delante de tu portería después de cada golpe.
+TUT_HOCKEY_BANK,Use the rails,Use as bordas,Usa las bandas
+TUT_HOCKEY_BANK_BODY,"The puck bounces off the long rails. When the way is blocked, send it off a rail and round the other mallet.","O disco quica nas bordas laterais. Com o caminho fechado, mande-o na borda para contornar o outro batedor.","El disco rebota en las bandas largas. Si el camino está cerrado, mándalo contra una banda para rodear el otro mazo."
+TUT_HOCKEY_TWO,Two players,Dois jogadores,Dos jugadores
+TUT_HOCKEY_TWO_BODY,"Pick 2 players on the Versus tab to share the phone: one of you at each end, a finger each, gold against blue.","Escolha Para dois na aba Duelos para dividir o celular: um em cada ponta, um dedo cada, dourado contra azul.","Elige Para dos en la pestaña Duelos para compartir el teléfono: uno en cada extremo, un dedo cada uno, dorado contra azul."

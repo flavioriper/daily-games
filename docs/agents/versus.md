@@ -5,7 +5,7 @@
 **The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
 Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone -- snooker, chess and checkers; the first
+holds games played against someone -- snooker, chess, checkers and air hockey; the first
 is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
@@ -114,6 +114,106 @@ chess is: rules, computer, skin contract, house set, board, screen.
 - Harnesses: `tests/_shot_checkers.gd` (every beat; `reduce` after the
   outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes
   moves back). Both put `user://versus.cfg` back.
+
+**Air hockey is the fourth Versus game** (2026-10-08, built unattended from
+one line and a photograph of a table: "a new arcade multiplayer game of air
+mini hockey"; no spec). Id `hockey`, title "Air Hockey" -- the game's own
+plain name, as Mini Golf's is, so the renamed-genre rule does not bite. It is
+on Versus and not on Arcade although the user's word was "arcade": Arcade is
+played alone for a score, and this needs someone at the other end.
+
+- **Three chips against the computer and a fourth for two people on the same
+  phone** (`Record.LOCAL`, 4). **There is no game online and none against a
+  friend**: the live transport is a turn's (`Match`: a move, then the other
+  seat's, a minute each, the rules refusing a write out of turn) and this
+  game has no turns -- two hands move at once, sixty times a second. Going
+  online would need a channel each seat writes freely at ten or more a second
+  (new rules, deployed by a person), someone to own the puck (each end in its
+  own half is the usual answer) and a look at what 300 ms does to a rally; it
+  was not half-wired. So `VersusTab.LOCAL_GAMES` holds `hockey`,
+  `VersusTab.levels_of(game)` gives a card its four chips as `[key, level]`
+  (the tab's `_level` is now the level itself, not the chip's index),
+  `VersusTab.plays_online(game)` is what `open_friend_game` asks, and
+  `ui/menu/invite_card.gd`'s own list of three is untouched. Nothing in
+  `server/` changed.
+- **The game is pure data** (`versus/hockey_sim.gd`, metres and seconds, a
+  fixed 1/240 s): a table 1.0 by 1.6 on end, the bottom goal seat 0's. A
+  mallet is led, not pushed -- `aim[p]` is where its player wants it and it
+  goes there at up to `MALLET_MAX` 7.5 m/s inside its own half; its speed over
+  the step is what the puck is struck with, and it has no mass to lose
+  (`MALLET_E` 0.72). The puck is capped at `PUCK_MAX` 4.6 m/s (5.2 crossed the
+  table in 0.3 s, quicker than anyone sees). A goal is the puck's middle
+  `GOAL_DEPTH` past the rail inside the mouth; the mouth's corners are posts,
+  struck as points. A puck squeezed against a rail pushes the mallet back,
+  or the two trade places every step. **A slow puck within `EDGE` of a rail
+  drifts back toward the table** (`DRIFT`): a mallet is wider than the puck
+  and kept off the rails by its own radius, so a puck at rest in a corner
+  could only be pushed further in, by a finger or by the computer, and a
+  match stopped there (one in 108 did, computer against computer, the puck
+  0.09 m from the top rail). First to `TARGET` 7; the screen serves
+  to whoever was scored on. Run `tests/_probe_hockey.gd` after touching it.
+- **The computer** (`versus/hockey_ai.gd`) has a person's limits, and the
+  levels are those numbers (`LEVELS`): its arm's top speed (1.5 / 2.4 / 3.5
+  m/s against a finger's 7.5), how late it sees the puck (0.30 / 0.19 /
+  0.11 s, a queue of what it saw), how far off its aim and its block are, and
+  whether it reads a bounce off the long rails. **Before the block had an
+  error (`slip`), two of the same level never scored**: each met the puck
+  dead on and sent it straight back, for ever. A puck that dawdles in its
+  half `STALL` 2.5 s it stops lining up and goes straight at. It runs in the
+  sim's own step,
+  no thread. Worked out for the top mallet and turned over for the bottom
+  one, so two of them play each other (the probe, the harnesses' hand, the
+  tutorial's last page).
+- **The table** (`versus/hockey_table.gd`): one baked mesh (frame, slots, the
+  top with its air holes and lines) and one live mesh a frame (shadows, the
+  puck and its trail, the mallets, a contact's spokes, a goal's glow). The
+  bottom mallet is the sun's gold and the top one the moon's blue. **A finger
+  leads a mallet that rides `LIFT` 0.085 m ahead of it**, so the thumb does
+  not cover it; with one hand every touch is the bottom mallet's wherever it
+  lands, with two a press belongs to the half it lands in, one touch index a
+  mallet (`_finger`). `tests/_tap_hockey.gd` drives it with real
+  `InputEventScreenTouch`es, two at once.
+- **The screen** (`versus/hockey_screen.gd`) is snooker's shape without the
+  bulb (`capabilities()` is empty): the sun's and the moon's plates, between
+  them FIRST TO 7, two rows of pips and the match's clock. Nothing moves
+  under the tutorial's card or the settings sheet. Two players are Sun and
+  Moon; their matches write no record (`Record.add` is skipped, the tab's
+  record line is empty) and send `versus_end` with `level: 4`.
+- **Sounds** (`tools/gen_sfx.py hockey`, nine, one take each, unheard):
+  `strike`, `wall`, `post` and `serve` are dry foley clicks -- they repeat --
+  pitched and levelled by how hard the contact was (`_hit_db`); `glide` is a
+  loop whose level follows the puck's speed; `goal`, `conceded`, `win` and
+  `lose` are a real kalimba. With two players every goal is `goal` and the
+  end is `win`.
+- **The Versus tab holds four cards** and gave something up for it: `_fit`
+  has a fourth step, `_set_side`, in which each picture leaves its own row
+  and lies beside its game's name with the record under the name. At
+  810x1440 that is the step it lands on (the cards need 1148 of 1300 design
+  px; with three steps they needed 1284 and left the pictures 64 px strips);
+  a 20:9 phone stops at the second step, pictures in their rows. 186 draw
+  calls on the tab.
+- 147-149 draw calls at the table, ANGLE agreeing, 161 with the end card,
+  169-175 with a tutorial page up (810x1440). Most of it is the deck's
+  planks and the pips, as on snooker.
+- **The tutorial** (`ui/hud/hockey_tutorial_diagram.gd`, five pages): the
+  whole table lying on its side, played by scripts of where each hand wants
+  its mallet (`scene_of`, `want`, `advance`), so a page repeats exactly;
+  the last page is two computers. The probe runs the four scripted scenes and
+  fails if the swing does not score, the bank does not go in off a rail, or
+  the block lets one through. Under reduce motion a page stands on one moment.
+- Harnesses: `tests/_probe_hockey.gd -- [matches] [seed]` (headless: every
+  pairing of levels, then the lessons), `tests/_shot_hockey.gd -- <outdir>
+  [level] [rm] [lang=]` (the screen built by hand, the bottom mallet a
+  level-2 computer, an end card forced; puts `user://versus.cfg` back),
+  `tests/_tap_hockey.gd` (input), `tests/_shot_versus_tab.gd -- <outdir>
+  [banner]` (the tab alone, offline), `tests/_probe_versus_buzz.gd --
+  hockey`, `tests/_shot_howto_screen.gd -- hockey <outdir>`.
+- **Open** (nobody has played it with a finger): whether the puck's and the
+  mallet's speeds feel right on a phone, whether `LIFT` is, whether Hard can
+  be beaten and Easy cannot lose (computer against computer says only that
+  each level beats the one under it 12-0), whether every wall and strike
+  should knock (they echo, as every sound does), and the calls in the
+  memory file.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'

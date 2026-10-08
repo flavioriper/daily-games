@@ -132,6 +132,10 @@ listed at the end of this section.
   `gone("unfriend")` and the lobby's fourth gone card are not in the spec.
   `open()` taking an invite already here is not in the spec.
 
+**Air hockey is not offered to a friend** (2026-10-08): it has no game
+online (`docs/agents/versus.md`), `VersusTab.plays_online("hockey")` is false
+and `ui/menu/invite_card.gd`'s `GAMES` is still the three.
+
 ### Screens
 
 (2026-10-04; spec section 4.)

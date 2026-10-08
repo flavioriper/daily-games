@@ -8,6 +8,9 @@ extends RefCounted
 const PATH := "user://versus.cfg"
 ## The fourth chip on the Versus tab: a live game against another player.
 const ONLINE := 3
+## Two players on one phone (air hockey's fourth chip): a level the tab can
+## remember, with no record kept under it.
+const LOCAL := 4
 
 static func _load() -> ConfigFile:
 	var cfg := ConfigFile.new()

@@ -1062,6 +1062,24 @@ SETS = {
         "win":      ("a warm celebratory marimba run rising with a soft clack of snooker balls, joyful and cozy", 2.0, -3),
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
     },
+    # Air hockey (Versus, versus/hockey_screen.gd): the table's own sounds as
+    # foley and dry -- a mallet on the puck and the puck on a rail fire many
+    # times a second, so each is a short click that never rings (`strike` and
+    # `wall` are pitched and levelled by how hard the contact was) -- and the
+    # verdicts on a real kalimba. `glide` is the puck on its cushion of air, a
+    # loop whose level follows the puck's speed. With two players on one
+    # phone every goal plays `goal` and the end plays `win`.
+    "hockey": {
+        "strike":   ("a single light plastic air hockey mallet tapping a small plastic puck on a smooth table, one short dry soft click, close mic, very short, no echo, no ring", 0.5, -8, FOLEY, "warm:4500"),
+        "wall":     ("a single small plastic puck knocking against a wooden rail, one short dry muted wooden tick, close mic, very short, no echo, no ring", 0.5, -11, FOLEY, "warm:4000"),
+        "post":     ("a single small plastic puck knocking the corner of a wooden rail, one short dry hollow wooden knock, close mic, very short, no echo, no ring", 0.5, -9, FOLEY, "warm:4000"),
+        "glide":    ("continuous steady soft whisper of air from a table of tiny air holes with a light plastic puck sliding across it, smooth, constant, quiet, no hits, no clicks", 3.0, -14, FOLEY, "loop"),
+        "serve":    ("a small flat plastic puck set down on a smooth table, one soft dry tap, close mic, very short", 0.5, -12, FOLEY),
+        "goal":     ("a small plastic puck dropping into a wooden slot with a soft hollow clunk, then two bright rising kalimba notes, happy and cozy", 1.0, -5, ARCADE),
+        "conceded": ("a small plastic puck dropping into a wooden slot with a soft hollow clunk, then two gentle falling kalimba notes, not yet, never a buzzer", 1.0, -8, ARCADE),
+        "win":      ("a warm celebratory rising run on a real kalimba and a wooden music box ending on one bright soft hand bell, joyful and cozy", 2.0, -3, ARCADE),
+        "lose":     ("a soft warm three-note descending kalimba, gentle and kind, good game", 1.4, -6, ARCADE),
+    },
     # Chess (Versus, versus/chess_screen.gd): wooden pieces on a wooden board
     # as foley, the verdicts in the house marimba. `hop` is the knight's leap.
     "chess": {

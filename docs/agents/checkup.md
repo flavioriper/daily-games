@@ -502,6 +502,7 @@ settings.
 | snooker | 7 | aim, draw back, let go; a red then a colour (the referee's own verdicts); what each ball is worth; two fouls; the spin pad; the bulb's gold line and notch; the buttons |
 | chess | 7 | tap or drag; rook, bishop, queen; knight, king, pawn; check and mate; castling, en passant, promotion; stalemate and the draws; Undo, bulb, Reset |
 | checkers | 6 | a step; a jump, backwards too; taking is a must, the most first; the crown and the flying king; how it ends; Undo, Reset, bulb |
+| hockey | 5 | a finger leads the mallet, up to the line; a swing into the far slot; a still mallet stops it, a moving one sends it back; off a long rail when the way is shut; two players (built with the game, 2026-10-08) |
 | firefly | 7 | slide and hold; the swarm's worth; dives and seeds; a moth's escorts; the silk beam and the rescue; the flyby; lanterns and buttons |
 | molehill | 7 | a whack and the quick bonus; gold and flowerpots; the rabbit; the streak; the last ten seconds; boosters; the buttons |
 | stackwood | 7 | slide and let go; merges; chains; the line; acorns and the rainbow block; zap and bomb; the bar and boosters |

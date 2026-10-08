@@ -1,12 +1,15 @@
 extends VBoxContainer
 
 ## The Versus tab: games played against someone rather than against the
-## day's board. Snooker, chess and checkers (versus/snooker_screen.gd,
-## versus/chess_screen.gd, versus/checkers_screen.gd), and the someone is the
-## computer at one of three levels or, on the fourth chip, another player
-## online (level Record.ONLINE; versus/online/). Its body takes the day row's
-## and the grid's room, the way Stats and Streak do, under the same header
-## and over the same bar.
+## day's board. Snooker, chess, checkers and air hockey
+## (versus/snooker_screen.gd, versus/chess_screen.gd,
+## versus/checkers_screen.gd, versus/hockey_screen.gd), and the someone is the
+## computer at one of three levels or, on the fourth chip, another player:
+## online for the three games of turns (level Record.ONLINE; versus/online/),
+## across the same phone for air hockey (level Record.LOCAL), which has no
+## turns for the live transport to carry. Its body takes the day row's and
+## the grid's room, the way Stats and Streak do, under the same header and
+## over the same bar.
 ##
 ## One card a game: a painted banner with the game's own drawing lying
 ## across it (still, so it costs meshes and no frame), the name and the
@@ -18,10 +21,11 @@ extends VBoxContainer
 ## where a friend is asked to one of these three games. The row is one more
 ## child of this column, so its height comes out of the room _fit measures.
 ##
-## Three cards are more than a short screen holds once an ad banner takes
-## its share, so the tab measures the room the menu's column leaves it
-## (_fit) and gives up, in turn, the lines under the names and then some of
-## the pictures' height, rather than push the bar off the screen.
+## Four cards are more than a screen holds, so the tab measures the room the
+## menu's column leaves it (_fit) and gives up, in turn, the lines under the
+## names, some of the pictures' height, and then the pictures' own row (each
+## lies small beside its game's name instead), rather than push the bar off
+## the screen.
 
 signal play(game: String, level: int)
 ## The Friends row was pressed.
@@ -39,6 +43,8 @@ const ChessSkin = preload("res://versus/chess_skin.gd")
 const Rules = preload("res://versus/chess_rules.gd")
 const CheckersSkin = preload("res://versus/checkers_skin.gd")
 const CheckersRules = preload("res://versus/checkers_rules.gd")
+const HockeySim = preload("res://versus/hockey_sim.gd")
+const HockeyTable = preload("res://versus/hockey_table.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Social = preload("res://core/social.gd")
@@ -52,12 +58,20 @@ const ART_H := 150.0
 ## The pictures' height once the room is short.
 const ART_H_SHORT := 96.0
 const CHIP_H := 84
-const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
-## The line under the name while the Online chip is the one picked.
+## The chips, as [key, level]: three of the computer's, then the other
+## player -- online, or for a game in LOCAL_GAMES across the same phone.
+const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
+const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_TWO", Record.LOCAL]]
+## The line under the name while the fourth chip is the one picked.
 const ONLINE_BLURB := "VS_ONLINE_BLURB"
-const GAMES := ["snooker", "chess", "checkers"]
-const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers"}
-const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB"}
+const LOCAL_BLURB := "VS_TWO_BLURB"
+const GAMES := ["snooker", "chess", "checkers", "hockey"]
+## The games with no game online (and so none against a friend): their fourth
+## chip is two players on this phone.
+const LOCAL_GAMES := ["hockey"]
+const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey"}
+const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB",
+	"hockey": "VS_HOCKEY_BLURB"}
 const FILL := Color("fcf7ef")
 ## The Friends row: its height, the plaque on it and the plaque's tint.
 const FRIENDS_H := 108.0
@@ -69,11 +83,16 @@ static var PLAIN := CanvasItemMaterial.new()
 var _level := {}
 var _chips := {}
 var _record := {}
-var _snooker_art: Control
-var _table: Control
+## The banners that are a real table lying on its side: [art, table, span].
+var _laid: Array = []
 var _blurbs: Array[Label] = []
 var _blurb := {}
 var _arts: Array[Control] = []
+## Each card's parts that move when the picture goes beside the name:
+## {col, art, head, name, rec, names}.
+var _parts: Array[Dictionary] = []
+## Whether the pictures lie beside the names now.
+var _side := false
 var friends_row: Button
 var _friends_sub: Label
 var _friends_dot: Control
@@ -86,8 +105,18 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_friends_row())
 	for game: String in GAMES:
-		_level[game] = clampi(Record.last_level(game), 0, LEVELS.size() - 1)
+		_level[game] = Record.last_level(game)
+		if not levels_of(game).any(func(l: Array) -> bool: return l[1] == _level[game]):
+			_level[game] = 1
 		add_child(_game_card(game))
+
+## A game's four chips, as [key, level].
+static func levels_of(game: String) -> Array:
+	return LEVELS_LOCAL if LOCAL_GAMES.has(game) else LEVELS
+
+## Whether `game` can be played online, and so against a friend.
+static func plays_online(game: String) -> bool:
+	return GAMES.has(game) and not LOCAL_GAMES.has(game)
 
 func _game_card(game: String) -> Control:
 	var card := PanelContainer.new()
@@ -109,6 +138,8 @@ func _game_card(game: String) -> Control:
 	_arts.append(art)
 	if game == "snooker":
 		_snooker_banner(art)
+	elif game == "hockey":
+		_hockey_banner(art)
 	else:
 		var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
 		lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -129,6 +160,14 @@ func _game_card(game: String) -> Control:
 	rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	head.add_child(rec)
 	_record[game] = rec
+	# Where the name and the record stand, one over the other, once the picture
+	# has come down beside them.
+	var names := VBoxContainer.new()
+	names.add_theme_constant_override("separation", -4)
+	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	names.visible = false
+	head.add_child(names)
+	_parts.append({"col": col, "art": art, "head": head, "name": name_l, "rec": rec, "names": names})
 	var blurb := Label.new()
 	blurb.text = BLURBS[game]
 	blurb.theme_type_variation = "CardBlurb"
@@ -141,14 +180,15 @@ func _game_card(game: String) -> Control:
 	row.add_theme_constant_override("separation", 12)
 	col.add_child(row)
 	var chips: Array[Button] = []
-	for i in LEVELS.size():
+	var levels := levels_of(game)
+	for i in levels.size():
 		var b := Button.new()
-		b.text = LEVELS[i]
+		b.text = levels[i][0]
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size.y = CHIP_H
 		b.add_theme_font_size_override("font_size", 30)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.pressed.connect(_pick.bind(game, i))
+		b.pressed.connect(_pick.bind(game, int(levels[i][1])))
 		row.add_child(b)
 		chips.append(b)
 	_chips[game] = chips
@@ -256,37 +296,56 @@ func _read_friends() -> void:
 	_paint_friends()
 
 func _snooker_banner(art: Control) -> void:
-	_snooker_art = art
 	var sim := Sim.new()
-	_table = Table.new()
-	_table.still = true
-	_table.sim = sim
-	_table.show_guide = false
-	_table.aim_dir = (sim.pos[11] - sim.pos[Sim.CUE]).normalized()
-	_table.power = 0.35
-	art.add_child(_table)
-	art.resized.connect(_lay_table)
+	var table := Table.new()
+	table.still = true
+	table.sim = sim
+	table.show_guide = false
+	table.aim_dir = (sim.pos[11] - sim.pos[Sim.CUE]).normalized()
+	table.power = 0.35
+	art.add_child(table)
+	var entry := [art, table, Vector2(Sim.W, Sim.L) + Vector2.ONE * 2.0 * (Table.CUSHION + Table.RAIL)]
+	_laid.append(entry)
+	art.resized.connect(_lay_table.bind(entry))
 
-## The table lies on its side across the banner, turned about its middle.
-func _lay_table() -> void:
-	var span := Vector2(Sim.W, Sim.L) + Vector2.ONE * 2.0 * (Table.CUSHION + Table.RAIL)
-	var h := minf(_snooker_art.size.y - 30.0, (_snooker_art.size.x - 60.0) * span.x / span.y)
+## Air hockey's banner: its table too, a rally caught with the puck just off
+## the gold mallet and the blue one coming across to meet it.
+func _hockey_banner(art: Control) -> void:
+	var sim := HockeySim.new()
+	sim.mallet[0] = Vector2(0.36, 1.2)
+	sim.mallet[1] = Vector2(0.66, 0.34)
+	sim.puck = Vector2(0.57, 0.76)
+	var table := HockeyTable.new()
+	table.still = true
+	table.sim = sim
+	art.add_child(table)
+	var entry := [art, table, Vector2(HockeySim.W, HockeySim.L) + Vector2.ONE * 2.0 * HockeyTable.RAIL]
+	_laid.append(entry)
+	art.resized.connect(_lay_table.bind(entry))
+
+## A table lies on its side across its banner, turned about its middle.
+func _lay_table(entry: Array) -> void:
+	var art: Control = entry[0]
+	var table: Control = entry[1]
+	var span: Vector2 = entry[2]
+	var h := minf(art.size.y - 30.0, (art.size.x - 60.0) * span.x / span.y)
 	var w := h * span.y / span.x
-	_table.size = Vector2(h, w)
-	_table.pivot_offset = _table.size * 0.5
-	_table.rotation = -PI * 0.5
-	_table.position = _snooker_art.size * 0.5 - _table.size * 0.5
-	_table.queue_redraw()
+	table.size = Vector2(h, w)
+	table.pivot_offset = table.size * 0.5
+	table.rotation = -PI * 0.5
+	table.position = art.size * 0.5 - table.size * 0.5
+	table.queue_redraw()
 
-func _pick(game: String, i: int) -> void:
-	_level[game] = i
-	Record.set_last_level(game, i)
+func _pick(game: String, level: int) -> void:
+	_level[game] = level
+	Record.set_last_level(game, level)
 	_paint_chips(game)
 
 func _paint_chips(game: String) -> void:
 	var chips: Array = _chips[game]
+	var levels := levels_of(game)
 	for i in chips.size():
-		var on: bool = i == _level[game]
+		var on: bool = levels[i][1] == _level[game]
 		var b: Button = chips[i]
 		var fill := Pal.SUN_TILE if on else Pal.SURFACE
 		var border := Pal.ACCENT_2 if on else Pal.LINE
@@ -295,13 +354,19 @@ func _paint_chips(game: String) -> void:
 		b.add_theme_color_override("font_color", Pal.ACCENT_2 if on else Pal.TEXT)
 		b.add_theme_color_override("font_hover_color", Pal.ACCENT_2 if on else Pal.TEXT)
 		b.add_theme_color_override("font_pressed_color", Pal.ACCENT_2 if on else Pal.TEXT)
-	(_blurb[game] as Label).text = ONLINE_BLURB if _level[game] == Record.ONLINE else BLURBS[game]
+	var line: String = BLURBS[game]
+	if _level[game] == Record.ONLINE:
+		line = ONLINE_BLURB
+	elif _level[game] == Record.LOCAL:
+		line = LOCAL_BLURB
+	(_blurb[game] as Label).text = line
 	refresh()
 
 func refresh() -> void:
 	for game: String in GAMES:
 		if _record.has(game):
-			(_record[game] as Label).text = Record.record_line(game, _level[game])
+			# Two on one phone are both the player: nothing is kept to show.
+			(_record[game] as Label).text = "" if _level[game] == Record.LOCAL else Record.record_line(game, _level[game])
 	_paint_friends()
 	_fit.call_deferred()
 
@@ -348,7 +413,7 @@ func _fit() -> void:
 		var margins := parent.get_parent() as MarginContainer
 		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
 	var room := height - other - sep * shown
-	for level in 3:
+	for level in 4:
 		_compact(level)
 		if get_combined_minimum_size().y <= room:
 			return
@@ -358,6 +423,44 @@ func _compact(level: int) -> void:
 		b.visible = level == 0
 	for a in _arts:
 		a.custom_minimum_size.y = ART_H_SHORT if level >= 2 else ART_H
+	_set_side(level >= 3)
+
+## The last thing given up: the pictures' own row. Each comes down beside its
+## game's name, the record under the name instead of across from it.
+func _set_side(on: bool) -> void:
+	if on == _side:
+		return
+	_side = on
+	for p in _parts:
+		var art: Control = p.art
+		var name_l: Label = p.name
+		var rec: Label = p.rec
+		var names: Control = p.names
+		art.get_parent().remove_child(art)
+		name_l.get_parent().remove_child(name_l)
+		rec.get_parent().remove_child(rec)
+		if on:
+			names.add_child(name_l)
+			names.add_child(rec)
+			rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			rec.size_flags_horizontal = Control.SIZE_FILL
+			(p.head as Control).add_child(art)
+			art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			art.size_flags_vertical = Control.SIZE_FILL
+		else:
+			(p.head as Control).add_child(name_l)
+			(p.head as Control).add_child(rec)
+			(p.head as Control).move_child(name_l, 0)
+			(p.head as Control).move_child(rec, 1)
+			rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			rec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			(p.col as Control).add_child(art)
+			(p.col as Control).move_child(art, 0)
+			art.size_flags_horizontal = Control.SIZE_FILL
+			art.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		names.visible = on
+		# A card taller than it needs gives the height to its picture.
+		(p.head as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL if on else Control.SIZE_FILL
 
 ## Chess's banner: the garden set lined up on a strip of lawn squares, the
 ## cream side facing the rose. Drawn once, with the set's own meshes.

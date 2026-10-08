@@ -8,10 +8,11 @@ extends SceneTree
 ##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- snooker
 ##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- chess
 ##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- checkers
+##     godot --headless --path . --script res://tests/_probe_versus_buzz.gd -- hockey
 ##
 ## `rm` after the game runs it under reduce motion. SPEED, LEVEL (the
-## computer's), YOU (chess, checkers: the hand's level, 0 to lose) and SHOTS (snooker)
-## from the environment. Puts user://versus.cfg back afterwards.
+## computer's), YOU (chess, checkers, hockey: the hand's level, 0 to lose), SHOTS
+## (snooker) and SECS (hockey: how long the rally is played) from the environment. Puts user://versus.cfg back afterwards.
 
 const Haptics = preload("res://core/haptics.gd")
 const Motion = preload("res://core/motion.gd")
@@ -20,6 +21,7 @@ const ChessAI = preload("res://versus/chess_ai.gd")
 const ChessRules = preload("res://versus/chess_rules.gd")
 const CheckersAI = preload("res://versus/checkers_ai.gd")
 const CheckersRules = preload("res://versus/checkers_rules.gd")
+const HockeyAI = preload("res://versus/hockey_ai.gd")
 
 var _game := "snooker"
 var _s: Node
@@ -63,6 +65,8 @@ func _run() -> void:
 		await _chess()
 	elif _game == "checkers":
 		await _checkers()
+	elif _game == "hockey":
+		await _hockey()
 	else:
 		await _snooker()
 	print("haptics: ", " ".join(Haptics.trace))
@@ -464,3 +468,49 @@ func _checkers_reply() -> void:
 	if _s._state == st.OVER:
 		what = "the end"
 	_say("  ... " + what)
+
+# --- air hockey ---
+
+## The hand is the computer's own (level YOU) saying where the bottom mallet
+## should be, as a finger does; goals are printed as they fall, then both end
+## cards are forced.
+func _hockey() -> void:
+	await _wait(0.3)
+	print("air hockey, level ", _s.level, ", reduce ", Motion.reduce)
+	_say("the screen opens, the puck served")
+	var hand := HockeyAI.new(0, _env("YOU", 2), 5)
+	var secs := float(_env("SECS", 30))
+	var t := 0.0
+	var scores: Array = _s.sim.scores.duplicate()
+	var hits: Array = _s._hits.duplicate()
+	while t < secs and not _s.sim.over:
+		await process_frame
+		var d := root.get_process_delta_time()
+		t += d
+		hand.drive(_s.sim, d)
+		if _s._hits[0] != hits[0] and hits[0] < 3:
+			_say("the hand's hit %d" % _s._hits[0])
+		elif _s._hits[1] != hits[1] and hits[1] < 2 and _s._hits[0] == hits[0]:
+			_say("the computer's hit %d" % _s._hits[1])
+		hits = _s._hits.duplicate()
+		if _s.sim.scores != scores:
+			_say("a goal %s (%s)" % ["for" if _s.sim.scores[0] > scores[0] else "against", str(_s.sim.scores)])
+			scores = _s.sim.scores.duplicate()
+	_say("the rest of %.0f s of rally" % t)
+	for won in [true, false]:
+		if _s._state != _s.State.OVER:
+			_s.sim.scores = [7, 3] if won else [2, 7]
+			_s.sim.over = true
+			_s.sim.winner = 0 if won else 1
+			_s._finish()
+		# The win's pattern is long, and the motor's time is real time.
+		await _wait(6.0)
+		_say("the end card, %s" % ("won" if _s.sim.winner == 0 else "lost"))
+		var again := _end_button()
+		if again != null:
+			again.pressed.emit()
+			await _wait(2.0)
+			_say("Play again")
+	_s._on_reset()
+	await _wait(2.0)
+	_say("Reset")

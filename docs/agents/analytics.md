@@ -27,7 +27,10 @@ see "Ads and the purchase" below.
   `ad_banner_impression`, and since 2026-09-29 `age_answered` (band), `ad_interstitial_shown`, `ad_interstitial_skipped` (`reason`), `ad_rewarded_offered` / `ad_rewarded_started` / `ad_rewarded_completed` (`placement`) and `ad_load_failed` (`format`, `error`) -- see "Ads and the purchase" below. Since 2026-09-26
   (Versus): `versus_start` (game, level), `versus_end` (won, both scores,
   shots, your highest break; chess: `result` won/lost/draw, `moves`,
-  `undos`, `colour`; checkers adds `taken` and `lost`, pieces) and
+  `undos`, `colour`; checkers adds `taken` and `lost`, pieces; air hockey
+  (`game: hockey`, 2026-10-08) sends `shots` as your mallet's hits and adds
+  `seconds`, and `level: 4` is two players on one phone, where `won` means
+  the bottom mallet's and `shots` both mallets') and
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
   `arcade_end` (score, stage, seconds, fired, hits, kills, best;
   Molehill sends stage as the best streak, and whacked, escaped, missed

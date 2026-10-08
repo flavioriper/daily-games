@@ -78,6 +78,8 @@ const CARDS := {
 	"chess": ["meadow", 1.4, Vector2(0.45, 0.6)],
 	# Checkers' lawn is chess's, looked at from further along the meadow.
 	"checkers": ["meadow", 1.5, Vector2(0.7, 0.7)],
+	# Air hockey's table stands out on the terrace under a clear sky.
+	"hockey": ["sky", 1.4, Vector2(0.6, 0.5)],
 	# Arcade (not a grid card): Firefly flies the night garden.
 	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
 	# Molehill is a lawn in the meadow too, nearer the grass.

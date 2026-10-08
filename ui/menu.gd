@@ -49,6 +49,7 @@ const VersusTab = preload("res://ui/menu/versus_tab.gd")
 const SnookerScreen = preload("res://versus/snooker_screen.gd")
 const ChessScreen = preload("res://versus/chess_screen.gd")
 const CheckersScreen = preload("res://versus/checkers_screen.gd")
+const HockeyScreen = preload("res://versus/hockey_screen.gd")
 const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
 const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
@@ -1169,6 +1170,9 @@ func _open_versus(game: String, level: int) -> void:
 		"checkers":
 			screen = CheckersScreen.new(level)
 			screen.name = "Checkers"
+		"hockey":
+			screen = HockeyScreen.new(level)
+			screen.name = "Hockey"
 		_:
 			return
 	screen.closed.connect(func() -> void:
@@ -1275,10 +1279,11 @@ func _left_game(tab: String) -> void:
 ## invite they sent (`accept` true). Whatever is open goes first -- a board,
 ## an Arcade or Versus screen, any sheet, a card -- with no interstitial in
 ## between, and the game closes back to the Versus tab. False if `game` is
-## not one of the three, or a live game online is on (Social.in_game): that
+## not one of the three (air hockey has no game online), or a live game online
+## is on (Social.in_game): that
 ## one is not walked out of for another.
 func open_friend_game(game: String, uid: String, accept: bool) -> bool:
-	if not VersusTab.GAMES.has(game) or uid.is_empty() or Social.in_game:
+	if not VersusTab.plays_online(game) or uid.is_empty() or Social.in_game:
 		return false
 	_switching = true
 	if is_instance_valid(friend_card):
