@@ -120,26 +120,27 @@ foundation's, unchanged. Three things changed in `index.ts`:
 - **A day already published is never made again**: `publishDays` reads the
   document first and skips. `create()` is still what writes, so two runs
   racing cannot overwrite either.
-- The schedule has `timeoutSeconds: 1500` and `memory: "512MiB"`.
+- The schedule has `timeoutSeconds: 1500`, `memory: "512MiB"` and
+  `secrets: ["OPENROUTER_API_KEY"]`.
 
 **`server/functions/src/generate.ts` is the only place a model is called.**
-The model is one **Vertex AI serves from this project**, asked through
-Vertex's OpenAI-compatible chat endpoint
-(`.../locations/<region>/endpoints/openapi/chat/completions`) with a plain
-`fetch` and a Google access token (`google-auth-library`): the function
-signs in as its own identity, so **there is no key and no secret**, and the
-cost is a line on the project's Google Cloud bill. That was the user's call
-on 2026-10-08 ("i wanna use the gcloud free credits ... using some cheap
-openai model"); the first version asked Claude Opus 5.5 through Anthropic's
-SDK with a secret, and is in git history (`f7ea2a3c`).
+It asks through **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`,
+a plain `fetch`, no SDK), which speaks one dialect for every maker's models,
+with the key in `OPENROUTER_API_KEY`: a secret on the deployed function, an
+environment variable anywhere else (this Mac's `~/.zshrc` has one). That is
+the third provider in one evening, each the user's call (2026-10-08): Claude
+Opus 5.5 through Anthropic's SDK first (`f7ea2a3c`), then a model on Vertex
+AI for the Google Cloud credits (`1485033f`, never run: the owner's gcloud
+login had expired), then "let's use my openrouter key so we can use a cheap
+model able to do it".
 
 - **Which model is a name**, read from the environment: `DAILY_MODEL` (the
-  writer; default `openai/gpt-oss-120b-maas`, OpenAI's open-weight model),
-  `DAILY_REVIEW_MODEL` (the reviewer; the writer when unset),
-  `DAILY_MODEL_REGION` (`us-central1`; `global` where a model is served
-  there). The same endpoint serves Gemini (`google/gemini-2.5-flash`), so
-  changing models is a variable, not code. `DAILY_MODEL=off`, a `demo-`
-  project or the emulator's host in the environment mean no model
+  writer, default `anthropic/claude-haiku-5.5`) and `DAILY_REVIEW_MODEL`
+  (the reviewer, default `openai/gpt-6-luna`). Both were $0.10 a million
+  tokens in and $0.50 out on OpenRouter's own list on 2026-10-08, and both
+  take structured outputs. **They are of different makers on purpose**: a
+  reviewer from the writer's family shares its mistakes. `DAILY_MODEL=off`,
+  no key, or the emulator's host in the environment mean no model
   (`available()`).
 - `ask<T>({system, prompt, schema, role?})` sends one request (16,000
   tokens at most, 240 s) and returns the parsed JSON or throws. It asks the
@@ -188,38 +189,37 @@ short wait on the network, then the reserve; and `world/main.gd` fetching
 the day behind the menu at boot. A board cannot ask in `build()`: the host
 sets `daily_key` after `start()` returns.
 
-**Cost and credits.** A day is roughly 15,000 tokens written and as many
-read again by the review. At the prices seen on 2026-10-08 for
-`gpt-oss-120b` ($0.09-0.15 a million tokens in, $0.36-0.60 out; two sources
-disagreed and Google's own page was not read) that is **about a cent a day**.
-**Whether Google Cloud credits pay for it depends on the credit**: Google's
-free-trial page says trial credits cannot be used on partner models served
-as managed APIs, which is what gpt-oss is; Gemini is Google's own and is not
-excluded. Nobody here has seen which credits the billing account holds. If
-the bill shows gpt-oss charged to the card, set `DAILY_MODEL` to a Gemini
-model -- or leave it, at a cent a day.
+**Cost and time, measured.** Two whole days were written from this Mac on
+2026-10-08 with the default pair: **about three and a half minutes each**
+(3:28 and 3:35 for the eight requests, one after another). The cost was not
+read off OpenRouter's dashboard; by the tokens (some 15,000 written and as
+many read again) it is **a few cents a day** at the list prices above.
 
-**The quality is the open question.** gpt-oss-120b is a much smaller model
-than the one this was designed around, it writes and fact-checks its own
-work unless `DAILY_REVIEW_MODEL` names another, and its Portuguese and
-Spanish are unread. The review, the validator and the bank bound the
-damage; they do not make a weak question good. Read a few days first.
+**What the model's days were like** (two days read): the review kept
+8/6/9/11 and 8/8/7/10 of the 9/9/9/13 drafted, so one day needed one bank
+question and the other none. The facts read true, the Portuguese and
+Spanish natural, the subjects spread, with Brazilian questions among them
+(the 1889 republic, Carlos Gomes, Dom Casmurro). Two things to know:
+**the Climb's top is softer than "one adult in ten"** -- the reviewer turns
+down most of what is really hard, as not sure enough, so one Climb ended on
+Vasco da Gama and the other on carpe diem -- and **a bank question can
+repeat a fact the model just asked** (both had the adult body's 206 bones
+in one band), which the fill now passes over by its answer. Nobody but me
+has read them; `tools/acorn_day.sh` prints one.
 
 **By hand** (run by a person; the last two change production):
 
-- `gcloud auth application-default login` as the project's owner, once, in a
-  real Terminal; then `tools/acorn_day.sh [yyyymmdd]` prints the day
-  `makeDay` would publish and writes nothing (`DAILY_MODEL=...` in front to
-  try another model, `DAILY_MODEL=off` for the bank's day). **Read a few of
-  these before trusting it with a night.**
-- `tools/vertex_identity.sh`, once: turns the Vertex AI API on and gives the
-  functions' identity `roles/aiplatform.user`. An open model may also want
-  its terms accepted once in Model Garden. Skipped, every night is the
-  bank's day and the log says why.
-- `tools/deploy_functions.sh`, then `tools/publish_day.sh` (runs
-  `publishDays` against the live project from this Mac) for the day a game
-  ships on, which the 03:00 scheduler never reaches. To pin a model on the
-  deployed function, put `DAILY_MODEL=...` in `server/functions/.env`.
+- `tools/acorn_day.sh [yyyymmdd]` prints the day `makeDay` would publish and
+  writes nothing (`DAILY_MODEL=...` in front to try another writer,
+  `DAILY_MODEL=off` for the bank's day).
+- `cd server && firebase functions:secrets:set OPENROUTER_API_KEY --project
+  daily-games-420bf`, once, **before** `tools/deploy_functions.sh`: a deploy
+  that names a secret that does not exist fails.
+- `tools/deploy_functions.sh`. The 03:00 UTC run publishes today and
+  tomorrow; `tools/publish_day.sh` (application default credentials and the
+  key in the environment) does the same from this Mac for a day the
+  scheduler will not reach. To pin other models on the deployed function,
+  put `DAILY_MODEL=...` in `server/functions/.env`.
 
 **Verified, and not** (2026-10-08). `npm run build` is clean. `publishDays`
 ran against the Firestore emulator (`firebase emulators:exec --only
@@ -229,13 +229,10 @@ the bank's day and left it untouched on a second run. `makeDay` ran against
 a stand-in for the model (a throwaway script that replaced `ask`): a clean
 day, a question over the limits dropped, a strict reviewer and a reviewer
 that disagreed both filled from the bank, a throwing writer gave the bank's
-day. **No model has been called** (2026-10-08): the project owner's gcloud login
-had expired on this Mac and there were no application default credentials.
-So the endpoint's path, the model's id as Vertex spells it, whether it takes
-`json_schema`, its output ceiling, the prompts, the time and the cost are
-all unproven until `tools/acorn_day.sh` answers.
-Nothing is deployed: the live `publishDay` is still the old one, and until
-the deploy every phone plays the bank.
+day. **The model's own half is proven from this Mac and no further**: the
+requests, the schema as OpenRouter takes it, the review and the fill ran for
+real, twice. What is not proven is the function doing it: the secret
+reaching it, and three and a half minutes inside a scheduled run.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. The turn flow's strings are keyed

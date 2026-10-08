@@ -192,8 +192,9 @@ const BRIEFS = [
   (n: number) => `${n} easy questions: ones nine adults in ten and most ten-year-olds can answer.`,
   (n: number) => `${n} medium questions of school general knowledge: about half of adults know each.`,
   (n: number) => `${n} hard questions: ones one adult in four knows, and a keen quiz player usually does.`,
-  (n: number) => `${n} questions in rising order, a quiz show's ladder: the first three easy, ` +
-    "then steadily harder, and the last three what one adult in ten knows.",
+  (n: number) => `${n} questions in strictly rising order, a quiz show's ladder: the first three easy, ` +
+    "then steadily harder, and the last four the hardest of all, what one adult in ten knows. " +
+    "No question may be easier than the one before it.",
 ];
 
 /** A band a request: a cheap model's answer has a low ceiling, and a band
@@ -311,6 +312,16 @@ function thinned(list: Question[], n: number): Question[] {
   return out;
 }
 
+/** A question as the next writer is told of it: "question (answer)". */
+function said(q: Question): string {
+  return `${q.en.q} (${q.en.right})`;
+}
+
+/** The answer in such a line, for telling two questions on one fact apart. */
+function answerOf(line: string): string {
+  return line.slice(line.lastIndexOf("(") + 1, -1).trim().toLowerCase();
+}
+
 /** What a published day says of itself to the next day's writer. */
 export function asked(day: unknown): string[] {
   const bands = (day as Day | undefined)?.bands;
@@ -319,7 +330,7 @@ export function asked(day: unknown): string[] {
   for (const band of bands) {
     if (!Array.isArray(band)) continue;
     for (const q of band) {
-      if (validQuestion(q)) out.push(`${q.en.q} (${q.en.right})`);
+      if (validQuestion(q)) out.push(said(q));
     }
   }
   return out;
@@ -355,6 +366,7 @@ async function writeBand(day: number, band: number, taken: string[]): Promise<Qu
 export async function makeDay(day: number, recent: string[] = []): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
+  const tiers = bank.tiers as Question[][];
   const taken = recent.slice();
   const bands: Question[][] = [];
   const kept: number[] = [];
@@ -379,13 +391,18 @@ export async function makeDay(day: number, recent: string[] = []): Promise<Day> 
       band = reserve[b];
       fromBank += n;
     } else {
-      const fill = reserve[b].slice(0, n - list.length);
+      // From the tier's whole order, not just the bank's seven: a bank
+      // question whose answer the day already has is passed over (the model
+      // and the bank both like the adult body's 206 bones).
+      const have = new Set([...taken.slice(recent.length), ...list.map(said)].map(answerOf));
+      const fill = ordered(tiers[b], day).filter((q) => !have.has(answerOf(said(q))))
+        .slice(0, n - list.length);
       band = [...list, ...fill];
       fromBank += fill.length;
       fromModel += list.length;
     }
     bands.push(band);
-    for (const q of band) taken.push(`${q.en.q} (${q.en.right})`);
+    for (const q of band) taken.push(said(q));
   }
   console.log(`acorn: day ${day}, kept ${kept.join("/")}, ${fromBank} from the bank`);
   return {v: 1, source: fromBank === 0 ? "model" : fromModel === 0 ? "bank" : "mixed", bands};

@@ -7,7 +7,7 @@
 # Writes to production, so a person runs it, not an agent session. Needs
 # application default credentials (`gcloud auth application-default login`)
 # that may write the project's Firestore and, for Golden Acorn's day to be
-# the model's rather than the bank's, use Vertex AI there.
+# the model's rather than the bank's, OPENROUTER_API_KEY in the environment.
 #
 #   tools/publish_day.sh
 set -euo pipefail

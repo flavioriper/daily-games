@@ -1,5 +1,3 @@
-import {GoogleAuth} from "google-auth-library";
-
 /**
  * The one place a model is asked for a day's content. A game that wants its
  * day written rather than derived hands over a prompt and the JSON schema of
@@ -8,29 +6,28 @@ import {GoogleAuth} from "google-auth-library";
  * publish when it is not are the game's (see acorn.ts, the first to use it,
  * and docs/agents/turns-and-backend.md, "A day written by a model").
  *
- * The model is one Vertex AI serves from the project itself, so its cost is
- * the project's Google Cloud bill and there is no key to keep: the function
- * signs in as its own identity (which needs the Vertex AI User role,
- * tools/vertex_identity.sh), and a person's `gcloud auth application-default
- * login` does the same for a dry run. It is asked through Vertex's
- * OpenAI-compatible chat endpoint, which serves the open models (OpenAI's
- * gpt-oss among them) and Gemini alike, so which model writes is a name:
+ * The model is asked through OpenRouter's chat endpoint, which speaks one
+ * dialect for every maker's models, so which model writes is a name:
  *
- *   DAILY_MODEL           the model that writes ("openai/gpt-oss-120b-maas")
- *   DAILY_REVIEW_MODEL    the model that reviews (the writer, when unset)
- *   DAILY_MODEL_REGION    where it is asked ("us-central1"; "global" works
- *                         for the models served there)
+ *   OPENROUTER_API_KEY    the key: a secret on the deployed function, an
+ *                         environment variable anywhere else
+ *   DAILY_MODEL           the model that writes
+ *   DAILY_REVIEW_MODEL    the model that reviews
  *
- * `off` as DAILY_MODEL means there is no model, as does running against the
- * emulator suite; available() says so before anybody builds a prompt.
+ * The two defaults are cheap models of different makers on purpose: a
+ * reviewer from the writer's own family shares its mistakes. `off` as
+ * DAILY_MODEL means there is no model, as does a missing key or running
+ * against the emulator suite; available() says so before anybody builds a
+ * prompt.
  */
 
-export const DEFAULT_MODEL = "openai/gpt-oss-120b-maas";
-const DEFAULT_REGION = "us-central1";
+export const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
+export const DEFAULT_REVIEW_MODEL = "openai/gpt-6-luna";
+const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-/** The most one answer may run to. A game asks for a day in pieces well
- *  under this (acorn.ts: a band a request), since the cheap models' ceilings
- *  are low and an answer cut off at one is a failed request. */
+/** The most one answer may run to, thinking included where a model thinks.
+ *  A game asks for a day in pieces well under this (acorn.ts: a band a
+ *  request): an answer cut off at the ceiling is a failed request. */
 const MAX_TOKENS = 16000;
 /** A request that has not answered by now is given up on. */
 const TIMEOUT_MS = 240000;
@@ -50,36 +47,20 @@ export interface Ask {
   role?: Role;
 }
 
-function project(): string {
-  return (process.env.GCLOUD_PROJECT ?? process.env.GOOGLE_CLOUD_PROJECT ?? "").trim();
+function key(): string {
+  return (process.env.OPENROUTER_API_KEY ?? "").trim();
 }
 
 export function modelFor(role: Role = "write"): string {
-  const writer = (process.env.DAILY_MODEL ?? "").trim() || DEFAULT_MODEL;
-  if (role === "write") return writer;
-  return (process.env.DAILY_REVIEW_MODEL ?? "").trim() || writer;
+  if (role === "review") {
+    return (process.env.DAILY_REVIEW_MODEL ?? "").trim() || DEFAULT_REVIEW_MODEL;
+  }
+  return (process.env.DAILY_MODEL ?? "").trim() || DEFAULT_MODEL;
 }
 
 export function available(): boolean {
-  if (modelFor() === "off") return false;
-  const p = project();
-  if (p === "" || p.startsWith("demo-")) return false;
+  if (modelFor() === "off" || key() === "") return false;
   return (process.env.FIRESTORE_EMULATOR_HOST ?? "") === "";
-}
-
-function endpoint(): string {
-  const region = (process.env.DAILY_MODEL_REGION ?? "").trim() || DEFAULT_REGION;
-  const host = region === "global" ? "aiplatform.googleapis.com" : `${region}-aiplatform.googleapis.com`;
-  return `https://${host}/v1/projects/${project()}/locations/${region}/endpoints/openapi/chat/completions`;
-}
-
-let auth: GoogleAuth | undefined;
-
-async function token(): Promise<string> {
-  auth ??= new GoogleAuth({scopes: ["https://www.googleapis.com/auth/cloud-platform"]});
-  const t = await auth.getAccessToken();
-  if (!t) throw new Error("no Google credentials");
-  return t;
 }
 
 /** The JSON in a model's answer: the whole of it, or what stands between
@@ -92,9 +73,13 @@ export function jsonIn(text: string): unknown {
 }
 
 async function post(body: Record<string, unknown>): Promise<Response> {
-  return fetch(endpoint(), {
+  return fetch(ENDPOINT, {
     method: "POST",
-    headers: {"Authorization": `Bearer ${await token()}`, "Content-Type": "application/json"},
+    headers: {
+      "Authorization": `Bearer ${key()}`,
+      "Content-Type": "application/json",
+      "X-Title": "Peeplet Daily",
+    },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
@@ -102,7 +87,7 @@ async function post(body: Record<string, unknown>): Promise<Response> {
 
 /**
  * One question, one JSON answer. Throws on anything that is not a complete
- * answer: no model, no credentials, a refusal by the endpoint, an answer cut
+ * answer: no model, no key, a refusal by the endpoint, an answer cut
  * off at the token limit, text with no JSON in it.
  */
 export async function ask<T>(a: Ask): Promise<T> {

@@ -103,6 +103,7 @@ export const publishDay = onSchedule({
   // a band reviewed): minutes, not the default's one.
   timeoutSeconds: 1500,
   memory: "512MiB",
+  secrets: ["OPENROUTER_API_KEY"],
 }, async () => {
   await publishDays(new Date());
 });
