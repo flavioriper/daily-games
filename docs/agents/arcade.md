@@ -1784,8 +1784,9 @@ supernovas (`Sim.kept()`), not a best.
   `2026-10-07-nightlight-ring-design.md`, whose section 22 lists every place
   the build left it; six tasks on `feat/nightlight-ring`, commits
   `588fcffa..e7411f41` and this note's own, then one fix wave after the
-  whole branch was reviewed, `f3f3c7e0`: "The final wave" below, and
-  wherever a sub-bullet says so). The user, 2026-10-07: "Let's
+  whole branch was reviewed, `f3f3c7e0`, and a correction to one ruling of
+  it, `a531e5d3`: "The final wave" below, and wherever a sub-bullet says
+  so). The user, 2026-10-07: "Let's
   redesign the nightlight game, instead of user throwing bodies, let's make
   it interact with the game in a different way. Here is the picture, the
   user start with a small star and tons of gas spinning around outside
@@ -1940,8 +1941,9 @@ supernovas (`Sim.kept()`), not a best.
     the far sky gives thins as the star grows (the probe prints 0.42, 0.25
     and 0.15 Suns a minute at 4, 8 and 16 Suns with no tile). A puff's
     worth (`RING_M / RING`) is set on a circle anywhere in the ring
-    (`_ring_spot`), out by a giant's envelope since the final wave
-    (`envelope()`, below), with `puff_h()` hydrogen and `dusty` dust,
+    (`_ring_spot`), pushed out only as far as the star's mouth requires
+    since the final wave (`drift_out()`, below), with `puff_h()` hydrogen
+    and `dusty` dust,
     `DRIFT_MOST` 8 a tick at most and the rest waiting; at `MOST` or `FULL`
     it goes into a puff already in the ring, the next one along every time
     (the final wave; until then all of it into the last puff in the list).
@@ -2115,8 +2117,8 @@ supernovas (`Sim.kept()`), not a best.
     (3.2 with `HAZE_A` 0.9 and `HAZE_FAR` 2.6 is 64% of the pixels and a
     lumpier cloud).
   - **The probe, the bot, the harness.** `tests/_probe_nightlight.gd` is
-    216 checks (86 before the pass, 204 before the final wave, whose twelve
-    are listed under it); its new ones are `_check_ring`,
+    227 checks (86 before the pass, 204 before the final wave, whose new
+    ones are listed under it); its new ones are `_check_ring`,
     `_check_frost`, `_check_pay` and `_check_worlds`, and the checks on
     `pour` are gone. Older checks whose premise moved were moved to the new
     rule and none was loosened to pass (one bar came out looser, under
@@ -2200,8 +2202,11 @@ supernovas (`Sim.kept()`), not a best.
       not explained**: the press task's `t3_angle.log` read 17 to 26
       before the gas had a layer of its own, the look task's
       `t4_angle.log` 9 to 20, and the final wave's 10 to 28 against 4 to
-      18 (each the lowest and the highest beat's mean). It is the phone's
-      driver; see Not done.
+      18 (each the lowest and the highest beat's mean; the highest is a
+      short beat with one long frame in it, `6c_relics` as a rule, which
+      read 29 ms on the default driver too on the correction's run, so
+      the lowest is the one to read). It is the phone's driver; see Not
+      done.
     - **The impatient hand** (`-- pace 40 <seed> random 1.0 gas`, seeds 1
       to 5): 2 Suns at 5.6, 5.3, 5.4, 5.0, 5.4 min; a first end at 26.2,
       29.0, 31.7, 25.6, 30.2 min (mean 28.5) and 15.0, 16.8, 17.8, 15.1,
@@ -2234,14 +2239,14 @@ supernovas (`Sim.kept()`), not a best.
       disc is past the ring, the need is 1, and at one Sun with three
       levels of Rich the far sky gives the most it ever does); 8 Suns at
       108.7 min, a supernova at 121.9 min and 16.4 Suns, a neutron star.
-      **Since the final wave that minute is gone** (the same command on
-      `f3f3c7e0`): the gas now drifts in 1,138 px and farther out round a
-      giant, which is outside a one-Sun giant's disc (990 px), so the far
-      sky makes a ring up out there and stops, and the ring comes down as
-      the star grows: 1.05 Suns at 100 min, helium at 103.1, then 1.13,
-      1.50, 1.81 and 1.89 at 104 to 107 min, 2 Suns at 107.9, 4 at 115.5,
-      8 at 120.0, never more than +1.09 Suns in a minute (the 119th), a
-      supernova at 128.5 min and 14.1 Suns, a neutron star.
+      **After the final wave it is the same star** (the same command on
+      `a531e5d3`): 1.05 Suns at 100 min, helium at 103.1, 1.28 Suns at 104
+      min and 4.28 at 105 (**+3.00 in that minute**), 8 Suns at 109.2 min,
+      a supernova at 118.7 min and 14.7 Suns, a neutron star. For one
+      commit it was not (`f3f3c7e0`, the wave's first rule for a giant's
+      gas, below): the gas was set down outside a one-Sun giant's disc and
+      the star climbed slowly, 2 Suns at 107.9 min and never more than
+      +1.09 in a minute, to a supernova at 128.5 min and 14.1 Suns.
       **A hand that stops for good at 3 Suns** (`-- pace 20 1 random 1.0
       gas stop=3`; 3.00 at 8.4 min): +0.38, +0.38, +0.46, +0.83, +0.92
       Suns in the next five minutes, 4 Suns at 10.9 min where the steady
@@ -2258,39 +2263,53 @@ supernovas (`Sim.kept()`), not a best.
       that puff's dust could make a planet in one step. `_trickle` now
       gives each puff's worth to `_next_puff()`: the next gas puff along
       `bodies` after `_into` (a cursor, saved nowhere; no number is
-      drawn) that is out in the ring (`ring.x * envelope()` or farther)
-      and outside the star's mouth; with none out there the last puff
+      drawn) that is out where gas is set down now (`ring.x *
+      drift_out()` or farther, which is past the star's mouth); with none
+      out there the last puff
       outside the mouth; with none of those it waits. The same run on
       the new sim: the heaviest puff ever 0.083, five puffs' worth, 2.5
       times the mean puff of the ring; the harness's three-Sun star's
       heaviest a minute on is 0.039 to 0.040, four runs.
-    - **Gas that drifts in follows a giant's envelope: the controller's
-      ruling, not the user's.** The ring's place was fixed at the
-      newborn's 518 to 788 px and a giant's mouth (`star_r() * EAT`) is
-      past it: on the old sim, at 8 Suns as a giant 16 of 50 puffs were
-      eaten in the tick they landed, and at 13 Suns as a supergiant all
-      34, for no light. From the helium flash on, a third of a life,
-      there was nothing to press (the last pass had the guarantee, "a
-      puff lands outside the star at every swell", and this one dropped
-      it with the pour; the reviewer left it to the user). `_trickle`
-      sets a puff down at `_ring_spot() * envelope()`, on the circle's
-      speed there; `envelope()` is `1 + GIANT * swell`, which `frost_r()`
-      already went by. At 8 Suns (swell 1) that is 1,138 to 1,733 px
-      against a mouth of 620 and a disc of 1,980; at 13 Suns (`SUPER`)
-      1,760 to 2,678 against 1,127 and 3,598. The probe's first puff to
-      land is eaten 69 s on for 0.68 of a perfect spiral's light at 8
-      Suns, and 82 s on for 0.84 at 13. **Its cost if wrong: a giant
-      phase that earns more light than was tuned for.** It was measured
-      and not retuned (the pace, below). **One thing the ruling did not
-      say**: the disc covers where the gas lands only from 5.36 Suns,
-      with a swell or without. A lighter giant's gas is set down outside
-      its disc, so it has a ring to make up and to press and is not fed
-      in full: the untouched star's one jump is gone (Measured). On the
-      screen that ring is 708 to 1,077 px from a one-Sun giant, on a
-      field that ends 500 px to either side of it, so most of it is off
-      the field; at 8 Suns it is 438 to 666 px. A mouth reaches the
-      place gas lands at 49.4 Suns and its outer edge at 174, giant or
-      not, as it did before.
+    - **Gas that drifts in is pushed out only as far as the star's mouth:
+      the controller's ruling, corrected once, and not the user's.** The
+      ring's place was fixed at the newborn's 518 to 788 px and a giant's
+      mouth (`star_r() * EAT`) grows past it: on the old sim, at 8 Suns as
+      a giant 16 of 50 puffs were eaten in the tick they landed, and at 13
+      Suns as a supergiant all 34, for no light. From the helium flash on,
+      a third of a life, there was nothing to press (the last pass had the
+      guarantee, "a puff lands outside the star at every swell", and this
+      one dropped it with the pour; the reviewer left it to the user).
+      **The rule** (`a531e5d3`): `_trickle` sets a puff down at
+      `_ring_spot() * drift_out()`, on the circle's speed there, and
+      `drift_out()` is `max(1, star_r() * EAT * DRIFT_CLEAR / ring.x)`,
+      `DRIFT_CLEAR` 1.1: the ring as it was laid, moved out only until its
+      inner edge is a tenth past the mouth. It is 1 for a newborn, for a
+      plain star under 37 Suns and for a giant under three and a half, so
+      a one-Sun giant (mouth 310 px, disc 990) has its gas in the plain
+      ring, inside its disc and on the field, and is fed in full, as it
+      was before the wave. An 8-Sun giant (mouth 620, disc 1,980) has it
+      at 682 to 1,038 px, a 13-Sun supergiant (1,127 and 3,598) at 1,240
+      to 1,887, a plain star of 60 Suns (552 and 1,762) at 607 to 924. On
+      the screen that is between 254 and 490 px from the star across
+      those four, on a field that ends 500 px to either side. `frost_r()`
+      still goes by `envelope()`, `1 + GIANT * swell`.
+      **The wave's first form was wrong, and it was the ruling that was
+      wrong, not the code** (`f3f3c7e0`): it set the gas down at the ring
+      times the whole envelope, on the premise that this lands inside a
+      giant's disc. Under 5.36 Suns it does not (under 1.52 none of it
+      does): a light giant's gas lay outside its disc, counted as the
+      ring's, closed the need and sat 708 px and farther from a one-Sun
+      giant, off the field. That giant was no longer fed, and the
+      untouched star showed it (Measured). It stood for one commit of code.
+      **What the rule costs**: the gas round a heavy giant is close to
+      its mouth, so it is eaten sooner and pays less than a wide ring
+      would. The probe's first puff to land is eaten 30 s on for 0.51 of
+      a perfect spiral's light at 8 Suns and 44 s on for 0.71 at 13 (the
+      first form: 69 s and 0.68, 82 s and 0.84), and over thirty seconds
+      the soonest any puff was gone was 18.8 s after it landed at 8 Suns
+      and 9.6 s at 60 plain Suns. A giant phase still earns more light
+      than was tuned for; it was measured and not retuned (the pace,
+      below).
     - **The hint is said until a press brakes something.** It went by
       `sim.eaten`: a star kept from before the ring opened with no
       button, no hint and no tutorial, and on a new star it went when
@@ -2312,55 +2331,70 @@ supernovas (`Sim.kept()`), not a best.
       reads it), `RING_MOST` (a guard: it never binds at these numbers),
       `TRICKLE`'s "a quarter of a minute", relics that "pull
       everything", the pour at a giant's rim, the screen's one spec.
-    - **Checked.** The probe, `probe_nightlight: 216 checks, 0 failed`
-      (2 min 14 s and 2 min 22 s). The twelve new ones: what drifts in
-      round a giant of 8 and of 13 Suns lands outside the mouth and
-      inside the disc with nothing eaten in its first twenty seconds, a
-      puff of it is still a body ten seconds on, and that puff has paid
-      light when it is eaten; a full sky fed for two minutes has no puff
-      over four times the ring's mean, and none of what was owed is
-      lost; a file with `dusty=nan`, `ring=[1, 1e12]`, `frost=[600]` or
+    - **Checked.** The probe, `probe_nightlight: 227 checks, 0 failed`
+      (2 min 21 s; 216 on `f3f3c7e0`). The new ones: `drift_out()` is 1
+      for a newborn, a plain star of eight Suns and a giant of one; round
+      a giant of one Sun, of 8 and of 13 (a supergiant) and round a plain
+      star of 60, what drifts in lands outside the mouth, at `DRIFT_CLEAR`
+      of it or farther, and inside the disc, a puff of it is still a body
+      ten seconds on, and that puff has paid light when it is eaten;
+      round the one-Sun giant it lands at the plain ring's own radii; an
+      untouched one-Sun giant whose ring is gone is fed (4.15 Suns in
+      five minutes); a full sky fed for two minutes has no puff over
+      four times the ring's mean, and none of what was owed is lost; a
+      file with `dusty=nan`, `ring=[1, 1e12]`, `frost=[600]` or
       `dusty=null` (the file's text written by hand: `set_value` with
       null erases the key) loads with a finite ring, frost line and
       dust. One older check's words moved with the rule and its bound
       did not: "a 12-Sun giant's mouth is past the middle of where the
       gas drifts in" is now "of the ring it was born with, and inside
-      where the gas drifts in now". The two bounds that pass thinly are
-      where they were (590 of 652 px; 172 of 170). Suite
-      `passed=249790 failed=0`. The harness, default driver and
-      `opengl3_angle`, en: `guards: 26 checked, 0 failed` and exit 0,
-      twice each (the second time after `_next_puff` learnt to pass over
-      a puff inside the mouth). Draw calls are within four of the list
-      above on every beat but `6b_powers` (166 to 177, by the kinds of
-      power the run drew): `6_giant` 136 to 138 with 230 to 242 bodies
-      where it had 10 to 13, `7_shop` 202 to 204, the tab 266.
-    - **`6_giant` by eye.** There is gas round the giant now: 213 to 220
-      puffs, every one in the disc, and the star at 12.19 or 12.20 Suns
-      after its forty seconds where it was at 12.55 with none left. It is
-      a faint mauve haze, warm because the disc is over all of it, much
-      thinner to the eye than a new star's ring, and it runs off the
-      field's sides. `13_new` is what it was: a cool ring round a
-      one-Sun star.
-    - **The pace, one seed** (`-- pace 40 1 random 1.0 gas`). 2, 4 and 8
-      Suns at 5.6, 9.9 and 15.0 min (they were 5.6, 10.0 and 15.0),
-      helium at 14.8 min and 7.5 Suns, then **a first end at 30.9 min
-      and 17.7 Suns, a neutron star, and 69.2 light a minute over the
-      life** (2,138 light: 1,598 the star's own burning, 475 the disc's
-      gas, 66 solids eaten) **against 26.2 min, 15.0 Suns and 43.3**.
-      That is 4.7 minutes later and 60% more light, **past both lines
-      the ruling set** (three minutes; a third). Most of it is the
-      powers the seed happened to draw this time, not the gas: Wind,
-      Fusion and Thrift twice, where it had Wind twice, Haze and
-      Radiance (a body in another place moves the generator's draws,
-      and Fusion pays the star's own burning once more). With the powers
-      and the perks out (`perks=0 powers=0`, the same seed, the sim of
-      `382e5e47` beside this one): a first end at 27.5 and 27.6 min,
-      15.6 and 15.3 Suns, 42.0 and 47.5 light a minute, of which the
-      star's own burning 30.8 and 30.6, the disc's gas 9.6 and 14.9,
-      solids 1.6 and 2.1. **So on this seed the ruling's own cost is 13%
-      more light over a life, nearly all of it from the disc's gas (half
-      as much again), and no change to when the star ends.** One seed;
-      the five were not run again.
+      where the gas drifts in now". **One of the wave's own checks was
+      changed by the correction**: on `f3f3c7e0` the landing check also
+      asked that nothing be eaten in its first twenty seconds, which gas
+      set down a tenth past the mouth makes untrue; it asks that every
+      puff land at `DRIFT_CLEAR` of the mouth or farther, and the probe
+      prints how soon the first was gone. The two bounds that pass thinly
+      are where they were (590 of 652 px; 172 of 170). Suite
+      `passed=249790 failed=0`. The harness: `guards: 26 checked, 0
+      failed` and exit 0 on the default driver and on `opengl3_angle`
+      for `f3f3c7e0` (twice each), and on the default driver for
+      `a531e5d3`; `opengl3_angle` was not run again after the correction.
+      Draw calls are within four of the list above on every beat but
+      `6b_powers` (166 to 177, by the kinds of power the run drew):
+      `6_giant` 136 with 150 bodies where it had 10 to 13, `7_shop` 204,
+      the tab 266.
+    - **`6_giant` by eye** (`a531e5d3`, default driver). There is gas
+      round the giant: 133 puffs, every one in the disc, and the star at
+      12.33 Suns after its forty seconds (12.55 before the wave, with
+      none left). It is a band close round the star, from its limb out
+      to about half its radius again, warm mauve because the disc is
+      over all of it, thickest above and to the right on this still, and
+      all of it is on the field. It is plainer to see than the first
+      form's (213 to 220 puffs spread thin and running off the field's
+      sides) and still much fainter than a new star's ring. `13_new` is
+      what it was: a cool ring round a one-Sun star.
+    - **The pace, one seed, with the powers and the perks out** (`-- pace
+      40 1 random 1.0 gas perks=0 powers=0`, the sim of `382e5e47`, the
+      first form's and the corrected rule's): a first end at 27.5, 27.6
+      and 27.5 min and 15.6, 15.3 and 15.4 Suns, a neutron star each
+      time; 42.0, 47.5 and 46.4 light a minute over the life, of which
+      the star's own burning 30.8, 30.6 and 30.7, the disc's gas 9.6,
+      14.9 and 14.0, solids 1.6, 2.1 and 1.7. **So the wave costs 10%
+      more light over a life on this seed, nearly all of it from the
+      disc's gas (nearly half as much again), and no change to when the
+      star ends.** One seed; the five were not run again.
+    - **The same seed with the powers it draws** (`-- pace 40 1 random
+      1.0 gas`) says less, because any change to where a body is moves
+      the generator's draws and the seed takes other powers. Before the
+      wave: 26.2 min, 15.0 Suns, 43.3 light a minute (Wind twice, Haze,
+      Radiance). The first form: 30.9 min, 17.7 Suns, 69.2 (Wind, Fusion,
+      Thrift twice). The corrected rule: **26.2 min, 15.2 Suns, 77.1**
+      (Wind, Haze twice, Fusion; 2,017 light, 1,598 of it the star's own
+      burning, 370 the disc's gas, 49 solids eaten). The end is where it
+      was; the light is 78% more, **past the third the ruling set as its
+      line**, and it is Fusion's doing: the star's own burning pays 61.1
+      a minute where it paid 31.0, and Fusion pays that burning once
+      more a level.
   - **Mine, not asked for**: every number above, and the rulings made
     while building, each with what it costs if wrong.
     - **`RING_M` 3.0 and `RING_MOST` 0.3**: the first ring is thin and the
@@ -2402,10 +2436,12 @@ supernovas (`Sim.kept()`), not a best.
       tear" read plainly; holding the share over would need the flag set
       only while the Furnace is on. Cost: a few worlds' half-share lost
       round a dim spell.
-    - **Gas that drifts in follows a giant's envelope** (the final wave):
-      a giant phase that earns more light than was tuned for (13% over a
-      life on the one seed measured with the powers out), and a giant
-      under 5.36 Suns that is no longer fed in full.
+    - **Gas that drifts in is pushed out just past a giant's mouth** (the
+      final wave, the controller's ruling as corrected) and `DRIFT_CLEAR`
+      1.1: a giant phase that earns more light than was tuned for (10%
+      over a life on the one seed measured with the powers out), and gas
+      round a heavy giant that is eaten half a minute to three quarters
+      of one after it lands.
     - **`system()` counting only closed paths.**
     - **The guard gated on the landing, and the perks card guarded too**:
       a deliberate very fast tap on a card that has just come up is
@@ -2478,26 +2514,23 @@ supernovas (`Sim.kept()`), not a best.
       minutes of burning, comes before the hydrogen is out, 167 (166.7:
       the probe prints it rounded on one line and cut to 166 on
       another); the giant's disc, 990 px, is past the whole ring, 788,
-      and the ring falls in. Until the final wave the far sky then fed it
-      in full (1.15 to 4.82 Suns in one minute, the one jump of the run);
-      since, the gas lands outside the disc of a giant that light and the
-      star climbs over the next twenty-five minutes, never more than
-      1.09 Suns in one of them. It still ends as a supernova after two
-      hours (128.5 min, 14.1 Suns). Nobody leaves a star a hundred
-      minutes.
+      and the ring falls in, the far sky feeds it in full (1.15 to 4.82
+      Suns in one minute before the final wave, 1.28 to 4.28 after it:
+      the one jump of the run) and it ends as a supernova after two
+      hours (118.7 min, 14.7 Suns). Nobody leaves a star a hundred
+      minutes; if someone does, that minute is what they come back to.
     - **With the sky at `MOST` the ring's puffs still grow**, shared out
       now and no longer one of them (five puffs' worth at most in the
       probe's two minutes, the far sky giving 21 puffs a second at its
       most). The bot's sky is at 260
       from about 2.4 Suns. Nobody has looked at a sky left full for long,
       and a puff is drawn no bigger than `GAS_WIDE` lets it be.
-    - **A giant's gas is faint, and a light giant's is off the field.**
-      Since the final wave there is gas round a giant, in its disc
-      (`6_giant`): a thin warm haze on a still, cut by the field's
-      sides, and nobody has pressed it. Under 5.36 Suns it lands outside
-      the disc and mostly outside the field (708 px and farther from a
-      one-Sun giant, on a field that ends 500 px to its sides): `zoom()`
-      still frames the ring where the star was born with it.
+    - **A giant's gas is faint and close in.** Since the final wave there
+      is gas round a giant, in its disc (`6_giant`): a warm band hugging
+      the star on a still, far fainter than a new star's ring, and
+      nobody has pressed it. Round a heavy giant it is set down a tenth
+      past the mouth, so a puff has half a minute or so before it is
+      eaten, and a press there has little to add.
     - **Worlds are hard to see** on `6d_system`: small iron-dark lumps
       under a cloud brighter than they are, and **no swirl is visible
       round a core**. The line names them; the eye does not find
@@ -2541,11 +2574,10 @@ supernovas (`Sim.kept()`), not a best.
         plan's 1,200. It is a sky no game makes (births are 2,800 px
         apart, so twelve relics are never all in reach).
     - **`opengl3_angle` is slower on this Mac on some runs and nobody
-      knows why.** Its beats' mean frames ran 17 to 26 ms, 9 to 20, 17 to
-      27 and 10 to 28 on four runs (before the gas had its layer, after
-      it, and twice since), the default driver's 9 to 18 and 4 to 18
-      (Measured). The rule is to check the phone's driver, and its frame
-      here is not accounted for.
+      knows why.** Its quickest beat's mean frame was 17, 9, 17 and 10 ms
+      on four runs (before the gas had its layer, after it, and twice
+      since), the default driver's 9, 4 and 3 (Measured). The rule is to
+      check the phone's driver, and its frame here is not accounted for.
     - **The spec's own list**: no drag that lifts an orbit (asked, not
       chosen), the concept tab is the first game still, no world tears or
       eats by its pull, no moons of solids and no rings round a world, the
