@@ -135,6 +135,10 @@ const PICK_DEAF := 0.5
 ## A power held, on a disc in the sky's corner.
 const CHIP := 68.0
 const CHIP_GAP := 10.0
+## The line that names the system: where it starts on the sky, and its top
+## with no power held (under the discs when there are any).
+const SYSTEM_X := 28.0
+const SYSTEM_Y := 22.0
 ## A held finger's brakes are heard and felt this often at most, in seconds.
 const FELT := 0.2
 ## A touch that also arrives as a mouse press (were mouse-from-touch or
@@ -166,6 +170,8 @@ var _fuel_low := false
 var _hint: Label
 var _chips: Button
 var _chips_for := ""
+var _system: Label
+var _system_for := ""
 var _pick: Control
 var _pick_title: Label
 var _pick_tiles: Array = []   # {button, icon, name, effect, cost, badge, level}
@@ -362,6 +368,15 @@ func _build() -> void:
 	_chips.draw.connect(_draw_chips)
 	_chips.pressed.connect(open_powers)
 	sky.add_child(_chips)
+	# what circles the star, named: one quiet line under the powers' discs
+	_system = Label.new()
+	_system.name = "System"
+	_system.theme_type_variation = "CardBlurb"
+	_system.add_theme_color_override("font_color", Color(Art.VEIL, 0.8))
+	_system.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_system.position = Vector2(SYSTEM_X, SYSTEM_Y)
+	_system.visible = false
+	sky.add_child(_system)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	sky.add_child(_fx)
@@ -1370,6 +1385,7 @@ func _refresh_hud(delta: float) -> void:
 		_made_l[i].text = "%s %d%%" % [tr(named) if named.begins_with("NL_") else named, pc]
 	_made.queue_redraw()
 	_refresh_chips()
+	_refresh_system()
 	(_plates.light.label as Label).text = Art.short(floorf(_shown.light), c)
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas + sim.fades > 0 or sim.dust > 0
@@ -1423,6 +1439,30 @@ func _refresh_chips() -> void:
 	_chips.visible = held > 0
 	_chips.size = Vector2(CHIP, held * (CHIP + CHIP_GAP))
 	_chips.queue_redraw()
+
+## What circles the star, in its own words: "3 planets · 1 giant · 22
+## rocks · 4 comets", a kind with none left out.
+func _system_line() -> String:
+	var n: Dictionary = sim.system()
+	var parts: PackedStringArray = []
+	for row: Array in [["planets", "NL_SYS_PLANETS"], ["giants", "NL_SYS_GIANTS"], ["rocks", "NL_SYS_ROCKS"], ["comets", "NL_SYS_COMETS"]]:
+		if int(n[row[0]]) > 0:
+			parts.append(_count(row[1], int(n[row[0]])))
+	return " · ".join(parts)
+
+## The line is written again only when a count changes. It is not shown with
+## nothing to name or while the sky plays an end, it sits under the powers'
+## discs when there are any, and it gives way to a note said across it.
+func _refresh_system() -> void:
+	var n: Dictionary = sim.system()
+	var key := "%d %d %d %d" % [int(n.planets), int(n.giants), int(n.rocks), int(n.comets)]
+	if key != _system_for:
+		_system_for = key
+		_system.text = _system_line()
+	_system.visible = _system.text != "" and not sky.ending()
+	_system.position.y = _chips.position.y + _chips.size.y if _chips.visible else SYSTEM_Y
+	var under_note: bool = _note_t > 0.0 and _system.position.y < _note.position.y + _note.size.y
+	_system.modulate.a = 1.0 - _note.modulate.a if under_note else 1.0
 
 ## A disc for each power held, its level on it past the first; all of them
 ## faint while the star is dim and they sleep.

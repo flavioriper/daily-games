@@ -8,9 +8,11 @@ extends Control
 ## The owner sets `sim`, calls `refresh` once a frame after stepping it, and
 ## tells it what the sim's events were (`ate`, `formed`, `met`, `tore`,
 ## `lit_up`) and where a finger pressed (`set_down`; `unworld` turns the
-## finger's place into the sim's). Five layers and about ten draws whatever the sky holds: the
-## gas is one MultiMesh of soft lights, the solids three lit by one shader,
-## every warm light one more, the star one square under its own shader.
+## finger's place into the sim's). Six layers and about ten draws whatever
+## the sky holds: the gas is one MultiMesh of soft lights on a layer of its
+## own (it covers a little of what is under it as well as adding to it:
+## `_mist`), the solids three lit by one shader, every warm light one more,
+## the star one square under its own shader.
 ##
 ## - **The disc is not drawn**, only the gas in it: it had a ring at its
 ##   edge until the user asked for it gone (2026-10-06: "remove this visual
@@ -19,8 +21,17 @@ extends Control
 ##   have no ground shadow"). A body's own far side is dark, in the shader.
 ## - **Nothing leaves a trail** (the same day: "remove the white dash behind
 ##   the bodies, create it only when body has ice and is closer to sun"): a
-##   body that is ice, inside the frost line, has a tail that lies away from
-##   the star, and that is all.
+##   body that is ice, within TAIL_R of the star's radii, has a tail that
+##   lies away from the star, and that is all. Near the star, not inside the
+##   frost line: that line is out at the ring's middle now, and a tail on
+##   every icy body inside it was a burst of rays round the star.
+## - **The ring is a cloud** (2026-10-08): a puff of a star's own ring is
+##   three soft lights, its own and two wide faint ones beside it, so 180
+##   puffs run together into one band of gas and not a scatter of beads.
+##   Gas a press has just braked (`Body.sink`) is drawn warm and brighter
+##   until the sim lets it go: what the finger did, seen. A tutorial page
+##   (no ring of the game's own) keeps one light a puff, a wider and
+##   brighter one.
 ## - **The end is the star's layers leaving** (the same day: "supernova
 ##   animation should be more nice to see, not just a flash, but the layers
 ##   exploding and being ejected into gas to the space"): `begin_end` builds
@@ -46,11 +57,12 @@ const Art = preload("res://arcade/nightlight_art.gd")
 const Motion = preload("res://core/motion.gd")
 
 ## The most solids and the most puffs drawn: the sim's own most, and the
-## shells of an end. The gas batch holds the sim's gas (FULL 300 at most),
-## twelve relics' nebulae (RELICS_MOST x NEBULA_PUFFS, 576) and the worst
-## end's shells (a fade's seven layers of 72, 504): 1380.
+## shells of an end. The gas batch holds the sim's gas, three lights a puff
+## (Sim.MOST 260 puffs, 780), twelve relics' nebulae (RELICS_MOST x
+## NEBULA_PUFFS, 576) and the worst end's shells (a fade's seven layers of
+## 72, 504): 1860.
 const MOST := 320
-const GAS_MOST := 1400
+const GAS_MOST := 2000
 ## Every warm light: two for a body (its heat, its tail), the puffs, two for
 ## each relic and neighbour. Sized so the relics, filled last, are never the
 ## ones dropped.
@@ -73,7 +85,32 @@ const SMALL := 3.0
 ## there is.
 const GAS_R := 34.0
 const GAS_WIDE := 2.2
-const GAS_A := 0.2
+const GAS_A := 0.26
+## The two lights beside a ring's puff, which make the ring a cloud: each
+## HAZE_WIDE times as wide as the puff's own and HAZE_A of its light,
+## HAZE_FAR of `Sim.gas_r()` from it at most, turning slowly about it
+## (HAZE_TURN of the puff's own tumbling; still under reduce motion).
+const HAZE_WIDE := 4.0
+const HAZE_A := 0.65
+const HAZE_FAR := 2.2
+const HAZE_TURN := 0.2
+## A tutorial page's puff is one light (a page has no ring of the game's
+## own, and its few heavy puffs are a third the size on the card): that one
+## is PAGE_WIDE times as wide and has PAGE_A times the light, or the gas the
+## first page is about was a few dim beads.
+const PAGE_WIDE := 1.8
+const PAGE_A := 1.5
+## Gas a press has just braked: this far toward the disc's warmth, and this
+## much brighter, falling away as `Body.sink` does. A steady tint, never a
+## pulse.
+const FLUSH_WARM := 1.0
+const FLUSH_A := 0.3
+## How much of what is under it a light of the sim's gas covers (the gas
+## layer blends premultiplied: `_mist`). With none of it, a knot of thirty
+## puffs under a held finger burnt out to a white ball; with this much a
+## crowd of them comes to the gas's own colour and stops, and a far star
+## still shows through the ring.
+const GAS_BODY := 0.75
 ## The tide pulls a body this much longer toward the star before it tears
 ## it, and as much thinner as keeps its size.
 const PULLED := 0.4
@@ -82,12 +119,18 @@ const PULLED := 0.4
 const REACH := 4.5
 ## Seconds a puff of light lasts where two bodies met.
 const PUFF := 0.4
-## Seconds the light of a press lasts where the finger came down, and the
-## most of them at once.
+## Seconds the light of a press lasts where the finger came down, the most
+## of them at once, how much light there is as it lands, and how wide it is
+## against the press's own reach (a light thins to nothing at its edge, so
+## one exactly as wide reads smaller than the press).
 const DOWN := 0.5
 const DOWNS := 12
-## A tail is this long at the frost line and TAIL_NEAR at the Roche radius,
-## in the design's pixels.
+const DOWN_A := 0.6
+const DOWN_WIDE := 1.15
+## An icy body has a tail within TAIL_R of the star's radii (where the
+## frost line was before the ring moved it out): TAIL_FAR long there and
+## TAIL_NEAR at the Roche radius, in the design's pixels.
+const TAIL_R := 2.2
 const TAIL_FAR := 10.0
 const TAIL_NEAR := 64.0
 
@@ -118,9 +161,8 @@ const VIEW_LEAST := 0.3
 ## nebula's has LOBES_NEBULA soft ones, a round shell more than fingers.
 const LOBES := 9
 const LOBES_NEBULA := 3
-## Puffs of the new star's gas inside this share of its disc drift in to it
-## as it condenses, from BIRTH_IN times as far.
-const BIRTH_NEAR := 0.8
+## The new star's gas, its whole ring, drifts in to it as it condenses,
+## from BIRTH_IN times as far again.
 const BIRTH_IN := 0.5
 ## The new star is a dim seed this much there while the camera finds it,
 ## so the pan has somewhere to go.
@@ -153,6 +195,7 @@ var _downs: Array = []               # {at, t, r}: the sim's units
 var _body_mat: ShaderMaterial
 var _star_mat: ShaderMaterial
 var _light_l: Control
+var _gas_l: Control
 var _warm_l: Control
 var _body_l: Control
 var _star_l: Control
@@ -245,12 +288,13 @@ func _init() -> void:
 	_body_mat = Art.body_material()
 	_star_mat = Art.star_material()
 	_light_l = _layer("Light", _draw_light, Art.adding())
+	_gas_l = _layer("Gas", _draw_gas, Art.covering())
 	_warm_l = _layer("Warm", _draw_warm, Art.adding())
 	_body_l = _layer("Bodies", _draw_bodies, _body_mat)
 	_star_l = _layer("Star", _draw_star, _star_mat)
 	_top_l = _layer("Top", _draw_top, null)
 	_warms = Batch.new(Art.glow(2.0), WARM_MOST)
-	_gas = Batch.new(Art.glow(1.6), GAS_MOST)
+	_gas = Batch.new(Art.glow_pre(1.6), GAS_MOST)
 	_holes = Batch.new(Art.disc(), 16)
 	for v in Art.LUMPS:
 		_lumps.append(Batch.new(Art.lump(v), MOST))
@@ -518,7 +562,7 @@ func refresh(delta: float) -> void:
 		_sky = Art.sky(size, sim.novas)
 		_corners = Art.corners(size, corner * u, paper) if paper.a > 0.0 else null
 		queue_redraw()
-	for layer: Control in [_light_l, _warm_l, _body_l, _star_l, _top_l]:
+	for layer: Control in [_light_l, _gas_l, _warm_l, _body_l, _star_l, _top_l]:
 		layer.queue_redraw()
 
 func _breath() -> float:
@@ -543,7 +587,7 @@ func _fill() -> void:
 	var born: bool = not _end.is_empty() and _end.swapped
 	var seen := _rise if born else _old()
 	# the new star's gas shows dimly as the camera finds it, and comes up
-	# with the star; its nearest puffs drift in to it as it condenses
+	# with the star; the whole ring gathers in as it condenses
 	var gas_seen := seen
 	var drawn_in := 0.0
 	if born:
@@ -553,8 +597,11 @@ func _fill() -> void:
 	var col := Art.burning_col(sim)
 	var rh: float = sim.haze_r()
 	var roche: float = sim.roche_r()
-	var frost: float = sim.frost_r()
+	var tail_r: float = sim.star_r() * TAIL_R
 	var reach := star_px() * REACH
+	# a ring's puff is three lights; a tutorial page's (no ring) is one
+	var clouded: bool = sim.ring.y > 0.0
+	var haze_far: float = sim.gas_r() * HAZE_FAR * z
 	if gas_seen > 0.0:
 		for b: Sim.Body in sim.bodies:
 			var far := b.pos.length()
@@ -563,13 +610,28 @@ func _fill() -> void:
 			var away := b.pos / far
 			var at := world(b.pos)
 			if b.kind == Sim.Kind.GAS:
-				if drawn_in > 0.0 and far < rh * BIRTH_NEAR:
+				if drawn_in > 0.0:
 					at = world(b.pos * (1.0 + drawn_in))
-				# cool far out, warm as the disc drags it in; thinner once its
-				# dust has fallen out
+				# cool far out, warm as the disc drags it in, and warm for a
+				# while where a press has just braked it; thinner once its dust
+				# has fallen out
 				var wide := GAS_R * minf(GAS_WIDE, pow(b.m / Sim.PUFF, 1.0 / 3.0)) * z / Art.R
 				var a := GAS_A * (1.0 if b.dust > 0.0 else 0.75) * minf(1.0, b.age * 2.0 + 0.2) * gas_seen
-				_gas.put(at, 0.0, wide, wide, Color(Art.GAS.lerp(Art.WARM, sqrt(b.heat)), a * (1.0 + 0.6 * b.heat)))
+				if not clouded:
+					wide *= PAGE_WIDE
+					a *= PAGE_A
+				var warm := maxf(sqrt(b.heat), FLUSH_WARM * sqrt(b.sink))
+				var tint := Color(Art.GAS.lerp(Art.WARM, warm), a * (1.0 + 0.6 * b.heat + FLUSH_A * b.sink))
+				_mist(at, wide, tint, GAS_BODY)
+				if clouded:
+					# two more lights beside it, wide and faint, so the ring reads
+					# as a cloud and not as beads: seeded by the puff (no RNG a
+					# frame), turning slowly with it
+					var spin := 0.0 if Motion.reduce else b.spin * HAZE_TURN
+					for k in 2:
+						var turn := float((b.id * 7919 + k * 104729) % 628) * 0.01 + spin
+						var off := Vector2.from_angle(turn) * haze_far * (0.6 + 0.4 * float((b.id + k * 3) % 5) / 4.0)
+						_mist(at + off, wide * HAZE_WIDE, Color(tint, tint.a * HAZE_A * (1.0 - b.heat)), GAS_BODY)
 				continue
 			var rb := Sim.body_r(b.m)
 			var r := maxf(small * u, rb * z)
@@ -577,12 +639,12 @@ func _fill() -> void:
 			if b.heat > 0.0:
 				var w := s * (2.2 + b.heat * 1.8)
 				_warms.put(at, 0.0, w, w, Color(Art.WARM, b.heat * 0.5 * seen))
-			# ice boils off inside the frost line, and what leaves it lies away
-			# from the star, whichever way the body flies. Not inside the
-			# Roche radius: a torn comet is a ring of pieces, and a tail on
-			# each was a burst of rays round the star
-			if b.ice >= Sim.ICE_LOOK and far < frost and far >= roche:
-				var near := 1.0 - (far - roche) / maxf(1.0, frost - roche)
+			# ice boils off near the star, and what leaves it lies away from
+			# the star, whichever way the body flies. Not inside the Roche
+			# radius: a torn comet is a ring of pieces, and a tail on each
+			# was a burst of rays round the star
+			if b.ice >= Sim.ICE_LOOK and far < tail_r and far >= roche:
+				var near := 1.0 - (far - roche) / maxf(1.0, tail_r - roche)
 				var long := lerpf(TAIL_FAR, TAIL_NEAR, near) * u * minf(1.5, 0.6 + r / (8.0 * u))
 				_warms.put(at + away * long * 0.5, away.angle(), long * 0.5 / Art.R, r * 2.4 / Art.R, Color(Art.TAIL, (0.16 + 0.2 * near) * b.ice * seen))
 			var paint := Color(Art.paint_of(b.kind, b.ice, b.metal), seen)
@@ -603,8 +665,8 @@ func _fill() -> void:
 	# little as it goes (it stands still under reduce motion)
 	for d: Dictionary in _downs:
 		var k: float = d.t / DOWN
-		var s := float(d.r) * z / Art.R * (1.0 if Motion.reduce else lerpf(0.7, 1.0, k))
-		_warms.put(world(d.at as Vector2), 0.0, s, s, Color(1.0, 0.89, 0.75, 0.35 * (1.0 - k)))
+		var s := float(d.r) * DOWN_WIDE * z / Art.R * (1.0 if Motion.reduce else lerpf(0.7, 1.0, k))
+		_warms.put(world(d.at as Vector2), 0.0, s, s, Color(1.0, 0.89, 0.75, DOWN_A * (1.0 - k)))
 	_fill_end()
 	for batch in batches:
 		batch.send()
@@ -614,6 +676,13 @@ func _fill() -> void:
 	_body_mat.set_shader_parameter("reach", reach * sc)
 	_body_mat.set_shader_parameter("haze", rh * z * sc)
 	_body_mat.set_shader_parameter("star_col", Vector3(col.r, col.g, col.b))
+
+## A light of the gas batch, `wide` of the mesh across, in `col`: its light
+## added, and `body` of it covering what is under it (Art.glow_pre). A
+## nebula's and a shell's cover nothing, so they are drawn as they were on a
+## layer that adds.
+func _mist(at: Vector2, wide: float, col: Color, body: float) -> void:
+	_gas.put(at, 0.0, wide, wide, Color(col.r * col.a, col.g * col.a, col.b * col.a, col.a * body))
 
 ## The dead stars (sim.relics) and the neighbour stars (sim.far). A relic's
 ## nebula is a seeded ring of soft lights in its layers' colours, spreading
@@ -645,7 +714,7 @@ func _fill_relics(z: float) -> void:
 			var li := k % maxi(1, layers.size() - 1)
 			if li >= layers.size() or float(layers[li]) < 0.01:
 				continue
-			_gas.put(at + way * spread * (1.0 + 0.6 * li / 7.0), 0.0, wide, wide, Color(Art.MADE[li], a))
+			_mist(at + way * spread * (1.0 + 0.6 * li / 7.0), wide, Color(Art.MADE[li], a), 0.0)
 		var rr: float = sim.relic_r(rel) * z
 		match int(rel.kind):
 			Sim.Relic.WD:
@@ -697,7 +766,7 @@ func _fill_end() -> void:
 		var far := r0 * 0.6 + float(at.fly) * k * u * float(p.v) * gone
 		var wide := (30.0 + 78.0 * gone) * float(p.s) * k * u / Art.R
 		var a := minf(1.0, age / 0.35) * (1.0 - smoothstep(0.45, 1.0, lived)) * 0.36
-		_gas.put(mid + way * far, 0.0, wide, wide, Color(p.col as Color, a))
+		_mist(mid + way * far, wide, Color(p.col as Color, a), 0.0)
 
 # --- drawing ---
 
@@ -746,12 +815,15 @@ func _draw_far() -> void:
 	var slid: Vector2 = ((sim.drift as Vector2) + half).posmod(FAR_WIDE) - half
 	_light_l.draw_mesh(_far, null, Transform2D(0.0, Vector2(s, s), 0.0, centre + shift * FAR_PARALLAX - slid * FAR_PARALLAX * s))
 
-## The gas and every warm light, then the star's own glow and what an end
-## adds to it.
+## The gas, over the star's light on the dust and under every warm light.
+func _draw_gas() -> void:
+	if sim != null:
+		_gas.show(_gas_l)
+
+## Every warm light, then the star's own glow and what an end adds to it.
 func _draw_warm() -> void:
 	if sim == null:
 		return
-	_gas.show(_warm_l)
 	_warms.show(_warm_l)
 	var now := _star_now()
 	var col := Art.burning_col(sim)

@@ -8,9 +8,12 @@ extends SceneTree
 ## on the ring's fullest part (a ScreenTouch, as a phone sends it) 0.2 s
 ## after it landed, its light still there, 3b the arc that finger then
 ## dragged along (a ScreenDrag a frame, braking as often as a held finger
-## does) twenty seconds on, falling, 4 the ring a steady hand has braked for
-## two minutes, with what the gas has made, 4b a planet the tide has torn,
-## 4c a sky as full as it gets (the draw calls' worst), 5a the two powers
+## does) a second and a half after it lifted, still warm from the brake (the
+## log says where that arc is twenty seconds on), 4 the ring a steady hand
+## has braked for two minutes, with what the gas has made, 4b a planet the
+## tide has torn, 4c a sky as full as it gets (the draw calls' worst; its
+## gas and rocks are laid from a seed, so every run shoots the same sky), 5a
+## the two powers
 ## offered at the next mark (the card comes up by itself), 5b one picked and
 ## on its disc, 5e the card opened on a held finger (the log says the card
 ## stayed down while the finger did, that the finger was dropped as it
@@ -27,14 +30,18 @@ extends SceneTree
 ## drawn, 13 the new star among the gas, 9a-9b a star of four Suns whose
 ## carbon core cannot light letting its layers go as a nebula (9c the camera
 ## between the white dwarf and the birthplace, 9b the new star after),
-## 13b-13c a star letting go, 14-16 the tutorial's four pages (14 the GAS
+## 13b-13c a star letting go, 6d a later star's iron-rich ring four minutes
+## on with its worlds and the line that names them, 6e a star of three Suns
+## a minute into a ring its disc half covers (both put there by hand:
+## `system`, `half`), 14-16 the tutorial's four pages (14 the GAS
 ## page 0.2 s after its second press, 14b the gas that press sent half way
 ## in, 16b the END page's camera), 17 the tab again with the star and its
-## relics on its card.
+## relics and its worlds on its card.
 ## Every run but `fresh` opens a kept star (a first cloud saved before the
 ## screen opens, so nothing is born on screen); `fresh` deletes the file, so
 ## the screen opens on a first star condensing out of its cloud (0 the birth,
-## 0b after it) and stops there.
+## 0b after it, 2b the ring two seconds after the birth is over) and stops
+## there.
 ## Prints the draw calls at each shot and the frames since the last with
 ## their mean and longest gap. The star and the wallet are throwaway files.
 ## Every guard is checked (`_check`): a line that starts FAIL, and the run
@@ -56,7 +63,9 @@ const STEPS := [
 	# a finger down, then 1.6 s along half a radian of the ring: it brakes as
 	# it lands and at 0.6, 1.2 and 1.8 s
 	[4.0, "press"], [4.2, "shot", "3_press"], [4.3, "drag", 1.6, 0.5], [6.0, "let_go"],
-	[6.1, "run", 20.0, false], [7.0, "shot", "3b_falling"],
+	# the arc while it is still warm (a brake's flush is gone in six seconds),
+	# then where it has got to twenty seconds on, for the log
+	[6.1, "run", 1.0, false], [6.5, "shot", "3b_falling"], [6.6, "run", 19.0, false],
 	[7.1, "run", 120.0, true], [9.0, "shot", "4_disc"],
 	[9.1, "planet"], [12.0, "shot", "4b_torn"],
 	[12.1, "crowd"], [13.0, "shot", "4c_full"],
@@ -92,22 +101,27 @@ const STEPS := [
 	# the fade: swap at 64.0, the pull back to 65.2, over at 72.2 (reduce
 	# motion: 68.0)
 	[59.0, "let_go_star"], [62.4, "shot", "13b_letting_go"], [64.5, "where"], [65.4, "shot", "13c_gone"], [65.41, "where"], [72.7, "perks_x"],
+	# the new star's sky put there by hand: an iron-rich ring and its worlds
+	# four minutes on, then three Suns and a minute into a ring its disc half
+	# covers
+	[72.8, "system"], [73.6, "shot", "6d_system"], [73.65, "line", "6d", 1],
+	[73.7, "half"], [74.5, "shot", "6e_half_eaten"], [74.55, "line", "6e", 0],
 	# GAS presses 0.8 and 1.6 s into its page and its gas is half way in at 19
-	[72.8, "tutor"], [74.6, "shot", "14_tut_gas"], [90.8, "shot", "14b_tut_gas_in"],
-	[90.9, "page", 1], [92.9, "shot", "15_tut_worlds"],
+	[74.6, "tutor"], [76.4, "shot", "14_tut_gas"], [92.6, "shot", "14b_tut_gas_in"],
+	[92.7, "page", 1], [94.7, "shot", "15_tut_worlds"],
 	# BURN's star is a giant (swell 1, 20 Suns) from 12.0 to 13.8 s into the page
-	[93.0, "page", 2], [99.0, "shot", "15b_tut_burn"], [106.1, "shot", "15c_tut_burn_giant"],
-	[106.2, "page", 3], [109.3, "shot", "16_tut_end"], [113.8, "shot", "16b_tut_end_pan"],
-	[113.9, "leave"], [115.1, "shot", "17_tab_after"],
-	[115.2, "quit"],
+	[94.8, "page", 2], [100.8, "shot", "15b_tut_burn"], [107.9, "shot", "15c_tut_burn_giant"],
+	[108.0, "page", 3], [111.1, "shot", "16_tut_end"], [115.6, "shot", "16b_tut_end_pan"],
+	[115.7, "leave"], [116.9, "shot", "17_tab_after"], [116.95, "card"],
+	[117.0, "quit"],
 ]
 ## The beats' clock moves this much a frame at most, in seconds.
 const MOST_STEP := 0.1
 ## `fresh`: no file, so the screen opens on a first star being born.
 const FRESH_STEPS := [
 	[1.6, "tab"], [2.8, "fresh"],
-	[2.9, "open"], [4.4, "shot", "0_birth"], [7.4, "shot", "0b_born"],
-	[7.5, "quit"],
+	[2.9, "open"], [4.4, "shot", "0_birth"], [7.4, "shot", "0b_born"], [8.9, "shot", "2b_ring"],
+	[9.0, "quit"],
 ]
 
 var _menu: Node
@@ -130,6 +144,7 @@ var _drag_all := 0.0
 var _drag_arc := 0.0
 var _drag_from := Vector2.ZERO
 var _marked: Array = []
+var _arc_s := 0.0
 ## The guards checked and how many failed; what is still to do at a time of
 ## the clock ([msec, Callable], soonest first); and what waits for a card to
 ## come up ({card, plan}: `plan` is called with the msec it came up at).
@@ -332,6 +347,74 @@ func _run(seconds: float, press: bool) -> void:
 	print("ran %.0f s in %d ms, %d presses braked something: %.2f Suns, light %.1f, %d gas (%d in the disc, the heaviest puff %.3f) and %d solids (%s), lv %s, picks %d" % [seconds, Time.get_ticks_msec() - t0, braked, _s.sim.suns(), _s.sim.light,
 		_s.sim.bodies.size() - solids, inside, fattest, solids, str(_s.sim.system()), str(_s.sim.lv), _s.sim.picks])
 
+## A world of `m` put on a circle `far` from the star, `turn` round it, made
+## of gas with `metal` of a dead star's iron in it.
+func _world(m: float, far: float, turn: float, metal: float) -> Sim.Body:
+	var pos := Vector2.from_angle(turn) * far
+	var b: Sim.Body = _s.sim.add(Sim.Kind.PLANET, m, pos, _s.sim.circle_vel(pos))
+	b.metal = metal
+	return b
+
+## The line that names the system says what the sim counts, `planets` of
+## them at least, and is where it should be.
+func _check_line(what: String, planets: int) -> void:
+	var n: Dictionary = _s.sim.system()
+	var line: Label = _s._system
+	var chips: Control = _s._chips
+	var top: float = chips.position.y + chips.size.y if chips.visible else float(_s.SYSTEM_Y)
+	_check(int(n.planets) >= planets and line.visible and line.text != "" and line.text == _s._system_line() and is_equal_approx(line.position.y, top)
+		and line.position.x + line.size.x <= _s.sky.size.x,
+		"%s: the line \"%s\" names %s, shown %s, %s (its top %d, the discs end at %d), %d px of the sky's %d" % [what, line.text, str(n), line.visible,
+			"under the powers' discs" if chips.visible else "at the sky's top with no power held", int(line.position.y), int(chips.position.y + chips.size.y), int(line.position.x + line.size.x), int(_s.sky.size.x)])
+
+## 6d: the new star left by the fade, set to one Sun with a one-Sun
+## newborn's ring whatever perk the run drew (an Ember's newborn is two
+## Suns, and its ring farther out), with a later sky's ring, the richest in
+## a dead star's dust the sim lays (ASH_MOST), and three worlds put on
+## circles in it by hand, two planets and a core that keeps gas: the pace is
+## not this harness's to wait for. Four minutes of the sim with no hand,
+## then the shot.
+func _system() -> void:
+	var sim: RefCounted = _s.sim
+	sim.bodies.clear()
+	sim.novas = 2
+	sim.mass = Sim.START
+	sim.fuel = sim.mass * 0.6
+	sim.env = sim.mass * 0.25
+	sim._set_ring()
+	sim._lay_ring(Sim.RING, Sim.RING_M, Sim.ASH_H, Sim.ASH_MOST)
+	var mid: float = (sim.ring.x + sim.ring.y) * 0.5
+	_world(0.009, lerpf(sim.ring.x, mid, 0.5), 0.6, 1.0)
+	_world(0.011, lerpf(mid, sim.ring.y, 0.5), 3.9, 1.0)
+	_world(0.016, mid, 2.2, 1.0)
+	_run(240.0, false)
+	print("a later star's ring 240 s on: %.2f Suns, novas %d, dust share %.3f, the system %s, the line \"%s\"" % [sim.suns(), sim.novas, sim.dusty, str(sim.system()), _s._system_line()])
+
+## 6e: that star at three Suns, its ring laid again where it was born with
+## it (the plain disc of three Suns covers its inner half) and two planets
+## on circles in the outer half, a minute on with no hand: long enough for
+## what the disc has to be winding in, and five minutes was the whole ring
+## gone. The powers it has grown past are taken first, never the Haze (a
+## wider disc covers the whole ring), so the line stands under their discs.
+func _half() -> void:
+	var sim: RefCounted = _s.sim
+	sim.bodies.clear()
+	sim.mass = Sim.START * 3.0
+	sim.fuel = sim.mass * 0.6
+	sim.env = sim.mass * 0.25
+	sim._lay_ring(Sim.RING, Sim.RING_M, Sim.ASH_H, Sim.ASH_MOST)
+	_world(0.009, lerpf(sim.ring.x, sim.ring.y, 0.8), 1.1, 1.0)
+	_world(0.01, lerpf(sim.ring.x, sim.ring.y, 0.95), 4.4, 1.0)
+	while sim.owed() > 0:
+		sim.pick(1 if String(sim.offering()[0]) == "haze" else 0)
+	var ring0: int = sim.gas_count()
+	_run(60.0, false)
+	var out := 0
+	for b: Sim.Body in sim.bodies:
+		if b.kind == Sim.Kind.GAS and b.pos.length() >= sim.haze_r():
+			out += 1
+	print("three Suns 60 s on: %.2f Suns, the disc %d px, the ring %s, %d of %d puffs left and %d of them outside the disc, the system %s" % [sim.suns(), int(sim.haze_r()), str(sim.ring), sim.gas_count(), ring0, out, str(sim.system())])
+
 func _process(delta: float) -> bool:
 	_t += minf(delta, MOST_STEP)
 	_frames += 1
@@ -416,15 +499,20 @@ func _process(delta: float) -> bool:
 				b.ice = 0.6
 				_s.sim._sort(b)
 			"crowd":
-				# as full a sky as the sim lets there be
+				# as full a sky as the sim lets there be, laid from a seed. The
+				# rocks go round at random: at a fixed step of the turn every
+				# third one, the icy ones, stood on seven spokes, and their tails
+				# made rays no game sky has
+				var rng := RandomNumberGenerator.new()
+				rng.seed = 41
 				while _s.sim.gas_count() < Sim.MOST:
-					var pos: Vector2 = Vector2.from_angle(randf() * TAU) * _s.sim.haze_r() * randf_range(0.7, 0.97)
-					var puff: Sim.Body = _s.sim.add(Sim.Kind.GAS, Sim.RING_M / Sim.RING, pos, _s.sim.circle_vel(pos) * randf_range(0.97, 1.0))
+					var pos: Vector2 = Vector2.from_angle(rng.randf() * TAU) * _s.sim.haze_r() * rng.randf_range(0.7, 0.97)
+					var puff: Sim.Body = _s.sim.add(Sim.Kind.GAS, Sim.RING_M / Sim.RING, pos, _s.sim.circle_vel(pos) * rng.randf_range(0.97, 1.0))
 					puff.h = _s.sim.puff_h()
 					puff.dust = _s.sim.dusty
 				for k in 140:
 					var far: float = _s.sim.haze_r() * (0.55 + 0.004 * k)
-					var way := Vector2.from_angle(TAU * k * 0.381)
+					var way := Vector2.from_angle(rng.randf() * TAU)
 					var b: Sim.Body = _s.sim.add(Sim.Kind.ROCK, 0.001 + 0.0002 * (k % 9), way * far, way.orthogonal() * -sqrt(_s.sim.gm() / far))
 					b.ice = 0.8 if k % 3 == 0 else 0.0
 					_s.sim._sort(b)
@@ -437,7 +525,12 @@ func _process(delta: float) -> bool:
 						if _marked.has(b.id):
 							rs.append(int(b.pos.length()))
 					rs.sort()
-					print("the braked arc twenty seconds on: %d of %d left, %s from the star; the ring starts at %d, the disc at %d" % [rs.size(), _marked.size(), str(rs), int(_s.sim.ring.x), int(_s.sim.haze_r())])
+					_arc_s += float(step[2])
+					var warm := 0.0
+					for b: Sim.Body in _s.sim.bodies:
+						if _marked.has(b.id):
+							warm = maxf(warm, b.sink)
+					print("the braked arc %.0f s on: %d of %d left, the warmest still %.2f of a brake's flush, %s from the star; the ring starts at %d, the disc at %d" % [_arc_s, rs.size(), _marked.size(), warm, str(rs), int(_s.sim.ring.x), int(_s.sim.haze_r())])
 			"grow":
 				# past the next pick: the card comes up by itself
 				_grow()
@@ -564,12 +657,31 @@ func _process(delta: float) -> bool:
 				_s.sim.cold = Sim.GRACE
 				print("before the fade: shift %s, view %.3f, relics %d, kinds %s" % [_s.sky.shift, _s.sky.view, _s.sim.relics.size(), str(_s.sim.relics.map(func(r: Dictionary) -> int: return int(r.kind)))])
 				print("left dim: the sim says %s" % _s.sim.ending())
+			"system":
+				_system()
+			"half":
+				_half()
+			"line":
+				_check_line(String(step[2]), int(step[3]))
+			"card":
+				# the Arcade card's line names the worlds the star was left with,
+				# and the card is no wider for it than the screen has room for
+				var kept: Dictionary = Sim.kept()
+				var n := int(kept.worlds)
+				var best: Label = _menu.arcade_tab._best["nightlight"]
+				var words: String = tr("NL_CARD_WORLDS_ONE") if n == 1 else tr("NL_CARD_WORLDS_N") % n
+				# the label, its line, the words, the head, the column, the card
+				var card: Control = best.get_parent().get_parent().get_parent().get_parent().get_parent()
+				var right: float = card.get_global_rect().end.x
+				_check(n > 0 and best.text.contains(" · " + words) and right <= root.get_visible_rect().size.x,
+					"the card names the star's worlds and its line fits: kept %s, the line \"%s\" %d px long, the card ends at %d of %d px" % [str(kept), best.text, int(best.size.x), int(right), int(root.get_visible_rect().size.x)])
 			"tutor":
 				_s.tutor.show()
 			"page":
 				_s.get_node("HowToPlay")._show_page(int(step[2]))
 			"leave":
 				_s.get_node("HowToPlay")._continue()
+				print("leaving: %.2f Suns, the system %s, the line \"%s\"" % [_s.sim.suns(), str(_s.sim.system()), _s._system.text])
 				_s.go_back()
 			"quit":
 				if _fresh:

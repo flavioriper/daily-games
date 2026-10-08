@@ -1046,6 +1046,8 @@ NL_CARD_MASS,%s× the Sun,%s× o Sol,%s× el Sol
 NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva
 NL_CARD_NOVAS_ONE,1 supernova,1 supernova,1 supernova
 NL_CARD_NOVAS_N,%d supernovas,%d supernovas,%d supernovas
+NL_CARD_WORLDS_ONE,1 world,1 mundo,1 mundo
+NL_CARD_WORLDS_N,%d worlds,%d mundos,%d mundos
 NL_CARD_RELICS_ONE,1 relic,1 relíquia,1 reliquia
 NL_CARD_RELICS_N,%d relics,%d relíquias,%d reliquias
 NL_MOTTO,"A star, and the gas to feed it",Uma estrela e o gás para alimentá-la,Una estrella y el gas para alimentarla
@@ -1055,6 +1057,14 @@ NL_FUEL,Fuel,Combustível,Combustible
 NL_FUEL_OUT,Empty,Vazio,Vacío
 NL_ROCK,Rock,Rocha,Roca
 NL_LIGHT,Light,Luz,Luz
+NL_SYS_PLANETS_ONE,1 planet,1 planeta,1 planeta
+NL_SYS_PLANETS_N,%d planets,%d planetas,%d planetas
+NL_SYS_GIANTS_ONE,1 giant,1 gigante,1 gigante
+NL_SYS_GIANTS_N,%d giants,%d gigantes,%d gigantes
+NL_SYS_ROCKS_ONE,1 rock,1 rocha,1 roca
+NL_SYS_ROCKS_N,%d rocks,%d rochas,%d rocas
+NL_SYS_COMETS_ONE,1 comet,1 cometa,1 cometa
+NL_SYS_COMETS_N,%d comets,%d cometas,%d cometas
 NL_HINT,Press the gas to slow it,Toque no gás para freá-lo,Toca el gas para frenarlo
 NL_PERKS,Perks,Vantagens,Ventajas
 NL_PERKS_BODY,"A star's end pays stardust, a supernova the most. A perk is drawn at random and stays for good.","O fim de uma estrela rende poeira estelar, e uma supernova rende mais. A vantagem é sorteada e fica para sempre.","El final de una estrella da polvo estelar, y una supernova da más. La ventaja se sortea y queda para siempre."
@@ -1127,7 +1137,7 @@ NL_END_FADE,"Nothing left to burn · the star fades, a white dwarf is left","Nad
 TUT_NL_GAS,Slow the gas,Freie o gás,Frena el gas
 TUT_NL_GAS_BODY,"Gas circles the star and never falls by itself. Press it to slow it: it drops into the disc, winds in and feeds the star. Hold to keep slowing it.","O gás gira em volta da estrela e nunca cai sozinho. Toque nele para freá-lo: ele desce até o disco, entra girando e alimenta a estrela. Segure para continuar freando.","El gas gira alrededor de la estrella y nunca cae solo. Tócalo para frenarlo: baja hasta el disco, entra girando y alimenta la estrella. Mantén para seguir frenando."
 TUT_NL_WORLDS,Gas makes worlds,O gás faz mundos,El gas hace mundos
-TUT_NL_WORLDS_BODY,"Dust in the gas sticks into grains, grains gather into rocks and planets, and a heavy planet keeps the gas too. Far from the star they are ice, and ice near the star grows a tail. The bigger a body, the longer it stays. Too close, the star's pull tears it apart.","A poeira do gás gruda em grãos, os grãos se juntam em rochas e planetas, e um planeta pesado também segura o gás. Longe da estrela eles são de gelo, e gelo perto da estrela ganha cauda. Quanto maior o corpo, mais tempo ele fica. Perto demais, a atração da estrela o despedaça.","El polvo del gas se pega en granos, los granos se juntan en rocas y planetas, y un planeta pesado también retiene el gas. Lejos de la estrella son de hielo, y el hielo cerca de la estrella echa cola. Cuanto mayor el cuerpo, más tiempo se queda. Demasiado cerca, la atracción de la estrella lo despedaza."
+TUT_NL_WORLDS_BODY,"Dust in the gas sticks into grains, grains gather into rocks and planets, and a heavy planet keeps the gas too. Far from the star they are ice, and ice near the star grows a tail. The bigger a body, the longer it stays. Too close, the star's pull tears it apart. A world pays far more light than the gas it was made from. Gas left in the ring makes them.","A poeira do gás gruda em grãos, os grãos se juntam em rochas e planetas, e um planeta pesado também segura o gás. Longe da estrela eles são de gelo, e gelo perto da estrela ganha cauda. Quanto maior o corpo, mais tempo ele fica. Perto demais, a atração da estrela o despedaça. Um mundo rende muito mais luz do que o gás de que foi feito. O gás deixado no anel é que os faz.","El polvo del gas se pega en granos, los granos se juntan en rocas y planetas, y un planeta pesado también retiene el gas. Lejos de la estrella son de hielo, y el hielo cerca de la estrella echa cola. Cuanto mayor el cuerpo, más tiempo se queda. Demasiado cerca, la atracción de la estrella lo despedaza. Un mundo da mucha más luz que el gas del que se hizo. El gas que queda en el anillo los forma."
 TUT_NL_BURN,The star burns its way up,A estrela queima degrau por degrau,La estrella quema escalón a escalón
 TUT_NL_BURN_BODY,"It fuses hydrogen into helium to shine, hotter and bluer the heavier it is. With a helium core of %s Suns the helium lights and makes carbon. A star of %s Suns goes on: neon, oxygen, silicon, iron, each quicker and paying less. As it grows it offers you a power to pick.","Ela funde hidrogênio em hélio para brilhar, mais quente e azul quanto mais pesada. Com um núcleo de hélio de %s sóis, o hélio acende e faz carbono. Uma estrela de %s sóis vai além: neônio, oxigênio, silício, ferro, cada um mais rápido e rendendo menos. Ao crescer, ela oferece um poder para você escolher.","Funde hidrógeno en helio para brillar, más caliente y azul cuanto más pesada. Con un núcleo de helio de %s soles, el helio se enciende y hace carbono. Una estrella de %s soles sigue: neón, oxígeno, silicio, hierro, cada uno más rápido y dando menos. Al crecer te ofrece un poder para elegir."
 TUT_NL_END,How a star ends,Como uma estrela acaba,Cómo termina una estrella

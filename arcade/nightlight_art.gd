@@ -61,6 +61,7 @@ const LUMPS := 3
 
 static var _lumps: Array[ArrayMesh] = []
 static var _glows := {}
+static var _glows_pre := {}
 static var _star: ArrayMesh
 static var _orb: ArrayMesh
 static var _orb_light: ArrayMesh
@@ -147,6 +148,26 @@ static func glow(fall := 2.0) -> ArrayMesh:
 		Motes.glow(b, Vector2.ZERO, R, Color.WHITE, fall)
 		_glows[fall] = b.mesh()
 	return _glows[fall]
+
+## That light for a layer that blends premultiplied (`covering`): every
+## vertex's colour is thinned by its own alpha, so a light tinted (r * a,
+## g * a, b * a, a * k) adds its colour and covers `k` of what is under it.
+## At 0 it only adds, as on a layer that adds; the more it covers, the less
+## a crowd of them burns out to white.
+static func glow_pre(fall := 2.0) -> ArrayMesh:
+	if not _glows_pre.has(fall):
+		var b := Face.Builder.new()
+		Motes.glow(b, Vector2.ZERO, R, Color.WHITE, fall)
+		for i in b.cols.size():
+			var a := b.cols[i].a
+			b.cols[i] = Color(a, a, a, a)
+		_glows_pre[fall] = b.mesh()
+	return _glows_pre[fall]
+
+static func covering() -> CanvasItemMaterial:
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
+	return m
 
 ## Rings of colour about the middle: `stops` are [share of `r`, colour], the
 ## first at the middle itself.
