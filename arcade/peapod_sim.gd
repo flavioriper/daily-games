@@ -82,6 +82,16 @@ extends RefCounted
 ## wave 17, where crates start getting 2k hp"). The numbers climb 1.16 a wave
 ## after wave 10, not 1.3 (`HP_LATE`).
 ##
+## The eleventh pass (2026-10-08, the user: "nearly impossible to get past
+## wave 50", "a good player can basically run forever", "a bot test for each
+## canon type to make sure they can hit like wave 100, 250, 500"). A crate's
+## number stops multiplying at wave HP_EASE and grows as a power of the wave.
+## Pods running together make a crate drop more energy (`pods_on`,
+## PAIR_PAY). An iron crate's number stops at wave IRON_TURN. A conker's hops
+## all land the same, the twins' card is both carts', the hose's rate climbs
+## as the others'. And a big gun is drawn as fewer, fatter shots
+## (VOLLEY_MOST, PEA_MOST, SEED_MOST): the same weight, a tenth of the shots.
+##
 ## The tenth pass (2026-10-06, the user: "crate on fire should explode and
 ## spread fire to near crates, fire damage should increase based on shoot
 ## damage", "different carts other than this default with different
@@ -143,19 +153,29 @@ const PEA_SPEED := 540.0
 ## By Cart. Nothing has a most (the user, 2026-10-06): the price is the
 ## brake, and the gun fires FIRE_MOST volleys a step at most.
 const CART_RATE := [5.0, 4.5, 1.4, 12.0, 3.5, 5.0]
-const CART_RATE_STEP := [1.0, 0.9, 0.28, 1.5, 0.7, 1.0]
+const CART_RATE_STEP := [1.0, 0.9, 0.28, 2.4, 0.7, 1.0]
 const FIRE_MOST := 3
+## What is in the air is what a phone pays for, so past these the gun is
+## drawn no thicker: a quicker gun's volleys leave VOLLEY_MOST a second and a
+## bigger volley is PEA_MOST peas (SEED_MOST seeds), each standing for as many
+## as it takes (`n`, its weight with it) and drawn that much fatter, FAT_MOST
+## times at most. Nothing is lost: iron takes one for each it stands for.
+const VOLLEY_MOST := 15.0
+const PEA_MOST := 5
+const SEED_MOST := 7
+const FAT_MOST := 1.8
 ## By Cart: the share of the pea's weight one shot lands as (what is short
 ## of a whole number is kept for the next: `_whole`), how fast it flies, how
 ## big it is drawn, and what the cart's own card costs and climbs by.
-const CART_WEIGHT := [1.0, 1.0, 4.2, 0.68, 0.36, 1.0]
+const CART_WEIGHT := [1.0, 1.5, 4.2, 0.8, 0.36, 1.0]
 const CART_SPEED_UP := [540.0, 540.0, 400.0, 900.0, 540.0, 540.0]
 const CART_SIZE := [1.0, 1.15, 1.9, 0.72, 0.8, 1.0]
 const CART_PRICE := [80, 40, 40, 36, 44, 36]
 const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 0.9]
-## The conker: how far a hop reaches, and what of its weight each hop keeps.
+## The conker: how far a hop reaches, and what of the shot's weight every hop
+## lands as (the same each hop: a hop more is that much more, with no end).
 const HOP_REACH := 120.0
-const HOP_KEEP := 0.7
+const HOP_KEEP := 1.0
 ## The pumpkin: how far its blast reaches and what a card adds, and the
 ## share of the shell everything in it takes.
 const BLAST_R := 46.0
@@ -172,9 +192,10 @@ const JET_CAP_STEP := 0.5
 const SEEDS := 5
 const SEED_STEP := 2
 const SEED_VX := 105.0
-## The twin's share of the cart's weight, and what a card adds.
+## The twin's share of the cart's weight, and what a card adds to both
+## carts (a twin alone lands mostly on what is not lowest).
 const TWIN := 0.7
-const TWIN_STEP := 0.15
+const TWIN_STEP := 0.5
 ## The crit: with none bought no pea is lucky. From the first level a pea
 ## has CRIT_CHANCE of landing CRIT_MULT times as hard, and every level after
 ## adds CRIT_MULT_STEP to that; the chance itself only goes up CRIT_CHANCE_STEP
@@ -268,13 +289,25 @@ const KNOCK := 9.0
 ## With every plate gone but the head it runs this much quicker.
 const MILLI_HURRY := 0.6
 const CATCH_UP := 5.0
-## A crate's number grows HP_EARLY a wave to wave HP_TURN and HP_LATE after.
-## Past the turn the gun is mostly bought (a wave's energy is about one card,
-## a tenth more gun), so HP_LATE over that is how steeply a run closes: at
-## 1.3 every run ended on the same wave, whatever was done.
+## A crate's number grows HP_EARLY a wave to wave HP_TURN and HP_LATE after,
+## to wave HP_EASE.
 const HP_EARLY := 1.32
 const HP_LATE := 1.16
 const HP_TURN := 10
+## Past wave HP_EASE it no longer multiplies: it grows as the wave to the
+## power HP_POWER, and past HP_FAR to HP_FAR_POWER. A gun bought out of a
+## flat wave's energy grows about as the wave squared and one fed by the
+## Energy card as its cube or more, so anything times itself a wave ends
+## every run on the same wave, and these two are what let a run go on.
+const HP_EASE := 20
+const HP_POWER := 3.3
+const HP_FAR := 100
+const HP_FAR_POWER := 2.8
+## An iron crate's number stops growing here: it is counted in shots, and a
+## cart of one shot a volley has only its rate to meet it with.
+const IRON_TURN := 40
+## What every pod more than one running together adds to a crate's energy.
+const PAIR_PAY := 0.5
 ## Kills this close together are one streak.
 const STREAK_GAP := 0.7
 
@@ -338,7 +371,11 @@ var _gust_said := -1.0
 var _part := 0.0
 ## The hose: what its drops are on, and how many have landed there running.
 var _jet_id := -1
-var _jet_n := 0
+var _jet_n := 0.0
+## How many shots the landing being dealt stands for (1 outside one), and
+## what iron is still owed of them.
+var _stands := 1.0
+var _iron_part := 0.0
 var _shopped := false
 var _last_pod := -1
 ## The crits' own dice, so a wave is dealt the same however the peas land.
@@ -425,7 +462,7 @@ func crit() -> float:
 
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
-	return 2.4 * pow(HP_EARLY, mini(w, HP_TURN) - 1) * pow(HP_LATE, maxi(0, w - HP_TURN))
+	return 2.4 * pow(HP_EARLY, mini(w, HP_TURN) - 1) * pow(HP_LATE, clampi(w, HP_TURN, HP_EASE) - HP_TURN) * pow(clampf(w / float(HP_EASE), 1.0, HP_FAR / float(HP_EASE)), HP_POWER) * pow(maxf(1.0, w / float(HP_FAR)), HP_FAR_POWER)
 
 static func holds_gift(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.SHOVE
@@ -439,6 +476,13 @@ static func is_shape(kind: int) -> bool:
 ## Whether shape `kind` (FAN, PIERCE or BURST) is running.
 func has_shape(kind: int) -> bool:
 	return float(shape_t[kind - Kind.FAN]) > 0.0
+
+## How many pods are running together: the shapes and the one element.
+func pods_on() -> int:
+	var n := int(element != 0)
+	for left: float in shape_t:
+		n += int(left > 0.0)
+	return n
 
 static func is_element(kind: int) -> bool:
 	return kind >= Kind.ZAP and kind <= Kind.GUST
@@ -498,7 +542,7 @@ func leave_shop() -> void:
 
 ## An iron crate's number: the peas it takes, whatever they weigh.
 static func iron_hp(w: int) -> int:
-	return 10 + 4 * w
+	return 10 + 4 * mini(w, IRON_TURN)
 
 static func path_len() -> float:
 	return (X1 - PATH_FROM) + (PATH_ROWS - 1) * (PI * TURN_R + X1 - X0)
@@ -629,12 +673,15 @@ func _slow() -> float:
 func _fire() -> void:
 	_cool -= DT
 	var n := 0
+	# past VOLLEY_MOST a second the volleys leave no oftener, each standing
+	# for `many` of them
+	var many := maxf(1.0, rate() / VOLLEY_MOST)
 	while _cool <= 0.0 and n < FIRE_MOST:
 		n += 1
-		_cool += 1.0 / rate()
-		_volley(x, 1.0, true)
+		_cool += many / rate()
+		_volley(x, 1.0 + (TWIN_STEP * special if cart == Cart.TWINS else 0.0), true, many)
 		if cart == Cart.TWINS:
-			_volley(W - x, twin_share(), false)
+			_volley(W - x, twin_share(), false, many)
 		events.append({"type": "shot", "x": x})
 		fired += 1
 	if _cool < 0.0:
@@ -651,35 +698,39 @@ static func pea_off(i: int, n: int) -> float:
 ## is the cart's own, which the hose counts. The pea gun's peas leave side by
 ## side, the dandelion's seeds as a cone, the rest one shot. The Fan's two
 ## are plain shots of the same cart and element, flung out from either side.
-func _volley(from: float, share: float, main: bool) -> void:
+func _volley(from: float, share: float, main: bool, many := 1.0) -> void:
 	var burst := has_shape(Kind.BURST)
 	var pierce := has_shape(Kind.PIERCE)
 	var own: int = [Shot.PEA, Shot.CONKER, Shot.PUMPKIN, Shot.DROP, Shot.SEED, Shot.PEA][cart]
 	var look: int = Shot.BURST if burst else (Shot.PIERCE if pierce else own)
-	var w: float = CART_WEIGHT[cart] * share
+	var w: float = CART_WEIGHT[cart] * share * many
 	var out := 6.0
 	if cart == Cart.DANDELION:
-		var n := seeds()
+		var n := mini(seeds(), SEED_MOST)
+		var each := seeds() / float(n)
 		for i in n:
-			_shoot(from, SEED_VX * (2.0 * i / (n - 1.0) - 1.0), look, w, pierce, burst, main)
+			_shoot(from, SEED_VX * (2.0 * i / (n - 1.0) - 1.0), look, w * each, pierce, burst, main, many * each)
 	else:
-		var n := peas if cart == Cart.PEA else 1
+		var all := peas if cart == Cart.PEA else 1
+		var n := mini(all, PEA_MOST)
+		var each := all / float(n)
 		for i in n:
-			_shoot(from + pea_off(i, n), 0.0, look, w, pierce, burst, main)
+			_shoot(from + pea_off(i, n), 0.0, look, w * each, pierce, burst, main, many * each)
 		out += pea_off(n - 1, n)
 	if has_shape(Kind.FAN):
 		for side in [-1.0, 1.0]:
-			_shoot(from + side * out, side * FAN_VX, own, w, false, false, false)
+			_shoot(from + side * out, side * FAN_VX, own, w, false, false, false, many)
 
 ## One shot into the air. It carries how it lands: `w` (its share of the
 ## pea's weight), `left` (the things a Dart still goes through), `burst`,
 ## `el` (its element), `hops` (a conker's, and `to`: the id it is hopping
 ## to, `seen`: what it has landed on), `blast` (a shell's reach); `k` is its
 ## look (Shot) and `sz` how big it is drawn.
-func _shoot(from: float, vx: float, look: int, w: float, pierce: bool, burst: bool, main: bool) -> void:
+func _shoot(from: float, vx: float, look: int, w: float, pierce: bool, burst: bool, main: bool, many := 1.0) -> void:
 	shots.append({"x": clampf(from, 3.0, W - 3.0), "y": CART_Y - 34.0, "vx": vx, "vy": -float(CART_SPEED_UP[cart]), "k": look,
-		"left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element, "w": w, "sz": CART_SIZE[cart], "main": main,
-		"hops": hops() if cart == Cart.CONKER else 0, "to": -1, "seen": [],
+		"left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element, "w": w, "main": main,
+		"n": many, "sz": CART_SIZE[cart] * minf(1.0 + 0.12 * log(many) / log(2.0), FAT_MOST),
+		"hops": hops() if cart == Cart.CONKER else 0, "to": -1, "seen": [], "w0": w,
 		"blast": blast_r() if cart == Cart.PUMPKIN else 0.0})
 
 func _step_shots() -> void:
@@ -765,7 +816,7 @@ func _spent(p: Dictionary, id: int) -> bool:
 	if int(p.hops) <= 0:
 		return true
 	p.hops = int(p.hops) - 1
-	p.w = float(p.w) * HOP_KEEP
+	p.w = float(p.w0) * HOP_KEEP
 	p.to = _nearest(Vector2(p.x, p.y), p.seen)
 	return int(p.to) < 0
 
@@ -857,7 +908,7 @@ func _exact(p: Dictionary, id: int) -> float:
 		return power * float(p.w)
 	if bool(p.main) and int(p.last) < 0 and int(p.to) < 0:
 		if id == _jet_id:
-			_jet_n += 1
+			_jet_n += float(p.n)
 		else:
 			_jet_id = id
 			_jet_n = 0
@@ -902,6 +953,7 @@ func _land_cell(p: Dictionary, r: int, c: int, at: Vector2) -> void:
 	var half := maxi(1, int(dmg / 2.0)) if dmg > 0 else 0
 	var shell := float(p.blast) > 0.0
 	_mark(cell, p, exact, at)
+	_stands = float(p.n)
 	_hurt_cell(r, c, dmg, at, Hit.PEA, lucky, shell)
 	if shell:
 		_blast_wall(r, c, float(p.blast), _whole(exact * BLAST_SHARE))
@@ -913,6 +965,7 @@ func _land_cell(p: Dictionary, r: int, c: int, at: Vector2) -> void:
 				_hurt_cell(rr, cc, half, cell_pos(rr, cc), Hit.SIDE)
 	if int(p.el) == Kind.ZAP and half > 0:
 		_zap_wall(r, c, half)
+	_stands = 1.0
 
 ## The same on the millipede's plate `i`.
 func _land_seg(p: Dictionary, i: int, at: Vector2) -> void:
@@ -930,6 +983,7 @@ func _land_seg(p: Dictionary, i: int, at: Vector2) -> void:
 			if j >= 0 and j < segs.size():
 				beside.append(segs[j].id)
 	_mark(sg, p, exact, at)
+	_stands = float(p.n)
 	_hurt_seg(i, dmg, at, Hit.PEA, lucky, shell)
 	if shell:
 		_blast_milli(where, id, float(p.blast), _whole(exact * BLAST_SHARE))
@@ -939,6 +993,7 @@ func _land_seg(p: Dictionary, i: int, at: Vector2) -> void:
 			_hurt_seg(j, half, path_at(segs[j].s), Hit.SIDE)
 	if int(p.el) == Kind.ZAP and half > 0:
 		_zap_milli(id, where, half)
+	_stands = 1.0
 
 ## A shell has landed on the crate at (`r`, `c`): every other crate within
 ## `reach` of it takes `dmg`, iron its whole.
@@ -1159,6 +1214,14 @@ func _stung(cell: Dictionary) -> int:
 	cell.sting_part = float(cell.sting_part) - n
 	return n
 
+## What iron takes of the landing now: one for every shot it stands for
+## (what is short of a whole one kept for the next).
+func _iron() -> int:
+	_iron_part += _stands
+	var n := int(_iron_part + 0.0001)
+	_iron_part -= n
+	return n
+
 func _seg_index(id: int) -> int:
 	for i in segs.size():
 		if int(segs[i].id) == id:
@@ -1174,7 +1237,7 @@ func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := 
 	if float(cell.brittle) > t:
 		dmg = roundi(dmg * BRITTLE)
 	if cell.kind == Kind.IRON and how != Hit.BOOM and not whole:
-		dmg = 1
+		dmg = _iron()
 	cell.hp = int(cell.hp) - dmg
 	var quiet := how != Hit.PEA and how != Hit.BOOM
 	events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": maxi(0, cell.hp), "max": cell.max, "quiet": quiet,
@@ -1201,7 +1264,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false, wh
 	if float(sg.brittle) > t:
 		dmg = roundi(dmg * BRITTLE)
 	if sg.kind == Kind.IRON and how != Hit.BOOM and not whole:
-		dmg = 1
+		dmg = _iron()
 	sg.hp = int(sg.hp) - dmg
 	var quiet := how != Hit.PEA and how != Hit.BOOM
 	events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": maxi(0, sg.hp), "max": sg.max, "quiet": quiet,
@@ -1241,6 +1304,8 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 		# a millipede is fewer plates than a wall is crates: its head makes
 		# the wave up to a wall's worth
 		pay *= maxf(1.0, wave_crates(wave) - milli_n)
+	var pair := pods_on()
+	pay *= 1.0 + PAIR_PAY * maxi(0, pair - 1)
 	# in orbs; what is short of one is kept for the next crate
 	_orb_part += pay * (1.0 + ENERGY_STEP * energy_lv) * ORBS
 	var got := int(_orb_part)
@@ -1253,7 +1318,7 @@ func _killed(cell: Dictionary, pos: Vector2, popped := false) -> void:
 	best_streak = maxi(best_streak, streak)
 	_streak_t = STREAK_GAP
 	events.append({"type": "kill", "pos": pos, "kind": kind, "points": worth, "max": cell.max, "id": cell.id,
-		"streak": streak, "popped": popped, "energy": got})
+		"streak": streak, "popped": popped, "energy": got, "pair": pair})
 	if holds_gift(kind):
 		_take(kind, pos)
 

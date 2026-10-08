@@ -940,6 +940,84 @@ chalk line ends the run. Its "furthest" is the wave.
     new pods, only a line; a flare's and a blast's rings were never caught
     in a shot; `_probe_arcade_buzz.gd -- peapod` was only brought up to the
     new names.
+- **The eleventh pass (2026-10-08, the user: "nearly impossible to get past
+  wave 50. The difficulty progression seems to be exponential after wave 30",
+  then "give more rewards based on combos or things like that, so good
+  players can keep going up while average players get stuck after a while
+  ... a good player can basically run forever ... a bot test for each canon
+  type to make sure they can hit like wave 100, 250, 500").** What the ninth
+  pass says of `HP_LATE` running on for ever, and the tenth of `HOP_KEEP`
+  0.7 a hop, the twin's share and iron's number, is history.
+  - **Why every run closed on the same wave.** A wave's energy is flat from
+    wave 12 (`wave_crates` stops at twelve rows) and a price climbs by the
+    card, so a gun grows about as the wave squared; `hp_base` multiplied by
+    1.16 every wave. The best bot ended on 32-40 whatever it bought.
+  - **The curve has four stretches** (`hp_base`): 1.32 a wave to wave 10,
+    1.16 to wave `HP_EASE` 20 (waves 1-20 are what they were), then the wave
+    to the power `HP_POWER` 3.3 to wave `HP_FAR` 100, and to `HP_FAR_POWER`
+    2.8 after. Before its row and its luck a crate is 129 on wave 20 as
+    it was, about 2,650 on wave 50 where it was 11,060, 26,000 on wave 100
+    where it was 18 million, 340,000 on wave 250 and 2.4 million on 500.
+  - **Pods running together pay** (`pods_on()`, `PAIR_PAY` 0.5): a crate
+    broken while two pods run drops half as much energy again, three twice,
+    four (the three shapes and an element) two and a half times. The `kill`
+    event carries `pair`. The screen shows it as a second paper pill under
+    the streak's (`_pair_rect`, `_draw_pair_pill`, `_draw_pair_words`,
+    `PP_PAIR` "Energy x%s"), drawn into the same `top` mesh, one string more.
+    The pods' tutorial page says so in the place of the ring's sentence (pt
+    overflowed at five lines and was shortened: 188 px of 230 in all three).
+  - **A streak pays nothing, and was tried.** The user chose "streak pays
+    energy" first. Measured: the slow hand, the quick hand and a bot that
+    softened crates to chain them all hold the same streak (6-9 a kill),
+    because the gun fires by itself: a streak measures the gun, not the
+    hand. Paying it sent every bot to wave 150. A hoarding bot (all four
+    pods at once) did no better than starting them as they come. **What the
+    bots can tell apart** is frost and shove kept for when the line is near
+    (about 15 waves) and the Energy card (bought, a gun grows as the wave
+    cubed or more; never bought, it ends in the 20s to 40s).
+  - **Iron stops growing at wave `IRON_TURN` 40** (170 shots). It is counted
+    in shots, four of them a wall, and a cart of one shot a volley has only
+    its rate against it: this, not the gun, is what ended the conker, the
+    hose and the twins between wave 130 and 190.
+  - **Three carts' cards.** The conker's hops all land `HOP_KEEP` (1.0) of
+    the shot (`w0`), not 0.7 of the hop before, and it weighs 1.5 (below
+    that it ends on 88-182, and gifts-at-once goes to 65-80 with it: the
+    one cart off the rest). The hose's rate step is 2.4 (a fifth of its
+    rate, as every other cart's; at 1.5 it ended on 55-67) and it weighs
+    0.8. The twins' card adds `TWIN_STEP` 0.5 to both carts (`_fire`): a
+    twin alone landed three quarters of its shots on what was not lowest,
+    and no share made it count. `PP_CARD_TWIN` is "Stronger twins".
+  - **A big gun is fewer, fatter shots.** Past `VOLLEY_MOST` 15 volleys a
+    second the gun fires no oftener and each volley stands for `many`; a
+    volley is `PEA_MOST` 5 peas or `SEED_MOST` 7 seeds at most. A shot
+    carries how many it stands for (`n`), weighs that much more and is
+    drawn up to `FAT_MOST` 1.8 times as big; iron takes one for each
+    (`_stands`, `_iron()`), the hose counts each (`_jet_n` is a float).
+    Nothing the shop sells has a most still. Shots in the air at wave 250:
+    77 on the pea gun where it was 600-1000, 99 on the dandelion where it
+    was 1300-2450; a run below the mosts is what it was to the pea.
+  - **The bots** (`tests/_probe_peapod.gd`): shopper 7 is the investor (an
+    Energy card whenever it pays itself back in twelve waves or half the
+    waves so far, while the gun has had as much; else the best buy), a
+    seventh argument stops a run on a wave, and the twins' bot aims where
+    the other cart has something too. **`-- far [wave] [seed]`** plays the
+    good player (quick, investor, gifts kept) on every cart and says when
+    each passed 100, 250 and 500: **run it after any change to the sim;
+    every cart must print `ok`.** Seeds 7, 8, 9, all six to 500: pea gun in
+    112-121 minutes of play, hose 109-123, dandelion 126-146, twins 84-88,
+    conker 236-245, pumpkin 260-273; 21-99 shots in the air at most.
+    Skill 1, gifts at once, four seeds a cart: never an Energy card 22-43;
+    the investor 47-71 pea, 65-80 conker, 61-64 pumpkin, 38-52 hose, 47-70
+    dandelion, 23-74 twins; at random 17-150 (a random buyer that takes
+    Energy early runs on). Suite 249790/0; `_shot_peapod.gd` 80-190 draw
+    calls on its cast.
+  - **Not done**: a phone (the fatter shots and the pill were seen in a
+    shot only); ANGLE was not rerun; no sound for the pill; pt and es are
+    the agent's; `_shot_peapod_carts.gd` and the perf probes were not
+    rerun. **Unconfirmed by the user**: that the Energy card and kept gifts
+    are what "good" means (nothing the hand does with the cart shows in a
+    bot); wave 500 being two to four and a half hours; five peas side by
+    side as the most drawn; the conker's stronger start.
 
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the

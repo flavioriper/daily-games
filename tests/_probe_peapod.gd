@@ -2,7 +2,11 @@ extends SceneTree
 
 ## Plays Peapod's sim headless with a bot and prints how far each run went.
 ## Run after touching arcade/peapod_sim.gd.
-##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-6] [keeper 0-1] [cart 0-5]
+##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-7] [keeper 0-1] [cart 0-5] [until]
+##   godot --headless --script tests/_probe_peapod.gd -- far [wave] [seed]
+## `until` stops a run on that wave (0: when it ends, an hour of play at
+## most). `far` plays the good player on every cart to `wave` (500) and says
+## when each passed 100, 250 and 500: every cart must get there.
 ## The cart is Sim.Cart. After the runs it prints what was taken off a second
 ## while each element ran (0: none), over all of them: an element is tuned
 ## when none is far ahead of the rest.
@@ -12,7 +16,9 @@ extends SceneTree
 ## that adds most to the gun for its price, 1 only the heavier pea, 2 only
 ## the quicker gun, 3 only the crit, 4 two Energy cards first and then as 0,
 ## 5 whatever it can afford, at random, 6 as 0 but never the pea more a
-## volley. A price is tuned when 0 goes a
+## volley, 7 the investor: an Energy card whenever it pays itself back in
+## twelve waves (or half the waves so far) and the gun has had as much, else
+## as 0. A price is tuned when 0 goes a
 ## little further than 1, 2 and 3, and 4 is ahead on a long run only.
 ## The keeper is what the bot does with a gift it holds: 0 starts it at
 ## once, 1 keeps a pod until it holds one that runs with it (a shape and an
@@ -20,6 +26,10 @@ extends SceneTree
 ## and keeps the frost and the shove for when the line is near.
 
 const Sim = preload("res://arcade/peapod_sim.gd")
+
+## What shopper 7 has spent on the Energy card and on the gun.
+var _on_energy := 0
+var _on_gun := 0
 
 func _target(sim: RefCounted, skill: int) -> float:
 	if sim.wave_kind == Sim.Wave.WALL:
@@ -31,7 +41,10 @@ func _target(sim: RefCounted, skill: int) -> float:
 				if cell == null:
 					continue
 				# gifts first, then the weakest of the lowest row
-				var w: int = int(cell.hp) - (1000 if Sim.holds_gift(int(cell.kind)) and skill >= 1 else 0)
+				var w: int = int(cell.hp) - ((1 << 28) if Sim.holds_gift(int(cell.kind)) and skill >= 1 else 0)
+				# the twins: where the other cart has something of this row too
+				if sim.cart == Sim.Cart.TWINS and skill >= 1 and sim.rows[r][Sim.COLS - 1 - c] != null:
+					w -= 1 << 26
 				if w < low:
 					low = w
 					best = c
@@ -55,10 +68,7 @@ func _volley(sim: RefCounted, special: int) -> float:
 	var w: float = Sim.CART_WEIGHT[sim.cart]
 	match sim.cart:
 		Sim.Cart.CONKER:
-			var sum := 0.0
-			for k in special + 2:
-				sum += pow(Sim.HOP_KEEP, k)
-			return w * sum
+			return w * (1.0 + Sim.HOP_KEEP * (special + 1))
 		Sim.Cart.PUMPKIN:
 			# the blast takes in about its area's worth of crates
 			var reach: float = Sim.BLAST_R + Sim.BLAST_STEP * special
@@ -68,7 +78,7 @@ func _volley(sim: RefCounted, special: int) -> float:
 		Sim.Cart.DANDELION:
 			return w * (Sim.SEEDS + Sim.SEED_STEP * special) * 0.8
 		Sim.Cart.TWINS:
-			return w * (1.0 + Sim.TWIN + Sim.TWIN_STEP * special)
+			return w * (1.0 + Sim.TWIN + 2.0 * Sim.TWIN_STEP * special)
 	return w * (1 + special)
 
 ## What the crit makes of a pea on average, at level `lv`.
@@ -104,6 +114,10 @@ func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
 			_:
 				if shopper == 4 and int(sim.bought[Sim.Card.ENERGY]) < 2:
 					pick = Sim.Card.ENERGY
+				elif shopper == 7 and _on_energy <= _on_gun and sim.price(Sim.Card.ENERGY) < Sim.wave_crates(sim.wave) * Sim.ENERGY_STEP * Sim.ORBS * maxf(12.0, sim.wave * 0.5):
+					# the investor: an Energy card that pays itself back in
+					# twelve waves, as long as the gun has had as much
+					pick = Sim.Card.ENERGY
 				else:
 					var best := 0.0
 					for card in [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.CRIT, Sim.Card.SHOTS]:
@@ -113,8 +127,13 @@ func _shop(sim: RefCounted, shopper: int, rng: RandomNumberGenerator) -> void:
 						if worth > best:
 							best = worth
 							pick = card
+		var cost: int = sim.price(pick) if pick >= 0 else 0
 		if pick < 0 or not sim.buy(pick):
 			break
+		if pick == Sim.Card.ENERGY:
+			_on_energy += cost
+		else:
+			_on_gun += cost
 	sim.leave_shop()
 
 ## Starts what the bot has, by its keeper: 0 starts every gift at once; 1
@@ -135,14 +154,47 @@ func _use(sim: RefCounted, keeper: int) -> void:
 		elif sim.element == 0:
 			sim.use(kind)
 
+## The good player (quick, the investor, gifts kept) on every cart, as far as
+## `far`: the wave each got to and when it passed 100, 250 and 500.
+func _far(far: int, seed_v: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	for cart in Sim.Cart.size():
+		rng.seed = seed_v
+		_on_energy = 0
+		_on_gun = 0
+		var sim = Sim.new(seed_v, cart)
+		var hand: float = sim.x
+		var most := 0
+		var at := {}
+		while not sim.is_over() and sim.wave < far:
+			if sim.phase == Sim.Phase.SHOP:
+				_shop(sim, 7, rng)
+			_use(sim, 1)
+			hand = move_toward(hand, _target(sim, 2), 520.0 * Sim.DT)
+			sim.target_x = hand
+			sim.step()
+			most = maxi(most, sim.shots.size())
+			sim.events.clear()
+			if sim.wave in [100, 250, 500] and not at.has(sim.wave):
+				at[sim.wave] = int(sim.t / 60.0)
+		var marks := ""
+		for w in [100, 250, 500]:
+			marks += "  %d: %s" % [w, ("%d min" % at[w]) if at.has(w) else "no"]
+		print("cart %d (%s): wave %d%s  shots %d  %s" % [cart, Sim.Cart.keys()[cart], sim.wave, marks, most, "ok" if sim.wave >= far else "SHORT"])
+	quit()
+
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
+	if args.size() > 0 and args[0] == "far":
+		_far(int(args[1]) if args.size() > 1 else 500, int(args[2]) if args.size() > 2 else 7)
+		return
 	var seed_v := int(args[0]) if args.size() > 0 else 7
 	var skill := int(args[1]) if args.size() > 1 else 1
 	var games := int(args[2]) if args.size() > 2 else 5
 	var shopper := int(args[3]) if args.size() > 3 else 0
 	var keeper := int(args[4]) if args.size() > 4 else 0
 	var cart := int(args[5]) if args.size() > 5 else 0
+	var until := int(args[6]) if args.size() > 6 else 0
 	var by_el := {}
 	var speed: float = [110.0, 240.0, 520.0][clampi(skill, 0, 2)]
 	var waves: Array = []
@@ -155,7 +207,11 @@ func _initialize() -> void:
 		var guard := 0
 		var log := ""
 		var most := 0
-		while not sim.is_over() and guard < 60 * 60 * 30:
+		var chain := 0
+		var pairs := 0
+		_on_energy = 0
+		_on_gun = 0
+		while not sim.is_over() and (guard < 60 * 60 * 60 or until > 0) and (until == 0 or sim.wave < until):
 			guard += 1
 			if sim.phase == Sim.Phase.SHOP:
 				_shop(sim, shopper, rng)
@@ -175,13 +231,16 @@ func _initialize() -> void:
 				tally[ev.type] = int(tally.get(ev.type, 0)) + 1
 				if ev.type == "hit":
 					by_el[el][1] += int(ev.dmg)
+				if ev.type == "kill":
+					chain += int(ev.streak)
+					pairs += int(ev.pair)
 				if ev.type == "wave":
 					log += " %d@%ds(d%d r%d c%d p%d e%d|%d)" % [ev.wave, int(sim.t), sim.power, sim.rate_lv, sim.crit_lv, sim.special, sim.energy_lv, sim.energy / Sim.ORBS]
 			sim.events.clear()
 		waves.append(sim.wave)
-		print("seed %d skill %d shopper %d keeper %d cart %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d own %d energy %d  dps %.0f  kills %d  gifts %d used %d waiting %d  earned %d  held %d  shots %d" % [
+		print("seed %d skill %d shopper %d keeper %d cart %d: wave %d  score %d  %.0f s  dmg %d rate %d crit %d own %d energy %d  dps %.0f  kills %d  gifts %d used %d waiting %d  earned %d  held %d  shots %d  streak %.1f best %d pods %.2f" % [
 			seed_v + g, skill, shopper, keeper, cart, sim.wave, sim.score, sim.t, sim.power, sim.rate_lv, sim.crit_lv, sim.special, sim.energy_lv, _dps(sim),
-			sim.kills, sim.caught, sim.used, sim.stock.reduce(func(a: int, b: int) -> int: return a + b, 0), sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most])
+			sim.kills, sim.caught, sim.used, sim.stock.reduce(func(a: int, b: int) -> int: return a + b, 0), sim.earned / Sim.ORBS, sim.energy / Sim.ORBS, most, chain / maxf(1.0, sim.kills), sim.best_streak, pairs / maxf(1.0, sim.kills)])
 		if g == 0:
 			print(log)
 			print(tally)

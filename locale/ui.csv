@@ -574,6 +574,7 @@ PP_GOT_FLAME,Ember pod!,Vagem brasa!,¡Vaina brasa!
 PP_GOT_FROST,Frost!,Geada!,¡Helada!
 PP_GOT_SHOVE,Shove!,Empurrão!,¡Empujón!
 PP_STREAK,Streak x%d,Sequência x%d,Racha x%d
+PP_PAIR,Energy x%s,Energia x%s,Energía x%s
 PP_WORD_1,Nice!,Boa!,¡Bien!
 PP_WORD_2,Great!,Ótimo!,¡Genial!
 PP_WORD_3,Pea-fect!,Perfeito!,¡Perfecto!
@@ -612,7 +613,7 @@ PP_CART_CONKER_LINE,Its shot hops on to the nearest crate. Its own card: one mor
 PP_CART_PUMPKIN_LINE,Slow and heavy: everything round where it lands is hit too. Its own card: a wider blast.,Lenta e pesada: tudo em volta de onde cai também é atingido. Carta própria: explosão maior.,Lenta y pesada: todo lo que rodea al impacto también recibe. Carta propia: explosión más amplia.
 PP_CART_HOSE_LINE,A stream of drops that hit harder the longer they stay on one crate. Its own card: more pressure.,Um jato de gotas que bate mais forte quanto mais fica na mesma caixa. Carta própria: mais pressão.,Un chorro de gotas que golpea más fuerte cuanto más se queda en la misma caja. Carta propia: más presión.
 PP_CART_DANDELION_LINE,A fan of light seeds: strongest up close. Its own card: two more seeds.,Um leque de sementes leves: mais forte de perto. Carta própria: mais duas sementes.,Un abanico de semillas ligeras: más fuerte de cerca. Carta propia: dos semillas más.
-PP_CART_TWINS_LINE,A second cart mirrors you across the garden. Its own card: a stronger twin.,Um segundo carrinho espelha você do outro lado do jardim. Carta própria: gêmeo mais forte.,Un segundo carrito te refleja al otro lado del jardín. Carta propia: gemelo más fuerte.
+PP_CART_TWINS_LINE,A second cart mirrors you across the garden. Its own card: stronger twins.,Um segundo carrinho espelha você do outro lado do jardim. Carta própria: gêmeos mais fortes.,Un segundo carrito te refleja al otro lado del jardín. Carta propia: gemelos más fuertes.
 PP_CART_LOCKED,Wave %d,Onda %d,Oleada %d
 PP_CART_NEW,New cart: %s!,Novo carrinho: %s!,¡Nuevo carrito: %s!
 PP_CART_NEXT,Reach wave %d to roll out the next cart: %s.,Chegue à onda %d para liberar o próximo carrinho: %s.,Llega a la oleada %d para desbloquear el próximo carrito: %s.
@@ -624,7 +625,7 @@ PP_CARD_JET,More pressure,Mais pressão,Más presión
 PP_CARD_JET_LINE,x%s  >  x%s at most,x%s  >  x%s no máximo,x%s  >  x%s como máximo
 PP_CARD_SEEDS,Two more seeds,Mais duas sementes,Dos semillas más
 PP_CARD_SEEDS_LINE,%d  >  %d seeds a shot,%d  >  %d sementes por tiro,%d  >  %d semillas por disparo
-PP_CARD_TWIN,Stronger twin,Gêmeo mais forte,Gemelo más fuerte
+PP_CARD_TWIN,Stronger twins,Gêmeos mais fortes,Gemelos más fuertes
 PP_CARD_TWIN_LINE,%d%%  >  %d%% of a shot,%d%%  >  %d%% de um tiro,%d%%  >  %d%% de un disparo
 BST_PP_PEA,Heavy pea,Ervilha pesada,Guisante pesado
 BST_PP_PEA_LINE,Start with a heavier pea,Comece com uma ervilha mais forte,Empieza con un guisante más fuerte
@@ -851,7 +852,7 @@ TUT_PEAPOD_CRATES_BODY,"A crate takes as many peas as its number, and its paint 
 TUT_PEAPOD_GIFTS,Keep a gift for later,Guarde o presente,Guarda el regalo
 TUT_PEAPOD_GIFTS_BODY,"Every gift has a button on the left, with how many you have. Break a gift crate to get one more. Tap a button whenever you want to use one.","Cada presente tem um botão à esquerda, com quantos você tem. Quebre uma caixa de presente para ganhar mais um. Toque no botão quando quiser usar um.","Cada regalo tiene un botón a la izquierda, con cuántos tienes. Rompe una caja de regalo para ganar uno más. Toca el botón cuando quieras usar uno."
 TUT_PEAPOD_PODS,Eight pods,Oito vagens,Ocho vainas
-TUT_PEAPOD_PODS_BODY,"A pod changes the peas for %d seconds. Some change how the peas fly, and those all run together. Some change their colour and what they do, one at a time. Its ring shows the time left.","Uma vagem muda as ervilhas por %d segundos. Umas mudam como elas voam, e essas valem todas juntas. Outras mudam a cor e o efeito, uma de cada vez. O anel mostra o tempo que resta.","Una vaina cambia los guisantes %d segundos. Unas cambian cómo vuelan, y funcionan todas juntas. Otras cambian el color y el efecto, de una en una. El anillo muestra cuánto queda."
+TUT_PEAPOD_PODS_BODY,"A pod changes the peas for %d seconds. Some change how the peas fly, and those all run together. Some change their colour and what they do, one at a time. Run two at once and crates drop more energy.","Uma vagem muda as ervilhas por %d segundos. Umas mudam como elas voam, e essas valem todas juntas. Outras mudam a cor e o efeito, uma de cada vez. Duas juntas rendem mais energia.","Una vaina cambia los guisantes %d segundos. Unas cambian cómo vuelan, y funcionan todas juntas. Otras cambian el color y el efecto, de una en una. Usa dos a la vez y las cajas sueltan más energía."
 TUT_PEAPOD_SHOP,The shop,A loja,La tienda
 TUT_PEAPOD_SHOP_BODY,"Every crate drops energy. After a wave, spend it on the pod. A price only rises when you buy that card. Reach further waves to roll out other carts.","Cada caixa solta energia. Depois de uma onda, gaste-a na vagem. O preço só sobe quando você compra aquela carta. Chegue mais longe para liberar outros carrinhos.","Cada caja suelta energía. Tras una oleada, gástala en la vaina. El precio solo sube cuando compras esa carta. Llega más lejos para desbloquear otros carritos."
 TUT_PEAPOD_C_DAMAGE,Every pea counts for one more.,Cada ervilha vale um a mais.,Cada guisante vale uno más.

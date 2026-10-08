@@ -395,6 +395,10 @@ var _chip_at := {}
 var _streak_n := 0
 var _streak_at := -10.0
 var _streak_in := 0.0
+## The pods' pill, under the streak's: how many pods ran together when it
+## was last up, and how far in it is.
+var _pair_n := 2
+var _pair_in := 0.0
 ## The wave's stars: how near the line came, and the stamping of the last
 ## clear ({at, stars, said}).
 var _wave_peak := 0.0
@@ -709,6 +713,7 @@ func _new_game() -> void:
 	_clear_rack()
 	_streak_n = 0
 	_streak_in = 0.0
+	_pair_in = 0.0
 	_wave_peak = 0.0
 	_clear = {}
 	_blooms.clear()
@@ -866,6 +871,11 @@ func _animate(delta: float) -> void:
 			_streak_at = _clock
 		_streak_n = sim.streak
 	_streak_in = move_toward(_streak_in, 1.0 if live else 0.0, delta * (7.0 if live else 3.0))
+	# the pods' pill: in while two pods or more run together
+	var pods: int = sim.pods_on() if playing else 0
+	if pods >= 2:
+		_pair_n = pods
+	_pair_in = move_toward(_pair_in, 1.0 if pods >= 2 else 0.0, delta * (7.0 if pods >= 2 else 3.0))
 	_wave_peak = maxf(_wave_peak, sim.danger())
 	_step_clear()
 	# a puff off the wheels of a cart rolled hard
@@ -1789,6 +1799,7 @@ func _draw_over() -> void:
 	_draw_muzzle(top)
 	_draw_rack_seats(top)
 	_draw_streak_pill(top)
+	_draw_pair_pill(top)
 	_draw_stars(top)
 	if sim.frost_t > 0.0:
 		Rewards.edge_glow(top, Rect2(Vector2.ZERO, field.size), FROST, minf(1.0, sim.frost_t), 0.6)
@@ -1824,6 +1835,7 @@ func _draw_over() -> void:
 	_draw_gun_words(font)
 	_draw_rack_counts(font)
 	_draw_streak_words(font)
+	_draw_pair_words(font)
 	_draw_pops(font)
 	_draw_nums(font)
 	_over.draw_set_transform(Vector2.ZERO)
@@ -2419,6 +2431,30 @@ func _draw_streak_words(font: Font) -> void:
 	_over.draw_set_transform(_shake_off + c, 0.0, Vector2(sc, sc))
 	_over.draw_string(font, Vector2(-w * 0.5, _text_fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs, Art.INK.lerp(ALARM.darkened(0.35), _heat))
 	_over.draw_set_transform(_shake_off)
+
+## The pods' pill, under the streak's: what a crate's energy is times while
+## two pods or more run together.
+func _pair_rect() -> Rect2:
+	var w := 78.0 * _u
+	var h := 15.0 * _u
+	var k := _pair_in if Motion.reduce else Motion.back_out(_pair_in)
+	return Rect2(Vector2(_mid(0.0).x - w * 0.5, 27.0 * _u - (1.0 - k) * 50.0 * _u), Vector2(w, h))
+
+func _draw_pair_pill(b: Face.Builder) -> void:
+	if _pair_in <= 0.01:
+		return
+	var rect := _pair_rect()
+	var r := rect.size.y * 0.5
+	b.fan(Face.Builder.round_rect(rect.position + Vector2(0, 1.8 * _u), rect.size, r), Color(0.3, 0.2, 0.08, 0.16))
+	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), Art.CREAM)
+
+func _draw_pair_words(font: Font) -> void:
+	if _pair_in <= 0.01:
+		return
+	var rect := _pair_rect()
+	var text := tr("PP_PAIR") % _fig(1.0 + Sim.PAIR_PAY * (_pair_n - 1))
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs).x
+	_over.draw_string(font, rect.position + Vector2((rect.size.x - w) * 0.5, rect.size.y * 0.5 + _text_fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text_fs, Art.INK)
 
 ## The stars a cleared wave is stamped, under its bonus: three seats, and a
 ## gold star popping onto each one earned.
