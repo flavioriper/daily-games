@@ -32,7 +32,8 @@ extends SceneTree
 ## disc, as often as the Flow tile lets it); `worlds` is patient (it presses
 ## the gas a quarter as often, so the ring stays full enough to make worlds,
 ## and presses every planet or giant on a closed path outside the disc until
-## its path dips into the disc, counting those as sent). After
+## its path dips into the disc, counting each as sent once; it never presses
+## a planetoid that is only passing, and says so). After
 ## the five: `stop=3` lifts the finger for good at three Suns, `novas=2`
 ## starts on a star with two supernovas behind it, `perks=0` buys no perk,
 ## `powers=0` takes each pick and puts the power out (two hands compared on
@@ -399,13 +400,15 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	var spot_t := -100.0
 	var most_ticks := 0
 	var t0 := Time.get_ticks_usec()
-	# the patient hand: the gaps gone by, and the worlds it is pressing down
+	# the patient hand: the gaps gone by, the worlds it is pressing down and
+	# the ones it has already been counted for this life
 	var patient := sends == "worlds"
 	var gaps := 0
 	var sending := {}
+	var counted := {}
 	# this life: the light it earned (spent or not), how much of that was the
 	# star's own burning, what it ate as gas and as solids; and this minute's
-	var life := {"n": 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "suns": sim.suns()}
+	var life := {"n": 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "passers": 0, "suns": sim.suns()}
 	var minute := {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 	var stopped := false
 	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s%s%s%s" % [minutes, rng_seed, takes, held * 100.0, sends,
@@ -426,11 +429,14 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 			gaps += 1
 			var hit := 0
 			if patient:
-				# a world it was pressing that is now on its way down is sent
-				life.sent += _sent(sim, sending)
+				# a world it was pressing that has come down is sent, once
+				life.sent += _sent(sim, sending, counted)
 				var world := _world(sim)
 				if world != null:
 					sending[world.id] = true
+					# never a passer: `_world` takes only what is on a closed path
+					if is_inf(_nearest(sim, world)):
+						life.passers += 1
 					hit = sim.brake(world.pos, sim.press_r())
 				elif gaps % 4 == 0:
 					hit = sim.brake(spot, sim.press_r())
@@ -519,7 +525,8 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 			next_mark = 2.0
 			stopped = false
 			sending.clear()
-			life = {"n": int(life.n) + 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "suns": sim.suns()}
+			counted.clear()
+			life = {"n": int(life.n) + 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "passers": 0, "suns": sim.suns()}
 			minute = {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 			print("  a new star: %.1f Suns, ring %.2f Suns at %.3f dust, perks %s" % [sim.suns(), _sky_mass(sim) / Sim.START, sim.dusty, str(sim.perk)])
 	_life(life, minutes - born / 60.0, sim.suns())
@@ -545,19 +552,23 @@ func _life(life: Dictionary, mins: float, suns_now: float) -> void:
 	if mins <= 0.0:
 		return
 	var gas_light: float = float(life.light) - float(life.shine) - float(life.lump) - float(life.torn)
-	print("  life %d: %.1f min; light %.0f, %.1f a minute (the first ten minutes %.1f a minute; %.0f of it the star's own burning); ate %.2f Suns of gas and %.3f of solids; solids eaten paid %.0f, the Furnace %.0f, the disc's gas %.0f; %.2f Suns a minute; light a minute: its own %.1f, gas %.1f, solids %.1f, the Furnace %.1f; %d worlds sent" % [
+	print("  life %d: %.1f min; light %.0f, %.1f a minute (the first ten minutes %.1f a minute; %.0f of it the star's own burning); ate %.2f Suns of gas and %.3f of solids; solids eaten paid %.0f, the Furnace %.0f, the disc's gas %.0f; %.2f Suns a minute; light a minute: its own %.1f, gas %.1f, solids %.1f, the Furnace %.1f; %d worlds sent, %d passers pressed" % [
 		life.n, mins, life.light, float(life.light) / mins, float(life.ten) / minf(mins, 10.0), life.shine, float(life.gas) / Sim.START, float(life.solid) / Sim.START,
 		life.lump, life.torn, gas_light, (suns_now - float(life.suns)) / mins,
-		float(life.shine) / mins, gas_light / mins, float(life.lump) / mins, float(life.torn) / mins, life.sent])
+		float(life.shine) / mins, gas_light / mins, float(life.lump) / mins, float(life.torn) / mins, life.sent, life.passers])
 
 ## The world the patient hand presses: the heaviest planet or giant on a
-## closed path that is outside the disc and whose path does not yet dip into
-## it. None if there is none.
+## CLOSED path (the rule `system()` counts by: a planetoid passing through is
+## not the ring's) that is outside the disc and whose path does not yet dip
+## into it. None if there is none.
 func _world(sim: RefCounted) -> Sim.Body:
 	var rh: float = sim.haze_r()
 	var best: Sim.Body = null
 	for b: Sim.Body in sim.bodies:
-		if (b.kind == Sim.Kind.PLANET or b.kind == Sim.Kind.GIANT) and b.pos.length() > rh and _nearest(sim, b) > rh * 0.95 and (best == null or b.m > best.m):
+		if b.kind != Sim.Kind.PLANET and b.kind != Sim.Kind.GIANT:
+			continue
+		var near := _nearest(sim, b)
+		if is_finite(near) and b.pos.length() > rh and near > rh * 0.95 and (best == null or b.m > best.m):
 			best = b
 	return best
 
@@ -572,18 +583,30 @@ func _nearest(sim: RefCounted, b: Sim.Body) -> float:
 	var a := -mu / (2.0 * energy)
 	return a * (1.0 - sqrt(maxf(0.0, 1.0 + 2.0 * energy * turn * turn / (mu * mu))))
 
-## How many of the worlds being pressed are on their way down now (in the
-## disc, or on a path that dips into it, or gone into the star); they are
-## taken off the list.
-func _sent(sim: RefCounted, sending: Dictionary) -> int:
+## How many of the worlds being pressed have come down since the last look:
+## still a solid on a closed path, and in the disc or on a path whose
+## nearest point is inside 0.95 of it. Each is counted once in a life
+## (`counted`) and taken off the list. One that is no longer there without
+## having come down (gathered into another, flung out, taken by a relic) is
+## taken off the list and not counted: between two looks, 0.6 s at most, a
+## world cannot go from a path clear of the disc into the star.
+func _sent(sim: RefCounted, sending: Dictionary, counted: Dictionary) -> int:
 	if sending.is_empty():
 		return 0
 	var still := {}
+	var went := 0
 	var rh: float = sim.haze_r()
 	for b: Sim.Body in sim.bodies:
-		if sending.has(b.id) and b.kind != Sim.Kind.GAS and b.pos.length() > rh and _nearest(sim, b) > rh * 0.95:
+		if not sending.has(b.id) or b.kind == Sim.Kind.GAS:
+			continue
+		var near := _nearest(sim, b)
+		if is_inf(near):
+			continue
+		if b.pos.length() > rh and near > rh * 0.95:
 			still[b.id] = true
-	var went := sending.size() - still.size()
+		elif not counted.has(b.id):
+			counted[b.id] = true
+			went += 1
 	sending.clear()
 	sending.merge(still)
 	return went
