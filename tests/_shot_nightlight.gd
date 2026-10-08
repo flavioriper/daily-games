@@ -39,7 +39,9 @@ extends SceneTree
 ## in, 16b the END page's camera), 17 the tab again with the star and its
 ## relics and its worlds on its card.
 ## Every run but `fresh` opens a kept star (a first cloud saved before the
-## screen opens, so nothing is born on screen); `fresh` deletes the file, so
+## screen opens, so nothing is born on screen, and one that has eaten
+## already: the hint is up on it all the same, until the first press that
+## brakes something, which two guards say); `fresh` deletes the file, so
 ## the screen opens on a first star condensing out of its cloud (0 the birth,
 ## 0b after it, 2b the ring two seconds after the birth is over) and stops
 ## there.
@@ -66,7 +68,9 @@ const STEPS := [
 	[4.0, "press"], [4.2, "shot", "3_press"], [4.3, "drag", 1.6, 0.5], [6.0, "let_go"],
 	# the arc while it is still warm (a brake's flush is gone in six seconds),
 	# then where it has got to twenty seconds on, for the log
-	[6.1, "run", 1.0, false], [6.5, "shot", "3b_falling"], [6.6, "run", 19.0, false],
+	# (the hint is read more than a frame after the lift: the beats' clock moves
+	# 0.1 s a frame at most, and the screen writes it once a frame)
+	[6.1, "run", 1.0, false], [6.25, "hint", false], [6.5, "shot", "3b_falling"], [6.6, "run", 19.0, false],
 	[7.1, "run", 120.0, true], [9.0, "shot", "4_disc"],
 	[9.1, "planet"], [12.0, "shot", "4b_torn"],
 	[12.1, "crowd"], [13.0, "shot", "4c_full"],
@@ -363,12 +367,17 @@ func _world(m: float, far: float, turn: float, metal: float) -> Sim.Body:
 func _check_line(what: String, planets: int) -> void:
 	var n: Dictionary = _s.sim.system()
 	var line: Label = _s._system
+	# the screen counts the bodies every SYSTEM_EVERY seconds: what it wrote by
+	# itself may be that far behind the sim, so the log says whether it was,
+	# and the line is then counted again now for the guard
+	var behind: bool = line.text != _s._system_line(n)
+	_s._refresh_system(0.0)
 	var chips: Control = _s._chips
 	var top: float = chips.position.y + chips.size.y if chips.visible else float(_s.SYSTEM_Y)
-	_check(int(n.planets) >= planets and line.visible and line.text != "" and line.text == _s._system_line() and is_equal_approx(line.position.y, top)
+	_check(int(n.planets) >= planets and line.visible and line.text != "" and line.text == _s._system_line(n) and is_equal_approx(line.position.y, top)
 		and line.position.x + line.size.x <= _s.sky.size.x,
-		"%s: the line \"%s\" names %s, shown %s, %s (its top %d, the discs end at %d), %d px of the sky's %d" % [what, line.text, str(n), line.visible,
-			"under the powers' discs" if chips.visible else "at the sky's top with no power held", int(line.position.y), int(chips.position.y + chips.size.y), int(line.position.x + line.size.x), int(_s.sky.size.x)])
+		"%s: the line \"%s\" names %s, shown %s, %s (its top %d, the discs end at %d), %d px of the sky's %d; what the screen had written by itself was behind the sim: %s" % [what, line.text, str(n), line.visible,
+			"under the powers' discs" if chips.visible else "at the sky's top with no power held", int(line.position.y), int(chips.position.y + chips.size.y), int(line.position.x + line.size.x), int(_s.sky.size.x), behind])
 
 ## 6d: the new star left by the fade, set to one Sun with a one-Sun
 ## newborn's ring whatever perk the run drew (an Ember's newborn is two
@@ -393,7 +402,7 @@ func _system() -> void:
 	# `system()` counts only what is on a closed path: the three are on circles
 	_check(int(sim.system().planets) == 3, "6d: the three worlds put by hand are on closed paths and counted: %s" % str(sim.system()))
 	_run(240.0, false)
-	print("a later star's ring 240 s on: %.2f Suns, novas %d, dust share %.3f, the system %s, the line \"%s\"" % [sim.suns(), sim.novas, sim.dusty, str(sim.system()), _s._system_line()])
+	print("a later star's ring 240 s on: %.2f Suns, novas %d, dust share %.3f, the system %s, the line \"%s\"" % [sim.suns(), sim.novas, sim.dusty, str(sim.system()), _s._system_line(sim.system())])
 
 ## 6e: that star at three Suns, its ring laid again where it was born with
 ## it (the plain disc of three Suns covers its inner half) and two planets
@@ -468,9 +477,12 @@ func _process(delta: float) -> bool:
 				print("fresh: the star's file is gone: %s" % (not FileAccess.file_exists(Sim.path)))
 			"open":
 				if not _fresh:
-					# a kept star: its first cloud, saved, so the screen opens on it as it stands
+					# a kept star: its first cloud, saved, so the screen opens on it as
+					# it stands. It has eaten before, as a star kept from before the
+					# ring has, and has never been pressed
 					var first: RefCounted = Sim.new()
 					first.born()
+					first.eaten = 1.0
 					first.save()
 				_menu._open_arcade("nightlight")
 				_s = _menu.get_node("Nightlight")
@@ -480,6 +492,7 @@ func _process(delta: float) -> bool:
 			"press":
 				print("star open: %.2f Suns, field %s, u %.3f, the star at %s, %d px; zoom %.3f, the ring %s is %d to %d px from it, %d puffs, the hint up %s" % [_s.sim.suns(), _s.sky.size, _s.sky.u, _s.sky.centre, _s.sky.star_px(),
 					_s.sim.zoom(), _s.sim.ring, int(_s.sky.world(Vector2(_s.sim.ring.x, 0.0)).x - _s.sky.centre.x), int(_s.sky.world(Vector2(_s.sim.ring.y, 0.0)).x - _s.sky.centre.x), _s.sim.gas_count(), _s._hint.visible])
+				_check(_s._hint.visible and _s.sim.eaten > 0.0, "a kept star that has eaten (%.1f) and has not been pressed opens with the hint up: %s" % [_s.sim.eaten, _s._hint.visible])
 				_spot_now = _spot(_s.sim)
 				_touch(true, _spot_now)
 				var hit := 0
@@ -526,6 +539,9 @@ func _process(delta: float) -> bool:
 					b.ice = 0.8 if k % 3 == 0 else 0.0
 					_s.sim._sort(b)
 				print("crowd: %d bodies up" % _s.sim.bodies.size())
+			"hint":
+				_check(_s._hint.visible == bool(step[2]) and _s._fingers.is_empty() and _s._braked, "after the first press that braked something, the finger lifted, the hint is %s: up %s, fingers %s, braked %s" % [
+					"up" if bool(step[2]) else "gone", _s._hint.visible, str(_s._fingers.keys()), _s._braked])
 			"run":
 				_run(float(step[2]), bool(step[3]))
 				if not bool(step[3]):

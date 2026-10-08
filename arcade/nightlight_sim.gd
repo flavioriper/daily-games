@@ -116,15 +116,17 @@ const BODY_R := 44.0
 ## The unit of gas and of dust: two thousandths of a Sun (the user: "going
 ## from 1x -> 2x sun is not so fast like throwing 3 bodies into it"). A ring's
 ## puff is RING_M / RING, about a PUFF, and carries a plain share of its mass
-## as dust (FIRST_DUST at a first birth, ASH_DUST and up after an end). H of a
-## puff is hydrogen, DUSTY of it dust, and GAS_HE of the
-## rest helium. What the hand is worth feeds the star, and the planets come at
-## their own pace.
+## as dust (FIRST_DUST at a first birth, ASH_DUST and up after an end). PUFF_H
+## of a puff is hydrogen and GAS_HE of what is neither hydrogen nor dust is
+## helium. What the hand is worth feeds the star, and the planets come at
+## their own pace. DUSTY is the dust share the older checks of
+## tests/_probe_nightlight.gd give their puffs: nothing in the game reads it.
 const PUFF := 0.02
 const PUFF_H := 0.7
 const DUSTY := 0.01
 const GAS_HE := 0.93
-## The most puffs in the sky; the trickle adds to the last one past it.
+## The most puffs in the sky; past it what drifts in is shared out among the
+## puffs already in the ring, one after another (`_trickle`).
 const MOST := 260
 ## The most solids the gas makes by itself.
 const SOLIDS := 40
@@ -141,8 +143,9 @@ const RING_M := 3.0
 const RING_FALLING := 6
 ## A ring is never more than this share of the newborn's own mass: a heavier
 ## one all comes down by itself once the star has eaten a tenth of a Sun of
-## it (the runaway). A richer sky shows in what drifts in (`trickle_rate`),
-## not in a heavier ring.
+## it (the runaway). A guard: RING_M is 0.3 of a one-Sun newborn and less of
+## an Ember's, so at these numbers it never binds. A richer sky shows in what
+## drifts in (`trickle_rate`), not in a heavier ring.
 const RING_MOST := 0.3
 ## The ring's outer edge is this far from the star on the screen, of the
 ## design's 1080 across.
@@ -162,9 +165,12 @@ const FLUSH := 6.0
 ## when the star was born (`ring_m`) and no further, so a full ring gets
 ## nothing and an emptied one all of it, anywhere in the ring. What lands
 ## inside a grown star's disc is not in the ring, so a big star is fed in
-## full with no hand. TRICKLE is the most of it, mass a second at one Sun
-## (1.2 Suns a minute: a ring the hand has emptied is full again in a quarter
-## of a minute, so early on the pace is the hand's and not the sky's);
+## full with no hand. The ring's place follows a giant's envelope
+## (`envelope`), so what drifts in round a giant lands outside its mouth.
+## TRICKLE is the most of it, mass a second at one Sun (1.2 Suns a minute: a
+## ring the hand has emptied is full again in about a minute, 63% of it at
+## 15 s, 87% at 30 and 98% at 60, so early on the pace is the hand's and not
+## the sky's);
 ## TRICKLE_UP the power of the star's Suns that most goes by; RICH_STEP what a
 ## level of Rich adds. The power is under zero. What a star draws with no
 ## hand grows all the same, from nothing at one and a half Suns to all of it
@@ -479,7 +485,9 @@ var picks := 0
 var offer: Array = []
 var bodies: Array[Body] = []
 ## The dead stars left in the sky, each {kind, m, pos, layers, age, novas}:
-## point masses that pull everything and eat what comes inside their radius.
+## point masses that act on everything by their tide (their pull, less what
+## it is at the star's own place: `tick`) and eat what comes inside their
+## radius.
 var relics: Array[Dictionary] = []
 ## Where the neighbour stars sit, only for the look of the sky.
 var far: Array[Vector2] = []
@@ -525,6 +533,9 @@ var dusty := FIRST_DUST
 ## up to this and no further. Kept in the file.
 var ring_m := RING_M
 var _owed_gas := 0.0
+## Where in `bodies` the last puff's worth went once the sky was full: the
+## next goes to the next puff of the ring after it. Not saved.
+var _into := 0
 ## The gas outside the disc as the last tick left it: what the ring holds now.
 var _gas_out := 0.0
 
@@ -680,7 +691,12 @@ func haze_r() -> float:
 ## Past this, water is ice: the ring's middle for the star's whole life, and
 ## a giant thaws it. A sim with no ring has the old line, 2.2 radii.
 func frost_r() -> float:
-	return frost * (1.0 + GIANT * swell) if frost > 0.0 else star_r() * 2.2
+	return frost * envelope() if frost > 0.0 else star_r() * 2.2
+
+## How much wider than itself a giant's envelope makes the star: what the
+## frost line and the place gas drifts in to go out by, with it.
+func envelope() -> float:
+	return 1.0 + GIANT * swell
 
 ## How much of a giant the star is for its colour and the sky: a supergiant
 ## is no redder than a giant.
@@ -923,6 +939,8 @@ func end() -> int:
 	bodies.clear()
 	events.clear()
 	_pass_wait = 0.0
+	_owed_gas = 0.0
+	_into = 0
 	# its silicon, iron and rock go out as dust in its gas
 	var ash_dust := minf(ASH_MOST, ASH_DUST + METAL * (was_layers[5] + was_layers[6] + was_layers[7]))
 	ring_m = _lay_ring(RING, minf(RING_M, RING_MOST * mass), ASH_H, ash_dust)
@@ -1104,22 +1122,26 @@ func need() -> float:
 	return clampf(1.0 - _gas_out / ring_m, 0.0, 1.0) if ring_m > 0.0 else 0.0
 
 ## What has drifted in is set down a puff at a time anywhere in the ring, on
-## a circle; with the sky full it goes into the last puff there is. As many
-## puffs as are owed, DRIFT_MOST a tick at most, and the rest waits.
+## a circle. The ring is where the star was born with it, out by a giant's
+## envelope: round a giant the gas lands outside its mouth and, from 5.4
+## Suns, inside its disc, where it winds in and pays. As many puffs as are
+## owed, DRIFT_MOST a tick at most, and the rest waits. With the sky full
+## each puff's worth goes into a puff already out in the ring, the next one
+## along `bodies` every time (`_into`), so no puff takes it all; with none
+## out there, into the last puff outside the star's mouth, and with none of
+## those either it waits. (A plain star's mouth reaches the ring's inner edge
+## at 49 Suns, and a giant's the envelope's at the same mass.)
 func _trickle() -> void:
 	if ring.y <= 0.0:
 		return
 	var each := RING_M / RING
+	var out := envelope()
 	_owed_gas += trickle_rate() * need() * STEP
 	for k in DRIFT_MOST:
 		if _owed_gas < each:
 			return
 		if gas_count() >= MOST or bodies.size() >= FULL:
-			var into: Body = null
-			for i in range(bodies.size() - 1, -1, -1):
-				if bodies[i].kind == Kind.GAS:
-					into = bodies[i]
-					break
+			var into := _next_puff(out)
 			if into == null:
 				return
 			into.h = (into.h * into.m + puff_h() * each) / (into.m + each)
@@ -1128,10 +1150,31 @@ func _trickle() -> void:
 			_owed_gas -= each
 			continue
 		_owed_gas -= each
-		var pos := _ring_spot()
+		var pos := _ring_spot() * out
 		var b := add(Kind.GAS, each, pos, circle_vel(pos))
 		b.h = puff_h()
 		b.dust = dusty
+
+## The next puff of gas after `_into` that is out in the ring (`out`: a
+## giant's envelope) and outside the star's mouth, going round `bodies`;
+## with none there the last puff outside the mouth, or null: nothing is fed
+## to a puff the star is about to eat. No number is drawn.
+func _next_puff(out: float) -> Body:
+	var n := bodies.size()
+	var mouth := star_r() * EAT
+	mouth *= mouth
+	var inner := maxf(ring.x * out * ring.x * out, mouth)
+	for k in n:
+		var at := (_into + k) % n
+		var b := bodies[at]
+		if b.kind == Kind.GAS and b.pos.length_squared() >= inner:
+			_into = at + 1
+			return b
+	for at in range(n - 1, -1, -1):
+		var b := bodies[at]
+		if b.kind == Kind.GAS and b.pos.length_squared() >= mouth:
+			return b
+	return null
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -1398,7 +1441,8 @@ func tick() -> void:
 	var gone := FAR / zoom()
 	# a spiral's work down to the star's real surface, a giant's wider one
 	# included: the light a body pays is the share of it the drag has done,
-	# so a puff poured at a giant's wider rim pays what a plain star's does
+	# so gas that drifts in round a giant, set down where its envelope has
+	# carried the ring, pays by the same rule as gas round a plain star
 	var bind := pull / (2.0 * star_r())
 	var gl := glow()
 	var roche := roche_r()
@@ -1772,10 +1816,19 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		sim._load_sky(cfg)
 	if ver >= 4:
 		var edges = cfg.get_value("star", "ring", [])
-		if edges is Array and (edges as Array).size() == 2 and (edges[0] is float or edges[0] is int) and (edges[1] is float or edges[1] is int) and is_finite(float(edges[0])) and is_finite(float(edges[1])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]):
+		# two finite numbers, the outer past the inner and no more than ten
+		# times the newborn's own outer edge (`sim.ring` is the newborn's here):
+		# the view is FRAME over it, and a ring of 1e12 is a star of no size
+		if edges is Array and (edges as Array).size() == 2 and (edges[0] is float or edges[0] is int) and (edges[1] is float or edges[1] is int) and is_finite(float(edges[0])) and is_finite(float(edges[1])) and float(edges[0]) > 0.0 and float(edges[1]) > float(edges[0]) and float(edges[1]) <= sim.ring.y * 10.0:
 			sim.ring = Vector2(float(edges[0]), float(edges[1]))
-			sim.frost = clampf(float(cfg.get_value("star", "frost", sim.frost)), sim.ring.x, sim.ring.y)
-		sim.dusty = clampf(float(cfg.get_value("star", "dusty", FIRST_DUST)), 0.0, ASH_MOST)
+			# the frost line with it, held inside that ring: a number, or the
+			# newborn's own. A nan goes through `clampf` untouched, and `float()`
+			# cannot take an Array
+			var line = cfg.get_value("star", "frost", sim.frost)
+			sim.frost = clampf(float(line) if _is_num(line) else sim.frost, sim.ring.x, sim.ring.y)
+		# the dust in the gas: a number, or a first star's
+		var share = cfg.get_value("star", "dusty", FIRST_DUST)
+		sim.dusty = clampf(float(share), 0.0, ASH_MOST) if _is_num(share) else FIRST_DUST
 		# what the ring weighed at birth; a file without it, or with something
 		# that is not a mass, keeps the newborn's own (`_set_ring`), and one
 		# far off it is held to half and to half as much again of that: a ring
@@ -1790,6 +1843,10 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		sim._lay_ring(room_left, RING_M * room_left / RING, ASH_H, ASH_DUST)
 	sim._gas_out = sim.gas_outside()
 	return sim
+
+## True for a file's value that is a number, and not nan or infinite.
+static func _is_num(v: Variant) -> bool:
+	return (v is float or v is int) and is_finite(float(v))
 
 ## The relics, the neighbour stars and the drift out of a file of KEPT 3 or
 ## later; a row that is not what it should be is left out.

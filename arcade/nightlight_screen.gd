@@ -17,8 +17,11 @@ extends Control
 ## disc makes of whatever it drags and the star of what it burns, buys the
 ## hand's four tiles; as the star grows it is offered two powers and one is
 ## picked; an end gives everything back to the sky, leaves a small star
-## among the gas and pays stardust for a perk that lasts. Spec
-## docs/superpowers/specs/2026-10-06-arcade-nightlight-design.md; the rules
+## among the gas and pays stardust for a perk that lasts. Specs, all in
+## docs/superpowers/specs/: 2026-10-06-arcade-nightlight-design.md, then
+## 2026-10-07-nightlight-universe-design.md (the relics, the three ends, the
+## camera) and 2026-10-07-nightlight-ring-design.md (the ring and the press;
+## its section 22 is the game as built). The rules
 ## and every number are arcade/nightlight_sim.gd's, the sky is
 ## arcade/nightlight_sky.gd's, the drawings nightlight_art.gd's.
 ##
@@ -139,6 +142,8 @@ const CHIP_GAP := 10.0
 ## with no power held (under the discs when there are any).
 const SYSTEM_X := 28.0
 const SYSTEM_Y := 22.0
+## The sim's bodies are counted for that line this often, in seconds.
+const SYSTEM_EVERY := 0.25
 ## A held finger's brakes are heard and felt this often at most, in seconds.
 const FELT := 0.2
 ## A touch that also arrives as a mouse press (were mouse-from-touch or
@@ -168,10 +173,14 @@ var _made: Control
 var _made_l: Array[Label] = []
 var _fuel_low := false
 var _hint: Label
+## True once a press of this visit has braked something: the hint has been
+## read. Not kept, so it is said again each time the game is opened.
+var _braked := false
 var _chips: Button
 var _chips_for := ""
 var _system: Label
 var _system_for := ""
+var _system_wait := 0.0
 var _pick: Control
 var _pick_title: Label
 var _pick_tiles: Array = []   # {button, icon, name, effect, cost, badge, level}
@@ -1088,6 +1097,7 @@ func _on_reset() -> void:
 	_end_done = false
 	_pick_wait = 0.0
 	_perks_due = false
+	_braked = false
 	_eaten_at_open = 0.0
 	_shown.mass = sim.mass
 	_shown.light = sim.light
@@ -1385,12 +1395,14 @@ func _refresh_hud(delta: float) -> void:
 		_made_l[i].text = "%s %d%%" % [tr(named) if named.begins_with("NL_") else named, pc]
 	_made.queue_redraw()
 	_refresh_chips()
-	_refresh_system()
+	_refresh_system(delta)
 	(_plates.light.label as Label).text = Art.short(floorf(_shown.light), c)
 	_shop_light.text = Art.short(floorf(sim.light), _comma())
 	_dust_b.visible = sim.novas + sim.fades > 0 or sim.dust > 0
-	# said until the star has eaten something
-	_hint.visible = sim.eaten <= 0.0 and _fingers.is_empty() and not sky.ending()
+	# said until a press of this visit has braked something (a star kept from
+	# before the ring has eaten plenty and never been pressed, and a new star
+	# eats its falling few with no hand at all)
+	_hint.visible = not _braked and _fingers.is_empty() and not sky.ending()
 	_dust_l.text = str(sim.dust)
 	var goal: Dictionary = sim.goal()
 	var core := _core_temp(sim.core_temp())
@@ -1441,24 +1453,28 @@ func _refresh_chips() -> void:
 	_chips.queue_redraw()
 
 ## What circles the star, in its own words: "3 planets · 1 giant · 22
-## rocks · 4 comets", a kind with none left out.
-func _system_line() -> String:
-	var n: Dictionary = sim.system()
+## rocks · 4 comets", a kind with none left out. `n` is `sim.system()`.
+func _system_line(n: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for row: Array in [["planets", "NL_SYS_PLANETS"], ["giants", "NL_SYS_GIANTS"], ["rocks", "NL_SYS_ROCKS"], ["comets", "NL_SYS_COMETS"]]:
 		if int(n[row[0]]) > 0:
 			parts.append(_count(row[1], int(n[row[0]])))
 	return " · ".join(parts)
 
-## The line is written again only when a count changes. It is not shown with
-## nothing to name or while the sky plays an end, it sits under the powers'
-## discs when there are any, and it gives way to a note said across it.
-func _refresh_system() -> void:
-	var n: Dictionary = sim.system()
-	var key := "%d %d %d %d" % [int(n.planets), int(n.giants), int(n.rocks), int(n.comets)]
-	if key != _system_for:
-		_system_for = key
-		_system.text = _system_line()
+## The bodies are counted every SYSTEM_EVERY seconds (and at once with no
+## time passed: the screen opening, a new star), and the line is written
+## again only when a count changes. It is not shown with nothing to name or
+## while the sky plays an end, it sits under the powers' discs when there
+## are any, and it gives way to a note said across it.
+func _refresh_system(delta: float) -> void:
+	_system_wait -= delta
+	if delta <= 0.0 or _system_wait <= 0.0:
+		_system_wait = SYSTEM_EVERY
+		var n: Dictionary = sim.system()
+		var key := "%d %d %d %d" % [int(n.planets), int(n.giants), int(n.rocks), int(n.comets)]
+		if key != _system_for:
+			_system_for = key
+			_system.text = _system_line(n)
 	_system.visible = _system.text != "" and not sky.ending()
 	_system.position.y = _chips.position.y + _chips.size.y if _chips.visible else SYSTEM_Y
 	var under_note: bool = _note_t > 0.0 and _system.position.y < _note.position.y + _note.size.y
@@ -1506,7 +1522,8 @@ func _refresh_tiles() -> void:
 		var done: bool = sim.is_done(tile)
 		var can: bool = sim.can_buy(tile)
 		var level := int(sim.lv[tile])
-		(t.effect as Label).text = tr("NL_DONE") if done else _effect(tile)
+		# Reach and Pure are the two with a last level, and each says its own
+		(t.effect as Label).text = tr("NL_DONE_REACH" if tile == "reach" else "NL_DONE") if done else _effect(tile)
 		(t.cost as Label).text = tr("NL_MAX") if done else Art.short(sim.cost(tile), _comma())
 		(t.mote as Control).visible = not done
 		(t.tick as Control).visible = done
@@ -1634,6 +1651,7 @@ func _brake(px: Vector2) -> void:
 	sky.set_down(at, r)
 	if sim.brake(at, r) == 0:
 		return
+	_braked = true
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now

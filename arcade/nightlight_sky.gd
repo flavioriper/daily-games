@@ -608,10 +608,11 @@ func _fill() -> void:
 			if far < 1.0:
 				continue
 			var away := b.pos / far
-			var at := world(b.pos)
+			# `world()`, with the scale this frame already has
+			var at := centre + shift + b.pos * z
 			if b.kind == Sim.Kind.GAS:
 				if drawn_in > 0.0:
-					at = world(b.pos * (1.0 + drawn_in))
+					at = centre + shift + b.pos * (1.0 + drawn_in) * z
 				# cool far out, warm as the disc drags it in, and warm for a
 				# while where a press has just braked it; thinner once its dust
 				# has fallen out

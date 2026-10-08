@@ -845,11 +845,11 @@ func _check_ring() -> void:
 		idle.eaten, few, idle_most.x, idle_most.y, idle.ring_m, _solid_count(idle)])
 	_ok("an untouched star with the trickle on eats no more than the falling few in fifteen minutes (%.3f of %.3f)" % [idle.eaten, few], idle.eaten <= few + 1e-6)
 	_ok("and the gas outside the disc is never more than a puff over the ring's birth weight (%.3f of %.3f)" % [idle_most.y, idle.ring_m], idle_most.y <= idle.ring_m + Sim.RING_M / Sim.RING + 1e-6)
-	# why that star does not go on to dim and fade (the bot's untouched star:
-	# 1.05 Suns at 100 minutes, helium at 103, a supernova at about two hours):
-	# at one Sun the helium flash comes before the hydrogen is out, and a
-	# giant's disc is past the whole ring, so from the flash the far sky feeds
-	# it in full with no hand. Not forced, and not a fade.
+	# why that star does not go on to dim: at one Sun the helium flash comes
+	# before the hydrogen is out, and a giant's disc is past the whole ring it
+	# was born with, so that ring falls in. (What the far sky then gives it is
+	# set down where the envelope has carried the ring, 1,139 px and out, which
+	# is outside a one-Sun giant's disc: see the checks on a giant below.)
 	var lone := _quiet(11)
 	var to_flash: float = Sim.FLASH * Sim.START / lone._plain_burn()
 	print("  a star of one Sun left alone: the helium flash at %.0f min, the hydrogen out at %.0f; a giant's disc is %.0f px and the ring ends at %.0f" % [
@@ -857,23 +857,115 @@ func _check_ring() -> void:
 	_ok("at one Sun the helium flash (%.0f min) comes before the hydrogen is out (%.0f min)" % [to_flash / 60.0, lone.fuel_time() / 60.0], to_flash < lone.fuel_time() and to_flash > 3600.0)
 	lone.swell = 1.0
 	_ok("and a one-Sun giant's disc is past the whole ring", lone.haze_r() > lone.ring.y)
-	# a giant does not swallow the sky: its mouth is past the ring's middle, so
-	# most of what drifts in is eaten as it lands and the rest is in its disc;
-	# that must stay a Sun or so a minute with the tiles a steady hand has by
-	# then (it was 4.9 Suns a minute when the trickle grew with the star's Suns)
+	# a giant does not swallow the sky: its mouth is past the middle of the
+	# ring it was born with, and what drifts in is set down where its envelope
+	# has carried that ring, outside the mouth and inside the disc; what it
+	# gains (eaten and winding in) must stay a Sun or so a minute with the
+	# tiles a steady hand has by then (it was 4.9 Suns a minute when the
+	# trickle grew with the star's Suns)
 	var big := _quiet(9)
 	big.passing = true
 	big._pass_gap = 1e9
 	big.mass = Sim.START * 12.0
 	big.swell = 1.0
 	big.lv.rich = 6
-	_ok("a 12-Sun giant's mouth is past the middle of where the gas drifts in", big.star_r() * Sim.EAT > (big.ring.x + big.ring.y) * 0.5 and big.haze_r() > big.ring.y)
+	_ok("a 12-Sun giant's mouth is past the middle of the ring it was born with, and inside where the gas drifts in now", big.star_r() * Sim.EAT > (big.ring.x + big.ring.y) * 0.5 and big.star_r() * Sim.EAT < big.ring.x * big.envelope() and big.haze_r() > big.ring.y * big.envelope())
 	var was_m: float = big.mass
 	_run(big, 60.0)
 	var gained: float = (big.mass - was_m + _sky_mass(big)) / Sim.START
 	print("  a 12-Sun giant with six levels of Rich and no hand gains %.2f Suns in a minute (%.2f with no tile; at 4, 8 and 16 Suns %.2f, %.2f and %.2f)" % [
 		gained, gained / (1.0 + Sim.RICH_STEP * 6.0), Sim.TRICKLE * pow(4.0, Sim.TRICKLE_UP) * 6.0, Sim.TRICKLE * pow(8.0, Sim.TRICKLE_UP) * 6.0, Sim.TRICKLE * pow(16.0, Sim.TRICKLE_UP) * 6.0])
 	_ok("a giant does not swallow the sky: under a Sun and a half a minute (%.2f)" % gained, gained > 0.0 and gained < 1.5)
+	# what drifts in round a giant lands where its envelope has carried the
+	# ring: outside its mouth and inside its disc, so it is there to be seen
+	# and pressed, winds in and pays. (Set down at the newborn's ring, as it
+	# was, a giant's mouth is past it: at 13 Suns every puff was eaten in the
+	# tick it landed, for no light.)
+	for case: Array in [[8.0, 1.0], [13.0, Sim.SUPER]]:
+		var g := _quiet(9)
+		g.passing = true
+		g._pass_gap = 1e9
+		g.mass = Sim.START * float(case[0])
+		g.swell = float(case[1])
+		var g_m: float = g.mass
+		var mouth: float = g.star_r() * Sim.EAT
+		var first: Sim.Body = null
+		var first_at := 0
+		var up_at_ten := false
+		var landed := 0
+		var clear := true
+		var land_in := INF
+		var far_out := 0.0
+		for i in int(20.0 / Sim.STEP):
+			var had: int = g._next_id
+			g.tick()
+			for p: Sim.Body in g.bodies:
+				if p.id < had or p.kind != Sim.Kind.GAS:
+					continue
+				landed += 1
+				var pr := p.pos.length()
+				land_in = minf(land_in, pr)
+				far_out = maxf(far_out, pr)
+				clear = clear and pr > mouth and pr < g.haze_r()
+				if first == null:
+					first = p
+					first_at = i
+			if first != null and i == first_at + int(10.0 / Sim.STEP):
+				up_at_ten = g.bodies.has(first)
+		_ok("at %s Suns, swell %s, what drifts in lands outside the mouth and inside the disc (%d puffs at %.0f to %.0f px, the mouth %.0f, the disc %.0f)" % [case[0], case[1], landed, land_in, far_out, mouth, g.haze_r()],
+			landed > 10 and clear and is_equal_approx(g.mass, g_m))
+		_ok("and a puff of it is still a body ten seconds on", first != null and up_at_ten)
+		# no more of it: the first puff is followed down
+		g.passing = false
+		var took := 20.0 - first_at * Sim.STEP
+		while g.bodies.has(first) and took < 1800.0:
+			g.tick()
+			took += Sim.STEP
+		var gave: float = first.paid + first.e
+		print("  round a giant of %s Suns (swell %s) the first puff to drift in was eaten %.0f s on and paid %.4f light, %.2f of a perfect spiral's" % [
+			case[0], case[1], took, gave, gave / (first.m * g.spiral_light())])
+		_ok("and it has paid light by the time it is eaten (%.4f)" % gave, not g.bodies.has(first) and g.mass > g_m and gave > 0.0)
+	# with the sky full, what drifts in is shared out among the ring's puffs
+	# and no one puff takes it: three Suns (the disc covers the ring's inner
+	# part, so the need never closes), six levels of Rich (21 puffs a second
+	# at the most), two minutes with no hand. One puff took all of it before:
+	# 5.8 of mass, 350 puffs' worth, a minute in
+	var brim_sky := _quiet(9)
+	brim_sky.passing = true
+	brim_sky._pass_gap = 1e9
+	brim_sky.born()
+	brim_sky.mass = Sim.START * 3.0
+	brim_sky.lv.rich = 6
+	brim_sky._gas_out = brim_sky.gas_outside()
+	var fed_from: float = _sky_mass(brim_sky) + brim_sky.mass
+	var fed := 0.0
+	var full_for := 0
+	var worst := 0.0
+	var fattest := 0.0
+	for i in int(120.0 / Sim.STEP):
+		fed += float(brim_sky.trickle_rate()) * float(brim_sky.need()) * Sim.STEP
+		if brim_sky.gas_count() >= Sim.MOST:
+			full_for += 1
+		brim_sky.tick()
+		if i % 60 != 59:
+			continue
+		var top := 0.0
+		var ring_sum := 0.0
+		var ring_n := 0
+		for p: Sim.Body in brim_sky.bodies:
+			if p.kind != Sim.Kind.GAS:
+				continue
+			top = maxf(top, p.m)
+			if p.pos.length() >= brim_sky.ring.x:
+				ring_sum += p.m
+				ring_n += 1
+		fattest = maxf(fattest, top)
+		if ring_n > 0:
+			worst = maxf(worst, top * ring_n / ring_sum)
+	print("  a full sky at three Suns, six levels of Rich, two minutes: at MOST for %.0f s of them, the heaviest puff ever %.4f (%.1f of a newborn ring's puff), at most %.1f times the mean puff out in the ring" % [
+		full_for * Sim.STEP, fattest, fattest / (Sim.RING_M / Sim.RING), worst])
+	_ok("with the sky full no puff takes all that drifts in: the heaviest is never over four times the mean puff of the ring (%.1f)" % worst, full_for > 600 and worst > 0.0 and worst <= 4.0)
+	_ok("and none of it is lost (%.2f owed)" % fed, absf(_sky_mass(brim_sky) + brim_sky.mass + brim_sky._owed_gas - fed_from - fed) < 1e-4)
 	# a sim whose ring was cleared (a tutorial page) still works
 	var bare := _quiet(2)
 	bare.ring = Vector2.ZERO
@@ -940,6 +1032,25 @@ func _check_ring() -> void:
 		odd.save(Sim.path)
 		var fell: RefCounted = Sim.load_saved(1)
 		_ok("a bad ring in the file (%s) falls back to the newborn's" % str(bad), is_equal_approx(fell.ring.y, Sim.STAR_R * Sim.HAZE * Sim.RING_OUT) and is_finite(fell.zoom()) and fell.zoom() > 0.0)
+	# and so does one ten times too wide; a frost line or a dust share that is
+	# not a finite number is the default, and nothing throws. `null` cannot be
+	# set (it erases the key), so the file's own text is written
+	keep.save()
+	var text := FileAccess.get_file_as_string(Sim.path)
+	for wrong: Array in [["dusty", "nan"], ["ring", "[1.0, 1e+12]"], ["frost", "[600.0]"], ["dusty", "null"]]:
+		var lines := text.split("\n")
+		var found := false
+		for k in lines.size():
+			if lines[k].begins_with(String(wrong[0]) + "="):
+				lines[k] = "%s=%s" % wrong
+				found = true
+		var f := FileAccess.open(Sim.path, FileAccess.WRITE)
+		f.store_string("\n".join(lines))
+		f.close()
+		var mended: RefCounted = Sim.load_saved(1)
+		_ok("a file with %s=%s loads with a finite ring, frost line and dust (ring %s, frost %s, dusty %s)" % [wrong[0], wrong[1], str(mended.ring), str(mended.frost), str(mended.dusty)],
+			found and mended.bodies.size() == keep.bodies.size() and mended.ring.is_equal_approx(keep.ring) and is_finite(mended.frost) and mended.frost >= mended.ring.x and mended.frost <= mended.ring.y
+			and is_finite(mended.dusty) and mended.dusty >= 0.0 and mended.dusty <= Sim.ASH_MOST and is_finite(mended.zoom()) and is_equal_approx(mended.zoom(), keep.zoom()))
 	# a full kept sky is given no more ring than it has room for
 	var crowd := ConfigFile.new()
 	crowd.set_value("star", "kept", 3)

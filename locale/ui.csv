@@ -1088,6 +1088,7 @@ NL_PERK_EMBER_FX,a new star starts twice as heavy,a estrela nova começa com o d
 NL_STREAM,Flow,Fluxo,Flujo
 NL_FX_STREAM,"slows every %s s, then %s s","freia a cada %s s, depois %s s","frena cada %s s, luego %s s"
 NL_DONE,as pure as it gets,o mais puro possível,lo más puro posible
+NL_DONE_REACH,as wide as it gets,o mais largo possível,lo más ancho posible
 NL_MAX,Max,Máx,Máx
 NL_POWERS,Star powers,Poderes da estrela,Poderes de la estrella
 NL_POWERS_BODY,"Always on while the star is lit. Each one burns more hydrogen, and they all go with the star when it ends.","Sempre ligados enquanto a estrela está acesa. Cada um queima mais hidrogênio, e todos se vão com a estrela quando ela acaba.","Siempre activos mientras la estrella está encendida. Cada uno quema más hidrógeno, y todos se van con la estrella cuando termina."
