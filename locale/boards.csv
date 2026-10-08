@@ -2742,3 +2742,141 @@ HTP_HP_TUNNEL_DONE_CAP,Both mouths inside: closed,As duas bocas dentro: fechado,
 HTP_HP_HINT_CAP,The bulb drops a bale of the best pen,A lâmpada solta um fardo do melhor cercado,La bombilla suelta un fardo del mejor corral
 HTP_HP_PINNED_CAP,Older straw: this bale is pinned,Palha mais velha: esse fardo é fixo,Paja más vieja: este fardo está fijo
 HTP_HP_STAYS_CAP,A pinned bale stays where it is,Um fardo fixo fica onde está,Un fardo fijo se queda donde está
+HB_BLURB,"Two silhouettes, one at its real size. Pull the other until it looks right beside it.","Duas silhuetas, uma no tamanho real. Puxe a outra até ficar do tamanho certo ao lado dela.","Dos siluetas, una a su tamaño real. Tira de la otra hasta que se vea bien a su lado."
+HB_SHORT,"Size it by eye,\nthen lock.","Meça no olho\ne trave.","Mídelo a ojo\ny fíjalo."
+HB_MOTTO,Size it by eye,Meça no olho,Mídelo a ojo
+HB_LVL_0,"5 rounds, close in size, with a tape","5 rodadas, tamanhos próximos, com trena","5 rondas, tamaños parecidos, con cinta"
+HB_LVL_1,"5 rounds, up to three times apart","5 rodadas, até três vezes de diferença","5 rondas, hasta el triple de diferencia"
+HB_LVL_2,"5 rounds, far apart in size","5 rodadas, tamanhos bem distantes","5 rondas, tamaños muy distintos"
+HB_LVL_3,"The Ladder: 7 rungs, your sizes carry on","A Escada: 7 degraus, seus tamanhos seguem","La Escalera: 7 peldaños, tus tamaños siguen"
+HB_LOCK,Lock,Travar,Fijar
+HB_NEXT,Next,Próxima,Siguiente
+HB_ROUND,%d / %d,%d / %d,%d / %d
+HB_MM,%s mm,%s mm,%s mm
+HB_CM,%s cm,%s cm,%s cm
+HB_M,%s m,%s m,%s m
+HB_TALL,%s tall,%s de altura,%s de alto
+HB_LONG,%s long,%s de comprimento,%s de largo
+HB_ABOUT,about %s,cerca de %s,unos %s
+HB_YOU_SAID,You said %s,Você disse %s,Dijiste %s
+HB_YOUR_SIZE,the size you gave it,o tamanho que você deu,el tamaño que le diste
+HB_SPOT,Spot on!,Na mosca!,¡Clavado!
+HB_OVER,%s%% too big,%s%% grande demais,%s%% de más
+HB_UNDER,%s%% too small,%s%% pequeno demais,%s%% de menos
+HB_TIMES_BIG,%s× too big,%s× grande demais,%s× demasiado grande
+HB_TIMES_SMALL,%s× too small,%s× pequeno demais,%s× demasiado pequeño
+HB_HEART_LOST,A heart gone.,Um coração a menos.,Un corazón menos.
+HB_HINT_BIGGER,Bigger than that.,Maior do que isso.,Más grande que eso.
+HB_HINT_SMALLER,Smaller than that.,Menor do que isso.,Más pequeño que eso.
+HB_HINT_THERE,That looks about right.,Parece bem por aí.,Parece estar bien así.
+HB_RESET,Back where it started.,De volta ao começo.,De vuelta al principio.
+HB_WIN_SUB,%d of %d points,%d de %d pontos,%d de %d puntos
+HB_SEAL_SHARP,Sharp eye,Olho afiado,Buen ojo
+HB_SEAL_LADDER,Ladder,Escada,Escalera
+HB_OUT,Out of hearts.,Acabaram os corações.,Sin corazones.
+HB_OUT_BODY,"That rung was more than double off. Climb the Ladder again, or watch a short video for one more heart.","Esse degrau passou do dobro. Suba a Escada de novo ou veja um vídeo curto para ganhar mais um coração.","Ese peldaño se pasó del doble. Sube la Escalera otra vez o mira un video corto para un corazón más."
+HB_OUT_BODY_PLAIN,That rung was more than double off. Climb the Ladder again whenever you like.,Esse degrau passou do dobro. Suba a Escada de novo quando quiser.,Ese peldaño se pasó del doble. Sube la Escalera otra vez cuando quieras.
+HB_RULES,"One silhouette stands at its real size, with a bracket over what its number measures. Drag anywhere to pull the white one bigger or smaller until the two look right together, then Lock. A lock is final. The closer you are, the more of the round's 100 points you keep: within 6%% is all of them, twice too big or half too small is 45, five times off is none. %d rounds make the day.","Uma silhueta está no tamanho real, com um colchete sobre o que o número mede. Arraste em qualquer lugar para deixar a branca maior ou menor até as duas parecerem certas juntas, e então Trave. Travar é definitivo. Quanto mais perto, mais dos 100 pontos da rodada você leva: dentro de 6%% são todos, o dobro ou a metade vale 45, cinco vezes fora não vale nada. O dia tem %d rodadas.","Una silueta está a su tamaño real, con un corchete sobre lo que mide su número. Arrastra en cualquier parte para agrandar o encoger la blanca hasta que las dos se vean bien juntas, y luego Fija. Fijar es definitivo. Cuanto más cerca, más de los 100 puntos de la ronda te llevas: dentro del 6%% son todos, el doble o la mitad vale 45, cinco veces de diferencia no vale nada. El día tiene %d rondas."
+HB_RULES_TAPE,"On Easy the tape reads the size as you go.","No Fácil a trena mostra o tamanho enquanto você puxa.","En Fácil la cinta marca el tamaño mientras tiras."
+HB_RULES_LADDER,"The Ladder: each thing you size becomes the next ruler, at the size you gave it, so a wrong rung bends every one after it. A lock more than double off costs a heart, and that rung is set straight. You have %d hearts.","A Escada: cada coisa que você mede vira a próxima régua, no tamanho que você deu, então um degrau errado entorta todos os seguintes. Travar com mais do que o dobro de erro custa um coração, e esse degrau é corrigido. Você tem %d corações.","La Escalera: cada cosa que mides es la siguiente regla, al tamaño que le diste, así que un peldaño mal tuerce todos los siguientes. Fijar con más del doble de error cuesta un corazón, y ese peldaño se corrige. Tienes %d corazones."
+HB_WHAT_BODY,"%s long, body only","%s de comprimento, só o corpo","%s de largo, solo el cuerpo"
+HB_WHAT_ACROSS_THE_SHELL,%s across the shell,%s de largura da concha,%s de ancho de concha
+HB_WHAT_SNOUT_TO_RUMP,%s snout to rump,%s do focinho à ponta do corpo,%s del hocico a la rabadilla
+HB_WHAT_WITHOUT_THE_TAIL,%s without the tail,%s sem contar o rabo,%s sin contar la cola
+HB_WHAT_WINGSPAN,%s wingspan,%s de envergadura,%s de envergadura
+HB_WHAT_AT_THE_SHOULDER,%s at the shoulder,%s até o ombro,%s hasta el hombro
+HB_ITEM_ANT,Ant,Formiga,Hormiga
+HB_ITEM_LADYBIRD,Ladybird,Joaninha,Mariquita
+HB_ITEM_BEE,Honey bee,Abelha,Abeja
+HB_ITEM_SNAIL,Snail,Caracol,Caracol
+HB_ITEM_TENNIS_BALL,Tennis ball,Bola de tênis,Pelota de tenis
+HB_ITEM_FROG,Frog,Rã,Rana
+HB_ITEM_MOUSE,Mouse,Camundongo,Ratón
+HB_ITEM_BUTTERFLY,Monarch butterfly,Borboleta-monarca,Mariposa monarca
+HB_ITEM_FOOTBALL,Football,Bola de futebol,Balón de fútbol
+HB_ITEM_CRAB,Blue crab,Siri-azul,Cangrejo azul
+HB_ITEM_CAT,Cat,Gato,Gato
+HB_ITEM_RABBIT,Rabbit,Coelho,Conejo
+HB_ITEM_CHICKEN,Chicken,Galinha,Gallina
+HB_ITEM_DOG,Dog,Cachorro,Perro
+HB_ITEM_SHEEP,Sheep,Ovelha,Oveja
+HB_ITEM_PENGUIN,Emperor penguin,Pinguim-imperador,Pingüino emperador
+HB_ITEM_COW,Cow,Vaca,Vaca
+HB_ITEM_HORSE,Horse,Cavalo,Caballo
+HB_ITEM_PERSON,Person,Pessoa,Persona
+HB_ITEM_BICYCLE,Bicycle,Bicicleta,Bicicleta
+HB_ITEM_DOOR,Door,Porta,Puerta
+HB_ITEM_ELEPHANT,Elephant,Elefante,Elefante
+HB_ITEM_CROCODILE,Crocodile,Crocodilo,Cocodrilo
+HB_ITEM_CAR,Car,Carro,Coche
+HB_ITEM_SHARK,Great white shark,Tubarão-branco,Tiburón blanco
+HB_ITEM_GIRAFFE,Giraffe,Girafa,Jirafa
+HB_ITEM_ORCA,Orca,Orca,Orca
+HB_ITEM_BUS,City bus,Ônibus,Autobús
+HB_ITEM_TREX,T. rex,T. rex,T. rex
+HB_ITEM_WHALE,Blue whale,Baleia-azul,Ballena azul
+HB_FACT_ANT,A queen of this little black garden ant can live for nearly 30 years.,A rainha dessa formiguinha preta de jardim pode viver quase 30 anos.,La reina de esta hormiguita negra de jardín puede vivir casi 30 años.
+HB_FACT_LADYBIRD,The seven-spot ladybird has three spots on each wing case and one shared in the middle.,A joaninha-de-sete-pintas tem três pintas em cada asa e uma dividida no meio.,La mariquita de siete puntos tiene tres en cada ala y uno compartido en el centro.
+HB_FACT_BEE,"A busy hive can hold as many as 60,000 worker bees.",Uma colmeia cheia pode ter até 60 mil abelhas operárias.,Una colmena llena puede tener hasta 60.000 abejas obreras.
+HB_FACT_SNAIL,"A Roman snail can live for 20 years, and its shell grows along with it.","Um escargot pode viver 20 anos, e a concha cresce junto com ele.","Un caracol romano puede vivir 20 años, y su concha crece con él."
+HB_FACT_TENNIS_BALL,Tennis balls turned yellow in 1972 so they would show up better on television.,As bolas de tênis ficaram amarelas em 1972 para aparecerem melhor na televisão.,Las pelotas de tenis se volvieron amarillas en 1972 para verse mejor en televisión.
+HB_FACT_FROG,"The edible frog is a cross between two other frogs, the pool frog and the marsh frog.","A rã-verde é um cruzamento de duas outras rãs, a rã-de-lessona e a rã-ridibunda.","La rana comestible es un cruce de otras dos ranas, la de Lessona y la europea común."
+HB_FACT_MOUSE,A house mouse's tail can be as long as the rest of its body.,O rabo de um camundongo pode ser tão comprido quanto o resto do corpo.,La cola de un ratón casero puede ser tan larga como el resto del cuerpo.
+HB_FACT_BUTTERFLY,"Monarchs fly up to 4,500 km to spend the winter in Mexico's mountain forests.",As monarcas voam até 4.500 km para passar o inverno nas florestas das montanhas do México.,Las monarcas vuelan hasta 4.500 km para pasar el invierno en los bosques de montaña de México.
+HB_FACT_FOOTBALL,"The laws of the game ask for a ball 68 to 70 cm around, which makes it this wide.","As regras do jogo pedem uma bola de 68 a 70 cm de circunferência, o que dá essa largura.","Las reglas del juego piden un balón de 68 a 70 cm de circunferencia, y eso da este ancho."
+HB_FACT_CRAB,Its scientific name means 'savoury beautiful swimmer'.,Seu nome científico quer dizer 'bela nadadora saborosa'.,Su nombre científico significa 'bella nadadora sabrosa'.
+HB_FACT_CAT,Cats sleep 12 to 16 hours a day.,Gatos dormem de 12 a 16 horas por dia.,Los gatos duermen de 12 a 16 horas al día.
+HB_FACT_RABBIT,"A rabbit's ears are 7 to 8 cm long, about a fifth of its whole body.","As orelhas de um coelho têm de 7 a 8 cm, cerca de um quinto do corpo todo.","Las orejas de un conejo miden de 7 a 8 cm, casi una quinta parte de su cuerpo."
+HB_FACT_CHICKEN,"There are more than 26 billion chickens, over three for every person on Earth.","Existem mais de 26 bilhões de galinhas, mais de três para cada pessoa na Terra.","Hay más de 26.000 millones de gallinas, más de tres por cada persona en la Tierra."
+HB_FACT_DOG,"A Labrador stands 55 to 57 cm at the shoulder, a good middle among big dogs.","Um labrador tem de 55 a 57 cm até o ombro, um bom meio-termo entre os cães grandes.","Un labrador mide de 55 a 57 cm hasta el hombro, un buen término medio entre los perros grandes."
+HB_FACT_SHEEP,A sheep's slit-shaped pupils let it see behind itself without turning its head.,As pupilas em fenda da ovelha deixam que ela veja atrás de si sem virar a cabeça.,Las pupilas alargadas de la oveja le dejan ver detrás de sí sin girar la cabeza.
+HB_FACT_PENGUIN,Emperor penguins dive deeper than 500 metres and stay under for 20 minutes.,Os pinguins-imperadores mergulham a mais de 500 metros e ficam 20 minutos lá embaixo.,Los pingüinos emperador bucean a más de 500 metros y aguantan 20 minutos bajo el agua.
+HB_FACT_COW,"A Holstein gives about 10,000 kg of milk a year, some 27 litres every day.","Uma vaca holandesa dá cerca de 10 mil kg de leite por ano, uns 27 litros por dia.","Una vaca frisona da unos 10.000 kg de leche al año, unos 27 litros cada día."
+HB_FACT_HORSE,"Horses are measured at the withers, and they can sleep standing up.","Cavalos são medidos na cernelha, e conseguem dormir em pé.","Los caballos se miden en la cruz, y pueden dormir de pie."
+HB_FACT_PERSON,"Around the world, men average about 171 cm tall and women about 160 cm.","No mundo, os homens têm em média 171 cm de altura e as mulheres, 160 cm.","En el mundo, los hombres miden de media unos 171 cm y las mujeres unos 160 cm."
+HB_FACT_BICYCLE,A road bike is longer than its rider is tall.,Uma bicicleta de estrada é mais comprida do que a altura de quem pedala.,Una bici de carretera es más larga que la altura de quien la monta.
+HB_FACT_DOOR,"A standard house door is about two metres tall, so nearly everyone walks under without ducking.","Uma porta comum tem uns dois metros de altura, então quase todo mundo passa sem se abaixar.","Una puerta corriente mide unos dos metros de alto, así que casi todos pasan sin agacharse."
+HB_FACT_ELEPHANT,The African bush elephant is the largest animal walking on land.,O elefante-da-savana é o maior animal que anda em terra firme.,El elefante africano de sabana es el animal más grande que camina sobre tierra.
+HB_FACT_CROCODILE,The saltwater crocodile is the largest reptile alive today.,O crocodilo-de-água-salgada é o maior réptil vivo hoje.,El cocodrilo de agua salada es el reptil vivo más grande de hoy.
+HB_FACT_CAR,A family hatchback is about as long as two and a half people lying head to toe.,Um hatch de família tem mais ou menos o comprimento de duas pessoas e meia deitadas em fila.,Un compacto familiar mide más o menos lo que dos personas y media tumbadas en fila.
+HB_FACT_SHARK,A great white has about 300 serrated teeth and keeps growing new ones.,O tubarão-branco tem uns 300 dentes serrilhados e está sempre trocando por novos.,El tiburón blanco tiene unos 300 dientes aserrados y siempre le salen nuevos.
+HB_FACT_GIRAFFE,"A giraffe's long neck has just seven bones, the same number as yours.","O pescoço comprido da girafa tem só sete ossos, o mesmo número que o seu.","El largo cuello de la jirafa tiene solo siete huesos, los mismos que el tuyo."
+HB_FACT_ORCA,"A male orca's back fin stands 1.8 metres tall, higher than most people.","A barbatana das costas de uma orca macho tem 1,8 metro, mais alta que a maioria das pessoas.","La aleta dorsal de una orca macho mide 1,8 metros, más alta que la mayoría de la gente."
+HB_FACT_BUS,A city bus is almost exactly as long as a T. rex.,Um ônibus urbano tem quase exatamente o comprimento de um T. rex.,Un autobús urbano es casi exactamente tan largo como un T. rex.
+HB_FACT_TREX,"Sue, one of the most complete T. rex skeletons, is more than 12 metres long.","Sue, um dos esqueletos de T. rex mais completos, tem mais de 12 metros de comprimento.","Sue, uno de los esqueletos de T. rex más completos, mide más de 12 metros de largo."
+HB_FACT_WHALE,The blue whale is the largest animal ever known; its heart alone weighs 180 kg.,A baleia-azul é o maior animal já conhecido; só o coração pesa 180 kg.,La ballena azul es el animal más grande que se conoce; solo su corazón pesa 180 kg.
+HTP_HB_SIZE,Size it by eye,Meça no olho,Mídelo a ojo
+HTP_HB_SIZE_BODY,"The dark shape is the ruler, standing at its real size. Drag anywhere to pull the white one bigger or smaller until the two look right together.","A forma escura é a régua, no tamanho real. Arraste em qualquer lugar para deixar a branca maior ou menor até as duas parecerem certas juntas.","La forma oscura es la regla, a su tamaño real. Arrastra en cualquier parte para agrandar o encoger la blanca hasta que las dos se vean bien juntas."
+HTP_HB_LOCK,Lock it in,Trave o palpite,Fija tu respuesta
+HTP_HB_LOCK_BODY,"Lock ends the round, and a lock is final. The real size grows out of your guess, and the card says how far off you were.","Travar encerra a rodada, e é definitivo. O tamanho real cresce a partir do seu palpite, e o cartão diz o quanto você errou.","Fijar termina la ronda, y es definitivo. El tamaño real crece desde tu respuesta, y la tarjeta dice cuánto te desviaste."
+HTP_HB_GRADE,Closer scores more,Mais perto vale mais,Más cerca vale más
+HTP_HB_GRADE_BODY,Each round is worth 100 points. Within 6% keeps them all; twice too big or half too small keeps 45; five times off keeps none.,Cada rodada vale 100 pontos. Dentro de 6% você leva todos; o dobro ou a metade vale 45; cinco vezes fora não vale nada.,Cada ronda vale 100 puntos. Dentro del 6% te los llevas todos; el doble o la mitad vale 45; cinco veces de diferencia no vale nada.
+HTP_HB_TAPE,The tape,A trena,La cinta
+HTP_HB_TAPE_BODY,"On Easy, a tape under the white shape reads its size as you drag. Trust your eye first, then check it against the tape.","No Fácil, uma trena sob a forma branca mostra o tamanho enquanto você arrasta. Confie no olho primeiro e depois confira na trena.","En Fácil, una cinta bajo la forma blanca marca su tamaño mientras arrastras. Confía primero en tu ojo y luego compáralo con la cinta."
+HTP_HB_LADDER,The Ladder,A Escada,La Escalera
+HTP_HB_LADDER_BODY,"Each thing you size becomes the next ruler, at the size you gave it. So a wrong rung bends every one after it.","Cada coisa que você mede vira a próxima régua, no tamanho que você deu. Então um degrau errado entorta todos os seguintes.","Cada cosa que mides es la siguiente regla, al tamaño que le diste. Así que un peldaño mal tuerce todos los siguientes."
+HTP_HB_HEARTS,Mind your hearts,Cuide dos corações,Cuida tus corazones
+HTP_HB_HEARTS_BODY,"A lock more than double off costs a heart, and that rung is set straight before the next. You have %d hearts.","Travar com mais do que o dobro de erro custa um coração, e esse degrau é corrigido antes do próximo. Você tem %d corações.","Fijar con más del doble de error cuesta un corazón, y ese peldaño se corrige antes del siguiente. Tienes %d corazones."
+HTP_HB_HINT,Not sure? Ask the bulb,Na dúvida? Peça à lâmpada,¿Con dudas? Pide a la bombilla
+HTP_HB_HINT_BODY_ONE,The bulb says whether the real size is bigger or smaller than where you stand. You have one hint.,A lâmpada diz se o tamanho real é maior ou menor do que o seu. Você tem uma dica.,La bombilla dice si el tamaño real es mayor o menor que el tuyo. Tienes una pista.
+HTP_HB_HINT_BODY_N,The bulb says whether the real size is bigger or smaller than where you stand. You have %d hints.,A lâmpada diz se o tamanho real é maior ou menor do que o seu. Você tem %d dicas.,La bombilla dice si el tamaño real es mayor o menor que el tuyo. Tienes %d pistas.
+HTP_HB_SIZE_START_CAP,The white one is the wrong size,A branca está no tamanho errado,La blanca tiene el tamaño equivocado
+HTP_HB_SIZE_CAP,Drag anywhere to size it,Arraste em qualquer lugar para ajustar,Arrastra en cualquier parte para ajustarla
+HTP_HB_SIZE_DONE_CAP,Stop when the two look right together,Pare quando as duas parecerem certas juntas,Para cuando las dos se vean bien juntas
+HTP_HB_LOCK_START_CAP,Size it until it looks about right,Ajuste até parecer mais ou menos certo,Ajusta hasta que se vea más o menos bien
+HTP_HB_LOCK_PRESS_CAP,Then press Lock,Depois toque em Travar,Luego toca Fijar
+HTP_HB_LOCK_CAP,A lock is final,Travar é definitivo,Fijar es definitivo
+HTP_HB_GRADE_START_CAP,"The closer, the more points","Quanto mais perto, mais pontos","Cuanto más cerca, más puntos"
+HTP_HB_GRADE_SPOT_CAP,Spot on: all 100 points,Na mosca: todos os 100 pontos,Clavado: los 100 puntos
+HTP_HB_GRADE_FAIR_CAP,A little over: fewer points,Um pouco a mais: menos pontos,Un poco de más: menos puntos
+HTP_HB_GRADE_OFF_CAP,Far too big: very few points,Grande demais: quase nenhum ponto,Demasiado grande: casi ningún punto
+HTP_HB_TAPE_START_CAP,"On Easy, a tape reads the size","No Fácil, uma trena mostra o tamanho","En Fácil, una cinta marca el tamaño"
+HTP_HB_TAPE_CAP,It changes as you drag,Ela muda enquanto você arrasta,Cambia mientras arrastras
+HTP_HB_LADDER_START_CAP,"On the Ladder, size it and lock","Na Escada, ajuste e trave","En la Escalera, ajusta y fija"
+HTP_HB_LADDER_OVER_CAP,A little too big. Now press Next,Um pouco grande demais. Agora toque em Próxima,Un poco de más. Ahora toca Siguiente
+HTP_HB_LADDER_CAP,"The next ruler, at the size you gave it","A próxima régua, no tamanho que você deu","La siguiente regla, al tamaño que le diste"
+HTP_HB_HEARTS_START_CAP,The Ladder has hearts,A Escada tem corações,La Escalera tiene corazones
+HTP_HB_HEARTS_CAP,More than double off: a heart goes,Mais que o dobro de erro: um coração se vai,Más del doble de error: se va un corazón
+HTP_HB_HINT_START_CAP,Not sure? Press the bulb,Na dúvida? Toque na lâmpada,¿Con dudas? Toca la bombilla
+HTP_HB_HINT_CAP,It says which way to go,Ela diz para que lado ir,Te dice hacia dónde ir
+HTP_HB_HINT_DONE_CAP,"Bigger, then","Maior, então","Más grande, entonces"

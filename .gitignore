@@ -93,3 +93,4 @@ server/.firebase/
 # The glob, because the suite names a new one for every service it starts
 # (firebase-debug.log turned up the first time the functions emulator ran).
 server/*.log
+tools/how_big/.venv/

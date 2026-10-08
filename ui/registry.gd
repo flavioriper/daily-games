@@ -884,6 +884,31 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "HP_LVL_3"},
 		],
 	},
+	{
+		"id": "how_big",
+		"kind": "puzzle",
+		"title": "How Big?",
+		"blurb": "HB_BLURB",
+		"short": "HB_SHORT",
+		"motto": "HB_MOTTO",
+		"footer": "Size · Lock · Reveal",
+		# The stage is the board: the finger sizes the answer where it stands,
+		# so no tray. The actions row stays for its third button, which here
+		# reads Lock and then Next -- a lock is the one move, and it is final.
+		"script": "res://puzzles/how_big2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (how_big_state.gd's ROUNDS and SPREAD)
+		# is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "HB_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HB_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HB_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HB_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

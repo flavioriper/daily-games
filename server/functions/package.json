@@ -7,7 +7,7 @@
     "node": "22"
   },
   "scripts": {
-    "build": "cp ../../content/how_big.json src/how_big.json && tsc",
+    "build": "tsc",
     "watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only auth,firestore,functions",
     "deploy": "firebase deploy --only functions"
