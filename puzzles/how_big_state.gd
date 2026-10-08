@@ -42,7 +42,7 @@ const SHARP := 0.9
 const REF_MIN := 72.0
 const DRAG_MIN := 30.0
 ## The ruler keeps to this much of the stage.
-const REF_ROOM := Vector2(0.58, 0.66)
+const REF_ROOM := Vector2(0.58, 0.6)
 ## The answer leaves at least this much room over it, and at most that much,
 ## so where the truth sits in the drag says nothing.
 const HEAD_MIN := 1.9

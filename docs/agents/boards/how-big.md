@@ -92,7 +92,7 @@
   their own. 81-118 draw calls on both drivers. No mascot: the pieces are
   marks, and the win keeps the family's sun and moon.
 - **How a round is framed** (`State.frame`): pixels a metre are chosen so
-  the ruler is at least 72 px and at most 58% of the stage's width and 66%
+  the ruler is at least 72 px and at most 58% of the stage's width and 60%
   of its height (under the result card), and the truth sits between 1/3.4
   and 1/1.9 of the most the answer can be dragged to -- where in that range
   is the day's lot, so the truth's place in the drag says nothing. The
@@ -110,6 +110,24 @@
 - **Harnesses**: `tests/_shot_how_big.gd` (rest, drag, lock, rounds, spot,
   hint, reset, out, restore; `pairs` prints a week of every band headless);
   `tests/_probe_perf.gd -- how_big`; `tests/_win.gd -- how_big`.
+- **The tutorial** (`ui/hud/how_big_tutorial_diagram.gd`, four pages on
+  Medium and Hard, five on Easy and Insane): the board itself on a
+  hand-picked pair (`State.setup_fixed`), played through its own input path
+  under a drawn finger -- sizing, the lock, the three grades, Easy's tape,
+  the Ladder's crossing, a heart going, the bulb. **The page draws the
+  board at 0.58**: its pills, grass and result card are fixed heights, and
+  at full size a 475 px page leaves 140 px of stage. So the text inside a
+  page is about 17 px, smaller than the card's own body text; it reads in
+  the shots and was left. The grades page's third lock is 2.7 times too big
+  and the hearts page's 2.5, since `State.frame` never lets the answer be
+  dragged much past 2.8 times the truth. One `echo` buzz shows in every
+  tutorial run's trace and was not chased (the page's own board is silent).
+- **The win harness's two failures are not this board's.** `tests/_win.gd`
+  read 30/32 on 2026-10-08: Marigold and Drumbeat fail, and fail the same
+  way on the harness as it stood before this board touched it (its
+  `_waiting` flag, which holds the walk while How Big?'s solver awaits).
+- **A size reads "1,6 m" under English on this Mac**: `Locale.number`
+  follows the machine, not the chosen language. Shared, not this board's.
 - **Not seen on a phone.** Shots and probes on this Mac only: the drag was
   never felt under a thumb. The sounds are one take a cue and unheard by
   the user; the pt and es lines (thirty names and thirty facts among them)
