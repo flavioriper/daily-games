@@ -88,7 +88,7 @@ const STEP := 1.0 / 60.0
 ## factor itself.
 const G := 4.8e4
 const DRAG := 0.011
-const LIGHT := 13.0
+const LIGHT := 7.5
 ## The drag at the disc's edge, as a share of the drag at the star: a disc
 ## flows in all the way out, or what is set down at its rim would hang there.
 const THIN := 0.3
@@ -159,13 +159,19 @@ const FLUSH := 6.0
 ## when the star was born (`ring_m`) and no further, so a full ring gets
 ## nothing and an emptied one all of it, anywhere in the ring. What lands
 ## inside a grown star's disc is not in the ring, so a big star is fed in
-## full with no hand. TRICKLE is the most of it, mass a second at one Sun;
-## TRICKLE_UP the power of the star's Suns that most goes by (Bondi's is 2,
-## which runs away); RICH_STEP what a level of Rich adds. No more than
-## DRIFT_MOST puffs are set down in a tick, and what is owed past that waits:
-## none is dropped.
-const TRICKLE := 0.028
-const TRICKLE_UP := 0.25
+## full with no hand. TRICKLE is the most of it, mass a second at one Sun
+## (1.2 Suns a minute: a ring the hand has emptied is full again in a quarter
+## of a minute, so early on the pace is the hand's and not the sky's);
+## TRICKLE_UP the power of the star's Suns that most goes by; RICH_STEP what a
+## level of Rich adds. The power is under zero. What a star draws with no
+## hand grows all the same, from nothing at one and a half Suns to all of it
+## at 5.4, as its disc covers the ring; past that, with the tiles a life
+## buys, a most that did not thin would double the star every few minutes
+## (Bondi's power is 2, which runs away; at 0.25 by this rule a first star
+## ended at 24 minutes and 32 Suns). No more than DRIFT_MOST puffs are set
+## down in a tick, and what is owed past that waits: none is dropped.
+const TRICKLE := 0.2
+const TRICKLE_UP := -0.75
 const RICH_STEP := 0.5
 const DRIFT_MOST := 8
 
