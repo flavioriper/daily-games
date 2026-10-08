@@ -64,6 +64,8 @@ was made because a card came up under a finger. Answer 4 is the guard.
 
 ## 3. What stands, what goes
 
+Amended: see section 22.
+
 **Stands**: the sim's frame and tick, gravity and the disc's drag, light as
 the drag's work, the tide, `_meet` (condensing, sweeping, gulping, merging),
 the chain, Suns, `on()`, the powers and their picks, the perks, stardust,
@@ -83,6 +85,8 @@ the lobe rule reads the ring, not the disc) and the Wind power (section 7:
 a giant's rim goes with the pour; `tick`'s `bind` on `star_r()` stays.
 
 ## 4. The ring (`arcade/nightlight_sim.gd`)
+
+Amended: see section 22.
 
 A star is born with a ring of gas on near-circles outside its disc, all
 turning the way the disc turns.
@@ -126,6 +130,8 @@ turning the way the disc turns.
   placed by the old rule.
 
 ## 5. The press
+
+Amended: see section 22.
 
 **The sim.** `brake(at: Vector2, r: float) -> int`: every body within `r`
 of `at` (gas and solids alike, in the sim's pixels) has its velocity
@@ -190,6 +196,8 @@ field. `seen_r()` becomes `star_r() * zoom()`.
   scale are unchanged. `gone` (`FAR / zoom()`) is 3,780 px at the start.
 
 ## 7. Self-feeding
+
+Amended: see section 22.
 
 - **The disc grows and the ring does not.** With no power the disc covers
   15% of the ring's area at 2 Suns, 44% at 3, 92% at 5 and all of it from
@@ -258,6 +266,8 @@ move with it.
 
 ## 8. Worlds pull
 
+Amended: see section 22.
+
 A solid of `PLANET_M` or more (the kinds PLANET and GIANT) pulls what is
 near it. The `WORLDS` 8 heaviest do.
 
@@ -286,6 +296,8 @@ near it. The `WORLDS` 8 heaviest do.
 
 ## 9. What a thing pays
 
+Amended: see section 22.
+
 Light is the reward; mass stays mass (a planet feeds the star what it
 weighs).
 
@@ -309,6 +321,8 @@ weighs).
 
 ## 10. The frost line and the worlds' cap
 
+Amended: see section 22.
+
 - `frost` is set at birth to the ring's middle (`(ring.x + ring.y) / 2`,
   653 px at one Sun) and `frost_r()` is `frost * (1 + GIANT * swell)`: the
   inner ring makes rock, the outer ring makes comets and giants, for the
@@ -318,6 +332,8 @@ weighs).
 - `SOLIDS` 24 becomes 40: what the gas may make by itself.
 
 ## 11. The shop, the perk, the words of the powers
+
+Amended: see section 22.
 
 The hand's tiles (`Sim.TILES`, `TILE`, `lv`), bought with light:
 
@@ -334,6 +350,8 @@ against the ring and reworded only if they now say something false.
 
 ## 12. The readout
 
+Amended: see section 22.
+
 `Sim.system()` returns the counts of PLANET, GIANT, COMET and ROCK.
 
 - **The screen**: one quiet line on the left of the field's top, under the
@@ -347,12 +365,16 @@ against the ring and reworded only if they now say something false.
 
 ## 13. The card guard
 
+Amended: see section 22.
+
 - `_offer` waits until no finger is down and `OFFER_CALM` 0.6 s have passed
   since the last one lifted.
 - The pick card reads no press for `PICK_DEAF` 0.5 s after it shows.
 - Section 5's list keeps the sky deaf under every card.
 
 ## 14. The file
+
+Amended: see section 22.
 
 `KEPT` 4 adds `ring` (two numbers), `frost`, `dusty`, the tiles' new keys,
 and a body's `rank` and `paid` as its eleventh and twelfth columns.
@@ -372,6 +394,8 @@ Older files load as they do now.
 
 ## 15. The tutorial and the words
 
+Amended: see section 22.
+
 - **GAS page** (`ui/hud/nightlight_tutorial_diagram.gd`): the page's own
   ring is laid at the disc's rim so the lesson fits its loop; a drawn
   finger presses it twice and the gas winds in. `TUT_NL_GAS` "Slow the gas",
@@ -388,12 +412,16 @@ Older files load as they do now.
 
 ## 16. Sound, haptics, analytics
 
+Amended: see section 22.
+
 No new file. `pour` is the press (section 5). `docs/agents/haptics.md` and
 `docs/agents/analytics.md` are read before the screen is touched; an event
 that counted pours counts presses that braked something. Nothing new is
 tracked.
 
 ## 17. Checks and measurements
+
+Amended: see section 22.
 
 **The probe** (`tests/_probe_nightlight.gd`; it keeps its checks, as every
 pass has). New: a ring is laid between `ring.x` and `ring.y`, all turning
@@ -437,6 +465,8 @@ Mac's debug build (608 us today with 300 and 12); if it is over, `WORLDS`
 comes down before `MOST` does.
 
 ## 18. The pace to tune toward
+
+Amended: see section 22.
 
 Every number in sections 4 to 11 is a starting value. The bot tunes
 `RING_M`, `TRICKLE`, `TRICKLE_UP`, `BRAKE`, the `PAY_*` steps, `LIGHT` and
@@ -482,3 +512,259 @@ click, the flush, and then gas that sinks 5 px in 5 s, enters the disc at
 fast"), and a pour took longer to pay, but a pour was not aimed. If the
 press feels dead, the first lever is the ring nearer the disc (`RING_IN`,
 `RING_OUT`), then `BRAKE`; `G` is not touched.
+
+## 22. As built
+
+2026-10-08. Sections 1 to 21 are the design as it was written on 2026-10-07,
+with 7a added while the sim was being built. This section lists every place
+the game as built departs from them, each with its reason and the number it
+ended on; where it and an earlier section differ, this one is the game. A
+section it overrides says so under its heading. Built by six tasks on
+`feat/nightlight-ring` (base `1415a7ff`). The notes for whoever touches the
+game next are `docs/agents/arcade.md`, "A ninth time", which names the
+command or the log behind every figure here. Section 7a is left as it was
+written; where its numbers moved again, the paragraphs below say so.
+
+**What stands, what goes (section 3).** Three things section 3 said would
+stand were changed: gravity gained a term (a relic's pull at the star's own
+place is taken off every body, 7a), the Furnace power pays by another rule
+(below), and a comet's tail is no longer drawn by the frost line (below).
+`_lay_gas` lays only the six falling puffs of a ring. `Sim.DUSTY` is left
+in the sim and only the probe reads it.
+
+**The ring (sections 4 and 7a).**
+
+- `RING_M` is 3.0, 0.3 Suns in `RING` 180 puffs (7a's reason: orbits shrink
+  as the star grows, so a heavy ring all comes down by itself).
+- `RING_MOST` 0.3 is new: no ring weighs more than 0.3 of its newborn, and
+  a later ring is no heavier than a first one. Section 4 laid `RING_M * (1 +
+  RICHER * novas)`; at two supernovas that was 0.6 Suns round a one-Sun
+  star and 95 to 97% of it came down by itself. The probe now reads 33% of
+  a first ring brought down by a star that grows 15%, and 33%, 21% and 34%
+  after one, two and four supernovas. `RICHER` is in what drifts in
+  (`trickle_rate()`), not in the ring's weight. An Ember newborn of two
+  Suns gets the same 0.3 Suns, 0.15 of itself.
+- `ring_m` is new state: what the ring weighed at birth, which the far sky
+  makes it up to. It is in the file.
+- Dust is a plain share (7a), and the pace task moved 7a's numbers once
+  more: `FIRST_DUST` 0.004 (7a: 0.005), `ASH_DUST` 0.01, `METAL` 0.07
+  (0.25), `ASH_MOST` 0.03 (0.06), `IRONY` 0.008 (0.016). At `METAL` 0.25 a
+  supernova's gas was 0.032 dust and a third star had up to fifteen worlds
+  at once in its first ten minutes. The rings the bot's five first
+  supernovas left are 0.017 to 0.018 dust, fully iron-dark (that is from
+  twice `IRONY`); the cap is reached only by a star with more than 0.29 of
+  itself in silicon, iron and rock, which the probe builds by hand.
+- `LOBE` is 2.0 (7a). By `end()`'s rule a dwarf's birth is 2,800 to 2,940
+  px off (a dwarf of 0.6 to 0.75 Suns) and a neutron star's 3,440; the
+  camera's `fit` for both is under `VIEW_LEAST` 0.3 and is held there (see
+  the camera, below).
+- "Left alone at one Sun the rest never comes down" holds for an untouched
+  star's first hundred minutes and not for its life (see "An untouched
+  star", below).
+- A `KEPT` 2 file is given a ring too (section 14 said older files load as
+  they do now): such a star would have opened with nothing to press.
+
+**The press (section 5).** The sim's `brake`, `press_r()` and `flow_gap()`
+are as written, with the numbers as written (`BRAKE` 0.2, `PRESS_R` 95,
+`REACH_STEP` 0.25, `FLOW` 0.6, `FLOW_STEP` 0.88, `FLOW_LEAST` 0.15, `FLUSH`
+6).
+
+- **What a braked puff pays was underestimated.** From the ring's middle,
+  under the finger's middle: once, in the disc at 32 s and eaten at 112 s
+  for 0.92 of a perfect spiral's light (section 5 said 113 s and 0.61);
+  twice, 68 s and 0.57 (0.38); three times, 31 s and 0.12 (0.08). The order
+  stands: a gentle brake pays most, a long hold feeds fastest. Three
+  quarters of the way to a press's edge (`f` 0.95) the nearest point is
+  537 px and the gas stays up.
+- **The screen** is as written, and besides: the sky knows every finger on
+  it whether or not its press was read (`_touching`), so a thumb resting
+  through an end still holds a card back; a touch and a mouse press within
+  `TWICE_MS` 60 ms are one press; the press's light is laid whether or not
+  anything was caught, and only the click and the tap wait for a catch.
+- **The sky.** The press's light is `DOWN_A` 0.6 at its brightest and
+  `DOWN_WIDE` 1.15 of the press's reach (the plan's 0.35 and 1.0 were hard
+  to find on a still). Braked gas is drawn toward the
+  disc's warm colour by `sqrt(sink)` and 0.3 brighter (`FLUSH_A`). A puff's
+  two extra lights are `HAZE_WIDE` 4.0 times as wide as its own, `HAZE_A`
+  0.65 of its light and up to `HAZE_FAR` 2.2 of `gas_r()` off (section 5
+  put them inside `gas_r()`, where they bridged nothing between puffs 50
+  px apart), and `GAS_A` is 0.26.
+- **The gas is on a layer of its own that covers as well as adds**
+  (`Gas`, between `Light` and `Warm`, premultiplied alpha, `GAS_BODY` 0.75
+  of what is under each light covered). The spec left the gas where it
+  was, on a layer that only adds; with lights wide enough to make a cloud,
+  pure add burnt to a white ball wherever a finger held. It is still one
+  MultiMesh and one draw. A relic's nebula and an end's shells are in the
+  same batch and cover nothing. Its cost was measured on this Mac only:
+  1.9 to 2.6 ms a frame. `GAS_MOST` is 2,000, as written.
+- **A comet's tail is not in this spec and had to move**: it was drawn
+  inside the frost line, which section 10 put at the ring's middle, so
+  every icy body in the inner ring wore one. A tail is drawn inside
+  `TAIL_R` 2.2 star radii and outside the Roche radius.
+
+**The camera (sections 4 and 6).** `zoom()` and `FRAME` 500 are as written:
+0.635 at one Sun, the star 95 px, the ring 328 to 500 px from it on a
+1,000 px field. `VIEW_LEAST` stays 0.3. With `LOBE` 2.0 the dead star and
+the birthplace are both in frame from the end of the pull back and through
+the pan in every run, 655 px apart for a neutron star's birth and 532 to
+560 for a dwarf's (471 to 484 for an Ember newborn, whose ring is wider);
+half way through the pull back the birthplace is still outside the field
+for every dwarf, and for the neutron star on one run of four. In the
+eighth pass's game it was in frame from the first reading.
+
+**The trickle (sections 7 and 7a).**
+
+- **It is fed by need.** `_trickle()` adds `trickle_rate() * need() * STEP`
+  and `need()` is `1 - gas outside the disc / ring_m`, held to 0 and 1: a
+  full ring gets nothing, an emptied one all of it, and gas that has
+  landed inside a grown star's disc does not count. Section 7's steady
+  trickle piled up outside an idle star (4.2 Suns in 30 minutes on its
+  first numbers) and, once tuned, came down at once (1.15 to 4.8 Suns in
+  two minutes, at minute 13 to 15).
+- `TRICKLE` is 0.2 (1.2 Suns a minute at one Sun at the most; section 7:
+  0.017) and `TRICKLE_UP` is -0.75 (section 7: 1.0). With the ring refilled
+  in a quarter of a minute the early pace is the hand's; with the power at
+  0 a first star ended at 18 minutes and 37 Suns, because past 5.4 Suns
+  the disc covers the ring, the need is always 1 and the Rich tile
+  multiplies the rest. The most the far sky gives now thins as the star
+  grows: 0.42 Suns a minute at 4 Suns, 0.25 at 8, 0.15 at 16. What a star
+  takes with no hand still rises with its mass up to 5.4 Suns. **This
+  turns the direction section 2 kept from Bondi upside down**, and it is
+  one number.
+- New gas lands anywhere in the ring, evenly by area (section 7: between
+  0.9 and 1.0 of `ring.y`), on a circle. `DRIFT_MOST` 8 puffs a tick at
+  most, and what is owed past that waits. At `MOST` it goes into the last
+  puff in the list, which is not always one in the outer ring. A new puff
+  comes up from a fifth of its light over 0.4 s, the sky's old rule, not
+  over 2 s.
+- `RICHER` 0.5 a supernova multiplies `trickle_rate()`, with `RICH_STEP`
+  and `HAND` as written. On a ring that is full none of the three adds
+  anything.
+- `WIND` is 0.0003, as written.
+
+**An untouched star (section 7's last bullet).** It does not dim and fade.
+It eats the falling few and sits at 1.01 to 1.05 Suns for a hundred
+minutes with its ring full, and nothing piles up. At one Sun the helium
+flash (0.45 Suns of helium made, 107 minutes of burning) comes before the
+hydrogen is out (167 minutes); the giant's disc, 990 px, is past the whole
+ring, 788 px, so the ring falls in and the far sky then feeds the star in
+full: helium lit at 103.1 minutes, 1.15 Suns a minute later and 4.82 the
+minute after (the one jump of the run), a supernova at 121.9 minutes and
+16.4 Suns. That is the chain's own arithmetic and was not forced.
+
+**Worlds and relics (section 8, as 7a amended it).** `WORLDS` 8,
+`PULL_REACH` 6, `HILL_HOLD` 0.5 and `MOON_DRAG` 0.05 are as written. A
+world pulls solids out to six Hill radii; gas feels only a world that
+`holds` it (`CORE_M` or more and under `GIANT_MOST`), inside one Hill
+radius, and is eased toward it inside half of one. Each relic's pull at the
+star's own place is taken off every body. The worlds have their own packed
+arrays, not the relics' table. A tick with 300 bodies and 12 relics is 900
+to 952 us on this Mac's debug build, under the 1.2 ms line.
+
+**What a thing pays (section 9).**
+
+- The steps are 4, 10 and 25, as written. They were 2, 3 and 6 for one
+  round of the pace task, where solids paid 23 to 44 light of a first
+  life's 1,400 to 3,600, and went back.
+- `LIGHT` is 7.5 (it was 6.0 before this pass), so a first star's first
+  ten minutes earn what the last build's did.
+- **The Furnace is changed, though section 9 said it was not.** It paid
+  200 light a mass at every tear, and a torn world's pieces are torn
+  again: with solids paying in full it was half a later life's light. It
+  pays `FURNACE_SHARE` 0.5 a level of the body's own worth (`m *
+  spiral_light() * pay(rank)`), over and above that worth, once: the
+  pieces carry `Body.torn` and pay nothing more. A world of 0.02 or 0.04
+  pays 0.50 of its worth at one level and 1.00 at two, at 1 and at 4 Suns.
+- An `eat` event carries `e`, all the light that body paid. A solid's one
+  `shed` is drawn as up to `SHED_ORBS` 12 motes; all of it is counted.
+
+**Grains and the frost line (section 10).** The frost line and `SOLIDS` 40
+are as written. `STICK` 0.0006 is new: two cooled dusty puffs within reach
+make a grain only that share of the times `_meet` looks at them. A ring is
+laid cool, and without it 27 to 31 grains formed in its first second. A
+first ring left alone now has 4 solids at 10 s, 8 at a minute, 29 at
+three, 38 at ten.
+
+**The shop (section 11).** The four tiles and their prices are as written.
+Rich and the Hand perk multiply the most the far sky gives; they do
+nothing while the ring is full.
+
+**The readout (section 12).** `system()` counts only bodies on closed
+paths (`v^2 * r < 2 GM`): a planetoid passing through flickered into the
+count. The file's `worlds` follows. The line sits at the sky's top left,
+or under the powers' discs when there are any, and gives way to a note
+said across it.
+
+**The guard (section 13).** `OFFER_CALM` 0.6 is as written, and `PICK_WAIT`
+0.6 starts again after it, so a card comes up 1.2 s after the last finger
+lifts. **The deaf half second is a shield and is judged on the landing**:
+`_shield`, an empty Control in front of everything, is STOP for `PICK_DEAF`
+0.5 s after a card comes up by itself, and a press that lands on it stays
+its own however late it lifts. As written (a time test in `_on_pick`) a
+finger that landed on the fresh card and lifted after the half second
+still took a power. **The perks card after an end is guarded the same
+way** and waits for a calm sky (`_perks_due`); it was the other card that
+raises itself. Cost: the top bar is deaf for that half second too.
+
+**The file (section 14).** `KEPT` 4 also holds `ring_m`, `worlds`, and a
+body's `torn` as a thirteenth column (a row without it has not been torn).
+A bad `ring` falls back to the newborn's; `ring_m` is held between half
+and one and a half times the newborn's own. A `KEPT` 2 or 3 star is given
+a ring of `RING_M` at `ASH_DUST`, fewer puffs if the sky has no room
+(never past `FULL`).
+
+**The tutorial (section 15).** No finger is drawn: the GAS page shows its
+two presses as the game shows the player's, by their light. A page has no
+ring of the game's own (`ring` is none), so it keeps its old scale and
+frost line, nothing drifts in, and each puff is one light (`PAGE_WIDE` 1.8,
+`PAGE_A` 1.5). `TALL` for GAS is 1,300; its loop is `GAS_LOOP` 30 s from
+`GAS_SEED` 7.
+
+**Sound, haptics, analytics (section 16).** No event counted pours, so no
+event's meaning moved. `nightlight_upgrade`'s tile is now reach, flow,
+rich or pure.
+
+**Checks and measurements (section 17).** The probe is 204 checks. The two
+"ring beside a relic" checks compare against a twin sky with the relic
+removed (at least 0.95 of it, and a floor of 0.8 of the start), not
+against nine in ten of the start, which charged the relic for puffs the
+ring's own cores gulped. "Left alone the ring does not come down" asserts
+that nothing that started in the ring is inside the disc at 300 s and that
+the star ate no more than the falling few. The untouched-star check that
+asked for a fade is two checks on why it does not. The bot's hands are
+`gas`, impatient, and `worlds`, patient (gas a quarter as often, and every
+planet or giant on a closed path sent once). The harness's ring-at-birth
+beat is `2b_ring`, in its `fresh` mode only; "the ring half eaten" could
+not be shot (a ring is refilled by need) and that beat is
+`6e_disc_over_ring`; "worlds and their swirls" shows the worlds and no
+swirl. Draw calls: 89 to 91 on a new star, 135 to 139 heavy, 202 to 206
+with the shop, against 855.
+
+**The pace (section 18), a steady impatient hand, five seeds.**
+
+| Target | Result |
+|---|---|
+| 1 to 2 Suns in about five minutes | met: 5.6, 5.3, 5.4, 5.0, 5.4 min |
+| a first end at 25 to 30 minutes | met by the mean (28.5): 26.2, 29.0, 31.7, 25.6, 30.2 min, at 15.0 to 17.8 Suns, always a neutron star (the last build: 19 to 21 Suns, one black hole in three) |
+| a first star's light within 15% of the last build's | met by the mean on the first ten minutes: 11.8 a minute against 12.7 (by seed 10.3, 14.4, 11.7, 11.5, 11.0) |
+| a third star earns about twice a first | dropped as a target when the pay went back to 4, 10, 25; it earns about twice all the same (55.9 and 60.5 light a minute for the two hands against 29.5 and 27.7, and six times as much from solids: 11.8 and 11.5 against 2.1 and 1.8) |
+| a gas-only hand earns under half of one that waits for worlds | **not met, and the other way round**: on a third star the patient hand earns 8% less light in all (55.9 against 60.5 a minute) |
+
+Effort matters less than section 1's answer 3 wanted: a finger down 40% of
+the time reaches 2 Suns at 5.9, 5.5 and 6.1 minutes against 5.6, 5.3 and
+5.4; at 15% it is 7.4, 7.2 and 7.6. By four to five Suns the disc is over
+the ring and takes every world whatever the hand did.
+
+**Mine, not asked for (section 19), added by the build.** `RING_MOST`; the
+trickle by need and its negative power; `STICK`; `DRIFT_MOST`; the Furnace
+as a share paid once; counting only closed paths; the shield and the perks
+card's guard; the covering gas layer and every drawing constant above;
+`TAIL_R`; the twin-sky checks; a ring for a `KEPT` 2 star; the tide in the
+star's frame; `LOBE` 2.0; the bot's two hands.
+
+**Not done (section 20), added by the build.** The patient hand is not
+rewarded. The late game slows where the user said "making it faster". An
+untouched star ends as a supernova after two hours. Worlds are hard to see
+under the cloud and no swirl is visible round a core. The cloud is cut by
+the field's sides on a new star. The gas layer's cost is unmeasured on a
+phone. Nobody has played any of it.
