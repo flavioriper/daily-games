@@ -3,7 +3,7 @@ extends SceneTree
 ## Plays Peapod's sim headless with a bot and prints how far each run went.
 ## Run after touching arcade/peapod_sim.gd.
 ##   godot --headless --script tests/_probe_peapod.gd -- [seed] [skill 0-2] [games] [shopper 0-7] [keeper 0-1] [cart 0-5] [until]
-##   godot --headless --script tests/_probe_peapod.gd -- far [wave] [seed]
+##   godot --headless --script tests/_probe_peapod.gd -- far [wave] [seed] [cart]
 ## `until` stops a run on that wave (0: when it ends, an hour of play at
 ## most). `far` plays the good player on every cart to `wave` (500) and says
 ## when each passed 100, 250 and 500: every cart must get there.
@@ -74,7 +74,8 @@ func _volley(sim: RefCounted, special: int) -> float:
 		Sim.Cart.PUMPKIN:
 			# the blast takes in about its area's worth of crates
 			var reach: float = Sim.BLAST_R + Sim.BLAST_STEP * special
-			return w * (1.0 + Sim.BLAST_SHARE * maxf(0.0, PI * reach * reach / (Sim.CELL_W * Sim.CELL_H) - 1.0) * 0.6)
+			# no more of them than a wall holds
+			return w * (1.0 + (Sim.BLAST_SHARE + Sim.BLAST_SHARE_STEP * special) * clampf(PI * reach * reach / (Sim.CELL_W * Sim.CELL_H) - 1.0, 0.0, 40.0) * 0.6)
 		Sim.Cart.HOSE:
 			return w * (1.0 + (Sim.JET_CAP + Sim.JET_CAP_STEP * special - 1.0) * 0.4 * (1.0 + Sim.JET_QUICK * special) / (1.0 + Sim.JET_QUICK * special * 0.5))
 		Sim.Cart.DANDELION:
@@ -158,9 +159,11 @@ func _use(sim: RefCounted, keeper: int) -> void:
 
 ## The good player (quick, the investor, gifts kept) on every cart, as far as
 ## `far`: the wave each got to and when it passed 100, 250 and 500.
-func _far(far: int, seed_v: int) -> void:
+func _far(far: int, seed_v: int, only := -1) -> void:
 	var rng := RandomNumberGenerator.new()
 	for cart in Sim.Cart.size():
+		if only >= 0 and cart != only:
+			continue
 		rng.seed = seed_v
 		_on_energy = 0
 		_on_gun = 0
@@ -183,12 +186,24 @@ func _far(far: int, seed_v: int) -> void:
 		for w in [100, 250, 500]:
 			marks += "  %d: %s" % [w, ("%d min" % at[w]) if at.has(w) else "no"]
 		print("cart %d (%s): wave %d%s  shots %d  %s" % [cart, Sim.Cart.keys()[cart], sim.wave, marks, most, "ok" if sim.wave >= far else "SHORT"])
+		if sim.wave < far:
+			_say_end(sim)
 	quit()
+
+## What a run that fell short ended on: the lock's paint, and the lowest
+## rows as kind:number (a `!` on what the lock keeps).
+func _say_end(sim: RefCounted) -> void:
+	print("  ended on a %s, lock %d, gun dmg %d rate %d own %d" % ["wall" if sim.wave_kind == Sim.Wave.WALL else "millipede", sim.ward, sim.power, sim.rate_lv, sim.special])
+	for r in mini(4, sim.rows.size()):
+		var line := "  row %d:" % r
+		for cell in sim.rows[r]:
+			line += "  --" if cell == null else "  %s:%d%s" % [Sim.Kind.keys()[cell.kind], Sim.shown(cell), "!" if sim.warded(cell) else ""]
+		print(line)
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0 and args[0] == "far":
-		_far(int(args[1]) if args.size() > 1 else 500, int(args[2]) if args.size() > 2 else 7)
+		_far(int(args[1]) if args.size() > 1 else 500, int(args[2]) if args.size() > 2 else 7, int(args[3]) if args.size() > 3 else -1)
 		return
 	var seed_v := int(args[0]) if args.size() > 0 else 7
 	var skill := int(args[1]) if args.size() > 1 else 1

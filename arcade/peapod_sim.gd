@@ -183,11 +183,18 @@ const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 1.5]
 ## lands as (the same each hop: a hop more is that much more, with no end).
 const HOP_REACH := 120.0
 const HOP_KEEP := 1.0
+## A conker hops HOP_MOST times at most, each hop standing for as many as it
+## takes past that (it always hops its hops now, so a hundred hops were a
+## hundred landings a shot).
+const HOP_MOST := 12
 ## The pumpkin: how far its blast reaches and what a card adds, and the
 ## share of the shell everything in it takes.
 const BLAST_R := 46.0
 const BLAST_STEP := 14.0
 const BLAST_SHARE := 0.6
+## What a card adds to that share: a blast is soon as wide as the garden, and
+## a card that only widened it would then buy nothing.
+const BLAST_SHARE_STEP := 0.015
 ## The hose: what each drop more on the same thing adds, how much a card
 ## quickens that, the most it comes to and what a card adds to that.
 const JET_STEP := 0.08
@@ -206,7 +213,7 @@ const SEED_VX := 105.0
 ## hard as the first. TRAIL_MOST of them are in the garden at most, each
 ## standing for as many as it takes past that.
 const TRAIL_LAG := 0.35
-const TRAIL_MOST := 6
+const TRAIL_MOST := 4
 ## The crit: with none bought no pea is lucky. From the first level a pea
 ## has CRIT_CHANCE of landing CRIT_MULT times as hard, and every level after
 ## adds CRIT_MULT_STEP to that; the chance itself only goes up CRIT_CHANCE_STEP
@@ -325,9 +332,10 @@ const TIERS := 8
 ## specific color invincible, the buff ends when they are destroyed"). A wall
 ## holds one PLUS or TIMES from wave BUFF_WAVE and two from BUFF_TWO, a
 ## millipede one every BUFF_EVERY plates. PLUS adds PLUS_SHARE of a crate of
-## its row to each crate round it (the eight in a wall, BUFF_REACH plates
-## either side); TIMES makes each TIMES_BY times its number. Both go with
-## the crate that gave them.
+## its row to each crate round it (beside it and over it in a wall,
+## BUFF_REACH plates either side); TIMES makes each TIMES_BY times its
+## number, two of them no more than one. Both go with the crate that gave
+## them.
 const BUFF_WAVE := 6
 const BUFF_TWO := 16
 const BUFF_EVERY := 11
@@ -346,7 +354,7 @@ const WARD_ROW := 2
 const MEND_WAVE := 11
 const MEND_CHANCE := 0.5
 const MEND_TICK := 1.0
-const MEND_SHARE := 0.06
+const MEND_SHARE := 0.04
 ## What every pod more than one running together adds to a crate's energy.
 const PAIR_PAY := 0.5
 ## Kills this close together are one streak.
@@ -485,6 +493,9 @@ func hops() -> int:
 
 func blast_r() -> float:
 	return BLAST_R + BLAST_STEP * special
+
+func blast_share() -> float:
+	return BLAST_SHARE + BLAST_SHARE_STEP * special
 
 func jet_cap() -> float:
 	return JET_CAP + JET_CAP_STEP * special
@@ -836,7 +847,8 @@ func _shoot(from: float, vx: float, look: int, w: float, pierce: bool, burst: bo
 	shots.append({"x": clampf(from, 3.0, W - 3.0), "y": CART_Y - 34.0, "vx": vx, "vy": -float(CART_SPEED_UP[cart]), "k": look,
 		"left": PIERCES - 1 if pierce else 0, "last": -1, "burst": burst, "el": element, "w": w, "main": main,
 		"n": many, "sz": CART_SIZE[cart] * minf(1.0 + 0.12 * log(many) / log(2.0), FAT_MOST),
-		"hops": hops() if cart == Cart.CONKER else 0, "to": -1, "seen": [], "w0": w,
+		"hops": mini(hops(), HOP_MOST) if cart == Cart.CONKER else 0, "to": -1, "seen": [], "w0": w, "n0": many,
+		"fold": maxf(1.0, hops() / float(HOP_MOST)),
 		"blast": blast_r() if cart == Cart.PUMPKIN else 0.0})
 
 func _step_shots() -> void:
@@ -947,7 +959,8 @@ func _spent(p: Dictionary, id: int) -> bool:
 	if int(p.hops) <= 0:
 		return true
 	p.hops = int(p.hops) - 1
-	p.w = float(p.w0) * HOP_KEEP
+	p.w = float(p.w0) * HOP_KEEP * float(p.fold)
+	p.n = float(p.n0) * float(p.fold)
 	p.to = _next_hop(p, id)
 	return int(p.to) < 0
 
@@ -1098,7 +1111,7 @@ func _land_cell(p: Dictionary, r: int, c: int, at: Vector2) -> void:
 	_stands = float(p.n)
 	_hurt_cell(r, c, dmg, at, Hit.PEA, lucky, shell)
 	if shell:
-		_blast_wall(r, c, float(p.blast), _whole(exact * BLAST_SHARE))
+		_blast_wall(r, c, float(p.blast), _whole(exact * blast_share()))
 	if bool(p.burst) and half > 0:
 		for d: Vector2i in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0)]:
 			var rr: int = r + d.x
@@ -1128,7 +1141,7 @@ func _land_seg(p: Dictionary, i: int, at: Vector2) -> void:
 	_stands = float(p.n)
 	_hurt_seg(i, dmg, at, Hit.PEA, lucky, shell)
 	if shell:
-		_blast_milli(where, id, float(p.blast), _whole(exact * BLAST_SHARE))
+		_blast_milli(where, id, float(p.blast), _whole(exact * blast_share()))
 	for other: int in beside:
 		var j := _seg_index(other)
 		if j >= 0 and float(segs[j].dying) < 0.0 and float(segs[j].s) >= 0.0:
@@ -1456,10 +1469,13 @@ func _lost(cell: Dictionary, pos: Vector2) -> void:
 			_aura()
 			events.append({"type": "buff_off", "pos": pos, "kind": cell.kind})
 
-## The crates round (`r`, `c`) that can be looked after.
+## The crates the one at (`r`, `c`) looks after: those beside it and in the
+## row over it, never the row under. What stands between the gun and a
+## keeper is never the stronger for it, so a keeper can always be gone for
+## first (a TIMES over a heavy crate was a wall a slow cart could not dent).
 func _round(r: int, c: int) -> Array:
 	var out: Array = []
-	for dr in [-1, 0, 1]:
+	for dr in [0, 1]:
 		for dc in [-1, 0, 1]:
 			var rr: int = r + dr
 			var cc: int = c + dc
@@ -1503,7 +1519,7 @@ func _aura(fresh := false) -> void:
 	for g: Array in givers:
 		for cell: Dictionary in g[1]:
 			if g[0].kind == Kind.TIMES:
-				by[cell.id] = int(by.get(cell.id, 1)) * TIMES_BY
+				by[cell.id] = TIMES_BY
 			else:
 				fed[cell.id] = true
 				if fresh:
