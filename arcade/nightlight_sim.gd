@@ -165,8 +165,11 @@ const FLUSH := 6.0
 ## when the star was born (`ring_m`) and no further, so a full ring gets
 ## nothing and an emptied one all of it, anywhere in the ring. What lands
 ## inside a grown star's disc is not in the ring, so a big star is fed in
-## full with no hand. The ring's place follows a giant's envelope
-## (`envelope`), so what drifts in round a giant lands outside its mouth.
+## full with no hand. Where the star's mouth has grown to the ring's inner
+## edge or near it (a giant from three and a half Suns, a plain star from
+## 37) the gas is set down just far enough out to clear it, the ring's inner
+## edge at DRIFT_CLEAR of the mouth (`drift_out`), and nowhere else is the
+## ring's place moved.
 ## TRICKLE is the most of it, mass a second at one Sun (1.2 Suns a minute: a
 ## ring the hand has emptied is full again in about a minute, 63% of it at
 ## 15 s, 87% at 30 and 98% at 60, so early on the pace is the hand's and not
@@ -183,6 +186,7 @@ const TRICKLE := 0.2
 const TRICKLE_UP := -0.75
 const RICH_STEP := 0.5
 const DRIFT_MOST := 8
+const DRIFT_CLEAR := 1.1
 
 ## Condensing. A puff has to be up COOL seconds before its dust falls out.
 ## Two that are MEET px apart (as the game starts; it widens with the star)
@@ -694,9 +698,15 @@ func frost_r() -> float:
 	return frost * envelope() if frost > 0.0 else star_r() * 2.2
 
 ## How much wider than itself a giant's envelope makes the star: what the
-## frost line and the place gas drifts in to go out by, with it.
+## frost line goes out by, with it.
 func envelope() -> float:
 	return 1.0 + GIANT * swell
+
+## How far out of its birth place the far sky's gas must land to clear the
+## star's mouth: 1 while the mouth is well inside the ring, as it is for a
+## newborn, a plain star under 37 Suns and a giant under three and a half.
+func drift_out() -> float:
+	return maxf(1.0, star_r() * EAT * DRIFT_CLEAR / ring.x) if ring.x > 0.0 else 1.0
 
 ## How much of a giant the star is for its colour and the sky: a supergiant
 ## is no redder than a giant.
@@ -1122,20 +1132,20 @@ func need() -> float:
 	return clampf(1.0 - _gas_out / ring_m, 0.0, 1.0) if ring_m > 0.0 else 0.0
 
 ## What has drifted in is set down a puff at a time anywhere in the ring, on
-## a circle. The ring is where the star was born with it, out by a giant's
-## envelope: round a giant the gas lands outside its mouth and, from 5.4
-## Suns, inside its disc, where it winds in and pays. As many puffs as are
-## owed, DRIFT_MOST a tick at most, and the rest waits. With the sky full
-## each puff's worth goes into a puff already out in the ring, the next one
-## along `bodies` every time (`_into`), so no puff takes it all; with none
-## out there, into the last puff outside the star's mouth, and with none of
-## those either it waits. (A plain star's mouth reaches the ring's inner edge
-## at 49 Suns, and a giant's the envelope's at the same mass.)
+## a circle. The ring is where the star was born with it, pushed out only as
+## far as the star's mouth requires (`drift_out`): a light giant's gas lands
+## in the plain ring, inside its disc, and a heavy giant's just clear of its
+## mouth, so none is eaten in the tick it lands. As many puffs as are owed,
+## DRIFT_MOST a tick at most, and the rest waits. With the sky full each
+## puff's worth goes into a puff already out in the ring, the next one along
+## `bodies` every time (`_into`), so no puff takes it all; with none out
+## there, into the last puff outside the star's mouth, and with none of
+## those either it waits.
 func _trickle() -> void:
 	if ring.y <= 0.0:
 		return
 	var each := RING_M / RING
-	var out := envelope()
+	var out := drift_out()
 	_owed_gas += trickle_rate() * need() * STEP
 	for k in DRIFT_MOST:
 		if _owed_gas < each:
@@ -1155,21 +1165,22 @@ func _trickle() -> void:
 		b.h = puff_h()
 		b.dust = dusty
 
-## The next puff of gas after `_into` that is out in the ring (`out`: a
-## giant's envelope) and outside the star's mouth, going round `bodies`;
-## with none there the last puff outside the mouth, or null: nothing is fed
-## to a puff the star is about to eat. No number is drawn.
+## The next puff of gas after `_into` that is out where gas is set down
+## now (`out`: `drift_out()`, so past the star's mouth), going round
+## `bodies`; with none there the last puff outside the mouth, or null:
+## nothing is fed to a puff the star is about to eat. No number is drawn.
 func _next_puff(out: float) -> Body:
 	var n := bodies.size()
-	var mouth := star_r() * EAT
-	mouth *= mouth
-	var inner := maxf(ring.x * out * ring.x * out, mouth)
+	var inner := ring.x * out
+	inner *= inner
 	for k in n:
 		var at := (_into + k) % n
 		var b := bodies[at]
 		if b.kind == Kind.GAS and b.pos.length_squared() >= inner:
 			_into = at + 1
 			return b
+	var mouth := star_r() * EAT
+	mouth *= mouth
 	for at in range(n - 1, -1, -1):
 		var b := bodies[at]
 		if b.kind == Kind.GAS and b.pos.length_squared() >= mouth:
@@ -1441,8 +1452,8 @@ func tick() -> void:
 	var gone := FAR / zoom()
 	# a spiral's work down to the star's real surface, a giant's wider one
 	# included: the light a body pays is the share of it the drag has done,
-	# so gas that drifts in round a giant, set down where its envelope has
-	# carried the ring, pays by the same rule as gas round a plain star
+	# so gas that drifts in round a giant, set down clear of its mouth, pays
+	# by the same rule as gas round a plain star
 	var bind := pull / (2.0 * star_r())
 	var gl := glow()
 	var roche := roche_r()
