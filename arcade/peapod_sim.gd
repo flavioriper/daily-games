@@ -93,6 +93,17 @@ extends RefCounted
 ## as the others'. And a big gun is drawn as fewer, fatter shots
 ## (VOLLEY_MOST, PEA_MOST, SEED_MOST): the same weight, a tenth of the shots.
 ##
+## The twelfth pass (2026-10-08, the user's five asks). A conker always hops
+## its hops, back and forth between two crates if that is all there is
+## (`_next_hop`). The twins are a caravan: carts that follow where the first
+## was, one more a card, each as strong (`Cart.TRAIN`, `trail_x`). Four
+## crates look after the crates beside and over them for as long as they
+## stand: PLUS and TIMES on their numbers (`shown`), a lock that keeps one
+## paint from harm (`ward`, `warded`), a mender. The pumpkin's card
+## strengthens its blast as well as widening it. And a seventh cart, the
+## maple, whose seed goes up through its lane and back down. The hose's
+## stream is the screen's (`reach` is what it asks).
+##
 ## The tenth pass (2026-10-06, the user: "crate on fire should explode and
 ## spread fire to near crates, fire damage should increase based on shoot
 ## damage", "different carts other than this default with different

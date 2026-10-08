@@ -1017,6 +1017,134 @@ chalk line ends the run. Its "furthest" is the wave.
     are what "good" means (nothing the hand does with the cart shows in a
     bot); wave 500 being two to four and a half hours; five peas side by
     side as the most drawn; the conker's stronger start.
+- **The twelfth pass (2026-10-08, the user, leaving: "the bounce shoot
+  should always bounce the number of times it meant to bounce ... the only
+  way to not bounce is if there is no crate near", "a new crate that buff
+  other crates around by + and x, and a crate that make a specific color
+  invencible, buff end when they are destroyed, check on web if there is
+  more crate types", "the rose shoot (water) should be a constant flow that
+  start thin and get larger as the flow multiplier effect enters", "instead
+  of having a inversed one, it should have a delayed cart that do what he
+  does after x time, and more upgrades add more carts, keep them with same
+  power of the first cart, following cart follow the last delayed one",
+  "check on web also more different shoots cart we could easily add").**
+  Built unattended; nothing below was seen or played by the user. What the
+  passes above say of a conker's `seen`, of `Cart.TWINS`, `TWIN`,
+  `twin_share`, the mirrored cart, the hose's drops being drawn as drops and
+  six carts is history.
+  - **A conker always hops its hops** (`_next_hop`): the nearest thing it
+    has not landed on, and with none of those in `HOP_REACH` the nearest of
+    any but the one it is on, so two crates are gone back and forth
+    between. Spent only with nothing else in reach. It weighs 1.2 for it
+    (1.5 ran the average bot to 91-155; 1.2 is 49-100 where it was 65-80),
+    and **past `HOP_MOST` 12 hops a hop stands for several** (`fold`, its
+    weight and `n`): at wave 500 it was 237 shots in the air, now 98.
+  - **The hose is one stream** (`_draw_stream`, the screen's; the sim's drops
+    still fly and land as they did). A ribbon from the pod's mouth through
+    every one of the cart's own drops in the air, rounded (`STREAM_CUTS`),
+    so it trails behind a cart that slides, and on up to what the foremost
+    is about to land on (`sim.reach(x, y)`); its head runs up at the drops'
+    speed (`_stream_head`), so it is never a beam. **Its width is `jet()`**:
+    `STREAM_THIN` 2.4 units landing as one, `STREAM_WIDE` 11 at
+    `STREAM_FULL` three times, eased, thin again on whatever it turns to.
+    Glints run up it and a spray stands where it lands; neither under reduce
+    motion. One mesh a frame (about a hundred vertices), the element's
+    colour. The Fan's side drops and a Dart's drop past its first landing
+    are still drops.
+  - **The twins are the caravan** (`Cart.TRAIN`, the same index 5, so a
+    kept pick stands). The cart's `x` is written to a ring every step
+    (`_trail`); cart `k` behind is where the first was `k` x `TRAIL_LAG`
+    0.35 s ago (`trail_x`), so each follows the one ahead as its shadow and
+    all of them close up on a cart that stands still. One behind at first,
+    one more a card (`followers`), **each firing as hard as the first**
+    (`CART_WEIGHT` 0.6 each, so two are 1.2 peas; 48, step 1.5, the pea
+    gun's climb). `TRAIL_MOST` 4 are in the garden, each standing for as
+    many as it takes past that. Drawn as the helper's paler cart, the
+    furthest behind first. "Caravan / Caravana", "One more cart"
+    (`PP_CART_TRAIN*`, `PP_CARD_TRAIN*`).
+  - **Four crates that look after their neighbours** (`Kind.PLUS, TIMES,
+    WARD, MEND`, after `IRON`, so no older kind moved). A PLUS puts
+    `PLUS_SHARE` of a crate of its row on each plain or golden crate it
+    looks after (`cell.plus`, taken off first), a TIMES makes each
+    `TIMES_BY` 2 times its number (`cell.by`, `owed`: two of damage for
+    one), two of them no more than one; both end with the crate
+    (`_lost`, `_aura`). **`Sim.shown(cell)` is the number a crate wears and
+    its paint; `hp` and `max` are still what is really left** (cracks,
+    stings, the mender). The lock (`WARD`, `sim.ward` its paint) lets
+    nothing hurt a plain crate wearing that paint (`warded`): a crate worn
+    down into the paint stops there, and a blow big enough to carry one
+    past it still does. The mender gives each crate it looks after
+    `MEND_SHARE` 4% of what it began as every second.
+    - **A keeper looks after what is beside it and over it, never under**
+      (`_round`): with the eight round it, a TIMES behind a heavy crate was
+      a wall a slow cart could not dent (the pumpkin stopped on wave 161),
+      and there was nothing to choose. Now the keeper is always in front of
+      what it helps, and going for it first is the play.
+    - **The lock sits on row `WARD_ROW` 2 with its column emptied under
+      it**, in a column that held only plain crates, so a shot straight up
+      always reaches it and no gift goes with the shaft. Walls only: a
+      millipede's lower turns would stand in front of it. Its paint is the
+      one most of the plain crates of the lowest rows wear.
+    - From wave 6 a wall holds one PLUS or TIMES and from 16 two; from 8 a
+      lock half the time; from 11 a mender half the time. A millipede holds
+      a PLUS or TIMES every eleventh plate from wave 6, looking after two
+      plates either side.
+    - **Shown**: the PLUS and TIMES letter their own sign ("+150", "x2") in
+      a band of their colour, the mender a heart, the lock a padlock on the
+      paint it keeps (`Art.KEEP`, `_heart`, `_padlock`); what they look
+      after wears a badge at its corner (`Art.badge`) and what the lock
+      keeps a paper band and a small padlock (`Art.kept`): marks and rings,
+      never a shade of the paint (`_draw_keeps`, one more `_cast_draw` a
+      frame on both kinds of wave). A wave with a lock says so under its
+      banner (`PP_WARD_LINE`). A shot on the lock's paint is heard as
+      iron's `clank`; the lock breaking is `catch` low and a bump.
+    - **The bots break the lock first** (`_target`, in the probe and in
+      `_watch_peapod.gd`); without that they shoot a crate that cannot be
+      hurt until the wall lands.
+  - **The pumpkin's card also strengthens its blast** (`blast_share`,
+    `BLAST_SHARE_STEP` 0.015): by sixty cards its blast was 886 units across
+    in a 300-unit garden and a card bought nothing, which is why it was the
+    slowest to wave 500 (260 minutes) and the first to fall short once the
+    keepers came. The card's line still only says how wide.
+  - **The maple, a seventh cart** (`Cart.MAPLE`, `Shot.MAPLE`, opened on
+    wave 20): a winged seed that goes through everything in its lane, turns
+    at the top of the sky and comes back down through it, `PASSES` 2 and
+    one more a card (`turns`, `thru`; `PASS_MOST` 4 flown, the rest weight).
+    Three a second at 0.45 of a pea. The screen whirls it. The carts' card
+    is seven tiles, three rows, each 206 tall (was 250).
+  - **What the web turned up, and what was left.** Blocks in such games:
+    one that heals its neighbours (built, the mender), one whose blast
+    clears a row, a barrier that stops blasts, one that refills itself if
+    it survives a hit, one that moves sideways each turn, one that swallows
+    shots, one that splits in two when broken. Guns: a shotgun (the
+    dandelion already), one that comes back (built, the maple), a saw that
+    stays in the field, a piercing beam and drones as power-ups, a homing
+    shot. Cheapest next: a homing cart (the conker's `_home` already flies
+    a shot at an id) and a crate that splits into two half its number.
+  - **The bots** (seed 7 unless said). `far`: all seven to 500, pea gun 128
+    minutes, conker 145, pumpkin 163, hose 136, dandelion 149, caravan 141,
+    maple 131; 21-165 shots in the air at most (caravan 165, maple 153).
+    Skill 1, the investor, gifts at once, four seeds: pea 47-65, conker
+    49-100, pumpkin 65-86, hose 43-58, dandelion 52-68, caravan 46-65, maple
+    49-73. **`far` takes a fourth argument, one cart, and a run that falls
+    short says what it ended on** (`_say_end`).
+  - Suite 249790/0. `_shot_peapod_carts.gd` (seven carts, the four keepers
+    laid into its wall, the hose with no element so its water is seen)
+    111-159 draw calls, `_shot_peapod.gd` 83-224 with the keepers in its
+    cast. **`_shot_peapod_carts.gd`'s `_restore` writes the file before it
+    touches the screen's script**: a screen that did not parse left this
+    Mac's `arcade.cfg` as the harness's (put back from a copy an earlier
+    session had left in its scratchpad).
+  - **Not done**: a phone; nothing heard (no new sound: the lock is
+    `clank` and `catch`); pt and es are the agent's; the tutorial says
+    nothing of the keepers, the caravan or the maple, and its special page
+    is three crates still; the perf probes and `_probe_arcade_buzz.gd`
+    were not run; the haptics list has only a line. **Unconfirmed by the
+    user**: every number here; that "+ and x" means the crates' numbers and
+    "a specific color" a paint; a keeper not helping what is under it; the
+    lock's shaft; the mender and the maple, which nobody asked for by name;
+    the conker's lighter shot and the pumpkin's stronger blast, which came
+    with the bots and not from the user.
 
 **Tutorials** (2026-10-04, `docs/agents/checkup.md`, the last section): each
 screen has `tutor` (`ui/hud/screen_tutor.gd`) and `tutorial_pages()`, the
