@@ -4679,3 +4679,85 @@ func _buzz_minigolf() -> void:
 		await create_timer(1.2).timeout
 		_buzzed("reset")
 	_moves = _moves_minigolf()
+
+## Horse Pen's are taps: the answer's bales one at a time, then Submit.
+func _moves_horse() -> Array:
+	var st = _puzzle.state
+	var out := []
+	for c: int in st.m.sol:
+		var m := {}
+		m["do"] = func() -> void: _click(_puzzle.cell_centre(c))
+		out.append(m)
+	var done := {}
+	done["do"] = func() -> void: _host._on_check()
+	out.append(done)
+	return out
+
+## Horse Pen's buzzes: the horse patted, water tapped, a bale dropped and
+## lifted, Undo, Submit on an open pen, the four cells round the horse baled
+## (the pen closing, under the target) and Submit on that, a hint, the stock
+## spent and one more tapped, Reset. The plain run then lays the answer (the
+## target reached, the best pen) and submits (the win, the seal).
+func _buzz_horse() -> void:
+	var st = _puzzle.state
+	_buzz_more = 14.0
+	var pause := func() -> void: await create_timer(1.0).timeout
+	var tap := func(c: int) -> void: _click(_puzzle.cell_centre(c))
+	tap.call(st.horse)
+	await pause.call()
+	_buzzed("the horse patted")
+	for c in st.cells():
+		if st.is_water(c):
+			tap.call(c)
+			await pause.call()
+			_buzzed("water tapped")
+			break
+	var spare: Array = []
+	for c in st.cells():
+		if st.bare(c) and not (st.m.sol as Array).has(c) and not (st.m.nb[st.horse] as PackedInt32Array).has(c):
+			spare.append(c)
+	tap.call(spare[0])
+	await pause.call()
+	_buzzed("a bale dropped")
+	tap.call(spare[0])
+	await pause.call()
+	_buzzed("the bale lifted")
+	if _puzzle.capabilities().has("undo"):
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+		_host._on_undo()
+		await pause.call()
+	_host._on_check()
+	await pause.call()
+	_buzzed("Submit, the pen open")
+	var ring := 0
+	for c: int in st.m.nb[st.horse]:
+		if st.bare(c) and _puzzle.moves_left != 1:
+			tap.call(c)
+			ring += 1
+			await create_timer(0.4).timeout
+	await pause.call()
+	_buzzed("%d bales round the horse (closed %s)" % [ring, st.closed()])
+	_host._on_check()
+	await pause.call()
+	_buzzed("Submit, closed %s score %d" % [st.closed(), st.score()])
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_host._on_hint()
+		await pause.call()
+		_buzzed("hint")
+	if _puzzle.max_moves == 0:
+		for c in spare:
+			if st.bales_left() <= 0:
+				break
+			tap.call(c)
+			await create_timer(0.15).timeout
+		await pause.call()
+		_buzz_seen = Haptics.trace.size()
+		tap.call(spare[spare.size() - 1])
+		await pause.call()
+		_buzzed("a tap with the stock spent")
+	_host._on_reset()
+	await create_timer(1.6).timeout
+	_buzzed("reset")
+	_moves = _moves_horse()

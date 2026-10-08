@@ -307,6 +307,15 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   cell is its banner, the title, and Solved / Best / Average as a dim label
   over a bold value, or "Not solved yet". Only the page's banners are shown:
   **347** draw calls on Stats (619 with all twenty-nine standing).
+- **Horse Pen is the thirty-first card (2026-10-08).** Its picture is
+  `_draw_horse()` in `ui/menu/card_art.gd`: five cells by two of the board's
+  meadow built from `ui/faces/horse_parts.gd` (three bales, the wheat, a
+  boulder, an apple, a stream, the pony at 1.3 of a cell so it reads), one
+  mesh kept in `_horse_mesh` and rebuilt only when `_u` changes; its vista is
+  the meadow at `(0.12, 0.45)`. Three rows of six cells was tried first and
+  left the pony too small to read at 810x1440. Thirty-one cards at eight a
+  page are four pages, the last holding seven; `_shot_menu.gd -- last`
+  shoots it and read **215** draw calls there (216 on one of three runs).
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

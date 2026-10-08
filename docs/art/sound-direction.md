@@ -325,3 +325,23 @@ Peapod's `knock` sat at -58 dB. Ask for wood (a knuckle on a crate), not a
 thump, and check a new set with a high-pass in mind, not only its peak.
 
 None of it heard by anyone but for the user's verdict on the first go.
+
+## Horse Pen (2026-10-08)
+
+`SETS["horse"]`, eighteen cues, every one the board fires. Three styles:
+`MEADOW` (close-mic foley of straw bales, short grass and a wooden gate),
+`MEADOW_TUNE` (the garden family's kalimba, music box and hand bells) and
+`PONY`, for `neigh` alone -- the other styles end "no voice", which would
+ask the animal to keep quiet. **`place` fires on every move, and `lift` and
+`undo` nearly as often, so all three are dry straw cut to 0.22-0.28 s with
+no note in them** (-9, -12, -14). `locked` is a knuckle on a fence post,
+asked for as wood and not as a thump (the phone trap above); `closed` and
+`open` are the gate's latch. Notes are kept for what happens now and then:
+`ready` two kalimba notes up, `best` three with a hand bell, `not_yet` two
+down (the `fall` trick, as Tents' `check`), and `hint`, `solved`, `party`,
+`stamp`, `out_of_hearts` and `heart_back` phrased as Mini Golf's. One take a
+cue on the first run, no retakes, unheard by the user. Measured, not heard:
+every peak within a decibel of its target, nothing near-empty, and the foley
+holds its level above 400 Hz. `out_of_hearts` came back 0.95 s against 1.8
+asked and `stamp`'s thump sits 0.1 s behind a breath; both are like their
+siblings in other sets and were left.

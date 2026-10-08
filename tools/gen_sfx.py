@@ -233,6 +233,24 @@ LINKS_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
               "gentle, cozy, no synth, no electronic tones, no beeps, no music "
               "bed, no voice")
 
+# Horse Pen's meadow from above (2026-10-08): real straw bales on turf, a
+# wooden gate and its latch, a small pony, with the garden family's kalimba,
+# music box and hand bells for what the day says. A bale is dropped on every
+# move, so place, lift and undo are dry straw and nothing with a note.
+MEADOW = ("close-mic foley of a small sunny meadow paddock on a quiet morning, "
+          "real dry straw bales, short grass, a wooden gate with a wooden "
+          "latch, natural and acoustic, soft and warm, rounded, no synth, no "
+          "electronic tones, no beeps, no music, no voice")
+MEADOW_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+               "recorded close in a warm quiet room, natural, soft, rounded, "
+               "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+               "bed, no voice")
+# The pony itself: the families above all end "no voice", which would ask
+# the animal to keep quiet.
+PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
+        "meadow, natural, soft, warm, gentle, cute, dry, no synth, no music, "
+        "no human voice")
+
 # cue: (prompt, seconds, peak level in dBFS -- quieter for the chatty ones
 #       [, style in place of STYLE [, "loop": a seamless loop, no trim or fade
 #                                     | "fall": the take, then itself 3 semitones lower
@@ -1583,6 +1601,30 @@ SETS = {
         "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, LINKS_TUNE, "warm:7000"),
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, LINKS_TUNE, "warm:7000"),
         "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+    },
+    # Horse Pen (puzzles/horse2d.gd): hay bales dropped on a meadow to pen a
+    # pony in. `place` fires on every move and `lift` and `undo` nearly as
+    # often, so all three are dry straw cut short, with no note in them; the
+    # notes are kept for the pen closing on its target and the day's end.
+    "horse": {
+        "enter":         ("a small pony landing softly on short grass, two muffled hoof steps on turf, light and gentle, short", 1.0, -10, MEADOW, "warm:7000"),
+        "place":         ("one small dry straw bale set down on short grass, a single short dry soft straw crunch and pat, no ring, no tone, very short", 0.5, -9, MEADOW, "cut:0.28"),
+        "lift":          ("one small dry straw bale plucked up off the grass, a single short light dry straw rustle, no ring, no tone, very short", 0.5, -12, MEADOW, "cut:0.22"),
+        "undo":          ("a handful of dry straw brushed back lightly once, a single soft short dry rustle, no ring, no tone, very short and quiet", 0.5, -14, MEADOW, "cut:0.22"),
+        "reset":         ("a quick soft sweep of loose dry straw across short grass with a yard broom, one light brushing pass, short", 0.9, -11, MEADOW),
+        "locked":        ("one gentle dull knuckle knock on a wooden fence post, a soft kind not here, very short", 0.5, -11, MEADOW, "cut:0.3"),
+        "closed":        ("a small wooden garden gate latch clicking shut, one soft wooden clack, satisfying, very short", 0.5, -8, MEADOW, "cut:0.4"),
+        "open":          ("a small wooden gate latch lifted open, one light soft wooden click and a tiny loose rattle, very short", 0.5, -11, MEADOW, "cut:0.35"),
+        "ready":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -7, MEADOW_TUNE, "warm:7000"),
+        "best":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, happy and proud, short", 1.0, -6, MEADOW_TUNE, "warm:7000"),
+        "not_yet":       ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not yet, warm and round, never a buzzer", 1.0, -12, MEADOW_TUNE, "fall"),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, MEADOW_TUNE, "warm:7000"),
+        "neigh":         ("a small pony giving one short soft friendly nicker, a quiet breathy little whinny through the nose, cute and gentle, not loud, not dramatic, short", 0.9, -9, PONY),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a sunny meadow morning", 2.0, -5, MEADOW_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, MEADOW_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, MEADOW_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a pony dozing off in the grass", 1.8, -9, MEADOW_TUNE, "warm:7000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, MEADOW_TUNE, "warm:7000"),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

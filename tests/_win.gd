@@ -162,6 +162,9 @@ func _note(id: String) -> String:
 		"minigolf": return "band %d, %d holes, par %d, card %s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.band, _puzzle._state.holes.size(), _puzzle._state.par_total(), str(_puzzle._state.card),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
+		"horse": return "%dx%d meadow, %d of %d bales, pen %d of target %d (best %d), hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.w, _puzzle.state.h, _puzzle.state.bales(), _puzzle.state.budget, _puzzle.state.score(),
+			_puzzle.state.target, _puzzle.state.best, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -199,6 +202,7 @@ func _solve(id: String) -> void:
 		"pixelgarden": _solve_pixelgarden()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
+		"horse": _solve_horse()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -457,6 +461,27 @@ func _solve_minigolf() -> void:
 		var pts: Array[Vector2] = [from, from.lerp(to, 0.5), to]
 		_drag_path_local(pts)
 		_puzzle.settle_now()
+
+## Horse Pen: Submit pressed first on the open field (a not-yet, never an
+## ending), the bulb once where there is one, then the rest of the answer's
+## bales tapped in and Submit pressed again.
+func _solve_horse() -> void:
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for c in st.cells():
+		if not slot.has_point(_puzzle.cell_centre(c)):
+			_fit_ok = false
+	_press(_host.action_bar.check_button)
+	_hud_ok = _puzzle.checks == 1 and not st.is_solved()
+	if _puzzle.capabilities().has("hint"):
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.pinned.size() == 1
+	for c: int in st.m.sol:
+		if not st.has_bale(c):
+			_tap_local(_puzzle.cell_centre(c))
+	_hud_ok = _hud_ok and st.closed() and st.score() == st.best
+	_press(_host.action_bar.check_button)
 
 func _solve_sunbeam() -> void:
 	var st = _puzzle._state

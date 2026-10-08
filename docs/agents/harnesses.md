@@ -171,3 +171,20 @@ and `tests/_win.gd -- minigolf` needs the board's `settle_now()` between
 putts (a roll is on a clock). `tests/_probe_minigolf_bank.gd` (headless)
 re-proves `content/minigolf.json`; `tests/_gf_tut_search.gd` (headless)
 prints the tutorial's putts.
+
+## Horse Pen's harness (2026-10-08)
+
+`tests/_shot_horse.gd` plays the board through its real input path (a touch
+pressed and let go on a cell) and shoots numbered frames (`out=<dir>`):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_horse.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest play refuse notyet hint solve out reset restore`. `play` and
+`solve` lay the bank's answer a bale at a time; `out` (Insane) lays and lifts
+one bale until the moves are gone. `tests/_probe_perf.gd -- horse` lays the
+answer and submits (`x=buzz` walks every knock first), `tests/_win.gd --
+horse` wins through the input path with a refused Submit and a hint on the
+way, and `tests/_probe_horse_bank.gd` (headless) re-proves
+`content/horse.json`. `tools/mine_horse.gd -- <band> <n> <seed> show` prints
+meadows as text and `... check` compares the phone's search, the miner's and
+one four times as long.

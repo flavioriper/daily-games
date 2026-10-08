@@ -60,6 +60,7 @@ const SlideGen = preload("res://puzzles/slider_gen.gd")
 const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const GolfParts = preload("res://ui/faces/minigolf_parts.gd")
 const GolfSim = preload("res://puzzles/minigolf_sim.gd")
+const HorseParts = preload("res://ui/faces/horse_parts.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -218,6 +219,10 @@ var _drumbeat_keep: Array = []
 var _trestle_keep: Array = []
 ## Mini Golf's lane, held for the same RID reason as `_band_mesh`.
 var _minigolf_mesh: ArrayMesh
+## Horse Pen's meadow, built once a size (`_horse_u` is the `_u` it was
+## built for) and held for the same RID reason.
+var _horse_mesh: ArrayMesh
+var _horse_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -407,6 +412,7 @@ func _draw() -> void:
 		"drumbeat": _draw_drumbeat()
 		"trestle": _draw_trestle()
 		"minigolf": _draw_minigolf()
+		"horse": _draw_horse()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1514,3 +1520,61 @@ func _draw_minigolf() -> void:
 	GolfParts.flag(b, o + sim.cup * s, 11.0 * s, 0.6)
 	_minigolf_mesh = b.mesh()
 	draw_mesh(_minigolf_mesh, null)
+
+## Horse Pen's card: a corner of the meadow from above, five cells by two --
+## a stream down its right side, a boulder, three hay bales closing the near
+## corner of a pen, the pale wheat the pony can still walk, the pony standing
+## in it and an apple beside it -- drawn with the board's own pieces
+## (`ui/faces/horse_parts.gd`), so the card and the field are the same
+## drawing. One mesh, rebuilt only when the card changes size.
+const HP_COLS := 5
+const HP_ROWS := 2
+const HP_CELL := 49.0
+const HP_WATER := [4, 9]
+const HP_BALES := [0, 1, 5]
+const HP_WHEAT := [2, 6, 7, 8]
+const HP_BOULDER := 3
+const HP_APPLE := 8
+const HP_HORSE := Vector2(1.85, 1.24)
+
+func _draw_horse() -> void:
+	# Baked about the origin and moved to the middle: `_c` moves when the
+	# card grows in the axis that does not set `_u`.
+	if _horse_mesh != null and is_equal_approx(_horse_u, _u):
+		draw_mesh(_horse_mesh, null, Transform2D(0.0, _c))
+		return
+	var s := HP_CELL * _u
+	var field := Vector2(HP_COLS, HP_ROWS) * s
+	var o := -field * 0.5
+	var mid := func(i: int) -> Vector2: return o + Vector2(i % HP_COLS + 0.5, i / HP_COLS + 0.5) * s
+	var b := Face.Builder.new()
+	# The field on its darker rim, and the faint plot lines.
+	b.fan(Face.Builder.round_rect(o - Vector2.ONE * 3.0 * _u, field + Vector2.ONE * 6.0 * _u, 0.3 * s), Pal.TURF_RING)
+	b.fan(Face.Builder.round_rect(o, field, 0.24 * s), Pal.MEADOW)
+	var line := Color(Pal.TURF_LINE, 0.55)
+	for c in range(1, HP_COLS):
+		b.stroke(PackedVector2Array([o + Vector2(c * s, 0.12 * s), o + Vector2(c * s, field.y - 0.12 * s)]), 0.03 * s, line)
+	for r in range(1, HP_ROWS):
+		b.stroke(PackedVector2Array([o + Vector2(0.12 * s, r * s), o + Vector2(field.x - 0.12 * s, r * s)]), 0.03 * s, line)
+	# The wheat: the board's own unit, laid a cell at a time.
+	var wb := Face.Builder.new()
+	HorseParts.wheat(wb, s, 0.07 * s, 0.22 * s)
+	var wheat := wb.mesh()
+	for i: int in HP_WHEAT:
+		b.append(wheat, Transform2D(0.0, mid.call(i)))
+	HorseParts.water(b, func(i: int) -> bool: return i in HP_WATER, HP_COLS, HP_ROWS, o, s)
+	HorseParts.shade(b, mid.call(HP_BOULDER), s, 0.38, 0.16)
+	HorseParts.boulder(b, mid.call(HP_BOULDER), s * 0.94, HP_BOULDER)
+	# Back to front, so a bale's front never covers the one below it.
+	for i: int in HP_BALES:
+		HorseParts.shade(b, mid.call(i), s, 0.4, 0.22)
+		HorseParts.bale(b, mid.call(i), s)
+	HorseParts.shade(b, mid.call(HP_APPLE), s, 0.2, 0.16)
+	HorseParts.apple(b, mid.call(HP_APPLE), s)
+	# The pony, larger than its cell so it reads at card size.
+	var pony: Vector2 = o + HP_HORSE * s
+	HorseParts.shade(b, pony + Vector2(0.0, 0.1 * s), s * 1.3, 0.4, 0.22)
+	HorseParts.horse(b, pony + Vector2(0.0, 0.06 * s), s * 1.3, Face.Expr.JOY)
+	_horse_mesh = b.mesh()
+	_horse_u = _u
+	draw_mesh(_horse_mesh, null, Transform2D(0.0, _c))

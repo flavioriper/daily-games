@@ -33,3 +33,8 @@ avoid bell or ring sounds for something that repeat a lot, so use something
 more like a click." A chain's pebbles, a gun's shots, tiles landing: short,
 dry, no note. Notes are for what happens now and then. A constant action
 still gets its sound -- "a really subtle click", not silence.
+
+**Horse Pen has a set since 2026-10-08** (`SETS["horse"]`, `MEADOW` foley,
+`MEADOW_TUNE` notes and `PONY` for the `neigh`, eighteen cues): one take a
+cue, unheard by the user. A bale dropped, lifted or undone is dry straw
+with no note. Details: `docs/art/sound-direction.md`, its last section.
