@@ -32,7 +32,8 @@ extends SceneTree
 ## between the white dwarf and the birthplace, 9b the new star after),
 ## 13b-13c a star letting go, 6d a later star's iron-rich ring four minutes
 ## on with its worlds and the line that names them, 6e a star of three Suns
-## a minute into a ring its disc half covers (both put there by hand:
+## a minute into a ring its disc half covers, the gas in the disc warm and
+## the ring outside it kept full by the far sky (both put there by hand:
 ## `system`, `half`), 14-16 the tutorial's four pages (14 the GAS
 ## page 0.2 s after its second press, 14b the gas that press sent half way
 ## in, 16b the END page's camera), 17 the tab again with the star and its
@@ -103,9 +104,11 @@ const STEPS := [
 	[59.0, "let_go_star"], [62.4, "shot", "13b_letting_go"], [64.5, "where"], [65.4, "shot", "13c_gone"], [65.41, "where"], [72.7, "perks_x"],
 	# the new star's sky put there by hand: an iron-rich ring and its worlds
 	# four minutes on, then three Suns and a minute into a ring its disc half
-	# covers
+	# covers. That second beat was called `6e_half_eaten` and never showed a
+	# ring half eaten: the far sky makes a ring up by need as fast as the
+	# disc takes it, so the name says what is in the shot
 	[72.8, "system"], [73.6, "shot", "6d_system"], [73.65, "line", "6d", 1],
-	[73.7, "half"], [74.5, "shot", "6e_half_eaten"], [74.55, "line", "6e", 0],
+	[73.7, "half"], [74.5, "shot", "6e_disc_over_ring"], [74.55, "line", "6e", 0],
 	# GAS presses 0.8 and 1.6 s into its page and its gas is half way in at 19
 	[74.6, "tutor"], [76.4, "shot", "14_tut_gas"], [92.6, "shot", "14b_tut_gas_in"],
 	[92.7, "page", 1], [94.7, "shot", "15_tut_worlds"],
@@ -387,15 +390,20 @@ func _system() -> void:
 	_world(0.009, lerpf(sim.ring.x, mid, 0.5), 0.6, 1.0)
 	_world(0.011, lerpf(mid, sim.ring.y, 0.5), 3.9, 1.0)
 	_world(0.016, mid, 2.2, 1.0)
+	# `system()` counts only what is on a closed path: the three are on circles
+	_check(int(sim.system().planets) == 3, "6d: the three worlds put by hand are on closed paths and counted: %s" % str(sim.system()))
 	_run(240.0, false)
 	print("a later star's ring 240 s on: %.2f Suns, novas %d, dust share %.3f, the system %s, the line \"%s\"" % [sim.suns(), sim.novas, sim.dusty, str(sim.system()), _s._system_line()])
 
 ## 6e: that star at three Suns, its ring laid again where it was born with
 ## it (the plain disc of three Suns covers its inner half) and two planets
 ## on circles in the outer half, a minute on with no hand: long enough for
-## what the disc has to be winding in, and five minutes was the whole ring
-## gone. The powers it has grown past are taken first, never the Haze (a
-## wider disc covers the whole ring), so the line stands under their discs.
+## what the disc has to be winding in. It is a star eating a ring the far
+## sky keeps full, not a ring half eaten: what the disc takes is made up
+## by need, and the log says how much gas is outside the disc against what
+## the ring weighed at birth. The powers it has grown past are taken first,
+## never the Haze (a wider disc covers the whole ring), so the line stands
+## under their discs.
 func _half() -> void:
 	var sim: RefCounted = _s.sim
 	sim.bodies.clear()
@@ -405,6 +413,7 @@ func _half() -> void:
 	sim._lay_ring(Sim.RING, Sim.RING_M, Sim.ASH_H, Sim.ASH_MOST)
 	_world(0.009, lerpf(sim.ring.x, sim.ring.y, 0.8), 1.1, 1.0)
 	_world(0.01, lerpf(sim.ring.x, sim.ring.y, 0.95), 4.4, 1.0)
+	_check(int(sim.system().planets) == 2, "6e: the two worlds put by hand are on closed paths and counted: %s" % str(sim.system()))
 	while sim.owed() > 0:
 		sim.pick(1 if String(sim.offering()[0]) == "haze" else 0)
 	var ring0: int = sim.gas_count()
@@ -413,7 +422,7 @@ func _half() -> void:
 	for b: Sim.Body in sim.bodies:
 		if b.kind == Sim.Kind.GAS and b.pos.length() >= sim.haze_r():
 			out += 1
-	print("three Suns 60 s on: %.2f Suns, the disc %d px, the ring %s, %d of %d puffs left and %d of them outside the disc, the system %s" % [sim.suns(), int(sim.haze_r()), str(sim.ring), sim.gas_count(), ring0, out, str(sim.system())])
+	print("three Suns 60 s on: %.2f Suns, the disc %d px, the ring %s, %d puffs where %d were laid and %d of them outside the disc, weighing %.2f of the ring's %.2f at birth, the system %s" % [sim.suns(), int(sim.haze_r()), str(sim.ring), sim.gas_count(), ring0, out, sim.gas_outside(), sim.ring_m, str(sim.system())])
 
 func _process(delta: float) -> bool:
 	_t += minf(delta, MOST_STEP)
