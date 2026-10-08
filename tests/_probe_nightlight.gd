@@ -686,11 +686,28 @@ func _check_ring() -> void:
 	far.mass = Sim.START
 	_run(far, 120.0)
 	var got := _sky_mass(far)
-	_ok("two minutes of it is two tenths of a Sun", absf(got - Sim.TRICKLE * 120.0) < Sim.RING_M / Sim.RING * 1.5)
+	_ok("two minutes of it is what TRICKLE says (%.2f Suns)" % (Sim.TRICKLE * 120.0 / Sim.START), absf(got - Sim.TRICKLE * 120.0) < Sim.RING_M / Sim.RING * 1.5)
 	var outer := true
 	for p: Sim.Body in far.bodies:
 		outer = outer and p.pos.length() > far.ring.y * 0.85
 	_ok("it arrives at the ring's outer edge", outer)
+	# a giant does not swallow the sky: its mouth is past the ring's edge, so
+	# what drifts in is eaten as it lands, and that must stay a Sun or so a
+	# minute with the tiles a steady hand has by then (it was 5.7 Suns a minute
+	# when the trickle grew with the star's Suns: the harness's 12-Sun giant)
+	var big := _quiet(9)
+	big.passing = true
+	big._pass_gap = 1e9
+	big.mass = Sim.START * 12.0
+	big.swell = 1.0
+	big.lv.rich = 6
+	_ok("a 12-Sun giant's mouth is past where the gas drifts in", big.star_r() * Sim.EAT > big.ring.y * 0.9)
+	var was_m: float = big.mass
+	_run(big, 60.0)
+	var gained: float = (big.mass - was_m + _sky_mass(big)) / Sim.START
+	print("  a 12-Sun giant with six levels of Rich and no hand gains %.2f Suns in a minute (%.2f with no tile; at 4, 8 and 16 Suns %.2f, %.2f and %.2f)" % [
+		gained, gained / (1.0 + Sim.RICH_STEP * 6.0), Sim.TRICKLE * pow(4.0, Sim.TRICKLE_UP) * 6.0, Sim.TRICKLE * pow(8.0, Sim.TRICKLE_UP) * 6.0, Sim.TRICKLE * pow(16.0, Sim.TRICKLE_UP) * 6.0])
+	_ok("a giant does not swallow the sky: under a Sun and a half a minute (%.2f)" % gained, gained > 0.0 and gained < 1.5)
 	# a sim whose ring was cleared (a tutorial page) still works
 	var bare := _quiet(2)
 	bare.ring = Vector2.ZERO

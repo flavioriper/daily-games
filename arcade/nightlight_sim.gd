@@ -159,8 +159,8 @@ const FLUSH := 6.0
 ## Gas from the far sky: mass a second at one Sun (a tenth of a Sun a
 ## minute), the power of the star's Suns it grows by (Bondi's is 2, which
 ## runs away), and what a level of Rich adds.
-const TRICKLE := 0.017
-const TRICKLE_UP := 1.0
+const TRICKLE := 0.028
+const TRICKLE_UP := 0.25
 const RICH_STEP := 0.5
 
 ## Condensing. A puff has to be up COOL seconds before its dust falls out.
