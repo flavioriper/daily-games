@@ -188,3 +188,7 @@ way, and `tests/_probe_horse_bank.gd` (headless) re-proves
 `content/horse.json`. `tools/mine_horse.gd -- <band> <n> <seed> show` prints
 meadows as text and `... check` compares the phone's search, the miner's and
 one four times as long.
+The tutorial: `tests/_probe_perf.gd -- horse d=2 howto shot=2 gap=6 to=40
+lang=en` (`/tmp/probe_horse_p<n>.png`). On `d=3` the run ends in a script
+error at `_probe_perf.gd:140` once it reaches the shared Moves page, which
+has no `_caption` for the probe to print; the seven shots are written first.

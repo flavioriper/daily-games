@@ -807,7 +807,8 @@ func _draw_hud() -> void:
 			right_ink = Pal.SUN_DEEP
 		elif state.score() >= state.target:
 			right_ink = Pal.LEAF_DEEP
-	var left_ink := Pal.BAD if now - _pill_bad < 0.6 or state.bales_left() == 0 else Pal.TEXT
+	# Rose only while it is bad news: the stock spent with the pen still open.
+	var left_ink := Pal.BAD if now - _pill_bad < 0.6 or (state.bales_left() == 0 and not closed) else Pal.TEXT
 	var lw := font.get_string_size(left_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var rw := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var icon := PILL_H * 0.9
