@@ -1185,7 +1185,7 @@ func _build_rail(b: Face.Builder) -> void:
 	var at := Vector2(first.x - w * 0.5, first.y - (_rack_step() * 0.5 + 2.0) * _u)
 	var size := Vector2(w, px(Vector2(0, Sim.H - 2.4)).y - at.y)
 	b.fan(Face.Builder.round_rect(at + Vector2(0, 2.0 * _u), size, w * 0.5), Color(0.2, 0.32, 0.1, 0.12))
-	b.fan(Face.Builder.round_rect(at, size, w * 0.5), Color(Art.PAPER, 0.55))
+	b.fan(Face.Builder.round_rect(at, size, w * 0.5), Color(Art.PAPER, 0.4))
 
 ## Under each button: its shadow, a paper seat that goes down and darker
 ## under a press, and round the seat's rim the time its gift has left.
@@ -1318,7 +1318,8 @@ func _play_events() -> void:
 				_wave_peak = 0.0
 				var milli: bool = ev.kind == Sim.Wave.MILLI
 				if int(ev.wave) > 1:
-					_show_banner(tr("PP_WAVE_N") % int(ev.wave), tr("PP_MILLI_LINE") if milli else "", 0.7)
+					_show_banner(tr("PP_WAVE_N") % int(ev.wave), tr("PP_MILLI_LINE") if milli else (tr("PP_WARD_LINE") if int(ev.get("ward", -1)) >= 0 else ""),
+						1.4 if int(ev.get("ward", -1)) >= 0 else 0.7)
 					_fx.cue("milli" if milli else "wave")
 				_wave_l.pivot_offset = _wave_l.size * 0.5
 				_beat(_wave_l, 0.3, 0.35)
@@ -1339,7 +1340,7 @@ func _play_events() -> void:
 					_crumb(pos)
 					if _clock - _hit_heard >= HIT_GAP:
 						_hit_heard = _clock
-						_quiet.cue("clank" if ev.kind == Sim.Kind.IRON else "hit", _hit_pitch(int(ev.hp)), -6.0 - randf() * HIT_SOFT)
+						_quiet.cue("clank" if ev.kind == Sim.Kind.IRON or ev.has("ward") else "hit", _hit_pitch(int(ev.hp)), -6.0 - randf() * HIT_SOFT)
 			"kill":
 				_on_kill(ev)
 			"gift":
@@ -1352,6 +1353,20 @@ func _play_events() -> void:
 				_bolts.append({"pts": ev.pts, "t": 0.0})
 			"flare":
 				_on_flare(pos)
+			"ward_off":
+				# the lock broken: its paint can be hurt again
+				var paint: Color = Art.PAINT[clampi(int(ev.tier), 0, Art.PAINT.size() - 1)]
+				_rw.ring(_in_rw(pos), 120.0 * _u, Color(Art.KEEP[Sim.Kind.WARD], 0.9))
+				_rw.spray(_in_rw(pos), paint, 8, 560.0, "shard", 0.9 * _u / 2.4)
+				_rw.spray(_in_rw(pos), Art.KEEP[Sim.Kind.WARD], 6, 480.0, "star", 0.9)
+				_fx.cue("catch", 0.8, -3.0)
+				_feel(Haptics.BUMP)
+				_flash_now(Art.KEEP[Sim.Kind.WARD], 0.2)
+			"buff_off":
+				_rw.ring(_in_rw(pos), 64.0 * _u, Color(Art.KEEP[int(ev.kind)], 0.9))
+				_rw.spray(_in_rw(pos), Art.KEEP[int(ev.kind)], 6, 420.0, "mote", 0.9)
+			"mend":
+				_rw.ring(_in_rw(pos), 56.0 * _u, Color(Art.KEEP[Sim.Kind.MEND], 0.7), 0.0, 0.4)
 			"blast":
 				_on_blast(pos, float(ev.r))
 			"gust":
@@ -2007,7 +2022,7 @@ func _draw_stream(flow: Array, heavy: float) -> void:
 		var f := (k + run) / STREAM_GLINTS
 		var i0 := clampi(int(f * (m - 1)), 0, m - 2)
 		var i1 := clampi(i0 + maxi(1, int(m / float(STREAM_GLINTS) * 0.45)), i0 + 1, m - 1)
-		Art._ribbon(b, pts.slice(i0, i1 + 1), wide * 0.3, wide * 0.3, Color(Art.PAPER, 0.55))
+		Art._ribbon(b, pts.slice(i0, i1 + 1), wide * 0.3, wide * 0.3, Color(Art.PAPER, 0.4))
 	if landed:
 		# where it lands it breaks into a spray
 		var tip := pts[m - 1]
@@ -2128,6 +2143,9 @@ func _letter(font: Font, numbered: Array, s: float) -> void:
 			Art.number(_over, font, c, n[1], s, 1.0, n[2])
 
 func _draw_wall(font: Font) -> void:
+	var kept: Array = []
+	var locked: Array = []
+	var signs: Array = []
 	var numbered: Array = []
 	var lit: Array = []
 	var cracked: Array = []
@@ -2145,7 +2163,8 @@ func _draw_wall(font: Font) -> void:
 				continue
 			var kn := _knocked(cell.id)
 			var kind: int = cell.kind
-			var tier := Art.tier_of(cell.hp) if kind == Sim.Kind.CRATE else 0
+			var show: int = Sim.shown(cell)
+			var tier := Art.tier_of(show) if kind == Sim.Kind.CRATE else (maxi(0, sim.ward) if kind == Sim.Kind.WARD else 0)
 			var xf := Transform2D(0.0, kn[0], 0.0, px(at))
 			var worn := Art.worn(cell.hp, cell.max)
 			if float(cell.burn_t) > 0.0:
@@ -2167,14 +2186,27 @@ func _draw_wall(font: Font) -> void:
 			if float(kn[1]) > 0.0:
 				lit.append([xf, kn[1]])
 			if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
-				numbered.append([at + Vector2(0, -Art.LIP * 0.5), cell.hp, kind, kn[1]])
+				numbered.append([at + Vector2(0, -Art.LIP * 0.5), show, kind, kn[1]])
+			elif kind == Sim.Kind.PLUS or kind == Sim.Kind.TIMES:
+				signs.append([at + Vector2(0, -Art.LIP * 0.5), kind, int(cell.gives)])
+			var corner := at + Vector2(Sim.CELL_W * 0.5 - 9.5, Sim.CELL_H * 0.5 - 12.0)
+			if int(cell.plus) > 0:
+				kept.append([corner, Sim.Kind.PLUS, cell.id])
+				corner.x -= 12.0
+			if int(cell.by) > 1:
+				kept.append([corner, Sim.Kind.TIMES, cell.id])
+			if sim.warded(cell):
+				locked.append(xf)
 	_cast_draw()
 	_draw_blinks(lit, false, cracked)
 	_letter(font, numbered, (Sim.CELL_H - 3.0) * _u)
 	_draw_fires(alight)
 	_draw_marks(stung, rimed)
+	_draw_keeps(font, kept, locked, signs, false, (Sim.CELL_H - 3.0) * _u)
 
 func _draw_milli(font: Font, top: Face.Builder) -> void:
+	var kept: Array = []
+	var signs: Array = []
 	var numbered: Array = []
 	var lit: Array = []
 	var cracked: Array = []
@@ -2229,7 +2261,8 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 			_head_tag = [tag, sg.hp]
 			continue
 		var kind: int = sg.kind
-		var tier := Art.tier_of(sg.hp) if kind == Sim.Kind.CRATE else 0
+		var show: int = Sim.shown(sg)
+		var tier := Art.tier_of(show) if kind == Sim.Kind.CRATE else 0
 		var xf := Transform2D(waddle, sc, 0.0, px(at + jitter))
 		_cast_add(Art.plate(kind, tier, _u), xf, Color.WHITE)
 		var worn := Art.worn(sg.hp, sg.max)
@@ -2238,7 +2271,13 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 		if float(kn[1]) > 0.0:
 			lit.append([xf, kn[1]])
 		if kind == Sim.Kind.CRATE or kind == Sim.Kind.GOLD or kind == Sim.Kind.IRON:
-			numbered.append([at + Vector2(0, -Sim.SEG_R * 0.09), sg.hp, kind, kn[1]])
+			numbered.append([at + Vector2(0, -Sim.SEG_R * 0.09), show, kind, kn[1]])
+		elif kind == Sim.Kind.PLUS or kind == Sim.Kind.TIMES:
+			signs.append([at + Vector2(0, -Sim.SEG_R * 0.09), kind, int(sg.gives)])
+		if int(sg.plus) > 0:
+			kept.append([at + Vector2(Sim.SEG_R * 0.62, Sim.SEG_R * 0.56), Sim.Kind.PLUS, sg.id])
+		if int(sg.by) > 1:
+			kept.append([at + Vector2(Sim.SEG_R * 0.62 - (11.0 if int(sg.plus) > 0 else 0.0), Sim.SEG_R * 0.56), Sim.Kind.TIMES, sg.id])
 	_cast_draw()
 	if not head_at.is_empty():
 		_over.draw_mesh(head_at[0], null, head_at[1])
@@ -2246,6 +2285,7 @@ func _draw_milli(font: Font, top: Face.Builder) -> void:
 	_letter(font, numbered, Sim.SEG_R * 1.7 * _u)
 	_draw_fires(alight)
 	_draw_marks(stung, rimed)
+	_draw_keeps(font, kept, [], signs, true, Sim.SEG_R * 1.7 * _u)
 
 ## The flame on each thing alight ([where its foot is, the thing's id]),
 ## never a tint of the thing: a crate's paint is its number.
@@ -2277,6 +2317,27 @@ func _draw_marks(stung: Array, rimed: Array) -> void:
 		var sc := 0.6 + 0.7 * k
 		_cast_add(puff, Transform2D(0.0, Vector2(sc * float(pf.way), sc), 0.0, px(pf.pos + Vector2(0, -14.0 * k))), Color(1, 1, 1, 0.85 * (1.0 - k * k)))
 	_cast_draw()
+
+## What the crates that look after others show (the twelfth pass): a badge
+## at the corner of each thing a PLUS or a TIMES has made more of (`kept`:
+## [where, PLUS or TIMES, the thing's id]), a paper band and a padlock on
+## each thing the lock keeps (`locked`: its transform), and the sign on each
+## PLUS and TIMES itself (`signs`: [where, its kind, what it adds]), lettered
+## in its own colour. Marks and rings, never a shade of a thing's paint.
+func _draw_keeps(font: Font, kept: Array, locked: Array, signs: Array, round: bool, s: float) -> void:
+	var band := Art.kept(round, _u)
+	for xf: Transform2D in locked:
+		_cast_add(band, xf, Color.WHITE)
+	for a: Array in kept:
+		var sc := 1.0 if Motion.reduce else 1.0 + 0.07 * sin(_clock * 4.0 + float(a[2]))
+		_cast_add(Art.badge(a[1], _u), Transform2D(0.0, Vector2(sc, sc), 0.0, px(a[0])), Color.WHITE)
+	_cast_draw()
+	for a: Array in signs:
+		var text := ("+" + Art.short(int(a[2]))) if int(a[1]) == Sim.Kind.PLUS else "x%d" % Sim.TIMES_BY
+		var fs := maxi(8, int(s * [0.56, 0.56, 0.54, 0.46, 0.38, 0.32][mini(text.length(), 5)]))
+		var size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		var at := px(a[0]) + Vector2(-size.x * 0.5, (font.get_ascent(fs) - font.get_descent(fs)) * 0.5)
+		_over.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.deepen(Art.KEEP[int(a[1])]).darkened(0.25))
 
 ## Lightning along each chain: a jagged line from one thing to the next, a
 ## white core in a yellow one, gone in a blink.

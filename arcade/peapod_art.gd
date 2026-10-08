@@ -84,6 +84,11 @@ const PUMPKIN := Color("f09a3e")
 const WATER := Color("6fb8ea")
 const FLUFF := Color("fffdf6")
 const IRON := Color("b7c0cc")
+## The crates that look after others, by Sim.Kind: the PLUS's green, the
+## TIMES's violet, the mender's rose and the lock's brass. Their signs and
+## the badges on what they look after are these, never a shade of a paint.
+const KEEP := {Sim.Kind.PLUS: Color("5fa85a"), Sim.Kind.TIMES: Color("8a63b8"), Sim.Kind.MEND: Color("e77f93"),
+	Sim.Kind.WARD: Color("d9a441")}
 const DART := Color("ffe08a")
 const BERRY := Color("f2907c")
 ## The flowers a cleared wave leaves on the grass: petals and eye.
@@ -106,7 +111,7 @@ static func _keep(key: String, m: ArrayMesh) -> ArrayMesh:
 
 ## The paint a number wears: a step up every time it trebles.
 static func tier_of(hp: int) -> int:
-	return clampi(int(log(maxf(1.0, hp)) / log(3.0)), 0, PAINT.size() - 1)
+	return Sim.tier_of(hp)
 
 ## What a crate or a plate is known by: its paint, or its gift's.
 static func colour(kind: int, hp: int) -> Color:
@@ -119,6 +124,8 @@ static func colour(kind: int, hp: int) -> Color:
 			return HEAD
 		Sim.Kind.IRON:
 			return IRON
+	if KEEP.has(kind):
+		return KEEP[kind]
 	if GIFT.has(kind):
 		return GIFT[kind]
 	return PAINT[tier_of(hp)]
@@ -138,6 +145,9 @@ static func _face_colour(kind: int, tier: int) -> Color:
 		return IRON
 	if kind == Sim.Kind.HEAD:
 		return HEAD
+	if kind == Sim.Kind.WARD:
+		# the lock wears the paint it keeps
+		return PAINT[clampi(tier, 0, PAINT.size() - 1)]
 	return CREAM
 
 static func _lip_colour(kind: int, tier: int) -> Color:
@@ -195,6 +205,14 @@ static func crate(kind: int, tier: int, u: float) -> ArrayMesh:
 					b.disc(p, 1.7 * u, IRON.lightened(0.5))
 		Sim.Kind.BOMB:
 			icon(b, kind, c + Vector2(0, 2.0 * u), (h - lip) * 0.7)
+		Sim.Kind.PLUS, Sim.Kind.TIMES:
+			# its sign is lettered by the screen, inside this band
+			b.stroke(Face.Builder.round_rect(at + Vector2(3.6, 3.6) * u, Vector2(w - 7.2 * u, h - lip - 7.2 * u), r * 0.66), maxf(1.6, 1.9 * u),
+				KEEP[kind], true)
+		Sim.Kind.MEND:
+			_heart(b, c, (h - lip) * 0.36)
+		Sim.Kind.WARD:
+			_padlock(b, c + Vector2(0, 1.0 * u), (h - lip) * 0.38)
 		_:
 			medal(b, kind, c, (h - lip) * 0.4, false)
 	return _keep(key, b.mesh())
@@ -230,6 +248,12 @@ static func plate(kind: int, tier: int, u: float) -> ArrayMesh:
 				b.disc(p, 1.5 * u, IRON.lightened(0.5))
 		Sim.Kind.BOMB:
 			icon(b, kind, c + Vector2(0, 2.0 * u), r * 1.15)
+		Sim.Kind.PLUS, Sim.Kind.TIMES:
+			b.stroke(Face.Builder.ring(c, r * 0.74, r * 0.74), maxf(1.6, 1.9 * u), KEEP[kind], true)
+		Sim.Kind.MEND:
+			_heart(b, c, r * 0.6)
+		Sim.Kind.WARD:
+			_padlock(b, c, r * 0.6)
 		_:
 			medal(b, kind, c, r * 0.6, false)
 	return _keep(key, b.mesh())
@@ -849,6 +873,76 @@ static func shot(look: int, u: float, el := 0) -> ArrayMesh:
 				b.disc(Vector2(0, r * 0.14), r, deepen(col))
 				b.disc(Vector2.ZERO, r * 0.9, col)
 				b.disc(Vector2(-r * 0.3, -r * 0.32), r * 0.3, Color(1, 1, 1, 0.65))
+	return _keep(key, b.mesh())
+
+## A heart `r` tall either way of `c`, the mender's, with a paper cross on it.
+static func _heart(b: Face.Builder, c: Vector2, r: float) -> void:
+	for pass_ in 2:
+		var k := r if pass_ == 0 else r * 0.84
+		var col: Color = deepen(KEEP[Sim.Kind.MEND]) if pass_ == 0 else KEEP[Sim.Kind.MEND]
+		var o := c + Vector2(0, r * 0.1 if pass_ == 0 else 0.0)
+		b.disc(o + Vector2(-k * 0.46, -k * 0.3), k * 0.52, col)
+		b.disc(o + Vector2(k * 0.46, -k * 0.3), k * 0.52, col)
+		b.polygon(PackedVector2Array([o + Vector2(-k * 0.94, -k * 0.1), o + Vector2(k * 0.94, -k * 0.1), o + Vector2(0, k * 0.96)]), col)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.34, -r * 0.24), Vector2(r * 0.68, r * 0.2), r * 0.08), PAPER)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.1, -r * 0.48), Vector2(r * 0.2, r * 0.68), r * 0.08), PAPER)
+
+## A padlock `r` tall either way of `c`: a brass body with a keyhole, its
+## shackle over it.
+static func _padlock(b: Face.Builder, c: Vector2, r: float) -> void:
+	var brass: Color = KEEP[Sim.Kind.WARD]
+	var loop := Face.Builder.arc_points(c + Vector2(0, -r * 0.2), r * 0.42, PI, TAU)
+	loop.insert(0, c + Vector2(-r * 0.42, r * 0.1))
+	loop.append(c + Vector2(r * 0.42, r * 0.1))
+	b.stroke(loop, r * 0.3, INK, false, false)
+	b.stroke(loop, r * 0.16, PAPER, false, false)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.72, -r * 0.08), Vector2(r * 1.44, r * 1.08), r * 0.2), INK)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.62, 0.0), Vector2(r * 1.24, r * 0.9), r * 0.14), brass)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.62, 0.0), Vector2(r * 1.24, r * 0.3), r * 0.14), brass.lightened(0.35))
+	b.disc(c + Vector2(0, r * 0.4), r * 0.15, INK)
+	b.fan(Face.Builder.round_rect(c + Vector2(-r * 0.06, r * 0.4), Vector2(r * 0.12, r * 0.3), r * 0.04), INK)
+
+## The badge at the corner of a thing a PLUS or a TIMES looks after,
+## centred: a disc of that crate's colour with its sign in paper.
+static func badge(kind: int, u: float) -> ArrayMesh:
+	var key := _key("bdg", kind, 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := 5.6 * u
+	var col: Color = KEEP[kind]
+	b.disc(Vector2.ZERO, r + 1.2 * u, PAPER)
+	b.disc(Vector2(0, 0.5 * u), r, deepen(col))
+	b.disc(Vector2.ZERO, r * 0.94, col)
+	var turn := 0.0 if kind == Sim.Kind.PLUS else PI * 0.25
+	for k in 2:
+		var d := Vector2.from_angle(turn + PI * 0.5 * k) * r * 0.56
+		b.stroke(PackedVector2Array([-d, d]), maxf(1.4, 1.7 * u), PAPER)
+	return _keep(key, b.mesh())
+
+## What a thing the lock keeps wears, centred: a paper band round it with
+## an ink line in it, and a small padlock on its top edge. `round` is a
+## millipede's plate. A ring, never a shade of the thing's paint.
+static func kept(round: bool, u: float) -> ArrayMesh:
+	var key := _key("kpt", int(round), 0, u)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var top := Vector2.ZERO
+	var line: PackedVector2Array
+	if round:
+		var r := Sim.SEG_R * u
+		line = Face.Builder.ring(Vector2(0, -r * 0.09), r * 0.86, r * 0.86)
+		top = Vector2(0, -r * 0.95)
+	else:
+		var w := (Sim.CELL_W - 3.0) * u
+		var h := (Sim.CELL_H - 3.0) * u - LIP * u
+		line = Face.Builder.round_rect(Vector2(-w * 0.5, -(h + LIP * u) * 0.5) + Vector2(2.2, 2.2) * u, Vector2(w - 4.4 * u, h - 4.4 * u), ROUND * u * 0.8)
+		top = Vector2(w * 0.5 - 9.0 * u, -(h + LIP * u) * 0.5 + 2.0 * u)
+	b.stroke(line, 3.4 * u, Color(PAPER, 0.95), true)
+	b.stroke(line, maxf(1.0, 0.9 * u), Color(INK, 0.75), true)
+	b.disc(top + Vector2(0, 1.0 * u), 6.6 * u, PAPER)
+	_padlock(b, top, 5.2 * u)
 	return _keep(key, b.mesh())
 
 ## The nettle's mark on a thing stung, centred: a small violet leaf, its

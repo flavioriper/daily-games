@@ -114,7 +114,12 @@ enum Wave { WALL, MILLI }
 ## What a crate or a plate is. FAN to SHOVE hold a gift (`holds_gift`); FAN
 ## to FLAME are the pods (`is_pod`): FAN to BURST are how the peas go
 ## (`is_shape`), ZAP and FLAME what they are made of (`is_element`).
-enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, NETTLE, HAIL, GUST, FROST, SHOVE, IRON }
+## PLUS to MEND (the twelfth pass) are crates that look after the crates
+## round them for as long as they stand: PLUS adds to their numbers, TIMES
+## multiplies them, WARD (a lock) lets nothing hurt the crates of one paint,
+## MEND gives them back what they have lost. They sit after IRON, so the
+## kinds before them keep their numbers.
+enum Kind { CRATE, GOLD, BOMB, HEAD, FAN, PIERCE, BURST, ZAP, FLAME, NETTLE, HAIL, GUST, FROST, SHOVE, IRON, PLUS, TIMES, WARD, MEND }
 ## How a shot in flight is shaped; its element (`el`) is its colour. PEA to
 ## BURST are the pea gun's and what the Dart and the Berry make of any
 ## cart's; the rest are the other carts' own.
@@ -312,6 +317,36 @@ const HP_FAR_POWER := 2.8
 ## An iron crate's number stops growing here: it is counted in shots, and a
 ## cart of one shot a volley has only its rate to meet it with.
 const IRON_TURN := 40
+## The paints a number can wear (the screen's `Art.PAINT`): a step up every
+## time it trebles (`tier_of`).
+const TIERS := 8
+## The crates that look after their neighbours (the user, 2026-10-08: "a new
+## crate that buffs other crates around by + and x", "a crate that makes a
+## specific color invincible, the buff ends when they are destroyed"). A wall
+## holds one PLUS or TIMES from wave BUFF_WAVE and two from BUFF_TWO, a
+## millipede one every BUFF_EVERY plates. PLUS adds PLUS_SHARE of a crate of
+## its row to each crate round it (the eight in a wall, BUFF_REACH plates
+## either side); TIMES makes each TIMES_BY times its number. Both go with
+## the crate that gave them.
+const BUFF_WAVE := 6
+const BUFF_TWO := 16
+const BUFF_EVERY := 11
+const BUFF_REACH := 2
+const PLUS_SHARE := 1.0
+const TIMES_BY := 2
+## The lock: from wave WARD_WAVE a wall has one WARD_CHANCE of the time, on
+## row WARD_ROW with nothing under it, so a shot straight up always reaches
+## it. While it stands no plain crate of its paint takes anything.
+const WARD_WAVE := 8
+const WARD_CHANCE := 0.5
+const WARD_ROW := 2
+## The mender: from wave MEND_WAVE a wall has one MEND_CHANCE of the time.
+## Every MEND_TICK it gives each crate round it MEND_SHARE of what that crate
+## began as, up to what it began as.
+const MEND_WAVE := 11
+const MEND_CHANCE := 0.5
+const MEND_TICK := 1.0
+const MEND_SHARE := 0.06
 ## What every pod more than one running together adds to a crate's energy.
 const PAIR_PAY := 0.5
 ## Kills this close together are one streak.
@@ -386,6 +421,13 @@ var _iron_part := 0.0
 ## the next to be written).
 var _trail := PackedFloat32Array()
 var _past := 0
+## The paint the wall's lock keeps from harm (-1: no lock stands).
+var ward := -1
+## Whether the wave was dealt a PLUS or a TIMES, and a mender; the mender's
+## clock.
+var _buffs := false
+var _menders := false
+var _mend_c := 0.0
 var _shopped := false
 var _last_pod := -1
 ## The crits' own dice, so a wave is dealt the same however the peas land.
@@ -485,6 +527,39 @@ func crit() -> float:
 ## A crate's number on wave `w`, before its row and its luck.
 static func hp_base(w: int) -> float:
 	return 2.4 * pow(HP_EARLY, mini(w, HP_TURN) - 1) * pow(HP_LATE, clampi(w, HP_TURN, HP_EASE) - HP_TURN) * pow(clampf(w / float(HP_EASE), 1.0, HP_FAR / float(HP_EASE)), HP_POWER) * pow(maxf(1.0, w / float(HP_FAR)), HP_FAR_POWER)
+
+## The paint a number wears: a step up every time it trebles.
+static func tier_of(hp: int) -> int:
+	return clampi(int(log(maxf(1.0, hp)) / log(3.0)), 0, TIERS - 1)
+
+## Whether a crate of `kind` can be looked after by a PLUS, a TIMES or a
+## mender: the ones that wear a number of their own weight.
+static func buffable(kind: int) -> bool:
+	return kind == Kind.CRATE or kind == Kind.GOLD
+
+## The number `cell` wears: what is left of it, times what a TIMES makes of
+## it, and what a PLUS has put on top.
+static func shown(cell: Dictionary) -> int:
+	return int(cell.hp) * int(cell.by) - int(cell.owed) + int(cell.plus)
+
+## Whether the lock keeps `cell` from harm: a plain crate wearing its paint.
+func warded(cell: Dictionary) -> bool:
+	return ward >= 0 and int(cell.kind) == Kind.CRATE and tier_of(shown(cell)) == ward
+
+## What `dmg` takes off what `cell` really has left: a PLUS's share goes
+## first, and under a TIMES it takes TIMES_BY of damage for one (what is
+## short of that kept, `owed`).
+func _soak(cell: Dictionary, dmg: int) -> int:
+	if int(cell.plus) > 0:
+		var take := mini(int(cell.plus), dmg)
+		cell.plus = int(cell.plus) - take
+		dmg -= take
+	var by: int = cell.by
+	if by <= 1:
+		return dmg
+	var all: int = int(cell.owed) + dmg
+	cell.owed = all % by
+	return int((all - int(cell.owed)) / float(by))
 
 static func holds_gift(kind: int) -> bool:
 	return kind >= Kind.FAN and kind <= Kind.SHOVE
@@ -623,6 +698,7 @@ func step() -> void:
 			_step_shots()
 			_step_flares()
 			_step_burns()
+			_step_mend()
 			if gap_t > 0.0:
 				gap_t -= DT
 				if gap_t <= 0.0:
@@ -1300,18 +1376,25 @@ func _seg_index(id: int) -> int:
 ## `lucky` is a crit. A brittle thing takes BRITTLE of whatever it is.
 func _hurt_cell(r: int, c: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false, whole := false) -> void:
 	var cell: Dictionary = rows[r][c]
+	var quiet := how != Hit.PEA and how != Hit.BOOM
+	if warded(cell):
+		# the lock's paint takes nothing; a shot is heard to glance off it
+		if not quiet:
+			events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": cell.hp, "max": cell.max, "quiet": false,
+				"dmg": 0, "crit": false, "how": how, "ward": true})
+		return
 	if float(cell.brittle) > t:
 		dmg = roundi(dmg * BRITTLE)
 	if cell.kind == Kind.IRON and how != Hit.BOOM and not whole:
 		dmg = _iron()
-	cell.hp = int(cell.hp) - dmg
-	var quiet := how != Hit.PEA and how != Hit.BOOM
+	cell.hp = int(cell.hp) - _soak(cell, dmg)
 	events.append({"type": "hit", "pos": at, "id": cell.id, "kind": cell.kind, "hp": maxi(0, cell.hp), "max": cell.max, "quiet": quiet,
 		"dmg": dmg, "crit": lucky, "how": how})
 	if cell.hp > 0:
 		return
 	var pos := cell_pos(r, c)
 	rows[r][c] = null
+	_lost(cell, pos)
 	if float(cell.burn_t) > 0.0:
 		_flares.append({"t": FLARE_FUSE, "pos": pos, "off": wall_y - pos.y, "c": c, "heat": float(cell.burn)})
 	_killed(cell, pos)
@@ -1331,7 +1414,7 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false, wh
 		dmg = roundi(dmg * BRITTLE)
 	if sg.kind == Kind.IRON and how != Hit.BOOM and not whole:
 		dmg = _iron()
-	sg.hp = int(sg.hp) - dmg
+	sg.hp = int(sg.hp) - _soak(sg, dmg)
 	var quiet := how != Hit.PEA and how != Hit.BOOM
 	events.append({"type": "hit", "pos": at, "id": sg.id, "kind": sg.kind, "hp": maxi(0, sg.hp), "max": sg.max, "quiet": quiet,
 		"dmg": dmg, "crit": lucky, "how": how})
@@ -1353,9 +1436,109 @@ func _hurt_seg(i: int, dmg: int, at: Vector2, how := Hit.PEA, lucky := false, wh
 				ids.append(segs[j].id)
 		_flares.append({"t": FLARE_FUSE, "pos": pos, "ids": ids, "heat": float(sg.burn)})
 	segs.remove_at(i)
+	if _buffs:
+		_aura()
+		if sg.kind == Kind.PLUS or sg.kind == Kind.TIMES:
+			events.append({"type": "buff_off", "pos": pos, "kind": sg.kind})
 	_killed(sg, pos)
 	_push += KNOCK
 	events.append({"type": "knock"})
+
+## A crate that looked after others has gone from the wall, and what it gave
+## goes with it: the lock's paint can be hurt again, a PLUS's share and a
+## TIMES's doubling come off the crates round where it stood.
+func _lost(cell: Dictionary, pos: Vector2) -> void:
+	match int(cell.kind):
+		Kind.WARD:
+			events.append({"type": "ward_off", "pos": pos, "tier": ward})
+			ward = -1
+		Kind.PLUS, Kind.TIMES:
+			_aura()
+			events.append({"type": "buff_off", "pos": pos, "kind": cell.kind})
+
+## The crates round (`r`, `c`) that can be looked after.
+func _round(r: int, c: int) -> Array:
+	var out: Array = []
+	for dr in [-1, 0, 1]:
+		for dc in [-1, 0, 1]:
+			var rr: int = r + dr
+			var cc: int = c + dc
+			if (dr == 0 and dc == 0) or rr < 0 or rr >= rows.size() or cc < 0 or cc >= COLS:
+				continue
+			if rows[rr][cc] != null and buffable(int(rows[rr][cc].kind)):
+				out.append(rows[rr][cc])
+	return out
+
+## The plates either side of plate `i` that can be looked after.
+func _beside(i: int) -> Array:
+	var out: Array = []
+	for j in range(maxi(1, i - BUFF_REACH), mini(segs.size(), i + BUFF_REACH + 1)):
+		if j != i and buffable(int(segs[j].kind)) and float(segs[j].dying) < 0.0:
+			out.append(segs[j])
+	return out
+
+## What each PLUS and TIMES standing gives the crates round it, worked out
+## again: every crate is as many times its number as the TIMES round it make
+## it, and one with no PLUS left beside it loses what a PLUS put on it.
+## `fresh` (a wave just dealt) is when a PLUS puts its share on.
+func _aura(fresh := false) -> void:
+	var all: Array = []
+	var givers: Array = []
+	if wave_kind == Wave.WALL:
+		for r in rows.size():
+			for c in COLS:
+				var cell = rows[r][c]
+				if cell == null:
+					continue
+				all.append(cell)
+				if cell.kind == Kind.PLUS or cell.kind == Kind.TIMES:
+					givers.append([cell, _round(r, c)])
+	else:
+		for i in segs.size():
+			all.append(segs[i])
+			if segs[i].kind == Kind.PLUS or segs[i].kind == Kind.TIMES:
+				givers.append([segs[i], _beside(i)])
+	var fed := {}
+	var by := {}
+	for g: Array in givers:
+		for cell: Dictionary in g[1]:
+			if g[0].kind == Kind.TIMES:
+				by[cell.id] = int(by.get(cell.id, 1)) * TIMES_BY
+			else:
+				fed[cell.id] = true
+				if fresh:
+					cell.plus = int(cell.plus) + int(g[0].gives)
+	for cell: Dictionary in all:
+		var now: int = by.get(cell.id, 1)
+		if now != int(cell.by):
+			cell.by = now
+			cell.owed = 0
+		if not fed.has(cell.id):
+			cell.plus = 0
+
+## The menders: every MEND_TICK each gives the crates round it MEND_SHARE of
+## what they began as, never past it. The `mend` event says where.
+func _step_mend() -> void:
+	if not _menders or gap_t > 0.0 or wave_kind != Wave.WALL:
+		return
+	_mend_c -= DT
+	if _mend_c > 0.0:
+		return
+	_mend_c += MEND_TICK
+	var any := false
+	for r in rows.size():
+		for c in COLS:
+			if rows[r][c] == null or int(rows[r][c].kind) != Kind.MEND:
+				continue
+			any = true
+			var healed: Array = []
+			for cell: Dictionary in _round(r, c):
+				if int(cell.hp) < int(cell.max):
+					cell.hp = mini(int(cell.max), int(cell.hp) + maxi(1, roundi(int(cell.max) * MEND_SHARE)))
+					healed.append(cell.id)
+			if not healed.is_empty():
+				events.append({"type": "mend", "pos": cell_pos(r, c), "ids": healed})
+	_menders = any
 
 ## A crate or a plate gone: the score, the streak, its energy, and one more
 ## of a gift crate's gift, kept for when it is wanted.
@@ -1441,6 +1624,10 @@ func _shove() -> void:
 func _deal() -> void:
 	wave += 1
 	_flares.clear()
+	ward = -1
+	_buffs = false
+	_menders = false
+	_mend_c = MEND_TICK
 	_jet_id = -1
 	_jet_n = 0
 	wave_kind = Wave.MILLI if wave % 3 == 0 else Wave.WALL
@@ -1448,7 +1635,7 @@ func _deal() -> void:
 		_deal_wall()
 	else:
 		_deal_milli()
-	events.append({"type": "wave", "wave": wave, "kind": wave_kind})
+	events.append({"type": "wave", "wave": wave, "kind": wave_kind, "ward": ward})
 
 ## How many gift crates (or plates) wave `w` holds.
 static func gift_count(w: int) -> int:
@@ -1510,7 +1697,7 @@ static func iron_count(w: int) -> int:
 func _cell(kind: int, hp: int) -> Dictionary:
 	_next_id += 1
 	return {"kind": kind, "hp": maxi(1, hp), "max": maxi(1, hp), "id": _next_id - 1, "burn_t": 0.0, "burn_c": 0.0, "burn": 0.0, "burn_part": 0.0,
-		"sting": 0.0, "sting_t": 0.0, "sting_c": 0.0, "sting_part": 0.0, "brittle": 0.0}
+		"sting": 0.0, "sting_t": 0.0, "sting_c": 0.0, "sting_part": 0.0, "brittle": 0.0, "plus": 0, "by": 1, "owed": 0, "gives": 0}
 
 ## A wall: rows of crates, the higher the heavier, with gaps, one to four
 ## gifts up it, a firecracker from wave four and a golden crate now and then.
@@ -1540,8 +1727,63 @@ func _deal_wall() -> void:
 	if wave >= 2 and rng.randf() < 0.6:
 		_scatter(1, n, func(r: int) -> Dictionary: return _cell(Kind.GOLD, roundi(base * (1.6 + 0.3 * r))))
 	_scatter(iron_count(wave), n, func(_r: int) -> Dictionary: return _cell(Kind.IRON, iron_hp(wave)))
+	_deal_keepers(n, base)
 	wall_y = 0.0
 	wall_speed = 6.5 + 0.45 * mini(wave, 20)
+
+## How many PLUS and TIMES crates wave `w`'s wall holds.
+static func buff_count(w: int) -> int:
+	return 0 if w < BUFF_WAVE else (1 if w < BUFF_TWO else 2)
+
+## The crates that look after others, into a wall of `n` rows dealt and
+## scattered: the PLUS and TIMES, a mender, and last the lock, on row
+## WARD_ROW with its column emptied under it. The lock's paint is the one
+## most of the plain crates it will be met among wear.
+func _deal_keepers(n: int, base: float) -> void:
+	var count := buff_count(wave)
+	if count > 0:
+		_buffs = true
+		_scatter(count, n, func(r: int) -> Dictionary:
+			var cell := _cell(Kind.PLUS if rng.randf() < 0.5 else Kind.TIMES, roundi(base * (0.8 + 0.2 * r)))
+			cell.gives = maxi(1, roundi(base * (1.0 + 0.3 * r) * PLUS_SHARE))
+			return cell)
+	if wave >= MEND_WAVE and rng.randf() < MEND_CHANCE:
+		_menders = true
+		_scatter(1, n, func(r: int) -> Dictionary: return _cell(Kind.MEND, roundi(base * (0.8 + 0.2 * r))))
+	if wave >= WARD_WAVE and n > WARD_ROW and rng.randf() < WARD_CHANCE:
+		# a column with only plain crates in the way, so no gift goes with them
+		var free: Array = []
+		for c in COLS:
+			var plain := true
+			for r in WARD_ROW + 1:
+				plain = plain and (rows[r][c] == null or int(rows[r][c].kind) == Kind.CRATE)
+			if plain:
+				free.append(c)
+		if not free.is_empty():
+			var c: int = free[rng.randi_range(0, free.size() - 1)]
+			for r in WARD_ROW:
+				rows[r][c] = null
+			rows[WARD_ROW][c] = _cell(Kind.WARD, roundi(base * 1.5))
+	_aura(true)
+	if wave < WARD_WAVE or _find_kind(Kind.WARD).x < 0:
+		return
+	var tally: Array = []
+	tally.resize(TIERS)
+	tally.fill(0)
+	for r in mini(n, WARD_ROW + 4):
+		for cell in rows[r]:
+			if cell != null and int(cell.kind) == Kind.CRATE:
+				tally[tier_of(shown(cell))] += 1
+	ward = tally.find(tally.max())
+
+## Where the first crate of `kind` is in the wall, as (row, column): (-1, -1)
+## for none.
+func _find_kind(kind: int) -> Vector2i:
+	for r in rows.size():
+		for c in COLS:
+			if rows[r][c] != null and int(rows[r][c].kind) == kind:
+				return Vector2i(r, c)
+	return Vector2i(-1, -1)
 
 ## Puts `count` cells made by `make` on rows of their own, clear of the
 ## lowest and of each other.
@@ -1600,14 +1842,20 @@ func _deal_milli() -> void:
 			kind = Kind.GOLD
 		elif i % 5 == 3 and wave >= 9:
 			kind = Kind.IRON
+		elif i % BUFF_EVERY == 7 and wave >= BUFF_WAVE:
+			kind = Kind.PLUS if rng.randf() < 0.5 else Kind.TIMES
 		var hp := base * rng.randf_range(0.7, 1.3) * (0.5 if holds_gift(kind) else (1.6 if kind == Kind.GOLD else 1.0))
 		if kind == Kind.IRON:
 			hp = iron_hp(wave) * 0.5
 		var sg := _cell(kind, roundi(hp))
+		if kind == Kind.PLUS or kind == Kind.TIMES:
+			_buffs = true
+			sg.gives = maxi(1, roundi(base * PLUS_SHARE))
 		sg.s = -(i + 1) * SPACING
 		sg.dying = -1.0
 		segs.append(sg)
 	milli_n = n
+	_aura(true)
 	milli_speed = 20.0 + 0.7 * mini(wave, 24)
 
 func _step_milli() -> void:

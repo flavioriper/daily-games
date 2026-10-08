@@ -33,6 +33,11 @@ var _on_gun := 0
 
 func _target(sim: RefCounted, skill: int) -> float:
 	if sim.wave_kind == Sim.Wave.WALL:
+		# the lock first: nothing of its paint can be hurt while it stands
+		if sim.ward >= 0:
+			var lock: Vector2i = sim._find_kind(Sim.Kind.WARD)
+			if lock.x >= 0:
+				return (lock.y + 0.5) * Sim.CELL_W
 		for r in sim.rows.size():
 			var best := -1
 			var low := 1 << 30

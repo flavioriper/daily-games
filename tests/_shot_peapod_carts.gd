@@ -131,6 +131,17 @@ func _lay() -> void:
 		sim.rows.append(row)
 	sim.rows[2][1] = sim._cell(Sim.Kind.IRON, 30)
 	sim.rows[3][3] = sim._cell(Sim.Kind.GOLD, 150)
+	# the crates that look after others: a PLUS, a TIMES, a mender and the lock
+	var plus: Dictionary = sim._cell(Sim.Kind.PLUS, 200)
+	plus.gives = 150
+	sim.rows[1][0] = plus
+	sim.rows[2][4] = sim._cell(Sim.Kind.TIMES, 600)
+	sim.rows[3][1] = sim._cell(Sim.Kind.MEND, 900)
+	sim.rows[0][2] = sim._cell(Sim.Kind.WARD, 4000)
+	sim.ward = Sim.tier_of(240)
+	sim._buffs = true
+	sim._menders = true
+	sim._aura(true)
 	sim.wall_y = 250.0
 	sim.wall_speed = 3.0
 	sim.power = 5
