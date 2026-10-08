@@ -167,7 +167,7 @@ const FAT_MOST := 1.8
 ## By Cart: the share of the pea's weight one shot lands as (what is short
 ## of a whole number is kept for the next: `_whole`), how fast it flies, how
 ## big it is drawn, and what the cart's own card costs and climbs by.
-const CART_WEIGHT := [1.0, 1.5, 4.2, 0.8, 0.36, 1.0]
+const CART_WEIGHT := [1.0, 1.2, 4.2, 0.8, 0.36, 1.0]
 const CART_SPEED_UP := [540.0, 540.0, 400.0, 900.0, 540.0, 540.0]
 const CART_SIZE := [1.0, 1.15, 1.9, 0.72, 0.8, 1.0]
 const CART_PRICE := [80, 40, 40, 36, 44, 36]
@@ -805,8 +805,8 @@ func _strike(p: Dictionary) -> bool:
 	return false
 
 ## A shot that has landed on `id`: a piercing one with targets left goes on,
-## a conker with hops left turns for the nearest thing it has not landed on
-## (HOP_KEEP of its weight each hop). True when it is spent.
+## a conker with hops left turns for the next thing (`_next_hop`; HOP_KEEP of
+## its weight each hop). True when it is spent.
 func _spent(p: Dictionary, id: int) -> bool:
 	(p.seen as Array).append(id)
 	if int(p.to) < 0 and int(p.left) > 0:
@@ -817,8 +817,17 @@ func _spent(p: Dictionary, id: int) -> bool:
 		return true
 	p.hops = int(p.hops) - 1
 	p.w = float(p.w0) * HOP_KEEP
-	p.to = _nearest(Vector2(p.x, p.y), p.seen)
+	p.to = _next_hop(p, id)
 	return int(p.to) < 0
+
+## Where a conker goes from the thing `id` it has just landed on: the nearest
+## thing it has not landed on yet, and with none of those in reach the
+## nearest of any but `id` itself, so with two crates left it goes back and
+## forth between them. -1 only when nothing else is within a hop.
+func _next_hop(p: Dictionary, id: int) -> int:
+	var from := Vector2(p.x, p.y)
+	var to := _nearest(from, p.seen)
+	return to if to >= 0 else _nearest(from, [id])
 
 ## A conker on its hop flies at what it is hopping to, wherever that is by
 ## now, and lands on it; what it was after gone, it turns for the next
@@ -827,7 +836,9 @@ func _home(p: Dictionary) -> bool:
 	var id: int = p.to
 	var at := _where(id)
 	if at.x == INF:
-		p.to = _nearest(Vector2(p.x, p.y), p.seen)
+		# `last` is -1 on a conker that has not gone through anything: where
+		# it is now is over nothing it must keep off
+		p.to = _next_hop(p, -1)
 		return int(p.to) >= 0
 	var from := Vector2(p.x, p.y)
 	var speed: float = CART_SPEED_UP[cart]
