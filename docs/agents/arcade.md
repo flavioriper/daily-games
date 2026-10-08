@@ -1010,11 +1010,10 @@ chalk line ends the run. Its "furthest" is the wave.
     the investor 47-71 pea, 65-80 conker, 61-64 pumpkin, 38-52 hose, 47-70
     dandelion, 23-74 twins; at random 17-150 (a random buyer that takes
     Energy early runs on). Suite 249790/0; `_shot_peapod.gd` 80-190 draw
-    calls on its cast.
+    calls on its cast and 192 under ANGLE, `_shot_peapod_carts.gd` 105-162.
   - **Not done**: a phone (the fatter shots and the pill were seen in a
-    shot only); ANGLE was not rerun; no sound for the pill; pt and es are
-    the agent's; `_shot_peapod_carts.gd` and the perf probes were not
-    rerun. **Unconfirmed by the user**: that the Energy card and kept gifts
+    shot only); no sound for the pill; pt and es are the agent's; the perf
+    probes were not rerun. **Unconfirmed by the user**: that the Energy card and kept gifts
     are what "good" means (nothing the hand does with the cart shows in a
     bot); wave 500 being two to four and a half hours; five peas side by
     side as the most drawn; the conker's stronger start.
