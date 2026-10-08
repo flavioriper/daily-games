@@ -909,6 +909,31 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "HB_LVL_3"},
 		],
 	},
+	{
+		"id": "acorn",
+		"kind": "puzzle",
+		"title": "Golden Acorn",
+		"blurb": "AC_BLURB",
+		"short": "AC_SHORT",
+		"motto": "AC_MOTTO",
+		"footer": "Pick · Lock · Learn",
+		# The card is the board: the four answers are tapped where they
+		# stand, so no tray. The actions row stays for its third button,
+		# which reads Lock and then Next -- a lock is the one move, and final.
+		"script": "res://puzzles/acorn2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (acorn_state.gd's ASKS) is its own
+		# daily with its own done mark and its own questions.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "AC_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "AC_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "AC_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "AC_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

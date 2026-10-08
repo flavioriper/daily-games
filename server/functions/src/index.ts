@@ -3,7 +3,7 @@ import {onSchedule} from "firebase-functions/v2/scheduler";
 import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
-import howBig from "./how_big.json";
+import {asked, makeDay} from "./acorn";
 
 initializeApp();
 const db = getFirestore();
@@ -37,23 +37,21 @@ export function dayKey(d: Date): number {
 }
 
 /**
- * The published content, one entry per turn game.
+ * The published content, one entry per game that has a day to publish.
  *
- * How Big? draws its item from content/how_big.json, the same table the
- * client ships in res:// -- `npm run build` copies it beside this file, so
- * there is one table and it cannot drift -- and picks by the day hash exactly
- * as turns/how_big.gd does on a phone that never reached the network. The
- * point of publishing what a phone could derive is the override: a day's
- * document, once created, is what every player gets, so a hand-picked day
- * can be written ahead of the scheduler and the derivation steps aside.
+ * A day's document, once created, is what every player gets. `make` is
+ * handed the day and what the game's last days published (newest first), so
+ * a game whose day is written by a model can tell it what not to repeat. It
+ * must not throw for want of a model: see acorn.ts, which answers from the
+ * bank the game ships. docs/agents/turns-and-backend.md, "A day written by a
+ * model", is the contract a new game follows.
  */
-export const GAMES: Record<string, (day: number) => unknown> = {
-  how_big: (day) => {
-    const items = howBig.items;
-    const it = items[fnv1a(`how_big|${day}`) % items.length];
-    return {item: it.id, metres: it.metres};
-  },
+export const GAMES: Record<string, (day: number, recent: unknown[]) => Promise<unknown>> = {
+  acorn: (day, recent) => makeDay(day, recent.flatMap(asked)),
 };
+
+/** How many days back a game is shown of itself. */
+export const RECENT_DAYS = 10;
 
 /**
  * Games that publish nothing and only keep a crowd: a daily board sends one
@@ -99,19 +97,48 @@ function turnDoc(day: number, game: string) {
  * ALREADY_EXISTS is the normal case and is swallowed; anything else throws,
  * so a genuine write failure fails the run instead of passing for a skip.
  */
-export const publishDay = onSchedule("0 3 * * *", async () => {
+export const publishDay = onSchedule({
+  schedule: "0 3 * * *",
+  // A written day is two long answers from a model (acorn.ts): minutes, not
+  // the default's one.
+  timeoutSeconds: 1500,
+  memory: "512MiB",
+  secrets: ["ANTHROPIC_API_KEY"],
+}, async () => {
   await publishDays(new Date());
 });
 
+function parsed(json: unknown): unknown {
+  try {
+    return JSON.parse(String(json));
+  } catch {
+    return null;
+  }
+}
+
+/** What `game` published on the days before `day`, newest first. */
+async function recentDays(game: string, day: Date): Promise<unknown[]> {
+  const out: unknown[] = [];
+  for (let back = 1; back <= RECENT_DAYS; back++) {
+    const snap = await turnDoc(dayKey(new Date(day.getTime() - back * 86400000)), game).get();
+    if (snap.exists) out.push(parsed(snap.get("json")));
+  }
+  return out;
+}
+
 /** The body of publishDay, apart from it so a harness can run the real thing:
- *  `functions:shell` cannot invoke a v2 scheduled function. */
+ *  `functions:shell` cannot invoke a v2 scheduled function. A day already
+ *  there is never made again -- making one may cost a model's time. */
 export async function publishDays(now: Date): Promise<void> {
   const tomorrow = new Date(now.getTime() + 86400000);
-  for (const day of [dayKey(now), dayKey(tomorrow)]) {
+  for (const when of [now, tomorrow]) {
+    const day = dayKey(when);
     for (const [game, make] of Object.entries(GAMES)) {
       const doc = turnDoc(day, game);
+      if ((await doc.get()).exists) continue;
+      const content = await make(day, await recentDays(game, when));
       try {
-        await doc.create({json: JSON.stringify(make(day))});
+        await doc.create({json: JSON.stringify(content)});
       } catch (e) {
         if (!(await doc.get()).exists) throw e;
       }

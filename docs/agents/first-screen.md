@@ -325,6 +325,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   `_how_big_mesh`. Its vista is the sky at `(0.30, 0.50)`. Thirty-two cards
   at eight a page fill four pages; `_shot_menu.gd -- last` read **225** draw
   calls on the last.
+- **Golden Acorn is the thirty-third card (2026-10-08).** Its picture is
+  `_draw_acorn()` in `ui/menu/card_art.gd`: the board in small -- the
+  question's paper with the golden acorn between two pairs of ruled lines,
+  and the four plates two by two under it, the second turned leaf with its
+  tick -- `ui/faces/acorn_art.gd`'s shapes, one mesh kept in `_acorn_mesh`.
+  Its vista is the sky at `(0.62, 0.42)`. **Thirty-three cards at eight a
+  page are five pages, the last holding this card alone**;
+  `_shot_menu.gd -- last` (three turns now) read **143** draw calls there.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

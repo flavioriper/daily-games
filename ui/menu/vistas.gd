@@ -71,6 +71,8 @@ const CARDS := {
 	"horse": ["meadow", 1.6, Vector2(0.12, 0.45)],
 	# How Big?'s two things stand out in the open, under a clear sky.
 	"how_big": ["sky", 1.5, Vector2(0.30, 0.50)],
+	# Golden Acorn's quiz is asked in the open too, further along the sky.
+	"acorn": ["sky", 1.5, Vector2(0.62, 0.42)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

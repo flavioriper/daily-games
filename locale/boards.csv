@@ -2880,3 +2880,62 @@ HTP_HB_HEARTS_CAP,More than double off: a heart goes,Mais que o dobro de erro: u
 HTP_HB_HINT_START_CAP,Not sure? Press the bulb,Na dúvida? Toque na lâmpada,¿Con dudas? Toca la bombilla
 HTP_HB_HINT_CAP,It says which way to go,Ela diz para que lado ir,Te dice hacia dónde ir
 HTP_HB_HINT_DONE_CAP,"Bigger, then","Maior, então","Más grande, entonces"
+AC_BLURB,"A daily quiz. Four answers, one right: pick, lock, and learn why.","Um quiz diário. Quatro respostas, uma certa: escolha, confirme e descubra o porquê.","Un quiz diario. Cuatro respuestas, una correcta: elige, confirma y descubre por qué."
+AC_SHORT,"Four answers,\none is right.","Quatro respostas,\numa é a certa.","Cuatro respuestas,\nuna es la buena."
+AC_MOTTO,Are you sure?,Tem certeza?,¿Seguro?
+AC_LVL_0,"7 easy questions, two bulbs","7 perguntas fáceis, duas lâmpadas","7 preguntas fáciles, dos bombillas"
+AC_LVL_1,7 questions from school days,7 perguntas dos tempos de escola,7 preguntas de los días de escuela
+AC_LVL_2,7 questions for keen players,7 perguntas para quem gosta de quiz,7 preguntas para buenos jugadores
+AC_LVL_3,"The Climb: 10 rising, two hearts","A Escalada: 10 que sobem, dois corações","La Escalada: 10 que suben, dos corazones"
+AC_LOCK,Lock,Confirmar,Confirmar
+AC_NEXT,Next,Próxima,Siguiente
+AC_DONE,Finish,Concluir,Terminar
+AC_ROUND,%d / %d,%d / %d,%d / %d
+AC_FETCHING,Fetching today's questions…,Buscando as perguntas de hoje…,Buscando las preguntas de hoy…
+AC_PICK_FIRST,Pick an answer first.,Escolha uma resposta primeiro.,Elige una respuesta primero.
+AC_HINT_TOLD,Two wrong answers gone.,Duas respostas erradas saíram.,Se fueron dos respuestas erróneas.
+AC_HINT_USED,This one is already down to two.,Esta já ficou com duas.,Esta ya quedó en dos.
+AC_WIN_SUB,%d of %d right,%d de %d certas,%d de %d correctas
+AC_SEAL_PERFECT,Perfect,Perfeito,Perfecto
+AC_SEAL_CLIMB,Golden,De ouro,De oro
+AC_OUT,Out of hearts.,Acabaram os corações.,Sin corazones.
+AC_OUT_BODY,"That was the last heart. Start a new Climb with fresh questions, or watch a short video for one more heart.","Esse foi o último coração. Comece uma nova Escalada com perguntas novas, ou veja um vídeo curto para ganhar mais um coração.","Ese fue el último corazón. Empieza una nueva Escalada con preguntas nuevas, o mira un video corto para ganar un corazón más."
+AC_OUT_BODY_PLAIN,That was the last heart. Start a new Climb with fresh questions whenever you like.,Esse foi o último coração. Comece uma nova Escalada com perguntas novas quando quiser.,Ese fue el último corazón. Empieza una nueva Escalada con preguntas nuevas cuando quieras.
+AC_RULES,"%d questions, new every day. Each has four answers and only one is right. Tap an answer to pick it, then Lock to make it final: a lock is never taken back. The right answer turns green, with a line about it, and your acorns count the ones you got right.","%d perguntas, novas todos os dias. Cada uma tem quatro respostas e só uma está certa. Toque numa resposta para escolher e depois em Confirmar: confirmou, não tem volta. A resposta certa fica verde, com uma linha sobre ela, e suas bolotas contam os acertos.","%d preguntas, nuevas cada día. Cada una tiene cuatro respuestas y solo una es correcta. Toca una respuesta para elegirla y luego Confirmar: una vez confirmada, no hay vuelta atrás. La respuesta correcta se pone verde, con una línea sobre ella, y tus bellotas cuentan los aciertos."
+AC_RULES_BULB_ONE,The bulb takes two wrong answers away. You have one for the day.,A lâmpada tira duas respostas erradas. Você tem uma para o dia.,La bombilla quita dos respuestas erróneas. Tienes una para el día.
+AC_RULES_BULB_N,The bulb takes two wrong answers away. You have %d for the day.,A lâmpada tira duas respostas erradas. Você tem %d para o dia.,La bombilla quita dos respuestas erróneas. Tienes %d para el día.
+AC_RULES_CLIMB,The Climb: ten questions that start easy and end where few can follow. A wrong answer costs a heart and you have %d; reach the top with one left for the golden acorn. No bulb up here.,A Escalada: dez perguntas que começam fáceis e terminam onde poucos chegam. Uma resposta errada custa um coração e você tem %d; chegue ao topo com um sobrando para ganhar a bolota de ouro. Aqui não tem lâmpada.,La Escalada: diez preguntas que empiezan fáciles y terminan donde pocos llegan. Una respuesta errónea cuesta un corazón y tienes %d; llega a la cima con uno para ganar la bellota de oro. Aquí no hay bombilla.
+AC_CAT_NATURE,Nature,Natureza,Naturaleza
+AC_CAT_SCIENCE,Science,Ciência,Ciencia
+AC_CAT_GEOGRAPHY,Geography,Geografia,Geografía
+AC_CAT_HISTORY,History,História,Historia
+AC_CAT_ARTS,Arts,Artes,Artes
+AC_CAT_FOOD,Food,Comida,Comida
+AC_CAT_SPORTS,Sports,Esportes,Deportes
+AC_CAT_WORDS,Words,Palavras,Palabras
+AC_CAT_EVERYDAY,Everyday,Dia a dia,Día a día
+HTP_AC_PICK,Pick an answer,Escolha uma resposta,Elige una respuesta
+HTP_AC_PICK_BODY,Every question has four answers and only one is right. Tap one to pick it. Nothing is final yet: tap another and the light moves.,Cada pergunta tem quatro respostas e só uma está certa. Toque numa para escolher. Nada é definitivo ainda: toque em outra e a luz muda.,Cada pregunta tiene cuatro respuestas y solo una es correcta. Toca una para elegirla. Nada es definitivo aún: toca otra y la luz se mueve.
+HTP_AC_LOCK,Lock it in,Confirme,Confirma
+HTP_AC_LOCK_BODY,"Lock makes your pick final. A breath, and the right answer turns green. Each one you get right is an acorn.","Confirmar torna a escolha definitiva. Um suspiro, e a resposta certa fica verde. Cada acerto é uma bolota.","Confirmar hace definitiva tu elección. Un suspiro, y la respuesta correcta se pone verde. Cada acierto es una bellota."
+HTP_AC_WHY,Wrong? Learn why,Errou? Descubra o porquê,¿Fallaste? Descubre por qué
+HTP_AC_WHY_BODY,"A wrong pick turns red and the right answer shows beside it, with a line about it under the question. Then press Next.","A escolha errada fica vermelha e a resposta certa aparece ao lado, com uma linha sobre ela embaixo da pergunta. Depois toque em Próxima.","La elección errónea se pone roja y la respuesta correcta aparece al lado, con una línea sobre ella bajo la pregunta. Luego toca Siguiente."
+HTP_AC_CLIMB,The Climb,A Escalada,La Escalada
+HTP_AC_CLIMB_BODY,"Ten questions, each harder than the last. A wrong answer costs a heart, and you have %d. Reach the top for the golden acorn.","Dez perguntas, cada uma mais difícil que a anterior. Uma resposta errada custa um coração, e você tem %d. Chegue ao topo para ganhar a bolota de ouro.","Diez preguntas, cada una más difícil que la anterior. Una respuesta errónea cuesta un corazón, y tienes %d. Llega a la cima para ganar la bellota de oro."
+HTP_AC_HINT,Not sure? Ask the bulb,Na dúvida? Peça à lâmpada,¿Con dudas? Pide a la bombilla
+HTP_AC_HINT_BODY_ONE,The bulb takes two wrong answers off the card. You have one hint.,A lâmpada tira duas respostas erradas do cartão. Você tem uma dica.,La bombilla quita dos respuestas erróneas de la tarjeta. Tienes una pista.
+HTP_AC_HINT_BODY_N,The bulb takes two wrong answers off the card. You have %d hints.,A lâmpada tira duas respostas erradas do cartão. Você tem %d dicas.,La bombilla quita dos respuestas erróneas de la tarjeta. Tienes %d pistas.
+HTP_AC_PICK_START_CAP,"Four answers, one is right","Quatro respostas, uma é a certa","Cuatro respuestas, una es la buena"
+HTP_AC_PICK_CAP,Tap an answer to pick it,Toque numa resposta para escolher,Toca una respuesta para elegirla
+HTP_AC_PICK_DONE_CAP,Changed your mind? Tap another,Mudou de ideia? Toque em outra,¿Cambiaste de idea? Toca otra
+HTP_AC_LOCK_START_CAP,Pick the one you believe in,Escolha aquela em que você acredita,Elige la que creas
+HTP_AC_LOCK_PRESS_CAP,Then press Lock,Depois toque em Confirmar,Luego toca Confirmar
+HTP_AC_LOCK_CAP,Right! A lock is final,"Certo! Confirmou, não tem volta",¡Correcto! Confirmar es definitivo
+HTP_AC_WHY_START_CAP,Not every guess lands,Nem todo palpite acerta,No toda respuesta acierta
+HTP_AC_WHY_CAP,"The right one shows, with a line about it","A certa aparece, com uma linha sobre ela","La correcta aparece, con una línea sobre ella"
+HTP_AC_WHY_NEXT_CAP,Then on to the next,"Depois, a próxima","Luego, la siguiente"
+HTP_AC_CLIMB_START_CAP,The Climb has hearts,A Escalada tem corações,La Escalada tiene corazones
+HTP_AC_CLIMB_CAP,A wrong answer: a heart goes,Resposta errada: um coração se vai,Respuesta errónea: se va un corazón
+HTP_AC_HINT_START_CAP,Not sure? Press the bulb,Na dúvida? Toque na lâmpada,¿Con dudas? Toca la bombilla
+HTP_AC_HINT_CAP,Two wrong answers fade,Duas respostas erradas somem,Dos respuestas erróneas se apagan
+HTP_AC_HINT_DONE_CAP,Now pick from the two left,Agora escolha entre as duas,Ahora elige entre las dos

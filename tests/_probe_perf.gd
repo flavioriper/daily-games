@@ -4762,6 +4762,39 @@ func _buzz_horse() -> void:
 	_buzzed("reset")
 	_moves = _moves_horse()
 
+## Golden Acorn's are a tap and two presses of the row's button a question:
+## the right plate picked and locked, then Next (after the last, Finish). The
+## deal follows the open by a frame, a lock's answer is held for a breath and
+## Next waits for the plates to leave, so a move the board was not ready for
+## goes back on the list. Ten rungs want `to=40`.
+func _moves_acorn() -> Array:
+	var out := []
+	var n: int = _puzzle.State.ASKS[_puzzle.state.band]
+	for r in n:
+		for what: String in ["lock", "next"]:
+			var m := {}
+			m["do"] = func() -> void:
+				if not _acorn_step(r, what):
+					_moves.push_front(m)
+			out.append(m)
+	return out
+
+## One of Golden Acorn's moves on question `r`; false when the board was not
+## there yet.
+func _acorn_step(r: int, what: String) -> bool:
+	var st = _puzzle.state
+	# (the board's Phase: 0 WAIT, 1 PLAY, 2 REVEAL, 3 SWAP)
+	if what == "lock":
+		if st.count() == 0 or st.index != r or int(_puzzle._phase) != 1:
+			return false
+		_puzzle.pick_answer(st.right_place())
+		_host._on_check()
+		return st.locked()
+	if st.index != r or int(_puzzle._phase) != 2:
+		return st.index > r or _puzzle.is_done()
+	_host._on_check()
+	return st.index > r or _puzzle.is_done()
+
 ## How Big?'s are a size and two presses of the row's button a round: the
 ## answer sized to its truth and locked, then Next. A lock is refused for a
 ## beat after a round is dealt and Next while the pair is still walking off,

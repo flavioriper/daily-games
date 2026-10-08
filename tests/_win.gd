@@ -174,6 +174,9 @@ func _note(id: String) -> String:
 		"how_big": return "band %d, %d rounds, scores %s, %d of %d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.round_count(), str(_puzzle.completion_record().scores), _puzzle.state.total(),
 			_puzzle.state.best_total(), _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
+			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -213,6 +216,7 @@ func _solve(id: String) -> void:
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
 		"how_big": _solve_how_big()
+		"acorn": _solve_acorn()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -492,6 +496,49 @@ func _solve_horse() -> void:
 			_tap_local(_puzzle.cell_centre(c))
 	_hud_ok = _hud_ok and st.closed() and st.score() == st.best
 	_press(_host.action_bar.check_button)
+
+## Golden Acorn: every question answered through the input path -- a touch
+## on the right answer's plate, then the row's button to lock and again for
+## the next (after the last, to finish) -- with the bulb once on the first
+## question. The deal follows the open by a frame (or by the network), a
+## lock's answer is held for a breath and Next waits for the plates to
+## leave, so this one awaits, and holds the walk (`_waiting`) to the win.
+func _solve_acorn() -> void:
+	_waiting = true
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	var guard := 0
+	while _puzzle.state.count() == 0 and guard < 900:
+		guard += 1
+		await process_frame
+	var st = _puzzle.state
+	var hint_ok := true
+	for r in st.count():
+		# the question asked and standing (the board's Phase: 1 PLAY)
+		guard = 0
+		while (st.index != r or int(_puzzle._phase) != 1) and guard < 600:
+			guard += 1
+			await process_frame
+		await create_timer(0.6).timeout
+		for i in 4:
+			if not slot.has_point(_puzzle.plate_point(i)):
+				_fit_ok = false
+		if r == 0 and _puzzle.capabilities().has("hint"):
+			_press(_host.top_bar.hint_button)
+			hint_ok = _puzzle.hints_used == 1 and not st.is_cut(st.right_place())
+		_tap_local(_puzzle.plate_point(st.right_place()))
+		_press(_host.action_bar.check_button)
+		_hud_ok = _hud_ok and st.locked() and bool(st.results[r].right)
+		await create_timer(1.6).timeout
+		_press(_host.action_bar.check_button)
+		if r + 1 < st.count():
+			await create_timer(0.4).timeout
+			_hud_ok = _hud_ok and st.index == r + 1
+	_hud_ok = _hud_ok and hint_ok and _puzzle.checks == st.count() and st.perfect()
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
 
 ## How Big?: every round sized through the input path -- a touch pressed on
 ## the grip, dragged to where the answer reads its truth, let go -- then the

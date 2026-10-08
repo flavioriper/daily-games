@@ -1,0 +1,1226 @@
+[
+ {
+  "id": "m001",
+  "cat": "nature",
+  "en": {
+   "q": "Which is the largest animal living on land?",
+   "right": "African elephant",
+   "wrong": [
+    "White rhinoceros",
+    "Hippopotamus",
+    "Giraffe"
+   ],
+   "why": "A big male can weigh around six tonnes, and it spends most of the day eating."
+  },
+  "pt": {
+   "q": "Qual é o maior animal que vive em terra firme?",
+   "right": "Elefante-africano",
+   "wrong": [
+    "Rinoceronte-branco",
+    "Hipopótamo",
+    "Girafa"
+   ],
+   "why": "Um macho grande pode pesar cerca de seis toneladas e passa quase o dia todo comendo."
+  },
+  "es": {
+   "q": "¿Cuál es el animal terrestre más grande?",
+   "right": "Elefante africano",
+   "wrong": [
+    "Rinoceronte blanco",
+    "Hipopótamo",
+    "Jirafa"
+   ],
+   "why": "Un macho grande puede pesar unas seis toneladas y pasa casi todo el día comiendo."
+  }
+ },
+ {
+  "id": "m002",
+  "cat": "nature",
+  "en": {
+   "q": "Which animal is the largest rodent in the world?",
+   "right": "Capybara",
+   "wrong": [
+    "Beaver",
+    "Porcupine",
+    "Marmot"
+   ],
+   "why": "Capybaras live by South American rivers and can stay underwater for several minutes."
+  },
+  "pt": {
+   "q": "Qual animal é o maior roedor do mundo?",
+   "right": "Capivara",
+   "wrong": [
+    "Castor",
+    "Porco-espinho",
+    "Marmota"
+   ],
+   "why": "A capivara vive à beira dos rios da América do Sul e fica vários minutos debaixo d'água."
+  },
+  "es": {
+   "q": "¿Qué animal es el roedor más grande del mundo?",
+   "right": "Capibara",
+   "wrong": [
+    "Castor",
+    "Puercoespín",
+    "Marmota"
+   ],
+   "why": "El capibara vive junto a los ríos de Sudamérica y aguanta varios minutos bajo el agua."
+  }
+ },
+ {
+  "id": "m003",
+  "cat": "nature",
+  "en": {
+   "q": "How many hearts does an octopus have?",
+   "right": "Three",
+   "wrong": [
+    "One",
+    "Two",
+    "Four"
+   ],
+   "why": "Two hearts push blood through the gills and the third sends it around the body."
+  },
+  "pt": {
+   "q": "Quantos corações tem um polvo?",
+   "right": "Três",
+   "wrong": [
+    "Um",
+    "Dois",
+    "Quatro"
+   ],
+   "why": "Dois corações levam o sangue às brânquias e o terceiro o manda para o resto do corpo."
+  },
+  "es": {
+   "q": "¿Cuántos corazones tiene un pulpo?",
+   "right": "Tres",
+   "wrong": [
+    "Uno",
+    "Dos",
+    "Cuatro"
+   ],
+   "why": "Dos corazones llevan la sangre a las branquias y el tercero la envía al resto del cuerpo."
+  }
+ },
+ {
+  "id": "m004",
+  "cat": "nature",
+  "en": {
+   "q": "Which bird can hover in front of a flower and even fly backwards?",
+   "right": "Hummingbird",
+   "wrong": [
+    "Woodpecker",
+    "Swallow",
+    "Sparrow"
+   ],
+   "why": "Its wings trace a figure of eight, dozens of times a second, which lets it hang in the air."
+  },
+  "pt": {
+   "q": "Qual ave consegue parar no ar diante de uma flor e até voar para trás?",
+   "right": "Beija-flor",
+   "wrong": [
+    "Pica-pau",
+    "Andorinha",
+    "Pardal"
+   ],
+   "why": "As asas desenham um oito dezenas de vezes por segundo, e assim ele fica parado no ar."
+  },
+  "es": {
+   "q": "¿Qué ave puede quedarse quieta en el aire frente a una flor y hasta volar hacia atrás?",
+   "right": "Colibrí",
+   "wrong": [
+    "Pájaro carpintero",
+    "Golondrina",
+    "Gorrión"
+   ],
+   "why": "Sus alas dibujan un ocho decenas de veces por segundo, y así se sostiene en el aire."
+  }
+ },
+ {
+  "id": "m005",
+  "cat": "science",
+  "en": {
+   "q": "Which is the hottest planet in the Solar System?",
+   "right": "Venus",
+   "wrong": [
+    "Mercury",
+    "Mars",
+    "Jupiter"
+   ],
+   "why": "Venus's thick air traps heat, so it beats Mercury even though Mercury is closer to the Sun."
+  },
+  "pt": {
+   "q": "Qual é o planeta mais quente do Sistema Solar?",
+   "right": "Vênus",
+   "wrong": [
+    "Mercúrio",
+    "Marte",
+    "Júpiter"
+   ],
+   "why": "O ar espesso de Vênus prende o calor; por isso ele ganha de Mercúrio, que fica mais perto do Sol."
+  },
+  "es": {
+   "q": "¿Cuál es el planeta más caliente del Sistema Solar?",
+   "right": "Venus",
+   "wrong": [
+    "Mercurio",
+    "Marte",
+    "Júpiter"
+   ],
+   "why": "El aire espeso de Venus atrapa el calor; por eso le gana a Mercurio, que está más cerca del Sol."
+  }
+ },
+ {
+  "id": "m006",
+  "cat": "science",
+  "en": {
+   "q": "What is the chemical symbol for gold?",
+   "right": "Au",
+   "wrong": [
+    "Ag",
+    "Fe",
+    "Cu"
+   ],
+   "why": "It comes from aurum, the Latin word for gold. Ag is silver, from argentum."
+  },
+  "pt": {
+   "q": "Qual é o símbolo químico do ouro?",
+   "right": "Au",
+   "wrong": [
+    "Ag",
+    "Fe",
+    "Cu"
+   ],
+   "why": "Vem de aurum, ouro em latim. Ag é a prata, de argentum."
+  },
+  "es": {
+   "q": "¿Cuál es el símbolo químico del oro?",
+   "right": "Au",
+   "wrong": [
+    "Ag",
+    "Fe",
+    "Cu"
+   ],
+   "why": "Viene de aurum, oro en latín. Ag es la plata, de argentum."
+  }
+ },
+ {
+  "id": "m007",
+  "cat": "science",
+  "en": {
+   "q": "Which gas do plants take in from the air to make their food?",
+   "right": "Carbon dioxide",
+   "wrong": [
+    "Oxygen",
+    "Nitrogen",
+    "Carbon monoxide"
+   ],
+   "why": "With sunlight and water, plants turn it into sugar and give oxygen back to the air."
+  },
+  "pt": {
+   "q": "Qual gás as plantas retiram do ar para produzir seu alimento?",
+   "right": "Gás carbônico",
+   "wrong": [
+    "Oxigênio",
+    "Nitrogênio",
+    "Monóxido de carbono"
+   ],
+   "why": "Com luz do sol e água, a planta o transforma em açúcar e devolve oxigênio ao ar."
+  },
+  "es": {
+   "q": "¿Qué gas toman las plantas del aire para fabricar su alimento?",
+   "right": "Dióxido de carbono",
+   "wrong": [
+    "Oxígeno",
+    "Nitrógeno",
+    "Monóxido de carbono"
+   ],
+   "why": "Con luz del sol y agua, la planta lo convierte en azúcar y devuelve oxígeno al aire."
+  }
+ },
+ {
+  "id": "m008",
+  "cat": "science",
+  "en": {
+   "q": "How many bones are there in an adult human body?",
+   "right": "206",
+   "wrong": [
+    "106",
+    "186",
+    "306"
+   ],
+   "why": "A baby is born with about 300 pieces; many of them join together as the child grows."
+  },
+  "pt": {
+   "q": "Quantos ossos tem o corpo de uma pessoa adulta?",
+   "right": "206",
+   "wrong": [
+    "106",
+    "186",
+    "306"
+   ],
+   "why": "Um bebê nasce com cerca de 300 peças; muitas delas se juntam enquanto a criança cresce."
+  },
+  "es": {
+   "q": "¿Cuántos huesos tiene el cuerpo de una persona adulta?",
+   "right": "206",
+   "wrong": [
+    "106",
+    "186",
+    "306"
+   ],
+   "why": "Un bebé nace con unas 300 piezas; muchas se van uniendo mientras el niño crece."
+  }
+ },
+ {
+  "id": "m009",
+  "cat": "geography",
+  "en": {
+   "q": "What is the capital of Australia?",
+   "right": "Canberra",
+   "wrong": [
+    "Sydney",
+    "Melbourne",
+    "Perth"
+   ],
+   "why": "Sydney and Melbourne both wanted the title, so a new city was planned between the two."
+  },
+  "pt": {
+   "q": "Qual é a capital da Austrália?",
+   "right": "Camberra",
+   "wrong": [
+    "Sydney",
+    "Melbourne",
+    "Perth"
+   ],
+   "why": "Sydney e Melbourne disputavam o título; então planejaram uma cidade nova entre as duas."
+  },
+  "es": {
+   "q": "¿Cuál es la capital de Australia?",
+   "right": "Canberra",
+   "wrong": [
+    "Sídney",
+    "Melbourne",
+    "Perth"
+   ],
+   "why": "Sídney y Melbourne se disputaban el título, así que se planeó una ciudad nueva entre las dos."
+  }
+ },
+ {
+  "id": "m010",
+  "cat": "geography",
+  "en": {
+   "q": "What is the capital of Canada?",
+   "right": "Ottawa",
+   "wrong": [
+    "Toronto",
+    "Montreal",
+    "Vancouver"
+   ],
+   "why": "Ottawa sits on the river that separates the provinces of Ontario and Quebec."
+  },
+  "pt": {
+   "q": "Qual é a capital do Canadá?",
+   "right": "Ottawa",
+   "wrong": [
+    "Toronto",
+    "Montreal",
+    "Vancouver"
+   ],
+   "why": "Ottawa fica à beira do rio que separa as províncias de Ontário e Quebec."
+  },
+  "es": {
+   "q": "¿Cuál es la capital de Canadá?",
+   "right": "Ottawa",
+   "wrong": [
+    "Toronto",
+    "Montreal",
+    "Vancouver"
+   ],
+   "why": "Ottawa está a orillas del río que separa las provincias de Ontario y Quebec."
+  }
+ },
+ {
+  "id": "m011",
+  "cat": "geography",
+  "en": {
+   "q": "In which country are the ruins of Machu Picchu?",
+   "right": "Peru",
+   "wrong": [
+    "Bolivia",
+    "Ecuador",
+    "Colombia"
+   ],
+   "why": "The Incas built it in the 15th century, more than 2,400 metres up in the Andes."
+  },
+  "pt": {
+   "q": "Em que país ficam as ruínas de Machu Picchu?",
+   "right": "Peru",
+   "wrong": [
+    "Bolívia",
+    "Equador",
+    "Colômbia"
+   ],
+   "why": "Os incas a construíram no século XV, a mais de 2.400 metros de altitude, nos Andes."
+  },
+  "es": {
+   "q": "¿En qué país están las ruinas de Machu Picchu?",
+   "right": "Perú",
+   "wrong": [
+    "Bolivia",
+    "Ecuador",
+    "Colombia"
+   ],
+   "why": "Los incas la construyeron en el siglo XV, a más de 2.400 metros de altura en los Andes."
+  }
+ },
+ {
+  "id": "m012",
+  "cat": "geography",
+  "en": {
+   "q": "Mount Everest belongs to which mountain range?",
+   "right": "Himalayas",
+   "wrong": [
+    "Andes",
+    "Alps",
+    "Rockies"
+   ],
+   "why": "The name Himalaya comes from Sanskrit and means \"home of snow\"."
+  },
+  "pt": {
+   "q": "O monte Everest faz parte de qual cordilheira?",
+   "right": "Himalaia",
+   "wrong": [
+    "Andes",
+    "Alpes",
+    "Montanhas Rochosas"
+   ],
+   "why": "O nome Himalaia vem do sânscrito e quer dizer \"morada da neve\"."
+  },
+  "es": {
+   "q": "¿A qué cordillera pertenece el monte Everest?",
+   "right": "Himalaya",
+   "wrong": [
+    "Andes",
+    "Alpes",
+    "Montañas Rocosas"
+   ],
+   "why": "El nombre Himalaya viene del sánscrito y significa \"morada de la nieve\"."
+  }
+ },
+ {
+  "id": "m013",
+  "cat": "history",
+  "en": {
+   "q": "In which century did Columbus first sail across the Atlantic to the Americas?",
+   "right": "15th century",
+   "wrong": [
+    "14th century",
+    "16th century",
+    "17th century"
+   ],
+   "why": "He set out in 1492 with three ships: the Niña, the Pinta and the Santa María."
+  },
+  "pt": {
+   "q": "Em que século Colombo atravessou o Atlântico e chegou à América pela primeira vez?",
+   "right": "Século XV",
+   "wrong": [
+    "Século XIV",
+    "Século XVI",
+    "Século XVII"
+   ],
+   "why": "Ele partiu em 1492 com três navios: a Niña, a Pinta e a Santa María."
+  },
+  "es": {
+   "q": "¿En qué siglo cruzó Colón el Atlántico y llegó a América por primera vez?",
+   "right": "Siglo XV",
+   "wrong": [
+    "Siglo XIV",
+    "Siglo XVI",
+    "Siglo XVII"
+   ],
+   "why": "Zarpó en 1492 con tres naves: la Niña, la Pinta y la Santa María."
+  }
+ },
+ {
+  "id": "m014",
+  "cat": "history",
+  "en": {
+   "q": "In which year did people first walk on the Moon?",
+   "right": "1969",
+   "wrong": [
+    "1959",
+    "1965",
+    "1975"
+   ],
+   "why": "Apollo 11 landed in July, and Neil Armstrong was the first to step onto the surface."
+  },
+  "pt": {
+   "q": "Em que ano o ser humano pisou na Lua pela primeira vez?",
+   "right": "1969",
+   "wrong": [
+    "1959",
+    "1965",
+    "1975"
+   ],
+   "why": "A Apollo 11 pousou em julho, e Neil Armstrong foi o primeiro a pisar no solo lunar."
+  },
+  "es": {
+   "q": "¿En qué año el ser humano pisó la Luna por primera vez?",
+   "right": "1969",
+   "wrong": [
+    "1959",
+    "1965",
+    "1975"
+   ],
+   "why": "El Apolo 11 alunizó en julio, y Neil Armstrong fue el primero en pisar la superficie."
+  }
+ },
+ {
+  "id": "m015",
+  "cat": "history",
+  "en": {
+   "q": "In which year did Brazil declare its independence from Portugal?",
+   "right": "1822",
+   "wrong": [
+    "1500",
+    "1789",
+    "1889"
+   ],
+   "why": "It was declared on 7 September, which is still Brazil's national day."
+  },
+  "pt": {
+   "q": "Em que ano o Brasil declarou sua independência de Portugal?",
+   "right": "1822",
+   "wrong": [
+    "1500",
+    "1789",
+    "1889"
+   ],
+   "why": "Foi em 7 de setembro, às margens do riacho do Ipiranga, em São Paulo."
+  },
+  "es": {
+   "q": "¿En qué año declaró Brasil su independencia de Portugal?",
+   "right": "1822",
+   "wrong": [
+    "1500",
+    "1789",
+    "1889"
+   ],
+   "why": "Fue el 7 de septiembre, que sigue siendo el día nacional de Brasil."
+  }
+ },
+ {
+  "id": "m016",
+  "cat": "history",
+  "en": {
+   "q": "Which ancient people built the pyramid city of Chichén Itzá?",
+   "right": "The Maya",
+   "wrong": [
+    "The Aztecs",
+    "The Incas",
+    "The Olmecs"
+   ],
+   "why": "At each equinox, the shadows on its great pyramid look like a snake sliding down the steps."
+  },
+  "pt": {
+   "q": "Que povo antigo construiu a cidade e as pirâmides de Chichén Itzá?",
+   "right": "Os maias",
+   "wrong": [
+    "Os astecas",
+    "Os incas",
+    "Os olmecas"
+   ],
+   "why": "Em cada equinócio, as sombras da grande pirâmide parecem uma serpente descendo os degraus."
+  },
+  "es": {
+   "q": "¿Qué pueblo antiguo construyó la ciudad y las pirámides de Chichén Itzá?",
+   "right": "Los mayas",
+   "wrong": [
+    "Los aztecas",
+    "Los incas",
+    "Los olmecas"
+   ],
+   "why": "En cada equinoccio, las sombras de la gran pirámide parecen una serpiente que baja los escalones."
+  }
+ },
+ {
+  "id": "m017",
+  "cat": "arts",
+  "en": {
+   "q": "Who wrote the novel \"Don Quixote\"?",
+   "right": "Miguel de Cervantes",
+   "wrong": [
+    "Lope de Vega",
+    "Dante Alighieri",
+    "Luís de Camões"
+   ],
+   "why": "It came out in two parts, in 1605 and 1615, and its knight famously fights windmills."
+  },
+  "pt": {
+   "q": "Quem escreveu o romance \"Dom Quixote\"?",
+   "right": "Miguel de Cervantes",
+   "wrong": [
+    "Lope de Vega",
+    "Dante Alighieri",
+    "Luís de Camões"
+   ],
+   "why": "Saiu em duas partes, em 1605 e 1615, e seu cavaleiro ficou famoso por lutar com moinhos."
+  },
+  "es": {
+   "q": "¿Quién escribió la novela \"Don Quijote de la Mancha\"?",
+   "right": "Miguel de Cervantes",
+   "wrong": [
+    "Lope de Vega",
+    "Dante Alighieri",
+    "Luís de Camões"
+   ],
+   "why": "Salió en dos partes, en 1605 y 1615, y su caballero es famoso por pelear con molinos."
+  }
+ },
+ {
+  "id": "m018",
+  "cat": "arts",
+  "en": {
+   "q": "Who painted \"The Starry Night\"?",
+   "right": "Vincent van Gogh",
+   "wrong": [
+    "Claude Monet",
+    "Pablo Picasso",
+    "Salvador Dalí"
+   ],
+   "why": "He painted it in 1889 in the south of France, with a swirling sky over a sleeping village."
+  },
+  "pt": {
+   "q": "Quem pintou \"A Noite Estrelada\"?",
+   "right": "Vincent van Gogh",
+   "wrong": [
+    "Claude Monet",
+    "Pablo Picasso",
+    "Salvador Dalí"
+   ],
+   "why": "Ele a pintou em 1889, no sul da França, com um céu em redemoinhos sobre uma vila adormecida."
+  },
+  "es": {
+   "q": "¿Quién pintó \"La noche estrellada\"?",
+   "right": "Vincent van Gogh",
+   "wrong": [
+    "Claude Monet",
+    "Pablo Picasso",
+    "Salvador Dalí"
+   ],
+   "why": "La pintó en 1889, en el sur de Francia, con un cielo en remolinos sobre un pueblo dormido."
+  }
+ },
+ {
+  "id": "m019",
+  "cat": "arts",
+  "en": {
+   "q": "How many strings does a violin have?",
+   "right": "Four",
+   "wrong": [
+    "Three",
+    "Five",
+    "Six"
+   ],
+   "why": "From low to high they are tuned to the notes G, D, A and E."
+  },
+  "pt": {
+   "q": "Quantas cordas tem um violino?",
+   "right": "Quatro",
+   "wrong": [
+    "Três",
+    "Cinco",
+    "Seis"
+   ],
+   "why": "Da mais grave à mais aguda, elas são afinadas em sol, ré, lá e mi."
+  },
+  "es": {
+   "q": "¿Cuántas cuerdas tiene un violín?",
+   "right": "Cuatro",
+   "wrong": [
+    "Tres",
+    "Cinco",
+    "Seis"
+   ],
+   "why": "De la más grave a la más aguda, se afinan en sol, re, la y mi."
+  }
+ },
+ {
+  "id": "m020",
+  "cat": "arts",
+  "en": {
+   "q": "Which composer wrote \"The Four Seasons\"?",
+   "right": "Antonio Vivaldi",
+   "wrong": [
+    "Wolfgang Amadeus Mozart",
+    "Johann Sebastian Bach",
+    "Ludwig van Beethoven"
+   ],
+   "why": "It is a set of four violin concertos, one for each season, published in 1725."
+  },
+  "pt": {
+   "q": "Qual compositor escreveu \"As Quatro Estações\"?",
+   "right": "Antonio Vivaldi",
+   "wrong": [
+    "Wolfgang Amadeus Mozart",
+    "Johann Sebastian Bach",
+    "Ludwig van Beethoven"
+   ],
+   "why": "São quatro concertos para violino, um para cada estação, publicados em 1725."
+  },
+  "es": {
+   "q": "¿Qué compositor escribió \"Las cuatro estaciones\"?",
+   "right": "Antonio Vivaldi",
+   "wrong": [
+    "Wolfgang Amadeus Mozart",
+    "Johann Sebastian Bach",
+    "Ludwig van Beethoven"
+   ],
+   "why": "Son cuatro conciertos para violín, uno por cada estación, publicados en 1725."
+  }
+ },
+ {
+  "id": "m021",
+  "cat": "food",
+  "en": {
+   "q": "Which grain is Japanese sake brewed from?",
+   "right": "Rice",
+   "wrong": [
+    "Barley",
+    "Wheat",
+    "Corn"
+   ],
+   "why": "Sake is brewed, more like a beer than a wine, from polished rice."
+  },
+  "pt": {
+   "q": "De qual grão é feito o saquê japonês?",
+   "right": "Arroz",
+   "wrong": [
+    "Cevada",
+    "Trigo",
+    "Milho"
+   ],
+   "why": "O saquê é fermentado, mais como cerveja do que como vinho, a partir de arroz polido."
+  },
+  "es": {
+   "q": "¿De qué grano se elabora el sake japonés?",
+   "right": "Arroz",
+   "wrong": [
+    "Cebada",
+    "Trigo",
+    "Maíz"
+   ],
+   "why": "El sake se fermenta, más como una cerveza que como un vino, a partir de arroz pulido."
+  }
+ },
+ {
+  "id": "m022",
+  "cat": "food",
+  "en": {
+   "q": "Which spice gives curry powder its yellow colour?",
+   "right": "Turmeric",
+   "wrong": [
+    "Paprika",
+    "Cinnamon",
+    "Cumin"
+   ],
+   "why": "Turmeric is a root of the ginger family, dried and ground to a golden powder."
+  },
+  "pt": {
+   "q": "Qual tempero dá ao curry em pó a cor amarela?",
+   "right": "Cúrcuma",
+   "wrong": [
+    "Páprica",
+    "Canela",
+    "Cominho"
+   ],
+   "why": "A cúrcuma é uma raiz da família do gengibre, seca e moída até virar um pó dourado."
+  },
+  "es": {
+   "q": "¿Qué especia le da al curry en polvo su color amarillo?",
+   "right": "Cúrcuma",
+   "wrong": [
+    "Pimentón",
+    "Canela",
+    "Comino"
+   ],
+   "why": "La cúrcuma es una raíz de la familia del jengibre, seca y molida en un polvo dorado."
+  }
+ },
+ {
+  "id": "m023",
+  "cat": "food",
+  "en": {
+   "q": "Which cheese goes on a classic Margherita pizza?",
+   "right": "Mozzarella",
+   "wrong": [
+    "Gorgonzola",
+    "Parmesan",
+    "Ricotta"
+   ],
+   "why": "Red tomato, white cheese and green basil: the pizza wears the colours of Italy's flag."
+  },
+  "pt": {
+   "q": "Qual queijo vai na pizza Margherita clássica?",
+   "right": "Muçarela",
+   "wrong": [
+    "Gorgonzola",
+    "Parmesão",
+    "Ricota"
+   ],
+   "why": "Tomate vermelho, queijo branco e manjericão verde: a pizza tem as cores da bandeira da Itália."
+  },
+  "es": {
+   "q": "¿Qué queso lleva la pizza Margarita clásica?",
+   "right": "Mozzarella",
+   "wrong": [
+    "Gorgonzola",
+    "Parmesano",
+    "Ricota"
+   ],
+   "why": "Tomate rojo, queso blanco y albahaca verde: la pizza lleva los colores de la bandera de Italia."
+  }
+ },
+ {
+  "id": "m024",
+  "cat": "food",
+  "en": {
+   "q": "Brazilian cheese bread (pão de queijo) is made with starch from which root?",
+   "right": "Cassava",
+   "wrong": [
+    "Potato",
+    "Sweet potato",
+    "Yam"
+   ],
+   "why": "The same root gives tapioca, which is why the little breads are chewy and free of wheat."
+  },
+  "pt": {
+   "q": "O polvilho do pão de queijo é feito de qual raiz?",
+   "right": "Mandioca",
+   "wrong": [
+    "Batata",
+    "Batata-doce",
+    "Inhame"
+   ],
+   "why": "A tapioca vem da mesma raiz; por isso o pãozinho é elástico e não leva trigo."
+  },
+  "es": {
+   "q": "¿Con el almidón de qué raíz se hace el pan de queso brasileño (pão de queijo)?",
+   "right": "Yuca",
+   "wrong": [
+    "Papa",
+    "Camote",
+    "Ñame"
+   ],
+   "why": "La yuca también se llama mandioca, y de ella sale la tapioca; por eso el pancito no lleva trigo."
+  }
+ },
+ {
+  "id": "m025",
+  "cat": "sports",
+  "en": {
+   "q": "How many players does a volleyball team have on the court?",
+   "right": "Six",
+   "wrong": [
+    "Five",
+    "Seven",
+    "Eight"
+   ],
+   "why": "The six rotate one place clockwise each time their team wins back the serve."
+  },
+  "pt": {
+   "q": "Quantos jogadores um time de vôlei tem em quadra?",
+   "right": "Seis",
+   "wrong": [
+    "Cinco",
+    "Sete",
+    "Oito"
+   ],
+   "why": "Os seis giram uma posição no sentido horário cada vez que o time recupera o saque."
+  },
+  "es": {
+   "q": "¿Cuántos jugadores tiene en la cancha un equipo de voleibol?",
+   "right": "Seis",
+   "wrong": [
+    "Cinco",
+    "Siete",
+    "Ocho"
+   ],
+   "why": "Los seis rotan un lugar en el sentido del reloj cada vez que su equipo recupera el saque."
+  }
+ },
+ {
+  "id": "m026",
+  "cat": "sports",
+  "en": {
+   "q": "Roughly how long is a marathon?",
+   "right": "42 km",
+   "wrong": [
+    "21 km",
+    "30 km",
+    "50 km"
+   ],
+   "why": "The exact distance is 42.195 km, a little over 26 miles."
+  },
+  "pt": {
+   "q": "Quantos quilômetros tem, mais ou menos, uma maratona?",
+   "right": "42 km",
+   "wrong": [
+    "21 km",
+    "30 km",
+    "50 km"
+   ],
+   "why": "A distância exata é de 42,195 km; a meia maratona tem a metade disso."
+  },
+  "es": {
+   "q": "¿Cuántos kilómetros tiene, más o menos, un maratón?",
+   "right": "42 km",
+   "wrong": [
+    "21 km",
+    "30 km",
+    "50 km"
+   ],
+   "why": "La distancia exacta es de 42,195 km; el medio maratón tiene la mitad."
+  }
+ },
+ {
+  "id": "m027",
+  "cat": "sports",
+  "en": {
+   "q": "In which sport does a player score with a slam dunk?",
+   "right": "Basketball",
+   "wrong": [
+    "Volleyball",
+    "Handball",
+    "Water polo"
+   ],
+   "why": "A dunk takes a leap to a rim that hangs 3.05 metres above the floor."
+  },
+  "pt": {
+   "q": "Em qual esporte se pontua com uma enterrada?",
+   "right": "Basquete",
+   "wrong": [
+    "Vôlei",
+    "Handebol",
+    "Polo aquático"
+   ],
+   "why": "A enterrada exige um salto até um aro que fica a 3,05 metros do chão."
+  },
+  "es": {
+   "q": "¿En qué deporte se anota con una clavada?",
+   "right": "Baloncesto",
+   "wrong": [
+    "Voleibol",
+    "Balonmano",
+    "Waterpolo"
+   ],
+   "why": "La clavada exige saltar hasta un aro que está a 3,05 metros del suelo."
+  }
+ },
+ {
+  "id": "m028",
+  "cat": "sports",
+  "en": {
+   "q": "Which art, part fight and part dance, is played to the sound of the berimbau?",
+   "right": "Capoeira",
+   "wrong": [
+    "Judo",
+    "Karate",
+    "Taekwondo"
+   ],
+   "why": "The berimbau is a bow with a single string and a gourd, and it sets the pace of the game."
+  },
+  "pt": {
+   "q": "Qual arte, mistura de luta e dança, é jogada ao som do berimbau?",
+   "right": "Capoeira",
+   "wrong": [
+    "Judô",
+    "Caratê",
+    "Taekwondo"
+   ],
+   "why": "O berimbau é um arco de uma corda só com uma cabaça, e é ele quem dita o ritmo do jogo."
+  },
+  "es": {
+   "q": "¿Qué arte, mezcla de lucha y danza, se juega al son del berimbau?",
+   "right": "Capoeira",
+   "wrong": [
+    "Judo",
+    "Karate",
+    "Taekwondo"
+   ],
+   "why": "El berimbau es un arco de una sola cuerda con una calabaza, y marca el ritmo del juego."
+  }
+ },
+ {
+  "id": "m029",
+  "cat": "words",
+  "en": {
+   "q": "What is the last letter of the Greek alphabet?",
+   "right": "Omega",
+   "wrong": [
+    "Alpha",
+    "Sigma",
+    "Delta"
+   ],
+   "why": "The word \"alphabet\" itself comes from the first two Greek letters, alpha and beta."
+  },
+  "pt": {
+   "q": "Qual é a última letra do alfabeto grego?",
+   "right": "Ômega",
+   "wrong": [
+    "Alfa",
+    "Sigma",
+    "Delta"
+   ],
+   "why": "A própria palavra \"alfabeto\" vem das duas primeiras letras gregas, alfa e beta."
+  },
+  "es": {
+   "q": "¿Cuál es la última letra del alfabeto griego?",
+   "right": "Omega",
+   "wrong": [
+    "Alfa",
+    "Sigma",
+    "Delta"
+   ],
+   "why": "La propia palabra \"alfabeto\" viene de las dos primeras letras griegas, alfa y beta."
+  }
+ },
+ {
+  "id": "m030",
+  "cat": "words",
+  "en": {
+   "q": "What do we call a word that reads the same forwards and backwards?",
+   "right": "Palindrome",
+   "wrong": [
+    "Synonym",
+    "Anagram",
+    "Acronym"
+   ],
+   "why": "\"Level\" and \"radar\" are palindromes: try reading them from the last letter to the first."
+  },
+  "pt": {
+   "q": "Como se chama a palavra que se lê igual de trás para a frente?",
+   "right": "Palíndromo",
+   "wrong": [
+    "Sinônimo",
+    "Anagrama",
+    "Acrônimo"
+   ],
+   "why": "\"Arara\" e \"radar\" são palíndromos: experimente ler da última letra para a primeira."
+  },
+  "es": {
+   "q": "¿Cómo se llama la palabra que se lee igual al derecho y al revés?",
+   "right": "Palíndromo",
+   "wrong": [
+    "Sinónimo",
+    "Anagrama",
+    "Acrónimo"
+   ],
+   "why": "\"Reconocer\" y \"radar\" son palíndromos: prueba leerlos de la última letra a la primera."
+  }
+ },
+ {
+  "id": "m031",
+  "cat": "words",
+  "en": {
+   "q": "What does the prefix \"kilo\" mean, as in kilometre and kilogram?",
+   "right": "A thousand",
+   "wrong": [
+    "Ten",
+    "A hundred",
+    "A million"
+   ],
+   "why": "It comes from the Greek word for thousand: a kilometre is 1,000 metres."
+  },
+  "pt": {
+   "q": "O que quer dizer o prefixo \"quilo\", de quilômetro e quilograma?",
+   "right": "Mil",
+   "wrong": [
+    "Dez",
+    "Cem",
+    "Um milhão"
+   ],
+   "why": "Vem da palavra grega para mil: um quilômetro tem 1.000 metros."
+  },
+  "es": {
+   "q": "¿Qué significa el prefijo \"kilo\", de kilómetro y kilogramo?",
+   "right": "Mil",
+   "wrong": [
+    "Diez",
+    "Cien",
+    "Un millón"
+   ],
+   "why": "Viene de la palabra griega para mil: un kilómetro tiene 1.000 metros."
+  }
+ },
+ {
+  "id": "m032",
+  "cat": "words",
+  "en": {
+   "q": "Which alphabet is used to write Russian?",
+   "right": "Cyrillic",
+   "wrong": [
+    "Latin",
+    "Greek",
+    "Arabic"
+   ],
+   "why": "The same alphabet is used for Bulgarian, Serbian and Ukrainian, among other languages."
+  },
+  "pt": {
+   "q": "Qual alfabeto é usado para escrever em russo?",
+   "right": "Cirílico",
+   "wrong": [
+    "Latino",
+    "Grego",
+    "Árabe"
+   ],
+   "why": "O mesmo alfabeto serve ao búlgaro, ao sérvio e ao ucraniano, entre outras línguas."
+  },
+  "es": {
+   "q": "¿Qué alfabeto se usa para escribir en ruso?",
+   "right": "Cirílico",
+   "wrong": [
+    "Latino",
+    "Griego",
+    "Árabe"
+   ],
+   "why": "El mismo alfabeto sirve para el búlgaro, el serbio y el ucraniano, entre otros idiomas."
+  }
+ },
+ {
+  "id": "m033",
+  "cat": "everyday",
+  "en": {
+   "q": "How many minutes are there in a whole day?",
+   "right": "1440",
+   "wrong": [
+    "1240",
+    "1380",
+    "1600"
+   ],
+   "why": "Twenty-four hours times sixty minutes: 24 × 60 = 1440."
+  },
+  "pt": {
+   "q": "Quantos minutos tem um dia inteiro?",
+   "right": "1440",
+   "wrong": [
+    "1240",
+    "1380",
+    "1600"
+   ],
+   "why": "Vinte e quatro horas vezes sessenta minutos: 24 × 60 = 1440."
+  },
+  "es": {
+   "q": "¿Cuántos minutos tiene un día entero?",
+   "right": "1440",
+   "wrong": [
+    "1240",
+    "1380",
+    "1600"
+   ],
+   "why": "Veinticuatro horas por sesenta minutos: 24 × 60 = 1440."
+  }
+ },
+ {
+  "id": "m034",
+  "cat": "everyday",
+  "en": {
+   "q": "How many minutes are there in a full day?",
+   "right": "1,440",
+   "wrong": [
+    "1,240",
+    "1,600",
+    "2,400"
+   ],
+   "why": "Twenty-four hours of sixty minutes each make 1,440."
+  },
+  "pt": {
+   "q": "Quantos minutos tem um dia inteiro?",
+   "right": "1.440",
+   "wrong": [
+    "1.240",
+    "1.600",
+    "2.400"
+   ],
+   "why": "Vinte e quatro horas de sessenta minutos cada dão 1.440."
+  },
+  "es": {
+   "q": "¿Cuántos minutos tiene un día completo?",
+   "right": "1.440",
+   "wrong": [
+    "1.240",
+    "1.600",
+    "2.400"
+   ],
+   "why": "Veinticuatro horas de sesenta minutos cada una dan 1.440."
+  }
+ },
+ {
+  "id": "m035",
+  "cat": "everyday",
+  "en": {
+   "q": "What does a barometer measure?",
+   "right": "Air pressure",
+   "wrong": [
+    "Air humidity",
+    "Wind speed",
+    "Temperature"
+   ],
+   "why": "When the pressure drops quickly, rain or a storm is usually on the way."
+  },
+  "pt": {
+   "q": "O que um barômetro mede?",
+   "right": "Pressão do ar",
+   "wrong": [
+    "Umidade do ar",
+    "Velocidade do vento",
+    "Temperatura"
+   ],
+   "why": "Quando a pressão cai depressa, costuma vir chuva ou tempestade."
+  },
+  "es": {
+   "q": "¿Qué mide un barómetro?",
+   "right": "Presión del aire",
+   "wrong": [
+    "Humedad del aire",
+    "Velocidad del viento",
+    "Temperatura"
+   ],
+   "why": "Cuando la presión baja rápido, suele venir lluvia o tormenta."
+  }
+ },
+ {
+  "id": "m036",
+  "cat": "everyday",
+  "en": {
+   "q": "In Roman numerals, which number does the letter L stand for?",
+   "right": "50",
+   "wrong": [
+    "5",
+    "100",
+    "500"
+   ],
+   "why": "V is 5, C is 100 and D is 500, so LX on a clock or a book chapter means 60."
+  },
+  "pt": {
+   "q": "Nos algarismos romanos, que número a letra L representa?",
+   "right": "50",
+   "wrong": [
+    "5",
+    "100",
+    "500"
+   ],
+   "why": "V vale 5, C vale 100 e D vale 500; assim, LX num capítulo de livro quer dizer 60."
+  },
+  "es": {
+   "q": "En los números romanos, ¿qué número representa la letra L?",
+   "right": "50",
+   "wrong": [
+    "5",
+    "100",
+    "500"
+   ],
+   "why": "V vale 5, C vale 100 y D vale 500; así, LX en un capítulo de libro significa 60."
+  }
+ }
+]

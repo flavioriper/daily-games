@@ -11,6 +11,11 @@ submit and no crowd. Nothing in the game is a turn today; one would need its
 own host again (`legacy/ui/turn_host.gd` and `legacy/core/turn_base.gd` are
 in git history).
 
+**One board reads its day from the backend: Golden Acorn** (2026-10-08,
+`docs/agents/boards/golden-acorn.md`). Its questions are written by a model
+at night and published as that day's document; see "A day written by a
+model" below. It sends nothing back.
+
 **The live project is `daily-games-420bf`** (provisioned 2026-09-17; it
 replaced `peeplet-daily`, which now holds nothing this game uses). Firestore
 is a `nam5` multi-region database with the rules from `server/` released,
@@ -87,18 +92,113 @@ first two days (2026-09-17 and -18) were seeded this way.
 
 **How Big?**, the only turn, was removed with the 3D game on 2026-09-24 and
 came back flat on 2026-10-08 as a board that never talks to the backend.
-`content/how_big.json` is the board's table now (things, sizes, sources),
-not the file `publishDay` reads: **the `how_big` entry in
-`server/functions/src/index.ts` (`GAMES`) still describes the old table**
-(`scout_m`, `slot`) from its own copy, `server/functions/src/how_big.json`,
-and publishes days nothing reads. The build no longer copies the board's
-table over that copy (`package.json`, 2026-10-08: the new table has no
-`metres`, so a build would have published days without one). It was left alone
-on 2026-10-08 (the functions are deployed by a person); drop the entry the
-next time they are deployed. `tools/_backend_probe.gd` and
-`tools/seed_turn_day.sh` name `how_big` only as an example game id.
-`locale/turn.csv` lost its `HOWBIG_*` rows the same day and keeps the
-`TURN_*` ones (`TURN_LANGUAGE` is the settings sheet's).
+`content/how_big.json` is the board's table (things, sizes, sources). **Its
+`GAMES` entry is gone from `server/functions/src/index.ts` since 2026-10-08**
+(with the functions' own stale copy of the table), but **the deployed
+functions still publish it** until `tools/deploy_functions.sh` is next run.
+`tools/_backend_probe.gd` and `tools/seed_turn_day.sh` name `how_big` only as
+an example game id. `locale/turn.csv` lost its `HOWBIG_*` rows the same day
+and keeps the `TURN_*` ones (`TURN_LANGUAGE` is the settings sheet's).
+
+## A day written by a model
+
+2026-10-08, for Golden Acorn, and written to be followed: the next game
+whose day is generated (the user named one, "krill") adds a file beside
+`acorn.ts` and one line to `GAMES`.
+
+**The shape.** Generation runs on the server at night, never on a phone:
+the key stays in one place, every player gets the same day, and a phone
+costs nothing. `publishDay` (03:00 UTC, today and tomorrow) calls each
+game's `make(day, recent)` and `create()`s `days/<day>/turns/<game>` with
+the result as its one `json` field -- the document, the rule that lets any
+signed-in player read it, `Backend.day_content` and its cache are the turn
+foundation's, unchanged. Three things changed in `index.ts`:
+
+- `GAMES` is `Record<string, (day, recent) => Promise<unknown>>`. `recent`
+  is what the game published on the last `RECENT_DAYS` (10) days, newest
+  first, parsed; a game turns it into "do not repeat these".
+- **A day already published is never made again**: `publishDays` reads the
+  document first and skips. `create()` is still what writes, so two runs
+  racing cannot overwrite either.
+- The schedule has `timeoutSeconds: 1500`, `memory: "512MiB"` and
+  `secrets: ["ANTHROPIC_API_KEY"]`.
+
+**`server/functions/src/generate.ts` is the only place a model is called.**
+`ask<T>({system, prompt, schema, effort?})` sends one request to
+`claude-opus-5-5` through `@anthropic-ai/sdk` -- streamed (a day is a long
+answer), adaptive thinking, effort `high`, the answer held to `schema` by
+structured outputs (`output_config.format`), a classifier's decline retried
+on Anthropic's recommended model in the same call (`fallbacks: "default"`)
+-- and returns the parsed JSON or throws (no key, a refusal, an answer cut
+at the token limit, text that does not parse). `available()` says whether
+there is a key at all. It knows nothing about any game.
+
+**What a game's file owes** (`acorn.ts` is the model to copy):
+
+1. **A prompt and a schema.** The standing rules in `system`, today's
+   request in `prompt`, the answer's JSON schema. Schemas are plain: no
+   length or count limits in them (not relied on; whether the API would
+   hold the model to them was not looked up), those are checked in code.
+2. **A validator** (`validQuestion`): the shape and the limits the screen
+   can hold. Everything the model returns goes through it before it is
+   believed, and the phone runs the same checks on what it reads
+   (`State.valid`).
+3. **A review.** A second `ask`, in another role, that does not see the
+   first one's answer key. Golden Acorn's reviewer is shown each question
+   with its four answers shuffled (`shownOrder`) and unmarked, answers it
+   itself, and names what is wrong with it (arguable, dated, lost in
+   translation, unsuitable, a giveaway). A question is kept only when the
+   reviewer picked the answer the writer meant, said it was sure, and found
+   nothing (`passing`). Ask the writer for more than the day needs
+   (`DRAFTS` 9/9/9/13 for 7/7/7/10) so the review has some to turn down.
+4. **A reserve the game ships**, and a rule for the gap: `makeDay` **never
+   throws**. No key, an error, a refusal: the day is the bank's
+   (`content/acorn.json`, copied beside the source by `npm run build` as the
+   ignored `src/acorn_bank.json`). A band left short by the review is
+   filled from the bank; a short Climb is the bank's whole, because two
+   hands' questions spliced together would not rise. The document says
+   which it was (`source`: `model`, `mixed`, `bank`).
+5. **The phone derives the reserve's day the same way** (`bankDay` there,
+   `State.bank_band` here), so a night the model failed and a phone that
+   never reached the network deal the same day.
+
+**The client's half** is `puzzles/acorn2d.gd`'s `_deal`: cache first, one
+short wait on the network, then the reserve; and `world/main.gd` fetching
+the day behind the menu at boot. A board cannot ask in `build()`: the host
+sets `daily_key` after `start()` returns.
+
+**Cost and time.** Two requests a day and game. Golden Acorn's writer
+returns about 40 questions in three languages (an estimate: some 15,000
+output tokens, and the review a few thousand more, plus thinking), so a day
+is expected to cost well under a dollar at $4 / $20 per million tokens and
+to take a few minutes. **None of that is measured**: see below.
+
+**By hand** (all three run by a person; the last two write to production):
+
+- `tools/acorn_day.sh [yyyymmdd]` prints the day `makeDay` would publish and
+  writes nothing: the model's with `ANTHROPIC_API_KEY` in the environment,
+  the bank's without. **Read a few of these before trusting it with a night.**
+- `cd server && firebase functions:secrets:set ANTHROPIC_API_KEY --project
+  daily-games-420bf`, once, **before** `tools/deploy_functions.sh`: a deploy
+  that names a secret that does not exist fails.
+- `tools/publish_day.sh` runs `publishDays` against the live project from
+  this Mac (application default credentials, the key in the environment):
+  the day a game ships on, which the 03:00 scheduler never reaches.
+
+**Verified, and not** (2026-10-08). `npm run build` is clean. `publishDays`
+ran against the Firestore emulator (`firebase emulators:exec --only
+firestore --project demo-peeplet`, `FIRESTORE_EMULATOR_HOST` set,
+`node lib/cli.js publish`): it wrote `days/<today>/turns/acorn` once with
+the bank's day and left it untouched on a second run. `makeDay` ran against
+a stand-in for the model (a throwaway script that replaced `ask`): a clean
+day, a question over the limits dropped, a strict reviewer and a reviewer
+that disagreed both filled from the bank, a throwing writer gave the bank's
+day. **The real model has never been called**: there is no Anthropic key on
+this Mac. So the prompts, the schema as the API accepts it, the beta
+`fallbacks` parameter beside structured outputs on a stream, the time and
+the cost are all unproven until `tools/acorn_day.sh` is run with a key.
+Nothing is deployed: the live `publishDay` is still the old one, and until
+the deploy every phone plays the bank.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. The turn flow's strings are keyed

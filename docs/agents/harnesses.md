@@ -193,6 +193,33 @@ lang=en` (`/tmp/probe_horse_p<n>.png`). On `d=3` the run ends in a script
 error at `_probe_perf.gd:140` once it reaches the shared Moves page, which
 has no `_caption` for the probe to print; the seven shots are written first.
 
+## Golden Acorn's harness (2026-10-08)
+
+`tests/_shot_acorn.gd` plays the board through its real input path (a touch
+pressed and let go on a plate, the row's button through the host) and shoots
+numbered frames (`out=<dir>`, `lang=en|pt|es`):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_acorn.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest play perfect hint out doc restore`. `play` answers every
+question, right and wrong by turns, and shoots each reveal and the win;
+`perfect` answers all rightly (the seal); `out` (Insane) answers wrongly
+until the hearts are gone, shoots the card and tries again (a new Climb).
+`doc` puts a day's document in the backend's cache as the server would write
+it, opens the daily on it (`source model` in the printed line) and takes it
+out again; `restore` reopens a day already played with one wrong. **`bank`
+needs no window**: it prints a week of every band's questions from the bank,
+the same ids `tools/acorn_day.sh <day>` prints for the server -- run both
+after touching either side's ordering. The harness stops the backend, so it
+plays the bank; **the board deals a frame after it opens**, so a script
+that sizes itself by the state's count on the first frame reads zero (this
+one takes the count from `State.ASKS`). `tests/_probe_perf.gd -- acorn`
+(`to=40` for the Climb) and `tests/_win.gd -- acorn` play it through the
+host; both wait for the deal, and `_win.gd`'s solver awaits and holds the
+walk as How Big?'s does. The tutorial: `tests/_probe_perf.gd -- acorn d=0
+howto shot=2 gap=6 to=40 lang=en` (`/tmp/probe_acorn_p<n>.png`; `d=3` for
+the Climb's page). `tests/_shot_menu.gd -- last` turns three pages now.
+
 ## How Big?'s harness (2026-10-08)
 
 `tests/_shot_how_big.gd` plays the board through its real input path (a

@@ -45,3 +45,10 @@ unheard by the user. `notch` is the one that repeats (a click every 8% the
 answer grows or shrinks): a ruler's joint, cut to 0.07 s at -19, and the
 board pitches it down as the thing gets bigger. Details:
 `docs/art/sound-direction.md`, its last section.
+
+**Golden Acorn has a set since 2026-10-08** (`SETS["acorn"]`, `QUIZ` foley of
+a card table -- index cards, a wooden tile, a pencil -- and `QUIZ_TUNE`
+notes, fourteen cues): one take a cue, unheard by the user. `pick` is the
+one that repeats (every tap on an answer): a wooden tile set down, cut to
+0.1 s at -15, no note. The held breath after a lock is silence, not a drum
+roll. Details: `docs/art/sound-direction.md`, its last section.

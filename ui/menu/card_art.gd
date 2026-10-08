@@ -62,6 +62,7 @@ const GolfParts = preload("res://ui/faces/minigolf_parts.gd")
 const GolfSim = preload("res://puzzles/minigolf_sim.gd")
 const HorseParts = preload("res://ui/faces/horse_parts.gd")
 const HowBigArt = preload("res://ui/faces/how_big_art.gd")
+const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -227,6 +228,8 @@ var _horse_u := -1.0
 ## How Big?'s pair, built once a size the same way.
 var _how_big_mesh: ArrayMesh
 var _how_big_u := -1.0
+var _acorn_mesh: ArrayMesh
+var _acorn_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -418,6 +421,7 @@ func _draw() -> void:
 		"minigolf": _draw_minigolf()
 		"horse": _draw_horse()
 		"how_big": _draw_how_big()
+		"acorn": _draw_acorn()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1626,3 +1630,49 @@ func _draw_how_big() -> void:
 	_how_big_mesh = b.mesh()
 	_how_big_u = _u
 	draw_mesh(_how_big_mesh, null, Transform2D(0.0, _c))
+
+## Golden Acorn's card: the board in small -- the question's paper with the
+## golden acorn on it, and under it the four answers' plates, two by two,
+## one of them turned leaf green with its tick. Drawn with the board's own
+## shapes (`ui/faces/acorn_art.gd`). One mesh, rebuilt only when the card
+## changes size.
+const AC_W := 220.0
+const AC_H := 104.0
+
+func _draw_acorn() -> void:
+	if _acorn_mesh != null and is_equal_approx(_acorn_u, _u):
+		draw_mesh(_acorn_mesh, null, Transform2D(0.0, _c))
+		return
+	var u := _u
+	var o := Vector2(-AC_W, -AC_H) * 0.5 * u
+	var b := Face.Builder.new()
+	b.fan(Face.Builder.round_rect(o - Vector2.ONE * 3.0 * u, Vector2(AC_W + 6.0, AC_H + 6.0) * u, 15.0 * u), Pal.ACORN_DEEP)
+	b.fan(Face.Builder.round_rect(o, Vector2(AC_W, AC_H) * u, 12.0 * u), Pal.ACORN_TILE)
+	# The paper, and the prize on it between two rules of a question's lines.
+	var paper := Rect2(o + Vector2(10.0, 9.0) * u, Vector2(AC_W - 20.0, 40.0) * u)
+	b.fan(Face.Builder.round_rect(paper.position + Vector2(0.0, 2.0 * u), paper.size, 8.0 * u), Color(Pal.LINE, 0.7))
+	b.fan(Face.Builder.round_rect(paper.position, paper.size, 8.0 * u), Pal.SURFACE)
+	AcornArt.acorn(b, paper.get_center() + Vector2(0.0, -1.0 * u), 13.0 * u, true)
+	for side: float in [-1.0, 1.0]:
+		for row in 2:
+			var y := paper.get_center().y + (row * 9.0 - 4.5) * u
+			var x0 := paper.get_center().x + side * 24.0 * u
+			var x1 := paper.get_center().x + side * (78.0 - row * 16.0) * u
+			b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x1, y)]), 3.0 * u, Pal.MARK)
+	# The four plates; the second is the right one.
+	var pw := (AC_W - 20.0 - 8.0) * 0.5
+	var ph := 18.0
+	for i in 4:
+		var at := o + Vector2(10.0 + (i % 2) * (pw + 8.0), 56.0 + (i / 2) * (ph + 6.0)) * u
+		var right := i == 1
+		b.fan(Face.Builder.round_rect(at + Vector2(0.0, 2.0 * u), Vector2(pw, ph) * u, 7.0 * u), Pal.LEAF_DEEP if right else Pal.LINE)
+		b.fan(Face.Builder.round_rect(at, Vector2(pw, ph) * u, 7.0 * u), Pal.LEAF_TILE if right else Pal.SURFACE)
+		var dot := at + Vector2(11.0, ph * 0.5) * u
+		b.disc(dot, 6.0 * u, Pal.LEAF_DEEP if right else Pal.ACORN)
+		if right:
+			AcornArt.tick(b, dot, 6.0 * u, Pal.SURFACE)
+		b.stroke(PackedVector2Array([dot + Vector2(13.0, 0.0) * u, dot + Vector2(pw - 26.0 - (i * 11) % 23, 0.0) * u]),
+			3.0 * u, Pal.LEAF if right else Pal.MARK)
+	_acorn_mesh = b.mesh()
+	_acorn_u = _u
+	draw_mesh(_acorn_mesh, null, Transform2D(0.0, _c))

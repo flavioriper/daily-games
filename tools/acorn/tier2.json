@@ -1,0 +1,1226 @@
+[
+ {
+  "id": "h001",
+  "cat": "nature",
+  "en": {
+   "q": "How many legs does a crab have, counting its two claws?",
+   "right": "Ten",
+   "wrong": [
+    "Six",
+    "Eight",
+    "Twelve"
+   ],
+   "why": "Crabs, lobsters and shrimps are decapods, a name that means \"ten feet\" in Greek."
+  },
+  "pt": {
+   "q": "Quantas patas tem um caranguejo, contando as duas pinças?",
+   "right": "Dez",
+   "wrong": [
+    "Seis",
+    "Oito",
+    "Doze"
+   ],
+   "why": "Caranguejos, lagostas e camarões são decápodes, nome que quer dizer \"dez pés\" em grego."
+  },
+  "es": {
+   "q": "¿Cuántas patas tiene un cangrejo, contando sus dos pinzas?",
+   "right": "Diez",
+   "wrong": [
+    "Seis",
+    "Ocho",
+    "Doce"
+   ],
+   "why": "Cangrejos, langostas y camarones son decápodos, nombre que quiere decir \"diez pies\" en griego."
+  }
+ },
+ {
+  "id": "h002",
+  "cat": "nature",
+  "en": {
+   "q": "What colour is a polar bear's skin, under all that fur?",
+   "right": "Black",
+   "wrong": [
+    "White",
+    "Pink",
+    "Grey"
+   ],
+   "why": "The dark skin soaks up the sun's warmth, and the hairs are not white but clear and hollow."
+  },
+  "pt": {
+   "q": "De que cor é a pele do urso-polar, debaixo de todo aquele pelo?",
+   "right": "Preta",
+   "wrong": [
+    "Branca",
+    "Rosa",
+    "Cinza"
+   ],
+   "why": "A pele escura absorve o calor do sol, e os pelos não são brancos: são transparentes e ocos."
+  },
+  "es": {
+   "q": "¿De qué color es la piel del oso polar, debajo de todo ese pelo?",
+   "right": "Negra",
+   "wrong": [
+    "Blanca",
+    "Rosada",
+    "Gris"
+   ],
+   "why": "La piel oscura absorbe el calor del sol, y los pelos no son blancos: son transparentes y huecos."
+  }
+ },
+ {
+  "id": "h003",
+  "cat": "nature",
+  "en": {
+   "q": "Which of these mammals lays eggs?",
+   "right": "Platypus",
+   "wrong": [
+    "Anteater",
+    "Porcupine",
+    "Otter"
+   ],
+   "why": "The platypus and the echidnas are the only mammals that lay eggs, and they still feed milk to their young."
+  },
+  "pt": {
+   "q": "Qual destes mamíferos põe ovos?",
+   "right": "Ornitorrinco",
+   "wrong": [
+    "Tamanduá",
+    "Porco-espinho",
+    "Lontra"
+   ],
+   "why": "O ornitorrinco e as equidnas são os únicos mamíferos que põem ovos, e ainda amamentam os filhotes."
+  },
+  "es": {
+   "q": "¿Cuál de estos mamíferos pone huevos?",
+   "right": "Ornitorrinco",
+   "wrong": [
+    "Oso hormiguero",
+    "Puercoespín",
+    "Nutria"
+   ],
+   "why": "El ornitorrinco y los equidnas son los únicos mamíferos que ponen huevos, y aun así amamantan a sus crías."
+  }
+ },
+ {
+  "id": "h004",
+  "cat": "nature",
+  "en": {
+   "q": "Which is the largest wild cat of the Americas?",
+   "right": "Jaguar",
+   "wrong": [
+    "Puma",
+    "Ocelot",
+    "Margay"
+   ],
+   "why": "Only the tiger and the lion are bigger; the jaguar swims well and often hunts in the water."
+  },
+  "pt": {
+   "q": "Qual é o maior felino selvagem das Américas?",
+   "right": "Onça-pintada",
+   "wrong": [
+    "Onça-parda",
+    "Jaguatirica",
+    "Gato-maracajá"
+   ],
+   "why": "Só o tigre e o leão são maiores; a onça-pintada nada bem e muitas vezes caça dentro da água."
+  },
+  "es": {
+   "q": "¿Cuál es el felino salvaje más grande de América?",
+   "right": "Jaguar",
+   "wrong": [
+    "Puma",
+    "Ocelote",
+    "Margay"
+   ],
+   "why": "Solo el tigre y el león son más grandes; el jaguar nada bien y muchas veces caza en el agua."
+  }
+ },
+ {
+  "id": "h005",
+  "cat": "science",
+  "en": {
+   "q": "Which chemical element has the symbol W?",
+   "right": "Tungsten",
+   "wrong": [
+    "Titanium",
+    "Tin",
+    "Vanadium"
+   ],
+   "why": "The W comes from wolfram, the element's other name; it is the metal of old light-bulb filaments."
+  },
+  "pt": {
+   "q": "Qual elemento químico tem o símbolo W?",
+   "right": "Tungstênio",
+   "wrong": [
+    "Titânio",
+    "Estanho",
+    "Vanádio"
+   ],
+   "why": "O W vem de wolfrâmio, outro nome do elemento; é o metal dos filamentos das lâmpadas antigas."
+  },
+  "es": {
+   "q": "¿Qué elemento químico tiene el símbolo W?",
+   "right": "Tungsteno",
+   "wrong": [
+    "Titanio",
+    "Estaño",
+    "Vanadio"
+   ],
+   "why": "La W viene de wolframio, su otro nombre; es el metal de los filamentos de las bombillas antiguas."
+  }
+ },
+ {
+  "id": "h006",
+  "cat": "science",
+  "en": {
+   "q": "Which planet spins tipped over on its side?",
+   "right": "Uranus",
+   "wrong": [
+    "Neptune",
+    "Saturn",
+    "Venus"
+   ],
+   "why": "Its axis leans about 98 degrees, so each pole gets some 42 years of sunlight and then 42 of darkness."
+  },
+  "pt": {
+   "q": "Qual planeta gira deitado de lado?",
+   "right": "Urano",
+   "wrong": [
+    "Netuno",
+    "Saturno",
+    "Vênus"
+   ],
+   "why": "Seu eixo é inclinado uns 98 graus: cada polo passa cerca de 42 anos no sol e depois 42 no escuro."
+  },
+  "es": {
+   "q": "¿Qué planeta gira acostado de lado?",
+   "right": "Urano",
+   "wrong": [
+    "Neptuno",
+    "Saturno",
+    "Venus"
+   ],
+   "why": "Su eje está inclinado unos 98 grados: cada polo pasa unos 42 años al sol y luego 42 a oscuras."
+  }
+ },
+ {
+  "id": "h007",
+  "cat": "science",
+  "en": {
+   "q": "Which part of the eye gives it its colour?",
+   "right": "Iris",
+   "wrong": [
+    "Pupil",
+    "Retina",
+    "Cornea"
+   ],
+   "why": "The iris is a ring of muscle that widens or narrows the pupil to let in more or less light."
+  },
+  "pt": {
+   "q": "Que parte do olho dá a ele a sua cor?",
+   "right": "Íris",
+   "wrong": [
+    "Pupila",
+    "Retina",
+    "Córnea"
+   ],
+   "why": "A íris é um anel de músculo que abre ou fecha a pupila para deixar entrar mais ou menos luz."
+  },
+  "es": {
+   "q": "¿Qué parte del ojo le da su color?",
+   "right": "Iris",
+   "wrong": [
+    "Pupila",
+    "Retina",
+    "Córnea"
+   ],
+   "why": "El iris es un anillo de músculo que abre o cierra la pupila para dejar entrar más o menos luz."
+  }
+ },
+ {
+  "id": "h008",
+  "cat": "science",
+  "en": {
+   "q": "Which organ of the body makes insulin?",
+   "right": "Pancreas",
+   "wrong": [
+    "Liver",
+    "Spleen",
+    "Kidney"
+   ],
+   "why": "Insulin lets the body's cells take in sugar from the blood; it is made in clusters called islets."
+  },
+  "pt": {
+   "q": "Qual órgão do corpo produz a insulina?",
+   "right": "Pâncreas",
+   "wrong": [
+    "Fígado",
+    "Baço",
+    "Rim"
+   ],
+   "why": "A insulina deixa as células pegarem o açúcar do sangue; é feita em grupinhos de células, as ilhotas."
+  },
+  "es": {
+   "q": "¿Qué órgano del cuerpo produce la insulina?",
+   "right": "Páncreas",
+   "wrong": [
+    "Hígado",
+    "Bazo",
+    "Riñón"
+   ],
+   "why": "La insulina deja que las células tomen el azúcar de la sangre; se hace en grupitos de células, los islotes."
+  }
+ },
+ {
+  "id": "h009",
+  "cat": "geography",
+  "en": {
+   "q": "What is the capital of New Zealand?",
+   "right": "Wellington",
+   "wrong": [
+    "Auckland",
+    "Christchurch",
+    "Dunedin"
+   ],
+   "why": "Auckland is bigger, but Wellington, at the south end of the North Island, has been capital since 1865."
+  },
+  "pt": {
+   "q": "Qual é a capital da Nova Zelândia?",
+   "right": "Wellington",
+   "wrong": [
+    "Auckland",
+    "Christchurch",
+    "Dunedin"
+   ],
+   "why": "Auckland é maior, mas Wellington, na ponta sul da Ilha Norte, é a capital desde 1865."
+  },
+  "es": {
+   "q": "¿Cuál es la capital de Nueva Zelanda?",
+   "right": "Wellington",
+   "wrong": [
+    "Auckland",
+    "Christchurch",
+    "Dunedin"
+   ],
+   "why": "Auckland es más grande, pero Wellington, en el sur de la Isla Norte, es la capital desde 1865."
+  }
+ },
+ {
+  "id": "h010",
+  "cat": "geography",
+  "en": {
+   "q": "What is the capital of Morocco?",
+   "right": "Rabat",
+   "wrong": [
+    "Casablanca",
+    "Marrakesh",
+    "Fez"
+   ],
+   "why": "Casablanca is the biggest city and Marrakesh the most famous, but the capital is Rabat, on the Atlantic."
+  },
+  "pt": {
+   "q": "Qual é a capital do Marrocos?",
+   "right": "Rabat",
+   "wrong": [
+    "Casablanca",
+    "Marrakech",
+    "Fez"
+   ],
+   "why": "Casablanca é a maior cidade e Marrakech a mais famosa, mas a capital é Rabat, à beira do Atlântico."
+  },
+  "es": {
+   "q": "¿Cuál es la capital de Marruecos?",
+   "right": "Rabat",
+   "wrong": [
+    "Casablanca",
+    "Marrakech",
+    "Fez"
+   ],
+   "why": "Casablanca es la ciudad más grande y Marrakech la más famosa, pero la capital es Rabat, sobre el Atlántico."
+  }
+ },
+ {
+  "id": "h011",
+  "cat": "geography",
+  "en": {
+   "q": "Besides Bolivia, which South American country has no sea coast?",
+   "right": "Paraguay",
+   "wrong": [
+    "Uruguay",
+    "Ecuador",
+    "Guyana"
+   ],
+   "why": "Paraguay reaches the ocean by river: boats go down the Paraguay and the Paraná to the Atlantic."
+  },
+  "pt": {
+   "q": "Além da Bolívia, qual país da América do Sul não tem litoral?",
+   "right": "Paraguai",
+   "wrong": [
+    "Uruguai",
+    "Equador",
+    "Guiana"
+   ],
+   "why": "O Paraguai chega ao mar pelos rios: os barcos descem o Paraguai e o Paraná até o Atlântico."
+  },
+  "es": {
+   "q": "Además de Bolivia, ¿qué país de Sudamérica no tiene costa?",
+   "right": "Paraguay",
+   "wrong": [
+    "Uruguay",
+    "Ecuador",
+    "Guyana"
+   ],
+   "why": "Paraguay llega al mar por los ríos: los barcos bajan por el Paraguay y el Paraná hasta el Atlántico."
+  }
+ },
+ {
+  "id": "h012",
+  "cat": "geography",
+  "en": {
+   "q": "In which country is the old desert city of Timbuktu?",
+   "right": "Mali",
+   "wrong": [
+    "Niger",
+    "Chad",
+    "Sudan"
+   ],
+   "why": "Timbuktu grew rich on the edge of the Sahara, where camel caravans met the boats of the Niger River."
+  },
+  "pt": {
+   "q": "Em que país fica a antiga cidade de Tombuctu?",
+   "right": "Mali",
+   "wrong": [
+    "Níger",
+    "Chade",
+    "Sudão"
+   ],
+   "why": "Tombuctu enriqueceu à beira do Saara, onde as caravanas de camelos encontravam os barcos do rio Níger."
+  },
+  "es": {
+   "q": "¿En qué país está la antigua ciudad de Tombuctú?",
+   "right": "Malí",
+   "wrong": [
+    "Níger",
+    "Chad",
+    "Sudán"
+   ],
+   "why": "Tombuctú se enriqueció al borde del Sahara, donde las caravanas se encontraban con los barcos del Níger."
+  }
+ },
+ {
+  "id": "h013",
+  "cat": "history",
+  "en": {
+   "q": "Who was the first woman to travel into space?",
+   "right": "Valentina Tereshkova",
+   "wrong": [
+    "Sally Ride",
+    "Svetlana Savitskaya",
+    "Mae Jemison"
+   ],
+   "why": "She circled the Earth 48 times, alone in the Vostok 6 capsule, in June 1963."
+  },
+  "pt": {
+   "q": "Quem foi a primeira mulher a viajar ao espaço?",
+   "right": "Valentina Tereshkova",
+   "wrong": [
+    "Sally Ride",
+    "Svetlana Savitskaya",
+    "Mae Jemison"
+   ],
+   "why": "Ela deu 48 voltas na Terra, sozinha na cápsula Vostok 6, em junho de 1963."
+  },
+  "es": {
+   "q": "¿Quién fue la primera mujer en viajar al espacio?",
+   "right": "Valentina Tereshkova",
+   "wrong": [
+    "Sally Ride",
+    "Svetlana Savitskaya",
+    "Mae Jemison"
+   ],
+   "why": "Dio 48 vueltas a la Tierra, sola en la cápsula Vostok 6, en junio de 1963."
+  }
+ },
+ {
+  "id": "h014",
+  "cat": "history",
+  "en": {
+   "q": "The ruins of ancient Carthage lie in which present-day country?",
+   "right": "Tunisia",
+   "wrong": [
+    "Libya",
+    "Egypt",
+    "Algeria"
+   ],
+   "why": "Carthage was founded by Phoenician sailors; its ruins are beside Tunis, the capital."
+  },
+  "pt": {
+   "q": "As ruínas da antiga Cartago ficam em qual país de hoje?",
+   "right": "Tunísia",
+   "wrong": [
+    "Líbia",
+    "Egito",
+    "Argélia"
+   ],
+   "why": "Cartago foi fundada por navegadores fenícios; suas ruínas ficam ao lado de Túnis, a capital."
+  },
+  "es": {
+   "q": "¿En qué país actual están las ruinas de la antigua Cartago?",
+   "right": "Túnez",
+   "wrong": [
+    "Libia",
+    "Egipto",
+    "Argelia"
+   ],
+   "why": "Cartago fue fundada por navegantes fenicios; sus ruinas están junto a la ciudad de Túnez, la capital."
+  }
+ },
+ {
+  "id": "h015",
+  "cat": "history",
+  "en": {
+   "q": "Which city was the capital of Brazil just before Brasília?",
+   "right": "Rio de Janeiro",
+   "wrong": [
+    "Salvador",
+    "São Paulo",
+    "Belo Horizonte"
+   ],
+   "why": "Rio was the capital for almost two centuries, until Brasília was opened in 1960."
+  },
+  "pt": {
+   "q": "Qual cidade era a capital do Brasil logo antes de Brasília?",
+   "right": "Rio de Janeiro",
+   "wrong": [
+    "Salvador",
+    "São Paulo",
+    "Belo Horizonte"
+   ],
+   "why": "O Rio foi capital por quase dois séculos, até a inauguração de Brasília, em 1960."
+  },
+  "es": {
+   "q": "¿Qué ciudad era la capital de Brasil justo antes de Brasilia?",
+   "right": "Río de Janeiro",
+   "wrong": [
+    "Salvador",
+    "São Paulo",
+    "Belo Horizonte"
+   ],
+   "why": "Río fue capital durante casi dos siglos, hasta que se inauguró Brasilia, en 1960."
+  }
+ },
+ {
+  "id": "h016",
+  "cat": "history",
+  "en": {
+   "q": "Which of the Seven Wonders of the ancient world stood in Alexandria?",
+   "right": "The Lighthouse",
+   "wrong": [
+    "The Colossus",
+    "The Hanging Gardens",
+    "The Mausoleum"
+   ],
+   "why": "It stood on the island of Pharos, whose name became the word for lighthouse in many languages."
+  },
+  "pt": {
+   "q": "Qual das sete maravilhas do mundo antigo ficava em Alexandria?",
+   "right": "O Farol",
+   "wrong": [
+    "O Colosso",
+    "Os Jardins Suspensos",
+    "O Mausoléu"
+   ],
+   "why": "Ele ficava na ilha de Faros, e foi do nome dela que veio a nossa palavra farol."
+  },
+  "es": {
+   "q": "¿Cuál de las siete maravillas del mundo antiguo estaba en Alejandría?",
+   "right": "El Faro",
+   "wrong": [
+    "El Coloso",
+    "Los Jardines Colgantes",
+    "El Mausoleo"
+   ],
+   "why": "Estaba en la isla de Faros, y del nombre de ella viene nuestra palabra faro."
+  }
+ },
+ {
+  "id": "h017",
+  "cat": "arts",
+  "en": {
+   "q": "Who painted the melting clocks of \"The Persistence of Memory\"?",
+   "right": "Salvador Dalí",
+   "wrong": [
+    "Pablo Picasso",
+    "Joan Miró",
+    "René Magritte"
+   ],
+   "why": "Dalí said the soft clocks came to him while he watched a Camembert cheese melting in the sun."
+  },
+  "pt": {
+   "q": "Quem pintou os relógios derretidos de \"A Persistência da Memória\"?",
+   "right": "Salvador Dalí",
+   "wrong": [
+    "Pablo Picasso",
+    "Joan Miró",
+    "René Magritte"
+   ],
+   "why": "Dalí contou que a ideia veio ao ver um queijo camembert derretendo ao sol."
+  },
+  "es": {
+   "q": "¿Quién pintó los relojes blandos de \"La persistencia de la memoria\"?",
+   "right": "Salvador Dalí",
+   "wrong": [
+    "Pablo Picasso",
+    "Joan Miró",
+    "René Magritte"
+   ],
+   "why": "Dalí contó que la idea le vino al ver un queso camembert derritiéndose al sol."
+  }
+ },
+ {
+  "id": "h018",
+  "cat": "arts",
+  "en": {
+   "q": "Who painted \"Girl with a Pearl Earring\"?",
+   "right": "Vermeer",
+   "wrong": [
+    "Rembrandt",
+    "Rubens",
+    "Van Dyck"
+   ],
+   "why": "Vermeer worked slowly in the Dutch town of Delft; only about 35 of his paintings are known."
+  },
+  "pt": {
+   "q": "Quem pintou \"Moça com Brinco de Pérola\"?",
+   "right": "Vermeer",
+   "wrong": [
+    "Rembrandt",
+    "Rubens",
+    "Van Dyck"
+   ],
+   "why": "Vermeer pintava devagar na cidade holandesa de Delft; só se conhecem uns 35 quadros dele."
+  },
+  "es": {
+   "q": "¿Quién pintó \"La joven de la perla\"?",
+   "right": "Vermeer",
+   "wrong": [
+    "Rembrandt",
+    "Rubens",
+    "Van Dyck"
+   ],
+   "why": "Vermeer pintaba despacio en la ciudad holandesa de Delft; solo se conocen unos 35 cuadros suyos."
+  }
+ },
+ {
+  "id": "h019",
+  "cat": "arts",
+  "en": {
+   "q": "Who wrote the novel \"One Hundred Years of Solitude\"?",
+   "right": "Gabriel García Márquez",
+   "wrong": [
+    "Mario Vargas Llosa",
+    "Jorge Luis Borges",
+    "Miguel Ángel Asturias"
+   ],
+   "why": "It follows seven generations of the Buendía family in the imaginary town of Macondo."
+  },
+  "pt": {
+   "q": "Quem escreveu o romance \"Cem Anos de Solidão\"?",
+   "right": "Gabriel García Márquez",
+   "wrong": [
+    "Mario Vargas Llosa",
+    "Jorge Luis Borges",
+    "Miguel Ángel Asturias"
+   ],
+   "why": "O livro acompanha sete gerações da família Buendía na cidade imaginária de Macondo."
+  },
+  "es": {
+   "q": "¿Quién escribió la novela \"Cien años de soledad\"?",
+   "right": "Gabriel García Márquez",
+   "wrong": [
+    "Mario Vargas Llosa",
+    "Jorge Luis Borges",
+    "Miguel Ángel Asturias"
+   ],
+   "why": "Cuenta siete generaciones de la familia Buendía en el pueblo imaginario de Macondo."
+  }
+ },
+ {
+  "id": "h020",
+  "cat": "arts",
+  "en": {
+   "q": "Who composed the ballet \"Swan Lake\"?",
+   "right": "Tchaikovsky",
+   "wrong": [
+    "Stravinsky",
+    "Prokofiev",
+    "Rachmaninoff"
+   ],
+   "why": "It was his first ballet, from 1877; \"The Sleeping Beauty\" and \"The Nutcracker\" came later."
+  },
+  "pt": {
+   "q": "Quem compôs o balé \"O Lago dos Cisnes\"?",
+   "right": "Tchaikovsky",
+   "wrong": [
+    "Stravinsky",
+    "Prokofiev",
+    "Rachmaninoff"
+   ],
+   "why": "Foi seu primeiro balé, de 1877; depois vieram \"A Bela Adormecida\" e \"O Quebra-Nozes\"."
+  },
+  "es": {
+   "q": "¿Quién compuso el ballet \"El lago de los cisnes\"?",
+   "right": "Chaikovski",
+   "wrong": [
+    "Stravinski",
+    "Prokófiev",
+    "Rajmáninov"
+   ],
+   "why": "Fue su primer ballet, de 1877; después llegaron \"La bella durmiente\" y \"El cascanueces\"."
+  }
+ },
+ {
+  "id": "h021",
+  "cat": "food",
+  "en": {
+   "q": "Which pasta's name means \"little worms\" in Italian?",
+   "right": "Vermicelli",
+   "wrong": [
+    "Spaghetti",
+    "Linguine",
+    "Farfalle"
+   ],
+   "why": "Pasta names are little pictures: spaghetti are \"little strings\" and farfalle are \"butterflies\"."
+  },
+  "pt": {
+   "q": "Qual massa tem um nome que quer dizer \"minhoquinhas\" em italiano?",
+   "right": "Vermicelli",
+   "wrong": [
+    "Spaghetti",
+    "Linguine",
+    "Farfalle"
+   ],
+   "why": "Os nomes das massas são desenhos: spaghetti são \"barbantinhos\" e farfalle são \"borboletas\"."
+  },
+  "es": {
+   "q": "¿Qué pasta tiene un nombre que significa \"gusanitos\" en italiano?",
+   "right": "Vermicelli",
+   "wrong": [
+    "Spaghetti",
+    "Linguine",
+    "Farfalle"
+   ],
+   "why": "Los nombres de las pastas son dibujos: spaghetti son \"cordelitos\" y farfalle son \"mariposas\"."
+  }
+ },
+ {
+  "id": "h022",
+  "cat": "food",
+  "en": {
+   "q": "From which country does the kiwi fruit originally come?",
+   "right": "China",
+   "wrong": [
+    "New Zealand",
+    "Australia",
+    "Chile"
+   ],
+   "why": "It was the \"Chinese gooseberry\" until New Zealand growers renamed it after their bird in 1959."
+  },
+  "pt": {
+   "q": "De que país vem originalmente a fruta kiwi?",
+   "right": "China",
+   "wrong": [
+    "Nova Zelândia",
+    "Austrália",
+    "Chile"
+   ],
+   "why": "Era a \"groselha chinesa\" até os produtores da Nova Zelândia lhe darem o nome da sua ave, em 1959."
+  },
+  "es": {
+   "q": "¿De qué país es originario el kiwi, la fruta?",
+   "right": "China",
+   "wrong": [
+    "Nueva Zelanda",
+    "Australia",
+    "Chile"
+   ],
+   "why": "Era la \"grosella china\" hasta que en Nueva Zelanda le pusieron el nombre de su ave, en 1959."
+  }
+ },
+ {
+  "id": "h023",
+  "cat": "food",
+  "en": {
+   "q": "Which nut is ground with sugar to make marzipan?",
+   "right": "Almond",
+   "wrong": [
+    "Hazelnut",
+    "Walnut",
+    "Pistachio"
+   ],
+   "why": "The paste is soft and easy to model, so it is often shaped into little fruits and animals."
+  },
+  "pt": {
+   "q": "Que fruto seco é moído com açúcar para fazer marzipã?",
+   "right": "Amêndoa",
+   "wrong": [
+    "Avelã",
+    "Noz",
+    "Pistache"
+   ],
+   "why": "A massa é macia e fácil de modelar; por isso costuma virar frutinhas e bichinhos."
+  },
+  "es": {
+   "q": "¿Qué fruto seco se muele con azúcar para hacer mazapán?",
+   "right": "Almendra",
+   "wrong": [
+    "Avellana",
+    "Nuez",
+    "Pistacho"
+   ],
+   "why": "La pasta es blanda y fácil de modelar; por eso suele tener forma de frutitas y animales."
+  }
+ },
+ {
+  "id": "h024",
+  "cat": "food",
+  "en": {
+   "q": "Quinoa was first grown in which mountain range?",
+   "right": "The Andes",
+   "wrong": [
+    "The Himalayas",
+    "The Alps",
+    "The Atlas"
+   ],
+   "why": "People around Lake Titicaca have grown it for thousands of years; it is a seed, not a true cereal."
+  },
+  "pt": {
+   "q": "A quinoa foi cultivada primeiro em qual cordilheira?",
+   "right": "Os Andes",
+   "wrong": [
+    "O Himalaia",
+    "Os Alpes",
+    "O Atlas"
+   ],
+   "why": "Os povos do lago Titicaca a plantam há milhares de anos; é uma semente, não um cereal de verdade."
+  },
+  "es": {
+   "q": "¿En qué cordillera se cultivó primero la quinua?",
+   "right": "Los Andes",
+   "wrong": [
+    "El Himalaya",
+    "Los Alpes",
+    "El Atlas"
+   ],
+   "why": "Los pueblos del lago Titicaca la siembran desde hace miles de años; es una semilla, no un cereal verdadero."
+  }
+ },
+ {
+  "id": "h025",
+  "cat": "sports",
+  "en": {
+   "q": "In golf, what is a score of two under par on a hole called?",
+   "right": "Eagle",
+   "wrong": [
+    "Birdie",
+    "Albatross",
+    "Bogey"
+   ],
+   "why": "One under par is a birdie, two an eagle and three an albatross: the rarer the score, the bigger the bird."
+  },
+  "pt": {
+   "q": "No golfe, como se chama fazer um buraco em duas tacadas abaixo do par?",
+   "right": "Eagle",
+   "wrong": [
+    "Birdie",
+    "Albatroz",
+    "Bogey"
+   ],
+   "why": "Uma abaixo do par é birdie, duas é eagle e três é albatroz: quanto mais raro, maior a ave."
+  },
+  "es": {
+   "q": "En golf, ¿cómo se llama hacer un hoyo con dos golpes bajo el par?",
+   "right": "Eagle",
+   "wrong": [
+    "Birdie",
+    "Albatros",
+    "Bogey"
+   ],
+   "why": "Uno bajo el par es birdie, dos es eagle y tres es albatros: cuanto más raro, más grande el ave."
+  }
+ },
+ {
+  "id": "h026",
+  "cat": "sports",
+  "en": {
+   "q": "How many players does a rugby union team have on the field?",
+   "right": "15",
+   "wrong": [
+    "11",
+    "12",
+    "13"
+   ],
+   "why": "Rugby league, the sister game, is played with thirteen a side, and rugby sevens with seven."
+  },
+  "pt": {
+   "q": "Quantos jogadores tem em campo um time de rugby union?",
+   "right": "15",
+   "wrong": [
+    "11",
+    "12",
+    "13"
+   ],
+   "why": "O rugby league, o jogo irmão, é jogado com treze de cada lado, e o rugby sevens, com sete."
+  },
+  "es": {
+   "q": "¿Cuántos jugadores tiene en la cancha un equipo de rugby union?",
+   "right": "15",
+   "wrong": [
+    "11",
+    "12",
+    "13"
+   ],
+   "why": "El rugby league, el juego hermano, se juega con trece por lado, y el rugby sevens, con siete."
+  }
+ },
+ {
+  "id": "h027",
+  "cat": "sports",
+  "en": {
+   "q": "Which city hosted the first modern Olympic Games, in 1896?",
+   "right": "Athens",
+   "wrong": [
+    "Paris",
+    "London",
+    "Rome"
+   ],
+   "why": "They went to Greece to honour the ancient Games of Olympia; Paris hosted the second, in 1900."
+  },
+  "pt": {
+   "q": "Que cidade sediou os primeiros Jogos Olímpicos modernos, em 1896?",
+   "right": "Atenas",
+   "wrong": [
+    "Paris",
+    "Londres",
+    "Roma"
+   ],
+   "why": "Foram à Grécia em honra dos antigos Jogos de Olímpia; Paris recebeu os segundos, em 1900."
+  },
+  "es": {
+   "q": "¿Qué ciudad organizó los primeros Juegos Olímpicos modernos, en 1896?",
+   "right": "Atenas",
+   "wrong": [
+    "París",
+    "Londres",
+    "Roma"
+   ],
+   "why": "Fueron a Grecia en honor a los antiguos Juegos de Olimpia; París recibió los segundos, en 1900."
+  }
+ },
+ {
+  "id": "h028",
+  "cat": "sports",
+  "en": {
+   "q": "Which country won the first football World Cup, in 1930?",
+   "right": "Uruguay",
+   "wrong": [
+    "Argentina",
+    "Brazil",
+    "Italy"
+   ],
+   "why": "Uruguay was also the host, and beat Argentina 4-2 in the final, played in Montevideo."
+  },
+  "pt": {
+   "q": "Que país ganhou a primeira Copa do Mundo de futebol, em 1930?",
+   "right": "Uruguai",
+   "wrong": [
+    "Argentina",
+    "Brasil",
+    "Itália"
+   ],
+   "why": "O Uruguai também era o anfitrião e venceu a Argentina por 4 a 2 na final, em Montevidéu."
+  },
+  "es": {
+   "q": "¿Qué país ganó el primer Mundial de fútbol, en 1930?",
+   "right": "Uruguay",
+   "wrong": [
+    "Argentina",
+    "Brasil",
+    "Italia"
+   ],
+   "why": "Uruguay también era el anfitrión y venció a Argentina 4 a 2 en la final, en Montevideo."
+  }
+ },
+ {
+  "id": "h029",
+  "cat": "words",
+  "en": {
+   "q": "From which language does the word \"sauna\" come?",
+   "right": "Finnish",
+   "wrong": [
+    "Swedish",
+    "Norwegian",
+    "Russian"
+   ],
+   "why": "In Finland the sauna is part of the home: there are millions, and most families have their own."
+  },
+  "pt": {
+   "q": "De que língua vem a palavra \"sauna\"?",
+   "right": "Finlandês",
+   "wrong": [
+    "Sueco",
+    "Norueguês",
+    "Russo"
+   ],
+   "why": "Na Finlândia a sauna é parte da casa: há milhões delas, e quase toda família tem a sua."
+  },
+  "es": {
+   "q": "¿De qué idioma viene la palabra \"sauna\"?",
+   "right": "Finés",
+   "wrong": [
+    "Sueco",
+    "Noruego",
+    "Ruso"
+   ],
+   "why": "En Finlandia el sauna es parte de la casa: hay millones, y casi toda familia tiene el suyo."
+  }
+ },
+ {
+  "id": "h030",
+  "cat": "words",
+  "en": {
+   "q": "From which language does the word \"yogurt\" come?",
+   "right": "Turkish",
+   "wrong": [
+    "Greek",
+    "Arabic",
+    "Persian"
+   ],
+   "why": "It comes from a Turkish verb meaning to thicken, which is just what happens to the milk."
+  },
+  "pt": {
+   "q": "De que língua vem a palavra \"iogurte\"?",
+   "right": "Turco",
+   "wrong": [
+    "Grego",
+    "Árabe",
+    "Persa"
+   ],
+   "why": "Vem de um verbo turco que quer dizer engrossar, que é bem o que acontece com o leite."
+  },
+  "es": {
+   "q": "¿De qué idioma viene la palabra \"yogur\"?",
+   "right": "Turco",
+   "wrong": [
+    "Griego",
+    "Árabe",
+    "Persa"
+   ],
+   "why": "Viene de un verbo turco que quiere decir espesar, que es justo lo que le pasa a la leche."
+  }
+ },
+ {
+  "id": "h031",
+  "cat": "words",
+  "en": {
+   "q": "The name \"hippopotamus\" comes from the Greek for \"river\" and which animal?",
+   "right": "Horse",
+   "wrong": [
+    "Pig",
+    "Cow",
+    "Elephant"
+   ],
+   "why": "\"Hippos\" is horse and \"potamos\" is river; a hippodrome was a track for horse races."
+  },
+  "pt": {
+   "q": "O nome \"hipopótamo\" vem do grego para \"rio\" e qual animal?",
+   "right": "Cavalo",
+   "wrong": [
+    "Porco",
+    "Vaca",
+    "Elefante"
+   ],
+   "why": "\"Hippos\" é cavalo e \"potamos\" é rio; um hipódromo é uma pista de corrida de cavalos."
+  },
+  "es": {
+   "q": "El nombre \"hipopótamo\" viene del griego para \"río\" y ¿qué animal?",
+   "right": "Caballo",
+   "wrong": [
+    "Cerdo",
+    "Vaca",
+    "Elefante"
+   ],
+   "why": "\"Hippos\" es caballo y \"potamos\" es río; un hipódromo es una pista de carreras de caballos."
+  }
+ },
+ {
+  "id": "h032",
+  "cat": "words",
+  "en": {
+   "q": "In \"telephone\" and \"telescope\", what does the Greek \"tele\" mean?",
+   "right": "Far",
+   "wrong": [
+    "Sound",
+    "See",
+    "Fast"
+   ],
+   "why": "A telephone is a \"far voice\" and a telescope a \"far looker\"; television is \"far seeing\"."
+  },
+  "pt": {
+   "q": "Em \"telefone\" e \"telescópio\", o que quer dizer o grego \"tele\"?",
+   "right": "Longe",
+   "wrong": [
+    "Som",
+    "Ver",
+    "Rápido"
+   ],
+   "why": "Telefone é \"voz de longe\" e telescópio, \"olhar de longe\"; televisão é \"ver de longe\"."
+  },
+  "es": {
+   "q": "En \"teléfono\" y \"telescopio\", ¿qué significa el griego \"tele\"?",
+   "right": "Lejos",
+   "wrong": [
+    "Sonido",
+    "Ver",
+    "Rápido"
+   ],
+   "why": "Teléfono es \"voz de lejos\" y telescopio, \"mirar de lejos\"; televisión es \"ver de lejos\"."
+  }
+ },
+ {
+  "id": "h033",
+  "cat": "everyday",
+  "en": {
+   "q": "How many keys does a standard piano have?",
+   "right": "88",
+   "wrong": [
+    "76",
+    "85",
+    "92"
+   ],
+   "why": "There are 52 white keys and 36 black ones, covering a little more than seven octaves."
+  },
+  "pt": {
+   "q": "Quantas teclas tem um piano padrão?",
+   "right": "88",
+   "wrong": [
+    "76",
+    "85",
+    "92"
+   ],
+   "why": "São 52 teclas brancas e 36 pretas, cobrindo pouco mais de sete oitavas."
+  },
+  "es": {
+   "q": "¿Cuántas teclas tiene un piano estándar?",
+   "right": "88",
+   "wrong": [
+    "76",
+    "85",
+    "92"
+   ],
+   "why": "Son 52 teclas blancas y 36 negras, que cubren poco más de siete octavas."
+  }
+ },
+ {
+  "id": "h034",
+  "cat": "everyday",
+  "en": {
+   "q": "On a boat, which side is called starboard?",
+   "right": "Right",
+   "wrong": [
+    "Left",
+    "Front",
+    "Back"
+   ],
+   "why": "The left side is port; at night a boat shows a green light to starboard and a red one to port."
+  },
+  "pt": {
+   "q": "Num barco, que lado é chamado de estibordo, ou boreste?",
+   "right": "Direito",
+   "wrong": [
+    "Esquerdo",
+    "Dianteiro",
+    "Traseiro"
+   ],
+   "why": "O lado esquerdo é o bombordo; à noite, o barco leva luz verde a estibordo e vermelha a bombordo."
+  },
+  "es": {
+   "q": "En un barco, ¿qué lado se llama estribor?",
+   "right": "Derecho",
+   "wrong": [
+    "Izquierdo",
+    "Delantero",
+    "Trasero"
+   ],
+   "why": "El lado izquierdo es babor; de noche, el barco lleva luz verde a estribor y roja a babor."
+  }
+ },
+ {
+  "id": "h035",
+  "cat": "everyday",
+  "en": {
+   "q": "How many karats is pure gold?",
+   "right": "24",
+   "wrong": [
+    "18",
+    "20",
+    "22"
+   ],
+   "why": "A karat is one part in 24, so 18-karat gold is three quarters gold and the rest other metals."
+  },
+  "pt": {
+   "q": "Quantos quilates tem o ouro puro?",
+   "right": "24",
+   "wrong": [
+    "18",
+    "20",
+    "22"
+   ],
+   "why": "Um quilate é uma parte em 24: o ouro 18 quilates tem três quartos de ouro e o resto de outros metais."
+  },
+  "es": {
+   "q": "¿Cuántos quilates tiene el oro puro?",
+   "right": "24",
+   "wrong": [
+    "18",
+    "20",
+    "22"
+   ],
+   "why": "Un quilate es una parte de 24: el oro de 18 quilates tiene tres cuartos de oro y el resto, otros metales."
+  }
+ },
+ {
+  "id": "h036",
+  "cat": "everyday",
+  "en": {
+   "q": "How many sheets of paper are in a ream?",
+   "right": "500",
+   "wrong": [
+    "100",
+    "250",
+    "1000"
+   ],
+   "why": "A ream is the wrapped pack printer paper comes in; the word comes from the Arabic for a bundle."
+  },
+  "pt": {
+   "q": "Quantas folhas de papel tem uma resma?",
+   "right": "500",
+   "wrong": [
+    "100",
+    "250",
+    "1000"
+   ],
+   "why": "A resma é o pacote fechado do papel de impressora; a palavra vem do árabe para fardo."
+  },
+  "es": {
+   "q": "¿Cuántas hojas de papel tiene una resma?",
+   "right": "500",
+   "wrong": [
+    "100",
+    "250",
+    "1000"
+   ],
+   "why": "La resma es el paquete cerrado del papel de impresora; la palabra viene del árabe para fardo."
+  }
+ }
+]

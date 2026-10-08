@@ -62,8 +62,9 @@ func _initialize() -> void:
 		_second_turn_at = FIRST_AT + 0.8
 		_settle = PAGE2_SETTLE + 0.8
 	if _last:
-		_turns_left = 2
-		_settle = PAGE2_SETTLE + 1.6
+		# Five pages since Golden Acorn (thirty-three cards at eight a page).
+		_turns_left = 3
+		_settle = PAGE2_SETTLE + 3.2
 	for a in args:
 		if a in ["streak", "stats"] or a == "diff" or a.begins_with("diff="):
 			_tab_arg = a

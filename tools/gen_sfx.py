@@ -259,6 +259,17 @@ BENCH_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
               "natural, soft, rounded, gentle, cozy, no synth, no electronic "
               "tones, no beeps, no music bed, no voice")
 
+# Golden Acorn's quiz (2026-10-08): a card table in a quiet room. What is
+# not a note is index cards, a wooden tile and a pencil on a wooden table.
+QUIZ = ("close-mic foley recorded at a small wooden card table in a quiet "
+        "warm room, real stiff paper index cards, small wooden tiles and a "
+        "pencil, natural and acoustic, soft, dry, rounded, no synth, no "
+        "electronic tones, no beeps, no music, no voice")
+QUIZ_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
+             "and small hand bells recorded close in a warm quiet room, "
+             "natural, soft, rounded, gentle, cozy, no synth, no electronic "
+             "tones, no beeps, no music bed, no voice")
+
 PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
         "meadow, natural, soft, warm, gentle, cute, dry, no synth, no music, "
         "no human voice")
@@ -1679,6 +1690,28 @@ SETS = {
         "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a job well measured", 2.0, -5, BENCH_TUNE, "warm:7000"),
         "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, BENCH_TUNE, "warm:7000"),
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, BENCH_TUNE, "warm:7000"),
+    },
+    # Golden Acorn (puzzles/acorn2d.gd, 2026-10-08): a quiz at a card table.
+    # `pick` is the one that repeats (every tap on an answer, and a player
+    # in doubt taps several): a wooden tile set down, dry, cut short, no
+    # note. A lock, its answer, the bulb and the day's end happen now and
+    # then and may be notes. No drum roll and no buzzer: the held breath
+    # after a lock is silence, and a wrong answer steps down on a kalimba.
+    "acorn": {
+        "enter":         ("a small stack of stiff paper index cards squared up on a wooden table with two soft taps, light and gentle, short", 0.8, -11, QUIZ, "warm:7000"),
+        "pick":          ("one small wooden tile set down on a wooden table, a single short soft dry wooden tick, no ring, no tone, very short and quiet", 0.5, -15, QUIZ, "warm:6000", "cut:0.1"),
+        "lock":          ("one stiff paper index card pressed flat on a wooden table with a firm soft knuckle knock, a single dull warm wooden clack, no ring, very short", 0.5, -8, QUIZ, "cut:0.32"),
+        "next":          ("one stiff paper index card slid off the top of a small stack and turned over on a wooden table, a single soft short dry paper swish, no tone, very short", 0.5, -13, QUIZ, "cut:0.3"),
+        "refuse":        ("a pencil tapped twice softly on a wooden table, two small dull wooden taps, a gentle not yet, very short", 0.5, -12, QUIZ, "cut:0.3"),
+        "right":         ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, exactly right, happy and proud, short", 1.0, -6, QUIZ_TUNE, "warm:7000"),
+        "wrong":         ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not quite, warm and round, never a buzzer", 1.0, -11, QUIZ_TUNE, "fall"),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -9, QUIZ_TUNE, "warm:7000"),
+        "heart_lost":    ("one soft low note on a wooden tongue drum with a small dull wooden knock under it, a gentle oh dear, warm and round, never a buzzer, short", 0.8, -10, QUIZ_TUNE, "warm:6000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, QUIZ_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a reading lamp turned low", 1.8, -9, QUIZ_TUNE, "warm:7000"),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a quiz night won among friends", 2.0, -5, QUIZ_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, QUIZ_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, QUIZ_TUNE, "warm:7000"),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

@@ -35,6 +35,9 @@ func _ready() -> void:
 	# The backend wakes here and nowhere else, same as telemetry: the suite
 	# and the harnesses build these screens and stay offline.
 	Backend.start(self)  # first: Ads.start() reads remote config through it
+	# Golden Acorn's questions for today, fetched behind the menu so its card
+	# opens on them at once (puzzles/acorn2d.gd waits a moment when it must).
+	Backend.day_content("acorn", Daily.date_key())  # deliberately not awaited
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)

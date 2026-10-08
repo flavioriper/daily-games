@@ -365,3 +365,21 @@ tongue drum over a dull knock. `hint`, `solved`, `party`, `stamp`,
 `out_of_hearts` and `heart_back` are phrased as Horse Pen's. One take a cue
 on the first run, no retakes, unheard by the user and not measured.
 
+## Golden Acorn (2026-10-08)
+
+`SETS["acorn"]`, fourteen cues, every one the board fires. Two styles:
+`QUIZ` (close-mic foley of a card table: stiff index cards, a small wooden
+tile, a pencil) and `QUIZ_TUNE` (the garden family's kalimba, music box,
+tongue drum and hand bells). **`pick` is the only cue that repeats** -- a
+player in doubt taps several answers -- and it is a wooden tile set down
+with no note, cut to 0.1 s at -15. `lock` is a card pressed flat under a
+knuckle, `next` a card slid off the stack and turned, `refuse` a pencil
+tapped twice (Lock with nothing picked, a bulb on a question already cut),
+`enter` the stack squared up. **Between `lock` and the answer there is 0.6 s
+of nothing**: a quiz show's drum roll or sting was left out on purpose, and
+the answer is a note, up for right and down for not quite -- `right` three
+kalimba notes and a hand bell, `wrong` two falling (the `fall` trick, as
+Tents' `check`), never a buzzer; `heart_lost` is a low tongue drum over a
+dull knock. `hint`, `solved`, `party`, `stamp`, `out_of_hearts` and
+`heart_back` are phrased as How Big?'s. One take a cue on the first run, no
+retakes, unheard by the user and not measured.

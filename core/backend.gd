@@ -220,6 +220,12 @@ static func day_content(game: String, date_key: int) -> Dictionary:
 		return got
 	return {"ok": false, "data": bundled(game), "error": got.error}
 
+## The day's content if this phone already holds it, {} if not: no network,
+## no wait. For a board that has to stand at once (a completed daily put
+## back) and can do without.
+static func cached_day(game: String, date_key: int) -> Dictionary:
+	return _read_cache(game, date_key, "content")
+
 ## The crowd so far: {count, histogram, byLocale}. Always asks the network
 ## when there is one, because this is the number that moves.
 static func tally(game: String, date_key: int) -> Dictionary:
