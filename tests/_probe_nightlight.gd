@@ -133,15 +133,26 @@ func _first_solid(sim: RefCounted, most := 60.0) -> Sim.Body:
 
 ## Runs `seconds` and hands back what the far sky owed in them by its rule:
 ## `trickle_rate() * need()` summed over every tick, and the most the gas
-## outside the disc came to on the way.
+## outside the disc came to on the way, counted here and not read from the
+## sim's own running figure.
 func _run_owed(sim: RefCounted, seconds: float) -> Vector2:
 	var owed := 0.0
 	var most := 0.0
 	for i in int(seconds / Sim.STEP):
 		owed += float(sim.trickle_rate()) * float(sim.need()) * Sim.STEP
 		sim.tick()
-		most = maxf(most, float(sim._gas_out))
+		if i % 6 == 0:
+			most = maxf(most, _gas_beyond(sim))
 	return Vector2(owed, most)
+
+## The gas outside the disc, counted body by body.
+func _gas_beyond(sim: RefCounted) -> float:
+	var rh: float = sim.haze_r()
+	var out := 0.0
+	for b: Sim.Body in sim.bodies:
+		if b.kind == Sim.Kind.GAS and b.pos.length() >= rh:
+			out += b.m
+	return out
 
 func _solid_count(sim: RefCounted) -> int:
 	return sim.bodies.size() - sim.gas_count()
@@ -892,6 +903,18 @@ func _check_ring() -> void:
 	keep.save()
 	var back: RefCounted = Sim.load_saved(1)
 	_ok("a star saved and read back keeps its ring", back.ring.is_equal_approx(keep.ring) and is_equal_approx(back.frost, keep.frost) and is_equal_approx(back.dusty, Sim.ASH_MOST * 0.5) and int(back.lv.reach) == 2 and back.bodies.size() == keep.bodies.size())
+	# what the ring weighed at birth comes back; a file's figure far off the
+	# newborn's own is held to half of it and to half as much again
+	_ok("a star read back keeps what its ring weighed", is_equal_approx(back.ring_m, keep.ring_m))
+	var newborn_ring: float = minf(Sim.RING_M, Sim.RING_MOST * Sim.START)
+	for odd_m: Array in [[1e-12, 0.5], [1e9, 1.5]]:
+		var thin := ConfigFile.new()
+		thin.load(Sim.path)
+		thin.set_value("star", "ring_m", odd_m[0])
+		thin.save(Sim.path)
+		var held_m: RefCounted = Sim.load_saved(1)
+		_ok("a file's ring of %s is held to %.1f of the newborn's" % [str(odd_m[0]), odd_m[1]], is_equal_approx(held_m.ring_m, newborn_ring * float(odd_m[1])))
+	keep.save()
 	var old := ConfigFile.new()
 	old.load(Sim.path)
 	old.set_value("star", "kept", 3)
@@ -1003,24 +1026,82 @@ func _check_pay() -> void:
 	_ok("a torn planet's pieces keep its rank", ranks and torn.bodies.size() >= 2)
 	_ok("and share what it had paid", is_equal_approx(shared, 0.3))
 	_ok("with no Furnace a tear pays nothing", torn.light == 0.0)
-	# the Furnace pays a share of the torn body's own worth, a level, over and
-	# above that worth: what the pieces have paid is not touched
-	var forge := _quiet(13)
-	forge.power.furnace = 2
-	var f: Sim.Body = forge.add(Sim.Kind.ROCK, 0.02, Vector2(forge.roche_r() * 0.9, 0.0), Vector2.ZERO)
-	forge._sort(f)
-	f.paid = 0.3
-	forge._tear(0)
-	var bonus: float = Sim.FURNACE_SHARE * 2.0 * 0.02 * forge.spiral_light() * Sim.PAY_WORLD
-	var forge_paid := 0.0
-	for piece: Sim.Body in forge.bodies:
-		forge_paid += piece.paid
-	_ok("the Furnace pays FURNACE_SHARE of a torn body's worth a level (%.2f)" % bonus, absf(forge.light - bonus) < 1e-6 and forge.events.any(func(e): return e.kind == "shed" and is_equal_approx(float(e.e), bonus)))
-	_ok("and that is not counted as paid", is_equal_approx(forge_paid, 0.3))
-	forge.awake = false
-	var dark_light: float = forge.light
-	forge._tear(0)
-	_ok("a dim star's Furnace pays nothing", forge.light == dark_light)
+	# the Furnace pays a share of a body's own worth, a level, once: on its
+	# first tear, however often its pieces are torn again on the way down, and
+	# over and above the worth the star pays for it. A world of 0.02 and one of
+	# 0.04 on a grazing path, at one Sun and at four, with no Furnace, one
+	# level and two, each followed through `tick` until the star has it all.
+	for star_suns: float in [1.0, 4.0]:
+		for world_m: float in [0.02, 0.04]:
+			var forged: Array[float] = []
+			var in_all: Array[float] = []
+			var tears: Array[int] = []
+			var worth := 0.0
+			for level: int in [0, 1, 2]:
+				var forge := _quiet(13)
+				forge.mass = Sim.START * star_suns
+				forge.power.furnace = level
+				var from := Vector2(forge.main_r() * 2.0, 0.0)
+				var falls: Sim.Body = forge.add(Sim.Kind.ROCK, world_m, from, forge.circle_vel(from) * 0.55)
+				forge._sort(falls)
+				worth = world_m * forge.spiral_light() * Sim.pay(falls.rank)
+				var got := 0.0
+				var torn_n := 0
+				var t := 0.0
+				while forge.bodies.size() > 0 and t < 900.0:
+					forge.tick()
+					t += Sim.STEP
+					for k in forge.events.size():
+						var e: Dictionary = forge.events[k]
+						if String(e.kind) == "tear":
+							torn_n += 1
+						elif String(e.kind) == "shed" and k > 0 and String(forge.events[k - 1].kind) == "tear" and forge.events[k - 1].at == e.at:
+							got += float(e.e)
+					forge.events.clear()
+				forged.append(got)
+				in_all.append(float(forge.light) if forge.bodies.is_empty() else -1.0)
+				tears.append(torn_n)
+			print("  the Furnace, a world of %.2f at %.0f Sun(s), worth %.2f: torn %d times on the way down; no Furnace %.3f, one level %.3f (%.2f of its worth), two %.3f (%.2f)" % [
+				world_m, star_suns, worth, tears[1], forged[0], forged[1], forged[1] / worth, forged[2], forged[2] / worth])
+			_ok("with no Furnace a world of %.2f at %.0f Sun(s) pays none" % [world_m, star_suns], forged[0] == 0.0 and tears[0] > 1)
+			_ok("one level pays FURNACE_SHARE of its worth, once, however often its pieces are torn (%.2f of %.2f)" % [forged[1], Sim.FURNACE_SHARE * worth], tears[1] > 1 and absf(forged[1] - Sim.FURNACE_SHARE * worth) < Sim.FURNACE_SHARE * worth * 0.05)
+			_ok("two levels pay twice that (%.2f)" % forged[2], absf(forged[2] - 2.0 * Sim.FURNACE_SHARE * worth) < 2.0 * Sim.FURNACE_SHARE * worth * 0.05)
+			_ok("and it is over and above the worth the star pays for the body, not part of it", in_all[0] > 0.0 and absf(in_all[0] - worth) < worth * 0.05 and absf(in_all[2] - worth - forged[2]) < worth * 0.05)
+	# a dim star's Furnace pays nothing
+	var forge_dim := _quiet(13)
+	forge_dim.power.furnace = 2
+	forge_dim.awake = false
+	var fd: Sim.Body = forge_dim.add(Sim.Kind.ROCK, 0.02, Vector2(forge_dim.roche_r() * 0.9, 0.0), Vector2.ZERO)
+	forge_dim._sort(fd)
+	forge_dim._tear(0)
+	_ok("a dim star's Furnace pays nothing", forge_dim.light == 0.0)
+	_ok("the pieces of a torn body carry that it was torn", forge_dim.bodies.all(func(x): return x.torn) and not fd.torn)
+	# two solids that gather are torn only if both were: one that has taken in
+	# fresh mass may pay the Furnace once more
+	for both: bool in [true, false]:
+		var heap := _quiet(13)
+		var spot := Vector2(heap.haze_r() * 1.3, 0.0)
+		var one_p: Sim.Body = heap.add(Sim.Kind.ROCK, 0.003, spot, heap.circle_vel(spot))
+		var two_p: Sim.Body = heap.add(Sim.Kind.ROCK, 0.003, spot + Vector2(2.0, 0.0), heap.circle_vel(spot))
+		one_p.torn = true
+		two_p.torn = both
+		_run(heap, 1.0)
+		_ok("two gathered solids are torn only if both were (%s)" % ("both" if both else "one"), heap.bodies.size() == 1 and heap.bodies[0].torn == both)
+	# the file keeps it, and a row from before it has not been torn
+	var torn_keep := _quiet(15)
+	var tk: Sim.Body = torn_keep.add(Sim.Kind.ROCK, 0.004, Vector2(700.0, 0.0), torn_keep.circle_vel(Vector2(700.0, 0.0)))
+	tk.torn = true
+	torn_keep.save()
+	var torn_back: RefCounted = Sim.load_saved(1)
+	_ok("a torn body read back is still torn", torn_back.bodies.size() == 1 and torn_back.bodies[0].torn)
+	var torn_cfg := ConfigFile.new()
+	torn_cfg.load(Sim.path)
+	var torn_rows: Array = torn_cfg.get_value("star", "bodies", [])
+	torn_rows[0] = (torn_rows[0] as Array).slice(0, 12)
+	torn_cfg.set_value("star", "bodies", torn_rows)
+	torn_cfg.save(Sim.path)
+	var torn_old: RefCounted = Sim.load_saved(1)
+	_ok("a twelve-column row has not been torn", torn_old.bodies.size() == 1 and not torn_old.bodies[0].torn)
 	# nothing pays a negative amount: a body that has already paid more than it owes
 	var over := _quiet(14)
 	var o: Sim.Body = over.add(Sim.Kind.ROCK, 0.001, Vector2(145.0, 0.0), Vector2.ZERO)

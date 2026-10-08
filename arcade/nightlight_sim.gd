@@ -74,6 +74,9 @@ class Body:
 	var rank := 0.0
 	## The light it has let go so far.
 	var paid := 0.0
+	## True for a piece of a body the tide has torn: the Furnace has paid for
+	## it, and does not pay again when the piece is torn in its turn.
+	var torn := false
 
 const STEP := 1.0 / 60.0
 ## Gravity for a star of one mass, the disc's drag at the star's surface (a
@@ -360,9 +363,12 @@ const MILES := [2.0, 4.0, 8.0, 15.0, 30.0, 60.0]
 ## WIND_REACH of its radius, so what is parked there comes down. It makes no
 ## light. Wide haze: HAZE_STEP wider a level. Beacon: bodies pass BEACON_SOON
 ## sooner and BEACON_RICH heavier. Radiance: RADIANCE more light from the
-## disc. Tidal furnace: a torn body pays FURNACE_SHARE of its own worth (its
-## mass, a perfect spiral's light and what its rank pays) a level, over and
-## above that worth. Fusion: the star's own burning pays one SHINE more a
+## disc. Tidal furnace: a body the tide tears pays FURNACE_SHARE of its own
+## worth (its mass, a perfect spiral's light and what its rank pays) a level,
+## over and above that worth and once: its pieces are torn again on the way
+## down and pay nothing more (`Body.torn`). Two solids that gather are torn
+## only if both were, so one that has taken in fresh mass may pay once more.
+## Fusion: the star's own burning pays one SHINE more a
 ## level. Thrift: it burns THRIFT as much.
 const WIND := 0.0003
 const WIND_REACH := 3.0
@@ -1087,9 +1093,9 @@ func press_r() -> float:
 func flow_gap() -> float:
 	return maxf(FLOW_LEAST, FLOW * pow(FLOW_STEP, int(lv.flow)))
 
-## The most mass a second that drifts in from the far sky: more the heavier
-## the star, and RICHER more for every supernova so far, as what passes is
-## heavier.
+## The most mass a second that drifts in from the far sky: by the star's Suns
+## to the power TRICKLE_UP (less the heavier it is, with that under zero), and
+## RICHER more for every supernova so far, as what passes is heavier.
 func trickle_rate() -> float:
 	return TRICKLE * pow(suns(), TRICKLE_UP) * (1.0 + RICHER * novas) * (1.0 + RICH_STEP * int(lv.rich)) * (1.0 + HAND * int(perk.hand))
 
@@ -1105,7 +1111,6 @@ func _trickle() -> void:
 		return
 	var each := RING_M / RING
 	_owed_gas += trickle_rate() * need() * STEP
-	var rh := haze_r()
 	for k in DRIFT_MOST:
 		if _owed_gas < each:
 			return
@@ -1121,16 +1126,12 @@ func _trickle() -> void:
 			into.dust = (into.dust * into.m + dusty * each) / (into.m + each)
 			into.m += each
 			_owed_gas -= each
-			if into.pos.length() >= rh:
-				_gas_out += each
 			continue
 		_owed_gas -= each
 		var pos := _ring_spot()
 		var b := add(Kind.GAS, each, pos, circle_vel(pos))
 		b.h = puff_h()
 		b.dust = dusty
-		if pos.length() >= rh:
-			_gas_out += each
 
 ## A body from far off, on an open path.
 func _passer() -> void:
@@ -1176,8 +1177,9 @@ func _tear(at: int) -> void:
 		mid += off * (shares[k] / total)
 	bodies.remove_at(at)
 	events.append({"kind": "tear", "at": b.pos, "m": b.m})
-	if on("furnace") > 0:
-		# a share of what the body is worth, over and above it: not in `paid`
+	if on("furnace") > 0 and not b.torn:
+		# a share of what the body is worth, over and above it and not in
+		# `paid`; once, on its first tear: its pieces carry `torn`
 		var paid := FURNACE_SHARE * on("furnace") * b.m * spiral_light() * pay(b.rank)
 		light += paid
 		events.append({"kind": "shed", "at": b.pos, "e": paid})
@@ -1192,6 +1194,7 @@ func _tear(at: int) -> void:
 		piece.heat = b.heat
 		piece.rank = b.rank
 		piece.paid = b.paid * share
+		piece.torn = true
 		_sort(piece)
 		if k == 0:
 			piece.id = b.id
@@ -1279,6 +1282,7 @@ func _meet() -> void:
 						b.e += a.e
 						b.rank = maxf(a.rank, b.rank)
 						b.paid += a.paid
+						b.torn = a.torn and b.torn
 						b.m = m
 						a.m = 0.0
 						_sort(b)
@@ -1661,7 +1665,7 @@ func save() -> void:
 	cfg.set_value("star", "eaten", eaten)
 	var kept := []
 	for b in bodies:
-		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal, b.rank, b.paid])
+		kept.append([int(b.kind), b.m, b.pos.x, b.pos.y, b.vel.x, b.vel.y, b.h, b.dust, b.ice, b.metal, b.rank, b.paid, 1 if b.torn else 0])
 	cfg.set_value("star", "bodies", kept)
 	cfg.set_value("star", "relics", relics.map(func(r): return [int(r.kind), float(r.m), (r.pos as Vector2).x, (r.pos as Vector2).y, float(r.age), int(r.novas), Array(r.layers), int(r.fades)]))
 	cfg.set_value("star", "far", far.map(func(p): return [p.x, p.y]))
@@ -1760,6 +1764,8 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		var had := (row as Array).size() >= 12 and is_finite(float(row[10])) and is_finite(float(row[11]))
 		b.rank = maxf(0.0, float(row[10])) if had and b.kind != Kind.GAS else 0.0
 		b.paid = maxf(0.0, float(row[11])) if had else 0.0
+		# a thirteenth column says the tide has torn it; a row without one has not been
+		b.torn = (row as Array).size() >= 13 and b.kind != Kind.GAS and int(row[12]) == 1
 		b.age = COOL
 		sim._sort(b)
 	if ver >= 3:
@@ -1771,10 +1777,12 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 			sim.frost = clampf(float(cfg.get_value("star", "frost", sim.frost)), sim.ring.x, sim.ring.y)
 		sim.dusty = clampf(float(cfg.get_value("star", "dusty", FIRST_DUST)), 0.0, ASH_MOST)
 		# what the ring weighed at birth; a file without it, or with something
-		# that is not a mass, keeps the newborn's own (`_set_ring`)
+		# that is not a mass, keeps the newborn's own (`_set_ring`), and one
+		# far off it is held to half and to half as much again of that: a ring
+		# of next to nothing would never be made up
 		var born_m = cfg.get_value("star", "ring_m", sim.ring_m)
 		if (born_m is float or born_m is int) and is_finite(float(born_m)) and float(born_m) > 0.0:
-			sim.ring_m = minf(float(born_m), sim.ring_m * 1.5)
+			sim.ring_m = clampf(float(born_m), sim.ring_m * 0.5, sim.ring_m * 1.5)
 	else:
 		# a star kept before the ring is given one: inside a heavy star's disc it simply falls;
 		# a sky already full is given only what it has room for
