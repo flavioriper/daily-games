@@ -52,6 +52,9 @@ be built.
       from an island id.
 - [x] (2026-09-24) Backend: **kept**. A new, flat How Big? is coming, so the
       functions, `core/backend.gd` and `content/how_big.json` stay.
+      (2026-10-08: the flat How Big? is built, as a board that needs none of
+      it -- `docs/agents/boards/how-big.md`. Whether the backend stays is
+      open again.)
 - [x] (2026-09-24) Rewrite CLAUDE.md's legacy/ and turns sections to match.
 - [x] (2026-09-24) Measure the APK size again. **32.3 MB**, against 50.2 MB
       for CI's last build with the 3D in it (run 35982761844: 11.1 MB of
@@ -126,8 +129,9 @@ be built.
       No key shows on any board in any language (probe), suite 122,581/0,
       and the pt and es card grids fit on a frame at 810x1440.
 - [ ] Key the new Stats, Streak, purchase and consent strings.
-- [ ] pt is pt-BR (`ui.csv`). `locale/turn.csv` is pt-PT, but it goes with
-      How Big?.
+- [ ] pt is pt-BR (`ui.csv`). `locale/turn.csv` is pt-PT; its How Big? rows
+      went on 2026-10-08 (the board's are pt-BR in `boards.csv`), the eight
+      `TURN_*` rows are left.
 - [ ] Have a native speaker review each language: a machine-fluent rule
       that reads wrong is worse than English.
 

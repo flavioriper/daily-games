@@ -38,3 +38,10 @@ still gets its sound -- "a really subtle click", not silence.
 `MEADOW_TUNE` notes and `PONY` for the `neigh`, eighteen cues): one take a
 cue, unheard by the user. A bale dropped, lifted or undone is dry straw
 with no note. Details: `docs/art/sound-direction.md`, its last section.
+
+**How Big? has a set since 2026-10-08** (`SETS["how_big"]`, `BENCH` foley of
+a carpenter's bench and `BENCH_TUNE` notes, sixteen cues): one take a cue,
+unheard by the user. `notch` is the one that repeats (a click every 8% the
+answer grows or shrinks): a ruler's joint, cut to 0.07 s at -19, and the
+board pitches it down as the thing gets bigger. Details:
+`docs/art/sound-direction.md`, its last section.

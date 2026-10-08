@@ -4761,3 +4761,35 @@ func _buzz_horse() -> void:
 	await create_timer(1.6).timeout
 	_buzzed("reset")
 	_moves = _moves_horse()
+
+## How Big?'s are a size and two presses of the row's button a round: the
+## answer sized to its truth and locked, then Next. A lock is refused for a
+## beat after a round is dealt and Next while the pair is still walking off,
+## so a move the board was not ready for goes back on the list. Seven rungs
+## want `to=20`.
+func _moves_how_big() -> Array:
+	var out := []
+	var n: int = _puzzle.state.round_count()
+	for r in n:
+		for what: String in (["lock"] if r == n - 1 else ["lock", "next"]):
+			var m := {}
+			m["do"] = func() -> void:
+				if not _how_big_step(r, what):
+					_moves.push_front(m)
+			out.append(m)
+	return out
+
+## One of How Big?'s moves on round `r`; false when the board was not there yet.
+func _how_big_step(r: int, what: String) -> bool:
+	var st = _puzzle.state
+	# (the board's Phase: 0 PLAY, 1 REVEAL, 2 SWAP)
+	if what == "lock":
+		if st.index != r or int(_puzzle._phase) != 0:
+			return false
+		_puzzle.size_to(st.truth())
+		_host._on_check()
+		return st.locked()
+	if st.index != r or int(_puzzle._phase) != 1:
+		return st.index > r
+	_host._on_check()
+	return st.index > r

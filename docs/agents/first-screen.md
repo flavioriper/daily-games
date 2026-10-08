@@ -316,6 +316,15 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   left the pony too small to read at 810x1440. Thirty-one cards at eight a
   page are four pages, the last holding seven; `_shot_menu.gd -- last`
   shoots it and read **215** draw calls there (216 on one of three runs).
+- **How Big? is the thirty-second card (2026-10-08).** Its picture is
+  `_draw_how_big()` in `ui/menu/card_art.gd`: the board's own card in small
+  (sky over a strip of grass on a rim, because the two shapes alone were
+  lost against the vista), the horse in ink with its bracket and the
+  elephant in white beside it, plainly too small, with the grip on its
+  corner -- `ui/faces/how_big_art.gd`'s shapes, one mesh kept in
+  `_how_big_mesh`. Its vista is the sky at `(0.30, 0.50)`. Thirty-two cards
+  at eight a page fill four pages; `_shot_menu.gd -- last` read **225** draw
+  calls on the last.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

@@ -247,6 +247,18 @@ MEADOW_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
                "bed, no voice")
 # The pony itself: the families above all end "no voice", which would ask
 # the animal to keep quiet.
+# How Big?'s carpenter's bench (2026-10-08): rulers, a clamp, paper and a
+# tape measure for what is not a note, and the polished boards' kalimba,
+# music box and hand bells for what is.
+BENCH = ("close-mic foley recorded at a small wooden workbench in a quiet "
+         "warm room, a real wooden folding ruler, a small wooden clamp, thick "
+         "paper and a tape measure, natural and acoustic, soft, dry, rounded, "
+         "no synth, no electronic tones, no beeps, no music, no voice")
+BENCH_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
+              "and small hand bells recorded close in a warm quiet room, "
+              "natural, soft, rounded, gentle, cozy, no synth, no electronic "
+              "tones, no beeps, no music bed, no voice")
+
 PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
         "meadow, natural, soft, warm, gentle, cute, dry, no synth, no music, "
         "no human voice")
@@ -1625,6 +1637,30 @@ SETS = {
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, MEADOW_TUNE, "warm:7000"),
         "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a pony dozing off in the grass", 1.8, -9, MEADOW_TUNE, "warm:7000"),
         "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, MEADOW_TUNE, "warm:7000"),
+    },
+    # How Big? (puzzles/how_big2d.gd, 2026-10-08): a carpenter's bench. The
+    # one cue that repeats is `notch`, a click every time the answer grows or
+    # shrinks by a twelfth while the finger pulls it: dry, cut short, the
+    # quietest file of the set, and the board pitches it down as the thing
+    # gets bigger. A lock, a reveal by its grade and the day's end happen now
+    # and then and may be notes.
+    "how_big": {
+        "enter":         ("a wooden folding ruler opened out on a workbench, two soft dry wooden clicks, light and gentle, short", 0.8, -11, BENCH, "warm:7000"),
+        "notch":         ("one single tiny dry click of a wooden folding ruler's joint, a short soft wooden tick, no ring, no tone, very short and quiet", 0.5, -19, BENCH, "warm:6000", "cut:0.07"),
+        "lock":          ("a small wooden clamp snapped shut on a workbench, one firm soft wooden clack, satisfying, no ring, very short", 0.5, -8, BENCH, "cut:0.32"),
+        "next":          ("one sheet of thick paper slid aside across a wooden workbench, a single soft short dry paper swish, no tone, very short", 0.5, -13, BENCH, "cut:0.3"),
+        "reset":         ("a steel tape measure's tape drawn back gently into its case over a wooden bench, one soft short dry ratchety zip ending in a small click, quiet, short", 0.8, -12, BENCH),
+        "spot":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, exactly right, happy and proud, short", 1.0, -6, BENCH_TUNE, "warm:7000"),
+        "close":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -8, BENCH_TUNE, "warm:7000"),
+        "fair":          ("one soft warm single note on a real kalimba, round and neutral, an all right, short", 0.6, -10, BENCH_TUNE, "warm:7000"),
+        "off":           ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not quite, warm and round, never a buzzer", 1.0, -12, BENCH_TUNE, "fall"),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -9, BENCH_TUNE, "warm:7000"),
+        "heart_lost":    ("one soft low note on a wooden tongue drum with a small dull wooden knock under it, a gentle oh dear, warm and round, never a buzzer, short", 0.8, -10, BENCH_TUNE, "warm:6000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, BENCH_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a workshop lamp turned low", 1.8, -9, BENCH_TUNE, "warm:7000"),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a job well measured", 2.0, -5, BENCH_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, BENCH_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, BENCH_TUNE, "warm:7000"),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

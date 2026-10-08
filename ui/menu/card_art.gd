@@ -61,6 +61,7 @@ const HedgehogFace = preload("res://ui/faces/hedgehog_face.gd")
 const GolfParts = preload("res://ui/faces/minigolf_parts.gd")
 const GolfSim = preload("res://puzzles/minigolf_sim.gd")
 const HorseParts = preload("res://ui/faces/horse_parts.gd")
+const HowBigArt = preload("res://ui/faces/how_big_art.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -223,6 +224,9 @@ var _minigolf_mesh: ArrayMesh
 ## built for) and held for the same RID reason.
 var _horse_mesh: ArrayMesh
 var _horse_u := -1.0
+## How Big?'s pair, built once a size the same way.
+var _how_big_mesh: ArrayMesh
+var _how_big_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -413,6 +417,7 @@ func _draw() -> void:
 		"trestle": _draw_trestle()
 		"minigolf": _draw_minigolf()
 		"horse": _draw_horse()
+		"how_big": _draw_how_big()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1578,3 +1583,46 @@ func _draw_horse() -> void:
 	_horse_mesh = b.mesh()
 	_horse_u = _u
 	draw_mesh(_horse_mesh, null, Transform2D(0.0, _c))
+
+## How Big?'s card: the round as the board stands it -- a strip of grass, the
+## ruler in ink on the left with its bracket, and the answer in white beside
+## it, plainly too small, with the grip on its corner -- drawn with the
+## board's own shapes (`ui/faces/how_big_art.gd`). One mesh, rebuilt only
+## when the card changes size.
+const HB_W := 236.0
+const HB_H := 98.0
+const HB_REF := "horse"
+const HB_TGT := "elephant"
+
+func _draw_how_big() -> void:
+	if _how_big_mesh != null and is_equal_approx(_how_big_u, _u):
+		draw_mesh(_how_big_mesh, null, Transform2D(0.0, _c))
+		return
+	var u := _u
+	var o := Vector2(-HB_W, -HB_H) * 0.5 * u
+	var ground := o.y + (HB_H - 12.0) * u
+	var b := Face.Builder.new()
+	# The board's own card in small: sky over a strip of grass, on a rim.
+	b.fan(Face.Builder.round_rect(o - Vector2.ONE * 3.0 * u, Vector2(HB_W + 6.0, HB_H + 6.0) * u, 15.0 * u), Pal.LEAF_DEEP)
+	b.fan(Face.Builder.round_rect(o, Vector2(HB_W, HB_H) * u, 12.0 * u), Pal.MEADOW)
+	var sky := Face.Builder.round_rect(o, Vector2(HB_W, HB_H - 12.0) * u, 12.0 * u)
+	b.fan(sky, Pal.SKY_HORIZON)
+	b.fan(PackedVector2Array([Vector2(o.x, ground - 14.0 * u), Vector2(o.x + HB_W * u, ground - 14.0 * u),
+		Vector2(o.x + HB_W * u, ground), Vector2(o.x, ground)]), Pal.SKY_HORIZON)
+	b.stroke(PackedVector2Array([Vector2(o.x + 6.0 * u, ground), Vector2(o.x + (HB_W - 6.0) * u, ground)]), 2.4 * u, Pal.LEAF)
+	var ref_foot := Vector2(o.x + 34.0 * u, ground)
+	var ref_long := 76.0 * u
+	HowBigArt.fill(b, HB_REF, HowBigArt.stand(HB_REF, ref_foot, ref_long), Pal.TEXT)
+	var rs := HowBigArt.size_of(HB_REF) * (ref_long / maxf(HowBigArt.size_of(HB_REF).x, HowBigArt.size_of(HB_REF).y))
+	HowBigArt.bracket(b, ref_foot + Vector2(-10.0 * u, 0.0), ref_foot + Vector2(-10.0 * u, -rs.y * 0.8),
+		Vector2.RIGHT, Pal.TEXT_DIM, 2.2 * u, 5.0 * u)
+	var tgt_foot := Vector2(o.x + (HB_W - 22.0) * u, ground)
+	var tgt_long := 70.0 * u
+	var xf := HowBigArt.stand(HB_TGT, tgt_foot, tgt_long, true)
+	HowBigArt.fill(b, HB_TGT, xf, Pal.SURFACE)
+	HowBigArt.outline(b, HB_TGT, xf, 2.0 * u, Pal.TEXT)
+	var ts := HowBigArt.size_of(HB_TGT) * (tgt_long / maxf(HowBigArt.size_of(HB_TGT).x, HowBigArt.size_of(HB_TGT).y))
+	HowBigArt.grip(b, tgt_foot - ts, 11.0 * u, Vector2(-1.0, -1.0), Pal.SUN, Pal.TEXT)
+	_how_big_mesh = b.mesh()
+	_how_big_u = _u
+	draw_mesh(_how_big_mesh, null, Transform2D(0.0, _c))

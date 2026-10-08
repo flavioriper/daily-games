@@ -4,9 +4,12 @@
 
 A **turn** is one committed input a day, an immediate reveal and a graded
 result -- never a pass or a fail. The only one, How Big?, was 3D and was
-removed on 2026-09-24 with the rest of the 3D game; a future turn would be
-drawn flat and would need its own host again (`legacy/ui/turn_host.gd` and
-`legacy/core/turn_base.gd` are in git history).
+removed on 2026-09-24 with the rest of the 3D game. **It came back on
+2026-10-08 as a board, not a turn** (`docs/agents/boards/how-big.md`): a
+Puzzles-grid card with four bands, graded on the phone, with no publish, no
+submit and no crowd. Nothing in the game is a turn today; one would need its
+own host again (`legacy/ui/turn_host.gd` and `legacy/core/turn_base.gd` are
+in git history).
 
 **The live project is `daily-games-420bf`** (provisioned 2026-09-17; it
 replaced `peeplet-daily`, which now holds nothing this game uses). Firestore
@@ -82,10 +85,20 @@ writes one day's document the way `publishDay` would (create-only), for the
 day a game ships on, which the 03:00 scheduler never reaches. How Big?'s
 first two days (2026-09-17 and -18) were seeded this way.
 
-**How Big?**, the only turn, was removed with the 3D game on 2026-09-24.
-The backend, the functions and `content/how_big.json` are still in place;
-whether they stay for a future flat turn is open in
-`docs/roadmap-to-release.md`.
+**How Big?**, the only turn, was removed with the 3D game on 2026-09-24 and
+came back flat on 2026-10-08 as a board that never talks to the backend.
+`content/how_big.json` is the board's table now (things, sizes, sources),
+not the file `publishDay` reads: **the `how_big` entry in
+`server/functions/src/index.ts` (`GAMES`) still describes the old table**
+(`scout_m`, `slot`) from its own copy, `server/functions/src/how_big.json`,
+and publishes days nothing reads. The build no longer copies the board's
+table over that copy (`package.json`, 2026-10-08: the new table has no
+`metres`, so a build would have published days without one). It was left alone
+on 2026-10-08 (the functions are deployed by a person); drop the entry the
+next time they are deployed. `tools/_backend_probe.gd` and
+`tools/seed_turn_day.sh` name `how_big` only as an example game id.
+`locale/turn.csv` lost its `HOWBIG_*` rows the same day and keeps the
+`TURN_*` ones (`TURN_LANGUAGE` is the settings sheet's).
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. The turn flow's strings are keyed

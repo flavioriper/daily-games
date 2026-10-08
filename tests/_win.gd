@@ -17,6 +17,8 @@ var _frames := 0
 var _results: Array = []
 var _fit_ok := true
 var _hud_ok := true
+## True while a solver that awaits is still playing: the slots stand still.
+var _waiting := false
 
 func _initialize() -> void:
 	# No card is `soon` any more (the last one, Pipes, gave up its slot to
@@ -46,6 +48,10 @@ func _initialize() -> void:
 	_menu = main.get_node("UI/Menu")
 
 func _process(_delta: float) -> bool:
+	# A board whose win takes wall time (How Big?'s rounds) holds the walk
+	# until its solver is through.
+	if _waiting:
+		return false
 	_frames += 1
 	if _idx >= _entries.size():
 		var bad := 0
@@ -165,6 +171,9 @@ func _note(id: String) -> String:
 		"horse": return "%dx%d meadow, %d of %d bales, pen %d of target %d (best %d), hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.w, _puzzle.state.h, _puzzle.state.bales(), _puzzle.state.budget, _puzzle.state.score(),
 			_puzzle.state.target, _puzzle.state.best, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"how_big": return "band %d, %d rounds, scores %s, %d of %d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.round_count(), str(_puzzle.completion_record().scores), _puzzle.state.total(),
+			_puzzle.state.best_total(), _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -203,6 +212,7 @@ func _solve(id: String) -> void:
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
+		"how_big": _solve_how_big()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -482,6 +492,46 @@ func _solve_horse() -> void:
 			_tap_local(_puzzle.cell_centre(c))
 	_hud_ok = _hud_ok and st.closed() and st.score() == st.best
 	_press(_host.action_bar.check_button)
+
+## How Big?: every round sized through the input path -- a touch pressed on
+## the grip, dragged to where the answer reads its truth, let go -- then the
+## row's button to lock and again for the next, with the bulb once on the
+## first round. A lock waits a beat after the deal and Next for the pair to
+## walk off, so this one awaits, and holds the walk (`_waiting`) to the win.
+func _solve_how_big() -> void:
+	_waiting = true
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	var hint_ok := true
+	for r in st.round_count():
+		# the round dealt and standing (the board's Phase: 0 PLAY)
+		var guard := 0
+		while (st.index != r or int(_puzzle._phase) != 0) and guard < 600:
+			guard += 1
+			await process_frame
+		await create_timer(0.5).timeout
+		if not slot.has_point(_puzzle.grip_point()) or not slot.has_point(_puzzle.grip_for(st.truth())):
+			_fit_ok = false
+		if r == 0 and _puzzle.capabilities().has("hint"):
+			_press(_host.top_bar.hint_button)
+			hint_ok = _puzzle.hints_used == 1
+		# A press too near the answer's foot steers by the finger's rise, not
+		# by the grip: a second drag from the grip's new place lands it.
+		for _try in 3:
+			if st.ratio_off(_puzzle._guess(), st.truth()) > 1.02:
+				_drag_local(_puzzle.grip_point(), _puzzle.grip_for(st.truth()))
+		_press(_host.action_bar.check_button)
+		_hud_ok = _hud_ok and st.locked() and int(st.results[r].score) == 100
+		if r + 1 < st.round_count():
+			await create_timer(0.9).timeout
+			_press(_host.action_bar.check_button)
+			_hud_ok = _hud_ok and st.index == r + 1
+	_hud_ok = _hud_ok and hint_ok and _puzzle.checks == st.round_count()
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
 
 func _solve_sunbeam() -> void:
 	var st = _puzzle._state

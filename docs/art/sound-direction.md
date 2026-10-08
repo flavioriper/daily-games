@@ -345,3 +345,23 @@ every peak within a decibel of its target, nothing near-empty, and the foley
 holds its level above 400 Hz. `out_of_hearts` came back 0.95 s against 1.8
 asked and `stamp`'s thump sits 0.1 s behind a breath; both are like their
 siblings in other sets and were left.
+
+## How Big? (2026-10-08)
+
+`SETS["how_big"]`, sixteen cues, every one the board fires. Two styles:
+`BENCH` (close-mic foley of a carpenter's bench: a wooden folding ruler, a
+small clamp, thick paper, a tape measure) and `BENCH_TUNE` (the garden
+family's kalimba, music box, tongue drum and hand bells). **`notch` is the
+only cue that repeats** -- one click every time the answer has grown or
+shrunk by 8% under the finger, so a long pull is a run of them -- and it is
+a ruler's joint with no note, cut to 0.07 s and the quietest file of the set
+(-19); the board plays it between 1.35 and 0.75 of its pitch, lower the
+bigger the thing has become, and 6 dB under its file. `lock` is the clamp
+snapping shut, `next` a sheet of paper slid aside, `reset` the tape drawn
+back. The reveal is a note by its grade, up for good and down for not yet:
+`spot` three kalimba notes and a hand bell, `close` two, `fair` one, `off`
+two falling (the `fall` trick, as Tents' `check`); `heart_lost` is a low
+tongue drum over a dull knock. `hint`, `solved`, `party`, `stamp`,
+`out_of_hearts` and `heart_back` are phrased as Horse Pen's. One take a cue
+on the first run, no retakes, unheard by the user and not measured.
+

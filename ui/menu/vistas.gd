@@ -69,6 +69,8 @@ const CARDS := {
 	"minigolf": ["meadow", 1.5, Vector2(0.75, 0.35)],
 	# Horse Pen's pasture: the meadow's open grass, low and to the left.
 	"horse": ["meadow", 1.6, Vector2(0.12, 0.45)],
+	# How Big?'s two things stand out in the open, under a clear sky.
+	"how_big": ["sky", 1.5, Vector2(0.30, 0.50)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

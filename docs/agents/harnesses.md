@@ -192,3 +192,26 @@ The tutorial: `tests/_probe_perf.gd -- horse d=2 howto shot=2 gap=6 to=40
 lang=en` (`/tmp/probe_horse_p<n>.png`). On `d=3` the run ends in a script
 error at `_probe_perf.gd:140` once it reaches the shared Moves page, which
 has no `_caption` for the probe to print; the seven shots are written first.
+
+## How Big?'s harness (2026-10-08)
+
+`tests/_shot_how_big.gd` plays the board through its real input path (a
+touch pressed on the grip, dragged in eight steps and let go) and shoots
+numbered frames (`out=<dir>`, `seed=<n>` for another day):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_how_big.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest drag lock rounds spot hint reset out restore`. `rounds` locks
+every round a little off and `spot` exactly (the seal); `out` (Insane) locks
+three times too big until the hearts are gone, shoots the card and tries
+again. **`pairs` needs no window**: it prints a week of every band's rounds
+with how far apart the two things are and how each is framed (the ruler's,
+the truth's, the most and the starting size in pixels) -- run it after
+changing `content/how_big.json` or `State.SPREAD`. `tests/_probe_perf.gd --
+how_big` sizes every round to its truth and locks; `tests/_win.gd --
+how_big` wins through the input path.
+The tutorial: `tests/_probe_perf.gd -- how_big d=0 howto shot=2 gap=6 to=40
+lang=en` (`/tmp/probe_how_big_p<n>.png`; `d=3` for the Ladder and hearts
+pages). `tests/_win.gd`'s solver for this board awaits (a lock's beat, the
+swap and the last hold cannot be walked in one frame) and holds the
+harness's own walk with `_waiting` meanwhile; seven rungs want `to=20`.

@@ -65,7 +65,7 @@ that area**, and add new history there rather than here.
   code, comments, commits or on screen (Code Break, Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
   Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
-  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Grove). The spec names the original once, to
+  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Grove, How Big?). The spec names the original once, to
   forbid it.
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
