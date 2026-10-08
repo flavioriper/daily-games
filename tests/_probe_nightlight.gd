@@ -22,12 +22,17 @@ extends SceneTree
 ## nebula and leaves a white dwarf, a supernova a neutron star (a black hole
 ## from twenty Suns), and the next star is born away from the relics, its
 ## gas dusty with what the last one made.
-## `pace` holds a finger on the ring (braking as fast as the Flow tile lets
-## it), buys the cheapest tile it can, takes the first, the second or either of the two
-## powers offered, buys a perk whenever the stardust reaches, and prints
+## `pace` holds a finger on the ring, buys the cheapest tile it can, takes
+## the first, the second or either of the two powers offered, buys a perk
+## whenever the stardust reaches, and prints
 ## every milestone with what the sky held, a line a minute (the Suns, the
 ## light earned in that minute and where it came from, what was eaten, the
-## system's counts, the tiles and the powers) and a sum for each life. After
+## system's counts, the tiles and the powers) and a sum for each life. Its
+## two hands: `gas` is impatient (the fullest slice of the ring outside the
+## disc, as often as the Flow tile lets it); `worlds` is patient (it presses
+## the gas a quarter as often, so the ring stays full enough to make worlds,
+## and presses every planet or giant on a closed path outside the disc until
+## its path dips into the disc, counting those as sent). After
 ## the five: `stop=3` lifts the finger for good at three Suns, `novas=2`
 ## starts on a star with two supernovas behind it, `perks=0` buys no perk,
 ## `powers=0` takes each pick and puts the power out (two hands compared on
@@ -124,6 +129,18 @@ func _first_solid(sim: RefCounted, most := 60.0) -> Sim.Body:
 			if b.kind != Sim.Kind.GAS:
 				return b
 	return null
+
+## Runs `seconds` and hands back what the far sky owed in them by its rule:
+## `trickle_rate() * need()` summed over every tick, and the most the gas
+## outside the disc came to on the way.
+func _run_owed(sim: RefCounted, seconds: float) -> Vector2:
+	var owed := 0.0
+	var most := 0.0
+	for i in int(seconds / Sim.STEP):
+		owed += float(sim.trickle_rate()) * float(sim.need()) * Sim.STEP
+		sim.tick()
+		most = maxf(most, float(sim._gas_out))
+	return Vector2(owed, most)
 
 func _solid_count(sim: RefCounted) -> int:
 	return sim.bodies.size() - sim.gas_count()
@@ -320,14 +337,17 @@ func _check_rules() -> void:
 	var full := _quiet(13)
 	full.passing = true
 	full._pass_gap = 1e9
-	# a full sky of puffs on circles in the ring, which the star does not eat
+	# a sky with as many puffs as it may hold, on circles in the ring, which
+	# the star does not eat; they are light, so the ring is half empty and the
+	# far sky still feeds it
 	for k in Sim.MOST:
 		var at: Vector2 = Vector2.from_angle(TAU * k / Sim.MOST) * full.ring.y
-		full.add(Sim.Kind.GAS, Sim.PUFF, at, full.circle_vel(at)).h = full.puff_h()
+		full.add(Sim.Kind.GAS, full.ring_m * 0.5 / Sim.MOST, at, full.circle_vel(at)).h = full.puff_h()
+	full._gas_out = full.gas_outside()
 	var held: float = _sky_mass(full)
-	_run(full, 60.0)
+	var came := _run_owed(full, 60.0)
 	_ok("the sky holds no more than its most", full.gas_count() <= Sim.MOST)
-	_ok("and loses none of what drifted in", absf(_sky_mass(full) - held + full._owed_gas - Sim.TRICKLE * 60.0) < 0.001 and is_equal_approx(full.mass, Sim.START))
+	_ok("and loses none of what drifted in (%.3f)" % came.x, came.x > 0.5 and absf(_sky_mass(full) - held + full._owed_gas - came.x) < 0.001 and is_equal_approx(full.mass, Sim.START))
 	sim.mass = Sim.START * 4.5
 	_ok("two picks by four Suns", sim.owed() == 2)
 	var two: Array = sim.offering()
@@ -379,27 +399,44 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	var spot_t := -100.0
 	var most_ticks := 0
 	var t0 := Time.get_ticks_usec()
+	# the patient hand: the gaps gone by, and the worlds it is pressing down
+	var patient := sends == "worlds"
+	var gaps := 0
+	var sending := {}
 	# this life: the light it earned (spent or not), how much of that was the
 	# star's own burning, what it ate as gas and as solids; and this minute's
-	var life := {"n": 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0}
+	var life := {"n": 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "suns": sim.suns()}
 	var minute := {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 	var stopped := false
 	print("pace: %.0f min, seed %d, powers %s, a finger down %.0f%% of the time, sending %s%s%s%s" % [minutes, rng_seed, takes, held * 100.0, sends,
 		", %d supernovas behind it" % behind if behind > 0 else "", ", the finger stops at %.1f Suns" % stop if stop > 0.0 else "", ("" if perks else ", no perks") + ("" if powers else ", every power picked and put out")])
-	print("    min   Suns  +Suns  light/min  ate gas  solids | planets giants rocks comets grains, worlds on closed paths | gas (outside the disc: n, Suns) | tiles | the light: its own burning, solids eaten, the Furnace, the disc | powers")
+	print("    min   Suns  +Suns  light/min  ate gas  solids | planets giants rocks comets (all on closed paths) grains, worlds | gas (outside the disc: n, Suns) | tiles | the light: its own burning, solids eaten, the Furnace, the disc's gas | powers")
 	for i in int(minutes * 60.0 / Sim.STEP):
 		var t: float = i * Sim.STEP
 		since += Sim.STEP
 		# the spot is chosen every three seconds; the finger is down in spells of ten seconds
 		if t - spot_t >= 3.0:
 			spot_t = t
-			spot = _spot(sim, sends == "worlds")
+			spot = _spot(sim)
 		if stop > 0.0 and not stopped and sim.suns() >= stop:
 			stopped = true
 			print("  %5.1f min  the finger stops at %.2f Suns  %s" % [(t - born) / 60.0, sim.suns(), _outside(sim, t - last_hit)])
 		if since >= sim.flow_gap() and fmod(t, 10.0) < 10.0 * held and not stopped:
 			since = 0.0
-			if sim.brake(spot, sim.press_r()) > 0:
+			gaps += 1
+			var hit := 0
+			if patient:
+				# a world it was pressing that is now on its way down is sent
+				life.sent += _sent(sim, sending)
+				var world := _world(sim)
+				if world != null:
+					sending[world.id] = true
+					hit = sim.brake(world.pos, sim.press_r())
+				elif gaps % 4 == 0:
+					hit = sim.brake(spot, sim.press_r())
+			else:
+				hit = sim.brake(spot, sim.press_r())
+			if hit > 0:
 				pressed += 1
 				last_hit = t
 		var had: float = sim.light
@@ -422,27 +459,25 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 					var what := "gas" if bool(e.gas) else "solid"
 					life[what] += float(e.m)
 					minute[what] += float(e.m)
-				"shed":
-					# a solid's worth is let go in the tick it is eaten, just before
-					# its `eat`; the Furnace's comes just after a `tear`
-					if k + 1 < sim.events.size() and String(sim.events[k + 1].kind) == "eat" and not bool(sim.events[k + 1].gas) and sim.events[k + 1].at == e.at:
+					# all a solid paid, from its first drag to its last, is counted
+					# where it is eaten
+					if not bool(e.gas):
 						minute.lump += float(e.e)
 						life.lump += float(e.e)
-					elif k > 0 and String(sim.events[k - 1].kind) == "tear" and sim.events[k - 1].at == e.at:
+				"shed":
+					# the Furnace's light comes just after a `tear`, where it was
+					if k > 0 and String(sim.events[k - 1].kind) == "tear" and sim.events[k - 1].at == e.at:
 						minute.torn += float(e.e)
 						life.torn += float(e.e)
 		sim.events.clear()
 		if t - born >= float(minute.at):
 			var n: Dictionary = sim.system()
 			var grains := 0
-			# the worlds on closed paths: a planetoid passing through is a planet
-			# to `system()` and to the readout, and not one the ring made
-			var bound := 0
 			for b: Sim.Body in sim.bodies:
 				if b.kind == Sim.Kind.GRAIN:
 					grains += 1
-				elif (b.kind == Sim.Kind.PLANET or b.kind == Sim.Kind.GIANT) and b.vel.length_squared() < 2.0 * sim.gm() / b.pos.length():
-					bound += 1
+			# `system()` counts what is on a closed path, so these are the worlds
+			var bound: int = int(n.planets) + int(n.giants)
 			var out := _outside(sim, t - last_hit)
 			print("  %5.0f  %5.2f  %+5.2f  %9.1f  %7.3f  %6.4f | %2d %2d %2d %2d %2d %2d | %3d (%s) | %s | %.0f %.0f %.0f %.0f | %s" % [float(minute.at) / 60.0, sim.suns(), sim.suns() - float(minute.suns), minute.light,
 				float(minute.gas) / Sim.START, float(minute.solid) / Sim.START, n.planets, n.giants, n.rocks, n.comets, grains, bound, sim.gas_count(),
@@ -475,7 +510,7 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 			print("  end: %s remnant: %s at %.1f min, %.1f Suns" % [how, left, (t - born) / 60.0, was])
 			print("  %5.1f min  %s at %.1f Suns, +%d stardust, dim %.0f s, %d presses braked something; h %.0f%% he %.0f%% c %.0f%% fe %.0f%% rock %.0f%%; powers %s" % [
 				(t - born) / 60.0, how, was, paid, dim, pressed, shares[0] * 100.0, shares[1] * 100.0, shares[2] * 100.0, shares[6] * 100.0, shares[7] * 100.0, had_powers])
-			_life(life, (t - born) / 60.0)
+			_life(life, (t - born) / 60.0, was)
 			while perks and sim.buy_perk() != "":
 				pass
 			born = t
@@ -483,10 +518,11 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 			pressed = 0
 			next_mark = 2.0
 			stopped = false
-			life = {"n": int(life.n) + 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0}
+			sending.clear()
+			life = {"n": int(life.n) + 1, "light": 0.0, "shine": 0.0, "ten": 0.0, "gas": 0.0, "solid": 0.0, "lump": 0.0, "torn": 0.0, "sent": 0, "suns": sim.suns()}
 			minute = {"at": 60.0, "light": 0.0, "suns": sim.suns(), "gas": 0.0, "solid": 0.0, "shine": 0.0, "lump": 0.0, "torn": 0.0}
 			print("  a new star: %.1f Suns, ring %.2f Suns at %.3f dust, perks %s" % [sim.suns(), _sky_mass(sim) / Sim.START, sim.dusty, str(sim.perk)])
-	_life(life, minutes - born / 60.0)
+	_life(life, minutes - born / 60.0, sim.suns())
 	print("pace: %d supernovas, %d let go, the sky held %d at most, %.0f us a tick" % [sim.novas, sim.fades, most_ticks, float(Time.get_ticks_usec() - t0) / (minutes * 60.0 / Sim.STEP)])
 	# the dearest sky: 300 bodies and the most relics, in a ring
 	var crowd: RefCounted = Sim.new(rng_seed)
@@ -503,13 +539,54 @@ func _pace(minutes: float, rng_seed: int, takes: String, held: float, sends: Str
 	print("pace: 300 bodies and %d relics, %d bodies left, %.0f us a tick" % [crowd.relics.size(), crowd.bodies.size(), float(Time.get_ticks_usec() - t1) / 600.0])
 
 ## A life's sum: the light it earned a minute, over its first ten minutes and
-## over the whole of it, and what the star ate.
-func _life(life: Dictionary, mins: float) -> void:
+## over the whole of it, where that light came from, what the star ate, how
+## fast it grew and how many worlds the patient hand sent.
+func _life(life: Dictionary, mins: float, suns_now: float) -> void:
 	if mins <= 0.0:
 		return
-	print("  life %d: %.1f min; light %.0f, %.1f a minute (the first ten minutes %.1f a minute; %.0f of it the star's own burning); ate %.2f Suns of gas and %.3f of solids; solids eaten paid %.0f, the Furnace %.0f, the disc %.0f" % [
+	var gas_light: float = float(life.light) - float(life.shine) - float(life.lump) - float(life.torn)
+	print("  life %d: %.1f min; light %.0f, %.1f a minute (the first ten minutes %.1f a minute; %.0f of it the star's own burning); ate %.2f Suns of gas and %.3f of solids; solids eaten paid %.0f, the Furnace %.0f, the disc's gas %.0f; %.2f Suns a minute; light a minute: its own %.1f, gas %.1f, solids %.1f, the Furnace %.1f; %d worlds sent" % [
 		life.n, mins, life.light, float(life.light) / mins, float(life.ten) / minf(mins, 10.0), life.shine, float(life.gas) / Sim.START, float(life.solid) / Sim.START,
-		life.lump, life.torn, float(life.light) - float(life.shine) - float(life.lump) - float(life.torn)])
+		life.lump, life.torn, gas_light, (suns_now - float(life.suns)) / mins,
+		float(life.shine) / mins, gas_light / mins, float(life.lump) / mins, float(life.torn) / mins, life.sent])
+
+## The world the patient hand presses: the heaviest planet or giant on a
+## closed path that is outside the disc and whose path does not yet dip into
+## it. None if there is none.
+func _world(sim: RefCounted) -> Sim.Body:
+	var rh: float = sim.haze_r()
+	var best: Sim.Body = null
+	for b: Sim.Body in sim.bodies:
+		if (b.kind == Sim.Kind.PLANET or b.kind == Sim.Kind.GIANT) and b.pos.length() > rh and _nearest(sim, b) > rh * 0.95 and (best == null or b.m > best.m):
+			best = b
+	return best
+
+## The nearest point of a body's path to the star; INF on an open path.
+func _nearest(sim: RefCounted, b: Sim.Body) -> float:
+	var mu: float = sim.gm()
+	var r := b.pos.length()
+	var energy := b.vel.length_squared() * 0.5 - mu / r
+	if energy >= 0.0:
+		return INF
+	var turn := b.pos.cross(b.vel)
+	var a := -mu / (2.0 * energy)
+	return a * (1.0 - sqrt(maxf(0.0, 1.0 + 2.0 * energy * turn * turn / (mu * mu))))
+
+## How many of the worlds being pressed are on their way down now (in the
+## disc, or on a path that dips into it, or gone into the star); they are
+## taken off the list.
+func _sent(sim: RefCounted, sending: Dictionary) -> int:
+	if sending.is_empty():
+		return 0
+	var still := {}
+	var rh: float = sim.haze_r()
+	for b: Sim.Body in sim.bodies:
+		if sending.has(b.id) and b.kind != Sim.Kind.GAS and b.pos.length() > rh and _nearest(sim, b) > rh * 0.95:
+			still[b.id] = true
+	var went := sending.size() - still.size()
+	sending.clear()
+	sending.merge(still)
+	return went
 
 ## The star dies as the bot's own do: a supernova at 19 Suns with an iron
 ## core, a quarter of a Sun of silicon over it and the rest hydrogen and
@@ -521,11 +598,10 @@ func _die(sim: RefCounted) -> void:
 	sim.env = sim.mass - sim.fuel - (Sim.NEXT + Sim.IRON) * Sim.START
 	sim.end()
 
-## Where the bot presses: the heaviest solid outside the disc if it sends
-## worlds, else the middle of the fullest of 24 slices of the ring outside it.
-func _spot(sim: RefCounted, worlds: bool) -> Vector2:
+## Where the bot presses for gas: the middle of the fullest of 24 slices of
+## the ring outside the disc.
+func _spot(sim: RefCounted) -> Vector2:
 	var rh: float = sim.haze_r()
-	var best: Sim.Body = null
 	var slices := PackedFloat32Array()
 	slices.resize(24)
 	var sum: Array[Vector2] = []
@@ -534,13 +610,9 @@ func _spot(sim: RefCounted, worlds: bool) -> Vector2:
 	for b: Sim.Body in sim.bodies:
 		if b.pos.length() <= rh:
 			continue
-		if b.kind != Sim.Kind.GAS and (best == null or b.m > best.m):
-			best = b
 		var k := int(fposmod(b.pos.angle(), TAU) / TAU * 24.0) % 24
 		slices[k] += b.m
 		sum[k] += b.pos * b.m
-	if worlds and best != null and best.m >= Sim.GRAIN_M:
-		return best.pos
 	var top := 0
 	for k in 24:
 		if slices[k] > slices[top]:
@@ -653,7 +725,7 @@ func _check_ring() -> void:
 	print("  a star that grows 15%% in two minutes eats %.2f of the ring's %.1f in ten more (%.0f%%); left alone, %.2f" % [eats[1], Sim.RING_M, eats[1] / Sim.RING_M * 100.0, eats[0]])
 	_ok("the star's growth brings some of the ring down (%.0f%%), and not all of it" % (eats[1] / Sim.RING_M * 100.0), eats[1] > eats[0] + Sim.RING_M * 0.05 and eats[1] < Sim.RING_M * 0.5 and eats[0] < Sim.RING_M * 0.05)
 	# and so does the ring a supernova leaves, however many came before it: it
-	# is held to RING_MOST of the newborn, and the rest drifts in after
+	# is RING_M, held to RING_MOST of the newborn
 	for behind: int in [1, 2, 4]:
 		var later := _quiet(5)
 		for k in behind:
@@ -671,49 +743,97 @@ func _check_ring() -> void:
 		print("  after %d supernovas the ring is %.2f Suns, and a star that grows 15%% in two minutes eats %.0f%% of it in ten more" % [behind, ring_m / Sim.START, later.eaten / ring_m * 100.0])
 		_ok("a ring after %d supernovas is no more than RING_MOST of the newborn (%.2f Suns)" % [behind, ring_m / Sim.START], ring_m <= Sim.RING_MOST * newborn * 1.1)
 		_ok("and under half of it comes down by itself (%.0f%%)" % (later.eaten / ring_m * 100.0), later.eaten < ring_m * 0.5)
-	# what that ring could not hold drifts in after: as much again as the
-	# trickle until it is all in, and none of it lost
+	# the richer sky is in what drifts in, not in a heavier ring
 	var rich := _quiet(9)
-	_die(rich)
-	_die(rich)
-	rich.relics.clear()
-	var owed: float = rich._late
-	_ok("the gas a ring could not hold is owed (%.1f of %.1f)" % [owed, Sim.RING_M * (1.0 + Sim.RICHER * 2.0)], is_equal_approx(owed + Sim.RING_MOST * rich.mass, Sim.RING_M * (1.0 + Sim.RICHER * 2.0)))
-	rich.passing = true
-	rich._pass_gap = 1e9
-	var all0: float = _sky_mass(rich) + rich.mass
-	var pace: float = rich.trickle_rate()
-	var spell: float = owed / pace * 0.5
-	_run(rich, spell)
-	_ok("it comes with the trickle, as much again", absf(_sky_mass(rich) + rich.mass + rich._owed_gas - all0 - 2.0 * pace * spell) < 0.02 and absf(float(rich._late) - owed * 0.5) < 0.02)
-	_run(rich, spell * 1.2)
-	_ok("and then it is all in", rich._late == 0.0)
-	# the trickle
+	var plain: float = rich.trickle_rate()
+	rich.novas = 2
+	_ok("every supernova so far makes RICHER more gas drift in", is_equal_approx(rich.trickle_rate(), plain * (1.0 + Sim.RICHER * 2.0)))
+	# the trickle, fed by need
 	var far := _quiet(9)
 	far.passing = true
 	far._pass_gap = 1e9
 	var was: float = far.trickle_rate()
 	far.mass = Sim.START * 4.0
-	_ok("the trickle grows with the star", is_equal_approx(far.trickle_rate(), was * pow(4.0, Sim.TRICKLE_UP)))
+	_ok("the most the far sky gives goes by the star's Suns to the power TRICKLE_UP", is_equal_approx(far.trickle_rate(), was * pow(4.0, Sim.TRICKLE_UP)))
 	far.mass = Sim.START
-	_run(far, 120.0)
+	_ok("an empty ring is fed in full and a ring at its birth weight not at all", is_equal_approx(far.need(), 1.0) and is_equal_approx(far.ring_m, minf(Sim.RING_M, Sim.RING_MOST * far.mass)))
+	var into_empty := _run_owed(far, 120.0)
 	var got := _sky_mass(far)
-	_ok("two minutes of it is what TRICKLE says (%.2f Suns)" % (Sim.TRICKLE * 120.0 / Sim.START), absf(got - Sim.TRICKLE * 120.0) < Sim.RING_M / Sim.RING * 1.5)
-	var outer := true
+	_ok("what drifts into an empty ring is what the rule owes (%.2f, where the most in two minutes is %.2f)" % [into_empty.x, was * 120.0], absf(got + far._owed_gas - into_empty.x) < 1e-4 and into_empty.x < was * 120.0)
+	_ok("and it makes the ring up to its birth weight and no further (%.2f of %.2f)" % [got, far.ring_m], got > far.ring_m * (1.0 - exp(-was * 120.0 / far.ring_m)) - 3.0 * Sim.RING_M / Sim.RING and got <= far.ring_m + Sim.RING_M / Sim.RING + 1e-6)
+	var inner := 0
+	var outer := 0
+	var in_ring := true
 	for p: Sim.Body in far.bodies:
-		outer = outer and p.pos.length() > far.ring.y * 0.85
-	_ok("it arrives at the ring's outer edge", outer)
-	# a giant does not swallow the sky: its mouth is past the ring's edge, so
-	# what drifts in is eaten as it lands, and that must stay a Sun or so a
-	# minute with the tiles a steady hand has by then (it was 5.7 Suns a minute
-	# when the trickle grew with the star's Suns: the harness's 12-Sun giant)
+		var pr := p.pos.length()
+		in_ring = in_ring and pr > far.ring.x * 0.98 and pr < far.ring.y * 1.02
+		if pr < far.frost:
+			inner += 1
+		else:
+			outer += 1
+	_ok("it arrives all over the ring (%d inside its middle, %d outside)" % [inner, outer], in_ring and inner > far.bodies.size() / 5 and outer > far.bodies.size() / 5)
+	# with the gas outside at the ring's birth weight, two minutes add nothing
+	var brim := _quiet(9)
+	brim.passing = true
+	brim._pass_gap = 1e9
+	for k in Sim.RING:
+		var at_k: Vector2 = Vector2.from_angle(TAU * k / Sim.RING) * lerpf(brim.ring.x, brim.ring.y, 0.2 + 0.6 * fmod(k * 0.381, 1.0))
+		var g_k: Sim.Body = brim.add(Sim.Kind.GAS, brim.ring_m / Sim.RING, at_k, brim.circle_vel(at_k))
+		g_k.dust = 0.0
+	brim._gas_out = brim.gas_outside()
+	var brim_m := _sky_mass(brim)
+	_run(brim, 120.0)
+	_ok("a ring at its birth weight is given nothing in two minutes", brim.bodies.size() == Sim.RING and absf(_sky_mass(brim) - brim_m) < 1e-6 and brim._owed_gas < 1e-6)
+	# with none outside (a star whose disc is past the ring) they add the full
+	# rate: it lands in the disc, is not the ring's, and is eaten with no hand
+	var grown := _quiet(9)
+	grown.passing = true
+	grown._pass_gap = 1e9
+	grown.mass = Sim.START * 6.0
+	var grown_m: float = grown.mass
+	var full_rate: float = grown.trickle_rate()
+	var into_disc := _run_owed(grown, 120.0)
+	var all_in: float = grown.mass - grown_m + _sky_mass(grown) + grown._owed_gas
+	_ok("the disc of a 6-Sun star is past the ring, so none of its gas is outside", grown.haze_r() > grown.ring.y and into_disc.y == 0.0)
+	_ok("and two minutes add trickle_rate() * 120 (%.2f Suns of %.2f)" % [all_in / Sim.START, full_rate * 120.0 / Sim.START], absf(all_in - into_disc.x) < 1e-4 and absf(all_in - full_rate * 120.0) < full_rate * 120.0 * 0.03)
+	_ok("which the star eats with no hand", grown.mass - grown_m > all_in * 0.3)
+	# an untouched first star, the trickle on: fifteen minutes eat no more than
+	# the falling few, and the ring is never more than a puff over its weight
+	var idle := _quiet(11)
+	idle.passing = true
+	idle._pass_gap = 1e9
+	idle.born()
+	var few := 0.0
+	for k in Sim.RING_FALLING:
+		few += idle.bodies[k].m
+	var idle_most := _run_owed(idle, 900.0)
+	print("  an untouched first star, fifteen minutes with the trickle on: ate %.3f (the falling few weigh %.3f), the far sky gave %.3f, the gas outside the disc at most %.3f of the ring's %.3f, %d solids" % [
+		idle.eaten, few, idle_most.x, idle_most.y, idle.ring_m, _solid_count(idle)])
+	_ok("an untouched star with the trickle on eats no more than the falling few in fifteen minutes (%.3f of %.3f)" % [idle.eaten, few], idle.eaten <= few + 1e-6)
+	_ok("and the gas outside the disc is never more than a puff over the ring's birth weight (%.3f of %.3f)" % [idle_most.y, idle.ring_m], idle_most.y <= idle.ring_m + Sim.RING_M / Sim.RING + 1e-6)
+	# why that star does not go on to dim and fade (the bot's untouched star:
+	# 1.05 Suns at 100 minutes, helium at 103, a supernova at about two hours):
+	# at one Sun the helium flash comes before the hydrogen is out, and a
+	# giant's disc is past the whole ring, so from the flash the far sky feeds
+	# it in full with no hand. Not forced, and not a fade.
+	var lone := _quiet(11)
+	var to_flash: float = Sim.FLASH * Sim.START / lone._plain_burn()
+	print("  a star of one Sun left alone: the helium flash at %.0f min, the hydrogen out at %.0f; a giant's disc is %.0f px and the ring ends at %.0f" % [
+		to_flash / 60.0, lone.fuel_time() / 60.0, lone.haze_r() * (1.0 + Sim.GIANT), lone.ring.y])
+	_ok("at one Sun the helium flash (%.0f min) comes before the hydrogen is out (%.0f min)" % [to_flash / 60.0, lone.fuel_time() / 60.0], to_flash < lone.fuel_time() and to_flash > 3600.0)
+	lone.swell = 1.0
+	_ok("and a one-Sun giant's disc is past the whole ring", lone.haze_r() > lone.ring.y)
+	# a giant does not swallow the sky: its mouth is past the ring's middle, so
+	# most of what drifts in is eaten as it lands and the rest is in its disc;
+	# that must stay a Sun or so a minute with the tiles a steady hand has by
+	# then (it was 4.9 Suns a minute when the trickle grew with the star's Suns)
 	var big := _quiet(9)
 	big.passing = true
 	big._pass_gap = 1e9
 	big.mass = Sim.START * 12.0
 	big.swell = 1.0
 	big.lv.rich = 6
-	_ok("a 12-Sun giant's mouth is past where the gas drifts in", big.star_r() * Sim.EAT > big.ring.y * 0.9)
+	_ok("a 12-Sun giant's mouth is past the middle of where the gas drifts in", big.star_r() * Sim.EAT > (big.ring.x + big.ring.y) * 0.5 and big.haze_r() > big.ring.y)
 	var was_m: float = big.mass
 	_run(big, 60.0)
 	var gained: float = (big.mass - was_m + _sky_mass(big)) / Sim.START
@@ -859,6 +979,25 @@ func _check_pay() -> void:
 		shared += piece.paid
 	_ok("a torn planet's pieces keep its rank", ranks and torn.bodies.size() >= 2)
 	_ok("and share what it had paid", is_equal_approx(shared, 0.3))
+	_ok("with no Furnace a tear pays nothing", torn.light == 0.0)
+	# the Furnace pays a share of the torn body's own worth, a level, over and
+	# above that worth: what the pieces have paid is not touched
+	var forge := _quiet(13)
+	forge.power.furnace = 2
+	var f: Sim.Body = forge.add(Sim.Kind.ROCK, 0.02, Vector2(forge.roche_r() * 0.9, 0.0), Vector2.ZERO)
+	forge._sort(f)
+	f.paid = 0.3
+	forge._tear(0)
+	var bonus: float = Sim.FURNACE_SHARE * 2.0 * 0.02 * forge.spiral_light() * Sim.PAY_WORLD
+	var forge_paid := 0.0
+	for piece: Sim.Body in forge.bodies:
+		forge_paid += piece.paid
+	_ok("the Furnace pays FURNACE_SHARE of a torn body's worth a level (%.2f)" % bonus, absf(forge.light - bonus) < 1e-6 and forge.events.any(func(e): return e.kind == "shed" and is_equal_approx(float(e.e), bonus)))
+	_ok("and that is not counted as paid", is_equal_approx(forge_paid, 0.3))
+	forge.awake = false
+	var dark_light: float = forge.light
+	forge._tear(0)
+	_ok("a dim star's Furnace pays nothing", forge.light == dark_light)
 	# nothing pays a negative amount: a body that has already paid more than it owes
 	var over := _quiet(14)
 	var o: Sim.Body = over.add(Sim.Kind.ROCK, 0.001, Vector2(145.0, 0.0), Vector2.ZERO)
@@ -1018,6 +1157,22 @@ func _check_worlds() -> void:
 	_ok("the system counts planets, giants, rocks and comets, not grains", int(count.planets) == 1 and int(count.giants) == 1 and int(count.rocks) == 1 and int(count.comets) == 1)
 	sys.save()
 	_ok("the file keeps the worlds, and the card reads them", int(Sim.kept().worlds) == 2)
+	# only what is on a closed path is counted: a planet passing through is
+	# not the star's, the same planet on a circle is
+	var pass_by := _quiet(21)
+	var where := Vector2(700.0, 0.0)
+	var open_v: float = sqrt(2.0 * pass_by.gm() / 700.0)
+	var roamer: Sim.Body = pass_by.add(Sim.Kind.ROCK, 0.02, where, Vector2(0.0, -open_v * 1.05))
+	pass_by._sort(roamer)
+	_ok("a planet on an open path is not counted", roamer.kind == Sim.Kind.PLANET and int(pass_by.system().planets) == 0)
+	pass_by.save()
+	_ok("nor kept as a world", int(Sim.kept().worlds) == 0)
+	roamer.vel = pass_by.circle_vel(where)
+	_ok("the same planet on a circle is", int(pass_by.system().planets) == 1)
+	roamer.vel = Vector2(0.0, -open_v * 0.99)
+	_ok("and on a long closed path", int(pass_by.system().planets) == 1)
+	pass_by.save()
+	_ok("and is kept", int(Sim.kept().worlds) == 1)
 
 func _check_relics() -> void:
 	var sim := _quiet()
