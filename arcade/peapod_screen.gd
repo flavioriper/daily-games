@@ -93,6 +93,14 @@ const GAP := 20
 const HUD_H := 110.0
 const FRAME := 16
 const BACKDROP_BLEED := 90.0
+## The hose's stream, in field units: how wide where its drops land as one
+## and where they land STREAM_FULL times as hard (and no wider past that),
+## the steps a stretch between two drops is rounded in, and the glints on it.
+const STREAM_THIN := 2.4
+const STREAM_WIDE := 11.0
+const STREAM_FULL := 3.0
+const STREAM_CUTS := 4
+const STREAM_GLINTS := 4
 ## The most sim steps one frame may run, so a stall never fast-forwards.
 const MAX_STEPS := 4
 ## The finger's slide, times this, is the cart's.
@@ -188,10 +196,10 @@ const SHOP_NAMES := ["PP_CARD_DAMAGE", "PP_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD
 ## The carts (Sim.Cart): each one's name, what it says of itself where it is
 ## chosen, the card only it sells and that card's line of figures; and the
 ## wave a player must have reached to roll each out (the pea gun is everyone's).
-const CART_NAMES := ["PP_CART_PEA", "PP_CART_CONKER", "PP_CART_PUMPKIN", "PP_CART_HOSE", "PP_CART_DANDELION", "PP_CART_TWINS"]
-const CART_LINES := ["PP_CART_PEA_LINE", "PP_CART_CONKER_LINE", "PP_CART_PUMPKIN_LINE", "PP_CART_HOSE_LINE", "PP_CART_DANDELION_LINE", "PP_CART_TWINS_LINE"]
-const OWN_NAMES := ["PP_CARD_SHOTS", "PP_CARD_HOPS", "PP_CARD_BLAST", "PP_CARD_JET", "PP_CARD_SEEDS", "PP_CARD_TWIN"]
-const OWN_LINES := ["PP_CARD_SHOTS_LINE", "PP_CARD_HOPS_LINE", "PP_CARD_BLAST_LINE", "PP_CARD_JET_LINE", "PP_CARD_SEEDS_LINE", "PP_CARD_TWIN_LINE"]
+const CART_NAMES := ["PP_CART_PEA", "PP_CART_CONKER", "PP_CART_PUMPKIN", "PP_CART_HOSE", "PP_CART_DANDELION", "PP_CART_TRAIN"]
+const CART_LINES := ["PP_CART_PEA_LINE", "PP_CART_CONKER_LINE", "PP_CART_PUMPKIN_LINE", "PP_CART_HOSE_LINE", "PP_CART_DANDELION_LINE", "PP_CART_TRAIN_LINE"]
+const OWN_NAMES := ["PP_CARD_SHOTS", "PP_CARD_HOPS", "PP_CARD_BLAST", "PP_CARD_JET", "PP_CARD_SEEDS", "PP_CARD_TRAIN"]
+const OWN_LINES := ["PP_CARD_SHOTS_LINE", "PP_CARD_HOPS_LINE", "PP_CARD_BLAST_LINE", "PP_CARD_JET_LINE", "PP_CARD_SEEDS_LINE", "PP_CARD_TRAIN_LINE"]
 const CART_WAVE := [0, 5, 8, 11, 14, 17]
 ## The gun's click is heard this far apart at the closest (a hose is a
 ## dozen drops a second and more), and a burst or a blast its thump.
@@ -235,6 +243,11 @@ var _fx: Node2D
 ## for.
 var _quiet: Node2D
 var _backdrop: ColorRect
+## The hose's stream: its mesh (kept until the next), how hard its drops are
+## landing as it is drawn (eased), and how far up its head has run (field y).
+var _stream: ArrayMesh
+var _stream_w := 1.0
+var _stream_head := INF
 var _margins: MarginContainer
 var _score_l: Label
 var _best_l: Label
@@ -1827,9 +1840,9 @@ func _draw_over() -> void:
 	_draw_rack_pips()
 	if not _head_tag.is_empty():
 		Art.number(_over, font, px(_head_tag[0]), _head_tag[1], Sim.SEG_R * 1.25 * _u, 1.0, Sim.Kind.HEAD)
-	if sim.cart == Sim.Cart.TWINS:
-		# the twin, across the garden's middle from the cart
-		_draw_cart(Sim.W - sim.x, true)
+	# the caravan, the furthest behind first
+	for k in range(sim.trail(), 0, -1):
+		_draw_cart(sim.trail_x(k), true)
 	_draw_cart(sim.x, false)
 	_draw_flights()
 	_draw_gun_words(font)
@@ -1897,7 +1910,14 @@ func _draw_peas() -> void:
 	var u := _u
 	var ox := _origin.x
 	var oy := _origin.y
+	var hose: bool = sim.cart == Sim.Cart.HOSE
+	var flow: Array = []
 	for p: Dictionary in sim.shots:
+		# the hose's own drops are one stream (`_draw_stream`), until a Dart's
+		# has gone through something
+		if hose and bool(p.main) and int(p.last) < 0:
+			flow.append(p)
+			continue
 		var el: int = p.el
 		var k: int = int(p.k) + shapes * (0 if el == 0 else el - Sim.Kind.ZAP + 1)
 		var buf: PackedFloat32Array = _pea_buf[k]
@@ -1934,6 +1954,70 @@ func _draw_peas() -> void:
 		mm.visible_instance_count = counts[k]
 		mm.buffer = buf
 		_over.draw_multimesh(mm, null)
+	if hose:
+		_draw_stream(flow, heavy)
+
+## The hose's water (the user, 2026-10-08: "a constant flow that starts thin
+## and gets larger as the flow multiplier effect enters"): one ribbon from
+## the pod's mouth through every drop in the air, so it trails behind a cart
+## that slides as a hose's does, and on up to whatever the foremost drop is
+## about to land on. It is as wide as the drops are landing hard (`jet()`),
+## thin on a thing just turned to and swelling while it stays there. The
+## sim's drops are what land; this is only how they are drawn. One mesh.
+func _draw_stream(flow: Array, heavy: float) -> void:
+	var dt := get_process_delta_time()
+	var want := clampf(sim.jet(), 1.0, STREAM_FULL)
+	_stream_w = want if Motion.reduce else lerpf(_stream_w, want, 1.0 - exp(-dt * 9.0))
+	if flow.is_empty() or sim.phase == Sim.Phase.OVER:
+		_stream_head = INF
+		return
+	flow.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.y) > float(b.y))
+	var first: Dictionary = flow[flow.size() - 1]
+	# the water's head runs up at the drops' speed and stops on what is there
+	var stop: float = sim.reach(float(first.x), float(first.y))
+	var head := minf(float(first.y), _stream_head - float(Sim.CART_SPEED_UP[Sim.Cart.HOSE]) * dt)
+	_stream_head = maxf(stop, head)
+	var landed: bool = _stream_head <= stop + 0.5 and stop > -sim.sky
+	var mouth := Vector2(sim.x, Sim.CART_Y - 38.0)
+	var raw := PackedVector2Array([mouth])
+	for p: Dictionary in flow:
+		if float(p.y) < mouth.y - 4.0 and float(p.y) > _stream_head + 4.0:
+			raw.append(Vector2(p.x, p.y))
+	raw.append(Vector2(first.x, _stream_head))
+	# rounded through the drops, so a slide bends it and does not kink it
+	var pts := PackedVector2Array()
+	var n := raw.size()
+	for i in n - 1:
+		var a := raw[maxi(i - 1, 0)]
+		var d := raw[mini(i + 2, n - 1)]
+		for k in STREAM_CUTS:
+			var at := raw[i].cubic_interpolate(raw[i + 1], a, d, k / float(STREAM_CUTS))
+			pts.append(px(Vector2(clampf(at.x, minf(raw[i].x, raw[i + 1].x), maxf(raw[i].x, raw[i + 1].x)), at.y)))
+	pts.append(px(raw[n - 1]))
+	var col: Color = Art.SHOT_OF.get(sim.element, Art.WATER)
+	var fat := minf(1.7, heavy) * float(first.sz) / float(Sim.CART_SIZE[Sim.Cart.HOSE])
+	var wide := (STREAM_THIN + (STREAM_WIDE - STREAM_THIN) * (_stream_w - 1.0) / (STREAM_FULL - 1.0)) * minf(fat, 2.2) * _u
+	var b := Face.Builder.new()
+	Art._ribbon(b, pts, wide * 0.8 + 2.0 * _u, wide + 2.0 * _u, Art.deepen(col))
+	Art._ribbon(b, pts, wide * 0.8, wide, col)
+	# the light down its middle runs up it, so still water is seen to flow
+	var run := 0.0 if Motion.reduce else fposmod(_clock * 3.2, 1.0)
+	var m := pts.size()
+	for k in STREAM_GLINTS:
+		var f := (k + run) / STREAM_GLINTS
+		var i0 := clampi(int(f * (m - 1)), 0, m - 2)
+		var i1 := clampi(i0 + maxi(1, int(m / float(STREAM_GLINTS) * 0.45)), i0 + 1, m - 1)
+		Art._ribbon(b, pts.slice(i0, i1 + 1), wide * 0.3, wide * 0.3, Color(Art.PAPER, 0.55))
+	if landed:
+		# where it lands it breaks into a spray
+		var tip := pts[m - 1]
+		var beat := 0.0 if Motion.reduce else _clock * 21.0
+		for k in 5:
+			var a := PI * (0.12 + 0.19 * k) + 0.25 * sin(beat + k * 1.9)
+			var far := wide * (0.9 + 0.5 * absf(sin(beat * 0.7 + k * 2.3)))
+			b.disc(tip + Vector2(cos(a) * far, sin(a) * far * 0.55 + wide * 0.15), wide * (0.28 + 0.1 * (k % 2)), col.lerp(Art.PAPER, 0.55))
+	_stream = b.mesh()
+	_over.draw_mesh(_stream, null)
 
 ## How a crate or a plate sits this frame, as [its squeeze, how fresh the
 ## knock is 1..0]: squeezed by the pea that just landed, else as it is. The
@@ -2884,8 +2968,8 @@ func _own_value() -> String:
 			return line % [_fig(sim.jet_cap()), _fig(sim.jet_cap() + Sim.JET_CAP_STEP)]
 		Sim.Cart.DANDELION:
 			return line % [sim.seeds(), sim.seeds() + Sim.SEED_STEP]
-		Sim.Cart.TWINS:
-			return line % [roundi(sim.twin_share() * 100.0), roundi((sim.twin_share() + Sim.TWIN_STEP) * 100.0)]
+		Sim.Cart.TRAIN:
+			return line % [1 + sim.followers(), 2 + sim.followers()]
 	return line % [sim.peas, sim.peas + 1]
 
 func _refresh_shop() -> void:
@@ -3250,8 +3334,8 @@ func _cart_tile(c: int) -> Button:
 		var u := 2.7
 		var foot := Vector2(pic.size.x * 0.5, pic.size.y - 9.0 * u - 4.0)
 		var carts := [[foot, u, false]]
-		if c == Sim.Cart.TWINS:
-			carts = [[foot + Vector2(-46.0, 3.0), u * 0.8, true], [foot + Vector2(30.0, 0), u, false]]
+		if c == Sim.Cart.TRAIN:
+			carts = [[foot + Vector2(-58.0, 3.0), u * 0.8, true], [foot + Vector2(34.0, 0), u, false]]
 		for k: Array in carts:
 			var at: Vector2 = k[0]
 			var ku: float = k[1]

@@ -398,7 +398,7 @@ static func card_icon(b: Face.Builder, card: int, c: Vector2, s: float) -> void:
 
 ## The picture of the card only cart `cart` (Sim.Cart) sells, `s` tall
 ## about `c`: a conker hopping on, a blast's rings, a drop under pressure, a
-## fan of seeds, a pea and its twin. The pea gun's is `card_icon`'s.
+## fan of seeds, a cart and the one behind it. The pea gun's is `card_icon`'s.
 static func own_icon(b: Face.Builder, cart: int, c: Vector2, s: float) -> void:
 	match cart:
 		Sim.Cart.CONKER:
@@ -418,9 +418,13 @@ static func own_icon(b: Face.Builder, cart: int, c: Vector2, s: float) -> void:
 			for k in 5:
 				var d := Vector2.from_angle(-PI * 0.5 + (k - 2) * 0.42)
 				_seed(b, c + Vector2(0, s * 0.4) + d * s * 0.74, s * 0.13, d.angle() + PI * 0.5)
-		Sim.Cart.TWINS:
-			pea(b, c + Vector2(-s * 0.22, s * 0.04), s * 0.24)
-			pea(b, c + Vector2(s * 0.26, s * 0.1), s * 0.17)
+		Sim.Cart.TRAIN:
+			for k in 2:
+				var at := c + Vector2(s * (0.2 - 0.42 * k), s * (0.06 + 0.06 * k))
+				var w := s * (0.4 - 0.1 * k)
+				b.fan(Face.Builder.round_rect(at - Vector2(w * 0.5, w * 0.28), Vector2(w, w * 0.5), w * 0.14), PAPER if k == 0 else Color(PAPER, 0.7))
+				for side: float in [-1.0, 1.0]:
+					b.disc(at + Vector2(side * w * 0.3, w * 0.3), w * 0.17, INK)
 		_:
 			card_icon(b, Sim.Card.SHOTS, c, s)
 
@@ -622,7 +626,7 @@ static func wheel(u: float) -> ArrayMesh:
 ## element running (`el`: Sim.Kind.ZAP or FLAME) it is the element's colour,
 ## as its peas are.
 static func barrel(u: float, helper := false, el := 0, cart := 0) -> ArrayMesh:
-	if cart != Sim.Cart.PEA and cart != Sim.Cart.TWINS:
+	if cart != Sim.Cart.PEA and cart != Sim.Cart.TRAIN:
 		return _gun(u, el, cart)
 	var key := _key("b", int(helper), el, u)
 	if _cache.has(key):

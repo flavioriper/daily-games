@@ -607,13 +607,13 @@ PP_CART_CONKER,Conker,Castanha,Castaña
 PP_CART_PUMPKIN,Pumpkin,Abóbora,Calabaza
 PP_CART_HOSE,Hose,Mangueira,Manguera
 PP_CART_DANDELION,Dandelion,Dente-de-leão,Diente de león
-PP_CART_TWINS,Twins,Gêmeos,Gemelos
+PP_CART_TRAIN,Caravan,Caravana,Caravana
 PP_CART_PEA_LINE,A pea straight up. Its own card: one more pea.,Uma ervilha reta para cima. Carta própria: mais uma ervilha.,Un guisante recto hacia arriba. Carta propia: un guisante más.
 PP_CART_CONKER_LINE,Its shot hops on to the nearest crate. Its own card: one more hop.,O tiro salta para a caixa mais próxima. Carta própria: mais um salto.,El disparo salta a la caja más cercana. Carta propia: un salto más.
 PP_CART_PUMPKIN_LINE,Slow and heavy: everything round where it lands is hit too. Its own card: a wider blast.,Lenta e pesada: tudo em volta de onde cai também é atingido. Carta própria: explosão maior.,Lenta y pesada: todo lo que rodea al impacto también recibe. Carta propia: explosión más amplia.
 PP_CART_HOSE_LINE,A stream of drops that hit harder the longer they stay on one crate. Its own card: more pressure.,Um jato de gotas que bate mais forte quanto mais fica na mesma caixa. Carta própria: mais pressão.,Un chorro de gotas que golpea más fuerte cuanto más se queda en la misma caja. Carta propia: más presión.
 PP_CART_DANDELION_LINE,A fan of light seeds: strongest up close. Its own card: two more seeds.,Um leque de sementes leves: mais forte de perto. Carta própria: mais duas sementes.,Un abanico de semillas ligeras: más fuerte de cerca. Carta propia: dos semillas más.
-PP_CART_TWINS_LINE,A second cart mirrors you across the garden. Its own card: stronger twins.,Um segundo carrinho espelha você do outro lado do jardim. Carta própria: gêmeos mais fortes.,Un segundo carrito te refleja al otro lado del jardín. Carta propia: gemelos más fuertes.
+PP_CART_TRAIN_LINE,A second cart follows where you were a moment ago and shoots as hard as you. Its own card: one more cart.,Um segundo carrinho segue por onde você passou há um instante e atira tão forte quanto você. Carta própria: mais um carrinho.,Un segundo carrito sigue por donde pasaste hace un instante y dispara tan fuerte como tú. Carta propia: un carrito más.
 PP_CART_LOCKED,Wave %d,Onda %d,Oleada %d
 PP_CART_NEW,New cart: %s!,Novo carrinho: %s!,¡Nuevo carrito: %s!
 PP_CART_NEXT,Reach wave %d to roll out the next cart: %s.,Chegue à onda %d para liberar o próximo carrinho: %s.,Llega a la oleada %d para desbloquear el próximo carrito: %s.
@@ -625,8 +625,8 @@ PP_CARD_JET,More pressure,Mais pressão,Más presión
 PP_CARD_JET_LINE,x%s  >  x%s at most,x%s  >  x%s no máximo,x%s  >  x%s como máximo
 PP_CARD_SEEDS,Two more seeds,Mais duas sementes,Dos semillas más
 PP_CARD_SEEDS_LINE,%d  >  %d seeds a shot,%d  >  %d sementes por tiro,%d  >  %d semillas por disparo
-PP_CARD_TWIN,Stronger twins,Gêmeos mais fortes,Gemelos más fuertes
-PP_CARD_TWIN_LINE,%d%%  >  %d%% of a shot,%d%%  >  %d%% de um tiro,%d%%  >  %d%% de un disparo
+PP_CARD_TRAIN,One more cart,Mais um carrinho,Un carrito más
+PP_CARD_TRAIN_LINE,%d  >  %d carts,%d  >  %d carrinhos,%d  >  %d carritos
 BST_PP_PEA,Heavy pea,Ervilha pesada,Guisante pesado
 BST_PP_PEA_LINE,Start with a heavier pea,Comece com uma ervilha mais forte,Empieza con un guisante más fuerte
 BST_PP_QUICK,Quick pod,Vagem veloz,Vaina veloz

@@ -16,8 +16,8 @@ extends SceneTree
 const Sim = preload("res://arcade/peapod_sim.gd")
 const PATH := "user://arcade.cfg"
 ## What each cart runs under: [element, shape (0: none)].
-const DRESS := [[Sim.Kind.NETTLE, 0], [Sim.Kind.FLAME, 0], [Sim.Kind.HAIL, 0], [Sim.Kind.GUST, Sim.Kind.BURST],
-	[Sim.Kind.ZAP, Sim.Kind.FAN], [0, Sim.Kind.PIERCE]]
+const DRESS := [[Sim.Kind.NETTLE, 0], [Sim.Kind.FLAME, 0], [Sim.Kind.HAIL, 0], [0, Sim.Kind.FAN],
+	[Sim.Kind.ZAP, Sim.Kind.FAN], [Sim.Kind.GUST, Sim.Kind.PIERCE]]
 
 var _menu: Node
 var _s: Node
@@ -62,13 +62,15 @@ func _initialize() -> void:
 	_menu = main.get_node("UI/Menu")
 
 func _restore() -> void:
-	if Screen != null:
-		Screen.force_cart = -1
+	# the file first: a screen that did not parse has no `force_cart` to set,
+	# and an error here once left this machine's record unrestored
 	if _had:
 		var f := FileAccess.open(PATH, FileAccess.WRITE)
 		f.store_string(_before)
 	else:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
+	if Screen != null and Screen.can_instantiate():
+		Screen.force_cart = -1
 
 func _shot(name: String) -> void:
 	RenderingServer.force_draw()

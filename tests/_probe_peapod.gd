@@ -42,9 +42,6 @@ func _target(sim: RefCounted, skill: int) -> float:
 					continue
 				# gifts first, then the weakest of the lowest row
 				var w: int = int(cell.hp) - ((1 << 28) if Sim.holds_gift(int(cell.kind)) and skill >= 1 else 0)
-				# the twins: where the other cart has something of this row too
-				if sim.cart == Sim.Cart.TWINS and skill >= 1 and sim.rows[r][Sim.COLS - 1 - c] != null:
-					w -= 1 << 26
 				if w < low:
 					low = w
 					best = c
@@ -77,8 +74,8 @@ func _volley(sim: RefCounted, special: int) -> float:
 			return w * (1.0 + (Sim.JET_CAP + Sim.JET_CAP_STEP * special - 1.0) * 0.4 * (1.0 + Sim.JET_QUICK * special) / (1.0 + Sim.JET_QUICK * special * 0.5))
 		Sim.Cart.DANDELION:
 			return w * (Sim.SEEDS + Sim.SEED_STEP * special) * 0.8
-		Sim.Cart.TWINS:
-			return w * (1.0 + Sim.TWIN + 2.0 * Sim.TWIN_STEP * special)
+		Sim.Cart.TRAIN:
+			return w * (2.0 + special)
 	return w * (1 + special)
 
 ## What the crit makes of a pea on average, at level `lv`.

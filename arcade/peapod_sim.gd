@@ -88,7 +88,8 @@ extends RefCounted
 ## number stops multiplying at wave HP_EASE and grows as a power of the wave.
 ## Pods running together make a crate drop more energy (`pods_on`,
 ## PAIR_PAY). An iron crate's number stops at wave IRON_TURN. A conker's hops
-## all land the same, the twins' card is both carts', the hose's rate climbs
+## all land the same, the twins' card is both carts' (the twins became the
+## caravan in the twelfth), the hose's rate climbs
 ## as the others'. And a big gun is drawn as fewer, fatter shots
 ## (VOLLEY_MOST, PEA_MOST, SEED_MOST): the same weight, a tenth of the shots.
 ##
@@ -129,8 +130,9 @@ enum Hit { PEA, SIDE, BOOM, BURN, STING }
 ## and everything round where it lands takes a share; a wider blast a card.
 ## HOSE: a stream of drops that land harder the longer they stay on one
 ## thing; a card lets them. DANDELION: a cone of light seeds, two more a
-## card. TWINS: a second cart mirrored across the garden, its share a card.
-enum Cart { PEA, CONKER, PUMPKIN, HOSE, DANDELION, TWINS }
+## card. TRAIN: a cart follows where this one was a moment ago and fires as
+## it does; a card is one more, each behind the last.
+enum Cart { PEA, CONKER, PUMPKIN, HOSE, DANDELION, TRAIN }
 
 const DT := 1.0 / 60.0
 const W := 300.0
@@ -167,11 +169,11 @@ const FAT_MOST := 1.8
 ## By Cart: the share of the pea's weight one shot lands as (what is short
 ## of a whole number is kept for the next: `_whole`), how fast it flies, how
 ## big it is drawn, and what the cart's own card costs and climbs by.
-const CART_WEIGHT := [1.0, 1.2, 4.2, 0.8, 0.36, 1.0]
+const CART_WEIGHT := [1.0, 1.2, 4.2, 0.8, 0.36, 0.6]
 const CART_SPEED_UP := [540.0, 540.0, 400.0, 900.0, 540.0, 540.0]
 const CART_SIZE := [1.0, 1.15, 1.9, 0.72, 0.8, 1.0]
-const CART_PRICE := [80, 40, 40, 36, 44, 36]
-const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 0.9]
+const CART_PRICE := [80, 40, 40, 36, 44, 48]
+const CART_PRICE_STEP := [1.5, 1.0, 1.0, 0.9, 1.0, 1.5]
 ## The conker: how far a hop reaches, and what of the shot's weight every hop
 ## lands as (the same each hop: a hop more is that much more, with no end).
 const HOP_REACH := 120.0
@@ -192,10 +194,14 @@ const JET_CAP_STEP := 0.5
 const SEEDS := 5
 const SEED_STEP := 2
 const SEED_VX := 105.0
-## The twin's share of the cart's weight, and what a card adds to both
-## carts (a twin alone lands mostly on what is not lowest).
-const TWIN := 0.7
-const TWIN_STEP := 0.5
+## The caravan (the user, 2026-10-08: "a delayed cart that does what he does
+## after x time, more upgrades add more carts, keep them with the same power
+## as the first cart, a following cart follows the last delayed one"): each
+## cart behind is where the one ahead of it was TRAIL_LAG ago, and fires as
+## hard as the first. TRAIL_MOST of them are in the garden at most, each
+## standing for as many as it takes past that.
+const TRAIL_LAG := 0.35
+const TRAIL_MOST := 6
 ## The crit: with none bought no pea is lucky. From the first level a pea
 ## has CRIT_CHANCE of landing CRIT_MULT times as hard, and every level after
 ## adds CRIT_MULT_STEP to that; the chance itself only goes up CRIT_CHANCE_STEP
@@ -376,6 +382,10 @@ var _jet_n := 0.0
 ## what iron is still owed of them.
 var _stands := 1.0
 var _iron_part := 0.0
+## The caravan: where the cart was at each of the last steps (a ring, `_past`
+## the next to be written).
+var _trail := PackedFloat32Array()
+var _past := 0
 var _shopped := false
 var _last_pod := -1
 ## The crits' own dice, so a wave is dealt the same however the peas land.
@@ -440,8 +450,20 @@ func jet_cap() -> float:
 func seeds() -> int:
 	return SEEDS + SEED_STEP * special
 
-func twin_share() -> float:
-	return TWIN + TWIN_STEP * special
+## The carts behind the first: how many there are, how many are in the
+## garden, and where the `k`th of those is (1 the nearest): where the cart
+## was `k` lags ago.
+func followers() -> int:
+	return (1 + special) if cart == Cart.TRAIN else 0
+
+func trail() -> int:
+	return mini(followers(), TRAIL_MOST)
+
+func trail_x(k: int) -> float:
+	var n := _trail.size()
+	if n == 0:
+		return x
+	return _trail[posmod(_past - 1 - mini(roundi(k * TRAIL_LAG / DT), n - 1), n)]
 
 ## How hard the hose's drops are landing now, 1 and up.
 func jet() -> float:
@@ -642,6 +664,12 @@ func _move() -> void:
 	elif axis != 0.0:
 		want = x + axis * 260.0 * DT
 	x = move_toward(x, clampf(want, CART_HALF, W - CART_HALF), CART_SPEED * DT)
+	if cart == Cart.TRAIN:
+		if _trail.is_empty():
+			_trail.resize(roundi(TRAIL_MOST * TRAIL_LAG / DT) + 1)
+			_trail.fill(x)
+		_trail[_past] = x
+		_past = (_past + 1) % _trail.size()
 
 ## The shape, the element and the frost run down.
 func _tick_gifts() -> void:
@@ -668,8 +696,8 @@ func _tick_gifts() -> void:
 func _slow() -> float:
 	return FROST if frost_t > 0.0 else 1.0
 
-## A volley leaves all at once, from wherever the cart is; the twin's leaves
-## with it from across the garden.
+## A volley leaves all at once, from wherever the cart is; the caravan's
+## leave with it, each from where its cart is.
 func _fire() -> void:
 	_cool -= DT
 	var n := 0
@@ -679,9 +707,10 @@ func _fire() -> void:
 	while _cool <= 0.0 and n < FIRE_MOST:
 		n += 1
 		_cool += many / rate()
-		_volley(x, 1.0 + (TWIN_STEP * special if cart == Cart.TWINS else 0.0), true, many)
-		if cart == Cart.TWINS:
-			_volley(W - x, twin_share(), false, many)
+		_volley(x, 1.0, true, many)
+		var behind := trail()
+		for k in behind:
+			_volley(trail_x(k + 1), followers() / float(behind), false, many)
 		events.append({"type": "shot", "x": x})
 		fired += 1
 	if _cool < 0.0:
@@ -694,7 +723,8 @@ static func pea_off(i: int, n: int) -> float:
 	return (i - (n - 1) * 0.5) * minf(PEA_GAP, PEA_ROW / maxf(1.0, n - 1.0))
 
 ## A volley from `from` as the cart, the shapes and the element running make
-## it, each shot `share` of the cart's weight (the twin's is less); `main`
+## it, each shot `share` of the cart's weight (a cart of the caravan standing
+## for several is more); `main`
 ## is the cart's own, which the hose counts. The pea gun's peas leave side by
 ## side, the dandelion's seeds as a cone, the rest one shot. The Fan's two
 ## are plain shots of the same cart and element, flung out from either side.
@@ -756,6 +786,31 @@ func _step_shots() -> void:
 			continue
 		keep.append(p)
 	shots = keep
+
+## How far up a shot leaving (`px`, `py`) flies before it lands: the y of
+## the underside of the first thing over it, the top of the sky with nothing
+## there. The screen's, for the hose's stream.
+func reach(px: float, py: float) -> float:
+	var top := -sky - 8.0
+	if phase != Phase.PLAY or gap_t > 0.0:
+		return top
+	if wave_kind == Wave.WALL:
+		if rows.is_empty():
+			return top
+		var c := clampi(int(px / CELL_W), 0, COLS - 1)
+		for r in range(maxi(0, int((wall_y - py) / CELL_H)), rows.size()):
+			if rows[r][c] != null:
+				return maxf(top, wall_y - r * CELL_H)
+		return top
+	var best := top
+	for sg: Dictionary in segs:
+		if float(sg.dying) >= 0.0 or float(sg.s) < 0.0:
+			continue
+		var at := path_at(sg.s)
+		var rad := (HEAD_R if sg.kind == Kind.HEAD else SEG_R) + 2.0
+		if absf(at.x - px) < rad and at.y - rad < py:
+			best = maxf(best, minf(py, at.y + rad))
+	return best
 
 ## Where every plate is, and the band of the field they are in.
 func _place_segs() -> void:
