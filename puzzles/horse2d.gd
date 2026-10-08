@@ -141,6 +141,7 @@ var fx: Node2D
 ## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a band
 ## that does not count. Out of moves unsolved is `out_of_hearts`, the name
 ## the host and the card already know. No band has hearts.
+var hearts := 0
 var max_hearts := 0
 var moves_left := 0
 var max_moves := 0
@@ -1009,7 +1010,7 @@ func _speak() -> void:
 		return
 	var short: int = state.target - state.score()
 	if short > 0:
-		_say((tr("HP_SHORT_ONE") if short == 1 else tr("HP_SHORT_N")) % short, Face.Expr.PUZZLED)
+		_say(tr("HP_SHORT_ONE") if short == 1 else tr("HP_SHORT_N") % short, Face.Expr.PUZZLED)
 	elif state.score() >= state.best:
 		_say(tr("HP_BEST"), Face.Expr.JOY)
 	else:
@@ -1157,7 +1158,7 @@ func check() -> int:
 		State.SMALL:
 			_shake_at = now
 			var short: int = state.target - state.score()
-			_tell((tr("HP_SUBMIT_SMALL_ONE") if short == 1 else tr("HP_SUBMIT_SMALL_N")) % short, Face.Expr.PUZZLED)
+			_tell(tr("HP_SUBMIT_SMALL_ONE") if short == 1 else tr("HP_SUBMIT_SMALL_N") % short, Face.Expr.PUZZLED)
 			fx.cue("not_yet")
 		State.OK:
 			check_solved()
@@ -1258,6 +1259,7 @@ func _on_solved() -> void:
 	_press_cell = -1
 	_end_shade()
 	_tip_timer.stop()
+	_toast = ""
 	_solved_at = now
 	_final_score = state.score()
 	_expr = Face.Expr.JOY
