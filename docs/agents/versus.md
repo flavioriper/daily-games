@@ -755,9 +755,9 @@ once, to forbid it: Othello. No code, comment, key, commit or screen uses it.
   position the moon had been passed over in says the pass again; the fouls
   for a message out of turn lean on `Match` never handing a move twice
   (`_handed` is reset only by a new match, read 2026-10-09); the sounds; pt and
-  es; **the live rules are not deployed** (`tools/deploy_live.sh`, by a
-  person): until they are, Online and a friend's invite to this game are
-  refused by the database.
+  es; the live rules with `reversi` were deployed on 2026-10-09
+  (`tools/deploy_live.sh`, at the user's word), and nothing has been played
+  against the live database yet.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
