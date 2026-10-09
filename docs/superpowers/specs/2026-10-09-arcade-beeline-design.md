@@ -91,8 +91,8 @@ lawn flown into bad, a new best the win (`docs/agents/haptics.md` row 49).
   falls at a median of 8, with 220 ms and 22 at 3. The dewdrop, the wide
   gates, the Second chance and the ribbons' marks pass.
 - `tests/_shot_beeline.gd` through the real menu at 810x1440, on the
-  desktop driver (two readings), on `opengl3_angle` and under reduce
-  motion: a ScreenTouch sent through the viewport takes her off; 56 draw
+  desktop driver (two readings), on `opengl3_angle`, under reduce motion
+  and in pt and es: a ScreenTouch sent through the viewport takes her off; 56 draw
   calls waiting, 62 in play, 69-70 at a ribbon or a bump, 105 with the end
   card, 286 on the tab with eight cards.
 - `tests/_shot_howto_screen.gd -- beeline`: six pages, 140-151 draw calls.
@@ -114,6 +114,8 @@ lawn flown into bad, a new best the win (`docs/agents/haptics.md` row 49).
 ## 8. Not done
 
 Nothing run on a phone; no sound heard by a person; pt and es written by
-me and read by nobody, and only the tutorial card was shot in pt (the run
-itself only in en); `tests/_probe_arcade_buzz.gd` has no Beeline bot, so
-the knocks are read from the code, not traced.
+me and read by nobody (the run and the end card were shot in both and
+fit; the tutorial card in pt and en); `tests/_probe_arcade_buzz.gd` has no
+Beeline bot, so the knocks are read from the code, not traced. After a
+Second chance the hedge taken away keeps its number, so if it was the one
+wearing a ribbon the gap that pays that ribbon does not wear it.

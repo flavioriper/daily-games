@@ -784,6 +784,9 @@ func _new_best_passed() -> void:
 func _run_over() -> void:
 	if _offer_chance():
 		return
+	# No stage is kept: the ribbons are a function of the score, and the tab's
+	# card has no "furthest" line for this game (ui/menu/arcade_tab.gd's
+	# FURTHEST is read for any game whose stage is over 0).
 	var better := Record.add(GAME, sim.score, 0, _boosted)
 	_run_gold = Wallet.pay_run(better)
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
