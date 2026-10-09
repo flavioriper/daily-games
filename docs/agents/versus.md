@@ -140,8 +140,18 @@ played alone for a score, and this needs someone at the other end.
   fixed 1/240 s): a table 1.0 by 1.6 on end, the bottom goal seat 0's. A
   mallet is led, not pushed -- `aim[p]` is where its player wants it and it
   goes there at up to `MALLET_MAX` 7.5 m/s inside its own half; its speed over
-  the step is what the puck is struck with, and it has no mass to lose
-  (`MALLET_E` 0.72). The puck is capped at `PUCK_MAX` 4.6 m/s (5.2 crossed the
+  the last `SWING` 8 steps (1/30 s) is what the puck is struck with, and it
+  has no mass to lose (`MALLET_E` 0.72). **Never its speed over one step**
+  (2026-10-09, the user: "a small movement makes it fly at maximum speed"):
+  a finger's place is read once a frame, so the mallet crosses the whole
+  frame's worth in its first 1/240 s and stands for the rest, and one step's
+  speed was the hand's four times over at 60 Hz -- a puck at rest left at 6.9
+  times the finger's speed where the rule says 1.72, and a finger at 0.8 m/s
+  (about 5 cm/s on the glass) reached `PUCK_MAX`. Now it is 1.72 at 60 and at
+  120 Hz and the cap takes a finger at 2.7 m/s
+  (`tests/_probe_hockey_touch.gd`, headless). The computer strikes a little
+  softer for it, its arm still gathering speed over the window: a goal every
+  13 to 78 s where it was 10 to 56, each level still 12-0 over the one under. The puck is capped at `PUCK_MAX` 4.6 m/s (5.2 crossed the
   table in 0.3 s, quicker than anyone sees). A goal is the puck's middle
   `GOAL_DEPTH` past the rail inside the mouth; the mouth's corners are posts,
   struck as points. A puck squeezed against a rail pushes the mallet back,
@@ -205,7 +215,10 @@ played alone for a score, and this needs someone at the other end.
   pairing of levels, then the lessons), `tests/_shot_hockey.gd -- <outdir>
   [level] [rm] [lang=]` (the screen built by hand, the bottom mallet a
   level-2 computer, an end card forced; puts `user://versus.cfg` back),
-  `tests/_tap_hockey.gd` (input), `tests/_shot_versus_tab.gd -- <outdir>
+  `tests/_tap_hockey.gd` (input; its "and not the far one" line already
+  failed before 2026-10-09, the far mallet 0.02 m off home, not looked into),
+  `tests/_probe_hockey_touch.gd` (headless: a finger read at 60 and 120 Hz
+  into a puck at rest, the puck's speed for the finger's), `tests/_shot_versus_tab.gd -- <outdir>
   [banner]` (the tab alone, offline), `tests/_probe_versus_buzz.gd --
   hockey`, `tests/_shot_howto_screen.gd -- hockey <outdir>`.
 - **Open** (nobody has played it with a finger): whether the puck's and the

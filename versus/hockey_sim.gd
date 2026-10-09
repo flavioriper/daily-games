@@ -9,9 +9,9 @@ extends RefCounted
 ##
 ## A mallet is not pushed, it is led: `aim[p]` is where its player wants it
 ## and each step it goes there as fast as MALLET_MAX allows, kept inside its
-## own half. Its speed over that step is what the puck is struck with, so a
-## hand that whips through the puck sends it and one that only stands there
-## blocks it. The mallet has no mass to lose: the puck leaves with the
+## own half. Its speed over the last SWING of a second is what the puck is
+## struck with, so a hand that whips through the puck sends it and one that
+## only stands there blocks it. The mallet has no mass to lose: the puck leaves with the
 ## mallet's speed added to its own bounce.
 ##
 ## The steps are short enough that nothing tunnels: at full speed the puck
@@ -36,6 +36,12 @@ const WALL_E := 0.9
 const MALLET_E := 0.72
 const PUCK_MAX := 4.6
 const MALLET_MAX := 7.5
+## How many steps a mallet's speed is measured over: a thirtieth of a second.
+## A finger's place is read once a frame, so the mallet crosses a whole
+## frame's worth of the hand in its first step and stands still for the rest;
+## its speed over one step was the hand's four times over at 60 Hz, and a
+## nudge sent the puck off at PUCK_MAX. Over two frames it is the hand's own.
+const SWING := 8
 ## The air never lets a puck sit against a rail: one going slower than
 ## DRIFT_UNDER within EDGE of a rail is eased back toward the table at DRIFT
 ## (m/s2). A mallet is wider than the puck and kept off the rails by its own
@@ -58,6 +64,10 @@ var puck_on := true
 var mallet: Array[Vector2] = [home(0), home(1)]
 var mallet_vel: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
 var aim: Array[Vector2] = [home(0), home(1)]
+## Each mallet's last SWING moves, a ring, and their sum.
+var _moves: Array = [[], []]
+var _moved: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO]
+var _move_at := 0
 var scores := [0, 0]
 var over := false
 var winner := -1
@@ -107,6 +117,8 @@ func reset(first := 0) -> void:
 		mallet[p] = home(p)
 		aim[p] = home(p)
 		mallet_vel[p] = Vector2.ZERO
+		_moves[p].clear()
+		_moved[p] = Vector2.ZERO
 	serve(first)
 
 func step(dt: float = DT) -> void:
@@ -116,8 +128,15 @@ func step(dt: float = DT) -> void:
 		var reach := MALLET_MAX * dt
 		if to.length() > reach:
 			to = to.normalized() * reach
-		mallet_vel[p] = to / dt
 		mallet[p] += to
+		var ring: Array = _moves[p]
+		if ring.size() < SWING:
+			ring.resize(SWING)
+			ring.fill(Vector2.ZERO)
+		_moved[p] += to - ring[_move_at]
+		ring[_move_at] = to
+		mallet_vel[p] = _moved[p] / (SWING * dt)
+	_move_at = (_move_at + 1) % SWING
 	if not puck_on or over:
 		return
 	clock += dt
