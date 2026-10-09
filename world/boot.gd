@@ -21,6 +21,7 @@ extends Node
 
 const Motion = preload("res://core/motion.gd")
 const Opening = preload("res://ui/opening.gd")
+const Sound = preload("res://core/sound.gd")
 
 const MAIN := "res://world/main.tscn"
 ## Over everything main.tscn's own layers draw.
@@ -32,6 +33,11 @@ const SOONEST := 0.6
 ## The frames the first screen gets under the opening before it is shown:
 ## its build, its first draw, and one to spare.
 const UNDER := 3
+## The opening's one sound (tools/gen_sfx.py, `ui`'s `opening`): tiles set
+## down and two low kalimba notes, the quietest tune in the game since it is
+## heard on every launch. Not played under reduce motion, where nothing
+## lands for it to belong to.
+const TUNE := preload("res://assets/sfx/ui/opening.ogg")
 
 ## Put on the real scene root in place of its own script: a harness's offline
 ## stand-in.
@@ -40,10 +46,18 @@ var opening: Opening
 var _main: Node
 var _hurry := false
 var _under := 0
+var _tune: AudioStreamPlayer
 
 func _ready() -> void:
 	# main.gd loads this again with the rest; the opening has to know now.
 	Motion.load_settings()
+	# The sound switch too, or a muted game would open with a tune.
+	Sound.load_settings()
+	if not Motion.reduce:
+		_tune = AudioStreamPlayer.new()
+		_tune.stream = TUNE
+		add_child(_tune)
+		_tune.play()
 	var layer := CanvasLayer.new()
 	layer.name = "OpeningLayer"
 	layer.layer = LAYER
@@ -85,4 +99,9 @@ func _reveal() -> void:
 	opening.leave()
 
 func _done() -> void:
+	# A tapped opening is gone before its tune is: let the last note ring.
+	if _tune != null and _tune.playing:
+		set_process(false)
+		opening.get_parent().queue_free()
+		await _tune.finished
 	queue_free()

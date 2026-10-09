@@ -41,8 +41,14 @@ came in, the word lifts off and the ground thins over 0.5 s.
   (a finger still down from the icon is not a skip).
 - Reduce motion: it stands finished from the first frame, is held 0.8 s at
   least, and leaves in one plain fade of `Motion.REDUCED_TIME`.
-- It is silent. No sound was asked for and none has been heard; a sound on
-  every launch wants the user's ear first.
+- It has one sound since 2026-10-09, asked for by the user: `ui`'s
+  `opening` (`assets/sfx/ui/opening.ogg`, 1.7 s at -13, `HEARTH_TUNE`: tiles
+  set down, then two low kalimba notes), played by `world/boot.gd` from the
+  first frame, so `ui/opening.gd` alone stays silent in a harness. Boot
+  loads the sound switch before it plays; under reduce motion it is not
+  played. A tapped opening leaves before the tune ends: boot frees the
+  opening's layer and waits for the last note before freeing itself.
+  Unheard by the user, and not synced to a beat of the animation.
 
 ### The handover (`world/boot.gd`)
 

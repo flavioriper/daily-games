@@ -93,10 +93,21 @@ eased in, none above -8. Details: `docs/art/sound-direction.md`, its last
 section.
 
 **Beeline has a set since 2026-10-09** (`SETS["beeline"]`, nine cues): one
-take a cue, unheard by the user. `flap` (every tap, 0.1 s at -25) and `pass`
-(every gap, 0.14 s at -21) never stop and are `HEARTH_TAP`'s dull low taps
-with no note; `bump` and `land` are `GROVE` leaf and grass, `dew` a `JETTY`
-water drop; the notes (`ribbon`, `start`, `game_over`, `new_best`) are
-`HEARTH_TUNE`'s low muffled kalimba, rolled off and eased in, none above
--10. The screen pitches `pass` up by at most 11% across each ten gaps.
+take a cue. `flap` (every tap, 0.1 s at -15) and `pass` (every gap, 0.14 s
+at -13) never stop and are dry taps on thin wood with no note; `bump` and
+`land` (-12) are `GROVE` leaf and grass, `dew` a `JETTY` water drop; the
+notes (`ribbon`, `start`, `game_over`, `new_best`) are `HEARTH_TUNE`'s low
+muffled kalimba, rolled off and eased in, none above -10. The screen pitches
+`pass` up by at most 11% across each ten gaps.
+
+The first `flap`, `pass` and `land` were `HEARTH_TAP`'s felt at -25, -21 and
+-16 under a 2400-3200 Hz roll-off, and the user heard the rewards and
+nothing in the game (2026-10-09): high-passed at 400 Hz, a stand-in for a
+phone's speaker, they peaked at -40 dB and under. The lesson beside
+Nightlight's: quiet and dark together is silence on a phone, so a tap that
+never stops keeps a body above 400 Hz (the three now read -20, -15 and -15
+there). The new takes are unheard by the user. ElevenLabs answers a hushed
+prompt with a near-empty take now and then (a raw peak under -30 dB, or a
+1.7 s cue with 0.2 s of sound in it): measure the raw take in
+`build/sfx_raw/` and ask again with `--new`.
 

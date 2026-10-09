@@ -336,6 +336,9 @@ SETS = {
     "ui": {
         "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
         "page":     ("A soft hand brushing sideways across a linen tablecloth, one gentle muffled fabric swipe, warm and hushed", 0.5, -14, COZY),
+        # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
+        # it is the quietest tune there is, low and eased in.
+        "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
     },
     "binairo": {
         "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),
@@ -1916,12 +1919,17 @@ SETS = {
     # quarter). The rest happens now and then: a hedge met, the grass, a
     # dewdrop bursting, a ribbon (four a run at most) and the run's two
     # ends. Nightlight's lesson is kept: low, dark, quiet, eased in, no
-    # bell and nothing bright.
+    # bell and nothing bright. The same day the user heard the rewards and
+    # nothing else: `flap`, `pass` and `land` were HEARTH_TAP's felt at -25,
+    # -21 and -16 under a 2400-3200 Hz roll-off, which left nothing above
+    # 400 Hz for a phone's speaker (-40 dB and under). They are dry taps on
+    # thin wood now, still with no note, at -15, -13 and -12 and rolled off
+    # near 5 kHz.
     "beeline": {
-        "flap":      ("one very soft low muffled pat of a fingertip on a small felt cushion, a dull round 'pup', very short and quiet", 0.5, -25, HEARTH_TAP, "warm:2400", "cut:0.1", "tight", "ease:0.01"),
-        "pass":      ("one very soft low tap of a felt mallet on a small hollow wooden box, a round dull 'tok', very short and quiet", 0.5, -21, HEARTH_TAP, "warm:2800", "cut:0.14", "tight", "ease:0.008"),
+        "flap":      ("one small soft dry tap of a fingertip on a thin smooth wooden box, a light round woody 'tup' with a clear body, gentle, very short", 0.5, -15, FOLEY, "warm:4800", "cut:0.1", "tight", "ease:0.006"),
+        "pass":      ("one soft dry tap of a small wooden mallet on a small hollow wooden block, a round woody 'tok' with a clear body, gentle, very short", 0.5, -13, FOLEY, "warm:5000", "cut:0.14", "tight", "ease:0.006"),
         "bump":      ("a small soft thing bumping into a leafy garden hedge, one dull soft thud and a short hush of leaves, gentle, not harsh, short", 0.7, -14, GROVE, "warm:4500", "ease:0.012"),
-        "land":      ("a small soft thing dropping onto thick grass, one low soft muffled plop, gentle, very short", 0.5, -16, GROVE, "warm:3200", "cut:0.3", "ease:0.012"),
+        "land":      ("a small soft thing dropping onto thick grass, one soft plop with a short dry rustle of grass blades, gentle, very short", 0.5, -12, GROVE, "warm:5000", "cut:0.3", "ease:0.01"),
         "dew":       ("one soft round low water drop 'bloop' falling into a small wooden bowl of water, gentle and dull, short", 0.6, -15, JETTY, "warm:4500", "ease:0.012"),
         "ribbon":    ("two soft low rising notes on the kalimba, warm and woody, a small prize won, short", 0.7, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
         "start":     ("three slow soft rising notes on the kalimba, a quiet morning in a garden beginning, short", 1.0, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
