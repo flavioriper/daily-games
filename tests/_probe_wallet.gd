@@ -33,7 +33,8 @@ func _process(_d: float) -> bool:
 			"res://arcade/second_chance.gd", "res://ui/menu/gold_pill.gd", "res://ui/hud/gifts_sheet.gd", "res://ui/hud/shop_sheet.gd",
 			"res://ui/menu/arcade_tab.gd", "res://ui/menu/menu_header.gd", "res://ui/menu.gd", "res://ui/flat/flat_host.gd",
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
-			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd"]:
+			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
+			"res://arcade/beeline_screen.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -159,6 +160,18 @@ func _process(_d: float) -> bool:
 	Boosters.revive("peapod", pp)
 	pp.step()
 	_check(not pp.is_over() and pp.wall_y < pp.DANGER - 100.0, "peapod revived, the wall back at %.0f" % pp.wall_y)
+
+	var bl = load("res://arcade/beeline_sim.gd").new(3)
+	Boosters.apply("beeline", bl, ["bl_dew", "bl_wide"])
+	_check(bl.dew == 1 and is_equal_approx(float(bl.gates[0].gap), bl.gap_of(0) + bl.WIDE_BY), "beeline: a dewdrop, wide gates")
+	bl.flap()
+	for i in 120 * 8:
+		bl.step()
+	_check(bl.is_over() and bl.dew == 0, "beeline over on the lawn, the dewdrop spent")
+	Boosters.revive("beeline", bl)
+	bl.flap()
+	bl.step()
+	_check(not bl.is_over() and bl.ghost > 0.0, "beeline revived, flying on")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

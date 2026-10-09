@@ -82,3 +82,12 @@ cue, unheard by the user. A game is a hundred throws, so `throw`, `lob`,
 and have no note; the notes (`sunk`, `glug`, `hint`, `win`, `lose`) are
 `HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8. Details:
 `docs/art/sound-direction.md`, its last section.
+
+**Beeline has a set since 2026-10-09** (`SETS["beeline"]`, nine cues): one
+take a cue, unheard by the user. `flap` (every tap, 0.1 s at -25) and `pass`
+(every gap, 0.14 s at -21) never stop and are `HEARTH_TAP`'s dull low taps
+with no note; `bump` and `land` are `GROVE` leaf and grass, `dew` a `JETTY`
+water drop; the notes (`ribbon`, `start`, `game_over`, `new_best`) are
+`HEARTH_TUNE`'s low muffled kalimba, rolled off and eased in, none above
+-10. The screen pitches `pass` up by at most 11% across each ten gaps.
+

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## The Arcade tab and a run of Beeline, shot at fixed beats:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_beeline.gd -- <outdir> [reduce] [lang=pt]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_beeline.gd -- <outdir> [reduce]
 ##
 ## 1 the Arcade tab, 2 the hint before the first beat, then a real touch
 ## through the viewport (printed: whether the sim took off), 3 a bot flying,
@@ -33,8 +33,6 @@ func _initialize() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a == "reduce":
 			load("res://core/motion.gd").reduce = true
-		elif a.begins_with("lang="):
-			TranslationServer.set_locale(a.substr(5))
 		else:
 			_out = a
 	# A throwaway wallet, so a run never spends or earns this Mac's gold.

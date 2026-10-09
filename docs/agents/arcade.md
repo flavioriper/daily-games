@@ -2870,3 +2870,35 @@ supernovas (`Sim.kept()`), not a best.
       `ERROR: Invalid polygon data, triangulation failed` from
       `ui/menu/menu_header.gd`'s `_draw_sprig` as the menu came back, in
       one harness run of five (the menu's, not the game's).
+
+**Beeline is the eighth** (2026-10-09, spec
+`2026-10-09-arcade-beeline-design.md`, built unattended): the tap-to-fly
+game, which the spec names once to forbid; **it is called Beeline and
+nothing else**. A bee flown by taps through the gaps in a garden's hedges,
+one point a gap, ribbons at 10, 20, 30 and 40.
+
+- **The game is pure data** (`arcade/beeline_sim.gd`, field units, fixed
+  1/120 s): a beat sets her rise (never adds), constant pull, one speed for
+  the whole run, hedges 150 apart. `tests/_probe_beeline.gd -- [runs]
+  [react ms] [error] [gates]` flies it with a bot that plans nothing; **with
+  no reaction time and no error it must never fall**, which is what
+  `MAX_STEP` (80 between one gap's middle and the next) is for. Run it after
+  touching the sim.
+- **One Control draws it** (`arcade/beeline_screen.gd`'s `_draw_field`): a
+  still sky; clouds, hills and lawn as tiles slid by the transform
+  (`Art.*_TILE`); a hedge is one of two cached columns stood on its gap's
+  edge, the field's clip taking the rest; the bee is a body and a wings
+  mesh squashed by the transform; shadow, dewdrop, pollen and leaves are
+  one live mesh. 56 draw calls waiting, 62 in play, 105 with the end card,
+  286 on the tab (810x1440, both drivers).
+- **A tile's bands each run past its ends, and each further than the band
+  under it** (`Art.ground`): `Face.Builder` feathers a fan's edge, and
+  tiles laid edge to edge showed a pale seam every 240 units.
+- **The tab has eight cards**: they pair up four rows of two on a phone
+  (`_fit`), as seven did.
+- **The tutorial's garden looks closer** (`Garden._tall_units`, 250 of the
+  456 units, following her slowly through `_cam`): at the page's size the
+  whole sky made her 17 pixels long. The screen itself keeps `_cam` at 0.
+- **Not in `tests/_probe_arcade_buzz.gd`**: it has no Beeline bot.
+- Owed: a phone, the sounds heard, pt and es read, the spec's eight calls.
+

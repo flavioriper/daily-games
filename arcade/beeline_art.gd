@@ -134,45 +134,47 @@ static func _bee(b: Face.Builder, look: int, s: float) -> void:
 			b.stroke(Face.Builder.arc_points(Vector2(0.7, 0.1) * s, 0.15 * s, PI * 0.15, PI * 0.75), 0.07 * s, INK)
 
 ## One half of a gate: `down` hangs from the sky's top, else it stands on
-## the ground. The trimmed end is at the origin, across the middle.
+## the ground. Its clipped, rounded end is at the origin, across the middle:
+## a wall of leaf with scalloped sides, never a smooth column.
 static func hedge(u: float, down: bool) -> ArrayMesh:
 	return _made("hedge%s/%.2f" % ["d" if down else "u", u], func(b: Face.Builder) -> void:
 		var dir := -1.0 if down else 1.0
 		var hw := Sim.GATE_W * 0.5 * u
 		var far := HEDGE_LEN * u * dir
+		var dome := 13.0 * u
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 7 if down else 11
-		# the column: an inked edge, the leaf, a shaded side
-		_box(b, -hw, 6.0 * u * dir, hw, far, HEDGE_INK)
-		_box(b, -hw + 2.0 * u, 6.0 * u * dir, hw - 2.0 * u, far, HEDGE_DEEP)
-		_box(b, -hw + 2.0 * u, 6.0 * u * dir, hw - 11.0 * u, far, HEDGE)
-		_box(b, -hw + 5.0 * u, 6.0 * u * dir, -hw + 12.0 * u, far, Color(HEDGE_HI, 0.55))
-		# clipped leaf: clumps down its length, lighter toward the light
-		var n := int(HEDGE_LEN / 9.0)
+		var n := int(HEDGE_LEN / 8.0)
+		# the ink under everything: the wall, a row of leaf bumps down each
+		# side, and the rounded end
+		_box(b, -hw + 4.0 * u, dome * dir, hw - 4.0 * u, far, HEDGE_INK)
 		for i in n:
-			var y := (18.0 + i * 9.0 + rng.randf_range(-2.0, 2.0)) * u * dir
-			var x := rng.randf_range(-hw + 8.0 * u, hw - 8.0 * u)
-			var lit := x < 0.0
-			b.ellipse(Vector2(x, y), rng.randf_range(5.0, 8.0) * u, rng.randf_range(3.0, 4.5) * u,
-				Color(HEDGE_HI if lit else HEDGE_INK, 0.5 if lit else 0.3))
+			var y := (dome / u + 2.0 + i * 8.0) * u * dir
+			for side: float in [-1.0, 1.0]:
+				b.disc(Vector2(side * (hw - 4.5 * u), y), 6.4 * u, HEDGE_INK)
+		b.ellipse(Vector2(0, dome * dir), hw + 1.5 * u, dome, HEDGE_INK)
+		# the leaf over it, lit from the left
+		_box(b, -hw + 4.0 * u, dome * dir, hw - 4.0 * u, far, HEDGE)
+		for i in n:
+			var y := (dome / u + 2.0 + i * 8.0) * u * dir
+			b.disc(Vector2(-(hw - 4.5 * u), y), 4.6 * u, HEDGE_HI if i % 3 == 0 else HEDGE)
+			b.disc(Vector2(hw - 4.5 * u, y), 4.6 * u, HEDGE_DEEP)
+		b.ellipse(Vector2(0, dome * dir), hw - 0.5 * u, dome - 2.0 * u, HEDGE)
+		b.ellipse(Vector2(-hw * 0.3, (dome - 4.5 * u) * dir), hw * 0.42, 3.2 * u, Color(HEDGE_HI, 0.8))
+		# clumps of leaf down its length, lighter toward the light
+		for i in int(HEDGE_LEN / 6.0):
+			var y := (10.0 + i * 6.0 + rng.randf_range(-2.0, 2.0)) * u * dir
+			var x := rng.randf_range(-hw + 9.0 * u, hw - 9.0 * u)
+			var lit := x < rng.randf_range(-0.3, 0.5) * hw
+			b.ellipse(Vector2(x, y), rng.randf_range(4.0, 7.0) * u, rng.randf_range(2.6, 4.0) * u,
+				Color(HEDGE_HI if lit else HEDGE_DEEP, 0.55 if lit else 0.6))
 		# blossom here and there
-		for i in int(HEDGE_LEN / 46.0):
-			var c := Vector2(rng.randf_range(-hw + 9.0 * u, hw - 9.0 * u), (30.0 + i * 46.0 + rng.randf_range(-10.0, 10.0)) * u * dir)
+		for i in int(HEDGE_LEN / 40.0):
+			var c := Vector2(rng.randf_range(-hw + 10.0 * u, hw - 10.0 * u), (16.0 + i * 40.0 + rng.randf_range(-8.0, 8.0)) * u * dir)
 			var col: Color = BLOSSOMS[rng.randi() % BLOSSOMS.size()]
 			for p in 5:
 				b.disc(c + Vector2.from_angle(TAU * p / 5.0 + i) * 2.4 * u, 2.1 * u, col)
-			b.disc(c, 1.5 * u, Color("f2c14e") if col != BLOSSOMS[1] else BLOSSOMS[0])
-		# the trimmed end, a rounded cap a little wider than the column
-		var cap := 20.0 * u
-		var cw := hw + 3.0 * u
-		var y0 := minf(0.0, cap * dir)
-		b.polygon(Face.Builder.round_rect(Vector2(-cw, y0), Vector2(cw * 2.0, cap), 8.0 * u), HEDGE_INK)
-		b.polygon(Face.Builder.round_rect(Vector2(-cw + 2.0 * u, y0 + 2.0 * u), Vector2(cw * 2.0 - 4.0 * u, cap - 4.0 * u), 6.5 * u), HEDGE_DEEP)
-		b.polygon(Face.Builder.round_rect(Vector2(-cw + 2.0 * u, y0 + 2.0 * u), Vector2(cw * 2.0 - 12.0 * u, cap - 4.0 * u), 6.5 * u), HEDGE)
-		b.ellipse(Vector2(-cw * 0.4, y0 + 6.5 * u), cw * 0.38, 2.6 * u, Color(HEDGE_HI, 0.8))
-		for i in 4:
-			var c := Vector2((-0.6 + 0.4 * i) * cw + rng.randf_range(-2.0, 2.0) * u, y0 + rng.randf_range(9.0, 14.0) * u)
-			b.ellipse(c, 4.5 * u, 2.4 * u, Color(HEDGE_HI if i < 2 else HEDGE_INK, 0.35)))
+			b.disc(c, 1.5 * u, Color("f2c14e") if col != BLOSSOMS[1] else BLOSSOMS[0]))
 
 static func _box(b: Face.Builder, x0: float, y0: float, x1: float, y1: float, col: Color) -> void:
 	b.fan(PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)]), col)
@@ -227,13 +229,14 @@ static func hills(u: float) -> ArrayMesh:
 		var w := HILL_TILE * u
 		# two rows of rounded hills; each row ends where it began, so tiles meet
 		for row: Array in [[HILL_FAR, 62.0, 3.0, 0.0], [HILL_NEAR, 38.0, 5.0, 1.3]]:
-			var pts := PackedVector2Array([Vector2(0, 0)])
+			var pts := PackedVector2Array([Vector2(-u, 0)])
 			var steps := 48
 			for i in steps + 1:
 				var k := float(i) / steps
 				var tall: float = float(row[1]) * (0.62 + 0.38 * sin(k * TAU * float(row[2]) + float(row[3])) * sin(k * TAU + float(row[3])))
-				pts.append(Vector2(k * w, -tall * u))
-			pts.append(Vector2(w, 0))
+				# a unit past both ends, under the next tile's feathered edge
+				pts.append(Vector2(k * w + (-u if i == 0 else (u if i == steps else 0.0)), -tall * u))
+			pts.append(Vector2(w + u, 0))
 			b.polygon(pts, row[0])
 		# a few round trees along the nearer row
 		for i in 5:
@@ -248,11 +251,15 @@ static func ground(u: float) -> ArrayMesh:
 	return _made("ground/%.2f" % u, func(b: Face.Builder) -> void:
 		var w := GROUND_TILE * u
 		var tall := GROUND * u
-		_box(b, 0.0, 0.0, w, tall, SOIL)
-		_box(b, 0.0, 22.0 * u, w, tall, SOIL_DEEP)
-		_box(b, 0.0, 0.0, w, 16.0 * u, LAWN_DEEP)
-		_box(b, 0.0, 0.0, w, 12.0 * u, LAWN)
-		_box(b, 0.0, 0.0, w, 4.0 * u, LAWN_HI)
+		# each band runs a unit past both ends, under its neighbours' feathered
+		# edges, or the tiles show their seams
+		# (and each a little further than the one under it, so a band's soft
+		# end never shows the band below through it)
+		_box(b, -u, 0.0, w + u, tall, SOIL)
+		_box(b, -2.0 * u, 22.0 * u, w + 2.0 * u, tall, SOIL_DEEP)
+		_box(b, -2.0 * u, 0.0, w + 2.0 * u, 16.0 * u, LAWN_DEEP)
+		_box(b, -3.0 * u, 0.0, w + 3.0 * u, 12.0 * u, LAWN)
+		_box(b, -4.0 * u, 0.0, w + 4.0 * u, 4.0 * u, LAWN_HI)
 		# the turf's scalloped foot, and mown stripes leaning the way she flies
 		var n := 20
 		for i in n:

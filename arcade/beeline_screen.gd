@@ -105,6 +105,9 @@ var _knock := -1
 ## Pixels a field unit, and her place across the garden, in pixels.
 var _u := 3.0
 var _bee_x := 100.0
+## How far down the garden the field looks, in pixels: nothing here, where
+## the whole sky fits; a tutorial page looks closer and follows her.
+var _cam := 0.0
 var _sky: ArrayMesh
 var _live: ArrayMesh
 ## The screen's own clock, for motion the sim does not own; it stops with
@@ -116,8 +119,8 @@ var _lean := 0.0
 var _flap_at := -10.0
 var _pass_at := -10.0
 ## Bits in the garden's own space: {kind, pos (field units, x along the
-## garden), t, seed, col}. Pollen off a beat, leaves off a hedge, a ring
-## where a gap was passed, a dewdrop's burst.
+## garden), t, seed, col}. Pollen off a beat, leaves off a hedge or the
+## lawn, a dewdrop's burst.
 var _bits: Array = []
 var _shake := 0.0
 var _shake_off := Vector2.ZERO
@@ -287,9 +290,9 @@ func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_u = s.y / (Sim.H + Art.GROUND)
+	_u = s.y / _tall_units()
 	_bee_x = s.x * BEE_AT
-	_sky = Art.sky(s)
+	_sky = Art.sky(Vector2(s.x, (Sim.H + Art.GROUND) * _u))
 	if _banner != null:
 		_place_banner()
 	field.queue_redraw()
@@ -298,14 +301,19 @@ func _place_banner() -> void:
 	var box: Control = _banner.get_meta("box")
 	box.reset_size()
 	box.size.x = field.size.x
-	box.position = Vector2(0, field.size.y * 0.24)
+	# under her, clear of where she hovers
+	box.position = Vector2(0, field.size.y * 0.5)
 	box.pivot_offset = box.size * 0.5
+
+## How much of the garden's height the field shows, in units: all of it.
+func _tall_units() -> float:
+	return Sim.H + Art.GROUND
 
 ## A point of the garden (x along it, y down from the sky's top, in field
 ## units) in the field's pixels.
 func px(p: Vector2) -> Vector2:
 	var along: float = sim.x if sim != null else 0.0
-	return Vector2(_bee_x + (p.x - along) * _u, p.y * _u)
+	return Vector2(_bee_x + (p.x - along) * _u, p.y * _u - _cam)
 
 # --- the game ---
 
@@ -517,7 +525,6 @@ func _play_events() -> void:
 				_pass_at = _clock
 				_fx.cue("pass", 1.0 + 0.012 * mini(int(ev.n) % 10, 9))
 				_feel(Haptics.TICK)
-				_bit("ring", Vector2(sim.x - Sim.R, float(ev.cy)), Color("fffaf0"), 0.4)
 			"ribbon":
 				_on_ribbon(int(ev.tier))
 			"dew":
@@ -525,7 +532,7 @@ func _play_events() -> void:
 				_feel(Haptics.BUMP)
 				_bit("burst", at, Art.DEW, 0.5)
 				_shake = maxf(_shake, 0.3)
-				_rw.sticker(tr("BL_DEW_POP"), _in_rw(at + Vector2(0, -34.0)), 54, 1.1, false, Color("8fd0e6"), false, "dew", 30.0)
+				_rw.sticker(tr("BL_DEW_POP"), _in_rw(at + Vector2(0, -56.0)), 54, 1.1, false, Color("8fd0e6"), false, "dew", 30.0)
 				_rw.spray(_in_rw(at), Art.DEW, 10, 520.0, "spark", 1.0)
 			"bump":
 				_fx.cue("bump")
@@ -603,7 +610,8 @@ func _draw_field() -> void:
 	var s := field.size
 	var along: float = sim.x if sim != null else 0.0
 	var ground_y := Sim.H * _u
-	field.draw_set_transform(_shake_off)
+	var off := _shake_off - Vector2(0, _cam)
+	field.draw_set_transform(off)
 	field.draw_mesh(_sky, null)
 	# the clouds drift by themselves as well, so a garden at rest is not still
 	var drift := 0.0 if Motion.reduce else _clock * 3.0
@@ -616,9 +624,9 @@ func _draw_field() -> void:
 		_draw_bee()
 		_draw_live()
 		_draw_score()
+	field.draw_set_transform(Vector2.ZERO)
 	if _flash > 0.0:
 		field.draw_rect(Rect2(Vector2.ZERO, s), Color(1, 1, 1, 0.5 * _flash))
-	field.draw_set_transform(Vector2.ZERO)
 
 ## A strip's tiles laid across the garden, slid `along` units to the left.
 func _tiles(mesh: ArrayMesh, tile: float, along: float, y: float) -> void:
@@ -633,7 +641,7 @@ func _draw_gates() -> void:
 	var down := Art.hedge(_u, true)
 	var reach := (Sim.GATE_W + 8.0) * _u
 	for g: Dictionary in sim.gates:
-		var x := px(Vector2(float(g.x) + Sim.GATE_W * 0.5, 0.0)).x
+		var x := _bee_x + (float(g.x) + Sim.GATE_W * 0.5 - float(sim.x)) * _u
 		if x < -reach or x > field.size.x + reach:
 			continue
 		var top: float = (float(g.cy) - float(g.gap) * 0.5) * _u
@@ -675,8 +683,8 @@ func _draw_bee() -> void:
 	field.draw_mesh(Art.wings(_u), null, xf * Transform2D(0.0, Vector2(1.0, beat), 0.0, Art.WING_AT * _u), tint)
 	field.draw_mesh(Art.bee(look, _u), null, xf, tint)
 
-## The dewdrop round her, the pollen behind her, the leaves off a hedge and
-## the ring where a gap was passed: one mesh.
+## Her shadow, the dewdrop round her, the pollen behind her, the leaves off
+## a hedge and a dewdrop's burst: one mesh.
 func _draw_live() -> void:
 	var b := Face.Builder.new()
 	var at := _bee_at()
@@ -688,7 +696,7 @@ func _draw_live() -> void:
 		Art.dew_into(b, at, Art.BEE * 1.5 * _u * wob)
 	for bit: Dictionary in _bits:
 		var k: float = bit.t / bit.life
-		var p := px(bit.pos)
+		var p := px(bit.pos) + Vector2(0, _cam)
 		var sd: float = bit.seed
 		match String(bit.kind):
 			"pollen":
@@ -701,9 +709,6 @@ func _draw_live() -> void:
 				for v: Vector2 in Face.Builder.ring(Vector2.ZERO, 3.6 * _u, 1.8 * _u):
 					pts.append(q + v.rotated(sd + k * 9.0))
 				b.fan(pts, Color(bit.col, 1.0 - k * k))
-			"ring":
-				var r := (8.0 + 22.0 * k) * _u
-				b.stroke(Face.Builder.ring(p, r, r), maxf(1.5, 2.4 * _u * (1.0 - k)), Color(bit.col, 0.8 * (1.0 - k)), true)
 			"burst":
 				Art.dew_into(b, p, Art.BEE * (1.5 + 1.6 * k) * _u, 1.0 - k)
 	_live = b.mesh()
@@ -716,18 +721,18 @@ func _draw_score() -> void:
 	if sim.phase == Sim.Phase.READY and sim.score == 0:
 		return
 	var font := CozyTheme.display(700)
-	var fs := int(46.0 * _u)
+	var fs := int(minf(46.0 * _u, field.size.y * 0.16))
 	var text := str(sim.score)
 	var since := _clock - _pass_at
 	var sc := 1.0 if Motion.reduce or since > 0.3 else 1.0 + 0.22 * sin(since / 0.3 * PI) * (1.0 - since / 0.3)
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var mid := Vector2(field.size.x * 0.5, 58.0 * _u)
+	var mid := Vector2(field.size.x * 0.5, minf(58.0 * _u, field.size.y * 0.2))
 	field.draw_set_transform(mid + _shake_off, 0.0, Vector2(sc, sc))
 	var o := Vector2(-w * 0.5, fs * 0.36)
 	field.draw_string_outline(font, o + Vector2(0, 0.06 * fs), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(0.2 * fs), Color(Art.INK, 0.3))
 	field.draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(0.2 * fs), Art.INK)
 	field.draw_string(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))
-	field.draw_set_transform(_shake_off)
+	field.draw_set_transform(_shake_off - Vector2(0, _cam))
 
 # --- the rewards ---
 

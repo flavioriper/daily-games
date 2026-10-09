@@ -623,14 +623,14 @@ class BeelineBanner extends Control:
 		for g: Array in [[mid - 150.0 * u, 26.0, 96.0], [mid + 110.0 * u, 50.0, 118.0]]:
 			draw_mesh(BeeArt.hedge(u, true), null, Transform2D(0.0, Vector2(g[0], float(g[1]) * u)))
 			draw_mesh(BeeArt.hedge(u, false), null, Transform2D(0.0, Vector2(g[0], float(g[2]) * u)))
-		draw_mesh(BeeArt.ribbon(1, 8.0 * u), null, Transform2D(0.0, Vector2(mid + 110.0 * u, 129.0 * u)))
+		draw_mesh(BeeArt.ribbon(1, 8.0 * u), null, Transform2D(0.0, Vector2(mid + 110.0 * u, 132.0 * u)))
 		var at := Vector2(mid - 20.0 * u, 74.0 * u)
 		var b := Face.Builder.new()
 		for k in 5:
-			b.disc(at + Vector2(-22.0 - 13.0 * k, -3.0 - 0.9 * k * k) * u, (2.4 - 0.3 * k) * u, Color("fbe08a", 0.9 - 0.15 * k))
+			b.disc(at + Vector2(-30.0 - 13.0 * k, -3.0 - 0.9 * k * k) * u, (2.4 - 0.3 * k) * u, Color("fbe08a", 0.9 - 0.15 * k))
 		var trail := b.mesh()
 		_keep.append(trail)
 		draw_mesh(trail, null)
 		var xf := Transform2D(0.2, at)
-		draw_mesh(BeeArt.wings(u * 1.5), null, xf * Transform2D(0.0, BeeArt.WING_AT * u * 1.5))
-		draw_mesh(BeeArt.bee(BeeArt.Look.FLY, u * 1.5), null, xf)
+		draw_mesh(BeeArt.wings(u * 2.0), null, xf * Transform2D(0.0, BeeArt.WING_AT * u * 2.0))
+		draw_mesh(BeeArt.bee(BeeArt.Look.FLY, u * 2.0), null, xf)

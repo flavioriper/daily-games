@@ -87,6 +87,10 @@ class Garden extends "res://arcade/beeline_screen.gd":
 	## The garden is no wider than this for its height, so the bee is not
 	## lost in a long strip of it.
 	const WIDE := 1.25
+	## A page looks closer: this much of the garden's height, in units, and
+	## the look follows her this fast.
+	const TALL := 250.0
+	const FOLLOW := 2.2
 
 	var _frame: PanelContainer
 
@@ -137,6 +141,17 @@ class Garden extends "res://arcade/beeline_screen.gd":
 		field.position = Vector2(FRAME, FRAME)
 		field.size = size - Vector2(FRAME, FRAME) * 2.0
 
+	func _tall_units() -> float:
+		return TALL
+
+	## The look drifts after her, so a beat still reads as a lift.
+	func _animate(delta: float) -> void:
+		super(delta)
+		_cam = lerpf(_cam, _cam_for(), minf(1.0, delta * FOLLOW))
+
+	func _cam_for() -> float:
+		return clampf(sim.y * _u - field.size.y * 0.5, 0.0, (Sim.H + Art.GROUND) * _u - field.size.y)
+
 	func _pause(_on: bool) -> void:
 		pass
 
@@ -164,6 +179,7 @@ class Garden extends "res://arcade/beeline_screen.gd":
 		_shown_score = sim.score
 		_milestone = 0
 		_rw.clear()
+		_cam = _cam_for()
 
 	## The round run to second `at` and held there, for a page that stands
 	## still.
