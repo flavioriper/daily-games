@@ -102,7 +102,14 @@ const SAVE_GAP := 5.0
 ## `fade`, and `born` as the small star comes up after an end or a Start
 ## over. A grain forming, two bodies meeting and gas eaten are silent:
 ## several a second.
+## The set was heard on 2026-10-09 and was "too harsh": the files are
+## darker and 4 to 6 dB down, and what is added here is less (`light` at -6
+## up LIGHT_RUN semitones, `eat` at -4 at most).
 const EAT_GAP := 0.12
+## The run of `light` clicks climbs this many semitones and stays there: a
+## whole octave up, the tick was the sharpest thing in the game (the user,
+## 2026-10-09: "too harsh").
+const LIGHT_RUN := 5
 const TEAR_GAP := 0.3
 ## The supernova's take is a breath and then the thump: it is started this
 ## long before the core has fallen in, so the thump is the layers leaving.
@@ -1280,7 +1287,7 @@ func _hear_eaten(m: float) -> void:
 		return
 	_ate_at = now
 	var r := Sim.body_r(m)
-	_quiet.cue("eat", clampf(1.35 - 0.045 * r, 0.7, 1.3) * randf_range(0.97, 1.03), clampf(-9.0 + 0.7 * r, -8.0, 0.0))
+	_quiet.cue("eat", clampf(1.25 - 0.045 * r, 0.7, 1.15) * randf_range(0.97, 1.03), clampf(-11.0 + 0.6 * r, -10.0, -4.0))
 
 ## A line over the sky's head, for a few seconds.
 func _say(key: String) -> void:
@@ -1352,7 +1359,7 @@ func _on_motes_landed(_n: int, note: int) -> void:
 	if (_plates.light.panel as Control).scale.x <= 1.01:
 		_kick("light")
 	if note >= 0:
-		_quiet.cue("light", pow(2.0, mini(note, 12) / 12.0), -3.0)
+		_quiet.cue("light", pow(2.0, mini(note, LIGHT_RUN) / 12.0), -6.0)
 
 ## A plate swells as something lands on it. Each kick ends the last, or
 ## landings a moment apart would leave it stuck big (ui/menu/gold_pill.gd).

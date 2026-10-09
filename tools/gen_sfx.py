@@ -90,6 +90,16 @@ HEARTH = ("close-mic foley recorded in a quiet warm room at night, real soft "
           "sharp, no synth, no electronic tones, no beeps, no science fiction, "
           "no whoosh, no music, no voice")
 
+# Nightlight's notes (2026-10-09). The set was heard and was "too harsh":
+# ARCADE's music box and hand bells, asked for bright, with a shimmer and a
+# sparkle on top, peaking at -4 to -8. Its notes are a kalimba and a tongue
+# drum played low and muffled now, and no prompt under this asks for a
+# bell, a sparkle or anything bright.
+HEARTH_TUNE = ("a real kalimba and a wooden tongue drum played very softly "
+               "with felt, close in a warm quiet room at night, low, mellow, "
+               "muffled, round, hushed, no bells, no chimes, no sparkle, no "
+               "synth, no beeps, no music bed, no voice")
+
 # Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
 # kalimba in place of the house marimba, which turns a lantern into a woodblock.
 DUSK = ("cozy casual mobile puzzle game sound, soft warm glass chimes, music "
@@ -1808,33 +1818,37 @@ SETS = {
         "buy":  ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
         "no":   ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, GROVE),
     },
-    # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Three cues go on
-    # for as long as the game does and are clicks, cut short, the quietest
-    # of the set and played through an Fx2D that knocks for nothing: `pour`
-    # (a puff of gas, up to five a second while the button is held), `light`
-    # (a mote of light landing on its plate, a short run up) and `eat` (a
-    # solid falling into the star). Everything else happens now and then and
-    # may be a note: a body torn, a stage of the chain lighting (five a life
-    # at most), the star going dim and waking, the two powers offered, one
-    # taken, a tile bought or refused, and the two ends with the small star
-    # that comes after. The supernova is asked for with bells on top of its
-    # thump: a low whump alone is not there on a phone's speaker. A prompt
-    # and its style together are 450 characters at most.
+    # Nightlight (arcade/nightlight_screen.gd, 2026-10-06; made quieter and
+    # darker on 2026-10-09, when the user had heard it: "too harsh, I want
+    # something way more cozier, subtle"). Three cues go on for as long as
+    # the game does and are clicks, cut short, the quietest of the set:
+    # `pour` (the press that braked something, five a second at most),
+    # `light` (a mote of light landing on its plate, a short run up) and
+    # `eat` (a solid falling into the star). Everything else happens now and
+    # then and may be a note: a body torn, a stage of the chain lighting
+    # (five a life at most), the star going dim and waking, the two powers
+    # offered, one taken, a tile bought or refused, and the two ends with
+    # the small star that comes after. Every cue is rolled off (`warm`) and
+    # eased in (`ease`), and no note peaks above -11 but the supernova,
+    # whose thump is followed by low notes because a whump alone is not
+    # there on a phone's speaker. A prompt and its style together are 450
+    # characters at most.
     "nightlight": {
-        "pour":   ("one tiny soft dry 'pf' of a pinch of flour puffed off a fingertip, a very small breath of air, very short and quiet", 0.5, -22, HEARTH, "warm:6000", "cut:0.07", "tight"),
-        "light":  ("one tiny soft dry tick of a fingernail on a small paper lantern, very short and quiet", 0.5, -20, HEARTH, "warm:6500", "cut:0.06", "tight"),
-        "eat":    ("one small round pebble dropped into a bowl of fine dry sand, a single soft 'pft' with a tiny woody tock in it, very short", 0.5, -15, HEARTH, "warm:6000", "cut:0.16", "tight"),
-        "tear":   ("a small dry biscuit crumbling apart between two fingers, a short soft crumble of a few pieces, gentle", 0.6, -13, HEARTH, "warm:6500"),
-        "ignite": ("one warm round note on a wooden tongue drum with a single kalimba note blooming just after it and a soft hand bell shimmer on top, something lighting deep inside and glowing, about one second", 1.3, -7, ARCADE),
-        "dim":    ("two slow soft notes stepping down on a wooden tongue drum, a lamp turned low, gentle and kind, never sad", 1.0, -10, ARCADE),
-        "wake":   ("two soft rising notes on a real kalimba, a small lamp coming back on, warm, short", 0.7, -9, ARCADE),
-        "pick":   ("a gentle bright three-note rising phrase on a real music box, a choice being offered, short", 0.9, -8, ARCADE),
-        "perk":   ("one warm rising kalimba pluck with a small hand bell sparkle on top, a gift taken, short", 0.7, -7, ARCADE),
-        "buy":    ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
-        "no":     ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, ARCADE),
-        "nova":   ("a soft breath drawn in, one big round soft 'whoomp' of a heavy wool blanket shaken out, then many tiny hand bells and music box notes sprinkling down one after another for three seconds, a slow glittering shower fading away", 5.0, -4, ARCADE),
-        "fade":   ("one long slow soft exhale of air through wool, with four slow gentle kalimba notes stepping down far apart over it, something letting go, calm and kind, never sad", 5.0, -8, ARCADE),
-        "born":   ("a small warm rising three-note phrase on a real music box ending on one soft hand bell, a new little light beginning, hopeful, short", 1.4, -7, ARCADE),
+        "pour":   ("one tiny soft dry 'pf' of a pinch of flour puffed off a fingertip, a very small breath of air, very short and quiet", 0.5, -26, HEARTH, "warm:4200", "cut:0.07", "tight", "ease:0.012"),
+        "light":  ("one tiny soft dry tick of a fingernail on a small paper lantern, very short and quiet", 0.5, -23, HEARTH, "warm:4500", "cut:0.06", "tight", "ease:0.01"),
+        "eat":    ("one small round pebble dropped into a bowl of fine dry sand, a single soft 'pft' with a tiny woody tock in it, very short", 0.5, -18, HEARTH, "warm:4200", "cut:0.16", "tight", "ease:0.012"),
+        "tear":   ("a pinch of fine dry sand and a few soft crumbs let fall onto a wool blanket, one short soft hush, low and muffled, gentle", 0.6, -17, HEARTH, "warm:4200", "ease:0.02"),
+        "ignite": ("one low warm round note on the tongue drum, then one soft kalimba note blooming under it, something glowing deep inside, slow, about one second", 1.3, -11, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "dim":    ("two slow soft low notes stepping down on the tongue drum, a lamp turned low, gentle and kind, never sad", 1.0, -14, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "wake":   ("two soft low rising notes on the kalimba, a small lamp coming back on, warm, short", 0.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "pick":   ("three slow soft rising notes on the kalimba, a quiet choice being offered, short", 0.9, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "perk":   ("one warm low kalimba pluck with one soft tongue drum note under it, a small gift taken, short", 0.7, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "buy":    ("two soft low rising notes on the kalimba, warm and woody, something made a little better, short", 0.6, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        # the first take's knock, kept: one asked for on felt came back with nothing above 400 Hz
+        "no":     ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -16, ARCADE, "warm:4500", "ease:0.012"),
+        "nova":   ("a soft breath drawn in, one big round soft low 'whoomp' of a heavy wool blanket shaken out, then a few slow soft low kalimba and tongue drum notes falling far apart for three seconds, fading away", 5.0, -8, HEARTH_TUNE, "warm:5500", "ease:0.03"),
+        "fade":   ("one long slow soft exhale of air through wool, with four slow gentle low kalimba notes stepping down far apart over it, something letting go, calm and kind, never sad", 5.0, -12, HEARTH_TUNE, "warm:5000", "ease:0.04"),
+        "born":   ("three slow soft rising notes on the kalimba ending on one warm tongue drum note, a new little light beginning, hopeful, short", 1.4, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
     },
 }
 
@@ -1886,7 +1900,7 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         sys.exit(f"ElevenLabs answered {e.code}: {detail}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0, tight: bool = False) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0, tight: bool = False, ease: float = 0.0) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -1905,7 +1919,11 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     # Warm (2026-09-29, Untangle): a take whose hiss or scratch sits above the
     # cozy family is rolled off -- two gentle low-pass poles and a high shelf
     # -- and eased in so its first transient is a touch rather than a click.
-    soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d=0.004" if warm else ""
+    # Ease (2026-10-09, Nightlight): 4 ms is still a tick on a take that
+    # starts at full level; a cue that should arrive rather than land names
+    # a longer one.
+    soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d={ease or 0.004}" if warm else \
+        f",afade=t=in:d={ease}" if ease else ""
     if cut:
         soft += f",atrim=0:{cut},afade=t=out:st={cut * 0.6:.3f}:d={cut * 0.4:.3f}"
     with tempfile.TemporaryDirectory() as tmp:
@@ -1956,13 +1974,14 @@ def main() -> None:
         loop = "loop" in rest[1:]
         warm = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("warm:")), 0)
         cut = next((float(f[4:]) for f in rest[1:] if isinstance(f, str) and f.startswith("cut:")), 0.0)
+        ease = next((float(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("ease:")), 0.0)
         raw = raw_dir / f"{cue}.mp3"
         if "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
         if "fall" in rest[1:]:
             raw = fall(raw)
-        to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:])
+        to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:], ease)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

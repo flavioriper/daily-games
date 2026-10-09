@@ -25,7 +25,12 @@ for now"). The pass itself: `docs/art/sound-direction.md`, its last section.
 
 **Nightlight has a set since 2026-10-06** (`HEARTH` foley and `ARCADE`
 notes, fourteen cues; `docs/agents/arcade.md`). A space game gets no pad
-and no laser. **A harness is heard on this Mac**: run one that plays a
+and no laser. **Heard on 2026-10-09 and "too harsh"**: its notes are
+`HEARTH_TUNE` now (kalimba and tongue drum, low and muffled, no bells, no
+"bright", no "sparkle"), every cue has `warm` and the new `ease:<seconds>`
+fade-in, and no note peaks above -11 (`nova` -8). When a set is asked to be
+cozier, that is the order: what the game adds at play, then level and
+roll-off, then the prompt's words. **A harness is heard on this Mac**: run one that plays a
 game with sounds under `--audio-driver Dummy`.
 
 **What repeats a lot is a click (user, 2026-10-05).** "It's important to

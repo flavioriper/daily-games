@@ -1605,6 +1605,39 @@ supernovas (`Sim.kept()`), not a best.
     played; `buy` and `ignite` are the calls that were there and were not
     reached by that run. **Nobody has heard any of it**: the levels and
     every take are mine, and the user names the ones to redo.
+  - **Heard, and made quieter and darker (2026-10-09).** The user: "right
+    now sounds are too harsh, i want something way more cozier, subtle".
+    What was harsh, by reading the set: the notes were `ARCADE`'s music box
+    and hand bells asked for "bright", with a "shimmer" and a "sparkle",
+    peaking at -4 to -9 with no roll-off; `light` was played at -3 and
+    climbed a whole octave; `eat` was lifted to 0 dB for a big body.
+    - **The notes are `HEARTH_TUNE` now**: a kalimba and a tongue drum
+      played low and muffled, no bell, chime or sparkle in any prompt.
+      `ignite`, `dim`, `wake`, `pick`, `perk`, `buy`, `nova`, `fade` and
+      `born` are new takes under it, `tear` is a new take too (sand and
+      crumbs on wool, where a biscuit crumbled), and `pour`, `light`, `eat`
+      and `no` are the first takes processed again. The 2026-10-06 raws are
+      in `build/sfx_raw/nightlight_2026-10-06` (not in git; the old files
+      are in history before this commit).
+    - **Every cue is rolled off and eased in**: `warm:4200` to `5500` and a
+      new `ease:<seconds>` flag of `tools/gen_sfx.py` (the fade-in `warm`
+      gives is 4 ms, still a tick), 10 to 40 ms here. Peaks: `pour` -26,
+      `light` -23, `eat` -18, `tear` -17, `no` -16, the notes -11 to -14,
+      `nova` -8 (it was -4).
+    - **At play**: `light` climbs `LIGHT_RUN` (5) semitones and stays, at
+      -6; `eat` is between -10 and -4 and pitched 0.7 to 1.15.
+    - **Measured, not heard**: energy above 3.5 kHz fell 5 to 15 dB on every
+      cue (`nova` by 19). **The price is a phone's speaker**: above 400 Hz
+      the notes keep 2 to 11 dB less than their whole (`perk` loses 10.6,
+      `dim` and `fade` 9, `ignite` 8), and `nova`'s thump is followed by a
+      few low notes, not bells. A `no` asked for on felt had nothing above
+      400 Hz and was thrown away for the first take's knock. If a cue is
+      not there on the phone, lift its peak before its brightness.
+    - Checked by the shot harness under `--audio-driver Dummy` with a
+      throwaway print in `Fx2D.cue`: born, buy, dim, eat, fade, light,
+      nova, perk, pick, pour, tear and wake were asked for and loaded;
+      `ignite` and `no` are not reached by that run. The takes and levels
+      are mine again: the user names the ones to redo.
 - **An eighth time (2026-10-07): a universe around the star** (spec
   `2026-10-07-nightlight-universe-design.md`, built by five tasks on
   `feat/nightlight-universe`, commits `bbf3a05d..63068a4d`). The user,
