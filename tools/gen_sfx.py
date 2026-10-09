@@ -317,6 +317,31 @@ JETTY_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
               "natural, soft, rounded, gentle, cozy, no synth, no electronic "
               "tones, no beeps, no music bed, no voice")
 
+# The user, 2026-10-09, of the menu's page turn and Dominoes' tile: "a harsh
+# scratch sound extremely annoying. I want something really really soft ...
+# soft, cozy, low tics, swipes should sound more like a light breeze blowing,
+# or like those old mouse wheel spinning doing those low pitch clicks, or
+# maybe leaves being blown". What those takes shared, measured: a burst of
+# noise with most of its energy between 1 and 8 kHz (a centroid near 3 kHz),
+# which is what anything slid, brushed or clacked comes back as. So a thing
+# set down or picked up is HUSH -- one low soft tick, rolled off near 1.5 kHz
+# -- and a swipe is BREEZE, a breath of air with no hiss. No prompt under
+# either says slide, brush, scrape, sweep, rustle or clack. Two traps, both
+# fallen into the same day: asked for "deep" and "low-pitched" the takes came
+# back under 300 Hz, which a phone does not play, so each cue names
+# `body:<Hz>`, a high-pass, and what is levelled is the part between it and
+# `warm` (300 Hz to 1.6 kHz or so); and asked for "very soft, quiet" the API
+# returns near silence (a peak of -44 dB), which levelling turns into room
+# noise -- the prompt asks for a plain soft tick and the level makes it quiet.
+HUSH = ("close-mic recording in a quiet warm room, a soft muffled hollow "
+        "wooden tick, like one notch of an old mouse wheel turned slowly, "
+        "round, dull, gentle and cozy, low but not bassy, no thump, no "
+        "rumble, no scratch, no scrape, no hiss, no rustle, no ring, no "
+        "tone, no music, no voice")
+BREEZE = ("a light warm breeze outdoors on a calm day, soft low air moving "
+          "gently, hushed, round and cozy, no whistle, no hiss, no crackle, "
+          "no scratch, no music, no voice")
+
 PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
         "meadow, natural, soft, warm, gentle, cute, dry, no synth, no music, "
         "no human voice")
@@ -328,6 +353,11 @@ PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
 #                                       over 4 ms, for a take that came back scratchy
 #                                     | "cut:<s>": only the take's first <s> seconds, for a
 #                                       tick the API keeps doubling (Marigold's wall, pop)
+#                                     | "body:<Hz>": rolled off below <Hz>, so a low soft
+#                                       take is levelled by what a phone plays, not by
+#                                       its rumble
+#                                     | "steep": `warm`'s roll-off four poles steeper, for
+#                                       air and leaves, which are hiss all the way up
 #                                     | "tight": the lead-in trimmed at -36 dB, not -60, for
 #                                       a tap that must land on its frame (Peapod's hit came
 #                                       back 60 ms behind a breath of room noise)]])
@@ -335,12 +365,11 @@ SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
         "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
-        # The user, 2026-10-09: "too harsh". The linen brush was a rumble
-        # under 400 Hz and a hiss as loud at 6 kHz as at 3: rolled off, only
-        # the rumble was left, which a phone does not play. It is a thick
-        # card slid over felt now, a sound with its body in the middle,
-        # rolled off above 3.5 kHz and eased in over 30 ms.
-        "page":     ("one thick soft paper card sliding slowly sideways across a felt-covered wooden table, a short low soft muffled 'fwump', dull and round, no hiss, no scratch", 0.5, -15, COZY, "warm:3500", "ease:0.03"),
+        # The user, 2026-10-09, twice: the linen brush "too harsh", then the
+        # card slid over felt that replaced it "a harsh scratch". A page turn
+        # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and
+        # eased in over 60 ms: nothing in it is rubbed against anything.
+        "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
         # it is the quietest tune there is, low and eased in.
         "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
@@ -1878,12 +1907,12 @@ SETS = {
     # for a hand's end and the game's: `out`, `lost_hand`, `hint`, `win`,
     # `lose`, on HEARTH_TUNE's low muffled kalimba.
     "dominoes": {
-        "place":     ("one thick domino tile set down on a felt covered wooden table, a single soft low dull clack, muffled by the felt, no ring, no tone, very short", 0.5, -11, HEARTH, "warm:5000", "cut:0.2"),
-        "draw":      ("one thick domino tile slid a short way across felt, a single very soft short dry slide, no ring, no tone, quiet", 0.5, -16, HEARTH, "warm:5000", "cut:0.22", "ease:0.02"),
-        "lift":      ("one thick domino tile picked up off a felt table, a single very soft dull tick, no ring, no tone, quiet and very short", 0.5, -17, HEARTH, "warm:5000", "cut:0.12"),
+        "place":     ("one thick tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
+        "draw":      ("a single soft hollow wooden tick, one notch of an old mouse wheel, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.14", "body:320"),
+        "lift":      ("a single soft hollow wooden tick, a thick tile lifted off felt, very short", 0.5, -18, HUSH, "warm:1500", "cut:0.12", "body:320"),
         "refused":   ("a domino tile tapped once flat on a felt table, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
         "knock":     ("a knuckle knocking twice gently on a felt covered wooden table, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
-        "shuffle":   ("thick domino tiles stirred face down on a felt table by two hands, soft low dull clacks and slides slowing to a stop, muffled, no ring, short", 1.1, -14, HEARTH, "warm:5000", "ease:0.03"),
+        "shuffle":   ("six soft hollow wooden ticks one after another, slowing down, an old mouse wheel turned slowly", 1.1, -16, HUSH, "warm:1000", "ease:0.02", "body:320"),
         "out":       ("one domino tile set down on felt, then two soft slow rising notes on a low kalimba, pleased and warm, short", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
         "lost_hand": ("one low soft falling tongue drum note, gentle and round, not sad, short", 0.9, -12, HEARTH_TUNE, "warm:5500", "ease:0.02"),
         "hint":      ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
@@ -1900,11 +1929,11 @@ SETS = {
     # notes are kept for the bulb and the end: `hint`, `win`, `lose`, `draw`,
     # on HEARTH_TUNE's low muffled kalimba.
     "reversi": {
-        "place":   ("one thick wooden game disc set down flat on a painted wooden board, a single soft low dull tock, no ring, no tone, very short", 0.5, -11, HEARTH, "warm:5000", "cut:0.2"),
-        "flip":    ("one small thick wooden disc turned over on a wooden board, a single very soft dry low click, no ring, no tone, quiet and very short", 0.5, -15, HEARTH, "warm:4500", "cut:0.12"),
+        "place":   ("one thick wooden disc set down gently on a felt-lined board, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
+        "flip":    ("a single soft hollow wooden tick, one notch of an old mouse wheel, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320"),
         "refused": ("a wooden disc tapped once flat on a wooden board and held, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
-        "lift":    ("one thick wooden disc picked up off a wooden board, a single very soft dull tick, no ring, no tone, quiet and very short", 0.5, -17, HEARTH, "warm:5000", "cut:0.12"),
-        "sweep":   ("a handful of thick wooden discs swept off a wooden board into a hand, soft low dull clacks slowing to a stop, muffled, no ring, short", 0.9, -14, HEARTH, "warm:5000", "ease:0.03"),
+        "lift":    ("a single soft hollow wooden tick, a thick wooden disc lifted off felt, very short", 0.5, -18, HUSH, "warm:1500", "cut:0.12", "body:320"),
+        "sweep":   ("five soft hollow wooden ticks one after another, slowing down, an old mouse wheel turned slowly", 0.9, -16, HUSH, "warm:1000", "ease:0.02", "body:320"),
         "pass":    ("a knuckle knocking twice gently on a wooden board's frame, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
         "hint":    ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
         "win":     ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
@@ -2035,7 +2064,7 @@ def generate(api_key: str, prompt: str, seconds: float, style: str = STYLE, loop
         sys.exit(f"ElevenLabs answered {e.code}: {detail}")
 
 
-def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0, tight: bool = False, ease: float = 0.0) -> None:
+def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, warm: int = 0, cut: float = 0.0, tight: bool = False, ease: float = 0.0, body: int = 0, steep: bool = False) -> None:
     # Trim silence at both ends (reverse trick for the tail) with a low
     # threshold and a little padding, so a soft ripple is not eaten; then
     # scale to a peak level (loudnorm misbehaves on sub-second clips) and
@@ -2059,6 +2088,10 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     # a longer one.
     soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d={ease or 0.004}" if warm else \
         f",afade=t=in:d={ease}" if ease else ""
+    if steep and warm:
+        soft = f",lowpass=f={warm}:p=2,lowpass=f={warm}:p=2" + soft
+    if body:
+        soft = f",highpass=f={body}:p=2,highpass=f={body}:p=2" + soft
     if cut:
         soft += f",atrim=0:{cut},afade=t=out:st={cut * 0.6:.3f}:d={cut * 0.4:.3f}"
     with tempfile.TemporaryDirectory() as tmp:
@@ -2116,7 +2149,8 @@ def main() -> None:
         out = out_dir / f"{cue}.ogg"
         if "fall" in rest[1:]:
             raw = fall(raw)
-        to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:], ease)
+        body = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("body:")), 0)
+        to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:], ease, body, "steep" in rest[1:])
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

@@ -128,3 +128,23 @@ prompt with a near-empty take now and then (a raw peak under -30 dB, or a
 1.7 s cue with 0.2 s of sound in it): measure the raw take in
 `build/sfx_raw/` and ask again with `--new`.
 
+**No scratch: a thing is a low soft tick, a swipe is a breeze** (the user,
+2026-10-09, of the menu's page turn and Dominoes' tile: "a harsh scratch
+sound extremely annoying ... soft, cozy, low tics, swipes should sound more
+like a light breeze blowing, or like those old mouse wheel spinning doing
+those low pitch clicks, or maybe leaves being blown"). Measured, the takes
+he named were bursts of noise with most of their energy between 1 and 8 kHz
+(a centroid near 3 kHz): what anything slid, brushed, swept or clacked comes
+back as. `tools/gen_sfx.py` has two styles for it, `HUSH` (one notch of an
+old mouse wheel) and `BREEZE`, and two options, `body:<Hz>` (a high-pass, so
+a low take is levelled by what a phone plays) and `steep` (four more poles
+on `warm`). Redone that day: `ui/page` (a breath of breeze, steep above 1.1
+kHz), Dominoes' `place`, `draw`, `lift`, `shuffle` and Reversi's `place`,
+`flip`, `lift`, `sweep` (ticks with their body at 300 Hz to 1 kHz, 34 to 50
+dB down above 3 kHz, where the old ones were 3 dB down). Two traps: a prompt
+that says "deep" or "low-pitched" comes back under 300 Hz, and one that says
+"very soft, quiet" comes back nearly silent. Unheard by the user. **Not
+redone**: a scan of all 1,151 cues finds 149 short ones with most of their
+energy above 2 kHz (the `place`, `lift`, `undo`, `select` and `reset` of many
+boards among them, Penny Drop's four); the measure also catches bright notes
+that do not scratch, so it is a list to listen through, not a verdict.
