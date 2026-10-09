@@ -92,6 +92,8 @@ const CARDS := {
 	"penny": ["dusk", 1.5, Vector2(0.4, 0.5)],
 	# Dominoes' mat is laid out in the meadow, further along from the lawns.
 	"dominoes": ["meadow", 1.6, Vector2(0.3, 0.55)],
+	# Reversi's board lies on the terrace under a clear sky, by the hockey table.
+	"reversi": ["sky", 1.5, Vector2(0.4, 0.45)],
 	# Arcade (not a grid card): Firefly flies the night garden.
 	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
 	# Molehill is a lawn in the meadow too, nearer the grass.

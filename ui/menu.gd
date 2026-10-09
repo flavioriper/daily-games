@@ -54,6 +54,7 @@ const HockeyScreen = preload("res://versus/hockey_screen.gd")
 const BoatsScreen = preload("res://versus/boats_screen.gd")
 const PennyScreen = preload("res://versus/penny_screen.gd")
 const DominoesScreen = preload("res://versus/dominoes_screen.gd")
+const ReversiScreen = preload("res://versus/reversi_screen.gd")
 const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
 const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
@@ -1302,6 +1303,9 @@ func _open_versus(game: String, level: int) -> void:
 		"dominoes":
 			screen = DominoesScreen.new(level)
 			screen.name = "Dominoes"
+		"reversi":
+			screen = ReversiScreen.new(level)
+			screen.name = "Reversi"
 		_:
 			return
 	screen.closed.connect(func() -> void:
@@ -1406,7 +1410,7 @@ func _left_game(tab: String) -> void:
 
 # --- friends ---
 
-## Opens `game` (snooker, chess, checkers, boats, penny, dominoes) against the friend `uid`: asking
+## Opens `game` (snooker, chess, checkers, boats, penny, dominoes, reversi) against the friend `uid`: asking
 ## them (`accept` false: the lobby waits on their answer) or taking the
 ## invite they sent (`accept` true). Whatever is open goes first -- a board,
 ## an Arcade or Versus screen, any sheet, a card -- with no interstitial in

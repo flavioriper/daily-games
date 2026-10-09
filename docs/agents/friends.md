@@ -149,6 +149,12 @@ ends dealing from the match's seed. Not probed with a friend (the
 stranger's path was, `tests/_probe_online.gd -- dominoes`), and the picker
 with six games and Cancel was not shot.
 
+**Reversi is offered to a friend** (2026-10-09): the seventh game in `GAMES`
+and in the rules' three lists, its wire `{m: square}`, the turn kept by a
+seat whose move leaves the other no square. Not probed with a friend (the
+stranger's path was, `tests/_probe_online.gd -- reversi`), and the picker
+with seven games and Cancel was not shot.
+
 **Air hockey is not offered to a friend** (2026-10-08): it has no game
 online (`docs/agents/versus.md`), `VersusTab.plays_online("hockey")` is false
 and `ui/menu/invite_card.gd`'s `GAMES` is still the three.

@@ -7,7 +7,7 @@ extends SceneTree
 ##     firebase emulators:start --only auth,database --project demo-peeplet
 ##   FIREBASE_EMULATOR=127.0.0.1 FIREBASE_PROJECT=demo-peeplet \
 ##     godot --headless --path . --script res://tests/_probe_online.gd -- chess
-##   (or `-- checkers`, `-- penny`, or `-- snooker`)
+##   (or `-- checkers`, `-- penny`, `-- reversi`, or `-- snooker`)
 ##
 ## Run with only the game's name, it is the conductor: for each of three
 ## games it starts **two more processes** of itself (`-- chess play <who>
@@ -78,6 +78,8 @@ const CkAI = preload("res://versus/checkers_ai.gd")
 const PnRules = preload("res://versus/penny_rules.gd")
 const PnAI = preload("res://versus/penny_ai.gd")
 const DmRules = preload("res://versus/dominoes_rules.gd")
+const RvRules = preload("res://versus/reversi_rules.gd")
+const RvAI = preload("res://versus/reversi_ai.gd")
 const DmAI = preload("res://versus/dominoes_ai.gd")
 const Record = preload("res://versus/versus_record.gd")
 const Sim = preload("res://versus/snooker_sim.gd")
@@ -99,8 +101,11 @@ const CK_LINE := [
 ]
 ## A game this long is given up by whoever is to move, the real way.
 const LONG := 110
+## Reversi's opening: eight discs after which the first side has no square,
+## so the second moves twice running and the first of those keeps the turn.
+const RV_LINE := [44, 45, 26, 52, 60, 59, 46, 61]
 
-## "chess", "checkers", "penny", "dominoes" or "snooker".
+## "chess", "checkers", "penny", "dominoes", "reversi" or "snooker".
 var _game := "chess"
 var _begun := false
 var _fails := 0
@@ -126,10 +131,10 @@ func _process(delta: float) -> bool:
 	if not _begun:
 		_begun = true
 		var args := OS.get_cmdline_user_args()
-		if args.size() >= 1 and args[0] in ["chess", "checkers", "penny", "dominoes", "snooker"]:
+		if args.size() >= 1 and args[0] in ["chess", "checkers", "penny", "dominoes", "reversi", "snooker"]:
 			_game = args[0]
 		else:
-			print("usage: -- chess|checkers|penny|dominoes|snooker")
+			print("usage: -- chess|checkers|penny|dominoes|reversi|snooker")
 			quit(2)
 			return false
 		# Every mode, the players' too: Backend.start with no emulator named
@@ -215,7 +220,7 @@ func _conduct() -> void:
 	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
 	if not a.is_empty() and not b.is_empty():
 		_check("they are two players in one match", a.uid != b.uid and a.opponent == b.uid and b.opponent == a.uid)
-		_check("in different seats, the opener %s" % {"chess": "white", "checkers": "light", "penny": "dropping first", "dominoes": "leading"}[_game], int(a.seat) + int(b.seat) == 1 \
+		_check("in different seats, the opener %s" % {"chess": "white", "checkers": "light", "penny": "dropping first", "dominoes": "leading", "reversi": "moving first"}[_game], int(a.seat) + int(b.seat) == 1 \
 			and int(a.first) == int(b.first) and bool(a.white) != bool(b.white) \
 			and bool(a.white) == (int(a.seat) == int(a.first)))
 		_check("each drew the other's name on its scoreboard", a.rival == b.me and b.rival == a.me,
@@ -237,6 +242,10 @@ func _conduct() -> void:
 		elif _game == "penny":
 			_check("every drop travelled, column by column", a.specials == b.specials and int(a.plies) >= 7,
 				"the columns: %s" % str(a.specials))
+		elif _game == "reversi":
+			_check("every disc travelled, square by square, and a turn kept after the eighth", a.specials == b.specials
+				and int(a.plies) >= 9 and str(a.specials).begins_with("44, 45, 26, 52, 60, 59, 46, 61 again, "),
+				str(a.specials).left(60))
 		elif _game == "dominoes":
 			_check("both dealt every hand from the match's seed and laid the same tiles", a.specials == b.specials and int(a.plies) >= 14,
 				str(a.specials))
@@ -537,6 +546,10 @@ func _choose() -> Variant:
 	var g: RefCounted = _s.rules
 	if _game == "penny":
 		return PnAI.new().plan(g.copy(), 1 if _s.player == PnRules.FIRST else 0, _env("SEED", 1) + int(g.ply), 150)
+	if _game == "reversi":
+		if int(g.ply) < RV_LINE.size() and g.can(RV_LINE[int(g.ply)]):
+			return RV_LINE[int(g.ply)]
+		return RvAI.new().plan(g.copy(), 1 if _s.player == RvRules.FIRST else 0, _env("SEED", 1) + int(g.ply), 60)
 	if _game == "dominoes":
 		return DmAI.new().plan(g.view(g.turn), 1 if _s.player == DmRules.FIRST else 0, _env("SEED", 1) + int(g.laid), 60)
 	var ply: int = _s._history.size()
@@ -597,6 +610,9 @@ func _drive(real: float) -> void:
 			if _game == "penny":
 				# A slot the rack does not have.
 				_s.online.send({"m": 9})
+			elif _game == "reversi":
+				# A square the board does not have.
+				_s.online.send({"m": 99})
 			elif _game == "dominoes":
 				# A tile said to have been drawn while one in hand fits.
 				_s.online.send({"d": 1, "m": int(_choose())})
@@ -809,6 +825,9 @@ func _moves() -> int:
 	if _game == "dominoes":
 		# Tiles laid, four or five hands of them: scaled so LONG still means long.
 		return int(_s.rules.laid) / 4
+	if _game == "reversi":
+		# Discs set down, sixty a game: halved so LONG still means long.
+		return int(_s.rules.ply) / 2
 	return int(_s.rules.fullmove) if _game == "chess" else int(_s._move_number())
 
 ## Back, as the top bar's arrow does it, and then the dialog's Resign.
@@ -856,8 +875,13 @@ func _write(closed: bool) -> void:
 	var crown := 0
 	var takes := 0
 	var specials: Array = []
-	var flat: bool = _game == "penny" or _game == "dominoes"
-	var plies: int = int(g.laid) if _game == "dominoes" else (int(g.ply) if _game == "penny" else _s._history.size())
+	var flat: bool = _game == "penny" or _game == "dominoes" or _game == "reversi"
+	var plies: int = int(g.laid) if _game == "dominoes" else (int(g.ply) if _game == "penny" or _game == "reversi" else _s._history.size())
+	if _game == "reversi":
+		# Each square, and "again" after one that left the other side none.
+		for i in g.history.size():
+			var nxt: int = g.history[i + 1][2] if i + 1 < g.history.size() else (g.turn if not g.over else -1)
+			specials.append("%d%s" % [int(g.history[i][0]), " again" if nxt == int(g.history[i][2]) else ""])
 	if _game == "penny":
 		for col in g.history:
 			specials.append(str(col))
@@ -900,12 +924,12 @@ func _write(closed: bool) -> void:
 		"uid": Backend.uid(), "me": load("res://versus/online/names.gd").name_of(Backend.uid()),
 		"opponent": on.opponent, "rival": _s._names[1].text,
 		"seat": on.seat, "first": on.first,
-		"white": _s.player == {"chess": Rules.WHITE, "checkers": CkRules.LIGHT, "penny": PnRules.FIRST, "dominoes": DmRules.FIRST}[_game],
+		"white": _s.player == {"chess": Rules.WHITE, "checkers": CkRules.LIGHT, "penny": PnRules.FIRST, "dominoes": DmRules.FIRST, "reversi": RvRules.FIRST}[_game],
 		"winner": int(on.result.get("winner", -9)), "why": str(on.result.get("why", "")),
 		"outcome": "lost" if closed else str(_s.board._mood), "status": g.status(), "fullmove": _moves(),
 		"plies": plies,
 		"position": (("%s %d %d %d" % [g.board, g.turn, g.castling, g.ep]) if _game == "chess" \
-			else (("%s %d" % [g.cells, g.turn]) if _game == "penny" else (str(g.digest()) if _game == "dominoes" \
+			else (("%s %d" % [g.cells, g.turn]) if _game == "penny" or _game == "reversi" else (str(g.digest()) if _game == "dominoes" \
 			else ("%s %d %d" % [g.board, g.turn, g.quiet])))).md5_text(),
 		"chain": chain, "longest": longest, "crown": crown, "takes": takes,
 		"ep": ep, "promo": promo, "castle": castle, "b8": b8, "specials": ", ".join(specials),

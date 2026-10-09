@@ -465,3 +465,17 @@ one cue over a second long). None has a note. The notes come at a hand's end
 and the game's -- `out` (a tile down and two rising notes), `lost_hand` (one
 low falling note, not sad), `hint`, `win`, `lose` -- on `HEARTH_TUNE`'s low
 muffled kalimba and tongue drum, each eased in, none above -8.
+
+### Reversi (2026-10-09)
+
+`SETS["reversi"]`, ten cues, one take each, unheard by the user. The place is
+a painted wooden board on the deck and a box of thick wooden discs: `HEARTH`'s
+close foley, every prompt saying no ring and no tone -- `place` (a disc set on
+its square), `flip` (a disc turned over, 0.12 s at -15: the board plays it
+once for each ring of squares that turns, a little higher and louder each ring
+out, so a long run is a short rising patter and not thirty clicks), `refused`,
+`lift` (a move taken back), `sweep` (the board cleared for a new game, the one
+cue near a second long) and `pass` (two knuckles on the frame: nowhere to
+play). None has a note. The notes come once a game -- `hint`, `win`, `lose`,
+`draw` (the same note twice) -- on `HEARTH_TUNE`'s low muffled kalimba and
+tongue drum, each eased in, none above -8.

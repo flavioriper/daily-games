@@ -100,6 +100,15 @@ dry and have no note; the notes (`out`, `lost_hand`, `hint`, `win`, `lose`)
 are `HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8. Details:
 `docs/art/sound-direction.md`, its last section.
 
+**Reversi has a set since 2026-10-09** (`SETS["reversi"]`, `HEARTH` foley of
+thick wooden discs on a painted board, ten cues): one take a cue, unheard by
+the user. A game is sixty discs set down and a few hundred turned, so `place`,
+`flip` (one a ring of turning discs, 0.92 to 1.2 the further out, never one a
+disc), `refused`, `lift`, `sweep` and `pass` (a knuckle on the frame) are dry
+and have no note; the notes (`hint`, `win`, `lose`, `draw`) are
+`HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8. Details:
+`docs/art/sound-direction.md`, its last section.
+
 **Beeline has a set since 2026-10-09** (`SETS["beeline"]`, nine cues): one
 take a cue. `flap` (every tap, 0.1 s at -15) and `pass` (every gap, 0.14 s
 at -13) never stop and are dry taps on thin wood with no note; `bump` and

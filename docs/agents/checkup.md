@@ -506,6 +506,7 @@ settings.
 | chess | 7 | tap or drag; rook, bishop, queen; knight, king, pawn; check and mate; castling, en passant, promotion; stalemate and the draws; Undo, bulb, Reset |
 | checkers | 6 | a step; a jump, backwards too; taking is a must, the most first; the crown and the flying king; how it ends; Undo, Reset, bulb |
 | penny | 5 | a penny slid over a slot and dropped, and the moon's on top of it; the fourth of a row and the rings round it; a line of three stopped; a third penny that leaves two places to finish; Undo, Reset, the bulb, online |
+| reversi | 5 | a run shut and turned, the moon's answer, another; one disc shutting four lines at once, the finger held; a disc that leaves the moon no square and the sun moving again; a corner taken along an edge; the bulb, Undo, Reset, online |
 | dominoes | 5 | three tiles laid where the numbers match, the moon answering; a tile that fits both ends picked up and a place chosen, then a double across; two tiles drawn and the one that fits laid; the last tile laid and the other hand turned up; the bulb, Reset, no undo, online |
 | boats | 5 | laying the five boats out; a throw and its ring or cross; following a hit along its line; a boat sunk on each side and how it ends; the bulb, Reset, online |
 | hockey | 5 | a finger leads the mallet, up to the line; a swing into the far slot; a still mallet stops it, a moving one sends it back; off a long rail when the way is shut; two players (built with the game, 2026-10-08) |

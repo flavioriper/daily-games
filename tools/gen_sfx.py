@@ -1890,6 +1890,27 @@ SETS = {
         "win":       ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
         "lose":      ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
     },
+    # Reversi (Versus, versus/reversi_screen.gd): thick two-faced wooden discs
+    # on a painted wooden board, as HEARTH's foley. A game is sixty discs set
+    # down and a few hundred turned over, so everything a disc does is dry, low
+    # and short with no note: `place` (a disc set on its square), `flip` (one
+    # ring of discs turned over, played a little higher for each ring further
+    # out), `refused`, `lift` (a move taken back), `sweep` (the board cleared
+    # for a new game), `pass` (a knuckle on the frame: no square to play). The
+    # notes are kept for the bulb and the end: `hint`, `win`, `lose`, `draw`,
+    # on HEARTH_TUNE's low muffled kalimba.
+    "reversi": {
+        "place":   ("one thick wooden game disc set down flat on a painted wooden board, a single soft low dull tock, no ring, no tone, very short", 0.5, -11, HEARTH, "warm:5000", "cut:0.2"),
+        "flip":    ("one small thick wooden disc turned over on a wooden board, a single very soft dry low click, no ring, no tone, quiet and very short", 0.5, -15, HEARTH, "warm:4500", "cut:0.12"),
+        "refused": ("a wooden disc tapped once flat on a wooden board and held, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
+        "lift":    ("one thick wooden disc picked up off a wooden board, a single very soft dull tick, no ring, no tone, quiet and very short", 0.5, -17, HEARTH, "warm:5000", "cut:0.12"),
+        "sweep":   ("a handful of thick wooden discs swept off a wooden board into a hand, soft low dull clacks slowing to a stop, muffled, no ring, short", 0.9, -14, HEARTH, "warm:5000", "ease:0.03"),
+        "pass":    ("a knuckle knocking twice gently on a wooden board's frame, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
+        "hint":    ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "win":     ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
+        "lose":    ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "draw":    ("two soft slow level notes on a low kalimba, the same note twice, calm and even, a friendly tie", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+    },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"
     "wallet": {

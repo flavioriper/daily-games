@@ -5,7 +5,7 @@
 **The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
 Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone -- snooker, chess, checkers, air hockey, Toy Boats, Penny Drop and Dominoes; the first
+holds games played against someone -- snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes and Reversi; the first
 is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
@@ -624,6 +624,140 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   players on one phone does not suit (hidden hands); **the live rules are
   not deployed** (`tools/deploy_live.sh`, by a person): until they are,
   Online and a friend's invite to this game are refused by the database.
+
+**Reversi is the eighth Versus game** (2026-10-09, built unattended from one
+line and a photograph of the game's box, a blue tray of black and white
+discs: "the next multiplayer game ... check rules on web, wire everything even
+sound"; no spec). Id `reversi`, title "Reversi" -- the game's own plain name
+since 1883, as Chess's and Dominoes' are, so the renamed-genre rule does not
+bite. The name that is a trademark is the modern boxed edition's, said here
+once, to forbid it: Othello. No code, comment, key, commit or screen uses it.
+
+- **The rules, looked up (Wikipedia, GNOME's rules page, Ludii) and fixed**:
+  eight by eight; the four middle squares start filled, two a side on the
+  slants (the modern start every source treats as the standard; the 1883
+  game's empty middle is not played); the dark side moves first -- here
+  `Rules.FIRST`, and who that is swaps every game (`Record.last_colour`;
+  online it is the opener); a disc must shut at least one straight run of
+  the other side's between itself and another of the mover's own, and every
+  run shut, in all eight directions at once, is turned; a side with no such
+  square passes, and may not pass when it has one; the game ends when neither
+  side has a square; the most discs win and the same count is a draw.
+- **The rules are pure data** (`versus/reversi_rules.gd`): a cell is `x + y *
+  8`, y 0 the top; a move is its cell. **The pass is made by `make` itself**:
+  after a move `turn` is whoever moves next, the same side again when the
+  other has no square (`passed`), and `over` when neither has. `last_side`
+  is who made the last move (what `settle`'s `mine_last` is read from, since
+  the side to move says nothing about it here). `make` answers the cells
+  turned, nearest first along each line (empty for a move refused);
+  `unmake` takes a move back with its pass; `lay(rows, side)` sets a board
+  from eight strings (`x`, `o`) for a tutorial page, the tab's picture or a
+  probe. Run `tests/_probe_reversi.gd` after touching it or the computer:
+  **it counts the positions after one to seven plies against the published
+  numbers (4, 12, 56, 244, 1396, 8200, 55092)**, which is what proves the
+  turning in eight directions.
+- **The computer** (`versus/reversi_ai.gd`) copies the board into its own
+  array and searches: negamax and alpha-beta, the squares worth most first,
+  a position scored by where the discs lie (`WEIGHT`: a corner 120, the
+  square on the slant beside it -45, made safe once the corner is held), by
+  the squares each side could play (`MOBILITY`) and, past 48 discs, by the
+  count. Level 0 looks one ply with a heavy blur and three times in ten sets
+  its disc anywhere; 1 looks three plies; 2 deepens to `DEPTH_MAX` 8 inside
+  420 ms and plays the last `SOLVE_AT` 9 squares out exactly (its first move
+  382 ms on this Mac). On a worker thread, chess's `_think` and
+  `_poll_think`. Over 20 games a pairing at 25 ms: 1 beats 0 18-2, 2 beats
+  0 20-0, 2 beats 1 16-4; any square at all loses 18-2, 20-0 and 20-0. No
+  bitboards: a GDScript int is signed and the sixty-fourth bit is a trap.
+  The bulb is level 2's square, three a game; Undo takes back your disc and
+  whatever answered it, passes included.
+- **The board** (`versus/reversi_board.gd`): seen from straight above. One
+  baked mesh (the deck's shadow, the wooden frame, the blue field, every
+  other square a touch lighter, the lines) and **one cached mesh a face,
+  drawn under a transform wherever a disc lies**; a disc turning is the same
+  mesh squashed across to nothing and the other face grown back (`FLIP` 0.34
+  s), **a ring of squares at a time outwards from the disc set down**
+  (`STEP`), each ring with one `flip` cue a little higher than the last, so
+  a move that turns twelve makes at most seven sounds. The only mesh rebuilt
+  is the small one over the discs: a dot on every square the player may
+  play, the frame under the finger and a ring on each disc it would turn
+  (the thumb hides the square), the ring on the last disc, the bulb's ring,
+  the other player's choice ringed `PONDER` before its disc is down, a cross
+  on a square refused, and **the tally under the board** (the sun's share
+  from the left, the moon's from the right, a notch at the half). The
+  player's face is the sun's (cream, a sun stamped) and the other's the
+  moon's (night blue, a crescent stamped) whoever moves first; a disc's edge
+  shows the face underneath; legal squares are dots and never a tint. The
+  board shows what it was told (`play`, `sync`), not the rules it was set up
+  from. Input is touch and mouse both: down, slide, let go on a square.
+  `still` is the tab's picture (as wide as its control, cut to its height),
+  `deaf` and `tally = false` a tutorial page's. Up to 64 discs are 64
+  `draw_mesh` calls.
+- **The screen** (`versus/reversi_screen.gd`) is Penny Drop's shape: `WAIT,
+  ENTER, YOURS, THINK, ANIM, REWIND, OVER`, the two counts between the
+  plates (DISCS, yours first). A pass is said and knocked (`pass`), and the
+  computer waits `PASS_WAIT` longer before it moves again. The end card's
+  line is the count.
+- **Online and against a friend** (level 3; `VersusTab.plays_online`,
+  `invite_card.gd`'s `GAMES`, the three game lists in
+  `server/database.rules.json`). Both ends hold the same board, so it is
+  Penny Drop's pattern with one thing more: the wire is `{m: square}`, 0 to
+  63, and **a seat whose move leaves the other no square keeps the turn**
+  (`send(d, true)`, snooker's and Dominoes' precedent) and moves again; each
+  end works that out from its own rules. A foul is anything but one key
+  holding a whole number of a square that may be played, a message that
+  comes while this seat is to move, or one waiting when this seat's turn
+  begins; the other seat's `end` is not taken on trust. **What it does not
+  stop**: a seat that does not keep a turn it should have kept leaves the
+  server waiting on a seat whose rules say it may not move, and that seat
+  loses on the clock; honest ends never do it, since both run the same
+  rules. Not staged: a turn kept that should have passed (the message after
+  it is the foul above).
+- **Sounds** (`tools/gen_sfx.py reversi`, ten, one take each, unheard):
+  `HEARTH` foley, dry, low and short with no note for everything a disc
+  does (`place`, `flip`, `refused`, `lift` -- a move taken back -- `sweep`,
+  the board cleared, and `pass`, a knuckle on the frame); the notes are
+  `hint`, `win`, `lose` and `draw`, on `HEARTH_TUNE`'s low muffled kalimba.
+- **The tab holds eight cards in four rows**, the fourth row now full: the
+  cards are the size they were with seven (237 draw calls at 810x1440).
+- 75-82 draw calls at the board early, 107-138 late (a draw call a disc),
+  152-160 with the end card, 95-104 with a tutorial page, ANGLE agreeing
+  (810x1440).
+- **The tutorial** (`ui/hud/reversi_tutorial_diagram.gd`, five pages): the
+  board set by `Rules.lay` and played by a script and a finger -- a run shut
+  and turned and the moon's answer, one disc shutting four lines at once
+  (the finger held so the rings show), a disc that leaves the moon no square
+  and the sun moving again, a corner taken along an edge, the bulb. Under
+  reduce motion a page stands on the board as its lesson leaves it. The
+  bodies fit four lines in en, pt and es (shot; five was an overflow).
+- Harnesses: `tests/_probe_reversi.gd -- [games] [seed]` (headless: 18 rule
+  cases, the seven counts, 300 games of any square that end, add up and come
+  back move by move, every pairing, any square against each level);
+  `tests/_shot_reversi.gd -- <outdir> [level] [rm] [lang=] [lose]
+  [speed=N]` (a whole game by real touches: the finger held, the bulb, a
+  taken square refused, Undo, an end card either way, Play again's sweep;
+  puts `user://versus.cfg` back); `tests/_probe_online.gd -- reversi` (the
+  emulators: the seven cases the other games of turns have, all passed --
+  the whole game opens on `RV_LINE`, eight discs after which the first side
+  has no square, so a kept turn travels, and ends the same at both ends
+  after 58 plies); `tests/_shot_howto_screen.gd -- reversi <outdir>`;
+  `tests/_shot_versus_tab.gd`. `_probe_versus_buzz.gd` and `_shot_online.gd`
+  have no arm for it.
+- **Open**: nothing was touched on a phone (a square is about 85 px at
+  810x1440: whether a thumb finds it, whether the dots are too faint or give
+  too much away -- they can be an option); Hard against a person (computer
+  against computer only: it beat any square 62-0 once); whether Easy can be
+  beaten by a child; the pace of a long turn-over and of a pass; a chip for
+  two players on one phone (the game suits it, nothing is hidden; Online
+  took the fourth row of the sheet, as on Penny Drop); a draw was reached by
+  the probe and never through the screen, online or off; a whole game as
+  the side that moves second was played through the screen online (the
+  probe's other seat) and never against the computer; Undo back to a
+  position the moon had been passed over in says the pass again; the fouls
+  for a message out of turn lean on `Match` never handing a move twice
+  (`_handed` is reset only by a new match, read 2026-10-09); the sounds; pt and
+  es; **the live rules are not deployed** (`tools/deploy_live.sh`, by a
+  person): until they are, Online and a friend's invite to this game are
+  refused by the database.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
