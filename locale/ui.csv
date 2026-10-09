@@ -1221,3 +1221,41 @@ TUT_BOATS_SINK_BODY,"A boat sinks when every square of it is hit, and its outlin
 TUT_BOATS_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
 TUT_BOATS_BAR_BODY_ONE,"The bulb rings a good square to try, once a game. Reset starts a new game. Online, each throw has a minute. Sound and this guide are under the gear.","A lâmpada marca uma boa casa, uma vez por partida. Recomeçar inicia uma partida nova. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla, una vez por partida. Reiniciar empieza una partida nueva. En línea, cada jugada tiene un minuto. El sonido y esta guía están en el engranaje."
 TUT_BOATS_BAR_BODY_N,"The bulb rings a good square to try, %d times a game. Reset starts a new game. Online, each throw has a minute. Sound and this guide are under the gear.","A lâmpada marca uma boa casa, %d vezes por partida. Recomeçar inicia uma partida nova. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla, %d veces por partida. Reiniciar empieza una partida nueva. En línea, cada jugada tiene un minuto. El sonido y esta guía están en el engranaje."
+ARC_BEELINE_BLURB,"Tap to beat her wings and fly the bee through the gaps in the hedges. One gap, one point.","Toque para bater as asas e leve a abelha pelos vãos das sebes. Um vão, um ponto.","Toca para batir las alas y lleva a la abeja por los huecos de los setos. Un hueco, un punto."
+BL_MOTTO,One gap at a time,Um vão de cada vez,Un hueco a la vez
+BL_NEXT,NEXT RIBBON,PRÓXIMA FITA,PRÓXIMA CINTA
+BL_READY,Tap to fly,Toque para voar,Toca para volar
+BL_READY_LINE,Every tap is one beat of her wings,Cada toque é uma batida de asas,Cada toque es un aleteo
+BL_RESUME,Tap to fly on,Toque para seguir voando,Toca para seguir volando
+BL_DEW_POP,Dewdrop!,Gota de orvalho!,¡Gota de rocío!
+BL_RIBBON_1,Clay ribbon!,Fita de barro!,¡Cinta de barro!
+BL_RIBBON_2,Silver ribbon!,Fita de prata!,¡Cinta de plata!
+BL_RIBBON_3,Gold ribbon!,Fita de ouro!,¡Cinta de oro!
+BL_RIBBON_4,Pearl ribbon!,Fita de pérola!,¡Cinta de perla!
+BL_END_CARD,Back to the hive for now,De volta à colmeia por enquanto,De vuelta a la colmena por ahora
+BL_STAT_FLAPS,wing beats,batidas de asas,aleteos
+BL_STAT_RIBBONS,ribbons,fitas,cintas
+BL_STAT_TIME,in the air,no ar,en el aire
+BST_BL_DEW,Dewdrop,Gota de orvalho,Gota de rocío
+BST_BL_DEW_LINE,The first bump only bursts the drop,A primeira batida só estoura a gota,El primer golpe solo revienta la gota
+BST_BL_WIDE,Wide gates,Vãos largos,Huecos anchos
+BST_BL_WIDE_LINE,The first ten gaps are wider,Os dez primeiros vãos são mais largos,Los diez primeros huecos son más anchos
+BST_CHANCE_BEELINE,"The hedge she met is gone, and she flies on.","A sebe em que ela bateu some, e ela segue voando.","El seto con el que chocó desaparece, y sigue volando."
+TUT_BEELINE_FLY,Tap to fly,Toque para voar,Toca para volar
+TUT_BEELINE_FLY_BODY,Every tap is one beat of her wings and lifts her the same little way. Leave her alone and she sinks. Tap anywhere in the garden.,"Cada toque é uma batida de asas e a faz subir sempre o mesmo pouquinho. Sem toques, ela desce. Toque em qualquer lugar do jardim.","Cada toque es un aleteo y la sube siempre el mismo poquito. Si no tocas, baja. Toca en cualquier parte del jardín."
+TUT_BEELINE_GAPS,Through the gaps,Pelos vãos,Por los huecos
+TUT_BEELINE_GAPS_BODY,"The hedges come one after another, each with a gap. Every gap she flies through is one point. The first gaps are wider than the rest.","As sebes vêm uma depois da outra, cada uma com um vão. Cada vão atravessado vale um ponto. Os primeiros vãos são mais largos que os demais.","Los setos llegan uno tras otro, cada uno con un hueco. Cada hueco que cruza vale un punto. Los primeros huecos son más anchos que los demás."
+TUT_BEELINE_BUMP,Mind the hedges,Cuidado com as sebes,Cuidado con los setos
+TUT_BEELINE_BUMP_BODY,Touch a hedge or the lawn and the run is over. The top of the sky is safe: she only stops there.,Encostar numa sebe ou no gramado encerra a partida. O topo do céu é seguro: ali ela só para.,Tocar un seto o el césped termina la partida. Lo alto del cielo es seguro: allí solo se detiene.
+TUT_BEELINE_RIBBONS,Ribbons,Fitas,Cintas
+TUT_BEELINE_RIBBONS_BODY,"A run wins a ribbon at %d points, and a better one at %d, %d and %d. The gap that wins one wears it.","Uma partida ganha uma fita com %d pontos, e outra melhor com %d, %d e %d. O vão que dá a fita já vem com ela.","Una partida gana una cinta con %d puntos, y otra mejor con %d, %d y %d. El hueco que la da ya la lleva puesta."
+TUT_BEELINE_BOOSTS,Boosters,Reforços,Refuerzos
+TUT_BEELINE_BOOSTS_BODY,"Hold a booster, or the gold for one, and a card offers them before the run. The Second chance is offered once, when she falls.","Tenha um reforço, ou o ouro para comprar um, e um cartão os oferece antes da partida. A Segunda chance é oferecida uma vez, quando ela cai.","Ten un refuerzo, o el oro para comprar uno, y una tarjeta los ofrece antes de la partida. La Segunda oportunidad se ofrece una vez, cuando ella cae."
+TUT_BEELINE_BOOST_DEW,"Dewdrop: the first bump bursts it, and she flies through everything for a moment","Gota de orvalho: a primeira batida a estoura, e ela atravessa tudo por um instante","Gota de rocío: el primer golpe la revienta, y ella lo atraviesa todo un momento"
+TUT_BEELINE_BOOST_WIDE,Wide gates: the first %d gaps are wider,Vãos largos: os %d primeiros vãos são mais largos,Huecos anchos: los %d primeros huecos son más anchos
+TUT_BEELINE_BOOST_CHANCE,Second chance: the hedge she met is gone and she flies on,Segunda chance: a sebe em que ela bateu some e ela segue voando,Segunda oportunidad: el seto con el que chocó desaparece y sigue volando
+TUT_BEELINE_HUD,The buttons,Os botões,Los botones
+TUT_BEELINE_HUD_BODY,"A beat of the wings is never taken back, so there is no Undo. The run waits while the settings or this guide are open: tap the garden to fly on.","Uma batida de asas não se desfaz, por isso não há Desfazer. A partida espera enquanto as configurações ou este guia estão abertos: toque no jardim para seguir voando.","Un aleteo no se deshace, así que no hay Deshacer. La partida espera mientras los ajustes o esta guía están abiertos: toca el jardín para seguir volando."
+TUT_BEELINE_HUD_RESET,A fresh run from the first hedge,Uma partida nova desde a primeira sebe,Una partida nueva desde el primer seto
+TUT_BEELINE_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
+TUT_BEELINE_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"

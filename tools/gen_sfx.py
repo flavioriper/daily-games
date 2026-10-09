@@ -1889,6 +1889,25 @@ SETS = {
         "fade":   ("one long slow soft exhale of air through wool, with four slow gentle low kalimba notes stepping down far apart over it, something letting go, calm and kind, never sad", 5.0, -12, HEARTH_TUNE, "warm:5000", "ease:0.04"),
         "born":   ("three slow soft rising notes on the kalimba ending on one warm tongue drum note, a new little light beginning, hopeful, short", 1.4, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
     },
+    # Beeline (arcade/beeline_screen.gd, 2026-10-09): a bee flown through the
+    # gaps in a garden's hedges. Two cues never stop and are dull low taps,
+    # the quietest of the set: `flap` (every beat of the wings, two or three
+    # a second) and `pass` (a gap behind her, one every second and a
+    # quarter). The rest happens now and then: a hedge met, the grass, a
+    # dewdrop bursting, a ribbon (four a run at most) and the run's two
+    # ends. Nightlight's lesson is kept: low, dark, quiet, eased in, no
+    # bell and nothing bright.
+    "beeline": {
+        "flap":      ("one very soft low muffled pat of a fingertip on a small felt cushion, a dull round 'pup', very short and quiet", 0.5, -25, HEARTH_TAP, "warm:2400", "cut:0.1", "tight", "ease:0.01"),
+        "pass":      ("one very soft low tap of a felt mallet on a small hollow wooden box, a round dull 'tok', very short and quiet", 0.5, -21, HEARTH_TAP, "warm:2800", "cut:0.14", "tight", "ease:0.008"),
+        "bump":      ("a small soft thing bumping into a leafy garden hedge, one dull soft thud and a short hush of leaves, gentle, not harsh, short", 0.7, -14, GROVE, "warm:4500", "ease:0.012"),
+        "land":      ("a small soft thing dropping onto thick grass, one low soft muffled plop, gentle, very short", 0.5, -16, GROVE, "warm:3200", "cut:0.3", "ease:0.012"),
+        "dew":       ("one soft round low water drop 'bloop' falling into a small wooden bowl of water, gentle and dull, short", 0.6, -15, JETTY, "warm:4500", "ease:0.012"),
+        "ribbon":    ("two soft low rising notes on the kalimba, warm and woody, a small prize won, short", 0.7, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "start":     ("three slow soft rising notes on the kalimba, a quiet morning in a garden beginning, short", 1.0, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        "game_over": ("three soft slow descending notes on a low kalimba, gentle and kind, never sad, good try", 1.5, -12, HEARTH_TUNE, "warm:5500", "ease:0.02"),
+        "new_best":  ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+    },
 }
 
 

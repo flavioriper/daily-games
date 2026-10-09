@@ -102,6 +102,8 @@ const CARDS := {
 	"peapod": ["meadow", 1.6, Vector2(0.7, 0.55)],
 	# Nightlight's star hangs high in the night vista's sky.
 	"nightlight": ["night", 2.2, Vector2(0.14, 0.3)],
+	# Beeline's bee flies the meadow's morning sky, over its hedges.
+	"beeline": ["meadow", 1.5, Vector2(0.3, 0.4)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

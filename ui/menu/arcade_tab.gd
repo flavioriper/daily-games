@@ -7,7 +7,9 @@ extends VBoxContainer
 ## Thirteen (arcade/thirteen_screen.gd), chains of pebbles merged up to 13,
 ## Posy (arcade/posy_screen.gd), a swap-three garden played a day at a
 ## time, and Peapod (arcade/peapod_screen.gd), a pea cannon against crates
-## that come down with a number on each. Its body takes the day row's and the grid's room, as Versus, Stats
+## that come down with a number on each, and Beeline
+## (arcade/beeline_screen.gd), a bee flown by taps through the gaps in a
+## garden's hedges. Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
@@ -37,6 +39,7 @@ const PeaArt = preload("res://arcade/peapod_art.gd")
 const PeaSim = preload("res://arcade/peapod_sim.gd")
 const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
+const BeeArt = preload("res://arcade/beeline_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
 
@@ -47,13 +50,13 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -143,7 +146,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -594,3 +597,40 @@ class NightlightBanner extends Control:
 		var mesh := b.mesh()
 		_keep.append(mesh)
 		draw_mesh(mesh, null)
+
+## Beeline's banner: a strip of the garden with two gates in it, the nearer
+## wearing its ribbon, and the bee on her way from one gap to the next with
+## a little pollen behind her. Drawn once.
+class BeelineBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := size.y / 150.0
+		var ground := size.y - 16.0 * u
+		var x := -20.0 * u
+		while x < size.x:
+			draw_mesh(BeeArt.ground(u), null, Transform2D(0.0, Vector2(x, ground)))
+			x += BeeArt.GROUND_TILE * u
+		var mid := size.x * 0.5
+		# each gate: where it stands and the gap's top and bottom
+		for g: Array in [[mid - 150.0 * u, 26.0, 96.0], [mid + 110.0 * u, 50.0, 118.0]]:
+			draw_mesh(BeeArt.hedge(u, true), null, Transform2D(0.0, Vector2(g[0], float(g[1]) * u)))
+			draw_mesh(BeeArt.hedge(u, false), null, Transform2D(0.0, Vector2(g[0], float(g[2]) * u)))
+		draw_mesh(BeeArt.ribbon(1, 8.0 * u), null, Transform2D(0.0, Vector2(mid + 110.0 * u, 129.0 * u)))
+		var at := Vector2(mid - 20.0 * u, 74.0 * u)
+		var b := Face.Builder.new()
+		for k in 5:
+			b.disc(at + Vector2(-22.0 - 13.0 * k, -3.0 - 0.9 * k * k) * u, (2.4 - 0.3 * k) * u, Color("fbe08a", 0.9 - 0.15 * k))
+		var trail := b.mesh()
+		_keep.append(trail)
+		draw_mesh(trail, null)
+		var xf := Transform2D(0.2, at)
+		draw_mesh(BeeArt.wings(u * 1.5), null, xf * Transform2D(0.0, BeeArt.WING_AT * u * 1.5))
+		draw_mesh(BeeArt.bee(BeeArt.Look.FLY, u * 1.5), null, xf)
