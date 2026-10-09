@@ -64,6 +64,7 @@ const HorseParts = preload("res://ui/faces/horse_parts.gd")
 const HowBigArt = preload("res://ui/faces/how_big_art.gd")
 const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const PearlArt = preload("res://ui/faces/pearl_art.gd")
+const LatticeArt = preload("res://ui/faces/lattice_art.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -233,6 +234,9 @@ var _acorn_mesh: ArrayMesh
 var _acorn_u := -1.0
 var _pearl_mesh: ArrayMesh
 var _pearl_u := -1.0
+## Lattice's corner of slats and tiles, built once a size.
+var _lattice_mesh: ArrayMesh
+var _lattice_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -426,6 +430,7 @@ func _draw() -> void:
 		"how_big": _draw_how_big()
 		"acorn": _draw_acorn()
 		"pearl": _draw_pearl()
+		"lattice": _draw_lattice()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1732,3 +1737,43 @@ func _draw_pearl() -> void:
 	_pearl_mesh = b.mesh()
 	_pearl_u = _u
 	draw_mesh(_pearl_mesh, null, Transform2D(0.0, _c))
+
+## Lattice's card: one gap of the board and the eight tiles round it --
+## `ui/faces/lattice_art.gd`'s slats, sockets, tiles and knot, so the card and
+## the board are the same drawing. Five tiles are home and three are not; the
+## knot points at two of them. One mesh, rebuilt only when the card changes
+## size, with the nine numerals as draw commands over it, which is the
+## arrangement the board itself uses.
+const LA_CELL := 36.0
+const LA_TILES := [[2, true], [5, false], [1, true], [4, true], [3, false], [1, false], [3, true], [5, true]]
+
+func _draw_lattice() -> void:
+	var s := LA_CELL * _u
+	if _lattice_mesh == null or not is_equal_approx(_lattice_u, _u):
+		var b := Face.Builder.new()
+		for a in [0, 2]:
+			LatticeArt.slat(b, Vector2(a * s, 0.0) - Vector2.ONE * s * 1.5, Vector2(s, 3.0 * s), s)
+		for a in [0, 2]:
+			LatticeArt.slat(b, Vector2(0.0, a * s) - Vector2.ONE * s * 1.5, Vector2(3.0 * s, s), s)
+		var k := 0
+		for i in 9:
+			var mid := Vector2(i % 3 - 1, i / 3 - 1) * s
+			if i == 4:
+				LatticeArt.knot(b, mid, s, "LU")
+				continue
+			LatticeArt.socket(b, mid, s)
+			LatticeArt.tile(b, mid, s, LA_TILES[k][1])
+			k += 1
+		_lattice_mesh = b.mesh()
+		_lattice_u = _u
+	draw_mesh(_lattice_mesh, null, Transform2D(0.0, _c))
+	var n := 0
+	for i in 9:
+		var x := (i % 3 - 1) * LA_CELL
+		var y := (i / 3 - 1) * LA_CELL
+		if i == 4:
+			_text("6", x, y + 6.0, 17.0, Pal.PAPER)
+			continue
+		_text(str(LA_TILES[n][0]), x, y + 6.5, 22.0, Pal.SURFACE if LA_TILES[n][1] else Pal.TEXT)
+		n += 1
+

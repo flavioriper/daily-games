@@ -177,6 +177,9 @@ func _note(id: String) -> String:
 		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"lattice": return "band %d, %d tiles on %d by %d, %d knots, %d swaps (par %d), %d left of %d, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.n, _puzzle.state.n, _puzzle.state.knots.size(),
+			_puzzle.state.swaps, _puzzle.state.par, _puzzle.moves_left, _puzzle.max_moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"pearl": return "band %d, %d prompts (%s), %d m of %d, %d pearls, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.depth(),
 			_puzzle.state.floor_depth(), _puzzle.state.pearls(), _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
@@ -221,6 +224,7 @@ func _solve(id: String) -> void:
 		"how_big": _solve_how_big()
 		"acorn": _solve_acorn()
 		"pearl": _solve_pearl()
+		"lattice": _solve_lattice()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -538,6 +542,49 @@ func _solve_acorn() -> void:
 			await create_timer(0.4).timeout
 			_hud_ok = _hud_ok and st.index == r + 1
 	_hud_ok = _hud_ok and hint_ok and _puzzle.checks == st.count() and st.perfect()
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
+
+## Lattice: a tile at home tapped (refused), the bulb once where there is
+## one, one swap of the answer by a drag and the rest by two taps each. A
+## tile in the air is not picked up, so this one awaits between swaps, and
+## holds the walk (`_waiting`) to the win.
+func _solve_lattice() -> void:
+	_waiting = true
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for c in st.count():
+		if not slot.has_point(_puzzle.cell_centre(c)):
+			_fit_ok = false
+	await create_timer(0.8).timeout
+	for c in st.count():
+		if st.is_home(c):
+			_tap_local(_puzzle.cell_centre(c))
+			break
+	_hud_ok = st.swaps == 0
+	if _puzzle.capabilities().has("hint"):
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.swaps == 1
+		await create_timer(0.4).timeout
+	var dragged := false
+	var guard := 0
+	while not st.is_solved() and guard < 60:
+		guard += 1
+		var pair: Array = st.hint()
+		var before: int = st.swaps
+		if not dragged:
+			dragged = true
+			_drag_local(_puzzle.cell_centre(pair[0]), _puzzle.cell_centre(pair[1]))
+		else:
+			_tap_local(_puzzle.cell_centre(pair[0]))
+			_tap_local(_puzzle.cell_centre(pair[1]))
+		_hud_ok = _hud_ok and st.swaps == before + 1
+		await create_timer(0.4).timeout
+	_hud_ok = _hud_ok and st.is_solved() and (_puzzle.max_moves == 0 or _puzzle.moves_left == _puzzle.max_moves - st.swaps)
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:
 		wait += 1

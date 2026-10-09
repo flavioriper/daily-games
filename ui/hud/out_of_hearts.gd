@@ -73,7 +73,7 @@ func _ready() -> void:
 	again.pressed.connect(_answer.bind(0))
 	var heart: Button = null
 	if _offer:
-		heart = Dialog.secondary("play", tr("OUT_MOVES_MORE") % _moves if _moves > 0 else tr(str(_words.get("more", "BN_ONE_HEART"))))
+		heart = Dialog.secondary("play", tr(str(_words.get("more", "OUT_MOVES_MORE"))) % _moves if _moves > 0 else tr(str(_words.get("more", "BN_ONE_HEART"))))
 		heart.name = "OneMoreHeart"
 		heart.pressed.connect(_on_heart)
 		Ads.offered(PLACEMENT)

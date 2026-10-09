@@ -4762,6 +4762,79 @@ func _buzz_horse() -> void:
 	_buzzed("reset")
 	_moves = _moves_horse()
 
+## Lattice's are swaps: the bulb's own pair tapped one tile after the other.
+## A tile still in the air is not picked up, so a swap the board was not
+## ready for goes back on the list.
+func _moves_lattice() -> Array:
+	var out := []
+	for k in _puzzle.state.par + 2:
+		var m := {}
+		m["do"] = func() -> void:
+			var st = _puzzle.state
+			var pair: Array = st.hint()
+			if pair.is_empty():
+				return
+			var before: int = st.swaps
+			_click(_puzzle.cell_centre(pair[0]))
+			_click(_puzzle.cell_centre(pair[1]))
+			if st.swaps == before:
+				if _puzzle._picked >= 0:
+					_puzzle.tap(_puzzle._picked)
+				_moves.push_front(m)
+		out.append(m)
+	return out
+
+## Lattice's buzzes: a tile at home tapped, a tile picked and put back, a
+## swap that sends nothing home, Undo, a swap that sends one or two home, the
+## bulb, Reset. The plain run then makes the answer's swaps (the lines, the
+## win, the seal).
+func _buzz_lattice() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var tap := func(c: int) -> void: _click(_puzzle.cell_centre(c))
+	var out: Array = []
+	for c in st.count():
+		if st.is_home(c):
+			tap.call(c)
+			await pause.call()
+			_buzzed("a tile at home tapped")
+			break
+	for c in st.count():
+		if not st.is_home(c):
+			out.append(c)
+	tap.call(out[0])
+	await pause.call()
+	_buzzed("a tile picked")
+	tap.call(out[0])
+	await pause.call()
+	_buzzed("and put back")
+	for c: int in out:
+		if c != out[0] and st.cur[c] != st.cur[out[0]] and st.cur[c] != st.sol[out[0]] and st.cur[out[0]] != st.sol[c]:
+			tap.call(out[0])
+			tap.call(c)
+			await pause.call()
+			_buzzed("a swap that sends nothing home")
+			if _puzzle.can_undo():
+				_host._on_undo()
+				await pause.call()
+				_buzzed("undo")
+			break
+	var pair: Array = st.hint()
+	tap.call(pair[0])
+	tap.call(pair[1])
+	await pause.call()
+	_buzzed("a swap that sends %d home" % (int(st.is_home(pair[0])) + int(st.is_home(pair[1]))))
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_host._on_hint()
+		await pause.call()
+		_buzzed("hint")
+	if _puzzle.max_moves == 0:
+		_host._on_reset()
+		await create_timer(1.4).timeout
+		_buzzed("reset")
+	_moves = _moves_lattice()
+
 ## Golden Acorn's are a tap and two presses of the row's button a question:
 ## the right plate picked and locked, then Next (after the last, Finish). The
 ## deal follows the open by a frame, a lock's answer is held for a breath and

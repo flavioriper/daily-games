@@ -961,6 +961,32 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "PD_LVL_3"},
 		],
 	},
+	{
+		"id": "lattice",
+		"kind": "puzzle",
+		"title": "Lattice",
+		"blurb": "LA_BLURB",
+		"short": "LA_SHORT",
+		"motto": "LA_MOTTO",
+		"footer": "Swap · Sum · Settle",
+		# The tiles are all on the lattice, so there is no tray, and a tile
+		# says for itself whether it is home, so there is no Check: Undo, the
+		# bulb and Reset ride up into the top bar.
+		"script": "res://puzzles/lattice2d.gd",
+		"shell": "flat",
+		"tray": "none",
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (lattice_gen.gd's BANDS, deals mined
+		# into content/lattice.json) is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "LA_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "LA_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "LA_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "LA_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

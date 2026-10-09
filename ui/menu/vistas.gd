@@ -75,6 +75,8 @@ const CARDS := {
 	"acorn": ["sky", 1.5, Vector2(0.62, 0.42)],
 	# Pearl Dive goes down off the beach Bridges is built over.
 	"pearl": ["beach", 1.6, Vector2(0.28, 0.60)],
+	# Lattice's slats stand in a garden: the meadow, by its cottages.
+	"lattice": ["meadow", 1.5, Vector2(0.42, 0.30)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

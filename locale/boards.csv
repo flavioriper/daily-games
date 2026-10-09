@@ -3006,3 +3006,64 @@ HTP_PD_BREATH_START_CAP,One tank for the whole dive,Um tanque para o mergulho to
 HTP_PD_BREATH_CAP,An answer gives air back,Uma resposta devolve ar,Una respuesta devuelve aire
 HTP_PD_HINT_START_CAP,After the Pearl? Press the bulb,Atrás da Pérola? Toque na lâmpada,¿Tras la Perla? Toca la bombilla
 HTP_PD_HINT_CAP,"Its first letter, and its length","A primeira letra, e o tamanho","Su primera letra, y su largo"
+LA_RULES,"Swap any two tiles until every whole row and every whole column holds the numbers 1 to %d, each once. Drag a tile onto another, or tap one and then the other. A tile that lands in its own place turns green and stays there; a tile still plain is in the wrong place.","Troque duas peças quaisquer até que cada linha inteira e cada coluna inteira tenha os números de 1 a %d, uma vez cada. Arraste uma peça sobre outra, ou toque em uma e depois na outra. A peça que cai no lugar certo fica verde e não sai mais; a que continua clara está no lugar errado.","Intercambia dos fichas cualesquiera hasta que cada fila entera y cada columna entera tenga los números del 1 al %d, una vez cada uno. Arrastra una ficha sobre otra, o toca una y luego la otra. La ficha que cae en su sitio se pone verde y ya no se mueve; la que sigue clara está en el sitio equivocado."
+LA_RULES_KNOTS,The dark knots in the gaps point at the tiles beside them: the number on a knot is what those tiles add up to when they are right.,Os nós escuros nos vãos apontam para as peças ao lado: o número do nó é quanto essas peças somam quando estão certas.,Los nudos oscuros de los huecos apuntan a las fichas de al lado: el número del nudo es lo que suman esas fichas cuando están bien.
+LA_RULES_FREE,Swap as often as you like. This lattice can be done in %d swaps.,Troque quantas vezes quiser. Esta treliça sai em %d trocas.,Intercambia cuantas veces quieras. Esta celosía sale en %d cambios.
+LA_RULES_COUNTED,"You have %d swaps, and this lattice can be done in %d. Every swap costs one and there is no taking one back. Run out with tiles still plain and the lattice is lost.","Você tem %d trocas, e esta treliça sai em %d. Cada troca custa uma e não dá para desfazer. Se acabarem com peças ainda claras, a treliça está perdida.","Tienes %d cambios, y esta celosía sale en %d. Cada cambio cuesta uno y no se puede deshacer. Si se acaban con fichas aún claras, la celosía está perdida."
+LA_BLURB,Swap the number tiles until every line of the lattice holds each number once.,Troque as peças numeradas até cada linha da treliça ter cada número uma vez.,Intercambia las fichas numeradas hasta que cada línea de la celosía tenga cada número una vez.
+LA_SHORT,"Swap the tiles,\nfill every line.","Troque as peças,\ncomplete as linhas.","Cambia las fichas,\ncompleta las líneas."
+LA_MOTTO,Every tile has a home,Cada peça tem seu lugar,Cada ficha tiene su sitio
+LA_LVL_0,"5 × 5, numbers 1 to 5","5 × 5, números de 1 a 5","5 × 5, números del 1 al 5"
+LA_LVL_1,"7 × 7, a gentle scramble","7 × 7, pouco embaralhada","7 × 7, poco revuelta"
+LA_LVL_2,"7 × 7, well scrambled","7 × 7, bem embaralhada","7 × 7, bien revuelta"
+LA_LVL_3,"Twenty: six knots, 20 swaps","Vinte: seis nós, 20 trocas","Veinte: seis nudos, 20 cambios"
+LA_PILL_ONE,1 swap · best %d,1 troca · mínimo %d,1 cambio · mínimo %d
+LA_PILL_N,%d swaps · best %d,%d trocas · mínimo %d,%d cambios · mínimo %d
+LA_LEFT_ONE,1 swap left,1 troca restante,1 cambio restante
+LA_LEFT_N,%d swaps left,%d trocas restantes,%d cambios restantes
+LA_TIP_SWAP,"Drag a tile onto another to swap them, or tap one and then the other.","Arraste uma peça sobre outra para trocá-las, ou toque em uma e depois na outra.","Arrastra una ficha sobre otra para cambiarlas, o toca una y luego la otra."
+LA_TIP_LINE,Every whole row and column holds each number once.,Cada linha e coluna inteira tem cada número uma vez.,Cada fila y columna entera tiene cada número una vez.
+LA_TIP_KNOT,A knot's number is the sum of the tiles it points at.,O número do nó é a soma das peças para as quais ele aponta.,El número del nudo es la suma de las fichas a las que apunta.
+LA_TIP_HOME,A plain tile is in the wrong place. That is a clue too.,Uma peça clara está no lugar errado. Isso também é uma pista.,Una ficha clara está en el sitio equivocado. Eso también es una pista.
+LA_TIP_COUNT,Every swap counts here. The best swap sends two tiles home at once.,Aqui cada troca conta. A melhor troca leva duas peças para casa de uma vez.,Aquí cada cambio cuenta. El mejor cambio lleva dos fichas a su sitio a la vez.
+LA_REFUSE_HOME,That tile is home. It stays.,Essa peça já está em casa. Ela fica.,Esa ficha ya está en su sitio. Se queda.
+LA_REFUSE_SAME,Those two are the same number.,Essas duas têm o mesmo número.,Esas dos tienen el mismo número.
+LA_LINE,A whole line home!,Uma linha inteira em casa!,¡Una línea entera en su sitio!
+LA_HINTED,"One swap of the answer, made for you.","Uma troca da resposta, feita para você.","Un cambio de la respuesta, hecho para ti."
+LA_RESET,"Scrambled again, as it was dealt.","Embaralhada de novo, como veio.","Revuelta otra vez, como vino."
+LA_WIN,Every tile is home.,Todas as peças em casa.,Todas las fichas en su sitio.
+LA_WIN_SUB,Done in %d swaps. The fewest possible is %d.,Feita em %d trocas. O mínimo possível é %d.,Hecha en %d cambios. El mínimo posible es %d.
+LA_WIN_SUB_BEST,Done in %d swaps: the fewest possible!,Feita em %d trocas: o mínimo possível!,Hecha en %d cambios: ¡el mínimo posible!
+LA_WIN_SUB_LAST,Done on the very last swap.,Feita na última troca.,Hecha en el último cambio.
+LA_WIN_SUB_SPARE_ONE,Done with 1 swap to spare.,Feita com 1 troca de sobra.,Hecha con 1 cambio de sobra.
+LA_WIN_SUB_SPARE_N,Done with %d swaps to spare.,Feita com %d trocas de sobra.,Hecha con %d cambios de sobra.
+LA_OUT,The swaps ran out.,As trocas acabaram.,Se acabaron los cambios.
+LA_OUT_TITLE,Out of swaps,Sem trocas,Sin cambios
+LA_OUT_BODY,"The swaps ran out with tiles still out of place. Start it again, or watch a short video for %d more swaps.",As trocas acabaram com peças ainda fora do lugar. Recomece ou assista a um vídeo curto e ganhe mais %d trocas.,Los cambios se acabaron con fichas aún fuera de su sitio. Empieza de nuevo o mira un video corto para tener %d cambios más.
+LA_OUT_REST,The swaps ran out with tiles still out of place. Start it again whenever you like.,As trocas acabaram com peças ainda fora do lugar. Recomece quando quiser.,Los cambios se acabaron con fichas aún fuera de su sitio. Empieza de nuevo cuando quieras.
+LA_OUT_MORE,%d more swaps,Mais %d trocas,%d cambios más
+LA_SEAL_BEST,Fewest swaps,Mínimo de trocas,Mínimo de cambios
+LA_SEAL_INSANE,Twenty,Vinte,Veinte
+HTP_LA_SWAP,Swap two tiles,Troque duas peças,Cambia dos fichas
+HTP_LA_SWAP_BODY,"Every tile is already on the lattice, in the wrong place. Drag one onto another to swap them, or tap one and then the other. A tile that lands in its own place turns green and stays.","Todas as peças já estão na treliça, no lugar errado. Arraste uma sobre outra para trocá-las, ou toque em uma e depois na outra. A peça que cai no lugar certo fica verde e não sai mais.","Todas las fichas ya están en la celosía, en el sitio equivocado. Arrastra una sobre otra para cambiarlas, o toca una y luego la otra. La ficha que cae en su sitio se pone verde y se queda."
+HTP_LA_LINES,Each number once a line,Cada número uma vez por linha,Cada número una vez por línea
+HTP_LA_LINES_BODY,"Every whole row and every whole column holds each number once. So a line already holding a green 3 needs no other 3, and a plain tile tells you its number belongs somewhere else.","Cada linha inteira e cada coluna inteira tem cada número uma vez. Então uma linha que já tem um 3 verde não precisa de outro 3, e uma peça clara avisa que o número dela é de outro lugar.","Cada fila entera y cada columna entera tiene cada número una vez. Así, una línea que ya tiene un 3 verde no necesita otro 3, y una ficha clara avisa de que su número va en otro sitio."
+HTP_LA_KNOT,Read the knots,Leia os nós,Lee los nudos
+HTP_LA_KNOT_BODY,"A knot points at the tiles beside it, and its number is what they add up to when they are right. If one of the two is already green, the other is simple subtraction.","O nó aponta para as peças ao lado, e o número dele é quanto elas somam quando estão certas. Se uma das duas já está verde, a outra é uma simples subtração.","El nudo apunta a las fichas de al lado, y su número es lo que suman cuando están bien. Si una de las dos ya está verde, la otra es una simple resta."
+HTP_LA_HINT,Stuck? Ask the bulb,Travou? Peça à lâmpada,¿Atascado? Pide a la bombilla
+HTP_LA_HINT_BODY_ONE,"The bulb makes one swap of the answer for you, two tiles home at once when it can. You have one hint.","A lâmpada faz uma troca da resposta para você, duas peças em casa de uma vez quando dá. Você tem uma dica.","La bombilla hace por ti un cambio de la respuesta, dos fichas a su sitio a la vez cuando se puede. Tienes una pista."
+HTP_LA_HINT_BODY_N,"The bulb makes one swap of the answer for you, two tiles home at once when it can. You have %d hints.","A lâmpada faz uma troca da resposta para você, duas peças em casa de uma vez quando dá. Você tem %d dicas.","La bombilla hace por ti un cambio de la respuesta, dos fichas a su sitio a la vez cuando se puede. Tienes %d pistas."
+HTP_LA_COUNT,Count your swaps,Conte suas trocas,Cuenta tus cambios
+HTP_LA_COUNT_BODY,"You have %d swaps and the lattice can be done in %d, so there are five to spare. A swap that sends two tiles home at once is the one to look for. When the swaps are gone the lattice is lost.","Você tem %d trocas e a treliça sai em %d, então sobram cinco. Procure a troca que leva duas peças para casa de uma vez. Quando as trocas acabam, a treliça está perdida.","Tienes %d cambios y la celosía sale en %d, así que sobran cinco. Busca el cambio que lleva dos fichas a su sitio a la vez. Cuando se acaban los cambios, la celosía está perdida."
+HTP_LA_PICK_CAP,Tap a tile to pick it up,Toque numa peça para pegá-la,Toca una ficha para cogerla
+HTP_LA_SWAP_CAP,Tap another: they swap,Toque em outra: elas trocam,Toca otra: se cambian
+HTP_LA_HOME_CAP,Green: that tile is home,Verde: essa peça está em casa,Verde: esa ficha está en su sitio
+HTP_LA_BOTH_CAP,Two home with one swap,Duas em casa com uma troca,Dos en su sitio con un cambio
+HTP_LA_MISS_CAP,Still plain: not there either,Ainda clara: aí também não,Sigue clara: ahí tampoco
+HTP_LA_ROW_CAP,This row still needs a 2 and a 4,Esta linha ainda precisa de um 2 e um 4,A esta fila le faltan un 2 y un 4
+HTP_LA_ROW_DONE_CAP,Each number once: the line is whole,Cada número uma vez: linha completa,Cada número una vez: línea completa
+HTP_LA_KNOT_CAP,The knot says these two add up to 6,O nó diz que estas duas somam 6,El nudo dice que estas dos suman 6
+HTP_LA_KNOT_SUB_CAP,"The 2 is green, so the other is a 4","O 2 está verde, então a outra é um 4","El 2 está verde, así que la otra es un 4"
+HTP_LA_KNOT_DONE_CAP,Both home: the knot turns green,As duas em casa: o nó fica verde,Las dos en su sitio: el nudo se pone verde
+HTP_LA_BULB_CAP,The bulb makes a swap of the answer,A lâmpada faz uma troca da resposta,La bombilla hace un cambio de la respuesta
+HTP_LA_LEFT_CAP,Every swap takes one off the count,Cada troca tira uma da conta,Cada cambio quita uno de la cuenta
