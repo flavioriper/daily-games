@@ -30,7 +30,9 @@ see "Ads and the purchase" below.
   `undos`, `colour`; checkers adds `taken` and `lost`, pieces; air hockey
   (`game: hockey`, 2026-10-08) sends `shots` as your mallet's hits and adds
   `seconds`, and `level: 4` is two players on one phone, where `won` means
-  the bottom mallet's and `shots` both mallets') and
+  the bottom mallet's and `shots` both mallets'; Toy Boats (`game: boats`,
+  2026-10-09) sends `moves` as your pebbles, `hints`, `sunk` and `lost` in
+  boats and `first`, whether you threw first) and
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
   `arcade_end` (score, stage, seconds, fired, hits, kills, best;
   Molehill sends stage as the best streak, and whacked, escaped, missed

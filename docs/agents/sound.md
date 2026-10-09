@@ -74,3 +74,10 @@ notes, seventeen cues): one take a cue (`home` two), unheard by the user.
 `drop` and `undo` they are dry wood cut to 0.1-0.28 s with no note; the
 notes are `home2` (two tiles home at once), `line`, `hint` and the day's
 end. Details: `docs/art/sound-direction.md`, its last section.
+
+**Toy Boats has a set since 2026-10-09** (`SETS["boats"]`, `JETTY` foley of
+a wooden box, calm water, toy boats and pebbles, nineteen cues): one take a
+cue, unheard by the user. A game is a hundred throws, so `throw`, `lob`,
+`miss`, `splash`, `hit`, `knock` and above all `tick` (0.06 s at -19) are dry
+and have no note; the notes (`sunk`, `glug`, `hint`, `win`, `lose`) are
+`HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8.

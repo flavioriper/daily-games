@@ -5,7 +5,7 @@
 **The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
 Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone -- snooker, chess, checkers and air hockey; the first
+holds games played against someone -- snooker, chess, checkers, air hockey and Toy Boats; the first
 is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
@@ -227,6 +227,125 @@ played alone for a score, and this needs someone at the other end.
   each level beats the one under it 12-0), whether every wall and strike
   should knock (they echo, as every sound does), and the calls in the
   memory file.
+
+**Toy Boats is the fifth Versus game** (2026-10-09, built unattended from one
+line and a photograph of a folding wooden box with a chalk slate in its lid:
+"battleship is the next multiplayer game ... check rules on web, wire
+everything even sound"; no spec). Id `boats`, title "Toy Boats". The game it
+follows is the boxed one with two grids and a fleet of plastic ships, whose
+name is a trademark and is said here once, to forbid it: Battleship. No
+code, comment, key, commit or screen uses it; the pieces are toy boats on a
+pond and what is thrown is a pebble.
+
+- **The rules, looked up (Wikipedia's page of the game, the 2002 box's
+  fleet) and fixed**: ten by ten; five boats of 5, 4, 3, 3 and 2 along a row
+  or a column; never over one another, **side by side allowed** (the box's
+  rule; sources disagree and the house rule that forbids touching is not
+  played); one throw a turn at a square not tried, turn about whatever it
+  did; miss or hit is said, **a boat is named only when it sinks**; all five
+  sunk loses. Salvo and the other variants are not here. Who throws first
+  swaps every game (`Record.last_colour` holds it; online it is the opener).
+- **The rules are pure data** (`versus/boats_rules.gd`), one class for both
+  sides of the water: a pond whose boats are known answers a pebble
+  (`fire`), a pond whose boats are not is the slate (`note` writes an answer
+  down and refuses one that cannot be; `agrees` checks a whole fleet against
+  every answer given). A boat is `Vector3i(x, y, dir)`, its index its length
+  in `FLEET`. `pack`/`unpack`/`seal` are the wire's. Run
+  `tests/_probe_boats.gd` after touching it or the computer.
+- **The computer** (`versus/boats_ai.gd`) sees the slate and nothing else,
+  runs where it is called (0.35 ms a throw at the top level). 0 throws
+  anywhere and follows a hit up 70% of the time; 1 hunts every other square
+  and follows a line of two hits; 2 counts the ways the boats afloat could
+  lie across each square (a way through an unexplained hit worth 24 times
+  more a hit) and throws where there are most. Alone they need 66, 52 and 45
+  pebbles to sink a fleet; over 200 games 1 beats 0 176-24, 2 beats 0 194-6,
+  2 beats 1 154-46. Levels 1 and 2 lay their own boats apart. The bulb is
+  level 2's throw for the player's slate, three a game. No undo (a pebble
+  thrown has told you something); Reset is a new game.
+- **The board** (`versus/boats_board.gd`): the pond (blue, wooden boats, a
+  red peg for a hit on yours, a ripple for a miss) and the slate (chalk: a
+  ring for a miss, a cross for a hit, a boat's outline once sunk, dashed at
+  the end for the ones never found). Each grid is one baked mesh in a space
+  of its own (`U` 100 a square) drawn under a transform, plus one live mesh
+  rebuilt only while something moves; the two change places when play
+  begins (`begin_play`) without rebuilding anything. The slate's twenty
+  letters and numbers are the only text, and **`draw_set_transform_matrix`
+  must be put back after them** -- left set, every mesh after was drawn
+  transformed twice. `still` lays the two side by side for the tab's card
+  and the tutorial. Input is touch and mouse both: laying out, drag to move
+  (a place with no room is a red ring and a hatch, and the boat goes back)
+  and tap to turn about the square touched (or the nearest that leaves
+  room); playing, a finger on the slate lights its row and column and
+  letting go throws. The board's `Fx2D` is its own child, so effects take
+  the board's own points (`point_of`), not screen ones.
+- **The screen** (`versus/boats_screen.gd`) is checkers' shape. States
+  `WAIT, ENTER, PLACE, READY, SWAP, YOURS, FLY, THEIRS, ANIM, SHOW, OVER`.
+  Beside the small grid: Ready and Shuffle while laying out, then TO SINK
+  over the five boats the player is after, crossed out as they go. The
+  plates count boats afloat; the middle counts the player's pebbles.
+- **Online and against a friend** (level 3; `VersusTab.plays_online`,
+  `invite_card.gd`'s `GAMES`, the three game lists in
+  `server/database.rules.json`). It is the one game whose two ends do not
+  hold the same position, so "a foul is a message this end's rules could
+  not have produced" is not enough: an answer cannot be checked when it is
+  given. So **each end seals its fleet first and shows it last**:
+  - `{c: seal}` each seat once, the opener first -- `Rules.seal` is the
+    SHA-256 of a 32-hex salt, `|` and the packed fleet (`sha256_text`, the
+    same on every device; never `hash()`). Both lay out at once after
+    `started`; the second seal is held until the first has come, because the
+    transport takes a write only from the seat to move. **With 4 s left of
+    the minute the boats are taken as they lie** (`LAY_AT`), so laying out
+    never loses on time.
+  - `{s: square}` a throw, the turn passing; `{r: 1|2}` its answer, **the
+    answerer keeping the turn** (`send(d, true)`, snooker's precedent) and
+    then throwing; `{r: 3, i, b: [x, y, d]}` sunk, with which boat and how
+    it lay.
+  - The last boat's answer carries `v: [fleet, salt]` and passes the turn;
+    the winner checks it (the seal, and `agrees` with the slate), sends its
+    own `{v}` and ends the match (`settle(..., mine_last)`); the loser waits
+    in `SHOW` up to `SHOW_WAIT` 4 s for it, checks it the same way, and is
+    shown where the boats it never found lay.
+  - Fouls: a message that does not belong to the state it arrives in (the
+    inbox holds one that is only early: a landing still being watched), a
+    seal that is not 64 hex or comes twice, a throw off the pond or at a
+    square tried, an answer `note` refuses, a fleet that is not its seal's
+    or does not agree with the answers, `end` said to a board whose fleet is
+    not all sunk, or no fleet within `SHOW_WAIT` of `end`.
+  - **What it does not stop**: an end that lies and then walks away or runs
+    out its clock is only a loser by resign or timeout, as anywhere; a lie
+    is found at the showing, not when told. A fleet is never proved to the
+    server, which knows no game.
+- **Sounds** (`tools/gen_sfx.py boats`, nineteen, one take each, unheard):
+  `JETTY` foley, everything a throw makes dry, short and without a note
+  (`tick`, the finger crossing a square, is 0.06 s at -19); the notes are
+  `sunk`, `glug` (your boat going under), `hint`, `win` and `lose`, on
+  `HEARTH_TUNE`'s low muffled kalimba.
+- **The tab holds five cards**: `_fit` has a fifth step (`_tall`: chips and
+  Play 66 high, 12 between cards), which is where 810x1440 lands (1278 of
+  1300 design px). 212 draw calls on the tab.
+- 67-78 draw calls at the board, 88-92 with the end card, 95-102 with a
+  tutorial page, ANGLE agreeing (810x1440).
+- **The tutorial** (`ui/hud/boats_tutorial_diagram.gd`, five pages): the box
+  as a picture and a finger doing what a thumb does through the board's own
+  `_lift`, `_carry`, `_drop`, `aim`, `answer`, `strike`; pebbles answered by
+  a pond of the page's own.
+- Harnesses: `tests/_probe_boats.gd -- [games] [seed]` (headless: 22 rule
+  cases, each level alone, every pairing); `tests/_shot_boats.gd -- <outdir>
+  [level] [rm] [lang=] [lose]` (a whole game by real touches, an end card
+  either way; puts `user://versus.cfg` back);
+  `tests/_probe_boats_online.gd [-- lay]` (the emulators, two processes
+  through the real screen: a whole game to one result and one pair of ponds
+  at both ends in 8 s, a fleet moved after its seal, a throw off the pond, a
+  sinking that cannot be, a resignation, and with `lay` an end that never
+  presses Ready -- 65 s); `tests/_shot_howto_screen.gd -- boats <outdir>`;
+  `tests/_shot_versus_tab.gd`. `tests/_probe_online.gd`,
+  `_probe_versus_buzz.gd` and `_shot_online.gd` have no arm for it.
+- **Open**: nothing was touched on a phone (whether a square is easy to hit
+  with a thumb at 70 px, whether the small pond is readable); the pace (a
+  round is about 3 s before the player thinks, a game 35-60 rounds); Hard
+  against a person; the sounds; pt and es; **the live rules are not
+  deployed** (`tools/deploy_live.sh`, by a person): until they are, Online
+  and a friend's invite to this game are refused by the database.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
