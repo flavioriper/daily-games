@@ -1,12 +1,104 @@
 <!-- Moved verbatim from CLAUDE.md on 2026-09-29. -->
 
+## The cozy rules
+
+The user, 2026-10-09: "Sounds should always aim for cozy low, low clicks,
+ticks, slides should always aim for something gentle sliding on wood never
+on steel, old mouse center button wheel scroll fast clicks, for sounds like
+the button click overall, never high pitch sounds, always some low pitched
+or bass sound. Lofi inspired". These rules come first; where a note further
+down this file or in `docs/art/sound-direction.md` disagrees, it is history
+and these win. Every new cue and every redone one is held to them.
+
+**1. Every sound is one of three things.** Decide which before writing a
+prompt.
+
+| The cue | What it is | Style and options | Level |
+|---|---|---|---|
+| A thing set down, lifted, turned, pressed, counted; a button; anything that repeats | one low soft tick, the notch of an old mouse wheel; several in a row are a wheel spun | `HUSH`, `cut:0.06`-`0.28`, `warm:1000`-`1600`, `body:320` | -13 to -19 |
+| A swipe, a page, a sweep, anything that travels | a breath of breeze, or a thing slid gently on wood (rule 4) | `BREEZE`, `warm:1100`, `steep`, `ease`, `body:320` | -16 |
+| A moment: a hint, a line, a hand won, the day's end | a few low muffled notes, kalimba or tongue drum played with felt | `HEARTH_TUNE`, `warm`, `ease` | none above -8 |
+
+**2. Low, and never high.** No cue has its weight above 1 kHz. The measure,
+taken on every take before it is kept: the body between 300 Hz and 1 kHz,
+30 dB or more down above 3 kHz (the takes the user hated had a centroid
+near 3 kHz and were 3 dB down there). No pitch climb at play goes past
+five semitones, and a tick that repeats varies by 0.94 to 1.06 at random so
+it is never the same sound twice. Good news still rises and "not yet" still
+falls, but on the low notes: a rise is two or three steps of a kalimba, not
+a sparkle.
+
+**3. "Bass" stops at 300 Hz.** A phone's speaker plays next to nothing
+under about 250 Hz (measured here on 2026-10-09: Beeline's taps, dark and
+quiet, peaked at -40 dB high-passed at 400 Hz and the user heard nothing).
+So low means a round body at 300 Hz to 1 kHz with the top taken off, not a
+thump or a rumble. Each tick names `body:320`, and a take is checked
+high-passed at 400 Hz: it still reads -20 dB or better there. A prompt that
+says "deep", "bass" or "low-pitched" comes back under 300 Hz, and one that
+says "very soft, quiet" comes back near silent: ask for a plain soft hollow
+tick and let the level and the roll-off make it low and quiet.
+
+**4. Wood, never steel.** What a sound is made of: wood, felt, cork, wool,
+paper, leaves, air, calm water. Never steel, metal, coins that ring, glass,
+ceramic, bells, chimes, a glockenspiel, a music box's bright comb, anything
+that rings on. Of two things that touch, the softer is the one heard (a
+wooden tile on felt is felt), so a prompt always names the soft thing it
+lands on. **A slide is gentle and on wood**, and it is the hardest to get:
+the same morning, everything asked for as slid, brushed, swept, scraped,
+rustled or clacked came back as a burst of noise from 1 to 8 kHz, the
+"harsh scratch" the user named. So a page or a swipe of the finger stays a
+breeze; a piece that travels over the board may be wood on wood, asked for
+as a low hollow wooden glide or a wheel turning, with none of those six
+words in the prompt, `warm` at 1600 or under, and the measure of rule 2
+deciding whether it is kept. A slide that does not pass is a row of ticks.
+
+**5. A button is a mouse wheel's click.** Every button, tab, key and chip:
+one notch of an old mouse's wheel, low and dull, 0.06 to 0.15 s, no note
+and no paper in it. A list that scrolls or a count that runs is the wheel
+spun: the same tick, quickly, throttled so it never machine-guns
+(`CUE_GAP`). A constant action still gets its tick -- "a really subtle
+click", never silence, and never a note.
+
+**6. Lofi is a treatment, not a noise.** What is taken from it: the top
+rolled off gently (`warm`, and `steep` for air), an onset that is rounded
+and never snaps (`ease`, 4 ms at least), levels kept low, a close dry room.
+What is not: vinyl crackle, tape hiss, wow, a bit-crusher or any noise laid
+over a take -- crackle and hiss are the scratch the user hates -- and the
+"never synth" rule below stands: every file is a take of a real thing.
+
+**7. The prompt proposes, the measure decides.** One take a cue; measure
+the raw take in `build/sfx_raw/` and the finished file (rules 2 and 3); ask
+again with `--new` when it fails rather than filtering a bad take harder.
+Then `godot --headless --path . --import`, or the game still plays the old
+file. Say in the commit which cues the user has not heard.
+
+**Copy these, not those.** A new set is built from `HUSH`, `BREEZE`,
+`HEARTH`, `HEARTH_TAP` and `HEARTH_TUNE`. Not models, though boards still
+use them: `STYLE` (glockenspiel, bubbly pops), `ARCADE` and every `*_TUNE`
+that says "small hand bells" or "music box", `DUSK` and `GLASSHOUSE` (glass
+chimes), `NIGHT` (glass jars and bells), `CARTOON`. **Owed against these
+rules, none started**: `ui/click` (still "paper and wood", `STYLE`, -12,
+never measured); the 149 short cues listed at the foot of this file; the
+bell and chime notes of the sets above. They are redone when the user names
+them.
+
+**What other games do** (looked up 2026-10-09; little is written down, and
+none of it outranks the user's ear). Unpacking's foley, the genre's
+reference: real things recorded, never one thing standing in for another;
+pick-ups short and immediate so the hand never feels late; when two
+materials meet the softest decides the sound; several takes a sound so a
+repeat is never identical. UI sound guides: a tap is 30 to 150 ms, with no
+peak that tires an ear over hundreds of presses and nothing piercing on a
+small speaker. Lofi production guides: the top rolled off somewhere from 5
+to 10 kHz on a gentle slope (ours is far lower, by the user's word).
+
 ## Sound
 
-Full rules: `docs/art/sound-direction.md`. Sounds are generated with
-ElevenLabs by `tools/gen_sfx.py <puzzle_id>` into
+Sounds are generated with ElevenLabs by `tools/gen_sfx.py <puzzle_id>` into
 `assets/sfx/<puzzle_id>/<cue>.ogg`, and `Fx2D.cue()` plays whichever cue has
-a file -- a missing file is silence, on purpose. Soft wood, marimba, kalimba,
-glockenspiel and paper; never a buzzer; up means good, down means not yet;
+a file -- a missing file is silence, on purpose. How a board's set is chosen
+and generated: `docs/art/sound-direction.md`. Never a buzzer; up means good,
+down means not yet;
 cues that fire on every touch (Binairo's `focus`, `blush_out`) get no file.
 One take per cue; the user listens and names the ones to redo. The set is
 keyed by `puzzle_id()`, not the card's name (Code Break's is `mastermind`).

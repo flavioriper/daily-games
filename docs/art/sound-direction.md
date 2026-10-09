@@ -14,8 +14,15 @@ user corrects a sound, record the correction here.
 
 The same brief as `shading-direction.md`: soft, warm, rounded, never harsh.
 
-- **Instruments:** soft wood (taps, pops), marimba, kalimba, glockenspiel,
-  and paper for small UI clicks. One family, so a board sounds like one toy.
+**The rules a sound is held to are "The cozy rules" at the top of
+`docs/agents/sound.md` (2026-10-09): low ticks, wood never steel, nothing
+high, lofi's roll-off.** This file is how a set is chosen and generated, and
+the history of each one; where a section below asks for a glockenspiel, a
+bell, a chime or a bright note, it records what was made, not what to make.
+
+- **Instruments:** soft wood and felt for ticks, a low kalimba or a tongue
+  drum for notes. One family, so a board sounds like one toy. (Until
+  2026-10-09 this line also named marimba, glockenspiel and paper clicks.)
 - **No buzzers, no alarms, no harsh transients.** A mistake is a kind "not
   quite" -- two soft notes going down -- never an error beep. That is the
   sound form of the tip card that names a broken rule instead of scolding.
