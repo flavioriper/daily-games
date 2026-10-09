@@ -224,7 +224,7 @@ func strike(c: int, r: int, boat := -1) -> void:
 	var fall := 0.0 if Motion.reduce else FALL
 	_pebble = {"c": c, "at": _t, "r": r, "boat": boat, "fall": fall}
 	_busy(fall + 1.4)
-	_cue("whistle")
+	_cue("lob")
 	_after(fall, func() -> void:
 		_pebble = {}
 		_born[0][c] = _t

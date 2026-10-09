@@ -4,7 +4,7 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_howto_screen.gd -- <game> <outdir> [lang=pt] [level=2] [secs=6] [every=1.5] [reduce]
 ##
-## <game> is snooker, chess, checkers, hockey, firefly, molehill, stackwood, thirteen,
+## <game> is snooker, chess, checkers, hockey, boats, firefly, molehill, stackwood, thirteen,
 ## posy or peapod. The screen is built by hand, the card opened as the ? opens
 ## it (`tutor.show()`), and each page is shot every `every` seconds for `secs`
 ## before Next is pressed: <outdir>/ht_<game>_p<page>_<n>.png. Prints each
@@ -18,6 +18,7 @@ const SCREENS := {
 	"chess": "res://versus/chess_screen.gd",
 	"checkers": "res://versus/checkers_screen.gd",
 	"hockey": "res://versus/hockey_screen.gd",
+	"boats": "res://versus/boats_screen.gd",
 	"firefly": "res://arcade/firefly_screen.gd",
 	"molehill": "res://arcade/molehill_screen.gd",
 	"stackwood": "res://arcade/stackwood_screen.gd",
@@ -76,7 +77,7 @@ func _initialize() -> void:
 	wallet.reload()
 	# load(), not preload: the screens name the Ads autoload.
 	var script: GDScript = load(SCREENS[_game])
-	_s = script.new(_level) if _game in ["snooker", "chess", "checkers", "hockey"] else script.new()
+	_s = script.new(_level) if _game in ["snooker", "chess", "checkers", "hockey", "boats"] else script.new()
 	root.add_child(_s)
 
 func _restore() -> void:

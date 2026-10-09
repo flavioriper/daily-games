@@ -1,11 +1,11 @@
 extends VBoxContainer
 
 ## The Versus tab: games played against someone rather than against the
-## day's board. Snooker, chess, checkers and air hockey
+## day's board. Snooker, chess, checkers, air hockey and Toy Boats
 ## (versus/snooker_screen.gd, versus/chess_screen.gd,
 ## versus/checkers_screen.gd, versus/hockey_screen.gd), and the someone is the
 ## computer at one of three levels or, on the fourth chip, another player:
-## online for the three games of turns (level Record.ONLINE; versus/online/),
+## online for the four games of turns (level Record.ONLINE; versus/online/),
 ## across the same phone for air hockey (level Record.LOCAL), which has no
 ## turns for the live transport to carry. Its body takes the day row's and
 ## the grid's room, the way Stats and Streak do, under the same header and
@@ -21,11 +21,12 @@ extends VBoxContainer
 ## where a friend is asked to one of these three games. The row is one more
 ## child of this column, so its height comes out of the room _fit measures.
 ##
-## Four cards are more than a screen holds, so the tab measures the room the
+## Five cards are more than a screen holds, so the tab measures the room the
 ## menu's column leaves it (_fit) and gives up, in turn, the lines under the
-## names, some of the pictures' height, and then the pictures' own row (each
-## lies small beside its game's name instead), rather than push the bar off
-## the screen.
+## names, some of the pictures' height, the pictures' own row (each lies
+## small beside its game's name instead), and last some of the chips' height
+## and of the gaps between the cards, rather than push the bar off the
+## screen.
 
 signal play(game: String, level: int)
 ## The Friends row was pressed.
@@ -60,6 +61,8 @@ const ART_H := 150.0
 ## The pictures' height once the room is short.
 const ART_H_SHORT := 96.0
 const CHIP_H := 84
+## The chips' and Play's height once five cards have given up everything else.
+const CHIP_H_SHORT := 66
 ## The chips, as [key, level]: three of the computer's, then the other
 ## player -- online, or for a game in LOCAL_GAMES across the same phone.
 const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
@@ -91,6 +94,8 @@ var _laid: Array = []
 var _blurbs: Array[Label] = []
 var _blurb := {}
 var _arts: Array[Control] = []
+## Every chip and Play button: what the last step of _fit makes shorter.
+var _tall: Array[Control] = []
 ## Each card's parts that move when the picture goes beside the name:
 ## {col, art, head, name, rec, names}.
 var _parts: Array[Dictionary] = []
@@ -196,6 +201,7 @@ func _game_card(game: String) -> Control:
 		b.pressed.connect(_pick.bind(game, int(levels[i][1])))
 		row.add_child(b)
 		chips.append(b)
+		_tall.append(b)
 	_chips[game] = chips
 	var go := IconButton.new("chevron_right", tr("VS_PLAY"), "SunButton")
 	go.name = "Play_" + game
@@ -204,6 +210,7 @@ func _game_card(game: String) -> Control:
 		Record.set_last_level(game, _level[game])
 		play.emit(game, _level[game]))
 	row.add_child(go)
+	_tall.append(go)
 	_paint_chips(game)
 	return card
 
@@ -441,7 +448,7 @@ func _fit() -> void:
 		var margins := parent.get_parent() as MarginContainer
 		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
 	var room := height - other - sep * shown
-	for level in 4:
+	for level in 5:
 		_compact(level)
 		if get_combined_minimum_size().y <= room:
 			return
@@ -452,6 +459,10 @@ func _compact(level: int) -> void:
 	for a in _arts:
 		a.custom_minimum_size.y = ART_H_SHORT if level >= 2 else ART_H
 	_set_side(level >= 3)
+	# Five cards on a short screen: the chips and the gaps give a little too.
+	for t in _tall:
+		t.custom_minimum_size.y = CHIP_H_SHORT if level >= 4 else CHIP_H
+	add_theme_constant_override("separation", 12 if level >= 4 else GAP)
 
 ## The last thing given up: the pictures' own row. Each comes down beside its
 ## game's name, the record under the name instead of across from it.

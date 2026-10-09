@@ -1810,6 +1810,35 @@ SETS = {
         "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, JETTY_TUNE, "warm:7000"),
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, JETTY_TUNE, "warm:7000"),
     },
+    # Toy Boats (Versus, versus/boats_screen.gd): a folding wooden box, a
+    # pond of calm water, wooden toy boats and pebbles, as JETTY's foley. A
+    # game is a hundred throws, so everything a throw makes is dry and short
+    # with no note -- `tick` (the finger crossing a square, a boat carried a
+    # square) is the quietest thing in the set -- and the notes are kept for
+    # what happens five times a game or once: `sunk`, `glug`, `hint`, `win`,
+    # `lose`, on HEARTH_TUNE's low muffled kalimba (the user, 2026-10-09:
+    # acoustic is not enough, also low, dark, quiet, soft onset, no bells).
+    "boats": {
+        "enter":    ("five small wooden toy boats set down onto calm water one after another, soft little wet wooden pats, gentle, short", 1.1, -13, JETTY, "warm:6000"),
+        "lift":     ("a small wooden toy boat lifted out of calm water, one tiny soft wet drip, very short and quiet", 0.5, -16, JETTY, "warm:6000", "cut:0.25"),
+        "place":    ("a small wooden toy boat set down on calm water, one soft dull wet wooden pat, no ring, very short", 0.5, -12, JETTY, "warm:6000", "cut:0.3"),
+        "turn":     ("a small wooden toy boat turned round on calm water, one short soft wet swish, no ring, very short", 0.5, -13, JETTY, "warm:6000", "cut:0.3"),
+        "tick":     ("one fingertip tapping a wooden slate frame once, a single short soft dull wooden tick, no ring, no tone, very short and quiet", 0.5, -19, JETTY, "warm:5000", "cut:0.06"),
+        "refused":  ("a single soft dull bump of a small wooden toy against a wooden box side, muffled, no ring, no tone, very short", 0.5, -13, JETTY, "warm:5000", "cut:0.25"),
+        "ready":    ("the brass latch of a small wooden box pressed shut, one soft low wooden click, no ring, short", 0.5, -11, JETTY, "warm:6000", "cut:0.3"),
+        "fold":     ("the lid of a small wooden box swung over on its hinge and set down, a soft low wooden creak and a dull knock, short", 0.8, -12, JETTY, "warm:6000"),
+        "throw":    ("a small pebble tossed underhand, one very soft short airy whiff of a sleeve, no whistle, no tone, quiet", 0.5, -17, JETTY, "warm:5000", "cut:0.25", "ease:0.03"),
+        "lob":      ("a small pebble falling through the air, one very soft short airy whiff, no whistle, no tone, quiet", 0.5, -18, JETTY, "warm:5000", "cut:0.3", "ease:0.04"),
+        "miss":     ("one small smooth pebble dropped into calm water far away, a single soft small round plop, no ring, short", 0.6, -13, JETTY, "warm:6000", "cut:0.45"),
+        "splash":   ("one small smooth pebble dropped into calm water close by, a single soft round plop and a tiny ripple, short", 0.7, -11, JETTY, "warm:6000", "cut:0.55"),
+        "hit":      ("one small pebble knocking a hollow wooden toy boat, a single soft dull hollow wooden knock, no ring, very short", 0.5, -10, JETTY, "warm:6000", "cut:0.3"),
+        "knock":    ("a small wooden peg pressed into a hole in a wooden toy boat, one soft low dull wooden knock, no ring, very short", 0.5, -10, JETTY, "warm:5500", "cut:0.3"),
+        "sunk":     ("a hollow wooden toy boat knocked and tipping under calm water with a few soft bubbles, then two soft rising notes on a low kalimba, pleased and warm, short", 1.3, -9, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "glug":     ("a hollow wooden toy boat filling and going under calm water, a soft low glug and a few slow bubbles, then one low soft falling tongue drum note, gentle, not sad", 1.3, -11, HEARTH_TUNE, "warm:5500", "ease:0.02"),
+        "hint":     ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "win":      ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
+        "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+    },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"
     "wallet": {
