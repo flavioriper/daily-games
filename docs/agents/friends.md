@@ -135,6 +135,8 @@ listed at the end of this section.
 **Toy Boats is offered to a friend** (2026-10-09): the fourth game in
 `ui/menu/invite_card.gd`'s `GAMES` and in the rules' three lists; its wire is
 in `docs/agents/versus.md`. Not probed with a friend (the stranger's path was).
+The picker holds four games and Cancel (`tests/_shot_friends.gd`, 378 draw
+calls over the sheet at 810x1440).
 
 **Air hockey is not offered to a friend** (2026-10-08): it has no game
 online (`docs/agents/versus.md`), `VersusTab.plays_online("hockey")` is false

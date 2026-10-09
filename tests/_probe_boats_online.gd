@@ -159,11 +159,13 @@ func _conduct(lay: bool) -> void:
 	_check("the other end ends it: won, the answerer gone", not b.is_empty() and b.outcome == "won" and b.why == "left", str(b.get("why", "?")))
 
 	_say("5. a resignation")
+	var at5 := Record.get_record("boats", Record.ONLINE)
 	r = await _pair("resign", "whole", 90.0)
 	a = r[0]
 	b = r[1]
 	_check("the one who left was asked first, and its screen closed settled", not a.is_empty() and a.asked and a.closed and a.settled)
 	_check("the other won by it", not b.is_empty() and b.outcome == "won" and b.why == "resign", str(b.get("why", "?")))
+	_check("one win and one loss counted for it", Record.get_record("boats", Record.ONLINE) - at5 == Vector2i(1, 1))
 
 	if lay:
 		_say("6. one end never presses Ready")

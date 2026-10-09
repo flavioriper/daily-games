@@ -422,3 +422,17 @@ works for, and it is the first note**: `home2`, two rising kalimba notes.
 on the first run; `home` came back 0.06 s long and was taken again (0.10 s).
 Unheard by the user; lengths were read off the files (0.10 s to 2.0 s) and
 nothing was listened to.
+
+### Toy Boats (2026-10-09)
+
+`SETS["boats"]`, nineteen cues, one take each, unheard by the user. The
+place is a folding wooden box on a jetty: `JETTY`'s foley for the boats
+(`enter`, `lift`, `place`, `turn`, `refused`), the box (`ready`, `fold`) and
+the pebbles (`throw` and `miss` for yours, `lob`, `splash` and `knock` for
+the other player's, `hit`). A game is a hundred throws, so all of those are
+dry, cut to 0.25-0.55 s and have no note, and `tick` (the finger crossing a
+square of the slate, a boat carried a square) is 0.06 s at -19. The notes
+come five times a game or once -- `sunk`, `glug` (your own boat going
+under: one low falling note, not sad), `hint`, `win`, `lose` -- on
+`HEARTH_TUNE`'s low muffled kalimba and tongue drum, each eased in, none
+above -8, after Nightlight's set was heard as too harsh the same day.
