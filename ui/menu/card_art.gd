@@ -63,6 +63,7 @@ const GolfSim = preload("res://puzzles/minigolf_sim.gd")
 const HorseParts = preload("res://ui/faces/horse_parts.gd")
 const HowBigArt = preload("res://ui/faces/how_big_art.gd")
 const AcornArt = preload("res://ui/faces/acorn_art.gd")
+const PearlArt = preload("res://ui/faces/pearl_art.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -230,6 +231,8 @@ var _how_big_mesh: ArrayMesh
 var _how_big_u := -1.0
 var _acorn_mesh: ArrayMesh
 var _acorn_u := -1.0
+var _pearl_mesh: ArrayMesh
+var _pearl_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -422,6 +425,7 @@ func _draw() -> void:
 		"horse": _draw_horse()
 		"how_big": _draw_how_big()
 		"acorn": _draw_acorn()
+		"pearl": _draw_pearl()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1676,3 +1680,55 @@ func _draw_acorn() -> void:
 	_acorn_mesh = b.mesh()
 	_acorn_u = _u
 	draw_mesh(_acorn_mesh, null, Transform2D(0.0, _c))
+
+## Pearl Dive's card: the board in small -- the paper with the clock's bar,
+## two ruled lines of a prompt and the line an answer was typed on, and
+## beside it the water with the bell on its rope over the shell that holds
+## the pearl -- `ui/faces/pearl_art.gd`'s shapes. One mesh, rebuilt only when
+## the card changes size.
+func _draw_pearl() -> void:
+	if _pearl_mesh != null and is_equal_approx(_pearl_u, _u):
+		draw_mesh(_pearl_mesh, null, Transform2D(0.0, _c))
+		return
+	var u := _u
+	var o := Vector2(-AC_W, -AC_H) * 0.5 * u
+	var b := Face.Builder.new()
+	b.fan(Face.Builder.round_rect(o - Vector2.ONE * 3.0 * u, Vector2(AC_W + 6.0, AC_H + 6.0) * u, 15.0 * u), Pal.CLOUD_DEEP)
+	b.fan(Face.Builder.round_rect(o, Vector2(AC_W, AC_H) * u, 12.0 * u), Pal.CLOUD_TILE)
+	# The water, light to dark, with the sand under it.
+	var sea: Array = PearlArt.SEA
+	var water := Rect2(o + Vector2(AC_W - 62.0, 9.0) * u, Vector2(52.0, AC_H - 18.0) * u)
+	b.fan(Face.Builder.round_rect(water.position, water.size, 9.0 * u), sea[1])
+	for k in range(2, sea.size()):
+		var y := water.position.y + water.size.y * (k - 1) / float(sea.size() - 1)
+		b.fan(Face.Builder.round_rect(Vector2(water.position.x, y), Vector2(water.size.x, water.end.y - y), 9.0 * u), sea[k])
+	var mid := water.get_center().x
+	PearlArt.shell(b, Vector2(mid, water.end.y - 15.0 * u), 5.0 * u)
+	b.stroke(PackedVector2Array([Vector2(mid, water.position.y + 2.0 * u), Vector2(mid, water.position.y + 30.0 * u)]),
+		1.6 * u, Color(PearlArt.NACRE, 0.85))
+	PearlArt.bell(b, Vector2(mid, water.position.y + 40.0 * u), 11.0 * u)
+	PearlArt.bubble(b, Vector2(mid - 15.0 * u, water.position.y + 20.0 * u), 2.4 * u, 0.7)
+	PearlArt.bubble(b, Vector2(mid + 14.0 * u, water.position.y + 58.0 * u), 1.8 * u, 0.6)
+	# The paper: the clock, a prompt's two lines, and the answer on its line.
+	var paper := Rect2(o + Vector2(10.0, 9.0) * u, Vector2(AC_W - 82.0, AC_H - 18.0) * u)
+	b.fan(Face.Builder.round_rect(paper.position + Vector2(0.0, 2.0 * u), paper.size, 8.0 * u), Color(Pal.LINE, 0.7))
+	b.fan(Face.Builder.round_rect(paper.position, paper.size, 8.0 * u), Pal.SURFACE)
+	var bar := Rect2(paper.position + Vector2(10.0, 9.0) * u, Vector2(paper.size.x - 20.0 * u, 5.0 * u))
+	b.fan(Face.Builder.round_rect(bar.position, bar.size, 2.5 * u), Pal.SURFACE_HI)
+	b.fan(Face.Builder.round_rect(bar.position, Vector2(bar.size.x * 0.62, bar.size.y), 2.5 * u), Pal.ACCENT)
+	for row in 2:
+		var y := paper.position.y + (26.0 + row * 9.0) * u
+		var half := (46.0 - row * 14.0) * u
+		b.stroke(PackedVector2Array([Vector2(paper.get_center().x - half, y), Vector2(paper.get_center().x + half, y)]), 3.0 * u, Pal.MARK)
+	var field := Rect2(paper.position + Vector2(9.0, 48.0) * u, Vector2(paper.size.x - 18.0 * u, 26.0 * u))
+	var gold: Color = PearlArt.TIER[4]
+	b.fan(Face.Builder.round_rect(field.position + Vector2(0.0, 2.0 * u), field.size, 8.0 * u), Color(gold, 0.8))
+	b.fan(Face.Builder.round_rect(field.position, field.size, 8.0 * u), gold)
+	b.fan(Face.Builder.round_rect(field.position + Vector2.ONE * 1.6 * u, field.size - Vector2.ONE * 3.2 * u, 6.6 * u), PearlArt.TIER_TILE[4])
+	var dot := field.position + Vector2(15.0 * u, field.size.y * 0.5)
+	b.disc(dot, 8.0 * u, gold)
+	PearlArt.pearl(b, dot, 4.8 * u)
+	b.stroke(PackedVector2Array([dot + Vector2(16.0, 0.0) * u, Vector2(field.end.x - 14.0 * u, dot.y)]), 3.4 * u, gold)
+	_pearl_mesh = b.mesh()
+	_pearl_u = _u
+	draw_mesh(_pearl_mesh, null, Transform2D(0.0, _c))

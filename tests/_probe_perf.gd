@@ -4795,6 +4795,52 @@ func _acorn_step(r: int, what: String) -> bool:
 	_host._on_check()
 	return st.index > r or _puzzle.is_done()
 
+## Pearl Dive's are Enter to dive, then a line typed and offered and Enter
+## for the next a prompt: an answer of each tier by turns, through the
+## board's own way in (what the tray's keys send). The deal follows the open
+## by a frame and a prompt takes a moment to change, so a move the board was
+## not ready for goes back on the list. Eight prompts want `to=40`.
+func _moves_pearl() -> Array:
+	var out := []
+	var n: int = _puzzle.State.ASKS[_puzzle.state.band]
+	var dive := {}
+	dive["do"] = func() -> void:
+		if _puzzle.state.count() == 0:
+			_moves.push_front(dive)
+		else:
+			_puzzle.commit_row()
+	out.append(dive)
+	for r in n:
+		for what: String in ["offer", "next"]:
+			var m := {}
+			m["do"] = func() -> void:
+				if not _pearl_step(r, what):
+					_moves.push_front(m)
+			out.append(m)
+	return out
+
+## One of Pearl Dive's moves on prompt `r`; false when the board was not
+## there yet.
+func _pearl_step(r: int, what: String) -> bool:
+	var st = _puzzle.state
+	# (the board's Phase: 0 WAIT, 1 READY, 2 PLAY, 3 REVEAL, 4 SWAP)
+	if what == "offer":
+		if st.count() == 0 or st.index != r or int(_puzzle._phase) != 2:
+			return false
+		var answers: Array = st.prompt().answers
+		var pick := 0
+		for a in answers.size():
+			if int(answers[a].t) == r % 5:
+				pick = a
+		for ch in _puzzle.State.norm(st.answer_name(r, pick)):
+			_puzzle.type_letter(ch)
+		_puzzle.commit_row()
+		return st.answered()
+	if st.index != r or int(_puzzle._phase) != 3:
+		return st.index > r or _puzzle.is_done()
+	_puzzle.commit_row()
+	return st.index > r or _puzzle.is_done()
+
 ## How Big?'s are a size and two presses of the row's button a round: the
 ## answer sized to its truth and locked, then Next. A lock is refused for a
 ## beat after a round is dealt and Next while the pair is still walking off,

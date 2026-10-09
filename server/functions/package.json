@@ -7,7 +7,7 @@
     "node": "22"
   },
   "scripts": {
-    "build": "cp ../../content/acorn.json src/acorn_bank.json && tsc",
+    "build": "cp ../../content/acorn.json src/acorn_bank.json && cp ../../content/pearl.json src/pearl_bank.json && tsc",
     "watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only auth,firestore,functions",
     "deploy": "firebase deploy --only functions"

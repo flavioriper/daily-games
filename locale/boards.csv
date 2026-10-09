@@ -2939,3 +2939,70 @@ HTP_AC_CLIMB_CAP,A wrong answer: a heart goes,Resposta errada: um coração se v
 HTP_AC_HINT_START_CAP,Not sure? Press the bulb,Na dúvida? Toque na lâmpada,¿Con dudas? Toca la bombilla
 HTP_AC_HINT_CAP,Two wrong answers fade,Duas respostas erradas somem,Dos respuestas erróneas se apagan
 HTP_AC_HINT_DONE_CAP,Now pick from the two left,Agora escolha entre as duas,Ahora elige entre las dos
+PD_BLURB,"Name a kind of thing against the clock. The rarer your answer, the deeper the dive.","Diga um tipo de coisa contra o relógio. Quanto mais rara a resposta, mais fundo o mergulho.","Di un tipo de cosa contra el reloj. Cuanto más rara la respuesta, más hondo el buceo."
+PD_SHORT,Rare answers\ndive deeper.,Respostas raras\nvão mais fundo.,Respuestas raras\nvan más hondo.
+PD_MOTTO,"The rarer, the deeper.","Quanto mais rara, mais fundo.","Cuanto más rara, más hondo."
+PD_LVL_0,"5 everyday prompts, 30 s each","5 temas do dia a dia, 30 s cada","5 temas cotidianos, 30 s cada uno"
+PD_LVL_1,"6 school-day prompts, 25 s each","6 temas de escola, 25 s cada","6 temas de escuela, 25 s cada uno"
+PD_LVL_2,"7 narrow prompts, 20 s each","7 temas fechados, 20 s cada","7 temas cerrados, 20 s cada uno"
+PD_LVL_3,"One Breath: 8 prompts, one tank","Um Fôlego: 8 temas, um tanque","Un Respiro: 8 temas, un tanque"
+PD_ROUND,%d / %d,%d / %d,%d / %d
+PD_METRES,%d m,%d m,%d m
+PD_GAIN,+%d m,+%d m,+%d m
+PD_FETCHING,Fetching today's prompts…,Buscando os temas de hoje…,Buscando los temas de hoy…
+PD_READY,"%d prompts, %d seconds each. Name one thing for each: the rarer, the deeper.","%d temas, %d segundos cada. Diga uma coisa para cada um: quanto mais rara, mais fundo.","%d temas, %d segundos cada uno. Di una cosa para cada uno: cuanto más rara, más hondo."
+PD_READY_BREATH,%d prompts on one tank: %d seconds of air. Rare answers give air back.,%d temas com um tanque só: %d segundos de ar. Respostas raras devolvem ar.,%d temas con un solo tanque: %d segundos de aire. Las respuestas raras devuelven aire.
+PD_READY_FIELD,Enter to dive,Enviar para mergulhar,Enviar para bucear
+PD_READY_FOOT,An answer that isn't on the list costs %d seconds.,Uma resposta fora da lista custa %d segundos.,Una respuesta fuera de la lista cuesta %d segundos.
+PD_TYPE,Type an answer,Digite uma resposta,Escribe una respuesta
+PD_TYPE_FIRST,Type an answer first.,Digite uma resposta primeiro.,Escribe una respuesta primero.
+PD_MISS,%s isn't on the list · −%d s,%s não está na lista · −%d s,%s no está en la lista · −%d s
+PD_DRY,Out of time,Acabou o tempo,Se acabó el tiempo
+PD_TIER_0,The shallows: everyone says it,No raso: todo mundo diz,En lo bajo: todos lo dicen
+PD_TIER_1,Under the waves: well known,Sob as ondas: bem conhecida,Bajo las olas: muy conocida
+PD_TIER_2,Deep water: a rare one,Água funda: uma rara,Agua honda: una rara
+PD_TIER_3,The dark: very few say it,No escuro: quase ninguém diz,En lo oscuro: casi nadie lo dice
+PD_FOUND_PEARL,You found the Pearl!,Você achou a Pérola!,¡Encontraste la Perla!
+PD_PEARL_WAS,The Pearl: %s,A Pérola: %s,La Perla: %s
+PD_ALSO_DEEP,Also deep: %s,Também no fundo: %s,También en lo hondo: %s
+PD_ENTER_NEXT,Enter for the next prompt,Enviar para o próximo tema,Enviar para el siguiente tema
+PD_ENTER_DONE,Enter to come up,Enviar para subir,Enviar para subir
+PD_HINT_LINE,The Pearl starts with %s and has %d letters,A Pérola começa com %s e tem %d letras,La Perla empieza con %s y tiene %d letras
+PD_HINT_USED,The bulb has already told this one.,A lâmpada já contou esta.,La bombilla ya contó esta.
+PD_WIN_SUB,"%d m deep, of %d","%d m de fundo, de %d","%d m de hondo, de %d"
+PD_SEAL_DEEP,Deep,Fundo,Hondo
+PD_SEAL_BREATH,One breath,Um fôlego,Un respiro
+PD_OUT,Out of air.,Acabou o ar.,Sin aire.
+PD_OUT_TITLE,Out of air,Acabou o ar,Sin aire
+PD_MORE_AIR,More air,Mais ar,Más aire
+PD_OUT_BODY,"The tank is empty. Start a new dive with fresh prompts, or watch a short video for more air.","O tanque esvaziou. Comece um novo mergulho com temas novos, ou veja um vídeo curto para ganhar mais ar.","El tanque está vacío. Empieza un nuevo buceo con temas nuevos, o mira un video corto para tener más aire."
+PD_OUT_BODY_PLAIN,The tank is empty. Start a new dive with fresh prompts whenever you like.,O tanque esvaziou. Comece um novo mergulho com temas novos quando quiser.,El tanque está vacío. Empieza un nuevo buceo con temas nuevos cuando quieras.
+PD_RULES,"%d prompts, new every day, %d seconds each. A prompt names a kind of thing: type one and press Enter. The first answer the list holds ends the prompt, so think before you send.","%d temas, novos todo dia, %d segundos cada. Um tema pede um tipo de coisa: digite uma e toque em Enviar. A primeira resposta que estiver na lista encerra o tema, então pense antes de enviar.","%d temas, nuevos cada día, %d segundos cada uno. Un tema pide un tipo de cosa: escribe una y toca Enviar. La primera respuesta que esté en la lista cierra el tema, así que piensa antes de enviar."
+PD_RULES_BREATH,"One Breath: %d prompts on one tank of %d seconds of air, which only runs while a prompt is waiting. Every answer gives air back, and a rare one gives much more. Run out and the dive is over.","Um Fôlego: %d temas com um tanque de %d segundos de ar, que só corre enquanto um tema espera. Toda resposta devolve ar, e uma rara devolve muito mais. Se o ar acabar, o mergulho termina.","Un Respiro: %d temas con un tanque de %d segundos de aire, que solo corre mientras un tema espera. Toda respuesta devuelve aire, y una rara devuelve mucho más. Si se acaba, termina el buceo."
+PD_RULES_DEPTH,"The rarer the answer, the deeper the bell goes: 1 m for what everyone says, then 3, 6 and 8, and 10 m for the Pearl, the one deepest answer of each prompt. An answer that isn't on the list costs %d seconds. Spaces and accents don't matter.","Quanto mais rara a resposta, mais fundo o sino desce: 1 m para o que todo mundo diz, depois 3, 6 e 8, e 10 m para a Pérola, a resposta mais funda de cada tema. Uma resposta fora da lista custa %d segundos. Espaços e acentos não importam.","Cuanto más rara la respuesta, más hondo baja la campana: 1 m para lo que todos dicen, luego 3, 6 y 8, y 10 m para la Perla, la respuesta más honda de cada tema. Una respuesta fuera de la lista cuesta %d segundos. Los espacios y los acentos no importan."
+PD_RULES_BULB_ONE,The bulb tells the Pearl's first letter and how long it is. You have one for the day.,A lâmpada conta a primeira letra da Pérola e quantas letras ela tem. Você tem uma para o dia.,La bombilla dice la primera letra de la Perla y cuántas letras tiene. Tienes una para el día.
+PD_RULES_BULB_N,The bulb tells the Pearl's first letter and how long it is. You have %d for the day.,A lâmpada conta a primeira letra da Pérola e quantas letras ela tem. Você tem %d para o dia.,La bombilla dice la primera letra de la Perla y cuántas letras tiene. Tienes %d para el día.
+HTP_PD_TYPE,Name one,Diga uma,Di una
+HTP_PD_TYPE_BODY,A prompt names a kind of thing. Type one and press Enter before the clock runs out. The first answer on the list ends the prompt.,Um tema pede um tipo de coisa. Digite uma e toque em Enviar antes de o relógio zerar. A primeira resposta que estiver na lista encerra o tema.,Un tema pide un tipo de cosa. Escribe una y toca Enviar antes de que se acabe el reloj. La primera respuesta que esté en la lista cierra el tema.
+HTP_PD_RARE,Rare dives deeper,A rara vai mais fundo,La rara va más hondo
+HTP_PD_RARE_BODY,"What everyone says is worth 1 m. An answer few would think of takes the bell far down, and each prompt hides one Pearl worth 10 m.","O que todo mundo diz vale 1 m. Uma resposta em que poucos pensariam leva o sino lá para baixo, e cada tema esconde uma Pérola de 10 m.","Lo que todos dicen vale 1 m. Una respuesta en la que pocos pensarían lleva la campana muy abajo, y cada tema esconde una Perla de 10 m."
+HTP_PD_MISS,Not on the list,Fora da lista,Fuera de la lista
+HTP_PD_MISS_BODY,"An answer the list doesn't hold costs %d seconds, and you can try another. Spaces and accents don't matter.","Uma resposta que não está na lista custa %d segundos, e você pode tentar outra. Espaços e acentos não importam.","Una respuesta que no está en la lista cuesta %d segundos, y puedes probar otra. Los espacios y los acentos no importan."
+HTP_PD_BREATH,One Breath,Um Fôlego,Un Respiro
+HTP_PD_BREATH_BODY,"One tank of %d seconds for the whole dive. Every answer gives air back, a rare one much more. Out of air, the dive is over.","Um tanque de %d segundos para o mergulho inteiro. Toda resposta devolve ar, e uma rara muito mais. Sem ar, o mergulho acaba.","Un tanque de %d segundos para todo el buceo. Toda respuesta devuelve aire, y una rara mucho más. Sin aire, se acaba el buceo."
+HTP_PD_HINT,After the Pearl? Ask the bulb,Atrás da Pérola? Peça à lâmpada,¿Tras la Perla? Pide a la bombilla
+HTP_PD_HINT_BODY_ONE,The bulb tells the Pearl's first letter and how many letters it has. You have one hint.,A lâmpada conta a primeira letra da Pérola e quantas letras ela tem. Você tem uma dica.,La bombilla dice la primera letra de la Perla y cuántas letras tiene. Tienes una pista.
+HTP_PD_HINT_BODY_N,The bulb tells the Pearl's first letter and how many letters it has. You have %d hints.,A lâmpada conta a primeira letra da Pérola e quantas letras ela tem. Você tem %d dicas.,La bombilla dice la primera letra de la Perla y cuántas letras tiene. Tienes %d pistas.
+HTP_PD_TYPE_START_CAP,"A prompt, and a clock","Um tema, e um relógio","Un tema, y un reloj"
+HTP_PD_TYPE_CAP,"Type one, then Enter","Digite uma, depois Enviar","Escribe una, luego Enviar"
+HTP_PD_TYPE_DONE_CAP,Everyone says it: 1 m,Todo mundo diz: 1 m,Todos lo dicen: 1 m
+HTP_PD_RARE_START_CAP,Think of one few would say,Pense numa que poucos diriam,Piensa en una que pocos dirían
+HTP_PD_RARE_CAP,Rare: the bell goes far down,Rara: o sino desce bastante,Rara: la campana baja mucho
+HTP_PD_RARE_PEARL_CAP,The Pearl is the deepest of all,A Pérola é a mais funda de todas,La Perla es la más honda de todas
+HTP_PD_MISS_START_CAP,Not every answer is on the list,Nem toda resposta está na lista,No toda respuesta está en la lista
+HTP_PD_MISS_CAP,It costs a few seconds,Custa alguns segundos,Cuesta unos segundos
+HTP_PD_MISS_DONE_CAP,Try another,Tente outra,Prueba otra
+HTP_PD_BREATH_START_CAP,One tank for the whole dive,Um tanque para o mergulho todo,Un tanque para todo el buceo
+HTP_PD_BREATH_CAP,An answer gives air back,Uma resposta devolve ar,Una respuesta devuelve aire
+HTP_PD_HINT_START_CAP,After the Pearl? Press the bulb,Atrás da Pérola? Toque na lâmpada,¿Tras la Perla? Toca la bombilla
+HTP_PD_HINT_CAP,"Its first letter, and its length","A primeira letra, e o tamanho","Su primera letra, y su largo"

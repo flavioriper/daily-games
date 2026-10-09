@@ -934,6 +934,33 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "AC_LVL_3"},
 		],
 	},
+	{
+		"id": "pearl",
+		"kind": "puzzle",
+		"title": "Pearl Dive",
+		"blurb": "PD_BLURB",
+		"short": "PD_SHORT",
+		"motto": "PD_MOTTO",
+		"footer": "Type · Dive · Find",
+		# It types, so its tray is Hidden Word's keyboard, and Enter is every
+		# move there is (dive, offer the answer, the next prompt): no actions
+		# row, and no tip card.
+		"script": "res://puzzles/pearl2d.gd",
+		"shell": "flat",
+		"tray": "keys",
+		"actions": false,
+		"tip": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (pearl_state.gd's ASKS) is its own
+		# daily with its own done mark and its own prompts.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "PD_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "PD_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "PD_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PD_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

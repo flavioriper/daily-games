@@ -52,3 +52,12 @@ notes, fourteen cues): one take a cue, unheard by the user. `pick` is the
 one that repeats (every tap on an answer): a wooden tile set down, cut to
 0.1 s at -15, no note. The held breath after a lock is silence, not a drum
 roll. Details: `docs/art/sound-direction.md`, its last section.
+
+**Pearl Dive has a set since 2026-10-09** (`SETS["pearl"]`, `JETTY` foley of
+a wooden jetty over calm water -- drops, bubbles, a wet rope, a plank -- and
+`JETTY_TUNE` notes, sixteen cues): one take a cue, unheard by the user.
+`tick` is the one that repeats (the clock's last five seconds): a wooden
+clock's tick, cut to 0.07 s at -16, no note. `miss` can come several times
+a prompt and is two dull knocks on a plank, no note either. The keyboard's
+keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
+cue a letter. Details: `docs/art/sound-direction.md`, its last section.

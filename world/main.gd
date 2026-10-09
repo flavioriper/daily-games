@@ -38,6 +38,8 @@ func _ready() -> void:
 	# Golden Acorn's questions for today, fetched behind the menu so its card
 	# opens on them at once (puzzles/acorn2d.gd waits a moment when it must).
 	Backend.day_content("acorn", Daily.date_key())  # deliberately not awaited
+	# Pearl Dive's prompts ride the same way (puzzles/pearl2d.gd).
+	Backend.day_content("pearl", Daily.date_key())  # deliberately not awaited
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)

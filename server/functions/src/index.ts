@@ -4,6 +4,7 @@ import {initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {asked, makeDay} from "./acorn";
+import {asked as pearlAsked, makeDay as pearlDay} from "./pearl";
 
 initializeApp();
 const db = getFirestore();
@@ -48,6 +49,10 @@ export function dayKey(d: Date): number {
  */
 export const GAMES: Record<string, (day: number, recent: unknown[]) => Promise<unknown>> = {
   acorn: (day, recent) => makeDay(day, recent.flatMap(asked)),
+  // Three days back and no further: good kinds are a few hundred, a day
+  // takes twenty-six, and a writer forbidden ten days of them goes looking
+  // among moons and cacti.
+  pearl: (day, recent) => pearlDay(day, recent.slice(0, 3).flatMap(pearlAsked)),
 };
 
 /** How many days back a game is shown of itself. */
@@ -99,9 +104,12 @@ function turnDoc(day: number, game: string) {
  */
 export const publishDay = onSchedule({
   schedule: "0 3 * * *",
-  // A written day is eight answers from a model (acorn.ts: a band written,
-  // a band reviewed): minutes, not the default's one.
-  timeoutSeconds: 1500,
+  // A written day is minutes, not the default's one: Golden Acorn's about
+  // three and a half (acorn.ts: a band written, a band reviewed) and Pearl
+  // Dive's about six (pearl.ts: some fifty requests, five at a time), so a
+  // first night, which writes today and tomorrow, is near twenty. The most
+  // a scheduled function is given.
+  timeoutSeconds: 1800,
   memory: "512MiB",
   secrets: ["OPENROUTER_API_KEY"],
 }, async () => {

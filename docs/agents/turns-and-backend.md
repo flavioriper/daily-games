@@ -120,7 +120,8 @@ foundation's, unchanged. Three things changed in `index.ts`:
 - **A day already published is never made again**: `publishDays` reads the
   document first and skips. `create()` is still what writes, so two runs
   racing cannot overwrite either.
-- The schedule has `timeoutSeconds: 1500`, `memory: "512MiB"` and
+- The schedule has `timeoutSeconds: 1800` (1500 until Pearl Dive joined,
+  2026-10-09; the most a scheduled function is given), `memory: "512MiB"` and
   `secrets: ["OPENROUTER_API_KEY"]`.
 
 **`server/functions/src/generate.ts` is the only place a model is called.**
@@ -233,6 +234,105 @@ day. **The model's own half is proven from this Mac and no further**: the
 requests, the schema as OpenRouter takes it, the review and the fill ran for
 real, twice. What is not proven is the function doing it: the secret
 reaching it, and three and a half minutes inside a scheduled run.
+
+### Pearl Dive, the second game on the contract (2026-10-09)
+
+`server/functions/src/pearl.ts`, one line in `GAMES`, the bank copied by
+`npm run build` as the ignored `src/pearl_bank.json`. The contract held:
+`generate.ts` is untouched and `ask` is still the only way to a model. What
+is Pearl Dive's own:
+
+- **A day is twenty-six prompts** (5 + 6 + 7, and One Breath's 3 + 3 + 2),
+  each a kind of thing and the list of every answer the game takes for it,
+  some fifty a prompt, tiered and spelled in en, pt and es. A published
+  day is about 150 KB of JSON (Firestore's limit is 1 MiB a document).
+- **How rare an answer is is written, not counted** from what players
+  type: the bank has to work on a phone that never reached anybody, and a
+  day has to be whole before its first player.
+- **Asked for in three steps.** One request proposes the day's kinds, a
+  third more than needed (`proposeKinds`; asked twice when it must be: the
+  writer ran on to the token ceiling with a list that never ended in two of
+  the first five askings). Then **a prompt a request, five at a time**
+  (`POOL`): the writer lists the answers, and the reviewer -- not told the
+  tiers, shown the list shuffled -- says which answers do not belong, how
+  rare it finds each, and which well-known ones are missing. A second
+  round writes the spare kinds for the prompts the first round lost.
+- **The review is merged, not obeyed** (`merged`): an answer the reviewer
+  found something against, or gave no verdict on, goes; a tier two or more
+  steps from the reviewer's moves one step toward it; what was missing is
+  added at the reviewer's tier (2 at most); the Pearl is the writer's unless
+  it went or the reviewer finds it commonplace, and then the first deep
+  answer is the Pearl. A kind the reviewer calls unclear or unsuitable is
+  lost whole.
+- **`cleaned()` is where a list becomes the contract's**, for the model's
+  day and the bank alike: spellings with a numeral or outside 2..22 folded
+  letters go; a spelling two answers share stays with the commoner; an
+  answer left nameless in a language goes (so does one whose shown name is
+  over 26 characters -- that silently cost the bank *A Midsummer Night's
+  Dream* until it was put back by hand); shown names get a capital; and
+  **names are also taken bare**: a word that stands in a third of a list's
+  names ("Lake Titicaca", "Onion soup", "Mar Negro") may be left off, and
+  so may an opening article ("The Scream"). The phone matches whole
+  spellings, one slip forgiven, so the short name has to be in the data.
+- **The gap rule is a prompt, not a band**: a slot the model lost is filled
+  from the bank (the slot's own bank prompt first, never a kind the day
+  already asks), and `source` says `model`, `mixed` or `bank` as Golden
+  Acorn's does. No kinds at all, or no model: the bank's day, which
+  `State.bank_band` deals the same on the phone -- the ids of 2026-10-09 to
+  11 were printed from both sides and agree.
+- **The writer is told three days back, not ten** (`GAMES`' line): good
+  kinds are a few hundred and a day takes twenty-six.
+
+**Measured** (one whole day, 2026-10-09, the default pair): **5 minutes 45
+seconds**, kept 8/9/9 of the 8/9/9 wanted with none from the bank (two
+prompts were lost in the first round and written again from the spares).
+With Golden Acorn's three and a half that is over nine minutes a day and
+near twenty on a first night, which writes two days: hence the timeout. The
+cost was not read off OpenRouter's dashboard; by the size of the answers it
+is **under ten cents a day**, and the bank's hundred-odd prompts some forty
+cents.
+
+**What the model's day was like** (read once, the asks, the commonest
+answers and the Pearls of all twenty-six; the lists themselves only in the
+bank). The kinds are sound and plain (a fruit, a capital city in Europe, a
+Roman emperor, a marsupial), the Portuguese and Spanish natural, the Pearls
+real and findable by somebody (Vaduz, the stapes, the theremin, the
+coelacanth) with a few too deep (Lorenzo di Credi, bammy). What to know:
+**it repeats the bank's kinds** when not told of them (the dry run tells it
+only that day's bank prompts), **the commonest tier is loose** (sourdough
+and tortilla beside baguette), **membership slips through the review now
+and then** (Caravaggio among the Renaissance painters), and left alone it
+drifts to kinds that are too narrow to play -- the moons of Saturn came
+back three times while the bank was written, with twenty answers nobody
+can name.
+
+**The bank** (`content/pearl.json`, 30 + 31 + 30 prompts, 4,741 answers,
+338 KB) was written by this same pipeline, `node lib/cli.js bank pearl
+<level> <count> tools/pearl/level<N>.json`, in several runs, and mended by
+hand: of 115 prompts written, 24 were dropped (moons, cacti, corals, cell
+types, sushi, two lists of "tea" that were flavours, branded board games,
+vague "types of" bridge, spider, shop, candy), and in the rest a score of
+answers were removed, re-tiered or added (São Paulo was missing from the
+cities of Brazil, pepper from the spices; a few Pearls were commonplace).
+**Every prompt's English was read once, by tier; the Portuguese and Spanish
+of some fifteen.** Nobody has checked all 4,741 answers for truth, and a
+right answer that is missing is refused on the phone. Edit
+`tools/pearl/level0..2.json` (one prompt a line) and run
+`python3 tools/build_pearl.py`, which checks the contract and writes the
+bank.
+
+**By hand**: `tools/pearl_day.sh [yyyymmdd]` prints the day and writes
+nothing (`DAILY_MODEL=off` for the bank's); `node lib/cli.js day pearl
+[yyyymmdd]` is the same without the build. Nothing new to set before a
+deploy: the secret is Golden Acorn's. `tools/publish_day.sh` publishes both
+games.
+
+**Verified, and not.** `npm run build` clean; the bank's day and one whole
+model day printed from this Mac, and the model's day passed the phone's own
+`State.day_band` on all four bands (headless). **Not run**: `publishDays`
+with this game against the emulator, a stand-in for a failing model (the
+fill and the second round ran only as the real model happened to exercise
+them), and the deployed function.
 
 `core/locale.gd` picks between `en`, `pt` and `es` and does the number
 formatting `TranslationServer` does not. The turn flow's strings are keyed

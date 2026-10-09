@@ -220,6 +220,39 @@ walk as How Big?'s does. The tutorial: `tests/_probe_perf.gd -- acorn d=0
 howto shot=2 gap=6 to=40 lang=en` (`/tmp/probe_acorn_p<n>.png`; `d=3` for
 the Climb's page). `tests/_shot_menu.gd -- last` turns three pages now.
 
+## Pearl Dive's harness (2026-10-09)
+
+`tests/_shot_pearl.gd` plays the board through the way in a player has (the
+tray's own keys pressed, letter by letter, and its Enter) and shoots
+numbered frames (`out=<dir>`, `lang=en|pt|es`):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_pearl.gd -- d=0..3 <mode> [rm] [fixed]
+
+Modes: `rest play deep hint dry out doc restore`. `play` answers every
+prompt, shallow to the Pearl by turns with one line the list does not hold
+on the way, and shoots each reveal and the win; `deep` types the Pearl every
+time (the seal, the floor); `dry` runs the clock out on the first prompt;
+`out` (Insane) answers one prompt, lets the air run out, shoots the card and
+tries again (a new dive from the bank). The two that would wait a real clock
+out set `state.time_left` short instead. `doc` puts a day's document in the
+backend's cache as the server would write it, opens the daily on it (`source
+model` in the printed line) and takes it out again; `restore` reopens a day
+already played with one prompt dry. **`fixed` deals the tutorial's one
+prompt on every slot** in place of the bank's, for a look that does not
+depend on the bank (`out`'s Try again and `restore` still deal from the
+bank). **`bank` needs no window**: it prints three days of every band's
+prompts from the bank, the same ids `tools/pearl_day.sh <day>` prints for
+the server -- run both after touching either side's ordering. The harness
+stops the backend, so it plays the bank; the board deals a frame after it
+opens, as Golden Acorn's does. `tests/_probe_perf.gd -- pearl` (`to=40` for
+One Breath) plays an answer of each tier by turns through `type_letter` and
+`commit_row`, and `tests/_win.gd -- pearl` presses the tray's keys with
+touches, the bulb once and one miss on the way, and types every Pearl; both
+wait for the deal. The tutorial: `tests/_probe_perf.gd -- pearl d=0 howto
+shot=2 gap=6 to=40 lang=en` (`/tmp/probe_pearl_p<n>.png`; `d=3` for One
+Breath's page). **Run a harness that plays it under `--audio-driver Dummy`**
+or the dive is heard on this Mac.
+
 ## How Big?'s harness (2026-10-08)
 
 `tests/_shot_how_big.gd` plays the board through its real input path (a

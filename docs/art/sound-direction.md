@@ -383,3 +383,24 @@ Tents' `check`), never a buzzer; `heart_lost` is a low tongue drum over a
 dull knock. `hint`, `solved`, `party`, `stamp`, `out_of_hearts` and
 `heart_back` are phrased as How Big?'s. One take a cue on the first run, no
 retakes, unheard by the user and not measured.
+
+## Pearl Dive (2026-10-09)
+
+`SETS["pearl"]`, sixteen cues, every one the board fires. Two styles: `JETTY`
+(close-mic foley on a small wooden jetty over calm water: drops, bubbles, a
+wet rope, planks) and `JETTY_TUNE` (the garden family's kalimba, music box,
+tongue drum and hand bells). **Two cues repeat and neither is a note**:
+`tick`, the clock's last five seconds, a wooden clock's tick cut to 0.07 s at
+-16; and `miss`, an answer the list does not hold, two dull knocks on a wet
+plank cut to 0.3 s. `refuse` is one fingertip tap (Enter on an empty line, a
+bulb already told). **An answer is heard by its depth**: `hit` is one drop
+into a bucket (a common or known answer, tiers 0 and 1), `deep` two rising
+kalimba notes over a drop (tiers 2 and 3), `pearl` three and a hand bell.
+`dive` is a pebble into deep water, `next` one slow bubble, `air_back` a few
+quick ones, `enter` a wave against the jetty's post. **No alarm and no
+buzzer for the clock**: a prompt run dry is `dry`, two notes falling (the
+`fall` trick, as Tents' `check`), and One Breath out of air is `out_of_air`,
+a music box winding down. `hint`, `solved`, `party` and `stamp` are phrased
+as Golden Acorn's. One take a cue on the first run, no retakes, unheard by
+the user; lengths and peaks were read off the files (0.07 s to 2.0 s, -18 to
+-5 dB) and nothing was listened to.

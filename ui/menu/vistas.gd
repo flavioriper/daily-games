@@ -73,6 +73,8 @@ const CARDS := {
 	"how_big": ["sky", 1.5, Vector2(0.30, 0.50)],
 	# Golden Acorn's quiz is asked in the open too, further along the sky.
 	"acorn": ["sky", 1.5, Vector2(0.62, 0.42)],
+	# Pearl Dive goes down off the beach Bridges is built over.
+	"pearl": ["beach", 1.6, Vector2(0.28, 0.60)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

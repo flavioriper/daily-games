@@ -29,13 +29,17 @@ var _body := ["BN_OUT_BODY", "BN_OUT_BODY_REST"]
 ## card reads Out of moves and the video buys this many more. The signal is
 ## still `one_more_heart`.
 var _moves := 0
+## A board's own words for the title and for the video's button, by key
+## ("title", "more"): Pearl Dive runs out of air, not hearts.
+var _words := {}
 
 ## `used`: whether this board has had its one heart already. One more heart
 ## is on the card when it has not and a video is ready. `body` is a board's
 ## own pair of lines (Shikaku's garden naps, not Binairo's suns and moons).
-func _init(used: bool, body: Array = [], moves := 0) -> void:
+func _init(used: bool, body: Array = [], moves := 0, words := {}) -> void:
 	_offer = not used and Ads.can_reward(PLACEMENT)
 	_moves = moves
+	_words = words
 	if moves > 0:
 		_body = ["OUT_MOVES_BODY", "OUT_MOVES_REST"]
 	if body.size() == 2:
@@ -54,7 +58,7 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 22)
 	card.add_child(col)
-	col.add_child(Dialog.head("OUT_MOVES_TITLE" if _moves > 0 else "BN_OUT_TITLE", "heart_line"))
+	col.add_child(Dialog.head(str(_words.get("title", "OUT_MOVES_TITLE" if _moves > 0 else "BN_OUT_TITLE")), "heart_line"))
 	var line := Label.new()
 	line.theme_type_variation = "SheetBody"
 	line.text = tr(_body[0] if _offer else _body[1])
@@ -69,7 +73,7 @@ func _ready() -> void:
 	again.pressed.connect(_answer.bind(0))
 	var heart: Button = null
 	if _offer:
-		heart = Dialog.secondary("play", tr("OUT_MOVES_MORE") % _moves if _moves > 0 else tr("BN_ONE_HEART"))
+		heart = Dialog.secondary("play", tr("OUT_MOVES_MORE") % _moves if _moves > 0 else tr(str(_words.get("more", "BN_ONE_HEART"))))
 		heart.name = "OneMoreHeart"
 		heart.pressed.connect(_on_heart)
 		Ads.offered(PLACEMENT)

@@ -88,6 +88,8 @@ server/functions/node_modules/
 server/functions/lib/
 # Copied from content/acorn.json by `npm run build`; the bank lives once.
 server/functions/src/acorn_bank.json
+# The same for content/pearl.json.
+server/functions/src/pearl_bank.json
 server/.firebase/
 # Dropped by the Firebase emulator suite on every run; not project state.
 # The glob, because the suite names a new one for every service it starts

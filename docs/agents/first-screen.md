@@ -333,6 +333,17 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   Its vista is the sky at `(0.62, 0.42)`. **Thirty-three cards at eight a
   page are five pages, the last holding this card alone**;
   `_shot_menu.gd -- last` (three turns now) read **143** draw calls there.
+- **Pearl Dive is the thirty-fourth card (2026-10-09).** Its picture is
+  `_draw_pearl()` in `ui/menu/card_art.gd`: the board in small -- the paper
+  with the clock's bar, a prompt's two ruled lines and an answer on its line
+  in the Pearl's gold, and beside it the water, light to dark, with the bell
+  on its rope over the shell -- `ui/faces/pearl_art.gd`'s shapes, one mesh
+  kept in `_pearl_mesh`. Its vista is the beach at `(0.28, 0.60)`, Bridges'
+  own. The fifth page holds two cards now. **`_shot_menu.gd -- last` could
+  not show it on 2026-10-09**: the harness reads the player's own save, and
+  that day's Daily gifts sheet stood over the page; the card's picture was
+  shot alone by a throwaway probe instead, and its draw calls on the page
+  were not read.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

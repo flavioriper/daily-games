@@ -270,6 +270,18 @@ QUIZ_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
              "natural, soft, rounded, gentle, cozy, no synth, no electronic "
              "tones, no beeps, no music bed, no voice")
 
+# Pearl Dive's water (2026-10-09): a small wooden jetty over calm water.
+# What is not a note is water, a wet rope, a plank and a small brass bell
+# knocked with a knuckle (a dull knock, never a ring).
+JETTY = ("close-mic foley recorded on a small wooden jetty over calm clear "
+         "water on a quiet warm day, real water drops and small bubbles, a "
+         "wet rope and wooden planks, natural and acoustic, soft, dry, "
+         "rounded, no synth, no electronic tones, no beeps, no music, no voice")
+JETTY_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
+              "and small hand bells recorded close in a warm quiet room, "
+              "natural, soft, rounded, gentle, cozy, no synth, no electronic "
+              "tones, no beeps, no music bed, no voice")
+
 PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
         "meadow, natural, soft, warm, gentle, cute, dry, no synth, no music, "
         "no human voice")
@@ -1712,6 +1724,32 @@ SETS = {
         "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a quiz night won among friends", 2.0, -5, QUIZ_TUNE, "warm:7000"),
         "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, QUIZ_TUNE, "warm:7000"),
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, QUIZ_TUNE, "warm:7000"),
+    },
+    # Pearl Dive (puzzles/pearl2d.gd, 2026-10-09): a dive off a wooden jetty.
+    # `tick` is the one that repeats (the clock's last five seconds, every
+    # prompt that runs that low): a dry wooden tick, cut short, no note. A
+    # miss can come several times a prompt, so it is a dull knock and no
+    # note either. An answer is felt by its depth: a water drop for a common
+    # one, two kalimba notes for a rare one, three and a hand bell for the
+    # Pearl. No buzzer and no alarm: the clock running out steps down on a
+    # kalimba, and out of air is a music box winding down.
+    "pearl": {
+        "enter":         ("one small calm wave lapping once against a wooden jetty post with a soft wet rope creak, gentle, short", 0.9, -12, JETTY, "warm:7000"),
+        "dive":          ("one small smooth pebble dropped into calm deep water, a single soft round plop followed by a tiny trail of rising bubbles, short", 0.9, -9, JETTY, "warm:7000"),
+        "tick":          ("one small wooden clock tick, a single short soft dry wooden tick, no ring, no tone, very short and quiet", 0.5, -16, JETTY, "warm:6000", "cut:0.07"),
+        "miss":          ("a knuckle knocked twice softly on a wet wooden plank, two small dull wooden knocks, a gentle not that one, no ring, very short", 0.5, -12, JETTY, "cut:0.3"),
+        "refuse":        ("a single soft dull tap of a fingertip on a wooden plank, no ring, no tone, very short and quiet", 0.5, -13, JETTY, "cut:0.2"),
+        "hit":           ("one single water drop falling into a still wooden bucket of water, a soft round plip, short", 0.5, -10, JETTY, "cut:0.4"),
+        "deep":          ("two soft rising notes on a real kalimba with one small water drop plip under the first note, pleased and warm, short", 0.9, -8, JETTY_TUNE, "warm:7000"),
+        "pearl":         ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, a treasure found, happy and proud, short", 1.2, -6, JETTY_TUNE, "warm:7000"),
+        "dry":           ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not quite, warm and round, never a buzzer", 1.0, -11, JETTY_TUNE, "fall"),
+        "next":          ("one single slow bubble rising through still water, a soft short round blub, no tone, very short", 0.5, -13, JETTY, "cut:0.3"),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -9, JETTY_TUNE, "warm:7000"),
+        "air_back":      ("a few small bubbles rising quickly through still water, a soft short bright bubbling, gentle", 0.7, -13, JETTY, "warm:7000"),
+        "out_of_air":    ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, like sinking slowly back to the surface at dusk", 1.8, -9, JETTY_TUNE, "warm:7000"),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like coming up from a dive with a pearl in hand", 2.0, -5, JETTY_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, JETTY_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, JETTY_TUNE, "warm:7000"),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

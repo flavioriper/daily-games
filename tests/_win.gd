@@ -177,6 +177,9 @@ func _note(id: String) -> String:
 		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"pearl": return "band %d, %d prompts (%s), %d m of %d, %d pearls, hints=%d, checks=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.depth(),
+			_puzzle.state.floor_depth(), _puzzle.state.pearls(), _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"pinwheel": return "%dx%d frame, %d pieces, %d taps, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.shapes.size(),
 			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -217,6 +220,7 @@ func _solve(id: String) -> void:
 		"horse": _solve_horse()
 		"how_big": _solve_how_big()
 		"acorn": _solve_acorn()
+		"pearl": _solve_pearl()
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -534,6 +538,57 @@ func _solve_acorn() -> void:
 			await create_timer(0.4).timeout
 			_hud_ok = _hud_ok and st.index == r + 1
 	_hud_ok = _hud_ok and hint_ok and _puzzle.checks == st.count() and st.perfect()
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
+
+## Pearl Dive: every prompt answered through the way in a player has -- the
+## tray's own keys pressed with a touch, letter by letter, and its Enter to
+## dive, to offer the line and to ask the next -- with the bulb once on the
+## first prompt, a line the list does not hold on the second, and the Pearl
+## typed everywhere else. The deal follows the open by a frame (or by the
+## network) and a prompt takes a moment to change, so this one awaits, and
+## holds the walk (`_waiting`) to the win.
+func _solve_pearl() -> void:
+	_waiting = true
+	var S = load("res://puzzles/pearl_state.gd")
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	var tray: Node = _host.tray
+	var enter: Button = tray.find_child("Key_Enter", true, false)
+	var guard := 0
+	while _puzzle.state.count() == 0 and guard < 900:
+		guard += 1
+		await process_frame
+	var st = _puzzle.state
+	_fit_ok = _fit_ok and slot.has_point(_puzzle.field_point())
+	await create_timer(0.6).timeout
+	_press(enter)
+	var hint_ok := true
+	var miss_ok := true
+	for r in st.count():
+		# the prompt asked and standing (the board's Phase: 2 PLAY)
+		guard = 0
+		while (st.index != r or int(_puzzle._phase) != 2) and guard < 600:
+			guard += 1
+			await process_frame
+		await create_timer(0.3).timeout
+		if r == 0 and _puzzle.capabilities().has("hint"):
+			_press(_host.top_bar.hint_button)
+			hint_ok = _puzzle.hints_used == 1 and not st.told().is_empty()
+		if r == 1:
+			for ch in "zzzqx":
+				_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
+			_press(enter)
+			miss_ok = st.misses == 1 and not st.answered()
+		for ch in S.norm(st.pearl_name()):
+			_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
+		_press(enter)
+		_hud_ok = _hud_ok and st.answered() and int(st.results[r].t) == S.PEARL
+		await create_timer(1.3).timeout
+		_press(enter)
+	_hud_ok = _hud_ok and hint_ok and miss_ok and st.pearls() == st.count() and st.depth() == st.floor_depth()
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:
 		wait += 1
