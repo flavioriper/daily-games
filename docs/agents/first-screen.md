@@ -88,7 +88,23 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   (a second grid, `_peek`, in a plain `_grid_slot` so no container resets
   the offsets), and on let-go it lands past a quarter of the width or a
   700 px/s flick, else slides back; the ends rubber-band. The chevrons play
-  the same slide. Draw calls at rest are unchanged (253 / 222). A turn sounds
+  the same slide. Draw calls at rest are unchanged (253 / 222). **Since 2026-10-09
+  the pages beside the one up are built ahead and parked, never built or
+  shown under the finger** (the user: the swipe "feels waaay too laggy, it
+  doesn't feel like a scrolling responsive"). The peek page used to be
+  built on the frame a drag began and freed as the turn landed: 10 ms of
+  building and a 29 ms first frame on this Mac, every swipe, several times
+  that on a phone. Now `_warm` builds a neighbour 0.05 s after a page
+  comes to rest (the next first, then the previous; 0.9 s after the menu
+  rises), the page turned away from stays built as the peek, and pages
+  further than one away are freed (`_spare`). **A page out of sight is
+  parked `PARK` spans to the side, shown, not hidden**: showing a hidden
+  grid made every card draw again, 10-40 ms on the frame the finger first
+  moved. Parked pages are culled (276 / 227 draw calls at rest on pages two
+  and three, the same as hidden). Measured with real ScreenTouch drags
+  through the viewport, ten swipes: the worst frame of a drag was 30-42 ms
+  before and 7-8 ms after, against 6 ms at rest. Not felt on a phone yet.
+  Still paid, once a page: the build itself, just after a landing. A turn sounds
   a hushed linen brush (`assets/sfx/ui/page.ogg`, `UiSound.page`; a paper swish until 2026-09-28, which the house marimba style made tonal), never the click:
   the pager buttons carry the `silent` meta. Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this

@@ -185,6 +185,8 @@ const PAGE_EDGE := 0.3
 ## PAGE_SLIDE_MIN).
 const PAGE_SLIDE := 0.34
 const PAGE_SLIDE_MIN := 0.14
+## A page out of sight stands this many spans to the side (see `_spare`).
+const PARK := 3.0
 ## Where a friend's card is drawn: over any sheet (10) and a sheet's own
 ## dialog (12 more).
 const CARD_Z := 30
@@ -239,6 +241,24 @@ var _peek: GridContainer
 var _peek_page := -1
 var _peek_cards: Array = []
 var _peek_fillers: Array = []
+## The pages beside the one that is up, built ahead and kept hidden: page ->
+## {grid, cards, fillers}. Building eight cards and drawing them for the
+## first time is tens of milliseconds on a phone, and it used to be paid on
+## the frame a drag began, every drag (the user, 2026-10-09: the swipe
+## "feels waaay too laggy"). Now a drag only shows what is already there:
+## `_warm` builds a neighbour a moment after the page comes to rest, and a
+## page turned away from stays built as the peek.
+##
+## **A page out of sight is parked, never hidden** (`_park`: shown, PARK
+## spans off to the side, where the canvas culls it). Showing a hidden grid
+## made every card on it draw again, 10 to 40 ms on this Mac on the frame
+## the finger first moved, which was most of the lag that building ahead
+## was meant to remove. `_peek_shown` says whether the peek is in the slide.
+var _spare := {}
+var _peek_shown := false
+var _warm_gen := 0
+## The fitted gap between rows, for a grid made after the fit.
+var _row_gap := GAP
 var _slide_tw: Tween
 ## Where the running slide is heading: 0 back to rest, +-1 a turn.
 var _slide_go := 0
@@ -552,10 +572,10 @@ func _build_list() -> void:
 func _new_grid(grid_name: String) -> GridContainer:
 	var g := GridContainer.new()
 	g.name = grid_name
-	g.columns = COLS
+	g.columns = _cols
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	g.add_theme_constant_override("h_separation", GAP)
-	g.add_theme_constant_override("v_separation", GAP)
+	g.add_theme_constant_override("v_separation", _row_gap)
 	g.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_grid_slot.add_child(g)
 	return g
@@ -582,6 +602,8 @@ func _build_page() -> void:
 	_grid.position.x = 0.0
 	_fill(_grid, _page, cards, _fillers)
 	_set_pager(_page, _pages())
+	# once the menu's entrance has played
+	_queue_warm(0.9)
 
 func _free_nodes(from: Node, nodes: Array) -> void:
 	for n: Node in nodes:
@@ -696,7 +718,8 @@ func _fit_grid() -> void:
 	var gap := GAP
 	if rows > 1:
 		gap = maxi(MIN_ROW_GAP, GAP + floori((slack - grow * rows) / (rows - 1)))
-	for g: GridContainer in [_grid, _peek]:
+	_row_gap = gap
+	for g: GridContainer in [_grid, _peek] + _spare_grids():
 		g.add_theme_constant_override("v_separation", gap)
 	var per := cols * rows
 	var row_h := PuzzleCard.CARD_H + grow
@@ -711,7 +734,7 @@ func _fit_grid() -> void:
 		_build_page()
 	elif row_h != _row_h:
 		_row_h = row_h
-		for card in cards + _peek_cards:
+		for card in cards + _peek_cards + _spare_cards():
 			card.fit_height(row_h)
 
 ## Turns the page when a press on the grid travels far enough sideways:
@@ -810,7 +833,7 @@ func _let_go() -> void:
 	_dragging = false
 	var span := _span()
 	var go := 0
-	if _peek.visible and _peek_page >= 0:
+	if _peek_shown and _peek_page >= 0:
 		var dir := _peek_page - _page
 		var toward := -dir * _drag_x
 		var fling := -dir * _drag_v
@@ -818,23 +841,96 @@ func _let_go() -> void:
 			go = dir
 	_slide_to(go)
 
-## Builds `page` into the peek grid if it is not the one standing there.
+## Stands `page` in the peek grid if it is not the one there: the page built
+## ahead for it (`_spare`) when there is one, so nothing is built under the
+## finger; the page that was the peek is kept as a spare.
 func _show_peek(page: int) -> void:
 	if _peek_page != page:
-		_free_nodes(_peek, _peek_cards)
-		_free_nodes(_peek, _peek_fillers)
-		_fill(_peek, page, _peek_cards, _peek_fillers)
+		if _peek_page >= 0:
+			_park(_peek)
+			_peek.name = "Spare_%d" % _peek_page
+			_spare[_peek_page] = {"grid": _peek, "cards": _peek_cards, "fillers": _peek_fillers}
+			_peek = null
+			_peek_cards = []
+			_peek_fillers = []
+		if _spare.has(page):
+			var e: Dictionary = _spare[page]
+			_spare.erase(page)
+			if _peek != null:
+				_grid_slot.remove_child(_peek)
+				_peek.queue_free()
+			_peek = e.grid
+			_peek_cards = e.cards
+			_peek_fillers = e.fillers
+			_peek.name = "Peek"
+		else:
+			if _peek == null:
+				_peek = _new_grid("Peek")
+			_fill(_peek, page, _peek_cards, _peek_fillers)
 		_peek_page = page
 	_peek.visible = true
+	_peek_shown = true
 
 func _hide_peek() -> void:
-	_peek.visible = false
+	_peek_shown = false
+	_park(_peek)
+
+## Stands a grid out of sight without hiding it.
+func _park(g: Control) -> void:
+	g.position.x = _span() * PARK
+
+func _spare_grids() -> Array:
+	var out: Array = []
+	for e: Dictionary in _spare.values():
+		out.append(e.grid)
+	return out
+
+func _spare_cards() -> Array:
+	var out: Array = []
+	for e: Dictionary in _spare.values():
+		out.append_array(e.cards)
+	return out
+
+func _free_spare(page: int) -> void:
+	var e: Dictionary = _spare[page]
+	_spare.erase(page)
+	_grid_slot.remove_child(e.grid)
+	(e.grid as Node).queue_free()
+
+## Asks for the pages beside this one to be built, `delay` from now; a later
+## ask replaces an earlier one.
+func _queue_warm(delay: float) -> void:
+	_warm_gen += 1
+	if is_inside_tree():
+		get_tree().create_timer(maxf(delay, 0.03)).timeout.connect(_warm.bind(_warm_gen))
+
+## Builds one page beside the one that is up, the next before the previous,
+## and asks again for the other. It is parked as it is built, shown, so its
+## first layout and its first drawing are paid now and not on the frame a
+## finger first pulls it in. Never under a drag or a slide: the landing asks
+## again.
+func _warm(gen: int) -> void:
+	if gen != _warm_gen or _dragging or Motion.running(_slide_tw) or not _can_swipe():
+		return
+	for page: int in [_page + 1, _page - 1]:
+		if page < 0 or page >= _pages() or page == _peek_page or _spare.has(page):
+			continue
+		var g := _new_grid("Spare_%d" % page)
+		var made := {"grid": g, "cards": [], "fillers": []}
+		_fill(g, page, made.cards, made.fillers)
+		_park(g)
+		_spare[page] = made
+		_queue_warm(0.15)
+		return
 
 func _drop_peek() -> void:
 	Motion.stop(_slide_tw)
+	for page: int in _spare.keys():
+		_free_spare(page)
 	_free_nodes(_peek, _peek_cards)
 	_free_nodes(_peek, _peek_fillers)
 	_peek_page = -1
+	_peek_shown = false
 	_peek.visible = false
 	_peek.position.x = 0.0
 	_grid.position.x = 0.0
@@ -923,7 +1019,7 @@ func _slide_to(go: int) -> void:
 		UiSound.page(self)
 	var span := _span()
 	var end_x := -go * span
-	if go == 0 and not _peek.visible:
+	if go == 0 and not _peek_shown:
 		end_x = 0.0
 	var peek_dir := signf(_peek_page - _page) if _peek_page >= 0 else 0.0
 	if Motion.reduce:
@@ -937,7 +1033,8 @@ func _slide_to(go: int) -> void:
 	_slide_tw.tween_method(func(x: float) -> void:
 		_drag_x = x
 		_grid.position.x = x
-		_peek.position.x = x + peek_dir * span, _drag_x, end_x, time)
+		if _peek_shown:
+			_peek.position.x = x + peek_dir * span, _drag_x, end_x, time)
 	_slide_tw.chain().tween_callback(_land.bind(go))
 	if go != 0:
 		# The dots and chevrons answer at the start of the slide, not its end.
@@ -957,17 +1054,22 @@ func _land(go: int) -> void:
 		var f := _fillers
 		_fillers = _peek_fillers
 		_peek_fillers = f
+		# the page turned away from stays built, as the peek: a swipe back
+		# shows it as it is
+		var was := _page
 		_page = _peek_page
-		_peek_page = -1
-		_free_nodes(_peek, _peek_cards)
-		_free_nodes(_peek, _peek_fillers)
+		_peek_page = was
+		_peek.name = "Turned"
 		_grid.name = "Grid"
 		_peek.name = "Peek"
+		for page: int in _spare.keys():
+			if absi(page - _page) > 1:
+				_free_spare(page)
 	_hide_peek()
 	_drag_x = 0.0
 	_grid.position.x = 0.0
-	_peek.position.x = 0.0
 	_set_pager(_page, _pages())
+	_queue_warm(0.05)
 
 ## A slide still running is landed where it was heading before anything
 ## else moves the page, except a drag, which picks it up mid-way.
@@ -1007,6 +1109,7 @@ func _show_list(tab := "home") -> void:
 		_tab = ""
 	_show_tab(tab)
 	_enter()
+	_queue_warm(0.9)
 	# The week's gift, once a day, by itself, once the menu has risen.
 	if tab == "home" and Wallet.calendar_open():
 		get_tree().create_timer(0.9).timeout.connect(func() -> void:
