@@ -158,10 +158,11 @@ func _process(delta: float) -> bool:
 				_step = 40 if _sn_only else (30 if _ck_only else 1)
 				_wait = _t + 0.6
 		1:
-			if _beat(0.6, func() -> void: _menu.versus_tab._pick("chess", Record.ONLINE), "01_tab"):
+			if _beat(0.6, func() -> void: _menu.versus_tab.open.emit("chess"), "01_tab"):
 				_step = 99 if _tab_only else 2
 		2:
 			if _beat(0.7, func() -> void:
+					_menu.versus_sheet.close()
 					_menu._open_versus("chess", Record.ONLINE)
 					_s = _menu.get_node("Chess"), "02_looking"):
 				_step = 3

@@ -50,6 +50,7 @@ const NIGHT_RIM := Color("f2b63c")
 var _entry: Dictionary = {}
 var _title: Label
 var _list: VBoxContainer
+var _blurb: Label
 
 func _build_sheet(col: VBoxContainer) -> void:
 	var head := _title_row(col, "", "puzzle")
@@ -65,6 +66,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	var blurb := Label.new()
 	blurb.theme_type_variation = "SheetBodyDim"
 	blurb.text = "DIFF_PICK"
+	_blurb = blurb
 	words.add_child(blurb)
 	head.add_child(words)
 	head.move_child(words, 1)

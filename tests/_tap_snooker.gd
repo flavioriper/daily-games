@@ -59,8 +59,8 @@ func _process(delta: float) -> bool:
 		1:
 			if _t > 1.8:
 				print("tab now ", _menu._tab)
-				var play: Control = _menu.versus_tab.find_child("Play_snooker", true, false)
-				_tap(play)
+				# The card opens the sheet that asks who to play; its Medium row.
+				_menu.versus_sheet.picked.emit("snooker", 1)
 				_step = 2
 		2:
 			if _t > 3.0:

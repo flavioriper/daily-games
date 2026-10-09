@@ -46,6 +46,7 @@ const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
 const VersusTab = preload("res://ui/menu/versus_tab.gd")
+const VersusSheet = preload("res://ui/menu/versus_sheet.gd")
 const SnookerScreen = preload("res://versus/snooker_screen.gd")
 const ChessScreen = preload("res://versus/chess_screen.gd")
 const CheckersScreen = preload("res://versus/checkers_screen.gd")
@@ -202,6 +203,7 @@ var settings_sheet: Control
 ## (through world/main.gd) the banner's tab all open it.
 var remove_ads_sheet: Control
 var difficulty_sheet: Control
+var versus_sheet: Control
 ## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
 var shop_sheet: Control
@@ -324,6 +326,14 @@ func _ready() -> void:
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
 	add_child(difficulty_sheet)
+	# A Versus card asks who to play on the same sheet's rows.
+	versus_sheet = VersusSheet.new()
+	versus_sheet.name = "VersusSheet"
+	versus_sheet.picked.connect(func(game: String, level: int) -> void:
+		Record.set_last_level(game, level)
+		_open_versus(game, level))
+	add_child(versus_sheet)
+	versus_tab.open.connect(versus_sheet.ask_game)
 	friends_sheet = FriendsSheet.new()
 	friends_sheet.name = "FriendsSheet"
 	friends_sheet.play.connect(func(game: String, uid: String) -> void: open_friend_game(game, uid, false))
@@ -467,7 +477,6 @@ func _build_list() -> void:
 	versus_tab = VersusTab.new()
 	versus_tab.name = "VersusTab"
 	versus_tab.visible = false
-	versus_tab.play.connect(_open_versus)
 	root.add_child(versus_tab)
 	arcade_tab = ArcadeTab.new()
 	arcade_tab.name = "ArcadeTab"

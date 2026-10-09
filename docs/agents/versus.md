@@ -426,6 +426,29 @@ are pennies, the grid is a rack, a column is a slot.
   draw calls); a 20:9 phone still shows one column, pictures beside the
   names (1668 of 1780). The five single-column steps before it are
   unchanged.
+- **The tab is the first screen's cards since 2026-10-09** (the user: "let's
+  redesign it to match the daily games cards, where the difficulty (+ online)
+  shows as the same sheet after clicking on the game"), and everything above
+  about chips, Play, `_fit`'s six steps, `_set_side` and `_set_pairs` is
+  history. Each game is a `PuzzleCard` (`ui/menu/puzzle_card_2d.gd`, `Card_<game>`,
+  `Pal.CAT` by index, a new two-line `VS_<GAME>_SHORT`), two a row; the
+  game's still drawing lies in a layer of its own over the card's plate,
+  because `CardArt` frees its children on every resize. `_fit` only shares
+  the room among three rows: a row is never under `PuzzleCard.CARD_H` and
+  what is over goes to the picture (`art_grow`, 150 here, 26 on the first
+  screen); at 810x1440 a card is 490 by 377. A card emits `open(game)` and
+  the menu shows `ui/menu/versus_sheet.gd`, the difficulty sheet's own rows
+  for `levels_of(game)`: Easy, Medium, Hard with the record at that level
+  as the line, and the night row for the other player (Online, or 2 players
+  for a game in `LOCAL_GAMES`; `VS_ONLINE_LINE` until there is a record
+  online). A row emits `picked(game, level)`; the menu writes
+  `Record.set_last_level` and opens the game. Nothing remembers a chip any
+  more. 189 draw calls on the tab, 246 with the sheet up (810x1440). The
+  drawings are clipped square, so a wide one (Toy Boats) shows past the
+  plate's rounded corner by a few pixels. `VS_*_BLURB`, `VS_ONLINE_BLURB`
+  and `VS_TWO_BLURB` are no longer read. `_tap_snooker.gd`, `_tap_chess.gd`
+  and `_shot_online.gd` were pointed at the sheet and not re-run. pt/es of
+  the nine new keys unread by a speaker.
 - 110-114 draw calls at the rack, 131-137 with the end card, 132-141 with a
   tutorial page, ANGLE agreeing (810x1440).
 - **The tutorial** (`ui/hud/penny_tutorial_diagram.gd`, five pages): the

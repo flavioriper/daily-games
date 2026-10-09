@@ -1279,3 +1279,12 @@ TUT_BEELINE_HUD_BODY,"A beat of the wings is never taken back, so there is no Un
 TUT_BEELINE_HUD_RESET,A fresh run from the first hedge,Uma partida nova desde a primeira sebe,Una partida nueva desde el primer seto
 TUT_BEELINE_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
 TUT_BEELINE_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
+VS_PICK,Who are you playing?,Contra quem você joga?,¿Contra quién juegas?
+VS_ONLINE_LINE,"A live game, a minute a move.","Ao vivo, um minuto por jogada.","En vivo, un minuto por jugada."
+VS_TWO_LINE,Two players on one phone.,Dois jogadores em um celular.,Dos jugadores en un teléfono.
+VS_SNOOKER_SHORT,"Pot the reds, then the colours.","Encaçape as vermelhas, depois as cores.","Mete las rojas, luego los colores."
+VS_CHESS_SHORT,Catch the other king.,Encurrale o rei adversário.,Atrapa al rey rival.
+VS_CHECKERS_SHORT,"Hop, jump and crown your men.","Pule, capture e coroe suas pedras.","Salta, captura y corona tus fichas."
+VS_HOCKEY_SHORT,First to seven goals.,Quem fizer sete gols vence.,Gana quien marque siete goles.
+VS_BOATS_SHORT,Find the other fleet first.,Ache a outra frota primeiro.,Encuentra antes la otra flota.
+VS_PENNY_SHORT,Line up four pennies to win.,Alinhe quatro moedas para vencer.,Alinea cuatro monedas para ganar.

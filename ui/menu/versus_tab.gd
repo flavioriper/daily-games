@@ -12,33 +12,30 @@ extends VBoxContainer
 ## the grid's room, the way Stats and Streak do, under the same header and
 ## over the same bar.
 ##
-## One card a game: a painted banner with the game's own drawing lying
-## across it (still, so it costs meshes and no frame), the name and the
-## record at the chip picked, a line, and the four chips beside Play.
-## Each game remembers its own chip.
+## One card a game, the first screen's own (ui/menu/puzzle_card_2d.gd, since
+## 2026-10-09; before, a wide card each with four chips beside Play): a
+## painted banner with the game's own drawing lying across it (still, so it
+## costs meshes and no frame), the name, a short line and the round go. The
+## whole card is the button, and `open` asks the menu for the sheet that
+## picks who to play (ui/menu/versus_sheet.gd).
 ##
 ## Above the cards, one row: Friends, with how many of them are online now.
 ## It opens the Friends sheet (ui/menu/friends_sheet.gd, through `friends`),
-## where a friend is asked to one of these three games. The row is one more
+## where a friend is asked to one of these games. The row is one more
 ## child of this column, so its height comes out of the room _fit measures.
 ##
-## Six cards are more than a screen holds, so the tab measures the room the
-## menu's column leaves it (_fit) and gives up, in turn, the lines under the
-## names, some of the pictures' height, the pictures' own row (each lies
-## small beside its game's name instead), some of the chips' height and of
-## the gaps between the cards, and last the cards' width: they stand two a
-## row, as the Arcade tab's do, the chips two by two over Play, rather than
-## push the bar off the screen.
+## The cards stand two a row, and the room three rows leave over goes to
+## their pictures (_fit), up to ART_GROW.
 
-signal play(game: String, level: int)
+## A card was pressed: the menu asks who to play.
+signal open(game: String)
 ## The Friends row was pressed.
 signal friends
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
-const IconButton = preload("res://ui/hud/icon_button.gd")
-const SunDot = preload("res://ui/sun_dot.gd")
+const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const Record = preload("res://versus/versus_record.gd")
 const Sim = preload("res://versus/snooker_sim.gd")
 const Table = preload("res://versus/snooker_table.gd")
@@ -61,27 +58,22 @@ const Icons = preload("res://ui/icons.gd")
 const GAP := 20
 const PAD := 24
 const RADIUS := 36
-const ART_H := 150.0
-## The pictures' height once the room is short.
-const ART_H_SHORT := 96.0
-const CHIP_H := 84
-## The chips' and Play's height once five cards have given up everything else.
-const CHIP_H_SHORT := 66
+const COLS := 2
+## How much taller than the first screen's a card's picture may grow here.
+const ART_GROW := 150.0
 ## The chips, as [key, level]: three of the computer's, then the other
 ## player -- online, or for a game in LOCAL_GAMES across the same phone.
 const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
 const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_TWO", Record.LOCAL]]
-## The line under the name while the fourth chip is the one picked.
-const ONLINE_BLURB := "VS_ONLINE_BLURB"
-const LOCAL_BLURB := "VS_TWO_BLURB"
 const GAMES := ["snooker", "chess", "checkers", "hockey", "boats", "penny"]
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
 	"boats": "Toy Boats", "penny": "Penny Drop"}
-const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB",
-	"hockey": "VS_HOCKEY_BLURB", "boats": "VS_BOATS_BLURB", "penny": "VS_PENNY_BLURB"}
+## Each card's line: two lines at half the screen's width at most.
+const SHORTS := {"snooker": "VS_SNOOKER_SHORT", "chess": "VS_CHESS_SHORT", "checkers": "VS_CHECKERS_SHORT",
+	"hockey": "VS_HOCKEY_SHORT", "boats": "VS_BOATS_SHORT", "penny": "VS_PENNY_SHORT"}
 const FILL := Color("fcf7ef")
 ## The Friends row: its height, the plaque on it and the plaque's tint.
 const FRIENDS_H := 108.0
@@ -90,27 +82,10 @@ const FRIENDS_TINT := Color("f4b8a4")
 const ONLINE_INK := Color("4f8a31")
 static var PLAIN := CanvasItemMaterial.new()
 
-var _level := {}
-var _chips := {}
-var _record := {}
 ## The banners that are a real table lying on its side: [art, table, span].
 var _laid: Array = []
-var _blurbs: Array[Label] = []
-var _blurb := {}
-var _arts: Array[Control] = []
-## Every chip and Play button: what the last step of _fit makes shorter.
-var _tall: Array[Control] = []
-## Each card's parts that move when the picture goes beside the name:
-## {col, art, head, name, rec, names}.
-var _parts: Array[Dictionary] = []
-## Whether the pictures lie beside the names now.
-var _side := false
-## The cards, one a row or two.
+var _cards: Array[Control] = []
 var _grid: GridContainer
-## Each card's row of chips and Play: {row, chips, go}.
-var _rows: Array[Dictionary] = []
-## Whether the cards stand two a row now.
-var _pairs := false
 var friends_row: Button
 var _friends_sub: Label
 var _friends_dot: Control
@@ -123,17 +98,13 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_friends_row())
 	_grid = GridContainer.new()
-	_grid.columns = 1
+	_grid.columns = COLS
 	_grid.add_theme_constant_override("h_separation", GAP)
 	_grid.add_theme_constant_override("v_separation", GAP)
-	_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_grid)
-	for game: String in GAMES:
-		_level[game] = Record.last_level(game)
-		if not levels_of(game).any(func(l: Array) -> bool: return l[1] == _level[game]):
-			_level[game] = 1
-		_grid.add_child(_game_card(game))
+	for i in GAMES.size():
+		_grid.add_child(_game_card(GAMES[i], Pal.CAT[i % Pal.CAT.size()]))
 
 ## A game's four chips, as [key, level].
 static func levels_of(game: String) -> Array:
@@ -143,102 +114,33 @@ static func levels_of(game: String) -> Array:
 static func plays_online(game: String) -> bool:
 	return GAMES.has(game) and not LOCAL_GAMES.has(game)
 
-func _game_card(game: String) -> Control:
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(FILL, RADIUS, PAD))
-	card.material = PLAIN
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.add_child(col)
-	var art := Vistas.card_plate(game, Pal.ACCENT_2 if game == "snooker" else Pal.ACCENT)
-	art.custom_minimum_size.y = ART_H
-	# A tall phone's spare height goes to the pictures, not to a gap under
-	# the cards.
-	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	art.clip_contents = true
-	col.add_child(art)
-	_arts.append(art)
-	if game == "snooker":
-		_snooker_banner(art)
-	elif game == "hockey":
-		_hockey_banner(art)
-	elif game == "boats":
-		_boats_banner(art)
-	elif game == "penny":
-		_penny_banner(art)
-	else:
-		var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
-		lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		art.add_child(lineup)
-
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
-	col.add_child(head)
-	var name_l := Label.new()
-	name_l.text = NAMES[game]
-	name_l.theme_type_variation = "CardName"
-	head.add_child(name_l)
-	name_l.add_child(SunDot.new(name_l))
-	var rec := Label.new()
-	rec.theme_type_variation = "CardBlurb"
-	rec.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	rec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	head.add_child(rec)
-	_record[game] = rec
-	# Where the name and the record stand, one over the other, once the picture
-	# has come down beside them.
-	var names := VBoxContainer.new()
-	names.add_theme_constant_override("separation", -4)
-	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	names.visible = false
-	head.add_child(names)
-	_parts.append({"col": col, "art": art, "head": head, "name": name_l, "rec": rec, "names": names})
-	var blurb := Label.new()
-	blurb.text = BLURBS[game]
-	blurb.theme_type_variation = "CardBlurb"
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(blurb)
-	_blurbs.append(blurb)
-	_blurb[game] = blurb
-
-	var row := BoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	col.add_child(row)
-	var chip_grid := GridContainer.new()
-	chip_grid.columns = 4
-	chip_grid.add_theme_constant_override("h_separation", 12)
-	chip_grid.add_theme_constant_override("v_separation", 10)
-	chip_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(chip_grid)
-	var chips: Array[Button] = []
-	var levels := levels_of(game)
-	for i in levels.size():
-		var b := Button.new()
-		b.text = levels[i][0]
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size.y = CHIP_H
-		b.add_theme_font_size_override("font_size", 30)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.pressed.connect(_pick.bind(game, int(levels[i][1])))
-		chip_grid.add_child(b)
-		chips.append(b)
-		_tall.append(b)
-	_chips[game] = chips
-	var go := IconButton.new("chevron_right", tr("VS_PLAY"), "SunButton")
-	go.name = "Play_" + game
-	go.custom_minimum_size = Vector2(230, CHIP_H)
-	go.pressed.connect(func() -> void:
-		Record.set_last_level(game, _level[game])
-		play.emit(game, _level[game]))
-	row.add_child(go)
-	_tall.append(go)
-	_rows.append({"row": row, "chips": chip_grid, "go": go})
-	_paint_chips(game)
+func _game_card(game: String, colour: Color) -> Control:
+	var card := PuzzleCard.new({"id": game, "title": NAMES[game], "short": SHORTS[game]}, colour)
+	card.name = "Card_" + game
+	card.art_grow = ART_GROW
+	card.open.connect(func() -> void: open.emit(game))
+	# The card builds itself as it enters the tree; its picture's plate is
+	# there then. The drawing lies in a layer of its own over the plate: the
+	# card's own picture (ui/menu/card_art.gd) frees its children whenever
+	# it is resized, and has none for these games.
+	card.ready.connect(func() -> void:
+		var art := Control.new()
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.clip_contents = true
+		card.art.get_parent().add_child(art)
+		if game == "snooker":
+			_snooker_banner(art)
+		elif game == "hockey":
+			_hockey_banner(art)
+		elif game == "boats":
+			_boats_banner(art)
+		elif game == "penny":
+			_penny_banner(art)
+		else:
+			var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
+			lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art.add_child(lineup))
+	_cards.append(card)
 	return card
 
 ## The row above the cards: a plaque, Friends over a line that counts who is
@@ -416,37 +318,7 @@ func _lay_table(entry: Array) -> void:
 	table.position = art.size * 0.5 - table.size * 0.5
 	table.queue_redraw()
 
-func _pick(game: String, level: int) -> void:
-	_level[game] = level
-	Record.set_last_level(game, level)
-	_paint_chips(game)
-
-func _paint_chips(game: String) -> void:
-	var chips: Array = _chips[game]
-	var levels := levels_of(game)
-	for i in chips.size():
-		var on: bool = levels[i][1] == _level[game]
-		var b: Button = chips[i]
-		var fill := Pal.SUN_TILE if on else Pal.SURFACE
-		var border := Pal.ACCENT_2 if on else Pal.LINE
-		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
-			b.add_theme_stylebox_override(state, CozyTheme.chip(fill, 28, border, 4 if on else 2, state == "pressed"))
-		b.add_theme_color_override("font_color", Pal.ACCENT_2 if on else Pal.TEXT)
-		b.add_theme_color_override("font_hover_color", Pal.ACCENT_2 if on else Pal.TEXT)
-		b.add_theme_color_override("font_pressed_color", Pal.ACCENT_2 if on else Pal.TEXT)
-	var line: String = BLURBS[game]
-	if _level[game] == Record.ONLINE:
-		line = ONLINE_BLURB
-	elif _level[game] == Record.LOCAL:
-		line = LOCAL_BLURB
-	(_blurb[game] as Label).text = line
-	refresh()
-
 func refresh() -> void:
-	for game: String in GAMES:
-		if _record.has(game):
-			# Two on one phone are both the player: nothing is kept to show.
-			(_record[game] as Label).text = "" if _level[game] == Record.LOCAL else Record.record_line(game, _level[game])
 	_paint_friends()
 	_fit.call_deferred()
 
@@ -473,9 +345,9 @@ func _outer() -> Control:
 		return parent.get_parent().get_parent() as Control
 	return null
 
-## Fits the cards to the room the column leaves between the header and the
-## bar: whole if they fit, else without the lines under the names, else
-## with shorter pictures too.
+## Gives the cards' rows the room the column leaves between the header and
+## the bar: never under the first screen's own row, and what is over it goes
+## to the pictures.
 func _fit() -> void:
 	var parent := get_parent() as Control
 	if parent == null or not is_visible_in_tree():
@@ -492,74 +364,11 @@ func _fit() -> void:
 	if outer != null:
 		var margins := parent.get_parent() as MarginContainer
 		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
-	var room := height - other - sep * shown
-	for level in 6:
-		_compact(level)
-		if get_combined_minimum_size().y <= room:
-			return
-
-func _compact(level: int) -> void:
-	for b in _blurbs:
-		b.visible = level == 0
-	for a in _arts:
-		a.custom_minimum_size.y = ART_H_SHORT if level >= 2 else ART_H
-	_set_side(level >= 3)
-	# Five cards on a short screen: the chips and the gaps give a little too.
-	for t in _tall:
-		t.custom_minimum_size.y = CHIP_H_SHORT if level >= 4 else CHIP_H
-	add_theme_constant_override("separation", 12 if level >= 4 else GAP)
-	_grid.add_theme_constant_override("v_separation", 12 if level >= 4 else GAP)
-	_set_pairs(level >= 5)
-
-## The very last thing given up: a card's width. They stand two a row, each
-## with its chips two by two and Play under them.
-func _set_pairs(on: bool) -> void:
-	if on == _pairs:
-		return
-	_pairs = on
-	_grid.columns = 2 if on else 1
-	_grid.add_theme_constant_override("h_separation", 12 if on else GAP)
-	for r in _rows:
-		(r.row as BoxContainer).vertical = on
-		(r.chips as GridContainer).columns = 2 if on else 4
-		(r.go as Control).custom_minimum_size.x = 0.0 if on else 230.0
-
-## The last thing given up: the pictures' own row. Each comes down beside its
-## game's name, the record under the name instead of across from it.
-func _set_side(on: bool) -> void:
-	if on == _side:
-		return
-	_side = on
-	for p in _parts:
-		var art: Control = p.art
-		var name_l: Label = p.name
-		var rec: Label = p.rec
-		var names: Control = p.names
-		art.get_parent().remove_child(art)
-		name_l.get_parent().remove_child(name_l)
-		rec.get_parent().remove_child(rec)
-		if on:
-			names.add_child(name_l)
-			names.add_child(rec)
-			rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			rec.size_flags_horizontal = Control.SIZE_FILL
-			(p.head as Control).add_child(art)
-			art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			art.size_flags_vertical = Control.SIZE_FILL
-		else:
-			(p.head as Control).add_child(name_l)
-			(p.head as Control).add_child(rec)
-			(p.head as Control).move_child(name_l, 0)
-			(p.head as Control).move_child(rec, 1)
-			rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			rec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			(p.col as Control).add_child(art)
-			(p.col as Control).move_child(art, 0)
-			art.size_flags_horizontal = Control.SIZE_FILL
-			art.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		names.visible = on
-		# A card taller than it needs gives the height to its picture.
-		(p.head as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL if on else Control.SIZE_FILL
+	var room := height - other - sep * shown - friends_row.get_combined_minimum_size().y - GAP
+	var rows := ceili(float(_cards.size()) / COLS)
+	var row_h := clampf(floorf((room - GAP * (rows - 1)) / rows), PuzzleCard.CARD_H, PuzzleCard.CARD_H + ART_GROW)
+	for card in _cards:
+		card.fit_height(row_h)
 
 ## Chess's banner: the garden set lined up on a strip of lawn squares, the
 ## cream side facing the rose. Drawn once, with the set's own meshes.

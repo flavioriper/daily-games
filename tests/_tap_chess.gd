@@ -60,8 +60,8 @@ func _process(delta: float) -> bool:
 				_step = 1
 		1:
 			if _t > 1.6:
-				var play: Button = _menu.versus_tab.find_child("Play_chess", true, false)
-				play.pressed.emit()
+				# The card opens the sheet that asks who to play; its Medium row.
+				_menu.versus_sheet.picked.emit("chess", 1)
 				_step = 2
 		2:
 			_s = _menu.get_node_or_null("Chess")

@@ -83,6 +83,9 @@ var _seal_mesh: ArrayMesh
 ## This card's row height: CARD_H on a 1080x1920 screen, more on a taller
 ## one (see `fit_height`).
 var card_h := CARD_H
+## How far this card's picture may grow past ART_H: ART_GROW on the first
+## screen, more on the Versus tab, whose six cards have a whole screen.
+var art_grow := ART_GROW
 var _press_tw: Tween
 
 func _init(the_entry: Dictionary, the_colour: Color, is_completed := false, the_levels := []) -> void:
@@ -112,7 +115,7 @@ func _build() -> void:
 
 	var art_plate := PanelContainer.new()
 	_art_plate = art_plate
-	art_plate.custom_minimum_size = Vector2(0.0, ART_H + clampf(card_h - CARD_H, 0.0, ART_GROW))
+	art_plate.custom_minimum_size = Vector2(0.0, ART_H + clampf(card_h - CARD_H, 0.0, art_grow))
 	art_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	col.add_child(art_plate)
@@ -353,5 +356,5 @@ func fit_height(h: float) -> void:
 	if not is_node_ready():
 		return
 	if _art_plate != null:
-		_art_plate.custom_minimum_size.y = ART_H + clampf(card_h - CARD_H, 0.0, ART_GROW)
+		_art_plate.custom_minimum_size.y = ART_H + clampf(card_h - CARD_H, 0.0, art_grow)
 	_update_min()
