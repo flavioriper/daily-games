@@ -39,9 +39,9 @@ const WIDTH := 820.0
 const FACE := 170.0
 ## Over a sheet (ui/hud/sheet.gd's OVER_BOARD), whichever it is raised over.
 const OVER_SHEET := 12
-const GAMES := ["snooker", "chess", "checkers"]
+const GAMES := ["snooker", "chess", "checkers", "boats"]
 ## Titles stay English (ui/menu/versus_tab.gd's NAMES).
-const TITLES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers"}
+const TITLES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "boats": "Toy Boats"}
 
 var kind: int = Kind.INVITE
 var uid := ""

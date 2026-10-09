@@ -1176,3 +1176,48 @@ TUT_HOCKEY_BANK,Use the rails,Use as bordas,Usa las bandas
 TUT_HOCKEY_BANK_BODY,"The puck bounces off the long rails. When the way is blocked, send it off a rail and round the other mallet.","O disco quica nas bordas laterais. Com o caminho fechado, mande-o na borda para contornar o outro batedor.","El disco rebota en las bandas largas. Si el camino está cerrado, mándalo contra una banda para rodear el otro mazo."
 TUT_HOCKEY_TWO,Two players,Dois jogadores,Dos jugadores
 TUT_HOCKEY_TWO_BODY,"Pick 2 players on the Versus tab to share the phone: one of you at each end, a finger each, gold against blue.","Escolha Para dois na aba Duelos para dividir o celular: um em cada ponta, um dedo cada, dourado contra azul.","Elige Para dos en la pestaña Duelos para compartir el teléfono: uno en cada extremo, un dedo cada uno, dorado contra azul."
+VS_BOATS_BLURB,"Hide five toy boats on your pond, then take turns tossing pebbles to find the other fleet first.","Esconda cinco barquinhos no seu lago e, cada um na sua vez, jogue pedrinhas para achar a outra frota primeiro.","Esconde cinco barquitos en tu estanque y, por turnos, lanza piedritas para encontrar antes la otra flota."
+BTS_MOTTO,SINK THE MOON'S FLEET,AFUNDE A FROTA DA LUA,HUNDE LA FLOTA DE LA LUNA
+BTS_THROWS,PEBBLES,PEDRINHAS,PIEDRITAS
+BTS_LAY,Drag a boat to move it. Tap it to turn it.,Arraste um barco para mover. Toque nele para virar.,Arrastra un barco para moverlo. Tócalo para girarlo.
+BTS_LAY_FIRST,Lay out your boats,Arrume os seus barcos,Coloca tus barcos
+BTS_READY,Ready,Pronto,Listo
+BTS_SHUFFLE,Shuffle,Embaralhar,Mezclar
+BTS_WAITING,Waiting for %s,Esperando %s,Esperando a %s
+BTS_TO_SINK,TO SINK,A AFUNDAR,POR HUNDIR
+BTS_AFLOAT_ONE,%d boat afloat,%d barco na água,%d barco a flote
+BTS_AFLOAT_N,%d boats afloat,%d barcos na água,%d barcos a flote
+BTS_YOUR_THROW,Your throw,Sua vez,Tu turno
+BTS_AIMING,Aiming…,Mirando…,Apuntando…
+BTS_LAYING,Laying out…,Arrumando…,Colocando…
+BTS_IS_READY,Ready,Pronto,Listo
+BTS_YOU_FIRST,You throw first,Você joga primeiro,Tú lanzas primero
+BTS_BOT_FIRST,Bot throws first,O bot joga primeiro,El bot lanza primero
+BTS_MISS,Splash. A miss,Tchibum. Água,Chof. Agua
+BTS_HIT,A hit!,Acertou!,¡Tocado!
+BTS_SANK,Sunk: %s!,Afundou: %s!,¡Hundido: %s!
+BTS_LOST_BOAT,You lost: %s,Você perdeu: %s,Perdiste: %s
+BTS_BOAT_0,the Barge,a Barcaça,la Barcaza
+BTS_BOAT_1,the Ferry,a Balsa,el Ferri
+BTS_BOAT_2,the Tugboat,o Rebocador,el Remolcador
+BTS_BOAT_3,the Sailboat,o Veleiro,el Velero
+BTS_BOAT_4,the Rowboat,o Bote,el Bote
+BTS_TRIED,You tried that square already,Você já tentou essa casa,Ya probaste esa casilla
+BTS_NO_ROOM,No room for it there,Não cabe aí,Ahí no cabe
+BTS_HINT_LINE,Try the ringed square,Tente a casa marcada,Prueba la casilla marcada
+BTS_WIN,Fleet sunk!,Frota afundada!,¡Flota hundida!
+BTS_LOSE,Your boats are down,Seus barcos afundaram,Tus barcos se hundieron
+BTS_WON_IN,All five boats in %d pebbles.,Os cinco barcos em %d pedrinhas.,Los cinco barcos en %d piedritas.
+BTS_LOST_LEFT_ONE,%d of their boats was still afloat.,Ainda restava %d barco do outro lado.,Aún quedaba %d barco del otro lado.
+BTS_LOST_LEFT_N,%d of their boats were still afloat.,Ainda restavam %d barcos do outro lado.,Aún quedaban %d barcos del otro lado.
+TUT_BOATS_LAY,Hide five boats,Esconda cinco barcos,Esconde cinco barcos
+TUT_BOATS_LAY_BODY,"Before the first pebble, lay your five boats out on your pond: drag one to move it, tap it to turn it. They may lie side by side, never across one another. Shuffle lays them by chance; Ready begins.","Antes da primeira pedrinha, arrume os seus cinco barcos no lago: arraste um para mover, toque nele para virar. Podem ficar lado a lado, nunca um sobre o outro. Embaralhar arruma ao acaso; Pronto começa.","Antes de la primera piedrita, coloca tus cinco barcos en el estanque: arrastra uno para moverlo, tócalo para girarlo. Pueden estar lado a lado, nunca uno sobre otro. Mezclar los coloca al azar; Listo empieza."
+TUT_BOATS_THROW,A pebble a turn,Uma pedrinha por vez,Una piedrita por turno
+TUT_BOATS_THROW_BODY,"The slate is the other pond, which you cannot see. Slide a finger over it, its row and column light up, and let go to throw at that square. A ring is chalked for a miss, a cross for a hit.","A lousa é o outro lago, que você não vê. Deslize o dedo sobre ela, a linha e a coluna acendem, e solte para jogar naquela casa. Um círculo de giz é água, um xis é acerto.","La pizarra es el otro estanque, que no ves. Desliza un dedo sobre ella, su fila y su columna se iluminan, y suelta para lanzar a esa casilla. Un círculo de tiza es agua, una equis es tocado."
+TUT_BOATS_HUNT,Follow a hit,Siga um acerto,Sigue un tocado
+TUT_BOATS_HUNT_BODY,"A boat lies in a straight line. After a hit, try the squares beside it; once two hits line up, keep along that line until the boat sinks.","Um barco fica em linha reta. Depois de um acerto, tente as casas ao lado; quando dois acertos se alinham, siga nessa linha até o barco afundar.","Un barco está en línea recta. Tras un tocado, prueba las casillas de al lado; cuando dos tocados se alinean, sigue por esa línea hasta hundir el barco."
+TUT_BOATS_SINK,Sink all five,Afunde os cinco,Hunde los cinco
+TUT_BOATS_SINK_BODY,"A boat sinks when every square of it is hit, and its outline is chalked on the slate. The other player throws at your pond turn about: a peg marks each hit on your boats. The first to sink all five wins.","Um barco afunda quando todas as suas casas são acertadas, e o contorno dele vai para a lousa. O outro jogador joga no seu lago, uma vez cada: um pino marca cada acerto nos seus barcos. Quem afundar os cinco primeiro vence.","Un barco se hunde cuando todas sus casillas han sido tocadas, y su contorno queda en la pizarra. El otro jugador lanza a tu estanque por turnos: una clavija marca cada tocado en tus barcos. Gana quien hunda antes los cinco."
+TUT_BOATS_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
+TUT_BOATS_BAR_BODY_ONE,"The bulb rings a good square to try, once a game. Reset starts a new game. Online the other player is a person, with a minute a throw. Sound and this guide are under the gear.","A lâmpada marca uma boa casa para tentar, uma vez por partida. Recomeçar inicia uma partida nova. Online o outro jogador é uma pessoa, com um minuto por jogada. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla para probar, una vez por partida. Reiniciar empieza una partida nueva. En línea el otro jugador es una persona, con un minuto por jugada. El sonido y esta guía están en el engranaje."
+TUT_BOATS_BAR_BODY_N,"The bulb rings a good square to try, %d times a game. Reset starts a new game. Online the other player is a person, with a minute a throw. Sound and this guide are under the gear.","A lâmpada marca uma boa casa para tentar, %d vezes por partida. Recomeçar inicia uma partida nova. Online o outro jogador é uma pessoa, com um minuto por jogada. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla para probar, %d veces por partida. Reiniciar empieza una partida nueva. En línea el otro jugador es una persona, con un minuto por jugada. El sonido y esta guía están en el engranaje."

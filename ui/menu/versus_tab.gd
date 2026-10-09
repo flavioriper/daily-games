@@ -45,6 +45,8 @@ const CheckersSkin = preload("res://versus/checkers_skin.gd")
 const CheckersRules = preload("res://versus/checkers_rules.gd")
 const HockeySim = preload("res://versus/hockey_sim.gd")
 const HockeyTable = preload("res://versus/hockey_table.gd")
+const BoatsRules = preload("res://versus/boats_rules.gd")
+const BoatsBoard = preload("res://versus/boats_board.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Social = preload("res://core/social.gd")
@@ -65,13 +67,14 @@ const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], [
 ## The line under the name while the fourth chip is the one picked.
 const ONLINE_BLURB := "VS_ONLINE_BLURB"
 const LOCAL_BLURB := "VS_TWO_BLURB"
-const GAMES := ["snooker", "chess", "checkers", "hockey"]
+const GAMES := ["snooker", "chess", "checkers", "hockey", "boats"]
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
-const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey"}
+const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
+	"boats": "Toy Boats"}
 const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB",
-	"hockey": "VS_HOCKEY_BLURB"}
+	"hockey": "VS_HOCKEY_BLURB", "boats": "VS_BOATS_BLURB"}
 const FILL := Color("fcf7ef")
 ## The Friends row: its height, the plaque on it and the plaque's tint.
 const FRIENDS_H := 108.0
@@ -140,6 +143,8 @@ func _game_card(game: String) -> Control:
 		_snooker_banner(art)
 	elif game == "hockey":
 		_hockey_banner(art)
+	elif game == "boats":
+		_boats_banner(art)
 	else:
 		var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
 		lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -322,6 +327,29 @@ func _hockey_banner(art: Control) -> void:
 	var entry := [art, table, Vector2(HockeySim.W, HockeySim.L) + Vector2.ONE * 2.0 * HockeyTable.RAIL]
 	_laid.append(entry)
 	art.resized.connect(_lay_table.bind(entry))
+
+## Toy Boats' banner: the box open, a game some way in -- the pond with a
+## peg in one boat and a ripple beside another, the slate with its rings,
+## its crosses and one boat already chalked.
+func _boats_banner(art: Control) -> void:
+	var pond := BoatsRules.new()
+	pond.lay([Vector3i(1, 1, 0), Vector3i(7, 3, 1), Vector3i(2, 4, 0), Vector3i(0, 6, 1), Vector3i(4, 8, 0)])
+	for c: int in [14, 37, 52, 66, 81, 29]:
+		pond.fire(c)
+	var slate := BoatsRules.new()
+	for c: int in [3, 27, 40, 58, 75, 91]:
+		slate.note(c, BoatsRules.MISS)
+	slate.note(62, BoatsRules.HIT)
+	slate.note(63, BoatsRules.HIT)
+	slate.note(64, BoatsRules.SUNK, 2, Vector3i(2, 6, 0))
+	slate.note(18, BoatsRules.HIT)
+	var board := BoatsBoard.new()
+	board.still = true
+	board.setup(pond, slate)
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board.offset_top = 8.0
+	board.offset_bottom = -8.0
+	art.add_child(board)
 
 ## A table lies on its side across its banner, turned about its middle.
 func _lay_table(entry: Array) -> void:
