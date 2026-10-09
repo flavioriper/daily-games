@@ -1839,6 +1839,26 @@ SETS = {
         "win":      ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
         "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
     },
+    # Penny Drop (Versus, versus/penny_screen.gd): a painted wooden rack and
+    # two rolls of pennies, as HEARTH's foley. A game is up to forty-two
+    # drops, so everything a drop makes is dry and short with no note:
+    # `drop` (the penny let go into its slot), `land` (its knock on what is
+    # below, played lower and louder the further it fell), `tick` (the finger
+    # crossing to another slot, the quietest thing in the set). The notes are
+    # kept for what happens once a game: `hint`, `win`, `lose`, `draw`, on
+    # HEARTH_TUNE's low muffled kalimba.
+    "penny": {
+        "drop":     ("one coin slipped into the slot of a wooden box, a single very soft short dry slide of metal on wood, no ring, no tone, quiet", 0.5, -15, HEARTH, "warm:5500", "cut:0.2", "ease:0.02"),
+        "land":     ("one thick coin dropped onto a wooden tray, a single soft dull low clack, muffled, no ring, no tone, very short", 0.5, -10, HEARTH, "warm:5500", "cut:0.22"),
+        "tick":     ("one fingertip tapping a wooden frame once, a single short soft dull wooden tick, no ring, no tone, very short and quiet", 0.5, -19, HEARTH, "warm:5000", "cut:0.06"),
+        "refused":  ("a coin bumping the closed wooden top of a box, a single soft dull muffled knock, no ring, no tone, very short", 0.5, -13, HEARTH, "warm:5000", "cut:0.25"),
+        "lift":     ("one coin picked up off a wooden table, a single very soft short dry scrape and lift, no ring, no tone, quiet", 0.5, -15, HEARTH, "warm:5500", "cut:0.25"),
+        "spill":    ("a handful of thick coins sliding out of a wooden box and tumbling onto a wooden table, soft dull muffled clacks slowing to a stop, no ring, short", 1.1, -12, HEARTH, "warm:5500"),
+        "hint":     ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "win":      ("a warm short rising phrase on a low kalimba and a wooden tongue drum, four soft notes climbing in a row and a fifth round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
+        "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "draw":     ("two soft slow level notes on a low kalimba, the same note twice, calm and even, a friendly tie", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+    },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"
     "wallet": {

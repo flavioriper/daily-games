@@ -130,6 +130,8 @@ var _down := false
 var _hint := -1
 var _last := -1
 var _line := PackedInt32Array()
+## How the game ended, "" while it is on.
+var _mood := ""
 var _won_at := -1.0
 var _shake_at := -10.0
 
@@ -166,6 +168,7 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	_hint = -1
 	_last = -1
 	_line = PackedInt32Array()
+	_mood = ""
 	_won_at = -1.0
 	var wait := 0.0
 	if enter and not Motion.reduce and old.size() == Rules.CELLS:
@@ -274,7 +277,8 @@ func set_lifted(col: int) -> void:
 	_busy(0.5)
 
 ## The game is over. A line, if there is one, is ringed.
-func finish(_outcome: String, line := PackedInt32Array()) -> void:
+func finish(outcome: String, line := PackedInt32Array()) -> void:
+	_mood = outcome
 	_line = line
 	_won_at = _t
 	_hover_look = -1
@@ -288,6 +292,10 @@ func finish(_outcome: String, line := PackedInt32Array()) -> void:
 			_after(0.1 + 0.09 * i, func() -> void: _fx.sparkle(at, Pal.SUN_SPARK))
 	_busy(1.2)
 	_touch()
+
+## Whether a penny is in the air, on its way down or back up.
+func is_busy() -> bool:
+	return not _air.is_empty() or not _back_up.is_empty()
 
 # --- layout and time ---
 
