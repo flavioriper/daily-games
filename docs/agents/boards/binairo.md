@@ -288,3 +288,15 @@ This replaces the hold rules of the two sections above where they differ.
   move, as it was a new judgement before. Out of moves nothing is swept off
   the board (which tiles are wrong is the answer). No Undo, Hint or Check on
   Insane; `BN_RULES_MOVES` is the board's own sentence because of the cycle.
+
+**Sounds redone against the cozy rules, 2026-10-09** (`docs/agents/sound.md`,
+the first set of the redo). `place`, `clear`, `brush`, `undo`, `combo` and
+`line_silly` are low wooden ticks (0.1 to 0.26 s, -13 to -17), `reset` and
+`confetti` a breath of breeze, `hint`, `line`, `liar`, `flawless`,
+`out_of_hearts`, `solved` and `party` phrases written with `notes` from one
+kalimba note each, none above -8 (`solved` was -3). `combo` is a tick the
+board pitches now, not a pluck, and `COMBO_STEPS` climbs five semitones in
+all where it climbed fourteen. Kept from the first set: `blush_in`, `check`,
+`check_ok` (given its second note), `enter`, `heart_back`, `heart_lost`.
+All 21 read "0 flagged" in `tools/measure_sfx.py binairo`; none heard by the
+user.

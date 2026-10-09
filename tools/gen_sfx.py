@@ -100,6 +100,18 @@ HEARTH_TUNE = ("a real kalimba and a wooden tongue drum played very softly "
                "muffled, round, hushed, no bells, no chimes, no sparkle, no "
                "synth, no beeps, no music bed, no voice")
 
+# The notes of a set redone against the cozy rules (2026-10-09, Binairo
+# first). HEARTH_TUNE's "low" and "very softly" came back as one pure tone
+# at 250 to 330 Hz, peaking at -26 dB: under what a phone plays (-35 dB
+# high-passed at 400 Hz) and levelled up out of the room's noise. The same
+# kalimba and tongue drum, asked for in the middle of the instrument and
+# played gently; the roll-off is what keeps it dark.
+COZY_TUNE = ("a real kalimba and a wooden tongue drum played gently with "
+             "felt, close in a warm quiet room, the middle notes of the "
+             "instrument, mellow, muffled, round and warm, not deep, no "
+             "bass, no bells, no chimes, no sparkle, nothing bright, no "
+             "synth, no beeps, no music bed, no voice")
+
 # Nightlight's clicks (2026-10-09, the second go the same morning). The
 # three cues that never stop were HEARTH's flour and sand cut to 60 ms: a
 # sliver of hiss from 80 Hz to 12 kHz, a tick of static however quiet. They
@@ -360,7 +372,11 @@ PONY = ("close-mic recording of a real small friendly pony in a quiet sunny "
 #                                       air and leaves, which are hiss all the way up
 #                                     | "tight": the lead-in trimmed at -36 dB, not -60, for
 #                                       a tap that must land on its frame (Peapod's hit came
-#                                       back 60 ms behind a breath of room noise)]])
+#                                       back 60 ms behind a breath of room noise)
+#                                     | "notes:<gap>:<semitones>,...": a phrase built from
+#                                       the take, which is one note however it is asked:
+#                                       the note played once a step, that many semitones
+#                                       up or down, <gap> seconds apart (COZY_TUNE)]])
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
@@ -375,30 +391,42 @@ SETS = {
         "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
     },
     "binairo": {
-        "place":    ("a single soft wooden tile tap with a tiny bubbly pop, very short", 0.5, -6),
-        "clear":    ("a very short soft downward whoosh-pop, a small token lifted off a wooden board", 0.5, -9),
-        "brush":    ("a tiny soft paper click, selecting a pencil, very short and quiet", 0.5, -12),
-        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        # Redone 2026-10-09 against the cozy rules (docs/agents/sound.md): what
+        # is a thing is a HUSH tick, what travels is BREEZE, what is a moment
+        # is COZY_TUNE's muffled kalimba, its phrases written with `notes`
+        # from the one note a take holds. Six takes of the first set already
+        # measured low and were kept: blush_in, check, heart_back, heart_lost
+        # as they were (blush_in 4 dB down), enter levelled down and rolled
+        # off, check_ok levelled down and given the second note its prompt
+        # always asked for.
+        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
+        "clear":    ("one small light wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320"),
+        # The lift's take over again: four prompts for a pencil's own tick came
+        # back scratched (a fifth to a quarter of each above 3 kHz).
+        "brush":    ("one small light wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320", "notes:0:2"),
+        "undo":     ("two soft dull hollow wooden tocks close together, the second a little lower, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight"),
+        "hint":     ("three slow soft notes rising on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.15:3,7,10", "cut:0.8"),
         # check and blush_in re-prompted 2026-09-29 (insane polish): the low
         # marimba boops and the wooden "bonk" read as a scold, not a shrug.
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick ripple of many small soft wooden pops, tiles being swept off a board", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "line":     ("a short happy two-note soft kalimba pluck, a row completed", 0.6, -6),
-        "blush_in": ("a tiny soft felt mallet tap on a small wooden block with a gentle little pitch dip, a shy muffled 'oops', very short and quiet", 0.5, -10),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -9),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -10, STYLE, "body:300", "notes:0.13:2,6"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("five slow soft notes rising on a kalimba over one gentle tongue drum note, a warm quiet little celebration that fades", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,2,4,7,9", "cut:1.7"),
+        "line":     ("two soft notes rising on a kalimba, short", 0.6, -12, COZY_TUNE, "warm:2600", "ease:0.01", "body:300", "notes:0.12:5,9"),
+        "blush_in": ("a tiny soft felt mallet tap on a small wooden block with a gentle little pitch dip, a shy muffled 'oops', very short and quiet", 0.5, -14, STYLE, "body:300"),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -13, STYLE, "body:300", "warm:2400"),
         # Hearts, streaks and rewards (2026-09-29 insane polish, spec section 3).
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -14),
+        "out_of_hearts": ("three slow soft notes going down on a kalimba, like a sleepy yawn, calm and kind, maybe tomorrow", 1.5, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.3:9,5,2"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "combo":         ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti":      ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "line_silly":    ("a playful soft wooden boing, a springy muffled wood bounce with a tiny giggling kalimba trill on top, cute and short", 0.7, -7),
-        "flawless":      ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, a gentle proud 'perfect'", 1.5, -5),
-        "liar":          ("a sneaky tiptoeing soft pizzicato plucked string phrase, caught red-handed, cheeky and playful, light", 1.0, -7),
-        "party":         ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
+        # Every scored tile from the second of a streak, on top of `place`: a
+        # tick the board pitches, not a note (what repeats is a click).
+        "combo":         ("a single soft hollow wooden tock, a small woodblock tapped with felt, round, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.14", "body:320"),
+        "confetti":      ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "line_silly":    ("three soft hollow wooden ticks one after another, speeding up, an old mouse wheel turned", 0.7, -15, HUSH, "warm:1500", "body:320"),
+        "flawless":      ("two slow soft notes rising on a kalimba and left to fade, a gentle proud 'perfect'", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.32:0,7"),
+        "liar":          ("four soft tongue drum notes tiptoeing, sneaky and playful, the last one a little higher, light", 1.0, -11, COZY_TUNE, "warm:2600", "ease:0.01", "body:300", "notes:0.16:6,7,6,10"),
+        "party":         ("a slow rising run of soft kalimba notes ending on two gentle tongue drum notes, a warm cozy little party, fading", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-7,-3,0,-3,0,5", "cut:1.9"),
     },
     # Code Break (puzzle_id "mastermind"): little round friends fly into
     # seats, a Check drops score pips into a pouch, lids lift on the answer.
@@ -2111,6 +2139,24 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
                         "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
 
 
+def tune(mp3: pathlib.Path, gap: float, steps: list[float]) -> pathlib.Path:
+    # A phrase from one recorded note (2026-10-09, Binairo). Asked for
+    # "five notes rising" the API returns a single kalimba hit ringing out,
+    # every time, and as often as not at 250 to 350 Hz, under what a phone
+    # plays. So the take is the note, and the phrase is written here: the
+    # same take once a step, moved by that many semitones, `gap` apart.
+    out = mp3.with_name(mp3.stem + "_tune.wav")
+    marks = "".join(f"[n{i}]" for i in range(len(steps)))
+    voices = ";".join(
+        f"[v{i}]asetrate={44100 * 2 ** (st / 12):.1f},aresample=44100,adelay={int(i * gap * 1000)}:all=1[n{i}]"
+        for i, st in enumerate(steps))
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-filter_complex",
+                    f"[0]aresample=44100,asplit={len(steps)}" + "".join(f"[v{i}]" for i in range(len(steps))) + ";"
+                    + voices + f";{marks}amix=inputs={len(steps)}:normalize=0:duration=longest",
+                    str(out)], check=True)
+    return out
+
+
 def fall(mp3: pathlib.Path) -> pathlib.Path:
     # A two-note "not yet" built from one note: the API gave Binairo's check a
     # single kalimba hit three takes running (2026-09-29), however the prompt
@@ -2147,6 +2193,10 @@ def main() -> None:
         if "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
+        notes = next((f[6:] for f in rest[1:] if isinstance(f, str) and f.startswith("notes:")), "")
+        if notes:
+            gap, steps = notes.split(":")
+            raw = tune(raw, float(gap), [float(v) for v in steps.split(",")])
         if "fall" in rest[1:]:
             raw = fall(raw)
         body = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("body:")), 0)

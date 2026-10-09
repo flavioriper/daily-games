@@ -17,7 +17,7 @@ prompt.
 |---|---|---|---|
 | A thing set down, lifted, turned, pressed, counted; a button; anything that repeats | one low soft tick, the notch of an old mouse wheel; several in a row are a wheel spun | `HUSH`, `cut:0.06`-`0.28`, `warm:1000`-`1600`, `body:320` | -13 to -19 |
 | A swipe, a page, a sweep, anything that travels | a breath of breeze, or a thing slid gently on wood (rule 4) | `BREEZE`, `warm:1100`, `steep`, `ease`, `body:320` | -16 |
-| A moment: a hint, a line, a hand won, the day's end | a few low muffled notes, kalimba or tongue drum played with felt | `HEARTH_TUNE`, `warm`, `ease` | none above -8 |
+| A moment: a hint, a line, a hand won, the day's end | a few muffled notes at 400 to 700 Hz, kalimba or tongue drum played with felt | `COZY_TUNE`, `warm:2000`-`2600`, `ease`, `body:300`, `notes` (rule 8) | none above -8 |
 
 **2. Low, and never high.** No cue has its weight above 1 kHz. The measure,
 taken on every take before it is kept: the body between 300 Hz and 1 kHz,
@@ -72,8 +72,34 @@ again with `--new` when it fails rather than filtering a bad take harder.
 Then `godot --headless --path . --import`, or the game still plays the old
 file. Say in the commit which cues the user has not heard.
 
+**8. A take is one note; the phrase is written.** Asked for "five notes
+rising", the API returns one kalimba hit ringing out, every time (nine
+takes of nine, Binairo, 2026-10-09), and at 250 to 350 Hz as often as not:
+a pure tone a phone does not play (-35 dB high-passed at 400 Hz). So a note
+cue's take is its one note, and `"notes:<gap>:<semitones>,..."` writes the
+phrase from it: `"notes:0.14:0,2,4,7,9"` is five rising, `"notes:0.3:9,5,2"`
+three falling slowly, and the steps are chosen so every note lands between
+400 and 700 Hz (the measure prints the raw take's centroid). Rising is
+good, falling is not yet, and two cues of one board never share a contour.
+
+**The measure is `tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]`.** A
+line a file and a word for the rule it breaks: `high` (under 30 dB down
+above 3 kHz, or a centroid over 1 kHz), `rumble` (more under 300 Hz than
+from 300 Hz to 1 kHz), `faint` (under -24 dB high-passed at 400 Hz), and on
+raw takes `empty` and `scratch` (a quarter of it above 3 kHz: ask again, do
+not filter). A set is done at "0 flagged". It measures and does not hear:
+a single tone at 450 Hz passes whatever it sounds like. What a tick prompt
+comes back as, from Binairo's thirty-odd takes: "set down gently on thick
+felt, a single soft tock, round and hollow" lands most often; "one notch of
+an old mouse wheel" alone came back scratched three times in five and
+"lifted off" or "picked up" as a thump at 110 Hz or a hiss at 7 kHz, so a
+lift is a lighter thing set down. A tick that will not come is another
+tick's take a step or two up (`"notes:0:2"`).
+
 **Copy these, not those.** A new set is built from `HUSH`, `BREEZE`,
-`HEARTH`, `HEARTH_TAP` and `HEARTH_TUNE`. Not models, though boards still
+`HEARTH`, `HEARTH_TAP` and `COZY_TUNE` (`HEARTH_TUNE` says "low" and "very
+softly" and is what came back under 300 Hz at -26 dB; the sets that use it
+have not been measured on the phone's side). Not models, though boards still
 use them: `STYLE` (glockenspiel, bubbly pops), `ARCADE` and every `*_TUNE`
 that says "small hand bells" or "music box", `DUSK` and `GLASSHOUSE` (glass
 chimes), `NIGHT` (glass jars and bells), `CARTOON`. **Owed against these
@@ -81,6 +107,19 @@ rules, none started**: `ui/click` (still "paper and wood", `STYLE`, -12,
 never measured); the 149 short cues listed at the foot of this file; the
 bell and chime notes of the sets above. They are redone when the user names
 them.
+
+**The redo, a set at a time** (the user, 2026-10-09: "let's start to redo
+all games sfx"). In `SETS` order; the next is the first row not done. Done
+means every file of the set reads "0 flagged", the board's own pitch climbs
+are inside five semitones, and the sounds are imported; it does not mean
+heard.
+
+| Set | State |
+|---|---|
+| `ui` | `page` and `opening` pass; `click` passes the measure but is still the paper-and-wood take, not a wheel's notch: not done |
+| `binairo` | done 2026-10-09, unheard: 15 new takes (7 ticks, 2 breezes, 7 phrases with `brush` the lift's take), 6 kept; the streak's climb 14 semitones down to 5 |
+| `mastermind` (Code Break) | next |
+| `balance`, `untangle`, `shikaku`, `tents`, `lightup`, `oneline`, `nonogram`, `queens`, `hiddenword`, `wordtrail`, `mushroom`, `sudoku`, `bridges`, `quilt`, `planes`, `pinwheel`, `caterpillar`, `sunbeam`, `knight`, `snooker`, `hockey`, `chess`, `checkers`, `hedgehogs`, `slider`, `marigold`, `pixelgarden`, `fairylights`, `firefly`, `molehill`, `stackwood`, `thirteen`, `posy`, `peapod`, `rings`, `drumbeat`, `trestle`, `minigolf`, `horse`, `lattice`, `how_big`, `acorn`, `pearl`, `boats`, `penny`, `dominoes`, `reversi`, `wallet`, `grove`, `nightlight`, `beeline` | not started, in this order |
 
 **What other games do** (looked up 2026-10-09; little is written down, and
 none of it outranks the user's ear). Unpacking's foley, the genre's

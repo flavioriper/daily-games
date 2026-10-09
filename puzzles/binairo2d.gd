@@ -172,12 +172,13 @@ const GLANCE_TIME := 0.6
 ## A hinted tile warms from white into the given sand over this long.
 const WARM_TIME := 0.3
 ## The streak: its paper bubble shows from COMBO_FROM, the layered `combo`
-## pluck climbs the major pentatonic from the second in a row (semitones from
-## the sample's own pitch; the eighth and past hold the top), and confetti
-## flies at COMBO_CONFETTI. A broken streak's bubble deflates over
+## tick climbs a semitone a tile from the second in a row (semitones from
+## the sample's own pitch; five in all and the seventh and past hold the top:
+## no climb is longer, docs/agents/sound.md), and confetti flies at
+## COMBO_CONFETTI. A broken streak's bubble deflates over
 ## COMBO_DEFLATE.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 
 ## What the phone does under each cue (core/haptics.gd keeps the strongest
