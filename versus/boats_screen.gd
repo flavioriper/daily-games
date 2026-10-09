@@ -1122,7 +1122,7 @@ func _place_toast() -> void:
 	var room: Rect2 = board.panel_rect()
 	var sz := _toast.get_combined_minimum_size()
 	_toast.global_position = Vector2(at.position.x + board.used_rect.get_center().x - sz.x * 0.5,
-		at.position.y + room.end.y - sz.y * 0.75)
+		at.position.y + room.end.y + Board.GAP * 0.5 - sz.y * 0.5)
 
 func _on_reset() -> void:
 	if not can_reset():

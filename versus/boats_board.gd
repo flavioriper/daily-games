@@ -206,7 +206,7 @@ func answer(c: int, r: int, boat := -1) -> void:
 	if r == Rules.SUNK:
 		_sank[1][boat] = _t
 	_busy(1.2)
-	var at := _global_of(1, c)
+	var at := point_of(1, c)
 	if r == Rules.MISS:
 		_cue("miss")
 		_puff(at, CHALK, 4)
@@ -228,7 +228,7 @@ func strike(c: int, r: int, boat := -1) -> void:
 	_after(fall, func() -> void:
 		_pebble = {}
 		_born[0][c] = _t
-		var at := _global_of(0, c)
+		var at := point_of(0, c)
 		if r == Rules.MISS:
 			_cue("splash")
 			_puff(at, Pal.WATER_HI, 6)
@@ -250,8 +250,8 @@ func _watch(r: int) -> float:
 func set_hint(c: int) -> void:
 	_hint = c
 	if c >= 0 and _fx != null:
-		_fx.ring(_global_of(1, c), _unit(1) * 0.6, HINT)
-		_fx.sparkle(_global_of(1, c), HINT)
+		_fx.ring(point_of(1, c), _unit(1) * 0.6, HINT)
+		_fx.sparkle(point_of(1, c), HINT)
 	_touch()
 
 ## The end: the other player's boats still afloat are chalked on the slate
@@ -270,12 +270,8 @@ func finish(outcome: String, fleet: Array = []) -> void:
 func panel_rect() -> Rect2:
 	return Rect2(_small.end.x + GAP, _small.position.y, _big.end.x - _small.end.x - GAP, _small.size.y)
 
-## The middle of square `c` of the pond (0) or the slate (1), on the screen.
-func _global_of(grid: int, c: int) -> Vector2:
-	var at := Rules.xy(c)
-	return get_global_transform() * (_xf(grid) * (Vector2(at.x + 0.5 + BORDER, at.y + 0.5 + BORDER) * U))
-
-## The middle of square `c` in this control: for a harness's finger.
+## The middle of square `c` of the pond (0) or the slate (1), in this control:
+## where the board's own effects go, and a harness's finger.
 func point_of(grid: int, c: int) -> Vector2:
 	var at := Rules.xy(c)
 	return _xf(grid) * (Vector2(at.x + 0.5 + BORDER, at.y + 0.5 + BORDER) * U)
@@ -773,7 +769,7 @@ func _build_tally() -> ArrayMesh:
 		return _mesh_of(b)
 	var rows := Rules.FLEET.size()
 	var top := room.position.y + room.size.y * 0.2
-	var pitch := (room.end.y - top) / rows
+	var pitch := (room.end.y - top - room.size.y * 0.05) / rows
 	var c := minf(pitch * 0.62, room.size.x / 6.2)
 	var plate := Rect2(room.position.x, top - pitch * 0.12, room.size.x, room.end.y - top + pitch * 0.12)
 	b.fan(Face.Builder.round_rect(plate.position + Vector2(0.0, 5.0), plate.size, 22.0), WOOD_DEEP)
