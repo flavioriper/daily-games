@@ -452,7 +452,11 @@ are pennies, the grid is a rack, a column is a slot.
   are wanted, since they change how every game's card looks on a short
   screen; a chip for two players on one phone (the game suits it, and a card
   has room for four chips: Online took the fourth, as on the other games of
-  turns); **the live rules are not deployed** (`tools/deploy_live.sh`, by a
+  turns); the faces on the plates only change at the end (nothing reacts to
+  a three with an open place); a full slot knocks twice, the screen's warn
+  and the echo of the rack's `refused`; a draw was finished through the
+  screen once by a throwaway harness (the card, `Drawn 1`, the `draw` cue),
+  and no kept harness reaches one; **the live rules are not deployed** (`tools/deploy_live.sh`, by a
   person): until they are, Online and a friend's invite to this game are
   refused by the database.
 
