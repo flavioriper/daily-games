@@ -100,6 +100,16 @@ HEARTH_TUNE = ("a real kalimba and a wooden tongue drum played very softly "
                "muffled, round, hushed, no bells, no chimes, no sparkle, no "
                "synth, no beeps, no music bed, no voice")
 
+# Nightlight's clicks (2026-10-09, the second go the same morning). The
+# three cues that never stop were HEARTH's flour and sand cut to 60 ms: a
+# sliver of hiss from 80 Hz to 12 kHz, a tick of static however quiet. They
+# are dull low taps on wood and wool now, with a body and no hiss, and are
+# let ring out a little longer.
+HEARTH_TAP = ("close-mic foley in a quiet warm room, one soft low muffled "
+              "tap on wood, felt or wool, round, dull and dark, a small "
+              "body and no hiss, no rustle, no crackle, no sand, no click, "
+              "no synth, no beeps, no music, no voice")
+
 # Fairy Lights' garden at dusk (2026-09-30): glass chimes, a music box and
 # kalimba in place of the house marimba, which turns a lantern into a woodblock.
 DUSK = ("cozy casual mobile puzzle game sound, soft warm glass chimes, music "
@@ -1834,10 +1844,10 @@ SETS = {
     # there on a phone's speaker. A prompt and its style together are 450
     # characters at most.
     "nightlight": {
-        "pour":   ("one tiny soft dry 'pf' of a pinch of flour puffed off a fingertip, a very small breath of air, very short and quiet", 0.5, -26, HEARTH, "warm:4200", "cut:0.07", "tight", "ease:0.012"),
-        "light":  ("one tiny soft dry tick of a fingernail on a small paper lantern, very short and quiet", 0.5, -23, HEARTH, "warm:4500", "cut:0.06", "tight", "ease:0.01"),
-        "eat":    ("one small round pebble dropped into a bowl of fine dry sand, a single soft 'pft' with a tiny woody tock in it, very short", 0.5, -18, HEARTH, "warm:4200", "cut:0.16", "tight", "ease:0.012"),
-        "tear":   ("a pinch of fine dry sand and a few soft crumbs let fall onto a wool blanket, one short soft hush, low and muffled, gentle", 0.6, -17, HEARTH, "warm:4200", "ease:0.02"),
+        "pour":   ("one soft low muffled pat of a fingertip on a thick wool blanket over a wooden table, a dull round 'pup', very short and quiet", 0.5, -24, HEARTH_TAP, "warm:2400", "cut:0.11", "tight", "ease:0.01"),
+        "light":  ("one very soft low tap of a felt mallet on a small hollow wooden box, a round dull 'tok', very short and quiet", 0.5, -22, HEARTH_TAP, "warm:2800", "cut:0.13", "tight", "ease:0.008"),
+        "eat":    ("one soft low round 'plop' of a small pebble dropped into a felt-lined wooden bowl, dull and muffled, short", 0.5, -18, HEARTH_TAP, "warm:2800", "cut:0.22", "tight", "ease:0.01"),
+        "tear":   ("three soft low muffled taps of small wooden beads falling one after another on a wool blanket, dull and round, gentle, short", 0.6, -18, HEARTH_TAP, "warm:1800", "ease:0.015"),
         "ignite": ("one low warm round note on the tongue drum, then one soft kalimba note blooming under it, something glowing deep inside, slow, about one second", 1.3, -11, HEARTH_TUNE, "warm:5000", "ease:0.015"),
         "dim":    ("two slow soft low notes stepping down on the tongue drum, a lamp turned low, gentle and kind, never sad", 1.0, -14, HEARTH_TUNE, "warm:5000", "ease:0.015"),
         "wake":   ("two soft low rising notes on the kalimba, a small lamp coming back on, warm, short", 0.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),

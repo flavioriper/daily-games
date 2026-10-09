@@ -110,6 +110,9 @@ const EAT_GAP := 0.12
 ## whole octave up, the tick was the sharpest thing in the game (the user,
 ## 2026-10-09: "too harsh").
 const LIGHT_RUN := 5
+## `light` and `pour` are dull taps whose body sits under 300 Hz, where a
+## phone's speaker has nothing: they are played this much higher.
+const LOW_TAP := 1.6
 const TEAR_GAP := 0.3
 ## The supernova's take is a breath and then the thump: it is started this
 ## long before the core has fallen in, so the thump is the layers leaving.
@@ -1359,7 +1362,7 @@ func _on_motes_landed(_n: int, note: int) -> void:
 	if (_plates.light.panel as Control).scale.x <= 1.01:
 		_kick("light")
 	if note >= 0:
-		_quiet.cue("light", pow(2.0, mini(note, LIGHT_RUN) / 12.0), -6.0)
+		_quiet.cue("light", LOW_TAP * pow(2.0, mini(note, LIGHT_RUN) / 12.0), -6.0)
 
 ## A plate swells as something lands on it. Each kick ends the last, or
 ## landings a moment apart would leave it stuck big (ui/menu/gold_pill.gd).
@@ -1662,7 +1665,7 @@ func _brake(px: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
-		_fx.cue("pour", randf_range(0.94, 1.08))
+		_fx.cue("pour", LOW_TAP * randf_range(0.94, 1.08))
 	_dirty = true
 
 ## Held, a finger brakes again where it is now, as often as Flow lets it.

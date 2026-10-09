@@ -1638,6 +1638,20 @@ supernovas (`Sim.kept()`), not a best.
       nova, perk, pick, pour, tear and wake were asked for and loaded;
       `ignite` and `no` are not reached by that run. The takes and levels
       are mine again: the user names the ones to redo.
+  - **And again an hour later: "still the same harsh terrible sounds".**
+    Two things were wrong with the pass above. **The game was playing the
+    old files**: Godot plays `.godot/imported/*.oggvorbisstr`, and nothing
+    had reimported them (`godot --headless --path . --import` after every
+    `gen_sfx.py` run; the Dummy-audio check proves the call, not the file).
+    And **the three cues that never stop had only been turned down**:
+    `pour`, `light` and `eat` were flour and sand cut to 60 ms, a sliver of
+    hiss from 80 Hz to 12 kHz on a spectrogram, static however quiet. They
+    and `tear` are new takes under `HEARTH_TAP` (a dull tap on wood, felt
+    or wool, with a body and no hiss; `warm:1800` to `2800`, cut at 0.11 to
+    0.22 s). Their body sits under 300 Hz, so `light` and `pour` are played
+    `LOW_TAP` (1.6) higher for a phone's speaker. **Look at a spectrogram
+    of a cue that repeats** (`ffmpeg -lavfi showspectrumpic`): energy above
+    3.5 kHz said nothing about this. Still unheard as this is written.
 - **An eighth time (2026-10-07): a universe around the star** (spec
   `2026-10-07-nightlight-universe-design.md`, built by five tasks on
   `feat/nightlight-universe`, commits `bbf3a05d..63068a4d`). The user,
