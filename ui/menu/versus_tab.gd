@@ -1,11 +1,12 @@
 extends VBoxContainer
 
 ## The Versus tab: games played against someone rather than against the
-## day's board. Snooker, chess, checkers, air hockey and Toy Boats
+## day's board. Snooker, chess, checkers, air hockey, Toy Boats and Penny Drop
 ## (versus/snooker_screen.gd, versus/chess_screen.gd,
-## versus/checkers_screen.gd, versus/hockey_screen.gd), and the someone is the
+## versus/checkers_screen.gd, versus/hockey_screen.gd, versus/boats_screen.gd,
+## versus/penny_screen.gd), and the someone is the
 ## computer at one of three levels or, on the fourth chip, another player:
-## online for the four games of turns (level Record.ONLINE; versus/online/),
+## online for the five games of turns (level Record.ONLINE; versus/online/),
 ## across the same phone for air hockey (level Record.LOCAL), which has no
 ## turns for the live transport to carry. Its body takes the day row's and
 ## the grid's room, the way Stats and Streak do, under the same header and
@@ -21,12 +22,13 @@ extends VBoxContainer
 ## where a friend is asked to one of these three games. The row is one more
 ## child of this column, so its height comes out of the room _fit measures.
 ##
-## Five cards are more than a screen holds, so the tab measures the room the
+## Six cards are more than a screen holds, so the tab measures the room the
 ## menu's column leaves it (_fit) and gives up, in turn, the lines under the
 ## names, some of the pictures' height, the pictures' own row (each lies
-## small beside its game's name instead), and last some of the chips' height
-## and of the gaps between the cards, rather than push the bar off the
-## screen.
+## small beside its game's name instead), some of the chips' height and of
+## the gaps between the cards, and last the cards' width: they stand two a
+## row, as the Arcade tab's do, the chips two by two over Play, rather than
+## push the bar off the screen.
 
 signal play(game: String, level: int)
 ## The Friends row was pressed.
@@ -48,6 +50,8 @@ const HockeySim = preload("res://versus/hockey_sim.gd")
 const HockeyTable = preload("res://versus/hockey_table.gd")
 const BoatsRules = preload("res://versus/boats_rules.gd")
 const BoatsBoard = preload("res://versus/boats_board.gd")
+const PennyRules = preload("res://versus/penny_rules.gd")
+const PennyBoard = preload("res://versus/penny_board.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Social = preload("res://core/social.gd")
@@ -70,14 +74,14 @@ const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], [
 ## The line under the name while the fourth chip is the one picked.
 const ONLINE_BLURB := "VS_ONLINE_BLURB"
 const LOCAL_BLURB := "VS_TWO_BLURB"
-const GAMES := ["snooker", "chess", "checkers", "hockey", "boats"]
+const GAMES := ["snooker", "chess", "checkers", "hockey", "boats", "penny"]
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
-	"boats": "Toy Boats"}
+	"boats": "Toy Boats", "penny": "Penny Drop"}
 const BLURBS := {"snooker": "VS_SNOOKER_BLURB", "chess": "VS_CHESS_BLURB", "checkers": "VS_CHECKERS_BLURB",
-	"hockey": "VS_HOCKEY_BLURB", "boats": "VS_BOATS_BLURB"}
+	"hockey": "VS_HOCKEY_BLURB", "boats": "VS_BOATS_BLURB", "penny": "VS_PENNY_BLURB"}
 const FILL := Color("fcf7ef")
 ## The Friends row: its height, the plaque on it and the plaque's tint.
 const FRIENDS_H := 108.0
@@ -101,6 +105,12 @@ var _tall: Array[Control] = []
 var _parts: Array[Dictionary] = []
 ## Whether the pictures lie beside the names now.
 var _side := false
+## The cards, one a row or two.
+var _grid: GridContainer
+## Each card's row of chips and Play: {row, chips, go}.
+var _rows: Array[Dictionary] = []
+## Whether the cards stand two a row now.
+var _pairs := false
 var friends_row: Button
 var _friends_sub: Label
 var _friends_dot: Control
@@ -112,11 +122,18 @@ func _init() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_friends_row())
+	_grid = GridContainer.new()
+	_grid.columns = 1
+	_grid.add_theme_constant_override("h_separation", GAP)
+	_grid.add_theme_constant_override("v_separation", GAP)
+	_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_grid)
 	for game: String in GAMES:
 		_level[game] = Record.last_level(game)
 		if not levels_of(game).any(func(l: Array) -> bool: return l[1] == _level[game]):
 			_level[game] = 1
-		add_child(_game_card(game))
+		_grid.add_child(_game_card(game))
 
 ## A game's four chips, as [key, level].
 static func levels_of(game: String) -> Array:
@@ -132,6 +149,7 @@ func _game_card(game: String) -> Control:
 	card.material = PLAIN
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -150,6 +168,8 @@ func _game_card(game: String) -> Control:
 		_hockey_banner(art)
 	elif game == "boats":
 		_boats_banner(art)
+	elif game == "penny":
+		_penny_banner(art)
 	else:
 		var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
 		lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -186,9 +206,15 @@ func _game_card(game: String) -> Control:
 	_blurbs.append(blurb)
 	_blurb[game] = blurb
 
-	var row := HBoxContainer.new()
+	var row := BoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	col.add_child(row)
+	var chip_grid := GridContainer.new()
+	chip_grid.columns = 4
+	chip_grid.add_theme_constant_override("h_separation", 12)
+	chip_grid.add_theme_constant_override("v_separation", 10)
+	chip_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(chip_grid)
 	var chips: Array[Button] = []
 	var levels := levels_of(game)
 	for i in levels.size():
@@ -199,7 +225,7 @@ func _game_card(game: String) -> Control:
 		b.add_theme_font_size_override("font_size", 30)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(_pick.bind(game, int(levels[i][1])))
-		row.add_child(b)
+		chip_grid.add_child(b)
 		chips.append(b)
 		_tall.append(b)
 	_chips[game] = chips
@@ -211,6 +237,7 @@ func _game_card(game: String) -> Control:
 		play.emit(game, _level[game]))
 	row.add_child(go)
 	_tall.append(go)
+	_rows.append({"row": row, "chips": chip_grid, "go": go})
 	_paint_chips(game)
 	return card
 
@@ -358,6 +385,24 @@ func _boats_banner(art: Control) -> void:
 	board.offset_bottom = -8.0
 	art.add_child(board)
 
+## Penny Drop's banner: the foot of the rack some way into a game, the sun
+## with three on a slant. The rack is as wide as the picture allows and
+## stands on its bottom edge, so a short picture shows its lowest rows.
+func _penny_banner(art: Control) -> void:
+	var rules := PennyRules.new()
+	for c: int in [3, 3, 4, 2, 2, 4, 1, 5, 3, 2, 5, 0]:
+		rules.make(c)
+	var board := PennyBoard.new()
+	board.still = true
+	board.setup(rules, PennyRules.FIRST)
+	art.add_child(board)
+	var lay := func() -> void:
+		var w := minf(art.size.x - 24.0, art.size.y * 3.6)
+		board.size = Vector2(w, art.size.y - 4.0)
+		board.position = Vector2((art.size.x - w) * 0.5, 0.0)
+	art.resized.connect(lay)
+	lay.call()
+
 ## A table lies on its side across its banner, turned about its middle.
 func _lay_table(entry: Array) -> void:
 	var art: Control = entry[0]
@@ -448,7 +493,7 @@ func _fit() -> void:
 		var margins := parent.get_parent() as MarginContainer
 		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
 	var room := height - other - sep * shown
-	for level in 5:
+	for level in 6:
 		_compact(level)
 		if get_combined_minimum_size().y <= room:
 			return
@@ -463,6 +508,21 @@ func _compact(level: int) -> void:
 	for t in _tall:
 		t.custom_minimum_size.y = CHIP_H_SHORT if level >= 4 else CHIP_H
 	add_theme_constant_override("separation", 12 if level >= 4 else GAP)
+	_grid.add_theme_constant_override("v_separation", 12 if level >= 4 else GAP)
+	_set_pairs(level >= 5)
+
+## The very last thing given up: a card's width. They stand two a row, each
+## with its chips two by two and Play under them.
+func _set_pairs(on: bool) -> void:
+	if on == _pairs:
+		return
+	_pairs = on
+	_grid.columns = 2 if on else 1
+	_grid.add_theme_constant_override("h_separation", 12 if on else GAP)
+	for r in _rows:
+		(r.row as BoxContainer).vertical = on
+		(r.chips as GridContainer).columns = 2 if on else 4
+		(r.go as Control).custom_minimum_size.x = 0.0 if on else 230.0
 
 ## The last thing given up: the pictures' own row. Each comes down beside its
 ## game's name, the record under the name instead of across from it.
