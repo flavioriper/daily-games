@@ -344,6 +344,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   that day's Daily gifts sheet stood over the page; the card's picture was
   shot alone by a throwaway probe instead, and its draw calls on the page
   were not read.
+- **Lattice is the thirty-fifth card (2026-10-09).** Its picture is
+  `_draw_lattice()` in `ui/menu/card_art.gd`: a strip of the board, five
+  cells by three with its two gaps -- `ui/faces/lattice_art.gd`'s slats,
+  sockets, tiles and knots, nine tiles home and four not -- one mesh kept in
+  `_lattice_mesh` with its fifteen numerals drawn over it. One gap and the
+  eight tiles round it was tried first and read as too small. Its vista is
+  the meadow at `(0.42, 0.30)`. The fifth page holds three cards;
+  `_shot_menu.gd -- last` read **173** draw calls there.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

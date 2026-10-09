@@ -61,3 +61,11 @@ clock's tick, cut to 0.07 s at -16, no note. `miss` can come several times
 a prompt and is two dull knocks on a plank, no note either. The keyboard's
 keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
 cue a letter. Details: `docs/art/sound-direction.md`, its last section.
+
+**Lattice has a set since 2026-10-09** (`SETS["lattice"]`, `TILES` foley of
+wooden game tiles and a wooden lattice on a garden table and `TILES_TUNE`
+notes, seventeen cues): one take a cue (`home` two), unheard by the user.
+`pick`, `swap` and one of `miss` or `home` sound on every move, so with
+`drop` and `undo` they are dry wood cut to 0.1-0.28 s with no note; the
+notes are `home2` (two tiles home at once), `line`, `hint` and the day's
+end. Details: `docs/art/sound-direction.md`, its last section.

@@ -211,7 +211,7 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.HINT, "HTP_LA_HINT",
 			tr("HTP_LA_HINT_BODY_ONE") if hints == 1 else tr("HTP_LA_HINT_BODY_N") % hints])
 	if max_moves > 0:
-		steps.append([Diagram.Lesson.COUNT, "HTP_LA_COUNT", tr("HTP_LA_COUNT_BODY") % [max_moves, state.par]])
+		steps.append([Diagram.Lesson.COUNT, "HTP_LA_COUNT", tr("HTP_LA_COUNT_BODY") % [max_moves, state.par, max_moves - state.par]])
 	var pages := []
 	for step in steps:
 		var d: Control = Diagram.new()
@@ -892,6 +892,7 @@ func reset_board() -> void:
 	fx.cue("reset")
 
 func _restart() -> void:
+	_gen += 1  # (a swap still in the air must not land on the fresh deal)
 	state.reset()
 	moves = 0
 	_running = true

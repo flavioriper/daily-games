@@ -474,7 +474,7 @@ The rule, as each board applies it:
   alone (a clue going green, two pieces visibly clashing). What came from
   the answer is gone.
 
-Twenty-two boards are on it. Where one departs from the two formulas:
+Twenty-three boards are on it. Where one departs from the two formulas:
 
 - **Bridges** has slack 4: a plank only comes off round the 0-1-2-0 cycle,
   so one slip costs three moves to mend.
@@ -494,6 +494,11 @@ Twenty-two boards are on it. Where one departs from the two formulas:
 - Sequence and path boards say `TIP_MOVES_SEQ` and pass `seq` to
   `MovesDiagram.page` (or their own body key); the shared placing lines are
   untrue of them.
+- **Lattice** (2026-10-09) has slack 5 over a par of 15, the twenty swaps
+  of the game it follows, and it keeps the green of a tile at home: that is
+  the game's own feedback, as Hidden Word's letters are, and without it
+  there is nothing to solve by. Its lines read swaps (`LA_LEFT_*`,
+  `LA_OUT_*`), not moves.
 - **Trestle keeps its two hearts**: they are spent only on a Go the player
   watches fail, and a count that stands still while members are laid would
   not be a move counter.

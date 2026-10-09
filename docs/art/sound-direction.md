@@ -404,3 +404,21 @@ a music box winding down. `hint`, `solved`, `party` and `stamp` are phrased
 as Golden Acorn's. One take a cue on the first run, no retakes, unheard by
 the user; lengths and peaks were read off the files (0.07 s to 2.0 s, -18 to
 -5 dB) and nothing was listened to.
+
+## Lattice (2026-10-09)
+
+A garden table: small flat wooden number tiles and a wooden lattice with
+shallow sockets (`TILES`), and the garden family's kalimba, music box and
+hand bells for what the day says (`TILES_TUNE`). **Every move is three
+sounds** -- a tile picked (`pick`, a tick at -15), the two swapped (`swap`,
+two quick taps) and what it came to as they land -- so all of those are dry
+wood with no note: `miss` a dull loose knock, `home` one snug click of a
+tile seated in its socket. **Two tiles home at once is the one a player
+works for, and it is the first note**: `home2`, two rising kalimba notes.
+`line` is three and a hand bell. `drop` and `undo` are a tap and a slide,
+`locked` a knuckle on the table, `reset` a handful of tiles swept together,
+`enter` the same laid out. `hint`, `solved`, `party`, `stamp`,
+`out_of_hearts` and `heart_back` are phrased as Horse Pen's. One take a cue
+on the first run; `home` came back 0.06 s long and was taken again (0.10 s).
+Unheard by the user; lengths were read off the files (0.10 s to 2.0 s) and
+nothing was listened to.

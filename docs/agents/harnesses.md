@@ -220,6 +220,26 @@ walk as How Big?'s does. The tutorial: `tests/_probe_perf.gd -- acorn d=0
 howto shot=2 gap=6 to=40 lang=en` (`/tmp/probe_acorn_p<n>.png`; `d=3` for
 the Climb's page). `tests/_shot_menu.gd -- last` turns three pages now.
 
+## Lattice's harness (2026-10-09)
+
+`tests/_shot_lattice.gd` plays the board through its real input path (a
+touch pressed, dragged and let go) and shoots numbered frames (`out=<dir>`,
+which must exist):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_lattice.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest play refuse hint solve out reset restore`. `play` makes three
+swaps of the answer by two taps and one by a drag, shot in the air; `solve`
+makes the bulb's own swaps to the win; `out` (Insane) trades two tiles back
+and forth until the swaps are gone. A tile in the air is not picked up, so
+a harness leaves 0.3 s between swaps. `tests/_probe_perf.gd -- lattice`
+makes the answer's swaps (`x=buzz` walks every knock first; `d=3 howto
+shot=2 gap=6 to=40 lang=en` shoots the tutorial to
+`/tmp/probe_lattice_p<n>.png`), `tests/_win.gd -- lattice` wins through the
+input path with a refused tap, the bulb and a drag on the way, and
+`tests/_probe_lattice_bank.gd` (headless) re-proves `content/lattice.json`.
+`tools/build_lattice.py [count] [seed]` mines it (Python, no Godot).
+
 ## Pearl Dive's harness (2026-10-09)
 
 `tests/_shot_pearl.gd` plays the board through the way in a player has (the

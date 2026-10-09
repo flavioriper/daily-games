@@ -247,6 +247,21 @@ MEADOW_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
                "bed, no voice")
 # The pony itself: the families above all end "no voice", which would ask
 # the animal to keep quiet.
+# Lattice's garden table (2026-10-09): small wooden number tiles set into the
+# sockets of a wooden lattice, with the garden family's kalimba, music box
+# and hand bells for what the day says. A tile is picked up and two are
+# swapped on every move, and most swaps send one home, so pick, drop, swap,
+# miss, home and undo are dry wood and nothing with a note.
+TILES = ("close-mic foley recorded at a small wooden garden table on a quiet "
+         "morning, real small flat wooden game tiles and a wooden lattice "
+         "frame with shallow wooden sockets, natural and acoustic, soft and "
+         "warm, dry, rounded, no synth, no electronic tones, no beeps, no "
+         "music, no voice")
+TILES_TUNE = ("real acoustic kalimba, wooden music box and small hand bells "
+              "recorded close in a warm quiet room, natural, soft, rounded, "
+              "gentle, cozy, no synth, no electronic tones, no beeps, no music "
+              "bed, no voice")
+
 # How Big?'s carpenter's bench (2026-10-08): rulers, a clamp, paper and a
 # tape measure for what is not a note, and the polished boards' kalimba,
 # music box and hand bells for what is.
@@ -1678,6 +1693,30 @@ SETS = {
         "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, MEADOW_TUNE, "warm:7000"),
         "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a pony dozing off in the grass", 1.8, -9, MEADOW_TUNE, "warm:7000"),
         "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, MEADOW_TUNE, "warm:7000"),
+    },
+    # Lattice (puzzles/lattice2d.gd): wooden number tiles swapped about a
+    # lattice. `pick`, `swap` and one of `home`, `home2` or `miss` fire on
+    # every move, so the first five are dry wood cut short with no note in
+    # them (a tile home is a snug seat, not a chime); the notes are kept for
+    # two tiles home at once, a whole line and the day's end.
+    "lattice": {
+        "enter":         ("a handful of small flat wooden game tiles laid out quickly on a wooden table, a short soft dry wooden patter, light and gentle, short", 0.9, -11, TILES, "warm:7000"),
+        "pick":          ("one small flat wooden game tile lifted out of a shallow wooden socket with a fingertip, a single tiny dry soft wooden tick, no ring, no tone, very short and quiet", 0.5, -15, TILES, "cut:0.12"),
+        "drop":          ("one small flat wooden game tile set back down into its wooden socket, a single soft dry wooden tap, no ring, no tone, very short and quiet", 0.5, -14, TILES, "cut:0.16"),
+        "swap":          ("two small flat wooden game tiles slid past each other and set down on wood, two quick soft dry wooden taps close together, no ring, no tone, very short", 0.5, -10, TILES, "cut:0.28"),
+        "miss":          ("one small wooden game tile set down loosely on a wooden table, a single dull soft hollow wooden knock, flat, no ring, no tone, very short", 0.5, -13, TILES, "cut:0.2"),
+        "home":          ("one small wooden game tile pressed snugly into a fitted wooden socket, a single firm satisfying soft wooden click, snug, no ring, no tone, very short", 0.5, -8, TILES, "cut:0.22"),
+        "undo":          ("two small wooden game tiles slid back across a wooden table, a single soft short dry wooden slide, no ring, no tone, very short and quiet", 0.5, -14, TILES, "cut:0.22"),
+        "reset":         ("a handful of small wooden game tiles swept together and shuffled across a wooden table with one hand, a short soft dry wooden clatter, gentle", 0.9, -11, TILES),
+        "locked":        ("one gentle dull knuckle knock on a wooden table top, a soft kind not this one, very short", 0.5, -11, TILES, "cut:0.3"),
+        "home2":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -8, TILES_TUNE, "warm:7000"),
+        "line":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, happy and proud, short", 1.0, -7, TILES_TUNE, "warm:7000"),
+        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, TILES_TUNE, "warm:7000"),
+        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a sunny garden morning", 2.0, -5, TILES_TUNE, "warm:7000"),
+        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, TILES_TUNE, "warm:7000"),
+        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, TILES_TUNE, "warm:7000"),
+        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a garden at dusk", 1.8, -9, TILES_TUNE, "warm:7000"),
+        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, TILES_TUNE, "warm:7000"),
     },
     # How Big? (puzzles/how_big2d.gd, 2026-10-08): a carpenter's bench. The
     # one cue that repeats is `notch`, a click every time the answer grows or

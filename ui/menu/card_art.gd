@@ -1738,42 +1738,48 @@ func _draw_pearl() -> void:
 	_pearl_u = _u
 	draw_mesh(_pearl_mesh, null, Transform2D(0.0, _c))
 
-## Lattice's card: one gap of the board and the eight tiles round it --
-## `ui/faces/lattice_art.gd`'s slats, sockets, tiles and knot, so the card and
-## the board are the same drawing. Five tiles are home and three are not; the
-## knot points at two of them. One mesh, rebuilt only when the card changes
-## size, with the nine numerals as draw commands over it, which is the
-## arrangement the board itself uses.
-const LA_CELL := 36.0
-const LA_TILES := [[2, true], [5, false], [1, true], [4, true], [3, false], [1, false], [3, true], [5, true]]
+## Lattice's card: a strip of the board, five cells by three, with its two
+## gaps -- `ui/faces/lattice_art.gd`'s slats, sockets, tiles and knots, so the
+## card and the board are the same drawing. Nine tiles are home and four are
+## not; each knot points at two of them. One mesh, rebuilt only when the card
+## changes size, with the fifteen numerals as draw commands over it, which is
+## the arrangement the board itself uses.
+const LA_CELL := 34.0
+## A row a line: a number at home, a negative one not yet, 0 a knot.
+const LA_ROWS := [[2, -5, 1, 4, 3], [4, 0, -3, 0, 1], [-1, 3, 5, -2, 4]]
+const LA_KNOTS := [["LU", "9"], ["RD", "3"]]
 
 func _draw_lattice() -> void:
 	var s := LA_CELL * _u
 	if _lattice_mesh == null or not is_equal_approx(_lattice_u, _u):
 		var b := Face.Builder.new()
-		for a in [0, 2]:
-			LatticeArt.slat(b, Vector2(a * s, 0.0) - Vector2.ONE * s * 1.5, Vector2(s, 3.0 * s), s)
-		for a in [0, 2]:
-			LatticeArt.slat(b, Vector2(0.0, a * s) - Vector2.ONE * s * 1.5, Vector2(3.0 * s, s), s)
-		var k := 0
-		for i in 9:
-			var mid := Vector2(i % 3 - 1, i / 3 - 1) * s
-			if i == 4:
-				LatticeArt.knot(b, mid, s, "LU")
-				continue
-			LatticeArt.socket(b, mid, s)
-			LatticeArt.tile(b, mid, s, LA_TILES[k][1])
-			k += 1
+		var corner := -Vector2(2.5, 1.5) * s
+		for x in [0, 2, 4]:
+			LatticeArt.slat(b, corner + Vector2(x * s, 0.0), Vector2(s, 3.0 * s), s)
+		for y in [0, 2]:
+			LatticeArt.slat(b, corner + Vector2(0.0, y * s), Vector2(5.0 * s, s), s)
+		var knot := 0
+		for y in 3:
+			for x in 5:
+				var mid := Vector2(x - 2, y - 1) * s
+				var v: int = LA_ROWS[y][x]
+				if v == 0:
+					LatticeArt.knot(b, mid, s, LA_KNOTS[knot][0])
+					knot += 1
+					continue
+				LatticeArt.socket(b, mid, s)
+				LatticeArt.tile(b, mid, s, v > 0)
 		_lattice_mesh = b.mesh()
 		_lattice_u = _u
 	draw_mesh(_lattice_mesh, null, Transform2D(0.0, _c))
-	var n := 0
-	for i in 9:
-		var x := (i % 3 - 1) * LA_CELL
-		var y := (i / 3 - 1) * LA_CELL
-		if i == 4:
-			_text("6", x, y + 6.0, 17.0, Pal.PAPER)
-			continue
-		_text(str(LA_TILES[n][0]), x, y + 6.5, 22.0, Pal.SURFACE if LA_TILES[n][1] else Pal.TEXT)
-		n += 1
-
+	var k := 0
+	for y in 3:
+		for x in 5:
+			var v: int = LA_ROWS[y][x]
+			var at_x := (x - 2) * LA_CELL
+			var at_y := (y - 1) * LA_CELL
+			if v == 0:
+				_text(LA_KNOTS[k][1], at_x, at_y + 5.0, 14.0, Pal.PAPER)
+				k += 1
+			else:
+				_text(str(absi(v)), at_x, at_y + 5.6, 19.0, Pal.SURFACE if v > 0 else Pal.TEXT)
