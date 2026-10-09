@@ -769,6 +769,10 @@ func _swipe_press(event: InputEvent, id: int, pressed: bool) -> void:
 	if not pressed:
 		if id == _swipe_id:
 			_swipe_id = -1
+			# The card under the lifting finger is still pressed; it does
+			# not open (`_open`) and must not click either.
+			if _swiped:
+				UiSound.hush()
 			if _dragging:
 				_let_go()
 		return

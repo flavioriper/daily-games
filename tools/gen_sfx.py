@@ -335,7 +335,12 @@ SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
         "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
-        "page":     ("A soft hand brushing sideways across a linen tablecloth, one gentle muffled fabric swipe, warm and hushed", 0.5, -14, COZY),
+        # The user, 2026-10-09: "too harsh". The linen brush was a rumble
+        # under 400 Hz and a hiss as loud at 6 kHz as at 3: rolled off, only
+        # the rumble was left, which a phone does not play. It is a thick
+        # card slid over felt now, a sound with its body in the middle,
+        # rolled off above 3.5 kHz and eased in over 30 ms.
+        "page":     ("one thick soft paper card sliding slowly sideways across a felt-covered wooden table, a short low soft muffled 'fwump', dull and round, no hiss, no scratch", 0.5, -15, COZY, "warm:3500", "ease:0.03"),
         # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
         # it is the quietest tune there is, low and eased in.
         "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),

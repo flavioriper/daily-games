@@ -105,7 +105,7 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   through the viewport, ten swipes: the worst frame of a drag was 30-42 ms
   before and 7-8 ms after, against 6 ms at rest. Not felt on a phone yet.
   Still paid, once a page: the build itself, just after a landing. A turn sounds
-  a hushed linen brush (`assets/sfx/ui/page.ogg`, `UiSound.page`; a paper swish until 2026-09-28, which the house marimba style made tonal), never the click:
+  a thick card slid over felt (`assets/sfx/ui/page.ogg`, `UiSound.page`; a paper swish until 2026-09-28, which the house marimba style made tonal, then a linen brush the user called "too harsh" on 2026-10-09: a rumble under 400 Hz and a hiss as loud at 6 kHz as at 3, so the new take has its body in the middle, is rolled off above 3.5 kHz and eased in over 30 ms; unheard by the user), never the click. The card under a lifting swipe is still pressed, and until 2026-10-09 it clicked: the release of a swipe calls `UiSound.hush()` from `_input`, which drops any click asked for in that frame (Stats' pages too; a touch-drag probe saw the click's player made before the fix and not after, and a plain tap still clicks):
   the pager buttons carry the `silent` meta. Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this
   file (twelve, before 2026-09-24) are the 1080x1920 page. **They are also

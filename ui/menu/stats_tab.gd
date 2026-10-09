@@ -495,6 +495,7 @@ func _input(event: InputEvent) -> void:
 		_swipe_id = -2
 		var d := at - _swipe_from
 		if absf(d.x) > SWIPE and absf(d.x) > absf(d.y) * 1.5:
+			UiSound.hush()
 			turn(1 if d.x < 0.0 else -1)
 
 func _mmss(t: float) -> String:

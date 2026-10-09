@@ -22,6 +22,7 @@ static var _stream: AudioStream
 static var _pending := false
 static var _still := false
 static var _page_player: AudioStreamPlayer
+static var _hush_frame := -1
 
 ## Wire `button` to click when pressed, once however often it re-enters.
 static func wire(button: BaseButton) -> void:
@@ -30,8 +31,16 @@ static func wire(button: BaseButton) -> void:
 	button.set_meta("ui_click", true)
 	button.pressed.connect(func() -> void: click(button))
 
+## No click this frame: the finger that is lifting was a swipe, and the
+## button under it is pressed all the same (the menu's pages, Stats' pages).
+## Called from `_input`, which a frame runs before any button's `pressed`.
+static func hush() -> void:
+	_hush_frame = Engine.get_process_frames()
+
 ## Ask for a click; it plays at the end of the frame unless a board cue did.
 static func click(from: Node) -> void:
+	if _hush_frame == Engine.get_process_frames():
+		return
 	if from.has_meta("silent") or _pending or not from.is_inside_tree():
 		return
 	_pending = true
