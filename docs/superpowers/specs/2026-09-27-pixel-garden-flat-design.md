@@ -69,13 +69,15 @@ Marigold's precedent, recorded so it is not read as an oversight.
 
 | Band | Size | Colours | Pictures |
 | --- | --- | --- | --- |
-| Easy | 10 x 10 | 3-4 | 10 |
-| Medium | 12 x 12 | 4-5 | 10 |
-| Hard | 14 x 14 | 5-6 | 10 |
-| Insane | 16 x 16 | 6-7 | 10 |
+| Easy | 10 x 10 | 3-4 | 30 |
+| Medium | 12 x 12 | 4-5 | 30 |
+| Hard | 14 x 14 | 5-6 | 30 |
+| Insane | 16 x 16 | 6-7 | 30 |
 
-The day's picture is the band's `rng.randi() % 10`, so a band repeats a
-picture about every ten days; New deals another. Harder bands are richer
+The day's picture is the next of one fixed shuffle of the band
+(`State.day_pick`, since 2026-10-09; it was `rng.randi() % 10` over ten
+pictures), so a band goes thirty days before a picture returns; New deals
+the one after. Harder bands are richer
 pictures, not bigger easy ones: outlines, highlights, and **close shades side
 by side** (green, forest and lime; orange, red and yellow), since telling
 them apart on a 212 px thumbnail is where the difficulty is. Insane is a

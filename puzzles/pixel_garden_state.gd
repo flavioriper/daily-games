@@ -114,12 +114,28 @@ static func band_pictures(difficulty: int) -> Array:
 		return []
 	return bands[clampi(difficulty, 0, bands.size() - 1)]
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## Which of a band's `count` pictures the day takes: one fixed shuffle of the
+## band walked a day at a time (InsaneBank's rule), so no picture comes back
+## until the whole band has passed. `step` is PuzzleBase.bank_step, how many
+## times New has been pressed. New pictures go on the end of a band; the
+## order is this shuffle's, never the file's.
+static func day_pick(difficulty: int, count: int, step: int) -> int:
+	if count <= 0:
+		return 0
+	var order: Array = range(count)
+	var shuffle := RandomNumberGenerator.new()
+	shuffle.seed = Daily.fnv1a("pixelgarden|%d" % difficulty)
+	for i in range(count - 1, 0, -1):
+		var j := shuffle.randi_range(0, i)
+		var t = order[i]; order[i] = order[j]; order[j] = t
+	return order[posmod(InsaneBank.day_ordinal() + step, count)]
+
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	var pics := band_pictures(difficulty)
 	if pics.is_empty():
 		return
 	band = clampi(difficulty, 0, 3)
-	load_picture(pics[rng.randi() % pics.size()])
+	load_picture(pics[day_pick(band, pics.size(), bank_step)])
 	_rng.seed = rng.randi()
 	if band == WINDBLOWN:
 		blow(rng)

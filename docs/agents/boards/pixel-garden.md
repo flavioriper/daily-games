@@ -93,3 +93,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `PG_RULES_PLATES`, and "Check rings..." left `PG_RULES` for its own key,
   `PG_RULES_CHECK`, read only on a band with Check. `PG_LVL_2` still reads
   "three hearts" (Hard's, stale since ce192ab). Not seen rendered.
+- **The bank is 120 pictures, thirty a band (2026-10-09).** Ten a band came
+  back within days: the pick was `rng.randi() % 10`, so a picture could
+  return the next morning. Eighty more were drawn (twenty a band, on the
+  END of each band's list -- append, never reorder), and the day now walks
+  one fixed shuffle of its band (`State.day_pick`, InsaneBank's rule, seeded
+  by `fnv1a("pixelgarden|<band>")` and `InsaneBank.day_ordinal()`), so a
+  band goes thirty days before a picture returns; New is the next in that
+  order (`bank_step`), no longer a random one. The board's `rng` no longer
+  chooses the picture. `tools/check_pixel_garden.py` is the validator the
+  first spec described and never shipped (size, colours by band, 30-70%
+  filled, never all four edges, no id or name twice); `--sheet out.png
+  [--band N] [--skip 10]` draws the pictures as beads for a cull. Windblown's
+  budget now runs 90 (the heron) to 171. The new pictures were judged on the
+  contact sheet only, by their author; the weakest are the woodpecker, the
+  garden gate, the wheelbarrow, the hummingbird and the mallard, and the
+  swan, the badger and the snowman carry white in bulk. The pt and es names
+  are unread by a speaker. One windowed shot (Insane, the snowman, six
+  chips): 81 draw calls at rest. A day finished before this landed reopens
+  on the new pick's picture, fused (the record keeps no `pic_id`).

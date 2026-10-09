@@ -1423,6 +1423,86 @@ PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
 PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
 PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
 PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
+PG_PIC_PEAR,Pear,Pera,Pera
+PG_PIC_LEMON,Lemon,Limão,Limón
+PG_PIC_TOMATO,Tomato,Tomate,Tomate
+PG_PIC_RADISH,Radish,Rabanete,Rábano
+PG_PIC_GRAPES,Grapes,Uvas,Uvas
+PG_PIC_PEA_POD,Pea Pod,Vagem,Vaina
+PG_PIC_SPROUT,Sprout,Broto,Brote
+PG_PIC_CLOVER,Clover,Trevo,Trébol
+PG_PIC_POPPY,Poppy,Papoula,Amapola
+PG_PIC_FLOWER_POT,Flower Pot,Vaso de Flor,Maceta
+PG_PIC_SUN,Sun,Sol,Sol
+PG_PIC_RAIN_CLOUD,Rain Cloud,Nuvem de Chuva,Nube de Lluvia
+PG_PIC_CHICK,Chick,Pintinho,Pollito
+PG_PIC_FISH,Fish,Peixe,Pez
+PG_PIC_WELLIE,Rain Boot,Galocha,Bota de Agua
+PG_PIC_BUCKET,Bucket,Balde,Cubo
+PG_PIC_MOON,Moon,Lua,Luna
+PG_PIC_KITE,Kite,Pipa,Cometa
+PG_PIC_PLUM,Plum,Ameixa,Ciruela
+PG_PIC_CORN,Corn,Milho,Maíz
+PG_PIC_PINEAPPLE,Pineapple,Abacaxi,Piña
+PG_PIC_ROSE,Rose,Rosa,Rosa
+PG_PIC_LAVENDER,Lavender,Lavanda,Lavanda
+PG_PIC_PANSY,Pansy,Amor-perfeito,Pensamiento
+PG_PIC_LILY_PAD,Lily Pad,Vitória-régia,Nenúfar
+PG_PIC_BEETLE,Beetle,Besouro,Escarabajo
+PG_PIC_MOUSE,Mouse,Ratinho,Ratón
+PG_PIC_HEN,Hen,Galinha,Gallina
+PG_PIC_GOLDFISH,Goldfish,Peixinho-dourado,Pez Dorado
+PG_PIC_WHEELBARROW,Wheelbarrow,Carrinho de Mão,Carretilla
+PG_PIC_TROWEL,Trowel,Pazinha,Paleta
+PG_PIC_LANTERN,Lantern,Lanterna,Farol
+PG_PIC_GNOME,Gnome,Gnomo,Gnomo
+PG_PIC_JAM_JAR,Jam Jar,Pote de Geleia,Tarro de Mermelada
+PG_PIC_HONEY_POT,Honey Pot,Pote de Mel,Tarro de Miel
+PG_PIC_UMBRELLA,Umbrella,Guarda-chuva,Paraguas
+PG_PIC_AUBERGINE,Aubergine,Berinjela,Berenjena
+PG_PIC_PEPPER,Pepper,Pimentão,Pimiento
+PG_PIC_WINDMILL,Windmill,Moinho,Molino
+PG_PIC_WORM,Worm,Minhoca,Lombriz
+PG_PIC_MOLE,Mole,Toupeira,Topo
+PG_PIC_FAWN,Fawn,Cervinho,Cervatillo
+PG_PIC_SWAN,Swan,Cisne,Cisne
+PG_PIC_KINGFISHER,Kingfisher,Martim-pescador,Martín Pescador
+PG_PIC_WOODPECKER,Woodpecker,Pica-pau,Pájaro Carpintero
+PG_PIC_LIZARD,Lizard,Lagartixa,Lagartija
+PG_PIC_APPLE_TREE,Apple Tree,Macieira,Manzano
+PG_PIC_GREENHOUSE,Greenhouse,Estufa,Invernadero
+PG_PIC_WELL,Well,Poço,Pozo
+PG_PIC_SCARECROW,Scarecrow,Espantalho,Espantapájaros
+PG_PIC_BENCH,Garden Bench,Banco de Jardim,Banco de Jardín
+PG_PIC_BIRD_BATH,Bird Bath,Banho de Passarinho,Baño de Pájaros
+PG_PIC_GARDEN_GATE,Garden Gate,Portão do Jardim,Portón del Jardín
+PG_PIC_TRACTOR,Tractor,Trator,Tractor
+PG_PIC_KETTLE,Kettle,Chaleira,Tetera
+PG_PIC_PIE,Pie,Torta,Tarta
+PG_PIC_HOT_AIR_BALLOON,Hot Air Balloon,Balão,Globo
+PG_PIC_TENT,Tent,Barraca,Tienda
+PG_PIC_CAMPFIRE,Campfire,Fogueira,Fogata
+PG_PIC_RACCOON,Raccoon,Guaxinim,Mapache
+PG_PIC_BADGER,Badger,Texugo,Tejón
+PG_PIC_STAG,Stag,Cervo,Ciervo
+PG_PIC_HERON,Heron,Garça,Garza
+PG_PIC_PEACOCK,Peacock,Pavão,Pavo Real
+PG_PIC_ROOSTER,Rooster,Galo,Gallo
+PG_PIC_BARN,Barn,Celeiro,Granero
+PG_PIC_TREEHOUSE,Treehouse,Casa na Árvore,Casa del Árbol
+PG_PIC_LEAF,Leaf,Folha,Hoja
+PG_PIC_BOUQUET,Bouquet,Buquê,Ramo
+PG_PIC_WREATH,Wreath,Guirlanda,Corona
+PG_PIC_HUMMINGBIRD,Hummingbird,Beija-flor,Colibrí
+PG_PIC_CHAMELEON,Chameleon,Camaleão,Camaleón
+PG_PIC_HARE,Hare,Lebre,Liebre
+PG_PIC_BEAR,Honey Bear,Urso do Mel,Oso de la Miel
+PG_PIC_SAILBOAT,Sailboat,Veleiro,Velero
+PG_PIC_SUNSET,Sunset,Pôr do Sol,Atardecer
+PG_PIC_SNOWMAN,Snowman,Boneco de Neve,Muñeco de Nieve
+PG_PIC_NEST,Nest,Ninho,Nido
+PG_PIC_BLUEBIRD,Bluebird,Azulão,Azulejo
+PG_PIC_MALLARD,Mallard,Pato-real,Ánade Real
 DB_RULES,"Berries ride one road in time with the song, every one into the same ring. Each berry wears the colour of its drum and has the drum's mark under it; tap that drum as the berry reaches the ring. Easy has one drum, Medium two, Hard and Insane three. Two berries at once, one over the other, are two fingers. A berry with a ribbon behind it is held down until the ribbon ends, a golden bar is drummed as fast as you can, and a balloon pops after that many taps.\n\nEvery note is GOOD, OK or BAD by how close you were. GOOD and OK fill the soul gauge; a BAD or a berry let past drains it, breaks your combo and lets the tune fade for a moment. Finish the song with the gauge at or over its line to clear it. Go-Go time scores a fifth more.\n\nIf the berries feel early or late on your phone, tap Tune on the start card and tap along with the wood block.","As frutinhas seguem por uma estrada no ritmo da música, todas para o mesmo anel. Cada frutinha tem a cor do seu tambor e a marca dele embaixo; toque nesse tambor quando a frutinha chegar ao anel. O Fácil tem um tambor, o Médio dois, o Difícil e o Insano três. Duas frutinhas juntas, uma sobre a outra, pedem dois dedos. Uma frutinha com uma fita atrás fica pressionada até a fita acabar, uma barra dourada é tocada o mais rápido que puder, e um balão estoura depois de tantos toques.\n\nCada nota é BOM, OK ou RUIM conforme a sua precisão. BOM e OK enchem o medidor de alma; um RUIM ou uma frutinha que passa esvaziam o medidor, quebram o combo e deixam a melodia sumir por um instante. Termine a música com o medidor na linha ou acima dela para passar. O Go-Go vale um quinto a mais.\n\nSe as frutinhas parecerem adiantadas ou atrasadas no seu celular, toque em Ajustar no cartão de início e acompanhe o bloco de madeira.","Las bayas van por un camino al ritmo de la canción, todas hacia el mismo aro. Cada baya lleva el color de su tambor y su marca debajo; toca ese tambor cuando la baya llegue al aro. Fácil tiene un tambor, Medio dos, Difícil e Insano tres. Dos bayas a la vez, una sobre la otra, piden dos dedos. Una baya con una cinta detrás se mantiene pulsada hasta que la cinta termina, una barra dorada se toca lo más rápido que puedas, y un globo revienta tras esa cantidad de toques.\n\nCada nota es BIEN, OK o MAL según tu precisión. BIEN y OK llenan el medidor de alma; un MAL o una baya que pasa lo vacían, rompen el combo y apagan la melodía un momento. Termina la canción con el medidor en la línea o por encima para superarla. El Go-Go vale una quinta parte más.\n\nSi las bayas se sienten adelantadas o atrasadas en tu teléfono, toca Ajustar en la tarjeta de inicio y sigue el bloque de madera."
 DB_BLURB,"One road, one short song: tap each berry's drum.","Uma estrada, uma música curta: toque o tambor de cada frutinha.","Un camino, una canción corta: toca el tambor de cada baya."
 DB_SHORT,"Drum the song,\nfill the gauge.","Toque a música,\nencha o medidor.","Toca la canción,\nllena el medidor."

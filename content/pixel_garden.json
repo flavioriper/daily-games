@@ -182,6 +182,326 @@
      "....mm....",
      "...mmmm..."
     ]
+   },
+   {
+    "id": "pear",
+    "name": "PG_PIC_PEAR",
+    "rows": [
+     ".....m....",
+     "....mg....",
+     "....ii....",
+     "...iiii...",
+     "...iyii...",
+     "..iiyiii..",
+     ".iiyiiiii.",
+     ".iiiiiiii.",
+     ".iiiiiiii.",
+     "..iiiiii.."
+    ]
+   },
+   {
+    "id": "lemon",
+    "name": "PG_PIC_LEMON",
+    "rows": [
+     "..........",
+     "......gg..",
+     ".....gg...",
+     "...yyyy...",
+     "..yywyyy..",
+     ".yywyyyyy.",
+     ".yyyyyyyo.",
+     "..yyyyoo..",
+     "...yooo...",
+     ".........."
+    ]
+   },
+   {
+    "id": "tomato",
+    "name": "PG_PIC_TOMATO",
+    "rows": [
+     "..........",
+     "...g.gg...",
+     "..gggggg..",
+     ".rrrggrrr.",
+     "rrwrrrrrrr",
+     "rrwrrrrrrr",
+     "rrrrrrrrrr",
+     ".rrrrrrrr.",
+     "..rrrrrr..",
+     ".........."
+    ]
+   },
+   {
+    "id": "radish",
+    "name": "PG_PIC_RADISH",
+    "rows": [
+     "..g....g..",
+     "..gg..gg..",
+     "...gggg...",
+     "....gg....",
+     "...ssss...",
+     "..spssss..",
+     "..spssss..",
+     "...ssss...",
+     "....ww....",
+     "....w....."
+    ]
+   },
+   {
+    "id": "grapes",
+    "name": "PG_PIC_GRAPES",
+    "rows": [
+     ".....m....",
+     "...ggm....",
+     "..gggm....",
+     "..uu.uu...",
+     ".uluuluu..",
+     ".uuuuuuu..",
+     "..uluulu..",
+     "..uuuuu...",
+     "...ulu....",
+     "....u....."
+    ]
+   },
+   {
+    "id": "pea_pod",
+    "name": "PG_PIC_PEA_POD",
+    "rows": [
+     "..........",
+     "..........",
+     ".......gg.",
+     ".ffffffff.",
+     "fiigiigiif",
+     "fiigiigiif",
+     ".ffffffff.",
+     ".gg.......",
+     "..........",
+     ".........."
+    ]
+   },
+   {
+    "id": "sprout",
+    "name": "PG_PIC_SPROUT",
+    "rows": [
+     "..........",
+     ".gg....gg.",
+     ".ggg..ggg.",
+     "..gggiggg.",
+     "...ggigg..",
+     "....ii....",
+     "....ii....",
+     "..mmmmmm..",
+     ".mmmmmmmm.",
+     ".mmmmmmmm."
+    ]
+   },
+   {
+    "id": "clover",
+    "name": "PG_PIC_CLOVER",
+    "rows": [
+     "..gg..gg..",
+     ".gggggggg.",
+     ".gigggigg.",
+     "..ggffgg..",
+     "..ggffgg..",
+     ".gigggigg.",
+     ".gggggggg.",
+     "..gg.fgg..",
+     ".....f....",
+     "......f..."
+    ]
+   },
+   {
+    "id": "poppy",
+    "name": "PG_PIC_POPPY",
+    "rows": [
+     "..........",
+     "..rrr.rr..",
+     ".rrrrrrrr.",
+     ".rrrddrrr.",
+     ".rrrddrrr.",
+     "..rrrrrr..",
+     "...rrrr...",
+     "....g.....",
+     ".gg.g.....",
+     "..ggg....."
+    ]
+   },
+   {
+    "id": "flower_pot",
+    "name": "PG_PIC_FLOWER_POT",
+    "rows": [
+     "....pp....",
+     "...pyyp...",
+     "....pp....",
+     "....g.....",
+     "..g.g.gg..",
+     "..ggggg...",
+     ".oooooooo.",
+     "..oooooo..",
+     "..oooooo..",
+     "...oooo..."
+    ]
+   },
+   {
+    "id": "sun",
+    "name": "PG_PIC_SUN",
+    "rows": [
+     "....oo....",
+     ".o......o.",
+     "...yyyy...",
+     "..ywyyyy..",
+     "o.yyyyyy.o",
+     "..yyyyyy..",
+     "...yyyy...",
+     ".o......o.",
+     "....oo....",
+     ".........."
+    ]
+   },
+   {
+    "id": "rain_cloud",
+    "name": "PG_PIC_RAIN_CLOUD",
+    "rows": [
+     "..........",
+     "...eee....",
+     "..eweeee..",
+     ".eweeeeee.",
+     "eeeeeeeeee",
+     "eeeeeeeeee",
+     "..........",
+     ".k..b..k..",
+     "..k..b..k.",
+     ".b..k..b.."
+    ]
+   },
+   {
+    "id": "chick",
+    "name": "PG_PIC_CHICK",
+    "rows": [
+     "..........",
+     "...yyyy...",
+     "..yyyyyy..",
+     "..ydyydy..",
+     "..yyooyy..",
+     ".yyyyyyyy.",
+     ".yyyyyyyy.",
+     ".yyyyyyyy.",
+     "..yyyyyy..",
+     "...o..o..."
+    ]
+   },
+   {
+    "id": "fish",
+    "name": "PG_PIC_FISH",
+    "rows": [
+     "..........",
+     "....bbb...",
+     "b..bbbbb..",
+     "bb.bkbkbb.",
+     "bbbbkbkbdb",
+     "bbbbkbkbbb",
+     "bb.bkbkbb.",
+     "b..bbbbb..",
+     "....bbb...",
+     ".........."
+    ]
+   },
+   {
+    "id": "wellie",
+    "name": "PG_PIC_WELLIE",
+    "rows": [
+     "..........",
+     "...yyyy...",
+     "...ywyy...",
+     "...ywyy...",
+     "...yyyy...",
+     "...yyyy...",
+     "...yyyyy..",
+     "...yyyyyyy",
+     "...yyyyyyy",
+     "...ooooooo"
+    ]
+   },
+   {
+    "id": "bucket",
+    "name": "PG_PIC_BUCKET",
+    "rows": [
+     "..........",
+     "...dddd...",
+     "..d....d..",
+     ".bbbbbbbb.",
+     ".bkbbbbbb.",
+     ".bkbbbbbb.",
+     "..bkbbbb..",
+     "..bbbbbb..",
+     "..bbbbbb..",
+     "...bbbb..."
+    ]
+   },
+   {
+    "id": "moon",
+    "name": "PG_PIC_MOON",
+    "rows": [
+     "..........",
+     "...yyyy...",
+     "..yyy...w.",
+     ".yyy......",
+     ".yyy...k..",
+     ".yyy......",
+     ".yyyy...w.",
+     "..yyyyyy..",
+     "...yyyy...",
+     ".........."
+    ]
+   },
+   {
+    "id": "kite",
+    "name": "PG_PIC_KITE",
+    "rows": [
+     "....rk....",
+     "...rrkk...",
+     "..rrrkkk..",
+     ".rrrrkkkk.",
+     "..yyybbb..",
+     "...yybb...",
+     "....yb....",
+     "....r.....",
+     "...r......",
+     "..r......."
+    ]
+   },
+   {
+    "id": "plum",
+    "name": "PG_PIC_PLUM",
+    "rows": [
+     "..........",
+     ".....mgg..",
+     "....mgg...",
+     "...uuuu...",
+     "..uluuuu..",
+     ".uluuuuuu.",
+     ".uuuuuuuu.",
+     ".uuuuuuuu.",
+     "..uuuuuu..",
+     "...uuuu..."
+    ]
+   },
+   {
+    "id": "corn",
+    "name": "PG_PIC_CORN",
+    "rows": [
+     "....yy....",
+     "...yoyy...",
+     "...yyoy...",
+     "..gyoyyg..",
+     "..gyyoyg..",
+     ".ggyoyygg.",
+     ".ggyyoygg.",
+     ".gggyyggg.",
+     "..gggggg..",
+     "...gggg..."
+    ]
    }
   ],
   [
@@ -363,6 +683,366 @@
      "....yyyyy...",
      ".....o..o...",
      "............"
+    ]
+   },
+   {
+    "id": "pineapple",
+    "name": "PG_PIC_PINEAPPLE",
+    "rows": [
+     ".....gg.....",
+     "...g.gg.g...",
+     "...gggggg...",
+     "....gffg....",
+     "...yoyyoy...",
+     "..yyoyyoyy..",
+     "..oyyoyyoy..",
+     "..yoyyoyyo..",
+     "..yyoyyoyy..",
+     "..oyyoyyoy..",
+     "...oyyoyy...",
+     "............"
+    ]
+   },
+   {
+    "id": "rose",
+    "name": "PG_PIC_ROSE",
+    "rows": [
+     "............",
+     "....rrrr....",
+     "...rssrrr...",
+     "..rsrrrsrr..",
+     "..rsrssrsr..",
+     "..rrsrrsrr..",
+     "...rrssrr...",
+     "....rrrr....",
+     "..ff.g......",
+     "...ffg.ff...",
+     ".....gff....",
+     ".....g......"
+    ]
+   },
+   {
+    "id": "lavender",
+    "name": "PG_PIC_LAVENDER",
+    "rows": [
+     "..l...l...l.",
+     ".ulu.ulu.ulu",
+     ".lul.lul.lul",
+     ".ulu.ulu.ulu",
+     ".lul.lul.lul",
+     "..u...u...u.",
+     "..g...g...g.",
+     "..g..fg..fg.",
+     "..gf..g...g.",
+     "...g..g..g..",
+     "....ggggg...",
+     ".....fff...."
+    ]
+   },
+   {
+    "id": "pansy",
+    "name": "PG_PIC_PANSY",
+    "rows": [
+     "............",
+     "...uu..uu...",
+     "..uuuuuuuu..",
+     "..uuuuuuuu..",
+     ".lluuyyuull.",
+     ".lllyddylll.",
+     ".llllyyllll.",
+     "..llllllll..",
+     "...ll..ll...",
+     ".....gg.....",
+     "....ggg.....",
+     ".....g......"
+    ]
+   },
+   {
+    "id": "lily_pad",
+    "name": "PG_PIC_LILY_PAD",
+    "rows": [
+     "............",
+     "............",
+     "...gggggg...",
+     "..gggppggg..",
+     ".ggfpwwpggg.",
+     ".gfgpwypg...",
+     ".gfggppgg...",
+     ".ggfgggggg..",
+     "..ggffgggg..",
+     "...gggggg...",
+     "............",
+     "............"
+    ]
+   },
+   {
+    "id": "beetle",
+    "name": "PG_PIC_BEETLE",
+    "rows": [
+     "............",
+     "...d.....d..",
+     "....d...d...",
+     ".....ddd....",
+     ".d..ttbtt.d.",
+     "..dtktbtttd.",
+     "...tktbttt..",
+     ".ddtttbtttdd",
+     "...tttbttt..",
+     "..dtttbtttd.",
+     ".d..ttbtt.d.",
+     "............"
+    ]
+   },
+   {
+    "id": "mouse",
+    "name": "PG_PIC_MOUSE",
+    "rows": [
+     "............",
+     "............",
+     "..ee........",
+     ".eppe.eee...",
+     ".eppeeeeee..",
+     "..eeeedeeee.",
+     "...eeeeeeeep",
+     "p..eeeeeee..",
+     ".p.eewwwee..",
+     "..ppee..ee..",
+     "............",
+     "............"
+    ]
+   },
+   {
+    "id": "hen",
+    "name": "PG_PIC_HEN",
+    "rows": [
+     "............",
+     ".......rr...",
+     "......rrr...",
+     "......mmm...",
+     ".m....mdmy..",
+     ".mm...mmmr..",
+     ".mmmmmmmm...",
+     ".mmnnnmmm...",
+     "..mnnnmmm...",
+     "...mmmmm....",
+     "....y.y.....",
+     "...yy.yy...."
+    ]
+   },
+   {
+    "id": "goldfish",
+    "name": "PG_PIC_GOLDFISH",
+    "rows": [
+     "............",
+     "..........k.",
+     ".y...oooo...",
+     ".yy.oooooo.k",
+     ".yyyooyooodo",
+     "..yyoyooooo.",
+     ".yyyooyoooo.",
+     ".yy.oooooo..",
+     ".y...oooo...",
+     "......yy....",
+     "............",
+     "............"
+    ]
+   },
+   {
+    "id": "wheelbarrow",
+    "name": "PG_PIC_WHEELBARROW",
+    "rows": [
+     "............",
+     "............",
+     ".........mm.",
+     "rrrrrrrr.m..",
+     ".rrrrrrrrm..",
+     ".rrrrrrrm...",
+     "..rrrrrrm...",
+     "...mmmmm....",
+     "..dd..m.m...",
+     ".deed.m..m..",
+     ".deed.m...m.",
+     "..dd..m....."
+    ]
+   },
+   {
+    "id": "trowel",
+    "name": "PG_PIC_TROWEL",
+    "rows": [
+     ".....rr.....",
+     "....rrrr....",
+     "....rrrr....",
+     ".....rr.....",
+     ".....mm.....",
+     ".....mm.....",
+     "...eeeeee...",
+     "..eeweeeee..",
+     "..eeweeeee..",
+     "...eweeee...",
+     "....eeee....",
+     ".....ee....."
+    ]
+   },
+   {
+    "id": "lantern",
+    "name": "PG_PIC_LANTERN",
+    "rows": [
+     ".....dd.....",
+     "....d..d....",
+     "....dddd....",
+     "...rrrrrr...",
+     "...dyyyyd...",
+     "...dyooyd...",
+     "...dyooyd...",
+     "...dyooyd...",
+     "...dyyyyd...",
+     "...rrrrrr...",
+     "..dddddddd..",
+     "............"
+    ]
+   },
+   {
+    "id": "gnome",
+    "name": "PG_PIC_GNOME",
+    "rows": [
+     ".....rr.....",
+     "....rrrr....",
+     "....rrrr....",
+     "...rrrrrr...",
+     "..rrrrrrrr..",
+     "...cdccdc...",
+     "...wwrrww...",
+     "..wwwwwwww..",
+     "..bwwwwwwb..",
+     "..bbwwwwbb..",
+     "...bbwwbb...",
+     "...dd..dd..."
+    ]
+   },
+   {
+    "id": "jam_jar",
+    "name": "PG_PIC_JAM_JAR",
+    "rows": [
+     "............",
+     "...rwrwrw...",
+     "..wrwrwrwr..",
+     "...mmmmmm...",
+     "..rrrrrrrr..",
+     "..rkrrrrrr..",
+     "..rkwwwwrr..",
+     "..rrwsswrr..",
+     "..rrwwwwrr..",
+     "..rrrrrrrr..",
+     "...rrrrrr...",
+     "............"
+    ]
+   },
+   {
+    "id": "honey_pot",
+    "name": "PG_PIC_HONEY_POT",
+    "rows": [
+     "............",
+     "....oooo....",
+     "...oooooo...",
+     "..mmmmmmmm..",
+     "..yyoyyyoy..",
+     ".yyyoyyyyyy.",
+     ".yyyyyyyyyy.",
+     ".ynnnnnnnny.",
+     ".yyyyyyyyyy.",
+     ".yyyyyyyyyy.",
+     "..yyyyyyyy..",
+     "...yyyyyy..."
+    ]
+   },
+   {
+    "id": "umbrella",
+    "name": "PG_PIC_UMBRELLA",
+    "rows": [
+     "............",
+     "..k..rr..k..",
+     "...rrssrr...",
+     "..rrrssrrr..",
+     ".srrrssrrrs.",
+     ".srrrssrrrs.",
+     ".s.r.ss.r.s.",
+     ".....mm.....",
+     ".....mm.....",
+     ".....mm.....",
+     "...m.mm.....",
+     "...mmm......"
+    ]
+   },
+   {
+    "id": "aubergine",
+    "name": "PG_PIC_AUBERGINE",
+    "rows": [
+     "............",
+     ".......gg...",
+     "......gg....",
+     "....gggggg..",
+     "....ggfgg...",
+     "...uuuuuu...",
+     "..uuluuuuu..",
+     "..uluuuuuu..",
+     "..uluuuuuu..",
+     "..uuuuuuuu..",
+     "...uuuuuu...",
+     "....uuuu...."
+    ]
+   },
+   {
+    "id": "pepper",
+    "name": "PG_PIC_PEPPER",
+    "rows": [
+     "............",
+     "......g.....",
+     ".....gg.....",
+     "..rrrggrrr..",
+     ".rrrrrrrrrr.",
+     ".rwrrrsrrrr.",
+     ".rwrrrsrrrr.",
+     ".rrrrrsrrrr.",
+     ".rrrrrsrrrr.",
+     "..rrrrsrrr..",
+     "..rrr.rrrr..",
+     "...r...rr..."
+    ]
+   },
+   {
+    "id": "windmill",
+    "name": "PG_PIC_WINDMILL",
+    "rows": [
+     ".m.......m..",
+     "..m.....m...",
+     "...m.rr.m...",
+     "....mrrm....",
+     "....rmmr....",
+     "....mnnm....",
+     "...m.nn.m...",
+     "..m.nnnn.m..",
+     ".m..nknn..m.",
+     "....nnnn....",
+     "...nnddnn...",
+     "...nnddnn..."
+    ]
+   },
+   {
+    "id": "worm",
+    "name": "PG_PIC_WORM",
+    "rows": [
+     "............",
+     "....ppp.....",
+     "...pdppp....",
+     "...ppppp....",
+     "....sss.....",
+     "....ppp.....",
+     "....ppp.....",
+     ".g..sss..g..",
+     "gmmmpppmmmg.",
+     "mmmmmmmmmmmm",
+     "mmmmmmmmmmmm",
+     ".mmmmmmmmmm."
     ]
    }
   ],
@@ -564,6 +1244,406 @@
      "roygbbuubbgyor",
      "roygbu..ubgyor",
      "roygbu..ubgyor",
+     ".............."
+    ]
+   },
+   {
+    "id": "mole",
+    "name": "PG_PIC_MOLE",
+    "rows": [
+     "..............",
+     "..............",
+     ".....dddd.....",
+     "....dddddd....",
+     "....dwddwd....",
+     "....ddppdd....",
+     "....dddddd....",
+     "..ppddddddpp..",
+     "...mmmmmmmm...",
+     "..mmnmmmmmmm..",
+     ".mmmmmmnmmmmm.",
+     ".mmnmmmmmmnmm.",
+     "gmmmmmmmmmmmmg",
+     "gggggggggggggg"
+    ]
+   },
+   {
+    "id": "fawn",
+    "name": "PG_PIC_FAWN",
+    "rows": [
+     "..............",
+     ".........m.m..",
+     ".........nnn..",
+     "........nnnnn.",
+     "........ndnnn.",
+     "........nnnnd.",
+     ".........nn...",
+     ".nnnnnnnnnn...",
+     "nnwnnwnnnnn...",
+     "nnnnwnnwnnn...",
+     ".nnccccccnn...",
+     ".nn.....nn....",
+     ".nn.....nn....",
+     ".dd.....dd...."
+    ]
+   },
+   {
+    "id": "swan",
+    "name": "PG_PIC_SWAN",
+    "rows": [
+     "..............",
+     "...www........",
+     "..wwdwo.......",
+     "..ww..........",
+     "..ww..........",
+     "..ww..........",
+     "..www...www...",
+     "...ww.wwwwww..",
+     "...wwwwwweeww.",
+     "...wwwwweewww.",
+     "....wwwwwwww..",
+     "kbkkbkkbkkbkkb",
+     "bkbbkbbkbbkbbk",
+     ".............."
+    ]
+   },
+   {
+    "id": "kingfisher",
+    "name": "PG_PIC_KINGFISHER",
+    "rows": [
+     "..............",
+     "..............",
+     "....bbbb......",
+     "...bkbbbb.....",
+     "...bbdbwwdddd.",
+     "...bbbwwo.....",
+     "..bbkbooo.....",
+     "..bbbkooo.....",
+     "..bkbbooo.....",
+     "..bbbboo......",
+     "...bbbo.......",
+     "mmmmmmmmmmmmm.",
+     "..b...........",
+     ".............."
+    ]
+   },
+   {
+    "id": "woodpecker",
+    "name": "PG_PIC_WOODPECKER",
+    "rows": [
+     "...rrr...mmmm.",
+     "..rrrr...mmnm.",
+     "..wdwweeemmmm.",
+     "..wwww...mnmm.",
+     "..dddw...mmmm.",
+     ".ddwddw..mmnm.",
+     ".dwddww..mmmm.",
+     ".ddwdww.dmnmm.",
+     ".dwddww.dmmmm.",
+     ".ddddw...mmnm.",
+     "..ddd....mmmm.",
+     "..dd.....mnmm.",
+     "..dd.....mmmm.",
+     ".........mmnm."
+    ]
+   },
+   {
+    "id": "lizard",
+    "name": "PG_PIC_LIZARD",
+    "rows": [
+     "........r.....",
+     ".......gg.....",
+     "......dggd....",
+     "......gggg....",
+     "..g....gg..g..",
+     "..gg..giig.gg.",
+     "...ggggffggg..",
+     "......giig....",
+     "......gffg....",
+     "...ggggiiggg..",
+     "..gg..giig.gg.",
+     "..g....gg..g..",
+     "........gg....",
+     ".........ggg.."
+    ]
+   },
+   {
+    "id": "apple_tree",
+    "name": "PG_PIC_APPLE_TREE",
+    "rows": [
+     "..............",
+     "....gggggg....",
+     "...ggrggggg...",
+     "..gggggfgrgg..",
+     ".ggrgfgggggfg.",
+     ".gggggggrgggg.",
+     ".gfggrggggfgg.",
+     "..ggggfgggrg..",
+     "...gggggggg...",
+     ".....mmmm.....",
+     ".....mmmm.....",
+     ".....mmmm.....",
+     "....mmmmmm....",
+     ".iiiiiiiiiiii."
+    ]
+   },
+   {
+    "id": "greenhouse",
+    "name": "PG_PIC_GREENHOUSE",
+    "rows": [
+     "..............",
+     "......ee......",
+     ".....ekke.....",
+     "....ekkkke....",
+     "...ekkkkkke...",
+     "..eeeeeeeeee..",
+     "..ekkekkekke..",
+     "..ekkekkekke..",
+     "..egkekkekge..",
+     "..eggekkegge..",
+     "..ergekkegre..",
+     "..eooekkeooe..",
+     "..mmmmmmmmmm..",
+     ".............."
+    ]
+   },
+   {
+    "id": "well",
+    "name": "PG_PIC_WELL",
+    "rows": [
+     "..............",
+     "...rrrrrrrr...",
+     "..rrrrrrrrrr..",
+     ".rrrrrrrrrrrr.",
+     "...m..dd..m...",
+     "...m..dd..m...",
+     "...m.nnnn.m...",
+     "...m.nnnn.m...",
+     "...m......m...",
+     "..eeeeeeeeee..",
+     "..edeeedeeed..",
+     "..eeedeeedee..",
+     "..edeeedeeed..",
+     ".gggggggggggg."
+    ]
+   },
+   {
+    "id": "scarecrow",
+    "name": "PG_PIC_SCARECROW",
+    "rows": [
+     "..............",
+     ".....mmmm.....",
+     "....mmmmmm....",
+     "...mmmmmmmm...",
+     ".....nnnn.....",
+     ".....dnnd.....",
+     ".....nnnn.....",
+     "nnrrrrrrrrrrnn",
+     "....rrrrrr....",
+     "....rrrrrr....",
+     "....rrrrrr....",
+     "....bbbbbb....",
+     "....bbmmbb....",
+     "......mm......"
+    ]
+   },
+   {
+    "id": "bench",
+    "name": "PG_PIC_BENCH",
+    "rows": [
+     "..............",
+     "..............",
+     "..............",
+     ".mmmmmmmmmmmm.",
+     ".nnnnnnnnnnnn.",
+     ".mmmmmmmmmmmm.",
+     ".nnnnnnnnnnnn.",
+     ".d..........d.",
+     "dmmmmmmmmmmmmd",
+     "dnnnnnnnnnnnnd",
+     ".d..........d.",
+     ".d..........d.",
+     "pdg.y..p..g.dy",
+     "gggggggggggggg"
+    ]
+   },
+   {
+    "id": "bird_bath",
+    "name": "PG_PIC_BIRD_BATH",
+    "rows": [
+     "..............",
+     ".....bbb......",
+     "....bbdbo.....",
+     "...bbbbb......",
+     ".eekkkkkkkkee.",
+     "..eeeeeeeeee..",
+     "...eeeeeeee...",
+     ".....eeee.....",
+     "......ee......",
+     "......ee......",
+     "......ee......",
+     ".....eeee.....",
+     "...eeeeeeee...",
+     ".gggggggggggg."
+    ]
+   },
+   {
+    "id": "garden_gate",
+    "name": "PG_PIC_GARDEN_GATE",
+    "rows": [
+     "..............",
+     ".mm........mm.",
+     ".mm.n.nn.n.mm.",
+     ".mm.n.nn.n.mm.",
+     ".mmnnnnnnnnmm.",
+     ".mm.n.nn.n.mm.",
+     ".mm.n.nndn.mm.",
+     ".mm.n.nn.n.mm.",
+     ".mm.n.nn.n.mm.",
+     ".mmnnnnnnnnmm.",
+     ".mm.n.nn.n.mm.",
+     "pmmgn.nn.ngmmp",
+     "gmmggpggpggmmg",
+     "gggggggggggggg"
+    ]
+   },
+   {
+    "id": "tractor",
+    "name": "PG_PIC_TRACTOR",
+    "rows": [
+     "..............",
+     "..............",
+     "..rrrrrr......",
+     "..rkkkkr......",
+     "..rkkkkr...d..",
+     "..rkkkkr...d..",
+     "..rrrrrrrrrrr.",
+     "..rrrrrrrrrrry",
+     "..ddddrrrrrrr.",
+     ".ddeeddrr.dd..",
+     ".deeeed..deed.",
+     ".ddeedd..deed.",
+     "..dddd....dd..",
+     "gggggggggggggg"
+    ]
+   },
+   {
+    "id": "kettle",
+    "name": "PG_PIC_KETTLE",
+    "rows": [
+     "..............",
+     "......w.......",
+     ".......w......",
+     ".....ddd......",
+     "....ttttt.....",
+     "...ttttttt...e",
+     "..ttktttttt.ee",
+     "..tktttttttee.",
+     "ddtkttttttte..",
+     "d.ttttttttt...",
+     "ddttttttttt...",
+     "..ttttttttt...",
+     "...ddddddd....",
+     ".............."
+    ]
+   },
+   {
+    "id": "pie",
+    "name": "PG_PIC_PIE",
+    "rows": [
+     "..............",
+     ".....c..c.....",
+     "....c..c......",
+     ".....c..c.....",
+     "..............",
+     "....nnnnnn....",
+     "..nnnrnnrnnn..",
+     ".nnrnnnnnnrnn.",
+     ".nnnnrnnrnnnn.",
+     "mnmnmnmnmnmnmn",
+     ".mmmmmmmmmmmm.",
+     "..mmmmmmmmmm..",
+     ".eeeeeeeeeeee.",
+     ".............."
+    ]
+   },
+   {
+    "id": "hot_air_balloon",
+    "name": "PG_PIC_HOT_AIR_BALLOON",
+    "rows": [
+     "....ooyyoo....",
+     "...rooyyoor...",
+     "..rrooyyoorr..",
+     "..rrooyyoorr..",
+     "..rrooyyoorr..",
+     "..rrooyyoorr..",
+     "...rooyyoor...",
+     "....ooyyoo....",
+     ".....oyyo.....",
+     ".....m..m.....",
+     ".....m..m.....",
+     ".....nnnn.....",
+     ".....nmmn.....",
+     ".....nnnn....."
+    ]
+   },
+   {
+    "id": "tent",
+    "name": "PG_PIC_TENT",
+    "rows": [
+     "..............",
+     "......rr......",
+     "......m.......",
+     "......oo......",
+     ".....oooo.....",
+     "....ooyyoo....",
+     "...oooyyooo...",
+     "...ooyddyoo...",
+     "..oooyddyooo..",
+     "..ooyddddyoo..",
+     ".oooyddddyooo.",
+     ".ooyddddddyoo.",
+     "gggggggggggggg",
+     ".............."
+    ]
+   },
+   {
+    "id": "campfire",
+    "name": "PG_PIC_CAMPFIRE",
+    "rows": [
+     "..............",
+     "......r.......",
+     ".....rr.......",
+     ".....rrr..r...",
+     "....rror.rr...",
+     "....roorrrr...",
+     "...rrooorrr...",
+     "...rooyoorr...",
+     "...royyyor....",
+     "...royyyor....",
+     "....oyyyo.....",
+     ".mmmmmmmmmmmm.",
+     ".dmmdmmmmdmmd.",
+     "..ee.eeee.ee.."
+    ]
+   },
+   {
+    "id": "raccoon",
+    "name": "PG_PIC_RACCOON",
+    "rows": [
+     "..............",
+     ".ee........ee.",
+     ".epee....eepe.",
+     ".eeeeeeeeeeee.",
+     ".eeeeeeeeeeee.",
+     ".ewwweeeewwwe.",
+     ".wdddweewdddw.",
+     ".ddwddeeddwdd.",
+     ".eddddwwdddde.",
+     "..eeccccccee..",
+     "...cccddccc...",
+     "....cccccc....",
+     ".....cccc.....",
      ".............."
     ]
    }
@@ -786,6 +1866,446 @@
      "..mnmnmnmnmnmn..",
      "...nnnnnnnnnn...",
      "................",
+     "................"
+    ]
+   },
+   {
+    "id": "badger",
+    "name": "PG_PIC_BADGER",
+    "rows": [
+     "................",
+     "..dd........dd..",
+     ".dpdd......ddpd.",
+     ".ddddeewweedddd.",
+     "..eeddwwwwddee..",
+     "..eddddwwdddde..",
+     "..wddcdwwdcddw..",
+     "..wwdddwwdddww..",
+     "..wwwddwwddwww..",
+     "...wwwwwwwwww...",
+     "...wwwwddwwww...",
+     "....wwwddwww....",
+     ".....wwwwww.....",
+     "..g...wwww...g..",
+     ".ggg.g....g.ggg.",
+     "gggggggggggggggg"
+    ]
+   },
+   {
+    "id": "stag",
+    "name": "PG_PIC_STAG",
+    "rows": [
+     ".n.n....n.n.....",
+     ".n.n....n.n.....",
+     "..nnn..nnn......",
+     "....n..n........",
+     "...mmmmmm.......",
+     "..mmdmmmmm......",
+     ".dmmmmmmmm......",
+     "..mmmmmmmmmmmmm.",
+     "....wwmmmmmmmmmw",
+     "....wwmmmmmmmmm.",
+     "....mmmmmmmmmmm.",
+     "....mmccccccmmm.",
+     "....mm......mm..",
+     "....mm......mm..",
+     "....dd......dd..",
+     ".ggggggggggggggg"
+    ]
+   },
+   {
+    "id": "heron",
+    "name": "PG_PIC_HERON",
+    "rows": [
+     "................",
+     "......ddd.......",
+     ".....wwdwyyy....",
+     ".....ww.........",
+     "......ww........",
+     "......ww........",
+     ".....ww.........",
+     ".....wwee.......",
+     "....eeeeeee.....",
+     "...eeeeeeeeee...",
+     "...eebeeeeeeee..",
+     "....eebbeeeee...",
+     "......y..y......",
+     ".g....y..y...g..",
+     ".g.g..y..y.g.g..",
+     "kkkkkkkkkkkkkkkk"
+    ]
+   },
+   {
+    "id": "peacock",
+    "name": "PG_PIC_PEACOCK",
+    "rows": [
+     "................",
+     ".....tttttt.....",
+     "...tgbggggbgt...",
+     "..tgyggbbggygt..",
+     ".tbgggdbbdgggbt.",
+     ".tyggbgoogbggyt.",
+     ".tgggygbbgygggt.",
+     "..tgggbbbbgggt..",
+     "..tggbbbbbbggt..",
+     "...tgbbbbbbgt...",
+     "....tbbbbbbt....",
+     ".....bbbbbb.....",
+     "......bbbb......",
+     "......o..o......",
+     ".....oo..oo.....",
+     "................"
+    ]
+   },
+   {
+    "id": "rooster",
+    "name": "PG_PIC_ROOSTER",
+    "rows": [
+     "................",
+     ".........rr.r...",
+     "........rrrrr...",
+     ".........ooo....",
+     ".ff......odoyy..",
+     "fff.m....ooor...",
+     "ffmm.....ooor...",
+     "fmmm....oooo....",
+     ".fmmm..ooooo....",
+     ".fmmmooooooo....",
+     "..mmoooonnoo....",
+     "...ooooonnoo....",
+     "....ooooooo.....",
+     "......y..y......",
+     "......y..y......",
+     ".....yy.yy......"
+    ]
+   },
+   {
+    "id": "barn",
+    "name": "PG_PIC_BARN",
+    "rows": [
+     "................",
+     "......mmmm......",
+     "....mmmmmmmm....",
+     "...mmrrrrrrmm...",
+     "..mmrrrwwrrrmm..",
+     ".mmrrrrwwrrrrmm.",
+     ".mrrrrrrrrrrrrm.",
+     "..rrrrrrrrrrrr..",
+     "..rwwrrrrrrwwr..",
+     "..rwwrwwwwrwwr..",
+     "..rrrrwddwrrrr..",
+     "..rrrrwddwrrrr..",
+     "..rrrrwddwrrrr..",
+     "yyrrrrwddwrrrryy",
+     "gggggggggggggggg",
+     "................"
+    ]
+   },
+   {
+    "id": "treehouse",
+    "name": "PG_PIC_TREEHOUSE",
+    "rows": [
+     "....gggggggg....",
+     "..ggggfggggggg..",
+     ".gggrrrrrrgfggg.",
+     ".gfrrrrrrrrgggg.",
+     ".gggnnnnnngggfg.",
+     ".gfgnyyndnggggg.",
+     ".gggnyyndngfgg..",
+     "..ggnnnndnggg...",
+     "...mmmmmmmm.....",
+     "....d..mmm......",
+     "....dd.mmm......",
+     "....d..mmm......",
+     "....dd.mmm......",
+     "....d..mmm......",
+     "....d.mmmmm.....",
+     "..gggggggggggg.."
+    ]
+   },
+   {
+    "id": "leaf",
+    "name": "PG_PIC_LEAF",
+    "rows": [
+     "................",
+     "..........ggg...",
+     "........gggggg..",
+     "......ggggfgggg.",
+     ".....gggigfggkg.",
+     "....ggggfgggggg.",
+     "...gggrrfgggfgg.",
+     "..ggdrdrrggfggg.",
+     "..ggrrrdrgfgigg.",
+     ".gggdrrrdfggggg.",
+     ".gggrdrrfggggg..",
+     ".ggggrrfgggkg...",
+     ".gggggfggggg....",
+     ".ggggfgggg......",
+     "..gff...........",
+     ".ff............."
+    ]
+   },
+   {
+    "id": "bouquet",
+    "name": "PG_PIC_BOUQUET",
+    "rows": [
+     "................",
+     "....pp...ll.....",
+     "...pyyp.lyyl....",
+     "..rrpp.rr.ll.pp.",
+     ".ryyr.ryyr..pyyp",
+     "..rrg..rrg.g.pp.",
+     "....gg.gg.gg.g..",
+     ".....ggggggg....",
+     "....nnnnnnnnn...",
+     "....nnnnnnnnn...",
+     ".....nnnnnnn....",
+     ".....sssssss....",
+     "......nnnnn.....",
+     "......nnnnn.....",
+     ".......nnn......",
+     "................"
+    ]
+   },
+   {
+    "id": "wreath",
+    "name": "PG_PIC_WREATH",
+    "rows": [
+     "................",
+     ".....gfgggf.....",
+     "...gggrgfgggg...",
+     "..gfggggggrgfg..",
+     "..ggig....gggg..",
+     ".ggrg......gfgg.",
+     ".gfgg......ggrg.",
+     ".gggi......iggg.",
+     ".grgg......gfgg.",
+     ".ggfg......grgg.",
+     "..gggg....gigg..",
+     "..gfgyyggyygfg..",
+     "...ggyyooyygg...",
+     ".....yy..yy.....",
+     "....yy....yy....",
+     "................"
+    ]
+   },
+   {
+    "id": "hummingbird",
+    "name": "PG_PIC_HUMMINGBIRD",
+    "rows": [
+     "................",
+     ".gg.............",
+     ".ggg............",
+     "..gggg.......pp.",
+     "...gggg.ttt..pp.",
+     "....tggttdt.pyyp",
+     "....ttgttttddyyp",
+     "...tttttrrr..pp.",
+     "..ttttttwr....g.",
+     ".ttttttww.....g.",
+     ".tt.ttww.....gg.",
+     "tt...tw......g..",
+     "t............g..",
+     "............gg..",
+     "............g...",
+     "................"
+    ]
+   },
+   {
+    "id": "chameleon",
+    "name": "PG_PIC_CHAMELEON",
+    "rows": [
+     "................",
+     "................",
+     "....gggg........",
+     "...ggggggiggg...",
+     "..googgigggygg..",
+     ".ggodgggygggigg.",
+     ".gggggigggyggggg",
+     "..ggggggiggg...g",
+     "...g.gg..gg.gg.g",
+     "...g.g...g..gggg",
+     "mmmmmmmmmmmmmmmm",
+     "..........mm....",
+     "...........mi...",
+     "................",
+     "................",
+     "................"
+    ]
+   },
+   {
+    "id": "hare",
+    "name": "PG_PIC_HARE",
+    "rows": [
+     "...nn..nn.......",
+     "...npn.npn......",
+     "...npn.npn......",
+     "...npn.npn......",
+     "...nnnnnnn......",
+     "..nnnnnnnn......",
+     "..ndnnnnnnn.....",
+     ".pnnnnnnnnnnn...",
+     "..nnccnnnnnnnn..",
+     "...cccnnnnnnnnn.",
+     "...cccnnnnnnnnnw",
+     "...ccnnnnnnnnnww",
+     "...nnnnnnmmnnnn.",
+     "...nn.nnmmmmnn..",
+     "..nnn.nnnnnnn...",
+     ".gggggggggggggg."
+    ]
+   },
+   {
+    "id": "bear",
+    "name": "PG_PIC_BEAR",
+    "rows": [
+     "................",
+     "..mm......mm....",
+     ".mnnm....mnnm...",
+     ".mnmmmmmmmmnm...",
+     "..mmmmmmmmmm....",
+     "..mmdmmmmdmm....",
+     "..mmmnnnnmmm....",
+     "..mmnnddnnmm....",
+     "..mmnnnnnnmm....",
+     "...mmnnnnmm.....",
+     "..mmmmmmmm.oooo.",
+     ".mmmmmmmmmmyoyy.",
+     ".mmmccccmmmyyyy.",
+     ".mmmccccmm.yyyy.",
+     ".mmmccccmm..yy..",
+     "..mm....mm......"
+    ]
+   },
+   {
+    "id": "sailboat",
+    "name": "PG_PIC_SAILBOAT",
+    "rows": [
+     "................",
+     ".......d........",
+     "......rd........",
+     ".....rrdc.......",
+     "....rrrdcc......",
+     "...rrrrdccc.....",
+     "..rrrrrdcccc....",
+     ".rrrrrrdccccc...",
+     ".......d........",
+     "mmmmmmmmmmmmmm..",
+     ".mnmmnmmnmmnm...",
+     "..mmmmmmmmmm....",
+     "kbkkbkkbkkbkkbkk",
+     "bkbbkbbkbbkbbkbb",
+     "kbkkbkkbkkbkkbkk",
+     "................"
+    ]
+   },
+   {
+    "id": "sunset",
+    "name": "PG_PIC_SUNSET",
+    "rows": [
+     "................",
+     "................",
+     "......oooo......",
+     "....ooyyyyoo....",
+     "...ooyyyyyyoo...",
+     "...oyyyyyyyyo...",
+     "..ooyyyyyyyyoo..",
+     "..oyyyyyyyyyyo..",
+     ".gggoyyyyyyoggg.",
+     "ggggggyyyygggggg",
+     "gggfggggggggfggg",
+     "ffggggfffggggfff",
+     "ffffgfffffffgfff",
+     "bkbbkbbkbbkbbkbb",
+     "kbkkbkkbkkbkkbkk",
+     "................"
+    ]
+   },
+   {
+    "id": "snowman",
+    "name": "PG_PIC_SNOWMAN",
+    "rows": [
+     "......dddd......",
+     "......dddd......",
+     ".....dddddd.....",
+     "......wwww......",
+     ".....wdwwdw.....",
+     ".....wwwooo.....",
+     "......wwww......",
+     ".....rrrrrr.....",
+     ".m..wwwrrwww..m.",
+     "..mwwwwdrwwwwm..",
+     "...wwwwwrwwww...",
+     "...wwwwdwwwww...",
+     "...wwwwwwwwww...",
+     "....wwwdwwww....",
+     ".kkkkwwwwwwkkkk.",
+     ".kkkkkkkkkkkkkk."
+    ]
+   },
+   {
+    "id": "nest",
+    "name": "PG_PIC_NEST",
+    "rows": [
+     "................",
+     "................",
+     ".gg.............",
+     "gfgg....kk......",
+     ".gf.kk.kkkk.kk..",
+     "...kkkkkbkkkkkk.",
+     "...kbkkkkkkkbkk.",
+     ".mnkkkkkkkbkkknm",
+     "mnmmnmmmnmmmnmmn",
+     "nmmnmmnmmmnmmnmm",
+     ".mnmmmnmmnmmmnm.",
+     ".mmmnmmmmmmnmmm.",
+     "..mnmmmnmmmmnm..",
+     "...mmmnmmnmmm...",
+     ".....mmmmmm.....",
+     "................"
+    ]
+   },
+   {
+    "id": "bluebird",
+    "name": "PG_PIC_BLUEBIRD",
+    "rows": [
+     "................",
+     "......bbbb......",
+     ".....bbbbbb.....",
+     ".....bbbbdbyy...",
+     ".....bbbbbb.....",
+     "....bbkbbooo....",
+     "...bbkkbboooo...",
+     "..bbkkkbbooooo..",
+     ".bbbkkbbbooooo..",
+     "bbb.bbbbboooo...",
+     "bb...bbbbooo....",
+     ".......d..d.....",
+     "mmmmmmmmmmmmmmm.",
+     "..pp..mm........",
+     ".pypp...........",
+     "..pp............"
+    ]
+   },
+   {
+    "id": "mallard",
+    "name": "PG_PIC_MALLARD",
+    "rows": [
+     "................",
+     "................",
+     "..........g.....",
+     "....gggg..g..g..",
+     "...ggdgg..g..g..",
+     ".yyggggg..g..g..",
+     "....gggg..g.gg..",
+     "....nnnnn.g.g...",
+     "...nnnnnnnnnnnm.",
+     "..nnnnmmmnnnnmm.",
+     "..nnnmmmmmnnnm..",
+     "...nnnnnnnnnn...",
+     "kbkkbkkbkkbkkbkk",
+     "bkbbkbbkbbkbbkbb",
+     "kbkkbkkbkkbkkbkk",
      "................"
     ]
    }

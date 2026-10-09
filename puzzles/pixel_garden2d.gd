@@ -455,7 +455,7 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.setup(rng, difficulty)
+	_state.setup(rng, difficulty, bank_step)
 	_gen += 1
 	max_hearts = State.hearts_for(difficulty)
 	hearts = max_hearts
