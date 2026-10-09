@@ -450,3 +450,18 @@ second long). A game is up to forty-two drops, so none of those has a note.
 The notes come once a game -- `hint`, `win` (four notes climbing in a row
 and a fifth held), `lose`, `draw` (the same note twice) -- on `HEARTH_TUNE`'s
 low muffled kalimba and tongue drum, each eased in, none above -8.
+
+### Dominoes (2026-10-09)
+
+`SETS["dominoes"]`, eleven cues, one take each, unheard by the user. The
+place is a felt mat on the deck and a box of thick tiles: `HEARTH`'s close
+foley, and the felt is in every prompt so nothing clacks hard -- `place` (a
+tile set down at the end of the line; the board plays it at 0.94 to 1.06 so
+twenty in a row are not one sample), `draw` (a tile slid out of the
+boneyard), `lift` (a tile picked up to choose its end, 0.12 s at -17),
+`refused`, `knock` (a pass: two knuckles on the table, which is how a pass
+is said at a real one) and `shuffle` (the tiles stirred before a deal, the
+one cue over a second long). None has a note. The notes come at a hand's end
+and the game's -- `out` (a tile down and two rising notes), `lost_hand` (one
+low falling note, not sad), `hint`, `win`, `lose` -- on `HEARTH_TUNE`'s low
+muffled kalimba and tongue drum, each eased in, none above -8.

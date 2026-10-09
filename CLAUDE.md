@@ -26,7 +26,7 @@ that area**, and add new history there rather than here.
 | First screen: menu, cards, pager, header, Stats/Streak, registry | `docs/agents/first-screen.md` |
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
 | One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |
-| Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop) | `docs/agents/versus.md` |
+| Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline) | `docs/agents/arcade.md` |
 | Valley: the shared inventory (`Stock`) and the Grove | `docs/agents/valley.md` |

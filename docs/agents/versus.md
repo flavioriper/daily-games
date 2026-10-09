@@ -5,7 +5,7 @@
 **The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
 Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone -- snooker, chess, checkers, air hockey, Toy Boats and Penny Drop; the first
+holds games played against someone -- snooker, chess, checkers, air hockey, Toy Boats, Penny Drop and Dominoes; the first
 is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
@@ -482,6 +482,148 @@ are pennies, the grid is a rack, a column is a slot.
   and no kept harness reaches one; **the live rules are not deployed** (`tools/deploy_live.sh`, by a
   person): until they are, Online and a friend's invite to this game are
   refused by the database.
+
+**Dominoes is the seventh Versus game** (2026-10-09, built unattended from
+one line and a photograph of a double-six set in its pine box: "the next
+multiplayer game ... check rules on web, wire everything even sound"; no
+spec). Id `dominoes`, title "Dominoes" -- the game's own plain name, as
+Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
+
+- **The rules, looked up (pagat.com's Draw game for two) and fixed**: a
+  double-six set, seven tiles each, fourteen in the boneyard; the leader
+  lays any tile; a tile goes at either end with the matching half touching,
+  a double across; a hand that cannot play draws one at a time until it can;
+  the boneyard's last two are never drawn, and then it passes; a hand ends
+  when a side lays its last tile or both pass in a row; the lighter hand
+  scores the other's pips less its own, the same count is nobody's hand;
+  the lead changes sides every hand. **Three calls where pagat leaves room
+  or was not followed**: a draw is only for a hand that cannot play (pagat
+  lets a player draw at will: one button fewer, and no bluff to explain);
+  the game is to `TARGET` 50, not pagat's 100 (three to five hands against
+  the computer, eight in the probe's worst); who leads the first hand swaps
+  every game (`Record.last_colour`; online it is the opener) instead of a
+  draw for it. Fives, Muggins and the spinner are not here.
+- **The rules are pure data** (`versus/dominoes_rules.gd`): a tile is its
+  index 0-27 (`LO`, `HI`, `Rules.id(a, b)`), a move `tile * 2 + end`, or
+  `DRAW` 56, or `PASS` 57 -- a pass is a move, made for the player by the
+  screen. It holds the whole game, both hands and the boneyard's order, and
+  `deal(seed)` then `next_hand()` deal every hand of a game from the one
+  seed by `_shuffle`'s own arithmetic (not the engine's generator), so two
+  devices given a seed hold the same game. `make` ends a hand itself
+  (`hand_over`, `hand_winner`, `hand_points`, `hand_blocked`) and sets
+  `turn` to the next hand's leader; `winner` is the game's. `lay(...)` sets
+  a hand by hand for a tutorial page or a probe. **`view(side)` is all the
+  computer is ever handed**: its hand, the line, two counts, the scores and
+  `said` (every tile laid, and for a draw or a pass the two ends as they
+  stood). Run `tests/_probe_dominoes.gd` after touching it or the computer.
+- **The computer** (`versus/dominoes_ai.gd`) never sees the other hand or
+  the boneyard at any level. 0 lays any tile that fits six times in ten; 1
+  lays heavy tiles and doubles first and keeps numbers it has more of; 2
+  deals the unseen tiles every way they could lie -- `lacks`: the other
+  side holds none of a number that was an end when it drew or passed, and a
+  tile drawn and kept forgets what was known before -- plays each of its
+  moves out to the hand's end over every deal (the same deals for every
+  move), and takes the best average, inside 320 ms on a worker thread (277
+  ms for an opening move on this Mac). Over 40 games a pairing, the lead
+  alternating, the top level at 25 ms: 1 beats 0 30-10, 2 beats 0 37-3, 2
+  beats 1 33-7. The bulb is level 2's tile for the player's own view, three
+  a game, and is not spent when the only move is a draw. **No undo** (a
+  tile drawn has been seen); Reset is a new game.
+- **The board** (`versus/dominoes_board.gd`): a felt mat. The other hand
+  face down along the top, the line in the middle, the boneyard on the
+  left under it (the two that are never drawn fenced off), the player's
+  tiles along the bottom -- a row or two of seven, rows of ten past
+  fourteen. **Every tile is a sprite for the whole game** (a place, a size,
+  a lie, face up or not) and `sync()` reads the rules and gives each the
+  place it now belongs in; the tiles go there by themselves, and nothing
+  else animates a move, a draw, a deal or the line being refitted. A tile
+  is one cached mesh for the way it lies (28 x 4 at most, built when first
+  shown) and two backs, drawn under a transform. `lay_line` is the line's
+  geometry in halves of a tile: end 1 runs right and turns down at `ROW` 6
+  from the first tile, end 0 runs left and turns up, a double lies across,
+  the tile at a turn stands on the row's last square and the row beyond
+  starts from its far half; the whole line is then fitted to its room
+  (`UNIT_MAX` 74 px a half, smaller for a long line). `tests/_probe_dominoes_line.gd`
+  proves it over 300 random hands: no two tiles overlap, each touches the
+  tile it was laid against on the matching half, never wider than a row
+  (the longest 25 tiles, 12 by 11.5 halves). The table is laid out in a
+  room of at least `ROOM` and scaled down to a smaller control (`_k`), which
+  is how it fits a tutorial page. A tile that fits stands `LIFT` higher
+  while it is the player's turn; a tap lays it where it fits, and one that
+  fits both ends with different numbers is picked up first and the two
+  places light (`_slot`) for a second tap. A tap on the boneyard draws
+  when nothing fits (it is ringed then) and is refused otherwise. The
+  first deal waits for the control's first layout (`_deal_due`): before it
+  there is no room to deal into. `still` is the tab's picture, the line
+  alone.
+- **The screen** (`versus/dominoes_screen.gd`) is Penny Drop's shape: `WAIT,
+  ENTER, YOURS, THINK, ANIM, HAND, OVER`. The plates carry each side's
+  points, FIRST TO 50 between them. A pass is knocked and said, then made
+  after `PASS_WAIT`; the other side's draws come `STEP` apart. A finished
+  hand lies open `HAND_WAIT` 3.6 s with the other hand turned up and its
+  worth said, then the next is dealt. `_after` drops a waiting beat when
+  the game has moved on (`_beat`).
+- **Online and against a friend** (level 3; `VersusTab.plays_online`,
+  `invite_card.gd`'s `GAMES`, the three game lists in
+  `server/database.rules.json`). **It is Penny Drop's pattern and not Toy
+  Boats'**: both ends deal from `online.match_seed` -- the first game to
+  read it -- so both hold the whole game and a turn is checked whole; there
+  is no seal. The wire is one message a turn, `{d: tiles drawn, m: tile * 2
+  + end}`, `m: -1` for a pass; the turn passes except from the seat that
+  ends a hand and leads the next (`send(d, true)`). A foul is anything but
+  two whole numbers in range that this table's rules play out exactly: a
+  draw with a tile that fits, a pass with one or with the boneyard open, a
+  tile not held or that does not fit. Hands end and are dealt at each end
+  by its own rules (a move for the next hand waits in `_inbox` while this
+  end's finished hand still lies open), and the other seat's `end` is not
+  taken on trust. **What it does not stop: an end whose program was changed
+  can read the other hand, since it holds it**; nothing it then plays is a
+  foul. Hiding the hand from the other device would take a deal neither
+  end knows whole, which this transport has no server to make.
+- **Sounds** (`tools/gen_sfx.py dominoes`, eleven, one take each, unheard):
+  `HEARTH` foley, dry, low and short with no note for everything a tile does
+  (`place`, pitched a little either way each time; `draw`, `lift`,
+  `refused`, `knock` -- a pass, knuckles on the table -- and `shuffle`, once
+  a hand); the notes are `out`, `lost_hand`, `hint`, `win` and `lose`, on
+  `HEARTH_TUNE`'s low muffled kalimba.
+- **The tab holds seven cards in four rows**, the last row one card: `_fit`
+  shares the same room among four (1300 design px at 810x1440, 207 draw
+  calls), so every card's picture is shorter than it was with six.
+- 92-95 draw calls at the table, 112-118 with the end card, 125-133 with a
+  tutorial page, ANGLE agreeing (810x1440).
+- **The tutorial** (`ui/hud/dominoes_tutorial_diagram.gd`, five pages): the
+  table set by `Rules.lay` and played by a script and a finger -- three
+  tiles matched, a tile picked up and an end chosen and a double across,
+  two draws and the tile that fits, the last tile and the other hand turned
+  up, the bulb. Under reduce motion a page stands on the table as its
+  lesson leaves it.
+- Harnesses: `tests/_probe_dominoes.gd -- [games] [seed]` (headless: 21 rule
+  cases, 200 games to the target the same at two ends, what a view holds,
+  what a draw tells, every pairing); `tests/_probe_dominoes_line.gd`
+  (headless, the line's geometry); `tests/_shot_dominoes.gd -- <outdir>
+  [level] [rm] [lang=] [lose] [speed=N]` (a whole game by real touches: a
+  tile refused, the boneyard refused, the bulb, an end chosen, draws, an
+  end card either way; puts `user://versus.cfg` back);
+  `tests/_probe_online.gd -- dominoes` (the emulators: the seven cases the
+  other games of turns have, all passed -- a whole game of eight hands and
+  140 tiles to one result and one digest at both ends, the seed printed; a
+  kill; a resignation; a foul, a draw claimed with a tile that fits; a
+  forged end; a move and a Back inside the found beat);
+  `tests/_shot_howto_screen.gd -- dominoes <outdir>`;
+  `tests/_shot_versus_tab.gd`. `_probe_versus_buzz.gd` and `_shot_online.gd`
+  have no arm for it.
+- **Open**: nothing was touched on a phone (a tile on the line is 74 design
+  px a half at its largest, the far hand and the boneyard 46 and 42: whether
+  the pips read; whether a tile in a hand of fifteen is easy to hit);
+  whether fifty is the right length and Hard the right strength (a hand is
+  half luck: computer against computer only); the pace of a pass and of the
+  look at a finished hand; one hand can decide a game (79 points were lost
+  in one by a hand that kept drawing); the tiles' pips are small on a
+  tutorial page; the sounds; pt and es; a blocked hand with the same count
+  was reached by the probe and never through the screen; a chip for two
+  players on one phone does not suit (hidden hands); **the live rules are
+  not deployed** (`tools/deploy_live.sh`, by a person): until they are,
+  Online and a friend's invite to this game are refused by the database.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'

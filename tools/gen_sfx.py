@@ -1867,6 +1867,29 @@ SETS = {
         "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
         "draw":     ("two soft slow level notes on a low kalimba, the same note twice, calm and even, a friendly tie", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
     },
+    # Dominoes (Versus, versus/dominoes_screen.gd): thick ivory-coloured tiles
+    # on a felt mat, as HEARTH's foley. A hand is twenty-odd tiles laid and a
+    # game four hands or so, so everything a tile does is dry, low and short
+    # with no note: `place` (a tile set down at the end of the line, pitched a
+    # little either way each time), `draw` (one slid out of the boneyard),
+    # `lift` (a tile picked up to choose its end), `refused`, `knock` (a
+    # pass: the knuckle on the table that says "I cannot go"), `shuffle` (the
+    # tiles stirred face down before a deal, once a hand). The notes are kept
+    # for a hand's end and the game's: `out`, `lost_hand`, `hint`, `win`,
+    # `lose`, on HEARTH_TUNE's low muffled kalimba.
+    "dominoes": {
+        "place":     ("one thick domino tile set down on a felt covered wooden table, a single soft low dull clack, muffled by the felt, no ring, no tone, very short", 0.5, -11, HEARTH, "warm:5000", "cut:0.2"),
+        "draw":      ("one thick domino tile slid a short way across felt, a single very soft short dry slide, no ring, no tone, quiet", 0.5, -16, HEARTH, "warm:5000", "cut:0.22", "ease:0.02"),
+        "lift":      ("one thick domino tile picked up off a felt table, a single very soft dull tick, no ring, no tone, quiet and very short", 0.5, -17, HEARTH, "warm:5000", "cut:0.12"),
+        "refused":   ("a domino tile tapped once flat on a felt table, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
+        "knock":     ("a knuckle knocking twice gently on a felt covered wooden table, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
+        "shuffle":   ("thick domino tiles stirred face down on a felt table by two hands, soft low dull clacks and slides slowing to a stop, muffled, no ring, short", 1.1, -14, HEARTH, "warm:5000", "ease:0.03"),
+        "out":       ("one domino tile set down on felt, then two soft slow rising notes on a low kalimba, pleased and warm, short", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "lost_hand": ("one low soft falling tongue drum note, gentle and round, not sad, short", 0.9, -12, HEARTH_TUNE, "warm:5500", "ease:0.02"),
+        "hint":      ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        "win":       ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
+        "lose":      ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+    },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"
     "wallet": {

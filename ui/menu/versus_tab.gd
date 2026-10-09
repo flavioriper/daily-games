@@ -49,6 +49,8 @@ const BoatsRules = preload("res://versus/boats_rules.gd")
 const BoatsBoard = preload("res://versus/boats_board.gd")
 const PennyRules = preload("res://versus/penny_rules.gd")
 const PennyBoard = preload("res://versus/penny_board.gd")
+const DominoesRules = preload("res://versus/dominoes_rules.gd")
+const DominoesBoard = preload("res://versus/dominoes_board.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Social = preload("res://core/social.gd")
@@ -65,15 +67,16 @@ const ART_GROW := 150.0
 ## player -- online, or for a game in LOCAL_GAMES across the same phone.
 const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
 const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_TWO", Record.LOCAL]]
-const GAMES := ["snooker", "chess", "checkers", "hockey", "boats", "penny"]
+const GAMES := ["snooker", "chess", "checkers", "hockey", "boats", "penny", "dominoes"]
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
-	"boats": "Toy Boats", "penny": "Penny Drop"}
+	"boats": "Toy Boats", "penny": "Penny Drop", "dominoes": "Dominoes"}
 ## Each card's line: two lines at half the screen's width at most.
 const SHORTS := {"snooker": "VS_SNOOKER_SHORT", "chess": "VS_CHESS_SHORT", "checkers": "VS_CHECKERS_SHORT",
-	"hockey": "VS_HOCKEY_SHORT", "boats": "VS_BOATS_SHORT", "penny": "VS_PENNY_SHORT"}
+	"hockey": "VS_HOCKEY_SHORT", "boats": "VS_BOATS_SHORT", "penny": "VS_PENNY_SHORT",
+	"dominoes": "VS_DOMINOES_SHORT"}
 const FILL := Color("fcf7ef")
 ## The Friends row: its height, the plaque on it and the plaque's tint.
 const FRIENDS_H := 108.0
@@ -136,6 +139,8 @@ func _game_card(game: String, colour: Color) -> Control:
 			_boats_banner(art)
 		elif game == "penny":
 			_penny_banner(art)
+		elif game == "dominoes":
+			_dominoes_banner(art)
 		else:
 			var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
 			lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -304,6 +309,24 @@ func _penny_banner(art: Control) -> void:
 		board.position = Vector2((art.size.x - w) * 0.5, 0.0)
 	art.resized.connect(lay)
 	lay.call()
+
+## Dominoes' banner: a line some way into a hand on its felt, a double
+## across it and a turn at one end, as large as the picture allows.
+func _dominoes_banner(art: Control) -> void:
+	var rules := DominoesRules.new()
+	var line := []
+	for pair: Array in [[6, 4, 0], [4, 4, 1], [6, 2, 0], [4, 1, 1], [2, 2, 0], [1, 5, 1], [2, 3, 0], [5, 5, 1]]:
+		line.append(DominoesRules.id(pair[0], pair[1]) * 2 + pair[2])
+	rules.lay([], [], [], line)
+	var board := DominoesBoard.new()
+	board.still = true
+	board.setup(rules, DominoesRules.FIRST)
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board.offset_left = 10.0
+	board.offset_right = -10.0
+	board.offset_top = 8.0
+	board.offset_bottom = -4.0
+	art.add_child(board)
 
 ## A table lies on its side across its banner, turned about its middle.
 func _lay_table(entry: Array) -> void:

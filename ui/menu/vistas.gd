@@ -90,6 +90,8 @@ const CARDS := {
 	"boats": ["beach", 1.5, Vector2(0.62, 0.55)],
 	# Penny Drop's rack stands on the terrace at dusk, by snooker's table.
 	"penny": ["dusk", 1.5, Vector2(0.4, 0.5)],
+	# Dominoes' mat is laid out in the meadow, further along from the lawns.
+	"dominoes": ["meadow", 1.6, Vector2(0.3, 0.55)],
 	# Arcade (not a grid card): Firefly flies the night garden.
 	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
 	# Molehill is a lawn in the meadow too, nearer the grass.

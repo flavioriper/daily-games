@@ -77,6 +77,8 @@ const CkRules = preload("res://versus/checkers_rules.gd")
 const CkAI = preload("res://versus/checkers_ai.gd")
 const PnRules = preload("res://versus/penny_rules.gd")
 const PnAI = preload("res://versus/penny_ai.gd")
+const DmRules = preload("res://versus/dominoes_rules.gd")
+const DmAI = preload("res://versus/dominoes_ai.gd")
 const Record = preload("res://versus/versus_record.gd")
 const Sim = preload("res://versus/snooker_sim.gd")
 const SnAI = preload("res://versus/snooker_ai.gd")
@@ -98,7 +100,7 @@ const CK_LINE := [
 ## A game this long is given up by whoever is to move, the real way.
 const LONG := 110
 
-## "chess", "checkers", "penny" or "snooker".
+## "chess", "checkers", "penny", "dominoes" or "snooker".
 var _game := "chess"
 var _begun := false
 var _fails := 0
@@ -124,10 +126,10 @@ func _process(delta: float) -> bool:
 	if not _begun:
 		_begun = true
 		var args := OS.get_cmdline_user_args()
-		if args.size() >= 1 and args[0] in ["chess", "checkers", "penny", "snooker"]:
+		if args.size() >= 1 and args[0] in ["chess", "checkers", "penny", "dominoes", "snooker"]:
 			_game = args[0]
 		else:
-			print("usage: -- chess|checkers|penny|snooker")
+			print("usage: -- chess|checkers|penny|dominoes|snooker")
 			quit(2)
 			return false
 		# Every mode, the players' too: Backend.start with no emulator named
@@ -213,7 +215,7 @@ func _conduct() -> void:
 	_check("both processes finished", not a.is_empty() and not b.is_empty(), "%.0f s" % seen[2])
 	if not a.is_empty() and not b.is_empty():
 		_check("they are two players in one match", a.uid != b.uid and a.opponent == b.uid and b.opponent == a.uid)
-		_check("in different seats, the opener %s" % {"chess": "white", "checkers": "light", "penny": "dropping first"}[_game], int(a.seat) + int(b.seat) == 1 \
+		_check("in different seats, the opener %s" % {"chess": "white", "checkers": "light", "penny": "dropping first", "dominoes": "leading"}[_game], int(a.seat) + int(b.seat) == 1 \
 			and int(a.first) == int(b.first) and bool(a.white) != bool(b.white) \
 			and bool(a.white) == (int(a.seat) == int(a.first)))
 		_check("each drew the other's name on its scoreboard", a.rival == b.me and b.rival == a.me,
@@ -235,6 +237,9 @@ func _conduct() -> void:
 		elif _game == "penny":
 			_check("every drop travelled, column by column", a.specials == b.specials and int(a.plies) >= 7,
 				"the columns: %s" % str(a.specials))
+		elif _game == "dominoes":
+			_check("both dealt every hand from the match's seed and laid the same tiles", a.specials == b.specials and int(a.plies) >= 14,
+				str(a.specials))
 		else:
 			_check("a chain and a crowning travelled",
 				int(a.chain) >= 1 and int(b.chain) >= 1 and int(a.crown) >= 1 and int(b.crown) >= 1 \
@@ -532,6 +537,8 @@ func _choose() -> Variant:
 	var g: RefCounted = _s.rules
 	if _game == "penny":
 		return PnAI.new().plan(g.copy(), 1 if _s.player == PnRules.FIRST else 0, _env("SEED", 1) + int(g.ply), 150)
+	if _game == "dominoes":
+		return DmAI.new().plan(g.view(g.turn), 1 if _s.player == DmRules.FIRST else 0, _env("SEED", 1) + int(g.laid), 60)
 	var ply: int = _s._history.size()
 	if _game == "checkers":
 		if ply < CK_LINE.size():
@@ -569,6 +576,10 @@ func _drive(real: float) -> void:
 		return
 	if st == _s.State.YOURS:
 		_tools = _tools or _s.can_undo() or _s.can_reset() or _s.hints_left() > 0 or _s.hints_held() > 0
+	if _game == "dominoes" and st == _s.State.YOURS and not _s.board.is_busy() and not _acted and _s.rules.can(DmRules.DRAW):
+		# Nothing fits: a tile from the boneyard, as a tap on it takes one.
+		_s._on_draw()
+		return
 	if st == _s.State.YOURS and not _s.board.is_busy() and not _acted:
 		if _mode == "die" and _mine >= 3:
 			_say("killing itself")
@@ -586,6 +597,9 @@ func _drive(real: float) -> void:
 			if _game == "penny":
 				# A slot the rack does not have.
 				_s.online.send({"m": 9})
+			elif _game == "dominoes":
+				# A tile said to have been drawn while one in hand fits.
+				_s.online.send({"d": 1, "m": int(_choose())})
 			elif _game == "checkers":
 				# A man's leap from one corner to the other.
 				_s.online.send({"m": [0, 1, 63]})
@@ -792,6 +806,9 @@ func _write_snooker(closed: bool) -> void:
 
 ## The move number the screen shows.
 func _moves() -> int:
+	if _game == "dominoes":
+		# Tiles laid, four or five hands of them: scaled so LONG still means long.
+		return int(_s.rules.laid) / 4
 	return int(_s.rules.fullmove) if _game == "chess" else int(_s._move_number())
 
 ## Back, as the top bar's arrow does it, and then the dialog's Resign.
@@ -839,11 +856,15 @@ func _write(closed: bool) -> void:
 	var crown := 0
 	var takes := 0
 	var specials: Array = []
-	var plies: int = int(g.ply) if _game == "penny" else _s._history.size()
+	var flat: bool = _game == "penny" or _game == "dominoes"
+	var plies: int = int(g.laid) if _game == "dominoes" else (int(g.ply) if _game == "penny" else _s._history.size())
 	if _game == "penny":
 		for col in g.history:
 			specials.append(str(col))
-	for i in (0 if _game == "penny" else plies):
+	if _game == "dominoes":
+		specials.append("seed %d, %d hands, %d tiles laid, %d-%d to the opener" % [int(g.deal_seed), int(g.hand_no) + 1,
+			int(g.laid), int(g.scores[0]), int(g.scores[1])])
+	for i in (0 if flat else plies):
 		var d: Dictionary = _s._history[i]
 		if _game == "checkers":
 			var n: int = (d.caps as Array).size()
@@ -879,12 +900,13 @@ func _write(closed: bool) -> void:
 		"uid": Backend.uid(), "me": load("res://versus/online/names.gd").name_of(Backend.uid()),
 		"opponent": on.opponent, "rival": _s._names[1].text,
 		"seat": on.seat, "first": on.first,
-		"white": _s.player == {"chess": Rules.WHITE, "checkers": CkRules.LIGHT, "penny": PnRules.FIRST}[_game],
+		"white": _s.player == {"chess": Rules.WHITE, "checkers": CkRules.LIGHT, "penny": PnRules.FIRST, "dominoes": DmRules.FIRST}[_game],
 		"winner": int(on.result.get("winner", -9)), "why": str(on.result.get("why", "")),
 		"outcome": "lost" if closed else str(_s.board._mood), "status": g.status(), "fullmove": _moves(),
 		"plies": plies,
 		"position": (("%s %d %d %d" % [g.board, g.turn, g.castling, g.ep]) if _game == "chess" \
-			else (("%s %d" % [g.cells, g.turn]) if _game == "penny" else ("%s %d %d" % [g.board, g.turn, g.quiet]))).md5_text(),
+			else (("%s %d" % [g.cells, g.turn]) if _game == "penny" else (str(g.digest()) if _game == "dominoes" \
+			else ("%s %d %d" % [g.board, g.turn, g.quiet])))).md5_text(),
 		"chain": chain, "longest": longest, "crown": crown, "takes": takes,
 		"ep": ep, "promo": promo, "castle": castle, "b8": b8, "specials": ", ".join(specials),
 		"tools": _tools,

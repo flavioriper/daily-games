@@ -92,6 +92,14 @@ to 0.92 and -7 up to 0 dB by how far the penny fell), `tick` (0.06 s at
 eased in, none above -8. Details: `docs/art/sound-direction.md`, its last
 section.
 
+**Dominoes has a set since 2026-10-09** (`SETS["dominoes"]`, `HEARTH` foley
+of thick tiles on felt, eleven cues): one take a cue, unheard by the user. A
+game is eighty-odd tiles laid, so `place` (pitched 0.94 to 1.06 at random),
+`draw`, `lift`, `refused`, `knock` (a pass) and `shuffle` (once a hand) are
+dry and have no note; the notes (`out`, `lost_hand`, `hint`, `win`, `lose`)
+are `HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8. Details:
+`docs/art/sound-direction.md`, its last section.
+
 **Beeline has a set since 2026-10-09** (`SETS["beeline"]`, nine cues): one
 take a cue. `flap` (every tap, 0.1 s at -15) and `pass` (every gap, 0.14 s
 at -13) never stop and are dry taps on thin wood with no note; `bump` and

@@ -143,6 +143,12 @@ calls over the sheet at 810x1440).
 with a friend (the stranger's path was, `tests/_probe_online.gd -- penny`).
 The picker holds five games and Cancel and still fits its card at 810x1440.
 
+**Dominoes is offered to a friend** (2026-10-09): the sixth game in `GAMES`
+and in the rules' three lists, its wire `{d: tiles drawn, m: move}`, both
+ends dealing from the match's seed. Not probed with a friend (the
+stranger's path was, `tests/_probe_online.gd -- dominoes`), and the picker
+with six games and Cancel was not shot.
+
 **Air hockey is not offered to a friend** (2026-10-08): it has no game
 online (`docs/agents/versus.md`), `VersusTab.plays_online("hockey")` is false
 and `ui/menu/invite_card.gd`'s `GAMES` is still the three.

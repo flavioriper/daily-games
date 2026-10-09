@@ -34,7 +34,10 @@ see "Ads and the purchase" below.
   2026-10-09) sends `moves` as your pebbles, `hints`, `sunk` and `lost` in
   boats and `first`, whether you threw first; Penny Drop (`game: penny`,
   2026-10-09) sends `result` won/lost/draw, `moves`, `undos`, `hints` and
-  `first`, whether you dropped first) and
+  `first`, whether you dropped first; Dominoes (`game: dominoes`,
+  2026-10-09) sends `result` won/lost, `moves` as every tile laid by either
+  side, `hands`, `hints`, `score`, `score_other` and `first`, whether you
+  led the first hand) and
   `versus_abandon`; since 2026-09-27 (Arcade): `arcade_start` (game),
   `arcade_end` (score, stage, seconds, fired, hits, kills, best;
   Molehill sends stage as the best streak, and whacked, escaped, missed

@@ -10,7 +10,7 @@
         ],
         "$uid": {
           ".write": "auth != null && (auth.uid === $uid || (!newData.exists() && data.child('at').val() < now - 60000))",
-          ".validate": "newData.hasChildren(['since', 'at']) && ($game === 'snooker' || $game === 'chess' || $game === 'checkers' || $game === 'boats' || $game === 'penny')",
+          ".validate": "newData.hasChildren(['since', 'at']) && ($game === 'snooker' || $game === 'chess' || $game === 'checkers' || $game === 'boats' || $game === 'penny' || $game === 'dominoes')",
           "since": {
             ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
           },
@@ -33,7 +33,7 @@
         ".write": "auth != null && !data.exists() && newData.exists() && (newData.child('p0').val() === auth.uid || newData.child('p1').val() === auth.uid) && newData.child('p0').val() !== newData.child('p1').val() && newData.child('n').val() === 0 && newData.child('turn').val() === newData.child('first').val() && newData.child('at').val() === now && newData.child('turnAt').val() === now && !newData.child('moves').exists() && !newData.child('seen').exists() && !newData.child('result').exists() && ((newData.parent().parent().child('queue').child(newData.child('game').val()).child(newData.child('p0').val()).child('match').val() === $id && newData.parent().parent().child('queue').child(newData.child('game').val()).child(newData.child('p1').val()).child('match').val() === $id) || (newData.parent().parent().child('social').child(newData.child('p1').val()).child('invites').child(newData.child('p0').val()).child('match').val() === $id && newData.parent().parent().child('social').child(newData.child('p1').val()).child('invites').child(newData.child('p0').val()).child('game').val() === newData.child('game').val()))",
         ".validate": "newData.hasChildren(['game', 'p0', 'p1', 'first', 'seed', 'at', 'n', 'turn', 'turnAt'])",
         "game": {
-          ".validate": "newData.val() === 'snooker' || newData.val() === 'chess' || newData.val() === 'checkers' || newData.val() === 'boats' || newData.val() === 'penny'"
+          ".validate": "newData.val() === 'snooker' || newData.val() === 'chess' || newData.val() === 'checkers' || newData.val() === 'boats' || newData.val() === 'penny' || newData.val() === 'dominoes'"
         },
         "p0": {
           ".validate": "newData.isString()"
@@ -131,7 +131,7 @@
             ".write": "auth != null && ((auth.uid === $from && (!newData.exists() || root.child('social').child($uid).child('friends').child($from).exists())) || (auth.uid === $uid && !newData.exists()))",
             ".validate": "newData.hasChildren(['game', 'at'])",
             "game": {
-              ".validate": "(newData.val() === 'snooker' || newData.val() === 'chess' || newData.val() === 'checkers' || newData.val() === 'boats' || newData.val() === 'penny')"
+              ".validate": "(newData.val() === 'snooker' || newData.val() === 'chess' || newData.val() === 'checkers' || newData.val() === 'boats' || newData.val() === 'penny' || newData.val() === 'dominoes')"
             },
             "at": {
               ".validate": "newData.isNumber() && (newData.val() === now || newData.val() === data.val())"
