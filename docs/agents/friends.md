@@ -138,6 +138,11 @@ in `docs/agents/versus.md`. Not probed with a friend (the stranger's path was).
 The picker holds four games and Cancel (`tests/_shot_friends.gd`, 378 draw
 calls over the sheet at 810x1440).
 
+**Penny Drop is offered to a friend** (2026-10-09): the fifth game in
+`GAMES` and in the rules' three lists, its wire `{m: column}`. Not probed
+with a friend (the stranger's path was, `tests/_probe_online.gd -- penny`).
+The picker holds five games and Cancel and still fits its card at 810x1440.
+
 **Air hockey is not offered to a friend** (2026-10-08): it has no game
 online (`docs/agents/versus.md`), `VersusTab.plays_online("hockey")` is false
 and `ui/menu/invite_card.gd`'s `GAMES` is still the three.

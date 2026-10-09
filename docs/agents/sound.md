@@ -81,7 +81,16 @@ cue, unheard by the user. A game is a hundred throws, so `throw`, `lob`,
 `miss`, `splash`, `hit`, `knock` and above all `tick` (0.06 s at -19) are dry
 and have no note; the notes (`sunk`, `glug`, `hint`, `win`, `lose`) are
 `HEARTH_TUNE`'s low muffled kalimba, eased in, none above -8. Details:
-`docs/art/sound-direction.md`, its last section.
+`docs/art/sound-direction.md`.
+
+**Penny Drop has a set since 2026-10-09** (`SETS["penny"]`, `HEARTH` foley of
+a wooden rack and thick coins, ten cues): one take a cue, unheard by the
+user. A game is up to forty-two drops, so `drop`, `land` (pitched 1.12 down
+to 0.92 and -7 up to 0 dB by how far the penny fell), `tick` (0.06 s at
+-19), `refused`, `lift` and `spill` are dry and have no note; the notes
+(`hint`, `win`, `lose`, `draw`) are `HEARTH_TUNE`'s low muffled kalimba,
+eased in, none above -8. Details: `docs/art/sound-direction.md`, its last
+section.
 
 **Beeline has a set since 2026-10-09** (`SETS["beeline"]`, nine cues): one
 take a cue, unheard by the user. `flap` (every tap, 0.1 s at -25) and `pass`

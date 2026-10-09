@@ -5,7 +5,7 @@
 **The bar has four tabs since 2026-09-26** (five since 2026-09-27, with
 Arcade -- see below): Puzzles (the daily grid, which
 was Home; its key is still `home`), **Versus**, Stats and Streak. Versus
-holds games played against someone -- snooker, chess, checkers, air hockey and Toy Boats; the first
+holds games played against someone -- snooker, chess, checkers, air hockey, Toy Boats and Penny Drop; the first
 is **snooker**, against the
 computer only for now (spec `2026-09-26-versus-snooker-design.md`). It is not
 a registry entry and not a `PuzzleBase`: `versus/snooker_screen.gd` is its own
@@ -346,6 +346,115 @@ pond and what is thrown is a pebble.
   against a person; the sounds; pt and es; **the live rules are not
   deployed** (`tools/deploy_live.sh`, by a person): until they are, Online
   and a friend's invite to this game are refused by the database.
+
+**Penny Drop is the sixth Versus game** (2026-10-09, built unattended from
+one line and a photograph of the game's box: "the next multiplayer game ...
+check rules on web, wire everything even sound"; no spec). Id `penny`, title
+"Penny Drop". The game it follows is the upright plastic grid with two
+colours of discs, whose name is a trademark and is said here once, to forbid
+it: Connect 4. No code, comment, key, commit or screen uses it; the pieces
+are pennies, the grid is a rack, a column is a slot.
+
+- **The rules, looked up and fixed**: seven slots by six; a penny a turn
+  into a slot with room, falling to the lowest free place; the first four of
+  a side next to one another across, up or along either slant win at once; a
+  full rack with no line is a draw. The box leaves who starts to the players:
+  here it swaps every game (`Record.last_colour`; online it is the opener).
+  None of the box's variants (five in a row, the pop-out rack) are here.
+- **The rules are pure data** (`versus/penny_rules.gd`): a cell is `col +
+  row * 7`, row 0 the bottom; a move is its column; `make` answers the cell
+  landed in (-1 refused), `unmake` takes it back, `line` holds every cell of
+  the winning run or runs (five when a penny joins two runs). Run
+  `tests/_probe_penny.gd` after touching it or the computer.
+- **The computer** (`versus/penny_ai.gd`) reads the rack into two 49-bit
+  boards (seven bits a column, the seventh a spare, so no shift runs one
+  column into the next) and searches: negamax and alpha-beta, the middle
+  columns first, a position scored by the empty places that would finish a
+  line. Level 0 looks two plies with a heavy blur and misses a win a quarter
+  of the time and a block four times in ten; 1 looks four plies; 2 deepens
+  to `DEPTH_MAX` 10 inside 420 ms (it opens in the middle after 196 ms on
+  this Mac). On a worker thread, chess's `_think` and `_poll_think`. Over 20
+  games a pairing: 1 beats 0 16-3, 2 beats 0 20-0, 2 beats 1 19-0 with a
+  draw; a random column loses 20-0 to every level. **The game is a win for
+  whoever drops first when played perfectly, and level 2 is not that** -- it
+  sees ten plies, not forty-two. The bulb is level 2's column, three a game;
+  Undo takes back your penny and the answer to it.
+- **The board** (`versus/penny_board.gd`): the rack from the front. Two
+  baked meshes that never change -- the back (the deck's shadow, the wooden
+  foot, the dark inside) and the face, **a tile a hole, each a square with a
+  round hole through it, built from `vertex` and `tri` so the tiles meet
+  with no feathered seam** -- and between them the pennies, **one cached
+  mesh a side drawn under a transform wherever a penny is** (in its hole, in
+  its roll, waiting over the rack, falling), so a drop rebuilds nothing. The
+  only mesh rebuilt is the small one over the face (the slot's frame, the
+  dot on the last penny, the bulb's ring, the rings round a line). The
+  player's pennies are the sun's (brass, a sun stamped) and the other's the
+  moon's (a silvery blue, a crescent stamped) whoever drops first: the stamp
+  tells them apart without the colour, and a winning line is ringed, never
+  tinted. The board shows what it was told (`play`, `rewind`), not the rules
+  it was set up from, so a penny is in its hole once it has landed. Each
+  side's pennies still to play lie in a roll, the moon's above the rack and
+  the sun's below. A finger anywhere on a slot brings the waiting penny over
+  it and frames the slot (touch and mouse both); letting go drops it; a full
+  slot is framed red, crossed, and refused. A new game after one played
+  spills the old pennies out of the bottom (`spill`). `still` is the tab's
+  picture (as wide as its control, standing on its bottom edge, so a short
+  picture shows the lowest rows); `deaf` and `rolls = false` are a tutorial
+  page's.
+- **The screen** (`versus/penny_screen.gd`) is checkers' shape: `WAIT,
+  ENTER, YOURS, THINK, ANIM, REWIND, OVER`, the move number between the
+  plates, Undo and the bulb on the bar. While the other player chooses, its
+  penny drifts over the slots, goes over the one chosen, hangs `PONDER` 0.4
+  s and drops.
+- **Online and against a friend** (level 3; `VersusTab.plays_online`,
+  `invite_card.gd`'s `GAMES`, the three game lists in
+  `server/database.rules.json`). Both ends hold the same rack, so it is
+  checkers' pattern whole: the wire is `{m: column}`, a foul is anything but
+  one key holding a whole number 0-6 of a slot with room, and the other
+  seat's `end` is not taken on trust (the rack finishes on its own
+  `rules.status()`).
+- **Sounds** (`tools/gen_sfx.py penny`, ten, one take each, unheard):
+  `HEARTH` foley, dry and short with no note for everything a drop makes
+  (`drop`, `land` -- played lower and louder the further the penny fell --
+  `tick`, `refused`, `lift`, `spill`); the notes are `hint`, `win`, `lose`
+  and `draw`, on `HEARTH_TUNE`'s low muffled kalimba.
+- **The tab holds six cards, two a row on a short screen**: `_fit` has a
+  sixth step (`_set_pairs`), the Arcade tab's answer. The cards live in a
+  `GridContainer` (`_grid`) that goes from one column to two, each card's
+  chips two by two (`chip_grid`) over a full-width Play, the picture small
+  beside the name. That is where 810x1440 lands (1272 of 1300 design px, 243
+  draw calls); a 20:9 phone still shows one column, pictures beside the
+  names (1668 of 1780). The five single-column steps before it are
+  unchanged.
+- 110-114 draw calls at the rack, 131-137 with the end card, 132-141 with a
+  tutorial page, ANGLE agreeing (810x1440).
+- **The tutorial** (`ui/hud/penny_tutorial_diagram.gd`, five pages): the
+  rack played by a script of columns and a finger, each page opening on a
+  position (`pre`) -- a drop, the fourth of a row, a line of three stopped,
+  a third penny that leaves two places to finish, the bulb. Under reduce
+  motion a page stands on the rack as its lesson leaves it.
+- Harnesses: `tests/_probe_penny.gd -- [games] [seed]` (headless: 16 rule
+  cases, what levels 1 and 2 must never miss, every pairing, a random
+  column against each level); `tests/_shot_penny.gd -- <outdir> [level] [rm]
+  [lang=] [lose]` (a whole game by real touches: a slide, the bulb, Undo, a
+  full slot refused, an end card either way, Play again's spill; puts
+  `user://versus.cfg` back); `tests/_probe_online.gd -- penny` (the
+  emulators: the seven cases chess and checkers have -- a whole game, a
+  kill, a resignation, a foul, a forged end, a move and a Back inside the
+  found beat -- all passed);
+  `tests/_shot_howto_screen.gd -- penny <outdir>`;
+  `tests/_shot_versus_tab.gd`. `_probe_versus_buzz.gd` and `_shot_online.gd`
+  have no arm for it.
+- **Open**: nothing was touched on a phone (a slot is about 120 px wide
+  under a thumb; whether the waiting penny reads as yours); whether Easy can
+  be beaten by a child and Hard by anyone (computer against computer only);
+  the fall's pace; the sounds; pt and es; whether the tab's two-a-row cards
+  are wanted, since they change how every game's card looks on a short
+  screen; a chip for two players on one phone (the game suits it, and a card
+  has room for four chips: Online took the fourth, as on the other games of
+  turns); **the live rules are not deployed** (`tools/deploy_live.sh`, by a
+  person): until they are, Online and a friend's invite to this game are
+  refused by the database.
 
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'

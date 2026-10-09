@@ -436,3 +436,17 @@ come five times a game or once -- `sunk`, `glug` (your own boat going
 under: one low falling note, not sad), `hint`, `win`, `lose` -- on
 `HEARTH_TUNE`'s low muffled kalimba and tongue drum, each eased in, none
 above -8, after Nightlight's set was heard as too harsh the same day.
+
+### Penny Drop (2026-10-09)
+
+`SETS["penny"]`, ten cues, one take each, unheard by the user. The place is
+a painted wooden rack on a deck and two rolls of thick coins: `HEARTH`'s
+close foley for everything a drop makes -- `drop` (the penny let go into its
+slot, a short dry slide), `land` (its knock on what is below; the board
+plays it lower and louder the further it fell), `tick` (the finger crossing
+to another slot, 0.06 s at -19), `refused` (a full slot), `lift` (a penny
+taken back) and `spill` (the rack emptied for a new game, the one cue over a
+second long). A game is up to forty-two drops, so none of those has a note.
+The notes come once a game -- `hint`, `win` (four notes climbing in a row
+and a fifth held), `lose`, `draw` (the same note twice) -- on `HEARTH_TUNE`'s
+low muffled kalimba and tongue drum, each eased in, none above -8.
