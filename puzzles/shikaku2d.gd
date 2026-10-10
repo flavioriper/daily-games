@@ -205,10 +205,11 @@ const SPROUT_STEPS := 6
 const SPROUT_TIME := 0.4
 const SPROUT_LAG := 0.25
 ## The streak (Binairo's): the paper bubble from COMBO_FROM, the layered
-## `combo` pluck up the major pentatonic from the second in a row, confetti
+## `combo` tick a semitone up a bed from the second in a row (five semitones
+## in all, the cozy rules' limit), confetti
 ## at COMBO_CONFETTI, a broken streak's bubble deflating over COMBO_DEFLATE.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -1572,7 +1573,7 @@ func _recount() -> void:
 	_count = area
 	_count_at = _now()
 	# The tick climbs as the bed grows, so its size can be heard.
-	fx.cue("select", minf(1.0 + 0.04 * (area - 1), 1.6))
+	fx.cue("select", minf(1.0 + 0.04 * (area - 1), 1.33))
 	_anim_until = maxf(_anim_until, _count_at + Motion.BUMP_TIME)
 	# The sign the rectangle has just come to fit bobs: that one is mine.
 	var fit := _fitted_clue(_pending())
