@@ -112,6 +112,7 @@ var _over_l: Node2D
 var _pill: PanelContainer
 var _coins_l: Label
 var _zoom_b: Button
+var _turn_b: Button
 var _drawer_b: Button
 var _drawer: VBoxContainer
 var _drawer_catch: Control
@@ -137,6 +138,7 @@ var _zoom := 1.0
 var _near := 1.0
 var _far := false
 var _laid_out := false
+var _turn_tw: Tween
 
 # the hand
 var _touches := {}      # finger -> where it is
@@ -255,13 +257,25 @@ func _build() -> void:
 		settings_sheet.open())
 	col.add_child(top_bar)
 	col.add_child(_coin_pill())
+	# the zoom and the turn, side by side under the pill, each its own size
+	var view_row := HBoxContainer.new()
+	view_row.name = "View"
+	view_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	view_row.add_theme_constant_override("separation", 18)
+	col.add_child(view_row)
 	_zoom_b = IconButton.new("minus", "", "IconButton")
 	_zoom_b.name = "Zoom"
-	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
-	_zoom_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_round(_zoom_b, int(ZOOM_B * 0.5))
 	_zoom_b.pressed.connect(func() -> void: set_far(not _far))
-	col.add_child(_zoom_b)
+	_turn_b = IconButton.new("turn", "", "IconButton")
+	_turn_b.name = "Turn"
+	_turn_b.pressed.connect(turn_view)
+	for b: Button in [_zoom_b, _turn_b]:
+		b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_round(b, int(ZOOM_B * 0.5))
+		view_row.add_child(b)
 
 	_drawer_catch = Control.new()
 	_drawer_catch.name = "DrawerCatch"
@@ -372,7 +386,7 @@ func _layout_field() -> void:
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
-		_cam = Art.at(Vector2(Art.PLATE, Art.PLATE) * 0.5)
+		_cam = life.seen(Vector2(Art.PLATE, Art.PLATE) * 0.5)
 		_cam_to = _cam
 		_cam_raw = _cam
 	_place_world()
@@ -392,11 +406,11 @@ func to_field(v: Vector2) -> Vector2:
 ## A point of tile space (a tile's middle is tile + (0.5, 0.5)) in the
 ## field's pixels, for the hand and for a harness that presses.
 func screen_of(t: Vector2) -> Vector2:
-	return to_field(Art.at(t))
+	return to_field(life.seen(t))
 
 ## The point of tile space under a point of the field.
 func tile_under(pos: Vector2) -> Vector2:
-	return Art.tile_at((pos - world.position) / _zoom)
+	return life.tile_at((pos - world.position) / _zoom)
 
 ## A point of the view held to where the view's middle may go: the board's
 ## own tiles and POND tiles of pond past them, measured along the land (a
@@ -404,16 +418,35 @@ func tile_under(pos: Vector2) -> Vector2:
 ## off a diamond's corners).
 func _clamp(v: Vector2) -> Vector2:
 	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
-	return Art.at(Art.tile_at(v).clamp(box.position, box.end))
+	return life.seen((life.tile_at(v) as Vector2).clamp(box.position, box.end))
 
 ## The far zoom shows twice as much; the near one a plate across the field.
 func set_far(on: bool) -> void:
 	_far = on
 	(_zoom_b as IconButton).set_icon("plus" if on else "minus")
 
+## The view goes round a quarter, clockwise, so that what a tree or a
+## building hid is seen (the user, 2026-10-10). Only the view: the turn is
+## the life's (factory/life.gd, `seen` and `tile_at`), the sim's tiles and
+## facings are what they were, and the tile under the middle of the screen
+## stays under it. Nothing is tweened round: the land is laid out again at
+## once and comes back in out of a short dip. A preference of this screen,
+## not kept: it opens at no turn.
+func turn_view() -> void:
+	var under: Vector2 = life.tile_at(_cam)
+	var going: Vector2 = life.tile_at(_cam_to)
+	_let_go()
+	life.set_turn(int(life.turn) + 1)
+	_cam = life.seen(under)
+	_cam_to = life.seen(going)
+	_cam_raw = _cam_to
+	_place_world()
+	Motion.stop(_turn_tw)
+	_turn_tw = Motion.appear(world, 0.3, 1.0, 0.16)
+
 ## The view goes to show plate `p`.
 func look_at_plate(p: Vector2i) -> void:
-	_cam_raw = Life.plus_at(p)
+	_cam_raw = life.plus_at(p)
 	_cam_to = _cam_raw
 
 func _step_view(delta: float) -> void:
@@ -518,7 +551,7 @@ func _play_events() -> void:
 			"sale":
 				# the quiet tick of something sold, and the count on its way up
 				_quiet.cue("chop", 1.2 * _vary(), -9.0)
-				var stall := Art.at(Vector2(Sim.MARKET_AT) + Vector2.ONE) + Art.MARKET_COUNTER
+				var stall: Vector2 = life.seen(Vector2(Sim.MARKET_AT) + Vector2.ONE) + Art.MARKET_COUNTER
 				_nums.append({"at": stall + Vector2(_rng.randf_range(-18.0, 18.0), -64.0), "text": "+" + Art.short(int(e.amount)), "t": 0.0})
 				_kick()
 			"refused":
@@ -791,17 +824,17 @@ func hit(pos: Vector2) -> Dictionary:
 			continue
 		var tall: float = Art.height(tr.look)
 		var wide: float = float(Art.RADIUS[int(tr.look)]) * Art.TREE_SCALE + 12.0
-		var rel: Vector2 = v - (Life.mid(tr.tile) - Vector2(0.0, tall * 0.5))
+		var rel: Vector2 = v - (life.mid(tr.tile) - Vector2(0.0, tall * 0.5))
 		if pow(rel.x / wide, 2.0) + pow(rel.y / (tall * 0.5 + 12.0), 2.0) > 1.0:
 			continue
-		var d := Art.depth(Vector2(tr.tile))
+		var d: float = life.depth(Vector2(tr.tile) + Vector2(0.5, 0.5))
 		if d > best_d:
 			best_d = d
 			best = {"what": "tree", "tile": tr.tile}
 	# a building's body covers the ground behind it: the tiles a little
 	# further down the screen are asked whose body this point is on
 	for lift: float in [84.0, 56.0, 28.0, 0.0]:
-		var t := Vector2i(Art.tile_at(v + Vector2(0.0, lift)).floor())
+		var t := Vector2i((life.tile_at(v + Vector2(0.0, lift)) as Vector2).floor())
 		var found := {}
 		if sim.is_market(t):
 			found = {"what": "market", "tile": t}
@@ -811,16 +844,17 @@ func hit(pos: Vector2) -> Dictionary:
 			var m: Dictionary = sim.module_at(t)
 			if not m.is_empty():
 				found = {"what": "module", "tile": m.root, "id": int(m.id)}
-		if not found.is_empty() and Art.depth(Vector2(t)) > best_d:
-			best_d = Art.depth(Vector2(t))
+		var td: float = life.depth(Vector2(t) + Vector2(0.5, 0.5))
+		if not found.is_empty() and td > best_d:
+			best_d = td
 			best = found
 	if not best.is_empty():
 		return best
-	var tile := Vector2i(Art.tile_at(v).floor())
+	var tile := Vector2i((life.tile_at(v) as Vector2).floor())
 	if sim.belts.has(tile):
 		return {"what": "belt", "tile": tile}
 	for p: Vector2i in sim.free_edges():
-		var rel: Vector2 = v - Life.plus_at(p)
+		var rel: Vector2 = v - life.plus_at(p)
 		if pow(rel.x / 104.0, 2.0) + pow(rel.y / (104.0 * Art.DEEP), 2.0) <= 1.0:
 			return {"what": "plus", "tile": p * Art.PLATE, "plate": p}
 	return {"what": "ground", "tile": tile}
@@ -899,7 +933,8 @@ func _ghosts() -> Array:
 	var kind: String = sim.picked
 	var tile := Vector2i(tile_under(_at).floor())
 	var f := _fit(kind, tile)
-	var foot: Array = Life.footprint(kind, tile, f)
+	# the footprint as it is seen: a machine of two tiles lies the other way a quarter on
+	var foot: Array = Life.footprint(kind, life.seen_tile(tile), life.seen_facing(f))
 	var ok: bool = sim.can_place(kind, tile, f) and sim.coins >= sim.price(kind)
 	var shift := Vector2(Motion.shiver_offset(_ghost_wob, 0.06, 0.3), 0.0)
 	return [[Art.ghost(foot[1].x, foot[1].y, ok), Art.flat(Vector2(foot[0] as Vector2i) + shift)]]
@@ -1128,11 +1163,12 @@ func _draw_over(ci: CanvasItem) -> void:
 		var kind: String = sim.picked
 		var tile := Vector2i(tile_under(_at).floor())
 		var f := _fit(kind, tile)
-		var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(f) if kind == "kiln" else Art.retort(f))
-		ci.draw_mesh(mesh, null, Transform2D(0.0, Life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
+		var vf: int = life.seen_facing(f)
+		var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(vf) if kind == "kiln" else Art.retort(vf))
+		ci.draw_mesh(mesh, null, Transform2D(0.0, life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
 	if not _long.is_empty() and _held >= HOLD_SHOWS:
 		var k := clampf((_held - HOLD_SHOWS) / (HOLD - HOLD_SHOWS), 0.0, 1.0)
-		ci.draw_set_transform(Life.mid(_long.tile), 0.0, Vector2(1.0, Art.DEEP))
+		ci.draw_set_transform(life.mid(_long.tile), 0.0, Vector2(1.0, Art.DEEP))
 		ci.draw_arc(Vector2.ZERO, 74.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
 		ci.draw_arc(Vector2.ZERO, 74.0, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
 		ci.draw_set_transform(Vector2.ZERO)

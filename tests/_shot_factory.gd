@@ -40,6 +40,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_out = args[0]
+	DirAccess.make_dir_recursive_absolute(_out)
 	Art = load("res://factory/art.gd")
 	Sim = load("res://factory/sim.gd")
 	Motion = load("res://core/motion.gd")
@@ -149,9 +150,9 @@ func _crown(tile: Vector2i) -> Vector2:
 
 func _look(t: Vector2, far := false) -> void:
 	_screen.set_far(far)
-	_screen._cam_raw = Art.at(t)
-	_screen._cam_to = Art.at(t)
-	_screen._cam = Art.at(t)
+	_screen._cam_raw = _screen.life.seen(t)
+	_screen._cam_to = _screen.life.seen(t)
+	_screen._cam = _screen.life.seen(t)
 	_screen._zoom = _screen._near * (0.5 if far else 1.0)
 	await _frames(3)
 
@@ -246,6 +247,7 @@ func _run() -> void:
 	await _late_land()
 	await _hands()
 	await _cards()
+	await _turns()
 	await _tutorial()
 	await _tab()
 	if FileAccess.file_exists(SAVE):
@@ -451,6 +453,74 @@ func _cards() -> void:
 	await _shot("drawer_late")
 	_screen.go_back()
 	_check("then the drawer", not _screen.drawer_open())
+
+## The view turned a quarter at a time by its button, four times round. At
+## each turn: every tile of the land is seen at a place of its own and read
+## back from it; a belt dragged across two empty neighbours, pressed where
+## they are seen, lands on those very tiles facing from the first to the
+## second in the sim's own terms; and a tap where a standing tree's crown is
+## drawn reaches that tree.
+const TURN_BELTS := [[Vector2i(1, 8), Vector2i(2, 8), 0], [Vector2i(4, 8), Vector2i(4, 9), 1],
+	[Vector2i(1, 15), Vector2i(0, 15), 2], [Vector2i(6, 15), Vector2i(6, 14), 3]]
+
+func _turns() -> void:
+	var home: Vector2 = _screen.life.seen(Vector2(3.5, 2.5))
+	for q in 4:
+		await _look(Vector2(8.0, 8.0), true)
+		await _press_button(_screen._turn_b)
+		var turn: int = _screen.life.turn
+		_check("turn %d: the button turns the view a quarter" % (q + 1), turn == (q + 1) % 4, str(turn))
+		await _wait(0.4)
+		await _shot("turn_%d_far" % turn)
+		await _look(Vector2(3.5, 11.5))
+		await _wait(0.2)
+		await _shot("turn_%d_meadow" % turn)
+		await _look(Vector2(6.5, 6.0))
+		await _wait(0.2)
+		await _shot("turn_%d_market" % turn)
+		# every tile seen at a place of its own, and read back from it
+		var places := {}
+		var back := true
+		for p: Vector2i in _sim.plates:
+			for y in Sim.PLATE:
+				for x in Sim.PLATE:
+					var tile: Vector2i = p * Sim.PLATE + Vector2i(x, y)
+					var at: Vector2 = _screen.life.seen(Vector2(tile) + Vector2(0.5, 0.5))
+					places[Vector2i(at.round())] = true
+					back = back and Vector2i((_screen.life.tile_at(at) as Vector2).floor()) == tile \
+						and Vector2i((_screen.tile_under(_screen.screen_of(Vector2(tile) + Vector2(0.5, 0.5))) as Vector2).floor()) == tile
+		_check("turn %d: every tile has a place of its own and is read back from it" % turn, back and places.size() == _sim.plates.size() * 64, "%d places" % places.size())
+		# a belt dragged across two empty neighbours
+		var pair: Array = TURN_BELTS[q]
+		var a: Vector2i = pair[0]
+		var b: Vector2i = pair[1]
+		var free: bool = _sim.tile_free(a) and _sim.tile_free(b)
+		var had: int = _sim.belts.size()
+		await _look(Vector2(a + b) * 0.5 + Vector2(0.5, 0.5))
+		_screen.pick("belt")
+		await _drag([_at(Vector2(a) + Vector2(0.5, 0.5)), _at(Vector2(b) + Vector2(0.5, 0.5))])
+		_screen.pick("")
+		_check("turn %d: a drag lays belts on the tiles under the finger, facing in the sim's terms" % turn,
+			free and _sim.belts.size() == had + 2 and _sim.belts.get(a, -1) == pair[2] and _sim.belts.get(b, -1) == pair[2],
+			"%s %s, %s %s, %d laid" % [a, _sim.belts.get(a, -1), b, _sim.belts.get(b, -1), _sim.belts.size() - had])
+		# a tree, the nearest standing one to the eye, tapped on its crown
+		var front: Dictionary = {}
+		for id: int in _sim.trees:
+			var tr: Dictionary = _sim.trees[id]
+			if tr.state == "standing" and not tr.queued and (front.is_empty()
+					or _screen.life.depth(Vector2(tr.tile)) > _screen.life.depth(Vector2(front.tile))):
+				front = tr
+		if front.is_empty():
+			_check("turn %d: a standing tree to tap" % turn, false)
+			continue
+		await _look(Vector2(front.tile) + Vector2(0.5, 0.5))
+		await _tap(_crown(front.tile))
+		_check("turn %d: a tap where a tree's crown is drawn reaches that tree" % turn, front.state == "bitten" or front.queued, "%s %s" % [front.tile, front.state])
+	_check("four turns come back to the first view", _screen.life.turn == 0 and (_screen.life.seen(Vector2(3.5, 2.5)) as Vector2).is_equal_approx(home))
+	await _look(Vector2(8.0, 8.0), true)
+	await _wait(0.3)
+	await _shot("turned_home")
+	_screen.set_far(false)
 
 func _tutorial() -> void:
 	_screen.tutor.show()

@@ -103,6 +103,47 @@ not sunk with it; `APPLICATION_PAUSED` and `WM_CLOSE_REQUEST` saves never
 fired on this Mac. Analytics events are `factory_enter` / `factory_leave`
 only. The cozy sound pass and haptics table rows are owed. Eras 3 to 7.
 
+**The view turns (2026-10-10)**, the user: "add a button to rotate the
+view, so user can click to rotate and see something being blocked". This
+overrides spec one's "no rotation".
+- **The turn is `factory/life.gd`'s `turn`, 0 to 3 quarters clockwise**, a
+  view preference: the screen opens at 0 and does not keep it, the tab's
+  card and the tutorial's pages stay at 0, the sim and its save know
+  nothing of it. Tile space is turned about its origin before `Art.at`
+  (a quarter takes (x, y) to (-y, x)), so tiles go to tiles and plates to
+  plates.
+- **One pair of functions: `life.seen(t)` (sim tile space to view units)
+  and `life.tile_at(v)` (back).** On them: `seen_tile`, `seen_plate`,
+  `seen_facing` ((facing + turn) % 4), `depth`, `mid`, `plus_at`. **Nothing
+  that places or reads a position calls `Art.at`, `Art.tile_at` or
+  `Art.depth` on a sim coordinate**; the screen's `screen_of`, `tile_under`,
+  `hit`, `_clamp`, the ghost, the sell ring and the "+N" all go through
+  them. A facing a drag gives is still worked out in sim tiles, and the
+  last belt's facing is a sim facing.
+- A plate's `sides` mask is turned with it and the draw order is by the
+  turned lattice; a kiln or retort is drawn at its seen facing, glow and
+  smoke with it; a 1x2's ghost and frame take the seen footprint.
+  **The market's art has one face and keeps it toward the eye at every
+  turn**; a plate's washes, pebbles, flowers and grass tufts are the
+  plate's own and do not turn with the land.
+- The button is `Turn`, the zoom button's twin beside it under the coin
+  pill, wearing `ui/icons.gd`'s `turn`. `screen.turn_view()` keeps the tile
+  under the middle of the screen under it; the land is laid out again at
+  once and fades in from 0.3 over 0.16 s (nothing under reduce motion). No
+  key is bound: the screen reads none.
+- **Measured** (810x1440, both drivers): 109 to 120 draw calls on the
+  four-plate land at each of the four turns (it was 101 to 106 before the
+  harness laid eight more belts and set four more beavers; a turn itself
+  adds none). `tests/_shot_factory.gd` 55/0 on the default driver and on
+  `opengl3_angle`: at each turn all 256 tiles have a place of their own and
+  are read back from it, a belt dragged across two empty neighbours lands
+  on those tiles with the sim's facing, a tap on a crown reaches its tree,
+  and four presses come back to the first view. Menu harness 8/0, probe
+  147/0.
+- **Not seen**: a phone; the fade watched moving; a fall or a plate rising
+  while turned; the pan's soft stop at the turned corners (the clamp is in
+  sim tiles, so it should hold); a land that is not a square of plates.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

@@ -34,6 +34,18 @@ extends RefCounted
 ##   each run drawn on its own layer, windy and plain by turns.
 ## - **Belts are one MultiMesh** and what lies or rides one MultiMesh a kind.
 ##
+## - **The view turns by quarters** (`turn`, 2026-10-10: "add a button to
+##   rotate the view, so user can click to rotate and see something being
+##   blocked"). The sim's tiles never change; only where a tile is seen
+##   does. Tile space is turned about its origin before `Art.at`, so whole
+##   tiles go to whole tiles and plates to plates. **Everything that places
+##   or reads a position goes through one pair, `seen(t)` and `tile_at(v)`**
+##   (and `seen_tile`, `seen_plate`, `seen_facing`, `depth` built on the same
+##   turn): never `Art.at` on a sim coordinate. The market's art has one
+##   face and keeps it toward the eye at every turn, its counter's stack
+##   where the art puts it; the ground's washes, pebbles and tufts are a
+##   plate's own and do not turn with the land.
+##
 ## Under reduce motion a beaver is there or not and only changes its face, a
 ## felled tree fades where it stands, nothing bursts, a plate and a module
 ## are there at once and smoke stands still.
@@ -80,6 +92,9 @@ const ITEMS := ["log", "stone", "lime", "charcoal"]
 ## The land, in view units: the holder's to place and scale.
 var world: Node2D
 var sim: RefCounted
+## Quarters the view is turned clockwise, 0 to 3: set by `set_turn`. A view
+## preference of the holder's, never the sim's and never kept.
+var turn := 0
 ## Whether the plus of every free edge is drawn (not on the tab's card).
 var plus := true
 ## The holder's own flat things, over the belts and under what stands:
@@ -96,7 +111,7 @@ var _stand: Node2D
 var _air_l: Node2D
 var _pool: Array[Node2D] = []
 var _runs: Array = []
-var _order: Array = []      # [plate, kind, sides, variant], back to front
+var _order: Array = []      # [plate as seen, kind, sides as seen, variant, plate], back to front
 var _edges: Array = []
 var _plates_n := -1
 var _belt_mm: MultiMesh
@@ -177,13 +192,58 @@ func stale() -> void:
 	_plates_n = -1
 	_belts_stale = true
 
+# --- the turn: where a tile is seen ---
+
+## A point of tile space turned `q` quarters about the origin: a quarter
+## takes (x, y) to (-y, x), so +x (down the screen and right) becomes +y
+## (down and left) and the land goes round clockwise under the eye.
+static func _spin(t: Vector2, q: int) -> Vector2:
+	match posmod(q, 4):
+		1:
+			return Vector2(-t.y, t.x)
+		2:
+			return -t
+		3:
+			return Vector2(t.y, -t.x)
+	return t
+
+## A point of the sim's tile space (a tile's middle is tile + (0.5, 0.5)),
+## in view units, as the view is turned now. THE way from the sim to the eye.
+func seen(t: Vector2) -> Vector2:
+	return Art.at(_spin(t, turn))
+
+## The point of the sim's tile space under a point of the view: the way back.
+func tile_at(v: Vector2) -> Vector2:
+	return _spin(Art.tile_at(v), -turn)
+
+## The tile of the art's grid a sim tile is drawn on (its lowest corner).
+func seen_tile(tile: Vector2i) -> Vector2i:
+	return Vector2i(_spin(Vector2(tile) + MID, turn).floor())
+
+## The same for a plate of the lattice.
+func seen_plate(p: Vector2i) -> Vector2i:
+	return Vector2i((_spin((Vector2(p) + MID) * Art.PLATE, turn) / Art.PLATE).floor())
+
+## The facing a sim facing is drawn at.
+func seen_facing(facing: int) -> int:
+	return posmod(facing + turn, 4)
+
+## What a point of the sim's tile space is sorted by, back to front.
+func depth(t: Vector2) -> float:
+	return Art.depth(_spin(t, turn))
+
+## Turns the view to `quarters`; everything is laid out again.
+func set_turn(quarters: int) -> void:
+	turn = posmod(quarters, 4)
+	stale()
+
 ## The land's box in view units: every plate's diamond and the earth under
 ## it, with nothing added for what stands.
 func bounds() -> Rect2:
 	var box := Rect2()
 	var first := true
 	for p: Vector2i in sim.plates:
-		var back := Art.at(Vector2(p * Art.PLATE))
+		var back := Art.at(Vector2(seen_plate(p) * Art.PLATE))
 		var r := Rect2(back.x - Art.HALF, back.y, Art.HALF * 2.0, Art.HALF * 2.0 * Art.DEEP)
 		box = r if first else box.merge(r)
 		first = false
@@ -201,14 +261,16 @@ func tile_bounds() -> Rect2:
 	return box
 
 ## The middle of a tile, in view units.
-static func mid(tile: Vector2i) -> Vector2:
-	return Art.at(Vector2(tile) + MID)
+func mid(tile: Vector2i) -> Vector2:
+	return seen(Vector2(tile) + MID)
 
 ## Where a plate's plus lies, in view units.
-static func plus_at(p: Vector2i) -> Vector2:
-	return Art.at(Vector2(p * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5)
+func plus_at(p: Vector2i) -> Vector2:
+	return seen(Vector2(p * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5)
 
-## The lowest tile corner of a module's footprint and its size in tiles.
+## The lowest tile corner of a module's footprint and its size in tiles, in
+## whatever grid `root` and `facing` are given in: the sim's, or the art's
+## (`seen_tile`, `seen_facing`) for a thing drawn.
 static func footprint(kind: String, root: Vector2i, facing: int) -> Array:
 	if kind == "firebox":
 		return [root, Vector2i.ONE]
@@ -404,8 +466,9 @@ func _lay_plates() -> void:
 		var sides := 0
 		for i in 4:
 			if sim.plates.has(p + Art.DIRS[i]):
-				sides |= 1 << i
-		_order.append([p, String(sim.plates[p]), sides, posmod(p.x * 3 + p.y * 5, 4)])
+				# the side it is joined on, as the view is turned
+				sides |= 1 << seen_facing(i)
+		_order.append([seen_plate(p), String(sim.plates[p]), sides, posmod(p.x * 3 + p.y * 5, 4), p])
 	_order.sort_custom(func(a: Array, b: Array) -> bool:
 		var da: int = a[0].x + a[0].y
 		var db: int = b[0].x + b[0].y
@@ -421,7 +484,7 @@ func _lay_belts() -> void:
 		_belt_mm.instance_count = maxi(32, _belt_n * 2)
 	var i := 0
 	for tile: Vector2i in sim.belts:
-		_belt_mm.set_instance_transform_2d(i, Art.flat(Vector2(tile), int(sim.belts[tile])))
+		_belt_mm.set_instance_transform_2d(i, Art.flat(Vector2(seen_tile(tile)), seen_facing(int(sim.belts[tile]))))
 		i += 1
 	_belt_mm.visible_instance_count = _belt_n
 	_belt_l.queue_redraw()
@@ -435,7 +498,7 @@ func _fill_items() -> void:
 	for tile: Vector2i in sim.items:
 		for it: Dictionary in sim.items[tile]:
 			if lists.has(it.kind):
-				(lists[it.kind] as Array).append(Art.at(sim.item_pos(tile, it)))
+				(lists[it.kind] as Array).append(seen(sim.item_pos(tile, it)))
 	for kind: String in ITEMS:
 		var at: Array = lists[kind]
 		var mm: MultiMesh = _item_mm[kind]
@@ -503,7 +566,7 @@ func _fill_stand() -> void:
 		var tile: Vector2i = tr.tile
 		if not _up(tile):
 			continue
-		var d := Art.depth(Vector2(tile) + MID)
+		var d := depth(Vector2(tile) + MID)
 		var at := mid(tile)
 		if tr.state == "stump":
 			if _falls.has(id):
@@ -520,15 +583,16 @@ func _fill_stand() -> void:
 		_add_beaver(list, _beavers[id])
 	for tile: Vector2i in sim.rocks:
 		if _up(tile):
-			list.append([Art.depth(Vector2(tile) + MID), 0, Art.rock(sim.rocks[tile].ready),
+			list.append([depth(Vector2(tile) + MID), 0, Art.rock(sim.rocks[tile].ready),
 				Transform2D(_turned(tile), mid(tile)), white])
 	var stall := Vector2(Sim.MARKET_AT) + Vector2.ONE
-	var stall_d := Art.depth(stall)
-	list.append([stall_d, 0, Art.market(), Transform2D(_turned(Sim.MARKET_AT), Art.at(stall)), white])
+	# the stall has one face and keeps it toward the eye at every turn
+	var stall_d := depth(stall)
+	list.append([stall_d, 0, Art.market(), Transform2D(_turned(Sim.MARKET_AT), seen(stall)), white])
 	var wait: Array = sim.market.wait
 	for i in mini(wait.size(), Art.MARKET_SPOTS.size()):
 		list.append([stall_d + 0.01 * (i + 1), 0, Art.item(wait[i]),
-			Transform2D(0.0, Vector2(0.7, 0.7), 0.0, Art.at(stall) + Art.MARKET_SPOTS[i]), white])
+			Transform2D(0.0, Vector2(0.7, 0.7), 0.0, seen(stall) + Art.MARKET_SPOTS[i]), white])
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
@@ -555,7 +619,7 @@ func _add_fall(list: Array, f: Dictionary) -> void:
 	var look: int = f.look
 	var tile: Vector2i = f.tile
 	var at := mid(tile)
-	var d := Art.depth(Vector2(tile) + MID)
+	var d := depth(Vector2(tile) + MID)
 	var size := Art.TREE_SCALE
 	var pose := _pose(f)
 	var s := _stump(look)
@@ -602,7 +666,7 @@ func _add_beaver(list: Array, b: Dictionary) -> void:
 	# it looks at the trunk: right when it sits on the left
 	var xf := Transform2D(0.0, Vector2(-side * s * grow * (1.0 + 0.06 * snap), s * grow * (1.0 - 0.06 * snap)), 0.0, at)
 	var wag := 0.5 * rear - 0.12 * snap + (0.3 * absf(sin(float(b.cheer) * 22.0)) if cheering else 0.04 * sin(float(b.age) * 3.0))
-	var d := Art.depth(Vector2(tile) + MID) + 0.01
+	var d := depth(Vector2(tile) + MID) + 0.01
 	var nod := 0.22 * snap - 0.3 * rear - (0.28 if cheering else 0.0)
 	var neck := Beaver.NECK + Vector2(3.0 * snap - 4.0 * rear, -2.0 * rear)
 	list.append([d, 1, Beaver.tail(), xf * Transform2D(wag, Beaver.TAIL_AT), Color.WHITE])
@@ -617,16 +681,17 @@ func _add_module(list: Array, m: Dictionary) -> void:
 	if not _up(root):
 		return
 	var kind: String = m.kind
-	var f: int = m.facing
+	# the facing it is drawn at: its ways in and out turn with the view
+	var f: int = seen_facing(m.facing)
 	var at := mid(root)
-	var d := Art.depth(Vector2(root) + MID)
+	var d := depth(Vector2(root) + MID)
 	if kind != "firebox":
 		d += 0.5 * maxf(0.0, Art.depth(Vector2(Art.DIRS[f])))
 	var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(f) if kind == "kiln" else Art.retort(f))
 	var xf := Transform2D(_turned(root), at)
 	if not m.built:
 		var k := clampf(float(m.build), 0.0, 1.0)
-		var foot := footprint(kind, root, f)
+		var foot := footprint(kind, seen_tile(root), f)
 		var corner := Art.at(Vector2(foot[0] as Vector2i))
 		var middle := Art.at(Vector2(foot[0] as Vector2i) + Vector2(foot[1] as Vector2i) * 0.5)
 		if Motion.reduce:
@@ -669,7 +734,7 @@ func _add_module(list: Array, m: Dictionary) -> void:
 
 func _draw_ground(ci: CanvasItem) -> void:
 	for o: Array in _order:
-		var k := _risen(o[0])
+		var k := _risen(o[4])
 		ci.draw_mesh(Art.plate(o[1], o[2], o[3]), null,
 			Transform2D(0.0, Art.at(Vector2((o[0] as Vector2i) * Art.PLATE)) + Vector2(0.0, (1.0 - k) * SUNK)),
 			Color(1.0, 1.0, 1.0, minf(1.0, k * 3.0)))
@@ -677,7 +742,7 @@ func _draw_ground(ci: CanvasItem) -> void:
 ## The grass, plate by plate, on the ones that are up.
 func _draw_grass(ci: CanvasItem) -> void:
 	for o: Array in _order:
-		if _risen(o[0]) < 1.0:
+		if _risen(o[4]) < 1.0:
 			continue
 		ci.draw_set_transform(Art.at(Vector2((o[0] as Vector2i) * Art.PLATE)))
 		for mm: MultiMesh in Art.grass(o[1], o[3]):
