@@ -5,8 +5,8 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_eddy.gd -- <outdir> [reduce] [en|pt|es]
 ##
 ## 1 the Arcade tab, 2 the hint before the pad is leaned, then a real touch
-## held on the pad through the viewport (printed: whether the whirlpool set
-## off), 3 a bot at play, 4 a level made (the growing is set one short of
+## held on the pad and dragged through the viewport (printed: whether the
+## whirlpool set off and the knob followed), 3 a bot at play, 4 a level made (the growing is set one short of
 ## the level that takes ducks), 5 a grown whirlpool with toys going down,
 ## 6 the spin low, 7 the end card. Prints the draw calls at each shot. The
 ## end writes a score to user://arcade.cfg, so the file this machine had is
@@ -140,6 +140,15 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.5:
 				print("touch set off: ", _s.sim.phase == Sim.Phase.PLAY, " moved ", _s.sim.pos - _from, " field ", _s.field.size, " tall ", _s.sim.h)
 				var p: Control = _s.pad
+				# and the finger dragged up, as a thumb does all run long
+				var was: Vector2 = _s._knob
+				var drag := InputEventScreenDrag.new()
+				drag.index = 0
+				drag.position = root.get_final_transform() * (p.get_global_transform_with_canvas() * (p.size * 0.5 + Vector2(0, -60)))
+				drag.relative = Vector2(-60, -60)
+				Input.parse_input_event(drag)
+				Input.flush_buffered_events()
+				print("drag moved the knob: ", was, " -> ", _s._knob)
 				_touch(false, root.get_final_transform() * (p.get_global_transform_with_canvas() * (p.size * 0.5 + Vector2(60, 0))))
 				_play = true
 				_step = 4

@@ -303,14 +303,17 @@ func _apply_insets() -> void:
 	Vistas.set_top_pad(_backdrop, insets.x)
 
 ## The pond is as wide as the room and as tall as the room makes it: a run
-## not yet begun takes the room's shape, one under way keeps its own.
+## not yet begun takes the room's shape (what floats is kept and brought
+## inside the banks), one under way keeps its own.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
 	var tall := _tall_units()
+	# the room changing under a run not yet begun (the ad banner coming up a
+	# second after the screen) moves the bank, never deals the pond again
 	if sim != null and sim.phase == Sim.Phase.READY and sim.score == 0 and absf(sim.h - tall) > 1.0:
-		_fresh_sim()
+		sim.fit(tall)
 	var h: float = sim.h if sim != null else tall
 	_u = minf(s.x / Sim.W, s.y / h) * _zoom()
 	var size_px := Vector2(Sim.W, h) * _u
@@ -610,6 +613,8 @@ func _on_swallow(ev: Dictionary) -> void:
 ## and what its mouth now takes is said under it.
 func _on_level(n: int, opens: Array) -> void:
 	_level_at = _clock
+	# what was too big a moment ago may not be any more
+	_rw.stickers = _rw.stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != "too_big")
 	_fx.cue("level", minf(1.0 + 0.03 * (n - 2), CLIMB_TOP))
 	_feel(Haptics.GOOD)
 	var at := _rw.at(field, field.size * Vector2(0.5, 0.3))

@@ -3082,8 +3082,10 @@ biggest whirlpool.
   through the viewport. `_lean()` is what the sim is handed, so the
   tutorial's pond overrides that one function with its hand.
 - **The pond is as tall as the room** (`_tall_units`, `Sim.new(-1, tall)`):
-  a run not yet begun is made again when the field's shape changes, one
-  under way keeps its own and is centred.
+  a run not yet begun is fitted to the field's new shape (`Sim.fit`: the
+  ad banner comes up a second after the screen, and dealing the pond again
+  there would swap every leaf under the player's eyes), one under way keeps
+  its own and is centred.
 - **The tab has ten cards**, two a row in five rows on a phone.
 - **The tutorial's pond looks closer** (`Pond._zoom` 2, the pad beside it
   rather than under), and its hand goes after the things themselves

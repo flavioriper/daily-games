@@ -461,6 +461,16 @@ func _restock() -> void:
 	th.drift = (aim - at).normalized() * PUSH
 	th.fresh = FRESH
 
+## The pond made `tall`, as the screen's room changes under a run: the
+## whirlpool and everything afloat are kept, and brought inside the banks.
+func fit(tall: float) -> void:
+	h = tall
+	pos = pos.clamp(Vector2(BANK, BANK), Vector2(W - BANK, h - BANK))
+	for th: Dictionary in things:
+		if float(th.sink) < 0.0:
+			var lo := BANK + float(KINDS[th.kind].r)
+			th.pos = (th.pos as Vector2).clamp(Vector2(lo, lo), Vector2(W - lo, h - lo))
+
 # --- boosters (arcade/boosters.gd) ---
 
 func long_spin() -> void:
