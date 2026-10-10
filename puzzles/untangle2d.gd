@@ -2075,7 +2075,7 @@ func _release() -> void:
 			# A tap on a peg selects it, or lets it go.
 			if _sel == p:
 				_sel = -1
-				fx.cue("put", 1.0, -10.0)
+				fx.cue("put", 1.0, -4.0)
 			else:
 				_sel = p
 				_hot = -1
@@ -2100,7 +2100,7 @@ func _release() -> void:
 				_refuse(p, "UT_TAUT")
 				return
 		_sel = -1
-		fx.cue("put", 1.0, -10.0)
+		fx.cue("put", 1.0, -4.0)
 		_dirty = true
 
 ## Ends every flight and every hold at once and runs what was waiting: for a
@@ -2139,7 +2139,7 @@ func _go_home(p: int, refused: bool) -> void:
 		fx.cue("refused")
 		_tell("UT_TAUT", Face.Expr.WORRIED)
 	else:
-		fx.cue("put", 1.0, -10.0)
+		fx.cue("put", 1.0, -4.0)
 	_later_call(HOME_TIME, func() -> void:
 		_sq_at[p] = _now())
 	_dirty = true
@@ -2392,7 +2392,7 @@ func _use_stitch(when: float) -> void:
 			if i < _stitch_at.size():
 				_stitch_at[i] = _now()
 			_needle_dip = _now()
-			fx.cue("stitch", 1.0, -14.0)
+			fx.cue("stitch", 1.0, -4.0)
 			var left := state.thread_left()
 			if left == LOW_THREAD and _difficulty >= 3:
 				fx.cue("thread_low", 1.0, -8.0)
