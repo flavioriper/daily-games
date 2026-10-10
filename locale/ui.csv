@@ -1363,3 +1363,43 @@ TUT_DECKCHAIR_HUD_HINT_ONE,"The bulb rings a move that gets somewhere, %d time a
 TUT_DECKCHAIR_HUD_HINT_N,"The bulb rings a move that gets somewhere, %d times a deal","A lâmpada marca uma jogada que rende, %d vezes por partida","La bombilla marca una jugada que sirve, %d veces por partida"
 TUT_DECKCHAIR_HUD_RESET,"A new deal, from the top","Uma partida nova, do começo","Una partida nueva, desde el principio"
 TUT_DECKCHAIR_HUD_GEAR,Settings. The clock waits for you,Configurações. O relógio espera por você,Ajustes. El reloj te espera
+ARC_EDDY_BLURB,"Steer a whirlpool round the pond with the pad. Go slowly: it draws in leaves, grows, and takes the toys too.","Guie um redemoinho pelo lago com o controle. Vá devagar: ele puxa as folhas, cresce e leva os brinquedos também.","Guía un remolino por el estanque con el mando. Ve despacio: atrae las hojas, crece y se lleva también los juguetes."
+ARC_BEST_LEVEL,Biggest whirlpool: level %d,Maior redemoinho: nível %d,Mayor remolino: nivel %d
+ED_MOTTO,Round and round and down,"Girando, girando, até o fundo","Girando, girando, hasta el fondo"
+ED_LEVEL,WHIRLPOOL,REDEMOINHO,REMOLINO
+ED_READY,Lean the pad,Incline o controle,Inclina el mando
+ED_READY_LINE,Go slowly beside what floats and the water takes it,Vá devagar perto do que flutua e a água leva,Ve despacio junto a lo que flota y el agua se lo lleva
+ED_RESUME,Touch the pad to go on,Toque no controle para continuar,Toca el mando para seguir
+ED_TOO_BIG,Too big until level %d,Grande demais até o nível %d,Demasiado grande hasta el nivel %d
+ED_LOW,Winding down!,Perdendo força!,¡Pierde fuerza!
+ED_LEVEL_UP,Level %d!,Nível %d!,¡Nivel %d!
+ED_OPEN_DUCK,Ducks go down now,Agora os patinhos descem,Ahora bajan los patitos
+ED_OPEN_BOAT,Boats go down now,Agora os barquinhos descem,Ahora bajan los barquitos
+ED_OPEN_BALL,Balls go down now,Agora as bolas descem,Ahora bajan las pelotas
+ED_END_CARD,The pond is still again,O lago está calmo de novo,El estanque vuelve a la calma
+ED_STAT_TAKEN,drawn down,levados ao fundo,llevados al fondo
+ED_STAT_LEVEL,whirlpool,redemoinho,remolino
+ED_STAT_TIME,turning,girando,girando
+BST_ED_LONG,Long spin,Giro longo,Giro largo
+BST_ED_LONG_LINE,The whirlpool turns fifteen seconds longer,O redemoinho gira quinze segundos a mais,El remolino gira quince segundos más
+BST_ED_HEAD,Head start,Vantagem inicial,Ventaja inicial
+BST_ED_HEAD_LINE,The whirlpool starts at level three,O redemoinho começa no nível três,El remolino empieza en el nivel tres
+BST_CHANCE_EDDY,The whirlpool winds up again with half its spin.,O redemoinho volta a girar com metade da força.,El remolino vuelve a girar con la mitad de su fuerza.
+TUT_EDDY_STEER,Lean the pad,Incline o controle,Inclina el mando
+TUT_EDDY_STEER_BODY,"The round pad under the pond steers the whirlpool. Lean its knob a little to drift, all the way to hurry. Let go and the whirlpool stops.","O controle redondo embaixo do lago guia o redemoinho. Incline o botão um pouco para ir devagar, até o fim para correr. Solte e o redemoinho para.","El mando redondo bajo el estanque guía el remolino. Inclina su botón un poco para ir despacio, hasta el final para correr. Suéltalo y el remolino se detiene."
+TUT_EDDY_SLOW,Slowly does it,Devagar se vai longe,Despacio se llega lejos
+TUT_EDDY_SLOW_BODY,"The water needs time to take hold. Hurry past a leaf and it is only tugged and left behind. Wait beside it and it goes round, faster and faster, and down.","A água precisa de tempo para agarrar. Passe correndo por uma folha e ela só balança e fica para trás. Espere ao lado e ela gira, cada vez mais rápido, e desce.","El agua necesita tiempo para agarrar. Pasa corriendo junto a una hoja y solo se mece y se queda atrás. Espera a su lado y gira, cada vez más rápido, y baja."
+TUT_EDDY_GROW,It grows,Ele cresce,Crece
+TUT_EDDY_GROW_BODY,"All it swallows makes the whirlpool grow, up to level %d: the ring round the pad fills. A small one cannot move a toy. Ducks go down from level %d, boats and balls later.","Tudo o que ele engole faz o redemoinho crescer, até o nível %d: o anel em volta do controle enche. Um pequeno não move um brinquedo. Os patinhos descem a partir do nível %d, barcos e bolas depois.","Todo lo que traga hace crecer el remolino, hasta el nivel %d: el anillo del mando se llena. Uno pequeño no mueve un juguete. Los patitos bajan desde el nivel %d, barcos y pelotas después."
+TUT_EDDY_SPIN,The spin runs out,O giro acaba,El giro se acaba
+TUT_EDDY_SPIN_BODY,"A whirlpool turns for %d seconds, shown by the bar over the pond, and every level gives %d back. When the bar is empty it unwinds and the run is over.","Um redemoinho gira por %d segundos, mostrados na barra sobre o lago, e cada nível devolve %d. Quando a barra esvazia, ele se desfaz e a partida termina.","Un remolino gira %d segundos, que muestra la barra sobre el estanque, y cada nivel devuelve %d. Cuando la barra se vacía se deshace y la partida termina."
+TUT_EDDY_BOOSTS,Boosters,Reforços,Refuerzos
+TUT_EDDY_BOOSTS_BODY,"Hold a booster, or the gold for one, and a card offers them before the run. The Second chance is offered once, when the whirlpool unwinds.","Tenha um reforço, ou o ouro para comprar um, e um cartão os oferece antes da partida. A Segunda chance é oferecida uma vez, quando o redemoinho se desfaz.","Ten un refuerzo, o el oro para uno, y una tarjeta los ofrece antes de la partida. La Segunda oportunidad se ofrece una vez, cuando el remolino se deshace."
+TUT_EDDY_BOOST_LONG,Long spin: the whirlpool turns %d seconds longer,Giro longo: o redemoinho gira %d segundos a mais,Giro largo: el remolino gira %d segundos más
+TUT_EDDY_BOOST_HEAD,Head start: the whirlpool starts at level %d,Vantagem inicial: o redemoinho começa no nível %d,Ventaja inicial: el remolino empieza en el nivel %d
+TUT_EDDY_BOOST_CHANCE,Second chance: it winds up again with half its spin,Segunda chance: ele volta a girar com metade da força,Segunda oportunidad: vuelve a girar con la mitad de su fuerza
+TUT_EDDY_HUD,The buttons,Os botões,Los botones
+TUT_EDDY_HUD_BODY,"What has gone down stays down, so there is no Undo. The run waits while the settings or this guide are open: touch the pad to go on.","O que desceu não volta, por isso não há Desfazer. A partida espera enquanto as configurações ou este guia estão abertos: toque no controle para continuar.","Lo que bajó no vuelve, así que no hay Deshacer. La partida espera mientras los ajustes o esta guía están abiertos: toca el mando para seguir."
+TUT_EDDY_HUD_RESET,A fresh run on a full pond,Uma partida nova num lago cheio,Una partida nueva en un estanque lleno
+TUT_EDDY_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
+TUT_EDDY_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"

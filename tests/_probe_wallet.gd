@@ -34,7 +34,8 @@ func _process(_d: float) -> bool:
 			"res://ui/menu/arcade_tab.gd", "res://ui/menu/menu_header.gd", "res://ui/menu.gd", "res://ui/flat/flat_host.gd",
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
-			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd"]:
+			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
+			"res://arcade/eddy_screen.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -180,6 +181,16 @@ func _process(_d: float) -> bool:
 	_check(dc.is_over(), "deckchair finished by hand")
 	Boosters.revive("deckchair", dc)
 	_check(not dc.is_over() and not dc.find_move().is_empty(), "deckchair revived, with a way on")
+	var ed = load("res://arcade/eddy_sim.gd").new(3)
+	Boosters.apply("eddy", ed, ["ed_long", "ed_head"])
+	_check(is_equal_approx(ed.spin, ed.SPIN + ed.LONG_BY) and ed.level == 1 + ed.HEAD_LEVELS, "eddy: a long spin, a head start")
+	ed.steer(Vector2.RIGHT)
+	ed.spin = 0.0
+	for i in 200:
+		ed.step()
+	_check(ed.is_over(), "eddy over, its spin out")
+	Boosters.revive("eddy", ed)
+	_check(not ed.is_over() and ed.spin > 0.0, "eddy revived, with spin to turn on")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

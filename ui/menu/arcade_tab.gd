@@ -10,7 +10,8 @@ extends VBoxContainer
 ## that come down with a number on each, and Beeline
 ## (arcade/beeline_screen.gd), a bee flown by taps through the gaps in a
 ## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
-## seven-column card game for one. Its body takes the day row's and the grid's room, as Versus, Stats
+## seven-column card game for one, and Eddy (arcade/eddy_screen.gd), a
+## whirlpool steered about a pond. Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
@@ -41,6 +42,8 @@ const PeaSim = preload("res://arcade/peapod_sim.gd")
 const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
 const BeeArt = preload("res://arcade/beeline_art.gd")
+const EddyArt = preload("res://arcade/eddy_art.gd")
+const EddySim = preload("res://arcade/eddy_sim.gd")
 const DeckArt = preload("res://arcade/deckchair_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -52,13 +55,13 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -148,7 +151,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -660,3 +663,40 @@ class DeckchairBanner extends Control:
 			draw_string(font, Vector2(0.11, 0.325) * w, DeckArt.RANKS[k], HORIZONTAL_ALIGNMENT_LEFT, -1, int(w * 0.31),
 				DeckArt.RED if k % 2 == 1 else DeckArt.BLACK)
 		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## Eddy's banner: a round of the pond lying in the meadow, the whirlpool
+## turning in its middle, a duck and a boat on their way round it and
+## leaves between them. Drawn once.
+class EddyBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := size.y / 110.0
+		var c := size * Vector2(0.5, 0.54)
+		var rx := minf(size.x * 0.46, 170.0 * u)
+		var ry := 46.0 * u
+		var b := Face.Builder.new()
+		b.ellipse(c + Vector2(0, 3.0 * u), rx + 5.0 * u, ry + 5.0 * u, EddyArt.BANK_DEEP)
+		b.ellipse(c, rx + 3.0 * u, ry + 3.0 * u, EddyArt.BANK_HI)
+		b.ellipse(c, rx, ry, EddyArt.WATER_LOW)
+		b.ellipse(c - Vector2(0, 2.0 * u), rx * 0.96, ry * 0.92, EddyArt.WATER)
+		b.ellipse(c - Vector2(rx * 0.3, ry * 0.4), rx * 0.4, ry * 0.2, Color(EddyArt.WATER_HI, 0.6))
+		var water := b.mesh()
+		_keep.append(water)
+		draw_mesh(water, null)
+		# the whirlpool lies flat on the water: squashed as the pond is
+		var flat := Transform2D(0.0, Vector2(1.0, ry / rx * 1.9), 0.0, c)
+		draw_mesh(EddyArt.streaks(11.0 * u), null, flat * Transform2D(0.6, Vector2.ZERO))
+		draw_mesh(EddyArt.funnel(11.0 * u), null, flat)
+		for row: Array in [[EddySim.Kind.LEAF, 0, -0.62, -0.2, 0.5], [EddySim.Kind.LEAF, 1, -0.3, 0.5, 2.1], [EddySim.Kind.PETAL, 0, 0.2, -0.56, 1.0],
+				[EddySim.Kind.LEAF, 2, 0.74, 0.1, 3.6], [EddySim.Kind.ACORN, 0, -0.78, 0.3, 4.0], [EddySim.Kind.PETAL, 2, 0.34, 0.62, 5.2]]:
+			draw_mesh(EddyArt.thing(row[0], row[1], 1.5 * u), null, Transform2D(float(row[4]), c + Vector2(float(row[2]) * rx, float(row[3]) * ry)))
+		draw_mesh(EddyArt.thing(EddySim.Kind.BOAT, 1, 1.25 * u), null, Transform2D(-0.5, c + Vector2(0.52 * rx, -0.3 * ry)))
+		draw_mesh(EddyArt.thing(EddySim.Kind.DUCK, 0, 1.5 * u), null, Transform2D(2.4, c + Vector2(-0.4 * rx, 0.02 * ry)))

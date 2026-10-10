@@ -1,0 +1,336 @@
+extends Control
+
+## One page of Eddy's tutorial: a small pond played by the game itself.
+## The page holds a `Pond` -- arcade/eddy_screen.gd with its top bar,
+## plates, cards, lettering, sound and record taken out, so what is left is
+## the framed pond and the pad beside it -- running a `Round`, the game's
+## own sim with a hand added: it leans the pad toward one place after
+## another, and the pad's knob is drawn where that hand holds it. So the
+## whirlpool goes where the knob leans, a leaf waited beside goes round and
+## down, one hurried past is left turning, and a duck sits where it is until
+## the whirlpool has grown, exactly as in the pond. `lesson` picks the page
+## (set before it enters the tree):
+##
+## - STEER: the whirlpool taken round a square, slowly and then quickly.
+## - SLOW: flat out across three leaves, which stay; then back at a walk,
+##   and they go down.
+## - GROW: beside a duck too big for it; two leaves make the level, and the
+##   duck goes down.
+## - SPIN: the bar nearly empty; a leaf makes a level and gives some back,
+##   then it runs out and the whirlpool unwinds.
+## - BOOSTS: the two boosters and the Second chance, drawn as chips.
+## - HUD: the top bar's Reset, gear and ?, drawn as they are (nothing is
+##   ever taken back, so no Undo).
+
+const Pal = preload("res://core/palette.gd")
+const Motion = preload("res://core/motion.gd")
+const Face = preload("res://ui/faces/face.gd")
+const Icons = preload("res://ui/icons.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const Sim = preload("res://arcade/eddy_sim.gd")
+const Boosters = preload("res://arcade/boosters.gd")
+
+enum Lesson { STEER, SLOW, GROW, SPIN, BOOSTS, HUD }
+
+var lesson: int = Lesson.STEER
+
+var _pond: Pond
+var _begun := false
+## When the lesson starts over, and the second a still page stands at.
+var _length := 8.0
+var _still_at := 2.0
+var _rows_shown: ArrayMesh
+
+## The game's sim with a hand on the pad: `plan` is a row of steps, each
+## [until (seconds), where (a place from the pond's middle, or null to let
+## go), how far the knob is leaned at most].
+class Round extends "res://arcade/eddy_sim.gd":
+	var clock := 0.0
+	var plan: Array = []
+
+	func _init() -> void:
+		super(4, 300.0)
+		things.clear()
+		stocks = false
+		events.clear()
+
+	func mid() -> Vector2:
+		return Vector2(W * 0.5, h * 0.5)
+
+	## A thing laid still, `from` the pond's middle.
+	func lay(kind: int, from: Vector2, look := 0) -> void:
+		var th := put(kind, mid() + from)
+		th.drift = Vector2.ZERO
+		th.look = look
+		th.age = 10.0
+
+	## Where the hand leans the pad just now.
+	func hand() -> Vector2:
+		for row: Array in plan:
+			if clock < float(row[0]):
+				if row[1] == null:
+					return Vector2.ZERO
+				var d: Vector2 = mid() + (row[1] as Vector2) - pos
+				return d.normalized() * minf(float(row[2]), d.length() / 30.0)
+		return Vector2.ZERO
+
+	func step() -> void:
+		clock += DT
+		super()
+
+## The screen, quiet: the framed pond and its pad alone, no top bar, plate,
+## sheet, card or hint, no sound (its id names no set), no knock, no record
+## and no analytics.
+class Pond extends "res://arcade/eddy_screen.gd":
+	## How much closer than the whole pond a page looks.
+	const CLOSE := 2.0
+	## The pad's strip beside the pond, as a part of the page's width.
+	const PAD_PART := 0.3
+
+	var _frame: PanelContainer
+
+	## The rewards with no lettering but a level's and a toy's, cut to the
+	## page, and nothing flown to a plate the page has not got.
+	class Quiet extends "res://arcade/rewards.gd":
+		func sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "", rise := 0.0, keep := false) -> Dictionary:
+			if id != "level" and id != "opens" and id != "too_big" and id != "low":
+				return {}
+			return super(text, where, mini(fs, 34), life, false, col, false, id, rise, keep)
+
+		func spray(from: Vector2, col: Color, n: int, speed: float, kind := "spark", size := 1.0, delay := 0.0, to := Vector2.INF) -> void:
+			if to == Vector2.INF:
+				super(from, col, n, speed * 0.5, kind, size * 0.6, delay, to)
+
+		func ring(_from: Vector2, _radius: float, _col: Color, _delay := 0.0, _life := 0.45) -> void:
+			pass
+
+	func puzzle_id() -> String:
+		return "eddy_tutorial"
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# the plates are read by the screen and never shown
+		var plates := _build_hud()
+		plates.visible = false
+		add_child(plates)
+		_frame = _build_frame()
+		_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_frame)
+		add_child(_build_pad())
+		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fx.buzzes = false
+		_rw = Quiet.new()
+		add_child(_rw)
+		resized.connect(_fit)
+
+	func _fit() -> void:
+		var pad_w := floorf(size.x * PAD_PART)
+		_frame.position = Vector2.ZERO
+		_frame.size = Vector2(size.x - pad_w, size.y)
+		# now, not on the frame's next sort: a lesson laid this frame is drawn
+		# in the field's pixels
+		field.position = Vector2(FRAME, FRAME)
+		field.size = _frame.size - Vector2(FRAME, FRAME) * 2.0
+		pad.position = Vector2(size.x - pad_w, 0.0)
+		pad.size = Vector2(pad_w, size.y)
+
+	func _zoom() -> float:
+		return CLOSE
+
+	func _tall_units() -> float:
+		return 300.0
+
+	## The knob is where the round's hand holds it.
+	func _lean() -> Vector2:
+		return (sim as Round).hand() if sim.phase != Sim.Phase.DRAIN and sim.phase != Sim.Phase.OVER else Vector2.ZERO
+
+	func _animate(delta: float) -> void:
+		super(delta)
+		var lean := _lean()
+		_held = -3 if lean.length() > 0.0 else -1
+		_knob = _knob.lerp(lean * TRAVEL, minf(1.0, delta * 14.0))
+
+	## The pad is as big as its strip lets it be.
+	func _draw_pad() -> void:
+		super()
+
+	func _pause(_on: bool) -> void:
+		pass
+
+	func _hint(_text: String, _sub_text: String) -> void:
+		pass
+
+	func _run_over() -> void:
+		pass
+
+	## A round laid on the pond: nothing left of the last.
+	func lay(game: RefCounted) -> void:
+		sim = game
+		_acc = 0.0
+		_paused = false
+		_bits.clear()
+		_knob = Vector2.ZERO
+		_held = -1
+		_pass_at = -10.0
+		_level_at = -10.0
+		_low_at = -10.0
+		_best = 0
+		_beat_best = false
+		_shown_score = sim.score
+		_shown_level = sim.level
+		_milestone = 100000
+		_core = sim.core()
+		_rw.clear()
+		_layout_field()
+
+	## The round run to second `at` and held there, for a page that stands
+	## still.
+	func hold(at: float) -> void:
+		while sim.clock < at and not sim.is_over():
+			sim.steer(_lean())
+			sim.step()
+			_play_events()
+			_clock += Sim.DT
+			_animate(Sim.DT)
+		_paused = true
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip_contents = true
+	if _played():
+		_pond = Pond.new()
+		add_child(_pond)
+	resized.connect(_layout)
+	call_deferred("_layout")
+
+func _enter_tree() -> void:
+	# A page turned back to starts its lesson again.
+	if _begun:
+		call_deferred("_reset")
+
+func _played() -> bool:
+	return lesson != Lesson.BOOSTS and lesson != Lesson.HUD
+
+func _layout() -> void:
+	if not _played():
+		queue_redraw()
+		return
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	# the frame's shadow falls under it
+	var room := size - Vector2(0, 14.0)
+	_pond.size = Vector2(minf(room.x, room.y * 1.75), room.y).floor()
+	_pond.position = ((room - _pond.size) * 0.5).round()
+	_pond._fit()
+	if not _begun and is_inside_tree():
+		_begun = true
+		_reset()
+
+# --- the lessons ---
+
+## The lesson from its top: a fresh round on the pond.
+func _reset() -> void:
+	if not _played() or not is_inside_tree() or size.x <= 0.0:
+		return
+	var game := Round.new()
+	match lesson:
+		Lesson.STEER:
+			# round a square at a drift, then again in a hurry
+			for row: Array in [[Sim.Kind.LEAF, Vector2(-52, -34), 0], [Sim.Kind.PETAL, Vector2(54, 30), 2], [Sim.Kind.LEAF, Vector2(50, -36), 1]]:
+				game.lay(row[0], row[1], row[2])
+			game.plan = [[0.6, null, 0.0], [2.0, Vector2(36, 0), 0.35], [3.2, Vector2(36, 26), 0.35], [4.8, Vector2(-36, 26), 0.35],
+				[5.6, null, 0.0], [6.2, Vector2(-36, -22), 1.0], [6.9, Vector2(30, -22), 1.0], [7.5, Vector2(0, 0), 1.0], [8.6, null, 0.0]]
+			_length = 8.8
+			_still_at = 2.6
+		Lesson.SLOW:
+			for k in 3:
+				game.lay(Sim.Kind.LEAF, Vector2(-26.0 + 26.0 * k, 4.0 if k % 2 == 0 else -5.0), k)
+			game.pos = game.mid() + Vector2(-64, 0)
+			game.plan = [[0.7, null, 0.0], [1.7, Vector2(66, 0), 1.0], [2.7, null, 0.0], [5.2, Vector2(26, 0), 0.22], [7.0, Vector2(0, 0), 0.2],
+				[9.2, Vector2(-28, 0), 0.2], [10.4, null, 0.0]]
+			_length = 10.6
+			_still_at = 4.6
+		Lesson.GROW:
+			game.level = Sim.level_for(Sim.Kind.DUCK) - 1
+			game.grown = game.need() - 2
+			game.lay(Sim.Kind.DUCK, Vector2(30, -6))
+			game.lay(Sim.Kind.LEAF, Vector2(-44, 22), 1)
+			game.lay(Sim.Kind.LEAF, Vector2(-50, -20), 0)
+			game.pos = game.mid() + Vector2(-4, -6)
+			game.plan = [[0.5, null, 0.0], [3.2, Vector2(14, -6), 0.25], [5.4, Vector2(-40, 20), 0.4], [7.6, Vector2(-46, -18), 0.3],
+				[11.4, Vector2(26, -6), 0.35], [12.4, null, 0.0]]
+			_length = 12.6
+			_still_at = 2.6
+		Lesson.SPIN:
+			game.level = 2
+			game.grown = game.need() - 1
+			game.spin = 4.2
+			game.lay(Sim.Kind.LEAF, Vector2(30, 6), 2)
+			game.lay(Sim.Kind.PETAL, Vector2(-40, -24), 0)
+			game.lay(Sim.Kind.ACORN, Vector2(-30, 30), 0)
+			game.plan = [[0.5, null, 0.0], [3.0, Vector2(24, 6), 0.3], [6.5, Vector2(-34, -22), 0.25], [14.0, Vector2(-26, 26), 0.2]]
+			_length = 13.4
+			_still_at = 1.2
+	game.steer(Vector2.RIGHT * 0.01)
+	game.steer(Vector2.ZERO)
+	game.events.clear()
+	_pond.lay(game)
+	if Motion.reduce:
+		_pond.hold(_still_at)
+
+func _process(_delta: float) -> void:
+	if not _played() or not _begun or Motion.reduce:
+		return
+	if _pond.sim.clock >= _length:
+		_reset()
+
+# --- drawing ---
+
+## The chip pages: the boosters with what each does, and the top bar's
+## buttons drawn as they are on the screen beside what they do here.
+func _draw() -> void:
+	if _played() or size.x <= 0.0:
+		return
+	var rows: Array = []
+	if lesson == Lesson.BOOSTS:
+		rows = [
+			[Boosters.icon("ed_long"), tr("TUT_EDDY_BOOST_LONG") % int(Sim.LONG_BY)],
+			[Boosters.icon("ed_head"), tr("TUT_EDDY_BOOST_HEAD") % (1 + Sim.HEAD_LEVELS)],
+			[Boosters.icon(Boosters.CHANCE), tr("TUT_EDDY_BOOST_CHANCE")],
+		]
+	else:
+		rows = [
+			["reset", tr("TUT_EDDY_HUD_RESET")],
+			["gear", tr("TUT_EDDY_HUD_GEAR")],
+			["help", tr("TUT_EDDY_HUD_HELP")],
+		]
+	var boosts := lesson == Lesson.BOOSTS
+	var row_h := size.y / rows.size()
+	var chip := minf(104.0, row_h * 0.72)
+	var x0 := 36.0
+	var b := Face.Builder.new()
+	var centres: Array = []
+	for k in rows.size():
+		var c := Vector2(x0 + chip * 0.5, row_h * (k + 0.5))
+		centres.append(c)
+		if boosts:
+			# a booster is a disc in its game's colour, the Second chance gold
+			var tint: Color = Boosters.tint(Boosters.CHANCE if k == 2 else "ed_long")
+			b.disc(c + Vector2(0, 6.0), chip * 0.5, Color(Pal.TEXT, 0.16))
+			b.disc(c, chip * 0.5, tint)
+		else:
+			var at := c - Vector2(chip, chip) * 0.5
+			b.polygon(Face.Builder.round_rect(at + Vector2(0, 6.0), Vector2(chip, chip), 26.0), Color(Pal.TEXT, 0.16))
+			b.polygon(Face.Builder.round_rect(at, Vector2(chip, chip), 26.0), Pal.SURFACE)
+	_rows_shown = b.mesh()
+	draw_mesh(_rows_shown, null)
+	var font: Font = CozyTheme.display(700)
+	var tx := x0 + chip + 28.0
+	var wide := size.x - tx - 24.0
+	for k in rows.size():
+		var c: Vector2 = centres[k]
+		Icons.paint(self, String(rows[k][0]), Rect2(c - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54),
+			Pal.SURFACE if boosts else Pal.TEXT, Color.TRANSPARENT if boosts else Pal.SURFACE)
+		var line := String(rows[k][1])
+		var lines := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, wide, 30)
+		draw_multiline_string(font, Vector2(tx, c.y - lines.y * 0.5 + 30.0 * 0.82), line, HORIZONTAL_ALIGNMENT_LEFT, wide, 30, -1, Pal.TEXT)

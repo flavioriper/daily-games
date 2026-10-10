@@ -112,6 +112,8 @@ const CARDS := {
 	"beeline": ["meadow", 1.5, Vector2(0.3, 0.4)],
 	# Deckchair's cards are dealt out on the meadow's grass.
 	"deckchair": ["meadow", 1.5, Vector2(0.55, 0.6)],
+	# Eddy's pond lies in the meadow's grass.
+	"eddy": ["meadow", 1.6, Vector2(0.2, 0.6)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
