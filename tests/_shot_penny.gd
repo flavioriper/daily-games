@@ -3,15 +3,21 @@ extends SceneTree
 ## A game of Penny Drop, shot at fixed beats, the screen built by hand so
 ## nothing of the menu (or the network) is started:
 ##
-##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_penny.gd -- <outdir> [level] [rm] [lang=pt|es] [lose]
+##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_penny.gd -- <outdir> [level] [rm] [lang=pt|es] [lose] [draw]
 ##
 ## The hand is real touches on the board: a finger put down on one slot and
 ## slid to another, let go; then a drop a turn in the slot the best computer
 ## would pick (`lose`: in any slot, so the end card is the lost one), the bulb
 ## once, a full slot tried once it exists, Undo once. Shots: start, over (the
 ## finger down), falling, landed, hint, back (a penny going back up), end,
-## spill (Play again emptying the rack). Prints the draw calls at each and
-## puts user://versus.cfg back.
+## spill (Play again emptying the rack). The board's moments are shot while
+## they show, the first time each comes up (the board's `moments`): knock,
+## pair, three, block, lid, run (the four, twice: `run` and `run_b`), fetch
+## (the waiting penny off its roll). `draw`: instead of a game, a rack four
+## pennies short of full with no line is laid and the last pennies dropped by
+## the harness itself, for `lid` and `sigh` (a full rack with no line), which
+## a game against the computer hardly ever comes to. Prints the draw calls at
+## each and puts user://versus.cfg back.
 
 const AI = preload("res://versus/penny_ai.gd")
 const Rules = preload("res://versus/penny_rules.gd")
@@ -31,6 +37,14 @@ var _had_record := false
 var _undone := false
 var _hinted := false
 var _peak := 0
+var _draw := false
+var _draw_rules: RefCounted
+var _draw_at := 0
+## A game with no line in it, the forty-two slots in order.
+const DRAWN := [6, 4, 6, 2, 3, 0, 0, 2, 1, 6, 6, 2, 4, 6, 4, 5, 3, 6, 1, 5, 1, 3, 0, 5, 2, 1, 2, 0, 2, 3, 5, 4, 1, 1, 4,
+	3, 5, 4, 3, 5, 0, 0]
+## A moment and how long after it began it is shot.
+const MOMENTS := {"knock": 0.05, "pair": 0.22, "three": 0.26, "block": 0.2, "lid": 0.16, "run": 0.42, "sigh": 0.3}
 
 func _initialize() -> void:
 	_had_record = FileAccess.file_exists("user://versus.cfg")
@@ -44,6 +58,8 @@ func _initialize() -> void:
 			load("res://core/motion.gd").reduce = true
 		elif a == "lose":
 			_lose = true
+		elif a == "draw":
+			_draw = true
 		elif a.begins_with("lang="):
 			TranslationServer.set_locale(a.trim_prefix("lang="))
 		elif a.is_valid_int():
@@ -93,6 +109,15 @@ func _process(delta: float) -> bool:
 		return false
 	_peak = maxi(_peak, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	var S = _screen.State
+	for kind: String in MOMENTS:
+		if _board.moments.has(kind) and not _done.has(kind):
+			var age: float = _board._t - float(_board.moments[kind])
+			if age >= float(MOMENTS[kind]) and age < float(MOMENTS[kind]) + 0.2:
+				_shot(kind)
+	if _board.moments.has("run") and _board._t - float(_board.moments["run"]) >= 1.95:
+		_shot("run_b")
+	if _board._hover_look == 1 and _board._t - _board._fetch_at >= 0.1 and _board._t - _board._fetch_at < 0.2 and _t > 3.0:
+		_shot("fetch")
 	_wait -= delta
 	if _wait > 0.0:
 		return false
@@ -100,6 +125,17 @@ func _process(delta: float) -> bool:
 		0:
 			if _screen._state == S.YOURS and _t > 1.6:
 				_shot("start")
+				if _draw:
+					# The rack as it stands four pennies from full.
+					_draw_rules = Rules.new()
+					_draw_at = DRAWN.size() - 4
+					for i in _draw_at:
+						_draw_rules.make(DRAWN[i])
+					_board.setup(_draw_rules, _screen.player)
+					_board.set_waiting(_draw_rules.turn)
+					_step = 20
+					_wait = 0.8
+					return false
 				_touch(_at(1), true)
 				_slide(_at(2))
 				_slide(_at(_pick()))
@@ -186,6 +222,28 @@ func _process(delta: float) -> bool:
 			_wait = 0.3
 		10:
 			_shot("spill")
+			print("peak draws ", _peak)
+			_restore()
+			return true
+		20:
+			if _draw_at < DRAWN.size():
+				var side: int = _draw_rules.turn
+				_board.play(_draw_rules.make(DRAWN[_draw_at]), side)
+				_draw_at += 1
+				_step = 21
+			else:
+				print("  drawn: status %d" % _draw_rules.status())
+				_board.finish("draw")
+				_step = 22
+				_wait = 1.4
+		21:
+			if not _board.is_busy():
+				if _draw_at < DRAWN.size():
+					_board.set_waiting(_draw_rules.turn)
+				_step = 20
+				_wait = 0.9
+		22:
+			_shot("drawn")
 			print("peak draws ", _peak)
 			_restore()
 			return true

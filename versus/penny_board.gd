@@ -19,6 +19,12 @@ extends Control
 ## column's light, the rings round a line) is one small mesh rebuilt only
 ## while it moves.
 ##
+## The rolls lie in pine trays lined with the rack's own felt, baked into the
+## back. The moments -- a knock, pennies of a side meeting, a line stopped, a
+## slot filled, the four, a rack with no line, the waiting penny's life -- are
+## the pennies' own transforms and soft round light in the mesh over the face,
+## so none of them is a draw call; none of them runs under reduce motion.
+##
 ## The board shows what it has been told (`play`, `rewind`), not the rules it
 ## was set up from, so a penny is in its hole only once it has landed.
 
@@ -89,6 +95,57 @@ const SPILL := 0.7
 const TICK_VARY := Vector2(0.94, 1.06)
 const HOVER_SPEED := 14.0
 
+## The trays the rolls lie in: how far past the grid they reach, their height.
+const TRAY_OUT := 14.0
+const TRAY_H := 92.0
+const PINE := Color("e6c896")
+const PINE_LIT := Color("f3ddb4")
+const PINE_DEEP := Color("b88f5c")
+
+## --- the moments ---
+## A knock: how far the pennies under it are driven (each `Motion.NUDGE_LAG`
+## after the one above, and less), how far the face dips on its foot, how
+## much the penny that knocked is squashed, and the light under it.
+const KNOCK_PX := 5.0
+const KNOCK_FADE := 0.8
+const RACK_PX := 4.0
+const SQUASH := 0.1
+const KNOCK_LIGHT := 0.32
+## Pennies of one side meeting: the light at each seam and the motes off it,
+## the hop and the lean of the ones that answer, and the step from one seam
+## to the next along a run of three.
+const JOIN_TIME := 0.75
+const JOIN_MOTES := 3
+const JOIN_HOP := -6.0
+const JOIN_LEAN := 0.16
+const JOIN_STEP := 0.07
+## A line of three stopped: the ring that closes on the penny that stopped it
+## and the shiver of the three.
+const BLOCK_TIME := 0.6
+const BLOCK_PX := 3.0
+## A slot filled to the top: its pennies settle and its frame glints.
+const LID_TIME := 0.7
+const LID_PX := 2.5
+## The four: the step from one winner to the next, how often the light and
+## the hop run the line again, and how far every other penny draws back into
+## its hole (a ring of the dark inside round it, never a shade).
+const RUN_STEP := 0.09
+const RUN_EVERY := 1.7
+const RUN_TRAVEL := 0.6
+const STEP_BACK := 0.86
+## A rack full with no line: every penny sinks once, a row after a row.
+const SIGH_PX := 6.0
+const SIGH_TIME := 0.7
+const SIGH_STEP := 0.05
+## A full slot tried: its pennies shiver.
+const FULL_PX := 3.0
+## The waiting penny: the flight from its roll and its swell on the way, how
+## it leans the way it goes, and how often it rocks while it is the player's.
+const FETCH := 0.28
+const AIR := 0.14
+const LEAN := 0.22
+const BECKON := 2.6
+
 var rules: RefCounted
 ## The rules' side the player is: its pennies are the sun's.
 var player := 0
@@ -139,6 +196,27 @@ var _line := PackedInt32Array()
 var _mood := ""
 var _won_at := -1.0
 var _shake_at := -10.0
+var _shake_col := -1
+## The moments, each by the clock it was set off on. The harness reads
+## `moments` (a kind and when it last began) to shoot one while it shows.
+var moments := {}
+var _knock_at := -10.0
+var _knock_col := -1
+var _knock_row := -1
+var _knock_k := 0.0
+## Each {at, look, cells, k0, n}: a run of a side through the penny just
+## landed, the cells in order along it, k0 the landed one's place in them.
+var _joins: Array[Dictionary] = []
+## {at, cell, cells}: the penny that stopped a line and the three it stopped.
+var _block := {}
+var _lid_at := -10.0
+var _lid_col := -1
+## The line's cells in order along it, and whether they are one straight run.
+var _line_order := PackedInt32Array()
+var _line_straight := false
+var _fetch_at := -10.0
+var _fetch_from := Vector2.ZERO
+var _wait_at := 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still or deaf else Control.MOUSE_FILTER_STOP
@@ -175,6 +253,8 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	_line = PackedInt32Array()
 	_mood = ""
 	_won_at = -1.0
+	_calm()
+	_fetch_at = -10.0
 	var wait := 0.0
 	if enter and not Motion.reduce and old.size() == Rules.CELLS:
 		# The bar under the rack is drawn and everything in it drops out, the
@@ -242,6 +322,7 @@ func rewind(cell: int) -> void:
 	_last = -1
 	_hint = -1
 	_line = PackedInt32Array()
+	_calm()
 	if Motion.reduce or look < 0:
 		_after(Motion.REDUCED_TIME, func() -> void: settled.emit())
 		_touch()
@@ -263,9 +344,19 @@ func set_hint(col: int) -> void:
 
 ## Whose penny waits over the rack: the rules' `side`, or -1 for nobody's.
 func set_waiting(side: int) -> void:
+	var was := _hover_look
 	_hover_look = -1 if side < 0 else look_of(side)
 	if side < 0:
 		_thinking = false
+	elif _hover_look != was:
+		_wait_at = _t
+		if rolls and not still and not Motion.reduce and _hover_look == 1:
+			# The moon's comes off the end of its roll, which lies just over
+			# where it waits. The sun's roll is under the rack: a penny flying
+			# up across the face read as one lying in the wrong hole.
+			_fetch_from = _roll_at(_hover_look, _roll_left()[_hover_look])
+			_fetch_at = _t
+			_busy(FETCH + 0.1)
 	_busy(0.3)
 	_touch()
 
@@ -291,12 +382,90 @@ func finish(outcome: String, line := PackedInt32Array()) -> void:
 	_over = -1
 	_down = false
 	_thinking = false
-	if not line.is_empty() and not Motion.reduce and _fx != null:
-		for i in line.size():
-			var at := point_of(mid(line[i]))
-			_after(0.1 + 0.09 * i, func() -> void: _fx.sparkle(at, Pal.SUN_SPARK))
+	_line_order = line.duplicate()
+	_line_order.sort()
+	_line_straight = _line_order.size() >= 2
+	for i in range(2, _line_order.size()):
+		if _line_order[i] - _line_order[i - 1] != _line_order[1] - _line_order[0]:
+			_line_straight = false
+	if not Motion.reduce:
+		if not line.is_empty():
+			_mark("run")
+		elif outcome == "draw":
+			_mark("sigh")
+			_busy(SIGH_TIME + SIGH_STEP * Rules.H + 0.2)
 	_busy(1.2)
 	_touch()
+
+func _mark(kind: String) -> void:
+	moments[kind] = _t
+
+## Nothing of a moment is left showing.
+func _calm() -> void:
+	_joins.clear()
+	_block = {}
+	_knock_col = -1
+	_lid_col = -1
+	_shake_col = -1
+	_line_order = PackedInt32Array()
+
+## A penny has come to rest in `cell`: what it made there, read off the rack
+## as it is shown.
+func _landed(cell: int, look: int) -> void:
+	_joins.clear()
+	_block = {}
+	if Motion.reduce:
+		return
+	var col := cell % Rules.W
+	var row := cell / Rules.W
+	var stopped := PackedInt32Array()
+	var longest := 1
+	for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]:
+		# the run of its own side through it
+		var run := PackedInt32Array([cell])
+		var k0 := 0
+		for way in [-1, 1]:
+			var x: int = col + d.x * way
+			var y: int = row + d.y * way
+			while x >= 0 and x < Rules.W and y >= 0 and y < Rules.H and _cells[x + y * Rules.W] == look + 1:
+				if way < 0:
+					run.insert(0, x + y * Rules.W)
+					k0 += 1
+				else:
+					run.append(x + y * Rules.W)
+				x += d.x * way
+				y += d.y * way
+		if run.size() >= 2:
+			_joins.append({"at": _t, "look": look, "cells": run, "k0": k0, "n": run.size()})
+			longest = maxi(longest, run.size())
+		# a line of the other side it stands in the way of: any four in a row
+		# through it whose other three are the other side's
+		for start in range(-3, 1):
+			var three := PackedInt32Array()
+			for i in 4:
+				var x: int = col + d.x * (start + i)
+				var y: int = row + d.y * (start + i)
+				if x < 0 or x >= Rules.W or y < 0 or y >= Rules.H:
+					break
+				var c := x + y * Rules.W
+				if c != cell and _cells[c] == 2 - look:
+					three.append(c)
+			if three.size() == 3:
+				for c in three:
+					if not stopped.has(c):
+						stopped.append(c)
+	if longest >= 2:
+		_mark("three" if longest >= 3 else "pair")
+		_busy(JOIN_TIME + JOIN_STEP * 4.0 + 0.1)
+	if not stopped.is_empty():
+		_block = {"at": _t, "cell": cell, "cells": stopped}
+		_mark("block")
+		_busy(BLOCK_TIME + 0.1)
+	if row == Rules.H - 1:
+		_lid_at = _t
+		_lid_col = col
+		_mark("lid")
+		_busy(LID_TIME + 0.1)
 
 ## Whether a penny is in the air, on its way down or back up.
 func is_busy() -> bool:
@@ -360,10 +529,17 @@ func _fall(delta: float) -> void:
 				p.hit = true
 				p.y = float(p.to)
 				p.v = -float(p.v) * BOUNCE
+				if not Motion.reduce:
+					_knock_at = _t
+					_knock_col = int(p.cell) % Rules.W
+					_knock_row = int(p.cell) / Rules.W
+					_knock_k = lerpf(0.5, 1.0, fell)
+					_mark("knock")
 			else:
 				_cells[int(p.cell)] = int(p.look) + 1
 				_last = int(p.cell)
 				_air.remove_at(i)
+				_landed(int(p.cell), int(p.look))
 				_busy(WATCH + 0.3)
 				_after(WATCH, func() -> void: settled.emit())
 				continue
@@ -432,6 +608,7 @@ func _gui_input(event: InputEvent) -> void:
 				chosen.emit(col)
 			else:
 				_shake_at = _t
+				_shake_col = col
 				_busy(0.4)
 				_cue("refused", randf_range(TICK_VARY.x, TICK_VARY.y))
 				refused.emit("full")
@@ -463,39 +640,115 @@ func _draw() -> void:
 		_glow = _build_glow()
 	_over_mesh = _build_over()
 	_shown = [_back, _front, _penny, _glow, _over_mesh]
+	# The face dips on its foot at a knock and shivers when the rack is full
+	# with no line; the foot, the trays and the shadow stay where they are.
+	var xf := _xf
+	var live := not Motion.reduce
+	if live:
+		var shift := Vector2(0.0, Motion.nudge_offset(_t - _knock_at, RACK_PX * _knock_k, Motion.NUDGE_TIME, 0.0))
+		if _mood == "draw" and _line.is_empty():
+			shift.x += Motion.shiver_offset(_t - _won_at, FULL_PX, 0.3)
+		xf = _xf * Transform2D(0.0, shift)
 	draw_mesh(_back, null, _xf)
 	var lit := _over if _down else -1
 	if lit >= 0:
-		draw_mesh(_glow, null, _xf * Transform2D(0.0, Vector2(lit * U, 0.0)))
+		draw_mesh(_glow, null, xf * Transform2D(0.0, Vector2(lit * U, 0.0)))
 	for c in Rules.CELLS:
 		if _cells[c] != 0:
-			draw_mesh(_penny[_cells[c] - 1], null, _xf * Transform2D(0.0, mid(c)))
+			draw_mesh(_penny[_cells[c] - 1], null, xf * (_cell_xf(c) if live else Transform2D(0.0, mid(c))))
 	for p: Dictionary in _air:
 		var a := 1.0
+		var squash := Vector2.ONE
 		if bool(p.spill):
 			a = clampf((SPACE_ROLLS.end.y + 200.0 - float(p.y)) / 300.0, 0.0, 1.0)
-		draw_mesh(_penny[int(p.look)], null, _xf * Transform2D(0.0, Vector2(float(p.x), float(p.y))), Color(1, 1, 1, a))
+		elif bool(p.hit):
+			# the knock flattens it once
+			var q := Motion.bump_scale(_t - _knock_at, SQUASH * _knock_k, Motion.BUMP_TIME) - 1.0
+			squash = Vector2(1.0 + q, 1.0 - q)
+		draw_mesh(_penny[int(p.look)], null, xf * Transform2D(0.0, squash, 0.0, Vector2(float(p.x), float(p.y) + (squash.x - 1.0) * PENNY_R)), Color(1, 1, 1, a))
 	if not _back_up.is_empty():
 		var f := clampf((_t - float(_back_up.at)) / REWIND, 0.0, 1.0)
 		var y := lerpf(float(_back_up.from), HOVER_Y, ease(f, 0.5))
-		draw_mesh(_penny[int(_back_up.look)], null, _xf * Transform2D(0.0, Vector2(float(_back_up.x), y)), Color(1, 1, 1, 1.0 - f * f))
-	draw_mesh(_front, null, _xf)
+		draw_mesh(_penny[int(_back_up.look)], null, xf * Transform2D(0.0, Vector2(float(_back_up.x), y)), Color(1, 1, 1, 1.0 - f * f))
+	draw_mesh(_front, null, xf)
 	if rolls and not still:
 		_draw_rolls()
 	if _hover_look >= 0 and _hover_a > 0.0:
-		var at := Vector2((_hover_x + 0.5) * U, HOVER_Y)
-		if interactive and not _down and not Motion.reduce:
-			at.y += sin(_t * 3.2) * 5.0
-		var shake := _t - _shake_at
-		if shake < 0.3 and not Motion.reduce:
-			at.x += sin(shake * 60.0) * 7.0 * (1.0 - shake / 0.3)
-		draw_mesh(_penny[_hover_look], null, _xf * Transform2D(0.0, Vector2.ONE * (0.8 + 0.2 * _hover_a), 0.0, at), Color(1, 1, 1, _hover_a))
+		var at := _hover_at()
+		var sc := 0.8 + 0.2 * _hover_a
+		var a := _hover_a
+		var lean := 0.0
+		if live:
+			var shake := _t - _shake_at
+			if shake < 0.3:
+				at.x += sin(shake * 60.0) * 7.0 * (1.0 - shake / 0.3)
+			# It leans the way it is going, and rocks now and then while it is
+			# the player's to drop.
+			lean = clampf((_hover_to - _hover_x) * LEAN, -0.4, 0.4)
+			if interactive and not _down:
+				lean += Motion.wobble_angle(fposmod(_t - _wait_at, BECKON) - BECKON * 0.5)
+			var u := (_t - _fetch_at) / FETCH
+			if u < 1.0:
+				# on its way from the roll, swelling at the middle of the way
+				var e := 1.0 - (1.0 - u) * (1.0 - u)
+				at = _fetch_from.lerp(at, e)
+				sc = lerpf(ROLL_R / PENNY_R, 1.0, e) * (1.0 + AIR * sin(PI * u))
+				a = 1.0
+				lean = 0.0
+		draw_mesh(_penny[_hover_look], null, _xf * Transform2D(lean, Vector2.ONE * sc, 0.0, at), Color(1, 1, 1, a))
 	if _over_mesh != null:
-		draw_mesh(_over_mesh, null, _xf)
+		draw_mesh(_over_mesh, null, xf)
 
-## Each side's pennies not yet played, lying in a roll: one fewer for the one
-## waiting over the rack or in the air.
-func _draw_rolls() -> void:
+## Where the waiting penny hangs.
+func _hover_at() -> Vector2:
+	var at := Vector2((_hover_x + 0.5) * U, HOVER_Y)
+	if interactive and not _down and not Motion.reduce:
+		at.y += sin(_t * 3.2) * 5.0
+	return at
+
+## A penny lying in `c` as it is this frame: driven down by a knock above it,
+## answering one of its side that landed beside it, shivering in a line that
+## was stopped or a slot that is full, hopping in the four or drawn back
+## into its hole beside it. Never called under reduce motion.
+func _cell_xf(c: int) -> Transform2D:
+	var at := mid(c)
+	var col := c % Rules.W
+	var row := c / Rules.W
+	var sc := 1.0
+	var lean := 0.0
+	if col == _knock_col and row < _knock_row:
+		var depth := _knock_row - row
+		at.y += Motion.nudge_offset(_t - _knock_at, KNOCK_PX * _knock_k * pow(KNOCK_FADE, depth - 1), Motion.NUDGE_TIME, Motion.NUDGE_LAG * depth)
+	if col == _lid_col:
+		at.y += Motion.nudge_offset(_t - _lid_at, LID_PX, Motion.NUDGE_TIME, Motion.NUDGE_LAG * row)
+	if col == _shake_col:
+		at.x += Motion.shiver_offset(_t - _shake_at, FULL_PX, 0.3)
+	if not _line.is_empty():
+		var since := _t - _won_at
+		var k := _line_order.find(c)
+		if k >= 0:
+			at.y += Motion.hop_lift(fposmod(since, RUN_EVERY) - 0.1 - RUN_STEP * k, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+		else:
+			var u := clampf((since - 0.25) / 0.4, 0.0, 1.0)
+			sc = lerpf(1.0, STEP_BACK, u * u * (3.0 - 2.0 * u))
+		return Transform2D(0.0, Vector2(sc, sc), 0.0, at)
+	for j: Dictionary in _joins:
+		var k: int = (j.cells as PackedInt32Array).find(c)
+		# the one that landed has only just come to rest: in a pair the other
+		# answers, in a three all of them do, one after another
+		if k >= 0 and (int(j.n) >= 3 or k != int(j.k0)):
+			var since: float = _t - float(j.at) - JOIN_STEP * absi(k - int(j.k0))
+			at.y += Motion.hop_lift(since, JOIN_HOP, Motion.HOP_TIME)
+			lean += Motion.wobble_angle(since, JOIN_LEAN)
+	if not _block.is_empty() and (_block.cells as PackedInt32Array).has(c):
+		at.x += Motion.shiver_offset(_t - float(_block.at) - 0.08, BLOCK_PX, 0.3)
+	if _mood == "draw":
+		at.y += Motion.hop_lift(_t - _won_at - SIGH_STEP * row, SIGH_PX, SIGH_TIME)
+	return Transform2D(lean, Vector2(sc, sc), 0.0, at)
+
+## How many pennies lie in each roll: one fewer for the one waiting over the
+## rack or in the air.
+func _roll_left() -> Array:
 	var left := [Rules.CELLS / 2, Rules.CELLS / 2]
 	for c in Rules.CELLS:
 		if _cells[c] != 0:
@@ -507,12 +760,33 @@ func _draw_rolls() -> void:
 		left[int(_back_up.look)] -= 1
 	if _hover_look >= 0:
 		left[_hover_look] -= 1
+	return left
+
+## The middle of the `i`th penny of a roll.
+static func _roll_at(look: int, i: int) -> Vector2:
 	var step := (GRID.x - 2.0 * ROLL_R) / (Rules.CELLS / 2 - 1)
+	return Vector2(ROLL_R + maxi(i, 0) * step, ROLL_BOTTOM_Y if look == 0 else ROLL_TOP_Y)
+
+## Each side's pennies not yet played, lying in a roll.
+func _draw_rolls() -> void:
+	var left := _roll_left()
 	var k := ROLL_R / PENNY_R
 	for look in 2:
-		var y := ROLL_BOTTOM_Y if look == 0 else ROLL_TOP_Y
 		for i in maxi(0, left[look]):
-			draw_mesh(_penny[look], null, _xf * Transform2D(0.0, Vector2(k, k), 0.0, Vector2(ROLL_R + i * step, y)))
+			draw_mesh(_penny[look], null, _xf * Transform2D(0.0, Vector2(k, k), 0.0, _roll_at(look, i)))
+
+## A pine tray lined with the felt of the rack's inside, seen from above: its
+## shadow, its walls and the floor inside them, darker under the near wall.
+static func _tray(b: Face.Builder, at: Vector2, sz: Vector2, wall := 8.0) -> void:
+	var r := sz.y * 0.5
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 7.0), sz, r), Color(0.1, 0.06, 0.02, 0.24))
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 4.0), sz, r), PINE_DEEP)
+	b.fan(Face.Builder.round_rect(at, sz, r), PINE)
+	b.stroke(Face.Builder.round_rect(at + Vector2(3.0, 3.0), sz - Vector2(6.0, 6.0), r - 3.0), 2.0, Color(PINE_LIT, 0.9), true)
+	var inner := at + Vector2(wall, wall)
+	var isz := sz - Vector2(wall, wall) * 2.0
+	b.fan(Face.Builder.round_rect(inner, isz, r - wall), INSIDE.darkened(0.2))
+	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 5.0), isz - Vector2(0.0, 5.0), r - wall), INSIDE.lightened(0.08))
 
 ## The shadow the rack throws on the deck, its wooden foot, and the dark
 ## inside seen through the holes.
@@ -520,6 +794,9 @@ func _build_back() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var foot_at := Vector2(-(FRAME + FOOT_OUT), GRID.y + FRAME * 0.5)
 	var foot := Vector2(GRID.x + 2.0 * (FRAME + FOOT_OUT), FOOT_H)
+	if rolls and not still:
+		for y: float in [ROLL_TOP_Y, ROLL_BOTTOM_Y]:
+			_tray(b, Vector2(-TRAY_OUT, y - TRAY_H * 0.5), Vector2(GRID.x + 2.0 * TRAY_OUT, TRAY_H))
 	Scenery.soft_disc(b, Vector2(GRID.x * 0.5, GRID.y + FRAME + FOOT_H * 0.7), GRID.x * 0.62, 30.0, Color(0.15, 0.08, 0.03, 0.3))
 	b.fan(Face.Builder.round_rect(foot_at + Vector2(0.0, 5.0), foot, 14.0), WOOD_DEEP)
 	b.fan(Face.Builder.round_rect(foot_at, foot - Vector2(0.0, 5.0), 14.0), WOOD)
@@ -592,6 +869,11 @@ func _build_glow() -> ArrayMesh:
 ## dot on the last penny dropped, the bulb's ring, the rings round a line.
 func _build_over() -> ArrayMesh:
 	var b := Face.Builder.new()
+	if not Motion.reduce:
+		_light_wait(b)
+		_light_knock(b)
+		_light_joins(b)
+		_light_lid(b)
 	if _down and _over >= 0:
 		var x := (_over + 0.5) * U
 		var full: bool = not rules.can(_over)
@@ -613,6 +895,9 @@ func _build_over() -> ArrayMesh:
 		var tip := Vector2(x, HOVER_Y + 26.0 + 6.0 * beat)
 		b.polygon(PackedVector2Array([tip + Vector2(-20.0, -28.0), tip + Vector2(20.0, -28.0), tip]), HINT)
 		_busy(0.2)
+	if not Motion.reduce:
+		_light_block(b)
+		_light_run(b)
 	if not _line.is_empty():
 		var since := _t - _won_at
 		for i in _line.size():
@@ -626,3 +911,103 @@ func _build_over() -> ArrayMesh:
 		if not Motion.reduce:
 			_busy(0.2)
 	return null if b.verts.is_empty() else b.mesh()
+
+# --- the moments' light: soft and round, all of it in the mesh over the face ---
+
+## A mote: a soft round light with a paler heart.
+static func _mote(b: Face.Builder, at: Vector2, r: float, col: Color, a: float) -> void:
+	Scenery.soft_disc(b, at, r, r, Color(col, a))
+	Scenery.soft_disc(b, at, r * 0.5, r * 0.5, Color(HALO, a))
+
+## The penny that is the player's to drop stands in a breath of light.
+func _light_wait(b: Face.Builder) -> void:
+	if _hover_look < 0 or not interactive or _down or _t - _fetch_at < FETCH:
+		return
+	var breath := 0.5 + 0.5 * sin(_t * 2.4)
+	var r := PENNY_R * (1.7 + 0.15 * breath)
+	Scenery.soft_disc(b, _hover_at(), r, r, Color(HALO, (0.2 + 0.14 * breath) * _hover_a))
+
+## Where a penny knocked: a low breath of light along what it landed on.
+func _light_knock(b: Face.Builder) -> void:
+	var since := _t - _knock_at
+	if _knock_col < 0 or since < 0.0 or since >= KNOCK_LIGHT:
+		return
+	var u := since / KNOCK_LIGHT
+	var out := 1.0 - (1.0 - u) * (1.0 - u)
+	var at := mid(_knock_col + _knock_row * Rules.W) + Vector2(0.0, PENNY_R)
+	Scenery.soft_disc(b, at, U * (0.45 + 0.5 * out), 20.0 + 14.0 * out, Color(HALO, 0.75 * _knock_k * (1.0 - u)))
+
+## Pennies of one side that now touch: light in the side's own colour where
+## each two meet, spreading and fading, and motes of it drifting off. Along a
+## run of three it goes from seam to seam, and brighter.
+func _light_joins(b: Face.Builder) -> void:
+	for j: Dictionary in _joins:
+		var cells: PackedInt32Array = j.cells
+		var col: Color = (SHINE[int(j.look)] as Color).lightened(0.25)
+		var strong: bool = int(j.n) >= 3
+		for i in cells.size() - 1:
+			# the seam nearest the penny that landed lights first
+			var away := mini(absi(i - int(j.k0)), absi(i + 1 - int(j.k0)))
+			var since: float = _t - float(j.at) - JOIN_STEP * away
+			if since < 0.0 or since >= JOIN_TIME:
+				continue
+			var u := since / JOIN_TIME
+			var out := 1.0 - (1.0 - u) * (1.0 - u)
+			var seam := (mid(cells[i]) + mid(cells[i + 1])) * 0.5
+			var reach := (44.0 if strong else 36.0) + 34.0 * out
+			Scenery.soft_disc(b, seam, reach, reach, Color(col, (1.0 if strong else 0.85) * (1.0 - u)))
+			Scenery.soft_disc(b, seam, reach * 0.5, reach * 0.5, Color(HALO, 0.85 * (1.0 - u)))
+			for m in JOIN_MOTES:
+				var a := TAU * m / JOIN_MOTES + float(j.at) * 3.0 + i * 1.3
+				var at := seam + Vector2(cos(a), sin(a) * 0.8) * (16.0 + 46.0 * out) + Vector2(0.0, -18.0 * u)
+				_mote(b, at, 13.0 * (1.0 - 0.5 * u), col.lightened(0.4), 1.0 - u)
+
+## A slot filled to the top: its frame glints once and light lies on its lid.
+func _light_lid(b: Face.Builder) -> void:
+	var since := _t - _lid_at
+	if _lid_col < 0 or since < 0.0 or since >= LID_TIME:
+		return
+	var u := since / LID_TIME
+	var a := sin(minf(u * 3.0, 1.0) * PI * 0.5) * (1.0 - u)
+	b.stroke(Face.Builder.round_rect(Vector2(_lid_col * U + 3.0, 3.0), Vector2(U - 6.0, GRID.y - 6.0), 12.0), 4.0, Color(HALO, 0.8 * a), true)
+	Scenery.soft_disc(b, Vector2((_lid_col + 0.5) * U, -FRAME * 0.5), U * 0.62, 22.0, Color(HALO, 0.9 * a))
+
+## A line of three stopped: a ring of light closes on the penny that stopped
+## it.
+func _light_block(b: Face.Builder) -> void:
+	if _block.is_empty():
+		return
+	var since := _t - float(_block.at)
+	if since < 0.0 or since >= BLOCK_TIME:
+		return
+	var u := since / BLOCK_TIME
+	var shut := 1.0 - (1.0 - u) * (1.0 - u) * (1.0 - u)
+	var r := PENNY_R + 2.0 + 30.0 * (1.0 - shut)
+	var a := sin(minf(u * 4.0, 1.0) * PI * 0.5) * (1.0 - u * u)
+	var at := mid(int(_block.cell))
+	b.stroke(Face.Builder.ring(at, r, r), 6.0, Color(HALO, 0.95 * a), true)
+	Scenery.soft_disc(b, at, r + 26.0, r + 26.0, Color(HALO, 0.3 * a))
+
+## The four: light comes up on one after another as each hops, a soft light
+## runs a straight line from end to end, and motes rise off them once.
+func _light_run(b: Face.Builder) -> void:
+	if _line_order.is_empty() or _line.is_empty():
+		return
+	var since := _t - _won_at
+	var cyc := fposmod(since, RUN_EVERY) - 0.1
+	var n := _line_order.size()
+	for k in n:
+		var at := mid(_line_order[k])
+		var lvl := Motion.flash_level(cyc - RUN_STEP * k)
+		if lvl > 0.0:
+			Scenery.soft_disc(b, at, PENNY_R * 1.7, PENNY_R * 1.7, Color(HALO, 0.55 * lvl))
+		var up := (since - 0.2 - RUN_STEP * k) / 1.1
+		if up > 0.0 and up < 1.0:
+			for m in 3:
+				var a := TAU * m / 3.0 + k * 1.7
+				_mote(b, at + Vector2(cos(a) * (26.0 + 30.0 * up), sin(a) * 18.0 - 70.0 * up), 12.0 * (1.0 - 0.5 * up), Pal.SUN_RAY.lightened(0.5), 1.0 - up)
+	if _line_straight:
+		var u := cyc / (RUN_TRAVEL + RUN_STEP * n)
+		if u > 0.0 and u < 1.0:
+			var at := mid(_line_order[0]).lerp(mid(_line_order[n - 1]), u)
+			Scenery.soft_disc(b, at, 70.0, 70.0, Color(HALO, 0.7 * sin(u * PI)))

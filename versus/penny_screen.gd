@@ -42,6 +42,7 @@ const HAPTICS := {"hint": Haptics.GOOD, "win": Haptics.WIN, "lose": Haptics.LOSE
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const Face = preload("res://ui/faces/face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Online = preload("res://versus/online/online.gd")
 
@@ -51,6 +52,11 @@ const MARGIN := 40
 const GAP := 20
 const SCORE_H := 128.0
 const DECK_PAD := 18
+## The purse on the deck: its cloth and its cord.
+const PURSE := Color("c8695f")
+const PURSE_LIT := Color("de8a7c")
+const PURSE_DEEP := Color("9c4b48")
+const CORD := Color("fbeedd")
 const BACKDROP_BLEED := 90.0
 const HINTS := 3
 ## Seconds: the least the computer is seen to think, how long its penny hangs
@@ -274,14 +280,26 @@ func _build_deck(sz: Vector2) -> ArrayMesh:
 	for k in 3:
 		b.stroke(Face.Builder.round_rect(Vector2.ONE * (5.0 + k * 10.0), sz - Vector2.ONE * (10.0 + k * 20.0), radius - 5.0 - k * 10.0),
 			10.0, Color(0.25, 0.12, 0.05, 0.08), true)
+	# the lamp's light lies in a pool round the rack
+	var stand := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size)
+	Scenery.soft_disc(b, stand.get_center(), stand.size.x * 0.66, stand.size.y * 0.6, Color(1.0, 0.93, 0.74, 0.3))
+	# the purse the pennies came in, under the sun's tray on the side the
+	# thumb leaves in sight, where the deck has the room for it
+	var purse_r := stand.size.x * 0.055
+	var room := sz.y - stand.end.y
+	var purse := Rect2()
+	if room >= purse_r * 2.2 + 34.0:
+		var at := Vector2(stand.position.x + stand.size.x * 0.17, stand.end.y + room * 0.5 + purse_r * 0.25)
+		_purse(b, at, purse_r)
+		purse = Rect2(at - Vector2.ONE * purse_r, Vector2.ONE * purse_r * 2.0).grow(purse_r * 0.9)
 	# petals and leaves blown on, never under the board
-	var keep_out := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size).grow(16.0)
+	var keep_out := stand.grow(16.0)
 	var placed := 0
 	var tries := 0
 	while placed < 14 and tries < 300:
 		tries += 1
 		var p := Vector2(rng.randf_range(40.0, sz.x - 40.0), rng.randf_range(34.0, sz.y - 34.0))
-		if keep_out.has_point(p):
+		if keep_out.has_point(p) or purse.has_point(p):
 			continue
 		var ang := rng.randf() * TAU
 		var pts := PackedVector2Array()
@@ -302,6 +320,40 @@ func _build_deck(sz: Vector2) -> ArrayMesh:
 				Color(Pal.LEAF_DEEP, 0.7))
 		placed += 1
 	return b.mesh()
+
+## A cloth purse lying on the deck, its neck gathered by a cord and a sun
+## stitched on its side: `r` is the half of its width.
+static func _purse(b: Face.Builder, c: Vector2, r: float) -> void:
+	var neck := Vector2(0.74, -0.74)
+	Scenery.soft_disc(b, c + Vector2(r * 0.1, r * 0.55), r * 1.5, r * 0.8, Color(0.15, 0.08, 0.03, 0.4))
+	# the frill past the cord, three folds of it
+	for k in 3:
+		var d := neck.rotated((k - 1) * 0.42)
+		b.ellipse(c + d * r * 1.42 + Vector2(0.0, r * 0.06), r * 0.3, r * 0.3, PURSE_DEEP)
+		b.ellipse(c + d * r * 1.42, r * 0.28, r * 0.28, PURSE_LIT if k == 1 else PURSE)
+	b.ellipse(c + Vector2(0.0, r * 0.1), r * 1.04, r * 0.9, PURSE_DEEP)
+	b.ellipse(c, r, r * 0.86, PURSE)
+	b.fan(PackedVector2Array([c + neck.orthogonal() * r * 0.5, c + neck * r * 1.2 + neck.orthogonal() * r * 0.3,
+		c + neck * r * 1.2 - neck.orthogonal() * r * 0.3, c - neck.orthogonal() * r * 0.5]), PURSE)
+	b.stroke(Face.Builder.arc_points(c, r * 0.74, PI * 1.02, PI * 1.42), r * 0.1, Color(PURSE_LIT, 0.9))
+	# the folds the cord gathers
+	for k in 3:
+		var side := neck.orthogonal() * (k - 1) * r * 0.2
+		b.stroke(PackedVector2Array([c + neck * r * 0.62 + side * 1.5, c + neck * r * 1.0 + side]), r * 0.05, Color(PURSE_DEEP, 0.7))
+	# the cord, tied, its two ends lying loose
+	var tie := c + neck * r * 1.08
+	b.stroke(PackedVector2Array([tie + neck.orthogonal() * r * 0.36, tie - neck.orthogonal() * r * 0.36]), r * 0.13, CORD)
+	b.stroke(Face.Builder.bezier2(tie, tie + Vector2(r * 0.5, r * 0.1), tie + Vector2(r * 0.62, r * 0.62), 8), r * 0.07, CORD)
+	b.stroke(Face.Builder.bezier2(tie, tie + Vector2(-r * 0.1, r * 0.5), tie + Vector2(r * 0.22, r * 0.86), 8), r * 0.07, CORD)
+	b.disc(tie + Vector2(r * 0.62, r * 0.62), r * 0.08, CORD)
+	b.disc(tie + Vector2(r * 0.22, r * 0.86), r * 0.08, CORD)
+	b.disc(tie, r * 0.11, CORD)
+	# the sun, stitched
+	var sun := c + Vector2(-r * 0.12, r * 0.1)
+	b.disc(sun, r * 0.17, CORD)
+	for k in 8:
+		var d := Vector2.from_angle(TAU * k / 8.0)
+		b.stroke(PackedVector2Array([sun + d * r * 0.27, sun + d * r * 0.4]), r * 0.07, CORD)
 
 static func _plank_rect(at: Vector2, sz: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])
