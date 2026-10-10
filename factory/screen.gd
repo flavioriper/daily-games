@@ -515,7 +515,6 @@ func _play_events() -> void:
 			"plate":
 				_fx.cue("buy")
 				look_at_plate(e.plate)
-				Analytics.track("factory_plate", {"kind": String(e.kind), "plates": sim.plates.size()})
 			"sale":
 				# the quiet tick of something sold, and the count on its way up
 				_quiet.cue("chop", 1.2 * _vary(), -9.0)
