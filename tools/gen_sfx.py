@@ -3169,61 +3169,118 @@ SETS = {
         # chop's cut, and no row is written from it).
         "no":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-8,-8"),
     },
-    # Nightlight (arcade/nightlight_screen.gd, 2026-10-06; made quieter and
-    # darker on 2026-10-09, when the user had heard it: "too harsh, I want
-    # something way more cozier, subtle"). Three cues go on for as long as
-    # the game does and are clicks, cut short, the quietest of the set:
-    # `pour` (the press that braked something, five a second at most),
-    # `light` (a mote of light landing on its plate, a short run up) and
-    # `eat` (a solid falling into the star). Everything else happens now and
-    # then and may be a note: a body torn, a stage of the chain lighting
-    # (five a life at most), the star going dim and waking, the two powers
-    # offered, one taken, a tile bought or refused, and the two ends with
-    # the small star that comes after. Every cue is rolled off (`warm`) and
-    # eased in (`ease`), and no note peaks above -11 but the supernova,
-    # whose thump is followed by low notes because a whump alone is not
-    # there on a phone's speaker. A prompt and its style together are 450
-    # characters at most.
+    # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Redone 2026-10-10
+    # against the cozy rules (docs/agents/sound.md), the fifty-second set of
+    # the redo, with Beeline's below, and with it the last. The set was
+    # heard on 2026-10-09 as "too harsh" and made dark and quiet, and a
+    # phone did not play it: ten of fourteen read -27 to -57 dB high-passed
+    # at 400 Hz (HEARTH_TUNE's notes at 220 to 350 Hz, felt taps at 135 and
+    # 157 Hz). None kept: `eat` and `pick` passed, but the set is in one
+    # tuning now. Three new takes, one call each: `pour` (a hollow wooden
+    # block set down on felt, 753 Hz), `no`'s (a lighter button, 529 Hz, one
+    # tock) and one muffled kalimba note, `buy`'s (375 Hz at -25 dB, so a
+    # phrase's steps are 2 to 10 up: 421 to 668 Hz). `light`, `eat` and
+    # `pick` are the button's take, the star's life and the two ends the
+    # note's, `tear` Hedgehogs' gust, of the same prompt. Every tick is
+    # `tight`. Nothing new is a pat on wool, a mallet, a pebble, beads, a
+    # tongue drum, a knock, a whoomp or an exhale; no two phrases share a
+    # contour and none peaks above -8.
     "nightlight": {
-        "pour":   ("one soft low muffled pat of a fingertip on a thick wool blanket over a wooden table, a dull round 'pup', very short and quiet", 0.5, -24, HEARTH_TAP, "warm:2400", "cut:0.11", "tight", "ease:0.01"),
-        "light":  ("one very soft low tap of a felt mallet on a small hollow wooden box, a round dull 'tok', very short and quiet", 0.5, -22, HEARTH_TAP, "warm:2800", "cut:0.13", "tight", "ease:0.008"),
-        "eat":    ("one soft low round 'plop' of a small pebble dropped into a felt-lined wooden bowl, dull and muffled, short", 0.5, -18, HEARTH_TAP, "warm:2800", "cut:0.22", "tight", "ease:0.01"),
-        "tear":   ("three soft low muffled taps of small wooden beads falling one after another on a wool blanket, dull and round, gentle, short", 0.6, -18, HEARTH_TAP, "warm:1800", "ease:0.015"),
-        "ignite": ("one low warm round note on the tongue drum, then one soft kalimba note blooming under it, something glowing deep inside, slow, about one second", 1.3, -11, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "dim":    ("two slow soft low notes stepping down on the tongue drum, a lamp turned low, gentle and kind, never sad", 1.0, -14, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "wake":   ("two soft low rising notes on the kalimba, a small lamp coming back on, warm, short", 0.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "pick":   ("three slow soft rising notes on the kalimba, a quiet choice being offered, short", 0.9, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "perk":   ("one warm low kalimba pluck with one soft tongue drum note under it, a small gift taken, short", 0.7, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "buy":    ("two soft low rising notes on the kalimba, warm and woody, something made a little better, short", 0.6, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        # the first take's knock, kept: one asked for on felt came back with nothing above 400 Hz
-        "no":     ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -16, ARCADE, "warm:4500", "ease:0.012"),
-        "nova":   ("a soft breath drawn in, one big round soft low 'whoomp' of a heavy wool blanket shaken out, then a few slow soft low kalimba and tongue drum notes falling far apart for three seconds, fading away", 5.0, -8, HEARTH_TUNE, "warm:5500", "ease:0.03"),
-        "fade":   ("one long slow soft exhale of air through wool, with four slow gentle low kalimba notes stepping down far apart over it, something letting go, calm and kind, never sad", 5.0, -12, HEARTH_TUNE, "warm:5000", "ease:0.04"),
-        "born":   ("three slow soft rising notes on the kalimba ending on one warm tongue drum note, a new little light beginning, hopeful, short", 1.4, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
+        # The press that braked something, five a second at most under a
+        # held finger (FELT): the block, one tock from 0 ms, cut ahead of
+        # the take's second knock (0.18 s behind the first). No row is
+        # written from it.
+        "pour":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        # A mote of light landing on its plate, a semitone a landing up five
+        # (the screen's LIGHT_RUN): the button's take two steps up, so that
+        # its run is 630 to 841 Hz and never eat's notch.
+        "light":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.08", "body:320", "tight", "notes:0:2"),
+        # A solid swallowed by the star: the button's take as it came, one
+        # low notch, played lower and louder the bigger the body was.
+        "eat":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.14", "body:320", "tight"),
+        # A body torn. Its pieces fall in on the same frames and are eat's
+        # notches, so this is air: Hedgehogs' gust.
+        "tear":   ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # The star's life, from the one note. A stage of the chain lit, the
+        # fullest: four up.
+        "ignite": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,7,10", "cut:1.1"),
+        # Gone dim: two slow ones down.
+        "dim":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:7,5", "cut:0.9"),
+        # Lit again: two alike and a third up.
+        "wake":   ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:2,2,5", "cut:1.0"),
+        # The two powers offered: a card set down, the button's take, two
+        # notches up.
+        "pick":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-2,1"),
+        # A power or a perk taken: two notes a fourth apart, all but
+        # together.
+        "perk":   ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:2,7", "cut:0.6"),
+        # A tile bought: two quiet notes up a third.
+        "buy":    ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:3,7", "cut:0.6"),
+        # What the light does not reach: two low notches alike.
+        "no":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-3,-3"),
+        # The supernova: six notes up and over, the longest phrase of the
+        # set. The screen starts it NOVA_LEAD (0.65 s) before the core has
+        # fallen in, and the third note, the top, is written at 0.65 s.
+        "nova":   ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.325:3,7,10,7,5,2", "cut:2.3"),
+        # A star letting go (a fade, a nebula): four slow ones down, far
+        # apart, over before the small star comes up (4.2 s at the least).
+        "fade":   ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.6:9,7,5,2", "cut:2.5"),
+        # The small star after an end or a Start over: three up.
+        "born":   ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.18:2,5,9", "cut:1.0"),
     },
     # Beeline (arcade/beeline_screen.gd, 2026-10-09): a bee flown through the
-    # gaps in a garden's hedges. Two cues never stop and are dull low taps,
-    # the quietest of the set: `flap` (every beat of the wings, two or three
-    # a second) and `pass` (a gap behind her, one every second and a
-    # quarter). The rest happens now and then: a hedge met, the grass, a
-    # dewdrop bursting, a ribbon (four a run at most) and the run's two
-    # ends. Nightlight's lesson is kept: low, dark, quiet, eased in, no
-    # bell and nothing bright. The same day the user heard the rewards and
+    # gaps in a garden's hedges. Two cues never stop: `flap` (every beat of
+    # the wings, two or three a second) and `pass` (a gap behind her, one
+    # every second and a quarter). The rest happens now and then: a hedge
+    # met, the grass, a dewdrop bursting, a ribbon (four a run at most) and
+    # the run's two ends. The day it was made the user heard the rewards and
     # nothing else: `flap`, `pass` and `land` were HEARTH_TAP's felt at -25,
     # -21 and -16 under a 2400-3200 Hz roll-off, which left nothing above
-    # 400 Hz for a phone's speaker (-40 dB and under). They are dry taps on
-    # thin wood now, still with no note, at -15, -13 and -12 and rolled off
-    # near 5 kHz.
+    # 400 Hz for a phone's speaker (-40 dB and under). That lesson stands:
+    # a tap that never stops is quiet, and it keeps its body over 400 Hz.
     "beeline": {
-        "flap":      ("one small soft dry tap of a fingertip on a thin smooth wooden box, a light round woody 'tup' with a clear body, gentle, very short", 0.5, -15, FOLEY, "warm:4800", "cut:0.1", "tight", "ease:0.006"),
-        "pass":      ("one soft dry tap of a small wooden mallet on a small hollow wooden block, a round woody 'tok' with a clear body, gentle, very short", 0.5, -13, FOLEY, "warm:5000", "cut:0.14", "tight", "ease:0.006"),
-        "bump":      ("a small soft thing bumping into a leafy garden hedge, one dull soft thud and a short hush of leaves, gentle, not harsh, short", 0.7, -14, GROVE, "warm:4500", "ease:0.012"),
-        "land":      ("a small soft thing dropping onto thick grass, one soft plop with a short dry rustle of grass blades, gentle, very short", 0.5, -12, GROVE, "warm:5000", "cut:0.3", "ease:0.01"),
-        "dew":       ("one soft round low water drop 'bloop' falling into a small wooden bowl of water, gentle and dull, short", 0.6, -15, JETTY, "warm:4500", "ease:0.012"),
-        "ribbon":    ("two soft low rising notes on the kalimba, warm and woody, a small prize won, short", 0.7, -12, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "start":     ("three slow soft rising notes on the kalimba, a quiet morning in a garden beginning, short", 1.0, -13, HEARTH_TUNE, "warm:5000", "ease:0.015"),
-        "game_over": ("three soft slow descending notes on a low kalimba, gentle and kind, never sad, good try", 1.5, -12, HEARTH_TUNE, "warm:5500", "ease:0.02"),
-        "new_best":  ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # fifty-third set of the redo and the last, with Nightlight's above.
+        # None kept. Three new takes, one call each: `pass` (a hollow wooden
+        # block set down on felt, 566 Hz raw, its tock 0.11 s into the take
+        # and alone), `flap` (a lighter button, 562 Hz raw, one tock from
+        # 0 ms) and one muffled kalimba note, `start`'s (375 Hz at -28 dB, so
+        # the phrases are written 2 to 9 steps up, 421 to 631 Hz). bump and
+        # land are pass's take; dew, ribbon, game_over and new_best the
+        # note's. Every tick is `tight`. Nothing new is a fingertip, a
+        # mallet, leaves, grass or a drop of water (land's take was 96% above
+        # 3 kHz, dew sat at 1.2 kHz, flap and new_best had most of themselves
+        # under 300 Hz, ribbon's take was empty at -40 dB), and nothing is a
+        # wing, a buzz or a whirr.
+        # The tap, the constant action of the whole game: "a really subtle
+        # click", never silence and never a note. The button's one notch, cut
+        # at 0.06 s, and the quietest file of the set by 7 dB. The screen
+        # plays it as it is, varied by 0.94 to 1.06, so -22 is what a phone
+        # gets (-22.3 high-passed at 400 Hz): a decibel over Peapod's shot,
+        # and the floor of the measure is -24. Turn it up here, not down.
+        "flap":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -22, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        # A gap behind her: the block, one tock. A beat of the wings can fall
+        # on its frame, so it is the other take; the screen climbs it under
+        # two semitones across ten gaps.
+        "pass":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        # A hedge met, the end of the run: pass's take, one notch five steps
+        # down, the loudest tick.
+        "bump":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        # The grass, a moment after the hedge or by itself: pass's take, two
+        # low notches alike, two steps under the hedge's.
+        "land":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.28", "body:320", "tight", "notes:0.1:-7,-7"),
+        # A dewdrop bursting in place of the bump, and the Second chance
+        # taken: one note and no more, so it is never pass's tick twice.
+        "dew":       ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:6", "cut:0.5"),
+        # A ribbon, on the frame its gap's tick sounds: two quick notes up a
+        # fourth. The screen plays the fourth ribbon 18% up, 663 Hz at most.
+        "ribbon":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.09:2,7", "cut:0.6"),
+        # A run beginning: three notes up, a third and a third.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,6,9", "cut:0.9"),
+        # The end card: three slow ones down, start's turned over.
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,2", "cut:1.3"),
+        # A best passed: five up a step at a time, the longest rise.
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
 }
 

@@ -104,18 +104,35 @@ const SAVE_GAP := 5.0
 ## several a second.
 ## The set was heard on 2026-10-09 and was "too harsh": the files are
 ## darker and 4 to 6 dB down, and what is added here is less (`light` at -6
-## up LIGHT_RUN semitones, `eat` at -4 at most).
+## up LIGHT_RUN semitones, `eat` at -4 at most; -2 since the redo below).
+## Redone on 2026-10-10 against the cozy rules (docs/agents/sound.md): made
+## dark and quiet, a phone did not play ten of the fourteen. The ticks are
+## wood on felt at 530 to 750 Hz (`pour` a block, `light`, `eat`, `pick` and
+## `no` a lighter button), the star's life and its ends phrases of one
+## muffled kalimba note, `tear` a puff of air. So nothing is played higher
+## to be heard (LOW_TAP), `eat` is held inside five semitones and has 2 dB
+## back (EAT_PITCH), and the ticks under a finger vary by TICK_VARY.
 const EAT_GAP := 0.12
+## `eat` by the body's radius: 1.0 for the smallest down to 0.8, which with
+## its 3% either way is inside five semitones. It was
+## clampf(1.25 - 0.045 * r, 0.7, 1.15), near nine.
+const EAT_PITCH := Vector3(1.044, 0.02, 0.8)
+## A tick that repeats is never the same twice: this much either way.
+const TICK_VARY := 0.06
 ## The run of `light` clicks climbs this many semitones and stays there: a
 ## whole octave up, the tick was the sharpest thing in the game (the user,
 ## 2026-10-09: "too harsh").
 const LIGHT_RUN := 5
-## `light` and `pour` are dull taps whose body sits under 300 Hz, where a
-## phone's speaker has nothing: they are played this much higher.
-const LOW_TAP := 1.6
+## `light` and `pour` were dull taps whose body sat under 300 Hz, where a
+## phone's speaker has nothing, and were played 1.6 times higher. Their
+## takes sit at 630 and 740 Hz since 2026-10-10 and are played as they are:
+## at 1.6 the run of `light` would top out at 1.35 kHz.
+const LOW_TAP := 1.0
 const TEAR_GAP := 0.3
-## The supernova's take is a breath and then the thump: it is started this
-## long before the core has fallen in, so the thump is the layers leaving.
+## The supernova's take was a breath and then the thump: it is started this
+## long before the core has fallen in, so the thump was the layers leaving.
+## Since 2026-10-10 it is six notes up and over with no thump, and the top
+## note is written this far in (tools/gen_sfx.py, `nova`).
 const NOVA_LEAD := 0.65
 const HAPTICS := {"pour": Haptics.TAP, "buy": Haptics.BUMP, "perk": Haptics.BUMP, "no": Haptics.WARN, "ignite": Haptics.BUMP, "nova": Haptics.THUD,
 	"fade": Haptics.BUMP}
@@ -1261,7 +1278,7 @@ func _play_events() -> void:
 				var now := Time.get_ticks_msec()
 				if now - _tore_at >= int(TEAR_GAP * 1000.0):
 					_tore_at = now
-					_fx.cue("tear", randf_range(0.92, 1.08))
+					_fx.cue("tear", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 			"shine":
 				# the star's own light, off its own face, wherever the camera has it
 				_motes.drop(origin * sky.world(Vector2.ZERO), float(e.e) * ORBS, 1)
@@ -1290,7 +1307,9 @@ func _hear_eaten(m: float) -> void:
 		return
 	_ate_at = now
 	var r := Sim.body_r(m)
-	_quiet.cue("eat", clampf(1.25 - 0.045 * r, 0.7, 1.15) * randf_range(0.97, 1.03), clampf(-11.0 + 0.6 * r, -10.0, -4.0))
+	# it was -11.0 + 0.6 * r between -10 and -4: at -10 the file reads -25 dB
+	# on a phone's side, so 2 dB are given back
+	_quiet.cue("eat", clampf(EAT_PITCH.x - EAT_PITCH.y * r, EAT_PITCH.z, 1.0) * randf_range(0.97, 1.03), clampf(-9.0 + 0.6 * r, -8.0, -2.0))
 
 ## A line over the sky's head, for a few seconds.
 func _say(key: String) -> void:
@@ -1665,7 +1684,7 @@ func _brake(px: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _felt_at >= int(FELT * 1000.0):
 		_felt_at = now
-		_fx.cue("pour", LOW_TAP * randf_range(0.94, 1.08))
+		_fx.cue("pour", LOW_TAP * randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 	_dirty = true
 
 ## Held, a finger brakes again where it is now, as often as Flow lets it.

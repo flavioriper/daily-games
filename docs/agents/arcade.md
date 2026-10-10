@@ -1638,6 +1638,21 @@ supernovas (`Sim.kept()`), not a best.
       nova, perk, pick, pour, tear and wake were asked for and loaded;
       `ignite` and `no` are not reached by that run. The takes and levels
       are mine again: the user names the ones to redo.
+  - **Redone against the cozy rules (2026-10-10), unheard.** Dark and
+    quiet, a phone did not play ten of the fourteen (-27 to -57 dB
+    high-passed at 400 Hz). All fourteen are new, from three takes and a
+    borrowed puff: `pour` a hollow wooden block on felt, `light`, `eat`,
+    `pick` and `no` a lighter button's notches, `ignite`, `born`, `wake`,
+    `dim`, `fade`, `nova`, `buy` and `perk` phrases of one muffled kalimba
+    note (each its own contour, none above -8), `tear` a puff of air.
+    At play: `LOW_TAP` is 1.0 (it was 1.6: `pour` and `light` are no
+    longer played higher), `pour` and `tear` vary by `TICK_VARY` (0.94 to
+    1.06), `eat` runs 1.0 down to 0.8 by the body's size (`EAT_PITCH`; it
+    was 1.15 to 0.7) between -8 and -2 (-10 and -4); `light` is as it was.
+    **The supernova has no thump any more**: `NOVA_LEAD` and the hand's
+    thud are where they were, and the phrase's top note is written at
+    0.65 s. `nova` is 2.2 s where 3.5 and `fade` 2.3 where 5.0. The
+    detail is the set's row in `docs/agents/sound.md`.
   - **And again an hour later: "still the same harsh terrible sounds".**
     Two things were wrong with the pass above. **The game was playing the
     old files**: Godot plays `.godot/imported/*.oggvorbisstr`, and nothing
