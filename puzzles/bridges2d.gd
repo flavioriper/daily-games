@@ -107,10 +107,10 @@ const DUSK := Color(0.74, 0.76, 0.92)
 const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
-## The streak: a note up the pentatonic from the second right plank, the
-## bubble from the third, confetti at five and ten.
+## The streak: a tick a semitone higher from the second right plank, five in
+## all, the bubble from the third, confetti at five and ten.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -3618,7 +3618,7 @@ func _draw_coach(t: float) -> void:
 
 ## A right plank (on Hard and Insane the answer's; on Easy and Medium one
 ## that pushes nothing over its number, which reveals nothing) builds the
-## streak -- a note up the pentatonic from the second, the bubble from the
+## streak -- a tick a semitone higher from the second, the bubble from the
 ## third, confetti at five and ten.
 func _on_right(key: String) -> void:
 	if is_done() or state.is_solved():

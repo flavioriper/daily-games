@@ -1129,41 +1129,60 @@ SETS = {
     # felt, gentle water and kalimba: the hollow "bonk" and the tape-rewind
     # undo read as a toy or a scold, as they did on Sudoku and Mushroom Patch.
     "bridges": {
-        "place":    ("a single soft muffled wooden plank laid down on a little dock with a tiny gentle water lap underneath, warm and hushed, very short", 0.5, -9, COZY),
-        "remove":   ("a soft short wooden plank lifted off a little dock with a tiny drip of water, gentle and quiet, very short", 0.5, -12, COZY),
-        "met":      ("a short happy two-note soft kalimba pluck rising, a little island complete, warm and round", 0.6, -8),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # fifteenth set of the redo, as Sudoku's above. Kept from the first
+        # set, as they were: over, locked, check_ok, split, love, dance,
+        # heart_back and the boat; met, twirl and heart_lost rolled off.
+        # Nothing here is a plank's creak, a drip, a splash, a bell, a
+        # glockenspiel, a music box or a celesta any more. place and remove
+        # are the two things a finger does all day, so they are the plainest;
+        # combo is a tick the board pitches, not past five semitones. Every
+        # tick is `tight`. Borrowed takes: check is Code Break's and confetti
+        # Binairo's, of the same prompts; enter is place's, undo and sink
+        # remove's, ruled join's. The phrases' steps are set by each take's
+        # own note, so that every note lands between 400 and 700 Hz.
+        "place":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # A lift is a lighter thing set down.
+        "remove":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "met":      ("a short happy two-note soft kalimba pluck rising, a little island complete, warm and round", 0.6, -10, STYLE, "warm:2400", "body:300"),
         "over":     ("a tiny soft kalimba note with a gentle little wobble, a kind 'too many', muffled and warm, very short", 0.5, -13),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft wooden creak and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny water shimmer, cozy and kind", 1.0, -8),
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,6,10", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
-        "reset":    ("a soft quick ripple of little wooden planks being gathered up with gentle water laps, hushed and cozy", 1.0, -11, COZY),
-        "enter":    ("a soft airy cascade of tiny muffled wooden pops and a gentle calm water lap, little islands rising out of a quiet pond, cozy and hushed", 1.0, -11, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
-        # The network: two groups joined, and the near-miss named.
-        "join":     ("a sweet little rising pair of soft music box notes with a tiny sparkle, two friends holding hands, warm and happy", 0.8, -11),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The islets rising: place's take, five in a row.
+        "enter":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:-1,1,4,6,8", "cut:1.7"),
+        # The network: two groups joined, two quiet notes alike and a third
+        # up, and the near-miss named.
+        "join":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:4,4,9", "cut:0.7"),
         "split":    ("a gentle curious three-note kalimba question, rising at the end, 'hmm, almost', warm and kind, never a buzzer", 0.9, -13),
-        # The streak and the gags.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. fish: a small puff of air where the splash was.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
-        "fish":     ("a tiny cute fish leaping out of a calm pond with a small soft splash and landing back with a gentle bloop, playful and silly", 0.9, -12, CARTOON),
-        # Hearts, the wrong plank sinking, the buoy, and the pond at dusk.
-        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
-        "sink":     ("a small wooden plank cracking softly in two and sinking into a calm pond with a gentle bloop and a few tiny bubbles, a bit funny, muffled", 0.9, -13, CARTOON),
-        "ruled":    ("a small buoy bobbing up in calm water with a tiny soft bell ding, gentle and quiet, a kind reminder", 0.6, -15),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk over a still pond, calm and kind, maybe tomorrow", 1.5, -14),
+        "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10, STYLE, "warm:2400", "body:300"),
+        "fish":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.03", "body:320"),
+        # Hearts, the wrong plank sinking (three notches down, never a
+        # slide), the buoy (one quiet note, no bell), and the pond at dusk.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15, STYLE, "warm:2400", "body:300"),
+        "sink":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.5", "body:320", "tight", "notes:0.14:0,-2,-4"),
+        "ruled":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.45"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:9,5,2"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
         # The party.
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of paper at the end, joyful and warm", 2.0, -4),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:1,-3,4"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
         "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
         "boat":     ("a tiny paper boat drifting across a calm pond, gentle water lapping and a soft little toy boat horn toot, cute and cozy", 2.0, -11, CARTOON),
-        # Insane: Lantern Night. The lanterns light after the islets rise, and flare at the party.
-        "lanterns": ("a soft warm hush of little paper lanterns glowing on one by one at night by a calm pond, gentle crickets far away and one faint warm celesta note, cozy and magical", 1.5, -13, COZY),
-        "lanterns_glow": ("a warm dreamy swell of soft celesta and glockenspiel notes rising and glowing, paper lanterns lit bright over night water, magical and cozy", 1.8, -9),
+        # Insane: Lantern Night. The lanterns light after the islets rise, a
+        # long slow breath of air, and flare at the party, three slow notes
+        # that rise and settle.
+        "lanterns": ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.6, -16, BREEZE, "warm:1100", "steep", "ease:0.12", "body:320"),
+        "lanterns_glow": ("one slow soft note on a kalimba, calm and kind, left to fade", 1.6, -11, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.35:4,13,9"),
     },
     # Quilt: cloth patches dragged off a rack onto a backing; a patch that
     # lands sews a running stitch along its seams. The first set was
