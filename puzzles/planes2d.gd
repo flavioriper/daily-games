@@ -312,10 +312,11 @@ const IDLE_TIME := 0.7
 const IDLE_LIFT := 0.12
 
 # --- the rewards (polish section 4; Fairy Lights' and Quilt's) ---
-## The streak: a launch plucks `combo` up the pentatonic from the second; the
-## bubble from COMBO_FROM; confetti at 5, 10, 20 and every 10 after.
+## The streak: a launch ticks `combo` a semitone higher from the second, five
+## in all; the bubble from COMBO_FROM; confetti at 5, 10, 20 and every 10
+## after.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -3361,8 +3362,8 @@ func _pick_gag(i: int, t: float) -> int:
 	return roll
 
 ## Plane `i` has just launched (not refused, not crashed), before
-## note_move(), with the gag its flight was shaped for. The streak: a note
-## up the pentatonic from the second, the bubble over the launch spot from
+## note_move(), with the gag its flight was shaped for. The streak: a tick
+## a semitone higher from the second, the bubble over the launch spot from
 ## the third, confetti at 5, 10, 20 and every 10 after. The last few planes
 ## are counted down. The winning launch does none of it: the party is coming
 ## (Mushroom Patch's review found a combo landing over the party).

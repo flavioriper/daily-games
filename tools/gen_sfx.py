@@ -1255,35 +1255,54 @@ SETS = {
     # launch; Insane is Windy Day, and `drift` rides every launch there, so it
     # is short and very quiet.
     "planes": {
-        "place":    ("a light soft breath of air and a gentle papery swish gliding away, a small folded paper plane launched from a hand, hushed, short", 0.7, -10, BREEZE),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # seventeenth set of the redo, with Quilt's above. Kept from the
+        # first set, as they were: refuse, undo, hint, heart_lost, heart_back
+        # and the clouds; the flock rolled off. Nothing here is paper, a
+        # music box or a bird any more (a rustle, a fold and a crinkle are
+        # scratch, a chirp sat whole above 3 kHz). A launch travels, so
+        # `place` is a small puff of air, the first one a phone plays: the
+        # old one was a breath at 19 Hz. combo is a tick the board pitches,
+        # not past five semitones. Every tick is `tight`. Borrowed takes:
+        # confetti is Binairo's and the cat Untangle's kitten, of the same
+        # prompts; whoosh is place's, flutter crash's, tweet and love loop's.
+        # The phrases' steps are set by each take's own note, so that every
+        # note lands between 400 and 700 Hz.
+        "place":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -15, BREEZE, "warm:900", "steep", "ease:0.015", "body:320", "cut:0.3"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not that one', muffled and warm, very short", 0.5, -12, BREEZE),
         "undo":     ("a tiny soft paper rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, BREEZE),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, BREEZE),
-        "reset":    ("a soft airy flurry of small paper rustles and gentle breaths of air, paper planes gliding back to the hand, hushed and cozy", 1.0, -11, BREEZE),
-        "enter":    ("a soft airy cascade of tiny paper folds and a light warm breeze, a sheet of paper planes appearing in a sunny sky, hushed", 1.0, -11, BREEZE),
-        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending on a soft bright shimmer and a gentle breath of air, the whole sky cleared, joyful and cozy", 2.0, -4, BREEZE),
-        # The streak and the gags.
-        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, BREEZE),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, BREEZE),
-        "loop":     ("a paper plane doing a loop-the-loop, a soft airy swoosh rising and curling round with a playful three-note kalimba run, light and cute", 1.0, -11, BREEZE),
-        "tweet":    ("a single tiny soft little songbird chirp, two sweet high notes, close and gentle, very short", 0.5, -14, COZY),
-        "whoosh":   ("a quick soft airy whoosh of a paper plane passing close by, gentle and warm, short", 0.6, -12, BREEZE),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, BREEZE),
-        # Crashes and hearts (Hard and Insane).
-        "crash":    ("a small paper dart bumping its folded nose into a soft cushion and crumpling a little, a muffled papery pat followed by a soft crinkle of paper, gentle and cute, never an impact", 0.8, -13, COZY),
-        "flutter":  ("a folded paper plane fluttering gently down, soft papery wobbles and a quiet little rustle settling, hushed", 0.9, -14, COZY),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The planes appearing in the sky: a long slow breath.
+        "enter":    ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.2, -16, BREEZE, "warm:1100", "steep", "ease:0.12", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:2,4,7,9,11", "cut:1.7"),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. loop: four quiet notes up and over. tweet: two quiet
+        # notes, the bird. whoosh: place's puff, lower and slower in.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "loop":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,9,7,4", "cut:0.8"),
+        "tweet":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:9,11", "cut:0.4"),
+        "whoosh":   ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -15, BREEZE, "warm:750", "steep", "ease:0.05", "body:320"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
+        # Crashes and hearts (Hard and Insane). crash: a soft nose on a
+        # cushion, one tock. flutter: its take, three notches down, never a
+        # flap.
+        "crash":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.16", "body:320", "tight"),
+        "flutter":  ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.5", "body:320", "tight", "notes:0.14:0,-2,-4"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, BREEZE),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, paper planes resting for the day, calm and kind, maybe tomorrow", 1.6, -14, BREEZE),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, BREEZE),
-        # Windy Day (Insane).
-        "gust":     ("a warm soft whoosh of breeze rising and passing, a gentle gust of wind on a sunny day, rounded and cozy", 1.0, -12, BREEZE),
-        "drift":    ("a very quiet tiny airy swish, a faint breath of wind nudging a paper plane aside, barely there, very short", 0.5, -18, BREEZE),
-        "stuck":    ("a soft sigh of wind that fades and stops, a breeze settling down to calm, gentle, short", 0.8, -14, BREEZE),
+        # Windy Day (Insane). drift rides every launch, so it is the
+        # quietest; stuck is the breeze settling.
+        "gust":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises, passes and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.08", "body:320"),
+        "drift":    ("a tiny breath of warm air, one light short puff that fades", 0.5, -19, BREEZE, "warm:800", "steep", "ease:0.04", "body:320", "cut:0.3"),
+        "stuck":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # The party.
-        "stamp":    ("a soft paper stamp thump followed by a clear warm music box chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, BREEZE),
-        "party":    ("a short joyful flourish on a music box and kalimba, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, BREEZE),
-        "flock":    ("many little paper planes whooshing softly past together, airy swishes overlapping, with a bright rising kalimba flourish, joyful and gentle", 1.6, -9, BREEZE),
-        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,5,12"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
+        "flock":    ("many little paper planes whooshing softly past together, airy swishes overlapping, with a bright rising kalimba flourish, joyful and gentle", 1.6, -9, BREEZE, "warm:2000", "body:300"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
         "clouds":   ("soft fluffy clouds drifting apart, an airy gentle shimmer of breeze with a warm slow music box note, dreamy and calm", 1.5, -12, BREEZE),
     },
     # Pinwheel: tap a paper pinwheel and its cloth piece takes a quarter turn.
