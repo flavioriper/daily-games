@@ -53,6 +53,10 @@ const BACKDROP_BLEED := 90.0
 ## line stays up.
 const AFTER_GOAL := 1.25
 const TOAST_HOLD := 1.7
+## How long the table keeps the match's last goal to itself before the end
+## card comes up over it: the light down the rails (Table.LAP) and the
+## winner's hops. Nothing under reduce motion.
+const WIN_HOLD := 1.1
 ## The level names by level; Record.LOCAL is two players on this phone.
 const LEVELS := {0: "DIFF_EASY", 1: "DIFF_MEDIUM", 2: "DIFF_HARD", Record.LOCAL: "VS_TWO"}
 ## A hit this hard (m/s closing) is as loud as a hit gets.
@@ -98,6 +102,7 @@ var _toast: PanelContainer
 var _toast_label: Label
 var _toast_tw: Tween
 var _end: Control
+var _end_tw: Tween
 # --- the scoreboard ---
 var _plates: Array = []
 var _scores: Array[Label] = []
@@ -106,6 +111,11 @@ var _faces: Array = []
 var _clock_label: Label
 var _pips: Control
 var _clock_shown := -1
+## The pip a goal just filled (its seat and which) and the seconds since: it
+## takes Motion's bump as the score beside it does.
+var _pip_seat := -1
+var _pip_at := 0
+var _pip_t := 99.0
 
 func _init(the_level := 1) -> void:
 	level = the_level if LEVELS.has(the_level) else 1
@@ -360,7 +370,8 @@ func _draw_pips() -> void:
 		for i in n:
 			var c := Vector2(x0 + step * i, y)
 			if i < int(sim.scores[p]):
-				_pips.draw_circle(c, r, tint, true, -1.0, true)
+				var pop := Motion.bump_scale(_pip_t, Motion.BUMP * 2.0) if p == _pip_seat and i == _pip_at else 1.0
+				_pips.draw_circle(c, r * pop, tint, true, -1.0, true)
 			else:
 				_pips.draw_circle(c, r - 1.5, Color(Pal.LINE, 0.55), false, 2.0, true)
 
@@ -398,6 +409,9 @@ func can_reset() -> bool:
 # --- the match ---
 
 func _new_match() -> void:
+	Motion.stop(_end_tw)
+	_end_tw = null
+	_pip_seat = -1
 	if _end != null:
 		_end.queue_free()
 		_end = null
@@ -448,6 +462,9 @@ func _process(delta: float) -> void:
 				sim.serve(_serve_to)
 				_served(_serve_to)
 		_tick_clock()
+	if _pip_t < Motion.BUMP_TIME:
+		_pip_t += delta
+		_pips.queue_redraw()
 	_glide_sound(delta, waiting)
 
 func _tick_clock() -> void:
@@ -488,13 +505,15 @@ func _play_events() -> void:
 
 func _on_goal(by: int, at: Vector2) -> void:
 	table.goal(1 - by, at)
+	_pip_seat = by
+	_pip_at = int(sim.scores[by]) - 1
+	_pip_t = 0.0
 	_refresh_board()
 	_scores[by].pivot_offset = _scores[by].size * 0.5
 	Motion.bump(_scores[by])
 	_faces[by].expression = Face.Expr.JOY
 	_faces[1 - by].expression = Face.Expr.WORRIED
-	var mouth: Vector2 = table.px(Sim.goal_of(1 - by))
-	_fx.puff(mouth, Table.SIDE[by][1], 10)
+	# The mouth's light, the motes and the mallets' part are the table's.
 	if sim.over:
 		_finish()
 		return
@@ -545,6 +564,16 @@ func _finish() -> void:
 			"seconds": int(sim.clock)})
 	Ads.note_finished()
 	_fx.cue("win" if won or two_players() else "lose")
+	# The table has the last goal to itself first; the tween is the screen's,
+	# so a match started over in the meantime takes the card with it.
+	if Motion.reduce:
+		_show_end(won)
+		return
+	_end_tw = create_tween()
+	_end_tw.tween_interval(WIN_HOLD)
+	_end_tw.tween_callback(_show_end.bind(won))
+
+func _show_end(won: bool) -> void:
 	_end = _build_end(won)
 	add_child(_end)
 	Motion.appear(_end, 0.0, 1.0, 0.3)
