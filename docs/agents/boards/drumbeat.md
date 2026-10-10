@@ -114,6 +114,7 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 **One drum, pitched (2026-10-10).** The user: the blue drum's "metalic sound
 is terrible, all tambors should have basically the same drum sound only with
 different pitches". `tools/gen_drumbeat.py drums` writes `drum_0` to `drum_3`
-from one `drum(ratio)`: the big felt-beaten drum at 1, 1.5, 1.78 and 2 times
-its pitch, a little shorter as it rises. `DRUM_KINDS` still plays 0, then 0
+from one `drum(ratio)`: a felt-beaten skin at 1, 1.5, 2 and 2.67 times 105
+Hz, a little shorter as it rises, its octave and twelfth strong enough
+that a phone's speaker (nothing under 250 Hz) still plays each its own note. `DRUM_KINDS` still plays 0, then 0
 and 3, then 0, 1 and 3. Unheard.

@@ -152,8 +152,8 @@ def wood(m, vel=1.0):
 # the same drum sound only with different pitches". They were four
 # instruments (a big drum, a hand drum, a frame drum with jingles and a
 # tongue drum of bare tones at 620 and 1550 Hz, the blue one); they are the
-# big drum now, a felt beater on a skin, tuned up the lanes: the root, a
-# fifth, a seventh and the octave. A smaller drum rings a little shorter. ---
+# big drum now, a felt beater on a skin, tuned up the lanes. A smaller drum
+# rings a little shorter. ---
 
 
 def lowpass(y, k):
@@ -163,28 +163,34 @@ def lowpass(y, k):
 def drum(ratio=1.0, seed=31):
     # a felt beater on a skin: a round boom that settles a little in pitch,
     # a soft thump and no click. `ratio` tunes it; the decays shorten by its
-    # square root, as a smaller skin's do
+    # square root, as a smaller skin's do. A phone plays next to nothing
+    # under 250 Hz (docs/agents/sound.md, rule 3), and the first take of
+    # this, a 72 Hz boom with faint overtones, left 1% of each drum above
+    # that: four knocks alike. So the skin sits at 105 Hz and its octave
+    # and twelfth ring nearly as long as it does: the pitch a phone carries
+    # is theirs, 210 to 590 Hz across the four.
     short = 1.0 / np.sqrt(ratio)
-    n = int(SR * 0.6 * short)
+    n = int(SR * 0.55 * short)
     t = np.arange(n) / SR
-    f = ratio * (72 + 38 * np.exp(-t / (0.03 * short)))
+    f = ratio * (105 + 40 * np.exp(-t / (0.03 * short)))
     ph = 2 * np.pi * np.cumsum(f) / SR
-    y = (np.sin(ph) * env(n, 0.002, 0.2 * short)
-         + 0.3 * np.sin(1.5 * ph) * env(n, 0.002, 0.07 * short)
-         + 0.12 * np.sin(2.2 * ph) * env(n, 0.002, 0.035 * short))
+    y = (np.sin(ph) * env(n, 0.002, 0.17 * short)
+         + 0.8 * np.sin(2.0 * ph) * env(n, 0.002, 0.13 * short)
+         + 0.35 * np.sin(3.0 * ph) * env(n, 0.002, 0.07 * short))
     k = int(SR * 0.015)
     thump = lowpass(np.random.default_rng(seed).standard_normal(k), 40)
-    y[:k] += 1.6 * thump * np.linspace(1, 0, k)
-    y = np.tanh(1.3 * y)
+    y[:k] += 0.9 * thump * np.linspace(1, 0, k)
+    y = np.tanh(1.1 * y)
     fade = int(SR * 0.02)
     y[-fade:] *= np.linspace(1, 0, fade)
     return y
 
 
 # The lanes' drums by kind (puzzles/drumbeat2d.gd DRUM_KINDS plays 0, 1 and
-# 3; 2 is kept in tune for a fourth lane).
+# 3; 2 is kept in tune for a fourth lane): the root, a fifth, the octave and
+# an eleventh.
 DRUMS = [("drum_0", lambda: drum(1.0), -1.5), ("drum_1", lambda: drum(1.5), -2.5),
-         ("drum_2", lambda: drum(1.78), -3.0), ("drum_3", lambda: drum(2.0), -3.0)]
+         ("drum_2", lambda: drum(2.0), -3.0), ("drum_3", lambda: drum(2.67), -3.5)]
 
 
 

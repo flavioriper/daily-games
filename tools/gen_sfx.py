@@ -392,12 +392,13 @@ SETS = {
         # The user again that day, of the click and the page: "should be
         # lower as well", "way lower". The click is 6 dB down and the page 8
         # (-34 with BREEZE_TRIM): the measure calls both faint, as meant.
-        # The user that evening, of the click at -25: "too low, can't hear
-        # anything even in the highest volume, fix it". So -25 is under what
-        # is heard at all and -19 was "should be lower": it is -20, the same
-        # low take, and it must not read `faint` in the measure (phone -24
-        # or better). Between -19 and -22 is all the room this number has.
-        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -20, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        # The user that evening, of the click at -25, on the phone: "too low,
+        # can't hear anything even in the highest volume, fix it". "Should be
+        # lower" was said of -19 on the Mac's speakers; the phone is the ear
+        # that counts, so it is -18, inside rule 1's -13 to -19, the same low
+        # take. It must not read `faint` in the measure (phone -24 or
+        # better), and it does not go under -20 again.
+        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # The user, 2026-10-09, twice: the linen brush "too harsh", then the
         # card slid over felt that replaced it "a harsh scratch". A page turn
         # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and

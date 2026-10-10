@@ -426,3 +426,22 @@ All 39 rows are done (2026-10-04; rows 1-37 on 2026-10-03, row 39 with Versus on
 | 51 | dominoes (Versus) | 2026-10-09 | built with the game: tap as your tile is laid (`_on_chosen`), tick as you draw (`_on_draw`), warn on a tile that fits neither end, on the boneyard tapped with a tile that fits, and on your own pass; good on a hint (`hint`) and on a hand won (`out`), tap on Reset and Play again; win and lose. The table's own cues (`place`, `draw`, `lift`, `refused`, `shuffle`) and `knock`, `lost_hand` are not mapped and ring for both players, so each carries the echo. Nothing more for the other player's tile than its landing's echo. A tile carried (2026-10-10) adds no kind: picked up it is `lift`'s echo, laid it is `_on_chosen`'s tap, let go on the wrong end the same warn. Your last tile's two raps on the table are a bump each (`board.rapped`). Online adds row 39's. Not probed: `tests/_probe_versus_buzz.gd` has no arm for it |
 | 52 | reversi (Versus) | 2026-10-09 | built with the game: tap as your disc is set down (`_on_chosen`), warn on a square that is taken or would turn nothing, and as your own turn is skipped; tick on Undo, good on a hint (`hint`) and on a draw (`draw`), tap on Reset and Play again; win and lose. The board's own cues (`place`, `flip`, `lift`, `refused`, `sweep`) and `pass` are not mapped and ring for both players, so each carries the echo, a ring of turning discs a knock. Nothing more for the other player's disc than its echo. Online adds row 39's. Not probed: `tests/_probe_versus_buzz.gd` has no arm for it |
 | 53 | deckchair (Arcade) | 2026-10-10 | built with the game: a card lifted, set on a column or turned off the stock is its sound's echo (`lift`, `place`, `draw`, `recycle`, `undo`, no kind chosen); tap as a card goes home (`home`), tick as a hidden card turns up (`flip`), warn on a card with nowhere to go (`nope`), good on a hint (`hint`) and as a suit's king goes home (`suit`), bad as the dead end is called (`stuck`), tap on Finish, Reset and Play again, bump as the best is passed, the win for every card home (`win`) and for the end card's `new_best`. The sweep's cards are heard through a second Fx2D with its buzzes off and one in four ticks (`SWEEP_FELT`). Read from the code, not traced: `_probe_arcade_buzz.gd` has no Deckchair bot |
+
+## No ghost touch (2026-10-10)
+
+The user: "all games should have feedback to anything that interact ingame,
+never a ghost click that do something silent". Every board, Versus game,
+Arcade game and the Factory was read for a touch that changes something with
+neither a cue nor a knock, and 24 screens had one (commit 481f0a00 names each;
+Sudoku's cell and Trestle's bolt are in the commits beside it). The fix is a
+cue, so the knock is the echo `ui/fx2d.gd` gives every unmapped cue, or
+`fx.touch()`, which plays the echo itself. No `HAPTICS` map changed, so the
+rows above still say "nothing" for touches that now carry the echo: where a
+row and this paragraph disagree, this is later. Calls nobody has confirmed:
+air hockey's mallet clicks each time it is taken, Word Trail ticks when a
+trail unwinds (a one-tile tap included), Penny Drop and Reversi tick on the
+press and cue on the release 0.1 s apart, Deckchair's cards set back are
+heard, the Factory's wheel and pinch zoom tick. Left silent, and known:
+Horse Pen on Insane with no moves left and an open pen, Super Slider's
+let-go while Homesick's solver thinks, Untangle's `hover` and Binairo's
+`focus` and `blush_out` (cues with no file).

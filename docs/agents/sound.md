@@ -124,17 +124,23 @@ a cue of its own it is `fx.cue`; without one it is `fx.touch()`
 make. A touch that does nothing (bare ground, a board that is over) stays
 silent, and so does one a cue already answers on the same frame. It was
 Sudoku's cell that was named: `select`, pencil's take two steps up at -18,
-and 0.84 of its pitch as the cell is let go.
+and 0.84 of its pitch as the cell is let go. The pass over every other
+game is commit 481f0a00 (24 screens; `docs/agents/haptics.md` has the list's
+shape).
 **The click itself was inaudible the same evening** ("too low, can't hear
-anything even in the highest volume"): -25 is under what is heard, -19 was
-"should be lower", so it is -20 and must not read `faint`.
+anything even in the highest volume"): -25 is under what a phone plays, and
+"should be lower" was said of -19 on the Mac, so it is -18 (phone -19 in the
+measure) and never under -20 again.
 **Drumbeat's drums are one drum** ("the blue tambor metalic sound is
 terrible, all tambors should have basically the same drum sound only with
-different pitches"): `tools/gen_drumbeat.py drum(ratio)`, the big drum at
-the root, a fifth, a seventh and the octave for kinds 0 to 3; the tongue
-drum of bare tones at 620 and 1550 Hz, the hand drum and the jingles are
-gone. They are synthesised as before and read `rumble` in the measure (a
-drum is under 300 Hz; its thump carries on a phone at -10 to -12).
+different pitches"): `tools/gen_drumbeat.py drum(ratio)`, one felt-beaten
+skin at 1, 1.5, 2 and 2.67 times 105 Hz for kinds 0 to 3; the tongue drum
+of bare tones at 620 and 1550 Hz, the hand drum and the jingles are gone.
+The first take of it was a 72 Hz boom with 1% of each drum above 250 Hz:
+four knocks alike on a phone (rule 3). So the octave and the twelfth ring
+nearly as long as the skin, and what a phone carries is 210 to 590 Hz, a
+different note a drum. Synthesised as before; three read `rumble` in the
+measure, as a drum does.
 
 **The measure is `tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]`.** A
 line a file and a word for the rule it breaks: `high` (under 30 dB down
