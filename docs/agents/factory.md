@@ -1,4 +1,122 @@
-## Valley
+## Factory
+
+**The sixth tab since 2026-10-10**, in the slot the Valley and its Grove had
+(dropped that day; their history is the second half of this file). A piece
+of land in a pond, seen corner on: tap a tree, a beaver bites it down, the
+log lies beside it; a belt laid by a drag carries it to the market, which
+sells it; coins buy belts, more plates of land, and from the second plate a
+fire box, a kiln and a retort. The land runs only while it is on screen,
+nothing is hurried and the game has no end. The road is
+`docs/brainstorm/factory-roadmap.html`; every rate is in the ledger,
+`docs/superpowers/specs/2026-10-10-factory-physics-design.md` (**change a
+number there first**); this build is spec one,
+`2026-10-10-factory-board-and-hand-era-design.md`. Neither game of the
+genre is named anywhere but the roadmap, once.
+
+**What the user said, and what was skipped for them.** The brief is quoted
+at the top of spec one. On 2026-10-10: "start implementing the factory
+change plans, make a first initial mvp with the concepts and a initial
+working state, no question, wire everything". So this pass took every
+default of spec one's section 13 without the review the spec was waiting
+for, and went **straight to Godot with no concept tab** (the standing rule
+is a playable tab in `concepts.html` first; the user's "no question"
+overrode it for this pass only). **The user has seen none of it running.**
+
+**Where it lives.**
+- `factory/sim.gd`: the land as pure data, 10 Hz, deterministic, no clock.
+  Its header is the API (tables to read, actions that return whether they
+  did anything, `events` for the holder to drain). `tests/_probe_factory.gd`
+  (headless, 147 checks; `-- pace [seed] [lands]` plays a bot).
+- `factory/art.gd`: every drawing, a mesh each, begun as a copy of the
+  Grove's. Its header lists it all. The tile grid: plate `P` owns tiles
+  `P*8 .. P*8+7`, `Art.at(t)` is tile space to view units, +x down and
+  right, +y down and left, a facing is an index of `DIRS`.
+- `factory/life.gd`: the whole board drawn for every holder (screen, tab
+  card, tutorial pages) on a `world` Node2D, with the Grove's beaver, bite,
+  four-beat fall, stump, chips and leaf burst played off the sim's events.
+  **A new look for the land goes here, not in three files.**
+- `factory/screen.gd` (camera, hand, HUD, drawer, cards), `factory/tile.gd`
+  (the drawer's and the plate card's tile), `ui/menu/factory_tab.gd`,
+  `ui/hud/factory_tutorial_diagram.gd`.
+- Harnesses: `tests/_shot_factory.gd` (the screen built by hand, 38 checks,
+  31 shots, `reduce` after the outdir), `tests/_shot_factory_menu.gd`
+  (through the real menu), `tests/_shot_factory_art.gd` (the art alone).
+
+**Rules that bite.**
+- **One sim, owned by the tab.** `factory_tab.gd` makes and loads it once,
+  steps it only while the tab is shown, and `lend()`s it to the screen
+  (`ui/menu.gd` `_open_factory`), which hands it back on `closed`
+  (`returned()`). The screen never makes or loads one. Whoever steps drains
+  `events`. Two holders stepping was the Grove's double landing.
+- **Nothing while unseen**: no timestamp is kept, a closed app or another
+  tab moves nothing. Do not add catch-up.
+- **A layer that pans or zooms is a Node2D with a custom rect**
+  (`RenderingServer.canvas_item_set_custom_rect`): the engine culls a layer
+  by its meshes' boxes without their transforms, and whole layers vanished.
+- **Only trees, their shadows and grass wear the wind material**; the
+  depth-sorted list is cut into runs on windy and plain layers.
+- Belts are one MultiMesh under one material (`Art.belt_run(t)` a frame),
+  items one MultiMesh a kind.
+- Leaving calls no `Ads.leaving_game()`, as the Valley's rule said.
+- Sounds are the Grove's four files, reused (`assets/sfx/grove/`, reached
+  by `_fx._puzzle = "grove"`): no new take, none heard.
+
+**Measured** (810x1440, 2026-10-10, default driver and `opengl3_angle`
+alike): 56 draw calls on a new land, 101 to 106 on four plates with belts
+across them, 155 at the peak (the drawer open on that land), the tab 73
+alone and 114 in the menu. Probe 147/0; the screen's harness 38/0 on both
+drivers and under reduce motion; the menu's harness 8/0; suite 249800/0.
+The pace bot buys the second plate at play-minute 18 (mean of ten lands,
+16.6 to 20.8; the spec says 25 and allows a third); it taps the instant a
+tree stands, so a person is later.
+
+**Decided for the user and not judged by them** (each small to change):
+- Spec one's section 13 defaults, all of them: the name Factory, 8 by 8, a
+  4 minute regrow, rocks every 3 minutes, sell back at full price, heat by
+  touching, two zoom levels with a button, fire lit by a tap.
+- **20 coins on a new land** (the spec gave none, and nothing sells without
+  a belt).
+- **A log or a stone lies on a neighbouring tile**, toward the market
+  first, where the spec said "at its foot": a log under its own stump could
+  only leave by a belt that kills the tree.
+- Trees and rocks stand on a plate's inner 6 by 6, the rim left for belts.
+- A shared fire gives each sink supply over demand, 60 over 120, by the
+  ledger; spec one's "60 over 100" is loose.
+- The fire box has three levels (60, 90, 120 kW for 60 and 180); the
+  spec's third price, 540, buys nothing. Five fuels wait beside the one
+  burning. A burning fuel is lost when the box is sold.
+- The save is one packed blob in `user://factory.cfg`, not named keys (a
+  float came back a digit off through the text file).
+- The market faces the viewer, with no keeper yet.
+- Picking a tile closes the drawer; the button then shows what is picked
+  and unpicks. A tap on bare ground with Belt picked lays one belt. The
+  plate card's three tiles each carry the price and buy on a press.
+- pt and es were written by the agents and read by no speaker.
+
+**Not done.** A phone. Nothing watched moving or heard. No pace bot past
+the second plate (first lime, third plate unmeasured). No keeper, no stone
+rolling off a rock, no ledger sentence on a card, no first-fire teaching;
+a fire box with fuel waiting and the fire out cannot open its card (the
+tap lights it); the burning fuel does not shrink; pluses sit half off the
+screen at the near zoom on a new land; belts on a plate still rising are
+not sunk with it; `APPLICATION_PAUSED` and `WM_CLOSE_REQUEST` saves never
+fired on this Mac. Analytics events are `factory_enter` / `factory_leave`
+only. The cozy sound pass and haptics table rows are owed. Eras 3 to 7.
+
+## The Valley and the Grove (dropped 2026-10-10)
+
+**What follows is history.** The Valley tab and the Grove were removed on
+2026-10-10 when Factory took the slot (the user: "fully replace the valley
+tab ... all features will be within the game instead of splitted"):
+`valley/`, `ui/menu/valley_tab.gd`, `ui/hud/grove_tutorial_diagram.gd`,
+the `Stock` autoload (`core/stock.gd`), the Grove's probe and harness and
+its locale keys are gone; the Grove's last state is commit `1f261898`.
+`user://grove.cfg` and `user://stock.cfg` are left on a phone and never
+read. Nothing below describes code in the tree, but the reasons behind the
+land's look, the beaver, the fall and the wind still hold for
+`factory/art.gd` and `factory/life.gd`, which began as the Grove's.
+
+### The Valley
 
 **A sixth tab since 2026-10-05**, between Arcade and Stats: slow places
 that share one inventory and have no finish (spec

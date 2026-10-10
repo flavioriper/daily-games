@@ -29,7 +29,7 @@ that area**, and add new history there rather than here.
 | Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair) | `docs/agents/arcade.md` |
-| Valley: the shared inventory (`Stock`) and the Grove | `docs/agents/valley.md` |
+| Factory: the land, the sim, the one-sim rule (and the dropped Valley and Grove, as history) | `docs/agents/factory.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
 | Haptics: the kinds, the rules and the per-game list | `docs/agents/haptics.md` |

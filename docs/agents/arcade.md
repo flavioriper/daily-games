@@ -754,7 +754,7 @@ chalk line ends the run. Its "furthest" is the wave.
     and its prices are the same mote. **Since 2026-10-06 the mote's look
     (`glow`, `orb`, `orb_light`, the three blues) is `ui/motes.gd`'s**, which
     `Art` hands on, because the Grove's energy is the same one
-    (docs/agents/valley.md). That file is also this flight as a layer of
+    (docs/agents/factory.md, the Valley half). That file is also this flight as a layer of
     its own, with these numbers; Peapod's screen still runs the code it was
     copied from, so **a change to how a mote flies is made in both** until
     this screen is moved onto the layer.
