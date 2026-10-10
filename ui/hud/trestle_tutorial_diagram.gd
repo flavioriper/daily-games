@@ -251,7 +251,8 @@ func _run(gen: int) -> void:
 				if ok:
 					_say("HTP_TR_HOLD_CAP")
 			Lesson.BUDGET:
-				ok = await _tap(_art.chip_to_local(Sim.WOOD), gen)
+				# no chip to pick with one material (the board's CHIPS)
+				ok = await _wait(0.6, gen)
 				if ok:
 					_say("HTP_TR_COST_CAP")
 					ok = await _lay_all(STRUTS, gen)

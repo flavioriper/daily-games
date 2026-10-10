@@ -110,3 +110,26 @@ river is `splash` at 1.0 to 1.12 and -6 dB (`DROP_PITCH`, `DROP_DB`; 1.3 to
 1.1). `cross` and `solved`, and `fail` and `heart_lost`, sound on one frame,
 so `cross` is two notches and `heart_lost` one note: neither is a second
 phrase.
+
+**One material (2026-10-10).** The user: "Trestle should have a single
+material for now, no need for 3". The strip has no chips (`CHIPS` 0 in
+`puzzles/trestle2d.gd`; 3 brings them, their picking and `_mat` back) and
+the budget bar takes its width. The hand lays wood, and **a piece laid along
+the deck's line is the road** (`Gen.on_deck`, `Gen.mat_for`, asked by
+`_mat_for` in `_lay` and for the ghost): the sim, its two kinds and their
+prices are untouched, so its arithmetic and the lessons' bridges stand. What
+is given up is a road anywhere but the deck's line. **Rope is offered on no
+band** (`Gen.BANDS` mats are road and wood); it is still in the sim, the
+drawing, the sounds and the locale, and the tutorial's rope page shows only
+where `state.mats` has it. The bank was mined again without rope on the
+seeds it had (band 0 kept as it was, it never had rope): 17, 19, 20 and 65
+levels (69 tea levels mined on seeds 3001 to 3006, 4 dropped by
+`_probe_trestle_tea.gd -- write`), every proof at 0.85 or under in
+`_probe_trestle_bank.gd`, every proof's road on the deck and nothing else.
+The rope bank is `build/trestle/rope/` on this Mac and in git before this
+commit. Texts in three languages no longer name rope or the chips
+(`TR_RULES`, `TR_LVL_0`, `TR_LVL_1`, `TR_CHEER_2`, `HTP_TR_BUDGET_BODY`,
+`HTP_TR_PICK_CAP`); the tutorial's budget page taps no chip. A bolt let go
+plays `select` at 0.9. Shot on Normal: 105 to 107 draw calls building and
+testing, 86 to 91 after. Not on a phone; the tutorial pages were not shot
+again.

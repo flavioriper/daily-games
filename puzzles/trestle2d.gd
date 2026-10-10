@@ -258,6 +258,11 @@ var _bar_fill: Face.Builder
 var _bar_fill_for := ""
 var _faces: Array[Control] = []
 var _mat := Sim.ROAD
+## How many material chips the strip shows. None for now (the user,
+## 2026-10-10: "a single material for now, no need for 3"): the hand lays
+## wood, and `Gen.mat_for` makes a piece along the deck's line the road. Set
+## it to 3 and the chips, their picking and `_mat` are what they were.
+const CHIPS := 0
 ## Building: the joint a gesture started on, where it is making for, and the
 ## joint a tap chose to chain from.
 var _from := Vector2i(-99, -99)
@@ -1857,16 +1862,17 @@ func _chip_rect(i: int) -> Rect2:
 		return _slot(i)
 	return Rect2(Vector2(PAD + i * (CHIP.x + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), CHIP)
 
-## The free build's strip: six even slots, three chips and three pills.
+## The free build's strip: even slots, the chips and three pills.
 func _slot(i: int) -> Rect2:
-	var w := (size.x - 2.0 * PAD - 5.0 * CHIP_GAP) / 6.0
+	var n := CHIPS + 3
+	var w := (size.x - 2.0 * PAD - (n - 1) * CHIP_GAP) / float(n)
 	return Rect2(Vector2(PAD + i * (w + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
 
 ## Where a pill stands: two wide ones after the solve, three slots in the
 ## free build.
 func _pill_rect(p: int) -> Rect2:
 	if _free:
-		return _slot({Pill.GO: 3, Pill.CONVOY: 4, Pill.DONE: 5}.get(p, 5))
+		return _slot(CHIPS + int({Pill.GO: 0, Pill.CONVOY: 1, Pill.DONE: 2}.get(p, 2)))
 	var font: Font = CozyTheme.body(700)
 	var x := PAD
 	for q in [Pill.CONVOY, Pill.FREE]:
@@ -1984,7 +1990,7 @@ func _point_at(p: Vector2) -> Vector2i:
 	return q
 
 func _press(p: Vector2) -> void:
-	for i in (3 if _strip_shown() else 0):
+	for i in (CHIPS if _strip_shown() else 0):
 		if _chip_rect(i).has_point(p):
 			_pick_mat(i)
 			return
@@ -2034,7 +2040,10 @@ func _release(p: Vector2) -> void:
 	# a tap
 	if _from != NONE:
 		if _sel == _from:
+			# a bolt let go is the pick's tick a little lower: no tap that
+			# does something is silent
 			_sel = NONE
+			fx.cue("select", 0.9)
 		elif _sel != NONE and Gen.fits(_sel, _from):
 			_lay(_sel, _from)
 		else:
@@ -2063,12 +2072,22 @@ func _release(p: Vector2) -> void:
 		_last_broken = {}
 		_moved()
 		return
+	if _sel != NONE:
+		fx.cue("select", 0.9)
 	_sel = NONE
+
+## The material a piece from `a` to `b` is laid in: the chosen chip's, or
+## with no chips the road on the deck's line and wood off it.
+func _mat_for(a: Vector2i, b: Vector2i) -> int:
+	return _mat if CHIPS > 0 else Gen.mat_for(state.level, a, b)
 
 ## Lays a member of the chosen material from `a` to `b`, or says why not.
 func _lay(a: Vector2i, b: Vector2i) -> void:
+	_mat = _mat_for(a, b)
 	var why := state.why_not(a, b, _mat)
 	if why == State.Refusal.SAME:
+		if _sel != b:
+			fx.cue("select", 1.1)
 		_sel = b
 		return
 	if why != State.Refusal.OK:
@@ -2797,10 +2816,11 @@ func _draw_front() -> void:
 			var pulse := 0.5 + 0.5 * sin(t * 6.0) if not Motion.reduce else 1.0
 			fm.put(Look.RING, [], Transform2D(0.0, Vector2.ONE * (k * (0.2 + 0.03 * pulse) / 0.2), 0.0, px(Vector2(from))))
 		if _dragging and _from != NONE and _to != NONE:
-			var ok := state.why_not(_from, _to, _mat)
+			var mat := _mat_for(_from, _to)
+			var ok := state.why_not(_from, _to, mat)
 			var good := ok == State.Refusal.OK
 			var tint := Color(0, 0, 0, 0) if good else Color(Parts.BAD, 0.7)
-			_put_member(fm, px(Vector2(_from)), px(Vector2(_to)), _mat, Vector2(_from).distance_to(Vector2(_to)), Parts.member_inks(_mat, tint, 0.75))
+			_put_member(fm, px(Vector2(_from)), px(Vector2(_to)), mat, Vector2(_from).distance_to(Vector2(_to)), Parts.member_inks(mat, tint, 0.75))
 	var tags := _load_tags() if not _testing and (not is_done() or _free or not _last_broken.is_empty()) else []
 	# each tag pops in after the test, one after another
 	var pops: Array = []
@@ -2918,7 +2938,7 @@ func _build_strip() -> ArrayMesh:
 		for i in _stars():
 			Rewards.star(b, Vector2(size.x - PAD - 8.0 - STAR_STEP * (i + 0.5), 46.0), 13.0, Rewards.GOLD)
 		return b.mesh()
-	for i in 3:
+	for i in CHIPS:
 		var r := _chip_rect(i)
 		var on := i == _mat
 		var there := state.mats.has(i)
@@ -3009,7 +3029,7 @@ func _draw_words() -> void:
 		var sz := body.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
 		_front.draw_string(body, Vector2(size.x - PAD - sz.x, STRIP_H + 44.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24,
 			Pal.TEXT_DIM if state.cost() <= state.budget else Parts.BAD)
-	for i in 3:
+	for i in CHIPS:
 		var r := _chip_rect(i)
 		var there := state.mats.has(i)
 		var lift := _chip_lift(i)
@@ -3158,7 +3178,7 @@ static func _cord(b: Face.Builder, p: Vector2, q: Vector2, u: float) -> void:
 	b.stroke(cord, u * 0.018, Color("7a6048"), false, false)
 
 func _budget_rect() -> Rect2:
-	var x := PAD + 3.0 * (CHIP.x + CHIP_GAP) + 16.0
+	var x := PAD + CHIPS * (CHIP.x + CHIP_GAP) + 16.0
 	var w := size.x - PAD - x - 12.0
 	return Rect2(Vector2(x, STRIP_H - 34.0), Vector2(w, 22.0))
 

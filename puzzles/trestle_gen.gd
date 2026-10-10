@@ -20,12 +20,16 @@ const LO := -4
 const HI := 3
 
 ## Per band: gap widths, cart mass, budget over the proof's cost, materials.
+## One material for now (the user, 2026-10-10: "a single material for now, no
+## need for 3"): the player lays wood and nothing else, and a piece laid along
+## the deck's line is the road (`on_deck`). Rope is still in the sim and the
+## drawing, offered on no band.
 const BANDS := [
 	{"w": [4, 5], "cart": 1.2, "slack": 1.6, "mats": [Sim.ROAD, Sim.WOOD], "dy": [0]},
-	{"w": [5, 6, 7], "cart": 1.6, "slack": 1.4, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0, 0, 1, -1]},
-	{"w": [7, 8, 9], "cart": 2.0, "slack": 1.25, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0, 1, -1]},
+	{"w": [5, 6, 7], "cart": 1.6, "slack": 1.4, "mats": [Sim.ROAD, Sim.WOOD], "dy": [0, 0, 1, -1]},
+	{"w": [7, 8, 9], "cart": 2.0, "slack": 1.25, "mats": [Sim.ROAD, Sim.WOOD], "dy": [0, 1, -1]},
 	# Insane is the Tea Party: level banks only, since tea spills on a ramp
-	{"w": [8, 9, 10], "cart": 2.4, "slack": 1.08, "mats": [Sim.ROAD, Sim.WOOD, Sim.ROPE], "dy": [0], "tea": true},
+	{"w": [8, 9, 10], "cart": 2.4, "slack": 1.08, "mats": [Sim.ROAD, Sim.WOOD], "dy": [0], "tea": true},
 ]
 ## The most a proof may lean the tea, as a share of the rim.
 const TEA_MARGIN := 0.85
@@ -57,6 +61,19 @@ static func fits(a: Vector2i, b: Vector2i) -> bool:
 ## Road may climb no steeper than one in one.
 static func road_ok(a: Vector2i, b: Vector2i) -> bool:
 	return absi(b.y - a.y) <= absi(b.x - a.x)
+
+## Is `a`-`b` a step of the deck's line, the road the cart drives on?
+static func on_deck(level: Dictionary, a: Vector2i, b: Vector2i) -> bool:
+	var w := int(level.w)
+	var dy := int(level.get("dy", 0))
+	var lo := a if a.x < b.x else b
+	var hi := b if a.x < b.x else a
+	return hi.x == lo.x + 1 and lo.x >= 0 and hi.x <= w and lo.y == deck_y(w, dy, lo.x) and hi.y == deck_y(w, dy, hi.x)
+
+## What a piece laid from `a` to `b` is, with one material in the hand: the
+## road along the deck's line, a wooden beam anywhere else.
+static func mat_for(level: Dictionary, a: Vector2i, b: Vector2i) -> int:
+	return Sim.ROAD if on_deck(level, a, b) else Sim.WOOD
 
 static func plain_deck(level: Dictionary) -> Array:
 	var w := int(level.w)
