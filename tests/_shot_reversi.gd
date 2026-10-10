@@ -13,6 +13,14 @@ extends SceneTree
 ## pass (the first turn skipped, if one is), count, end, sweep (Play again
 ## clearing the board). After the first move the clock runs `speed` times as
 ## fast (3). Prints the draw calls at each and puts user://versus.cfg back.
+##
+## The moments are shot as they come up, the clock back at 1 for the ones the
+## hand sets off: ripple (the light under a run as it turns), big_a/b/c (a
+## move of six discs or three lines: the flips, the second bloom, the
+## answer), corner_a/b (the brass), edge (the rail of an edge filled), lead
+## (the notch as the lead changes hands), knock (a side passed over), single
+## (the only open square beckoning), count_a/count/count_c (the count at the
+## end). One that never came up is said at the end.
 
 const AI = preload("res://versus/reversi_ai.gd")
 const Rules = preload("res://versus/reversi_rules.gd")
@@ -37,6 +45,8 @@ var _first := -1
 var _passes := 0
 var _seen_ply := -1
 var _peak := 0
+var _moment := ""
+var _slow_cell := -1
 
 func _initialize() -> void:
 	_had_record = FileAccess.file_exists("user://versus.cfg")
@@ -94,6 +104,7 @@ func _process(delta: float) -> bool:
 		_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return false
 	_peak = maxi(_peak, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+	_watch()
 	var S = _screen.State
 	var r: RefCounted = _screen.rules
 	if r.ply != _seen_ply:
@@ -147,7 +158,29 @@ func _process(delta: float) -> bool:
 					_step = 6
 					_wait = 0.12
 					return false
+				if _board._single and not _done.has("single") and not _board.Motion.reduce \
+						and _board._t - _board._turn_at < _board.BECKON * 2.0:
+					# the only open square is left to beckon once
+					return false
+				if not _done.has("knock") and _board._t - _board._knock_at < 0.5:
+					# the other side's knock is let finish
+					return false
 				var cell := _pick()
+				var n: int = r.flips(cell, r.turn).size()
+				var kind := ""
+				if cell in _board.CORNERS and not _done.has("corner_a"):
+					kind = "corner"
+				elif n >= _board.BIG and not _done.has("big_a"):
+					kind = "big"
+				if kind != "" and not _board.Motion.reduce:
+					print("  %s: square %d turns %d at ply %d" % [kind, cell, n, r.ply])
+					_moment = kind
+					Engine.time_scale = 1.0
+					_touch(_at(cell), true)
+					_touch(_at(cell), false)
+					_step = 20
+					_wait = 0.26
+					return false
 				_touch(_at(cell), true)
 				_touch(_at(cell), false)
 				_wait = 0.1
@@ -155,8 +188,12 @@ func _process(delta: float) -> bool:
 				print("  over: status %d winner %d discs %d-%d ply %d passes %d, player %d" % [r.status(), r.winner(),
 					r.count(0), r.count(1), r.ply, _passes, _screen.player])
 				Engine.time_scale = 1.0
-				_step = 8
-				_wait = 0.9
+				_step = 80
+				_wait = 0.5
+		80:
+			_shot("count_a")
+			_step = 8
+			_wait = 0.4
 		5:
 			if _screen._hint_cell >= 0:
 				_wait = 0.3
@@ -182,10 +219,26 @@ func _process(delta: float) -> bool:
 			_shot("refused")
 			_step = 4
 			_wait = 0.3
+		20:
+			_shot(_moment + "_a")
+			_step = 21
+			_wait = 0.3 if _moment == "corner" else (_board._big_at - _board._t + 0.14)
+		21:
+			_shot(_moment + "_b")
+			_step = 22
+			_wait = 0.2
+		22:
+			_shot(_moment + "_c")
+			Engine.time_scale = _speed
+			_step = 4
 		8:
 			_shot("count")
+			_step = 81
+			_wait = 0.5
+		81:
+			_shot("count_c")
 			_step = 9
-			_wait = 3.0
+			_wait = 2.5
 		9:
 			_shot("end")
 			if _screen._end != null and _screen.online == null:
@@ -199,10 +252,39 @@ func _process(delta: float) -> bool:
 			_wait = 1.2
 		11:
 			_shot("again")
+			var missed := PackedStringArray()
+			for m: String in ["ripple", "big_a", "corner_a", "edge", "lead", "knock", "single", "count_a"]:
+				if not _done.has(m):
+					missed.append(m)
+			print("  never came up: ", ", ".join(missed) if not missed.is_empty() else "nothing")
 			print("peak draws ", _peak)
 			_restore()
 			return true
 	return false
+
+## The moments nobody sets off on purpose, shot on the frame they show.
+func _watch() -> void:
+	if _board.Motion.reduce or _board.rules == null:
+		return
+	var t: float = _board._t
+	if not _done.has("ripple") and not _board._glow.is_empty():
+		for c: int in _board._glow:
+			var e: float = t - float(_board._glow[c].at)
+			if e > _board.FLIP * 0.4 and e < _board.FLIP * 0.7:
+				_shot("ripple")
+				break
+	if t - _board._lead_at > 0.12 and t - _board._lead_at < 0.4:
+		_shot("lead")
+	if t - _board._knock_at > 0.1 and t - _board._knock_at < 0.2:
+		_shot("knock")
+	if not _board._rails.is_empty():
+		var e: float = t - float(_board._rails[0].at)
+		if e > 0.2 and e < 0.6:
+			_shot("edge")
+	if _board.interactive and _board._single and _screen._state == _screen.State.YOURS:
+		var e := fmod(t - _board._turn_at, _board.BECKON)
+		if t - _board._turn_at > _board.BECKON * 0.5 and e > 0.06 and e < 0.16:
+			_shot("single")
 
 func _pick() -> int:
 	var r: RefCounted = _screen.rules

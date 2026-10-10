@@ -33,6 +33,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 ## What the phone knocks for (docs/agents/haptics.md). The board's cues ring
@@ -304,7 +305,28 @@ func _build_deck(sz: Vector2) -> ArrayMesh:
 			b.stroke(PackedVector2Array([p - Vector2(r * 1.2, 0.0).rotated(ang), p + Vector2(r * 0.8, 0.0).rotated(ang)]), 2.0,
 				Color(Pal.LEAF_DEEP, 0.7))
 		placed += 1
+	_dress_deck(b, sz)
 	return b.mesh()
+
+## What stands on the deck over the board, clear of the line of words: the
+## set's pine tray lined with felt, the spare discs in it (two of each face),
+## and a cup of tea. Dominoes' tray and cup, so the two tables are one
+## house's. Part of the deck's mesh; left out where the room is too low.
+func _dress_deck(b: Face.Builder, sz: Vector2) -> void:
+	var k: float = board.used_rect.size.x / Board.SPACE_TALLY.size.x
+	var top := 24.0
+	var bottom: float = board.toast_point().y + DECK_PAD - 62.0
+	var tray := Vector2(232.0, 78.0) * k
+	if bottom - top < tray.y + 8.0 or sz.x < 600.0:
+		return
+	var mid_y := minf(top + (bottom - top) * 0.5, top + 80.0 * k)
+	var at := Vector2(46.0, mid_y - tray.y * 0.5)
+	Scenery.tray(b, at, tray, 7.0 * k)
+	var discs: Array = [board._build_disc(0), board._build_disc(1)]
+	for i in 4:
+		var c := at + Vector2(tray.x * (0.5 + (i - 1.5) * 0.225), tray.y * 0.5 + 1.0)
+		b.append(discs[i / 2], Transform2D(0.0, Vector2(k, k) * 0.56, 0.0, c))
+	Scenery.cup(b, Vector2(sz.x - 46.0 - 40.0 * k, mid_y), 40.0 * k)
 
 static func _plank_rect(at: Vector2, sz: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])
@@ -513,6 +535,7 @@ func _start_turn() -> void:
 	var again: bool = rules.passed and rules.ply > 0
 	if again:
 		_fx.cue("pass")
+		board.knock(1 - rules.turn)
 		if not mine:
 			_fx.buzz(Haptics.WARN)
 		_say(tr("RVS_PASS_THEM" if mine else "RVS_PASS_YOU"))
