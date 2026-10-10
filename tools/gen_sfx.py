@@ -386,12 +386,18 @@ KITTEN = ("close-mic recording of a real small kitten in a quiet warm room, "
 SETS = {
     # The interface, not a board: every button's click (ui/ui_sound.gd).
     "ui": {
-        "click":    ("a single tiny soft paper and wood click, pressing a small cozy button, very short and light", 0.5, -12),
+        # The user, 2026-10-10: "too loud, too high pitch, annoying". It was the
+        # paper-and-wood take of September at -12, 17% of it from 1 to 3 kHz:
+        # a wheel's notch now (rule 5), 7 dB down. One number turns it up.
+        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # The user, 2026-10-09, twice: the linen brush "too harsh", then the
         # card slid over felt that replaced it "a harsh scratch". A page turn
         # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and
         # eased in over 60 ms: nothing in it is rubbed against anything.
-        "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The user, 2026-10-10: "the most annoying sound in the world, too
+        # loud, too harsh". The same breath, 5 dB down, darker (900) and cut
+        # at 0.35 s where half a second was heard.
+        "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -20, BREEZE, "warm:900", "steep", "ease:0.08", "body:320", "cut:0.35"),
         # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
         # it is the quietest tune there is, low and eased in.
         "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
@@ -1554,7 +1560,7 @@ SETS = {
         "cushion":  ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-3"),
         # A ball down: clack's take, two notches, the second four steps up.
         "pot":      ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.26", "body:320", "tight", "notes:0.1:0,4"),
-        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
+        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         "foul":     ("a soft gentle two-note downward kalimba, not yet, never a buzzer", 0.6, -9),
         "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:-3,0,4", "cut:1.0"),
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.14:8,10,12,15,17", "cut:1.7"),
@@ -1576,7 +1582,7 @@ SETS = {
         "wall":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
         # A goal's corner: wall's take, three steps down.
         "post":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1200", "cut:0.16", "body:320", "tight", "notes:0:-3"),
-        "glide":    ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -14, BREEZE, "loop", "warm:900", "steep", "body:320"),
+        "glide":    ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         # The puck set down: strike's take, two steps down.
         "serve":    ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
         "goal":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:3,8", "cut:0.7"),
@@ -1806,7 +1812,7 @@ SETS = {
         # The seed in the pond: pop's take, three steps down.
         "drain":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-3"),
         "fever":    ("one soft note on a kalimba over a gentle tongue drum, warm and bright-hearted, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.1:2,4,6,7,9,11", "cut:1.6"),
-        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:900", "steep", "body:320"),
+        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         "close":    ("a soft playful disappointed 'awww' of two kalimba notes bending down with a little wooden wobble, a near miss, funny and kind, never sad", 0.9, -10, POND_TUNE, "warm:7000"),
         # The last seed in the pot: fever's take, down, and up past where it began.
         "fever_pot":("one soft note on a kalimba over a gentle tongue drum, warm and bright-hearted, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.11:9,6,2,6,11", "cut:1.5"),
@@ -2095,9 +2101,12 @@ SETS = {
     # so it is a tock with no note either. Nothing is a stone: a pebble on
     # sand came back as a click at 2.5 kHz and three clacking at 4.5.
     "thirteen": {
-        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A chain's click, heard for as long as a finger slides: 4 dB down
+        # and darker (the user, 2026-10-10: the slide is "too loud, too
+        # harsh"), and the screen's climb stops at three semitones.
+        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # A pebble given back: select's take, two steps down.
-        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-2"),
+        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1100", "cut:0.07", "body:320", "tight", "notes:0:-2"),
         "short":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough pebbles, gentle, very short", 0.5, -10, ARCADE),
         "merge":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
         # A pebble settling: merge's take, two steps down and quieter.
@@ -2466,7 +2475,7 @@ SETS = {
         # Snooker's roll, of the same prompt. honk: the horn at mid-span, two
         # quick notes alike.
         "go":            ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,9", "cut:0.7"),
-        "roll":          ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
+        "roll":          ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         "honk":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:8,8", "cut:0.5"),
         # A beam near its limit: select's take, three slow low notches. A beam
         # gone: wood's take, three notches, down and half back. A rope gone:
@@ -3000,7 +3009,7 @@ SETS = {
         # felt.
         # The penny let go: a puff of air, cut short because the knock comes
         # 0.23 s behind it on a full column (0.52 s on an empty one).
-        "drop":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -18, BREEZE, "warm:900", "steep", "ease:0.04", "body:320", "cut:0.22"),
+        "drop":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -22, BREEZE, "warm:750", "steep", "ease:0.04", "body:320", "cut:0.22"),
         # Its knock on what is below: the board plays it 1.08 to 0.92, lower
         # and up to 5.5 dB louder the further it fell.
         "land":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),

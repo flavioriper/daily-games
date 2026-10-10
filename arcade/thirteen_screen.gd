@@ -222,8 +222,10 @@ var _tier := 0
 ## 2026-10-10; it was 5% a pebble up to 1.5, and 7% up to 1.9 before that, a
 ## squeak by the end of a long chain). The sound is a click and stays one: a
 ## kalimba note up the pentatonic was tried on 2026-10-05 and the user
-## turned it down -- nothing that repeats this much may ring.
-const CLIMB_TOP := 1.335
+## turned it down -- nothing that repeats this much may ring. Three
+## semitones since 2026-10-10 (the user: the slide is "too loud, too harsh"),
+## and `select` is 4 dB down in its file.
+const CLIMB_TOP := 1.19
 ## Pebbles falling together land as one soft patter, not a rattle: `land`
 ## is heard at most once in LAND_GAP seconds.
 const LAND_GAP := 0.09

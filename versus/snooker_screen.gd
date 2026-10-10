@@ -127,6 +127,10 @@ var _pot_felt := false
 ## The cloth's rumble: one looping voice whose level follows how fast the
 ## balls are running, so a break roars and a last creeping ball fades out.
 var _roll: AudioStreamPlayer
+## The roll's level with the whole table moving, linear. The user,
+## 2026-10-10: "waaaay more subtle" -- it was 1.0 of a file at -15, and is
+## this of one at -22, 13 dB down in all.
+const ROLL_TOP := 0.5
 var _backdrop: ColorRect
 var _margins: MarginContainer
 var _toast: PanelContainer
@@ -779,11 +783,12 @@ func _roll_sound(delta: float) -> void:
 			if sim.on[i]:
 				run += sim.vel[i].length()
 	# Heard from a crawl, full by about two metres a second of ball on the cloth.
-	var want := clampf(run / 2.0, 0.0, 1.0)
+	var speed := clampf(run / 2.0, 0.0, 1.0)
+	var want := speed * ROLL_TOP
 	var now := db_to_linear(_roll.volume_db)
-	now = move_toward(now, want, delta * (6.0 if want > now else 2.5))
+	now = move_toward(now, want, delta * (6.0 if want > now else 2.5) * ROLL_TOP)
 	_roll.volume_db = linear_to_db(maxf(now, 0.0001))
-	_roll.pitch_scale = lerpf(0.85, 1.1, want)
+	_roll.pitch_scale = lerpf(0.92, 1.04, speed)
 	if now > 0.002 and not _roll.playing:
 		_roll.play()
 	elif now <= 0.002 and _roll.playing:

@@ -1,6 +1,6 @@
 extends RefCounted
 
-## The interface's click: one soft paper-and-wood tap for every button in the
+## The interface's click: one low notch of a mouse wheel for every button in the
 ## game (back, pager, tabs, sheets, tray chips...). CozyTheme's dress() wires
 ## it to every BaseButton that enters the tree, so a new button needs nothing.
 ## A press the board answers with its own cue in the same frame (a tray chip

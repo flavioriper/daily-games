@@ -19,6 +19,19 @@ prompt.
 | A swipe, a page, a sweep, anything that travels | a breath of breeze, or a thing slid gently on wood (rule 4) | `BREEZE`, `warm:1100`, `steep`, `ease`, `body:320` | -16 |
 | A moment: a hint, a line, a hand won, the day's end | a few muffled notes at 400 to 700 Hz, kalimba or tongue drum played with felt | `COZY_TUNE`, `warm:2000`-`2600`, `ease`, `body:300`, `notes` (rule 8) | none above -8 |
 
+**What is heard all the time is under everything else (user, 2026-10-10).**
+Of the button's click, the menu's page turn and the slides of air hockey,
+snooker, Penny Drop and Lucky Thirteen: "too loud, too harsh", and of a
+sound that never stops, "waaaay more subtle, since it's a sound user will
+heard all the time". So a loop that follows a thing moving is a file at -22
+with `warm:700`, played at half that or under (`GLIDE_TOP` 0.45 in
+`versus/hockey_screen.gd`, `ROLL_TOP` 0.5 in `versus/snooker_screen.gd`: 13
+dB under what they were), its pitch moving a semitone either way and no
+more; Marigold's and Trestle's `roll` are the same file at the levels their
+boards had. A swipe's breath is -20 to -22, and the click under a finger
+that slides (Lucky Thirteen's `select`) is -19 and climbs three semitones.
+All of it measured, none of it heard yet.
+
 **2. Low, and never high.** No cue has its weight above 1 kHz. The measure,
 taken on every take before it is kept: the body between 300 Hz and 1 kHz,
 30 dB or more down above 3 kHz (the takes the user hated had a centroid
@@ -110,8 +123,7 @@ have not been measured on the phone's side). Not models, though boards still
 use them: `STYLE` (glockenspiel, bubbly pops), `ARCADE` and every `*_TUNE`
 that says "small hand bells" or "music box", `DUSK` and `GLASSHOUSE` (glass
 chimes), `NIGHT` (glass jars and bells), `CARTOON`. **Owed against these
-rules, none started**: `ui/click` (still "paper and wood", `STYLE`, -12,
-never measured); the 149 short cues listed at the foot of this file; the
+rules, none started**: the 149 short cues listed at the foot of this file; the
 bell and chime notes of the sets above. They are redone when the user names
 them.
 
@@ -128,7 +140,7 @@ is rendered by name never, or written again.
 
 | Set | State |
 |---|---|
-| `ui` | `page` and `opening` pass; `click` passes the measure but is still the paper-and-wood take, not a wheel's notch: not done |
+| `ui` | done 2026-10-10, unheard: `click` is a new take, a wheel's notch (a light wooden button on felt, `HUSH`, -19 cut at 0.07 s, 544 Hz where 761; it was the paper-and-wood take at -12); `page` the same breath at -20, `warm:900`, cut at 0.35 s (it was -16 and half a second); `opening` passes |
 | `binairo` | done 2026-10-09, unheard: 15 new takes (7 ticks, 2 breezes, 7 phrases with `brush` the lift's take), 6 kept; the streak's climb 14 semitones down to 5 |
 | `mastermind` (Code Break) | done 2026-10-10, unheard: 19 new takes (10 ticks, 2 breezes, 7 phrases), 6 kept; `note` and `pip` are ticks and their climb is 16 semitones down to 5 (`CLIMB`) |
 | `balance` | done 2026-10-10, unheard: 17 new takes (9 ticks, 2 breezes, 6 phrases), 5 kept; `land` and `tock` pitched inside five semitones |

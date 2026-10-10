@@ -88,6 +88,10 @@ const HAPTICS := {"goal": Haptics.GOOD, "conceded": Haptics.WARN, "win": Haptics
 ## The puck's whisper on its cushion of air: one looping voice whose level
 ## follows how fast it is going.
 var _glide: AudioStreamPlayer
+## The glide's level at full speed, linear. The user, 2026-10-10: "waaaay
+## more subtle, since it's a sound user will heard all the time" -- it was
+## 0.7 of a file at -14, and is this of one at -22, 13 dB down in all.
+const GLIDE_TOP := 0.45
 var _backdrop: ColorRect
 var _margins: MarginContainer
 var _toast: PanelContainer
@@ -510,12 +514,14 @@ func _glide_sound(delta: float, waiting: bool) -> void:
 	var run := 0.0
 	if _state == State.PLAY and not waiting and sim.puck_on:
 		run = sim.puck_vel.length()
-	# Heard from a drift, full by about three metres a second.
-	var want := clampf(run / 3.0, 0.0, 1.0) * 0.7
+	# Heard from a drift, full by about three metres a second. Full is
+	# GLIDE_TOP: the puck never stops, so this is under everything else.
+	var speed := clampf(run / 3.0, 0.0, 1.0)
+	var want := speed * GLIDE_TOP
 	var now := db_to_linear(_glide.volume_db)
-	now = move_toward(now, want, delta * (5.0 if want > now else 2.5))
+	now = move_toward(now, want, delta * (5.0 if want > now else 2.5) * GLIDE_TOP)
 	_glide.volume_db = linear_to_db(maxf(now, 0.0001))
-	_glide.pitch_scale = lerpf(0.9, 1.12, want)
+	_glide.pitch_scale = lerpf(0.94, 1.04, speed)
 	if now > 0.002 and not _glide.playing:
 		_glide.play()
 	elif now <= 0.002 and _glide.playing:
