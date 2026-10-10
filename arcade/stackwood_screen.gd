@@ -46,6 +46,8 @@ const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 
 const GAME := "stackwood"
+## No sound the screen pitches climbs past five semitones (the cozy rules).
+const CLIMB_TOP := 1.335
 const MARGIN := 40
 const GAP := 20
 const HUD_H := 110.0
@@ -806,7 +808,7 @@ func _play_events() -> void:
 				_show_banner(tr("SW_GO"), "", 0.3)
 				_fx.cue("go")
 			"move":
-				_fx.cue("move", randf_range(0.95, 1.08), -2.0)
+				_fx.cue("move", randf_range(0.94, 1.06), -2.0)
 			"drop":
 				_fx.cue("drop", randf_range(0.95, 1.05))
 			"spawn":
@@ -828,7 +830,7 @@ func _play_events() -> void:
 					var down: float = float(ev.row) - under.pos.y
 					under.dip = -0.035 * (down - 1.0)
 					under.dip_amt = (0.07 if _was_dropping else 0.04) * pow(0.7, down - 1.0)
-				_fx.cue("land", randf_range(0.92, 1.06))
+				_fx.cue("land", randf_range(0.94, 1.06))
 				_landed = true
 				_drop_merged = false
 				# One tap a drop: a block let go taps as it lands, or, when
@@ -928,7 +930,8 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.sparkle(px(to.x, to.y), Color("fffaf0"))
 			_fx.ring(px(to.x, to.y), 1.2 * _u, Art.GOLD)
 	_launch_acorns(ev)
-	_fx.cue("merge", minf(1.0 + 0.09 * (chain - 1), 1.6))
+	# a tock a semitone a round of the chain, five in all
+	_fx.cue("merge", minf(pow(2.0, (chain - 1) / 12.0), CLIMB_TOP))
 	# A merge is the common right move, the tap its drop held back; a chain
 	# bumps once, at its second round.
 	if not _answered:
@@ -942,7 +945,7 @@ func _on_merge(ev: Dictionary) -> void:
 		_drop_merged = true
 		_streak += 1
 	if chain >= 2:
-		_fx.cue("chain", minf(1.0 + 0.07 * (chain - 2), 1.5))
+		_fx.cue("chain", minf(pow(2.0, (chain - 2) / 12.0), CLIMB_TOP))
 		_kick(_score_k, 0.3, 0.35)
 		_shake = maxf(_shake, 0.15 + 0.05 * chain)
 	if chain >= 3:
@@ -1933,7 +1936,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("move", 0.9 + 0.8 * k, -10.0)
+			_fx.cue("move", 1.0 + (CLIMB_TOP - 1.0) * k, -10.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		_kick(_end_score, 0.25, 0.4)
