@@ -2017,54 +2017,71 @@ SETS = {
         "game_over":("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
         "new_best": ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
     },
-    # Molehill (Arcade, arcade/molehill_screen.gd): whack-a-mole on a lawn.
-    # The whacks are cartoon bonks; pop_up and escape fire constantly, so
-    # they sit low.
+    # Molehill (Arcade, arcade/molehill_screen.gd): moles bopped on a lawn.
+    # Redone against the cozy rules on 2026-10-10 (docs/agents/sound.md has
+    # the row). The mallet is a tick and so is everything it lands on;
+    # pop_up and escape fire constantly, so they sit lowest.
     "molehill": {
-        "pop_up":      ("a tiny soft 'plop' of a small animal popping up out of a hole in the soil, very short", 0.5, -16, CARTOON),
-        "whack":       ("a soft rubbery cartoon 'bonk' of a wooden mallet on a little head, with a tiny squeak, very short", 0.5, -6, CARTOON),
-        "whack_gold":  ("a cartoon mallet 'bonk' followed by a bright jingle of coins and a sparkle, a golden prize, short", 0.8, -5, CARTOON),
-        "clang":       ("a hollow clay flowerpot knocked by a wooden mallet, a round 'clonk' that rings a little, short", 0.5, -7, CARTOON),
-        "crack":       ("a clay flowerpot cracking apart with a soft crunch and a cartoon 'bonk', short", 0.6, -6, CARTOON),
-        "bunny":       ("a startled little cartoon rabbit squeak and a soft 'boing', oops, not hurt, short", 0.6, -6, CARTOON),
-        "miss":        ("a soft dull thud of a wooden mallet on grass and soil, a miss, very short", 0.5, -10, CARTOON),
-        "escape":      ("a tiny cheeky cartoon raspberry giggle of a little mole ducking back down a hole, very short", 0.5, -14, CARTOON),
-        "combo":       ("a bright rising three-note run on a real kalimba with a hand bell sparkle, a combo multiplier going up, short", 0.7, -6, ARCADE),
-        "streak_lost": ("a short soft two-note fall on a real kalimba, a streak broken, gentle", 0.5, -10, ARCADE),
-        "go":          ("two short bright rising notes on a real music box with a little hand bell on top, a round starts, cheerful", 0.6, -5, ARCADE),
+        "pop_up":      ("a tiny soft 'plop' of a small animal popping up out of a hole in the soil, very short", 0.5, -16, CARTOON, "warm:1400", "body:320"),
+        "whack":       ("one small wooden mallet set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        # The golden mole: the note, two quick ones a fourth apart.
+        "whack_gold":  ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
+        # A pot knocked is whack's take three steps down, a pot broken two
+        # notches falling.
+        "clang":       ("one small wooden mallet set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-3"),
+        "crack":       ("one small wooden mallet set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.22", "body:320", "tight", "notes:0.09:0,-4"),
+        # The bunny bopped by mistake: a low wobble, a step down and back.
+        "bunny":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.13:5,4,5", "cut:0.7"),
+        # The mallet on the grass: Firefly's shot, a lighter thing.
+        "miss":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        # A mole gone back down: Hedgehogs' gust.
+        "escape":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # The multiplier going up: Super Slider's tick, a semitone a step.
+        "combo":       ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "streak_lost": ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.16:7,4", "cut:0.7"),
+        "go":          ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,4,8", "cut:0.8"),
         "tick":        ("a single soft wooden clock tick with a tiny bell, a countdown second, very short", 0.5, -9, ARCADE),
-        "frenzy":      ("an excited quick rising run on a real kalimba over a soft roll of fingers drumming on a wooden box, the last ten seconds, double points", 1.2, -5, ARCADE),
-        "time_up":     ("a cheerful alarm clock 'brring' bell, very short, time is up", 0.8, -6, CARTOON),
-        "start":       ("a short cheerful opening tune on a real kalimba and music box, a bouncy garden melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
-        "game_over":   ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
-        "new_best":    ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
+        "frenzy":      ("an excited quick rising run on a real kalimba over a soft roll of fingers drumming on a wooden box, the last ten seconds, double points", 1.2, -8, ARCADE),
+        # The bell is gone: four notes hopping, a third apart.
+        "time_up":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:11,8,11,8", "cut:0.9"),
+        "start":       ("a short cheerful opening tune on a real kalimba and music box, a bouncy garden melody, a game beginning, about two seconds", 2.2, -8, ARCADE, "warm:1800", "body:300"),
+        "game_over":   ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
+        "new_best":    ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE),
     },
     # Stackwood (Arcade, arcade/stackwood_screen.gd): numbered wooden toy
-    # blocks that fall and merge. The blocks are CARTOON wood; the jingles
-    # ARCADE (a kalimba and music box since 2026-10-05). move and land fire
-    # on every block, so they sit low; merge is pitched up the chain by the
-    # screen.
+    # blocks that fall and merge. Redone against the cozy rules on
+    # 2026-10-10 (docs/agents/sound.md has the row). move and land fire on
+    # every block, so they sit low; merge is land's take, pitched up the
+    # chain by the screen, five semitones at most.
     "stackwood": {
-        "move":      ("a tiny soft wooden tick, a toy block nudged one step sideways, very short", 0.5, -18, CARTOON),
-        "drop":      ("a quick soft airy whoosh of a small wooden block dropping, very short", 0.5, -14, CARTOON),
-        "land":      ("a soft hollow wooden toy block landing on a stack of blocks, a warm 'tock', very short", 0.5, -9, CARTOON),
-        "merge":     ("two wooden toy blocks clicking together into one with a bright soft chime, satisfying, very short", 0.5, -6, CARTOON),
-        "chain":     ("a quick bright rising three-note run on a real kalimba with a hand bell sparkle, a chain combo, short", 0.7, -6, ARCADE),
-        "big":       ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest block made, short", 0.8, -5, ARCADE),
-        "milestone": ("a joyful triumphant fanfare on a real kalimba, music box and hand bells, a great block reached at last, about two seconds", 2.2, -4, ARCADE),
-        "wild":      ("a soft swirling run of tiny hand bells and music box notes, a rainbow shimmer, magical, soft and bright, short", 0.8, -7, ARCADE),
-        "buy":       ("a cheerful two-note music box chime with a tiny coin clink, a power-up bought, short", 0.6, -7, ARCADE),
-        "fuse":      ("a short soft cartoon fuse hiss and crackle, a little bomb lit, short", 0.7, -10, CARTOON),
-        "bomb":      ("a soft round cartoon 'boom' with wooden blocks scattering, playful, not harsh, short", 0.9, -5, CARTOON),
-        "zap":       ("a quick soft crackle of a dry twig snapping with a bright sprinkle of tiny hand bells, a playful little lightning bolt, short", 0.7, -7, ARCADE),
-        "refused":   ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough acorns, gentle, very short", 0.5, -10, ARCADE),
-        "warn":      ("two soft worried notes on a real kalimba, the second a little lower, a stack near the top, gentle, not alarming", 0.6, -9, ARCADE),
+        "move":      ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A block let go: Hedgehogs' gust.
+        "drop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "land":      ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "merge":     ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        # The chain's count: Super Slider's tick, a semitone a step.
+        "chain":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        # A new biggest block: the note, two a fourth apart.
+        "big":       ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,9", "cut:0.7"),
+        "milestone": ("a joyful triumphant fanfare on a real kalimba, music box and hand bells, a great block reached at last, about two seconds", 2.2, -8, ARCADE, "warm:2600", "body:300"),
+        "wild":      ("a soft swirling run of tiny hand bells and music box notes, a rainbow shimmer, magical, soft and bright, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
+        "buy":       ("a cheerful two-note music box chime with a tiny coin clink, a power-up bought, short", 0.6, -8, ARCADE),
+        # The fuse lit is move's take, four quick notches (the wheel spun);
+        # the bolt three quick ones down; not enough acorns two low alike.
+        "fuse":      ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.055:0,1,2,3"),
+        # The bomb and the stack coming down are land's take: a short tumble
+        # of five notches and a long one of eleven, falling.
+        "bomb":      ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:0,-3,-1,-5,-2"),
+        "zap":       ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.17", "body:320", "tight", "notes:0.045:5,2,0"),
+        "refused":   ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
+        # A stack near the top: two slow notes, the second lower.
+        "warn":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:7,4", "cut:0.8"),
         "retired":   ("a soft pop and a small falling sprinkle of music box notes, the smallest blocks put away, short", 0.6, -8, ARCADE),
-        "topple":    ("a tall stack of wooden toy blocks toppling and tumbling down, a cascade of hollow wooden clatters, about a second and a half", 1.5, -5, CARTOON),
-        "go":        ("two short bright rising notes on a real music box with a little hand bell on top, a game starts, cheerful", 0.6, -5, ARCADE),
-        "start":     ("a short cheerful opening tune on a real kalimba and music box, a bouncy toy-box melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
-        "game_over": ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
-        "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
+        "topple":    ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1500", "cut:1.1", "body:320", "tight", "notes:0.085:0,-1,2,-2,-1,-4,-3,-5,-4,-7,-7"),
+        "go":        ("two short bright rising notes on a real music box with a little hand bell on top, a game starts, cheerful", 0.6, -8, ARCADE),
+        "start":     ("a short cheerful opening tune on a real kalimba and music box, a bouncy toy-box melody, a game beginning, about two seconds", 2.2, -8, ARCADE, "warm:1800", "body:300"),
+        "game_over": ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
+        "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
     },
     # Lucky Thirteen (Arcade, arcade/thirteen_screen.gd): numbered river
     # pebbles merged by drawing chains. Re-recorded 2026-10-05 as RIVERBED

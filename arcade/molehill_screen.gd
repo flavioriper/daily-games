@@ -50,6 +50,8 @@ const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "molehill"
+## No sound the screen pitches climbs past five semitones (the cozy rules).
+const CLIMB_TOP := 1.335
 const MARGIN := 40
 const GAP := 20
 const HUD_H := 110.0
@@ -560,7 +562,7 @@ func swing(i: int, p: Vector2) -> void:
 	var ground := _hill_pos(i) if got != "miss" and i >= 0 else p
 	_mallets.append({"pos": where, "ground": ground, "t": 0.0, "hit": got != "miss"})
 	if got == "miss" and i < 0:
-		_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
+		_fx.cue("miss", randf_range(0.94, 1.06), -4.0)
 		_burst(p, LAWN_DEEP, false)
 	_play_events()
 
@@ -618,13 +620,13 @@ func _play_events() -> void:
 				_show_banner(tr("MH_GO"), "", 0.4)
 				_fx.cue("go")
 			"up":
-				_fx.cue("pop_up", randf_range(0.92, 1.12), -8.0)
+				_fx.cue("pop_up", randf_range(0.94, 1.06), -8.0)
 				_burst(_hill_pos(hill) + Vector2(0, -3.0), Art.SOIL_HI, false, 0.6)
 			"hit":
 				_hit_at[hill] = _clock
 				var kind: int = ev.kind
 				var gold := kind == Sim.Kind.GOLD
-				_fx.cue("whack_gold" if gold else ("crack" if kind == Sim.Kind.POT else "whack"), randf_range(0.94, 1.08))
+				_fx.cue("whack_gold" if gold else ("crack" if kind == Sim.Kind.POT else "whack"), randf_range(0.94, 1.06))
 				_burst(_hill_pos(hill) + Vector2(0, -6.0), Art.SOIL_HI, gold or kind == Sim.Kind.POT)
 				if gold:
 					_fx.sparkle(px(top), Art.GOLD)
@@ -660,14 +662,15 @@ func _play_events() -> void:
 				_rw.spray(_in_rw(top + Vector2(0, -24.0)), Art.CARROT, 3, 420.0, "shard", 0.8)
 				_flash_now(Color("f4a7a0"), 0.35)
 			"miss":
-				_fx.cue("miss", randf_range(0.9, 1.1), -4.0)
+				_fx.cue("miss", randf_range(0.94, 1.06), -4.0)
 				_burst(_hill_pos(hill) + Vector2(0, 2.0), Art.SOIL, false)
 			"escape":
-				_fx.cue("escape", randf_range(0.95, 1.08), -6.0)
+				_fx.cue("escape", randf_range(0.94, 1.06), -6.0)
 				# the raspberry it blows on its way down
 				_fx.puff(px(top + Vector2(3.0, 22.0)), Color("fffaf0"), 4)
 			"combo":
-				_fx.cue("combo", 1.0 + 0.08 * (int(ev.mult) - 2))
+				# a tick a semitone a step, five in all
+				_fx.cue("combo", minf(pow(2.0, (int(ev.mult) - 2) / 12.0), CLIMB_TOP))
 				_feel(Haptics.BUMP)
 				_on_combo(hill, int(ev.mult))
 				_score_k.pivot_offset = _score_k.size * 0.5
@@ -1511,7 +1514,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("tick", 0.9 + 0.8 * k, -10.0)
+			_fx.cue("combo", 1.0 + (CLIMB_TOP - 1.0) * k, -10.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		Motion.bump(_end_score, 0.25, 0.4)
