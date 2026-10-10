@@ -119,7 +119,12 @@ them.
 all games sfx"). In `SETS` order; the next is the first row not done. Done
 means every file of the set reads "0 flagged", the board's own pitch climbs
 are inside five semitones, and the sounds are imported; it does not mean
-heard.
+heard. **A kept cue is only as good as its raw take** (Fairy Lights,
+2026-10-10): rendering a whole set renders every cue from whatever is in
+`build/sfx_raw/`, and three that passed there came out 74 to 99% above 3 kHz
+from takes a week older than their files. Before a set is rendered whole,
+measure it `--raw` and compare with the files; a kept cue whose raw is gone
+is rendered by name never, or written again.
 
 | Set | State |
 |---|---|
