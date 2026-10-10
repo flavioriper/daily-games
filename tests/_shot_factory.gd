@@ -1,0 +1,508 @@
+extends SceneTree
+
+## Factory's screen (factory/screen.gd), played by touches and shot; then the
+## tab's card (ui/menu/factory_tab.gd) alone. Windowed, one run at a time:
+##
+##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_factory.gd -- <outdir> > <log> 2>&1
+##
+## (add `--rendering-driver opengl3_angle` before `--script` for the phone's
+## driver, and `reduce` after <outdir> for reduce motion). It builds the
+## screen by hand on a land of its own (`Sim.new(7)`, kept in a throwaway
+## file that is deleted as it ends) and goes through a first session with
+## real ScreenTouch and ScreenDrag events handed to the screen's own input
+## handler: a tree tapped and bitten down, Belt picked, a belt dragged from
+## the log to the market, the log sold, the plate card from a plus, a second
+## plate bought. Then a late land of four plates is built through the sim's
+## own actions and stepped until its kiln and retort work and the market's
+## counter is stacked; a machine is placed by a finger, a belt sold by a
+## held one, the view dragged and pinched; the cards, the drawer, the far
+## zoom and the tutorial's three pages are shot. Each step that matters
+## prints PASS or FAIL, each shot its draw calls.
+
+const SEED := 7
+const SAVE := "user://factory_harness.cfg"
+## The tree the session fells (seed 7), where its log lies, and the drag.
+const TREE := Vector2i(5, 2)
+const LOG := Vector2i(5, 3)
+const DRAG := [Vector2(5.5, 3.5), Vector2(5.5, 4.5), Vector2(5.5, 5.5), Vector2(5.5, 6.5), Vector2(6.4, 6.5)]
+const WANT_BELTS := {Vector2i(5, 3): 1, Vector2i(5, 4): 1, Vector2i(5, 5): 1, Vector2i(5, 6): 0}
+
+var Art: GDScript
+var Sim: GDScript
+var Motion: GDScript
+var _out := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/f811faee-d34c-4697-9443-559f872b4e16/scratchpad"
+var _screen: Control
+var _sim: RefCounted
+var _fails := 0
+var _n := 0
+
+func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	if args.size() > 0:
+		_out = args[0]
+	Art = load("res://factory/art.gd")
+	Sim = load("res://factory/sim.gd")
+	Motion = load("res://core/motion.gd")
+	Motion.reduce = args.has("reduce")
+	load("res://ui/hud/screen_tutor.gd").no_first_play = true
+	Sim.path = SAVE
+	_borrow_words()
+	_run()
+
+## Until Factory's rows are in locale/ui.csv its keys would show raw and
+## every line with a figure in it would fail to format: the rows are read
+## from `factory_locale_rows.csv` beside <outdir> when the keys are not
+## known yet. Once they are merged this does nothing.
+func _borrow_words() -> void:
+	TranslationServer.set_locale("en")
+	if TranslationServer.translate("FACTORY_BELT") != &"FACTORY_BELT":
+		return
+	var f := FileAccess.open(_out.get_base_dir().path_join("factory_locale_rows.csv"), FileAccess.READ)
+	if f == null:
+		print("     (no words: the FACTORY_ keys are neither in the locale nor beside the shots)")
+		return
+	var words := Translation.new()
+	words.locale = "en"
+	while not f.eof_reached():
+		var row := f.get_csv_line()
+		if row.size() >= 2 and row[0] != "":
+			words.add_message(row[0], row[1])
+	TranslationServer.add_translation(words)
+
+func _frames(n: int) -> void:
+	for i in n:
+		await process_frame
+
+func _wait(seconds: float) -> void:
+	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < until:
+		await process_frame
+
+## Waits until `test` says so, `most` seconds at the longest.
+func _until(test: Callable, most: float) -> bool:
+	var until := Time.get_ticks_msec() + int(most * 1000.0)
+	while Time.get_ticks_msec() < until:
+		if test.call():
+			return true
+		await process_frame
+	return test.call()
+
+func _check(what: String, ok: bool, more := "") -> void:
+	if not ok:
+		_fails += 1
+	print("%s  %s%s" % ["PASS" if ok else "FAIL", what, "" if more == "" else "  (" + more + ")"])
+
+func _shot(called: String) -> void:
+	await _frames(2)
+	_n += 1
+	var path := "%s/%02d_%s.png" % [_out, _n, called]
+	root.get_texture().get_image().save_png(path)
+	print("%s  draw calls %d" % [path, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
+
+## The land goes on `seconds` at once: the screen's own frame, a tick each.
+func _run_on(seconds: float) -> void:
+	for i in int(seconds / 0.1):
+		_screen._process(0.1)
+
+# --- the hand ---
+
+func _touch(pos: Vector2, pressed: bool, finger := 0) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = finger
+	e.position = pos
+	e.pressed = pressed
+	_screen._on_field_input(e)
+
+func _move(pos: Vector2, finger := 0) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = finger
+	e.position = pos
+	_screen._on_field_input(e)
+
+func _tap(pos: Vector2) -> void:
+	_touch(pos, true)
+	await _frames(2)
+	_touch(pos, false)
+	await _frames(2)
+
+## A finger down at the first point, through the others a few steps a
+## stretch, and up at the last.
+func _drag(points: Array, steps := 6) -> void:
+	_touch(points[0], true)
+	await _frames(2)
+	for i in range(1, points.size()):
+		for k in range(1, steps + 1):
+			_move((points[i - 1] as Vector2).lerp(points[i], float(k) / steps))
+			await process_frame
+	await _frames(2)
+	_touch(points[points.size() - 1], false)
+	await _frames(2)
+
+## Where a tile-space point is on the screen now.
+func _at(t: Vector2) -> Vector2:
+	return _screen.screen_of(t)
+
+## A tree is tapped on its crown, not on its tile.
+func _crown(tile: Vector2i) -> Vector2:
+	var look: int = _sim.tree_at(tile).look
+	return _at(Vector2(tile) + Vector2(0.5, 0.5)) - Vector2(0.0, Art.height(look) * 0.45 * _screen._zoom)
+
+func _look(t: Vector2, far := false) -> void:
+	_screen.set_far(far)
+	_screen._cam_raw = Art.at(t)
+	_screen._cam_to = Art.at(t)
+	_screen._cam = Art.at(t)
+	_screen._zoom = _screen._near * (0.5 if far else 1.0)
+	await _frames(3)
+
+func _press_button(b: Button) -> void:
+	b.pressed.emit()
+	await _frames(2)
+
+# --- the run ---
+
+func _run() -> void:
+	await _frames(8)
+	if FileAccess.file_exists(SAVE):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
+	_sim = Sim.new(SEED)
+	_screen = load("res://factory/screen.gd").new()
+	_screen.name = "Factory"
+	_screen.setup(_sim)
+	root.add_child(_screen)
+	await _frames(4)
+	# the harness is the hand: the real pointer over the window is not
+	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	await _wait(0.8)
+	await _shot("new_land")
+
+	# a tree, tapped on its crown
+	await _tap(_crown(TREE))
+	var tree: Dictionary = _sim.tree_at(TREE)
+	_check("a tap on the crown sets a beaver to the tree", tree.state == "bitten", str(tree.state))
+	await _wait(1.1)
+	await _shot("beaver")
+	await _until(func() -> bool: return tree.state == "stump", 4.0)
+	await _wait(0.45)
+	await _shot("falling")
+	var lies := await _until(func() -> bool: return _sim.items.has(LOG), 3.0)
+	_check("the tree is felled and its log lies beside the stump", tree.state == "stump" and lies, str(_sim.items.keys()))
+	await _wait(0.3)
+	await _shot("log")
+
+	# the drawer, Belt, and a drag from the log to the market
+	await _press_button(_screen._drawer_b)
+	_check("the drawer opens", _screen.drawer_open())
+	await _wait(0.3)
+	await _shot("drawer")
+	await _press_button(_screen._tiles.belt.button)
+	_check("Belt is picked and the drawer shut", _sim.picked == "belt" and not _screen.drawer_open())
+	var cam: Vector2 = _screen._cam
+	var way: Array = []
+	for t: Vector2 in DRAG:
+		way.append(_at(t))
+	await _drag(way)
+	var laid := true
+	for tile: Vector2i in WANT_BELTS:
+		laid = laid and _sim.belts.get(tile, -1) == WANT_BELTS[tile]
+	_check("a drag lays the belts, each facing the way the finger left", laid and _sim.belts.size() == WANT_BELTS.size(), str(_sim.belts))
+	_check("the drag did not pan the view", _screen._cam == cam)
+	_check("four belts cost four coins", _sim.coins == Sim.START_COINS - 4, str(_sim.coins))
+	await _wait(1.6)
+	await _shot("log_riding")
+	var sold := await _until(func() -> bool: return _sim.earned > 0, 14.0)
+	_check("the log reaches the market and is sold: coins up", sold and _sim.coins == Sim.START_COINS - 3, "coins %d" % _sim.coins)
+	await _wait(0.25)
+	await _shot("sold")
+	# a tap on a laid belt turns it a quarter, and back round
+	await _tap(_at(Vector2(5.5, 4.5)))
+	_check("a tap on a belt turns it a quarter", _sim.belts[Vector2i(5, 4)] == 2, str(_sim.belts[Vector2i(5, 4)]))
+	for i in 3:
+		await _tap(_at(Vector2(5.5, 4.5)))
+	await _press_button(_screen._drawer_b)
+	_check("the drawer's button puts the belt down", _sim.picked == "")
+
+	# a plus, the plate card, a second plate
+	await _tap(_at(Vector2(12.0, 4.0)) + Vector2(-34.0, 0.0))
+	_check("a tap on a plus opens the plate card", _screen.card_open() and _screen._card_for == "plate")
+	await _wait(0.4)
+	await _shot("plate_card")
+	var quarry: Button = _screen._card_slot.find_child("Quarry", true, false)
+	await _press_button(quarry)
+	_check("a plate the coins do not reach is refused", _sim.plates.size() == 1 and _screen.card_open())
+	_sim.coins = 60
+	await _frames(2)
+	await _press_button(quarry)
+	_check("the second plate is bought", _sim.plates.size() == 2 and _sim.plates.get(Vector2i(1, 0), "") == "quarry" and not _screen.card_open(), str(_sim.plates))
+	await _wait(1.3)
+	await _shot("plate_rising")
+	await _wait(2.6)
+	await _shot("second_plate")
+	await _press_button(_screen._drawer_b)
+	await _wait(0.3)
+	await _shot("drawer_unlocked")
+	await _press_button(_screen._drawer_b)
+
+	await _late_land()
+	await _hands()
+	await _cards()
+	await _tutorial()
+	await _tab()
+	if FileAccess.file_exists(SAVE):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
+	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
+	quit()
+
+func _lay(tile: Vector2i, facing: int) -> void:
+	if not _sim.can_lay(tile) or not _sim.lay_belt(tile, facing):
+		print("     (no belt on %s)" % tile)
+
+## Four plates (forest, quarry, meadow, forest) with belts across all, two
+## fires lit, a kiln and a retort working and the market's counter stacked:
+## built through the sim's own actions and stepped, not waited for.
+func _late_land() -> void:
+	_sim.coins = 100000
+	_check("the third and fourth plates are bought", _sim.buy_plate(Vector2i(0, 1), "meadow") and _sim.buy_plate(Vector2i(1, 1), "forest"))
+	# the meadow: a kiln and a retort, a fire each, a belt in and a belt out
+	var built := true
+	built = _sim.place("kiln", Vector2i(2, 10), 0) and built
+	built = _sim.place("firebox", Vector2i(2, 11), 0) and built
+	built = _sim.place("retort", Vector2i(2, 13), 0) and built
+	built = _sim.place("firebox", Vector2i(2, 14), 0) and built
+	_check("a kiln, a retort and two fire boxes are placed", built)
+	for row in [10, 11, 13, 14]:
+		_lay(Vector2i(0, row), 0)
+		_lay(Vector2i(1, row), 0)
+	for x in [4, 5, 6]:
+		_lay(Vector2i(x, 10), 0)
+	for y in [10, 9, 8]:
+		_lay(Vector2i(7, y), 3)
+	for x in [4, 5]:
+		_lay(Vector2i(x, 13), 0)
+	for y in [13, 12, 11]:
+		_lay(Vector2i(6, y), 3)
+	# the quarry: a row along its front edge into the market's side
+	for x in range(14, 7, -1):
+		_lay(Vector2i(x, 6), 2)
+	# the far forest: down its near edge and round the corner to the market
+	for y in range(12, 7, -1):
+		_lay(Vector2i(8, y), 3)
+	_lay(Vector2i(8, 7), 2)
+	_sim.upgrade("market")
+	await _frames(2)
+	_run_on(4.0)
+	await _look(Vector2(3.5, 11.5))
+	await _wait(0.4)
+	await _shot("building")
+	_run_on(45.0)
+	var all_built := true
+	for id: int in _sim.modules:
+		all_built = all_built and _sim.modules[id].built
+	_check("the machines are built", all_built)
+	# fuel and work, by belt
+	for i in 2:
+		_sim.put(Vector2i(0, 11), "log")
+		_sim.put(Vector2i(0, 14), "log")
+		_run_on(2.5)
+	_sim.put(Vector2i(0, 10), "stone")
+	_sim.put(Vector2i(0, 13), "log")
+	_run_on(6.0)
+	await _frames(2)
+	await _shot("fuel_waiting")
+	# the fires are lit by a finger
+	for fire: Vector2i in [Vector2i(2, 11), Vector2i(2, 14)]:
+		await _tap(_at(Vector2(fire) + Vector2(0.5, 0.5)) + Vector2(0.0, -14.0))
+	var lit := true
+	for fire: Vector2i in [Vector2i(2, 11), Vector2i(2, 14)]:
+		lit = lit and _sim.module_at(fire).lit
+	_check("a tap on a fire box with fuel waiting lights it", lit)
+	_run_on(4.0)
+	var kiln: Dictionary = _sim.module_at(Vector2i(2, 10))
+	var retort: Dictionary = _sim.module_at(Vector2i(2, 13))
+	_check("the kiln and the retort work on their fires", _sim.working(kiln) and float(kiln.share) > 0.0 and _sim.working(retort) and float(retort.share) > 0.0,
+		"kiln %s %.2f, retort %s %.2f" % [kiln.inp, kiln.share, retort.inp, retort.share])
+	# things on the way: rocks chipped, trees tapped, the market's counter stacked
+	for tile: Vector2i in _sim.rocks:
+		_sim.tap(tile)
+	var tapped := 0
+	for id: int in _sim.trees:
+		if _sim.trees[id].state == "standing" and tapped < 4 and id % 2 == 0:
+			_sim.tap(_sim.trees[id].tile)
+			tapped += 1
+	for i in 9:
+		_sim.put(Vector2i(7, 9), ["log", "stone", "lime", "charcoal"][i % 4])
+		_sim.put(Vector2i(12, 6), "stone")
+		_sim.put(Vector2i(8, 11), "log")
+		_run_on(1.2)
+	_check("the market's counter is stacked", (_sim.market.wait as Array).size() >= 4, str(_sim.market.wait))
+	await _look(Vector2(3.5, 11.5))
+	await _wait(0.5)
+	await _shot("late_meadow")
+	await _look(Vector2(6.5, 6.0))
+	await _wait(0.3)
+	await _shot("late_market")
+	await _look(Vector2(11.5, 4.5))
+	await _wait(0.3)
+	await _shot("late_quarry")
+	await _look(Vector2(11.5, 11.5))
+	await _wait(0.3)
+	await _shot("late_far_forest")
+	await _look(Vector2(8.0, 8.0), true)
+	await _wait(0.5)
+	await _shot("late_zoomed_out")
+
+## What a finger does on the late land: a machine placed under a ghost, a
+## belt sold by holding, the view dragged, two fingers pinching.
+func _hands() -> void:
+	await _look(Vector2(4.0, 12.0))
+	_screen.pick("retort")
+	_screen._facing = 1
+	var before: int = _sim.modules.size()
+	_touch(_at(Vector2(4.5, 14.5)), true)
+	await _frames(2)
+	_move(_at(Vector2(4.5, 14.8)))
+	await _frames(3)
+	await _shot("ghost")
+	_touch(_at(Vector2(4.5, 14.8)), false)
+	await _frames(2)
+	var stood: Dictionary = _sim.module_at(Vector2i(4, 14))
+	_check("a machine picked is stood where the finger lifts, facing as the last belt",
+		_sim.modules.size() == before + 1 and not stood.is_empty() and stood.kind == "retort" and stood.facing == 1 and _sim.picked == "", str(stood))
+	# on the market it does not fit: nothing is placed and it stays picked
+	_screen.pick("firebox")
+	_touch(_at(Vector2(6.5, 6.5)), true)
+	await _frames(2)
+	_touch(_at(Vector2(6.5, 6.5)), false)
+	await _frames(2)
+	_check("a machine that does not fit is not placed", _sim.modules.size() == before + 1 and _sim.picked == "firebox")
+	_screen.pick("")
+	# a finger held on a belt sells it back
+	var coins: int = _sim.coins
+	var belt := Vector2i(0, 14)
+	_touch(_at(Vector2(belt) + Vector2(0.5, 0.5)), true)
+	await _wait(0.34)
+	await _shot("sell_ring")
+	await _wait(0.4)
+	_touch(_at(Vector2(belt) + Vector2(0.5, 0.5)), false)
+	await _frames(2)
+	_check("a finger held on a belt sells it back for its coin", not _sim.belts.has(belt) and _sim.coins == coins + 1, "coins %d" % (_sim.coins - coins))
+	# a drag on open ground pans, and the view comes to rest
+	var cam: Vector2 = _screen._cam
+	var from := _at(Vector2(5.5, 15.5))
+	await _drag([from, from + Vector2(-260.0, -120.0)], 8)
+	_check("a drag on open ground pans the view", _screen._cam.distance_to(cam) > 150.0, str(_screen._cam - cam))
+	await _wait(0.6)
+	await _shot("panned")
+	# far out past the land the view is held and comes back inside
+	await _drag([Vector2(900.0, 1500.0), Vector2(100.0, 500.0)], 6)
+	await _drag([Vector2(900.0, 1500.0), Vector2(100.0, 500.0)], 6)
+	await _drag([Vector2(900.0, 1500.0), Vector2(100.0, 500.0)], 6)
+	await _wait(0.8)
+	_check("the view stops at the land's bounds", _screen._clamp(_screen._cam_to).distance_to(_screen._cam_to) < 1.0 and _screen._cam.distance_to(_screen._cam_to) < 40.0, str(_screen._cam_to))
+	await _shot("at_the_bounds")
+	# two fingers closing zoom out, opening zoom in
+	_touch(Vector2(300.0, 900.0), true, 0)
+	_touch(Vector2(800.0, 1300.0), true, 1)
+	await _frames(2)
+	_move(Vector2(480.0, 1040.0), 0)
+	_move(Vector2(620.0, 1160.0), 1)
+	await _frames(2)
+	_touch(Vector2(480.0, 1040.0), false, 0)
+	_touch(Vector2(620.0, 1160.0), false, 1)
+	var out: bool = _screen._far
+	_touch(Vector2(480.0, 1040.0), true, 0)
+	_touch(Vector2(620.0, 1160.0), true, 1)
+	await _frames(2)
+	_move(Vector2(300.0, 900.0), 0)
+	_move(Vector2(800.0, 1300.0), 1)
+	await _frames(2)
+	_touch(Vector2(300.0, 900.0), false, 0)
+	_touch(Vector2(800.0, 1300.0), false, 1)
+	_check("a pinch goes to the far zoom and back", out and not _screen._far)
+	await _press_button(_screen._zoom_b)
+	_check("the zoom button does the same", _screen._far)
+	await _press_button(_screen._zoom_b)
+
+func _cards() -> void:
+	await _look(Vector2(3.5, 11.5))
+	await _tap(_at(Vector2(2.5, 10.5)) + Vector2(0.0, -24.0))
+	_check("a tap on a machine opens its card", _screen.card_open() and _screen._card_for == "module")
+	await _wait(0.4)
+	await _shot("kiln_card")
+	_screen.close_card()
+	await _tap(_at(Vector2(2.5, 13.5)) + Vector2(0.0, -24.0))
+	await _wait(0.4)
+	await _shot("retort_card")
+	_screen.close_card()
+	await _tap(_at(Vector2(2.5, 11.5)) + Vector2(0.0, -14.0))
+	_check("a tap on a lit fire box opens its card", _screen.card_open() and _screen._card_for == "module")
+	await _wait(0.4)
+	await _shot("firebox_card")
+	_screen.close_card()
+	await _look(Vector2(6.5, 6.0))
+	await _tap(_at(Vector2(7.0, 7.0)) + Vector2(0.0, -60.0))
+	_check("a tap on the market opens its card", _screen.card_open() and _screen._card_for == "market")
+	await _wait(0.4)
+	await _shot("market_card")
+	_screen.go_back()
+	_check("back closes the card first", not _screen.card_open())
+	await _press_button(_screen._drawer_b)
+	await _wait(0.3)
+	await _shot("drawer_late")
+	_screen.go_back()
+	_check("then the drawer", not _screen.drawer_open())
+
+func _tutorial() -> void:
+	_screen.tutor.show()
+	await _wait(2.2)
+	await _shot("tutorial_tree")
+	var card: Control = _screen.get_node("HowToPlay")
+	card._turn(1)
+	await _wait(2.7)
+	await _shot("tutorial_belt")
+	card._turn(1)
+	await _wait(4.4)
+	await _shot("tutorial_plate")
+	_screen.go_back()
+	await _frames(3)
+	_check("back closes the tutorial", not _screen.tutor.is_open())
+
+## The tab alone, at the column's size. The screen leaves first and keeps
+## the land; the tab reads that file, so its card is the late land.
+func _tab() -> void:
+	# something on its way to the market, for the tab to be seen selling
+	for x in [4, 5, 6]:
+		_sim.put(Vector2i(x, 10), "log")
+	var closed := [false]
+	_screen.closed.connect(func() -> void: closed[0] = true)
+	_screen.go_back()
+	_check("back leaves the screen, the land kept", closed[0] and FileAccess.file_exists(SAVE))
+	_screen.queue_free()
+	await _frames(3)
+	var page := ColorRect.new()
+	page.color = load("res://core/palette.gd").PAPER
+	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page.theme = load("res://ui/theme.gd").make()
+	root.add_child(page)
+	var tab: Control = load("res://ui/menu/factory_tab.gd").new()
+	tab.name = "FactoryTab"
+	tab.position = Vector2(40.0, 330.0)
+	tab.size = Vector2(1000.0, 1340.0)
+	page.add_child(tab)
+	await _frames(4)
+	tab.refresh()
+	_check("the tab reads the land the screen kept", tab.sim.plates.size() == 4 and tab.sim.coins == _sim.coins, "plates %d" % tab.sim.plates.size())
+	var earned: int = tab.sim.earned
+	await _wait(1.5)
+	await _shot("tab")
+	await _until(func() -> bool: return tab.sim.earned > earned, 12.0)
+	_check("the land runs on the tab: something was sold there", tab.sim.earned > earned)
+	var lent: RefCounted = tab.lend()
+	_check("lent, the tab stops stepping", lent == tab.sim and not tab.is_processing())
+	tab.returned()
+	_check("handed back, it steps again", tab.is_processing())
+	tab.visible = false
+	await _frames(2)
+	_check("hidden, it does not", not tab.is_processing())
+	page.queue_free()
+	await _frames(3)
