@@ -416,24 +416,43 @@ func _seg_dir() -> Vector2:
 	var b := _other(cart_seg, cart_from)
 	return (jp[b] - jp[cart_from]).normalized()
 
-## The road member leaving joint `j` that carries straight on along `dir`.
+## Can the cart drive on member `k`? Road always; and, with one material in
+## the player's hand (2026-10-10: "the car falls to the water because it
+## doesn't see wood as road"), a wooden beam too, where it climbs no steeper
+## than one in one. Rope never.
+func _drivable(k: int) -> bool:
+	if malive[k] == 0 or mstub[k] == 1:
+		return false
+	if mmat[k] == ROAD:
+		return true
+	if mmat[k] != WOOD:
+		return false
+	var d := home[mb[k]] - home[ma[k]]
+	return absf(d.y) <= absf(d.x) + 0.001
+
+## The member leaving joint `j` that carries straight on along `dir`: a road
+## member if any does, so a bridge with its road laid drives exactly as it
+## did when only road carried the cart, else a beam.
 func _next_road(j: int, dir: Vector2, not_k: int) -> int:
-	var best := -1
-	var best_dot := 0.2
-	for k in ma.size():
-		if k == not_k or malive[k] == 0 or mstub[k] == 1 or mmat[k] != ROAD:
-			continue
-		if ma[k] != j and mb[k] != j:
-			continue
-		var o := _other(k, j)
-		var d := (jp[o] - jp[j]).normalized()
-		if d.x <= 0.05:
-			continue
-		var dot := d.dot(dir)
-		if dot > best_dot:
-			best_dot = dot
-			best = k
-	return best
+	for want_road in [true, false]:
+		var best := -1
+		var best_dot := 0.2
+		for k in ma.size():
+			if k == not_k or not _drivable(k) or (mmat[k] == ROAD) != want_road:
+				continue
+			if ma[k] != j and mb[k] != j:
+				continue
+			var o := _other(k, j)
+			var d := (jp[o] - jp[j]).normalized()
+			if d.x <= 0.05:
+				continue
+			var dot := d.dot(dir)
+			if dot > best_dot:
+				best_dot = dot
+				best = k
+		if best >= 0:
+			return best
+	return -1
 
 func _drive() -> void:
 	_drive_one()
@@ -529,7 +548,7 @@ func _land(was: Vector2) -> void:
 		events.append({"kind": "land", "at": cart_pos})
 		return
 	for k in ma.size():
-		if malive[k] == 0 or mstub[k] == 1 or mmat[k] != ROAD:
+		if not _drivable(k):
 			continue
 		var p := jp[ma[k]]
 		var q := jp[mb[k]]

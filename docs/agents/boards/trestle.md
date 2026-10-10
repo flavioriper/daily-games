@@ -133,3 +133,17 @@ commit. Texts in three languages no longer name rope or the chips
 plays `select` at 0.9. Shot on Normal: 105 to 107 draw calls building and
 testing, 86 to 91 after. Not on a phone; the tutorial pages were not shot
 again.
+
+**The cart drives on wood (2026-10-10, the same evening).** The user: "the
+car falls to the water because it doesn't see wood as road". A piece two
+long laid along the deck was wood, and nothing but road carried the cart.
+Two changes: `Gen.on_deck` is any piece with both ends on the deck's line
+(one step or two), and **the sim's cart takes a wooden beam where no road
+leads on** (`_drivable`: road, or wood no steeper than one in one; rope
+never; `_next_road` asks for a road first, so a bridge with its road laid
+drives bit for bit as before, and `_land` lands on either). The bank holds
+as it did (17, 19, 20, 65 at 0.85; the tea probe 65 of 65), and every
+proof with its road swapped for wood still crosses on Easy, Normal and
+Insane, 16 of 20 on Hard. Known and left: a deck built of wood one row off
+the line is cheaper and stronger than road, so budgets are looser than the
+miner meant.

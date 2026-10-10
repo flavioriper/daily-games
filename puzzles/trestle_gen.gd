@@ -62,13 +62,14 @@ static func fits(a: Vector2i, b: Vector2i) -> bool:
 static func road_ok(a: Vector2i, b: Vector2i) -> bool:
 	return absi(b.y - a.y) <= absi(b.x - a.x)
 
-## Is `a`-`b` a step of the deck's line, the road the cart drives on?
+## Does `a`-`b` run along the deck's line, both ends on it (one step or a
+## longer piece over two)? That piece is drawn and priced as the road.
 static func on_deck(level: Dictionary, a: Vector2i, b: Vector2i) -> bool:
 	var w := int(level.w)
 	var dy := int(level.get("dy", 0))
-	var lo := a if a.x < b.x else b
-	var hi := b if a.x < b.x else a
-	return hi.x == lo.x + 1 and lo.x >= 0 and hi.x <= w and lo.y == deck_y(w, dy, lo.x) and hi.y == deck_y(w, dy, hi.x)
+	if a.x == b.x or mini(a.x, b.x) < 0 or maxi(a.x, b.x) > w:
+		return false
+	return a.y == deck_y(w, dy, a.x) and b.y == deck_y(w, dy, b.x) and road_ok(a, b)
 
 ## What a piece laid from `a` to `b` is, with one material in the hand: the
 ## road along the deck's line, a wooden beam anywhere else.
