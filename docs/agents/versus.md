@@ -193,11 +193,13 @@ played alone for a score, and this needs someone at the other end.
   under the tutorial's card or the settings sheet. Two players are Sun and
   Moon; their matches write no record (`Record.add` is skipped, the tab's
   record line is empty) and send `versus_end` with `level: 4`.
-- **Sounds** (`tools/gen_sfx.py hockey`, nine, one take each, unheard):
-  `strike`, `wall`, `post` and `serve` are dry foley clicks -- they repeat --
-  pitched and levelled by how hard the contact was (`_hit_db`); `glide` is a
-  loop whose level follows the puck's speed; `goal`, `conceded`, `win` and
-  `lose` are a real kalimba. With two players every goal is `goal` and the
+- **Sounds** (`tools/gen_sfx.py hockey`, nine, unheard; redone 2026-10-10
+  against the cozy rules, `docs/agents/sound.md`): `strike`, `wall`, `post`
+  and `serve` are low wooden tocks (`HUSH`) -- they repeat -- pitched, not
+  past five semitones, and levelled by how hard the contact was (`_hit_db`,
+  floor 0.4); `glide` is a loop of steady air whose level follows the puck's
+  speed; `goal`, `conceded` and `win` are a muffled kalimba written with
+  `notes`, `lose` the first set's take. With two players every goal is `goal` and the
   end is `win`.
 - **The Versus tab holds four cards** and gave something up for it: `_fit`
   has a fourth step, `_set_side`, in which each picture leaves its own row

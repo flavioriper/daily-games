@@ -454,8 +454,10 @@ func _tick_clock() -> void:
 	_clock_label.text = "%d:%02d" % [s / 60, s % 60]
 
 ## Loud as the contact was hard: a nudge is a tick, a full swing a crack.
+## The floor is 0.4 since the ticks went low and quiet (2026-10-10): at 0.14
+## a nudge played under what a phone's speaker gives back.
 func _hit_db(speed: float) -> float:
-	return linear_to_db(clampf(0.14 + 0.86 * speed / FULL_HIT, 0.14, 1.0))
+	return linear_to_db(clampf(0.4 + 0.6 * speed / FULL_HIT, 0.4, 1.0))
 
 func _play_events() -> void:
 	for e in sim.events:
@@ -465,7 +467,7 @@ func _play_events() -> void:
 				var speed := float(e.speed)
 				_hits[who] += 1
 				if speed > 0.12:
-					_fx.cue("strike", clampf(0.86 + speed * 0.05, 0.86, 1.2), _hit_db(speed))
+					_fx.cue("strike", clampf(0.86 + speed * 0.042, 0.86, 1.148), _hit_db(speed))
 					table.flash("mallet", e.at, speed / FULL_HIT, who)
 					if table.hands[who]:
 						_fx.buzz(Haptics.TAP if speed > 2.2 else Haptics.TICK)

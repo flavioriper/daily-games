@@ -1558,23 +1558,29 @@ SETS = {
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.14:8,10,12,15,17", "cut:1.7"),
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
     },
-    # Air hockey (Versus, versus/hockey_screen.gd): the table's own sounds as
-    # foley and dry -- a mallet on the puck and the puck on a rail fire many
-    # times a second, so each is a short click that never rings (`strike` and
-    # `wall` are pitched and levelled by how hard the contact was) -- and the
-    # verdicts on a real kalimba. `glide` is the puck on its cushion of air, a
-    # loop whose level follows the puck's speed. With two players on one
-    # phone every goal plays `goal` and the end plays `win`.
+    # Air hockey (Versus, versus/hockey_screen.gd). Redone 2026-10-10 against
+    # the cozy rules, the twenty-third set of the redo. Kept from the first
+    # set: lose, 4 dB down. Nothing new is plastic, a clunk, a music box or
+    # a hand bell. A mallet on the puck and the puck on a rail fire many
+    # times a second, so each is one low tock that never rings (`strike`,
+    # `wall` and `post` are pitched, not past five semitones, and levelled by
+    # how hard the contact was), `tight`. Borrowed takes: serve is strike's,
+    # post wall's, conceded goal's. `glide` is the puck on its cushion of
+    # air, a loop whose level follows the puck's speed: a steady breath, no
+    # hiss. With two players on one phone every goal plays `goal` and the
+    # end plays `win`.
     "hockey": {
-        "strike":   ("a single light plastic air hockey mallet tapping a small plastic puck on a smooth table, one short dry soft click, close mic, very short, no echo, no ring", 0.5, -8, FOLEY, "warm:4500"),
-        "wall":     ("a single small plastic puck knocking against a wooden rail, one short dry muted wooden tick, close mic, very short, no echo, no ring", 0.5, -11, FOLEY, "warm:4000"),
-        "post":     ("a single small plastic puck knocking the corner of a wooden rail, one short dry hollow wooden knock, close mic, very short, no echo, no ring", 0.5, -9, FOLEY, "warm:4000"),
-        "glide":    ("continuous steady soft whisper of air from a table of tiny air holes with a light plastic puck sliding across it, smooth, constant, quiet, no hits, no clicks", 3.0, -14, FOLEY, "loop"),
-        "serve":    ("a small flat plastic puck set down on a smooth table, one soft dry tap, close mic, very short", 0.5, -12, FOLEY),
-        "goal":     ("a small plastic puck dropping into a wooden slot with a soft hollow clunk, then two bright rising kalimba notes, happy and cozy", 1.0, -5, ARCADE),
-        "conceded": ("a small plastic puck dropping into a wooden slot with a soft hollow clunk, then two gentle falling kalimba notes, not yet, never a buzzer", 1.0, -8, ARCADE),
-        "win":      ("a warm celebratory rising run on a real kalimba and a wooden music box ending on one bright soft hand bell, joyful and cozy", 2.0, -3, ARCADE),
-        "lose":     ("a soft warm three-note descending kalimba, gentle and kind, good game", 1.4, -6, ARCADE),
+        "strike":   ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "wall":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        # A goal's corner: wall's take, three steps down.
+        "post":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1200", "cut:0.16", "body:320", "tight", "notes:0:-3"),
+        "glide":    ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -14, BREEZE, "loop", "warm:900", "steep", "body:320"),
+        # The puck set down: strike's take, two steps down.
+        "serve":    ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "goal":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:3,8", "cut:0.7"),
+        "conceded": ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.18:7,3", "cut:0.7"),
+        "win":      ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2400", "steep", "ease:0.012", "body:300", "notes:0.14:8,12,15,12,15,17", "cut:1.9"),
+        "lose":     ("a soft warm three-note descending kalimba, gentle and kind, good game", 1.4, -10, ARCADE),
     },
     # Chess (Versus, versus/chess_screen.gd): wooden pieces on a wooden board
     # as foley, the verdicts in the house marimba. `hop` is the knight's leap.
