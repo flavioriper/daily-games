@@ -1,9 +1,18 @@
 extends Control
 
-## Dominoes' table, seen from above: a felt mat on the deck. Along the top
-## the other player's tiles, face down; in the middle the line; under it, on
-## the left and clear of the thumb, the boneyard; along the bottom the
-## player's own tiles, face up, the ones that fit standing a little proud.
+## Dominoes' table, seen from above: a felt cloth on the deck, stitched round
+## its hem, a pool of lamplight in its middle and a sprig embroidered in two
+## corners. Along the top the other player's tiles, face down in a pine tray
+## lined with felt; in the middle the line; under it, on the left and clear
+## of the thumb, the boneyard in its pine box (the two never drawn behind a
+## slat of their own), and beside it a cup of tea that steams; along the
+## bottom the player's own tiles, face up, the ones that fit standing a
+## little proud.
+##
+## The set is the house's: each number's pips have a colour of their own, so
+## a three is found by its blue before it is counted (the count still says
+## it: colour is never the only word), a double wears a brass rim, and the
+## backs are painted rose with a sprout stamped in cream.
 ##
 ## The line grows from its first tile both ways and turns when it reaches the
 ## side of the mat: one end turns down and comes back under itself, the other
@@ -46,6 +55,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
 
 enum Zone { STOCK, MINE, THEIRS, LINE }
 
@@ -92,11 +102,30 @@ const IVORY_EDGE := Color("cbbb97")
 const IVORY_LIT := Color("fffaf0")
 const INK := Color("2c2a33")
 const BRASS := Color("d9a441")
-const WOOD := Color("b98457")
-const WOOD_LIT := Color("d3a273")
-const WOOD_DEEP := Color("7d5334")
 const HALO := Color("fff6e0")
 const HINT := Color("f9c04a")
+## A number's pips, 1 to 6: berry, leaf, dusk blue, pumpkin, plum, teal.
+const PIPS := [Color("2c2a33"), Color("bf4a44"), Color("4f8a31"), Color("5567b8"),
+	Color("c86f22"), Color("8a5aa8"), Color("2f7f7a")]
+## The backs' paint and the sprout stamped on them.
+const BACK := Color("cf6f68")
+const BACK_DEEP := Color("a34f4c")
+const BACK_LIT := Color("e39088")
+const STAMP := Color("fbeedd")
+## The trays' pine and their felt lining.
+const PINE := Color("e6c896")
+const PINE_LIT := Color("f3ddb4")
+const PINE_DEEP := Color("b88f5c")
+const LINING := Color("3f7459")
+## The cup, its saucer and the tea.
+const CHINA := Color("fbf3e4")
+const CHINA_EDGE := Color("d9c9ad")
+const TEA := Color("b9743f")
+const TEA_LIT := Color("d39a5e")
+## A tile turns over in `TURN` s, squashed across to nothing at the half;
+## one that lands on the line swells by `LAND_BUMP` and settles.
+const TURN := 0.24
+const LAND_BUMP := 0.07
 
 ## How fast a tile closes on its place (the share left falls by e every
 ## 1/SPEED s), the look at a landing before the game goes on, and the deal.
@@ -122,6 +151,9 @@ class Sprite:
 	var wait := 0.0
 	var land := false
 	var shown := true
+	## How far turned face up, 0 to 1, and when it last landed on the line.
+	var face := 0.0
+	var landed := -10.0
 
 var rules: RefCounted
 ## The rules' side the player is: its tiles lie along the bottom.
@@ -152,6 +184,8 @@ var _k := 1.0
 var _sprites: Array[Sprite] = []
 var _meshes := {}
 var _mat: ArrayMesh
+## The boneyard's row the mat was built for: a second row of the hand moves it.
+var _mat_y := -1.0
 var _over_mesh: ArrayMesh
 var _shown: Array = []
 var _fx: Node2D
@@ -252,6 +286,7 @@ func _deal() -> void:
 	for sp in _sprites:
 		sp.pos = heap + Vector2(rng.randf_range(-150.0, 150.0), rng.randf_range(-90.0, 90.0))
 		sp.s = 0.5
+		sp.face = 0.0
 		sp.fly = true
 	for i in rules.stock.size():
 		_sprites[rules.stock[i]].wait = 0.25 + 0.012 * i
@@ -526,14 +561,20 @@ func _aim(sp: Sprite, zone: int, to: Vector2, s: float, o: int, up: bool, snap: 
 		sp.pos = to
 		sp.s = s
 		sp.fly = false
+		sp.face = 1.0 if up else 0.0
 
 func _process(delta: float) -> void:
 	_t += delta
-	var live := _t < _busy_until
+	# the cup steams for as long as the table is looked at
+	var live := _t < _busy_until or not (still or Motion.reduce)
 	var k := 1.0 - exp(-delta * SPEED)
 	var flying := false
 	for t in _sprites.size():
 		var sp := _sprites[t]
+		var face := 1.0 if sp.up and sp.wait <= 0.0 else 0.0
+		if sp.face != face:
+			live = true
+			sp.face = face if Motion.reduce else move_toward(sp.face, face, delta / TURN)
 		if t == _drag:
 			# under a finger: it keeps up, and is not a move to wait for
 			live = true
@@ -555,7 +596,11 @@ func _process(delta: float) -> void:
 				sp.s = sp.to_s
 				if sp.land:
 					sp.land = false
+					sp.landed = _t
+					_busy(Motion.BUMP_TIME)
 					_cue("place")
+					if _fx != null:
+						_fx.puff(sp.to * _k + Vector2(0.0, _half_size(sp.o).y * _unit * _k), FELT_LIT, 3)
 					if t == _rap_due:
 						_start_rap(t)
 				if sp.fly:
@@ -778,8 +823,9 @@ func _tap(at: Vector2) -> void:
 func _draw() -> void:
 	if rules == null or size.x <= 0.0 or _sprites.is_empty():
 		return
-	if _mat == null:
+	if _mat == null or _mat_y != _zone_stock.position.y:
 		_mat = _build_mat()
+		_mat_y = _zone_stock.position.y
 	_over_mesh = _build_over()
 	_shown = [_mat, _over_mesh]
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(_k, _k))
@@ -795,13 +841,15 @@ func _draw() -> void:
 				var since := _t - _shake_at
 				if since < 0.3 and not Motion.reduce:
 					at.x += sin(since * 60.0) * 6.0 * (1.0 - since / 0.3)
-			var up := sp.up and sp.wait <= 0.0
-			var s := sp.s
+			# turning over: squashed across to nothing, and the other side out
+			var up := sp.face > 0.5
+			var across := absf(cos(PI * sp.face))
+			var s := sp.s * (1.0 + 0.08 * sin(PI * sp.face)) * Motion.bump_scale(_t - sp.landed, LAND_BUMP)
 			if t == _rap:
 				var lift := _rap_lift()
 				at.y -= lift * RAP_RISE * _unit
 				s *= 1.0 + 0.07 * lift
-			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(s, s), 0.0, at))
+			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(s * across, s), 0.0, at))
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
 
@@ -812,8 +860,10 @@ func _mesh(tile: int, o: int) -> ArrayMesh:
 		_meshes[key] = _build_tile(tile, o)
 	return _meshes[key]
 
-## One tile about the origin: its shadow, the ivory's side and top, and face
-## up the line across its middle with a brass pin, and each half's pips.
+## One tile about the origin: its shadow, its side and top, and face up the
+## line across its middle with a brass pin and each half's pips in their
+## number's colour, a double rimmed in brass; a back is painted, a sprout
+## stamped on it.
 static func _build_tile(tile: int, o: int) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var upright := o % 2 == 1
@@ -822,13 +872,12 @@ static func _build_tile(tile: int, o: int) -> ArrayMesh:
 	var at := -body * 0.5
 	var back := tile < 0
 	b.fan(Face.Builder.round_rect(at + Vector2(1.0, 9.0), body, 16.0), Color(0.1, 0.06, 0.02, 0.26))
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 5.0), body, 16.0), WOOD_DEEP if back else IVORY_EDGE)
-	b.fan(Face.Builder.round_rect(at, body, 16.0), WOOD if back else IVORY)
-	b.stroke(Face.Builder.round_rect(at + Vector2(5.0, 5.0), body - Vector2(10.0, 10.0), 12.0), 3.0,
-		Color(WOOD_LIT, 0.8) if back else Color(IVORY_LIT, 0.9), true)
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 5.0), body, 16.0), BACK_DEEP if back else IVORY_EDGE)
+	b.fan(Face.Builder.round_rect(at, body, 16.0), BACK if back else IVORY)
+	var rim := Color(BACK_LIT, 0.85) if back else (Color(BRASS, 0.95) if Rules.is_double(tile) else Color(IVORY_LIT, 0.9))
+	b.stroke(Face.Builder.round_rect(at + Vector2(5.0, 5.0), body - Vector2(10.0, 10.0), 12.0), 3.0, rim, true)
 	if back:
-		var d := 13.0
-		b.polygon(PackedVector2Array([Vector2(0, -d), Vector2(d, 0), Vector2(0, d), Vector2(-d, 0)]), Color(WOOD_LIT, 0.9))
+		_sprout(b, Vector2(0.0, 10.0), 1.9, STAMP)
 		return b.mesh()
 	var along := Vector2(0.0, 1.0) if upright else Vector2(1.0, 0.0)
 	var cross := Vector2(along.y, along.x)
@@ -861,24 +910,107 @@ static func _pips(b: Face.Builder, c: Vector2, n: int, upright: bool) -> void:
 		spots.append(Vector2(g, 0.0))
 	for p: Vector2 in spots:
 		var q := p if upright else Vector2(p.y, -p.x)
-		b.disc(c + q + Vector2(0.0, 1.0), 9.5, Color(1, 1, 1, 0.5))
-		b.disc(c + q, 9.0, INK)
+		b.disc(c + q + Vector2(0.0, 1.5), 10.0, Color(1, 1, 1, 0.6))
+		b.disc(c + q, 9.5, PIPS[n])
+		b.disc(c + q + Vector2(-3.0, -3.0), 2.6, Color(1, 1, 1, 0.32))
 
-## The felt, with a stitched line round it, and the darker beds the two
-## hands and the boneyard lie in.
+## A leaf from its foot to its tip, `bulge` wide at the middle.
+static func _leaf(b: Face.Builder, foot: Vector2, tip: Vector2, bulge: float, col: Color) -> void:
+	var mid := (foot + tip) * 0.5
+	var n := (tip - foot).orthogonal().normalized() * bulge
+	var pts := Face.Builder.bezier2(foot, mid + n, tip, 8)
+	pts.append_array(Face.Builder.bezier2(tip, mid - n, foot, 8))
+	b.fan(pts, col)
+
+## The house's sprout about `c`: a stem and its two leaves, `k` times 30 tall.
+static func _sprout(b: Face.Builder, c: Vector2, k: float, col: Color) -> void:
+	b.stroke(Face.Builder.bezier2(c + Vector2(1.0, 16.0) * k, c + Vector2(-3.0, 6.0) * k, c + Vector2(0.0, -4.0) * k, 6), 3.4 * k, col)
+	_leaf(b, c + Vector2(0.0, -3.0) * k, c + Vector2(-17.0, -17.0) * k, 9.0 * k, col)
+	_leaf(b, c + Vector2(0.0, -1.0) * k, c + Vector2(14.0, -12.0) * k, 7.0 * k, col)
+
+## Dashes of thread along a closed outline.
+static func _stitch(b: Face.Builder, pts: PackedVector2Array, dash: float, gap: float, width: float, col: Color) -> void:
+	var run := PackedVector2Array()
+	var left := dash
+	var on := true
+	for i in pts.size():
+		var a := pts[i]
+		var to := pts[(i + 1) % pts.size()]
+		var seg := a.distance_to(to)
+		var done := 0.0
+		if on and run.is_empty():
+			run.append(a)
+		while seg - done > left:
+			done += left
+			var p := a.lerp(to, done / seg)
+			if on:
+				run.append(p)
+				b.stroke(run, width, col)
+				run = PackedVector2Array()
+			else:
+				run = PackedVector2Array([p])
+			on = not on
+			left = dash if on else gap
+		left -= seg - done
+		if on:
+			run.append(to)
+	if on and run.size() > 1:
+		b.stroke(run, width, col)
+
+## A pine tray lined with felt, seen from above: its shadow, its walls and
+## the floor inside them, darker under the near wall.
+static func _tray(b: Face.Builder, at: Vector2, sz: Vector2, wall := 7.0) -> void:
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 7.0), sz, 20.0), Color(0.1, 0.06, 0.02, 0.24))
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 4.0), sz, 20.0), PINE_DEEP)
+	b.fan(Face.Builder.round_rect(at, sz, 20.0), PINE)
+	b.stroke(Face.Builder.round_rect(at + Vector2(3.0, 3.0), sz - Vector2(6.0, 6.0), 17.0), 2.0, Color(PINE_LIT, 0.9), true)
+	var inner := at + Vector2(wall, wall)
+	var isz := sz - Vector2(wall, wall) * 2.0
+	b.fan(Face.Builder.round_rect(inner, isz, 14.0), LINING.darkened(0.18))
+	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 5.0), isz - Vector2(0.0, 5.0), 14.0), LINING)
+
+## A cup of tea on its saucer, seen from above, `r` the saucer's radius.
+static func _cup(b: Face.Builder, c: Vector2, r: float) -> void:
+	b.ellipse(c + Vector2(1.0, 7.0), r, r, Color(0.1, 0.06, 0.02, 0.24))
+	b.disc(c + Vector2(0.0, 3.0), r, CHINA_EDGE)
+	b.disc(c, r, CHINA)
+	b.stroke(Face.Builder.ring(c, r * 0.8, r * 0.8), 2.0, Color(CHINA_EDGE, 0.7), true)
+	# the handle, out to the right and a little down
+	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.1), r * 0.24, -PI * 0.6, PI * 0.6), 7.0, CHINA_EDGE)
+	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.04), r * 0.24, -PI * 0.6, PI * 0.6), 6.0, CHINA)
+	b.disc(c + Vector2(0.0, 4.0), r * 0.62, CHINA_EDGE)
+	b.disc(c, r * 0.62, CHINA)
+	b.disc(c, r * 0.5, TEA)
+	b.stroke(Face.Builder.arc_points(c, r * 0.36, PI * 1.05, PI * 1.5), 3.0, Color(TEA_LIT, 0.9))
+
+## The cloth: felt with a pool of light in its middle, a sprig embroidered in
+## two corners of the line's room and thread stitched round the hem; on it
+## the far hand's tray, the boneyard's box and the cup.
 func _build_mat() -> ArrayMesh:
 	var b := Face.Builder.new()
 	b.fan(Face.Builder.round_rect(Vector2(0.0, 6.0), _v - Vector2(0.0, 6.0), 30.0), Color(0.12, 0.07, 0.03, 0.3))
 	b.fan(Face.Builder.round_rect(Vector2.ZERO, _v - Vector2(0.0, 6.0), 30.0), FELT)
+	var pool := _zone_line.get_center()
+	Scenery.soft_disc(b, pool, _zone_line.size.x * 0.52, _zone_line.size.y * 0.5, Color(FELT_LIT, 0.55))
 	if not still:
-		b.fan(Face.Builder.round_rect(Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0), 20.0), Color(FELT_DEEP, 0.7))
-		b.fan(Face.Builder.round_rect(Vector2(PAD, _zone_stock.position.y + 6.0),
-			Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - PAD - 8.0, STOCK_H - 12.0), 20.0), Color(FELT_DEEP, 0.7))
-		# the two that stay have a bed of their own, fenced off
-		var fence := _stock_at(Rules.KEEP).x - H * STOCK_S * 0.5 - 13.0
-		b.stroke(PackedVector2Array([Vector2(fence, _zone_stock.position.y + 20.0), Vector2(fence, _zone_stock.end.y - 20.0)]), 4.0, Color(FELT_LIT, 0.9))
-	b.stroke(Face.Builder.round_rect(Vector2(7.0, 7.0), _v - Vector2(14.0, 20.0), 24.0), 2.5, Color(FELT_LIT, 0.8), true)
+		var thread := Color(FELT_LIT, 0.75)
+		_sprout(b, _zone_line.position + Vector2(52.0, 62.0), 1.5, thread)
+		_sprout(b, _zone_line.end - Vector2(54.0, 30.0), 1.5, thread)
+		_tray(b, Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0))
+		var box_at := Vector2(PAD, _zone_stock.position.y + 6.0)
+		var box := Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - PAD - 8.0, STOCK_H - 12.0)
+		_tray(b, box_at, box)
+		# the two that stay lie behind a slat of their own
+		var slat := _stock_at(Rules.KEEP).x - H * STOCK_S * 0.5 - 13.0
+		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 5.0), Vector2(8.0, box.y - 8.0), 3.0), PINE_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 3.0), Vector2(8.0, box.y - 10.0), 3.0), PINE)
+		_cup(b, _cup_at(), 44.0)
+	_stitch(b, Face.Builder.round_rect(Vector2(7.0, 7.0), _v - Vector2(14.0, 20.0), 24.0), 14.0, 9.0, 2.5, Color(FELT_LIT, 0.85))
 	return b.mesh()
+
+## The middle of the cup, right of the boneyard's box.
+func _cup_at() -> Vector2:
+	return Vector2(_v.x - PAD - 76.0, _zone_stock.position.y + STOCK_H * 0.5 - 2.0)
 
 static func _frame(b: Face.Builder, c: Vector2, half: Vector2, grow: float, width: float, col: Color) -> void:
 	b.stroke(Face.Builder.round_rect(c - half - Vector2.ONE * grow, (half + Vector2.ONE * grow) * 2.0, 14.0 + grow), width, col, true)
@@ -890,6 +1022,13 @@ func _build_over() -> ArrayMesh:
 		return null
 	var b := Face.Builder.new()
 	var beat := 0.0 if Motion.reduce else 0.5 + 0.5 * sin(_t * 5.0)
+	if not Motion.reduce:
+		# the tea's steam: three soft motes that rise, widen and thin
+		var cup := _cup_at()
+		for i in 3:
+			var u := fposmod(_t * 0.22 + i / 3.0, 1.0)
+			var at := cup + Vector2(sin(_t * 0.9 + i * 2.1) * 7.0 * u, -8.0 - 46.0 * u)
+			Scenery.soft_disc(b, at, 11.0 + 12.0 * u, 11.0 + 12.0 * u, Color(1, 1, 1, 0.34 * sin(PI * u)))
 	if _picked >= 0 and interactive:
 		var sp := _sprites[_picked]
 		_frame(b, sp.pos, _half_size(sp.o) * H * sp.s, 3.0, 6.0, HALO)

@@ -546,11 +546,31 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   beats 1 33-7. The bulb is level 2's tile for the player's own view, three
   a game, and is not spent when the only move is a draw. **No undo** (a
   tile drawn has been seen); Reset is a new game.
-- **The board** (`versus/dominoes_board.gd`): a felt mat. The other hand
+- **The board** (`versus/dominoes_board.gd`): a felt cloth. The other hand
   face down along the top, the line in the middle, the boneyard on the
   left under it (the two that are never drawn fenced off), the player's
   tiles along the bottom -- a row or two of seven, rows of ten past
-  fourteen. **Every tile is a sprite for the whole game** (a place, a size,
+  fourteen. **The set and the table are the house's** (2026-10-10, the
+  user: "the dominoes game looks too simple, redesign it to be cozier and
+  more customized like all ours games"; it was stock ivory on bare felt):
+  each number's pips have a colour (`PIPS`: berry, leaf, dusk blue, pumpkin,
+  plum, teal -- the count still says the number, colour is never the only
+  word), a double wears a brass rim, the backs are painted rose with the
+  sprout stamped in cream (`_sprout`); the cloth has a pool of light under
+  the line, a sprig embroidered in two corners and a dashed hem
+  (`_stitch`); the far hand and the boneyard lie in pine trays lined with
+  felt (`_tray`, the two kept behind a slat), and a cup of tea stands right
+  of the box (`_cup`, `_cup_at`), three soft motes of steam over it in the
+  over mesh. All of it is in `_mat`, rebuilt when the boneyard's row moves
+  (`_mat_y`; before, the bed stayed where a one-row hand had put it). **A
+  tile turns over** (`Sprite.face`, `TURN` 0.24 s, squashed across to
+  nothing at the half): the other side's tile on its way to the line, a
+  tile drawn into the player's hand, the far hand shown, the deal. **A tile
+  that lands on the line swells and settles** (`LAND_BUMP` 0.07 through
+  `Motion.bump_scale`) with a puff of felt. Under reduce motion a tile is
+  turned at once, nothing swells and the cup does not steam. The table
+  redraws every frame while it is looked at (the steam), except `still` and
+  under reduce motion. No faces on the tiles: pips are marks. **Every tile is a sprite for the whole game** (a place, a size,
   a lie, face up or not) and `sync()` reads the rules and gives each the
   place it now belongs in; the tiles go there by themselves, and nothing
   else animates a move, a draw, a deal or the line being refitted. A tile
@@ -637,8 +657,10 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
 - **The tab holds seven cards in four rows**, the last row one card: `_fit`
   shares the same room among four (1300 design px at 810x1440, 207 draw
   calls), so every card's picture is shorter than it was with six.
-- 92-95 draw calls at the table, 112-118 with the end card, 125-133 with a
-  tutorial page, ANGLE agreeing (810x1440).
+- 92-95 draw calls at the table, 112-120 with the end card, 127-135 with a
+  tutorial page, ANGLE agreeing (810x1440; the same after the redress of
+  2026-10-10, which added no draw call: peak 119, ANGLE 120, 112 under
+  reduce motion).
 - **The tutorial** (`ui/hud/dominoes_tutorial_diagram.gd`, five pages): the
   table set by `Rules.lay` and played by a script and a finger -- three
   tiles matched, a tile picked up and an end chosen and a double across,
