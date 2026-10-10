@@ -163,12 +163,11 @@ static var _bank: Array = []
 
 ## The first mined Easy level, for a bank that is missing or short a band:
 ## the board always opens.
-const FALLBACK := {"anchors": [[0, 0], [4, 0], [0, -2], [4, -1]], "band": 0, "budget": 3900, "cart": 1.2,
-	"dy": 0, "mats": [0, 1], "proof_cost": 2390, "w": 4,
+const FALLBACK := {"anchors": [[0, 0], [4, 0], [0, -2], [4, -1]], "band": 0, "budget": 3300, "cart": 1.2,
+	"dy": 0, "mats": [0, 1], "proof_cost": 2040, "w": 4,
 	"proof": [
 		[0, 0, 1, 0, 0], [1, 0, 2, 0, 0], [2, 0, 3, 0, 0], [3, 0, 4, 0, 0], [0, 0, 1, 1, 1], [1, 0, 1, 1, 1],
-		[1, 1, 2, 1, 1], [1, 0, 2, 1, 1], [2, 0, 2, 1, 1], [2, 1, 3, 1, 1], [2, 1, 3, 0, 1], [3, 0, 3, 1, 1],
-		[3, 1, 4, 0, 1]]}
+		[1, 1, 2, 1, 1], [1, 0, 2, 1, 1], [2, 1, 3, 1, 1], [2, 1, 3, 0, 1], [3, 0, 3, 1, 1], [3, 1, 4, 0, 1]]}
 
 static func bank() -> Array:
 	if _bank.is_empty() and FileAccess.file_exists(BANK):

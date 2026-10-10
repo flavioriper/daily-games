@@ -160,5 +160,5 @@ or whose bare deck crosses. 17, 19, 18 and 65 levels (two of Hard dropped),
 every proof at 0.85 or under, the tea probe 65 of 65 with no obvious truss
 in budget. The tutorial's bridges at cart 1.6: the road alone snaps (1.03),
 two struts hold at 0.71, with tea they spill (1.01) and the two braces
-carry it at 0.73. `Gen.FALLBACK` keeps its old proof and budget. The crowd's
+carry it at 0.73. `Gen.FALLBACK` is the bank's first Easy level as re-priced (2040, budget 3300). The crowd's
 scores of earlier days were against the old prices.
