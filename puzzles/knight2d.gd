@@ -207,7 +207,7 @@ const AGO := -1.0e9
 
 # --- the streak and the gags ---
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -2335,8 +2335,8 @@ func _day_hash() -> int:
 		return 0
 	return absi(hash([_state.w, _state.king, int(_state.g.you), _state.foes.size()]))
 
-## A kept hop that was not a hint: the streak grows -- a note up the
-## pentatonic from the second, the bubble over your knight from the third,
+## A kept hop that was not a hint: the streak grows -- a tick a semitone
+## higher from the second, the bubble over your knight from the third,
 ## confetti at 4, 7 and every 5 -- and the gag picked for it plays.
 func _on_safe_hop(to: int, land: float, gag: int) -> void:
 	_streak += 1

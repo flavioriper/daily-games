@@ -1479,39 +1479,61 @@ SETS = {
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Knight: a cream knight hops in Ls to take the rose king; rose knights
-    # answer every hop. A catch slides the board back one move. Re-prompted
-    # 2026-10-01 (polish) in PADDOCK -- the old set's undo was a tape rewind
-    # and its refuse a wooden bonk -- and the hearts, Brambles and party cues
-    # added.
+    # answer every hop. A catch slides the board back one move.
     "knight": {
-        "hop":      ("a single soft felt-bottomed wooden chess knight landing on a paper board, a light cozy tap with a tiny springy lift, very short", 0.5, -11, PADDOCK),
-        "answer":   ("a lower softer felt-bottomed wooden piece tap on paper, hushed, very short", 0.5, -14, PADDOCK),
-        "take":     ("a bright small cartoon wooden 'bonk' of one toy chess piece knocking another over, a tiny tumble and a twinkle, cute, short", 0.6, -10, PADDOCK),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twenty-first set of the redo, with Sunbeam's above. Kept from the
+        # polish's set, as they were: caught, refuse, hint, stuck, boxed,
+        # heart_lost and heart_back. Nothing new is paper, a bonk, a boing, a
+        # leaf, a snore, a music box, a party blower or a pony (a rustle is
+        # scratch, the bonk sat at 2.7 kHz). A hop is the thing a finger does
+        # all day, so `hop` is the plainest: one tock. combo is a tick the
+        # board pitches, not past five semitones. Every tick is `tight`.
+        # Borrowed takes: confetti is Binairo's and the cat Untangle's
+        # kitten, of the same prompts; take and enter are hop's, undo and
+        # the bramble answer's, love, flutter and the crown the nap's. The
+        # phrases' steps are set by each take's own note, so that every note
+        # lands between 400 and 700 Hz, and no two phrases share a contour.
+        # What travels is air: the slide back, the somersault and the
+        # brambles withering are a breath of breeze each.
+        "hop":      ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "answer":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # A rose knight taken: hop's take, two notches, the second up.
+        "take":     ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,3"),
         "caught":   ("a soft gentle two-note kalimba falling, a kind 'oops, caught', warm and patient, never a buzzer, short", 0.6, -12, PADDOCK),
-        "slide":    ("a short soft glide of felt-bottomed wooden pieces sliding back on paper, hushed and cozy", 0.5, -13, PADDOCK),
+        "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not that one', very short", 0.5, -13, PADDOCK),
-        "undo":     ("a soft little music box note sliding gently down with a felt-soft wooden tick, a kind 'take that back', quiet, very short", 0.5, -12, PADDOCK),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba underneath, cozy and kind", 1.0, -8, PADDOCK),
-        "reset":    ("a soft quick descending ripple of tiny felt-soft wooden ticks, toy chess pieces hopping home, hushed and cozy", 1.0, -11, PADDOCK),
-        "solved":   ("a warm celebratory kalimba and music box run rising, ending in a little wooden toy king toppling with a soft clack and a happy pony nicker, joyful and cozy", 2.0, -4, PADDOCK),
-        "enter":    ("a soft airy cascade of tiny felt-bottomed wooden pieces being set on a paper board, gentle", 1.0, -11, PADDOCK),
-        "flip":     ("a playful soft airy whoosh spinning once round with a tiny springy boing and a giggly kalimba trill, a little toy pony doing a somersault, cute, short", 0.7, -10, PADDOCK),
-        "bramble":  ("a tiny soft leafy rustle and a little green sprouting pop, a small bramble springing up from the ground, cute and quiet, very short", 0.5, -15, PADDOCK),
-        "nap":      ("a tiny sleepy yawn made of two soft descending music box notes and a gentle little snore puff, a toy knight dozing off, cute and quiet", 1.0, -12, PADDOCK),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
+        # The pieces set on the board: hop's take, five in a row.
+        "enter":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The somersault: a small puff of air.
+        "flip":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # Brambles (Insane). bramble: one sprung up, a light notch. nap: a
+        # knight fenced in dozing off, two quiet notes down. wither: a long
+        # breath easing.
+        "bramble":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        "nap":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.2:8,5", "cut:0.7"),
         "stuck":    ("a soft gentle three-note kalimba falling, a kind 'no way through from here', warm and calm, never a buzzer", 0.9, -13, PADDOCK),
         "boxed":    ("a soft worried little kalimba wobble with a leafy thorny rustle closing in, gentle, 'oh no, boxed in', never harsh, short", 0.8, -12, PADDOCK),
-        "wither":   ("a soft gentle downward leafy rustle fading away, little brambles shrinking back into the ground, with a faint warm music box note, hushed", 0.9, -14, PADDOCK),
+        "wither":   ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -17, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, PADDOCK),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a garden table at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, PADDOCK),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, PADDOCK),
-        "combo":    ("a single short soft bright kalimba pluck, one clean warm note, very short", 0.5, -8, PADDOCK),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, PADDOCK),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, PADDOCK),
-        "flutter":  ("a tiny butterfly fluttering by, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -12, PADDOCK),
-        "crown":    ("a small golden toy crown landing with a soft bright 'ting' and a warm sparkling music box shimmer, proud and cute, short", 1.0, -8, PADDOCK),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -5, PADDOCK),
-        "party":    ("a short cozy celebratory flourish on kalimba and music box, rising and bright, with a few soft little party blower toots and a happy pony nicker, warm and joyful", 2.0, -4, PADDOCK),
-        "purr":     ("a sleepy little cat curled up on a warm sunny garden table purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. flutter: two quiet notes up, the butterfly. crown: two
+        # slow notes, the second a fifth up.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
+        "crown":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.22:3,10", "cut:0.9"),
+        # The party.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,4,11"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "steep", "ease:0.012", "body:300", "notes:0.14:8,12,15,12,15,17", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Snooker (Versus, versus/snooker_screen.gd): real table sounds first --
     # resin balls and a leather tip -- kept soft, then the game's own marimba
