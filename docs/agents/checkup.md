@@ -516,6 +516,7 @@ settings.
 | thirteen | 6 | a chain; the last one grows; the 13; a stuck tray and Swap; the five tools and their climbing prices; Restart and boosters |
 | posy | 7 | a swap; the day's goals and spare moves; the four specials; weeds, stones, moss; out of moves and the +5; the tools; buttons and boosters |
 | peapod | 8 | the cart; numbers, paints and the line; the frost and the shove, had as their crates break (nothing is caught since 2026-10-05); the five pods; the shop's four cards (a list, like the last page); golden, iron, firecracker; the millipede; boosters and buttons |
+| deckchair | 8 | a red six carried onto a black seven and a five tapped after it; hidden cards turning up; the homes, ace upward; the stock, one card a tap; a king to the empty column; what scores (a list); boosters (a list); the buttons (built with the game, 2026-10-10) |
 | beeline | 6 | a tap is a beat and she sinks without one; the gaps and the count; a hedge or the lawn ends it, the sky's top does not; the four ribbons; boosters; the buttons (built with the game, 2026-10-09) |
 
 None is level-aware: Versus levels change only how well the computer plays,

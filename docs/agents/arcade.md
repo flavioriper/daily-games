@@ -2917,3 +2917,59 @@ one point a gap, ribbons at 10, 20, 30 and 40.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Beeline bot.
 - Owed: a phone, the sounds heard, pt and es read, the spec's eight calls.
 
+
+**Deckchair is the ninth** (2026-10-10, spec
+`2026-10-10-arcade-deckchair-design.md`, built unattended): the
+seven-column card game for one, whose two names the spec gives once to
+forbid; **it is called Deckchair and nothing else**. Seven columns built
+down in alternating colours, four homes built up by suit, the stock turned
+one card at a time and gone through for ever. The Windows score (10 a card
+home, 5 a card turned up or played off the waste, 15 lost for one brought
+back down, 700,000 over the seconds for a deal won) without its two
+penalties. Its "furthest" is the most cards home.
+
+- **The game is pure data** (`arcade/deckchair_sim.gd`, no clock but the
+  seconds the screen hands `tick`): a card is 0 to 51, the homes are
+  counts, `drop(card, At.COL or At.HOME, i)`, `draw()`, `undo()`, `events`.
+  `tests/_probe_deckchair.gd -- [deals] [first seed]` plays it with a bot
+  and checks the whole deal after every move; run it after touching the
+  sim. 300 deals: 151 won, 0 failed.
+- **Random deals cannot all be won, so the dead end is called**
+  (`_replan`, `_search`): after every move a breadth-first look for the
+  nearest position from which a card is turned up, sent home past where
+  the homes stand, or played off the stock. Twice: the columns rearranged
+  among themselves, to the end (quick); then, only if that finds nothing,
+  with the homes' top cards brought down too, given up at `SEARCH_MOST`
+  (600 positions, 70 ms at worst on this Mac). **A search given up says
+  stuck all the same** (`unsure`): one look to the end took half a second
+  at 3,000 positions, and of the 31 deals in 300 that end past its reach
+  all but one are stuck indeed. So the screen's card never ends the deal:
+  it sits at the table's foot with Undo and Finish, and a move that finds
+  a way on puts it away.
+- **The plan is kept across the moves that follow it** (`_plan`, popped in
+  `drop` when the move made is its first): replanned from scratch, a card
+  brought down from its home for a reason was sent straight back as "a
+  card home", for ever.
+- **The table is its own Control** (`arcade/deckchair_table.gd`: the
+  cloth, the cards, `press`/`drag`/`release`/`tap`/`tap_stock`), so the
+  tutorial's pages are the table with a hand scripted on it and nothing of
+  the screen. It says what to play (`said`) and what the sim did
+  (`played`); the screen owns the sound.
+- **A card is one cached mesh and one text draw** (`deckchair_art.gd`: a
+  face less its rank a suit, one back, laid by `draw_set_transform`); a
+  pile draws its top two or three cards only (`_vis`), and a card on its
+  way is drawn after everything at rest. 103 draw calls dealt, 133 mid
+  deal, 162 with the dead end's card, 196 on the end card, 302 on the tab,
+  both drivers.
+- **A wrapped Label in a card sized by anchors came out the whole table
+  tall** (the dead end's card, first shot): it is held at the table's foot
+  by a MarginContainer and shrinks to its end. `Dialog`'s buttons carry a
+  minimum width that pushed the card off the table; theirs is cleared and
+  they share the row.
+- **No mascot**: the cards are marks. The end card's seat is a fan of the
+  homes' top cards, the tab's banner a hand of cards over the meadow.
+- **The tab has nine cards**: four rows of two and Deckchair alone on a
+  fifth, which fits 810x1440 with nothing to spare. A tenth needs `_fit`
+  looked at.
+- **Not in `tests/_probe_arcade_buzz.gd`**: it has no Deckchair bot.
+- Owed: a phone, the sounds heard, pt and es read, the spec's ten calls.
