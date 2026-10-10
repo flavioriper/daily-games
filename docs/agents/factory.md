@@ -144,6 +144,70 @@ overrides spec one's "no rotation".
   while turned; the pan's soft stop at the turned corners (the clamp is in
   sim tiles, so it should hold); a land that is not a square of plates.
 
+**The belt on legs, the swipe and the bends (2026-10-10)**, the user:
+"another polish you gotta do on convey. It should be like the convey from"
+a factory game they named, "not directly on the ground. Also, user should
+be able to hold and swip to add multiples (only straight line). If the
+convey didn't connect to any other convey, show a direction reference line
+(it always move into the direction of the movement), if it connect to
+another one, the direction become the direction from the one already
+placed", and then "make sure to properly add a curve when changing
+direction".
+- **The bed stands `Art.BELT_UP` (20, under a third of `RISE`) over the
+  turf.** `Art.belt()` is the old flat tile-space mesh, drawn lifted
+  (`Transform2D(0, BELT_LIFT) * Art.flat(...)`); `Art.belt_under()` is what
+  carries it, in view units about the tile's middle: its shade on the
+  grass, four posts, the bed's two seen edges `BELT_DEEP` thick. It is the
+  same at every facing and every turn of the view. **Belts are still flat
+  layers under everything that stands** (unders, then beds, both filled
+  back to front): a tree or a building on the tile right behind a belt
+  draws its foot over the bed's back edge by up to 20 units; it read right
+  in the shots and was left. An item on a belt is lifted onto the bed,
+  across the tick it gets on or off; one lying on the ground is not.
+- **A belt fed by its side alone is a quarter bend** (`life.shape(tile)`: 0
+  straight, 1 fed from facing plus a quarter, 2 from the other side; a
+  feeder is a belt pointing in or a kiln's or retort's way out). Fed from
+  behind, from both sides or by nothing it is straight, and a side belt
+  butts in (a T). **Derived in `_lay_belts` whenever belts or machines
+  change, never kept in the sim.** `Art.belt_bend(mirror)` is in tile space
+  leaving toward +x like `belt()`, its UV running along the arc so the one
+  material runs slats and chevron round it; `Art.belt_under_bend(corner)`
+  is its legs, shade and seen edge by the corner it turns about as drawn.
+  A MultiMesh a shape: three of beds under the belt material, up to five
+  of unders. **An item on a bend is drawn round the arc** by
+  `life.item_at` (from where the sim's square path has it); `sim.item_pos`
+  is unchanged.
+- **Laying is hold and swipe.** With Belt picked a press and a drag show a
+  run from the pressed tile along whichever tile axis the finger is
+  further on, cut at the first tile `sim.can_lay` refuses, tiles past the
+  coins in the warn tone; a line with a chevron a tile and an arrowhead
+  says the way it will flow. **Nothing is laid until the finger lifts**
+  (`_run_to`, `_lay_run`). A tap still lays one, and a tap on a belt still
+  turns it. Belts already on the line are left as they lie, with two
+  exceptions decided here: a run of one tile is re-faced, and **the laid
+  belt a run flows out of, when it led nowhere, turns into the run** (the
+  corner of an L, which then bends by the rule above).
+- **The way a run flows is `screen.run_facing(sim, tiles, swipe)`**, one
+  pure function. Each end is asked, the start first, and the first answer
+  stands: (1) the tile beyond it is a belt pointing into it, or a kiln or
+  retort whose way out it is: away from this end; (2) the tile beyond is a
+  belt not pointing in, the market, a fire box or a way in: toward it; (3)
+  the end tile is itself a laid belt: pointing along the run or leading
+  nowhere, away; leading on elsewhere, toward; (4) a belt beside the end
+  points into it: away. No answer: the finger's way.
+- **Measured** (810x1440, both drivers alike): 62 draw calls on a new land
+  (was 56), 112 to 124 on the four-plate land at the four turns (was 101
+  to 120), 154 to 164 while a run is held (the ghosts are a draw a tile),
+  166 at the peak (the drawer open), the tab 76 alone. `tests/_shot_factory.gd`
+  88/0 on the default driver and `opengl3_angle`, the swipes and the bends
+  at view turns 0 and 1; menu harness 8/0; probe 147/0.
+- **Not seen**: a phone; anything moving (the slats round a bend, an item
+  round the arc, the line settling as the finger reaches a belt) other
+  than in stills; a bend out of a kiln's or retort's way out; belts at a
+  machine's hopper or tray judged for height only at a glance; the
+  tutorial's words still say "Drag from the log to the market" where its
+  picture now shows two swipes.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

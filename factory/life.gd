@@ -32,9 +32,12 @@ extends RefCounted
 ## - **What stands is sorted by `Art.depth`** across trees and buildings. Only
 ##   trees wear the wind, so the sorted list is cut into runs of one kind and
 ##   each run drawn on its own layer, windy and plain by turns.
-## - **Belts are two MultiMeshes**, the legs and edges under (`Art.belt_under`)
-##   and the beds over, lifted `Art.BELT_UP`, both filled back to front; they
-##   stay flat layers under everything that stands. What lies or rides is one
+## - **Belts are a MultiMesh a shape**: the beds (straight, and a quarter
+##   bend from either side for a belt fed by its side alone: `shape`), lifted
+##   `Art.BELT_UP` under the one belt material, and under them the legs and
+##   edges (`Art.belt_under`, `belt_under_bend`), all filled back to front.
+##   They stay flat layers under everything that stands. An item on a bend
+##   is drawn round its arc (`item_at`); the sim knows no bends. What lies or rides is one
 ##   MultiMesh a kind, an item on a belt lifted onto its bed.
 ##
 ## - **The view turns by quarters** (`turn`, 2026-10-10: "add a button to
@@ -119,8 +122,13 @@ var _runs: Array = []
 var _order: Array = []      # [plate as seen, kind, sides as seen, variant, plate], back to front
 var _edges: Array = []
 var _plates_n := -1
-var _belt_mm: MultiMesh
-var _under_mm: MultiMesh
+## The beds by shape (straight, a bend fed from the side toward its facing
+## plus a quarter, one fed from the other side) and what is under them by
+## shape as drawn ("s", or a bend's corner), a MultiMesh each; a belt's
+## shape, by tile, read off its feeders whenever belts change.
+var _bed_mms: Array[MultiMesh] = []
+var _under_mms := {}
+var _shapes := {}
 var _belts_stale := true
 var _belt_n := -1
 var _item_mm := {}          # kind -> MultiMesh
@@ -158,12 +166,8 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_stand.name = "Stand"
 	world.add_child(_stand)
 	_air_l = layer(_draw_air)
-	_belt_mm = MultiMesh.new()
-	_belt_mm.transform_format = MultiMesh.TRANSFORM_2D
-	_belt_mm.mesh = Art.belt()
-	_under_mm = MultiMesh.new()
-	_under_mm.transform_format = MultiMesh.TRANSFORM_2D
-	_under_mm.mesh = Art.belt_under()
+	for mesh: ArrayMesh in [Art.belt(), Art.belt_bend(false), Art.belt_bend(true)]:
+		_bed_mms.append(_many(mesh))
 	for kind: String in ITEMS:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_2D
@@ -302,7 +306,7 @@ func event(e: Dictionary) -> void:
 			_beavers.erase(int(e.id))
 		"chip":
 			shake(e.tile)
-		"laid", "turned", "sold_back":
+		"laid", "turned", "sold_back", "placed", "built":
 			_belts_stale = true
 		"plate":
 			_plates_n = -1
@@ -487,24 +491,94 @@ func _lay_plates() -> void:
 	_ground_l.queue_redraw()
 	_grass_l.queue_redraw()
 
+func _many(mesh: ArrayMesh) -> MultiMesh:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_2D
+	mm.mesh = mesh
+	mm.instance_count = 16
+	mm.visible_instance_count = 0
+	return mm
+
+## The shape of the belt on `tile`: 0 straight, 1 a quarter bend fed from
+## the side its facing plus a quarter looks to, 2 from the other side. A
+## belt is a bend only when its one feeder (a belt pointing into it, or the
+## way out of a kiln or a retort) comes in by a side; fed from behind, from
+## both sides or by nothing it is straight, and a side belt butts into it.
+## Read off the sim's tables every time, never kept there.
+func shape(tile: Vector2i) -> int:
+	if not sim.belts.has(tile):
+		return 0
+	var f: int = sim.belts[tile]
+	var fed := [false, false, false, false]   # by the quarter the feeder lies to, from the facing
+	for q in range(1, 4):
+		var d := (f + q) % 4
+		var n: Vector2i = tile + Art.DIRS[d]
+		if sim.belts.has(n):
+			fed[q] = int(sim.belts[n]) == (d + 2) % 4
+		else:
+			var m: Dictionary = sim.module_at(n)
+			fed[q] = not m.is_empty() and m.kind != "firebox" and sim.out_tile(m) == tile
+	if fed[2] or fed[1] == fed[3]:
+		return 0
+	return 1 if fed[1] else 2
+
+## Where an item is drawn, in the sim's tile space: where the sim has it
+## between two ticks, but round the arc on a bend (the sim's own path there
+## is a square corner: in to the middle, then out).
+func item_at(tile: Vector2i, it: Dictionary) -> Vector2:
+	var pos: Vector2 = sim.item_pos(tile, it)
+	var bend: int = _shapes.get(tile, 0)
+	if bend == 0:
+		return pos
+	var f: int = sim.belts[tile]
+	var ahead := Vector2(Art.DIRS[f])
+	var side := Vector2(Art.DIRS[(f + (1 if bend == 1 else 3)) % 4])
+	var rel := pos - (Vector2(tile) + MID)
+	var q := rel.dot(side)
+	if q > 0.5:
+		# still on the belt that feeds it, between two ticks
+		return pos
+	# how far along its way through the tile, 0 to 1
+	var s := clampf(0.5 - q if q > 0.001 else 0.5 + rel.dot(ahead), 0.0, 1.0)
+	return Vector2(tile) + MID + (ahead + side) * 0.5 - (ahead * cos(s * PI * 0.5) + side * sin(s * PI * 0.5)) * 0.5
+
 func _lay_belts() -> void:
 	_belts_stale = false
 	_belt_n = sim.belts.size()
-	if _belt_mm.instance_count < _belt_n:
-		_belt_mm.instance_count = maxi(32, _belt_n * 2)
-		_under_mm.instance_count = _belt_mm.instance_count
 	# the back first: a nearer belt's legs and edge are over a further one's
 	var tiles: Array = sim.belts.keys()
 	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return depth(Vector2(a)) < depth(Vector2(b)))
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
-	for i in tiles.size():
-		var tile: Vector2i = tiles[i]
-		_under_mm.set_instance_transform_2d(i, Transform2D(0.0, mid(tile)))
-		_belt_mm.set_instance_transform_2d(i, lift * Art.flat(Vector2(seen_tile(tile)), seen_facing(int(sim.belts[tile]))))
-	_belt_mm.visible_instance_count = _belt_n
-	_under_mm.visible_instance_count = _belt_n
+	var beds := [[], [], []]
+	var unders := {}
+	_shapes.clear()
+	for tile: Vector2i in tiles:
+		var bend := shape(tile)
+		var vf := seen_facing(int(sim.belts[tile]))
+		var key: Variant = "s"
+		if bend != 0:
+			_shapes[tile] = bend
+			key = Art.DIRS[vf] + Art.DIRS[(vf + (1 if bend == 1 else 3)) % 4]
+		(beds[bend] as Array).append(lift * Art.flat(Vector2(seen_tile(tile)), vf))
+		if not unders.has(key):
+			unders[key] = []
+		(unders[key] as Array).append(Transform2D(0.0, mid(tile)))
+	for i in 3:
+		_fill(_bed_mms[i], beds[i])
+	for key: Variant in unders:
+		if not _under_mms.has(key):
+			_under_mms[key] = _many(Art.belt_under() if key is String else Art.belt_under_bend(key))
+	for key: Variant in _under_mms:
+		_fill(_under_mms[key], unders.get(key, []))
 	_under_l.queue_redraw()
 	_belt_l.queue_redraw()
+
+func _fill(mm: MultiMesh, xfs: Array) -> void:
+	if mm.instance_count < xfs.size():
+		mm.instance_count = xfs.size() * 2
+	for i in xfs.size():
+		mm.set_instance_transform_2d(i, xfs[i])
+	mm.visible_instance_count = xfs.size()
 
 ## How far up an item at `pos` (sim tile space) is drawn: on a belt's bed,
 ## or on the ground.
@@ -522,7 +596,7 @@ func _fill_items() -> void:
 			if lists.has(it.kind):
 				# onto the bed or off it over the tick it crosses, not at a jump
 				var up := lerpf(_lifted((it.was as Vector2).lerp(Vector2(tile) + MID, 0.02)), Art.BELT_UP if sim.belts.has(tile) else 0.0, float(sim.alpha))
-				(lists[it.kind] as Array).append(seen(sim.item_pos(tile, it)) + Vector2(0.0, -up))
+				(lists[it.kind] as Array).append(seen(item_at(tile, it)) + Vector2(0.0, -up))
 	for kind: String in ITEMS:
 		var at: Array = lists[kind]
 		var mm: MultiMesh = _item_mm[kind]
@@ -773,12 +847,14 @@ func _draw_grass(ci: CanvasItem) -> void:
 			ci.draw_multimesh(mm, null)
 
 func _draw_under(ci: CanvasItem) -> void:
-	if _belt_n > 0:
-		ci.draw_multimesh(_under_mm, null)
+	for key: Variant in _under_mms:
+		if (_under_mms[key] as MultiMesh).visible_instance_count > 0:
+			ci.draw_multimesh(_under_mms[key], null)
 
 func _draw_belts(ci: CanvasItem) -> void:
-	if _belt_n > 0:
-		ci.draw_multimesh(_belt_mm, null)
+	for mm in _bed_mms:
+		if mm.visible_instance_count > 0:
+			ci.draw_multimesh(mm, null)
 
 func _draw_flat(ci: CanvasItem) -> void:
 	if plus:

@@ -324,6 +324,8 @@ static var _tuft: ArrayMesh
 static var _flower: ArrayMesh
 static var _leaf_mesh: ArrayMesh
 static var _belt: ArrayMesh
+static var _bends := {}
+static var _under_bends := {}
 static var _belt_mat: ShaderMaterial
 static var _winds := {}
 
@@ -1289,6 +1291,112 @@ static func belt() -> ArrayMesh:
 		_belt = ArrayMesh.new()
 		_belt.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return _belt
+
+## A belt tile that turns a quarter, in tile space like `belt()` and leaving
+## toward +x: fed from its side (the user, 2026-10-10: "make sure to
+## properly add a curve when changing direction"). It comes in at the middle
+## of its +y side and sweeps round the corner (1, 1) to the middle of its +x
+## side; `mirror` comes in by the -y side instead, round (1, 0). Bed, rails
+## and pegs follow the arc and meet a neighbour's at the tile's edges, where
+## they are a straight belt's. Its UV runs ALONG THE ARC (x from 0 where it
+## comes in to 1 where it leaves, y across as on a straight belt, -1 on the
+## rails), so the one material runs the slats and the chevron round the bend.
+static func belt_bend(mirror: bool) -> ArrayMesh:
+	if not _bends.has(mirror):
+		var b := Face.Builder.new()
+		var bed := Color("d6ad78")
+		var c := Vector2(FINE, FINE)
+		var n := 16
+		var uvs := PackedVector2Array()
+		for i in n + 1:
+			var a := PI + PI * 0.5 * i / n
+			var dir := Vector2(cos(a), sin(a))
+			b.vertex(c + dir * 13.0, bed)
+			b.vertex(c + dir * 87.0, bed)
+			uvs.append(Vector2(float(i) / n, 0.87))
+			uvs.append(Vector2(float(i) / n, 0.13))
+		for i in n:
+			b.tri(i * 2, i * 2 + 1, i * 2 + 3)
+			b.tri(i * 2, i * 2 + 3, i * 2 + 2)
+		for r: float in [89.5, 10.5]:
+			var arc := PackedVector2Array()
+			var lit := PackedVector2Array()
+			for i in n + 1:
+				var a := PI + PI * 0.5 * i / n
+				arc.append(c + Vector2(cos(a), sin(a)) * r)
+				lit.append(c + Vector2(cos(a), sin(a)) * (r + 1.5))
+			b.stroke(arc, 11.0, PLANK_DEEP, false, false)
+			b.stroke(lit, 3.0, PLANK.lightened(0.16), false, false)
+			for k: float in [0.25, 0.75]:
+				var a := PI + PI * 0.5 * k
+				b.fan(Face.Builder.ring(c + Vector2(cos(a), sin(a)) * r, 3.4, 3.4), Color("7a5836"))
+		uvs.resize(b.verts.size())
+		for i in b.verts.size():
+			if i >= (n + 1) * 2:
+				uvs[i] = Vector2(0.0, -1.0)
+			if mirror:
+				b.verts[i].y = FINE - b.verts[i].y
+			b.verts[i] /= FINE
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = b.verts
+		arrays[Mesh.ARRAY_COLOR] = b.cols
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_INDEX] = b.idx
+		var m := ArrayMesh.new()
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		_bends[mirror] = m
+	return _bends[mirror]
+
+## `belt_under` for a bend: the shade, the posts and the bed's seen edge
+## following the arc. `corner` is the corner of its tile the bend turns
+## about, (1, 1), (-1, 1), (-1, -1) or (1, -1) from the tile's middle on the
+## grid as it is drawn (for `flat(tile, f)`: DIRS[f] + DIRS[f + 1], or
+## DIRS[f] + DIRS[f + 3] mirrored).
+static func belt_under_bend(corner: Vector2i) -> ArrayMesh:
+	if not _under_bends.has(corner):
+		var b := Face.Builder.new()
+		var c := Vector2(corner) * 0.5
+		var from := atan2(-float(corner.y), -float(corner.x)) - PI * 0.25
+		var n := 12
+		var shade := PackedVector2Array()
+		for i in n + 1:
+			var a := from + PI * 0.5 * i / n
+			shade.append(at(c + Vector2(cos(a), sin(a)) * 0.92) + Vector2(5.0, 2.0))
+		for i in range(n, -1, -1):
+			var a := from + PI * 0.5 * i / n
+			shade.append(at(c + Vector2(cos(a), sin(a)) * 0.08) + Vector2(5.0, 2.0))
+		b.polygon(shade, Color(CAST, 0.3))
+		var wood := [PLANK, PLANK.lightened(0.08), PLANK_DEEP.darkened(0.12)]
+		for o: Vector2 in [Vector2(-0.36, -0.36), Vector2(0.36, -0.36), Vector2(-0.36, 0.36), Vector2(0.36, 0.36)]:
+			# no post out in the open corner the bed does not cover
+			if o.sign() != -Vector2(corner):
+				_block(b, o, Vector2(0.055, 0.055), 0.0, BELT_UP - BELT_DEEP, wood)
+		var lit := PLANK.darkened(0.06)
+		var dark := PLANK_DEEP.darkened(0.18)
+		var top := BELT_UP
+		var foot := BELT_UP - BELT_DEEP
+		# the outer edge, where it looks at the eye
+		for i in n:
+			var a0 := from + PI * 0.5 * i / n
+			var a1 := from + PI * 0.5 * (i + 1) / n
+			var mid := Vector2(cos((a0 + a1) * 0.5), sin((a0 + a1) * 0.5))
+			if mid.x + mid.y <= 0.02:
+				continue
+			var p0 := c + Vector2(cos(a0), sin(a0)) * 0.95
+			var p1 := c + Vector2(cos(a1), sin(a1)) * 0.95
+			b.polygon(PackedVector2Array([_p(p0, top), _p(p1, top), _p(p1, foot), _p(p0, foot)]),
+				lit.lerp(dark, clampf(mid.x / (absf(mid.x) + absf(mid.y)), 0.0, 1.0)))
+		# its two ends, on the tile's sides: seen where no neighbour stands in front
+		for k in 2:
+			var a := from + PI * 0.5 * k
+			var d := Vector2(cos(a), sin(a))
+			var out := (Vector2(corner) - d * Vector2(corner).dot(d)).sign()
+			if out.x + out.y > 0.0:
+				b.polygon(PackedVector2Array([_p(c + d * 0.05, top), _p(c + d * 0.95, top), _p(c + d * 0.95, foot), _p(c + d * 0.05, foot)]),
+					lit if out.y > 0.0 else dark)
+		_under_bends[corner] = b.mesh()
+	return _under_bends[corner]
 
 ## The belts' one material (shaders/belt_2d.gdshader). Its `time`, in
 ## seconds, runs the slats BELT_SPEED tiles a second toward each belt's own

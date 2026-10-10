@@ -266,6 +266,7 @@ func _run() -> void:
 	await _cards()
 	await _turns()
 	await _swipes()
+	await _bends()
 	await _tutorial()
 	await _tab()
 	if FileAccess.file_exists(SAVE):
@@ -657,6 +658,60 @@ func _swipes() -> void:
 	await _wait(0.3)
 	await _shot("raised_far_turn_0")
 	_screen.set_far(false)
+
+## A belt fed by its side alone is a bend: an L and an S laid by swipes on
+## the open plate, a T that stays straight, and what rides drawn round the
+## arc; at no turn and a quarter round, shot near and at twice that.
+func _bends() -> void:
+	var life: RefCounted = _screen.life
+	for turn in 2:
+		var say := "turn %d: " % turn
+		if turn == 1:
+			await _press_button(_screen._turn_b)
+		await _look(Vector2(3.5, 19.5))
+		_screen.pick("belt")
+		await _drag([_mid(Vector2i(1, 17)), _mid(Vector2i(4, 17))])
+		await _drag([_mid(Vector2i(4, 17)), _mid(Vector2i(4, 20))])
+		_check(say + "a run swiped off the end of another turns the corner into itself",
+			_sim.belts.get(Vector2i(4, 17), -1) == 1 and _sim.belts.get(Vector2i(4, 20), -1) == 1 and _sim.belts.get(Vector2i(3, 17), -1) == 0, str(_sim.belts.get(Vector2i(4, 17), -1)))
+		await _drag([_mid(Vector2i(4, 20)), _mid(Vector2i(7, 20))])
+		await _frames(2)
+		_check(say + "the L's corner is a bend from the side it is fed by, and the S's the other bend",
+			life.shape(Vector2i(4, 17)) == 1 and life.shape(Vector2i(4, 20)) == 2 and life.shape(Vector2i(3, 17)) == 0 and life.shape(Vector2i(4, 18)) == 0,
+			"%d %d" % [life.shape(Vector2i(4, 17)), life.shape(Vector2i(4, 20))])
+		# what rides the corner at its half way is on the arc: off both centre lines, in the tile
+		var corner := Vector2i(4, 17)
+		var it := {"id": -1, "kind": "log", "at": 0.5, "from": 0, "was": Vector2(corner) + Vector2(0.5, 0.5)}
+		var rel: Vector2 = life.item_at(corner, it) - (Vector2(corner) + Vector2(0.5, 0.5))
+		_check(say + "an item half way round the bend is drawn on the arc", absf(rel.x) > 0.08 and absf(rel.y) > 0.08 and absf(rel.x) < 0.5 and absf(rel.y) < 0.5 and rel.x < 0.0 and rel.y > 0.0, str(rel))
+		# a T: a side belt into a through belt leaves it straight
+		await _drag([_mid(Vector2i(0, 22)), _mid(Vector2i(3, 22))])
+		await _drag([_mid(Vector2i(1, 20)), _mid(Vector2i(1, 22))])
+		await _frames(2)
+		_check(say + "a belt loaded from the side as well as from behind stays straight",
+			_sim.belts.get(Vector2i(1, 21), -1) == 1 and _sim.belts.get(Vector2i(1, 22), -1) == 0 and life.shape(Vector2i(1, 22)) == 0, "%s %d" % [_sim.belts.get(Vector2i(1, 21), -1), life.shape(Vector2i(1, 22))])
+		_screen.pick("")
+		for i in 7:
+			_sim.put(Vector2i(1, 17), ["log", "stone", "lime", "charcoal"][i % 4])
+			_run_on(1.5)
+		await _look(Vector2(4.5, 19.0))
+		await _wait(0.4)
+		await _shot("bends_turn_%d" % turn)
+		var near: float = _screen._near
+		_screen._near = near * 2.0
+		await _look(Vector2(4.5, 17.8))
+		await _shot("bend_l_2x_turn_%d" % turn)
+		await _look(Vector2(4.6, 20.2))
+		await _shot("bend_s_2x_turn_%d" % turn)
+		_screen._near = near
+		await _look(Vector2(4.5, 19.0))
+		for row in [17, 20, 22]:
+			_unlay(Vector2i(0, row), Vector2i(7, row))
+		_unlay(Vector2i(4, 17), Vector2i(4, 20))
+		_unlay(Vector2i(1, 20), Vector2i(1, 22))
+		await _frames(2)
+	for i in 3:
+		await _press_button(_screen._turn_b)
 
 func _tutorial() -> void:
 	_screen.tutor.show()
