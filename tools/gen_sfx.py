@@ -1368,32 +1368,55 @@ SETS = {
     # polish (2026-10-01) toward a sunny clover garden (CLOVER in place of
     # the house marimba): no tape-rewind undo, no wooden bonk.
     "caterpillar": {
-        "place":    ("a tiny soft clover leaf rustle with a small felt-soft wooden tick, a little caterpillar waking up and stretching, hushed, very short", 0.5, -11, CLOVER),
-        "munch":    ("a tiny cute caterpillar nibbling a soft leaf, two quick gentle crunch-crunch nibbles with a small warm rising kalimba plink, soft and adorable, very short", 0.5, -9, CLOVER),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # nineteenth set of the redo, with Pinwheel's above. Kept from the
+        # polish's set, as they were: refuse, strand, heart_lost and
+        # heart_back. Nothing new is a leaf, a crunch, a bubble, a buzz, a
+        # wing, a music box or a party blower (a rustle and a crunch are
+        # scratch, the ladybug's buzz sat whole above 3 kHz). munch fires on
+        # every leaf eaten, so it is two low notches, a nibble; combo is a
+        # tick the board pitches, not past five semitones. Every tick is
+        # `tight`. Borrowed takes: confetti is Binairo's and the cat
+        # Untangle's kitten, of the same prompts, and reset Pinwheel's (four
+        # takes here each came back a scratch); enter is place's, slip
+        # undo's, love and burp row's, fill and hungry the ladybug's. combo
+        # is cut at 0.055 s, ahead of its take's second tock at 60 ms. The
+        # phrases' steps are set by each take's own note, so that every note
+        # lands between 400 and 700 Hz, and no two phrases share a contour.
+        # A lift is a lighter thing set down.
+        "place":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "munch":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.08:0,2"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leafy tap, a kind 'not that way', warm, very short", 0.5, -12, CLOVER),
-        "undo":     ("a tiny soft leaf rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, CLOVER),
-        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, CLOVER),
-        "reset":    ("a soft quick descending ripple of leafy rustles and tiny felt ticks, a little caterpillar curling back up small, hushed and cozy", 1.0, -11, CLOVER),
-        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending in a soft bright shimmer and a light airy flutter of butterfly wings over clover, joyful and cozy", 2.0, -4, CLOVER),
-        "enter":    ("a soft airy cascade of tiny felt pops and a light rustle of clover leaves, a little garden of leaves appearing, hushed", 1.0, -11, CLOVER),
-        # The polish's new cues.
-        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, CLOVER),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, CLOVER),
-        "burp":     ("a tiny cute caterpillar hiccup-burp that blows a little soap bubble, a soft bubbly 'blip' and a tiny bubble pop, adorable, not gross, very short", 0.6, -12, CLOVER),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, CLOVER),
-        "ladybug":  ("a tiny ladybug buzzing softly in and landing on a leaf with a soft little tick, cute, gentle, never annoying, short", 0.9, -14, CLOVER),
-        "hungry":   ("a tiny soft tummy rumble, a cute little 'grumble' of a hungry caterpillar, muffled and gentle, a kind 'not yet', short", 0.6, -12, CLOVER),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:9,12,16", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
+        # The leaves laid out: place's take, five in a row.
+        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. burp: one quiet note. ladybug: three quiet notes, up and
+        # back a step. hungry: two low notes alike, a kind 'not yet'.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.055", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "burp":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:5", "cut:0.45"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
+        "ladybug":  ("one soft short note on a kalimba, round and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:4,9,7", "cut:0.6"),
+        "hungry":   ("one soft short note on a kalimba, round and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.16:4,4", "cut:0.6"),
         "strand":   ("a soft worried 'uh-oh', two kalimba notes with a gentle wobble bending down, warm and muffled, never a buzzer, short", 0.6, -12, CLOVER),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, CLOVER),
-        "slip":     ("a little caterpillar scooting back one square, a soft quick leafy slide with a felt-soft tick, gentle, very short", 0.5, -12, CLOVER),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a clover garden at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, CLOVER),
+        # The caterpillar scooting back a square: undo's take, one notch down.
+        "slip":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, CLOVER),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -5, CLOVER),
-        "party":    ("a short cozy celebratory flourish on kalimba and music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -4, CLOVER),
-        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
-        "flutter":  ("several tiny butterflies taking off together, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.2, -12, CLOVER),
-        "row":      ("a quick soft rising sparkle run across a row of little tiles, a tiny music box glissando, light and bright, short", 0.7, -11, CLOVER),
-        "fill":     ("a tummy filling back up after a leaf, a soft happy 'mmm' with a warm rising kalimba plink, content and cute, short", 0.6, -11, CLOVER),
+        # The party. flutter: the butterflies taking off, a small puff of air.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,5,12"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,3,6,3,6,8", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        "flutter":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # A row of the garden eaten clean: four quick quiet notes up. fill
+        # (Insane, Peckish): the tummy topped up, two quiet notes up.
+        "row":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:3,5,7,10", "cut:0.7"),
+        "fill":     ("one soft short note on a kalimba, round and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,9", "cut:0.45"),
     },
     # Sunbeam: drag a brass mirror or a copper cup along its wooden rail and
     # the light follows; wet every dewdrop, then the bud blooms. `step` fires

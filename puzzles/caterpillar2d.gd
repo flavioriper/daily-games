@@ -213,10 +213,11 @@ const PILL_GAP := 18.0
 
 # --- the rewards ---
 ## The streak: leaves eaten in a row (a cut, an undo, a reset, a wrong step
-## or the hearts running out ends it): a note up the pentatonic from the
-## second, the bubble from the third, confetti at 4, 7 and every 5.
+## or the hearts running out ends it): a tick a semitone higher from the
+## second, five in all, the bubble from the third, confetti at 4, 7 and
+## every 5.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -2755,8 +2756,8 @@ func _day_hash() -> int:
 		return 0
 	return absi(hash([_state.cols, _state.leaves.size(), int(_state.leaves[0]), _state.hedges.size()]))
 
-## The player's own step has just eaten leaf `c`: the streak grows -- a note
-## up the pentatonic from the second, the bubble over the leaf from the
+## The player's own step has just eaten leaf `c`: the streak grows -- a tick
+## a semitone higher from the second, the bubble over the leaf from the
 ## third, confetti at 4, 7 and every 5 -- and one leaf in GAG_ODDS a gag.
 ## The last leaf does none of it: the party is coming.
 func _on_leaf(c: int) -> void:
