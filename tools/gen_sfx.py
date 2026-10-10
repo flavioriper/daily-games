@@ -1586,7 +1586,7 @@ SETS = {
     },
     # Chess (Versus, versus/chess_screen.gd). Redone 2026-10-10 against the
     # cozy rules (docs/agents/sound.md), the twenty-fourth set of the redo,
-    # with checkers' to follow. Kept from the first set: lose, 4 dB down. Nothing
+    # with checkers' below. Kept from the first set: lose, 4 dB down. Nothing
     # new is a scrape, a swish, a clack, a tumble, a boing, a bonk, a marimba
     # or a glockenspiel. A piece chosen and a piece set down are what a hand
     # does all game, so `lift` and `place` are the plainest: one tock each,
@@ -1618,24 +1618,34 @@ SETS = {
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
         "draw":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:5,5", "cut:0.8"),
     },
-    # Checkers (Versus, versus/checkers_screen.gd): round wooden draughts on
-    # a wooden board as foley, the verdicts in the house marimba. `hop` is a
-    # jump's take-off (pitched up a step a jump down a chain), `capture` the
-    # piece squashed and tossed, `flip` a losing piece turning face down.
+    # Checkers (Versus, versus/checkers_screen.gd). Redone 2026-10-10 against
+    # the cozy rules, the twenty-fifth set of the redo. Kept from the first
+    # set: lose and draw, 4 dB down. Nothing new is a scrape, a swish, a
+    # clack, a coin's spin, a boing, a bonk or a glockenspiel.
+    # `lift` and `place` are one tock each, the lift a lighter thing,
+    # `tight`; the board pitches them down a chain of jumps, not past five
+    # semitones. Borrowed takes: capture and enter are place's, flip and
+    # refused lift's, slide and hop chess's, of the same prompts. `slide` (a king setting off, a move taken back) is a
+    # breath of breeze, `hop` (a jump's take-off) a small puff, `flip` (a
+    # losing piece turning face down, a dozen in a row) one light notch.
     "checkers": {
-        "lift":     ("a single flat round wooden draughts piece lifted off a wooden board, a tiny soft scrape, close mic, very short", 0.5, -14, FOLEY),
-        "place":    ("a single flat round wooden draughts piece set down on a wooden board, a soft warm wooden click, close mic, very short", 0.5, -7, FOLEY),
-        "slide":    ("a flat round wooden draughts piece sliding briefly across a wooden board, a short soft swish, close mic", 0.5, -14, FOLEY),
-        "hop":      ("a short playful soft airy whoosh with a tiny springy boing, a little wooden disc leaping", 0.5, -12),
-        "capture":  ("one flat wooden draughts piece landing hard on another, a crisp wooden clack then a small coin-like spin and wobble settling, close mic, short", 0.8, -6, FOLEY),
-        "crown":    ("a gentle magical rising sparkle shimmer with a small bright glockenspiel ding, a crown landing on a piece", 1.2, -6),
-        "flip":     ("a single flat wooden draughts piece flipped over onto a wooden board, a soft quick tick-tock clack, close mic, very short", 0.5, -10, FOLEY),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "enter":    ("a quick soft cascade of flat wooden draughts pieces dealt out on a wooden board one after another, little coin-like wobbles", 1.4, -9, FOLEY),
-        "win":      ("a warm celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
-        "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -6),
+        "lift":     ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "place":    ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "hop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # A piece jumped: place's take, two notches, the second three steps down.
+        "capture":  ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,-3"),
+        "crown":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:6,9,13,9", "cut:0.9"),
+        # A losing piece turned face down: lift's take, two steps down.
+        "flip":     ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # Not that square: lift's take, twice and falling.
+        "refused":  ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,7,9", "cut:1.0"),
+        # The pieces dealt out: place's take, five in a row.
+        "enter":    ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        "win":      ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2400", "steep", "ease:0.012", "body:300", "notes:0.14:4,7,9,7,9,12", "cut:1.9"),
+        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
+        "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -10),
     },
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.

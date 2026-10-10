@@ -477,7 +477,7 @@ func play(d: Dictionary) -> void:
 	for i in range(first, legs.size()):
 		var leg: Array = legs[i]
 		var n := i - first
-		var pitch := 1.0 + 0.09 * n
+		var pitch := minf(1.0 + 0.09 * n, 1.28)
 		if not reduce and not dropped_quiet:
 			_after(float(leg[2]), func() -> void: _cue(skin.takeoff_cue(type, capture), pitch))
 		_after(float(leg[2]) + float(leg[3]), func() -> void:
@@ -515,7 +515,7 @@ func play(d: Dictionary) -> void:
 			a.crown_at = _now
 			a.face = CheckersSkin.F_JOY
 			a.face_until = _now + ct + 0.6
-			_cue("lift", 1.4))
+			_cue("lift", 1.33))
 		_after(t + (0.1 if reduce else ct * skin.crown_land()), func() -> void:
 			a.type = Rules.KING
 			_cue("crown")
@@ -547,7 +547,7 @@ func _knock(victim: Actor, dir: Vector2, contact: float, n: int, knocks := false
 		victim.rest_scale = tray_scale
 		victim.face = CheckersSkin.F_DIZZY
 		victim.face_until = INF
-		_cue("capture", 1.0 + 0.1 * n)
+		_cue("capture", minf(1.0 + 0.1 * n, 1.33))
 		if _fx != null:
 			if knocks:
 				_fx.buzz(Haptics.BUMP)
@@ -638,7 +638,7 @@ func finish(outcome: String) -> void:
 		_after(0.5 + i * 0.16, func() -> void:
 			if a.kind == "" and not a.face_down:
 				_start(a, "yield", skin.yield_time(), a.at, a.at)
-				_cue("flip", 0.9 + 0.05 * i))
+				_cue("flip", minf(0.9 + 0.05 * i, 1.2)))
 
 ## Now and then one resting piece does its own little thing, while the
 ## game waits on someone.
@@ -855,7 +855,7 @@ func _choose(to: int) -> void:
 		# routes part after this landing: choose the rest a landing at a time
 		_prefix.append(to)
 		_retarget()
-		_cue("lift", 1.1 + 0.08 * _prefix.size())
+		_cue("lift", minf(1.1 + 0.08 * _prefix.size(), 1.33))
 		return
 	if not ending.is_empty():
 		chosen.emit(ending[0])
