@@ -995,7 +995,7 @@ func _build_mat() -> ArrayMesh:
 	if not still:
 		var thread := Color(FELT_LIT, 0.75)
 		_sprout(b, _zone_line.position + Vector2(52.0, 62.0), 1.5, thread)
-		_sprout(b, _zone_line.end - Vector2(54.0, 30.0), 1.5, thread)
+		_sprout(b, _zone_line.end - Vector2(54.0, 42.0), 1.5, thread)
 		_tray(b, Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0))
 		var box_at := Vector2(PAD, _zone_stock.position.y + 6.0)
 		var box := Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - PAD - 8.0, STOCK_H - 12.0)
@@ -1010,7 +1010,7 @@ func _build_mat() -> ArrayMesh:
 
 ## The middle of the cup, right of the boneyard's box.
 func _cup_at() -> Vector2:
-	return Vector2(_v.x - PAD - 76.0, _zone_stock.position.y + STOCK_H * 0.5 - 2.0)
+	return Vector2(_v.x - PAD - 76.0, _zone_stock.position.y + STOCK_H * 0.5 - 14.0)
 
 static func _frame(b: Face.Builder, c: Vector2, half: Vector2, grow: float, width: float, col: Color) -> void:
 	b.stroke(Face.Builder.round_rect(c - half - Vector2.ONE * grow, (half + Vector2.ONE * grow) * 2.0, 14.0 + grow), width, col, true)

@@ -658,9 +658,11 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   shares the same room among four (1300 design px at 810x1440, 207 draw
   calls), so every card's picture is shorter than it was with six.
 - 92-95 draw calls at the table, 112-120 with the end card, 127-135 with a
-  tutorial page, ANGLE agreeing (810x1440; the same after the redress of
-  2026-10-10, which added no draw call: peak 119, ANGLE 120, 112 under
-  reduce motion).
+  tutorial page, ANGLE agreeing (810x1440). The redress of 2026-10-10 added
+  one at rest, the over mesh, which the steam now always fills (it was
+  drawn only while something was lit): peak 119, ANGLE 120, and 112 under
+  reduce motion, where there is no steam. The table also redraws every
+  frame while it is looked at, for the steam.
 - **The tutorial** (`ui/hud/dominoes_tutorial_diagram.gd`, five pages): the
   table set by `Rules.lay` and played by a script and a finger -- three
   tiles matched, a tile picked up and an end chosen and a double across,
