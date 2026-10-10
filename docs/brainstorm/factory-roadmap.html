@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory · the long road</title>
+<style>
+@font-face{font-family:"Fredoka";src:url("../../assets/fonts/Fredoka-Variable.ttf") format("truetype");font-weight:300 700}
+@font-face{font-family:"Nunito";src:url("../../assets/fonts/Nunito-Variable.ttf") format("truetype");font-weight:200 1000}
+:root{
+  --paper:#f6efe2; --card:#fffaf1; --ink:#2f2a25; --muted:#6f655b; --line:#e3d8c6;
+  --wood:#8a5a3a; --sun:#f2b544; --rose:#e4707a; --sky:#3f7fd6; --leaf:#5ea82f; --grey:#a2988e;
+  --ember:#d9742f; --steam:#7f8c99; --water:#4f9fd0; --volt:#e2b800; --solar:#f0a33a; --star:#7a5fd4;
+  --display:"Fredoka",-apple-system,"SF Pro Rounded",sans-serif;
+  --body:"Nunito",-apple-system,"SF Pro Text",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--body)}
+a{color:var(--sky)}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:.2px}
+header{padding:40px 28px 26px;border-bottom:3px solid var(--ink)}
+header .wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}
+header h1{margin:0;font-size:46px;line-height:1.02}
+header h1 small{display:block;font:700 13px/1 var(--body);letter-spacing:2.4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+header p{margin:12px 0 0;max-width:720px;color:var(--muted);font-size:17px}
+header .stamp{font-family:var(--display);text-align:right;color:var(--muted);font-size:14px;line-height:1.5}
+header .stamp b{display:block;color:var(--ink);font-size:20px}
+main{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+section{margin-top:66px;padding-top:24px;border-top:3px solid var(--ink)}
+section h2{font-size:34px;margin:0 0 6px}
+section h3{font-size:22px;margin:28px 0 8px}
+section .lede{font-size:17.5px;color:var(--muted);max-width:780px;margin:0 0 22px}
+p{max-width:780px}
+ul{max-width:780px;padding-left:22px}
+li{margin:4px 0}
+code{font:600 13.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:18px 0 0}
+.rule{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.rule b{display:block;font-family:var(--display);font-size:17px;margin-bottom:4px}
+.rule span{color:var(--muted);font-size:14.5px}
+/* the road */
+.road{position:relative;margin:26px 0 0;padding-left:34px}
+.road:before{content:"";position:absolute;left:11px;top:0;bottom:0;width:4px;border-radius:2px;
+  background:linear-gradient(var(--wood),var(--ember),var(--steam),var(--water),var(--volt),var(--solar),var(--star))}
+.era{position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px 24px 18px;margin:0 0 22px}
+.era:before{content:"";position:absolute;left:-30px;top:26px;width:18px;height:18px;border-radius:50%;border:4px solid var(--paper);background:var(--c)}
+.era h3{margin:0;font-size:26px;display:flex;align-items:baseline;gap:12px}
+.era h3 small{font:800 11px/1 var(--body);letter-spacing:1.6px;text-transform:uppercase;color:#fff;background:var(--c);border-radius:999px;padding:5px 10px}
+.era .gate{color:var(--muted);font-size:14.5px;margin:6px 0 14px}
+.era .gate b{color:var(--ink)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 22px}
+.cols h4{margin:8px 0 4px;font-size:14px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-family:var(--body);font-weight:800}
+.cols ul{margin:0;padding-left:18px;font-size:14.5px}
+.lesson{margin:14px 0 0;padding:10px 14px;border-left:4px solid var(--c);background:var(--paper);border-radius:0 10px 10px 0;font-size:15px}
+.lesson b{font-family:var(--display)}
+/* tables */
+table{border-collapse:collapse;width:100%;max-width:980px;margin:14px 0 0;font-size:14.5px}
+th{text-align:left;font:800 11px/1 var(--body);letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);padding:8px 8px;border-bottom:1px solid var(--ink)}
+td{padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:hover td{background:var(--card)}
+/* figure */
+figure{margin:18px 0 0;max-width:780px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
+.chip{font:800 10.5px/1 var(--body);letter-spacing:.8px;text-transform:uppercase;border-radius:999px;padding:4px 8px;display:inline-block;white-space:nowrap;margin-right:4px}
+.chip.ok{background:#dff0d6;color:#37701c}
+.chip.ask{background:#ffe1b3;color:#8a4b00}
+.chip.no{background:#f7dcd7;color:#a33c2c}
+.open li{margin:8px 0}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div>
+    <h1><small>Brainstorm · 2026-10-10</small>Factory, the long road</h1>
+    <p>A calm build-and-sell game on a board of plates. It replaces the Valley tab: one game, one money, one screen, nothing split into places. The player chops by hand, lights a fire, automates, and ends up somewhere futuristic, selling everything along the way to buy the next module.</p>
+  </div>
+  <div class="stamp"><b>Working name: Factory</b>sixth tab, in place of Valley<br>fixed isometric view, no rotation</div>
+</div></header>
+<main>
+
+<section id="premise">
+  <h2>What it is</h2>
+  <p class="lede">Farm, factory, sell. Trees and rocks on a plate of land; belts carry what comes off them to a market; the market sells so many items a second; the coins buy saws, burners, more plates. Every tier a thing passes through makes it worth more, and the only way to earn is to sell.</p>
+  <p>Two games are the references and neither may be named in code, comments, commits or on screen, by the renamed-genre rule: the browser belt game <em>Conveyor Idle</em> gave the loop and the plate board; the PC factory game <em>Satisfactory</em> gave the long arc of power and overload. That is the only time this page names them. In the PC game the player grows the base; here the player sells everything and buys modules, like an incremental.</p>
+  <div class="rules">
+    <div class="rule"><b>One money</b><span>Coins from the market buy everything. No gems, no premium counter, no prestige in the first spec (the economy leaves room for one later).</span></div>
+    <div class="rule"><b>Nothing while closed</b><span>The land runs only while the app is open. No away earnings, no "come back" card, no doubling ad.</span></div>
+    <div class="rule"><b>No hurry, no anxiety</b><span>Nothing times out, spills, breaks or is lost. A tap is labour in the hand era, never a hurry on a machine. Over demand everything just runs slower.</span></div>
+    <div class="rule"><b>Slow and endless</b><span>The land moves only during a session and a session is as long as the player wants. It is never done, and numbers are not made faster for a demo.</span></div>
+    <div class="rule"><b>Fixed isometric</b><span>The Grove's view, corner on, no camera rotation. The board pans by drag.</span></div>
+    <div class="rule"><b>Any age</b><span>Comfortable and lovely for anyone: the palette is pictures, prices are coins, the tutorial is the first three taps.</span></div>
+  </div>
+</section>
+
+<section id="board">
+  <h2>The board of plates</h2>
+  <p class="lede">The land is not one grid that grows at its edges; it is plates, bought one at a time, each given a kind by the player, joined like a board game. Belts run across the seam between two plates as if it were not there.</p>
+  <figure>
+    <svg viewBox="0 0 780 300" role="img" aria-label="Three plates joined corner to corner, with plus signs on free edges">
+      <defs><filter id="s"><feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#2f2a25" flood-opacity=".18"/></filter></defs>
+      <g filter="url(#s)">
+        <polygon points="390,40 540,115 390,190 240,115" fill="#9bcf6a" stroke="#6e9a46" stroke-width="3" stroke-linejoin="round"/>
+        <polygon points="240,115 390,190 240,265 90,190" fill="#c9b79a" stroke="#9a8768" stroke-width="3" stroke-linejoin="round"/>
+        <polygon points="540,115 690,190 540,265 390,190" fill="#8fc7e8" stroke="#5f9ec4" stroke-width="3" stroke-linejoin="round"/>
+      </g>
+      <g font-family="Fredoka,sans-serif" font-size="15" font-weight="600" fill="#2f2a25" text-anchor="middle">
+        <text x="390" y="120">forest</text><text x="240" y="195">quarry</text><text x="540" y="195">pond</text>
+      </g>
+      <g fill="#fffaf1" stroke="#2f2a25" stroke-width="2.5">
+        <circle cx="465" cy="77" r="15"/><circle cx="315" cy="77" r="15"/><circle cx="165" cy="227" r="15"/><circle cx="615" cy="227" r="15"/><circle cx="390" cy="265" r="15"/>
+      </g>
+      <g stroke="#2f2a25" stroke-width="3" stroke-linecap="round">
+        <path d="M465 70v14M458 77h14M315 70v14M308 77h14M165 220v14M158 227h14M615 220v14M608 227h14M390 258v14M383 265h14"/>
+      </g>
+      <g stroke="#8a5a3a" stroke-width="7" stroke-linecap="round" fill="none" opacity=".85">
+        <path d="M300 128 L372 164 L444 128 L515 164"/>
+      </g>
+      <g font-family="Nunito,sans-serif" font-size="12.5" fill="#6f655b" text-anchor="middle">
+        <text x="390" y="292">a plus on a free edge buys a plate there; the player picks its kind</text>
+      </g>
+    </svg>
+    <figcaption>The first plate is the Grove's diamond, reused as it is: one rounded diamond on a block of earth in a pond. Each plate is a grid of 8 by 8 tiles. A belt (brown) crosses from the quarry to the forest to the pond with no seam.</figcaption>
+  </figure>
+  <h3>Plate kinds</h3>
+  <table>
+    <tr><th>Kind</th><th>What stands on it</th><th>What it gives</th><th>From era</th></tr>
+    <tr><td><b>Forest</b></td><td>Trees that come up at random spots and regrow after a cut, the Grove's trees</td><td>Logs</td><td class="n">1 (the first plate)</td></tr>
+    <tr><td><b>Quarry</b></td><td>Rocks, later coal seams under them</td><td>Stone, then coal</td><td class="n">2</td></tr>
+    <tr><td><b>Meadow</b></td><td>Open grass, flowers, nothing to gather</td><td>Room: the cheapest plate, for machines and windmills</td><td class="n">2</td></tr>
+    <tr><td><b>Pond</b></td><td>Water with a rim of ground; machines sit on the rim</td><td>A place for water wheels; reeds, later sand</td><td class="n">4</td></tr>
+    <tr><td><b>Hill</b></td><td>A raised plate, the only place with wind and iron</td><td>Iron ore, wind</td><td class="n">4</td></tr>
+    <tr><td><b>Shore</b></td><td>Sand against the pond</td><td>Sand for glass</td><td class="n">5</td></tr>
+  </table>
+  <p>A plate's price climbs with the count owned, not with its kind, so the choice of kind is the player's taste and plan, never a price. Only kinds the current era has unlocked are offered. A plate is never sold back: the land only grows.</p>
+</section>
+
+<section id="road">
+  <h2>The road, era by era</h2>
+  <p class="lede">Each era opens when one key module is bought, and each adds exactly one new complexity layer, one new power source and one new product tier. The player can stay in any era as long as they like; nothing nags.</p>
+  <div class="road">
+
+  <div class="era" style="--c:var(--wood)">
+    <h3>By hand <small>era 1</small></h3>
+    <div class="gate">From the first open. <b>Ends when the Saw is bought.</b> About three minutes of play, longer if the player potters.</div>
+    <div class="cols">
+      <div><h4>Board</h4><ul><li>One forest plate, the market standing on its front corner from the start</li><li>Five trees up, three rocks lying</li></ul></div>
+      <div><h4>Labour</h4><ul><li>Tap a tree: the beaver comes, bites three times, the tree comes down the Grove's way, a log lies on the tile at its foot</li><li>Tap a rock: a stone chips off (a rock never runs out, trees regrow in about a minute)</li><li>A log or a stone lies on the tile where it fell and rides the first belt laid on that tile; nothing is dragged by hand</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Belt</b>, 1 coin a tile, 2 items a second</li><li><b>Market</b>, given, sells 1 item a second, pays the item's price</li></ul></div>
+      <div><h4>Products</h4><ul><li>Log 1 coin · Stone 2 coins</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> things ride belts, the market sells so many a second, and a queue in front of it is coins waiting. The first upgrade a player meets is the market's rate.</div>
+  </div>
+
+  <div class="era" style="--c:var(--ember)">
+    <h3>Fire <small>era 2</small></h3>
+    <div class="gate">Opens with the <b>Saw</b>. <b>Ends when the Stoker is bought.</b></div>
+    <div class="cols">
+      <div><h4>Board</h4><ul><li>The second plate: quarry or meadow, the player's pick</li></ul></div>
+      <div><h4>Power, tended by hand</h4><ul><li>The <b>Burner</b> sits beside a machine. Logs reach it by belt and pile in its hopper, five at most</li><li>It burns only while someone keeps it lit: a tap puts one log on, it glows a minute, then dims. The saw pauses, calm, until the next tap. Nothing is lost and no log is wasted</li><li>One burner warms every machine touching it; a second machine wants a second burner</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Saw</b>: log in, plank out, needs heat</li><li><b>Burner</b></li><li><b>Kiln</b>: stone in, brick out, needs heat</li></ul></div>
+      <div><h4>Products</h4><ul><li>Plank 4 · Brick 6</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> machines need power and someone has to feed them. The player feels the chore just long enough to want the next era.</div>
+  </div>
+
+  <div class="era" style="--c:var(--steam)">
+    <h3>Steam <small>era 3</small></h3>
+    <div class="gate">Opens with the <b>Stoker</b>. <b>Ends when the Water Wheel is bought.</b></div>
+    <div class="cols">
+      <div><h4>Automation</h4><ul><li><b>Stoker</b>: fitted to a burner, it feeds the fire from the hopper by itself</li><li><b>Lodge</b>: the Grove's own beavers chop every tree in its reach and lay the logs on its belt</li><li><b>Drill</b>: digs stone from a quarry plate without a tap, and coal where a seam is</li><li><b>Coal burner</b>: hotter, feeds itself, burns coal</li><li><b>Joiner</b>: planks in, a chair out, needs heat</li></ul></div>
+      <div><h4>Power, the first limit</h4><ul><li>Power is one meter for the whole land: supply from burners, demand from machines. No wires, no poles</li><li>Over demand, every machine runs at supply over demand. Nothing stops, nothing trips</li><li>A belt carries 2 items a second; the <b>fast belt</b> 4. A full belt waits, it never spills</li><li><b>Splitter</b>: one belt into two, alternating</li></ul></div>
+      <div><h4>Products</h4><ul><li>Coal 3 · Chair 12</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> automation is bounded. Power and belt capacity are the two numbers the player plans around for the rest of the game.</div>
+  </div>
+
+  <div class="era" style="--c:var(--water)">
+    <h3>Water and wind <small>era 4</small></h3>
+    <div class="gate">Opens with the <b>Water Wheel</b>. <b>Ends when the Dynamo is bought.</b></div>
+    <div class="cols">
+      <div><h4>Board</h4><ul><li>Pond and hill plates unlock</li></ul></div>
+      <div><h4>Power, clean but placed</h4><ul><li><b>Water wheel</b>: only on a pond plate's rim, steady power with no fuel</li><li><b>Windmill</b>: only on a hill plate, steady power with no fuel</li><li>Limited by where they fit, so the player buys plates for power, not just for ore</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Smelter</b>: iron ore in, ingot out, hungry for power</li><li><b>Nailer</b>: one ingot in, two boxes of nails out</li><li>The <b>Joiner</b> takes two inputs now: planks and nails make a table</li><li><b>Merger</b>: two belts into one</li></ul></div>
+      <div><h4>Products</h4><ul><li>Ingot 10 · Nails 8 (two a box an ingot) · Table 30</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> two inputs. Belts merge, split and cross plates, and the board starts to look like a factory.</div>
+  </div>
+
+  <div class="era" style="--c:var(--volt)">
+    <h3>Electric <small>era 5</small></h3>
+    <div class="gate">Opens with the <b>Dynamo</b>. <b>Ends when the Solar Panel is bought.</b></div>
+    <div class="cols">
+      <div><h4>Board</h4><ul><li>Shore plates unlock; a <b>second market</b> may be bought</li></ul></div>
+      <div><h4>Power</h4><ul><li><b>Dynamo</b>: burns anything, coal best, big supply</li><li>Machines of this era draw more than all of era 3 together</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Bridge</b>: a belt over a belt</li><li><b>Glassworks</b>: sand in, glass out</li><li><b>Assembler</b>: three inputs</li><li>Market rate upgrades climb through here</li></ul></div>
+      <div><h4>Products</h4><ul><li>Glass 15 · Lamp (glass, ingot) 60 · Bicycle (ingots, nails, planks) 150</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> crossing belts and three-input recipes. Layout becomes the game.</div>
+  </div>
+
+  <div class="era" style="--c:var(--solar)">
+    <h3>Solar <small>era 6</small></h3>
+    <div class="gate">Opens with the <b>Solar Panel</b>. <b>Ends when the Core is bought.</b></div>
+    <div class="cols">
+      <div><h4>Power</h4><ul><li><b>Solar panel</b>: fits anywhere, no fuel, small</li><li><b>Battery</b>: holds a surplus so a hungry machine can draw in bursts</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Drone pad</b>: two pads carry items between them with no belt, across any distance</li><li><b>Circuit press</b>: glass and ingot make a circuit</li><li><b>Radio works</b>: a circuit and glass make a radio</li><li><b>Robot works</b>: circuits, ingots and lamps make a robot</li></ul></div>
+      <div><h4>Products</h4><ul><li>Circuit 80 · Radio 250 · Robot 800</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> belts are no longer the only way to move a thing, and a big board stays readable.</div>
+  </div>
+
+  <div class="era" style="--c:var(--star)">
+    <h3>Beyond <small>era 7</small></h3>
+    <div class="gate">Opens with the <b>Core</b>. <b>Never ends.</b></div>
+    <div class="cols">
+      <div><h4>Power</h4><ul><li><b>Core</b>: one tile, power for a whole land</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Printer</b>: any product from a pulp of anything, at the printer's level</li><li><b>Pad</b>: an item that steps on it steps off any other pad</li><li>Every module gains levels with no cap; price is the brake, as in Peapod</li></ul></div>
+      <div><h4>Products</h4><ul><li>The printer's tiers climb forever, each a round number above the last</li></ul></div>
+    </div>
+    <div class="lesson"><b>Lesson:</b> there is no end. A land here is a garden the player tends, and the numbers are the only thing that grows.</div>
+  </div>
+
+  </div>
+</section>
+
+<section id="economy">
+  <h2>The economy's skeleton</h2>
+  <p class="lede">Every number here is a first guess to be tuned by a pace bot, never by a demo. What is fixed is the shape: a product is worth about four times what went into it, a module costs about five times the one before, and a plate's price doubles with each owned.</p>
+  <table>
+    <tr><th>Era</th><th>Key module</th><th>Its price</th><th>Best product</th><th>Market rate reached</th><th>Rough time in play, nothing running between sessions</th></tr>
+    <tr><td>1 By hand</td><td>Saw</td><td class="n">60</td><td>Stone 2</td><td class="n">1 / s</td><td>3 minutes</td></tr>
+    <tr><td>2 Fire</td><td>Stoker</td><td class="n">400</td><td>Brick 6</td><td class="n">2 / s</td><td>20 minutes</td></tr>
+    <tr><td>3 Steam</td><td>Water Wheel</td><td class="n">2,500</td><td>Chair 12</td><td class="n">3 / s</td><td>1 hour</td></tr>
+    <tr><td>4 Water and wind</td><td>Dynamo</td><td class="n">15,000</td><td>Table 30</td><td class="n">5 / s</td><td>3 hours</td></tr>
+    <tr><td>5 Electric</td><td>Solar Panel</td><td class="n">100,000</td><td>Bicycle 150</td><td class="n">8 / s, two markets</td><td>8 hours</td></tr>
+    <tr><td>6 Solar</td><td>Core</td><td class="n">800,000</td><td>Robot 800</td><td class="n">12 / s</td><td>20 hours</td></tr>
+    <tr><td>7 Beyond</td><td>Printer levels</td><td class="n">× 5 a level</td><td>climbs forever</td><td class="n">climbs forever</td><td>as long as they like</td></tr>
+  </table>
+  <h3>What sells back</h3>
+  <p>A module sold back returns its full price. The game is about selling, and a player who tries a layout and undoes it loses nothing but the minute. Plates alone are kept. Items on a belt that is sold back lie on their tiles and ride the first belt laid on those tiles, as in era 1.</p>
+  <h3>Prestige, left room for</h3>
+  <p>Not in the first spec. If the numbers at era 7 need a second axis, it is a <em>sell the whole land</em> that keeps a multiplier on prices and starts a new first plate. The economy above is built so that a multiplier on prices alone would carry it; nothing else should be made to depend on a second currency.</p>
+</section>
+
+<section id="play">
+  <h2>How it is played on a phone</h2>
+  <div class="cols">
+    <div><h4>The screen</h4><ul><li>The board takes the screen; the coin count sits on a pill at the top</li><li>The palette is a drawer on the <b>left</b> (the thumb that builds rests on the right; the thumb-side rule)</li><li>The power meter appears from era 3 as a thin bar beside the coins: supply over demand, green to amber, never red</li></ul></div>
+    <div><h4>Building</h4><ul><li>Pick a module in the drawer, tap a tile: it stands, the price leaves the pill</li><li>Belt picked, drag across tiles: a belt is laid along the drag in its direction; lift to end</li><li>Tap a placed belt to turn it a quarter; tap a machine to open its card (what it makes, its level, sell back)</li><li>Long press a module: it is sold back</li><li>Drag on open ground pans</li></ul></div>
+    <div><h4>Era 1 labour</h4><ul><li>Tap a tree: the beaver bites; tap a rock: a chip</li><li>From era 3 these taps still work but nobody needs them</li></ul></div>
+    <div><h4>What never happens</h4><ul><li>No countdown, no decay, no spoilage, no blackout</li><li>No away earnings, no ad for a boost, no second currency</li><li>No camera rotation</li></ul></div>
+  </div>
+</section>
+
+<section id="reuse">
+  <h2>Reused from the Grove</h2>
+  <p class="lede">The Grove's mechanics (the finger oval, energy, the skill tree, the raft and jetty) are dropped. Its art and structure carry over as the Factory's first plate and its creatures. The Grove's last state is commit <code>1f261898</code> (2026-10-07) and git history keeps all of it; no dead folder is carried.</p>
+  <table>
+    <tr><th>Piece</th><th>Where it is</th><th>Becomes</th></tr>
+    <tr><td>The land: one rounded diamond on earth in a pond, its light, its mirror on the water</td><td><code>valley/grove_art.gd</code></td><td>Every plate; the pond kind reuses the water, the hill kind raises the block</td></tr>
+    <tr><td>Trees, their wind, their shadows cast along the ground</td><td><code>valley/grove_tree.gd</code>, <code>grove_art.gd</code></td><td>The forest plate's trees, as they are</td></tr>
+    <tr><td>The beaver, three meshes, bite and cheer; the four-beat fall; chips; stumps; piles of wood lying</td><td><code>ui/faces/beaver.gd</code>, <code>valley/grove_life.gd</code></td><td>Era 1's chop and era 3's Lodge; a log lying is a pile of one</td></tr>
+    <tr><td>The shop card: tiles with a picture on a disc, a price bar that alone says whether coins reach</td><td><code>grove_screen.gd</code>'s <code>_tile</code></td><td>The palette drawer's tiles and a machine's card</td></tr>
+    <tr><td>The tab card, Android back through <code>versus_host</code>, no ad on leaving</td><td><code>ui/menu/valley_tab.gd</code>, <code>ui/menu.gd</code></td><td>The Factory tab in the same slot</td></tr>
+    <tr><td>The pace bot and the probe's shape</td><td><code>tests/_probe_grove.gd</code>, <code>tests/_shot_grove.gd</code></td><td>The Factory's, rewritten against the sim</td></tr>
+  </table>
+  <p>A tester's saved grove (<code>user://grove.cfg</code>) and the wood in <code>user://stock.cfg</code> are ignored, not converted; <code>Stock</code> goes when the Grove goes, since there is one place and nothing to share.</p>
+</section>
+
+<section id="budget">
+  <h2>What it costs to draw</h2>
+  <p class="lede">This is the heaviest thing the project will have drawn: plates, belts, items riding them, machines, trees and beavers in one view, under a budget of 855 draw calls on gl_compatibility.</p>
+  <ul>
+    <li><b>A plate is one mesh</b>, the Grove's ground, and never redrawn while it stands.</li>
+    <li><b>Belts are one MultiMesh</b> for the whole land, a tile an instance, the arrows a scrolling UV in the material; a belt laid or turned rebuilds the buffer, not a mesh a tile.</li>
+    <li><b>Items are one MultiMesh a kind</b>: a log is an instance, never a draw. Ten kinds on screen is ten draws for any number of items.</li>
+    <li><b>A machine is one cached mesh a kind</b> drawn under a transform; its moving part (a blade, a flame, a wheel) is a second instance of a shared mesh.</li>
+    <li><b>Trees and beavers</b> stay as the Grove drew them: the Grove's late land measured 379 under the oval, which is the known floor to build on.</li>
+    <li>No <code>instance uniform</code> anywhere; a per-instance colour goes in the MultiMesh's colour. Checked on <code>opengl3_angle</code> before it ships.</li>
+  </ul>
+</section>
+
+<section id="order">
+  <h2>In what order it gets built</h2>
+  <p class="lede">The first Godot spec is eras 1 and 2 with the plate board, the tab swap and the tutorial: enough to replace the Valley tab with something that plays. Each later era is a pass with its own spec, the way Peapod and Nightlight grew.</p>
+  <ol>
+    <li><b>Spec one: the board and the hand era.</b> Plates, the forest and quarry and meadow kinds, belts, the market and its rate, trees and rocks tapped, the saw and the burner tended by hand, the kiln. The tab swap, save, tutorial, the pace bot. The Grove's code goes in this pass.</li>
+    <li><b>Era 3, Steam.</b> The power meter, the stoker, the lodge, the drill, coal, belt limits and the fast belt, the splitter.</li>
+    <li><b>Era 4, Water and wind.</b> Pond and hill plates, wheels, windmills, iron, two-input recipes, the merger.</li>
+    <li><b>Era 5, Electric.</b> Bridges, glass, the assembler, the second market.</li>
+    <li><b>Era 6 and 7.</b> Solar, batteries, drones, the core, printers, pads.</li>
+    <li><b>Sounds, haptics, pt and es</b> follow each pass under the cozy rules: a tap on a tree is the Grove's dry tick, a belt is silent, a sale is a low tock.</li>
+  </ol>
+  <p>The playable concept tab in <code>docs/brainstorm/concepts.html</code> comes from spec one before Godot code, by the standing rule for a new game.</p>
+</section>
+
+<section id="open">
+  <h2>Open calls</h2>
+  <p class="lede">Decided in this brainstorm, and what is still yours to call.</p>
+  <ul class="open">
+    <li><span class="chip ok">decided</span> Free grid with hand-laid belts; items are the only money, sold through a market with a rate; one money; nothing while closed; no hurry taps; fixed isometric; the Grove dropped, its art reused; plates bought on an edge with a kind the player picks.</li>
+    <li><span class="chip ask">assumed</span> <b>The fire is tended by tapping it</b>, one log a tap, a minute a log, the saw pausing in between. If "manually feed" meant something else, say so.</li>
+    <li><span class="chip ask">assumed</span> <b>Belts exist from the first tap</b>: a log lies where the tree fell and rides the first belt laid against it. The alternative, a hand era with no belts where the log walks to the market by itself, teaches belts later and was not chosen.</li>
+    <li><span class="chip ask">your call</span> <b>The name.</b> Factory is the working name. Candidates with the same warmth as the other tabs: Workshop, Millbrook, Tinker, Hollow Mill.</li>
+    <li><span class="chip ask">your call</span> <b>A plate is 8 by 8.</b> It fits the Grove's diamond at the size the trees are drawn; 10 by 10 would make them small.</li>
+    <li><span class="chip ask">your call</span> <b>Sell back at full price.</b> Chosen for calm; a 20 percent loss would make a layout a commitment.</li>
+    <li><span class="chip ask">your call</span> <b>Power as one land-wide meter</b> with no wires or poles, and slowdown instead of blackouts. The PC game's poles were the thing judged too fiddly for a thumb.</li>
+    <li><span class="chip ask">your call</span> <b>Zoom.</b> Two levels by pinch, or none and a board that always fits by panning.</li>
+    <li><span class="chip ask">your call</span> <b>No reading needed to play</b>, so a child can; the palette is pictures and the only words are on cards.</li>
+    <li><span class="chip ask">your call</span> <b>Rocks never run out and trees regrow.</b> Nothing on a plate is ever used up, so a plate bought is never a mistake.</li>
+  </ul>
+</section>
+
+</main>
+</body>
+</html>
