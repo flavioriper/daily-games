@@ -261,10 +261,11 @@ const CARD_AFTER_STILL := 0.5
 ## Show the words: one word locks after another, this far apart.
 const REVEAL_STEP := 0.5
 const SHOWN_ALPHA := 0.28
-## Rewards. A lock plucks a note up the major pentatonic, across the game; a
-## word found within QUICK of the last is quick; three in a row without a
+## Rewards. A lock is a tick a semitone higher a word, across the game and
+## never past five (the cozy rules; it was a pluck up two octaves); a word
+## found within QUICK of the last is quick; three in a row without a
 ## plausible miss is a streak; seven letters or more is a big one.
-const PENTA := [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
+const CLIMB := [0, 1, 2, 3, 4, 5]
 const QUICK := 6.0
 const STREAK := 3
 const BIG := 7
@@ -1903,9 +1904,9 @@ func _take(cell: Vector2i, grew := true) -> void:
 
 ## A tile taken or given back: one soft tick that climbs with the trail's
 ## length (Shikaku's count tick), so a word's size can be heard as it grows
-## and a retraction steps back down.
+## and a retraction steps back down. Five semitones at most (the cozy rules).
 func _tick() -> void:
-	fx.cue("select", minf(1.0 + 0.05 * float(_trail.size() - 1), 1.6))
+	fx.cue("select", minf(1.0 + 0.05 * float(_trail.size() - 1), 1.33))
 
 ## Side-adjacent, never diagonal. The bending is the whole puzzle, and a
 ## diagonal step would make a straight line of it.
@@ -2267,7 +2268,7 @@ func _rewards(i: int, t: float) -> void:
 	var quick := _last_lock > -50.0 and t - _last_lock < QUICK
 	_last_lock = t
 	_streak += 1
-	var step: int = PENTA[mini(_notes, PENTA.size() - 1)]
+	var step: int = CLIMB[mini(_notes, CLIMB.size() - 1)]
 	_notes += 1
 	var lock := int(_lock_gen.get(i, 0))
 	var live := func() -> bool: return int(_lock_gen.get(i, 0)) == lock and bool(_state.words[i]["found"])
@@ -2571,7 +2572,7 @@ func show_words() -> void:
 				return
 			_found_at[i] = _now()
 			_lifted_at.erase(i)
-			fx.cue("reveal", 1.0 - 0.03 * float(k))
+			fx.cue("reveal", maxf(1.0 - 0.03 * float(k), 0.75))
 			_busy_for(float((_state.words[i]["path"] as Array).size()) * _wave_step() + Motion.BUMP_TIME)
 			_refresh())
 	var end := 0.3 + float(left) * step + 8.0 * _wave_step()

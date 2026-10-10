@@ -945,39 +945,58 @@ SETS = {
     # (wish, droop, out_of_wishes, wish_back); Insane is Night Walk, the
     # field in the dark but for a little lantern (lantern, dawn).
     "wordtrail": {
-        "select":   ("a single tiny soft felt-tipped kalimba tick, one light muffled plucked tine, extremely short and hushed, no reverb tail", 0.5, -15),
-        "place":    ("a short bright rising soft kalimba run of four notes with a gentle silky ribbon swish, a hidden word found, warm and cozy", 0.8, -7),
-        "undo":     ("a soft short paper slide backwards with a tiny felt pat, a ribbon gently rolled back up, hushed and cozy", 0.6, -12, COZY),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a light paper rustle, cozy and kind", 1.0, -8),
-        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of paper, colourful ribbons swept gently off a parchment card, hushed and cozy", 1.0, -10, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
-        "enter":    ("a soft airy cascade of tiny paper cards settling and a light leafy rustle, a little field of letter tiles laid out in a meadow, cozy and hushed", 1.0, -11, COZY),
-        # Rewards: the streak, the word's reactions and its gags.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -9),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twelfth set of the redo, as Hidden Word's above. Kept from the
+        # first set, as they were: big, streak, love, twirl, droop, wish_back,
+        # lost and dawn; conga and miss with their rumble off, dance and
+        # reveal rolled off. Nothing here is paper, a ribbon or a
+        # glockenspiel any more. select fires on every tile a finger takes,
+        # pitched up a little a tile (1.33 at most, five semitones), so it is
+        # the plainest and the shortest; combo is a tick the board pitches a
+        # semitone a word, five at most, and cut at 0.055 s (two takes each
+        # held a second tock 60 ms behind). Every tick is `tight`. Borrowed
+        # takes: confetti is Binairo's, of the same prompt; enter is
+        # select's. The phrases' steps are set by each take's own note, so
+        # that every note lands between 400 and 700 Hz.
+        "select":   ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        # A word found: four quick notes up.
+        "place":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,6,8,11", "cut:0.8"),
+        # A word taken back: a lighter thing set down, twice and falling.
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:2,4,6,9,11", "cut:1.7"),
+        # The field laid out: select's take, five in a row.
+        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        # Rewards: the streak, the word's reactions and its gags. combo: a
+        # tick a word, pitched by the board. quick: a small puff of air.
+        # flutter: the butterfly going, two quiet notes up.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.055", "body:320", "tight"),
         "streak":   ("a cheerful quick three-note rising kalimba and glockenspiel run, on a roll, bright and happy, short", 0.7, -9),
         "big":      ("a pleased little 'ooh' on soft kalimba, two notes up then a third higher with a small glockenspiel sparkle, a big word found, warm", 0.8, -9),
-        "quick":    ("a tiny fast whoosh of air ending on one bright soft kalimba ping, quick as a wink, cute and short", 0.5, -11),
+        "quick":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -17, BREEZE, "warm:1000", "steep", "ease:0.03", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "conga":    ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, letters dancing in a line, cozy", 1.2, -10),
-        "flutter":  ("a tiny butterfly fluttering away, soft quick papery wing flaps with a light rising glockenspiel twinkle, delicate and sweet", 0.8, -12, COZY),
+        "conga":    ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, letters dancing in a line, cozy", 1.2, -10, STYLE, "body:300", "warm:2600", "notes:0:5"),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:5,8", "cut:0.55"),
         "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
-        # A wrong trail on Hard and Insane blows a dandelion seed away.
-        "miss":     ("a tiny soft kalimba note with a gentle little downward wobble, a kind 'not that one', muffled and warm, very short, never a buzzer", 0.5, -13),
-        "wish":     ("a soft little breath of air blowing a dandelion seed away, a gentle airy puff with a faint high glockenspiel shimmer drifting off, delicate and cozy", 0.8, -13, COZY),
-        "wish_low": ("two soft low kalimba notes, a gentle careful 'hmm', only a few wishes left, warm and kind, not worried", 0.6, -13),
+        # A wrong trail on Hard and Insane blows a dandelion seed away: a
+        # breath of air, no shimmer. wish_low: two quiet notes down.
+        "miss":     ("a tiny soft kalimba note with a gentle little downward wobble, a kind 'not that one', muffled and warm, very short, never a buzzer", 0.5, -13, STYLE, "body:300", "warm:2600", "notes:0:6"),
+        "wish":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "wish_low": ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.2:6,3", "cut:0.7"),
         "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
-        "out_of_wishes": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "out_of_wishes": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,4"),
         "wish_back": ("a warm rising pair of soft kalimba plucks with a tiny airy puff, a new dandelion clock growing back, gentle and happy", 0.7, -12),
-        "reveal":   ("a single soft low felt kalimba note with a light paper ribbon unrolling, a word shown gently, calm, not sad", 0.6, -13),
+        "reveal":   ("a single soft low felt kalimba note with a light paper ribbon unrolling, a word shown gently, calm, not sad", 0.6, -13, STYLE, "warm:2000", "body:300"),
         "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
-        # The party.
-        "bloom":    ("a soft little flourish of flowers popping open, several tiny papery pops rising in pitch with a light glockenspiel twinkle, a meadow blooming, sweet", 1.0, -10),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper flags at the end, joyful and warm", 2.0, -4),
-        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        # Insane: Night Walk.
-        "lantern":  ("a tiny soft warm glow switching on, a gentle hushed airy 'fwoom' of a little paper lantern being lit with one faint glockenspiel note, very short and quiet", 0.5, -16, COZY),
+        # The party. bloom: the meadow opening, four quiet notes.
+        "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:4,8,6,11", "cut:0.9"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,3,5,8", "cut:1.9"),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9, STYLE, "warm:2400", "body:300"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,0,7"),
+        # Insane: Night Walk. The lantern lit is one quiet note.
+        "lantern":  ("one soft short note on a kalimba, muffled and kind", 0.6, -16, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:6", "cut:0.45"),
         "dawn":     ("a slow soft sunrise swell, warm gentle glockenspiel and kalimba notes rising and brightening with a faint morning birdsong chirp, peaceful and cozy", 2.0, -8),
     },
     # Mushroom Patch: plant a mushroom where one must be, lay a pebble where
