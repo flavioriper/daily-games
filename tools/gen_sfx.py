@@ -1648,39 +1648,63 @@ SETS = {
         "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -10),
     },
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
-    # some. A wrong rake wakes one, grumpy -- a snuffle, never a buzzer.
+    # some. A wrong rake wakes one, grumpy -- two low notes, never a buzzer.
     "hedgehogs": {
-        # 2026-10-01 (polish) in HARVEST -- the old set's undo was a tape
-        # rewind and its refuse a wooden bonk; Sleepwalkers, hearts and the
-        # rewards are new.
-        "rake":     ("a short soft sweep of a little bamboo rake through a small pile of dry autumn leaves, cozy and crisp, very short", 0.5, -11, HARVEST),
-        "gust":     ("a soft airy flurry of dry autumn leaves lifting off a lawn in a light warm breeze, with a faint rising kalimba shimmer", 0.9, -10, HARVEST),
-        "flag":     ("a small wooden twig pushed softly into a pile of dry leaves with a tiny muffled felt tap, very short", 0.5, -11, HARVEST),
-        "unflag":   ("a small twig pulled gently out of dry leaves with a tiny rustle, very short", 0.5, -13, HARVEST),
-        "woke":     ("a tiny grumpy hedgehog snuffle and a little sleepy huff, then one soft low kalimba note, cute and kind, never harsh", 0.9, -10, HARVEST),
-        "chord":    ("two quick soft little rake sweeps through dry leaves, light and tidy, very short", 0.5, -11, HARVEST),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twenty-sixth set of the redo, with Super Slider's below. Kept from
+        # the polish's set, as they were: refuse, check, check_ok, hint,
+        # enter, love, heart_lost and heart_back. Nothing new is a rake, a
+        # leaf, a twig, a snuffle, a bell, a music box, a boink or a party
+        # blower (a sweep and a rustle are scratch, a silver bell rings). A
+        # rake is the thing a finger does all day, so `rake` is the plainest:
+        # one tock. combo is a tick the board pitches, not past five
+        # semitones. Every tick is `tight`. Borrowed takes: confetti is
+        # Binairo's and the cat Untangle's kitten, of the same prompts; chord
+        # is rake's, unflag, undo, snuffle and the acorn flag's, woke and
+        # flutter the bell's. The phrases' steps are set by each take's own
+        # note, so that every note lands between 400 and 700 Hz, and no two
+        # phrases share a contour. What travels is air: a wide rake is a gust
+        # and a lawn's worth a longer one.
+        "rake":     ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "gust":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "flag":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        # The twig pulled out: flag's take, two steps down.
+        "unflag":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # A hedgehog woken: the bell's take, two low notes alike, a small
+        # "hmph" (heart_lost falls a quarter second behind it).
+        "woke":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.14:4,4", "cut:0.6"),
+        # A number tapped to rake round it: rake's take, two notches.
+        "chord":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,2"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leaf rustle, a kind 'not that one', very short", 0.5, -14, HARVEST),
         "check":    ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient", 0.6, -12, HARVEST),
         "check_ok": ("three soft warm kalimba notes rising, bright and happy, 'all good'", 0.7, -10, HARVEST),
-        "undo":     ("a soft little music box note sliding gently down with a felt-soft leaf rustle, a kind 'take that back', quiet, very short", 0.5, -13, HARVEST),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba underneath, cozy and kind", 1.0, -9, HARVEST),
-        "reset":    ("a soft rustle of autumn leaves drifting back down onto a lawn, with a calm low music box note, gentle", 1.0, -11, HARVEST),
-        "solved":   ("a warm celebratory kalimba and music box run rising, with a soft swirl of leaves and tiny happy hedgehog squeaks, joyful and cozy", 2.0, -5, HARVEST),
+        "reset":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         "enter":    ("a soft airy rustle of autumn leaves settling onto grass, with one warm low kalimba note", 1.0, -12, HARVEST),
-        "bell":     ("a single small soft silver moon bell chime, round and dreamy, ringing out gently at night, music box tone, cozy and quiet", 1.0, -11, HARVEST),
-        "snuffle":  ("a tiny sleeping hedgehog shuffling under dry leaves, a soft little sleepy snuffle and two tiny pitter-patter footsteps in the leaves, cute, quiet", 0.8, -12, HARVEST),
+        # Sleepwalkers (Insane). bell: the night's walk, one quiet note (it
+        # was a silver bell). snuffle: the walker's steps, flag's take, three
+        # slow notches.
+        "bell":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:7", "cut:0.6"),
+        "snuffle":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.4", "body:320", "tight", "notes:0.12:-2,0,-2"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, HARVEST),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, an autumn lawn at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, HARVEST),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:12,9,5"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, HARVEST),
-        "combo":    ("a single short soft bright kalimba pluck, one clean warm note, very short", 0.5, -9, HARVEST),
-        "confetti": ("a soft flutter of tiny paper confetti and a few dry leaves falling, with a tiny sparkling music box twinkle, light and airy", 1.0, -10, HARVEST),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. flutter: two quiet notes up, the butterfly. acorn: flag's
+        # take, a hop and two bounces. whoosh: a lawn's worth of leaves gone
+        # at once, a longer breath than the gust.
+        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -11, HARVEST),
-        "flutter":  ("a tiny butterfly fluttering up out of a pile of leaves, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -13, HARVEST),
-        "acorn":    ("a little acorn popping out of dry leaves and bouncing twice on soft grass, tiny hollow wooden boinks, playful and cute, short", 0.8, -11, HARVEST),
-        "whoosh":   ("a soft happy whoosh of a big pile of dry leaves blown away all at once, airy and bright with a small rising kalimba sparkle", 0.9, -11, HARVEST),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, HARVEST),
-        "party":    ("a short cozy celebratory flourish on kalimba and music box, rising and bright, with a few soft little party blower toots and tiny happy hedgehog squeaks, warm and joyful", 2.0, -5, HARVEST),
-        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
+        "acorn":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.42", "body:320", "tight", "notes:0.13:4,0,-1"),
+        "whoosh":   ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        # The party.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,6,13"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Super Slider: painted wooden blocks slid round a walnut tray until the
     # big one walks out of a little garden gate. 2026-10-01 (polish): players

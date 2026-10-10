@@ -207,7 +207,7 @@ const AGO := -1.0e9
 # --- the rewards ---
 ## The streak: safe rakes in a row (not a hint's); the bubble from the third.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -2516,8 +2516,8 @@ func _day_hash() -> int:
 		return 0
 	return absi(hash([_state.cols(), _state.rows(), int(_state.g.start), int(_state.g.k)]))
 
-## A safe rake that was not a hint's: the streak grows -- a note up the
-## pentatonic from the second, the bubble over the pile from the third,
+## A safe rake that was not a hint's: the streak grows -- a tick a semitone
+## higher from the second, the bubble over the pile from the third,
 ## confetti at 4, 7 and every 5 -- and the gag picked for it plays.
 func _on_safe_rake(c: int, lands: float) -> void:
 	_streak += 1
