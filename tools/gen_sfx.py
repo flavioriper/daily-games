@@ -772,39 +772,55 @@ SETS = {
         # The petals on the wind: a long slow breath of air, no twinkle.
         "petals":   ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 2.0, -15, BREEZE, "warm:1100", "steep", "ease:0.15", "body:320"),
     },
-    # Nonogram: mosaic tiles laid on a floor by row and column clues. Re-
-    # prompted toward felt, wood and kalimba on 2026-09-30, as One Line's,
-    # Light Up's, Tents' and Shikaku's were: the tape rewind, the bonk and the
-    # marimba boops read as a toy or a scold. place plays on every stroke, so
-    # it is the quietest and roundest.
+    # Nonogram: mosaic tiles laid on a floor by row and column clues.
     "nonogram": {
-        "place":    ("a single small glazed ceramic tile set down softly into a wooden tray, a gentle muted clack with a tiny warm kalimba pluck, very short", 0.5, -9, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # ninth set of the redo, as One Line's above. Kept from the first
+        # set: locked, check, check_ok, heart_lost, heart_back, slip and frame
+        # as they were, love rolled off. Nothing here is ceramic any more: a
+        # glazed tile's clack and a ripple of them sat between 1 and 3 kHz,
+        # and place and undo had come out 20 and 90 ms long. combo is a tick
+        # the board pitches, not past five semitones. Every tick is `tight`.
+        # place plays on every stroke, so it is the plainest. Two takes are
+        # borrowed, their own having failed twice: mushroom is One Line's and
+        # confetti Binairo's, each of the same prompt. place, combo and undo
+        # were taken again until each was one tock (the first of each held a
+        # second 60 ms behind). The phrases' steps are set by each take's own
+        # note, so that every note lands between 400 and 700 Hz. slip's
+        # prompt still says ceramic: it is the kept take's, which measures low.
+        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath, cozy and kind", 1.0, -8),
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:2,7,9", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
-        "reset":    ("a soft quick ripple of small ceramic tiles being lifted and stacked gently into a wooden box, hushed and cozy", 1.0, -10, COZY),
-        "enter":    ("a soft airy cascade of tiny ceramic and wooden taps settling gently, a little mosaic floor laid out, cozy and hushed", 1.0, -11, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
-        # The streak, the gags, the daisies and the pebbles a finished line lays.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "mushroom": ("a tiny cute mushroom popping out of soft moss, a soft squishy 'bloop' with a little happy rising boing, gentle and silly", 0.7, -10),
-        "bee":      ("a tiny cute bumblebee zooming past from left to right, a soft fuzzy buzz rising and falling with a tiny happy glockenspiel ting, gentle and funny", 1.2, -12, COZY),
-        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -14),
-        "pebbles":  ("a quick soft ripple of tiny smooth pebbles set down one after another on wood, gentle little taps, cozy and satisfying", 0.8, -13, COZY),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The floor laid out: place's take, five in a row.
+        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,2,0,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,6,8,11,13", "cut:1.7"),
+        # The streak, the gags, the daisies and the pebbles a finished line
+        # lays. combo: layered over place, a tick the board pitches by the
+        # streak. mushroom: two tocks a third apart. bee: two quiet notes
+        # going by. bloom: one. pebbles: a wheel's four notches.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10, STYLE, "warm:2400", "body:300"),
+        "mushroom": ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.4", "body:320", "tight", "notes:0.13:0,4"),
+        "bee":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:7,5", "cut:0.55"),
+        "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:2", "cut:0.45"),
+        "pebbles":  ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.4", "body:320", "tight", "notes:0.07:0,2,0,3"),
         # Hearts, the wrong tile turned out, and the party.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
         "slip":     ("a small ceramic tile lifted out of its socket with a soft hollow wooden pop, and a tiny pebble set down in its place, warm and quiet", 0.6, -12, COZY),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,9,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,4,11"),
         "frame":    ("a small wooden picture frame set gently on a wall, a soft hollow wooden knock and a tiny warm chime, cozy and proud", 0.8, -10, COZY),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
-        "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
-        "leaves":   ("a soft autumn breeze and a gentle shower of dry leaves drifting down and rustling, warm and cozy, with one tiny low kalimba note", 2.0, -9, COZY),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,9,11,9,11,13", "cut:1.9"),
+        # The petals and the leaves on the wind: a long slow breath of air
+        # each, no twinkle, the leaves the lower of the two.
+        "petals":   ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 2.0, -15, BREEZE, "warm:1100", "steep", "ease:0.15", "body:320"),
+        "leaves":   ("a soft warm breeze through the leaves of one big old tree, a gentle slow breath of air that rises and fades", 2.0, -16, BREEZE, "warm:1000", "steep", "ease:0.12", "body:320"),
     },
     # Queens: a little crowned bee seated on a garden court; crosses are the
     # player's own marks and the ones the queens lay. Re-prompted toward felt,

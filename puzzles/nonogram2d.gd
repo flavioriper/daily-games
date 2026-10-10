@@ -156,7 +156,7 @@ const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 ## The streak (Binairo's, Shikaku's, Tents', Light Up's, One Line's).
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -2221,7 +2221,7 @@ func _ok_lines() -> Dictionary:
 			out[k] = true
 	return out
 
-## The streak (the combo pitched up the pentatonic from the second, the
+## The streak (the combo tick a semitone up each from the second, the
 ## bubble from the third, confetti at five and ten) and a gag now and then.
 func _on_right_stroke(cells: Array, last: Vector2i, land: float) -> void:
 	_streak += 1
