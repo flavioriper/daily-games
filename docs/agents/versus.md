@@ -32,7 +32,11 @@ reaches it through the `versus_host` group.
   which turned a ball's clack into a soft boop, so a cue may name its own
   style (`FOLEY`). Clacks and cushions are as loud as the contact was hard
   (`Fx2D.cue`'s `volume_db`), and `roll` is a looping voice whose level
-  follows the balls' summed speed (`_roll_sound`).
+  follows the balls' summed speed (`_roll_sound`). **Redone 2026-10-10
+  against the cozy rules** (`docs/agents/sound.md`, which has the detail):
+  the table is low wooden tocks on `HUSH` now, not resin and leather, the
+  roll a breath of air, the clack's climb five semitones and `_hit_db`'s
+  floor 0.4.
 - **The pace is the cue drawn back, not a slot** (2026-09-26): press on the
   cue behind the ball and drag it back along its line; the pace is how far
   it was drawn, and letting go plays (`snooker_table.gd`'s `pulling` and

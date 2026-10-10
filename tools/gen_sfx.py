@@ -1535,19 +1535,28 @@ SETS = {
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "steep", "ease:0.012", "body:300", "notes:0.14:8,12,15,12,15,17", "cut:1.9"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
-    # Snooker (Versus, versus/snooker_screen.gd): real table sounds first --
-    # resin balls and a leather tip -- kept soft, then the game's own marimba
-    # for the verdicts. `clack` plays for every contact, pitched by speed.
+    # Snooker (Versus, versus/snooker_screen.gd). Redone 2026-10-10 against
+    # the cozy rules (docs/agents/sound.md), the twenty-second set of the
+    # redo, with air hockey's below. Kept from the first set: foul as it was
+    # and lose, 4 dB down. Nothing new is resin, leather, rubber, a marimba
+    # or a glockenspiel: the table's own sounds were a click at 2.5 kHz and
+    # two thumps under 300 Hz. `clack` plays for every contact and `cushion`
+    # for every rail, pitched by speed (not past five semitones) and levelled
+    # by `_hit_db`, so they are the plainest: one tock each, `tight`.
+    # Borrowed takes: cushion and pot are clack's. `roll` is a loop whose
+    # level follows the balls: what travels is air, a steady breath.
     "snooker": {
-        "strike":   ("a single leather cue tip striking a snooker cue ball, a crisp short tock, close mic, very short", 0.5, -8, FOLEY),
-        "clack":    ("a single sharp clack of one resin snooker ball hitting another on a table, crisp click, close mic, very short, no echo", 0.5, -6, FOLEY),
-        "cushion":  ("a single dull thump of a snooker ball bouncing off the rubber cushion of a snooker table rail, close mic, very short", 0.5, -8, FOLEY),
-        "pot":      ("a snooker ball dropping into a leather pocket with a soft hollow thunk and a short roll, cozy", 0.8, -8, FOLEY),
-        "roll":     ("continuous steady low rumble of snooker balls rolling across a felt cloth table, smooth, constant, no hits, no clicks", 3.0, -10, FOLEY, "loop"),
+        "strike":   ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "clack":    ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        # A rail: clack's take, three steps down and duller.
+        "cushion":  ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        # A ball down: clack's take, two notches, the second four steps up.
+        "pot":      ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.26", "body:320", "tight", "notes:0.1:0,4"),
+        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
         "foul":     ("a soft gentle two-note downward kalimba, not yet, never a buzzer", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "win":      ("a warm celebratory marimba run rising with a soft clack of snooker balls, joyful and cozy", 2.0, -3),
-        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
+        "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:-3,0,4", "cut:1.0"),
+        "win":      ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.14:8,10,12,15,17", "cut:1.7"),
+        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
     },
     # Air hockey (Versus, versus/hockey_screen.gd): the table's own sounds as
     # foley and dry -- a mallet on the puck and the puck on a rail fire many
@@ -2480,6 +2489,9 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
     # a longer one.
     soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4,afade=t=in:d={ease or 0.004}" if warm else \
         f",afade=t=in:d={ease}" if ease else ""
+    if loop and warm:
+        # A loop is rolled off and not eased: a fade would dip at its seam.
+        soft = f",lowpass=f={warm}:p=2,highshelf=f={warm // 2}:g=-4"
     if steep and warm:
         soft = f",lowpass=f={warm}:p=2,lowpass=f={warm}:p=2" + soft
     if body:

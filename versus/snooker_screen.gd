@@ -764,9 +764,11 @@ func _process(delta: float) -> void:
 	_poll_think()
 
 ## Loud as the contact was hard: a kiss at a walking pace is a tick, a break
-## a crack. `speed` is the closing speed in metres a second.
+## a crack. `speed` is the closing speed in metres a second. The floor is
+## 0.4 since the ticks went low and quiet (2026-10-10): at 0.12 a kiss played
+## under what a phone's speaker gives back.
 func _hit_db(speed: float, full: float) -> float:
-	return linear_to_db(clampf(0.12 + 0.88 * speed / full, 0.12, 1.0))
+	return linear_to_db(clampf(0.4 + 0.6 * speed / full, 0.4, 1.0))
 
 func _roll_sound(delta: float) -> void:
 	if _roll == null or _roll.stream == null:
@@ -791,7 +793,7 @@ func _play_events() -> void:
 	for e in sim.events:
 		match String(e.kind):
 			"ball":
-				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.08, 0.85, 1.25), _hit_db(float(e.speed), 3.0))
+				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.057, 0.85, 1.135), _hit_db(float(e.speed), 3.0))
 				table.flash("ball", e.at, float(e.speed) / 2.5)
 			"cushion":
 				if float(e.speed) > 0.08:
