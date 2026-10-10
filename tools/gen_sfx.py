@@ -478,36 +478,46 @@ SETS = {
     # Balance: a seesaw of fruit with secret weights (the scales it began as
     # are gone); a fruit settling in a cup, a beam that comes level chimes.
     "balance": {
-        # step and refused re-prompted 2026-09-29 (sunset pass): the wooden
-        # click and "bonk" read as a scold, as Binairo's and Code Break's did.
-        "step":     ("a tiny soft felt thump, a small round fruit settling into a little wooden cup, cozy and quiet, very short", 0.5, -11),
-        "level":    ("a soft bright two-note kalimba chime going up, a hanging scale settling perfectly level", 0.7, -6),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # third set of the redo: what is a thing is a HUSH tick, what travels
+        # is BREEZE, what is a moment is COZY_TUNE's muffled kalimba, its
+        # phrase written with `notes` from the one note a take holds. Four
+        # takes of the first set already measured low and were kept: refused,
+        # hour_back and sun_low as they were, level levelled down;
+        # enter is levelled down and rolled off. Every tick is `tight` (Code
+        # Break's lesson: a tock sits behind its room noise and a `cut` ends
+        # before it).
+        "step":     ("one small round wooden ball set down gently in a little wooden cup lined with felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.14", "body:320", "tight"),
+        "level":    ("a soft bright two-note kalimba chime going up, a hanging scale settling perfectly level", 0.7, -9, STYLE, "body:300"),
         "refused":  ("a tiny soft felt pat with a gentle little kalimba wobble, a kind 'this one stays put', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "reset":    ("a quick soft run of little fruit hopping back into a wicker basket, gentle bumps and a light rustle", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a wooden seesaw creaking once as it tips, then a small fruit landing on a plank with a soft thump", 1.0, -9),
-        # The seesaw (2026-09-27): a fruit picked up, a fruit landing on the
-        # plank (pitched by its weight in the board), the plank's end
-        # bumping down on a hay bale, and the tock of the beam coming to rest.
-        "lift":     ("a tiny soft pluck, a small round fruit lifted out of a wicker basket, very short", 0.5, -12, FOLEY),
-        "land":     ("a small round apple dropped onto a wooden plank, one soft hollow wooden thump, close mic, very short", 0.5, -6, FOLEY),
-        "thud":     ("the end of a wooden seesaw plank bumping down onto a soft hay bale, a cushioned muffled thump with a gentle straw rustle, cozy", 0.6, -8, FOLEY),
-        "tock":     ("a single soft muted wooden tock, a gentle settle, very short", 0.5, -12),
-        # The sunset pass (2026-09-29, docs/superpowers/specs/2026-09-29-balance-sunset-design.md):
-        # Insane's springy bales, the sun going down on Hard and Insane, and
-        # the silly rewards.
-        "boing":     ("a playful soft springy cartoon boing, a hay bale bouncing like a spring, with a tiny rising slide whistle, cute and cozy, not harsh", 0.9, -6, CARTOON),
-        "sunset":    ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.6, -12),
+        "undo":     ("one small wooden ball set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,11,8", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,6,8,11,13", "cut:1.7"),
+        "enter":    ("a wooden seesaw creaking once as it tips, then a small fruit landing on a plank with a soft thump", 1.0, -13, FOLEY, "body:300", "warm:2000"),
+        # The seesaw: a fruit picked up (a lift is a lighter thing set down),
+        # a fruit landing on the plank (pitched by its weight in the board),
+        # the plank's end coming down on a hay bale, and the tock of the beam
+        # coming to rest.
+        "lift":     ("one small light wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        "land":     ("one small round wooden ball set down gently on a wooden plank covered in felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.18", "body:320", "tight"),
+        "thud":     ("the end of a wooden plank set down gently on a thick wool cushion, a single soft dull tock, round and hollow, very short", 0.6, -14, HUSH, "warm:1200", "cut:0.24", "body:320", "tight"),
+        "tock":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1600", "cut:0.12", "body:320", "tight"),
+        # Insane's springy bales: two tocks, the second a third up. No
+        # cartoon spring and no whistle.
+        "boing":     ("one small wooden block set down gently on a thick wool cushion, a single soft hollow tock, round, very short", 0.6, -13, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.1:0,4"),
+        "sunset":    ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:9,6,2"),
         "hour_back": ("a warm rising pair of soft kalimba plucks with a tiny glockenspiel sparkle, the sun peeking back up, gentle and happy", 0.8, -10),
         "sun_low":   ("a single soft low warm kalimba note, gentle, a quiet 'the day is getting late', very short", 0.5, -14),
-        "toss":      ("a light airy whoosh ending in a bright soft kalimba ting, a nice throw landing, playful", 0.7, -9),
-        "giggle":    ("a tiny cute high giggling trill on a soft glockenspiel and kalimba, the sun giggling when tickled, playful, very short", 0.7, -10),
-        "reveal":    ("a soft wooden box lid lifting with a small curious kalimba shimmer, a secret being uncovered", 1.0, -6),
-        "stamp":     ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":     ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
-        "confetti":  ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        # A good throw, pitched up a little by the run: one note, no whoosh.
+        "toss":      ("one soft short note on a kalimba, warm and happy", 0.7, -12, COZY_TUNE, "warm:2400", "ease:0.008", "body:300", "notes:0:5", "cut:0.5"),
+        # The sun tickled: a wheel's four notches, up and down. It can be
+        # tapped over and over, so it is ticks and no trill.
+        "giggle":    ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.6, -16, HUSH, "warm:1600", "cut:0.34", "body:320", "tight", "notes:0.07:0,3,1,4"),
+        "reveal":    ("a small wooden box lid set down gently on thick felt, a single soft tock, round and hollow, very short", 0.6, -13, HUSH, "warm:1600", "cut:0.34", "body:320", "tight", "notes:0.13:0,3"),
+        "stamp":     ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,4,11"),
+        "party":     ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,3,6,3,6,8", "cut:1.9"),
+        "confetti":  ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
     },
     # Untangle: pegs in a wooden ring, a thick cotton rope from each to its twin,
     # lifted into empty holes until no ropes cross. Re-prompted 2026-09-29
@@ -2157,13 +2167,17 @@ def tune(mp3: pathlib.Path, gap: float, steps: list[float]) -> pathlib.Path:
     # every time, and as often as not at 250 to 350 Hz, under what a phone
     # plays. So the take is the note, and the phrase is written here: the
     # same take once a step, moved by that many semitones, `gap` apart.
+    # The take's lead-in is trimmed first (2026-10-10, Balance): moved with
+    # the pitch, 0.37 s of room noise before a tock put its second, three
+    # semitones up, 0.07 s after the first where 0.13 was written.
     out = mp3.with_name(mp3.stem + "_tune.wav")
+    head = "silenceremove=start_periods=1:start_threshold=-36dB:start_silence=0.004"
     marks = "".join(f"[n{i}]" for i in range(len(steps)))
     voices = ";".join(
         f"[v{i}]asetrate={44100 * 2 ** (st / 12):.1f},aresample=44100,adelay={int(i * gap * 1000)}:all=1[n{i}]"
         for i, st in enumerate(steps))
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3), "-filter_complex",
-                    f"[0]aresample=44100,asplit={len(steps)}" + "".join(f"[v{i}]" for i in range(len(steps))) + ";"
+                    f"[0]aresample=44100,{head},asplit={len(steps)}" + "".join(f"[v{i}]" for i in range(len(steps))) + ";"
                     + voices + f";{marks}amix=inputs={len(steps)}:normalize=0:duration=longest",
                     str(out)], check=True)
     return out

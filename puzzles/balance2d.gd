@@ -848,7 +848,7 @@ func _after_physics() -> void:
 				_squash_at[f] = t
 				var w: int = sim.weights[f]
 				var speed: float = e.speed
-				fx.cue("land", lerpf(1.2, 0.78, clampf((w - 1.0) / 11.0, 0.0, 1.0)),
+				fx.cue("land", lerpf(1.15, 0.87, clampf((w - 1.0) / 11.0, 0.0, 1.0)),
 					lerpf(-12.0, 0.0, clampf(speed / (_cup * 10.0), 0.0, 1.0)))
 				_landed(f, clampf(speed / (_cup * 8.0), 0.3, 1.0))
 				_glance_at(f, t)
@@ -869,7 +869,7 @@ func _after_physics() -> void:
 					fx.puff(Vector2(_pivot.x + side * (_half - _cup * 0.35), _ground - _cup * 0.2), Pal.STRAW, 5)
 			"grass":
 				_squash_at[int(e.f)] = t
-				fx.cue("land", 0.7, -8.0)
+				fx.cue("land", 0.87, -8.0)
 				if not Motion.reduce:
 					fx.puff(sim.position(int(e.f)) + Vector2(0.0, sim.r), Pal.LEAF, 4)
 			"home":
@@ -1031,7 +1031,7 @@ func _word_at() -> Vector2:
 func _cheer_closer(off: int) -> void:
 	var word: String = "BAL_W_SO_CLOSE" if off <= 2 else WORDS[mini(_closer - 1, WORDS.size() - 1)]
 	var n := mini(_closer, 4)
-	fx.cue("tock", 1.15 + 0.08 * n, -6.0)
+	fx.cue("tock", 1.0 + 0.06 * n, -6.0)
 	_sun_kick_at = _now()
 	_busy_for(0.6)
 	var at := _vial_centre()

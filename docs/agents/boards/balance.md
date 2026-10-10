@@ -118,3 +118,22 @@ seal's thud is in `_stamp_down`'s landing callback. `tests/_probe_perf.gd --
 balance d=<n> x=buzz` (`_buzz_balance`, which carries a fruit through
 `_gui_input`); the probe's moves take a twin's cup when a hint pinned a twin
 in theirs.
+
+## Sounds redone against the cozy rules (2026-10-10)
+
+`docs/agents/sound.md`, the third set of the redo; this replaces the
+**Sound** notes above where they differ. `step`, `lift`, `land`, `thud`,
+`tock`, `undo` (two tocks falling), `reveal` (two rising), `boing` (two
+tocks a third apart: no cartoon spring, no whistle) and `giggle` (a wheel's
+four notches up and down, since the sun can be tickled over and over) are
+low wooden ticks, 0.09 to 0.34 s at -13 to -17. `reset` and `confetti` are a
+breath of breeze. `hint` (up and settling back), `solved` (five rising),
+`party` (up, back and up), `sunset` (three falling), `stamp` (a dip and a
+rise) and `toss` (one note, pitched by the run) are a muffled kalimba
+written with `notes`, none above -8 (`solved` was -3, `party` -4, `hint`
+and `stamp` glockenspiel, `sunset` a music box). Kept from the first set:
+`refused`, `hour_back`, `sun_low`, `level` (3 dB down) and `enter` (4 dB
+down, rolled off). At play nothing spans more than five semitones now:
+`land` is 1.15 down to 0.87 by weight (it was 1.2 to 0.78, and 0.7 on
+grass), the closer-to-level `tock` 1.06 to 1.24 (it was up to 1.47). All 22
+read "0 flagged" in `tools/measure_sfx.py balance`; none heard by the user.
