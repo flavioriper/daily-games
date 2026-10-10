@@ -55,8 +55,12 @@ homes are counts, a move resolves at once and leaves events.
   is set down on whichever of them it covers most.
 - **Undo** takes back any move and its points (400 deep). **Three hints**
   a deal: the bulb rings a move that gets somewhere.
-- **The dead end is called.** Random deals of this game cannot all be won
-  (the bot here wins half of them).
+- **The dead end is called.** Random deals of this game cannot all be won,
+  and a deal that can be won is lost by a wrong turn. Measured 2026-10-10
+  with a solver that sees every card, on seeds 1 to 1000: 854 can be won,
+  54 cannot whatever is done, 92 not settled at four million positions. The
+  bot here, which takes the nearest card turned up or sent home, wins 493
+  of them, so most dead ends are a winnable deal played into a corner.
   After every move the sim looks for a way on: a card turned up, a card
   home past where the homes stand, or a card played off the stock (every
   one of which is within reach, the stock being turned one at a time for
@@ -130,9 +134,12 @@ is felt (`docs/agents/haptics.md` row 53).
    three at a time, no limit of passes).
 3. The Windows score without its two penalties for time and for passes;
    the time bonus kept, so a quicker win scores more.
-4. Deals are shuffled, not picked: about half can be lost whatever is
-   done. A bank of proved deals (as Lattice and Horse Pen have) would make
-   every deal winnable and was not built.
+4. Deals are shuffled, not picked: at least 85 in 100 can be won and at
+   least 5 in 100 cannot (section 3; an earlier line here said "about
+   half", which was the bot's losses, not the deals'). A bank of proved
+   deals (as Lattice and Horse Pen have) would make every deal winnable
+   and was not built. The bulb follows the bot, so a hint can lead into a
+   dead end of a deal that could be won.
 5. The dead end is called by the game, with Undo and Finish; there is no
    way to finish a deal that still has a move.
 6. Undo without limit or price; three hints.
