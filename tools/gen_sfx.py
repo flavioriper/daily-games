@@ -1314,30 +1314,53 @@ SETS = {
     # linen, felt, a wooden spool, kalimba and a music box. No tape-rewind
     # undo, no wooden bonk.
     "pinwheel": {
-        "place":    ("a soft airy paper pinwheel whirr turning a quarter round, with a tiny felt-soft wooden click as it settles, hushed, very short", 0.5, -11, LINEN),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # eighteenth set of the redo. Kept from the polish's set, as they
+        # were: refused, hint, heart_lost and heart_back (hint keeps its
+        # first prompt, a music box in it, and passes the measure). Nothing
+        # new is paper, linen, thread, a needle, a ribbon, a music box or a
+        # whistle (a whirr, a rustle and a flutter are scratch, a needle is
+        # steel, a twang rings). A quarter turn is the thing a finger does
+        # all day, so `place` is the plainest: one notch of a wheel. combo
+        # is a tick the board pitches, not past five semitones. Every tick
+        # is `tight`. Borrowed takes: confetti is Binairo's and the cat
+        # Untangle's kitten, of the same prompts; enter is place's, undo,
+        # tack and tug snag's, love flutter's. The phrases' steps are set by
+        # each take's own note, so that every note lands between 400 and
+        # 700 Hz. What travels on air is air: the whirl, the kite and the
+        # ribbons are a breath of breeze each.
+        "place":    ("one small wooden bobbin set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'that one stays', muffled and warm, very short", 0.5, -12, LINEN),
-        "undo":     ("a tiny soft linen rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, LINEN),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, LINEN),
-        "reset":    ("a soft airy ripple of little paper pinwheels whirring back one after another with tiny felt clicks, hushed and cozy", 1.0, -11, LINEN),
-        "enter":    ("a soft airy cascade of tiny paper flutters and felt pops, a quilt of little pinwheels appearing on a breezy porch, hushed", 1.0, -11, LINEN),
-        "solved":   ("a warm short celebratory music box and kalimba flourish, rising arpeggio ending in a soft bright shimmer and a happy breeze through paper pinwheels, joyful and cozy", 2.0, -4, LINEN),
-        # The polish's new cues.
-        "combo":    ("a single short soft bright kalimba and music box pluck, one clean note, very short", 0.5, -8, LINEN),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, LINEN),
-        "whirl":    ("a little paper pinwheel catching a happy gust and whirring round and round fast, a soft rising airy whirr with a playful two-note kalimba whistle, cute", 1.0, -11, LINEN),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, LINEN),
-        "flutter":  ("a tiny butterfly fluttering past, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute, short", 0.9, -12, LINEN),
-        "snag":     ("a soft fabric snag, a gentle thread catching with a tiny tug and a muffled felt thump, a small 'oops', warm, never harsh, short", 0.5, -12, LINEN),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The pinwheels pinned up: place's take, five in a row.
+        "enter":    ("one small wooden bobbin set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:6,8,11,13,15", "cut:1.7"),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. whirl: a pinwheel catching a gust. flutter: two quiet
+        # notes up, the butterfly.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "whirl":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises, passes and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.08", "body:320"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
+        # Snags and hearts (Hard and Insane). snag: the wrong turn caught, one
+        # light notch. tack: its take, two quick notches, the piece stitched
+        # down. tug: its take, lower, a ribbon gone taut (Insane).
+        "snag":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, LINEN),
-        "tack":     ("a tiny soft needle and thread stitch, two quick gentle pulls of thread through linen and a small bright music box ding, neat and kind", 0.6, -12, LINEN),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, paper pinwheels going still at dusk, calm and kind, maybe tomorrow", 1.6, -14, LINEN),
+        "tack":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.22", "body:320", "tight", "notes:0.07:0,2"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:4,1,-3"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, LINEN),
-        "tug":      ("a soft satin ribbon pulled taut with a gentle little stretch and release, a quiet springy twang on a felt-muted kalimba, short", 0.5, -14, LINEN),
-        "stamp":    ("a soft paper stamp thump followed by a clear warm music box chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, LINEN),
-        "party":    ("a short joyful flourish on a music box and kalimba, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, LINEN),
-        "kite":     ("a paper kite with a ribbon tail swooping up on a warm breeze, a soft rising airy whoosh and a gentle fluttering of paper and ribbon, joyful", 1.4, -10, LINEN),
-        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
-        "ribbons":  ("satin ribbons slipping loose and fluttering up into a breeze, soft silky swishes with a slow dreamy music box note, calm and happy", 1.5, -12, LINEN),
+        "tug":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # The party. kite: a long breath that rises. ribbons (Insane): the
+        # breeze easing as they slip loose.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,5,12"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,3,6,3,6,8", "cut:1.9"),
+        "kite":     ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.2, -15, BREEZE, "warm:1100", "steep", "ease:0.12", "body:320"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        "ribbons":  ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
     },
     # Caterpillar: drag from leaf 1 and every square grows the caterpillar a
     # segment; it eats the leaves in order. `step` fires on every square, so

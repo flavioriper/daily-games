@@ -284,10 +284,11 @@ const PRESS_DIP := 0.84
 # --- the rewards (polish section 3; Quilt's, Fairy Lights' and Paper Planes') ---
 ## The streak: taps in a row that leave the frame tidier (fewer bare or
 ## doubled squares); a tap that changes nothing is neutral, a messier one,
-## a snag, an undo or a reset ends it. `combo` up the pentatonic from the
-## second, the bubble from COMBO_FROM, confetti at 4, 7, then every 5.
+## a snag, an undo or a reset ends it. `combo` ticks a semitone higher from
+## the second, five in all, the bubble from COMBO_FROM, confetti at 4, 7,
+## then every 5.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -2662,7 +2663,7 @@ func _day_hash() -> int:
 
 ## Piece `p` has just turned (not snagged, not refused), from `before` to
 ## `after` squares still wrong; `lands` is when the last tugged piece comes
-## down. A tidier frame grows the streak: a note up the pentatonic from the
+## down. A tidier frame grows the streak: a tick a semitone higher from the
 ## second, the bubble over the pin from the third, confetti at 4, 7 and every
 ## 5 after, and one tidying tap in GAG_ODDS a gag. A messier one ends the
 ## streak; one that changes nothing is neutral. The winning tap does none of
