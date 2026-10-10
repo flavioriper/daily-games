@@ -380,10 +380,13 @@ const SWAY_IN := 0.8
 const HOOK := 1.2
 
 # --- the rewards (polish section 3; Quilt's and Mushroom Patch's) ---
-## The streak: a turn that wakes a lantern plucks `combo` up the pentatonic
+## The streak: a turn that wakes a lantern ticks `combo` a semitone higher
 ## from the second; the bubble from COMBO_FROM; confetti at COMBO_CONFETTI.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
+## A lantern's tick climbs with its depth and holds five semitones up (the
+## cozy rules; it held at 1.5, seven).
+const WAKE_TOP := 1.335
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [4, 7]
 const COMBO_DEFLATE := 0.25
@@ -521,7 +524,7 @@ var _anim_until := 0.0
 ## finished waking. win_delay() spends the same figure, so the win screen and
 ## the wash can never disagree about how long the wash is.
 var _wash_end := 0.0
-## The lanterns' wake chimes still to come, oldest first: each lantern chimes
+## The lanterns' wake ticks still to come, oldest first: each lantern ticks
 ## when the wash reaches it, a little higher the further out along the wire.
 var _wake_cues: Array = []
 ## Whether the last frame was a moving one, so the board can lay one final
@@ -2111,7 +2114,7 @@ func _settle(before: PackedInt32Array, at: float, by_turn := false) -> void:
 	var lanterns: Dictionary = {}
 	for i in state.lanterns():
 		lanterns[i] = true
-	# A chime still to come for a lantern this move put out is dropped with
+	# A tick still to come for a lantern this move put out is dropped with
 	# it: an undo or a reset that cuts a lantern off before the wash reached
 	# it would otherwise still ring it awake -- and play its gag -- over a
 	# lantern going dark.
@@ -2131,7 +2134,7 @@ func _settle(before: PackedInt32Array, at: float, by_turn := false) -> void:
 				# than together, because each is on its own depth.
 				_wake_at[i] = moment
 				_wake_cues.append({"at": moment, "cell": i, "by_turn": by_turn,
-					"pitch": minf(1.0 + 0.03 * float(now_d[i]), 1.5)})
+					"pitch": minf(1.0 + 0.03 * float(now_d[i]), WAKE_TOP)})
 				last = maxf(last, moment + Motion.BUMP_TIME)
 		else:
 			_out_at[i] = moment
@@ -2565,7 +2568,7 @@ func _run_out() -> void:
 	_asleep = true
 	_release_press()
 	_break_streak()
-	# The garden goes dark: no lantern still to wake chimes into it.
+	# The garden goes dark: no lantern still to wake ticks into it.
 	_wake_cues = []
 	_tip_timer.stop()
 	fx.cue("out_of_hearts")
@@ -2740,8 +2743,8 @@ func _reset_rewards() -> void:
 ## holds the result. Every new join the turn made gives off a spark as the
 ## piece lands (and `join` once a turn). Then the streak, read off the
 ## lanterns alone so it says nothing the garden does not show: a turn that
-## puts a lantern out ends it, one that wakes a lantern builds it -- a note up
-## the pentatonic from the second, the bubble from the third, confetti at
+## puts a lantern out ends it, one that wakes a lantern builds it -- a tick a
+## semitone higher from the second, the bubble from the third, confetti at
 ## four and seven, each as the wash reaches the first lantern it woke -- and
 ## one that does neither leaves it be. The winning turn does none of it: the
 ## party is about to start (Mushroom Patch's review found a combo landing

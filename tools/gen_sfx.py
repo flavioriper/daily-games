@@ -1909,70 +1909,113 @@ SETS = {
     },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
-    # Re-prompted 2026-09-30 (the polish) toward glass chimes, soft felt taps,
-    # a music box and kalimba (DUSK in place of the house marimba): the
-    # tape-rewind undo and the wooden "bonk" read as a toy or a scold, as they
-    # did on Bridges, Sudoku and Quilt. Hard and Insane blow a fuse on a wrong
-    # join; Insane is Wish Tags.
+    # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.
+    # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+    # thirtieth set of the redo, with Firefly's below. Nothing is kept: the
+    # three that passed (hint, refuse, undo) had lost their raw takes, so
+    # they are written from this set's own. Nothing new is glass, a chime, a
+    # music box, a glockenspiel, brass, a fizz, paper or a wing (DUSK; ten
+    # cues sat 68 to 99% above 3 kHz, the wire's turn among them, and solved
+    # and party peaked at -4). Three takes of ticks and notes: `place` (a
+    # wooden toggle on felt), `wake` (a lighter bead) and `hum` (one muffled
+    # note, at 332 Hz, so its phrases are 4 to 11 steps up); here enter,
+    # fuse, clip and undo are place's, join wake's, and hint, refuse, love,
+    # heart_lost, heart_back and dance hum's. solved, out_of_hearts, stamp
+    # and party are a take each (330, 331, 330 and 446 Hz). Borrowed, of the
+    # same prompts: combo and reset Super Slider's and the tags its gate,
+    # the moth Hedgehogs' gust and the fireflies its whoosh, confetti
+    # Binairo's, the cat Untangle's kitten. Every tick is `tight`. A lantern
+    # waking is a tick the board pitches by its depth, combo one it pitches
+    # by the streak, neither past five semitones.
     "fairylights": {
-        "place":    ("a single soft muffled felt tap with a tiny delicate glass tick, a small piece of garden wire turned a quarter, hushed, very short", 0.5, -11, DUSK),
-        "join":     ("a tiny soft warm click and a faint little sparkle, two thin wires touching, very short and very quiet", 0.5, -15, DUSK),
-        "wake":     ("a single tiny warm glass chime twinkle, a little paper lantern softly lighting up, very short and delicate", 0.5, -13, DUSK),
-        "refuse":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12, DUSK),
-        "undo":     ("a tiny soft felt tap and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11, DUSK),
-        "hint":     ("a gentle magical sparkle, three soft glass chime notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, DUSK),
-        "reset":    ("a soft quick descending ripple of tiny glass chimes fading out, garden lanterns dimming one after another, hushed and cozy", 1.0, -11, DUSK),
-        "enter":    ("a soft airy cascade of tiny glass chime twinkles and a light leafy rustle, a little evening garden appearing at dusk, hushed", 1.0, -11, DUSK),
-        "solved":   ("a warm short celebratory music box and glass chime flourish, rising arpeggio ending on a soft bright shimmer, a whole garden of lanterns lit, joyful and cozy", 2.0, -4, DUSK),
+        "place":    ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
+        # Two wires touching: wake's take, two steps down.
+        "join":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:-2"),
+        # A lantern lit, seventeen in a ripple: the wheel spun, and the board
+        # pitches it by the lantern's depth, not past five semitones.
+        "wake":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
+        # Not there: the note, two quick ones a step down.
+        "refuse":   ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.1:6,4", "cut:0.5"),
+        # Taken back: place's take, twice and falling.
+        "undo":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,7,11", "cut:1.0"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The garden set out: place's take, five in a row.
+        "enter":    ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         # The streak and the gags.
-        "combo":    ("a single short soft bright kalimba and glass chime pluck, one clean note, very short", 0.5, -8, DUSK),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glass twinkle, light and airy", 1.0, -9, DUSK),
-        "moth":     ("a small soft moth fluttering its papery wings close by, gentle quick delicate flaps, hushed", 0.8, -14, COZY),
-        "hum":      ("a little lantern humming a tiny tune, three soft music box notes, sweet and sleepy, quiet", 0.9, -12, DUSK),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note glass chime 'aww', cute and warm, short", 0.7, -10, DUSK),
-        # Hearts and the fuse (Hard and Insane).
-        "heart_lost":    ("a soft gentle glass chime two-note fall, a small sad 'oh', a delicate tink dropping, warm and muffled, never a buzzer", 0.6, -15, DUSK),
-        "fuse":     ("a tiny soft warm electric fizz and a small muffled pop, a little bulb flickering off and on, cozy and gentle, not scary, short", 0.6, -14, COZY),
-        "clip":     ("a small brass clip snapping onto a thin wire, a single soft little metallic click, close and quiet, very short", 0.5, -13, COZY),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, garden lights dimming for the night, calm and kind, maybe tomorrow", 1.6, -14, DUSK),
-        "heart_back":    ("a warm rising pair of soft glass chime notes, a little heart coming back, gentle and happy", 0.6, -15, DUSK),
+        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        # The moth: Hedgehogs' gust, the quietest puff there is.
+        "moth":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:1100", "steep", "ease:0.05", "body:320"),
+        "hum":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.2:4,8,6", "cut:0.9"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:4,4,7", "cut:0.6"),
+        # Hearts and the fuse (Hard and Insane). The fuse sounds with
+        # heart_lost, so it is two low notches alike and the heart one low
+        # quiet note: neither is a second fall.
+        "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0:4", "cut:0.6"),
+        "fuse":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        # The clip on a judged wire: place's take, one notch two steps up.
+        "clip":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:2"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:4,9", "cut:0.7"),
         # The party.
-        "stamp":    ("a soft paper stamp thump followed by a clear warm glass chime sparkle, two bright rising notes ringing out and fading slowly, proud", 1.5, -5, DUSK),
-        "party":    ("a short joyful garden party flourish on a music box and glockenspiel, rising and bright with a flutter of paper at the end, warm and cozy", 2.0, -4, DUSK),
-        "dance":    ("a short cheerful bouncy kalimba tune, four playful light hopping notes, a tiny happy dance, cozy and cute", 1.2, -9, DUSK),
-        "fireflies":("an airy rising shimmer of many tiny soft twinkles, fireflies drifting up into a dusk sky, magical and gentle", 1.5, -11, DUSK),
-        "purr":     ("a sleepy little cat curled up in a warm garden purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
-        # Insane: Wish Tags.
-        "tags":     ("little paper wish tags fluttering on a string in a soft breeze with a warm golden glass chime shimmer, cozy and magical", 1.3, -11, DUSK),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,5,12"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,3,5,8", "cut:1.9"),
+        "dance":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,9,4,11", "cut:0.9"),
+        # Fireflies drifting up: Hedgehogs' whoosh, a long breath that rises.
+        "fireflies":("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        # Insane: Wish Tags. The tags on their string in a breeze: Super
+        # Slider's gate, a long breath.
+        "tags":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -16, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
     },
     # Firefly (Arcade, arcade/firefly_screen.gd): a formation shooter in a
     # night garden. `shoot` fires several times a second, so it is short
     # and quiet; `beam` is the moth's silk beam, looped while it is open.
-    # Re-recorded 2026-10-05 off the chiptune: NIGHT foley for the shot, the
-    # pop, the dive and the beam, ARCADE's kalimba and music box for the rest.
+    # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+    # thirty-first set of the redo, with Fairy Lights' above. Fifteen kept
+    # on their takes of 2026-10-05, none above -8 now (they were -4 to -7):
+    # hurt and carried as they were, captured, rescue, docked, stage, clear,
+    # flyby, result, extra and game_over turned down, beam_open, start,
+    # perfect and new_best rolled off as well; they keep ARCADE's prompts, a
+    # music box and hand bells in them, and pass the measure. Three new
+    # takes: `shoot` (a light wooden button on felt, where it was a click
+    # 94% above 3 kHz), `pop` (a cork on felt, where it was 81% under 300
+    # Hz) and `pop_moth` (one muffled note, at 334 Hz, so the phrases are 4
+    # to 11 steps up); rogue and ship_pop are pop_moth's. Borrowed, of the
+    # same prompts: the dive is Hedgehogs' gust and the beam Snooker's
+    # steady air. Nothing new is a seed, a cork's pop, a paper fan, a paper
+    # bag, a glass rim or a hand bell. The screen pitches shoot, pop and
+    # docked, none past five semitones.
     "firefly": {
-        "shoot":    ("one tiny soft dry click of a fingertip flicking a small seed off a leaf, very short and quiet", 0.5, -14, NIGHT, "warm:6000", "cut:0.08"),
-        "pop":      ("one single small soft round pop of a cork pulled from a tiny bottle, dry, no ringing, very short", 0.5, -9, NIGHT, "warm:6000", "cut:0.15"),
-        "pop_moth": ("a bigger round soft pop followed by a bright sprinkle of small hand bells and music box notes, a big moth sent off, short and satisfying", 0.7, -6, ARCADE),
+        "shoot":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        "pop":      ("one small cork set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        # A big moth sent off: two muffled notes, a fourth up.
+        "pop_moth": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
         "hurt":     ("one short low hollow note on a wooden tongue drum, damped at once, an armoured ladybird hit but not beaten yet, very short", 0.5, -9, ARCADE),
-        "dive":     ("a quick soft breathy swoop of a paper fan swept down through the air, falling, a bug diving, quick", 0.8, -13, NIGHT),
-        "beam_open":("a soft rising run on a real music box with a shimmer of tiny hand bells opening up, a ribbon of silk light unrolling, gentle", 0.8, -8, ARCADE),
-        "beam":     ("a steady soft shimmering tremolo of tiny hand bells over a gently singing glass rim, a ribbon of silk light, continuous, even, no accents, no ending", 3.0, -12, NIGHT, "loop"),
-        "captured": ("a sad little wobbling slide down on a real kalimba, a few notes bending lower, a little friend caught and carried up, gentle", 1.2, -7, ARCADE),
+        # A bug diving: Hedgehogs' gust.
+        "dive":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "beam_open":("a soft rising run on a real music box with a shimmer of tiny hand bells opening up, a ribbon of silk light unrolling, gentle", 0.8, -8, ARCADE, "warm:2600", "body:300"),
+        # The silk beam, looped while it is open: Snooker's steady air.
+        "beam":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
+        "captured": ("a sad little wobbling slide down on a real kalimba, a few notes bending lower, a little friend caught and carried up, gentle", 1.2, -8, ARCADE),
         "carried":  ("a short low minor two-note fall on a real kalimba, a friend lost, soft", 0.8, -9, ARCADE),
-        "rescue":   ("a bright happy rising run on a real kalimba with a music box sparkle on top, a friend set free", 1.0, -5, ARCADE),
-        "docked":   ("a cheerful quick pair of music box notes with a soft wooden click, two friends joining up, stronger together", 0.7, -5, ARCADE),
-        "rogue":    ("a short low uneasy two-note wobble on a wooden tongue drum, something turning against you, soft, not scary", 0.8, -9, ARCADE),
-        "ship_pop": ("a soft round paper-bag 'poof' fading into a falling sprinkle of tiny hand bells, a little firefly's light going out, not too loud", 1.2, -5, ARCADE),
-        "start":    ("a short cheerful opening tune on a real kalimba and music box, a bouncy rising melody with a hand bell on top, a game beginning, about three seconds", 3.0, -4, ARCADE),
-        "stage":    ("a short bright three-note fanfare on a real music box and hand bells, a new stage beginning", 1.2, -6, ARCADE),
-        "clear":    ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -6, ARCADE),
-        "flyby":    ("a playful bouncy little tune on a real kalimba and a wooden tongue drum, a bonus round starting", 1.8, -5, ARCADE),
-        "result":   ("a short friendly run of music box notes counting up one by one, a score being tallied", 1.2, -6, ARCADE),
-        "perfect":  ("a triumphant sparkling fanfare on a real kalimba, music box and hand bells, a perfect bonus round, joyful", 2.2, -4, ARCADE),
-        "extra":    ("three bright rising notes on a real music box with a hand bell sparkle, an extra life earned", 1.0, -5, ARCADE),
-        "game_over":("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
-        "new_best": ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
+        "rescue":   ("a bright happy rising run on a real kalimba with a music box sparkle on top, a friend set free", 1.0, -8, ARCADE),
+        "docked":   ("a cheerful quick pair of music box notes with a soft wooden click, two friends joining up, stronger together", 0.7, -8, ARCADE),
+        # A friend turned: the note, a low wobble (down a step and back).
+        "rogue":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.13:5,4,5", "cut:0.7"),
+        # The firefly's light going out: three quick notes down.
+        "ship_pop": ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:11,7,4", "cut:0.9"),
+        "start":    ("a short cheerful opening tune on a real kalimba and music box, a bouncy rising melody with a hand bell on top, a game beginning, about three seconds", 3.0, -8, ARCADE, "warm:1800", "body:300"),
+        "stage":    ("a short bright three-note fanfare on a real music box and hand bells, a new stage beginning", 1.2, -8, ARCADE),
+        "clear":    ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -8, ARCADE),
+        "flyby":    ("a playful bouncy little tune on a real kalimba and a wooden tongue drum, a bonus round starting", 1.8, -8, ARCADE),
+        "result":   ("a short friendly run of music box notes counting up one by one, a score being tallied", 1.2, -8, ARCADE),
+        "perfect":  ("a triumphant sparkling fanfare on a real kalimba, music box and hand bells, a perfect bonus round, joyful", 2.2, -8, ARCADE, "warm:2600", "body:300"),
+        "extra":    ("three bright rising notes on a real music box with a hand bell sparkle, an extra life earned", 1.0, -8, ARCADE),
+        "game_over":("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
+        "new_best": ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
     },
     # Molehill (Arcade, arcade/molehill_screen.gd): whack-a-mole on a lawn.
     # The whacks are cartoon bonks; pop_up and escape fire constantly, so
