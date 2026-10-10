@@ -11,7 +11,13 @@ extends SceneTree
 ## somewhere to go. Then a bot plays the sim's own moves: 4 the table mid
 ## deal, 5 the bulb's rings, 6 the dead end's card, Finish, 7 the end card.
 ## A second deal (seed 3, which the bot wins): 8 the sweep, 9 the win, 10
-## its end card. Prints the draw calls at each shot. The ends write scores
+## its end card. The moments are shot as they come up, each once, a tenth of
+## a second in (m_home, m_ace, m_suit, m_king, m_seam, m_turn: a card home,
+## an ace, a king that ends its suit, a king on an empty column, a run laid
+## on a card, a card turned up), with m_tap (the pack tapped square), m_deal (the pack dealt), m_recycle
+## (the waste going back), m_sigh (the dead end) and m_win (the kings'
+## hop); one that never came up is named at the end. Prints the draw calls
+## at each shot. The ends write scores
 ## to user://arcade.cfg, so the file this machine had is put back on every
 ## way out, the timeout included.
 
@@ -38,6 +44,13 @@ var _moves := 0
 var _touches: Array = []
 var _carried := -1
 var _carry_to := Vector2i(-1, -1)
+## The moments shot so far, and the passes the stock had made.
+var _seen := {}
+var _passes := 0
+var _recycled := -1.0
+## world/main.gd reads this Mac's settings as it comes up, so reduce motion
+## is set again every frame and not once before it.
+var _reduce := false
 
 func _initialize() -> void:
 	# The first play's tutorial card would stand over the deal and eat the taps.
@@ -47,7 +60,7 @@ func _initialize() -> void:
 		_before = FileAccess.get_file_as_string(PATH)
 	for a: String in OS.get_cmdline_user_args():
 		if a == "reduce":
-			load("res://core/motion.gd").reduce = true
+			_reduce = true
 		elif a in ["en", "pt", "es"]:
 			# the language for this run only: Locale.set_current would write it
 			# to this Mac's settings
@@ -143,14 +156,47 @@ func _find_carry() -> bool:
 					return true
 	return false
 
+## Shoots each moment of the table's once, a little way into it.
+func _watch() -> void:
+	if _s == null or _s.sim == null or _s.table == null:
+		return
+	var tb: Control = _s.table
+	for l: Dictionary in tb._lights:
+		var kind: String = "m_" + String(l.kind)
+		if not _seen.has(kind) and float(l.t) >= 0.1:
+			_seen[kind] = true
+			_shot(kind)
+	var dealing: float = tb._clock - tb._deal_at
+	if dealing > 0.1 and dealing < 0.25 and not _seen.has("m_tap"):
+		_seen["m_tap"] = true
+		_shot("m_tap")
+	if dealing > 0.5 and dealing < 0.7 and not _seen.has("m_deal"):
+		_seen["m_deal"] = true
+		_shot("m_deal")
+	if int(_s.sim.passes) != _passes:
+		_passes = int(_s.sim.passes)
+		_recycled = _t
+	if _recycled >= 0.0 and _t > _recycled + 0.12 and not _seen.has("m_recycle"):
+		_seen["m_recycle"] = true
+		_shot("m_recycle")
+	if not _seen.has("m_sigh") and tb._clock - tb._sigh_at > 0.2 and tb._clock - tb._sigh_at < 0.4:
+		_seen["m_sigh"] = true
+		_shot("m_sigh")
+	if not _seen.has("m_win") and tb._clock - tb._won_at > 0.42 and tb._clock - tb._won_at < 1.0:
+		_seen["m_win"] = true
+		_shot("m_win")
+
 func _process(delta: float) -> bool:
 	_t += delta
 	if _t > TIMEOUT:
 		print("TIMEOUT at step %d" % _step)
 		_put_back()
 		return true
+	if _reduce:
+		load("res://core/motion.gd").reduce = true
 	_skip_gold()
 	_send()
+	_watch()
 	if _bot and _s != null and _t >= _bot_at:
 		_bot_at = _t + _bot_gap
 		_play_one()
@@ -242,7 +288,7 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 10
 		10:
-			if _t > _at + 0.4:
+			if _t > _at + 0.12:
 				_shot("5_hint")
 				print("hints left: ", _s.sim.hints, " undo: ", _s.can_undo())
 				_bot = true
@@ -299,6 +345,9 @@ func _process(delta: float) -> bool:
 		20:
 			if _t > _at + 2.6:
 				_shot("10_end_won")
+				for kind in ["m_tap", "m_deal", "m_turn", "m_seam", "m_home", "m_ace", "m_king", "m_suit", "m_recycle", "m_sigh", "m_win"]:
+					if not _seen.has(kind):
+						print("never came up: ", kind)
 				_put_back()
 				return true
 	return false
