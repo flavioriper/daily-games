@@ -706,8 +706,21 @@ func _draw_field() -> void:
 	field.draw_mesh(_pond, null, Transform2D(0.0, _o))
 	if sim == null:
 		return
-	# what floats, the small things under the toys; what is going down waits
-	# for the mouth to be drawn under it
+	# the whirlpool lies under everything afloat: a thing drawn in is seen on
+	# its mouth all the way, never under it until it is caught (the user,
+	# 2026-10-10: "it show under the whirlpool for a second")
+	var live: float = sim.strength()
+	if live > 0.0:
+		var at := px(sim.pos)
+		var swell := 1.0
+		if not Motion.reduce and _clock - _level_at < 0.5:
+			swell += 0.16 * sin((_clock - _level_at) / 0.5 * PI)
+		var sc := _core * _u / CORE_PX * swell * (0.5 + 0.5 * live)
+		# hurried, it has lost its pull: the streaks round it thin away
+		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live * _calm))
+		field.draw_mesh(Art.funnel(CORE_PX), null, Transform2D(_turn, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
+	# what floats, the small things under the toys, and over them what is
+	# going down
 	var sinking: Array = []
 	for tier: int in [1, 2]:
 		for th: Dictionary in sim.things:
@@ -721,16 +734,6 @@ func _draw_field() -> void:
 				sc += 0.03 * sin(_clock * 2.2 + float(th.id))
 			var a := clampf(float(th.age) / 0.5, 0.0, 1.0)
 			field.draw_mesh(Art.thing(th.kind, th.look, _u), null, Transform2D(float(th.ang), Vector2(sc, sc), 0.0, px(th.pos)), Color(1, 1, 1, a))
-	var live: float = sim.strength()
-	if live > 0.0:
-		var at := px(sim.pos)
-		var swell := 1.0
-		if not Motion.reduce and _clock - _level_at < 0.5:
-			swell += 0.16 * sin((_clock - _level_at) / 0.5 * PI)
-		var sc := _core * _u / CORE_PX * swell * (0.5 + 0.5 * live)
-		# hurried, it has lost its pull: the streaks round it thin away
-		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live * _calm))
-		field.draw_mesh(Art.funnel(CORE_PX), null, Transform2D(_turn, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
 	for th: Dictionary in sinking:
 		var k := clampf(float(th.sink) / float(Sim.KINDS[th.kind].sink), 0.0, 1.0)
 		var sc := 1.0 - 0.8 * k * k
