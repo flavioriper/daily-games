@@ -227,11 +227,11 @@ const CARD_AFTER_STILL := 0.3
 ## over her (the light passes over her: she is on the floor).
 const CAT_SIZE := 0.98
 const VEIL_ALPHA := 0.55
-## The streak (Binairo's, Shikaku's and Tents'): right lamps in a row, a
-## pentatonic step each from the second, the "x3" bubble from COMBO_FROM, and
+## The streak (Binairo's, Shikaku's and Tents'): right lamps in a row, the
+## `combo` tick a semitone up each from the second (five in all), the "x3" bubble from COMBO_FROM, and
 ## confetti at COMBO_CONFETTI.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -328,7 +328,7 @@ const SKY_FADE := 0.45
 const SKY_SIZE := 0.46
 ## The sweep ticks up a little per stone, as Tents' does.
 const SWEEP_PITCH := 0.04
-const SWEEP_PITCH_MAX := 1.6
+const SWEEP_PITCH_MAX := 1.33
 
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
@@ -2638,7 +2638,7 @@ func _judge(cell: Vector2i) -> void:
 
 ## A lamp judged right -- on Hard and Insane fair and the answer's (it is in
 ## `_judged` already), on Easy and Medium simply fair. It builds the streak
-## (the combo pitched up the pentatonic from the second, the bubble from the
+## (the combo tick a semitone up each from the second, the bubble from the
 ## third, confetti at five and ten) and may play a gag. On a board with hearts
 ## its candle flares and a moth comes to circle it: only there has the board
 ## judged it, so only there may the light say "right".

@@ -671,38 +671,50 @@ SETS = {
     },
     # Light Up: paper lamps set down in a stone courtyard light their rows.
     "lightup": {
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a soft quick ripple of small wooden pops and a gentle airy puff, little lamps being blown out", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden and stone pops rolling in, a courtyard of stones appearing", 1.0, -9),
-        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-lightup-polish-design.md):
-        # place, locked, undo and check re-prompted toward paper, felt and
-        # kalimba, as Shikaku's and Tents' were the same day -- the bonk, the
-        # tape rewind and the wooden boops read as a scold or a toy.
-        "place":    ("a soft paper lantern gently set down on smooth stone with a tiny papery rustle and a warm little glow swelling, gentle and round, very short", 0.5, -7, COZY),
-        "strike":   ("a lamp softly blown out, a tiny gentle breath and a small paper lantern settling, warm and hushed, very short", 0.5, -11, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # seventh set of the redo, as Tents' above. Kept from the first set:
+        # check, locked, heart_lost and heart_back as they were, check_ok
+        # levelled down, cool rolled off. Nothing here is paper or stone any
+        # more: a lantern's rustle, a slate chip and a hand over the floor
+        # all sat above 3 kHz. chip, clear and combo are ticks the board
+        # pitches, none past five semitones. Every tick is `tight`.
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.18:0,3,7", "cut:0.9"),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -10, STYLE, "body:300", "warm:2600"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,7,10", "cut:1.7"),
+        # The stones rolling in: place's take, five in a row.
+        "enter":    ("one small wooden lantern base set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,3,0,5"),
+        "place":    ("one small wooden lantern base set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # A lamp put out: a lift is a lighter thing set down. The board also
+        # plays it 5 dB down when a wrong lamp is taken away, so it is no
+        # quieter than place.
+        "strike":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         # chip / clear tick per stone of a sweep, pitched up as it grows.
-        "chip":     ("a single tiny soft click of a small slate chip set down on a stone floor, very short and quiet", 0.5, -13, COZY),
-        "clear":    ("a tiny soft brush of a hand over a smooth stone floor, one hushed light sweep, very short and quiet", 0.5, -14, COZY),
-        # combo: layered over place and pitched up the pentatonic by the streak.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
-        "puff":     ("a little paper lantern puffing out a small soft smoke ring shaped like a heart, a gentle round 'poof' with a tiny sweet kalimba twinkle, silly and cute", 0.8, -9),
-        "snail":    ("a tiny snail carrying a little lantern slides past, a soft slidey squeak and a tiny tinkling bell, cute and gentle", 1.0, -10),
-        "moth":     ("a soft papery flutter of a small moth's wings arriving at a lantern, with a tiny glockenspiel twinkle, light and delicate", 0.8, -11, COZY),
-        "purr":     ("a content little cat purring briefly on a soft cushion, cozy, soft and warm, short", 1.0, -10, COZY),
-        "wake":     ("a small cat woken by a light, one short cross little mew, cute and grumpy, not a hiss, short", 0.6, -10, COZY),
+        "chip":     ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.09", "body:320", "tight"),
+        "clear":    ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        # combo: layered over place, a tick the board pitches by the streak.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8, STYLE, "warm:2400", "body:300"),
+        # The gags. puff: the lantern's smoke ring, a puff of air. snail:
+        # three slow notches of a wheel. moth: two quiet notes arriving.
+        "puff":     ("one small soft round puff of warm air, a gentle breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:1200", "steep", "ease:0.03", "body:320"),
+        "snail":    ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.7", "body:320", "tight", "notes:0.22:0,2,0"),
+        "moth":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:5,7", "cut:0.5"),
+        # The cat. Untangle's purr was 89% under 300 Hz, which a phone does
+        # not play: a chirrup here too, and a real cat's short mew.
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        "wake":     ("one short soft low grumbly mew with the mouth nearly closed, sleepy and a little cross, gentle", 0.7, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a lantern dimming, never a buzzer", 0.6, -15),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by lantern light, calm and kind, maybe tomorrow", 1.5, -14),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,3,0"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper lanterns at the end, joyful and warm", 2.0, -4),
-        "lanterns": ("sky lanterns rising into the night, an airy warm whoosh drifting upward with a soft glockenspiel shimmer, gentle and magical", 2.0, -7),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:3,0,7"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,7,3,7,12", "cut:1.9"),
+        # The sky lanterns going up: a long slow breath of air, no shimmer.
+        "lanterns": ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 2.0, -15, BREEZE, "warm:1100", "steep", "ease:0.15", "body:320"),
     },
     # One Line: a snail walks every line between posts exactly once.
     "oneline": {
