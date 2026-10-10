@@ -625,35 +625,49 @@ SETS = {
     },
     # Tents: pitch a tent beside each tree on a grassy campsite grid.
     "tents": {
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "reset":    ("a quick soft ripple of canvas flaps and small wooden pops, tents being packed away", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops and a light leafy rustle, a campsite of trees appearing", 1.0, -9),
-        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-tents-polish-design.md):
-        # place, locked, undo and check re-prompted toward felt and kalimba,
-        # as Shikaku's were the same morning -- the bonk, the tape rewind and
-        # the wooden boops read as a scold or a toy.
-        "place":    ("a soft cozy canvas tent fabric whump with a tiny warm wooden peg tap, a little tent popping up, gentle and round, very short", 0.5, -7, COZY),
-        "strike":   ("a soft hushed canvas fabric fold and flop, a small tent gently folded down, warm and muffled, very short", 0.5, -11, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # sixth set of the redo, as Shikaku's above. Kept from the first set:
+        # locked and cool as they were, check_ok levelled down, heart_lost
+        # with its rumble taken off, heart_back rolled off; check is Code
+        # Break's take of the same prompt (this board's own came back under
+        # 300 Hz). Nothing here is canvas any more: a whump was a thump at
+        # 18 Hz, a fold, a zip and a rustle are the scratch. cairn, clear and
+        # combo are ticks the board pitches, none past five semitones. Every
+        # tick is `tight`.
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:0,4,7", "cut:0.9"),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -10, STYLE, "body:300", "warm:2600"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,2,4,7,9", "cut:1.7"),
+        # The trees standing up: place's take, five in a row. The cascade of
+        # pops and leaves it was had four fifths of itself above 3 kHz.
+        "enter":    ("one small wooden tent peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "place":    ("one small wooden tent peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # A tent folded down: a lift is a lighter thing set down.
+        "strike":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+# undo is strike's take, twice and falling: its own held two tocks
+        # 80 ms apart, four once the phrase was written.
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         # cairn / clear tick per square of a sweep, pitched up as it grows.
-        "cairn":    ("a single tiny soft click of two small smooth pebbles set on grass, very short and quiet", 0.5, -13, COZY),
-        "clear":    ("a tiny soft brush of a hand over grass, one hushed light sweep, very short and quiet", 0.5, -14, COZY),
-        # combo: layered over place and pitched up the pentatonic by the streak.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "peek":     ("a tiny cute soft zipper unzip then a small happy 'hoo!' like a cheerful little kalimba trill, a camper peeking out of a tent to wave, silly and sweet, no voice", 0.9, -9),
+        "cairn":    ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.09", "body:320", "tight"),
+# clear is cairn's take three steps down: a cork came back scratched or
+        # under 300 Hz three times in three.
+        "clear":    ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        # combo: layered over place, a tick the board pitches by the streak.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        # The gags. peek: a camper's wave, up and back. bunny: three hops,
+        # ticks on a cushion. oak: the tree's own leaves in a breath of air.
+        "peek":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:4,7,4", "cut:0.6"),
         "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
-        "bunny":    ("three tiny soft bouncy boings on grass getting quieter, a small bunny hopping past, cute and light", 0.9, -10),
-        "oak":      ("a warm soft rustle of big oak leaves with two small glockenspiel notes rising, a happy old tree, gentle", 0.8, -9),
-        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a tent sagging, never a buzzer", 0.6, -15),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by a campfire, calm and kind, maybe tomorrow", 1.5, -14),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
+        "bunny":    ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.15:0,4,2"),
+        "oak":      ("a soft warm breeze through the leaves of one big old tree, a gentle slow breath of air that rises and fades, short", 0.9, -16, BREEZE, "warm:1100", "steep", "ease:0.08", "body:320"),
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a tent sagging, never a buzzer", 0.6, -15, STYLE, "body:300", "notes:0:4"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,4,0"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, STYLE, "warm:2400", "body:300"),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:5,0,9"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,4,7,4,7,12", "cut:1.9"),
     },
     # Light Up: paper lamps set down in a stone courtyard light their rows.
     "lightup": {

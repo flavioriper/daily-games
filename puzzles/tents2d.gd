@@ -180,9 +180,10 @@ const EJECT_AFTER := 0.75
 const SLEEP_STAGGER := 0.05
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
-## The streak: right tents in a row, a pentatonic step each from the second.
+## The streak: right tents in a row, the `combo` tick a semitone up each from
+## the second (five semitones in all, the cozy rules' limit).
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -229,9 +230,10 @@ const BUNTING_TIME := 0.6
 const BUNTING_FLAGS := 11
 const BUNTING_SAG := 0.28
 const BUNTING_COLOURS := [Pal.FLOWER, Pal.SUN, Pal.LEAF, Pal.MOON_DEEP, Pal.TENT_CANVAS]
-## The sweep ticks up a little per square, as Shikaku's drag does.
+## The sweep ticks up a little per square, as Shikaku's drag does, and stops
+## five semitones up.
 const SWEEP_PITCH := 0.04
-const SWEEP_PITCH_MAX := 1.6
+const SWEEP_PITCH_MAX := 1.33
 
 ## The parts of the ground baked while they stand still (see _rest_parts).
 enum RestPart { CAIRN, TREE_SHADOW, TENT_SHADOW, LAMP }
