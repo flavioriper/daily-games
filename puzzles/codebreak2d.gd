@@ -206,9 +206,11 @@ const HAPTICS := {
 ## it is going; the friends already seated glance at it for GLANCE_TIME.
 const FLY_LEAN := 0.22
 const GLANCE_TIME := 0.6
-## The row-fill tune: the seat's step up the major pentatonic, in semitones,
-## layered under `place` at NOTE_DB. The pips climb the same scale.
-const PENTA := [0, 2, 4, 7, 9, 12, 14, 16]
+## The row-fill climb: the seat's step in semitones from the sample's own
+## pitch, layered under `place` at NOTE_DB as a tick, a semitone a seat. The
+## pips climb the same steps. Five semitones in all and the sixth and past
+## hold the top: no climb is longer (docs/agents/sound.md).
+const CLIMB := [-2, -1, 0, 1, 2, 3]
 const NOTE_DB := -4.0
 ## A reaction (Warmer!, Everyone's here!, the clean miss) starts at REACT_AT
 ## and holds the row big until SLIDE_AT_REACT, so it is seen with faces on.
@@ -872,7 +874,7 @@ func pick(i: int) -> bool:
 ## under the hop. It is the seat's note, so a row filled left to right plays
 ## a little run up; it says nothing about the score.
 func _note(slot: int) -> void:
-	fx.cue("note", pow(2.0, float(PENTA[slot % PENTA.size()]) / 12.0), NOTE_DB)
+	fx.cue("note", pow(2.0, float(CLIMB[mini(slot, CLIMB.size() - 1)]) / 12.0), NOTE_DB)
 
 ## Every friend seated in row g looks toward seat `s` for a moment -- the
 ## one who just arrived looks up at the row instead.
@@ -1133,9 +1135,9 @@ func check() -> int:
 	note_move()
 	return length - exact
 
-## One bead per pip as it lands in the pouch, each a step higher up the
-## pentatonic -- in the pile's order, filled first, which is never the
-## seats'. A row that scored nothing gets the old soft pouch sound instead.
+## One tick per pip as it lands in the pouch, each a semitone higher up
+## CLIMB -- in the pile's order, filled first, which is never the seats'. A
+## row that scored nothing gets one dull tock instead.
 func _pip_sounds(exact: int, colour: int) -> void:
 	var n := exact + colour
 	if n == 0:
@@ -1145,7 +1147,7 @@ func _pip_sounds(exact: int, colour: int) -> void:
 		fx.cue("pip", 1.0)
 		return
 	for i in n:
-		var pitch := pow(2.0, float(PENTA[i % PENTA.size()]) / 12.0)
+		var pitch := pow(2.0, float(CLIMB[mini(i, CLIMB.size() - 1)]) / 12.0)
 		_after(PIP_AT + i * PIP_STAGGER + PIP_POP * PIP_LAND, fx.cue.bind("pip", pitch))
 
 ## What the whole row does about its score -- always the whole row, one

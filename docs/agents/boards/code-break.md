@@ -118,6 +118,31 @@ window (after the party) 192. Far under 855.
   has none, the Shell Game.
 - Undo was already on every band, and Reset wherever `can_reset()` allows.
 
+### Sounds redone against the cozy rules (2026-10-10)
+
+`docs/agents/sound.md`, the second set of the redo; this replaces the
+**Sound** bullet above where they differ. `place`, `clear`, `full` (the pat
+twice, the second lower), `undo` (two tocks falling), `score`, `reveal` (two
+tocks rising, a lid), `note`, `pip`, `peek` and `shuffle` (three tocks,
+nothing slid) are low wooden ticks, 0.09 to 0.42 s at -13 to -17; `reset`
+and `confetti` a breath of breeze; `hint`, `solved`, `so_close`, `all_here`,
+`stamp`, `party` and `out_of_rows` phrases written with `notes` from one
+kalimba or tongue drum note each, none above -8 (`solved` was -3, `party`
+-4, `hint` and `stamp` glockenspiel). `note` and `pip` are ticks the board
+pitches now, not a pluck and a glass bead, and `CLIMB` (it was `PENTA`)
+rises a semitone a seat or a pip, five in all, where the pentatonic rose
+sixteen. Kept from the first set: `check`, `cool`, `locked`, `row_back`,
+`warmer` (2 dB down) and `enter` (4 dB down, rolled off). All 25 read
+"0 flagged" in `tools/measure_sfx.py mastermind`; none heard by the user.
+Every tick is `tight`: without it `full`, `undo` and `score` shipped as one
+tock 0.15 s late or as room noise, the take's lead-in outlasting the `cut`,
+and the measure passed them all the same (look at the envelope of a cut
+tick, not only its line). No two phrases share a contour: `hint` goes up a
+fourth and holds, `stamp` dips and rises, `so_close` zigzags up, `all_here`
+bounces between two notes, `solved` is five rising, `party` up, back and
+up, `out_of_rows` three falling; `warmer` and `row_back` are the kept
+rising three and rising pair.
+
 ### Haptics (2026-10-03)
 
 `HAPTICS` in `puzzles/codebreak2d.gd`; the row in `docs/agents/haptics.md`

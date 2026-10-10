@@ -431,36 +431,48 @@ SETS = {
     # Code Break (puzzle_id "mastermind"): little round friends fly into
     # seats, a Check drops score pips into a pouch, lids lift on the answer.
     "mastermind": {
-        "place":    ("a tiny soft bouncy boing and a wooden seat tap, a small round character hopping into a seat, very short", 0.5, -6),
-        "clear":    ("a very short soft downward whoosh-pop, a small character hopping out of a wooden seat", 0.5, -9),
-        # full, locked and check re-prompted 2026-09-29 (Code Break polish):
-        # the wooden bumps and boops read as a scold, as Binairo's did.
-        "full":     ("a tiny soft felt pat, a gentle muffled 'hmm, all full', a small cushion being patted twice, warm and quiet, very short", 0.5, -13),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # second set of the redo: what is a thing is a HUSH tick, what travels
+        # is BREEZE, what is a moment is COZY_TUNE's muffled kalimba, its
+        # phrase written with `notes` from the one note a take holds. Five
+        # takes of the first set already measured low and were kept as they
+        # were (check, cool, locked, row_back) or levelled down (warmer), and
+        # enter is levelled down and rolled off as Binairo's was.
+        # Every tick is `tight`: a take's tock sits up to 0.18 s into its room
+        # noise, which a `cut` then ends before the sound (the first full, undo
+        # and score were one late tock or none).
+        "place":    ("one small round wooden piece set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "clear":    ("one small light wooden piece set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        # A full row's "hmm": the same pat twice, the second a step lower.
+        "full":     ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "notes:0.1:0,-2", "tight"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt brush and one small kalimba note gliding gently down, a kind 'take that back', warm and quiet, very short", 0.6, -9),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
+        "undo":     ("one small wooden piece set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "notes:0.11:0,-3", "tight"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.2:4,9,9", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
-        "score":    ("a soft cloth pouch settling on a wooden table, a tiny muffled flop, cozy and quiet", 0.6, -10),
-        "reveal":   ("a soft wooden box lid lifting with a small curious kalimba shimmer, a secret being uncovered", 1.0, -6),
-        "reset":    ("a quick ripple of many small soft wooden pops, pieces being swept off a board", 1.0, -8),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of seats appearing", 1.0, -9),
-        # The polish pass (2026-09-29, docs/superpowers/specs/2026-09-29-codebreak-polish-design.md).
-        # note: layered under place and pitched up the pentatonic by seat, so
-        # a filling row plays a little tune. pip: one per score pip, pitched
-        # up a step each as it lands.
-        "note":        ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "pip":         ("a single small glass bead dropping into a soft cloth pouch, a tiny muted clink, very short", 0.5, -9),
-        "warmer":      ("a warm rising three-note soft kalimba phrase, a happy little 'getting warmer', gentle", 0.8, -8),
-        "so_close":    ("an excited rising soft marimba and glockenspiel run with a tiny sparkle at the top, 'so close!', joyful and warm", 1.0, -6),
-        "all_here":    ("a playful bouncy soft wooden xylophone conga shuffle, small round characters dancing in a line, cute and cozy", 1.2, -7),
+        # A row that scored nothing: one dull tock, lower than a pip.
+        "score":    ("one small wooden block set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.6, -15, HUSH, "warm:1300", "cut:0.2", "body:320", "tight"),
+        # The lids lift on the answer: a tock and the same a little higher.
+        "reveal":   ("a small wooden box lid set down gently on thick felt, a single soft tock, round and hollow, very short", 0.6, -13, HUSH, "warm:1600", "cut:0.34", "body:320", "notes:0.13:0,3", "tight"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,6,8,11,13", "cut:1.7"),
+        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of seats appearing", 1.0, -13, STYLE, "body:300", "warm:2400"),
+        # note: layered under place and pitched a semitone a seat, so a
+        # filling row climbs a little. pip: one per score pip, a semitone up
+        # each as it lands. Both are ticks the board pitches, not notes (what
+        # repeats is a click), and neither climbs past five semitones.
+        "note":        ("one small round wooden piece set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "pip":         ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1600", "cut:0.09", "body:320", "tight"),
+        "warmer":      ("a warm rising three-note soft kalimba phrase, a happy little 'getting warmer', gentle", 0.8, -10, STYLE, "body:300"),
+        "so_close":    ("one soft note on a kalimba, warm and happy, short", 1.0, -9, COZY_TUNE, "warm:2600", "ease:0.01", "body:300", "notes:0.11:2,6,4,9"),
+        "all_here":    ("one soft note on a wooden tongue drum, round and playful, short", 1.2, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:5,5,10,5,10", "cut:1.1"),
         "cool":        ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
-        "shuffle":     ("two small wooden cups sliding and hopping over each other on a table, soft wooden shuffle and two gentle taps landing, playful, a magician's cup game", 0.9, -7),
-        "peek":        ("a tiny soft wooden lid lifting a crack and settling back with a very quiet tock, curious and cute", 0.6, -15),
-        "stamp":       ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":       ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -4),
-        "confetti":    ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "out_of_rows": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn, calm and kind, maybe tomorrow", 1.5, -14),
+        # The cup game: three tocks, the middle one a step up. Nothing slid.
+        "shuffle":     ("one small wooden cup set down gently on thick felt, a single soft hollow tock, round, very short", 0.6, -14, HUSH, "warm:1500", "cut:0.42", "body:320", "notes:0.12:0,2,0", "tight"),
+        "peek":        ("one small light wooden lid set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.6, -17, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "stamp":       ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,0,7"),
+        "party":       ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
+        "confetti":    ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "out_of_rows": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.5, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
         "row_back":    ("a warm rising pair of soft kalimba plucks, a little extra chance, gentle and happy", 0.6, -12),
     },
     # Balance: a seesaw of fruit with secret weights (the scales it began as

@@ -94,7 +94,10 @@ felt, a single soft tock, round and hollow" lands most often; "one notch of
 an old mouse wheel" alone came back scratched three times in five and
 "lifted off" or "picked up" as a thump at 110 Hz or a hiss at 7 kHz, so a
 lift is a lighter thing set down. A tick that will not come is another
-tick's take a step or two up (`"notes:0:2"`).
+tick's take a step or two up (`"notes:0:2"`). **A cut tick is `tight`**
+(Code Break, 2026-10-10): a take's tock sits up to 0.18 s into room noise
+the default trim keeps, so `cut` ended three ticks before their sound and
+the measure passed them; `heard` far shorter than the file is the sign.
 
 **Copy these, not those.** A new set is built from `HUSH`, `BREEZE`,
 `HEARTH`, `HEARTH_TAP` and `COZY_TUNE` (`HEARTH_TUNE` says "low" and "very
@@ -118,8 +121,9 @@ heard.
 |---|---|
 | `ui` | `page` and `opening` pass; `click` passes the measure but is still the paper-and-wood take, not a wheel's notch: not done |
 | `binairo` | done 2026-10-09, unheard: 15 new takes (7 ticks, 2 breezes, 7 phrases with `brush` the lift's take), 6 kept; the streak's climb 14 semitones down to 5 |
-| `mastermind` (Code Break) | next |
-| `balance`, `untangle`, `shikaku`, `tents`, `lightup`, `oneline`, `nonogram`, `queens`, `hiddenword`, `wordtrail`, `mushroom`, `sudoku`, `bridges`, `quilt`, `planes`, `pinwheel`, `caterpillar`, `sunbeam`, `knight`, `snooker`, `hockey`, `chess`, `checkers`, `hedgehogs`, `slider`, `marigold`, `pixelgarden`, `fairylights`, `firefly`, `molehill`, `stackwood`, `thirteen`, `posy`, `peapod`, `rings`, `drumbeat`, `trestle`, `minigolf`, `horse`, `lattice`, `how_big`, `acorn`, `pearl`, `boats`, `penny`, `dominoes`, `reversi`, `wallet`, `grove`, `nightlight`, `beeline` | not started, in this order |
+| `mastermind` (Code Break) | done 2026-10-10, unheard: 19 new takes (10 ticks, 2 breezes, 7 phrases), 6 kept; `note` and `pip` are ticks and their climb is 16 semitones down to 5 (`CLIMB`) |
+| `balance` | next |
+| `untangle`, `shikaku`, `tents`, `lightup`, `oneline`, `nonogram`, `queens`, `hiddenword`, `wordtrail`, `mushroom`, `sudoku`, `bridges`, `quilt`, `planes`, `pinwheel`, `caterpillar`, `sunbeam`, `knight`, `snooker`, `hockey`, `chess`, `checkers`, `hedgehogs`, `slider`, `marigold`, `pixelgarden`, `fairylights`, `firefly`, `molehill`, `stackwood`, `thirteen`, `posy`, `peapod`, `rings`, `drumbeat`, `trestle`, `minigolf`, `horse`, `lattice`, `how_big`, `acorn`, `pearl`, `boats`, `penny`, `dominoes`, `reversi`, `wallet`, `grove`, `nightlight`, `beeline` | not started, in this order |
 
 **What other games do** (looked up 2026-10-09; little is written down, and
 none of it outranks the user's ear). Unpacking's foley, the genre's
