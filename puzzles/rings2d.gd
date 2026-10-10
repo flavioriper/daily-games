@@ -258,7 +258,9 @@ const LOCK_HOP_TIME := 0.42
 
 # --- the rewards (Pinwheel's) ---
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+## The streak's `combo` is a tick a semitone a step, five in all (the cozy
+## rules, 2026-10-10; it was a pluck up fourteen: [-5, -3, 0, 2, 4, 7, 9]).
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -800,7 +802,7 @@ func _tap(i: int) -> void:
 		if _state.lift(i):
 			_state.prejudge()
 			_held_at = _now()
-			fx.cue("lift")
+			fx.cue("lift", randf_range(0.94, 1.06))
 			if Gen.two_tone(_state.held):
 				_after(RISE_TIME * 0.3, fx.cue.bind("tumble"))
 				_say(tr("RG_HELD_TUMBLE"), Face.Expr.PUZZLED)
@@ -821,7 +823,7 @@ func _tap(i: int) -> void:
 		var turn := _held_turn(_now())
 		_state.put_back()
 		_held_at = -100.0
-		fx.cue("drop")
+		fx.cue("drop", randf_range(0.94, 1.06))
 		_fly(code, i, i, (_state.pegs[i] as Array).size() - 1, -1, _now(), false, turn, Gen.flip(code))
 		_say(tr("RG_PUT_BACK"), Face.Expr.HAPPY)
 	elif _state.would_doom(i):
@@ -840,7 +842,7 @@ func _tap(i: int) -> void:
 			_say(tr(_state.refusal(i)), Face.Expr.WORRIED)
 		else:
 			_held_at = -100.0
-			fx.cue("drop")
+			fx.cue("drop", randf_range(0.94, 1.06))
 			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads _flight for the landing moment

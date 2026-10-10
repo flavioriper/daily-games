@@ -94,3 +94,9 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   Undo that Insane does not have. Not updated: `RG_LVL_3` ("two hearts") on
   the level picker, `tests/_shot_rings.gd`, the tutorial diagram's dormant
   HEARTS lesson. Not seen on screen: only headless checks were run.
+- **Sounds redone on 2026-10-10** against the cozy rules (`docs/agents/sound.md`,
+  the `rings` row): the set is no longer `TERRACE`'s. At the board: the
+  streak's `combo` climbs a semitone a step, five in all (`COMBO_STEPS`
+  `[-2, -1, 0, 1, 2, 3]`; it was `[-5, -3, 0, 2, 4, 7, 9]`, fourteen), and
+  `lift` and `drop` play at 0.94 to 1.06 at random (the doomed drop's 0.9
+  stands). Measured, not heard.
