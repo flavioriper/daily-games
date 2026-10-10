@@ -2513,52 +2513,143 @@ SETS = {
     # inside a wooden kerb, into a cup with a flag in it; the card's words
     # (hole in one, birdie, par, bogey) each have their own short phrase.
     "minigolf": {
-        "enter":         ("a few garden birds chirping softly and one golf ball set down on felt with a small soft tap, a calm sunny lawn", 1.3, -11, LINKS, "warm:7000"),
-        "putt":          ("a putter striking a golf ball once, a single soft rounded tock, very short", 0.5, -7, LINKS, "cut:0.3"),
-        "wall":          ("a golf ball knocking once against a wooden board, a single soft hollow wooden knock, very short", 0.5, -9, LINKS, "cut:0.25"),
-        "post":          ("a golf ball bouncing off a rubber bumper with one soft springy boing, playful, very short", 0.5, -8, LINKS, "cut:0.35"),
-        "sand":          ("a golf ball rolling into fine dry sand and stopping, a short soft hiss of sand", 0.6, -11, LINKS),
-        "splash":        ("a golf ball dropping into a small garden pond with one round soft plop and a few bubbles, short", 0.9, -7, LINKS),
-        "lip":           ("a golf ball rattling round the rim of a plastic cup and rolling away, a short hollow rattle", 0.6, -9, LINKS, "cut:0.45"),
-        "sink":          ("a golf ball dropping into a plastic mini golf cup with a hollow rattle at the bottom, satisfying, short", 0.7, -6, LINKS),
-        "ace":           ("a bright joyful rising flourish on a real music box and hand bells, five quick notes ending on a high ringing bell, a little triumph", 1.6, -5, LINKS_TUNE, "warm:7000"),
-        "birdie":        ("three quick bright rising notes on a real kalimba with a tiny hand bell on the last, happy, short", 0.9, -7, LINKS_TUNE, "warm:7000"),
-        "par":           ("two soft warm rising notes on a real kalimba, content, short", 0.7, -9, LINKS_TUNE, "warm:7000"),
-        "bogey":         ("two soft notes on a real kalimba, the second a little lower, a gentle never mind, short", 0.7, -10, LINKS_TUNE, "warm:7000"),
-        "next":          ("a small cloth flag fluttering once in a light breeze, one soft airy whoosh, short", 0.7, -12, LINKS),
-        "gate":          ("a small wooden garden gate swinging on its hinge with a soft creak and a little latch click, short", 0.7, -10, LINKS),
-        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, LINKS_TUNE, "warm:7000"),
-        "reset":         ("a paper scorecard flipped over and a small pencil tapped on it twice, soft, short", 0.8, -10, LINKS),
-        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful", 1.8, -9, LINKS_TUNE, "warm:7000"),
-        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, LINKS_TUNE, "warm:7000"),
-        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy", 2.0, -5, LINKS_TUNE, "warm:7000"),
-        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, LINKS_TUNE, "warm:7000"),
-        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, LINKS_TUNE, "warm:7000"),
-        "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # fortieth set of the redo, with Horse Pen's below. None kept: eight
+        # passed, but the set was LINKS_TUNE's (a music box and hand bells by
+        # style, and by prompt in birdie, hint, heart_back and solved; solved
+        # peaked at -5), enter was garden birds and splash a plop in a pond,
+        # and the takes of birdie, par, bogey and heart_back sit at -21 to
+        # -30 dB, so every cue is written again and the set is in one tuning.
+        # Three new takes: `putt` (a hollow wooden block set down on felt,
+        # the stroke under the finger, so the plainest: one tock), `wall` (a
+        # lighter thing set down, the knock on every kerb) and one muffled
+        # kalimba note, `hint`'s. Every tick is `tight`. sink and gate are
+        # putt's take, post, lip, reset and enter wall's, and ace, birdie,
+        # par, bogey, solved, out_of_hearts, heart_back, stamp and party the
+        # note's. Borrowed, of the same prompts: sand is Hedgehogs' breath
+        # (its reset), splash its gust, the next hole its whoosh and the cat
+        # Untangle's kitten. Nothing new is a club's click, a clack off a
+        # board, a rubber boing, a rattle in a plastic cup, sand hissing, a
+        # plop, a flag, a hinge, a pencil, birds, a music box, a hand bell
+        # or a party blower. putt's take holds a second knock 0.19 s behind
+        # its tock, so it is cut at 0.14 and only the two cues that end
+        # before that knock are written from it (sink's first notch is four
+        # steps down, which puts it at 0.24, where the cut ends); the rows
+        # are wall's take, which is one tock and nothing else. The note came
+        # back at 376 Hz, so the phrases' steps are 2 to 11 up and every note
+        # lands between 400 and 700 Hz; no two cues share a contour. wall's
+        # tock starts at 20 ms, the others at 0.
+        "putt":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        # The kerb, pitched and levelled by how hard the ball met it. A post
+        # is the same take one notch three steps up (the board adds a step a
+        # post).
+        "wall":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        "post":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:3"),
+        # Into the sand: a breath that eases and stops, Hedgehogs' reset.
+        # Into the pond: a puff of air, its gust.
+        "sand":          ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "splash":        ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # Round the rim and out: wall's take, three quick notches there and
+        # back. In the cup: putt's take, two notches with the second four
+        # steps up; the card's word follows 0.32 s behind, so it is not a
+        # phrase.
+        "lip":           ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.06:0,2,0"),
+        "sink":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.24", "body:320", "tight", "notes:0.1:-4,0"),
+        # The card's words: the better the hole, the longer and the higher
+        # the rise. A hole in one is two climbs of three, a birdie three up,
+        # par two notes a third apart all but together, a bogey two with the
+        # second two steps down.
+        "ace":           ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.1:2,5,9,4,7,11", "cut:1.3"),
+        "birdie":        ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:4,7,9", "cut:0.8"),
+        "par":           ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:4,7", "cut:0.6"),
+        "bogey":         ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:6,4", "cut:0.7"),
+        # The next hole sliding in: a longer breath, Hedgehogs' whoosh. The
+        # gates swapping: putt's take, two low notches all but together.
+        "next":          ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        "gate":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-5,-2"),
+        # The bulb: two notes alike and a third up.
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,3,7", "cut:1.0"),
+        # The card blank again: wall's take, five notches falling. The course
+        # set out: five in a row.
+        "reset":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:5,3,1,0,-2"),
+        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The strokes run out (Insane), and the three handed back.
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:3,8", "cut:0.7"),
+        # The round done: five up. The party: six up and over, the seal three
+        # that dip and rise, the cat Untangle's kitten.
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:2,4,7,9,11", "cut:1.7"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:2,5,9,5,9,11", "cut:1.9"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:7,3,10"),
+        "purr":          ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Horse Pen (puzzles/horse2d.gd): hay bales dropped on a meadow to pen a
     # pony in. `place` fires on every move and `lift` and `undo` nearly as
-    # often, so all three are dry straw cut short, with no note in them; the
-    # notes are kept for the pen closing on its target and the day's end.
+    # often; the notes are kept for the pen closing on its target and the
+    # day's end, and the pony has its own voice.
     "horse": {
-        "enter":         ("a small pony landing softly on short grass, two muffled hoof steps on turf, light and gentle, short", 1.0, -10, MEADOW, "warm:7000"),
-        "place":         ("one small dry straw bale set down on short grass, a single short dry soft straw crunch and pat, no ring, no tone, very short", 0.5, -9, MEADOW, "cut:0.28"),
-        "lift":          ("one small dry straw bale plucked up off the grass, a single short light dry straw rustle, no ring, no tone, very short", 0.5, -12, MEADOW, "cut:0.22"),
-        "undo":          ("a handful of dry straw brushed back lightly once, a single soft short dry rustle, no ring, no tone, very short and quiet", 0.5, -14, MEADOW, "cut:0.22"),
-        "reset":         ("a quick soft sweep of loose dry straw across short grass with a yard broom, one light brushing pass, short", 0.9, -11, MEADOW),
-        "locked":        ("one gentle dull knuckle knock on a wooden fence post, a soft kind not here, very short", 0.5, -11, MEADOW, "cut:0.3"),
-        "closed":        ("a small wooden garden gate latch clicking shut, one soft wooden clack, satisfying, very short", 0.5, -8, MEADOW, "cut:0.4"),
-        "open":          ("a small wooden gate latch lifted open, one light soft wooden click and a tiny loose rattle, very short", 0.5, -11, MEADOW, "cut:0.35"),
-        "ready":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -7, MEADOW_TUNE, "warm:7000"),
-        "best":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, happy and proud, short", 1.0, -6, MEADOW_TUNE, "warm:7000"),
-        "not_yet":       ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not yet, warm and round, never a buzzer", 1.0, -12, MEADOW_TUNE, "fall"),
-        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, MEADOW_TUNE, "warm:7000"),
-        "neigh":         ("a small pony giving one short soft friendly nicker, a quiet breathy little whinny through the nose, cute and gentle, not loud, not dramatic, short", 0.9, -9, PONY),
-        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a sunny meadow morning", 2.0, -5, MEADOW_TUNE, "warm:7000"),
-        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, MEADOW_TUNE, "warm:7000"),
-        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, MEADOW_TUNE, "warm:7000"),
-        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a pony dozing off in the grass", 1.8, -9, MEADOW_TUNE, "warm:7000"),
-        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, MEADOW_TUNE, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-first set of the redo, with Mini Golf's above. One kept: the
+        # pony's `neigh`, its own take and prompt, rolled off and turned down
+        # as Untangle's kitten was (an animal's voice is a character and does
+        # not become notches). Six more passed (best, heart_back, hint,
+        # locked, ready, solved), but the set was MEADOW_TUNE's (a wooden
+        # music box and hand bells by style; best, hint, solved and
+        # heart_back by prompt too, solved and best at -5 and -6) and locked
+        # a knuckle on a fence post, so all are written from this set's
+        # takes and it is in one tuning. Three new takes: `place` (a hollow
+        # wooden block set down on felt, the thing a finger does all day, so
+        # the plainest: one tock), `lift` (a lighter thing set down) and one
+        # muffled kalimba note, `hint`'s. Every tick is `tight`. open,
+        # not_yet and enter are place's take, undo, locked and closed lift's,
+        # and ready, best, solved, party, stamp, out_of_hearts and heart_back
+        # the note's. Borrowed, of the same prompt: reset is Hedgehogs'
+        # breath (its reset). Nothing new is straw, grass, a hoof, a broom, a
+        # fence post, a gate's latch, a music box, a hand bell, a rubber
+        # stamp or a party blower. Place's take sits at 771 Hz cut at 320,
+        # so `place` is two steps under it; lift's at 481 Hz so cut, so `lift` is
+        # three steps over it and nothing of it goes under its take; the
+        # note came back at 342 Hz, so the phrases' steps are 3 to 12 up and
+        # every note lands between 400 and 700 Hz; no two cues share a
+        # contour. Every tock starts at 0 ms.
+        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.09:-5,-2,-5,-2"),
+        "place":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "lift":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        # Taken back: lift's take, twice and falling.
+        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:3,0"),
+        # Every bale gone: a breath, Hedgehogs' reset.
+        "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # Not there (water, a stone, a tunnel, a pinned bale, no bales left):
+        # lift's take, two low notches alike.
+        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:0,0"),
+        # The pen shut, short of its target: it sounds on the frame `place`
+        # does, so it is lift's take, two notches with the second four steps
+        # up. The pen open again sounds with `lift`, so it is place's take,
+        # one notch four steps under place's.
+        "closed":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.09:2,6"),
+        "open":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        # The pen at its target: two notes a third apart all but together. At
+        # the best there is: two alike and a third up. Either sounds over
+        # `place`, a tock.
+        "ready":         ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:5,9", "cut:0.7"),
+        "best":          ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:7,7,11", "cut:0.8"),
+        # Check on a pen that is open or too small: place's take, three slow
+        # notches falling.
+        "not_yet":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.14:-2,-4,-7"),
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:1.0"),
+        # The pony patted: its own voice, a real one (PONY), the take of
+        # 2026-10-08 with the top rolled off, 3 dB down.
+        "neigh":         ("a small pony giving one short soft friendly nicker, a quiet breathy little whinny through the nose, cute and gentle, not loud, not dramatic, short", 0.9, -12, PONY, "warm:2400", "ease:0.01", "body:300"),
+        # The day's end. `party` starts 0.4 s into `solved`, so solved is four
+        # quick notes up and the party the long one, six up and over; the seal
+        # 0.8 s after that, three notes that dip and rise.
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.1:5,7,9,12", "cut:0.9"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:3,7,10,7,10,12", "cut:1.9"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,3,10"),
+        # Out of moves (Insane): three slow notes down. Five more: two a
+        # fourth apart.
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:12,8,3"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,10", "cut:0.7"),
     },
     # Lattice (puzzles/lattice2d.gd): wooden number tiles swapped about a
     # lattice. `pick`, `swap` and one of `home`, `home2` or `miss` fire on

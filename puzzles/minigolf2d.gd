@@ -76,6 +76,18 @@ const SWAP_TIME := 0.6
 const WET_TIME := 0.85
 const GATE_TIME := 0.32
 const POST_TIME := 0.3
+# --- the sounds (docs/agents/sound.md, the cozy rules) ---
+## The softest putt and the softest knock on a kerb, in dB under the hardest.
+## They were -8 and -12; the files are 6 dB under the ones they replaced
+## (putt -13 where it was -7, wall -15 where it was -9), and a kiss on the
+## kerb at -12 read -28 dB on a phone; at -5 it reads -22.
+const PUTT_SOFT_DB := -4.0
+const WALL_SOFT_DB := -5.0
+## A tick or a breath that repeats is never the same sound twice (the rim,
+## the sand, the gates; they were 1.0 every time). The kerb by its speed
+## (0.9 to 1.2, five semitones), the putt by its power (0.92 to 1.14) and a
+## post by its number (1.0 to 1.12) were inside five semitones already.
+const TICK_VARY := Vector2(0.94, 1.06)
 const FLAG_NEAR := 17.0
 ## How often the ball at rest breathes a ring out.
 const BECKON := 2.4
@@ -509,7 +521,7 @@ func _handle(events: Array, t: float) -> void:
 		match String(e[0]):
 			"wall", "gate":
 				var hard := clampf(float(e[2]) / 90.0, 0.0, 1.0)
-				fx.cue("wall", 0.9 + 0.3 * hard, lerpf(-12.0, 0.0, hard))
+				fx.cue("wall", 0.9 + 0.3 * hard, lerpf(WALL_SOFT_DB, 0.0, hard))
 				if hard > 0.25:
 					fx.puff(_pt(at), Pal.GF_KERB_HI, 2)
 			"post":
@@ -517,10 +529,10 @@ func _handle(events: Array, t: float) -> void:
 				fx.cue("post", 1.0 + 0.06 * float(int(e[2]) % 3))
 				fx.ring(_pt(at), 3.4 * s, Pal.GF_POST_HI, 0.35)
 			"sand":
-				fx.cue("sand")
+				fx.cue("sand", randf_range(TICK_VARY.x, TICK_VARY.y))
 				fx.puff(_pt(at), Pal.GF_SAND, 4)
 			"lip":
-				fx.cue("lip")
+				fx.cue("lip", randf_range(TICK_VARY.x, TICK_VARY.y))
 				_float_word("GF_LIP", at)
 			"splash":
 				_on_splash(at, t)
@@ -540,7 +552,7 @@ func _after_putt(t: float) -> void:
 	if sim.gate_phase.size() > 0 and sim.parity != _gate_was:
 		_gate_was = sim.parity
 		_gate_at = t
-		fx.cue("gate")
+		fx.cue("gate", randf_range(TICK_VARY.x, TICK_VARY.y))
 		_busy_for(GATE_TIME + 0.1)
 	_guide_for = Vector2(INF, INF)
 	_busy_for(0.3)
@@ -607,7 +619,11 @@ func _on_sunk(t: float) -> void:
 	var last: bool = _state.last_hole()
 	get_tree().create_timer(0.0 if Motion.reduce else SINK_TIME).timeout.connect(func():
 		if is_inside_tree() and (_phase == "sunk" or _won):
-			fx.cue(cue_name)
+			# The last cup's word is shown and not sounded: `solved` began on
+			# the frame the ball dropped and `party` is 0.28 s off, and a third
+			# phrase between them is three tunes at once (it was sounded always).
+			if not _won:
+				fx.cue(cue_name)
 			_sticker(tr(word), col, n == 1 or d < 0))
 	if n == 1 and not Motion.reduce:
 		fx.confetti(Vector2(size.x * 0.5, _band() + 20.0), 24, size.x * 0.8)
@@ -1311,7 +1327,7 @@ func _putt() -> void:
 	_power = 0.0
 	_snapped = false
 	_hud = null
-	fx.cue("putt", 0.92 + 0.22 * power, lerpf(-8.0, 0.0, power))
+	fx.cue("putt", 0.92 + 0.22 * power, lerpf(PUTT_SOFT_DB, 0.0, power))
 	_spend(1, 0.0)
 	note_move()
 

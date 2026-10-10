@@ -81,7 +81,17 @@
   minigolf` wins through the input path with `settle_now()` between putts.
 - **Sounds**: 22 cues generated 2026-10-05 (`tools/gen_sfx.py minigolf`,
   the LINKS foley set and the garden's kalimba, music box and hand bells),
-  one take a cue, unheard by the user.
+  one take a cue, unheard by the user. **Redone 2026-10-10 against the cozy
+  rules** (`docs/agents/sound.md`, the `minigolf` row): three takes, a
+  wooden block on felt (`putt`), a lighter button (`wall`) and one muffled
+  kalimba note, and every cue written from them or borrowed air; unheard.
+  At play: the softest putt is 4 dB under the hardest and the softest kerb
+  5 (`PUTT_SOFT_DB`, `WALL_SOFT_DB`; they were 8 and 12, and the new files
+  are 6 dB under the old), the rim, the sand and the gates vary by 0.94 to
+  1.06 (`TICK_VARY`; 1.0), and **the last cup's word (Par, Birdie, Hole in
+  one) is shown and no longer sounded**: `solved` starts on the frame the
+  ball drops and `party` 0.6 s after, and the word's phrase 0.32 s in made
+  three tunes at once. The sticker and the sprout's line are unchanged.
 - **Not seen on a phone.** Shots on both drivers and under reduce motion
   only; the pull's length (`PULL`, 300 px) and the ball's size were judged
   on this Mac's window. The pt and es lines are unreviewed.
