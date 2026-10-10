@@ -1420,40 +1420,63 @@ SETS = {
     },
     # Sunbeam: drag a brass mirror or a copper cup along its wooden rail and
     # the light follows; wet every dewdrop, then the bud blooms. `step` fires
-    # on every peg a drag crosses, so it gets no file
-    # (docs/art/sound-direction.md).
+    # on every peg a drag crosses: the quietest notch there is, a wheel turned
+    # under the finger (Fx2D's CUE_GAP keeps it from machine-gunning).
     "sunbeam": {
-        # Re-prompted in the polish (2026-10-01) toward the greenhouse.
-        "lift":     ("a tiny felt-soft brass click, a little mirror lifted off a wooden peg with a breath of air, hushed, very short", 0.5, -13, GLASSHOUSE),
-        "step":     ("a single tiny soft wooden rail tick, a small brass piece passing a peg as it slides, very short and quiet", 0.5, -15),
-        "slide":    ("a short soft wooden glide ending in a gentle felt-soft brass tick, a mirror settling onto its peg, cozy and hushed", 0.5, -11, GLASSHOUSE),
-        "drop":     ("a tiny felt-soft brass tick on wood, very short and quiet", 0.5, -15, GLASSHOUSE),
-        "dew":      ("a single tiny bright glass droplet chime, a dewdrop catching warm sunlight, soft music box, very short", 0.6, -10, GLASSHOUSE),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twentieth set of the redo. Kept from the polish's set, as they were:
+        # dry, refuse, shy, wake, heart_lost and heart_back. Nothing new is
+        # brass, glass, a chime, a music box, steam or a wing (brass and
+        # glass ring, a glide and a flutter are scratch). A piece let go on
+        # its peg is the thing a finger does all day, so `slide` is the
+        # plainest: one tock, and no longer a glide. combo is a tick the
+        # board pitches, not past five semitones, and the dew one quiet note
+        # the board pitches by the drops lit, not past five either. Every
+        # tick is `tight`. Borrowed takes: confetti is Binairo's and the cat
+        # Untangle's kitten, of the same prompts; step, undo and stir are
+        # lift's, drop and enter slide's, rainbow, love, flutter and chorus
+        # the dew's. The phrases' steps are set by each take's own note, so
+        # that every note lands between 400 and 700 Hz, and no two phrases
+        # share a contour. A lift is a lighter thing set down.
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "step":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.06", "body:320", "tight", "notes:0:-1"),
+        "slide":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # Put back where it was lifted: slide's take, lower and quieter.
+        "drop":     ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "dew":      ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.4"),
         "dry":      ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient, short", 0.6, -12, GLASSHOUSE),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not that one', warm, very short", 0.5, -12, GLASSHOUSE),
-        "undo":     ("a soft little glass shimmer sliding gently down with a felt-soft wooden tick, a kind 'take that back', warm and quiet, very short", 0.5, -11, GLASSHOUSE),
-        "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm glass chime underneath, cozy and kind", 1.0, -8, GLASSHOUSE),
-        "reset":    ("a soft quick descending ripple of tiny felt-soft wooden ticks, little mirrors sliding home along their rails, hushed and cozy", 1.0, -11, GLASSHOUSE),
-        "solved":   ("a warm short celebratory music box and glass chime flourish rising into a soft airy shimmer, a flower opening in morning sunlight, joyful and cozy", 2.0, -4, GLASSHOUSE),
-        "enter":    ("a soft airy cascade of tiny glass chimes and felt-soft brass clicks, a greenhouse waking in the morning sun, hushed", 1.0, -11, GLASSHOUSE),
-        # The polish's new cues.
-        "stir":     ("a tiny sleepy snail murmuring in its sleep, a soft muffled 'mmh' with a little wobbly kalimba note, cute, very short", 0.5, -15, GLASSHOUSE),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:-2,1,5", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
+        # The mirrors set on their pegs: slide's take, five in a row.
+        "enter":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The polish's cues. stir: a snail under the light, one low light
+        # notch (it fires mid-drag). sizzle: a drop dried, a small puff of
+        # air. slip: the piece gone home along its rail, a short breath.
+        "stir":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-3"),
         "shy":      ("a tiny shy nervous glass twinkle trembling, a dewdrop blushing, a soft quivering music box note, cute, very short", 0.5, -15, GLASSHOUSE),
         "wake":     ("a little snail startled awake, a cute soft surprised 'oh!' squeak made of two quick rising kalimba notes, gentle, never a buzzer, short", 0.6, -12, GLASSHOUSE),
-        "sizzle":   ("a tiny dewdrop drying in the sun, a very soft little steam 'pfff' with a delicate glass note fading, gentle, short", 0.7, -13, GLASSHOUSE),
+        "sizzle":   ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, GLASSHOUSE),
-        "slip":     ("a little brass mirror sliding back along its wooden rail, a soft quick glide with a felt-soft tick, gentle, very short", 0.5, -12, GLASSHOUSE),
-        "out_of_hearts": ("a sleepy music box winding slowly down, a few soft notes descending and slowing, a greenhouse at dusk going quiet, calm and kind, maybe tomorrow", 1.6, -14, GLASSHOUSE),
+        "slip":     ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:14,11,9"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, GLASSHOUSE),
-        "combo":    ("a single short soft bright glass and music box pluck, one clean note, very short", 0.5, -8, GLASSHOUSE),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling music box twinkle, light and airy", 1.0, -9, GLASSHOUSE),
-        "rainbow":  ("a soft shimmering rising glissando of tiny glass chimes, a little rainbow appearing in a sunbeam, magical and warm, short", 1.0, -10, GLASSHOUSE),
-        "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -10, GLASSHOUSE),
-        "flutter":  ("tiny butterflies fluttering by, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -12, GLASSHOUSE),
-        "chorus":   ("many tiny glass dewdrops chiming together all at once in warm sunlight, a soft bright shimmering chord on music box and glass, magical, short", 1.2, -7, GLASSHOUSE),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -5, GLASSHOUSE),
-        "party":    ("a short cozy celebratory flourish on music box and glass chimes, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -4, GLASSHOUSE),
-        "purr":     ("a sleepy little cat curled up in a warm sunny window purring briefly, soft contented purr, cozy and warm, short", 1.0, -10, COZY),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. rainbow: four quick quiet notes, up and over. flutter: two
+        # quiet notes up, the butterfly. chorus: every drop at once, three
+        # notes all but together.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "rainbow":  ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:6,9,13,9", "cut:0.8"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:7,7,10", "cut:0.6"),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:9,11", "cut:0.4"),
+        "chorus":   ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.04:6,10,13", "cut:0.9"),
+        # The party.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:3,-1,6"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Knight: a cream knight hops in Ls to take the rose king; rose knights
     # answer every hop. A catch slides the board back one move. Re-prompted

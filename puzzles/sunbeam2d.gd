@@ -201,11 +201,11 @@ const SHY_SHAKE := 2.5
 const DRY_TIME := 1.2
 
 # --- the rewards ---
-## The streak: moves in a row that light a new drop. A note up the
-## pentatonic from the second, the "x3" bubble from the third, confetti at 4,
-## 7 and every 5.
+## The streak: moves in a row that light a new drop. A tick a semitone
+## higher from the second, five in all, the "x3" bubble from the third,
+## confetti at 4, 7 and every 5.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -1004,7 +1004,8 @@ func _arrivals(t: float) -> void:
 						_say(tr("SB_SHY_WARN"), Face.Expr.WORRIED)
 			else:
 				_ring_at(_centre(c), t)
-				fx.cue("dew", 1.0 + 0.08 * float(now_wet.size() - 1))
+				# a semitone a drop already lit, five at most
+				fx.cue("dew", pow(2.0, float(mini(now_wet.size() - 1, 5)) / 12.0))
 	_wet = now_wet
 	var tr_: Dictionary = _state.beam
 	var key := str(_state.pos)
@@ -2572,7 +2573,7 @@ func _after_move(before: PackedInt32Array) -> void:
 	elif lost:
 		_break_streak()
 
-## The streak grows -- a note up the pentatonic from the second, the bubble
+## The streak grows -- a tick a semitone higher from the second, the bubble
 ## over the drop from the third, confetti at 4, 7 and every 5 -- and one newly
 ## lit drop in GAG_ODDS gets a gag.
 func _on_drops(cells: Array) -> void:
