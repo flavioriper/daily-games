@@ -1056,9 +1056,9 @@ SETS = {
         "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
         "meadow":   ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:4,8,6,11", "cut:0.9"),
         # Insane: Fairy Rings. The rings grow in after the patch, a long slow
-        # breath of air, and glow at the party, three slow notes up.
+        # breath of air, and glow at the party, three slow notes that rise and settle.
         "rings":    ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.6, -16, BREEZE, "warm:1100", "steep", "ease:0.12", "body:320"),
-        "rings_glow": ("one slow soft note on a kalimba, calm and kind, left to fade", 1.6, -11, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.3:4,8,11"),
+        "rings_glow": ("one slow soft note on a kalimba, calm and kind, left to fade", 1.6, -11, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.35:4,11,8"),
     },
     # Sudoku: numerals in ink on paper panels laid in a wooden tray; a row,
     # column or region that fills lights up in a wave. Re-prompted toward
