@@ -286,7 +286,8 @@ func _build() -> void:
 	_drawer_catch.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_drawer_catch.gui_input.connect(func(event: InputEvent) -> void:
 		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
-			close_drawer())
+			close_drawer()
+			_fx.touch(0.84))
 	add_child(_drawer_catch)
 	_drawer = VBoxContainer.new()
 	_drawer.name = "Drawer"
@@ -316,7 +317,8 @@ func _build() -> void:
 	_card.visible = false
 	_card.gui_input.connect(func(event: InputEvent) -> void:
 		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
-			close_card())
+			close_card()
+			_fx.touch(0.84))
 	_card_slot = CenterContainer.new()
 	_card_slot.name = "Center"
 	_card_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -427,6 +429,14 @@ func _clamp(v: Vector2) -> Vector2:
 func set_far(on: bool) -> void:
 	_far = on
 	(_zoom_b as IconButton).set_icon("plus" if on else "minus")
+
+## A pinch or the wheel: the zoom has no button's click under it, so it ticks
+## when it changes.
+func _zoom_by_hand(on: bool) -> void:
+	if on == _far:
+		return
+	set_far(on)
+	_fx.touch(1.0 if on else 0.84)
 
 ## The view goes round a quarter, clockwise, so that what a tree or a
 ## building hid is seen (the user, 2026-10-10). Only the view: the turn is
@@ -696,9 +706,9 @@ func _on_field_input(event: InputEvent) -> void:
 			else:
 				_release(MOUSE, b.position)
 		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			set_far(true)
+			_zoom_by_hand(true)
 		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_UP:
-			set_far(false)
+			_zoom_by_hand(false)
 	elif event is InputEventMouseMotion and _touches.has(MOUSE):
 		_drag(MOUSE, (event as InputEventMouseMotion).position)
 
@@ -749,10 +759,10 @@ func _drag(finger: int, pos: Vector2) -> void:
 			var all := _touches.values()
 			var ratio := (all[0] as Vector2).distance_to(all[1]) / _pinch
 			if ratio > PINCH and _far:
-				set_far(false)
+				_zoom_by_hand(false)
 				_mode = "done"
 			elif ratio < 1.0 / PINCH and not _far:
-				set_far(true)
+				_zoom_by_hand(true)
 				_mode = "done"
 		return
 	if finger != _finger:
@@ -883,10 +893,13 @@ func _tap(pos: Vector2) -> void:
 				sim.tap(tile)
 			else:
 				open_module(int(h.id))
+				_fx.touch()
 		"market":
 			open_market()
+			_fx.touch()
 		"plus":
 			open_plate(h.plate)
+			_fx.touch()
 		"belt":
 			sim.turn(tile)
 		"ground":

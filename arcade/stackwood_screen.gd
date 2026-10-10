@@ -726,6 +726,7 @@ func _on_field_input(event: InputEvent) -> void:
 	if _paused:
 		if pressed and _end == null and not settings_sheet.is_open():
 			_pause(false)
+			_fx.touch()
 		return
 	if pressed:
 		_dragging = true

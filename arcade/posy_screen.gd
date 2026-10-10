@@ -1037,6 +1037,7 @@ func _on_field_input(event: InputEvent) -> void:
 			_try_swap(a, cell)
 		elif _selected == cell:
 			_selected = Vector2i(-1, -1)
+			_fx.cue("select", 0.84, -4.0)
 		elif _selected.x < 0 and sim.special(cell) != Sim.Sp.NONE:
 			# a special tapped on its own goes off where it stands
 			_hint = []

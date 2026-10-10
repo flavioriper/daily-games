@@ -1967,6 +1967,8 @@ func _release(p: Vector2) -> void:
 			sim.to_basket_now(f)
 			_squash_at[f] = _now()
 			_tell("BAL_TIP_DRAG")
+			# Set down with no flight to end in the sim's "home": its sound.
+			fx.cue("step", 0.85)
 		else:
 			# a tap on the plank: home to the basket
 			state.place(f, State.BASKET)

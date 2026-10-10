@@ -290,6 +290,7 @@ func _build() -> void:
 	side_col.add_child(_caption("SNK_SPIN"))
 	spin_pad = Controls.SpinPad.new()
 	spin_pad.changed.connect(func() -> void: table.tip = spin_pad.tip)
+	spin_pad.pressed.connect(func() -> void: _fx.touch())
 	side_col.add_child(spin_pad)
 
 	table = Table.new()
@@ -300,6 +301,7 @@ func _build() -> void:
 		_hush())
 	table.pulling.connect(_on_pull)
 	table.placed.connect(func() -> void: _fx.buzz(Haptics.TAP))
+	table.grabbed.connect(func() -> void: _fx.touch())
 	table.released.connect(_on_release)
 	row.add_child(table)
 	_fx = Fx2D.new()
@@ -702,7 +704,9 @@ func _on_release(power: float) -> void:
 	if _state != State.AIM:
 		return
 	if power < 0.03:
+		# The cue was taken and let go with no stroke in it.
 		table.power = 0.0
+		_fx.touch(0.84)
 		return
 	_shoot(table.aim_dir, _speed_for(power), spin_pad.tip)
 

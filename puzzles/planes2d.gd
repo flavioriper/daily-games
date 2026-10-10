@@ -2500,6 +2500,7 @@ func _wake(before: Dictionary, from: Vector2i, t: float) -> void:
 ## move counted, and no mark left on the board once the band has gone.
 func _refuse_tap(i: int, blocked: int, t: float) -> void:
 	_say(tr("PP_REFUSE"), Face.Expr.PUZZLED)
+	fx.cue("refuse")
 	if Motion.reduce:
 		return
 	var cells: Array[Vector2i] = []
@@ -2513,7 +2514,6 @@ func _refuse_tap(i: int, blocked: int, t: float) -> void:
 		_shiver[blocked] = t
 	_nudge[i] = t
 	_busy_for(maxf(BLOCK_FLASH, Motion.NUDGE_LAG + Motion.NUDGE_TIME))
-	fx.cue("refuse")
 
 # --- the sprout's line ---
 

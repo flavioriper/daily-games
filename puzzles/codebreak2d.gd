@@ -2122,6 +2122,8 @@ func _gui_input(event: InputEvent) -> void:
 			_target = was
 	else:
 		_target = -1 if _target == was else was
+		# No friend moved, so no cue of the board's: the tick, lower let go.
+		fx.touch(1.0 if _target == was else 0.84)
 	_paint_sockets(g)
 
 ## The active row's seat under a board-local point, or -1.

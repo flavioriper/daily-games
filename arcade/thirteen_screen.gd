@@ -1210,6 +1210,9 @@ func _play_events() -> void:
 				if int(ev.n) >= 2:
 					_fx.cue("short")
 					_show_banner("", tr("LT_SHORT"), 0.6)
+				else:
+					# one pebble picked and let go again
+					_fx.cue("unselect", _chain_pitch(0))
 			"merge":
 				_on_merge(ev)
 			"settle":

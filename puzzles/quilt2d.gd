@@ -2205,6 +2205,10 @@ func _gui_input(event: InputEvent) -> void:
 			_grab(event.position, finger)
 		elif not _drag.is_empty() and finger == int(_drag.get("finger", -1)):
 			if event is InputEventScreenTouch and event.canceled:
+				# A lifted patch going back is heard as any patch set down is;
+				# Undo, Hint and Reset cancel too and have their own sounds.
+				if not _was_tap():
+					fx.cue("place" if int(_drag["from"]) >= 0 else "lift")
 				_cancel_drag()
 			else:
 				_drag["point"] = event.position
@@ -2283,6 +2287,7 @@ func _grab(local: Vector2, finger := -1) -> void:
 		# A hint's patch is a given: it is not the player's to move.
 		_refused = {"patch": p, "at": _now()}
 		_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
+		fx.cue("refused")
 		_speak(tr("QL_HINTED_FAST"), Face.Expr.WORRIED)
 		_refresh()
 		return

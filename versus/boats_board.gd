@@ -399,6 +399,9 @@ func _gui_input(event: InputEvent) -> void:
 		var q := _square_at(1, at)
 		var c := Rules.cell(q.x, q.y) if _on_grid(q) else -1
 		if release:
+			if c < 0 and _over >= 0 and slate.marks[_over] == Rules.UNKNOWN:
+				# let go off the pond: the square that was held is given up
+				_cue("tick", 0.84)
 			_over = -1
 			if c >= 0:
 				if slate.marks[c] == Rules.UNKNOWN:

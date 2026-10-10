@@ -1978,6 +1978,7 @@ func _tap(at: Vector2i) -> void:
 		for i: int in over:
 			_wob[i] = t
 		_busy_for(WOB_TIME)
+		fx.touch()
 		_say(tr("PW_TURN"), Face.Expr.HAPPY)
 	_refresh()
 

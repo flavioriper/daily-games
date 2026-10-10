@@ -1844,6 +1844,9 @@ func _gui_input(event: InputEvent) -> void:
 				# the way out of a trail without spending a wish.
 				_release(_off_field(event.position))
 				accept_event()
+			elif _lamp_on:
+				# The lantern put out with no trail in hand: its own let-go tick.
+				fx.cue("select", LET_GO_PITCH)
 			_lamp_off()
 	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and _lamp_on and _trail.is_empty():
 		var near := _near_cell(event.position)
@@ -1908,6 +1911,9 @@ func _take(cell: Vector2i, grew := true) -> void:
 func _tick() -> void:
 	fx.cue("select", minf(1.0 + 0.05 * float(_trail.size() - 1), 1.33))
 
+## The same tick as a trail or the lantern is put down.
+const LET_GO_PITCH := 0.84
+
 ## Side-adjacent, never diagonal. The bending is the whole puzzle, and a
 ## diagonal step would make a straight line of it.
 static func _adjacent(a: Vector2i, b: Vector2i) -> bool:
@@ -1929,8 +1935,10 @@ func _release(cancel := false) -> void:
 		if path.size() > 1 and not Motion.reduce:
 			_ghost = {"path": path, "at": t}
 			_busy_for(BEAM_TIME)
-		if not cancel:
-			_missed(path, t)
+		# A trail that only unwinds is still a thing let go: the trace's tick, a
+		# little lower, unless the seed blown off already answered.
+		if cancel or not _missed(path, t):
+			fx.cue("select", LET_GO_PITCH)
 		_refresh()
 		return
 	_found_at[i] = t
@@ -1955,8 +1963,8 @@ func _release(cancel := false) -> void:
 ## unwinds). On Hard and Insane a trail that could have been a word -- as
 ## long as one still hiding -- and was never tried blows a seed off the
 ## dandelion; the last seed is the card. A trail tried before is free, and
-## the sprout says so.
-func _missed(path: Array, t: float) -> void:
+## the sprout says so. True when a seed went, which has its own sound.
+func _missed(path: Array, t: float) -> bool:
 	var plausible: bool = _state.could_be(path)
 	var again: bool = plausible and _state.tried.has(State._key(path))
 	var cost: bool = _state.miss(path)
@@ -1964,9 +1972,9 @@ func _missed(path: Array, t: float) -> void:
 		_streak = 0
 	if again and _state.counts_wishes():
 		_say(tr("WT_TRIED"), Face.Expr.HAPPY)
-		return
+		return false
 	if not cost:
-		return
+		return false
 	_miss_path = path
 	_miss_at = t
 	_blown[_state.misses - 1] = t
@@ -1984,6 +1992,7 @@ func _missed(path: Array, t: float) -> void:
 		_say(tr("WT_WISHES_ONE") if left == 1 else tr("WT_WISHES_N") % left, Face.Expr.WORRIED)
 	else:
 		_say(tr("WT_WISH_GONE") % left, Face.Expr.HAPPY)
+	return true
 
 # --- the sprout's line ---
 

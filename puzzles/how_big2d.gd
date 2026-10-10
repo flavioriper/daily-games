@@ -810,6 +810,8 @@ func _press(at: Vector2) -> void:
 	_drag_from = at
 	_drag_px = _px
 	_grip_at = _now()
+	# The answer is taken hold of and let go aloud; the notches are the drag's.
+	fx.touch()
 	_busy_for(Motion.PRESS_TIME)
 	_redraw()
 
@@ -818,6 +820,7 @@ func _release() -> void:
 		return
 	_drag = false
 	_grip_up = _now()
+	fx.touch(0.84)
 	_busy_for(Motion.RELEASE_TIME)
 	_redraw()
 	focus_changed.emit()

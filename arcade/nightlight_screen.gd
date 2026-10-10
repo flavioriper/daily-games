@@ -600,7 +600,10 @@ func _dialog(called: String, width: float, out: Callable) -> Array:
 	scrim.visible = false
 	scrim.gui_input.connect(func(event: InputEvent) -> void:
 		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
-			out.call())
+			out.call()
+			# heard when it shut the card (the pick's stays up)
+			if not scrim.visible:
+				_fx.touch(0.84))
 	var center := CenterContainer.new()
 	center.name = "Center"
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE

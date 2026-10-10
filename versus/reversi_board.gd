@@ -600,6 +600,9 @@ func _gui_input(event: InputEvent) -> void:
 		if not _down:
 			return
 		_down = false
+		if cell < 0 and _over >= 0 and _fx != null:
+			# let go off the board: the square that was held is given up
+			_fx.touch(0.84)
 		_over = -1
 		if cell >= 0:
 			if rules.can(cell):
@@ -619,6 +622,8 @@ func _gui_input(event: InputEvent) -> void:
 	if cell != _over:
 		_over = cell
 		_busy(0.2)
+		if press and cell >= 0 and _fx != null:
+			_fx.touch()
 	queue_redraw()
 
 # --- drawing ---

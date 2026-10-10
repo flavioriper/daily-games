@@ -2811,6 +2811,8 @@ func _release(at := Vector2(-1.0e9, -1.0e9)) -> void:
 	if from != State.NOWHERE:
 		if dir == Vector2i.ZERO:
 			_read_islet(from)
+			# The number read out is the tap's whole answer, and it is heard.
+			fx.touch()
 			_refresh()
 			return
 		if lane == "":

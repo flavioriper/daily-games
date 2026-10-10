@@ -588,7 +588,8 @@ func tap(card: int) -> void:
 	play_events()
 
 ## The carried cards let go: onto the place they cover most of, if it is one
-## of theirs; over a place that is not, a shake; else back without a word.
+## of theirs; over a place that is not, a shake; else back where they lay,
+## set down a little lower.
 func _set_down() -> void:
 	var head: int = _carry[0]
 	var mine := Rect2(_at[head], card_size())
@@ -624,6 +625,8 @@ func _set_down() -> void:
 		play_events()
 	elif wrong:
 		_refuse(head)
+	else:
+		said.emit("place", 0.84)
 
 static func _overlap(a: Rect2, b: Rect2) -> float:
 	var i := a.intersection(b)

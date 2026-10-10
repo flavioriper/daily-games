@@ -13,6 +13,8 @@ const Pal = preload("res://core/palette.gd")
 ## cushion. The dot never leaves the miscue limit.
 class SpinPad extends Control:
 	signal changed
+	## A finger came down on the pad (once a touch, where `changed` is every move of it).
+	signal pressed
 
 	var tip := Vector2.ZERO
 	var enabled := true
@@ -29,12 +31,15 @@ class SpinPad extends Control:
 		if not enabled:
 			return
 		var at := Vector2.INF
+		var down := false
 		if event is InputEventScreenTouch and event.pressed:
 			at = event.position
+			down = true
 		elif event is InputEventScreenDrag:
 			at = event.position
 		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			at = event.position
+			down = true
 		elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			at = event.position
 		if at == Vector2.INF:
@@ -50,6 +55,8 @@ class SpinPad extends Control:
 		tip = t
 		queue_redraw()
 		changed.emit()
+		if down:
+			pressed.emit()
 
 	func _r() -> float:
 		return minf(size.x, size.y) * 0.42

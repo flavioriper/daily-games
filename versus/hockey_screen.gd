@@ -211,7 +211,9 @@ func _build() -> void:
 	table = Table.new()
 	table.name = "Table"
 	table.hands = [true, two_players()]
-	table.touched.connect(func(_seat: int) -> void: _hush())
+	table.touched.connect(func(_seat: int) -> void:
+		_hush()
+		_fx.touch())
 	inset.add_child(table)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS

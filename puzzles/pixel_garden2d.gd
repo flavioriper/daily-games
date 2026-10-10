@@ -2053,6 +2053,8 @@ func _release() -> void:
 		_peek = false
 		_peek_at = _now()
 		_busy_for(PEEK_TIME)
+		# The card set back down: its own sound, a little lower.
+		fx.cue("peek", 0.84)
 		queue_redraw()
 		return
 	if not _stroking:

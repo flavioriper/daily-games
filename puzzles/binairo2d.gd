@@ -1252,6 +1252,11 @@ func _tap(r: int, c: int) -> void:
 	if state.given[r][c]:
 		_hop(r, c, DIP, Motion.HOP_TIME)
 		_focus(r, c)
+		# Its lines are picked out and it has no cue of its own: the tick,
+		# unless moving on from the held tile has just been heard (a blush,
+		# a heart lost).
+		if Fx2D.UiSound.board_frame != Engine.get_process_frames():
+			fx.touch()
 		return
 	# A brush paints its symbol; on a tile that already shows it, the tap
 	# cycles on, so a second tap on a sun makes a moon whatever is armed.

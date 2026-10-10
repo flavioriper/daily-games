@@ -1997,6 +1997,9 @@ func _press(c: int) -> void:
 		else:
 			_press_at = t
 			_busy_for(PRESS_TIME)
+			# The head taken hold of: a tick, and the stroke's knock is still
+			# its release's.
+			fx.touch()
 			_refresh()
 	else:
 		_say(tr("CP_FROM_HEAD"), Face.Expr.HAPPY)

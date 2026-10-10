@@ -577,6 +577,7 @@ func _on_field_input(event: InputEvent) -> void:
 		if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
 			if _end == null and not settings_sheet.is_open():
 				_pause(false)
+				_fx.touch()
 		return
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch

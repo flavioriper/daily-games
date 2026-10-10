@@ -1771,6 +1771,7 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if c == _state.you:
 			_bump_at = _now()
+			fx.touch()
 			_say(tr(_tips()[0]), Face.Expr.HAPPY)
 			_refresh()
 		else:

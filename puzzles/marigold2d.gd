@@ -3669,6 +3669,8 @@ func _press(local: Vector2) -> void:
 	if _phase != "aim" or _state.seeds <= 0 or not _think.is_empty():
 		return
 	_aiming = true
+	# The aim is taken up: one tick, and none as it turns.
+	fx.touch()
 	_aim_at(local)
 
 ## The aim turns toward the finger; above the sun it lies nearly level.
@@ -3695,6 +3697,7 @@ func _release(local: Vector2) -> void:
 		return
 	_aiming = false
 	if local.y < BAND * 0.8:
+		fx.touch(0.84)
 		return
 	_shoot()
 

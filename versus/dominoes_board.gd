@@ -933,6 +933,8 @@ func _drop(tile: int) -> void:
 		refused.emit("fit")
 	# not laid after all: home
 	if rules.hands[player].has(tile):
+		if end < 0:
+			_cue("place", 0.84)
 		_place_all(false)
 	_touch()
 
@@ -980,6 +982,7 @@ func _tap(at: Vector2) -> void:
 		return
 	if _picked >= 0:
 		_picked = -1
+		_cue("lift", 0.84)
 		_place_all(false)
 		_touch()
 

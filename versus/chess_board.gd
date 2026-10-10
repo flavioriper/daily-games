@@ -146,6 +146,8 @@ var _mood := ""
 var _press_at := Vector2.ZERO
 var _pressing := false
 var _dragging := false
+## The press landed on the piece already picked, so no lift was heard for it.
+var _quiet_press := false
 var _drag_cell := Vector2.ZERO
 var _hover := -1
 var _picker: PackedInt32Array = PackedInt32Array()
@@ -681,7 +683,9 @@ func _on_press(p: Vector2) -> void:
 		if sq == _selected:
 			_pressing = true
 			_press_at = p
+			_quiet_press = true
 			return
+		_quiet_press = false
 		_select(sq)
 		if _selected >= 0:
 			_pressing = true
@@ -696,6 +700,9 @@ func _on_drag(p: Vector2) -> void:
 		return
 	if not _dragging and p.distance_to(_press_at) > DRAG_START:
 		_dragging = true
+		if _quiet_press:
+			_quiet_press = false
+			_cue("lift")
 	if _dragging:
 		_drag_cell = cell_at(p - Vector2(0.0, (skin.foot_drop() - 0.35) * cell))
 		var over := sq_at(p)
@@ -715,6 +722,7 @@ func _on_release(p: Vector2) -> void:
 		_choose(over)
 		return
 	# Dropped nowhere it can go: back to its square.
+	_cue("place", 0.84)
 	var a: Actor = _at_sq.get(_selected)
 	_dragging = false
 	_hover = -1
@@ -760,6 +768,8 @@ func _choose(to: int) -> void:
 		_picker = options
 		_hover = -1
 		_marks_dirty = true
+		if _fx != null:
+			_fx.touch()
 		if _dragging:
 			var a: Actor = _at_sq.get(_selected)
 			_dragging = false
@@ -789,6 +799,7 @@ func _pick_promotion(p: Vector2) -> void:
 			chosen.emit(m)
 			return
 	# Anywhere else puts the pawn back.
+	_cue("lift", 0.8)
 	var from := _selected
 	deselect()
 	var a: Actor = _at_sq.get(from)

@@ -543,6 +543,7 @@ func _on_field_input(event: InputEvent) -> void:
 	if _paused:
 		if _end == null and not settings_sheet.is_open():
 			_pause(false)
+			_fx.touch()
 		return
 	tap(unit(at))
 

@@ -155,6 +155,7 @@ var fx: Node2D
 var _phase := "aim"
 var _acc := 0.0
 var _aiming := false
+var _drawn := false   # this press has pulled an aim out
 var _from := Vector2.ZERO
 var _aim := -PI * 0.5
 var _power := 0.0
@@ -1267,6 +1268,7 @@ func _press(local: Vector2) -> void:
 	_from = local
 	_power = 0.0
 	_snapped = false
+	_drawn = false
 
 ## The pull back from where the finger went down: the ball goes the other
 ## way, harder the further it is pulled.
@@ -1292,14 +1294,24 @@ func _pull(local: Vector2) -> void:
 				fx.buzz(Haptics.TICK)
 	_aim = a
 	_power = u
+	# The aim ticks once as it is first pulled out, not as it turns.
+	if not _drawn:
+		_drawn = true
+		fx.touch()
 
 ## Let go to putt; let go with the pull put back to put the aim down.
 func _release(local: Vector2) -> void:
 	if not _aiming:
 		return
+	# (An aim first pulled out by the letting go has the putt for its sound.)
+	var drawn := _drawn
+	_drawn = true
 	_pull(local)
 	_aiming = false
 	if _power <= 0.0:
+		# An aim pulled out and put back down is let go aloud.
+		if drawn:
+			fx.touch(0.84)
 		return
 	_putt()
 

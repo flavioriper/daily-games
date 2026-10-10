@@ -600,6 +600,9 @@ func _gui_input(event: InputEvent) -> void:
 		if not _down:
 			return
 		_down = false
+		if col < 0 and _over >= 0:
+			# let go off the rack: the press is given up with no drop
+			_cue("tick", 0.84)
 		_over = -1
 		if col >= 0:
 			if rules.can(col):
@@ -621,10 +624,15 @@ func _gui_input(event: InputEvent) -> void:
 	if col != _over:
 		_over = col
 		if col >= 0:
+			# A press ticks too when it sends the penny to another column; one
+			# on the column it already hangs over is answered by the drop.
+			var shifts := _hover_to != float(col)
 			_hover_to = float(col)
 			if not press:
 				_cue("tick", randf_range(TICK_VARY.x, TICK_VARY.y))
 				moved.emit()
+			elif shifts:
+				_cue("tick", randf_range(TICK_VARY.x, TICK_VARY.y))
 		_busy(0.3)
 	_touch()
 

@@ -20,6 +20,9 @@ extends Control
 
 signal aimed
 signal placed
+## The hand took hold of something: the ball in hand, the cue to draw it
+## back, or the aim as it first swings (once a press).
+signal grabbed
 signal pulling
 signal released(power: float)
 
@@ -131,6 +134,8 @@ var _stroke_from := 0.0
 var _stroke_done: Callable
 var _sinking: Array = []
 var _drag := ""
+## This press has already swung the aim and said so.
+var _swung := false
 ## Where the cue was picked up, px, for measuring the draw-back from.
 var _grab_at := Vector2.ZERO
 ## The full draw for this pick-up, px (0: the default reach).
@@ -347,9 +352,12 @@ func _gui_input(event: InputEvent) -> void:
 	var cue: Vector2 = sim.pos[Sim.CUE]
 	if press:
 		_drag = "aim"
+		_swung = false
 		if in_hand and px(cue).distance_to(at) < Sim.R * ppm * 3.2:
 			_drag = "ball"
+			grabbed.emit()
 		elif _on_cue(at):
+			grabbed.emit()
 			_drag = "pull"
 			_grab_at = at
 			_reach = clampf(_room(at, -aim_dir), REACH_MIN, maxf(PULL * ppm, REACH))
@@ -370,6 +378,9 @@ func _gui_input(event: InputEvent) -> void:
 			aim_dir = d.normalized()
 			hint_dir = Vector2.ZERO
 			aimed.emit()
+			if not _swung:
+				_swung = true
+				grabbed.emit()
 
 ## Whether a press lands on the cue lying behind the ball.
 func _on_cue(at: Vector2) -> bool:
