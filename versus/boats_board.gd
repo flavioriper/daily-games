@@ -83,7 +83,7 @@ const SPLASH := 0.55
 const SWAP := 0.55
 ## The cues that are notches of wood, and how far each strays at random.
 const TICK_VARY := Vector2(0.94, 1.06)
-const VARIED := ["tick", "lift", "place", "turn", "refused", "miss", "hit", "splash", "knock"]
+const VARIED := ["tick", "lift", "place", "turn", "refused", "miss", "hit", "splash", "knock", "throw"]
 const LETTERS := "ABCDEFGHIJ"
 
 var pond: RefCounted

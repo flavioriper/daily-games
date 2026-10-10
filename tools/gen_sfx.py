@@ -2985,8 +2985,14 @@ SETS = {
         "fold":     ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
         # A pebble on its way: yours a puff of air, Hedgehogs' gust; the
         # other player's, coming down, its breath (its reset).
-        "throw":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
-        "lob":      ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # The user, 2026-10-10: "replace the toy boats landing hit slide
+        # effect, it's terrible". A pebble in the air was a breath of air
+        # (Hedgehogs' gust and breath) before every landing; it is a notch
+        # now, as rule 4 has it for a slide that does not pass: the flick of
+        # the hand letting go (lift's take three steps up), and for theirs
+        # two light notches coming down. Never `--new`: the takes are lift's.
+        "throw":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:3"),
+        "lob":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.24", "body:320", "tight", "notes:0.11:2,-1"),
         # Yours, wide: lift's take, one low notch.
         "miss":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-4", "before:2200:3"),
         # Theirs, wide of your boats: place's, three steps under it and duller.
