@@ -570,7 +570,24 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   `Motion.bump_scale`) with a puff of felt. Under reduce motion a tile is
   turned at once, nothing swells and the cup does not steam. The table
   redraws every frame while it is looked at (the steam), except `still` and
-  under reduce motion. No faces on the tiles: pips are marks. **Every tile is a sprite for the whole game** (a place, a size,
+  under reduce motion. No faces on the tiles: pips are marks. **The
+  moments** (2026-10-10, the user, having seen the redress: "design is
+  great but I want more animations for example for the pieces with same
+  face touching ... more key moments animations"), all in the over mesh or
+  on the tiles' own transforms, so no draw call more: **a match** (`_kiss`
+  when a tile lands: the two halves that meet are found by `_halves`, their
+  pips swell `KISS_POP` 0.42 over the tiles, light in the number's colour
+  spreads from the seam and six soft motes of it drift off for `KISS_TIME`
+  0.7 s -- round light, no stars: the landing's puff of felt went for it --
+  and the tile laid against answers with a small swell; a blank's light is
+  the lamp's); **a double** is framed in brass as it lands; **the far hand
+  shown** turns a tile every `REVEAL_STEP` 0.07 s along the tray
+  (`Sprite.hold`); **a hand the player took**: the line hops from its last
+  tile back to the first, `WAVE_STEP` 0.06 s apart (`hop_at`, in `reveal`);
+  **a blocked hand**: the whole line shivers once (`_lock_at`). None of them
+  under reduce motion. `tests/_shot_dominoes.gd` shoots `kiss`,
+  `kiss_double`, `wave` and `locked` when a game comes to them; `locked`
+  has not come up in a run, so the shiver is unseen. **Every tile is a sprite for the whole game** (a place, a size,
   a lie, face up or not) and `sync()` reads the rules and gives each the
   place it now belongs in; the tiles go there by themselves, and nothing
   else animates a move, a draw, a deal or the line being refitted. A tile

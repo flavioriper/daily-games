@@ -126,6 +126,23 @@ const TEA_LIT := Color("d39a5e")
 ## one that lands on the line swells by `LAND_BUMP` and settles.
 const TURN := 0.24
 const LAND_BUMP := 0.07
+## The moments. A tile laid against its match: the two halves' pips swell by
+## `KISS_POP` over `KISS_POP_TIME`, light the number's colour spreads from
+## the seam and motes of it drift off for `KISS_TIME`, and the tile it was
+## laid against answers with a smaller swell; a double is framed in brass
+## for as long. The far hand shown: one tile turned every `REVEAL_STEP`. A
+## hand that is the player's: the line hops from its last tile back, a tile
+## every `WAVE_STEP`. A hand blocked: the whole line shivers.
+const KISS_TIME := 0.7
+const KISS_POP := 0.42
+const KISS_POP_TIME := 0.34
+const KISS_MOTES := 6
+const ANSWER_BUMP := 0.04
+const REVEAL_STEP := 0.07
+const WAVE_STEP := 0.06
+const WAVE_HOP := -16.0
+const LOCK_PX := 4.0
+const LOCK_TIME := 0.4
 
 ## How fast a tile closes on its place (the share left falls by e every
 ## 1/SPEED s), the look at a landing before the game goes on, and the deal.
@@ -154,6 +171,11 @@ class Sprite:
 	## How far turned face up, 0 to 1, and when it last landed on the line.
 	var face := 0.0
 	var landed := -10.0
+	## How long yet before it turns, when it answered a tile laid against it,
+	## and when its hop in the line's wave begins.
+	var hold := 0.0
+	var answered := -10.0
+	var hop_at := -10.0
 
 var rules: RefCounted
 ## The rules' side the player is: its tiles lie along the bottom.
@@ -226,6 +248,15 @@ var _mood := ""
 var _down := false
 var _shake_tile := -1
 var _shake_at := -10.0
+## The last match: when, the seam, the number, the two halves whose pips
+## swell ({c, upright} each), and the double framed in brass (-1 for none).
+var _kiss_at := -10.0
+var _kiss_c := Vector2.ZERO
+var _kiss_n := 0
+var _kiss_halves: Array = []
+var _kiss_double := -1
+## When the line last shivered, blocked.
+var _lock_at := -10.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still or deaf else Control.MOUSE_FILTER_STOP
@@ -262,6 +293,12 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 		sp.fly = false
 		sp.wait = 0.0
 		sp.land = false
+		sp.hold = 0.0
+		sp.hop_at = -10.0
+		sp.answered = -10.0
+		sp.landed = -10.0
+	_kiss_at = -10.0
+	_lock_at = -10.0
 	_place_all(true)
 	_deal_due = false
 	if enter and not still:
@@ -369,8 +406,67 @@ func set_must_draw(on: bool) -> void:
 func reveal(on := true) -> void:
 	_reveal = on
 	_place_all(false)
-	_busy(0.4)
+	var theirs: PackedInt32Array = rules.hands[1 - player]
+	if not Motion.reduce:
+		# turned one after another along the tray
+		for i in theirs.size():
+			_sprites[theirs[i]].hold = REVEAL_STEP * i
+		if on and rules.hand_over and not still:
+			if rules.hand_blocked:
+				_lock_at = _t
+			if rules.hand_winner == player:
+				# the line hops, from the tile laid last back to the first
+				var n: int = rules.plays.size()
+				for i in n:
+					_sprites[rules.plays[n - 1 - i].x].hop_at = _t + 0.3 + WAVE_STEP * i
+				_busy(0.3 + WAVE_STEP * n + Motion.HOP_TIME)
+	_busy(0.4 + REVEAL_STEP * theirs.size() + TURN)
 	_touch()
+
+## The two halves of a tile lying at `c` the way `o` says: [{c, n, upright}].
+func _halves(tile: int, c: Vector2, o: int) -> Array:
+	var upright := o % 2 == 1
+	var along := (Vector2(0.0, 1.0) if upright else Vector2(1.0, 0.0)) * _unit * 0.5
+	var first: int = Rules.LO[tile] if o < 2 else Rules.HI[tile]
+	var second: int = Rules.HI[tile] if o < 2 else Rules.LO[tile]
+	return [{"c": c - along, "n": first, "upright": upright}, {"c": c + along, "n": second, "upright": upright}]
+
+## `tile` has landed on the line: the halves that meet are found and lit.
+func _kiss(tile: int) -> void:
+	if Motion.reduce or still:
+		return
+	var at := -1
+	for i in rules.plays.size():
+		if rules.plays[i].x == tile:
+			at = i
+	if at < 0:
+		return
+	_kiss_double = tile if Rules.is_double(tile) else -1
+	_kiss_halves = []
+	_kiss_at = _t
+	_busy(KISS_TIME)
+	var sp := _sprites[tile]
+	_kiss_c = sp.to
+	if at == 0:
+		# the first tile of a hand meets nothing
+		_kiss_n = -1
+		return
+	var p: Vector3i = rules.plays[at]
+	var mate := 0
+	for j in at:
+		if rules.plays[j].y == p.y:
+			mate = j
+	var other := _sprites[rules.plays[mate].x]
+	_kiss_n = p.z
+	var best := INF
+	for a: Dictionary in _halves(tile, sp.to, sp.o):
+		for b: Dictionary in _halves(rules.plays[mate].x, other.to, other.o):
+			var d: float = Vector2(a.c).distance_squared_to(b.c)
+			if a.n == p.z and b.n == p.z and d < best:
+				best = d
+				_kiss_halves = [a, b]
+				_kiss_c = (Vector2(a.c) + Vector2(b.c)) * 0.5
+	other.answered = _t
 
 ## The game is over ("won", "lost", "draw"): the far hand is turned up.
 func finish(outcome: String) -> void:
@@ -574,7 +670,12 @@ func _process(delta: float) -> void:
 		var face := 1.0 if sp.up and sp.wait <= 0.0 else 0.0
 		if sp.face != face:
 			live = true
-			sp.face = face if Motion.reduce else move_toward(sp.face, face, delta / TURN)
+			if sp.hold > 0.0 and not Motion.reduce:
+				sp.hold -= delta
+			else:
+				sp.face = face if Motion.reduce else move_toward(sp.face, face, delta / TURN)
+		else:
+			sp.hold = 0.0
 		if t == _drag:
 			# under a finger: it keeps up, and is not a move to wait for
 			live = true
@@ -599,8 +700,7 @@ func _process(delta: float) -> void:
 					sp.landed = _t
 					_busy(Motion.BUMP_TIME)
 					_cue("place")
-					if _fx != null:
-						_fx.puff(sp.to * _k + Vector2(0.0, _half_size(sp.o).y * _unit * _k), FELT_LIT, 3)
+					_kiss(t)
 					if t == _rap_due:
 						_start_rap(t)
 				if sp.fly:
@@ -844,7 +944,11 @@ func _draw() -> void:
 			# turning over: squashed across to nothing, and the other side out
 			var up := sp.face > 0.5
 			var across := absf(cos(PI * sp.face))
-			var s := sp.s * (1.0 + 0.08 * sin(PI * sp.face)) * Motion.bump_scale(_t - sp.landed, LAND_BUMP)
+			var s := sp.s * (1.0 + 0.08 * sin(PI * sp.face)) * Motion.bump_scale(_t - sp.landed, LAND_BUMP) \
+				* Motion.bump_scale(_t - sp.answered, ANSWER_BUMP)
+			if sp.zone == Zone.LINE:
+				at.y += Motion.hop_lift(_t - sp.hop_at, WAVE_HOP)
+				at.x += Motion.shiver_offset(_t - _lock_at, LOCK_PX, LOCK_TIME)
 			if t == _rap:
 				var lift := _rap_lift()
 				at.y -= lift * RAP_RISE * _unit
@@ -894,8 +998,9 @@ static func _build_tile(tile: int, o: int) -> ArrayMesh:
 
 ## A half's pips about `c`: the die's patterns, the six in two lines along
 ## the tile.
-static func _pips(b: Face.Builder, c: Vector2, n: int, upright: bool) -> void:
-	var g := 25.0
+static func _pips(b: Face.Builder, c: Vector2, n: int, upright: bool, k := 1.0, grow := 1.0) -> void:
+	var g := 25.0 * k
+	var r := k * grow
 	var spots: Array = []
 	if n % 2 == 1:
 		spots.append(Vector2.ZERO)
@@ -910,9 +1015,9 @@ static func _pips(b: Face.Builder, c: Vector2, n: int, upright: bool) -> void:
 		spots.append(Vector2(g, 0.0))
 	for p: Vector2 in spots:
 		var q := p if upright else Vector2(p.y, -p.x)
-		b.disc(c + q + Vector2(0.0, 1.5), 10.0, Color(1, 1, 1, 0.6))
-		b.disc(c + q, 9.5, PIPS[n])
-		b.disc(c + q + Vector2(-3.0, -3.0), 2.6, Color(1, 1, 1, 0.32))
+		b.disc(c + q + Vector2(0.0, 1.5) * r, 10.0 * r, Color(1, 1, 1, 0.6))
+		b.disc(c + q, 9.5 * r, PIPS[n])
+		b.disc(c + q + Vector2(-3.0, -3.0) * r, 2.6 * r, Color(1, 1, 1, 0.32))
 
 ## A leaf from its foot to its tip, `bulge` wide at the middle.
 static func _leaf(b: Face.Builder, foot: Vector2, tip: Vector2, bulge: float, col: Color) -> void:
@@ -1029,6 +1134,7 @@ func _build_over() -> ArrayMesh:
 			var u := fposmod(_t * 0.22 + i / 3.0, 1.0)
 			var at := cup + Vector2(sin(_t * 0.9 + i * 2.1) * 7.0 * u, -8.0 - 46.0 * u)
 			Scenery.soft_disc(b, at, 11.0 + 12.0 * u, 11.0 + 12.0 * u, Color(1, 1, 1, 0.34 * sin(PI * u)))
+		_light_kiss(b)
 	if _picked >= 0 and interactive:
 		var sp := _sprites[_picked]
 		_frame(b, sp.pos, _half_size(sp.o) * H * sp.s, 3.0, 6.0, HALO)
@@ -1062,6 +1168,36 @@ func _build_over() -> ArrayMesh:
 	if _must_draw and _hint != Rules.DRAW:
 		_light_stock(b, HALO, beat)
 	return null if b.verts.is_empty() else b.mesh()
+
+## The match just made: light in the number's colour spreading from the
+## seam, motes of it drifting off, the two halves' pips swollen over their
+## tiles, and a double framed in brass.
+func _light_kiss(b: Face.Builder) -> void:
+	var since := _t - _kiss_at
+	if since < 0.0 or since >= KISS_TIME:
+		return
+	var u := since / KISS_TIME
+	var out := 1.0 - (1.0 - u) * (1.0 - u)
+	if _kiss_double >= 0:
+		var sp := _sprites[_kiss_double]
+		_frame(b, sp.to, _half_size(sp.o) * _unit, 2.0 + 10.0 * out, 5.0, Color(BRASS, 0.9 * (1.0 - u)))
+	if _kiss_n < 0:
+		return
+	# a blank has no colour of its own: its light is the lamp's
+	var col: Color = HALO if _kiss_n == 0 else (PIPS[_kiss_n] as Color).lightened(0.25)
+	var reach := _unit * (0.8 + 1.3 * out)
+	Scenery.soft_disc(b, _kiss_c, reach, reach, Color(col.lightened(0.2), 0.9 * (1.0 - u)))
+	Scenery.soft_disc(b, _kiss_c, reach * 0.5, reach * 0.5, Color(HALO, 0.7 * (1.0 - u)))
+	for i in KISS_MOTES:
+		var a := TAU * i / KISS_MOTES + _kiss_at * 3.0
+		var at := _kiss_c + Vector2(cos(a), sin(a) * 0.8) * _unit * (0.5 + 1.3 * out) + Vector2(0.0, -10.0 * u)
+		var r := _unit * 0.26 * (1.0 - 0.5 * u)
+		Scenery.soft_disc(b, at, r, r, Color(col.lightened(0.45), 1.0 - u))
+		Scenery.soft_disc(b, at, r * 0.5, r * 0.5, Color(HALO, 1.0 - u))
+	var pop := Motion.bump_scale(since, KISS_POP, KISS_POP_TIME)
+	if pop > 1.0:
+		for h: Dictionary in _kiss_halves:
+			_pips(b, h.c, h.n, h.upright, _unit / H, pop)
 
 ## A frame round the boneyard's tile that would be drawn.
 func _light_stock(b: Face.Builder, col: Color, beat: float) -> void:

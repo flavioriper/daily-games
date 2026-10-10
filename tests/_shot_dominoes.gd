@@ -14,6 +14,9 @@ extends SceneTree
 ## tile is let go on the end it does not fit and on nothing. Shots:
 ## carry_lay, carry_wrong, carry_nowhere (the tile under the finger),
 ## rap (the player's last tile off the felt between its two raps),
+## kiss (a match lit at its seam), kiss_double (a double framed in brass),
+## wave (the line hopping after a hand the player took), locked (the line
+## shivering, blocked) -- each when the game comes to it,
 ## deal (tiles in the air), start, laid, picked (two places lit), hint, draw
 ## (the boneyard lit), refused, long (the line at its longest in the first
 ## hand), hand (a finished hand lying open), end. After the first hand the
@@ -124,6 +127,23 @@ func _process(delta: float) -> bool:
 		return false
 	if _board._rap >= 0 and _board._rap_lift() > 0.7:
 		_shot("rap")
+	# the moments: a match lit (and a double's), the line's wave, a blocked line
+	var kissed: float = _board._t - _board._kiss_at
+	if kissed > 0.1 and kissed < 0.3:
+		if _board._kiss_n > 0:
+			_shot("kiss")
+		if _board._kiss_double >= 0:
+			_shot("kiss_double")
+	if _board._t - _board._lock_at > 0.05 and _board._t - _board._lock_at < 0.3:
+		_shot("locked")
+	if not _done.has("wave") and _board.rules != null:
+		var hopping := 0
+		for p: Vector3i in _board.rules.plays:
+			var since: float = _board._t - _board._sprites[p.x].hop_at
+			if since > 0.05 and since < 0.25:
+				hopping += 1
+		if hopping >= 3:
+			_shot("wave")
 	_peak = maxi(_peak, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	var S = _screen.State
 	var r: RefCounted = _screen.rules
