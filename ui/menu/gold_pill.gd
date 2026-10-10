@@ -18,6 +18,12 @@ const GOLD := Color("f2b632")
 const GOLD_DEEP := Color("c98a16")
 const GOLD_HI := Color("ffe39a")
 const FLIGHT := 0.62
+## The clink's climb: a coin's tick is 0.03 up on the last, so the twelve of
+## the biggest gift top out at 1.33, inside five semitones (it was 0.05 a
+## coin, 1.55 at the twelfth: 7.6 semitones). One draw a throw moves the whole
+## run, so no two gifts count alike and the climb stays a climb.
+const CLINK_STEP := 0.03
+const CLINK_VARY := Vector2(0.94, 1.06)
 
 var _shown := 0.0
 ## Gold still in the air: the count holds it back until the coins land.
@@ -28,6 +34,7 @@ var _coins: Array = []   # {from, to, t, delay, share}
 ## A tick for each coin that lands, a little higher each time.
 var _clink: AudioStreamPlayer
 var _landed := 0
+var _vary := 1.0
 ## The running bump or squash. Motion.bump returns to the scale it found, so
 ## coins landing 0.05 s apart inside a 0.16 s bump each took the last one's
 ## swell as their rest and the pill was left stuck big; every kick kills the
@@ -95,6 +102,7 @@ func fly_from(global_at: Vector2, amount: int) -> void:
 	var n := clampi(amount / 15, 4, 12)
 	_held += amount
 	_landed = 0
+	_vary = randf_range(CLINK_VARY.x, CLINK_VARY.y)
 	var share := amount / n
 	var to := get_global_rect().position + Vector2(COIN + 16.0, H * 0.5)
 	for i in n:
@@ -111,7 +119,7 @@ func _process(delta: float) -> void:
 			_held = maxi(0, _held - int(c.share))
 			_kick(Motion.bump.bind(self, 0.08, 0.16))
 			if _clink.stream != null:
-				_clink.pitch_scale = 1.0 + 0.05 * _landed
+				_clink.pitch_scale = (1.0 + CLINK_STEP * _landed) * _vary
 				_clink.play()
 				# What is heard is felt: each coin's clink, climbing with it.
 				Haptics.play(Haptics.ECHO, 1.0 + 0.1 * _landed)

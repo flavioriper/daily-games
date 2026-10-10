@@ -23,6 +23,12 @@ games minors reach, and pt-BR is one of our languages.
 - The gift button's badge counts claimable gifts; the gifts sheet opens by
   itself once a day (`Wallet.should_auto_open`).
 - Sounds are `assets/sfx/wallet/` (claim, buy, coin, refused), awaiting the
-  user's listen. `tests/_probe_wallet.gd` (headless, sims and arithmetic),
+  user's listen. Redone 2026-10-10 against the cozy rules
+  (`docs/agents/sound.md`, the `wallet` row): no coin rings, `coin` is one
+  notch of a wheel on the pill's own player (`ui/menu/gold_pill.gd`, not
+  Fx2D), 50 ms a coin, and climbs 0.03 a coin with one random draw a throw
+  (`CLINK_STEP`, `CLINK_VARY`; it was 0.05, 7.6 semitones at the twelfth).
+  Spending gold in `arcade/second_chance.gd` and `arcade/boost_card.gd`
+  plays no wallet cue. `tests/_probe_wallet.gd` (headless, sims and arithmetic),
   `tests/_probe_chance.gd` (every screen's Second chance through the real
   menu), `tests/_shot_gold.gd` (windowed, every new screen).

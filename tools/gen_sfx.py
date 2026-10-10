@@ -3111,20 +3111,63 @@ SETS = {
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"
     "wallet": {
-        "claim":    ("a small gift box opening with a soft paper rustle then a bright shower of little gold coins jingling, cheerful, short", 1.2, -5),
-        "buy":      ("a few small gold coins dropped onto a wooden counter with a soft happy chime, short", 0.7, -7),
-        "coin":     ("a single tiny soft gold coin clink, very short", 0.5, -14),
-        "refused":  ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -10),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # fiftieth set of the redo, with the Grove's below. None kept: all
+        # four were flagged (buy and coin were coins by prompt and 98 and 99%
+        # above 3 kHz, raw takes scratch; claim a shower of coins jingling at
+        # -5; refused 75% under 300 Hz). Three new takes: `buy` (a hollow
+        # wooden block set down on felt), `coin` (a lighter thing set down)
+        # and one muffled kalimba note, `claim`'s (three takes: two came back
+        # empty, at 273 and 296 Hz and -35 and -30 dB). refused is coin's
+        # take. Every tick is `tight` and starts inside 20 ms. No coin rings
+        # any more: these play over every board's own sounds, so they are
+        # short and none is above -10.
+        # A gift taken: three notes up, done in 0.47 s, ahead of the first
+        # coin's landing 0.62 s after it (ui/menu/gold_pill.gd's FLIGHT). The
+        # note came back at 330 Hz, so steps 5, 9 and 12 land at 440, 555
+        # and 660 Hz.
+        "claim":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:5,9,12", "cut:0.6"),
+        # A thing bought in the shop, and nothing else sounds with it: one
+        # tock, six steps under its take (916 Hz raw) to stay the heavier.
+        "buy":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        # Gold counted: one notch of the wheel for each coin that lands in
+        # the pill, 50 ms apart, four to twelve of them, on the pill's own
+        # player (four voices, not Fx2D's, so no CUE_GAP), a step of 0.03 up
+        # each: the wheel spun. Two steps under its take so the twelfth, at
+        # 1.33, still sits under 1 kHz.
+        "coin":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.08", "body:320", "tight", "notes:0:-2"),
+        # Not enough gold: coin's take, two low notches alike.
+        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-4,-4"),
     },
     # The Grove (valley/grove_screen.gd, 2026-10-05). `chop` plays on every
     # swing that hits for as long as a finger is held, twice a second at the
-    # start and six times late on: a click, cut short and the quietest file
-    # of the set. A tree down and a tile bought happen now and then.
+    # start and six times late on, and is the sound of the whole place: one
+    # low wooden tock. A tree down and a tile bought happen now and then.
     "grove": {
-        "chop": ("one small dry knock of a little hatchet biting into a thin green sapling, a short soft wooden tick, very short and quiet", 0.5, -18, GROVE, "warm:6000", "cut:0.09"),
-        "fell": ("a thin young tree coming down: one soft green-wood crack and a short hush of leaves settling on grass, gentle, short", 0.7, -11, GROVE),
-        "buy":  ("two soft rising notes on a real kalimba, warm and woody, something made a little better, short", 0.6, -9, ARCADE),
-        "no":   ("a soft low wooden double knock, a gentle not yet, very short", 0.5, -12, GROVE),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # fifty-first set of the redo, with the wallet's above. None kept:
+        # build/sfx_raw/ held no take of the four, so nothing could be
+        # rendered again. Three new takes: `chop` (a hollow wooden block set
+        # down on felt), `fell` (a lighter button) and one muffled kalimba
+        # note, `buy`'s. `no` is fell's take. Every tick is `tight`. Nothing
+        # new is a hatchet, a sapling, a crack, a hush of leaves or a knock
+        # (chop sat at 3.2 kHz and fell at 8 kHz, 85% above 3 kHz).
+        # An axe in a tree, and through the screen's quiet voice a beaver's
+        # tree down, a log landing on the jetty and a mote of light landing
+        # on its plate (valley/grove_screen.gd: TICK_VARY, CLIMB_TOP): the
+        # block, one tock from 0 ms, cut ahead of the next swing.
+        "chop": ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        # A tree down, a crate opened, a raft landed. It sounds on the frame
+        # the last chop does, so it is the button's take and not the
+        # block's: three notches tumbling down. The take sat at 887 Hz, so
+        # they are written one, four and seven steps under it.
+        "fell": ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.34", "body:320", "tight", "notes:0.09:-1,-4,-7"),
+        # A tile or a node of the tree bought: two quiet notes up, no more.
+        "buy":  ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:5,9", "cut:0.6"),
+        # What the energy does not reach: fell's take, two low notches alike
+        # (chop's take holds a second knock 0.16 s behind its tock, past
+        # chop's cut, and no row is written from it).
+        "no":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-8,-8"),
     },
     # Nightlight (arcade/nightlight_screen.gd, 2026-10-06; made quieter and
     # darker on 2026-10-09, when the user had heard it: "too harsh, I want
