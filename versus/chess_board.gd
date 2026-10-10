@@ -591,7 +591,7 @@ func finish(outcome: String, king_sq := -1) -> void:
 				if _fx != null:
 					_fx.sparkle(_foot(k.at) + skin.crown_seat(k.type, cell), Pal.SUN))
 			_after(0.2 + skin.topple_time() * skin.crown_pop() + skin.crown_time() * 0.48, func() -> void:
-				_cue("place", 1.35)
+				_cue("place", 1.33)
 				_ripple(k.at + Vector2(k.crown_dir * 1.05, 0.0), 0.6))
 	if outcome == "draw":
 		return

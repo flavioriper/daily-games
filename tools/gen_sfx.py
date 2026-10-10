@@ -1584,23 +1584,39 @@ SETS = {
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2400", "steep", "ease:0.012", "body:300", "notes:0.14:8,12,15,12,15,17", "cut:1.9"),
         "lose":     ("a soft warm three-note descending kalimba, gentle and kind, good game", 1.4, -10, ARCADE),
     },
-    # Chess (Versus, versus/chess_screen.gd): wooden pieces on a wooden board
-    # as foley, the verdicts in the house marimba. `hop` is the knight's leap.
+    # Chess (Versus, versus/chess_screen.gd). Redone 2026-10-10 against the
+    # cozy rules (docs/agents/sound.md), the twenty-fourth set of the redo,
+    # with checkers' to follow. Kept from the first set: lose, 4 dB down. Nothing
+    # new is a scrape, a swish, a clack, a tumble, a boing, a bonk, a marimba
+    # or a glockenspiel. A piece chosen and a piece set down are what a hand
+    # does all game, so `lift` and `place` are the plainest: one tock each,
+    # the lift a lighter thing (a lift asked for as a lift comes back a
+    # thump or a hiss), `tight`. Borrowed takes: capture, castle and enter
+    # are place's, refused lift's, promote and draw check's. What travels is
+    # air: a rook, bishop or queen setting off and a move taken back are a
+    # breath of breeze, the knight's leap a small puff. The phrases' steps
+    # are set by each take's own note, so that every note lands between 400
+    # and 700 Hz, and no two phrases share a contour.
     "chess": {
-        "lift":     ("a single small wooden chess piece lifted off a wooden board, a tiny soft felt scrape, close mic, very short", 0.5, -14, FOLEY),
-        "place":    ("a single wooden chess piece set down on a wooden chessboard, a soft warm felt-bottomed knock, close mic, very short", 0.5, -7, FOLEY),
-        "slide":    ("a wooden chess piece sliding briefly across a wooden board on felt, a short soft swish, close mic", 0.5, -14, FOLEY),
-        "capture":  ("a wooden chess piece knocking another wooden chess piece over, a crisp wooden clack then a small tumble and roll, close mic, short", 0.8, -6, FOLEY),
-        "castle":   ("two wooden chess pieces set down on a wooden board one right after the other, two soft knocks, close mic, short", 0.6, -7, FOLEY),
-        "hop":      ("a short playful soft airy whoosh with a tiny springy boing, a little wooden horse leaping", 0.5, -12),
-        "check":    ("two soft bright glockenspiel notes, a gentle alert, a king in danger, not alarming", 0.8, -7),
-        "promote":  ("a gentle magical rising sparkle shimmer with a soft marimba swell, a small piece transforming", 1.2, -6),
-        "refused":  ("a tiny soft worried wobble, a muffled wooden 'bonk' with a slight pitch dip, gentle", 0.5, -10),
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "enter":    ("a quick soft cascade of wooden chess pieces being set out on a wooden board one after another", 1.2, -9, FOLEY),
-        "win":      ("a warm celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -6),
-        "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -6),
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "place":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # A piece taken: place's take, two notches, the second four steps up.
+        "capture":  ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,4"),
+        # King and rook: place's take, two notches alike.
+        "castle":   ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.3", "body:320", "tight", "notes:0.13:0,0"),
+        # The knight's leap: a small puff of air.
+        "hop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "check":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.16:5,7", "cut:0.7"),
+        "promote":  ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:4,7,11,7", "cut:0.9"),
+        # Not that square: lift's take, twice and falling.
+        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:0,2,5", "cut:1.0"),
+        # The pieces set out: place's take, five in a row.
+        "enter":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "win":      ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.14:4,5,7,9,12", "cut:1.7"),
+        "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
+        "draw":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:5,5", "cut:0.8"),
     },
     # Checkers (Versus, versus/checkers_screen.gd): round wooden draughts on
     # a wooden board as foley, the verdicts in the house marimba. `hop` is a
