@@ -112,16 +112,10 @@ const BACK := Color("cf6f68")
 const BACK_DEEP := Color("a34f4c")
 const BACK_LIT := Color("e39088")
 const STAMP := Color("fbeedd")
-## The trays' pine and their felt lining.
-const PINE := Color("e6c896")
-const PINE_LIT := Color("f3ddb4")
-const PINE_DEEP := Color("b88f5c")
-const LINING := Color("3f7459")
-## The cup, its saucer and the tea.
-const CHINA := Color("fbf3e4")
-const CHINA_EDGE := Color("d9c9ad")
-const TEA := Color("b9743f")
-const TEA_LIT := Color("d39a5e")
+## The trays' pine and the tea's light are the house's (ui/flat/scenery.gd).
+const PINE := Scenery.PINE
+const PINE_DEEP := Scenery.PINE_DEEP
+const TEA_LIT := Scenery.TEA_LIT
 ## A tile turns over in `TURN` s, squashed across to nothing at the half;
 ## one that lands on the line swells by `LAND_BUMP` and settles.
 const TURN := 0.24
@@ -1168,32 +1162,6 @@ static func _stitch(b: Face.Builder, pts: PackedVector2Array, dash: float, gap: 
 	if on and run.size() > 1:
 		b.stroke(run, width, col)
 
-## A pine tray lined with felt, seen from above: its shadow, its walls and
-## the floor inside them, darker under the near wall.
-static func _tray(b: Face.Builder, at: Vector2, sz: Vector2, wall := 7.0) -> void:
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 7.0), sz, 20.0), Color(0.1, 0.06, 0.02, 0.24))
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 4.0), sz, 20.0), PINE_DEEP)
-	b.fan(Face.Builder.round_rect(at, sz, 20.0), PINE)
-	b.stroke(Face.Builder.round_rect(at + Vector2(3.0, 3.0), sz - Vector2(6.0, 6.0), 17.0), 2.0, Color(PINE_LIT, 0.9), true)
-	var inner := at + Vector2(wall, wall)
-	var isz := sz - Vector2(wall, wall) * 2.0
-	b.fan(Face.Builder.round_rect(inner, isz, 14.0), LINING.darkened(0.18))
-	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 5.0), isz - Vector2(0.0, 5.0), 14.0), LINING)
-
-## A cup of tea on its saucer, seen from above, `r` the saucer's radius.
-static func _cup(b: Face.Builder, c: Vector2, r: float) -> void:
-	b.ellipse(c + Vector2(1.0, 7.0), r, r, Color(0.1, 0.06, 0.02, 0.24))
-	b.disc(c + Vector2(0.0, 3.0), r, CHINA_EDGE)
-	b.disc(c, r, CHINA)
-	b.stroke(Face.Builder.ring(c, r * 0.8, r * 0.8), 2.0, Color(CHINA_EDGE, 0.7), true)
-	# the handle, out to the right and a little down
-	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.1), r * 0.24, -PI * 0.6, PI * 0.6), 7.0, CHINA_EDGE)
-	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.04), r * 0.24, -PI * 0.6, PI * 0.6), 6.0, CHINA)
-	b.disc(c + Vector2(0.0, 4.0), r * 0.62, CHINA_EDGE)
-	b.disc(c, r * 0.62, CHINA)
-	b.disc(c, r * 0.5, TEA)
-	b.stroke(Face.Builder.arc_points(c, r * 0.36, PI * 1.05, PI * 1.5), 3.0, Color(TEA_LIT, 0.9))
-
 ## The cloth: felt with a pool of light in its middle, a sprig embroidered in
 ## two corners of the line's room and thread stitched round the hem; on it
 ## the far hand's tray, the boneyard's box and the cup.
@@ -1207,15 +1175,15 @@ func _build_mat() -> ArrayMesh:
 		var thread := Color(FELT_LIT, 0.75)
 		_sprout(b, _zone_line.position + Vector2(52.0, 62.0), 1.5, thread)
 		_sprout(b, _zone_line.end - Vector2(54.0, 42.0), 1.5, thread)
-		_tray(b, Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0))
+		Scenery.tray(b, Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0))
 		var box_at := Vector2(PAD, _zone_stock.position.y + 6.0)
 		var box := Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - PAD - 8.0, STOCK_H - 12.0)
-		_tray(b, box_at, box)
+		Scenery.tray(b, box_at, box)
 		# the two that stay lie behind a slat of their own
 		var slat := _stock_at(Rules.KEEP).x - H * STOCK_S * 0.5 - 13.0
 		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 5.0), Vector2(8.0, box.y - 8.0), 3.0), PINE_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 3.0), Vector2(8.0, box.y - 10.0), 3.0), PINE)
-		_cup(b, _cup_at(), 44.0)
+		Scenery.cup(b, _cup_at(), 44.0)
 	_stitch(b, Face.Builder.round_rect(Vector2(7.0, 7.0), _v - Vector2(14.0, 20.0), 24.0), 14.0, 9.0, 2.5, Color(FELT_LIT, 0.85))
 	return b.mesh()
 

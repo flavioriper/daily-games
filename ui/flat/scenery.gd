@@ -29,6 +29,16 @@ const CLOUD_LIFT := 0.8
 const BLADE_SIDE := 0.72
 const BLADE_OUTER := 0.42
 const BLADE_W := 0.2
+## The house's tray (tray()): its pine and its felt lining.
+const PINE := Color("e6c896")
+const PINE_LIT := Color("f3ddb4")
+const PINE_DEEP := Color("b88f5c")
+const LINING := Color("3f7459")
+## The house's cup (cup()): the china and the tea.
+const CHINA := Color("fbf3e4")
+const CHINA_EDGE := Color("d9c9ad")
+const TEA := Color("b9743f")
+const TEA_LIT := Color("d39a5e")
 ## The shadow disc's radius in its own mesh, so that a scaled copy's rim is
 ## smooth at any size a board asks for.
 const SHADOW_UNIT := 64.0
@@ -147,3 +157,32 @@ static func soft_disc(b: Face.Builder, at: Vector2, rx: float, ry: float, colour
 		ix[i * 3 + 1] = first + i
 		ix[i * 3 + 2] = first + (i + 1) % n
 	b.idx.append_array(ix)
+
+## The house's pine tray lined with felt, seen from above, appended to a
+## caller's Builder: its shadow, its walls and the floor inside them, darker
+## under the near wall. Dominoes' hands and boneyard lie in these, Reversi's
+## spare discs.
+static func tray(b: Face.Builder, at: Vector2, sz: Vector2, wall := 7.0, lining := LINING) -> void:
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 7.0), sz, 20.0), Color(0.1, 0.06, 0.02, 0.24))
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 4.0), sz, 20.0), PINE_DEEP)
+	b.fan(Face.Builder.round_rect(at, sz, 20.0), PINE)
+	b.stroke(Face.Builder.round_rect(at + Vector2(3.0, 3.0), sz - Vector2(6.0, 6.0), 17.0), 2.0, Color(PINE_LIT, 0.9), true)
+	var inner := at + Vector2(wall, wall)
+	var isz := sz - Vector2(wall, wall) * 2.0
+	b.fan(Face.Builder.round_rect(inner, isz, 14.0), lining.darkened(0.18))
+	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 5.0), isz - Vector2(0.0, 5.0), 14.0), lining)
+
+## The house's cup of tea on its saucer, seen from above, `r` the saucer's
+## radius, likewise appended.
+static func cup(b: Face.Builder, c: Vector2, r: float) -> void:
+	b.ellipse(c + Vector2(1.0, 7.0), r, r, Color(0.1, 0.06, 0.02, 0.24))
+	b.disc(c + Vector2(0.0, 3.0), r, CHINA_EDGE)
+	b.disc(c, r, CHINA)
+	b.stroke(Face.Builder.ring(c, r * 0.8, r * 0.8), 2.0, Color(CHINA_EDGE, 0.7), true)
+	# the handle, out to the right and a little down
+	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.1), r * 0.24, -PI * 0.6, PI * 0.6), 7.0, CHINA_EDGE)
+	b.stroke(Face.Builder.arc_points(c + Vector2(r * 0.62, r * 0.04), r * 0.24, -PI * 0.6, PI * 0.6), 6.0, CHINA)
+	b.disc(c + Vector2(0.0, 4.0), r * 0.62, CHINA_EDGE)
+	b.disc(c, r * 0.62, CHINA)
+	b.disc(c, r * 0.5, TEA)
+	b.stroke(Face.Builder.arc_points(c, r * 0.36, PI * 1.05, PI * 1.5), 3.0, Color(TEA_LIT, 0.9))
