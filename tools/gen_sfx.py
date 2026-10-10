@@ -1848,37 +1848,64 @@ SETS = {
         "note_low":     ("one single low warm round note plucked once on a real bass kalimba and left to ring out, deep and soft, only one note, nothing else", 1.5, -6, POND_TUNE, "warm:7000"),
     },
     # Pixel Garden: copy a little picture onto a pegboard in beads; a full
-    # plate is ironed. Re-recorded 2026-10-01 (the polish) as BEADBOX: real
-    # beads, box, tweezers and iron, every note a kalimba or music box. `place`
-    # fires on every bead a stroke seats (pitched a hair apart), so it is tiny
-    # and quiet and cut to its first click.
+    # plate is ironed. `place` fires on every bead a stroke seats (pitched a
+    # hair apart), so it is the plainest and one of the quietest.
     "pixelgarden": {
-        "place":    ("a single tiny soft click, one small plastic fuse bead set down onto a peg of a plastic pegboard with tweezers, light, very short", 0.5, -14, BEADBOX, "warm:7000", "cut:0.25"),
-        "lift":     ("a tiny soft plucking tick, steel tweezers lifting one small plastic bead off a peg, very short and light", 0.5, -16, BEADBOX, "warm:7000", "cut:0.25"),
-        "pick":     ("steel tweezers dipping into a compartment of small plastic beads, a tiny soft rattle, very short", 0.5, -13, BEADBOX, "warm:7000"),
-        "peek":     ("a very short soft paper whoosh, a small paper pattern card lifted up to look at", 0.5, -15, BEADBOX, "warm:7000"),
-        "refuse":   ("tweezers tapping the empty plastic bottom of a compartment twice, a soft hollow little tick tick, gentle", 0.5, -12, BEADBOX, "warm:7000"),
-        "undo":     ("a tiny soft plucking tick and one small plastic bead dropped back into a box of beads, very short", 0.5, -12, BEADBOX, "warm:7000"),
-        "hint":     ("a gentle sparkle, three soft kalimba notes rising with a tiny hand bell on top, kind and helpful", 1.0, -8, BEADBOX_TUNE, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twenty-ninth set of the redo, with Marigold's above. Kept from the
+        # polish's set: check, check_ok, plate, heart_back and confetti as
+        # they were, hint, solved and party rolled off (the last two at -8,
+        # they were -5 and -6), heart_lost 3 dB down. Nothing new is plastic,
+        # steel tweezers, a box of beads, paper, an iron, steam, a wing, a
+        # music box or a rubber stamp (ten cues sat 86 to 98% above 3 kHz,
+        # the bead on every peg among them). A bead is a small wooden one
+        # set down on felt now. combo is a tick the board pitches, not past
+        # five semitones. Every tick is `tight`. Borrowed takes, of the same
+        # prompts: reset is Super Slider's and the iron its gate, steam and
+        # the butterfly Hedgehogs' gust, peek and confetti's like Binairo's
+        # puff, combo Super Slider's, the cat Untangle's kitten; here enter,
+        # astray and steady are place's, and pick, refuse and undo lift's.
+        # The phrases' steps are set by each take's own note, so that every
+        # note lands between 400 and 700 Hz. What travels is air: the
+        # pattern card lifted, the beads poured back, the iron and its steam
+        # are a breath or a puff each. A lift is a lighter thing set down.
+        "place":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight"),
+        # A colour picked from the box: lift's take, two steps up.
+        "pick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:2"),
+        "peek":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        # An empty compartment: lift's take, two low notches alike.
+        "refuse":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("a gentle sparkle, three soft kalimba notes rising with a tiny hand bell on top, kind and helpful", 1.0, -9, BEADBOX_TUNE, "warm:2400", "body:300"),
         "check":    ("a soft two-note downward kalimba, gentle, kind, not yet", 0.6, -10, BEADBOX_TUNE, "warm:7000"),
         "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -9, BEADBOX_TUNE, "warm:7000"),
-        "reset":    ("a soft quick cascade of many small plastic beads pouring back into a clear plastic box", 1.0, -9, BEADBOX, "warm:7000"),
-        "enter":    ("a soft handful of small plastic beads poured gently into a clear plastic compartment box", 1.0, -11, BEADBOX, "warm:7000"),
-        "iron":     ("a warm household iron set down gently on baking paper with a soft gentle steam puff and a slow glide, cozy, quiet", 1.6, -9, BEADBOX, "warm:7000"),
-        "steam":    ("one small soft puff of steam from a warm iron, a gentle short hiss, quiet and cozy", 0.7, -14, BEADBOX, "warm:7000"),
-        "plate":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -7, BEADBOX_TUNE, "warm:7000"),
-        "astray":   ("a few small plastic beads hopping off a pegboard and pattering back into a plastic box, soft and light, playful", 0.9, -11, BEADBOX, "warm:7000"),
-        "heart_lost": ("a soft sad little two-note kalimba falling, gentle and kind, not scolding", 0.9, -9, BEADBOX_TUNE, "warm:7000"),
-        "out_of_hearts": ("a slow gentle descending music box lullaby phrase, sleepy and soft, three notes winding down", 1.8, -9, BEADBOX_TUNE, "warm:7000"),
-        "heart_back": ("a warm hopeful rising kalimba phrase with a small hand bell, a heart coming back", 1.0, -8, BEADBOX_TUNE, "warm:7000"),
-        "combo":    ("a single bright soft kalimba note, warm and round, short", 0.5, -10, BEADBOX_TUNE, "warm:7000"),
-        "steady":   ("a quick soft run of small plastic beads clicking onto pegs one after another, a tidy little patter, very light", 0.8, -13, BEADBOX, "warm:7000"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The beads set in the box: place's take, five in a row.
+        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The iron over a full plate: a long breath. steam: a small puff.
+        "iron":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -15, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
+        "steam":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "plate":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -8, BEADBOX_TUNE, "warm:7000"),
+        # A plate ironed wrong, its beads hopping off: place's take, three
+        # notches down.
+        "astray":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.4", "body:320", "tight", "notes:0.1:0,-2,-4"),
+        "heart_lost": ("a soft sad little two-note kalimba falling, gentle and kind, not scolding", 0.9, -12, BEADBOX_TUNE, "warm:7000"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,4,0"),
+        "heart_back": ("a warm hopeful rising kalimba phrase with a small hand bell, a heart coming back, gentle and happy", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        # The streak: a tick the board pitches by the plates ironed right in
+        # a row. steady: a tidy run of beads, the wheel spun, place's take
+        # four quick notches.
+        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "steady":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.055:0,1,0,2"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
-        "flutter":  ("a butterfly's soft wings fluttering past, a tiny delicate papery flutter, very quiet", 0.8, -16, BEADBOX, "warm:7000"),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, BEADBOX_TUNE, "warm:7000"),
-        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -5, BEADBOX_TUNE, "warm:7000"),
-        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -6, BEADBOX_TUNE, "warm:7000"),
-        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # The butterfly: Hedgehogs' gust again, the quietest puff there is
+        # (pitched up, a take that quiet came out of `notes` empty).
+        "flutter":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:1100", "steep", "ease:0.05", "body:320"),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:5,1,8"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.

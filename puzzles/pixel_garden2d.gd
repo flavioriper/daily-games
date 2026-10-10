@@ -184,7 +184,9 @@ const STEADY_GAP := 5.0
 ## How far a stroke's finger travels, in cells, before its row or column is
 ## chosen.
 const AXIS_AFTER := 0.7
-const COMBO_STEPS := [0, 2, 4, 7, 9, 12]
+## The streak's tick, a semitone a plate ironed right in a row and no higher
+## than five (the cozy rules; it was a note up [0, 2, 4, 7, 9, 12]).
+const COMBO_STEPS := [0, 1, 2, 3, 4, 5]
 ## Hearts of love off a happy iron; a butterfly that lands on a plate.
 const LOVE_HEARTS := 3
 const LOVE_TIME := 1.2
