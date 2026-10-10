@@ -136,6 +136,14 @@ const TIERS := [10, 25, 50]
 const CONGA_AT := [30, 80]
 const CONGA_TIME := 5.0
 const CONGA_N := 5
+## No cue is pitched past five semitones (the cozy rules, docs/agents/
+## sound.md). The balloon's tock climbs with its strokes, 0.028 a stroke, and
+## holds here from the twelfth; it was `1.0 + 0.04 * clampf(hits, 0.0, 12.0)`,
+## to 1.48, near seven. The combo's tick (1.24 at most) and a hold's end (1.12
+## on the third drum) were inside it already; the pop, a tick that repeats,
+## varies by 0.94 to 1.06 at random (it was 1.0 every time).
+const CLIMB_TOP := 1.335
+const BALLOON_CLIMB := 0.028
 const SHADES_DROP := 0.35
 const FIREWORK_COLS := [Color("f2c14e"), Color("f08aa6"), Color("8cc8ec"), Color("f59a6a"), Color("b7e07a"), Color("c9a0f0")]
 const STICK_COLS := [Color("ff8fb0"), Color("7fe0ff"), Color("ffe066"), Color("a8ff8a")]
@@ -960,10 +968,10 @@ func _handle() -> void:
 					_rw.sticker(tr("DB_HITS") % int(ev.hits), _over_ring(), 44, 0.9, false, Parts.ROLL, false, "roll", 20.0)
 					_cheer()
 			"balloon":
-				fx.cue("balloon", 1.0 + 0.04 * clampf(float(_st.notes[int(ev.i)].hits), 0.0, 12.0), -4.0)
+				fx.cue("balloon", minf(1.0 + BALLOON_CLIMB * float(_st.notes[int(ev.i)].hits), CLIMB_TOP), -4.0)
 			"pop":
 				var at := _ring()
-				fx.cue("pop")
+				fx.cue("pop", randf_range(0.94, 1.06))
 				_rw.spray(at, Parts.BALLOON, 14, 620.0, "confetti", 1.0)
 				_rw.spray(at, GOLD, 6, 520.0, "star", 0.9)
 				_rw.ring(at, 160.0 * _u(), Parts.BALLOON)

@@ -103,3 +103,10 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `tests/_probe_perf.gd -- drumbeat d=<n> x=buzz` (`_buzz_drumbeat` lets
   berries past by `_db_hold`, runs out of hearts on Hard and Insane, then
   the bot plays the song through).
+- **Sounds redone against the cozy rules (2026-10-10, `docs/agents/sound.md`,
+  the `drumbeat` row).** The 26 cues of `tools/gen_sfx.py` are low ticks,
+  breaths and muffled notes, none above -8; `fail` is kept. The balloon's
+  tock climbs 0.028 a stroke and holds at five semitones (`CLIMB_TOP`,
+  `BALLOON_CLIMB`; it was 0.04 a stroke up to 1.48). The drums, the songs,
+  their tunes and the tap-along (`tools/gen_drumbeat.py`, eleven files) are
+  untouched and still fail the measure: owed. Unheard.

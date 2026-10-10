@@ -2334,79 +2334,180 @@ SETS = {
         "hoop":     ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:1.05", "body:320", "tight", "notes:0.17:2,0,2,0,-2,-3"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
-    # Drumbeat (puzzles/drumbeat2d.gd): a band of four drums at a garden
-    # festival at dusk. The drums themselves (drum_0..3) are synthesised by
-    # tools/gen_drumbeat.py with the songs, not generated here: they play on
-    # every stroke over the music and must start on their first sample.
-    # 2026-10-01 (the polish): every cue taken again as FESTIVAL /
-    # FESTIVAL_TUNE -- real hand percussion, paper lanterns, kalimba, music
-    # box and hand bells -- and the hearts, Echo and the silly rewards added.
+    # Drumbeat (puzzles/drumbeat2d.gd): a band of drums at a garden festival
+    # at dusk. The drums themselves (drum_0..3), the songs and their tunes
+    # (song_*, lead_*) and the tap-along (calib) are synthesised by
+    # tools/gen_drumbeat.py, not generated here: the drums play on every
+    # stroke over the music and must start on their first sample.
     "drumbeat": {
-        "enter":        ("a soft evening garden festival settling in, distant paper lanterns rustling in a breeze, one warm low kalimba note and a tiny wind chime", 1.0, -12, FESTIVAL, "warm:7000"),
-        "select":       ("a single tiny soft wooden click of a small wooden bead, very short", 0.5, -13, FESTIVAL, "warm:7000", "cut:0.1"),
-        "reset":        ("a soft rustle of paper lanterns and one calm low kalimba note, a garden stage getting ready again", 0.9, -12, FESTIVAL_TUNE, "warm:7000"),
-        "gogo":         ("a joyful swell of small hand bells and a soft shaker rising into one warm gentle frame drum hit and a kalimba sparkle, the festival begins, cozy", 1.4, -6, FESTIVAL_TUNE, "warm:7000"),
-        "soul":         ("three bright rising music box notes with a small hand bell shimmer, a meter filling past its line, delicate", 0.8, -9, FESTIVAL_TUNE, "warm:7000"),
-        "combo":        ("a single short bright pluck on a real kalimba with a tiny bell, one clean warm note, very short", 0.5, -10, FESTIVAL_TUNE, "warm:7000"),
-        "break":        ("a soft comic little wooden wobble, a drumstick fumbled onto a soft mat, gentle and funny, never harsh", 0.5, -13, FESTIVAL, "warm:7000"),
-        "balloon":      ("a tiny soft rubbery squeak of a small party balloon being squeezed, very short", 0.5, -13, FESTIVAL, "warm:7000", "cut:0.25"),
-        "pop":          ("a small party balloon popping with a soft round pop and a flutter of paper confetti and a tiny bell, cheerful", 0.8, -6, FESTIVAL, "warm:7000"),
-        "balloon_gone": ("a small balloon slowly deflating and flying off with a soft comic squeaky whistle, short and funny", 0.9, -11, FESTIVAL, "warm:7000"),
-        "clear":        ("a warm joyful rising run on a real kalimba, music box and soft hand bells over a gentle hand drum, landing on a bright chord, cozy and triumphant", 2.4, -5, FESTIVAL_TUNE, "warm:7000"),
-        "full_combo":   ("a happy festive flourish of hand bells, music box and kalimba with a soft frame drum roll ending on one warm big drum hit and a sparkle, a perfect performance, cozy", 2.8, -4, FESTIVAL_TUNE, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # thirty-eighth set of the redo, with Trestle's below. One kept,
+        # `fail`, as it was: a kalimba phrase by its prompt, its raw the take
+        # its file is made of. Seven more passed (clear, combo, echo_perfect,
+        # full_combo, hold_done, shades, soul), but each names a hand bell or
+        # a music box in its own prompt and clear and full_combo peaked at -5
+        # and -4, so they are written again with the eighteen that failed.
+        # Three new takes: `select` (a light wooden bead set down on felt),
+        # `balloon` (a hollow wooden block, the thing a finger does over and
+        # over, so the plainest: one tock) and one muffled kalimba note,
+        # `clear`'s. Every tick is `tight`: what sounds on a stroke while the
+        # song runs (balloon, pop, hold_done, combo, golden) starts on its
+        # first samples. break is select's take, pop, hold_done, enter and
+        # conga balloon's, and gogo, soul, echo, echo_perfect, golden, shades,
+        # tune_done, full_combo, heart_lost, heart_back, out_of_hearts, stamp
+        # and party the note's. Borrowed, of the same prompts: combo is Super
+        # Slider's tick, reset Hedgehogs' breath (its reset), the balloon
+        # flying off its whoosh and the cat Untangle's kitten. Nothing new is
+        # a hand bell, a music box, a shaker, a lantern's rustle, a balloon's
+        # squeak or whistle, coins, a rubber stamp or a party blower, and
+        # nothing is above -8, under drums that peak at -1 to -5. The note
+        # came back at 446 Hz, so the phrases' steps are 0 to 8 up and every
+        # note lands between 400 and 710 Hz; no two cues share a contour.
+        # balloon's take is one clean tock but sits at 778 Hz, so the balloon
+        # and the cues made of it are written one to three steps down: the
+        # board pitches the balloon up five semitones and it stays under
+        # 900 Hz. Every tick starts at 0 ms.
+        "select":       ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        # The band setting up: balloon's take, five in a row.
+        "enter":        ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-3,0,-3,-1,2"),
+        "reset":        ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # In the song. gogo: four quick notes hopping up. soul (the gauge
+        # past its line): three up. combo: a tick the board pitches by the
+        # streak called, 3.7 semitones at most. break (a streak of ten or
+        # more dropped): select's take, twice and falling. hold_done (a
+        # ribbon held to its end): balloon's take, one notch two steps over it.
+        "gogo":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:0,4,2,7", "cut:0.9"),
+        "soul":         ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:3,5,8", "cut:0.8"),
+        "combo":        ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "break":        ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hold_done":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.12", "body:320", "tight", "notes:0:-1"),
+        # The balloon: a tock a stroke, which the board pitches by the
+        # strokes so far, not past five semitones (CLIMB_TOP). pop: balloon's
+        # take, two notches with the second four steps up. balloon_gone (not popped in
+        # time): a long breath, the air going out of it.
+        "balloon":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:-3"),
+        "pop":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.06:-3,1"),
+        "balloon_gone": ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        # The song's end. clear: five up. full_combo: six, two climbs of
+        # three, the second from a step higher. fail is the polish's take.
+        "clear":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:0,2,4,5,7", "cut:1.7"),
+        "full_combo":   ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.13:0,2,4,2,4,7", "cut:1.9"),
         "fail":         ("a gentle short descending kalimba phrase, a kind try again, soft and warm, never sad", 1.6, -9, FESTIVAL_TUNE, "warm:7000"),
-        "heart_lost":   ("a soft gentle kalimba two-note fall, a small sad 'oh', warm and muffled, never a buzzer", 0.6, -12, FESTIVAL_TUNE, "warm:7000"),
-        "out_of_hearts":("a real wind-up music box winding slowly down, a few soft notes descending and slowing, a garden festival at night going quiet, calm and kind", 1.8, -12, FESTIVAL_TUNE, "warm:7000"),
-        "heart_back":   ("a warm rising pair of soft kalimba plucks and a tiny hand bell, a little heart coming back, gentle and happy", 0.7, -11, FESTIVAL_TUNE, "warm:7000"),
-        "echo":         ("a friendly little call of three quick soft wooden tongue drum notes rising, then a tiny bell, your turn, playful and cozy", 0.8, -8, FESTIVAL_TUNE, "warm:7000"),
-        "echo_perfect": ("a sweet shimmering answer of soft hand bells and a music box, two bright notes ringing together, a call answered perfectly, magical and warm", 1.0, -8, FESTIVAL_TUNE, "warm:7000"),
-        "golden":       ("a shower of small soft coins and a bright warm music box glissando with a hand bell, a golden treasure found, joyful and cozy", 1.2, -7, FESTIVAL_TUNE, "warm:7000"),
-        "conga":        ("a playful little soft hand drum and shaker conga shuffle with a kalimba hop, bouncy and cute, critters dancing in a line, cozy", 1.6, -9, FESTIVAL_TUNE, "warm:7000"),
-        "shades":       ("a playful cool little slide up on a kalimba ending in a tiny bright music box 'ting', a frog putting on sunglasses, funny and cute, short", 0.7, -9, FESTIVAL_TUNE, "warm:7000"),
-        "hold_done":    ("one soft round chime of a small hand bell, warm and clear, very short", 0.6, -12, FESTIVAL_TUNE, "warm:7000"),
-        "tune_done":    ("two soft warm wooden tongue drum notes and a tiny bell, everything in tune, gentle and satisfied", 0.8, -10, FESTIVAL_TUNE, "warm:7000"),
-        "stamp":        ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, FESTIVAL_TUNE, "warm:7000"),
-        "party":        ("a short cozy celebratory flourish on a real kalimba and a music box with soft party blower toots and a gentle hand drum, rising and bright, warm and joyful", 2.0, -6, FESTIVAL_TUNE, "warm:7000"),
-        "purr":         ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # Hearts (Hard and Insane).
+        "heart_lost":   ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0:0", "cut:0.6"),
+        "out_of_hearts":("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,4,0"),
+        "heart_back":   ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:2,7", "cut:0.7"),
+        # Echo (Insane). echo: Tam's call, a question, the second note a step
+        # higher. echo_perfect: the answer, two notes a third apart all but
+        # together.
+        "echo":         ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.16:3,5", "cut:0.6"),
+        "echo_perfect": ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:1,5", "cut:0.7"),
+        # The silly rewards. golden (the golden berry): a trill of four
+        # quick notes a step apart. conga: balloon's take, four notches, three
+        # alike and the last up. shades (the frog's sunglasses): three notes,
+        # up and half back.
+        "golden":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:2,4,5,7", "cut:0.7"),
+        "conga":        ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.5", "body:320", "tight", "notes:0.12:-3,-3,-3,1"),
+        "shades":       ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:0,7,4", "cut:0.7"),
+        # The tap-along done: two quiet notes alike and a third up.
+        "tune_done":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:0,0,4", "cut:0.7"),
+        # The party.
+        "stamp":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,0,7"),
+        "party":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,7,3,7,8", "cut:1.9"),
+        "purr":         ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Trestle (puzzles/trestle2d.gd): a bridge built of road planks, wooden
     # beams and rope over a river, then a little cart of fruit (on Insane
-    # with cups of tea) sent across; the bridge troll keeps score. All of it
-    # WORKSHOP foley and WORKSHOP_TUNE notes since the 2026-10-01 polish.
+    # with cups of tea) sent across; the bridge troll keeps score.
     "trestle": {
-        "enter":         ("a gentle brook babbling softly and a few small wooden planks set down one after another on a workbench, a calm riverside workshop opening", 1.2, -10, WORKSHOP, "warm:7000"),
-        "select":        ("a single tiny soft click of a small wooden peg, very short", 0.5, -13, WORKSHOP, "cut:0.25"),
-        "place_road":    ("one small pine plank laid flat onto a wooden frame, a single soft solid knock, very short", 0.5, -8, WORKSHOP, "cut:0.3"),
-        "place_wood":    ("one light wooden dowel set into a frame with a soft hollow knock and a tiny brass bolt click, very short", 0.5, -9, WORKSHOP, "cut:0.3"),
-        "place_rope":    ("a short piece of hemp rope pulled taut with a soft creak and a little knot tug, very short", 0.5, -10, WORKSHOP),
-        "remove":        ("a small wooden stick lifted off a frame and set aside with a soft wooden clack, very short", 0.5, -10, WORKSHOP, "cut:0.3"),
-        "refused":       ("two soft low knocks on a hollow wooden box, a gentle not quite, very short", 0.5, -11, WORKSHOP),
-        "undo":          ("a small wooden piece slid back across a wooden table with a soft brush, very short", 0.5, -11, WORKSHOP),
-        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, WORKSHOP_TUNE, "warm:7000"),
-        "reset":         ("a handful of small wooden sticks gathered up and stacked softly into a wooden box", 1.0, -9, WORKSHOP),
-        "go":            ("a small wooden toy cart starting to roll on wooden boards with a soft rattle, and one cheerful little brass bicycle bell ring", 1.0, -8, WORKSHOP),
-        "roll":          ("continuous steady soft rumble of small wooden toy cart wheels rolling over wooden planks, even, no bumps, no clicks", 3.0, -13, WORKSHOP, "loop"),
-        "creak":         ("a single soft low creak of a small wooden beam taking weight, close mic", 0.7, -10, WORKSHOP),
-        "snap":          ("a small dry wooden stick snapping in two with a soft crack and a light splinter, close mic, short", 0.6, -6, WORKSHOP, "cut:0.45"),
-        "snap_rope":     ("a thin taut hemp string snapping with a soft twang, short", 0.5, -7, WORKSHOP, "cut:0.4"),
-        "whoa":          ("three soft descending notes on a real kalimba, a little oh no, playful and gentle", 0.8, -10, WORKSHOP_TUNE, "warm:7000"),
-        "bump":          ("a small wooden toy cart landing on wooden boards with a soft thump and a little wheel rattle, short", 0.5, -9, WORKSHOP, "cut:0.4"),
-        "splash":        ("a small wooden toy dropped into a calm stream with a round soft splash and a few bubbles, short", 1.0, -7, WORKSHOP),
-        "fail":          ("a gentle short descending phrase on a real kalimba, four soft notes, a kind try again, warm not sad", 1.3, -9, WORKSHOP_TUNE, "warm:7000"),
-        "cross":         ("a small wooden toy cart rolling off wooden boards onto soft grass and two cheerful little brass bicycle bell rings", 0.9, -8, WORKSHOP),
-        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy", 2.0, -5, WORKSHOP_TUNE, "warm:7000"),
-        "settle":        ("a small wooden frame easing back into place with one soft gentle creak and a tiny settle, short", 0.6, -12, WORKSHOP),
-        "honk":          ("one squeeze of a small rubber bulb toy horn, a soft round honk, cute and funny, short", 0.5, -10, WORKSHOP, "cut:0.4"),
-        "clink":         ("two china teacups clinked together gently, a soft bright ceramic clink, cheers, short", 0.5, -10, WORKSHOP, "cut:0.4"),
-        "slosh":         ("tea sloshing up the side of a full china teacup, a small liquid swirl, close mic, short", 0.6, -11, WORKSHOP),
-        "spill":         ("a splash of tea spilling over the rim of china teacups onto a wooden tray with a little ceramic rattle, short", 0.8, -8, WORKSHOP),
-        "heart_lost":    ("two soft descending notes on a real kalimba, a small sigh, gentle, short", 0.7, -10, WORKSHOP_TUNE, "warm:7000"),
-        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful", 1.8, -9, WORKSHOP_TUNE, "warm:7000"),
-        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, WORKSHOP_TUNE, "warm:7000"),
-        "scorecard":     ("a small wooden paddle sign flipped up with a soft wooden clack and a tiny bright music box ting, proud and funny, short", 0.8, -9, WORKSHOP_TUNE, "warm:7000"),
-        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, WORKSHOP_TUNE, "warm:7000"),
-        "quack":         ("a mother duck giving two soft friendly quacks and tiny ducklings peeping, by a calm stream, gentle", 1.2, -12, WORKSHOP),
-        "purr":          ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # thirty-ninth set of the redo, with Drumbeat's above. None kept:
+        # seven passed, but the set was WORKSHOP_TUNE's (a music box and hand
+        # bells by style; hint, solved, scorecard and heart_back by prompt
+        # too, solved at -5), and the three that were plain kalimba falls
+        # (fail, whoa, heart_lost) sound with notes written here, so they are
+        # written from the same note and the set is in one tuning. Three new
+        # takes: `place_wood` (a hollow wooden block set down on felt, the
+        # thing a finger does all day, so the plainest: one tock), `select`
+        # (a lighter thing set down) and one muffled kalimba note, `hint`'s.
+        # Every tick is `tight`. place_road, reset, enter, snap, bump, cross
+        # and scorecard are wood's take, place_rope, remove, refused, undo,
+        # creak, snap_rope, clink, slosh and the ducks select's, and go,
+        # honk, whoa, fail, solved, heart_lost, out_of_hearts, heart_back and
+        # stamp the note's. Borrowed, of the same prompts: the cart's roll is
+        # Snooker's loop of steady air, settle Hedgehogs' breath (its reset),
+        # splash its gust, spill its whoosh and the cat Untangle's kitten.
+        # Nothing new is pine, hemp, brass, a bicycle bell, a creak, a crack,
+        # a twang, a rubber horn, china, tea, a splash, a duck, a music box
+        # or a hand bell. Wood's take sits at 696 Hz, so place_wood is two
+        # steps under it and nothing of it goes past three up; the note came
+        # back at 353 Hz, so the phrases' steps are 3 to 12 up and every note
+        # lands between 400 and 700 Hz; no two cues share a contour. Every
+        # tock starts at 0 ms.
+        "place_wood":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        # The road is the heavier plank: wood's take, three steps under it.
+        "place_road":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.16", "body:320", "tight", "notes:0:-5"),
+        # Rope is the lighter thing: select's take, three steps up.
+        "place_rope":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        "select":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight"),
+        # A piece taken off: select's take, one notch two steps down.
+        "remove":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # Not there: two low notches alike. Taken back, and Stop: twice and
+        # falling.
+        "refused":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:1.0"),
+        # Back to building: wood's take, five notches falling. The planks set
+        # out: five in a row.
+        "reset":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:3,1,-1,-2,-4"),
+        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-2,1,-2,0,3"),
+        # Go: two notes alike and a third up. The cart is a loop of steady air
+        # the board fades in and out and pitches by its load (0.85 to 1.1):
+        # Snooker's roll, of the same prompt. honk: the horn at mid-span, two
+        # quick notes alike.
+        "go":            ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,9", "cut:0.7"),
+        "roll":          ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
+        "honk":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:8,8", "cut:0.5"),
+        # A beam near its limit: select's take, three slow low notches. A beam
+        # gone: wood's take, three notches, down and half back. A rope gone:
+        # select's, two quick ones with the second five steps up.
+        "creak":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.4", "body:320", "tight", "notes:0.12:-3,-1,-3"),
+        "snap":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.06:2,-4,-1"),
+        "snap_rope":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.05:-1,4"),
+        # The cart off the deck: a wobble, a step down and back. Landing on a
+        # lower deck: wood's take, two notches all but together. Into the
+        # river, and a piece taken down into it: a puff of air, Hedgehogs' gust.
+        # fail: four notes that fall and come half back. cross: the wheels off
+        # the deck onto the bank, wood's take twice with the second three steps
+        # up; it sounds on the frame `solved` does, so it is not a phrase.
+        "whoa":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,5,7", "cut:0.5"),
+        "bump":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-6,-2"),
+        "splash":        ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "fail":          ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.2:10,7,3,5"),
+        "cross":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.26", "body:320", "tight", "notes:0.1:-2,1"),
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:3,5,7,10,12", "cut:1.7"),
+        # The bridge easing back after a test: a breath, Hedgehogs' reset.
+        "settle":        ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -18, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # Tea Party (Insane). clink: two cups of wood, select's take twice all
+        # but together. slosh: the tea near the rim, three quick notches there
+        # and back, the quietest thing here. spill: a longer breath, Hedgehogs'
+        # whoosh.
+        "clink":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.16", "body:320", "tight", "notes:0.04:2,5"),
+        "slosh":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.06:0,2,0"),
+        "spill":         ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        # Hearts (Hard and Insane). heart_lost sounds on the frame `fail` does,
+        # so it is one low quiet note, a fifth under fail's first, and not a
+        # second fall.
+        "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0:3", "cut:0.6"),
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:12,8,3"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,10", "cut:0.7"),
+        # The troll's card: wood's take, one notch three steps up. The seal:
+        # three notes that dip and rise. The ducks: select's take, two low
+        # notches and three above them. The cat: Untangle's kitten.
+        "scorecard":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,3,10"),
+        "quack":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.56", "body:320", "tight", "notes:0.11:-2,-2,3,3,3"),
+        "purr":          ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Mini Golf (puzzles/minigolf2d.gd): a ball putted round a felt green
     # inside a wooden kerb, into a cup with a flag in it; the card's words
