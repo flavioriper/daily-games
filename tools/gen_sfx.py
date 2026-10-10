@@ -1195,9 +1195,10 @@ SETS = {
         # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
         # sixteenth set of the redo. Kept from the first set, as they were:
         # refused, stuck, heart_lost and dance; heart_back and the bunting
-        # rolled off. Nothing here is cloth, thread, a needle, scissors,
-        # chalk, a glockenspiel or a music box any more (a rustle and a flap
-        # are scratch, a snip is steel). lift and place are the two things a
+        # rolled off (the bunting keeps its first prompt, cloth flags and
+        # all, and passes the measure). Nothing new is cloth, thread, a
+        # needle, scissors, chalk, a glockenspiel or a music box (a rustle
+        # and a flap are scratch, a snip is steel). lift and place are the two things a
         # finger does all day, so they are the plainest; combo is a tick the
         # board pitches, not past five semitones. Every tick is `tight`.
         # Borrowed takes: confetti is Binairo's and the cat Untangle's
@@ -1211,7 +1212,7 @@ SETS = {
         "place":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
         "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
-        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,6,10", "cut:0.9"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,7,11", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The patches laid out: place's take, five in a row.
         "enter":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
@@ -1258,9 +1259,11 @@ SETS = {
         # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
         # seventeenth set of the redo, with Quilt's above. Kept from the
         # first set, as they were: refuse, undo, hint, heart_lost, heart_back
-        # and the clouds; the flock rolled off. Nothing here is paper, a
-        # music box or a bird any more (a rustle, a fold and a crinkle are
-        # scratch, a chirp sat whole above 3 kHz). A launch travels, so
+        # and the clouds; the flock rolled off (undo, hint and the clouds
+        # keep their first prompts, a paper rustle and a music box in them,
+        # and pass the measure). Nothing new is paper, a music box or a bird
+        # (a rustle, a fold and a crinkle are scratch, a chirp sat whole
+        # above 3 kHz). A launch travels, so
         # `place` is a small puff of air, the first one a phone plays: the
         # old one was a breath at 19 Hz. combo is a tick the board pitches,
         # not past five semitones. Every tick is `tight`. Borrowed takes:
