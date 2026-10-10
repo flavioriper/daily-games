@@ -170,6 +170,7 @@ func _reset() -> void:
 			s.down = [1, 0, 0, 0, 0, 0, 0]
 			_steps = [{"at": 1.0, "do": "carry", "card": _c(HE, 13), "kind": Sim.At.COL, "i": 1}]
 			_length = 5.0
+	s.sweeps = false
 	s.score = 0
 	s.stuck = false
 	s.events.clear()
@@ -185,11 +186,12 @@ func _reset() -> void:
 	_finger = _spot(_steps[0]) if not _steps.is_empty() else Vector2.ZERO
 	_over.queue_redraw()
 
-## Where a step's finger comes down, in the table's pixels.
+## Where a step's finger comes down, in the table's pixels: on the strip of
+## the card that shows when another lies on it.
 func _spot(step: Dictionary) -> Vector2:
 	if String(step.do) == "stock":
 		return _table.stock_at() + _table.card_size() * 0.5
-	return _table.card_at(int(step.card)) + _table.card_size() * Vector2(0.5, 0.42)
+	return _table.card_at(int(step.card)) + _table.card_size() * Vector2(0.5, 0.2)
 
 func _process(delta: float) -> void:
 	if not _played() or not _begun or Motion.reduce or _table.sim == null:
@@ -221,7 +223,7 @@ func _process(delta: float) -> void:
 					_carry_from = _finger
 					var to := Vector2i(int(step.kind), int(step.i))
 					var top: Vector2 = _table.home_at(to.y) if to.x == Sim.At.HOME else _table.col_next(to.y)
-					_carry_to = top + _table.card_size() * Vector2(0.5, 0.42)
+					_carry_to = top + _table.card_size() * Vector2(0.5, 0.2)
 					_carry_at = _t
 					_down_until = INF
 					_table.press(_finger)

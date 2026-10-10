@@ -284,8 +284,10 @@ func capabilities() -> Array:
 func is_done() -> bool:
 	return sim != null and sim.is_over()
 
+## Never, as the other Arcade games: a deal won is over, and Restart stays
+## the way to the next.
 func is_solved() -> bool:
-	return sim != null and sim.phase == Sim.Phase.WON
+	return false
 
 func can_undo() -> bool:
 	return sim != null and sim.can_undo()

@@ -2938,9 +2938,10 @@ penalties. Its "furthest" is the most cards home.
   (`_replan`, `_search`): after every move a breadth-first look for the
   nearest position from which a card is turned up, sent home past where
   the homes stand, or played off the stock. Twice: the columns rearranged
-  among themselves, to the end (quick); then, only if that finds nothing,
-  with the homes' top cards brought down too, given up at `SEARCH_MOST`
-  (600 positions, 70 ms at worst on this Mac). **A search given up says
+  among themselves (quick, and cut off only at four times `SEARCH_MOST`);
+  then, only if that finds nothing, with the homes' top cards brought down
+  too, given up at `SEARCH_MOST` (600 positions, 70 ms at worst on this
+  Mac). **A search given up says
   stuck all the same** (`unsure`): one look to the end took half a second
   at 3,000 positions, and of the 31 deals in 300 that end past its reach
   all but one are stuck indeed. So the screen's card never ends the deal:
@@ -2966,6 +2967,12 @@ penalties. Its "furthest" is the most cards home.
   by a MarginContainer and shrinks to its end. `Dialog`'s buttons carry a
   minimum width that pushed the card off the table; theirs is cleared and
   they share the row.
+- **A tutorial page's sim has `sweeps` off**: a few cards laid face up is a
+  deal with nothing hidden, so the first move began the sweep and every
+  tap after it was refused (the pages' second steps did nothing until the
+  shots were read side by side). Its finger comes down on the strip of a
+  card that shows under the next (a fifth of the way down), or it picks
+  up the card lying on the one meant.
 - **No mascot**: the cards are marks. The end card's seat is a fan of the
   homes' top cards, the tab's banner a hand of cards over the meadow.
 - **The tab has nine cards**: four rows of two and Deckchair alone on a

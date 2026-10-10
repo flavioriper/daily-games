@@ -61,8 +61,8 @@ homes are counts, a move resolves at once and leaves events.
   home past where the homes stand, or a card played off the stock (every
   one of which is within reach, the stock being turned one at a time for
   ever). It looks twice (`_replan`): the columns rearranged among
-  themselves, to the end; then with the homes' top cards brought down as
-  well, to 600 positions. With nothing found a card comes up at the
+  themselves; then with the homes' top cards brought down as well, to 600
+  positions. With nothing found a card comes up at the
   table's foot: **Undo**, or **Finish** and keep the score. The table above
   it stays the player's, and a move that finds a way on puts it away.
   A search given up at 600 says stuck too (`unsure`): of 300 deals 31 end

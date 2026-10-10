@@ -40,6 +40,10 @@ const UNDO_MOST := 400
 ## called stuck all the same and `unsure` says so: the screen's card can be
 ## put away, so a way on that deep is still the player's to find.
 const SEARCH_MOST := 600
+## The first look, the columns alone, is given this many times as many: it
+## is nearly always a few dozen positions and is cut off only so that no
+## deal can hold a frame for a second.
+const FIRST_LOOK := 4
 const REVIVE_TRIES := 200
 
 var cols: Array = []
@@ -62,6 +66,9 @@ var stuck := false
 var began := false
 ## The cards are being sent home by themselves, every one face up.
 var sweeping := false
+## Whether a deal with every card face up sweeps at all. A tutorial page lays
+## a few cards face up to be played by a hand, and turns this off.
+var sweeps := true
 var events: Array = []
 var seed_used := 0
 
@@ -122,6 +129,9 @@ func _deal(aces_home: bool) -> void:
 	events = [{"type": "deal"}]
 	_replan()
 	stuck = _plan.is_empty()
+	# a deal with nothing to play from the shuffle says so at once
+	if stuck:
+		events.append({"type": "stuck"})
 
 func _shuffle(a: Array) -> void:
 	for i in range(a.size() - 1, 0, -1):
@@ -285,7 +295,7 @@ func _after() -> void:
 	stuck = _plan.is_empty()
 	if stuck and not was:
 		events.append({"type": "stuck"})
-	if not sweeping and hidden_count() == 0:
+	if sweeps and not sweeping and hidden_count() == 0:
 		sweeping = true
 		_undo.clear()
 		events.append({"type": "sweep"})
@@ -393,14 +403,15 @@ func hint() -> Dictionary:
 	hints -= 1
 	return m
 
-## Two looks: the columns rearranged among themselves, which is quick and
-## looked at to the end; then, only when that finds nothing, with the homes'
-## top cards brought down too, which is many times the positions and is
-## given up at SEARCH_MOST.
+## Two looks: the columns rearranged among themselves, which is quick; then,
+## only when that finds nothing, with the homes' top cards brought down too,
+## which is many times the positions and is given up at SEARCH_MOST.
 func _replan() -> void:
 	_plan = _search(false)
 	if _plan.is_empty():
+		var cut := unsure
 		_plan = _search(true)
+		unsure = unsure or cut
 
 ## Breadth first over what the columns can be rearranged into without
 ## getting anywhere, for the nearest position from which a card is turned
@@ -434,7 +445,7 @@ func _search(with_homes: bool) -> Array:
 			if not hit.is_empty():
 				path.append(hit)
 				return path
-			if with_homes and seen.size() > SEARCH_MOST:
+			if seen.size() > SEARCH_MOST * (1 if with_homes else FIRST_LOOK):
 				unsure = true
 				return []
 			queue.append([nc, nh, path])
