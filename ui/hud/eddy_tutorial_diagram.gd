@@ -64,15 +64,32 @@ class Round extends "res://arcade/eddy_sim.gd":
 		th.look = look
 		th.age = 10.0
 
-	## Where the hand leans the pad just now.
+	## Where the hand leans the pad just now. A step after a thing (its id)
+	## is passed over once that thing has gone down.
 	func hand() -> Vector2:
 		for row: Array in plan:
-			if clock < float(row[0]):
-				if row[1] == null:
+			if clock >= float(row[0]) or row[1] == null:
+				if clock < float(row[0]):
 					return Vector2.ZERO
-				var d: Vector2 = mid() + (row[1] as Vector2) - pos
-				return d.normalized() * minf(float(row[2]), d.length() / 30.0)
+				continue
+			var to := Vector2.ZERO
+			if row[1] is int:
+				var found := false
+				for th: Dictionary in things:
+					if int(th.id) == int(row[1]) and float(th.sink) < 0.0:
+						to = th.pos
+						found = true
+				if not found:
+					continue
+			else:
+				to = mid() + (row[1] as Vector2)
+			var d: Vector2 = to - pos
+			return d.normalized() * minf(float(row[2]), d.length() / 30.0)
 		return Vector2.ZERO
+
+	## Nothing left afloat, or the run over: the lesson has been told.
+	func told() -> bool:
+		return things.is_empty() or is_over()
 
 	func step() -> void:
 		clock += DT
@@ -251,25 +268,31 @@ func _reset() -> void:
 			_length = 10.6
 			_still_at = 4.6
 		Lesson.GROW:
+			# beside a duck too big for it, then two leaves for the level, then
+			# the duck again (the things are numbered as they are laid)
 			game.level = Sim.level_for(Sim.Kind.DUCK) - 1
 			game.grown = game.need() - 2
-			game.lay(Sim.Kind.DUCK, Vector2(30, -6))
-			game.lay(Sim.Kind.LEAF, Vector2(-44, 22), 1)
-			game.lay(Sim.Kind.LEAF, Vector2(-50, -20), 0)
-			game.pos = game.mid() + Vector2(-4, -6)
-			game.plan = [[0.5, null, 0.0], [3.2, Vector2(14, -6), 0.25], [5.4, Vector2(-40, 20), 0.4], [7.6, Vector2(-46, -18), 0.3],
-				[11.4, Vector2(26, -6), 0.35], [12.4, null, 0.0]]
-			_length = 12.6
-			_still_at = 2.6
+			game.lay(Sim.Kind.DUCK, Vector2(34, -8))
+			game.lay(Sim.Kind.LEAF, Vector2(-48, 26), 1)
+			game.lay(Sim.Kind.LEAF, Vector2(-54, -26), 0)
+			game.pos = game.mid() + Vector2(-6, -8)
+			var first: int = game.things[0].id
+			game.plan = [[0.5, null, 0.0], [3.4, first, 0.25], [8.0, first + 1, 0.5], [12.0, first + 2, 0.5], [18.0, first, 0.45]]
+			_length = 18.0
+			_still_at = 2.8
 		Lesson.SPIN:
+			# a short spin nearly out: one leaf makes the level and gives some
+			# back, and then it runs out
 			game.level = 2
 			game.grown = game.need() - 1
-			game.spin = 4.2
+			game.spin_full = 14.0
+			game.spin = 3.6
 			game.lay(Sim.Kind.LEAF, Vector2(30, 6), 2)
-			game.lay(Sim.Kind.PETAL, Vector2(-40, -24), 0)
-			game.lay(Sim.Kind.ACORN, Vector2(-30, 30), 0)
-			game.plan = [[0.5, null, 0.0], [3.0, Vector2(24, 6), 0.3], [6.5, Vector2(-34, -22), 0.25], [14.0, Vector2(-26, 26), 0.2]]
-			_length = 13.4
+			game.lay(Sim.Kind.PETAL, Vector2(-44, -28), 0)
+			game.lay(Sim.Kind.ACORN, Vector2(-40, 34), 0)
+			var leaf: int = game.things[0].id
+			game.plan = [[0.5, null, 0.0], [4.0, leaf, 0.3], [5.0, null, 0.0], [20.0, Vector2(0, 0), 0.2]]
+			_length = 16.0
 			_still_at = 1.2
 	game.steer(Vector2.RIGHT * 0.01)
 	game.steer(Vector2.ZERO)
@@ -281,8 +304,12 @@ func _reset() -> void:
 func _process(_delta: float) -> void:
 	if not _played() or not _begun or Motion.reduce:
 		return
-	if _pond.sim.clock >= _length:
+	var game: Round = _pond.sim
+	if game.clock >= _length:
 		_reset()
+	elif (lesson == Lesson.GROW or lesson == Lesson.SPIN) and game.told():
+		# a breath after the last thing is down, or the whirlpool unwound
+		_length = minf(_length, game.clock + 1.6)
 
 # --- drawing ---
 

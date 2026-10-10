@@ -517,6 +517,7 @@ settings.
 | posy | 7 | a swap; the day's goals and spare moves; the four specials; weeds, stones, moss; out of moves and the +5; the tools; buttons and boosters |
 | peapod | 8 | the cart; numbers, paints and the line; the frost and the shove, had as their crates break (nothing is caught since 2026-10-05); the five pods; the shop's four cards (a list, like the last page); golden, iron, firecracker; the millipede; boosters and buttons |
 | deckchair | 8 | a red six carried onto a black seven and a five tapped after it; hidden cards turning up; the homes, ace upward; the stock, one card a tap; a king to the empty column; what scores (a list); boosters (a list); the buttons (built with the game, 2026-10-10) |
+| eddy | 6 | the pad leans and the whirlpool follows, at a drift and in a hurry; flat out over three leaves, which stay, then at a walk, and they go down; a duck too big, two leaves for the level, the duck down; the spin nearly out, a level giving some back, the whirlpool unwinding; boosters (a list); the buttons (built with the game, 2026-10-10) |
 | beeline | 6 | a tap is a beat and she sinks without one; the gaps and the count; a hedge or the lawn ends it, the sky's top does not; the four ribbons; boosters; the buttons (built with the game, 2026-10-09) |
 
 None is level-aware: Versus levels change only how well the computer plays,

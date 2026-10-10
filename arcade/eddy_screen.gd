@@ -575,7 +575,7 @@ func _play_events() -> void:
 				_low_at = _clock
 				_fx.cue("low")
 				_feel(Haptics.BUMP)
-				_rw.sticker(tr("ED_LOW"), _rw.at(field, field.size * Vector2(0.5, 0.2)), 50, 1.4, false, Art.SPIN_LOW.lightened(0.3), false, "low")
+				_rw.sticker(tr("ED_LOW"), _rw.at(field, field.size * Vector2(0.5, 0.24)), 50, 1.4, false, Art.SPIN_LOW.lightened(0.3), false, "low")
 			"drain":
 				_fx.cue("drain")
 				_feel(Haptics.BAD)

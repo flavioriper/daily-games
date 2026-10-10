@@ -3381,6 +3381,38 @@ SETS = {
         # A best passed: five up a step at a time, the longest rise.
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Eddy (arcade/eddy_screen.gd, 2026-10-10): a whirlpool steered about a
+    # pond. Made against the cozy rules from the start (docs/agents/sound.md).
+    # One cue never stops: `plop`, a small thing gone down, one or two a
+    # second for the whole run. Nothing follows the whirlpool's turning: a
+    # sound that rose with the spin would be a whine, and the pad's press is
+    # the button's own click (ui/fx2d.gd's touch).
+    "eddy": {
+        # A leaf, a petal or an acorn gone down: the constant action, the
+        # quietest file of the set. The screen varies it by 0.94 to 1.06.
+        # Asked for first as a pebble dropped into a wooden bucket of water:
+        # the take sat at 1.1 kHz with 84% of itself between 1 and 3 kHz
+        # (flagged high), so nothing here is water. It is Beeline's light
+        # button on felt (562 Hz raw), as the block and the note are
+        # Beeline's takes too: no new take is kept in this set.
+        "plop":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -20, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A toy gone down: the block, one knock five steps down.
+        "gulp":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-5"),
+        # The spin under a quarter: two low notches alike.
+        "low":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.12:-3,-3"),
+        # The whirlpool unwinding: the wheel run down, four notches each a
+        # step lower.
+        "drain":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.6", "body:320", "tight", "notes:0.13:0,-2,-4,-7"),
+        # A level made, nine a run at most, and the Second chance taken: two
+        # notes up a fourth. The screen plays the tenth level 24% up.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # A run beginning: three notes up.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
+        # The end card: three slow ones down.
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,4", "cut:1.3"),
+        # A best passed: five up a step at a time, the longest rise.
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+    },
 }
 
 

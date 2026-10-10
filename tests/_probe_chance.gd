@@ -124,7 +124,8 @@ func _process(delta: float) -> bool:
 	_t += delta
 	if OS.get_environment("PROBE_T") != "" and int(_t * 10) != int((_t - delta) * 10):
 		printerr("t=%.1f" % _t)
-	if _t > 90.0:
+	# ten seconds a game and some to spare: nine games no longer fit in 90
+	if _t > 30.0 + 12.0 * GAMES.size():
 		_check(false, "timed out")
 		_finish(1)
 		return true

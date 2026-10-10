@@ -22,6 +22,10 @@ func _initialize() -> void:
 	var slow := _many(runs, false)
 	var fast := _many(runs, true)
 	_many(runs, false, 0.6)
+	# grown, the whirlpool is stronger, and hurry must still not pay
+	var slow_big := _many(runs, false, 1.0, 8)
+	var fast_big := _many(runs, true, 1.0, 8)
+	_check("grown to level 8, the patient bot still scores at least three times the hasty one", slow_big >= fast_big * 3.0)
 	_check("the patient bot scores at least three times the hasty one", slow >= fast * 3.0)
 	_kit()
 	print("%d failed" % _fails)
@@ -102,12 +106,13 @@ func _water() -> void:
 	print("mouths: duck from level %d, boat %d, ball %d" % [open, Sim.level_for(Sim.Kind.BOAT), Sim.level_for(Sim.Kind.BALL)])
 
 ## Plays `runs` runs and prints what they came to; gives back the median score.
-func _many(runs: int, hasty: bool, skill := 1.0) -> float:
+func _many(runs: int, hasty: bool, skill := 1.0, from := 1) -> float:
 	var scores: Array = []
 	var levels: Array = []
 	var secs: Array = []
 	for k in runs:
 		var s = Sim.new(k + 1)
+		s.level = from
 		_play(s, hasty, skill)
 		scores.append(s.score)
 		levels.append(s.level)
@@ -116,7 +121,7 @@ func _many(runs: int, hasty: bool, skill := 1.0) -> float:
 	levels.sort()
 	secs.sort()
 	print("%s bot: score %d / %d / %d   level %d / %d / %d   seconds %d / %d / %d (lowest, median, highest of %d)" % [
-		"hasty" if hasty else ("patient" if skill >= 1.0 else "slower"), scores[0], scores[runs / 2], scores[-1], levels[0], levels[runs / 2], levels[-1],
+		("hasty" if hasty else ("patient" if skill >= 1.0 else "slower")) + ("" if from == 1 else " from level %d" % from), scores[0], scores[runs / 2], scores[-1], levels[0], levels[runs / 2], levels[-1],
 		secs[0], secs[runs / 2], secs[-1], runs])
 	return float(scores[runs / 2])
 

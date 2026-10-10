@@ -35,7 +35,7 @@ const CORE := 7.0
 const CORE_STEP := 2.6
 ## The water's speed round the core's edge at level 1, and a level's more.
 const TURN := 60.0
-const TURN_STEP := 10.0
+const TURN_STEP := 8.0
 ## How much of the turning also runs inward, and how many cores out the
 ## whirlpool is felt at all.
 const INFLOW := 0.45
@@ -43,12 +43,15 @@ const REACH := 4.5
 ## A thing is gripped whole when the core is this many times its own
 ## radius; under that the grip falls off as the cube.
 const GRIP := 1.4
-## A thing in the core goes down when it moves with the water to within
-## this.
+## A thing goes down once it is this far into the core (a part of its
+## radius), goes round with the water there to within SLIP, and crosses the
+## whirlpool no faster than RUSH.
+const MOUTH := 0.95
 const SLIP := 25.0
+const RUSH := 30.0
 ## What is swallowed to leave level 1, and how much more each level asks.
 const GROW := 6
-const GROW_STEP := 10
+const GROW_STEP := 9
 ## The spin: seconds of turning in a run, and what a level gives back.
 const SPIN := 40.0
 const SPIN_BACK := 6.0
@@ -268,14 +271,17 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		g = grip_of(th.kind, level)
 		var round := swirl(p)
 		water += (round + vel * carry(r)) * g
-		# what floats is pressed toward the middle as the water round it is
-		# (the water's own turning, which a thing afloat shares), or drag
-		# alone would fling it out like a stone on a string
-		# -- and only as far as it already goes the whirlpool's way: one
-		# hurried past presses on nothing.
+		# What goes round is pressed toward the middle, as the turning water
+		# itself is, or drag alone would fling it out like a stone on a
+		# string. The water presses on a thing only as hard as its own going
+		# round asks, and no harder than the water there goes round itself:
+		# so a leaf lying still as a whirlpool hurries past is pressed by
+		# nothing.
 		if r > 0.001:
-			var with := 1.0 - smoothstep(0.3, 0.7, (v - vel).length() / maxf(SPEED, turn_of(level) * 1.5))
-			v -= (p - pos) / r * (round.length_squared() / maxf(r, rc * 0.25)) * g * with * DT
+			var n := (p - pos) / r
+			var side := Vector2(-n.y, n.x)
+			var going := clampf(v.dot(side), 0.0, round.dot(side))
+			v -= n * (going * going / maxf(r, rc * 0.25)) * DT
 	v += (water - v) * (1.0 - exp(-DT / float(kind.tau)))
 	p += v * DT
 	# the bank turns a thing back
@@ -296,7 +302,7 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		want = turn_of(level) * (1.0 / rc if r < rc else rc / (r * r)) * g * strength() * (1.0 - smoothstep(rc * REACH * 0.55, rc * REACH, r))
 	th.turn = lerpf(float(th.turn), want, minf(1.0, DT * 3.0))
 	th.ang = float(th.ang) + (float(th.turn) + float(th.idle)) * DT
-	if not live or r > rc * 0.8:
+	if not live or r > rc * MOUTH:
 		return
 	if g < 1.0:
 		# sat on a mouth too small for it
@@ -306,7 +312,11 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		return
 	if phase != Phase.PLAY:
 		return
-	if (v - vel - swirl(p)).length() <= SLIP:
+	# down it goes, once it goes round with the water and is not being run over
+	var n := (p - pos) / maxf(r, 0.001)
+	var side := Vector2(-n.y, n.x)
+	var rel := v - vel
+	if absf(rel.dot(side) - swirl(p).dot(side)) <= SLIP and absf(rel.dot(n)) <= RUSH:
 		th.sink = 0.0
 		th.rad = r
 		th.a = (p - pos).angle()

@@ -3041,3 +3041,56 @@ penalties. Its "furthest" is the most cards home.
   looked at.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Deckchair bot.
 - Owed: a phone, the sounds heard, pt and es read, the spec's ten calls.
+
+
+**Eddy is the tenth** (2026-10-10, spec
+`2026-10-10-arcade-eddy-design.md`, built unattended): a whirlpool steered
+about a pond by a fixed round pad, after a browser game the spec names once
+to forbid; **it is called Eddy and nothing else**. It starts small and
+grows through ten levels on what it swallows: leaves, petals and acorns,
+and from level 5 the toys (ducks, then boats, then balls). A spin of 40
+seconds runs down and every level gives 6 back. Its "furthest" is the
+biggest whirlpool.
+
+- **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed
+  1/60 s): `steer(lean)`, `step()`, `events`. The water is a vortex with a
+  core, and **nothing afloat is moved by rule**: drag toward the water's
+  speed over each thing's own `tau`, and a press toward the middle only as
+  hard as the thing's own going round asks. Going down is the one thing
+  scripted. `tests/_probe_eddy.gd -- [runs]` proves the three promises (a
+  whirlpool held by a leaf takes it, one hurried past does not, a duck
+  stays afloat until level 5) and plays a patient bot against a hasty one;
+  run it after touching the sim.
+- **Check a still whirlpool from every distance, not only with a bot.**
+  Two versions of the press left things orbiting for ever at 1 to 1.6
+  cores from a whirlpool of level 2 and up. The bot never showed it (it
+  sits on its leaf); the tutorial's frames side by side did. What held:
+  the press is `min(the thing's own tangential speed, the water's)` squared
+  over the radius, and the catch asks only that the thing goes round with
+  the water (`SLIP`, tangential) and is not being run over (`RUSH`,
+  radial) inside `MOUTH` of the core.
+- **One Control draws the pond** (`_draw_field`): the water and bank are a
+  still mesh built on resize; the whirlpool is `Art.funnel` and
+  `Art.streaks`, built once for a core of `CORE_PX` and scaled, turned by
+  the transform; each thing afloat is one cached mesh with its halo baked
+  in; the spin's bar and the rings are one live mesh. **The pad is a
+  second Control** (`_draw_pad`): the growing's ring, the base, the knob.
+  94 draw calls waiting, 87 in play, 99 to 101 grown, 126 to 131 with the
+  end card, 321 on the tab (810x1440, both drivers).
+- **The pad takes ScreenTouch, ScreenDrag and the mouse** (`_on_pad_input`,
+  `_held` is the finger's index); the harness holds a real touch on it
+  through the viewport. `_lean()` is what the sim is handed, so the
+  tutorial's pond overrides that one function with its hand.
+- **The pond is as tall as the room** (`_tall_units`, `Sim.new(-1, tall)`):
+  a run not yet begun is made again when the field's shape changes, one
+  under way keeps its own and is centred.
+- **The tab has ten cards**, two a row in five rows on a phone.
+- **The tutorial's pond looks closer** (`Pond._zoom` 2, the pad beside it
+  rather than under), and its hand goes after the things themselves
+  (`Round.plan` rows name a thing's id): a grown whirlpool moves what is
+  near it, so places written down beforehand were empty when it got there.
+- **No sound is water**: the one water take measured high (1.1 kHz). The
+  set is Beeline's three takes.
+- **Not in `tests/_probe_arcade_buzz.gd`**: it has no Eddy bot.
+- Owed: a phone, the sounds heard, pt and es read, the spec's ten calls.
+
