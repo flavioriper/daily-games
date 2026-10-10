@@ -81,6 +81,10 @@ const HINT := Color("f9c04a")
 const SPEED := 11.0
 const WATCH := 0.16
 const DEAL := 0.055
+## The notches are never the same sound twice: `place` was varied on landing
+## only (not with reduced motion), `draw`, `lift` and `refused` were 1.0.
+const TICK_VARY := Vector2(0.94, 1.06)
+const VARIED := ["place", "draw", "lift", "refused"]
 
 class Sprite:
 	var zone := Zone.STOCK
@@ -470,7 +474,7 @@ func _process(delta: float) -> void:
 				sp.s = sp.to_s
 				if sp.land:
 					sp.land = false
-					_cue("place", randf_range(0.94, 1.06))
+					_cue("place")
 				if sp.fly:
 					sp.fly = false
 					_await_at = maxf(_await_at, _t + WATCH)
@@ -498,6 +502,8 @@ func _touch() -> void:
 
 func _cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	if _fx != null:
+		if cue_name in VARIED:
+			pitch *= randf_range(TICK_VARY.x, TICK_VARY.y)
 		_fx.cue(cue_name, pitch, volume_db)
 
 # --- input ---

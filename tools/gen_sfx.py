@@ -3019,49 +3019,94 @@ SETS = {
         "lose":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.26:9,7,4", "cut:1.1"),
         "draw":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:7,7", "cut:0.8"),
     },
-    # Dominoes (Versus, versus/dominoes_screen.gd): thick ivory-coloured tiles
-    # on a felt mat, as HEARTH's foley. A hand is twenty-odd tiles laid and a
-    # game four hands or so, so everything a tile does is dry, low and short
-    # with no note: `place` (a tile set down at the end of the line, pitched a
-    # little either way each time), `draw` (one slid out of the boneyard),
-    # `lift` (a tile picked up to choose its end), `refused`, `knock` (a
-    # pass: the knuckle on the table that says "I cannot go"), `shuffle` (the
-    # tiles stirred face down before a deal, once a hand). The notes are kept
-    # for a hand's end and the game's: `out`, `lost_hand`, `hint`, `win`,
-    # `lose`, on HEARTH_TUNE's low muffled kalimba.
+    # Dominoes (Versus, versus/dominoes_screen.gd): thick wooden tiles on a
+    # felt mat. A hand is twenty-odd tiles laid and a game four hands or so,
+    # so everything a tile does is dry, low and short with no note, and the
+    # notes are kept for a hand's end, the bulb and the game's end.
     "dominoes": {
-        "place":     ("one thick tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
-        "draw":      ("a single soft hollow wooden tick, one notch of an old mouse wheel, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.14", "body:320"),
-        "lift":      ("a single soft hollow wooden tick, a thick tile lifted off felt, very short", 0.5, -18, HUSH, "warm:1500", "cut:0.12", "body:320"),
-        "refused":   ("a domino tile tapped once flat on a felt table, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
-        "knock":     ("a knuckle knocking twice gently on a felt covered wooden table, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
-        "shuffle":   ("six soft hollow wooden ticks one after another, slowing down, an old mouse wheel turned slowly", 1.1, -16, HUSH, "warm:1000", "ease:0.02", "body:320"),
-        "out":       ("one domino tile set down on felt, then two soft slow rising notes on a low kalimba, pleased and warm, short", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "lost_hand": ("one low soft falling tongue drum note, gentle and round, not sad, short", 0.9, -12, HEARTH_TUNE, "warm:5500", "ease:0.02"),
-        "hint":      ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "win":       ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
-        "lose":      ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-eighth set of the redo, with Reversi's below. None kept: nine
+        # of eleven were flagged, and the two that passed (`place`, `lift`)
+        # are written again so the set is in one tuning (lift's take was a
+        # thump at 178 Hz). The five of HEARTH_TUNE's kalimba sat at 194 to
+        # 330 Hz and read -44 to -47 on a phone (`win` -21, 98% under 300
+        # Hz), so a hand's end and the game's were all but silent there;
+        # `refused` was 42 Hz from an empty take, `draw` 85% under 300 Hz,
+        # `knock` a thump, `shuffle` a scratch take filtered. Three new takes:
+        # `place` (a hollow wooden block set down on felt, the tock under
+        # every move, so the plainest: one tock), `lift` (a lighter thing set
+        # down) and one muffled kalimba note, `hint`'s. Every tick is
+        # `tight`. knock is place's take, draw, refused and shuffle lift's,
+        # out, lost_hand, win and lose the note's. Nothing new is a knuckle,
+        # a table, a tile slid, a clack or a stir of tiles: a tile is a
+        # wooden thing on felt.
+        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        # A tile picked to choose its end.
+        "lift":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        # One taken from the boneyard, by either hand: lift's take, one notch
+        # of the wheel two steps up, the quietest thing in the set.
+        "draw":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.09", "body:320", "tight", "notes:0:2"),
+        # A tile that fits neither end, or the boneyard tapped with a tile
+        # that fits: lift's take, twice and falling.
+        "refused":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        # A pass, "I cannot go", and a hand tied: place's take, two low
+        # notches alike.
+        "knock":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.13:-7,-7"),
+        # The tiles stirred before a deal, once a hand: lift's take, the
+        # wheel spun, nine notches wandering over the deal's first second.
+        "shuffle":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.95", "body:320", "tight", "notes:0.1:0,3,-2,2,-1,4,1,-3,0"),
+        # Your hand emptied, or a blocked hand yours: three quick notes up.
+        "out":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:4,8,11", "cut:0.7"),
+        # The hand theirs: two notes, the second two steps down.
+        "lost_hand": ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:7,5", "cut:0.7"),
+        # The bulb: two notes alike and a third up.
+        "hint":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,4,8", "cut:1.0"),
+        # First to fifty: six up and over.
+        "win":       ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:3,7,10,7,10,11", "cut:1.9"),
+        # Three slow ones down, small and kind.
+        "lose":      ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
     },
     # Reversi (Versus, versus/reversi_screen.gd): thick two-faced wooden discs
-    # on a painted wooden board, as HEARTH's foley. A game is sixty discs set
-    # down and a few hundred turned over, so everything a disc does is dry, low
-    # and short with no note: `place` (a disc set on its square), `flip` (one
-    # ring of discs turned over, played a little higher for each ring further
-    # out), `refused`, `lift` (a move taken back), `sweep` (the board cleared
-    # for a new game), `pass` (a knuckle on the frame: no square to play). The
-    # notes are kept for the bulb and the end: `hint`, `win`, `lose`, `draw`,
-    # on HEARTH_TUNE's low muffled kalimba.
+    # on a painted wooden board. A game is sixty discs set down and a few
+    # hundred turned over, so everything a disc does is dry, low and short
+    # with no note, and the notes are kept for the bulb and the end.
     "reversi": {
-        "place":   ("one thick wooden disc set down gently on a felt-lined board, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
-        "flip":    ("a single soft hollow wooden tick, one notch of an old mouse wheel, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320"),
-        "refused": ("a wooden disc tapped once flat on a wooden board and held, a single soft dull muffled thud, no ring, no tone, very short", 0.5, -14, HEARTH, "warm:4500", "cut:0.22"),
-        "lift":    ("a single soft hollow wooden tick, a thick wooden disc lifted off felt, very short", 0.5, -18, HUSH, "warm:1500", "cut:0.12", "body:320"),
-        "sweep":   ("five soft hollow wooden ticks one after another, slowing down, an old mouse wheel turned slowly", 0.9, -16, HUSH, "warm:1000", "ease:0.02", "body:320"),
-        "pass":    ("a knuckle knocking twice gently on a wooden board's frame, two soft low dull muffled knocks, no ring, no tone, short", 0.6, -12, HEARTH, "warm:4500", "cut:0.45"),
-        "hint":    ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "win":     ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
-        "lose":    ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "draw":    ("two soft slow level notes on a low kalimba, the same note twice, calm and even, a friendly tie", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-ninth set of the redo, with Dominoes' above. None kept.
+        # Three new takes: `place` (a hollow wooden block set down on felt,
+        # the tock under every move), `lift` (a lighter button) and one
+        # muffled kalimba note, `hint`'s. Every tick is `tight`. flip and
+        # refused are lift's take, pass place's, win, lose and draw the
+        # note's, and `sweep` is Hedgehogs' breath, of the same prompt.
+        # Nothing new is a knuckle on a frame, a disc tapped flat, a thud or
+        # a tongue drum (flip and place passed and are not kept: place's raw
+        # was 67% under 300 Hz, and the set is in one tuning). The old
+        # sweep, five ticks asked for in one take, came back 90% above 3 kHz.
+        # A disc set on its square: the block, three steps under its take to
+        # be the heavier of the two (the take sat at 684 Hz, as the button).
+        "place":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        # A move taken back: the lighter thing set down.
+        "lift":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        # One ring of discs turned over, up to seven a move 85 ms apart:
+        # lift's take, one notch of the wheel two steps up, from 0 ms. The
+        # board plays it half a step higher a ring and 3 dB down on the
+        # first (versus/reversi_board.gd, FLIP_PITCH).
+        "flip":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # A square that turns nothing: lift's take, twice and falling.
+        "refused": ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        # No square to play, the turn handed back: place's take, two low
+        # notches alike.
+        "pass":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.14:-5,-5"),
+        # The board cleared for a new game, the discs going off corner to
+        # corner in 0.3 s: a breath of air, Hedgehogs' (its reset).
+        "sweep":   ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # The note came back at 340 Hz and -28 dB: steps 4 to 12 land every
+        # note at 428 to 680 Hz. The bulb: two notes up; a win five up, a
+        # loss three slow ones down, a draw two alike.
+        "hint":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,9", "cut:0.6"),
+        "win":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,12", "cut:1.5"),
+        "lose":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.26:9,7,4", "cut:1.1"),
+        "draw":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:7,7", "cut:0.8"),
     },
     # the gifts, the shop and the gold pill (spec 2026-09-28-gold-gifts), keyed
     # by the sheets' own puzzle_id "wallet"

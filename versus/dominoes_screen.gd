@@ -567,7 +567,8 @@ func _step_other(m: int) -> void:
 
 ## A pass is knocked on the table and said.
 func _knock(text: String) -> void:
-	_fx.cue("knock")
+	# Never the same sound twice (it was 1.0 every time).
+	_fx.cue("knock", randf_range(0.94, 1.06))
 	_say(text)
 
 ## The player tapped a tile that fits, and where it goes is settled.

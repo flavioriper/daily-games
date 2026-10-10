@@ -597,12 +597,19 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   can read the other hand, since it holds it**; nothing it then plays is a
   foul. Hiding the hand from the other device would take a deal neither
   end knows whole, which this transport has no server to make.
-- **Sounds** (`tools/gen_sfx.py dominoes`, eleven, one take each, unheard):
-  `HEARTH` foley, dry, low and short with no note for everything a tile does
-  (`place`, pitched a little either way each time; `draw`, `lift`,
-  `refused`, `knock` -- a pass, knuckles on the table -- and `shuffle`, once
-  a hand); the notes are `out`, `lost_hand`, `hint`, `win` and `lose`, on
-  `HEARTH_TUNE`'s low muffled kalimba.
+- **Sounds** (`tools/gen_sfx.py dominoes`, eleven from three takes, redone
+  2026-10-10 against the cozy rules, unheard; the row in
+  `docs/agents/sound.md` has the measures): a wooden block and a lighter
+  button set down on felt, dry, low and short with no note for everything a
+  tile does (`place`, `lift`, `draw` -- one notch as a tile leaves the
+  boneyard for either hand --, `refused` twice and falling, `knock` -- a
+  pass, and a hand tied: two low notches alike, no knuckles -- and
+  `shuffle`, nine notches wandering, once a hand); the notes are `out`,
+  `lost_hand`, `hint`, `win` and `lose`, written from one muffled kalimba
+  note at 421 to 668 Hz. `place`, `draw`, `lift` and `refused` vary by 0.94
+  to 1.06 at random (`TICK_VARY`, `VARIED` in the board's `_cue`; only a
+  landing `place` did before), and a pass's `knock` in the screen's
+  `_knock`. A game drawn plays `lose`: there is no third cue.
 - **The tab holds seven cards in four rows**, the last row one card: `_fit`
   shares the same room among four (1300 design px at 810x1440, 207 draw
   calls), so every card's picture is shorter than it was with six.
@@ -729,11 +736,19 @@ once, to forbid it: Othello. No code, comment, key, commit or screen uses it.
   loses on the clock; honest ends never do it, since both run the same
   rules. Not staged: a turn kept that should have passed (the message after
   it is the foul above).
-- **Sounds** (`tools/gen_sfx.py reversi`, ten, one take each, unheard):
-  `HEARTH` foley, dry, low and short with no note for everything a disc
-  does (`place`, `flip`, `refused`, `lift` -- a move taken back -- `sweep`,
-  the board cleared, and `pass`, a knuckle on the frame); the notes are
-  `hint`, `win`, `lose` and `draw`, on `HEARTH_TUNE`'s low muffled kalimba.
+- **Sounds** (`tools/gen_sfx.py reversi`, ten, unheard; redone 2026-10-10
+  against the cozy rules, the row in `docs/agents/sound.md`): three takes,
+  a hollow wooden block on felt (`place`, and `pass`: two low notches
+  alike), a lighter button (`lift` -- a move taken back -- `flip`, one notch
+  of the wheel, and `refused`, twice and falling) and one muffled kalimba
+  note (`hint` two up, `win` five up, `lose` three slow ones down, `draw`
+  two alike); `sweep`, the board cleared, is a breath of air. `flip` is
+  played once a ring of discs turned, 85 ms apart, never once a disc. At
+  play `place`, `lift` and `refused` vary by 0.94 to 1.06 at random
+  (`TICK_VARY`, `VARIED`; they were 1.0), and `flip` climbs half a step a
+  ring from 0.95, the run of one move moved by one such draw (`FLIP_PITCH`
+  0.95 + 0.028 a ring; it was 0.92 + 0.045 with no variation): 4.9
+  semitones at the widest.
 - **The tab holds eight cards in four rows**, the fourth row now full: the
   cards are the size they were with seven (237 draw calls at 810x1440).
 - 75-82 draw calls at the board early, 107-138 late (a draw call a disc),
