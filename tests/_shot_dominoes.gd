@@ -13,6 +13,7 @@ extends SceneTree
 ## other tile is carried to its place by a finger that drags, and once each a
 ## tile is let go on the end it does not fit and on nothing. Shots:
 ## carry_lay, carry_wrong, carry_nowhere (the tile under the finger),
+## rap (the player's last tile off the felt between its two raps),
 ## deal (tiles in the air), start, laid, picked (two places lit), hint, draw
 ## (the boneyard lit), refused, long (the line at its longest in the first
 ## hand), hand (a finished hand lying open), end. After the first hand the
@@ -118,7 +119,11 @@ func _process(delta: float) -> bool:
 		_board = _screen.board
 		# The real pointer over the window must not lay a tile.
 		_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_board.rapped.connect(func() -> void:
+			print("  rap at %.2f: hand over %s, winner %d, state %d" % [_t, str(_screen.rules.hand_over), _screen.rules.hand_winner, _screen._state]))
 		return false
+	if _board._rap >= 0 and _board._rap_lift() > 0.7:
+		_shot("rap")
 	_peak = maxi(_peak, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
 	var S = _screen.State
 	var r: RefCounted = _screen.rules

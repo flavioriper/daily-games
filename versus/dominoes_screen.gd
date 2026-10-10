@@ -212,6 +212,7 @@ func _build() -> void:
 	board.chosen.connect(_on_chosen)
 	board.draw_asked.connect(_on_draw)
 	board.settled.connect(_on_settled)
+	board.rapped.connect(func() -> void: _fx.buzz(Haptics.BUMP))
 	board.refused.connect(func(reason: String) -> void:
 		_fx.buzz(Haptics.WARN)
 		_say(tr("DOM_NO_FIT" if reason == "fit" else "DOM_NO_DRAW")))

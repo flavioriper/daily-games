@@ -581,7 +581,17 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   (`chosen`, as a tap); on the end it does not fit it is refused (the
   shake, `refused("fit")`); anywhere else it goes back to the hand and
   nothing is said. A tile that fits neither end can be carried and comes
-  back the same ways. The tap and the pick-up are as they were. A tap on
+  back the same ways. The tap and the pick-up are as they were. **The
+  player's last tile raps the table twice** (2026-10-10, the user: "when
+  player wins on dominoes, create a double tap on the table with the piece
+  to simulate the "win" gesture"): `sync` marks the tile that left the
+  player's hand for the line with the hand over, not blocked and theirs
+  (`_rap_due`); once landed it leaves the felt and comes down `RAP_COUNT` 2
+  times, `RAP_HOP` 0.17 s each and `RAP_RISE` 0.34 of a half high, `place`
+  at 0.86 and +2 dB with a puff of felt and `rapped` each time, and
+  `settled` waits for it, so the hand's card and `out` come after. Under
+  reduce motion the two knocks are heard and the tile lies still. Not the
+  other side's last tile, and not a blocked hand. A tap on
   the boneyard draws
   when nothing fits (it is ringed then) and is refused otherwise. The
   first deal waits for the control's first layout (`_deal_due`): before it

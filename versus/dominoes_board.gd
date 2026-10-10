@@ -37,6 +37,9 @@ signal settled
 ## A tap that does nothing: "fit" a tile that fits neither end, "draw" the
 ## boneyard while a tile fits.
 signal refused(reason: String)
+## The player's last tile came down on the table again: once for each of the
+## two raps that say the hand is theirs.
+signal rapped
 
 const Rules = preload("res://versus/dominoes_rules.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -69,6 +72,12 @@ const LIFT_PICKED := 40.0
 ## A carried tile: how far the finger moves before it is one, how far over
 ## the finger it rides, how fast it follows, and how far past a place's edge
 ## it may be let go and still be laid there (in halves of a line's tile).
+## The player's last tile raps the table twice once it has landed: how long
+## a rap is from leaving the felt to hitting it, and how high it goes, in
+## halves of a line's tile.
+const RAP_HOP := 0.17
+const RAP_RISE := 0.34
+const RAP_COUNT := 2
 const DRAG_START := 14.0
 const DRAG_RISE := 44.0
 const DRAG_SPEED := 32.0
@@ -170,6 +179,12 @@ var _grab_at := Vector2.ZERO
 var _grab_off := Vector2.ZERO
 var _drag := -1
 var _drag_end := -1
+## The tile that will rap the table when it lands, the one rapping now,
+## since when, and how many times it has come down.
+var _rap_due := -1
+var _rap := -1
+var _rap_at := 0.0
+var _rap_hits := 0
 var _reveal := false
 var _must_draw := false
 ## How the game ended, "" while it is on.
@@ -199,6 +214,8 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	_grab = -1
 	_drag = -1
 	_hint = -1
+	_rap_due = -1
+	_rap = -1
 	_reveal = false
 	_must_draw = false
 	_mood = ""
@@ -264,16 +281,38 @@ func sync() -> void:
 		if sp.zone == before[t]:
 			continue
 		if sp.zone == Zone.LINE:
+			# the player's last tile, and the hand is theirs by it
+			var out: bool = before[t] == Zone.MINE and rules.hand_over and not rules.hand_blocked and rules.hand_winner == player
 			if Motion.reduce:
 				_cue("place")
+				if out:
+					_start_rap(t)
 			else:
 				sp.land = true
+				if out:
+					_rap_due = t
 		elif before[t] == Zone.STOCK:
 			drew = true
 	if drew:
 		_cue("draw")
 	_expect(Motion.REDUCED_TIME if Motion.reduce else WATCH)
+	if _rap >= 0:
+		_await_at += RAP_HOP * RAP_COUNT
 	_touch()
+
+## The tile has landed and raps the table: `settled` waits for it.
+func _start_rap(tile: int) -> void:
+	_rap_due = -1
+	_rap = tile
+	_rap_at = _t
+	_rap_hits = 0
+	_await_at = maxf(_await_at, _t + RAP_HOP * RAP_COUNT + WATCH)
+
+## How far off the felt the rapping tile is now, 0 to 1.
+func _rap_lift() -> float:
+	if _rap < 0 or Motion.reduce or _rap_hits >= RAP_COUNT:
+		return 0.0
+	return sin(PI * fposmod(_t - _rap_at, RAP_HOP) / RAP_HOP)
 
 ## The bulb's move (a tile and its end, or Rules.DRAW), -1 for none.
 func set_hint(move: int) -> void:
@@ -517,11 +556,24 @@ func _process(delta: float) -> void:
 				if sp.land:
 					sp.land = false
 					_cue("place")
+					if t == _rap_due:
+						_start_rap(t)
 				if sp.fly:
 					sp.fly = false
 					_await_at = maxf(_await_at, _t + WATCH)
 		if sp.fly:
 			flying = true
+	if _rap >= 0:
+		live = true
+		while _rap_hits < RAP_COUNT and _t - _rap_at >= RAP_HOP * (_rap_hits + 1):
+			_rap_hits += 1
+			# lower and a little over a tile set down: it is meant
+			_cue("place", 0.86, 2.0)
+			if _fx != null and not Motion.reduce:
+				_fx.puff(_sprites[_rap].to * _k + Vector2(0.0, _unit * 0.5 * _k), FELT_LIT, 4)
+			rapped.emit()
+		if _rap_hits >= RAP_COUNT:
+			_rap = -1
 	if _await and not flying and _t >= _await_at:
 		_await = false
 		settled.emit()
@@ -736,7 +788,7 @@ func _draw() -> void:
 	for pass_no in 2:
 		for t in Rules.TILES:
 			var sp := _sprites[t]
-			if not sp.shown or ((sp.fly and sp.wait <= 0.0) or t == _drag) != (pass_no == 1):
+			if not sp.shown or ((sp.fly and sp.wait <= 0.0) or t == _drag or t == _rap) != (pass_no == 1):
 				continue
 			var at := sp.pos
 			if t == _shake_tile:
@@ -744,7 +796,12 @@ func _draw() -> void:
 				if since < 0.3 and not Motion.reduce:
 					at.x += sin(since * 60.0) * 6.0 * (1.0 - since / 0.3)
 			var up := sp.up and sp.wait <= 0.0
-			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(sp.s, sp.s), 0.0, at))
+			var s := sp.s
+			if t == _rap:
+				var lift := _rap_lift()
+				at.y -= lift * RAP_RISE * _unit
+				s *= 1.0 + 0.07 * lift
+			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(s, s), 0.0, at))
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
 
