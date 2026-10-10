@@ -442,17 +442,18 @@ func capabilities() -> Array[String]:
 		return []
 	return ["undo", "hint", "check"]
 
+## How far the stroke's tick climbs: three semitones.
+const SELECT_TOP := 1.19
 ## What the phone does under each cue (docs/agents/haptics.md). A stroke
 ## knocks once, as it is let go (`_release`, not the `place` cue, which a
 ## wrong tile's landing fires too): a tap when it laid a tile, a tick when
 ## it only crossed cells out or rubbed some out, a bump when it brought a
 ## line to read right (the `bloom` cue also fires for a hint, an Undo and an
-## eject). The streak's confetti is the other milestone. The cells sinking
-## under the finger, the brush, a grouted tile tapped (`locked`), the
+## eject). The streak's confetti is the other milestone. Each cell a
+## stroke takes in is the faintest knock, the echo of its tick (`select`,
+## not mapped). The brush, a grouted tile tapped (`locked`), the
 ## pebbles a finished line lays, the eject's `slip`, the streak's pluck and
 ## the gags say nothing. The seal thuds as it lands (`_party`).
-## How far the stroke's tick climbs: three semitones.
-const SELECT_TOP := 1.19
 const HAPTICS := {
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
