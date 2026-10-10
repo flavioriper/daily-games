@@ -832,9 +832,12 @@ SETS = {
         # (drone) or going off (buzz_off). place plays on every cross of a
         # sweep, pitched up a little a cross (1.24 at most, under five
         # semitones), so it is the plainest; combo is a tick the board
-        # pitches, not past five semitones. Every tick is `tight`. The
-        # phrases' steps are set by each take's own note, so that every note
-        # lands between 400 and 700 Hz.
+        # pitches, not past five semitones. Every tick is `tight`. Three
+        # takes are borrowed, each of the same prompt: check is Code Break's
+        # and heart_lost Nonogram's (this board's own sat under 300 Hz),
+        # confetti Binairo's (its own came back scratched four times in
+        # four); enter is place's. The phrases' steps are set by each take's
+        # own note, so that every note lands between 400 and 700 Hz.
         "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         # A lift is a lighter thing set down.
         "remove":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
@@ -886,9 +889,11 @@ SETS = {
         # envelope's fold and a brush all sat above 3 kHz. type fires on
         # every key, so it is the plainest and the shortest; flip plays five
         # times a row, 4% higher a tile; combo is a tick the board pitches a
-        # semitone a green letter, four at most. Every tick is `tight`. The
-        # phrases' steps are set by each take's own note, so that every note
-        # lands between 400 and 700 Hz.
+        # semitone a green letter, four at most. Every tick is `tight`.
+        # Borrowed takes: confetti is Binairo's, of the same prompt; enter,
+        # snail and snail_hurry are type's and post is flip's. The phrases'
+        # steps are set by each take's own note, so that every note lands
+        # between 400 and 700 Hz.
         "type":     ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
         # A letter taken back: a lighter thing set down.
         "erase":    ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
@@ -902,7 +907,7 @@ SETS = {
         "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
         # The streak, the row's reactions and the gags. combo: a tick a green
         # letter, pitched by the board. sprout: one quiet note.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.08", "body:320", "tight"),
         "warmer":   ("a cheerful little two-note rising kalimba 'ooh!', soft and warm, getting warmer, short", 0.6, -10),
         "so_close": ("a slightly excited three-note rising melody on soft kalimba and glockenspiel, a happy 'so close!', warm and bright, short", 0.8, -8),
         "all_here": ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, every friend has arrived, cozy", 1.2, -10, STYLE, "body:300", "warm:2600"),
@@ -920,12 +925,13 @@ SETS = {
         "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
         "out_of_rows": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:9,5,2"),
         "row_back": ("a warm rising pair of soft kalimba plucks, one more row, gentle and happy", 0.6, -12),
-        # Insane: Snail Mail. post: a row sealed, a pat on felt a tile. The
+        # Insane: Snail Mail. post: a row sealed, flip's take a little
+        # darker (a pat on felt came back as a knock 0.2 s ahead of its
+        # tock, and the cut kept the knock). The
         # snail is never a slide (a slide is the scratch): three slow
         # notches when it brings a sealed row's colours, four quick ones
-        # climbing when it hurries, both type's take (post's own held a
-        # knock 0.2 s ahead of its tock, which a phrase repeats).
-        "post":     ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.14", "body:320", "tight"),
+        # climbing when it hurries, both type's take.
+        "post":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.14", "body:320", "tight"),
         "snail":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.7", "body:320", "tight", "notes:0.22:0,2,0"),
         "snail_hurry": ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.45", "body:320", "tight", "notes:0.08:0,2,3,5"),
     },
