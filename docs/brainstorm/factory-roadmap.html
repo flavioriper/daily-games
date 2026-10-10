@@ -83,7 +83,8 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
 
 <section id="premise">
   <h2>What it is</h2>
-  <p class="lede">Farm, factory, sell. Trees and rocks on a plate of land; belts carry what comes off them to a market; the market sells so many items a second; the coins buy saws, burners, more plates. Every tier a thing passes through makes it worth more, and the only way to earn is to sell.</p>
+  <p class="lede">Farm, factory, sell. Trees and rocks on a plate of land; belts carry what comes off them to a market; the market sells so many items a second; the coins buy fires, kilns, more plates. Every tier a thing passes through makes it worth more, and the only way to earn is to sell.</p>
+  <p><b>Every number of mass, heat and power is real</b> and lives in one place, the physics ledger (<code>docs/superpowers/specs/2026-10-10-factory-physics-design.md</code>): the game runs at 4x, a log holds a log's heat, a steam engine wastes what one wastes, a tile of solar gives a tile's sun. The first build is <code>2026-10-10-factory-board-and-hand-era-design.md</code>.</p>
   <p>Two games are the references and neither may be named in code, comments, commits or on screen, by the renamed-genre rule: the browser belt game <em>Conveyor Idle</em> gave the loop and the plate board; the PC factory game <em>Satisfactory</em> gave the long arc of power and overload. That is the only time this page names them. In the PC game the player grows the base; here the player sells everything and buys modules, like an incremental.</p>
   <div class="rules">
     <div class="rule"><b>One money</b><span>Coins from the market buy everything. No gems, no premium counter, no prestige in the first spec (the economy leaves room for one later).</span></div>
@@ -144,35 +145,35 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
 
   <div class="era" style="--c:var(--wood)">
     <h3>By hand <small>era 1</small></h3>
-    <div class="gate">From the first open. <b>Ends when the Saw is bought.</b> About three minutes of play, longer if the player potters.</div>
+    <div class="gate">From the first open. <b>Ends when the second plate is bought.</b> About twelve minutes of play, longer if the player potters.</div>
     <div class="cols">
-      <div><h4>Board</h4><ul><li>One forest plate, the market standing on its front corner from the start</li><li>Five trees up, three rocks lying</li></ul></div>
-      <div><h4>Labour</h4><ul><li>Tap a tree: the beaver comes, bites three times, the tree comes down the Grove's way, a log lies on the tile at its foot</li><li>Tap a rock: a stone chips off (a rock never runs out, trees regrow in about a minute)</li><li>A log or a stone lies on the tile where it fell and rides the first belt laid on that tile; nothing is dragged by hand</li></ul></div>
-      <div><h4>Modules</h4><ul><li><b>Belt</b>, 1 coin a tile, 2 items a second</li><li><b>Market</b>, given, sells 1 item a second, pays the item's price</li></ul></div>
+      <div><h4>Board</h4><ul><li>One forest plate, the market standing on its front corner from the start</li><li>Six trees up, ten at most; a felled tree regrows from its stump in four minutes</li></ul></div>
+      <div><h4>Labour</h4><ul><li>Tap a tree: the beaver comes, bites three times, the tree comes down the Grove's way, a log lies on the tile at its foot</li><li>Rocks come with a quarry plate: a tap chips a stone off, the next chip is ready a minute later; a rock never runs out</li><li>A log or a stone lies on the tile where it fell and rides the first belt laid on that tile; nothing is dragged by hand</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Belt</b>, 1 coin a tile, a tile in two seconds, a log a second</li><li><b>Market</b>, given, sells one item every four seconds, pays the item's price; its levels raise the rate</li></ul></div>
       <div><h4>Products</h4><ul><li>Log 1 coin · Stone 2 coins</li></ul></div>
     </div>
-    <div class="lesson"><b>Lesson:</b> things ride belts, the market sells so many a second, and a queue in front of it is coins waiting. The first upgrade a player meets is the market's rate.</div>
+    <div class="lesson"><b>Lesson:</b> things ride belts, a laid belt is a decision, and the plate you buy next chooses what the next twenty minutes are about.</div>
   </div>
 
   <div class="era" style="--c:var(--ember)">
     <h3>Fire <small>era 2</small></h3>
-    <div class="gate">Opens with the <b>Saw</b>. <b>Ends when the Stoker is bought.</b></div>
+    <div class="gate">Opens with the <b>second plate</b>. <b>Ends when the Stoker is bought.</b> Fire alone gives heat, not turning power, so the machines here are the ones that want heat; the saw waits for steam.</div>
     <div class="cols">
       <div><h4>Board</h4><ul><li>The second plate: quarry or meadow, the player's pick</li></ul></div>
-      <div><h4>Power, tended by hand</h4><ul><li>The <b>Burner</b> sits beside a machine. Logs reach it by belt and pile in its hopper, five at most</li><li>It burns only while someone keeps it lit: a tap puts one log on, it glows a minute, then dims. The saw pauses, calm, until the next tap. Nothing is lost and no log is wasted</li><li>One burner warms every machine touching it; a second machine wants a second burner</li></ul></div>
-      <div><h4>Modules</h4><ul><li><b>Saw</b>: log in, plank out, needs heat</li><li><b>Burner</b></li><li><b>Kiln</b>: stone in, brick out, needs heat</li></ul></div>
-      <div><h4>Products</h4><ul><li>Plank 4 · Brick 6</li></ul></div>
+      <div><h4>Power, tended by hand</h4><ul><li>The <b>Firebox</b> sits beside a machine. Logs reach it by belt and pile in its hopper, five at most</li><li>It burns only while someone keeps it lit: a tap puts one log on; with a kiln working it lasts twenty minutes, then dims to embers. The kiln pauses, calm, until the next tap. Nothing is lost and no log is wasted</li><li>One firebox heats every machine touching it, sharing its heat; a second machine wants a second fire</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Firebox</b></li><li><b>Kiln</b>: stone in, lime out, needs heat, four minutes a stone</li><li><b>Retort</b>: log in, charcoal out, needs heat; charcoal is the smelter's fuel later</li></ul></div>
+      <div><h4>Products</h4><ul><li>Lime 10 · Charcoal 4</li></ul></div>
     </div>
-    <div class="lesson"><b>Lesson:</b> machines need power and someone has to feed them. The player feels the chore just long enough to want the next era.</div>
+    <div class="lesson"><b>Lesson:</b> machines want power, a fire has a draw, and someone has to light it. The player feels the chore just long enough to want a stoker.</div>
   </div>
 
   <div class="era" style="--c:var(--steam)">
     <h3>Steam <small>era 3</small></h3>
-    <div class="gate">Opens with the <b>Stoker</b>. <b>Ends when the Water Wheel is bought.</b></div>
+    <div class="gate">Opens with the <b>Stoker</b>. <b>Ends when the Water Wheel is bought.</b> Heat becomes turning power: a boiler and engine on a firebox, 7.5 kW of shaft from 94 of fire, as honest as a small mill engine.</div>
     <div class="cols">
-      <div><h4>Automation</h4><ul><li><b>Stoker</b>: fitted to a burner, it feeds the fire from the hopper by itself</li><li><b>Lodge</b>: the Grove's own beavers chop every tree in its reach and lay the logs on its belt</li><li><b>Drill</b>: digs stone from a quarry plate without a tap, and coal where a seam is</li><li><b>Coal burner</b>: hotter, feeds itself, burns coal</li><li><b>Joiner</b>: planks in, a chair out, needs heat</li></ul></div>
-      <div><h4>Power, the first limit</h4><ul><li>Power is one meter for the whole land: supply from burners, demand from machines. No wires, no poles</li><li>Over demand, every machine runs at supply over demand. Nothing stops, nothing trips</li><li>A belt carries 2 items a second; the <b>fast belt</b> 4. A full belt waits, it never spills</li><li><b>Splitter</b>: one belt into two, alternating</li></ul></div>
-      <div><h4>Products</h4><ul><li>Coal 3 · Chair 12</li></ul></div>
+      <div><h4>Automation</h4><ul><li><b>Stoker</b>: fitted to a firebox, it feeds the fire from the hopper by itself</li><li><b>Boiler and engine</b>: sits on a firebox, gives shaft power to what touches it and along a <b>shaft</b> tile laid like a belt</li><li><b>Saw</b>: log in, four planks out; <b>Stonecutter</b>, <b>Joiner</b> (three planks, a chair), <b>Lathe</b></li><li><b>Lodge</b>: the Grove's own beavers chop every tree in its reach and lay the logs on its belt</li><li><b>Drill</b>: digs stone from a quarry plate without a tap, and coal where a seam is</li><li>Coal from the drill burns longest; the firebox's levels raise its heat</li></ul></div>
+      <div><h4>Power, the first limit</h4><ul><li>Heat reaches what touches the fire; shaft reaches what touches the engine or a shaft tile. No wires yet; a meter a kind, supply over demand</li><li>Over demand, every machine on that source runs at supply over demand. Nothing stops, nothing trips</li><li>A belt carries a log a second; the <b>fast belt</b> two. A full belt waits, it never spills</li><li><b>Splitter</b>: one belt into two, alternating</li></ul></div>
+      <div><h4>Products</h4><ul><li>Plank 2 · Block 5 · Coal 3 · Chair 12</li></ul></div>
     </div>
     <div class="lesson"><b>Lesson:</b> automation is bounded. Power and belt capacity are the two numbers the player plans around for the rest of the game.</div>
   </div>
@@ -183,7 +184,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
     <div class="cols">
       <div><h4>Board</h4><ul><li>Pond and hill plates unlock</li></ul></div>
       <div><h4>Power, clean but placed</h4><ul><li><b>Water wheel</b>: only on a pond plate's rim, steady power with no fuel</li><li><b>Windmill</b>: only on a hill plate, steady power with no fuel</li><li>Limited by where they fit, so the player buys plates for power, not just for ore</li></ul></div>
-      <div><h4>Modules</h4><ul><li><b>Smelter</b>: iron ore in, ingot out, hungry for power</li><li><b>Nailer</b>: one ingot in, two boxes of nails out</li><li>The <b>Joiner</b> takes two inputs now: planks and nails make a table</li><li><b>Merger</b>: two belts into one</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Smelter</b>: ore and charcoal in, an ingot out, eight minutes each; the hungriest thing on the land</li><li><b>Nailer</b>: one ingot in, two boxes of nails out</li><li>The <b>Joiner</b> takes two inputs now: planks and nails make a table</li><li><b>Merger</b>: two belts into one</li></ul></div>
       <div><h4>Products</h4><ul><li>Ingot 10 · Nails 8 (two a box an ingot) · Table 30</li></ul></div>
     </div>
     <div class="lesson"><b>Lesson:</b> two inputs. Belts merge, split and cross plates, and the board starts to look like a factory.</div>
@@ -205,7 +206,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
     <h3>Solar <small>era 6</small></h3>
     <div class="gate">Opens with the <b>Solar Panel</b>. <b>Ends when the Core is bought.</b></div>
     <div class="cols">
-      <div><h4>Power</h4><ul><li><b>Solar panel</b>: fits anywhere, no fuel, small</li><li><b>Battery</b>: holds a surplus so a hungry machine can draw in bursts</li></ul></div>
+      <div><h4>Power</h4><ul><li><b>Solar panel</b>: fits anywhere, no fuel, a fifth of a kilowatt on average a tile and nothing at night: a plate of them to run one saw</li><li><b>Battery</b>: holds a surplus so a hungry machine can draw in bursts</li></ul></div>
       <div><h4>Modules</h4><ul><li><b>Drone pad</b>: two pads carry items between them with no belt, across any distance</li><li><b>Circuit press</b>: glass and ingot make a circuit</li><li><b>Radio works</b>: a circuit and glass make a radio</li><li><b>Robot works</b>: circuits, ingots and lamps make a robot</li></ul></div>
       <div><h4>Products</h4><ul><li>Circuit 80 · Radio 250 · Robot 800</li></ul></div>
     </div>
@@ -228,15 +229,15 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
 
 <section id="economy">
   <h2>The economy's skeleton</h2>
-  <p class="lede">Every number here is a first guess to be tuned by a pace bot, never by a demo. What is fixed is the shape: a product is worth about four times what went into it, a module costs about five times the one before, and a plate's price doubles with each owned.</p>
+  <p class="lede">Prices are the game's and a first guess, to be tuned by a pace bot, never by a demo; rates are the ledger's and are not tuned. What is fixed is the shape: a product is worth about four times what went into it, a module costs about five times the one before, and a plate's price triples with each owned.</p>
   <table>
     <tr><th>Era</th><th>Key module</th><th>Its price</th><th>Best product</th><th>Market rate reached</th><th>Rough time in play, nothing running between sessions</th></tr>
-    <tr><td>1 By hand</td><td>Saw</td><td class="n">60</td><td>Stone 2</td><td class="n">1 / s</td><td>3 minutes</td></tr>
-    <tr><td>2 Fire</td><td>Stoker</td><td class="n">400</td><td>Brick 6</td><td class="n">2 / s</td><td>20 minutes</td></tr>
-    <tr><td>3 Steam</td><td>Water Wheel</td><td class="n">2,500</td><td>Chair 12</td><td class="n">3 / s</td><td>1 hour</td></tr>
-    <tr><td>4 Water and wind</td><td>Dynamo</td><td class="n">15,000</td><td>Table 30</td><td class="n">5 / s</td><td>3 hours</td></tr>
-    <tr><td>5 Electric</td><td>Solar Panel</td><td class="n">100,000</td><td>Bicycle 150</td><td class="n">8 / s, two markets</td><td>8 hours</td></tr>
-    <tr><td>6 Solar</td><td>Core</td><td class="n">800,000</td><td>Robot 800</td><td class="n">12 / s</td><td>20 hours</td></tr>
+    <tr><td>1 By hand</td><td>Second plate</td><td class="n">50</td><td>Log 1</td><td class="n">1 / 4 s</td><td>12 minutes</td></tr>
+    <tr><td>2 Fire</td><td>Stoker</td><td class="n">400</td><td>Lime 10</td><td class="n">1 / 3 s</td><td>1 hour</td></tr>
+    <tr><td>3 Steam</td><td>Water Wheel</td><td class="n">2,500</td><td>Chair 12</td><td class="n">1 / 2 s</td><td>3 hours</td></tr>
+    <tr><td>4 Water and wind</td><td>Dynamo</td><td class="n">15,000</td><td>Table 30</td><td class="n">1 / s</td><td>8 hours</td></tr>
+    <tr><td>5 Electric</td><td>Solar Panel</td><td class="n">100,000</td><td>Bicycle 150</td><td class="n">2 / s, two markets</td><td>20 hours</td></tr>
+    <tr><td>6 Solar</td><td>Core</td><td class="n">800,000</td><td>Robot 800</td><td class="n">4 / s</td><td>50 hours</td></tr>
     <tr><td>7 Beyond</td><td>Printer levels</td><td class="n">× 5 a level</td><td>climbs forever</td><td class="n">climbs forever</td><td>as long as they like</td></tr>
   </table>
   <h3>What sells back</h3>
@@ -250,7 +251,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
   <div class="cols">
     <div><h4>The screen</h4><ul><li>The board takes the screen; the coin count sits on a pill at the top</li><li>The palette is a drawer on the <b>left</b> (the thumb that builds rests on the right; the thumb-side rule)</li><li>The power meter appears from era 3 as a thin bar beside the coins: supply over demand, green to amber, never red</li></ul></div>
     <div><h4>Building</h4><ul><li>Pick a module in the drawer, tap a tile: it stands, the price leaves the pill</li><li>Belt picked, drag across tiles: a belt is laid along the drag in its direction; lift to end</li><li>Tap a placed belt to turn it a quarter; tap a machine to open its card (what it makes, its level, sell back)</li><li>Long press a module: it is sold back</li><li>Drag on open ground pans</li></ul></div>
-    <div><h4>Era 1 labour</h4><ul><li>Tap a tree: the beaver bites; tap a rock: a chip</li><li>From era 3 these taps still work but nobody needs them</li></ul></div>
+    <div><h4>Era 1 labour</h4><ul><li>Tap a tree: the beaver bites; tap a rock: a chip; tap a cold firebox: it lights</li><li>From era 3 these taps still work but nobody needs them</li></ul></div>
     <div><h4>What never happens</h4><ul><li>No countdown, no decay, no spoilage, no blackout</li><li>No away earnings, no ad for a boost, no second currency</li><li>No camera rotation</li></ul></div>
   </div>
 </section>
@@ -287,8 +288,9 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
   <h2>In what order it gets built</h2>
   <p class="lede">The first Godot spec is eras 1 and 2 with the plate board, the tab swap and the tutorial: enough to replace the Valley tab with something that plays. Each later era is a pass with its own spec, the way Peapod and Nightlight grew.</p>
   <ol>
-    <li><b>Spec one: the board and the hand era.</b> Plates, the forest and quarry and meadow kinds, belts, the market and its rate, trees and rocks tapped, the saw and the burner tended by hand, the kiln. The tab swap, save, tutorial, the pace bot. The Grove's code goes in this pass.</li>
-    <li><b>Era 3, Steam.</b> The power meter, the stoker, the lodge, the drill, coal, belt limits and the fast belt, the splitter.</li>
+    <li><b>The physics ledger</b>, written: every source, sink, item and module of every era with its honest basis, so no later era contradicts an earlier one.</li>
+    <li><b>Spec one: the board and the hand era</b>, written. Plates, the forest and quarry and meadow kinds, belts, the market and its rate, trees and rocks tapped, the firebox tended by hand, the kiln and the retort. The tab swap, save, tutorial, the pace bot. The Grove's code goes in this pass.</li>
+    <li><b>Era 3, Steam.</b> The boiler and engine, shaft tiles, the saw and its kin, the stoker, the lodge, the drill, coal, the fast belt, the splitter, the meters.</li>
     <li><b>Era 4, Water and wind.</b> Pond and hill plates, wheels, windmills, iron, two-input recipes, the merger.</li>
     <li><b>Era 5, Electric.</b> Bridges, glass, the assembler, the second market.</li>
     <li><b>Era 6 and 7.</b> Solar, batteries, drones, the core, printers, pads.</li>
@@ -302,7 +304,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
   <p class="lede">Decided in this brainstorm, and what is still yours to call.</p>
   <ul class="open">
     <li><span class="chip ok">decided</span> Free grid with hand-laid belts; items are the only money, sold through a market with a rate; one money; nothing while closed; no hurry taps; fixed isometric; the Grove dropped, its art reused; plates bought on an edge with a kind the player picks.</li>
-    <li><span class="chip ask">assumed</span> <b>The fire is tended by tapping it</b>, one log a tap, a minute a log, the saw pausing in between. If "manually feed" meant something else, say so.</li>
+    <li><span class="chip ask">assumed</span> <b>The fire is tended by tapping it</b>, one fuel item a tap, twenty minutes a log under a kiln, the kiln pausing dim in between. If "manually feed" meant something else, say so.</li>
     <li><span class="chip ask">assumed</span> <b>Belts exist from the first tap</b>: a log lies where the tree fell and rides the first belt laid against it. The alternative, a hand era with no belts where the log walks to the market by itself, teaches belts later and was not chosen.</li>
     <li><span class="chip ask">your call</span> <b>The name.</b> Factory is the working name. Candidates with the same warmth as the other tabs: Workshop, Millbrook, Tinker, Hollow Mill.</li>
     <li><span class="chip ask">your call</span> <b>A plate is 8 by 8.</b> It fits the Grove's diamond at the size the trees are drawn; 10 by 10 would make them small.</li>
