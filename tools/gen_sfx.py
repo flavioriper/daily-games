@@ -1544,7 +1544,9 @@ SETS = {
     # for every rail, pitched by speed (not past five semitones) and levelled
     # by `_hit_db`, so they are the plainest: one tock each, `tight`.
     # Borrowed takes: cushion and pot are clack's. `roll` is a loop whose
-    # level follows the balls: what travels is air, a steady breath.
+    # level follows the balls: what travels is air, a steady breath (a
+    # loop's take is also read in 0.3 s steps: one that swells or dips
+    # pulses every three seconds, and the measure does not see it).
     "snooker": {
         "strike":   ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
         "clack":    ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
@@ -1565,7 +1567,7 @@ SETS = {
     # times a second, so each is one low tock that never rings (`strike`,
     # `wall` and `post` are pitched, not past five semitones, and levelled by
     # how hard the contact was), `tight`. Borrowed takes: serve is strike's,
-    # post wall's, conceded goal's. `glide` is the puck on its cushion of
+    # post wall's, conceded goal's, glide Snooker's roll. `glide` is the puck on its cushion of
     # air, a loop whose level follows the puck's speed: a steady breath, no
     # hiss. With two players on one phone every goal plays `goal` and the
     # end plays `win`.
