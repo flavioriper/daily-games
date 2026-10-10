@@ -718,41 +718,59 @@ SETS = {
     },
     # One Line: a snail walks every line between posts exactly once.
     "oneline": {
-        "hint":     ("a gentle magical sparkle chime, three soft glockenspiel notes rising", 1.0, -5),
-        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -5),
-        "solved":   ("a warm short celebratory marimba and glockenspiel flourish, rising arpeggio ending on a bright sparkle, joyful and cozy", 2.0, -3),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, little wooden posts appearing", 1.0, -9),
-        # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-oneline-polish-design.md):
-        # start, lay, locked, undo, check and reset re-prompted toward felt,
-        # wood and kalimba, as Shikaku's, Tents' and Light Up's were the same
-        # day -- the boing, the bonk, the tape rewind and the wooden boops
-        # read as a toy or a scold. lay plays on every step, pitched up a
-        # little with the streak, so it is the quietest and roundest.
-        "start":    ("a tiny soft snail settling onto a small wooden post, a gentle felt pat and a tiny warm kalimba note, very short and cozy", 0.5, -9, COZY),
-        "lay":      ("a single small wooden plank set down softly on a mossy path, a gentle hollow wooden tock with a tiny warm kalimba pluck, very short", 0.5, -9, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # eighth set of the redo, as Light Up's above. Kept from the first
+        # set: locked, love and heart_back as they were, check_ok levelled
+        # down, cool rolled off, heart_lost four steps up with its rumble
+        # off; check is Code Break's take of the same prompt (this board's
+        # own sat under 300 Hz). Nothing here is a plank that creaks, a drop
+        # that plinks or a wing that flutters any more: all three sat above
+        # 3 kHz. lay and combo are ticks the board pitches, neither past five
+        # semitones. Every tick is `tight`. Three takes are borrowed, their
+        # own having failed twice: start is mushroom's (the same pat), sun
+        # Light Up's puff and confetti Binairo's, each of the same prompt.
+        # The phrases' steps are set by each take's own note, so that every
+        # note lands between 400 and 700 Hz.
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.17:-2,0,5", "cut:0.9"),
+        "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -10, STYLE, "body:300", "warm:2600"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
+        # The posts standing up: lay's take, five in a row.
+        "enter":    ("one small wooden plank set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        # The snail settling on its first post.
+        "start":    ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.18", "body:320", "tight"),
+        # lay plays on every step, pitched up a little with the streak
+        # (1.32 at most, under five semitones).
+        "lay":      ("one small wooden plank set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
+        # undo is slip's take, twice and falling (slip's own first take was
+        # two tocks 50 ms apart; the fourth was one).
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
-        "reset":    ("a soft quick ripple of small wooden planks being lifted and stacked gently, hollow soft wooden taps and a hushed brush, cozy", 1.0, -10, COZY),
-        # Sunny Spells: a sunny line refused, and a dewy one after the sun.
-        "sun":      ("a tiny warm 'phew, too hot' shimmer, a soft rising heat haze sound with one small muted kalimba note, gentle and cute, very short", 0.6, -12),
-        "dew":      ("two tiny soft water droplets falling into a leaf with a gentle bright plink, refreshing and cozy, very short", 0.5, -11, COZY),
-        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -13),
-        # The streak, the gags and the ladybugs.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # Sunny Spells: a sunny line refused is a puff of warm air, and a
+        # dewy one after the sun two quiet notes; a flower opening is one.
+        "sun":      ("one small soft round puff of warm air, a gentle breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:1200", "steep", "ease:0.03", "body:320"),
+        "dew":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:5,7", "cut:0.5"),
+        "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:9", "cut:0.45"),
+        # The streak, the gags and the ladybugs. combo: layered over lay, a
+        # tick the board pitches by the streak. mushroom: two tocks a third
+        # apart. ladybug: three quiet notes, up and back.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8, STYLE, "warm:2400", "body:300"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "mushroom": ("a tiny cute mushroom popping out of soft moss, a soft squishy 'bloop' with a little happy rising boing, gentle and silly", 0.7, -10),
-        "ladybug":  ("a tiny ladybug buzzing in and landing softly, a short delicate wing flutter with a tiny happy glockenspiel ting, cute and light", 0.8, -11, COZY),
-        # Hearts, the wrong step's plank coming back up, and the party.
-        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a plank sagging, never a buzzer", 0.6, -15),
-        "slip":     ("a small wooden plank lifting back up with a soft hollow creak and a gentle slide, warm and quiet, not scary, short", 0.6, -12, COZY),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk by a pond, calm and kind, maybe tomorrow", 1.5, -14),
+        "mushroom": ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.4", "body:320", "tight", "notes:0.13:0,4"),
+        "ladybug":  ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:4,7,4", "cut:0.6"),
+        # Hearts, the wrong step's plank coming back up, and the party. A
+        # lift is a lighter thing set down.
+        "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, like a plank sagging, never a buzzer", 0.6, -15, STYLE, "body:300", "notes:0:4"),
+        "slip":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,6,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little flags at the end, joyful and warm", 2.0, -4),
-        "petals":   ("a gentle breeze carrying many soft flower petals, an airy warm whoosh with a light sprinkle of tiny glockenspiel twinkles, dreamy and cozy", 2.0, -8),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,2,9"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,1,6,1,6,8", "cut:1.9"),
+        # The petals on the wind: a long slow breath of air, no twinkle.
+        "petals":   ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 2.0, -15, BREEZE, "warm:1100", "steep", "ease:0.15", "body:320"),
     },
     # Nonogram: mosaic tiles laid on a floor by row and column clues. Re-
     # prompted toward felt, wood and kalimba on 2026-09-30, as One Line's,

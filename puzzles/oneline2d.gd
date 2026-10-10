@@ -180,7 +180,7 @@ const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 ## The streak (Binairo's, Shikaku's, Tents', Light Up's).
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -2050,7 +2050,7 @@ func _on_solved() -> void:
 
 ## A step judged right: on Hard and Insane one that keeps the figure
 ## finishable, on Easy and Medium one that strands nothing. It builds the
-## streak (the combo pitched up the pentatonic from the second, the bubble
+## streak (the combo tick a semitone up each from the second, the bubble
 ## from the third, confetti at five and ten) and may play a gag. `judged`
 ## (Hard and Insane, the player's own step) also calls a ladybug to ride.
 func _on_right_step(e: int, n: int, judged: bool) -> void:
