@@ -2975,6 +2975,67 @@ penalties. Its "furthest" is the most cards home.
   up the card lying on the one meant.
 - **No mascot**: the cards are marks. The end card's seat is a fan of the
   homes' top cards, the tab's banner a hand of cards over the meadow.
+- **The cloth dressed and the moments** (2026-10-10, the user of Dominoes:
+  "make sure to do same approach on solitaire game"). The cards were the
+  house's already (the canvas backs, their own marks) and were left, but for
+  the sprout stamped on a cream button in the back's middle. The cloth was a
+  bare gradient and is now a place, all of it in the one mesh `Art.cloth`
+  already was: a pool of lamplight over the columns (`CLOTH_LIT`), thread
+  stitched round the hem (`THREAD`, `Art.stitch`), the sprout embroidered
+  in a stitched ring at the foot -- drawn only where no column can reach
+  (`Art.REACH`, 4.96 cards: a king over six face down, built to its ace) --
+  and a glass of lemonade on a straw coaster in the top row's one empty
+  place (`glass_at`; 0.31 of a card across its half, because the waste fans
+  to 0.67 of the way across that place). Not tea: Dominoes has the tea.
+- **The moments are the card's own transform, and one mesh while something
+  is alight** (`_over`, built by `_build_over` and null at rest and under
+  reduce motion: one draw call more for as long as a light lasts). What a
+  move means is written down when the sim says it (`_mark`: `_meant`,
+  `_span`, `_lag`, `_onto`) and happens when the card gets there
+  (`_arrive`, from the snap in `_process`), since the event comes before
+  the card has moved. A card in the air swells at the middle of its way
+  (`AIR`) and one set down swells and settles (`LAND_BUMP`); a run's cards
+  settle one after another (`Motion.WAVE_STEP`), the card they were laid on
+  answers (`ANSWER_BUMP`) and the seam is lit (`"seam"`, `Art.GLOW`); a card
+  turned up swells through the turn and is met by the lamp (`"turn"`); a
+  card home spreads its suit's light (`LIGHT_RED`, `LIGHT_BLACK`) with soft
+  motes drifting off and its mark swelling (`HOME_POP`); an ace is framed in
+  brass, a king that ends its suit twice (`"suit"`, `CROWN_TIME`), and a
+  king set on an empty column once (`"king"`, `KING_BUMP`), the lemonade
+  rippling at both (`RIPPLE_T`). The pack is tapped square before a deal
+  (`DEAL_HOLD` 0.3 s, which the deal now waits); the waste goes back a card
+  at a time (`RECYCLE_T`); a dead end sinks the columns once (`SIGH`); a
+  deal won lights the four homes in brass, motes drifting down the cloth,
+  and the kings hop one after another (`WIN_HOP`, `WIN_GLOW`); the bulb's
+  card hops (`HINT_EVERY`); a pressed card sinks (`Motion.press_scale`);
+  carried cards stand a little larger and lean into the way they are taken
+  (`CARRY_SWELL`, `LEAN_MOST`). **None of these is in `_resting()` or
+  `settled()`**: a swelling card pushed into the late pass would be drawn
+  over the cards that lie on it.
+- **Light on a cream card must not be cream**: the lamp's own colour over a
+  face showed only as a grey wash on the mark, so the lamp's moments use
+  `Art.GLOW` (gold) and reach past the card onto the cloth; a suit's light
+  at 0.85 over a black card read as the card fading, and is 0.6.
+- Draw calls, `tests/_shot_deckchair.gd`, before and after: dealt 103 and
+  103, a carry 119 and 120, mid deal 133 and 133, the bulb 134 and 134, the
+  dead end 162 and 163 (the ripple still out), the end card 196 and 196,
+  the sweep 119 and 120, won 93 and 93 or 94, the won end card 130 and 130;
+  the moments' own frames 96 to 176 (the most with the bot playing a move
+  every 0.03 s, a dozen cards in the air); ANGLE the same to a call or two
+  (it had no reading before); under reduce motion 103, 113, 133, 134, 162,
+  194, 105, 89, 128 and no moment at all. The harness shoots each moment
+  once a tenth of a second in (`m_*`, the deal's two off the table's own
+  `_deal_at`) and names what never came up; its `reduce` now holds, set
+  every frame, because `world/main.gd` reads this Mac's settings as it
+  comes up and had been undoing it (so the 2026-10-10 build was never run
+  under reduce motion). The tutorial's pages, which play the moments too
+  (`_shot_howto_screen.gd -- deckchair`): 161 to 167, not read before.
+- The screen's own loud rewards (`_suit_home`, `_on_win`: the arcade's
+  stars, sparks and sunrays) were left as they were, and they cover the
+  king's brass and the homes' light at the very moment (`dc_m_suit`,
+  `dc_m_win`). Owed: a phone; the sigh, the ripple, the pressed card's sink
+  and the run's settling were run and not told apart in a still, and the
+  bulb's card never hopped in a shot (the bulb rang the stock).
 - **The tab has nine cards**: four rows of two and Deckchair alone on a
   fifth, which fits 810x1440 with nothing to spare. A tenth needs `_fit`
   looked at.

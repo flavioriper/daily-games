@@ -180,7 +180,7 @@ played alone for a score, and this needs someone at the other end.
   tutorial's last page).
 - **The table** (`versus/hockey_table.gd`): one baked mesh (frame, slots, the
   top with its air holes and lines) and one live mesh a frame (shadows, the
-  puck and its trail, the mallets, a contact's spokes, a goal's glow). The
+  puck and its trail, the mallets, a contact's light, a goal's glow). The
   bottom mallet is the sun's gold and the top one the moon's blue. **A finger
   leads a mallet that rides `LIFT` 0.085 m ahead of it**, so the thumb does
   not cover it; with one hand every touch is the bottom mallet's wherever it
@@ -227,6 +227,85 @@ played alone for a score, and this needs someone at the other end.
   into a puck at rest, the puck's speed for the finger's), `tests/_shot_versus_tab.gd -- <outdir>
   [banner]` (the tab alone, offline), `tests/_probe_versus_buzz.gd --
   hockey`, `tests/_shot_howto_screen.gd -- hockey <outdir>`.
+- **The table is the house's and its moments are lit** (2026-10-10, the
+  user, after Dominoes: "make sure to do same approach on solitaire game,
+  reversi, penny drop, air hockey"). Judged before touching: the frame, the
+  lip, the slots trimmed in their side's colour, the creases, the deck and
+  the scoreboard were already dressed and are as they were. What was bare was
+  the top's middle (a dot), the puck (a grey disc) and the mallets (two
+  colours and nothing of the sun or the moon); what was wrong was the light --
+  **a contact threw six spokes and a goal an `Fx2D.puff` of stars**, both the
+  sparks the user hates, and both are gone.
+  - **The set and the table** (`_build_table`, `_puck`, `_mallet`; all in the
+    baked mesh or the pieces'): the house's sprout painted in the middle
+    circle (`INK`) and stamped in cream on the puck (`STAMP`); a sprig painted
+    in two corners of the top (`_sprig`); the lamp's warm pool over the cool
+    one (`LAMP`); a brass stud at each corner of the frame and a brass inlay
+    in each long rail where the middle line meets it (`BRASS`, `_stud`). The
+    gold mallet carries the sun's rays round its skirt as twelve dots, the
+    blue one a crescent on its knob and three specks. There is no prop: the
+    table fills the deck and all of it is the touch target.
+  - **The three pieces are built once a resize** (`_build_pieces`) and laid
+    into the live mesh under a transform (`_place`): their vertices head the
+    mesh every frame, so their indices are kept ready and never offset in
+    script, and the under and over layers are appended round them in drawing
+    order. The live mesh went from 2.04 ms a frame to 0.76-0.97 with every
+    moment below in it. **A squash, a hop or a sag is that transform and
+    nothing else**; nothing drawn is read back by the sim, and
+    `tests/_probe_hockey.gd` and `_probe_hockey_touch.gd` give what they gave.
+  - **The moments**, all in the live mesh, light only as `Scenery.soft_disc`
+    (and `_soft_fan`, half of one, where it must stop at a rail), none under
+    reduce motion: a **strike** squashes the mallet along the blow (`SQUASH`,
+    `Motion.bump_scale`), stretches the puck off it (`STRETCH`) and leaves a
+    pulse of the striker's colour sized by the blow; a **rail** gives -- its
+    lip swells out where it was struck (`GIVE`, `Motion.nudge_offset`) -- the
+    puck flattens against it and warm light spreads along it; a **post** the
+    same in its goal's colour; a **fast puck** leaves beads of the light of
+    whoever struck it last (`_touch_tint`; drawn a bead apart, or they smear
+    into a streak) and sheds motes of it over `MOTE_SPEED` (`_motes`, never
+    more than `MOTES` 40); a **goal** lights the slot and the crease in the
+    scorer's colour and sends `GOAL_MOTES` back up the table while the puck
+    sinks, the scorer's mallet hops (`CHEER`, `Motion.hop_lift`) and the
+    other one sags with a shake of the head (`SLUMP`, `Motion.shiver_offset`)
+    until the puck is back; the **puck is set down** with `pop_in_scale` and
+    `drop_in_lift` and a ring of light in the colour of the half it lands in;
+    a **save** -- a blow inside `SAVE_NEAR` of the keeper's own goal, the
+    puck having come at `SAVE_SPEED` or more on a line that ends between the
+    posts -- rings the crease in the keeper's colour (`SAVE_TIME`); at
+    **match point** the mouth the leader shoots at breathes their light; the
+    **last goal** runs light from the mouth down both long rails to the
+    winner's end (`LAP`, `LAP_MOTES`, `_rim`) while the winner hops
+    `WIN_HOPS` times, and the screen holds the end card `WIN_HOLD` 1.1 s for
+    it (a tween of the screen's, killed by a new match; no hold under reduce
+    motion); and **a puck lying still** `STILL_WAIT` 0.8 s glows in the
+    colour of the half it lies in while both mallets breathe (`BREATH`). On
+    the scoreboard the pip a goal fills takes `Motion.bump_scale` with the
+    number beside it.
+  - **Light on this top wants the side's body colour, not its lit one, and
+    never cream**: the top is nearly white, and `HALO` on it is invisible
+    (the idle glow and the landing ring could not be seen until they took
+    `SIDE[sim.side()][0]`).
+  - **The tutorial and the tab's card draw the same table** and were not
+    edited. `Quiet.wipe()` clears `_trail`, `_flashes`, `_glow` and `_sink`
+    only, so a contact's light and a save are `_flashes` entries with a
+    `life` of their own, and everything else new (`_motes`, `_serve_t`,
+    `_goal_t`, `_slump`, the puck's squash) runs out by itself within a
+    second or follows `sim.puck_on`. A new `sim` is a puck set down, so each
+    run of a lesson opens with the pop. On the tutorial's table, which lies
+    on its side, the sprouts lie on theirs. `still` (the tab) draws at rest.
+  - 146-149 draw calls at the table as before (the table is two of them),
+    159 with the end card (160 on ANGLE, 157 under reduce motion), 169-174
+    with a tutorial page up; 232 on the Versus tab. `tests/_shot_hockey.gd`
+    now shoots when the thing is on the table rather than on a clock --
+    `serve`, `ring`, `idle`, `hit`, `wall`, `post`, `trail`, `save`,
+    `goal_a`, `goal_b`, `served`, `point`, `win_a`, `win_b`, `end` -- stages
+    what fourteen seconds of play did not bring (the puck put in front of a
+    goal and let go; the log says which), and prints the peak, what the live
+    mesh costs and a frame's time. A post's light was shot once, with a goal
+    going in on the same frame, and not on its own. `tests/_tap_hockey.gd`
+    fails one check, "and not the far one" (0.24 for 0.26), on the code
+    before this as well: the computer has a frame with the far mallet before
+    the harness takes it away. Not on a phone.
 - **Open** (nobody has played it with a finger): whether the puck's and the
   mallet's speeds feel right on a phone, whether `LIFT` is, whether Hard can
   be beaten and Easy cannot lose (computer against computer says only that
@@ -485,6 +564,73 @@ are pennies, the grid is a rack, a column is a slot.
   `tests/_shot_howto_screen.gd -- penny <outdir>`;
   `tests/_shot_versus_tab.gd`. `_probe_versus_buzz.gd` and `_shot_online.gd`
   have no arm for it.
+- **The table and the moments** (2026-10-10, the user, of Dominoes and then
+  of this game by name: "looks too simple ... cozier and more customized",
+  "more key moments animations", "make sure to do same approach on ...
+  penny drop"). **What was judged**: the rack, its foot and the stamped
+  pennies were already the house's and were left alone; what was bare was
+  what the rolls lay on (loose on the planks) and the deck round the rack.
+  So: each roll lies in **a pine tray lined with the felt of the rack's
+  inside** (`_tray`, `TRAY_OUT`, `TRAY_H`, baked into the back when `rolls
+  and not still`, so a tutorial page and the tab's picture have none); the
+  screen's deck mesh has **a pool of lamplight** round the rack
+  (`Scenery.soft_disc`) and **a cloth purse** with a sun stitched on it
+  under the sun's tray on the left (`_purse`, `PURSE*`, `CORD`; left out
+  when the deck has no room under the board, and the petals keep off it).
+  No cloth: the deck is already a place. **The moments** are the pennies'
+  own transforms (`_cell_xf`, never called under reduce motion) and soft
+  round light in the over mesh (`_light_*`, `_mote`), so no draw call
+  more; `moments` holds each kind and when it last began, for the harness.
+  **A knock** (first touch, in `_fall`): the penny is flattened once
+  (`SQUASH` through `Motion.bump_scale`), the pennies under it are driven
+  down one after another (`KNOCK_PX` 5, `KNOCK_FADE` a penny, each
+  `Motion.NUDGE_LAG` later), the face dips on its foot (`RACK_PX` 4, a
+  local transform: `_xf`, `column_at` and `point_of` do not move; the
+  back, the trays and the rolls stay put) and a breath of light lies along
+  what it landed on (`KNOCK_LIGHT`), all stronger the further it fell
+  (`_knock_k`). **Pennies of a side meeting** (`_landed`, read off
+  `_cells`, the rack as shown): for each of the four ways, the run through
+  the landed penny; at every seam of a run of two or more, light in the
+  side's own `SHINE` spreads and fades for `JOIN_TIME` 0.75 s with three
+  motes drifting off (`JOIN_MOTES`), and the neighbour hops and rocks
+  (`JOIN_HOP`, `JOIN_LEAN`); **a run of three** is brighter, lights seam
+  after seam (`JOIN_STEP`) and all three hop. **The open place that would
+  finish a line is not lit**: that is the bulb's work, and the bulb is
+  three a game. **A line of three stopped** (any four through the landed
+  penny whose other three are the other side's): a ring of light closes on
+  the penny that stopped it (`BLOCK_TIME`) and the three shiver
+  (`BLOCK_PX`). **A slot filled to the top**: its frame glints, light lies
+  on its lid and its pennies settle bottom first (`LID_TIME`, `LID_PX`).
+  **The four**: the star bursts (`Fx2D.sparkle`, six a win) went for it;
+  the rings come up as before, light comes up on one winner after another
+  as each hops (`RUN_STEP` 0.09, `Motion.SOLVE_HOP`), a soft light runs a
+  straight line end to end (`RUN_TRAVEL`), motes rise once, and the whole
+  runs again every `RUN_EVERY` 1.7 s while the rack is looked at; **every
+  other penny draws back into its hole** (`STEP_BACK` 0.86: a ring of the
+  dark inside round it, not a shade). **A rack full with no line**: the
+  face shivers and every penny sinks once, a row after a row (`SIGH_PX`,
+  `SIGH_STEP`). **A full slot tried**: its pennies shiver with the waiting
+  penny (`FULL_PX`). **The waiting penny**: the moon's comes off the end of
+  its roll and swells on the way (`FETCH` 0.28 s, `AIR`; the sun's does
+  not -- its roll is under the rack and a penny crossing the face read as
+  one in the wrong hole); it leans the way it is going (`LEAN`), and while
+  it is the player's it stands in a breath of light and rocks every
+  `BECKON` 2.6 s (`Motion.wobble_angle`). `settled` is said when it was.
+  Nothing of it under reduce motion; no sound, haptic, key or rule
+  changed. One draw call more while the player's penny waits (the over
+  mesh was empty with nothing on the rack to mark and now holds the
+  penny's light: `start` 112 to 113, 112 still under reduce motion);
+  `landed` also read 111 for 110 and was not chased. Still 110-114 at the
+  rack; 111 with the four lit (113 before: the bursts' node is gone), 131
+  with the lost card and 133 with the won one, ANGLE agreeing.
+  `tests/_shot_penny.gd` shoots each moment while it shows
+  (`knock`, `pair`, `three`, `block`, `lid`, `run`, `run_b`, `fetch`) and
+  has a `draw` argument that lays a rack four pennies short of full with
+  no line and drops the rest itself, for `sigh` and `drawn`. Seen in a
+  frame: all of those, the four both won and lost. Run and not looked at frame by frame: the pennies
+  under a knock, the face's dip, the hops and the rocking, the shiver of a
+  stopped three and of a full slot, the lean. Not on a phone; the tab's
+  picture (`_shot_versus_tab.gd`) was not re-shot.
 - **Open**: nothing was touched on a phone (a slot is about 120 px wide
   under a thumb; whether the waiting penny reads as yours); whether Easy can
   be beaten by a child and Hard by anyone (computer against computer only);
@@ -559,8 +705,9 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   sprout stamped in cream (`_sprout`); the cloth has a pool of light under
   the line, a sprig embroidered in two corners and a dashed hem
   (`_stitch`); the far hand and the boneyard lie in pine trays lined with
-  felt (`_tray`, the two kept behind a slat), and a cup of tea stands right
-  of the box (`_cup`, `_cup_at`), three soft motes of steam over it in the
+  felt (`Scenery.tray`, the two kept behind a slat), and a cup of tea stands
+  right of the box (`Scenery.cup`, `_cup_at`; both moved to
+  `ui/flat/scenery.gd` when Reversi took them the same day), three soft motes of steam over it in the
   over mesh. All of it is in `_mat`, rebuilt when the boneyard's row moves
   (`_mat_y`; before, the bed stayed where a one-row hand had put it). **A
   tile turns over** (`Sprite.face`, `TURN` 0.24 s, squashed across to
@@ -856,6 +1003,60 @@ once, to forbid it: Othello. No code, comment, key, commit or screen uses it.
   after 58 plies); `tests/_shot_howto_screen.gd -- reversi <outdir>`;
   `tests/_shot_versus_tab.gd`. `_probe_versus_buzz.gd` and `_shot_online.gd`
   have no arm for it.
+- **The moments and the dressing** (2026-10-10, the user after Dominoes: "make
+  sure to do same approach on solitaire game, reversi, penny drop, air
+  hockey"). Judged first: the discs (stamps, ring, shine, the other face at
+  the edge) and the deck (planks, petals) were dressed already and are as
+  they were; bare were the frame, the paint, the tally's ends and the strip
+  of deck over the board. **Dressing, no draw call**: in the base mesh a
+  line cut round the frame, a brass pin a corner and the lamp's pool of
+  light on the paint; in the over mesh a small disc of each face at its own
+  end of the tally (`_build_tally`); in the screen's deck mesh
+  (`_dress_deck`) the set's pine tray lined with felt with four spare discs
+  and a cup of tea, **the house's `Scenery.tray` and `Scenery.cup`** (Dominoes' own, moved
+  to `ui/flat/scenery.gd` so one game does not load another), over the line of words and left out where that strip
+  is lower than the tray. `SPACE_TALLY` is untouched, so no square moved.
+  **Moments, all in the over mesh or a disc's transform** (`_light_under`,
+  `_light_over`, `_swell`): the mover's light (`LIGHT`: warm for the sun,
+  silver for the moon) runs along a run as it turns -- a halo round each
+  disc, the square itself lit only as far as the disc is edge on (`_halo`:
+  light laid over a whole face read as the disc paling, which the
+  colour-by-side rule forbids), a mote drifting off (`MOTE_TIME`,
+  `MOTE_DRIFT`), and the disc settling with a swell once over (`SETTLE`;
+  `_turning` now lives `Motion.BUMP_TIME` longer); the disc set down blooms
+  (`BLOOM_TIME`, wider the more it turned); **a big move** (`BIG` 6 discs or
+  `BIG_LINES` 3 lines) blooms again as the last disc comes over, `BIG_MOTES`
+  motes leaving it, and its discs answer a ring at a time (`ENCORE`,
+  `Motion.WAVE_STEP`); **a corner** is framed in brass, the frame's pin
+  there lit (`CORNER_TIME`); **an edge filled** (all eight squares, either
+  face) lights its rail from the disc both ways (`RAIL_TIME`, `_note_edges`);
+  **a pass**: `board.knock(side)`, asked by the screen beside the `pass`
+  cue, sinks the passed side's discs twice (`KNOCK`, `KNOCK_HOP`) and its
+  disc on the tally; **the lead changing hands** swells the tally's notch
+  and the new leader's disc in its light (`LEAD_BUMP`, `LEAD_TIME`; not the
+  game's first lead, not during a move taken back -- `_lead_quiet`); **the
+  only open square beckons** every `BECKON` s, the board waking only for the
+  beat, and the dots come up `DOT_STEP` apart when a turn begins; the other
+  side's ring swells as it is chosen; **the end** counts the winner's discs
+  off a slant at a time from the top left (`COUNT_DELAY`, `COUNT_HOP`,
+  `COUNT_SPAN` 1.1 s, inside the screen's `END_WAIT`), each ringed in its
+  light and every third letting a mote go, every disc on a draw, and the
+  player's own sink once when the game is lost (`SIGH`, `SIGH_TIME`). **The
+  `Fx2D.sparkle` stars `finish` threw on the winner's discs are gone** (the
+  count replaces them; light is soft and round). `settled` is said when it
+  was: nothing waits on a moment, a big move's second bloom and answer run
+  into the next turn. Nothing of it under reduce motion; `sync` (Undo)
+  clears the lights and celebrates nothing. Curves are `Motion.bump_scale`,
+  `hop_lift`, `flash_level`, `back_out`, `stagger`. Draw calls as before: 76
+  at the start, 116-134 late, 154-156 with the end card, peak 155-161 by the
+  game (it was 161), ANGLE the same; the tutorial's pages 95-104.
+  `tests/_shot_reversi.gd` now shoots the moments as they come up, the
+  clock back at 1 for a corner and a big move (`ripple`, `big_a/b/c`,
+  `corner_a/b/c`, `edge`, `lead`, `knock`, `single`, `count_a/count/count_c`)
+  and says which never did. Seen in a frame: all but the knock on the board
+  (its tally disc was caught dipped, the board's discs between dips). Not on
+  a phone. A lost game through the harness ends with Godot's "RID leaked"
+  warning at exit; whether it did before was not checked.
 - **Open**: nothing was touched on a phone (a square is about 85 px at
   810x1440: whether a thumb finds it, whether the dots are too faint or give
   too much away -- they can be an option); Hard against a person (computer
