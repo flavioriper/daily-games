@@ -191,6 +191,15 @@ func _pack_buttons() -> void:
 				row.move_child(pad, at)
 		i += 2
 
+## A button `_pack_buttons` left out of every row has no parent, so the
+## tree does not free it with the sheet: the sheet does, or each one is
+## still there when the game quits (its styles and its text with it).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for b: Button in [rules_button, new_button, reset_button, ads_button, privacy_button, credits_button]:
+			if is_instance_valid(b) and b.get_parent() == null:
+				b.free()
+
 func _ready() -> void:
 	super()
 	credits_sheet = CreditsSheet.new()

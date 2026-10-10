@@ -178,8 +178,10 @@ static func _shoulders(x: float, half: float, foot: float, rise: float) -> Packe
 ## gear's centre takes the button's fill).
 static func paint(ci: CanvasItem, name: String, rect: Rect2, colour: Color, hole := Color.TRANSPARENT) -> void:
 	# A control drawn before it is laid out has no area, and a polygon scaled
-	# to nothing cannot be triangulated -- the engine errors on it.
-	if is_zero_approx(rect.size.x) or is_zero_approx(rect.size.y):
+	# to nothing cannot be triangulated -- the engine errors on it. Nor can
+	# one under half a pixel, an icon on the first frame it grows from
+	# nothing (the menu header's leaves); a mirrored rect's size is negative.
+	if absf(rect.size.x) < 0.5 or absf(rect.size.y) < 0.5:
 		return
 	var s := shape(name)
 	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
