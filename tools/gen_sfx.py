@@ -3017,7 +3017,10 @@ SETS = {
         "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
         # The finger crossing to another slot: lift's take, one notch of the
         # wheel two steps up, the quietest thing in the set.
-        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # A notch a column as the finger slides along the rack: 3 dB down,
+        # darker, and as the take came where it sat two steps up (the user,
+        # 2026-10-10: a slide heard all the time is "waaaay more subtle").
+        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -20, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # A full column: lift's take, two low notches alike.
         "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
         # The rack emptied before a new game: lift's take, seven notches

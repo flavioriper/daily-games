@@ -60,6 +60,8 @@ static func _flush(tree: SceneTree) -> void:
 		_player.name = "UiClick"
 		tree.root.add_child(_player)
 	_player.stream = _stream
+	# Never the same sound twice (the cozy rules: a tick that repeats varies).
+	_player.pitch_scale = randf_range(0.94, 1.06)
 	_player.play()
 	# What is heard is felt: the click is the faintest knock there is. A
 	# button with the meta "still" is pressed by a tutorial, not a hand.

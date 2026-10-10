@@ -19,19 +19,6 @@ prompt.
 | A swipe, a page, a sweep, anything that travels | a breath of breeze, or a thing slid gently on wood (rule 4) | `BREEZE`, `warm:1100`, `steep`, `ease`, `body:320` | -16 |
 | A moment: a hint, a line, a hand won, the day's end | a few muffled notes at 400 to 700 Hz, kalimba or tongue drum played with felt | `COZY_TUNE`, `warm:2000`-`2600`, `ease`, `body:300`, `notes` (rule 8) | none above -8 |
 
-**What is heard all the time is under everything else (user, 2026-10-10).**
-Of the button's click, the menu's page turn and the slides of air hockey,
-snooker, Penny Drop and Lucky Thirteen: "too loud, too harsh", and of a
-sound that never stops, "waaaay more subtle, since it's a sound user will
-heard all the time". So a loop that follows a thing moving is a file at -22
-with `warm:700`, played at half that or under (`GLIDE_TOP` 0.45 in
-`versus/hockey_screen.gd`, `ROLL_TOP` 0.5 in `versus/snooker_screen.gd`: 13
-dB under what they were), its pitch moving a semitone either way and no
-more; Marigold's and Trestle's `roll` are the same file at the levels their
-boards had. A swipe's breath is -20 to -22, and the click under a finger
-that slides (Lucky Thirteen's `select`) is -19 and climbs three semitones.
-All of it measured, none of it heard yet.
-
 **2. Low, and never high.** No cue has its weight above 1 kHz. The measure,
 taken on every take before it is kept: the body between 300 Hz and 1 kHz,
 30 dB or more down above 3 kHz (the takes the user hated had a centroid
@@ -94,6 +81,20 @@ phrase from it: `"notes:0.14:0,2,4,7,9"` is five rising, `"notes:0.3:9,5,2"`
 three falling slowly, and the steps are chosen so every note lands between
 400 and 700 Hz (the measure prints the raw take's centroid). Rising is
 good, falling is not yet, and two cues of one board never share a contour.
+
+**9. What is heard all the time is under everything else (user, 2026-10-10).**
+Of the button's click, the menu's page turn and the slides of air hockey,
+snooker, Penny Drop and Lucky Thirteen: "too loud, too harsh", and of a
+sound that never stops, "waaaay more subtle, since it's a sound user will
+heard all the time". So a loop that follows a thing moving is a file at -22
+with `warm:700`, played at half that or under (`GLIDE_TOP` 0.45 in
+`versus/hockey_screen.gd`, `ROLL_TOP` 0.5 in `versus/snooker_screen.gd`: 13
+dB under what they were), its pitch moving a semitone either way and no
+more; Marigold's and Trestle's `roll` are the same file at the levels their
+boards had. A swipe's breath is -20 to -22, and the click under a finger
+that slides (Lucky Thirteen's `select`, Penny Drop's `tick`) is -19 to -20
+and climbs three semitones at most.
+All of it measured, none of it heard yet.
 
 **The measure is `tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]`.** A
 line a file and a word for the rule it breaks: `high` (under 30 dB down
