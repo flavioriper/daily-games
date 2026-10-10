@@ -83,6 +83,13 @@
   drivers. The seventeen sounds are one take a cue (`home` two) and unheard
   by the user; the pt and es lines are unreviewed (treliça / celosía, peça /
   ficha, troca / cambio, nó / nudo).
+- **The sounds were redone against the cozy rules on 2026-10-10**
+  (`docs/agents/sound.md`, the row for `lattice`): two ticks, one muffled
+  note and Hedgehogs' air; a swap is a puff, a tile home a tock, two home
+  two tocks rising, a line two soft notes over the tock. The only change in
+  `lattice2d.gd`: `pick`, `drop`, `swap`, `home`, `home2`, `miss` and `undo`
+  play at 0.94 to 1.06 at random (`TICK_VARY`; 1.0 every time before).
+  Measured, not heard.
 - **Calls made without the user** (2026-10-09): the name and the garden
   lattice; knots that always point two ways; Easy at 5 by 5 and the par of
   each band; Easy to Hard uncounted with the par on the pill; Insane's six

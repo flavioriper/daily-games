@@ -2653,51 +2653,137 @@ SETS = {
     },
     # Lattice (puzzles/lattice2d.gd): wooden number tiles swapped about a
     # lattice. `pick`, `swap` and one of `home`, `home2` or `miss` fire on
-    # every move, so the first five are dry wood cut short with no note in
-    # them (a tile home is a snug seat, not a chime); the notes are kept for
-    # two tiles home at once, a whole line and the day's end.
+    # every move, so those five have no note in them (a tile home is a snug
+    # seat, not a chime); the notes are kept for a whole line, the bulb and
+    # the day's end.
     "lattice": {
-        "enter":         ("a handful of small flat wooden game tiles laid out quickly on a wooden table, a short soft dry wooden patter, light and gentle, short", 0.9, -11, TILES, "warm:7000"),
-        "pick":          ("one small flat wooden game tile lifted out of a shallow wooden socket with a fingertip, a single tiny dry soft wooden tick, no ring, no tone, very short and quiet", 0.5, -15, TILES, "cut:0.12"),
-        "drop":          ("one small flat wooden game tile set back down into its wooden socket, a single soft dry wooden tap, no ring, no tone, very short and quiet", 0.5, -14, TILES, "cut:0.16"),
-        "swap":          ("two small flat wooden game tiles slid past each other and set down on wood, two quick soft dry wooden taps close together, no ring, no tone, very short", 0.5, -10, TILES, "cut:0.28"),
-        "miss":          ("one small wooden game tile set down loosely on a wooden table, a single dull soft hollow wooden knock, flat, no ring, no tone, very short", 0.5, -13, TILES, "cut:0.2"),
-        "home":          ("one small wooden game tile pressed snugly into a fitted wooden socket, a single firm satisfying soft wooden click, snug, no ring, no tone, very short", 0.5, -8, TILES, "cut:0.22"),
-        "undo":          ("two small wooden game tiles slid back across a wooden table, a single soft short dry wooden slide, no ring, no tone, very short and quiet", 0.5, -14, TILES, "cut:0.22"),
-        "reset":         ("a handful of small wooden game tiles swept together and shuffled across a wooden table with one hand, a short soft dry wooden clatter, gentle", 0.9, -11, TILES),
-        "locked":        ("one gentle dull knuckle knock on a wooden table top, a soft kind not this one, very short", 0.5, -11, TILES, "cut:0.3"),
-        "home2":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -8, TILES_TUNE, "warm:7000"),
-        "line":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, happy and proud, short", 1.0, -7, TILES_TUNE, "warm:7000"),
-        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -8, TILES_TUNE, "warm:7000"),
-        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a sunny garden morning", 2.0, -5, TILES_TUNE, "warm:7000"),
-        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, TILES_TUNE, "warm:7000"),
-        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, TILES_TUNE, "warm:7000"),
-        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a garden at dusk", 1.8, -9, TILES_TUNE, "warm:7000"),
-        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, TILES_TUNE, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-second set of the redo, with How Big?'s below. None kept: six
+        # passed (heart_back, hint, home, home2, line, swap), but the notes were
+        # TILES_TUNE's (a wooden music box and small hand bells by style, and
+        # by prompt in line, hint and heart_back; line peaked at -7), home2's
+        # take sat at -29 dB, and home and swap were a firm click at -8 and two
+        # taps at -10, over the level of a tick, so every cue is written again
+        # and the set is in one tuning. Three new takes: `drop` (a hollow
+        # wooden block set down on felt, the tile under the finger, so the
+        # plainest: one tock), `pick` (a lighter thing set down) and one muffled
+        # kalimba note, `hint`'s. Every tick is `tight`. home and home2 are
+        # drop's take, miss, undo, locked and enter pick's, and line, solved,
+        # party, stamp, out_of_hearts and heart_back the note's. Borrowed, of
+        # the same prompts: swap is Hedgehogs' gust and reset its breath (its
+        # reset). Nothing new is a tile slid, swept, shuffled or clattered, a
+        # click in a socket, a knuckle, a music box, a hand bell, a rubber stamp
+        # or a party blower. Drop's take sits at 773 Hz cut at 320, so `drop` is
+        # two steps under it and nothing of it goes past one up; pick's at 731;
+        # the note came back at 453 Hz, so the phrases' steps are 2 down to 7 up
+        # and every note lands between 400 and 700 Hz; no two cues share a
+        # contour. Every tock starts at 0 ms.
+        "drop":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        # Two tiles crossing in their arc: what travels is air, a small puff,
+        # Hedgehogs' gust. `hint` sounds on the frame it does, and with motion
+        # reduced so does whichever of home, home2 and miss the swap earns, so
+        # it is neither a notch nor a note.
+        "swap":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # The swap landed, 0.24 s on. One tile home: drop's take, one notch
+        # three steps over drop's. Two at once: two notches, the second four
+        # steps up. Neither: pick's take, one notch four steps down.
+        "home":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight", "notes:0:1"),
+        "home2":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.09:-3,1"),
+        "miss":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-4"),
+        # Taken back: pick's take, twice and falling. Not that one (a tile at
+        # home, two of one number): two low notches alike.
+        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.11:0,-3"),
+        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-5"),
+        # The deal again: a breath, Hedgehogs' reset. The tiles popping onto the
+        # lattice: pick's take, five in a row.
+        "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-1,-4,-2,1"),
+        # A whole line: it sounds on the frame home or home2 does, a tock under
+        # it, so it is the one small note of the board, two a third apart all
+        # but together. The bulb: two alike and a third up, over the puff.
+        "line":          ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:0,4", "cut:0.6"),
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,2,5", "cut:1.0"),
+        # The day's end. `party` starts 0.15 s into `solved`, so solved is three
+        # quick low notes a step apart, over by then, and the party takes the
+        # rise from a step above its last: two climbs of three, the second from
+        # a step up. The seal comes 0.55 s into that, on the party's fifth
+        # note, so its first is a third under that one and not the same note
+        # twice: three that dip and rise.
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.07:-2,0,2", "cut:0.6"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:3,5,7,4,5,7", "cut:1.4"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:2,0,7"),
+        # Out of swaps (Insane): three slow notes down. Five more: two a fourth
+        # apart.
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,3,-2"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:0,5", "cut:0.7"),
     },
     # How Big? (puzzles/how_big2d.gd, 2026-10-08): a carpenter's bench. The
     # one cue that repeats is `notch`, a click every time the answer grows or
-    # shrinks by a twelfth while the finger pulls it: dry, cut short, the
-    # quietest file of the set, and the board pitches it down as the thing
-    # gets bigger. A lock, a reveal by its grade and the day's end happen now
-    # and then and may be notes.
+    # shrinks by a twelfth while the finger pulls it: the wheel of an old
+    # mouse spun under the finger, cut short, the quietest thing here, and
+    # the board pitches it down a little as the thing gets bigger. A lock is
+    # a tock; a reveal by its grade and the day's end happen now and then and
+    # are notes.
     "how_big": {
-        "enter":         ("a wooden folding ruler opened out on a workbench, two soft dry wooden clicks, light and gentle, short", 0.8, -11, BENCH, "warm:7000"),
-        "notch":         ("one single tiny dry click of a wooden folding ruler's joint, a short soft wooden tick, no ring, no tone, very short and quiet", 0.5, -19, BENCH, "warm:6000", "cut:0.07"),
-        "lock":          ("a small wooden clamp snapped shut on a workbench, one firm soft wooden clack, satisfying, no ring, very short", 0.5, -8, BENCH, "cut:0.32"),
-        "next":          ("one sheet of thick paper slid aside across a wooden workbench, a single soft short dry paper swish, no tone, very short", 0.5, -13, BENCH, "cut:0.3"),
-        "reset":         ("a steel tape measure's tape drawn back gently into its case over a wooden bench, one soft short dry ratchety zip ending in a small click, quiet, short", 0.8, -12, BENCH),
-        "spot":          ("three quick bright rising notes on a real kalimba with a tiny hand bell sparkle on the last, exactly right, happy and proud, short", 1.0, -6, BENCH_TUNE, "warm:7000"),
-        "close":         ("two soft warm rising notes on a real kalimba, pleased and content, short", 0.7, -8, BENCH_TUNE, "warm:7000"),
-        "fair":          ("one soft warm single note on a real kalimba, round and neutral, an all right, short", 0.6, -10, BENCH_TUNE, "warm:7000"),
-        "off":           ("a gentle two-note melody on a soft low kalimba: one note, then a second lower note, a kind cozy not quite, warm and round, never a buzzer", 1.0, -12, BENCH_TUNE, "fall"),
-        "hint":          ("three soft rising notes on a real music box with a tiny hand bell shimmer, gentle and kind", 1.0, -9, BENCH_TUNE, "warm:7000"),
-        "heart_lost":    ("one soft low note on a wooden tongue drum with a small dull wooden knock under it, a gentle oh dear, warm and round, never a buzzer, short", 0.8, -10, BENCH_TUNE, "warm:6000"),
-        "heart_back":    ("three soft rising notes on a real kalimba and a little hand bell, hopeful and warm", 1.0, -8, BENCH_TUNE, "warm:7000"),
-        "out_of_hearts": ("a slow sleepy descending lullaby phrase on a real music box winding down, soft and peaceful, a workshop lamp turned low", 1.8, -9, BENCH_TUNE, "warm:7000"),
-        "solved":        ("a warm short celebratory flourish on a real kalimba and a music box, a rising arpeggio ending on a bright hand bell, joyful and cozy, like a job well measured", 2.0, -5, BENCH_TUNE, "warm:7000"),
-        "party":         ("a cozy celebratory kalimba and hand bell flourish rising, with a very soft muffled party blower toot at the end, joyful and warm", 2.0, -5, BENCH_TUNE, "warm:7000"),
-        "stamp":         ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -7, BENCH_TUNE, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-third set of the redo, with Lattice's above. None kept: five
+        # passed (close, heart_back, hint, out_of_hearts, solved), but the set
+        # was BENCH_TUNE's (a wooden music box and hand bells by style, and by
+        # prompt in hint, heart_back, out_of_hearts and solved; solved peaked
+        # at -5), and close's take sat at -30 dB, so every cue is written again
+        # and the set is in one tuning. Three new takes: `lock` (a hollow
+        # wooden block set down on felt, the tock under the finger), `notch` (a
+        # lighter thing set down, the wheel's click) and one muffled kalimba
+        # note, `hint`'s. Every tick is `tight`. enter, heart_lost and stamp
+        # are lock's take, reset notch's, and spot, close, fair, off,
+        # heart_back, out_of_hearts, solved and party the note's. Borrowed, of
+        # the same prompt: the next round is Hedgehogs' gust. Nothing new is a
+        # folding ruler, a clamp, a sheet of paper, a steel tape, a tongue
+        # drum, a music box, a hand bell, a rubber stamp or a party blower.
+        # Lock's take sits at 833 Hz cut at 320, over the lighter one's 706, so
+        # `lock` is six steps under it and nothing of it is played at its own
+        # pitch; the note came back at 504 Hz, so the phrases' steps are 4 down
+        # to 5 up and every note lands between 400 and 673 Hz; no two cues
+        # share a contour. Both takes are one tock and nothing else, and every
+        # tock starts at 0 ms.
+        # The bench set out: lock's take, five notches in a row.
+        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-7,-4,-7,-5,-2"),
+        # One notch of the wheel, a step under its take. The board plays it at
+        # 1.08 to 0.92 by the answer's size and 0.94 to 1.06 at random, -4 dB,
+        # and fx's CUE_GAP holds two 60 ms apart.
+        "notch":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:-1"),
+        "lock":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        # The pair walking off and the next coming on: a puff of air,
+        # Hedgehogs' gust.
+        "next":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        # The answer back where the round began, and the Ladder from its first
+        # rung: notch's take, five notches falling, the wheel spun back.
+        "reset":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:2,0,-2,-3,-5"),
+        # The reveal by its grade: the better the guess, the longer and the
+        # higher the rise. Spot on is two climbs of three, close three up, fair
+        # two notes a third apart all but together, well off two with the
+        # second two steps down.
+        "spot":          ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.1:-4,-1,3,-2,1,5", "cut:1.3"),
+        "close":         ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:-2,1,3", "cut:0.8"),
+        "fair":          ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:-1,2", "cut:0.6"),
+        "off":           ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:0,-2", "cut:0.7"),
+        # The bulb: two notes alike and a third up.
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:-2,-2,2", "cut:1.0"),
+        # Hearts (the Ladder). heart_lost sounds 75 ms ahead of `off` (the card
+        # at 0.45 s, the grade at 0.525), so it is no note: lock's take, two low
+        # notches alike, nine steps under the take. Out of them: three slow
+        # notes down. One back: two a fourth apart.
+        "heart_lost":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.1:-9,-9"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:-3,2", "cut:0.7"),
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:3,0,-4"),
+        # The day's end. `party` and `stamp` both start 0.25 s into `solved`
+        # (SOLVE_DELAY), so solved is four quick notes up, the party the long
+        # one, six up and over, and the seal is no phrase: lock's take, two low
+        # notches all but together, a thing pressed down.
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.1:-2,0,2,5", "cut:0.9"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-4,0,3,0,3,5", "cut:1.9"),
+        "stamp":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-9,-6"),
     },
     # Golden Acorn (puzzles/acorn2d.gd, 2026-10-08): a quiz at a card table.
     # `pick` is the one that repeats (every tap on an answer, and a player

@@ -45,6 +45,10 @@ const KNOT_DIGIT := 0.3
 # --- motion: what is this board's own ---
 ## Two tiles cross in a shallow arc, growing a little at the top of it.
 const SWAP_TIME := 0.24
+## A tile picked, put back, swapped, landed or taken back is never the same
+## sound twice (docs/agents/sound.md, rule 2): all of them played at 1.0
+## every time until 2026-10-10.
+const TICK_VARY := Vector2(0.94, 1.06)
 const SWAP_ARC := 0.16
 const SWAP_GROW := 0.12
 ## A dragged tile goes back to its cell.
@@ -670,7 +674,7 @@ func _press(at: Vector2) -> void:
 	_held_since = _now()
 	_dragged = false
 	if cell != _picked:
-		fx.cue("pick")
+		fx.cue("pick", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_busy_for(Motion.LIFT_TIME)
 	_redraw()
 
@@ -689,7 +693,7 @@ func _release(at: Vector2) -> void:
 		_fly(held, _held_at, BACK_TIME)
 		if _dragged:
 			_picked = -1
-			fx.cue("drop")
+			fx.cue("drop", randf_range(TICK_VARY.x, TICK_VARY.y))
 		else:
 			tap(held)
 		_redraw()
@@ -698,7 +702,7 @@ func _release(at: Vector2) -> void:
 	if over < 0 or not _swap(held, over, _held_at):
 		_fly(held, _held_at, BACK_TIME)
 		if over < 0:
-			fx.cue("drop")
+			fx.cue("drop", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_redraw()
 
 ## A tap on `cell`: picks it, puts it back, or swaps it with the tile picked
@@ -711,7 +715,7 @@ func tap(cell: int) -> void:
 		return
 	if _picked == cell:
 		_picked = -1
-		fx.cue("drop")
+		fx.cue("drop", randf_range(TICK_VARY.x, TICK_VARY.y))
 	elif _picked < 0:
 		_picked = cell
 		_picked_since = _now()
@@ -744,7 +748,7 @@ func _swap(a: int, b: int, from: Vector2) -> bool:
 	var land := now + (0.0 if Motion.reduce else SWAP_TIME)
 	_home_at[a] = land
 	_home_at[b] = land
-	fx.cue("swap")
+	fx.cue("swap", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_bump_pill()
 	_after(land - now, _landed.bind(a, b))
 	note_move()
@@ -768,9 +772,9 @@ func _landed(a: int, b: int, quiet := false) -> void:
 			fx.ring(cell_centre(i), _cell * 0.55, Pal.LEAF)
 	if not quiet and not is_done():
 		if sent == 0:
-			fx.cue("miss")
+			fx.cue("miss", randf_range(TICK_VARY.x, TICK_VARY.y))
 		else:
-			fx.cue("home2" if sent == 2 else "home")
+			fx.cue("home2" if sent == 2 else "home", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_settle(quiet)
 	_knots_dirty = true
 	_busy_for(Motion.BUMP_TIME)
@@ -853,7 +857,7 @@ func undo() -> bool:
 	_remember()
 	_knots_dirty = true
 	_bump_pill()
-	fx.cue("undo")
+	fx.cue("undo", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_redraw()
 	moved.emit()
 	return true
