@@ -110,6 +110,8 @@ const CARDS := {
 	"nightlight": ["night", 2.2, Vector2(0.14, 0.3)],
 	# Beeline's bee flies the meadow's morning sky, over its hedges.
 	"beeline": ["meadow", 1.5, Vector2(0.3, 0.4)],
+	# Deckchair's cards are dealt out on the meadow's grass.
+	"deckchair": ["meadow", 1.5, Vector2(0.55, 0.6)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

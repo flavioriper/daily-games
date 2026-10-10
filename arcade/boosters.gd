@@ -9,7 +9,7 @@ extends RefCounted
 ## A booster helps a run start or survive and never multiplies its score.
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -25,11 +25,13 @@ const ITEMS := {
 	"pp_quick": {"game": "peapod", "icon": "trend", "price": 120},
 	"bl_dew": {"game": "beeline", "icon": "shield", "price": 120},
 	"bl_wide": {"game": "beeline", "icon": "plus", "price": 120},
+	"dc_aces": {"game": "deckchair", "icon": "sparkle", "price": 120},
+	"dc_hints": {"game": "deckchair", "icon": "bulb", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
 }
 ## Each booster's colour on its disc: the game's, so a chip says whose it is.
 const TINT := {"firefly": Color("5b5fa8"), "molehill": Color("8a6a45"), "stackwood": Color("b0773a"),
-	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "": Color("d49a2a")}
+	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "": Color("d49a2a")}
 
 const FF_SPARE_SHIPS := 1
 const MH_TIME := 10.0
@@ -43,6 +45,7 @@ const PP_POWER := 1
 const PP_RATE := 1
 const BL_DEW := 1
 const BL_WIDE := 10
+const DC_HINTS := 3
 
 static func of(game: String) -> Array:
 	var out := []
@@ -114,6 +117,10 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 				sim.dew += BL_DEW
 			"bl_wide":
 				sim.start_wide(BL_WIDE)
+			"dc_aces":
+				sim.start_aces()
+			"dc_hints":
+				sim.hints += DC_HINTS
 
 ## The Second chance: a run over is taken up again where it ended.
 static func revive(game: String, sim: RefCounted) -> void:

@@ -9,8 +9,8 @@ extends SceneTree
 ##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
 ##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline"]
-const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair"]
+const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair"}
 
 var _menu: Node
 var _t := 0.0
@@ -88,6 +88,12 @@ func _force_over(g: String, s: Node) -> void:
 			sim.dew = 0
 			sim.ghost = 0.0
 			sim.y = sim.H
+		"deckchair":
+			# some points made (a run with none is not offered a chance), then
+			# the deal finished by hand as the dead end's card does
+			sim.score = maxi(sim.score, 10)
+			sim.finish()
+			s.table.play_events()
 
 func _finish(code: int) -> void:
 	if _had:

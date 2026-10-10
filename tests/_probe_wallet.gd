@@ -34,7 +34,7 @@ func _process(_d: float) -> bool:
 			"res://ui/menu/arcade_tab.gd", "res://ui/menu/menu_header.gd", "res://ui/menu.gd", "res://ui/flat/flat_host.gd",
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
-			"res://arcade/beeline_screen.gd"]:
+			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -172,6 +172,14 @@ func _process(_d: float) -> bool:
 	bl.flap()
 	bl.step()
 	_check(not bl.is_over() and bl.ghost > 0.0, "beeline revived, flying on")
+
+	var dc = load("res://arcade/deckchair_sim.gd").new(3)
+	Boosters.apply("deckchair", dc, ["dc_aces", "dc_hints"])
+	_check(dc.home_count() == 4 and dc.score == 0 and dc.hints == dc.HINTS + Boosters.DC_HINTS, "deckchair: the aces home, more hints")
+	dc.finish()
+	_check(dc.is_over(), "deckchair finished by hand")
+	Boosters.revive("deckchair", dc)
+	_check(not dc.is_over() and not dc.find_move().is_empty(), "deckchair revived, with a way on")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

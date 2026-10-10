@@ -1344,3 +1344,53 @@ TUT_REVERSI_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
 TUT_REVERSI_BAR_BODY_ONE,"Undo takes back your disc and the bot's answer. Reset starts a new game. The bulb rings a good square, once a game. Online, each turn has a minute. The gear has sound and this guide.","Desfazer volta o seu disco e a resposta do bot. Recomeçar inicia outra partida. A lâmpada marca uma boa casa, uma vez por partida. Online, cada jogada tem um minuto. Som e guia, na engrenagem.","Deshacer retira tu ficha y la respuesta del bot. Reiniciar empieza otra partida. La bombilla marca una buena casilla, una vez por partida. En línea, cada turno tiene un minuto. Sonido y guía, en el engranaje."
 TUT_REVERSI_BAR_BODY_N,"Undo takes back your disc and the bot's answer. Reset starts a new game. The bulb rings a good square, %d times a game. Online, each turn has a minute. The gear has sound and this guide.","Desfazer volta o seu disco e a resposta do bot. Recomeçar inicia outra partida. A lâmpada marca uma boa casa, %d vezes por partida. Online, cada jogada tem um minuto. Som e guia, na engrenagem.","Deshacer retira tu ficha y la respuesta del bot. Reiniciar empieza otra partida. La bombilla marca una buena casilla, %d veces por partida. En línea, cada turno tiene un minuto. Sonido y guía, en el engranaje."
 VS_REVERSI_SHORT,"Turn their discs, end with more.","Vire os discos, termine com mais.","Voltea sus fichas, termina con más."
+ARC_DECKCHAIR_BLURB,"Seven columns of cards to sort home by suit, from the ace to the king. Tap a card or carry it.","Sete colunas de cartas para levar para casa por naipe, do ás ao rei. Toque numa carta ou arraste.","Siete columnas de cartas para llevar a casa por palo, del as al rey. Toca una carta o arrástrala."
+ARC_BEST_HOME,Most cards home: %d,Mais cartas em casa: %d,Más cartas en casa: %d
+DC_MOTTO,"Ace to king, suit by suit","Do ás ao rei, naipe a naipe","Del as al rey, palo a palo"
+DC_TIME,TIME,TEMPO,TIEMPO
+DC_STUCK,No moves left,Sem jogadas,Sin jugadas
+DC_STUCK_LINE,"Undo to try another way, or finish and keep your score.","Desfaça para tentar outro caminho, ou termine e fique com os pontos.","Deshaz para probar otro camino, o termina y quédate con los puntos."
+DC_STUCK_UNDO,Undo,Desfazer,Deshacer
+DC_FINISH,Finish,Terminar,Terminar
+DC_SWEEP,All face up!,Todas viradas!,¡Todas boca arriba!
+DC_WON,Every card home!,Todas em casa!,¡Todas en casa!
+DC_BONUS,Time bonus +%s,Bônus de tempo +%s,Bono de tiempo +%s
+DC_END_WON,A deal won!,Partida ganha!,¡Partida ganada!
+DC_END_CARD,That's the deal,Fim da partida,Fin de la partida
+DC_STAT_HOME,cards home,cartas em casa,cartas en casa
+DC_STAT_MOVES,moves,jogadas,jugadas
+DC_STAT_TIME,at the table,à mesa,en la mesa
+BST_DC_ACES,Aces home,Ases em casa,Ases en casa
+BST_DC_ACES_LINE,The four aces start on their piles,Os quatro ases já começam nas pilhas,Los cuatro ases empiezan en sus pilas
+BST_DC_HINTS,More hints,Mais dicas,Más pistas
+BST_DC_HINTS_LINE,Three more hints for the deal,Mais três dicas na partida,Tres pistas más en la partida
+BST_CHANCE_DECKCHAIR,The face-down cards and the stock are shuffled again.,As cartas viradas para baixo e o monte são embaralhados de novo.,Las cartas boca abajo y el mazo se barajan de nuevo.
+TUT_DECKCHAIR_BUILD,"Build down, red on black","Monte para baixo, alternando cores","Construye hacia abajo, alternando colores"
+TUT_DECKCHAIR_BUILD_BODY,"A card goes onto a card one higher of the other colour: a red six on a black seven. Tap a card to send it where it fits, or carry it there. It takes everything lying on it along.","Uma carta vai sobre outra um número acima e da outra cor: um seis vermelho num sete preto. Toque numa carta para mandá-la aonde cabe, ou arraste. Ela leva junto tudo o que está em cima.","Una carta va sobre otra un número mayor y del otro color: un seis rojo sobre un siete negro. Toca una carta para enviarla adonde cabe, o arrástrala. Se lleva todo lo que tiene encima."
+TUT_DECKCHAIR_TURN,Turn up the hidden cards,Vire as cartas escondidas,Descubre las cartas ocultas
+TUT_DECKCHAIR_TURN_BODY,"A face-down card left on top of its column turns over. Getting every card face up is most of the game: once they all are, the rest go home by themselves.","Uma carta virada para baixo que fica no topo da coluna é virada. Deixar todas à mostra é quase o jogo todo: quando estiverem, o resto vai para casa sozinho.","Una carta boca abajo que queda arriba de su columna se da la vuelta. Descubrirlas todas es casi todo el juego: cuando lo estén, el resto va a casa solo."
+TUT_DECKCHAIR_HOME,Send them home,Leve as cartas para casa,Llévalas a casa
+TUT_DECKCHAIR_HOME_BODY,"The four piles up top are built by suit, from the ace up to the king. Every card home wins the deal.","As quatro pilhas de cima são montadas por naipe, do ás até o rei. Todas as cartas em casa: partida ganha.","Las cuatro pilas de arriba se forman por palo, del as al rey. Todas las cartas en casa: partida ganada."
+TUT_DECKCHAIR_STOCK,The stock,O monte,El mazo
+TUT_DECKCHAIR_STOCK_BODY,"Tap the stock to turn one card. The card on top can be played like any other. When the stock runs out, tap it to go through the cards again, as often as you like.","Toque no monte para virar uma carta. A de cima pode ser jogada como qualquer outra. Quando o monte acabar, toque nele para passar pelas cartas de novo, quantas vezes quiser.","Toca el mazo para dar la vuelta a una carta. La de arriba se juega como cualquier otra. Cuando el mazo se acabe, tócalo para pasar por las cartas otra vez, cuantas veces quieras."
+TUT_DECKCHAIR_KING,Kings and empty columns,Reis e colunas vazias,Reyes y columnas vacías
+TUT_DECKCHAIR_KING_BODY,"Only a king, with whatever lies on it, may start an empty column.","Só um rei, com o que estiver em cima dele, pode começar uma coluna vazia.","Solo un rey, con lo que tenga encima, puede empezar una columna vacía."
+TUT_DECKCHAIR_SCORE,The score,A pontuação,La puntuación
+TUT_DECKCHAIR_SCORE_BODY,"Points come a card at a time. With nothing left to play, Finish keeps what the deal made.","Os pontos vêm carta a carta. Sem mais jogadas, Terminar guarda o que a partida rendeu.","Los puntos llegan carta a carta. Sin más jugadas, Terminar guarda lo que rindió la partida."
+TUT_DECKCHAIR_SCORE_HOME,%d for every card sent home,%d por carta levada para casa,%d por cada carta llevada a casa
+TUT_DECKCHAIR_SCORE_FLIP,"%d for a card turned face up, or played off the stock onto a column","%d por carta virada, ou jogada do monte numa coluna","%d por carta descubierta, o jugada del mazo a una columna"
+TUT_DECKCHAIR_SCORE_DOWN,%d lost for a card taken back down from its pile,%d a menos por carta tirada de volta da pilha,%d menos por carta bajada otra vez de su pila
+TUT_DECKCHAIR_SCORE_TIME,"A deal won pays a time bonus: the quicker, the bigger","Partida ganha paga um bônus de tempo: quanto mais rápida, maior","Una partida ganada da un bono de tiempo: cuanto más rápida, mayor"
+TUT_DECKCHAIR_BOOSTS,Boosters,Reforços,Refuerzos
+TUT_DECKCHAIR_BOOSTS_BODY,"Hold a booster, or the gold for one, and a card offers them before the deal. The Second chance is offered once, when a deal with nothing left to play is finished.","Tenha um reforço, ou o ouro para comprar um, e um cartão os oferece antes da partida. A Segunda chance é oferecida uma vez, ao terminar uma partida sem jogadas.","Ten un refuerzo, o el oro para comprar uno, y una tarjeta los ofrece antes de la partida. La Segunda oportunidad se ofrece una vez, al terminar una partida sin jugadas."
+TUT_DECKCHAIR_BOOST_ACES,Aces home: the four aces start on their piles,Ases em casa: os quatro ases já começam nas pilhas,Ases en casa: los cuatro ases empiezan en sus pilas
+TUT_DECKCHAIR_BOOST_HINTS_ONE,More hints: %d more hint for the deal,Mais dicas: mais %d dica na partida,Más pistas: %d pista más en la partida
+TUT_DECKCHAIR_BOOST_HINTS_N,More hints: %d more hints for the deal,Mais dicas: mais %d dicas na partida,Más pistas: %d pistas más en la partida
+TUT_DECKCHAIR_BOOST_CHANCE,Second chance: the face-down cards and the stock are shuffled again,Segunda chance: as cartas viradas para baixo e o monte são embaralhados de novo,Segunda oportunidad: las cartas boca abajo y el mazo se barajan de nuevo
+TUT_DECKCHAIR_HUD,The buttons,Os botões,Los botones
+TUT_DECKCHAIR_HUD_BODY,The clock starts with the first move and waits while the settings or this guide are open.,O relógio começa na primeira jogada e espera enquanto as configurações ou este guia estão abertos.,El reloj empieza con la primera jugada y espera mientras los ajustes o esta guía están abiertos.
+TUT_DECKCHAIR_HUD_UNDO,"Undo takes back a move, and its points with it","Desfazer volta uma jogada, e os pontos dela","Deshacer retira una jugada, y sus puntos con ella"
+TUT_DECKCHAIR_HUD_HINT_ONE,"The bulb rings a move that gets somewhere, %d time a deal","A lâmpada marca uma jogada que rende, %d vez por partida","La bombilla marca una jugada que sirve, %d vez por partida"
+TUT_DECKCHAIR_HUD_HINT_N,"The bulb rings a move that gets somewhere, %d times a deal","A lâmpada marca uma jogada que rende, %d vezes por partida","La bombilla marca una jugada que sirve, %d veces por partida"
+TUT_DECKCHAIR_HUD_RESET,"A new deal, from the top","Uma partida nova, do começo","Una partida nueva, desde el principio"
+TUT_DECKCHAIR_HUD_GEAR,Settings. The clock waits for you,Configurações. O relógio espera por você,Ajustes. El reloj te espera

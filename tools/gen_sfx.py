@@ -3319,6 +3319,55 @@ SETS = {
         # A best passed: five up a step at a time, the longest rise.
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Deckchair (arcade/deckchair_screen.gd, 2026-10-10): the seven-column
+    # card game for one. Made against the cozy rules from the start
+    # (docs/agents/sound.md). A deal is a couple of hundred cards lifted, set
+    # down and turned, so everything a card does is one tick, `place`'s take
+    # cut short and moved a step or two (the second take: a flat wooden tile
+    # laid on felt, 523 Hz raw and 37 dB down above 3 kHz; the first, asked
+    # for as a thick card of pressed board, came back at 1.1 kHz and gone in
+    # 30 ms). No card is slid, dealt, flicked or shuffled in a prompt, which
+    # is where the scratch comes from. The moments are one muffled
+    # kalimba note written into phrases (rule 8), Beeline's own take of it
+    # (375 Hz raw, so every phrase is written 2 to 9 steps up), and no two
+    # share a contour.
+    "deckchair": {
+        # A card set on a column: the constant action. The table varies it
+        # by 0.94 to 1.06.
+        "place":     ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        # A card taken up to be carried: the same tick two steps up, shorter
+        # and the quietest of the set.
+        "lift":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # The stock's top card turned onto the waste: two steps down.
+        "draw":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:-2"),
+        # A hidden card turning up: two quick notches, the second a step up.
+        "flip":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.07:1,3"),
+        # A card home: four steps up. The table climbs it under two and a
+        # half semitones from the ace to the king; the sweep plays it with
+        # no knock.
+        "home":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:4"),
+        # The waste turned back over into the stock: the wheel spun, five
+        # quick notches.
+        "recycle":   ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.34", "body:320", "tight", "notes:0.055:0,0,0,0,0"),
+        # The deal: the wheel spun for as long as the cards are laid.
+        "deal":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:1.0", "body:320", "tight", "notes:0.09:0,1,0,1,0,1,0,1,0,1"),
+        # A card that has nowhere to go: two low notches alike.
+        "nope":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        # A move taken back: three steps down.
+        "undo":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        # The bulb: two notes up a third.
+        "hint":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:5,9", "cut:0.6"),
+        # A suit all the way home, four a deal at most: three up.
+        "suit":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.11:2,6,9", "cut:0.8"),
+        # Nothing left to play: two slow ones down.
+        "stuck":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:7,3", "cut:1.0"),
+        # Every card home: up, back and up again.
+        "win":       ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:2,6,9,6,9", "cut:1.3"),
+        # The end card: three slow ones down.
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,5,2", "cut:1.3"),
+        # A best passed: five up a step at a time, the longest rise.
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+    },
 }
 
 

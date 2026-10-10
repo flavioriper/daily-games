@@ -9,7 +9,8 @@ extends VBoxContainer
 ## time, and Peapod (arcade/peapod_screen.gd), a pea cannon against crates
 ## that come down with a number on each, and Beeline
 ## (arcade/beeline_screen.gd), a bee flown by taps through the gaps in a
-## garden's hedges. Its body takes the day row's and the grid's room, as Versus, Stats
+## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
+## seven-column card game for one. Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
@@ -40,6 +41,7 @@ const PeaSim = preload("res://arcade/peapod_sim.gd")
 const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
 const BeeArt = preload("res://arcade/beeline_art.gd")
+const DeckArt = preload("res://arcade/deckchair_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
 
@@ -50,13 +52,13 @@ const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -146,7 +148,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -634,3 +636,27 @@ class BeelineBanner extends Control:
 		var xf := Transform2D(0.2, at)
 		draw_mesh(BeeArt.wings(u * 2.0), null, xf * Transform2D(0.0, BeeArt.WING_AT * u * 2.0))
 		draw_mesh(BeeArt.bee(BeeArt.Look.FLY, u * 2.0), null, xf)
+
+## Deckchair's banner: a hand of cards fanned over the meadow, the ace to
+## the six, and a back behind them. Drawn once. The cards are marks, so nobody sits here.
+class DeckchairBanner extends Control:
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		var w := size.y * 0.6
+		var font := CozyTheme.display(700)
+		var foot := Vector2(size.x * 0.5, size.y * 2.1)
+		var up := Vector2(-w * 0.5, -size.y * 1.98)
+		draw_set_transform_matrix(Transform2D(-0.44, foot) * Transform2D(0.0, up))
+		draw_mesh(DeckArt.back(w), null)
+		for k in 6:
+			draw_set_transform_matrix(Transform2D((k - 2.2) * 0.125, foot) * Transform2D(0.0, up))
+			draw_mesh(DeckArt.face(k % 4, w), null)
+			draw_string(font, Vector2(0.11, 0.325) * w, DeckArt.RANKS[k], HORIZONTAL_ALIGNMENT_LEFT, -1, int(w * 0.31),
+				DeckArt.RED if k % 2 == 1 else DeckArt.BLACK)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
