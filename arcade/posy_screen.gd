@@ -51,6 +51,8 @@ const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 
 const GAME := "posy"
+## No sound the screen pitches climbs past five semitones (the cozy rules).
+const CLIMB_TOP := 1.335
 const MARGIN := 40
 const GAP := 20
 const HUD_H := 130.0
@@ -764,7 +766,7 @@ func _animate(delta: float) -> void:
 				_fx.puff(at, Color("f6c53d"), 8)
 				_spray(_bits, at, Color("f6c53d"), 6, 460.0, "star", 0.8)
 				_ring(_bits, at, _u * 1.1, Color("fff4c2"))
-				_fx.cue("bee_hit", randf_range(0.95, 1.1), -4.0)
+				_fx.cue("bee_hit", randf_range(0.94, 1.06), -4.0)
 				if b.has("carry"):
 					_shake = maxf(_shake, 0.3)
 	_beams = _beams.filter(func(b: Dictionary) -> bool: return b.t < 0.6)
@@ -820,7 +822,7 @@ func _animate_rewards(delta: float) -> void:
 				_stars.said[i] = true
 				var at: Vector2 = _stars.at + Vector2((i - 1) * 110.0, -18.0 if i == 1 else 0.0)
 				if i < int(_stars.n):
-					_fx.cue("goal", 1.0 + 0.18 * i, -2.0)
+					_fx.cue("goal", pow(2.0, 2.0 * i / 12.0), -2.0)
 					_spray(_air_bits, at, Art.GOLD, 10, 520.0, "star", 1.2)
 					_spray(_air_bits, at, Color("fffaf0"), 6, 380.0, "spark", 1.0)
 					_ring(_air_bits, at, 90.0, Art.GOLD)
@@ -940,7 +942,7 @@ func _fly(delta: float) -> void:
 						var col := Art.paint(int(f.k))
 						_spray(_air_bits, f.to, col.lightened(0.25), 4, 300.0, "petal", 0.8)
 						_ring(_air_bits, f.to, 46.0, col.lightened(0.3))
-					_fx.cue("collect", randf_range(0.95, 1.2), -6.0)
+					_fx.cue("collect", randf_range(0.94, 1.06), -6.0)
 	_flights = _flights.filter(func(f: Dictionary) -> bool: return not f.get("home", false))
 	_air.queue_redraw()
 
@@ -963,7 +965,7 @@ func _turn_now(t: Dictionary) -> void:
 	_fx.sparkle(at, Art.GOLD)
 	if bool(turn.get("bloom", false)):
 		_shown_moves = maxi(0, _shown_moves - 1)
-		_fx.cue("convert", 1.0 + 0.04 * float(turn.get("n", 0)), -4.0)
+		_fx.cue("convert", minf(1.0 + 0.04 * float(turn.get("n", 0)), CLIMB_TOP), -4.0)
 		_spray(_bits, at, Art.GOLD, 6, 420.0, "star", 0.8)
 		_pops.append({"pos": at, "text": "+%d" % Sim.MOVE_BONUS, "t": 0.0, "col": Pal.SUN, "big": false})
 
@@ -1204,7 +1206,7 @@ func _apply(ev: Dictionary) -> void:
 				_tiles[f.id] = t
 				landed = true
 			if landed:
-				_fx.cue("land", randf_range(0.9, 1.1), -8.0)
+				_fx.cue("land", randf_range(0.94, 1.06), -8.0)
 			_settle = true
 		"convert":
 			if bool(ev.get("bloom", false)) and not quick:
@@ -1344,7 +1346,7 @@ func _ground_change(cell: Vector2i, change: Dictionary, wait := 0.0) -> void:
 		_spray(_bits, at, Art.WEED, 7, 420.0, "leaf", 0.9)
 		_spray(_bits, at, Art.SOIL, 4, 300.0, "seed", 0.9)
 		_ring(_bits, at, _u * 0.7, Color(Art.WEED.lightened(0.4), 0.9))
-		_fx.cue("weed", randf_range(0.95, 1.1), -4.0)
+		_fx.cue("weed", randf_range(0.94, 1.06), -4.0)
 	if change.has("block"):
 		var was := int(change.get("was", g.block))
 		g.block = int(change.block)
@@ -1358,11 +1360,11 @@ func _ground_change(cell: Vector2i, change: Dictionary, wait := 0.0) -> void:
 				_fx.puff(at, Art.STONE.lightened(0.3), 10)
 				_ring(_bits, at, _u * 1.1, Color(Art.STONE.lightened(0.4), 0.9))
 				_shake = maxf(_shake, 0.2)
-			_fx.cue("stone_break" if broke else "stone", randf_range(0.95, 1.1), -3.0)
+			_fx.cue("stone_break" if broke else "stone", randf_range(0.94, 1.06), -3.0)
 		elif was == Sim.Block.MOSS:
 			_fx.puff(at, Art.MOSS.lightened(0.2), 8)
 			_spray(_bits, at, Art.MOSS.lightened(0.15), 8, 460.0, "leaf", 1.0)
-			_fx.cue("moss_clear", randf_range(0.95, 1.1), -4.0)
+			_fx.cue("moss_clear", randf_range(0.94, 1.06), -4.0)
 	g.pending = false
 	if int(g.block) == Sim.Block.NONE and int(g.weed) <= 0:
 		_ground.erase(cell)
@@ -1691,7 +1693,7 @@ func _on_clear(ev: Dictionary) -> void:
 	for k: String in loud:
 		_fx.cue(k)
 	if (ev.tiles as Array).size() > 0:
-		_fx.cue("match", clampf(0.9 + 0.08 * (step - 1), 0.9, 1.7), -2.0 if loud.is_empty() else -6.0)
+		_fx.cue("match", minf(pow(2.0, (step - 1) / 12.0), CLIMB_TOP), -2.0 if loud.is_empty() else -6.0)
 		centre /= float((ev.tiles as Array).size())
 		var pts: int = ev.points
 		_shown_score += pts
@@ -1708,7 +1710,7 @@ func _on_clear(ev: Dictionary) -> void:
 			STICKER_COLS[(step - 2) % STICKER_COLS.size()], false, "cascade")
 	if WORDS.has(step):
 		_sticker(tr(WORDS[step]), _bed_at(0.5, 0.42), 88 + 6 * (step - 3), 1.5, true, Color.WHITE, true, "word")
-		_fx.cue("cheer", 1.0 + 0.1 * (step - 3) / 2.0)
+		_fx.cue("cheer", minf(1.0 + 0.1 * (step - 3) / 2.0, CLIMB_TOP))
 		_spray(_air_bits, _bed_at(0.5, 0.42), Art.GOLD, 14, 700.0, "star", 1.1)
 	elif step == 1 and (ev.blasts as Array).size() >= 2:
 		_sticker(tr("PS_COMBO"), _bed_at(0.5, 0.42), 84, 1.3, true, Color.WHITE, true, "word")
@@ -2510,7 +2512,7 @@ func _build_end(better: bool) -> Control:
 			tw.tween_callback(func() -> void:
 				plate.pivot_offset = plate.size * 0.5
 				plate.scale = Vector2(0.4, 0.4)
-				_fx.cue("land", 1.2 + 0.1 * plate.get_index(), -4.0))
+				_fx.cue("land", minf(pow(2.0, (plate.get_index() + 1) / 12.0), CLIMB_TOP), -4.0))
 			tw.tween_property(plate, "modulate:a", 1.0, 0.12)
 			tw.parallel().tween_property(plate, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	col.add_child(stats)
@@ -2535,7 +2537,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("collect", 0.9 + 0.5 * k, -12.0)
+			_fx.cue("collect", 1.0 + (CLIMB_TOP - 1.0) * k, -12.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		_kick(_end_score, 0.25, 0.4)
