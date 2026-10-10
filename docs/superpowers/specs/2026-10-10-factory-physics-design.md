@@ -33,8 +33,10 @@ Three things are bent, each once and on purpose:
    draws tens of watts against a saw's thousands; the ledger rounds it to
    nothing and says so here.
 
-Nothing else is bent. Where a real figure is a range the ledger picks a
-middle value and names it.
+Nothing else is bent, except that the last era is allowed one wonder: the
+core and the pads of era 7 have no honest basis and say so in their rows.
+Where a real figure is a range the ledger picks a middle value and names
+it.
 
 ## 2. Units and the clock
 
@@ -46,9 +48,9 @@ middle value and names it.
 | Length | m; **a tile is 2 m by 2 m**, a plate 16 m square | tiles |
 | Time | game seconds, 4 a real second | real seconds, minutes |
 
-The sim ticks at 10 Hz in real time (40 game seconds a tick) and every
-rate is a float per game second; a tick advances each machine's work by its
-power times 40 s.
+The sim ticks at 10 Hz in real time (0.4 game seconds a tick) and every
+rate is a float per game second; a tick advances each machine's work by
+`rated_kw * share * 0.4 / (recipe_mj * 1000)`, kilojoules over kilojoules.
 
 ## 3. Items
 
@@ -58,26 +60,26 @@ driven-off carbon dioxide, slag) and goes nowhere. Prices are the game's,
 in coins, rising with value added; they are listed in each era's spec, not
 here.
 
-| Item | Mass | Takes on a belt | Burns at | Notes |
+| Item | Mass | On a belt | Burns at | Notes |
 |---|---|---|---|---|
-| Log | 20 kg | 1 m (half a tile) | 16 MJ/kg, 320 MJ | 1 m long, 20 cm through, air-dried hardwood at 640 kg/m³ |
-| Stone | 20 kg | 0.5 m | no | limestone; a quarry's rock chips 20 kg a chip |
-| Lime | 11 kg | 0.5 m | no | quicklime; limestone loses 44% as CO₂ when burnt |
-| Charcoal | 5 kg | 0.5 m | 30 MJ/kg, 150 MJ | a retort keeps a quarter of the log's mass as charcoal |
-| Plank | 4 kg | 1 m | 16 MJ/kg, 64 MJ | four a log; 20% of the log is sawdust |
-| Coal | 20 kg | 0.5 m | 27 MJ/kg, 540 MJ | bituminous, a drill's chip |
-| Iron ore | 20 kg | 0.5 m | no | about 60% iron by mass |
-| Ingot | 10 kg | 0.5 m | no | a bloomery yields about half the ore's mass as iron |
-| Nails (box) | 5 kg | 0.5 m | no | two boxes an ingot |
-| Chair | 12 kg | 1 m | 16 MJ/kg | three planks |
-| Table | 28 kg | 1 m | no | six planks and a box of nails |
-| Sand | 20 kg | 0.5 m | no | a shore's shovel |
-| Glass | 8 kg | 0.5 m | no | sand and lime, 40% lost as gas and dross |
+| Log | 20 kg | a half tile, like every item | 16 MJ/kg, 320 MJ | 1 m long, 20 cm through, air-dried hardwood at 640 kg/m³ |
+| Stone | 20 kg | a half tile | no | limestone; a quarry's rock chips 20 kg a chip |
+| Lime | 11 kg | a half tile | no | quicklime; limestone loses 44% as CO₂ when burnt |
+| Charcoal | 5 kg | a half tile | 30 MJ/kg, 150 MJ | a retort keeps a quarter of the log's mass as charcoal |
+| Plank | 4 kg | a half tile | 16 MJ/kg, 64 MJ | four a log; 20% of the log is sawdust |
+| Coal | 20 kg | a half tile | 27 MJ/kg, 540 MJ | bituminous, a drill's chip |
+| Iron ore | 20 kg | a half tile | no | about 60% iron by mass |
+| Ingot | 10 kg | a half tile | no | a bloomery yields about half the ore's mass as iron |
+| Nails (box) | 5 kg | a half tile | no | two boxes an ingot |
+| Chair | 12 kg | a half tile | 16 MJ/kg | three planks |
+| Table | 28 kg | a half tile | no | six planks and a box of nails |
+| Sand | 20 kg | a half tile | no | a shore's shovel |
+| Glass | 8 kg | a half tile | no | sand and lime, 40% lost as gas and dross |
 | Lamp, bicycle, circuit, radio, robot | later eras' specs | | | |
 
 **Items are physical on the ground and on belts.** A log on a tile lies
-there until a belt is laid on that tile; two items cannot share a half
-tile; a belt that is full waits. Nothing is destroyed except by the
+there until a belt is laid on that tile; two items ride a tile at most, one a half tile; a belt that is full
+waits. Nothing is destroyed except by the
 market's sale and a retort's or kiln's burn.
 
 ## 4. Power comes in three kinds
@@ -88,7 +90,7 @@ Honest machines want one of three things, and a source gives one of them:
 |---|---|---|---|---|
 | **Heat** | a fire's thermal output, kW | the tiles touching the fire (a flue is not built) | firebox (logs, charcoal, coal), later the core | kiln, retort, boiler, smelter, glassworks |
 | **Shaft** | turning power, kW | the tiles touching the engine, and along a **shaft** tile laid like a belt (a line shaft) | steam engine (from a boiler), water wheel, windmill | saw, lathe, joiner, stonecutter, nailer, dynamo |
-| **Electric** | kW on one land-wide grid | every tile on the land (the lines are buried and never drawn) | dynamo (from shaft), solar panel, battery, the core | every era-5-and-later machine, and the lodge and drill |
+| **Electric** | kW on one land-wide grid | every tile on the land (the lines are buried and never drawn) | dynamo (from shaft), solar panel, battery, the core | every era-5-and-later machine, and the lodge and drill once converted |
 
 A sink draws its rated power while it has work and a little while idle
 (the idle fraction is in the sink's row). Over demand, **every sink on that
@@ -133,8 +135,8 @@ idle is the fraction given.
 | **Nailer** | 4 | shaft | 4 kW | 15% | 1 ingot → 2 nails | 0.5 MJ | 31 s |
 | **Glassworks** | 5 | heat | 120 kW | 30% | 2 sand + 1 lime → 2 glass | 60 MJ (7.5 a kg of glass) | 2 min 5 s |
 | **Assembler** | 5 | electric | 10 kW | 10% | three inputs, per product | per product | per product |
-| **Lodge** | 3 | electric or none | 0.5 kW | 0 | chops a tree in its reach every 45 s | the beavers' own | 45 s |
-| **Drill** | 3 | electric | 15 kW | 10% | 1 stone or 1 coal a cycle from the plate's rock | 2 MJ | 33 s |
+| **Lodge** | 3 | none in eras 3 and 4, electric 0.5 kW from era 5 | 0 | 0 | chops a tree in its reach every 45 s | the beavers' own | 45 s |
+| **Drill** | 3 | shaft; electric from era 5 | 7.5 kW | 10% | 1 stone or 1 coal a cycle from the plate's rock | 2 MJ | 67 s |
 | **Market** | 1 | nothing | 0 | 0 | sells so many items a second, by level | | |
 
 A machine that wants heat must touch a fire; one that wants shaft must
@@ -144,8 +146,9 @@ firebox's far side from the boiler shares its heat**: 60 kW split by draw,
 so a firebox feeding both a kiln and an engine runs both slow, and the
 player learns to give each its own fire.
 
-Before era 3 the Lodge chops with no power (beavers); from era 5 the
-electric Lodge is the same building with a lamp, chopping twice as fast.
+In eras 3 and 4 the Lodge chops with no power (beavers) and the Drill
+wants a whole engine to itself (7.5 kW, a small steam drill); from era 5
+both take the grid, the Lodge with a lamp, chopping twice as fast.
 
 ## 7. What a fire does over time
 
@@ -171,7 +174,7 @@ engine's shaft (7.5, 10, 15 kW) and its hunger with it.
 
 | Thing | Era | Speed | Carries | Honest basis |
 |---|---|---|---|---|
-| **Belt** | 1 | 0.25 m/s (a tile in 2 real s) | an item a metre: a log a tile, two stones a tile | a slat conveyor; a log a real second, two stones |
+| **Belt** | 1 | 0.25 m/s (a tile in 2 real s) | **two items a tile**, one a half tile, whatever the item | a slat conveyor; an item a real second |
 | **Fast belt** | 3 | 0.5 m/s | the same spacing | a rubber belt |
 | **Express belt** | 5 | 1 m/s | the same | |
 | **Splitter**, **merger**, **bridge** | 3, 4, 5 | the belt's | one item in flight a side | |

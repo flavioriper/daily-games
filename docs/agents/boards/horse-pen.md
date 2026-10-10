@@ -97,6 +97,12 @@
 - **Not seen on a phone.** Shots and probes on this Mac only. The sounds
   are one take a cue and unheard by the user; the pt and es lines are
   unreviewed.
+- **Sounds redone 2026-10-10** against the cozy rules (the row in
+  `docs/agents/sound.md`): a bale laid and a bale lifted are one soft
+  wooden tock each and vary by 0.94 to 1.06 at random (`TICK_VARY`; both
+  played at 1.0 on every move), the pen shutting and opening are notches,
+  a refused Submit three falling notches, the reset a breath, and the
+  pony keeps its own voice, rolled off. Measured, not heard.
 - **Calls made without the user** (2026-10-08): the bands' content (apples
   from Medium, golden apple and hives on Hard, Insane = Tunnels); the
   target as a share of the best pen known (80 / 85 / 90 / 90%) rather than

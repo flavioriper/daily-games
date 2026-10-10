@@ -100,7 +100,9 @@ the market and off any tile holding a module or an item). Trees keep
 coming up at random to a cap of **ten a plate**, one every 90 s while under
 the cap. A felled tree leaves a stump; **the stump grows the tree back in
 4 minutes** (the ledger's one bend on biology), so a plate's trees are
-never used up and a fuller forest is the reward of a plate bought.
+never used up and a fuller forest is the reward of a plate bought. A belt
+or a module may be laid on a stump: the stump is cleared and that tree is
+lost, and the plate grows a new one elsewhere under its cap.
 
 **Chopping.** A tap on a tree calls the beaver, who bites three times at
 the Grove's pace and the tree comes down the Grove's way: creak, drop,
@@ -113,11 +115,12 @@ makes a machine faster, in this era or any other.
 
 **Rocks** stand only on a quarry plate (era 2). A tap chips a stone off
 (the beaver does not come; the rock cracks and a stone rolls to the tile
-in front of it). The rock then shows no crack for **60 s** and a tap on it
-does nothing but a soft wobble; then a crack shows and the next chip is
-ready. Three rocks a quarry plate. A rock never runs out.
+in front of it). The rock then shows no crack for **3 minutes**, a tree's
+cadence, and a tap on it does nothing but a soft wobble; then a crack
+shows and the next chip is ready. Three rocks a quarry plate, so a stone a
+minute. A rock never runs out.
 
-**Belts.** One coin a tile, laid at once, 0.25 m/s, an item a metre (the
+**Belts.** One coin a tile, laid at once, 0.25 m/s, two items a tile (the
 ledger, section 8). A belt is laid by picking it in the drawer and
 dragging across tiles: each tile the finger crosses gets a belt facing the
 way the finger left it, and a belt laid onto a tile holding an item takes
@@ -137,11 +140,14 @@ level raises its rate: level 2 one every 3 s (price 30), level 3 one every
 (Peapod's rule: price is the brake).
 
 **Prices in this era.** Log 1, stone 2. Everything a player earns in era 1
-comes from logs: about three a minute from six trees, five a minute from a
-full plate of ten. The second plate (50) is bought at about twelve minutes
-of play from a new land; a kiln's fire at about twenty. That is slow on
-purpose: "really slow but funny to play". What is fun in those minutes is
-the beaver, the first belt going, and the plate rising from the pond.
+comes from logs: six trees on a four-minute regrow are a log and a half a
+minute, a full plate of ten two and a half. The second plate (50) is
+bought at about **25 minutes** of play from a new land, belts paid for; a
+kiln and its fire about fifteen minutes after. That is slow on purpose:
+"really slow but funny to play". What is fun in those minutes is the
+beaver, the first belt going, and the plate rising from the pond. (If 25
+is too long for a first session, the regrow is the dial: two minutes makes
+it twelve. Your call, section 13.)
 
 **Lesson of the era:** things ride belts, a laid belt is a decision, and
 the plate chooses what the next twenty minutes are about.
@@ -183,10 +189,13 @@ have no levels in this spec (a bigger kiln is the same kiln's rated power
 in a later era's spec, if at all).
 
 **Prices in this era.** A log tapped is 1; the same log as charcoal is 4;
-a stone chipped is 2, as lime 10. With one kiln and one firebox a quarry
-plate's three rocks (three stones a minute at most, 60 s a chip) keep the
-kiln fed with room to spare, and the kiln is the brake at 3 min 50 s. A
-second kiln on the same fire halves both. Era 2 ends when the player buys
+a stone chipped is 2, as lime 10. A quarry plate's three rocks give a
+stone a minute; one kiln fires one every 3 min 50 s, so a kiln earns about
+2.6 a minute from a quarter of the stones while selling them raw would be
+2 a minute from all of them: **firing wins**, which is the point. A
+second kiln on the same fire runs both at half, so the second wants its
+own fire. Rocks on a one-minute chip were tried on paper and dropped: they
+out-earned the kiln and invited a tap every twenty seconds. Era 2 ends when the player buys
 the Stoker, which era 3's spec adds to the drawer with its price (400);
 until era 3 ships the drawer ends at the retort and the land simply goes
 on.
@@ -208,8 +217,9 @@ player felt the chore of lighting it just long enough to want a stoker.
   stays picked until the drawer is opened again, since belts are laid in
   runs.
 - **Placing**: with a tile picked, a tap on an empty tile stands the
-  module facing the way the finger came from the market (so a kiln placed
-  beside a belt faces along it); the price leaves the pill; the beavers
+  module facing the way the last belt was laid (so a kiln placed at the
+  end of a belt faces along it); its card has a Turn button that turns it
+  a quarter; the price leaves the pill; the beavers
   build it over its build time with the frame rising; a tap on a tile it
   will not fit wobbles the ghost and places nothing. A ghost of the module
   follows the finger while it is held before the tap lands, so a child can
@@ -219,7 +229,8 @@ player felt the chore of lighting it just long enough to want a stoker.
   level with the price of the next, and a Sell button that returns the full
   price; the card is where the ledger's plain sentence is, under a press
   and hold on the picture.
-- **A tap on a belt** turns it a quarter. A **long press** on a belt or a
+- **A tap on a belt** turns it a quarter; a machine is turned from its
+  card. A **long press** on a belt or a
   module (0.5 s, a ring closing) sells it back; what was on it lies on its
   tiles.
 - **A tap on a tree, a rock or a firebox** is the labour of sections 4
@@ -236,12 +247,17 @@ player felt the chore of lighting it just long enough to want a stoker.
 
 `factory/sim.gd`, a `RefCounted` with no node, ticked at 10 Hz by whoever
 holds it (the screen, the tab's card, the probe), deterministic from its
-save and its seed, so that a harness can run it headless.
+save and its seed, so that a harness can run it headless. **It ticks only
+while the land is on screen**: on the Factory screen, or on the menu with
+the Factory tab up and its card visible. On any other tab, with the app
+in the background or closed, nothing moves and nothing sells; the tab
+card's motion is the land seen, not the land earning unseen.
 
 - `Board`: `plates: Dictionary[Vector2i, Plate]`; `Plate`: `kind`,
   `tiles: Array[Tile]` of 64; `Tile`: `module` (null, or a `Module` with
   `kind`, `facing`, `level`, `root` for a 2x2 or 1x2, `work` 0..1, `fuel`
-  for a firebox, `hopper`), `item` (null or an item kind), `tree` (a
+  for a firebox, `hopper`), `items` (up to two, each an item kind and its
+  `at` 0..1 along the tile, never closer than 0.5), `tree` (a
   `Tree` as the Grove's, with `stand`, `age`, `stump_at`), `rock` (with
   `ready_at`).
 - **Belts move in one pass from the front of each chain to its back**: the
@@ -249,10 +265,12 @@ save and its seed, so that a harness can run it headless.
   input, the market with room), advances those items by the belt's speed,
   then walks back along each chain, so an item never advances twice in a
   tick and a chain shuffles as one. An item on a belt is `at` 0..1 along
-  the tile; it leaves at 1 into the front tile at 0 if that tile accepts.
+  the tile; it leaves at 1 into the front tile at 0 if that tile accepts,
+  which it does when its back half is clear.
   Two feeders alternate by a `turn` bit on the fed tile.
 - **Machines** hold one input item and one output slot; `work` advances by
-  `rated_kw * share * 40 s / recipe_mj` a tick, `share` being the fraction
+  `rated_kw * share * 0.4 / (recipe_mj * 1000)` a tick (the ledger,
+  section 2), `share` being the fraction
   the source gives (section 4 of the ledger); the output goes to the front
   tile when it accepts. A firebox's `fuel` burns down by its draw.
 - **Heat** is resolved each tick before the machines: for each firebox,
@@ -361,7 +379,9 @@ is the kiln and the retort** and the saw opens era 3 with the boiler and
 engine; era 2 opens with the second plate rather than with a module.
 
 Still yours, each with the default this spec takes if you say nothing:
-the name (Factory); 8 by 8 tiles a plate; sell back at full price; power
+the name (Factory); 8 by 8 tiles a plate; a four-minute regrow and 25
+minutes to the second plate (two minutes and twelve if that is too slow);
+rocks on a three-minute chip; sell back at full price; power
 with no wires (heat and shaft by touching, electric land-wide); rocks never
 run out and trees regrow; zoom (two levels, pinch and a button); no reading
 needed to play; the fire tended by a tap (one fuel item a tap, the fire

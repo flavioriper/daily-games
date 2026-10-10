@@ -140,16 +140,16 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
 
 <section id="road">
   <h2>The road, era by era</h2>
-  <p class="lede">Each era opens when one key module is bought, and each adds exactly one new complexity layer, one new power source and one new product tier. The player can stay in any era as long as they like; nothing nags.</p>
+  <p class="lede">Each era opens on one purchase (a plate for the second, a key module for the rest) and adds exactly one new complexity layer, one new power source and one new product tier. The player can stay in any era as long as they like; nothing nags.</p>
   <div class="road">
 
   <div class="era" style="--c:var(--wood)">
     <h3>By hand <small>era 1</small></h3>
-    <div class="gate">From the first open. <b>Ends when the second plate is bought.</b> About twelve minutes of play, longer if the player potters.</div>
+    <div class="gate">From the first open. <b>Ends when the second plate is bought.</b> About twenty-five minutes of play on a four-minute regrow, longer if the player potters.</div>
     <div class="cols">
       <div><h4>Board</h4><ul><li>One forest plate, the market standing on its front corner from the start</li><li>Six trees up, ten at most; a felled tree regrows from its stump in four minutes</li></ul></div>
-      <div><h4>Labour</h4><ul><li>Tap a tree: the beaver comes, bites three times, the tree comes down the Grove's way, a log lies on the tile at its foot</li><li>Rocks come with a quarry plate: a tap chips a stone off, the next chip is ready a minute later; a rock never runs out</li><li>A log or a stone lies on the tile where it fell and rides the first belt laid on that tile; nothing is dragged by hand</li></ul></div>
-      <div><h4>Modules</h4><ul><li><b>Belt</b>, 1 coin a tile, a tile in two seconds, a log a second</li><li><b>Market</b>, given, sells one item every four seconds, pays the item's price; its levels raise the rate</li></ul></div>
+      <div><h4>Labour</h4><ul><li>Tap a tree: the beaver comes, bites three times, the tree comes down the Grove's way, a log lies on the tile at its foot</li><li>Rocks come with a quarry plate: a tap chips a stone off, the next chip is ready three minutes later; a rock never runs out</li><li>A log or a stone lies on the tile where it fell and rides the first belt laid on that tile; nothing is dragged by hand</li></ul></div>
+      <div><h4>Modules</h4><ul><li><b>Belt</b>, 1 coin a tile, a tile in two seconds, two items a tile</li><li><b>Market</b>, given, sells one item every four seconds, pays the item's price; its levels raise the rate</li></ul></div>
       <div><h4>Products</h4><ul><li>Log 1 coin · Stone 2 coins</li></ul></div>
     </div>
     <div class="lesson"><b>Lesson:</b> things ride belts, a laid belt is a decision, and the plate you buy next chooses what the next twenty minutes are about.</div>
@@ -171,8 +171,8 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
     <h3>Steam <small>era 3</small></h3>
     <div class="gate">Opens with the <b>Stoker</b>. <b>Ends when the Water Wheel is bought.</b> Heat becomes turning power: a boiler and engine on a firebox, 7.5 kW of shaft from 94 of fire, as honest as a small mill engine.</div>
     <div class="cols">
-      <div><h4>Automation</h4><ul><li><b>Stoker</b>: fitted to a firebox, it feeds the fire from the hopper by itself</li><li><b>Boiler and engine</b>: sits on a firebox, gives shaft power to what touches it and along a <b>shaft</b> tile laid like a belt</li><li><b>Saw</b>: log in, four planks out; <b>Stonecutter</b>, <b>Joiner</b> (three planks, a chair), <b>Lathe</b></li><li><b>Lodge</b>: the Grove's own beavers chop every tree in its reach and lay the logs on its belt</li><li><b>Drill</b>: digs stone from a quarry plate without a tap, and coal where a seam is</li><li>Coal from the drill burns longest; the firebox's levels raise its heat</li></ul></div>
-      <div><h4>Power, the first limit</h4><ul><li>Heat reaches what touches the fire; shaft reaches what touches the engine or a shaft tile. No wires yet; a meter a kind, supply over demand</li><li>Over demand, every machine on that source runs at supply over demand. Nothing stops, nothing trips</li><li>A belt carries a log a second; the <b>fast belt</b> two. A full belt waits, it never spills</li><li><b>Splitter</b>: one belt into two, alternating</li></ul></div>
+      <div><h4>Automation</h4><ul><li><b>Stoker</b>: fitted to a firebox, it feeds the fire from the hopper by itself</li><li><b>Boiler and engine</b>: sits on a firebox, gives shaft power to what touches it and along a <b>shaft</b> tile laid like a belt</li><li><b>Saw</b>: log in, four planks out; <b>Stonecutter</b>, <b>Joiner</b> (three planks, a chair), <b>Lathe</b></li><li><b>Lodge</b>: the Grove's own beavers chop every tree in its reach and lay the logs on its belt</li><li><b>Drill</b>: digs stone from a quarry plate without a tap, and coal where a seam is; wants a whole engine's shaft</li><li>Coal from the drill burns longest; the firebox's levels raise its heat</li></ul></div>
+      <div><h4>Power, the first limit</h4><ul><li>Heat reaches what touches the fire; shaft reaches what touches the engine or a shaft tile. No wires yet; a meter a kind, supply over demand</li><li>Over demand, every machine on that source runs at supply over demand. Nothing stops, nothing trips</li><li>A belt carries an item a second; the <b>fast belt</b> two. A full belt waits, it never spills</li><li><b>Splitter</b>: one belt into two, alternating</li></ul></div>
       <div><h4>Products</h4><ul><li>Plank 2 · Block 5 · Coal 3 · Chair 12</li></ul></div>
     </div>
     <div class="lesson"><b>Lesson:</b> automation is bounded. Power and belt capacity are the two numbers the player plans around for the rest of the game.</div>
@@ -232,7 +232,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
   <p class="lede">Prices are the game's and a first guess, to be tuned by a pace bot, never by a demo; rates are the ledger's and are not tuned. What is fixed is the shape: a product is worth about four times what went into it, a module costs about five times the one before, and a plate's price triples with each owned.</p>
   <table>
     <tr><th>Era</th><th>Key module</th><th>Its price</th><th>Best product</th><th>Market rate reached</th><th>Rough time in play, nothing running between sessions</th></tr>
-    <tr><td>1 By hand</td><td>Second plate</td><td class="n">50</td><td>Log 1</td><td class="n">1 / 4 s</td><td>12 minutes</td></tr>
+    <tr><td>1 By hand</td><td>Second plate</td><td class="n">50</td><td>Log 1</td><td class="n">1 / 4 s</td><td>25 minutes</td></tr>
     <tr><td>2 Fire</td><td>Stoker</td><td class="n">400</td><td>Lime 10</td><td class="n">1 / 3 s</td><td>1 hour</td></tr>
     <tr><td>3 Steam</td><td>Water Wheel</td><td class="n">2,500</td><td>Chair 12</td><td class="n">1 / 2 s</td><td>3 hours</td></tr>
     <tr><td>4 Water and wind</td><td>Dynamo</td><td class="n">15,000</td><td>Table 30</td><td class="n">1 / s</td><td>8 hours</td></tr>
@@ -312,6 +312,7 @@ figcaption{font-size:13.5px;color:var(--muted);margin-top:6px}
     <li><span class="chip ask">your call</span> <b>Power as one land-wide meter</b> with no wires or poles, and slowdown instead of blackouts. The PC game's poles were the thing judged too fiddly for a thumb.</li>
     <li><span class="chip ask">your call</span> <b>Zoom.</b> Two levels by pinch, or none and a board that always fits by panning.</li>
     <li><span class="chip ask">your call</span> <b>No reading needed to play</b>, so a child can; the palette is pictures and the only words are on cards.</li>
+    <li><span class="chip ask">your call</span> <b>The regrow.</b> Four minutes a tree makes the second plate 25 minutes of play; two minutes makes it twelve.</li>
     <li><span class="chip ask">your call</span> <b>Rocks never run out and trees regrow.</b> Nothing on a plate is ever used up, so a plate bought is never a mistake.</li>
   </ul>
 </section>
