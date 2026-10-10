@@ -68,6 +68,12 @@ const LEAN_DOWN := 0.95
 const MILESTONES := [50, 75, 100, 150, 200, 300, 500]
 const LEAF_COLS := [Art.HEDGE, Art.HEDGE_HI, Art.HEDGE_DEEP]
 const POLLEN := Color("fbe08a")
+## The cozy rules (docs/agents/sound.md): no cue climbs past five semitones.
+## `pass` runs 1.8 across ten gaps and `ribbon` 2.9 by the fourth, so the
+## hold changes nothing today; it is there for a fifth ribbon or a steeper
+## step. A beat of the wings varies by TICK_VARY and climbs nothing.
+const CLIMB_TOP := 1.335
+const TICK_VARY := 0.06
 
 var sim: RefCounted
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
@@ -518,12 +524,12 @@ func _play_events() -> void:
 				_hint("", "")
 			"flap":
 				_flap_at = _clock
-				_fx.cue("flap", randf_range(0.94, 1.06))
+				_fx.cue("flap", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 				for k in 3:
 					_bit("pollen", at + Vector2(-Art.BEE * 0.7, 3.0 + 3.0 * k), POLLEN, 0.55)
 			"pass":
 				_pass_at = _clock
-				_fx.cue("pass", 1.0 + 0.012 * mini(int(ev.n) % 10, 9))
+				_fx.cue("pass", minf(1.0 + 0.012 * mini(int(ev.n) % 10, 9), CLIMB_TOP))
 				_feel(Haptics.TICK)
 			"ribbon":
 				_on_ribbon(int(ev.tier))
@@ -746,7 +752,7 @@ func _plate_at(l: Label) -> Vector2:
 ## A ribbon won: its name lettered over a sunburst, stars home to the score,
 ## and a rain for the last.
 func _on_ribbon(tier: int) -> void:
-	_fx.cue("ribbon", 1.0 + 0.06 * (tier - 1))
+	_fx.cue("ribbon", minf(1.0 + 0.06 * (tier - 1), CLIMB_TOP))
 	_feel(Haptics.GOOD)
 	var at := _rw.at(field, field.size * Vector2(0.5, 0.36))
 	var col: Color = Art.RIBBON[tier - 1]
