@@ -1769,41 +1769,76 @@ SETS = {
     # flower buds; every bud it touches blooms with the next note of a rising
     # scale, the blooms are picked, and the last marigold is a full bloom.
     "marigold": {
-        # 2026-10-01 (polish): every cue taken again in POND / POND_TUNE, and
-        # the hearts, Sweethearts and the silly rewards added. `hit` is pitched
-        # up a scale, so it has to be one clean note.
-        "shoot":    ("a small seed puffed softly out of a curled green leaf tube, one round airy 'pff' with a tiny leafy flick, very short", 0.5, -10, POND, "warm:7000"),
-        "hit":      ("one single soft note plucked on a real kalimba, clean and round with a quick natural ring, only one note, nothing else", 0.5, -9, POND_TUNE, "warm:7000"),
-        "wall":     ("a tiny dry seed tapping a smooth wooden garden post, one soft woody tick, very short", 0.5, -17, POND, "warm:7000", "cut:0.1"),
-        "clover":   ("two quick soft music box notes ringing together with a tiny leafy rustle, something splitting in two happily", 0.7, -10, POND_TUNE, "warm:7000"),
-        "violet":   ("three sweet rising notes on a real music box with a soft hand bell shimmer, a special find, delicate", 0.8, -8, POND_TUNE, "warm:7000"),
-        "pop":      ("one tiny soft pluck of a flower petal off its stem, a light papery 'pip', very short and quiet", 0.5, -14, POND, "warm:7000", "cut:0.06"),
-        "pot":      ("a small seed dropping into a terracotta flowerpot full of soft soil, a hollow warm clay 'tunk', then one happy rising kalimba note", 0.8, -8, POND_TUNE, "warm:7000"),
-        "free":     ("three cheerful rising notes plucked on a real kalimba with a little music box sparkle on top, a reward earned", 1.0, -8, POND_TUNE, "warm:7000"),
-        "drain":    ("a small seed dropping softly into a still pond, one gentle little 'plip' and a tiny ripple, quiet", 0.6, -15, POND, "warm:7000"),
-        "fever":    ("a swelling run of soft hand bells and a real kalimba rising up into a bright warm shimmering music box chord, a wonderful moment, joyful", 1.8, -5, POND_TUNE, "warm:7000"),
-        "roll":     ("a steady soft rolling tremolo of fingers drumming on a wooden box and a felt-mallet frame drum, a suspenseful drumroll, even and constant, no accents, no ending", 3.0, -9, POND, "loop"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twenty-eighth set of the redo, with Pixel Garden's below. Kept from
+        # the polish's set: close, apart and shades as they were, heart_back
+        # three steps up (its plucks sat at 361 Hz, -25 dB on a phone). Nothing new is a seed, clay,
+        # water, a leaf, a frog, a duck, a drum, a music box, a hand bell or
+        # a party blower (the shot, the plip and the garden growing back sat
+        # near half above 3 kHz, the drumroll 98% under 300 Hz). `hit` is the
+        # board's own sound, one muffled note a bloom, and the board pitches
+        # it up a scale that stops at five semitones (it was a major scale up
+        # nineteen), so its take is one clean note at 400 Hz or over. Every
+        # tick is `tight`. Borrowed takes, of the same prompts: shoot is
+        # Hedgehogs' gust, reset Super Slider's, the roll Snooker's, combo
+        # Super Slider's, confetti Binairo's and the cat Untangle's kitten;
+        # here pop, drain, splash and the frog are wall's or pop's, and
+        # clover, violet, pot, free, hint, pair, out, heart_lost and the
+        # ducks hit's. The phrases' steps are set by each take's own note,
+        # so that every note lands between 400 and 700 Hz, and no two
+        # phrases share a contour. What travels is air: the seed leaving the
+        # sun is a small puff, the garden growing back a breath, and the
+        # drumroll under a seed falling to its pot a loop of steady air.
+        "shoot":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -15, BREEZE, "warm:900", "steep", "ease:0.03", "body:320"),
+        "hit":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.008", "body:300", "cut:0.5"),
+        "wall":     ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        # A lucky clover splitting the seed in two: two quick notes alike.
+        "clover":   ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:5,5", "cut:0.5"),
+        # The violet, a special find: four quick notes, up and over.
+        "violet":   ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:0,4,7,4", "cut:0.8"),
+        # A bloom picked: a lighter tick the board pitches up the scale.
+        "pop":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # The seed in the pot: one note, a fifth over a bloom's.
+        "pot":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.6"),
+        # A seed earned (the board pitches it by the shot's word): two notes
+        # alike and a third up.
+        "free":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:0,0,3", "cut:0.7"),
+        # The seed in the pond: pop's take, three steps down.
+        "drain":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-3"),
+        "fever":    ("one soft note on a kalimba over a gentle tongue drum, warm and bright-hearted, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.1:2,4,6,7,9,11", "cut:1.6"),
+        "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:900", "steep", "body:320"),
         "close":    ("a soft playful disappointed 'awww' of two kalimba notes bending down with a little wooden wobble, a near miss, funny and kind, never sad", 0.9, -10, POND_TUNE, "warm:7000"),
-        "fever_pot":("a bright happy cascade of hand bells and music box notes landing on a warm chord, a big prize won, joyful", 1.2, -5, POND_TUNE, "warm:7000"),
-        "out":      ("a gentle soft two-note kalimba falling, a kind 'try again', warm and patient, never sad or harsh", 0.8, -11, POND_TUNE, "warm:7000"),
-        "hint":     ("three soft rising music box notes with a delicate hand bell sparkle, gentle and magical", 1.0, -9, POND_TUNE, "warm:7000"),
-        "reset":    ("a soft rustle of leaves and little stems springing back up in a garden bed, with one calm low kalimba note, a garden growing back", 1.0, -11, POND, "warm:7000"),
-        "solved":   ("a warm joyful rising run on a real kalimba, music box and soft hand bells, landing on a bright gentle chord, cozy and triumphant", 2.6, -5, POND_TUNE, "warm:7000"),
-        "enter":    ("a soft airy rustle of leaves and petals settling in an evening garden by a pond, with one warm low kalimba note", 1.0, -12, POND, "warm:7000"),
-        "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -14, POND_TUNE, "warm:7000"),
-        "out_of_hearts": ("a real wind-up music box winding slowly down, a few soft notes descending and slowing, a pond garden at dusk going quiet, calm and kind", 1.6, -13, POND_TUNE, "warm:7000"),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -13, POND_TUNE, "warm:7000"),
-        "pair":     ("a sweet little two-note music box 'aww' rising, two notes ringing together in harmony, two sweethearts meeting, tender and warm", 0.8, -9, POND_TUNE, "warm:7000"),
+        # The last seed in the pot: fever's take, down, and up past where it began.
+        "fever_pot":("one soft note on a kalimba over a gentle tongue drum, warm and bright-hearted, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.11:9,6,2,6,11", "cut:1.5"),
+        "out":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:5,0", "cut:0.8"),
+        "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:0,4,8", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
+        # The garden set out: wall's take, five in a row.
+        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # A heart lost: one low quiet note.
+        "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:-1", "cut:0.45"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -13, POND_TUNE, "warm:2200", "body:300", "notes:0:3"),
+        # Sweethearts (Insane). pair: two notes a third apart, all but
+        # together (the board pitches it by the pairs of the shot). apart: a
+        # flower closing up, kept.
+        "pair":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.03:0,3", "cut:0.6"),
         "apart":    ("a soft sad little slide down on a kalimba with a tiny wooden wobble, a flower closing up, gentle and a bit funny, never harsh", 0.8, -12, POND_TUNE, "warm:7000"),
-        "combo":    ("a single short soft bright pluck on a real kalimba, one clean warm note, very short", 0.5, -10, POND_TUNE, "warm:7000"),
-        "confetti": ("a soft flutter of tiny paper confetti and petals falling, with a tiny music box twinkle, light and airy", 1.0, -11, POND_TUNE, "warm:7000"),
-        "ribbit":   ("one small cute frog croak by a pond at night, a short soft round 'ribbit', friendly and funny", 0.6, -10, POND, "warm:7000"),
-        "splash":   ("a small frog landing back on a lily pad, a soft wet little 'plap' and a tiny ripple of water, quiet", 0.5, -14, POND, "warm:7000"),
-        "quack":    ("a mother duck quacking softly twice and three tiny ducklings peeping as they paddle across a calm pond, cute and gentle", 1.4, -11, POND, "warm:7000"),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. ribbit: the frog, wall's take, two low notches. splash: the
+        # frog back on its pad, pop's take, one notch two steps down. quack:
+        # the ducks crossing, two low notes and three small ones above them.
+        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "ribbit":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.09:-2,-2"),
+        "splash":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-2"),
+        "quack":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:0,0,7,7,7", "cut:1.0"),
         "shades":   ("a playful cool little slide up on a kalimba ending in a tiny bright music box 'ting', something putting on sunglasses, funny and cute, short", 0.7, -9, POND_TUNE, "warm:7000"),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, POND_TUNE, "warm:7000"),
-        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -5, POND_TUNE, "warm:7000"),
-        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        # The party.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,4,11"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,7,3,7,8", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
         # 2026-10-05: the three instruments of the full bloom's tune, one note
         # each. tools/gen_marigold_music.py plays them at pitch into music.ogg
         # (the tune has to be exact, so it is sequenced, never prompted); the

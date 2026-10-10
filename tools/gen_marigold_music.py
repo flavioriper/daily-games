@@ -23,7 +23,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SR = 44100
 BPM = 148.0
 BEAT = 60.0 / BPM
-PEAK_DB = -3.0
+PEAK_DB = -8.0  # the cozy rules: no moment above -8 (it was -3 until 2026-10-10)
 
 # The tune in D, MIDI pitches with lengths in beats.
 A = [(66, 1), (66, 1), (67, 1), (69, 1), (69, 1), (67, 1), (66, 1), (64, 1),

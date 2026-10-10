@@ -124,9 +124,11 @@ const GLINT_EVERY := 1.7
 const GLINT_TIME := 0.6
 const PETAL_TIME := 4.5
 const FIREFLIES := 8
-## The reference's rising scale, one step a bloom within a shot: a major
-## scale up an octave and a fifth, then held at the top.
-const SCALE := [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19]
+## The rising scale, one step a bloom within a shot: a semitone a bloom up
+## to five, then held at the top (the cozy rules: no climb past five
+## semitones). Until 2026-10-10 it was the reference's major scale up an
+## octave and a fifth, [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19].
+const SCALE := [0, 1, 2, 3, 4, 5]
 const TOAST_HOLD := 2.6
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
@@ -1596,7 +1598,7 @@ func _sweethearts(i: int, j: int) -> void:
 		_ring(_bits, at, _s() * 6.0, Color(ROSE, 0.85))
 	_spray(_bits, a.lerp(c, 0.5), Color("fff0f5"), 6, 300.0, "spark", k)
 	_threads = null
-	fx.cue("pair", 1.0 + 0.06 * float(mini(_shot_pairs - 1, 6)))
+	fx.cue("pair", 1.0 + 0.055 * float(mini(_shot_pairs - 1, 6)))
 	if _shot_pairs == 1 and not _state.fever:
 		fx.buzz(Haptics.BUMP)
 	_hop_at = _now()
@@ -1691,7 +1693,7 @@ func _thread_look(b: Face.Builder, i: int, style: int) -> void:
 # --- the streak and the silly ones ---
 
 ## Shots in a row that keep a marigold (a pair on Insane): from the second a
-## word with a note up the scale, confetti from the third.
+## word with a tick up the scale, confetti from the third.
 func _on_streak(kept: bool) -> void:
 	if not kept:
 		_streak = 0
