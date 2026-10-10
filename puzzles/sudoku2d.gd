@@ -270,6 +270,8 @@ var state: State = null
 
 var fx: Node2D
 ## The cell the pad will write into, and whether it writes small.
+## A cell let go plays `select` this much lower than a cell picked.
+const SELECT_OFF_PITCH := 0.84
 var _sel := -1
 var _pencil := false
 ## cell -> true: what the last Check found, cleared per cell when it is
@@ -462,8 +464,9 @@ func _tips() -> Array:
 ## remove chip shares Undo's cue and its tick. `line` is not mapped either:
 ## a row, column or region the hand finished bumps from `_apply`, but not
 ## under a wrong number, whose heart is that move's one knock. The streak's
-## confetti is the other milestone. A cell selected, a tap refused (`locked`,
-## `ruled`), the wrong number tumbling off, every one of a number home, the
+## confetti is the other milestone. A cell selected or let go is `select`,
+## unmapped, so it knocks as the echo every heard cue does. A tap refused
+## (`locked`, `ruled`), the wrong number tumbling off, every one of a number home, the
 ## streak's notes, the daisies, the gags and the party say nothing. The seal
 ## thuds as it lands (`_party`).
 const HAPTICS := {
@@ -1294,6 +1297,10 @@ func _gui_input(event: InputEvent) -> void:
 	if i < 0:
 		return
 	_sel = -1 if i == _sel else i
+	# No tap that does something is silent: a tick as the cell is picked, the
+	# same one a little lower as it is let go, and the faintest knock under
+	# each (the cue is unmapped, so fx gives it the echo).
+	fx.cue("select", randf_range(0.97, 1.03) if _sel >= 0 else SELECT_OFF_PITCH)
 	if _sel >= 0 and state.has_hill(_sel):
 		_speak(tr("SD_HILL_SAYS") % state.hills[_sel], Face.Expr.HAPPY)
 	# The pad reads the counts and the pencil back off this board on every

@@ -163,3 +163,9 @@ Insane's bank was graded with suppositions (0 of 200 finished without one).
   `completion_record` keeps `moves` beside `hearts`. **Still wrong and not
   this pass's to fix**: `SD_RULES` ends on a sentence about Check, which
   Insane does not have (it was already untrue on a judged band).
+
+**A cell picked is heard and felt (2026-10-10).** The user: "Sudoku should
+have a sound feedback (and haptic) when selecting a empty space". `_gui_input`
+plays `select` (pencil's take two steps up, -18) as a cell is picked and at
+`SELECT_OFF_PITCH` as it is let go; the cue is unmapped, so the echo knocks
+under it. Rule 11 of `docs/agents/sound.md` is the general one. Unheard.

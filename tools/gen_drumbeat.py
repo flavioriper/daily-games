@@ -147,81 +147,44 @@ def wood(m, vel=1.0):
     return vel * (np.sin(2 * np.pi * f * t) + 0.4 * np.sin(2 * np.pi * f * 2.7 * t)) * env(n, 0.001, 0.025)
 
 
-# --- the player's four drums (2026-10-01): soft felt and hand strokes, warm,
-# nothing that cracks. Each lane has its own, so the four read by ear too:
-# low to high, left to right, like the lanes. ---
+# --- the player's drums: one drum at four pitches. The user, 2026-10-10: the
+# blue drum's "metalic sound is terrible, all tambors should have basically
+# the same drum sound only with different pitches". They were four
+# instruments (a big drum, a hand drum, a frame drum with jingles and a
+# tongue drum of bare tones at 620 and 1550 Hz, the blue one); they are the
+# big drum now, a felt beater on a skin, tuned up the lanes: the root, a
+# fifth, a seventh and the octave. A smaller drum rings a little shorter. ---
 
 
 def lowpass(y, k):
     return np.convolve(y, np.ones(k) / k, mode="same")
 
 
-def drum_big():
-    # the big drum: a felt beater on a wide skin, a round low boom that
-    # settles a little in pitch, a soft thump and no click
-    n = int(SR * 0.6)
+def drum(ratio=1.0, seed=31):
+    # a felt beater on a skin: a round boom that settles a little in pitch,
+    # a soft thump and no click. `ratio` tunes it; the decays shorten by its
+    # square root, as a smaller skin's do
+    short = 1.0 / np.sqrt(ratio)
+    n = int(SR * 0.6 * short)
     t = np.arange(n) / SR
-    f = 72 + 38 * np.exp(-t / 0.03)
+    f = ratio * (72 + 38 * np.exp(-t / (0.03 * short)))
     ph = 2 * np.pi * np.cumsum(f) / SR
-    y = (np.sin(ph) * env(n, 0.002, 0.2)
-         + 0.3 * np.sin(1.5 * ph) * env(n, 0.002, 0.07)
-         + 0.12 * np.sin(2.2 * ph) * env(n, 0.002, 0.035))
+    y = (np.sin(ph) * env(n, 0.002, 0.2 * short)
+         + 0.3 * np.sin(1.5 * ph) * env(n, 0.002, 0.07 * short)
+         + 0.12 * np.sin(2.2 * ph) * env(n, 0.002, 0.035 * short))
     k = int(SR * 0.015)
-    thump = lowpass(np.random.default_rng(31).standard_normal(k), 40)
+    thump = lowpass(np.random.default_rng(seed).standard_normal(k), 40)
     y[:k] += 1.6 * thump * np.linspace(1, 0, k)
-    return np.tanh(1.3 * y)
+    y = np.tanh(1.3 * y)
+    fade = int(SR * 0.02)
+    y[-fade:] *= np.linspace(1, 0, fade)
+    return y
 
 
-def drum_hand():
-    # the hand drum: a palm on a goatskin, a warm open tone that rings a
-    # moment, the skin's slap underneath
-    n = int(SR * 0.4)
-    t = np.arange(n) / SR
-    f = 190 + 60 * np.exp(-t / 0.012)
-    ph = 2 * np.pi * np.cumsum(f) / SR
-    y = (np.sin(ph) * env(n, 0.0015, 0.11)
-         + 0.42 * np.sin(1.68 * ph) * env(n, 0.0015, 0.05)
-         + 0.2 * np.sin(2.4 * ph) * env(n, 0.0015, 0.025))
-    k = int(SR * 0.01)
-    slap = lowpass(np.random.default_rng(32).standard_normal(k), 8)
-    y[:k] += 1.0 * slap * np.linspace(1, 0, k)
-    return np.tanh(1.2 * y)
-
-
-def drum_frame():
-    # the frame drum with little jingles: a soft thump of the fingers and a
-    # short shimmer of brass discs, rolled off so it never hisses
-    n = int(SR * 0.42)
-    t = np.arange(n) / SR
-    f = 150 + 40 * np.exp(-t / 0.01)
-    ph = 2 * np.pi * np.cumsum(f) / SR
-    body = np.sin(ph) * env(n, 0.002, 0.06)
-    rng = np.random.default_rng(33)
-    jingle = np.zeros(n)
-    for j, (fr, at) in enumerate([(4200, 0.0), (5100, 0.006), (3700, 0.013), (4700, 0.021)]):
-        i = int(at * SR)
-        m = n - i
-        tt = np.arange(m) / SR
-        jingle[i:] += np.sin(2 * np.pi * fr * tt + rng.random() * 6) * np.exp(-tt / 0.07) * (0.5 + 0.5 * rng.random())
-    jingle = lowpass(jingle, 3)
-    return np.tanh(1.1 * (0.9 * body + 0.22 * jingle))
-
-
-def drum_block():
-    # the wooden tongue drum: a mallet on a hollow box, a round woody tock
-    # with a little pitch, the friendliest of the four
-    n = int(SR * 0.3)
-    t = np.arange(n) / SR
-    y = (np.sin(2 * np.pi * 620 * t) * env(n, 0.001, 0.06)
-         + 0.45 * np.sin(2 * np.pi * 1550 * t) * env(n, 0.001, 0.02)
-         + 0.25 * np.sin(2 * np.pi * 310 * t) * env(n, 0.001, 0.04))
-    k = int(SR * 0.003)
-    knock = lowpass(np.random.default_rng(34).standard_normal(k), 4)
-    y[:k] += 0.5 * knock * np.linspace(1, 0, k)
-    return np.tanh(1.2 * y)
-
-
-DRUMS = [("drum_0", drum_big, -1.5), ("drum_1", drum_hand, -3.0), ("drum_2", drum_frame, -4.5), ("drum_3", drum_block, -4.5)]
+# The lanes' drums by kind (puzzles/drumbeat2d.gd DRUM_KINDS plays 0, 1 and
+# 3; 2 is kept in tune for a fourth lane).
+DRUMS = [("drum_0", lambda: drum(1.0), -1.5), ("drum_1", lambda: drum(1.5), -2.5),
+         ("drum_2", lambda: drum(1.78), -3.0), ("drum_3", lambda: drum(2.0), -3.0)]
 
 
 

@@ -392,7 +392,12 @@ SETS = {
         # The user again that day, of the click and the page: "should be
         # lower as well", "way lower". The click is 6 dB down and the page 8
         # (-34 with BREEZE_TRIM): the measure calls both faint, as meant.
-        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -25, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        # The user that evening, of the click at -25: "too low, can't hear
+        # anything even in the highest volume, fix it". So -25 is under what
+        # is heard at all and -19 was "should be lower": it is -20, the same
+        # low take, and it must not read `faint` in the measure (phone -24
+        # or better). Between -19 and -22 is all the room this number has.
+        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -20, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # The user, 2026-10-09, twice: the linen brush "too harsh", then the
         # card slid over felt that replaced it "a harsh scratch". A page turn
         # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and
@@ -1099,6 +1104,13 @@ SETS = {
         "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         # A pencilled note: a lighter thing set down.
         "pencil":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.1", "body:320", "tight"),
+        # A cell picked, and let go by a second tap (the user, 2026-10-10:
+        # "Sudoku should have a sound feedback (and haptic) when selecting a
+        # empty space ... never a ghost click that do something silent"). The
+        # thing a finger does most here, so the quietest tick of the set:
+        # pencil's take (never `--new`), two steps up, which the board
+        # plays a little lower when it lets go.
+        "select":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:2"),
         "line":     ("a short happy two-note soft kalimba pluck rising, a row completed, warm and round", 0.6, -8),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
         "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),

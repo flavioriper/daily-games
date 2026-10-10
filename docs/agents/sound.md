@@ -115,6 +115,27 @@ blends `high` (the old sound is in them), so here the ear outranks it: what
 repeats under a finger takes 1700 and -5, the rest 2400 and 0, and a thump
 keeps its low end with a `body` of 150.
 
+**11. No ghost touch (user, 2026-10-10).** "All games should have feedback
+to anything that interact ingame, never a ghost click that do something
+silent." A touch that changes anything -- a cell picked or let go, a mode
+turned, a piece lifted, a view moved by a button -- is heard and felt. With
+a cue of its own it is `fx.cue`; without one it is `fx.touch()`
+(`ui/fx2d.gd`): the interface's click and the faintest knock, no file to
+make. A touch that does nothing (bare ground, a board that is over) stays
+silent, and so does one a cue already answers on the same frame. It was
+Sudoku's cell that was named: `select`, pencil's take two steps up at -18,
+and 0.84 of its pitch as the cell is let go.
+**The click itself was inaudible the same evening** ("too low, can't hear
+anything even in the highest volume"): -25 is under what is heard, -19 was
+"should be lower", so it is -20 and must not read `faint`.
+**Drumbeat's drums are one drum** ("the blue tambor metalic sound is
+terrible, all tambors should have basically the same drum sound only with
+different pitches"): `tools/gen_drumbeat.py drum(ratio)`, the big drum at
+the root, a fifth, a seventh and the octave for kinds 0 to 3; the tongue
+drum of bare tones at 620 and 1550 Hz, the hand drum and the jingles are
+gone. They are synthesised as before and read `rumble` in the measure (a
+drum is under 300 Hz; its thump carries on a phone at -10 to -12).
+
 **The measure is `tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]`.** A
 line a file and a word for the rule it breaks: `high` (under 30 dB down
 above 3 kHz, or a centroid over 1 kHz), `rumble` (more under 300 Hz than

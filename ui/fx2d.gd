@@ -263,6 +263,36 @@ func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	# The board answered: a button pressed this frame keeps its click quiet.
 	UiSound.board_frame = Engine.get_process_frames()
 
+## The tick of a touch that did something and has no cue of its own (the
+## user, 2026-10-10: "all games should have feedback to anything that
+## interact ingame, never a ghost click that do something silent"): a cell
+## picked, a thing let go, a mode turned. It is the interface's click
+## (assets/sfx/ui/click.ogg), so it needs no file in the board's set, varied
+## so it is never the same twice, with the faintest knock under it. A touch
+## with a cue of its own calls `cue`; a touch that does nothing stays silent.
+func touch(pitch := 1.0) -> void:
+	if buzzes:
+		Haptics.play(Haptics.ECHO)
+	UiSound.board_frame = Engine.get_process_frames()
+	if _touch_stream == null:
+		if not ResourceLoader.exists(UiSound.CLICK):
+			return
+		_touch_stream = load(UiSound.CLICK)
+	var now := Time.get_ticks_msec()
+	if now - _touched_at < CUE_GAP:
+		return
+	_touched_at = now
+	if not is_instance_valid(_touch_player):
+		_touch_player = AudioStreamPlayer.new()
+		_touch_player.stream = _touch_stream
+		add_child(_touch_player)
+	_touch_player.pitch_scale = pitch * randf_range(0.94, 1.06)
+	_touch_player.play()
+
+static var _touch_stream: AudioStream
+var _touch_player: AudioStreamPlayer
+var _touched_at := -1000
+
 ## The board this Fx2D serves: the nearest ancestor that names a puzzle.
 func _puzzle_id() -> String:
 	if _puzzle == "":
