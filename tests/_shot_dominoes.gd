@@ -9,7 +9,10 @@ extends SceneTree
 ## would lay (`lose`: on the lightest that fits, so the end card is more
 ## likely the lost one), a tap on the place when the tile was picked up to
 ## choose an end, a tap on the boneyard when nothing fits, and once a tap on
-## a tile that fits neither end and on the boneyard when a tile does. Shots:
+## a tile that fits neither end and on the boneyard when a tile does. Every
+## other tile is carried to its place by a finger that drags, and once each a
+## tile is let go on the end it does not fit and on nothing. Shots:
+## carry_lay, carry_wrong, carry_nowhere (the tile under the finger),
 ## deal (tiles in the air), start, laid, picked (two places lit), hint, draw
 ## (the boneyard lit), refused, long (the line at its longest in the first
 ## hand), hand (a finished hand lying open), end. After the first hand the
@@ -36,6 +39,11 @@ var _refused := false
 var _peak := 0
 var _taps := 0
 var _ending := -1.0
+## A tile held under the finger: {to, kind}.
+var _hold := {}
+var _lays := 0
+var _wrong := false
+var _nowhere := false
 
 func _initialize() -> void:
 	_had_record = FileAccess.file_exists("user://versus.cfg")
@@ -84,6 +92,26 @@ func _tap(at: Vector2) -> void:
 		_board._gui_input(ev)
 	_taps += 1
 
+func _touch(at: Vector2, down: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = 0
+	ev.pressed = down
+	ev.position = at
+	_board._gui_input(ev)
+
+## A finger comes down on `tile` and carries its middle to `c`, and holds.
+func _carry(tile: int, c: Vector2, kind: String) -> void:
+	var from: Vector2 = _board.tile_point(tile)
+	var to: Vector2 = c + Vector2(0.0, _board.DRAG_RISE) * _board._k
+	_touch(from, true)
+	for i in range(1, 6):
+		var ev := InputEventScreenDrag.new()
+		ev.index = 0
+		ev.position = from.lerp(to, i / 5.0)
+		_board._gui_input(ev)
+	_hold = {"to": to, "kind": kind}
+	_wait = 0.3
+
 func _process(delta: float) -> bool:
 	_t += delta
 	if _board == null:
@@ -98,6 +126,18 @@ func _process(delta: float) -> bool:
 		_shot("deal")
 	_wait -= delta
 	if _wait > 0.0:
+		return false
+	if not _hold.is_empty():
+		_shot("carry_" + _hold.kind)
+		var laid_before: int = r.laid
+		var hand_before: int = r.hand_no
+		var over: int = _board._drag_end
+		var shook: float = _board._shake_at
+		_touch(_hold.to, false)
+		_taps += 1
+		print("  carried (%s): over end %d, refused %s, laid %s, said: %s" % [_hold.kind, over, _board._shake_at != shook, r.laid != laid_before or r.hand_no != hand_before, _screen._toast_label.text])
+		_hold = {}
+		_wait = 0.45
 		return false
 	if _screen._state == S.OVER:
 		if _ending < 0.0:
@@ -168,6 +208,19 @@ func _process(delta: float) -> bool:
 	if _done.has("refused_due"):
 		_shot("refused")
 	var move := _pick(r)
+	var end := move & 1
+	if not _wrong and r.plays.size() >= 2 and not r.fits(move >> 1, 1 - end):
+		_wrong = true
+		_carry(move >> 1, _board.slot_point((move >> 1) * 2 + 1 - end), "wrong")
+		return false
+	if not _nowhere and r.plays.size() >= 2:
+		_nowhere = true
+		_carry(move >> 1, _board.tile_point(r.hands[1 - _screen.player][0]), "nowhere")
+		return false
+	_lays += 1
+	if _lays % 2 == 0:
+		_carry(move >> 1, _board.slot_point(move), "lay")
+		return false
 	_tap(_board.tile_point(move >> 1))
 	if _board._picked < 0:
 		_shot("laid") if _done.has("laid_due") else _done.set("laid_due", true)

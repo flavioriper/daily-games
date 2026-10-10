@@ -568,7 +568,21 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   is how it fits a tutorial page. A tile that fits stands `LIFT` higher
   while it is the player's turn; a tap lays it where it fits, and one that
   fits both ends with different numbers is picked up first and the two
-  places light (`_slot`) for a second tap. A tap on the boneyard draws
+  places light (`_slot`) for a second tap. **A tile is also carried**
+  (2026-10-10, the user: "user should be able to drag and drop the piece
+  where he wants to land it, as long as the face touch the right face"): a
+  finger that moves `DRAG_START` 14 px with a tile under it takes the tile
+  along (`_carry`; `_drag`, riding `DRAG_RISE` over the finger, drawn over
+  everything, skipped by `_place_all` and never `fly`, so `is_busy` and
+  `settled` do not see it), the places it fits light, and within reach of
+  one (`_end_under`: the place grown by `DRAG_REACH` 0.9 of a half, the
+  tile's middle and not the finger) it turns and shrinks to lie as it
+  would there, the matching half against the line. Let go there it is laid
+  (`chosen`, as a tap); on the end it does not fit it is refused (the
+  shake, `refused("fit")`); anywhere else it goes back to the hand and
+  nothing is said. A tile that fits neither end can be carried and comes
+  back the same ways. The tap and the pick-up are as they were. A tap on
+  the boneyard draws
   when nothing fits (it is ringed then) and is refused otherwise. The
   first deal waits for the control's first layout (`_deal_due`): before it
   there is no room to deal into. `still` is the tab's picture, the line
@@ -625,8 +639,9 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   cases, 200 games to the target the same at two ends, what a view holds,
   what a draw tells, every pairing); `tests/_probe_dominoes_line.gd`
   (headless, the line's geometry); `tests/_shot_dominoes.gd -- <outdir>
-  [level] [rm] [lang=] [lose] [speed=N]` (a whole game by real touches: a
-  tile refused, the boneyard refused, the bulb, an end chosen, draws, an
+  [level] [rm] [lang=] [lose] [speed=N]` (a whole game by real touches,
+  every other tile carried by a dragging finger, one let go on the wrong
+  end and one on nothing: a tile refused, the boneyard refused, the bulb, an end chosen, draws, an
   end card either way; puts `user://versus.cfg` back);
   `tests/_probe_online.gd -- dominoes` (the emulators: the seven cases the
   other games of turns have, all passed -- a whole game of eight hands and

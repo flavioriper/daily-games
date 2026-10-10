@@ -22,6 +22,11 @@ extends Control
 ## A tap on a tile that fits one end lays it there. One that fits both ends
 ## with different numbers is picked up first, and the two places light: a tap
 ## on either lays it. A tap on the boneyard draws, when no tile fits.
+##
+## A tile is also carried: a finger that moves with a tile under it takes the
+## tile along, the places it fits light, and it is laid at the end it is let
+## go on. Let go on an end it does not fit it is refused, and anywhere else
+## it goes back to the hand.
 
 ## The player chose a move: `tile * 2 + end`.
 signal chosen(move: int)
@@ -61,6 +66,14 @@ const ROOM := Vector2(940.0, 1040.0)
 const ROOM_PAGE := Vector2(940.0, 800.0)
 const LIFT := 18.0
 const LIFT_PICKED := 40.0
+## A carried tile: how far the finger moves before it is one, how far over
+## the finger it rides, how fast it follows, and how far past a place's edge
+## it may be let go and still be laid there (in halves of a line's tile).
+const DRAG_START := 14.0
+const DRAG_RISE := 44.0
+const DRAG_SPEED := 32.0
+const DRAG_REACH := 0.9
+const DRAG_REACH_MIN := 34.0
 
 const FELT := Color("5c9c7c")
 const FELT_DEEP := Color("4a8669")
@@ -110,6 +123,8 @@ var interactive := false:
 			interactive = v
 			if not v:
 				_picked = -1
+				_grab = -1
+				_drag = -1
 			if rules != null and not _sprites.is_empty():
 				_place_all(false)
 			_touch()
@@ -147,6 +162,14 @@ var _origin := Vector2.ZERO
 ## turned up, the boneyard lit to be drawn from.
 var _picked := -1
 var _hint := -1
+## The tile under the finger since it came down, where the finger was then
+## and the tile's middle from it; the tile being carried, and the end it is
+## over now (-1 for none, whether it fits there or not).
+var _grab := -1
+var _grab_at := Vector2.ZERO
+var _grab_off := Vector2.ZERO
+var _drag := -1
+var _drag_end := -1
 var _reveal := false
 var _must_draw := false
 ## How the game ended, "" while it is on.
@@ -173,6 +196,8 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	rules = the_rules
 	player = side
 	_picked = -1
+	_grab = -1
+	_drag = -1
 	_hint = -1
 	_reveal = false
 	_must_draw = false
@@ -225,6 +250,8 @@ func sync() -> void:
 	if rules == null:
 		return
 	_picked = -1
+	_grab = -1
+	_drag = -1
 	_hint = -1
 	_must_draw = false
 	var before: Array[int] = []
@@ -252,6 +279,9 @@ func sync() -> void:
 func set_hint(move: int) -> void:
 	_hint = move
 	_picked = -1
+	if _drag >= 0:
+		_drag = -1
+		_place_all(false)
 	_busy(0.3)
 	_touch()
 
@@ -417,6 +447,10 @@ func _place_all(snap: bool) -> void:
 		return
 	var step := H * hs + 12.0
 	for i in mine.size():
+		if mine[i] == _drag:
+			# in the hand still, and wherever the finger has it
+			_sprites[mine[i]].shown = true
+			continue
 		var row := i / per
 		var in_row := mini(per, mine.size() - row * per)
 		var at := Vector2(_v.x * 0.5 + (i % per - (in_row - 1) * 0.5) * step,
@@ -459,7 +493,15 @@ func _process(delta: float) -> void:
 	var live := _t < _busy_until
 	var k := 1.0 - exp(-delta * SPEED)
 	var flying := false
-	for sp in _sprites:
+	for t in _sprites.size():
+		var sp := _sprites[t]
+		if t == _drag:
+			# under a finger: it keeps up, and is not a move to wait for
+			live = true
+			var kd := 1.0 if Motion.reduce else 1.0 - exp(-delta * DRAG_SPEED)
+			sp.pos = sp.pos.lerp(sp.to, kd)
+			sp.s = lerpf(sp.s, sp.to_s, kd)
+			continue
 		if sp.wait > 0.0:
 			sp.wait -= delta
 			flying = true
@@ -483,7 +525,7 @@ func _process(delta: float) -> void:
 	if _await and not flying and _t >= _await_at:
 		_await = false
 		settled.emit()
-	if _must_draw or _hint >= 0 or _picked >= 0:
+	if _must_draw or _hint >= 0 or _picked >= 0 or _drag >= 0:
 		live = live or not Motion.reduce
 	if live:
 		queue_redraw()
@@ -525,17 +567,112 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		press = event.pressed
 		at = event.position
+	elif event is InputEventScreenDrag:
+		if event.index == 0 and _down:
+			accept_event()
+			_carry(event.position / _k)
+		return
+	elif event is InputEventMouseMotion:
+		if _down and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+			accept_event()
+			_carry(event.position / _k)
+		return
 	else:
 		return
 	accept_event()
 	if press:
 		_down = true
+		_grab = -1
+		_drag = -1
+		if interactive:
+			_grab = _hand_tile(at / _k)
+			if _grab >= 0:
+				_grab_at = at / _k
+				_grab_off = _sprites[_grab].to - _grab_at
 		return
 	if not _down:
 		return
 	_down = false
-	if interactive:
+	var carried := _drag
+	_grab = -1
+	if carried >= 0:
+		_drop(carried)
+	elif interactive:
 		_tap(at / _k)
+
+## The player's tile under `at`, -1 for none.
+func _hand_tile(at: Vector2) -> int:
+	var mine: PackedInt32Array = rules.hands[player]
+	for i in range(mine.size() - 1, -1, -1):
+		if _rect_of(_sprites[mine[i]]).grow(5.0).has_point(at):
+			return mine[i]
+	return -1
+
+## The finger is at `at` and has not let go: the tile it came down on goes
+## with it once it has moved far enough to mean it, riding a little over the
+## finger, and over a place it fits it lies as it would there.
+func _carry(at: Vector2) -> void:
+	if not interactive or _grab < 0:
+		return
+	if _drag < 0:
+		if at.distance_to(_grab_at) < DRAG_START:
+			return
+		_drag = _grab
+		_picked = -1
+		_hint = -1
+		_cue("lift")
+		_place_all(false)
+	var sp := _sprites[_drag]
+	sp.to = at + _grab_off + Vector2(0.0, -DRAG_RISE)
+	_drag_end = _end_under(_drag, sp.to)
+	sp.o = 1
+	sp.to_s = HAND_S if sp.to.y > _zone_hand.position.y else maxf(_unit / H, 0.6)
+	if _drag_end >= 0 and rules.fits(_drag, _drag_end):
+		var slot := _slot(_drag, _drag_end)
+		sp.o = slot.o
+		sp.to_s = _unit / H
+	_touch()
+
+## The end whose place for `tile` is under `c`, the nearer of two, -1 for
+## neither. The place is there whether the tile fits it or not.
+func _end_under(tile: int, c: Vector2) -> int:
+	var best := -1
+	var near := INF
+	for end in 2:
+		var slot := _slot(tile, end)
+		var hsz := _half_size(slot.o) * _unit
+		var reach := maxf(DRAG_REACH_MIN, _unit * DRAG_REACH)
+		if not Rect2(Vector2(slot.c) - hsz, hsz * 2.0).grow(reach).has_point(c):
+			continue
+		var d := c.distance_squared_to(slot.c)
+		# of two as near, the one it fits
+		if d < near - 1.0 or (d < near + 1.0 and rules.fits(tile, end)):
+			near = d
+			best = end
+	return best
+
+## The carried tile is let go: laid at the end it is over if it fits there,
+## refused if it does not, and back in the hand from anywhere else.
+func _drop(tile: int) -> void:
+	var end := _drag_end
+	_drag = -1
+	_drag_end = -1
+	if not interactive or not rules.hands[player].has(tile):
+		_place_all(false)
+		_touch()
+		return
+	if end >= 0 and rules.fits(tile, end):
+		chosen.emit(tile * 2 + end)
+	elif end >= 0:
+		_shake_tile = tile
+		_shake_at = _t
+		_busy(0.4)
+		_cue("refused")
+		refused.emit("fit")
+	# not laid after all: home
+	if rules.hands[player].has(tile):
+		_place_all(false)
+	_touch()
 
 func _tap(at: Vector2) -> void:
 	# the two places a picked tile may go
@@ -599,7 +736,7 @@ func _draw() -> void:
 	for pass_no in 2:
 		for t in Rules.TILES:
 			var sp := _sprites[t]
-			if not sp.shown or (sp.fly and sp.wait <= 0.0) != (pass_no == 1):
+			if not sp.shown or ((sp.fly and sp.wait <= 0.0) or t == _drag) != (pass_no == 1):
 				continue
 			var at := sp.pos
 			if t == _shake_tile:
@@ -704,6 +841,18 @@ func _build_over() -> ArrayMesh:
 			var half := _half_size(slot.o) * _unit - Vector2.ONE * 4.0
 			b.fan(Face.Builder.round_rect(Vector2(slot.c) - half, half * 2.0, 10.0), Color(HALO, 0.3 + 0.15 * beat))
 			_frame(b, slot.c, half, 2.0 * beat, 5.0, HALO)
+	if _drag >= 0 and interactive:
+		# the places the carried tile fits, the one it is over brighter
+		for end in (1 if rules.plays.is_empty() else 2):
+			if not rules.fits(_drag, end):
+				continue
+			var slot := _slot(_drag, end)
+			var half := _half_size(slot.o) * _unit - Vector2.ONE * 4.0
+			var over := end == _drag_end
+			# the tile lies in the place it is over: a frame round it, no wash
+			if not over:
+				b.fan(Face.Builder.round_rect(Vector2(slot.c) - half, half * 2.0, 10.0), Color(HALO, 0.3 + 0.15 * beat))
+			_frame(b, slot.c, half, (5.0 if over else 0.0) + 2.0 * beat, 5.0, HALO)
 	if _hint >= 0:
 		if _hint == Rules.DRAW:
 			_light_stock(b, HINT, beat)
