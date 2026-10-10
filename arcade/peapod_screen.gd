@@ -140,6 +140,8 @@ const CHIP := 100
 const STICKER_COLS := [Color("f08a80"), Color("f6b866"), Color("f0d36a"), Color("9ed48a"), Color("86c2ee"), Color("c19be0")]
 ## How round the garden's corners are, inside the card's.
 const ROUND := 22.0
+## No sound the screen pitches climbs past five semitones (the cozy rules).
+const CLIMB_TOP := 1.335
 ## A streak's word, by its length, loudest first.
 const WORDS := [[75, "PP_WORD_5"], [50, "PP_WORD_4"], [35, "PP_WORD_3"], [20, "PP_WORD_2"], [10, "PP_WORD_1"]]
 const GOT := {Sim.Kind.FAN: "PP_GOT_FAN", Sim.Kind.PIERCE: "PP_GOT_PIERCE", Sim.Kind.BURST: "PP_GOT_BURST", Sim.Kind.ZAP: "PP_GOT_ZAP",
@@ -355,7 +357,11 @@ var _hit_heard := -10.0
 ## note each time it is worn down a colour. The sound itself is a damped
 ## wooden tock, never a ringing one; HIT_DRIFT of pitch and HIT_SOFT dB of
 ## level at random keep two alike from being the same sound twice.
-const HIT_NOTES := [9, 7, 4, 2, 0, -3, -5, -8]
+## The cozy rules (2026-10-10) hold the whole ladder inside five semitones,
+## drift and all: the same shape at about a quarter of its size. It was
+## [9, 7, 4, 2, 0, -3, -5, -8], seventeen semitones, the top note over 1 kHz;
+## that list is here to put back.
+const HIT_NOTES := [2.4, 1.9, 1.1, 0.5, 0.0, -0.8, -1.3, -2.2]
 const HIT_DRIFT := 0.012
 const HIT_SOFT := 2.0
 var _wheel := 0.0
@@ -1303,7 +1309,7 @@ func _build_pause() -> Control:
 
 ## The pitch a pea lands at on a crate or a plate with `hp` left.
 func _hit_pitch(hp: int) -> float:
-	var note: int = HIT_NOTES[mini(Art.tier_of(hp), HIT_NOTES.size() - 1)]
+	var note: float = HIT_NOTES[mini(Art.tier_of(hp), HIT_NOTES.size() - 1)]
 	return pow(2.0, note / 12.0) * randf_range(1.0 - HIT_DRIFT, 1.0 + HIT_DRIFT)
 
 func _play_events() -> void:
@@ -1327,7 +1333,7 @@ func _play_events() -> void:
 				_shot_at = _clock
 				if _clock - _shot_heard >= SHOT_GAP:
 					_shot_heard = _clock
-					_quiet.cue("shot", randf_range(0.94, 1.08), -4.0)
+					_quiet.cue("shot", randf_range(0.94, 1.06), -4.0)
 			"hit":
 				_hit_at[ev.id] = _clock
 				# a light shot now and then takes nothing off: no number for it
@@ -1388,9 +1394,11 @@ func _play_events() -> void:
 				_rw.spray(_in_rw(pos), Color("ffd65c"), 10, 820.0, "spark", 1.3)
 				_rw.sticker(tr("PP_BOOM"), _in_rw(pos + Vector2(0, -26.0)), 60, 0.9, false, Color("ffd65c"), false, "boom", 30.0)
 			"knock":
-				_fx.cue("knock", randf_range(0.95, 1.08), -4.0)
+				_fx.cue("knock", randf_range(0.94, 1.06), -4.0)
 			"pod_off":
-				_fx.cue("twin_off", 1.25, -8.0)
+				# a puff of air at -17 as it is: a quarter up it sat over
+				# 1 kHz, and 8 dB down a phone did not play it
+				_fx.cue("twin_off")
 			"clear":
 				_on_clear(ev)
 			"warn":
@@ -1422,7 +1430,7 @@ func _on_flare(pos: Vector2) -> void:
 	_shake = maxf(_shake, 0.16)
 	if _clock - _thump_at >= THUMP_GAP:
 		_thump_at = _clock
-		_quiet.cue("knock", randf_range(0.72, 0.82), -9.0)
+		_quiet.cue("knock", randf_range(0.72, 0.82), -5.0)
 
 ## A shell has landed: a ring out as far as its blast reaches, and dust.
 func _on_blast(pos: Vector2, reach: float) -> void:
@@ -1434,7 +1442,7 @@ func _on_blast(pos: Vector2, reach: float) -> void:
 	_shake = maxf(_shake, 0.2)
 	if _clock - _thump_at >= THUMP_GAP:
 		_thump_at = _clock
-		_quiet.cue("knock", randf_range(0.6, 0.68), -6.0)
+		_quiet.cue("knock", randf_range(0.6, 0.68), -2.0)
 
 func _spark(at: Vector2, col: Color) -> void:
 	if _sparks.size() < MAX_SPARKS:
@@ -2763,10 +2771,10 @@ func _step_orbs(delta: float) -> void:
 		_orbs = _orbs.filter(func(o: Dictionary) -> bool: return o.t != INF)
 		_orb_pulse = _clock
 		if _clock - _orb_heard >= 0.045:
-			# a run of notes up the scale while they keep landing
+			# a tick a semitone up each while they keep landing, five at most
 			_orb_note = _orb_note + 1 if _clock - _orb_heard < 0.3 else 0
 			_orb_heard = _clock
-			_quiet.cue("hit", 1.5 * pow(2.0, mini(_orb_note, 14) / 12.0), -13.0)
+			_quiet.cue("hit", minf(pow(2.0, _orb_note / 12.0), CLIMB_TOP), -13.0)
 		if _energy_l.scale.x <= 1.01:
 			_energy_l.pivot_offset = _energy_l.size * 0.5
 			_beat(_energy_l, 0.16, 0.16)
@@ -3055,7 +3063,7 @@ func _refresh_shop() -> void:
 func _buy(card: int) -> void:
 	if not sim.buy(card):
 		return
-	_fx.cue("catch", 1.0 + 0.04 * int(sim.bought[card]))
+	_fx.cue("catch", minf(1.0 + 0.04 * int(sim.bought[card]), CLIMB_TOP))
 	_fx.buzz(Haptics.TAP)
 	_chip_at[CHIP + card] = _clock
 	for r: Dictionary in _shop_rows:
