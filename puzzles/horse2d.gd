@@ -68,6 +68,10 @@ const BALE_DROP := 0.5
 const BALE_TIME := 0.24
 const BALE_OUT := 0.14
 const BALE_LIFT := 0.18
+## A bale laid, lifted or taken back is never the same tock twice
+## (docs/agents/sound.md, rule 2): all three played at 1.0 every time until
+## 2026-10-10.
+const TICK_VARY := Vector2(0.94, 1.06)
 ## The horse lands after the field, shakes its head at a Submit that is not
 ## one yet, hops when the pen closes and kicks on the win.
 const HORSE_LAG := 0.25
@@ -917,11 +921,11 @@ func tap(cell: int) -> void:
 				_bale_in.erase(cell)
 				if not Motion.reduce:
 					_bale_out.append({"cell": cell, "at": now, "old": old})
-				fx.cue("lift")
+				fx.cue("lift", randf_range(TICK_VARY.x, TICK_VARY.y))
 			else:
 				_bale_in[cell] = now
 				fx.puff(cell_centre(cell) + Vector2(0.0, 0.3 * _cell), Pal.STRAW, 4)
-				fx.cue("place")
+				fx.cue("place", randf_range(TICK_VARY.x, TICK_VARY.y))
 			_busy_for(BALE_TIME)
 			_bump_pill(0)
 			_after_change(now + (BALE_TIME * 0.6 if not was_bale else 0.0), false, cell)
@@ -1103,7 +1107,7 @@ func undo() -> bool:
 	_busy_for(BALE_TIME)
 	_bump_pill(0)
 	_after_change(now, true)
-	fx.cue("undo")
+	fx.cue("undo", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_redraw()
 	moved.emit()
 	return true
