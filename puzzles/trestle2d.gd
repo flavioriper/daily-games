@@ -289,7 +289,9 @@ var _tests := 0
 ## This test's carts are all over (a solve, or a crossing after one).
 var _run_over := false
 ## The cart's wheels on the planks: a looping voice whose level follows
-## whether the cart is rolling (snooker's `_roll_sound`).
+## whether the cart is rolling (snooker's `_roll_sound`). The loop is a
+## wheel's four notches since 2026-10-10 (it was a breath of air), so the
+## pitch a heavy cart lowers it by slows the wheel as well.
 var _roll: AudioStreamPlayer
 ## The stress view carried into building: member key -> the highest share
 ## of its limit it reached in the last test that ran it (over 1: it snapped).

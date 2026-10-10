@@ -1936,7 +1936,9 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("move", 1.0 + (CLIMB_TOP - 1.0) * k, -10.0)
+			# -4 where -10: the file is 6 dB down since 2026-10-10, and the
+			# count is as loud as it was.
+			_fx.cue("move", 1.0 + (CLIMB_TOP - 1.0) * k, -4.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		_kick(_end_score, 0.25, 0.4)

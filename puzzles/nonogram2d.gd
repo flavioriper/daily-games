@@ -451,6 +451,8 @@ func capabilities() -> Array[String]:
 ## under the finger, the brush, a grouted tile tapped (`locked`), the
 ## pebbles a finished line lays, the eject's `slip`, the streak's pluck and
 ## the gags say nothing. The seal thuds as it lands (`_party`).
+## How far the stroke's tick climbs: three semitones.
+const SELECT_TOP := 1.19
 const HAPTICS := {
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
@@ -1549,6 +1551,11 @@ func _paint(cell: Vector2i) -> void:
 	if state.mark_at(cell) == to:
 		return
 	_pending.append({"cell": cell, "to": to})
+	# Each cell the stroke takes in is heard as the finger reaches it (Word
+	# Trail's tick), not only the stroke's landing when it is let go: one
+	# soft notch that climbs with the run, three semitones at most, being
+	# the click under a finger that slides (the cozy rules, 9).
+	fx.cue("select", minf(1.0 + 0.03 * float(_pending.size() - 1), SELECT_TOP))
 
 func _release() -> void:
 	var cell := _press_cell

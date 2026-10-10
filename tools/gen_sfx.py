@@ -389,7 +389,10 @@ SETS = {
         # The user, 2026-10-10: "too loud, too high pitch, annoying". It was the
         # paper-and-wood take of September at -12, 17% of it from 1 to 3 kHz:
         # a wheel's notch now (rule 5), 7 dB down. One number turns it up.
-        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        # The user again that day, of the click and the page: "should be
+        # lower as well", "way lower". The click is 6 dB down and the page 8
+        # (-34 with BREEZE_TRIM): the measure calls both faint, as meant.
+        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -25, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # The user, 2026-10-09, twice: the linen brush "too harsh", then the
         # card slid over felt that replaced it "a harsh scratch". A page turn
         # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and
@@ -397,7 +400,7 @@ SETS = {
         # The user, 2026-10-10: "the most annoying sound in the world, too
         # loud, too harsh". The same breath, 5 dB down, darker (900) and cut
         # at 0.35 s where half a second was heard.
-        "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -20, BREEZE, "warm:900", "steep", "ease:0.08", "body:320", "cut:0.35"),
+        "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -28, BREEZE, "warm:900", "steep", "ease:0.08", "body:320", "cut:0.35"),
         # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
         # it is the quietest tune there is, low and eased in.
         "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
@@ -795,6 +798,11 @@ SETS = {
         # note, so that every note lands between 400 and 700 Hz. slip's
         # prompt still says ceramic: it is the kept take's, which measures low.
         "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # The user, 2026-10-10: a sound "when selecting tiles, not only on
+        # place (like we do for trail word)". Each cell a stroke takes in:
+        # place's take two steps up, the click under a finger that slides
+        # (rule 9), so -21 and short.
+        "select":   ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1400", "cut:0.08", "body:320", "tight", "notes:0:2"),
         "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
         "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:2,7,9", "cut:0.9"),
@@ -1995,24 +2003,24 @@ SETS = {
     # bag, a glass rim or a hand bell. The screen pitches shoot, pop and
     # docked, none past five semitones.
     "firefly": {
-        "shoot":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
-        "pop":      ("one small cork set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        "shoot":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.06", "body:320", "tight", "before:1700:-5"),
+        "pop":      ("one small cork set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "before:2400:0:150"),
         # A big moth sent off: two muffled notes, a fourth up.
-        "pop_moth": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
+        "pop_moth": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6", "before:2600:0:150"),
         "hurt":     ("one short low hollow note on a wooden tongue drum, damped at once, an armoured ladybird hit but not beaten yet, very short", 0.5, -9, ARCADE),
         # A bug diving: Hedgehogs' gust.
-        "dive":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "dive":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320", "before:1700:-5"),
         "beam_open":("a soft rising run on a real music box with a shimmer of tiny hand bells opening up, a ribbon of silk light unrolling, gentle", 0.8, -8, ARCADE, "warm:2600", "body:300"),
         # The silk beam, looped while it is open: Snooker's steady air.
-        "beam":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320"),
+        "beam":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -15, BREEZE, "loop", "warm:1000", "steep", "body:320", "before:1700:-5"),
         "captured": ("a sad little wobbling slide down on a real kalimba, a few notes bending lower, a little friend caught and carried up, gentle", 1.2, -8, ARCADE),
         "carried":  ("a short low minor two-note fall on a real kalimba, a friend lost, soft", 0.8, -9, ARCADE),
         "rescue":   ("a bright happy rising run on a real kalimba with a music box sparkle on top, a friend set free", 1.0, -8, ARCADE),
         "docked":   ("a cheerful quick pair of music box notes with a soft wooden click, two friends joining up, stronger together", 0.7, -8, ARCADE),
         # A friend turned: the note, a low wobble (down a step and back).
-        "rogue":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.13:5,4,5", "cut:0.7"),
+        "rogue":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.13:5,4,5", "cut:0.7", "before:2400:0:150"),
         # The firefly's light going out: three quick notes down.
-        "ship_pop": ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:11,7,4", "cut:0.9"),
+        "ship_pop": ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:11,7,4", "cut:0.9", "before:2600:0:150"),
         "start":    ("a short cheerful opening tune on a real kalimba and music box, a bouncy rising melody with a hand bell on top, a game beginning, about three seconds", 3.0, -8, ARCADE, "warm:1800", "body:300"),
         "stage":    ("a short bright three-note fanfare on a real music box and hand bells, a new stage beginning", 1.2, -8, ARCADE),
         "clear":    ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -8, ARCADE),
@@ -2060,7 +2068,11 @@ SETS = {
     # every block, so they sit low; merge is land's take, pitched up the
     # chain by the screen, five semitones at most.
     "stackwood": {
-        "move":      ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # The user, 2026-10-10: "Stackwood slide sound is terrible". It is the
+        # click under a finger that slides, and the two passes that took
+        # Lucky Thirteen's and Penny Drop's down to -23 and -24 missed it:
+        # -24 and duller (1100) where -18 and 1400.
+        "move":      ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -24, HUSH, "warm:1100", "cut:0.07", "body:320", "tight"),
         # A block let go: Hedgehogs' gust.
         "drop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "land":      ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
@@ -2141,40 +2153,40 @@ SETS = {
     # semitone a step and five at most, so it is a tock; collect fires on
     # every tile landing on a goal, the faintest tick. What travels is air.
     "posy": {
-        "select":       ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        "select":       ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "before:1700:-5"),
         # Two tiles trading places: Paper Planes' puff.
-        "swap":         ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.05", "body:320"),
+        "swap":         ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.05", "body:320", "before:2400:0"),
         # A swap that makes nothing: select's take, there and a step back.
-        "bad_swap":     ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-2"),
-        "match":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "bad_swap":     ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-2", "before:2400:0"),
+        "match":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "before:2400:0"),
         # Tiles settling: select's take, two steps down and quiet.
-        "land":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.06", "body:320", "tight", "notes:0:-2"),
+        "land":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.06", "body:320", "tight", "notes:0:-2", "before:2400:0"),
         # A tile reaching its goal: Firefly's shot, a lighter thing.
-        "collect":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        "collect":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.06", "body:320", "tight", "before:1700:-5"),
         # A breeze made is Hedgehogs' breath (its reset; Binairo's gust,
         # tried first, is 78% above 3 kHz raw and passes only filtered) and
         # a breeze let go its long one.
-        "made_breeze":  ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "made_breeze":  ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320", "before:2400:0"),
         # A seed pod made: the note, two quick ones a fourth apart.
-        "made_bomb":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
+        "made_bomb":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6", "before:2400:0"),
         "made_rainbow": ("a bright rising run on a real music box and kalimba with shimmering hand bells, a rainbow flower appearing, about a second", 1.0, -8, ARCADE),
-        "breeze":       ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        "breeze":       ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320", "before:2400:0"),
         # The seed pod going off is match's take, a tumble of five notches.
-        "bomb":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:0,-3,-1,-5,-2"),
+        "bomb":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:0,-3,-1,-5,-2", "before:2400:0:150"),
         "rainbow":      ("a sweeping shower of hand bells and music box notes scattering in every direction, sparkling and magical, about a second", 1.1, -8, ARCADE),
         "goal":         ("two bright happy notes on a real music box, a goal completed, short", 0.7, -8, ARCADE),
         "cheer":        ("a short joyful flourish on a real kalimba with a hand bell sparkle, a big cascade, happy", 0.8, -8, ARCADE),
         "day_done":     ("a joyful short garden fanfare on a real kalimba, music box and hand bells, a day's goals completed, about two seconds", 2.0, -8, ARCADE),
         # The bed dealt and the bed stirred: the wheel spun, nine notches
         # of match's take falling into place and eight of select's wandering.
-        "deal":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.8", "body:320", "tight", "notes:0.08:3,1,2,0,1,-2,-1,-3,-4"),
-        "shuffle":      ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.6", "body:320", "tight", "notes:0.065:0,3,-1,2,-2,1,3,0"),
+        "deal":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.8", "body:320", "tight", "notes:0.08:3,1,2,0,1,-2,-1,-3,-4", "before:2400:0"),
+        "shuffle":      ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.6", "body:320", "tight", "notes:0.065:0,3,-1,2,-2,1,3,0", "before:1700:-5"),
         "convert":      ("a soft twinkle of two tiny music box notes, a tile turning special, short", 0.6, -9, ARCADE, "warm:2400", "body:300"),
         "gift":         ("a cheerful little rising music box phrase with a hand bell sparkle, a present, a tool earned, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
         # The trowel: two notches of match's take, falling.
-        "trowel":       ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.22", "body:320", "tight", "notes:0.09:0,-4"),
-        "arm":          ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
-        "refused":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
+        "trowel":       ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.22", "body:320", "tight", "notes:0.09:0,-4", "before:2400:-3"),
+        "arm":          ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2", "before:2400:0"),
+        "refused":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3", "before:2400:0:150"),
         "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -8, CARTOON),
         "start":        ("a short cheerful opening tune on a real kalimba and music box, a bouncy flowery little melody, a game beginning, about two seconds", 2.2, -8, ARCADE),
         "game_over":    ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
@@ -2182,20 +2194,20 @@ SETS = {
         # The bee made is the note, four quick ones a step apart (a little
         # trill); the bee leaving Hedgehogs' gust, its landing match's take
         # three steps up.
-        "made_bee":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.07:7,9,7,9", "cut:0.6"),
-        "bee":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
-        "bee_hit":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:3"),
+        "made_bee":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.07:7,9,7,9", "cut:0.6", "before:2400:0"),
+        "bee":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:900", "steep", "ease:0.04", "body:320", "before:2400:0"),
+        "bee_hit":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:3", "before:2400:0"),
         # The bed's ground. A weed pulled is two quick notches of select's
         # take, rising; a stone knocked one of match's three steps down and
         # a stone broken three falling; moss creeping three slow low ones of
         # select's and moss plucked one of match's two steps up.
-        "weed":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.15", "body:320", "tight", "notes:0.06:0,2"),
-        "stone":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-3"),
-        "stone_break":  ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.07:-2,-5,-7"),
-        "moss":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.34", "body:320", "tight", "notes:0.11:-4,-4,-2"),
-        "moss_clear":   ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        "weed":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.15", "body:320", "tight", "notes:0.06:0,2", "before:1700:-5"),
+        "stone":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-3", "before:2400:0"),
+        "stone_break":  ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.07:-2,-5,-7", "before:2400:0"),
+        "moss":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.34", "body:320", "tight", "notes:0.11:-4,-4,-2", "before:2400:0"),
+        "moss_clear":   ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2", "before:2400:0:150"),
         # So close: the note, a question, the second a step higher.
-        "offer":        ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.22:5,7", "cut:0.8"),
+        "offer":        ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.22:5,7", "cut:0.8", "before:2400:0:150"),
         "more_moves":   ("a bright cheerful rising sprinkle of music box notes and a hand bell, extra moves granted, short", 0.8, -8, ARCADE),
     },
     # Peapod (Arcade, arcade/peapod_screen.gd): a pea cannon against numbered
@@ -2475,7 +2487,14 @@ SETS = {
         # Snooker's roll, of the same prompt. honk: the horn at mid-span, two
         # quick notes alike.
         "go":            ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,9", "cut:0.7"),
-        "roll":          ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
+        # The user, 2026-10-10: "Trestle car sound is terrible". It was
+        # Snooker's loop of steady air, and a cart is not air: it is a wheel
+        # turning now (rule 4), four of select's notches 0.2 s apart in a loop
+        # of 0.8 s, at -21 because it never stops while the cart rolls. The
+        # board still lowers it for a heavy cart, which slows the wheel too.
+        # The take is Toy Boats' lift (the same prompt); never `--new`, which
+        # would ask for a loop of it.
+        "roll":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "loop", "warm:1100", "body:320", "notes:0.2:0,-2,0,-3", "cut:0.8"),
         "honk":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:8,8", "cut:0.5"),
         # A beam near its limit: select's take, three slow low notches. A beam
         # gone: wood's take, three notches, down and half back. A rope gone:
@@ -2969,9 +2988,9 @@ SETS = {
         "throw":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "lob":      ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # Yours, wide: lift's take, one low notch.
-        "miss":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        "miss":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-4", "before:2200:3"),
         # Theirs, wide of your boats: place's, three steps under it and duller.
-        "splash":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7"),
+        "splash":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7", "before:2200:3"),
         # Yours on a boat: place's take, two notches, the second four steps up.
         "hit":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:-4,0"),
         # Theirs on a boat of yours: place's take, two notches, the second three steps down.
@@ -3382,7 +3401,12 @@ def to_ogg(mp3: pathlib.Path, out: pathlib.Path, peak: int, loop: bool = False, 
         soft = f",lowpass=f={warm}:p=2,lowpass=f={warm}:p=2" + soft
     if body:
         soft = f",highpass=f={body}:p=2,highpass=f={body}:p=2" + soft
-    if cut:
+    if cut and loop:
+        # A loop written from one tick (Trestle's wheel): `cut` is its whole
+        # length to the sample, padded with silence and never faded, so the
+        # gap across the seam is the gap between any two of its ticks.
+        soft += f",apad=whole_dur={cut},atrim=0:{cut}"
+    elif cut:
         soft += f",atrim=0:{cut},afade=t=out:st={cut * 0.6:.3f}:d={cut * 0.4:.3f}"
     with tempfile.TemporaryDirectory() as tmp:
         mono = pathlib.Path(tmp) / "mono.wav"
@@ -3421,6 +3445,45 @@ def tune(mp3: pathlib.Path, gap: float, steps: list[float]) -> pathlib.Path:
                     + voices + f";{marks}amix=inputs={len(steps)}:normalize=0:duration=longest",
                     str(out)], check=True)
     return out
+
+
+# The user, 2026-10-10, of Firefly's and Posy's sounds once the redo had
+# made every one a tick, a breath or a muffled note: "were better before,
+# mix the current lofi sounds with it", and of Toy Boats, "I miss water
+# sounds on attack miss". So a cue may name `"before:<warm>:<db>"`: the
+# file it had before its set was redone, read out of git at the commit
+# below, rolled off at `warm` and laid over the new one `db` from it. What
+# the old one was is heard again and the new one is the low body under it.
+BEFORE = {"firefly": "6fe2ae75^", "posy": "ae0c820a^", "boats": "a229a4f2^"}
+
+
+def before_take(board: str, cue: str, raw_dir: pathlib.Path) -> pathlib.Path:
+    old = raw_dir / "before" / f"{cue}.ogg"
+    if not old.exists():
+        old.parent.mkdir(exist_ok=True)
+        old.write_bytes(subprocess.run(
+            ["git", "-C", str(ROOT), "show", f"{BEFORE[board]}:assets/sfx/{board}/{cue}.ogg"],
+            capture_output=True, check=True).stdout)
+    return old
+
+
+def blend(out: pathlib.Path, old: pathlib.Path, peak: int, warm: int, gain: float, loop: bool, body: int = 300) -> None:
+    # The old file goes through the same treatment as a take (trimmed,
+    # rolled off, eased in, its rumble off), then the two are summed and
+    # the sum is put back at the cue's level. A loop ends with the shorter.
+    with tempfile.TemporaryDirectory() as tmp:
+        soft = pathlib.Path(tmp) / "old.ogg"
+        both = pathlib.Path(tmp) / "both.wav"
+        to_ogg(old, soft, peak + gain, loop, warm, ease=0.006, body=body)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(out), "-i", str(soft), "-filter_complex",
+                        f"[0][1]amix=inputs=2:normalize=0:duration={'shortest' if loop else 'longest'}",
+                        "-ac", "1", "-c:a", "pcm_f32le", str(both)], check=True)
+        probe = subprocess.run(["ffmpeg", "-i", str(both), "-af",
+                                "astats=measure_overall=Peak_level:measure_perchannel=none",
+                                "-f", "null", "-"], capture_output=True, text=True).stderr
+        top = float(re.search(r"Peak level dB: (-?[0-9.]+)", probe).group(1))
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(both), "-af", f"volume={peak - top:.2f}dB",
+                        "-ar", "44100", "-c:a", "libvorbis", "-q:a", "5", str(out)], check=True)
 
 
 def fall(mp3: pathlib.Path) -> pathlib.Path:
@@ -3469,6 +3532,13 @@ def main() -> None:
             raw = fall(raw)
         body = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("body:")), 0)
         to_ogg(raw, out, peak, loop, warm, cut, "tight" in rest[1:], ease, body, "steep" in rest[1:])
+        before = next((f[7:] for f in rest[1:] if isinstance(f, str) and f.startswith("before:")), "")
+        if before:
+            # A third number is the old file's own `body`: 300 unless it was
+            # a thump, which keeps what a phone does not play for the ears
+            # that can hear it.
+            old_warm, gain, *low = before.split(":")
+            blend(out, before_take(board, cue, raw_dir), peak, int(old_warm), float(gain), loop, int(low[0]) if low else 300)
         print(f"{cue:9s} -> {out.relative_to(ROOT)}")
 
 

@@ -593,7 +593,6 @@ func _apply(m: int) -> void:
 	if not rules.make(m):
 		return
 	_state = State.ANIM
-	board.interactive = false
 	_hint_move = -1
 	if online != null and side == player:
 		if m == Rules.DRAW:
@@ -604,6 +603,10 @@ func _apply(m: int) -> void:
 				rules.turn == player and rules.status() == Rules.PLAYING)
 			_my_draws = 0
 	board.sync()
+	# After the sync, never before it: the board lays its tiles again when
+	# this changes, and a tile already on the line when sync looks has not
+	# moved, so the player's own tile landed and was drawn with no sound.
+	board.interactive = false
 	_refresh_board()
 
 # --- a hand's end ---
