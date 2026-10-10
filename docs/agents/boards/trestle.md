@@ -99,3 +99,14 @@ put down costs one) are untrue of it. `HEARTS_BY` stays `[0, 0, 0, 2]`,
 Insane already has no hint, and Undo only takes back a member. A real move
 counter here (a member down or off costs one, tests free) would be a new
 design with a re-mined bank, not a conversion.
+
+**Sounds redone on 2026-10-10** against the cozy rules (the `trestle` row of
+`docs/agents/sound.md` has every cue): wooden tocks on felt, air and one
+muffled kalimba note in place of the WORKSHOP set, 33 cues, unheard. At play
+the medal's stars are `select` at 1.06, 1.16 and 1.26 (`MEDAL_PITCH`,
+`MEDAL_PITCH_STEP`; they were 1.15 + 0.2 a star), a piece dropped into the
+river is `splash` at 1.0 to 1.12 and -6 dB (`DROP_PITCH`, `DROP_DB`; 1.3 to
+1.6 at -9), and a snap and a creak vary by 0.94 to 1.06 (`TICK_VARY`; 0.9 to
+1.1). `cross` and `solved`, and `fail` and `heart_lost`, sound on one frame,
+so `cross` is two notches and `heart_lost` one note: neither is a second
+phrase.

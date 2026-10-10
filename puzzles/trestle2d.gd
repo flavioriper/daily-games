@@ -170,6 +170,18 @@ const SHAKE_DECAY := 9.0
 const WAVE_TIME := 0.34
 const MEDAL_AT := 0.9
 const MEDAL_STEP := 0.3
+## What the board pitches, held inside five semitones (the cozy rules,
+## docs/agents/sound.md, 2026-10-10). The medal's stars are `select` two
+## semitones or so a star, four at the top: they were 1.15 + 0.2 a star, to
+## 1.55, seven and a half. A piece dropped into the river is the cart's
+## puff a touch higher: it was 1.3 to 1.6 at -9 dB, and a puff a quarter up
+## sits over 1 kHz; the file is 8 dB under the old one, so 3 dB come back.
+## A snap and a creak vary as every tick does: they were 0.9 to 1.1.
+const MEDAL_PITCH := 1.06
+const MEDAL_PITCH_STEP := 0.1
+const DROP_PITCH := Vector2(1.0, 1.12)
+const DROP_DB := -6.0
+const TICK_VARY := Vector2(0.94, 1.06)
 const PENNANTS := [Color("ff6f61"), Color("ffd84d"), Color("5cb8ff"), Color("7fd66a"), Color("b77be6")]
 const FIREWORKS := [Color("ff6f61"), Color("ffb03b"), Color("ffd84d"), Color("7fd66a"), Color("5cb8ff"), Color("b77be6")]
 const FIRST_KEYS :=[["TR_FIRST_ROAD_ONE", "TR_FIRST_ROAD_N"], ["TR_FIRST_WOOD_ONE", "TR_FIRST_WOOD_N"], ["TR_FIRST_ROPE_ONE", "TR_FIRST_ROPE_N"]]
@@ -781,7 +793,7 @@ func _step_polish(t: float, delta: float) -> void:
 			if not f.splashed and (f.mid as Vector2).y > water:
 				f.splashed = true
 				f.vel = Vector2(v.x * 0.3, _u * 0.6)
-				fx.cue("splash", randf_range(1.3, 1.6), -9.0)
+				fx.cue("splash", randf_range(DROP_PITCH.x, DROP_PITCH.y), DROP_DB)
 				_rw.spray(Vector2((f.mid as Vector2).x, water), Color("cfeefc"), 7, 520.0, "clod", 0.7)
 				_rw.ring(Vector2((f.mid as Vector2).x, water), _u * 0.6, Color(1, 1, 1, 0.7))
 			if f.age < 4.0 and (f.mid as Vector2).y < water + _u * 3.0:
@@ -926,7 +938,7 @@ func _events(t: float) -> void:
 				_kick(SHAKE_SNAP)
 				_troll_duck = t
 				_troll.expression = Face.Expr.WORRIED
-				fx.cue("snap_rope" if int(e.mat) == Sim.ROPE else "snap", randf_range(0.9, 1.1))
+				fx.cue("snap_rope" if int(e.mat) == Sim.ROPE else "snap", randf_range(TICK_VARY.x, TICK_VARY.y))
 				var col: Color = [Parts.ROAD, Parts.WOOD, Parts.ROPE][int(e.mat)]
 				_rw.spray(at, col, 10, 520.0, "confetti", 0.9)
 				_rw.spray(at, Color("fff4d8"), 5, 420.0, "spark", 0.8)
@@ -994,7 +1006,7 @@ func _events(t: float) -> void:
 			if sim.mratio[k] > CREAK_AT:
 				_creaked[k] = true
 				_creak_at = t
-				fx.cue("creak", randf_range(0.9, 1.1))
+				fx.cue("creak", randf_range(TICK_VARY.x, TICK_VARY.y))
 				_mood(Face.Expr.WORRIED)
 				break
 
@@ -1301,7 +1313,7 @@ func _on_solved() -> void:
 		_after(MEDAL_AT + MEDAL_STEP * i, func():
 			var c := _medal_star(i)
 			if i < stars:
-				fx.cue("select", 1.15 + 0.2 * i)
+				fx.cue("select", MEDAL_PITCH + MEDAL_PITCH_STEP * i)
 				_rw.spray(c, Pal.SUN, 8, 520.0, "star", 0.9)
 				_rw.ring(c, 70.0, Color(Pal.SUN, 0.9))
 				_kick(0.03))
