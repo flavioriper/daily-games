@@ -51,7 +51,7 @@ extends "res://core/puzzle_base.gd"
 ## pebble there for good (`state.shown`). Insane is **Fairy Rings**: some
 ## numbers sit in a ring of little violet caps and count the sixteen cells two
 ## steps out instead of the eight touching. Pressing any number lights the
-## cells it counts. A plant builds a streak (a note up the pentatonic, the x3
+## cells it counts. A plant builds a streak (a tick a semitone higher, the x3
 ## bubble, confetti), now and then plays a gag (hearts, a twirl, a sneeze), a
 ## number whose every cell is marked and whose count holds opens a flower,
 ## and the solve throws a party: a meadow, a dance, confetti, a silly bit of
@@ -231,10 +231,11 @@ const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 ## The streak: a plant that holds (the answer's on Hard and Insane, one that
-## sends no number over on Easy and Medium) plucks `combo` up the pentatonic
-## from the second; the bubble from COMBO_FROM; confetti at COMBO_CONFETTI.
+## sends no number over on Easy and Medium) ticks `combo` a semitone higher
+## from the second, five in all; the bubble from COMBO_FROM; confetti at
+## COMBO_CONFETTI.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -2520,7 +2521,7 @@ func _refuse_shown(cell: Vector2i) -> void:
 	_busy_for(Motion.SHIVER_TIME)
 	_redraw()
 
-## A plant that holds builds the streak (a note up the pentatonic from the
+## A plant that holds builds the streak (a tick a semitone higher from the
 ## second, the bubble from the third, confetti at five and ten) and now and
 ## then plays a gag. `land` is when she has opened, from now.
 func _on_right_plant(cell: Vector2i, land: float) -> void:
