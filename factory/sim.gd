@@ -1167,7 +1167,8 @@ func load_saved() -> bool:
 	if not (kept is String) or (kept as String).is_empty():
 		return false
 	var bytes := Marshalls.base64_to_raw(kept)
-	if bytes.is_empty():
+	# bytes that do not open as a Dictionary are not handed to the decoder
+	if bytes.size() < 4 or (bytes.decode_u32(0) & 0xFF) != TYPE_DICTIONARY:
 		return false
 	var d: Variant = bytes_to_var(bytes)
 	if not (d is Dictionary) or not _sound(d):
