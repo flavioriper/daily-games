@@ -2104,9 +2104,9 @@ SETS = {
         # A chain's click, heard for as long as a finger slides: 4 dB down
         # and darker (the user, 2026-10-10: the slide is "too loud, too
         # harsh"), and the screen's climb stops at three semitones.
-        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -23, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # A pebble given back: select's take, two steps down.
-        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1100", "cut:0.07", "body:320", "tight", "notes:0:-2"),
+        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -25, HUSH, "warm:1100", "cut:0.07", "body:320", "tight", "notes:0:-2"),
         "short":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough pebbles, gentle, very short", 0.5, -10, ARCADE),
         "merge":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
         # A pebble settling: merge's take, two steps down and quieter.
@@ -3020,7 +3020,7 @@ SETS = {
         # A notch a column as the finger slides along the rack: 3 dB down,
         # darker, and as the take came where it sat two steps up (the user,
         # 2026-10-10: a slide heard all the time is "waaaay more subtle").
-        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -20, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -24, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
         # A full column: lift's take, two low notches alike.
         "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
         # The rack emptied before a new game: lift's take, seven notches
@@ -3297,6 +3297,13 @@ SETS = {
 }
 
 
+# Every breath of air, 6 dB under the level its line names: the user,
+# 2026-10-10, of the swipes in the boards and the loops under a puck or a
+# ball, once they were already down: "slide sound ingame still too loud".
+# One number for all of them (0 puts each back at its line's level).
+BREEZE_TRIM = -6
+
+
 def key() -> str:
     k = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     if not k:
@@ -3444,6 +3451,8 @@ def main() -> None:
     for cue in cues:
         prompt, seconds, peak, *rest = SETS[board][cue]
         style = rest[0] if rest else STYLE
+        if style is BREEZE:
+            peak += BREEZE_TRIM
         loop = "loop" in rest[1:]
         warm = next((int(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("warm:")), 0)
         cut = next((float(f[4:]) for f in rest[1:] if isinstance(f, str) and f.startswith("cut:")), 0.0)

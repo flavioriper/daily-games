@@ -94,7 +94,15 @@ more; Marigold's and Trestle's `roll` are the same file at the levels their
 boards had. A swipe's breath is -20 to -22, and the click under a finger
 that slides (Lucky Thirteen's `select`, Penny Drop's `tick`) is -19 to -20
 and climbs three semitones at most.
-All of it measured, none of it heard yet.
+The user again that day, having heard it on the Mac: "slide sound ingame
+still too loud", of all four and of the boards' swipes. So every `BREEZE`
+cue is 6 dB under the level its line names (`BREEZE_TRIM` in
+`tools/gen_sfx.py`, one number for the 145 of them, loops included; three of
+Paper Planes' had no raw take and are as they were: `heart_lost`,
+`heart_back`, `clouds`), and the two ticks are -23 and -24. The measure
+flags the loops and Penny Drop's `drop` and `tick` as `faint` now (-25 to
+-29 high-passed at 400 Hz): they are meant to be, and a phone may not play
+them at all -- the first thing to check on one.
 
 **The measure is `tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]`.** A
 line a file and a word for the rule it breaks: `high` (under 30 dB down
