@@ -170,7 +170,7 @@ const CARD_AFTER_STILL := 0.3
 const SHOWN_INK := Color(0.72, 0.36, 0.4)
 ## The streak (Binairo's, Shikaku's, Tents', Light Up's, One Line's, Nonogram's).
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -2027,7 +2027,7 @@ func _refuse_shown(cell: Vector2i) -> void:
 	_busy_for(Motion.SHIVER_TIME)
 	_redraw()
 
-## A right seat builds the streak (the combo pitched up the pentatonic from
+## A right seat builds the streak (the combo tick a semitone up each from
 ## the second, the bubble from the third, confetti at five and ten) and now
 ## and then plays a gag. `land` is when her pop has landed, from now.
 func _on_right_seat(cell: Vector2i, land: float) -> void:

@@ -823,39 +823,54 @@ SETS = {
         "leaves":   ("a soft warm breeze through the leaves of one big old tree, a gentle slow breath of air that rises and fades", 2.0, -16, BREEZE, "warm:1000", "steep", "ease:0.12", "body:320"),
     },
     # Queens: a little crowned bee seated on a garden court; crosses are the
-    # player's own marks and the ones the queens lay. Re-prompted toward felt,
-    # wood, kalimba and soft wings on 2026-09-30, as Nonogram's were: the tape
-    # rewind and the marimba "bonk" read as a toy or a scold. place plays on
-    # every cross of a sweep, so it is the quietest and roundest.
+    # player's own marks and the ones the queens lay.
     "queens": {
-        "place":    ("a tiny soft felt tap on a wooden board with a very quick gentle wing flutter, a little bee settling on a flower, very short and hushed", 0.5, -9, COZY),
-        "remove":   ("a very short soft felt brush and a tiny airy wing lift, a little bee rising off a flower, gentle and quiet", 0.5, -11, COZY),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft felt pat and a small wooden kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny wing flutter, cozy and kind", 1.0, -8),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # tenth set of the redo, as Nonogram's above. Nothing here is a wing
+        # or a buzz any more: a flutter, a fuzzy buzz and a papery unfurl all
+        # sat above 3 kHz, so the bee is heard as two quiet notes going by
+        # (drone) or going off (buzz_off). place plays on every cross of a
+        # sweep, pitched up a little a cross (1.24 at most, under five
+        # semitones), so it is the plainest; combo is a tick the board
+        # pitches, not past five semitones. Every tick is `tight`. The
+        # phrases' steps are set by each take's own note, so that every note
+        # lands between 400 and 700 Hz.
+        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # A lift is a lighter thing set down.
+        "remove":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12, STYLE, "body:300", "warm:2600", "notes:0:6"),
+        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,7,9", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
-        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of little wings, a garden court swept gently clear, hushed and cozy", 1.0, -10, COZY),
-        "enter":    ("a soft airy cascade of tiny wooden taps and a light leafy rustle, a little garden court laid out, cozy and hushed", 1.0, -11, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
-        # The streak, the gags, and the flowers a patch opens once it has its queen.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The court laid out: place's take, five in a row.
+        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,3,0,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:6,8,10,11,13", "cut:1.7"),
+        # The streak, the gags, and the flowers a patch opens once it has
+        # its queen. combo: layered over her seat, a tick the board pitches
+        # by the streak. drone: a bee going by, two quiet notes up. twirl
+        # and dance are the first set's takes, rolled off. bloom: one note.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "drone":    ("a tiny cute bumblebee buzzing in a quick little loop around a flower, a soft fuzzy buzz rising and falling, with a tiny happy glockenspiel ting at the end, gentle and funny", 1.2, -12, COZY),
-        "twirl":    ("a tiny playful spin, a soft airy whirl with a light wing flutter ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
-        "bloom":    ("a tiny soft flower opening, a delicate papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -14),
-        # Hearts, the wrong queen flying off, and the party.
+        "drone":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:6,8", "cut:0.55"),
+        "twirl":    ("a tiny playful spin, a soft airy whirl with a light wing flutter ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -11, STYLE, "warm:2400", "body:300"),
+        "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.45"),
+        # Hearts, the wrong queen flying off (two quiet notes down), and the
+        # party.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
-        "buzz_off": ("a little bee buzzing away sheepishly, a soft fuzzy buzz fading off into the distance with a tiny descending kalimba note, gentle and a bit funny", 0.8, -12, COZY),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little wings at the end, joyful and warm", 2.0, -4),
-        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
-        # Insane: Morning Mist. The mist rolls in on the entrance and lifts at the party.
-        "mist":     ("a soft cool morning breeze, a hushed airy whoosh drifting slowly with a faint distant wind chime, calm and cozy", 1.5, -13, COZY),
-        "mist_lift": ("a soft warm breeze lifting away with a gentle rising shimmer of glockenspiel notes, sunlight breaking through, dreamy and cozy", 1.8, -9),
+        "buzz_off": ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.14:9,5", "cut:0.6"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:9,5,2"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, STYLE, "warm:2400", "body:300"),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:7,4,11"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,3,5,7", "cut:1.9"),
+        "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -10, STYLE, "warm:2400", "body:300"),
+        # Insane: Morning Mist. The mist rolls in on the entrance and lifts
+        # at the party: a long slow breath of air each, no chime and no
+        # shimmer, the mist the lower of the two.
+        "mist":     ("a soft cool morning breeze over a quiet garden, a slow gentle breath of air that rises and fades", 1.5, -16, BREEZE, "warm:1000", "steep", "ease:0.15", "body:320"),
+        "mist_lift": ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.8, -15, BREEZE, "warm:1200", "steep", "ease:0.12", "body:320"),
     },
     # Hidden Word (puzzle_id "hiddenword"): type a five-letter guess on a
     # paper keyboard, Enter turns the row over a tile at a time, on a
