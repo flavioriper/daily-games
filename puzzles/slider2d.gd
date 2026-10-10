@@ -162,11 +162,11 @@ const SHAKE := 0.04
 const SHAKE_TIME := 0.32
 
 # --- the rewards ---
-## The streak: kept moves that bring the big block nearer the gate. A note up
-## the pentatonic from the second, the bubble from the third, confetti at 4,
+## The streak: kept moves that bring the big block nearer the gate. A tick a
+## semitone higher from the second, the bubble from the third, confetti at 4,
 ## 7 and every 5.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
@@ -1306,7 +1306,7 @@ func _move(local: Vector2) -> void:
 			var dx := int(signf(comp)) if axis == 0 else 0
 			var dy := int(signf(comp)) if axis == 1 else 0
 			if _state.step(p, dx, dy):
-				fx.cue("step", 1.0 + 0.04 * float(randi() % 3))
+				fx.cue("step", randf_range(0.94, 1.06))
 				_dust(p, Vector2(dx, dy))
 				stepped = true
 				break
@@ -1989,9 +1989,9 @@ func _day_hash() -> int:
 	return absi(hash([_state.start_key, _state.par]))
 
 ## A kept move that brought the big block nearer the gate: the streak grows
-## -- a note up the pentatonic from the second, the bubble over the moved
+## -- a tick a semitone higher from the second, the bubble over the moved
 ## block from the third, confetti at 4, 7 and every 5 -- a gag now and then,
-## the latch rattling one move from home, a sparkle on the count line the
+## the latch ticking one move from home, a sparkle on the count line the
 ## first time the way left is half the day's.
 func _on_nearer(p: int, land: float, left: int) -> void:
 	_streak += 1

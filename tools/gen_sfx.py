@@ -1707,39 +1707,63 @@ SETS = {
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Super Slider: painted wooden blocks slid round a walnut tray until the
-    # big one walks out of a little garden gate. 2026-10-01 (polish): players
-    # called the first set synthetic, so every cue a block makes is now
-    # close-mic foley of real hardwood on felt (WALNUT, rolled off above 7 kHz),
-    # and only the rewards are music, a real kalimba and music box
-    # (WALNUT_TUNE). The old undo was a tape rewind.
+    # big one walks out of a little garden gate.
     "slider": {
-        "lift":     ("a small smooth hardwood toy block picked up off a felt-lined wooden tray, one soft dry wooden tick, very short", 0.5, -15, WALNUT, "warm:7000"),
-        "step":     ("one quiet short scrape of a smooth hardwood block sliding a finger's width across soft felt, very short", 0.5, -19, WALNUT, "warm:7000"),
-        "bump":     ("a solid hardwood toy block gently knocking against another wooden block, one soft dull hollow wooden knock, very short", 0.5, -13, WALNUT, "warm:7000"),
-        "slide":    ("a smooth hardwood block sliding across a felt-lined tray and settling into place with one soft solid wooden clack, short", 0.6, -11, WALNUT, "warm:7000"),
-        "drop":     ("a hardwood toy block set gently back down on felt, a soft muted wooden tap, very short", 0.5, -16, WALNUT, "warm:7000"),
-        "undo":     ("a hardwood block pushed back across felt with a soft hush and a gentle wooden tap, quiet, short", 0.6, -14, WALNUT, "warm:7000"),
-        "slip":     ("a smooth wooden block sliding back across felt with a soft hush, ending in a gentle wooden tap, short", 0.7, -14, WALNUT, "warm:7000"),
-        "reset":    ("a handful of smooth hardwood toy blocks sliding back across a felt-lined tray, a soft ripple of gentle wooden clacks, short", 1.0, -12, WALNUT, "warm:7000"),
-        "enter":    ("small hardwood toy blocks set down one by one into a felt-lined wooden tray, a soft quick patter of gentle wooden taps", 1.0, -13, WALNUT, "warm:7000"),
-        "gate":     ("a tiny wooden garden gate swinging open on a soft creaky hinge with a little brass latch click", 0.8, -10, WALNUT, "warm:7000"),
-        "hop":      ("a small hardwood toy block hopping onto a flat garden stepping stone, one soft hollow tock, very short", 0.5, -15, WALNUT, "warm:7000"),
-        "latch":    ("a small brass garden-gate latch rattling softly three times, a happy little jiggle, short", 0.7, -13, WALNUT, "warm:7000"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # twenty-seventh set of the redo. Kept from the polish's set: hint,
+        # huff and heart_lost as they were, heart_back rolled off, and bump
+        # with its lead-in trimmed (its knock sat 0.13 s into the file).
+        # Nothing new is a scrape, a hush over felt, a clack, a hinge, brass,
+        # a music box or a party blower (a block slid came back between 1
+        # and 3 kHz, fourteen cues of it). A block let go is the thing a finger does all day, so `slide`
+        # is the plainest: one tock, and `step`, a cell under the finger, the
+        # quietest there is. combo is a tick the board pitches, not past five
+        # semitones. Every tick is `tight`. Borrowed takes: confetti is
+        # Binairo's and the cat Untangle's kitten, of the same prompts; step,
+        # undo and the latch are lift's, drop, enter and hop slide's, fret,
+        # flutter and twirl love's. The phrases' steps are set by each take's
+        # own note, so that every note lands between 400 and 700 Hz, and no
+        # two phrases share a contour. What travels is air: a block sent home,
+        # the tray dealt again and the gate swinging open are a breath of
+        # breeze each. A lift is a lighter thing set down.
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "step":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.06", "body:320", "tight", "notes:0:-1"),
+        "bump":     ("a solid hardwood toy block gently knocking against another wooden block, one soft dull hollow wooden knock, very short", 0.5, -13, WALNUT, "warm:7000", "cut:0.16", "tight"),
+        "slide":    ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # Put back where it was lifted: slide's take, lower and quieter.
+        "drop":     ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "slip":     ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The blocks set in the tray: slide's take, five in a row.
+        "enter":    ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The win. gate: the gate swinging open, a long breath. hop: the big
+        # block out over the stepping stones, slide's take two steps up (the
+        # board pitches each stone a little higher). latch: one move from
+        # home, lift's take, three quick notches.
+        "gate":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -16, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
+        "hop":      ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        "latch":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.07:0,2,0"),
         "hint":     ("three soft rising notes plucked on a real kalimba with a delicate music box sparkle, gentle and magical", 1.0, -10, WALNUT_TUNE),
-        "solved":   ("a warm happy rising run plucked on a real kalimba with a music box, ending on a bright gentle chord, cozy and joyful", 2.0, -6, WALNUT_TUNE),
-        "fret":     ("a single soft low kalimba note gently bending down, a tiny worried 'hmm', quiet and kind, very short", 0.5, -19, WALNUT_TUNE),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
+        "fret":     ("one soft short note on a kalimba, muffled and kind", 0.6, -17, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:-1", "cut:0.4"),
         "huff":     ("a tiny stubborn 'hmph' made of two quick soft low kalimba plucks and a muffled wooden knock, cute, very short", 0.5, -15, WALNUT_TUNE),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, WALNUT_TUNE),
-        "out_of_hearts": ("a real wind-up music box winding slowly down, a few soft notes descending and slowing, a garden at dusk going quiet, calm and kind", 1.6, -14, WALNUT_TUNE),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, WALNUT_TUNE),
-        "combo":    ("a single short soft bright pluck on a real kalimba, one clean warm note, very short", 0.5, -9, WALNUT_TUNE),
-        "confetti": ("a soft flutter of tiny paper confetti falling with a tiny music box twinkle, light and airy", 1.0, -10, WALNUT_TUNE),
-        "love":     ("a tiny soft sweet two-note music box 'aww' with a little bubbly pop, cute and warm, short", 0.7, -11, WALNUT_TUNE),
-        "flutter":  ("a tiny butterfly fluttering by, soft quick papery wing flutters with a delicate rising music box twinkle, light and cute", 1.0, -13, WALNUT_TUNE),
-        "twirl":    ("a playful soft airy whoosh spinning once around with a giggly kalimba trill, a little wooden toy doing a happy twirl, cute, short", 0.7, -11, WALNUT_TUNE),
-        "stamp":    ("a soft rubber seal stamp thump on paper followed by a small warm music box sparkle, two bright rising notes ringing out, proud", 1.5, -6, WALNUT_TUNE),
-        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -5, WALNUT_TUNE),
-        "purr":     ("a small cat purring softly and contentedly while curling up to sleep", 1.5, -14, COZY),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,5"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, WALNUT_TUNE, "warm:2200", "body:300"),
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. love: two quiet notes alike and a third up. flutter: two
+        # quiet notes up, the butterfly. twirl: four quick ones, up and over.
+        # fret (a drag that leads away from home): one low quiet note.
+        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:2,2,5", "cut:0.6"),
+        "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,6", "cut:0.4"),
+        "twirl":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:0,3,7,3", "cut:0.8"),
+        # The party.
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,4,11"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,7,11,7,11,13", "cut:1.9"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Marigold: the family's sun shoots a seed down through a pond garden of
     # flower buds; every bud it touches blooms with the next note of a rising
