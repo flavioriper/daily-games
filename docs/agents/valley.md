@@ -447,7 +447,17 @@ lays (810x1440, 2026-10-07, both drivers).
   ms click, the quietest of the set, since it repeats for as long as the
   finger is held; `fell`, `buy`, `no`. Unheard by the user. The jetty and
   the skills reuse these four (2026-10-07, the tree's section); no new take
-  was made.
+  was made. **Redone 2026-10-10 against the cozy rules**
+  (`docs/agents/sound.md`, the `grove` row): `chop` is one low wooden tock
+  on felt at -13, 0.12 s, no longer the quietest; `fell` three notches
+  tumbling down, `no` two low ones alike, `buy` two quiet kalimba notes up.
+  The screen's levels and pitches changed with them: every `chop` varies
+  by 0.94 to 1.06 of its pitch (`TICK_VARY`, where `CHOP_PITCH` 0.07 was
+  added), a mote's landing climbs five semitones from two over the axe's pitch
+  (`MOTE_PITCH` 1.12 to 1.5, `CLIMB_TOP`; fourteen from 1.5 before) at -9 dB (-13), a
+  beaver's tree is at -5 (-12), a log on the jetty at -7 (-11) and a
+  raft's landing `fell` at -8 (-9): the quiet three read under -24 dB on a
+  phone and were not heard there. Measured, not heard.
 - **Haptics** (`docs/agents/haptics.md` row 40): fell taps, a tile bought
   bumps, one refused warns; a chop that hits is felt only as its sound's
   echo. Since 2026-10-07 a raft's landing and a crate opened tap too (both
@@ -773,16 +783,17 @@ after a csv edit. Seconds take a comma in pt and es (`Art.decimal`).
 **Sounds are the four the Grove had, reused, and what is felt follows
 them** (`assets/sfx/grove/`, no new take; `docs/agents/haptics.md` row
 40).
-- A raft's landing: `fell` at -9 dB, felt as a tap.
+- A raft's landing: `fell` at -8 dB (-9 until 2026-10-10), felt as a tap.
 - A crate opened: `fell`, a tap.
 - A node bought: `buy`, a bump. One the energy does not reach: `no`, a
   warn. A press on a gone kind's bar: nothing.
-- A gathered log landing on the jetty: `chop` at 0.8 pitch and -11 dB
+- A gathered log landing on the jetty: `chop` at 0.8 pitch and -7 dB (-11
+  until 2026-10-10)
   through `_quiet`, so unfelt, never two within `CARRY_GAP` 0.05 s. Under
   reduce motion nothing is thrown, and the same click is played once for
   the gather.
 - A tree one of the grove's own beavers brings down: `chop` at 0.7 pitch
-  and -12 dB through `_quiet`, never two within `GNAW_GAP` 0.3 s; no
+  and -5 dB (-12 until 2026-10-10) through `_quiet`, never two within `GNAW_GAP` 0.3 s; no
   `fell`, no "+N", nothing felt. A beaver's bite is silent.
 - A keen chop and a full jetty have no sound of their own.
 
@@ -961,7 +972,8 @@ table and every beat).
     below its end and nothing drawn of a bundle going down.
   - The tab's card shows no counts on its stacks and no beavers.
   - New sounds are owed: a landing and a crate are `fell`, a gathered log
-    and a beaver's tree are `chop`.
+    and a beaver's tree are `chop` (still so after the redo of 2026-10-10,
+    which made new takes of the four and added no cue).
   - Smaller: `TAP` 24; faded is a mix toward paper, not alpha; a gone
     node's bar is empty and silent; a beaver's own fell is a quiet click
     with no "+N"; `SAVE_SLOW` 20 s; the tab's beavers lose the seconds

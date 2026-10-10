@@ -133,8 +133,14 @@ const SAVE_SLOW := 20.0
 ## soonest: a land swept late on fells a tree a frame.
 const REACH_GAP := 0.25
 ## A chop that hits is heard a little higher or lower each time, so a held
-## finger is not one sample on a loop.
-const CHOP_PITCH := 0.07
+## finger is not one sample on a loop: 0.94 to 1.06 of the pitch it is played
+## at (it was CHOP_PITCH 0.07 added to it, so 0.63 to 0.77 on a beaver's tree).
+const TICK_VARY := 0.06
+## No run of clicks climbs past five semitones (docs/agents/sound.md, rule 2).
+const CLIMB_TOP := 1.335
+## A mote's landing starts two semitones over the axe, which may be chopping
+## on the same frame, and its run ends where it used to begin (1.5).
+const MOTE_PITCH := 1.12
 ## The tap is a selection moved; a tree down is a piece set down; a tile
 ## bought is something finished; one that cannot be is a not yet.
 const HAPTICS := {"fell": Haptics.TAP, "buy": Haptics.BUMP, "no": Haptics.WARN}
@@ -763,7 +769,8 @@ func _play_events() -> void:
 					# felt. Its motes and its pile say what it left
 					if _since_gnaw >= GNAW_GAP:
 						_since_gnaw = 0.0
-						_quiet.cue("chop", 0.7 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH), -12.0)
+						# -12 dB until 2026-10-10: under -24 on a phone
+						_quiet.cue("chop", 0.7 * _vary(), -5.0)
 					_gnawed = true
 					continue
 				_nums.append({"at": Art.see(tree.pos) + Vector2(0.0, -Art.height(Sim.look_of(tree.tier)) * Art.TREE - 18.0 - (KEEN_LIFT if keen_on == int(tree.id) else 0.0)),
@@ -788,7 +795,7 @@ func _play_events() -> void:
 			"swing":
 				_since_chop = 0.0
 				if int(e.hits) > 0:
-					_fx.cue("chop", 1.0 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH))
+					_fx.cue("chop", _vary())
 			"log":
 				# the pile that fell's wood came down as: seen when its tree has landed
 				_life.left(e.log)
@@ -809,7 +816,7 @@ func _play_events() -> void:
 				# is the only sign (the wood itself is `take_owed`'s, above).
 				# Heard low and felt as a tree down is: it is seconds apart
 				_kick("wood")
-				_fx.cue("fell", 1.0, -9.0)
+				_fx.cue("fell", 1.0, -8.0)
 				_gains.append({"text": "+" + Art.short(int(e.wood)), "t": 0.0})
 	sim.events.clear()
 	if _tiles_for != _tiles_key():
@@ -844,7 +851,12 @@ func _on_carried() -> void:
 	if _since_carry < CARRY_GAP:
 		return
 	_since_carry = 0.0
-	_quiet.cue("chop", 0.8 + _rng.randf_range(-CHOP_PITCH, CHOP_PITCH), -11.0)
+	# -11 dB until 2026-10-10: under -24 on a phone
+	_quiet.cue("chop", 0.8 * _vary(), -7.0)
+
+## A tick's pitch this time: never the same sound twice.
+func _vary() -> float:
+	return _rng.randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY)
 
 ## Motes came down on the energy plate: it swells, unless it still is from
 ## the one before, and a click is heard, each a semitone up a short run.
@@ -852,7 +864,9 @@ func _on_motes_landed(_count: int, note: int) -> void:
 	if (_plates.energy.panel as Control).scale.x <= 1.01:
 		_kick("energy")
 	if note >= 0:
-		_quiet.cue("chop", 1.5 * pow(2.0, mini(note, 14) / 12.0), -13.0)
+		# it was 1.5 * pow(2.0, mini(note, 14) / 12.0) at -13 dB: a fifth over
+		# the axe and fourteen semitones up from there, 2 kHz at the top
+		_quiet.cue("chop", MOTE_PITCH * minf(pow(2.0, note / 12.0), CLIMB_TOP), -9.0)
 
 ## A plate swells as something lands on it. Each kick ends the last, or
 ## landings a moment apart would leave it stuck big (ui/menu/gold_pill.gd).
