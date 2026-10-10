@@ -266,6 +266,12 @@ const HEAP := [[1], [2], [2, 1], [3, 2, 1], [4, 3, 2, 1]]
 ## How fast a belt runs, in tiles a second, and its slats to a tile (the
 ## shader's own, shaders/belt_2d.gdshader).
 const BELT_SPEED := 0.5
+## A belt's bed stands this far over the turf (view units, between a quarter
+## and a third of RISE), and is this thick at its edge. BELT_LIFT moves a
+## thing drawn on the ground up onto the bed.
+const BELT_UP := 20.0
+const BELT_DEEP := 7.0
+const BELT_LIFT := Vector2(0.0, -BELT_UP)
 ## The kiln's round, in tiles, and how high its port's light sits.
 const KILN_R := 0.37
 const KILN_PORT := 14.0
@@ -1234,9 +1240,32 @@ static func _belt_into(b: Face.Builder, xf: Transform2D, painted: bool) -> int:
 			b.fan(xf * Face.Builder.ring(Vector2(x, y + 5.5), 3.4, 3.4), Color("7a5836"))
 	return count
 
+## What carries a belt's bed off the ground, in view units about the middle
+## of its tile: the shade it lays on the turf, a short post under each
+## corner, and the two edges of the bed the eye sees, BELT_DEEP thick (the
+## one looking down and left lit, the one looking down and right in shade).
+## The same at every facing and every turn of the view, so one MultiMesh of
+## it lies under all the belts; a belt next to it covers the edge they
+## share. The user, 2026-10-10: the belt "should be like the convey from"
+## a factory game they named, "not directly on the ground".
+static func belt_under() -> ArrayMesh:
+	if not _one.has("belt_under"):
+		var b := Face.Builder.new()
+		var shade := PackedVector2Array()
+		for o: Vector2 in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(0.5, 0.5), Vector2(-0.5, 0.5)]:
+			shade.append(at(o * 0.94) + Vector2(5.0, 2.0))
+		b.polygon(shade, Color(CAST, 0.3))
+		var wood := [PLANK, PLANK.lightened(0.08), PLANK_DEEP.darkened(0.12)]
+		for o: Vector2 in [Vector2(-0.36, -0.36), Vector2(0.36, -0.36), Vector2(-0.36, 0.36), Vector2(0.36, 0.36)]:
+			_block(b, o, Vector2(0.055, 0.055), 0.0, BELT_UP - BELT_DEEP, wood)
+		_block(b, Vector2.ZERO, Vector2(0.5, 0.45), BELT_UP - BELT_DEEP, BELT_UP, [PLANK_DEEP, PLANK.darkened(0.06), PLANK_DEEP.darkened(0.18)])
+		_one["belt_under"] = b.mesh()
+	return _one["belt_under"]
+
 ## One belt tile in tile space, (0, 0) to (1, 1), travelling toward +x: a
-## bed of wooden slats between two rails. Flat, so it carries no shadow and
-## no lit side, and any turn of it is right. Drawn under `flat(tile,
+## bed of wooden slats between two rails. Flat, and any turn of it is right;
+## it is drawn BELT_UP above the ground (`flat` then `BELT_LIFT`), over
+## `belt_under`, and what rides it is lifted as much. Drawn under `flat(tile,
 ## facing)` with `belt_material()`, by draw_mesh or as the instances of one
 ## MultiMesh for the whole land. Its UV says where on the belt a point is
 ## (x along the travel, y across; -1 across on the rails, which do not
@@ -1887,7 +1916,10 @@ static func icon(kind: String) -> ArrayMesh:
 	match kind:
 		"belt":
 			var s := 0.56 / FINE
-			var xf := Transform2D(ISO.x * s, ISO.y * s, Vector2.ZERO)
+			var xf := Transform2D(ISO.x * s, ISO.y * s, BELT_LIFT * 0.56)
+			# two tiles of it, on their legs, the bed over them
+			for i in 2:
+				b.append(belt_under(), Transform2D(0.0, Vector2(0.56, 0.56), 0.0, at(Vector2(i - 0.5, 0.0)) * 0.56))
 			for i in 2:
 				_belt_into(b, xf * Transform2D(0.0, Vector2(FINE * (i - 1.0), -FINE * 0.5)), true)
 			var mid := Vector2.ZERO

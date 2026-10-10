@@ -139,6 +139,16 @@ func _drag(points: Array, steps := 6) -> void:
 	_touch(points[points.size() - 1], false)
 	await _frames(2)
 
+## A finger down at the first point and through the others, left down.
+func _hold(points: Array, steps := 6) -> void:
+	_touch(points[0], true)
+	await _frames(2)
+	for i in range(1, points.size()):
+		for k in range(1, steps + 1):
+			_move((points[i - 1] as Vector2).lerp(points[i], float(k) / steps))
+			await process_frame
+	await _frames(3)
+
 ## Where a tile-space point is on the screen now.
 func _at(t: Vector2) -> Vector2:
 	return _screen.screen_of(t)
@@ -199,14 +209,21 @@ func _run() -> void:
 	await _press_button(_screen._tiles.belt.button)
 	_check("Belt is picked and the drawer shut", _sim.picked == "belt" and not _screen.drawer_open())
 	var cam: Vector2 = _screen._cam
-	var way: Array = []
-	for t: Vector2 in DRAG:
-		way.append(_at(t))
-	await _drag(way)
+	# hold and swipe: a straight run down from the log, nothing laid until
+	# the finger lifts; then a second from its corner to the market
+	await _hold([_at(DRAG[0]), _at(DRAG[3])])
+	_check("held, the run is shown and nothing is laid yet", _sim.belts.is_empty() and _screen._run.get("tiles", []).size() == 4, str(_screen._run))
+	_touch(_at(DRAG[3]), false)
+	await _frames(2)
+	var straight: bool = _sim.belts.size() == 4
+	for tile: Vector2i in WANT_BELTS:
+		straight = straight and _sim.belts.get(tile, -1) == 1
+	_check("lifting lays the run, a straight line facing the swipe", straight, str(_sim.belts))
+	await _drag([_at(DRAG[3]), _at(DRAG[4])])
 	var laid := true
 	for tile: Vector2i in WANT_BELTS:
 		laid = laid and _sim.belts.get(tile, -1) == WANT_BELTS[tile]
-	_check("a drag lays the belts, each facing the way the finger left", laid and _sim.belts.size() == WANT_BELTS.size(), str(_sim.belts))
+	_check("a swipe from the run's end to the market turns its corner into the market", laid and _sim.belts.size() == WANT_BELTS.size(), str(_sim.belts))
 	_check("the drag did not pan the view", _screen._cam == cam)
 	_check("four belts cost four coins", _sim.coins == Sim.START_COINS - 4, str(_sim.coins))
 	await _wait(1.6)
@@ -248,6 +265,7 @@ func _run() -> void:
 	await _hands()
 	await _cards()
 	await _turns()
+	await _swipes()
 	await _tutorial()
 	await _tab()
 	if FileAccess.file_exists(SAVE):
@@ -522,6 +540,124 @@ func _turns() -> void:
 	await _shot("turned_home")
 	_screen.set_far(false)
 
+func _mid(tile: Vector2i) -> Vector2:
+	return _at(Vector2(tile) + Vector2(0.5, 0.5))
+
+## Whether every tile from `a` to `b` (a straight line) has a belt facing
+## `f` and `n` belts were laid since `had`.
+func _line(a: Vector2i, b: Vector2i, f: int, had: int) -> bool:
+	var step := (b - a).sign()
+	var n := maxi(absi(b.x - a.x), absi(b.y - a.y)) + 1
+	for i in n:
+		if _sim.belts.get(a + step * i, -1) != f:
+			return false
+	return _sim.belts.size() == had + n
+
+func _unlay(a: Vector2i, b: Vector2i) -> void:
+	var step := (b - a).sign()
+	for i in maxi(absi(b.x - a.x), absi(b.y - a.y)) + 1:
+		if _sim.belts.has(a + step * i):
+			_sim.sell(a + step * i)
+
+## Hold and swipe, and the way a run flows, on a fifth plate of open meadow
+## (and beside the market): at no turn of the view, then a quarter round.
+func _swipes() -> void:
+	_check("a fifth plate, open meadow, for the swipes", _sim.buy_plate(Vector2i(0, 2), "meadow"))
+	_run_on(4.0)
+	_screen.pick("belt")
+	for turn in 2:
+		var say := "turn %d: " % turn
+		if turn == 1:
+			await _press_button(_screen._turn_b)
+		await _look(Vector2(4.0, 19.0))
+		# a free run: four tiles, the finger wandering off the line
+		var had: int = _sim.belts.size()
+		await _hold([_mid(Vector2i(3, 17)), _at(Vector2(6.6, 17.9))])
+		_check(say + "a diagonal drag stays on one axis, and nothing is laid while held",
+			_sim.belts.size() == had and _screen._run.get("tiles", []) == [Vector2i(3, 17), Vector2i(4, 17), Vector2i(5, 17), Vector2i(6, 17)] and _screen._run.facing == 0, str(_screen._run))
+		await _shot("swipe_free_turn_%d" % turn)
+		_touch(_at(Vector2(6.6, 17.9)), false)
+		await _frames(2)
+		_check(say + "a swipe of four tiles lays four belts in a line facing the swipe", _line(Vector2i(3, 17), Vector2i(6, 17), 0, had), str(_sim.belts.size() - had))
+		# from behind the run's tail, dragged away from it: it flows into the run
+		had = _sim.belts.size()
+		await _hold([_mid(Vector2i(2, 17)), _mid(Vector2i(0, 17))])
+		_check(say + "held, the line already points into the placed belt", _screen._run.get("facing", -1) == 0 and _screen._run.tiles.size() == 3, str(_screen._run))
+		await _shot("swipe_settled_turn_%d" % turn)
+		_touch(_mid(Vector2i(0, 17)), false)
+		await _frames(2)
+		_check(say + "a swipe away from a placed belt's tail flows into it", _line(Vector2i(0, 17), Vector2i(2, 17), 0, had), str(_sim.belts))
+		# from the run's front, off to the side: it flows on from it
+		had = _sim.belts.size()
+		await _drag([_mid(Vector2i(7, 17)), _mid(Vector2i(7, 20))])
+		_check(say + "a swipe from a placed belt's front flows on from it", _line(Vector2i(7, 17), Vector2i(7, 20), 1, had), str(_sim.belts.size() - had))
+		# the coins short: only what they reach
+		had = _sim.belts.size()
+		var purse: int = _sim.coins
+		_sim.coins = 2
+		await _hold([_mid(Vector2i(1, 19)), _mid(Vector2i(4, 19))])
+		_sim.coins = 2
+		await _frames(2)
+		_check(say + "held with two coins, two of the four are within reach", _screen._run.get("lay", -1) == 2 and _screen._run.tiles.size() == 4, str(_screen._run))
+		await _shot("swipe_short_turn_%d" % turn)
+		# the market sold meanwhile: the purse is two again as the finger lifts
+		_sim.coins = 2
+		_touch(_mid(Vector2i(4, 19)), false)
+		await _frames(2)
+		_check(say + "coins short: only what they reach is laid", _line(Vector2i(1, 19), Vector2i(2, 19), 0, had), "%d laid" % (_sim.belts.size() - had))
+		_sim.coins = purse
+		# back to the first tile and up: just that one; a tap: one more
+		had = _sim.belts.size()
+		await _drag([_mid(Vector2i(1, 21)), _mid(Vector2i(3, 21)), _mid(Vector2i(1, 21))])
+		await _tap(_mid(Vector2i(5, 22)))
+		_check(say + "dragged back to its first tile a swipe lays one, and a tap lays one", _sim.belts.size() == had + 2 and _sim.belts.has(Vector2i(1, 21)) and _sim.belts.has(Vector2i(5, 22)), str(_sim.belts.size() - had))
+		# into the market from the open side, and away from its edge
+		await _look(Vector2(5.0, 7.5))
+		had = _sim.belts.size()
+		await _drag([_mid(Vector2i(3, 7)), _mid(Vector2i(6, 7))])
+		_check(say + "a swipe ending at the market stops at it and flows into it", _line(Vector2i(3, 7), Vector2i(5, 7), 0, had), str(_sim.belts.size() - had))
+		_unlay(Vector2i(3, 7), Vector2i(5, 7))
+		await _frames(2)
+		had = _sim.belts.size()
+		await _drag([_mid(Vector2i(5, 7)), _mid(Vector2i(3, 7))])
+		_check(say + "a swipe from the market's edge, dragged away, still flows into it", _line(Vector2i(3, 7), Vector2i(5, 7), 0, had), str(_sim.belts))
+		_unlay(Vector2i(3, 7), Vector2i(5, 7))
+		# the rule itself, as the one function has it
+		var rule: bool = _screen.run_facing(_sim, [Vector2i(2, 22), Vector2i(3, 22)], 0) == 0 \
+			and _screen.run_facing(_sim, [Vector2i(3, 18), Vector2i(3, 19)], 1) == 3 \
+			and _screen.run_facing(_sim, [Vector2i(7, 21), Vector2i(7, 22)], 1) == 1 \
+			and _screen.run_facing(_sim, [Vector2i(7, 22), Vector2i(7, 21)], 3) == 1
+		_check(say + "the rule: a free run follows the finger, one swiped off a belt's side joins it, one off a belt's front flows on either way it is swiped", rule)
+		for row in [17, 19, 21, 22]:
+			_unlay(Vector2i(0, row), Vector2i(7, row))
+		_unlay(Vector2i(7, 17), Vector2i(7, 20))
+		await _frames(2)
+	_screen.pick("")
+	# raised belts with things riding, a quarter round: by the market, by the kiln, from far
+	for i in 6:
+		_sim.put(Vector2i(4 + i % 3, 10), ["stone", "log", "lime"][i % 3])
+		_sim.put(Vector2i(10 + i % 3, 6), "stone")
+		_run_on(0.8)
+	await _look(Vector2(6.5, 6.0))
+	await _wait(0.4)
+	await _shot("raised_market_turn_1")
+	await _look(Vector2(3.5, 11.5))
+	await _shot("raised_kiln_turn_1")
+	await _look(Vector2(8.0, 10.0), true)
+	await _wait(0.3)
+	await _shot("raised_far_turn_1")
+	for i in 3:
+		await _press_button(_screen._turn_b)
+	await _look(Vector2(6.5, 6.0))
+	await _wait(0.4)
+	await _shot("raised_market_turn_0")
+	await _look(Vector2(3.5, 11.5))
+	await _shot("raised_kiln_turn_0")
+	await _look(Vector2(8.0, 10.0), true)
+	await _wait(0.3)
+	await _shot("raised_far_turn_0")
+	_screen.set_far(false)
+
 func _tutorial() -> void:
 	_screen.tutor.show()
 	await _wait(2.2)
@@ -561,7 +697,7 @@ func _tab() -> void:
 	page.add_child(tab)
 	await _frames(4)
 	tab.refresh()
-	_check("the tab reads the land the screen kept", tab.sim.plates.size() == 4 and tab.sim.coins == _sim.coins, "plates %d" % tab.sim.plates.size())
+	_check("the tab reads the land the screen kept", tab.sim.plates.size() == _sim.plates.size() and tab.sim.coins == _sim.coins, "plates %d" % tab.sim.plates.size())
 	var earned: int = tab.sim.earned
 	await _wait(1.5)
 	await _shot("tab")

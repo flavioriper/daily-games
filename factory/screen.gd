@@ -25,7 +25,8 @@ extends Control
 ## is a tap: on a tree, a rock or a fire box with fuel waiting it is the
 ## labour; on a plus, the market or a machine it opens the card; on a belt
 ## it turns it a quarter. A drag pans, unless Belt is picked in the drawer
-## (it lays belts, each facing the way the finger left its tile) or a
+## (hold and swipe: a straight run of belts is shown from the pressed tile
+## to the finger with the way it will flow, and laid as the finger lifts) or a
 ## machine is (its ghost follows the finger and the release stands it). A
 ## finger held still for HOLD on a belt or a machine sells it back.
 
@@ -150,8 +151,10 @@ var _moved := false
 var _moved_at := 0
 var _held := 0.0
 var _long := {}         # what a held finger would sell: {tile}
-var _laid := 0
+## The tile a swipe with Belt picked began on, and the run it would lay now:
+## {tiles, lay (how many of them the coins reach, from the start), facing}.
 var _belt_tile := Vector2i.ZERO
+var _run := {}
 var _facing := 0
 var _pinch := 0.0
 var _ghost_wob := 10.0
@@ -718,7 +721,7 @@ func _press(finger: int, pos: Vector2) -> void:
 	_at = pos
 	_moved = false
 	_held = 0.0
-	_laid = 0
+	_run = {}
 	_long = {}
 	_vel = Vector2.ZERO
 	_cam_raw = _cam
@@ -770,7 +773,8 @@ func _drag(finger: int, pos: Vector2) -> void:
 				_cam_to = inside + (_cam_raw - inside) * SOFT
 				_cam = _cam_to
 		"belt":
-			_belt_to(Vector2i(tile_under(pos).floor()))
+			if _moved:
+				_run = _run_to(tile_under(pos))
 
 func _release(finger: int, pos: Vector2) -> void:
 	if not _touches.has(finger):
@@ -797,8 +801,11 @@ func _release(finger: int, pos: Vector2) -> void:
 			else:
 				_tap(pos)
 		"belt":
-			if _laid == 0 and not _moved:
+			if _moved:
+				_lay_run(_run_to(tile_under(pos)))
+			else:
 				_tap(pos)
+			_run = {}
 		"place":
 			_place(pos)
 
@@ -808,6 +815,7 @@ func _let_go() -> void:
 	_finger = NO_FINGER
 	_mode = ""
 	_long = {}
+	_run = {}
 	_cam_raw = _cam_to
 
 ## What is under a point of the field: {what, tile} and for a module its
@@ -850,6 +858,10 @@ func hit(pos: Vector2) -> Dictionary:
 			best = found
 	if not best.is_empty():
 		return best
+	# a belt's bed stands over its tile: the bed under the point first
+	var bed := Vector2i((life.tile_at(v - Art.BELT_LIFT) as Vector2).floor())
+	if sim.belts.has(bed):
+		return {"what": "belt", "tile": bed}
 	var tile := Vector2i((life.tile_at(v) as Vector2).floor())
 	if sim.belts.has(tile):
 		return {"what": "belt", "tile": tile}
@@ -879,34 +891,121 @@ func _tap(pos: Vector2) -> void:
 			sim.turn(tile)
 		"ground":
 			if sim.picked == "belt" and sim.can_lay(tile):
-				sim.lay_belt(tile, _facing)
+				# a run of one: it flows as what it meets says, else as the last did
+				_belt_tile = tile
+				_lay_run(_run_to(Vector2(tile) + Vector2(0.5, 0.5)))
 
-## The finger has come onto `tile` with Belt picked: every tile on the way
-## from the last one gets a belt facing the way the finger left it, and the
-## one it is on now the same facing until it is left in its turn.
-func _belt_to(tile: Vector2i) -> void:
-	var cur := _belt_tile
-	var guard := 0
-	while cur != tile and guard < 64:
-		guard += 1
-		var d := tile - cur
-		var step := Vector2i(signi(d.x), 0) if absi(d.x) >= absi(d.y) else Vector2i(0, signi(d.y))
-		var f := Art.DIRS.find(step)
-		_lay(cur, f)
-		cur += step
-		_lay(cur, f)
-		_facing = f
-	_belt_tile = tile
+## The run a swipe from `_belt_tile` to `to` (a point of sim tile space)
+## would lay: a straight line of tiles along whichever tile axis the finger
+## is further along, from the pressed tile to the finger's, cut short at the
+## first tile a belt cannot go on. Belts already on the line are part of it
+## and cost nothing; `lay` is how many tiles, from the start, the coins
+## reach. The user, 2026-10-10: "user should be able to hold and swip to add
+## multiples (only straight line)".
+func _run_to(to: Vector2) -> Dictionary:
+	var from := _belt_tile
+	var d := to - (Vector2(from) + Vector2(0.5, 0.5))
+	var along_x := absf(d.x) >= absf(d.y)
+	var end := Vector2i(to.floor())
+	var n := absi(end.x - from.x) if along_x else absi(end.y - from.y)
+	var step := Vector2i(1 if d.x >= 0.0 else -1, 0) if along_x else Vector2i(0, 1 if d.y >= 0.0 else -1)
+	var tiles: Array = []
+	var lay := 0
+	var coins: int = sim.coins
+	for i in n + 1:
+		var tile := from + step * i
+		if not sim.can_lay(tile):
+			break
+		tiles.append(tile)
+		if not sim.belts.has(tile):
+			coins -= sim.price("belt")
+		if coins >= 0:
+			lay = tiles.size()
+	if tiles.is_empty():
+		return {}
+	var swipe := Art.DIRS.find(step) if n > 0 else _facing
+	return {"tiles": tiles, "lay": lay, "facing": run_facing(sim, tiles, swipe)}
 
-func _lay(tile: Vector2i, facing: int) -> void:
-	if sim.belts.has(tile):
-		if int(sim.belts[tile]) != facing:
-			sim.lay_belt(tile, facing)
-			_laid += 1
-	elif sim.can_lay(tile):
-		# counted even when the coins refuse it: the drag was a laying, not a tap
-		sim.lay_belt(tile, facing)
-		_laid += 1
+## Whether the belt on `tile` hands on to something: a belt, the market, a
+## fire box, or the way in of a kiln or a retort in front of it.
+static func _feeds(land: RefCounted, tile: Vector2i) -> bool:
+	return _takes(land, tile + Art.DIRS[int(land.belts[tile])])
+
+## Whether `tile` is somewhere a belt may deliver into: the market, a fire
+## box, the way in of a kiln or a retort.
+static func _takes_in(land: RefCounted, tile: Vector2i) -> bool:
+	if land.is_market(tile):
+		return true
+	var m: Dictionary = land.module_at(tile)
+	return not m.is_empty() and (m.kind == "firebox" or m.root == tile)
+
+static func _takes(land: RefCounted, tile: Vector2i) -> bool:
+	return land.belts.has(tile) or _takes_in(land, tile)
+
+## The way a run of belts flows: `tiles` in the sim's coordinates from where
+## the swipe began to where it ended, `swipe` the facing from its first tile
+## to its last. Returns a sim facing, `swipe` or its opposite. The user,
+## 2026-10-10: "If the convey didn't connect to any other convey, show a
+## direction reference line (it always move into the direction of the
+## movement), if it connect to another one, the direction become the
+## direction from the one already placed".
+##
+## Each end of the run is asked what it meets, the start first (where the
+## two disagree the start wins), and the first answer at an end stands:
+## 1. the tile beyond it, along the line, is a belt pointing into it, or a
+##    kiln or retort whose way out it is: the run flows AWAY from this end;
+## 2. the tile beyond it is a belt that does not point into it, the market,
+##    a fire box, or a kiln's or retort's way in: the run flows TOWARD it;
+## 3. the end tile is itself a laid belt (and the run is longer than it):
+##    pointing along the run already, or leading nowhere, the run carries on
+##    from it, AWAY; leading on to something else, the run joins it, TOWARD;
+## 4. a belt beside the end tile points into it: AWAY.
+## With no answer at either end the run flows the way the finger moved.
+static func run_facing(land: RefCounted, tiles: Array, swipe: int) -> int:
+	var back := (swipe + 2) % 4
+	for at_start: bool in [true, false]:
+		var out := back if at_start else swipe       # the way off this end
+		var away := swipe if at_start else back      # the flow that leaves this end
+		var e: Vector2i = tiles[0] if at_start else tiles[tiles.size() - 1]
+		var beyond: Vector2i = e + Art.DIRS[out]
+		if land.belts.has(beyond):
+			return away if int(land.belts[beyond]) == (out + 2) % 4 else out
+		var m: Dictionary = land.module_at(beyond)
+		if not m.is_empty() and m.kind != "firebox" and land.out_tile(m) == e:
+			return away
+		if _takes_in(land, beyond):
+			return out
+		if tiles.size() > 1 and land.belts.has(e):
+			return away if int(land.belts[e]) == away or not _feeds(land, e) else out
+		for side: int in [(out + 1) % 4, (out + 3) % 4]:
+			var beside: Vector2i = e + Art.DIRS[side]
+			if land.belts.has(beside) and int(land.belts[beside]) == (side + 2) % 4:
+				return away
+	return swipe
+
+## The finger lifted on a run: every tile of it the coins reach that has no
+## belt gets one, flowing the run's way. Belts already on the line are left
+## as they lie, but for the one the run flows out of when it led nowhere
+## (it turns into the run: the corner of an L), and a run of one tile.
+func _lay_run(run: Dictionary) -> void:
+	if run.is_empty():
+		return
+	var tiles: Array = run.tiles
+	var f: int = run.facing
+	# the end the run flows out of
+	var source: Vector2i = tiles[0]
+	if tiles.size() > 1 and Art.DIRS[f] != (tiles[1] as Vector2i) - (tiles[0] as Vector2i):
+		source = tiles[tiles.size() - 1]
+	for i in int(run.lay):
+		var tile: Vector2i = tiles[i]
+		if not sim.belts.has(tile):
+			sim.lay_belt(tile, f)
+		elif int(sim.belts[tile]) != f and (tiles.size() == 1 or (tile == source and not _feeds(sim, tile))):
+			sim.lay_belt(tile, f)
+	if int(run.lay) < tiles.size() and not sim.belts.has(tiles[int(run.lay)]):
+		# the coins ran out along the way: the sim refuses the next and the pill says so
+		sim.lay_belt(tiles[int(run.lay)], f)
+	_facing = f
 
 ## The facing a machine picked would stand at on `tile`: the last belt's,
 ## or the next quarter it fits.
@@ -928,6 +1027,8 @@ func _place(pos: Vector2) -> void:
 ## The ghost of a machine held over the land: its footprint, green where it
 ## fits and the coins reach, and it shivers when a release placed nothing.
 func _ghosts() -> Array:
+	if _mode == "belt" and not _run.is_empty():
+		return _run_ghosts()
 	if _mode != "place" or _finger == NO_FINGER:
 		return []
 	var kind: String = sim.picked
@@ -938,6 +1039,22 @@ func _ghosts() -> Array:
 	var ok: bool = sim.can_place(kind, tile, f) and sim.coins >= sim.price(kind)
 	var shift := Vector2(Motion.shiver_offset(_ghost_wob, 0.06, 0.3), 0.0)
 	return [[Art.ghost(foot[1].x, foot[1].y, ok), Art.flat(Vector2(foot[0] as Vector2i) + shift)]]
+
+## The run a swipe would lay, as beds on their way: paper where a belt will
+## go, the warn tone past what the coins reach, nothing over a belt that is
+## there already.
+func _run_ghosts() -> Array:
+	var out: Array = []
+	var tiles: Array = _run.tiles
+	var lift := Transform2D(0.0, Art.BELT_LIFT)
+	for i in tiles.size():
+		var tile: Vector2i = tiles[i]
+		if sim.belts.has(tile):
+			continue
+		var short: bool = i >= int(_run.lay)
+		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.facing))),
+			Color(1.0, 0.5, 0.45, 0.8) if short else Color(1.0, 1.0, 1.0, 0.92)])
+	return out
 
 ## A finger held still on a belt or a machine sells it back.
 func _step_hand(delta: float) -> void:
@@ -1166,6 +1283,8 @@ func _draw_over(ci: CanvasItem) -> void:
 		var vf: int = life.seen_facing(f)
 		var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(vf) if kind == "kiln" else Art.retort(vf))
 		ci.draw_mesh(mesh, null, Transform2D(0.0, life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
+	if _mode == "belt" and not _run.is_empty():
+		_draw_flow(ci)
 	if not _long.is_empty() and _held >= HOLD_SHOWS:
 		var k := clampf((_held - HOLD_SHOWS) / (HOLD - HOLD_SHOWS), 0.0, 1.0)
 		ci.draw_set_transform(life.mid(_long.tile), 0.0, Vector2(1.0, Art.DEEP))
@@ -1182,6 +1301,38 @@ func _draw_over(ci: CanvasItem) -> void:
 		var a := 1.0 - k * k * k
 		ci.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
 		ci.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color(Art.MARK, a))
+
+## The direction reference line of a run being swiped: a soft line along
+## its beds and a chevron a tile pointing the way things will move, the last
+## one a full arrowhead. Drawn, not lettered: the fonts have no arrow.
+func _draw_flow(ci: CanvasItem) -> void:
+	var tiles: Array = _run.tiles
+	var f: int = _run.facing
+	var d := Vector2(Art.DIRS[f])
+	var pts := PackedVector2Array()
+	for tile: Vector2i in tiles:
+		pts.append(life.mid(tile) + Art.BELT_LIFT)
+	# the way of the flow on the screen, and half a tile of it
+	var half: Vector2 = (life.seen(Vector2(tiles[0]) + Vector2(0.5, 0.5) + d * 0.5) + Art.BELT_LIFT) - pts[0]
+	var way := half.normalized()
+	var across := Vector2(-way.y, way.x)
+	var first := pts[0]
+	var last := pts[pts.size() - 1]
+	if (last - first).dot(way) < 0.0:
+		first = last
+		last = pts[0]
+	var line := PackedVector2Array([first - half * 0.7, last + half * 0.7])
+	var ink := Color(0.23, 0.19, 0.16, 0.45)
+	ci.draw_polyline(line, ink, 13.0, true)
+	ci.draw_polyline(line, Color(1.0, 1.0, 1.0, 0.92), 6.0, true)
+	for i in pts.size():
+		var p := pts[i]
+		var head := p == last
+		var size := 1.5 if head else 1.0
+		var c: Vector2 = p + (half * 0.7 if head else Vector2.ZERO)
+		var arrow := PackedVector2Array([c - way * 13.0 * size + across * 15.0 * size, c + way * 5.0 * size, c - way * 13.0 * size - across * 15.0 * size])
+		ci.draw_polyline(arrow, ink, 13.0, true)
+		ci.draw_polyline(arrow, Color(1.0, 1.0, 1.0, 0.95) if not head else Pal.SUN, 6.0, true)
 
 # --- leaving ---
 

@@ -32,7 +32,10 @@ extends RefCounted
 ## - **What stands is sorted by `Art.depth`** across trees and buildings. Only
 ##   trees wear the wind, so the sorted list is cut into runs of one kind and
 ##   each run drawn on its own layer, windy and plain by turns.
-## - **Belts are one MultiMesh** and what lies or rides one MultiMesh a kind.
+## - **Belts are two MultiMeshes**, the legs and edges under (`Art.belt_under`)
+##   and the beds over, lifted `Art.BELT_UP`, both filled back to front; they
+##   stay flat layers under everything that stands. What lies or rides is one
+##   MultiMesh a kind, an item on a belt lifted onto its bed.
 ##
 ## - **The view turns by quarters** (`turn`, 2026-10-10: "add a button to
 ##   rotate the view, so user can click to rotate and see something being
@@ -98,11 +101,13 @@ var turn := 0
 ## Whether the plus of every free edge is drawn (not on the tab's card).
 var plus := true
 ## The holder's own flat things, over the belts and under what stands:
-## [mesh, transform] each (a ghost under the finger).
+## [mesh, transform] each, and a tint if there is a third (a ghost under
+## the finger, the run of belts a swipe would lay).
 var ghosts: Array = []
 
 var _ground_l: Node2D
 var _grass_l: Node2D
+var _under_l: Node2D
 var _belt_l: Node2D
 var _flat_l: Node2D
 var _shade_l: Node2D
@@ -115,6 +120,7 @@ var _order: Array = []      # [plate as seen, kind, sides as seen, variant, plat
 var _edges: Array = []
 var _plates_n := -1
 var _belt_mm: MultiMesh
+var _under_mm: MultiMesh
 var _belts_stale := true
 var _belt_n := -1
 var _item_mm := {}          # kind -> MultiMesh
@@ -143,6 +149,7 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	parent.add_child(world)
 	_ground_l = layer(_draw_ground)
 	_grass_l = layer(_draw_grass, Art.wind(true))
+	_under_l = layer(_draw_under)
 	_belt_l = layer(_draw_belts, Art.belt_material())
 	_flat_l = layer(_draw_flat)
 	_shade_l = layer(_draw_shade, _shade_mat)
@@ -154,6 +161,9 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_belt_mm = MultiMesh.new()
 	_belt_mm.transform_format = MultiMesh.TRANSFORM_2D
 	_belt_mm.mesh = Art.belt()
+	_under_mm = MultiMesh.new()
+	_under_mm.transform_format = MultiMesh.TRANSFORM_2D
+	_under_mm.mesh = Art.belt_under()
 	for kind: String in ITEMS:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_2D
@@ -482,12 +492,24 @@ func _lay_belts() -> void:
 	_belt_n = sim.belts.size()
 	if _belt_mm.instance_count < _belt_n:
 		_belt_mm.instance_count = maxi(32, _belt_n * 2)
-	var i := 0
-	for tile: Vector2i in sim.belts:
-		_belt_mm.set_instance_transform_2d(i, Art.flat(Vector2(seen_tile(tile)), seen_facing(int(sim.belts[tile]))))
-		i += 1
+		_under_mm.instance_count = _belt_mm.instance_count
+	# the back first: a nearer belt's legs and edge are over a further one's
+	var tiles: Array = sim.belts.keys()
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return depth(Vector2(a)) < depth(Vector2(b)))
+	var lift := Transform2D(0.0, Art.BELT_LIFT)
+	for i in tiles.size():
+		var tile: Vector2i = tiles[i]
+		_under_mm.set_instance_transform_2d(i, Transform2D(0.0, mid(tile)))
+		_belt_mm.set_instance_transform_2d(i, lift * Art.flat(Vector2(seen_tile(tile)), seen_facing(int(sim.belts[tile]))))
 	_belt_mm.visible_instance_count = _belt_n
+	_under_mm.visible_instance_count = _belt_n
+	_under_l.queue_redraw()
 	_belt_l.queue_redraw()
+
+## How far up an item at `pos` (sim tile space) is drawn: on a belt's bed,
+## or on the ground.
+func _lifted(pos: Vector2) -> float:
+	return Art.BELT_UP if sim.belts.has(Vector2i(pos.floor())) else 0.0
 
 ## What lies and what rides, a MultiMesh a kind, each where the sim has it
 ## between two ticks.
@@ -498,7 +520,9 @@ func _fill_items() -> void:
 	for tile: Vector2i in sim.items:
 		for it: Dictionary in sim.items[tile]:
 			if lists.has(it.kind):
-				(lists[it.kind] as Array).append(seen(sim.item_pos(tile, it)))
+				# onto the bed or off it over the tick it crosses, not at a jump
+				var up := lerpf(_lifted((it.was as Vector2).lerp(Vector2(tile) + MID, 0.02)), Art.BELT_UP if sim.belts.has(tile) else 0.0, float(sim.alpha))
+				(lists[it.kind] as Array).append(seen(sim.item_pos(tile, it)) + Vector2(0.0, -up))
 	for kind: String in ITEMS:
 		var at: Array = lists[kind]
 		var mm: MultiMesh = _item_mm[kind]
@@ -748,6 +772,10 @@ func _draw_grass(ci: CanvasItem) -> void:
 		for mm: MultiMesh in Art.grass(o[1], o[3]):
 			ci.draw_multimesh(mm, null)
 
+func _draw_under(ci: CanvasItem) -> void:
+	if _belt_n > 0:
+		ci.draw_multimesh(_under_mm, null)
+
 func _draw_belts(ci: CanvasItem) -> void:
 	if _belt_n > 0:
 		ci.draw_multimesh(_belt_mm, null)
@@ -757,7 +785,7 @@ func _draw_flat(ci: CanvasItem) -> void:
 		for p: Vector2i in _edges:
 			ci.draw_mesh(Art.plus(), null, Transform2D(0.0, plus_at(p)))
 	for g: Array in ghosts:
-		ci.draw_mesh(g[0], null, g[1])
+		ci.draw_mesh(g[0], null, g[1], g[2] if g.size() > 2 else Color.WHITE)
 
 ## The shadows, each under its own tree's lean and no other.
 func _draw_shade(ci: CanvasItem) -> void:

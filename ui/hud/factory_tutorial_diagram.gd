@@ -7,8 +7,9 @@ extends Control
 ## it enters the tree:
 ##
 ## - TREE: a tap on a tree, the beaver bites it down and the log lies.
-## - BELT: Belt picked, the finger drags from the log to the market, the log
-##   rides and is sold.
+## - BELT: Belt picked, the finger swipes a straight run down from the log
+##   and a second from its corner to the market; each is laid as the finger
+##   lifts, and the log rides and is sold.
 ## - PLATE: from further off, a tap on a plus and a plate comes up.
 ##
 ## A page starts over every LENGTH seconds on a land of the same seed, so it
@@ -35,7 +36,8 @@ const ACROSS := {Lesson.TREE: 560.0, Lesson.BELT: 840.0, Lesson.PLATE: 2500.0}
 const TREE := Vector2i(5, 2)
 const WAY := [[Vector2i(5, 3), 1], [Vector2i(5, 4), 1], [Vector2i(5, 5), 1], [Vector2i(5, 6), 0]]
 const DRAG_FROM := 1.2
-const DRAG_STEP := 0.5
+const DRAG_TIME := 1.8
+const DRAG_REST := 0.6
 const NEW_PLATE := Vector2i(1, 0)
 
 var lesson: int = Lesson.TREE
@@ -129,17 +131,32 @@ func _act() -> void:
 				_pressed = 0.0
 				_sim.tap(TREE)
 		Lesson.BELT:
-			var k := (_t - DRAG_FROM) / DRAG_STEP
-			_shows = _t > 0.5 and k < WAY.size() + 1.0
-			var at := clampf(k, 0.0, float(WAY.size()))
-			var i := mini(int(at), WAY.size() - 1)
-			var from: Vector2 = Vector2(WAY[i][0]) + Vector2(0.5, 0.5)
-			_finger = from + Vector2(Art.DIRS[int(WAY[i][1])]) * (at - i)
-			if k >= 0.0:
-				_pressed = 0.1
-			while _done < WAY.size() and k >= _done:
-				_sim.lay_belt(WAY[_done][0], WAY[_done][1])
-				_done += 1
+			# two swipes, each laid as the finger lifts: down from the log,
+			# then from the corner to the market
+			_life.ghosts = []
+			var down := (_t - DRAG_FROM) / DRAG_TIME
+			var over := (_t - DRAG_FROM - DRAG_TIME - DRAG_REST) / (DRAG_TIME * 0.5)
+			var first: Vector2 = Vector2(WAY[0][0]) + Vector2(0.5, 0.5)
+			var corner: Vector2 = Vector2(WAY[WAY.size() - 1][0]) + Vector2(0.5, 0.5)
+			_shows = (_t > 0.5 and down < 1.0) or (over > -0.4 and over < 1.0)
+			if down < 1.0:
+				_finger = first.lerp(corner, clampf(down, 0.0, 1.0))
+				if down > 0.0:
+					_pressed = 0.1
+					for i in WAY.size():
+						if Vector2(WAY[i][0]).y <= _finger.y:
+							_life.ghosts.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(WAY[i][0]), 1), Color(1.0, 1.0, 1.0, 0.72)])
+			else:
+				if _done == 0:
+					_done = 1
+					for step: Array in WAY:
+						_sim.lay_belt(step[0], 1)
+				_finger = corner + Vector2(0.8, 0.0) * clampf(over, 0.0, 1.0)
+				if over > 0.0 and over < 1.0:
+					_pressed = 0.1
+				if _done == 1 and over >= 1.0:
+					_done = 2
+					_sim.lay_belt(WAY[WAY.size() - 1][0], 0)
 		Lesson.PLATE:
 			_finger = Vector2(NEW_PLATE * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5
 			_shows = _t > 0.6 and _t < 2.6
