@@ -79,6 +79,15 @@ const LAST_HOLD := 1.5
 ## A step of the size's own clicks: one every time the answer has grown or
 ## shrunk by this ratio.
 const NOTCH := 1.08
+## The click's pitch from the smallest answer the stage holds to the biggest,
+## and the bit it varies by so it is never the same click twice: together
+## 0.865 to 1.145, inside five semitones (docs/agents/sound.md). It ran 1.35
+## to 0.75 with no variation, ten semitones.
+const NOTCH_PITCH := Vector2(1.08, 0.92)
+const TICK_VARY := Vector2(0.94, 1.06)
+## The click under the rest of the board. It was -6.0 on a file at -19; the
+## file is at -16 and reads -20 on a phone here (-22 at -6.0).
+const NOTCH_DB := -4.0
 const WIN_WAIT := 0.9
 const STAMP_FROM := 1.8
 const STAMP_DROP := 0.18
@@ -840,7 +849,7 @@ func set_px(px: float) -> void:
 		_notch = notch
 		# The size's own click: deeper the bigger the thing has become.
 		var u := inverse_lerp(log(float(_frame.min)), log(float(_frame.max)), log(_px))
-		fx.cue("notch", lerpf(1.35, 0.75, clampf(u, 0.0, 1.0)), -6.0)
+		fx.cue("notch", lerpf(NOTCH_PITCH.x, NOTCH_PITCH.y, clampf(u, 0.0, 1.0)) * randf_range(TICK_VARY.x, TICK_VARY.y), NOTCH_DB)
 	_redraw()
 	_hud_layer.queue_redraw()
 

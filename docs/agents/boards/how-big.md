@@ -141,3 +141,14 @@
   blue whale, a Labrador's 56 cm under a silhouette that is only "a dog",
   a US 2.03 m door); the football drawn black with its hexagons cut out;
   the functions' build no longer copying the table.
+- **Sounds redone against the cozy rules** (2026-10-10, measured, not
+  heard; the row is in `docs/agents/sound.md`). Three takes: `lock` a tock,
+  `notch` a lighter one, and one muffled note every grade and the day's end
+  are written from. The size's click was a file a phone did not play (-50
+  dB there); it is heard now, pitched 1.08 down to 0.92 by size where it
+  ran 1.35 to 0.75, varied 0.94 to 1.06 and played at -4 dB where it was -6
+  (`NOTCH_PITCH`, `TICK_VARY`, `NOTCH_DB`). Nothing else in the board
+  changed. `heart_lost` and `stamp` are notches because each lands on
+  another phrase (`off` 75 ms later; `party` on the same frame). Left as it
+  was: one more heart on the last rung sounds `heart_back` and `solved`
+  together.
