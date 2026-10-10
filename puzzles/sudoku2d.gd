@@ -37,8 +37,8 @@ extends "res://core/puzzle_base.gd"
 ## is crossed out of that cell for good (`state.ruled`). Insane is
 ## **Hilltops**: a little hill in some cells counts, in dots, how many of the
 ## four cells beside it hold a smaller number, and there are fewer givens than
-## any plain grid can have. A right number builds a streak (a note up the
-## pentatonic, the x3 bubble, confetti), now and then plays a gag (hearts, a
+## any plain grid can have. A right number builds a streak (a tick a
+## semitone higher, the x3 bubble, confetti), now and then plays a gag (hearts, a
 ## twirl, a boing), a finished region gets a daisy sticker, a number all nine
 ## of which are home hops in a wave, and the solve throws a party: the
 ## numbers dance, confetti, a silly bit of number wisdom and the seal.
@@ -201,10 +201,10 @@ const DUSK := Color(0.74, 0.76, 0.92)
 const DUSK_TIME := 0.8
 const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
-## The streak (Mushroom Patch's): a note up the pentatonic from the second,
-## the bubble from the third, confetti at five and ten.
+## The streak (Mushroom Patch's): a tick a semitone higher from the second,
+## five in all, the bubble from the third, confetti at five and ten.
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [5, 10]
 const COMBO_DEFLATE := 0.25
@@ -2246,7 +2246,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 
 ## A right number (on Hard and Insane the answer's; on Easy and Medium any
 ## number that clashes with nothing, which reveals nothing) builds the streak
-## -- a note up the pentatonic from the second, the bubble from the third,
+## -- a tick a semitone higher from the second, the bubble from the third,
 ## confetti at five and ten -- now and then plays a gag, and when it is the
 ## last of its number home, every one of them hops.
 func _on_right(i: int, d: int) -> void:
