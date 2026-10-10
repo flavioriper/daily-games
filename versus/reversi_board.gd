@@ -75,6 +75,17 @@ const WATCH := 0.22
 const REWIND := 0.3
 const SWEEP := 0.5
 
+## The notches at play (docs/agents/sound.md, rule 2). A notch is never the
+## same sound twice: `place`, `lift` and `refused` are played 0.94 to 1.06 at
+## random (they were 1.0 every time). `flip` is played once a ring of discs
+## turned, half a step higher a ring from FLIP_PITCH.x, and the whole run of
+## a move is moved by one such draw, so it still climbs: 0.893 to 1.185 at
+## the widest, 4.9 semitones. It was `0.92 + 0.045 * k` with no variation,
+## 4.5 semitones over seven rings, which the variation would take to 6.5.
+const TICK_VARY := Vector2(0.94, 1.06)
+const VARIED := ["place", "lift", "refused"]
+const FLIP_PITCH := Vector2(0.95, 0.028)
+
 var rules: RefCounted
 ## The rules' side the player is: its face is the sun's.
 var player := 0
@@ -220,9 +231,10 @@ func play(cell: int, turned: PackedInt32Array, side: int) -> void:
 		far = maxi(far, ring)
 		_turning[q] = {"from": _cells[q] - 1, "at": _t + POP * 0.6 + STEP * (ring - 1)}
 		_cells[q] = look + 1
+	var vary := randf_range(TICK_VARY.x, TICK_VARY.y)
 	for ring in far:
 		var k: int = ring
-		_after(POP * 0.6 + STEP * k + FLIP * 0.5, func() -> void: _cue("flip", 0.92 + 0.045 * k, -3.0 + 0.5 * k))
+		_after(POP * 0.6 + STEP * k + FLIP * 0.5, func() -> void: _cue("flip", (FLIP_PITCH.x + FLIP_PITCH.y * k) * vary, -3.0 + 0.5 * k))
 	var total := POP * 0.6 + STEP * (far - 1) + FLIP
 	_busy(total + WATCH + 0.3)
 	_after(total + WATCH, func() -> void: settled.emit())
@@ -359,6 +371,8 @@ func _after(seconds: float, what: Callable) -> void:
 
 func _cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	if _fx != null:
+		if cue_name in VARIED:
+			pitch *= randf_range(TICK_VARY.x, TICK_VARY.y)
 		_fx.cue(cue_name, pitch, volume_db)
 
 # --- input ---
