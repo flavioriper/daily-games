@@ -587,7 +587,23 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   **a blocked hand**: the whole line shivers once (`_lock_at`). None of them
   under reduce motion. `tests/_shot_dominoes.gd` shoots `kiss`,
   `kiss_double`, `wave` and `locked` when a game comes to them; `locked`
-  has not come up in a run, so the shiver is unseen. **Every tile is a sprite for the whole game** (a place, a size,
+  has not come up in a run, so the shiver is unseen. **More of them, the same
+  day** ("i want more, where it fits, let's add key moments animations"):
+  the heap is stirred before the deal (`Sprite.heap`, `mix`, `STIR`); a
+  tile in the air swells at the middle of its way (`far`, `AIR` 0.14); the
+  boneyard's next tile hops every `BECKON` 1.4 s while it must be drawn; a
+  hand down to one tile glows brass (`_light_last`) and the other side's
+  hops every `LAST_EVERY` 1.8 s; a pass dips the passing hand twice and is
+  asked for by the screen (`board.knock(mine)` from `_knock`); while the
+  other side thinks its tiles are lifted one after another
+  (`board.thinking`, set in the screen's `_refresh_board`, `MULL` 0.8 s);
+  a hand the other side took sinks the player's tiles once (`_sigh_at`);
+  the tea ripples at a rap, a knock and, fainter, a tile set down
+  (`_shake_tea`); the first tile of a hand gets the lamp's light. What a
+  tile at rest does is one function, `_alive`. The harness shoots `stir`,
+  `knock`, `last_0` and `last_1` too; `knock` did not come up either, so
+  the dip, the sigh, the mulling and the ripple are run but were not looked
+  at frame by frame. **Every tile is a sprite for the whole game** (a place, a size,
   a lie, face up or not) and `sync()` reads the rules and gives each the
   place it now belongs in; the tiles go there by themselves, and nothing
   else animates a move, a draw, a deal or the line being refitted. A tile

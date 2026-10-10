@@ -16,7 +16,9 @@ extends SceneTree
 ## rap (the player's last tile off the felt between its two raps),
 ## kiss (a match lit at its seam), kiss_double (a double framed in brass),
 ## wave (the line hopping after a hand the player took), locked (the line
-## shivering, blocked) -- each when the game comes to it,
+## shivering, blocked), knock (a hand dipping as it passes), stir (the heap
+## before the deal), last_0 / last_1 (a hand down to one tile, lit) -- each
+## when the game comes to it,
 ## deal (tiles in the air), start, laid, picked (two places lit), hint, draw
 ## (the boneyard lit), refused, long (the line at its longest in the first
 ## hand), hand (a finished hand lying open), end. After the first hand the
@@ -136,6 +138,14 @@ func _process(delta: float) -> bool:
 			_shot("kiss_double")
 	if _board._t - _board._lock_at > 0.05 and _board._t - _board._lock_at < 0.3:
 		_shot("locked")
+	if _board._t - _board._knock_at > 0.05 and _board._t - _board._knock_at < 0.12:
+		_shot("knock")
+	if _t > 0.45:
+		_shot("stir")
+	if _board.rules != null and not _board.rules.hand_over and not _board.is_busy():
+		for side in 2:
+			if _board.rules.hands[side].size() == 1:
+				_shot("last_%d" % side)
 	if not _done.has("wave") and _board.rules != null:
 		var hopping := 0
 		for p: Vector3i in _board.rules.plays:

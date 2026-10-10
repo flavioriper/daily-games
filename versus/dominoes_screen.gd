@@ -411,6 +411,8 @@ func _refresh_board() -> void:
 			box.set_border_width_all(4)
 		_plates[p].add_theme_stylebox_override("panel", box)
 		_plates[p].modulate.a = 1.0 if mine or over else 0.82
+		# the other side's tiles are turned over in thought while it thinks
+		board.thinking = _state == State.THINK
 		var pts: int = rules.scores[side]
 		var line := "" if _state == State.WAIT else _points_line(pts)
 		_status[p].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -534,7 +536,7 @@ func _start_turn() -> void:
 	if mine:
 		if forced == Rules.PASS:
 			_state = State.ANIM
-			_knock(tr("DOM_YOU_PASS"))
+			_knock(tr("DOM_YOU_PASS"), true)
 			_fx.buzz(Haptics.WARN)
 			_after(PASS_WAIT, func() -> void: _apply(Rules.PASS))
 		else:
@@ -563,11 +565,12 @@ func _step_other(m: int) -> void:
 	if _state != State.THINK or not rules.can(m) or rules.turn == player:
 		return
 	if m == Rules.PASS:
-		_knock(tr("DOM_THEY_PASS"))
+		_knock(tr("DOM_THEY_PASS"), false)
 	_apply(m)
 
 ## A pass is knocked on the table and said.
-func _knock(text: String) -> void:
+func _knock(text: String, mine: bool) -> void:
+	board.knock(mine)
 	# Never the same sound twice (it was 1.0 every time).
 	_fx.cue("knock", randf_range(0.94, 1.06))
 	_say(text)
@@ -810,7 +813,7 @@ func _take_online() -> void:
 		_script = turn
 	var move: int = _script.pop_front()
 	if move == Rules.PASS:
-		_knock(tr("DOM_THEY_PASS"))
+		_knock(tr("DOM_THEY_PASS"), false)
 	_apply(move)
 
 ## The match ended without this table ending it. A resignation, a clock or a

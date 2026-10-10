@@ -143,6 +143,26 @@ const WAVE_STEP := 0.06
 const WAVE_HOP := -16.0
 const LOCK_PX := 4.0
 const LOCK_TIME := 0.4
+## More of them. The deal: the heap is stirred, each tile swinging `STIR`
+## radians about the heap's middle until it is dealt. A tile in the air
+## swells by `AIR` at the middle of its way. The boneyard's next tile hops
+## every `BECKON` s while it must be drawn. A hand down to one tile: the tile
+## glows brass, and the other side's hops every `LAST_EVERY` s. A pass: the
+## hand that passes dips twice (`KNOCK_HOP` s each). The other side thinking:
+## one of its tiles after another is lifted and put back, `MULL` s each. A
+## hand the other side took: the player's tiles sink and come back. The tea
+## ripples at a rap, a knock and (less) a tile set down.
+const STIR := 0.9
+const AIR := 0.14
+const BECKON := 1.4
+const LAST_EVERY := 1.8
+const KNOCK_HOP := 0.16
+const KNOCK_PX := 7.0
+const MULL := 0.8
+const MULL_PX := -8.0
+const SIGH_PX := 7.0
+const SIGH_TIME := 0.7
+const RIPPLE_TIME := 0.8
 
 ## How fast a tile closes on its place (the share left falls by e every
 ## 1/SPEED s), the look at a landing before the game goes on, and the deal.
@@ -176,6 +196,11 @@ class Sprite:
 	var hold := 0.0
 	var answered := -10.0
 	var hop_at := -10.0
+	## Where it lies in the heap being stirred (from the heap's middle), while
+	## it waits to be dealt; and how far it had to go when it left.
+	var heap := Vector2.ZERO
+	var mix := false
+	var far := 0.0
 
 var rules: RefCounted
 ## The rules' side the player is: its tiles lie along the bottom.
@@ -257,6 +282,21 @@ var _kiss_halves: Array = []
 var _kiss_double := -1
 ## When the line last shivered, blocked.
 var _lock_at := -10.0
+## The other side is thinking: its tiles are lifted one after another.
+var thinking := false:
+	set(v):
+		if thinking != v:
+			thinking = v
+			_think_at = _t
+var _think_at := 0.0
+## The heap's middle, when a hand last passed and which zone, when the
+## player's tiles last sank, and when the tea was last shaken and how hard.
+var _heap_c := Vector2.ZERO
+var _knock_at := -10.0
+var _knock_zone := Zone.MINE
+var _sigh_at := -10.0
+var _ripple_at := -10.0
+var _ripple := 1.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still or deaf else Control.MOUSE_FILTER_STOP
@@ -294,11 +334,16 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 		sp.wait = 0.0
 		sp.land = false
 		sp.hold = 0.0
+		sp.mix = false
 		sp.hop_at = -10.0
 		sp.answered = -10.0
 		sp.landed = -10.0
 	_kiss_at = -10.0
 	_lock_at = -10.0
+	_knock_at = -10.0
+	_sigh_at = -10.0
+	_ripple_at = -10.0
+	thinking = false
 	_place_all(true)
 	_deal_due = false
 	if enter and not still:
@@ -319,12 +364,14 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 func _deal() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _run * 977 + 5
-	var heap := _zone_line.get_center()
+	_heap_c = _zone_line.get_center()
 	for sp in _sprites:
-		sp.pos = heap + Vector2(rng.randf_range(-150.0, 150.0), rng.randf_range(-90.0, 90.0))
+		sp.heap = Vector2(rng.randf_range(-150.0, 150.0), rng.randf_range(-90.0, 90.0))
+		sp.pos = _heap_c + sp.heap
 		sp.s = 0.5
 		sp.face = 0.0
 		sp.fly = true
+		sp.mix = true
 	for i in rules.stock.size():
 		_sprites[rules.stock[i]].wait = 0.25 + 0.012 * i
 	for side in 2:
@@ -414,6 +461,9 @@ func reveal(on := true) -> void:
 		if on and rules.hand_over and not still:
 			if rules.hand_blocked:
 				_lock_at = _t
+			if rules.hand_winner == 1 - player:
+				_sigh_at = _t
+				_busy(SIGH_TIME)
 			if rules.hand_winner == player:
 				# the line hops, from the tile laid last back to the first
 				var n: int = rules.plays.size()
@@ -422,6 +472,18 @@ func reveal(on := true) -> void:
 				_busy(0.3 + WAVE_STEP * n + Motion.HOP_TIME)
 	_busy(0.4 + REVEAL_STEP * theirs.size() + TURN)
 	_touch()
+
+## A hand passed (the player's, or the other side's): its tiles dip twice
+## and the tea is shaken.
+func knock(mine: bool) -> void:
+	_knock_at = _t
+	_knock_zone = Zone.MINE if mine else Zone.THEIRS
+	_shake_tea(1.0)
+	_busy(KNOCK_HOP * 2.0)
+
+func _shake_tea(how: float) -> void:
+	_ripple_at = _t
+	_ripple = how
 
 ## The two halves of a tile lying at `c` the way `o` says: [{c, n, upright}].
 func _halves(tile: int, c: Vector2, o: int) -> Array:
@@ -448,8 +510,8 @@ func _kiss(tile: int) -> void:
 	var sp := _sprites[tile]
 	_kiss_c = sp.to
 	if at == 0:
-		# the first tile of a hand meets nothing
-		_kiss_n = -1
+		# the first tile of a hand meets nothing: the lamp's light alone
+		_kiss_n = 0
 		return
 	var p: Vector3i = rules.plays[at]
 	var mate := 0
@@ -647,6 +709,7 @@ func _stock_at(i: int) -> Vector2:
 func _aim(sp: Sprite, zone: int, to: Vector2, s: float, o: int, up: bool, snap: bool) -> void:
 	if sp.zone != zone and not snap:
 		sp.fly = true
+		sp.far = sp.pos.distance_to(to)
 	sp.zone = zone
 	sp.shown = true
 	sp.to = to
@@ -687,6 +750,12 @@ func _process(delta: float) -> void:
 			sp.wait -= delta
 			flying = true
 			live = true
+			if sp.mix:
+				# the heap stirred: each tile swings about the middle its own way
+				sp.pos = _heap_c + sp.heap.rotated(STIR * sin(_t * 5.0 + t * 1.7) * (1.0 if t % 2 == 0 else -1.0))
+				if sp.wait <= 0.0:
+					sp.mix = false
+					sp.far = sp.pos.distance_to(sp.to)
 			continue
 		if sp.pos != sp.to or sp.s != sp.to_s:
 			live = true
@@ -698,6 +767,7 @@ func _process(delta: float) -> void:
 				if sp.land:
 					sp.land = false
 					sp.landed = _t
+					_shake_tea(0.5)
 					_busy(Motion.BUMP_TIME)
 					_cue("place")
 					_kiss(t)
@@ -714,6 +784,7 @@ func _process(delta: float) -> void:
 			_rap_hits += 1
 			# lower and a little over a tile set down: it is meant
 			_cue("place", 0.86, 2.0)
+			_shake_tea(1.0)
 			if _fx != null and not Motion.reduce:
 				_fx.puff(_sprites[_rap].to * _k + Vector2(0.0, _unit * 0.5 * _k), FELT_LIT, 4)
 			rapped.emit()
@@ -949,6 +1020,10 @@ func _draw() -> void:
 			if sp.zone == Zone.LINE:
 				at.y += Motion.hop_lift(_t - sp.hop_at, WAVE_HOP)
 				at.x += Motion.shiver_offset(_t - _lock_at, LOCK_PX, LOCK_TIME)
+			at.y += _alive(t, sp)
+			if sp.fly and sp.wait <= 0.0 and sp.far > 1.0 and not Motion.reduce:
+				# in the air: nearer the eye at the middle of its way
+				s *= 1.0 + AIR * sin(PI * clampf(1.0 - sp.pos.distance_to(sp.to) / sp.far, 0.0, 1.0))
 			if t == _rap:
 				var lift := _rap_lift()
 				at.y -= lift * RAP_RISE * _unit
@@ -956,6 +1031,37 @@ func _draw() -> void:
 			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(s * across, s), 0.0, at))
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
+
+## How far a tile at rest is off its place just now, down the screen: the
+## boneyard's next beckoning, a hand's last tile, a hand passing, the other
+## side turning its tiles over in thought, the player's sinking.
+func _alive(t: int, sp: Sprite) -> float:
+	if Motion.reduce or sp.fly or still:
+		return 0.0
+	var y := 0.0
+	if sp.zone == Zone.STOCK:
+		if _must_draw and interactive and not rules.stock.is_empty() and t == rules.stock[rules.stock.size() - 1]:
+			y += Motion.hop_lift(fposmod(_t, BECKON), -8.0)
+		return y
+	if sp.zone != Zone.MINE and sp.zone != Zone.THEIRS:
+		return y
+	var since := _t - _knock_at
+	if sp.zone == _knock_zone and since < KNOCK_HOP * 2.0:
+		y += KNOCK_PX * absf(sin(PI * since / KNOCK_HOP))
+	if rules.hand_over:
+		if sp.zone == Zone.MINE:
+			y -= Motion.hop_lift(_t - _sigh_at, -SIGH_PX, SIGH_TIME)
+		return y
+	if sp.zone == Zone.THEIRS:
+		var theirs: PackedInt32Array = rules.hands[1 - player]
+		if theirs.size() == 1:
+			y += Motion.hop_lift(fposmod(_t, LAST_EVERY), -7.0)
+		elif thinking and theirs.size() > 1:
+			var beat := (_t - _think_at) / MULL
+			# a different tile each time, never the one just put back
+			if theirs[(int(beat) * 3 + int(beat) / 2) % theirs.size()] == t:
+				y += Motion.hop_lift(fposmod(beat, 1.0) * MULL, MULL_PX, MULL * 0.8)
+	return y
 
 ## The mesh of a tile lying the way `o` says, -1 for a back.
 func _mesh(tile: int, o: int) -> ArrayMesh:
@@ -1135,6 +1241,15 @@ func _build_over() -> ArrayMesh:
 			var at := cup + Vector2(sin(_t * 0.9 + i * 2.1) * 7.0 * u, -8.0 - 46.0 * u)
 			Scenery.soft_disc(b, at, 11.0 + 12.0 * u, 11.0 + 12.0 * u, Color(1, 1, 1, 0.34 * sin(PI * u)))
 		_light_kiss(b)
+		_light_last(b)
+		var rippled := (_t - _ripple_at) / RIPPLE_TIME
+		if rippled >= 0.0 and rippled < 1.0:
+			# the tea shaken: two rings out to the cup's side
+			for i in 2:
+				var u := rippled - 0.25 * i
+				if u > 0.0:
+					b.stroke(Face.Builder.ring(cup, 22.0 * (0.15 + 0.85 * u), 22.0 * (0.15 + 0.85 * u)), 2.0,
+						Color(TEA_LIT, _ripple * (1.0 - u)), true)
 	if _picked >= 0 and interactive:
 		var sp := _sprites[_picked]
 		_frame(b, sp.pos, _half_size(sp.o) * H * sp.s, 3.0, 6.0, HALO)
@@ -1198,6 +1313,21 @@ func _light_kiss(b: Face.Builder) -> void:
 	if pop > 1.0:
 		for h: Dictionary in _kiss_halves:
 			_pips(b, h.c, h.n, h.upright, _unit / H, pop)
+
+## A hand down to its last tile: brass light breathing under the eye.
+func _light_last(b: Face.Builder) -> void:
+	if rules.hand_over:
+		return
+	for side in 2:
+		var hand: PackedInt32Array = rules.hands[side]
+		if hand.size() != 1 or hand[0] == _drag:
+			continue
+		var sp := _sprites[hand[0]]
+		if sp.fly:
+			continue
+		var breath := 0.5 + 0.5 * sin(_t * 3.0)
+		var r := H * sp.s * (1.5 + 0.2 * breath)
+		Scenery.soft_disc(b, sp.pos, r * 0.75, r, Color(BRASS.lightened(0.3), 0.16 + 0.14 * breath))
 
 ## A frame round the boneyard's tile that would be drawn.
 func _light_stock(b: Face.Builder, col: Color, beat: float) -> void:
