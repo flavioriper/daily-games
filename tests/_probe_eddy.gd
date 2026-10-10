@@ -66,12 +66,13 @@ func _water() -> void:
 	# hurried straight over the same leaf
 	for lv: int in [1, 5, 10]:
 		s = _bare(lv)
-		s.pos = Vector2(40.0, s.h * 0.5)
+		s.pos = Vector2(60.0, s.h * 0.5)
+		s.vel = Vector2.RIGHT * Sim.SPEED
 		leaf = s.put(Sim.Kind.LEAF, Vector2(150.0, s.h * 0.5 + s.core() * 0.3))
 		leaf.drift = Vector2.ZERO
 		var from: Vector2 = leaf.pos
 		s.steer(Vector2.RIGHT)
-		tally = _steps(s, 1.6)
+		tally = _steps(s, 180.0 / Sim.SPEED)
 		s.steer(Vector2.ZERO)
 		var moved := from.distance_to(leaf.pos) if s.things.size() > 0 else -1.0
 		_check("level %d, flat out over a leaf: not taken (moved %.1f)" % [lv, moved], int(tally.get("catch", 0)) == 0 and s.things.size() == 1)

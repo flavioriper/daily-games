@@ -67,6 +67,11 @@ that area**, and add new history there rather than here.
   Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
   Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop). The spec names the original once, to
   forbid it.
+- **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
+  screen should fit everything, just like the factory does, it's gonna be a
+  pattern from now on"): the field is laid full rect, edge to edge, and
+  the top bar, plates and controls lie over it, as `factory/screen.gd` and
+  `arcade/eddy_screen.gd` do. No paper page with the game in a frame.
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,

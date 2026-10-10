@@ -1,10 +1,15 @@
 extends Control
 
 ## Eddy: the tenth game on the Arcade tab, a whirlpool steered about a pond
-## (spec docs/superpowers/specs/2026-10-10-arcade-eddy-design.md). The flat
-## boards' top bar (back, the title in ink, restart, settings), a paper row
-## with the score, the best and the whirlpool's level, the pond in a wooden
-## frame, and under it the pad the thumb steers by.
+## (spec docs/superpowers/specs/2026-10-10-arcade-eddy-design.md). **The
+## pond is the whole screen**, edge to edge, as the Factory's land is (the
+## user, 2026-10-10: "the screen should fit everything, just like the
+## factory does, it's gonna be a pattern from now on"): no page and no
+## frame. Over it lie the flat boards' top bar (back, the title in ink,
+## restart, settings), a paper row with the score, the best and the
+## whirlpool's level, and at the foot the pad the thumb steers by. The
+## water under the plates and under the pad is the sim's two bands, where
+## nothing floats and the whirlpool does not go.
 ##
 ## Play: the pad's knob is leaned and the whirlpool goes that way, faster
 ## the further it is leaned. What floats is drawn in by the water alone
@@ -31,7 +36,6 @@ const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 ## What the phone knocks for (docs/agents/haptics.md). The events that share
@@ -51,7 +55,6 @@ const MARGIN := 40
 const GAP := 20
 const HUD_H := 110.0
 const FRAME := 16
-const BACKDROP_BLEED := 90.0
 ## The strip the pad sits in, the pad's half-width in it, how far the knob
 ## travels from the middle, and the lean under which the knob is at rest.
 const PAD_H := 250.0
@@ -88,7 +91,6 @@ var tutor: RefCounted
 var field: Control
 var pad: Control
 var _fx: Node2D
-var _backdrop: ColorRect
 var _margins: MarginContainer
 var _score_l: Label
 var _best_l: Label
@@ -123,6 +125,7 @@ var _held := -1
 ## The whirlpool as drawn: its core eased to the sim's, and how far its
 ## mouth and its streaks have turned.
 var _core := Sim.CORE
+var _calm := 1.0
 var _turn := 0.0
 var _turn_far := 0.0
 ## Rings on the water, in pond units: {pos, t, life, r, col}.
@@ -166,17 +169,13 @@ func _notification(what: int) -> void:
 # --- building ---
 
 func _build() -> void:
-	var page := ColorRect.new()
-	page.color = Pal.PAPER
-	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(page)
-	_backdrop = Vistas.board_plate(GAME, Pal.LEAF_DEEP)
-	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(_backdrop)
+	var water := _build_field()
+	water.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(water)
 
 	_margins = MarginContainer.new()
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_margins)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", GAP)
@@ -190,16 +189,20 @@ func _build() -> void:
 		_pause(true)
 		settings_sheet.open())
 	col.add_child(top_bar)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_build_hud())
-	col.add_child(_build_frame())
+	var open := Control.new()
+	open.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	open.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(open)
 	col.add_child(_build_pad())
 	_rw = Rewards.new()
 	add_child(_rw)
 	_apply_insets()
 
-## The wooden frame with the pond in it: the field, the two lines of
-## lettering over it and the effects. The tutorial's small pond
-## (ui/hud/eddy_tutorial_diagram.gd) is this, the pad and the plates.
+## A wooden frame with the pond in it: the tutorial's small pond
+## (ui/hud/eddy_tutorial_diagram.gd) is this, the pad and the plates. The
+## screen itself has no frame.
 func _build_frame() -> PanelContainer:
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
@@ -214,13 +217,17 @@ func _build_frame() -> PanelContainer:
 	box.shadow_size = 10
 	box.shadow_offset = Vector2(0, 6)
 	frame.add_theme_stylebox_override("panel", box)
+	frame.add_child(_build_field())
+	return frame
+
+## The pond: the field, the two lines of lettering over it and the effects.
+func _build_field() -> Control:
 	field = Control.new()
 	field.name = "Field"
 	field.clip_contents = true
 	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
-	frame.add_child(field)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
@@ -249,10 +256,10 @@ func _build_frame() -> PanelContainer:
 	over.add_child(_sub)
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
-	return frame
+	return field
 
-## The strip under the pond with the pad in its middle, where either thumb
-## reaches it and neither hides the water.
+## The strip at the pond's foot with the pad in its middle, where either
+## thumb reaches it and neither hides the water that is played on.
 func _build_pad() -> Control:
 	pad = Control.new()
 	pad.name = "Pad"
@@ -299,8 +306,19 @@ func _apply_insets() -> void:
 	_margins.add_theme_constant_override("margin_right", MARGIN)
 	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + BACKDROP_BLEED
-	Vistas.set_top_pad(_backdrop, insets.x)
+	_layout_field()
+
+## The pond's two bands in the field's pixels: what the top bar and the
+## plates cover, and what the pad's strip does. None on a tutorial page.
+func _bands() -> Vector2:
+	var insets := SafeArea.insets(self)
+	return Vector2(MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP, MARGIN + insets.y + PAD_H)
+
+## The same in pond units, for a field `s` pixels.
+func _bands_units() -> Vector2:
+	if field == null or field.size.x <= 0.0:
+		return Vector2.ZERO
+	return _bands() / (field.size.x / Sim.W * _zoom())
 
 ## The pond is as wide as the room and as tall as the room makes it: a run
 ## not yet begun takes the room's shape (what floats is kept and brought
@@ -310,10 +328,12 @@ func _layout_field() -> void:
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
 	var tall := _tall_units()
+	var bands := _bands_units()
 	# the room changing under a run not yet begun (the ad banner coming up a
 	# second after the screen) moves the bank, never deals the pond again
-	if sim != null and sim.phase == Sim.Phase.READY and sim.score == 0 and absf(sim.h - tall) > 1.0:
-		sim.fit(tall)
+	if sim != null and sim.phase == Sim.Phase.READY and sim.score == 0 \
+			and (absf(sim.h - tall) > 1.0 or absf(sim.top - bands.x) > 1.0 or absf(sim.foot - bands.y) > 1.0):
+		sim.fit(tall, bands.x, bands.y)
 	var h: float = sim.h if sim != null else tall
 	_u = minf(s.x / Sim.W, s.y / h) * _zoom()
 	var size_px := Vector2(Sim.W, h) * _u
@@ -328,14 +348,14 @@ func _place_banner() -> void:
 	box.size.x = field.size.x * 0.86
 	box.reset_size()
 	box.size.x = field.size.x * 0.86
-	box.position = Vector2(field.size.x * 0.07, field.size.y * 0.16)
+	box.position = Vector2(field.size.x * 0.07, _bands().x + (field.size.y - _bands().x - _bands().y) * 0.14)
 	box.pivot_offset = box.size * 0.5
 
 ## How tall a pond the field holds, in units, at Sim.W across.
 func _tall_units() -> float:
 	if field == null or field.size.x <= 0.0 or field.size.y <= 0.0:
 		return 360.0
-	return clampf(field.size.y / (field.size.x / Sim.W), 200.0, 520.0)
+	return clampf(field.size.y / (field.size.x / Sim.W), 200.0, 760.0)
 
 ## How much closer than the whole pond the field looks: not at all here; a
 ## tutorial page looks at its middle.
@@ -349,7 +369,8 @@ func px(p: Vector2) -> Vector2:
 # --- the game ---
 
 func _fresh_sim() -> void:
-	sim = Sim.new(-1, _tall_units())
+	var bands := _bands_units()
+	sim = Sim.new(-1, _tall_units(), bands.x, bands.y)
 	Boosters.apply(GAME, sim, _boosts)
 	_core = sim.core()
 	_shown_level = -1
@@ -458,9 +479,10 @@ func _animate(delta: float) -> void:
 		bit.t += delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
 	_core = lerpf(_core, sim.core(), minf(1.0, delta * 5.0))
+	_calm = lerpf(_calm, sim.calm(), minf(1.0, delta * 6.0))
 	# the mouth turns as the core's water does, the streaks as the water two
 	# cores out: a quarter as fast
-	var w: float = Sim.turn_of(sim.level) / sim.core() * sim.strength()
+	var w: float = Sim.turn_of(sim.level) / sim.core() * sim.strength() * (0.4 + 0.6 * _calm)
 	if Motion.reduce:
 		w *= 0.35
 	_turn += w * delta
@@ -706,7 +728,8 @@ func _draw_field() -> void:
 		if not Motion.reduce and _clock - _level_at < 0.5:
 			swell += 0.16 * sin((_clock - _level_at) / 0.5 * PI)
 		var sc := _core * _u / CORE_PX * swell * (0.5 + 0.5 * live)
-		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
+		# hurried, it has lost its pull: the streaks round it thin away
+		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live * _calm))
 		field.draw_mesh(Art.funnel(CORE_PX), null, Transform2D(_turn, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
 	for th: Dictionary in sinking:
 		var k := clampf(float(th.sink) / float(Sim.KINDS[th.kind].sink), 0.0, 1.0)
@@ -735,7 +758,8 @@ func bar_into(b: Face.Builder) -> void:
 	var s := field.size
 	var w := minf(s.x * 0.62, 420.0)
 	var tall := clampf(s.y * 0.028, 12.0, 22.0)
-	var at := Vector2((s.x - w) * 0.5, maxf(_o.y, 0.0) + Art.RIM * _u + tall * 0.9)
+	var under := _bands().x
+	var at := Vector2((s.x - w) * 0.5, (under + tall * 0.5) if under > 0.0 else (maxf(_o.y, 0.0) + Art.RIM * _u + tall * 0.9))
 	var part: float = clampf(sim.spin / sim.spin_full, 0.0, 1.0)
 	var low: bool = part <= Sim.LOW
 	if not Motion.reduce and _clock - _level_at < 0.3:

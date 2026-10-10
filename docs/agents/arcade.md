@@ -3048,8 +3048,8 @@ penalties. Its "furthest" is the most cards home.
 about a pond by a fixed round pad, after a browser game the spec names once
 to forbid; **it is called Eddy and nothing else**. It starts small and
 grows through ten levels on what it swallows: leaves, petals and acorns,
-and from level 5 the toys (ducks, then boats, then balls). A spin of 40
-seconds runs down and every level gives 6 back. Its "furthest" is the
+and from level 5 the toys (ducks, then boats, then balls). A spin of 50
+seconds runs down and every level gives 7 back. Its "furthest" is the
 biggest whirlpool.
 
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed
@@ -3069,14 +3069,29 @@ biggest whirlpool.
   over the radius, and the catch asks only that the thing goes round with
   the water (`SLIP`, tangential) and is not being run over (`RUSH`,
   radial) inside `MOUTH` of the core.
+- **The pond is the whole screen** (the user, 2026-10-10, after the first
+  build's page and wooden frame: "the screen should fit everything, just
+  like the factory does, it's gonna be a pattern from now on"). The field
+  is laid full rect first and the top bar, the plates and the pad lie over
+  it in the margins. What they cover is the sim's two bands (`top`,
+  `foot`, from `_bands()`: constants and the safe area, not read off the
+  containers), water where nothing floats and the whirlpool does not go.
+  `_build_frame` is the tutorial's alone.
+- **It is slow, and a hurry costs its pull** (the same message: "speed is
+  too fast, it should be way slower to move"). `SPEED` 60 (it was 150),
+  `ANSWER` 0.3. At 60 a whirlpool crossing a leaf flat out took it, so
+  `calm()` takes the swirl down to a fifth and the core's water stays
+  behind above a third of its fastest, and `RUSH` is 14. The run was paced
+  again for the slower travel: spin 50 and 7 back, growing 6 and 6 more a
+  level, 44 small things.
 - **One Control draws the pond** (`_draw_field`): the water and bank are a
   still mesh built on resize; the whirlpool is `Art.funnel` and
   `Art.streaks`, built once for a core of `CORE_PX` and scaled, turned by
   the transform; each thing afloat is one cached mesh with its halo baked
   in; the spin's bar and the rings are one live mesh. **The pad is a
   second Control** (`_draw_pad`): the growing's ring, the base, the knob.
-  94 draw calls waiting, 87 in play, 99 to 101 grown, 126 to 131 with the
-  end card, 321 on the tab (810x1440, both drivers).
+  101 draw calls waiting, 94 in play, 100 to 112 grown, 137 to 151 with
+  the end card, 321 on the tab (810x1440, both drivers).
 - **The pad takes ScreenTouch, ScreenDrag and the mouse** (`_on_pad_input`,
   `_held` is the finger's index); the harness holds a real touch on it
   through the viewport. `_lean()` is what the sim is handed, so the

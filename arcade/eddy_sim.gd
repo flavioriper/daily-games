@@ -25,9 +25,11 @@ enum Kind { LEAF, PETAL, ACORN, DUCK, BOAT, BALL }
 
 const DT := 1.0 / 60.0
 const W := 300.0
-## The whirlpool's fastest travel and how quickly it answers the pad.
-const SPEED := 150.0
-const ANSWER := 0.16
+## The whirlpool's fastest travel and how quickly it answers the pad. It
+## is slow on purpose (the user, 2026-10-10: "speed is too fast, it should
+## be way slower to move"; it was 150): five seconds across the pond.
+const SPEED := 60.0
+const ANSWER := 0.3
 ## It grows through these levels.
 const LEVELS := 10
 ## The core's radius at level 1 and what a level adds.
@@ -48,13 +50,15 @@ const GRIP := 1.4
 ## whirlpool no faster than RUSH.
 const MOUTH := 0.95
 const SLIP := 25.0
-const RUSH := 30.0
+const RUSH := 14.0
+## The part of its pull a whirlpool keeps travelling flat out.
+const HASTE := 0.2
 ## What is swallowed to leave level 1, and how much more each level asks.
 const GROW := 6
-const GROW_STEP := 9
+const GROW_STEP := 6
 ## The spin: seconds of turning in a run, and what a level gives back.
-const SPIN := 40.0
-const SPIN_BACK := 6.0
+const SPIN := 50.0
+const SPIN_BACK := 7.0
 ## Under this part of the spin the run says so, once.
 const LOW := 0.25
 ## The whirlpool unwinding at the end.
@@ -76,7 +80,7 @@ const KINDS := [
 	{"tier": 2, "r": 15.0, "tau": 2.2, "value": 20, "mass": 10, "sink": 1.5},
 ]
 ## How many of each tier the pond keeps afloat, and the most let in a second.
-const SMALL := 34
+const SMALL := 44
 const SMALL_STEP := 2
 const BIG := 4
 const BIG_STEP := 0.6
@@ -96,6 +100,11 @@ var phase_t := 0.0
 ## Seconds of play.
 var t := 0.0
 var h := 360.0
+## The bands of the pond's top and foot that lie under the screen's plates
+## and its pad: water like the rest, where nothing floats and the whirlpool
+## does not go.
+var top := 0.0
+var foot := 0.0
 var pos := Vector2.ZERO
 var vel := Vector2.ZERO
 ## The pad's lean, a length of 0 to 1.
@@ -119,13 +128,15 @@ var _let := 0.0
 var _low_said := false
 var _big_said := -10.0
 
-func _init(seed_value := -1, tall := 360.0) -> void:
+func _init(seed_value := -1, tall := 360.0, over := 0.0, under := 0.0) -> void:
 	if seed_value >= 0:
 		rng.seed = seed_value
 	else:
 		rng.randomize()
 	h = tall
-	pos = Vector2(W * 0.5, h * 0.5)
+	top = over
+	foot = under
+	pos = Vector2(W * 0.5, (top + h - foot) * 0.5)
 	_stock_first()
 	events.append({"type": "ready"})
 
@@ -170,6 +181,13 @@ func strength() -> float:
 		return clampf(1.0 - phase_t / DRAIN_T, 0.0, 1.0)
 	return 0.0 if phase == Phase.OVER else 1.0
 
+## How much of its pull the whirlpool keeps at the speed it travels: all
+## of it up to a third of its fastest, HASTE of it flat out. A whirlpool in
+## a hurry has not the strength to draw things in, nor takes the water of
+## its core along with it.
+func calm() -> float:
+	return lerpf(1.0, HASTE, smoothstep(0.33, 0.85, vel.length() / SPEED))
+
 ## The pad's lean. The first one of a run sets the spin running.
 func steer(dir: Vector2) -> void:
 	lean = dir.limit_length(1.0)
@@ -186,7 +204,7 @@ func swirl(p: Vector2) -> Vector2:
 	if r >= far or r < 0.001:
 		return Vector2.ZERO
 	var rc := core()
-	var vt := turn_of(level) * (r / rc if r < rc else rc / r) * strength()
+	var vt := turn_of(level) * (r / rc if r < rc else rc / r) * strength() * calm()
 	var n := d / r
 	var fade := 1.0 - smoothstep(far * 0.55, far, r)
 	return (Vector2(-n.y, n.x) * vt - n * vt * INFLOW) * fade
@@ -195,7 +213,7 @@ func swirl(p: Vector2) -> Vector2:
 ## shares: all of it in the core, none two cores out.
 func carry(r: float) -> float:
 	var rc := core()
-	return 1.0 - smoothstep(rc, rc * 2.0, r)
+	return (1.0 - smoothstep(rc, rc * 2.0, r)) * (1.0 - smoothstep(0.33, 0.85, vel.length() / SPEED))
 
 func step() -> void:
 	phase_t += DT
@@ -231,8 +249,8 @@ func step() -> void:
 func _move() -> void:
 	vel = vel.lerp(lean * SPEED, 1.0 - exp(-DT / ANSWER))
 	pos += vel * DT
-	var lo := Vector2(BANK, BANK)
-	var hi := Vector2(W - BANK, h - BANK)
+	var lo := Vector2(BANK, top + BANK)
+	var hi := Vector2(W - BANK, h - foot - BANK)
 	if pos.x < lo.x or pos.x > hi.x:
 		vel.x = 0.0
 	if pos.y < lo.y or pos.y > hi.y:
@@ -290,8 +308,8 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		p.x = clampf(p.x, lo, W - lo)
 		v.x = -v.x * 0.3
 		th.drift = Vector2(-own.x, own.y)
-	if p.y < lo or p.y > h - lo:
-		p.y = clampf(p.y, lo, h - lo)
+	if p.y < top + lo or p.y > h - foot - lo:
+		p.y = clampf(p.y, top + lo, h - foot - lo)
 		v.y = -v.y * 0.3
 		th.drift = Vector2(th.drift.x, -own.y)
 	th.pos = p
@@ -407,7 +425,7 @@ func _stock_first() -> void:
 func _free_place(from: Vector2, clear: float, apart: float) -> Vector2:
 	var p := Vector2.ZERO
 	for attempt in 30:
-		p = Vector2(rng.randf_range(BANK + 16.0, W - BANK - 16.0), rng.randf_range(BANK + 16.0, h - BANK - 16.0))
+		p = Vector2(rng.randf_range(BANK + 16.0, W - BANK - 16.0), rng.randf_range(top + BANK + 16.0, h - foot - BANK - 16.0))
 		if p.distance_to(from) < clear:
 			continue
 		var ok := true
@@ -448,28 +466,33 @@ func _restock() -> void:
 	for attempt in 3:
 		var side := rng.randi() % 4
 		var along := rng.randf()
-		var p := Vector2(BANK, lerpf(BANK, h - BANK, along))
+		var y0 := top + BANK
+		var y1 := h - foot - BANK
+		var p := Vector2(BANK, lerpf(y0, y1, along))
 		match side:
-			1: p = Vector2(W - BANK, lerpf(BANK, h - BANK, along))
-			2: p = Vector2(lerpf(BANK, W - BANK, along), BANK)
-			3: p = Vector2(lerpf(BANK, W - BANK, along), h - BANK)
+			1: p = Vector2(W - BANK, lerpf(y0, y1, along))
+			2: p = Vector2(lerpf(BANK, W - BANK, along), y0)
+			3: p = Vector2(lerpf(BANK, W - BANK, along), y1)
 		if p.distance_to(pos) > best:
 			best = p.distance_to(pos)
 			at = p
-	var aim := Vector2(rng.randf_range(W * 0.2, W * 0.8), rng.randf_range(h * 0.2, h * 0.8))
+	var aim := Vector2(rng.randf_range(W * 0.2, W * 0.8), lerpf(top, h - foot, rng.randf_range(0.2, 0.8)))
 	var th := put(kind, at)
 	th.drift = (aim - at).normalized() * PUSH
 	th.fresh = FRESH
 
-## The pond made `tall`, as the screen's room changes under a run: the
-## whirlpool and everything afloat are kept, and brought inside the banks.
-func fit(tall: float) -> void:
+## The pond made `tall` with its two bands, as the screen's room changes
+## under a run: the whirlpool and everything afloat are kept, and brought
+## inside the banks.
+func fit(tall: float, over := 0.0, under := 0.0) -> void:
 	h = tall
-	pos = pos.clamp(Vector2(BANK, BANK), Vector2(W - BANK, h - BANK))
+	top = over
+	foot = under
+	pos = pos.clamp(Vector2(BANK, top + BANK), Vector2(W - BANK, h - foot - BANK))
 	for th: Dictionary in things:
 		if float(th.sink) < 0.0:
 			var lo := BANK + float(KINDS[th.kind].r)
-			th.pos = (th.pos as Vector2).clamp(Vector2(lo, lo), Vector2(W - lo, h - lo))
+			th.pos = (th.pos as Vector2).clamp(Vector2(lo, top + lo), Vector2(W - lo, h - foot - lo))
 
 # --- boosters (arcade/boosters.gd) ---
 

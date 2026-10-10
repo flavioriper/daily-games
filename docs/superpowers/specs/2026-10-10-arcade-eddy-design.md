@@ -44,7 +44,8 @@ a real water, and a fixed round pad.
 ## 3. The water
 
 `arcade/eddy_sim.gd`, pure data, a pond 300 units wide and as tall as the
-screen makes it (374 on the phone's shape), stepped at 1/60 s.
+screen (533 on the phone's shape, of which the bands under the plates and
+under the pad are water nothing floats on), stepped at 1/60 s.
 
 - **The whirlpool is a vortex with a core** (a Rankine vortex): inside the
   core the water turns as one piece, outside it the turning falls off as
@@ -58,11 +59,15 @@ screen makes it (374 on the phone's shape), stepped at 1/60 s.
   own going round asks. (Without the press, drag alone flings things out
   like a stone on a string; with a press owed to the water's speed rather
   than the thing's own, a whirlpool hurried past bent a still leaf in.)
-- **Hurry takes nothing.** The whirlpool travels at up to 150 a second; a
-  leaf it crosses flat out is in the core for a tenth of a second, is
-  tugged 17 to 34 units and left turning. A thing goes down only once it
-  is in the mouth, goes round with the water there (`SLIP`) and is not
-  being run over (`RUSH`).
+- **Hurry takes nothing.** The whirlpool travels at up to 60 a second
+  (five seconds across the pond; it was 150 until the user's first play:
+  "speed is too fast, it should be way slower to move"). **In a hurry it
+  loses its pull** (`calm()`: all of it up to a third of its fastest, a
+  fifth flat out) and takes none of its core's water along, so a leaf it
+  crosses flat out is tugged 2 to 21 units and left. A thing goes down
+  only once it is in the mouth, goes round with the water there (`SLIP`)
+  and is not being run over (`RUSH`). The streaks round the mouth thin
+  away as it hurries, so the lost pull is seen.
 - **A small whirlpool cannot grip a big thing.** A thing feels the water
   as the cube of (the core's radius over 1.4 of its own), up to all of it:
   a duck feels 9% at level 1, 24% at 2, 50% at 3, 89% at 4 and all of it
@@ -75,29 +80,32 @@ screen makes it (374 on the phone's shape), stepped at 1/60 s.
 Two tiers, as the brief asked. **Tier 1**: leaves (three colours), petals
 (three) and acorns, 1, 1 and 2 points, each 1 toward the growing. **Tier
 2**: rubber ducks, sailing boats and beach balls, 10, 15 and 20 points and
-6, 8 and 10 toward the growing. The pond keeps 34 small things afloat (two
+6, 8 and 10 toward the growing. The pond keeps 44 small things afloat (two
 more a level) and 4 toys (more with the levels), new ones floating in from
 the banks.
 
 **Growing.** Ten levels. The core is 7 units at level 1 and 2.6 more a
 level (30.4 at ten), the turning 60 at the core's edge and 8 more a level.
-Level 1 asks 6 swallowed and each level 9 more.
+Level 1 asks 6 swallowed and each level 6 more.
 
-**The spin** is the reference's battery: 40 seconds of turning, a bar
-across the top of the pond, amber and said ("Winding down!") under a
-quarter. **Every level gives 6 seconds back.** At nothing the whirlpool
+**The spin** is the reference's battery: 50 seconds of turning, a bar
+under the plates, amber and said ("Winding down!") under a quarter.
+**Every level gives 7 seconds back.** At nothing the whirlpool
 unwinds over 1.4 s and the run is over.
 
 ## 4. The screen and the pad
 
-`arcade/eddy_screen.gd`: the top bar, three plates (score, best, the
-whirlpool's level of ten), the pond in its wooden frame, and under it a
-strip with **the pad in its middle**: a round of pale wood 216 pixels
+`arcade/eddy_screen.gd`. **The pond is the whole screen, edge to edge**,
+as the Factory's land is (the user, 2026-10-10: "the screen should fit
+everything, just like the factory does, it's gonna be a pattern from now
+on"; the first build had a paper page and the pond in a wooden frame).
+Over the water lie the top bar, three plates (score, best, the whirlpool's
+level of ten) and, at the foot, **the pad in the middle**: a round of pale wood 216 pixels
 across with a knob of the pond's water. The knob goes under the finger and
 no further than 70 pixels from the middle; the whirlpool goes the way it
 leans, faster the further (nothing under 12% of the travel), and stops when
-it is let go. Under the pond and in the middle, either thumb reaches it and
-neither hides the water. A ring round the pad fills toward the next level.
+it is let go. At the foot and in the middle, either thumb reaches it and
+neither hides the water that is played on. A ring round the pad fills toward the next level.
 
 The pond is drawn from straight above (`arcade/eddy_art.gd`): the light
 lying on the water, a grassy bank all round, lily pads, stones and reeds in
@@ -135,13 +143,13 @@ low, bad as the whirlpool unwinds, the win on a new best
 
 - `tests/_probe_eddy.gd` (headless), 0 failed: a still whirlpool takes a
   leaf three cores off; flat out straight over a leaf at levels 1, 5 and
-  10 it is not taken (moved 17, 34 and 22 units); at a walk it is; a duck
+  10 it is not taken (moved 2, 9 and 21 units); at a walk it is; a duck
   two cores from a whirlpool of level 1, 2 and 4 stays afloat and at 5
   goes down; beside a level 1 whirlpool she moves 6 units in three
-  seconds. A patient bot scores 679 / 846 / 967 and always reaches level
-  10; a slower one (it looks again twice a second and leans 60%) 120 /
-  149 / 211 and level 5; one that never slows 0 / 2 / 5 and level 1.
-  Started at level 8, patience still makes 712 to hurry's 102.
+  seconds. A patient bot scores 362 / 537 / 699 and reaches level 9 or
+  10 in 112 seconds; a slower one (it looks again twice a second and leans
+  60%) 65 / 95 / 155 and level 5; one that never slows 0 / 1 / 4 and level
+  1. Started at level 8, patience still makes 503 to hurry's 22.
 - A still whirlpool takes every kind its mouth takes from 0.3 to 4 cores
   off at every level, in 0.7 to 14 seconds (a scratch script; the first
   two versions of the press left things orbiting for ever at levels 2 and
@@ -150,10 +158,10 @@ low, bad as the whirlpool unwinds, the win on a new best
 - `tests/_shot_eddy.gd` through the real menu at 810x1440, on the desktop
   driver (en and pt), on `opengl3_angle` (es) and under reduce motion: a
   ScreenTouch held on the pad through the viewport sets the whirlpool off
-  and moves it; 94 draw calls waiting, 87 in play, 100 at a level, 99
-  grown with toys going down, 126 to 131 with the end card, 321 on the tab
+  and moves it; 101 draw calls waiting, 94 in play, 107 to 109 at a level, 100
+  to 112 grown with toys going down, 137 to 151 with the end card, 321 on the tab
   with ten cards (two a row, five rows).
-- `tests/_shot_howto_screen.gd -- eddy`: six pages, 138 to 148 draw calls,
+- `tests/_shot_howto_screen.gd -- eddy`: six pages, 132 to 145 draw calls,
   each page's frames read side by side.
 - `tests/_probe_chance.gd` and `tests/_probe_wallet.gd` with Eddy added,
   0 failed (the first's overall limit raised from 90 seconds: nine games
@@ -162,20 +170,22 @@ low, bad as the whirlpool unwinds, the win on a new best
 ## 8. Calls that are mine, unconfirmed
 
 1. The name, and the pond with its bank.
-2. The reference's battery kept, as the spin: 40 seconds, 6 back a level.
+2. The reference's battery kept, as the spin: 50 seconds, 7 back a level.
    The brief did not ask for a clock; without one a run has no end.
 3. Its upgrades bought with points between levels became the two boosters
    bought with gold; nothing is bought inside a run.
 4. Two tiers read as two sizes of thing (leaves, petals, acorns; ducks,
    boats, balls), not two tiers of upgrade.
-5. The pad under the pond in the middle, not in a corner over the water.
+5. The pad at the pond's foot in the middle, not in a corner; the water
+   under it and under the plates is out of play.
 6. Ducks from level 5, boats 6, balls 7; a toy the mouth cannot take is
    still nudged, more with each level.
 7. Things pass through one another: nothing afloat collides.
 8. No sound of water and none that follows the spin.
 9. Acorns among the small things (the brief names leaves).
-10. A grown whirlpool still takes nothing flat out (`RUSH` 30); a real one
-    that size might.
+10. A grown whirlpool still takes nothing flat out (`RUSH` 14, `HASTE`
+    0.2); a real one that size might. How slow is slow enough: 60 a second
+    is my reading of "way slower".
 
 ## 9. Not done
 

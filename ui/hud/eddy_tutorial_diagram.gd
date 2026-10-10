@@ -11,7 +11,7 @@ extends Control
 ## the whirlpool has grown, exactly as in the pond. `lesson` picks the page
 ## (set before it enters the tree):
 ##
-## - STEER: the whirlpool taken round a square, slowly and then quickly.
+## - STEER: the whirlpool taken round a square, at a drift and then flat out.
 ## - SLOW: flat out across three leaves, which stay; then back at a walk,
 ##   and they go down.
 ## - GROW: beside a duck too big for it; two leaves make the level, and the
@@ -154,6 +154,9 @@ class Pond extends "res://arcade/eddy_screen.gd":
 	func _zoom() -> float:
 		return CLOSE
 
+	func _bands() -> Vector2:
+		return Vector2.ZERO
+
 	func _tall_units() -> float:
 		return 300.0
 
@@ -255,18 +258,19 @@ func _reset() -> void:
 			# round a square at a drift, then again in a hurry
 			for row: Array in [[Sim.Kind.LEAF, Vector2(-52, -34), 0], [Sim.Kind.PETAL, Vector2(54, 30), 2], [Sim.Kind.LEAF, Vector2(50, -36), 1]]:
 				game.lay(row[0], row[1], row[2])
-			game.plan = [[0.6, null, 0.0], [2.0, Vector2(36, 0), 0.35], [3.2, Vector2(36, 26), 0.35], [4.8, Vector2(-36, 26), 0.35],
-				[5.6, null, 0.0], [6.2, Vector2(-36, -22), 1.0], [6.9, Vector2(30, -22), 1.0], [7.5, Vector2(0, 0), 1.0], [8.6, null, 0.0]]
-			_length = 8.8
-			_still_at = 2.6
+			game.plan = [[0.6, null, 0.0], [2.6, Vector2(36, 0), 0.4], [4.0, Vector2(36, 26), 0.4], [7.0, Vector2(-36, 26), 0.4],
+				[7.8, null, 0.0], [9.0, Vector2(-36, -22), 1.0], [10.4, Vector2(30, -22), 1.0], [11.2, Vector2(0, 0), 1.0], [12.2, null, 0.0]]
+			_length = 12.4
+			_still_at = 3.0
 		Lesson.SLOW:
+			# flat out across three leaves, then back for each at a walk
 			for k in 3:
 				game.lay(Sim.Kind.LEAF, Vector2(-26.0 + 26.0 * k, 4.0 if k % 2 == 0 else -5.0), k)
 			game.pos = game.mid() + Vector2(-64, 0)
-			game.plan = [[0.7, null, 0.0], [1.7, Vector2(66, 0), 1.0], [2.7, null, 0.0], [5.2, Vector2(26, 0), 0.22], [7.0, Vector2(0, 0), 0.2],
-				[9.2, Vector2(-28, 0), 0.2], [10.4, null, 0.0]]
-			_length = 10.6
-			_still_at = 4.6
+			var one: int = game.things[0].id
+			game.plan = [[0.7, null, 0.0], [3.3, Vector2(70, 0), 1.0], [4.1, null, 0.0], [9.0, one + 2, 0.3], [14.0, one + 1, 0.3], [19.0, one, 0.3]]
+			_length = 19.0
+			_still_at = 6.0
 		Lesson.GROW:
 			# beside a duck too big for it, then two leaves for the level, then
 			# the duck again (the things are numbered as they are laid)
@@ -277,8 +281,8 @@ func _reset() -> void:
 			game.lay(Sim.Kind.LEAF, Vector2(-54, -26), 0)
 			game.pos = game.mid() + Vector2(-6, -8)
 			var first: int = game.things[0].id
-			game.plan = [[0.5, null, 0.0], [3.4, first, 0.25], [8.0, first + 1, 0.5], [12.0, first + 2, 0.5], [18.0, first, 0.45]]
-			_length = 18.0
+			game.plan = [[0.5, null, 0.0], [3.4, first, 0.25], [10.0, first + 1, 0.6], [17.0, first + 2, 0.6], [26.0, first, 0.5]]
+			_length = 26.0
 			_still_at = 2.8
 		Lesson.SPIN:
 			# a short spin nearly out: one leaf makes the level and gives some
@@ -286,8 +290,8 @@ func _reset() -> void:
 			game.level = 2
 			game.grown = game.need() - 1
 			game.spin_full = 14.0
-			game.spin = 3.6
-			game.lay(Sim.Kind.LEAF, Vector2(30, 6), 2)
+			game.spin = 4.6
+			game.lay(Sim.Kind.LEAF, Vector2(20, 6), 2)
 			game.lay(Sim.Kind.PETAL, Vector2(-44, -28), 0)
 			game.lay(Sim.Kind.ACORN, Vector2(-40, 34), 0)
 			var leaf: int = game.things[0].id
@@ -307,7 +311,7 @@ func _process(_delta: float) -> void:
 	var game: Round = _pond.sim
 	if game.clock >= _length:
 		_reset()
-	elif (lesson == Lesson.GROW or lesson == Lesson.SPIN) and game.told():
+	elif lesson != Lesson.STEER and game.told():
 		# a breath after the last thing is down, or the whirlpool unwound
 		_length = minf(_length, game.clock + 1.6)
 
