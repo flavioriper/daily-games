@@ -141,3 +141,15 @@
   the user's choice: cheap ones through OpenRouter; the pair, Claude Haiku
   5.5 writing and GPT-6 Luna reviewing, is mine); the bank falling in for a short or failed night; no
   score sent to the crowd.
+- **Sounds redone against the cozy rules** (2026-10-10, measured, not
+  heard; the row is in `docs/agents/sound.md`). Three takes: `lock` a tock,
+  `pick` a lighter one, and one muffled note the verdicts, the bulb, the
+  hearts' two phrases and the day's end are written from; a page is a puff
+  of air. `right` is three quick notes up and `wrong` two, the second two
+  steps down; a heart lost, 0.35 s behind `wrong`, is two low notches and
+  no note, and so is the seal, which starts with the party. In the board
+  only this changed: `pick` and `lock` vary by 0.94 to 1.06 at random
+  (`TICK_VARY`; they were 1.0 every time). Nothing about how a day is
+  fetched, dealt or judged was touched. Still two phrases at once: a heart
+  taken back on the last question sounds `heart_back` and `solved` on one
+  frame.

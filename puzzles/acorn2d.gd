@@ -83,6 +83,9 @@ const STAMP_FROM := 1.8
 const STAMP_DROP := 0.18
 const STAMP_TILT := -0.22
 const TOAST_HOLD := 2.4
+## An answer picked and an answer locked are heard a dozen times a day, so
+## neither is the same tock twice (they were 1.0 every time).
+const TICK_VARY := Vector2(0.94, 1.06)
 const TOAST_H := 76.0
 const TOAST_PAD := 72.0
 const TOAST_RADIUS := 26.0
@@ -730,7 +733,7 @@ func pick_answer(i: int) -> void:
 		return
 	_picked = i
 	_pick_at = _now()
-	fx.cue("pick")
+	fx.cue("pick", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_busy_for(Motion.BUMP_TIME)
 	_redraw()
 	_hud_layer.queue_redraw()
@@ -793,7 +796,7 @@ func lock() -> void:
 	_toast = ""
 	checks += 1
 	moves += 1
-	fx.cue("lock")
+	fx.cue("lock", randf_range(TICK_VARY.x, TICK_VARY.y))
 	var hold := 0.0 if Motion.reduce else HOLD
 	var right := bool(res.right)
 	var place: int = state.right_place()
