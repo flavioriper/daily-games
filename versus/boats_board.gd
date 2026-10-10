@@ -81,6 +81,9 @@ const WATCH := 0.5
 const WATCH_SUNK := 0.95
 const SPLASH := 0.55
 const SWAP := 0.55
+## The cues that are notches of wood, and how far each strays at random.
+const TICK_VARY := Vector2(0.94, 1.06)
+const VARIED := ["tick", "lift", "place", "turn", "refused", "miss", "hit", "splash", "knock"]
 const LETTERS := "ABCDEFGHIJ"
 
 var pond: RefCounted
@@ -351,6 +354,9 @@ func _after(seconds: float, what: Callable) -> void:
 
 func _cue(cue_name: String, pitch := 1.0) -> void:
 	if _fx != null:
+		# The notches are never the same sound twice (they were 1.0 every time).
+		if cue_name in VARIED:
+			pitch *= randf_range(TICK_VARY.x, TICK_VARY.y)
 		_fx.cue(cue_name, pitch)
 
 func _puff(at: Vector2, colour: Color, n: int) -> void:

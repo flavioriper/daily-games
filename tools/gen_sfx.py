@@ -2921,54 +2921,103 @@ SETS = {
         "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
         "stamp":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-7,-4"),
     },
-    # Toy Boats (Versus, versus/boats_screen.gd): a folding wooden box, a
-    # pond of calm water, wooden toy boats and pebbles, as JETTY's foley. A
-    # game is a hundred throws, so everything a throw makes is dry and short
-    # with no note -- `tick` (the finger crossing a square, a boat carried a
-    # square) is the quietest thing in the set -- and the notes are kept for
-    # what happens five times a game or once: `sunk`, `glug`, `hint`, `win`,
-    # `lose`, on HEARTH_TUNE's low muffled kalimba (the user, 2026-10-09:
-    # acoustic is not enough, also low, dark, quiet, soft onset, no bells).
+    # Toy Boats (Versus, versus/boats_screen.gd). Redone 2026-10-10 against
+    # the cozy rules (docs/agents/sound.md), the forty-sixth set of the redo,
+    # with Penny Drop's below. None kept. Nothing new is water, a plop, a
+    # drip, a swish, a glug, a bubble, a latch, a creak or a pebble: a boat
+    # set down is a wooden block on felt. Three takes: `place` (the block),
+    # `lift` (a lighter button) and `hint`'s one muffled note. A game is a
+    # hundred throws, so what a throw makes is a notch or air with no note:
+    # the pebble on its way is air (Hedgehogs' gust, and its breath for the
+    # other player's), yours answered a low notch (`miss`) or two rising
+    # (`hit`), theirs a dull tock (`splash`, wide of your boats) or two
+    # falling (`knock`). `tick` is the finger crossing a square of the slate
+    # and a boat carried a square, the quietest thing in the set and still
+    # played by a phone. The notes are kept for what happens five times a
+    # game or once: `sunk` rises, `glug` (a boat of yours gone) is a small
+    # fall, `hint`, `win`, `lose`. `ready` and `fold` sound on one frame
+    # against the computer, so the first is two notches pressed down and the
+    # second air (Hedgehogs' whoosh): the box swung over.
     "boats": {
-        "enter":    ("five small wooden toy boats set down onto calm water one after another, soft little wet wooden pats, gentle, short", 1.1, -13, JETTY, "warm:6000"),
-        "lift":     ("a small wooden toy boat lifted out of calm water, one tiny soft wet drip, very short and quiet", 0.5, -16, JETTY, "warm:6000", "cut:0.25"),
-        "place":    ("a small wooden toy boat set down on calm water, one soft dull wet wooden pat, no ring, very short", 0.5, -12, JETTY, "warm:6000", "cut:0.3"),
-        "turn":     ("a small wooden toy boat turned round on calm water, one short soft wet swish, no ring, very short", 0.5, -13, JETTY, "warm:6000", "cut:0.3"),
-        "tick":     ("one fingertip tapping a wooden slate frame once, a single short soft dull wooden tick, no ring, no tone, very short and quiet", 0.5, -19, JETTY, "warm:5000", "cut:0.06"),
-        "refused":  ("a single soft dull bump of a small wooden toy against a wooden box side, muffled, no ring, no tone, very short", 0.5, -13, JETTY, "warm:5000", "cut:0.25"),
-        "ready":    ("the brass latch of a small wooden box pressed shut, one soft low wooden click, no ring, short", 0.5, -11, JETTY, "warm:6000", "cut:0.3"),
-        "fold":     ("the lid of a small wooden box swung over on its hinge and set down, a soft low wooden creak and a dull knock, short", 0.8, -12, JETTY, "warm:6000"),
-        "throw":    ("a small pebble tossed underhand, one very soft short airy whiff of a sleeve, no whistle, no tone, quiet", 0.5, -17, JETTY, "warm:5000", "cut:0.25", "ease:0.03"),
-        "lob":      ("a small pebble falling through the air, one very soft short airy whiff, no whistle, no tone, quiet", 0.5, -18, JETTY, "warm:5000", "cut:0.3", "ease:0.04"),
-        "miss":     ("one small smooth pebble dropped into calm water far away, a single soft small round plop, no ring, short", 0.6, -13, JETTY, "warm:6000", "cut:0.45"),
-        "splash":   ("one small smooth pebble dropped into calm water close by, a single soft round plop and a tiny ripple, short", 0.7, -11, JETTY, "warm:6000", "cut:0.55"),
-        "hit":      ("one small pebble knocking a hollow wooden toy boat, a single soft dull hollow wooden knock, no ring, very short", 0.5, -10, JETTY, "warm:6000", "cut:0.3"),
-        "knock":    ("a small wooden peg pressed into a hole in a wooden toy boat, one soft low dull wooden knock, no ring, very short", 0.5, -10, JETTY, "warm:5500", "cut:0.3"),
-        "sunk":     ("a hollow wooden toy boat knocked and tipping under calm water with a few soft bubbles, then two soft rising notes on a low kalimba, pleased and warm, short", 1.3, -9, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "glug":     ("a hollow wooden toy boat filling and going under calm water, a soft low glug and a few slow bubbles, then one low soft falling tongue drum note, gentle, not sad", 1.3, -11, HEARTH_TUNE, "warm:5500", "ease:0.02"),
-        "hint":     ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "win":      ("a warm short rising phrase on a low kalimba and a wooden tongue drum, five soft notes ending on a round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
-        "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        # The five boats set out: place's take, five in a row.
+        "enter":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-2,0,-2,1"),
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        # A boat set down: the block, four steps under its take to be the
+        # heavier of the two (the take sat at 820 Hz, the button at 670).
+        "place":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        # A quarter turn: lift's take, two notches close, the second three steps up.
+        "turn":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,3"),
+        # A square crossed: lift's take, one notch of the wheel two steps up.
+        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # No room, or a square already tried: lift's take, twice and falling.
+        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        # The lid pressed shut: place's take, two low notches all but together.
+        "ready":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-7,-4"),
+        # The box swung over: a whoosh of air, Hedgehogs'.
+        "fold":     ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        # A pebble on its way: yours a puff of air, Hedgehogs' gust; the
+        # other player's, coming down, its breath (its reset).
+        "throw":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "lob":      ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # Yours, wide: lift's take, one low notch.
+        "miss":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        # Theirs, wide of your boats: place's, three steps under it and duller.
+        "splash":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7"),
+        # Yours on a boat: place's take, two notches, the second four steps up.
+        "hit":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:-4,0"),
+        # Theirs on a boat of yours: place's take, two notches, the second three steps down.
+        "knock":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.1:-2,-5"),
+        # A boat of theirs gone: three quick notes up.
+        "sunk":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:5,9,12", "cut:0.7"),
+        # A boat of yours gone: two notes, the second two steps down.
+        "glug":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:8,6", "cut:0.7"),
+        # The bulb: two notes alike and a third up.
+        "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,5,9", "cut:1.0"),
+        # Six up and over.
+        "win":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
+        # Three slow ones down, small and kind.
+        "lose":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
     },
     # Penny Drop (Versus, versus/penny_screen.gd): a painted wooden rack and
-    # two rolls of pennies, as HEARTH's foley. A game is up to forty-two
-    # drops, so everything a drop makes is dry and short with no note:
-    # `drop` (the penny let go into its slot), `land` (its knock on what is
-    # below, played lower and louder the further it fell), `tick` (the finger
-    # crossing to another slot, the quietest thing in the set). The notes are
-    # kept for what happens once a game: `hint`, `win`, `lose`, `draw`, on
-    # HEARTH_TUNE's low muffled kalimba.
+    # two rolls of pennies. A game is up to forty-two drops, so everything a
+    # drop makes is dry and short with no note, and the notes are kept for
+    # what happens once a game.
     "penny": {
-        "drop":     ("one coin slipped into the slot of a wooden box, a single very soft short dry slide of metal on wood, no ring, no tone, quiet", 0.5, -15, HEARTH, "warm:5500", "cut:0.2", "ease:0.02"),
-        "land":     ("one thick coin dropped onto a wooden tray, a single soft dull low clack, muffled, no ring, no tone, very short", 0.5, -10, HEARTH, "warm:5500", "cut:0.22"),
-        "tick":     ("one fingertip tapping a wooden frame once, a single short soft dull wooden tick, no ring, no tone, very short and quiet", 0.5, -19, HEARTH, "warm:5000", "cut:0.06"),
-        "refused":  ("a coin bumping the closed wooden top of a box, a single soft dull muffled knock, no ring, no tone, very short", 0.5, -13, HEARTH, "warm:5000", "cut:0.25"),
-        "lift":     ("one coin picked up off a wooden table, a single very soft short dry scrape and lift, no ring, no tone, quiet", 0.5, -15, HEARTH, "warm:5500", "cut:0.25"),
-        "spill":    ("a handful of thick coins sliding out of a wooden box and tumbling onto a wooden table, soft dull muffled clacks slowing to a stop, no ring, short", 1.1, -12, HEARTH, "warm:5500"),
-        "hint":     ("three soft slow rising notes on a low kalimba, gentle and kind, a quiet idea", 1.0, -11, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "win":      ("a warm short rising phrase on a low kalimba and a wooden tongue drum, four soft notes climbing in a row and a fifth round held note, glad and cozy", 2.0, -8, HEARTH_TUNE, "warm:6500", "ease:0.02"),
-        "lose":     ("three soft slow descending notes on a low kalimba, gentle and kind, good game", 1.5, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
-        "draw":     ("two soft slow level notes on a low kalimba, the same note twice, calm and even, a friendly tie", 1.2, -10, HEARTH_TUNE, "warm:6000", "ease:0.02"),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # forty-seventh set of the redo, with Toy Boats' above. None kept:
+        # all ten were flagged. The six of HEARTH's foley were coins on wood
+        # (a slide of metal, a clack, a scrape, a handful tumbling), 52 to
+        # 95% above 3 kHz from takes that were all scratch, and `tick` a
+        # thump at 113 Hz a phone does not play; the four of HEARTH_TUNE's
+        # kalimba sat at 223 to 330 Hz, -28 to -46 dB on a phone. Three new
+        # takes: `land` (a hollow wooden block set down on felt, the knock
+        # under every move, so the plainest: one tock), `lift` (a lighter
+        # thing set down) and one muffled kalimba note, `hint`'s. Every tick
+        # is `tight`. tick, refused and spill are lift's take, win, lose and
+        # draw the note's, and `drop` is Hedgehogs' gust, of the same
+        # prompt. A coin never rings, so nothing new is a coin, a slot, a
+        # clack, a scrape or a tumble of metal: a penny is a wooden thing on
+        # felt.
+        # The penny let go: a puff of air, cut short because the knock comes
+        # 0.23 s behind it on a full column (0.52 s on an empty one).
+        "drop":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -18, BREEZE, "warm:900", "steep", "ease:0.04", "body:320", "cut:0.22"),
+        # Its knock on what is below: the board plays it 1.08 to 0.92, lower
+        # and up to 5.5 dB louder the further it fell.
+        "land":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        # A penny taken back out of the top of its column.
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        # The finger crossing to another slot: lift's take, one notch of the
+        # wheel two steps up, the quietest thing in the set.
+        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # A full column: lift's take, two low notches alike.
+        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        # The rack emptied before a new game: lift's take, seven notches
+        # tumbling down, the bottom row first.
+        "spill":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.62", "body:320", "tight", "notes:0.07:4,2,3,0,1,-2,-4"),
+        "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,9", "cut:0.6"),
+        "win":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,12", "cut:1.5"),
+        "lose":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.26:9,7,4", "cut:1.1"),
+        "draw":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:7,7", "cut:0.8"),
     },
     # Dominoes (Versus, versus/dominoes_screen.gd): thick ivory-coloured tiles
     # on a felt mat, as HEARTH's foley. A hand is twenty-odd tiles laid and a

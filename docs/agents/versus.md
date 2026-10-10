@@ -321,11 +321,15 @@ pond and what is thrown is a pebble.
     out its clock is only a loser by resign or timeout, as anywhere; a lie
     is found at the showing, not when told. A fleet is never proved to the
     server, which knows no game.
-- **Sounds** (`tools/gen_sfx.py boats`, nineteen, one take each, unheard):
-  `JETTY` foley, everything a throw makes dry, short and without a note
-  (`tick`, the finger crossing a square, is 0.06 s at -19); the notes are
-  `sunk`, `glug` (your boat going under), `hint`, `win` and `lose`, on
-  `HEARTH_TUNE`'s low muffled kalimba.
+- **Sounds** (`tools/gen_sfx.py boats`, nineteen, unheard): redone
+  2026-10-10 against the cozy rules (`docs/agents/sound.md`, the `boats`
+  row). Nothing is water: three takes (a wooden block and a lighter button
+  set down on felt, one muffled kalimba note) and Hedgehogs' air. What a
+  throw makes is air and a notch with no note (`tick`, the finger crossing
+  a square, is 0.07 s at -17.5); the notes are `sunk`, `glug` (your boat
+  going under), `hint`, `win` and `lose`. The board's nine notches vary by
+  0.94 to 1.06 at random (`TICK_VARY`, `VARIED` in `boats_board.gd`); they
+  were 1.0 every time.
 - **The tab holds five cards**: `_fit` has a fifth step (`_tall`: chips and
   Play 66 high, 12 between cards), which is where 810x1440 lands (1278 of
   1300 design px). 212 draw calls on the tab.
@@ -424,6 +428,13 @@ are pennies, the grid is a rack, a column is a slot.
   (`drop`, `land` -- played lower and louder the further the penny fell --
   `tick`, `refused`, `lift`, `spill`); the notes are `hint`, `win`, `lose`
   and `draw`, on `HEARTH_TUNE`'s low muffled kalimba.
+  **Redone 2026-10-10 against the cozy rules** (the row `penny` of
+  `docs/agents/sound.md`, unheard): three takes now, a wooden block and a
+  lighter button set down on felt and one muffled kalimba note, and a puff
+  of air for the penny let go; no coin is heard. In the board `tick`,
+  `drop`, `lift` and `refused` play 0.94 to 1.06 at random (`TICK_VARY`;
+  they were 1.0 every time); `land`'s pitch and level by its fall are as
+  they were.
 - **The tab holds six cards, two a row on a short screen**: `_fit` has a
   sixth step (`_set_pairs`), the Arcade tab's answer. The cards live in a
   `GridContainer` (`_grid`) that goes from one column to two, each card's
