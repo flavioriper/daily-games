@@ -82,6 +82,11 @@ const BOUNCE := 0.24
 const WATCH := 0.14
 const REWIND := 0.22
 const SPILL := 0.7
+## What repeats is never the same sound twice (the cozy rules): the finger's
+## tick, the penny let go, one taken back and a full column each play a
+## little either way. They were 1.0 every time. `land` is pitched by its
+## fall alone (1.08 down to 0.92), so it is left out.
+const TICK_VARY := Vector2(0.94, 1.06)
 const HOVER_SPEED := 14.0
 
 var rules: RefCounted
@@ -225,7 +230,7 @@ func play(cell: int, side: int) -> void:
 		_after(Motion.REDUCED_TIME, func() -> void: settled.emit())
 		_touch()
 		return
-	_cue("drop")
+	_cue("drop", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_air.append({"look": look, "x": to.x, "y": HOVER_Y, "v": 0.0, "to": to.y, "cell": cell, "hit": false,
 		"from": HOVER_Y, "wait": 0.0, "spill": false})
 	_busy(2.0)
@@ -241,7 +246,7 @@ func rewind(cell: int) -> void:
 		_after(Motion.REDUCED_TIME, func() -> void: settled.emit())
 		_touch()
 		return
-	_cue("lift")
+	_cue("lift", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_back_up = {"look": look, "x": mid(cell).x, "from": mid(cell).y, "at": _t}
 	_busy(REWIND + 0.1)
 	_after(REWIND, func() -> void:
@@ -428,7 +433,7 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				_shake_at = _t
 				_busy(0.4)
-				_cue("refused")
+				_cue("refused", randf_range(TICK_VARY.x, TICK_VARY.y))
 				refused.emit("full")
 		_touch()
 		return
@@ -441,7 +446,7 @@ func _gui_input(event: InputEvent) -> void:
 		if col >= 0:
 			_hover_to = float(col)
 			if not press:
-				_cue("tick")
+				_cue("tick", randf_range(TICK_VARY.x, TICK_VARY.y))
 				moved.emit()
 		_busy(0.3)
 	_touch()
