@@ -2142,9 +2142,10 @@ SETS = {
         "land":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.06", "body:320", "tight", "notes:0:-2"),
         # A tile reaching its goal: Firefly's shot, a lighter thing.
         "collect":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
-        # A breeze made is Binairo's gust and a breeze let go Hedgehogs'
-        # long one.
-        "made_breeze":  ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -17, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # A breeze made is Hedgehogs' breath (its reset; Binairo's gust,
+        # tried first, is 78% above 3 kHz raw and passes only filtered) and
+        # a breeze let go its long one.
+        "made_breeze":  ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # A seed pod made: the note, two quick ones a fourth apart.
         "made_bomb":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
         "made_rainbow": ("a bright rising run on a real music box and kalimba with shimmering hand bells, a rainbow flower appearing, about a second", 1.0, -8, ARCADE),
