@@ -2084,78 +2084,109 @@ SETS = {
         "new_best":  ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
     },
     # Lucky Thirteen (Arcade, arcade/thirteen_screen.gd): numbered river
-    # pebbles merged by drawing chains. Re-recorded 2026-10-05 as RIVERBED
-    # foley (the user hated the set). select fires on every pebble a chain
-    # takes and is pitched up the chain by the screen, a little. **It is a
-    # click, and the first take of all**: for an hour it was a kalimba note
-    # up the pentatonic, and the user: "it's important to avoid bell or
-    # ring sounds for something that repeat a lot, so use something more
-    # like a click, previous selection sound were in the right direction".
-    # merge is every move's, so it is a clack with no note either.
+    # pebbles merged by drawing chains. Redone against the cozy rules on
+    # 2026-10-10 (docs/agents/sound.md has the row). select fires on every
+    # pebble a chain takes and is pitched up the chain by the screen, a
+    # semitone a pebble and five at most. **It is a click and stays one**:
+    # for an hour on 2026-10-05 it was a kalimba note up the pentatonic, and
+    # the user: "it's important to avoid bell or ring sounds for something
+    # that repeat a lot, so use something more like a click, previous
+    # selection sound were in the right direction". merge is every move's,
+    # so it is a tock with no note either. Nothing is a stone: a pebble on
+    # sand came back as a click at 2.5 kHz and three clacking at 4.5.
     "thirteen": {
-        "select":     ("a single tiny soft click of a smooth river pebble tapped, bright and clean, very short", 0.5, -14, CARTOON),
-        "unselect":   ("a tiny soft low 'tok' of one smooth pebble set back down on damp sand, muffled, very short", 0.5, -18, RIVERBED, "warm:5000"),
+        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A pebble given back: select's take, two steps down.
+        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-2"),
         "short":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough pebbles, gentle, very short", 0.5, -10, ARCADE),
-        "merge":      ("three smooth river pebbles clicking softly together one after another, a little satisfying clack, dry, no ringing, very short", 0.6, -6, RIVERBED, "warm:6000"),
-        "land":       ("a tiny soft low 'tup' of one smooth pebble settling onto damp sand, muffled, very short", 0.5, -16, RIVERBED, "warm:5000"),
-        "new_number": ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest number made, short", 0.8, -5, ARCADE),
-        "goal":       ("a joyful triumphant fanfare on a real kalimba, music box and hand bells with one lucky bell ringing on top, the number thirteen reached, about two seconds", 2.4, -4, ARCADE),
-        "stuck":      ("two soft worried notes falling on a real kalimba, no moves left, gentle, not alarming", 0.7, -8, ARCADE),
-        "arm":        ("a soft quick wooden click and one tiny rising kalimba note, a tool picked up, short", 0.5, -10, ARCADE),
-        "undo":       ("a short soft brush of a hand over sand with one small kalimba note gliding gently down, a kind 'take that back', short", 0.6, -8, ARCADE),
-        "swap":       ("two smooth river pebbles sliding past each other over damp sand, a soft double hush, short", 0.6, -8, RIVERBED, "warm:6000"),
-        "pluck":      ("one smooth pebble lifted out of damp sand with a soft low 'thup', short", 0.5, -7, RIVERBED, "warm:6000"),
-        "shuffle":    ("a handful of smooth river pebbles rolled gently round a shallow wooden tray, a soft low rolling clatter, about a second", 1.0, -7, RIVERBED, "warm:6000"),
-        "lift":       ("a soft rising pair of kalimba notes with a hand bell sparkle, a pebble raised up one, short", 0.6, -7, ARCADE),
-        "refused":    ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not allowed, gentle, very short", 0.5, -10, ARCADE),
-        "tumble":     ("a trayful of smooth river pebbles tipped slowly out onto sand, a soft low cascade of stone clicks, about a second and a half", 1.5, -6, RIVERBED, "warm:6000"),
-        "start":      ("a short cheerful opening tune on a real kalimba and music box, a bouncy lucky little melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
-        "game_over":  ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
-        "new_best":   ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
+        "merge":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        # A pebble settling: merge's take, two steps down and quieter.
+        "land":       ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "new_number": ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest number made, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
+        "goal":       ("a joyful triumphant fanfare on a real kalimba, music box and hand bells with one lucky bell ringing on top, the number thirteen reached, about two seconds", 2.4, -8, ARCADE, "warm:2600", "body:300"),
+        # No moves left: two slow notes, the second a third lower.
+        "stuck":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:7,4", "cut:0.8"),
+        # The tools are select's take: one notch two steps up for a tool
+        # picked up, twice and falling for a move taken back, two a third
+        # apart for two pebbles trading places, two low ones alike for no.
+        "arm":        ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "undo":       ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-3"),
+        "swap":       ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.18", "body:320", "tight", "notes:0.08:-1,2"),
+        # A pebble taken off the board: merge's take, three steps up.
+        "pluck":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        # The board stirred and the board tipped out are merge's take: the
+        # wheel spun, nine notches wandering and eleven falling.
+        "shuffle":    ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.75", "body:320", "tight", "notes:0.075:0,2,-1,3,0,-2,1,-1,2"),
+        "lift":       ("a soft rising pair of kalimba notes with a hand bell sparkle, a pebble raised up one, short", 0.6, -8, ARCADE),
+        "refused":    ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
+        "tumble":     ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1500", "cut:1.1", "body:320", "tight", "notes:0.085:0,-1,2,-2,-1,-4,-3,-5,-4,-7,-7"),
+        "start":      ("a short cheerful opening tune on a real kalimba and music box, a bouncy lucky little melody, a game beginning, about two seconds", 2.2, -8, ARCADE, "warm:1800", "body:300"),
+        # The game's end: stuck's note, four slow ones stepping down.
+        "game_over":  ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:11,9,7,4", "cut:1.6"),
+        "new_best":   ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
     },
     # Posy (Arcade, arcade/posy_screen.gd): a swap-three garden of flowers,
-    # leaves, drops, mushrooms, berries and acorns. The garden's touches are
-    # CARTOON; the specials' shimmer and the jingles ARCADE. match fires on
-    # every cascade step and is pitched up the cascade by the screen, so it
-    # sits low; collect fires on every tile landing on a goal, lower still.
+    # leaves, drops, mushrooms, berries and acorns. Redone against the cozy
+    # rules on 2026-10-10 (docs/agents/sound.md has the row). match fires on
+    # every cascade step and is pitched up the cascade by the screen, a
+    # semitone a step and five at most, so it is a tock; collect fires on
+    # every tile landing on a goal, the faintest tick. What travels is air.
     "posy": {
-        "select":       ("a single tiny soft click, a small garden tile picked up, bright and clean, very short", 0.5, -14, CARTOON),
-        "swap":         ("a quick soft airy double swish, two small tiles trading places, playful, short", 0.5, -10, CARTOON),
-        "bad_swap":     ("a soft springy boing back, two tiles bumping and sliding back to where they were, gentle, short", 0.6, -10, CARTOON),
-        "match":        ("a soft bubbly pop of three little flowers plucked at once, satisfying, very short", 0.5, -6, CARTOON),
-        "land":         ("a tiny soft patter of small tiles settling into place, very short and quiet", 0.5, -18, CARTOON),
-        "collect":      ("one single tiny soft dry wooden tick, very short and quiet", 0.5, -18, COZY, "warm:6000", "cut:0.06"),
-        "made_breeze":  ("a soft rising breath of air through leaves with a shimmer of tiny hand bells, a magical breeze being made, short", 0.6, -8, ARCADE),
-        "made_bomb":    ("a soft rising sprinkle of music box notes over one warm low kalimba note, a seed pod swelling up, short", 0.7, -8, ARCADE),
-        "made_rainbow": ("a bright rising run on a real music box and kalimba with shimmering hand bells, a rainbow flower appearing, about a second", 1.0, -6, ARCADE),
-        "breeze":       ("a quick gust of wind sweeping across a garden, a clean whoosh with leaves rustling, short", 0.7, -6, CARTOON),
-        "bomb":         ("a soft cartoon poof blast, a burst of seeds and petals, round and gentle not harsh, short", 0.7, -5, CARTOON),
-        "rainbow":      ("a sweeping shower of hand bells and music box notes scattering in every direction, sparkling and magical, about a second", 1.1, -5, ARCADE),
-        "goal":         ("two bright happy notes on a real music box, a goal completed, short", 0.7, -6, ARCADE),
-        "cheer":        ("a short joyful flourish on a real kalimba with a hand bell sparkle, a big cascade, happy", 0.8, -7, ARCADE),
-        "day_done":     ("a joyful short garden fanfare on a real kalimba, music box and hand bells, a day's goals completed, about two seconds", 2.0, -4, ARCADE),
-        "deal":         ("a soft airy cascade of many small tiles tumbling into a wooden tray, about a second", 1.0, -9, CARTOON),
-        "shuffle":      ("a handful of small wooden tiles shaken and rattled in a tray, a quick rolling clatter, about a second", 1.0, -8, CARTOON),
-        "convert":      ("a soft twinkle of two tiny music box notes, a tile turning special, short", 0.6, -9, ARCADE),
-        "gift":         ("a cheerful little rising music box phrase with a hand bell sparkle, a present, a tool earned, short", 0.8, -7, ARCADE),
-        "trowel":       ("a small garden trowel digging into soft soil, a quick scoop and a soft pop, short", 0.6, -7, CARTOON),
-        "arm":          ("a soft quick wooden click and one tiny rising kalimba note, a tool picked up, short", 0.5, -10, ARCADE),
-        "refused":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not allowed, gentle, very short", 0.5, -10, ARCADE),
-        "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -7, CARTOON),
-        "start":        ("a short cheerful opening tune on a real kalimba and music box, a bouncy flowery little melody, a game beginning, about two seconds", 2.2, -4, ARCADE),
-        "game_over":    ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -5, ARCADE),
-        "new_best":     ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -4, ARCADE),
-        # the genre pass (2026-09-28): the bee, the bed's ground, the offer
-        "made_bee":     ("a soft cheerful buzzy little trill, a tiny bee appearing, playful, short", 0.6, -8, CARTOON),
-        "bee":          ("a quick soft cartoon bee buzz zipping away, playful, short", 0.6, -8, CARTOON),
-        "bee_hit":      ("a tiny soft cartoon 'bop' as a bee lands on a flower, very short", 0.5, -10, CARTOON),
-        "weed":         ("a small tuft of grass pulled out of soft soil, a quick rip and a soft pop, short", 0.5, -9, CARTOON),
-        "stone":        ("a small soft cartoon knock on a garden stone, a light crack, short", 0.5, -9, CARTOON),
-        "stone_break":  ("a soft cartoon garden stone crumbling apart into pebbles, round not harsh, short", 0.7, -7, CARTOON),
-        "moss":         ("a soft squishy creeping sound, moss spreading over a tile, gentle and slightly sneaky, short", 0.6, -10, CARTOON),
-        "moss_clear":   ("a soft fluffy poof, a clump of moss plucked away, short", 0.5, -9, CARTOON),
-        "offer":        ("a gentle hopeful two-note question on a real kalimba, the second note rising, so close, not sad", 0.8, -7, ARCADE),
-        "more_moves":   ("a bright cheerful rising sprinkle of music box notes and a hand bell, extra moves granted, short", 0.8, -6, ARCADE),
+        "select":       ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # Two tiles trading places: Paper Planes' puff.
+        "swap":         ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.05", "body:320"),
+        # A swap that makes nothing: select's take, there and a step back.
+        "bad_swap":     ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-2"),
+        "match":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        # Tiles settling: select's take, two steps down and quiet.
+        "land":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.06", "body:320", "tight", "notes:0:-2"),
+        # A tile reaching its goal: Firefly's shot, a lighter thing.
+        "collect":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        # A breeze made is Binairo's gust and a breeze let go Hedgehogs'
+        # long one.
+        "made_breeze":  ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -17, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # A seed pod made: the note, two quick ones a fourth apart.
+        "made_bomb":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,9", "cut:0.6"),
+        "made_rainbow": ("a bright rising run on a real music box and kalimba with shimmering hand bells, a rainbow flower appearing, about a second", 1.0, -8, ARCADE),
+        "breeze":       ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
+        # The seed pod going off is match's take, a tumble of five notches.
+        "bomb":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:0,-3,-1,-5,-2"),
+        "rainbow":      ("a sweeping shower of hand bells and music box notes scattering in every direction, sparkling and magical, about a second", 1.1, -8, ARCADE),
+        "goal":         ("two bright happy notes on a real music box, a goal completed, short", 0.7, -8, ARCADE),
+        "cheer":        ("a short joyful flourish on a real kalimba with a hand bell sparkle, a big cascade, happy", 0.8, -8, ARCADE),
+        "day_done":     ("a joyful short garden fanfare on a real kalimba, music box and hand bells, a day's goals completed, about two seconds", 2.0, -8, ARCADE),
+        # The bed dealt and the bed stirred: the wheel spun, nine notches
+        # of match's take falling into place and eight of select's wandering.
+        "deal":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.8", "body:320", "tight", "notes:0.08:3,1,2,0,1,-2,-1,-3,-4"),
+        "shuffle":      ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.6", "body:320", "tight", "notes:0.065:0,3,-1,2,-2,1,3,0"),
+        "convert":      ("a soft twinkle of two tiny music box notes, a tile turning special, short", 0.6, -9, ARCADE, "warm:2400", "body:300"),
+        "gift":         ("a cheerful little rising music box phrase with a hand bell sparkle, a present, a tool earned, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
+        # The trowel: two notches of match's take, falling.
+        "trowel":       ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.22", "body:320", "tight", "notes:0.09:0,-4"),
+        "arm":          ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "refused":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
+        "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -8, CARTOON),
+        "start":        ("a short cheerful opening tune on a real kalimba and music box, a bouncy flowery little melody, a game beginning, about two seconds", 2.2, -8, ARCADE),
+        "game_over":    ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
+        "new_best":     ("a joyful celebratory fanfare on a real kalimba, music box and soft hand bells, landing on a bright warm chord, a new high score", 2.4, -8, ARCADE, "warm:2600", "body:300"),
+        # The bee made is the note, four quick ones a step apart (a little
+        # trill); the bee leaving Hedgehogs' gust, its landing match's take
+        # three steps up.
+        "made_bee":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.07:7,9,7,9", "cut:0.6"),
+        "bee":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "bee_hit":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:3"),
+        # The bed's ground. A weed pulled is two quick notches of select's
+        # take, rising; a stone knocked one of match's three steps down and
+        # a stone broken three falling; moss creeping three slow low ones of
+        # select's and moss plucked one of match's two steps up.
+        "weed":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.15", "body:320", "tight", "notes:0.06:0,2"),
+        "stone":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-3"),
+        "stone_break":  ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.07:-2,-5,-7"),
+        "moss":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.34", "body:320", "tight", "notes:0.11:-4,-4,-2"),
+        "moss_clear":   ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        # So close: the note, a question, the second a step higher.
+        "offer":        ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.22:5,7", "cut:0.8"),
+        "more_moves":   ("a bright cheerful rising sprinkle of music box notes and a hand bell, extra moves granted, short", 0.8, -8, ARCADE),
     },
     # Peapod (Arcade, arcade/peapod_screen.gd): a pea cannon against numbered
     # crates. The gun never stops, so a shot is the faintest click and a pea

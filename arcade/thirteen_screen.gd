@@ -217,13 +217,13 @@ var _heat := 0.0
 var _rain := 0.0
 ## The longest tier the chain being drawn has rung out at.
 var _tier := 0
-## A chain's clicks (2026-10-05): each pebble it takes plays `select` a
-## little higher, CHAIN_STEP a pebble up to CHAIN_TOP. It was 7% a pebble up
-## to 1.9, a squeak by the end of a long chain. The sound is a click and
-## stays one: a kalimba note up the pentatonic was tried the same morning
-## and the user turned it down -- nothing that repeats this much may ring.
-const CHAIN_STEP := 0.05
-const CHAIN_TOP := 1.5
+## A chain's clicks: each pebble it takes plays `select` a semitone higher,
+## up to CLIMB_TOP, five semitones and no further (the cozy rules,
+## 2026-10-10; it was 5% a pebble up to 1.5, and 7% up to 1.9 before that, a
+## squeak by the end of a long chain). The sound is a click and stays one: a
+## kalimba note up the pentatonic was tried on 2026-10-05 and the user
+## turned it down -- nothing that repeats this much may ring.
+const CLIMB_TOP := 1.335
 ## Pebbles falling together land as one soft patter, not a rattle: `land`
 ## is heard at most once in LAND_GAP seconds.
 const LAND_GAP := 0.09
@@ -1181,7 +1181,7 @@ func _disarm() -> void:
 
 ## The pitch of the chain's pebble `i` (0 the first).
 func _chain_pitch(i: int) -> float:
-	return minf(0.9 + CHAIN_STEP * maxi(i, 0), CHAIN_TOP)
+	return minf(pow(2.0, maxi(i, 0) / 12.0), CLIMB_TOP)
 
 func _play_events() -> void:
 	for ev: Dictionary in sim.events:
@@ -1291,7 +1291,7 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.buzz(feel)
 		_fx.puff(at, Art.paint(int(ev.v)), 6)
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
-		_fx.cue("merge", clampf(0.9 + 0.03 * int(ev.v), 0.9, 1.3))
+		_fx.cue("merge", clampf(0.95 + 0.025 * int(ev.v), 0.95, 1.26))
 		_knock(into, 0.04 + 0.008 * n)
 		_merge_burst(ev, at)
 		if bool(ev.get("new_max", false)):
