@@ -147,3 +147,18 @@ proof with its road swapped for wood still crosses on Easy, Normal and
 Insane, 16 of 20 on Hard. Known and left: a deck built of wood one row off
 the line is cheaper and stronger than road, so budgets are looser than the
 miner meant.
+
+**One material in the sim too (2026-10-10, later still).** The user, told a
+wooden deck off the line was cheaper and stronger than road: "so improve
+it". `Sim.MATS[ROAD]` is the beam's numbers now (150 a unit, 0.08, 3200, 44
+and 36; it was 200, 0.15, 2400, 30 and 30), so a piece costs and carries the
+same wherever it lies and "road" is only how the deck's line is drawn.
+The bank was not mined again: `tools/reprune_trestle.gd -- <band>` prunes
+each banked proof again under the sim as it stands and prices it again
+(budget = cost times the band's slack), dropping a level whose proof fails
+or whose bare deck crosses. 17, 19, 18 and 65 levels (two of Hard dropped),
+every proof at 0.85 or under, the tea probe 65 of 65 with no obvious truss
+in budget. The tutorial's bridges at cart 1.6: the road alone snaps (1.03),
+two struts hold at 0.71, with tea they spill (1.01) and the two braces
+carry it at 0.73. `Gen.FALLBACK` keeps its old proof and budget. The crowd's
+scores of earlier days were against the old prices.

@@ -66,8 +66,11 @@ const TEA_ZETA := 0.22
 enum { ROAD, WOOD, ROPE }
 ## cost a unit of length, mass a unit, stiffness (EA), tension and
 ## compression limits. A rope's compression limit is never read.
+## One material for now (2026-10-10): the road is the beam's wood, the same
+## price, weight and strength, so a deck costs what it costs wherever it is
+## laid. The road's own numbers were 200, 0.15, 2400, 30 and 30.
 const MATS := [
-	{"cost": 200, "mass": 0.15, "ea": 2400.0, "t": 30.0, "c": 30.0},
+	{"cost": 150, "mass": 0.08, "ea": 3200.0, "t": 44.0, "c": 36.0},
 	{"cost": 150, "mass": 0.08, "ea": 3200.0, "t": 44.0, "c": 36.0},
 	{"cost": 120, "mass": 0.03, "ea": 2000.0, "t": 60.0, "c": 0.0},
 ]
