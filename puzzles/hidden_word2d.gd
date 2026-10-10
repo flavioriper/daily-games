@@ -283,8 +283,8 @@ const GROW_TIME := 0.45
 const REACT_AT := 0.12
 const BUBBLE_HOLD := 1.5
 const BUBBLE_FONT := 34
-## A new green plucks `combo` up the major pentatonic, one step a green found.
-const COMBO_STEPS := [0, 2, 4, 7, 9, 12, 14, 16, 19, 21]
+## A new green ticks `combo` a semitone up, one step a green found.
+const COMBO_STEPS := [0, 1, 2, 3, 4]
 ## Three of every five new greens, by the cell's hash, do something silly.
 const GAG_ODDS := 5
 const GAGS := 3

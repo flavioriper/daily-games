@@ -876,43 +876,58 @@ SETS = {
     # paper keyboard, Enter turns the row over a tile at a time, on a
     # parchment card in a little meadow. Insane is Snail Mail: a little snail
     # carries each row's colours and delivers them one row late (the row
-    # turns over as sealed kraft-paper envelopes first). Re-prompted toward
-    # felt, paper, kalimba and glockenspiel on 2026-09-30, as Queens' were:
-    # the wooden "bonk" read as a scold. type fires on every key, so it is the
-    # quietest, roundest and shortest; flip plays five times a row, 4% higher
-    # per tile, so it is very short and soft.
+    # turns over as sealed kraft-paper envelopes first).
     "hiddenword": {
-        "type":     ("a single tiny soft felt tap on a paper key, one muffled round little tick, typing on a cozy paper keyboard, extremely short and hushed", 0.5, -14, COZY),
-        "erase":    ("a tiny soft paper brush and a small felt pat, a letter gently taken back, very short and quiet", 0.5, -14, COZY),
-        "flip":     ("a single very short soft papery card flick, a small parchment tile turning over, light and hushed", 0.5, -12, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # eleventh set of the redo, as Queens' above. Kept from the first
+        # set, as they were: refused, lost, warmer, so_close, cool, love,
+        # twirl, dance, ready, droop and row_back; all_here with its rumble
+        # off. Nothing here is paper any more: a key, a card's flick, an
+        # envelope's fold and a brush all sat above 3 kHz. type fires on
+        # every key, so it is the plainest and the shortest; flip plays five
+        # times a row, 4% higher a tile; combo is a tick the board pitches a
+        # semitone a green letter, four at most. Every tick is `tight`. The
+        # phrases' steps are set by each take's own note, so that every note
+        # lands between 400 and 700 Hz.
+        "type":     ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        # A letter taken back: a lighter thing set down.
+        "erase":    ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "flip":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
         "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not quite a word', muffled and warm, very short, never a buzzer", 0.5, -12),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a light paper rustle, cozy and kind", 1.0, -8),
-        "reset":    ("a soft quick ripple of tiny felt pats and a light flutter of paper cards, a parchment card swept gently clear, hushed and cozy", 1.0, -10, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:6,9,11,13,14", "cut:1.7"),
         "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
-        "enter":    ("a soft airy cascade of tiny paper cards settling and a light leafy rustle, a little parchment card of letters laid out in a meadow, cozy and hushed", 1.0, -11, COZY),
-        # The streak, the row's reactions and the gags.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
+        # The card laid out: type's take, five in a row.
+        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        # The streak, the row's reactions and the gags. combo: a tick a green
+        # letter, pitched by the board. sprout: one quiet note.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
         "warmer":   ("a cheerful little two-note rising kalimba 'ooh!', soft and warm, getting warmer, short", 0.6, -10),
         "so_close": ("a slightly excited three-note rising melody on soft kalimba and glockenspiel, a happy 'so close!', warm and bright, short", 0.8, -8),
-        "all_here": ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, every friend has arrived, cozy", 1.2, -9),
+        "all_here": ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, every friend has arrived, cozy", 1.2, -10, STYLE, "body:300", "warm:2600"),
         "cool":     ("a laid-back cool little slide, a soft whistle-like kalimba glide gently down then back up, relaxed and pleased, cozy", 0.8, -10),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
         "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
-        "sprout":   ("a tiny leaf popping out of the soil, a soft papery unfurl with a gentle single glockenspiel twinkle, very short and sweet", 0.6, -12),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of little paper flags at the end, joyful and warm", 2.0, -4),
+        "sprout":   ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:5", "cut:0.45"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,7,9,7,9,12", "cut:1.9"),
         "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,2,9"),
         "ready":    ("a tiny soft two-note kalimba blip going up, a little 'ready', very short and quiet", 0.5, -13),
-        # Out of rows: the tiles sag, a lullaby, and a row given back.
+        # Out of rows: the tiles sag, three slow notes down, and a row given
+        # back.
         "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
-        "out_of_rows": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn at dusk, calm and kind, maybe tomorrow", 1.5, -14),
+        "out_of_rows": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:9,5,2"),
         "row_back": ("a warm rising pair of soft kalimba plucks, one more row, gentle and happy", 0.6, -12),
-        # Insane: Snail Mail.
-        "post":     ("a soft papery envelope folding shut and a tiny felt tap, a little letter sealed, very short and quiet", 0.5, -13, COZY),
-        "snail":    ("a tiny cute snail sliding slowly, a soft gentle squishy slide with a light paper rustle, ending on a small happy kalimba ting, a little letter delivered, cute and cozy", 1.2, -11, COZY),
-        "snail_hurry": ("a tiny cute snail scurrying quickly, a soft quick squishy patter ending in a bright little glockenspiel ding, good news travels fast, cute and funny", 0.8, -10, COZY),
+        # Insane: Snail Mail. post: a row sealed, a pat on felt a tile. The
+        # snail is never a slide (a slide is the scratch): three slow
+        # notches when it brings a sealed row's colours, four quick ones
+        # climbing when it hurries, both type's take (post's own held a
+        # knock 0.2 s ahead of its tock, which a phrase repeats).
+        "post":     ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.14", "body:320", "tight"),
+        "snail":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.7", "body:320", "tight", "notes:0.22:0,2,0"),
+        "snail_hurry": ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.45", "body:320", "tight", "notes:0.08:0,2,3,5"),
     },
     # Word Trail (puzzle_id "wordtrail"): drag a trail through letter tiles;
     # only a right word locks, and a ribbon of colour runs along it.
