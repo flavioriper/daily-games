@@ -76,6 +76,8 @@ const PETAL := Color("c7a6d8")
 const PETAL_WARM := Color("f2b5a0")
 ## Kills this close together (seconds) run a chain.
 const CHAIN_GAP := 1.5
+## No sound the screen pitches climbs past five semitones (the cozy rules).
+const CLIMB_TOP := 1.335
 ## A chain's word, by its length, loudest first.
 const WORDS := [[40, "FF_WORD_5"], [30, "FF_WORD_4"], [20, "FF_WORD_3"], [12, "FF_WORD_2"], [6, "FF_WORD_1"]]
 const HEAT := Color("ffb03b")
@@ -669,14 +671,14 @@ func _play_events() -> void:
 				# a quick gun is heard one volley a SHOT_HEARD at most
 				if _clock - _shot_heard >= SHOT_HEARD:
 					_shot_heard = _clock
-					_fx.cue("shoot", randf_range(0.96, 1.06), -4.0)
+					_fx.cue("shoot", randf_range(0.94, 1.06), -4.0)
 				_muzzle = 0.09
 			"pop":
 				var kind: int = ev.kind
 				var colour: Color = {Sim.Kind.GNAT: Art.GNAT_BODY, Sim.Kind.BEETLE: Art.BEETLE_SHELL,
 					Sim.Kind.MOTH: Art.MOTH_WING, Sim.Kind.ROGUE: Art.ROGUE_BODY}[kind]
 				_fx.puff(at, colour, 7 if kind == Sim.Kind.MOTH else 4)
-				_fx.cue("pop_moth" if kind == Sim.Kind.MOTH else "pop", randf_range(0.92, 1.1))
+				_fx.cue("pop_moth" if kind == Sim.Kind.MOTH else "pop", randf_range(0.94, 1.06))
 				var big := kind == Sim.Kind.MOTH or kind == Sim.Kind.ROGUE
 				_burst(ev.pos, colour, big)
 				if big:
@@ -883,7 +885,7 @@ func _count_chain() -> void:
 			_rw.spray(_field_at(0.5, 0.5), Pal.SUN, 3 + tier, 520.0, "star", 0.8, 0.1, _plate_at(_score_l))
 			_flash_now(Color("fff6c9"), 0.2 + 0.08 * tier)
 			_shake = maxf(_shake, 0.2 + 0.08 * tier)
-			_fx.cue("docked", 1.0 + 0.08 * tier, -2.0)
+			_fx.cue("docked", minf(1.0 + 0.08 * tier, CLIMB_TOP), -2.0)
 			_feel(Haptics.BUMP)
 			if tier >= 3:
 				_rw.rain(1.6, ["star", "confetti", "mote"], [Art.GLOW, Pal.SUN, Art.MOTH_WING, Art.BEETLE_SHELL, Art.GNAT_BODY])
@@ -1565,13 +1567,13 @@ func _drop_energy(at: Vector2, orbs: int) -> void:
 	_motes.drop(field.get_global_transform() * (px(at) + _shake_off), float(orbs), mini(orbs, MOTES_A_BUG))
 
 ## Motes came down on the plate: its count swells, and each landing is a
-## dry click a semitone up a short run, heard and never felt.
+## low tick a semitone up a short run of five, heard and never felt.
 func _on_motes_landed(_count: int, note: int) -> void:
 	if _energy_l.scale.x <= 1.01:
 		_energy_l.pivot_offset = _energy_l.size * 0.5
 		_beat(_energy_l, 0.16, 0.16)
 	if note >= 0:
-		_quiet.cue("shoot", 1.5 * pow(2.0, mini(note, 14) / 12.0), -9.0)
+		_quiet.cue("shoot", pow(2.0, mini(note, 5) / 12.0), -9.0)
 
 ## A beat on `node` that ends the last one on it.
 func _beat(node: Control, amount: float, time: float) -> void:
@@ -1751,7 +1753,7 @@ func _refresh_shop() -> void:
 func _buy(card: int) -> void:
 	if not sim.buy(card):
 		return
-	_fx.cue("docked", 1.0 + 0.04 * int(sim.bought[card]), -4.0)
+	_fx.cue("docked", minf(1.0 + 0.04 * int(sim.bought[card]), CLIMB_TOP), -4.0)
 	_fx.buzz(Haptics.TAP)
 	for r: Dictionary in _shop_rows:
 		if int(r.card) == card:
@@ -1896,7 +1898,7 @@ func _count_end() -> void:
 	if _end_score.text != text:
 		_end_score.text = text
 		if int(_clock * 20.0) % 2 == 0:
-			_fx.cue("shoot", 0.9 + 0.8 * k, -10.0)
+			_fx.cue("shoot", 1.0 + (CLIMB_TOP - 1.0) * k, -10.0)
 	if k >= 1.0:
 		_end_score.pivot_offset = _end_score.size * 0.5
 		Motion.bump(_end_score, 0.25, 0.4)
