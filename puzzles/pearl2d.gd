@@ -80,6 +80,10 @@ const DEPTH_FONT := 22
 const DIVE_TIME := 0.7
 ## The clock's last seconds are counted aloud.
 const LAST_SECONDS := 5
+## The clock's tick, a miss and a refusal are never the same sound twice
+## (docs/agents/sound.md, rule 2): all three played at 1.0 every time until
+## 2026-10-10.
+const TICK_VARY := Vector2(0.94, 1.06)
 ## A prompt leaves, and the next one comes.
 const SWAP_OUT := 0.16
 ## The answer is read before a tap may ask the next.
@@ -815,13 +819,13 @@ func offer() -> void:
 	if not bool(res.hit):
 		if bool(res.get("short", false)):
 			_tell(tr("PD_TYPE_FIRST"))
-			fx.cue("refuse")
+			fx.cue("refuse", randf_range(TICK_VARY.x, TICK_VARY.y))
 			return
 		_typed = ""
 		_miss_at = now
 		checks += 1
 		_tell(tr("PD_MISS") % [said, int(State.MISS_COST)])
-		fx.cue("miss")
+		fx.cue("miss", randf_range(TICK_VARY.x, TICK_VARY.y))
 		_busy_for(0.4)
 		if bool(res.get("ran", false)):
 			_ran_out()
@@ -919,7 +923,7 @@ func hint() -> bool:
 	var told: Dictionary = state.tell()
 	if told.is_empty():
 		_tell(tr("PD_HINT_USED"))
-		fx.cue("refuse")
+		fx.cue("refuse", randf_range(TICK_VARY.x, TICK_VARY.y))
 		return false
 	hints_used += 1
 	fx.cue("hint")
@@ -1131,7 +1135,7 @@ func _process(delta: float) -> void:
 		var ran: bool = state.tick(delta)
 		var whole := int(ceil(state.time_left))
 		if whole < _whole and whole <= LAST_SECONDS and whole > 0:
-			fx.cue("tick")
+			fx.cue("tick", randf_range(TICK_VARY.x, TICK_VARY.y))
 		_whole = whole
 		if ran:
 			_ran_out()

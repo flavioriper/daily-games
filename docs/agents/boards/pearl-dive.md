@@ -155,6 +155,14 @@
 - **Not seen on a phone.** Shots and probes on this Mac only. The sounds are
   one take a cue and unheard by the user; the pt and es lines of the chrome
   are unreviewed.
+- **The sounds were redone against the cozy rules on 2026-10-10**
+  (`docs/agents/sound.md`, the `pearl` row; measured, not heard). Nothing is
+  water any more: the dive, the next prompt and air given back are air, an
+  answer is a few muffled notes that rise longer and higher the rarer it is,
+  a miss two notches, the seal two notches. `tick` is the clock's last five
+  seconds, a wheel's notch, not a key. At play `tick`, `miss` and `refuse`
+  vary by 0.94 to 1.06 at random (`TICK_VARY`; they were 1.0 every time);
+  nothing else about a cue changed.
 - **Calls made without the user** (2026-10-09): the name, the bell and the
   Pearl; metres in place of points and five tiers in place of six; four
   bands (5, 6, 7 and 8 prompts at 30, 25, 20 s and one tank) rather than
