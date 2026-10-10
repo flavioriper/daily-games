@@ -261,10 +261,11 @@ const BAND_H := 32.0
 const STAKE := 38.0
 
 # --- the rewards (spec 2026-09-30-quilt-polish-design.md, section 4) ---
-## The streak: a note up the pentatonic from the second good drop, the
-## bubble from the third, confetti at four and seven (a quilt is small).
+## The streak: a tick a semitone higher from the second good drop, five in
+## all, the bubble from the third, confetti at four and seven (a quilt is
+## small).
 const COMBO_FROM := 3
-const COMBO_STEPS := [-5, -3, 0, 2, 4, 7, 9]
+const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_CONFETTI := [4, 7]
 const COMBO_DEFLATE := 0.25
@@ -2870,7 +2871,7 @@ func _reset_rewards() -> void:
 
 ## A good drop: on Hard and Insane a right patch, on Easy and Medium one that
 ## leaves the quilt finishable. Called once the patch is in the state and
-## before `note_move()`. It builds the streak -- a note up the pentatonic
+## before `note_move()`. It builds the streak -- a tick a semitone higher
 ## from the second, the bubble from the third, confetti at four and seven --
 ## plays the patch's gag, and runs a glint along any row or column it
 ## finished. The solving drop does none of it: the party is about to start.

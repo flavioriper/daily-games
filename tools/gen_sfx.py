@@ -1192,39 +1192,60 @@ SETS = {
     # judge a patch as it lands: a wrong one's thread snaps and it flutters
     # home. Insane is Scrap Basket: three scraps that don't belong.
     "quilt": {
-        "lift":     ("a tiny soft cotton fabric rustle, a small felt patch picked up off a felt mat, hushed, very short and quiet", 0.5, -13, COZY),
-        "place":    ("a soft muffled felt patch patted down onto a cotton quilt, followed by a few quick tiny soft needle-and-thread stitch pulls, a patch sewn on, cozy and hushed", 0.7, -9, COZY),
+        # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
+        # sixteenth set of the redo. Kept from the first set, as they were:
+        # refused, stuck, heart_lost and dance; heart_back and the bunting
+        # rolled off. Nothing here is cloth, thread, a needle, scissors,
+        # chalk, a glockenspiel or a music box any more (a rustle and a flap
+        # are scratch, a snip is steel). lift and place are the two things a
+        # finger does all day, so they are the plainest; combo is a tick the
+        # board pitches, not past five semitones. Every tick is `tight`.
+        # Borrowed takes: confetti is Binairo's and the cat Untangle's
+        # kitten, of the same prompts; enter and boing are place's, undo,
+        # wiggle and snip lift's, ruled and love row's (the hearts' bubbly
+        # pops sat at 1 kHz however they were rolled off: two quiet notes
+        # alike and a third up now). The phrases' steps are set by each
+        # take's own note, so that every note lands between 400 and 700 Hz.
+        # A lift is a lighter thing set down.
+        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "place":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("a tiny soft cotton rustle and a small kalimba note sliding gently down, a kind 'take that back', warm and quiet, very short", 0.5, -11),
-        "hint":     ("a gentle magical sparkle, three soft glockenspiel notes rising with a warm felt kalimba underneath and a tiny soft fabric rustle, cozy and kind", 1.0, -8),
-        "reset":    ("a soft quick ripple of cotton patches being gathered back onto a felt mat, gentle fabric rustles and a little wooden spool rolling, hushed and cozy", 1.0, -11, COZY),
-        "enter":    ("a soft airy cascade of tiny muffled felt pats and a small wooden spool tap, cloth patches laid out on a felt mat, cozy and hushed", 1.0, -11, COZY),
-        "solved":   ("a warm short celebratory kalimba and glockenspiel flourish, rising arpeggio ending on a soft bright sparkle, joyful and cozy", 2.0, -4),
-        # The rack patch tapped, and the dead end named (Easy and Medium).
-        "wiggle":   ("a tiny playful soft cloth wiggle, a quick little felt shuffle side to side with a soft muffled wooden spool tap, cute, very short", 0.5, -13, COZY),
+        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,6,10", "cut:0.9"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        # The patches laid out: place's take, five in a row.
+        "enter":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
+        # The rack patch tapped (two notches, side to side), and the dead end
+        # named (Easy and Medium).
+        "wiggle":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.22", "body:320", "tight", "notes:0.07:2,0"),
         "stuck":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'hmm, that gap won't fill', kind and curious, warm and round, never a buzzer", 1.0, -16, STYLE, "fall"),
-        # The streak and the gags.
-        "combo":    ("a single short bright soft kalimba pluck, one clean note, very short", 0.5, -8),
-        "confetti": ("a soft flutter of tiny paper confetti pieces falling with a tiny sparkling glockenspiel twinkle, light and airy", 1.0, -9),
-        "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "button":   ("a little button sewn onto cloth, a quick soft thread pull and a tiny cute round wooden pop, cheerful, very short", 0.6, -11, CARTOON),
-        "boing":    ("a tiny soft rubbery cartoon boing, a little cloth patch squashing and hopping happily on a quilt, cute and silly, gentle", 0.7, -13, CARTOON),
-        # A row or column of the quilt finished.
-        "row":      ("a quick soft sparkle running along in a line, a light rising glissando of tiny glockenspiel twinkles over a soft felt kalimba note, warm and happy", 0.9, -11),
-        # Hearts, the wrong patch snipped off and fluttering home, the quilt at dusk.
+        # The streak and the gags. combo: a tick the board pitches by the
+        # streak. button: a wooden bead pressed home. boing: place's take
+        # three times, up and back.
+        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
+        "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
+        "button":   ("one small round wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.14", "body:320", "tight"),
+        "boing":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.4", "body:320", "tight", "notes:0.1:0,3,0"),
+        # A row or column of the quilt finished: four quick quiet notes up.
+        "row":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:3,5,7,10", "cut:0.7"),
+        # Hearts, the wrong patch's thread let go (one light notch) and the
+        # patch blown home (a small puff of air, never a flap), the chalk
+        # mark (one quiet note), the quilt at dusk.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
-        "snip":     ("a single soft gentle scissors snip through cotton thread, a thread snapping, quiet and close, very short", 0.5, -13, COZY),
-        "flutter":  ("a small cloth patch peeling up and fluttering through the air, soft quick cotton fabric flaps, landing with a gentle muffled pat, a bit funny", 0.8, -13, COZY),
-        "ruled":    ("a very soft short chalk mark on fabric, a quiet little tailor's chalk scratch with a tiny low kalimba note, a gentle 'we already know that one', kind", 0.5, -14),
-        "out_of_hearts": ("a sleepy three-note music box lullaby slowly descending, like a soft yawn by a warm fire, the quilters nodding off, calm and kind, maybe tomorrow", 1.5, -14),
-        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
+        "snip":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight", "notes:0:4"),
+        "flutter":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.03", "body:320"),
+        "ruled":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.45"),
+        "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,6,3"),
+        "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, STYLE, "warm:2400", "body:300"),
         # The party.
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -5),
-        "party":    ("a cozy celebratory kalimba and glockenspiel flourish rising, with a very soft muffled party blower toot and a flutter of paper at the end, joyful and warm", 2.0, -4),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:7,4,10"),
+        "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,3,6,3,6,8", "cut:1.9"),
         "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
-        "purr":     ("a sleepy little cat curling up on a soft quilt and purring briefly, cozy, soft and warm, short", 1.0, -10, COZY),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
         # Insane: Scrap Basket. The three scraps strung up as bunting at the solve.
-        "bunting":  ("little cloth flags strung up on a line and fluttering in a gentle breeze, soft fabric flaps with a cheerful rising three-note kalimba, happy and cozy", 1.3, -11, COZY),
+        "bunting":  ("little cloth flags strung up on a line and fluttering in a gentle breeze, soft fabric flaps with a cheerful rising three-note kalimba, happy and cozy", 1.3, -11, COZY, "warm:2400", "body:300"),
     },
     # Paper Planes: tap a folded paper dart and it launches down its lane.
     # Re-prompted 2026-09-30 (the polish) toward soft paper, felt, kalimba, a
