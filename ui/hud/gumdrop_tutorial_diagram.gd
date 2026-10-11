@@ -138,9 +138,6 @@ class Bench extends "res://puzzles/gumdrop_table.gd":
 		if not frozen:
 			super(delta)
 
-	func _hint(_text: String, _sub_text: String) -> void:
-		pass
-
 	func lay(game: RefCounted) -> void:
 		frozen = false
 		super(game)

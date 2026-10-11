@@ -175,8 +175,6 @@ func _process(delta: float) -> bool:
 			if _t > _at + 1.2:
 				_shot("1_ready")
 				print("refund: gold %d -> %d, gd_soft held %d" % [_gold, root.get_node("Wallet").gold(), root.get_node("Wallet").count("gd_soft")])
-				var box: Control = _t_._banner.get_meta("box")
-				print("hint: a %.2f at %s size %s text '%s' visible %s" % [box.modulate.a, str(box.position), str(box.size), _t_._banner.text, str(box.is_visible_in_tree())])
 				print("bands: clear %s tray %s field %s" % [str(_t_.clear), str(_t_._tray), str(_t_.field.size)])
 				# a real touch on the second pot
 				_tap(_t_._pot_at[1] + Vector2(0, -50))

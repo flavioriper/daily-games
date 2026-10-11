@@ -1425,8 +1425,6 @@ TUT_EDDY_HUD_RESET,A fresh run on a full pond,Uma partida nova num lago cheio,Un
 TUT_EDDY_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
 TUT_EDDY_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
 GD_MOTTO,A little at a time,Um pouquinho de cada vez,Un poquito cada vez
-GD_READY,Colour the jelly,Pinte a gelatina,Pinta la gelatina
-GD_READY_LINE,Slide over the tray to move the dropper and hold the pink button to squeeze,Deslize sobre a bandeja para mover o conta-gotas e segure o botão rosa para apertar,Desliza sobre la bandeja para mover el cuentagotas y mantén el botón rosa para apretar
 GD_NEED,NEEDS %d%%,PRECISA DE %d%%,NECESITA %d%%
 GD_NEEDED,It needed %d%%,Precisava de %d%%,Necesitaba %d%%
 GD_NOTHING_YET,Nothing to serve yet,Ainda não há o que servir,Aún no hay nada que servir

@@ -150,6 +150,11 @@
   frame; the harness holds two `gd_soft` and read 200 gold become 440). The
   best-moulds record in `arcade.cfg` is left where it is and read by
   nothing.
+- **No words over the tray** (the user, 2026-10-11, of "Colour the jelly /
+  Slide over the tray..." laid over the mould before the first squeeze:
+  "remove this tutorial text on gumdrop, no other game have it"). The
+  banner, its two labels, `_hint` and `GD_READY`/`GD_READY_LINE` are gone;
+  `greet()` is the start sound only. The entry below is its history.
 - **The words over the tray before the first squeeze were off the screen**
   until this pass: a wrapping label says how tall it is from the width it
   has, and at the deal that was none, so the box came out 5,765 tall with

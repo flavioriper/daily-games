@@ -115,9 +115,6 @@ var _tip_was := Vector2.ZERO
 var _fx: Node2D
 var _match_l: Label
 var _need_l: Label
-var _banner: Label
-var _sub: Label
-var _banner_tw: Tween
 var _acc := 0.0
 var _shown_index := -1
 var _shown_match := -2
@@ -245,30 +242,6 @@ func _build_field() -> Control:
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
-	var over := VBoxContainer.new()
-	over.alignment = BoxContainer.ALIGNMENT_CENTER
-	over.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	field.add_child(over)
-	_banner = Label.new()
-	_banner.theme_type_variation = "WellDone"
-	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_banner.add_theme_color_override("font_color", Color("fffaf0"))
-	_banner.add_theme_color_override("font_shadow_color", Color(0.2, 0.12, 0.2, 0.6))
-	_banner.add_theme_constant_override("shadow_offset_y", 4)
-	_banner.add_theme_color_override("font_outline_color", Art.INK)
-	_banner.add_theme_constant_override("outline_size", 12)
-	over.add_child(_banner)
-	_sub = Label.new()
-	_sub.theme_type_variation = "SheetTitle"
-	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_sub.add_theme_color_override("font_color", Color("fffaf0"))
-	_sub.add_theme_color_override("font_outline_color", Art.INK)
-	_sub.add_theme_constant_override("outline_size", 8)
-	over.add_child(_sub)
-	over.modulate.a = 0.0
-	_banner.set_meta("box", over)
 	return field
 
 ## What the owner's chrome covers at the top and the foot of this rect, in
@@ -324,8 +297,6 @@ func _layout_field() -> void:
 		_table = Art.table(field.size)
 	_place()
 	_place_labels()
-	if _banner != null:
-		_place_banner()
 	_redraw()
 
 func _place_labels() -> void:
@@ -334,25 +305,6 @@ func _place_labels() -> void:
 	_match_l.position = right.position + Vector2(0, 22.0)
 	_need_l.size = Vector2(right.size.x, 40.0)
 	_need_l.position = right.position + Vector2(0, 118.0)
-
-## The two lines over the tray. A label that wraps says how tall it is
-## from the width it has, and before the first layout that is none (the
-## box came out 5,765 tall and its words off the screen): the lines are
-## given their width first, and the box its height a frame later.
-func _place_banner() -> void:
-	if field.size.x <= 0.0:
-		return
-	var box: Control = _banner.get_meta("box")
-	var wide := field.size.x * 0.86
-	_banner.custom_minimum_size.x = wide
-	_sub.custom_minimum_size.x = wide
-	box.position = Vector2(field.size.x * 0.07, _tray.position.y + _tray.size.y * 0.3)
-	_fit_banner.call_deferred()
-
-func _fit_banner() -> void:
-	var box: Control = _banner.get_meta("box")
-	box.size = Vector2(field.size.x * 0.86, box.get_combined_minimum_size().y)
-	box.pivot_offset = box.size * 0.5
 
 func _redraw() -> void:
 	field.queue_redraw()
@@ -429,7 +381,6 @@ func lay(game: RefCounted) -> void:
 	_fluid.lay(sim.mould)
 	sim.events.clear()
 	_rw.clear()
-	_hint("", "")
 	_layout_field()
 	_refresh_hud()
 
@@ -444,10 +395,11 @@ func cue(cue_name: String, knock := -1) -> void:
 func told_refund(gold: int) -> void:
 	_refund = gold
 
-## The words over the tray before the first squeeze.
+## The day's first sound. No words over the tray: no other board has
+## them, and the ? has the tutorial (the user, 2026-10-11: "remove this
+## tutorial text on gumdrop, no other game have it").
 func greet() -> void:
 	_fx.cue("start")
-	_hint(tr("GD_READY"), tr("GD_READY_LINE"))
 
 func _process(delta: float) -> void:
 	if sim == null:
@@ -636,8 +588,6 @@ func _play_events() -> void:
 	sim.events.clear()
 	for ev: Dictionary in evs:
 		match String(ev.type):
-			"go":
-				_hint("", "")
 			"deal":
 				_on_deal()
 			"again":
@@ -707,21 +657,6 @@ func _ring(at: Vector2, r: float, life: float, col: Color) -> void:
 	if Motion.reduce:
 		return
 	_bits.append({"pos": at, "t": 0.0, "life": life, "r": r, "col": col})
-
-func _hint(text: String, sub: String) -> void:
-	var box: Control = _banner.get_meta("box")
-	Motion.stop(_banner_tw)
-	if text == "":
-		_banner_tw = create_tween()
-		_banner_tw.tween_property(box, "modulate:a", 0.0, 0.18)
-		return
-	_banner.text = text
-	_sub.text = sub
-	_sub.visible = sub != ""
-	_place_banner()
-	box.scale = Vector2.ONE
-	_banner_tw = create_tween()
-	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
 
 func _refresh_hud() -> void:
 	if sim == null:
