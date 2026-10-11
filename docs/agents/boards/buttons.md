@@ -379,3 +379,9 @@ move together but each one in it own sequence, not all at once".
   close. Read as "a step between", not "smaller than whole": whole already
   shows all of the picture. Probed headless; the half-way step not seen on
   a screen.
+- **Corners link on every band again** (the user, 2026-10-11: "move back
+  the diagonal link"; `CORNERS_TO` 3). It takes back "Corners link on Easy
+  only" above. Both a pick and the stretch a sew fills go by the eight
+  ways, and `BB_RULES_CORNERS` is read on every band. `par` medians: 18 /
+  34 / 267 / 439 (rules probe 612 runs, board probe 28 days, 0 failures;
+  the suite 249,804).

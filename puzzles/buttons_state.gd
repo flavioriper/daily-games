@@ -46,7 +46,9 @@ const NEAR_CORNERS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i
 	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]
 ## The bands on which corners count as touching (the user, 2026-10-11:
 ## "lets remove the link diagonal after easy, make too easy").
-const CORNERS_TO := 0
+## Every band again: "move back the diagonal link" (the user, later the same
+## day), which took back "lets remove the link diagonal after easy".
+const CORNERS_TO := 3
 ## The bands that ring where a pick may go ("hard and insane should never
 ## show where to place").
 const GUIDES_TO := 1
@@ -359,7 +361,8 @@ func moves_budget() -> int:
 		return 0
 	return par + maxi(SLACK_MIN, par / 4)
 
-## What touches what on this band: the four sides, and on Easy the corners.
+## What touches what on this band: the four sides and, up to CORNERS_TO
+## (every band now), the corners.
 func near() -> Array:
 	return NEAR_CORNERS if band <= CORNERS_TO else NEAR
 
