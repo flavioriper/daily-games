@@ -385,3 +385,12 @@ move together but each one in it own sequence, not all at once".
   ways, and `BB_RULES_CORNERS` is read on every band. `par` medians: 18 /
   34 / 267 / 439 (rules probe 612 runs, board probe 28 days, 0 failures;
   the suite 249,804).
+- **The tin is twenty places, ten open** (the user, 2026-10-11: "the case
+  should be bigger, 20 slots, 10 free and 10 to unlock"; `CASE_BASE` 10 on
+  every band, `CASE_MAX` 20, still one more a colour whole). It takes back
+  "6 places (7 on Hard) of 12" above. Two rows of ten (`TIN_ROW` 10, a
+  place about 70 px at 810 wide; `_tin_row()` keeps the tutorial's small
+  tin one row). A picture has twelve colours at the most, so the last
+  places never open: the user's number, kept. `par` medians: 17 / 31 / 265
+  / 395. Rules probe 612 runs, board probe 28 days, 0 failures; the suite
+  249,804; seen on Insane (`play`), 103 draw calls at the peak.

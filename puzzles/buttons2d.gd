@@ -51,7 +51,7 @@ const PAD := 34.0
 const HUD_ROW := 76.0
 const GAP := 26.0
 const BORDER := 18.0
-const TIN_ROW := 6
+const TIN_ROW := 10
 const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
@@ -449,9 +449,10 @@ func _layout() -> void:
 		return
 	var top := _clear.x
 	var foot := size.y - _clear.y
-	_tin_step = minf(_tin_step_max, (size.x - 2.0 * PAD - 2.0 * TIN_PAD) / TIN_ROW)
-	var tin_rows := ceili(float(_tin_places) / TIN_ROW)
-	var tin_size := Vector2(TIN_ROW * _tin_step + 2.0 * TIN_PAD, tin_rows * _tin_step + 2.0 * TIN_PAD)
+	var per_row := _tin_row()
+	_tin_step = minf(_tin_step_max, (size.x - 2.0 * PAD - 2.0 * TIN_PAD) / per_row)
+	var tin_rows := ceili(float(_tin_places) / per_row)
+	var tin_size := Vector2(per_row * _tin_step + 2.0 * TIN_PAD, tin_rows * _tin_step + 2.0 * TIN_PAD)
 	_tin_rect = Rect2(Vector2((size.x - tin_size.x) * 0.5, foot - tin_size.y - GAP * 0.5), tin_size)
 	var head := top if _won else top + HUD_ROW
 	var floor_y := foot if _won else _tin_rect.position.y - GAP
@@ -558,8 +559,12 @@ func _mark_all() -> void:
 func cell_to_local(r: int, c: int) -> Vector2:
 	return _grid + (Vector2(c, r) + Vector2(0.5, 0.5)) * _cell
 
+## How many places a row of the tin holds: ten, or all of a small tin's.
+func _tin_row() -> int:
+	return mini(TIN_ROW, _tin_places)
+
 func tin_centre(place: int) -> Vector2:
-	return Art.tin_place(_tin_rect, place, TIN_ROW, _tin_step, _tin_places)
+	return Art.tin_place(_tin_rect, place, _tin_row(), _tin_step, _tin_places)
 
 ## The square under a point of the cloth as laid out.
 func _cell_at(local: Vector2) -> int:
@@ -590,7 +595,7 @@ func _build_still() -> ArrayMesh:
 
 func _build_tin() -> ArrayMesh:
 	var b := Face.Builder.new()
-	Art.tin(b, _tin_rect, _tin_places, state.capacity(), TIN_ROW, _tin_step)
+	Art.tin(b, _tin_rect, _tin_places, state.capacity(), _tin_row(), _tin_step)
 	return b.mesh()
 
 # --- the drawing ---

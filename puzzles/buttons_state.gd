@@ -24,8 +24,11 @@ extends RefCounted
 
 const BANK := "res://content/pixel_garden.json"
 ## The places in the tin a band starts with, and the most it ever has.
-const CASE_BASE := [6, 6, 7, 6]
-const CASE_MAX := 12
+## Ten places open of twenty, one more a colour whole (the user,
+## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
+## unlock"; 6 of 12 before, 7 on Hard).
+const CASE_BASE := [10, 10, 10, 10]
+const CASE_MAX := 20
 const HINTS_BY := [3, 3, 2, 0]
 ## Insane's spare taps over the par: a quarter of it, and never under this.
 const SLACK_MIN := 3
