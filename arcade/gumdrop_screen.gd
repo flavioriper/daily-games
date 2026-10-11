@@ -553,7 +553,7 @@ func _drive(delta: float) -> void:
 	_fluid.pigment = Mould.PIGMENT[int(sim.pots[sim.picked].flavour)]
 	_fluid.drag = (sim.tip - _tip_was) / Mould.SIDE / maxf(delta, 0.001)
 	_tip_was = sim.tip
-	if not sim.prefill.is_empty():
+	if not sim.prefill.is_empty() and _fluid.clear_done():
 		var pre: Dictionary = sim.prefill.pop_front()
 		_fluid.fill_cell = int(pre.cell)
 		_fluid.fill_pig = pre.pigment

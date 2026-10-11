@@ -150,6 +150,11 @@ func _build() -> void:
 	_mats["Dye"].set_shader_parameter("dye", _last_dye.get_texture())
 	_judge = _pass("Judge", DYE, "judge", {"dye": _last_dye.get_texture(), "mask": mask})
 
+## Whether a deal's clearing frames are over: a cell filled before that
+## would be wiped with them.
+func clear_done() -> bool:
+	return _clear_for == 0
+
 ## The dye as the screen draws it.
 func texture() -> Texture2D:
 	return _last_dye.get_texture()
