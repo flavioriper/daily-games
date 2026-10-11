@@ -1466,6 +1466,18 @@ PG_PIC_SHEEP_HILL,Sheep on the Hill,Ovelhas na Colina,Ovejas en la Colina
 PG_PIC_BEE_GARDEN,Bee Garden,Jardim das Abelhas,Jardín de las Abejas
 PG_PIC_MOUNTAIN_LAKE,Mountain Lake,Lago da Montanha,Lago de Montaña
 PG_PIC_SNOWY_CABIN,Snowy Cabin,Cabana na Neve,Cabaña Nevada
+PG_PIC_TEAPOT,Teapot,Bule,Tetera
+PG_PIC_SQUIRREL,Squirrel,Esquilo,Ardilla
+PG_PIC_ROBIN,Robin,Pisco,Petirrojo
+PG_PIC_TOADSTOOL,Toadstool,Cogumelo Pintado,Seta Moteada
+PG_PIC_TURTLE,Turtle,Tartaruga,Tortuga
+PG_PIC_WHALE,Whale,Baleia,Ballena
+PG_PIC_MONKEY,Monkey,Macaco,Mono
+PG_PIC_PENGUIN,Penguin,Pinguim,Pingüino
+PG_PIC_ELEPHANT,Elephant,Elefante,Elefante
+PG_PIC_GIRAFFE,Giraffe,Girafa,Jirafa
+PG_PIC_WATERING_CAN,Watering Can,Regador,Regadera
+PG_PIC_CUPCAKE,Cupcake,Cupcake,Cupcake
 DB_RULES,"Berries ride one road in time with the song, every one into the same ring. Each berry wears the colour of its drum and has the drum's mark under it; tap that drum as the berry reaches the ring. Easy has one drum, Medium two, Hard and Insane three. Two berries at once, one over the other, are two fingers. A berry with a ribbon behind it is held down until the ribbon ends, a golden bar is drummed as fast as you can, and a balloon pops after that many taps.\n\nEvery note is GOOD, OK or BAD by how close you were. GOOD and OK fill the soul gauge; a BAD or a berry let past drains it, breaks your combo and lets the tune fade for a moment. Finish the song with the gauge at or over its line to clear it. Go-Go time scores a fifth more.\n\nIf the berries feel early or late on your phone, tap Tune on the start card and tap along with the wood block.","As frutinhas seguem por uma estrada no ritmo da música, todas para o mesmo anel. Cada frutinha tem a cor do seu tambor e a marca dele embaixo; toque nesse tambor quando a frutinha chegar ao anel. O Fácil tem um tambor, o Médio dois, o Difícil e o Insano três. Duas frutinhas juntas, uma sobre a outra, pedem dois dedos. Uma frutinha com uma fita atrás fica pressionada até a fita acabar, uma barra dourada é tocada o mais rápido que puder, e um balão estoura depois de tantos toques.\n\nCada nota é BOM, OK ou RUIM conforme a sua precisão. BOM e OK enchem o medidor de alma; um RUIM ou uma frutinha que passa esvaziam o medidor, quebram o combo e deixam a melodia sumir por um instante. Termine a música com o medidor na linha ou acima dela para passar. O Go-Go vale um quinto a mais.\n\nSe as frutinhas parecerem adiantadas ou atrasadas no seu celular, toque em Ajustar no cartão de início e acompanhe o bloco de madeira.","Las bayas van por un camino al ritmo de la canción, todas hacia el mismo aro. Cada baya lleva el color de su tambor y su marca debajo; toca ese tambor cuando la baya llegue al aro. Fácil tiene un tambor, Medio dos, Difícil e Insano tres. Dos bayas a la vez, una sobre la otra, piden dos dedos. Una baya con una cinta detrás se mantiene pulsada hasta que la cinta termina, una barra dorada se toca lo más rápido que puedas, y un globo revienta tras esa cantidad de toques.\n\nCada nota es BIEN, OK o MAL según tu precisión. BIEN y OK llenan el medidor de alma; un MAL o una baya que pasa lo vacían, rompen el combo y apagan la melodía un momento. Termina la canción con el medidor en la línea o por encima para superarla. El Go-Go vale una quinta parte más.\n\nSi las bayas se sienten adelantadas o atrasadas en tu teléfono, toca Ajustar en la tarjeta de inicio y sigue el bloque de madera."
 DB_BLURB,"One road, one short song: tap each berry's drum.","Uma estrada, uma música curta: toque o tambor de cada frutinha.","Un camino, una canción corta: toca el tambor de cada baya."
 DB_SHORT,"Drum the song,\nfill the gauge.","Toque a música,\nencha o medidor.","Toca la canción,\nllena el medidor."

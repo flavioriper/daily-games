@@ -243,3 +243,7 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 - **The zoom's button goes a step at a time (2026-10-11)**: whole, half
   way, close, and back out (`PanZoom.cycle`; `docs/agents/boards/buttons.md`,
   "the zoom has a step"). The probe and the tutorial press twice for close.
+- **Cut-outs among the big pictures (2026-10-11)**: Hard and Insane are 18
+  pictures each, 12 scenes and 6 subjects on a bare board (asked of Button
+  Box; `docs/agents/boards/buttons.md`, "Cut-outs among the big pictures").
+  This board got them by sharing the bank, not by the user's word.

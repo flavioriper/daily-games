@@ -394,3 +394,37 @@ move together but each one in it own sequence, not all at once".
   places never open: the user's number, kept. `par` medians: 17 / 31 / 265
   / 395. Rules probe 612 runs, board probe 28 days, 0 failures; the suite
   249,804; seen on Insane (`play`), 103 draw calls at the peak.
+
+## Cut-outs among the big pictures (2026-10-11)
+
+- **A third of Hard and Insane is one subject on bare linen** (the user,
+  with a screenshot of a monkey on a plain board: "let's make sure the
+  button box don't have only square images"). Until now every one of the
+  24 big pictures filled its square edge to edge. Twelve cut-outs joined
+  the shared bank, six a band, so each big band is 18 (12 scenes, 6
+  cut-outs): teapot, squirrel, robin, toadstool, turtle, whale on Hard;
+  monkey, penguin, elephant, giraffe, watering can, cupcake on Insane.
+  Painted in `tools/paint_pixel_garden.py` (`CUT`, `edge()`: a dark line
+  on every bare peg beside a filled one; the penguin's is grey), with
+  rules of their own there and in `tools/check_pixel_garden.py`: 30 to 70%
+  filled, 5 to 10 colours on 24 and 6 to 12 on 32, the rest as a scene.
+  Parts of one colour are painted a peg apart so the line parts them (the
+  squirrel's tail from its back, the monkey's arms from its body).
+- **No rule of the board changed**: bare linen on a big picture went
+  through `_scramble_strips` (a strip ends at a bare peg), the light
+  pieces and the block meshes as it does on Easy. Measured: cut-outs are
+  267-381 buttons on Hard with a par of 116-196, 455-682 on Insane with
+  249-315 (scenes: 576, 205-303; 1,024, 340-436); the bands' medians are
+  now 241 and 377. **A subject mostly one colour opens part sewn**: the
+  elephant all grey opened with 132 of 682 at home (grey strips trade with
+  grey), so its ears are lilac and its blanket wide; keep a cut-out's
+  biggest colour near a quarter of the board.
+- Pixel Garden plays the same twelve (the bank is shared; its probe
+  passes). Rules probe 648 runs, board probe 28 days, Pixel Garden's probe,
+  0 failures; the suite 249,804. Seen once: the monkey on Insane
+  (`PG_BANK` of one picture, `tests/_shot_buttons.gd -- d=3 play`), 105
+  draw calls at the peak. The other eleven seen only on the checker's
+  sheet; the robin and the whale's spout are the weakest drawings.
+- **Mine, not the user's**: a third and not half or all; the twelve
+  subjects; Pixel Garden getting them too; the square dashed frame round
+  the room still drawn on a cut-out.

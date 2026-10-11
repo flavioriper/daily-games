@@ -10,6 +10,10 @@ whole scenes -- a sky, a ground, a subject and its details -- where Easy and
 Medium (bands 0 and 1, hand-typed in the bank and never touched here) are one
 object on a bare board. Button Box reads the same bank.
 
+A third of each big band is cut-outs (CUT, the same day, asked of Button Box):
+one subject on a bare board with a dark line round it, 30 to 70% filled, 5 to
+10 colours on 24 and 6 to 12 on 32, and the other rules as a scene keeps them.
+
 A picture is a function that paints a Pic (a grid of the bank's nineteen
 palette chars, '.' a bare peg) with the helpers below. Nothing here is random
 past a seeded Random, so a run always writes the same bank. The rules a big
@@ -1177,6 +1181,350 @@ def snowy_cabin():
     return p
 
 
+# ---------------------------------------------------------------- the cut-outs
+
+# One subject on a bare board, as Easy and Medium are, at the big sizes (the
+# user, 2026-10-11, of Button Box: "make sure the button box don't have only
+# square images"): no sky and no ground, the linen shows round it, and a dark
+# line runs round the shape so it reads on the cloth.
+
+def edge(p, ch="d"):
+    """The line round a cut-out: every bare peg beside a filled one."""
+    p.outline(PALETTE, ch, over=".")
+
+
+def teapot():
+    p = Pic(24)
+    # the handle, the spout, the pot
+    p.ellipse(4.5, 13.5, 3.2, 4.2, "s")
+    p.ellipse(4.8, 13.5, 1.4, 2.4, ".")
+    p.poly([(17, 12), (21, 8), (22, 9), (19, 16)], "p")
+    p.ellipse(11.5, 14, 6.6, 6, "p")
+    p.span(20, 8, 15, "s")
+    p.span(21, 8, 15, "s")
+    # the lid and its knob
+    p.span(8, 8, 15, "s")
+    p.span(7, 9, 14, "s")
+    p.rect(11, 5, 12, 6, "r")
+    # a band, two flowers, the light on it
+    p.span(11, 6, 17, "s", only="p")
+    daisy(p, 11, 15, "w", "r")
+    daisy(p, 15, 17, "w", "r")
+    p.dots("c", (7, 13), (7, 14), (7, 15), (8, 12), (8, 17), (7, 16))
+    edge(p)
+    return p
+
+
+def squirrel():
+    p = Pic(24)
+    # the tail, a peg clear of its back so the line parts them
+    p.ellipse(5.5, 11.5, 3.6, 7, "o")
+    p.ellipse(7.5, 5, 3, 2.6, "o")
+    p.ellipse(5.5, 12, 1.5, 4.6, "n")
+    p.dots("n", (7, 5), (8, 5), (7, 6))
+    # the body, the head, an ear
+    p.ellipse(14.5, 16, 3.8, 5, "o")
+    p.ellipse(16.5, 8.5, 3.6, 3.2, "o")
+    p.dots("o", (14, 4), (15, 4), (14, 5))
+    p.ellipse(16, 16.5, 1.8, 3.2, "c")
+    p.dots("c", (18, 10), (19, 10), (17, 10), (18, 11), (17, 11), (19, 9))
+    p.put(17, 8, "d")
+    p.put(20, 9, "d")
+    # an acorn in its paws, the feet, the grass
+    p.span(12, 19, 21, "m")
+    p.rect(19, 13, 21, 14, "n")
+    p.span(15, 20, 20, "n")
+    p.dots("m", (20, 11), (12, 21), (13, 21), (14, 21), (16, 21), (17, 21), (18, 21))
+    p.span(22, 2, 21, "g")
+    p.dots("i", (3, 22), (8, 22), (11, 22), (15, 22), (19, 22), (21, 22))
+    edge(p)
+    return p
+
+
+def robin():
+    p = Pic(24)
+    # the tail, the bird
+    p.poly([(5, 13), (2, 16), (3, 18), (6, 16)], "m")
+    p.ellipse(11.5, 11.5, 6.6, 6.6, "m")
+    p.ellipse(14, 12.5, 4.4, 4.6, "r", only="m")
+    p.ellipse(12.5, 16.6, 3.8, 1.8, "c", only="mr")
+    p.ellipse(7.5, 12.5, 2.2, 3.4, "n")
+    p.dots("d", (15, 7), (7, 11), (8, 13), (7, 15))
+    p.poly([(19, 9), (21, 10), (19, 11)], "y")
+    p.dots("y", (10, 19), (10, 20), (14, 19), (14, 20))
+    # the twig it stands on, a leaf, the berries
+    p.span(21, 3, 21, "n")
+    p.stamp(19, 18, ["gg", "gg"])
+    p.dots("g", (4, 20), (5, 20), (4, 19))
+    p.dots("r", (17, 22), (18, 22), (6, 22))
+    edge(p)
+    return p
+
+
+def toadstool():
+    p = Pic(24)
+    # the cap, flat under
+    p.ellipse(11.5, 12, 10.4, 9.4, "r")
+    p.rect(0, 13, 23, 23, ".")
+    p.span(13, 3, 20, "n")
+    p.span(12, 2, 21, "s", only="r")
+    for cx, cy, r in ((6.5, 8, 1.7), (13.5, 5.5, 2.1), (18, 10, 1.3), (10.5, 10.5, 1.2), (3.5, 11, 0.8)):
+        p.ellipse(cx, cy, r, r, "w")
+    # the stem and its skirt, the grass
+    p.taper(11.5, 14, 21, 2.6, 4.4, "c")
+    p.span(15, 7, 16, "n")
+    p.dots("n", (14, 17), (14, 18), (15, 19), (15, 20), (15, 18))
+    p.span(22, 3, 20, "g")
+    for x in (2, 5, 17, 20):
+        tuft(p, x, 21, "i")
+    p.dots("i", (9, 22), (13, 22), (16, 22), (6, 22))
+    daisy(p, 20, 18, "y", "y")
+    p.dots("y", (4, 20), (5, 19))
+    edge(p)
+    return p
+
+
+def turtle():
+    p = Pic(24)
+    # the shell and its plates
+    p.ellipse(10.5, 13, 8, 7.4, "g")
+    p.rect(0, 16, 23, 23, ".", only="g")
+    p.rect(3, 14, 18, 15, "y", only="g")
+    for cx, cy in ((10.5, 8.5), (6.5, 11), (14.5, 11), (10.5, 12)):
+        p.ellipse(cx, cy, 1.6, 1.2, "f")
+    p.dots("f", (4, 13), (17, 13), (8, 6), (13, 6))
+    # the head, the legs, the tail
+    p.ellipse(20, 12, 2.8, 2.6, "i")
+    p.rect(17, 14, 19, 15, "i")
+    p.rect(5, 16, 7, 18, "i")
+    p.rect(13, 16, 15, 18, "i")
+    p.span(19, 5, 7, "n")
+    p.span(19, 13, 15, "n")
+    p.dots("i", (1, 15), (0, 16), (1, 16), (2, 15))
+    p.put(20, 11, "d")
+    p.dots("p", (21, 13), (22, 13))
+    # a poppy on its back
+    daisy(p, 10, 3, "r", "y")
+    p.dots("r", (9, 2), (11, 2))
+    p.dots("p", (9, 4), (11, 4), (20, 13), (10, 5))
+    edge(p)
+    return p
+
+
+def whale():
+    p = Pic(24)
+    # the flukes, the whale
+    p.poly([(18, 12), (21, 8), (22, 5), (19, 7)], "b")
+    p.poly([(21, 8), (23, 6), (23, 9)], "b")
+    p.ellipse(10, 14, 8.6, 6.2, "b")
+    p.poly([(15, 12), (20, 9), (20, 13), (16, 18)], "b")
+    # the pale belly and its grooves, the eye, the fin
+    p.ellipse(9, 17, 7, 3.2, "k", only="b")
+    for x in (4, 7, 10, 13):
+        p.line(x, 18, x + 1, 19, "w", only="k")
+    p.put(5, 13, "d")
+    p.dots("p", (3, 15), (4, 15), (5, 15), (3, 16), (4, 16), (5, 16))
+    p.poly([(10, 14), (13, 16), (11, 17)], "t")
+    p.dots("t", (9, 9), (12, 9), (15, 10), (7, 10))
+    # the spout
+    p.dots("k", (8, 6), (8, 5), (8, 4), (7, 3), (9, 3), (6, 2), (10, 2), (5, 3), (11, 3))
+    edge(p)
+    return p
+
+
+def monkey():
+    p = Pic(32)
+    # the ears, the head
+    p.ellipse(6, 9.5, 2.9, 3.2, "m")
+    p.ellipse(25, 9.5, 2.9, 3.2, "m")
+    p.ellipse(6, 9.5, 1.3, 1.8, "p")
+    p.ellipse(25, 9.5, 1.3, 1.8, "p")
+    p.ellipse(15.5, 9, 8, 7.4, "m")
+    p.dots("m", (15, 1), (16, 0), (16, 1))
+    # the face: two rounds over a muzzle
+    p.ellipse(12, 8.5, 3.4, 3.6, "n")
+    p.ellipse(19, 8.5, 3.4, 3.6, "n")
+    p.ellipse(15.5, 12, 5.6, 3.6, "n")
+    for x in (11, 18):
+        p.rect(x, 8, x + 1, 9, "d")
+    p.dots("d", (14, 11), (17, 11))
+    p.span(13, 13, 18, "r")
+    p.dots("p", (10, 12), (11, 12), (20, 12), (21, 12))
+    # the body, the arms a peg clear of it, the legs
+    p.ellipse(15.5, 22, 4.6, 5.6, "m")
+    p.ellipse(15.5, 22.5, 2.6, 3.6, "c")
+    for x in (8, 22):
+        p.rect(x, 18, x + 1, 22, "m")
+        p.rect(x, 23, x + 1, 24, "n")
+    p.dots("m", (10, 17), (10, 18), (21, 17), (21, 18))
+    p.rect(11, 26, 13, 28, "m")
+    p.rect(18, 26, 20, 28, "m")
+    p.ellipse(11, 29.6, 2.6, 1.2, "n")
+    p.ellipse(20.5, 29.6, 2.6, 1.2, "n")
+    # the tail, curled
+    p.span(26, 21, 26, "m")
+    p.rect(27, 20, 27, 25, "m")
+    p.dots("m", (28, 19), (29, 19), (30, 20), (30, 21), (29, 22))
+    # a banana in its hand
+    p.stamp(3, 21, [" y  ", "yy  ", "yyy ", " yyy", "  yy"])
+    p.put(4, 20, "g")
+    p.dots("g", (4, 19), (5, 19), (3, 20), (5, 20), (4, 18))
+    edge(p)
+    return p
+
+
+def penguin():
+    p = Pic(32)
+    # the feet, the flippers, the body
+    p.ellipse(11, 29.5, 3, 1.4, "o")
+    p.ellipse(20, 29.5, 3, 1.4, "o")
+    p.poly([(7, 15), (3, 22), (4, 24), (8, 21)], "d")
+    p.poly([(24, 15), (28, 22), (27, 24), (23, 21)], "d")
+    p.ellipse(15.5, 19, 8.6, 10.4, "d")
+    p.ellipse(15.5, 10, 7, 6.6, "d")
+    p.ellipse(15.5, 21, 6, 7.6, "w")
+    # the face
+    p.ellipse(12.5, 10.5, 3, 3.2, "w")
+    p.ellipse(18.5, 10.5, 3, 3.2, "w")
+    p.rect(12, 10, 13, 11, "d")
+    p.rect(18, 10, 19, 11, "d")
+    p.dots("w", (12, 10), (18, 10))
+    p.poly([(14, 12), (17, 12), (15.5, 14)], "o")
+    p.dots("p", (9, 12), (10, 12), (11, 12), (20, 12), (21, 12), (22, 12))
+    # the bobble hat
+    p.taper(15.5, 2, 5, 3, 6.4, "t")
+    p.span(6, 8, 23, "c")
+    p.span(4, 10, 21, "k", only="t")
+    p.ellipse(15.5, 1, 1.6, 1.2, "c")
+    # the scarf
+    p.rect(8, 15, 23, 16, "r")
+    p.rect(19, 17, 21, 22, "r")
+    p.dots("y", (10, 15), (10, 16), (14, 15), (14, 16), (18, 15), (18, 16), (22, 15), (22, 16), (19, 20), (20, 20), (21, 20))
+    p.dots("k", (13, 22), (17, 24), (14, 26), (18, 20), (12, 25), (16, 21))
+    edge(p, "e")
+    return p
+
+
+def elephant():
+    p = Pic(32)
+    # the ears
+    p.ellipse(6, 11, 5, 7.6, "l")
+    p.ellipse(25, 11, 5, 7.6, "l")
+    p.ellipse(6.5, 11.5, 2.8, 5, "p")
+    p.ellipse(24.5, 11.5, 2.8, 5, "p")
+    # the body and its feet
+    p.ellipse(15.5, 23, 8, 6.4, "e")
+    for x in (8, 19):
+        p.rect(x, 26, x + 4, 30, "e")
+        p.dots("w", (x + 1, 30), (x + 3, 30))
+    p.ellipse(15.5, 24.5, 6, 4.4, "k", only="e")
+    # the head, the trunk with a flower
+    p.ellipse(15.5, 10.5, 7.6, 8, "e")
+    p.rect(14, 14, 17, 23, "e")
+    p.rect(17, 22, 20, 23, "e")
+    p.rect(20, 20, 21, 23, "e")
+    for y in (16, 18, 20):
+        p.span(y, 14, 17, "d")
+    p.poly([(12, 16), (10, 20), (12, 19)], "c")
+    p.poly([(19, 16), (21, 19), (19, 19)], "c")
+    for x in (11, 19):
+        p.rect(x, 9, x + 1, 10, "d")
+        p.put(x, 9, "w")
+    p.dots("p", (10, 13), (11, 13), (20, 13), (21, 13))
+    p.line(21, 19, 22, 14, "g")
+    daisy(p, 23, 13, "r", "y")
+    p.dots("r", (22, 12), (24, 12), (22, 14), (24, 14))
+    p.dots("g", (23, 17), (24, 16), (20, 17))
+    p.dots("y", (23, 13), (15, 3), (16, 3), (15, 4), (16, 4), (14, 4), (17, 4))
+    edge(p)
+    return p
+
+
+def giraffe():
+    p = Pic(32)
+    # the legs, the body, the tail
+    for x in (9, 12, 18, 21):
+        p.rect(x, 25, x + 1, 29, "y")
+        p.rect(x, 30, x + 1, 30, "m")
+    p.ellipse(15.5, 23, 7.4, 4, "y")
+    p.line(23, 22, 26, 26, "y")
+    p.dots("m", (26, 27), (27, 27), (26, 28))
+    # the neck and its mane, the head
+    p.rect(13, 9, 17, 21, "y")
+    p.rect(18, 9, 18, 19, "m")
+    p.ellipse(15, 6.5, 4.4, 3.4, "y")
+    p.ellipse(13.5, 8.5, 3.6, 2.2, "c")
+    p.rect(13, 1, 13, 3, "m")
+    p.rect(17, 1, 17, 3, "m")
+    p.dots("o", (13, 0), (17, 0), (12, 1), (18, 1), (12, 0), (18, 0))
+    p.dots("y", (9, 4), (10, 4), (20, 4), (21, 4))
+    p.dots("d", (14, 6), (17, 6), (11, 8), (13, 8))
+    p.dots("p", (16, 8), (17, 8), (9, 5), (10, 5), (20, 5), (21, 5))
+    # its patches
+    for x, y, w, h in ((14, 11, 2, 2), (15, 15, 2, 2), (13, 18, 2, 2), (10, 21, 3, 2), (15, 22, 3, 3),
+                       (20, 21, 2, 2), (11, 25, 1, 2), (18, 26, 2, 1), (9, 27, 1, 1), (22, 26, 1, 2), (17, 4, 1, 1), (19, 24, 2, 1)):
+        p.rect(x, y, x + w - 1, y + h - 1, "o", only="y")
+    # a sprig in its mouth
+    p.line(10, 9, 6, 11, "f")
+    p.dots("f", (7, 9), (5, 12))
+    p.stamp(3, 9, [" gg ", "gggg", " gg "])
+    p.stamp(6, 12, ["gg", "gg"])
+    p.span(31, 6, 25, "i")
+    for x in (5, 15, 24):
+        tuft(p, x, 30, "i")
+    edge(p)
+    return p
+
+
+def watering_can():
+    p = Pic(32)
+    # three flowers standing in it
+    for x, top, ch in ((11, 4, "r"), (16, 1, "y"), (21, 5, "p")):
+        p.line(x, top + 3, x, 14, "g")
+        p.stamp(x - 1, top, [ch + " " + ch, ch * 3, ch * 3])
+    p.dots("f", (12, 10), (13, 9), (15, 8), (14, 7), (22, 11), (23, 10), (17, 11), (18, 10))
+    # the handle, the spout and its rose, the can
+    p.ellipse(25.5, 20.5, 3.6, 5, "b")
+    p.ellipse(25.2, 20.5, 1.7, 3, ".")
+    p.poly([(9, 21), (3, 14), (5, 13), (9, 17)], "k")
+    p.poly([(1, 12), (6, 11), (7, 13), (2, 15)], "b")
+    p.rect(9, 15, 23, 28, "k")
+    p.rect(8, 14, 24, 15, "b")
+    p.rect(9, 28, 23, 29, "b")
+    p.span(21, 9, 23, "t")
+    p.span(22, 9, 23, "t")
+    # a heart on it, the light, the drops
+    p.stamp(13, 16, ["ww ww", "wwwww", " www ", "  w  "])
+    p.rect(10, 17, 10, 26, "w", only="k")
+    p.dots("t", (1, 18), (3, 20), (0, 22), (2, 24))
+    edge(p)
+    return p
+
+
+def cupcake():
+    p = Pic(32)
+    # the case, pleated
+    p.taper(15.5, 19, 29, 9.4, 6.6, "l")
+    for x in range(7, 25, 3):
+        p.line(x, 19, x + (1 if x < 15 else -1 if x > 16 else 0), 29, "u", only="l")
+    p.span(19, 6, 25, "u", only="l")
+    # the icing, three swirls up
+    p.ellipse(15.5, 16, 10.4, 3.4, "p")
+    p.ellipse(15.5, 11.5, 8, 3.2, "p")
+    p.ellipse(15.5, 7.5, 5.2, 2.8, "p")
+    p.ellipse(15.5, 4.6, 2.4, 1.6, "p")
+    for y, x0, x1 in ((18, 7, 24), (13, 9, 22), (9, 11, 20)):
+        p.span(y, x0, x1, "s", only="p")
+    p.dots("w", (8, 15), (9, 14), (10, 10), (11, 10), (12, 6), (13, 6), (7, 16))
+    # a cherry and its stalk, the sprinkles
+    p.ellipse(15.5, 1.8, 1.8, 1.8, "r")
+    p.dots("f", (17, 0), (18, 0), (19, 1), (20, 1), (21, 0), (20, 0))
+    for i, (x, y) in enumerate(((13, 15), (19, 16), (23, 15), (16, 11), (20, 11), (12, 12), (17, 7), (14, 8), (9, 17), (16, 15))):
+        p.span(y, x, x + 1, "yki"[i % 3])
+    edge(p)
+    return p
+
+
 # ---------------------------------------------------------------- the bank
 
 # (band, id, English name for the locale table, painter)
@@ -1205,7 +1553,24 @@ PICTURES = [
     (3, "treehouse", treehouse),
     (3, "bear", bear),
     (3, "snowy_cabin", snowy_cabin),
+    (2, "teapot", teapot),
+    (2, "squirrel", squirrel),
+    (2, "robin", robin),
+    (2, "toadstool", toadstool),
+    (2, "turtle", turtle),
+    (2, "whale", whale),
+    (3, "monkey", monkey),
+    (3, "penguin", penguin),
+    (3, "elephant", elephant),
+    (3, "giraffe", giraffe),
+    (3, "watering_can", watering_can),
+    (3, "cupcake", cupcake),
 ]
+# The cut-outs: one subject on a bare board, with rules of their own.
+CUT = {"teapot", "squirrel", "robin", "toadstool", "turtle", "whale",
+       "monkey", "penguin", "elephant", "giraffe", "watering_can", "cupcake"}
+CUT_FILL = (0.30, 0.70)
+CUT_COLOURS = {2: (5, 10), 3: (6, 12)}
 
 
 def stats(band, rows):
@@ -1230,10 +1595,12 @@ def problems(band, pid, rows):
     if set("".join(rows)) - set(PALETTE) - {"."}:
         out.append("unknown chars %s" % sorted(set("".join(rows)) - set(PALETTE) - {"."}))
     s = stats(band, rows)
-    lo, hi = COLOURS[band]
+    cut = pid in CUT
+    lo, hi = CUT_COLOURS[band] if cut else COLOURS[band]
     if not lo <= s["colours"] <= hi:
         out.append("%d colours, wants %d-%d" % (s["colours"], lo, hi))
-    if not FILL[0] <= s["fill"] <= FILL[1]:
+    fill = CUT_FILL if cut else FILL
+    if not fill[0] <= s["fill"] <= fill[1]:
         out.append("%.0f%% filled" % (s["fill"] * 100))
     if s["share"] >= MOST:
         out.append("%s is %.0f%% of it" % (s["most"], s["share"] * 100))

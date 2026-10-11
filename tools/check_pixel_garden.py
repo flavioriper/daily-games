@@ -11,7 +11,9 @@ and no id or name is used twice. Easy and Medium (10 and 12 square, spec
 never touching all four edges. Hard and Insane (24 and 32 square, painted by
 tools/paint_pixel_garden.py since 2026-10-11) are whole scenes: 85 to 100%
 filled, the edges theirs to touch, and no one colour 45% of the picture or
-more. The sheet needs Pillow; a big band is laid fewer pictures across so
+more -- or, a third of them, cut-outs (one subject on a bare board with a
+line round it, as Button Box asked on 2026-10-11): told by their fill, 30 to
+70%, and let 5 colours on 24 and 6 on 32. The sheet needs Pillow; a big band is laid fewer pictures across so
 the sheet stays within SHEET_W pixels.
 """
 import argparse
@@ -25,6 +27,8 @@ SIZES = [10, 12, 24, 32]
 COLOURS = [(3, 4), (4, 5), (7, 10), (8, 12)]
 FILL = [(0.30, 0.70), (0.30, 0.70), (0.85, 1.00), (0.85, 1.00)]
 BIG = 2          # the first band of whole scenes
+CUT_FILL = (0.30, 0.70)             # a big picture this full is a cut-out
+CUT_LEAST = {2: 5, 3: 6}            # and may have this few colours
 MOST = 0.45      # a big picture's largest colour stays under this share
 SHEET_W = 2000
 # core/palette.gd's PG_BEADS.
@@ -43,8 +47,8 @@ def check(bank):
     ids, names = set(), set()
     for b, pics in enumerate(bank["bands"]):
         n = SIZES[b]
-        lo, hi = COLOURS[b]
         for pic in pics:
+            lo, hi = COLOURS[b]
             pid = pic["id"]
             def bad(msg):
                 errors.append("band %d %s: %s" % (b, pid, msg))
@@ -61,11 +65,14 @@ def check(bank):
             used = set("".join(rows)) - {"."}
             if used - set(palette):
                 bad("unknown colours %s" % sorted(used - set(palette)))
-            if not lo <= len(used) <= hi:
-                bad("%d colours, wants %d-%d" % (len(used), lo, hi))
             flat = "".join(rows)
             filled = sum(c != "." for c in flat) / float(n * n)
-            if not FILL[b][0] <= filled <= FILL[b][1]:
+            cut = b >= BIG and CUT_FILL[0] <= filled <= CUT_FILL[1]
+            if cut:
+                lo = CUT_LEAST[b]
+            if not lo <= len(used) <= hi:
+                bad("%d colours, wants %d-%d" % (len(used), lo, hi))
+            if not cut and not FILL[b][0] <= filled <= FILL[b][1]:
                 bad("%.0f%% filled" % (filled * 100))
             if b >= BIG:
                 most = max(used, key=flat.count) if used else "."
