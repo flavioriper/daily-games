@@ -3073,10 +3073,41 @@ biggest whirlpool.
   build's page and wooden frame: "the screen should fit everything, just
   like the factory does, it's gonna be a pattern from now on"). The field
   is laid full rect first and the top bar, the plates and the pad lie over
-  it in the margins. What they cover is the sim's two bands (`top`,
-  `foot`, from `_bands()`: constants and the safe area, not read off the
-  containers), water where nothing floats and the whirlpool does not go.
-  `_build_frame` is the tutorial's alone.
+  it. `_build_frame` is the tutorial's alone.
+- **The pond is fixed and far bigger than the screen, and a camera looks at
+  a part of it** (the user, 2026-10-10 evening: "a fixed bigger water scene
+  with all objects rendered, and camera start to zoom out as user get
+  bigger and start to get bigger elements, something like .io games does.
+  Camera moves as the player try to move outside camera on edges").
+  `Sim.WIDE` by `Sim.TALL` (600 by 1000) on every phone, stocked by its
+  water (`room()`, about 300 things) with every kind there from the first.
+  The camera is the screen's (`_look`: `_u`, `_o`, `_cam`): the open water
+  between the plates and the pad (`_window`) shows `Sim.view_of(_core)`
+  units across, 240 at level 1 to 500 at level 10, on the core as drawn so
+  it widens as smoothly as the whirlpool swells; the whirlpool roams the
+  middle and takes the camera along only within `EDGE` (0.3) of a side
+  (`_follow`); the camera stops a mouth's width past the bank, and there
+  the plates and the pad lie over grass (`Art.pond`'s `turf`). The sim has
+  no bands any more and `Sim.fit` is gone: the room changing moves the
+  window, nothing on the water. New things come onto the water out of
+  sight (`_restock`). The world's size, the zoom's curve and `EDGE` are
+  three calls the user has not seen.
+- **Nothing is rebuilt as the camera moves**: the pond's mesh and each
+  thing's are built once at `POND_U` and `THING_U` and scaled by the draw
+  transform (a mesh keyed on the live `_u` would be rebuilt every frame of
+  a zoom), and a thing out of the field is not drawn.
+- **The tutorial's pond is the same screen with the camera held**: `Pond`
+  overrides `_across` (its small pond, `CLOSE` times nearer), `_follow`
+  (the pond's middle), `_turf` (none) and `_bands` (none).
+- **The whirlpool is drawn under everything afloat** (the user, the same
+  message: "when the whirlpool start pushing a object, it show under the
+  whirlpool for a second"). Drawn over, it hid a thing in its core until
+  the catch put it on top.
+- **The bigger pond plays longer between things**: the probe's patient bot
+  fell from 559 and level 10 to 305 and level 8, the slower one from 92 and
+  level 5 to 65 and level 4, on the pacing of the small pond (spin 50, 7
+  back), which was left alone. The sim's step is about five times the work
+  (300 things, each a `_drift` a step); not timed on a phone.
 - **It is slow, and a hurry costs its pull** (the same message: "speed is
   too fast, it should be way slower to move"). `SPEED` 60 (it was 150),
   `ANSWER` 0.3. At 60 a whirlpool crossing a leaf flat out took it, so
@@ -3090,19 +3121,15 @@ biggest whirlpool.
   the transform; each thing afloat is one cached mesh with its halo baked
   in; the spin's bar and the rings are one live mesh. **The pad is a
   second Control** (`_draw_pad`): the growing's ring, the base, the knob.
-  101 draw calls waiting, 94 in play, 100 to 112 grown, 137 to 151 with
-  the end card, 321 on the tab (810x1440, both drivers).
+  115 draw calls waiting, 106 in play at level 1, 206 at level 5, 266 to
+  283 at levels 8 to 10, 308 with the end card, 321 on the tab (810x1440,
+  `opengl3_angle`; the desktop driver within ten).
 - **The pad takes ScreenTouch, ScreenDrag and the mouse** (`_on_pad_input`,
   `_held` is the finger's index); the harness holds a real touch on it
   through the viewport. `_lean()` is what the sim is handed, so the
   tutorial's pond overrides that one function with its hand.
-- **The pond is as tall as the room** (`_tall_units`, `Sim.new(-1, tall)`):
-  a run not yet begun is fitted to the field's new shape (`Sim.fit`: the
-  ad banner comes up a second after the screen, and dealing the pond again
-  there would swap every leaf under the player's eyes), one under way keeps
-  its own and is centred.
 - **The tab has ten cards**, two a row in five rows on a phone.
-- **The tutorial's pond looks closer** (`Pond._zoom` 2, the pad beside it
+- **The tutorial's pond looks closer** (`Pond.CLOSE` 2, the pad beside it
   rather than under), and its hand goes after the things themselves
   (`Round.plan` rows name a thing's id): a grown whirlpool moves what is
   near it, so places written down beforehand were empty when it got there.

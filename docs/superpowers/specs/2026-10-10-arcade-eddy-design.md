@@ -43,9 +43,12 @@ a real water, and a fixed round pad.
 
 ## 3. The water
 
-`arcade/eddy_sim.gd`, pure data, a pond 300 units wide and as tall as the
-screen (533 on the phone's shape, of which the bands under the plates and
-under the pad are water nothing floats on), stepped at 1/60 s.
+`arcade/eddy_sim.gd`, pure data, a pond 600 units wide and 1000 tall on
+every phone, stepped at 1/60 s (the first build's was 300 wide and as tall
+as the screen; the user, 2026-10-10: "a fixed bigger water scene with all
+objects rendered, and camera start to zoom out as user get bigger"). Every
+kind floats there from the first, and what is new comes onto the water out
+of sight.
 
 - **The whirlpool is a vortex with a core** (a Rankine vortex): inside the
   core the water turns as one piece, outside it the turning falls off as
@@ -99,6 +102,13 @@ unwinds over 1.4 s and the run is over.
 as the Factory's land is (the user, 2026-10-10: "the screen should fit
 everything, just like the factory does, it's gonna be a pattern from now
 on"; the first build had a paper page and the pond in a wooden frame).
+**A camera looks at a part of the pond** (the same message as the bigger
+pond: "something like .io games does. Camera moves as the player try to
+move outside camera on edges"): the open water between the plates and the
+pad shows 240 units across at level 1 and 500 at level 10, the whirlpool
+roams its middle and takes the camera along from 0.3 of a side, and the
+camera stops at the bank, grass beyond it. The whirlpool is drawn under
+all that floats.
 Over the water lie the top bar, three plates (score, best, the whirlpool's
 level of ten) and, at the foot, **the pad in the middle**: a round of pale wood 216 pixels
 across with a knob of the pond's water. The knob goes under the finger and
@@ -158,10 +168,10 @@ low, bad as the whirlpool unwinds, the win on a new best
 - `tests/_shot_eddy.gd` through the real menu at 810x1440, on the desktop
   driver (en and pt), on `opengl3_angle` (es) and under reduce motion: a
   ScreenTouch held on the pad through the viewport sets the whirlpool off
-  and moves it; 101 draw calls waiting, 94 in play, 107 to 109 at a level, 100
-  to 112 grown with toys going down, 137 to 151 with the end card, 321 on the tab
+  and moves it; with the camera, 115 draw calls waiting, 106 in play, 206 at
+  level 5, 266 to 283 grown, 308 with the end card, 321 on the tab
   with ten cards (two a row, five rows).
-- `tests/_shot_howto_screen.gd -- eddy`: six pages, 132 to 145 draw calls,
+- `tests/_shot_howto_screen.gd -- eddy`: six pages, 137 to 146 draw calls,
   each page's frames read side by side.
 - `tests/_probe_chance.gd` and `tests/_probe_wallet.gd` with Eddy added,
   0 failed (the first's overall limit raised from 90 seconds: nine games
