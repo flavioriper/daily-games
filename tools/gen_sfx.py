@@ -3267,22 +3267,34 @@ SETS = {
     # Factory (factory/screen.gd). Everything else it plays is the Grove's
     # set above; this is the market's sale alone.
     "factory": {
-        # A thing sold: the coin that hops out of the market's hatch. The
-        # user, 2026-10-11, of the wallet's wooden `coin` played there: "why
-        # the sell sfx has the same sfx of the wood being cutted? we need
-        # something that sound closer to a coin or sell sfx related" (it
-        # measured 702 Hz against the chop's 607, two tocks on felt). So
-        # this one cue is a coin by prompt, against rule 4's "no coins that
-        # ring", on the user's word. A real coin comes back all above 3 kHz
-        # (three takes: centroids 11.4, 8.3 and 9.4 kHz, `scratch`, and a
-        # low-pass leaves nothing), so the take is moved 26 steps down: its
-        # ring lands near 2 kHz, a heavier, duller coin, and nothing is left
-        # above 3 kHz (40 dB down). The measure still calls it `high`: its
-        # centroid is over 1 kHz, as a coin's is. It repeats (a sale every
-        # 4 s on a new land, up to four a second), so it is short and at
-        # -15. The pouches asked for first (a coin into a cloth purse, a
-        # leather pouch set down) came back as a rattle.
-        "coin": ("one thick heavy gold coin dropped gently onto one other coin lying on a wooden table, a single short dull clink, close, dry, no jingle, no rattle, very short", 0.5, -15, COZY, "warm:2000", "steep", "cut:0.3", "body:320", "ease:0.004", "tight", "notes:0:-26"),
+        # A thing sold: the coin that hops out of the market's hatch. Third
+        # try. The first was the wallet's wooden `coin` as it is, one notch
+        # (the user, 2026-10-11: "why the sell sfx has the same sfx of the
+        # wood being cutted? we need something that sound closer to a coin
+        # or sell sfx related"; it sat at 702 Hz against the chop's 607, two
+        # tocks on felt, told apart by nothing). The second was a real coin
+        # dropped on another, moved 26 steps down to get under 3 kHz: `tune`
+        # pitches with asetrate, so the clink was also stretched 4.5 times
+        # (0.48 s to 2.16 s) into a metallic groan cut at 0.3 s, and the
+        # measure flagged it `high` at 2,011 Hz (the user, the same day:
+        # "the most terrible sound i ever heard"; the take is kept in
+        # build/sfx_raw/factory/old/). A third, the wallet's button take as
+        # three notches rising, was not wanted either: "I don't want a
+        # general wood toc for it, I want something that reminds a sell
+        # sfx, some coin clank i don't know, but in a cozier way". So the
+        # one coin by prompt stays (rule 4 bent on the user's word), and
+        # the cozy is in the thing it lands on: of five takes asked for
+        # muffled (a coin into a wool purse, two tapped in a hand, a till
+        # tray, a cup of coins, a felt pad in a wooden box), four came
+        # back scratch at 4 to 11 kHz and the felt pad alone came back
+        # low, 1,270 Hz with 5% above 3 kHz (build/sfx_raw/factory_try/).
+        # Moved six steps down, not twenty-six (1.4 times longer, a
+        # heavier coin, no groan), rolled off at 2000, cut at 0.3 s: 917 Hz,
+        # 55% in the body, 44% between 1 and 3 kHz (the clink), nothing
+        # above, and the measure passes. It repeats (a sale every 4 s on a
+        # new land, up to four a second), so -14; the screen varies it 0.94
+        # to 1.06.
+        "coin": ("one old brass coin dropped onto a thick felt pad lying inside a small wooden box, a single soft dull clink, muffled, close, very short", 0.5, -14, COZY, "warm:2000", "steep", "cut:0.3", "body:320", "ease:0.004", "tight", "notes:0:-6"),
     },
     # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Redone 2026-10-10
     # against the cozy rules (docs/agents/sound.md), the fifty-second set of

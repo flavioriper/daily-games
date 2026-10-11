@@ -584,10 +584,12 @@ func _play_events() -> void:
 	sim.events.clear()
 
 ## A sale's coin has come up out of the hatch (`life.coined`): a coin is
-## heard, a real one made low and dull (the user, 2026-10-11, of the
-## wallet's wooden tock there: "we need something that sound closer to a
-## coin"), never two inside COIN_GAP at a market that sells many a second,
-## and the count is on its way up beside it.
+## heard, a real one dropped on felt in a wooden box, a little lower (the
+## user, 2026-10-11, of the wallet's wooden tock there: "something that
+## sound closer to a coin", and of a wooden run of notches: "not a general
+## wood toc ... some coin clank ... in a cozier way"), never two inside
+## COIN_GAP at a market that sells many a second, and the count is on its
+## way up beside it.
 func _on_coin(amount: int) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:
