@@ -324,6 +324,15 @@ JETTY = ("close-mic foley recorded on a small wooden jetty over calm clear "
          "water on a quiet warm day, real water drops and small bubbles, a "
          "wet rope and wooden planks, natural and acoustic, soft, dry, "
          "rounded, no synth, no electronic tones, no beeps, no music, no voice")
+# Gumdrop's liquid (the user, 2026-10-11: "we need a more liquid sound for
+# when adding liquid and mixing colors"): thick syrup in a wooden bowl,
+# calm and close, which is the cozy rules' "calm water" and nothing that
+# splashes, drips on a hard thing or fizzes.
+SYRUP = ("close-mic foley recorded in a quiet warm kitchen, real thick warm "
+         "syrup and honey poured slowly into a wooden bowl of calm water, "
+         "soft, low, round and gentle, dry room, natural and acoustic, no "
+         "splashing, no fizz, no metal, no glass, no synth, no electronic "
+         "tones, no music, no voice")
 JETTY_TUNE = ("real acoustic kalimba, wooden music box, wooden tongue drum "
               "and small hand bells recorded close in a warm quiet room, "
               "natural, soft, rounded, gentle, cozy, no synth, no electronic "
@@ -3423,9 +3432,14 @@ SETS = {
     # liquid: Eddy's one water take came back at 1.1 kHz. The pots, the
     # buttons and the tray's touch are the button's own click (fx2d's touch).
     "gumdrop": {
-        # The dropper squeezed: the constant action, the quietest file of
-        # the set. The screen varies it by 0.94 to 1.06.
-        "pour":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        # The dropper squeezed: liquid since 2026-10-11 (it was a button's
+        # tock six times a second). `pour` is a loop under everything else,
+        # for as long as syrup is going into a cell; `drop` the first of it
+        # as the button goes down; `mix` the bubbles as a second flavour
+        # goes into a cell that holds another, every half second or so.
+        "pour":      ("a continuous thin steady stream of thick warm syrup poured slowly into a bowl of calm water, a soft low gentle trickle, smooth and even, no splashes", 3.0, -20, SYRUP, "loop", "warm:1000", "body:320"),
+        "drop":      ("one single soft low drop of thick syrup falling into a bowl of calm water, one round gentle plop, very short", 0.5, -16, SYRUP, "warm:1500", "cut:0.22", "body:320", "ease:0.004", "tight"),
+        "mix":       ("a few small soft round bubbles popping gently at the top of thick warm syrup stirred slowly with a wooden spoon, a quiet bloop bloop bloop, calm", 1.0, -15, SYRUP, "warm:1500", "cut:0.7", "body:320", "ease:0.006"),
         # The next tray set down.
         "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0.09:0,-2"),
         # The mould served: one knock, the tray picked up. (Spill, empty and

@@ -388,6 +388,27 @@ the tray's touch are the button's click. **A daily board since 2026-10-11**
 `puzzle_id`; `deal` a little lower is a mould emptied to be poured again,
 `game_over` the serves run out, `good` the video's serves, and `new_best`
 is played by nothing.
+**The pour is liquid since 2026-10-11** (the user, having the daily in
+hand: "we need a more liquid sound for when adding liquid and mixing
+colors"), which sets aside "nothing is a liquid" above for this board: rule
+4 allows calm water, and the user asked for it by name, as for Toy Boats'
+miss. A style of its own, `SYRUP` (thick syrup and honey poured into a
+wooden bowl of calm water; no splash, fizz, metal or glass), and three
+cues: **`pour`** is a 3 s loop of a thin stream, -20 with `warm:1000`,
+played by the table's own player (`_pour_snd`, `POUR_TOP` 0.9, up in 0.12 s
+and down in 0.3) for as long as syrup goes into a cell, in place of the
+button's tock six times a second; **`drop`** one round plop as the squeeze
+button goes down over a cell (-16, 0.22 s; over a wall or the tray the
+button only clicks); **`mix`** a few small bubbles (-15, 0.5 s) every 0.6 s
+(`MIX_GAP`) while a flavour goes into a cell another has gone into, varied
+by 0.94 to 1.06. Measured: `drop` 371 Hz, 48 dB down above 3 kHz; `mix`
+515 Hz, 45 dB down (its second take: the first, "two slow low bubbles",
+came back 92% under 300 Hz and `tight` cut it to a blip); **`pour` is
+flagged `high`**, 1,061 Hz with 68% from 1 to 3 kHz and 32 dB down above 3
+kHz (at `warm:1500` 1,125 Hz and 28 dB down): a trickle lives there, and
+rolled off further it stops being one. It is the sound heard all the time
+(rule 9), so its level is the first thing to judge by ear. Twelve cues.
+Unheard.
 
 **Deckchair has a set since 2026-10-10** (`SETS["deckchair"]`, fifteen
 cues), made against the cozy rules from the start and unheard by the user.

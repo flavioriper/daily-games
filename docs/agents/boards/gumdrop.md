@@ -152,9 +152,18 @@
   has, and at the deal that was none, so the box came out 5,765 tall with
   its lines centred far below the foot. `_place_banner` gives the two lines
   their width and `_fit_banner` sizes the box a frame later.
-- **Sounds**: the Arcade set as it was (`assets/sfx/gumdrop/`), found by
-  the board's `puzzle_id`. `new_best` is unused; `game_over` is the day
-  run out of serves.
+- **Sounds**: the Arcade set (`assets/sfx/gumdrop/`), found by the board's
+  `puzzle_id`. `new_best` is unused; `game_over` is the day run out of
+  serves. **The pour is liquid** (the user, 2026-10-11: "we need a more
+  liquid sound for when adding liquid and mixing colors"): `pour` is a
+  loop of syrup running, on the table's own player (`_pour_sound`), up
+  while syrup goes into a cell and down when it stops; `drop` the first of
+  it as the squeeze button goes down over a cell; `mix` bubbles every
+  `MIX_GAP` while a flavour goes into a cell another has gone into
+  (`_cell_pots`, cleared with the mould). The tutorial's bench has no set
+  and so no loop. `docs/agents/sound.md` has the takes and the measure
+  (`pour` reads `high`); the harness saw the loop start and stop and the
+  bubbles on Hard's mixed cell. Unheard.
 - **Measured 2026-10-11** (`tests/_shot_gumdrop.gd`, 810x1440,
   `opengl3_angle`, real touches, through the menu and the host): 100 to
   111 draw calls in play, 71 to 78 on the win and the done day, 163 to 168

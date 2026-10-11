@@ -30,6 +30,7 @@ var _tutor := false
 var _page := 0
 var _turns := 0
 var _gold := 0
+var _mixed := false
 var _step := 0
 var _at := 0.0
 var _play := false
@@ -194,6 +195,7 @@ func _process(delta: float) -> bool:
 		3:
 			if _t > _at + 1.6:
 				print("touch squeezes: ", _t_.sim.squeezing, " phase play: ", _t_.sim.phase == Sim.Phase.PLAY)
+				print("pour: loop playing %s at %.1f dB, last cue %s" % [str(_t_._pour_snd.playing), _t_._pour_snd.volume_db, _t_._fx.last_cue])
 				_shot("2_squeeze")
 				_touch(false, _t_._squeeze_at)
 				_at = _t
@@ -201,6 +203,7 @@ func _process(delta: float) -> bool:
 		4:
 			if _t > _at + 2.0:
 				print("let go: ", not _t_.sim.squeezing)
+				print("pour: loop stopped %s" % str(not _t_._pour_snd.playing))
 				# a finger drawn over the tray moves the tip as far
 				_was = _t_.sim.tip
 				var from: Vector2 = _t_._tray.get_center()
@@ -239,6 +242,9 @@ func _process(delta: float) -> bool:
 			if _t_.sim.index == 1 and _t_.sim.phase == Sim.Phase.PLAY and _t_.sim.wet() and _fills()[0] > 0.5 and _seen < 100:
 				_seen = 100
 				_shot("5_mid")
+			if _t_._fx.last_cue == "mix" and not _mixed:
+				_mixed = true
+				print("mix: bubbles as pot %d goes into cell %d, which held %s; loop %s" % [_t_.sim.picked, _t_.sim.tip_cell(), str(_t_._cell_pots.get(_t_.sim.tip_cell(), {}).keys()), str(_t_._pour_snd.playing)])
 			if _b.is_done():
 				print("solved: moves %d marks %s won %s" % [_b.moves, str(_t_.sim.marks), str(_host._won)])
 				_at = _t

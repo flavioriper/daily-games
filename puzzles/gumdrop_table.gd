@@ -73,8 +73,18 @@ const LEAN := 0.55
 const TAP_PX := 14.0
 ## The most sim steps one frame may run, so a stall never fast-forwards.
 const MAX_STEPS := 6
-## Seconds between two of the dropper's ticks while it is squeezed.
+## Seconds between two of the dropper's rings on the jelly while it is
+## squeezed.
 const POUR_GAP := 0.17
+## The pour is liquid (the user, 2026-10-11: "we need a more liquid sound
+## for when adding liquid and mixing colors"): a loop of syrup running
+## while it goes into a cell, at this level, linear, coming up and going
+## down over these seconds; and the bubbles of a second flavour going into
+## a cell that holds another, this far apart.
+const POUR_TOP := 0.9
+const POUR_IN := 0.12
+const POUR_OUT := 0.3
+const MIX_GAP := 0.6
 ## The cozy rules (docs/agents/sound.md): no cue climbs past five semitones,
 ## and a tick that repeats varies by TICK_VARY and climbs nothing.
 const CLIMB_TOP := 1.335
@@ -148,6 +158,11 @@ var _serve_down := -10.0
 var _tip := Vector2(50, 50)
 var _squash := 0.0
 var _pour_at := -10.0
+var _pour_snd: AudioStreamPlayer
+var _mix_at := -10.0
+## The pots that have gone into each cell of the mould on the tray:
+## {cell: {flavour: true}}.
+var _cell_pots := {}
 var _pick_at := -10.0
 var _deal_at := -10.0
 var _verdict_at := -10.0
@@ -168,6 +183,20 @@ func _ready() -> void:
 	_rw = Rewards.new()
 	add_child(_rw)
 	_pill.keys = SERVES
+	_build_pour()
+
+## The loop of syrup running, silent until something is poured. A table
+## that is not the board's (the tutorial's bench) has no set and no loop.
+func _build_pour() -> void:
+	var path := "res://assets/sfx/%s/pour.ogg" % (call("puzzle_id") if has_method("puzzle_id") else "gumdrop")
+	if not ResourceLoader.exists(path):
+		return
+	_pour_snd = AudioStreamPlayer.new()
+	_pour_snd.volume_db = -80.0
+	var stream: AudioStreamOggVorbis = (load(path) as AudioStreamOggVorbis).duplicate()
+	stream.loop = true
+	_pour_snd.stream = stream
+	add_child(_pour_snd)
 
 ## The table: the field, the syrup over it, the top over that, the card's
 ## two lines, the lettering and the effects.
@@ -391,6 +420,7 @@ func lay(game: RefCounted) -> void:
 	_slid = false
 	_shown_index = -1
 	_shown_match = -2
+	_cell_pots.clear()
 	won = false
 	held = false
 	_tip = sim.tip
@@ -479,13 +509,39 @@ func _animate(delta: float) -> void:
 	_squash = lerpf(_squash, 1.0 if sim.squeezing else 0.0, minf(1.0, delta * 16.0))
 	if pouring and _clock - _pour_at >= POUR_GAP:
 		_pour_at = _clock
-		_fx.cue("pour", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8))
+	_pour_sound(delta, pouring)
 	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
 	if _refund > 0 and field.size.x > 0.0:
 		_rw.sticker(tr("GD_REFUND") % _refund, _rw.at(field, _tray.get_center() + Vector2(0, _tray.size.y * 0.32)), 44, 3.5, false, Color("fff4c2"), false, "refund")
 		_refund = 0
 	_rw.step(delta)
+
+## What a pour sounds like: the loop up while syrup goes into a cell and
+## down when it stops, and the bubbles while this flavour goes into a cell
+## that another has gone into.
+func _pour_sound(delta: float, pouring: bool) -> void:
+	if pouring:
+		var cell: int = sim.tip_cell()
+		var flavour := int(sim.pots[sim.picked].flavour)
+		var into: Dictionary = _cell_pots.get(cell, {})
+		var mixing := not into.is_empty() and not (into.size() == 1 and into.has(flavour))
+		into[flavour] = true
+		_cell_pots[cell] = into
+		if mixing and _clock - _mix_at >= MIX_GAP:
+			_mix_at = _clock
+			_fx.cue("mix", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+	if _pour_snd == null:
+		return
+	var want := POUR_TOP if pouring and not held else 0.0
+	var now := db_to_linear(_pour_snd.volume_db)
+	now = move_toward(now, want, delta * POUR_TOP / (POUR_IN if want > now else POUR_OUT))
+	_pour_snd.volume_db = linear_to_db(maxf(now, 0.0001))
+	if now > 0.002 and not _pour_snd.playing:
+		_pour_snd.pitch_scale = randf_range(0.97, 1.03)
+		_pour_snd.play(randf() * 2.0)
+	elif now <= 0.002 and _pour_snd.playing:
+		_pour_snd.stop()
 
 # --- the fingers ---
 
@@ -518,7 +574,12 @@ func _press(index: int, at: Vector2) -> void:
 		if _squeeze_by == -1:
 			_squeeze_by = index
 			sim.squeeze(true)
-			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+			# over a cell the first of the syrup is heard; over a wall or the
+			# tray nothing comes and the button only clicks
+			if sim.tip_cell() >= 0:
+				_fx.cue("drop", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+			else:
+				_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 			_fx.buzz(Haptics.TAP)
 		return
 	if at.distance_to(_serve_at) <= SERVE_R + 14.0:
@@ -597,6 +658,7 @@ func _play_events() -> void:
 func _on_deal() -> void:
 	_deal_at = _clock
 	_slid = sim.index > 0
+	_cell_pots.clear()
 	_fluid.lay(sim.mould)
 	_tip = sim.tip
 	_tip_was = sim.tip
@@ -608,6 +670,7 @@ func _on_deal() -> void:
 
 ## The mould on the tray is clear again: one under its mark, or Reset.
 func _on_again() -> void:
+	_cell_pots.clear()
 	_fluid.lay(sim.mould)
 	_tip = sim.tip
 	_tip_was = sim.tip
