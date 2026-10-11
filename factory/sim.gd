@@ -409,7 +409,9 @@ func _run_forests() -> void:
 		var led := false
 		for d in 4:
 			var to := gate(p, d) + DIRS[d]
-			led = led or belts.has(to) or is_market(to) or _mod_at.has(to)
+			var m := module_at(to)
+			# a hopper, or a machine's back: its front takes nothing
+			led = led or belts.has(to) or is_market(to) or (not m.is_empty() and (m.kind == "firebox" or to == m.root))
 		if led:
 			continue
 		for q in 4:
