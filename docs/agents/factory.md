@@ -63,7 +63,8 @@ overrode it for this pass only). **The user has seen none of it running.**
   items one MultiMesh a kind.
 - Leaving calls no `Ads.leaving_game()`, as the Valley's rule said.
 - Sounds are the Grove's four files, reused (`assets/sfx/grove/`, reached
-  by `_fx._puzzle = "grove"`): no new take, none heard.
+  by `_fx._puzzle = "grove"`): no new take, none heard. (Since 2026-10-11 a
+  sale is the wallet's `coin`: the hatch's section.)
 
 **Measured** (810x1440, 2026-10-10, default driver and `opengl3_angle`
 alike): 56 draw calls on a new land, 101 to 106 on four plates with belts
@@ -91,7 +92,8 @@ tree stands, so a person is later.
   burning. A burning fuel is lost when the box is sold.
 - The save is one packed blob in `user://factory.cfg`, not named keys (a
   float came back a digit off through the text file).
-- The market faces the viewer, with no keeper yet.
+- The market faces the viewer, with no keeper yet. (A one-tile hatch
+  since 2026-10-11: its own section, below.)
 - Picking a tile closes the drawer; the button then shows what is picked
   and unpicks. A tap on bare ground with Belt picked lays one belt. The
   plate card's three tiles each carry the price and buy on a press.
@@ -288,6 +290,84 @@ not a count). Every rate is the ledger's section 12.
   heard; the pace (one automated forest makes four times what a level-1
   market sells, so the market's level is the brake now; no person or bot
   has played past the first plate).
+
+**The market is one square with a hatch (2026-10-11)**, the user: "on
+factory, the market tile should be a single square, the item stay above it
+and them it opens a hatch and the item falls, showing a jumping fade out
+coin (with some cozy coin sound), the door close and the next item move to
+it". This overrides every line above that speaks of a stall, a 2 by 2, a
+counter of six, a keeper or "sold as it lands".
+- **The sim** (ledger first, the Market's two rows): `is_market` is the one
+  tile `MARKET_AT` (6, 6), so (7, 6), (6, 7) and (7, 7) are bare ground and
+  the market is fed from its four sides, not eight tiles. `MARKET_ROOM` 1:
+  `market.wait` holds the one thing on the hatch and the next waits on its
+  belt. **Whatever comes lies there the whole interval** (`_sell`: the
+  clock stands at 0 while the hatch is bare), where the first to reach an
+  idle market was sold as it landed. Under load the rate is what it was, a
+  sale an interval. A new event, `brought {kind, from}`. `VERSION` is still
+  2: a land kept before this loads, a belt of it that ran into one of the
+  three freed tiles now leads nowhere, and a counter kept with six sells
+  them one at a time, only the first drawn.
+- **The art** (`Art.market`, `market_door`, `market_leaf`, `market_front`):
+  a box of planks `MARKET_TALL` high, which is `BELT_UP`, so a thing rolls
+  level off a belt's bed onto it; a square hole in its top, dark inside; a
+  coin painted on its sunny wall. **The two leaves are one kept mesh drawn
+  under `market_leaf(side, open)`**, a transform that swings it down about
+  its hinge: nothing is rebuilt. `market_front` is the box's near side
+  again, drawn over a thing falling so the box hides it. The box and its
+  leaves keep one face to the eye at every turn. The first build stood a
+  coin on a post behind the box and the sale's coin hopped up right over
+  it; it went the same hour.
+- **What is seen** (`life.gd` `_add_market`, `_on_sale`, `_hatch`,
+  `_lying_off`; every holder, so the tab's card and the tutorial too). On
+  `brought` the thing rides in from the edge it came over to the middle
+  (`SLIDE` 0.3 of the interval, 0.9 s at most, and only once the leaves are
+  shut). On `sale`, over `SALE` 0.7 of the interval (0.62 s at most): the
+  leaves swing down, it falls `FALL` into the dark behind the box's near
+  side, a coin hops `COIN_UP` out of the hole, turning once, and fades in
+  `COIN` 0.75 s, the leaves shut. Four sales are played at once at most
+  (`DROPS`). **`life.coined(amount)` fires as the coin comes up**, and that
+  is when the screen says "+N" beside it, swells the pill and plays the
+  sound, not at the sim's event.
+- **The sound is the house's coin**: `assets/sfx/wallet/coin.ogg`, the
+  gold pill's notch of a wheel (the cozy rules: no coin rings), through a
+  third `Fx2D` set to `wallet` with no buzz, at `COIN_PITCH` 0.92 varied by
+  `TICK_VARY`, never two within `COIN_GAP` 140 ms. No new take was made. It
+  was `chop` at 1.2. **A sale is heard and not felt**, as it was: the gold
+  pill's coin is felt as an echo when it lands, but that is a gift taken
+  now and then, and a market sells for as long as the screen is open. The
+  user has not ruled on it; `_coin_fx.buzzes = true` is the whole change.
+- **Reduce motion**: nothing slides, swings, falls or hops; the thing is
+  on the hatch or gone and `coined` fires at the sale, so the "+N" and the
+  sound still come.
+- The tutorial's belt film is 28 s (24): its first log now lies four
+  seconds on the hatch before it is sold.
+- **Measured** (810x1440, 2026-10-11): 94 draw calls on a new land, 111
+  with a log on the hatch, 113 to 116 through a sale (two leaves always,
+  the falling thing, the front and the coin while they last), 204 to 217 on
+  the six-plate land at the four turns (it was 210 to 217), 247 with the
+  drawer open, 270 under the tutorial, the tab 140; `opengl3_angle` under
+  reduce motion within a few of each. `tests/_probe_factory.gd` 177/0,
+  `tests/_shot_factory.gd` 140/0 on the default driver and 138/0 on
+  `opengl3_angle` with reduce (its five hatch shots are two there), suite
+  249804/0. `tests/_shot_factory_menu.gd` and `tests/_shot_factory_art.gd`
+  (its market block rewritten, parse-checked only) were not run.
+- **Decided for the user and not judged by them**: the square is (6, 6),
+  the old stall's back tile, which keeps the first belt's way; one thing on
+  the hatch and the rest on the belt; every thing waits its whole interval
+  (an idle market's first sale is 4 s later than it was); the box's look
+  and the coin on its wall; the coin's hop and its one turn; "+N" kept
+  beside the coin; the wallet's coin for the sound.
+- **What it does to the pace**: the market takes from four belts where
+  eight tiles touched it, and one thing a tick at the most. Measured
+  headless with a full belt on each of its four sides, a minute each: 1.00
+  a second at level 4, 2.00 at 5, 3.33 at 6 (its 0.25 s is three ticks
+  with the one the next takes to come on), 4.00 at 7 and no more at 8 or
+  9, which is the four belts' own second apiece. **Levels past the seventh
+  buy nothing and are still sold.** No bot has played a land with it.
+- **Not seen**: a phone; anything moving (every judgement is from five
+  stills of one sale at level 1); the sound heard; a fast market (level 4
+  and up) watched; a sale under a view turned while it plays.
 
 ## The Valley and the Grove (dropped 2026-10-10)
 

@@ -85,10 +85,13 @@ extends RefCounted
 ## shadow in each.
 ##   item(kind)          log, stone, lime, charcoal: about 42 across, two to
 ##                       a tile.
-##   market()            the 2 by 2 stall, origin the middle of its four
-##                       tiles. MARKET_COUNTER is the counter's corner,
-##                       MARKET_SPOTS six places on it back to front,
-##                       MARKET_KEEPER where a keeper's feet stand.
+##   market()            the 1 by 1 hatch, origin its tile's centre: a low
+##                       box with a hole in its top, a coin on its wall.
+##                       MARKET_TOP is where a thing lies on it.
+##                       market_door() is one leaf of the hatch, drawn
+##                       twice by market_leaf(side, open); market_front()
+##                       is the box's near side again, drawn over a thing
+##                       falling in.
 ##   firebox(), fire()   the 1 by 1 fire box (origin its tile's centre) and
 ##                       the light in its mouth, drawn at FIREBOX_MOUTH.
 ##   kiln(facing), retort(facing)  1 by 2, origin the centre of the back
@@ -201,8 +204,6 @@ const EMBER := Color("e8763a")
 const GOLD := Color("f2b632")
 const GOLD_DEEP := Color("c98a16")
 const GOLD_HI := Color("ffe39a")
-const AWNING := [Color("e2825f"), Color("fff6e6")]
-const AWNING_SHADE := [Color("b4604a"), Color("d9cdb8")]
 ## A plate's ground by kind: its grass, the light and the deep of it, the
 ## washes toward and away from the sun, and the turf hanging over its edge.
 const GROUND := {
@@ -297,16 +298,16 @@ const RETORT_SMOKE: Array[Vector2] = [
 ## The fire box's mouth is in its lit side, the one looking down and left.
 const FIREBOX_HALF := 0.36
 const FIREBOX_MOUTH := Vector2(-FIREBOX_HALF * K, FIREBOX_HALF * K * DEEP - 13.0)
-## The market's counter: how high it stands, its corner nearest the eye, six
-## places along its two wings from the back of each to the corner, and where
-## a keeper's feet go behind it.
-const COUNTER_TALL := 34.0
-const MARKET_COUNTER := Vector2(0.0, 1.44 * K * DEEP - COUNTER_TALL)
-const MARKET_SPOTS: Array[Vector2] = [
-	Vector2(-0.84 * K, 0.6 * K * DEEP - COUNTER_TALL), Vector2(0.84 * K, 0.6 * K * DEEP - COUNTER_TALL),
-	Vector2(-0.48 * K, 0.96 * K * DEEP - COUNTER_TALL), Vector2(0.48 * K, 0.96 * K * DEEP - COUNTER_TALL),
-	Vector2(-0.14 * K, 1.3 * K * DEEP - COUNTER_TALL), Vector2(0.14 * K, 1.3 * K * DEEP - COUNTER_TALL)]
-const MARKET_KEEPER := Vector2(0.0, 0.36 * K * DEEP)
+## The market's hatch: a box as tall as a belt's bed, so what a belt brings
+## rolls straight onto it; half its side and half the hole's, in tiles; how
+## far a leaf swings down (radians) and how deep the dark goes.
+const MARKET_TALL := BELT_UP
+const MARKET_HALF := 0.42
+const HATCH_HALF := 0.3
+const HATCH_SWING := 1.4
+const HATCH_DEEP := 30.0
+const MARKET_TOP := Vector2(0.0, -MARKET_TALL)
+const PIT := Color("2f2420")
 ## A tile-space mesh is drawn at this many units a tile and shrunk after:
 ## the builder feathers every edge by a unit and a half of its own.
 const FINE := 100.0
@@ -1846,105 +1847,99 @@ static func smoke() -> ArrayMesh:
 		_one["smoke"] = b.mesh()
 	return _one["smoke"]
 
-## The market, 2 by 2 tiles, the origin the middle of its four on the
-## ground. A stall seen from its front corner: a floor of planks, shelves
-## of goods along its two back sides under a striped awning on three posts,
-## and a counter in two wings along its two front sides, meeting at the
-## corner nearest the eye, in the open so what waits on it is seen. A crate
-## and a barrel stand at the counter's ends. The counter's top is left bare
-## (MARKET_COUNTER its corner, MARKET_SPOTS six places on it, back to front)
-## and so is the floor just behind it, where a keeper may stand
-## (MARKET_KEEPER, its feet): drawn after the stall, a keeper up to 70 tall
-## stands there clear of the counter's top and under the awning's edge.
+## The market, one tile, the origin its middle on the ground (the user,
+## 2026-10-11: "the market tile should be a single square, the item stay
+## above it and them it opens a hatch and the item falls"; it was a stall of
+## 2 by 2). A low box of planks with a square hole in its top, dark inside,
+## and a coin painted on its sunny wall to say what it is (a coin on a post
+## stood behind it for an hour: the sale's coin hopped up right over it).
+## The hole's two leaves are not in it (`market_door`, `market_leaf`): they
+## swing.
 static func market() -> ArrayMesh:
 	if not _one.has("market"):
 		var b := Face.Builder.new()
-		var wood := [PLANK.lightened(0.22), PLANK.lightened(0.06), PLANK_DEEP]
-		_ground_shade(b, [[Vector2.ZERO, Vector2(0.96, 0.96), 40.0]])
-		# the floor
-		var floor_pts := PackedVector2Array()
+		var wood := _market_wood()
+		var big := Vector2(MARKET_HALF, MARKET_HALF)
+		_ground_shade(b, [[Vector2.ZERO, big, MARKET_TALL]])
+		_block(b, Vector2.ZERO, big, 0.0, MARKET_TALL, wood)
+		# the hole, and the two inner walls the eye sees down it
+		var hole := PackedVector2Array()
 		for o: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			floor_pts.append(at(o * 0.95))
-		b.polygon(floor_pts, PLANK_DEEP.lightened(0.1))
-		for i in 9:
-			var x := lerpf(-0.95, 0.95, (i + 0.5) / 9.0)
-			b.stroke(PackedVector2Array([at(Vector2(x, -0.93)), at(Vector2(x, 0.93))]), 11.0,
-				PLANK.darkened(0.04) if i % 2 == 0 else PLANK.lightened(0.05), false, false)
-		# the back post, and the shelves along the two back sides with their goods
-		_post(b, Vector2(-0.9, -0.9), _awning_z(Vector2(-0.9, -0.9)))
-		_block(b, Vector2(-0.72, -0.2), Vector2(0.17, 0.62), 0.0, 44.0, wood)
-		_block(b, Vector2(-0.02, -0.72), Vector2(0.52, 0.17), 0.0, 44.0, wood)
-		for g: Array in [[-0.72, -0.6, 0], [-0.72, -0.18, 1], [-0.72, 0.22, 2], [-0.3, -0.72, 2], [0.08, -0.72, 0], [0.38, -0.72, 1]]:
-			var c := _p(Vector2(g[0], g[1]), 44.0)
-			match int(g[2]):
-				0:
-					_sack(b, c + Vector2(0.0, 2.0), 0.62)
-				1:
-					_chunk(b, c + Vector2(0.0, 2.0), 0.6)
-				_:
-					_basket(b, c + Vector2(0.0, 2.0), 0.6)
-		# the shade under the awning, on the floor
-		var under := PackedVector2Array()
-		for o: Vector2 in [Vector2(-0.95, -0.95), Vector2(0.3, -0.95), Vector2(0.3, 0.3), Vector2(-0.95, 0.3)]:
-			under.append(at(o))
-		b.polygon(under, PLANK_SHADE)
-		# the side posts, then the awning over all of that
-		_post(b, Vector2(-0.9, 0.24), _awning_z(Vector2(-0.9, 0.24)))
-		_post(b, Vector2(0.24, -0.9), _awning_z(Vector2(0.24, -0.9)))
-		_awning(b)
-		# the counter's two wings, the one along the +x side first: it is behind
-		_block(b, Vector2(0.74, 0.0), Vector2(0.16, 0.58), 0.0, COUNTER_TALL, wood)
-		_block(b, Vector2(0.08, 0.74), Vector2(0.82, 0.16), 0.0, COUNTER_TALL, wood)
-		for f: float in [0.25, 0.5, 0.75]:
-			b.stroke(PackedVector2Array([_p(Vector2(lerpf(-0.74, 0.9, f), 0.9), 2.0), _p(Vector2(lerpf(-0.74, 0.9, f), 0.9), COUNTER_TALL - 5.0)]),
-				1.6, Color(PLANK_DEEP, 0.6), false, false)
-			b.stroke(PackedVector2Array([_p(Vector2(0.9, lerpf(-0.58, 0.9, f)), 2.0), _p(Vector2(0.9, lerpf(-0.58, 0.9, f)), COUNTER_TALL - 5.0)]),
-				1.6, Color(PLANK_DEEP.darkened(0.2), 0.6), false, false)
-		b.stroke(PackedVector2Array([_p(Vector2(-0.74, 0.9), COUNTER_TALL), _p(Vector2(0.9, 0.9), COUNTER_TALL), _p(Vector2(0.9, -0.58), COUNTER_TALL)]),
-			2.6, PLANK.lightened(0.34), false, false)
-		# a crate at one end of it and a barrel at the other
-		_block(b, Vector2(-0.84, 0.8), Vector2(0.13, 0.13), 0.0, 24.0, [Pal.WOOD.lightened(0.24), Pal.WOOD.lightened(0.08), Pal.WOOD_DEEP])
-		b.stroke(PackedVector2Array([_p(Vector2(-0.97, 0.93), 12.0), _p(Vector2(-0.71, 0.93), 12.0), _p(Vector2(-0.71, 0.67), 12.0)]), 1.8, Pal.WOOD_DEEP.darkened(0.1), false, false)
-		_drum(b, Vector2(0.8, -0.8), 0.11, 0.0, 26.0, [PLANK.lightened(0.2), PLANK.lightened(0.08), PLANK, PLANK_DEEP])
-		for z: float in [7.0, 19.0]:
-			b.stroke(_round(Vector2(0.8, -0.8), 0.115, z, 0.0, PI, 10), 2.4, IRON, false, false)
+			hole.append(_p(o * HATCH_HALF, MARKET_TALL))
+		b.polygon(hole, PIT)
+		for wall: Array in [[Vector2(-1, -1), Vector2(1, -1), PLANK_DEEP.darkened(0.45)], [Vector2(-1, -1), Vector2(-1, 1), PLANK_DEEP.darkened(0.6)]]:
+			var from: Vector2 = wall[0] * HATCH_HALF
+			var to: Vector2 = wall[1] * HATCH_HALF
+			var face := PackedVector2Array([_p(from, MARKET_TALL), _p(to, MARKET_TALL), _p(to, MARKET_TALL - HATCH_DEEP), _p(from, MARKET_TALL - HATCH_DEEP)])
+			for part: PackedVector2Array in Geometry2D.intersect_polygons(face, hole):
+				b.polygon(part, wall[2])
+		_market_near(b)
 		_one["market"] = b.mesh()
 	return _one["market"]
 
-## How high the market's awning hangs over a point of its floor (tiles from
-## the stall's middle): it falls from the back corner toward the eye.
-static func _awning_z(t: Vector2) -> float:
-	return 98.0 + (0.6 - t.x - t.y) * 8.5
+## The market's near side by itself: its two seen walls and the top's two
+## near planks. Drawn over a thing falling through the hatch, which is then
+## behind them as it should be.
+static func market_front() -> ArrayMesh:
+	if not _one.has("market_front"):
+		var b := Face.Builder.new()
+		var big := Vector2(MARKET_HALF, MARKET_HALF)
+		var wood := _market_wood()
+		# `_block` with no top: the hole would be covered
+		b.polygon(PackedVector2Array([_p(Vector2(-big.x, big.y)), _p(big), _p(big, MARKET_TALL), _p(Vector2(-big.x, big.y), MARKET_TALL)]), wood[1])
+		b.polygon(PackedVector2Array([_p(big), _p(Vector2(big.x, -big.y)), _p(Vector2(big.x, -big.y), MARKET_TALL), _p(big, MARKET_TALL)]), wood[2])
+		_market_near(b)
+		_one["market_front"] = b.mesh()
+	return _one["market_front"]
 
-## A post of the market from the ground at `c` up `tall`.
-static func _post(b: Face.Builder, c: Vector2, tall: float) -> void:
-	_drum(b, c, 0.035, 0.0, tall, [PLANK, PLANK.lightened(0.14), PLANK, PLANK_DEEP])
+static func _market_wood() -> Array:
+	return [PLANK.lightened(0.22), PLANK.lightened(0.06), PLANK_DEEP]
 
-## The market's awning: cloth in stripes over its back three quarters,
-## falling toward the eye, a scalloped valance hanging from its two near
-## edges, each stripe's a tone darker on the side that looks away from the sun.
-static func _awning(b: Face.Builder) -> void:
-	var lo := -1.02
-	var hi := 0.34
-	var n := 8
-	var spot := func(t: Vector2, drop := 0.0) -> Vector2:
-		return _p(t, _awning_z(t) - drop)
-	for i in n:
-		var x0 := lerpf(lo, hi, float(i) / n)
-		var x1 := lerpf(lo, hi, float(i + 1) / n)
-		b.polygon(PackedVector2Array([spot.call(Vector2(x0, lo)), spot.call(Vector2(x1, lo)), spot.call(Vector2(x1, hi)), spot.call(Vector2(x0, hi))]), AWNING[i % 2])
-	_glow(b, spot.call(Vector2(-0.5, -0.1)), 70.0, 46.0, Color(1.0, 0.98, 0.86), 0.26)
-	# the valance: along the side looking down and left, then down and right
-	for i in n:
-		var x0 := lerpf(lo, hi, float(i) / n)
-		var x1 := lerpf(lo, hi, float(i + 1) / n)
-		for face in 2:
-			var from := Vector2(x0, hi) if face == 0 else Vector2(hi, x1)
-			var to := Vector2(x1, hi) if face == 0 else Vector2(hi, x0)
-			var tone: Color = AWNING[i % 2] if face == 0 else AWNING_SHADE[i % 2]
-			b.polygon(PackedVector2Array([spot.call(from), spot.call(to), spot.call(to, 11.0), spot.call(from, 11.0)]), tone.darkened(0.04))
-			b.disc(((spot.call(from, 11.0) as Vector2) + (spot.call(to, 11.0) as Vector2)) * 0.5, 6.2, tone.darkened(0.04))
-	b.stroke(PackedVector2Array([spot.call(Vector2(lo, hi)), spot.call(Vector2(hi, hi)), spot.call(Vector2(hi, lo))]), 2.2, Color(1.0, 1.0, 1.0, 0.5), false, false)
+## What both of the market's meshes end with: the top's two near planks,
+## the joints of the two walls, the coin painted on the sunny one and the
+## pale line round the hole and the rim.
+static func _market_near(b: Face.Builder) -> void:
+	var o := MARKET_HALF
+	var i := HATCH_HALF
+	var top: Color = _market_wood()[0]
+	b.polygon(PackedVector2Array([_p(Vector2(o, -o), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(i, -i), MARKET_TALL)]), top)
+	b.polygon(PackedVector2Array([_p(Vector2(-o, o), MARKET_TALL), _p(Vector2(-i, i), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL)]), top)
+	for f: float in [0.25, 0.5, 0.75]:
+		var u := lerpf(-o, o, f)
+		b.stroke(PackedVector2Array([_p(Vector2(u, o), 2.0), _p(Vector2(u, o), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP, 0.6), false, false)
+		b.stroke(PackedVector2Array([_p(Vector2(o, u), 2.0), _p(Vector2(o, u), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP.darkened(0.2), 0.6), false, false)
+	# the coin on the wall in the sun, lying in the wall's own plane
+	var along := at(Vector2(1.0, 0.0)).normalized()
+	b.append(icon("coin"), Transform2D(along * 0.17, Vector2(0.0, 0.17), _p(Vector2(0.0, o), MARKET_TALL * 0.5)))
+	b.stroke(PackedVector2Array([_p(Vector2(-o, o), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL), _p(Vector2(o, -o), MARKET_TALL)]), 2.4, PLANK.lightened(0.34), false, false)
+	b.stroke(PackedVector2Array([_p(Vector2(-i, i), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(i, -i), MARKET_TALL)]), 1.8, PLANK_DEEP.darkened(0.25), false, false)
+
+## One leaf of the market's hatch, in a space of its own at FINE units a
+## tile: x from its hinge (0) to its free edge, y along the hinge about its
+## middle. `market_leaf` lays it; nothing is rebuilt as it swings.
+static func market_door() -> ArrayMesh:
+	if not _one.has("market_door"):
+		var b := Face.Builder.new()
+		var w := HATCH_HALF * FINE
+		b.polygon(PackedVector2Array([Vector2(0.0, -w), Vector2(w, -w), Vector2(w, w), Vector2(0.0, w)]), PLANK.lightened(0.1))
+		for k in 3:
+			var y := lerpf(-w, w, (k + 0.5) / 3.0)
+			b.polygon(PackedVector2Array([Vector2(1.0, y - w / 3.0 + 1.2), Vector2(w - 1.0, y - w / 3.0 + 1.2), Vector2(w - 1.0, y + w / 3.0 - 1.2), Vector2(1.0, y + w / 3.0 - 1.2)]),
+				PLANK.lightened(0.16) if k % 2 == 0 else PLANK.lightened(0.04))
+		# its two iron straps from the hinge
+		for y: float in [-w * 0.55, w * 0.55]:
+			b.stroke(PackedVector2Array([Vector2(1.5, y), Vector2(w * 0.7, y)]), 3.2, IRON, false, true)
+		_one["market_door"] = b.mesh()
+	return _one["market_door"]
+
+## Where leaf `side` (0 hinged on the hole's -x edge, 1 on its +x) lies
+## when the hatch is `open` (0 shut, 1 hanging down), about the market's
+## own origin: draw `market_door()` under it.
+static func market_leaf(side: int, open: float) -> Transform2D:
+	var s := -1.0 if side == 0 else 1.0
+	var a := clampf(open, 0.0, 1.0) * HATCH_SWING
+	var across := ISO.x * -s * cos(a) + Vector2(0.0, RISE * sin(a))
+	return Transform2D(across / FINE, ISO.y / FINE, at(Vector2(s * HATCH_HALF, 0.0)) + MARKET_TOP)
 
 ## The round button that lies on the pond where a plate may be bought, about
 ## (0, 0), a tile and a half across: a pale disc flat on the water with a
@@ -2048,7 +2043,11 @@ static func icon(kind: String) -> ArrayMesh:
 		"retort":
 			_fit_into(b, retort(0), 94.0)
 		"market":
-			_fit_into(b, market(), 96.0)
+			var whole := Face.Builder.new()
+			whole.append(market(), Transform2D.IDENTITY)
+			for side in 2:
+				whole.append(market_door(), market_leaf(side, 0.0))
+			_fit_into(b, whole.mesh(), 96.0)
 		"forest":
 			_plot_into(b, "forest")
 			b.append(tree(3), Transform2D(0.0, Vector2(0.36, 0.36), 0.0, Vector2(-17.0, 8.0)))

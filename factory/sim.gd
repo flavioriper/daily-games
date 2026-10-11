@@ -16,8 +16,8 @@ extends RefCounted
 ##
 ## Geometry. A tile is one global Vector2i. Plate P (a Vector2i on the plate
 ## lattice, the first is (0,0)) owns tiles P*8 .. P*8+7 on both axes; the
-## lattice goes negative, so use `plate_of(tile)`. The market is the 2x2 on
-## tiles (6..7, 6..7) of the first plate, which is neutral ground; a new land
+## lattice goes negative, so use `plate_of(tile)`. The market is the one
+## tile (6, 6) of the first plate, which is neutral ground; a new land
 ## has a forest behind it, at `FOREST_AT`. A facing is an int 0..3 = +x, +y, -x, -y (`DIRS`); a
 ## quarter clockwise is (f + 1) % 4. Positions handed out as Vector2 are in
 ## tile units, a tile's middle at tile + (0.5, 0.5).
@@ -81,7 +81,7 @@ extends RefCounted
 ##   working(module) -> bool            holds an input and has room to finish
 ##   cycle_seconds(module) -> float     real seconds a cycle at the heat it
 ##                            would have working now; -1.0 with no fire lit
-##   market: Dictionary       {level, wait (item kinds, six at most), t}
+##   market: Dictionary       {level, wait (item kinds: the one on the hatch), t}
 ##   market_interval() -> float         seconds a sale: 4, 3, 2, 1, then halved
 ##   market_progress() -> float         0..1 toward the next sale
 ##   is_market(tile), on_land(tile), plate_of(tile), tile_free(tile)
@@ -113,6 +113,7 @@ extends RefCounted
 ##   lit {tile, id, kind}  dim {tile, id}
 ##   made {tile, id, kind}            a kiln or a retort done with one
 ##   out {tile, id, kind}             its output left into `tile`
+##   brought {kind, from}             onto the market's hatch, travelling `from`
 ##   sale {kind, amount, coins}
 ##   level {target, level}            "market", "forest" (with `plate`) or a
 ##                                    module's id
@@ -133,7 +134,7 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), 
 const KINDS := ["forest", "neutral"]
 ## The forest a new land has, behind the market's plate.
 const FOREST_AT := Vector2i(0, -1)
-## The market's back tile; it is 2x2 from here.
+## The market's tile: one square, a hatch (2x2 until 2026-10-11).
 const MARKET_AT := Vector2i(6, 6)
 const NONE := Vector2i(-99999, -99999)
 
@@ -173,7 +174,8 @@ const MARKET_EVERY := [4.0, 3.0, 2.0, 1.0]
 ## The price of levels 2, 3 and 4, then each MARKET_STEP times the last.
 const MARKET_PRICE := [30, 80, 200]
 const MARKET_STEP := 2.5
-const MARKET_ROOM := 6
+## What the hatch holds: the one thing lying on it. The next waits on its belt.
+const MARKET_ROOM := 1
 
 ## Fuel, MJ an item (the ledger, section 3).
 const FUEL := {"log": 320.0, "charcoal": 150.0}
@@ -260,7 +262,7 @@ func on_land(tile: Vector2i) -> bool:
 	return plates.has(plate_of(tile))
 
 func is_market(tile: Vector2i) -> bool:
-	return tile.x >= MARKET_AT.x and tile.x <= MARKET_AT.x + 1 and tile.y >= MARKET_AT.y and tile.y <= MARKET_AT.y + 1
+	return tile == MARKET_AT
 
 func is_forest(tile: Vector2i) -> bool:
 	return plates.get(plate_of(tile), "") == "forest"
@@ -611,7 +613,7 @@ func _yields(b: Vector2i, fed: Vector2i, v: float) -> bool:
 	return false
 
 ## An item going into `tile` by facing `f`: a belt whose back half is clear,
-## the market with room on its counter, a kiln's or a retort's back tile if
+## the market with nothing on its hatch, a kiln's or a retort's back tile if
 ## it holds nothing and the item is its kind, a firebox's hopper if it burns.
 func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float) -> bool:
 	if belts.has(tile):
@@ -633,6 +635,7 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float) -> bool:
 		if (market.wait as Array).size() >= MARKET_ROOM:
 			return false
 		(market.wait as Array).append(it.kind)
+		events.append({"type": "brought", "kind": it.kind, "from": f})
 		return true
 	var m := module_at(tile)
 	if m.is_empty() or not m.built:
@@ -1068,9 +1071,10 @@ func _tick() -> void:
 	_sell()
 	dirty = true
 
-## One sale an interval and no faster. The counter's clock runs up to one
-## interval while nothing waits, so the first item to reach an idle market
-## is sold as it lands and the next waits its whole turn.
+## One sale an interval and no faster. The hatch's clock stands at nothing
+## while nothing lies on it, so whatever comes lies there its whole interval
+## before the hatch opens under it (until 2026-10-11 the first to reach an
+## idle market was sold as it landed).
 func _sell() -> void:
 	var every := market_interval()
 	var wait: Array = market.wait
@@ -1083,8 +1087,7 @@ func _sell() -> void:
 		earned += amount
 		events.append({"type": "sale", "kind": kind, "amount": amount, "coins": coins})
 	if wait.is_empty():
-		# held a tick short, so the tick an item lands makes it a whole turn
-		market.t = minf(float(market.t), maxf(every - TICK, 0.0))
+		market.t = 0.0
 
 func _no(why: String, tile: Vector2i) -> bool:
 	events.append({"type": "refused", "why": why, "tile": tile})

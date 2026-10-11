@@ -25,7 +25,7 @@ const Pal = preload("res://core/palette.gd")
 enum Lesson { TREE, BELT, PLATE }
 
 const SEED := 7
-const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 24.0, Lesson.PLATE: 7.0}
+const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 28.0, Lesson.PLATE: 7.0}
 const STILL := {Lesson.TREE: 2.4, Lesson.BELT: 6.0, Lesson.PLATE: 5.5}
 ## What each page looks at, in tile space, and how many view units it shows
 ## across.

@@ -46,8 +46,8 @@ extends RefCounted
 ##   or reads a position goes through one pair, `seen(t)` and `tile_at(v)`**
 ##   (and `seen_tile`, `seen_plate`, `seen_facing`, `depth` built on the same
 ##   turn): never `Art.at` on a sim coordinate. The market's art has one
-##   face and keeps it toward the eye at every turn, its counter's stack
-##   where the art puts it; the ground's washes, pebbles and tufts are a
+##   face and keeps it toward the eye at every turn, the leaves of its
+##   hatch with it; the ground's washes, pebbles and tufts are a
 ##   plate's own and do not turn with the land.
 ##
 ## Under reduce motion a beaver is there or not and only changes its face,
@@ -76,6 +76,27 @@ const GROW := 0.6
 const RISE := 3.0
 const SUNK := 90.0
 const RISE_BARE := 0.7
+## The market's hatch. A sale is played over SALE of the market's interval,
+## SALE_MOST seconds at most, and of that: the leaves swing down over
+## OPEN, the thing falls from FALL_FROM to FALL_TO (FALL view units, into
+## the dark), the coin comes up at COIN_AT and the leaves are shut again
+## from SHUT_FROM to SHUT_TO. What comes next rides in from the belt's edge
+## over SLIDE of the interval, once the leaves are shut. A coin hops
+## COIN_UP and is gone in COIN seconds; DROPS sales are played at once.
+const SALE := 0.7
+const SALE_MOST := 0.62
+const OPEN := 0.3
+const FALL_FROM := 0.2
+const FALL_TO := 0.7
+const FALL := 38.0
+const COIN_AT := 0.55
+const SHUT_FROM := 0.7
+const SHUT_TO := 0.95
+const SLIDE := 0.3
+const SLIDE_MOST := 0.9
+const COIN := 0.75
+const COIN_UP := 64.0
+const DROPS := 4
 ## Every layer's box: a board of a dozen plates either way and the pond
 ## round it. The engine culls a layer by this and not by what it draws.
 const BOX := Rect2(-40000.0, -40000.0, 80000.0, 80000.0)
@@ -129,7 +150,13 @@ var _rise := {}       # plate -> seconds since it was bought
 var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, age, size}
 var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
 var _bit_mm: MultiMesh
+var _lying := {}      # what lies on the hatch: {from (the way it came), t}
+var _drops: Array = []    # sales being played: {kind, amount, t, len, off (tiles from the middle), paid}
 var _rng := RandomNumberGenerator.new()
+
+## A sale's coin is up: when the holder counts it, says "+N" and is heard.
+## At once under reduce motion.
+signal coined(amount: int)
 
 func _init() -> void:
 	_rng.seed = 20261010
@@ -174,6 +201,8 @@ func hold(with_sim: RefCounted) -> void:
 	_rise.clear()
 	_beavers.clear()
 	_bits.clear()
+	_lying.clear()
+	_drops.clear()
 	stale()
 
 ## A layer of the land over the ones there are, drawn by `draws(layer)`: the
@@ -284,6 +313,10 @@ func event(e: Dictionary) -> void:
 			_on_chop(int(e.id))
 		"laid", "turned", "sold_back", "placed", "built":
 			_belts_stale = true
+		"brought":
+			_lying = {"from": int(e.from), "t": 0.0}
+		"sale":
+			_on_sale(e)
 		"plate":
 			_plates_n = -1
 			if not Motion.reduce:
@@ -292,6 +325,34 @@ func event(e: Dictionary) -> void:
 				for id: int in sim.trees:
 					if Sim.plate_of(sim.trees[id].tile) == p:
 						_born[id] = -RISE * RISE_BARE
+
+## The hatch opens under what was lying on it. Past DROPS at once, and
+## under reduce motion, only the coin is told.
+func _on_sale(e: Dictionary) -> void:
+	var off := _lying_off()
+	_lying.clear()
+	if Motion.reduce or _drops.size() >= DROPS:
+		coined.emit(int(e.amount))
+		return
+	_drops.append({"kind": String(e.kind), "amount": int(e.amount), "t": 0.0, "off": off, "paid": false,
+		"len": clampf(float(sim.market_interval()) * SALE, 0.1, SALE_MOST)})
+
+## How far from the hatch's middle the thing lying on it still is, in sim
+## tiles: it rides in from the edge it came over.
+func _lying_off() -> Vector2:
+	if _lying.is_empty() or Motion.reduce:
+		return Vector2.ZERO
+	var time := clampf(float(sim.market_interval()) * SLIDE, 0.05, SLIDE_MOST)
+	var k := clampf(float(_lying.t) / time, 0.0, 1.0)
+	return -Vector2(Art.DIRS[int(_lying.from)]) * 0.5 * (1.0 - k) * (1.0 - k)
+
+## How far the hatch's leaves hang, 0 to 1: the most any sale wants.
+func _hatch() -> float:
+	var open := 0.0
+	for d: Dictionary in _drops:
+		var k := float(d.t) / float(d.len)
+		open = maxf(open, smoothstep(0.0, OPEN, k) * (1.0 - smoothstep(SHUT_FROM, SHUT_TO, k)))
+	return open
 
 ## What stands on `tile` shakes its head: a tap it did not take.
 func shake(tile: Vector2i) -> void:
@@ -373,6 +434,15 @@ func step(delta: float) -> void:
 		bit.pos = (bit.pos as Vector2) + vel * delta
 		bit.turn = float(bit.turn) + float(bit.spin) * delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
+	for d: Dictionary in _drops:
+		d.t += delta
+		if not d.paid and float(d.t) >= float(d.len) * COIN_AT:
+			d.paid = true
+			coined.emit(int(d.amount))
+	_drops = _drops.filter(func(d: Dictionary) -> bool: return d.t < maxf(float(d.len) * SHUT_TO, float(d.len) * COIN_AT + COIN))
+	# what comes next waits at the edge until the leaves are shut
+	if not _lying.is_empty() and _hatch() <= 0.02:
+		_lying.t += delta
 	if _plates_n != sim.plates.size():
 		_lay_plates()
 		rising = true
@@ -580,14 +650,7 @@ func _fill_stand() -> void:
 			if sim.plates.has(p + Art.DIRS[side]):
 				var g: Vector2i = Sim.gate(p, side)
 				list.append([depth(Vector2(g) + MID), 0, Art.pile(held), Transform2D(0.0, mid(g)), white])
-	var stall := Vector2(Sim.MARKET_AT) + Vector2.ONE
-	# the stall has one face and keeps it toward the eye at every turn
-	var stall_d := depth(stall)
-	list.append([stall_d, 0, Art.market(), Transform2D(_turned(Sim.MARKET_AT), seen(stall)), white])
-	var wait: Array = sim.market.wait
-	for i in mini(wait.size(), Art.MARKET_SPOTS.size()):
-		list.append([stall_d + 0.01 * (i + 1), 0, Art.item(wait[i]),
-			Transform2D(0.0, Vector2(0.7, 0.7), 0.0, seen(stall) + Art.MARKET_SPOTS[i]), white])
+	_add_market(list)
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
@@ -609,6 +672,51 @@ func _fill_stand() -> void:
 		(_runs[i] as Array).clear()
 	for c in _pool:
 		c.queue_redraw()
+
+## The market: its box, the two leaves of its hatch, what lies on it, what
+## is falling through it behind the box's near side, and the coins. The box
+## has one face and keeps it toward the eye at every turn; what lies on it
+## rides in from the side it came by as the view has it.
+func _add_market(list: Array) -> void:
+	var tile := Vector2(Sim.MARKET_AT) + MID
+	var d := depth(tile)
+	var box := Transform2D(_turned(Sim.MARKET_AT), seen(tile))
+	var white := Color.WHITE
+	list.append([d, 0, Art.market(), box, white])
+	var open := _hatch()
+	var shade := 1.0 - 0.34 * open
+	for side in 2:
+		list.append([d + 0.001 * (side + 1), 0, Art.market_door(), box * Art.market_leaf(side, open), Color(shade, shade, shade)])
+	var falling := false
+	for drop: Dictionary in _drops:
+		var k := float(drop.t) / float(drop.len)
+		if k < FALL_TO:
+			# to the middle as the leaves give, then down into the dark
+			var fall := smoothstep(FALL_FROM, FALL_TO, k)
+			fall *= fall
+			var off: Vector2 = (drop.off as Vector2) * (1.0 - smoothstep(0.0, OPEN, k))
+			var size := 1.0 - 0.2 * fall
+			var dark := 1.0 - 0.55 * fall
+			list.append([d + 0.003, 0, Art.item(drop.kind),
+				Transform2D(0.0, Vector2(size, size), 0.0, seen(tile + off) + Art.MARKET_TOP + Vector2(0.0, FALL * fall)),
+				Color(dark, dark, dark, 1.0 - smoothstep(0.6, 1.0, fall))])
+			falling = true
+	if falling:
+		list.append([d + 0.004, 0, Art.market_front(), box, white])
+	var wait: Array = sim.market.wait
+	if not wait.is_empty():
+		list.append([d + 0.005, 0, Art.item(wait[0]), Transform2D(0.0, seen(tile + _lying_off()) + Art.MARKET_TOP), white])
+	for drop: Dictionary in _drops:
+		var t := float(drop.t) - float(drop.len) * COIN_AT
+		if t < 0.0 or t >= COIN:
+			continue
+		# a hop: up, a little way back down, and gone
+		var k := t / COIN
+		var u := k * 0.72
+		var size := 0.34 * (0.5 + 0.5 * Motion.back_out(clampf(k / 0.25, 0.0, 1.0)))
+		list.append([d + 0.006, 0, Art.icon("coin"),
+			Transform2D(0.0, Vector2(size * cos(k * TAU), size), 0.0, seen(tile) + Art.MARKET_TOP + Vector2(0.0, -10.0 - COIN_UP * 4.0 * u * (1.0 - u))),
+			Color(1.0, 1.0, 1.0, 1.0 - smoothstep(0.55, 1.0, k))])
 
 ## A beaver by its tree, looking at it: popped in, its teeth in the wood on
 ## a chop.

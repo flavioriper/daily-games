@@ -95,7 +95,7 @@ func _until(sim: RefCounted, type: String, most: int, found: Array = []) -> int:
 				return i + 1
 	return -1
 
-## Every item the land holds: lying, riding, waiting on the counter, in a
+## Every item the land holds: lying, riding, lying on the hatch, in a
 ## machine or in a hopper.
 func _all(sim: RefCounted) -> int:
 	var n: int = sim.market.wait.size()
@@ -132,7 +132,7 @@ func _stock(sim: RefCounted, p: Vector2i = F) -> int:
 	return int(sim.forests[p].stock)
 
 ## The nine belts from the gate to the market: down the column past the gate
-## and along to the stall.
+## and along to the market.
 func _way(sim: RefCounted) -> void:
 	_belt_row(sim, PAST, 6, 1)
 	_belt_row(sim, Vector2i(3, 6), 3, 0)
@@ -168,9 +168,9 @@ func _check_land() -> void:
 		and Sim.plate_of(Vector2i(3, -1)) == F and sim.on_land(Vector2i(3, -1)) and not sim.on_land(Vector2i(3, -9)))
 	_ok("the belt is in the drawer; the fire, the retort and the kiln are not", sim.unlocked("belt") and not sim.unlocked("firebox") and not sim.unlocked("retort")
 		and not sim.unlocked("kiln") and not sim.can_place("firebox", Vector2i(0, 0), 0))
-	_ok("the market is its 2x2 and cannot be sold or built on", sim.is_market(Vector2i(6, 6)) and sim.is_market(Vector2i(7, 7)) and not sim.is_market(Vector2i(5, 7))
-		and not sim.sell(Vector2i(7, 7)) and not sim.can_lay(Vector2i(6, 7)) and not sim.can_lay(Vector2i(8, 0)))
-	_ok("its plate is open ground: every other tile of it is bare and takes a belt", _bare(sim, Vector2i.ZERO) == 60)
+	_ok("the market is its one tile and cannot be sold or built on", sim.is_market(Vector2i(6, 6)) and not sim.is_market(Vector2i(7, 7)) and not sim.is_market(Vector2i(5, 6))
+		and not sim.sell(Vector2i(6, 6)) and not sim.can_lay(Vector2i(6, 6)) and sim.can_lay(Vector2i(6, 7)) and not sim.can_lay(Vector2i(8, 0)))
+	_ok("its plate is open ground: every other tile of it is bare and takes a belt", _bare(sim, Vector2i.ZERO) == 63)
 	var same: RefCounted = Sim.new(7)
 	var other: RefCounted = Sim.new(8)
 	_ok("a seed is a land", var_to_str(sim.pack()) == var_to_str(same.pack()) and var_to_str(sim.pack()) != var_to_str(other.pack()))
@@ -261,13 +261,13 @@ func _check_forest() -> void:
 		nearest = mini(nearest, sales[i] - sales[i - 1])
 	_ok("the belt empties the forest and the market sells all fourteen, a coin each", sales.size() == 14 and sim.coins == 25 and sim.earned == 14 and _stock(sim) == 0 and _all(sim) == 0)
 	_ok("none lost on the way, and never two sales in under four seconds", not lost and nearest >= 40)
-	# one log, timed: out of the gate onto the belt, nine tiles, sold as it lands
+	# one log, timed: out of the gate onto the belt, nine tiles, four seconds on the hatch
 	sim = Sim.new(7)
 	_way(sim)
 	sim.tap(IN)
 	var found: Array = []
 	var at := _until(sim, "sale", 400, found)
-	_ok("a log tapped rides nine tiles of belt to the market in 18 s (%d ticks)" % at, at >= 180 and at <= 183 and sim.coins == 12)
+	_ok("a log tapped rides nine tiles of belt to the market in 18 s and lies on its hatch four (%d ticks)" % at, at >= 219 and at <= 223 and sim.coins == 12)
 	# what else takes a log past a gate: a hopper, a retort's back
 	sim = _open()
 	sim.place("firebox", PAST, 0)
@@ -400,37 +400,37 @@ func _check_levels() -> void:
 			made += 1 if e.type == "chop" else 0
 		lost = lost or made != sim.earned + _all(sim) + _stock(sim)
 	_ok("a level-1 forest on a belt sells fifteen a minute through a new market, and makes no more than that once all is full (%d sold, %d made)" % [sim.earned - before, made - was],
-		sim.earned - before == 15 and made - was == 15 and _stock(sim) == 12 and sim.market.wait.size() == 6)
+		sim.earned - before == 15 and made - was == 15 and _stock(sim) == 12 and sim.market.wait.size() == 1)
 	_ok("every log made is sold, riding, waiting or held: none lost", not lost and sim.coins == sim.earned)
 
 func _check_belts() -> void:
 	var sim: RefCounted = Sim.new(7)
-	# the front rim of the first plate: six tiles running into the market
-	_ok("a belt can be laid on the rim", sim.can_lay(Vector2i(0, 7)))
-	_belt_row(sim, Vector2i(0, 7), 6, 0)
+	# the market's row of the first plate: six tiles running into it
+	_ok("a belt can be laid on the rim", sim.can_lay(Vector2i(0, 6)))
+	_belt_row(sim, Vector2i(0, 6), 6, 0)
 	_ok("six belts are six coins", sim.coins == 14 and sim.belts.size() == 6)
-	_ok("the same belt twice is not paid twice", not sim.lay_belt(Vector2i(0, 7), 0) and sim.coins == 14)
-	_ok("a tap turns it a quarter, and again", sim.turn(Vector2i(0, 7)) and sim.belts[Vector2i(0, 7)] == 1 and sim.lay_belt(Vector2i(0, 7), 0) and sim.coins == 14)
-	sim.put(Vector2i(0, 7), "log")
+	_ok("the same belt twice is not paid twice", not sim.lay_belt(Vector2i(0, 6), 0) and sim.coins == 14)
+	_ok("a tap turns it a quarter, and again", sim.turn(Vector2i(0, 6)) and sim.belts[Vector2i(0, 6)] == 1 and sim.lay_belt(Vector2i(0, 6), 0) and sim.coins == 14)
+	sim.put(Vector2i(0, 6), "log")
 	var sale := -1
-	var before: float = sim.items[Vector2i(0, 7)][0].at
+	var before: float = sim.items[Vector2i(0, 6)][0].at
 	_tick(sim)
-	_ok("an item rides a twentieth of a tile a tick", is_equal_approx(sim.items[Vector2i(0, 7)][0].at - before, 0.05))
+	_ok("an item rides a twentieth of a tile a tick", is_equal_approx(sim.items[Vector2i(0, 6)][0].at - before, 0.05))
 	sim.step(0.05)
-	var half: Vector2 = sim.item_pos(Vector2i(0, 7), sim.items[Vector2i(0, 7)][0])
-	_ok("and is drawn a tick behind, half way between the last two", is_equal_approx(sim.alpha, 0.5) and is_equal_approx(half.x, 0.5 + 0.025) and is_equal_approx(half.y, 7.5))
+	var half: Vector2 = sim.item_pos(Vector2i(0, 6), sim.items[Vector2i(0, 6)][0])
+	_ok("and is drawn a tick behind, half way between the last two", is_equal_approx(sim.alpha, 0.5) and is_equal_approx(half.x, 0.5 + 0.025) and is_equal_approx(half.y, 6.5))
 	sim.step(0.05)
 	for i in 200:
 		for e: Dictionary in _tick(sim):
 			if e.type == "sale":
 				sale = i + 3
 	# from mid tile to the market's edge is five tiles and a half, 11 s
-	_ok("five and a half tiles to the market in 11 s, sold as it lands", sale >= 110 and sale <= 112)
+	_ok("five and a half tiles to the market in 11 s, then four on its hatch (%d)" % sale, sale >= 149 and sale <= 153)
 	_ok("a log is a coin", sim.coins == 15 and sim.earned == 1 and _all(sim) == 0)
 
 	# a full belt: twelve logs, a market that takes one every four seconds
 	for x in 6:
-		_ok("a tile takes two", sim.put(Vector2i(x, 7), "log") and sim.put(Vector2i(x, 7), "log") and not sim.put(Vector2i(x, 7), "log"))
+		_ok("a tile takes two", sim.put(Vector2i(x, 6), "log") and sim.put(Vector2i(x, 6), "log") and not sim.put(Vector2i(x, 6), "log"))
 	var sold := 0
 	var last := -1000
 	var nearest := 1000
@@ -449,9 +449,9 @@ func _check_belts() -> void:
 			var arr: Array = sim.items[t]
 			close = close or (arr.size() == 2 and arr[0].at - arr[1].at < 0.5 - 0.0001) or arr.size() > 2
 		if i == 150:
-			# the counter is full and the belt behind it waits
-			stuck = sim.market.wait.size() == 6 and sim.items[Vector2i(5, 7)][0].at == 1.0
-	_ok("the counter fills to six and the belt behind waits", stuck)
+			# the hatch has its one and the belt behind it waits
+			stuck = sim.market.wait.size() == 1 and sim.items[Vector2i(5, 6)][0].at == 1.0
+	_ok("the hatch holds one and the belt behind waits", stuck)
 	_ok("nothing is lost on a full belt", not lost)
 	_ok("no two items nearer than half a tile", not close)
 	_ok("never two sales in under four seconds", nearest >= 40)

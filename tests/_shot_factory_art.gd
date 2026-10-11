@@ -13,7 +13,7 @@ extends SceneTree
 ## and the pile a forest's stock is drawn as at two of its gates, three logs
 ## and twelve; on the market's plate a ring of belts in all four facings
 ## with every item on it, a run of belts over the seam and the market on its
-## front corner with six items on its counter; on the plate beside it a fire
+## tile with a log on its hatch; on the plate beside it a fire
 ## box burning and the kiln in its four facings with its glow (the kiln is
 ## kept in the library and locked in the game: nothing gives it stone); on
 ## the plate in front the retort in its four with its smoke, a frame of each
@@ -163,9 +163,11 @@ func _lay_things() -> void:
 		var d := Vector2(Art.DIRS[BELTS[i][2]])
 		for k in 2:
 			put.call(tile + d * (k * 0.5 - 0.25), Art.item(KINDS[(i + k) % 4]))
-	put.call(Vector2(7.0, 7.0), Art.market())
-	for i in Art.MARKET_SPOTS.size():
-		put.call(Vector2(7.0, 7.0), Art.item(KINDS[i % 4]), Art.MARKET_SPOTS[i], 0.7, Color.WHITE, 0.01 * (i + 1))
+	put.call(Vector2(6.5, 6.5), Art.market())
+	for side in 2:
+		_things.append([Art.depth(Vector2(6.5, 6.5)) + 0.001 * (side + 1), Art.market_door(),
+			Transform2D(0.0, Art.at(Vector2(6.5, 6.5))) * Art.market_leaf(side, 0.0), Color.WHITE])
+	put.call(Vector2(6.5, 6.5), Art.item(KINDS[0]), Art.MARKET_TOP, 1.0, Color.WHITE, 0.01)
 	for g: Array in GATES:
 		put.call(Vector2(g[0] + 0.5, g[1] + 0.5), Art.pile(g[2]))
 	put.call(Vector2(11.5, 6.5), Art.firebox())

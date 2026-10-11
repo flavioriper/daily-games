@@ -137,7 +137,7 @@ idle is the fraction given.
 | **Assembler** | 5 | electric | 10 kW | 10% | three inputs, per product | per product | per product |
 | **Lodge** | 3 | none in eras 3 and 4, electric 0.5 kW from era 5 | 0 | 0 | chops a tree in its reach every 45 s | the beavers' own | 45 s |
 | **Drill** | 3 | shaft; electric from era 5 | 7.5 kW | 10% | 1 stone or 1 coal a cycle from the plate's rock | 2 MJ | 67 s |
-| **Market** | 1 | nothing | 0 | 0 | sells so many items a second, by level | | |
+| **Market** | 1 | nothing | 0 | 0 | sells so many items a second, by level; one thing lies on its hatch at a time, for the whole interval (2026-10-11; a counter of six before, the first sold as it landed) | | |
 
 A machine that wants heat must touch a fire; one that wants shaft must
 touch an engine, a wheel, a mill or a shaft tile that leads to one; one
@@ -197,7 +197,7 @@ what was on it lies on its tiles.
 | Module | Footprint | Build time | Faces | In | Out |
 |---|---|---|---|---|---|
 | Belt | 1x1 | at once | four ways | back | front |
-| Market | 2x2 | given | front | any side | none |
+| Market | 1x1 (2x2 until 2026-10-11) | given | none | any of its four sides | none |
 | Firebox | 1x1 | 20 s | none | hopper on any side | heat to all four |
 | Kiln, retort | 1x2 | 40 s | four | back | front |
 | Boiler and engine | 2x2 | 60 s | none | heat from any side | shaft to all four |

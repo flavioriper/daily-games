@@ -18,7 +18,7 @@ extends SceneTree
 ## level bought; the plate card from a plus and the first plate bought. Then
 ## a late land of six plates (three of them forests, each with a belt past a
 ## gate) is built through the sim's own actions and stepped until its two
-## retorts work and the market's counter is stacked; a machine is placed by
+## retorts work and the market's hatch has its one; a machine is placed by
 ## a finger and refused on a forest, a belt sold by a held one, the view
 ## dragged and pinched; the cards, the drawer, the far zoom, the four turns
 ## of the view, the swipes, the bends and the tutorial's three pages are
@@ -97,6 +97,39 @@ func _until(test: Callable, most: float) -> bool:
 			return true
 		await process_frame
 	return test.call()
+
+## A sale at the market played out and shot: one lying on the hatch, the
+## leaves down under it, its coin up, the leaves shut again. Under reduce
+## motion nothing swings, so only the one lying and the "+1" are shot.
+func _hatch() -> void:
+	var life: RefCounted = _screen.life
+	await _look(Vector2(6.0, 6.0))
+	var lies: bool = await _until(func() -> bool: return _sim.market.wait.size() == 1 and float(_sim.market.t) > 1.5 and float(_sim.market.t) < 3.5, 12.0)
+	_check("a log lies on the market's hatch, in its middle, the leaves shut", lies and life._hatch() == 0.0 and life._lying_off().length() < 0.01,
+		"%s %.2f" % [_sim.market.wait, life._lying_off().length()])
+	await _shot("hatch_lying")
+	var was: int = _sim.earned
+	var coins := [0]
+	var count := func(n: int) -> void: coins[0] += n
+	life.coined.connect(count)
+	var sold: bool = await _until(func() -> bool: return _sim.earned > was, 6.0)
+	if Motion.reduce:
+		_check("under reduce motion a sale is its coin at once, nothing swinging", sold and coins[0] == 1 and life._drops.is_empty() and life._hatch() == 0.0)
+		await _shot("hatch_sold_reduce")
+	else:
+		_check("a sale opens the hatch under it", sold and life._drops.size() == 1 and coins[0] == 0)
+		await _wait(0.1)
+		await _shot("hatch_open")
+		await _wait(0.1)
+		await _shot("hatch_fall")
+		var paid: bool = await _until(func() -> bool: return coins[0] == 1, 2.0)
+		await _wait(0.15)
+		_check("its coin comes up as the thing is gone", paid and life._drops.size() == 1)
+		await _shot("hatch_coin")
+		var shut: bool = await _until(func() -> bool: return life._drops.is_empty(), 3.0)
+		_check("and the leaves are shut again", shut and life._hatch() == 0.0)
+		await _shot("hatch_shut")
+	life.coined.disconnect(count)
 
 func _check(what: String, ok: bool, more := "") -> void:
 	if not ok:
@@ -188,7 +221,7 @@ func _lying(tile: Vector2i) -> int:
 	return (_sim.items.get(tile, []) as Array).size()
 
 ## Every log the first forest ever gave, wherever it is now: held, lying,
-## riding, on the counter or sold (a land with nothing else on it yet).
+## riding, on the hatch or sold (a land with nothing else on it yet).
 func _logs() -> int:
 	var n: int = _stock() + (_sim.market.wait as Array).size() + int(_sim.earned)
 	for tile: Vector2i in _sim.items:
@@ -341,9 +374,10 @@ func _first_belts() -> void:
 			break
 		_run_on(1.0)
 	_check("the logs ride from the gate to the market and are sold: coins up", _sim.earned > 0 and _sim.coins == Sim.START_COINS - 9 + _sim.earned, "coins %d" % _sim.coins)
-	_check("none of the fourteen tapped is lost: held, riding, on the counter or sold", _logs() == 14, str(_logs()))
+	_check("none of the fourteen tapped is lost: held, riding, on the hatch or sold", _logs() == 14, str(_logs()))
 	await _wait(0.25)
 	await _shot("sold")
+	await _hatch()
 	# a tap on a laid belt turns it a quarter, and back round
 	await _tap(_at(Vector2(3.5, 2.5)))
 	_check("a tap on a belt turns it a quarter", _sim.belts[Vector2i(3, 2)] == 2, str(_sim.belts[Vector2i(3, 2)]))
@@ -416,8 +450,8 @@ func _lay(tile: Vector2i, facing: int) -> void:
 		print("     (no belt on %s)" % tile)
 
 ## Six plates (three neutral, three forests) with a belt past a gate of each
-## forest, two fires lit, two retorts working and the market's counter
-## stacked: built through the sim's own actions and stepped, not waited for.
+## forest, two fires lit, two retorts working and the market's hatch
+## holding its one: built through the sim's own actions and stepped, not waited for.
 func _late_land() -> void:
 	_sim.coins = 100000
 	_check("a second neutral plate and two more forests are bought", _sim.buy_plate(Vector2i(0, 1), "neutral") and _sim.buy_plate(EAST, "forest") and _sim.buy_plate(WEST, "forest")
@@ -437,14 +471,14 @@ func _late_land() -> void:
 		_lay(Vector2i(1, row), 0)
 	for x in [4, 5, 6]:
 		_lay(Vector2i(x, 10), 0)
-	for y in [10, 9, 8]:
+	for y in [10, 9, 8, 7]:
 		_lay(Vector2i(7, y), 3)
 	for x in [4, 5]:
 		_lay(Vector2i(x, 13), 0)
 	for y in [13, 12, 11]:
 		_lay(Vector2i(6, y), 3)
-	# the neutral plate beside the market: a row along its front edge into the market's side
-	for x in range(14, 7, -1):
+	# the neutral plate beside the market: a row along the market's own into its side
+	for x in range(14, 6, -1):
 		_lay(Vector2i(x, 6), 2)
 	# the forest behind that plate: from its gate down to the row
 	for y in range(0, 6):
@@ -490,12 +524,12 @@ func _late_land() -> void:
 	var second: Dictionary = _sim.module_at(Vector2i(2, 13))
 	_check("the two retorts work on their fires", _sim.working(first) and float(first.share) > 0.0 and _sim.working(second) and float(second.share) > 0.0,
 		"%s %.2f, %s %.2f" % [first.inp, first.share, second.inp, second.share])
-	# things on the way, and the market's counter stacked
+	# things on the way, one on the market's hatch and the belts behind it waiting
 	for i in 9:
 		_sim.put(Vector2i(7, 9), ["log", "stone", "lime", "charcoal"][i % 4])
 		_sim.put(Vector2i(12, 6), "charcoal")
 		_run_on(1.2)
-	_check("the market's counter is stacked", (_sim.market.wait as Array).size() >= 4, str(_sim.market.wait))
+	_check("the market's hatch has its one and the belt behind it waits", (_sim.market.wait as Array).size() == 1 and _lying(Vector2i(7, 6)) > 0, str(_sim.market.wait))
 	var rides := true
 	for tile: Vector2i in [Vector2i(11, 3), Vector2i(1, 4), Vector2i(3, 2)]:
 		rides = rides and _lying(tile) > 0
@@ -829,16 +863,16 @@ func _swipes() -> void:
 		await _tap(_mid(Vector2i(5, 22)))
 		_check(say + "dragged back to its first tile a swipe lays one, and a tap lays one", _sim.belts.size() == had + 2 and _sim.belts.has(Vector2i(1, 21)) and _sim.belts.has(Vector2i(5, 22)), str(_sim.belts.size() - had))
 		# into the market from the open side, and away from its edge
-		await _look(Vector2(5.0, 7.5))
+		await _look(Vector2(6.5, 4.5))
 		had = _sim.belts.size()
-		await _drag([_mid(Vector2i(3, 7)), _mid(Vector2i(6, 7))])
-		_check(say + "a swipe ending at the market stops at it and flows into it", _line(Vector2i(3, 7), Vector2i(5, 7), 0, had), str(_sim.belts.size() - had))
-		_unlay(Vector2i(3, 7), Vector2i(5, 7))
+		await _drag([_mid(Vector2i(6, 3)), _mid(Vector2i(6, 6))])
+		_check(say + "a swipe ending at the market stops at it and flows into it", _line(Vector2i(6, 3), Vector2i(6, 5), 1, had), str(_sim.belts.size() - had))
+		_unlay(Vector2i(6, 3), Vector2i(6, 5))
 		await _frames(2)
 		had = _sim.belts.size()
-		await _drag([_mid(Vector2i(5, 7)), _mid(Vector2i(3, 7))])
-		_check(say + "a swipe from the market's edge, dragged away, still flows into it", _line(Vector2i(3, 7), Vector2i(5, 7), 0, had), str(_sim.belts))
-		_unlay(Vector2i(3, 7), Vector2i(5, 7))
+		await _drag([_mid(Vector2i(6, 5)), _mid(Vector2i(6, 3))])
+		_check(say + "a swipe from the market's edge, dragged away, still flows into it", _line(Vector2i(6, 3), Vector2i(6, 5), 1, had), str(_sim.belts))
+		_unlay(Vector2i(6, 3), Vector2i(6, 5))
 		# the rule itself, as the one function has it
 		var rule: bool = _screen.run_facing(_sim, [Vector2i(2, 22), Vector2i(3, 22)], 0) == 0 \
 			and _screen.run_facing(_sim, [Vector2i(3, 18), Vector2i(3, 19)], 1) == 3 \
@@ -973,7 +1007,7 @@ func _tutorial() -> void:
 	var land: RefCounted = await _page(Diagram.Lesson.TREE, 3.2)
 	_check("the first page taps the forest three times: three logs, two past the gate", int(land.forests[F].stock) + (land.items.get(PAST, []) as Array).size() == 3
 		and (land.items.get(PAST, []) as Array).size() == 2 and land.belts.is_empty(), "%s %s" % [land.forests[F], land.items.keys()])
-	land = await _page(Diagram.Lesson.BELT, 22.5)
+	land = await _page(Diagram.Lesson.BELT, 27.0)
 	var way: bool = land.belts.size() == WANT_BELTS.size()
 	for tile: Vector2i in WANT_BELTS:
 		way = way and land.belts.get(tile, -1) == WANT_BELTS[tile]

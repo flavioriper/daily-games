@@ -96,6 +96,11 @@ const NO_FINGER := -99
 ## A refusal that is not a no: the tap simply did nothing.
 const QUIET := ["busy", "nothing", "same", "lit", "wait", "top"]
 const TICK_VARY := 0.06
+## A sale's coin: the wallet's `coin` a little under its own pitch and at
+## its own level, and the milliseconds between two of them at least.
+const COIN_PITCH := 0.92
+const COIN_DB := 0.0
+const COIN_GAP := 140
 ## The tap is a selection moved; a tree down is a piece set down; a thing
 ## bought is something finished; one that cannot be is a not yet.
 const HAPTICS := {"buy": Haptics.BUMP, "no": Haptics.WARN}
@@ -110,6 +115,8 @@ var world: Node2D
 
 var _fx: Node2D
 var _quiet: Node2D
+var _coin_fx: Node2D
+var _coin_at := -1000
 var _margins: MarginContainer
 var _water: ArrayMesh
 var _light: ArrayMesh
@@ -239,6 +246,11 @@ func _build() -> void:
 	_quiet.buzzes = false
 	_quiet._puzzle = "grove"
 	field.add_child(_quiet)
+	_coin_fx = Fx2D.new()
+	_coin_fx.buzzes = false
+	_coin_fx._puzzle = "wallet"
+	field.add_child(_coin_fx)
+	life.coined.connect(_on_coin)
 	_light_l = Control.new()
 	_light_l.name = "Light"
 	_light_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -396,7 +408,7 @@ func _layout_field() -> void:
 		_laid_out = true
 		_zoom = _near
 		# a new land is two plates: the seam between the market's and the
-		# forest behind it, so the gate, the forest's badge and the stall are seen
+		# forest behind it, so the gate, the forest's badge and the market are seen
 		_cam = life.seen(Vector2(Art.PLATE * 0.5, 0.0))
 		_cam_to = _cam
 		_cam_raw = _cam
@@ -567,15 +579,22 @@ func _play_events() -> void:
 			"plate":
 				_fx.cue("buy")
 				look_at_plate(e.plate)
-			"sale":
-				# the quiet tick of something sold, and the count on its way up
-				_quiet.cue("chop", 1.2 * _vary(), -9.0)
-				var stall: Vector2 = life.seen(Vector2(Sim.MARKET_AT) + Vector2.ONE) + Art.MARKET_COUNTER
-				_nums.append({"at": stall + Vector2(_rng.randf_range(-18.0, 18.0), -64.0), "text": "+" + Art.short(int(e.amount)), "t": 0.0})
-				_kick()
 			"refused":
 				_on_refused(String(e.why), e.tile)
 	sim.events.clear()
+
+## A sale's coin has come up out of the hatch (`life.coined`): the house's
+## coin is heard, a notch of a wheel and no ring (the wallet's take, the
+## cozy rules' "no coin rings"), never two inside COIN_GAP at a market that
+## sells many a second, and the count is on its way up beside it.
+func _on_coin(amount: int) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _coin_at >= COIN_GAP:
+		_coin_at = now
+		_coin_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
+	var hatch: Vector2 = life.seen(Vector2(Sim.MARKET_AT) + Life.MID) + Art.MARKET_TOP
+	_nums.append({"at": hatch + Vector2(_rng.randf_range(40.0, 52.0), -30.0), "text": "+" + Art.short(amount), "t": 0.0})
+	_kick()
 
 ## The sim did not do it. Most of the time that is a no: the thing shakes
 ## its head, and when it was the coins the pill does too.
