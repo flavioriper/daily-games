@@ -112,9 +112,13 @@ func _force_over(g: String, s: Node) -> void:
 			for i in 12:
 				sim.step()
 			sim.serve()
-			# through the settling to the verdict, and past its showing
-			for i in 60:
+			# through the settling to the verdict (the syrup is a fluid on the
+			# GPU: the judge is answered by hand here), and past its showing
+			for i in 80:
 				sim.step()
+				for ev: Dictionary in sim.events:
+					if ev.type == "judge":
+						sim.judge(PackedFloat32Array(), 0.1)
 			sim.phase_t = 1000.0
 
 func _finish(code: int) -> void:

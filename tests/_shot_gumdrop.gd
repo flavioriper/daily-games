@@ -58,33 +58,53 @@ func _shot(name: String) -> void:
 	print("shot %s at %.1f draws=%d score=%d level=%d match=%d" % [name, _t, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		sim.score if sim != null else 0, sim.level if sim != null else 0, int(sim.match_all * 100.0) if sim != null else 0])
 
-## How far a cell is toward the card's shade, by its mean concentration.
-func _fill(sim: RefCounted, c: int) -> float:
-	return float(sim.fill_of(c).x) / Sim.C_FULL
+var _fill := PackedFloat32Array()
+var _measured_at := -10.0
+var _done_at := -10.0
+var _cell_since := {}
 
-## The careful hand, a frame at a time: the first cell not yet full, from
-## its middle, the pots its flavour is made of, in pulses.
+## How strong each cell is, read back from the fluid a few times a second.
+func _fills() -> PackedFloat32Array:
+	if _t - _measured_at > 0.3 or _fill.size() != _s.sim.count.size():
+		_measured_at = _t
+		_fill = _s._fluid.measure().fill
+	return _fill
+
+## The careful hand, a frame at a time: the first cell not yet the card's
+## shade, the pots its flavour is made of, the tip drawn in a small ring
+## about the cell's middle as it squeezes (so the colour winds).
 func _bot() -> void:
 	var sim = _s.sim
 	if sim == null or sim.phase > Sim.Phase.PLAY or not _play:
 		return
+	var fills := _fills()
 	for c in sim.count.size():
 		var recipe: Dictionary = Mould.recipe(int(sim.mould.want[c]), sim.mould.pots)
 		var upto := 0.0
-		var have := _fill(sim, c)
+		var have: float = fills[c] if c < fills.size() else 0.0
+		var key := "%d/%d" % [sim.level, c]
 		for f: int in recipe:
-			upto += float(recipe[f]) * 0.96
+			upto += float(recipe[f]) * 0.9
 			if have < upto:
+				# a cell that will not take the shade in fourteen seconds is left
+				if not _cell_since.has(key):
+					_cell_since[key] = _t
+				if _t - float(_cell_since[key]) > 14.0:
+					break
 				sim.pick(sim.mould.pots.find(f))
-				sim.aim(sim.centre_of(c))
+				var ring := Vector2.from_angle(_t * 1.1) * 12.0
+				var at: Vector2 = sim.centre_of(c) + ring
+				if sim.reg[Sim.square(at)] != c:
+					at = sim.centre_of(c)
+				sim.aim(at)
 				sim.squeeze(true)
+				_done_at = _t
 				return
 	sim.squeeze(false)
-	# a moment for the colour to even out, then served
-	var wet := 0.0
-	for l: float in sim.liq:
-		wet += l
-	if wet < 1.0:
+	# five seconds for the colour to settle, then served
+	if _t - _done_at > 5.0:
+		var m: Dictionary = _s._fluid.measure()
+		print("bot serves at %.1f: fill %s near %s all %.2f" % [_t, str(m.fill), str(m.near), m.all])
 		sim.serve()
 
 func _skip_gold() -> void:
@@ -156,10 +176,23 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 4
 		4:
-			if _t > _at + 1.6:
+			if _t > _at + 0.8 and _seen == 0:
+				# the tip drawn across the cell as it squeezes: the colour winds
+				_seen = -1
+				_s.sim.aim(_s.sim.centre_of(1) + Vector2(-9.0, 4.0))
+			if _t > _at + 1.3 and _seen == -1:
+				_seen = -2
+				_s.sim.aim(_s.sim.centre_of(1) + Vector2(6.0, -7.0))
+			if _t > _at + 2.4:
+				_seen = 0
 				print("touch squeezes: ", _s.sim.squeezing, " phase play: ", _s.sim.phase == Sim.Phase.PLAY)
 				_shot("3_squeeze")
 				_touch(false, _s._squeeze_at)
+				_at = _t
+				_step = 9
+		9:
+			if _t > _at + 3.0:
+				_shot("3b_settled")
 				print("let go: ", not _s.sim.squeezing)
 				# a finger drawn over the tray moves the tip as far
 				_was = _s.sim.tip
@@ -179,13 +212,17 @@ func _process(delta: float) -> bool:
 			if _s.sim.phase == Sim.Phase.SHOW and _s.sim.phase_t > 0.5 and _s.sim.level > _seen:
 				_seen = _s.sim.level
 				_shot("4_served_%d" % _s.sim.level)
-			if _s.sim.phase == Sim.Phase.PLAY and _s.sim.level == 2 and _fill(_s.sim, 0) > 0.4 and _seen < 100:
+			if _s.sim.phase == Sim.Phase.PLAY and _s.sim.level == 2 and _fills()[0] > 0.4 and _seen < 100:
 				_shot("5_mid")
 				_seen = 100
 				_s.sim.level = 8
-			if _s.sim.level == 9 and _s.sim.phase == Sim.Phase.PLAY and _fill(_s.sim, 1) > 0.5 and _seen < 200:
+			if _s.sim.level == 9 and _s.sim.phase == Sim.Phase.PLAY and _fills()[1] > 0.5 and _seen < 200:
 				_shot("6_late")
 				_seen = 200
+			if _s._end != null:
+				# the bot flopped a mould: the end card as it is
+				_at = _t
+				_step = 8
 			if _s.sim.level >= 10 and _s.sim.phase == Sim.Phase.PLAY:
 				_play = false
 				# one cell held under the dropper far past the card's shade

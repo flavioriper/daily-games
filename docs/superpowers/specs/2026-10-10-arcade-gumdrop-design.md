@@ -234,3 +234,58 @@ Calls that are mine, unconfirmed: the gel model over a velocity field; the
 deepening as the brake (and its strength, 45% at twice the shade); the
 grain; the pace (90 a second); the judge in colour distance; the two
 replacement boosters and the refund; the `?`.
+
+## 10. 2026-10-11, later: a real fluid on the GPU
+
+The gel of section 9 lasted an hour. The user, over a still of it and an
+acrylic pour: "liquid still too minimal, I want a real high volume liquid
+effect of coloring ... something really really good to look"; then
+"terrible, it should look like a way stronger flow of color"; then "liquid
+should merge color after being inserted, not keep as a vortex forever";
+then "effect still terrible, check on web how games like this does". The
+web has no write-up of the reference's method; the open-source dye
+demos it resembles are all Stam's stable fluids in fragment shaders, with
+the dye a separate higher texture, injected as a splat of colour and
+momentum, and drawn as plain colour. That is what was built
+(`arcade/gumdrop_fluid.gd`, `shaders/gumdrop/`):
+
+- **Passes as sibling render targets in tree order**, which this
+  renderer draws in that order within a frame (checked first): advect
+  (the velocity carried, slowed, pushed at the tip), curl, vorticity
+  confinement, divergence, fourteen Jacobi sweeps of pressure, gradient,
+  dye, the dye's keep, and a judge pass. Velocity 128 square, dye 256.
+  Each pass is a ColorRect under a shader: about 22 draw calls.
+- **Eight bits a channel** (no HDR 2D on gl_compatibility, checked:
+  1.5 read back as 1.0), so velocity, pressure, divergence and curl are
+  packed across two bytes and never read through the sampler's filter;
+  the velocity is blended by hand.
+- **The mask**: the mould's inner cells drawn once a deal, the cell's
+  number plus one in red. A solid for the velocity (zero over it, Neumann
+  pressure, nothing toward it) and a fence for the dye (a texel whose
+  backtrace lands in another cell keeps its own).
+- **The dropper is a jet, not a source**: a push straight out from the
+  tip is all divergence and the pressure solve takes it back, so the
+  first fluid barely flowed. The jet points the way the dropper leans and
+  turns slowly (`JET_TURN`, `JET_RATE`), with a swirl across it and the
+  tip's own drag; the dye lands in a wide Gaussian at a high rate, so a
+  half-round cell is the card's shade in about two seconds.
+- **It merges**: the dye is blended a little with its cell's neighbours
+  every frame (`SETTLE`, read `SETTLE_R` texels off), and the jelly
+  turns viscous and loses its vortex confinement the moment the button
+  is let go, so a pour evens into one shade in a few seconds.
+- **Plain colour**: the look shader is the sim's colour maths and
+  nothing else. Lighting the dye from its slope (tried) made every fold a
+  crease of foil.
+- **The judge is a readback**: the judge pass writes each texel's
+  nearness and strength; at serve the screen reads it back once, sums
+  per cell by the cached mask, and answers the sim's `judge` event. The
+  sim no longer holds the syrup; the headless probe keeps the moulds,
+  the colour maths and the run with a judge answered by hand, and the
+  windowed harness is the play test (its bot reads the fluid back).
+- Under reduce motion: no vorticity, a calmer jelly, and a tutorial page
+  plays once and is held where it ends (the fluid cannot be run ahead off
+  screen).
+
+Calls that are mine, unconfirmed: everything above that is a number
+(jet, rate, viscosities, settle, Jacobi count, sizes); the readback at
+serve; the judge still in colour distance.

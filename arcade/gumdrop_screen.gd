@@ -19,17 +19,21 @@ extends Control
 ## 2026-10-11): serving it is the check, and the number is told then.
 ##
 ## Drawing: three Controls one over the other. The field draws the table,
-## the tray and the mould's floor. The syrup is the sim's grid as one small
-## texture drawn once through shaders/gumdrop_syrup_2d.gdshader. The top
-## draws the mould's walls over it, the card, the pots, the buttons, the
-## dropper and one live mesh. Every one of those is a cached mesh under a
-## transform; a mould's three are built when it is dealt.
+## the tray and the mould's floor. The syrup is the fluid's dye texture
+## (arcade/gumdrop_fluid.gd, a real fluid on the GPU since 2026-10-11)
+## drawn once through shaders/gumdrop_syrup_2d.gdshader. The top draws the
+## mould's walls over it, the card, the pots, the buttons, the dropper and
+## one live mesh. Every one of those is a cached mesh under a transform; a
+## mould's three are built when it is dealt. Each frame the screen tells
+## the fluid where the tip is and whether it is squeezed (`_drive`), and
+## when the sim asks to be judged it reads the fluid back.
 
 signal closed
 
 const Sim = preload("res://arcade/gumdrop_sim.gd")
 const Mould = preload("res://arcade/gumdrop_mould.gd")
 const Art = preload("res://arcade/gumdrop_art.gd")
+const Fluid = preload("res://arcade/gumdrop_fluid.gd")
 const Syrup = preload("res://shaders/gumdrop_syrup_2d.gdshader")
 const Record = preload("res://arcade/arcade_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
@@ -103,6 +107,9 @@ var tutor: RefCounted
 var field: Control
 var _syrup: Control
 var _top: Control
+## The fluid, and where the tip was last frame (its drag).
+var _fluid: Node
+var _tip_was := Vector2.ZERO
 var _fx: Node2D
 var _margins: MarginContainer
 var _score_l: Label
@@ -139,11 +146,6 @@ var _walls: ArrayMesh
 var _picture: ArrayMesh
 var _built_for := {}
 var _built_u := 0.0
-## The syrup's texture and the bytes it is made of.
-var _bytes := PackedByteArray()
-var _img: Image
-var _tex: ImageTexture
-var _stale := true
 var _live: ArrayMesh
 ## The screen's own clock, for motion the sim does not own.
 var _clock := 0.0
@@ -253,10 +255,9 @@ func _build_field() -> Control:
 	_top.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_top.draw.connect(_draw_top)
 	field.add_child(_top)
-	_bytes.resize(Sim.N * Sim.N * 4)
-	_bytes.fill(0)
-	_img = Image.create_from_data(Sim.N, Sim.N, false, Image.FORMAT_RGBA8, _bytes)
-	_tex = ImageTexture.create_from_image(_img)
+	_fluid = Fluid.new()
+	_fluid.name = "Fluid"
+	field.add_child(_fluid)
 
 	# a ? while the mould is played, its number once it is served
 	_match_l = Label.new()
@@ -443,6 +444,9 @@ func _slide() -> float:
 func _fresh_sim() -> void:
 	sim = Sim.new()
 	Boosters.apply(GAME, sim, _boosts)
+	_fluid.soft = sim.soft
+	_fluid.calm = Motion.reduce
+	_fluid.lay(sim.mould)
 	_shown_level = -1
 	_shown_match = -1
 	sim.events.clear()
@@ -470,7 +474,7 @@ func _new_game() -> void:
 	_shown_score = -1
 	_started_at = Time.get_ticks_msec()
 	_tip = sim.tip
-	_stale = true
+	_tip_was = sim.tip
 	_layout_field()
 	_refresh_hud()
 	top_bar.refresh(self)
@@ -524,6 +528,7 @@ func _process(delta: float) -> void:
 		_hand()
 		sim.step()
 		_play_events()
+	_drive(delta)
 	_animate(delta)
 	_refresh_hud()
 	_knock_now()
@@ -536,6 +541,27 @@ func _process(delta: float) -> void:
 ## The tutorial's hand works the sim from here.
 func _hand() -> void:
 	pass
+
+## The frame's state into the fluid: the tip in mould widths, its cell,
+## the squeeze, the pigment, how fast the tip is being drawn, and any cell
+## a tutorial page wants coloured before it starts.
+func _drive(delta: float) -> void:
+	_fluid.set_running(_fluid_runs())
+	_fluid.tip = sim.tip / Mould.SIDE
+	_fluid.tip_cell = sim.tip_cell()
+	_fluid.squeezing = sim.squeezing and sim.phase <= Sim.Phase.PLAY
+	_fluid.pigment = Mould.PIGMENT[int(sim.pots[sim.picked].flavour)]
+	_fluid.drag = (sim.tip - _tip_was) / Mould.SIDE / maxf(delta, 0.001)
+	_tip_was = sim.tip
+	if not sim.prefill.is_empty():
+		var pre: Dictionary = sim.prefill.pop_front()
+		_fluid.fill_cell = int(pre.cell)
+		_fluid.fill_pig = pre.pigment
+	_fluid.tick(delta)
+
+## Whether the fluid's passes run this frame.
+func _fluid_runs() -> bool:
+	return sim != null and _end == null and is_visible_in_tree()
 
 func _feel(kind: int) -> void:
 	_knock = maxi(_knock, kind)
@@ -550,17 +576,12 @@ func _animate(delta: float) -> void:
 		bit.t += delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
 	_tip = _tip.lerp(sim.tip, minf(1.0, delta * 30.0))
-	var pouring: bool = sim.squeezing and sim.phase <= Sim.Phase.PLAY
+	var pouring: bool = sim.squeezing and sim.phase <= Sim.Phase.PLAY and sim.tip_cell() >= 0
 	_squash = lerpf(_squash, 1.0 if sim.squeezing else 0.0, minf(1.0, delta * 16.0))
 	if pouring and _clock - _pour_at >= POUR_GAP:
 		_pour_at = _clock
 		_fx.cue("pour", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8))
-	if sim.moving or _stale:
-		_stale = false
-		Art.paint(sim, _bytes)
-		_img.set_data(Sim.N, Sim.N, false, Image.FORMAT_RGBA8, _bytes)
-		_tex.update(_img)
 	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
 	_rw.step(delta)
 
@@ -658,12 +679,15 @@ func _play_events() -> void:
 			"serve":
 				_let_go()
 				_fx.cue("serve")
+			"judge":
+				var m: Dictionary = _fluid.measure()
+				sim.judge(m.near, m.all)
 			"served":
 				_on_served(ev)
 			"over":
 				_run_over()
 			"revive":
-				_stale = true
+				_fluid.lay(sim.mould)
 				_verdict_at = -10.0
 				_hint(tr("CHANCE_GO"), tr("GD_READY_LINE"))
 	sim.events.clear()
@@ -671,8 +695,9 @@ func _play_events() -> void:
 func _on_deal() -> void:
 	_deal_at = _clock
 	_slid = sim.level > 1
-	_stale = true
+	_fluid.lay(sim.mould)
 	_tip = sim.tip
+	_tip_was = sim.tip
 	_bits.clear()
 	_place()
 	if sim.level > 1:
@@ -786,10 +811,10 @@ func _draw_field() -> void:
 	field.draw_mesh(_floor, null, xf)
 
 func _draw_syrup() -> void:
-	if sim == null or _tex == null:
+	if sim == null or _fluid == null:
 		return
 	_syrup.draw_set_transform_matrix(_group())
-	_syrup.draw_texture_rect(_tex, Rect2(Vector2.ZERO, _tray.size), false)
+	_syrup.draw_texture_rect(_fluid.texture(), Rect2(Vector2.ZERO, _tray.size), false)
 
 func _draw_top() -> void:
 	if sim == null or _walls == null:

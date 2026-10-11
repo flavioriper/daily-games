@@ -3,7 +3,7 @@ extends RefCounted
 ## Gumdrop's drawing (arcade/gumdrop_screen.gd): the kitchen table, the
 ## tray, a mould's floor and walls, the card's picture of it, the pots, the
 ## dropper and the two buttons, each one cached mesh. The syrup itself is
-## not here: it is the sim's grid as a texture (`paint`) under
+## not here: it is the fluid's dye texture (arcade/gumdrop_fluid.gd) under
 ## shaders/gumdrop_syrup_2d.gdshader.
 ##
 ## A mould's meshes are built in pixels, `u` of them a mould unit, with the
@@ -58,33 +58,6 @@ static func _made(key: String, build: Callable) -> ArrayMesh:
 	var m := b.mesh()
 	_cache[key] = m
 	return m
-
-## The sim's squares as bytes for the syrup's texture: each one's colour
-## (`Sim.colour`: the hue at its strength, deepened past the card's shade)
-## times its strength, the strength in alpha, so the shader's cubic blends
-## them right and takes the colour back out.
-static func paint(sim: RefCounted, into: PackedByteArray) -> void:
-	var n: int = Sim.N * Sim.N
-	var red: PackedFloat32Array = sim.red
-	var yel: PackedFloat32Array = sim.yel
-	var blu: PackedFloat32Array = sim.blu
-	for i in n:
-		var r := red[i]
-		var y := yel[i]
-		var b := blu[i]
-		var at := i * 4
-		if r + y + b <= 0.002:
-			into[at] = 0
-			into[at + 1] = 0
-			into[at + 2] = 0
-			into[at + 3] = 0
-			continue
-		var c := Sim.colour(r, y, b)
-		var a := c.a * 255.0
-		into[at] = int(c.r * a)
-		into[at + 1] = int(c.g * a)
-		into[at + 2] = int(c.b * a)
-		into[at + 3] = int(a)
 
 ## The table, the whole screen: pale boards running down it.
 static func table(size: Vector2) -> ArrayMesh:

@@ -24,8 +24,8 @@ var lesson: int = Lesson.FILL
 
 var _bench: Bench
 var _begun := false
-## Seconds a lesson runs before it starts again, and where it is held
-## under reduce motion.
+## Seconds a lesson runs before it starts again, and when it is held
+## under reduce motion (played once to there, then still).
 var _length := 8.0
 var _still_at := 2.0
 var _rows_shown: ArrayMesh
@@ -54,20 +54,6 @@ class Round extends "res://arcade/gumdrop_sim.gd":
 		deal(m)
 		_goal = tip
 		events.clear()
-
-	## A cell already coloured this far toward the card's shade of a flavour.
-	func filled(c: int, flavour: int, part: float) -> void:
-		var pig: Vector3 = Mould.PIGMENT[flavour]
-		var conc := part * C_FULL
-		for i in N * N:
-			if reg[i] == c:
-				red[i] = conc * pig.x
-				yel[i] = conc * pig.y
-				blu[i] = conc * pig.z
-		poured += conc * count[c]
-		moving = true
-		phase = Phase.PLAY
-		measure()
 
 	## Rows that squeeze `n` times from `from`, `on` seconds each with `off`
 	## between. Returns the second the last one ends.
@@ -186,22 +172,21 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 		_shown_match = -1
 		_milestone = 1000000
 		_tip = sim.tip
-		_stale = true
+		_tip_was = sim.tip
+		_fluid.calm = Motion.reduce
+		_fluid.lay(sim.mould)
 		_rw.clear()
 		_layout_field()
 
-	## Runs the lesson to `at` and stops it there: the page under reduce
-	## motion.
-	func hold(at: float) -> void:
-		while sim.clock < at:
-			sim.step()
-			_play_events()
-		_tip = sim.tip
-		_stale = true
-		_animate(0.0)
-		_refresh_hud()
-		_redraw()
+	## The fluid cannot be run ahead off screen, so a lesson under reduce
+	## motion plays once at its calm pace and is held where it ends
+	## (`freeze`), not run to a second and held there.
+	func freeze() -> void:
 		frozen = true
+		_fluid.set_running(false)
+
+	func _fluid_runs() -> bool:
+		return not frozen and super()
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -286,14 +271,15 @@ func _reset() -> void:
 			_length = at + 3.0
 			_still_at = at + 2.0
 	_bench.lay(game)
-	if Motion.reduce:
-		_bench.hold(_still_at)
 
 func _process(_delta: float) -> void:
-	if not _played() or not _begun or Motion.reduce:
+	if not _played() or not _begun:
 		return
 	var game: Round = _bench.sim
-	if game.clock >= _length:
+	if Motion.reduce:
+		if game.clock >= _still_at and not _bench.frozen:
+			_bench.freeze()
+	elif game.clock >= _length:
 		_reset()
 
 # --- drawing ---
