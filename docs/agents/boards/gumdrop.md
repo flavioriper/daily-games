@@ -114,11 +114,45 @@
   the brake, now that nothing spills and the pots are bottomless. `Art`
   reads `FLAVOURS` from the sim, and the shaders carry the same maths
   word for word.
-- **A mould is polygons made by rule** (`puzzles/gumdrop_mould.gd`): an
-  outline cut into sectors, a core and sectors, or bands. The sim's grid
-  and the art's meshes are both made from them. A wall is 5 units for a
-  reason: the syrup is drawn from squares 2.8 units wide, and a thinner
-  wall let the next cell's colour show at a cell's edge.
+- **A jelly is a real thing in chunks** (`puzzles/gumdrop_mould.gd`,
+  2026-10-11; the walled moulds cut by rule into sectors, a core or bands
+  are in git before it). The user, over the screen of the game the first
+  spec names once: "the jelly on the game should not have borders, it
+  should be a real jelly with different colors and instead of a color
+  picker it should be a needle that inject the color tint ... also we want
+  to show real images to the user not random simple forms". **And, of a
+  first build where the whole jelly was one piece and the tint ran
+  through all of it: "it's wrong, the jelly need individual chunks to
+  hold the colors"** -- so no wall is drawn, and every part of the picture
+  is still its own chunk that holds its own tint. `PICTURES` is 29 things
+  drawn in code (`parts(id)`: mushroom, watermelon, carrot ... rocket,
+  balloon, rainbow), each its parts from the one underneath to the one on
+  top, a flavour and the shapes it is made of (`ell`, `box`, `soft`,
+  `within`). `build(id)` gives `cells` in that order (a part in two pieces
+  is two cells; they overlap, and the chunk a point belongs to is the
+  last that holds it, `cell_at`), `want`, the whole `outline`, and
+  `seams`, what of each chunk's edge shows. The flavours are the
+  picture's own; a band only says how the pots are stood (`dress`).
+  `BANDS` rows: Easy 0-7 (two flavours), Medium 8-18 (three), Hard 11-26
+  (one mixed flavour's pot left out where the picture has one), Insane
+  19-28 (four and more, Three Pots). The fluid's mask is the cells drawn
+  in order, the judge's table is 16 (`CELLS_TOP`), and the dye's fence is
+  the chunk's number as it was the cell's, so the settling of the entry
+  below works a chunk at a time; the flow may cross a seam, the dye never
+  does. `Art.gloss_of` draws the seams as thin lines (`SEAM` 1.3 units,
+  wider than the dye's texel so two tints never show meeting) and the
+  clear rim; `Art.needle` and `Art.plunger` are the dropper's place, the
+  plunger sinking as the button is held. `tests/_shot_gumdrop_bank.gd`
+  draws every picture on one sheet (windowed): run it after touching
+  `parts`. Seen on Medium on `opengl3_angle`: house, and two more, 100%
+  each by the bot (which now goes from square to square of a chunk), 103
+  to 112 draw calls. The probe's "twice the shade matches less" check
+  was failing before this and is rewritten to what is true (1.00: the
+  eye's tolerance made the heavy hand free). **Not seen**: the tutorial's
+  pages on the mushroom, Hard and Insane, the menu card (the balloon),
+  pt and es. **The user's to call**: the pictures themselves and their
+  colours, which rows a band draws, pictures with parts as small as a
+  fish's fin (14 squares).
 - **The syrup is drawn once** through `shaders/gumdrop_syrup_2d.gdshader`
   from the fluid's dye texture: plain colour by the sim's maths, the
   strength in alpha. Lighting the dye from its slope (tried the same day)

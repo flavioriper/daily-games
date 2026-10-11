@@ -2,8 +2,8 @@ extends RefCounted
 
 ## Gumdrop as data (specs
 ## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md and
-## 2026-10-11-gumdrop-daily-design.md): the day, the mould, the pots, the
-## dropper and the judge's words. The table (puzzles/gumdrop_table.gd)
+## 2026-10-11-gumdrop-daily-design.md): the day, the jelly, the pots, the
+## needle and the judge's words. The table (puzzles/gumdrop_table.gd)
 ## hands it `pick()`, `aim()`, `squeeze()` and `serve()`, calls `step()` at
 ## the fixed DT and drains `events`.
 ##
@@ -83,7 +83,7 @@ var mould := {}
 ## The pots: {flavour}. They never run dry.
 var pots: Array = []
 var picked := 0
-## The dropper's tip, in mould units, and whether it is being squeezed.
+## The needle's tip, in mould units, and whether it is being squeezed.
 var tip := Vector2(Mould.SIDE, Mould.SIDE) * 0.5
 var squeezing := false
 ## Syrup squeezed into the jelly this mould.
@@ -102,13 +102,11 @@ var prefill: Array = []
 var _asked := false
 var _counted := false
 
-## A sim with one plain mould on its tray, until `set_day` or `deal` says
-## otherwise.
+## A sim with the first picture on its tray, until `set_day` or `deal`
+## says otherwise.
 func _init() -> void:
-	var m := Mould.build(Mould.Shape.ROUND, Mould.Cut.SECTORS, 2)
-	m.want = [0, 4]
-	m.pots = [0, 4]
-	m.mixed = -1
+	var m := Mould.build(Mould.PICTURES[0])
+	m.pots = Mould.flavours(m)
 	set_day([m], MARK, false)
 
 ## The day: these moulds, each served at `mark_at`, the serves counted or
@@ -224,12 +222,7 @@ func _lay() -> void:
 	count.resize(cells.size())
 	count.fill(0)
 	for i in N * N:
-		var p := Vector2((i % N) + 0.5, (i / N) + 0.5) * CELL
-		var found := -1
-		for c in cells.size():
-			if Geometry2D.is_point_in_polygon(p, cells[c]):
-				found = c
-				break
+		var found := Mould.cell_at(mould, Vector2((i % N) + 0.5, (i / N) + 0.5) * CELL)
 		reg[i] = found
 		if found >= 0:
 			count[found] += 1
@@ -253,33 +246,34 @@ static func square(p: Vector2) -> int:
 static func at(i: int) -> Vector2:
 	return Vector2((i % N) + 0.5, (i / N) + 0.5) * CELL
 
-## The cell the tip is over, -1 a wall or the tray: the walls are taken
-## out of the cells here, as the fluid's mask has them.
+## The chunk of jelly the tip is in, -1 the tray: the tint goes into that
+## chunk and stays in it.
 func tip_cell() -> int:
-	var c := reg[square(tip)]
-	if c < 0:
-		return -1
-	return c if Geometry2D.is_point_in_polygon(tip, mould.inner[c]) else -1
+	return Mould.cell_at(mould, tip)
 
-## The point of a cell furthest from its walls: where a careful hand puts
-## the dropper.
+## The point of a chunk furthest from its edges: where a careful hand
+## puts the needle. The middle of the squares about it that are all the
+## chunk's.
 func centre_of(c: int) -> Vector2:
 	var best := -1
-	var far := -1.0
-	var poly: PackedVector2Array = mould.inner[c]
+	var far := -1
 	for i in N * N:
 		if reg[i] != c:
 			continue
-		var p := at(i)
-		if not Geometry2D.is_point_in_polygon(p, poly):
-			continue
-		var near := 1e9
-		for k in poly.size():
-			near = minf(near, Geometry2D.get_closest_point_to_segment(p, poly[k], poly[(k + 1) % poly.size()]).distance_squared_to(p))
-		if near > far:
-			far = near
+		var x := i % N
+		var y := i / N
+		var ring := 0
+		var whole := true
+		while whole and ring < N:
+			ring += 1
+			for k in range(-ring, ring + 1):
+				for q: Vector2i in [Vector2i(x + k, y - ring), Vector2i(x + k, y + ring), Vector2i(x - ring, y + k), Vector2i(x + ring, y + k)]:
+					if q.x < 0 or q.y < 0 or q.x >= N or q.y >= N or reg[q.x + q.y * N] != c:
+						whole = false
+		if ring > far:
+			far = ring
 			best = i
-	return at(best) if best >= 0 else poly[0]
+	return at(best) if best >= 0 else (mould.cells[c] as PackedVector2Array)[0]
 
 ## A cell coloured before play, a tutorial page's: `part` of the way to
 ## the card's shade of a flavour.

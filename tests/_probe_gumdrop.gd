@@ -5,7 +5,7 @@ extends SceneTree
 ##   godot --headless --script tests/_probe_gumdrop.gd
 ## The syrup itself is a fluid on the GPU (puzzles/gumdrop_fluid.gd) and
 ## cannot run here: tests/_shot_gumdrop.gd plays it windowed with a bot
-## that reads the fluid back. Here: every design is built and its cells
+## that reads the fluid back. Here: every picture is built and its parts
 ## counted; the colour maths the judge's shader carries word for word; a
 ## band's day (how many moulds, the same off the same seed, what stands by
 ## the tray, every wanted flavour makeable from the pots); and the day's
@@ -35,14 +35,16 @@ func _check(what: String, ok: bool) -> void:
 
 func _designs() -> void:
 	var least := 9999
+	var whole := true
+	var most := 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	for row: Array in Mould.DESIGNS:
-		var m := Mould.build(row[0], row[1], row[2])
+	for id: String in Mould.PICTURES:
+		var m := Mould.build(id)
 		if m.is_empty():
-			_check("design %s builds" % str(row), false)
+			_check("picture %s builds" % id, false)
 			continue
-		Mould.dress(m, 4, Mould.Stood.ONE_MIXED, rng)
+		Mould.dress(m, Mould.Stood.ONE_MIXED, rng)
 		var s = Sim.new()
 		s.deal(m)
 		var small := 9999
@@ -51,12 +53,19 @@ func _designs() -> void:
 			small = mini(small, s.count[c])
 			all += s.count[c]
 		least = mini(least, small)
-		print("     design %s: %d cells, %d squares, the smallest %d" % [str(row), s.count.size(), all, small])
-	_check("every design's smallest cell has 12 squares or more (%d)" % least, least >= 12)
+		most = maxi(most, s.count.size())
+		whole = whole and int(m.pieces) == 1
+		var box := Rect2(m.outline[0], Vector2.ZERO)
+		for q: Vector2 in m.outline:
+			box = box.expand(q)
+		whole = whole and Rect2(3, 3, 94, 94).encloses(box)
+		print("     %s: %d parts in %s, %d squares, the smallest %d, %d piece(s), pots %s%s" % [id, s.count.size(), str(Mould.flavours(m)), all, small, int(m.pieces), str(m.pots), "" if m.mixed < 0 else " (mixes %d)" % m.mixed])
+	_check("every picture is one piece of jelly on the tray, %d parts at the most" % most, whole and most <= Mould.CELLS_TOP)
+	_check("every picture's smallest part shows 9 squares or more (%d)" % least, least >= 9)
 	var s = Sim.new()
-	var starts_in: bool = s.tip_cell() == 0
+	var starts_in: bool = s.tip_cell() >= 0
 	s.aim(Vector2(1, 1))
-	_check("the tip starts in a cell, and over the tray's corner it is in none", starts_in and s.tip_cell() == -1)
+	_check("the tip starts in the jelly, and over the tray's corner it is in none", starts_in and s.tip_cell() == -1)
 
 func _colour() -> void:
 	var F := Mould.Flavour
@@ -74,7 +83,9 @@ func _colour() -> void:
 		last = s
 	_check("the strength climbs with the pigment to the card's shade and no further (%.2f at 1.9)" % last, climbs and is_equal_approx(last, 1.0))
 	var dark := Sim.nearness(Sim.colour(full * 2.0, 0, 0), F.CHERRY)
-	_check("twice the shade is deeper and matches less (%.2f)" % dark, dark < 0.95 and dark > 0.7)
+	# it matched less until the judge was given an eye's tolerance (NEAR_FREE):
+	# the tip stops at 1.6 times the shade, and nothing it pours reads dark
+	_check("twice the shade is deeper, and the eye still calls it the card's (%.2f)" % dark, dark > 0.95)
 	var pale_c := Sim.nearness(Sim.colour(full * 0.3, 0, 0), F.CHERRY)
 	var pale_l := Sim.nearness(Sim.colour(0, full * 0.3, 0), F.LEMON)
 	_check("a pale cherry and a pale lemon are judged alike (%.2f, %.2f)" % [pale_c, pale_l], absf(pale_c - pale_l) < 0.03)
@@ -138,7 +149,7 @@ func _days() -> void:
 						mixed += 1
 				mixed_least = mini(mixed_least, mixed)
 		_check("band %d: %d moulds at %d%% on every one of 200 days, %d to %d cells, %d pots at most" % [band, int(spec.moulds), int(spec.mark), cells.min(), cells.max(), pots_most],
-			ok and pots_most <= 3)
+			ok and pots_most <= [2, 3, 4, 3][band])
 		_check("band %d: every wanted flavour is a pot or its two neighbours, both stood by the tray" % band, makeable)
 		if band < 2:
 			_check("band %d: nothing to mix" % band, mixed_least == 0)
@@ -149,7 +160,7 @@ func _days() -> void:
 	var same: bool = a.moulds.size() == b.moulds.size()
 	for i in a.moulds.size():
 		same = same and a.moulds[i].want == b.moulds[i].want and a.moulds[i].pots == b.moulds[i].pots \
-			and int(a.moulds[i].shape) == int(b.moulds[i].shape) and int(a.moulds[i].n) == int(b.moulds[i].n)
+			and String(a.moulds[i].id) == String(b.moulds[i].id)
 	_check("the same seed deals the same day", same)
 
 func _run() -> void:

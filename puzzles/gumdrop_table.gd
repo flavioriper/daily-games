@@ -1,7 +1,7 @@
 extends Control
 
-## Gumdrop's table: clear jelly in a walled mould coloured with a dropper
-## of syrup to match a card (specs
+## Gumdrop's table: one piece of clear jelly, cast as a real thing, tinted
+## with a needle of syrup to match a card (specs
 ## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md and
 ## 2026-10-11-gumdrop-daily-design.md). **The kitchen table is the whole
 ## rect**, edge to edge (CLAUDE.md: a game's world fills the screen): on it
@@ -12,9 +12,9 @@ extends Control
 ## tutorial's bench (ui/hud/gumdrop_tutorial_diagram.gd), which is this
 ## with a layout of its own. It was the Arcade screen until 2026-10-11.
 ##
-## Play: a finger drawn over the tray moves the dropper's tip as far as the
+## Play: a finger drawn over the tray moves the needle's tip as far as the
 ## finger goes (it need not be on the tip, so it never hides it) and a tap
-## puts the tip there; a pot touched is the flavour in the dropper; the
+## puts the tip there; a pot touched is the flavour in the needle; the
 ## pink button squeezes for as long as it is held; the gold one serves the
 ## mould. The day is puzzles/gumdrop_sim.gd's, stepped at its fixed DT;
 ## this draws it, plays its events and hands each on (`happened`). How near
@@ -24,14 +24,14 @@ extends Control
 ## Drawing: three Controls one over the other. The field draws the table,
 ## the tray and the mould's floor. The syrup is the fluid's dye texture
 ## (puzzles/gumdrop_fluid.gd, a real fluid on the GPU) drawn once through
-## shaders/gumdrop_syrup_2d.gdshader. The top draws the mould's walls over
-## it, the card, the pots, the buttons, the dropper and one live mesh.
+## shaders/gumdrop_syrup_2d.gdshader. The top draws the jelly's skin over
+## it, the card, the pots, the buttons, the needle and one live mesh.
 ## Every one of those is a cached mesh under a transform; a mould's three
 ## are built when it is dealt. Each frame the table tells the fluid where
 ## the tip is and whether it is squeezed (`_drive`), and when the sim asks
 ## to be judged it reads the fluid back.
 ##
-## The win: the card, the pots, the buttons and the dropper fade and the
+## The win: the card, the pots, the buttons and the needle fade and the
 ## tray slides to the middle of the span its owner leaves (`set_clear`
 ## with `won`), under the tray's one transform, so no mesh is rebuilt.
 
@@ -66,14 +66,14 @@ const POT_GAP := 150.0
 const SQUEEZE_R := 104.0
 const SERVE_R := 66.0
 const SERVE_OFF := 250.0
-## The dropper's length in pixels and how far it leans.
+## The needle's length in pixels and how far it leans.
 const DROPPER := 250.0
 const LEAN := 0.55
 ## A finger that has moved less than this far has tapped.
 const TAP_PX := 14.0
 ## The most sim steps one frame may run, so a stall never fast-forwards.
 const MAX_STEPS := 6
-## Seconds between two of the dropper's rings on the jelly while it is
+## Seconds between two of the needle's rings on the jelly while it is
 ## squeezed.
 const POUR_GAP := 0.17
 ## The pour is liquid (the user, 2026-10-11: "we need a more liquid sound
@@ -143,15 +143,15 @@ var _built_u := 0.0
 var _live: ArrayMesh
 ## The screen's own clock, for motion the sim does not own.
 var _clock := 0.0
-## The fingers: the one drawing the dropper about (-1 none, -2 the mouse),
+## The fingers: the one drawing the needle about (-1 none, -2 the mouse),
 ## where it was last and how far it has gone, and the one on the squeeze
 ## button.
 var _aim_by := -1
 var _aim_moved := 0.0
 var _squeeze_by := -1
 var _serve_down := -10.0
-## The dropper as drawn: its tip eased to the sim's, and how squashed its
-## bulb is.
+## The needle as drawn: its tip eased to the sim's, and how far in its
+## plunger is.
 var _tip := Vector2(50, 50)
 var _squash := 0.0
 var _pour_at := -10.0
@@ -526,8 +526,8 @@ func _press(index: int, at: Vector2) -> void:
 		if _squeeze_by == -1:
 			_squeeze_by = index
 			sim.squeeze(true)
-			# over a cell the first of the syrup is heard; over a wall or the
-			# tray nothing comes and the button only clicks
+			# in the jelly the first of the syrup is heard; over the tray
+			# nothing comes and the button only clicks
 			if sim.tip_cell() >= 0:
 				_fx.cue("drop", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 			else:
@@ -694,7 +694,7 @@ func _meshes() -> void:
 	_built_u = _u
 	_built_for = sim.mould
 	_floor = Art.floor_of(sim.mould, _u)
-	_walls = Art.walls_of(sim.mould, _u)
+	_walls = Art.gloss_of(sim.mould, _u)
 	_picture = Art.picture(sim.mould, (CARD.y - 36.0) / Mould.SIDE)
 
 func _draw_field() -> void:
@@ -755,14 +755,14 @@ func _draw_top() -> void:
 	_top.draw_mesh(Art.squeeze_button(SQUEEZE_R), null, Transform2D(0.0, Vector2(qd, qd), 0.0, _squeeze_at),
 		fade * (Color(0.86, 0.86, 0.86) if down else Color.WHITE))
 	_draw_live()
-	# the dropper over all of it, leaning away to the upper right
+	# the needle over all of it, leaning away to the upper right
 	if sim.phase <= Sim.Phase.PLAY and not won:
 		var tip := px(_tip)
 		var bob := 0.0 if Motion.reduce or sim.squeezing else 3.0 * sin(_clock * 2.4)
 		var lean := Transform2D(LEAN, tip + Vector2(0, -bob))
-		_top.draw_mesh(Art.dropper(int(sim.pots[sim.picked].flavour), DROPPER), null, lean)
-		var squash := Vector2(1.0 + 0.2 * _squash, 1.0 - 0.3 * _squash)
-		_top.draw_mesh(Art.bulb(DROPPER), null, lean * Transform2D(0.0, squash, 0.0, Vector2(0, -DROPPER + 4.0)))
+		# the plunger first, so it sinks into the barrel as it is squeezed
+		_top.draw_mesh(Art.plunger(DROPPER), null, lean * Transform2D(0.0, Vector2(0, -DROPPER * 0.74 + DROPPER * 0.13 * _squash)))
+		_top.draw_mesh(Art.needle(int(sim.pots[sim.picked].flavour), DROPPER), null, lean)
 	# a counted band's serves, beside the squeeze button
 	if sim.budget > 0 and not won:
 		_pill.draw(_top, _pill_at, sim.serves_left(), _clock)

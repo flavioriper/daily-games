@@ -4,7 +4,7 @@ extends Node
 ## the reference's screen: "I want a real high volume liquid effect of
 ## coloring ... something really really good to look"). The screen
 ## (puzzles/gumdrop_table.gd) owns one of these, tells it each frame where
-## the dropper's tip is and whether it is squeezed, draws its `texture()`
+## the needle's tip is and whether it is squeezed, draws its `texture()`
 ## over the tray through shaders/gumdrop_syrup_2d.gdshader, and asks it
 ## `measure()` when a mould is served.
 ##
@@ -19,9 +19,11 @@ extends Node
 ## marbling), divergence, JACOBI sweeps of pressure, gradient (the
 ## pressure taken off, nothing into a wall), dye (the pigments carried,
 ## more squeezed in), copy (the dye's keep), judge (each texel's nearness
-## to the card, read back at serve). The mask is the mould's cells drawn
-## once a deal, the cell's number plus one in red, a wall or the tray
-## black: a solid for the velocity and a fence for the dye.
+## to the card, read back at serve). The mask is the jelly's chunks drawn
+## once a deal, the chunk's number plus one in red, the tray black: the
+## tray is a solid for the velocity, and a chunk's number is the dye's
+## fence (since 2026-10-11 the chunks touch, with no wall between: the
+## flow may cross a seam, the dye never does).
 ##
 ## The render targets are eight bits a channel (no HDR 2D on
 ## gl_compatibility), so signed values are packed across two bytes; see
@@ -33,9 +35,9 @@ const Sim = preload("res://puzzles/gumdrop_sim.gd")
 const SIM := 128
 const DYE := 256
 const JACOBI := 14
-## The dropper: how wide its push and its dye land (in mould widths), how
+## The needle: how wide its push and its dye land (in mould widths), how
 ## hard its jet pushes and swirls (texels a second a second), how far the
-## jet turns from the way the dropper leans and how fast, and pigment a
+## jet turns from the way the needle leans and how fast, and pigment a
 ## second at the tip's middle.
 const PUSH_R := 0.09
 const DYE_R := 0.075
@@ -180,8 +182,8 @@ func lay(mould: Dictionary) -> void:
 	_mask_fresh = false
 	_clear_for = 2
 	var want := PackedVector3Array()
-	want.resize(8)
-	for c in mini(8, mould.want.size()):
+	want.resize(Mould.CELLS_TOP)
+	for c in mini(Mould.CELLS_TOP, mould.want.size()):
 		var col: Color = Sim.FLAVOURS[int(mould.want[c])]
 		want[c] = Vector3(col.r, col.g, col.b)
 	_mats["Judge"].set_shader_parameter("want", want)
@@ -191,12 +193,14 @@ func _draw_mask() -> void:
 		return
 	var k := float(DYE) / Mould.SIDE
 	_mask_draw.draw_rect(Rect2(0, 0, DYE, DYE), Color.BLACK)
-	var inner: Array = _mould.inner
-	for c in inner.size():
+	# the chunks in their order, the one on top drawn last; they lie side
+	# by side with no wall between, and the number is the fence
+	var cells: Array = _mould.cells
+	for c in cells.size():
 		var p := PackedVector2Array()
-		p.resize(inner[c].size())
+		p.resize(cells[c].size())
 		for i in p.size():
-			p[i] = inner[c][i] * k
+			p[i] = cells[c][i] * k
 		_mask_draw.draw_colored_polygon(p, Color((c + 1) / 255.0, 0, 0, 1))
 
 ## A frame: the state into the passes' uniforms.

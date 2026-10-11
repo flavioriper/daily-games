@@ -1,8 +1,8 @@
 extends RefCounted
 
 ## Gumdrop's drawing (puzzles/gumdrop_table.gd): the kitchen table, the
-## tray, a mould's floor and walls, the card's picture of it, the pots, the
-## dropper and the two buttons, each one cached mesh. The syrup itself is
+## tray, a jelly's floor and its skin, the card's picture of it, the pots,
+## the needle and the two buttons, each one cached mesh. The syrup itself is
 ## not here: it is the fluid's dye texture (puzzles/gumdrop_fluid.gd) under
 ## shaders/gumdrop_syrup_2d.gdshader.
 ##
@@ -24,9 +24,11 @@ const TRAY_HI := Color("585c6e")
 const TRAY_LOW := Color("2b2d38")
 const FLOOR := Color("30323e")
 const CLEAR := Color("c9d6e0")
-const WALL_TOP := Color("8a8fa3")
-const WALL_HI := Color("b4b9c9")
-const WALL_LOW := Color("4d5162")
+const JELLY_LOW := Color("4d5162")
+const STEEL := Color("b9c2cc")
+## How wide the seam between two chunks is drawn, in mould units: the
+## dye's texels are 0.4 of one, and the line hides where two tints meet.
+const SEAM := 1.3
 const PAPER := Color("fcf7ef")
 const GLASS := Color("eef4f6")
 const GLASS_LINE := Color("9fb2bd")
@@ -90,65 +92,59 @@ static func tray(side: float) -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(side, side), r), TRAY)
 		b.fan(Face.Builder.round_rect(Vector2(side * 0.05, side * 0.03), Vector2(side * 0.5, side * 0.012), side * 0.006), Color(1, 1, 1, 0.07)))
 
-## A mould's floor: its rim's shadow on the tray, the wall's own colour
-## under everything, and each cell's clear jelly.
+## A jelly's floor: its shadow on the tray and the clear jelly itself,
+## under the tint.
 static func floor_of(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var rim := _scaled(m.rim, u)
-	b.polygon(_moved(rim, Vector2(0.9, 1.5) * u), Color(0, 0, 0, 0.3))
-	b.polygon(rim, WALL_LOW)
-	for cell: PackedVector2Array in m.inner:
-		var p := _scaled(cell, u)
-		b.polygon(p, FLOOR)
-		b.polygon(p, Color(CLEAR, 0.34))
+	b.polygon(_moved(rim, Vector2(1.1, 1.8) * u), Color(0, 0, 0, 0.32))
+	b.polygon(rim, JELLY_LOW)
+	var body := _scaled(m.outline, u)
+	b.polygon(body, FLOOR)
+	b.polygon(body, Color(CLEAR, 0.4))
 	return b.mesh()
 
-## A mould's walls and rim, drawn over the syrup, and the light lying on
-## each cell's jelly.
-static func walls_of(m: Dictionary, u: float) -> ArrayMesh:
+## A jelly's skin, drawn over the tint: the thin seam where one chunk
+## meets the next (no wall: the chunks touch), the clear edge the whole
+## stands up by, lit from the upper left, and the light lying on it.
+static func gloss_of(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var w: float = Mould.WALL * u
-	var cells: Array = m.cells
-	for cell: PackedVector2Array in cells:
-		b.stroke(_moved(_scaled(cell, u), Vector2(0.5, 0.8) * u), w, WALL_LOW, true)
-	b.stroke(_moved(_scaled(m.outline, u), Vector2(0.5, 0.8) * u), w + Mould.RIM * u, WALL_LOW, true)
-	for cell: PackedVector2Array in cells:
-		b.stroke(_scaled(cell, u), w * 0.8, WALL_TOP, true)
-	b.stroke(_scaled(m.outline, u), w * 0.8 + Mould.RIM * u * 0.6, WALL_TOP, true)
-	for cell: PackedVector2Array in cells:
-		b.stroke(_moved(_scaled(cell, u), Vector2(-0.35, -0.5) * u), w * 0.22, Color(WALL_HI, 0.8), true)
-	for cell: PackedVector2Array in m.inner:
-		_shine(b, _scaled(cell, u), u)
+	var body := _scaled(m.outline, u)
+	var w: float = Mould.RIM * u * 2.0
+	for line: PackedVector2Array in m.seams:
+		if line.size() >= 2:
+			b.stroke(_moved(_scaled(line, u), Vector2(0.15, 0.25) * u), SEAM * u, Color(JELLY_LOW, 0.7))
+	for line: PackedVector2Array in m.seams:
+		if line.size() >= 2:
+			b.stroke(_moved(_scaled(line, u), Vector2(-0.15, -0.2) * u), SEAM * 0.5 * u, Color(CLEAR, 0.7))
+	b.stroke(_moved(body, Vector2(0.25, 0.4) * u), w, Color(JELLY_LOW, 0.75), true)
+	b.stroke(body, w * 0.82, Color(CLEAR, 0.62), true)
+	b.stroke(_moved(body, Vector2(-0.3, -0.42) * u), w * 0.26, Color(1, 1, 1, 0.5), true)
+	# the light: a long glint along the upper left and a small one by it
+	var box := Rect2(body[0], Vector2.ZERO)
+	for q in body:
+		box = box.expand(q)
+	for k in 9:
+		var at := box.position + box.size * Vector2(0.24 + 0.07 * (k % 3), 0.2 + 0.09 * (k / 3))
+		var r := clampf(minf(box.size.x, box.size.y) * 0.09, 3.0 * u, 7.0 * u)
+		var fits := true
+		for d: Vector2 in [Vector2(-1.6, 0), Vector2(1.6, 0), Vector2(0, -0.8), Vector2(0, 0.8)]:
+			fits = fits and Geometry2D.is_point_in_polygon(at + d * r, body)
+		if fits:
+			b.ellipse(at, r * 1.5, r * 0.62, Color(1, 1, 1, 0.16))
+			b.ellipse(at + Vector2(-r * 0.45, -r * 0.08), r * 0.5, r * 0.24, Color(1, 1, 1, 0.3))
+			break
 	return b.mesh()
 
-## The light on a cell of jelly: a soft glint toward its upper left.
-static func _shine(b: Face.Builder, p: PackedVector2Array, u: float) -> void:
-	var box := Rect2(p[0], Vector2.ZERO)
-	var mid := Vector2.ZERO
-	for q in p:
-		box = box.expand(q)
-		mid += q
-	mid /= p.size()
-	var at := mid.lerp(box.position, 0.36)
-	if not Geometry2D.is_point_in_polygon(at, p):
-		at = mid
-	var r := clampf(minf(box.size.x, box.size.y) * 0.1, 2.0 * u, 5.0 * u)
-	b.ellipse(at, r * 1.5, r * 0.7, Color(1, 1, 1, 0.2))
-	b.ellipse(at + Vector2(-r * 0.4, -r * 0.1), r * 0.5, r * 0.28, Color(1, 1, 1, 0.3))
-
-## The card's picture: the mould as it is wanted, every cell its flavour.
+## The card's picture: the jelly as it is wanted, every part its flavour,
+## the one underneath first.
 static func picture(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	b.polygon(_moved(_scaled(m.rim, u), Vector2(0.6, 1.0) * u), Color(INK, 0.16))
 	b.polygon(_scaled(m.rim, u), Color("fffdf8"))
 	var want: Array = m.want
-	for c in m.inner.size():
-		var p := _scaled(m.inner[c], u)
-		var col: Color = FLAVOURS[int(want[c])]
-		b.polygon(p, col.darkened(0.12))
-		var grown: Array = Geometry2D.offset_polygon(m.inner[c], -0.9)
-		if not grown.is_empty():
-			b.polygon(_moved(_scaled(grown[0], u), Vector2(-0.3, -0.4) * u), col)
+	for c in m.cells.size():
+		b.polygon(_scaled(m.cells[c], u), FLAVOURS[int(want[c])])
 	return b.mesh()
 
 static func _scaled(p: PackedVector2Array, u: float) -> PackedVector2Array:
@@ -205,36 +201,45 @@ static func jar_ring() -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(Vector2(-JAR_W * 0.5 - 15.0, -JAR_H - 6.0), Vector2(JAR_W + 30.0, JAR_H + 24.0), 30.0), Color(1, 1, 1, 0.5))
 		b.stroke(Face.Builder.round_rect(Vector2(-JAR_W * 0.5 - 15.0, -JAR_H - 6.0), Vector2(JAR_W + 30.0, JAR_H + 24.0), 30.0), 6.0, Color("fffdf8"), true))
 
-## The dropper's glass with a flavour in it: its tip at the origin, the
-## glass standing straight up from there, `len` pixels long.
-static func dropper(flavour: int, length: float) -> ArrayMesh:
-	return _made("dropper/%d/%.0f" % [flavour, length], func(b: Face.Builder) -> void:
+## The needle with a flavour in it: its point at the origin, standing
+## straight up from there, `length` pixels long. A steel needle, a hub, a
+## glass barrel with the tint in it and the barrel's two wings; the
+## plunger is its own mesh (`plunger`).
+static func needle(flavour: int, length: float) -> ArrayMesh:
+	return _made("needle/%d/%.0f" % [flavour, length], func(b: Face.Builder) -> void:
 		var w := length * 0.15
-		var neck := length * 0.3
+		var pin := length * 0.26
+		var top := length * 0.74
 		var col: Color = FLAVOURS[flavour]
-		var glass := PackedVector2Array([Vector2(-1.5, 0), Vector2(1.5, 0), Vector2(w * 0.2, -neck * 0.8), Vector2(w * 0.5, -neck),
-			Vector2(w * 0.5, -length), Vector2(-w * 0.5, -length), Vector2(-w * 0.5, -neck), Vector2(-w * 0.2, -neck * 0.8)])
-		b.polygon(_moved(glass, Vector2(5.0, 6.0)), Color(0, 0, 0, 0.16))
-		b.polygon(glass, Color(GLASS, 0.9))
-		# the syrup drawn up into it
-		b.polygon(PackedVector2Array([Vector2(-1.0, -2.0), Vector2(1.0, -2.0), Vector2(w * 0.14, -neck * 0.8), Vector2(w * 0.34, -neck),
-			Vector2(w * 0.34, -length * 0.74), Vector2(-w * 0.34, -length * 0.74), Vector2(-w * 0.34, -neck), Vector2(-w * 0.14, -neck * 0.8)]), col)
-		b.stroke(glass, 3.0, GLASS_LINE, true)
-		b.stroke(PackedVector2Array([Vector2(-w * 0.2, -neck * 1.1), Vector2(-w * 0.2, -length * 0.9)]), w * 0.12, Color(1, 1, 1, 0.6))
-		b.fan(Face.Builder.round_rect(Vector2(-w * 0.72, -length - 5.0), Vector2(w * 1.44, 12.0), 5.0), GLASS_LINE))
+		var barrel := Face.Builder.round_rect(Vector2(-w * 0.5, -top), Vector2(w, top - pin - 8.0), 7.0)
+		b.polygon(_moved(barrel, Vector2(5.0, 6.0)), Color(0, 0, 0, 0.16))
+		# the steel, to a point
+		b.polygon(PackedVector2Array([Vector2(0, 0), Vector2(2.6, -10.0), Vector2(2.6, -pin - 2.0), Vector2(-2.6, -pin - 2.0), Vector2(-2.6, -10.0)]), STEEL)
+		b.stroke(PackedVector2Array([Vector2(-0.8, -8.0), Vector2(-0.8, -pin)]), 1.6, Color(1, 1, 1, 0.7))
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.2, -pin - 10.0), Vector2(w * 0.4, 12.0), 3.0), GLASS_LINE)
+		b.polygon(barrel, Color(GLASS, 0.9))
+		# the tint in it
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.36, -top * 0.9), Vector2(w * 0.72, top * 0.9 - pin - 12.0), 5.0), col)
+		b.stroke(barrel, 3.0, GLASS_LINE, true)
+		for k in 3:
+			var y := -pin - 22.0 - (top - pin - 44.0) * k / 3.0
+			b.stroke(PackedVector2Array([Vector2(w * 0.5, y), Vector2(w * 0.18, y)]), 2.0, Color(GLASS_LINE, 0.9))
+		b.stroke(PackedVector2Array([Vector2(-w * 0.26, -pin - 18.0), Vector2(-w * 0.26, -top * 0.94)]), w * 0.11, Color(1, 1, 1, 0.6))
+		b.fan(Face.Builder.round_rect(Vector2(-w * 1.05, -top - 5.0), Vector2(w * 2.1, 11.0), 5.0), GLASS_LINE))
 
-## The dropper's rubber bulb, its foot at the origin: squashed by the
-## transform as it is squeezed.
-static func bulb(length: float) -> ArrayMesh:
-	return _made("bulb/%.0f" % length, func(b: Face.Builder) -> void:
-		var w := length * 0.2
-		var h := length * 0.42
-		b.ellipse(Vector2(5.0, -h * 0.5 + 6.0), w, h * 0.52, Color(0, 0, 0, 0.16))
-		b.ellipse(Vector2(0, -h * 0.5), w, h * 0.52, BULB_LOW)
-		b.ellipse(Vector2(-w * 0.08, -h * 0.53), w * 0.86, h * 0.46, BULB)
-		b.ellipse(Vector2(-w * 0.36, -h * 0.66), w * 0.2, h * 0.16, Color(BULB_HI, 0.9)))
+## The needle's plunger, the barrel's top at the origin: a rod and the
+## pad a thumb presses. The transform sinks it as it is squeezed.
+static func plunger(length: float) -> ArrayMesh:
+	return _made("plunger/%.0f" % length, func(b: Face.Builder) -> void:
+		var w := length * 0.15
+		var rod := length * 0.2
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.16 + 5.0, -rod + 6.0), Vector2(w * 0.32, rod + 4.0), 3.0), Color(0, 0, 0, 0.14))
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.16, -rod), Vector2(w * 0.32, rod + 4.0), 3.0), BULB_LOW)
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.8, -rod - 12.0), Vector2(w * 1.6, 16.0), 8.0), BULB_LOW)
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.8, -rod - 14.0), Vector2(w * 1.6, 13.0), 6.5), BULB)
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.6, -rod - 12.0), Vector2(w * 0.7, 4.0), 2.0), Color(BULB_HI, 0.9)))
 
-## The squeeze button: the bulb seen from above, a drop on it.
+## The squeeze button: the plunger's pad seen from above, a drop on it.
 static func squeeze_button(r: float) -> ArrayMesh:
 	return _made("squeeze/%.0f" % r, func(b: Face.Builder) -> void:
 		b.disc(Vector2(0, 0.09 * r), r, Color(0.25, 0.14, 0.06, 0.25))

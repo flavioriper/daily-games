@@ -41,10 +41,10 @@ class Round extends "res://puzzles/gumdrop_sim.gd":
 	var _goal := Vector2.ZERO
 
 
-	## A round mould in two halves, wanted in these two flavours, with these
-	## pots stood by it.
+	## The mushroom, its stalk and its cap wanted in these two flavours,
+	## with these pots stood by it.
 	func lay(want: Array, stood: Array) -> void:
-		var m := Mould.build(Mould.Shape.ROUND, Mould.Cut.SECTORS, 2)
+		var m := Mould.build("mushroom")
 		m.want = want
 		m.pots = stood
 		m.mixed = -1
@@ -204,11 +204,10 @@ func _reset() -> void:
 			_length = at + 1.6
 			_still_at = 5.0
 		Lesson.SOAK:
-			# one long squeeze off the middle: the colour blooms as far as the
-			# wall and no further, evens out once let go, and a second squeeze
-			# makes it stronger
+			# one long squeeze held still: the tint blooms about the needle and
+			# stays where it is, and a second squeeze makes it stronger
 			game.lay([F.LEMON, F.BLUEBERRY], [F.LEMON, F.BLUEBERRY])
-			var by: Vector2 = game.centre_of(0).lerp(game.centre_of(1), 0.3)
+			var by: Vector2 = game.centre_of(1)
 			game.plan = [[0.5, "aim", by], [1.4, "squeeze", true], [4.2, "squeeze", false],
 				[7.4, "squeeze", true], [9.0, "squeeze", false]]
 			_length = 12.0

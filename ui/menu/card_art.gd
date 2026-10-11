@@ -243,7 +243,7 @@ var _lattice_u := -1.0
 ## Button Box's swatch of patches and buttons, built once a size.
 var _buttons_mesh: ArrayMesh
 var _buttons_u := -1.0
-## Gumdrop's flower mould, built once a size.
+## Gumdrop's jelly, built once a size.
 var _gumdrop_mesh: ArrayMesh
 var _gumdrop_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
@@ -1760,7 +1760,7 @@ const LA_CELL := 34.0
 const LA_ROWS := [[2, -5, 1, 4, 3], [4, 0, -3, 0, 1], [-1, 3, 5, -2, 4]]
 const LA_KNOTS := [["LU", "9"], ["RD", "3"]]
 
-## Gumdrop's card: the tray with a flower mould on it, every cell its
+## Gumdrop's card: the tray with a jelly on it, every part its
 ## flavour -- the board's own drawing (puzzles/gumdrop_art.gd), so the card
 ## and the board cannot drift apart.
 const GD_SIDE := 88.0
@@ -1768,8 +1768,7 @@ const GD_SIDE := 88.0
 func _draw_gumdrop() -> void:
 	var side := GD_SIDE * _u
 	if _gumdrop_mesh == null or not is_equal_approx(_gumdrop_u, _u):
-		var m := GumMould.build(GumMould.Shape.FLOWER5, GumMould.Cut.CORE, 5)
-		m.want = [0, 1, 2, 3, 4, 5]
+		var m := GumMould.build("balloon")
 		_gumdrop_mesh = GumArt.picture(m, side / GumMould.SIDE)
 		_gumdrop_u = _u
 	var at := _c - Vector2(side, side) * 0.5

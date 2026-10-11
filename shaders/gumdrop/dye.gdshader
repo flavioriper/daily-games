@@ -8,7 +8,7 @@ render_mode blend_disabled, unshaded;
 // seconds instead of keeping its folds (the user, 2026-10-11: "liquid
 // should merge color after being inserted, not keep as a vortex
 // forever"). A texel keeps its own dye when the point it would read from
-// lies in another cell or a wall: nothing crosses a wall. A tutorial page
+// lies in another chunk or off the jelly: nothing crosses a seam. A tutorial page
 // may fill a whole cell at once (`fill_cell`).
 //
 // That near blend alone irons a fold and leaves a cell two shades: read

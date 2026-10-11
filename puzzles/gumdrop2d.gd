@@ -2,7 +2,7 @@ extends "res://core/puzzle_base.gd"
 
 ## Gumdrop as a daily board (spec
 ## docs/superpowers/specs/2026-10-11-gumdrop-daily-design.md): a band's few
-## moulds of clear jelly, each coloured with a dropper of syrup to match
+## moulds of clear jelly, each tinted with a needle of syrup to match
 ## its card and served. It was the eleventh Arcade game for a day; the
 ## user, 2026-10-11: "convert gumdrop into a daily game not arcade".
 ##

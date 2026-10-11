@@ -100,9 +100,9 @@ func _fills() -> PackedFloat32Array:
 		_fill = _t_._fluid.measure().fill
 	return _fill
 
-## The careful hand, a frame at a time: the first cell not yet the card's
-## shade, the pots its flavour is made of, the tip drawn in a small ring
-## about the cell's middle as it squeezes (so the colour winds).
+## The careful hand, a frame at a time: the first part not yet the card's
+## shade, the pots its flavour is made of, the tip drawn about the part
+## as it squeezes.
 func _bot() -> void:
 	var sim = _t_.sim
 	if sim == null or sim.phase > Sim.Phase.PLAY or not _play:
@@ -122,12 +122,16 @@ func _bot() -> void:
 				if _t - float(_cell_since[key]) > 14.0:
 					break
 				sim.pick(sim.mould.pots.find(f))
-				var ring := Vector2.from_angle(_t * 1.1) * 12.0
-				var at: Vector2 = sim.centre_of(c) + ring
-				if sim.reg[Sim.square(at)] != c:
-					at = sim.centre_of(c)
-				sim.aim(at)
-				sim.squeeze(true)
+				# the tint stays where it is put: the needle goes from square
+				# to square of the part, three a second
+				var own: Array = []
+				for i in sim.reg.size():
+					if sim.reg[i] == c:
+						own.append(i)
+				var at: Vector2 = Sim.at(own[int(_t * 3.0) * 7919 % own.size()])
+				sim.aim(sim.tip.move_toward(at, 1.6))
+				# on its way there it may cross another chunk: nothing goes in
+				sim.squeeze(sim.tip_cell() == c)
 				_done_at = _t
 				return
 	sim.squeeze(false)

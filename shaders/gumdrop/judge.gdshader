@@ -9,11 +9,11 @@ render_mode blend_disabled, unshaded;
 
 uniform sampler2D dye : filter_nearest, repeat_disable;
 uniform sampler2D mask : filter_nearest, repeat_disable;
-uniform vec3 want[8];
+uniform vec3 want[16];
 
 void fragment() {
 	int cell = cell_of(mask, UV);
-	if (cell < 0 || cell >= 8) {
+	if (cell < 0 || cell >= 16) {
 		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
 	} else {
 		vec4 col = colour_of(texture(dye, UV).rgb * AMOUNT_TOP);
