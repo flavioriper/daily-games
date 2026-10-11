@@ -17,17 +17,31 @@ extends RefCounted
 ## goes down only once it is in the core, moving with the water, and no
 ## wider than the mouth.
 ##
-## The pond is W wide and `h` tall, y down. Lengths are pond units, speeds
-## units a second.
+## The pond is `w` wide and `h` tall, y down. Lengths are pond units, speeds
+## units a second. The game's pond is WIDE by TALL whatever the phone, far
+## more than is looked at at once (`view_of`); a tutorial page lays a small
+## one.
 
 enum Phase { READY, PLAY, DRAIN, OVER }
 enum Kind { LEAF, PETAL, ACORN, DUCK, BOAT, BALL }
 
 const DT := 1.0 / 60.0
-const W := 300.0
+## The pond the game is played on (the user, 2026-10-10: "a fixed bigger
+## water scene with all objects rendered, and camera start to zoom out as
+## user get bigger"), and how much water SMALL and BIG are counted for: a
+## pond holds as many times those as it has that much water.
+const WIDE := 600.0
+const TALL := 1000.0
+const ROOM := 300.0 * 320.0
+## How much of the pond's width is looked at round a whirlpool of level 1,
+## and the power of its core's growth the look widens by. The screen's
+## camera reads it, and so does the stocking: a new thing comes onto the
+## water out of sight.
+const VIEW := 240.0
+const VIEW_POW := 0.5
 ## The whirlpool's fastest travel and how quickly it answers the pad. It
 ## is slow on purpose (the user, 2026-10-10: "speed is too fast, it should
-## be way slower to move"; it was 150): five seconds across the pond.
+## be way slower to move"; it was 150): four seconds across what is looked at, ten across the pond.
 const SPEED := 60.0
 const ANSWER := 0.3
 ## It grows through these levels.
@@ -86,7 +100,7 @@ const BIG := 4
 const BIG_STEP := 0.6
 const LET_IN := 2.5
 ## A thing's own slow wander, and the push that brings a new one in from the
-## bank for its first seconds.
+## bank for its first seconds where the pond is too small to hide it.
 const WANDER := 4.0
 const PUSH := 16.0
 const FRESH := 3.0
@@ -99,12 +113,8 @@ var phase := Phase.READY
 var phase_t := 0.0
 ## Seconds of play.
 var t := 0.0
-var h := 360.0
-## The bands of the pond's top and foot that lie under the screen's plates
-## and its pad: water like the rest, where nothing floats and the whirlpool
-## does not go.
-var top := 0.0
-var foot := 0.0
+var w := WIDE
+var h := TALL
 var pos := Vector2.ZERO
 var vel := Vector2.ZERO
 ## The pad's lean, a length of 0 to 1.
@@ -128,15 +138,14 @@ var _let := 0.0
 var _low_said := false
 var _big_said := -10.0
 
-func _init(seed_value := -1, tall := 360.0, over := 0.0, under := 0.0) -> void:
+func _init(seed_value := -1, tall := TALL, wide := WIDE) -> void:
 	if seed_value >= 0:
 		rng.seed = seed_value
 	else:
 		rng.randomize()
 	h = tall
-	top = over
-	foot = under
-	pos = Vector2(W * 0.5, (top + h - foot) * 0.5)
+	w = wide
+	pos = Vector2(w, h) * 0.5
 	_stock_first()
 	events.append({"type": "ready"})
 
@@ -145,6 +154,10 @@ func is_over() -> bool:
 
 static func core_of(lv: int) -> float:
 	return CORE + CORE_STEP * (lv - 1)
+
+## How many units across the pond is looked at round a core of `rc`.
+static func view_of(rc: float) -> float:
+	return VIEW * pow(rc / CORE, VIEW_POW)
 
 static func turn_of(lv: int) -> float:
 	return TURN + TURN_STEP * (lv - 1)
@@ -249,8 +262,8 @@ func step() -> void:
 func _move() -> void:
 	vel = vel.lerp(lean * SPEED, 1.0 - exp(-DT / ANSWER))
 	pos += vel * DT
-	var lo := Vector2(BANK, top + BANK)
-	var hi := Vector2(W - BANK, h - foot - BANK)
+	var lo := Vector2(BANK, BANK)
+	var hi := Vector2(w - BANK, h - BANK)
 	if pos.x < lo.x or pos.x > hi.x:
 		vel.x = 0.0
 	if pos.y < lo.y or pos.y > hi.y:
@@ -304,12 +317,12 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 	p += v * DT
 	# the bank turns a thing back
 	var lo := BANK + float(kind.r)
-	if p.x < lo or p.x > W - lo:
-		p.x = clampf(p.x, lo, W - lo)
+	if p.x < lo or p.x > w - lo:
+		p.x = clampf(p.x, lo, w - lo)
 		v.x = -v.x * 0.3
 		th.drift = Vector2(-own.x, own.y)
-	if p.y < top + lo or p.y > h - foot - lo:
-		p.y = clampf(p.y, top + lo, h - foot - lo)
+	if p.y < lo or p.y > h - lo:
+		p.y = clampf(p.y, lo, h - lo)
 		v.y = -v.y * 0.3
 		th.drift = Vector2(th.drift.x, -own.y)
 	th.pos = p
@@ -400,22 +413,28 @@ func _small_kind() -> int:
 	var roll := rng.randf()
 	return Kind.LEAF if roll < 0.55 else (Kind.PETAL if roll < 0.82 else Kind.ACORN)
 
-## A big thing: ducks mostly, the larger toys once the whirlpool has grown
-## some.
+## A big thing: ducks mostly. A small pond gets the larger toys once the
+## whirlpool has grown some; the game's has every kind from the first.
 func _big_kind() -> int:
 	var roll := rng.randf()
-	if level >= 4 and roll < 0.22:
+	if (level >= 4 or w > 300.0) and roll < 0.22:
 		return Kind.BALL
-	if level >= 3 and roll < 0.5:
+	if (level >= 3 or w > 300.0) and roll < 0.5:
 		return Kind.BOAT
 	return Kind.DUCK
 
+## How many times the water SMALL and BIG are counted for this pond has.
+func room() -> float:
+	return w * h / ROOM
+
 func _stock_first() -> void:
 	var mid := pos
-	for i in SMALL:
+	for i in int(SMALL * room()):
 		put(_small_kind(), _free_place(mid, 36.0, 0.0))
-	for kind: int in [Kind.DUCK, Kind.DUCK, Kind.DUCK, Kind.BOAT]:
-		var th := put(kind, _free_place(mid, 80.0, 30.0))
+	# every kind is there from the first, the big ones to be grown into
+	var toys := [Kind.DUCK, Kind.DUCK, Kind.DUCK, Kind.BOAT, Kind.DUCK, Kind.BALL, Kind.BOAT, Kind.DUCK]
+	for i in int(BIG * room()):
+		var th := put(toys[i % toys.size()], _free_place(mid, 80.0, 30.0))
 		th.age = 10.0
 	for th: Dictionary in things:
 		th.age = 10.0
@@ -425,7 +444,7 @@ func _stock_first() -> void:
 func _free_place(from: Vector2, clear: float, apart: float) -> Vector2:
 	var p := Vector2.ZERO
 	for attempt in 30:
-		p = Vector2(rng.randf_range(BANK + 16.0, W - BANK - 16.0), rng.randf_range(top + BANK + 16.0, h - foot - BANK - 16.0))
+		p = Vector2(rng.randf_range(BANK + 16.0, w - BANK - 16.0), rng.randf_range(BANK + 16.0, h - BANK - 16.0))
 		if p.distance_to(from) < clear:
 			continue
 		var ok := true
@@ -445,7 +464,8 @@ func count(tier: int) -> int:
 			n += 1
 	return n
 
-## New things float in from the banks as the pond thins.
+## New things come onto the water as the pond thins: out of sight where the
+## pond is bigger than what is looked at, else floating in from the banks.
 func _restock() -> void:
 	if not stocks:
 		return
@@ -453,46 +473,40 @@ func _restock() -> void:
 	if _let < 1.0:
 		return
 	var kind := -1
-	if count(2) < int(BIG + BIG_STEP * (level - 1)):
+	if count(2) < int((BIG + BIG_STEP * (level - 1)) * room()):
 		kind = _big_kind()
-	elif count(1) < SMALL + SMALL_STEP * (level - 1):
+	elif count(1) < int((SMALL + SMALL_STEP * (level - 1)) * room()):
 		kind = _small_kind()
 	if kind < 0:
 		return
 	_let -= 1.0
+	var sight := view_of(core())
+	if w > sight * 1.5:
+		for attempt in 12:
+			var p := Vector2(rng.randf_range(BANK + 16.0, w - BANK - 16.0), rng.randf_range(BANK + 16.0, h - BANK - 16.0))
+			if p.distance_to(pos) >= sight:
+				put(kind, p)
+				return
 	# from the bank furthest from the whirlpool as often as not
 	var at := Vector2.ZERO
 	var best := -1.0
 	for attempt in 3:
 		var side := rng.randi() % 4
 		var along := rng.randf()
-		var y0 := top + BANK
-		var y1 := h - foot - BANK
+		var y0 := BANK
+		var y1 := h - BANK
 		var p := Vector2(BANK, lerpf(y0, y1, along))
 		match side:
-			1: p = Vector2(W - BANK, lerpf(y0, y1, along))
-			2: p = Vector2(lerpf(BANK, W - BANK, along), y0)
-			3: p = Vector2(lerpf(BANK, W - BANK, along), y1)
+			1: p = Vector2(w - BANK, lerpf(y0, y1, along))
+			2: p = Vector2(lerpf(BANK, w - BANK, along), y0)
+			3: p = Vector2(lerpf(BANK, w - BANK, along), y1)
 		if p.distance_to(pos) > best:
 			best = p.distance_to(pos)
 			at = p
-	var aim := Vector2(rng.randf_range(W * 0.2, W * 0.8), lerpf(top, h - foot, rng.randf_range(0.2, 0.8)))
+	var aim := Vector2(rng.randf_range(w * 0.2, w * 0.8), h * rng.randf_range(0.2, 0.8))
 	var th := put(kind, at)
 	th.drift = (aim - at).normalized() * PUSH
 	th.fresh = FRESH
-
-## The pond made `tall` with its two bands, as the screen's room changes
-## under a run: the whirlpool and everything afloat are kept, and brought
-## inside the banks.
-func fit(tall: float, over := 0.0, under := 0.0) -> void:
-	h = tall
-	top = over
-	foot = under
-	pos = pos.clamp(Vector2(BANK, top + BANK), Vector2(W - BANK, h - foot - BANK))
-	for th: Dictionary in things:
-		if float(th.sink) < 0.0:
-			var lo := BANK + float(KINDS[th.kind].r)
-			th.pos = (th.pos as Vector2).clamp(Vector2(lo, top + lo), Vector2(W - lo, h - foot - lo))
 
 # --- boosters (arcade/boosters.gd) ---
 

@@ -150,7 +150,7 @@ func _play(s: RefCounted, hasty: bool, skill := 1.0) -> void:
 		if hasty:
 			# never slowing: up and down the pond flat out, a lane at a time
 			var lane: int = int(float(s.t) * Sim.SPEED / (float(s.h) - 40.0))
-			var x: float = 30.0 + fposmod(lane * 37.0, Sim.W - 60.0)
+			var x: float = 30.0 + fposmod(lane * 37.0, float(s.w) - 60.0)
 			var y: float = 20.0 if lane % 2 == 0 else float(s.h) - 20.0
 			s.steer((Vector2(x, y) - s.pos).normalized())
 		elif best.is_empty():

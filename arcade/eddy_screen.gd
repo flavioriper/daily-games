@@ -7,9 +7,19 @@ extends Control
 ## factory does, it's gonna be a pattern from now on"): no page and no
 ## frame. Over it lie the flat boards' top bar (back, the title in ink,
 ## restart, settings), a paper row with the score, the best and the
-## whirlpool's level, and at the foot the pad the thumb steers by. The
-## water under the plates and under the pad is the sim's two bands, where
-## nothing floats and the whirlpool does not go.
+## whirlpool's level, and at the foot the pad the thumb steers by.
+##
+## **The pond is far bigger than the screen, and a camera looks at a part of
+## it** (the user, 2026-10-10: "a fixed bigger water scene with all objects
+## rendered, and camera start to zoom out as user get bigger and start to
+## get bigger elements, something like .io games does. Camera moves as the
+## player try to move outside camera on edges"). The pond is the sim's WIDE
+## by TALL on every phone. What is looked at is the open water between the
+## plates and the pad (`_window`): `Sim.view_of` units across it, wider as
+## the core grows, and the whirlpool goes about its middle freely and takes
+## the camera along only from EDGE of its side (`_follow`). The camera
+## stops with the open water a mouth's width past the bank, so by a bank
+## the plates and the pad lie over the grass beyond it.
 ##
 ## Play: the pad's knob is leaned and the whirlpool goes that way, faster
 ## the further it is leaned. What floats is drawn in by the water alone
@@ -19,7 +29,9 @@ extends Control
 ## Drawing: one Control for the pond. The water and its bank are a still
 ## mesh built on resize; the whirlpool is its mouth and its streaks, turned
 ## and grown by the transform; everything afloat is one cached mesh under
-## its own transform. The spin's bar and the rings a thing leaves going
+## its own transform, and what is out of the field is not drawn at all.
+## Nothing is rebuilt as the camera moves or widens: the pond and each thing
+## are built once at POND_U and THING_U and scaled. The spin's bar and the rings a thing leaves going
 ## down are one live mesh over them. The pad is a second Control: its base,
 ## the growing's arc round it, and the knob.
 
@@ -66,6 +78,14 @@ const DEAD := 0.12
 const MAX_STEPS := 12
 ## The whirlpool's meshes are built for a core this many pixels and scaled.
 const CORE_PX := 48.0
+## The pixels a pond unit the pond's mesh and a thing's are built at, the
+## camera scaling them from there, and the grass drawn beyond the bank.
+const POND_U := 3.0
+const THING_U := 4.0
+const TURF := 220.0
+## The part of the open water, from each side, where the whirlpool takes
+## the camera along with it.
+const EDGE := 0.3
 ## The score lettered over the pond as it passes each of these.
 const MILESTONES := [100, 200, 300, 500, 750, 1000, 1500]
 ## The locale key said when a level first takes a kind.
@@ -109,10 +129,14 @@ var _shown_level := -1
 var _beat_best := false
 ## The knock this frame's events asked for, the strongest of them (-1: none).
 var _knock := -1
-## Pixels a pond unit, and where the pond's corner lies in the field.
+## Pixels a pond unit, and where the pond's corner lies in the field: both
+## the camera's (`_look`), which is the pond's point at the middle of the
+## open water.
 var _u := 2.0
 var _o := Vector2.ZERO
+var _cam := Vector2(Sim.WIDE, Sim.TALL) * 0.5
 var _pond: ArrayMesh
+var _pond_of := Vector2.ZERO
 var _live: ArrayMesh
 var _pad_live: ArrayMesh
 ## The screen's own clock, for motion the sim does not own; it stops with
@@ -314,31 +338,23 @@ func _bands() -> Vector2:
 	var insets := SafeArea.insets(self)
 	return Vector2(MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP, MARGIN + insets.y + PAD_H)
 
-## The same in pond units, for a field `s` pixels.
-func _bands_units() -> Vector2:
-	if field == null or field.size.x <= 0.0:
-		return Vector2.ZERO
-	return _bands() / (field.size.x / Sim.W * _zoom())
+## The open water in the field's pixels: the field less its two bands.
+func _window() -> Rect2:
+	var bands := _bands()
+	return Rect2(0.0, bands.x, field.size.x, maxf(1.0, field.size.y - bands.x - bands.y))
 
-## The pond is as wide as the room and as tall as the room makes it: a run
-## not yet begun takes the room's shape (what floats is kept and brought
-## inside the banks), one under way keeps its own.
+func _pond_size() -> Vector2:
+	return Vector2(sim.w, sim.h) if sim != null else Vector2(Sim.WIDE, Sim.TALL)
+
+## The room changing (the ad banner comes up a second after the screen) moves
+## the camera's window and nothing on the water.
 func _layout_field() -> void:
-	var s := field.size
-	if s.x <= 0.0 or s.y <= 0.0:
+	if field.size.x <= 0.0 or field.size.y <= 0.0:
 		return
-	var tall := _tall_units()
-	var bands := _bands_units()
-	# the room changing under a run not yet begun (the ad banner coming up a
-	# second after the screen) moves the bank, never deals the pond again
-	if sim != null and sim.phase == Sim.Phase.READY and sim.score == 0 \
-			and (absf(sim.h - tall) > 1.0 or absf(sim.top - bands.x) > 1.0 or absf(sim.foot - bands.y) > 1.0):
-		sim.fit(tall, bands.x, bands.y)
-	var h: float = sim.h if sim != null else tall
-	_u = minf(s.x / Sim.W, s.y / h) * _zoom()
-	var size_px := Vector2(Sim.W, h) * _u
-	_o = ((s - size_px) * 0.5).round()
-	_pond = Art.pond(size_px, _u)
+	if _pond == null or _pond_of != _pond_size():
+		_pond_of = _pond_size()
+		_pond = Art.pond(_pond_of * POND_U, POND_U, _turf())
+	_look()
 	if _banner != null:
 		_place_banner()
 	field.queue_redraw()
@@ -351,16 +367,40 @@ func _place_banner() -> void:
 	box.position = Vector2(field.size.x * 0.07, _bands().x + (field.size.y - _bands().x - _bands().y) * 0.14)
 	box.pivot_offset = box.size * 0.5
 
-## How tall a pond the field holds, in units, at Sim.W across.
-func _tall_units() -> float:
-	if field == null or field.size.x <= 0.0 or field.size.y <= 0.0:
-		return 360.0
-	return clampf(field.size.y / (field.size.x / Sim.W), 200.0, 760.0)
+## The grass drawn beyond the bank, in pond units: a tutorial page's pond is
+## framed and has none.
+func _turf() -> float:
+	return TURF
 
-## How much closer than the whole pond the field looks: not at all here; a
-## tutorial page looks at its middle.
-func _zoom() -> float:
-	return 1.0
+## How many pond units the open water shows across: more as the whirlpool
+## grows, on the core as drawn, so the look widens as smoothly as it swells.
+func _across() -> float:
+	return Sim.view_of(_core)
+
+## The camera goes with the whirlpool only once it is within EDGE of a side
+## of the open water, and stops at the bank: a pond narrower than what is
+## looked at is held by its middle.
+func _follow() -> void:
+	var seen := _window().size / _u
+	var pond := _pond_size()
+	# past the bank by the mouth's own width, so a whirlpool against a bank is
+	# still whole on the screen
+	var past := Art.RIM + _core * 1.5
+	for axis in 2:
+		var slack: float = seen[axis] * (0.5 - EDGE)
+		var lo: float = seen[axis] * 0.5 - past
+		var hi: float = pond[axis] + past - seen[axis] * 0.5
+		_cam[axis] = pond[axis] * 0.5 if lo > hi else clampf(clampf(_cam[axis], sim.pos[axis] - slack, sim.pos[axis] + slack), lo, hi)
+
+## The camera for this frame: `_u` and `_o`.
+func _look() -> void:
+	if field.size.x <= 0.0 or field.size.y <= 0.0:
+		return
+	var win := _window()
+	_u = win.size.x / _across()
+	if sim != null:
+		_follow()
+	_o = win.get_center() - _cam * _u
 
 ## A point of the pond, in units, in the field's pixels.
 func px(p: Vector2) -> Vector2:
@@ -369,10 +409,10 @@ func px(p: Vector2) -> Vector2:
 # --- the game ---
 
 func _fresh_sim() -> void:
-	var bands := _bands_units()
-	sim = Sim.new(-1, _tall_units(), bands.x, bands.y)
+	sim = Sim.new()
 	Boosters.apply(GAME, sim, _boosts)
 	_core = sim.core()
+	_cam = sim.pos
 	_shown_level = -1
 	sim.events.clear()
 
@@ -456,6 +496,7 @@ func _process(delta: float) -> void:
 			sim.step()
 			_play_events()
 		_animate(delta)
+		_look()
 	_refresh_hud()
 	_knock_now()
 	if _seat != null and is_instance_valid(_seat):
@@ -703,9 +744,12 @@ func _draw_field() -> void:
 		_layout_field()
 	if _pond == null:
 		return
-	field.draw_mesh(_pond, null, Transform2D(0.0, _o))
+	field.draw_rect(Rect2(Vector2.ZERO, field.size), Art.BANK)
+	field.draw_mesh(_pond, null, Transform2D(0.0, Vector2.ONE * (_u / POND_U), 0.0, _o))
 	if sim == null:
 		return
+	var grow := _u / THING_U
+	var seen := Rect2(Vector2.ZERO, field.size)
 	# the whirlpool lies under everything afloat: a thing drawn in is seen on
 	# its mouth all the way, never under it until it is caught (the user,
 	# 2026-10-10: "it show under the whirlpool for a second")
@@ -726,6 +770,8 @@ func _draw_field() -> void:
 		for th: Dictionary in sim.things:
 			if int(Sim.KINDS[th.kind].tier) != tier:
 				continue
+			if not seen.grow(float(Sim.KINDS[th.kind].r) * 1.6 * _u).has_point(px(th.pos)):
+				continue
 			if float(th.sink) >= 0.0:
 				sinking.append(th)
 				continue
@@ -733,13 +779,13 @@ func _draw_field() -> void:
 			if tier == 2 and not Motion.reduce:
 				sc += 0.03 * sin(_clock * 2.2 + float(th.id))
 			var a := clampf(float(th.age) / 0.5, 0.0, 1.0)
-			field.draw_mesh(Art.thing(th.kind, th.look, _u), null, Transform2D(float(th.ang), Vector2(sc, sc), 0.0, px(th.pos)), Color(1, 1, 1, a))
+			field.draw_mesh(Art.thing(th.kind, th.look, THING_U), null, Transform2D(float(th.ang), Vector2(sc, sc) * grow, 0.0, px(th.pos)), Color(1, 1, 1, a))
 	for th: Dictionary in sinking:
 		var k := clampf(float(th.sink) / float(Sim.KINDS[th.kind].sink), 0.0, 1.0)
 		var sc := 1.0 - 0.8 * k * k
 		var tint := Color.WHITE.lerp(Art.WATER_DARK, 0.7 * k)
 		tint.a = 1.0 - k * k * k
-		field.draw_mesh(Art.thing(th.kind, th.look, _u), null, Transform2D(float(th.ang), Vector2(sc, sc), 0.0, px(th.pos)), tint)
+		field.draw_mesh(Art.thing(th.kind, th.look, THING_U), null, Transform2D(float(th.ang), Vector2(sc, sc) * grow, 0.0, px(th.pos)), tint)
 	_draw_live()
 
 ## The rings on the water and the spin's bar across the pond's top: one mesh.

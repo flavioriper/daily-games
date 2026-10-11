@@ -49,13 +49,13 @@ class Round extends "res://arcade/eddy_sim.gd":
 	var plan: Array = []
 
 	func _init() -> void:
-		super(4, 300.0)
+		super(4, 300.0, 300.0)
 		things.clear()
 		stocks = false
 		events.clear()
 
 	func mid() -> Vector2:
-		return Vector2(W * 0.5, h * 0.5)
+		return Vector2(w, h) * 0.5
 
 	## A thing laid still, `from` the pond's middle.
 	func lay(kind: int, from: Vector2, look := 0) -> void:
@@ -151,14 +151,24 @@ class Pond extends "res://arcade/eddy_screen.gd":
 		pad.position = Vector2(size.x - pad_w, 0.0)
 		pad.size = Vector2(pad_w, size.y)
 
-	func _zoom() -> float:
-		return CLOSE
-
 	func _bands() -> Vector2:
 		return Vector2.ZERO
 
-	func _tall_units() -> float:
-		return 300.0
+	func _turf() -> float:
+		return 0.0
+
+	## Nothing is laid out before a round is on the pond.
+	func _layout_field() -> void:
+		if sim != null:
+			super()
+
+	## The page looks at the middle of its small pond, CLOSE times nearer
+	## than the whole of it, and the look never moves.
+	func _across() -> float:
+		return field.size.x / (minf(field.size.x / sim.w, field.size.y / sim.h) * CLOSE)
+
+	func _follow() -> void:
+		_cam = Vector2(sim.w, sim.h) * 0.5
 
 	## The knob is where the round's hand holds it.
 	func _lean() -> Vector2:

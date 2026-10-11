@@ -233,22 +233,40 @@ static func _curl(r0: float, r1: float, a0: float, sweep: float) -> PackedVector
 	return pts
 
 ## The pond under everything, `size` pixels: the water with the light lying
-## on it, and the bank all round. `u` is pixels a pond unit.
-static func pond(size: Vector2, u: float) -> ArrayMesh:
+## on it, and the bank all round. `u` is pixels a pond unit, and `turf` how
+## many units of grass are drawn beyond the bank, tufted and flowered.
+static func pond(size: Vector2, u: float, turf := 0.0) -> ArrayMesh:
 	var b := Face.Builder.new()
+	var rng := RandomNumberGenerator.new()
+	if turf > 0.0:
+		rng.seed = 7
+		var out := Vector2(turf, turf) * u
+		var all := size + out * 2.0
+		b.fan(PackedVector2Array([-out, Vector2(size.x + out.x, -out.y), size + out, Vector2(-out.x, size.y + out.y)]), BANK)
+		for i in int((all.x * all.y - size.x * size.y) / (u * u) / 2200.0):
+			var p := Vector2(rng.randf(), rng.randf()) * all - out
+			if Rect2(Vector2.ZERO, size).has_point(p):
+				continue
+			var roll := rng.randf()
+			if roll < 0.12:
+				b.disc(p, 2.4 * u, PETALS[rng.randi() % 3])
+				b.disc(p, 1.0 * u, Color("f2c14e"))
+			else:
+				b.ellipse(p, rng.randf_range(7.0, 16.0) * u, rng.randf_range(4.0, 8.0) * u, Color(BANK_HI if roll < 0.6 else BANK_DEEP, 0.5))
 	var a := b.vertex(Vector2.ZERO, WATER_HI)
 	var c := b.vertex(Vector2(size.x, 0), WATER)
 	var d := b.vertex(size, WATER_LOW)
 	var e := b.vertex(Vector2(0, size.y), WATER)
 	b.tri(a, c, d)
 	b.tri(a, d, e)
-	var rng := RandomNumberGenerator.new()
 	rng.seed = 12
-	# the light on the water: long pale patches, and short bright ripples
-	for i in 9:
+	# the light on the water: long pale patches, and short bright ripples, as
+	# many again for every 300 by 360 of a bigger pond
+	var more := maxf(1.0, size.x * size.y / (u * u) / 108000.0)
+	for i in int(9 * more):
 		var p := Vector2(rng.randf_range(0.1, 0.9) * size.x, rng.randf_range(0.08, 0.92) * size.y)
 		b.ellipse(p, rng.randf_range(26.0, 60.0) * u, rng.randf_range(7.0, 14.0) * u, Color(WATER_HI, 0.3))
-	for i in 26:
+	for i in int(26 * more):
 		var p := Vector2(rng.randf_range(0.06, 0.94) * size.x, rng.randf_range(0.05, 0.95) * size.y)
 		var w := rng.randf_range(5.0, 11.0) * u
 		b.stroke(Face.Builder.bezier2(p - Vector2(w, 0), p - Vector2(0, 1.6 * u), p + Vector2(w, 0), 8), maxf(1.5, 0.8 * u), Color(FOAM, 0.26))
