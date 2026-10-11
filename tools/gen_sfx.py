@@ -3264,6 +3264,26 @@ SETS = {
         # chop's cut, and no row is written from it).
         "no":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-8,-8"),
     },
+    # Factory (factory/screen.gd). Everything else it plays is the Grove's
+    # set above; this is the market's sale alone.
+    "factory": {
+        # A thing sold: the coin that hops out of the market's hatch. The
+        # user, 2026-10-11, of the wallet's wooden `coin` played there: "why
+        # the sell sfx has the same sfx of the wood being cutted? we need
+        # something that sound closer to a coin or sell sfx related" (it
+        # measured 702 Hz against the chop's 607, two tocks on felt). So
+        # this one cue is a coin by prompt, against rule 4's "no coins that
+        # ring", on the user's word. A real coin comes back all above 3 kHz
+        # (three takes: centroids 11.4, 8.3 and 9.4 kHz, `scratch`, and a
+        # low-pass leaves nothing), so the take is moved 26 steps down: its
+        # ring lands near 2 kHz, a heavier, duller coin, and nothing is left
+        # above 3 kHz (40 dB down). The measure still calls it `high`: its
+        # centroid is over 1 kHz, as a coin's is. It repeats (a sale every
+        # 4 s on a new land, up to four a second), so it is short and at
+        # -15. The pouches asked for first (a coin into a cloth purse, a
+        # leather pouch set down) came back as a rattle.
+        "coin": ("one thick heavy gold coin dropped gently onto one other coin lying on a wooden table, a single short dull clink, close, dry, no jingle, no rattle, very short", 0.5, -15, COZY, "warm:2000", "steep", "cut:0.3", "body:320", "ease:0.004", "tight", "notes:0:-26"),
+    },
     # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Redone 2026-10-10
     # against the cozy rules (docs/agents/sound.md), the fifty-second set of
     # the redo, with Beeline's below, and with it the last. The set was

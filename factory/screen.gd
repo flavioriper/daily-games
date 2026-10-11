@@ -96,9 +96,9 @@ const NO_FINGER := -99
 ## A refusal that is not a no: the tap simply did nothing.
 const QUIET := ["busy", "nothing", "same", "lit", "wait", "top"]
 const TICK_VARY := 0.06
-## A sale's coin: the wallet's `coin` a little under its own pitch and at
-## its own level, and the milliseconds between two of them at least.
-const COIN_PITCH := 0.92
+## A sale's coin: the factory's own `coin` (assets/sfx/factory/) at its own
+## pitch and level, and the milliseconds between two of them at least.
+const COIN_PITCH := 1.0
 const COIN_DB := 0.0
 const COIN_GAP := 140
 ## The tap is a selection moved; a tree down is a piece set down; a thing
@@ -248,7 +248,7 @@ func _build() -> void:
 	field.add_child(_quiet)
 	_coin_fx = Fx2D.new()
 	_coin_fx.buzzes = false
-	_coin_fx._puzzle = "wallet"
+	_coin_fx._puzzle = "factory"
 	field.add_child(_coin_fx)
 	life.coined.connect(_on_coin)
 	_light_l = Control.new()
@@ -583,10 +583,11 @@ func _play_events() -> void:
 				_on_refused(String(e.why), e.tile)
 	sim.events.clear()
 
-## A sale's coin has come up out of the hatch (`life.coined`): the house's
-## coin is heard, a notch of a wheel and no ring (the wallet's take, the
-## cozy rules' "no coin rings"), never two inside COIN_GAP at a market that
-## sells many a second, and the count is on its way up beside it.
+## A sale's coin has come up out of the hatch (`life.coined`): a coin is
+## heard, a real one made low and dull (the user, 2026-10-11, of the
+## wallet's wooden tock there: "we need something that sound closer to a
+## coin"), never two inside COIN_GAP at a market that sells many a second,
+## and the count is on its way up beside it.
 func _on_coin(amount: int) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:

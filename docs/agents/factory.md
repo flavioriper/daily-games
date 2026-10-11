@@ -329,14 +329,22 @@ counter of six, a keeper or "sold as it lands".
   (`DROPS`). **`life.coined(amount)` fires as the coin comes up**, and that
   is when the screen says "+N" beside it, swells the pill and plays the
   sound, not at the sim's event.
-- **The sound is the house's coin**: `assets/sfx/wallet/coin.ogg`, the
-  gold pill's notch of a wheel (the cozy rules: no coin rings), through a
-  third `Fx2D` set to `wallet` with no buzz, at `COIN_PITCH` 0.92 varied by
-  `TICK_VARY`, never two within `COIN_GAP` 140 ms. No new take was made. It
-  was `chop` at 1.2. **A sale is heard and not felt**, as it was: the gold
-  pill's coin is felt as an echo when it lands, but that is a gift taken
-  now and then, and a market sells for as long as the screen is open. The
-  user has not ruled on it; `_coin_fx.buzzes = true` is the whole change.
+- **The sound is a coin of the factory's own** (`assets/sfx/factory/coin.ogg`,
+  `tools/gen_sfx.py factory`), through a third `Fx2D` set to `factory`
+  with no buzz, varied by `TICK_VARY`, never two within `COIN_GAP` 140 ms.
+  The first build played the wallet's `coin` there, the gold pill's wooden
+  notch, and the user on hearing it the same day: "why the sell sfx has
+  the same sfx of the wood being cutted? we need something that sound
+  closer to a coin or sell sfx related" (it measured 702 Hz against the
+  chop's 607). So this one cue is a real coin, against the cozy rules' "no
+  coins that ring", on the user's word: a single coin dropped on another,
+  moved 26 steps down so its ring sits near 2 kHz with nothing above 3 kHz
+  (45.8 dB down), 0.3 s at -15. The measure flags it `high` (centroid
+  2,011 Hz) and it is kept so. **Measured, not heard.** **A sale is heard
+  and not felt**, as it was: the gold pill's coin is felt as an echo when
+  it lands, but that is a gift taken now and then, and a market sells for
+  as long as the screen is open. The user has not ruled on it;
+  `_coin_fx.buzzes = true` is the whole change.
 - **Reduce motion**: nothing slides, swings, falls or hops; the thing is
   on the hatch or gone and `coined` fires at the sale, so the "+N" and the
   sound still come.
@@ -357,7 +365,7 @@ counter of six, a keeper or "sold as it lands".
   the hatch and the rest on the belt; every thing waits its whole interval
   (an idle market's first sale is 4 s later than it was); the box's look
   and the coin on its wall; the coin's hop and its one turn; "+N" kept
-  beside the coin; the wallet's coin for the sound.
+  beside the coin; how low and dull the coin's sound is.
 - **What it does to the pace**: the market takes from four belts where
   eight tiles touched it, and one thing a tick at the most. Measured
   headless with a full belt on each of its four sides, a minute each: 1.00
