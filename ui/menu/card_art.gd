@@ -1829,7 +1829,10 @@ func _draw_buttons() -> void:
 			var sewn: bool = BB_ON[i] == BB_PATCH[i]
 			if not sewn:
 				b.ellipse(mid + Vector2(0.0, s * 0.12), s * 0.42, s * 0.36, Color(Pal.TEXT, 0.16))
-			ButtonArt.button(b, mid, s, ButtonArt.colour(BB_ON[i]), sewn)
+			if sewn:
+				ButtonArt.sewn(b, mid, s, ButtonArt.colour(BB_ON[i]))
+			else:
+				ButtonArt.button(b, mid, s, ButtonArt.colour(BB_ON[i]), false)
 		_buttons_mesh = b.mesh()
 		_buttons_u = _u
 	draw_mesh(_buttons_mesh, null, Transform2D(0.0, _c))

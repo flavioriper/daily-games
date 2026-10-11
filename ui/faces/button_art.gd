@@ -12,8 +12,13 @@ extends RefCounted
 ## whose every disc is feathered and round to three pixels.
 ##
 ## A button is coloured by index, so nothing about it is said by a shade of
-## its colour: loose is a button with a shadow on a patch of another colour,
-## sewn is the cross of thread through its holes.
+## its colour: loose is a round button with a shadow on a patch of another
+## colour, a bare patch is a small washed square with linen round it, and
+## sewn is the whole square in the colour, edge to edge, so the sewn ones
+## run together into the picture (`sewn`; the user, 2026-10-11: "it's hard
+## to see when button is on right place, can we make the button blend to
+## the ground and become just the color?"). The cross of thread `button`
+## and `button_lite` can still draw is no longer asked for.
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -81,9 +86,25 @@ static func patch(b, at: Vector2, cell: float, col: Color, lite := false) -> voi
 	if lite:
 		_raw(b, _cut(at, s * 0.5, cell * PATCH_RADIUS * 0.6), dyed(col).darkened(0.1))
 		_raw(b, _cut(at, s * 0.5 - cell * 0.03, cell * PATCH_RADIUS * 0.5), dyed(col))
+		_seat(b, at, cell, col, 12)
 		return
 	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * s, cell * PATCH_RADIUS), dyed(col).darkened(0.1))
 	b.fan(Face.Builder.round_rect(corner + Vector2.ONE * cell * 0.03, Vector2.ONE * (s - cell * 0.06), cell * PATCH_RADIUS * 0.8), dyed(col))
+	_seat(b, at, cell, col, 20)
+
+## The mark a button leaves to be sat on: a ring on the patch, hidden under
+## any button and seen on a bare one, so that bare and sewn differ by a
+## shape on the palest colours too (white cloth washed out is nearly white).
+static func _seat(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
+	_raw(b, _gon(at, cell * 0.3, sides), dyed(col).darkened(0.16))
+	_raw(b, _gon(at, cell * 0.3 - maxf(1.5, cell * 0.045), sides), dyed(col))
+
+## A button sewn on: it has gone into the cloth, and its square is the
+## colour whole, a hair over the cell so that neighbours leave no seam.
+static func sewn(b, at: Vector2, cell: float, col: Color) -> void:
+	var half := cell * 0.5 + 0.4
+	_raw(b, PackedVector2Array([at + Vector2(-half, -half), at + Vector2(half, -half),
+			at + Vector2(half, half), at + Vector2(-half, half)]), col)
 
 ## A button centred on `at`: its rim, its face a little above it, the dish
 ## and the four holes; `sewn` crosses them with thread.
@@ -180,13 +201,15 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 	out.ring = b.mesh()
 	for named in colours:
 		var col := colour(String(named))
-		for sewn in [false, true]:
-			b = Face.Builder.new()
-			if look != FULL:
-				button_lite(b, Vector2.ZERO, cell, col, sewn, look == CLOSE)
-			else:
-				button(b, Vector2.ZERO, cell, col, sewn)
-			(out.sewn if sewn else out.loose).append(b.mesh())
+		b = Face.Builder.new()
+		if look != FULL:
+			button_lite(b, Vector2.ZERO, cell, col, false, look == CLOSE)
+		else:
+			button(b, Vector2.ZERO, cell, col, false)
+		out.loose.append(b.mesh())
+		b = Face.Builder.new()
+		sewn(b, Vector2.ZERO, cell, col)
+		out.sewn.append(b.mesh())
 	return out
 
 ## The tin: a shallow wooden tray over `rect` with `places` hollows in rows
