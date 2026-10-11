@@ -467,7 +467,8 @@ func _judge() -> void:
 	var pct := int(round(match_all * 100.0))
 	var passed := pct >= mark()
 	var perfect := pct >= PERFECT
-	var points := pct + (PERFECT_BONUS if perfect else 0)
+	# a mould under its mark is worth nothing
+	var points := (pct + (PERFECT_BONUS if perfect else 0)) if passed else 0
 	verdict = {"pct": pct, "need": mark(), "pass": passed, "perfect": perfect, "points": points}
 	score += points
 	if passed:
@@ -488,12 +489,11 @@ func _after() -> void:
 		phase = Phase.OVER
 		events.append({"type": "over"})
 
-## The Second chance: the mould that ended the run, clear again, its pots
-## full, and what it was served for taken back.
+## The Second chance: the mould that ended the run, clear again and its
+## pots full.
 func revive() -> void:
 	if phase != Phase.OVER:
 		return
-	score -= int(verdict.get("points", 0))
 	_lay()
 	phase = Phase.PLAY
 	phase_t = 0.0

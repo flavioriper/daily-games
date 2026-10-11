@@ -94,7 +94,7 @@ var settings_sheet: Control
 ## first play (ui/hud/screen_tutor.gd).
 var tutor: RefCounted
 var field: Control
-var _dye: Control
+var _syrup: Control
 var _top: Control
 var _fx: Node2D
 var _margins: MarginContainer
@@ -223,17 +223,17 @@ func _build_field() -> Control:
 	field.draw.connect(_draw_field)
 	field.resized.connect(_layout_field)
 	field.gui_input.connect(_on_field_input)
-	_dye = Control.new()
-	_dye.name = "Syrup"
-	_dye.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dye.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_dye.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_dye.texture_repeat = CanvasItem.TEXTURE_REPEAT_DISABLED
+	_syrup = Control.new()
+	_syrup.name = "Syrup"
+	_syrup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_syrup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_syrup.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_syrup.texture_repeat = CanvasItem.TEXTURE_REPEAT_DISABLED
 	var mat := ShaderMaterial.new()
 	mat.shader = Syrup
-	_dye.material = mat
-	_dye.draw.connect(_draw_dye)
-	field.add_child(_dye)
+	_syrup.material = mat
+	_syrup.draw.connect(_draw_syrup)
+	field.add_child(_syrup)
 	_top = Control.new()
 	_top.name = "Top"
 	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -389,7 +389,7 @@ func _place_banner() -> void:
 
 func _redraw() -> void:
 	field.queue_redraw()
-	_dye.queue_redraw()
+	_syrup.queue_redraw()
 	_top.queue_redraw()
 
 ## A point of the mould on the field, and back.
@@ -792,11 +792,11 @@ func _draw_field() -> void:
 	field.draw_mesh(Art.tray(_tray.size.x), null, xf)
 	field.draw_mesh(_floor, null, xf)
 
-func _draw_dye() -> void:
+func _draw_syrup() -> void:
 	if sim == null or _tex == null:
 		return
-	_dye.draw_set_transform_matrix(_group())
-	_dye.draw_texture_rect(_tex, Rect2(Vector2.ZERO, _tray.size), false)
+	_syrup.draw_set_transform_matrix(_group())
+	_syrup.draw_texture_rect(_tex, Rect2(Vector2.ZERO, _tray.size), false)
 
 func _draw_top() -> void:
 	if sim == null or _walls == null:

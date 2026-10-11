@@ -85,8 +85,9 @@ is taken off whole. That is the match, 0 to 100.
 
 - **The mark** is 60 at level 1 and 2 more a level, 80 at most. A mould
   served under it ends the run.
-- **The score** is the match of every mould served, and 50 more for one at
-  95 or over ("Perfect!"). The tab's "furthest" is the most moulds served.
+- **The score** is the match of every mould served over its mark, and 50
+  more for one at 95 or over ("Perfect!"). The mould that ends the run is
+  worth nothing. The tab's "furthest" is the most moulds served.
 - A mould serves itself 1.6 s after every pot is empty and the syrup still.
 - A cell at 0.9 or over "sets": a note, a ring, a few sparks.
 
@@ -121,7 +122,7 @@ dropper over it.
   more syrup in every pot, all run) and **Taller walls** (`gd_tall`: the
   sills 1.3 times as high, all run).
 - **Second chance**: the mould that ended the run is clear again and its
-  pots full; what it was served for is taken back. Not offered to a run
+  pots full. Not offered to a run
   that served nothing.
 
 ## 7. Sound and feel
