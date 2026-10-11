@@ -85,9 +85,12 @@
   gl_compatibility): signed values are packed across two bytes and
   fetched by texel, the velocity blended by hand. **The dropper is a
   jet** that turns slowly, never a push straight out (all divergence, the
-  pressure takes it back). **The dye settles** toward its cell's mean
-  each frame and the jelly turns viscous once the button is let go, so a
-  pour merges into one shade; past `POUR_TOP` new dye displaces old, so
+  pressure takes it back). **The dye settles** toward its neighbours
+  each frame (`SETTLE`, `SETTLE_R` 3 texels: it irons a fold) and the
+  jelly turns viscous once the button is let go; a cell nothing is being
+  poured into settles toward eight texels far off as well (`FAR` 0.4,
+  `FAR_R` 14), which is what makes two flavours one shade (the entry of
+  2026-10-11 below); past `POUR_TOP` new dye displaces old, so
   a second flavour shifts a full cell. **The dye is fetched by texel
   with a mask check on every tap**: read through the sampler's linear
   filter it blended with the black wall texels and the settling blur
@@ -175,6 +178,24 @@
   `reduce`. `tests/_win.gd -- gumdrop`
   winnable 1/1 (cells prefilled, served by a real press). The suite's parse
   guard walks the registry: 249,802 passed.
+- **Two flavours in a cell become one shade in a second or two** (the
+  user, 2026-10-11, with an Insane mould whose grape petal was red at one
+  end and blue at the other: "colors are hard to mix"). The near settle
+  alone never did it: read 3 texels off it crosses a petal of 70 texels
+  in a quarter of a minute and more, and in eight bits it stops at a slope
+  of two steps a read, about a fifth of the scale across the petal, so a
+  mixed cell stayed two shades for good and the judge, a mean of texels,
+  marked it down however right its share. The far settle is in
+  `dye.gdshader`, eight taps each checked against the mask like the rest,
+  and is off in the cell under a held tip, so a pour fills no faster than
+  it did. No pass added. Seen on Hard on `opengl3_angle`
+  (`tests/_shot_gumdrop.gd`): the mixed cell one even shade at the serve,
+  107 draw calls; the bot's marks 88, 74, 98, 74 in 8 serves (91, 77, 96,
+  76 in 7 before: it still pours by strength, and an even cell of the
+  wrong share reads 0.2 to 0.5 near). Not changed, the user's to call: a
+  mix poured onto a full cell climbs to `POUR_TOP` before it displaces, so
+  it runs deeper than the card; and how wide of the share the judge
+  forgives.
 - Owed: a phone (the fluid's 22 small passes a frame are untimed there,
   and the judge's readback at serve), the user's verdict on the pour, the
   sounds heard, pt and es read (neither was shot), the win and the play

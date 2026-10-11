@@ -52,8 +52,10 @@ const POUR_TOP := 2.0
 ## is held, plain, under reduce motion and with the Softer jelly booster,
 ## and once it is let go (the flow dies in a moment instead of churning);
 ## and the vorticity's strength while held, nothing under reduce or at
-## rest. The dye settles toward its cell's mean (`SETTLE` a frame, read
-## SETTLE_R texels off), so a pour merges into one shade in a few seconds.
+## rest. The dye settles toward its neighbours (`SETTLE` a frame, read
+## SETTLE_R texels off), which irons a fold, and a cell not being poured
+## into toward eight texels FAR_R off (`FAR` a frame), which makes two
+## flavours one shade in a second or two.
 const VISC := 0.6
 const VISC_CALM := 2.5
 const VISC_SOFT := 0.6
@@ -61,6 +63,8 @@ const VISC_REST := 2.0
 const EPS := 7.0
 const SETTLE := 0.25
 const SETTLE_R := 3.0
+const FAR := 0.4
+const FAR_R := 14.0
 
 var soft := false
 var calm := false
@@ -145,7 +149,7 @@ func _build() -> void:
 	_mats["Pressure0"].set_shader_parameter("pres", last_p.get_texture())
 	var grad := _pass("Gradient", SIM, "gradient", {"vel": vort.get_texture(), "pres": last_p.get_texture(), "mask": mask, "n": n})
 	_mats["Advect"].set_shader_parameter("vel", grad.get_texture())
-	var dye := _pass("Dye", DYE, "dye", {"vel": grad.get_texture(), "mask": mask, "n": n, "radius": DYE_R, "rate": RATE, "pour_top": POUR_TOP / 2.5, "settle": SETTLE, "settle_r": SETTLE_R})
+	var dye := _pass("Dye", DYE, "dye", {"vel": grad.get_texture(), "mask": mask, "n": n, "radius": DYE_R, "rate": RATE, "pour_top": POUR_TOP / 2.5, "settle": SETTLE, "settle_r": SETTLE_R, "far": FAR, "far_r": FAR_R})
 	_last_dye = _pass("Keep", DYE, "copy", {"from": dye.get_texture()})
 	_mats["Dye"].set_shader_parameter("dye", _last_dye.get_texture())
 	_judge = _pass("Judge", DYE, "judge", {"dye": _last_dye.get_texture(), "mask": mask})

@@ -10,6 +10,15 @@ render_mode blend_disabled, unshaded;
 // forever"). A texel keeps its own dye when the point it would read from
 // lies in another cell or a wall: nothing crosses a wall. A tutorial page
 // may fill a whole cell at once (`fill_cell`).
+//
+// That near blend alone irons a fold and leaves a cell two shades: read
+// three texels off it crosses a cell in half a minute, and in eight bits
+// it stops at a slope of two steps a read, a fifth of the scale across a
+// petal (the user, 2026-10-11, of a petal red at one end and blue at the
+// other: "colors are hard to mix"). A cell nothing is being poured into
+// is blended with eight texels far off as well (`far`), which makes it
+// one shade in a second or two; the cell under the tip keeps the near
+// blend only, so a pour fills as slowly as it did.
 
 #include "res://shaders/gumdrop/fluid.gdshaderinc"
 
@@ -35,6 +44,8 @@ uniform float clearing = 0.0;
 // the neighbours are read, in texels.
 uniform float settle = 0.14;
 uniform float settle_r = 3.0;
+uniform float far = 0.4;
+uniform float far_r = 14.0;
 
 // One texel of the dye, or the texel's own when it lies in another cell
 // or a wall: a wall is black, and reading it through the sampler's
@@ -77,6 +88,15 @@ void fragment() {
 		vec3 about = (dye_texel(here + ivec2(o, 0), own, cell, size) + dye_texel(here - ivec2(o, 0), own, cell, size)
 			+ dye_texel(here + ivec2(0, o), own, cell, size) + dye_texel(here - ivec2(0, o), own, cell, size)) * 0.25;
 		d = mix(d, about, settle);
+		if (squeezing < 0.5 || tip_cell != cell) {
+			int a = int(far_r);
+			int g = int(far_r * 0.7071 + 0.5);
+			vec3 wide = (dye_texel(here + ivec2(a, 0), own, cell, size) + dye_texel(here - ivec2(a, 0), own, cell, size)
+				+ dye_texel(here + ivec2(0, a), own, cell, size) + dye_texel(here - ivec2(0, a), own, cell, size)
+				+ dye_texel(here + ivec2(g, g), own, cell, size) + dye_texel(here - ivec2(g, g), own, cell, size)
+				+ dye_texel(here + ivec2(g, -g), own, cell, size) + dye_texel(here - ivec2(g, -g), own, cell, size)) * 0.125;
+			d = mix(d, wide, far);
+		}
 		if (squeezing > 0.5 && tip_cell == cell) {
 			vec2 off = UV - tip;
 			float g = exp(-dot(off, off) / (radius * radius));
