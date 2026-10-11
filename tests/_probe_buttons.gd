@@ -57,8 +57,9 @@ func _legal(st) -> Array:
 	for c in st.colours.size():
 		var held: PackedInt32Array = st.tin_of(c)
 		var bare: PackedInt32Array = st.bare_of(c)
-		if not held.is_empty() and not bare.is_empty():
-			sews.append({"cells": PackedInt32Array(), "places": held, "to": bare[0]})
+		if not held.is_empty():
+			for to in bare:
+				sews.append({"cells": PackedInt32Array(), "places": held, "to": to})
 	var seen := {}
 	for i in st.slot.size():
 		if st.judge(i) != State.OK or seen.has(i):
@@ -66,9 +67,9 @@ func _legal(st) -> Array:
 		var run: PackedInt32Array = st.run_of(i)
 		for g in run:
 			seen[g] = true
-		var bare: PackedInt32Array = st.bare_of(st.cur[i])
-		if not bare.is_empty():
-			sews.append({"cells": run, "places": PackedInt32Array(), "to": bare[bare.size() - 1]})
+		# one sew a bare patch: which stretch a tap fills is the tap's choice
+		for to in st.bare_of(st.cur[i]):
+			sews.append({"cells": run, "places": PackedInt32Array(), "to": to})
 		if room:
 			stows.append({"cells": run, "places": PackedInt32Array(), "to": -1})
 	return [sews, stows]

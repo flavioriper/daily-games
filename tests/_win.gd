@@ -662,6 +662,9 @@ func _solve_buttons() -> void:
 		guard += 1
 		var before: int = st.taps
 		var move: Dictionary = st.hint()
+		# a pick stays picked after its move: put it down before the next
+		if _puzzle.holding():
+			_puzzle._drop()
 		if (move.cells as PackedInt32Array).is_empty():
 			_tap_local(_puzzle.tin_centre(move.places[0]))
 		else:

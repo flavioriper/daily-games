@@ -150,3 +150,39 @@ go to case, instead of land on the right place". So:
   on what changed. The draw calls above are the first build's; a pick adds
   nothing but its rings to the same meshes (90-99 read on the first cut of
   these rules).
+
+## Second polish (2026-10-11)
+
+The user, the same day: "lets remove the link diagonal after easy, make too
+easy. Also, hard and insane should never show where to place, also should
+only auto place in linked tiles, not fill all board on the same color.
+Another change, when user select a color, it should keep selected until end
+or use click on it again, so user can select for example a color, and click
+into different places of board to keep placing".
+
+- **Corners link on Easy only** (`State.near`, `CORNERS_TO` 0); from Medium
+  a run is the four sides. The rules sheet adds `BB_RULES_CORNERS` on Easy.
+- **Hard and Insane ring nothing** (`State.guides`, `GUIDES_TO` 1): no sun
+  ring on the bare patches or the tin's free places while a pick is held.
+  The pick itself still lifts and draws together on every band.
+- **A tap fills a stretch, not the cloth**: `State.sew` puts the pick onto
+  the tapped bare patch and the bare patches of that colour joined to it
+  (`bare_run`, by the band's own `near`), nearest first. A bare patch of
+  the colour elsewhere is another tap. Read as a rule for every band, not
+  only Hard and Insane: it is what makes the next point worth having.
+- **A pick stays picked** until it is used up or tapped again: what a sew
+  had no patch for, and what the tin had no room for, stay in the hand. This
+  takes back "a pick never outlives its move" above and keeps the half of
+  it that mattered: **a tap on a button in the tin is always a pick,
+  whatever is held** (a run off the cloth goes in on a free place or the
+  tin's wood). The bulb's move lets its leftover go.
+- `par` is the hand's moves under these rules (one sew a stretch): median
+  20 / 46 / 67 / 95 by band, 7 to 142.
+- Checked with no window (the user had asked for fewer): the rules probe
+  1,080 runs, the board probe 32 days through `tap` and `tap_tin`, both 0
+  failures; the tutorial's SEW and TIN lessons replayed on `Small`
+  headless (12 of 12 sewn; three sewn and the tin at 4 of 5); the suite
+  249,804. **Not seen on a screen**: the missing rings on Hard, the pick
+  left in the hand after a sew, the reworded lines, the win harness and the
+  buzz walk.
+

@@ -152,6 +152,9 @@ func _pick() -> void:
 	if move.is_empty():
 		return
 	_move = move
+	# a pick stays picked after its move: put it down before the next
+	if _puzzle.holding():
+		_puzzle._drop()
 	if OS.get_cmdline_user_args().has("trace"):
 		print("pick ", move, " held_c ", _puzzle._held_c, " tin ", _puzzle.state.tin, " taps ", _puzzle.state.taps)
 	if (move.cells as PackedInt32Array).is_empty():

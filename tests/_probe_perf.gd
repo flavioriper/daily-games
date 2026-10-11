@@ -4843,6 +4843,8 @@ func _move_buttons() -> void:
 	var move: Dictionary = st.hint()
 	if move.is_empty():
 		return
+	if _puzzle.holding():
+		_puzzle._drop()
 	if (move.cells as PackedInt32Array).is_empty():
 		_click(_puzzle.tin_centre(move.places[0]))
 	else:

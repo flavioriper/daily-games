@@ -223,7 +223,10 @@ func puzzle_id() -> String: return "buttons"
 func title() -> String: return "Button Box"
 
 func rules() -> String:
-	var out := tr("BB_RULES") + "\n\n" + tr("BB_RULES_TIN") % (state.capacity() - state.colours_done())
+	var out := tr("BB_RULES")
+	if state.band <= State.CORNERS_TO:
+		out += " " + tr("BB_RULES_CORNERS")
+	out += "\n\n" + tr("BB_RULES_TIN") % (state.capacity() - state.colours_done())
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
@@ -470,10 +473,13 @@ func _build_buttons(now: float) -> void:
 		busy = true
 		# where the pick may go: a ring on every bare patch of its colour,
 		# and on the tin's free places for a run off the cloth
+		# (Easy and Medium only: Hard and Insane never show where to place)
 		var pulse := 1.0 + 0.07 * sin((now - _held_at) * 7.0)
-		for i in state.bare_of(_held_c):
-			rest.append(_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.82, 0.0, cell_centre(i)))
-		if not _held_cells.is_empty():
+		var guided: bool = state.guides()
+		if guided:
+			for i in state.bare_of(_held_c):
+				rest.append(_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.82, 0.0, cell_centre(i)))
+		if guided and not _held_cells.is_empty():
 			var free: int = state.capacity() - state.in_tin()
 			for p in _tin_places:
 				if free > 0 and p < state.capacity() and state.tin[p] < 0:
@@ -800,11 +806,18 @@ func tap(i: int) -> void:
 		if int(res.why) != State.OK:
 			_refuse(i, "BB_REFUSE_WRONG")
 			return
-		# The ones no patch was left for go back where they were, let go: a
-		# pick that outlived its move left the tin's own out of reach under
-		# it (the user, 2026-10-11: "something is causing the game to get
-		# stuck").
-		_unhold()
+		# The ones no patch was left for stay picked, for the next bare patch
+		# (the user, 2026-10-11: "it should keep selected until end or use
+		# click on it again, so user can select a color and click into
+		# different places of board to keep placing"). A pick that outlives
+		# its move must never keep the tin's own out of reach: `tap_tin`.
+		var kept: PackedInt32Array = res.kept
+		if kept.is_empty():
+			_unhold()
+		elif _held_cells.is_empty():
+			_held_places = kept
+		else:
+			_held_cells = kept
 		_play(res, i, starts)
 		return
 	match state.judge(i):
@@ -822,27 +835,31 @@ func tap(i: int) -> void:
 func tap_tin(place := -1) -> void:
 	if not _can_play():
 		return
-	var full: bool = state.in_tin() >= state.capacity()
-	# A run off the cloth goes in -- unless the tin is full and the tap is on
-	# a button in it, which is then the pick: with a full tin its buttons are
-	# the way on, and they must never be out of reach.
-	if not _held_cells.is_empty() and not (full and place >= 0 and state.tin[place] >= 0):
+	# A tap on a button in the tin is always a pick, whatever is held: the
+	# tin's own are the way on when it is full, and a run still picked off
+	# the cloth once kept them out of reach ("something is causing the game
+	# to get stuck"). A run off the cloth goes in on a tap on a free place
+	# or on the tin's wood.
+	var on_button: bool = place >= 0 and state.tin[place] >= 0
+	if not _held_cells.is_empty() and not on_button:
 		var starts := {}
 		var now := _now()
 		for g in _held_cells:
 			starts[g] = _held_pos(g, false, now)
 		var res: Dictionary = state.stow(_held_cells)
 		if int(res.why) != State.OK:
-			_unhold()
 			_tell(tr("BB_REFUSE_FULL"))
 			fx.cue("locked")
-			_redraw()
 			return
-		_unhold()
+		# what the tin had no room for stays picked
+		var kept: PackedInt32Array = res.kept
+		if kept.is_empty():
+			_unhold()
+		else:
+			_held_cells = kept
 		_play(res, -1, starts)
-		var kept: int = (res.kept as PackedInt32Array).size()
-		if kept > 0:
-			_tell(tr("BB_KEPT_ONE") if kept == 1 else tr("BB_KEPT_N") % kept)
+		if kept.size() > 0:
+			_tell(tr("BB_KEPT_ONE") if kept.size() == 1 else tr("BB_KEPT_N") % kept.size())
 		return
 	var c: int = state.tin[place] if place >= 0 else -1
 	if c < 0 or (holding() and _held_cells.is_empty() and _held_c == c):
@@ -1043,7 +1060,10 @@ func hint() -> bool:
 		if to >= 0:
 			tap(to)
 		else:
-			tap_tin())
+			tap_tin()
+		# the bulb's move is one move: what it could not place is let go
+		_unhold()
+		_redraw())
 	return true
 
 ## The cloth as the day opened it, every button popping back on, and on
