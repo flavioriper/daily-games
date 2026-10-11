@@ -18,7 +18,7 @@ const Sim = preload("res://arcade/gumdrop_sim.gd")
 const Mould = preload("res://arcade/gumdrop_mould.gd")
 const Boosters = preload("res://arcade/boosters.gd")
 
-enum Lesson { FILL, WALLS, MATCH, MIX, BOOSTS, HUD }
+enum Lesson { FILL, SOAK, MATCH, MIX, BOOSTS, HUD }
 
 var lesson: int = Lesson.FILL
 
@@ -55,15 +55,16 @@ class Round extends "res://arcade/gumdrop_sim.gd":
 		_goal = tip
 		events.clear()
 
-	## A cell already this full of a flavour.
+	## A cell already coloured this far toward the card's shade of a flavour.
 	func filled(c: int, flavour: int, part: float) -> void:
 		var pig: Vector3 = Mould.PIGMENT[flavour]
+		var conc := part * C_FULL
 		for i in N * N:
 			if reg[i] == c:
-				depth[i] = part * FULL
-				red[i] = depth[i] * pig.x
-				yel[i] = depth[i] * pig.y
-				blu[i] = depth[i] * pig.z
+				red[i] = conc * pig.x
+				yel[i] = conc * pig.y
+				blu[i] = conc * pig.z
+		poured += conc * count[c]
 		moving = true
 		phase = Phase.PLAY
 		measure()
@@ -107,7 +108,7 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 	## flies over the page.
 	class Quiet extends "res://arcade/rewards.gd":
 		func sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "", rise := 0.0, keep := false) -> Dictionary:
-			if id != "spill" and id != "pct" and id != "word" and id != "empty":
+			if id != "pct" and id != "word":
 				return {}
 			return super(text, where, mini(fs, 60), life, false, col, false, id, rise, keep)
 
@@ -253,20 +254,21 @@ func _reset() -> void:
 			at = game.pulses(at + 1.4, 5, 1.0, 0.45)
 			_length = at + 1.6
 			_still_at = 5.0
-		Lesson.WALLS:
-			# held down hard by the wall: over it goes
+		Lesson.SOAK:
+			# one long squeeze off the middle: the colour blooms as far as the
+			# wall and no further, evens out once let go, and a second squeeze
+			# makes it stronger
 			game.lay([F.LEMON, F.BLUEBERRY], [F.LEMON, F.BLUEBERRY])
-			var by: Vector2 = game.centre_of(0).lerp(game.centre_of(1), 0.36)
-			game.plan = [[0.5, "aim", by], [1.5, "squeeze", true], [8.0, "squeeze", false]]
-			_length = 10.0
-			_still_at = 7.6
+			var by: Vector2 = game.centre_of(0).lerp(game.centre_of(1), 0.3)
+			game.plan = [[0.5, "aim", by], [1.4, "squeeze", true], [4.2, "squeeze", false],
+				[7.4, "squeeze", true], [9.0, "squeeze", false]]
+			_length = 12.0
+			_still_at = 6.4
 		Lesson.MATCH:
 			# one half as the card has it, the other topped up, and served
 			game.lay([F.LIME, F.ORANGE], [F.LIME, F.ORANGE])
 			game.filled(0, F.LIME, 1.0)
 			game.filled(1, F.ORANGE, 0.55)
-			game.pots[0].left = 0.0
-			game.pots[1].left = float(game.pots[1].full) * 0.4
 			game.pick(1)
 			game.plan = [[0.4, "aim", game.centre_of(1)]]
 			var at := game.pulses(1.4, 2, 1.0, 0.5)
@@ -277,7 +279,6 @@ func _reset() -> void:
 			# orange has no pot: half cherry, half lemon, in the same half
 			game.lay([F.ORANGE, F.BLUEBERRY], [F.CHERRY, F.LEMON, F.BLUEBERRY])
 			game.filled(1, F.BLUEBERRY, 1.0)
-			game.pots[2].left = 0.0
 			game.plan = [[0.4, "aim", game.centre_of(0)]]
 			var at := game.pulses(1.3, 3, 0.95, 0.4)
 			game.plan.append([at, "pick", 1])
@@ -305,8 +306,8 @@ func _draw() -> void:
 	var rows: Array = []
 	if lesson == Lesson.BOOSTS:
 		rows = [
-			[Boosters.icon("gd_full"), tr("TUT_GUMDROP_BOOST_FULL")],
-			[Boosters.icon("gd_tall"), tr("TUT_GUMDROP_BOOST_TALL")],
+			[Boosters.icon("gd_soft"), tr("TUT_GUMDROP_BOOST_SOFT")],
+			[Boosters.icon("gd_kind"), tr("TUT_GUMDROP_BOOST_KIND")],
 			[Boosters.icon(Boosters.CHANCE), tr("TUT_GUMDROP_BOOST_CHANCE")],
 		]
 	else:
@@ -326,7 +327,7 @@ func _draw() -> void:
 		centres.append(c)
 		if boosts:
 			# a booster is a disc in its game's colour, the Second chance gold
-			var tint: Color = Boosters.tint(Boosters.CHANCE if k == 2 else "gd_full")
+			var tint: Color = Boosters.tint(Boosters.CHANCE if k == 2 else "gd_soft")
 			b.disc(c + Vector2(0, 6.0), chip * 0.5, Color(Pal.TEXT, 0.16))
 			b.disc(c, chip * 0.5, tint)
 		else:

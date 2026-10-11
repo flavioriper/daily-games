@@ -41,6 +41,9 @@ mine (section 4).
 
 ## 3. The syrup
 
+*(As built on 2026-10-10. Section 9 replaces the depth, the sills and the
+pots' slack as of 2026-10-11.)*
+
 `arcade/gumdrop_sim.gd`, pure data, stepped at 1/60 s. The mould is a
 square of 100 units and a grid of 36 by 36 squares lies over it. Each
 square holds a depth of red, yellow and blue pigment.
@@ -76,6 +79,9 @@ pigments beside it are stood by the tray.
 times at level 1, 0.04 less a level, never under 1.2.
 
 ## 4. The run
+
+*(The judge, the tray's cost, the self-serving mould and the set cells
+changed on 2026-10-11: section 9.)*
 
 Mould after mould, no clock. **Serve** judges the mould after 0.7 s of
 settling: each cell is how full it is (a mean depth of 0.85 is full) times
@@ -118,9 +124,10 @@ dropper over it.
 
 ## 6. The Arcade's kit
 
-- Boosters (`arcade/boosters.gd`): **Fuller pots** (`gd_full`: a third
-  more syrup in every pot, all run) and **Taller walls** (`gd_tall`: the
-  sills 1.3 times as high, all run).
+- Boosters (`arcade/boosters.gd`), as built: **Fuller pots** (`gd_full`:
+  a third more syrup in every pot, all run) and **Taller walls**
+  (`gd_tall`: the sills 1.3 times as high, all run). *Both retired on
+  2026-10-11 (section 9).*
 - **Second chance**: the mould that ended the run is clear again and its
   pots full. Not offered to a run
   that served nothing.
@@ -148,3 +155,82 @@ flagged. Haptics: `docs/agents/haptics.md` row 55.
 8. The two boosters and what the Second chance does.
 9. The score: the match itself, 50 for a perfect one.
 10. The pace: 48 squares a second, a big mould about 14 s of squeezing.
+
+Of these, the user settled 2 (no fail: kept the mark, so the run still
+ends), 3 (limited syrup: **rejected**, the pots are bottomless) and 4 (the
+match shown live: **rejected**, hidden until served) on 2026-10-11.
+
+## 9. 2026-10-11: a liquid in a jelly, no leak, no limit, no peeking
+
+The user, over the reference's screen: "remove the leak feature, no need
+for it. Also remove the tint limit, more tint color only make the color
+stronger. Also, the color should behave more like a liquid, that's why
+it's called jelly, it should act like a colored liquid filling a jelly
+particles, spreading inside it. Check no web how to do it realistic. Also
+the user should not be able to see the accuracy till it clicks to check".
+
+**What the web said of the real thing.** A gel has no free surface and no
+bulk flow of its own: dye injected into it is pressed outward through the
+pores while the plunger is down (a plume that grows at a steady pace, the
+front where the pressure runs out), then spreads only by diffusion, with a
+front that slows as the square root of time and an edge that softens as it
+goes. Students' agar labs measure exactly that. The games that look like
+this on a GPU run a velocity field with a pressure solve (Stam's
+"Real-Time Fluid Dynamics for Games", 2003) and advect the dye through it;
+that is a liquid in a bowl, not a dye in a gel, and it costs a phone a
+Jacobi solve a frame. **What was built is the gel**: no velocity field.
+
+- **A square is jelly with a concentration of pigment in it**, no top to
+  it, and the liquid pressed into it and not yet drunk (`liq`). The liquid
+  runs down its own gradient between neighbouring squares of one cell
+  (0.22 of the difference a pass, at most a fifth of what a square holds,
+  two passes a step), carrying pigment held back a little by the jelly
+  (`HOLD` 0.35: the colour's front trails the liquid's, dense at the tip
+  and soft at the edge), and the jelly drinks 2% of it a step (`SOAK`).
+  So a bloom grows under a held button at a steady pace and comes to rest
+  once it is let go; after that the pigment only diffuses, 6% of a
+  difference a step, once a step, and the sim counts the jelly as still
+  when under 0.0006 a square moves in a step.
+- **Nothing crosses a wall or the rim.** The only edges are pairs of
+  squares in one cell. Over a wall or on the tray the tip squeezes
+  nothing. There is no spill, no sill, no tray cost, no `spill` cue.
+- **The jelly has a grain**: a square's permeability is one, ±45%, read
+  smoothly from a lattice of seven by seven random heights dealt with the
+  mould; an edge passes at the pair's harmonic mean. A bloom's edge is
+  ragged for it. The shader bends its read by a grain of its own (two
+  wound sines, 0.28 of a texel), so the rag holds at pixel size.
+- **The pots are bottomless.** No `left`, no `empty`, no slack, no mould
+  that serves itself when they run dry. The dropper gives 90 squares of
+  liquid a second (a square is a concentration of one).
+- **More is stronger, without limit, and past the card's shade deeper.**
+  A square's strength is 1 - exp(-c / 0.5), scaled to 1 at a
+  concentration of 1.25 (`C_FULL`, the card's own shade); past it the hue
+  is deepened toward its square, 45% at twice `C_FULL`. That deepening is
+  the only brake on a heavy hand.
+- **The judge compares colours.** A square's match is one less its
+  colour's distance from the card's flavour, as a share of the distance
+  from clear to that flavour (so a pale lemon and a pale cherry are judged
+  alike); a cell's is the mean of its squares', the mould's of all its
+  squares. No fill, no hue cost, no tray.
+- **The match is hidden while a mould is played**: a `?` beside the card
+  where the number was, the number once served. No cell "sets" any more
+  (a ring and a note at 0.9 were live accuracy); the `set` cue went.
+- **The boosters are Softer jelly** (`gd_soft`: the jelly drinks half as
+  fast, a hold reaches further) **and Kinder marks** (`gd_kind`: every
+  mould needs 10 less). Held `gd_full` and `gd_tall` come back as gold
+  when the screen opens, as Eddy's did.
+- **The tutorial's second page** is "Let it soak": one long squeeze off
+  the middle of a half blooms to the wall and no further, evens out once
+  let go, and a second squeeze makes it stronger.
+
+Measured in `tests/_probe_gumdrop.gd`: a half-round cell of 324 squares
+held from its middle is at the card's shade in 4.5 s and at 97% after a
+rest; held 8 s it is 89% (darker than the card); the careful bot serves 32
+moulds of two runs, 10.6 s a mould, the worst 93%; the careless one (the
+first pot, a second at every cell's edge) is over at level 1; a step with
+a wet mould is 0.9 ms on this Mac.
+
+Calls that are mine, unconfirmed: the gel model over a velocity field; the
+deepening as the brake (and its strength, 45% at twice the shade); the
+grain; the pace (90 a second); the judge in colour distance; the two
+replacement boosters and the refund; the `?`.

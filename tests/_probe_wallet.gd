@@ -191,9 +191,8 @@ func _process(_d: float) -> bool:
 	Boosters.revive("eddy", ed)
 	_check(not ed.is_over() and ed.spin > 0.0, "eddy revived, with spin to turn on")
 	var gd = load("res://arcade/gumdrop_sim.gd").new(3)
-	var plain: float = float(gd.pots[0].full)
-	Boosters.apply("gumdrop", gd, ["gd_full", "gd_tall"])
-	_check(is_equal_approx(float(gd.pots[0].full), plain * gd.FULLER) and is_equal_approx(gd.wall, gd.TALLER), "gumdrop: fuller pots, taller walls")
+	Boosters.apply("gumdrop", gd, ["gd_soft", "gd_kind"])
+	_check(is_equal_approx(gd.soak, gd.SOAK * gd.SOFTER) and gd.mark() == gd.mark_of(1) - gd.KINDER, "gumdrop: softer jelly, kinder marks")
 	gd.squeeze(true)
 	for i in 12:
 		gd.step()
@@ -203,7 +202,7 @@ func _process(_d: float) -> bool:
 		gd.step()
 	_check(gd.is_over(), "gumdrop over, a mould served nearly clear")
 	Boosters.revive("gumdrop", gd)
-	_check(not gd.is_over() and float(gd.pots[0].left) == float(gd.pots[0].full), "gumdrop revived, the mould clear and the pots full")
+	_check(not gd.is_over() and not gd.wet(), "gumdrop revived, the mould clear")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

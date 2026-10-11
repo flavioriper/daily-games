@@ -4,9 +4,10 @@ extends SceneTree
 ##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [reduce] [en|pt|es]
 ## Opens the Arcade tab and the game, then presses with real touches through
 ## the viewport: a pot, a tap on the tray, the squeeze button held, a drag
-## over the tray. A careful bot then plays three moulds through the sim, the
-## fourth is squeezed beside a wall until it spills and served as it is,
-## which ends the run. Each shot prints the frame's draw calls.
+## over the tray. A careful bot then plays three moulds through the sim, in
+## the fourth one cell is held under the dropper until it is far darker
+## than the card and the mould served as it is, which ends the run. Each
+## shot prints the frame's draw calls.
 ## user://arcade.cfg is put back on every way out.
 
 const Sim = preload("res://arcade/gumdrop_sim.gd")
@@ -57,12 +58,9 @@ func _shot(name: String) -> void:
 	print("shot %s at %.1f draws=%d score=%d level=%d match=%d" % [name, _t, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 		sim.score if sim != null else 0, sim.level if sim != null else 0, int(sim.match_all * 100.0) if sim != null else 0])
 
+## How far a cell is toward the card's shade, by its mean concentration.
 func _fill(sim: RefCounted, c: int) -> float:
-	var sum := 0.0
-	for i in sim.depth.size():
-		if sim.reg[i] == c:
-			sum += minf(sim.depth[i], 1.0)
-	return sum / (sim.count[c] * Sim.FULL)
+	return float(sim.fill_of(c).x) / Sim.C_FULL
 
 ## The careful hand, a frame at a time: the first cell not yet full, from
 ## its middle, the pots its flavour is made of, in pulses.
@@ -75,14 +73,18 @@ func _bot() -> void:
 		var upto := 0.0
 		var have := _fill(sim, c)
 		for f: int in recipe:
-			upto += float(recipe[f]) * 0.98
+			upto += float(recipe[f]) * 0.96
 			if have < upto:
 				sim.pick(sim.mould.pots.find(f))
 				sim.aim(sim.centre_of(c))
-				sim.squeeze(fmod(_t, 0.45) < 0.15)
+				sim.squeeze(true)
 				return
 	sim.squeeze(false)
-	if not sim.moving:
+	# a moment for the colour to even out, then served
+	var wet := 0.0
+	for l: float in sim.liq:
+		wet += l
+	if wet < 1.0:
 		sim.serve()
 
 func _skip_gold() -> void:
@@ -177,24 +179,24 @@ func _process(delta: float) -> bool:
 			if _s.sim.phase == Sim.Phase.SHOW and _s.sim.phase_t > 0.5 and _s.sim.level > _seen:
 				_seen = _s.sim.level
 				_shot("4_served_%d" % _s.sim.level)
-			if _s.sim.phase == Sim.Phase.PLAY and _s.sim.level == 2 and _s.sim.match_all > 0.4 and _seen < 100:
+			if _s.sim.phase == Sim.Phase.PLAY and _s.sim.level == 2 and _fill(_s.sim, 0) > 0.4 and _seen < 100:
 				_shot("5_mid")
 				_seen = 100
 				_s.sim.level = 8
-			if _s.sim.level == 9 and _s.sim.phase == Sim.Phase.PLAY and _s.sim.match_all > 0.5 and _seen < 200:
+			if _s.sim.level == 9 and _s.sim.phase == Sim.Phase.PLAY and _fill(_s.sim, 1) > 0.5 and _seen < 200:
 				_shot("6_late")
 				_seen = 200
 			if _s.sim.level >= 10 and _s.sim.phase == Sim.Phase.PLAY:
 				_play = false
-				# held down beside a wall
+				# one cell held under the dropper far past the card's shade
 				_s.sim.pick(0)
-				_s.sim.aim(_s.sim.centre_of(0).lerp(_s.sim.centre_of(1), 0.4))
+				_s.sim.aim(_s.sim.centre_of(0))
 				_touch(true, _s._squeeze_at)
 				_at = _t
 				_step = 6
 		6:
-			if _t > _at + 3.0:
-				_shot("7_spill")
+			if _t > _at + 9.0:
+				_shot("7_dark")
 				_touch(false, _s._squeeze_at)
 				_touch(true, _s._serve_at)
 				_touch(false, _s._serve_at)

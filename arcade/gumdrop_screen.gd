@@ -14,7 +14,9 @@ extends Control
 ## puts the tip there; a pot touched is the flavour in the dropper; the
 ## pink button squeezes for as long as it is held; the gold one serves the
 ## mould. The syrup is arcade/gumdrop_sim.gd's, stepped at its fixed DT;
-## this screen draws it and plays its events.
+## this screen draws it and plays its events. How near the card the mould
+## is stays hidden while it is played (a ? beside the card, since
+## 2026-10-11): serving it is the check, and the number is told then.
 ##
 ## Drawing: three Controls one over the other. The field draws the table,
 ## the tray and the mould's floor. The syrup is the sim's grid as one small
@@ -53,6 +55,11 @@ const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "gumdrop"
+## The two gold boosters the game had before 2026-10-11 (fuller pots,
+## taller walls), and what one cost: held ones are given back in gold when
+## the screen opens (core/wallet.gd).
+const OLD := ["gd_full", "gd_tall"]
+const OLD_PRICE := 120
 const MARGIN := 40
 const GAP := 20
 const HUD_H := 110.0
@@ -185,6 +192,12 @@ func _ready() -> void:
 	# the Undo and the bulb this game has not got until Play
 	top_bar.refresh(self)
 	_ask(false)
+	# the two gold boosters the game had before come back as gold
+	var back := 0
+	for id: String in OLD:
+		back += Wallet.refund(id, OLD_PRICE)
+	if back > 0:
+		_rw.sticker(tr("GD_REFUND") % back, _rw.at(self, size * Vector2(0.5, 0.5)), 44, 3.0, false, Color("fff4c2"), false, "refund")
 
 # --- building ---
 
@@ -245,11 +258,12 @@ func _build_field() -> Control:
 	_img = Image.create_from_data(Sim.N, Sim.N, false, Image.FORMAT_RGBA8, _bytes)
 	_tex = ImageTexture.create_from_image(_img)
 
+	# a ? while the mould is played, its number once it is served
 	_match_l = Label.new()
 	_match_l.theme_type_variation = "DayBig"
 	_match_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_match_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_match_l.text = "0%"
+	_match_l.text = "?"
 	field.add_child(_match_l)
 	_need_l = Label.new()
 	_need_l.theme_type_variation = "MenuKicker"
@@ -468,7 +482,7 @@ func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/gumdrop_tutorial_diagram.gd")
 	var steps := [
 		[Diagram.Lesson.FILL, "TUT_GUMDROP_FILL", tr("TUT_GUMDROP_FILL_BODY")],
-		[Diagram.Lesson.WALLS, "TUT_GUMDROP_WALLS", tr("TUT_GUMDROP_WALLS_BODY")],
+		[Diagram.Lesson.SOAK, "TUT_GUMDROP_SOAK", tr("TUT_GUMDROP_SOAK_BODY")],
 		[Diagram.Lesson.MATCH, "TUT_GUMDROP_MATCH", tr("TUT_GUMDROP_MATCH_BODY") % [Sim.MARK, Sim.MARK_TOP]],
 		[Diagram.Lesson.MIX, "TUT_GUMDROP_MIX", tr("TUT_GUMDROP_MIX_BODY") % 5],
 		[Diagram.Lesson.BOOSTS, "TUT_GUMDROP_BOOSTS", tr("TUT_GUMDROP_BOOSTS_BODY")],
@@ -536,7 +550,7 @@ func _animate(delta: float) -> void:
 		bit.t += delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
 	_tip = _tip.lerp(sim.tip, minf(1.0, delta * 30.0))
-	var pouring: bool = sim.squeezing and float(sim.pots[sim.picked].left) > 0.0 and sim.phase <= Sim.Phase.PLAY
+	var pouring: bool = sim.squeezing and sim.phase <= Sim.Phase.PLAY
 	_squash = lerpf(_squash, 1.0 if sim.squeezing else 0.0, minf(1.0, delta * 16.0))
 	if pouring and _clock - _pour_at >= POUR_GAP:
 		_pour_at = _clock
@@ -641,15 +655,6 @@ func _play_events() -> void:
 				_hint("", "")
 			"deal":
 				_on_deal()
-			"set":
-				_on_set(int(ev.cell))
-			"spill":
-				_on_spill(ev.at, bool(ev.tray))
-			"empty":
-				_fx.cue("empty")
-				_feel(Haptics.BUMP)
-				var foot: Vector2 = _pot_at[int(ev.pot)] if int(ev.pot) < _pot_at.size() else _squeeze_at
-				_rw.sticker(tr("GD_EMPTY"), _rw.at(field, foot + Vector2(0, -Art.JAR_H - 30.0)), 40, 1.3, false, Color("fffaf0"), false, "empty")
 			"serve":
 				_let_go()
 				_fx.cue("serve")
@@ -675,19 +680,6 @@ func _on_deal() -> void:
 		_feel(Haptics.TICK)
 		if bool(sim.mould.get("mixed", -1) >= 0) and sim.level == 5:
 			_rw.sticker(tr("GD_MIX_NOW"), _rw.at(field, _tray.get_center() + Vector2(0, -_tray.size.y * 0.3)), 46, 2.4, false, Color("fffaf0"), false, "mix")
-
-func _on_set(cell: int) -> void:
-	var at: Vector2 = sim.centre_of(cell)
-	_fx.cue("set", minf(1.0 + 0.04 * sim.is_set.count(true), CLIMB_TOP))
-	_feel(Haptics.TICK)
-	_ring(at, 13.0, 0.6, Color(1, 1, 1, 0.9))
-	_rw.spray(_in_rw(at), Color("fffaf0"), 5, 300.0, "spark", 0.8)
-
-func _on_spill(at: Vector2, tray: bool) -> void:
-	_fx.cue("spill", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
-	_feel(Haptics.BUMP)
-	_ring(at, 7.0, 0.5, Color(1, 1, 1, 0.7))
-	_rw.sticker(tr("GD_SPILL_TRAY" if tray else "GD_SPILL_WALL"), _in_rw(at + Vector2(0, -9.0)), 40, 1.2, false, Color("fffaf0"), false, "spill", 20.0)
 
 func _on_served(ev: Dictionary) -> void:
 	_verdict_at = _clock
@@ -738,10 +730,11 @@ func _hint(text: String, sub: String) -> void:
 func _refresh_hud() -> void:
 	if sim == null:
 		return
-	var pct := int(round(sim.match_all * 100.0))
+	# the number is told only once the mould is served: a ? until then
+	var pct := int(sim.verdict.get("pct", -1)) if sim.phase >= Sim.Phase.SHOW else -1
 	if pct != _shown_match or sim.level != _shown_level:
 		_shown_match = pct
-		_match_l.text = "%d%%" % pct
+		_match_l.text = "?" if pct < 0 else "%d%%" % pct
 		_need_l.text = tr("GD_NEED") % sim.mark()
 		# over the mark the number is the leaf's green, under it the ink
 		_match_l.add_theme_color_override("font_color", Pal.LEAF_DEEP if pct >= sim.mark() else Art.INK)
@@ -820,10 +813,7 @@ func _draw_top() -> void:
 		_top.draw_mesh(Art.jar_shadow(), null, at)
 		if on:
 			_top.draw_mesh(Art.jar_ring(), null, at)
-		var part: float = float(pot.left) / maxf(0.001, float(pot.full))
-		var syrup := Art.syrup(int(pot.flavour), part)
-		if syrup != null:
-			_top.draw_mesh(syrup, null, at)
+		_top.draw_mesh(Art.syrup(int(pot.flavour), 1.0), null, at)
 		_top.draw_mesh(Art.jar(), null, at)
 	# the buttons: a pressed one sinks and shades
 	var can: bool = sim.can_serve()

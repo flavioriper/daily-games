@@ -3428,15 +3428,9 @@ SETS = {
         "pour":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
         # The next tray set down.
         "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0.09:0,-2"),
-        # Syrup over a wall: the block, two notches going down.
-        "spill":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.1:-2,-5"),
-        # A pot run dry: two low notches alike.
-        "empty":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.12:-3,-3"),
-        # The mould served: one knock, the tray picked up.
+        # The mould served: one knock, the tray picked up. (Spill, empty and
+        # set went on 2026-10-11 with the leak, the limit and the live match.)
         "serve":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-4"),
-        # A cell set as it is wanted: one note. The screen plays each next
-        # cell of a mould a little higher, never past five semitones.
-        "set":       ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:2", "cut:0.45"),
         # Served over the mark: two notes up a fourth.
         "good":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
         # Served perfect: three up.

@@ -3202,30 +3202,70 @@ nothing else**. Mould after mould with no clock; each is served and judged
 by how near the card it is, and one under its mark (60, rising to 80) ends
 the run.
 
+**2026-10-11, the user's three orders** ("remove the leak feature", "remove
+the tint limit, more tint color only make the color stronger", "the color
+should behave more like a liquid ... a colored liquid filling a jelly ...
+spreading inside it", "the user should not be able to see the accuracy
+till it clicks to check"): the syrup no longer stands on the mould as a
+depth that runs over walls; it soaks into the jelly as a concentration
+with no top, the walls hold everything, the pots never run dry, and the
+match is a `?` beside the card until the serve button tells it. Straight to
+Godot, no concept tab (orders on a built screen). The spec's section 9 has
+the physics and the calls.
+
 - **The game is pure data** (`arcade/gumdrop_sim.gd`, a grid of 36 by 36
   squares over a mould of 100 units, fixed 1/60 s): `pick()`, `aim()`,
-  `squeeze()`, `serve()`, `step()`, `events`. Each square holds a depth of
-  three pigments; syrup runs from the deeper square to the shallower and
-  **nothing is moved by rule**. A wall is a sill between two squares, so
-  a spill is syrup standing higher than the wall and nothing else.
+  `squeeze()`, `serve()`, `step()`, `events`. Each square is a bit of
+  jelly holding a concentration of three pigments (`red`, `yel`, `blu`, no
+  limit) and the liquid pressed into it and not yet drunk (`liq`). The
+  liquid runs down its own gradient from square to square within a cell
+  (`FLOW`, `LEAVE`, two passes), carrying pigment held back a little
+  (`HOLD`), and the jelly drinks it (`SOAK`, 2% a step), so a bloom grows
+  at a steady pace under a held button and rests when it is let go; after
+  that the pigment only diffuses (`DIFF`, once a step), and under `STILL`
+  a square moved the sim counts as still (`moving` false, the texture no
+  longer written). **Nothing is moved by rule**, and nothing crosses a
+  wall: only pairs of squares in one cell are edges (`_ea`, `_eb`), with a
+  conductance from the jelly's grain (`perm`, a smoothed lattice of random
+  heights, ±45%), which is what makes a bloom's edge ragged. Over a wall
+  or the tray the tip squeezes nothing.
   `tests/_probe_gumdrop.gd -- [runs] [levels]` builds every design and
-  proves the promises (none made or lost, a cell squeezed from its middle
-  in pulses never spills, one held down by a wall does, two pigments blend
-  to the flavour between) and plays a careful bot and a careless one; run
-  it after touching the sim or the moulds. It takes two minutes.
+  proves the promises (no pigment made or lost, nothing across a wall
+  however hard it is held beside one, a cell held from its middle blooms
+  to its walls and evens out, more is stronger without limit and past the
+  shade darker, two pigments blend to the flavour between, a bloom comes
+  to rest) and plays a careful bot (each cell held from its middle to the
+  card's shade, 10.6 s a mould, the worst 93%) and a careless one (the
+  first pot a second at every cell's edge: over at level 1); run it after
+  touching the sim or the moulds. It takes two minutes. A step with a wet
+  mould is 0.9 ms on this Mac.
+- **The colour is the sim's** (`Sim.hue`, `strength`, `deep`, `colour`,
+  `nearness`), because the judge compares colours: a square's strength is
+  `1 - exp(-c / C0)` scaled to 1 at `C_FULL` (the card's own shade), and
+  past `C_FULL` the hue is deepened toward its square, `DEEP` at twice it.
+  **The match of a square is how near its colour is to the card's**, as a
+  share of the way from clear to the card's colour (so lemon and cherry
+  are judged alike); a cell's is its squares' mean, the mould's all of
+  them. A heavy hand goes darker than the card and matches less: that is
+  the brake, now that nothing spills and the pots are bottomless. `Art`
+  reads `FLAVOURS` from the sim.
 - **A mould is polygons made by rule** (`arcade/gumdrop_mould.gd`): an
   outline cut into sectors, a core and sectors, or bands. The sim's grid
   and the art's meshes are both made from them. A wall is 5 units for a
   reason: the syrup is drawn from squares 2.8 units wide, and a thinner
   wall let the next cell's colour show at a cell's edge.
 - **The syrup is one small texture** (`_tex`, 36 by 36, each texel its
-  colour times its depth with the depth in alpha), written from the sim
-  only while something runs (`sim.moving`) and drawn once through
+  colour times its strength with the strength in alpha, from
+  `Sim.colour`), written from the sim only while something runs
+  (`sim.moving`) and drawn once through
   `shaders/gumdrop_syrup_2d.gdshader`: a four-tap cubic, so no square
-  shows as a diamond. **A canvas shader's `COLOR` already holds the
-  texture's sample**: multiplying the result by it drew every flavour
-  twice as dark (the first shots' mustard lemon). The Control that draws
-  it sets `texture_filter` to linear: the four taps rely on it.
+  shows as a diamond, read at a point bent by a grain of two wound sines
+  (`BEND` 0.28 texel, no hash noise: a phone's fragment precision would
+  not carry it), so a bloom's edge is a soft rag at pixel size. **A canvas
+  shader's `COLOR` already holds the texture's sample**: multiplying the
+  result by it drew every flavour twice as dark (the first shots' mustard
+  lemon). The Control that draws it sets `texture_filter` to linear: the
+  four taps rely on it.
 - **Three Controls, one over the other**: the field (table, tray, the
   mould's floor), the syrup, the top (walls, card, pots, buttons, dropper,
   one live mesh). The walls are strokes of the cells' own outlines drawn
@@ -3241,11 +3281,22 @@ the run.
 - **The tutorial's bench is the same screen** (`Bench` in
   `ui/hud/gumdrop_tutorial_diagram.gd`): laid out on 1040 by 640 of its
   own (`_place` overridden) and scaled to the page, worked by a `Round`
-  whose plan says what the hand does when.
+  whose plan says what the hand does when. Six pages: fill, soak (one long
+  squeeze off the middle blooms to the wall and evens out, a second makes
+  it stronger), match (the number only once served), mix, boosters, the
+  buttons.
+- **The match is hidden in play**: the `DayBig` label beside the card is
+  a `?` until the mould is served, then its number, green over the mark.
+  No cell "sets" any more (that was live accuracy); the `set`, `spill` and
+  `empty` cues and their files went with the leak and the limit, and the
+  set has nine cues.
+- **The boosters are Softer jelly** (`gd_soft`: the jelly drinks the
+  liquid half as fast, so a hold reaches further) **and Kinder marks**
+  (`gd_kind`: every mould needs 10 less). The old two (`gd_full`,
+  `gd_tall`) are given back as gold when the screen opens
+  (`Wallet.refund`, `OLD`, `OLD_PRICE`), as Eddy's were.
 - **No mascot**: the pieces are marks.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Gumdrop bot.
-- The careful bot's worst mould is 87% against a top mark of 80: the late
-  moulds (eight sectors, a core and six) are where a run ends.
-- Owed: a phone (the sim's step is 0.8 ms on this Mac with a wet mould,
-  untimed there), the sounds heard, pt and es read, the spec's ten calls.
-  The reference was not played: its canvas took no keys from here.
+- Owed: a phone (the sim's step is 0.9 ms on this Mac with a wet mould,
+  untimed there), the sounds heard, pt and es read, the spec's calls. The
+  reference was not played: its canvas took no keys from here.

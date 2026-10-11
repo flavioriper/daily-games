@@ -37,10 +37,9 @@ const BULB_HI := Color("eda2ae")
 const BULB_LOW := Color("b65a6e")
 const SERVE := Color("f2b63c")
 const SERVE_LOW := Color("d99a22")
-## The six flavours, in Mould.Flavour's order, and all three pigments at
-## once.
-const FLAVOURS := [Color("e2495a"), Color("f39237"), Color("f4d44a"), Color("79c94f"), Color("4a86df"), Color("9a62d2")]
-const MUD := Color("7a5a48")
+## The six flavours, in Mould.Flavour's order: the sim's, since the judge
+## compares colours.
+const FLAVOURS := Sim.FLAVOURS
 ## The locale key of each flavour's name.
 const NAMES := ["GD_CHERRY", "GD_ORANGE", "GD_LEMON", "GD_LIME", "GD_BLUEBERRY", "GD_GRAPE"]
 ## The jar a pot is, in pixels, its mesh built once.
@@ -60,41 +59,28 @@ static func _made(key: String, build: Callable) -> ArrayMesh:
 	_cache[key] = m
 	return m
 
-## The colour of red, yellow and blue pigment in these parts: each flavour
-## where it is alone or half and half with its neighbour, and mud in the
-## middle, where all three meet.
-static func tint(r: float, y: float, b: float) -> Color:
-	var top := maxf(r, maxf(y, b))
-	if top <= 0.0:
-		return Color.WHITE
-	r /= top
-	y /= top
-	b /= top
-	var c00: Color = Color.WHITE.lerp(FLAVOURS[0], r)
-	var c10: Color = FLAVOURS[2].lerp(FLAVOURS[1], r)
-	var c01: Color = FLAVOURS[4].lerp(FLAVOURS[5], r)
-	var c11: Color = FLAVOURS[3].lerp(MUD, r)
-	return c00.lerp(c10, y).lerp(c01.lerp(c11, y), b)
-
 ## The sim's squares as bytes for the syrup's texture: each one's colour
-## times its depth, the depth in alpha.
+## (`Sim.colour`: the hue at its strength, deepened past the card's shade)
+## times its strength, the strength in alpha, so the shader's cubic blends
+## them right and takes the colour back out.
 static func paint(sim: RefCounted, into: PackedByteArray) -> void:
 	var n: int = Sim.N * Sim.N
-	var depth: PackedFloat32Array = sim.depth
 	var red: PackedFloat32Array = sim.red
 	var yel: PackedFloat32Array = sim.yel
 	var blu: PackedFloat32Array = sim.blu
 	for i in n:
-		var d := depth[i]
+		var r := red[i]
+		var y := yel[i]
+		var b := blu[i]
 		var at := i * 4
-		if d <= 0.004:
+		if r + y + b <= 0.002:
 			into[at] = 0
 			into[at + 1] = 0
 			into[at + 2] = 0
 			into[at + 3] = 0
 			continue
-		var a := minf(d, 1.0) * 255.0
-		var c := tint(red[i], yel[i], blu[i])
+		var c := Sim.colour(r, y, b)
+		var a := c.a * 255.0
 		into[at] = int(c.r * a)
 		into[at + 1] = int(c.g * a)
 		into[at + 2] = int(c.b * a)
@@ -207,7 +193,9 @@ static func _moved(p: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	return out
 
 ## A pot's syrup: what a jar holds when it is `part` full, built with the
-## jar's foot at the origin. Twelve fills a flavour are kept.
+## jar's foot at the origin. Twelve fills a flavour are kept. The game's
+## pots never run dry (since 2026-10-11) and stand full; the banner's are
+## drawn part full.
 static func syrup(flavour: int, part: float) -> ArrayMesh:
 	var step := int(round(clampf(part, 0.0, 1.0) * 12.0))
 	if step <= 0:

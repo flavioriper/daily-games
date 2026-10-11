@@ -3,14 +3,16 @@ extends SceneTree
 ## Proves Gumdrop's syrup headless and plays it with two bots. Run after
 ## touching arcade/gumdrop_sim.gd or arcade/gumdrop_mould.gd.
 ##   godot --headless --script tests/_probe_gumdrop.gd -- [runs] [levels]
-## Every design is built and its cells counted. The syrup's promises: none
-## is made or lost as it runs, a cell squeezed from its middle a little at
-## a time fills without a drop over its walls, and the same cell squeezed
-## beside a wall without a pause spills. Then a careful bot (each cell from
-## its middle, in pulses, the right pots) plays `runs` runs of `levels`
-## moulds and must serve every one over the mark, and a careless one (the
-## first pot, held down by a wall) must not get far. Then the boosters and
-## the Second chance.
+## Every design is built and its cells counted. The syrup's promises: no
+## pigment is made or lost as it soaks, nothing crosses a wall however hard
+## a cell is squeezed beside it, a cell held from its middle blooms to its
+## walls and evens out once let go, more makes it stronger and past the
+## card's shade darker, and two pigments blend to the flavour between. Then
+## a careful bot (each cell from its middle, held until it is the card's
+## shade, a rest after) plays `runs` runs of `levels` moulds and must serve
+## every one over the mark, and a careless one (the first pot, a second at
+## every cell's edge) must not get far. Then the boosters and the Second
+## chance.
 
 const Sim = preload("res://arcade/gumdrop_sim.gd")
 const Mould = preload("res://arcade/gumdrop_mould.gd")
@@ -65,82 +67,109 @@ func _run(s: RefCounted, seconds: float) -> Dictionary:
 		s.events.clear()
 	return tally
 
-func _total(s: RefCounted) -> float:
+## All the pigment in the mould, and all of it in one cell (-1 the tray).
+func _total(s: RefCounted, c := -2) -> float:
 	var sum := 0.0
-	for i in s.depth.size():
-		sum += s.depth[i]
+	for i in s.red.size():
+		if c == -2 or s.reg[i] == c:
+			sum += s.red[i] + s.yel[i] + s.blu[i]
 	return sum
 
+## How far a cell is toward the card's shade, by its mean concentration.
 func _fill(s: RefCounted, c: int) -> float:
-	var sum := 0.0
-	for i in s.depth.size():
-		if s.reg[i] == c:
-			sum += minf(s.depth[i], 1.0)
-	return sum / (s.count[c] * Sim.FULL)
+	return float(s.fill_of(c).x) / Sim.C_FULL
 
-## Squeezes cell `c` from `from` with pot `pot` until it is `upto` full, in
-## pulses of `pulse` seconds with `rest` between (0: never lets go).
-func _squeeze(s: RefCounted, c: int, pot: int, from: Vector2, upto: float, pulse: float, rest: float) -> Dictionary:
-	var tally := {}
+## Holds the dropper on `from` with pot `pot` until cell `c` is `upto` of
+## the way to the card's shade, then rests `rest` seconds.
+func _hold(s: RefCounted, c: int, pot: int, from: Vector2, upto: float, rest: float) -> void:
 	s.pick(pot)
 	s.aim(from)
 	var guard := 0
-	while _fill(s, c) < upto and float(s.pots[pot].left) > 0.0 and guard < 400 and s.phase <= Sim.Phase.PLAY:
+	s.squeeze(true)
+	while _fill(s, c) < upto and guard < 1800 and s.phase <= Sim.Phase.PLAY:
 		guard += 1
-		s.squeeze(true)
-		var a := _run(s, pulse)
-		s.squeeze(false)
-		var b := _run(s, rest) if rest > 0.0 else {}
-		for k in a:
-			tally[k] = int(tally.get(k, 0)) + int(a[k])
-		for k in b:
-			tally[k] = int(tally.get(k, 0)) + int(b[k])
-	return tally
+		s.step()
+		s.events.clear()
+	s.squeeze(false)
+	if rest > 0.0:
+		_run(s, rest)
 
 func _syrup() -> void:
 	var s = Sim.new(3)
 	var m := Mould.build(Mould.Shape.ROUND, Mould.Cut.SECTORS, 2)
 	m.want = [0, 2]
 	m.pots = [0, 2]
+	m.mixed = -1
 	s.deal(m)
 	s.events.clear()
-	var before := 0.0
-	for p: Dictionary in s.pots:
-		before += float(p.left)
-	var tally := _squeeze(s, 0, 0, s.centre_of(0), 0.99, 0.2, 0.25)
-	_run(s, 2.0)
-	var left := 0.0
-	for p: Dictionary in s.pots:
-		left += float(p.left)
-	_check("no syrup is made or lost as it runs (%.3f out of the pots, %.3f in the tray)" % [before - left, _total(s)], absf((before - left) - _total(s)) < 0.01)
-	_check("a cell squeezed from its middle in pulses fills with nothing over a wall (%d spills)" % int(tally.get("spill", 0)), int(tally.get("spill", 0)) == 0 and _fill(s, 0) >= 0.97)
-	_check("and nothing of it is in the next cell (%.3f)" % _fill(s, 1), _fill(s, 1) < 0.001)
-	_check("it sets (%.2f)" % s.cell_match[0], s.cell_match[0] >= Sim.SET_AT)
-	# the same cell, held down by its wall
+	_hold(s, 0, 0, s.centre_of(0), 1.0, 4.0)
+	s.measure()
+	_check("no pigment is made or lost as it soaks (%.2f squeezed, %.2f in the jelly)" % [s.poured, _total(s)], absf(s.poured - _total(s)) < 0.05)
+	var f: Vector2 = s.fill_of(0)
+	_check("a cell held from its middle blooms to its walls and evens out (the least square %.2f of the mean %.2f, match %.2f)" % [f.y, f.x, s.cell_match[0]], f.y >= 0.6 * f.x and s.cell_match[0] >= 0.9)
+	_check("and nothing of it is in the next cell or on the tray (%.4f, %.4f)" % [_total(s, 1), _total(s, -1)], _total(s, 1) == 0.0 and _total(s, -1) == 0.0)
+	# the same cell, held down hard beside its wall
 	s = Sim.new(3)
 	s.deal(m)
 	s.events.clear()
 	var by_wall: Vector2 = s.centre_of(0).lerp(s.centre_of(1), 0.38)
 	if s.reg[Sim.square(by_wall)] != 0:
 		by_wall = s.centre_of(0).lerp(s.centre_of(1), 0.25)
-	tally = _squeeze(s, 0, 0, by_wall, 0.99, 0.5, 0.0)
-	_check("held down beside a wall it spills before it is full (%d spills, the next cell %.2f)" % [int(tally.get("spill", 0)), _fill(s, 1)], int(tally.get("spill", 0)) > 0)
+	_hold(s, 0, 0, by_wall, 2.0, 2.0)
+	_check("held hard beside a wall nothing crosses it (the next cell %.4f, the tray %.4f, the cell itself %.2f of the shade)" % [_total(s, 1), _total(s, -1), _fill(s, 0)], _total(s, 1) == 0.0 and _total(s, -1) == 0.0 and _fill(s, 0) >= 1.9)
+	# more is stronger, and past the card's shade darker
+	s = Sim.new(3)
+	s.deal(m)
+	var last := -1.0
+	var climbs := true
+	var at_shade := 0.0
+	var dark := 0.0
+	s.pick(0)
+	s.aim(s.centre_of(0))
+	for k in 20:
+		s.squeeze(true)
+		_run(s, 0.5)
+		s.squeeze(false)
+		_run(s, 0.5)
+		s.measure()
+		var fill := _fill(s, 0)
+		climbs = climbs and fill > last
+		last = fill
+		if at_shade == 0.0 and fill >= 1.0:
+			_run(s, 3.0)
+			s.measure()
+			at_shade = s.cell_match[0]
+		if fill >= 2.0 and dark == 0.0:
+			_run(s, 3.0)
+			s.measure()
+			dark = s.cell_match[0]
+	_check("more syrup is more colour, with no limit (%.2f of the shade after %d holds)" % [last, 20], climbs and last >= 2.0)
+	_check("at the card's shade the cell matches it (%.2f), twice over it is darker and matches less (%.2f)" % [at_shade, dark], at_shade >= 0.9 and dark > 0.0 and dark < at_shade - 0.04)
 	# two pigments blend to the flavour between them
 	s = Sim.new(3)
 	m.want = [1, 2]
 	m.pots = [0, 2]
 	s.deal(m)
-	_squeeze(s, 0, 0, s.centre_of(0), 0.49, 0.2, 0.25)
-	_squeeze(s, 0, 1, s.centre_of(0), 0.99, 0.2, 0.25)
-	_run(s, 1.0)
+	_hold(s, 0, 0, s.centre_of(0), 0.5, 0.5)
+	_hold(s, 0, 1, s.centre_of(0), 1.0, 4.0)
 	s.measure()
 	_check("cherry and lemon half and half are orange (match %.2f)" % s.cell_match[0], s.cell_match[0] >= 0.9)
+	# a bloom comes to rest
+	s = Sim.new(3)
+	m.want = [0, 2]
+	s.deal(m)
+	_hold(s, 0, 0, s.centre_of(0), 1.0, 0.0)
+	var rested := 0.0
+	while s.moving and rested < 60.0:
+		_run(s, 1.0)
+		rested += 1.0
+	_check("a bloom let go comes to rest (%.0f s)" % rested, not s.moving and rested <= 30.0)
 	# how long a step takes with a mould full of syrup
 	s = Sim.new(4)
 	s.level = 12
 	s.deal()
 	for c in s.count.size():
-		_squeeze(s, c, 0, s.centre_of(c), 0.6, 0.3, 0.0)
+		_hold(s, c, 0, s.centre_of(c), 0.6, 0.0)
 	s.squeeze(true)
 	var from := Time.get_ticks_usec()
 	for i in 600:
@@ -155,9 +184,9 @@ func _play_carefully(s: RefCounted) -> float:
 		var recipe: Dictionary = Mould.recipe(int(s.mould.want[c]), s.mould.pots)
 		var upto := 0.0
 		for f: int in recipe:
-			upto += float(recipe[f]) * 0.99
-			_squeeze(s, c, s.mould.pots.find(f), s.centre_of(c), upto, 0.15, 0.3)
-	_run(s, 0.5)
+			upto += float(recipe[f]) * 0.98
+			_hold(s, c, s.mould.pots.find(f), s.centre_of(c), upto, 0.0)
+	_run(s, 3.0)
 	s.serve()
 	return s.t - from
 
@@ -166,14 +195,13 @@ func _careful(runs: int, levels: int) -> void:
 	var lost := 0
 	var secs := 0.0
 	var moulds := 0
-	var spills := 0
 	for r in runs:
 		var s = Sim.new(100 + r)
 		s.events.clear()
 		for lv in levels:
 			secs += _play_carefully(s)
 			moulds += 1
-			var tally := _run(s, Sim.SETTLE_T + Sim.SHOW_T + 0.1)
+			_run(s, Sim.SETTLE_T + Sim.SHOW_T + 0.1)
 			if int(s.verdict.pct) < 93:
 				print("     level %d: %d%%" % [lv + 1, int(s.verdict.pct)])
 			worst = mini(worst, int(s.verdict.pct))
@@ -198,7 +226,7 @@ func _careless(runs: int) -> void:
 				s.pick(0)
 				s.aim(by)
 				s.squeeze(true)
-				_run(s, 3.0)
+				_run(s, 1.0)
 				s.squeeze(false)
 			_run(s, 0.3)
 			s.serve()
@@ -208,9 +236,27 @@ func _careless(runs: int) -> void:
 
 func _kit() -> void:
 	var s = Sim.new(9)
-	var plain: float = float(s.pots[0].full)
-	Boosters.apply("gumdrop", s, ["gd_full", "gd_tall"])
-	_check("fuller pots, taller walls", is_equal_approx(float(s.pots[0].full), plain * Sim.FULLER) and is_equal_approx(s.wall, Sim.TALLER))
+	var plain: int = s.mark()
+	Boosters.apply("gumdrop", s, ["gd_soft", "gd_kind"])
+	_check("softer jelly, kinder marks", is_equal_approx(s.soak, Sim.SOAK * Sim.SOFTER) and s.mark() == plain - Sim.KINDER)
+	# a softer jelly: the same hold reaches further
+	var reach := []
+	for soft in [false, true]:
+		var q = Sim.new(9)
+		if soft:
+			q.softer()
+		q.pick(0)
+		q.aim(q.centre_of(0))
+		q.squeeze(true)
+		_run(q, 0.4)
+		q.squeeze(false)
+		_run(q, 2.0)
+		var far := 0
+		for i in Sim.N * Sim.N:
+			if q.reg[i] == 0 and q.red[i] + q.yel[i] + q.blu[i] > 0.1:
+				far += 1
+		reach.append(far)
+	_check("a softer jelly takes the same hold further (%d squares against %d)" % [reach[1], reach[0]], reach[1] > reach[0])
 	s.squeeze(true)
 	_run(s, 0.3)
 	s.squeeze(false)
@@ -219,4 +265,4 @@ func _kit() -> void:
 	_check("a mould served nearly clear ends the run", s.is_over())
 	var had: int = s.score
 	Boosters.revive("gumdrop", s)
-	_check("the Second chance clears the mould and fills the pots", not s.is_over() and _total(s) == 0.0 and s.score <= had and float(s.pots[0].left) == float(s.pots[0].full))
+	_check("the Second chance clears the mould", not s.is_over() and _total(s) == 0.0 and not s.wet() and s.score <= had)
