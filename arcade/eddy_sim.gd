@@ -99,8 +99,6 @@ const REACH_UP := 0.2
 const LOW := 0.25
 ## The whirlpool unwinding at the end.
 const DRAIN_T := 1.4
-## A Second chance gives this part of the spin back.
-const REVIVE := 0.5
 ## Each kind: its tier, the radius it is weighed at, the seconds it takes
 ## to take up the water's speed, its points, what it adds to the growing,
 ## and how long it is in going down.
@@ -575,13 +573,3 @@ func _restock() -> void:
 	var th := put(kind, at)
 	th.drift = (aim - at).normalized() * PUSH
 	th.fresh = FRESH
-
-## The Second chance: the whirlpool winds up again where it stopped.
-func revive() -> void:
-	phase = Phase.READY
-	phase_t = 0.0
-	spin = spin_full * REVIVE
-	_low_said = false
-	lean = Vector2.ZERO
-	vel = Vector2.ZERO
-	events.append({"type": "revive"})

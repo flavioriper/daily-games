@@ -8,7 +8,8 @@ extends RefCounted
 ##
 ## A booster helps a run start or survive and never multiplies its score.
 ## Eddy has none since 2026-10-11: its upgrades are kept and bought with its
-## own drops (arcade/eddy_upgrades.gd). It still takes the Second chance.
+## own drops (arcade/eddy_upgrades.gd), and no Second chance either: a run
+## ending there is a turn done, with the shop next (the same evening).
 ## Gumdrop has none either: it left the Arcade for the Puzzles grid on
 ## 2026-10-11, and whichever of its four (gd_full, gd_tall, gd_soft,
 ## gd_kind) are held come back as gold when the board opens

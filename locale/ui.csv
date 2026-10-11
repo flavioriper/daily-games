@@ -1415,7 +1415,6 @@ ED_NEXT,Next run,Próxima partida,Siguiente partida
 ED_STAT_TAKEN,drawn down,levados ao fundo,llevados al fondo
 ED_STAT_LEVEL,whirlpool,redemoinho,remolino
 ED_STAT_TIME,turning,girando,girando
-BST_CHANCE_EDDY,The whirlpool winds up again with half its spin.,O redemoinho volta a girar com metade da força.,El remolino vuelve a girar con la mitad de su fuerza.
 TUT_EDDY_STEER,Lean the pad,Incline o controle,Inclina el mando
 TUT_EDDY_STEER_BODY,"The round pad at the foot of the pond steers the whirlpool. Lean its knob a little to drift, all the way to hurry. Let go and the whirlpool stops.","O controle redondo ao pé do lago guia o redemoinho. Incline o botão um pouco para ir devagar, até o fim para correr. Solte e o redemoinho para.","El mando redondo al pie del estanque guía el remolino. Inclina su botón un poco para ir despacio, hasta el final para correr. Suéltalo y el remolino se detiene."
 TUT_EDDY_SLOW,Slowly does it,Devagar se vai longe,Despacio se llega lejos

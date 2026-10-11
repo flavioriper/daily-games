@@ -382,6 +382,9 @@ and `new_best` its muffled kalimba note written into phrases. **Water was
 asked for once and not kept**: a pebble dropped into a wooden bucket of
 water came back at 1.1 kHz with 84% of itself between 1 and 3 kHz. Nothing
 follows the whirlpool's turning, and the pad's press is the button's click.
+**`game_over` is not played since 2026-10-11** (the user: "instead of
+showing a you lose"): the end card plays `level`, two notes up, or
+`new_best`; the file stays in the set.
 
 **Gumdrop has a set since 2026-10-10** (`SETS["gumdrop"]`, nine cues since
 2026-10-11, twelve before), made against the cozy rules from the start and

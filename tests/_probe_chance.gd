@@ -9,8 +9,8 @@ extends SceneTree
 ##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
 ##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "eddy"]
-const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair"]
+const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair"}
 
 const Boosters = preload("res://arcade/boosters.gd")
 
@@ -96,14 +96,6 @@ func _force_over(g: String, s: Node) -> void:
 			sim.score = maxi(sim.score, 10)
 			sim.finish()
 			s.table.play_events()
-		"eddy":
-			# a leaf down (a run with none is not offered a chance), then the
-			# spin run out and the whirlpool unwound
-			sim.steer(Vector2.RIGHT)
-			sim.score = maxi(sim.score, 1)
-			sim.spin = 0.0
-			sim.phase = sim.Phase.DRAIN
-			sim.phase_t = 1000.0
 
 func _finish(code: int) -> void:
 	if _had:

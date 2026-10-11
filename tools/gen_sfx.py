@@ -3473,7 +3473,8 @@ SETS = {
         "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
         # A run beginning: three notes up.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
-        # The end card: three slow ones down.
+        # Three slow ones down. Not played since 2026-10-11: a run ending is
+        # a turn done and the end card plays `level` (arcade/eddy_screen.gd).
         "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,4", "cut:1.3"),
         # A best passed: five up a step at a time, the longest rise.
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),

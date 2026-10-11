@@ -82,17 +82,14 @@ func _bot() -> void:
 	var d: Vector2 = best.pos - sim.pos
 	_s._knob = d.normalized() * clampf(d.length() / 18.0, 0.0, 1.0) * _s.TRAVEL
 
-## A fresh wallet holds boosters, so the boost card stands before every run
-## and Second chance before every end card: play with none, and decline.
+## A fresh wallet holds boosters: were a boost card to stand before a run,
+## play with none.
 func _skip_gold() -> void:
 	if _s == null:
 		return
 	var boost: Node = _s.get_node_or_null("BoostCard")
 	if boost != null and not boost.is_queued_for_deletion():
 		boost._on_play()
-	var chance: Node = _s.get_node_or_null("SecondChance")
-	if chance != null and not chance.is_queued_for_deletion():
-		chance._on_no()
 
 func _touch(pressed: bool, at: Vector2) -> void:
 	var ev := InputEventScreenTouch.new()

@@ -3113,8 +3113,7 @@ biggest whirlpool.
     slower"). What the bullets above say of the Second chance, 600 by 1000,
     `VIEW` 240, `SPEED` 60 and the ladder's 40 runs is history.
     - **The end card is a turn done.** Head `ED_END_CARD` "Time's up!",
-      `ED_END_LINE` with the run's number (`Upgrades.runs()`, kept as `runs`
-      and counted in `Upgrades.bank`), the drops made counted up beside a
+      `ED_END_LINE` with the run's number (`Record.plays`), the drops made counted up beside a
       drop, the three tiles, "Drops to spend" with the bank, the best (or
       "A new best!") as a dim line. **Upgrades is always the gold button**,
       Next run (`ED_NEXT`) under it. The shop opened from the card has
@@ -3125,8 +3124,8 @@ biggest whirlpool.
       `BAD`.
     - **No Second chance on Eddy**: "Keep going?" stood before the card on
       any wallet with the gold, a one-take game's card in an incremental.
-      The screen no longer loads it; `Sim.revive` and `BST_CHANCE_EDDY`
-      are left, unused by the screen.
+      The screen no longer loads it; `Sim.revive`, `BST_CHANCE_EDDY`
+      and Eddy's row in `tests/_probe_chance.gd` went with it.
     - **`VIEW` 150** (240): 5.4 px a unit at level 1 on 810 wide, the core
       38 px. **The pond is 400 by 660** and `SMALL` 104, `SMALL_STEP` 5,
       `BIG` 10, `BIG_STEP` 1.5, `GREAT` 2.4, `HUGE` 1.2: as many looks wide

@@ -7,15 +7,13 @@ extends SceneTree
 ## hurried past the same leaf does not, and a duck beside a small whirlpool
 ## stays where it is until the whirlpool has grown. Then a patient bot (it
 ## slows as it nears what it is after) and a hasty one (always flat out) each
-## play `runs` runs: the patient one must do far better. Then the boosters
-## the Second chance. Then the climb: a bot plays run after run, banks what
+## play `runs` runs: the patient one must do far better. Then the climb: a bot plays run after run, banks what
 ## each scores and buys the cheapest upgrade it can, until a rowing boat goes
 ## down; the runs that takes is the game's pace (`ladder`: 60 to 90 were asked of a
 ## person, and the patient bot is far better than one, so 30 to 60 of it).
 ##   godot --headless --script tests/_probe_eddy.gd -- [runs] [ladder|only]
 
 const Sim = preload("res://arcade/eddy_sim.gd")
-const Boosters = preload("res://arcade/boosters.gd")
 const Upgrades = preload("res://arcade/eddy_upgrades.gd")
 
 var _fails := 0
@@ -209,11 +207,6 @@ func _kit() -> void:
 	s.steer(Vector2.ZERO)
 	_steps(s, Sim.SPIN + Sim.DRAIN_T + 1.0)
 	_check("a whirlpool left alone unwinds when its spin is out", s.is_over())
-	Boosters.revive("eddy", s)
-	_check("a revived run waits for the pad with half its spin", s.phase == Sim.Phase.READY and is_equal_approx(s.spin, s.spin_full * Sim.REVIVE))
-	var was: int = s.score
-	_play(s, false)
-	_check("a revived run scores again (%d more)" % (s.score - was), s.score > was)
 
 ## The climb: runs played one after another, each banked and spent on the
 ## cheapest upgrade the bank covers, until a rowing boat goes down. The runs

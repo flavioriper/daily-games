@@ -994,7 +994,7 @@ func _build_end(better: bool) -> Control:
 	col.add_child(head)
 	var line := Label.new()
 	line.name = "Line"
-	line.text = tr("ED_END_LINE") % Upgrades.runs()
+	line.text = tr("ED_END_LINE") % Record.plays(GAME)
 	line.theme_type_variation = "SheetBody"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
