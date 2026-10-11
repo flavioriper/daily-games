@@ -10,7 +10,10 @@ extends RefCounted
 ## on it, a grassy bank all round with stones, reeds and lily pads in the
 ## corners. What floats is drawn with its middle at the origin: three
 ## leaves, three petals, an acorn, and the toys -- a rubber duck, a little
-## sailing boat and a beach ball -- each in three colours (`look`).
+## sailing boat and a beach ball -- each in three colours (`look`). Above
+## the toys are what a garden leaves by a pond, to be grown into over many
+## runs: a tin bucket, a watering can and a lilo, then a raft of logs and a
+## rowing boat.
 ##
 ## The whirlpool is two meshes a core across (`funnel` and `streaks`, both
 ## built for a core of one `r` and scaled by the transform as it grows):
@@ -56,6 +59,18 @@ const HULLS_DEEP := [Color("b34a3a"), Color("3a70a0"), Color("438552")]
 const DECK := Color("f0d9a8")
 const SAIL := Color("fffaf0")
 const BALLS := [Color("e8604f"), Color("4f9fd0"), Color("f2b63c")]
+const TIN := Color("b9c4c9")
+const TIN_HI := Color("dde5e7")
+const TIN_DEEP := Color("8a979e")
+const CANS := [Color("5aa56a"), Color("d9634f"), Color("4f8fc4")]
+const CANS_DEEP := [Color("438552"), Color("b34a3a"), Color("3a70a0")]
+const LILOS := [Color("f4a7b4"), Color("8fd0c4"), Color("f2c66a")]
+const LILOS_DEEP := [Color("d97f92"), Color("64ab9e"), Color("d3a245")]
+const LOG := Color("b98958")
+const LOG_HI := Color("d3a673")
+const LOG_DEEP := Color("8a6a45")
+const ROPE := Color("efe2c4")
+const PLANK := Color("e6c998")
 const SPIN := Color("5fb3cf")
 const SPIN_LOW := Color("e39a4a")
 const BAR_BACK := Color("fffaf0")
@@ -100,6 +115,11 @@ static func thing_into(b: Face.Builder, kind: int, look: int, s: float, at := Ve
 		Sim.Kind.DUCK: _duck(into, s)
 		Sim.Kind.BOAT: _boat(into, look % 3, s)
 		Sim.Kind.BALL: _ball(into, look % 3, s)
+		Sim.Kind.BUCKET: _bucket(into, s)
+		Sim.Kind.CAN: _can(into, look % 3, s)
+		Sim.Kind.LILO: _lilo(into, look % 3, s)
+		Sim.Kind.RAFT: _raft(into, s)
+		Sim.Kind.ROWBOAT: _rowboat(into, look % 3, s)
 	if into != b:
 		b.append(into.mesh(), Transform2D(turn, at))
 
@@ -193,6 +213,102 @@ static func _ball(b: Face.Builder, look: int, s: float) -> void:
 		b.polygon(wedge, col)
 	b.disc(Vector2.ZERO, 0.2 * s, BALLS[(look + 2) % 3])
 	b.ellipse(Vector2(-0.3, -0.36) * s, 0.3 * s, 0.16 * s, Color(1, 1, 1, 0.45))
+
+## The tin bucket from above: its rim, the dark inside it with a little
+## water standing there, and its handle lying over.
+static func _bucket(b: Face.Builder, s: float) -> void:
+	b.disc(Vector2.ZERO, s, TIN_DEEP)
+	b.disc(Vector2.ZERO, 0.93 * s, TIN)
+	b.stroke(Face.Builder.arc_points(Vector2.ZERO, 0.86 * s, PI * 1.05, PI * 1.75), maxf(2.0, s * 0.07), TIN_HI)
+	b.disc(Vector2(0, 0.03 * s), 0.74 * s, TIN_DEEP.darkened(0.25))
+	b.disc(Vector2(0.04, 0.1) * s, 0.6 * s, WATER_DARK)
+	b.ellipse(Vector2(-0.12, -0.02) * s, 0.3 * s, 0.1 * s, Color(WATER_HI, 0.5))
+	# the handle, from ear to ear, fallen to one side
+	for side: float in [-1.0, 1.0]:
+		b.disc(Vector2(0, side * 0.88) * s, 0.1 * s, INK)
+	b.stroke(Face.Builder.bezier2(Vector2(0, -0.88) * s, Vector2(0.62, 0) * s, Vector2(0, 0.88) * s, 14), maxf(2.0, s * 0.08), INK)
+	b.stroke(Face.Builder.bezier2(Vector2(0.24, -0.3) * s, Vector2(0.37, 0) * s, Vector2(0.24, 0.3) * s, 6), maxf(3.0, s * 0.15), LOG)
+
+## The watering can from above, its spout toward +x: the round body open at
+## the top, the spout with its rose, the handle behind.
+static func _can(b: Face.Builder, look: int, s: float) -> void:
+	var col: Color = CANS[look]
+	var deep: Color = CANS_DEEP[look]
+	# the handle behind, a loop
+	b.stroke(Face.Builder.arc_points(Vector2(-0.56, 0) * s, 0.34 * s, PI * 0.5, PI * 1.5), maxf(3.0, s * 0.13), deep)
+	# the spout and its rose
+	b.polygon(PackedVector2Array([Vector2(0.2, -0.16) * s, Vector2(0.92, -0.07) * s, Vector2(0.92, 0.07) * s, Vector2(0.2, 0.16) * s]), deep)
+	b.polygon(PackedVector2Array([Vector2(0.24, -0.1) * s, Vector2(0.9, -0.04) * s, Vector2(0.9, 0.04) * s, Vector2(0.24, 0.1) * s]), col)
+	b.ellipse(Vector2(0.98, 0) * s, 0.1 * s, 0.2 * s, deep)
+	b.ellipse(Vector2(1.0, 0) * s, 0.06 * s, 0.15 * s, TIN_HI)
+	b.disc(Vector2(-0.14, 0) * s, 0.6 * s, deep)
+	b.disc(Vector2(-0.14, 0) * s, 0.54 * s, col)
+	b.disc(Vector2(-0.14, 0.02) * s, 0.4 * s, deep.darkened(0.25))
+	b.disc(Vector2(-0.11, 0.06) * s, 0.31 * s, WATER_DARK)
+	b.stroke(Face.Builder.arc_points(Vector2(-0.14, 0) * s, 0.47 * s, PI * 1.05, PI * 1.7), maxf(1.5, s * 0.05), Color(1, 1, 1, 0.4))
+	# the bar over the top
+	b.stroke(PackedVector2Array([Vector2(-0.52, 0) * s, Vector2(0.22, 0) * s]), maxf(2.5, s * 0.1), deep)
+
+## The lilo from above: a long air bed in ribs, its pillow toward +x.
+static func _lilo(b: Face.Builder, look: int, s: float) -> void:
+	var col: Color = LILOS[look]
+	var deep: Color = LILOS_DEEP[look]
+	var half := Vector2(1.0, 0.52) * s
+	b.fan(Face.Builder.round_rect(-half, half * 2.0, 0.2 * s), deep)
+	b.fan(Face.Builder.round_rect(-half + Vector2(0.05, 0.05) * s, half * 2.0 - Vector2(0.1, 0.1) * s, 0.16 * s), col)
+	# five ribs along it, light on each
+	for k in 5:
+		var y := (-0.4 + 0.2 * k) * s
+		if k > 0:
+			b.stroke(PackedVector2Array([Vector2(-0.9 * s, y - 0.1 * s), Vector2(0.52 * s, y - 0.1 * s)]), maxf(1.5, s * 0.03), Color(deep, 0.8))
+		b.stroke(PackedVector2Array([Vector2(-0.84 * s, y - 0.03 * s), Vector2(0.44 * s, y - 0.03 * s)]), maxf(1.5, s * 0.035), Color(1, 1, 1, 0.3))
+	# the pillow, across
+	b.fan(Face.Builder.round_rect(Vector2(0.56, -0.46) * s, Vector2(0.38, 0.92) * s, 0.14 * s), deep)
+	b.fan(Face.Builder.round_rect(Vector2(0.6, -0.42) * s, Vector2(0.3, 0.84) * s, 0.12 * s), FOAM)
+	b.ellipse(Vector2(0.72, -0.2) * s, 0.07 * s, 0.14 * s, Color(col, 0.6))
+
+## The raft from above: five logs side by side, lashed twice across.
+static func _raft(b: Face.Builder, s: float) -> void:
+	for k in 5:
+		var y := (-0.56 + 0.28 * k) * s
+		var long := (0.98 if k % 2 == 0 else 0.88) * s
+		var back := (-0.94 if k % 2 == 1 else -0.86) * s
+		b.fan(Face.Builder.round_rect(Vector2(back, y - 0.15 * s), Vector2(long - back, 0.3 * s), 0.13 * s), LOG_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(back + 0.03 * s, y - 0.12 * s), Vector2(long - back - 0.06 * s, 0.22 * s), 0.1 * s), LOG)
+		b.stroke(PackedVector2Array([Vector2(back + 0.14 * s, y - 0.05 * s), Vector2(long - 0.2 * s, y - 0.05 * s)]), maxf(1.5, s * 0.03), Color(LOG_HI, 0.9))
+		# the cut end, its rings
+		b.ellipse(Vector2(long - 0.05 * s, y), 0.05 * s, 0.11 * s, LOG_HI)
+		b.ellipse(Vector2(long - 0.05 * s, y), 0.025 * s, 0.055 * s, LOG_DEEP)
+	for x: float in [-0.5, 0.46]:
+		b.stroke(PackedVector2Array([Vector2(x, -0.72) * s, Vector2(x, 0.72) * s]), maxf(3.0, s * 0.075), ROPE.darkened(0.2))
+		b.stroke(PackedVector2Array([Vector2(x - 0.015, -0.72) * s, Vector2(x - 0.015, 0.72) * s]), maxf(1.5, s * 0.04), ROPE)
+
+## The rowing boat from above, her bow toward +x: the hull, the boards of
+## her floor, two thwarts and the oars shipped across her.
+static func _rowboat(b: Face.Builder, look: int, s: float) -> void:
+	var col: Color = HULLS[look]
+	var deep: Color = HULLS_DEEP[look]
+	# the oars lie under the gunwale's line, their blades out over the water
+	for side: float in [-1.0, 1.0]:
+		var from := Vector2(0.12, side * 0.1) * s
+		var to := Vector2(-0.5, side * 0.9) * s
+		b.stroke(PackedVector2Array([from, to]), maxf(2.0, s * 0.045), LOG_DEEP)
+		b.ellipse(to + (to - from).normalized() * 0.1 * s, 0.07 * s, 0.16 * s, LOG)
+	b.polygon(_blade(s * 1.0, s * 0.52, 1.08), deep)
+	b.polygon(_blade(s * 0.93, s * 0.45, 1.06), col)
+	b.polygon(_blade(s * 0.82, s * 0.36, 1.0), PLANK.darkened(0.12))
+	b.polygon(_blade(s * 0.78, s * 0.32, 0.98), PLANK)
+	for k in 3:
+		var y := (-0.14 + 0.14 * k) * s
+		b.stroke(PackedVector2Array([Vector2(-0.6 * s, y), Vector2(0.6 * s, y)]), maxf(1.0, s * 0.02), Color(LOG_DEEP, 0.45))
+	# her thwarts and the board at her stern
+	for x: float in [-0.3, 0.28]:
+		b.fan(Face.Builder.round_rect(Vector2(x - 0.08, -0.36) * s, Vector2(0.16, 0.72) * s, 0.03 * s), LOG_DEEP)
+		b.fan(Face.Builder.round_rect(Vector2(x - 0.07, -0.36) * s, Vector2(0.12, 0.72) * s, 0.03 * s), LOG_HI)
+	b.fan(Face.Builder.round_rect(Vector2(-0.84, -0.2) * s, Vector2(0.12, 0.4) * s, 0.03 * s), deep)
+	b.stroke(PackedVector2Array([Vector2(-0.5, -0.3) * s, Vector2(0.4, -0.34) * s]), maxf(1.5, s * 0.03), Color(1, 1, 1, 0.3))
+	for side: float in [-1.0, 1.0]:
+		b.disc(Vector2(0.0, side * 0.42) * s, 0.045 * s, INK)
 
 ## The whirlpool's mouth for a core of `r` pixels: the water going down
 ## darker ring by ring, three curls of foam turning in it, foam round its
@@ -330,6 +446,21 @@ static func _lily(b: Face.Builder, at: Vector2, r: float, turn: float, bloom: bo
 		for p in 6:
 			b.ellipse(at + Vector2.from_angle(TAU * p / 6.0) * 0.3 * r, 0.26 * r, 0.26 * r, PETALS[0] if p % 2 == 0 else PETALS[1])
 		b.disc(at, 0.16 * r, Color("f2c14e"))
+
+## A drop of the pond's water, `tall` pixels, its middle at the origin: what
+## a run banks and the shop is paid in.
+static func drop(tall: float) -> ArrayMesh:
+	return _made("drop/%.1f" % tall, func(b: Face.Builder) -> void:
+		var r := tall * 0.34
+		var c := Vector2(0, tall * 0.5 - r)
+		for pass_k in 2:
+			var grow := 1.0 if pass_k == 0 else 0.8
+			var col := WATER_DARK if pass_k == 0 else SPIN
+			var pts := PackedVector2Array([c + Vector2(0, -tall + r) * (1.0 if pass_k == 0 else 0.86)])
+			for p: Vector2 in Face.Builder.arc_points(c, r * grow, -PI * 0.22, PI * 1.22):
+				pts.append(p)
+			b.polygon(pts, col)
+		b.ellipse(c + Vector2(-0.32, 0.1) * r, 0.16 * r, 0.3 * r, Color(1, 1, 1, 0.55)))
 
 ## The pad the thumb steers by, `r` pixels across half of it: a round of
 ## pale wood with a rim and four small marks, its middle at the origin.

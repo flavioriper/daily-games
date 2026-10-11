@@ -8,9 +8,12 @@ extends SceneTree
 ## held on the pad and dragged through the viewport (printed: whether the
 ## whirlpool set off and the knob followed), 3 a bot at play, 4 a level made (the growing is set one short of
 ## the level that takes ducks), 5 a grown whirlpool with toys going down,
-## 6 the spin low, 7 the end card. Prints the draw calls at each shot. The
-## end writes a score to user://arcade.cfg, so the file this machine had is
-## put back.
+## 5b a whirlpool of the last level with a raft or a rowing boat going
+## down, 6 the spin low, 7 the end card, 8 the shop opened from it with a
+## bank to spend, 9 a level of every upgrade bought, 10 the fresh run it
+## fits. Prints the draw calls at each shot. The end writes a score, the bank
+## and the upgrades to user://arcade.cfg, so the file this machine had is put
+## back.
 
 const Sim = preload("res://arcade/eddy_sim.gd")
 
@@ -66,7 +69,7 @@ func _bot() -> void:
 	var best := {}
 	var best_w := -INF
 	for th: Dictionary in sim.things:
-		if float(th.sink) >= 0.0 or Sim.grip_of(th.kind, sim.level) < 1.0:
+		if float(th.sink) >= 0.0 or sim.grip(th.kind) < 1.0:
 			continue
 		var w: float = float(Sim.KINDS[th.kind].value) * 6.0 - float(th.pos.distance_to(sim.pos))
 		if w > best_w:
@@ -175,6 +178,17 @@ func _process(delta: float) -> bool:
 			for th: Dictionary in _s.sim.things:
 				if float(th.sink) > 0.5 and int(Sim.KINDS[th.kind].tier) == 2:
 					_shot("5_grown")
+					_s.sim.level = Sim.LEVELS
+					_s.sim.spin = _s.sim.spin_full
+					_at = _t
+					_step = 70
+					break
+		70:
+			# the camera has widened to the whole pond's width by now
+			_s.sim.spin = maxf(_s.sim.spin, 10.0)
+			for th: Dictionary in _s.sim.things:
+				if (float(th.sink) > 0.8 and int(Sim.KINDS[th.kind].tier) == 4) or _t > _at + 40.0:
+					_shot("5b_huge")
 					_s.sim.spin = _s.sim.spin_full * Sim.LOW + 0.3
 					_at = _t
 					_step = 8
@@ -191,6 +205,35 @@ func _process(delta: float) -> bool:
 		10:
 			if _t > _at + 2.4:
 				_shot("7_end")
+				_s._open_shop()
+				_at = _t
+				_step = 11
+		11:
+			if _t > _at + 0.8:
+				_shot("8_shop")
+				print("bank before buying: ", load("res://arcade/eddy_upgrades.gd").drops())
+				var shop: Node = _s.get_node("Shop")
+				for id: String in ["spin", "pull", "mouth", "reach"]:
+					shop._buy(id)
+				_at = _t
+				_step = 12
+		12:
+			if _t > _at + 0.6:
+				_shot("9_bought")
+				var ups: Dictionary = load("res://arcade/eddy_upgrades.gd").levels()
+				print("bought: ", ups, " bank ", load("res://arcade/eddy_upgrades.gd").drops())
+				(_s.get_node("Shop").find_child("Done", true, false) as Button).pressed.emit()
+				_at = _t
+				_step = 13
+		13:
+			if _t > _at + 0.3:
+				(_s._end.find_child("Again", true, false) as Button).pressed.emit()
+				_at = _t
+				_step = 14
+		14:
+			if _t > _at + 0.8:
+				print("fitted run: spin %.0f core %.1f shop button %s" % [_s.sim.spin_full, _s.sim.core(), _s._shop_b.visible])
+				_shot("10_fitted")
 				_restore()
 				return true
 	return false

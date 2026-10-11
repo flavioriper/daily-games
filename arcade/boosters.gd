@@ -7,9 +7,11 @@ extends RefCounted
 ## Spec docs/superpowers/specs/2026-09-28-gold-gifts-design.md, section 3.
 ##
 ## A booster helps a run start or survive and never multiplies its score.
+## Eddy has none since 2026-10-11: its upgrades are kept and bought with its
+## own drops (arcade/eddy_upgrades.gd). It still takes the Second chance.
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "eddy", "gumdrop"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "gumdrop"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -27,8 +29,6 @@ const ITEMS := {
 	"bl_wide": {"game": "beeline", "icon": "plus", "price": 120},
 	"dc_aces": {"game": "deckchair", "icon": "sparkle", "price": 120},
 	"dc_hints": {"game": "deckchair", "icon": "bulb", "price": 120},
-	"ed_long": {"game": "eddy", "icon": "clock", "price": 120},
-	"ed_head": {"game": "eddy", "icon": "trend", "price": 120},
 	"gd_full": {"game": "gumdrop", "icon": "plus", "price": 120},
 	"gd_tall": {"game": "gumdrop", "icon": "sparkle", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
@@ -125,10 +125,6 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 				sim.start_aces()
 			"dc_hints":
 				sim.hints += DC_HINTS
-			"ed_long":
-				sim.long_spin()
-			"ed_head":
-				sim.head_start()
 			"gd_full":
 				sim.fuller()
 			"gd_tall":

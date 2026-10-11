@@ -6,8 +6,16 @@ extends Control
 ## user, 2026-10-10: "the screen should fit everything, just like the
 ## factory does, it's gonna be a pattern from now on"): no page and no
 ## frame. Over it lie the flat boards' top bar (back, the title in ink,
-## restart, settings), a paper row with the score, the best and the
+## restart, settings), a paper row with the score, the bank of drops and the
 ## whirlpool's level, and at the foot the pad the thumb steers by.
+##
+## **A run is one of many** (the user, 2026-10-11: "a slow incremental where
+## user buy upgrades to go further and further, not a one take game", spec
+## docs/superpowers/specs/2026-10-11-eddy-incremental-design.md): what it
+## scores is banked as drops (arcade/eddy_upgrades.gd), and the shop
+## (arcade/eddy_shop.gd) is opened from the button under the opening lines
+## and from the end card. A fresh run is fitted with what was bought. Eddy
+## has no gold boosters any more; the Second chance stays.
 ##
 ## **The pond is far bigger than the screen, and a camera looks at a part of
 ## it** (the user, 2026-10-10: "a fixed bigger water scene with all objects
@@ -57,7 +65,8 @@ const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Boosters = preload("res://arcade/boosters.gd")
-const BoostCard = preload("res://arcade/boost_card.gd")
+const Upgrades = preload("res://arcade/eddy_upgrades.gd")
+const Shop = preload("res://arcade/eddy_shop.gd")
 const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
@@ -87,19 +96,20 @@ const TURF := 220.0
 ## the camera along with it.
 const EDGE := 0.3
 ## The score lettered over the pond as it passes each of these.
-const MILESTONES := [100, 200, 300, 500, 750, 1000, 1500]
+const MILESTONES := [100, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 7500, 10000]
 ## The locale key said when a level first takes a kind.
-const OPENS := {Sim.Kind.DUCK: "ED_OPEN_DUCK", Sim.Kind.BOAT: "ED_OPEN_BOAT", Sim.Kind.BALL: "ED_OPEN_BALL"}
+const OPENS := {Sim.Kind.DUCK: "ED_OPEN_DUCK", Sim.Kind.BOAT: "ED_OPEN_BOAT", Sim.Kind.BALL: "ED_OPEN_BALL",
+	Sim.Kind.BUCKET: "ED_OPEN_BUCKET", Sim.Kind.CAN: "ED_OPEN_CAN", Sim.Kind.LILO: "ED_OPEN_LILO",
+	Sim.Kind.RAFT: "ED_OPEN_RAFT", Sim.Kind.ROWBOAT: "ED_OPEN_ROWBOAT"}
 ## The cozy rules (docs/agents/sound.md): no cue climbs past five semitones,
 ## and a tick that repeats varies by TICK_VARY and climbs nothing.
 const CLIMB_TOP := 1.335
 const TICK_VARY := 0.06
 
 var sim: RefCounted
-## The run's boosters and whether it was helped (arcade/boosters.gd): a best
-## made so is marked. The Second chance is offered once a run, and the gold
-## the run earned goes on the end card.
-var _boosts: Array = []
+## Whether the run was helped by a Second chance (arcade/boosters.gd): a best
+## made so is marked. It is offered once a run, and the gold the run earned
+## goes on the end card.
 var _boosted := false
 var _chance_used := false
 var _run_gold := 0
@@ -113,7 +123,13 @@ var pad: Control
 var _fx: Node2D
 var _margins: MarginContainer
 var _score_l: Label
-var _best_l: Label
+var _bank_l: Label
+## The drops banked before this run; the plate shows them with the run's.
+var _bank := 0
+var _banked := false
+## The Upgrades button under the opening lines, and the end card's bank.
+var _shop_b: Button
+var _end_bank: Label
 var _level_l: Label
 var _banner: Label
 var _sub: Label
@@ -184,6 +200,12 @@ func _ready() -> void:
 	# the Undo and the bulb this game has not got until Play
 	top_bar.refresh(self)
 	_ask(false)
+	# the two gold boosters Eddy had before its shop come back as gold
+	var back := 0
+	for id: String in Upgrades.OLD:
+		back += Wallet.refund(id, Upgrades.OLD_PRICE)
+	if back > 0:
+		_rw.sticker(tr("ED_REFUND") % back, _rw.at(self, size * Vector2(0.5, 0.5)), 44, 3.0, false, Color("fff4c2"), false, "refund")
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -278,6 +300,17 @@ func _build_field() -> Control:
 	_sub.add_theme_color_override("font_outline_color", Art.INK)
 	_sub.add_theme_constant_override("outline_size", 8)
 	over.add_child(_sub)
+	# the shop, before a run: it keeps its own size under the two lines
+	_shop_b = Dialog.secondary("trend", tr("ED_SHOP"))
+	_shop_b.name = "Shop"
+	_shop_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_shop_b.visible = false
+	_shop_b.pressed.connect(_open_shop)
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 18
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	over.add_child(gap)
+	over.add_child(_shop_b)
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
 	return field
@@ -298,7 +331,7 @@ func _build_hud() -> Control:
 	row.custom_minimum_size.y = HUD_H
 	row.add_theme_constant_override("separation", 16)
 	var made := []
-	for key in ["FF_SCORE", "FF_BEST", "ED_LEVEL"]:
+	for key in ["FF_SCORE", "ED_BANK", "ED_LEVEL"]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		plate.size_flags_stretch_ratio = 1.25 if key == "FF_SCORE" else 1.0
@@ -320,7 +353,7 @@ func _build_hud() -> Control:
 		row.add_child(plate)
 		made.append(value)
 	_score_l = made[0]
-	_best_l = made[1]
+	_bank_l = made[1]
 	_level_l = made[2]
 	return row
 
@@ -410,7 +443,7 @@ func px(p: Vector2) -> Vector2:
 
 func _fresh_sim() -> void:
 	sim = Sim.new()
-	Boosters.apply(GAME, sim, _boosts)
+	Upgrades.fit(sim)
 	_core = sim.core()
 	_cam = sim.pos
 	_shown_level = -1
@@ -421,7 +454,10 @@ func _new_game() -> void:
 		_end.queue_free()
 		_end = null
 	_fresh_sim()
-	_boosted = not _boosts.is_empty()
+	_boosted = false
+	_bank = Upgrades.drops()
+	_banked = false
+	_end_bank = null
 	_chance_used = false
 	_run_gold = 0
 	_acc = 0.0
@@ -447,7 +483,8 @@ func _new_game() -> void:
 	top_bar.refresh(self)
 	_fx.cue("start")
 	_hint(tr("ED_READY"), tr("ED_READY_LINE"))
-	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+	var ups := Upgrades.levels()
+	Analytics.track("arcade_start", {"game": GAME, "spin": ups.spin, "pull": ups.pull, "mouth": ups.mouth, "reach": ups.reach})
 
 ## The tutorial card's pages (ui/hud/screen_tutor.gd), each a small pond
 ## played by this screen and the sim (ui/hud/eddy_tutorial_diagram.gd).
@@ -459,7 +496,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.SLOW, "TUT_EDDY_SLOW", tr("TUT_EDDY_SLOW_BODY")],
 		[Diagram.Lesson.GROW, "TUT_EDDY_GROW", tr("TUT_EDDY_GROW_BODY") % [Sim.LEVELS, Sim.level_for(Sim.Kind.DUCK)]],
 		[Diagram.Lesson.SPIN, "TUT_EDDY_SPIN", tr("TUT_EDDY_SPIN_BODY") % [int(Sim.SPIN), int(Sim.SPIN_BACK)]],
-		[Diagram.Lesson.BOOSTS, "TUT_EDDY_BOOSTS", tr("TUT_EDDY_BOOSTS_BODY")],
+		[Diagram.Lesson.SHOP, "TUT_EDDY_SHOP", tr("TUT_EDDY_SHOP_BODY")],
 		[Diagram.Lesson.HUD, "TUT_EDDY_HUD", tr("TUT_EDDY_HUD_BODY")],
 	]
 	var pages := []
@@ -701,6 +738,8 @@ func _ring(at: Vector2, r: float, life: float, col: Color) -> void:
 func _hint(text: String, sub: String) -> void:
 	var box: Control = _banner.get_meta("box")
 	Motion.stop(_banner_tw)
+	# the shop is offered only before a run has begun
+	_shop_b.visible = text != "" and sim != null and sim.phase == Sim.Phase.READY and sim.t <= 0.0
 	if text == "":
 		_banner_tw = create_tween()
 		_banner_tw.tween_property(box, "modulate:a", 0.0, 0.18)
@@ -712,6 +751,11 @@ func _hint(text: String, sub: String) -> void:
 	box.scale = Vector2.ONE
 	_banner_tw = create_tween()
 	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
+
+## The bank as the plate letters it: with the run's score while it is being
+## made, and alone once the run has been banked.
+func _bank_text() -> String:
+	return Record.grouped(_bank + (0 if _banked else sim.score))
 
 func _refresh_hud() -> void:
 	if sim == null:
@@ -729,11 +773,9 @@ func _refresh_hud() -> void:
 		Motion.bump(_score_l, 0.14, 0.26)
 	_shown_score = sim.score
 	_score_l.text = Record.grouped(sim.score)
-	_best_l.text = Record.grouped(maxi(_best, sim.score))
+	_bank_l.text = _bank_text()
 	if not _beat_best and _best > 0 and sim.score > _best:
 		_beat_best = true
-		_best_l.pivot_offset = _best_l.size * 0.5
-		Motion.bump(_best_l, 0.3, 0.4)
 		_new_best_passed()
 	_score_moments()
 
@@ -766,7 +808,7 @@ func _draw_field() -> void:
 	# what floats, the small things under the toys, and over them what is
 	# going down
 	var sinking: Array = []
-	for tier: int in [1, 2]:
+	for tier: int in range(1, Sim.TIERS + 1):
 		for th: Dictionary in sim.things:
 			if int(Sim.KINDS[th.kind].tier) != tier:
 				continue
@@ -776,7 +818,7 @@ func _draw_field() -> void:
 				sinking.append(th)
 				continue
 			var sc := 1.0
-			if tier == 2 and not Motion.reduce:
+			if tier >= 2 and not Motion.reduce:
 				sc += 0.03 * sin(_clock * 2.2 + float(th.id))
 			var a := clampf(float(th.age) / 0.5, 0.0, 1.0)
 			field.draw_mesh(Art.thing(th.kind, th.look, THING_U), null, Transform2D(float(th.ang), Vector2(sc, sc) * grow, 0.0, px(th.pos)), Color(1, 1, 1, a))
@@ -872,8 +914,8 @@ func _score_moments() -> void:
 
 func _new_best_passed() -> void:
 	_rw.sticker(tr("FF_NEW_BEST"), _rw.at(field, field.size * Vector2(0.5, 0.62)), 60, 1.6, true, Color.WHITE, false, "best")
-	_rw.spray(_plate_at(_best_l), Pal.SUN, 14, 620.0, "star", 1.0)
-	_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
+	_rw.spray(_plate_at(_score_l), Pal.SUN, 14, 620.0, "star", 1.0)
+	_rw.ring(_plate_at(_score_l), 160.0, Color(Pal.SUN, 0.9))
 	_feel(Haptics.BUMP)
 
 # --- the end ---
@@ -883,10 +925,14 @@ func _run_over() -> void:
 		return
 	# the furthest a whirlpool has grown is the stage the tab's card reads
 	var better := Record.add(GAME, sim.score, sim.level, _boosted)
+	# the run's score is its drops: banked once, here
+	_bank = Upgrades.bank(sim.score)
+	_banked = true
 	_run_gold = Wallet.pay_run(better)
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.level,
-		"seconds": secs, "small": sim.taken[1], "big": sim.taken[2], "best": better})
+		"seconds": secs, "small": sim.taken[1], "big": sim.taken[2], "great": sim.taken[3], "huge": sim.taken[4],
+		"bank": _bank, "best": better})
 	Ads.note_finished()
 	top_bar.refresh(self)
 	get_tree().create_timer(0.7).timeout.connect(_show_end.bind(better))
@@ -960,7 +1006,10 @@ func _build_end(better: bool) -> Control:
 	var stats := HBoxContainer.new()
 	stats.name = "Stats"
 	stats.add_theme_constant_override("separation", 14)
-	for pair in [[str(int(sim.taken[1]) + int(sim.taken[2])), "ED_STAT_TAKEN"], ["%d/%d" % [sim.level, Sim.LEVELS], "ED_STAT_LEVEL"],
+	var down := 0
+	for n: int in sim.taken:
+		down += n
+	for pair in [[str(down), "ED_STAT_TAKEN"], ["%d/%d" % [sim.level, Sim.LEVELS], "ED_STAT_LEVEL"],
 			["%d:%02d" % [secs / 60, secs % 60], "ED_STAT_TIME"]]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -986,12 +1035,32 @@ func _build_end(better: bool) -> Control:
 	best_line.theme_type_variation = "SheetBodyDim"
 	best_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(best_line)
-	var again := Dialog.primary("reset", tr("FF_AGAIN"))
+	# what the run put in the bank, and the bank
+	var banked := HBoxContainer.new()
+	banked.alignment = BoxContainer.ALIGNMENT_CENTER
+	banked.add_theme_constant_override("separation", 14)
+	var plus := Label.new()
+	plus.text = tr("ED_BANKED") % Record.grouped(sim.score)
+	plus.theme_type_variation = "SheetBody"
+	banked.add_child(plus)
+	var pill := Shop.drops_pill(40.0)
+	_end_bank = pill.get_node("Row/Count")
+	_end_bank.text = Record.grouped(_bank)
+	banked.add_child(pill)
+	col.add_child(banked)
+	# the shop leads when the bank covers something, else another run does
+	var buys := Upgrades.any()
+	var again := Dialog.secondary("reset", tr("FF_AGAIN")) if buys else Dialog.primary("reset", tr("FF_AGAIN"))
 	again.name = "Again"
 	again.pressed.connect(_ask)
+	var shop := Dialog.primary("trend", tr("ED_SHOP")) if buys else Dialog.secondary("trend", tr("ED_SHOP"))
+	shop.name = "Shop"
+	shop.pressed.connect(_open_shop)
+	var stack := Dialog.buttons(col, shop if buys else again, again if buys else shop, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
 	var back := Dialog.secondary("chevron_left", tr("FF_BACK"))
+	back.size_flags_horizontal = Control.SIZE_FILL
 	back.pressed.connect(_on_back)
-	Dialog.buttons(col, again, back, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
+	stack.add_child(back)
 	return scrim
 
 ## The end card's score runs up from nothing to what the run made, with a
@@ -1041,35 +1110,53 @@ func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
+	var shop := get_node_or_null("Shop")
+	if shop != null and not shop.is_queued_for_deletion():
+		shop.closed.emit()
+		shop.queue_free()
+		return
 	_on_back()
 
-# --- boosters (arcade/boosters.gd) ---
+# --- the shop and the Second chance ---
 
-## Before a run: the boost card, when a booster is held or the gold for one
-## is, else straight in. A run still going when it is asked for stops there.
+## A fresh run, fitted with what the shop has sold. A run still going when
+## it is asked for stops there.
 func _ask(by_hand := true) -> void:
-	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
+	if get_node_or_null("Shop") != null or get_node_or_null("SecondChance") != null:
 		return
-	if _end != null:
-		_end.queue_free()
-		_end = null
-	if not BoostCard.wanted(GAME):
-		_boosts = []
-		_new_game()
-		# Restart and Play again tap; the screen opening says nothing.
-		if by_hand:
-			_fx.buzz(Haptics.TAP)
+	_new_game()
+	# Restart and Play again tap; the screen opening says nothing.
+	if by_hand:
+		_fx.buzz(Haptics.TAP)
+
+## The shop over the pond: before a run, or from the end card. What is
+## bought before a run fits the run that is waiting; from the end card it
+## waits for Play again.
+func _open_shop() -> void:
+	if get_node_or_null("Shop") != null or sim == null:
 		return
-	if sim != null and not sim.is_over():
-		sim = null
-		_hint("", "")
-	var card := BoostCard.new(GAME)
-	card.name = "BoostCard"
-	card.play.connect(func(ids: Array) -> void:
-		_boosts = ids
-		_new_game()
-		_fx.buzz(Haptics.TAP))
-	add_child(card)
+	if not sim.is_over() and (sim.phase != Sim.Phase.READY or sim.t > 0.0):
+		return
+	_fx.touch()
+	_fx.buzz(Haptics.TAP)
+	var shop := Shop.new()
+	shop.name = "Shop"
+	var spent := [0]
+	shop.bought.connect(func(id: String, lv: int, paid: int) -> void:
+		spent[0] += paid
+		_fx.cue("level", minf(1.0 + 0.03 * (lv - 1), CLIMB_TOP))
+		_fx.buzz(Haptics.GOOD)
+		Analytics.track("eddy_upgrade", {"tile": id, "level": lv, "drops": paid}))
+	shop.closed.connect(func() -> void:
+		_fx.touch()
+		_fx.buzz(Haptics.TAP)
+		_bank = Upgrades.drops()
+		_bank_l.text = _bank_text()
+		if _end_bank != null and is_instance_valid(_end_bank):
+			_end_bank.text = Record.grouped(_bank)
+		if spent[0] > 0 and not sim.is_over():
+			_new_game())
+	add_child(shop)
 
 ## At the end, once a run: the Second chance, when one is held or the gold
 ## for one is. True while it is up; No thanks ends the run as it would have.

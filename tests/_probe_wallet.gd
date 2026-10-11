@@ -182,8 +182,7 @@ func _process(_d: float) -> bool:
 	Boosters.revive("deckchair", dc)
 	_check(not dc.is_over() and not dc.find_move().is_empty(), "deckchair revived, with a way on")
 	var ed = load("res://arcade/eddy_sim.gd").new(3)
-	Boosters.apply("eddy", ed, ["ed_long", "ed_head"])
-	_check(is_equal_approx(ed.spin, ed.SPIN + ed.LONG_BY) and ed.level == 1 + ed.HEAD_LEVELS, "eddy: a long spin, a head start")
+	_check(Boosters.of("eddy").is_empty(), "eddy: no gold boosters, its upgrades are its own")
 	ed.steer(Vector2.RIGHT)
 	ed.spin = 0.0
 	for i in 200:

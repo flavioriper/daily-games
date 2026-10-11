@@ -12,6 +12,8 @@ extends SceneTree
 const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "eddy", "gumdrop"]
 const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "gumdrop": "Gumdrop"}
 
+const Boosters = preload("res://arcade/boosters.gd")
+
 var _menu: Node
 var _t := 0.0
 var _gi := 0
@@ -156,8 +158,11 @@ func _process(delta: float) -> bool:
 			_at = _t + 0.5
 		1:
 			var card: Node = s.get_node_or_null("BoostCard")
-			if _video == "":
+			# Eddy has no gold boosters: its upgrades are bought with its own drops
+			if _video == "" and not Boosters.of(g).is_empty():
 				_check(card != null, g + ": boost card up")
+			elif Boosters.of(g).is_empty():
+				_check(card == null, g + ": no boost card, it has no boosters")
 			if card != null:
 				for id in card._toggles:
 					card._toggles[id].button_pressed = true
@@ -165,7 +170,7 @@ func _process(delta: float) -> bool:
 			_step = 2
 			_at = _t + 2.5
 		2:
-			_check(s.sim != null and not s.sim.is_over(), g + ": playing with " + ",".join(s._boosts))
+			_check(s.sim != null and not s.sim.is_over(), g + ": playing with " + (",".join(s._boosts) if "_boosts" in s else "its own upgrades"))
 			_force_over(g, s)
 			_step = 3
 			_at = _t + 1.0

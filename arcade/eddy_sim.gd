@@ -17,13 +17,21 @@ extends RefCounted
 ## goes down only once it is in the core, moving with the water, and no
 ## wider than the mouth.
 ##
+## A run is one of many (the user, 2026-10-11: "a slow incremental where user
+## buy upgrades to go further and further, not a one take game", spec
+## docs/superpowers/specs/2026-10-11-eddy-incremental-design.md). What it
+## scores is banked, the bank buys four upgrades that are kept
+## (arcade/eddy_upgrades.gd), and `fit()` hands a fresh run their levels: a
+## longer spin, more of the turning run inward, a wider mouth from the first
+## and a longer reach. The sim knows nothing of the bank.
+##
 ## The pond is `w` wide and `h` tall, y down. Lengths are pond units, speeds
 ## units a second. The game's pond is WIDE by TALL whatever the phone, far
 ## more than is looked at at once (`view_of`); a tutorial page lays a small
 ## one.
 
 enum Phase { READY, PLAY, DRAIN, OVER }
-enum Kind { LEAF, PETAL, ACORN, DUCK, BOAT, BALL }
+enum Kind { LEAF, PETAL, ACORN, DUCK, BOAT, BALL, BUCKET, CAN, LILO, RAFT, ROWBOAT }
 
 const DT := 1.0 / 60.0
 ## The pond the game is played on (the user, 2026-10-10: "a fixed bigger
@@ -45,7 +53,7 @@ const VIEW_POW := 0.5
 const SPEED := 60.0
 const ANSWER := 0.3
 ## It grows through these levels.
-const LEVELS := 10
+const LEVELS := 20
 ## The core's radius at level 1 and what a level adds.
 const CORE := 7.0
 const CORE_STEP := 2.6
@@ -70,16 +78,20 @@ const HASTE := 0.2
 ## What is swallowed to leave level 1, and how much more each level asks.
 const GROW := 6
 const GROW_STEP := 6
-## The spin: seconds of turning in a run, and what a level gives back.
-const SPIN := 50.0
-const SPIN_BACK := 7.0
+## The spin: seconds of turning in a run with nothing bought, and what a
+## level gives back.
+const SPIN := 30.0
+const SPIN_BACK := 4.0
+## What a level of each of the shop's upgrades is worth: seconds of spin,
+## inflow, units of core at level 1, cores of reach.
+const SPIN_UP := 2.0
+const PULL_UP := 0.05
+const MOUTH_UP := 0.6
+const REACH_UP := 0.2
 ## Under this part of the spin the run says so, once.
 const LOW := 0.25
 ## The whirlpool unwinding at the end.
 const DRAIN_T := 1.4
-## Long spin and Head start (arcade/boosters.gd).
-const LONG_BY := 15.0
-const HEAD_LEVELS := 2
 ## A Second chance gives this part of the spin back.
 const REVIVE := 0.5
 ## Each kind: its tier, the radius it is weighed at, the seconds it takes
@@ -92,12 +104,21 @@ const KINDS := [
 	{"tier": 2, "r": 11.0, "tau": 1.4, "value": 10, "mass": 6, "sink": 1.3},
 	{"tier": 2, "r": 13.0, "tau": 1.8, "value": 15, "mass": 8, "sink": 1.4},
 	{"tier": 2, "r": 15.0, "tau": 2.2, "value": 20, "mass": 10, "sink": 1.5},
+	{"tier": 3, "r": 21.0, "tau": 2.8, "value": 40, "mass": 22, "sink": 1.7},
+	{"tier": 3, "r": 24.0, "tau": 3.2, "value": 50, "mass": 28, "sink": 1.8},
+	{"tier": 3, "r": 27.0, "tau": 3.6, "value": 60, "mass": 34, "sink": 1.9},
+	{"tier": 4, "r": 33.0, "tau": 4.5, "value": 120, "mass": 60, "sink": 2.2},
+	{"tier": 4, "r": 38.0, "tau": 5.5, "value": 160, "mass": 80, "sink": 2.4},
 ]
+const TIERS := 4
 ## How many of each tier the pond keeps afloat, and the most let in a second.
 const SMALL := 44
 const SMALL_STEP := 2
 const BIG := 4
 const BIG_STEP := 0.6
+## The third and fourth tiers, there from the first run to be grown into.
+const GREAT := 1.0
+const HUGE := 0.5
 const LET_IN := 2.5
 ## A thing's own slow wander, and the push that brings a new one in from the
 ## bank for its first seconds where the pond is too small to hide it.
@@ -125,8 +146,14 @@ var grown := 0
 var spin := SPIN
 var spin_full := SPIN
 var score := 0
-## Things swallowed, of each tier.
-var taken := [0, 0, 0]
+## Things swallowed, of each tier, and the biggest kind among them (-1 none).
+var taken := [0, 0, 0, 0, 0]
+var biggest := -1
+## The shop's upgrades as this run has them (`fit`): the core at level 1,
+## the part of the turning that runs inward, and the cores it is felt out to.
+var core0 := CORE
+var inflow := INFLOW
+var far := REACH
 var events: Array = []
 ## What floats: {id, kind, look, pos, vel, ang, turn, drift, fresh, age,
 ## sink (seconds of going down, -1 afloat), rad, a, from}.
@@ -152,12 +179,23 @@ func _init(seed_value := -1, tall := TALL, wide := WIDE) -> void:
 func is_over() -> bool:
 	return phase == Phase.OVER
 
-static func core_of(lv: int) -> float:
-	return CORE + CORE_STEP * (lv - 1)
+## A fresh run's upgrades, each a level of 0 and up: {spin, pull, mouth,
+## reach}.
+func fit(ups: Dictionary) -> void:
+	spin_full = SPIN + SPIN_UP * int(ups.get("spin", 0))
+	spin = spin_full
+	inflow = INFLOW + PULL_UP * int(ups.get("pull", 0))
+	core0 = CORE + MOUTH_UP * int(ups.get("mouth", 0))
+	far = REACH + REACH_UP * int(ups.get("reach", 0))
 
-## How many units across the pond is looked at round a core of `rc`.
+## The core at level `lv` of a whirlpool whose first is `base`.
+static func core_of(lv: int, base := CORE) -> float:
+	return base + CORE_STEP * (lv - 1)
+
+## How many units across the pond is looked at round a core of `rc`: never
+## more than the pond is wide.
 static func view_of(rc: float) -> float:
-	return VIEW * pow(rc / CORE, VIEW_POW)
+	return minf(VIEW * pow(rc / CORE, VIEW_POW), WIDE)
 
 static func turn_of(lv: int) -> float:
 	return TURN + TURN_STEP * (lv - 1)
@@ -167,22 +205,30 @@ static func need_of(lv: int) -> int:
 	return GROW + GROW_STEP * (lv - 1)
 
 ## The first level whose mouth takes `kind`.
-static func level_for(kind: int) -> int:
+static func level_for(kind: int, base := CORE) -> int:
 	for lv in range(1, LEVELS + 1):
-		if grip_of(kind, lv) >= 1.0:
+		if grip_of(kind, lv, base) >= 1.0:
 			return lv
 	return LEVELS
 
 ## How much of the water's pull a thing of `kind` feels at level `lv`, 0 to 1.
-static func grip_of(kind: int, lv: int) -> float:
-	var k := clampf(core_of(lv) / (float(KINDS[kind].r) * GRIP), 0.0, 1.0)
+static func grip_of(kind: int, lv: int, base := CORE) -> float:
+	var k := clampf(core_of(lv, base) / (float(KINDS[kind].r) * GRIP), 0.0, 1.0)
 	return k * k * k
 
 func core() -> float:
-	return core_of(level)
+	return core_of(level, core0)
 
 func reach() -> float:
-	return core() * REACH
+	return core() * far
+
+## This run's own: how much of its pull `kind` feels now, and the level its
+## mouth first takes it.
+func grip(kind: int) -> float:
+	return grip_of(kind, level, core0)
+
+func opens_at(kind: int) -> int:
+	return level_for(kind, core0)
 
 func need() -> int:
 	return need_of(level)
@@ -213,14 +259,14 @@ func steer(dir: Vector2) -> void:
 func swirl(p: Vector2) -> Vector2:
 	var d := p - pos
 	var r := d.length()
-	var far := reach()
-	if r >= far or r < 0.001:
+	var out := reach()
+	if r >= out or r < 0.001:
 		return Vector2.ZERO
 	var rc := core()
 	var vt := turn_of(level) * (r / rc if r < rc else rc / r) * strength() * calm()
 	var n := d / r
-	var fade := 1.0 - smoothstep(far * 0.55, far, r)
-	return (Vector2(-n.y, n.x) * vt - n * vt * INFLOW) * fade
+	var fade := 1.0 - smoothstep(out * 0.55, out, r)
+	return (Vector2(-n.y, n.x) * vt - n * vt * inflow) * fade
 
 ## How much of the whirlpool's travel the water at `r` from its middle
 ## shares: all of it in the core, none two cores out.
@@ -298,8 +344,8 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 	var water := own
 	var r := p.distance_to(pos)
 	var g := 0.0
-	if live and r < rc * REACH:
-		g = grip_of(th.kind, level)
+	if live and r < rc * far:
+		g = grip(th.kind)
 		var round := swirl(p)
 		water += (round + vel * carry(r)) * g
 		# What goes round is pressed toward the middle, as the turning water
@@ -330,7 +376,7 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 	# it turns with the water round it
 	var want := 0.0
 	if g > 0.0 and r > 0.001:
-		want = turn_of(level) * (1.0 / rc if r < rc else rc / (r * r)) * g * strength() * (1.0 - smoothstep(rc * REACH * 0.55, rc * REACH, r))
+		want = turn_of(level) * (1.0 / rc if r < rc else rc / (r * r)) * g * strength() * (1.0 - smoothstep(rc * far * 0.55, rc * far, r))
 	th.turn = lerpf(float(th.turn), want, minf(1.0, DT * 3.0))
 	th.ang = float(th.ang) + (float(th.turn) + float(th.idle)) * DT
 	if not live or r > rc * MOUTH:
@@ -339,7 +385,7 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		# sat on a mouth too small for it
 		if t - _big_said > 4.0 and phase == Phase.PLAY:
 			_big_said = t
-			events.append({"type": "too_big", "kind": th.kind, "at": p, "level": level_for(th.kind)})
+			events.append({"type": "too_big", "kind": th.kind, "at": p, "level": opens_at(th.kind)})
 		return
 	if phase != Phase.PLAY:
 		return
@@ -376,6 +422,7 @@ func _swallow(th: Dictionary) -> void:
 	var kind: Dictionary = KINDS[th.kind]
 	score += int(kind.value)
 	taken[kind.tier] += 1
+	biggest = maxi(biggest, int(th.kind))
 	events.append({"type": "swallow", "kind": th.kind, "tier": kind.tier, "value": kind.value, "at": pos})
 	if level >= LEVELS:
 		return
@@ -390,10 +437,10 @@ func _swallow(th: Dictionary) -> void:
 		grown = 0
 
 ## The kinds whose first level is `lv`.
-static func _opened(lv: int) -> Array:
+func _opened(lv: int) -> Array:
 	var out := []
 	for kind in KINDS.size():
-		if lv > 1 and level_for(kind) == lv:
+		if lv > 1 and opens_at(kind) == lv:
 			out.append(kind)
 	return out
 
@@ -434,8 +481,13 @@ func _stock_first() -> void:
 	# every kind is there from the first, the big ones to be grown into
 	var toys := [Kind.DUCK, Kind.DUCK, Kind.DUCK, Kind.BOAT, Kind.DUCK, Kind.BALL, Kind.BOAT, Kind.DUCK]
 	for i in int(BIG * room()):
-		var th := put(toys[i % toys.size()], _free_place(mid, 80.0, 30.0))
-		th.age = 10.0
+		put(toys[i % toys.size()], _free_place(mid, 80.0, 30.0))
+	var great := [Kind.BUCKET, Kind.CAN, Kind.LILO]
+	for i in int(GREAT * room()):
+		put(great[i % great.size()], _free_place(mid, 140.0, 70.0))
+	var huge := [Kind.RAFT, Kind.ROWBOAT]
+	for i in int(HUGE * room()):
+		put(huge[i % huge.size()], _free_place(mid, 200.0, 110.0))
 	for th: Dictionary in things:
 		th.age = 10.0
 
@@ -450,7 +502,7 @@ func _free_place(from: Vector2, clear: float, apart: float) -> Vector2:
 		var ok := true
 		if apart > 0.0:
 			for th: Dictionary in things:
-				if int(KINDS[th.kind].tier) == 2 and p.distance_to(th.pos) < apart:
+				if int(KINDS[th.kind].tier) >= 2 and p.distance_to(th.pos) < apart + float(KINDS[th.kind].r):
 					ok = false
 					break
 		if ok:
@@ -472,12 +524,21 @@ func _restock() -> void:
 	_let = minf(_let + LET_IN * DT, 3.0)
 	if _let < 1.0:
 		return
+	var have := [0, 0, 0, 0, 0]
+	for th: Dictionary in things:
+		have[int(KINDS[th.kind].tier)] += 1
 	var kind := -1
-	if count(2) < int((BIG + BIG_STEP * (level - 1)) * room()):
+	if have[4] < int(HUGE * room()):
+		kind = Kind.RAFT if rng.randf() < 0.55 else Kind.ROWBOAT
+	elif have[3] < int(GREAT * room()):
+		kind = [Kind.BUCKET, Kind.CAN, Kind.LILO][rng.randi() % 3]
+	elif have[2] < int((BIG + BIG_STEP * (level - 1)) * room()):
 		kind = _big_kind()
-	elif count(1) < int((SMALL + SMALL_STEP * (level - 1)) * room()):
+	elif have[1] < int((SMALL + SMALL_STEP * (level - 1)) * room()):
 		kind = _small_kind()
 	if kind < 0:
+		# a full pond is looked at again in a while, not sixty times a second
+		_let = 0.0
 		return
 	_let -= 1.0
 	var sight := view_of(core())
@@ -507,15 +568,6 @@ func _restock() -> void:
 	var th := put(kind, at)
 	th.drift = (aim - at).normalized() * PUSH
 	th.fresh = FRESH
-
-# --- boosters (arcade/boosters.gd) ---
-
-func long_spin() -> void:
-	spin_full += LONG_BY
-	spin = spin_full
-
-func head_start() -> void:
-	level = mini(LEVELS, level + HEAD_LEVELS)
 
 ## The Second chance: the whirlpool winds up again where it stopped.
 func revive() -> void:

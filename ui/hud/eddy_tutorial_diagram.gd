@@ -18,7 +18,7 @@ extends Control
 ##   duck goes down.
 ## - SPIN: the bar nearly empty; a leaf makes a level and gives some back,
 ##   then it runs out and the whirlpool unwinds.
-## - BOOSTS: the two boosters and the Second chance, drawn as chips.
+## - SHOP: the four upgrades the bank of drops buys, drawn as chips.
 ## - HUD: the top bar's Reset, gear and ?, drawn as they are (nothing is
 ##   ever taken back, so no Undo).
 
@@ -28,9 +28,10 @@ const Face = preload("res://ui/faces/face.gd")
 const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Sim = preload("res://arcade/eddy_sim.gd")
-const Boosters = preload("res://arcade/boosters.gd")
+const Upgrades = preload("res://arcade/eddy_upgrades.gd")
+const Shop = preload("res://arcade/eddy_shop.gd")
 
-enum Lesson { STEER, SLOW, GROW, SPIN, BOOSTS, HUD }
+enum Lesson { STEER, SLOW, GROW, SPIN, SHOP, HUD }
 
 var lesson: int = Lesson.STEER
 
@@ -239,7 +240,7 @@ func _enter_tree() -> void:
 		call_deferred("_reset")
 
 func _played() -> bool:
-	return lesson != Lesson.BOOSTS and lesson != Lesson.HUD
+	return lesson != Lesson.SHOP and lesson != Lesson.HUD
 
 func _layout() -> void:
 	if not _played():
@@ -327,25 +328,22 @@ func _process(_delta: float) -> void:
 
 # --- drawing ---
 
-## The chip pages: the boosters with what each does, and the top bar's
+## The chip pages: the shop's upgrades with what each does, and the top bar's
 ## buttons drawn as they are on the screen beside what they do here.
 func _draw() -> void:
 	if _played() or size.x <= 0.0:
 		return
 	var rows: Array = []
-	if lesson == Lesson.BOOSTS:
-		rows = [
-			[Boosters.icon("ed_long"), tr("TUT_EDDY_BOOST_LONG") % int(Sim.LONG_BY)],
-			[Boosters.icon("ed_head"), tr("TUT_EDDY_BOOST_HEAD") % (1 + Sim.HEAD_LEVELS)],
-			[Boosters.icon(Boosters.CHANCE), tr("TUT_EDDY_BOOST_CHANCE")],
-		]
+	if lesson == Lesson.SHOP:
+		for id: String in Upgrades.IDS:
+			rows.append([String(Upgrades.ICON[id]), tr("TUT_EDDY_UP_" + id.to_upper())])
 	else:
 		rows = [
 			["reset", tr("TUT_EDDY_HUD_RESET")],
 			["gear", tr("TUT_EDDY_HUD_GEAR")],
 			["help", tr("TUT_EDDY_HUD_HELP")],
 		]
-	var boosts := lesson == Lesson.BOOSTS
+	var boosts := lesson == Lesson.SHOP
 	var row_h := size.y / rows.size()
 	var chip := minf(104.0, row_h * 0.72)
 	var x0 := 36.0
@@ -355,10 +353,9 @@ func _draw() -> void:
 		var c := Vector2(x0 + chip * 0.5, row_h * (k + 0.5))
 		centres.append(c)
 		if boosts:
-			# a booster is a disc in its game's colour, the Second chance gold
-			var tint: Color = Boosters.tint(Boosters.CHANCE if k == 2 else "ed_long")
+			# an upgrade is a disc in the pond's colour, as in the shop
 			b.disc(c + Vector2(0, 6.0), chip * 0.5, Color(Pal.TEXT, 0.16))
-			b.disc(c, chip * 0.5, tint)
+			b.disc(c, chip * 0.5, Shop.TINT)
 		else:
 			var at := c - Vector2(chip, chip) * 0.5
 			b.polygon(Face.Builder.round_rect(at + Vector2(0, 6.0), Vector2(chip, chip), 26.0), Color(Pal.TEXT, 0.16))

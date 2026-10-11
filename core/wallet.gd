@@ -120,6 +120,17 @@ func use(item: String, game: String, or_buy := false) -> bool:
 	Analytics.track("booster_used", {"item": item, "game": game})
 	return true
 
+## Takes back every `item` held, one no longer sold, for `price` gold each
+## (Eddy's two boosters, 2026-10-11). The gold given.
+func refund(item: String, price: int) -> int:
+	var n := count(item)
+	if n <= 0:
+		return 0
+	_cfg_now().set_value("items", item, 0)
+	_save()
+	add_gold(n * price, "refund")
+	return n * price
+
 func can_have(item: String) -> bool:
 	return count(item) > 0 or gold() >= Boosters.price(item)
 

@@ -179,6 +179,9 @@ low, bad as the whirlpool unwinds, the win on a new best
 
 ## 8. Calls that are mine, unconfirmed
 
+Calls 2 and 3 were undone on 2026-10-11: see
+`2026-10-11-eddy-incremental-design.md`.
+
 1. The name, and the pond with its bank.
 2. The reference's battery kept, as the spin: 50 seconds, 7 back a level.
    The brief did not ask for a clock; without one a run has no end.

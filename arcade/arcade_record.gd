@@ -50,6 +50,17 @@ static func set_pick(game: String, v: int) -> void:
 	cfg.set_value(game, "pick", v)
 	cfg.save(PATH)
 
+## What a game keeps between runs besides its scores (Eddy's bank and its
+## upgrades' levels, arcade/eddy_upgrades.gd).
+static func kept(game: String, key: String, default: int = 0) -> int:
+	return int(_load().get_value(game, key, default))
+
+static func keep(game: String, values: Dictionary) -> void:
+	var cfg := _load()
+	for key: String in values:
+		cfg.set_value(game, key, int(values[key]))
+	cfg.save(PATH)
+
 ## A score as the player's language groups it: 12,340 or 12.340.
 static func grouped(n: int) -> String:
 	return Locale.number(n)

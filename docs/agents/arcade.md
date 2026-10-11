@@ -3052,6 +3052,59 @@ and from level 5 the toys (ducks, then boats, then balls). A spin of 50
 seconds runs down and every level gives 7 back. Its "furthest" is the
 biggest whirlpool.
 
+- **Since 2026-10-11 a run is one of many** (the user: "eddy game should
+  be a slow incremental where user buy upgrades to go further and further,
+  not a one take game", then "just build it all"; spec
+  `2026-10-11-eddy-incremental-design.md`). What the paragraph above says of
+  ten levels, a spin of 50 and 7 back, and what the bullets below say of the
+  two boosters, the bots' scores and levels 8 to 10, is history.
+  - **Drops and the shop.** A run's score is banked as drops, Eddy's own
+    (`arcade/eddy_upgrades.gd`; `user://arcade.cfg`, section `eddy`: `drops`
+    and `up_<id>`, through `Record.kept` / `Record.keep`). Drops buy four
+    upgrades with no top, each level `GROWTH` 1.36 dearer: Spin (2 s),
+    Pull (inflow +0.05), Mouth (the core at level 1 +0.6), Reach (+0.2
+    cores). `Sim.fit(levels)` hands them to a fresh run; **the sim's
+    `core0`, `inflow` and `far` are the run's, `CORE`, `INFLOW` and `REACH`
+    the unbought ones**, and `level_for` / `grip_of` take a `base` (the
+    run's own are `opens_at(kind)` and `grip(kind)`). The shop is
+    `arcade/eddy_shop.gd`, a card over the pond: from the button under the
+    opening lines (shown only while `sim.t` is 0; buying there starts the
+    fitted run afresh) and from the end card, whose first button it is when
+    the bank covers anything. The middle plate is the bank with the run's
+    score on top of it, not the best.
+  - **Pull is the inward part of the water, not its turning.** The catch
+    asks a thing to go round with the water within `SLIP`; faster turning
+    would have moved what is caught. Inflow limits itself: the water goes
+    inward slower toward the middle, so a thing is caught deeper in. Proved
+    at 6, 12 and 24 levels by the probe. Travel is not sold (the user's "way
+    slower" of the day before).
+  - **Twenty levels and two tiers above the toys** (`Sim.TIERS` 4): bucket,
+    watering can, lilo (levels 10, 12, 13 with no Mouth bought), raft and
+    rowing boat (17, 19). Six and three of them float from the first run
+    (`GREAT`, `HUGE`), drawn in `eddy_art.gd` like the rest. `view_of` stops
+    at the pond's width. Worth 40 to 160: at 60 to 400 the first climb was
+    over in 19 runs.
+  - **The pace is measured, not guessed**: `tests/_probe_eddy.gd -- 6
+    ladder` plays run after run, banks, buys the cheapest upgrade and stops
+    when a rowing boat goes down. At 1.36: the patient bot 40 runs and 46 minutes, a middling one (skill 0.8) 97 and 115, the slower 146 and 171; the user asked for 60 to 90 of a person, who is none of the three. A run with nothing bought is 30 s
+    and 4 back a level (patient bot: level 4, about 60 drops). `-- 6 only
+    <growth> <skill>` is one climb at a price growth of its own, for tuning;
+    six run side by side in about a quarter of an hour.
+  - **The gold boosters are gone** (`ed_long`, `ed_head`: out of
+    `Boosters.GAMES` and `ITEMS`, so the gold shop and the featured gift no
+    longer name Eddy); held ones come back as 120 gold each when the screen
+    opens (`Wallet.refund`), with a sticker. No boost card; the Second
+    chance stays. `_probe_chance.gd` takes a game with no boosters.
+  - **`_restock` looks at a full pond every 0.4 s, not every step** (it
+    counted every thing twice a step), and counts the tiers in one pass.
+  - The tutorial's fifth page is the shop's four upgrades as chips; the
+    Second chance is no longer on a page. Shot in en, pt and es: no body
+    overflows. `_shot_eddy.gd` goes on to the last level, the end card, the
+    shop, a level of each upgrade bought and the fitted run: 108 to 259 draw
+    calls in play at level 20, 300 with the end card, 397 with the shop over
+    it (810x1440).
+  - Mine and unseen by the user: the spec's ten calls. Owed: a phone, the
+    sounds, pt and es, a person's climb timed.
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed
   1/60 s): `steer(lean)`, `step()`, `events`. The water is a vortex with a
   core, and **nothing afloat is moved by rule**: drag toward the water's

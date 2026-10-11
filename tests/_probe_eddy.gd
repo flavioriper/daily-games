@@ -8,16 +8,26 @@ extends SceneTree
 ## stays where it is until the whirlpool has grown. Then a patient bot (it
 ## slows as it nears what it is after) and a hasty one (always flat out) each
 ## play `runs` runs: the patient one must do far better. Then the boosters
-## and the Second chance.
+## the Second chance. Then the climb: a bot plays run after run, banks what
+## each scores and buys the cheapest upgrade it can, until a rowing boat goes
+## down; the runs that takes is the game's pace (`ladder`: 60 to 90 were asked of a
+## person, and the patient bot is far better than one, so 30 to 60 of it).
+##   godot --headless --script tests/_probe_eddy.gd -- [runs] [ladder|only]
 
 const Sim = preload("res://arcade/eddy_sim.gd")
 const Boosters = preload("res://arcade/boosters.gd")
+const Upgrades = preload("res://arcade/eddy_upgrades.gd")
 
 var _fails := 0
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var runs := int(args[0]) if args.size() > 0 else 20
+	if args.size() > 1 and args[1] == "only":
+		# tuning: one climb at a price growth and a skill of its own
+		_ladder(float(args[3]) if args.size() > 3 else 1.0, float(args[2]) if args.size() > 2 else Upgrades.GROWTH)
+		quit(0)
+		return
 	_water()
 	var slow := _many(runs, false)
 	var fast := _many(runs, true)
@@ -28,6 +38,9 @@ func _initialize() -> void:
 	_check("grown to level 8, the patient bot still scores at least three times the hasty one", slow_big >= fast_big * 3.0)
 	_check("the patient bot scores at least three times the hasty one", slow >= fast * 3.0)
 	_kit()
+	if args.size() > 1 and args[1] == "ladder":
+		var n := _ladder(1.0)
+		_check("the patient bot takes a rowing boat in 30 to 60 runs (%d)" % n, n >= 30 and n <= 60)
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -37,8 +50,9 @@ func _check(what: String, ok: bool) -> void:
 		_fails += 1
 
 ## An empty pond with the whirlpool at its middle and the spin running.
-func _bare(lv := 1) -> RefCounted:
+func _bare(lv := 1, ups := {}) -> RefCounted:
 	var s = Sim.new(1)
+	s.fit(ups)
 	s.things.clear()
 	s.stocks = false
 	s.level = lv
@@ -64,8 +78,11 @@ func _water() -> void:
 	var tally := _steps(s, 4.0)
 	_check("a still whirlpool takes a leaf three cores off (%d swallowed)" % int(tally.get("swallow", 0)), int(tally.get("swallow", 0)) == 1)
 	# hurried straight over the same leaf
-	for lv: int in [1, 5, 10]:
-		s = _bare(lv)
+	for at: int in [1, 5, 10, 20, -1, -10]:
+		# under nothing, a whirlpool with twelve of every upgrade
+		var ups := {} if at > 0 else {"spin": 12, "pull": 12, "mouth": 12, "reach": 12}
+		var lv := absi(at)
+		s = _bare(lv, ups)
 		s.pos = Vector2(60.0, s.h * 0.5)
 		s.vel = Vector2.RIGHT * Sim.SPEED
 		leaf = s.put(Sim.Kind.LEAF, Vector2(150.0, s.h * 0.5 + s.core() * 0.3))
@@ -104,7 +121,27 @@ func _water() -> void:
 	var at: Vector2 = d1.pos
 	_steps(s, 3.0)
 	_check("level 1: a duck beside it has hardly moved in three seconds (%.1f)" % at.distance_to(d1.pos), at.distance_to(d1.pos) < 12.0)
-	print("mouths: duck from level %d, boat %d, ball %d" % [open, Sim.level_for(Sim.Kind.BOAT), Sim.level_for(Sim.Kind.BALL)])
+	# the two tiers above the toys, and the upgrades
+	for kind: int in [Sim.Kind.BUCKET, Sim.Kind.ROWBOAT]:
+		var at_lv := Sim.level_for(kind)
+		for lv: int in [at_lv - 1, at_lv]:
+			s = _bare(lv)
+			var big: Dictionary = s.put(kind, s.pos + Vector2(s.core() * 1.6, 0))
+			big.drift = Vector2.ZERO
+			tally = _steps(s, 14.0)
+			_check("level %d: %s" % [lv, "kind %d stays afloat" % kind if lv < at_lv else "kind %d goes down" % kind], (int(tally.get("swallow", 0)) == 1) == (lv == at_lv))
+	for n: int in [6, 12, 24]:
+		s = _bare(1, {"pull": n, "reach": n})
+		leaf = s.put(Sim.Kind.LEAF, s.pos + Vector2(s.core() * 3.0, 0))
+		leaf.drift = Vector2.ZERO
+		tally = _steps(s, 4.0)
+		_check("pull and reach %d: a still whirlpool takes a leaf three cores off" % n, int(tally.get("swallow", 0)) == 1)
+	s = _bare(1, {"mouth": 14})
+	_check("mouth 14: a duck goes down at level 1 (opens at %d)" % s.opens_at(Sim.Kind.DUCK), s.opens_at(Sim.Kind.DUCK) == 1)
+	var names := []
+	for kind in Sim.KINDS.size():
+		names.append("%d:%d" % [kind, Sim.level_for(kind)])
+	print("mouths (kind:level): " + " ".join(names))
 
 ## Plays `runs` runs and prints what they came to; gives back the median score.
 func _many(runs: int, hasty: bool, skill := 1.0, from := 1) -> float:
@@ -139,7 +176,7 @@ func _play(s: RefCounted, hasty: bool, skill := 1.0) -> void:
 		var best_w := -INF
 		# a person looks again a few times a second, not sixty
 		for th: Dictionary in (s.things if look <= 0 else []):
-			if float(th.sink) >= 0.0 or Sim.grip_of(th.kind, s.level) < 1.0:
+			if float(th.sink) >= 0.0 or s.grip(th.kind) < 1.0:
 				continue
 			var w: float = float(Sim.KINDS[th.kind].value) * 6.0 - float(th.pos.distance_to(s.pos))
 			if w > best_w:
@@ -163,8 +200,10 @@ func _play(s: RefCounted, hasty: bool, skill := 1.0) -> void:
 
 func _kit() -> void:
 	var s = Sim.new(3)
-	Boosters.apply("eddy", s, ["ed_long", "ed_head"])
-	_check("long spin and a head start", is_equal_approx(s.spin, Sim.SPIN + Sim.LONG_BY) and s.level == 1 + Sim.HEAD_LEVELS)
+	s.fit({"spin": 2, "pull": 1, "mouth": 3, "reach": 4})
+	_check("a fitted run has its upgrades", is_equal_approx(s.spin, Sim.SPIN + 2 * Sim.SPIN_UP) and is_equal_approx(s.core(), Sim.CORE + 3 * Sim.MOUTH_UP)
+		and is_equal_approx(s.reach(), s.core() * (Sim.REACH + 4 * Sim.REACH_UP)) and s.level == 1)
+	_check("prices rise and none is free", Upgrades.price("spin", 0) > 0 and Upgrades.price("spin", 5) > Upgrades.price("spin", 4))
 	s = Sim.new(3)
 	s.steer(Vector2.RIGHT)
 	s.steer(Vector2.ZERO)
@@ -175,3 +214,37 @@ func _kit() -> void:
 	var was: int = s.score
 	_play(s, false)
 	_check("a revived run scores again (%d more)" % (s.score - was), s.score > was)
+
+## The climb: runs played one after another, each banked and spent on the
+## cheapest upgrade the bank covers, until a rowing boat goes down. The runs
+## it took (200 when it never did).
+func _ladder(skill: float, growth := Upgrades.GROWTH) -> int:
+	var ups := {"spin": 0, "pull": 0, "mouth": 0, "reach": 0}
+	var bank := 0
+	var minutes := 0.0
+	var first := {}
+	for run in range(1, 201):
+		var s = Sim.new(1000 + run)
+		s.fit(ups)
+		_play(s, false, skill)
+		bank += s.score
+		minutes += float(s.t) / 60.0
+		for tier in range(2, Sim.TIERS + 1):
+			if int(s.taken[tier]) > 0 and not first.has(tier):
+				first[tier] = run
+		if run <= 3 or run % 10 == 0 or s.biggest == Sim.Kind.ROWBOAT:
+			print("  run %d: score %d, level %d, %d s, biggest kind %d, bank %d, upgrades %s" % [run, s.score, s.level, int(s.t), s.biggest, bank, str(ups)])
+		if s.biggest == Sim.Kind.ROWBOAT:
+			print("ladder at skill %.1f, growth %.2f: a rowing boat in %d runs and %d minutes; tiers first taken on runs %s" % [skill, growth, run, int(minutes), str(first)])
+			return run
+		while true:
+			var pick := ""
+			for id: String in Upgrades.IDS:
+				if pick == "" or Upgrades.price(id, ups[id], growth) < Upgrades.price(pick, ups[pick], growth):
+					pick = id
+			if Upgrades.price(pick, ups[pick], growth) > bank:
+				break
+			bank -= Upgrades.price(pick, ups[pick], growth)
+			ups[pick] += 1
+	print("ladder at skill %.1f: no rowing boat in 200 runs (%d minutes)" % [skill, int(minutes)])
+	return 200
