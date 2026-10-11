@@ -394,6 +394,26 @@ move together but each one in it own sequence, not all at once".
   places never open: the user's number, kept. `par` medians: 17 / 31 / 265
   / 395. Rules probe 612 runs, board probe 28 days, 0 failures; the suite
   249,804; seen on Insane (`play`), 103 draw calls at the peak.
+- **A colour whole opens two places** (the user, 2026-10-11: "since now we
+  have 10 hidden slots, each unlock must unlock 2 not 1, so they all
+  become available near the end"; `CASE_STEP` 2, `State.base()` is the
+  number the rules print). It takes back "still one more a colour whole"
+  above. Every place a tap opens gets its ring (`_open_places`; a tap can
+  make two colours whole), clamped to the places drawn, since the
+  tutorial's tin shows six. The pictures have 3-4 colours on Easy, 4-5 on
+  Medium, 6-10 on Hard and 8-12 on Insane, so the tin ends at 16-18 on
+  Easy and Medium and is all twenty by the fifth colour on Hard and
+  Insane, about half way: the user's number, kept, a rate by band not
+  asked. `tests/_probe_buttons_board.gd` tapped tin places 0-11 only and
+  left a last button in place 12 for 200,000 taps; it taps all twenty now.
+  `par` medians: 17 / 31 / 241 / 370.
+- **A pick comes up only a little** (the user, 2026-10-11: "it should not
+  raise so high because it become bad to understand where is each piece,
+  make it slightly raise"). `HELD_RISE` 0.06 of a square (0.14), and the
+  draw toward the tapped button, which was what took a button half a
+  square off its own, is `PULL` 0.05 up to `PULL_MOST` 0.12 (0.22 up to
+  0.9). `HELD_SCALE` and the bob as they were. Seen on Medium (`play`),
+  92 draw calls at the peak: each picked button over its own square.
 
 ## Cut-outs among the big pictures (2026-10-11)
 

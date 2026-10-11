@@ -11,7 +11,7 @@ extends "res://core/puzzle_base.gd"
 ## draws.
 ##
 ## How it is drawn. `_bg` is the linen (a layout); `_still` the stitched
-## border and the patches; `_tin` the tin, rebuilt when it gains a place.
+## border and the patches; `_tin` the tin, rebuilt when it gains places.
 ## The buttons are unit meshes under transforms baked with Face.FlatBuilder:
 ## the ones at rest into a mesh a block of the cloth (`_blocks`, rebuilt
 ## only when a button of the block changes: Insane's picture is a thousand
@@ -107,11 +107,14 @@ const STAMP_TILT := -0.22
 const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
 ## A picked run draws this far toward the button that was tapped, stands
-## this much bigger and higher, and bobs.
-const PULL := 0.22
-const PULL_MOST := 0.9
+## this much bigger and higher, and bobs. It comes up only a little (the
+## user, 2026-10-11: "it should not raise so high because it become bad to
+## understand where is each piece"; HELD_RISE was 0.14, and PULL 0.22 up to
+## 0.9 of a square, which took a button half a square off its own).
+const PULL := 0.05
+const PULL_MOST := 0.12
 const HELD_SCALE := 1.1
-const HELD_RISE := 0.14
+const HELD_RISE := 0.06
 const HELD_BOB := 0.03
 const HINT_BEAT := 0.5
 ## A button landing is never the same tick twice (docs/agents/sound.md, rule
@@ -260,7 +263,7 @@ var _held_anchor := Vector2.ZERO
 ## What the finger went down on: a square, or TIN_HIT and a place.
 var _pressed_tin := -2
 var _open_at := -INF
-var _open_place := -1
+var _open_places := PackedInt32Array()
 var _pressed := -1
 var _kept_told := false
 
@@ -295,7 +298,7 @@ func rules() -> String:
 		out += " " + tr("BB_RULES_CORNERS")
 	if state.band >= State.BIG_FROM:
 		out += "\n\n" + tr("BB_RULES_BIG")
-	out += "\n\n" + tr("BB_RULES_TIN") % (state.capacity() - state.colours_done())
+	out += "\n\n" + tr("BB_RULES_TIN") % state.base()
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
@@ -405,7 +408,7 @@ func _deal() -> void:
 	_unhold()
 	_streak = 0
 	_combo_n = 0
-	_open_place = -1
+	_open_places = PackedInt32Array()
 	_kept_told = false
 	var n: int = state.slot.size()
 	_arrive = _filled(n, -INF)
@@ -851,10 +854,11 @@ func _draw_over() -> void:
 			for p in _held_places:
 				var k := Vector2.ONE * _held_grow(now, _held_lag(p, true))
 				top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
-	if not Motion.reduce and now - _open_at < Motion.BUMP_TIME * 2.0 and _open_place >= 0:
+	if not Motion.reduce and now - _open_at < Motion.BUMP_TIME * 2.0 and not _open_places.is_empty():
 		busy = true
 		var k := Motion.bump_scale(now - _open_at, 0.3, Motion.BUMP_TIME * 2.0)
-		top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(_open_place)))
+		for p in _open_places:
+			top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(p)))
 	var pic := _pic_xf(now)
 	var zk := pic.get_scale().x
 	var keep: Array = []
@@ -1071,8 +1075,8 @@ func _held_pos(i: int, in_tin: bool, now: float) -> Vector2:
 	var k := _held_k(now, _held_lag(i, in_tin))
 	var home := tin_centre(i) if in_tin else cell_centre(i)
 	var unit := _tin_step if in_tin else _cell
-	# a run of hundreds draws together no further than PULL_MOST of a square
-	# each: pulled a fifth of the way, a sky would leave its patches
+	# no button draws together further than PULL_MOST of a square: each
+	# stays over its own
 	var at := home if in_tin else home + ((_held_anchor - home) * PULL).limit_length(_cell * PULL_MOST) * k
 	var bob := 0.0 if Motion.reduce or not _held_bobs() else sin((now - _held_at) * 5.0 + i * 0.9) * HELD_BOB * unit
 	return at - Vector2(0.0, (HELD_RISE * unit + bob) * k)
@@ -1346,7 +1350,7 @@ func _landed(kind: int, where: int, nth: int, of: int) -> void:
 	_request()
 
 ## A colour is whole: its buttons hop outward from the tapped patch, and
-## the tin gains a place.
+## the tin gains its places.
 func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 	if is_done():
 		return
@@ -1372,11 +1376,13 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 	_busy_for(Motion.SOLVE_TIME + far * WHOLE_STEP + 0.1)
 	if now_open > was:
 		_tin = null
-		_open_place = now_open - 1
+		# (the tutorial's small tin draws fewer places than can open)
+		_open_places = PackedInt32Array(range(mini(was, _tin_places), mini(now_open, _tin_places)))
 		_open_at = now + 0.25
 		_after(0.25, func() -> void:
 			fx.cue("open")
-			fx.ring(tin_centre(_open_place), _tin_step * 0.5, Pal.SUN)
+			for p in _open_places:
+				fx.ring(tin_centre(p), _tin_step * 0.5, Pal.SUN)
 			_request())
 		_busy_for(0.25 + Motion.BUMP_TIME * 2.0)
 		_tell(tr("BB_WHOLE_OPEN"), from)

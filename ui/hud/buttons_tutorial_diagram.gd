@@ -11,7 +11,7 @@ extends Control
 ##   in.
 ## - SEW: the patches it left are bare, so the next run is picked and a
 ##   bare patch of its colour tapped: sewn. The tin's own go the same way.
-## - TIN: a run longer than the tin has places; a colour whole opens one.
+## - TIN: a run longer than the tin has places; a colour whole opens two.
 ## - HINT: the bulb makes a move.
 ## - ZOOM (Hard and Insane, whose pictures are big): two fingers apart
 ##   bring the picture close, one finger dragged looks around, and the
@@ -37,7 +37,7 @@ const LEGEND := {"r": "red", "g": "green", "y": "yellow"}
 ## green out of the tin.
 const PLAIN := [["rrgg", "rrgg", "yyyy"], ["ggyy", "ggyy", "rrrr"]]
 ## Five reds in a run and four places: one stays. Yellow home makes yellow
-## whole, and the tin gains its fifth place.
+## whole, and the tin gains its fifth and sixth places.
 const LONG := [["yyygg", "rrrrr"], ["rrrrr", "yyygg"]]
 ## A picture with something in the middle to come close to; its buttons are
 ## its own rows, two rows down.
@@ -85,7 +85,7 @@ class Small extends "res://puzzles/buttons2d.gd":
 	func _ready() -> void:
 		super()
 		# the page is short: one row of six small places, which is all a
-		# tin that starts at four and gains one or two ever opens here
+		# tin that starts at four ever shows open here
 		_tin_places = 6
 		_tin_step_max = 58.0
 		mouse_filter = Control.MOUSE_FILTER_IGNORE

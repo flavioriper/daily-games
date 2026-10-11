@@ -13,7 +13,7 @@ extends RefCounted
 ## or, for a run off the cloth, the tin, as many as it has room for.
 ## Nothing goes anywhere by itself.
 ##
-## The tin starts small and gains a place every time a colour is whole.
+## The tin starts small and gains two places every time a colour is whole.
 ##
 ## Nothing here can be lost up to Hard: the bare patches are always as many
 ## as the buttons in the tin, so while the tin holds anything some colour
@@ -24,11 +24,13 @@ extends RefCounted
 
 const BANK := "res://content/pixel_garden.json"
 ## The places in the tin a band starts with, and the most it ever has.
-## Ten places open of twenty, one more a colour whole (the user,
+## Ten places open of twenty, CASE_STEP more a colour whole (the user,
 ## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
-## unlock"; 6 of 12 before, 7 on Hard).
+## unlock"; 6 of 12 before, 7 on Hard -- and, the same day, "each unlock
+## must unlock 2 not 1", one a colour before).
 const CASE_BASE := [10, 10, 10, 10]
 const CASE_MAX := 20
+const CASE_STEP := 2
 const HINTS_BY := [3, 3, 2, 0]
 ## Insane's spare taps over the par: a quarter of it, and never under this.
 const SLACK_MIN := 3
@@ -344,9 +346,14 @@ func colours_done() -> int:
 			out += 1
 	return out
 
-## The places open in the tin now: the band's own and one a colour whole.
+## The places the tin starts with: the band's own.
+func base() -> int:
+	return tin_base if tin_base >= 0 else int(CASE_BASE[band])
+
+## The places open in the tin now: the band's own and CASE_STEP a colour
+## whole.
 func capacity() -> int:
-	return mini(CASE_MAX, (tin_base if tin_base >= 0 else int(CASE_BASE[band])) + colours_done())
+	return mini(CASE_MAX, base() + CASE_STEP * colours_done())
 
 func in_tin() -> int:
 	var out := 0
