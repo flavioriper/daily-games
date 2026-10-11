@@ -102,3 +102,10 @@ see "Ads and the purchase" below.
   was pressed on one already gone). A friend's game then sends
   `versus_online_found` and `versus_online_end` as a stranger's does, and
   no `versus_online_seek` or `versus_online_nobody`.
+
+**Furrow (2026-10-11)** is kept, so it sends no `arcade_start` or
+`arcade_end`: `furrow_enter` (plots, crops, seeds, away in seconds, ripe),
+`furrow_leave` (seconds, seeds, picked, sweeps), `furrow_plot` (n, seeds
+paid), `furrow_crop` (crop, seeds paid), `furrow_upgrade` (tile, level,
+seeds paid), `furrow_sweep` (n, seeds: a clean sweep only). No event a
+pick. `rules_opened` carries `puzzle_id` furrow.

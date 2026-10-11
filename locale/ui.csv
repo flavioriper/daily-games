@@ -1451,3 +1451,58 @@ TUT_GUMDROP_HUD_BODY,"Syrup squeezed in cannot be taken out, so there is no Undo
 TUT_GUMDROP_HUD_RESET,"The mould on the tray, clear again","A forma na bandeja, limpa de novo","El molde de la bandeja, limpio otra vez"
 TUT_GUMDROP_HUD_GEAR,Settings,Configurações,Ajustes
 TUT_GUMDROP_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
+ARC_FURROW_BLURB,"A small field that grows while you are away. Pick it all in one stroke for a longer chain, and spend the seeds on plots, crops and the shed.","Uma pequena roça que cresce enquanto você está fora. Colha tudo num só gesto para uma corrente maior e gaste as sementes em canteiros, cultivos e no galpão.","Un pequeño huerto que crece mientras no estás. Recógelo todo de un solo gesto para una cadena más larga y gasta las semillas en bancales, cultivos y el cobertizo."
+FW_MOTTO,"Sow, wait, sweep","Plante, espere, colha","Siembra, espera, recoge"
+FW_SEEDS,SEEDS,SEMENTES,SEMILLAS
+FW_CHAIN,CHAIN,CORRENTE,CADENA
+FW_RIPE,RIPE,MADUROS,MADUROS
+FW_CHAIN_BEST,best %d,recorde %d,récord %d
+FW_BACK_ONE,Welcome back! 1 crop is ripe,Bem-vindo de volta! 1 cultivo maduro,¡Hola de nuevo! 1 cultivo maduro
+FW_BACK_N,Welcome back! %d crops are ripe,Bem-vindo de volta! %d cultivos maduros,¡Hola de nuevo! %d cultivos maduros
+FW_ALL_RIPE,All ripe: one stroke!,Tudo maduro: num só gesto!,Todo maduro: ¡de un gesto!
+FW_BUNCH_0,Handful!,Punhado!,¡Puñado!
+FW_BUNCH_1,Basketful!,Cesta cheia!,¡Cesta llena!
+FW_BUNCH_2,Barrowful!,Carrinho cheio!,¡Carretilla llena!
+FW_BUNCH_3,Cartload!,Carroça cheia!,¡Carro lleno!
+FW_SWEEP,Clean sweep!,Colheita completa!,¡Cosecha completa!
+FW_NEW_PLOT,New plot!,Canteiro novo!,¡Bancal nuevo!
+FW_NEW_CROP,New crop: tap a bed to sow it,Cultivo novo: toque num canteiro para plantar,Cultivo nuevo: toca un bancal para sembrarlo
+FW_SHORT,%s more,faltam %s,faltan %s
+FW_SOWING,Sowing: %s. Tap the packet again to pick.,Plantando: %s. Toque no pacote de novo para colher.,Sembrando: %s. Toca el sobre otra vez para recoger.
+FW_SHOP,The shed,O galpão,El cobertizo
+FW_SHOP_SHORT,Shed,Galpão,Cobertizo
+FW_SHOP_LINE,Seeds buy these for good. None has a top: each level only costs more than the last.,As sementes compram isto para sempre. Nenhum tem limite: cada nível só custa mais que o anterior.,Las semillas compran esto para siempre. Ninguno tiene tope: cada nivel solo cuesta más que el anterior.
+FW_SHOP_DONE,Done,Pronto,Listo
+FW_UP_COMPOST,Compost,Adubo,Abono
+FW_UP_COMPOST_LINE,Everything grows faster,Tudo cresce mais depressa,Todo crece más deprisa
+FW_UP_BASKET,Basket,Cesta,Cesta
+FW_UP_BASKET_LINE,Every crop pays more seeds,Cada cultivo rende mais sementes,Cada cultivo da más semillas
+FW_UP_KNACK,Knack,Jeito,Maña
+FW_UP_KNACK_LINE,Each link of a chain pays more,Cada elo da corrente rende mais,Cada eslabón de la cadena da más
+FW_UP_STATUS,Level %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
+FW_CROP_RADISH,Radish,Rabanete,Rábano
+FW_CROP_CARROT,Carrot,Cenoura,Zanahoria
+FW_CROP_LETTUCE,Lettuce,Alface,Lechuga
+FW_CROP_TOMATO,Tomato,Tomate,Tomate
+FW_CROP_CORN,Corn,Milho,Maíz
+FW_CROP_PUMPKIN,Pumpkin,Abóbora,Calabaza
+FW_CROP_SUNFLOWER,Sunflower,Girassol,Girasol
+FW_CROP_MELON,Watermelon,Melancia,Sandía
+FW_CARD_NEW,A bare field,Uma roça vazia,Un huerto vacío
+FW_CARD_SEEDS,%s seeds,%s sementes,%s semillas
+FW_CARD_PLOTS,%d plots,%d canteiros,%d bancales
+TUT_FURROW_PICK,Pick what is ripe,Colha o que está maduro,Recoge lo maduro
+TUT_FURROW_PICK_BODY,"A ripe crop bobs and glints. Touch it and it is picked for seeds, and the bed grows the same crop again. A plant still growing only tells you how long it needs.","Um cultivo maduro balança e brilha. Toque e ele é colhido por sementes, e o canteiro planta o mesmo de novo. Uma planta ainda crescendo só diz quanto tempo falta.","Un cultivo maduro se mece y brilla. Tócalo y se recoge por semillas, y el bancal vuelve a sembrar lo mismo. Una planta que aún crece solo te dice cuánto le falta."
+TUT_FURROW_CHAIN,"One stroke, one chain","Um gesto, uma corrente","Un gesto, una cadena"
+TUT_FURROW_CHAIN_BODY,"Draw your finger across the beds. Each crop picked soon after the last is a link, and a link pays %d%% more than the one before. A whole field of %d plots or more in one chain is a clean sweep.","Passe o dedo pelos canteiros. Cada cultivo colhido logo após o anterior é um elo, e um elo rende %d%% a mais que o anterior. A roça inteira, com %d canteiros ou mais, numa só corrente é uma colheita completa.","Pasa el dedo por los bancales. Cada cultivo recogido tras el anterior es un eslabón, y un eslabón da un %d%% más que el anterior. El huerto entero, con %d bancales o más, en una sola cadena es una cosecha completa."
+TUT_FURROW_AWAY,It grows while you are away,Cresce enquanto você está fora,Crece mientras no estás
+TUT_FURROW_AWAY_BODY,"The field keeps growing with the game shut. What ripens waits for you and never spoils, so sow slow crops before you leave and come back to one long chain.",A roça continua crescendo com o jogo fechado. O que amadurece espera por você e nunca estraga: plante cultivos lentos antes de sair e volte para uma corrente longa.,El huerto sigue creciendo con el juego cerrado. Lo que madura te espera y nunca se estropea: siembra cultivos lentos antes de irte y vuelve a una cadena larga.
+TUT_FURROW_SOW,Sow another crop,Plante outro cultivo,Siembra otro cultivo
+TUT_FURROW_SOW_BODY,"Tap a packet to take it in hand, then touch or stroke the beds to sow it. Slow crops pay more seeds. Tap the packet again to put it back and pick.",Toque num pacote para pegá-lo e depois toque ou passe o dedo nos canteiros para plantar. Cultivos lentos rendem mais sementes. Toque no pacote de novo para guardá-lo e colher.,Toca un sobre para cogerlo y luego toca o recorre los bancales para sembrarlo. Los cultivos lentos dan más semillas. Toca el sobre otra vez para guardarlo y recoger.
+TUT_FURROW_BUY,"More plots, more crops","Mais canteiros, mais cultivos","Más bancales, más cultivos"
+TUT_FURROW_BUY_BODY,Seeds open the next plot: tap its signboard. They also buy the next packet on the tray. A bigger field makes a longer chain.,As sementes abrem o próximo canteiro: toque na placa. Elas também compram o próximo pacote da bandeja. Uma roça maior dá uma corrente mais longa.,Las semillas abren el siguiente bancal: toca su cartel. También compran el siguiente sobre de la bandeja. Un huerto mayor da una cadena más larga.
+TUT_FURROW_HUD,The buttons,Os botões,Los botones
+TUT_FURROW_HUD_BODY,"What is picked stays picked, so there is no Undo. Nothing is lost by leaving: the field is kept and goes on growing.","O que foi colhido fica colhido, por isso não há Desfazer. Nada se perde ao sair: a roça fica guardada e continua crescendo.","Lo recogido se queda recogido, por eso no hay Deshacer. Nada se pierde al salir: el huerto se guarda y sigue creciendo."
+TUT_FURROW_HUD_SHED,"The shed: Compost grows faster, a Basket pays more, the Knack makes chains richer","O galpão: Adubo cresce mais rápido, Cesta rende mais, Jeito enriquece as correntes","El cobertizo: Abono crece más rápido, Cesta da más, Maña enriquece las cadenas"
+TUT_FURROW_HUD_GEAR,Settings,Configurações,Ajustes
+TUT_FURROW_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"

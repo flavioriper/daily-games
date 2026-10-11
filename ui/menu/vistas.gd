@@ -116,6 +116,8 @@ const CARDS := {
 	"deckchair": ["meadow", 1.5, Vector2(0.55, 0.6)],
 	# Eddy's pond lies in the meadow's grass.
 	"eddy": ["meadow", 1.6, Vector2(0.2, 0.6)],
+	# Furrow's beds are dug in the meadow's grass.
+	"furrow": ["meadow", 1.6, Vector2(0.6, 0.7)],
 	# Gumdrop's tray is set out on the meadow's grass.
 	"gumdrop": ["meadow", 1.5, Vector2(0.7, 0.55)],
 }

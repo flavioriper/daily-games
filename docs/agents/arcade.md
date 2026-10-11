@@ -3242,5 +3242,69 @@ biggest whirlpool.
 
 
 **Gumdrop was the eleventh for a day** (2026-10-10 to 10-11) and is a
-daily board now: `docs/agents/boards/gumdrop.md`. The tab is ten cards
-again; `_compact(4)` and `ART_H_STRIP` stay for the next eleventh.
+daily board now: `docs/agents/boards/gumdrop.md`. The tab was ten cards
+again until Furrow (below, the same day) took `_compact(4)` and
+`ART_H_STRIP` as the eleventh.
+
+**Furrow is the eleventh** (2026-10-11, spec
+`docs/superpowers/specs/2026-10-11-arcade-furrow-design.md`), built
+unattended from "a idle farm game is the next arcade game ... Cozy
+animations, good animations on key events, satisfactory sounds on combos":
+a field of 20 plots that grows on the wall clock while the game is shut.
+What ripens waits and never rots, and the chain (each crop picked within
+1.6 s of the last pays 5% more, up to the open plots) makes one stroke
+across a ripe field the thing to come back for.
+
+- **It is isometric since the same evening** (the user, over a picture
+  of a farm seen from a corner: "this is what i was thinking"; the first
+  build was a flat grid of beds). A plot is a lot, a diamond `_a` to its
+  side corner, nine plants of its crop; the lots lie three and two a row
+  (`layout`), `LOT` of the way from one to the next earth and the rest
+  road. Which plot stands where is the sim's opening order laid on the
+  spots nearest the middle first, so a tutorial or a harness names a plot
+  by `place(k)`, the land as it is read, never by its index. The house,
+  the barn and the mill are scenery in the ground's mesh; only the sails
+  are drawn apart, to turn. Animals, buildings that make things and a land
+  bigger than the screen were in the picture and are not built: the
+  spec's call 13.
+- **A lot's plants lean, its earth does not**: the earth of every lot is
+  one mesh and a lot's nine plants another (`Art.rows`), drawn under a
+  shear, so the wind moves each top over its own foot.
+- **A kept game, like Nightlight**: `user://furrow.cfg`, no run, no end
+  card, no gold, no boosters; `ui/menu.gd` leaves it without an
+  interstitial and the tab's card reads `Sim.kept()` (seeds held, plots
+  open). It is not in `arcade_record.gd` at all.
+- **The game is pure data** (`arcade/furrow_sim.gd`): `step(dt)` takes any
+  `dt` and `away(seconds)` grows the field in one go, so hours away cost
+  nothing to work out. Nothing is banked away. `tests/_probe_furrow.gd`
+  must print 0 failed; with `pace` it climbs with two bots (17.6 days
+  looking in, 146 hours staying).
+- **The field is its own Control** (`arcade/furrow_field.gd`), shared by
+  the screen and the tutorial's pages, as Deckchair's table is: it takes
+  the touch (ScreenTouch, ScreenDrag and the mouse; a drag is sampled every
+  quarter cell so a quick stroke misses no bed), calls the sim, and the
+  owner plays the sim's events back into it with `play`. The ground is one
+  mesh, the lots' earth one, a lot's plants a cached mesh under a
+  transform, the bars, glints, puffs and the tutorial's finger one live
+  mesh.
+- **The tray is drawn, not built of buttons**: one Control, nine slots
+  (the shed, then the packets), pressed through `press_slot`.
+- **A chain's tick climbs** a semitone a link to five and holds
+  (`_on_pick`), the one place a repeating tick is pitched: the user asked
+  for sounds on combos. If it reads as a tune and not a tick, hold it at
+  the 0.98 to 1.02 it also varies by.
+- **A screen that saves as it leaves the tree writes its file after a
+  harness has put things back.** The first two windowed runs left
+  `furrow.cfg` and their own files in this Mac's user data (removed). The
+  screen no longer saves on `NOTIFICATION_EXIT_TREE`, `Sim.save` does
+  nothing with `Sim.path` empty, `tests/_shot_furrow.gd` empties it as it
+  ends and `tests/_shot_howto_screen.gd` before it builds the screen.
+- **The tab has eleven cards**: five rows of two and Furrow alone on a
+  sixth, the pictures cut to `ART_H_STRIP`. Its banner sizes its plants by
+  the strip's height so they still read.
+- **No mascot**, no start-over, no helper that picks: the spec's section 8.
+- **Not in `tests/_probe_arcade_buzz.gd`**: it has no Furrow bot.
+- **How to see it**: `tests/_shot_furrow.gd -- <outdir> [reduce]
+  [en|pt|es]` (windowed, through the real menu, a real touch and a real
+  drag; 66 to 164 draw calls on `opengl3_angle`),
+  `tests/_shot_howto_screen.gd -- furrow <outdir>`.

@@ -62,6 +62,7 @@ const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const BeelineScreen = preload("res://arcade/beeline_screen.gd")
 const DeckchairScreen = preload("res://arcade/deckchair_screen.gd")
 const EddyScreen = preload("res://arcade/eddy_screen.gd")
+const FurrowScreen = preload("res://arcade/furrow_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
@@ -1357,14 +1358,17 @@ func _open_arcade(game: String) -> void:
 		"eddy":
 			screen = EddyScreen.new()
 			screen.name = "Eddy"
+		"furrow":
+			screen = FurrowScreen.new()
+			screen.name = "Furrow"
 		_:
 			return
-	# Nightlight is kept and has no run to finish: like the Factory's land
+	# Nightlight and Furrow are kept and have no run to finish: like the Factory's land
 	# tab it is looked in on, so leaving it is not a moment for an
 	# interstitial.
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		if game != "nightlight":
+		if game != "nightlight" and game != "furrow":
 			_left_game("arcade")
 		elif not _switching:
 			_show_list("arcade"))

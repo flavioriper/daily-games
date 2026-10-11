@@ -45,6 +45,8 @@ const NightSim = preload("res://arcade/nightlight_sim.gd")
 const BeeArt = preload("res://arcade/beeline_art.gd")
 const EddyArt = preload("res://arcade/eddy_art.gd")
 const EddySim = preload("res://arcade/eddy_sim.gd")
+const FurrowArt = preload("res://arcade/furrow_art.gd")
+const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const DeckArt = preload("res://arcade/deckchair_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -59,13 +61,13 @@ const ART_H_TINY := 104.0
 ## a strip, so the sixth row was on the page. Kept for the next eleventh.
 const ART_H_STRIP := 62.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -155,7 +157,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -224,6 +226,13 @@ func refresh() -> void:
 			if relics > 0:
 				(_best[game] as Label).text += " · " + (tr("NL_CARD_RELICS_ONE") if relics == 1 else tr("NL_CARD_RELICS_N") % relics)
 			(_stage[game] as Label).text = "" if novas == 0 else "· " + (tr("NL_CARD_NOVAS_ONE") if novas == 1 else tr("NL_CARD_NOVAS_N") % novas)
+			continue
+		# Furrow is kept too: its line is the field as it stands
+		if game == "furrow":
+			var land: Dictionary = FurrowSim.kept()
+			var open := int(land.plots)
+			(_best[game] as Label).text = tr("FW_CARD_NEW") if open == 0 else tr("FW_CARD_SEEDS") % Record.grouped(int(land.seeds))
+			(_stage[game] as Label).text = "" if open == 0 else "· " + tr("FW_CARD_PLOTS") % open
 			continue
 		var best := Record.best(game)
 		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
@@ -669,6 +678,37 @@ class DeckchairBanner extends Control:
 			draw_string(font, Vector2(0.11, 0.325) * w, DeckArt.RANKS[k], HORIZONTAL_ALIGNMENT_LEFT, -1, int(w * 0.31),
 				DeckArt.RED if k % 2 == 1 else DeckArt.BLACK)
 		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## Furrow's banner: a row of beds dug in the meadow, a crop ripe on each
+## and a sprout on the last. Drawn once.
+class FurrowBanner extends Control:
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		_keep.clear()
+		var u := size.y / 110.0
+		var n := 5
+		# on the strip a card is cut to when the tab is full, the plants are
+		# still as tall as the strip lets them be
+		var w := minf(size.x * 0.92 / n, maxf(74.0 * u, size.y * 0.95))
+		var from := size.x * 0.5 - w * n * 0.5
+		var bed := Vector2(w * 0.88, w * 0.36)
+		var b := Face.Builder.new()
+		for i in n:
+			b.append(FurrowArt.bed(bed), Transform2D(0.0, Vector2(from + w * (i + 0.5), size.y * 0.8)))
+		var beds := b.mesh()
+		_keep.append(beds)
+		draw_mesh(beds, null)
+		for row: Array in [[4, 3], [0, 3], [5, 3], [6, 3], [1, 1]]:
+			var i := _keep.size() - 1
+			draw_mesh(FurrowArt.plant(row[0], row[1], w * 0.4), null, Transform2D(0.0, Vector2(from + w * (i + 0.5), size.y * 0.8)))
+			_keep.append(null)
 
 ## Eddy's banner: a round of the pond lying in the meadow, the whirlpool
 ## turning in its middle, a duck and a boat on their way round it and

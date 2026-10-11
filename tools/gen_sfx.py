@@ -3496,6 +3496,41 @@ SETS = {
         # A best passed: five up a step at a time, the longest rise.
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Furrow (arcade/furrow_screen.gd, 2026-10-11): a small field that grows
+    # while the game is shut. Made against the cozy rules from the start
+    # (docs/agents/sound.md). One cue repeats: `pick`, a crop out of its bed,
+    # up to twenty in a stroke; the screen plays it a semitone higher a link
+    # of the chain, to five and no further. No new take is kept: the set is
+    # the three measured takes Beeline, Eddy and Gumdrop are made of (the
+    # light button on felt, the hollow block, one muffled kalimba note),
+    # copied into build/sfx_raw/furrow/. The packets and the shed's button
+    # are the button's own click (fx2d's touch).
+    "furrow": {
+        # A crop picked: the chain's tick, the cue of the game.
+        "pick":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A packet's crop into a bed: the block, three steps down.
+        "sow":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        # Not enough seeds: two low notches alike.
+        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        # A chain over, its basket set down: two knocks, the second a third up.
+        "tally":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.09:0,4"),
+        # A plot opened: three notches up.
+        "plot":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.42", "body:320", "tight", "notes:0.1:-2,1,5"),
+        # The 5th, 10th, 15th and 20th link: two notes up a third, played a
+        # step or two higher each (0, 2, 4, 5 semitones).
+        "bunch":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.09:2,5", "cut:0.55"),
+        # The whole field in one chain: five up a step at a time, the
+        # longest rise.
+        "sweep":     ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,4,6,7,9", "cut:1.2"),
+        # A level of an upgrade bought in the shed: two notes up a fourth.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # A new crop's packet: three notes up.
+        "crop":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:2,6,9", "cut:0.9"),
+        # The field opened: two notes up, quieter than anything it leads to.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+        # A golden crop, ripening and picked: one note alone.
+        "gold":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:9", "cut:0.5"),
+    },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
     # start (docs/agents/sound.md). One cue never stops: `pour`, the

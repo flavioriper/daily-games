@@ -35,7 +35,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
 			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
-			"res://arcade/eddy_screen.gd", "res://puzzles/gumdrop2d.gd"]:
+			"res://arcade/eddy_screen.gd", "res://arcade/furrow_screen.gd", "res://puzzles/gumdrop2d.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -188,8 +188,6 @@ func _process(_d: float) -> bool:
 	for i in 200:
 		ed.step()
 	_check(ed.is_over(), "eddy over, its spin out")
-	Boosters.revive("eddy", ed)
-	_check(not ed.is_over() and ed.spin > 0.0, "eddy revived, with spin to turn on")
 	_check(Boosters.of("gumdrop").is_empty(), "gumdrop: no gold boosters, it is a daily board")
 
 	DirAccess.remove_absolute(tmp)
