@@ -65,6 +65,8 @@ const HowBigArt = preload("res://ui/faces/how_big_art.gd")
 const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const PearlArt = preload("res://ui/faces/pearl_art.gd")
 const LatticeArt = preload("res://ui/faces/lattice_art.gd")
+const GumArt = preload("res://puzzles/gumdrop_art.gd")
+const GumMould = preload("res://puzzles/gumdrop_mould.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
 const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
@@ -237,6 +239,9 @@ var _pearl_u := -1.0
 ## Lattice's corner of slats and tiles, built once a size.
 var _lattice_mesh: ArrayMesh
 var _lattice_u := -1.0
+## Gumdrop's flower mould, built once a size.
+var _gumdrop_mesh: ArrayMesh
+var _gumdrop_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -431,6 +436,7 @@ func _draw() -> void:
 		"acorn": _draw_acorn()
 		"pearl": _draw_pearl()
 		"lattice": _draw_lattice()
+		"gumdrop": _draw_gumdrop()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1748,6 +1754,22 @@ const LA_CELL := 34.0
 ## A row a line: a number at home, a negative one not yet, 0 a knot.
 const LA_ROWS := [[2, -5, 1, 4, 3], [4, 0, -3, 0, 1], [-1, 3, 5, -2, 4]]
 const LA_KNOTS := [["LU", "9"], ["RD", "3"]]
+
+## Gumdrop's card: the tray with a flower mould on it, every cell its
+## flavour -- the board's own drawing (puzzles/gumdrop_art.gd), so the card
+## and the board cannot drift apart.
+const GD_SIDE := 88.0
+
+func _draw_gumdrop() -> void:
+	var side := GD_SIDE * _u
+	if _gumdrop_mesh == null or not is_equal_approx(_gumdrop_u, _u):
+		var m := GumMould.build(GumMould.Shape.FLOWER5, GumMould.Cut.CORE, 5)
+		m.want = [0, 1, 2, 3, 4, 5]
+		_gumdrop_mesh = GumArt.picture(m, side / GumMould.SIDE)
+		_gumdrop_u = _u
+	var at := _c - Vector2(side, side) * 0.5
+	draw_mesh(GumArt.tray(side), null, Transform2D(0.0, at))
+	draw_mesh(_gumdrop_mesh, null, Transform2D(0.0, at))
 
 func _draw_lattice() -> void:
 	var s := LA_CELL * _u

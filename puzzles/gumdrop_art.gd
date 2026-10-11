@@ -1,9 +1,9 @@
 extends RefCounted
 
-## Gumdrop's drawing (arcade/gumdrop_screen.gd): the kitchen table, the
+## Gumdrop's drawing (puzzles/gumdrop_table.gd): the kitchen table, the
 ## tray, a mould's floor and walls, the card's picture of it, the pots, the
 ## dropper and the two buttons, each one cached mesh. The syrup itself is
-## not here: it is the fluid's dye texture (arcade/gumdrop_fluid.gd) under
+## not here: it is the fluid's dye texture (puzzles/gumdrop_fluid.gd) under
 ## shaders/gumdrop_syrup_2d.gdshader.
 ##
 ## A mould's meshes are built in pixels, `u` of them a mould unit, with the
@@ -11,8 +11,8 @@ extends RefCounted
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
-const Mould = preload("res://arcade/gumdrop_mould.gd")
-const Sim = preload("res://arcade/gumdrop_sim.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
+const Sim = preload("res://puzzles/gumdrop_sim.gd")
 
 const INK := Color("3b3340")
 const TABLE := Color("ecd3ab")

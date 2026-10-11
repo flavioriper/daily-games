@@ -24,6 +24,9 @@ const RIM := 2.0
 ## The count turns rose from here down.
 const LOW := 3
 
+## The pill's two lines, for one and for many: a board whose counted move
+## has a name of its own (Gumdrop's serves) sets them.
+var keys := ["MOVES_LEFT_ONE", "MOVES_LEFT_N"]
 var _shown: ArrayMesh
 var _wide := -1.0
 var _bump_at := -INF
@@ -45,7 +48,7 @@ static func line(on: Control, left: int) -> String:
 ## Draws the pill centred on `centre` of `layer`.
 func draw(layer: Control, centre: Vector2, left: int, now: float) -> void:
 	var font: Font = CozyTheme.display(700)
-	var text := line(layer, left)
+	var text := layer.tr(keys[0]) if left == 1 else layer.tr(keys[1]) % left
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, FONT).x
 	var wide := tw + 2.0 * PAD
 	if _shown == null or not is_equal_approx(wide, _wide):

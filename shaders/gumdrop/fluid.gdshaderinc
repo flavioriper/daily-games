@@ -1,4 +1,4 @@
-// Gumdrop's fluid, shared by its passes (arcade/gumdrop_fluid.gd). The
+// Gumdrop's fluid, shared by its passes (puzzles/gumdrop_fluid.gd). The
 // render targets are eight bits a channel on the phone's driver (no HDR
 // 2D on gl_compatibility), so a signed value is packed across two bytes:
 // the velocity's x in RG and y in BA, the pressure, the divergence and
@@ -6,7 +6,7 @@
 // filter (the halves would blend apart): it is fetched by texel and, for
 // the velocity, blended by hand.
 //
-// The colour maths is arcade/gumdrop_sim.gd's `hue`, `strength`, `deep`,
+// The colour maths is puzzles/gumdrop_sim.gd's `hue`, `strength`, `deep`,
 // `colour` and `nearness` word for word, so the judge here and the probe
 // there agree.
 

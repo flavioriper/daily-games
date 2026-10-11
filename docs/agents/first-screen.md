@@ -368,6 +368,14 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   eight tiles round it was tried first and read as too small. Its vista is
   the meadow at `(0.42, 0.30)`. The fifth page holds three cards;
   `_shot_menu.gd -- last` read **173** draw calls there.
+- **Gumdrop is the thirty-sixth card (2026-10-11)**, come over from the
+  Arcade tab. Its picture is `_draw_gumdrop()` in `ui/menu/card_art.gd`: the
+  tray with the flower mould on it, every cell its flavour --
+  `puzzles/gumdrop_art.gd`'s own tray and picture, the picture one mesh kept
+  in `_gumdrop_mesh`. Its vista is the meadow at `(0.7, 0.55)`, the one it
+  had on the Arcade tab. The fifth page holds four cards;
+  `tests/_shot_gumdrop.gd -- <out> tutor` turns the grid to it and read
+  **178** draw calls there. The Arcade tab is ten cards again.
 - **The registry is two lists.** `Registry.PUZZLES` is the grid (twenty
   flat boards since Fairy Lights and Rings, no `soon`; eighteen before
   2026-09-24); `Registry.LEGACY` is the old game. A grid entry

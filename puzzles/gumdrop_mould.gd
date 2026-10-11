@@ -3,8 +3,8 @@ extends RefCounted
 ## A Gumdrop mould as pure data (spec
 ## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md): an outline
 ## cut into cells by walls, and the flavour each cell is wanted in. The sim
-## (arcade/gumdrop_sim.gd) lays its grid over it and the art
-## (arcade/gumdrop_art.gd) draws it, both from the same polygons.
+## (puzzles/gumdrop_sim.gd) lays its grid over it and the art
+## (puzzles/gumdrop_art.gd) draws it, both from the same polygons.
 ##
 ## Everything is in mould units: a field SIDE by SIDE, y down, the mould
 ## about its middle. An outline is one closed curve seen whole from a point
@@ -28,8 +28,8 @@ const CORE_PART := 0.44
 const PIGMENT := [Vector3(1, 0, 0), Vector3(0.5, 0.5, 0), Vector3(0, 1, 0), Vector3(0, 0.5, 0.5), Vector3(0, 0, 1), Vector3(0.5, 0, 0.5)]
 
 ## The moulds, easiest first: each row is a shape, a cut and how many cells
-## the cut makes (a core is one more). A level draws from the rows about it
-## (`pick`).
+## the cut makes (a core is one more). A band's day draws from a run of
+## the rows (`BANDS`, `day`).
 const DESIGNS := [
 	[Shape.ROUND, Cut.SECTORS, 2], [Shape.EGG, Cut.BANDS, 2], [Shape.HEART, Cut.SECTORS, 2],
 	[Shape.ROUND, Cut.SECTORS, 3], [Shape.EGG, Cut.BANDS, 3], [Shape.DROP, Cut.BANDS, 3],
@@ -40,10 +40,19 @@ const DESIGNS := [
 	[Shape.FLOWER5, Cut.CORE, 5], [Shape.STAR, Cut.CORE, 5], [Shape.EGG, Cut.BANDS, 5],
 	[Shape.FLOWER6, Cut.CORE, 6], [Shape.ROUND, Cut.CORE, 6], [Shape.ROUND, Cut.SECTORS, 8],
 ]
-## How many rows a level may draw from, and how far the first of them moves
-## on with each level.
-const SPREAD := 3
-const ADVANCE := 1.4
+## A day's moulds by band (docs/superpowers/specs/
+## 2026-10-11-gumdrop-daily-design.md, section 1): how many, the rows of
+## DESIGNS they are drawn from, the most flavours one is wanted in, how
+## they are stood (`Stood`), and the mark each has to be served at.
+enum Stood { PLAIN, ONE_MIXED, THREE_POTS }
+const BANDS := [
+	{"moulds": 2, "rows": [0, 5], "flavours": [2, 2], "stood": Stood.PLAIN, "mark": 60},
+	{"moulds": 3, "rows": [3, 10], "flavours": [3, 3], "stood": Stood.PLAIN, "mark": 65},
+	{"moulds": 4, "rows": [8, 16], "flavours": [3, 4], "stood": Stood.ONE_MIXED, "mark": 70},
+	{"moulds": 5, "rows": [13, 23], "flavours": [4, 5], "stood": Stood.THREE_POTS, "mark": 75},
+]
+## The three pots Insane stands by every tray: the pigments themselves.
+const PRIMARIES := [0, 2, 4]
 
 ## The outline's points, the point it is cut about, and the angle its first
 ## wall leaves that point at.
@@ -154,33 +163,30 @@ static func cut(shape: int, how: int, n: int) -> Array:
 		cells.append(_ccw(core))
 	return cells
 
-## Which design a level is given.
-static func pick(level: int, rng: RandomNumberGenerator) -> Array:
-	var from := mini(int((level - 1) * ADVANCE), DESIGNS.size() - SPREAD)
-	return DESIGNS[from + rng.randi_range(0, SPREAD - 1)]
-
-## How many flavours a level's mould is wanted in, and whether one of them
-## has to be mixed from two pots.
-static func flavours_at(level: int) -> int:
-	return 2 if level <= 2 else (3 if level <= 6 else 4)
-
-static func mixes_at(level: int) -> bool:
-	return level >= 5
-
-## A whole mould for a level: its polygons, each cell's flavour and the
-## pots stood by it. A cell the walls leave too little of is not kept, and
-## a design that loses one is drawn again.
-static func deal(level: int, rng: RandomNumberGenerator) -> Dictionary:
-	for attempt in 8:
-		var row := pick(level, rng)
+## A band's moulds for a day, easiest first: distinct designs from the
+## band's rows, each dressed by the band's rule. A design the walls leave
+## too little of is passed over.
+static func day(band: int, rng: RandomNumberGenerator) -> Array:
+	var spec: Dictionary = BANDS[clampi(band, 0, BANDS.size() - 1)]
+	var rows: Array = []
+	for r in range(int(spec.rows[0]), int(spec.rows[1]) + 1):
+		rows.append(r)
+	var picked: Array = []
+	while picked.size() < int(spec.moulds) and not rows.is_empty():
+		var r: int = rows[rng.randi_range(0, rows.size() - 1)]
+		rows.erase(r)
+		if not build(DESIGNS[r][0], DESIGNS[r][1], DESIGNS[r][2]).is_empty():
+			picked.append(r)
+	picked.sort()
+	var out: Array = []
+	for i in picked.size():
+		var row: Array = DESIGNS[picked[i]]
 		var m := build(row[0], row[1], row[2])
-		if m.is_empty():
-			continue
-		dress(m, level, rng)
-		return m
-	var plain := build(Shape.ROUND, Cut.SECTORS, 2)
-	dress(plain, level, rng)
-	return plain
+		# the later moulds of a day are wanted in the most flavours
+		var k: int = int(spec.flavours[0]) if i * 2 < picked.size() else int(spec.flavours[1])
+		dress(m, k, int(spec.stood), rng)
+		out.append(m)
+	return out
 
 static func build(shape: int, how: int, n: int) -> Dictionary:
 	var o := outline(shape)
@@ -198,14 +204,24 @@ static func build(shape: int, how: int, n: int) -> Dictionary:
 	return {"shape": shape, "cut": how, "n": n, "outline": o.points, "rim": rim, "mid": o.mid,
 		"cells": cells, "inner": inner, "want": [], "pots": []}
 
-## Gives a built mould its flavours and its pots.
-static func dress(m: Dictionary, level: int, rng: RandomNumberGenerator) -> void:
+## Gives a built mould its flavours and its pots: wanted in `flavours` of
+## them (no more than it has cells), stood as `stood` says.
+static func dress(m: Dictionary, flavours: int, stood: int, rng: RandomNumberGenerator) -> void:
 	var count: int = m.cells.size()
-	var k := mini(flavours_at(level), count)
+	var k := mini(flavours, count)
 	var all := [0, 1, 2, 3, 4, 5]
 	var chosen: Array = []
 	var mixed := -1
-	if mixes_at(level) and k >= 3:
+	if stood == Stood.THREE_POTS:
+		# two of the flavours between the pigments first, so two cells at
+		# least are mixed, then whatever else
+		var odd := [1, 3, 5]
+		while chosen.size() < mini(2, k):
+			var f: int = odd[rng.randi_range(0, odd.size() - 1)]
+			odd.erase(f)
+			all.erase(f)
+			chosen.append(f)
+	elif stood == Stood.ONE_MIXED and k >= 3:
 		# an odd flavour and the two pigments beside it: it is wanted, and
 		# only they are stood by the tray
 		mixed = [1, 3, 5][rng.randi_range(0, 2)]
@@ -231,10 +247,13 @@ static func dress(m: Dictionary, level: int, rng: RandomNumberGenerator) -> void
 		if not want.has(chosen[j]):
 			want[j % count] = chosen[j]
 	var pots: Array = []
-	for f: int in chosen:
-		if f != mixed:
-			pots.append(f)
-	pots.sort()
+	if stood == Stood.THREE_POTS:
+		pots = PRIMARIES.duplicate()
+	else:
+		for f: int in chosen:
+			if f != mixed:
+				pots.append(f)
+		pots.sort()
 	m.want = want
 	m.pots = pots
 	m.mixed = mixed

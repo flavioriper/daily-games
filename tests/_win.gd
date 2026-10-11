@@ -177,6 +177,8 @@ func _note(id: String) -> String:
 		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"gumdrop": return "band %d, %d moulds at %d%%, served at %s in %d serves, board fit=%s, hud=%s" % [
+			_puzzle.band, _puzzle.sim.moulds.size(), _puzzle.sim.mark(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
 		"lattice": return "band %d, %d tiles on %d by %d, %d knots, %d swaps (par %d), %d left of %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.n, _puzzle.state.n, _puzzle.state.knots.size(),
 			_puzzle.state.swaps, _puzzle.state.par, _puzzle.moves_left, _puzzle.max_moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -225,6 +227,41 @@ func _solve(id: String) -> void:
 		"acorn": _solve_acorn()
 		"pearl": _solve_pearl()
 		"lattice": _solve_lattice()
+		"gumdrop": _solve_gumdrop()
+
+## Gumdrop's syrup is a fluid on the GPU, so nothing here can pour it in a
+## frame: each mould's cells are filled as the card has them (the sim's
+## prefill, a tutorial page's), given a second to land, and served with a
+## press on the table's own button. It takes wall time, so this one awaits
+## and holds the walk (`_waiting`) to the win.
+func _solve_gumdrop() -> void:
+	_waiting = true
+	var sim = _puzzle.sim
+	var table = _puzzle.table
+	_fit_ok = Rect2(Vector2.ZERO, table.field.size).encloses(table._tray)
+	_hud_ok = table.clear.x > 0.0 and table._card.position.y >= table.clear.x
+	for i in sim.moulds.size():
+		var guard := 0
+		while (sim.index != i or int(sim.phase) > 1) and guard < 900:
+			guard += 1
+			await process_frame
+		for c in sim.mould.want.size():
+			sim.filled(c, int(sim.mould.want[c]), 1.0)
+		await create_timer(1.2).timeout
+		var at: Vector2 = table.field.get_global_transform_with_canvas() * table._serve_at
+		for down in [true, false]:
+			var ev := InputEventScreenTouch.new()
+			ev.index = 0
+			ev.pressed = down
+			ev.position = root.get_final_transform() * at
+			Input.parse_input_event(ev)
+			Input.flush_buffered_events()
+	var wait := 0
+	while not _puzzle.is_done() and wait < 900:
+		wait += 1
+		await process_frame
+	_hud_ok = _hud_ok and _puzzle.moves == sim.moulds.size()
+	_waiting = false
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n

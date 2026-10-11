@@ -987,6 +987,35 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "LA_LVL_3"},
 		],
 	},
+	{
+		"id": "gumdrop",
+		"kind": "puzzle",
+		"title": "Gumdrop",
+		"blurb": "GD_BLURB",
+		"short": "GD_SHORT",
+		"motto": "GD_MOTTO",
+		"footer": "Squeeze · Soak · Serve",
+		# The kitchen table is the whole screen (`bleed`, ui/flat/flat_host.gd):
+		# the pots and the Squeeze and Serve buttons lie on it, so there is no
+		# tray and no actions row, and Reset rides up into the top bar. It was
+		# an Arcade game for a day (2026-10-10 to 10-11).
+		"script": "res://puzzles/gumdrop2d.gd",
+		"shell": "flat",
+		"bleed": true,
+		"tray": "none",
+		"actions": false,
+		"tip": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (gumdrop_mould.gd's BANDS, a few moulds
+		# off the day's seed) is its own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "GD_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "GD_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "GD_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "GD_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

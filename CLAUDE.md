@@ -28,7 +28,7 @@ that area**, and add new history there rather than here.
 | One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |
 | Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
-| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Gumdrop) | `docs/agents/arcade.md` |
+| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy) | `docs/agents/arcade.md` |
 | Factory: the land, the sim, the one-sim rule (and the dropped Valley and Grove, as history) | `docs/agents/factory.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
@@ -71,7 +71,9 @@ that area**, and add new history there rather than here.
   screen should fit everything, just like the factory does, it's gonna be a
   pattern from now on"): the field is laid full rect, edge to edge, and
   the top bar, plates and controls lie over it, as `factory/screen.gd` and
-  `arcade/eddy_screen.gd` do. No paper page with the game in a frame.
+  `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
+  daily board asks the flat host for it with `"bleed": true` in the
+  registry (Gumdrop; `docs/agents/flat-screens.md`).
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,

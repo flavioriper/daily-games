@@ -11,8 +11,8 @@ extends VBoxContainer
 ## (arcade/beeline_screen.gd), a bee flown by taps through the gaps in a
 ## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
 ## seven-column card game for one, and Eddy (arcade/eddy_screen.gd), a
-## whirlpool steered about a pond, and Gumdrop (arcade/gumdrop_screen.gd),
-## clear jelly in a mould coloured with a dropper of syrup. Its body takes the day row's and the grid's room, as Versus, Stats
+## whirlpool steered about a pond. (Gumdrop was the eleventh for a day and
+## became a daily board on 2026-10-11, puzzles/gumdrop2d.gd.) Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
@@ -45,8 +45,6 @@ const NightSim = preload("res://arcade/nightlight_sim.gd")
 const BeeArt = preload("res://arcade/beeline_art.gd")
 const EddyArt = preload("res://arcade/eddy_art.gd")
 const EddySim = preload("res://arcade/eddy_sim.gd")
-const GumArt = preload("res://arcade/gumdrop_art.gd")
-const GumMould = preload("res://arcade/gumdrop_mould.gd")
 const DeckArt = preload("res://arcade/deckchair_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -57,17 +55,17 @@ const RADIUS := 36
 const ART_H := 260.0
 const ART_H_SHORT := 150.0
 const ART_H_TINY := 104.0
-## Eleven cards are six rows of two: the pictures a strip, so the sixth row
-## is on the page.
+## Eleven cards were six rows of two (2026-10-10, for a day): the pictures
+## a strip, so the sixth row was on the page. Kept for the next eleventh.
 const ART_H_STRIP := 62.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "gumdrop"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "gumdrop": "Gumdrop"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "gumdrop": "ARC_GUMDROP_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "gumdrop": "ARC_BEST_MOULDS"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "gumdrop": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -157,7 +155,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "gumdrop": GumdropBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -708,36 +706,3 @@ class EddyBanner extends Control:
 			draw_mesh(EddyArt.thing(row[0], row[1], 1.5 * u), null, Transform2D(float(row[4]), c + Vector2(float(row[2]) * rx, float(row[3]) * ry)))
 		draw_mesh(EddyArt.thing(EddySim.Kind.BOAT, 1, 1.25 * u), null, Transform2D(-0.5, c + Vector2(0.52 * rx, -0.3 * ry)))
 		draw_mesh(EddyArt.thing(EddySim.Kind.DUCK, 0, 1.5 * u), null, Transform2D(2.4, c + Vector2(-0.4 * rx, 0.02 * ry)))
-
-## Gumdrop's banner: the tray lying in the meadow with a flower mould on
-## it, every cell its flavour, two pots beside it and the dropper leaning
-## over. Drawn once.
-class GumdropBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var side := minf(size.y * 0.86, size.x * 0.4)
-		var at := Vector2(size.x * 0.5 - side * 0.5, size.y * 0.56 - side * 0.5)
-		draw_mesh(GumArt.tray(side), null, Transform2D(0.0, at))
-		var m := GumMould.build(GumMould.Shape.FLOWER5, GumMould.Cut.CORE, 5)
-		m.want = [0, 1, 2, 3, 4, 5]
-		var pic := GumArt.picture(m, side / GumMould.SIDE)
-		_keep.append(pic)
-		draw_mesh(pic, null, Transform2D(0.0, at))
-		var k := side / 240.0
-		for row: Array in [[0, -0.78, 0.92], [4, -1.02, 1.0]]:
-			var foot := Vector2(size.x * 0.5 + side * float(row[1]), size.y * float(row[2]))
-			var xf := Transform2D(0.0, Vector2(k, k), 0.0, foot)
-			draw_mesh(GumArt.jar_shadow(), null, xf)
-			draw_mesh(GumArt.syrup(int(row[0]), 0.75), null, xf)
-			draw_mesh(GumArt.jar(), null, xf)
-		var lean := Transform2D(0.7, Vector2(k, k), 0.0, at + Vector2(side * 0.66, side * 0.4))
-		draw_mesh(GumArt.dropper(5, 250.0), null, lean)
-		draw_mesh(GumArt.bulb(250.0), null, lean * Transform2D(0.0, Vector2(0, -246.0)))

@@ -1,0 +1,782 @@
+extends Control
+
+## Gumdrop's table: clear jelly in a walled mould coloured with a dropper
+## of syrup to match a card (specs
+## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md and
+## 2026-10-11-gumdrop-daily-design.md). **The kitchen table is the whole
+## rect**, edge to edge (CLAUDE.md: a game's world fills the screen): on it
+## lie the card with the picture of what is wanted, the tray with the
+## mould, the pots of syrup and the two round buttons. Whoever owns it
+## lays its chrome over it and says what that covers (`set_clear`): the
+## daily board (puzzles/gumdrop2d.gd) under the flat host's rows, and the
+## tutorial's bench (ui/hud/gumdrop_tutorial_diagram.gd), which is this
+## with a layout of its own. It was the Arcade screen until 2026-10-11.
+##
+## Play: a finger drawn over the tray moves the dropper's tip as far as the
+## finger goes (it need not be on the tip, so it never hides it) and a tap
+## puts the tip there; a pot touched is the flavour in the dropper; the
+## pink button squeezes for as long as it is held; the gold one serves the
+## mould. The day is puzzles/gumdrop_sim.gd's, stepped at its fixed DT;
+## this draws it, plays its events and hands each on (`happened`). How near
+## the card the mould is stays hidden while it is played (a ? beside the
+## card): serving it is the check, and the number is told then.
+##
+## Drawing: three Controls one over the other. The field draws the table,
+## the tray and the mould's floor. The syrup is the fluid's dye texture
+## (puzzles/gumdrop_fluid.gd, a real fluid on the GPU) drawn once through
+## shaders/gumdrop_syrup_2d.gdshader. The top draws the mould's walls over
+## it, the card, the pots, the buttons, the dropper and one live mesh.
+## Every one of those is a cached mesh under a transform; a mould's three
+## are built when it is dealt. Each frame the table tells the fluid where
+## the tip is and whether it is squeezed (`_drive`), and when the sim asks
+## to be judged it reads the fluid back.
+##
+## The win: the card, the pots, the buttons and the dropper fade and the
+## tray slides to the middle of the span its owner leaves (`set_clear`
+## with `won`), under the tray's one transform, so no mesh is rebuilt.
+
+## Each of the sim's events, after the table has played it.
+signal happened(ev: Dictionary)
+
+const Sim = preload("res://puzzles/gumdrop_sim.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
+const Art = preload("res://puzzles/gumdrop_art.gd")
+const Fluid = preload("res://puzzles/gumdrop_fluid.gd")
+const Syrup = preload("res://shaders/gumdrop_syrup_2d.gdshader")
+const CozyTheme = preload("res://ui/theme.gd")
+const Pal = preload("res://core/palette.gd")
+const Motion = preload("res://core/motion.gd")
+const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+## What the phone knocks for (docs/agents/haptics.md). The events that share
+## a frame ask through `_feel` and the frame knocks once, with the
+## strongest; no cue is mapped.
+const HAPTICS := {}
+const Face = preload("res://ui/faces/face.gd")
+const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const Rewards = preload("res://arcade/rewards.gd")
+
+const MARGIN := 40
+const GAP := 20
+## The card over the tray, the row the pots stand in, the squeeze button's
+## radius and the serve button's, and how far apart the pots stand.
+const CARD := Vector2(500.0, 180.0)
+const POT_H := 150.0
+const POT_GAP := 150.0
+const SQUEEZE_R := 104.0
+const SERVE_R := 66.0
+const SERVE_OFF := 250.0
+## The dropper's length in pixels and how far it leans.
+const DROPPER := 250.0
+const LEAN := 0.55
+## A finger that has moved less than this far has tapped.
+const TAP_PX := 14.0
+## The most sim steps one frame may run, so a stall never fast-forwards.
+const MAX_STEPS := 6
+## Seconds between two of the dropper's ticks while it is squeezed.
+const POUR_GAP := 0.17
+## The cozy rules (docs/agents/sound.md): no cue climbs past five semitones,
+## and a tick that repeats varies by TICK_VARY and climbs nothing.
+const CLIMB_TOP := 1.335
+const TICK_VARY := 0.06
+## Seconds the tray takes to the middle of the win's span, the room kept
+## under it for its shadow, and how long the fluid still runs once the day
+## is done (the last mould settling, or a finished day's fill).
+const WIN_TIME := 0.45
+const WIN_FOOT := 24.0
+const DONE_RUN := 5.0
+
+var sim: RefCounted
+## What of the rect the owner's chrome covers at the top and the foot, and
+## whether the day is won (`set_clear`).
+var clear := Vector2.ZERO
+var won := false
+var _won_at := -10.0
+var _win_tray := Rect2()
+## The fluid's passes are off while this is set (a card over the table).
+var held := false
+var _refund := 0
+var field: Control
+var _syrup: Control
+var _top: Control
+## The fluid, and where the tip was last frame (its drag).
+var _fluid: Node
+var _tip_was := Vector2.ZERO
+var _fx: Node2D
+var _match_l: Label
+var _need_l: Label
+var _banner: Label
+var _sub: Label
+var _banner_tw: Tween
+var _acc := 0.0
+var _shown_index := -1
+var _shown_match := -2
+var _shown_left := -1
+var _pill := MovesPill.new()
+const SERVES := ["GD_SERVES_ONE", "GD_SERVES_N"]
+## The knock this frame's events asked for, the strongest of them (-1: none).
+var _knock := -1
+## Where everything lies on the table (`_place`): the tray's square, pixels
+## a mould unit, the card, each pot's foot, and the two buttons' middles.
+var _tray := Rect2()
+var _u := 6.0
+var _card := Rect2()
+var _pot_at: Array = []
+var _squeeze_at := Vector2.ZERO
+var _serve_at := Vector2.ZERO
+var _pill_at := Vector2.ZERO
+var _table: ArrayMesh
+var _table_of := Vector2.ZERO
+## The dealt mould's meshes and what they were built for.
+var _floor: ArrayMesh
+var _walls: ArrayMesh
+var _picture: ArrayMesh
+var _built_for := {}
+var _built_u := 0.0
+var _live: ArrayMesh
+## The screen's own clock, for motion the sim does not own.
+var _clock := 0.0
+## The fingers: the one drawing the dropper about (-1 none, -2 the mouse),
+## where it was last and how far it has gone, and the one on the squeeze
+## button.
+var _aim_by := -1
+var _aim_moved := 0.0
+var _squeeze_by := -1
+var _serve_down := -10.0
+## The dropper as drawn: its tip eased to the sim's, and how squashed its
+## bulb is.
+var _tip := Vector2(50, 50)
+var _squash := 0.0
+var _pour_at := -10.0
+var _pick_at := -10.0
+var _deal_at := -10.0
+var _verdict_at := -10.0
+var _wobble := 0.0
+var _slid := false
+## Rings on the jelly, in mould units: {pos, t, life, r, col}.
+var _bits: Array = []
+## The loud rewards over the whole table (arcade/rewards.gd).
+var _rw: Rewards
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	theme = CozyTheme.make()
+	var table := _build_field()
+	table.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(table)
+	_rw = Rewards.new()
+	add_child(_rw)
+	_pill.keys = SERVES
+
+## The table: the field, the syrup over it, the top over that, the card's
+## two lines, the lettering and the effects.
+func _build_field() -> Control:
+	field = Control.new()
+	field.name = "Field"
+	field.clip_contents = true
+	field.mouse_filter = Control.MOUSE_FILTER_STOP
+	field.draw.connect(_draw_field)
+	field.resized.connect(_layout_field)
+	field.gui_input.connect(_on_field_input)
+	_syrup = Control.new()
+	_syrup.name = "Syrup"
+	_syrup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_syrup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_syrup.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_syrup.texture_repeat = CanvasItem.TEXTURE_REPEAT_DISABLED
+	var mat := ShaderMaterial.new()
+	mat.shader = Syrup
+	_syrup.material = mat
+	_syrup.draw.connect(_draw_syrup)
+	field.add_child(_syrup)
+	_top = Control.new()
+	_top.name = "Top"
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_top.draw.connect(_draw_top)
+	field.add_child(_top)
+	_fluid = Fluid.new()
+	_fluid.name = "Fluid"
+	field.add_child(_fluid)
+
+	# a ? while the mould is played, its number once it is served
+	_match_l = Label.new()
+	_match_l.theme_type_variation = "DayBig"
+	_match_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_match_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_match_l.text = "?"
+	field.add_child(_match_l)
+	_need_l = Label.new()
+	_need_l.theme_type_variation = "MenuKicker"
+	_need_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_need_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.add_child(_need_l)
+
+	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
+	field.add_child(_fx)
+	var over := VBoxContainer.new()
+	over.alignment = BoxContainer.ALIGNMENT_CENTER
+	over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.add_child(over)
+	_banner = Label.new()
+	_banner.theme_type_variation = "WellDone"
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_banner.add_theme_color_override("font_color", Color("fffaf0"))
+	_banner.add_theme_color_override("font_shadow_color", Color(0.2, 0.12, 0.2, 0.6))
+	_banner.add_theme_constant_override("shadow_offset_y", 4)
+	_banner.add_theme_color_override("font_outline_color", Art.INK)
+	_banner.add_theme_constant_override("outline_size", 12)
+	over.add_child(_banner)
+	_sub = Label.new()
+	_sub.theme_type_variation = "SheetTitle"
+	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sub.add_theme_color_override("font_color", Color("fffaf0"))
+	_sub.add_theme_color_override("font_outline_color", Art.INK)
+	_sub.add_theme_constant_override("outline_size", 8)
+	over.add_child(_sub)
+	over.modulate.a = 0.0
+	_banner.set_meta("box", over)
+	return field
+
+## What the owner's chrome covers at the top and the foot of this rect, in
+## its own pixels; `now_won` is the day won, the tray going to the middle
+## of what is left (`instant`: already there, a finished day reopened).
+func set_clear(top: float, bottom: float, now_won := false, instant := false) -> void:
+	clear = Vector2(top, bottom)
+	if now_won and not won:
+		_won_at = _clock - (WIN_TIME if instant or Motion.reduce else 0.0)
+	won = now_won
+	_layout_field()
+
+func _bands() -> Vector2:
+	return clear
+
+## How many pots the mould has stood by it.
+func _pots() -> int:
+	return sim.pots.size() if sim != null else 2
+
+## Lays the table: the card, the tray under it as big as the room allows,
+## the pots under the tray and the buttons at the foot, the squeeze in the
+## middle where either thumb reaches it and the serve to its left (the
+## right thumb hides the lower right).
+func _place() -> void:
+	var bands := _bands()
+	var s := field.size
+	var room := maxf(1.0, s.y - bands.x - bands.y)
+	var fixed := CARD.y + GAP * 2.0 + POT_H + GAP + SQUEEZE_R * 2.0 + GAP
+	var side := clampf(minf(s.x - MARGIN * 2.0 - 30.0, room - fixed), 160.0, 1000.0)
+	var y := bands.x + maxf(0.0, (room - fixed - side) * 0.5)
+	_card = Rect2((s.x - CARD.x) * 0.5, y + 8.0, CARD.x, CARD.y)
+	y += CARD.y + GAP * 2.0
+	_tray = Rect2((s.x - side) * 0.5, y, side, side)
+	_u = side / Mould.SIDE
+	y += side + GAP + POT_H
+	_pot_at.clear()
+	var n := _pots()
+	for i in n:
+		_pot_at.append(Vector2(s.x * 0.5 + (i - (n - 1) * 0.5) * POT_GAP, y - 14.0))
+	y += GAP + SQUEEZE_R
+	_squeeze_at = Vector2(s.x * 0.5, y)
+	_serve_at = Vector2(s.x * 0.5 - SERVE_OFF, y + 10.0)
+	_pill_at = Vector2(s.x * 0.5 + SERVE_OFF + 20.0, y + 10.0)
+	# the win's tray: as big as the span allows, in its middle
+	var big := clampf(minf(s.x - MARGIN * 2.0 - 30.0, room - WIN_FOOT), 160.0, 1000.0)
+	_win_tray = Rect2((s.x - big) * 0.5, bands.x + maxf(0.0, (room - WIN_FOOT - big) * 0.5), big, big)
+
+func _layout_field() -> void:
+	if field.size.x <= 0.0 or field.size.y <= 0.0:
+		return
+	if _table == null or _table_of != field.size:
+		_table_of = field.size
+		_table = Art.table(field.size)
+	_place()
+	_place_labels()
+	if _banner != null:
+		_place_banner()
+	_redraw()
+
+func _place_labels() -> void:
+	var right := Rect2(_card.position + Vector2(CARD.y + 10.0, 0), Vector2(_card.size.x - CARD.y - 30.0, _card.size.y))
+	_match_l.size = Vector2(right.size.x, 96.0)
+	_match_l.position = right.position + Vector2(0, 22.0)
+	_need_l.size = Vector2(right.size.x, 40.0)
+	_need_l.position = right.position + Vector2(0, 118.0)
+
+## The two lines over the tray. A label that wraps says how tall it is
+## from the width it has, and before the first layout that is none (the
+## box came out 5,765 tall and its words off the screen): the lines are
+## given their width first, and the box its height a frame later.
+func _place_banner() -> void:
+	if field.size.x <= 0.0:
+		return
+	var box: Control = _banner.get_meta("box")
+	var wide := field.size.x * 0.86
+	_banner.custom_minimum_size.x = wide
+	_sub.custom_minimum_size.x = wide
+	box.position = Vector2(field.size.x * 0.07, _tray.position.y + _tray.size.y * 0.3)
+	_fit_banner.call_deferred()
+
+func _fit_banner() -> void:
+	var box: Control = _banner.get_meta("box")
+	box.size = Vector2(field.size.x * 0.86, box.get_combined_minimum_size().y)
+	box.pivot_offset = box.size * 0.5
+
+func _redraw() -> void:
+	field.queue_redraw()
+	_syrup.queue_redraw()
+	_top.queue_redraw()
+
+## A point of the mould on the field, and back.
+func px(p: Vector2) -> Vector2:
+	return _group() * (p * _u)
+
+func to_mould(p: Vector2) -> Vector2:
+	return (p - _tray.position) / _u
+
+## How far the win has gone, 0 to 1: the chrome of the table fading and
+## the tray on its way to the middle.
+func _win_k() -> float:
+	if not won:
+		return 0.0
+	var k := clampf((_clock - _won_at) / WIN_TIME, 0.0, 1.0)
+	return 1.0 - pow(1.0 - k, 3.0)
+
+## The tray's own transform: where it lies, slid aside as a served mould
+## leaves and the next comes, shaken as a jelly is when it is judged, and
+## carried to the middle on the win.
+func _group() -> Transform2D:
+	var at := _tray.position
+	var sc := Vector2.ONE
+	if not Motion.reduce:
+		at.x += _slide() * field.size.x
+		var since := _clock - _verdict_at
+		if since >= 0.0 and since < 1.6:
+			var w := _wobble * sin(since * 19.0) * exp(-since * 3.0)
+			sc = Vector2(1.0 + w, 1.0 - w)
+	var mid := _tray.size * 0.5
+	var xf := Transform2D(0.0, sc, 0.0, at + mid - mid * sc)
+	var k := _win_k()
+	if k > 0.0:
+		var grow := lerpf(1.0, _win_tray.size.x / _tray.size.x, k)
+		xf = Transform2D(0.0, Vector2(grow, grow), 0.0, _tray.position.lerp(_win_tray.position, k)) \
+			* Transform2D(0.0, sc, 0.0, mid - mid * sc)
+	return xf
+
+## How far aside the tray is, in screens: off to the left as a mould that
+## passed is taken away, in from the right as the next is set down.
+func _slide() -> float:
+	if sim == null:
+		return 0.0
+	if sim.phase == Sim.Phase.SHOW and bool(sim.verdict.get("pass", false)):
+		var k := clampf((sim.phase_t - (Sim.SHOW_T - 0.4)) / 0.4, 0.0, 1.0)
+		return -k * k * 1.1
+	var k2 := clampf((_clock - _deal_at) / 0.45, 0.0, 1.0)
+	return (1.0 - Motion.back_out(k2)) * 1.1 if _slid else 0.0
+
+# --- the game ---
+
+## A day (or a tutorial page's round) laid on the table from its start.
+func lay(game: RefCounted) -> void:
+	sim = game
+	_acc = 0.0
+	_bits.clear()
+	_aim_by = -1
+	_squeeze_by = -1
+	_deal_at = -10.0
+	_verdict_at = -10.0
+	_slid = false
+	_shown_index = -1
+	_shown_match = -2
+	won = false
+	held = false
+	_tip = sim.tip
+	_tip_was = sim.tip
+	_fluid.calm = Motion.reduce
+	_fluid.lay(sim.mould)
+	sim.events.clear()
+	_rw.clear()
+	_hint("", "")
+	_layout_field()
+	_refresh_hud()
+
+## A cue and a knock of the owner's (the day run out, a serve bought back).
+func cue(cue_name: String, knock := -1) -> void:
+	_fx.cue(cue_name)
+	if knock >= 0:
+		_fx.buzz(knock)
+
+## The gold the boosters of its Arcade days came back as: lettered over
+## the tray on the first frame the table has its size.
+func told_refund(gold: int) -> void:
+	_refund = gold
+
+## The words over the tray before the first squeeze.
+func greet() -> void:
+	_fx.cue("start")
+	_hint(tr("GD_READY"), tr("GD_READY_LINE"))
+
+func _process(delta: float) -> void:
+	if sim == null:
+		return
+	_clock += delta
+	_acc += minf(delta, Sim.DT * MAX_STEPS)
+	while _acc >= Sim.DT:
+		_acc -= Sim.DT
+		_hand()
+		sim.step()
+		_play_events()
+	_drive(delta)
+	_animate(delta)
+	_refresh_hud()
+	_knock_now()
+	_redraw()
+
+## The tutorial's hand works the sim from here.
+func _hand() -> void:
+	pass
+
+## The frame's state into the fluid: the tip in mould widths, its cell,
+## the squeeze, the pigment, how fast the tip is being drawn, and any cell
+## a tutorial page wants coloured before it starts.
+func _drive(delta: float) -> void:
+	_fluid.set_running(_fluid_runs())
+	_fluid.tip = sim.tip / Mould.SIDE
+	_fluid.tip_cell = sim.tip_cell()
+	_fluid.squeezing = sim.squeezing and sim.phase <= Sim.Phase.PLAY
+	_fluid.pigment = Mould.PIGMENT[int(sim.pots[sim.picked].flavour)]
+	_fluid.drag = (sim.tip - _tip_was) / Mould.SIDE / maxf(delta, 0.001)
+	_tip_was = sim.tip
+	if not sim.prefill.is_empty() and _fluid.clear_done():
+		var pre: Dictionary = sim.prefill.pop_front()
+		_fluid.fill_cell = int(pre.cell)
+		_fluid.fill_pig = pre.pigment
+	_fluid.tick(delta)
+
+## Whether the fluid's passes run this frame: not under a card, and not
+## long after the day is done.
+func _fluid_runs() -> bool:
+	return sim != null and not held and is_visible_in_tree() \
+		and not (sim.is_done() and sim.phase_t > Sim.SHOW_T + DONE_RUN)
+
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+func _knock_now() -> void:
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
+
+func _animate(delta: float) -> void:
+	for bit: Dictionary in _bits:
+		bit.t += delta
+	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
+	_tip = _tip.lerp(sim.tip, minf(1.0, delta * 30.0))
+	var pouring: bool = sim.squeezing and sim.phase <= Sim.Phase.PLAY and sim.tip_cell() >= 0
+	_squash = lerpf(_squash, 1.0 if sim.squeezing else 0.0, minf(1.0, delta * 16.0))
+	if pouring and _clock - _pour_at >= POUR_GAP:
+		_pour_at = _clock
+		_fx.cue("pour", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8))
+	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
+	if _refund > 0 and field.size.x > 0.0:
+		_rw.sticker(tr("GD_REFUND") % _refund, _rw.at(field, _tray.get_center() + Vector2(0, _tray.size.y * 0.32)), 44, 3.5, false, Color("fff4c2"), false, "refund")
+		_refund = 0
+	_rw.step(delta)
+
+# --- the fingers ---
+
+func _on_field_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			_press(touch.index, touch.position)
+		else:
+			_release(touch.index, touch.position)
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		_drag(drag.index, drag.relative)
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		var click := event as InputEventMouseButton
+		if click.pressed:
+			_press(-2, click.position)
+		else:
+			_release(-2, click.position)
+	elif event is InputEventMouseMotion:
+		_drag(-2, (event as InputEventMouseMotion).relative)
+
+func _busy() -> bool:
+	return sim == null or held or won or sim.phase > Sim.Phase.PLAY
+
+func _press(index: int, at: Vector2) -> void:
+	if _busy():
+		return
+	if at.distance_to(_squeeze_at) <= SQUEEZE_R + 14.0:
+		if _squeeze_by == -1:
+			_squeeze_by = index
+			sim.squeeze(true)
+			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+			_fx.buzz(Haptics.TAP)
+		return
+	if at.distance_to(_serve_at) <= SERVE_R + 14.0:
+		_serve_down = _clock
+		_fx.buzz(Haptics.TAP)
+		if sim.can_serve():
+			sim.serve()
+		else:
+			# nothing in the mould yet: the button answers and says why
+			_fx.touch(0.94)
+			_rw.sticker(tr("GD_NOTHING_YET"), _rw.at(field, _serve_at + Vector2(60.0, -SERVE_R - 30.0)), 40, 1.3, false, Color("fffaf0"), false, "nothing")
+		return
+	for i in _pot_at.size():
+		var foot: Vector2 = _pot_at[i]
+		if Rect2(foot.x - POT_GAP * 0.5, foot.y - Art.JAR_H - 16.0, POT_GAP, Art.JAR_H + 44.0).has_point(at):
+			sim.pick(i)
+			_pick_at = _clock
+			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+			_fx.buzz(Haptics.TAP)
+			return
+	if _tray.grow(24.0).has_point(at) and _aim_by == -1:
+		_aim_by = index
+		_aim_moved = 0.0
+		_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+		_fx.buzz(Haptics.TICK)
+
+func _drag(index: int, by: Vector2) -> void:
+	if index != _aim_by or _busy():
+		return
+	_aim_moved += by.length()
+	if _aim_moved >= TAP_PX:
+		sim.aim(sim.tip + by / _u)
+
+func _release(index: int, at: Vector2) -> void:
+	if index == _squeeze_by:
+		_squeeze_by = -1
+		if sim != null:
+			sim.squeeze(false)
+	if index == _aim_by:
+		_aim_by = -1
+		if not _busy() and _aim_moved < TAP_PX:
+			sim.aim(to_mould(at))
+
+func _let_go() -> void:
+	_aim_by = -1
+	_squeeze_by = -1
+	if sim != null:
+		sim.squeeze(false)
+
+# --- events ---
+
+func _play_events() -> void:
+	var evs: Array = sim.events.duplicate()
+	sim.events.clear()
+	for ev: Dictionary in evs:
+		match String(ev.type):
+			"go":
+				_hint("", "")
+			"deal":
+				_on_deal()
+			"again":
+				_on_again()
+			"serve":
+				_let_go()
+				_fx.cue("serve")
+			"judge":
+				var m: Dictionary = _fluid.measure()
+				sim.judge(m.near, m.all)
+				# the verdict and the day's end are this frame's too
+				evs.append_array(sim.events)
+				sim.events.clear()
+			"served":
+				_on_served(ev)
+		happened.emit(ev)
+
+func _on_deal() -> void:
+	_deal_at = _clock
+	_slid = sim.index > 0
+	_fluid.lay(sim.mould)
+	_tip = sim.tip
+	_tip_was = sim.tip
+	_bits.clear()
+	_place()
+	if sim.index > 0:
+		_fx.cue("deal")
+		_feel(Haptics.TICK)
+
+## The mould on the tray is clear again: one under its mark, or Reset.
+func _on_again() -> void:
+	_fluid.lay(sim.mould)
+	_tip = sim.tip
+	_tip_was = sim.tip
+	_bits.clear()
+	_verdict_at = -10.0
+	_fx.cue("deal", 0.94)
+	_feel(Haptics.TICK)
+
+func _on_served(ev: Dictionary) -> void:
+	_verdict_at = _clock
+	var pct := int(ev.pct)
+	var at := _rw.at(field, _tray.get_center())
+	if bool(ev.perfect) and bool(ev["pass"]):
+		_wobble = 0.09
+		_fx.cue("perfect")
+		_feel(Haptics.GOOD)
+		_rw.sticker("%d%%" % pct, at, 110, 1.9, true, Color.WHITE, true, "pct")
+		_rw.sticker(tr("GD_PERFECT"), at + Vector2(0, 110.0), 54, 1.9, false, Color("fff4c2"), false, "word")
+		_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
+	elif bool(ev["pass"]):
+		_wobble = 0.06
+		_fx.cue("good", minf(1.0 + 0.04 * sim.index, CLIMB_TOP))
+		_feel(Haptics.GOOD)
+		_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Color("fffaf0"), true, "pct")
+		_rw.sticker(tr("GD_GOOD"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
+	else:
+		_wobble = 0.03
+		_fx.cue("flop")
+		_feel(Haptics.BAD)
+		_rw.sticker("%d%%" % pct, at, 100, 2.2, false, Color("fffaf0"), false, "pct")
+		_rw.sticker(tr("GD_NEEDED") % int(ev.need), at + Vector2(0, 104.0), 46, 2.2, false, Color("ffd9c2"), false, "word")
+
+func _ring(at: Vector2, r: float, life: float, col: Color) -> void:
+	if Motion.reduce:
+		return
+	_bits.append({"pos": at, "t": 0.0, "life": life, "r": r, "col": col})
+
+func _hint(text: String, sub: String) -> void:
+	var box: Control = _banner.get_meta("box")
+	Motion.stop(_banner_tw)
+	if text == "":
+		_banner_tw = create_tween()
+		_banner_tw.tween_property(box, "modulate:a", 0.0, 0.18)
+		return
+	_banner.text = text
+	_sub.text = sub
+	_sub.visible = sub != ""
+	_place_banner()
+	box.scale = Vector2.ONE
+	_banner_tw = create_tween()
+	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
+
+func _refresh_hud() -> void:
+	if sim == null:
+		return
+	# the number is told only once the mould is served: a ? until then
+	var pct := int(sim.verdict.get("pct", -1)) if sim.phase >= Sim.Phase.SHOW else -1
+	var left: int = sim.serves_left()
+	if left != _shown_left:
+		if _shown_left >= 0:
+			_pill.bump(_clock)
+		_shown_left = left
+	if pct == _shown_match and sim.index == _shown_index and not won:
+		return
+	_shown_match = pct
+	_shown_index = sim.index
+	_match_l.text = "?" if pct < 0 else "%d%%" % pct
+	# over the mark the number is the leaf's green, under it the ink
+	_match_l.add_theme_color_override("font_color", Pal.LEAF_DEEP if pct >= sim.mark() else Art.INK)
+	_need_l.text = tr("GD_NEED") % sim.mark()
+	if sim.moulds.size() > 1:
+		_need_l.text += "  ·  %d/%d" % [sim.index + 1, sim.moulds.size()]
+	# the card's two lines go with the card on the win
+	_match_l.modulate.a = 1.0 - _win_k()
+	_need_l.modulate.a = _match_l.modulate.a
+	if won and _win_k() < 1.0:
+		_shown_match = -2
+
+# --- drawing ---
+
+func _meshes() -> void:
+	if sim == null:
+		return
+	if _built_u == _u and is_same(_built_for, sim.mould) and _floor != null:
+		return
+	_built_u = _u
+	_built_for = sim.mould
+	_floor = Art.floor_of(sim.mould, _u)
+	_walls = Art.walls_of(sim.mould, _u)
+	_picture = Art.picture(sim.mould, (CARD.y - 36.0) / Mould.SIDE)
+
+func _draw_field() -> void:
+	if _table == null:
+		_layout_field()
+	if _table == null:
+		return
+	field.draw_mesh(_table, null)
+	if sim == null:
+		return
+	_meshes()
+	var xf := _group()
+	field.draw_mesh(Art.tray(_tray.size.x), null, xf)
+	field.draw_mesh(_floor, null, xf)
+
+func _draw_syrup() -> void:
+	if sim == null or _fluid == null:
+		return
+	_syrup.draw_set_transform_matrix(_group())
+	_syrup.draw_texture_rect(_fluid.texture(), Rect2(Vector2.ZERO, _tray.size), false)
+
+func _draw_top() -> void:
+	if sim == null or _walls == null:
+		return
+	var xf := _group()
+	_top.draw_mesh(_walls, null, xf)
+	# everything but the tray fades on the win
+	var fade := Color(1, 1, 1, 1.0 - _win_k())
+	if fade.a <= 0.0:
+		_draw_live()
+		return
+	# the card and its picture
+	_top.draw_mesh(Art.card(_card.size), null, Transform2D(-0.012, _card.position), fade)
+	_top.draw_mesh(_picture, null, Transform2D(0.0, _card.position + Vector2(18.0, 18.0)), fade)
+	# the pots: the picked one stands in its ring, a little nearer
+	for i in mini(_pot_at.size(), sim.pots.size()):
+		var pot: Dictionary = sim.pots[i]
+		var foot: Vector2 = _pot_at[i]
+		var on: bool = i == sim.picked
+		var sc := 1.0
+		if on:
+			sc = 1.08
+			if not Motion.reduce and _clock - _pick_at < 0.25:
+				sc += 0.1 * sin((_clock - _pick_at) / 0.25 * PI)
+		var at := Transform2D(0.0, Vector2(sc, sc), 0.0, foot)
+		_top.draw_mesh(Art.jar_shadow(), null, at, fade)
+		if on:
+			_top.draw_mesh(Art.jar_ring(), null, at, fade)
+		_top.draw_mesh(Art.syrup(int(pot.flavour), 1.0), null, at, fade)
+		_top.draw_mesh(Art.jar(), null, at, fade)
+	# the buttons: a pressed one sinks and shades
+	var can: bool = sim.can_serve()
+	var sd := 0.94 if _clock - _serve_down < 0.12 else 1.0
+	_top.draw_mesh(Art.serve_button(SERVE_R), null, Transform2D(0.0, Vector2(sd, sd), 0.0, _serve_at),
+		fade * Color(1, 1, 1, 1.0 if can else 0.45) * (Color(0.88, 0.88, 0.88) if sd < 1.0 else Color.WHITE))
+	var down: bool = _squeeze_by != -1 or sim.squeezing
+	var qd := 0.94 if down else 1.0
+	_top.draw_mesh(Art.squeeze_button(SQUEEZE_R), null, Transform2D(0.0, Vector2(qd, qd), 0.0, _squeeze_at),
+		fade * (Color(0.86, 0.86, 0.86) if down else Color.WHITE))
+	_draw_live()
+	# the dropper over all of it, leaning away to the upper right
+	if sim.phase <= Sim.Phase.PLAY and not won:
+		var tip := px(_tip)
+		var bob := 0.0 if Motion.reduce or sim.squeezing else 3.0 * sin(_clock * 2.4)
+		var lean := Transform2D(LEAN, tip + Vector2(0, -bob))
+		_top.draw_mesh(Art.dropper(int(sim.pots[sim.picked].flavour), DROPPER), null, lean)
+		var squash := Vector2(1.0 + 0.2 * _squash, 1.0 - 0.3 * _squash)
+		_top.draw_mesh(Art.bulb(DROPPER), null, lean * Transform2D(0.0, squash, 0.0, Vector2(0, -DROPPER + 4.0)))
+	# a counted band's serves, beside the squeeze button
+	if sim.budget > 0 and not won:
+		_pill.draw(_top, _pill_at, sim.serves_left(), _clock)
+
+func _draw_live() -> void:
+	if _bits.is_empty():
+		return
+	var b := Face.Builder.new()
+	for bit: Dictionary in _bits:
+		var k: float = bit.t / bit.life
+		var r: float = float(bit.r) * _u * (0.3 + 0.7 * k)
+		b.stroke(Face.Builder.ring(px(bit.pos), r, r), maxf(1.5, 0.9 * _u * (1.0 - k)), Color(bit.col, bit.col.a * (1.0 - k)), true)
+	_live = b.mesh()
+	if _live != null:
+		_top.draw_mesh(_live, null)

@@ -1,5 +1,10 @@
 # Gumdrop, the Arcade tab's eleventh game
 
+> **2026-10-11: Gumdrop is a daily board, not an Arcade game.** The run, the
+> score, the boosters and the end card below are history; the pour, the
+> fluid, the colour and the judge (sections 9 and 10) stand. See
+> `2026-10-11-gumdrop-daily-design.md` and `docs/agents/boards/gumdrop.md`.
+
 2026-10-10. Built in one sitting while the user was away, from their brief
 over a screenshot of the reference running in a browser: "is the next
 arcade game to be created, check rules on web, wire everything even sound,

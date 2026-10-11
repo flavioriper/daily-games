@@ -1,24 +1,23 @@
 extends Control
 
-## Gumdrop's tutorial pages (arcade/gumdrop_screen.gd's `tutorial_pages`):
+## Gumdrop's tutorial pages (puzzles/gumdrop2d.gd's `tutorial_pages`):
 ## the game itself, small, played by a hand that is written down. A page is
 ## a `Round` (the sim with a clock and a plan of what the hand does when)
-## laid on a `Bench` (the screen without its chrome: the tray on the left,
-## the card, the pots and the two buttons beside it). The pressed button,
-## the picked pot's ring and the dropper are the screen's own drawing, so
-## the page shows exactly what a finger does. The last two pages are rows
-## of an icon and a line.
+## laid on a `Bench` (the board's own table, puzzles/gumdrop_table.gd, laid
+## out sideways: the tray on the left, the card, the pots and the two
+## buttons beside it). The pressed button, the picked pot's ring and the
+## dropper are the table's own drawing, so the page shows exactly what a
+## finger does. The last page is rows of an icon and a line.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
-const Sim = preload("res://arcade/gumdrop_sim.gd")
-const Mould = preload("res://arcade/gumdrop_mould.gd")
-const Boosters = preload("res://arcade/boosters.gd")
+const Sim = preload("res://puzzles/gumdrop_sim.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
-enum Lesson { FILL, SOAK, MATCH, MIX, BOOSTS, HUD }
+enum Lesson { FILL, SOAK, MATCH, MIX, HUD }
 
 var lesson: int = Lesson.FILL
 
@@ -33,7 +32,7 @@ var _rows_shown: ArrayMesh
 ## The sim with a clock and a hand: `plan` rows are [second, what, with],
 ## in order: "pick" a pot, "aim" at a point of the mould (the tip travels
 ## there), "squeeze" true or false, "serve".
-class Round extends "res://arcade/gumdrop_sim.gd":
+class Round extends "res://puzzles/gumdrop_sim.gd":
 	const TRAVEL := 70.0
 
 	var clock := 0.0
@@ -41,8 +40,6 @@ class Round extends "res://arcade/gumdrop_sim.gd":
 	var _next := 0
 	var _goal := Vector2.ZERO
 
-	func _init() -> void:
-		super(1)
 
 	## A round mould in two halves, wanted in these two flavours, with these
 	## pots stood by it.
@@ -51,7 +48,7 @@ class Round extends "res://arcade/gumdrop_sim.gd":
 		m.want = want
 		m.pots = stood
 		m.mixed = -1
-		deal(m)
+		set_day([m], MARK, false)
 		_goal = tip
 		events.clear()
 
@@ -83,9 +80,8 @@ class Round extends "res://arcade/gumdrop_sim.gd":
 			aim(tip.move_toward(_goal, TRAVEL * DT))
 		super()
 
-## The screen without its chrome, laid out on a bench of its own size and
-## scaled to the page.
-class Bench extends "res://arcade/gumdrop_screen.gd":
+## The table laid out on a bench of its own size and scaled to the page.
+class Bench extends "res://puzzles/gumdrop_table.gd":
 	const BENCH := Vector2(1040.0, 640.0)
 
 	var frozen := false
@@ -113,10 +109,6 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		size = BENCH
-		# the plates are read by the screen and never shown
-		var plates := _build_hud()
-		plates.visible = false
-		add_child(plates)
 		add_child(_build_field())
 		field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		field.size = BENCH
@@ -126,11 +118,9 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 		_rw = Quiet.new()
 		add_child(_rw)
 
-	func _bands() -> Vector2:
-		return Vector2.ZERO
-
 	func _place() -> void:
 		_tray = Rect2(24.0, 30.0, 580.0, 580.0)
+		_win_tray = _tray
 		_u = _tray.size.x / Mould.SIDE
 		_card = Rect2(642.0, 34.0, 370.0, CARD.y)
 		_pot_at.clear()
@@ -144,9 +134,6 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 		super()
 		_match_l.position.y += 20.0
 
-	func _hand() -> void:
-		pass
-
 	func _process(delta: float) -> void:
 		if not frozen:
 			super(delta)
@@ -154,29 +141,9 @@ class Bench extends "res://arcade/gumdrop_screen.gd":
 	func _hint(_text: String, _sub_text: String) -> void:
 		pass
 
-	func _run_over() -> void:
-		pass
-
 	func lay(game: RefCounted) -> void:
-		sim = game
 		frozen = false
-		_acc = 0.0
-		_bits.clear()
-		_deal_at = -10.0
-		_verdict_at = -10.0
-		_slid = false
-		_best = 0
-		_beat_best = true
-		_shown_score = sim.score
-		_shown_level = -1
-		_shown_match = -1
-		_milestone = 1000000
-		_tip = sim.tip
-		_tip_was = sim.tip
-		_fluid.calm = Motion.reduce
-		_fluid.lay(sim.mould)
-		_rw.clear()
-		_layout_field()
+		super(game)
 
 	## The fluid cannot be run ahead off screen, so a lesson under reduce
 	## motion plays once at its calm pace and is held where it ends
@@ -203,7 +170,7 @@ func _enter_tree() -> void:
 		call_deferred("_reset")
 
 func _played() -> bool:
-	return lesson != Lesson.BOOSTS and lesson != Lesson.HUD
+	return lesson != Lesson.HUD
 
 func _layout() -> void:
 	if not _played():
@@ -284,25 +251,15 @@ func _process(_delta: float) -> void:
 
 # --- drawing ---
 
-## The two pages that are rows of an icon and a line: the boosters and the
-## bar's buttons.
+## The page that is rows of an icon and a line: the bar's buttons.
 func _draw() -> void:
 	if _played() or size.x <= 0.0:
 		return
-	var rows: Array = []
-	if lesson == Lesson.BOOSTS:
-		rows = [
-			[Boosters.icon("gd_soft"), tr("TUT_GUMDROP_BOOST_SOFT")],
-			[Boosters.icon("gd_kind"), tr("TUT_GUMDROP_BOOST_KIND")],
-			[Boosters.icon(Boosters.CHANCE), tr("TUT_GUMDROP_BOOST_CHANCE")],
-		]
-	else:
-		rows = [
-			["reset", tr("TUT_GUMDROP_HUD_RESET")],
-			["gear", tr("TUT_GUMDROP_HUD_GEAR")],
-			["help", tr("TUT_GUMDROP_HUD_HELP")],
-		]
-	var boosts := lesson == Lesson.BOOSTS
+	var rows := [
+		["reset", tr("TUT_GUMDROP_HUD_RESET")],
+		["gear", tr("TUT_GUMDROP_HUD_GEAR")],
+		["help", tr("TUT_GUMDROP_HUD_HELP")],
+	]
 	var row_h := size.y / rows.size()
 	var chip := minf(104.0, row_h * 0.72)
 	var x0 := 36.0
@@ -311,15 +268,9 @@ func _draw() -> void:
 	for k in rows.size():
 		var c := Vector2(x0 + chip * 0.5, row_h * (k + 0.5))
 		centres.append(c)
-		if boosts:
-			# a booster is a disc in its game's colour, the Second chance gold
-			var tint: Color = Boosters.tint(Boosters.CHANCE if k == 2 else "gd_soft")
-			b.disc(c + Vector2(0, 6.0), chip * 0.5, Color(Pal.TEXT, 0.16))
-			b.disc(c, chip * 0.5, tint)
-		else:
-			var at := c - Vector2(chip, chip) * 0.5
-			b.polygon(Face.Builder.round_rect(at + Vector2(0, 6.0), Vector2(chip, chip), 26.0), Color(Pal.TEXT, 0.16))
-			b.polygon(Face.Builder.round_rect(at, Vector2(chip, chip), 26.0), Pal.SURFACE)
+		var at := c - Vector2(chip, chip) * 0.5
+		b.polygon(Face.Builder.round_rect(at + Vector2(0, 6.0), Vector2(chip, chip), 26.0), Color(Pal.TEXT, 0.16))
+		b.polygon(Face.Builder.round_rect(at, Vector2(chip, chip), 26.0), Pal.SURFACE)
 	_rows_shown = b.mesh()
 	draw_mesh(_rows_shown, null)
 	var font: Font = CozyTheme.display(700)
@@ -328,7 +279,7 @@ func _draw() -> void:
 	for k in rows.size():
 		var c: Vector2 = centres[k]
 		Icons.paint(self, String(rows[k][0]), Rect2(c - Vector2(chip, chip) * 0.27, Vector2(chip, chip) * 0.54),
-			Pal.SURFACE if boosts else Pal.TEXT, Color.TRANSPARENT if boosts else Pal.SURFACE)
+			Pal.TEXT, Pal.SURFACE)
 		var line := String(rows[k][1])
 		var lines := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, wide, 30)
 		draw_multiline_string(font, Vector2(tx, c.y - lines.y * 0.5 + 30.0 * 0.82), line, HORIZONTAL_ALIGNMENT_LEFT, wide, 30, -1, Pal.TEXT)

@@ -35,7 +35,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
 			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
-			"res://arcade/eddy_screen.gd", "res://arcade/gumdrop_screen.gd"]:
+			"res://arcade/eddy_screen.gd", "res://puzzles/gumdrop2d.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -190,24 +190,7 @@ func _process(_d: float) -> bool:
 	_check(ed.is_over(), "eddy over, its spin out")
 	Boosters.revive("eddy", ed)
 	_check(not ed.is_over() and ed.spin > 0.0, "eddy revived, with spin to turn on")
-	var gd = load("res://arcade/gumdrop_sim.gd").new(3)
-	Boosters.apply("gumdrop", gd, ["gd_soft", "gd_kind"])
-	_check(gd.soft and gd.mark() == gd.mark_of(1) - gd.KINDER, "gumdrop: softer jelly, kinder marks")
-	gd.squeeze(true)
-	for i in 12:
-		gd.step()
-	gd.squeeze(false)
-	gd.serve()
-	# the syrup is a fluid on the GPU: the judge is answered by hand here
-	for i in 300:
-		gd.step()
-		for ev: Dictionary in gd.events:
-			if ev.type == "judge":
-				gd.judge(PackedFloat32Array(), 0.1)
-		gd.events.clear()
-	_check(gd.is_over(), "gumdrop over, a mould served nearly clear")
-	Boosters.revive("gumdrop", gd)
-	_check(not gd.is_over() and not gd.wet(), "gumdrop revived, the mould clear")
+	_check(Boosters.of("gumdrop").is_empty(), "gumdrop: no gold boosters, it is a daily board")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

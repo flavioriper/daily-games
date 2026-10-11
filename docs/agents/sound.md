@@ -383,7 +383,11 @@ are Beeline's light button on felt; `serve` its hollow block; `good`,
 note. `spill`, `empty` and `set` went on 2026-10-11 with the leak, the
 pots' limit and the live match (their files deleted). **Nothing is a
 liquid** (Eddy's one water take measured high). The pots, the buttons and
-the tray's touch are the button's click.
+the tray's touch are the button's click. **A daily board since 2026-10-11**
+(`docs/agents/boards/gumdrop.md`): the same files, found by the board's
+`puzzle_id`; `deal` a little lower is a mould emptied to be poured again,
+`game_over` the serves run out, `good` the video's serves, and `new_best`
+is played by nothing.
 
 **Deckchair has a set since 2026-10-10** (`SETS["deckchair"]`, fifteen
 cues), made against the cozy rules from the start and unheard by the user.

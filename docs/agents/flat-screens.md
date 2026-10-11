@@ -373,6 +373,34 @@ pointing `seed_as` at them. Specs:
 
 Per-board entries (Queens through Shikaku) are in `docs/agents/boards/`.
 
+### A board that fills the screen: `bleed` (2026-10-11)
+
+Gumdrop came over from the Arcade tab with its table edge to edge, and the
+user's rule of 2026-10-10 is that a game's world fills the screen. A
+registry entry says `"bleed": true` (with `"tray": "none"` and
+`"actions": false`: its controls lie on its own field) and
+`ui/flat/flat_host.gd` then:
+
+- lays the board **full rect under the rows**, in a `BleedSlot` that is the
+  host's second child, not in the column's card slot. The column's own row
+  stays as the empty gap between the two slots. No backdrop plate
+  (`_backdrop` stays null), no board card (`_card` hidden); the paper page
+  is still under everything.
+- sets the margins and the column to ignore the pointer, so the board takes
+  every touch the rows do not. A container left on PASS would hand the
+  touch to the host and never to the board beside it.
+- tells the board what the rows cover, in the board's own pixels:
+  `set_clear(top, bottom, won)` from `_tell_clear()`, at the spawn, on
+  `_apply_insets` and once in `_show_win` with the win's slots (`TOP_WIN`
+  and the bottom with or without the next-level button).
+- never freezes and scales the board for the win's slide (`_freeze_board`,
+  `_thaw_board` and `_fit_card` return early): the board moves itself into
+  the span it was told.
+
+Everything else is the host's as for any board: the bar, the day card, the
+tutorial, `_on_solved`, the win stack, Redo, the next level. A bleed board
+with a tray or an actions row was not tried.
+
 ### The win screen comes in with the board's wave (2026-10-04)
 
 The host used to wait `win_delay()` (0.8 s by default, 3.3 on Code Break)

@@ -9,12 +9,13 @@ extends RefCounted
 ## A booster helps a run start or survive and never multiplies its score.
 ## Eddy has none since 2026-10-11: its upgrades are kept and bought with its
 ## own drops (arcade/eddy_upgrades.gd). It still takes the Second chance.
-## Gumdrop's two were replaced the same day (fuller pots and taller walls,
-## for pots that never run dry and walls nothing crosses); held ones come
-## back as gold when its screen opens.
+## Gumdrop has none either: it left the Arcade for the Puzzles grid on
+## 2026-10-11, and whichever of its four (gd_full, gd_tall, gd_soft,
+## gd_kind) are held come back as gold when the board opens
+## (puzzles/gumdrop2d.gd).
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "gumdrop"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -32,13 +33,11 @@ const ITEMS := {
 	"bl_wide": {"game": "beeline", "icon": "plus", "price": 120},
 	"dc_aces": {"game": "deckchair", "icon": "sparkle", "price": 120},
 	"dc_hints": {"game": "deckchair", "icon": "bulb", "price": 120},
-	"gd_soft": {"game": "gumdrop", "icon": "sparkle", "price": 120},
-	"gd_kind": {"game": "gumdrop", "icon": "heart", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
 }
 ## Each booster's colour on its disc: the game's, so a chip says whose it is.
 const TINT := {"firefly": Color("5b5fa8"), "molehill": Color("8a6a45"), "stackwood": Color("b0773a"),
-	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "gumdrop": Color("d0527a"), "": Color("d49a2a")}
+	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "": Color("d49a2a")}
 
 const FF_SPARE_SHIPS := 1
 const MH_TIME := 10.0
@@ -128,10 +127,6 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 				sim.start_aces()
 			"dc_hints":
 				sim.hints += DC_HINTS
-			"gd_soft":
-				sim.softer()
-			"gd_kind":
-				sim.kind()
 
 ## The Second chance: a run over is taken up again where it ended.
 static func revive(game: String, sim: RefCounted) -> void:

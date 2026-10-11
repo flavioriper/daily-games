@@ -3,7 +3,7 @@ extends Node
 ## Gumdrop's syrup as a fluid on the GPU (since 2026-10-11, the user over
 ## the reference's screen: "I want a real high volume liquid effect of
 ## coloring ... something really really good to look"). The screen
-## (arcade/gumdrop_screen.gd) owns one of these, tells it each frame where
+## (puzzles/gumdrop_table.gd) owns one of these, tells it each frame where
 ## the dropper's tip is and whether it is squeezed, draws its `texture()`
 ## over the tray through shaders/gumdrop_syrup_2d.gdshader, and asks it
 ## `measure()` when a mould is served.
@@ -25,10 +25,10 @@ extends Node
 ##
 ## The render targets are eight bits a channel (no HDR 2D on
 ## gl_compatibility), so signed values are packed across two bytes; see
-## the include. Everything the colour means is arcade/gumdrop_sim.gd's.
+## the include. Everything the colour means is puzzles/gumdrop_sim.gd's.
 
-const Mould = preload("res://arcade/gumdrop_mould.gd")
-const Sim = preload("res://arcade/gumdrop_sim.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
+const Sim = preload("res://puzzles/gumdrop_sim.gd")
 
 const SIM := 128
 const DYE := 256

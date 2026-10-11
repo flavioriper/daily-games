@@ -12,7 +12,7 @@ const Boosters = preload("res://arcade/boosters.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Analytics = preload("res://core/analytics.gd")
 
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "gumdrop": "Gumdrop"}
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
 
 var pill: Button
 var _game := "firefly"

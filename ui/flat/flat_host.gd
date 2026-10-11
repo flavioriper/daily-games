@@ -36,6 +36,18 @@ extends "res://ui/puzzle_host.gd"
 ## and not a second scene.
 ## Spec: docs/superpowers/specs/2026-09-18-binairo-flat-design.md, sections
 ## 3, 8 (as amended) and 9.3.
+##
+## **A board whose world fills the screen asks for `"bleed": true`**
+## (Gumdrop, 2026-10-11; spec 2026-10-11-gumdrop-daily-design.md, section
+## 2). It is laid full rect under these rows and not in the card slot: no
+## backdrop plate, no board card, and the margins and the column ignore
+## the pointer so the board takes every touch the rows do not. The host
+## tells it what the rows cover (`set_clear(top, bottom, won)`, in the
+## board's own pixels) at the spawn, when the insets change and once at the
+## win with the win's slots; the board is never frozen and scaled for the
+## slide, it moves itself into the span. Everything else -- the bar, the
+## day card, the tutorial, the win, the done mark, the streak -- is as it
+## is for every board.
 
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
@@ -127,6 +139,10 @@ var _day_key := 0
 ## The card's span (_card_span) the board was laid out at when the win's
 ## slide froze it.
 var _frozen := Vector2.ZERO
+## A board laid full rect under the rows (the registry's `bleed`), and the
+## height the bottom slot has on its win.
+var _bleed := false
+var _bottom_win := BOTTOM_WIN
 
 func _ready() -> void:
 	# puzzle_host's _ready spawns the daily seed; the day is taken with it.
@@ -200,12 +216,15 @@ func _build_chrome(root: VBoxContainer) -> void:
 	for i in Registry.PUZZLES.size():
 		if String(Registry.PUZZLES[i].get("id", "")) == id:
 			_accent = Pal.CAT[i % Pal.CAT.size()]
-	_backdrop = Vistas.board_plate(id, _accent)
-	_backdrop.name = "Backdrop"
-	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(_backdrop)
-	move_child(_backdrop, 1)
-	_place_backdrop()
+	_bleed = bool(_entry.get("bleed", false))
+	# a board that fills the screen is its own picture
+	if not _bleed:
+		_backdrop = Vistas.board_plate(id, _accent)
+		_backdrop.name = "Backdrop"
+		_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		add_child(_backdrop)
+		move_child(_backdrop, 1)
+		_place_backdrop()
 
 	# --- the top slot: top bar and day card, and the win art over them ---
 	_top_slot = Control.new()
@@ -260,6 +279,18 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# Flat parchment under the grid, as the mock has it: the paper wash the
 	# rest of the chrome wears reads as a stain across a field of small tiles.
 	_card.material = null
+	if _bleed:
+		# The column's own row stays as the gap between the slots; the board
+		# goes in a slot of the whole screen, under the margins.
+		_board_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_board_holder = Control.new()
+		_board_holder.name = "BleedSlot"
+		_board_holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_board_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_board_holder)
+		move_child(_board_holder, 1)
+		_margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# --- the bottom slot: palette and actions, then the win's stats and buttons ---
 	_bottom_slot = Control.new()
@@ -502,6 +533,18 @@ func _place_backdrop() -> void:
 func _apply_insets() -> void:
 	super()
 	_place_backdrop()
+	_tell_clear()
+
+## What the rows cover of a `bleed` board, told to it in its own pixels
+## (it is laid full rect): the top slot and the bottom one, as they are
+## while it is played or, once won, as the win screen has them.
+func _tell_clear() -> void:
+	if not _bleed or not is_instance_valid(_puzzle) or not _puzzle.has_method("set_clear"):
+		return
+	var insets := SafeArea.insets(self)
+	var rows := _bottom_win if _won else _bottom_play
+	_puzzle.set_clear(MARGIN + insets.x + (TOP_WIN if _won else TOP_PLAY) + GAP,
+		MARGIN + insets.y + (rows + GAP if rows > 0.0 else 0.0), _won)
 
 ## A column of rows across the top of `slot`, sized to its own content, so a
 ## tween on the slot's minimum height moves the rows around it and not them.
@@ -561,7 +604,7 @@ func _on_step(i: int, delta: int) -> void:
 ## however it is cut -- air above and below reads as centring where all of it
 ## below reads as a board that fell over.
 func _fit_card() -> void:
-	if _board_holder == null or _card == null:
+	if _board_holder == null or _card == null or _bleed:
 		return
 	var span := _card_span(_board_holder.size.y)
 	_card.offset_top = span.x
@@ -583,7 +626,7 @@ func _card_span(h: float) -> Vector2:
 ## out at and is scaled and moved to follow its card instead, and it is laid
 ## out once, at the new size, when the slide is over (_thaw_board).
 func _freeze_board() -> void:
-	if not is_instance_valid(_puzzle) or _board_holder.size.y <= 0.0:
+	if _bleed or not is_instance_valid(_puzzle) or _board_holder.size.y <= 0.0:
 		return
 	_frozen = _card_span(_board_holder.size.y)
 	if _frozen.y <= 0.0:
@@ -607,7 +650,7 @@ func _follow_board() -> void:
 func _thaw_board() -> void:
 	if _board_holder.resized.is_connected(_follow_board):
 		_board_holder.resized.disconnect(_follow_board)
-	if not is_instance_valid(_puzzle):
+	if _bleed or not is_instance_valid(_puzzle):
 		return
 	_puzzle.scale = Vector2.ONE
 	_puzzle.pivot_offset = Vector2.ZERO
@@ -644,6 +687,9 @@ func _spawn(the_seed: int) -> void:
 	_puzzle.daily_key = _day_key
 	day_card.set_hearts(Progress.hearts())
 	_fit_card()
+	if _bleed:
+		_card.visible = false
+		_tell_clear()
 
 ## The board's wave and the rows making way for the win screen run together.
 func _on_solved() -> void:
@@ -725,6 +771,8 @@ func _show_win(hold := 0.0) -> void:
 	_next_level = _find_next_level()
 	_dress_win_buttons()
 	var bottom_win := BOTTOM_WIN + (NEXT_BUTTON + GAP if _next_level >= 0 else 0.0)
+	_bottom_win = bottom_win
+	_tell_clear()
 	# A board whose answer is a row of characters shows it instead of the
 	# sun and the moon (flat_win).
 	if _puzzle.has_method("flat_win"):

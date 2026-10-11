@@ -1,14 +1,15 @@
 extends RefCounted
 
-## Gumdrop as data (spec
-## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md): the run,
-## the mould, the pots, the dropper and the judge's words. The screen
-## (arcade/gumdrop_screen.gd) hands it `pick()`, `aim()`, `squeeze()` and
-## `serve()`, calls `step()` at the fixed DT and drains `events`.
+## Gumdrop as data (specs
+## docs/superpowers/specs/2026-10-10-arcade-gumdrop-design.md and
+## 2026-10-11-gumdrop-daily-design.md): the day, the mould, the pots, the
+## dropper and the judge's words. The table (puzzles/gumdrop_table.gd)
+## hands it `pick()`, `aim()`, `squeeze()` and `serve()`, calls `step()` at
+## the fixed DT and drains `events`.
 ##
 ## The syrup itself is not here since 2026-10-11 (the user: "I want a real
 ## high volume liquid effect of coloring"): it is a fluid on the GPU
-## (arcade/gumdrop_fluid.gd), which the screen drives from this sim's tip
+## (puzzles/gumdrop_fluid.gd), which the screen drives from this sim's tip
 ## and squeeze and reads back when a mould is served. This sim says what a
 ## colour means: a bit of jelly shows the hue of its pigments' shares at
 ## the strength of their sum (1 - exp(-c / C0), the card's shade at
@@ -17,15 +18,19 @@ extends RefCounted
 ## colour. The fluid's shaders carry the same maths word for word
 ## (shaders/gumdrop/fluid.gdshaderinc).
 ##
-## A run is mould after mould with no clock. Served, a mould settles
-## SETTLE_T and the sim asks to be judged (`judge` event); the screen
-## answers `judge()` with each cell's match and the verdict follows. Under
-## the level's mark the run is over. The match is not shown while the
-## mould is played.
+## A day is a band's few moulds, one after the other, with no clock
+## (`set_day`). Served, a mould settles SETTLE_T and the sim asks to be
+## judged (`judge` event); the table answers `judge()` with each cell's
+## match and the verdict follows. At the mark or over, the next mould is
+## set down, and the last one served is the day done. Under it the mould
+## is emptied and poured again -- unless the band counts its serves
+## (Insane: `budget`, the moulds and SLACK more) and there are now fewer
+## left than moulds, which is the day lost. The match is not shown while
+## the mould is played.
 
-const Mould = preload("res://arcade/gumdrop_mould.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
-enum Phase { READY, PLAY, SETTLE, SHOW, OVER }
+enum Phase { READY, PLAY, SETTLE, SHOW, OVER, DONE }
 
 const DT := 1.0 / 60.0
 ## Squares a side of the grid that says which cell the tip is over, and
@@ -42,36 +47,35 @@ const NEAR_FREE := 0.1
 const NEAR_GONE := 0.8
 ## Squeezed a second, for the record of what went in.
 const RATE := 4.0
-## The mark a mould has to be served at: at level 1, a level's more, the top.
+## The mark a mould has to be served at when no day says (a tutorial
+## page's), and the match a mould is called perfect at.
 const MARK := 60
-const MARK_STEP := 2
-const MARK_TOP := 80
-## At this and over a mould is perfect, and is worth this much more.
 const PERFECT := 95
-const PERFECT_BONUS := 50
+## The serves a counted band has over its moulds: one flop mended.
+const SLACK := 1
 ## Seconds: the syrup left to settle before it is judged, and the verdict
 ## shown.
 const SETTLE_T := 0.9
 const SHOW_T := 2.4
-## The boosters: a kinder mark is this much lower; a softer jelly is the
-## fluid's (arcade/gumdrop_fluid.gd).
-const KINDER := 10
 ## The six flavours' colours, in Mould.Flavour's order, and all three
 ## pigments at once.
 const FLAVOURS := [Color("e2495a"), Color("f39237"), Color("f4d44a"), Color("79c94f"), Color("4a86df"), Color("9a62d2")]
 const MUD := Color("7a5a48")
 
-var rng := RandomNumberGenerator.new()
 var phase := Phase.READY
 var phase_t := 0.0
 ## Seconds played.
 var t := 0.0
-var level := 1
-var score := 0
-## Moulds served over the mark, the perfect ones among them, and the last
-## verdict: {pct, need, pass, perfect, points}.
-var served := 0
-var perfects := 0
+## The day: its moulds, which of them is on the tray, the mark each is
+## served at, and each one's match once it passed.
+var moulds: Array = []
+var index := 0
+var need := MARK
+var marks: Array = []
+## The serves a counted band has (0: not counted) and the serves made.
+var budget := 0
+var serves := 0
+## The last verdict: {pct, need, pass, perfect}.
 var verdict := {}
 var events: Array = []
 
@@ -95,33 +99,59 @@ var match_all := 0.0
 ## Cells a tutorial page wants coloured before it starts: {cell, pigment}.
 ## The screen drains them into the fluid.
 var prefill: Array = []
-var soft := false
-var kinder := 0
 var _asked := false
+var _counted := false
 
-func _init(seed_value := -1) -> void:
-	if seed_value >= 0:
-		rng.seed = seed_value
-	else:
-		rng.randomize()
-	deal()
-	events.clear()
+## A sim with one plain mould on its tray, until `set_day` or `deal` says
+## otherwise.
+func _init() -> void:
+	var m := Mould.build(Mould.Shape.ROUND, Mould.Cut.SECTORS, 2)
+	m.want = [0, 4]
+	m.pots = [0, 4]
+	m.mixed = -1
+	set_day([m], MARK, false)
+
+## The day: these moulds, each served at `mark_at`, the serves counted or
+## not.
+func set_day(list: Array, mark_at: int, counted: bool) -> void:
+	moulds = list
+	need = mark_at
+	_counted = counted
+	restart()
+
+## A band's day off the day's seed.
+func deal_day(band: int, from: RandomNumberGenerator) -> void:
+	var spec: Dictionary = Mould.BANDS[clampi(band, 0, Mould.BANDS.size() - 1)]
+	set_day(Mould.day(band, from), int(spec.mark), band >= 3)
+
+## The day from its first mould, every serve back.
+func restart() -> void:
+	index = 0
+	serves = 0
+	# a video's serves are gone with the day they were bought in
+	budget = moulds.size() + SLACK if _counted else 0
+	marks.clear()
+	verdict = {}
+	t = 0.0
+	phase = Phase.READY
+	phase_t = 0.0
+	deal(moulds[0])
 
 func is_over() -> bool:
 	return phase == Phase.OVER
 
-static func mark_of(lv: int) -> int:
-	return mini(MARK + MARK_STEP * (lv - 1), MARK_TOP)
+func is_done() -> bool:
+	return phase == Phase.DONE
 
 func mark() -> int:
-	return maxi(1, mark_of(level) - kinder)
+	return need
 
-## The boosters (arcade/boosters.gd).
-func softer() -> void:
-	soft = true
+## Serves left on a counted band, and moulds still to pass.
+func serves_left() -> int:
+	return maxi(0, budget - serves)
 
-func kind() -> void:
-	kinder = KINDER
+func moulds_left() -> int:
+	return moulds.size() - index
 
 # --- the colour ---
 
@@ -175,11 +205,18 @@ static func nearness(col: Color, flavour: int) -> float:
 
 # --- a mould ---
 
-## A new mould for the level, or `m` laid as it is (a tutorial page's).
-func deal(m := {}) -> void:
-	mould = m if not m.is_empty() else Mould.deal(level, rng)
+## `m` set down on the tray, clear.
+func deal(m: Dictionary) -> void:
+	mould = m
 	_lay()
-	events.append({"type": "deal", "level": level})
+	events.append({"type": "deal", "index": index})
+
+## The mould on the tray emptied, to be poured again.
+func empty() -> void:
+	if phase != Phase.READY and phase != Phase.PLAY:
+		return
+	_lay()
+	events.append({"type": "again"})
 
 func _lay() -> void:
 	var cells: Array = mould.cells
@@ -277,6 +314,7 @@ func serve() -> void:
 	if not can_serve():
 		return
 	squeezing = false
+	serves += 1
 	phase = Phase.SETTLE
 	phase_t = 0.0
 	_asked = false
@@ -305,7 +343,8 @@ func step() -> void:
 				_after()
 
 ## The answer to a `judge` event: each cell's match, 0 to 1, as the fluid
-## measured it. The verdict follows.
+## measured it. The verdict follows; the day's last mould passed is the
+## day done, there and then.
 func judge(near: PackedFloat32Array, all: float) -> void:
 	if phase != Phase.SETTLE:
 		return
@@ -315,33 +354,51 @@ func judge(near: PackedFloat32Array, all: float) -> void:
 	var pct := int(round(match_all * 100.0))
 	var passed := pct >= mark()
 	var perfect := pct >= PERFECT
-	# a mould under its mark is worth nothing
-	var points := (pct + (PERFECT_BONUS if perfect else 0)) if passed else 0
-	verdict = {"pct": pct, "need": mark(), "pass": passed, "perfect": perfect, "points": points}
-	score += points
-	if passed:
-		served += 1
-		if perfect:
-			perfects += 1
+	verdict = {"pct": pct, "need": mark(), "pass": passed, "perfect": perfect}
 	phase = Phase.SHOW
 	phase_t = 0.0
-	events.append({"type": "served", "pct": pct, "need": mark(), "pass": passed, "perfect": perfect, "points": points})
+	events.append({"type": "served", "pct": pct, "need": mark(), "pass": passed, "perfect": perfect})
+	if passed:
+		marks.append(pct)
+		if index >= moulds.size() - 1:
+			phase = Phase.DONE
+			events.append({"type": "done"})
 
 func _after() -> void:
 	if bool(verdict.get("pass", false)):
-		level += 1
-		deal()
+		index += 1
+		deal(moulds[index])
 		phase = Phase.PLAY
 		phase_t = 0.0
-	else:
+	elif budget > 0 and serves_left() < moulds_left():
 		phase = Phase.OVER
 		events.append({"type": "over"})
+	else:
+		_lay()
+		phase = Phase.PLAY
+		phase_t = 0.0
+		events.append({"type": "again"})
 
-## The Second chance: the mould that ended the run, clear again.
-func revive() -> void:
+## The out-of-moves card's video: `more` serves and the mould that ended
+## the day, clear again.
+func revive(more: int) -> void:
 	if phase != Phase.OVER:
 		return
+	budget = serves + moulds_left() - 1 + more
 	_lay()
 	phase = Phase.PLAY
 	phase_t = 0.0
-	events.append({"type": "revive", "level": level})
+	events.append({"type": "again"})
+
+## A finished day put back: its last mould on the tray, filled as the card
+## has it, and the numbers it was served at.
+func finish(pcts: Array) -> void:
+	index = moulds.size() - 1
+	deal(moulds[index])
+	for c in mould.want.size():
+		filled(c, int(mould.want[c]), 1.0)
+	marks = pcts.duplicate()
+	var last := int(pcts[-1]) if not pcts.is_empty() else 100
+	verdict = {"pct": last, "need": mark(), "pass": true, "perfect": last >= PERFECT}
+	phase = Phase.DONE
+	phase_t = SHOW_T

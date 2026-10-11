@@ -80,6 +80,17 @@ transform (no mesh is rebuilt). The record is each mould's match
 shows its last mould filled flat in the card's colours (the tutorial's
 prefill) with the day's numbers under it.
 
+**Amended while building, 2026-10-11.** The numbers are the win screen's
+own line ("Served at 100% · 98%", `flat_win`), not a label under the tray:
+there it was small white type on wood, squeezed against the stats card.
+With `faces` handed over the win screen hides its sun and moon, which left
+its top bare, so the row is three gumdrops (`Jelly`, cherry, lemon,
+blueberry; no mascot). And Insane's counted move is named on screen: the
+pill reads "N serves left" (`MovesPill.keys`), the card "Not enough
+serves" with its own body, the tutorial's last page "Count your serves",
+because the day is lost with fewer serves than moulds, not at none, and
+the shared words said otherwise beside a pill still reading 4.
+
 ## 5. Leaving Arcade
 
 The Arcade tab is ten cards again. Softer jelly and Kinder marks are

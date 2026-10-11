@@ -1,30 +1,30 @@
 extends SceneTree
 
 ## Proves what of Gumdrop runs headless. Run after touching
-## arcade/gumdrop_sim.gd or arcade/gumdrop_mould.gd.
+## puzzles/gumdrop_sim.gd or puzzles/gumdrop_mould.gd.
 ##   godot --headless --script tests/_probe_gumdrop.gd
-## The syrup itself is a fluid on the GPU since 2026-10-11
-## (arcade/gumdrop_fluid.gd) and cannot run here: tests/_shot_gumdrop.gd
-## plays it windowed with a bot that reads the fluid back. Here: every
-## design is built and its cells counted; the colour maths the judge's
-## shader carries word for word (the hue of two pigments is the flavour
-## between, the strength climbs to the card's shade and no further, past
-## it the colour deepens and matches less, a pale lemon and a pale cherry
-## are judged alike); the run (a mould served asks to be judged, the
-## verdict follows the answer, under the mark the run is over, the mark
-## climbs 60 to 80); the boosters and the Second chance.
+## The syrup itself is a fluid on the GPU (puzzles/gumdrop_fluid.gd) and
+## cannot run here: tests/_shot_gumdrop.gd plays it windowed with a bot
+## that reads the fluid back. Here: every design is built and its cells
+## counted; the colour maths the judge's shader carries word for word; a
+## band's day (how many moulds, the same off the same seed, what stands by
+## the tray, every wanted flavour makeable from the pots); and the day's
+## run with the judge answered by hand (a mould served asks to be judged,
+## over the mark the next is set down and the last is the day done, under
+## it the mould is emptied, Insane's serves and the day lost, the video's
+## serves, a finished day put back).
 
-const Sim = preload("res://arcade/gumdrop_sim.gd")
-const Mould = preload("res://arcade/gumdrop_mould.gd")
-const Boosters = preload("res://arcade/boosters.gd")
+const Sim = preload("res://puzzles/gumdrop_sim.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
 var _fails := 0
 
 func _initialize() -> void:
 	_designs()
 	_colour()
+	_days()
 	_run()
-	_kit()
+	_insane()
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -42,8 +42,8 @@ func _designs() -> void:
 		if m.is_empty():
 			_check("design %s builds" % str(row), false)
 			continue
-		Mould.dress(m, 9, rng)
-		var s = Sim.new(1)
+		Mould.dress(m, 4, Mould.Stood.ONE_MIXED, rng)
+		var s = Sim.new()
 		s.deal(m)
 		var small := 9999
 		var all := 0
@@ -53,7 +53,7 @@ func _designs() -> void:
 		least = mini(least, small)
 		print("     design %s: %d cells, %d squares, the smallest %d" % [str(row), s.count.size(), all, small])
 	_check("every design's smallest cell has 12 squares or more (%d)" % least, least >= 12)
-	var s = Sim.new(2)
+	var s = Sim.new()
 	var starts_in: bool = s.tip_cell() == 0
 	s.aim(Vector2(1, 1))
 	_check("the tip starts in a cell, and over the tray's corner it is in none", starts_in and s.tip_cell() == -1)
@@ -107,33 +107,84 @@ func _serve_as(s: RefCounted, pct: float) -> Dictionary:
 	s.events.clear()
 	return tally
 
-func _run() -> void:
-	var s = Sim.new(7)
+func _day(band: int, seed_value: int) -> RefCounted:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var s = Sim.new()
+	s.deal_day(band, rng)
 	s.events.clear()
-	_check("nothing to serve until something is squeezed", not s.can_serve())
-	var tally := _serve_as(s, 0.86)
-	_check("a mould served asks to be judged once and the verdict follows (%s)" % str(tally), int(tally.get("judge", 0)) == 1 and int(tally.get("served", 0)) == 1)
-	_check("86%% over a mark of 60 is 86 points and the next mould (%d, level %d)" % [s.score, s.level], s.score == 86 and s.level == 2 and s.phase == Sim.Phase.PLAY)
-	tally = _serve_as(s, 0.97)
-	_check("97%% is perfect: 97 and %d more (%d)" % [Sim.PERFECT_BONUS, s.score], s.score == 86 + 97 + Sim.PERFECT_BONUS and s.perfects == 1)
-	var marks := []
-	for lv in [1, 2, 11, 12, 30]:
-		marks.append(Sim.mark_of(lv))
-	_check("the mark climbs 60 to 80 (%s)" % str(marks), marks == [60, 62, 80, 80, 80])
-	s.level = 10
-	var had: int = s.score
-	tally = _serve_as(s, 0.5)
-	_check("50%% under the mark is worth nothing and ends the run (%d, over %s)" % [s.score, str(s.is_over())], s.score == had and s.is_over() and int(tally.get("over", 0)) == 1)
+	return s
 
-func _kit() -> void:
-	var s = Sim.new(9)
-	var plain: int = s.mark()
-	Boosters.apply("gumdrop", s, ["gd_soft", "gd_kind"])
-	_check("softer jelly, kinder marks", s.soft and s.mark() == plain - Sim.KINDER)
-	s.filled(0, 0, 1.0)
-	_check("a tutorial page's cell is coloured through the prefill", s.prefill.size() == 1 and s.wet())
-	_serve_as(s, 0.1)
-	_check("a mould served nearly clear ends the run", s.is_over())
-	var had: int = s.score
-	Boosters.revive("gumdrop", s)
-	_check("the Second chance clears the mould", not s.is_over() and not s.wet() and s.score <= had)
+func _days() -> void:
+	for band in 4:
+		var spec: Dictionary = Mould.BANDS[band]
+		var ok := true
+		var makeable := true
+		var cells := []
+		var pots_most := 0
+		var mixed_least := 99
+		for seed_value in 200:
+			var s = _day(band, seed_value)
+			ok = ok and s.moulds.size() == int(spec.moulds) and s.mark() == int(spec.mark)
+			for m: Dictionary in s.moulds:
+				cells.append(m.cells.size())
+				pots_most = maxi(pots_most, m.pots.size())
+				var mixed := 0
+				for f: int in m.want:
+					var recipe: Dictionary = Mould.recipe(f, m.pots)
+					for pot: int in recipe:
+						makeable = makeable and m.pots.has(pot)
+					if recipe.size() > 1:
+						mixed += 1
+				mixed_least = mini(mixed_least, mixed)
+		_check("band %d: %d moulds at %d%% on every one of 200 days, %d to %d cells, %d pots at most" % [band, int(spec.moulds), int(spec.mark), cells.min(), cells.max(), pots_most],
+			ok and pots_most <= 3)
+		_check("band %d: every wanted flavour is a pot or its two neighbours, both stood by the tray" % band, makeable)
+		if band < 2:
+			_check("band %d: nothing to mix" % band, mixed_least == 0)
+		if band == 3:
+			_check("Three Pots: only the pigments stand by the tray and a cell or more is mixed (least %d)" % mixed_least, mixed_least >= 1)
+	var a = _day(2, 77)
+	var b = _day(2, 77)
+	var same: bool = a.moulds.size() == b.moulds.size()
+	for i in a.moulds.size():
+		same = same and a.moulds[i].want == b.moulds[i].want and a.moulds[i].pots == b.moulds[i].pots \
+			and int(a.moulds[i].shape) == int(b.moulds[i].shape) and int(a.moulds[i].n) == int(b.moulds[i].n)
+	_check("the same seed deals the same day", same)
+
+func _run() -> void:
+	var s = _day(0, 7)
+	_check("nothing to serve until something is squeezed", not s.can_serve())
+	var first: Dictionary = s.mould
+	var tally := _serve_as(s, 0.4)
+	_check("a mould served asks to be judged once and the verdict follows (%s)" % str(tally), int(tally.get("judge", 0)) == 1 and int(tally.get("served", 0)) == 1)
+	_check("40%% under a mark of 60: the same mould, clear again, and the day goes on", is_same(s.mould, first) and not s.wet() and s.phase == Sim.Phase.PLAY and int(tally.get("again", 0)) == 1 and s.index == 0)
+	tally = _serve_as(s, 0.86)
+	_check("86%% is the next mould set down (index %d)" % s.index, s.index == 1 and s.phase == Sim.Phase.PLAY and not is_same(s.mould, first) and int(tally.get("deal", 0)) == 1)
+	s.squeeze(true)
+	for i in 6:
+		s.step()
+	s.squeeze(false)
+	s.empty()
+	_check("Reset empties the mould on the tray", not s.wet() and s.index == 1)
+	tally = _serve_as(s, 0.97)
+	_check("the last mould served is the day done, there and then (%s)" % str(s.marks), s.is_done() and int(tally.get("done", 0)) == 1 and s.marks == [86, 97] and s.serves == 3)
+	var back = _day(0, 7)
+	back.finish([86, 97])
+	_check("a finished day put back: the last mould, every cell to be filled, its numbers", back.is_done() and back.index == 1 and back.prefill.size() == back.mould.want.size() and back.marks == [86, 97])
+
+func _insane() -> void:
+	var s = _day(3, 11)
+	_check("Insane counts serves: the moulds and %d more (%d)" % [Sim.SLACK, s.budget], s.budget == s.moulds.size() + Sim.SLACK and _day(2, 11).budget == 0)
+	_serve_as(s, 0.9)
+	var tally := _serve_as(s, 0.3)
+	_check("one flop is mended: %d serves left for %d moulds" % [s.serves_left(), s.moulds_left()], s.phase == Sim.Phase.PLAY and s.serves_left() == s.moulds_left() and int(tally.get("again", 0)) == 1)
+	tally = _serve_as(s, 0.3)
+	_check("a second leaves fewer serves than moulds: the day is lost", s.is_over() and int(tally.get("over", 0)) == 1)
+	s.revive(2)
+	_check("the video's two serves: the mould clear, one to spare (%d for %d)" % [s.serves_left(), s.moulds_left()], s.phase == Sim.Phase.PLAY and not s.wet() and s.serves_left() == s.moulds_left() + 1)
+	s.restart()
+	_check("Try again is the day from its first mould, every serve back", s.index == 0 and s.serves == 0 and s.marks.is_empty() and s.serves_left() == s.budget)
+	for i in s.moulds.size():
+		_serve_as(s, 0.8)
+	_check("five moulds at 80%% over a mark of 75 is the day done with a serve unspent", s.is_done() and s.serves_left() == 1)
