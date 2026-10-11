@@ -62,6 +62,7 @@ const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
 const BeelineScreen = preload("res://arcade/beeline_screen.gd")
 const DeckchairScreen = preload("res://arcade/deckchair_screen.gd")
 const EddyScreen = preload("res://arcade/eddy_screen.gd")
+const GumdropScreen = preload("res://arcade/gumdrop_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
@@ -1357,6 +1358,9 @@ func _open_arcade(game: String) -> void:
 		"eddy":
 			screen = EddyScreen.new()
 			screen.name = "Eddy"
+		"gumdrop":
+			screen = GumdropScreen.new()
+			screen.name = "Gumdrop"
 		_:
 			return
 	# Nightlight is kept and has no run to finish: like the Factory's land

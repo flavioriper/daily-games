@@ -9,8 +9,8 @@ extends SceneTree
 ##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
 ##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "eddy"]
-const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "eddy", "gumdrop"]
+const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "gumdrop": "Gumdrop"}
 
 var _menu: Node
 var _t := 0.0
@@ -101,6 +101,18 @@ func _force_over(g: String, s: Node) -> void:
 			sim.score = maxi(sim.score, 1)
 			sim.spin = 0.0
 			sim.phase = sim.Phase.DRAIN
+			sim.phase_t = 1000.0
+		"gumdrop":
+			# a mould served before (a run with none is not offered a chance),
+			# then this one served nearly clear
+			sim.served = maxi(sim.served, 1)
+			sim.squeeze(true)
+			for i in 12:
+				sim.step()
+			sim.serve()
+			# through the settling to the verdict, and past its showing
+			for i in 60:
+				sim.step()
 			sim.phase_t = 1000.0
 
 func _finish(code: int) -> void:

@@ -1403,3 +1403,51 @@ TUT_EDDY_HUD_BODY,"What has gone down stays down, so there is no Undo. The run w
 TUT_EDDY_HUD_RESET,A fresh run on a full pond,Uma partida nova num lago cheio,Una partida nueva en un estanque lleno
 TUT_EDDY_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
 TUT_EDDY_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
+ARC_GUMDROP_BLURB,"Colour the jelly to match the card. Move the dropper, squeeze the syrup in, and stop before it runs over a wall.","Pinte a gelatina igual ao cartão. Mova o conta-gotas, aperte a calda e pare antes que ela passe por cima da parede.","Pinta la gelatina igual que la tarjeta. Mueve el cuentagotas, aprieta el sirope y para antes de que pase por encima de la pared."
+ARC_BEST_MOULDS,Most moulds: %d,Mais formas: %d,Más moldes: %d
+GD_MOTTO,A little at a time,Um pouquinho de cada vez,Un poquito cada vez
+GD_MOULD,MOULD,FORMA,MOLDE
+GD_READY,Colour the jelly,Pinte a gelatina,Pinta la gelatina
+GD_READY_LINE,Slide over the tray to move the dropper and hold the pink button to squeeze,Deslize sobre a bandeja para mover o conta-gotas e segure o botão rosa para apertar,Desliza sobre la bandeja para mover el cuentagotas y mantén el botón rosa para apretar
+GD_NEED,NEEDS %d%%,PRECISA DE %d%%,NECESITA %d%%
+GD_NEEDED,It needed %d%%,Precisava de %d%%,Necesitaba %d%%
+GD_NOTHING_YET,Nothing to serve yet,Ainda não há o que servir,Aún no hay nada que servir
+GD_EMPTY,Empty!,Vazio!,¡Vacío!
+GD_SPILL_WALL,Over the wall!,Passou da parede!,¡Pasó la pared!
+GD_SPILL_TRAY,On the tray!,Na bandeja!,¡En la bandeja!
+GD_PERFECT,Perfect!,Perfeito!,¡Perfecto!
+GD_GOOD,Served!,Servido!,¡Servido!
+GD_MIX_NOW,Two flavours make a third,Dois sabores fazem um terceiro,Dos sabores hacen un tercero
+GD_END_CARD,That one did not set,Essa não deu ponto,Esa no cuajó
+GD_STAT_SERVED,served,servidas,servidas
+GD_STAT_PERFECT,perfect,perfeitas,perfectas
+GD_STAT_LAST,the last one,a última,la última
+GD_CHERRY,Cherry,Cereja,Cereza
+GD_ORANGE,Orange,Laranja,Naranja
+GD_LEMON,Lemon,Limão,Limón
+GD_LIME,Lime,Lima,Lima
+GD_BLUEBERRY,Blueberry,Mirtilo,Arándano
+GD_GRAPE,Grape,Uva,Uva
+BST_GD_FULL,Fuller pots,Potes mais cheios,Tarros más llenos
+BST_GD_FULL_LINE,Every pot holds a third more syrup,Cada pote leva um terço a mais de calda,Cada tarro lleva un tercio más de sirope
+BST_GD_TALL,Taller walls,Paredes mais altas,Paredes más altas
+BST_GD_TALL_LINE,The syrup has further to rise before it runs over,A calda precisa subir mais para passar por cima,El sirope tiene que subir más para pasar por encima
+BST_CHANCE_GUMDROP,The mould is clear again and the pots are full.,A forma fica limpa de novo e os potes cheios.,El molde queda limpio de nuevo y los tarros llenos.
+TUT_GUMDROP_FILL,Squeeze the syrup in,Aperte a calda,Aprieta el sirope
+TUT_GUMDROP_FILL_BODY,"Slide a finger over the tray and the dropper moves as far as your finger does. A tap puts its tip right there. Touch a pot for its flavour, then hold the pink button: the syrup runs out for as long as you hold.","Deslize o dedo sobre a bandeja e o conta-gotas anda o mesmo tanto. Um toque leva a ponta até ali. Toque num pote para escolher o sabor e segure o botão rosa: a calda sai enquanto você segurar.","Desliza un dedo sobre la bandeja y el cuentagotas se mueve lo mismo. Un toque lleva la punta justo allí. Toca un tarro para elegir su sabor y mantén el botón rosa: el sirope sale mientras lo mantengas."
+TUT_GUMDROP_WALLS,Mind the walls,Cuidado com as paredes,Cuidado con las paredes
+TUT_GUMDROP_WALLS_BODY,"Syrup piles up under the dropper before it spreads. From the middle of a cell, a little at a time, it fills evenly. Held down beside a wall it runs over, into the next cell or onto the tray.","A calda se acumula sob o conta-gotas antes de se espalhar. No meio de uma parte, um pouquinho de cada vez, ela enche por igual. Apertada junto a uma parede, passa para a parte vizinha ou cai na bandeja.","El sirope se amontona bajo el cuentagotas antes de extenderse. En el centro de una parte, un poquito cada vez, se llena por igual. Apretado junto a una pared, pasa a la parte de al lado o cae en la bandeja."
+TUT_GUMDROP_MATCH,Match the card,Deixe igual ao cartão,Iguala la tarjeta
+TUT_GUMDROP_MATCH_BODY,"The card shows the jelly as it is wanted, and the number how near yours is. The gold button serves it. The first mould needs %d%%, later ones up to %d%%. One served under its mark ends the run.","O cartão mostra a gelatina como deve ficar, e o número o quanto a sua está perto. O botão dourado serve. A primeira forma pede %d%%, as seguintes até %d%%. Uma servida abaixo da marca encerra a partida.","La tarjeta muestra la gelatina deseada, y el número lo cerca que está la tuya. El botón dorado la sirve. El primer molde pide %d%%, los siguientes hasta %d%%. Uno servido bajo su marca termina la partida."
+TUT_GUMDROP_MIX,Two make a third,Dois fazem um terceiro,Dos hacen un tercero
+TUT_GUMDROP_MIX_BODY,"From mould %d on, a flavour on the card may have no pot. Squeeze half of each of its two neighbours into the same cell: cherry and lemon make orange, lemon and blueberry lime, blueberry and cherry grape.","Da forma %d em diante, um sabor do cartão pode não ter pote. Aperte metade de cada vizinho na mesma parte: cereja e limão fazem laranja, limão e mirtilo lima, mirtilo e cereja uva.","Desde el molde %d, un sabor de la tarjeta puede no tener tarro. Aprieta la mitad de cada vecino en la misma parte: cereza y limón hacen naranja, limón y arándano lima, arándano y cereza uva."
+TUT_GUMDROP_BOOSTS,Boosters,Reforços,Refuerzos
+TUT_GUMDROP_BOOSTS_BODY,"Hold a booster, or the gold for one, and a card offers them before the run. The Second chance is offered once, when a mould is served under its mark.","Tenha um reforço, ou o ouro para comprar um, e um cartão os oferece antes da partida. A Segunda chance é oferecida uma vez, quando uma forma é servida abaixo da marca.","Ten un refuerzo, o el oro para uno, y una tarjeta los ofrece antes de la partida. La Segunda oportunidad se ofrece una vez, cuando un molde se sirve por debajo de su marca."
+TUT_GUMDROP_BOOST_FULL,Fuller pots: every pot holds a third more syrup,Potes mais cheios: cada pote leva um terço a mais de calda,Tarros más llenos: cada tarro lleva un tercio más de sirope
+TUT_GUMDROP_BOOST_TALL,Taller walls: the syrup has further to rise before it runs over,Paredes mais altas: a calda precisa subir mais para passar por cima,Paredes más altas: el sirope tiene que subir más para pasar por encima
+TUT_GUMDROP_BOOST_CHANCE,Second chance: the mould is clear again and the pots are full,Segunda chance: a forma fica limpa de novo e os potes cheios,Segunda oportunidad: el molde queda limpio de nuevo y los tarros llenos
+TUT_GUMDROP_HUD,The buttons,Os botões,Los botones
+TUT_GUMDROP_HUD_BODY,"Syrup squeezed in cannot be taken out, so there is no Undo. Nothing is timed: the jelly waits for you as long as you like.","Calda apertada não volta para o pote, por isso não há Desfazer. Nada é cronometrado: a gelatina espera por você o tempo que quiser.","El sirope apretado no vuelve al tarro, así que no hay Deshacer. Nada va contra reloj: la gelatina te espera todo lo que quieras."
+TUT_GUMDROP_HUD_RESET,A fresh run from the first mould,Uma partida nova desde a primeira forma,Una partida nueva desde el primer molde
+TUT_GUMDROP_HUD_GEAR,Settings,Configurações,Ajustes
+TUT_GUMDROP_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"

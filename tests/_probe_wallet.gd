@@ -35,7 +35,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
 			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
-			"res://arcade/eddy_screen.gd"]:
+			"res://arcade/eddy_screen.gd", "res://arcade/gumdrop_screen.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -191,6 +191,20 @@ func _process(_d: float) -> bool:
 	_check(ed.is_over(), "eddy over, its spin out")
 	Boosters.revive("eddy", ed)
 	_check(not ed.is_over() and ed.spin > 0.0, "eddy revived, with spin to turn on")
+	var gd = load("res://arcade/gumdrop_sim.gd").new(3)
+	var plain: float = float(gd.pots[0].full)
+	Boosters.apply("gumdrop", gd, ["gd_full", "gd_tall"])
+	_check(is_equal_approx(float(gd.pots[0].full), plain * gd.FULLER) and is_equal_approx(gd.wall, gd.TALLER), "gumdrop: fuller pots, taller walls")
+	gd.squeeze(true)
+	for i in 12:
+		gd.step()
+	gd.squeeze(false)
+	gd.serve()
+	for i in 300:
+		gd.step()
+	_check(gd.is_over(), "gumdrop over, a mould served nearly clear")
+	Boosters.revive("gumdrop", gd)
+	_check(not gd.is_over() and float(gd.pots[0].left) == float(gd.pots[0].full), "gumdrop revived, the mould clear and the pots full")
 
 	DirAccess.remove_absolute(tmp)
 	print("FAILS: %d" % _fails)

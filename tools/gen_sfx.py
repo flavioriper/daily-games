@@ -3413,6 +3413,43 @@ SETS = {
         # A best passed: five up a step at a time, the longest rise.
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
+    # coloured with a dropper of syrup. Made against the cozy rules from the
+    # start (docs/agents/sound.md). One cue never stops: `pour`, the
+    # dropper's tick, six a second for as long as the button is held. No
+    # new take is kept: the set is the three measured takes Beeline and Eddy
+    # are made of (the light button on felt, the hollow block, one muffled
+    # kalimba note), copied into build/sfx_raw/gumdrop/. Nothing here is a
+    # liquid: Eddy's one water take came back at 1.1 kHz. The pots, the
+    # buttons and the tray's touch are the button's own click (fx2d's touch).
+    "gumdrop": {
+        # The dropper squeezed: the constant action, the quietest file of
+        # the set. The screen varies it by 0.94 to 1.06.
+        "pour":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        # The next tray set down.
+        "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0.09:0,-2"),
+        # Syrup over a wall: the block, two notches going down.
+        "spill":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.1:-2,-5"),
+        # A pot run dry: two low notches alike.
+        "empty":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.12:-3,-3"),
+        # The mould served: one knock, the tray picked up.
+        "serve":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-4"),
+        # A cell set as it is wanted: one note. The screen plays each next
+        # cell of a mould a little higher, never past five semitones.
+        "set":       ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:2", "cut:0.45"),
+        # Served over the mark: two notes up a fourth.
+        "good":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # Served perfect: three up.
+        "perfect":   ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,6,9", "cut:0.8"),
+        # Served under the mark: two slow ones down.
+        "flop":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:7,3", "cut:1.0"),
+        # A run beginning: three notes up.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
+        # The end card: three slow ones down.
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,5,4", "cut:1.3"),
+        # A best passed: five up a step at a time, the longest rise.
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+    },
 }
 
 

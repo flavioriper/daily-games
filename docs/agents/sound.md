@@ -374,6 +374,15 @@ asked for once and not kept**: a pebble dropped into a wooden bucket of
 water came back at 1.1 kHz with 84% of itself between 1 and 3 kHz. Nothing
 follows the whirlpool's turning, and the pad's press is the button's click.
 
+**Gumdrop has a set since 2026-10-10** (`SETS["gumdrop"]`, twelve cues),
+made against the cozy rules from the start and unheard by the user. No take
+of its own: `pour` (the dropper squeezed, the constant action, six a second
+while the button is held, -21) and `deal` are Beeline's light button on
+felt; `spill`, `empty` and `serve` its hollow block; `set`, `good`,
+`perfect`, `flop`, `start`, `game_over` and `new_best` its muffled kalimba
+note. **Nothing is a liquid** (Eddy's one water take measured high). The
+pots, the buttons and the tray's touch are the button's click.
+
 **Deckchair has a set since 2026-10-10** (`SETS["deckchair"]`, fifteen
 cues), made against the cozy rules from the start and unheard by the user.
 Two takes in all. Everything a card does is `place`'s take, a flat wooden

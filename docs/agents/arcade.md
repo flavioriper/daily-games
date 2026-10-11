@@ -3138,3 +3138,60 @@ biggest whirlpool.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Eddy bot.
 - Owed: a phone, the sounds heard, pt and es read, the spec's ten calls.
 
+
+
+**Gumdrop is the eleventh** (2026-10-10, spec
+`2026-10-10-arcade-gumdrop-design.md`, built unattended): clear jelly in a
+walled mould, coloured with a dropper of syrup to match a card, after a
+browser game the spec names once to forbid; **it is called Gumdrop and
+nothing else**. Mould after mould with no clock; each is served and judged
+by how near the card it is, and one under its mark (60, rising to 80) ends
+the run.
+
+- **The game is pure data** (`arcade/gumdrop_sim.gd`, a grid of 36 by 36
+  squares over a mould of 100 units, fixed 1/60 s): `pick()`, `aim()`,
+  `squeeze()`, `serve()`, `step()`, `events`. Each square holds a depth of
+  three pigments; syrup runs from the deeper square to the shallower and
+  **nothing is moved by rule**. A wall is a sill between two squares, so
+  a spill is syrup standing higher than the wall and nothing else.
+  `tests/_probe_gumdrop.gd -- [runs] [levels]` builds every design and
+  proves the promises (none made or lost, a cell squeezed from its middle
+  in pulses never spills, one held down by a wall does, two pigments blend
+  to the flavour between) and plays a careful bot and a careless one; run
+  it after touching the sim or the moulds. It takes two minutes.
+- **A mould is polygons made by rule** (`arcade/gumdrop_mould.gd`): an
+  outline cut into sectors, a core and sectors, or bands. The sim's grid
+  and the art's meshes are both made from them. A wall is 5 units for a
+  reason: the syrup is drawn from squares 2.8 units wide, and a thinner
+  wall let the next cell's colour show at a cell's edge.
+- **The syrup is one small texture** (`_tex`, 36 by 36, each texel its
+  colour times its depth with the depth in alpha), written from the sim
+  only while something runs (`sim.moving`) and drawn once through
+  `shaders/gumdrop_syrup_2d.gdshader`: a four-tap cubic, so no square
+  shows as a diamond. **A canvas shader's `COLOR` already holds the
+  texture's sample**: multiplying the result by it drew every flavour
+  twice as dark (the first shots' mustard lemon). The Control that draws
+  it sets `texture_filter` to linear: the four taps rely on it.
+- **Three Controls, one over the other**: the field (table, tray, the
+  mould's floor), the syrup, the top (walls, card, pots, buttons, dropper,
+  one live mesh). The walls are strokes of the cells' own outlines drawn
+  over the syrup, which is what hides it under them. 60 to 68 draw calls
+  in play, 101 with the end card, 312 on the tab (810x1440,
+  `opengl3_angle`).
+- **The fingers are the field's** (`_on_field_input`): ScreenTouch,
+  ScreenDrag and the mouse, hit by hand against the tray, the pots and
+  the two buttons (`_place` lays them all). The drag is relative, so the
+  finger is never on the tip. The harness presses with real touches.
+- **The tab has eleven cards**: six rows of two do not fit at the tiny
+  picture, so `_compact(4)` makes the pictures a strip (`ART_H_STRIP`).
+- **The tutorial's bench is the same screen** (`Bench` in
+  `ui/hud/gumdrop_tutorial_diagram.gd`): laid out on 1040 by 640 of its
+  own (`_place` overridden) and scaled to the page, worked by a `Round`
+  whose plan says what the hand does when.
+- **No mascot**: the pieces are marks.
+- **Not in `tests/_probe_arcade_buzz.gd`**: it has no Gumdrop bot.
+- The careful bot's worst mould is 87% against a top mark of 80: the late
+  moulds (eight sectors, a core and six) are where a run ends.
+- Owed: a phone (the sim's step is 0.8 ms on this Mac with a wet mould,
+  untimed there), the sounds heard, pt and es read, the spec's ten calls.
+  The reference was not played: its canvas took no keys from here.
