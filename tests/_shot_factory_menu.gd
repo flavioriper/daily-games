@@ -1,7 +1,10 @@
 extends SceneTree
 
 ## Factory through the real menu, on throwaway files: the tab shown, Play
-## pressed, a tree tapped with a finger, the screen left, the tab again.
+## pressed, the forest tapped with a finger on a crown (a log, which lies
+## past its gate), its badge tapped with a finger (its card), the screen
+## left, the tab again. Both taps are real ScreenTouch events parsed by the
+## engine, so they reach the screen through its own field as a phone's would.
 ## tests/_shot_factory.gd builds the screen by hand; this one proves the
 ## menu's own wiring (ui/menu.gd `_open_factory`: the tab lends its one sim
 ## and takes it back).
@@ -16,7 +19,8 @@ var _out := "/tmp"
 var _tmp: Array = []
 var _fails := 0
 const STEPS := [[1.5, "tab"], [2.2, "shot", "m1_tab"], [2.3, "play"], [3.2, "shot", "m2_screen"],
-	[3.3, "tap"], [3.4, "release"], [4.6, "shot", "m3_beaver"], [7.5, "shot", "m4_log"], [7.6, "leave"], [8.4, "shot", "m5_tab_after"], [8.5, "quit"]]
+	[3.3, "tap"], [3.4, "release"], [3.9, "shot", "m3_tapped"], [5.0, "log"], [5.1, "shot", "m4_log"],
+	[5.2, "badge"], [5.3, "release"], [6.0, "card"], [6.1, "shot", "m5_forest_card"], [6.2, "leave"], [7.0, "shot", "m6_tab_after"], [7.1, "quit"]]
 
 func _check(ok: bool, what: String) -> void:
 	print("%s %s" % ["PASS" if ok else "FAIL", what])
@@ -48,7 +52,13 @@ func _initialize() -> void:
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
 
+## The throwaway files go. The tab keeps its land once more as the tree comes
+## down (ui/menu/factory_tab.gd saves on leaving the tree unless the land is
+## lent), which would write the land's file again after it was removed: the
+## land is marked lent first, so nothing is left behind.
 func _finish() -> void:
+	if _menu != null and _menu.factory_tab != null:
+		_menu.factory_tab.lent = true
 	for p: String in _tmp:
 		DirAccess.remove_absolute(p)
 
@@ -59,8 +69,7 @@ func _touch(at: Vector2, down: bool) -> void:
 	e.pressed = down
 	Input.parse_input_event(e)
 
-var _tree_px := Vector2.ZERO
-var _felled := 0
+var _px := Vector2.ZERO
 
 func _process(delta: float) -> bool:
 	_t += delta
@@ -81,27 +90,43 @@ func _process(delta: float) -> bool:
 				_s = _menu.get_node_or_null("Factory")
 				_check(_s != null, "Play mounts the screen")
 				_check(_s != null and _s.sim == _menu.factory_tab.sim, "the screen holds the tab's own sim")
+				_check(_s != null and _s.sim.plates.size() == 2 and _s.sim.forests.size() == 1 and _s.sim.items.is_empty(),
+					"which is a new land: the market's plate, a forest behind it, nothing lying")
 				_check(not _menu.factory_tab.is_processing(), "the tab stops stepping while lent")
 			"tap":
-				# the first standing tree, pressed where the screen draws its crown
-				var Art = load("res://factory/art.gd")
+				# the tree nearest the eye, pressed where the screen draws its crown
+				var front := {}
 				for id in _s.sim.trees:
 					var tree: Dictionary = _s.sim.trees[id]
-					if String(tree.state) == "standing":
-						var world: Node2D = _s.world
-						var view: Vector2 = Art.at(Vector2(tree.tile) + Vector2(0.5, 0.5))
-						_tree_px = (world.get_global_transform_with_canvas() * view if world != null else view) + Vector2(0.0, -30.0)
-						break
+					if front.is_empty() or _s.life.depth(Vector2(tree.tile)) > _s.life.depth(Vector2(front.tile)):
+						front = tree
+				var world: Node2D = _s.world
+				_px = world.get_global_transform_with_canvas() * (_s.life.mid(front.tile) as Vector2) + Vector2(0.0, -30.0)
 				# window coordinates: the canvas is stretched into the window
-				_tree_px = root.get_final_transform() * _tree_px
-				_touch(_tree_px, true)
+				_px = root.get_final_transform() * _px
+				_touch(_px, true)
 			"release":
-				_touch(_tree_px, false)
-			"leave":
+				_touch(_px, false)
+			"log":
 				var logs := 0
 				for tile in _s.sim.items:
 					logs += (_s.sim.items[tile] as Array).size()
-				_check(logs > 0, "a finger's tap felled a tree and a log lies (%d)" % logs)
+				var gate: Vector2i = _s.sim.gate(Vector2i(0, -1), 1) + Vector2i(0, 1)
+				_check(logs == 1 and _s.sim.items.has(gate) and int(_s.sim.forests[Vector2i(0, -1)].stock) == 0,
+					"a finger's tap on the forest gave one log and it lies past the gate (%d)" % logs)
+			"badge":
+				var world: Node2D = _s.world
+				_px = root.get_final_transform() * (world.get_global_transform_with_canvas() * (_s.badge_at(Vector2i(0, -1)) as Vector2))
+				_touch(_px, true)
+			"card":
+				var logs := 0
+				for tile in _s.sim.items:
+					logs += (_s.sim.items[tile] as Array).size()
+				_check(_s.card_open() and _s._card_for == "forest", "a finger's tap on the forest's badge opens its card")
+				_check(logs == 1 and int(_s.sim.forests[Vector2i(0, -1)].stock) == 0, "and takes no log")
+			"leave":
+				_s.go_back()
+				_check(not _s.card_open(), "back closes the card and stays on the screen")
 				_s._on_back()
 				_check(_menu.factory_tab.is_processing(), "the tab steps again once the land is back")
 			"quit":

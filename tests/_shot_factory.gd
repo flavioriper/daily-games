@@ -10,27 +10,37 @@ extends SceneTree
 ## screen by hand on a land of its own (`Sim.new(7)`, kept in a throwaway
 ## file that is deleted as it ends) and goes through a first session with
 ## real ScreenTouch and ScreenDrag events handed to the screen's own input
-## handler: a tree tapped and bitten down, Belt picked, a belt dragged from
-## the log to the market, the log sold, the plate card from a plus, a second
-## plate bought. Then a late land of four plates is built through the sim's
-## own actions and stepped until its kiln and retort work and the market's
-## counter is stacked; a machine is placed by a finger, a belt sold by a
-## held one, the view dragged and pinched; the cards, the drawer, the far
-## zoom and the tutorial's three pages are shot. Each step that matters
-## prints PASS or FAIL, each shot its draw calls.
+## handler: the forest tapped on a crown, on its floor and on its gate, two
+## logs lying past the gate with no belt, the forest filled to twelve; Belt
+## picked, a swipe begun inside the forest that lays nothing and one into it
+## that stops at its edge, then the nine belts swiped from the gate to the
+## market and the logs sold; the forest's card from its badge and its first
+## level bought; the plate card from a plus and the first plate bought. Then
+## a late land of six plates (three of them forests, each with a belt past a
+## gate) is built through the sim's own actions and stepped until its two
+## retorts work and the market's counter is stacked; a machine is placed by
+## a finger and refused on a forest, a belt sold by a held one, the view
+## dragged and pinched; the cards, the drawer, the far zoom, the four turns
+## of the view, the swipes, the bends and the tutorial's three pages are
+## shot. Each step that matters prints PASS or FAIL, each shot its draw
+## calls.
 
 const SEED := 7
 const SAVE := "user://factory_harness.cfg"
-## The tree the session fells (seed 7), where its log lies, and the drag.
-const TREE := Vector2i(5, 2)
-const LOG := Vector2i(5, 3)
-const DRAG := [Vector2(5.5, 3.5), Vector2(5.5, 4.5), Vector2(5.5, 5.5), Vector2(5.5, 6.5), Vector2(6.4, 6.5)]
-const WANT_BELTS := {Vector2i(5, 3): 1, Vector2i(5, 4): 1, Vector2i(5, 5): 1, Vector2i(5, 6): 0}
+## The forest a new land has and the tile past the one gate of it that leads
+## on to land; the two forests the late land buys.
+const F := Vector2i(0, -1)
+const PAST := Vector2i(3, 0)
+const WEST := Vector2i(-1, 0)
+const EAST := Vector2i(1, -1)
+## The nine belts of the first session, from the gate to the market.
+const WANT_BELTS := {Vector2i(3, 0): 1, Vector2i(3, 1): 1, Vector2i(3, 2): 1, Vector2i(3, 3): 1, Vector2i(3, 4): 1, Vector2i(3, 5): 1,
+	Vector2i(3, 6): 0, Vector2i(4, 6): 0, Vector2i(5, 6): 0}
 
 var Art: GDScript
 var Sim: GDScript
 var Motion: GDScript
-var _out := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/f811faee-d34c-4697-9443-559f872b4e16/scratchpad"
+var _out := "/tmp/shot_factory"
 var _screen: Control
 var _sim: RefCounted
 var _fails := 0
@@ -154,9 +164,41 @@ func _at(t: Vector2) -> Vector2:
 	return _screen.screen_of(t)
 
 ## A tree is tapped on its crown, not on its tile.
-func _crown(tile: Vector2i) -> Vector2:
-	var look: int = _sim.tree_at(tile).look
-	return _at(Vector2(tile) + Vector2(0.5, 0.5)) - Vector2(0.0, Art.height(look) * 0.45 * _screen._zoom)
+func _crown(tr: Dictionary) -> Vector2:
+	return _at(Vector2(tr.tile) + Vector2(0.5, 0.5)) - Vector2(0.0, Art.height(int(tr.look)) * 0.45 * _screen._zoom)
+
+## The tree nearest the eye as the view is turned now: no other crown is in
+## front of its own.
+func _front_tree() -> Dictionary:
+	var front := {}
+	for id: int in _sim.trees:
+		var tr: Dictionary = _sim.trees[id]
+		if front.is_empty() or _screen.life.depth(Vector2(tr.tile)) > _screen.life.depth(Vector2(front.tile)):
+			front = tr
+	return front
+
+## Where forest `p`'s badge is drawn, in the field's pixels.
+func _badge(p: Vector2i) -> Vector2:
+	return _screen.world.position + _screen.badge_at(p) * _screen._zoom
+
+func _stock(p: Vector2i = F) -> int:
+	return int(_sim.forests[p].stock)
+
+func _lying(tile: Vector2i) -> int:
+	return (_sim.items.get(tile, []) as Array).size()
+
+## Every log the first forest ever gave, wherever it is now: held, lying,
+## riding, on the counter or sold (a land with nothing else on it yet).
+func _logs() -> int:
+	var n: int = _stock() + (_sim.market.wait as Array).size() + int(_sim.earned)
+	for tile: Vector2i in _sim.items:
+		n += _lying(tile)
+	return n
+
+## The one button of a forest's or the market's card, and the plate card's
+## tile for a kind of land.
+func _card_button() -> Button:
+	return _screen._card_slot.find_child("Buttons", true, false).get_child(0)
 
 func _look(t: Vector2, far := false) -> void:
 	_screen.set_far(far)
@@ -185,82 +227,16 @@ func _run() -> void:
 	# the harness is the hand: the real pointer over the window is not
 	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	await _wait(0.8)
+	var field := Rect2(Vector2.ZERO, _screen.field.size)
+	_check("the screen opens on the seam: the forest's badge, its gate and the market are all seen",
+		(_screen._cam as Vector2).is_equal_approx(_screen.life.seen(Vector2(4.0, 0.0))) and field.has_point(_badge(F))
+		and field.has_point(_at(Vector2(3.5, -0.5))) and field.has_point(_at(Vector2(7.0, 7.0))), str(_badge(F)))
 	await _shot("new_land")
 
-	# a tree, tapped on its crown
-	await _tap(_crown(TREE))
-	var tree: Dictionary = _sim.tree_at(TREE)
-	_check("a tap on the crown sets a beaver to the tree", tree.state == "bitten", str(tree.state))
-	await _wait(1.1)
-	await _shot("beaver")
-	await _until(func() -> bool: return tree.state == "stump", 4.0)
-	await _wait(0.45)
-	await _shot("falling")
-	var lies := await _until(func() -> bool: return _sim.items.has(LOG), 3.0)
-	_check("the tree is felled and its log lies beside the stump", tree.state == "stump" and lies, str(_sim.items.keys()))
-	await _wait(0.3)
-	await _shot("log")
-
-	# the drawer, Belt, and a drag from the log to the market
-	await _press_button(_screen._drawer_b)
-	_check("the drawer opens", _screen.drawer_open())
-	await _wait(0.3)
-	await _shot("drawer")
-	await _press_button(_screen._tiles.belt.button)
-	_check("Belt is picked and the drawer shut", _sim.picked == "belt" and not _screen.drawer_open())
-	var cam: Vector2 = _screen._cam
-	# hold and swipe: a straight run down from the log, nothing laid until
-	# the finger lifts; then a second from its corner to the market
-	await _hold([_at(DRAG[0]), _at(DRAG[3])])
-	_check("held, the run is shown and nothing is laid yet", _sim.belts.is_empty() and _screen._run.get("tiles", []).size() == 4, str(_screen._run))
-	_touch(_at(DRAG[3]), false)
-	await _frames(2)
-	var straight: bool = _sim.belts.size() == 4
-	for tile: Vector2i in WANT_BELTS:
-		straight = straight and _sim.belts.get(tile, -1) == 1
-	_check("lifting lays the run, a straight line facing the swipe", straight, str(_sim.belts))
-	await _drag([_at(DRAG[3]), _at(DRAG[4])])
-	var laid := true
-	for tile: Vector2i in WANT_BELTS:
-		laid = laid and _sim.belts.get(tile, -1) == WANT_BELTS[tile]
-	_check("a swipe from the run's end to the market turns its corner into the market", laid and _sim.belts.size() == WANT_BELTS.size(), str(_sim.belts))
-	_check("the drag did not pan the view", _screen._cam == cam)
-	_check("four belts cost four coins", _sim.coins == Sim.START_COINS - 4, str(_sim.coins))
-	await _wait(1.6)
-	await _shot("log_riding")
-	var sold := await _until(func() -> bool: return _sim.earned > 0, 14.0)
-	_check("the log reaches the market and is sold: coins up", sold and _sim.coins == Sim.START_COINS - 3, "coins %d" % _sim.coins)
-	await _wait(0.25)
-	await _shot("sold")
-	# a tap on a laid belt turns it a quarter, and back round
-	await _tap(_at(Vector2(5.5, 4.5)))
-	_check("a tap on a belt turns it a quarter", _sim.belts[Vector2i(5, 4)] == 2, str(_sim.belts[Vector2i(5, 4)]))
-	for i in 3:
-		await _tap(_at(Vector2(5.5, 4.5)))
-	await _press_button(_screen._drawer_b)
-	_check("the drawer's button puts the belt down", _sim.picked == "")
-
-	# a plus, the plate card, a second plate
-	await _tap(_at(Vector2(12.0, 4.0)) + Vector2(-34.0, 0.0))
-	_check("a tap on a plus opens the plate card", _screen.card_open() and _screen._card_for == "plate")
-	await _wait(0.4)
-	await _shot("plate_card")
-	var quarry: Button = _screen._card_slot.find_child("Quarry", true, false)
-	await _press_button(quarry)
-	_check("a plate the coins do not reach is refused", _sim.plates.size() == 1 and _screen.card_open())
-	_sim.coins = 60
-	await _frames(2)
-	await _press_button(quarry)
-	_check("the second plate is bought", _sim.plates.size() == 2 and _sim.plates.get(Vector2i(1, 0), "") == "quarry" and not _screen.card_open(), str(_sim.plates))
-	await _wait(1.3)
-	await _shot("plate_rising")
-	await _wait(2.6)
-	await _shot("second_plate")
-	await _press_button(_screen._drawer_b)
-	await _wait(0.3)
-	await _shot("drawer_unlocked")
-	await _press_button(_screen._drawer_b)
-
+	await _first_taps()
+	await _first_belts()
+	await _first_level()
+	await _first_plate()
 	await _late_land()
 	await _hands()
 	await _cards()
@@ -274,23 +250,188 @@ func _run() -> void:
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
 	quit()
 
+## The forest by hand: what a point of it reads as, a tap a log, two lying
+## past the gate with no belt, twelve held and no more.
+func _first_taps() -> void:
+	var front := _front_tree()
+	var floor_at := Vector2(1.5, -0.5)
+	var h: Dictionary = _screen.hit(_crown(front))
+	_check("a crown reads as the forest, at its tree", h.what == "forest" and h.tile == front.tile, str(h))
+	h = _screen.hit(_at(floor_at))
+	_check("so does the forest's floor where no tree stands", h.what == "forest" and h.tile == Vector2i(1, -1), str(h))
+	h = _screen.hit(_badge(F))
+	_check("its badge reads as the badge of its plate", h.what == "badge" and h.get("plate", null) == F, str(h))
+	h = _screen.hit(_at(Vector2(1.5, 2.5)))
+	_check("open ground past it reads as ground", h.what == "ground" and h.tile == Vector2i(1, 2), str(h))
+	await _tap(_crown(front))
+	_check("a tap on a crown is one log", _stock() + _lying(PAST) == 1, "%d held, %d lying" % [_stock(), _lying(PAST)])
+	await _wait(0.12)
+	await _tap(_at(floor_at))
+	await _wait(0.12)
+	await _tap(_at(Vector2(3.5, -0.5)))
+	await _shot("tapped")
+	_check("three taps, on a crown, on the floor and on the gate, are three logs", _stock() + _lying(PAST) == 3, "%d held, %d lying" % [_stock(), _lying(PAST)])
+	var out := await _until(func() -> bool: return _lying(PAST) == 2 and _stock() == 1, 2.0)
+	_check("with no belt two lie on the ground past the gate and the third waits in the forest", out and _sim.items.size() == 1, "%d held, %s" % [_stock(), _sim.items.keys()])
+	await _wait(0.3)
+	await _shot("logs_past_gate")
+	for i in 14:
+		await _tap(_crown(front))
+	_check("the forest fills to twelve and a tap more gives nothing", _stock() == Sim.FOREST_ROOM and Sim.FOREST_ROOM == 12 and _lying(PAST) == 2 and _sim.coins == Sim.START_COINS,
+		"%d held" % _stock())
+	await _wait(0.3)
+	await _shot("forest_full")
+
+## The drawer, Belt, what a swipe does at a forest's edge, and the belts from
+## the gate to the market.
+func _first_belts() -> void:
+	await _press_button(_screen._drawer_b)
+	_check("the drawer opens", _screen.drawer_open())
+	_check("on a new land it holds the belt and the market, and no machine", _screen._tiles.belt.button.visible and _screen._tiles.market.button.visible
+		and not _screen._tiles.firebox.button.visible and not _screen._tiles.retort.button.visible and not _screen._tiles.kiln.button.visible)
+	await _wait(0.3)
+	await _shot("drawer")
+	await _press_button(_screen._tiles.belt.button)
+	_check("Belt is picked and the drawer shut", _sim.picked == "belt" and not _screen.drawer_open())
+	await _look(Vector2(4.0, 2.5))
+	var cam: Vector2 = _screen._cam
+	# begun inside the forest: no run, nothing laid
+	await _hold([_at(Vector2(3.5, -2.5)), _at(Vector2(3.5, 4.5))])
+	_check("a swipe begun inside a forest shows no run", _screen._run.is_empty() and _sim.belts.is_empty(), str(_screen._run))
+	await _shot("swipe_from_forest")
+	_touch(_at(Vector2(3.5, 4.5)), false)
+	await _frames(2)
+	_check("and lays nothing as the finger lifts: no belt, no coin spent", _sim.belts.is_empty() and _sim.coins == Sim.START_COINS, "%d belts" % _sim.belts.size())
+	# from open ground up into the forest: cut at its edge
+	await _hold([_at(Vector2(5.5, 2.5)), _at(Vector2(5.5, -3.5))])
+	_check("a swipe from open ground into a forest stops at its edge", _screen._run.get("tiles", []) == [Vector2i(5, 2), Vector2i(5, 1), Vector2i(5, 0)], str(_screen._run))
+	await _shot("swipe_into_forest")
+	_touch(_at(Vector2(5.5, -3.5)), false)
+	await _frames(2)
+	var none: bool = _sim.belts.size() == 3
+	for tile: Vector2i in _sim.belts:
+		none = none and not _sim.is_forest(tile)
+	_check("and lays only the three on open ground", none, str(_sim.belts))
+	for y in 3:
+		_sim.sell(Vector2i(5, y))
+	await _frames(2)
+	# hold and swipe: a straight run down from the tile past the gate, nothing
+	# laid until the finger lifts; then a second from its corner to the market
+	await _hold([_at(Vector2(3.5, 0.5)), _at(Vector2(3.5, 6.5))])
+	_check("held from the tile past the gate, the run is shown and nothing is laid yet", _sim.belts.is_empty() and _screen._run.get("tiles", []).size() == 7, str(_screen._run))
+	await _shot("swipe_held")
+	_touch(_at(Vector2(3.5, 6.5)), false)
+	await _frames(2)
+	var straight: bool = _sim.belts.size() == 7
+	for y in 7:
+		straight = straight and _sim.belts.get(Vector2i(3, y), -1) == 1
+	_check("lifting lays the run, a straight line facing the swipe", straight, str(_sim.belts))
+	await _drag([_at(Vector2(3.5, 6.5)), _at(Vector2(5.5, 6.5))])
+	var laid := true
+	for tile: Vector2i in WANT_BELTS:
+		laid = laid and _sim.belts.get(tile, -1) == WANT_BELTS[tile]
+	_check("a swipe from the run's end to the market turns its corner into the market", laid and _sim.belts.size() == WANT_BELTS.size(), str(_sim.belts))
+	_check("the drags did not pan the view", _screen._cam == cam)
+	_check("nine belts cost nine coins", _sim.coins - _sim.earned == Sim.START_COINS - 9, str(_sim.coins))
+	_run_on(7.0)
+	await _wait(0.3)
+	await _shot("logs_riding")
+	for i in 40:
+		if _sim.earned > 0:
+			break
+		_run_on(1.0)
+	_check("the logs ride from the gate to the market and are sold: coins up", _sim.earned > 0 and _sim.coins == Sim.START_COINS - 9 + _sim.earned, "coins %d" % _sim.coins)
+	_check("none of the fourteen tapped is lost: held, riding, on the counter or sold", _logs() == 14, str(_logs()))
+	await _wait(0.25)
+	await _shot("sold")
+	# a tap on a laid belt turns it a quarter, and back round
+	await _tap(_at(Vector2(3.5, 2.5)))
+	_check("a tap on a belt turns it a quarter", _sim.belts[Vector2i(3, 2)] == 2, str(_sim.belts[Vector2i(3, 2)]))
+	for i in 3:
+		await _tap(_at(Vector2(3.5, 2.5)))
+	_check("and four taps bring it round", _sim.belts[Vector2i(3, 2)] == 1)
+	await _press_button(_screen._drawer_b)
+	_check("the drawer's button puts the belt down", _sim.picked == "")
+
+## The forest's card, from its badge, and its first level.
+func _first_level() -> void:
+	await _look(Vector2(4.0, -3.0))
+	await _tap(_badge(F))
+	_check("a tap on a forest's badge opens its card", _screen.card_open() and _screen._card_for == "forest", _screen._card_for)
+	_check("and takes no log: the badge is not the forest", _screen.hit(_badge(F)).what == "badge")
+	await _wait(0.4)
+	await _shot("forest_card")
+	var up := _card_button()
+	_sim.coins = 40
+	await _frames(2)
+	await _press_button(up)
+	_check("a level the coins do not reach is refused", int(_sim.forests[F].level) == 0 and _sim.coins >= 40 and _screen.card_open())
+	_sim.coins = 60
+	await _frames(2)
+	_check("its one button names the first level's price", up.label_text == TranslationServer.translate("FACTORY_FOREST_AUTO_FOR") % "60", up.label_text)
+	await _press_button(up)
+	_check("the forest's first level is bought for 60: a log a second by itself", _sim.forest_rate(F) == 1.0 and int(_sim.forests[F].level) == 1 and _sim.coins < 10, "coins %d" % _sim.coins)
+	await _wait(0.3)
+	_check("and the button offers the second for 180", _screen.card_open() and up.label_text == TranslationServer.translate("FACTORY_LEVEL_FOR") % [2, "180"], up.label_text)
+	await _shot("forest_card_level_1")
+	_screen.close_card()
+	var had := _logs()
+	_run_on(6.0)
+	_check("it works with no hand on it: six seconds on, six more logs than there were", _logs() == had + 6, "%d to %d" % [had, _logs()])
+	await _wait(1.2)
+	await _shot("forest_by_itself")
+
+## A plus, the plate card, the first plate bought.
+func _first_plate() -> void:
+	await _look(Vector2(12.0, 4.0))
+	await _tap(_screen.to_field(_screen.life.plus_at(Vector2i(1, 0))))
+	_check("a tap on a plus opens the plate card", _screen.card_open() and _screen._card_for == "plate")
+	var kinds: Node = _screen._card_slot.find_child("Kinds", true, false)
+	var neutral: Button = kinds.get_node_or_null("Neutral") if kinds != null else null
+	_check("it offers the two kinds of land: a forest and neutral ground", kinds != null and kinds.get_child_count() == 2 and kinds.get_node_or_null("Forest") != null and neutral != null)
+	await _wait(0.4)
+	await _shot("plate_card")
+	_sim.coins = 30
+	await _frames(2)
+	await _press_button(neutral)
+	_check("a plate the coins do not reach is refused", _sim.plates.size() == 2 and _screen.card_open())
+	_sim.coins = 50
+	await _frames(2)
+	await _press_button(neutral)
+	_check("the first plate is bought for 50: neutral ground beside the market's", _sim.plates.size() == 3 and _sim.plates.get(Vector2i(1, 0), "") == "neutral" and not _screen.card_open() and _sim.coins < 10,
+		str(_sim.plates))
+	await _wait(1.3)
+	await _shot("plate_rising")
+	await _wait(2.6)
+	await _shot("first_plate")
+	await _press_button(_screen._drawer_b)
+	await _wait(0.3)
+	_check("the plate brings the fire box and the retort to the drawer, and no kiln", _screen._tiles.firebox.button.visible and _screen._tiles.retort.button.visible
+		and not _screen._tiles.kiln.button.visible)
+	await _shot("drawer_unlocked")
+	await _press_button(_screen._drawer_b)
+
 func _lay(tile: Vector2i, facing: int) -> void:
 	if not _sim.can_lay(tile) or not _sim.lay_belt(tile, facing):
 		print("     (no belt on %s)" % tile)
 
-## Four plates (forest, quarry, meadow, forest) with belts across all, two
-## fires lit, a kiln and a retort working and the market's counter stacked:
-## built through the sim's own actions and stepped, not waited for.
+## Six plates (three neutral, three forests) with a belt past a gate of each
+## forest, two fires lit, two retorts working and the market's counter
+## stacked: built through the sim's own actions and stepped, not waited for.
 func _late_land() -> void:
 	_sim.coins = 100000
-	_check("the third and fourth plates are bought", _sim.buy_plate(Vector2i(0, 1), "meadow") and _sim.buy_plate(Vector2i(1, 1), "forest"))
-	# the meadow: a kiln and a retort, a fire each, a belt in and a belt out
+	_check("a second neutral plate and two more forests are bought", _sim.buy_plate(Vector2i(0, 1), "neutral") and _sim.buy_plate(EAST, "forest") and _sim.buy_plate(WEST, "forest")
+		and _sim.plates.size() == 6 and _sim.forests.size() == 3 and _sim.trees.size() == 3 * Sim.TREES)
+	# the neutral plate in front: two retorts, a fire each, a belt in and a belt out
 	var built := true
-	built = _sim.place("kiln", Vector2i(2, 10), 0) and built
+	built = _sim.place("retort", Vector2i(2, 10), 0) and built
 	built = _sim.place("firebox", Vector2i(2, 11), 0) and built
 	built = _sim.place("retort", Vector2i(2, 13), 0) and built
 	built = _sim.place("firebox", Vector2i(2, 14), 0) and built
-	_check("a kiln, a retort and two fire boxes are placed", built)
+	_check("two retorts and two fire boxes are placed", built)
+	var had: int = _sim.modules.size()
+	_check("a kiln is not to be had, and nothing stands in a forest", not _sim.place("kiln", Vector2i(4, 12), 0) and not _sim.place("firebox", Vector2i(-4, 4), 0)
+		and not _sim.place("retort", Vector2i(0, 2), 2) and _sim.modules.size() == had)
 	for row in [10, 11, 13, 14]:
 		_lay(Vector2i(0, row), 0)
 		_lay(Vector2i(1, row), 0)
@@ -302,13 +443,20 @@ func _late_land() -> void:
 		_lay(Vector2i(x, 13), 0)
 	for y in [13, 12, 11]:
 		_lay(Vector2i(6, y), 3)
-	# the quarry: a row along its front edge into the market's side
+	# the neutral plate beside the market: a row along its front edge into the market's side
 	for x in range(14, 7, -1):
 		_lay(Vector2i(x, 6), 2)
-	# the far forest: down its near edge and round the corner to the market
-	for y in range(12, 7, -1):
-		_lay(Vector2i(8, y), 3)
-	_lay(Vector2i(8, 7), 2)
+	# the forest behind that plate: from its gate down to the row
+	for y in range(0, 6):
+		_lay(Vector2i(11, y), 1)
+	# the forest beside the market's plate: from its gate across to the first belt
+	for x in range(0, 3):
+		_lay(Vector2i(x, 4), 0)
+	_check("each new forest's gate has a belt past it", _sim.belts.get(Sim.gate(EAST, 1) + Vector2i(0, 1), -1) == 1 and _sim.belts.get(Sim.gate(WEST, 0) + Vector2i(1, 0), -1) == 0)
+	_sim.upgrade(EAST * Sim.PLATE)
+	_sim.upgrade(WEST * Sim.PLATE)
+	_sim.upgrade(WEST * Sim.PLATE)
+	_check("their levels are their own", int(_sim.forest_rate(F)) == 1 and int(_sim.forest_rate(EAST)) == 1 and int(_sim.forest_rate(WEST)) == 2)
 	_sim.upgrade("market")
 	await _frames(2)
 	_run_on(4.0)
@@ -325,7 +473,7 @@ func _late_land() -> void:
 		_sim.put(Vector2i(0, 11), "log")
 		_sim.put(Vector2i(0, 14), "log")
 		_run_on(2.5)
-	_sim.put(Vector2i(0, 10), "stone")
+	_sim.put(Vector2i(0, 10), "log")
 	_sim.put(Vector2i(0, 13), "log")
 	_run_on(6.0)
 	await _frames(2)
@@ -338,42 +486,51 @@ func _late_land() -> void:
 		lit = lit and _sim.module_at(fire).lit
 	_check("a tap on a fire box with fuel waiting lights it", lit)
 	_run_on(4.0)
-	var kiln: Dictionary = _sim.module_at(Vector2i(2, 10))
-	var retort: Dictionary = _sim.module_at(Vector2i(2, 13))
-	_check("the kiln and the retort work on their fires", _sim.working(kiln) and float(kiln.share) > 0.0 and _sim.working(retort) and float(retort.share) > 0.0,
-		"kiln %s %.2f, retort %s %.2f" % [kiln.inp, kiln.share, retort.inp, retort.share])
-	# things on the way: rocks chipped, trees tapped, the market's counter stacked
-	for tile: Vector2i in _sim.rocks:
-		_sim.tap(tile)
-	var tapped := 0
-	for id: int in _sim.trees:
-		if _sim.trees[id].state == "standing" and tapped < 4 and id % 2 == 0:
-			_sim.tap(_sim.trees[id].tile)
-			tapped += 1
+	var first: Dictionary = _sim.module_at(Vector2i(2, 10))
+	var second: Dictionary = _sim.module_at(Vector2i(2, 13))
+	_check("the two retorts work on their fires", _sim.working(first) and float(first.share) > 0.0 and _sim.working(second) and float(second.share) > 0.0,
+		"%s %.2f, %s %.2f" % [first.inp, first.share, second.inp, second.share])
+	# things on the way, and the market's counter stacked
 	for i in 9:
 		_sim.put(Vector2i(7, 9), ["log", "stone", "lime", "charcoal"][i % 4])
-		_sim.put(Vector2i(12, 6), "stone")
-		_sim.put(Vector2i(8, 11), "log")
+		_sim.put(Vector2i(12, 6), "charcoal")
 		_run_on(1.2)
 	_check("the market's counter is stacked", (_sim.market.wait as Array).size() >= 4, str(_sim.market.wait))
+	var rides := true
+	for tile: Vector2i in [Vector2i(11, 3), Vector2i(1, 4), Vector2i(3, 2)]:
+		rides = rides and _lying(tile) > 0
+	_check("logs of all three forests ride the belts past their gates", rides, "%d %d %d" % [_lying(Vector2i(11, 3)), _lying(Vector2i(1, 4)), _lying(Vector2i(3, 2))])
+	var shut := true
+	for tile: Vector2i in _sim.belts:
+		shut = shut and not _sim.is_forest(tile)
+	for tile: Vector2i in _sim.items:
+		shut = shut and not _sim.is_forest(tile)
+	for id: int in _sim.modules:
+		for tile: Vector2i in _sim.modules[id].tiles:
+			shut = shut and not _sim.is_forest(tile)
+	_check("no belt, no machine and nothing lying is inside any forest", shut)
 	await _look(Vector2(3.5, 11.5))
 	await _wait(0.5)
-	await _shot("late_meadow")
+	await _shot("late_machines")
 	await _look(Vector2(6.5, 6.0))
 	await _wait(0.3)
 	await _shot("late_market")
-	await _look(Vector2(11.5, 4.5))
+	await _look(Vector2(4.0, 0.5))
 	await _wait(0.3)
-	await _shot("late_quarry")
-	await _look(Vector2(11.5, 11.5))
+	await _shot("late_first_gate")
+	await _look(Vector2(11.5, 1.0))
 	await _wait(0.3)
-	await _shot("late_far_forest")
-	await _look(Vector2(8.0, 8.0), true)
+	await _shot("late_east_forest")
+	await _look(Vector2(-1.5, 4.0))
+	await _wait(0.3)
+	await _shot("late_west_forest")
+	await _look(Vector2(6.0, 2.0), true)
 	await _wait(0.5)
 	await _shot("late_zoomed_out")
 
-## What a finger does on the late land: a machine placed under a ghost, a
-## belt sold by holding, the view dragged, two fingers pinching.
+## What a finger does on the late land: a machine placed under a ghost and
+## refused on a forest, a belt sold by holding, the view dragged, two
+## fingers pinching.
 func _hands() -> void:
 	await _look(Vector2(4.0, 12.0))
 	_screen.pick("retort")
@@ -396,9 +553,23 @@ func _hands() -> void:
 	_touch(_at(Vector2(6.5, 6.5)), false)
 	await _frames(2)
 	_check("a machine that does not fit is not placed", _sim.modules.size() == before + 1 and _sim.picked == "firebox")
+	# nor in a forest: the ghost says no and nothing stands
+	await _look(Vector2(4.0, -3.0))
+	_touch(_at(Vector2(4.5, -3.5)), true)
+	await _frames(2)
+	_move(_at(Vector2(4.5, -3.2)))
+	await _frames(3)
+	var ghosts: Array = _screen._ghosts()
+	await _shot("ghost_on_forest")
+	_touch(_at(Vector2(4.5, -3.2)), false)
+	await _frames(2)
+	_check("a machine held over a forest shows the ghost that says no, and lifting stands nothing", ghosts.size() == 1 and ghosts[0][0] == Art.ghost(1, 1, false)
+		and _sim.modules.size() == before + 1 and _sim.picked == "firebox" and _sim.module_at(Vector2i(4, -4)).is_empty())
 	_screen.pick("")
+	await _look(Vector2(4.0, 12.0))
 	# a finger held on a belt sells it back
 	var coins: int = _sim.coins
+	var earned: int = _sim.earned
 	var belt := Vector2i(0, 14)
 	_touch(_at(Vector2(belt) + Vector2(0.5, 0.5)), true)
 	await _wait(0.34)
@@ -406,7 +577,17 @@ func _hands() -> void:
 	await _wait(0.4)
 	_touch(_at(Vector2(belt) + Vector2(0.5, 0.5)), false)
 	await _frames(2)
-	_check("a finger held on a belt sells it back for its coin", not _sim.belts.has(belt) and _sim.coins == coins + 1, "coins %d" % (_sim.coins - coins))
+	_check("a finger held on a belt sells it back for its coin", not _sim.belts.has(belt) and _sim.coins - (_sim.earned - earned) == coins + 1, "coins %d" % (_sim.coins - coins))
+	# a finger held on a forest sells nothing and takes no log by holding
+	await _look(Vector2(4.0, -3.0))
+	var trees: int = _sim.trees.size()
+	_touch(_at(Vector2(4.5, -3.5)), true)
+	await _wait(0.8)
+	var ring: bool = _screen._long.is_empty()
+	_touch(_at(Vector2(4.5, -3.5)), false)
+	await _frames(2)
+	_check("a finger held on a forest sells nothing of it", ring and _sim.trees.size() == trees and _sim.forests.has(F) and _sim.plates.get(F, "") == "forest")
+	await _look(Vector2(4.0, 12.0))
 	# a drag on open ground pans, and the view comes to rest
 	var cam: Vector2 = _screen._cam
 	var from := _at(Vector2(5.5, 15.5))
@@ -449,10 +630,6 @@ func _cards() -> void:
 	await _tap(_at(Vector2(2.5, 10.5)) + Vector2(0.0, -24.0))
 	_check("a tap on a machine opens its card", _screen.card_open() and _screen._card_for == "module")
 	await _wait(0.4)
-	await _shot("kiln_card")
-	_screen.close_card()
-	await _tap(_at(Vector2(2.5, 13.5)) + Vector2(0.0, -24.0))
-	await _wait(0.4)
 	await _shot("retort_card")
 	_screen.close_card()
 	await _tap(_at(Vector2(2.5, 11.5)) + Vector2(0.0, -14.0))
@@ -467,6 +644,22 @@ func _cards() -> void:
 	await _shot("market_card")
 	_screen.go_back()
 	_check("back closes the card first", not _screen.card_open())
+	# a forest two levels up, by its badge; then at its last level
+	await _look(Vector2(-4.0, 1.0))
+	await _tap(_badge(WEST))
+	var up: Button = _card_button() if _screen.card_open() else null
+	_check("a bought forest's badge opens that forest's card, at its own level", _screen._card_for == "forest" and up != null
+		and up.label_text == TranslationServer.translate("FACTORY_LEVEL_FOR") % [3, "540"], "" if up == null else up.label_text)
+	await _wait(0.4)
+	await _shot("forest_card_level_2")
+	if up != null:
+		await _press_button(up)
+		await _press_button(up)
+		await _wait(0.3)
+		_check("its last level bought from the card, the card offers no more", int(_sim.forests[WEST].level) == 4 and _sim.forest_rate(WEST) == 4.0 and not up.visible
+			and _sim.upgrade_price(WEST * Sim.PLATE) == -1 and int(_sim.forests[F].level) == 1)
+		await _shot("forest_card_top")
+	_screen.go_back()
 	await _press_button(_screen._drawer_b)
 	await _wait(0.3)
 	await _shot("drawer_late")
@@ -477,15 +670,16 @@ func _cards() -> void:
 ## each turn: every tile of the land is seen at a place of its own and read
 ## back from it; a belt dragged across two empty neighbours, pressed where
 ## they are seen, lands on those very tiles facing from the first to the
-## second in the sim's own terms; and a tap where a standing tree's crown is
-## drawn reaches that tree.
+## second in the sim's own terms; every forest's badge is hit where it is
+## drawn; a swipe begun on a forest tile lays nothing; and a tap where the
+## crown nearest the eye is drawn is a log from that tree's forest.
 const TURN_BELTS := [[Vector2i(1, 8), Vector2i(2, 8), 0], [Vector2i(4, 8), Vector2i(4, 9), 1],
 	[Vector2i(1, 15), Vector2i(0, 15), 2], [Vector2i(6, 15), Vector2i(6, 14), 3]]
 
 func _turns() -> void:
 	var home: Vector2 = _screen.life.seen(Vector2(3.5, 2.5))
 	for q in 4:
-		await _look(Vector2(8.0, 8.0), true)
+		await _look(Vector2(6.0, 2.0), true)
 		await _press_button(_screen._turn_b)
 		var turn: int = _screen.life.turn
 		_check("turn %d: the button turns the view a quarter" % (q + 1), turn == (q + 1) % 4, str(turn))
@@ -493,10 +687,13 @@ func _turns() -> void:
 		await _shot("turn_%d_far" % turn)
 		await _look(Vector2(3.5, 11.5))
 		await _wait(0.2)
-		await _shot("turn_%d_meadow" % turn)
+		await _shot("turn_%d_machines" % turn)
 		await _look(Vector2(6.5, 6.0))
 		await _wait(0.2)
 		await _shot("turn_%d_market" % turn)
+		await _look(Vector2(4.0, -1.0))
+		await _wait(0.2)
+		await _shot("turn_%d_forest" % turn)
 		# every tile seen at a place of its own, and read back from it
 		var places := {}
 		var back := true
@@ -518,25 +715,43 @@ func _turns() -> void:
 		await _look(Vector2(a + b) * 0.5 + Vector2(0.5, 0.5))
 		_screen.pick("belt")
 		await _drag([_at(Vector2(a) + Vector2(0.5, 0.5)), _at(Vector2(b) + Vector2(0.5, 0.5))])
-		_screen.pick("")
 		_check("turn %d: a drag lays belts on the tiles under the finger, facing in the sim's terms" % turn,
 			free and _sim.belts.size() == had + 2 and _sim.belts.get(a, -1) == pair[2] and _sim.belts.get(b, -1) == pair[2],
 			"%s %s, %s %s, %d laid" % [a, _sim.belts.get(a, -1), b, _sim.belts.get(b, -1), _sim.belts.size() - had])
-		# a tree, the nearest standing one to the eye, tapped on its crown
-		var front: Dictionary = {}
-		for id: int in _sim.trees:
-			var tr: Dictionary = _sim.trees[id]
-			if tr.state == "standing" and not tr.queued and (front.is_empty()
-					or _screen.life.depth(Vector2(tr.tile)) > _screen.life.depth(Vector2(front.tile))):
-				front = tr
-		if front.is_empty():
-			_check("turn %d: a standing tree to tap" % turn, false)
-			continue
+		# a swipe begun on a forest tile, out over open ground
+		had = _sim.belts.size()
+		await _look(Vector2(0.0, 1.5))
+		await _drag([_mid(Vector2i(-3, 1)), _mid(Vector2i(1, 1))])
+		_screen.pick("")
+		_check("turn %d: a swipe begun inside a forest lays nothing" % turn, _sim.belts.size() == had and not _sim.belts.has(Vector2i(0, 1)) and not _sim.belts.has(Vector2i(1, 1)),
+			"%d laid" % (_sim.belts.size() - had))
+		# every forest's badge, where it is drawn
+		var badges := true
+		for p: Vector2i in _sim.forests:
+			var h: Dictionary = _screen.hit(_badge(p))
+			badges = badges and h.what == "badge" and h.get("plate", null) == p
+		_check("turn %d: every forest's badge is hit where it is drawn" % turn, badges)
+		# the tree nearest the eye, tapped on its crown
+		var front := _front_tree()
+		var p: Vector2i = Sim.plate_of(front.tile)
 		await _look(Vector2(front.tile) + Vector2(0.5, 0.5))
-		await _tap(_crown(front.tile))
-		_check("turn %d: a tap where a tree's crown is drawn reaches that tree" % turn, front.state == "bitten" or front.queued, "%s %s" % [front.tile, front.state])
+		var crown := _crown(front)
+		var hit: Dictionary = _screen.hit(crown)
+		_touch(crown, true)
+		var held := _stock(p)
+		_touch(crown, false)
+		# what the sim said of it, before the screen's next frame drains it: a
+		# log off that very tree, or that tree shaking its head when its forest
+		# is full (a late forest mostly is: its belt carries less than it makes)
+		var said: Dictionary = _sim.events.back() if not _sim.events.is_empty() else {}
+		var now := _stock(p)
+		await _frames(2)
+		var took: bool = said.get("type", "") == "chop" and int(said.id) == int(front.id) and not said.auto and now == held + 1
+		var full: bool = said.get("type", "") == "refused" and said.why == "full" and said.tile == front.tile and held == Sim.FOREST_ROOM and now == held
+		_check("turn %d: a tap where a tree's crown is drawn reaches that tree, a log of its forest or its no when full" % turn,
+			hit.what == "forest" and hit.tile == front.tile and (took or full), "%s of %s: %d to %d, %s" % [front.tile, p, held, now, said.get("type", "nothing")])
 	_check("four turns come back to the first view", _screen.life.turn == 0 and (_screen.life.seen(Vector2(3.5, 2.5)) as Vector2).is_equal_approx(home))
-	await _look(Vector2(8.0, 8.0), true)
+	await _look(Vector2(6.0, 2.0), true)
 	await _wait(0.3)
 	await _shot("turned_home")
 	_screen.set_far(false)
@@ -560,10 +775,11 @@ func _unlay(a: Vector2i, b: Vector2i) -> void:
 		if _sim.belts.has(a + step * i):
 			_sim.sell(a + step * i)
 
-## Hold and swipe, and the way a run flows, on a fifth plate of open meadow
-## (and beside the market): at no turn of the view, then a quarter round.
+## Hold and swipe, and the way a run flows, on a seventh plate of open
+## neutral ground (and beside the market): at no turn of the view, then a
+## quarter round.
 func _swipes() -> void:
-	_check("a fifth plate, open meadow, for the swipes", _sim.buy_plate(Vector2i(0, 2), "meadow"))
+	_check("a seventh plate, open neutral ground, for the swipes", _sim.buy_plate(Vector2i(0, 2), "neutral"))
 	_run_on(4.0)
 	_screen.pick("belt")
 	for turn in 2:
@@ -629,22 +845,25 @@ func _swipes() -> void:
 			and _screen.run_facing(_sim, [Vector2i(7, 21), Vector2i(7, 22)], 1) == 1 \
 			and _screen.run_facing(_sim, [Vector2i(7, 22), Vector2i(7, 21)], 3) == 1
 		_check(say + "the rule: a free run follows the finger, one swiped off a belt's side joins it, one off a belt's front flows on either way it is swiped", rule)
+		# a forest's gate is not something a run meets: one laid toward it keeps the finger's way
+		_check(say + "the rule at a forest: a run swiped up to a gate, or away from it, flows as the finger went",
+			_screen.run_facing(_sim, [Vector2i(-1, 9), Vector2i(-1, 8)], 3) == 3 and _screen.run_facing(_sim, [Vector2i(-1, 8), Vector2i(-1, 9)], 1) == 1)
 		for row in [17, 19, 21, 22]:
 			_unlay(Vector2i(0, row), Vector2i(7, row))
 		_unlay(Vector2i(7, 17), Vector2i(7, 20))
 		await _frames(2)
 	_screen.pick("")
-	# raised belts with things riding, a quarter round: by the market, by the kiln, from far
+	# raised belts with things riding, a quarter round: by the market, by the retorts, from far
 	for i in 6:
 		_sim.put(Vector2i(4 + i % 3, 10), ["stone", "log", "lime"][i % 3])
-		_sim.put(Vector2i(10 + i % 3, 6), "stone")
+		_sim.put(Vector2i(10 + i % 3, 6), "charcoal")
 		_run_on(0.8)
 	await _look(Vector2(6.5, 6.0))
 	await _wait(0.4)
 	await _shot("raised_market_turn_1")
 	await _look(Vector2(3.5, 11.5))
-	await _shot("raised_kiln_turn_1")
-	await _look(Vector2(8.0, 10.0), true)
+	await _shot("raised_retorts_turn_1")
+	await _look(Vector2(4.0, 8.0), true)
 	await _wait(0.3)
 	await _shot("raised_far_turn_1")
 	for i in 3:
@@ -653,8 +872,8 @@ func _swipes() -> void:
 	await _wait(0.4)
 	await _shot("raised_market_turn_0")
 	await _look(Vector2(3.5, 11.5))
-	await _shot("raised_kiln_turn_0")
-	await _look(Vector2(8.0, 10.0), true)
+	await _shot("raised_retorts_turn_0")
+	await _look(Vector2(4.0, 8.0), true)
 	await _wait(0.3)
 	await _shot("raised_far_turn_0")
 	_screen.set_far(false)
@@ -710,13 +929,34 @@ func _bends() -> void:
 		_unlay(Vector2i(4, 17), Vector2i(4, 20))
 		_unlay(Vector2i(1, 20), Vector2i(1, 22))
 		await _frames(2)
+	# the belt past the first forest's gate is fed by nothing the sim calls a
+	# belt: it is drawn straight, and so is the corner into the market's row
+	_check("the belt past a gate is drawn straight, and the corner of the first way a bend", life.shape(PAST) == 0 and life.shape(Vector2i(3, 6)) != 0,
+		"%d %d" % [life.shape(PAST), life.shape(Vector2i(3, 6))])
 	for i in 3:
 		await _press_button(_screen._turn_b)
+
+## One page of the tutorial played on its own for `seconds` from its start,
+## off the screen: the land its film has made by then.
+func _page(lesson: int, seconds: float) -> RefCounted:
+	var d: Control = load("res://ui/hud/factory_tutorial_diagram.gd").new()
+	d.lesson = lesson
+	d.position = Vector2(-4000.0, 0.0)
+	d.size = Vector2(900.0, 700.0)
+	root.add_child(d)
+	await _frames(2)
+	d.set_process(false)
+	d._start()
+	d._advance(seconds)
+	var land: RefCounted = d._sim
+	d.queue_free()
+	await _frames(2)
+	return land
 
 func _tutorial() -> void:
 	_screen.tutor.show()
 	await _wait(2.2)
-	await _shot("tutorial_tree")
+	await _shot("tutorial_forest")
 	var card: Control = _screen.get_node("HowToPlay")
 	card._turn(1)
 	await _wait(2.7)
@@ -727,6 +967,20 @@ func _tutorial() -> void:
 	_screen.go_back()
 	await _frames(3)
 	_check("back closes the tutorial", not _screen.tutor.is_open())
+	# what each page's film does, on the game's own sim
+	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
+	_check("the tutorial has three pages", _screen.tutorial_pages().size() == 3)
+	var land: RefCounted = await _page(Diagram.Lesson.TREE, 3.2)
+	_check("the first page taps the forest three times: three logs, two past the gate", int(land.forests[F].stock) + (land.items.get(PAST, []) as Array).size() == 3
+		and (land.items.get(PAST, []) as Array).size() == 2 and land.belts.is_empty(), "%s %s" % [land.forests[F], land.items.keys()])
+	land = await _page(Diagram.Lesson.BELT, 22.5)
+	var way: bool = land.belts.size() == WANT_BELTS.size()
+	for tile: Vector2i in WANT_BELTS:
+		way = way and land.belts.get(tile, -1) == WANT_BELTS[tile]
+	_check("the second lays the nine belts from the gate to the market and a log is sold", way and land.earned > 0 and land.coins == Sim.START_COINS - 9 + land.earned,
+		"%d belts, %d sold" % [land.belts.size(), land.earned])
+	land = await _page(Diagram.Lesson.PLATE, 5.5)
+	_check("the third buys neutral ground beside the market's plate", land.plates.size() == 3 and land.plates.get(Vector2i(1, 0), "") == "neutral" and land.coins == 0, str(land.plates))
 
 ## The tab alone, at the column's size. The screen leaves first and keeps
 ## the land; the tab reads that file, so its card is the late land.
@@ -738,8 +992,11 @@ func _tab() -> void:
 	_screen.closed.connect(func() -> void: closed[0] = true)
 	_screen.go_back()
 	_check("back leaves the screen, the land kept", closed[0] and FileAccess.file_exists(SAVE))
+	var kept: Dictionary = _sim.pack()
 	_screen.queue_free()
 	await _frames(3)
+	var read: RefCounted = Sim.new(1)
+	_check("the file the screen kept reads back as the very land it left", read.load_saved() and var_to_str(read.pack()) == var_to_str(kept) and int(kept.version) == 2)
 	var page := ColorRect.new()
 	page.color = load("res://core/palette.gd").PAPER
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -752,7 +1009,11 @@ func _tab() -> void:
 	page.add_child(tab)
 	await _frames(4)
 	tab.refresh()
-	_check("the tab reads the land the screen kept", tab.sim.plates.size() == _sim.plates.size() and tab.sim.coins == _sim.coins, "plates %d" % tab.sim.plates.size())
+	var levels: bool = tab.sim.forests.size() == 3
+	for p: Vector2i in _sim.forests:
+		levels = levels and tab.sim.forests.has(p) and int(tab.sim.forests[p].level) == int(_sim.forests[p].level)
+	_check("the tab reads the land the screen kept, its forests at their levels", tab.sim.plates.size() == _sim.plates.size() and tab.sim.plates.size() == 7 and levels
+		and tab.sim.belts.size() == _sim.belts.size(), "plates %d" % tab.sim.plates.size())
 	var earned: int = tab.sim.earned
 	await _wait(1.5)
 	await _shot("tab")
