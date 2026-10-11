@@ -107,7 +107,7 @@ pond: "something like .io games does. Camera moves as the player try to
 move outside camera on edges"): the open water between the plates and the
 pad shows 240 units across at level 1 and 500 at level 10, the whirlpool
 roams its middle and takes the camera along from 0.3 of a side, and the
-camera stops at the bank, grass beyond it. The whirlpool is drawn under
+camera stops a mouth's width past the bank, grass beyond it. The whirlpool is drawn under
 all that floats.
 Over the water lie the top bar, three plates (score, best, the whirlpool's
 level of ten) and, at the foot, **the pad in the middle**: a round of pale wood 216 pixels
