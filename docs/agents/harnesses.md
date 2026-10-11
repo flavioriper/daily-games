@@ -311,6 +311,15 @@ opens the tutorial as the ? does and shoots each page twice. A button still
 in the air is not lifted, so a harness leaves 0.4 s between taps. Each
 argument is its own word: zsh does not split `"d=0 solve"` held in a
 variable, and the run is then `rest` on that band without a word.
+**Big pictures (2026-10-11)**: `big` (Hard and Insane) shoots the picture
+whole, close by the zoom's button with a run picked, a one-finger pan and a
+pinch back, reading the draw calls of each apart; `howzoom` is the
+tutorial's ZOOM page alone. A harness presses `cell_screen(i)` now:
+`cell_centre` is the layout's, before the zoom. Pixel Garden's
+`tests/_shot_pixel_garden.gd` has `tour` for the same (whole, seated, the
+button, a run on the zoomed board, two fingers pushing, the picture held,
+the ZOOM page, the win) and its `wind` mode is `peek`. Both boards read
+`PG_BANK=<file>` (debug builds) for another bank of pictures.
 `tests/_probe_buttons_board.gd` (headless, `days=6`) plays whole days through
 the board's own `tap` and `tap_tin` with clumsy hands and needs no window;
 `solve trace` prints every pick and place. A move is two taps: the pick,
