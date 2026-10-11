@@ -322,11 +322,13 @@ func _add_plate(p: Vector2i, kind: String) -> void:
 	if kind != "forest":
 		return
 	forests[p] = {"level": 0, "stock": 0, "t": 0.0, "next": 0, "paid": 0}
-	# its trees stand inside its rim, where no gate is
+	# its trees stand inside its rim, where no gate is, on every other tile
+	# so that they fill it and none hides the one behind
 	var can: Array[Vector2i] = []
 	for y in range(1, PLATE - 1):
 		for x in range(1, PLATE - 1):
-			can.append(p * PLATE + Vector2i(x, y))
+			if (x + y) % 2 == 0:
+				can.append(p * PLATE + Vector2i(x, y))
 	for i in TREES:
 		var at: Vector2i = can.pop_at(_rng.randi_range(0, can.size() - 1))
 		trees[_next_id] = {"id": _next_id, "tile": at, "look": _rng.randi_range(0, LOOKS - 1)}

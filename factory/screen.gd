@@ -395,7 +395,9 @@ func _layout_field() -> void:
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
-		_cam = life.seen(Vector2(Art.PLATE, Art.PLATE) * 0.5)
+		# a new land is two plates: the seam between the market's and the
+		# forest behind it, so the gate, the forest's badge and the stall are seen
+		_cam = life.seen(Vector2(Art.PLATE * 0.5, 0.0))
 		_cam_to = _cam
 		_cam_raw = _cam
 	_place_world()
