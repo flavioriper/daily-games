@@ -3288,13 +3288,18 @@ SETS = {
         # tray, a cup of coins, a felt pad in a wooden box), four came
         # back scratch at 4 to 11 kHz and the felt pad alone came back
         # low, 1,270 Hz with 5% above 3 kHz (build/sfx_raw/factory_try/).
-        # Moved six steps down, not twenty-six (1.4 times longer, a
-        # heavier coin, no groan), rolled off at 2000, cut at 0.3 s: 917 Hz,
-        # 55% in the body, 44% between 1 and 3 kHz (the clink), nothing
-        # above, and the measure passes. It repeats (a sale every 4 s on a
-        # new land, up to four a second), so -14; the screen varies it 0.94
-        # to 1.06.
-        "coin": ("one old brass coin dropped onto a thick felt pad lying inside a small wooden box, a single soft dull clink, muffled, close, very short", 0.5, -14, COZY, "warm:2000", "steep", "cut:0.3", "body:320", "ease:0.004", "tight", "notes:0:-6"),
+        # The felt pad six steps down went in (917 Hz, the measure passed),
+        # then nine variants of five takes were put on a page with a play
+        # button each and the user picked this one by ear, 2026-10-11: a
+        # gold coin dropped into a velvet-lined wooden drawer, a take that
+        # came back scratch (10.1 kHz raw), moved ten steps down (1.8 times
+        # longer, still a clink and not a groan), rolled off at 3000 steep,
+        # cut at 0.25 s. It reads `high`: 2,091 Hz, 68% between 1 and 3
+        # kHz, 18% above (7.4 dB down). Kept on the user's ear over the
+        # measure; this is the one cue in the game allowed that. It repeats
+        # (a sale every 4 s on a new land, up to four a second), so -14; the
+        # screen varies it 0.94 to 1.06.
+        "coin": ("one gold coin dropped into a small velvet-lined wooden drawer, a single soft muted clink, close, very short", 0.5, -14, COZY, "warm:3000", "steep", "cut:0.25", "body:320", "ease:0.004", "tight", "notes:0:-10"),
     },
     # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Redone 2026-10-10
     # against the cozy rules (docs/agents/sound.md), the fifty-second set of
