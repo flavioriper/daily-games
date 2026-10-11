@@ -75,8 +75,14 @@ const HELD_BOB_MAX := 48
 
 # --- motion: what is this board's own ---
 ## One button of a run leaves this long after the one before it.
-const RUN_STEP := 0.04
-const RUN_STEP_CAP := 0.5
+const RUN_STEP := 0.06
+const RUN_STEP_CAP := 0.9
+## A pick comes up as a wave out of the tapped button: each one this long
+## after its neighbour nearer the tap, the farthest no later than the cap
+## (the user, 2026-10-11: "start pushing them in sequence on linked ones
+## like a wave").
+const PICK_STEP := 0.045
+const PICK_CAP := 0.5
 const FLY_TIME := 0.3
 const FLY_ARC := 0.55
 const FLY_GROW := 0.18
@@ -804,14 +810,15 @@ func _build_live(now: float) -> bool:
 func _build_held(now: float) -> void:
 	var top := Face.FlatBuilder.new(_flat_cache)
 	var u := _lu()
-	var k := Vector2.ONE * _held_grow(now)
 	for i in _held_cells:
 		var at := _held_pos(i, false, now)
-		top.append(u.shade, Transform2D(0.0, k, 0.0, cell_centre(i).lerp(at, 0.8) + Vector2(0.0, _cell * HELD_RISE)))
+		var k := Vector2.ONE * _held_grow(now, _held_lag(i, false))
+		top.append(u.shade, Transform2D(0.0, k, 0.0, cell_centre(i).lerp(at, 0.8) + Vector2(0.0, _cell * HELD_RISE * _held_k(now, _held_lag(i, false)))))
 	for i in _held_cells:
+		var k := Vector2.ONE * _held_grow(now, _held_lag(i, false))
 		top.append(u.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(i, false, now)))
 	_held_mesh = top.mesh()
-	_held_still = (Motion.reduce or not _held_bobs()) and now - _held_at > Motion.LIFT_TIME * 1.6
+	_held_still = (Motion.reduce or not _held_bobs()) and now - _held_at > Motion.LIFT_TIME * 1.6 + PICK_CAP
 
 func _held_bobs() -> bool:
 	return _held_cells.size() + _held_places.size() <= HELD_BOB_MAX
@@ -836,8 +843,8 @@ func _draw_over() -> void:
 					top.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.8, 0.0, tin_centre(p)))
 		if not _held_places.is_empty():
 			busy = true
-			var k := Vector2.ONE * _held_grow(now)
 			for p in _held_places:
+				var k := Vector2.ONE * _held_grow(now, _held_lag(p, true))
 				top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
 	if not Motion.reduce and now - _open_at < Motion.BUMP_TIME * 2.0 and _open_place >= 0:
 		busy = true
@@ -1036,18 +1043,27 @@ func _in_sight(i: int) -> bool:
 	return not zoom.zoomed() or _view.has_point(_at(i))
 
 ## How far a pick has come up: 0 as it is tapped, 1 once it is lifted.
-func _held_k(now: float) -> float:
+func _held_k(now: float, lag := 0.0) -> float:
 	if Motion.reduce:
 		return 1.0
-	return Motion.back_out(clampf((now - _held_at) / (Motion.LIFT_TIME * 1.6), 0.0, 1.0))
+	return Motion.back_out(clampf((now - _held_at - lag) / (Motion.LIFT_TIME * 1.6), 0.0, 1.0))
 
-func _held_grow(now: float) -> float:
-	return lerpf(1.0, HELD_SCALE, _held_k(now))
+func _held_grow(now: float, lag := 0.0) -> float:
+	return lerpf(1.0, HELD_SCALE, _held_k(now, lag))
+
+## How long after the tap a picked button starts up: its distance from the
+## tapped one, a PICK_STEP a square, so the lift runs out through the run.
+func _held_lag(i: int, in_tin: bool) -> float:
+	if Motion.reduce:
+		return 0.0
+	var home := tin_centre(i) if in_tin else cell_centre(i)
+	var unit := _tin_step if in_tin else _cell
+	return minf(home.distance_to(_held_anchor) / maxf(unit, 1.0) * PICK_STEP, PICK_CAP)
 
 ## Where a picked button is drawn: drawn toward the tapped one, lifted, and
 ## bobbing a little, each a beat behind its neighbour.
 func _held_pos(i: int, in_tin: bool, now: float) -> Vector2:
-	var k := _held_k(now)
+	var k := _held_k(now, _held_lag(i, in_tin))
 	var home := tin_centre(i) if in_tin else cell_centre(i)
 	var unit := _tin_step if in_tin else _cell
 	# a run of hundreds draws together no further than PULL_MOST of a square

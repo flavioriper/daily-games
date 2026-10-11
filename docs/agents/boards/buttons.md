@@ -335,3 +335,26 @@ as they were; a zoom and a pan. "all good, just build it".
   its 60 px; the plain button under 46 px; blocks in place of a button at
   a time on a big picture's entrance and win; "A big picture, 24 × 24:
   zoom in" and "A huge picture, 32 × 32, counted moves".
+
+## The wave (2026-10-11)
+
+The user: "part of the cozy satisfactory is the buttons moving in sequence
+but fast, so when user click somewhere to remove or add button, start
+pushing them in sequence on linked ones like a wave", and "let's say user
+has 6 pieces selected, he can click into 2 different places and they will
+move together but each one in it own sequence, not all at once".
+
+- **A pick comes up as a wave** out of the tapped button: each picked
+  button starts its lift `PICK_STEP` (0.045 s) a square of distance from the
+  tapped one later, the farthest no later than `PICK_CAP` (0.5 s)
+  (`_held_lag`). The tin's own, picked, do the same along the tin.
+- **A move's buttons leave further apart**: `RUN_STEP` 0.04 to 0.06 s and
+  the whole run 0.9 s at the most (0.5 before), so six read as six and not
+  as one. They land outward from the tapped patch (`bare_run`'s order).
+- **Two moves run at once**: nothing waits for the first to land, so a pick
+  of six tapped onto two stretches flies as two sequences side by side.
+  That was already so; only the tapped square's own arriving button is
+  held back.
+- Reduce-motion has no lag. Probed headless (the board probe 28 days and
+  the zoom, 0 failures; the suite 249,804). **Not seen on a screen**: the
+  steps are mine to tune once the user has felt them.
