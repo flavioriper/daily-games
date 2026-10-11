@@ -4835,6 +4835,74 @@ func _buzz_lattice() -> void:
 		_buzzed("reset")
 	_moves = _moves_lattice()
 
+## Button Box's are taps: the state's own, one a move. A button still in
+## the air is not lifted, so a tap the board was not ready for goes back on
+## the list.
+func _moves_buttons() -> Array:
+	var out := []
+	for k in _puzzle.state.par + 4:
+		var m := {}
+		m["do"] = func() -> void:
+			var st = _puzzle.state
+			var i: int = st.hint()
+			if i < 0:
+				return
+			var before: int = st.taps
+			_click(_puzzle.cell_centre(i))
+			if st.taps == before:
+				_moves.push_front(m)
+		out.append(m)
+	return out
+
+## Button Box's buzzes: a sewn button tapped, a run into the tin, the tin
+## filled and one tap more (refused), Undo, a run sewn, the bulb, Reset. The
+## plain run then makes the state's taps (the colours whole, the win, the
+## seal).
+func _buzz_buttons() -> void:
+	var st = _puzzle.state
+	_buzz_more = 8.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	var tap := func(c: int) -> void: _click(_puzzle.cell_centre(c))
+	var loose := func() -> int:
+		for c in st.slot.size():
+			if st.slot[c] >= 0 and st.cur[c] >= 0 and not st.is_home(c) and st._bare(st.cur[c]).is_empty():
+				return c
+		return -1
+	for c in st.slot.size():
+		if st.slot[c] >= 0 and st.is_home(c):
+			tap.call(c)
+			await pause.call()
+			_buzzed("a sewn button tapped")
+			break
+	tap.call(loose.call())
+	await pause.call()
+	_buzzed("a run into the tin")
+	var guard := 0
+	while st.in_tin() < st.capacity() and loose.call() >= 0 and guard < 12:
+		guard += 1
+		tap.call(loose.call())
+		await pause.call()
+	if loose.call() >= 0:
+		tap.call(loose.call())
+		await pause.call()
+		_buzzed("the tin full and one tap more")
+	if _puzzle.can_undo():
+		_host._on_undo()
+		await pause.call()
+		_buzzed("undo")
+	tap.call(st.hint())
+	await pause.call()
+	_buzzed("the state's own tap")
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_host._on_hint()
+		await pause.call()
+		_buzzed("hint")
+	if _puzzle.max_moves == 0:
+		_host._on_reset()
+		await create_timer(1.4).timeout
+		_buzzed("reset")
+	_moves = _moves_buttons()
+
 ## Golden Acorn's are a tap and two presses of the row's button a question:
 ## the right plate picked and locked, then Next (after the last, Finish). The
 ## deal follows the open by a frame, a lock's answer is held for a breath and

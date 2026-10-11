@@ -65,6 +65,7 @@ const HowBigArt = preload("res://ui/faces/how_big_art.gd")
 const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const PearlArt = preload("res://ui/faces/pearl_art.gd")
 const LatticeArt = preload("res://ui/faces/lattice_art.gd")
+const ButtonArt = preload("res://ui/faces/button_art.gd")
 const GumArt = preload("res://puzzles/gumdrop_art.gd")
 const GumMould = preload("res://puzzles/gumdrop_mould.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
@@ -239,6 +240,9 @@ var _pearl_u := -1.0
 ## Lattice's corner of slats and tiles, built once a size.
 var _lattice_mesh: ArrayMesh
 var _lattice_u := -1.0
+## Button Box's swatch of patches and buttons, built once a size.
+var _buttons_mesh: ArrayMesh
+var _buttons_u := -1.0
 ## Gumdrop's flower mould, built once a size.
 var _gumdrop_mesh: ArrayMesh
 var _gumdrop_u := -1.0
@@ -436,6 +440,7 @@ func _draw() -> void:
 		"acorn": _draw_acorn()
 		"pearl": _draw_pearl()
 		"lattice": _draw_lattice()
+		"buttons": _draw_buttons()
 		"gumdrop": _draw_gumdrop()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -1805,3 +1810,26 @@ func _draw_lattice() -> void:
 				k += 1
 			else:
 				_text(str(absi(v)), at_x, at_y + 5.6, 19.0, Pal.SURFACE if v > 0 else Pal.TEXT)
+
+## Button Box's card: a swatch of the board's own patches and buttons
+## (`ui/faces/button_art.gd`), five across and two down: six buttons home
+## with their cross of thread, four loose on the wrong patch with their
+## shadow. One mesh, rebuilt only when the card changes size.
+const BB_CELL := 46.0
+const BB_PATCH := ["rose", "rose", "yellow", "sky", "sky", "rose", "yellow", "yellow", "yellow", "sky"]
+const BB_ON := ["rose", "yellow", "yellow", "rose", "sky", "rose", "yellow", "sky", "yellow", "yellow"]
+
+func _draw_buttons() -> void:
+	var s := BB_CELL * _u
+	if _buttons_mesh == null or not is_equal_approx(_buttons_u, _u):
+		var b := Face.Builder.new()
+		for i in 10:
+			var mid := Vector2(i % 5 - 2, i / 5 - 0.5) * s
+			ButtonArt.patch(b, mid, s, ButtonArt.colour(BB_PATCH[i]))
+			var sewn: bool = BB_ON[i] == BB_PATCH[i]
+			if not sewn:
+				b.ellipse(mid + Vector2(0.0, s * 0.12), s * 0.42, s * 0.36, Color(Pal.TEXT, 0.16))
+			ButtonArt.button(b, mid, s, ButtonArt.colour(BB_ON[i]), sewn)
+		_buttons_mesh = b.mesh()
+		_buttons_u = _u
+	draw_mesh(_buttons_mesh, null, Transform2D(0.0, _c))

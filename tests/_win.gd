@@ -179,6 +179,10 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"gumdrop": return "band %d, %d moulds at %d%%, served at %s in %d serves, board fit=%s, hud=%s" % [
 			_puzzle.band, _puzzle.sim.moulds.size(), _puzzle.sim.mark(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
+		"buttons": return "band %d, %d buttons on %d by %d (%s), %d taps (par %d), tin %d of %d, %d left of %d, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
+			_puzzle.state.taps, _puzzle.state.par, _puzzle.state.in_tin(), _puzzle.state.capacity(),
+			_puzzle.moves_left, _puzzle.max_moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"lattice": return "band %d, %d tiles on %d by %d, %d knots, %d swaps (par %d), %d left of %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.n, _puzzle.state.n, _puzzle.state.knots.size(),
 			_puzzle.state.swaps, _puzzle.state.par, _puzzle.moves_left, _puzzle.max_moves, _puzzle.hints_used, _fit_ok, _hud_ok]
@@ -227,6 +231,7 @@ func _solve(id: String) -> void:
 		"acorn": _solve_acorn()
 		"pearl": _solve_pearl()
 		"lattice": _solve_lattice()
+		"buttons": _solve_buttons()
 		"gumdrop": _solve_gumdrop()
 
 ## Gumdrop's syrup is a fluid on the GPU, so nothing here can pour it in a
@@ -622,6 +627,42 @@ func _solve_lattice() -> void:
 		_hud_ok = _hud_ok and st.swaps == before + 1
 		await create_timer(0.4).timeout
 	_hud_ok = _hud_ok and st.is_solved() and (_puzzle.max_moves == 0 or _puzzle.moves_left == _puzzle.max_moves - st.swaps)
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
+
+## Button Box: a sewn button tapped where there is one (refused), the bulb
+## once where there is one, then the state's own tap, one at a time, through
+## the board's input. A button still in the air is not lifted, so this one
+## awaits between taps, and holds the walk (`_waiting`) to the win.
+func _solve_buttons() -> void:
+	_waiting = true
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = slot.encloses(_puzzle._tin_rect)
+	for c in st.slot.size():
+		if st.slot[c] >= 0 and not slot.has_point(_puzzle.cell_centre(c)):
+			_fit_ok = false
+	await create_timer(0.8).timeout
+	for c in st.slot.size():
+		if st.slot[c] >= 0 and st.is_home(c):
+			_tap_local(_puzzle.cell_centre(c))
+			break
+	_hud_ok = st.taps == 0
+	if _puzzle.capabilities().has("hint"):
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.taps == 1
+		await create_timer(0.6).timeout
+	var guard := 0
+	while not st.is_solved() and guard < 400:
+		guard += 1
+		var before: int = st.taps
+		_tap_local(_puzzle.cell_centre(st.hint()))
+		_hud_ok = _hud_ok and st.taps == before + 1
+		await create_timer(0.45).timeout
+	_hud_ok = _hud_ok and st.is_solved() and st.in_tin() == 0
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:
 		wait += 1

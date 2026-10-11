@@ -2768,6 +2768,42 @@ SETS = {
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,3,-2"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:0,5", "cut:0.7"),
     },
+    # Button Box (puzzles/buttons2d.gd, 2026-10-11): wooden buttons on linen
+    # and a wooden tin. No new take: the three it is made of are Lattice's,
+    # copied into build/sfx_raw/buttons/ -- `pick` (a light wooden button set
+    # down on felt, which is this board's own piece by name), `drop` (the
+    # hollow block, the tin's wood) and the one muffled kalimba note at 453
+    # Hz -- with Hedgehogs' breath for the reset. What repeats has no note in
+    # it: `lift` on every tap, then `sew` or `tin` once a button as a run
+    # lands, a wheel spun, which the board climbs half a step a button and
+    # five at the most. The notes are kept for the streak (`combo`, one note
+    # the board pitches up to five steps), a long run sewn at once, a colour
+    # whole, the bulb and the day's end; every note lands between 400 and
+    # 700 Hz and no two cues share a contour.
+    "buttons": {
+        "lift":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "sew":           ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight", "notes:0:1"),
+        "tin":           ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        # The tin's new place: two tocks of its wood, the second four steps up.
+        "open":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.09:-3,1"),
+        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.11:0,-3"),
+        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-5"),
+        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-1,-4,-2,1"),
+        "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # The streak: one note, pitched by the board. A long run sewn at
+        # once: two close together, a third apart. A colour whole: three up.
+        "combo":         ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:0", "cut:0.45"),
+        "run":           ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.06:0,3", "cut:0.6"),
+        "whole":         ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.11:0,4,7", "cut:0.9"),
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,2,5", "cut:1.0"),
+        # The day's end, as Lattice times it: `party` starts 0.15 s into
+        # `solved` and the seal lands on the party's fifth note.
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.07:-2,0,2", "cut:0.6"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:3,5,7,4,5,7", "cut:1.4"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:2,0,7"),
+        "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,3,-2"),
+        "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:0,5", "cut:0.7"),
+    },
     # How Big? (puzzles/how_big2d.gd, 2026-10-08): a carpenter's bench. The
     # one cue that repeats is `notch`, a click every time the answer grows or
     # shrinks by a twelfth while the finger pulls it: the wheel of an old

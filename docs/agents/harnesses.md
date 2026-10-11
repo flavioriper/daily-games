@@ -295,3 +295,23 @@ lang=en` (`/tmp/probe_how_big_p<n>.png`; `d=3` for the Ladder and hearts
 pages). `tests/_win.gd`'s solver for this board awaits (a lock's beat, the
 swap and the last hold cannot be walked in one frame) and holds the
 harness's own walk with `_waiting` meanwhile; seven rungs want `to=20`.
+
+## Button Box's harness (2026-10-11)
+
+`tests/_shot_buttons.gd` plays the board through its real input path (a
+touch pressed and let go on a button) and shoots numbered frames
+(`out=<dir>`, which must exist):
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_buttons.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest play refuse hint solve out reset restore howto`. `solve` makes
+the state's own taps to the win; `refuse` taps a sewn button, then fills the
+tin and taps once more; `out` (Insane) spends the taps carelessly; `howto`
+opens the tutorial as the ? does and shoots each page twice. A button still
+in the air is not lifted, so a harness leaves 0.4 s between taps. Each
+argument is its own word: zsh does not split `"d=0 solve"` held in a
+variable, and the run is then `rest` on that band without a word.
+`tests/_probe_buttons.gd` (headless, `seeds=3`) plays every picture of the
+bank three ways and checks that nothing can be stuck; `tests/_win.gd --
+buttons` and `tests/_probe_perf.gd -- buttons` (`x=buzz`) are the shared
+ones.

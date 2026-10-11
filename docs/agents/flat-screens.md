@@ -397,6 +397,11 @@ registry entry says `"bleed": true` (with `"tray": "none"` and
   `_thaw_board` and `_fit_card` return early): the board moves itself into
   the span it was told.
 
+**Button Box is the second** (2026-10-11, `docs/agents/boards/buttons.md`):
+linen edge to edge, the picture and its tin on it, the win's picture slid
+to the middle of the span under one transform. It has Undo and the bulb in
+the top bar, which a bleed board had not had; they work as on any board.
+
 Everything else is the host's as for any board: the bar, the day card, the
 tutorial, `_on_solved`, the win stack, Redo, the next level. A bleed board
 with a tray or an actions row was not tried.

@@ -1,0 +1,134 @@
+extends RefCounted
+
+## Button Box's drawings: the linen the table is laid with, a dyed patch of
+## cloth, the button that sits on it (loose, or sewn on with a cross of
+## thread), and the tin. Builder shapes and not Controls, as Quilt's cloth
+## and Lattice's tiles are: the board bakes up to 168 buttons into a mesh,
+## and the menu card and the tutorial draw the same pieces.
+##
+## A button is coloured by index, so nothing about it is said by a shade of
+## its colour: loose is a button with a shadow on a patch of another colour,
+## sewn is the cross of thread through its holes.
+
+const Pal = preload("res://core/palette.gd")
+const Face = preload("res://ui/faces/face.gd")
+const Scenery = preload("res://ui/flat/scenery.gd")
+
+## Sizes as a share of the cell.
+const PATCH := 0.94
+const PATCH_RADIUS := 0.14
+const RIM := 0.4
+const FACE_R := 0.36
+const DISH := 0.24
+const HOLE := 0.045
+const HOLE_AT := 0.085
+const RISE := 0.03
+const LINEN := Color("e9dcc3")
+const LINEN_WARP := Color("dfd0b3")
+const LINEN_WEFT := Color("f1e6d0")
+const THREAD := Color("fbf7ee")
+const THREAD_DARK := Color("4a3226")
+const WEAVE := 16.0
+
+static func colour(named: String) -> Color:
+	return Pal.PG_BEADS.get(named, Pal.LINE)
+
+## The cloth a patch is cut from: the button's colour, washed out.
+static func dyed(col: Color) -> Color:
+	return col.lerp(LINEN, 0.42)
+
+## The thread a button of `col` is sewn on with: pale, or dark on a pale one.
+static func thread_for(col: Color) -> Color:
+	return THREAD_DARK if col.get_luminance() > 0.72 else THREAD
+
+## The table's linen over `size`: one flat cloth with the weave drawn in.
+static func linen(b, size: Vector2) -> void:
+	b.fan(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0.0), size, Vector2(0.0, size.y)]), LINEN)
+	var y := WEAVE * 0.5
+	while y < size.y:
+		b.stroke(PackedVector2Array([Vector2(0.0, y), Vector2(size.x, y)]), 1.5, LINEN_WARP, false, false)
+		y += WEAVE
+	var x := WEAVE * 0.5
+	while x < size.x:
+		b.stroke(PackedVector2Array([Vector2(x, 0.0), Vector2(x, size.y)]), 1.5, LINEN_WEFT, false, false)
+		x += WEAVE
+
+## A running stitch round `rect`, a dash every `step`.
+static func stitches(b, rect: Rect2, step: float, colour_: Color) -> void:
+	var corners := [rect.position, Vector2(rect.end.x, rect.position.y), rect.end, Vector2(rect.position.x, rect.end.y)]
+	for k in 4:
+		var a: Vector2 = corners[k]
+		var z: Vector2 = corners[(k + 1) % 4]
+		var n := maxi(1, int(round(a.distance_to(z) / step)))
+		for i in n:
+			var p := a.lerp(z, (i + 0.2) / n)
+			var q := a.lerp(z, (i + 0.8) / n)
+			b.stroke(PackedVector2Array([p, q]), maxf(2.0, step * 0.16), colour_)
+
+## A patch of dyed cloth centred on `at`.
+static func patch(b, at: Vector2, cell: float, col: Color) -> void:
+	var s := cell * PATCH
+	var corner := at - Vector2.ONE * s * 0.5
+	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * s, cell * PATCH_RADIUS), dyed(col).darkened(0.1))
+	b.fan(Face.Builder.round_rect(corner + Vector2.ONE * cell * 0.03, Vector2.ONE * (s - cell * 0.06), cell * PATCH_RADIUS * 0.8), dyed(col))
+
+## A button centred on `at`: its rim, its face a little above it, the dish
+## and the four holes; `sewn` crosses them with thread.
+static func button(b, at: Vector2, cell: float, col: Color, sewn: bool) -> void:
+	var up := at - Vector2(0.0, cell * RISE)
+	b.disc(at + Vector2(0.0, cell * RISE), cell * RIM, col.darkened(0.3))
+	b.disc(up, cell * RIM, col.darkened(0.12))
+	b.disc(up, cell * FACE_R, col)
+	b.disc(up, cell * DISH, col.darkened(0.1))
+	b.disc(up - Vector2(0.0, cell * 0.012), cell * (DISH - 0.025), col.lightened(0.05))
+	var d := cell * HOLE_AT
+	var ink := col.darkened(0.6)
+	for o: Vector2 in [Vector2(-d, -d), Vector2(d, -d), Vector2(d, d), Vector2(-d, d)]:
+		b.disc(up + o, cell * HOLE, ink)
+	if sewn:
+		var thread := thread_for(col)
+		var wide := maxf(1.6, cell * 0.05)
+		b.stroke(PackedVector2Array([up + Vector2(-d, -d), up + Vector2(d, d)]), wide, thread)
+		b.stroke(PackedVector2Array([up + Vector2(d, -d), up + Vector2(-d, d)]), wide, thread)
+
+## The pieces drawn many times over, each once about the origin at `cell`:
+## {shade, ring, loose: [a colour], sewn: [a colour]}.
+static func units(cell: float, colours: Array) -> Dictionary:
+	var out := {"loose": [], "sewn": []}
+	var b := Face.Builder.new()
+	Scenery.soft_disc(b, Vector2(0.0, cell * 0.12), cell * 0.44, cell * 0.14, Color(Pal.TEXT, 0.22))
+	out.shade = b.mesh()
+	b = Face.Builder.new()
+	b.disc(Vector2.ZERO, cell * 0.5, Pal.SUN)
+	b.disc(Vector2.ZERO, cell * 0.43, Color(Pal.SUN_TILE, 0.9))
+	out.ring = b.mesh()
+	for named in colours:
+		var col := colour(String(named))
+		for sewn in [false, true]:
+			b = Face.Builder.new()
+			button(b, Vector2.ZERO, cell, col, sewn)
+			(out.sewn if sewn else out.loose).append(b.mesh())
+	return out
+
+## The tin: a shallow wooden tray over `rect` with `places` hollows in rows
+## of `per_row`, the first `open` of them worn smooth and the rest only
+## marked out in stitches of chalk.
+static func tin(b, rect: Rect2, places: int, open: int, per_row: int, step: float) -> void:
+	var r := step * 0.34
+	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, 6.0), rect.size, r), Pal.PLAQUE_DEEP)
+	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), Pal.WOOD_DEEP)
+	b.fan(Face.Builder.round_rect(rect.position + Vector2.ONE * 5.0, rect.size - Vector2.ONE * 10.0, r * 0.8), Pal.WOOD)
+	for p in places:
+		var at := tin_place(rect, p, per_row, step, places)
+		if p < open:
+			b.disc(at + Vector2(0.0, 2.0), step * 0.4, Pal.WOOD.lightened(0.18))
+			b.disc(at, step * 0.4, Pal.WOOD_DEEP)
+			b.disc(at + Vector2(0.0, 2.0), step * 0.37, Pal.WOOD_DEEP.darkened(0.12))
+		else:
+			b.stroke(Face.Builder.ring(at, step * 0.33, step * 0.33), 2.0, Color(Pal.WOOD_DEEP, 0.55), true)
+
+## The middle of place `p` of a tin over `rect`.
+static func tin_place(rect: Rect2, p: int, per_row: int, step: float, places := 12) -> Vector2:
+	var rows := ceili(float(places) / per_row)
+	var origin := rect.get_center() - Vector2(per_row * step, rows * step) * 0.5
+	return origin + Vector2((p % per_row) + 0.5, (p / per_row) + 0.5) * step

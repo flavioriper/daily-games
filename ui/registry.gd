@@ -1016,6 +1016,36 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "GD_LVL_3"},
 		],
 	},
+	{
+		"id": "buttons",
+		"kind": "puzzle",
+		"title": "Button Box",
+		"blurb": "BB_BLURB",
+		"short": "BB_SHORT",
+		"motto": "BB_MOTTO",
+		"footer": "Lift · Sew · Reveal",
+		# The sewing table is the whole screen (`bleed`, ui/flat/flat_host.gd):
+		# the picture and the tin lie on its linen, so there is no tray and no
+		# actions row, and Undo, the bulb and Reset ride up into the top bar.
+		# The board's own toast says what the tip card would.
+		"script": "res://puzzles/buttons2d.gd",
+		"shell": "flat",
+		"bleed": true,
+		"tray": "none",
+		"actions": false,
+		"tip": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (a picture of content/pixel_garden.json's
+		# band, scrambled off the day's seed) is its own daily with its own
+		# done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "BB_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "BB_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "BB_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "BB_LVL_3"},
+		],
+	},
 ]
 
 ## Every entry the game knows.

@@ -322,6 +322,14 @@ a prompt and is two dull knocks on a plank, no note either. The keyboard's
 keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
 cue a letter. Details: `docs/art/sound-direction.md`, its last section.
 
+**Button Box has a set since 2026-10-11** (`SETS["buttons"]`, seventeen
+cues, no new take: Lattice's `pick`, `drop` and kalimba note and Hedgehogs'
+breath, copied into `build/sfx_raw/buttons/`). `lift` sounds on every tap
+and `sew` or `tin` once a button as a run lands, so those are ticks with no
+note, climbed half a step a button and five at the most by the board; the
+notes are the streak (`combo`, pitched up to five steps), `run`, `whole`,
+`hint` and the day's end. 0 of 17 flagged; unheard by the user.
+
 **Lattice has a set since 2026-10-09** (`SETS["lattice"]`, `TILES` foley of
 wooden game tiles and a wooden lattice on a garden table and `TILES_TUNE`
 notes, seventeen cues): one take a cue (`home` two), unheard by the user.

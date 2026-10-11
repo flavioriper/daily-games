@@ -368,6 +368,12 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   eight tiles round it was tried first and read as too small. Its vista is
   the meadow at `(0.42, 0.30)`. The fifth page holds three cards;
   `_shot_menu.gd -- last` read **173** draw calls there.
+- **Button Box is the thirty-seventh card (2026-10-11).** Its picture is
+  `_draw_buttons()` in `ui/menu/card_art.gd`: a swatch of
+  `ui/faces/button_art.gd`'s patches and buttons, five across and two
+  down, six sewn with their cross of thread and four loose on the wrong
+  patch (three by three at 38 was tried first and ran over the strip), one mesh kept in
+  `_buttons_mesh`. Its vista is the meadow at `(0.58, 0.34)`.
 - **Gumdrop is the thirty-sixth card (2026-10-11)**, come over from the
   Arcade tab. Its picture is `_draw_gumdrop()` in `ui/menu/card_art.gd`: the
   tray with the flower mould on it, every cell its flavour --
