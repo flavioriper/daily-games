@@ -10,8 +10,8 @@ extends SceneTree
 ## the level that takes ducks), 5 a grown whirlpool with toys going down,
 ## 5b a whirlpool of the last level with a raft or a rowing boat going
 ## down, 6 the spin low, 7 the end card, 8 the shop opened from it with a
-## bank to spend, 9 a level of every upgrade bought, 10 the fresh run it
-## fits. Prints the draw calls at each shot. The end writes a score, the bank
+## bank to spend, 9 a level of every upgrade bought, 10 the fresh run its
+## Next run lays, fitted. Prints the draw calls at each shot. The end writes a score, the bank
 ## and the upgrades to user://arcade.cfg, so the file this machine had is put
 ## back.
 
@@ -80,7 +80,7 @@ func _bot() -> void:
 		_s._knob = Vector2.ZERO
 		return
 	var d: Vector2 = best.pos - sim.pos
-	_s._knob = d.normalized() * clampf(d.length() / 45.0, 0.0, 1.0) * _s.TRAVEL
+	_s._knob = d.normalized() * clampf(d.length() / 18.0, 0.0, 1.0) * _s.TRAVEL
 
 ## A fresh wallet holds boosters, so the boost card stands before every run
 ## and Second chance before every end card: play with none, and decline.
@@ -115,7 +115,7 @@ func _process(delta: float) -> bool:
 	if _s != null and _s._paused and _s._end == null:
 		_s._pause(false)
 	_bot() if _s != null else null
-	if _t > 120.0:
+	if _t > 180.0:
 		print("gave up at step %d" % _step)
 		_restore()
 		return true
@@ -227,7 +227,8 @@ func _process(delta: float) -> bool:
 				_step = 13
 		13:
 			if _t > _at + 0.3:
-				(_s._end.find_child("Again", true, false) as Button).pressed.emit()
+				# from the end card the shop's button is Next run: no Play again
+				print("the shop closed into the next run: ", _s._end == null and _s.sim.phase == Sim.Phase.READY)
 				_at = _t
 				_step = 14
 		14:

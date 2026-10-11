@@ -85,7 +85,7 @@ class Round extends "res://arcade/eddy_sim.gd":
 			else:
 				to = mid() + (row[1] as Vector2)
 			var d: Vector2 = to - pos
-			return d.normalized() * minf(float(row[2]), d.length() / 30.0)
+			return d.normalized() * minf(float(row[2]), d.length() / 12.0)
 		return Vector2.ZERO
 
 	## Nothing left afloat, or the run over: the lesson has been told.
@@ -267,21 +267,21 @@ func _reset() -> void:
 	match lesson:
 		Lesson.STEER:
 			# round a square at a drift, then again in a hurry
-			for row: Array in [[Sim.Kind.LEAF, Vector2(-52, -34), 0], [Sim.Kind.PETAL, Vector2(54, 30), 2], [Sim.Kind.LEAF, Vector2(50, -36), 1]]:
+			for row: Array in [[Sim.Kind.LEAF, Vector2(-44, -30), 0], [Sim.Kind.PETAL, Vector2(46, 28), 2], [Sim.Kind.LEAF, Vector2(44, -32), 1]]:
 				game.lay(row[0], row[1], row[2])
-			game.plan = [[0.6, null, 0.0], [2.6, Vector2(36, 0), 0.4], [4.0, Vector2(36, 26), 0.4], [7.0, Vector2(-36, 26), 0.4],
-				[7.8, null, 0.0], [9.0, Vector2(-36, -22), 1.0], [10.4, Vector2(30, -22), 1.0], [11.2, Vector2(0, 0), 1.0], [12.2, null, 0.0]]
-			_length = 12.4
-			_still_at = 3.0
+			game.plan = [[0.6, null, 0.0], [3.2, Vector2(20, 0), 0.4], [5.0, Vector2(20, 14), 0.4], [9.4, Vector2(-20, 14), 0.4],
+				[10.2, null, 0.0], [11.8, Vector2(-20, -12), 1.0], [13.8, Vector2(18, -12), 1.0], [15.0, Vector2(0, 0), 1.0], [16.0, null, 0.0]]
+			_length = 16.2
+			_still_at = 4.0
 		Lesson.SLOW:
 			# flat out across three leaves, then back for each at a walk
 			for k in 3:
-				game.lay(Sim.Kind.LEAF, Vector2(-26.0 + 26.0 * k, 4.0 if k % 2 == 0 else -5.0), k)
-			game.pos = game.mid() + Vector2(-64, 0)
+				game.lay(Sim.Kind.LEAF, Vector2(-20.0 + 20.0 * k, 4.0 if k % 2 == 0 else -5.0), k)
+			game.pos = game.mid() + Vector2(-46, 0)
 			var one: int = game.things[0].id
-			game.plan = [[0.7, null, 0.0], [3.3, Vector2(70, 0), 1.0], [4.1, null, 0.0], [9.0, one + 2, 0.3], [14.0, one + 1, 0.3], [19.0, one, 0.3]]
-			_length = 19.0
-			_still_at = 6.0
+			game.plan = [[0.7, null, 0.0], [4.8, Vector2(50, 0), 1.0], [5.6, null, 0.0], [11.5, one + 2, 0.3], [17.5, one + 1, 0.3], [23.5, one, 0.3]]
+			_length = 23.5
+			_still_at = 8.0
 		Lesson.GROW:
 			# beside a duck too big for it, then two leaves for the level, then
 			# the duck again (the things are numbered as they are laid)
@@ -292,8 +292,8 @@ func _reset() -> void:
 			game.lay(Sim.Kind.LEAF, Vector2(-54, -26), 0)
 			game.pos = game.mid() + Vector2(-6, -8)
 			var first: int = game.things[0].id
-			game.plan = [[0.5, null, 0.0], [3.4, first, 0.25], [10.0, first + 1, 0.6], [17.0, first + 2, 0.6], [26.0, first, 0.5]]
-			_length = 26.0
+			game.plan = [[0.5, null, 0.0], [3.4, first, 0.25], [11.0, first + 1, 0.6], [19.0, first + 2, 0.6], [32.0, first, 0.5]]
+			_length = 32.0
 			_still_at = 2.8
 		Lesson.SPIN:
 			# a short spin nearly out: one leaf makes the level and gives some
@@ -302,7 +302,7 @@ func _reset() -> void:
 			game.grown = game.need() - 1
 			game.spin_full = 14.0
 			game.spin = 4.6
-			game.lay(Sim.Kind.LEAF, Vector2(20, 6), 2)
+			game.lay(Sim.Kind.LEAF, Vector2(12, 4), 2)
 			game.lay(Sim.Kind.PETAL, Vector2(-44, -28), 0)
 			game.lay(Sim.Kind.ACORN, Vector2(-40, 34), 0)
 			var leaf: int = game.things[0].id

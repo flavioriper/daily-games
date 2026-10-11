@@ -37,20 +37,27 @@ const DT := 1.0 / 60.0
 ## The pond the game is played on (the user, 2026-10-10: "a fixed bigger
 ## water scene with all objects rendered, and camera start to zoom out as
 ## user get bigger"), and how much water SMALL and BIG are counted for: a
-## pond holds as many times those as it has that much water.
-const WIDE := 600.0
-const TALL := 1000.0
+## pond holds as many times those as it has that much water. It was 600 by
+## 1000 until the camera came closer (VIEW): it is as many looks wide as it
+## was, two and a half, and holds as much, so the water is as full to the
+## eye as it was.
+const WIDE := 400.0
+const TALL := 660.0
 const ROOM := 300.0 * 320.0
-## How much of the pond's width is looked at round a whirlpool of level 1,
-## and the power of its core's growth the look widens by. The screen's
+## How much of the pond's width is looked at round a whirlpool of level 1
+## (240 until the user, 2026-10-11: "camera is too far, it should be closer
+## to the vortex"), and the power of its core's growth the look widens by. The screen's
 ## camera reads it, and so does the stocking: a new thing comes onto the
 ## water out of sight.
-const VIEW := 240.0
+const VIEW := 150.0
 const VIEW_POW := 0.5
 ## The whirlpool's fastest travel and how quickly it answers the pad. It
 ## is slow on purpose (the user, 2026-10-10: "speed is too fast, it should
-## be way slower to move"; it was 150): four seconds across what is looked at, ten across the pond.
-const SPEED := 60.0
+## be way slower to move", of 150, and 2026-10-11, of 60: "movement is too
+## fast yet, it should be way slower"): six seconds across what is looked
+## at, seventeen across the pond. SLIP, RUSH and HASTE are measured against
+## it and came down with it.
+const SPEED := 24.0
 const ANSWER := 0.3
 ## It grows through these levels.
 const LEVELS := 20
@@ -71,10 +78,10 @@ const GRIP := 1.4
 ## radius), goes round with the water there to within SLIP, and crosses the
 ## whirlpool no faster than RUSH.
 const MOUTH := 0.95
-const SLIP := 25.0
-const RUSH := 14.0
+const SLIP := 10.0
+const RUSH := 5.6
 ## The part of its pull a whirlpool keeps travelling flat out.
-const HASTE := 0.2
+const HASTE := 0.08
 ## What is swallowed to leave level 1, and how much more each level asks.
 const GROW := 6
 const GROW_STEP := 6
@@ -112,13 +119,13 @@ const KINDS := [
 ]
 const TIERS := 4
 ## How many of each tier the pond keeps afloat, and the most let in a second.
-const SMALL := 44
-const SMALL_STEP := 2
-const BIG := 4
-const BIG_STEP := 0.6
+const SMALL := 104
+const SMALL_STEP := 5
+const BIG := 10
+const BIG_STEP := 1.5
 ## The third and fourth tiers, there from the first run to be grown into.
-const GREAT := 1.0
-const HUGE := 0.5
+const GREAT := 2.4
+const HUGE := 1.2
 const LET_IN := 2.5
 ## A thing's own slow wander, and the push that brings a new one in from the
 ## bank for its first seconds where the pond is too small to hide it.

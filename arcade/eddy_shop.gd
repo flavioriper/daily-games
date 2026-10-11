@@ -5,7 +5,7 @@ extends Control
 ## a run or from the end card. A row is one upgrade: what it does, its
 ## level, what the level is worth now and what the next one would be, and
 ## its price on a pill. A row the bank does not cover is dim and cannot be
-## pressed. Done closes it.
+## pressed. Done closes it; from the end card the button is Next run.
 ## Spec docs/superpowers/specs/2026-10-11-eddy-incremental-design.md.
 
 ## A level of `id` was bought for `paid` drops.
@@ -23,6 +23,8 @@ const Motion = preload("res://core/motion.gd")
 const TINT := Color("3f86b0")
 const ROW_H := 176.0
 
+## Opened from the end card: Done is Next run, and the screen lays one.
+var next := false
 var _rows := {}
 var _bank: Label
 
@@ -51,7 +53,7 @@ func _ready() -> void:
 		var row := _row(id)
 		col.add_child(row)
 		_rows[id] = row
-	var done := Dialog.primary("check", tr("ED_SHOP_DONE"))
+	var done := Dialog.primary("chevron_right", tr("ED_NEXT")) if next else Dialog.primary("check", tr("ED_SHOP_DONE"))
 	done.name = "Done"
 	done.pressed.connect(func() -> void:
 		closed.emit()

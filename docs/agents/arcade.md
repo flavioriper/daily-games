@@ -3104,6 +3104,54 @@ biggest whirlpool.
     calls in play at level 20, 300 with the end card, 397 with the shop over
     it (810x1440); on `opengl3_angle` 108 to 277, 334 and 430.
   - **A run left by Back or Restart banks nothing**; only `_run_over` banks.
+  - **Third pass the same day: the turn's end, a nearer camera, a slower
+    whirlpool** (the user, 2026-10-11: "when the time is up, instead of
+    showing a you lose, it should show a message about the turn end and a
+    summary of numbers, and show a button so user go do upgrade to spend
+    points and go into next run. Also, camera is too far, it should be
+    closer to the vortex, and movement is too fast yet, it should be way
+    slower"). What the bullets above say of the Second chance, 600 by 1000,
+    `VIEW` 240, `SPEED` 60 and the ladder's 40 runs is history.
+    - **The end card is a turn done.** Head `ED_END_CARD` "Time's up!",
+      `ED_END_LINE` with the run's number (`Upgrades.runs()`, kept as `runs`
+      and counted in `Upgrades.bank`), the drops made counted up beside a
+      drop, the three tiles, "Drops to spend" with the bank, the best (or
+      "A new best!") as a dim line. **Upgrades is always the gold button**,
+      Next run (`ED_NEXT`) under it. The shop opened from the card has
+      `next` set: its button is Next run and closing it calls `_new_game()`
+      (not `_ask`: the shop is still in the tree as it says `closed`, and
+      `_ask` would see it and do nothing). The card plays `level`, never
+      `game_over` (the file stays, unplayed); the drain knocks `BUMP`, not
+      `BAD`.
+    - **No Second chance on Eddy**: "Keep going?" stood before the card on
+      any wallet with the gold, a one-take game's card in an incremental.
+      The screen no longer loads it; `Sim.revive` and `BST_CHANCE_EDDY`
+      are left, unused by the screen.
+    - **`VIEW` 150** (240): 5.4 px a unit at level 1 on 810 wide, the core
+      38 px. **The pond is 400 by 660** and `SMALL` 104, `SMALL_STEP` 5,
+      `BIG` 10, `BIG_STEP` 1.5, `GREAT` 2.4, `HUGE` 1.2: as many looks wide
+      as it was (2.5), as many things in all (about 320) and as many on the
+      screen. A nearer camera on the old pond showed 11 small things, not
+      28, and the bots' scores halved.
+    - **`SPEED` 24** (60). On the screen that is 130 px a second against
+      202: the nearer camera eats a part of the cut. **`SLIP` 10, `RUSH`
+      5.6, `HASTE` 0.08 came down with it** (25, 14, 0.2): they are speeds
+      measured against the whirlpool's own, and at 24 with the old ones a
+      whirlpool flat out took every leaf it crossed. The probe's bot slows
+      from 18 units off (45), as the shot's does; the tutorial's hand from
+      12 (30), and its four films were laid again nearer the middle with
+      longer steps (16, 23, 32 and 16 s; played headless: the hurried pass
+      takes nothing, each leaf at a walk goes down, the duck after the
+      level, the spin runs out).
+    - Measured: `_probe_eddy.gd -- 12` 0 failed, patient 51, slower 32,
+      hasty 1 (59, 33, 0 before); the patient ladder **51 runs and 61
+      minutes** (40 and 46), ducks first on run 6, buckets 27, rafts 41.
+      The suite 249,804 passed. `_shot_eddy.gd` on `opengl3_angle`, second
+      reading: 118 to 377 draw calls in play, 408 with the end card, 507
+      with the shop.
+    - Mine and unseen: 150 and 24 themselves, the smaller pond, the card's
+      words, the run's number, dropping the Second chance, the film's new
+      timing (not watched moving, no still taken of the tutorial).
   - Mine and unseen by the user: the spec's ten calls. Owed: a phone, the
     sounds, pt and es, a person's climb timed.
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed

@@ -1369,7 +1369,6 @@ TUT_DECKCHAIR_HUD_RESET,"A new deal, from the top","Uma partida nova, do começo
 TUT_DECKCHAIR_HUD_GEAR,Settings. The clock waits for you,Configurações. O relógio espera por você,Ajustes. El reloj te espera
 ARC_EDDY_BLURB,"Steer a whirlpool round the pond. What it draws down is banked as drops, and drops buy a stronger whirlpool for the next run.","Guie um redemoinho pelo lago. O que ele leva ao fundo vira gotas, e as gotas compram um redemoinho mais forte para a próxima partida.","Guía un remolino por el estanque. Lo que se lleva al fondo se guarda como gotas, y las gotas compran un remolino más fuerte para la próxima partida."
 ED_BANK,DROPS,GOTAS,GOTAS
-ED_BANKED,+%s drops banked,+%s gotas guardadas,+%s gotas guardadas
 ED_SHOP,Upgrades,Melhorias,Mejoras
 ED_SHOP_LINE,"Every run banks its score as drops. Spend them here: what you buy is kept for every run after.","Cada partida guarda os pontos como gotas. Gaste aqui: o que você compra vale para todas as partidas seguintes.","Cada partida guarda sus puntos como gotas. Gástalas aquí: lo que compras vale para todas las partidas siguientes."
 ED_SHOP_DONE,Done,Pronto,Listo
@@ -1409,7 +1408,10 @@ ED_LEVEL_UP,Level %d!,Nível %d!,¡Nivel %d!
 ED_OPEN_DUCK,Ducks go down now,Agora os patinhos descem,Ahora bajan los patitos
 ED_OPEN_BOAT,Boats go down now,Agora os barquinhos descem,Ahora bajan los barquitos
 ED_OPEN_BALL,Balls go down now,Agora as bolas descem,Ahora bajan las pelotas
-ED_END_CARD,The pond is still again,O lago está calmo de novo,El estanque vuelve a la calma
+ED_END_CARD,Time's up!,Acabou o tempo!,¡Se acabó el tiempo!
+ED_END_LINE,Run %d is done. Spend your drops and go further.,Partida %d concluída. Gaste suas gotas e vá mais longe.,Partida %d terminada. Gasta tus gotas y llega más lejos.
+ED_TO_SPEND,Drops to spend,Gotas para gastar,Gotas para gastar
+ED_NEXT,Next run,Próxima partida,Siguiente partida
 ED_STAT_TAKEN,drawn down,levados ao fundo,llevados al fondo
 ED_STAT_LEVEL,whirlpool,redemoinho,remolino
 ED_STAT_TIME,turning,girando,girando

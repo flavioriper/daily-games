@@ -98,7 +98,7 @@ func _water() -> void:
 	s.pos = Vector2(110.0, s.h * 0.5)
 	leaf = s.put(Sim.Kind.LEAF, Vector2(150.0, s.h * 0.5 + 3.0))
 	leaf.drift = Vector2.ZERO
-	s.steer(Vector2.RIGHT * 0.12)
+	s.steer(Vector2.RIGHT * 0.3)
 	tally = _steps(s, 6.0)
 	_check("level 1, at a walk over a leaf: taken", int(tally.get("swallow", 0)) == 1)
 	# a duck beside a small whirlpool, and beside a grown one
@@ -194,7 +194,7 @@ func _play(s: RefCounted, hasty: bool, skill := 1.0) -> void:
 			s.steer(Vector2.ZERO)
 		else:
 			var d: Vector2 = best.pos - s.pos
-			s.steer(d.normalized() * clampf(d.length() / 45.0, 0.0, 1.0) * skill)
+			s.steer(d.normalized() * clampf(d.length() / 18.0, 0.0, 1.0) * skill)
 		s.step()
 		s.events.clear()
 

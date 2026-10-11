@@ -15,7 +15,16 @@ extends Control
 ## scores is banked as drops (arcade/eddy_upgrades.gd), and the shop
 ## (arcade/eddy_shop.gd) is opened from the button under the opening lines
 ## and from the end card. A fresh run is fitted with what was bought. Eddy
-## has no gold boosters any more; the Second chance stays.
+## has no gold boosters any more.
+##
+## **A run ending is a turn done, not a loss** (the user, 2026-10-11: "when
+## the time is up, instead of showing a you lose, it should show a message
+## about the turn end and a summary of numbers, and show a button so user go
+## do upgrade to spend points and go into next run"). The end card says the
+## time is up and which run it was, counts the drops it made, sums it up
+## (what went down, the level, the seconds, the bank, the best), and leads
+## with Upgrades: the shop opened from there closes into the next run. No
+## Second chance is offered here, and nothing sounds or knocks like a miss.
 ##
 ## **The pond is far bigger than the screen, and a camera looks at a part of
 ## it** (the user, 2026-10-10: "a fixed bigger water scene with all objects
@@ -64,10 +73,8 @@ const Haptics = preload("res://core/haptics.gd")
 const HAPTICS := {"new_best": Haptics.WIN}
 const Face = preload("res://ui/faces/face.gd")
 const Analytics = preload("res://core/analytics.gd")
-const Boosters = preload("res://arcade/boosters.gd")
 const Upgrades = preload("res://arcade/eddy_upgrades.gd")
 const Shop = preload("res://arcade/eddy_shop.gd")
-const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 
@@ -107,11 +114,7 @@ const CLIMB_TOP := 1.335
 const TICK_VARY := 0.06
 
 var sim: RefCounted
-## Whether the run was helped by a Second chance (arcade/boosters.gd): a best
-## made so is marked. It is offered once a run, and the gold the run earned
-## goes on the end card.
-var _boosted := false
-var _chance_used := false
+## The gold the run earned, for the end card.
 var _run_gold := 0
 var top_bar: Control
 var settings_sheet: Control
@@ -454,11 +457,9 @@ func _new_game() -> void:
 		_end.queue_free()
 		_end = null
 	_fresh_sim()
-	_boosted = false
 	_bank = Upgrades.drops()
 	_banked = false
 	_end_bank = null
-	_chance_used = false
 	_run_gold = 0
 	_acc = 0.0
 	_paused = false
@@ -681,14 +682,11 @@ func _play_events() -> void:
 				_rw.sticker(tr("ED_LOW"), _rw.at(field, field.size * Vector2(0.5, 0.24)), 50, 1.4, false, Art.SPIN_LOW.lightened(0.3), false, "low")
 			"drain":
 				_fx.cue("drain")
-				_feel(Haptics.BAD)
+				_feel(Haptics.BUMP)
 				_held = -1
 				_ring(sim.pos, sim.reach(), 1.2, Art.FOAM)
 			"over":
 				_run_over()
-			"revive":
-				_hint(tr("CHANCE_GO"), tr("ED_READY_LINE"))
-				_ring(sim.pos, sim.reach(), 0.8, Art.FOAM)
 	sim.events.clear()
 
 ## A thing gone down: a small one is a tick and a ring, a toy a deeper knock
@@ -921,10 +919,8 @@ func _new_best_passed() -> void:
 # --- the end ---
 
 func _run_over() -> void:
-	if _offer_chance():
-		return
 	# the furthest a whirlpool has grown is the stage the tab's card reads
-	var better := Record.add(GAME, sim.score, sim.level, _boosted)
+	var better := Record.add(GAME, sim.score, sim.level, false)
 	# the run's score is its drops: banked once, here
 	_bank = Upgrades.bank(sim.score)
 	_banked = true
@@ -940,7 +936,8 @@ func _run_over() -> void:
 func _show_end(better: bool) -> void:
 	if sim == null or not sim.is_over() or _end != null:
 		return
-	_fx.cue("new_best" if better else "game_over")
+	# a turn done: the level's two notes up, never the falling three
+	_fx.cue("new_best" if better else "level")
 	_end = _build_end(better)
 	add_child(_end)
 	# the rewards (their rain and bursts) stay over the card
@@ -988,20 +985,34 @@ func _build_end(better: bool) -> Control:
 	col.add_child(seat)
 	_seat = seat
 	var head := Label.new()
-	head.text = "FF_NEW_BEST" if better else "ED_END_CARD"
+	head.text = "ED_END_CARD"
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# the longer languages take two lines rather than widen the card
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	head.custom_minimum_size.x = 740
 	col.add_child(head)
+	var line := Label.new()
+	line.name = "Line"
+	line.text = tr("ED_END_LINE") % Upgrades.runs()
+	line.theme_type_variation = "SheetBody"
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.x = 740
+	col.add_child(line)
+	# what the run made, counted up beside a drop
+	var made := HBoxContainer.new()
+	made.alignment = BoxContainer.ALIGNMENT_CENTER
+	made.add_theme_constant_override("separation", 12)
+	made.add_child(Shop.drop_icon(72.0))
 	var score := Label.new()
-	score.text = Record.grouped(sim.score) if Motion.reduce else "0"
+	score.text = "+" + (Record.grouped(sim.score) if Motion.reduce else "0")
 	if not Motion.reduce:
 		_end_score = score
 	score.theme_type_variation = "DayBig"
 	score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(score)
+	made.add_child(score)
+	col.add_child(made)
 	var secs := int(sim.t)
 	var stats := HBoxContainer.new()
 	stats.name = "Stats"
@@ -1030,17 +1041,12 @@ func _build_end(better: bool) -> Control:
 		words.add_child(kicker)
 		stats.add_child(plate)
 	col.add_child(stats)
-	var best_line := Label.new()
-	best_line.text = tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
-	best_line.theme_type_variation = "SheetBodyDim"
-	best_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(best_line)
-	# what the run put in the bank, and the bank
+	# the bank the run went into, to be spent
 	var banked := HBoxContainer.new()
 	banked.alignment = BoxContainer.ALIGNMENT_CENTER
 	banked.add_theme_constant_override("separation", 14)
 	var plus := Label.new()
-	plus.text = tr("ED_BANKED") % Record.grouped(sim.score)
+	plus.text = "ED_TO_SPEND"
 	plus.theme_type_variation = "SheetBody"
 	banked.add_child(plus)
 	var pill := Shop.drops_pill(40.0)
@@ -1048,15 +1054,20 @@ func _build_end(better: bool) -> Control:
 	_end_bank.text = Record.grouped(_bank)
 	banked.add_child(pill)
 	col.add_child(banked)
-	# the shop leads when the bank covers something, else another run does
-	var buys := Upgrades.any()
-	var again := Dialog.secondary("reset", tr("FF_AGAIN")) if buys else Dialog.primary("reset", tr("FF_AGAIN"))
-	again.name = "Again"
-	again.pressed.connect(_ask)
-	var shop := Dialog.primary("trend", tr("ED_SHOP")) if buys else Dialog.secondary("trend", tr("ED_SHOP"))
+	var best_line := Label.new()
+	best_line.text = tr("FF_NEW_BEST") if better else tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))
+	best_line.theme_type_variation = "SheetBodyDim"
+	best_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(best_line)
+	# the shop leads, always: a run is played to be spent, and the shop
+	# closes into the next one
+	var shop := Dialog.primary("trend", tr("ED_SHOP"))
 	shop.name = "Shop"
 	shop.pressed.connect(_open_shop)
-	var stack := Dialog.buttons(col, shop if buys else again, again if buys else shop, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
+	var again := Dialog.secondary("chevron_right", tr("ED_NEXT"))
+	again.name = "Again"
+	again.pressed.connect(_ask)
+	var stack := Dialog.buttons(col, shop, again, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
 	var back := Dialog.secondary("chevron_left", tr("FF_BACK"))
 	back.size_flags_horizontal = Control.SIZE_FILL
 	back.pressed.connect(_on_back)
@@ -1068,7 +1079,7 @@ func _build_end(better: bool) -> Control:
 func _count_end() -> void:
 	var k := clampf((_clock - _end_at - 0.4) / 0.9, 0.0, 1.0)
 	var shown := int(round(sim.score * (1.0 - pow(1.0 - k, 3.0))))
-	var text := Record.grouped(shown)
+	var text := "+" + Record.grouped(shown)
 	if _end_score.text != text:
 		_end_score.text = text
 	if k >= 1.0:
@@ -1117,12 +1128,12 @@ func go_back() -> void:
 		return
 	_on_back()
 
-# --- the shop and the Second chance ---
+# --- the shop ---
 
 ## A fresh run, fitted with what the shop has sold. A run still going when
 ## it is asked for stops there.
 func _ask(by_hand := true) -> void:
-	if get_node_or_null("Shop") != null or get_node_or_null("SecondChance") != null:
+	if get_node_or_null("Shop") != null:
 		return
 	_new_game()
 	# Restart and Play again tap; the screen opening says nothing.
@@ -1130,8 +1141,8 @@ func _ask(by_hand := true) -> void:
 		_fx.buzz(Haptics.TAP)
 
 ## The shop over the pond: before a run, or from the end card. What is
-## bought before a run fits the run that is waiting; from the end card it
-## waits for Play again.
+## bought before a run fits the run that is waiting; from the end card its
+## button is Next run, and closing it lays that run.
 func _open_shop() -> void:
 	if get_node_or_null("Shop") != null or sim == null:
 		return
@@ -1141,6 +1152,7 @@ func _open_shop() -> void:
 	_fx.buzz(Haptics.TAP)
 	var shop := Shop.new()
 	shop.name = "Shop"
+	shop.next = sim.is_over()
 	var spent := [0]
 	shop.bought.connect(func(id: String, lv: int, paid: int) -> void:
 		spent[0] += paid
@@ -1154,25 +1166,7 @@ func _open_shop() -> void:
 		_bank_l.text = _bank_text()
 		if _end_bank != null and is_instance_valid(_end_bank):
 			_end_bank.text = Record.grouped(_bank)
-		if spent[0] > 0 and not sim.is_over():
+		# not through _ask: the shop is still in the tree as it says closed
+		if spent[0] > 0 or sim.is_over():
 			_new_game())
 	add_child(shop)
-
-## At the end, once a run: the Second chance, when one is held or the gold
-## for one is. True while it is up; No thanks ends the run as it would have.
-func _offer_chance() -> bool:
-	if _chance_used or not SecondChance.wanted() or sim.score <= 0:
-		return false
-	_chance_used = true
-	var card := SecondChance.new(GAME)
-	card.name = "SecondChance"
-	card.taken.connect(func() -> void:
-		_boosted = true
-		Boosters.revive(GAME, sim)
-		_fx.buzz(Haptics.GOOD)
-		_fx.cue("level")
-		_play_events()
-		top_bar.refresh(self))
-	card.declined.connect(_run_over)
-	add_child(card)
-	return true

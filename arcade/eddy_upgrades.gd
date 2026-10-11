@@ -40,10 +40,14 @@ static func levels() -> Dictionary:
 static func drops() -> int:
 	return Record.kept(GAME, "drops")
 
-## A run's score into the bank; the bank after it.
+## How many runs have been played to their end.
+static func runs() -> int:
+	return Record.kept(GAME, "runs")
+
+## A run's score into the bank, and the run counted; the bank after it.
 static func bank(score: int) -> int:
 	var now := drops() + maxi(score, 0)
-	Record.keep(GAME, {"drops": now})
+	Record.keep(GAME, {"drops": now, "runs": runs() + 1})
 	return now
 
 static func can_buy(id: String) -> bool:
