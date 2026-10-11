@@ -229,3 +229,34 @@ tables and adds prices, levels, the look and the tutorial. A number that
 turns out wrong at play is corrected **here first**, with the honest basis
 beside it, and the era's spec follows. A new machine gets a row here before
 it gets a tile there.
+
+## 12. The closed forest (2026-10-11)
+
+The user, 2026-10-11: "the forest must be a closed grid that only output
+the material, user should not be able to build inside of it, only upgrade.
+It should have a output to connect convey in every side. User click on the
+grid to farm wood, and the first upgrade is a wood / second automation",
+and "remove mine keep only forest for now". Asked what the upgrade meant
+they chose "Auto, 1 wood a second"; asked what a tap does, "One tap, one
+log". **These are the user's numbers and they are not honest ones**: a
+plate of fourteen trees does not give a log a second, and rule 2 of
+section 1 (a tree regrows in game hours) no longer governs anything, since
+a forest's trees are never felled. The forest is the ledger's second
+wonder, beside era 7's, and says so here.
+
+| What | Figure | Whose |
+|---|---|---|
+| A tap on a forest | 1 log into its stock, at once | the user's |
+| A forest holds | 12 logs (`FOREST_ROOM`) before a tap is refused and its own work waits | an agent's |
+| It gives by | a gate in each side, one log a gate a tick into what takes it beyond, the sides by turns; with no taker, one lies on bare ground past a gate | the gates the user's, the rest an agent's |
+| Level 1 | 1 log a second by itself, 60 coins | the rate the user's, the price an agent's |
+| Levels 2, 3, 4 | 2, 3, 4 logs a second for 180, 540, 1,620 coins | an agent's |
+| The most a forest can send | 4 logs a second: a belt carries one a second (section 8) and there are four gates | follows from section 8 |
+
+What this does to the rest: a level-1 market sells a log every 4 s, so one
+automated forest makes four times what a new market sells, and **the
+market's level is the brake on income now, not the trees**. A log is still
+320 MJ in a fire box and 1 coin at the market. Stone, lime and the kiln
+keep their rows above but nothing gives stone: the quarry is removed and
+the kiln cannot be bought until a plate gives stone again. The meadow is
+renamed neutral: white ground, the only kind that is built on.

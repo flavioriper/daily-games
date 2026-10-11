@@ -2,10 +2,14 @@
 
 **The sixth tab since 2026-10-10**, in the slot the Valley and its Grove had
 (dropped that day; their history is the second half of this file). A piece
-of land in a pond, seen corner on: tap a tree, a beaver bites it down, the
-log lies beside it; a belt laid by a drag carries it to the market, which
-sells it; coins buy belts, more plates of land, and from the second plate a
-fire box, a kiln and a retort. The land runs only while it is on screen,
+of land in a pond, seen corner on: tap the forest and a log comes out of
+its gate; a belt laid by a drag carries it to the market, which sells it;
+coins buy belts, more plates of land, the forest's levels, and from the
+first plate bought a fire box and a retort. (**Since 2026-10-11**; until
+then a tree was tapped and bitten down by a beaver and the log lay beside
+its stump. "The closed forest" below is what stands, and it overrides
+every line of the sections before it that speaks of felling, stumps,
+rocks, a quarry or a meadow.) The land runs only while it is on screen,
 nothing is hurried and the game has no end. The road is
 `docs/brainstorm/factory-roadmap.html`; every rate is in the ledger,
 `docs/superpowers/specs/2026-10-10-factory-physics-design.md` (**change a
@@ -207,6 +211,76 @@ direction".
   machine's hopper or tray judged for height only at a glance; the
   tutorial's words still say "Drag from the log to the market" where its
   picture now shows two swipes.
+
+**The closed forest and neutral ground (2026-10-11)**, the user: "on
+factory game, instead of meadow call it neutral, a white ground with
+neutral texture. Remove mine keep only forest for now, and the forest must
+be a closed grid that only output the material, user should not be able to
+build inside of it, only upgrade. It should have a output to connect convey
+in every side. User click on the grid to farm wood, and the first upgrade
+is a wood / second automation". Asked two things, they chose "Auto, 1 wood
+a second" (one upgrade line, not a wood upgrade and then an automation
+one) and "One tap, one log" (a clicker: the trees are the forest's look,
+not a count). Every rate is the ledger's section 12.
+- **Two kinds of plate**: `forest` and `neutral` (`Sim.KINDS`). The quarry,
+  its rocks and `Art.rock` are deleted; the meadow is `neutral`, white
+  ground with every tile ruled on it and a speckle (`GROUND["neutral"]`,
+  `Art._neutral_into`), growing no grass. Stone, lime and the kiln stay in
+  the sim's tables and the art, and **the kiln cannot be bought**
+  (`Sim.LOCKED`): nothing gives stone.
+- **A new land is two plates**: (0, 0) is neutral and holds the market, and
+  a forest stands behind it at `Sim.FOREST_AT` (0, -1). So the plate
+  prices count plates bought (`plates.size() - 2`), era 2 opens at three
+  plates, and the screen opens looking at the seam, tile (4, 0).
+- **A forest is closed.** `_lay_why` answers `forest` for all 64 tiles and
+  `tile_free` is false there, so no belt, machine, lying item or spill
+  goes in. `sim.forests[P]` is `{level, stock, t, next, paid}`. A tap on
+  any tile of it (`hit` gives `forest` for a crown as for the ground) is
+  one log into `stock`, refused `full` at `FOREST_ROOM` 12. **`sim.trees`
+  is scenery**: 14 a forest on every other inner tile, `{id, tile, look}`,
+  never felled; the fall, the stump, regrow, sprouting and the beaver
+  queue are deleted from the sim and from `life.gd`.
+- **A gate in each side** (`Sim.GATES`, `Sim.gate(P, side)`; the same tile
+  at every quarter turn, so the gates baked into the plate's mesh are
+  right at every turn of the view). `_run_forests`, every tick: one log a
+  gate into what takes it beyond (`_enter`: a belt, the market, a hopper,
+  a retort's back), the side after the last first; when nothing takes any,
+  one lies on bare ground past a gate, so a new land's first taps are seen
+  to give. A log out is the event `log`; one in is `chop {tile, id, plate,
+  auto}`.
+- **Levels** (`FOREST_RATE`, `FOREST_PRICE`): 1, 2, 3, 4 logs a second by
+  itself for 60, 180, 540, 1,620. `sim.upgrade(any tile of it)`.
+- **What is seen** (`life.gd`, `art.gd`): the forest's plate has a dark
+  floor, a hedge along the middle of its rim tiles and in each side a
+  plank chute between two posts (`Art._forest_into`, in the ground's mesh:
+  no draw call). On a `chop` a beaver pops up by the tree nearest the tap,
+  bites, a chip or two fly, and stays `STAY` 0.7 s. The stock is a pile of
+  logs (`Art.pile`) at every gate with land beyond it.
+- **The badge** (`screen.gd` `badge_at`, `_draw_badge`): a round sign
+  floating `BADGE_UP` over the forest's middle, an arrow up and the next
+  level's price, the sun's colour when the coins reach. **It is the only
+  way to the forest's card** (`open_forest`), since a tap on the forest is
+  a log. The card: what a tap gives, its rate, what it holds of 12, one
+  button for the next level.
+- The tutorial's three pages are the same lessons on the new land (three
+  taps, a belt from the gate to the market in two swipes, a neutral plate
+  bought); texts in en, pt and es changed with them.
+- **A land kept before this is not read** (`VERSION` 2): its forest had
+  belts and machines in it. A tester's phone starts a new land.
+- **Measured** (810x1440, default driver and `opengl3_angle` alike,
+  2026-10-11, a throwaway run): 92 draw calls on a new land (62 before:
+  fourteen trees and their shadows where there were six), 97 to 104 while
+  tapping, 98 with nine belts running, 123 with the forest's card open,
+  196 on a land of five plates (three forests) at each of the four turns,
+  235 with the drawer open on it.
+- **Decided for the user and not judged by them**: the stock of 12 and the
+  refusal when full; logs lying past a gate when no belt takes them;
+  levels 2 to 4 and every price; the hedge, the chutes and the badge; two
+  plates on a new land with the forest behind; the kiln locked rather
+  than removed; pt and es. **Not seen**: a phone; anything moving or
+  heard; the pace (one automated forest makes four times what a level-1
+  market sells, so the market's level is the brake now; no person or bot
+  has played past the first plate).
 
 ## The Valley and the Grove (dropped 2026-10-10)
 

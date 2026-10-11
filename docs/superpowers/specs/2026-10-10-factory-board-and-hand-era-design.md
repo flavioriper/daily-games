@@ -7,6 +7,13 @@ the save, the tutorial and the harnesses. The long road is
 power comes from `2026-10-10-factory-physics-design.md` (the ledger) and is
 not re-derived here. Later eras are later specs.
 
+**Changed 2026-10-11, and this spec is not rewritten for it**: the forest
+is a closed plate tapped for logs and levelled for a rate, the quarry is
+gone, the meadow is neutral ground and a new land is two plates. Where the
+sections below speak of felling a tree, a stump, a rock, a quarry or a
+meadow they describe the first build; what stands now is the ledger's
+section 12 and `docs/agents/factory.md`, "The closed forest".
+
 What the user said is quoted. The user's brief for the whole game: "really
 slow but funny to play", "as physic assertive as possible related to power
 resources, items resource and building", "no click to hurry, no anxiety",
