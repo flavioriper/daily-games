@@ -5,20 +5,21 @@ extends RefCounted
 ##
 ## A little picture of cloth patches, one a square, each dyed the colour of
 ## the button that belongs on it -- and a button on every patch, of some
-## other colour. The one move is a tap on a button out of place: it lifts
-## with every button of its colour that touches it, a run. Each one lifted
-## goes straight onto a bare patch of its own colour while there is one (the
-## nearest), and is sewn there for good; the rest go into the tin, as many
-## as it has room for, and the others stay where they were. A patch left
-## bare takes a button of its colour out of the tin at once.
+## other colour. A move is two taps. The first picks: a button out of place
+## with every button of its colour that touches it, corners counted (a
+## run), or every button of one colour in the tin. The second says where
+## they go: a bare patch of their colour, and they are sewn onto the bare
+## patches nearest it, as many as there are; or, for a run off the cloth,
+## the tin, as many as it has room for. Nothing goes anywhere by itself.
 ##
 ## The tin starts small and gains a place every time a colour is whole.
 ##
-## Nothing here can be lost up to Hard: while the tin holds anything there
-## is a bare patch for each button in it, of a colour the tin has none of,
-## so a button of that colour is still on the cloth and a tap on it goes
-## home (`tests/_probe_buttons.gd` plays that out). Insane counts its taps:
-## the taps this file's own hand takes (`par`) and a few more.
+## Nothing here can be lost up to Hard: the bare patches are always as many
+## as the buttons in the tin, so while the tin holds anything some colour
+## has a bare patch and a button off it, on the cloth or in the tin, and
+## that button can be sewn (`tests/_probe_buttons.gd` plays that out).
+## Insane counts its moves: the moves this file's own hand takes (`par`)
+## and a few more.
 
 const BANK := "res://content/pixel_garden.json"
 ## The places in the tin a band starts with, and the most it ever has.
@@ -32,10 +33,11 @@ const COUNTED_FROM := 3
 const CHUNK := Vector2i(3, 7)
 ## The pictures a day may draw before it keeps the one it has.
 const DRAWS := 12
-const NEAR := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+const NEAR := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]
 
-## What a tap came to.
-enum { OK, REFUSED_HOME, REFUSED_FULL, REFUSED_BARE }
+## What a move came to.
+enum { OK, REFUSED_HOME, REFUSED_FULL, REFUSED_BARE, REFUSED_WRONG }
 ## What one button of a tap did: [kind, from, to, colour]. `from` and `to`
 ## are squares, or places in the tin on the side the kind names.
 enum { TO_PATCH, TO_TIN, FROM_TIN }
@@ -242,8 +244,9 @@ func moves_budget() -> int:
 		return 0
 	return par + maxi(SLACK_MIN, par / 4)
 
-## The run a tap on `i` lifts: `i` and every button of its colour out of
-## place that touches it, nearest first.
+## The run a tap on `i` picks: `i` and every button of its colour out of
+## place that touches it, corners counted, nearest first. Empty for a bare
+## patch or a sewn button.
 func run_of(i: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if i < 0 or slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i]:
@@ -262,17 +265,23 @@ func run_of(i: int) -> PackedInt32Array:
 				out.append(j)
 	return out
 
-## Whether a tap on `i` would move anything.
+## The places of the tin that hold colour `c`.
+func tin_of(c: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for p in tin.size():
+		if tin[p] == c and c >= 0:
+			out.append(p)
+	return out
+
+## What a first tap on `i` would be: OK for a button that can be picked.
 func judge(i: int) -> int:
 	if i < 0 or slot[i] < 0 or cur[i] < 0:
 		return REFUSED_BARE
 	if cur[i] == slot[i]:
 		return REFUSED_HOME
-	if in_tin() >= capacity() and _bare(cur[i]).is_empty():
-		return REFUSED_FULL
 	return OK
 
-func _bare(c: int) -> PackedInt32Array:
+func bare_of(c: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	for k in slot.size():
 		if slot[k] == c and cur[k] < 0:
@@ -291,58 +300,89 @@ func _nearest(pool: PackedInt32Array, to: int) -> int:
 			best = n
 	return best
 
-## Taps the button on `i`. {why, moves, kept, was, now, whole}: what each
-## button did in order, how many of the run stayed, the tin's places before
-## and after and the colours this tap made whole.
-func tap(i: int) -> Dictionary:
-	var why := judge(i)
-	if why != OK:
-		return {"why": why, "moves": []}
+func _before() -> Array:
 	history.append([cur.duplicate(), tin.duplicate(), taps])
-	var was := capacity()
-	var whole_was: Array = []
+	var whole: Array = []
 	for c in colours.size():
-		whole_was.append(colour_done(c))
-	var c := cur[i]
-	var run := run_of(i)
-	var bare := _bare(c)
-	var room := was - in_tin()
-	var moves: Array = []
-	var left: Array = []
-	var kept := 0
-	for g in run:
-		if not bare.is_empty():
-			var n := _nearest(bare, g)
-			var k := bare[n]
-			bare.remove_at(n)
-			cur[k] = c
-			cur[g] = -1
-			moves.append([TO_PATCH, g, k, c])
-			left.append(g)
-		elif room > 0:
-			var place := tin.find(-1)
-			tin[place] = c
-			cur[g] = -1
-			room -= 1
-			moves.append([TO_TIN, g, place, c])
-			left.append(g)
-		else:
-			kept += 1
-	# a patch left bare takes its button out of the tin
-	for g: int in left:
-		var place := tin.find(slot[g])
-		if place >= 0:
-			tin[place] = -1
-			cur[g] = slot[g]
-			moves.append([FROM_TIN, place, g, slot[g]])
+		whole.append(colour_done(c))
+	return whole
+
+func _after(res: Dictionary, was: int, whole_was: Array) -> Dictionary:
 	taps += 1
 	var whole: Array = []
 	for k in colours.size():
 		if not whole_was[k] and colour_done(k):
 			whole.append(k)
-	return {"why": OK, "moves": moves, "kept": kept, "was": was, "now": capacity(), "whole": whole}
+	res["why"] = OK
+	res["was"] = was
+	res["now"] = capacity()
+	res["whole"] = whole
+	return res
 
-## Takes the last tap back. False with nothing to take back.
+## Sews the picked buttons -- `cells` off the cloth, or `places` out of the
+## tin -- onto the bare patches of their colour nearest `at`, a bare patch
+## of that colour. {why, moves, kept}: `kept` are the ones with no patch
+## left for them, still where they were.
+func sew(cells: PackedInt32Array, places: PackedInt32Array, at: int) -> Dictionary:
+	var from_tin := cells.is_empty()
+	if from_tin and places.is_empty():
+		return {"why": REFUSED_BARE, "moves": []}
+	var c := tin[places[0]] if from_tin else cur[cells[0]]
+	if at < 0 or slot[at] < 0 or cur[at] >= 0:
+		return {"why": REFUSED_BARE, "moves": []}
+	if slot[at] != c:
+		return {"why": REFUSED_WRONG, "moves": []}
+	var was := capacity()
+	var whole_was := _before()
+	# the patches to fill, nearest the tapped one first
+	var bare := bare_of(c)
+	var order: Array = []
+	while not bare.is_empty():
+		var n := _nearest(bare, at)
+		order.append(bare[n])
+		bare.remove_at(n)
+	var moves: Array = []
+	var kept := PackedInt32Array()
+	var source := places if from_tin else cells
+	for k in source.size():
+		if k >= order.size():
+			kept.append(source[k])
+			continue
+		var to: int = order[k]
+		cur[to] = c
+		if from_tin:
+			tin[source[k]] = -1
+			moves.append([FROM_TIN, source[k], to, c])
+		else:
+			cur[source[k]] = -1
+			moves.append([TO_PATCH, source[k], to, c])
+	return _after({"moves": moves, "kept": kept}, was, whole_was)
+
+## Puts the picked run `cells` into the tin, as many as it has room for.
+## {why, moves, kept}.
+func stow(cells: PackedInt32Array) -> Dictionary:
+	if cells.is_empty():
+		return {"why": REFUSED_BARE, "moves": []}
+	var was := capacity()
+	var room := was - in_tin()
+	if room <= 0:
+		return {"why": REFUSED_FULL, "moves": []}
+	var whole_was := _before()
+	var c := cur[cells[0]]
+	var moves: Array = []
+	var kept := PackedInt32Array()
+	for g in cells:
+		if room <= 0:
+			kept.append(g)
+			continue
+		var place := tin.find(-1)
+		tin[place] = c
+		cur[g] = -1
+		room -= 1
+		moves.append([TO_TIN, g, place, c])
+	return _after({"moves": moves, "kept": kept}, was, whole_was)
+
+## Takes the last move back. False with nothing to take back.
 func undo() -> bool:
 	if history.is_empty():
 		return false
@@ -369,23 +409,27 @@ func finish(used := -1) -> void:
 	if used >= 0:
 		taps = used
 
-## The tap this file's own hand would make: the run that sews the most at
-## once, and with nothing bare to sew onto, the biggest run the tin takes
-## whole (the smallest of all when none fits). -1 on a finished cloth.
-func hint() -> int:
+## The move this file's own hand would make, {cells, places, to}: the pick
+## (a run off the cloth or the tin's own of one colour) and where it goes
+## (a bare patch, or -1 for the tin). It sews the most it can at once; with
+## nothing to sew it stows the biggest run the tin takes whole, the
+## smallest of all when none fits. {} on a finished cloth.
+func hint() -> Dictionary:
+	var bare_n := {}
+	for c in colours.size():
+		bare_n[c] = bare_of(c).size()
+	var best := {}
+	var best_gain := 0
+	for c in colours.size():
+		var held := tin_of(c)
+		var gain := mini(held.size(), int(bare_n[c]))
+		if gain > best_gain:
+			best_gain = gain
+			best = {"cells": PackedInt32Array(), "places": held, "to": bare_of(c)[0]}
 	var seen := {}
 	var room := capacity() - in_tin()
-	var bare_of := {}
-	var tin_of := {}
-	for c in tin:
-		if c >= 0:
-			tin_of[c] = int(tin_of.get(c, 0)) + 1
-	var best := -1
-	var best_gain := 0
-	var lift := -1
-	var lift_size := 0
-	var small := -1
-	var small_size := 1 << 30
+	var lift := PackedInt32Array()
+	var small := PackedInt32Array()
 	for i in slot.size():
 		if slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i] or seen.has(i):
 			continue
@@ -393,33 +437,32 @@ func hint() -> int:
 		for g in run:
 			seen[g] = true
 		var c := cur[i]
-		if not bare_of.has(c):
-			bare_of[c] = _bare(c).size()
-		var sewn := mini(run.size(), int(bare_of[c]))
-		var gone := mini(run.size(), sewn + room)
-		# what the tin gives back onto the patches this run leaves
-		var back := {}
-		var gain := sewn
-		for n in gone:
-			var d := slot[run[n]]
-			var have := int(tin_of.get(d, 0)) - int(back.get(d, 0))
-			if have > 0:
-				back[d] = int(back.get(d, 0)) + 1
-				gain += 1
+		var gain := mini(run.size(), int(bare_n[c]))
 		if gain > best_gain:
 			best_gain = gain
-			best = i
-		if run.size() <= room and run.size() > lift_size:
-			lift_size = run.size()
-			lift = i
-		if run.size() < small_size:
-			small_size = run.size()
-			small = i
-	if best >= 0:
+			var bare := bare_of(c)
+			best = {"cells": run, "places": PackedInt32Array(), "to": bare[_nearest(bare, i)]}
+		if run.size() <= room and run.size() > lift.size():
+			lift = run
+		if small.is_empty() or run.size() < small.size():
+			small = run
+	if not best.is_empty():
 		return best
-	return lift if lift >= 0 else small
+	if lift.is_empty():
+		lift = small
+	if lift.is_empty():
+		return {}
+	return {"cells": lift, "places": PackedInt32Array(), "to": -1}
 
-## The taps `hint` takes from the opening, on a copy.
+## Makes `move` (a `hint`). The result of `sew` or `stow`.
+func play(move: Dictionary) -> Dictionary:
+	if move.is_empty():
+		return {"why": REFUSED_BARE, "moves": []}
+	if int(move.to) < 0:
+		return stow(move.cells)
+	return sew(move.cells, move.places, int(move.to))
+
+## The moves `hint` takes from the opening, on a copy.
 func _solve_taps() -> int:
 	var probe = get_script().new()
 	probe.band = band
@@ -433,8 +476,7 @@ func _solve_taps() -> int:
 	var guard := 0
 	while not probe.is_solved() and guard < 4000:
 		guard += 1
-		var i: int = probe.hint()
-		if i < 0 or probe.tap(i).why != OK:
+		if probe.play(probe.hint()).why != OK:
 			return 0
 		probe.history = []
 	return probe.taps if probe.is_solved() else 0

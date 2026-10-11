@@ -3,10 +3,12 @@ extends "res://core/puzzle_base.gd"
 ## Button Box as a flat board: a sewing table laid with linen from edge to
 ## edge (`"bleed": true` in ui/registry.gd), a little picture of dyed cloth
 ## patches on it with a button of the wrong colour on every one, and a
-## wooden tin at the foot. A tap lifts a button and every one of its colour
-## touching it: each flies to a bare patch of its own colour and is sewn
-## there, or into the tin. The rules are in puzzles/buttons_state.gd, which
-## this only draws.
+## wooden tin at the foot. A move is two taps: the first picks a button and
+## every one of its colour touching it, and they lift and draw together;
+## the second says where they go -- a bare patch of their colour, where
+## they are sewn, or the tin. Nothing lands by itself (the user,
+## 2026-10-11). The rules are in puzzles/buttons_state.gd, which this only
+## draws.
 ##
 ## How it is drawn. `_bg` is the linen (a layout); `_still` the stitched
 ## border and the patches; `_tin` the tin, rebuilt when it gains a place;
@@ -64,7 +66,13 @@ const STAMP_R := 0.15
 const STAMP_TILT := -0.22
 const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
-const HALO_HOLD := 1.6
+## A picked run draws this far toward the button that was tapped, stands
+## this much bigger and higher, and bobs.
+const PULL := 0.22
+const HELD_SCALE := 1.1
+const HELD_RISE := 0.14
+const HELD_BOB := 0.03
+const HINT_BEAT := 0.5
 ## A button landing is never the same tick twice (docs/agents/sound.md, rule
 ## 2), and a run climbs half a step a button, five at the most.
 const TICK_VARY := Vector2(0.96, 1.04)
@@ -120,7 +128,7 @@ var state = State.new()
 signal leave
 
 var fx: Node2D
-## Insane's tap counter: `max_moves` is 0 on a band that never runs out. Out
+## Insane's move counter: `max_moves` is 0 on a band that never runs out. Out
 ## of taps unsolved is `out_of_hearts`, the name the host and the card know.
 var hearts := 0
 var max_hearts := 0
@@ -174,9 +182,16 @@ var _hop_at := PackedFloat32Array()
 var _shiver_at := PackedFloat32Array()
 ## Buttons in the air: {c, from, to, at, time, sewn}.
 var _flights: Array = []
-## The squares a refused tap rings: the buttons that would sew.
-var _halo: PackedInt32Array = []
-var _halo_at := -INF
+## The pick: the squares of a run off the cloth, or the places of the tin's
+## own of one colour; its colour (-1: nothing picked), since when, and the
+## point it draws toward.
+var _held_cells := PackedInt32Array()
+var _held_places := PackedInt32Array()
+var _held_c := -1
+var _held_at := 0.0
+var _held_anchor := Vector2.ZERO
+## What the finger went down on: a square, or TIN_HIT and a place.
+var _pressed_tin := -2
 var _open_at := -INF
 var _open_place := -1
 var _pressed := -1
@@ -285,7 +300,7 @@ func _deal() -> void:
 	_pressed = -1
 	_toast = ""
 	_flights = []
-	_halo = []
+	_unhold()
 	_streak = 0
 	_combo_n = 0
 	_open_place = -1
@@ -449,16 +464,26 @@ func _build_buttons(now: float) -> void:
 	var rest := Face.FlatBuilder.new(_flat_cache)
 	var top := Face.FlatBuilder.new(_flat_cache)
 	var busy := false
-	var halo_on := now - _halo_at < HALO_HOLD
-	busy = busy or halo_on
-	if halo_on:
-		var pulse := 1.0 + 0.06 * sin((now - _halo_at) * 9.0)
-		for i in _halo:
-			if state.cur[i] >= 0 and not state.is_home(i):
-				rest.append(_units.ring, Transform2D(0.0, Vector2(pulse, pulse), 0.0, cell_centre(i)))
+	var holding := _held_c >= 0
+	var held := {}
+	if holding:
+		busy = true
+		# where the pick may go: a ring on every bare patch of its colour,
+		# and on the tin's free places for a run off the cloth
+		var pulse := 1.0 + 0.07 * sin((now - _held_at) * 7.0)
+		for i in state.bare_of(_held_c):
+			rest.append(_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.82, 0.0, cell_centre(i)))
+		if not _held_cells.is_empty():
+			var free: int = state.capacity() - state.in_tin()
+			for p in _tin_places:
+				if free > 0 and p < state.capacity() and state.tin[p] < 0:
+					free -= 1
+					rest.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.8, 0.0, tin_centre(p)))
+		for i in _held_cells:
+			held[i] = true
 	for i in state.slot.size():
 		var c: int = state.cur[i]
-		if state.slot[i] < 0 or c < 0 or now < _arrive[i]:
+		if state.slot[i] < 0 or c < 0 or now < _arrive[i] or held.has(i):
 			continue
 		var at := cell_centre(i)
 		var sc := Vector2.ONE
@@ -492,7 +517,7 @@ func _build_buttons(now: float) -> void:
 	if _solved_at == -INF or now - _solved_at < WIN_WAIT:
 		for p in _tin_places:
 			var c: int = state.tin[p]
-			if c < 0 or now < _tin_arrive[p]:
+			if c < 0 or now < _tin_arrive[p] or (holding and _held_places.has(p)):
 				continue
 			var k := 1.0
 			if not Motion.reduce and now - _tin_arrive[p] < Motion.BUMP_TIME:
@@ -503,7 +528,15 @@ func _build_buttons(now: float) -> void:
 		busy = true
 		var k := Motion.bump_scale(now - _open_at, 0.3, Motion.BUMP_TIME * 2.0)
 		rest.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(_open_place)))
-	var flying := false
+	var flying := holding
+	if holding:
+		var k := Vector2.ONE * _held_grow(now)
+		for i in _held_cells:
+			var at := _held_pos(i, false, now)
+			top.append(_units.shade, Transform2D(0.0, k, 0.0, cell_centre(i).lerp(at, 0.8) + Vector2(0.0, _cell * HELD_RISE)))
+			top.append(_units.loose[_held_c], Transform2D(0.0, k, 0.0, at))
+		for p in _held_places:
+			top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
 	var keep: Array = []
 	for f: Dictionary in _flights:
 		var e: float = now - float(f.at)
@@ -660,122 +693,211 @@ func _tell(text: String, near := -1) -> void:
 	_toast_high = near >= 0 and state.xy(near).y >= state.h * 2 / 3
 	_hud_layer.queue_redraw()
 
+# --- the pick ---
+
+func holding() -> bool:
+	return _held_c >= 0
+
+func _unhold() -> void:
+	_held_cells = PackedInt32Array()
+	_held_places = PackedInt32Array()
+	_held_c = -1
+
+## How far a pick has come up: 0 as it is tapped, 1 once it is lifted.
+func _held_k(now: float) -> float:
+	if Motion.reduce:
+		return 1.0
+	return Motion.back_out(clampf((now - _held_at) / (Motion.LIFT_TIME * 1.6), 0.0, 1.0))
+
+func _held_grow(now: float) -> float:
+	return lerpf(1.0, HELD_SCALE, _held_k(now))
+
+## Where a picked button is drawn: drawn toward the tapped one, lifted, and
+## bobbing a little, each a beat behind its neighbour.
+func _held_pos(i: int, in_tin: bool, now: float) -> Vector2:
+	var k := _held_k(now)
+	var home := tin_centre(i) if in_tin else cell_centre(i)
+	var unit := _tin_step if in_tin else _cell
+	var at := home if in_tin else home.lerp(_held_anchor, PULL * k)
+	var bob := 0.0 if Motion.reduce else sin((now - _held_at) * 5.0 + i * 0.9) * HELD_BOB * unit
+	return at - Vector2(0.0, (HELD_RISE * unit + bob) * k)
+
+func _pick(cells: PackedInt32Array, places: PackedInt32Array, c: int, anchor: Vector2) -> void:
+	_held_cells = cells
+	_held_places = places
+	_held_c = c
+	_held_at = _now()
+	_held_anchor = anchor
+	fx.cue("lift", randf_range(TICK_VARY.x, TICK_VARY.y))
+	_redraw()
+
+## Puts the pick down where it was.
+func _drop() -> void:
+	if not holding():
+		return
+	_unhold()
+	fx.cue("lift", 0.84 * randf_range(TICK_VARY.x, TICK_VARY.y))
+	_redraw()
+
 # --- input ---
+
+const TIN_HIT := -3
 
 ## Touch and mouse, as every flat board takes them (touch is not mouse here:
 ## emulate_mouse_from_touch is off). A tap is a press and a release on one
-## button.
+## thing: a square of the cloth, or the tin.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
+		var over := _cell_at(event.position)
+		var over_tin := _tin_at(event.position)
 		if event.pressed:
-			_pressed = _cell_at(event.position)
+			_pressed = over
+			_pressed_tin = over_tin
 		else:
-			var over := _cell_at(event.position)
 			if over >= 0 and over == _pressed:
 				tap(over)
+			elif over < 0 and over_tin != -2 and _pressed_tin != -2:
+				tap_tin(over_tin)
+			elif over < 0 and _pressed < 0 and holding():
+				_drop()
 			_pressed = -1
+			_pressed_tin = -2
 
-## A tap on square `i`. The harnesses and the tutorial call this too.
+## The tin under `local`: a place, -1 for its wood between places, -2 off it.
+func _tin_at(local: Vector2) -> int:
+	if _won or not _tin_rect.grow(_tin_step * 0.2).has_point(local):
+		return -2
+	for p in _tin_places:
+		if tin_centre(p).distance_to(local) < _tin_step * 0.5:
+			return p
+	return -1
+
+func _can_play() -> bool:
+	if is_done() or out_of_hearts or _solved_at > -INF:
+		return false
+	return max_moves == 0 or moves_left > 0
+
+## A tap on square `i`: picks the run of the button there, puts a pick back
+## down, or -- on a bare patch -- sews the pick onto it. The harnesses and
+## the tutorial call this too.
 func tap(i: int) -> void:
-	if is_done() or out_of_hearts or i < 0 or _solved_at > -INF:
+	if not _can_play() or i < 0 or _now() < _arrive[i]:
 		return
-	var now := _now()
-	if now < _arrive[i]:
-		return
-	if max_moves > 0 and moves_left <= 0:
-		return
-	var res: Dictionary = state.tap(i)
-	match int(res.why):
-		State.REFUSED_BARE:
+	if state.cur[i] < 0:
+		if not holding():
+			_refuse(i, "BB_REFUSE_PICK")
 			return
+		var places := _held_places
+		var starts := {}
+		var now := _now()
+		for g in _held_cells:
+			starts[g] = _held_pos(g, false, now)
+		for p in places:
+			starts[-1 - p] = _held_pos(p, true, now)
+		var res: Dictionary = state.sew(_held_cells, places, i)
+		if int(res.why) != State.OK:
+			_refuse(i, "BB_REFUSE_WRONG")
+			return
+		# The ones no patch was left for go back where they were, let go: a
+		# pick that outlived its move left the tin's own out of reach under
+		# it (the user, 2026-10-11: "something is causing the game to get
+		# stuck").
+		_unhold()
+		_play(res, i, starts)
+		return
+	match state.judge(i):
 		State.REFUSED_HOME:
 			_refuse(i, "BB_REFUSE_HOME")
-			return
-		State.REFUSED_FULL:
-			_halo = _sewable()
-			_halo_at = now
-			_busy_for(HALO_HOLD)
-			_refuse(i, "BB_REFUSE_FULL")
-			return
-	_halo = []
-	_play(res, i)
-	note_move()
-	_spend(1, _last_land)
+		State.OK:
+			if _held_cells.has(i):
+				_drop()
+			else:
+				_pick(state.run_of(i), PackedInt32Array(), state.cur[i], cell_centre(i))
 
-## The squares whose button a tap would sew at once.
-func _sewable() -> PackedInt32Array:
-	var out := PackedInt32Array()
-	var bare := {}
-	for i in state.slot.size():
-		if state.slot[i] >= 0 and state.cur[i] < 0:
-			bare[state.slot[i]] = true
-	for i in state.slot.size():
-		if state.slot[i] >= 0 and state.cur[i] >= 0 and not state.is_home(i) and bare.has(state.cur[i]):
-			out.append(i)
-	return out
+## A tap on the tin (`place` -1: its wood): a run picked off the cloth goes
+## in; with nothing picked, a button there picks every one of its colour in
+## the tin.
+func tap_tin(place := -1) -> void:
+	if not _can_play():
+		return
+	var full: bool = state.in_tin() >= state.capacity()
+	# A run off the cloth goes in -- unless the tin is full and the tap is on
+	# a button in it, which is then the pick: with a full tin its buttons are
+	# the way on, and they must never be out of reach.
+	if not _held_cells.is_empty() and not (full and place >= 0 and state.tin[place] >= 0):
+		var starts := {}
+		var now := _now()
+		for g in _held_cells:
+			starts[g] = _held_pos(g, false, now)
+		var res: Dictionary = state.stow(_held_cells)
+		if int(res.why) != State.OK:
+			_unhold()
+			_tell(tr("BB_REFUSE_FULL"))
+			fx.cue("locked")
+			_redraw()
+			return
+		_unhold()
+		_play(res, -1, starts)
+		var kept: int = (res.kept as PackedInt32Array).size()
+		if kept > 0:
+			_tell(tr("BB_KEPT_ONE") if kept == 1 else tr("BB_KEPT_N") % kept)
+		return
+	var c: int = state.tin[place] if place >= 0 else -1
+	if c < 0 or (holding() and _held_cells.is_empty() and _held_c == c):
+		_drop()
+		return
+	if _now() < _tin_arrive[place]:
+		return
+	_pick(PackedInt32Array(), state.tin_of(c), c, tin_centre(place))
 
 var _last_land := 0.0
 ## When the last landing ticked, into the tin (true) and onto a patch.
 var _ticked_at := {}
 
-## Sends a tap's buttons on their way: one after another out of the run,
-## each to its patch or its place in the tin, and the tin's own onto the
-## patches the run left bare.
-func _play(res: Dictionary, from: int) -> void:
+## Sends a move's buttons on their way, one after another, each from where
+## it hung (`starts`: a square, or -1 - place for one out of the tin) to
+## its patch or its place in the tin. `at_cell` is the patch tapped, -1 for
+## the tin.
+func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var now := _now()
 	var moves_: Array = res.moves
-	var lifted := 0
-	for m: Array in moves_:
-		if int(m[0]) != State.FROM_TIN:
-			lifted += 1
-	var step := minf(RUN_STEP, RUN_STEP_CAP / maxf(1.0, lifted))
+	var step := minf(RUN_STEP, RUN_STEP_CAP / maxf(1.0, moves_.size()))
 	var fly := 0.0 if Motion.reduce else FLY_TIME
-	var left_at := {}
 	var order := 0
 	var sewn := 0
 	var last := now
 	var tin_k := _tin_step * 0.86 / _cell
 	for m: Array in moves_:
 		var kind := int(m[0])
-		var c := int(m[3])
-		var at := now
-		var f := {"c": c, "time": fly, "k0": 1.0, "k1": 1.0}
+		var at := now + (0.0 if Motion.reduce else order * step)
+		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": 1.0}
 		match kind:
 			State.TO_PATCH:
-				at = now + (0.0 if Motion.reduce else order * step)
-				left_at[int(m[1])] = at
-				f.from = cell_centre(int(m[1]))
+				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
 				_arrive[int(m[2])] = at + fly
-				order += 1
 				sewn += 1
 			State.TO_TIN:
-				at = now + (0.0 if Motion.reduce else order * step)
-				left_at[int(m[1])] = at
-				f.from = cell_centre(int(m[1]))
+				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = tin_centre(int(m[2]))
 				f.k1 = tin_k
 				_tin_arrive[int(m[2])] = at + fly
-				order += 1
 			State.FROM_TIN:
-				at = float(left_at.get(int(m[2]), now)) + (0.0 if Motion.reduce else TIN_LAG)
-				f.from = tin_centre(int(m[1]))
+				f.from = starts.get(-1 - int(m[1]), tin_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
-				f.k0 = tin_k
+				f.k0 = tin_k * HELD_SCALE
 				_arrive[int(m[2])] = at + fly
 				sewn += 1
-		f.at = at
 		_flights.append(f)
 		last = maxf(last, at + fly)
-		var nth := order - 1 if kind != State.FROM_TIN else order + sewn
-		_after(at + fly - now, _landed.bind(kind, int(m[2]), nth))
+		_after(at + fly - now, _landed.bind(kind, int(m[2]), order))
+		order += 1
 	_last_land = last
-	fx.cue("lift", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_bump_pill()
 	_busy_for(last - now + Motion.BUMP_TIME + 0.1)
-	# the streak: taps in a row that each sewed something
+	# the streak: moves in a row that each sewed something
 	if sewn > 0:
 		_streak += 1
 		if _streak >= 2:
@@ -786,11 +908,11 @@ func _play(res: Dictionary, from: int) -> void:
 		if _streak >= COMBO_FROM:
 			_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
 			_combo_n = _streak
-			_combo_cell = from
+			_combo_cell = at_cell
 			_combo_at = _now()
 			_combo_out_at = -INF
 			if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
-				fx.confetti(cell_centre(from), 14, _cell * 3.0)
+				fx.confetti(cell_centre(at_cell), 14, _cell * 3.0)
 	else:
 		_streak = 0
 		if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
@@ -800,14 +922,12 @@ func _play(res: Dictionary, from: int) -> void:
 			if not is_done():
 				fx.cue("run")
 				if not Motion.reduce:
-					fx.confetti(cell_centre(from), 10 + mini(sewn, 12), _cell * 4.0))
-	# said once a cloth: after that the buttons left behind say it themselves
-	if int(res.kept) > 0 and not _kept_told:
-		_kept_told = true
-		_tell(tr("BB_KEPT_ONE") if int(res.kept) == 1 else tr("BB_KEPT_N") % int(res.kept), from)
+					fx.confetti(cell_centre(at_cell), 10 + mini(sewn, 12), _cell * 4.0))
 	if not (res.whole as Array).is_empty():
-		_after(last - now, _whole.bind(res.whole, int(res.was), int(res.now), from))
+		_after(last - now, _whole.bind(res.whole, int(res.was), int(res.now), at_cell))
 	_redraw()
+	note_move()
+	_spend(1, last)
 
 ## One button has landed: its tick, a step up the run, and a ring where it
 ## was sewn.
@@ -821,20 +941,15 @@ func _landed(kind: int, where: int, nth: int) -> void:
 	var tick: bool = now - float(_ticked_at.get(into_tin, -INF)) >= TICK_GAP
 	if tick:
 		_ticked_at[into_tin] = now
-	if into_tin:
-		if tick:
-			fx.cue("tin", pitch)
-	else:
-		if tick:
-			fx.cue("sew", pitch)
-		if nth % 3 == 0:
-			fx.ring(cell_centre(where), _cell * 0.6, Art.thread_for(Art.colour(state.colours[state.slot[where]])))
+		fx.cue("tin" if into_tin else "sew", pitch)
+	if not into_tin and nth % 3 == 0:
+		fx.ring(cell_centre(where), _cell * 0.6, Art.thread_for(Art.colour(state.colours[state.slot[where]])))
 	_bump_pill()
 	_busy_for(Motion.BUMP_TIME)
 	_redraw()
 
-## A colour is whole: its buttons hop outward from the tapped one, and the
-## tin gains a place.
+## A colour is whole: its buttons hop outward from the tapped patch, and
+## the tin gains a place.
 func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 	if is_done():
 		return
@@ -868,7 +983,7 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 func _refuse(i: int, why: String) -> void:
 	_tell(tr(why), i)
 	fx.cue("locked")
-	if not Motion.reduce:
+	if not Motion.reduce and state.cur[i] >= 0:
 		_shiver_at[i] = _now()
 		_busy_for(Motion.SHIVER_TIME)
 	_redraw()
@@ -890,7 +1005,7 @@ func undo() -> bool:
 	_arrive.fill(-INF)
 	_tin_arrive.fill(-INF)
 	_hop_at.fill(-INF)
-	_halo = []
+	_unhold()
 	_streak = 0
 	_combo_n = 0
 	_tin = null
@@ -903,20 +1018,32 @@ func undo() -> bool:
 func hints_left() -> int:
 	return State.hints_for(state.band) + hints_extra - hints_used
 
-## Makes the tap the state's own hand would: a ring on the button, then the
-## run as the player would lift it.
+## Makes the move the state's own hand would, as the player makes it: the
+## pick, a beat, then the tap that says where it goes.
 func hint() -> bool:
 	if is_done() or out_of_hearts or hints_left() <= 0:
 		return false
-	var i: int = state.hint()
-	if i < 0 or state.judge(i) != State.OK or _now() < _arrive[i]:
+	var move: Dictionary = state.hint()
+	if move.is_empty():
 		return false
 	hints_used += 1
-	fx.ring(cell_centre(i), _cell * 0.7, Pal.SUN)
-	fx.sparkle(cell_centre(i), Pal.SUN)
+	_unhold()
+	var cells: PackedInt32Array = move.cells
+	var places: PackedInt32Array = move.places
+	var from_tin := cells.is_empty()
+	var c: int = state.tin[places[0]] if from_tin else state.cur[cells[0]]
+	var anchor := tin_centre(places[0]) if from_tin else cell_centre(cells[0])
+	fx.ring(anchor, _cell * 0.7, Pal.SUN)
+	fx.sparkle(anchor, Pal.SUN)
 	fx.cue("hint")
-	tap(i)
-	_tell(tr("BB_HINTED"), i)
+	_pick(cells, places, c, anchor)
+	var to := int(move.to)
+	_tell(tr("BB_HINTED"), to if to >= 0 else cells[0])
+	_after(0.0 if Motion.reduce else HINT_BEAT, func() -> void:
+		if to >= 0:
+			tap(to)
+		else:
+			tap_tin())
 	return true
 
 ## The cloth as the day opened it, every button popping back on, and on
@@ -992,7 +1119,7 @@ func _on_solved() -> void:
 	var now := _now()
 	_pressed = -1
 	_toast = ""
-	_halo = []
+	_unhold()
 	_combo_n = 0
 	_solved_at = now
 	_final_taps = state.taps

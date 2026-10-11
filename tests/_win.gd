@@ -634,8 +634,8 @@ func _solve_lattice() -> void:
 	_waiting = false
 
 ## Button Box: a sewn button tapped where there is one (refused), the bulb
-## once where there is one, then the state's own tap, one at a time, through
-## the board's input. A button still in the air is not lifted, so this one
+## once where there is one, then the state's own moves, each a pick and a
+## tap on where it goes (a bare patch or the tin), through the board's input. A button still in the air is not lifted, so this one
 ## awaits between taps, and holds the walk (`_waiting`) to the win.
 func _solve_buttons() -> void:
 	_waiting = true
@@ -653,13 +653,25 @@ func _solve_buttons() -> void:
 	_hud_ok = st.taps == 0
 	if _puzzle.capabilities().has("hint"):
 		_press(_host.top_bar.hint_button)
-		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.taps == 1
-		await create_timer(0.6).timeout
+		# the bulb picks, and half a second on says where
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and _puzzle.holding() and st.taps == 0
+		await create_timer(1.2).timeout
+		_hud_ok = _hud_ok and st.taps == 1
 	var guard := 0
-	while not st.is_solved() and guard < 400:
+	while not st.is_solved() and guard < 600:
 		guard += 1
 		var before: int = st.taps
-		_tap_local(_puzzle.cell_centre(st.hint()))
+		var move: Dictionary = st.hint()
+		if (move.cells as PackedInt32Array).is_empty():
+			_tap_local(_puzzle.tin_centre(move.places[0]))
+		else:
+			_tap_local(_puzzle.cell_centre(move.cells[0]))
+		_hud_ok = _hud_ok and _puzzle.holding() and st.taps == before
+		await create_timer(0.15).timeout
+		if int(move.to) >= 0:
+			_tap_local(_puzzle.cell_centre(int(move.to)))
+		else:
+			_tap_local(_puzzle.tin_centre(mini(st.in_tin(), st.capacity() - 1)))
 		_hud_ok = _hud_ok and st.taps == before + 1
 		await create_timer(0.45).timeout
 	_hud_ok = _hud_ok and st.is_solved() and st.in_tin() == 0

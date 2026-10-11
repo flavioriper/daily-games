@@ -3164,44 +3164,47 @@ GD_OUT_BODY,"There are fewer serves left than moulds to serve. Start the day aga
 GD_OUT_REST,There are fewer serves left than moulds to serve. Start the day again whenever you like.,Restam menos serviços do que formas para servir. Recomece o dia quando quiser.,Quedan menos servicios que moldes por servir. Empieza el día de nuevo cuando quieras.
 GD_OUT_MORE,%d more serves,Mais %d serviços,%d servicios más
 TUT_GUMDROP_SERVES,Count your serves,Conte seus serviços,Cuenta tus servicios
-BB_RULES,"Every patch of cloth is dyed the colour of the button that belongs on it, and every button starts on the wrong patch. Tap a button to lift it with every button of its colour touching it. Each one flies to a bare patch of its own colour and is sewn on; with no bare patch for it, it goes into the tin. A patch left bare takes its button out of the tin by itself. Sew on every button to see the picture.","Cada retalho de pano tem a cor do botão que pertence a ele, e todo botão começa no retalho errado. Toque num botão para levantá-lo com todos os botões da mesma cor encostados nele. Cada um voa para um retalho vazio da sua cor e é costurado; sem retalho vazio, vai para a lata. Um retalho que fica vazio puxa sozinho o botão dele da lata. Costure todos os botões para ver o desenho.","Cada retal de tela tiene el color del botón que le corresponde, y todos los botones empiezan en el retal equivocado. Toca un botón para levantarlo con todos los botones de su color que lo tocan. Cada uno vuela a un retal vacío de su color y queda cosido; si no hay retal vacío, va a la lata. Un retal que queda vacío saca solo su botón de la lata. Cose todos los botones para ver el dibujo."
-BB_RULES_TIN,"The tin starts with %d places and gains one every time a colour is whole. When it is full, only a button with a bare patch waiting can be lifted.","A lata começa com %d lugares e ganha mais um cada vez que uma cor fica completa. Quando ela enche, só dá para levantar um botão que tenha um retalho vazio esperando.","La lata empieza con %d huecos y gana uno cada vez que un color queda completo. Cuando se llena, solo se puede levantar un botón que tenga un retal vacío esperando."
+BB_RULES,"Every patch of cloth is dyed the colour of the button that belongs on it, and every button starts on the wrong patch. Tap a button to pick it up with every button of its colour touching it, corners too. Then tap where they go: a bare patch of their colour, and they are sewn on, or the tin, to get them out of the way. Buttons in the tin are picked and sewn the same way. Sew on every button to see the picture.","Cada retalho de pano tem a cor do botão que pertence a ele, e todo botão começa no retalho errado. Toque num botão para pegá-lo com todos os botões da mesma cor encostados nele, até na diagonal. Depois toque para onde eles vão: um retalho vazio da cor deles, e ficam costurados, ou a lata, para tirá-los do caminho. Os botões da lata são pegos e costurados do mesmo jeito. Costure todos os botões para ver o desenho.","Cada retal de tela tiene el color del botón que le corresponde, y todos los botones empiezan en el retal equivocado. Toca un botón para cogerlo con todos los botones de su color que lo tocan, también en diagonal. Luego toca adónde van: un retal vacío de su color, y quedan cosidos, o la lata, para quitarlos de en medio. Los botones de la lata se cogen y se cosen igual. Cose todos los botones para ver el dibujo."
+BB_RULES_TIN,"The tin starts with %d places and gains one every time a colour is whole. A run bigger than its free places leaves the rest behind.","A lata começa com %d lugares e ganha mais um cada vez que uma cor fica completa. Um grupo maior que os lugares livres deixa o resto para trás.","La lata empieza con %d huecos y gana uno cada vez que un color queda completo. Un grupo mayor que sus huecos libres deja el resto atrás."
 BB_BLURB,Lift the buttons off the wrong patches and sew each one where its colour belongs.,Tire os botões dos retalhos errados e costure cada um onde a cor dele pertence.,Quita los botones de los retales equivocados y cose cada uno donde va su color.
 BB_SHORT,"Sort the buttons,\nsew the picture.","Separe os botões,\ncosture o desenho.","Ordena los botones,\ncose el dibujo."
 BB_MOTTO,A place for every button,Um lugar para cada botão,Un sitio para cada botón
 BB_LVL_0,"10 × 10, three or four colours","10 × 10, três ou quatro cores","10 × 10, tres o cuatro colores"
 BB_LVL_1,"12 × 12, up to five colours","12 × 12, até cinco cores","12 × 12, hasta cinco colores"
 BB_LVL_2,"14 × 14, up to six colours","14 × 14, até seis cores","14 × 14, hasta seis colores"
-BB_LVL_3,"16 × 16, a small tin, counted taps","16 × 16, lata pequena, toques contados","16 × 16, lata pequeña, toques contados"
+BB_LVL_3,"16 × 16, a small tin, counted moves","16 × 16, lata pequena, jogadas contadas","16 × 16, lata pequeña, jugadas contadas"
 BB_PILL,%d of %d sewn,%d de %d costurados,%d de %d cosidos
 BB_REFUSE_HOME,That one is sewn on. It stays.,Esse já está costurado. Ele fica.,Ese ya está cosido. Se queda.
-BB_REFUSE_FULL,The tin is full. Lift a button whose patch is bare.,A lata está cheia. Levante um botão que tenha retalho vazio.,La lata está llena. Levanta un botón que tenga un retal vacío.
+BB_REFUSE_FULL,The tin is full. Sew some buttons on first.,A lata está cheia. Costure alguns botões antes.,La lata está llena. Cose algunos botones antes.
 BB_KEPT_ONE,The tin was full: one stayed behind.,A lata encheu: um ficou para trás.,La lata se llenó: uno se quedó atrás.
 BB_KEPT_N,The tin was full: %d stayed behind.,A lata encheu: %d ficaram para trás.,La lata se llenó: %d se quedaron atrás.
 BB_WHOLE,A whole colour sewn on!,Uma cor inteira costurada!,¡Un color entero cosido!
 BB_WHOLE_OPEN,A whole colour! One more place in the tin.,Uma cor inteira! Mais um lugar na lata.,¡Un color entero! Un hueco más en la lata.
-BB_HINTED,"One tap, made for you.","Um toque, feito para você.","Un toque, hecho para ti."
+BB_HINTED,"One move, made for you.","Uma jogada, feita para você.","Una jugada, hecha para ti."
 BB_RESET,"Scrambled again, as it came.","Embaralhado de novo, como veio.","Revuelto otra vez, como vino."
-BB_OUT,The taps ran out.,Os toques acabaram.,Se acabaron los toques.
-BB_WIN_SUB_ONE,%s: sewn in a single tap.,%s: costurado em um único toque.,%s: cosido en un solo toque.
-BB_WIN_SUB_N,%s: sewn in %d taps.,%s: costurado em %d toques.,%s: cosido en %d toques.
+BB_OUT,The moves ran out.,As jogadas acabaram.,Se acabaron las jugadas.
+BB_WIN_SUB_ONE,%s: sewn in a single move.,%s: costurado em uma única jogada.,%s: cosido en una sola jugada.
+BB_WIN_SUB_N,%s: sewn in %d moves.,%s: costurado em %d jogadas.,%s: cosido en %d jugadas.
 BB_SEAL_NEAT,Neat hand,Mão caprichosa,Mano fina
 BB_SEAL_INSANE,Every button,Todos os botões,Todos los botones
-HTP_BB_LIFT,Lift a run of buttons,Levante uma fileira de botões,Levanta un grupo de botones
-HTP_BB_LIFT_BODY,"Every button starts on a patch of the wrong colour. Tap one and it lifts with every button of its colour touching it. With no bare patch of their colour yet, they go into the tin.","Todo botão começa num retalho da cor errada. Toque em um e ele sobe com todos os botões da mesma cor encostados nele. Sem retalho vazio da cor deles, vão para a lata.","Todos los botones empiezan en un retal del color equivocado. Toca uno y se levanta con todos los botones de su color que lo tocan. Si aún no hay retal vacío de su color, van a la lata."
-HTP_BB_SEW,Bare patches get sewn,Retalho vazio recebe botão,Los retales vacíos se cosen
-HTP_BB_SEW_BODY,"A patch left bare is waiting for a button of its own colour. Lift that colour next and the buttons fly straight home and are sewn on for good. The tin drops its own onto any patch that comes bare.","Um retalho vazio espera um botão da cor dele. Levante essa cor em seguida e os botões voam direto para casa e ficam costurados. A lata solta os dela em qualquer retalho que ficar vazio.","Un retal vacío espera un botón de su color. Levanta ese color después y los botones vuelan directo a su sitio y quedan cosidos. La lata suelta los suyos en cualquier retal que quede vacío."
+HTP_BB_LIFT,Pick up a run of buttons,Pegue um grupo de botões,Coge un grupo de botones
+HTP_BB_LIFT_BODY,"Every button starts on a patch of the wrong colour. Tap one and it lifts with every button of its colour touching it, corners too. Nothing moves until you say where: tap the tin to put them in.","Todo botão começa num retalho da cor errada. Toque em um e ele sobe com todos os botões da mesma cor encostados nele, até na diagonal. Nada se move até você dizer para onde: toque na lata para guardá-los.","Todos los botones empiezan en un retal del color equivocado. Toca uno y se levanta con todos los botones de su color que lo tocan, también en diagonal. Nada se mueve hasta que digas adónde: toca la lata para guardarlos."
+HTP_BB_SEW,Tap a bare patch to sew,Toque num retalho vazio para costurar,Toca un retal vacío para coser
+HTP_BB_SEW_BODY,"A patch left bare is waiting for a button of its own colour. Pick that colour up and tap the bare patch: the buttons are sewn on for good, onto the bare patches nearest your tap. Buttons in the tin are picked and sewn the same way.","Um retalho vazio espera um botão da cor dele. Pegue essa cor e toque no retalho vazio: os botões ficam costurados, nos retalhos vazios mais perto do toque. Os botões da lata são pegos e costurados do mesmo jeito.","Un retal vacío espera un botón de su color. Coge ese color y toca el retal vacío: los botones quedan cosidos, en los retales vacíos más cercanos al toque. Los botones de la lata se cogen y se cosen igual."
 HTP_BB_TIN,Mind the tin,Cuidado com a lata,Ojo con la lata
-HTP_BB_TIN_BODY,"The tin is small: a run longer than its free places leaves buttons behind. Every colour you finish opens one more place. When the tin is full, lift a button whose patch is bare.","A lata é pequena: uma fileira maior que os lugares livres deixa botões para trás. Cada cor completa abre mais um lugar. Com a lata cheia, levante um botão que tenha retalho vazio.","La lata es pequeña: un grupo más largo que sus huecos libres deja botones atrás. Cada color que completas abre un hueco más. Con la lata llena, levanta un botón que tenga un retal vacío."
+HTP_BB_TIN_BODY,"The tin is small: a run bigger than its free places leaves buttons behind. Every colour you finish opens one more place.","A lata é pequena: um grupo maior que os lugares livres deixa botões para trás. Cada cor completa abre mais um lugar.","La lata es pequeña: un grupo mayor que sus huecos libres deja botones atrás. Cada color que completas abre un hueco más."
 HTP_BB_HINT,Stuck? Ask the bulb,Travou? Peça à lâmpada,¿Atascado? Pide a la bombilla
-HTP_BB_HINT_BODY_ONE,The bulb makes one good tap for you. You have one hint.,A lâmpada faz um bom toque para você. Você tem uma dica.,La bombilla hace un buen toque por ti. Tienes una pista.
-HTP_BB_HINT_BODY_N,The bulb makes one good tap for you. You have %d hints.,A lâmpada faz um bom toque para você. Você tem %d dicas.,La bombilla hace un buen toque por ti. Tienes %d pistas.
+HTP_BB_HINT_BODY_ONE,The bulb makes one good move for you. You have one hint.,A lâmpada faz uma boa jogada para você. Você tem uma dica.,La bombilla hace una buena jugada por ti. Tienes una pista.
+HTP_BB_HINT_BODY_N,The bulb makes one good move for you. You have %d hints.,A lâmpada faz uma boa jogada para você. Você tem %d dicas.,La bombilla hace una buena jugada por ti. Tienes %d pistas.
 HTP_BB_LIFT_CAP,Tap one: the whole run lifts,Toque em um: sobem todos juntos,Toca uno: se levanta todo el grupo
-HTP_BB_TIN_CAP,No bare patch yet: into the tin,Sem retalho vazio: para a lata,Sin retal vacío: a la lata
-HTP_BB_BARE_CAP,The red patches are bare now,Os retalhos vermelhos estão vazios,Los retales rojos están vacíos
-HTP_BB_SEWN_CAP,Red flies home and is sewn on,O vermelho voa para casa e é costurado,El rojo vuela a su sitio y queda cosido
-HTP_BB_BACK_CAP,The tin drops its own in,A lata solta os dela,La lata suelta los suyos
+HTP_BB_TIN_CAP,Tap the tin: in they go,Toque na lata: lá vão eles,Toca la lata: allá van
+HTP_BB_BARE_CAP,The red patches are bare: pick red,Os retalhos vermelhos estão vazios: pegue o vermelho,Los retales rojos están vacíos: coge el rojo
+HTP_BB_SEWN_CAP,Tap a bare red patch: sewn on,Toque num retalho vermelho vazio: costurado,Toca un retal rojo vacío: cosido
+HTP_BB_BACK_CAP,Pick from the tin the same way,Pegue da lata do mesmo jeito,Coge de la lata igual
 HTP_BB_LONG_CAP,Five in the run and four places,Cinco botões e quatro lugares,Cinco botones y cuatro huecos
 HTP_BB_STAY_CAP,One stays behind,Um fica para trás,Uno se queda atrás
 HTP_BB_OPEN_CAP,A colour whole: one more place,Uma cor completa: mais um lugar,Un color completo: un hueco más
-HTP_BB_BULB_CAP,The bulb makes a tap for you,A lâmpada faz um toque para você,La bombilla hace un toque por ti
+HTP_BB_BULB_CAP,The bulb makes a move for you,A lâmpada faz uma jogada para você,La bombilla hace una jugada por ti
+BB_REFUSE_PICK,Pick up a button first.,Pegue um botão primeiro.,Coge un botón primero.
+BB_REFUSE_WRONG,That patch is another colour.,Esse retalho é de outra cor.,Ese retal es de otro color.
+HTP_BB_HELD_CAP,They wait for you to say where,Eles esperam você dizer para onde,Esperan a que digas adónde

@@ -15,7 +15,8 @@
   open slots of their colour at once; the case gains slots as colours fill.
   Ours, name for name: the patches of dyed cloth, the buttons, the tin, a
   run, sewn.
-- **One move**: tap a button out of place. It lifts with every button of
+- **One move** (as first built; **replaced the same day**, see "Pick, then
+  place" at the foot): tap a button out of place. It lifts with every button of
   its colour touching it (`State.run_of`, nearest first). Each goes to the
   nearest bare patch of its own colour and is sewn there for good; with no
   bare patch, into the tin while it has room; the rest stay where they
@@ -101,3 +102,51 @@
   refused; the tin at 6 of 12 and a place a colour whole; Pixel Garden's
   pictures; the scramble's lengths; Insane as counted taps over a greedy
   par; the original's four boosters left out (the bulb is the hint).
+
+## Pick, then place (2026-10-11)
+
+The user, having played the first build: "User must click on the piece and
+do another click where it goes, not do it automatic. if it click in a red
+button, all red buttons (on the wrong place) linked to it (all directions,
+even diagonal) start to be pulled together. If user click on the case they
+go to case, instead of land on the right place". So:
+
+- **A move is two taps and nothing lands by itself.** The first picks: a
+  button out of place with every one of its colour touching it, **corners
+  counted** (`State.NEAR` is eight ways), or, on a button in the tin, every
+  button of that colour in the tin (`tin_of`). The second says where: a
+  bare patch of their colour (`State.sew`: onto the bare patches nearest
+  the tapped one, as many as there are) or, for a run off the cloth, the
+  tin (`State.stow`: as many as it has room for). The tin no longer gives
+  a button back on its own.
+- **A pick** lifts, grows a tenth, draws 22% of the way toward the tapped
+  button and bobs (`_held_pos`), and where it may go is ringed in sun: the
+  bare patches of its colour and the tin's free places. Tapping it again,
+  or bare linen, puts it down; tapping another button picks that run.
+  A bare patch tapped with nothing picked says "Pick up a button first",
+  one of another colour "That patch is another colour".
+- **A pick never outlives its move, and a full tin's buttons can always be
+  picked.** The first cut kept the buttons no patch was left for picked,
+  and a tap on the tin with a run picked always tried to stow it: with the
+  tin full, the tin's own buttons -- the only way on -- could not be
+  picked without first tapping bare linen (the user: "something is causing
+  the game to get stuck"; `tests/_shot_buttons.gd -- d=0 solve trace` showed
+  the state's own hand stalled at 40 of 56). Now the leftover is let go,
+  a refused stow lets go too, and a tap on a button in a full tin picks it
+  whatever is held.
+- **Still nothing can be stuck**, by the same count (bare patches equal the
+  buttons in the tin). `tests/_probe_buttons.gd` plays the rules three
+  ways (1,080 runs, 0 failures) and **`tests/_probe_buttons_board.gd`
+  plays the board's own `tap` and `tap_tin`, headless**, with a hand that
+  taps anything at all and one that always tries the tin first: 32 days,
+  0 failures. Run it after any change to the taps.
+- **A move, not a tap, is what is counted**: `par` is the hand's moves (7
+  to 127, median 18 / 39 / 59 / 76 by band; taking a button out of the tin
+  is a move now), Insane's budget a quarter over it, and the lines say
+  moves. The bulb picks, and half a second on taps where it goes.
+- **Not re-shot after the stuck fix**: the win harness, the perf probe's
+  buzz walk and the tutorial's pages were last run on the cut before it
+  (the user asked for fewer windows); the tutorial's lessons do not depend
+  on what changed. The draw calls above are the first build's; a pick adds
+  nothing but its rings to the same meshes (90-99 read on the first cut of
+  these rules).

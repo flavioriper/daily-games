@@ -7,11 +7,12 @@ extends Control
 ## button and its release, as a finger would), over a caption that says
 ## what it means. `lesson` picks the page (set before it enters the tree):
 ##
-## - LIFT: a tap lifts a whole run of one colour, into the tin.
-## - SEW: the patches it left are bare, so the next run flies home and is
-##   sewn, and the tin's own drop onto the patches that run left.
+## - LIFT: a tap picks a whole run of one colour; a tap on the tin puts it
+##   in.
+## - SEW: the patches it left are bare, so the next run is picked and a
+##   bare patch of its colour tapped: sewn. The tin's own go the same way.
 ## - TIN: a run longer than the tin has places; a colour whole opens one.
-## - HINT: the bulb makes a tap.
+## - HINT: the bulb makes a move.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -28,8 +29,8 @@ const CHIP_SCALE := 0.8
 const BULB_SIZE := 110.0
 const LEGEND := {"r": "red", "g": "green", "y": "yellow"}
 
-## Three taps do it: green into the tin, red home, yellow home and the
-## green out of the tin behind it.
+## Four moves do it: green into the tin, red home, yellow home, and the
+## green out of the tin.
 const PLAIN := [["rrgg", "rrgg", "yyyy"], ["ggyy", "ggyy", "rrrr"]]
 ## Five reds in a run and four places: one stays. Yellow home makes yellow
 ## whole, and the tin gains its fifth place.
@@ -46,6 +47,8 @@ var _loop: Tween
 var _begun := false
 var _finger := Vector2(-1.0, -1.0)   # page-local; x < 0 is no finger
 var _down := false
+## Where the finger went down, so it comes up on the same spot.
+var _aim := Vector2.ZERO
 var _finger_shown: ArrayMesh
 
 ## The board, quiet: no sound set (its id names none) and no buzz, no
@@ -214,28 +217,45 @@ func _start() -> void:
 	_loop.tween_interval(2.0)
 	match lesson:
 		Lesson.LIFT:
-			_tap(0, "HTP_BB_LIFT_CAP", "HTP_BB_TIN_CAP", 3.4)
+			_tap(0, "HTP_BB_LIFT_CAP", "HTP_BB_HELD_CAP", 1.6)
+			_tap(TIN, "", "HTP_BB_TIN_CAP", 3.0)
 		Lesson.SEW:
-			_tap(0, "", "", 1.4)
-			_tap(8, "HTP_BB_BARE_CAP", "HTP_BB_SEWN_CAP", 2.6)
-			_tap(2, "", "HTP_BB_BACK_CAP", 3.6)
-		Lesson.TIN:
-			_tap(0, "HTP_BB_LONG_CAP", "HTP_BB_STAY_CAP", 2.8)
-			_tap(5, "", "HTP_BB_OPEN_CAP", 3.2)
+			_tap(0, "", "", 0.3)
+			_tap(TIN, "", "", 1.0)
+			_tap(8, "HTP_BB_BARE_CAP", "", 0.9)
+			_tap(0, "", "HTP_BB_SEWN_CAP", 2.2)
+			_tap(2, "", "", 0.6)
 			_tap(8, "", "", 1.4)
-			_tap(4, "", "", 2.8)
+			_tap(TIN - 1, "HTP_BB_BACK_CAP", "", 0.9)
+			_tap(2, "", "", 3.2)
+		Lesson.TIN:
+			_tap(0, "HTP_BB_LONG_CAP", "", 1.0)
+			_tap(TIN, "", "HTP_BB_STAY_CAP", 2.6)
+			_tap(5, "", "", 0.7)
+			_tap(0, "", "HTP_BB_OPEN_CAP", 3.4)
 		Lesson.HINT:
 			for k in 3:
 				_press_chip()
-				_loop.tween_interval(2.4)
+				_loop.tween_interval(2.6)
 	_loop.tween_callback(_reset)
+
+## A square of the cloth, or the tin: TIN is its first free place and
+## TIN - 1 - p its place p.
+const TIN := -1
+
+func _where(cell: int) -> Vector2:
+	if cell >= 0:
+		return _art.cell_centre(cell)
+	if cell == TIN:
+		return _art.tin_centre(mini(_art.state.in_tin(), _art._tin_places - 1))
+	return _art.tin_centre(TIN - 1 - cell)
 
 ## The finger taps `cell`: the caption turns to `before` as it comes, and to
 ## `after` once the tap is made; then the cloth settles for `wait`.
 func _tap(cell: int, before: String, after: String, wait: float) -> void:
 	if before != "":
 		_loop.tween_callback(_say.bind(before))
-	_loop.tween_callback(func() -> void: _point_at(_art.cell_centre(cell)))
+	_loop.tween_callback(func() -> void: _point_at(_where(cell)))
 	_loop.tween_interval(0.45)
 	_loop.tween_callback(func() -> void: _button(cell, true))
 	_loop.tween_interval(0.18)
@@ -275,13 +295,17 @@ func _still() -> void:
 	match lesson:
 		Lesson.LIFT:
 			_art.tap(0)
+			_art.tap_tin()
 			_say("HTP_BB_TIN_CAP")
 		Lesson.SEW:
 			_art.tap(0)
+			_art.tap_tin()
 			_art.tap(8)
+			_art.tap(0)
 			_say("HTP_BB_SEWN_CAP")
 		Lesson.TIN:
 			_art.tap(0)
+			_art.tap_tin()
 			_say("HTP_BB_STAY_CAP")
 		Lesson.HINT:
 			_art.hint()
@@ -303,7 +327,9 @@ func _button(cell: int, pressed: bool) -> void:
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = pressed
-	ev.position = _art.cell_centre(cell)
+	if pressed:
+		_aim = _where(cell)
+	ev.position = _aim
 	_finger = ev.position
 	_down = pressed
 	_art._gui_input(ev)

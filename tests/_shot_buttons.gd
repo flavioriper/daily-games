@@ -5,9 +5,9 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_buttons.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the entrance and the cloth); `play` (four taps of the
-## state's own hand, shot in the air and landed); `refuse` (a sewn button
-## tapped; the tin filled and one tap more); `hint` (the bulb, then Undo);
+## Modes: `rest` (the entrance and the cloth); `play` (four moves of the
+## state's own hand, shot picked and in the air); `refuse` (a sewn button
+## tapped; the tin filled and tapped once more; a patch of another colour); `hint` (the bulb, then Undo);
 ## `solve` (the hand's taps to the win); `out` (Insane: the taps spent
 ## carelessly, the card, Try again); `reset`; `restore` (a day reopened
 ## already sewn); `howto` (the tutorial's four pages as they play).
@@ -27,6 +27,7 @@ var _host: Node
 var _puzzle: Node
 var _opened := false
 var _plan: Array = []
+var _move := {}
 var _n := 0
 var _end := 4.0
 var _ms_from := 0.5
@@ -42,6 +43,8 @@ func _initialize() -> void:
 			_level = int(a.substr(2))
 		elif a == "rm":
 			_reduce = true
+		elif a == "trace":
+			pass
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
 		else:
@@ -132,11 +135,45 @@ func _touch(at: Vector2, down: bool) -> void:
 	ev.position = at
 	_puzzle._gui_input(ev)
 
-## The next tap of the state's own hand.
+## A tap on the tin: place `p`, or its first free place.
+func _tap_tin(p := -1) -> void:
+	var st = _puzzle.state
+	var at: Vector2 = _puzzle.tin_centre(p if p >= 0 else mini(st.in_tin(), st.capacity() - 1))
+	for down in [true, false]:
+		var ev := InputEventScreenTouch.new()
+		ev.index = 0
+		ev.pressed = down
+		ev.position = at
+		_puzzle._gui_input(ev)
+
+## The pick of the state's own next move.
+func _pick() -> void:
+	var move: Dictionary = _puzzle.state.hint()
+	if move.is_empty():
+		return
+	_move = move
+	if OS.get_cmdline_user_args().has("trace"):
+		print("pick ", move, " held_c ", _puzzle._held_c, " tin ", _puzzle.state.tin, " taps ", _puzzle.state.taps)
+	if (move.cells as PackedInt32Array).is_empty():
+		_tap_tin(move.places[0])
+	else:
+		_tap(move.cells[0])
+
+## And where it goes.
+func _place() -> void:
+	if _move.is_empty():
+		return
+	if int(_move.to) >= 0:
+		_tap(int(_move.to))
+	else:
+		_tap_tin()
+	if OS.get_cmdline_user_args().has("trace"):
+		print("  placed: taps ", _puzzle.state.taps, " held_c ", _puzzle._held_c, " cells ", _puzzle._held_cells, " places ", _puzzle._held_places, " toast ", _puzzle._toast)
+	_move = {}
+
 func _next() -> void:
-	var i: int = _puzzle.state.hint()
-	if i >= 0:
-		_tap(i)
+	_pick()
+	_place()
 
 func _first(test: Callable) -> int:
 	for i in _puzzle.state.slot.size():
@@ -144,11 +181,10 @@ func _first(test: Callable) -> int:
 			return i
 	return -1
 
-## A button out of place that no bare patch waits for: it can only go into
-## the tin.
+## A button out of place.
 func _loose() -> int:
 	var st = _puzzle.state
-	return _first(func(i: int) -> bool: return st.cur[i] >= 0 and not st.is_home(i) and st._bare(st.cur[i]).is_empty())
+	return _first(func(i: int) -> bool: return st.cur[i] >= 0 and not st.is_home(i))
 
 func _script() -> void:
 	var st = _puzzle.state
@@ -159,28 +195,39 @@ func _script() -> void:
 			_at(2.0, _shot)
 			_end = 3.0
 		"play":
-			_at(1.6, _next)
-			_at(1.8, _shot)
-			_at(2.4, _shot)
-			_at(2.6, _next)
-			_at(2.8, _shot)
-			_at(3.4, _next)
-			_at(4.0, _next)
-			_at(4.25, _shot)
-			_at(5.2, _shot)
-			_end = 6.0
+			_at(1.6, _pick)
+			_at(2.3, _shot)
+			_at(2.4, _place)
+			_at(2.55, _shot)
+			_at(3.2, _pick)
+			_at(3.7, _shot)
+			_at(3.8, _place)
+			_at(3.95, _shot)
+			_at(4.6, _next)
+			_at(5.2, _next)
+			_at(6.0, _shot)
+			_end = 6.6
 		"refuse":
 			_at(1.6, func() -> void: _tap(_first(st.is_home) if _first(st.is_home) >= 0 else 0))
 			_at(1.75, _shot)
 			var t := 2.4
-			for k in 8:
+			for k in 10:
 				_at(t, func() -> void:
-					var i := _loose()
-					if i >= 0:
-						_tap(i))
+					if st.in_tin() < st.capacity() and _loose() >= 0:
+						_tap(_loose())
+						_tap_tin())
 				t += 0.5
-			_at(t + 0.2, _shot)
-			_end = t + 2.0
+			# the tin is full: a run picked and the tin tapped once more
+			_at(t, func() -> void: _tap(_loose()))
+			_at(t + 0.3, func() -> void: _tap_tin())
+			_at(t + 0.5, _shot)
+			# a pick and a bare patch of another colour
+			_at(t + 1.0, func() -> void:
+				var wrong := _first(func(i: int) -> bool: return st.cur[i] < 0 and st.slot[i] != _puzzle._held_c)
+				if wrong >= 0:
+					_tap(wrong))
+			_at(t + 1.2, _shot)
+			_end = t + 2.4
 		"hint":
 			_at(1.6, func() -> void: _host._on_hint())
 			_at(1.75, _shot)
@@ -191,20 +238,25 @@ func _script() -> void:
 		"solve":
 			var t := 1.4
 			for k in st.par + 2:
-				_at(t, _next)
-				t += 0.45
+				_at(t, _pick)
+				_at(t + 0.2, _place)
+				t += 0.6
 			for dt in [-3.0, 0.0, 0.5, 1.0, 1.6, 2.6, 4.2]:
 				_at(t + dt, _shot)
 			_end = t + 5.2
 		"out":
 			var t := 1.6
-			for k in _puzzle.max_moves * 3:
+			for k in _puzzle.max_moves * 2:
 				_at(t, func() -> void:
 					if _puzzle.moves_left <= 0:
 						return
-					var i := _loose()
-					_tap(i if i >= 0 and st.in_tin() < st.capacity() else st.hint()))
-				t += 0.12
+					# a careless hand: one button at a time into the tin, then the hand's own
+					if st.in_tin() < st.capacity() and k % 3 != 0 and _loose() >= 0:
+						_tap(_loose())
+						_tap_tin()
+					else:
+						_next())
+				t += 0.4
 			_at(2.4, _shot)
 			_at(t + 0.6, _shot)
 			_at(t + 2.4, _shot)

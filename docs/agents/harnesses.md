@@ -311,6 +311,10 @@ opens the tutorial as the ? does and shoots each page twice. A button still
 in the air is not lifted, so a harness leaves 0.4 s between taps. Each
 argument is its own word: zsh does not split `"d=0 solve"` held in a
 variable, and the run is then `rest` on that band without a word.
+`tests/_probe_buttons_board.gd` (headless, `days=6`) plays whole days through
+the board's own `tap` and `tap_tin` with clumsy hands and needs no window;
+`solve trace` prints every pick and place. A move is two taps: the pick,
+then a bare patch or the tin.
 `tests/_probe_buttons.gd` (headless, `seeds=3`) plays every picture of the
 bank three ways and checks that nothing can be stuck; `tests/_win.gd --
 buttons` and `tests/_probe_perf.gd -- buttons` (`x=buzz`) are the shared
