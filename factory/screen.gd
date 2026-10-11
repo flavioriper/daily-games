@@ -1,9 +1,9 @@
 extends Control
 
-## Factory: the land, played. Plates in a pond seen corner on, trees a tap
-## sets a beaver to, logs that lie and ride the belts a finger drags to the
-## market, coins that buy belts, plates and from the second plate a fire, a
-## kiln and a retort. Spec
+## Factory: the land, played. Plates in a pond seen corner on, a closed
+## forest a tap takes a log from, logs that leave it by its gates and ride
+## the belts a finger drags to the market, coins that buy belts, plates, a
+## forest's levels and from the first plate bought a fire and a retort. Spec
 ## docs/superpowers/specs/2026-10-10-factory-board-and-hand-era-design.md;
 ## the rules and every number are factory/sim.gd's, the drawings
 ## factory/art.gd's, and what is seen of the land factory/life.gd's.
@@ -22,8 +22,8 @@ extends Control
 ##
 ## The hand (spec section 6). Every finger is a ScreenTouch or a ScreenDrag,
 ## the desktop mouse read beside them. A press that moves under TAP pixels
-## is a tap: on a tree, a rock or a fire box with fuel waiting it is the
-## labour; on a plus, the market or a machine it opens the card; on a belt
+## is a tap: on a forest or a fire box with fuel waiting it is the labour;
+## on a plus, the market, a machine or a forest's badge it opens the card; on a belt
 ## it turns it a quarter. A drag pans, unless Belt is picked in the drawer
 ## (hold and swipe: a straight run of belts is shown from the pressed tile
 ## to the finger with the way it will flow, and laid as the finger lifts) or a
@@ -62,7 +62,12 @@ const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
 const DRAWER_TILES := ["belt", "firebox", "kiln", "retort", "market"]
 const NAMES := {"belt": "FACTORY_BELT", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
-	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "quarry": "FACTORY_QUARRY", "meadow": "FACTORY_MEADOW"}
+	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "neutral": "FACTORY_NEUTRAL"}
+## A forest's badge, the way to its card (a tap on the forest itself is a
+## log): how far over the plate's middle it floats and how big it is, in
+## view units.
+const BADGE_UP := 250.0
+const BADGE_R := 46.0
 const CARD_W := 1000.0
 const CARD_INSET := 26
 const PLATE_TILE := 372.0
@@ -93,7 +98,7 @@ const QUIET := ["busy", "nothing", "same", "lit", "wait", "top"]
 const TICK_VARY := 0.06
 ## The tap is a selection moved; a tree down is a piece set down; a thing
 ## bought is something finished; one that cannot be is a not yet.
-const HAPTICS := {"fell": Haptics.TAP, "buy": Haptics.BUMP, "no": Haptics.WARN}
+const HAPTICS := {"buy": Haptics.BUMP, "no": Haptics.WARN}
 
 var sim: RefCounted
 var top_bar: Control
@@ -222,7 +227,6 @@ func _build() -> void:
 	add_child(field)
 	life = Life.new()
 	world = life.mount(field, sim)
-	life.landed.connect(func(at: Vector2) -> void: _fx.puff(to_field(at) + Vector2(0.0, 18.0 * _zoom), Color("f3ecd2"), 5))
 	_over_l = life.layer(_draw_over)
 	field.resized.connect(_layout_field)
 	_fx = Fx2D.new()
@@ -540,12 +544,12 @@ func _play_events() -> void:
 	for e: Dictionary in sim.events:
 		life.event(e)
 		match String(e.type):
-			"hit":
-				_fx.cue("chop", _vary())
-			"fell":
-				_fx.cue("fell")
-			"chip":
-				_fx.cue("chop", 0.8 * _vary())
+			"chop":
+				# the hand's log is heard; the forest's own, a second apart, only just
+				if e.auto:
+					_quiet.cue("chop", 0.9 * _vary(), -10.0)
+				else:
+					_fx.cue("chop", _vary())
 			"laid":
 				_quiet.cue("chop", 0.84 * _vary(), -6.0)
 			"turned":
@@ -574,10 +578,6 @@ func _play_events() -> void:
 ## The sim did not do it. Most of the time that is a no: the thing shakes
 ## its head, and when it was the coins the pill does too.
 func _on_refused(why: String, tile: Vector2i) -> void:
-	if why == "wait":
-		# a rock not ready gives nothing but a soft wobble
-		life.shake(tile)
-		return
 	if QUIET.has(why):
 		return
 	_fx.cue("no")
@@ -836,10 +836,11 @@ func hit(pos: Vector2) -> Dictionary:
 	var v: Vector2 = (pos - world.position) / _zoom
 	var best := {}
 	var best_d := -INF
+	for p: Vector2i in sim.forests:
+		if (v - badge_at(p)).length() <= BADGE_R + 10.0:
+			return {"what": "badge", "tile": p * Art.PLATE, "plate": p}
 	for id: int in sim.trees:
 		var tr: Dictionary = sim.trees[id]
-		if tr.state == "stump":
-			continue
 		var tall: float = Art.height(tr.look)
 		var wide: float = float(Art.RADIUS[int(tr.look)]) * Art.TREE_SCALE + 12.0
 		var rel: Vector2 = v - (life.mid(tr.tile) - Vector2(0.0, tall * 0.5))
@@ -848,7 +849,7 @@ func hit(pos: Vector2) -> Dictionary:
 		var d: float = life.depth(Vector2(tr.tile) + Vector2(0.5, 0.5))
 		if d > best_d:
 			best_d = d
-			best = {"what": "tree", "tile": tr.tile}
+			best = {"what": "forest", "tile": tr.tile}
 	# a building's body covers the ground behind it: the tiles a little
 	# further down the screen are asked whose body this point is on
 	for lift: float in [84.0, 56.0, 28.0, 0.0]:
@@ -856,8 +857,6 @@ func hit(pos: Vector2) -> Dictionary:
 		var found := {}
 		if sim.is_market(t):
 			found = {"what": "market", "tile": t}
-		elif sim.rocks.has(t) and lift <= 28.0:
-			found = {"what": "rock", "tile": t}
 		elif lift <= 56.0:
 			var m: Dictionary = sim.module_at(t)
 			if not m.is_empty():
@@ -879,14 +878,23 @@ func hit(pos: Vector2) -> Dictionary:
 		var rel: Vector2 = v - life.plus_at(p)
 		if pow(rel.x / 104.0, 2.0) + pow(rel.y / (104.0 * Art.DEEP), 2.0) <= 1.0:
 			return {"what": "plus", "tile": p * Art.PLATE, "plate": p}
+	if sim.is_forest(tile):
+		return {"what": "forest", "tile": tile}
 	return {"what": "ground", "tile": tile}
+
+## Where forest `p`'s badge floats, in view units: over the middle of it.
+func badge_at(p: Vector2i) -> Vector2:
+	return life.plus_at(p) + Vector2(0.0, -BADGE_UP)
 
 func _tap(pos: Vector2) -> void:
 	var h := hit(pos)
 	var tile: Vector2i = h.tile
 	match String(h.what):
-		"tree", "rock":
+		"forest":
 			sim.tap(tile)
+		"badge":
+			open_forest(h.plate)
+			_fx.touch()
 		"module":
 			var m: Dictionary = sim.modules[int(h.id)]
 			if m.kind == "firebox" and m.built and not m.lit and not (m.hopper as Array).is_empty():
@@ -1139,7 +1147,7 @@ func _open_card(title: String, what: String, fill: Callable) -> void:
 	_card.visible = true
 	Motion.appear(_card, 0.0, 1.0, 0.2)
 
-## The plate card: the three kinds, each a tile with its picture, its name,
+## The plate card: the two kinds, each a tile with its picture, its name,
 ## a line and the price on its bar. Pressing one buys the plate at `p`.
 func open_plate(p: Vector2i) -> void:
 	_open_card(tr("FACTORY_PLATE_TITLE"), "plate", func(col: VBoxContainer) -> void:
@@ -1203,6 +1211,36 @@ func open_module(id: int) -> void:
 				if cost >= 0:
 					_say(up, tr("FACTORY_LEVEL_FOR") % [int(m.level) + 1, Art.short(cost)])
 				(lines[2] as Label).text = tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)]
+		_card_tick.call())
+
+## A forest's card: what a tap gives, what it makes by itself, what it holds
+## of what it can, and the next level's price. Nothing else is done to a
+## forest: it is not built in, turned or sold.
+func open_forest(p: Vector2i) -> void:
+	if not sim.forests.has(p):
+		return
+	_open_card(tr("FACTORY_FOREST"), "forest", func(col: VBoxContainer) -> void:
+		var lines := _card_body(col, "forest", [tr("FACTORY_FOREST_MAKES"), "", ""])
+		var row := HBoxContainer.new()
+		row.name = "Buttons"
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(row)
+		var up := _card_button(row, "trend", "", "PrimaryButton")
+		up.pressed.connect(func() -> void:
+			if not sim.upgrade(p * Art.PLATE):
+				Motion.shiver(up, 6.0))
+		_card_tick = func() -> void:
+			var f: Dictionary = sim.forests[p]
+			var rate := int(sim.forest_rate(p))
+			(lines[1] as Label).text = tr("FACTORY_FOREST_HAND") if rate == 0 else (tr("FACTORY_FOREST_RATE_ONE") if rate == 1 else tr("FACTORY_FOREST_RATE_N") % rate)
+			(lines[2] as Label).text = tr("FACTORY_FOREST_HOLDS") % [int(f.stock), Sim.FOREST_ROOM]
+			var cost: int = sim.upgrade_price(p * Art.PLATE)
+			up.visible = cost >= 0
+			if cost >= 0:
+				if int(f.level) == 0:
+					_say(up, tr("FACTORY_FOREST_AUTO_FOR") % Art.short(cost))
+				else:
+					_say(up, tr("FACTORY_LEVEL_FOR") % [int(f.level) + 1, Art.short(cost)])
 		_card_tick.call())
 
 ## The market's card: its level, the seconds a sale, the next level's price.
@@ -1304,9 +1342,9 @@ func _draw_over(ci: CanvasItem) -> void:
 		ci.draw_arc(Vector2.ZERO, 74.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
 		ci.draw_arc(Vector2.ZERO, 74.0, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
 		ci.draw_set_transform(Vector2.ZERO)
-	if _nums.is_empty():
-		return
 	var font := get_theme_font("font", "SheetTitle")
+	for p: Vector2i in sim.forests:
+		_draw_badge(ci, font, p)
 	for n: Dictionary in _nums:
 		var k: float = float(n.t) / NUM
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x
@@ -1314,6 +1352,30 @@ func _draw_over(ci: CanvasItem) -> void:
 		var a := 1.0 - k * k * k
 		ci.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
 		ci.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color(Art.MARK, a))
+
+## A forest's badge: a round sign over it with an arrow up, the sun's own
+## when the coins reach the next level and paper when they do not, the price
+## under it; at the last level a plain one with its level. A tap opens the
+## forest's card.
+func _draw_badge(ci: CanvasItem, font: Font, p: Vector2i) -> void:
+	var at := badge_at(p)
+	var cost: int = sim.upgrade_price(p * Art.PLATE)
+	var can: bool = cost >= 0 and sim.coins >= cost
+	var ink := Color(0.23, 0.19, 0.16)
+	ci.draw_circle(at + Vector2(0.0, 5.0), BADGE_R, Color(ink, 0.28))
+	ci.draw_circle(at, BADGE_R, Pal.SUN if can else Art.PRICE_OFF)
+	ci.draw_arc(at, BADGE_R, 0.0, TAU, 40, Color(ink, 0.5), 3.0, true)
+	if cost < 0:
+		var top := str(int(sim.forests[p].level))
+		ci.draw_string(font, at + Vector2(-font.get_string_size(top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x * 0.5, 16.0), top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, ink)
+		return
+	var arrow := Color(ink, 0.9 if can else 0.5)
+	ci.draw_polyline(PackedVector2Array([at + Vector2(-17.0, 2.0), at + Vector2(0.0, -17.0), at + Vector2(17.0, 2.0)]), arrow, 8.0, true)
+	ci.draw_line(at + Vector2(0.0, -13.0), at + Vector2(0.0, 21.0), arrow, 8.0, true)
+	var text := Art.short(cost)
+	var foot := at + Vector2(-font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x * 0.5, BADGE_R + 40.0)
+	ci.draw_string_outline(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, 8, Color(ink, 0.7))
+	ci.draw_string(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color.WHITE)
 
 ## The direction reference line of a run being swiped: a soft line along
 ## its beds and a chevron a tile pointing the way things will move, the last

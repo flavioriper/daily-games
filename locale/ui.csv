@@ -973,18 +973,22 @@ FRIENDS_NEW_TITLE,New friend,Nova amizade,Nueva amistad
 FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são amigos. Chame para jogar quando quiser.,Ahora son amigos. Invita a jugar cuando quieras.
 BAR_FACTORY,Factory,Fábrica,Fábrica
 FACTORY_MOTTO,Nothing here is in a hurry,Aqui nada tem pressa,Aquí nada tiene prisa
-FACTORY_BLURB,"Fell trees, lay belts and sell at the market. The land only runs while you watch it.","Derrube árvores, monte esteiras e venda no mercado. A terra só funciona enquanto você olha.","Tala árboles, coloca cintas y vende en el mercado. La tierra solo funciona mientras la miras."
+FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The land only runs while you watch it.","Toque na floresta para ter toras, monte esteiras e venda no mercado. A terra só anda enquanto você olha.","Toca el bosque para sacar troncos, tiende cintas y vende en el mercado. La tierra solo anda mientras la miras."
 FACTORY_BELT,Belt,Esteira,Cinta
 FACTORY_FIREBOX,Fire box,Fornalha,Fogón
 FACTORY_KILN,Kiln,Forno,Horno
 FACTORY_RETORT,Retort,Retorta,Retorta
 FACTORY_MARKET,Market,Mercado,Mercado
 FACTORY_FOREST,Forest,Floresta,Bosque
-FACTORY_QUARRY,Quarry,Pedreira,Cantera
-FACTORY_MEADOW,Meadow,Campina,Pradera
-FACTORY_FOREST_LINE,Trees to fell for logs,Árvores para derrubar e ter toras,Árboles que talar para tener troncos
-FACTORY_QUARRY_LINE,Three rocks to chip for stone,Três rochas para lascar e ter pedra,Tres rocas que picar para tener piedra
-FACTORY_MEADOW_LINE,Open room to build on,Espaço livre para construir,Espacio libre para construir
+FACTORY_NEUTRAL,Neutral,Neutro,Neutro
+FACTORY_FOREST_LINE,"Gives logs at a gate on every side","Dá toras por um portão em cada lado","Da troncos por un portón en cada lado"
+FACTORY_NEUTRAL_LINE,Open ground to build on,Chão livre para construir,Suelo libre para construir
+FACTORY_FOREST_MAKES,"Tap it for a log. Logs leave by the gate on each side; nothing is built inside.","Toque nela para ter uma tora. As toras saem pelo portão de cada lado; nada se constrói dentro.","Tócalo para sacar un tronco. Los troncos salen por el portón de cada lado; dentro no se construye nada."
+FACTORY_FOREST_HAND,It makes none by itself yet.,Sozinha ainda não faz nenhuma.,Solo todavía no hace ninguno.
+FACTORY_FOREST_RATE_ONE,Makes a log a second by itself.,Faz uma tora por segundo sozinha.,Hace un tronco por segundo solo.
+FACTORY_FOREST_RATE_N,Makes %d logs a second by itself.,Faz %d toras por segundo sozinha.,Hace %d troncos por segundo solo.
+FACTORY_FOREST_HOLDS,Holds %d of %d logs.,Guarda %d de %d toras.,Guarda %d de %d troncos.
+FACTORY_FOREST_AUTO_FOR,A log a second for %s,Uma tora por segundo por %s,Un tronco por segundo por %s
 FACTORY_PLATE_TITLE,New land,Terra nova,Tierra nueva
 FACTORY_FIREBOX_MAKES,"Burns a log or charcoal a belt brings, and heats the kiln or retort that touches it.","Queima a tora ou o carvão que a esteira traz e aquece o forno ou a retorta ao lado.","Quema el tronco o el carbón que trae la cinta y calienta el horno o la retorta de al lado."
 FACTORY_KILN_MAKES,"Stone in at the back, lime out at the front.","Entra pedra por trás, sai cal pela frente.","Entra piedra por detrás, sale cal por delante."
@@ -1005,12 +1009,12 @@ FACTORY_NEEDS_FIRE,Needs a lit fire box beside it.,Precisa de uma fornalha acesa
 FACTORY_CYCLE,Makes one every %s,Faz um a cada %s,Hace uno cada %s
 FACTORY_MIN_S,%d min %d s,%d min %d s,%d min %d s
 FACTORY_S,%s s,%s s,%s s
-TUT_FACTORY_TREE,Tap a tree,Toque em uma árvore,Toca un árbol
-TUT_FACTORY_TREE_BODY,"A beaver comes and bites it down in three bites. The log lies beside the stump, and the tree grows back.","Um castor vem e a derruba em três mordidas. A tora fica ao lado do toco, e a árvore cresce de novo.","Viene un castor y lo derriba de tres mordiscos. El tronco queda junto al tocón, y el árbol vuelve a crecer."
+TUT_FACTORY_TREE,Tap the forest,Toque na floresta,Toca el bosque
+TUT_FACTORY_TREE_BODY,"Every tap is a log. It comes out of the gate in the forest's side. Nothing is built inside a forest: the arrow over it opens its upgrades.","Cada toque é uma tora. Ela sai pelo portão na lateral da floresta. Nada se constrói dentro dela: a seta em cima abre as melhorias.","Cada toque es un tronco. Sale por el portón del lado del bosque. Dentro no se construye nada: la flecha de arriba abre sus mejoras."
 TUT_FACTORY_BELT,Swipe a belt to the market,Deslize uma esteira até o mercado,Desliza una cinta hasta el mercado
 TUT_FACTORY_BELT_BODY,"Open the drawer on the left and pick Belt. Hold and swipe in a straight line, then lift: an arrow shows which way things will ride. Each belt costs a coin, and the market pays for what arrives.","Abra a gaveta à esquerda e escolha Esteira. Segure e deslize em linha reta, depois solte: uma seta mostra para onde as coisas vão. Cada esteira custa uma moeda, e o mercado paga pelo que chega.","Abre el cajón de la izquierda y elige Cinta. Mantén y desliza en línea recta, luego suelta: una flecha muestra hacia dónde irán las cosas. Cada cinta cuesta una moneda, y el mercado paga lo que llega."
 TUT_FACTORY_PLATE,Buy more land,Compre mais terra,Compra más tierra
-TUT_FACTORY_PLATE_BODY,"Tap a plus on the pond and choose forest, quarry or meadow. The second piece of land brings fire, a kiln and a retort.","Toque em um mais no lago e escolha floresta, pedreira ou campina. O segundo pedaço de terra traz o fogo, o forno e a retorta.","Toca un más en el estanque y elige bosque, cantera o pradera. El segundo trozo de tierra trae el fuego, el horno y la retorta."
+TUT_FACTORY_PLATE_BODY,"Tap a plus on the pond and choose a forest or neutral ground. The first piece of land you buy brings fire and a retort.","Toque em um mais no lago e escolha uma floresta ou chão neutro. O primeiro pedaço de terra que você compra traz o fogo e a retorta.","Toca un más en el estanque y elige un bosque o suelo neutro. El primer trozo de tierra que compras trae el fuego y la retorta."
 ARC_NIGHTLIGHT_BLURB,"Feed a star with gas and watch worlds form round it. It burns its way up to iron, goes supernova, and starts again in a richer sky.","Alimente uma estrela com gás e veja mundos se formarem ao redor. Ela queima até o ferro, vira supernova e recomeça num céu mais rico.","Alimenta una estrella con gas y mira cómo se forman mundos a su alrededor. Quema hasta el hierro, se vuelve supernova y vuelve a empezar en un cielo más rico."
 NL_CARD_MASS,%s× the Sun,%s× o Sol,%s× el Sol
 NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva

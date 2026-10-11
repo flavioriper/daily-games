@@ -1,8 +1,9 @@
 extends RefCounted
 
-## Factory, as pure data: plates of land in a pond, trees a tap fells, logs
-## that lie and ride belts to a market that sells them, and from the second
-## plate a fire, a kiln and a retort. Nothing here draws, reads the clock or
+## Factory, as pure data: plates of land in a pond, a closed forest a tap
+## takes a log from, logs that leave it by a gate on each side and ride belts
+## to a market that sells them, and from the first plate bought a fire and a
+## retort. Nothing here draws, reads the clock or
 ## touches a node: whoever holds it (the screen, the tab's card, the probe)
 ## steps it, drains `events` and draws from what it reads. It is deterministic
 ## from its seed and its save, and **nothing happens while it is not stepped**:
@@ -16,7 +17,8 @@ extends RefCounted
 ## Geometry. A tile is one global Vector2i. Plate P (a Vector2i on the plate
 ## lattice, the first is (0,0)) owns tiles P*8 .. P*8+7 on both axes; the
 ## lattice goes negative, so use `plate_of(tile)`. The market is the 2x2 on
-## tiles (6..7, 6..7). A facing is an int 0..3 = +x, +y, -x, -y (`DIRS`); a
+## tiles (6..7, 6..7) of the first plate, which is neutral ground; a new land
+## has a forest behind it, at `FOREST_AT`. A facing is an int 0..3 = +x, +y, -x, -y (`DIRS`); a
 ## quarter clockwise is (f + 1) % 4. Positions handed out as Vector2 are in
 ## tile units, a tile's middle at tile + (0.5, 0.5).
 ##
@@ -34,19 +36,31 @@ extends RefCounted
 ##
 ## Money and land.
 ##   coins, earned: int
-##   plates: Dictionary       Vector2i -> "forest" | "quarry" | "meadow"
+##   plates: Dictionary       Vector2i -> "forest" | "neutral"
 ##   free_edges() -> Array    lattice coords a plate may be bought on
 ##   plate_price() -> int     50, 150, then x3
 ##   buy_plate(P, kind) -> bool
-##   unlocked(kind) -> bool   belt always; firebox, kiln, retort from 2 plates
+##   unlocked(kind) -> bool   belt always; firebox and retort from the first
+##                            plate bought; the kiln never, while nothing
+##                            gives stone
 ##   price(kind) -> int       belt 1, firebox 20, kiln 40, retort 40
 ##
+## A forest is closed (the user, 2026-10-11: "the forest must be a closed grid
+## that only output the material, user should not be able to build inside of
+## it, only upgrade"): no belt and no machine goes on any of its 64 tiles, a
+## tap anywhere on it is one log into its stock, and the stock leaves by the
+## gate in each side into whatever takes it beyond (a belt, the market, a
+## hopper, a retort's back), the sides by turns.
+##   forests: Dictionary      plate -> {level (0: the hand alone), stock,
+##                            t (0..1 toward the next log of its own), next
+##                            (the side the next log tries first), paid}
+##   is_forest(tile) -> bool
+##   gate(P, side) -> Vector2i          the forest tile a log leaves by
+##   forest_rate(P) -> float            logs a second it makes by itself
+##
 ## Reading, all cheap (these are the sim's own tables: read, never write).
-##   trees: Dictionary        id -> {id, tile, look 0..3, state "standing" |
-##                            "bitten" | "stump", bites 0..3, t (s to the next
-##                            bite), regrow (s left of a stump), queued}
-##   tree_at(tile) -> Dictionary        {} if none
-##   rocks: Dictionary        tile -> {tile, ready, wait (s to ready)}
+##   trees: Dictionary        id -> {id, tile, look 0..3}: what a forest
+##                            is seen by, never counted and never felled
 ##   belts: Dictionary        tile -> facing
 ##   items: Dictionary        tile -> Array of {id, kind, at 0..1, from, was};
 ##                            index 0 is the front one. On a belt `at` runs
@@ -74,9 +88,9 @@ extends RefCounted
 ##
 ## Acting. Each returns whether it did anything; when it did not it pushes
 ## {type "refused", why, tile}.
-##   tap(tile)                a tree: a beaver (three a plate, the fourth tap
-##                            waits its turn unseen); a rock: a stone if ready;
-##                            a firebox: lights the next fuel if the fire is out
+##   tap(tile)                a forest: one log into its stock (refused "full"
+##                            when it holds FOREST_ROOM); a firebox: lights
+##                            the next fuel if the fire is out
 ##   can_lay(tile)            fits a belt (coins not looked at)
 ##   lay_belt(tile, facing)   1 coin; on a belt already there it only re-faces
 ##   turn(tile)               a belt or a 1x2 module a quarter clockwise
@@ -84,19 +98,14 @@ extends RefCounted
 ##   place(kind, tile, facing)          tile is the root: a 1x2's back (input)
 ##   sell(tile)               a belt or a module back for all that was paid
 ##   sell_price(tile) -> int
-##   upgrade(target)          "market", or a module's tile
+##   upgrade(target)          "market", a module's tile, or a forest's tile
 ##   upgrade_price(target) -> int       -1: nothing to buy there
 ##   put(tile, kind) -> bool  drops an item, for harnesses
 ##
 ## Events (each has `type`; `tile` where there is one).
-##   beaver {tile, id}                a beaver set to a tree
-##   hit {tile, id, bites}            the first and second bite
-##   fell {tile, id}                  the third; the log comes FALL later
-##   log {tile, from, kind}           it lies on `tile`, off the tree at `from`
-##   grew {tile, id, sprout}          a stump grown back, or a new tree
-##   cleared {tile, id}               a stump under a belt or a module, gone
-##   chip {tile, to}                  a stone off the rock at `tile`
-##   ready {tile}                     a rock cracked again
+##   chop {tile, id, plate, auto}     a log into a forest's stock, off the
+##                                    tree `id` at `tile`; `auto`: its own
+##   log {tile, from, kind}           out of the gate `from` into `tile`
 ##   laid {tile, facing}  turned {tile, facing}
 ##   placed {tile, id, kind}  built {tile, id, kind}
 ##   sold_back {tile, kind, amount, items}
@@ -105,7 +114,8 @@ extends RefCounted
 ##   made {tile, id, kind}            a kiln or a retort done with one
 ##   out {tile, id, kind}             its output left into `tile`
 ##   sale {kind, amount, coins}
-##   level {target, level}            "market" or a module's id
+##   level {target, level}            "market", "forest" (with `plate`) or a
+##                                    module's id
 ##   plate {plate, kind}
 ##   refused {why, tile}
 ## ---------------------------------------------------------------------------
@@ -116,11 +126,13 @@ const GAME_S := 0.4
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 1
+const VERSION := 2
 
 const PLATE := 8
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
-const KINDS := ["forest", "quarry", "meadow"]
+const KINDS := ["forest", "neutral"]
+## The forest a new land has, behind the market's plate.
+const FOREST_AT := Vector2i(0, -1)
 ## The market's back tile; it is 2x2 from here.
 const MARKET_AT := Vector2i(6, 6)
 const NONE := Vector2i(-99999, -99999)
@@ -130,23 +142,23 @@ const NONE := Vector2i(-99999, -99999)
 const START_COINS := 20
 const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4}
 const PRICE := {"belt": 1, "firebox": 20, "kiln": 40, "retort": 40}
-## The second plate, the third, then each PLATE_STEP times the last.
+## The first plate bought, the second, then each PLATE_STEP times the last.
 const PLATE_PRICE := [50, 150]
 const PLATE_STEP := 3
 
-## The beaver: three bites this far apart, the log on the ground FALL after
-## the third (the tree is falling meanwhile), three beavers a plate.
-const BITES := 3
-const BITE_EVERY := 0.8
-const FALL := 0.9
-const BEAVERS := 3
-const REGROW := 240.0
-const SPROUT := 90.0
-const TREES_NEW := 6
-const TREES_MOST := 10
+## A forest: the trees it is seen by, the logs it holds before its gates
+## take them, the logs a second it makes by itself at each level (the user,
+## 2026-10-11: "the first upgrade is a wood / second automation"; the later
+## levels are a log a second more each, up to what four gates can carry) and
+## what each level costs.
+const TREES := 14
 const LOOKS := 4
-const ROCKS := 3
-const ROCK_WAIT := 180.0
+const FOREST_ROOM := 12
+const FOREST_RATE := [0.0, 1.0, 2.0, 3.0, 4.0]
+const FOREST_PRICE := [60, 180, 540, 1620]
+## The tile of a forest plate a log leaves by, toward each of DIRS: a little
+## off the middle of the side, and the same place at every quarter turn.
+const GATES: Array[Vector2i] = [Vector2i(7, 4), Vector2i(3, 7), Vector2i(0, 3), Vector2i(4, 0)]
 
 ## A belt: a tile in two real seconds (0.25 m/s), two items a tile, never
 ## nearer than half a tile (the ledger, section 8).
@@ -179,6 +191,10 @@ const RECIPE := {
 	"retort": {"takes": "log", "gives": "charcoal", "mj": 32.0},
 }
 const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0}
+## Built and kept, and not to be had: the quarry is gone and nothing gives
+## the kiln its stone (the user, 2026-10-11: "remove mine keep only forest
+## for now").
+const LOCKED := ["kiln"]
 
 ## A harness points this elsewhere before it makes a sim.
 static var path := "user://factory.cfg"
@@ -187,8 +203,8 @@ var land_seed := 0
 var coins := 0
 var earned := 0
 var plates := {}
+var forests := {}
 var trees := {}
-var rocks := {}
 var belts := {}
 var items := {}
 var modules := {}
@@ -201,11 +217,7 @@ var picked := ""
 var _rng := RandomNumberGenerator.new()
 var _acc := 0.0
 var _next_id := 1
-var _tree_at := {}       # tile -> tree id
 var _mod_at := {}        # tile -> module id
-var _queue := {}         # plate -> tree ids waiting for a beaver
-var _sprout := {}        # forest plate -> seconds to its next new tree
-var _falls: Array = []   # logs in the air: {tile, kind, t}
 var _turn := {}          # fed tile -> the belt tile that fed it last
 var _order: Array = []
 var _order_stale := true
@@ -221,8 +233,8 @@ func new_land(with_seed: int) -> void:
 	coins = START_COINS
 	earned = 0
 	plates = {}
+	forests = {}
 	trees = {}
-	rocks = {}
 	belts = {}
 	items = {}
 	modules = {}
@@ -232,14 +244,11 @@ func new_land(with_seed: int) -> void:
 	alpha = 0.0
 	_acc = 0.0
 	_next_id = 1
-	_tree_at = {}
 	_mod_at = {}
-	_queue = {}
-	_sprout = {}
-	_falls = []
 	_turn = {}
 	_order_stale = true
-	_add_plate(Vector2i.ZERO, "forest")
+	_add_plate(Vector2i.ZERO, "neutral")
+	_add_plate(FOREST_AT, "forest")
 	dirty = true
 
 ## The plate a tile is on, owned or not. The lattice goes negative, so this
@@ -253,13 +262,14 @@ func on_land(tile: Vector2i) -> bool:
 func is_market(tile: Vector2i) -> bool:
 	return tile.x >= MARKET_AT.x and tile.x <= MARKET_AT.x + 1 and tile.y >= MARKET_AT.y and tile.y <= MARKET_AT.y + 1
 
-## Bare ground: land with no market, module, belt, tree or rock on it.
-func tile_free(tile: Vector2i) -> bool:
-	return on_land(tile) and not is_market(tile) and not _mod_at.has(tile) and not belts.has(tile) \
-		and not _tree_at.has(tile) and not rocks.has(tile)
+func is_forest(tile: Vector2i) -> bool:
+	return plates.get(plate_of(tile), "") == "forest"
 
-func tree_at(tile: Vector2i) -> Dictionary:
-	return trees[_tree_at[tile]] if _tree_at.has(tile) else {}
+## Bare ground: open land with no market, module or belt on it. No tile of
+## a forest is.
+func tile_free(tile: Vector2i) -> bool:
+	return plates.get(plate_of(tile), "") == "neutral" and not is_market(tile) and not _mod_at.has(tile) \
+		and not belts.has(tile)
 
 func module_at(tile: Vector2i) -> Dictionary:
 	return modules[_mod_at[tile]] if _mod_at.has(tile) else {}
@@ -275,11 +285,12 @@ func free_edges() -> Array:
 	return out
 
 func plate_price() -> int:
-	var n := plates.size()
-	if n - 1 < PLATE_PRICE.size():
-		return PLATE_PRICE[n - 1]
+	# a new land has two, so the count bought is two under the count held
+	var n := maxi(plates.size() - 2, 0)
+	if n < PLATE_PRICE.size():
+		return PLATE_PRICE[n]
 	var p: int = PLATE_PRICE[PLATE_PRICE.size() - 1]
-	for i in n - PLATE_PRICE.size():
+	for i in n + 1 - PLATE_PRICE.size():
 		p *= PLATE_STEP
 	return p
 
@@ -297,97 +308,130 @@ func buy_plate(p: Vector2i, kind: String) -> bool:
 	dirty = true
 	return true
 
-## Era 2 opens with the second plate: the plate is the key.
+## Era 2 opens with the first plate bought: the plate is the key.
 func unlocked(kind: String) -> bool:
 	if kind == "belt":
 		return true
-	return BUILD.has(kind) and plates.size() >= 2
+	return BUILD.has(kind) and not LOCKED.has(kind) and plates.size() >= 3
 
 func price(kind: String) -> int:
 	return int(PRICE.get(kind, 0))
 
 func _add_plate(p: Vector2i, kind: String) -> void:
 	plates[p] = kind
-	if kind == "forest":
-		_queue[p] = []
-		_sprout[p] = SPROUT
-		for i in TREES_NEW:
-			var at := _stand(p)
-			if at != NONE:
-				_add_tree(at)
-	elif kind == "quarry":
-		for i in ROCKS:
-			var at := _stand(p)
-			if at != NONE:
-				rocks[at] = {"tile": at, "ready": true, "wait": 0.0}
-
-## A place for a tree or a rock on plate `p`: inside its edge (the rim is left
-## for belts and for the seam), on bare ground with nothing lying on it.
-func _stand(p: Vector2i) -> Vector2i:
+	if kind != "forest":
+		return
+	forests[p] = {"level": 0, "stock": 0, "t": 0.0, "next": 0, "paid": 0}
+	# its trees stand inside its rim, where no gate is
 	var can: Array[Vector2i] = []
 	for y in range(1, PLATE - 1):
 		for x in range(1, PLATE - 1):
-			var t := p * PLATE + Vector2i(x, y)
-			if tile_free(t) and not items.has(t):
-				can.append(t)
-	if can.is_empty():
-		return NONE
-	return can[_rng.randi_range(0, can.size() - 1)]
+			can.append(p * PLATE + Vector2i(x, y))
+	for i in TREES:
+		var at: Vector2i = can.pop_at(_rng.randi_range(0, can.size() - 1))
+		trees[_next_id] = {"id": _next_id, "tile": at, "look": _rng.randi_range(0, LOOKS - 1)}
+		_next_id += 1
 
-func _add_tree(tile: Vector2i) -> Dictionary:
-	var tr := {"id": _next_id, "tile": tile, "look": _rng.randi_range(0, LOOKS - 1), "state": "standing",
-		"bites": 0, "t": 0.0, "regrow": 0.0, "queued": false}
-	_next_id += 1
-	trees[tr.id] = tr
-	_tree_at[tile] = tr.id
-	return tr
+static func gate(p: Vector2i, side: int) -> Vector2i:
+	return p * PLATE + GATES[side]
 
-func _trees_on(p: Vector2i, biting_only: bool) -> int:
-	var n := 0
+func forest_rate(p: Vector2i) -> float:
+	return float(FOREST_RATE[int(forests[p].level)]) if forests.has(p) else 0.0
+
+## The tree of forest `p` nearest `near`, the lower id of two as near.
+func _tree_by(p: Vector2i, near: Vector2i) -> Dictionary:
+	var best := {}
+	var best_d := 0
 	for id: int in trees:
 		var tr: Dictionary = trees[id]
-		if plate_of(tr.tile) == p and (not biting_only or tr.state == "bitten"):
-			n += 1
-	return n
+		if plate_of(tr.tile) != p:
+			continue
+		var d := ((tr.tile as Vector2i) - near).length_squared()
+		if best.is_empty() or d < best_d or (d == best_d and id < int(best.id)):
+			best = tr
+			best_d = d
+	return best
+
+## One log into forest `p`'s stock, off the tree nearest `near`. False when
+## the stock is full.
+func _chop(p: Vector2i, near: Vector2i, auto: bool) -> bool:
+	var f: Dictionary = forests[p]
+	if int(f.stock) >= FOREST_ROOM:
+		return false
+	f.stock = int(f.stock) + 1
+	var tr := _tree_by(p, near)
+	events.append({"type": "chop", "tile": tr.get("tile", near), "id": int(tr.get("id", 0)), "plate": p, "auto": auto})
+	return true
+
+## Every tick: a forest with a level makes its own logs, and what a forest
+## holds leaves by its gates, one a gate a tick, the side after the last
+## first, into whatever takes it there. Where nothing takes any, one lies on
+## bare ground past a gate, so a new land's first taps are seen to give.
+func _run_forests() -> void:
+	for p: Vector2i in forests:
+		var f: Dictionary = forests[p]
+		var rate := forest_rate(p)
+		if rate > 0.0:
+			f.t = float(f.t) + TICK * rate
+			while float(f.t) >= 1.0 - EPS:
+				# a tree in its turn, by the dice the land was made with
+				var near := p * PLATE + Vector2i(_rng.randi_range(1, PLATE - 2), _rng.randi_range(1, PLATE - 2))
+				if not _chop(p, near, true):
+					f.t = 1.0
+					break
+				f.t = maxf(float(f.t) - 1.0, 0.0)
+		if int(f.stock) <= 0:
+			continue
+		var first: int = f.next
+		var it := {}
+		var gave := false
+		for q in 4:
+			if int(f.stock) <= 0:
+				break
+			var d := (first + q) % 4
+			var g := gate(p, d)
+			if it.is_empty():
+				it = _item("log", _mid(g))
+			it.was = _mid(g)
+			if not _enter(g + DIRS[d], it, d, 0.0):
+				continue
+			f.stock = int(f.stock) - 1
+			f.next = (d + 1) % 4
+			gave = true
+			events.append({"type": "log", "tile": g + DIRS[d], "from": g, "kind": "log"})
+			it = {}
+		if gave or int(f.stock) <= 0:
+			continue
+		for q in 4:
+			var d := (first + q) % 4
+			var g := gate(p, d)
+			var to := g + DIRS[d]
+			if not tile_free(to) or _count(to) >= ROOM:
+				continue
+			if it.is_empty():
+				it = _item("log", _mid(g))
+			it.was = _mid(g)
+			var arr: Array = items.get(to, [])
+			arr.append(it)
+			items[to] = arr
+			f.stock = int(f.stock) - 1
+			f.next = (d + 1) % 4
+			events.append({"type": "log", "tile": to, "from": g, "kind": "log"})
+			break
 
 # --- the hand ---
 
 func tap(tile: Vector2i) -> bool:
-	if _tree_at.has(tile):
-		return _tap_tree(trees[_tree_at[tile]])
-	if rocks.has(tile):
-		var rock: Dictionary = rocks[tile]
-		if not rock.ready:
-			return _no("wait", tile)
-		rock.ready = false
-		rock.wait = ROCK_WAIT
-		events.append({"type": "chip", "tile": tile, "to": _lie(tile, "stone")})
+	if is_forest(tile):
+		if not _chop(plate_of(tile), tile, false):
+			# the tree that would have given it shakes its head
+			return _no("full", _tree_by(plate_of(tile), tile).get("tile", tile))
 		dirty = true
 		return true
 	var m := module_at(tile)
 	if not m.is_empty() and m.kind == "firebox":
 		return _light(m)
 	return _no("nothing", tile)
-
-func _tap_tree(tr: Dictionary) -> bool:
-	if tr.state != "standing" or tr.queued:
-		return _no("busy", tr.tile)
-	var p := plate_of(tr.tile)
-	if _trees_on(p, true) < BEAVERS:
-		_set_beaver(tr)
-	else:
-		# the fourth tap waits its turn and nothing shows it
-		tr.queued = true
-		(_queue[p] as Array).append(tr.id)
-	dirty = true
-	return true
-
-func _set_beaver(tr: Dictionary) -> void:
-	tr.state = "bitten"
-	tr.queued = false
-	tr.bites = 0
-	tr.t = BITE_EVERY
-	events.append({"type": "beaver", "tile": tr.tile, "id": tr.id})
 
 func _light(m: Dictionary) -> bool:
 	if not m.built:
@@ -413,14 +457,12 @@ func can_lay(tile: Vector2i) -> bool:
 func _lay_why(tile: Vector2i) -> String:
 	if not on_land(tile):
 		return "pond"
+	if is_forest(tile):
+		return "forest"
 	if is_market(tile):
 		return "market"
 	if _mod_at.has(tile):
 		return "taken"
-	if rocks.has(tile):
-		return "rock"
-	if _tree_at.has(tile) and trees[_tree_at[tile]].state != "stump":
-		return "tree"
 	return ""
 
 ## A belt on `tile` facing `facing`. On a belt already there it re-faces it
@@ -439,7 +481,6 @@ func lay_belt(tile: Vector2i, facing: int) -> bool:
 	if coins < price("belt"):
 		return _no("coins", tile)
 	coins -= price("belt")
-	_clear_stump(tile)
 	belts[tile] = facing
 	_order_stale = true
 	_settle(tile)
@@ -623,8 +664,8 @@ func _pos(tile: Vector2i, it: Dictionary) -> Vector2:
 func item_pos(tile: Vector2i, it: Dictionary) -> Vector2:
 	return (it.was as Vector2).lerp(_pos(tile, it), alpha)
 
-## Onto a belt from above (a log off a tree, a stone off a rock): mid tile if
-## the belt is empty there, else behind what rides it if that leaves the gap.
+## Onto a belt from above (a harness's `put`): mid tile if the belt is empty
+## there, else behind what rides it if that leaves the gap.
 func _belt_drop(tile: Vector2i, kind: String, was: Vector2) -> bool:
 	var arr: Array = items.get(tile, [])
 	if arr.size() >= ROOM:
@@ -646,33 +687,6 @@ func _lay_down(tile: Vector2i, kind: String, was: Vector2) -> void:
 	items[tile] = arr
 	if was == Vector2.INF:
 		it.was = _pos(tile, it)
-
-## The facing from a tile toward the market, the wider way first.
-func _to_market(tile: Vector2i) -> int:
-	var dx := (MARKET_AT.x * 2 + 1) - tile.x * 2
-	var dy := (MARKET_AT.y * 2 + 1) - tile.y * 2
-	if absi(dx) >= absi(dy):
-		return 0 if dx > 0 else 2
-	return 1 if dy > 0 else 3
-
-## Where what came off the tree or the rock at `origin` lies: on a belt beside
-## it that takes it; else the first bare tile beside it with room, the one
-## toward the market first, then clockwise; else under the stump itself.
-## Returns the tile.
-func _lie(origin: Vector2i, kind: String) -> Vector2i:
-	var first := _to_market(origin)
-	var was := _mid(origin)
-	for q in 4:
-		var n := origin + DIRS[(first + q) % 4]
-		if belts.has(n) and _belt_drop(n, kind, was):
-			return n
-	for q in 4:
-		var n := origin + DIRS[(first + q) % 4]
-		if tile_free(n) and _count(n) < ROOM:
-			_lay_down(n, kind, was)
-			return n
-	_lay_down(origin, kind, was)
-	return origin
 
 func _count(tile: Vector2i) -> int:
 	return (items.get(tile, []) as Array).size()
@@ -768,26 +782,17 @@ func place(kind: String, tile: Vector2i, facing: int) -> bool:
 	dirty = true
 	return true
 
-## Takes a module's tiles: a stump under it is gone and what lay there is
-## moved to the nearest bare ground.
+## Takes a module's tiles: what lay there is moved to the nearest bare
+## ground.
 func _stand_module(m: Dictionary) -> void:
 	for t: Vector2i in m.tiles:
 		_mod_at[t] = m.id
-		_clear_stump(t)
 	for t: Vector2i in m.tiles:
 		if items.has(t):
 			var arr: Array = items[t]
 			items.erase(t)
 			for it: Dictionary in arr:
 				_spill([t], it.kind)
-
-func _clear_stump(tile: Vector2i) -> void:
-	if not _tree_at.has(tile):
-		return
-	var id: int = _tree_at[tile]
-	_tree_at.erase(tile)
-	trees.erase(id)
-	events.append({"type": "cleared", "tile": tile, "id": id})
 
 func sell_price(tile: Vector2i) -> int:
 	if belts.has(tile):
@@ -832,9 +837,12 @@ func sell(tile: Vector2i) -> bool:
 	dirty = true
 	return true
 
-## The price of the next level of `target` ("market", or a module's tile);
-## -1 where there is none to buy.
+## The price of the next level of `target` ("market", a module's tile, or
+## any tile of a forest); -1 where there is none to buy.
 func upgrade_price(target: Variant) -> int:
+	if target is Vector2i and is_forest(target):
+		var lv: int = forests[plate_of(target)].level
+		return FOREST_PRICE[lv] if lv < FOREST_PRICE.size() else -1
 	if target is Vector2i and is_market(target):
 		target = "market"
 	if target is String:
@@ -861,7 +869,12 @@ func upgrade(target: Variant) -> bool:
 	if coins < cost:
 		return _no("coins", at)
 	coins -= cost
-	if target is String or is_market(at):
+	if is_forest(at):
+		var f: Dictionary = forests[plate_of(at)]
+		f.level = int(f.level) + 1
+		f.paid = int(f.paid) + cost
+		events.append({"type": "level", "target": "forest", "level": f.level, "plate": plate_of(at), "tile": at})
+	elif target is String or is_market(at):
 		market.level = int(market.level) + 1
 		market.t = minf(market.t, market_interval())
 		events.append({"type": "level", "target": "market", "level": market.level})
@@ -1035,78 +1048,13 @@ func _tick() -> void:
 	for tile: Vector2i in items:
 		for it: Dictionary in items[tile]:
 			it.was = _pos(tile, it)
-	_grow()
+	_run_forests()
 	_move_belts()
 	_heat()
 	_run_modules()
 	_burn()
 	_sell()
 	dirty = true
-
-func _grow() -> void:
-	# what is in the air first, so a log lands FALL after the third bite
-	var i := 0
-	while i < _falls.size():
-		var fall: Dictionary = _falls[i]
-		fall.t = float(fall.t) - TICK
-		if float(fall.t) > EPS:
-			i += 1
-			continue
-		_falls.remove_at(i)
-		events.append({"type": "log", "tile": _lie(fall.tile, fall.kind), "from": fall.tile, "kind": fall.kind})
-	for id: int in trees:
-		var tr: Dictionary = trees[id]
-		if tr.state == "bitten":
-			tr.t = float(tr.t) - TICK
-			if float(tr.t) > EPS:
-				continue
-			tr.bites = int(tr.bites) + 1
-			if int(tr.bites) < BITES:
-				tr.t = BITE_EVERY
-				events.append({"type": "hit", "tile": tr.tile, "id": id, "bites": tr.bites})
-				continue
-			tr.state = "stump"
-			tr.t = 0.0
-			tr.regrow = REGROW
-			_falls.append({"tile": tr.tile, "kind": "log", "t": FALL})
-			events.append({"type": "fell", "tile": tr.tile, "id": id})
-			_next_beaver(plate_of(tr.tile))
-		elif tr.state == "stump":
-			tr.regrow = float(tr.regrow) - TICK
-			if float(tr.regrow) <= EPS:
-				tr.regrow = 0.0
-				tr.bites = 0
-				tr.state = "standing"
-				tr.look = _rng.randi_range(0, LOOKS - 1)
-				events.append({"type": "grew", "tile": tr.tile, "id": id, "sprout": false})
-	for p: Vector2i in _sprout:
-		if _trees_on(p, false) >= TREES_MOST:
-			continue
-		_sprout[p] = float(_sprout[p]) - TICK
-		if float(_sprout[p]) > EPS:
-			continue
-		_sprout[p] = SPROUT
-		var at := _stand(p)
-		if at != NONE:
-			var tr := _add_tree(at)
-			events.append({"type": "grew", "tile": at, "id": tr.id, "sprout": true})
-	for tile: Vector2i in rocks:
-		var rock: Dictionary = rocks[tile]
-		if rock.ready:
-			continue
-		rock.wait = float(rock.wait) - TICK
-		if float(rock.wait) <= EPS:
-			rock.wait = 0.0
-			rock.ready = true
-			events.append({"type": "ready", "tile": tile})
-
-func _next_beaver(p: Vector2i) -> void:
-	var q: Array = _queue.get(p, [])
-	while not q.is_empty():
-		var id: int = q.pop_front()
-		if trees.has(id) and trees[id].state == "standing":
-			_set_beaver(trees[id])
-			return
 
 ## One sale an interval and no faster. The counter's clock runs up to one
 ## interval while nothing waits, so the first item to reach an idle market
@@ -1138,10 +1086,9 @@ func pack() -> Dictionary:
 	return {
 		"version": VERSION, "seed": land_seed, "rng": _rng.state, "coins": coins, "earned": earned,
 		"acc": _acc, "next_id": _next_id, "picked": picked,
-		"plates": plates.duplicate(true), "trees": trees.duplicate(true), "rocks": rocks.duplicate(true),
+		"plates": plates.duplicate(true), "forests": forests.duplicate(true), "trees": trees.duplicate(true),
 		"belts": belts.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
-		"market": market.duplicate(true), "queue": _queue.duplicate(true), "sprout": _sprout.duplicate(true),
-		"falls": _falls.duplicate(true), "turn": _turn.duplicate(true),
+		"market": market.duplicate(true), "turn": _turn.duplicate(true),
 	}
 
 ## The land goes into the file as bytes (base64), not as text: a float
@@ -1182,11 +1129,11 @@ func load_saved() -> bool:
 const _SHAPES := {
 	"version": TYPE_INT, "seed": TYPE_INT, "rng": TYPE_INT, "coins": TYPE_INT, "earned": TYPE_INT,
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING,
-	"plates": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "rocks": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
-	"items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "queue": TYPE_DICTIONARY,
-	"sprout": TYPE_DICTIONARY, "falls": TYPE_ARRAY, "turn": TYPE_DICTIONARY,
+	"plates": TYPE_DICTIONARY, "forests": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
+	"items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
 }
-const _TREE_KEYS := ["id", "tile", "look", "state", "bites", "t", "regrow", "queued"]
+const _TREE_KEYS := ["id", "tile", "look"]
+const _FOREST_KEYS := ["level", "stock", "t", "next", "paid"]
 const _MODULE_KEYS := ["id", "kind", "root", "facing", "level", "tiles", "built", "build", "paid"]
 const _FIRE_KEYS := ["lit", "fuel", "fuel_max", "fuel_kind", "hopper", "draw", "cap"]
 const _SINK_KEYS := ["inp", "out", "work", "share"]
@@ -1195,19 +1142,21 @@ static func _sound(d: Dictionary) -> bool:
 	for key: String in _SHAPES:
 		if not d.has(key) or typeof(d[key]) != _SHAPES[key]:
 			return false
-	if d.version != VERSION or d.coins < 0 or not d.plates.has(Vector2i.ZERO):
+	# a land of the first version (trees felled one by one, a quarry, a
+	# meadow) is not read: its forest had belts and machines in it
+	if d.version != VERSION or d.coins < 0 or d.plates.get(Vector2i.ZERO, "") != "neutral":
 		return false
 	for p: Variant in d.plates:
 		if not (p is Vector2i) or not KINDS.has(d.plates[p]):
 			return false
+		if d.plates[p] == "forest":
+			var f: Variant = d.forests.get(p)
+			if not (f is Dictionary) or not f.has_all(_FOREST_KEYS) or not (f.level is int) or f.level < 0 \
+					or f.level > FOREST_PRICE.size() or not (f.stock is int) or not (f.next is int) or f.next < 0 or f.next > 3:
+				return false
 	for id: Variant in d.trees:
 		var tr: Variant = d.trees[id]
-		if not (id is int) or not (tr is Dictionary) or not tr.has_all(_TREE_KEYS) or not (tr.tile is Vector2i) \
-				or not ["standing", "bitten", "stump"].has(tr.state):
-			return false
-	for t: Variant in d.rocks:
-		var rock: Variant = d.rocks[t]
-		if not (t is Vector2i) or not (rock is Dictionary) or not rock.has_all(["tile", "ready", "wait"]):
+		if not (id is int) or not (tr is Dictionary) or not tr.has_all(_TREE_KEYS) or not (tr.tile is Vector2i):
 			return false
 	for t: Variant in d.belts:
 		if not (t is Vector2i) or not (d.belts[t] is int) or d.belts[t] < 0 or d.belts[t] > 3:
@@ -1239,12 +1188,6 @@ static func _sound(d: Dictionary) -> bool:
 	for kind: Variant in mk.wait:
 		if not SELLS.has(kind):
 			return false
-	for fall: Variant in d.falls:
-		if not (fall is Dictionary) or not fall.has_all(["tile", "kind", "t"]) or not (fall.tile is Vector2i):
-			return false
-	for p: Variant in d.queue:
-		if not (d.queue[p] is Array):
-			return false
 	return true
 
 func _unpack(d: Dictionary) -> void:
@@ -1258,29 +1201,17 @@ func _unpack(d: Dictionary) -> void:
 	_next_id = d.next_id
 	picked = d.picked
 	plates = (d.plates as Dictionary).duplicate(true)
+	forests = (d.forests as Dictionary).duplicate(true)
 	trees = (d.trees as Dictionary).duplicate(true)
-	rocks = (d.rocks as Dictionary).duplicate(true)
 	belts = (d.belts as Dictionary).duplicate(true)
 	items = (d.items as Dictionary).duplicate(true)
 	modules = (d.modules as Dictionary).duplicate(true)
 	market = (d.market as Dictionary).duplicate(true)
-	_queue = (d.queue as Dictionary).duplicate(true)
-	_sprout = (d.sprout as Dictionary).duplicate(true)
-	_falls = (d.falls as Array).duplicate(true)
 	_turn = (d.turn as Dictionary).duplicate(true)
-	_tree_at = {}
-	for id: int in trees:
-		_tree_at[trees[id].tile] = id
 	_mod_at = {}
 	for id: int in modules:
 		for t: Vector2i in modules[id].tiles:
 			_mod_at[t] = id
-	for p: Vector2i in plates:
-		if plates[p] == "forest":
-			if not _queue.has(p):
-				_queue[p] = []
-			if not _sprout.has(p):
-				_sprout[p] = SPROUT
 	events = []
 	_order_stale = true
 	dirty = false

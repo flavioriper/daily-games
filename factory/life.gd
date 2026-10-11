@@ -2,13 +2,13 @@ extends RefCounted
 
 ## What is seen of Factory's land, for whoever shows it (the screen, the
 ## tab's card, the tutorial's pages): the plates on the pond, the belts and
-## what rides them, the trees and the shadow each throws, the beavers that
-## bite them and the way one comes down, the rocks, the market and the
-## machines. It began as the Grove's valley/grove_life.gd (the beaver, the
-## bite, the four beats of a fall, the stump, the chips and the burst of
-## leaves are that file's, tuned on 2026-10-06) with the jetty, the raft,
-## the crate, the throws and the grove's own beavers cut, and it took the
-## rest of the board in so that three holders draw one land by one path.
+## what rides them, a forest's trees and the shadow each throws, the beaver
+## that bites one for every log taken, the market and the machines. It began
+## as the Grove's valley/grove_life.gd (the beaver, the bite and the chips
+## are that file's, tuned on 2026-10-06; the fall, the stump and the burst
+## of leaves went on 2026-10-11, when a forest became a closed plate whose
+## trees are never felled) and it took the rest of the board in so that
+## three holders draw one land by one path.
 ## The rules stay the sim's (factory/sim.gd), the drawings the art's
 ## (factory/art.gd, ui/faces/beaver.gd).
 ##
@@ -20,15 +20,13 @@ extends RefCounted
 ## the sim's events and `step(delta)`. A holder that did not see the events
 ## (the tab, while the screen had the land) calls `stale()` and everything
 ## is read from the tables again; nothing here needs an event to be right,
-## only to be lively: a beaver is at every tree the table says is bitten.
+## only to be lively.
 ##
-## - **A tree comes down in four beats** (CREAK back, DROP over, SETTLE one
-##   bounce with a burst of its leaves, GONE drawn in toward its crown):
-##   0.9 s, the sim's own FALL, so the log is on its tile as the crown goes.
-##   Its shadow does not turn with it: it runs out along the ground.
-## - **A beaver** sits left of an even tree and right of an odd one, rears as
-##   the sim's next bite comes due, has its teeth in on `hit`, and hops when
-##   the tree is down, which falls away from it.
+## - **A beaver** pops up left of an even tree and right of an odd one on
+##   the sim's `chop` (a log into that forest's stock, by the hand or by the
+##   forest itself), its teeth in and a chip or two flying, the tree
+##   squashed; it stays `STAY` for the next and goes.
+## - **A forest's stock is a pile at each gate that has land beyond it.**
 ## - **What stands is sorted by `Art.depth`** across trees and buildings. Only
 ##   trees wear the wind, so the sorted list is cut into runs of one kind and
 ##   each run drawn on its own layer, windy and plain by turns.
@@ -52,35 +50,24 @@ extends RefCounted
 ##   where the art puts it; the ground's washes, pebbles and tufts are a
 ##   plate's own and do not turn with the land.
 ##
-## Under reduce motion a beaver is there or not and only changes its face, a
-## felled tree fades where it stands, nothing bursts, a plate and a module
-## are there at once and smoke stands still.
-
-## A felled tree's crown has come down at `at` (view units): the holder's dust.
-signal landed(at: Vector2)
+## Under reduce motion a beaver is there or not and only changes its face,
+## no chip flies, a plate and a module are there at once and smoke stands
+## still.
 
 const Art = preload("res://factory/art.gd")
 const Sim = preload("res://factory/sim.gd")
 const Beaver = preload("res://ui/faces/beaver.gd")
 const Motion = preload("res://core/motion.gd")
 
-## Seconds a hit tree's squash lasts, and the four beats of a fall.
+## Seconds a hit tree's squash lasts.
 const SQUASH := 0.16
-const CREAK := 0.1
-const DROP := 0.42
-const SETTLE := 0.18
-const GONE := 0.2
-## How far over a lying tree is, in radians, and how far it leans back first.
-const LIE := 1.5
-const BACK := 0.07
-## A beaver's seconds in and out, how long it stays by a tree no longer
-## bitten, a bite's length and a cheer's.
+## A beaver's seconds in and out, how long it stays by its tree after a
+## bite, and a bite's length.
 const SHOW_IN := 0.16
 const SHOW_OUT := 0.14
-const LINGER := 0.15
+const STAY := 0.7
 const BITE := 0.26
-const CHEER := 0.56
-## Chips and burst leaves in the air at most, and how fast they come down.
+## Chips in the air at most, and how fast they come down.
 const BITS := 48
 const FALLS := 900.0
 ## Seconds a tree takes to come up, and a plate out of the pond; how far
@@ -139,8 +126,7 @@ var _hit := {}        # tree id -> seconds since it was hit
 var _born := {}       # tree id -> seconds since it came up (under 0: not yet)
 var _wob := {}        # tile -> seconds since it was shaken
 var _rise := {}       # plate -> seconds since it was bought
-var _falls := {}      # tree id -> {id, tile, look, t, dir, down}
-var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, cheer, age, size, due}
+var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, age, size}
 var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
 var _bit_mm: MultiMesh
 var _rng := RandomNumberGenerator.new()
@@ -186,7 +172,6 @@ func hold(with_sim: RefCounted) -> void:
 	_born.clear()
 	_wob.clear()
 	_rise.clear()
-	_falls.clear()
 	_beavers.clear()
 	_bits.clear()
 	stale()
@@ -295,17 +280,8 @@ static func footprint(kind: String, root: Vector2i, facing: int) -> Array:
 
 func event(e: Dictionary) -> void:
 	match String(e.type):
-		"hit":
-			_on_hit(int(e.id))
-		"fell":
-			_on_fell(int(e.id))
-		"grew":
-			_born[int(e.id)] = 0.0
-		"cleared":
-			_falls.erase(int(e.id))
-			_beavers.erase(int(e.id))
-		"chip":
-			shake(e.tile)
+		"chop":
+			_on_chop(int(e.id))
 		"laid", "turned", "sold_back", "placed", "built":
 			_belts_stale = true
 		"plate":
@@ -322,14 +298,16 @@ func shake(tile: Vector2i) -> void:
 	if not Motion.reduce:
 		_wob[tile] = 0.0
 
-## The tree is squashed and its beaver's teeth are in, a chip or two flying.
-func _on_hit(id: int) -> void:
+## A log off the tree: it is squashed and a beaver's teeth are in, a chip or
+## two flying.
+func _on_chop(id: int) -> void:
 	if not sim.trees.has(id):
 		return
 	var tr: Dictionary = sim.trees[id]
 	_hit[id] = 0.0
 	var b := _beaver(tr)
 	b.bite = 0.0
+	b.seen = 0.0
 	if Motion.reduce:
 		return
 	var side: float = b.side
@@ -338,26 +316,12 @@ func _on_hit(id: int) -> void:
 		_bit(at, Vector2(side * _rng.randf_range(40.0, 150.0), -_rng.randf_range(120.0, 260.0)), 0.42,
 			Art.PITH if i == 0 else Art.BARK.lightened(0.25), _rng.randf_range(0.5, 0.8), 1.0)
 
-## The third bite: the tree starts down, away from its beaver, which cheers.
-func _on_fell(id: int) -> void:
-	if not sim.trees.has(id):
-		return
-	var tr: Dictionary = sim.trees[id]
-	var b := _beaver(tr)
-	b.bite = 0.0
-	b.cheer = 0.0
-	var f := {"id": id, "tile": tr.tile, "look": int(tr.look), "t": 0.0, "dir": -float(b.side), "down": false}
-	_falls[id] = f
-	if Motion.reduce:
-		f.down = true
-		landed.emit(mid(tr.tile))
-
 func _beaver(tr: Dictionary) -> Dictionary:
 	var id: int = tr.id
 	if not _beavers.has(id):
 		_beavers[id] = {"tile": tr.tile, "look": int(tr.look), "side": -1.0 if id % 2 == 0 else 1.0, "show": 0.0,
-			"rising": true, "seen": 0.0, "bite": 10.0, "cheer": -1.0, "age": 0.0,
-			"size": 0.7 + 0.004 * float(Art.RADIUS[int(tr.look)]), "due": 0.0}
+			"rising": true, "seen": 0.0, "bite": 10.0, "age": 0.0,
+			"size": 0.7 + 0.004 * float(Art.RADIUS[int(tr.look)])}
 	return _beavers[id]
 
 func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, weight: float) -> void:
@@ -365,21 +329,6 @@ func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, we
 		return
 	_bits.append({"pos": at, "vel": vel, "t": 0.0, "life": life, "turn": _rng.randf() * TAU,
 		"spin": _rng.randf_range(-9.0, 9.0), "col": colour, "size": size, "weight": weight})
-
-## A crown hits the ground: its leaves jump out of it.
-func _burst(f: Dictionary) -> void:
-	var look: int = f.look
-	var r: float = float(Art.RADIUS[look]) * Art.TREE_SCALE
-	var at := _crown_at(f)
-	for i in 5 + look:
-		_bit(at + Vector2(_rng.randf_range(-0.7, 0.7), _rng.randf_range(-0.5, 0.2)) * r,
-			Vector2(float(f.dir) * _rng.randf_range(10.0, 150.0) + _rng.randf_range(-70.0, 70.0), -_rng.randf_range(110.0, 300.0)),
-			_rng.randf_range(0.7, 1.1), Art.LEAF[look], _rng.randf_range(0.9, 1.4), 0.5)
-
-## Where the middle of a lying tree's crown is, in view units.
-func _crown_at(f: Dictionary) -> Vector2:
-	var r: float = float(Art.RADIUS[int(f.look)]) * Art.TREE_SCALE * 1.7
-	return mid(f.tile) + Vector2(float(f.dir) * sin(LIE), -cos(LIE)) * r
 
 # --- time ---
 
@@ -405,33 +354,12 @@ func step(delta: float) -> void:
 	for p: Vector2i in _rise.keys():
 		if _rise[p] > RISE:
 			_rise.erase(p)
-	var whole := Motion.REDUCED_TIME if Motion.reduce else CREAK + DROP + SETTLE + GONE
-	for id: int in _falls.keys():
-		var f: Dictionary = _falls[id]
-		f.t += delta
-		if not f.down and (Motion.reduce or f.t >= CREAK + DROP):
-			f.down = true
-			if not Motion.reduce:
-				_burst(f)
-			landed.emit(_crown_at(f))
-		if f.t >= whole:
-			_falls.erase(id)
 	for id: int in _beavers.keys():
 		var b: Dictionary = _beavers[id]
 		b.seen += delta
 		b.bite += delta
 		b.age += delta
-		if b.cheer >= 0.0:
-			b.cheer += delta
-	for id: int in sim.trees:
-		var tr: Dictionary = sim.trees[id]
-		if tr.state == "bitten":
-			var b := _beaver(tr)
-			b.seen = 0.0
-			b.due = 1.0 - clampf(float(tr.t) / Sim.BITE_EVERY, 0.0, 1.0)
-	for id: int in _beavers.keys():
-		var b: Dictionary = _beavers[id]
-		var want: bool = b.seen < LINGER or (b.cheer >= 0.0 and b.cheer < CHEER)
+		var want: bool = b.seen < STAY
 		b.rising = want
 		b.show = move_toward(float(b.show), 1.0 if want else 0.0, delta / (SHOW_IN if want else SHOW_OUT))
 		if not want and float(b.show) <= 0.0:
@@ -628,32 +556,6 @@ func _size(id: int) -> Vector2:
 func _turned(tile: Vector2i) -> float:
 	return Motion.wobble_angle(float(_wob[tile])) if _wob.has(tile) else 0.0
 
-## A falling tree at its moment: how far over (to the right when over 0),
-## how flat it is pressed along its length, how much of it is left (1 to 0
-## as it goes), how seen it is and how much of its shadow.
-func _pose(f: Dictionary) -> Array:
-	var t: float = f.t
-	if Motion.reduce:
-		var left := 1.0 - t / Motion.REDUCED_TIME
-		return [0.0, 0.0, 1.0, left, left]
-	var dir: float = f.dir
-	if t < CREAK:
-		return [-dir * BACK * sin(t / CREAK * PI * 0.5), 0.0, 1.0, 1.0, 1.0]
-	t -= CREAK
-	if t < DROP:
-		return [dir * lerpf(-BACK, LIE, pow(t / DROP, 2.4)), 0.0, 1.0, 1.0, 1.0]
-	t -= DROP
-	if t < SETTLE:
-		var k := t / SETTLE
-		return [dir * (LIE - 0.14 * sin(k * PI) * (1.0 - k)), 0.1 * sin(minf(1.0, k * 2.0) * PI), 1.0, 1.0, 1.0]
-	t -= SETTLE
-	var g := clampf(t / GONE, 0.0, 1.0)
-	return [dir * LIE, 0.0, (1.0 + 0.3 * g) * (1.0 - g * g), 0.0 if g >= 1.0 else 1.0, 1.0 - g]
-
-## A stump of `look`: a sapling's is the birch's, small.
-static func _stump(look: int) -> Array:
-	return [Art.stump(1), 0.55] if look == 0 else [Art.stump(look), 1.0]
-
 ## Everything that stands, [depth, windy, mesh, transform, tint] each, sorted
 ## from the back and cut into runs for the layers.
 func _fill_stand() -> void:
@@ -664,25 +566,20 @@ func _fill_stand() -> void:
 		var tile: Vector2i = tr.tile
 		if not _up(tile):
 			continue
-		var d := depth(Vector2(tile) + MID)
-		var at := mid(tile)
-		if tr.state == "stump":
-			if _falls.has(id):
-				continue
-			var s := _stump(tr.look)
-			list.append([d, 1, s[0], Transform2D(0.0, Vector2(s[1], s[1]), 0.0, at), white])
-		else:
-			var size := _size(id)
-			if size.x > 0.0:
-				list.append([d, 1, Art.tree(tr.look), Transform2D(_turned(tile), size, 0.0, at), white])
-	for id: int in _falls:
-		_add_fall(list, _falls[id])
+		var size := _size(id)
+		if size.x > 0.0:
+			list.append([depth(Vector2(tile) + MID), 1, Art.tree(tr.look), Transform2D(_turned(tile), size, 0.0, mid(tile)), white])
 	for id: int in _beavers:
 		_add_beaver(list, _beavers[id])
-	for tile: Vector2i in sim.rocks:
-		if _up(tile):
-			list.append([depth(Vector2(tile) + MID), 0, Art.rock(sim.rocks[tile].ready),
-				Transform2D(_turned(tile), mid(tile)), white])
+	for p: Vector2i in sim.forests:
+		var held: int = sim.forests[p].stock
+		if held <= 0 or not _up(p * Art.PLATE):
+			continue
+		# what it holds, lying by every gate that leads on to land
+		for side in 4:
+			if sim.plates.has(p + Art.DIRS[side]):
+				var g: Vector2i = Sim.gate(p, side)
+				list.append([depth(Vector2(g) + MID), 0, Art.pile(held), Transform2D(0.0, mid(g)), white])
 	var stall := Vector2(Sim.MARKET_AT) + Vector2.ONE
 	# the stall has one face and keeps it toward the eye at every turn
 	var stall_d := depth(stall)
@@ -713,33 +610,8 @@ func _fill_stand() -> void:
 	for c in _pool:
 		c.queue_redraw()
 
-func _add_fall(list: Array, f: Dictionary) -> void:
-	var look: int = f.look
-	var tile: Vector2i = f.tile
-	var at := mid(tile)
-	var d := depth(Vector2(tile) + MID)
-	var size := Art.TREE_SCALE
-	var pose := _pose(f)
-	var s := _stump(look)
-	if Motion.reduce:
-		list.append([d, 1, s[0], Transform2D(0.0, Vector2(s[1], s[1]), 0.0, at), Color.WHITE])
-		list.append([d + 0.001, 1, Art.tree(look), Transform2D(0.0, Vector2(size, size), 0.0, at), Color(1.0, 1.0, 1.0, pose[3])])
-		return
-	if f.t > CREAK:
-		list.append([d, 1, s[0], Transform2D(0.0, Vector2(s[1], s[1]), 0.0, at), Color.WHITE])
-	var left: float = pose[2]
-	if float(pose[3]) > 0.0 and left > 0.02:
-		var flat: float = pose[1]
-		var xf := Transform2D(float(pose[0]), Vector2(size * (1.0 + flat * 0.6), size * (1.0 - flat)), 0.0, at)
-		if left != 1.0:
-			# it goes into what it gives: drawn in toward its crown's middle
-			var crown := xf * Vector2(0.0, -float(Art.RADIUS[look]) * 1.7)
-			xf = Transform2D(0.0, Vector2(left, left), 0.0, crown * (1.0 - left)) * xf
-		list.append([d + 0.001, 1, Art.tree(look), xf, Color.WHITE])
-
-## A beaver by its tree, looking at it: popped in, reared back as the next
-## bite comes due, its teeth in the wood on a hit, hopping when the tree is
-## down.
+## A beaver by its tree, looking at it: popped in, its teeth in the wood on
+## a chop.
 func _add_beaver(list: Array, b: Dictionary) -> void:
 	var show: float = b.show
 	if show <= 0.0:
@@ -749,24 +621,17 @@ func _add_beaver(list: Array, b: Dictionary) -> void:
 	var s: float = b.size
 	var grow := 1.0
 	var snap := 0.0
-	var rear := 0.0
-	var hop := 0.0
-	var cheering: bool = float(b.cheer) >= 0.0 and float(b.cheer) < CHEER
 	if not Motion.reduce:
 		grow = Motion.back_out(show) if b.rising else show
 		snap = pow(1.0 - clampf(float(b.bite) / BITE, 0.0, 1.0), 2.0)
-		if cheering:
-			hop = Motion.hop_lift(fmod(float(b.cheer), CHEER * 0.5), -11.0, CHEER * 0.5)
-		elif float(b.seen) < 0.1:
-			rear = smoothstep(0.5, 1.0, float(b.due))
 	var reach: float = Art.girth(b.look) + (Beaver.NECK.x + Beaver.TEETH.x - 2.0) * s
-	var at := mid(tile) + Vector2(side * (reach - 3.0 * snap * s), 3.0 + hop)
+	var at := mid(tile) + Vector2(side * (reach - 3.0 * snap * s), 3.0)
 	# it looks at the trunk: right when it sits on the left
 	var xf := Transform2D(0.0, Vector2(-side * s * grow * (1.0 + 0.06 * snap), s * grow * (1.0 - 0.06 * snap)), 0.0, at)
-	var wag := 0.5 * rear - 0.12 * snap + (0.3 * absf(sin(float(b.cheer) * 22.0)) if cheering else 0.04 * sin(float(b.age) * 3.0))
+	var wag := 0.04 * sin(float(b.age) * 3.0) - 0.12 * snap
 	var d := depth(Vector2(tile) + MID) + 0.01
-	var nod := 0.22 * snap - 0.3 * rear - (0.28 if cheering else 0.0)
-	var neck := Beaver.NECK + Vector2(3.0 * snap - 4.0 * rear, -2.0 * rear)
+	var nod := 0.22 * snap
+	var neck := Beaver.NECK + Vector2(3.0 * snap, 0.0)
 	list.append([d, 1, Beaver.tail(), xf * Transform2D(wag, Beaver.TAIL_AT), Color.WHITE])
 	list.append([d + 0.001, 1, Beaver.body(), xf, Color.WHITE])
 	list.append([d + 0.002, 1, Beaver.head(float(b.bite) < BITE * 0.6), xf * Transform2D(nod, neck), Color.WHITE])
@@ -844,7 +709,8 @@ func _draw_grass(ci: CanvasItem) -> void:
 			continue
 		ci.draw_set_transform(Art.at(Vector2((o[0] as Vector2i) * Art.PLATE)))
 		for mm: MultiMesh in Art.grass(o[1], o[3]):
-			ci.draw_multimesh(mm, null)
+			if mm.instance_count > 0:
+				ci.draw_multimesh(mm, null)
 
 func _draw_under(ci: CanvasItem) -> void:
 	for key: Variant in _under_mms:
@@ -867,17 +733,11 @@ func _draw_flat(ci: CanvasItem) -> void:
 func _draw_shade(ci: CanvasItem) -> void:
 	for id: int in sim.trees:
 		var tr: Dictionary = sim.trees[id]
-		if tr.state == "stump" or not _up(tr.tile):
+		if not _up(tr.tile):
 			continue
 		var size := _size(id)
 		if size.x > 0.0:
 			ci.draw_mesh(Art.shade(tr.look), null, Art.cast(mid(tr.tile), size))
-	for id: int in _falls:
-		var f: Dictionary = _falls[id]
-		var pose := _pose(f)
-		if float(pose[4]) > 0.0:
-			ci.draw_mesh(Art.shade(f.look), null, Art.cast(mid(f.tile), Vector2(Art.TREE_SCALE, Art.TREE_SCALE), pose[0]),
-				Color(1.0, 1.0, 1.0, pose[4]))
 
 func _draw_items(ci: CanvasItem) -> void:
 	for kind: String in ITEMS:
@@ -888,7 +748,7 @@ func _draw_run(ci: CanvasItem, i: int) -> void:
 	for e: Array in _runs[i]:
 		ci.draw_mesh(e[2], null, e[3], e[4])
 
-## Chips and burst leaves, one MultiMesh.
+## Chips, one MultiMesh.
 func _draw_air(ci: CanvasItem) -> void:
 	if _bits.is_empty():
 		return

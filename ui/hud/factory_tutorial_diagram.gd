@@ -6,10 +6,10 @@ extends Control
 ## finger that does what the page says. `lesson` picks the page, set before
 ## it enters the tree:
 ##
-## - TREE: a tap on a tree, the beaver bites it down and the log lies.
-## - BELT: Belt picked, the finger swipes a straight run down from the log
+## - TREE: three taps on the forest, a log each, out of its gate.
+## - BELT: Belt picked, the finger swipes a straight run down from the gate
 ##   and a second from its corner to the market; each is laid as the finger
-##   lifts, and the log rides and is sold.
+##   lifts, and the logs ride and are sold.
 ## - PLATE: from further off, a tap on a plus and a plate comes up.
 ##
 ## A page starts over every LENGTH seconds on a land of the same seed, so it
@@ -25,16 +25,20 @@ const Pal = preload("res://core/palette.gd")
 enum Lesson { TREE, BELT, PLATE }
 
 const SEED := 7
-const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 15.5, Lesson.PLATE: 7.0}
+const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 24.0, Lesson.PLATE: 7.0}
 const STILL := {Lesson.TREE: 2.4, Lesson.BELT: 6.0, Lesson.PLATE: 5.5}
 ## What each page looks at, in tile space, and how many view units it shows
 ## across.
-const LOOK := {Lesson.TREE: Vector2(5.5, 2.9), Lesson.BELT: Vector2(5.7, 4.5), Lesson.PLATE: Vector2(8.0, 4.4)}
-const ACROSS := {Lesson.TREE: 560.0, Lesson.BELT: 840.0, Lesson.PLATE: 2500.0}
-## The tree the pages fell (on the land of SEED), where its log lies, and
-## the belt's way from there to the market: [tile, facing] each.
-const TREE := Vector2i(5, 2)
-const WAY := [[Vector2i(5, 3), 1], [Vector2i(5, 4), 1], [Vector2i(5, 5), 1], [Vector2i(5, 6), 0]]
+const LOOK := {Lesson.TREE: Vector2(3.5, -2.2), Lesson.BELT: Vector2(4.0, 3.0), Lesson.PLATE: Vector2(6.5, 1.5)}
+const ACROSS := {Lesson.TREE: 1000.0, Lesson.BELT: 1250.0, Lesson.PLATE: 2900.0}
+## Where the pages tap the forest (the new land's, behind the market's
+## plate), and the belt's way from its gate to the market: [tile, facing]
+## each, the corner at CORNER.
+const TREE := Vector2i(3, -4)
+const TAPS := [1.1, 1.8, 2.5]
+const WAY := [[Vector2i(3, 0), 1], [Vector2i(3, 1), 1], [Vector2i(3, 2), 1], [Vector2i(3, 3), 1], [Vector2i(3, 4), 1],
+	[Vector2i(3, 5), 1], [Vector2i(3, 6), 0], [Vector2i(4, 6), 0], [Vector2i(5, 6), 0]]
+const CORNER := 6
 const DRAG_FROM := 1.2
 const DRAG_TIME := 1.8
 const DRAG_REST := 0.6
@@ -80,8 +84,8 @@ func _layout() -> void:
 	_world.position = size * 0.5 - Art.at(LOOK[lesson]) * u
 	queue_redraw()
 
-## The page's land, as it opens: for the belt's page the tree is down and
-## its log lies; for the plate's the coins are there.
+## The page's land, as it opens: for the belt's page two logs lie past the
+## gate; for the plate's the coins are there.
 func _start() -> void:
 	_t = 0.0
 	_done = 0
@@ -89,8 +93,8 @@ func _start() -> void:
 	_shows = false
 	_sim = Sim.new(SEED)
 	if lesson == Lesson.BELT:
-		_sim.tap(TREE)
-		for i in 40:
+		for i in 2:
+			_sim.tap(TREE)
 			_sim.step(Sim.TICK)
 	elif lesson == Lesson.PLATE:
 		_sim.coins = _sim.plate_price()
@@ -123,47 +127,51 @@ func _advance(delta: float) -> void:
 func _act() -> void:
 	match lesson:
 		Lesson.TREE:
-			# on the crown, where a hand taps a tree
 			_finger = Vector2(TREE) + Vector2(0.5, 0.5)
-			_shows = _t > 0.5 and _t < 2.2
-			if _done == 0 and _t >= 1.1:
-				_done = 1
+			_shows = _t > 0.5 and _t < 3.4
+			if _done < TAPS.size() and _t >= float(TAPS[_done]):
+				_done += 1
 				_pressed = 0.0
 				_sim.tap(TREE)
 		Lesson.BELT:
-			# two swipes, each laid as the finger lifts: down from the log,
+			# two swipes, each laid as the finger lifts: down from the gate,
 			# then from the corner to the market
 			_life.ghosts = []
 			var down := (_t - DRAG_FROM) / DRAG_TIME
 			var over := (_t - DRAG_FROM - DRAG_TIME - DRAG_REST) / (DRAG_TIME * 0.5)
 			var first: Vector2 = Vector2(WAY[0][0]) + Vector2(0.5, 0.5)
-			var corner: Vector2 = Vector2(WAY[WAY.size() - 1][0]) + Vector2(0.5, 0.5)
+			var corner: Vector2 = Vector2(WAY[CORNER][0]) + Vector2(0.5, 0.5)
+			var last: Vector2 = Vector2(WAY[WAY.size() - 1][0]) + Vector2(0.5, 0.5)
 			_shows = (_t > 0.5 and down < 1.0) or (over > -0.4 and over < 1.0)
 			if down < 1.0:
 				_finger = first.lerp(corner, clampf(down, 0.0, 1.0))
 				if down > 0.0:
 					_pressed = 0.1
-					for i in WAY.size():
+					for i in CORNER + 1:
 						if Vector2(WAY[i][0]).y <= _finger.y:
 							_life.ghosts.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(WAY[i][0]), 1), Color(1.0, 1.0, 1.0, 0.72)])
 			else:
 				if _done == 0:
 					_done = 1
-					for step: Array in WAY:
-						_sim.lay_belt(step[0], 1)
-				_finger = corner + Vector2(0.8, 0.0) * clampf(over, 0.0, 1.0)
+					for i in CORNER + 1:
+						_sim.lay_belt(WAY[i][0], 1)
+				_finger = corner.lerp(last, clampf(over, 0.0, 1.0))
 				if over > 0.0 and over < 1.0:
 					_pressed = 0.1
+					for i in range(CORNER + 1, WAY.size()):
+						if Vector2(WAY[i][0]).x <= _finger.x:
+							_life.ghosts.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(WAY[i][0]), 0), Color(1.0, 1.0, 1.0, 0.72)])
 				if _done == 1 and over >= 1.0:
 					_done = 2
-					_sim.lay_belt(WAY[WAY.size() - 1][0], 0)
+					for i in range(CORNER, WAY.size()):
+						_sim.lay_belt(WAY[i][0], 0)
 		Lesson.PLATE:
 			_finger = Vector2(NEW_PLATE * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5
 			_shows = _t > 0.6 and _t < 2.6
 			if _done == 0 and _t >= 1.6:
 				_done = 1
 				_pressed = 0.0
-				_sim.buy_plate(NEW_PLATE, "quarry")
+				_sim.buy_plate(NEW_PLATE, "neutral")
 
 ## The finger: a pale ring that closes on a dot as it presses, drawn over the
 ## land at a size the page's scale leaves readable.
@@ -172,8 +180,6 @@ func _draw_finger(ci: CanvasItem) -> void:
 		return
 	var s: float = 1.0 / maxf(0.01, _world.scale.x)
 	var at := Art.at(_finger)
-	if lesson == Lesson.TREE:
-		at.y -= Art.height(1) * 0.5
 	var down := 1.0 - clampf(_pressed / 0.3, 0.0, 1.0)
 	var r := (30.0 - 8.0 * down) * s
 	ci.draw_circle(at, r, Color(1.0, 1.0, 1.0, 0.35 + 0.3 * down), true, -1.0, true)

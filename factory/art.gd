@@ -35,7 +35,7 @@ extends RefCounted
 ##                       that knows where open water is.
 ##   plate(kind, sides, variant)  one plate's land, its tile (0, 0) corner on
 ##                       the mesh's origin: draw it at at(P * 8). `kind` is
-##                       forest, quarry or meadow. `sides` bit i is set when
+##                       forest or neutral. `sides` bit i is set when
 ##                       a plate lies beyond the side toward DIRS[i]: that
 ##                       side has no earth, a corner is rounded only where
 ##                       both its sides are free, and the plate in front
@@ -48,7 +48,7 @@ extends RefCounted
 ##                       how far along a side a free corner is rounded (tiles).
 ##
 ## TREES AND WIND. Only layers that draw trees, their shadows and the grass
-## wear a wind material; everything else here (belts, items, rocks, piles,
+## wear a wind material; everything else here (belts, items, piles,
 ## buildings) is drawn on plain layers, so nothing is hung under its origin
 ## to keep it still (the Grove's `_still` is gone).
 ##   tree(look)          0 sapling, 1 birch, 2 oak, 3 pine, 4 blossom,
@@ -85,7 +85,6 @@ extends RefCounted
 ## shadow in each.
 ##   item(kind)          log, stone, lime, charcoal: about 42 across, two to
 ##                       a tile.
-##   rock(ready)         a quarry boulder on a tile, cracked when ready.
 ##   market()            the 2 by 2 stall, origin the middle of its four
 ##                       tiles. MARKET_COUNTER is the counter's corner,
 ##                       MARKET_SPOTS six places on it back to front,
@@ -106,7 +105,7 @@ extends RefCounted
 ##   ghost(w, h, ok)     a footprint's highlight in tile space, 0..w by
 ##                       0..h: draw under flat(tile).
 ##   icon(kind)          96 across about (0, 0): belt, firebox, kiln,
-##                       retort, market, forest, quarry, meadow, log, stone,
+##                       retort, market, forest, neutral, log, stone,
 ##                       lime, charcoal, coin.
 ##
 ## FIGURES. comma(), decimal(text), amount(v, comma), short(n).
@@ -208,13 +207,21 @@ const AWNING_SHADE := [Color("b4604a"), Color("d9cdb8")]
 ## washes toward and away from the sun, and the turf hanging over its edge.
 const GROUND := {
 	"forest": {"grass": GRASS, "lit": GRASS_LIT, "deep": GRASS_DEEP, "warm": WASH_WARM, "cool": WASH_COOL, "lip": LIP, "lip_lit": LIP_LIT},
-	"quarry": {"grass": Color("b5c186"), "lit": Color("d0d69b"), "deep": Color("8fa46f"), "warm": Color("eae2b2"), "cool": Color("86a377"),
-		"lip": Color("7c965a"), "lip_lit": Color("9bb268")},
-	"meadow": {"grass": Color("9ccb69"), "lit": Color("c0e07d"), "deep": Color("76b05d"), "warm": Color("eef29c"), "cool": Color("68a761"),
-		"lip": Color("5a984d"), "lip_lit": Color("7ab758")},
+	# white ground that is no kind of land (the user, 2026-10-11: "a white
+	# ground with neutral texture"): chalk, a warm and a cool white over it
+	"neutral": {"grass": Color("f1eee7"), "lit": Color("ffffff"), "deep": Color("cfcac0"), "warm": Color("fffaf0"), "cool": Color("dde0e2"),
+		"lip": Color("c4bfb4"), "lip_lit": Color("e4e0d7")},
 }
+## A forest's hedge, which closes it, and the dark floor under its trees.
+const HEDGE := Color("3f8a52")
+const HEDGE_LIT := Color("63ab5c")
+const HEDGE_DEEP := Color("2f6f49")
+const FLOOR := Color(0.16, 0.42, 0.3, 0.3)
+## The tile of a forest a log leaves by, toward each of DIRS: the sim's
+## GATES. The same place at every quarter turn, so the mesh need not turn.
+const GATES: Array[Vector2i] = [Vector2i(7, 4), Vector2i(3, 7), Vector2i(0, 3), Vector2i(4, 0)]
 ## How many tufts and how many drifts of flowers a plate of a kind grows.
-const GROWS := {"forest": [44, 5], "quarry": [12, 1], "meadow": [34, 13]}
+const GROWS := {"forest": [44, 5], "neutral": [0, 0]}
 
 ## How the land is seen (the contract the sim shares): half a tile's width
 ## in view units, how deep the ground is seen for its width, and the tiles
@@ -314,7 +321,6 @@ static var _plates := {}
 static var _grass := {}
 static var _pads := {}
 static var _items := {}
-static var _rocks := {}
 static var _kilns := {}
 static var _retorts := {}
 static var _frames := {}
@@ -685,8 +691,8 @@ static func leaf() -> ArrayMesh:
 
 ## The grass that stands on a plate of `kind`: its tufts, and its flowers in
 ## a few drifts, a MultiMesh each in the plate's own view units (draw them
-## where the plate is drawn), for a layer wearing `wind(true)`. A quarry
-## grows little, a meadow flowers. Kept: plates of a kind share them.
+## where the plate is drawn), for a layer wearing `wind(true)`. Neutral
+## ground grows none. Kept: plates of a kind share them.
 static func grass(kind: String, variant := 0) -> Array[MultiMesh]:
 	var key := "%s|%d" % [kind, variant]
 	if _grass.has(key):
@@ -819,8 +825,8 @@ static func _lily(b: Face.Builder, c: Vector2, r: float, turn: float) -> void:
 ## One plate's land, in view units, the corner of its local tile (0, 0) (its
 ## back corner) on the mesh's origin: a screen draws it at at(P * 8), the
 ## plates sorted by P.x + P.y so the one in front is drawn last. `kind` is
-## forest (the Grove's grass), quarry (paler, bare stone showing, pebbles)
-## or meadow (lighter grass, clover and washes of flowers).
+## forest (the Grove's grass under a dark floor, closed by a hedge with a
+## gate in each side) or neutral (white ground, the tiles ruled on it).
 ##
 ## `sides` says where the land goes on: bit i is set when a plate lies
 ## beyond the side toward DIRS[i]. Such a side is cut straight and has no
@@ -970,22 +976,22 @@ static func _plate_into(b: Face.Builder, kind: String, sides: int, variant: int)
 		var to := Vector2(0.0, 0.5) if side == 2 else Vector2(PLATE - 0.5, 0.0)
 		b.stroke(PackedVector2Array([at(from) + Vector2(1.0, 2.5), at(to) + Vector2(-1.0 if side == 3 else 1.0, 2.5)]), 2.6,
 			Color(0.9, 0.96, 0.66, 0.42 if side == 2 else 0.24), false, false)
-	match kind:
-		"quarry":
-			_quarry_into(b, rng)
-		"meadow":
-			_meadow_into(b, rng)
-	for k in (30 if kind == "quarry" else 80):
-		var p := _on_plate(rng, 30.0)
-		var long := rng.randf_range(8.0, 17.0)
-		b.stroke(PackedVector2Array([p, p + Vector2(long, -long * 0.2)]), 2.6, Color(lit, 0.6) if k % 2 else Color(deep, 0.5))
-	for k in 18:
-		var r := rng.randf_range(22.0, 46.0)
-		_glow(b, _on_plate(rng, r + 20.0), r, r * DEEP, warm.lerp(lit, rng.randf()), 0.42)
-	for k in (22 if kind == "quarry" else 6):
-		_pebble(b, _on_plate(rng, 40.0), rng.randf_range(0.8, 1.3) if kind == "quarry" else 1.0)
+	if kind == "neutral":
+		_neutral_into(b, rng)
+	else:
+		for k in 80:
+			var p := _on_plate(rng, 30.0)
+			var long := rng.randf_range(8.0, 17.0)
+			b.stroke(PackedVector2Array([p, p + Vector2(long, -long * 0.2)]), 2.6, Color(lit, 0.6) if k % 2 else Color(deep, 0.5))
+		for k in 18:
+			var r := rng.randf_range(22.0, 46.0)
+			_glow(b, _on_plate(rng, r + 20.0), r, r * DEEP, warm.lerp(lit, rng.randf()), 0.42)
+		for k in 6:
+			_pebble(b, _on_plate(rng, 40.0), 1.0)
+	if kind == "forest":
+		_forest_into(b)
 	# the tiles' corners, where no shore is
-	var tick := Color(deep.darkened(0.12), 0.34)
+	var tick := Color(deep.darkened(0.12), 0.34 if kind != "forest" else 0.0)
 	for tx in PLATE + 1:
 		for ty in PLATE + 1:
 			if (tx == PLATE and (sides & 1) == 0) or (ty == PLATE and (sides & 2) == 0) or (tx == 0 and (sides & 4) == 0) or (ty == 0 and (sides & 8) == 0):
@@ -1097,39 +1103,67 @@ static func _pebble(b: Face.Builder, c: Vector2, s: float) -> void:
 	b.ellipse(c, 8.0 * s, 5.4 * s, Pal.ROCK)
 	b.ellipse(c + Vector2(-2.0, -1.8) * s, 3.6 * s, 2.2 * s, Color("d8cdb6"))
 
-## A quarry's ground: bare stone showing through the turf in pale patches,
-## each with a harder middle, a crack or two and a darker lower edge.
-static func _quarry_into(b: Face.Builder, rng: RandomNumberGenerator) -> void:
-	for k in 13:
-		var r := rng.randf_range(44.0, 96.0)
-		var p := _on_plate(rng, r * 1.1)
-		_glow(b, p, r, r * DEEP, Color("e4dabd"), 0.9)
-		var turn := rng.randf_range(-0.3, 0.3)
-		var slab := Transform2D(turn, Vector2(1.0, DEEP), 0.0, p)
-		b.fan(slab * Face.Builder.ring(Vector2(3.0, 5.0), r * 0.46, r * 0.4), Color(LIME_SHADE, 0.34))
-		b.fan(slab * Face.Builder.ring(Vector2.ZERO, r * 0.46, r * 0.4), Color("e9e0c6"))
-		b.fan(slab * Face.Builder.ring(Vector2(-r * 0.1, -r * 0.08), r * 0.26, r * 0.2), Color("f4eedb"))
-		if k % 2 == 0:
-			b.stroke(slab * PackedVector2Array([Vector2(-r * 0.3, -r * 0.05), Vector2(-r * 0.05, r * 0.06), Vector2(r * 0.1, -r * 0.04), Vector2(r * 0.34, r * 0.1)]),
-				1.8, Color(LIME_SHADE, 0.7))
+## Neutral ground: every tile ruled on it with a thin line, a few of them a
+## tone off, and a speckle, so that white is a floor and not a hole.
+static func _neutral_into(b: Face.Builder, rng: RandomNumberGenerator) -> void:
+	var tone: Dictionary = GROUND["neutral"]
+	var deep: Color = tone["deep"]
+	for k in 12:
+		var t := Vector2(rng.randi_range(0, PLATE - 1), rng.randi_range(0, PLATE - 1))
+		b.polygon(PackedVector2Array([at(t + Vector2(0.06, 0.06)), at(t + Vector2(0.94, 0.06)), at(t + Vector2(0.94, 0.94)), at(t + Vector2(0.06, 0.94))]),
+			Color(deep, 0.1) if k % 3 else Color(1.0, 1.0, 1.0, 0.5))
+	for k in range(1, PLATE):
+		b.stroke(PackedVector2Array([at(Vector2(k, 0.12)), at(Vector2(k, PLATE - 0.12))]), 1.8, Color(deep, 0.42), false, false)
+		b.stroke(PackedVector2Array([at(Vector2(0.12, k)), at(Vector2(PLATE - 0.12, k))]), 1.8, Color(deep, 0.42), false, false)
+	for k in 90:
+		var p := _on_plate(rng, 26.0)
+		var r := rng.randf_range(1.4, 2.8)
+		b.ellipse(p, r, r * DEEP, Color(deep, rng.randf_range(0.3, 0.6)))
 
-## A meadow's ground: washes of flowers too far off to count, and clover.
-static func _meadow_into(b: Face.Builder, rng: RandomNumberGenerator) -> void:
-	var washes := [Color("f7b9d2"), Color("fff0b8"), Color("ffffff"), Color("f7b9d2"), Color("d9c8f2")]
-	for k in 14:
-		var r := rng.randf_range(40.0, 84.0)
-		var p := _on_plate(rng, r * 1.1)
-		var wash: Color = washes[k % washes.size()]
-		_glow(b, p, r, r * DEEP, wash, 0.36)
-		for j in 7:
-			var q := p + Vector2(rng.randf_range(-r, r) * 0.62, rng.randf_range(-r, r) * 0.62 * DEEP)
-			b.ellipse(q, 2.6, 1.9, Color(wash.lerp(Color.WHITE, 0.4), 0.85))
-	for k in 16:
-		var p := _on_plate(rng, 40.0)
-		for j in 3:
-			var q := p + Vector2.from_angle(TAU * j / 3.0 + 0.4) * Vector2(6.5, 4.4)
-			b.ellipse(q, 5.6, 3.8, CLOVER)
-			b.ellipse(q + Vector2(-1.2, -1.0), 2.6, 1.8, CLOVER_LIT)
+## What closes a forest: the dark floor under its trees, a hedge along the
+## middle of its rim tiles on all four sides, the back two first, and in each
+## side a gate, the hedge open on a plank chute between two posts that runs
+## out to the edge. The hedge is in the ground's mesh, half a tile in from
+## the edge, so the seam of the plate in front does not lie over it.
+static func _forest_into(b: Face.Builder) -> void:
+	var inner := PackedVector2Array([at(Vector2(0.9, 0.9)), at(Vector2(PLATE - 0.9, 0.9)), at(Vector2(PLATE - 0.9, PLATE - 0.9)), at(Vector2(0.9, PLATE - 0.9))])
+	b.polygon(inner, FLOOR)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261011
+	for side: int in [3, 2, 0, 1]:
+		var out := Vector2(DIRS[side])
+		var along := Vector2(-out.y, out.x).abs()
+		var mid := Vector2(PLATE, PLATE) * 0.5 + out * (PLATE * 0.5 - 0.5)
+		var g := Vector2(GATES[side]) + Vector2(0.5, 0.5)
+		var gate_s := (g - mid).dot(along)
+		# the chute: planks from the gate tile's middle out to the plate's edge
+		var a := g - along * 0.3
+		var c := g + along * 0.3
+		b.polygon(PackedVector2Array([at(a) + Vector2(3.0, 5.0), at(c) + Vector2(3.0, 5.0), at(c + out * 0.5) + Vector2(3.0, 5.0), at(a + out * 0.5) + Vector2(3.0, 5.0)]), SHADE)
+		b.polygon(PackedVector2Array([at(a), at(c), at(c + out * 0.5), at(a + out * 0.5)]), PLANK)
+		for k in 4:
+			var t := 0.06 + k * 0.125
+			b.stroke(PackedVector2Array([at(a + out * t), at(c + out * t)]), 2.0, PLANK_DEEP, false, false)
+		var bushes: Array = []
+		var s := -PLATE * 0.5 + 0.5
+		while s <= PLATE * 0.5 - 0.5 + 0.01:
+			if absf(s - gate_s) > 0.52:
+				bushes.append(at(mid + along * s) + Vector2(rng.randf_range(-3.0, 3.0), rng.randf_range(-2.0, 2.0)))
+			s += 0.25
+		bushes.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y)
+		for p: Vector2 in bushes:
+			b.ellipse(p + Vector2(7.0, 5.0), 21.0, 9.0, SHADE)
+		for p: Vector2 in bushes:
+			var r := rng.randf_range(15.0, 19.0)
+			b.disc(p + Vector2(0.0, -r * 0.55), r, HEDGE_DEEP)
+			b.disc(p + Vector2(-1.5, -r * 0.7), r * 0.86, HEDGE)
+			b.disc(p + Vector2(-r * 0.3, -r * 0.95), r * 0.46, HEDGE_LIT)
+		for e: float in [-0.42, 0.42]:
+			var foot := at(g + along * e)
+			b.ellipse(foot + Vector2(5.0, 3.0), 9.0, 4.0, SHADE)
+			b.polygon(PackedVector2Array([foot + Vector2(-5.0, 2.0), foot + Vector2(5.0, 2.0), foot + Vector2(5.0, -34.0), foot + Vector2(-5.0, -34.0)]), PLANK)
+			b.polygon(PackedVector2Array([foot + Vector2(1.0, 2.0), foot + Vector2(5.0, 2.0), foot + Vector2(5.0, -34.0), foot + Vector2(1.0, -34.0)]), PLANK_DEEP)
+			b.ellipse(foot + Vector2(0.0, -34.0), 6.0, 3.2, ROPE)
 
 ## What lies over the land and its trees: warm light from where the sun is,
 ## and the frame falling away a little toward its edges. One mesh for a
@@ -1488,37 +1522,6 @@ static func _basket(b: Face.Builder, c: Vector2, s: float) -> void:
 			Vector2(r, -0.2 * r), Vector2(0.7 * r, 0.8 * r), Vector2(-0.4 * r, 0.9 * r)]), COAL)
 		b.polygon(Transform2D(float(lump[0]) * 0.3, p) * PackedVector2Array([Vector2(-0.6 * r, -0.8 * r), Vector2(0.4 * r, -r), Vector2(0.1 * r, -0.3 * r),
 			Vector2(-0.6 * r, -0.1 * r)]), COAL_LIT)
-
-## A quarry's boulder standing on a tile, the middle of its foot on (0, 0),
-## its shadow thrown right: pale stone lit from the upper left, moss on its
-## shoulder. `ready` (it can be broken): a crack down it from the top, pale
-## where the stone is fresh, and two chips at its foot.
-static func rock(ready: bool) -> ArrayMesh:
-	if not _rocks.has(ready):
-		var b := Face.Builder.new()
-		b.ellipse(Vector2(18.0, 3.0), 56.0, 14.0, CAST)
-		var body := PackedVector2Array([Vector2(-44, -3), Vector2(-47, -22), Vector2(-37, -45), Vector2(-18, -61), Vector2(6, -66), Vector2(28, -57),
-			Vector2(42, -37), Vector2(46, -14), Vector2(38, 2), Vector2(10, 8), Vector2(-24, 6)])
-		b.polygon(body, LIME)
-		_crescent(b, body, Vector2(-17.0, -9.0), LIME_SHADE)
-		_crescent(b, body, Vector2(13.0, 12.0), LIME_LIT)
-		b.polygon(PackedVector2Array([Vector2(-18, -61), Vector2(6, -66), Vector2(28, -57), Vector2(12, -44), Vector2(-10, -46)]), Color(LIME_LIT, 0.8))
-		b.stroke(PackedVector2Array([Vector2(-10, -46), Vector2(-16, -24), Vector2(-30, -8)]), 2.0, Color(LIME_SHADE, 0.6))
-		b.stroke(PackedVector2Array([Vector2(12, -44), Vector2(22, -22), Vector2(14, -2)]), 2.0, Color(LIME_SHADE.darkened(0.1), 0.6))
-		for m: Array in [[-30.0, -47.0, 8.0], [-22.0, -55.0, 7.0], [-36.0, -38.0, 6.0]]:
-			b.ellipse(Vector2(m[0], m[1]), float(m[2]) * 1.2, float(m[2]) * 0.8, Pal.BANK)
-		b.ellipse(Vector2(-27.0, -52.0), 5.0, 3.0, Color("a8c860"))
-		_pebble(b, Vector2(-48.0, 8.0), 0.8)
-		if ready:
-			var crack := PackedVector2Array([Vector2(3, -65), Vector2(-3, -50), Vector2(7, -38), Vector2(-1, -23), Vector2(9, -9), Vector2(5, 6)])
-			b.stroke(Transform2D(0.0, Vector2(-2.2, 0.0)) * crack, 2.4, Color("f8f3e4"))
-			b.stroke(crack, 3.6, Color("6e5f50"))
-			b.stroke(PackedVector2Array([Vector2(7, -38), Vector2(20, -33)]), 2.6, Color("6e5f50"))
-			b.stroke(PackedVector2Array([Vector2(-1, -23), Vector2(-13, -19)]), 2.2, Color("6e5f50"))
-			_chunk(b, Vector2(40.0, 14.0), 0.36)
-			_chunk(b, Vector2(-30.0, 15.0), 0.3)
-		_rocks[ready] = b.mesh()
-	return _rocks[ready]
 
 # --- what is built ---
 
@@ -2014,7 +2017,7 @@ static func ghost(w: int, h: int, ok: bool) -> ArrayMesh:
 
 ## A picture about (0, 0), 96 across, for a drawer's tile or a card: `belt`,
 ## the modules (`firebox`, `kiln`, `retort`, `market`), the kinds of plate
-## (`forest`, `quarry`, `meadow`), what is carried (`log`, `stone`, `lime`,
+## (`forest`, `neutral`), what is carried (`log`, `stone`, `lime`,
 ## `charcoal`) and `coin` (the gold pill's coin, ui/menu/gold_pill.gd, as a
 ## mesh). The modules and the carried are their own meshes, fitted.
 static func icon(kind: String) -> ArrayMesh:
@@ -2050,13 +2053,8 @@ static func icon(kind: String) -> ArrayMesh:
 			_plot_into(b, "forest")
 			b.append(tree(3), Transform2D(0.0, Vector2(0.36, 0.36), 0.0, Vector2(-17.0, 8.0)))
 			b.append(tree(2), Transform2D(0.0, Vector2(0.4, 0.4), 0.0, Vector2(12.0, 16.0)))
-		"quarry":
-			_plot_into(b, "quarry")
-			b.append(rock(false), Transform2D(0.0, Vector2(0.56, 0.56), 0.0, Vector2(-2.0, 18.0)))
-		"meadow":
-			_plot_into(b, "meadow")
-			for f: Array in [[-20.0, 12.0, 1.3], [0.0, 22.0, 1.5], [19.0, 10.0, 1.2], [-2.0, 4.0, 1.0]]:
-				b.append(flower(), Transform2D(0.0, Vector2(f[2], f[2]), 0.0, Vector2(f[0], f[1])), PETALS[int(absf(float(f[0]))) % PETALS.size()])
+		"neutral":
+			_plot_into(b, "neutral")
 		"coin":
 			var r := 42.0
 			b.disc(Vector2(0.0, r * 0.12), r, GOLD_DEEP)
@@ -2105,9 +2103,10 @@ static func _plot_into(b: Face.Builder, kind: String) -> void:
 		top.append(to)
 	b.polygon(top, tone["grass"])
 	_glow(b, Vector2(-12.0, y - 6.0), 30.0, 18.0, tone["warm"], 0.6)
-	if kind == "quarry":
-		b.ellipse(Vector2(20.0, y + 4.0), 12.0, 6.0, Color("e9e0c6"))
-		b.ellipse(Vector2(-24.0, y - 2.0), 9.0, 4.6, Color("e9e0c6"))
+	if kind == "neutral":
+		var rule := Color(tone["deep"] as Color, 0.7)
+		b.stroke(PackedVector2Array([Vector2(half * 0.5, y - deep * 0.5), Vector2(-half * 0.5, y + deep * 0.5)]), 1.8, rule, false, false)
+		b.stroke(PackedVector2Array([Vector2(-half * 0.5, y - deep * 0.5), Vector2(half * 0.5, y + deep * 0.5)]), 1.8, rule, false, false)
 
 ## Whether the language writes 0,47 for 0.47 (pt, es), and a line of figures
 ## as it does.
