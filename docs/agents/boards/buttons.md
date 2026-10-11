@@ -36,7 +36,9 @@
   a refusal.
 - **The bands**: the picture is one of `content/pixel_garden.json`'s band
   (Pixel Garden's hand-drawn bank: 10, 12, 14 and 16 square, 30 a band, 3
-  to 7 colours, 32 to 168 buttons), picked by this board's own seed, so the
+  to 7 colours, 32 to 168 buttons **until 2026-10-11; Hard is 24 square
+  and Insane 32 since, 576 and 1,024 buttons, and cut another way: "Big
+  pictures" at the foot**), picked by this board's own seed, so the
   two boards do not show one picture on one day except by chance. A bare
   peg there is bare linen here. The scramble reads the picture's colours
   down its columns, cuts them into lengths of 3 to 7, shuffles the lengths
@@ -51,12 +53,15 @@
   first Insane day ran out at 126 of 144 sewn.
 - **`State.hint` is a greedy hand, not a best**: the run that sews the most
   at once (the tin's own that fall in behind it counted), and with nothing
-  to sew, the biggest run the tin takes whole. `par` is its count from the
-  opening, so a player may beat it, and the seal asks `<=`.
+  to sew, the biggest run the tin takes whole (**its ties and its choice
+  for the tin were rewritten on 2026-10-11, "Big pictures"**). `par` is its
+  count from the opening, so a player may beat it, and the seal asks `<=`.
 - **Drawn as** `_bg` (the linen, a layout), `_still` (the stitched border
   and a patch a square), `_tin` (rebuilt when a place opens), and the
   buttons as unit meshes a colour, loose and sewn, baked with
-  `Face.FlatBuilder` into `_rest` and, in the air, `_top`; the pill, the
+  `Face.FlatBuilder` into `_rest` and, in the air, `_top` (**`_rest` is
+  gone since 2026-10-11: a mesh a block, a live mesh, and three layers;
+  "Big pictures"**); the pill, the
   toast and the streak's bubble on a layer of their own. **84-111 draw
   calls on `opengl3_angle`** at 810x1440 (96 at the peak of an Insane day,
   the second of two readings; 111 through `_probe_perf.gd`'s Medium win;
@@ -90,7 +95,7 @@
   spun and never a rattle; `run` two notes for a long run; `whole` three rising; `open` two tocks
   of the tin. `tools/measure_sfx.py buttons`: 0 of 17 flagged. Unheard.
 - **Harnesses**: `tests/_shot_buttons.gd` (rest, play, refuse, hint, solve,
-  out, reset, restore, howto); `tests/_probe_buttons.gd` (headless, the
+  out, reset, restore, howto, and since 2026-10-11 big and howzoom); `tests/_probe_buttons.gd` (headless, the
   rules); `tests/_win.gd -- buttons` wins through the input path with a
   refused tap and the bulb on the way; `tests/_probe_perf.gd -- buttons`.
 - **Not seen on a phone.** Shots and probes on this Mac only. The sounds
@@ -177,7 +182,8 @@ into different places of board to keep placing".
   whatever is held** (a run off the cloth goes in on a free place or the
   tin's wood). The bulb's move lets its leftover go.
 - `par` is the hand's moves under these rules (one sew a stretch): median
-  20 / 46 / 67 / 95 by band, 7 to 142.
+  20 / 46 / 67 / 95 by band, 7 to 142 (**18 / 43 / 283 / 450 since
+  2026-10-11**, the hand a little better and the last two bands big).
 - Checked with no window (the user had asked for fewer): the rules probe
   1,080 runs, the board probe 32 days through `tap` and `tap_tin`, both 0
   failures; the tutorial's SEW and TIN lessons replayed on `Small`
@@ -186,3 +192,146 @@ into different places of board to keep placing".
   left in the hand after a sew, the reworded lines, the win harness and the
   buzz walk.
 
+## Big pictures (2026-10-11)
+
+The user: "on Button box and pixel garden, the hard and insane should have
+really big and complex images ... Something that the user have even to zoom
+in to see". Decided with them since: the shared bank's Hard band is 24
+square and Insane 32, filled scenes of 8 to 12 colours (576 and 1,024
+buttons, a button on every square); Easy and Medium as they were; the rules
+as they were; a zoom and a pan. "all good, just build it".
+
+- **What a move can sew is what the tin holds, and that is the whole
+  arithmetic of a big day.** The bare patches are always as many as the
+  buttons in the tin, so no sew is ever bigger than the tin: 6 or 7 places
+  at the start, 12 at the end. 1,024 buttons at 6 a move is 170 moves with
+  every move a full chain and not one button put in the tin; the brief
+  asked for a par of 100-140 on Hard and 160-220 on Insane by cutting the
+  scramble longer, and **the lengths are not the lever**: with the old
+  scramble, `CHUNK` from 3-7 up to 60-120 moved Hard's median from 438 to
+  422 and Insane's from 773 to 758 (24 synthetic deals a band). A bigger
+  tin is not the lever either with this hand (10 and 12 places of 18 gave
+  242 and 410). What moved it:
+  - **Big pictures are scrambled a strip at a time** (`_scramble_strips`,
+    `BIG_FROM` 2): the picture is cut along its rows into strips of one
+    colour, `CHUNK` long at the most (5-7 on Hard, 6 on Insane: a tinful),
+    and the strips of one length trade their buttons round a ring, no
+    strip getting its own colour. A strip lifted bares a strip's worth of
+    one colour, which another strip fills whole. 438 to 294, 773 to 479.
+    Easy and Medium keep the old scramble, call for call.
+  - **The hand takes a run up by the patches under it** (`_tidy`): when
+    only some of a run will go, the buttons standing on the biggest joined
+    stretch of one colour of patch go first, so what they leave bare is
+    one stretch. And of two sews as big it takes the one that leaves fewer
+    colours bare, then the shorter run; for the tin, the run that opens
+    the most patches in the fewest colours. To 266 and 385 on the
+    synthetic bank. A "neat sews only" rule (never nibble a long run for a
+    small stretch) was tried and made Insane worse (504-536): out.
+  - **Measured on the real bank** (12 pictures a band, 8-10 colours on
+    Hard and 10-12 on Insane, all squares filled): **par 228-340, median
+    283 on Hard; 357-511, median 450 on Insane** (budget a quarter over:
+    about 560). That is two to three times the brief's figure and is the
+    floor of these rules with a greedy hand, not a tuning left undone:
+    the user's to call (a shorter day wants fewer buttons or other rules,
+    not other lengths). Easy and Medium moved to 18 and 43 (were 20 and
+    46): the same hand, a little better.
+- **The par is counted in a few dozen ms.** Counted the old way (the cloth
+  read again for every move) a 32-square day opened in 1.0 s. The hand now
+  keeps what it sees from move to move (`_solve_taps`: a run only ever
+  loses buttons, so a move changes the one run it picked; the bare patches
+  are never more than the tin), a redraw of the picture no longer counts a
+  par each (`setup` counts once), and `colours_done`, `homes` and `count`
+  are kept and not scanned (`_off`; `capacity()` was 12 scans of the cloth
+  a call). `state.setup`: 18 ms on Hard, 32 on Insane (median of 24, 46
+  the worst); the board's whole `start`, layout and meshes with it, 39 and
+  64 ms. `hint()` itself reads the cloth: 1.4 and 2.4 ms a call.
+  `tests/_probe_buttons.gd` checks the two agree (the hand ends on the
+  par) on every deal.
+- **`PG_BANK`** in a debug build points `State.bank()` at another file, as
+  Pixel Garden's does.
+- **Drawn in three layers.** The board's own `_draw` is the linen, the tin
+  and the tin's buttons, which never scale. `_cloth` (a child Control over
+  the picture's room, `clip_contents` only while zoomed) draws the border
+  and the patches, **the buttons at rest a mesh a block** (`_blocks`: 8
+  squares a side on a picture over 16 square, so 9 meshes on Hard and 16
+  on Insane; one block on Easy and Medium), the ones doing something
+  (`_live`, one mesh a frame) and the pick (`_held_mesh`). `_over`, above
+  both and never clipped, draws what flies. A button leaves its block for
+  `_live` when it is picked, lands, hops or shivers (`_mark`) and goes back
+  when all of them are still; a block is rebuilt only then (0.25 ms).
+  Before this every button was rebuilt every frame anything moved.
+- **A big picture's pieces are light** (`Art.button_lite`, `Art.patch`'s
+  `lite`): polygons with only the outline feathered. Seen whole (a square
+  is 30.5 px of the 1080 on Insane, 40.7 on Hard) the button is a rim, a
+  face and a dish, **and sewn is a bold cross from edge to edge**: the four
+  holes would be a pixel each. Seen close (from 46 px a square, back at
+  42) it is the whole button, holes and thread. 227k vertices for Insane's
+  thousand plain and 516k close, where `Art.button` would be 1.3 million
+  and the patches another 650k; the patches are 37k.
+- **A picture of over 300 buttons moves as blocks**: it pops in whole, not
+  a button at a time; the win hops a block at a time along the diagonals;
+  a colour whole hops six squares out from the tapped one and no further,
+  with twelve sparkles at the most; a run rings eight times at the most; a
+  pick of over 48 does not bob and is built once (`_held_still`), and a
+  pick draws together no further than 0.9 of a square a button (a sky of
+  360 pulled a fifth of the way left its patches: seen, fixed).
+- **The zoom** (`ui/flat/pan_zoom.gd`, shared with Pixel Garden; not
+  changed here): Hard and Insane only (`_zoom_limits`), one transform over
+  the same meshes, the picture's room between the pill and the tin as its
+  view. Two fingers pinch and pan; one finger dragged past 14 px pans a
+  picture seen close (`one_finger_pan`: this board is taps); the wheel on a
+  desk. A gesture that begins drops the press in hand and ticks
+  (`fx.touch`), so letting go taps nothing; a pick in hand stays. **The
+  button** is an 84 px `IconButton` at the room's bottom left, 12 in (the
+  thumb's side stays clear), plus when whole and minus when close, to 60
+  px a square (the most a pinch goes is 84); hidden on Easy and Medium,
+  on a done day and from the win. Squares are hit through
+  `zoom.to_layout` and only inside the room; the tin is never zoomed. A
+  flight keeps each end in its own measure (`fc`, `tc`) and the cloth end
+  goes through the zoom every frame, so an arc from a close picture to
+  the tin is one arc. The bulb brings a close picture to its pick and
+  then to its place (`show_point`). Reset, a new day and a day reopened
+  are whole; the win glides whole and the slide starts from the zoom it
+  found (`_from_zoom`). `cell_centre` is the layout's; **a harness presses
+  `cell_screen`**.
+- **The share** is 12 or 16 marks a side on a big picture, each the colour
+  most of its squares are (`SHARE_MAX`). The menu card is its fixed swatch.
+- **The tutorial has a ZOOM page on Hard and Insane** (`Lesson.ZOOM`): a
+  6-by-8 cloth that zooms whatever its band, two fingers that are real
+  touches going apart, one dragged, and the page's own button back to
+  whole. `HTP_BB_ZOOM*`, `BB_RULES_BIG`, and `BB_LVL_2` and `BB_LVL_3`
+  reworded, in en, pt and es.
+- **Probes** (headless, the real bank): `tests/_probe_buttons.gd` 612 runs,
+  0 failures (three seeds on Easy and Medium, **one on Hard and Insane**;
+  its moves are drawn at random off one pass of the cloth now, the old
+  listing of every run against every bare patch was a second a move at 32
+  square; 29 s). `tests/_probe_buttons_board.gd` 28 days, 0 failures
+  (**one day each on Hard and Insane**: a hand that taps anything takes
+  19,000 and 38,000 taps there) and the zoom through `_gui_input` with
+  ScreenTouch and ScreenDrag, 0 failures: the button close and back, a tap
+  on the square under the finger whole, close and after a pan, a finger
+  that barely moves still taps, a pan and a pinch tap nothing, a pan keeps
+  the pick, a pinch stops at the most and at whole, the picture always
+  covers its room, the tin taken from a close picture, Reset whole. The
+  suite 249,804 passed.
+- **Seen** (three windows, `opengl3_angle`, 810x1440; `tests/_shot_buttons.gd
+  -- d=3 big`, twice, and `-- d=2 howzoom`): Insane whole, 0 and 66 sewn
+  (buttons read as buttons, sewn as crosses, bare patches as patches);
+  close with a run picked; six in the air to the tin; panned; whole again;
+  the ZOOM page playing. **Draw calls 84 to 90 in play on Insane** whole
+  and close (the second run's readings; 86-88 the first), 163 in the one
+  frame the harness makes twelve moves at once, 129 under the tutorial.
+- **Not seen or owed**: a phone (the pinch with real fingers, the frame
+  time of 516k vertices close, the button under a thumb); Hard on a screen
+  but for the tutorial's backdrop; the win of a big picture (the block
+  hop, the slide from a zoom, the seal); the bulb bringing the picture to
+  its move (its ring is thrown where the pick was before the glide, so on
+  a pick out of sight the picture moves out from under it: known, not
+  fixed); the new lines in a real locale (shot as raw keys, no reimport);
+  the win harness and the perf probe, not rerun. A mouse cannot pan (the
+  wheel zooms about the pointer). The pt and es lines are unreviewed.
+- **Calls made without the user**: the strip scramble and the better hand
+  in place of longer lengths; a par of 283 and 450; the button's place and
+  its 60 px; the plain button under 46 px; blocks in place of a button at
+  a time on a big picture's entrance and win; "A big picture, 24 × 24:
+  zoom in" and "A huge picture, 32 × 32, counted moves".

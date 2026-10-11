@@ -11,10 +11,18 @@ extends "res://core/puzzle_base.gd"
 ## draws.
 ##
 ## How it is drawn. `_bg` is the linen (a layout); `_still` the stitched
-## border and the patches; `_tin` the tin, rebuilt when it gains a place;
-## the buttons are unit meshes under transforms baked with Face.FlatBuilder
-## into `_rest` and, for the ones in the air, `_top`. The pill, the toast
-## and the streak's bubble are on a layer of their own.
+## border and the patches; `_tin` the tin, rebuilt when it gains a place.
+## The buttons are unit meshes under transforms baked with Face.FlatBuilder:
+## the ones at rest into a mesh a block of the cloth (`_blocks`, rebuilt
+## only when a button of the block changes: Insane's picture is a thousand
+## buttons), the ones doing something (`_live`) into one mesh a frame, a
+## pick into `_held_mesh`, and the ones in the air into `_top`. The picture
+## is on a layer of its own (`_cloth`) so that Hard and Insane, whose
+## pictures are 24 and 32 square, can be looked at close: one transform
+## (`zoom`, ui/flat/pan_zoom.gd) over the same meshes, clipped to the room
+## between the pill and the tin. What flies between the cloth and the tin
+## is drawn over both, unclipped (`_over`). The pill, the toast and the
+## streak's bubble are on a layer of their own and never scale.
 ##
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
 ## docs/art/flat-motion.md) read as curves. This board's own: a run leaving
@@ -32,6 +40,8 @@ const Art = preload("res://ui/faces/button_art.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const PanZoom = preload("res://ui/flat/pan_zoom.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 ## The taps the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
@@ -45,6 +55,23 @@ const TIN_ROW := 6
 const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
+## The zoom button's close: a square about this big on the screen (and
+## CELL_MAX at the closest a pinch goes).
+const NEAR_PX := 60.0
+const ZOOM_B := 84.0
+const ZOOM_INSET := 12.0
+## The buttons at rest are baked a block of this many squares a side, on a
+## picture over 16 square; a smaller picture is one block.
+const BLOCK := 8
+## A picture of more buttons than this moves as blocks: no button of it
+## pops in by itself and the win hops a block at a time.
+const BIG := 300
+## The plain button (Art.SMALL) gives way to the whole one as the picture
+## comes close, and back, a little apart so a pinch does not flicker.
+const LOD_IN := 46.0
+const LOD_OUT := 42.0
+## A pick of more buttons than this stands still once lifted.
+const HELD_BOB_MAX := 48
 
 # --- motion: what is this board's own ---
 ## One button of a run leaves this long after the one before it.
@@ -56,6 +83,13 @@ const FLY_GROW := 0.18
 ## A button out of the tin leaves once its patch is bare.
 const TIN_LAG := 0.16
 const WHOLE_STEP := 0.03
+## On a big picture a colour whole hops this many squares out from the
+## tapped one and no further, and sparkles this often at the most; a run
+## rings this many times.
+const WHOLE_REACH := 6
+const SPARKLES := 12
+const RINGS := 8
+const BLOCK_STAGGER := 0.09
 const WIN_WAIT := 1.3
 const PARTY_EXTRA := 0.6
 const WIN_SLIDE := 0.5
@@ -69,6 +103,7 @@ const CARD_AFTER_STILL := 0.3
 ## A picked run draws this far toward the button that was tapped, stands
 ## this much bigger and higher, and bobs.
 const PULL := 0.22
+const PULL_MOST := 0.9
 const HELD_SCALE := 1.1
 const HELD_RISE := 0.14
 const HELD_BOB := 0.03
@@ -162,12 +197,38 @@ var _bg: ArrayMesh
 var _still: ArrayMesh
 var _tin: ArrayMesh
 var _tin_units := {}
-var _rest: ArrayMesh
 var _top: ArrayMesh
+var _tin_rest: ArrayMesh
 var _units := {}
+## The plain buttons, on a picture whose squares are under Art.SMALL.
+var _units_far := {}
+var _near_look := true
 var _flat_cache: Dictionary = {}
-var _live_dirty := true
 var _shown: Array = []
+var _shown_cloth: Array = []
+var _shown_over: Array = []
+## The buttons at rest, a mesh a block, and which blocks are stale.
+var _blocks: Array = []
+var _block_stale := PackedByteArray()
+var _block_hop := PackedFloat32Array()
+var _bsize := 16
+var _bw := 1
+var _bh := 1
+## The squares whose button is doing something: out of its block and drawn
+## every frame until all of them are still.
+var _live := {}
+var _live_mesh: ArrayMesh
+var _held_mesh: ArrayMesh
+var _held_still := false
+
+# --- the zoom (Hard and Insane) ---
+var zoom := PanZoom.new()
+var _view := Rect2()
+var _cloth: Control
+var _over: Control
+var _zoom_b: IconButton
+## The zoom as the win found it, for the slide.
+var _from_zoom := Transform2D.IDENTITY
 var _hud_layer: Control
 var _hud_shown: ArrayMesh
 var _combo_shown: ArrayMesh
@@ -226,6 +287,8 @@ func rules() -> String:
 	var out := tr("BB_RULES")
 	if state.band <= State.CORNERS_TO:
 		out += " " + tr("BB_RULES_CORNERS")
+	if state.band >= State.BIG_FROM:
+		out += "\n\n" + tr("BB_RULES_BIG")
 	out += "\n\n" + tr("BB_RULES_TIN") % (state.capacity() - state.colours_done())
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
@@ -241,6 +304,8 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.LIFT, "HTP_BB_LIFT", tr("HTP_BB_LIFT_BODY")],
 		[Diagram.Lesson.SEW, "HTP_BB_SEW", tr("HTP_BB_SEW_BODY")],
 		[Diagram.Lesson.TIN, "HTP_BB_TIN", tr("HTP_BB_TIN_BODY")]]
+	if state.band >= State.BIG_FROM:
+		steps.append([Diagram.Lesson.ZOOM, "HTP_BB_ZOOM", tr("HTP_BB_ZOOM_BODY")])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_BB_HINT",
 			tr("HTP_BB_HINT_BODY_ONE") if hints == 1 else tr("HTP_BB_HINT_BODY_N") % hints])
@@ -263,6 +328,18 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	_cloth = Control.new()
+	_cloth.name = "Cloth"
+	_cloth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cloth.draw.connect(_draw_cloth)
+	add_child(_cloth)
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.z_index = 1
+	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_over.draw.connect(_draw_over)
+	add_child(_over)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -275,6 +352,21 @@ func _ready() -> void:
 	_hud_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud_layer.draw.connect(_draw_hud)
 	add_child(_hud_layer)
+	# The zoom button, at the foot of the picture's room on the left (the
+	# thumb's side stays clear): its own size, in no container.
+	_zoom_b = IconButton.new("plus", "", "IconButton")
+	_zoom_b.name = "Zoom"
+	_zoom_b.z_index = 1
+	_zoom_b.visible = false
+	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+	var up := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), true, 0)
+	for st in ["normal", "hover", "disabled"]:
+		_zoom_b.add_theme_stylebox_override(st, up)
+	_zoom_b.add_theme_stylebox_override("pressed", down)
+	_zoom_b.pressed.connect(zoom_button)
+	add_child(_zoom_b)
+	zoom.one_finger_pan = true
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -292,6 +384,7 @@ func _begin() -> void:
 	_slid_at = -INF
 	_stamp_at = INF
 	_seal_mesh = null
+	zoom.reset()
 	_deal()
 	_layout()
 	_enter()
@@ -314,7 +407,8 @@ func _deal() -> void:
 	_shiver_at = _filled(n, -INF)
 	_tin_arrive = _filled(State.CASE_MAX, -INF)
 	_tin = null
-	_live_dirty = true
+	_live = {}
+	_stale_all()
 	if _hud_layer != null:
 		_hud_layer.queue_redraw()
 
@@ -334,6 +428,10 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 	if won and not _won and _cell > 0.0:
 		_from_cell = _cell
 		_from_grid = _grid
+		# the win has the picture whole: the slide starts from the zoom it
+		# found
+		_from_zoom = zoom.xf()
+		zoom.reset()
 		_slid_at = _now() if is_inside_tree() and _solved_at > _now() - 5.0 else -INF
 	_won = won
 	_layout()
@@ -357,11 +455,31 @@ func _layout() -> void:
 		return
 	var pic := Vector2(state.w, state.h) * _cell
 	_grid = Vector2((size.x - pic.x) * 0.5, head + BORDER + (room.y - pic.y) * 0.5)
+	# the picture's room, which a zoomed picture is clipped to
+	_view = Rect2(0.0, head, size.x, maxf(1.0, floor_y - head))
+	_cloth.position = _view.position
+	_cloth.size = _view.size
+	var limits := _zoom_limits()
+	zoom.setup(_view, limits.x, limits.y)
+	_zoom_b.position = Vector2(ZOOM_INSET, _view.end.y - ZOOM_INSET - ZOOM_B)
+	_zoom_b.size = Vector2(ZOOM_B, ZOOM_B)
 	_flat_cache = {}
 	var named: Array = []
 	for c: String in state.colours:
 		named.append(c)
-	_units = Art.units(_cell, named)
+	# a big picture's buttons are the light ones: plain seen whole, with
+	# their holes seen close
+	var lite := _cell < Art.SMALL
+	_units = Art.units(_cell, named, Art.CLOSE if lite else Art.FULL)
+	_units_far = Art.units(_cell, named, Art.PLAIN) if lite else {}
+	_near_look = _units_far.is_empty() or _cell * zoom.k >= LOD_IN
+	_bsize = BLOCK if maxi(state.w, state.h) > 16 else 16
+	_bw = ceili(float(state.w) / _bsize)
+	_bh = ceili(float(state.h) / _bsize)
+	_blocks = []
+	_blocks.resize(_bw * _bh)
+	_block_hop = _filled(_bw * _bh, -INF)
+	_stale_all()
 	_tin_units = Art.units(_tin_step * 0.86, named)
 	var b := Face.Builder.new()
 	Art.linen(b, size)
@@ -369,14 +487,67 @@ func _layout() -> void:
 	_still = _build_still()
 	_tin = null
 	_seal_mesh = null
-	_live_dirty = true
+	_held_still = false
 	_hud_layer.queue_redraw()
-	queue_redraw()
+	_request()
 
-## Control-local point over the middle of square `i`. The harnesses press
-## these.
+## How close the picture may come, (the button's, a pinch's most): only the
+## big pictures of Hard and Insane zoom, and not once they are won.
+func _zoom_limits() -> Vector2:
+	if state.band < State.BIG_FROM or _won or _cell <= 0.0:
+		return Vector2.ONE
+	return Vector2(NEAR_PX / _cell, CELL_MAX / _cell)
+
+func _zoom_button_wanted() -> bool:
+	return zoom.enabled and not _won and _solved_at == -INF and not is_done()
+
+## The zoom button: whole to close, close to whole.
+func zoom_button() -> void:
+	zoom.toggle()
+	_request()
+
+## The middle of square `i` on the cloth as it is laid out. Under a zoom the
+## screen has it at `cell_screen`.
 func cell_centre(i: int) -> Vector2:
 	return _grid + (Vector2(state.xy(i)) + Vector2(0.5, 0.5)) * _cell
+
+## Control-local point over the middle of square `i`, zoomed as it is. The
+## harnesses press these.
+func cell_screen(i: int) -> Vector2:
+	return zoom.to_screen(cell_centre(i))
+
+func _big() -> bool:
+	return state.count() > BIG
+
+## The buttons as they are drawn at this zoom: the plain ones on a big
+## picture seen whole.
+func _lu() -> Dictionary:
+	return _units if _near_look else _units_far
+
+func _block_of(i: int) -> int:
+	return (i / state.w) / _bsize * _bw + (i % state.w) / _bsize
+
+func _stale_all() -> void:
+	_block_stale = PackedByteArray()
+	_block_stale.resize(_bw * _bh)
+	_block_stale.fill(1)
+	_held_still = false
+
+## Square `i`'s button is about to do something: it leaves its block's mesh
+## for the one drawn every frame.
+func _mark(i: int) -> void:
+	if i < 0 or _live.has(i):
+		return
+	_live[i] = true
+	var b := _block_of(i)
+	if b < _block_stale.size():
+		_block_stale[b] = 1
+
+func _mark_all() -> void:
+	for i in state.slot.size():
+		if state.slot[i] >= 0:
+			_live[i] = true
+	_stale_all()
 
 func cell_to_local(r: int, c: int) -> Vector2:
 	return _grid + (Vector2(c, r) + Vector2(0.5, 0.5)) * _cell
@@ -384,11 +555,19 @@ func cell_to_local(r: int, c: int) -> Vector2:
 func tin_centre(place: int) -> Vector2:
 	return Art.tin_place(_tin_rect, place, TIN_ROW, _tin_step, _tin_places)
 
+## The square under a point of the cloth as laid out.
 func _cell_at(local: Vector2) -> int:
 	if _cell <= 0.0:
 		return -1
 	var p := (local - _grid) / _cell
 	return state.at_xy(Vector2i(int(floor(p.x)), int(floor(p.y))))
+
+## The square under a finger: through the zoom, and only inside the room a
+## zoomed picture shows in (what it hides under the tin is not there).
+func _cell_under(at: Vector2) -> int:
+	if zoom.zoomed() and not _view.has_point(at):
+		return -1
+	return _cell_at(zoom.to_layout(at))
 
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(state.w, state.h) * _cell)
@@ -400,7 +579,7 @@ func _build_still() -> ArrayMesh:
 	Art.stitches(b, field, 22.0, Color(Pal.PLAQUE, 0.55))
 	for i in state.slot.size():
 		if state.slot[i] >= 0:
-			Art.patch(b, cell_centre(i), _cell, Art.colour(state.colours[state.slot[i]]))
+			Art.patch(b, cell_centre(i), _cell, Art.colour(state.colours[state.slot[i]]), _cell < Art.SMALL)
 	return b.mesh()
 
 func _build_tin() -> ArrayMesh:
@@ -411,17 +590,24 @@ func _build_tin() -> ArrayMesh:
 # --- the drawing ---
 
 ## Where the picture's own pixels are on the screen now: itself, but for the
-## win's slide from where it was played to the middle of what is left.
+## win's slide from where it was played (and however close) to the middle of
+## what is left.
 func _slide_xf(now: float) -> Transform2D:
 	var e := now - _slid_at
 	if Motion.reduce or e >= WIN_SLIDE or _from_cell <= 0.0 or _cell <= 0.0:
 		return Transform2D.IDENTITY
 	var u := clampf(e / WIN_SLIDE, 0.0, 1.0)
 	var s := u * u * (3.0 - 2.0 * u)
-	var k := lerpf(_from_cell / _cell, 1.0, s)
-	var at := _from_grid.lerp(_grid, s)
-	return Transform2D(0.0, at) * Transform2D(0.0, Vector2(k, k), 0.0, Vector2.ZERO) * Transform2D(0.0, -_grid)
+	var k0 := _from_cell / _cell
+	var was := _from_zoom * Transform2D(0.0, Vector2(k0, k0), 0.0, _from_grid - _grid * k0)
+	var k := lerpf(was.get_scale().x, 1.0, s)
+	return Transform2D(0.0, Vector2(k, k), 0.0, was.origin.lerp(Vector2.ZERO, s))
 
+## From the cloth as laid out to the screen: the zoom, and the win's slide.
+func _pic_xf(now: float) -> Transform2D:
+	return _slide_xf(now) * zoom.xf()
+
+## The linen, the tin and the tin's own buttons at rest: what never scales.
 func _draw() -> void:
 	if _cell <= 0.0 or _bg == null:
 		return
@@ -429,120 +615,236 @@ func _draw() -> void:
 	var shown: Array = [_bg]
 	draw_mesh(_bg, null)
 	var since := now - _opened - Motion.ENTER_DELAY
+	var tin_seen := 1.0 if Motion.reduce else Motion.appear_level(since)
+	if _solved_at > -INF:
+		tin_seen = 0.0 if Motion.reduce else clampf(1.0 - (now - _solved_at - WIN_WAIT * 0.4) / 0.3, 0.0, 1.0)
+		if _won and _slid_at == -INF:
+			tin_seen = 0.0
+	if tin_seen > 0.0:
+		if _tin == null:
+			_tin = _build_tin()
+		draw_mesh(_tin, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, tin_seen))
+		shown.append(_tin)
+	_tin_rest = null
+	if _solved_at == -INF or now - _solved_at < WIN_WAIT:
+		var rest := Face.FlatBuilder.new(_flat_cache)
+		for p in _tin_places:
+			var c: int = state.tin[p]
+			if c < 0 or now < _tin_arrive[p] or (_held_c >= 0 and _held_places.has(p)):
+				continue
+			var k := 1.0
+			if not Motion.reduce and now - _tin_arrive[p] < Motion.BUMP_TIME:
+				_busy_for(0.1)
+				k = Motion.bump_scale(now - _tin_arrive[p], 0.12)
+			rest.append(_tin_units.loose[c], Transform2D(0.0, Vector2(k, k), 0.0, tin_centre(p)))
+		_tin_rest = rest.mesh()
+	if _tin_rest != null:
+		draw_mesh(_tin_rest, null)
+		shown.append(_tin_rest)
+	_shown = shown
+
+## The picture: the border and the patches, the buttons at rest a block at a
+## time, the ones doing something and the pick, all under one transform.
+func _draw_cloth() -> void:
+	if _cell <= 0.0 or _bg == null or _still == null:
+		return
+	var now := _now()
+	var shown: Array = []
+	var since := now - _opened - Motion.ENTER_DELAY
 	var seen := 1.0 if Motion.reduce else Motion.appear_level(since)
 	var grown := 1.0 if Motion.reduce else Motion.wide_pop_scale(since)
 	var centre := _field_px().get_center()
-	var slide := _slide_xf(now)
-	var xf := slide * Transform2D(0.0, Vector2(grown, grown), 0.0, centre) * Transform2D(0.0, -centre)
-	var busy := now < _anim_until
+	var pic := Transform2D(0.0, -_cloth.position) * _pic_xf(now)
+	var xf := pic * Transform2D(0.0, Vector2(grown, grown), 0.0, centre) * Transform2D(0.0, -centre)
+	# the plain button far off, the whole one close
+	if not _units_far.is_empty():
+		var px := _cell * zoom.k
+		var near := px >= LOD_IN if not _near_look else px > LOD_OUT
+		if near != _near_look:
+			_near_look = near
+			_stale_all()
 	if seen > 0.0:
-		draw_mesh(_still, null, xf, Color(1.0, 1.0, 1.0, seen))
+		_cloth.draw_mesh(_still, null, xf, Color(1.0, 1.0, 1.0, seen))
 		shown.append(_still)
-		var tin_seen := seen
-		if _solved_at > -INF:
-			tin_seen = 0.0 if Motion.reduce else clampf(1.0 - (now - _solved_at - WIN_WAIT * 0.4) / 0.3, 0.0, 1.0)
-			if _won and _slid_at == -INF:
-				tin_seen = 0.0
-		if tin_seen > 0.0:
-			if _tin == null:
-				_tin = _build_tin()
-			draw_mesh(_tin, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, tin_seen))
-			shown.append(_tin)
-	if _live_dirty or busy or _rest == null:
-		_build_buttons(now)
-		_live_dirty = false
-	if _rest != null:
-		draw_mesh(_rest, null, slide)
-		shown.append(_rest)
-	if _top != null:
-		draw_mesh(_top, null, slide)
-		shown.append(_top)
+	var busy := _build_live(now)
+	var cut := zoom.zoomed()
+	var tint := Color(1.0, 1.0, 1.0, seen)
+	for b in _blocks.size():
+		var at := Vector2(b % _bw, b / _bw) * _bsize * _cell + _grid
+		if cut and not _view.intersects(zoom.xf() * Rect2(at, Vector2.ONE * _bsize * _cell).grow(_cell)):
+			continue
+		if _block_stale[b] == 1:
+			_block_stale[b] = 0
+			_blocks[b] = _build_block(b)
+		if _blocks[b] == null or seen <= 0.0:
+			continue
+		var hop := now - _block_hop[b]
+		var lift := 0.0
+		if not Motion.reduce and hop < Motion.SOLVE_TIME and hop > -3.0:
+			busy = true
+			if hop >= 0.0:
+				lift -= Motion.hop_lift(hop, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
+		_cloth.draw_mesh(_blocks[b], null, xf * Transform2D(0.0, Vector2(0.0, -lift)), tint)
+		shown.append(_blocks[b])
+	if _live_mesh != null:
+		_cloth.draw_mesh(_live_mesh, null, pic)
+		shown.append(_live_mesh)
+	if _held_c >= 0:
+		if not _held_still or _held_mesh == null:
+			busy = true
+			_build_held(now)
+		if _held_mesh != null:
+			_cloth.draw_mesh(_held_mesh, null, pic)
+			shown.append(_held_mesh)
+	else:
+		_held_mesh = null
 	if now >= _stamp_at:
-		_draw_stamp(now, shown, slide)
-	_shown = shown
+		_draw_stamp(now, shown, pic)
+	_shown_cloth = shown
+	if busy:
+		_busy_for(0.1)
 
-## Every button where it is at `now`: the ones at rest into `_rest`, the
-## ones in the air into `_top`, over them.
-func _build_buttons(now: float) -> void:
+## The buttons at rest in block `b`.
+func _build_block(b: int) -> ArrayMesh:
 	var rest := Face.FlatBuilder.new(_flat_cache)
-	var top := Face.FlatBuilder.new(_flat_cache)
+	var u := _lu()
+	var x0 := (b % _bw) * _bsize
+	var y0 := (b / _bw) * _bsize
+	for y in range(y0, mini(state.h, y0 + _bsize)):
+		for x in range(x0, mini(state.w, x0 + _bsize)):
+			var i: int = y * state.w + x
+			var c: int = state.cur[i]
+			if state.slot[i] < 0 or c < 0 or _live.has(i):
+				continue
+			var at := Transform2D(0.0, cell_centre(i))
+			if c == state.slot[i]:
+				rest.append(u.sewn[c], at)
+			else:
+				rest.append(u.shade, at)
+				rest.append(u.loose[c], at)
+	return rest.mesh()
+
+## Every button that is doing something, where it is at `now`, and the rings
+## on the patches a pick may go to. True while any of them still moves; once
+## none does they go back to their blocks.
+func _build_live(now: float) -> bool:
+	var rest := Face.FlatBuilder.new(_flat_cache)
+	var u := _lu()
 	var busy := false
 	var holding := _held_c >= 0
 	var held := {}
 	if holding:
-		busy = true
-		# where the pick may go: a ring on every bare patch of its colour,
-		# and on the tin's free places for a run off the cloth
+		# where the pick may go: a ring on every bare patch of its colour
 		# (Easy and Medium only: Hard and Insane never show where to place)
-		var pulse := 1.0 + 0.07 * sin((now - _held_at) * 7.0)
-		var guided: bool = state.guides()
-		if guided:
+		if state.guides():
+			busy = true
+			var pulse := 1.0 + 0.07 * sin((now - _held_at) * 7.0)
 			for i in state.bare_of(_held_c):
-				rest.append(_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.82, 0.0, cell_centre(i)))
-		if guided and not _held_cells.is_empty():
-			var free: int = state.capacity() - state.in_tin()
-			for p in _tin_places:
-				if free > 0 and p < state.capacity() and state.tin[p] < 0:
-					free -= 1
-					rest.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.8, 0.0, tin_centre(p)))
+				rest.append(u.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.82, 0.0, cell_centre(i)))
 		for i in _held_cells:
 			held[i] = true
-	for i in state.slot.size():
+	var still := 0
+	for i: int in _live:
 		var c: int = state.cur[i]
-		if state.slot[i] < 0 or c < 0 or now < _arrive[i] or held.has(i):
+		if held.has(i):
+			continue
+		if c < 0:
+			still += 1
+			continue
+		if now < _arrive[i]:
+			busy = true
 			continue
 		var at := cell_centre(i)
 		var sc := Vector2.ONE
 		var lift := 0.0
-		var home: bool = state.is_home(i)
+		var home: bool = c == state.slot[i]
+		var moving := false
 		if not Motion.reduce:
 			var p: Vector2i = state.xy(i)
 			var e := now - _opened - Motion.ENTER_DELAY - Motion.stagger(p.x + p.y, Motion.ENTER_STAGGER)
-			if e < Motion.POP_IN:
+			if e < Motion.POP_IN and not _big():
 				busy = true
 				if e <= 0.0:
 					continue
+				moving = true
 				sc = Motion.pop_in_scale(e)
 			var landed := now - _arrive[i]
 			if landed < Motion.BUMP_TIME:
-				busy = true
+				moving = true
 				sc *= Motion.bump_scale(landed, 0.2 if home else 0.1)
 			var hop := now - _hop_at[i]
 			if hop >= 0.0 and hop < Motion.SOLVE_TIME:
-				busy = true
+				moving = true
 				lift -= Motion.hop_lift(hop, Motion.SOLVE_HOP, Motion.SOLVE_TIME)
 			elif hop < 0.0 and hop > -3.0:
-				busy = true
+				moving = true
 			var shiver := now - _shiver_at[i]
 			if shiver >= 0.0 and shiver < Motion.SHIVER_TIME:
-				busy = true
+				moving = true
 				at.x += Motion.shiver_offset(shiver, Motion.SHIVER_PX * 2.0)
+		if moving:
+			busy = true
+		else:
+			still += 1
 		if not home or lift > 0.5:
-			rest.append(_units.shade, Transform2D(0.0, sc, 0.0, at))
-		rest.append(_units.sewn[c] if home else _units.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
-	if _solved_at == -INF or now - _solved_at < WIN_WAIT:
-		for p in _tin_places:
-			var c: int = state.tin[p]
-			if c < 0 or now < _tin_arrive[p] or (holding and _held_places.has(p)):
-				continue
-			var k := 1.0
-			if not Motion.reduce and now - _tin_arrive[p] < Motion.BUMP_TIME:
-				busy = true
-				k = Motion.bump_scale(now - _tin_arrive[p], 0.12)
-			rest.append(_tin_units.loose[c], Transform2D(0.0, Vector2(k, k), 0.0, tin_centre(p)))
+			rest.append(u.shade, Transform2D(0.0, sc, 0.0, at))
+		rest.append(u.sewn[c] if home else u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
+	_live_mesh = rest.mesh()
+	# all still: back to the blocks (the pick stays out while it is held)
+	if not busy and still > 0:
+		for i: int in _live.keys():
+			if not held.has(i):
+				_live.erase(i)
+				_block_stale[_block_of(i)] = 1
+		_live_mesh = null
+	return busy
+
+## The pick, lifted: built every frame while it comes up and bobs, and once
+## for a pick too big to bob.
+func _build_held(now: float) -> void:
+	var top := Face.FlatBuilder.new(_flat_cache)
+	var u := _lu()
+	var k := Vector2.ONE * _held_grow(now)
+	for i in _held_cells:
+		var at := _held_pos(i, false, now)
+		top.append(u.shade, Transform2D(0.0, k, 0.0, cell_centre(i).lerp(at, 0.8) + Vector2(0.0, _cell * HELD_RISE)))
+	for i in _held_cells:
+		top.append(u.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(i, false, now)))
+	_held_mesh = top.mesh()
+	_held_still = (Motion.reduce or not _held_bobs()) and now - _held_at > Motion.LIFT_TIME * 1.6
+
+func _held_bobs() -> bool:
+	return _held_cells.size() + _held_places.size() <= HELD_BOB_MAX
+
+## What is over the cloth and the tin both, and never clipped: the rings on
+## the tin's free places, the tin's own buttons picked, and every button in
+## the air, each end of its flight where the screen has it now.
+func _draw_over() -> void:
+	if _cell <= 0.0 or _bg == null:
+		return
+	var now := _now()
+	var top := Face.FlatBuilder.new(_flat_cache)
+	var u := _lu()
+	var busy := false
+	if _held_c >= 0:
+		if state.guides() and not _held_cells.is_empty():
+			var pulse := 1.0 + 0.07 * sin((now - _held_at) * 7.0)
+			var free: int = state.capacity() - state.in_tin()
+			for p in _tin_places:
+				if free > 0 and p < state.capacity() and state.tin[p] < 0:
+					free -= 1
+					top.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.8, 0.0, tin_centre(p)))
+		if not _held_places.is_empty():
+			busy = true
+			var k := Vector2.ONE * _held_grow(now)
+			for p in _held_places:
+				top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
 	if not Motion.reduce and now - _open_at < Motion.BUMP_TIME * 2.0 and _open_place >= 0:
 		busy = true
 		var k := Motion.bump_scale(now - _open_at, 0.3, Motion.BUMP_TIME * 2.0)
-		rest.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(_open_place)))
-	var flying := holding
-	if holding:
-		var k := Vector2.ONE * _held_grow(now)
-		for i in _held_cells:
-			var at := _held_pos(i, false, now)
-			top.append(_units.shade, Transform2D(0.0, k, 0.0, cell_centre(i).lerp(at, 0.8) + Vector2(0.0, _cell * HELD_RISE)))
-			top.append(_units.loose[_held_c], Transform2D(0.0, k, 0.0, at))
-		for p in _held_places:
-			top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
+		top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(_open_place)))
+	var pic := _pic_xf(now)
+	var zk := pic.get_scale().x
 	var keep: Array = []
 	for f: Dictionary in _flights:
 		var e: float = now - float(f.at)
@@ -550,21 +852,26 @@ func _build_buttons(now: float) -> void:
 			continue
 		keep.append(f)
 		busy = true
-		flying = true
-		var u := clampf(e / float(f.time), 0.0, 1.0)
-		var s := u * u * (3.0 - 2.0 * u)
-		var arc := sin(PI * u)
-		var from: Vector2 = f.from
-		var at := from.lerp(f.to, s)
-		var grow := lerpf(float(f.k0), float(f.k1), s) * (1.0 + arc * FLY_GROW)
-		var lift := arc * FLY_ARC * _cell
-		top.append(_units.shade, Transform2D(0.0, Vector2(grow, grow), 0.0, at + Vector2(0.0, lift * 0.2)))
-		top.append(_units.loose[int(f.c)], Transform2D(0.0, Vector2(grow, grow), 0.0, at - Vector2(0.0, lift)))
+		var t := clampf(e / float(f.time), 0.0, 1.0)
+		var s := t * t * (3.0 - 2.0 * t)
+		var arc := sin(PI * t)
+		# an end on the cloth is where the zoom has it this frame
+		var from: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
+		var to: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
+		var k_from := float(f.k0) * (zk if bool(f.fc) else 1.0)
+		var k_to := float(f.k1) * (zk if bool(f.tc) else 1.0)
+		var at := from.lerp(to, s)
+		var grow := lerpf(k_from, k_to, s) * (1.0 + arc * FLY_GROW)
+		var lift := arc * FLY_ARC * _cell * lerpf(zk if bool(f.fc) else 1.0, zk if bool(f.tc) else 1.0, s)
+		top.append(u.shade, Transform2D(0.0, Vector2(grow, grow), 0.0, at + Vector2(0.0, lift * 0.2)))
+		top.append(u.loose[int(f.c)], Transform2D(0.0, Vector2(grow, grow), 0.0, at - Vector2(0.0, lift)))
 	_flights = keep
-	_rest = rest.mesh()
-	_top = top.mesh() if flying else null
+	_top = top.mesh()
+	_shown_over = [_top]
+	if _top != null:
+		_over.draw_mesh(_top, null)
 	if busy:
-		_anim_until = maxf(_anim_until, now + 0.1)
+		_busy_for(0.1)
 
 # --- the pill, the toast and the streak ---
 
@@ -632,7 +939,11 @@ func _draw_combo(now: float) -> void:
 	var text := "x%d" % _combo_n
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
 	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
-	var tail := cell_centre(_combo_cell) + Vector2(_cell * 0.25, -_cell * 0.4)
+	# over the square on the screen, wherever the zoom has it; inside the
+	# picture's room when it has gone out of sight
+	var tail := _at(_combo_cell) + Vector2(0.25, -0.4) * _cell * zoom.k
+	if zoom.zoomed():
+		tail = tail.clamp(_view.position + Vector2(0.0, box.y), _view.end)
 	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.75)
 	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
 	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
@@ -696,7 +1007,7 @@ func _draw_toast(now: float) -> void:
 func _tell(text: String, near := -1) -> void:
 	_toast = text
 	_toast_at = _now()
-	_toast_high = near >= 0 and state.xy(near).y >= state.h * 2 / 3
+	_toast_high = near >= 0 and _at(near).y >= lerpf(_field_px().position.y, _field_px().end.y, 0.62)
 	_hud_layer.queue_redraw()
 
 # --- the pick ---
@@ -708,6 +1019,21 @@ func _unhold() -> void:
 	_held_cells = PackedInt32Array()
 	_held_places = PackedInt32Array()
 	_held_c = -1
+	_held_still = false
+
+## Square `i` on the screen now (for what is drawn over the picture and not
+## in it: a ring, confetti, the streak's bubble).
+func _at(i: int) -> Vector2:
+	return _pic_xf(_now()) * cell_centre(i)
+
+## A point of the picture to throw confetti from: square `i`, or the nearest
+## point of the room when the zoom has it out of sight.
+func _at_seen(i: int) -> Vector2:
+	var p := _at(i)
+	return p.clamp(_view.position, _view.end) if zoom.zoomed() else p
+
+func _in_sight(i: int) -> bool:
+	return not zoom.zoomed() or _view.has_point(_at(i))
 
 ## How far a pick has come up: 0 as it is tapped, 1 once it is lifted.
 func _held_k(now: float) -> float:
@@ -724,8 +1050,10 @@ func _held_pos(i: int, in_tin: bool, now: float) -> Vector2:
 	var k := _held_k(now)
 	var home := tin_centre(i) if in_tin else cell_centre(i)
 	var unit := _tin_step if in_tin else _cell
-	var at := home if in_tin else home.lerp(_held_anchor, PULL * k)
-	var bob := 0.0 if Motion.reduce else sin((now - _held_at) * 5.0 + i * 0.9) * HELD_BOB * unit
+	# a run of hundreds draws together no further than PULL_MOST of a square
+	# each: pulled a fifth of the way, a sky would leave its patches
+	var at := home if in_tin else home + ((_held_anchor - home) * PULL).limit_length(_cell * PULL_MOST) * k
+	var bob := 0.0 if Motion.reduce or not _held_bobs() else sin((now - _held_at) * 5.0 + i * 0.9) * HELD_BOB * unit
 	return at - Vector2(0.0, (HELD_RISE * unit + bob) * k)
 
 func _pick(cells: PackedInt32Array, places: PackedInt32Array, c: int, anchor: Vector2) -> void:
@@ -734,8 +1062,11 @@ func _pick(cells: PackedInt32Array, places: PackedInt32Array, c: int, anchor: Ve
 	_held_c = c
 	_held_at = _now()
 	_held_anchor = anchor
+	_held_still = false
+	for i in cells:
+		_mark(i)
 	fx.cue("lift", randf_range(TICK_VARY.x, TICK_VARY.y))
-	_redraw()
+	_request()
 
 ## Puts the pick down where it was.
 func _drop() -> void:
@@ -743,7 +1074,7 @@ func _drop() -> void:
 		return
 	_unhold()
 	fx.cue("lift", 0.84 * randf_range(TICK_VARY.x, TICK_VARY.y))
-	_redraw()
+	_request()
 
 # --- input ---
 
@@ -752,11 +1083,25 @@ const TIN_HIT := -3
 ## Touch and mouse, as every flat board takes them (touch is not mouse here:
 ## emulate_mouse_from_touch is off). A tap is a press and a release on one
 ## thing: a square of the cloth, or the tin.
+##
+## On Hard and Insane the zoom reads every event first: two fingers pinch
+## and pan, one finger dragged pans a picture seen close (this board is
+## played by taps alone), the wheel zooms on a desk. A gesture that begins
+## takes the press in hand with it, so letting go taps nothing.
 func _gui_input(event: InputEvent) -> void:
+	if zoom.enabled:
+		var took := zoom.feed(event)
+		if took != PanZoom.NONE:
+			if took == PanZoom.BEGAN:
+				_pressed = -1
+				_pressed_tin = -2
+				_gesture_tick()
+			_request()
+			return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
-		var over := _cell_at(event.position)
+		var over := _cell_under(event.position)
 		var over_tin := _tin_at(event.position)
 		if event.pressed:
 			_pressed = over
@@ -770,6 +1115,11 @@ func _gui_input(event: InputEvent) -> void:
 				_drop()
 			_pressed = -1
 			_pressed_tin = -2
+
+## A pan or a pinch has no button's click under it, so it ticks as it
+## begins (the tutorial's page is silent).
+func _gesture_tick() -> void:
+	fx.touch(0.9)
 
 ## The tin under `local`: a place, -1 for its wood between places, -2 off it.
 func _tin_at(local: Vector2) -> int:
@@ -889,27 +1239,35 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	for m: Array in moves_:
 		var kind := int(m[0])
 		var at := now + (0.0 if Motion.reduce else order * step)
-		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": 1.0}
+		# `fc` and `tc`: the end is on the cloth (in the picture's own
+		# measure, which the zoom moves) and not on the tin (the screen's)
+		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": 1.0, "fc": true, "tc": true}
 		match kind:
 			State.TO_PATCH:
 				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
 				_arrive[int(m[2])] = at + fly
+				_mark(int(m[1]))
+				_mark(int(m[2]))
 				sewn += 1
 			State.TO_TIN:
 				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = tin_centre(int(m[2]))
+				f.tc = false
 				f.k1 = tin_k
 				_tin_arrive[int(m[2])] = at + fly
+				_mark(int(m[1]))
 			State.FROM_TIN:
 				f.from = starts.get(-1 - int(m[1]), tin_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
+				f.fc = false
 				f.k0 = tin_k * HELD_SCALE
 				_arrive[int(m[2])] = at + fly
+				_mark(int(m[2]))
 				sewn += 1
 		_flights.append(f)
 		last = maxf(last, at + fly)
-		_after(at + fly - now, _landed.bind(kind, int(m[2]), order))
+		_after(at + fly - now, _landed.bind(kind, int(m[2]), order, moves_.size()))
 		order += 1
 	_last_land = last
 	_bump_pill()
@@ -929,7 +1287,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 			_combo_at = _now()
 			_combo_out_at = -INF
 			if COMBO_CONFETTI.has(_streak) and not Motion.reduce:
-				fx.confetti(cell_centre(at_cell), 14, _cell * 3.0)
+				fx.confetti(_at_seen(at_cell), 14, _cell * 3.0)
 	else:
 		_streak = 0
 		if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
@@ -939,16 +1297,16 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 			if not is_done():
 				fx.cue("run")
 				if not Motion.reduce:
-					fx.confetti(cell_centre(at_cell), 10 + mini(sewn, 12), _cell * 4.0))
+					fx.confetti(_at_seen(at_cell), 10 + mini(sewn, 12), _cell * 4.0))
 	if not (res.whole as Array).is_empty():
 		_after(last - now, _whole.bind(res.whole, int(res.was), int(res.now), at_cell))
-	_redraw()
+	_request()
 	note_move()
 	_spend(1, last)
 
 ## One button has landed: its tick, a step up the run, and a ring where it
 ## was sewn.
-func _landed(kind: int, where: int, nth: int) -> void:
+func _landed(kind: int, where: int, nth: int, of: int) -> void:
 	var pitch := pow(2.0, minf(RUN_CLIMB_MAX, nth * RUN_CLIMB) / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y)
 	# A run lands a button every 0.04 s, and all at once with motion reduced:
 	# its ticks and its knocks are a wheel spun, one every TICK_GAP, never a
@@ -959,11 +1317,12 @@ func _landed(kind: int, where: int, nth: int) -> void:
 	if tick:
 		_ticked_at[into_tin] = now
 		fx.cue("tin" if into_tin else "sew", pitch)
-	if not into_tin and nth % 3 == 0:
-		fx.ring(cell_centre(where), _cell * 0.6, Art.thread_for(Art.colour(state.colours[state.slot[where]])))
+	# a ring every third, and of a long run RINGS in all (a ring is a draw)
+	if not into_tin and nth % maxi(3, ceili(float(of) / RINGS)) == 0 and _in_sight(where):
+		fx.ring(_at(where), _cell * zoom.k * 0.6, Art.thread_for(Art.colour(state.colours[state.slot[where]])))
 	_bump_pill()
 	_busy_for(Motion.BUMP_TIME)
-	_redraw()
+	_request()
 
 ## A colour is whole: its buttons hop outward from the tapped patch, and
 ## the tin gains a place.
@@ -973,14 +1332,21 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 	var now := _now()
 	var origin: Vector2i = state.xy(from)
 	var far := 0
+	var big := _big()
+	var sparkles := 0
 	for i in state.slot.size():
 		if which.has(state.slot[i]):
 			var d: Vector2i = state.xy(i) - origin
 			var ring := maxi(absi(d.x), absi(d.y))
+			# a sky of four hundred does not hop to its far corner
+			if big and ring > WHOLE_REACH:
+				continue
 			far = maxi(far, ring)
 			_hop_at[i] = now + ring * WHOLE_STEP
-			if not Motion.reduce and (i * 7) % 5 == 0:
-				fx.sparkle(cell_centre(i), Pal.SUN)
+			_mark(i)
+			if not Motion.reduce and (i * 7) % 5 == 0 and sparkles < SPARKLES and _in_sight(i):
+				sparkles += 1
+				fx.sparkle(_at(i), Pal.SUN)
 	fx.cue("whole")
 	_busy_for(Motion.SOLVE_TIME + far * WHOLE_STEP + 0.1)
 	if now_open > was:
@@ -990,20 +1356,21 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 		_after(0.25, func() -> void:
 			fx.cue("open")
 			fx.ring(tin_centre(_open_place), _tin_step * 0.5, Pal.SUN)
-			_redraw())
+			_request())
 		_busy_for(0.25 + Motion.BUMP_TIME * 2.0)
 		_tell(tr("BB_WHOLE_OPEN"), from)
 	else:
 		_tell(tr("BB_WHOLE"), from)
-	_redraw()
+	_request()
 
 func _refuse(i: int, why: String) -> void:
 	_tell(tr(why), i)
 	fx.cue("locked")
 	if not Motion.reduce and state.cur[i] >= 0:
 		_shiver_at[i] = _now()
+		_mark(i)
 		_busy_for(Motion.SHIVER_TIME)
-	_redraw()
+	_request()
 
 func tip_line() -> Dictionary:
 	return {"text": "", "mood": Face.Expr.HAPPY}
@@ -1023,12 +1390,14 @@ func undo() -> bool:
 	_tin_arrive.fill(-INF)
 	_hop_at.fill(-INF)
 	_unhold()
+	_live = {}
+	_stale_all()
 	_streak = 0
 	_combo_n = 0
 	_tin = null
 	_bump_pill()
 	fx.cue("undo", randf_range(TICK_VARY.x, TICK_VARY.y))
-	_redraw()
+	_request()
 	moved.emit()
 	return true
 
@@ -1050,20 +1419,25 @@ func hint() -> bool:
 	var from_tin := cells.is_empty()
 	var c: int = state.tin[places[0]] if from_tin else state.cur[cells[0]]
 	var anchor := tin_centre(places[0]) if from_tin else cell_centre(cells[0])
-	fx.ring(anchor, _cell * 0.7, Pal.SUN)
-	fx.sparkle(anchor, Pal.SUN)
+	# a picture seen close is brought to the pick, and then to where it goes
+	if not from_tin:
+		zoom.show_point(anchor)
+	var shown := anchor if from_tin else zoom.xf() * anchor
+	fx.ring(shown, _cell * zoom.k * 0.7, Pal.SUN)
+	fx.sparkle(shown, Pal.SUN)
 	fx.cue("hint")
 	_pick(cells, places, c, anchor)
 	var to := int(move.to)
 	_tell(tr("BB_HINTED"), to if to >= 0 else cells[0])
 	_after(0.0 if Motion.reduce else HINT_BEAT, func() -> void:
 		if to >= 0:
+			zoom.show_point(cell_centre(to))
 			tap(to)
 		else:
 			tap_tin()
 		# the bulb's move is one move: what it could not place is let go
 		_unhold()
-		_redraw())
+		_request())
 	return true
 
 ## The cloth as the day opened it, every button popping back on, and on
@@ -1080,11 +1454,14 @@ func _restart() -> void:
 	state.reset()
 	moves = 0
 	_running = true
+	zoom.reset()
 	_deal()
 	_opened = _now() - Motion.ENTER_DELAY
+	if not _big():
+		_mark_all()
 	_busy_for(Motion.POP_IN + Motion.stagger(state.w + state.h, Motion.ENTER_STAGGER) + 0.1)
 	_bump_pill()
-	_redraw()
+	_request()
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -1108,8 +1485,9 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_stamp_at = now - 10.0 if _stamped() else INF
 	_seal_mesh = null
+	zoom.reset()
 	_hud_layer.queue_redraw()
-	_redraw()
+	_request()
 
 func share_glyphs() -> String:
 	var out: String = state.share_glyphs()
@@ -1145,15 +1523,24 @@ func _on_solved() -> void:
 	_final_taps = state.taps
 	_final_left = moves_left - (1 if max_moves > 0 else 0)
 	var lag := 0.0 if Motion.reduce else maxf(0.0, _last_land - now) + Motion.SOLVE_DELAY
-	for i in state.slot.size():
-		if state.slot[i] >= 0:
-			var c: Vector2i = state.xy(i)
-			_hop_at[i] = now + lag + Motion.stagger(c.x + c.y, Motion.SOLVE_STAGGER, 1.0)
+	# the picture is seen whole for its win
+	if zoom.zoomed():
+		zoom.toggle()
+	if _big():
+		# a thousand buttons hop a block at a time, each block one mesh
+		for b in _blocks.size():
+			_block_hop[b] = now + lag + Motion.stagger(b % _bw + b / _bw, BLOCK_STAGGER, 1.0)
+	else:
+		for i in state.slot.size():
+			if state.slot[i] >= 0:
+				var c: Vector2i = state.xy(i)
+				_hop_at[i] = now + lag + Motion.stagger(c.x + c.y, Motion.SOLVE_STAGGER, 1.0)
+				_mark(i)
 	_after(lag, fx.cue.bind("solved"))
 	_hud_layer.queue_redraw()
 	_party(lag)
 	_busy_for(lag + Motion.SOLVE_TIME + 1.0 + WIN_SLIDE + 0.3)
-	_redraw()
+	_request()
 
 func _party(lag: float) -> void:
 	var now := _now()
@@ -1162,7 +1549,7 @@ func _party(lag: float) -> void:
 		_seal_mesh = null
 		_after(_stamp_at - now, func() -> void:
 			fx.cue("stamp")
-			queue_redraw())
+			_request())
 		if not Motion.reduce:
 			_after(_stamp_at - now + STAMP_DROP, fx.buzz.bind(Haptics.THUD))
 			_busy_for(lag + STAMP_AT + STAMP_DROP * 3.0)
@@ -1192,17 +1579,17 @@ func _draw_stamp(now: float, shown: Array, slide: Transform2D) -> void:
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
 	var centre := field.end - Vector2(rad, rad) * 0.6
 	var xf := slide * Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
-	draw_set_transform_matrix(xf)
-	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
-	draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
+	_cloth.draw_set_transform_matrix(xf)
+	_cloth.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
+	_cloth.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
 	var neat: bool = _final_taps <= state.par
 	var lines: Array
 	if insane:
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02], [tr("BB_SEAL_NEAT") if neat else tr("BB_SEAL_INSANE"), 0.17, 0.36]]
 	else:
 		lines = [[tr("BB_SEAL_NEAT"), 0.24, 0.12]]
-	Seal.text(self, rad, lines)
-	draw_set_transform_matrix(Transform2D.IDENTITY)
+	Seal.text(_cloth, rad, lines)
+	_cloth.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # --- Insane's taps ---
 
@@ -1226,7 +1613,7 @@ func _run_out() -> void:
 	_pressed = -1
 	fx.cue("out_of_hearts")
 	_tell(tr("BB_OUT"))
-	_redraw()
+	_request()
 	_after(CARD_AFTER_STILL if Motion.reduce else CARD_AFTER, _open_card)
 
 ## The card, over the whole screen: on the host so it covers the chrome, or
@@ -1286,6 +1673,8 @@ func _close_card() -> void:
 ## onto it along the diagonals.
 func _enter() -> void:
 	_opened = _now()
+	if not _big():
+		_mark_all()
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP + Motion.POP_IN + Motion.stagger(state.w + state.h, Motion.ENTER_STAGGER))
 	fx.cue("enter")
 
@@ -1309,17 +1698,29 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0:
 		return
 	var now := _now()
-	if now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1:
-		queue_redraw()
+	var gliding := zoom.step(delta)
+	if gliding or zoom.busy() or now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1:
+		_request()
+	# a zoomed picture is cut to its room; whole, it may pop and slide past it
+	_cloth.clip_contents = zoom.zoomed()
+	var wanted := _zoom_button_wanted()
+	if _zoom_b.visible != wanted:
+		_zoom_b.visible = wanted
+	if wanted:
+		_zoom_b.set_icon("minus" if zoom.k > (1.0 + zoom.k_near) * 0.5 else "plus")
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.DROP_FADE + 0.1 or now - _pill_bump < Motion.BUMP_TIME + 0.1 \
 			or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \
-			or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)):
+			or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)) \
+			or (gliding and _combo_n >= COMBO_FROM):
 		_hud_layer.queue_redraw()
 
-func _redraw() -> void:
-	_live_dirty = true
+## Draws the board again: the linen and the tin, the picture, what flies.
+func _request() -> void:
 	queue_redraw()
+	if _cloth != null:
+		_cloth.queue_redraw()
+		_over.queue_redraw()
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0

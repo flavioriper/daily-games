@@ -19,20 +19,21 @@ extends Control
 ## - PLATE: a plate filled right and ironed for good; another filled with a
 ##   bead astray, which hops home (a heart on Hard and Insane).
 ## - PEEK: the picture held to see it big.
-## - WIND (Insane): the card's squares blown about and turned, a square's
-##   clip matched to its plate's, and that plate copied with the clip on top.
+## - ZOOM (Hard and Insane): two fingers spread to go close and dragged to
+##   move about, and the round button back to the whole board.
 ## - CHECK (Easy and Medium): Check rings a bead out of place; it is lifted.
 ## - UNDO: a run taken back by Undo, then Reset sends every bead home.
 ## - HINT: the bulb puts a peg right, twice (bands with hints).
 ##
 ## The board checkup, 2026-10-03: Pixel Garden had only the shared one-page
-## card.
+## card. ZOOM took WIND's place on 2026-10-11, when Windblown went and the
+## big pictures came.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 
-enum Lesson { SEAT, KIT, PLATE, PEEK, WIND, CHECK, UNDO, HINT }
+enum Lesson { SEAT, KIT, PLATE, PEEK, ZOOM, CHECK, UNDO, HINT }
 
 const FINGER_R := 0.3
 const FINGER_ALPHA := 0.16
@@ -52,11 +53,10 @@ const STEP := 0.14
 ##      .  g  g  g  g  .
 const PIC := {"id": "tutorial", "name": "PG_PIC_TULIP",
 	"rows": [".p..p.", ".pppp.", ".pssp.", "..pp..", "g.gg.g", ".gggg."]}
-## Windblown's card: square q shows plate PERM[q], turned TURN[q] quarter
-## turns. The top left square shows the green plate on the bottom right
-## (four dots), turned on its side.
-const PERM := [3, 2, 1, 0]
-const TURN := [1, 2, 3, 1]
+## The ZOOM lesson's little board goes this close by its button, and this
+## close at most.
+const ZOOM_NEAR := 1.9
+const ZOOM_MOST := 2.3
 
 var lesson: int = Lesson.SEAT
 ## The band the board behind the page is on.
@@ -68,6 +68,8 @@ var _caption: Label
 var _loop: Tween
 var _begun := false
 var _finger := Vector2(-1.0, -1.0)   # board-local; x < 0 is no finger
+## The second finger of a pinch, likewise.
+var _finger2 := Vector2(-1.0, -1.0)
 var _down := false
 var _finger_shown: ArrayMesh
 
@@ -105,6 +107,18 @@ class Board extends "res://puzzles/pixel_garden2d.gd":
 	func _open_card() -> void:
 		pass
 
+	## Only the ZOOM lesson's board zooms, and its pinch makes no sound.
+	var zooms := false
+
+	func _zoomable() -> bool:
+		return zooms
+
+	func _zoom_limits() -> Vector2:
+		return Vector2(ZOOM_NEAR, ZOOM_MOST)
+
+	func _pinch_tick() -> void:
+		pass
+
 	## The board on the left as tall as the page; on the right the pattern
 	## card at the top and the box, its name and bar at the bottom.
 	func _layout() -> void:
@@ -128,6 +142,7 @@ class Board extends "res://puzzles/pixel_garden2d.gd":
 		_head_top = top
 		_right = Rect2(rx, size.y - top - HEAD, right_w, HEAD)
 		_place_chips()
+		_place_view()
 		_table = null
 		_thumb_mesh = null
 		_bands = []
@@ -145,9 +160,8 @@ class Board extends "res://puzzles/pixel_garden2d.gd":
 	func lay(p: Dictionary, b: int, enter: bool) -> void:
 		_state.load_picture(PIC)
 		_state.band = b
-		if b == State.WINDBLOWN:
-			_state.perm = PackedInt32Array(PERM)
-			_state.turn = PackedInt32Array(TURN)
+		zoom.reset()
+		_focus = Vector2.INF
 		for e: Array in p.get("beads", []):
 			_state._seat(int(e[0]) * _state.n + int(e[1]), colour(String(e[2])))
 		_gen += 1
@@ -198,29 +212,19 @@ class Board extends "res://puzzles/pixel_garden2d.gd":
 	func card() -> Vector2:
 		return _thumb.get_center()
 
-	## Where square `q`'s clip sits on the pattern card (the card's own
-	## drawing, _build_thumb_pixels).
-	func card_clip(q: int) -> Vector2:
-		var n: int = _state.n
-		var h: int = _state.half
-		var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
-		var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP_WIND)
-		var at := inner.position + Vector2.ONE * 6.0
-		var o := at + Vector2(float(q % 2) * (h + THUMB_GAP_WIND), float(q / 2) * (h + THUMB_GAP_WIND)) * s
-		var pad := minf(0.15, THUMB_GAP_WIND * 0.4) * s
-		var tile := Rect2(o - Vector2.ONE * pad, Vector2.ONE * (h * s + 2.0 * pad))
-		var dir := Vector2.UP.rotated(_state.turn[q] * PI * 0.5)
-		return _thumb.position + tile.get_center() + dir * (tile.size.x * 0.5 + s * 0.1)
+	## The middle of the zoom's button.
+	func zoom_button() -> Vector2:
+		return _zoom_b.position + _zoom_b.size * 0.5
 
-	## Where plate `q`'s clip sits on the board.
-	func plate_clip(q: int) -> Vector2:
-		var pr := _plate_rect(q)
-		return Vector2(pr.get_center().x, pr.position.y - MARGIN * _cell * 0.5)
+	## The middle of the tray's floor.
+	func middle() -> Vector2:
+		return zoom.view.get_center()
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	_art = Board.new()
+	_art.zooms = lesson == Lesson.ZOOM
 	add_child(_art)
 	_over = Control.new()
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -262,7 +266,7 @@ func _layout() -> void:
 		call_deferred("_start")
 
 func _process(_delta: float) -> void:
-	if _finger.x >= 0.0 or _finger_shown != null:
+	if _finger.x >= 0.0 or _finger2.x >= 0.0 or _finger_shown != null:
 		_over.queue_redraw()
 
 ## The board each lesson starts from: [row, column, colour] seated.
@@ -278,8 +282,9 @@ func _position() -> Dictionary:
 				[0, 4, "pink"], [1, 3, "pink"], [1, 4, "pink"], [2, 4, "green"]], "brush": "pink"}
 		Lesson.PEEK, Lesson.HINT:
 			return {"beads": [[1, 1, "pink"], [1, 2, "pink"], [1, 3, "pink"], [1, 4, "pink"]]}
-		Lesson.WIND:
-			return {"beads": [[1, 1, "pink"], [1, 2, "pink"]], "brush": "green"}
+		Lesson.ZOOM:
+			return {"beads": [[0, 1, "pink"], [0, 4, "pink"], [1, 1, "pink"], [1, 2, "pink"], [1, 3, "pink"],
+				[1, 4, "pink"], [2, 1, "pink"], [2, 4, "pink"], [5, 1, "green"], [5, 2, "green"]], "brush": "rose"}
 		Lesson.CHECK:
 			return {"beads": [[1, 1, "pink"], [1, 2, "pink"], [0, 2, "pink"], [5, 1, "green"], [5, 2, "green"]]}
 	return {}
@@ -322,12 +327,19 @@ func _start() -> void:
 			_say_for("HTP_PG_ASTRAY_HEART_CAP" if judged else "HTP_PG_ASTRAY_CAP", 2.8)
 		Lesson.PEEK:
 			_hold_at(func() -> Vector2: return _art.card(), "HTP_PG_PEEK_CAP", 2.0, 1.6)
-		Lesson.WIND:
-			_point_for(func() -> Vector2: return _art.card_clip(0), "HTP_PG_BLOWN_CAP", 2.2)
-			_point_for(func() -> Vector2: return _art.plate_clip(PERM[0]), "HTP_PG_CLIP_CAP", 2.2)
-			_run([[5, 3], [5, 4]], "HTP_PG_TOP_CAP", 0.6)
-			_run([[4, 3]], "", 0.6)
-			_run([[4, 5]], "", 2.0)
+		Lesson.ZOOM:
+			_pinch(Vector2(0.5, -0.2), Vector2(1.7, -0.7), Vector2.ZERO, "HTP_PG_ZOOM_PINCH_CAP", 1.2)
+			_pinch(Vector2(0.8, -0.3), Vector2(0.8, -0.3), Vector2(1.2, 1.0), "HTP_PG_ZOOM_PAN_CAP", 1.0)
+			_tap(2, 2, "HTP_PG_ZOOM_PLAY_CAP", "", 1.0)
+			_loop.tween_callback(_say.bind("HTP_PG_ZOOM_BTN_CAP"))
+			_loop.tween_callback(func() -> void: _point_at(_art.zoom_button()))
+			_loop.tween_interval(0.5)
+			_loop.tween_callback(func() -> void:
+				_down = true
+				_art._on_zoom_button())
+			_loop.tween_interval(0.2)
+			_loop.tween_callback(_lift)
+			_loop.tween_interval(1.8)
 		Lesson.CHECK:
 			_loop.tween_callback(_say.bind("HTP_PG_CHECK_CAP"))
 			_loop.tween_interval(0.5)
@@ -398,6 +410,53 @@ func _hold_at(at: Callable, key: String, hold: float, wait: float) -> void:
 	_loop.tween_callback(_lift)
 	_loop.tween_interval(wait)
 
+## Two fingers come down about the middle of the tray, `from` and its
+## mirror (in cells), and go to `to` and its mirror -- apart to go close --
+## while both drift by `drift`; then they lift and it plays out for `wait`.
+## Through the board's own input, a touch a finger.
+func _pinch(from: Vector2, to: Vector2, drift: Vector2, key: String, wait: float) -> void:
+	const STEPS := 10
+	var at := func(i: int, side: float) -> Vector2:
+		var u := float(i) / STEPS
+		var e := u * u * (3.0 - 2.0 * u)
+		return _art.middle() + (from.lerp(to, e) * side + drift * e) * _art._cell
+	_loop.tween_callback(_say.bind(key))
+	_loop.tween_callback(func() -> void:
+		_finger = at.call(0, 1.0)
+		_finger2 = at.call(0, -1.0)
+		_down = false)
+	_loop.tween_interval(0.5)
+	_loop.tween_callback(func() -> void:
+		_down = true
+		_touch(0, at.call(0, 1.0), true)
+		_touch(1, at.call(0, -1.0), true))
+	for i in range(1, STEPS + 1):
+		_loop.tween_interval(0.06)
+		_loop.tween_callback(func() -> void:
+			_finger = at.call(i, 1.0)
+			_finger2 = at.call(i, -1.0)
+			_slide(0, _finger)
+			_slide(1, _finger2))
+	_loop.tween_interval(0.25)
+	_loop.tween_callback(func() -> void:
+		_touch(0, _finger, false)
+		_touch(1, _finger2, false)
+		_lift())
+	_loop.tween_interval(wait)
+
+func _touch(index: int, at: Vector2, pressed: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.pressed = pressed
+	ev.position = at
+	_art._gui_input(ev)
+
+func _slide(index: int, at: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = index
+	ev.position = at
+	_art._gui_input(ev)
+
 ## The finger presses the first peg of `pegs` ([row, column] each) and drags
 ## through the rest a peg a step, then lets go; then it plays out for `wait`.
 func _run(pegs: Array, key: String, wait: float) -> void:
@@ -425,7 +484,7 @@ func _reset(fresh := false) -> void:
 	_art.lay(_position(), band, fresh)
 	_lift()
 	_say({Lesson.SEAT: "HTP_PG_PICK_CAP", Lesson.KIT: "HTP_PG_PICK_CAP", Lesson.PLATE: "HTP_PG_LAST_CAP",
-		Lesson.PEEK: "HTP_PG_PEEK_CAP", Lesson.WIND: "HTP_PG_BLOWN_CAP", Lesson.CHECK: "HTP_PG_CHECK_CAP",
+		Lesson.PEEK: "HTP_PG_PEEK_CAP", Lesson.ZOOM: "HTP_PG_ZOOM_PINCH_CAP", Lesson.CHECK: "HTP_PG_CHECK_CAP",
 		Lesson.UNDO: "HTP_PG_RUN_CAP", Lesson.HINT: "HTP_PG_HINT_CAP"}[lesson])
 
 ## Reduce motion: the lesson's point, standing still.
@@ -448,9 +507,9 @@ func _still() -> void:
 		Lesson.PEEK:
 			_art._press(_art.card())
 			_say("HTP_PG_PEEK_CAP")
-		Lesson.WIND:
-			_drag_now([[5, 3], [5, 4]])
-			_say("HTP_PG_CLIP_CAP")
+		Lesson.ZOOM:
+			_art._on_zoom_button()
+			_say("HTP_PG_ZOOM_BTN_CAP")
 		Lesson.CHECK:
 			_art.check()
 			_say("HTP_PG_CHECK_CAP")
@@ -486,6 +545,7 @@ func _point_at(at: Vector2) -> void:
 
 func _lift() -> void:
 	_finger = Vector2(-1.0, -1.0)
+	_finger2 = Vector2(-1.0, -1.0)
 	_down = false
 
 func _button(at: Vector2, pressed: bool) -> void:
@@ -507,13 +567,16 @@ func _motion(at: Vector2) -> void:
 
 func _draw_finger() -> void:
 	var cell: float = _art._cell
-	if _finger.x < 0.0 or cell <= 0.0:
+	if (_finger.x < 0.0 and _finger2.x < 0.0) or cell <= 0.0:
 		_finger_shown = null
 		return
 	var b := Face.Builder.new()
-	var at := _art.position + _finger + Vector2(cell * 0.18, cell * 0.22)
-	var r := maxf(16.0, cell * FINGER_R) * (0.85 if _down else 1.0)
-	b.disc(at, r, Color(Pal.TEXT, FINGER_ALPHA * (1.6 if _down else 1.0)))
-	b.stroke(Face.Builder.ring(at, r, r), 3.0, Color(Pal.TEXT, 0.45), true)
+	for f: Vector2 in [_finger, _finger2]:
+		if f.x < 0.0:
+			continue
+		var at := _art.position + f + Vector2(cell * 0.18, cell * 0.22)
+		var r := maxf(16.0, cell * FINGER_R) * (0.85 if _down else 1.0)
+		b.disc(at, r, Color(Pal.TEXT, FINGER_ALPHA * (1.6 if _down else 1.0)))
+		b.stroke(Face.Builder.ring(at, r, r), 3.0, Color(Pal.TEXT, 0.45), true)
 	_finger_shown = b.mesh()
 	_over.draw_mesh(_finger_shown, null)

@@ -30,8 +30,15 @@ const HINTS_BY := [3, 3, 2, 0]
 ## Insane's spare taps over the par: a quarter of it, and never under this.
 const SLACK_MIN := 3
 const COUNTED_FROM := 3
-## The lengths the scramble cuts the colours into.
-const CHUNK := Vector2i(3, 7)
+## The lengths the scramble cuts the colours into, a band: the big pictures
+## of Hard and Insane (24 and 32 square, the user, 2026-10-11) are cut
+## longer, so a day there is long and not endless.
+const CHUNK := [Vector2i(3, 7), Vector2i(3, 7), Vector2i(5, 7), Vector2i(6, 6)]
+## A shared picture is at most this many marks across.
+const SHARE_MAX := 16
+## The bands of the big pictures, which are scrambled a strip at a time
+## (`_scramble_strips`).
+const BIG_FROM := 2
 ## The pictures a day may draw before it keeps the one it has.
 const DRAWS := 12
 const NEAR := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -73,12 +80,25 @@ var taps := 0
 var par := 0
 ## Every tap, for Undo: [cur, tin, taps].
 var history: Array = []
+## The pictures `setup` drew before it kept one (a probe reads it).
+var draws := 0
+## The patches of each colour not yet sewn, and the patches there are: kept
+## by `sew`, counted again by anything else that changes `cur`.
+var _off := PackedInt32Array()
+var _count := 0
+## The hand counting its own game keeps no history.
+var _quiet := false
 
 static func bank() -> Dictionary:
 	if not _bank_read:
 		_bank_read = true
-		if FileAccess.file_exists(BANK):
-			var doc = JSON.parse_string(FileAccess.get_file_as_string(BANK))
+		# PG_BANK, in a debug build, points a harness at another bank.
+		var path := BANK
+		if OS.is_debug_build() and OS.has_environment("PG_BANK"):
+			path = OS.get_environment("PG_BANK")
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			var doc = JSON.parse_string(f.get_as_text())
 			if doc is Dictionary:
 				_bank = doc
 	return _bank
@@ -99,14 +119,23 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		adopt(pic, legend, rng)
 		return
 	# A picture nearly all one colour cannot be scrambled off itself: it is
-	# drawn again while more than a quarter of it opens already sewn.
+	# drawn again while more than a quarter of it opens already sewn. The
+	# par is the hand's whole game, so it is counted once, for the picture
+	# kept.
+	draws = 0
 	for attempt in DRAWS:
-		adopt(pics[rng.randi_range(0, pics.size() - 1)], doc.palette, rng)
+		draws += 1
+		_lay(pics[rng.randi_range(0, pics.size() - 1)], doc.palette, rng)
 		if homes() * 4 <= count():
-			return
+			break
+	par = _solve_taps()
 
 ## Plays `pic` ({name, rows}) with its letters read through `legend`.
 func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
+	_lay(pic, legend, rng)
+	par = _solve_taps()
+
+func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
 	var rows: Array = pic.rows
 	h = rows.size()
 	w = String(rows[0]).length()
@@ -128,14 +157,13 @@ func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> v
 			slot[y * w + x] = k
 	start = _scramble(rng)
 	reset()
-	par = _solve_taps()
 
 ## A hand-made cloth (the tutorial's): `rows` the patches and `opening` the
 ## buttons on them, letter for letter.
 func adopt_laid(rows: Array, opening: Array, legend: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	adopt({"name": "", "rows": rows}, legend, rng)
+	_lay({"name": "", "rows": rows}, legend, rng)
 	for y in h:
 		for x in w:
 			if slot[y * w + x] >= 0:
@@ -147,7 +175,11 @@ func adopt_laid(rows: Array, opening: Array, legend: Dictionary) -> void:
 ## columns, cut into short lengths, the lengths shuffled and laid along the
 ## rows -- so the colours come in runs of a few and nearly every button is
 ## off its patch; the few that are not trade places with one that can.
+## That is Easy and Medium; a big picture is cut another way
+## (`_scramble_strips`).
 func _scramble(rng: RandomNumberGenerator) -> PackedInt32Array:
+	if band >= BIG_FROM:
+		return _trade_home(_scramble_strips(rng), rng)
 	var by_row := PackedInt32Array()
 	var by_col := PackedInt32Array()
 	for y in h:
@@ -161,10 +193,11 @@ func _scramble(rng: RandomNumberGenerator) -> PackedInt32Array:
 			if slot[y * w + x] >= 0:
 				by_col.append(y * w + x)
 	var n := by_row.size()
+	var chunk: Vector2i = CHUNK[clampi(band, 0, CHUNK.size() - 1)]
 	var lengths: Array = []
 	var at := 0
 	while at < n:
-		var cut := mini(n - at, rng.randi_range(CHUNK.x, CHUNK.y))
+		var cut := mini(n - at, rng.randi_range(chunk.x, chunk.y))
 		lengths.append([at, cut])
 		at += cut
 	for k in range(lengths.size() - 1, 0, -1):
@@ -180,6 +213,76 @@ func _scramble(rng: RandomNumberGenerator) -> PackedInt32Array:
 		for k in int(piece[1]):
 			best[by_row[put]] = slot[by_col[int(piece[0]) + k]]
 			put += 1
+	return _trade_home(best, rng)
+
+## A big picture's buttons as the day opens. Cut the small way, a 32-square
+## cloth opens with a hundred buttons each alone among strangers and the
+## hand's game is 600 moves, most of them one button (measured, 2026-10-11):
+## what a move can sew is what the tin can hold, so a long day wants every
+## move to sew a tinful. So the picture is cut along its rows into strips of
+## one colour, CHUNK long at the most, and the strips of one length trade
+## their buttons round in a ring, no strip with one of its own colour: a
+## strip lifted bares a strip's worth of one colour, which another strip
+## fills whole.
+func _scramble_strips(rng: RandomNumberGenerator) -> PackedInt32Array:
+	var chunk: Vector2i = CHUNK[clampi(band, 0, CHUNK.size() - 1)]
+	var by_len := {}
+	for y in h:
+		var x := 0
+		while x < w:
+			var c := slot[y * w + x]
+			if c < 0:
+				x += 1
+				continue
+			var want := rng.randi_range(chunk.x, chunk.y)
+			var strip := PackedInt32Array()
+			while x < w and slot[y * w + x] == c and strip.size() < want:
+				strip.append(y * w + x)
+				x += 1
+			if not by_len.has(strip.size()):
+				by_len[strip.size()] = []
+			(by_len[strip.size()] as Array).append(strip)
+	var out := PackedInt32Array()
+	out.resize(w * h)
+	out.fill(-1)
+	var lens := by_len.keys()
+	lens.sort()
+	for len_: int in lens:
+		var ring: Array = by_len[len_]
+		var n := ring.size()
+		for k in range(n - 1, 0, -1):
+			var j := rng.randi_range(0, k)
+			var t = ring[k]
+			ring[k] = ring[j]
+			ring[j] = t
+		# two of one colour side by side in the ring: one of them trades
+		# places with a strip that neither place minds
+		for i in n:
+			var a := (i + 1) % n
+			if slot[ring[i][0]] != slot[ring[a][0]]:
+				continue
+			var from := rng.randi_range(0, n - 1)
+			for k in n:
+				var j := (from + k) % n
+				var cj := slot[ring[j][0]]
+				var ca := slot[ring[a][0]]
+				if j == i or j == a or cj == ca:
+					continue
+				if cj == slot[ring[(a + 1) % n][0]] or ca == slot[ring[(j + n - 1) % n][0]] \
+						or ca == slot[ring[(j + 1) % n][0]]:
+					continue
+				var t = ring[a]
+				ring[a] = ring[j]
+				ring[j] = t
+				break
+		for i in n:
+			var c := slot[ring[(i + 1) % n][0]]
+			for g: int in ring[i]:
+				out[g] = c
+	return out
+
+## A button that opens on its own patch trades places with one that can.
+func _trade_home(best: PackedInt32Array, rng: RandomNumberGenerator) -> PackedInt32Array:
 	for i in best.size():
 		if slot[i] < 0 or best[i] != slot[i]:
 			continue
@@ -195,11 +298,19 @@ func _scramble(rng: RandomNumberGenerator) -> PackedInt32Array:
 	return best
 
 func count() -> int:
-	var out := 0
-	for s in slot:
-		if s >= 0:
-			out += 1
-	return out
+	return _count
+
+## Counts again what `_off` keeps: the patches of each colour not yet sewn.
+func _recount() -> void:
+	_off = PackedInt32Array()
+	_off.resize(colours.size())
+	_off.fill(0)
+	_count = 0
+	for i in slot.size():
+		if slot[i] >= 0:
+			_count += 1
+			if cur[i] != slot[i]:
+				_off[slot[i]] += 1
 
 func xy(i: int) -> Vector2i:
 	return Vector2i(i % w, i / w)
@@ -213,22 +324,18 @@ func is_home(i: int) -> bool:
 	return slot[i] >= 0 and cur[i] == slot[i]
 
 func homes() -> int:
-	var out := 0
-	for i in slot.size():
-		if slot[i] >= 0 and cur[i] == slot[i]:
-			out += 1
+	var out := _count
+	for n in _off:
+		out -= n
 	return out
 
 func colour_done(c: int) -> bool:
-	for i in slot.size():
-		if slot[i] == c and cur[i] != c:
-			return false
-	return true
+	return _off[c] == 0
 
 func colours_done() -> int:
 	var out := 0
-	for c in colours.size():
-		if colour_done(c):
+	for n in _off:
+		if n == 0:
 			out += 1
 	return out
 
@@ -336,7 +443,8 @@ func _nearest(pool: PackedInt32Array, to: int) -> int:
 	return best
 
 func _before() -> Array:
-	history.append([cur.duplicate(), tin.duplicate(), taps])
+	if not _quiet:
+		history.append([cur.duplicate(), tin.duplicate(), taps])
 	var whole: Array = []
 	for c in colours.size():
 		whole.append(colour_done(c))
@@ -380,6 +488,7 @@ func sew(cells: PackedInt32Array, places: PackedInt32Array, at: int) -> Dictiona
 			continue
 		var to: int = order[k]
 		cur[to] = c
+		_off[c] -= 1
 		if from_tin:
 			tin[source[k]] = -1
 			moves.append([FROM_TIN, source[k], to, c])
@@ -420,6 +529,7 @@ func undo() -> bool:
 	cur = last[0]
 	tin = last[1]
 	taps = last[2]
+	_recount()
 	return true
 
 ## The cloth as the day opened it.
@@ -430,35 +540,78 @@ func reset() -> void:
 	tin.fill(-1)
 	taps = 0
 	history = []
+	_recount()
 
 ## Every button sewn, for a finished daily reopened.
 func finish(used := -1) -> void:
 	cur = slot.duplicate()
 	tin.fill(-1)
 	history = []
+	_recount()
 	if used >= 0:
 		taps = used
 
 ## The move this file's own hand would make, {cells, places, to}: the pick
 ## (a run off the cloth or the tin's own of one colour) and where it goes
 ## (a bare patch, or -1 for the tin). It sews the most it can at one tap,
-## onto the biggest joined stretch of bare patches the pick's colour has;
-## with nothing to sew it stows the biggest run the tin takes whole, the
-## smallest of all when none fits. {} on a finished cloth.
+## onto the biggest joined stretch of bare patches the pick's colour has,
+## and of two as good the one that leaves patches of fewer colours bare
+## behind it; with nothing to sew it puts into the tin the run that opens
+## the most patches in the fewest colours. {} on a finished cloth.
 func hint() -> Dictionary:
-	# the biggest stretch of bare patches a colour: [size, a patch of it]
+	var bare := PackedInt32Array()
+	for i in slot.size():
+		if slot[i] >= 0 and cur[i] < 0:
+			bare.append(i)
+	return _choose(_stretches(bare), _runs())
+
+## The biggest stretch of bare patches a colour, {colour: [size, a patch of
+## it]}, out of `bare`: every bare patch, lowest first.
+func _stretches(bare: PackedInt32Array) -> Dictionary:
 	var stretch := {}
 	var mapped := {}
-	for i in slot.size():
-		if slot[i] < 0 or cur[i] >= 0 or mapped.has(i):
+	for i in bare:
+		if mapped.has(i):
 			continue
 		var run := bare_run(i)
 		for g in run:
 			mapped[g] = true
 		if run.size() > int((stretch.get(slot[i], [0, -1]) as Array)[0]):
 			stretch[slot[i]] = [run.size(), i]
+	return stretch
+
+## Every run on the cloth, each from its lowest square.
+func _runs() -> Array:
+	var out: Array = []
+	var seen := PackedByteArray()
+	seen.resize(slot.size())
+	for i in slot.size():
+		if slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i] or seen[i] == 1:
+			continue
+		var run := run_of(i)
+		for g in run:
+			seen[g] = 1
+		out.append(run)
+	return out
+
+## The colours of the patches under the first `n` buttons of `run`.
+func _kinds(run: PackedInt32Array, n: int) -> int:
+	var first := slot[run[0]]
+	var more := {}
+	for k in range(1, n):
+		if slot[run[k]] != first:
+			more[slot[run[k]]] = true
+	return 1 + more.size()
+
+## `hint`, given what it sees: `stretch` (`_stretches`) and `runs` (every
+## run, each from its lowest square, in any order). `first` in what it
+## returns is the lowest square of the run picked.
+func _choose(stretch: Dictionary, runs: Array) -> Dictionary:
 	var best := {}
 	var best_gain := 0
+	var best_kinds := 0
+	var best_first := -1
+	var best_size := 0
 	for c in colours.size():
 		if not stretch.has(c):
 			continue
@@ -467,33 +620,83 @@ func hint() -> Dictionary:
 		if gain > best_gain:
 			best_gain = gain
 			best = {"cells": PackedInt32Array(), "places": held, "to": int(stretch[c][1])}
-	var seen := {}
 	var room := capacity() - in_tin()
 	var lift := PackedInt32Array()
-	var small := PackedInt32Array()
-	for i in slot.size():
-		if slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i] or seen.has(i):
-			continue
-		var run := run_of(i)
-		for g in run:
-			seen[g] = true
-		var c := cur[i]
+	var lift_n := 0
+	var lift_kinds := 1
+	for run: PackedInt32Array in runs:
+		var c := cur[run[0]]
 		if stretch.has(c):
 			var gain := mini(run.size(), int(stretch[c][0]))
-			if gain > best_gain:
-				best_gain = gain
-				best = {"cells": run, "places": PackedInt32Array(), "to": int(stretch[c][1])}
-		if run.size() <= room and run.size() > lift.size():
+			# of two that sew as many, the tin's own first, then the run that
+			# leaves patches of fewer colours bare, then the shorter (a long
+			# run is not nibbled while a short one will do), then the lowest
+			if gain > best_gain or (gain == best_gain and best_first >= 0):
+				var kinds := _kinds(run, gain)
+				if gain > best_gain or kinds < best_kinds or (kinds == best_kinds and (run.size() < best_size
+						or (run.size() == best_size and run[0] < best_first))):
+					best_gain = gain
+					best_kinds = kinds
+					best_size = run.size()
+					best_first = run[0]
+					best = {"cells": run, "places": PackedInt32Array(), "to": int(stretch[c][1])}
+		if best_gain > 0 or room <= 0:
+			continue
+		# for the tin: the most buttons a colour of patch they leave bare
+		var n := mini(run.size(), room)
+		var kinds := _kinds(run, n)
+		var better := n * (1 + lift_kinds) - lift_n * (1 + kinds)
+		if lift.is_empty() or better > 0 or (better == 0 and (n > lift_n or (n == lift_n and run[0] < lift[0]))):
 			lift = run
-		if small.is_empty() or run.size() < small.size():
-			small = run
+			lift_n = n
+			lift_kinds = kinds
 	if not best.is_empty():
+		if best_first >= 0:
+			best["first"] = best_first
+			best.cells = _tidy(best.cells, best_gain)
 		return best
 	if lift.is_empty():
-		lift = small
-	if lift.is_empty():
 		return {}
-	return {"cells": lift, "places": PackedInt32Array(), "to": -1}
+	return {"cells": _tidy(lift, lift_n), "places": PackedInt32Array(), "to": -1, "first": lift[0]}
+
+## `run` in the order the hand takes it up when only `n` of it will go: the
+## buttons standing on the biggest joined stretch of one colour of patch
+## first, so what they leave bare is one stretch and the next sew a big one
+## (a player does as much by choosing which button of the run to tap).
+func _tidy(run: PackedInt32Array, n: int) -> PackedInt32Array:
+	if n >= run.size():
+		return run
+	var inside := {}
+	for g in run:
+		inside[g] = true
+	var seen := {}
+	var top := PackedInt32Array()
+	for g in run:
+		if seen.has(g):
+			continue
+		var piece := PackedInt32Array([g])
+		seen[g] = true
+		var head := 0
+		while head < piece.size():
+			var p := xy(piece[head])
+			head += 1
+			for d: Vector2i in near():
+				var j := at_xy(p + d)
+				if j >= 0 and inside.has(j) and not seen.has(j) and slot[j] == slot[g]:
+					seen[j] = true
+					piece.append(j)
+		if piece.size() > top.size():
+			top = piece
+			if top.size() >= n:
+				break
+	var out := top.duplicate()
+	var taken := {}
+	for g in top:
+		taken[g] = true
+	for g in run:
+		if not taken.has(g):
+			out.append(g)
+	return out
 
 ## Makes `move` (a `hint`). The result of `sew` or `stow`.
 func play(move: Dictionary) -> Dictionary:
@@ -503,7 +706,11 @@ func play(move: Dictionary) -> Dictionary:
 		return stow(move.cells)
 	return sew(move.cells, move.places, int(move.to))
 
-## The moves `hint` takes from the opening, on a copy.
+## The moves `hint` takes from the opening, on a copy. What the hand sees is
+## kept from move to move and not read off the cloth again: the bare patches
+## are never more than the tin holds, and a run only ever loses buttons, so
+## a move changes the one run it picked (a 32-square cloth is counted in a
+## few dozen ms and not a second).
 func _solve_taps() -> int:
 	var probe = get_script().new()
 	probe.band = band
@@ -513,13 +720,41 @@ func _solve_taps() -> int:
 	probe.colours = colours
 	probe.slot = slot
 	probe.start = start
+	probe._quiet = true
 	probe.reset()
+	var runs := {}
+	for run: PackedInt32Array in probe._runs():
+		runs[run[0]] = run
+	var bare := {}
 	var guard := 0
 	while not probe.is_solved() and guard < 4000:
 		guard += 1
-		if probe.play(probe.hint()).why != OK:
+		var open := PackedInt32Array(bare.keys())
+		open.sort()
+		var move: Dictionary = probe._choose(probe._stretches(open), runs.values())
+		var res: Dictionary = probe.play(move)
+		if int(res.why) != OK:
 			return 0
-		probe.history = []
+		for m: Array in res.moves:
+			if int(m[0]) != TO_TIN:
+				bare.erase(int(m[2]))
+			if int(m[0]) != FROM_TIN:
+				bare[int(m[1])] = true
+		var cells: PackedInt32Array = move.cells
+		if cells.is_empty():
+			continue
+		# the run picked is what is left of it, which may be in pieces
+		runs.erase(int(move.first))
+		var kept: PackedInt32Array = (res.kept as PackedInt32Array).duplicate()
+		kept.sort()
+		var seen := {}
+		for g in kept:
+			if seen.has(g):
+				continue
+			var piece: PackedInt32Array = probe.run_of(g)
+			for q in piece:
+				seen[q] = true
+			runs[g] = piece
 	return probe.taps if probe.is_solved() else 0
 
 ## The cloth as it was sewn: a square a patch in its nearest emoji colour.
@@ -528,9 +763,20 @@ func share_glyphs() -> String:
 		"rose": "🟥", "lilac": "🟪", "purple": "🟪", "sky": "🟦", "blue": "🟦", "teal": "🟩", "lime": "🟩",
 		"green": "🟩", "forest": "🟩", "tan": "🟧", "brown": "🟫", "dark": "⬛", "grey": "⬜"}
 	var out := ""
-	for y in h:
-		for x in w:
-			var s := slot[y * w + x]
-			out += "▫️" if s < 0 else String(marks.get(colours[s], "⬜"))
+	# A big picture is shared small: a mark is two squares a side there, and
+	# the colour most of its squares are (1,024 marks are not a share).
+	var step := ceili(float(maxi(w, h)) / SHARE_MAX)
+	for y in range(0, h, step):
+		for x in range(0, w, step):
+			var votes := {}
+			var top := ""
+			for yy in range(y, mini(h, y + step)):
+				for xx in range(x, mini(w, x + step)):
+					var s := slot[yy * w + xx]
+					var mark := "▫️" if s < 0 else String(marks.get(colours[s], "⬜"))
+					votes[mark] = int(votes.get(mark, 0)) + 1
+					if top == "" or int(votes[mark]) > int(votes[top]):
+						top = mark
+			out += top
 		out += "\n"
 	return out.strip_edges()

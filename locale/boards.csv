@@ -1340,8 +1340,8 @@ PG_SHORT,"Bead by bead,\ncopy the picture.","Conta por conta,\ncopie a figura.",
 PG_MOTTO,Bead by bead,Conta por conta,Cuenta a cuenta
 PG_LVL_0,"10 × 10, 3–4 colours","10 × 10, 3–4 cores","10 × 10, 3–4 colores"
 PG_LVL_1,"12 × 12, 4–5 colours","12 × 12, 4–5 cores","12 × 12, 4–5 colores"
-PG_LVL_2,"14 × 14, 5–6 colours","14 × 14, 5–6 cores","14 × 14, 5–6 colores"
-PG_LVL_3,Windblown: the pattern's squares blew about,Ventania: os quadrados do molde voaram,Ventolera: los cuadrados del patrón volaron
+PG_LVL_2,"24 × 24, a big picture, 7–10 colours","24 × 24, uma figura grande, 7–10 cores","24 × 24, un dibujo grande, 7–10 colores"
+PG_LVL_3,"32 × 32, the biggest picture, counted moves","32 × 32, a maior figura, jogadas contadas","32 × 32, el dibujo más grande, jugadas contadas"
 PG_FUSED,That peg is fixed for good.,Esse pino está fixo de vez.,Esa clavija está fija para siempre.
 PG_TAKEN,That peg already has a bead. Pick its colour and tap it to lift it first.,Esse pino já tem uma conta. Escolha a cor dela e toque para tirá-la antes.,Esa clavija ya tiene una cuenta. Elige su color y tócala para quitarla primero.
 PG_NONE_LEFT,That colour is used up. One of its beads is in the wrong place.,Essa cor acabou. Uma das contas dela está no lugar errado.,Ese color se acabó. Una de sus cuentas está en el lugar equivocado.
@@ -1358,8 +1358,8 @@ PG_RESET,Every bead back in the kit.,Todas as contas de volta ao kit.,Todas las 
 PG_WIN,"%s, finished and ironed.",Figura pronta e passada a ferro: %s.,Dibujo terminado y planchado: %s.
 PG_RULES_PLATES,"The board is four plates. When every bead of the picture is on the board, the iron passes over the plates: a plate with every bead right is ironed for good; on the others, the beads astray hop back into the box.","O tabuleiro tem quatro placas. Quando todas as contas da figura estão no tabuleiro, o ferro passa pelas placas: a placa com todas as contas certas fica passada de vez; nas outras, as contas fora do lugar pulam de volta para a caixa.","El tablero tiene cuatro placas. Cuando todas las cuentas del dibujo están en el tablero, la plancha pasa por las placas: la placa con todas las cuentas bien queda planchada para siempre; en las otras, las cuentas fuera de lugar saltan de vuelta a la caja."
 PG_RULES_HEARTS,Hard: three hearts. A plate ironed with beads astray costs one. There is no Check: the iron is the judge.,Difícil: três corações. Uma placa passada com contas fora do lugar custa um. Não há Conferir: o ferro é o juiz.,Difícil: tres corazones. Una placa planchada con cuentas fuera de lugar cuesta uno. No hay Comprobar: la plancha es el juez.
-PG_RULES_WIND,"Windblown: the wind blew the pattern card's four squares about. Each one landed somewhere else, turned. A square's clip has the colour and dots of the plate it shows, and points to that plate's top. No iron passes over a plate here: it comes only when the whole picture is right.","Ventania: o vento espalhou os quatro quadrados do molde. Cada um caiu em outro lugar, girado. O clipe de um quadrado tem a cor e os pontinhos da placa que ele mostra, e aponta para o topo dessa placa. Aqui o ferro não passa em nenhuma placa: ele só vem quando a figura inteira está certa.","Ventolera: el viento desordenó los cuatro cuadrados del patrón. Cada uno cayó en otro lugar, girado. La pinza de un cuadrado tiene el color y los puntitos de la placa que muestra, y apunta a la parte de arriba de esa placa. Aquí la plancha no pasa por ninguna placa: solo llega cuando todo el dibujo está bien."
-PG_WIND_TIP,"Windblown! Match each square's clip to a plate, and turn it in your head so the clip is on top.",Ventania! Ache a placa de cada quadrado pelo clipe e gire-o na cabeça até o clipe ficar em cima.,¡Ventolera! Busca la placa de cada cuadrado por su pinza y gíralo en tu cabeza hasta que la pinza quede arriba.
+PG_RULES_ZOOM,"This picture is big: spread two fingers on the board to zoom in, pinch to zoom out, and drag with two fingers to move around. The round button on the board zooms in and back out. One finger seats beads as always.","Esta figura é grande: afaste dois dedos no tabuleiro para aproximar, junte-os para afastar e arraste com dois dedos para se mover. O botão redondo no tabuleiro aproxima e volta. Um dedo só coloca contas como sempre.","Este dibujo es grande: separa dos dedos sobre el tablero para acercar, júntalos para alejar y arrastra con dos dedos para moverte. El botón redondo del tablero acerca y vuelve. Un solo dedo pone cuentas como siempre."
+PG_ZOOM_TIP,A big one! Spread two fingers or tap + to zoom in.,Uma grande! Afaste dois dedos ou toque em + para aproximar.,¡Uno grande! Separa dos dedos o toca + para acercar.
 PG_HARD_TIP,A full plate is ironed at once. Beads astray cost a heart.,Uma placa cheia é passada na hora. Contas fora do lugar custam um coração.,Una placa llena se plancha al momento. Las cuentas fuera de lugar cuestan un corazón.
 PG_PLATE_OFF_ONE,The iron found 1 bead astray. It hopped back into the box.,O ferro achou 1 conta fora do lugar. Ela pulou de volta para a caixa.,La plancha encontró 1 cuenta fuera de lugar. Saltó de vuelta a la caja.
 PG_PLATE_OFF_N,The iron found %s beads astray. They hopped back into the box.,O ferro achou %s contas fora do lugar. Elas pularam de volta para a caixa.,La plancha encontró %s cuentas fuera de lugar. Saltaron de vuelta a la caja.
@@ -1372,7 +1372,6 @@ PG_WORD_PLATE,Perfect plate!,Placa perfeita!,¡Placa perfecta!
 PG_WORD_ROW,%s in a row!,%s seguidas!,¡%s seguidas!
 PG_WORD_STEADY,Steady hand!,Mão firme!,¡Pulso firme!
 PG_WORD_WHOOSH,Whoosh!,Zum!,¡Zas!
-PG_WIND_SEAL,Windblown,Ventania,Ventolera
 PG_CHEER_0,Bead wisdom: the tweezers never hurry.,Sabedoria das contas: a pinça nunca tem pressa.,Sabiduría de cuentas: la pinza nunca tiene prisa.
 PG_CHEER_1,"Bead wisdom: count twice, iron once.","Sabedoria das contas: conte duas vezes, passe o ferro uma.","Sabiduría de cuentas: cuenta dos veces, plancha una."
 PG_CHEER_2,Bead wisdom: every picture starts with one bead.,Sabedoria das contas: toda figura começa com uma conta.,Sabiduría de cuentas: todo dibujo empieza con una cuenta.
@@ -1403,26 +1402,9 @@ PG_PIC_WATERMELON,Watermelon,Melancia,Sandía
 PG_PIC_CACTUS,Cactus,Cacto,Cactus
 PG_PIC_BIRDHOUSE,Birdhouse,Casinha de Passarinho,Casita para Pájaros
 PG_PIC_BIRD,Garden Bird,Pássaro do Jardim,Pájaro del Jardín
-PG_PIC_ROBIN,Robin,Pisco-de-peito-ruivo,Petirrojo
-PG_PIC_HEDGEHOG,Hedgehog,Ouriço,Erizo
-PG_PIC_OWL,Owl,Coruja,Búho
-PG_PIC_WATERING_CAN,Watering Can,Regador,Regadera
 PG_PIC_COTTAGE,Cottage,Chalé,Casita de Campo
-PG_PIC_PUMPKIN,Pumpkin,Abóbora,Calabaza
-PG_PIC_TURTLE,Turtle,Tartaruga,Tortuga
-PG_PIC_TEACUP,Teacup,Xícara de Chá,Taza de Té
-PG_PIC_BUNNY,Bunny,Coelhinho,Conejito
-PG_PIC_RAINBOW,Rainbow,Arco-íris,Arcoíris
-PG_PIC_FOX,Fox,Raposa,Zorro
-PG_PIC_SQUIRREL,Squirrel,Esquilo,Ardilla
-PG_PIC_SHEEP,Sheep,Ovelha,Oveja
 PG_PIC_KOI_POND,Koi Pond,Lago de Carpas,Estanque de Carpas
 PG_PIC_MUSHROOM_HOUSE,Mushroom House,Casa de Cogumelo,Casa de Seta
-PG_PIC_CAT,Cat,Gato,Gato
-PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
-PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
-PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
-PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
 PG_PIC_PEAR,Pear,Pera,Pera
 PG_PIC_LEMON,Lemon,Limão,Limón
 PG_PIC_TOMATO,Tomato,Tomate,Tomate
@@ -1463,46 +1445,27 @@ PG_PIC_AUBERGINE,Aubergine,Berinjela,Berenjena
 PG_PIC_PEPPER,Pepper,Pimentão,Pimiento
 PG_PIC_WINDMILL,Windmill,Moinho,Molino
 PG_PIC_WORM,Worm,Minhoca,Lombriz
-PG_PIC_MOLE,Mole,Toupeira,Topo
-PG_PIC_FAWN,Fawn,Cervinho,Cervatillo
-PG_PIC_SWAN,Swan,Cisne,Cisne
-PG_PIC_KINGFISHER,Kingfisher,Martim-pescador,Martín Pescador
-PG_PIC_WOODPECKER,Woodpecker,Pica-pau,Pájaro Carpintero
-PG_PIC_LIZARD,Lizard,Lagartixa,Lagartija
-PG_PIC_APPLE_TREE,Apple Tree,Macieira,Manzano
-PG_PIC_GREENHOUSE,Greenhouse,Estufa,Invernadero
-PG_PIC_WELL,Well,Poço,Pozo
-PG_PIC_SCARECROW,Scarecrow,Espantalho,Espantapájaros
-PG_PIC_BENCH,Garden Bench,Banco de Jardim,Banco de Jardín
-PG_PIC_BIRD_BATH,Bird Bath,Banho de Passarinho,Baño de Pájaros
-PG_PIC_GARDEN_GATE,Garden Gate,Portão do Jardim,Portón del Jardín
-PG_PIC_TRACTOR,Tractor,Trator,Tractor
-PG_PIC_KETTLE,Kettle,Chaleira,Tetera
-PG_PIC_PIE,Pie,Torta,Tarta
-PG_PIC_HOT_AIR_BALLOON,Hot Air Balloon,Balão,Globo
-PG_PIC_TENT,Tent,Barraca,Tienda
-PG_PIC_CAMPFIRE,Campfire,Fogueira,Fogata
-PG_PIC_RACCOON,Raccoon,Guaxinim,Mapache
-PG_PIC_BADGER,Badger,Texugo,Tejón
-PG_PIC_STAG,Stag,Cervo,Ciervo
-PG_PIC_HERON,Heron,Garça,Garza
-PG_PIC_PEACOCK,Peacock,Pavão,Pavo Real
-PG_PIC_ROOSTER,Rooster,Galo,Gallo
-PG_PIC_BARN,Barn,Celeiro,Granero
 PG_PIC_TREEHOUSE,Treehouse,Casa na Árvore,Casa del Árbol
-PG_PIC_LEAF,Leaf,Folha,Hoja
-PG_PIC_BOUQUET,Bouquet,Buquê,Ramo
-PG_PIC_WREATH,Wreath,Guirlanda,Corona
-PG_PIC_HUMMINGBIRD,Hummingbird,Beija-flor,Colibrí
-PG_PIC_CHAMELEON,Chameleon,Camaleão,Camaleón
-PG_PIC_HARE,Hare,Lebre,Liebre
 PG_PIC_BEAR,Honey Bear,Urso do Mel,Oso de la Miel
-PG_PIC_SAILBOAT,Sailboat,Veleiro,Velero
-PG_PIC_SUNSET,Sunset,Pôr do Sol,Atardecer
-PG_PIC_SNOWMAN,Snowman,Boneco de Neve,Muñeco de Nieve
-PG_PIC_NEST,Nest,Ninho,Nido
-PG_PIC_BLUEBIRD,Bluebird,Azulão,Azulejo
-PG_PIC_MALLARD,Mallard,Pato-real,Ánade Real
+PG_PIC_NIGHT_OWL,Night Owl,Coruja da Noite,Búho Nocturno
+PG_PIC_BUNNY_MEADOW,Bunny in the Meadow,Coelhinho no Campo,Conejito en el Prado
+PG_PIC_PUMPKIN_PATCH,Pumpkin Patch,Canteiro de Abóboras,Huerto de Calabazas
+PG_PIC_DUCK_POND,Duck Pond,Lago dos Patos,Estanque de Patos
+PG_PIC_BALLOON_RIDE,Balloon Ride,Passeio de Balão,Paseo en Globo
+PG_PIC_SAILING_DAY,Sailing Day,Dia de Velejar,Día de Vela
+PG_PIC_APPLE_ORCHARD,Apple Orchard,Pomar de Maçãs,Huerto de Manzanos
+PG_PIC_SNOW_DAY,Snow Day,Dia de Neve,Día de Nieve
+PG_PIC_CAMPFIRE_NIGHT,Campfire Night,Noite de Fogueira,Noche de Fogata
+PG_PIC_AUTUMN_HEDGEHOG,Autumn Hedgehog,Ouriço de Outono,Erizo de Otoño
+PG_PIC_TULIP_FIELDS,Tulip Fields,Campos de Tulipas,Campos de Tulipanes
+PG_PIC_CAT_IN_BOX,Cat in a Box,Gato na Caixa,Gato en la Caja
+PG_PIC_WOODLAND_FOX,Woodland Fox,Raposa do Bosque,Zorro del Bosque
+PG_PIC_RED_BARN,Red Barn,Celeiro Vermelho,Granero Rojo
+PG_PIC_LIGHTHOUSE,Lighthouse,Farol,Faro
+PG_PIC_SHEEP_HILL,Sheep on the Hill,Ovelhas na Colina,Ovejas en la Colina
+PG_PIC_BEE_GARDEN,Bee Garden,Jardim das Abelhas,Jardín de las Abejas
+PG_PIC_MOUNTAIN_LAKE,Mountain Lake,Lago da Montanha,Lago de Montaña
+PG_PIC_SNOWY_CABIN,Snowy Cabin,Cabana na Neve,Cabaña Nevada
 DB_RULES,"Berries ride one road in time with the song, every one into the same ring. Each berry wears the colour of its drum and has the drum's mark under it; tap that drum as the berry reaches the ring. Easy has one drum, Medium two, Hard and Insane three. Two berries at once, one over the other, are two fingers. A berry with a ribbon behind it is held down until the ribbon ends, a golden bar is drummed as fast as you can, and a balloon pops after that many taps.\n\nEvery note is GOOD, OK or BAD by how close you were. GOOD and OK fill the soul gauge; a BAD or a berry let past drains it, breaks your combo and lets the tune fade for a moment. Finish the song with the gauge at or over its line to clear it. Go-Go time scores a fifth more.\n\nIf the berries feel early or late on your phone, tap Tune on the start card and tap along with the wood block.","As frutinhas seguem por uma estrada no ritmo da música, todas para o mesmo anel. Cada frutinha tem a cor do seu tambor e a marca dele embaixo; toque nesse tambor quando a frutinha chegar ao anel. O Fácil tem um tambor, o Médio dois, o Difícil e o Insano três. Duas frutinhas juntas, uma sobre a outra, pedem dois dedos. Uma frutinha com uma fita atrás fica pressionada até a fita acabar, uma barra dourada é tocada o mais rápido que puder, e um balão estoura depois de tantos toques.\n\nCada nota é BOM, OK ou RUIM conforme a sua precisão. BOM e OK enchem o medidor de alma; um RUIM ou uma frutinha que passa esvaziam o medidor, quebram o combo e deixam a melodia sumir por um instante. Termine a música com o medidor na linha ou acima dela para passar. O Go-Go vale um quinto a mais.\n\nSe as frutinhas parecerem adiantadas ou atrasadas no seu celular, toque em Ajustar no cartão de início e acompanhe o bloco de madeira.","Las bayas van por un camino al ritmo de la canción, todas hacia el mismo aro. Cada baya lleva el color de su tambor y su marca debajo; toca ese tambor cuando la baya llegue al aro. Fácil tiene un tambor, Medio dos, Difícil e Insano tres. Dos bayas a la vez, una sobre la otra, piden dos dedos. Una baya con una cinta detrás se mantiene pulsada hasta que la cinta termina, una barra dorada se toca lo más rápido que puedas, y un globo revienta tras esa cantidad de toques.\n\nCada nota es BIEN, OK o MAL según tu precisión. BIEN y OK llenan el medidor de alma; un MAL o una baya que pasa lo vacían, rompen el combo y apagan la melodía un momento. Termina la canción con el medidor en la línea o por encima para superarla. El Go-Go vale una quinta parte más.\n\nSi las bayas se sienten adelantadas o atrasadas en tu teléfono, toca Ajustar en la tarjeta de inicio y sigue el bloque de madera."
 DB_BLURB,"One road, one short song: tap each berry's drum.","Uma estrada, uma música curta: toque o tambor de cada frutinha.","Un camino, una canción corta: toca el tambor de cada baya."
 DB_SHORT,"Drum the song,\nfill the gauge.","Toque a música,\nencha o medidor.","Toca la canción,\nllena el medidor."
@@ -2510,8 +2473,8 @@ HTP_PG_PLATE_BODY,"The board is four plates. When every bead of the picture is o
 HTP_PG_PLATE_BODY_HEARTS,"The board is four plates. When every bead of the picture is on the board, the iron passes over the plates: a plate that is all right is fixed for good; on the others, the beads astray hop back into the box and a heart goes. You have %d hearts, and no Check: the iron is the judge.","O tabuleiro tem quatro placas. Quando todas as contas da figura estão no tabuleiro, o ferro passa pelas placas: a placa que está toda certa fica fixa de vez; nas outras, as contas fora do lugar pulam de volta para a caixa e vai um coração. Você tem %d corações, e não há Conferir: o ferro é o juiz.","El tablero tiene cuatro placas. Cuando todas las cuentas del dibujo están en el tablero, la plancha pasa por las placas: la placa que está toda bien queda fija para siempre; en las otras, las cuentas fuera de lugar saltan de vuelta a la caja y se va un corazón. Tienes %d corazones, y no hay Comprobar: la plancha es el juez."
 HTP_PG_PEEK,See it big,Veja grande,Míralo en grande
 HTP_PG_PEEK_BODY,"Hold the picture card to see it big over the board, peg for peg, and let go to carry on.","Segure o cartão da figura para vê-lo grande sobre o tabuleiro, pino por pino, e solte para continuar.","Mantén pulsada la tarjeta del dibujo para verla en grande sobre el tablero, clavija a clavija, y suelta para seguir."
-HTP_PG_WIND,Windblown,Ventania,Ventolera
-HTP_PG_WIND_BODY,"The wind blew the picture card's four squares about: each landed in another place, turned. A square's clip has the colour and dots of the plate it shows, and sits on that plate's top edge: turn the square in your head until its clip is on top, and copy it there.","O vento espalhou os quatro quadrados do cartão: cada um caiu em outro lugar, girado. O clipe de um quadrado tem a cor e os pontinhos da placa que ele mostra, e fica na borda de cima dessa placa: gire o quadrado na cabeça até o clipe ficar em cima e copie-o lá.","El viento desordenó los cuatro cuadrados de la tarjeta: cada uno cayó en otro lugar, girado. La pinza de un cuadrado tiene el color y los puntos de la placa que muestra, y va en el borde de arriba de esa placa: gira el cuadrado en tu cabeza hasta que la pinza quede arriba y cópialo allí."
+HTP_PG_ZOOM,Zoom in,Aproxime,Acércate
+HTP_PG_ZOOM_BODY,"This picture is big. Spread two fingers on the board to zoom in, pinch to zoom out, and drag with two fingers to move around. The round button zooms in and back out. One finger seats beads as always.","Esta figura é grande. Afaste dois dedos no tabuleiro para aproximar, junte-os para afastar e arraste com dois dedos para se mover. O botão redondo aproxima e volta. Um dedo só coloca contas como sempre.","Este dibujo es grande. Separa dos dedos sobre el tablero para acercar, júntalos para alejar y arrastra con dos dedos para moverte. El botón redondo acerca y vuelve. Un solo dedo pone cuentas como siempre."
 HTP_PG_CHECK,Not sure?,Na dúvida?,¿Dudas?
 HTP_PG_CHECK_BODY,Check rings every bead that is not where the picture wants it. Lift it with its colour and look again.,Conferir circula cada conta que não está onde a figura pede. Tire-a com a cor dela e olhe de novo.,Comprobar rodea cada cuenta que no está donde la quiere el dibujo. Quítala con su color y vuelve a mirar.
 HTP_PG_UNDO_BODY,"Undo takes your last tap or drag back, and Reset sends every bead back to the box. A plate the iron has fixed stays as it is. Neither costs anything.","Desfazer volta o seu último toque ou arrasto, e Recomeçar manda todas as contas de volta para a caixa. Uma placa que o ferro fixou fica como está. Nenhum dos dois custa nada.","Deshacer quita tu último toque o arrastre, y Reiniciar devuelve todas las cuentas a la caja. Una placa que la plancha fijó se queda como está. Ninguno de los dos cuesta nada."
@@ -2531,9 +2494,10 @@ HTP_PG_FULL_CAP,This plate is full too,Esta placa também encheu,Esta placa tamb
 HTP_PG_ASTRAY_CAP,A bead astray hops back home,Uma conta errada pula de volta,Una cuenta errada salta de vuelta
 HTP_PG_ASTRAY_HEART_CAP,A bead astray hops home: a heart goes,Uma conta errada volta: vai um coração,Una cuenta errada vuelve: se va un corazón
 HTP_PG_PEEK_CAP,Hold the picture to see it big,Segure a figura para vê-la grande,Mantén el dibujo para verlo grande
-HTP_PG_BLOWN_CAP,"This square blew here, turned","Este quadrado voou para cá, girado","Este cuadrado voló aquí, girado"
-HTP_PG_CLIP_CAP,Its clip's dots name this plate,Os pontinhos do clipe dão esta placa,Los puntos de la pinza dan esta placa
-HTP_PG_TOP_CAP,"Clip on top, and copy it here","Clipe em cima, e copie aqui","Pinza arriba, y cópialo aquí"
+HTP_PG_ZOOM_PINCH_CAP,Spread two fingers to zoom in,Afaste dois dedos para aproximar,Separa dos dedos para acercar
+HTP_PG_ZOOM_PAN_CAP,Drag with two fingers to move,Arraste com dois dedos para mover,Arrastra con dos dedos para mover
+HTP_PG_ZOOM_PLAY_CAP,One finger still seats beads,Um dedo continua colocando contas,Un dedo sigue poniendo cuentas
+HTP_PG_ZOOM_BTN_CAP,The button zooms in and back out,O botão aproxima e volta,El botón acerca y vuelve
 HTP_PG_CHECK_CAP,Check rings a bead out of place,Conferir circula a conta errada,Comprobar rodea la cuenta errada
 HTP_PG_CHECK_LIFT_CAP,"Lift it, and look again","Tire-a, e olhe de novo","Quítala, y vuelve a mirar"
 HTP_PG_UNDO_CAP,Undo takes the last run back,Desfazer volta a última fileira,Deshacer quita la última fila
@@ -3171,8 +3135,8 @@ BB_SHORT,"Sort the buttons,\nsew the picture.","Separe os botões,\ncosture o de
 BB_MOTTO,A place for every button,Um lugar para cada botão,Un sitio para cada botón
 BB_LVL_0,"10 × 10, diagonals link too","10 × 10, diagonais também ligam","10 × 10, las diagonales también unen"
 BB_LVL_1,"12 × 12, up to five colours","12 × 12, até cinco cores","12 × 12, hasta cinco colores"
-BB_LVL_2,"14 × 14, nothing shows where to place","14 × 14, nada mostra onde colocar","14 × 14, nada indica dónde colocar"
-BB_LVL_3,"16 × 16, no guides, counted moves","16 × 16, sem guias, jogadas contadas","16 × 16, sin guías, jugadas contadas"
+BB_LVL_2,"A big picture, 24 × 24: zoom in","Um desenho grande, 24 × 24: dê zoom","Un dibujo grande, 24 × 24: haz zoom"
+BB_LVL_3,"A huge picture, 32 × 32, counted moves","Um desenho enorme, 32 × 32, jogadas contadas","Un dibujo enorme, 32 × 32, jugadas contadas"
 BB_PILL,%d of %d sewn,%d de %d costurados,%d de %d cosidos
 BB_REFUSE_HOME,That one is sewn on. It stays.,Esse já está costurado. Ele fica.,Ese ya está cosido. Se queda.
 BB_REFUSE_FULL,The tin is full. Sew some buttons on first.,A lata está cheia. Costure alguns botões antes.,La lata está llena. Cose algunos botones antes.
@@ -3209,3 +3173,9 @@ BB_REFUSE_PICK,Pick up a button first.,Pegue um botão primeiro.,Coge un botón 
 BB_REFUSE_WRONG,That patch is another colour.,Esse retalho é de outra cor.,Ese retal es de otro color.
 HTP_BB_HELD_CAP,They wait for you to say where,Eles esperam você dizer para onde,Esperan a que digas adónde
 BB_RULES_CORNERS,Here corners count as touching.,Aqui as diagonais também contam.,Aquí las diagonales también cuentan.
+BB_RULES_BIG,"The picture is big: spread two fingers to come close, drag to look around, and the button at the bottom left shows it whole again. Nothing shows where a button goes.","O desenho é grande: afaste dois dedos para chegar perto, arraste para olhar em volta, e o botão embaixo à esquerda mostra tudo de novo. Nada mostra onde cada botão vai.","El dibujo es grande: separa dos dedos para acercarte, arrastra para mirar alrededor, y el botón de abajo a la izquierda lo muestra entero otra vez. Nada indica dónde va cada botón."
+HTP_BB_ZOOM,Come close to a big picture,Chegue perto de um desenho grande,Acércate a un dibujo grande
+HTP_BB_ZOOM_BODY,"This picture is too big to sew from afar. Spread two fingers to zoom in and pinch to zoom out. Close up, drag one finger to look around. The round button at the bottom left goes close and back to the whole picture.","Este desenho é grande demais para costurar de longe. Afaste dois dedos para aproximar e junte para afastar. De perto, arraste um dedo para olhar em volta. O botão redondo embaixo à esquerda aproxima e volta ao desenho inteiro.","Este dibujo es demasiado grande para coser de lejos. Separa dos dedos para acercar y júntalos para alejar. De cerca, arrastra un dedo para mirar alrededor. El botón redondo de abajo a la izquierda acerca y vuelve al dibujo entero."
+HTP_BB_ZOOM_PINCH_CAP,Two fingers apart: closer,Dois dedos se afastando: mais perto,Dos dedos separándose: más cerca
+HTP_BB_ZOOM_PAN_CAP,Drag one finger to look around,Arraste um dedo para olhar em volta,Arrastra un dedo para mirar alrededor
+HTP_BB_ZOOM_BTN_CAP,The button: the whole picture again,O botão: o desenho inteiro de novo,El botón: el dibujo entero otra vez

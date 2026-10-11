@@ -16,15 +16,25 @@ extends "res://core/puzzle_base.gd"
 ## (2026-10-01 polish). A plate holding as many beads as the picture puts on
 ## it is ironed at once by a little iron with a face: right, it fuses for
 ## good under it, with steam, a twirl and a word; wrong, the iron frowns and
-## the beads astray hop back into their compartments -- a heart on Hard and
-## Insane. On Insane (Windblown) the pattern card's four squares have blown
-## about, each turned: their clips' colours and pips name the plates and
-## point to each one's top.
+## the beads astray hop back into their compartments.
 ##
-## Since 2026-10-04 no band has hearts. Windblown counts moves instead (a
-## bead seated or lifted is one; the pill sits where the hearts did) and no
-## plate is ironed there until the picture is right: a verdict on a plate
-## was the answer (docs/agents/flat-screens.md, "Insane counts moves").
+## Since 2026-10-04 no band has hearts. Insane counts moves instead (a bead
+## seated or lifted is one; the pill sits where the hearts did) and no plate
+## is ironed there until the picture is right: a verdict on a plate was the
+## answer (docs/agents/flat-screens.md, "Insane counts moves").
+##
+## **Big pictures (2026-10-11).** Hard is 24 pegs square and Insane 32, in
+## up to twelve colours, and the pattern card always shows the true picture
+## (Windblown is gone). A peg of a 32-square board is too small for a
+## finger, so those two bands zoom and pan (ui/flat/pan_zoom.gd): two
+## fingers pinch and drag, the round button at the tray's lower left goes
+## close and back. The zoom is one transform over the meshes below, never a
+## new `_cell`. What is in peg space is drawn by two children behind this
+## Control's own drawing -- `_ground` (the table and the tray) and `_field`
+## (the plates, pegs, beads and marks, clipped to the tray's floor, under
+## `zoom.xf()`) -- and the head, the beads in the air, the words, the held
+## picture and the toast are drawn here, over them, and never scale. A
+## point of the screen becomes a peg through `zoom.to_layout`.
 ##
 ## **The iron is this board's signature.** On the solve the beads hop in the
 ## family's wave, then the iron crosses the whole board along the diagonal
@@ -32,8 +42,8 @@ extends "res://core/puzzle_base.gd"
 ## coming up, and the bare pegs fade away behind it.
 ##
 ## How it is drawn. Four meshes and some text:
-##   table -- the card's table, the tray, the four plates and every peg.
-##            Built once a layout (and while the win clears the pegs).
+##   table -- the card's table and the tray (`_ground`); the four plates
+##            (`_plates`) and every peg, on the field. Built once a layout.
 ##   head  -- the pattern card's frame, the box, the tweezers, the hearts and
 ##            the bar. Rebuilt when the kit, the chosen colour or the hearts
 ##            change, or something in it moves.
@@ -73,6 +83,12 @@ const PAD := 30.0
 ## The header over the board: the pattern card is HEAD square, and the box,
 ## the name and the bar stand beside it.
 const HEAD := 212.0
+## A day of more than ROW_MOST colours stands its compartments in two rows,
+## in a taller head (the pattern card grows with it): a 24 or 32 square
+## board is bound by the card's width, so the head's extra height costs the
+## pegs nothing on a phone.
+const HEAD_BIG := 300.0
+const ROW_MOST := 7
 const HEAD_GAP := 26.0
 ## The tray's rim round the board, the board's own margin round its pegs, and
 ## the seam between two plates, in cells -- a hairline, as on a real board.
@@ -90,22 +106,32 @@ const HEAP_MAX := 9.0
 const HEAP_MIN := 3.0
 const NAME_SIZE := 34
 const COUNT_SIZE := 28
+## The count's size under a compartment of the two-row box.
+const COUNT_SMALL := 22
 const BAR_H := 20.0
 ## The still beads are cut into bands of this many rows.
 const BAND := 4
-## The pattern card's own seam between squares, in its pixels: a hairline,
-## wider on Windblown where each square's clip stands in it.
+## The pattern card's own seam between squares, in its pixels: a hairline.
 const THUMB_GAP := 0.25
-const THUMB_GAP_WIND := 1.0
-## The four plates' clips on Windblown: their colours (sun, sky, rose,
-## leaf -- far apart in lightness as well as hue) and each one's pips.
-const PLATE_TINTS := [Color("f2b33d"), Color("4f84cc"), Color("e07a9a"), Color("5fa845")]
+## The zoom (Hard and Insane): the button goes close enough for a peg to be
+## PEG_NEAR px across, fingers may go on to PEG_MOST. The button is ZOOM_B
+## across, ZOOM_INSET in from the tray floor's lower left corner (the thumb
+## side stays clear), and when close the board may be pushed up by the
+## button's height so the pegs under it can be reached.
+const PEG_NEAR := 56.0
+const PEG_MOST := 84.0
+const ZOOM_B := 84.0
+const ZOOM_INSET := 12.0
 
 # --- the motion ---
 ## How long the held picture takes to grow over the board, and how much of
 ## the board it covers.
 const PEEK_TIME := 0.18
 const PEEK_COVER := 0.86
+## A board past PEEK_BIG pegs a side holds its picture up as wide as the
+## card allows, PEEK_EDGE in from its sides.
+const PEEK_BIG := 16
+const PEEK_EDGE := 10.0
 ## A bead is seated, not popped: it fades in held above its peg, falls onto
 ## it over the first SEAT_FALL of SEAT_TIME, and snaps down with a small
 ## press. Lifting runs the other way over LIFT_TIME.
@@ -133,6 +159,21 @@ const TWEEZ_DIP := 8.0
 ## while the beads astray hop home). Steam every STEAM_EVERY.
 const PLATE_LEAD := 0.22
 const PLATE_STEP := 0.05
+## However big the plate, its iron crosses it in no more than PLATE_SPAN
+## (a 16 square board's 0.8 s), and the win's crosses the board in no more
+## than IRON_SPAN (a 16 square board's 1.44 s): a step a diagonal was a
+## minute's wait on a thousand beads.
+const PLATE_SPAN := 0.8
+const IRON_SPAN := 1.44
+## A board past BIG pegs a side wins another way, because a thousand beads
+## made again on every frame of the wave is a stutter: no bead hops, a bead
+## is live only while the iron is on it (IRON_TIME_BIG, half the fuse), and
+## the still beads are cut along the iron's diagonals (BAND_DIAG a band) in
+## place of rows, so a frame makes again the band the iron enters and the
+## one it leaves and no other.
+const BIG := 16
+const IRON_TIME_BIG := 0.15
+const BAND_DIAG := 4
 const PLATE_TAIL := 0.45
 const STEAM_EVERY := 0.14
 const IRON_SIZE := 1.9
@@ -171,6 +212,11 @@ const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys, once a picture.
 const MOVES_BONUS := 5
+## ...or this share of the budget when that is more: five moves buy nothing
+## on a thousand beads.
+const MOVES_BONUS_PART := 40
+const PanZoom = preload("res://ui/flat/pan_zoom.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
 
 # --- the rewards ---
 ## Words that pop over the board: Perfect plate!, N in a row!, Steady hand!
@@ -285,8 +331,48 @@ var _head_top := 0.0
 var _right := Rect2()
 var _table: ArrayMesh
 var _thumb_mesh: ArrayMesh
+## A big picture held up: its squares drawn apart, so they can be counted
+## (on the little card they are drawn whole, or the gaps shimmer).
+var _peek_mesh: ArrayMesh
+## The zoom and what it moves. `_ground` draws the table and the tray and
+## `_field` the plates, pegs and beads under `zoom.xf()`, clipped to the
+## tray's floor; both stand behind this Control's own drawing. `_plates` is
+## the field's floor, `_mask` the tray's round inner corners drawn back over
+## a zoomed field (its clip is a plain rectangle).
+var zoom := PanZoom.new()
+var _ground: Control
+var _field: Control
+var _zoom_b: Button
+var _zoom_icon := ""
+var _plates: ArrayMesh
+var _mask: ArrayMesh
+var _field_shown: Array = []
+var _ground_shown: Array = []
+## Set by `_refresh`: the bands are looked over again on the next draw. A
+## draw for a pan, a toast or a chip leaves them be.
+var _stale := true
+## The head's height and how the compartments stand, set by the layout.
+var _head := HEAD
+var _chip_rows := 1
+var _heap_most := 0
+## What the stroke in hand has done, for a second finger that cancels it:
+## [[peg, the bead it held before, the moves it cost], ...], and whether the
+## stroke spent the last move.
+var _stroke_log: Array = []
+var _stroke_ended := false
+var _stroke_at := -100.0
+var _lost_before := false
+## The peg last pressed, as laid out: where the button zooms to.
+var _focus := Vector2.INF
 var _bands: Array = []
 var _band_looks: Array = []
+## The pegs of each band: rows of BAND, or (the win of a big board)
+## diagonals of BAND_DIAG. `_win_diag` is the next diagonal the win's iron
+## has yet to reach.
+var _band_sets: Array = []
+var _band_key := -1
+var _by_diag := false
+var _win_diag := 0
 var _live: ArrayMesh
 ## The checkup's copies (puzzles/pixel_garden_looks.gd): the beads' kit made
 ## at `_kit_cell` and drawn scaled, the pegs' and the box's, the bare and the
@@ -328,7 +414,7 @@ var hearts := 0
 var max_hearts := 0
 var out_of_hearts := false
 var _heart_used := false
-## Windblown's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a
+## Insane's move counter (ui/flat/moves_pill.gd): `max_moves` is 0 on a
 ## band that does not count. Out of moves unsolved is `out_of_hearts`, the
 ## name the host and the card already know.
 var moves_left := 0
@@ -392,18 +478,18 @@ func rules() -> String:
 		out += " " + tr("PG_RULES_CHECK")
 	if max_moves <= 0:
 		out += "\n\n" + tr("PG_RULES_PLATES")
-	if max_hearts > 0 and not _state.windblown():
+	if max_hearts > 0:
 		out += "\n\n" + tr("PG_RULES_HEARTS")
-	elif _state.windblown():
-		out += "\n\n" + tr("PG_RULES_WIND")
+	if _zoomable():
+		out += "\n\n" + tr("PG_RULES_ZOOM")
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES") % max_moves
 	return out
 
 ## The tutorial, one lesson a page (the board checkup, 2026-10-03): pick
 ## and seat, the kit running out, the plates and the iron (not on a band
-## that counts moves, where no plate is ironed), the picture held big,
-## Windblown (Insane), Check, Undo and Reset (bands that have them), the
+## that counts moves, where no plate is ironed), the picture held big, the
+## zoom (Hard and Insane), Check, Undo and Reset (bands that have them), the
 ## bulb (bands with hints) and the move counter (Insane). Each page is the
 ## board itself on a hand-made 6x6 tulip, playing the lesson
 ## (ui/hud/pixel_garden_tutorial_diagram.gd).
@@ -419,8 +505,8 @@ func tutorial_pages() -> Array:
 	elif max_moves <= 0:
 		steps.append([Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_PG_PLATE_BODY")])
 	steps.append([Diagram.Lesson.PEEK, "HTP_PG_PEEK", tr("HTP_PG_PEEK_BODY")])
-	if _state.windblown():
-		steps.append([Diagram.Lesson.WIND, "HTP_PG_WIND", tr("HTP_PG_WIND_BODY")])
+	if _zoomable():
+		steps.append([Diagram.Lesson.ZOOM, "HTP_PG_ZOOM", tr("HTP_PG_ZOOM_BODY")])
 	if "check" in capabilities():
 		steps.append([Diagram.Lesson.CHECK, "HTP_PG_CHECK", tr("HTP_PG_CHECK_BODY")])
 	if "undo" in capabilities():
@@ -438,7 +524,7 @@ func tutorial_pages() -> Array:
 		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Easy, Medium and Hard keep Undo, Check and their hints. Windblown counts
+## Easy, Medium and Hard keep Undo, Check and their hints. Insane counts
 ## moves: no Undo (lifting a bead is the take-back, and it costs one), no
 ## hint and no Check, which would each say what is wrong.
 func capabilities() -> Array[String]:
@@ -446,8 +532,49 @@ func capabilities() -> Array[String]:
 		3: return []
 	return ["undo", "hint", "check"]
 
+## Hard and Insane: a board too big to play whole, so it zooms.
+func _zoomable() -> bool:
+	return _state.band >= 2
+
+## What the zoom button goes to and the most fingers may reach, as scales of
+## the board laid out.
+func _zoom_limits() -> Vector2:
+	return Vector2(maxf(1.0, PEG_NEAR / _cell), maxf(1.0, PEG_MOST / _cell))
+
+## The zoom answers while the board is in play -- and, for the moment
+## between a stroke spending the last move and the card coming, to the
+## second finger that takes that stroke back.
+func _zoom_live() -> bool:
+	return zoom.enabled and _zoomable() and not _won and not is_done() \
+		and (not out_of_hearts or (_stroke_ended and not _asleep))
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	for item: Control in [Control.new(), Control.new()]:
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.show_behind_parent = true
+		add_child(item)
+	_ground = get_child(0)
+	_ground.name = "Ground"
+	_ground.draw.connect(_draw_ground)
+	_field = get_child(1)
+	_field.name = "Field"
+	_field.clip_contents = true
+	_field.draw.connect(_draw_field)
+	# The zoom's button: this Control's own child at its own size, in no
+	# container. It clicks and knocks as every button does (ui/ui_sound.gd).
+	_zoom_b = IconButton.new("plus", "", "IconButton")
+	_zoom_b.name = "Zoom"
+	_zoom_icon = "plus"
+	_zoom_b.visible = false
+	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+	var up := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), true, 0)
+	for st in ["normal", "hover", "disabled"]:
+		_zoom_b.add_theme_stylebox_override(st, up)
+	_zoom_b.add_theme_stylebox_override("pressed", down)
+	_zoom_b.pressed.connect(_on_zoom_button)
+	add_child(_zoom_b)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -485,9 +612,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tweez_from = brush
 	_opened = _now()
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP)
+	zoom.reset()
+	_focus = Vector2.INF
 	_layout()
 	fx.cue("enter")
-	var tip := "PG_WIND_TIP" if _state.windblown() else ("PG_HARD_TIP" if max_hearts > 0 else "")
+	var tip := "PG_ZOOM_TIP" if _zoomable() else ("PG_HARD_TIP" if max_hearts > 0 else "")
 	if tip != "":
 		_after(0.6, func() -> void:
 			if not is_done():
@@ -533,30 +662,39 @@ func _reset_looks() -> void:
 	_cat = null
 	_cat_curled = false
 	_bands = []
+	_by_diag = false
+	_win_diag = 0
 	_table = null
 	_thumb_mesh = null
+	_peek_mesh = null
 	_kit = null
 	_heap_kit = null
 	_drop_layout_meshes()
 	_clear_gesture()
+	_stroke_log = []
+	_stroke_ended = false
 
 # --- layout ---
 
 func _span() -> float:
 	return float(_state.n) + 2.0 * MARGIN + GAP
 
+## The head's height: taller on a day whose compartments stand in two rows.
+func _head_for() -> float:
+	return HEAD_BIG if _state.names.size() > ROW_MOST else HEAD
+
 func _cell_for(available: float) -> float:
 	if _state.n == 0:
 		return 0.0
 	var span := _span()
 	return maxf(0.0, minf((size.x - 2.0 * PAD - 2.0 * RIM) / span,
-		(available - 2.0 * PAD - HEAD - HEAD_GAP - 2.0 * RIM) / span))
+		(available - 2.0 * PAD - _head_for() - HEAD_GAP - 2.0 * RIM) / span))
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * _span() + 2.0 * RIM + 2.0 * PAD + HEAD + HEAD_GAP)
+	return minf(available, cell * _span() + 2.0 * RIM + 2.0 * PAD + _head_for() + HEAD_GAP)
 
 func card_centred() -> bool:
 	return true
@@ -565,23 +703,77 @@ func _layout() -> void:
 	_cell = _cell_for(size.y)
 	if _cell <= 0.0:
 		return
+	_head = _head_for()
 	var face := _cell * _span()
-	var tall := minf(size.y, face + 2.0 * RIM + 2.0 * PAD + HEAD + HEAD_GAP)
+	var tall := minf(size.y, face + 2.0 * RIM + 2.0 * PAD + _head + HEAD_GAP)
 	var top := (size.y - tall) * 0.5 + PAD
 	_head_top = top
 	var span := maxf(face + 2.0 * RIM, minf(size.x - 2.0 * PAD, 940.0))
 	var left := size.x * 0.5 - span * 0.5
-	_thumb = Rect2(left, top, HEAD, HEAD)
-	_right = Rect2(left + HEAD + 26.0, top, span - HEAD - 26.0, HEAD)
-	var board_top := top + HEAD + HEAD_GAP
+	_thumb = Rect2(left, top, _head, _head)
+	_right = Rect2(left + _head + 26.0, top, span - _head - 26.0, _head)
+	var board_top := top + _head + HEAD_GAP
 	_board = Rect2(size.x * 0.5 - face * 0.5 - RIM, board_top, face + 2.0 * RIM, face + 2.0 * RIM)
 	_grid = _board.position + Vector2.ONE * (RIM + MARGIN * _cell)
 	_place_chips()
+	_place_view()
 	_table = null
 	_bands = []
 	_love_mesh = null
 	_drop_layout_meshes()
 	_refresh()
+
+## The zoom's room (the tray's floor), its limits, and its button, from the
+## board as just laid out. A zoom in hand is kept and clamped.
+func _place_view() -> void:
+	var view := _board.grow(-RIM)
+	var lim := _zoom_limits() if _zoomable() and _cell > 0.0 else Vector2.ONE
+	# Close, the board may be pushed up clear of the button over its corner.
+	zoom.slack_hi = Vector2(0.0, ZOOM_B + 1.5 * ZOOM_INSET)
+	zoom.setup(view, lim.x, lim.y)
+	if _ground == null:
+		return
+	_ground.position = Vector2.ZERO
+	_ground.size = size
+	_zoom_b.size = Vector2(ZOOM_B, ZOOM_B)
+	_zoom_b.position = Vector2(view.position.x + ZOOM_INSET, view.end.y - ZOOM_INSET - ZOOM_B)
+	_sync_zoom()
+
+## The button shows only while the zoom answers, and reads plus when the
+## board is whole, minus when close -- whether it or two fingers did it.
+func _sync_zoom() -> void:
+	if _zoom_b == null:
+		return
+	# (a picture small enough that the button would go nowhere has none)
+	var on := _zoom_live() and zoom.k_near > 1.001 and not _peek \
+		and _now() - _opened >= Motion.ENTER_DELAY + Motion.ENTER_POP
+	if _zoom_b.visible != on:
+		_zoom_b.visible = on
+	var icon := "minus" if zoom.zoomed() else "plus"
+	if icon != _zoom_icon:
+		_zoom_icon = icon
+		(_zoom_b as IconButton).set_icon(icon)
+
+## The button: close on the peg last touched (the middle before any), or
+## back to the whole board.
+func _on_zoom_button() -> void:
+	if not _zoom_live():
+		return
+	zoom.toggle(Vector2.INF if zoom.zoomed() or _focus == Vector2.INF else zoom.to_screen(_focus))
+	_view_moved()
+
+## Back to the whole board, gliding: the win, Reset, Try again.
+func _zoom_whole() -> void:
+	if zoom.zoomed():
+		zoom.toggle()
+		_view_moved()
+
+## The view moved and nothing else did: the field under its new transform,
+## and what this Control draws over it at pegs' places.
+func _view_moved() -> void:
+	if _field != null:
+		_field.queue_redraw()
+	queue_redraw()
 
 ## Everything laid out at the old size. The bead kit is kept unless the cell
 ## grew past it (drawn scaled, a relayout makes no bead again); the box's
@@ -599,6 +791,8 @@ func _drop_layout_meshes() -> void:
 	_heaps_key = ""
 	_top_key = ""
 	_band_looks = []
+	_plates = null
+	_mask = null
 
 ## A few more copies' indices a frame, once the entrance is over, until the
 ## beads' kit holds the whole board and the box's every bead.
@@ -611,8 +805,8 @@ func _prime() -> void:
 		_kit.grow(PRIME_STEP)
 		return
 	var all := 0
-	for v in _state.need:
-		all += v
+	for i in _state.need.size():
+		all += _heap_full(i)
 	if _heap_kit.count == 0:
 		_heap_kit.look(0)
 	if _heap_kit.tiled_count() < all:
@@ -641,21 +835,28 @@ var _live_dirty := true
 var _heap_kit_r := 0.0
 
 ## The compartments stand in a row under the picture's name, centred in the
-## room beside the picture, closing up when a day has many colours.
+## room beside the picture, closing up when a day has many colours; past
+## ROW_MOST colours they stand in two rows, between the name's line and the
+## bar's.
 func _place_chips() -> void:
 	_chip_rects = []
 	var k: int = _state.names.size()
 	if k == 0:
 		return
+	_chip_rows = 2 if k > ROW_MOST else 1
+	var per := int(ceil(float(k) / float(_chip_rows)))
 	var room := _right.size.x - 12.0
-	var gap := minf(CHIP_GAP, maxf(2.0, (room - CHIP.x * k) / maxf(1.0, k - 1)))
-	var chip := Vector2(minf(CHIP.x, (room - gap * (k - 1)) / k), CHIP.y)
-	var run := chip.x * k + gap * (k - 1)
+	var gap := minf(CHIP_GAP, maxf(2.0, (room - CHIP.x * per) / maxf(1.0, per - 1)))
+	var tall := CHIP.y
+	if _chip_rows > 1:
+		tall = (_right.size.y - 50.0 - BAR_H - 18.0 - CHIP_GAP) / float(_chip_rows)
+	var chip := Vector2(minf(CHIP.x, (room - gap * (per - 1)) / per), tall)
+	var run := chip.x * per + gap * (per - 1)
 	var x0 := _right.position.x + (_right.size.x - run) * 0.5
 	var y := _right.position.y + 50.0
 	for i in k:
-		_chip_rects.append(Rect2(Vector2(x0 + i * (chip.x + gap), y), chip))
-	_box = Rect2(Vector2(x0, y), Vector2(run, chip.y)).grow(6.0)
+		_chip_rects.append(Rect2(Vector2(x0 + (i % per) * (chip.x + gap), y + (i / per) * (chip.y + CHIP_GAP)), chip))
+	_box = Rect2(Vector2(x0, y), Vector2(run, chip.y * _chip_rows + CHIP_GAP * (_chip_rows - 1))).grow(6.0)
 	var most := 1
 	for v in _state.need:
 		most = maxi(most, v)
@@ -666,6 +867,21 @@ func _place_chips() -> void:
 			_heap_r = r
 			break
 		r -= 0.25
+	_heap_most = maxi(1, _heap_room(_well(_chip_rects[0]), _heap_r))
+
+## How many beads compartment `i` shows when full, and how many now. A
+## colour with more beads than a compartment holds at the smallest size (a
+## sky of three hundred) is drawn to scale: full when none is seated, down
+## to one bead while any is left.
+func _heap_full(i: int) -> int:
+	return mini(maxi(0, _state.need[i]), _heap_most)
+
+func _heap_shown(i: int) -> int:
+	var left: int = maxi(0, _state.left(i))
+	var need: int = _state.need[i]
+	if need <= _heap_most or left == 0:
+		return left
+	return clampi(int(ceil(float(left) * _heap_most / float(need))), 1, _heap_most)
 
 ## The floor of a compartment, where its beads lie.
 func _well(r: Rect2) -> Rect2:
@@ -712,9 +928,10 @@ func _centre(c: int) -> Vector2:
 	return _grid + (Vector2(x, y) + Vector2(0.5, 0.5)) * _cell
 
 ## Control-local point over the centre of the peg at (row, column), the name
-## every flat board gives it and the one a harness taps.
+## every flat board gives it and the one a harness taps: where the peg shows,
+## zoomed as the board is.
 func cell_to_local(r: int, c: int) -> Vector2:
-	return _centre(r * _state.n + c)
+	return zoom.to_screen(_centre(r * _state.n + c))
 
 func _axis(v: float) -> int:
 	var h := float(_state.half)
@@ -753,7 +970,7 @@ func _chip_at_point(local: Vector2) -> int:
 
 ## Where a bead going home lands: on top of its compartment's beads.
 func _home(k: int) -> Vector2:
-	return _slot(k, maxi(0, _state.left(k) - 1))
+	return _slot(k, maxi(0, _heap_shown(k) - 1))
 
 # --- frames ---
 
@@ -769,12 +986,40 @@ func _process(delta: float) -> void:
 			settled = true
 	_steam(t)
 	_prime()
+	_win_front(t)
 	if is_instance_valid(_cat) or t >= _cat_at:
 		_place_cat(t)
+	var gliding: bool = zoom.step(delta) or zoom.busy()
+	_sync_zoom()
 	if settled or t < _anim_until:
 		_refresh()
+	elif gliding:
+		_view_moved()
 	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
 		queue_redraw()
+
+## The win of a big board: each diagonal's beads go live as the iron reaches
+## them and rest again, fused, once it has passed.
+func _win_front(t: float) -> void:
+	if not (_won and _by_diag):
+		return
+	var n: int = _state.n
+	var step := _iron_step()
+	while _win_diag <= 2 * n - 2:
+		var at := _solved_at + IRON_AT + _win_diag * step
+		if t < at:
+			break
+		for x in range(maxi(0, _win_diag - (n - 1)), mini(_win_diag, n - 1) + 1):
+			var c := (_win_diag - x) * n + x
+			if _state.beads[c] != State.EMPTY:
+				_touch(c, at + _iron_time())
+		_win_diag += 1
+
+func _big() -> bool:
+	return _state.n > BIG
+
+func _iron_time() -> float:
+	return IRON_TIME_BIG if _big() else IRON_TIME
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED:
@@ -789,9 +1034,12 @@ func _touch(c: int, until: float) -> void:
 	_busy_for(until - _now())
 
 func _refresh() -> void:
-	_live = null
 	_live_dirty = true
+	_stale = true
 	queue_redraw()
+	if _field != null:
+		_field.queue_redraw()
+		_ground.queue_redraw()
 
 ## Runs `what` after `delay`, unless the board has been dealt again.
 func _after(delay: float, what: Callable) -> void:
@@ -820,43 +1068,100 @@ func _plate_busy(q: int) -> bool:
 
 # --- the drawing ---
 
+## The entrance's pop as [its transform, how much is seen, its scale].
+func _pop(t: float) -> Array:
+	var since := t - _opened - Motion.ENTER_DELAY
+	var grow := Motion.wide_pop_scale(since)
+	return [Transform2D(0.0, Vector2.ONE * grow, 0.0, size * 0.5 * (1.0 - grow)),
+		Motion.appear_level(since, Motion.ENTER_POP), grow]
+
+## The field stands on the tray's floor under the entrance's pop, so its clip
+## pops with the tray.
+func _pose_field(xf: Transform2D, grow: float) -> void:
+	var at: Vector2 = xf * zoom.view.position
+	if not _field.position.is_equal_approx(at):
+		_field.position = at
+	if not _field.size.is_equal_approx(zoom.view.size):
+		_field.size = zoom.view.size
+	if not _field.scale.is_equal_approx(Vector2.ONE * grow):
+		_field.scale = Vector2.ONE * grow
+
+## Every mesh the three drawings share, made again where it is stale. The
+## first of them to draw in a frame does the work.
+func _prepare(t: float) -> void:
+	_ensure_kits()
+	if _table == null:
+		_build_table()
+	if _pegs_under == null:
+		_build_pegs()
+	if _stale or _bands.is_empty():
+		_stale = false
+		_update_bands(t)
+	if _live_dirty:
+		_live_dirty = false
+		_build_live(t)
+
+## The table and the tray, behind everything.
+func _draw_ground() -> void:
+	var shown: Array = []
+	if _state.n > 0 and _cell > 0.0:
+		var t := _now()
+		var pop := _pop(t)
+		if float(pop[1]) > 0.0:
+			_prepare(t)
+			_ground.draw_mesh(_table, null, pop[0], Color(1.0, 1.0, 1.0, pop[1]))
+			shown.append(_table)
+	_ground_shown = shown
+
+## The plates, the pegs, every bead and the marks over them, under the zoom
+## and clipped to the tray's floor. Close, what flies about the board (the
+## irons, the love, the butterfly, a hint's ring) is clipped with them;
+## whole, `_draw` lays it over the tray's rim as it always did.
+func _draw_field() -> void:
+	var shown: Array = []
+	if _state.n > 0 and _cell > 0.0:
+		var t := _now()
+		var pop := _pop(t)
+		var seen: float = pop[1]
+		if seen > 0.0:
+			_pose_field(pop[0], pop[2])
+			_prepare(t)
+			var xf: Transform2D = Transform2D(0.0, -zoom.view.position) * zoom.xf()
+			# The bare pegs fade once the win's iron has passed: the mesh's
+			# alpha, not a rebuild.
+			var layers: Array = [_plates, _pegs_under, _pegs_bare]
+			layers.append_array(_bands)
+			layers.append_array([_leaving_mesh, _live_beads, _marks])
+			if zoom.zoomed():
+				layers.append(_live)
+			for m in layers:
+				if m == null:
+					continue
+				var a := seen * (1.0 - _pegs_gone(t) if m == _pegs_bare else 1.0)
+				if a > 0.0:
+					_field.draw_mesh(m, null, xf, Color(1.0, 1.0, 1.0, a))
+					shown.append(m)
+	_field_shown = shown
+
 func _draw() -> void:
 	if _state.n == 0 or _cell <= 0.0:
 		return
 	var t := _now()
-	var since := t - _opened - Motion.ENTER_DELAY
-	var seen := Motion.appear_level(since, Motion.ENTER_POP)
+	var pop := _pop(t)
+	var xf: Transform2D = pop[0]
+	var seen: float = pop[1]
+	_pose_field(xf, pop[2])
 	if seen <= 0.0:
 		return
-	var grow := Motion.wide_pop_scale(since)
-	var mid := size * 0.5
-	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var shown: Array = []
-	_ensure_kits()
-	if _table == null:
-		_table = _build_table(t)
-	draw_mesh(_table, null, xf, tint)
-	shown.append(_table)
-	if _pegs_under == null:
-		_build_pegs()
-	# The bare pegs fade once the win's iron has passed: the mesh's alpha,
-	# not a rebuild.
-	for m in [_pegs_under, _pegs_bare]:
-		if m != null:
-			var a := seen * (1.0 - _pegs_gone(t) if m == _pegs_bare else 1.0)
-			if a > 0.0:
-				draw_mesh(m, null, xf, Color(1.0, 1.0, 1.0, a))
-				shown.append(m)
-	_update_bands(t)
-	if _live_dirty:
-		_live_dirty = false
-		_build_live(t)
-	# The marks go over every bead and under the irons, love and flies.
-	for m in _bands + [_leaving_mesh, _live_beads, _marks, _live]:
-		if m != null:
-			draw_mesh(m, null, xf, tint)
-			shown.append(m)
+	_prepare(t)
+	# Over the field: whole, what flies about the board; close, the tray's
+	# round corners back over the field's square clip.
+	var over: ArrayMesh = _mask if zoom.zoomed() else _live
+	if over != null:
+		draw_mesh(over, null, xf, tint)
+		shown.append(over)
 	_update_head(t)
 	for m in [_head_under, _head_pick, _heaps, _head_over, _head_lid]:
 		if m != null:
@@ -880,10 +1185,10 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	_shown = shown
 
-## The card's table, the wooden tray, the four plates with the seam between
-## them and their clips, and every peg -- the bare ones fading out once the
-## win's iron has passed.
-func _build_table(t: float) -> ArrayMesh:
+## The card's table and the wooden tray with the seam's floor (`_table`, the
+## ground's), the four plates with their clips (`_plates`, the field's), and
+## the tray's round inner corners (`_mask`).
+func _build_table() -> void:
 	var b := Face.Builder.new()
 	var clip := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
 	Rings._clip_polygon(b, clip, Pal.PG_TABLE.lerp(Pal.PARCHMENT, 0.5), clip)
@@ -903,9 +1208,11 @@ func _build_table(t: float) -> ArrayMesh:
 	var inner := r.grow(-RIM)
 	b.fan(Face.Builder.round_rect(inner.position - Vector2.ONE * 2.0, inner.size + Vector2.ONE * 4.0, BOARD_RADIUS),
 		Pal.PG_TRAY_DEEP)
-	# The seam's floor: the hairline that shows between the four plates.
+	# The seam's floor: the hairline that shows between the four plates, and
+	# what shows under a board pushed up clear of the zoom's button.
 	b.fan(Face.Builder.round_rect(inner.position, inner.size, BOARD_RADIUS - 2.0), Pal.PG_BOARD_DEEP)
-	var wind: bool = _state.windblown()
+	_table = b.mesh()
+	var p := Face.Builder.new()
 	var m := MARGIN * _cell
 	for q in 4:
 		var pr := _plate_rect(q)
@@ -919,12 +1226,32 @@ func _build_table(t: float) -> ArrayMesh:
 		var rad := BOARD_RADIUS - 4.0
 		var radii := [2.0, 2.0, 2.0, 2.0]
 		radii[q] = rad
-		b.fan(_corners(face, radii), Pal.PG_BOARD_DEEP)
-		b.fan(_corners(Rect2(face.position, face.size - Vector2(0.0, 2.0)), radii), Pal.PG_BOARD)
-		if wind:
-			b.stroke(_corners(face.grow(-3.0), radii), 2.0, Color(PLATE_TINTS[q], 0.55), true)
-		_clip(b, Vector2(pr.get_center().x, face.position.y + 1.0), _cell, 0.0, q, wind)
-	return b.mesh()
+		p.fan(_corners(face, radii), Pal.PG_BOARD_DEEP)
+		p.fan(_corners(Rect2(face.position, face.size - Vector2(0.0, 2.0)), radii), Pal.PG_BOARD)
+		# (Just inside the plate's top edge: the field is clipped there.)
+		_clip(p, Vector2(pr.get_center().x, face.position.y + 1.0 + _cell * 0.08), _cell)
+	_plates = p.mesh()
+	# The tray's inner corners: what lies between the floor's round corner
+	# and the square one the field is clipped to.
+	var k := Face.Builder.new()
+	var rr := BOARD_RADIUS - 2.0
+	var spots := [[inner.position, Vector2(1, 1), PI, 1.5 * PI], [Vector2(inner.end.x, inner.position.y), Vector2(-1, 1), 1.5 * PI, TAU],
+		[inner.end, Vector2(-1, -1), 0.0, 0.5 * PI], [Vector2(inner.position.x, inner.end.y), Vector2(1, -1), 0.5 * PI, PI]]
+	for sp: Array in spots:
+		var corner: Vector2 = sp[0]
+		var centre: Vector2 = corner + (sp[1] as Vector2) * rr
+		for ring: Array in [[rr, Pal.PG_TRAY_DEEP], [rr + 2.0, Pal.PG_TRAY_HI]]:
+			var pts := PackedVector2Array([corner])
+			for i in 9:
+				var ang := lerpf(float(sp[2]), float(sp[3]), i / 8.0)
+				var at := centre + Vector2(cos(ang), sin(ang)) * float(ring[0])
+				pts.append(at.clamp(inner.position, inner.end))
+			for i in range(1, pts.size() - 1):
+				var v0 := k.vertex(pts[0], ring[1])
+				var v1 := k.vertex(pts[i], ring[1])
+				var v2 := k.vertex(pts[i + 1], ring[1])
+				k.tri(v0, v1, v2)
+	_mask = k.mesh()
 
 ## Every peg, as copies of one: the ones the picture covers, and the bare
 ## ones, which the win fades (under a bead the peg is hidden anyway).
@@ -953,56 +1280,72 @@ static func _corners(r: Rect2, radii: Array) -> PackedVector2Array:
 			pts.append(c + Vector2(cos(ang), sin(ang)) * rad)
 	return pts
 
-## A plate's clip: a little tab on its top edge, `s` a cell, turned `angle`
-## (the pattern card turns it with its square). Plain wood, or on Windblown
-## in the plate's colour with q + 1 pips, so a plate is named by colour and
-## count and its top is where the clip is.
-func _clip(b: Face.Builder, at: Vector2, s: float, angle: float, q: int, wind: bool) -> void:
+## A plate's clip: a little wooden tab on its top edge, `s` a cell.
+func _clip(b: Face.Builder, at: Vector2, s: float) -> void:
 	var w := s * 0.7
 	var h := s * 0.16
-	var xf := Transform2D(angle, at)
-	var ink: Color = PLATE_TINTS[q] if wind else Pal.PG_TRAY_HI
-	var deep: Color = ink.darkened(0.25)
-	var pts := Face.Builder.round_rect(Vector2(-w * 0.5, -h * 0.5), Vector2(w, h), h * 0.45)
-	var lo := PackedVector2Array()
-	var hi := PackedVector2Array()
-	for p in pts:
-		lo.append(xf * (p + Vector2(0.0, h * 0.18)))
-		hi.append(xf * p)
-	b.polygon(lo, deep)
-	b.polygon(hi, ink)
-	if wind:
-		for i in q + 1:
-			var x := (float(i) - float(q) * 0.5) * h * 0.62
-			b.disc(xf * Vector2(x, 0.0), h * 0.17, Color.WHITE)
+	var ink: Color = Pal.PG_TRAY_HI
+	b.polygon(Face.Builder.round_rect(at + Vector2(-w * 0.5, -h * 0.5 + h * 0.18), Vector2(w, h), h * 0.45), ink.darkened(0.25))
+	b.polygon(Face.Builder.round_rect(at + Vector2(-w * 0.5, -h * 0.5), Vector2(w, h), h * 0.45), ink)
+
+## The win's iron takes this long a diagonal, and a plate's this long: their
+## own steps on a small board, less on a big one (IRON_SPAN, PLATE_SPAN).
+func _iron_step() -> float:
+	return minf(IRON_STEP, IRON_SPAN / maxf(1.0, 2.0 * _state.n))
+
+func _plate_step() -> float:
+	return minf(PLATE_STEP, PLATE_SPAN / maxf(1.0, 2.0 * _state.half))
 
 func _pegs_gone(t: float) -> float:
 	if not _won:
 		return 0.0
 	if Motion.reduce:
 		return 1.0
-	var start := _solved_at + IRON_AT + float(_state.n) * IRON_STEP
+	var start := _solved_at + IRON_AT + float(_state.n) * _iron_step()
 	return clampf((t - start) / PEGS_GONE, 0.0, 1.0)
 
-func _update_bands(t: float) -> void:
+## The pegs of each band, cut again when the board or the way of cutting
+## changes.
+func _cut_bands() -> void:
 	var n: int = _state.n
-	var count := int(ceil(float(n) / float(BAND)))
+	var key := n * 2 + (1 if _by_diag else 0)
+	if key == _band_key and not _band_sets.is_empty():
+		return
+	_band_key = key
+	_band_sets = []
+	if _by_diag:
+		# (a packed array in an Array is a copy when taken out: fill each
+		# band's own, then put it in)
+		for k in int(ceil(float(2 * n - 1) / float(BAND_DIAG))):
+			var pegs := PackedInt32Array()
+			for d in range(k * BAND_DIAG, mini(2 * n - 1, (k + 1) * BAND_DIAG)):
+				for x in range(maxi(0, d - (n - 1)), mini(d, n - 1) + 1):
+					pegs.append((d - x) * n + x)
+			_band_sets.append(pegs)
+	else:
+		for k in int(ceil(float(n) / float(BAND))):
+			_band_sets.append(PackedInt32Array(range(k * BAND * n, mini(_state.size(), (k + 1) * BAND * n))))
+	_bands = []
+	_band_looks = []
+
+func _update_bands(t: float) -> void:
+	_cut_bands()
+	var count := _band_sets.size()
 	if _bands.size() != count or _band_looks.size() != count:
 		_bands.resize(count)
 		_bands.fill(null)
 		_band_looks.resize(count)
 		_band_looks.fill(PackedInt32Array())
 	for k in count:
-		var first := k * BAND * n
-		var last := mini(_state.size(), (k + 1) * BAND * n)
+		var pegs: PackedInt32Array = _band_sets[k]
 		var looks := PackedInt32Array()
-		looks.resize(last - first)
-		for c in range(first, last):
-			looks[c - first] = -2 if _moving.has(c) else _look(c, t)
+		looks.resize(pegs.size())
+		for i in pegs.size():
+			looks[i] = -2 if _moving.has(pegs[i]) else _look(pegs[i], t)
 		if _bands[k] != null and looks == _band_looks[k]:
 			continue
 		var cp := Looks.Copies.new()
-		for c in range(first, last):
+		for c in pegs:
 			if not _moving.has(c):
 				_put_bead(cp, c, t)
 		_bands[k] = cp.mesh(_kit)
@@ -1139,23 +1482,29 @@ func _seat(since: float) -> Vector3:
 ## compartment, shrinking to a heap bead's size as they land.
 func _draw_flying(b: Face.Builder, t: float) -> void:
 	var keep: Array = []
+	var zk: float = zoom.k
 	for g: Dictionary in _flying:
 		var u: float = (t - float(g.at)) / HOME_TIME
 		if u >= 1.0 or Motion.reduce:
 			continue
 		keep.append(g)
-		var from: Vector2 = g.from
+		# Its peg is where the zoom shows it; one out of sight sets off from
+		# the edge of the tray's floor.
+		var from: Vector2 = zoom.to_screen(g.from)
+		var seen: bool = zoom.view.has_point(from)
 		if u < 0.0:
-			var at := from
-			if bool(g.sits):
-				at.x += sin(t * 38.0) * _cell * 0.03
-			Bead.bead(b, at, _cell, g.colour)
+			if seen:
+				if bool(g.sits):
+					from.x += sin(t * 38.0) * _cell * zk * 0.03
+				Bead.bead(b, from, _cell * zk, g.colour)
 			continue
+		if not seen:
+			from = from.clamp(zoom.view.position, zoom.view.end)
 		var to: Vector2 = g.to
 		var e := u * u * (3.0 - 2.0 * u)
 		var arc := (to - from).length() * HOME_ARC * 4.0 * u * (1.0 - u)
 		var p := from.lerp(to, e) - Vector2(0.0, arc)
-		var s := lerpf(1.0 + 0.25 * sin(u * PI), _heap_r / (_cell * Bead.R), e)
+		var s := lerpf((1.0 + 0.25 * sin(u * PI)) * zk, _heap_r / (_cell * Bead.R), e)
 		Bead.bead(b, p, _cell * s, g.colour, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_BOARD, false)
 	_flying = keep
 
@@ -1164,6 +1513,7 @@ func _draw_flying(b: Face.Builder, t: float) -> void:
 ## they arrive -- where the seat takes them over and presses them home.
 func _draw_incoming(b: Face.Builder, t: float) -> void:
 	var keep: Array = []
+	var zk: float = zoom.k
 	for g: Dictionary in _incoming:
 		var u: float = (t - float(g.at)) / FLY_TIME
 		if u >= 1.0 or Motion.reduce or _state.beads[int(g.peg)] == State.EMPTY:
@@ -1172,13 +1522,12 @@ func _draw_incoming(b: Face.Builder, t: float) -> void:
 		if u < 0.0:
 			continue
 		var from: Vector2 = g.from
-		var to := _centre(int(g.peg)) - Vector2(0.0, _cell * SEAT_HIGH)
+		var to: Vector2 = zoom.to_screen(_centre(int(g.peg)) - Vector2(0.0, _cell * SEAT_HIGH))
 		var e := 1.0 - (1.0 - u) * (1.0 - u)
 		var arc := (to - from).length() * FLY_ARC * 4.0 * u * (1.0 - u)
 		var p := from.lerp(to, e) - Vector2(0.0, arc)
-		var sc := lerpf(_heap_r / (_cell * Bead.R), 1.0 + SEAT_NEAR, e)
-		Bead.bead(b, p + Vector2(0.0, _cell * SEAT_HIGH * 0.0), _cell * sc, g.colour, Vector2.ONE, 1.0, 0.0, 0.0, 0.0,
-			Pal.PG_BOARD, false)
+		var sc := lerpf(_heap_r / (_cell * Bead.R), (1.0 + SEAT_NEAR) * zk, e)
+		Bead.bead(b, p, _cell * sc, g.colour, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_BOARD, false)
 	_incoming = keep
 
 ## The diagonal a peg stands on, from the top left.
@@ -1186,7 +1535,7 @@ func _diag(c: int) -> int:
 	return c % _state.n + c / _state.n
 
 func _hop(c: int, t: float) -> float:
-	if not _won or Motion.reduce:
+	if not _won or Motion.reduce or _big():
 		return 0.0
 	var at := _solved_at + Motion.stagger(_diag(c), Motion.SOLVE_STAGGER * 0.5, 0.5)
 	return -Motion.hop_lift(t - at, Motion.SOLVE_HOP * _cell / 90.0, Motion.SOLVE_TIME)
@@ -1195,22 +1544,22 @@ func _hop(c: int, t: float) -> float:
 func _fused(c: int, t: float) -> float:
 	var f := 0.0
 	if _fuse_at[c] > -INF:
-		f = 1.0 if Motion.reduce else clampf((t - _fuse_at[c]) / IRON_TIME, 0.0, 1.0)
+		f = 1.0 if Motion.reduce else clampf((t - _fuse_at[c]) / _iron_time(), 0.0, 1.0)
 	if not _won:
 		return f
 	if Motion.reduce:
 		return 1.0
-	return maxf(f, clampf((t - _solved_at - IRON_AT - _diag(c) * IRON_STEP) / IRON_TIME, 0.0, 1.0))
+	return maxf(f, clampf((t - _solved_at - IRON_AT - _diag(c) * _iron_step()) / _iron_time(), 0.0, 1.0))
 
 ## The glint as an iron passes a bead: a bell over IRON_TIME.
 func _shine(c: int, t: float) -> float:
 	var out := 0.0
 	if _fuse_at[c] > -INF:
-		var u := (t - _fuse_at[c]) / IRON_TIME
+		var u := (t - _fuse_at[c]) / _iron_time()
 		if u > 0.0 and u < 1.0:
 			out = sin(u * PI)
 	if _won:
-		var w := (t - _solved_at - IRON_AT - _diag(c) * IRON_STEP) / IRON_TIME
+		var w := (t - _solved_at - IRON_AT - _diag(c) * _iron_step()) / _iron_time()
 		if w > 0.0 and w < 1.0:
 			out = maxf(out, sin(w * PI))
 	return out
@@ -1220,7 +1569,7 @@ func _shine(c: int, t: float) -> float:
 func _draw_iron(b: Face.Builder, t: float) -> void:
 	if not _won or Motion.reduce:
 		return
-	var d := (t - _solved_at - IRON_AT) / IRON_STEP
+	var d := (t - _solved_at - IRON_AT) / _iron_step()
 	var n := float(_state.n)
 	if d < -2.0 or d > 2.0 * n + 2.0:
 		return
@@ -1267,7 +1616,7 @@ func _maybe_iron() -> void:
 	var start := maxf(t, _busy_until)
 	var still := Motion.reduce
 	var lead := 0.0 if still else PLATE_LEAD
-	var step := 0.0 if still else PLATE_STEP
+	var step := 0.0 if still else _plate_step()
 	var tail := 0.0 if still else PLATE_TAIL
 	for q in full:
 		var res: Dictionary = _state.iron_plate(q)
@@ -1282,7 +1631,7 @@ func _maybe_iron() -> void:
 				var local := Vector2(_centre(c) - rect.position) / _cell
 				_fuse_at[c] = start + lead + (local.x + local.y) * 0.5 * step
 				if _state.beads[c] != State.EMPTY:
-					_touch(c, _fuse_at[c] + IRON_TIME)
+					_touch(c, _fuse_at[c] + _iron_time())
 		else:
 			var reveal := start + lead + travel
 			var i := 0
@@ -1321,10 +1670,10 @@ func _plate_done(ir: Dictionary, astray: int, costs := true) -> void:
 			_after(0.25, func() -> void: fx.cue("combo", pow(2.0, step / 12.0), -2.0))
 		else:
 			_word(tr("PG_WORD_PLATE"), top)
-		if not Motion.reduce:
-			fx.sparkle(top, Pal.SUN)
+		if not Motion.reduce and zoom.view.has_point(zoom.to_screen(top)):
+			fx.sparkle(zoom.to_screen(top), Pal.SUN)
 			if _streak >= 3:
-				fx.confetti(top, 18, rect.size.x * 0.8)
+				fx.confetti(zoom.to_screen(top), 18, rect.size.x * 0.8)
 				_after(0.1, func() -> void: fx.cue("confetti"))
 		_gag(int(ir.q))
 		return
@@ -1351,7 +1700,7 @@ func _draw_plate_iron(b: Face.Builder, ir: Dictionary, t: float) -> void:
 	if e < 0.0 or t > end + 0.25 or Motion.reduce:
 		return
 	var rect := _plate_rect(int(ir.q))
-	var travel := float(2 * _state.half) * PLATE_STEP
+	var travel := float(2 * _state.half) * _plate_step()
 	var k := clampf((e - PLATE_LEAD) / travel, 0.0, 1.0)
 	var at := rect.position.lerp(rect.end, 0.08 + 0.84 * k)
 	var lift := 0.0
@@ -1383,11 +1732,14 @@ func _steam(t: float) -> void:
 		if t <= float(ir.end) + 0.3:
 			keep.append(ir)
 		var e := t - float(ir.at) - PLATE_LEAD
-		var travel := float(2 * _state.half) * PLATE_STEP
+		var travel := float(2 * _state.half) * _plate_step()
 		if e > 0.0 and e < travel:
 			var rect := _plate_rect(int(ir.q))
-			var at := rect.position.lerp(rect.end, 0.08 + 0.84 * e / travel)
-			fx.puff(at - Vector2(_iron_px() * 0.25, _iron_px() * 0.1), Color(Color.WHITE, 0.8), 2)
+			var at := zoom.to_screen(rect.position.lerp(rect.end, 0.08 + 0.84 * e / travel)
+				- Vector2(_iron_px() * 0.25, _iron_px() * 0.1))
+			# (an iron at work out of sight puffs nothing over the head)
+			if zoom.view.has_point(at):
+				fx.puff(at, Color(Color.WHITE, 0.8), 2)
 			_last_steam = t
 			if fmod(e, 0.5) < STEAM_EVERY:
 				fx.cue("steam", 0.95 + 0.1 * randf(), -4.0)
@@ -1480,7 +1832,9 @@ func _draw_words(t: float) -> void:
 		var al := clampf((1.0 - u) / 0.35, 0.0, 1.0)
 		var text: String = w.text
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, WORD_FONT).x
-		var at: Vector2 = w.pos - Vector2(0.0, WORD_RISE * (1.0 - (1.0 - u) * (1.0 - u)))
+		# Over its place on the board as the zoom shows it, kept on the tray.
+		var at: Vector2 = zoom.to_screen(w.pos).clamp(zoom.view.position + Vector2(0.0, WORD_RISE + 40.0), zoom.view.end)
+		at.y -= WORD_RISE * (1.0 - (1.0 - u) * (1.0 - u))
 		at.x = clampf(at.x, tw * 0.5 + 12.0, size.x - tw * 0.5 - 12.0)
 		draw_set_transform(at, sin(e * 5.0) * 0.04, Vector2.ONE * k)
 		var base := Vector2(-tw * 0.5, font.get_ascent(WORD_FONT) * 0.35)
@@ -1562,7 +1916,7 @@ func _build_head_lid(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	_draw_tweezers(b, t)
 	_draw_hearts(b, t)
-	var bar := Rect2(_right.position.x, _right.end.y - BAR_H - 4.0, _right.size.x - 150.0, BAR_H)
+	var bar := Rect2(_right.position.x, _right.end.y - BAR_H - 4.0, _right.size.x - _tally_room(), BAR_H)
 	var bump := Motion.bump_scale(t - _bar_bump, 0.08)
 	bar = Rect2(bar.position - Vector2(0.0, (bump - 1.0) * BAR_H * 0.5), Vector2(bar.size.x, BAR_H * bump))
 	b.fan(Face.Builder.round_rect(bar.position + Vector2(0.0, 2.0), bar.size, BAR_H * 0.5), Color(Pal.TEXT, 0.12))
@@ -1576,6 +1930,13 @@ func _build_head_lid(t: float) -> ArrayMesh:
 			Color(Color.WHITE, 0.35))
 	return b.mesh()
 
+## The room the tally takes at the bar's right end: 150, or what its widest
+## reading needs (a thousand beads).
+func _tally_room() -> float:
+	var font: Font = CozyTheme.display(700)
+	var widest := "%d / %d" % [_state.target, _state.target]
+	return maxf(150.0, font.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1.0, NAME_SIZE).x + 18.0)
+
 func _draw_thumb_frame(b: Face.Builder, r: Rect2) -> void:
 	Scenery.soft_disc(b, r.get_center() + Vector2(0.0, r.size.y * 0.5 + 2.0), r.size.x * 0.55, 14.0,
 		Color(Pal.TEXT, 0.14))
@@ -1584,40 +1945,39 @@ func _draw_thumb_frame(b: Face.Builder, r: Rect2) -> void:
 	b.fan(Face.Builder.round_rect(r.position + Vector2.ONE * 8.0, r.size - Vector2.ONE * 16.0, 13.0),
 		Pal.PG_BOARD_DEEP.darkened(0.12))
 
-## The pattern card: four squares like the board's four plates, each with its
-## clip, and the picture's pixels on them -- on Windblown, each square
-## showing another plate, turned, its clip turned with it. In the card's own
-## frame so the peek can grow the one mesh over the board by a transform.
-func _build_thumb_pixels(r: Rect2) -> ArrayMesh:
+## The pattern card: four squares like the board's four plates, and the
+## picture's pixels on them. In the card's own frame so the peek can grow
+## the one mesh over the board by a transform.
+func _build_thumb_pixels(r: Rect2, apart := false) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var n: int = _state.n
 	var h: int = _state.half
 	var inner := r.grow(-8.0)
-	var wind: bool = _state.windblown()
-	var gap := THUMB_GAP_WIND if wind else THUMB_GAP
-	var s := (inner.size.x - 12.0) / (float(n) + gap)
+	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
 	var at := inner.position + Vector2.ONE * 6.0
 	for q in 4:
-		var o := at + Vector2(float(q % 2) * (h + gap), float(q / 2) * (h + gap)) * s
-		var pad := minf(0.15, gap * 0.4) * s
+		var o := at + Vector2(float(q % 2) * (h + THUMB_GAP), float(q / 2) * (h + THUMB_GAP)) * s
+		var pad := minf(0.15, THUMB_GAP * 0.4) * s
 		var tile := Rect2(o - Vector2.ONE * pad, Vector2.ONE * (h * s + 2.0 * pad))
 		b.fan(Face.Builder.round_rect(tile.position, tile.size, s * 0.6), Pal.PG_BOARD)
-		var p: int = _state.perm[q]
-		if wind:
-			b.stroke(Face.Builder.round_rect(tile.position, tile.size, s * 0.6), maxf(1.5, s * 0.18),
-				PLATE_TINTS[p], true)
 		for v in h:
 			for u in h:
-				var c: int = _state.card_peg(q, u, v)
-				var k: int = _state.want[c]
+				var k: int = _state.want[((q / 2) * h + v) * n + (q % 2) * h + u]
 				var px := o + (Vector2(u, v) + Vector2(0.5, 0.5)) * s
+				if _big() and k != State.EMPTY:
+					# A thousand pixels: a plain square each (Bead.pixel's
+					# round one with its hole is eighty vertices), whole on
+					# the card and a hair apart when it is held up.
+					var e := s * (0.46 if apart else 0.5)
+					var col: Color = _state.colours[k]
+					var v0 := b.vertex(px + Vector2(-e, -e), col)
+					b.vertex(px + Vector2(e, -e), col)
+					b.vertex(px + Vector2(e, e), col)
+					b.vertex(px + Vector2(-e, e), col)
+					b.tri(v0, v0 + 1, v0 + 2)
+					b.tri(v0, v0 + 2, v0 + 3)
+					continue
 				Bead.pixel(b, px, s, _state.colours[k] if k != State.EMPTY else Color.WHITE, k == State.EMPTY)
-		if wind:
-			# The clip on the square's top edge, turned as the square is.
-			var mid := tile.get_center()
-			var turn: int = _state.turn[q]
-			var dir := Vector2.UP.rotated(turn * PI * 0.5)
-			_clip(b, mid + dir * (tile.size.x * 0.5 + s * 0.1), s * 3.4, turn * PI * 0.5, p, true)
 	return b.mesh()
 
 ## The clear plastic box: a compartment a colour, each heaped with beads as
@@ -1649,10 +2009,14 @@ func _draw_box(b: Face.Builder, over: Face.Builder, pick: Face.Builder, t: float
 		over.fan(Face.Builder.round_rect(label.position + Vector2(label.size.x * 0.5 - 7.0, -3.0), Vector2(14.0, 6.0), 3.0),
 			_state.colours[i])
 	_draw_chosen(pick, t)
-	# The dividers, a hair of clear plastic between two compartments.
+	# The dividers, a hair of clear plastic between two compartments of a
+	# row.
 	for i in range(1, _chip_rects.size()):
-		var x := (_chip_rects[i - 1].end.x + _chip_rects[i].position.x) * 0.5
-		over.fan(Face.Builder.round_rect(Vector2(x - 1.5, box.position.y + 4.0), Vector2(3.0, box.size.y * 0.74), 1.5),
+		var r := _chip_rects[i]
+		if not is_equal_approx(r.position.y, _chip_rects[i - 1].position.y):
+			continue
+		var x := (_chip_rects[i - 1].end.x + r.position.x) * 0.5
+		over.fan(Face.Builder.round_rect(Vector2(x - 1.5, r.position.y - 2.0), Vector2(3.0, (r.size.y + 12.0) * 0.74), 1.5),
 			Color("c7dde4"))
 
 ## Every compartment's beads: every one left, lying flat with its hole
@@ -1668,11 +2032,11 @@ func _build_heaps(t: float) -> ArrayMesh:
 		_heap_runs = []
 		for i in _chip_rects.size():
 			var full := Looks.Copies.new()
-			for k in maxi(0, _state.need[i]):
+			for k in _heap_full(i):
 				full.add(_heap_kit, i, Transform2D(0.0, _slot(i, k)))
 			_heap_runs.append(full)
 	for i in _chip_rects.size():
-		var left: int = mini(maxi(0, _state.left(i)), _heap_runs[i].n)
+		var left: int = mini(_heap_shown(i), _heap_runs[i].n)
 		if left == 0:
 			continue
 		var shake := Motion.shiver_offset(t - float(_chip_shake[i]), 4.0)
@@ -1703,7 +2067,7 @@ func _draw_tweezers(b: Face.Builder, t: float) -> void:
 	var since := t - _tweez_at - TWEEZ_TIME
 	if since > 0.0 and since < 0.3 and not Motion.reduce:
 		tip.y += sin(since / 0.3 * PI) * TWEEZ_DIP
-	var back := tip + Vector2(minf(to.size.x, 80.0) * 0.6, -CHIP.y * 0.5)
+	var back := tip + Vector2(minf(to.size.x, 80.0) * 0.6, -to.size.y * 0.5)
 	var dir := (back - tip).normalized()
 	var side := Vector2(-dir.y, dir.x)
 	Scenery.soft_disc(b, tip + Vector2(10.0, 8.0), 10.0, 6.0, Color(Pal.TEXT, 0.18))
@@ -1781,15 +2145,16 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 		hearts_w = pill_w + 12.0
 	draw_string(font, Vector2(_right.position.x + 4.0, _right.position.y + font.get_ascent(NAME_SIZE)),
 		name, HORIZONTAL_ALIGNMENT_LEFT, _right.size.x - 8.0 - hearts_w, NAME_SIZE, Color(Pal.TEXT, seen))
+	var count_size := COUNT_SMALL if _chip_rows > 1 else COUNT_SIZE
 	for i in _chip_rects.size():
 		var r := _chip_rects[i]
 		var shake := Motion.shiver_offset(t - float(_chip_shake[i]), 4.0)
 		var left: int = maxi(0, _state.left(i))
 		var text := str(left)
-		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, COUNT_SIZE).x
-		var y := r.position.y + r.size.y * 0.875 + font.get_ascent(COUNT_SIZE) * 0.38
+		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, count_size).x
+		var y := r.position.y + r.size.y * 0.875 + font.get_ascent(count_size) * 0.38
 		draw_string(font, Vector2(r.get_center().x + shake - wide * 0.5, y), text,
-			HORIZONTAL_ALIGNMENT_LEFT, -1.0, COUNT_SIZE, Color(Pal.TEXT_DIM if left == 0 else Pal.TEXT, seen))
+			HORIZONTAL_ALIGNMENT_LEFT, -1.0, count_size, Color(Pal.TEXT_DIM if left == 0 else Pal.TEXT, seen))
 	var tally := "%d / %d" % [_state.placed(), _state.target]
 	var tw := font.get_string_size(tally, HORIZONTAL_ALIGNMENT_LEFT, -1.0, NAME_SIZE).x
 	var bar_y := _right.end.y - BAR_H * 0.5 - 4.0
@@ -1816,6 +2181,13 @@ func _draw_peek(t: float, shown: Array) -> void:
 	var e := Motion.back_out(k) if _peek else k * k
 	var target := _board.size.x * PEEK_COVER
 	var big := Rect2(_board.get_center() - Vector2.ONE * target * 0.5, Vector2.ONE * target)
+	if _state.n > PEEK_BIG:
+		# A big picture as large as the card allows, over the board and as
+		# much of the head as it needs.
+		target = minf(size.x, size.y) - 2.0 * PEEK_EDGE
+		big = Rect2(Vector2(size.x * 0.5 - target * 0.5,
+			clampf(_board.get_center().y - target * 0.5, PEEK_EDGE, maxf(PEEK_EDGE, size.y - PEEK_EDGE - target))),
+			Vector2.ONE * target)
 	var r := Rect2(_thumb.position.lerp(big.position, e), _thumb.size.lerp(big.size, e))
 	var sc := r.size.x / _thumb.size.x
 	var xf := Transform2D(0.0, Vector2.ONE * sc, 0.0, r.position - _thumb.position * sc)
@@ -1823,8 +2195,14 @@ func _draw_peek(t: float, shown: Array) -> void:
 	_draw_thumb_frame(b, _thumb)
 	var frame := b.mesh()
 	draw_mesh(frame, null, xf, Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
-	draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
+	var pic := _thumb_mesh
+	if _big():
+		if _peek_mesh == null:
+			_peek_mesh = _build_thumb_pixels(Rect2(Vector2.ZERO, _thumb.size), true)
+		pic = _peek_mesh
+	draw_mesh(pic, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, minf(1.0, k * 2.0)))
 	shown.append(frame)
+	shown.append(pic)
 
 # --- the toast ---
 
@@ -1860,7 +2238,9 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = key
 	if _toast_mesh == null:
 		return
-	var mid := Vector2(size.x * 0.5, _board.end.y - TOAST_MARGIN - h * 0.5)
+	# (over the zoom's button, where there is one)
+	var lift := ZOOM_B + ZOOM_INSET if _zoomable() and zoom.enabled else 0.0
+	var mid := Vector2(size.x * 0.5, _board.end.y - TOAST_MARGIN - h * 0.5 - lift)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1906,7 +2286,19 @@ func _tell_hearts(key: String, astray: int) -> void:
 ## on the pattern card it holds the card up over the board; on a peg it
 ## starts a stroke that seats the chosen colour -- or lifts it, when the peg
 ## it began on already holds that colour -- on every peg the finger crosses.
+## On a board that zooms the zoom reads every event first: a second finger
+## makes the first the start of a pinch, and what it had begun is taken back.
 func _gui_input(event: InputEvent) -> void:
+	if _zoom_live():
+		match zoom.feed(event):
+			PanZoom.BEGAN:
+				accept_event()
+				_pinch_began()
+				return
+			PanZoom.TOOK:
+				accept_event()
+				_view_moved()
+				return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
@@ -1927,8 +2319,67 @@ func _gui_input(event: InputEvent) -> void:
 		if _stroking and finger == _press_finger:
 			_drag(event.position)
 
+## Two fingers are down: whatever the first had begun never happened. The
+## card it held is set down; the stroke it started is taken back bead for
+## bead, with the moves it spent -- and the board's end, if it spent the
+## last one and the card is not yet up.
+func _pinch_began() -> void:
+	if _peek:
+		_release()
+	_cancel_stroke()
+	_press_finger = -2
+	_pinch_tick()
+	_view_moved()
+
+## A pinch is heard and felt as it takes hold: no ghost touch.
+func _pinch_tick() -> void:
+	fx.touch(0.84)
+
+func _cancel_stroke() -> void:
+	if _asleep or not (_stroking or _stroke_ended):
+		return
+	var t := _now()
+	var back: Array = _state.cancel_stroke()
+	var pegs := {}
+	for e: Array in back:
+		var c := int(e[0])
+		pegs[c] = true
+		# The peg is as it was before the press: nothing is arriving on it.
+		_arrive_at[c] = -100.0
+		_shake_at[c] = -100.0
+		_drop[c] = 0
+		_until[c] = t
+		_moving[c] = true
+	var refund := 0
+	for e: Array in _stroke_log:
+		refund += int(e[2])
+	var air: Array = []
+	for g: Dictionary in _incoming:
+		if not pegs.has(int(g.peg)):
+			air.append(g)
+	_incoming = air
+	air = []
+	for g: Dictionary in _flying:
+		if not (pegs.has(int(g.get("peg", -1))) and float(g.at) >= _stroke_at):
+			air.append(g)
+	_flying = air
+	if max_moves > 0:
+		moves_left = mini(max_moves, moves_left + refund)
+		if _stroke_ended and out_of_hearts:
+			out_of_hearts = false
+			_running = true
+			_lost_ever = _lost_before
+	_stroke_ended = false
+	_stroke_log = []
+	_clear_gesture()
+	_busy_for(0.1)
+	moved.emit()
+	_refresh()
+
 func _press(at: Vector2) -> void:
 	_clear_gesture()
+	_stroke_log = []
+	_stroke_ended = false
 	if _thumb.has_point(at):
 		_peek = true
 		_peek_at = _now()
@@ -1942,19 +2393,29 @@ func _press(at: Vector2) -> void:
 	if chip >= 0:
 		_pick(chip)
 		return
-	var c := _peg_at(at)
+	# A peg is found where the zoom shows it, and only on the tray's floor.
+	if not zoom.view.has_point(at):
+		return
+	var p: Vector2 = zoom.to_layout(at)
+	var c := _peg_at(p)
 	if c < 0 or _plate_busy(_state.plate_of(c)):
 		return
 	_stroking = true
 	_start = c
-	_start_at = at
+	_start_at = p
+	_stroke_at = _now()
+	_lost_before = _lost_ever
+	_focus = _centre(c)
 	_line = 0
 	_erase = _state.beads[c] == brush
 	_state.begin_stroke()
 	_paint(c)
 	_refresh()
 
-func _drag(at: Vector2) -> void:
+func _drag(screen: Vector2) -> void:
+	# The finger as the board was laid out; one that has left the tray's floor
+	# paints no peg that is out of sight.
+	var at: Vector2 = zoom.to_layout(screen.clamp(zoom.view.position, zoom.view.end - Vector2.ONE * 0.01))
 	# The run keeps to the row or the column it set off along: whichever way
 	# the finger first went farther, once it has gone AXIS_AFTER of a cell.
 	if _line == 0:
@@ -1974,8 +2435,8 @@ func _drag(at: Vector2) -> void:
 		var z := Vector2i(c % n, c / n)
 		var steps := maxi(absi(z.x - a.x), absi(z.y - a.y))
 		for i in range(1, steps):
-			var p := Vector2i(roundi(lerpf(a.x, z.x, float(i) / steps)), roundi(lerpf(a.y, z.y, float(i) / steps)))
-			_paint(p.y * n + p.x)
+			var q := Vector2i(roundi(lerpf(a.x, z.x, float(i) / steps)), roundi(lerpf(a.y, z.y, float(i) / steps)))
+			_paint(q.y * n + q.x)
 	_paint(c)
 	_refresh()
 
@@ -1991,7 +2452,7 @@ func _paint(c: int) -> void:
 	if _erase and had != brush:
 		return
 	var to: int = State.EMPTY if _erase else brush
-	# Windblown counts moves: a bead seated or lifted is one, and the stroke
+	# Insane counts moves: a bead seated or lifted is one, and the stroke
 	# stops where the budget does.
 	var cost: int = _state.move_cost(c, to) if max_moves > 0 else 0
 	if cost > moves_left:
@@ -2000,6 +2461,7 @@ func _paint(c: int) -> void:
 	var t := _now()
 	match r:
 		"put":
+			_stroke_log.append([c, had, cost])
 			if had != State.EMPTY:
 				_go_home(c, had, t)
 			if _state.beads[c] != State.EMPTY:
@@ -2008,7 +2470,7 @@ func _paint(c: int) -> void:
 				if fly > 0.0:
 					# Out of the box from the top of its beads, the one the
 					# kit just gave up.
-					_incoming.append({"from": _slot(k, _state.left(k)), "peg": c, "colour": _state.colours[k], "at": t})
+					_incoming.append({"from": _slot(k, _heap_shown(k)), "peg": c, "colour": _state.colours[k], "at": t})
 				_arrive_at[c] = t + fly
 				_drop[c] = 2 if fly > 0.0 else 0
 				_touch(c, t + fly + SEAT_TIME)
@@ -2057,9 +2519,18 @@ func _release() -> void:
 		fx.cue("peek", 0.84)
 		queue_redraw()
 		return
+	if _stroke_ended:
+		# The stroke that spent the last move, closed as its finger lifts.
+		_state.end_stroke()
+		_stroke_ended = false
+		_stroke_log = []
+		_clear_gesture()
+		_refresh()
+		return
 	if not _stroking:
 		return
 	_stroking = false
+	_stroke_log = []
 	var seated := _seated_in_stroke
 	var changed: PackedInt32Array = _state.end_stroke()
 	var mid := Vector2.ZERO
@@ -2082,7 +2553,7 @@ func _release() -> void:
 		_word(tr("PG_WORD_WHOOSH" if seated >= WHOOSH else "PG_WORD_STEADY"), mid)
 		fx.cue("steady")
 		if not Motion.reduce and seated >= WHOOSH:
-			fx.sparkle(mid, Pal.SUN)
+			fx.sparkle(zoom.to_screen(mid), Pal.SUN)
 	note_move()
 	_refresh()
 
@@ -2181,7 +2652,10 @@ func hint() -> bool:
 	if not Motion.reduce:
 		_rings.append({"pos": _centre(c), "at": _now()})
 		_busy_for(Motion.RING_TIME)
-	fx.sparkle(_centre(c), Pal.SUN)
+	# A peg out of sight is brought into view; its sparkle is for one in it.
+	if zoom.view.has_point(zoom.to_screen(_centre(c))):
+		fx.sparkle(zoom.to_screen(_centre(c)), Pal.SUN)
+	_show_peg(c)
 	fx.cue("hint")
 	if not _state.is_solved():
 		fx.buzz(Haptics.GOOD)
@@ -2222,8 +2696,15 @@ func check() -> int:
 	else:
 		_tell("PG_CHECK_ONE" if wrong.size() == 1 else "PG_CHECK_N", "" if wrong.size() == 1 else str(wrong.size()))
 		fx.cue("check")
+		_show_peg(wrong[0])
 	_refresh()
 	return wrong.size()
+
+## Brings peg `c` into view on a board zoomed close.
+func _show_peg(c: int) -> void:
+	if zoom.zoomed():
+		zoom.show_point(_centre(c))
+		_view_moved()
 
 ## Every bead back in its compartment but the ones a hint or an iron fixed,
 ## flying home in a wave from the far corner. A bare board is the picture
@@ -2232,6 +2713,7 @@ func reset_board() -> void:
 	if _blocked():
 		return
 	moves_left = max_moves
+	_zoom_whole()
 	var before: PackedInt32Array = _state.beads.duplicate()
 	var pegs: PackedInt32Array = _state.reset()
 	_send_home(before, pegs)
@@ -2247,7 +2729,7 @@ func reset_board() -> void:
 func _go_home(c: int, k: int, t: float) -> void:
 	if Motion.reduce:
 		return
-	_flying.append({"from": _centre(c), "to": _home(k), "colour": _state.colours[k], "at": t, "sits": false})
+	_flying.append({"from": _centre(c), "to": _home(k), "colour": _state.colours[k], "at": t, "sits": false, "peg": c})
 	_busy_for(HOME_TIME + 0.1)
 
 func _send_home(before: PackedInt32Array, pegs: PackedInt32Array) -> void:
@@ -2263,18 +2745,18 @@ func _send_home(before: PackedInt32Array, pegs: PackedInt32Array) -> void:
 func is_solved() -> bool:
 	return _state.is_solved()
 
-## The finished picture, and Windblown and Flawless when earned.
+## The finished picture, and Insane and Flawless when earned.
 func share_glyphs() -> String:
 	var out: String = _state.share_glyphs()
-	if _state.windblown() and is_solved():
-		out += "\n🌬️ " + tr("PG_WIND_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	if _state.insane() and is_solved():
+		out += "\n🏅 " + tr("BN_INSANE_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
 	elif _flawless:
 		out += "\n🏅 " + tr("BN_FLAWLESS")
 	return out
 
 # --- hearts ---
 
-## `cost` moves go off Windblown's counter. The last one gone with the
+## `cost` moves go off Insane's counter. The last one gone with the
 ## picture unfinished ends the board once the bead has landed (`land`); a
 ## stroke in hand ends where it is.
 func _spend(cost: int, land: float) -> void:
@@ -2290,8 +2772,10 @@ func _spend(cost: int, land: float) -> void:
 	out_of_hearts = true
 	_running = false
 	if _stroking:
-		_state.end_stroke()
-		_clear_gesture()
+		# The stroke paints no more, and is closed as its finger lifts or the
+		# card comes: until then a second finger can still take it back.
+		_stroking = false
+		_stroke_ended = true
 	moved.emit()
 	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else 0.3), _run_out)
 
@@ -2314,6 +2798,12 @@ func _run_out() -> void:
 	if _asleep or not out_of_hearts or is_done():
 		return
 	_asleep = true
+	if _stroke_ended:
+		_state.end_stroke()
+		_stroke_ended = false
+		_stroke_log = []
+	zoom.reset()
+	_view_moved()
 	fx.cue("out_of_hearts")
 	_dusk_toward(DUSK)
 	_refresh()
@@ -2331,7 +2821,7 @@ func _dusk_toward(tint: Color) -> void:
 func _open_card() -> void:
 	if not out_of_hearts or is_done() or is_instance_valid(_heart_card):
 		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], MOVES_BONUS) if max_moves > 0 \
+	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, [], _moves_bonus()) if max_moves > 0 \
 		else load(OUT_OF_HEARTS).new(_heart_used, ["PG_OUT_BODY", "PG_OUT_REST"])
 	_heart_card = card
 	card.try_again.connect(try_again)
@@ -2342,6 +2832,10 @@ func _open_card() -> void:
 		host.add_child(card)
 	else:
 		get_tree().root.add_child(card)
+
+## What the out-of-moves card's video buys.
+func _moves_bonus() -> int:
+	return maxi(MOVES_BONUS, max_moves / MOVES_BONUS_PART)
 
 ## Try again: the same picture on a bare board (a hint's pegs kept), every
 ## heart and the whole budget of moves back, the clock and the moves made
@@ -2381,7 +2875,7 @@ func heart_back() -> void:
 	_close_card()
 	_heart_used = true
 	if max_moves > 0:
-		moves_left = MOVES_BONUS
+		moves_left = _moves_bonus()
 		_moves_pill.bump(_now())
 	else:
 		hearts = 1
@@ -2416,23 +2910,30 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return IRON_AT + 2.0 * _state.n * IRON_STEP + IRON_TIME + WIN_WAIT
+	return IRON_AT + 2.0 * _state.n * _iron_step() + _iron_time() + WIN_WAIT
 
 func _on_solved() -> void:
 	var t := _now()
 	_solved_at = t
 	_won = true
 	_clear_gesture()
+	_zoom_whole()
 	_halo = {}
 	_flawless = hints_used == 0 and checks == 0 and not _lost_ever
 	for q in 4:
 		if _state.ironed[q] == 0:
 			_state.iron_plate(q)
-	# Every bead is live while the wave and the iron cross it.
-	var span: float = IRON_AT + 2.0 * _state.n * IRON_STEP + IRON_TIME
-	for c in _state.size():
-		if _state.beads[c] != State.EMPTY:
-			_touch(c, t + span)
+	var span: float = IRON_AT + 2.0 * _state.n * _iron_step() + _iron_time()
+	if not _big():
+		# Every bead is live while the wave and the iron cross it.
+		for c in _state.size():
+			if _state.beads[c] != State.EMPTY:
+				_touch(c, t + span)
+	elif not Motion.reduce:
+		# A big board: a diagonal at a time, as the iron gets there
+		# (_win_front), the still beads cut its way.
+		_by_diag = true
+		_win_diag = 0
 	_busy_for(span + PEGS_GONE)
 	fx.cue("solved")
 	if not Motion.reduce:
@@ -2453,6 +2954,7 @@ func restore_completed_board() -> void:
 	_gen += 1
 	_state.fill()
 	_reset_looks()
+	zoom.reset()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	moves_left = clampi(int(completed_record.get("moves", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
@@ -2465,7 +2967,7 @@ func restore_completed_board() -> void:
 	_opened = t - 100.0
 	_cat_at = t - 100.0
 	_cat_curled = false
-	if _flawless or _state.windblown():
+	if _flawless or _state.insane():
 		_stamp_at = t - 100.0
 	_place_cat(t)
 	_refresh()
@@ -2474,14 +2976,14 @@ func restore_completed_board() -> void:
 
 ## After the win's iron: confetti, the nap cat hopping onto the pattern card
 ## and curling up, a line of bead wisdom, and the seal when the solve earned
-## one (flawless, or any Windblown).
+## one (flawless, or any Insane).
 func _party(span: float) -> void:
 	var now := _now()
 	var lead := 0.0 if Motion.reduce else span + 0.15
 	_party_at = now + lead
 	_after(lead + 0.6, func() -> void: _tell("PG_CHEER_%d" % posmod(_state.pic_id.hash(), CHEERS)))
 	_cat_at = now if Motion.reduce else _party_at + CAT_AT
-	if _flawless or _state.windblown():
+	if _flawless or _state.insane():
 		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
 		_seal_mesh = null
 		_after(_stamp_at - now, func() -> void:
@@ -2507,14 +3009,14 @@ func _party(span: float) -> void:
 # --- the nap cat ---
 
 func _cat_px() -> float:
-	return HEAD * 0.82
+	return _thumb.size.x * 0.82
 
 ## Where she curls up: on the pattern card.
 func _cat_spot() -> Vector2:
-	return _thumb.get_center() + Vector2(0.0, HEAD * 0.06)
+	return _thumb.get_center() + Vector2(0.0, _thumb.size.y * 0.06)
 
 func _cat_start() -> Vector2:
-	return Vector2(_right.position.x + _right.size.x * 0.35, _thumb.get_center().y + HEAD * 0.06)
+	return Vector2(_right.position.x + _right.size.x * 0.35, _thumb.get_center().y + _thumb.size.y * 0.06)
 
 func _cat_walk() -> float:
 	return CAT_POP + CAT_HOPS * CAT_HOP_TIME
@@ -2576,11 +3078,11 @@ func _curl_cat(quiet: bool) -> void:
 		fx.cue("purr")
 
 ## The seal on the tray's lower right corner, dropping in and settling, its
-## words over it: Flawless; on Windblown "Insane" over Flawless or Windblown,
-## on the night seal.
+## words over it: Flawless; on Insane "Insane" over Flawless or the board's
+## motto, on the night seal.
 func _draw_stamp(t: float, shown: Array) -> void:
 	var rad := size.x * STAMP_R * 0.75
-	var insane: bool = _state.windblown()
+	var insane: bool = _state.insane()
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
 	shown.append(_seal_mesh)
@@ -2600,7 +3102,7 @@ func _draw_stamp(t: float, shown: Array) -> void:
 	var lines: Array
 	if insane:
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
-			[tr("BN_FLAWLESS") if _flawless else tr("PG_WIND_SEAL"), 0.17, 0.36]]
+			[tr("BN_FLAWLESS") if _flawless else tr("PG_MOTTO"), 0.17, 0.36]]
 	else:
 		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
 	Seal.text(self, rad, lines)

@@ -20,16 +20,18 @@ extends RefCounted
 ## **The board is four plates** (2026-10-01 polish), as a real big pegboard
 ## is four small ones clipped together. A plate whose beads are all on it --
 ## as many as the picture puts there -- is ironed at once: right, and it is
-## fused for good; wrong, and the beads astray hop back into the box (and on
-## Hard and Insane it costs a heart, which the board keeps). On Insane,
-## Windblown, the pattern card's four squares have blown about: each shows
-## somewhere else, turned (`perm`, `turn`), and the board must still be the
-## true picture.
+## fused for good; wrong, and the beads astray hop back into the box.
 ##
-## **No band has hearts since 2026-10-04**, and Windblown counts moves
-## instead (`moves_budget`, `move_cost`): there the board never calls the
-## iron on a plate, so nothing says which bead is astray and nothing is
-## taken off for the player. The iron still closes a picture that is right.
+## **No band has hearts since 2026-10-04**, and Insane counts moves instead
+## (`moves_budget`, `move_cost`): there the board never calls the iron on a
+## plate, so nothing says which bead is astray and nothing is taken off for
+## the player. The iron still closes a picture that is right.
+##
+## **Big pictures (2026-10-11).** Hard's pictures are 24 pegs square and
+## Insane's 32, filled scenes in up to twelve colours, and the pattern card
+## always shows the true picture: Windblown (the card's four squares
+## shuffled and turned on Insane) is gone, with `perm`, `turn`, `blow` and
+## `card_peg`. Insane's spare moves grow with the picture.
 ## Spec: docs/superpowers/specs/2026-09-27-pixel-garden-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-pixel-garden-polish-design.md.
 
@@ -42,11 +44,18 @@ const HINTS := 3
 ## neither hints nor Check -- only the iron judges.
 const HINTS_BY := [3, 3, 2, 0]
 const HEARTS_BY := [0, 0, 0, 0]
-## Windblown's spare moves over the picture's own beads (`moves_budget`): a
-## bead seated or lifted costs one. Three is one slip mended (off and on)
-## with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
-const WINDBLOWN := 3
+## Insane's spare moves over the picture's own beads (`moves_budget`): a
+## bead seated or lifted costs one. A twentieth of the picture and never
+## under three (one slip mended, off and on, with one to spare): with no
+## Check a bead astray shows late and costs two, and a picture of a thousand
+## beads has room for many.
+const MOVES_SLACK := 3
+const MOVES_SLACK_PART := 20
+## The band that counts moves.
+const INSANE := 3
+## share_glyphs draws no more squares a side than this: a bigger picture is
+## shared a block of pegs a square.
+const SHARE_SIDE := 16
 ## `locked` holds HINTED for a peg a hint put right, FUSED for one an iron
 ## fused with its plate; Try again keeps a hint's and melts the rest.
 const HINTED := 1
@@ -84,10 +93,6 @@ var half := 0
 ## How many beads the picture puts on each plate, and whether each is ironed.
 var plate_need := PackedInt32Array([0, 0, 0, 0])
 var ironed := PackedByteArray([0, 0, 0, 0])
-## Windblown: the square the pattern card shows in place q is plate perm[q],
-## turned turn[q] quarter turns clockwise. Identity elsewhere.
-var perm := PackedInt32Array([0, 1, 2, 3])
-var turn := PackedInt32Array([0, 0, 0, 0])
 
 static func hints_for(difficulty: int) -> int:
 	return HINTS_BY[clampi(difficulty, 0, 3)]
@@ -137,38 +142,9 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	band = clampi(difficulty, 0, 3)
 	load_picture(pics[day_pick(band, pics.size(), bank_step)])
 	_rng.seed = rng.randi()
-	if band == WINDBLOWN:
-		blow(rng)
 
-## Windblown: shuffles where the pattern card shows each plate and turns
-## each one, so that no square is left both in its own place and upright, and
-## at least three are turned.
-func blow(rng: RandomNumberGenerator) -> void:
-	for _try in 64:
-		var p := PackedInt32Array([0, 1, 2, 3])
-		for i in range(3, 0, -1):
-			var j := rng.randi() % (i + 1)
-			var tmp := p[i]
-			p[i] = p[j]
-			p[j] = tmp
-		var r := PackedInt32Array()
-		var turned := 0
-		var ok := true
-		for q in 4:
-			r.append(rng.randi() % 4)
-			if r[q] != 0:
-				turned += 1
-			if p[q] == q and r[q] == 0:
-				ok = false
-		if ok and turned >= 3:
-			perm = p
-			turn = r
-			return
-	perm = PackedInt32Array([3, 2, 1, 0])
-	turn = PackedInt32Array([1, 2, 3, 1])
-
-func windblown() -> bool:
-	return band == WINDBLOWN
+func insane() -> bool:
+	return band == INSANE
 
 ## Takes `pic` (one entry of the bank) as the day's picture, on a bare board.
 func load_picture(pic: Dictionary) -> void:
@@ -228,8 +204,6 @@ func load_picture(pic: Dictionary) -> void:
 		if want[c] != EMPTY:
 			plate_need[plate_of(c)] += 1
 	ironed = PackedByteArray([0, 0, 0, 0])
-	perm = PackedInt32Array([0, 1, 2, 3])
-	turn = PackedInt32Array([0, 0, 0, 0])
 	# A plate the picture leaves bare has nothing to iron: it is done.
 	for q in 4:
 		if plate_need[q] == 0:
@@ -311,26 +285,6 @@ func _fuse_plate(q: int) -> void:
 			locked[c] = FUSED
 		_forget(c)
 
-## The pattern card's square in place `q` at its own (u, v): which peg of the
-## board it shows. Windblown turns square q by turn[q] quarter turns
-## clockwise and shows plate perm[q] there.
-func card_peg(q: int, u: int, v: int) -> int:
-	var h := half
-	var x := u
-	var y := v
-	match turn[q]:
-		1:
-			x = v
-			y = h - 1 - u
-		2:
-			x = h - 1 - u
-			y = h - 1 - v
-		3:
-			x = h - 1 - v
-			y = u
-	var p := perm[q]
-	return ((p / 2) * h + y) * n + (p % 2) * h + x
-
 ## Try again: every bead back in the kit but what a hint fused; the plates
 ## un-ironed (a bare one stays done).
 func restart() -> void:
@@ -378,7 +332,9 @@ func can_undo() -> bool:
 ## The moves a band hands out: the picture's beads and its slack, or 0 on a
 ## band that does not count them.
 func moves_budget() -> int:
-	return target + int(MOVES_SLACK[band]) if int(MOVES_SLACK[band]) > 0 else 0
+	if band != INSANE:
+		return 0
+	return target + maxi(MOVES_SLACK, target / MOVES_SLACK_PART)
 
 ## What `put(c, to)` would cost: one for a bead it would seat or lift,
 ## nothing for a put it would refuse (the same bead, a fixed peg, a peg
@@ -430,6 +386,22 @@ func end_stroke() -> PackedInt32Array:
 	for e in _stroke:
 		out.append(int(e[0]))
 	_stroke = []
+	return out
+
+## Drops the stroke in hand as if it had never begun (a second finger landed:
+## the first was the start of a pinch). Every peg it changed is put back,
+## last first, and nothing joins the history. Returns [[peg, the bead it
+## held meanwhile], ...].
+func cancel_stroke() -> Array:
+	var out: Array = []
+	if not _in_stroke:
+		return out
+	for i in range(_stroke.size() - 1, -1, -1):
+		var c := int(_stroke[i][0])
+		out.append([c, beads[c]])
+		_seat(c, int(_stroke[i][1]))
+	_stroke = []
+	_in_stroke = false
 	return out
 
 func _seat(c: int, to: int) -> void:
@@ -520,7 +492,8 @@ func fill() -> void:
 	history = []
 
 ## The finished picture in coloured squares, the nearest of the nine a phone
-## has to each bead, on a white ground.
+## has to each bead, on a white ground; a big picture a block of pegs a
+## square (SHARE_SIDE).
 func share_glyphs() -> String:
 	var squares := {"🟥": Color("e0503a"), "🟧": Color("f08a2c"), "🟨": Color("f4c640"),
 		"🟩": Color("5fa845"), "🟦": Color("4a7fc1"), "🟪": Color("7e5aa6"),
@@ -536,10 +509,25 @@ func share_glyphs() -> String:
 				near = d
 				best = s
 		glyph.append(best)
+	# A picture past SHARE_SIDE is shared a block a square, each the colour
+	# most of its pegs have: 24 pegs as 12 squares, 32 as 16.
+	var step := maxi(1, int(ceil(float(n) / float(SHARE_SIDE))))
 	var out := ""
-	for y in n:
-		for x in n:
-			var v := want[y * n + x]
-			out += "▫️" if v == EMPTY else glyph[v]
+	for y in range(0, n, step):
+		for x in range(0, n, step):
+			var tally := {}
+			var best := "▫️"
+			var most := 0
+			for dy in step:
+				for dx in step:
+					if y + dy >= n or x + dx >= n:
+						continue
+					var v := want[(y + dy) * n + x + dx]
+					var g: String = "▫️" if v == EMPTY else glyph[v]
+					tally[g] = int(tally.get(g, 0)) + 1
+					if int(tally[g]) > most:
+						most = int(tally[g])
+						best = g
+			out += best
 		out += "\n"
 	return out.strip_edges(false, true)

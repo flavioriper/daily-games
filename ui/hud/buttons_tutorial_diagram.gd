@@ -13,6 +13,10 @@ extends Control
 ##   bare patch of its colour tapped: sewn. The tin's own go the same way.
 ## - TIN: a run longer than the tin has places; a colour whole opens one.
 ## - HINT: the bulb makes a move.
+## - ZOOM (Hard and Insane, whose pictures are big): two fingers apart
+##   bring the picture close, one finger dragged looks around, and the
+##   button shows it whole again. The page's fingers are real touches fed
+##   to the board's own zoom.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -20,7 +24,7 @@ const Face = preload("res://ui/faces/face.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 
-enum Lesson { LIFT, SEW, TIN, HINT }
+enum Lesson { LIFT, SEW, TIN, HINT, ZOOM }
 
 const FINGER_R := 0.2
 const FINGER_ALPHA := 0.16
@@ -35,6 +39,12 @@ const PLAIN := [["rrgg", "rrgg", "yyyy"], ["ggyy", "ggyy", "rrrr"]]
 ## Five reds in a run and four places: one stays. Yellow home makes yellow
 ## whole, and the tin gains its fifth place.
 const LONG := [["yyygg", "rrrrr"], ["rrrrr", "yyygg"]]
+## A picture with something in the middle to come close to; its buttons are
+## its own rows, two rows down.
+const FRAMED := [["yyggggyy", "ygrrrrgy", "ygryyrgy", "ygryyrgy", "ygrrrrgy", "yyggggyy"],
+	["ygrrrrgy", "yyggggyy", "yyggggyy", "ygrrrrgy", "ygryyrgy", "ygryyrgy"]]
+## How close the page's picture comes: at the button, and at the most.
+const ZOOM_TO := Vector2(1.9, 2.3)
 
 var lesson: int = Lesson.LIFT
 
@@ -46,6 +56,8 @@ var _chip_holder: Control
 var _loop: Tween
 var _begun := false
 var _finger := Vector2(-1.0, -1.0)   # page-local; x < 0 is no finger
+## The second finger of a pinch.
+var _finger2 := Vector2(-1.0, -1.0)
 var _down := false
 ## Where the finger went down, so it comes up on the same spot.
 var _aim := Vector2.ZERO
@@ -54,8 +66,21 @@ var _finger_shown: ArrayMesh
 ## The board, quiet: no sound set (its id names none) and no buzz, no
 ## toast, no party and no seal.
 class Small extends "res://puzzles/buttons2d.gd":
+	## The ZOOM page's cloth zooms, whatever its band; the page has a
+	## button of its own.
+	var zoom_lesson := false
+
 	func puzzle_id() -> String:
 		return "buttons_tutorial"
+
+	func _zoom_limits() -> Vector2:
+		return ZOOM_TO if zoom_lesson and _cell > 0.0 and not _won else Vector2.ONE
+
+	func _zoom_button_wanted() -> bool:
+		return false
+
+	func _gesture_tick() -> void:
+		pass
 
 	func _ready() -> void:
 		super()
@@ -124,13 +149,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
 	_art = Small.new()
+	_art.zoom_lesson = lesson == Lesson.ZOOM
 	add_child(_art)
-	if lesson == Lesson.HINT:
+	if lesson == Lesson.HINT or lesson == Lesson.ZOOM:
 		_chip_holder = Control.new()
 		_chip_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_chip_holder.scale = Vector2.ONE * CHIP_SCALE
 		add_child(_chip_holder)
-		_chip = IconButton.new("bulb")
+		_chip = IconButton.new("bulb" if lesson == Lesson.HINT else "plus")
 		_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_chip.custom_minimum_size = Vector2.ONE * BULB_SIZE
 		_chip_holder.add_child(_chip)
@@ -188,6 +214,10 @@ func _place_chip() -> void:
 	var k := minf(CHIP_SCALE, (room - 28.0) / maxf(want.x, 1.0))
 	_chip_holder.scale = Vector2(k, k)
 	_chip_holder.position = Vector2(field.end.x + room * 0.5, field.get_center().y) - want * k * 0.5
+	# the zoom button is at the foot of the picture's room on the left, as
+	# it is on the board
+	if lesson == Lesson.ZOOM:
+		_chip_holder.position = Vector2(12.0, _art._view.end.y - 12.0 - want.y * k)
 
 func _chip_mid() -> Vector2:
 	return _chip_holder.position + _chip.size * _chip_holder.scale * 0.5
@@ -195,8 +225,12 @@ func _chip_mid() -> Vector2:
 func _process(_delta: float) -> void:
 	if _finger.x >= 0.0 or _finger_shown != null:
 		_over.queue_redraw()
+	if lesson == Lesson.ZOOM and _chip != null:
+		_chip.set_icon("minus" if _art.zoom.k > (1.0 + ZOOM_TO.x) * 0.5 else "plus")
 
 func _cloth() -> Array:
+	if lesson == Lesson.ZOOM:
+		return FRAMED
 	return LONG if lesson == Lesson.TIN else PLAIN
 
 # --- the loops ---
@@ -237,6 +271,14 @@ func _start() -> void:
 			for k in 3:
 				_press_chip()
 				_loop.tween_interval(2.6)
+		Lesson.ZOOM:
+			_pinch()
+			_loop.tween_interval(1.4)
+			_pan()
+			_loop.tween_interval(1.2)
+			_loop.tween_callback(_say.bind("HTP_BB_ZOOM_BTN_CAP"))
+			_press_chip()
+			_loop.tween_interval(2.0)
 	_loop.tween_callback(_reset)
 
 ## A square of the cloth, or the tin: TIN is its first free place and
@@ -274,9 +316,71 @@ func _press_chip() -> void:
 		_down = true
 		_chip.squish())
 	_loop.tween_interval(0.18)
-	_loop.tween_callback(func() -> void: _art.hint())
+	_loop.tween_callback(func() -> void:
+		if lesson == Lesson.ZOOM:
+			_art.zoom_button()
+		else:
+			_art.hint())
 	_loop.tween_interval(0.25)
 	_loop.tween_callback(_lift)
+
+## Two fingers come down on the middle of the picture and go apart: the
+## board's zoom has them as two touches, and brings the picture close.
+func _pinch() -> void:
+	_loop.tween_callback(_say.bind("HTP_BB_ZOOM_PINCH_CAP"))
+	_loop.tween_callback(func() -> void: _two(0.0, false))
+	_loop.tween_interval(0.5)
+	_loop.tween_callback(func() -> void:
+		_down = true
+		_touch(0, _finger, true)
+		_touch(1, _finger2, true))
+	_loop.tween_method(func(u: float) -> void:
+		_two(u, true)
+		_drag(0, _finger)
+		_drag(1, _finger2), 0.0, 1.0, 0.8)
+	_loop.tween_interval(0.2)
+	_loop.tween_callback(func() -> void:
+		_touch(1, _finger2, false)
+		_touch(0, _finger, false)
+		_lift())
+
+## Where a pinch's fingers are, `u` of the way apart.
+func _two(u: float, down: bool) -> void:
+	var mid: Vector2 = _art._view.get_center()
+	var reach := Vector2(34.0, -14.0) * (1.0 + 2.4 * u)
+	_finger = mid - reach
+	_finger2 = mid + reach
+	_down = down
+
+## One finger dragged across the picture seen close: it pans.
+func _pan() -> void:
+	var from := func() -> Vector2: return _art._view.get_center() + Vector2(70.0, 30.0)
+	_loop.tween_callback(_say.bind("HTP_BB_ZOOM_PAN_CAP"))
+	_loop.tween_callback(func() -> void: _point_at(from.call()))
+	_loop.tween_interval(0.45)
+	_loop.tween_callback(func() -> void:
+		_down = true
+		_touch(0, _finger, true))
+	_loop.tween_method(func(u: float) -> void:
+		_finger = from.call() + Vector2(-140.0, -60.0) * u
+		_drag(0, _finger), 0.0, 1.0, 0.8)
+	_loop.tween_interval(0.2)
+	_loop.tween_callback(func() -> void:
+		_touch(0, _finger, false)
+		_lift())
+
+func _touch(index: int, at: Vector2, down: bool) -> void:
+	var ev := InputEventScreenTouch.new()
+	ev.index = index
+	ev.pressed = down
+	ev.position = at
+	_art._gui_input(ev)
+
+func _drag(index: int, at: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = index
+	ev.position = at
+	_art._gui_input(ev)
 
 ## Every lesson back to its question. `fresh` is the first lay, which pops
 ## the cloth in with the board's entrance.
@@ -288,7 +392,7 @@ func _reset(fresh := false) -> void:
 	_lift()
 	_place_chip()
 	_say({Lesson.LIFT: "HTP_BB_LIFT_CAP", Lesson.SEW: "HTP_BB_BARE_CAP", Lesson.TIN: "HTP_BB_LONG_CAP",
-		Lesson.HINT: "HTP_BB_BULB_CAP"}[lesson])
+		Lesson.HINT: "HTP_BB_BULB_CAP", Lesson.ZOOM: "HTP_BB_ZOOM_PINCH_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
 func _still() -> void:
@@ -309,6 +413,9 @@ func _still() -> void:
 			_say("HTP_BB_STAY_CAP")
 		Lesson.HINT:
 			_art.hint()
+		Lesson.ZOOM:
+			_art.zoom_button()
+			_say("HTP_BB_ZOOM_PINCH_CAP")
 
 func _say(key: String) -> void:
 	_caption.text = tr(key)
@@ -321,6 +428,7 @@ func _point_at(at: Vector2) -> void:
 
 func _lift() -> void:
 	_finger = Vector2(-1.0, -1.0)
+	_finger2 = Vector2(-1.0, -1.0)
 	_down = false
 
 func _button(cell: int, pressed: bool) -> void:
@@ -342,9 +450,15 @@ func _draw_finger() -> void:
 		_finger_shown = null
 		return
 	var b := Face.Builder.new()
-	var at := _art.position + _finger + Vector2(cell * 0.18, cell * 0.22)
-	var r := cell * FINGER_R * (0.85 if _down else 1.0)
-	b.disc(at, r, Color(Pal.TEXT, FINGER_ALPHA * (1.6 if _down else 1.0)))
-	b.stroke(Face.Builder.ring(at, r, r), 3.0, Color(Pal.TEXT, 0.45), true)
+	for finger: Vector2 in [_finger, _finger2]:
+		if finger.x < 0.0:
+			continue
+		# a pinch's fingers are on the spot they touch; a tap's is a little
+		# off its button, which it would hide
+		var off := Vector2.ZERO if lesson == Lesson.ZOOM and _finger2.x >= 0.0 else Vector2(cell * 0.18, cell * 0.22)
+		var at := _art.position + finger + off
+		var r := (22.0 if lesson == Lesson.ZOOM else cell * FINGER_R) * (0.85 if _down else 1.0)
+		b.disc(at, r, Color(Pal.TEXT, FINGER_ALPHA * (1.6 if _down else 1.0)))
+		b.stroke(Face.Builder.ring(at, r, r), 3.0, Color(Pal.TEXT, 0.45), true)
 	_finger_shown = b.mesh()
 	_over.draw_mesh(_finger_shown, null)

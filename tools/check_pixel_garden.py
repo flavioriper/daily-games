@@ -5,9 +5,14 @@
     python3 tools/check_pixel_garden.py --sheet out.png    # and draw every picture as beads
     python3 tools/check_pixel_garden.py --sheet out.png --band 2 --skip 10
 
-The rules (spec 2026-09-27, section 3): a band's pictures are all its size,
-in its count of colours, 30 to 70% filled, never touching all four edges,
-and no id or name twice. The sheet needs Pillow.
+The rules: a band's pictures are all its size and in its count of colours,
+and no id or name is used twice. Easy and Medium (10 and 12 square, spec
+2026-09-27, section 3) are one object on a bare board: 30 to 70% filled,
+never touching all four edges. Hard and Insane (24 and 32 square, painted by
+tools/paint_pixel_garden.py since 2026-10-11) are whole scenes: 85 to 100%
+filled, the edges theirs to touch, and no one colour 45% of the picture or
+more. The sheet needs Pillow; a big band is laid fewer pictures across so
+the sheet stays within SHEET_W pixels.
 """
 import argparse
 import json
@@ -16,8 +21,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BANK = ROOT / "content" / "pixel_garden.json"
-SIZES = [10, 12, 14, 16]
-COLOURS = [(3, 4), (4, 5), (5, 6), (6, 7)]
+SIZES = [10, 12, 24, 32]
+COLOURS = [(3, 4), (4, 5), (7, 10), (8, 12)]
+FILL = [(0.30, 0.70), (0.30, 0.70), (0.85, 1.00), (0.85, 1.00)]
+BIG = 2          # the first band of whole scenes
+MOST = 0.45      # a big picture's largest colour stays under this share
+SHEET_W = 2000
 # core/palette.gd's PG_BEADS.
 BEADS = {
     "red": "e0503a", "orange": "f08a2c", "yellow": "f4c640", "cream": "f3e6c8",
@@ -54,9 +63,15 @@ def check(bank):
                 bad("unknown colours %s" % sorted(used - set(palette)))
             if not lo <= len(used) <= hi:
                 bad("%d colours, wants %d-%d" % (len(used), lo, hi))
-            filled = sum(c != "." for c in "".join(rows)) / float(n * n)
-            if not 0.30 <= filled <= 0.70:
+            flat = "".join(rows)
+            filled = sum(c != "." for c in flat) / float(n * n)
+            if not FILL[b][0] <= filled <= FILL[b][1]:
                 bad("%.0f%% filled" % (filled * 100))
+            if b >= BIG:
+                most = max(used, key=flat.count) if used else "."
+                if flat.count(most) >= MOST * n * n:
+                    bad("%s is %.0f%% of it" % (palette.get(most, most), flat.count(most) * 100.0 / (n * n)))
+                continue
             edges = [any(c != "." for c in rows[0]), any(c != "." for c in rows[-1]),
                      any(r[0] != "." for r in rows), any(r[-1] != "." for r in rows)]
             if all(edges):
@@ -68,30 +83,42 @@ def sheet(bank, out, band, skip, cell):
     from PIL import Image, ImageDraw
     palette = bank["palette"]
     bands = [band] if band >= 0 else range(len(bank["bands"]))
-    per_row = 10
     pad, label = 14, 16
-    tile = 16 * cell + pad
-    rows_of = [max(1, -(-len(bank["bands"][b][skip:]) // per_row)) for b in bands]
-    img = Image.new("RGB", (per_row * tile + pad, sum(rows_of) * (tile + label) + pad), "#efe6d2")
+    # One layout a band: its own bead, its own count across.
+    lay = []
+    for b in bands:
+        pics = bank["bands"][b][skip:]
+        n = max([len(p["rows"]) for p in pics] + [SIZES[b]])
+        c = max(2, min(cell, (SHEET_W - 2 * pad) // n))
+        tile = n * c + pad
+        per_row = max(1, min(10, (SHEET_W - pad) // tile))
+        lay.append((b, pics, n, c, per_row, tile, max(1, -(-len(pics) // per_row))))
+    width = max(per_row * tile for _b, _p, _n, _c, per_row, tile, _r in lay) + pad
+    height = sum(nrows * (tile + label) for _b, _p, _n, _c, _per, tile, nrows in lay) + pad
+    img = Image.new("RGB", (width, height), "#efe6d2")
     d = ImageDraw.Draw(img)
     y0 = pad
-    for b, nrows in zip(bands, rows_of):
-        for i, pic in enumerate(bank["bands"][b][skip:]):
+    for b, pics, size, c, per_row, tile, nrows in lay:
+        for i, pic in enumerate(pics):
             x = pad + (i % per_row) * tile
             y = y0 + (i // per_row) * (tile + label)
             n = len(pic["rows"])
-            d.rectangle([x - 3, y - 3, x + n * cell + 2, y + n * cell + 2], fill="#fbf7ee")
+            d.rectangle([x - 3, y - 3, x + n * c + 2, y + n * c + 2], fill="#fbf7ee")
+            inset = 1 if c >= 8 else 0
             for r, row in enumerate(pic["rows"]):
-                for c, ch in enumerate(row):
-                    box = [x + c * cell + 1, y + r * cell + 1, x + (c + 1) * cell - 1, y + (r + 1) * cell - 1]
+                for k, ch in enumerate(row):
+                    box = [x + k * c + inset, y + r * c + inset, x + (k + 1) * c - 1, y + (r + 1) * c - 1]
                     if ch == ".":
-                        m = cell // 2 - 1
+                        m = c // 2 - 1
                         d.ellipse([box[0] + m, box[1] + m, box[2] - m, box[3] - m], fill="#ddd2bb")
                         continue
-                    rgb = tuple(int(BEADS[palette[ch]][k:k + 2], 16) for k in (0, 2, 4))
+                    rgb = tuple(int(BEADS[palette[ch]][j:j + 2], 16) for j in (0, 2, 4))
+                    if c < 8:       # a bead this small is a square of its colour
+                        d.rectangle(box, fill=rgb)
+                        continue
                     d.ellipse(box, fill=tuple(int(v * 0.72) for v in rgb))
                     d.ellipse([box[0] + 1, box[1] + 1, box[2] - 1, box[3] - 1], fill=rgb)
-            d.text((x, y + 16 * cell + 1), pic["id"], fill="#4a3226")
+            d.text((x, y + size * c + 1), pic["id"], fill="#4a3226")
         y0 += nrows * (tile + label)
     img.save(out)
 
@@ -102,7 +129,7 @@ def main():
     ap.add_argument("--sheet")
     ap.add_argument("--band", type=int, default=-1)
     ap.add_argument("--skip", type=int, default=0, help="leave out the first N pictures of each band")
-    ap.add_argument("--cell", type=int, default=10)
+    ap.add_argument("--cell", type=int, default=10, help="pixels a bead")
     a = ap.parse_args()
     bank = json.loads(Path(a.bank).read_text())
     errors = check(bank)

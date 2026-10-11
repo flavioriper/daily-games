@@ -10,7 +10,12 @@ extends SceneTree
 ## tapped; the tin filled and tapped once more; a patch of another colour); `hint` (the bulb, then Undo);
 ## `solve` (the hand's taps to the win); `out` (Insane: the taps spent
 ## carelessly, the card, Try again); `reset`; `restore` (a day reopened
-## already sewn); `howto` (the tutorial's four pages as they play).
+## already sewn); `howto` (the tutorial's pages as they play, five on Hard and
+## Insane); `big` (Hard and Insane: the picture whole at rest, then close by
+## the button with a run picked, the run in the air to the tin, a pan by one
+## finger and a pinch back to whole, the draw calls of each read apart).
+## `howzoom` is the tutorial's ZOOM page alone (Hard and Insane).
+## `PG_BANK=<file>` points the board at another bank of pictures.
 ## Frames go to <dir>/bb_<mode>_d<level>_<n>.png; every mode prints the peak
 ## draw calls and the mean frame from 0.5 s on.
 
@@ -85,6 +90,7 @@ func _process(delta: float) -> bool:
 		_ms_sum += delta * 1000.0
 		_ms_n += 1
 		_draws_max = maxi(_draws_max, int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)))
+		_mark_peak = maxi(_mark_peak, int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)))
 	if _t >= _end:
 		if _ms_n > 0:
 			print("frames: draw calls peak %d, mean %.2f ms over %d frames" % [_draws_max, _ms_sum / maxf(_ms_n, 1), _ms_n])
@@ -106,6 +112,12 @@ func _cleanup() -> void:
 			card.queue_free()
 	load("res://core/motion.gd").reduce = false
 
+## The draw calls since the last mark, by name: the peak of each stretch.
+var _mark_peak := 0
+func _mark(what: String) -> void:
+	print("draws: %s, peak %d (now %d)" % [what, _mark_peak, int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))])
+	_mark_peak = 0
+
 func _at(t: float, what: Callable) -> void:
 	_plan.append([t, what])
 	_plan.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
@@ -120,7 +132,7 @@ func _shot(tag := "") -> void:
 
 ## A tap: a touch pressed and let go over `cell`, through the board's input.
 func _tap(cell: int) -> void:
-	var at: Vector2 = _puzzle.cell_centre(cell)
+	var at: Vector2 = _puzzle.cell_screen(cell)
 	for down in [true, false]:
 		var ev := InputEventScreenTouch.new()
 		ev.index = 0
@@ -279,7 +291,7 @@ func _script() -> void:
 			# the tutorial card as the ? opens it, each page shot twice as it plays
 			_at(0.6, func() -> void: _host._show_tutorial())
 			var t := 1.0
-			for page in 4:
+			for page in (5 if _level >= 2 else 4):
 				_at(t + 4.2, _shot)
 				_at(t + 7.5, _shot)
 				_at(t + 7.7, func() -> void:
@@ -290,6 +302,75 @@ func _script() -> void:
 				if is_instance_valid(_host._tutorial):
 					_host._tutorial.free())
 			_end = t + 0.6
+		"big":
+			# a dozen of the hand's moves first, so some are sewn; then whole,
+			# at rest
+			_at(0.9, func() -> void:
+				for k in 12:
+					_next()
+				if _puzzle.holding():
+					_puzzle._drop())
+			_at(1.6, _shot)
+			_at(1.7, _mark.bind("whole at rest"))
+			# close, by the button, on the picture's middle
+			_at(2.4, func() -> void: _puzzle.zoom_button())
+			_at(3.0, _mark.bind("going close"))
+			# a run picked: the biggest in sight
+			_at(3.1, func() -> void:
+				var best := -1
+				var most := 0
+				for i in st.slot.size():
+					if st.slot[i] >= 0 and st.cur[i] >= 0 and not st.is_home(i) \
+							and _puzzle._view.grow(-120.0).has_point(_puzzle.cell_screen(i)):
+						var n: int = st.run_of(i).size()
+						if n > most:
+							most = n
+							best = i
+				print("pick: a run of ", most, " at ", best)
+				_tap(best))
+			_at(3.8, _shot)
+			_at(3.9, _mark.bind("close, a run picked"))
+			# into the tin, shot in the air
+			_at(4.0, func() -> void: _tap_tin())
+			_at(4.16, _shot)
+			_at(4.3, _shot)
+			_at(4.9, _shot)
+			_at(5.0, _mark.bind("the run to the tin"))
+			# one finger pans
+			_at(5.2, func() -> void:
+				var from: Vector2 = _puzzle._view.get_center()
+				_touch(from, true)
+				for k in 8:
+					var ev := InputEventScreenDrag.new()
+					ev.index = 0
+					ev.position = from + Vector2(-30.0, -22.0) * (k + 1)
+					_puzzle._gui_input(ev)
+				_touch(from + Vector2(-240.0, -176.0), false))
+			_at(5.5, _shot)
+			# the bulb's place brings the picture to it (Hard has a bulb)
+			_at(5.7, func() -> void:
+				if _puzzle.hints_left() > 0:
+					_host._on_hint())
+			_at(6.6, _shot)
+			_at(6.7, _mark.bind("panned, hinted"))
+			# whole again
+			_at(6.9, func() -> void: _puzzle.zoom_button())
+			_at(7.6, _shot)
+			_at(7.7, _mark.bind("whole again"))
+			_end = 8.2
+		"howzoom":
+			# the tutorial's ZOOM page (Hard and Insane), shot as it plays
+			_at(0.6, func() -> void: _host._show_tutorial())
+			_at(1.0, func() -> void:
+				for k in 3:
+					if is_instance_valid(_host._tutorial):
+						_host._tutorial._turn(1))
+			for t in [2.6, 4.3, 5.4, 6.6, 7.6, 9.0, 10.2]:
+				_at(t, _shot)
+			_at(10.6, func() -> void:
+				if is_instance_valid(_host._tutorial):
+					_host._tutorial.free())
+			_end = 11.0
 		"restore":
 			_at(0.2, func() -> void:
 				_puzzle.completed_record = {"taps": st.par + 2, "left": 0}
