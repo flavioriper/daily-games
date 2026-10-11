@@ -96,6 +96,11 @@ card no longer stands before a run. The Second chance stays.
 8. No new sound: buying plays the level's cue, the new tiers the toys'.
 9. The gold boosters removed and refunded.
 10. The pace itself: the bots bracket a person, they are not one.
+11. A run left by Back or Restart banks nothing: only a run whose spin ran
+    out is banked.
+12. Mouth is slow: the level at which a duck goes down from the first is
+    the fourteenth. `MOUTH_UP` (0.6) is the first knob if it feels
+    worthless.
 
 ## 7. Not done
 

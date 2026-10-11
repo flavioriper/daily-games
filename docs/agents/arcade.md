@@ -3102,7 +3102,8 @@ biggest whirlpool.
     overflows. `_shot_eddy.gd` goes on to the last level, the end card, the
     shop, a level of each upgrade bought and the fitted run: 108 to 259 draw
     calls in play at level 20, 300 with the end card, 397 with the shop over
-    it (810x1440).
+    it (810x1440); on `opengl3_angle` 108 to 277, 334 and 430.
+  - **A run left by Back or Restart banks nothing**; only `_run_over` banks.
   - Mine and unseen by the user: the spec's ten calls. Owed: a phone, the
     sounds, pt and es, a person's climb timed.
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed
