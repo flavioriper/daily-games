@@ -358,3 +358,24 @@ move together but each one in it own sequence, not all at once".
 - Reduce-motion has no lag. Probed headless (the board probe 28 days and
   the zoom, 0 failures; the suite 249,804). **Not seen on a screen**: the
   steps are mine to tune once the user has felt them.
+
+## Sewn is the colour, and the zoom has a step (2026-10-11)
+
+- **A sewn button is its square in the colour, whole** (the user: "it's hard
+  to see button box when button is on right place, can we make the button
+  blend to the ground and become just the color?"). `Art.sewn`: the cell
+  edge to edge, no rim, holes or thread, so sewn squares run together into
+  the picture. This takes back "sewn is the cross of thread" above. Bare
+  and sewn still differ by a shape, never a shade: **a bare patch carries a
+  ring where its button sits** (`Art._seat`, hidden under any button), which
+  is what tells white sewn from white bare. The menu card's the same. Seen
+  on Hard (`big`): 98 to 125 draw calls.
+- **The zoom's button goes a step at a time** (the user: "user should be
+  able to do another step of zoom out"): whole, half way (`sqrt(k_near)`),
+  close, and back out the same way (`PanZoom.cycle`, the icon from
+  `next_in`); two quick presses are two steps. `toggle` stays for code that
+  wants whole at once (Reset, the win). Pixel Garden's button is the same.
+  The probes, the harnesses and both tutorials press twice where they meant
+  close. Read as "a step between", not "smaller than whole": whole already
+  shows all of the picture. Probed headless; the half-way step not seen on
+  a screen.

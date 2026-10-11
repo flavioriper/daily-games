@@ -348,6 +348,7 @@ func _zoom_checks() -> void:
 		_b._sync_zoom()
 		_ok(_b._zoom_b.visible and _b._zoom_icon == "plus", "band %d: the button shows, a plus" % band)
 		_b._on_zoom_button()
+		_b._on_zoom_button()
 		_b._sync_zoom()
 		_ok(is_equal_approx(z.k, z.k_near) and _b._zoom_icon == "minus", "band %d: it goes close (%.2f), a minus" % [band, z.k])
 		# There and back, and clamped, at a hundred pushes and pinches.
@@ -379,6 +380,7 @@ func _zoom_checks() -> void:
 		# Every peg in sight is found where it shows.
 		z.reset()
 		_b._on_zoom_button()
+		_b._on_zoom_button()
 		var found := true
 		var count := 0
 		for c in st.size():
@@ -400,6 +402,7 @@ func _zoom_checks() -> void:
 			"band %d: the lower left peg can be pushed clear of the button (peg at %s, k %.2f, view %s)" % [band, _at(corner), z.k, view])
 		# A run keeps its row zoomed, and paints nothing out of sight.
 		z.reset()
+		_b._on_zoom_button()
 		_b._on_zoom_button()
 		var first := -1
 		for c in st.size():

@@ -507,9 +507,9 @@ func _zoom_limits() -> Vector2:
 func _zoom_button_wanted() -> bool:
 	return zoom.enabled and not _won and _solved_at == -INF and not is_done()
 
-## The zoom button: whole to close, close to whole.
+## The zoom button: whole, half way, close, and back out a step at a time.
 func zoom_button() -> void:
-	zoom.toggle()
+	zoom.cycle()
 	_request()
 
 ## The middle of square `i` on the cloth as it is laid out. Under a zoom the
@@ -1723,7 +1723,7 @@ func _process(delta: float) -> void:
 	if _zoom_b.visible != wanted:
 		_zoom_b.visible = wanted
 	if wanted:
-		_zoom_b.set_icon("minus" if zoom.k > (1.0 + zoom.k_near) * 0.5 else "plus")
+		_zoom_b.set_icon("plus" if zoom.next_in() else "minus")
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.DROP_FADE + 0.1 or now - _pill_bump < Motion.BUMP_TIME + 0.1 \
 			or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \

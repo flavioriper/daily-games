@@ -319,6 +319,7 @@ func _press_chip() -> void:
 	_loop.tween_callback(func() -> void:
 		if lesson == Lesson.ZOOM:
 			_art.zoom_button()
+			_art.zoom_button()
 		else:
 			_art.hint())
 	_loop.tween_interval(0.25)
@@ -414,6 +415,7 @@ func _still() -> void:
 		Lesson.HINT:
 			_art.hint()
 		Lesson.ZOOM:
+			_art.zoom_button()
 			_art.zoom_button()
 			_say("HTP_BB_ZOOM_PINCH_CAP")
 

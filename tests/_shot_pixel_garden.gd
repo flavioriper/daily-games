@@ -210,7 +210,9 @@ func _script() -> void:
 			_read("whole 1", 1.6, 2.1)
 			_read("whole 2", 2.1, 2.6)
 			# The button, on the middle of the board.
-			_at(2.7, func() -> void: _puzzle._zoom_b.pressed.emit())
+			_at(2.7, func() -> void:
+				_puzzle._zoom_b.pressed.emit()
+				_puzzle._zoom_b.pressed.emit())
 			_at(3.2, _shot)
 			# A run of the row's own colour dragged on the zoomed board.
 			var run := func(row: int, hold: bool) -> void:

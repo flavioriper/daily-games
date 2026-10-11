@@ -313,7 +313,9 @@ func _script() -> void:
 			_at(1.6, _shot)
 			_at(1.7, _mark.bind("whole at rest"))
 			# close, by the button, on the picture's middle
-			_at(2.4, func() -> void: _puzzle.zoom_button())
+			_at(2.4, func() -> void:
+				_puzzle.zoom_button()
+				_puzzle.zoom_button())
 			_at(3.0, _mark.bind("going close"))
 			# a run picked: the biggest in sight
 			_at(3.1, func() -> void:
@@ -354,7 +356,9 @@ func _script() -> void:
 			_at(6.6, _shot)
 			_at(6.7, _mark.bind("panned, hinted"))
 			# whole again
-			_at(6.9, func() -> void: _puzzle.zoom_button())
+			_at(6.9, func() -> void:
+				_puzzle.zoom_button()
+				_puzzle.zoom_button())
 			_at(7.6, _shot)
 			_at(7.7, _mark.bind("whole again"))
 			_end = 8.2

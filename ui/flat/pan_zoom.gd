@@ -61,6 +61,7 @@ var _glide_from_t := Vector2.ZERO
 var _glide_to_k := 1.0
 var _glide_to_t := Vector2.ZERO
 var _glide := -1.0
+var _going_in := true
 
 ## Sets the room and the limits; `near` is the button's zoom. Call from the
 ## layout. A zoom in hand is kept and clamped to the new room.
@@ -135,6 +136,45 @@ func toggle(at := Vector2.INF) -> void:
 		_glide = -1.0
 	else:
 		_glide = 0.0
+
+## The button, a step at a time (the user, 2026-10-11: "user should be able
+## to do another step of zoom out"): whole, half way, close, and back out
+## the same way. `at` (screen) is kept under the view's middle on the way
+## in; the way out keeps the middle of what is seen.
+func cycle(at := Vector2.INF) -> void:
+	if not enabled:
+		return
+	var goes_in := next_in()
+	_going_in = goes_in
+	var mid := sqrt(k_near)
+	var to_k := 1.0
+	# from where a glide in hand is going, so two quick presses are two steps
+	var cur := _glide_to_k if _glide >= 0.0 else k
+	if goes_in:
+		to_k = mid if cur < mid * 0.98 else k_near
+	else:
+		to_k = mid if cur > mid * 1.02 else 1.0
+	if at == Vector2.INF or not goes_in:
+		at = view.get_center()
+	_glide_from_k = k
+	_glide_from_t = _t
+	_glide_to_k = to_k
+	_glide_to_t = _clamp(view.get_center() - to_layout(at) * to_k, to_k)
+	if Motion.reduce:
+		k = _glide_to_k
+		_t = _glide_to_t
+		_glide = -1.0
+	else:
+		_glide = 0.0
+
+## Whether the button's next step goes closer (a plus) or back out (a minus).
+func next_in() -> bool:
+	var goal := _glide_to_k if _glide >= 0.0 else k
+	if goal <= 1.001:
+		return true
+	if goal >= k_near * 0.98:
+		return false
+	return _going_in
 
 ## Brings the layout point `p` into the view, zoomed as it is (a hint's
 ## square, a refusal's).

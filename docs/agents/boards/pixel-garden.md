@@ -240,3 +240,6 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
     A run does not pan the board as it nears the floor's edge. Zoomed, a
     bead's 1.5 px feather is 3 to 4.5 px: soft, not wrong; a kit made at
     the close size would be crisp there and a third heavier.
+- **The zoom's button goes a step at a time (2026-10-11)**: whole, half
+  way, close, and back out (`PanZoom.cycle`; `docs/agents/boards/buttons.md`,
+  "the zoom has a step"). The probe and the tutorial press twice for close.

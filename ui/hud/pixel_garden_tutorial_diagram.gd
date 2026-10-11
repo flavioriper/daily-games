@@ -336,6 +336,7 @@ func _start() -> void:
 			_loop.tween_interval(0.5)
 			_loop.tween_callback(func() -> void:
 				_down = true
+				_art._on_zoom_button()
 				_art._on_zoom_button())
 			_loop.tween_interval(0.2)
 			_loop.tween_callback(_lift)
@@ -508,6 +509,7 @@ func _still() -> void:
 			_art._press(_art.card())
 			_say("HTP_PG_PEEK_CAP")
 		Lesson.ZOOM:
+			_art._on_zoom_button()
 			_art._on_zoom_button()
 			_say("HTP_PG_ZOOM_BTN_CAP")
 		Lesson.CHECK:

@@ -749,17 +749,17 @@ func _sync_zoom() -> void:
 		and _now() - _opened >= Motion.ENTER_DELAY + Motion.ENTER_POP
 	if _zoom_b.visible != on:
 		_zoom_b.visible = on
-	var icon := "minus" if zoom.zoomed() else "plus"
+	var icon := "plus" if zoom.next_in() else "minus"
 	if icon != _zoom_icon:
 		_zoom_icon = icon
 		(_zoom_b as IconButton).set_icon(icon)
 
-## The button: close on the peg last touched (the middle before any), or
-## back to the whole board.
+## The button: a step closer on the peg last touched (the middle before
+## any), whole, half way, close, and back out the same way.
 func _on_zoom_button() -> void:
 	if not _zoom_live():
 		return
-	zoom.toggle(Vector2.INF if zoom.zoomed() or _focus == Vector2.INF else zoom.to_screen(_focus))
+	zoom.cycle(Vector2.INF if _focus == Vector2.INF else zoom.to_screen(_focus))
 	_view_moved()
 
 ## Back to the whole board, gliding: the win, Reset, Try again.

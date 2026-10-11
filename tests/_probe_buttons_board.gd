@@ -167,9 +167,11 @@ func _zoom() -> void:
 			band, board._cell, board._cell * z.k_near, board._cell * z.k_max])
 		# the button: close, and whole again
 		board.zoom_button()
+		board.zoom_button()
 		_check(is_equal_approx(z.k, z.k_near), "the button did not go close")
 		var p := Vector2(333.0, 777.0)
 		_check(z.to_layout(z.to_screen(p)).distance_to(p) < 0.01, "to_layout does not undo to_screen")
+		board.zoom_button()
 		board.zoom_button()
 		_check(is_equal_approx(z.k, 1.0) and z.xf() == Transform2D.IDENTITY, "the button did not come back whole")
 		# a tap on the whole picture lands on its square
@@ -179,6 +181,7 @@ func _zoom() -> void:
 		_check(board._held_cells.has(i), "whole: the tap did not pick the square under it")
 		board._drop()
 		# close: a tap lands on the square under the finger
+		board.zoom_button()
 		board.zoom_button()
 		for round in 3:
 			i = _loose_in_sight(board, i)
@@ -248,6 +251,7 @@ func _zoom() -> void:
 		_touch(board, 0, a, false)
 		_check(is_equal_approx(z.k, 1.0) and z.xf().origin.length() < 0.01, "a pinch together did not end whole")
 		# the tin is never zoomed: a run goes in from a picture seen close
+		board.zoom_button()
 		board.zoom_button()
 		i = _loose_in_sight(board)
 		_touch(board, 0, board.cell_screen(i), true)
