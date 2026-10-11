@@ -3243,7 +3243,14 @@ spec's section 10 has the whole of it; the gel of section 9 lived an hour.
   jet** that turns slowly, never a push straight out (all divergence, the
   pressure takes it back). **The dye settles** toward its cell's mean
   each frame and the jelly turns viscous once the button is let go, so a
-  pour merges into one shade. Each frame the screen's `_drive` sets the
+  pour merges into one shade; past `POUR_TOP` new dye displaces old, so
+  a second flavour shifts a full cell. **The dye is fetched by texel
+  with a mask check on every tap**: read through the sampler's linear
+  filter it blended with the black wall texels and the settling blur
+  drained every cell from its rim (fills fell from full to 0.65 in five
+  seconds of rest). **The judge has an eye's tolerance** (`NEAR_FREE`
+  0.1, `NEAR_GONE` 0.8 of the way off). 81 to 90 draw calls in play, 101
+  with the end card. Each frame the screen's `_drive` sets the
   tip, its cell, the squeeze, the pigment and the drag, and `tick(delta)`
   writes the uniforms; `set_running` turns the passes off while the
   screen is not played, paused or held. `measure()` reads the judge pass

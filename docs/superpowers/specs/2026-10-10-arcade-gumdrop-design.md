@@ -254,7 +254,8 @@ momentum, and drawn as plain colour. That is what was built
   (the velocity carried, slowed, pushed at the tip), curl, vorticity
   confinement, divergence, fourteen Jacobi sweeps of pressure, gradient,
   dye, the dye's keep, and a judge pass. Velocity 128 square, dye 256.
-  Each pass is a ColorRect under a shader: about 22 draw calls.
+  Each pass is a ColorRect under a shader: 81 to 90 draw calls in play
+  (60 to 68 before), 101 with the end card.
 - **Eight bits a channel** (no HDR 2D on gl_compatibility, checked:
   1.5 read back as 1.0), so velocity, pressure, divergence and curl are
   packed across two bytes and never read through the sampler's filter;
@@ -273,6 +274,18 @@ momentum, and drawn as plain colour. That is what was built
   every frame (`SETTLE`, read `SETTLE_R` texels off), and the jelly
   turns viscous and loses its vortex confinement the moment the button
   is let go, so a pour evens into one shade in a few seconds.
+- **The pour has a top** (`POUR_TOP`, 2.0 amounts, a little past the
+  card's shade) past which new dye takes the old one's place, so nothing
+  goes black under the tip and a second flavour poured on a full cell
+  shifts it toward itself.
+- **The dye is read by texel**, each tap checked against the mask. Read
+  through the sampler's linear filter it blended with the black wall
+  texels, and the settling blur drained every cell from its rim: the
+  bots' fills fell from full to 0.65 in five seconds of rest.
+- **The judge has an eye's tolerance** (`NEAR_FREE`, `NEAR_GONE`): a
+  tenth of the way off the card's colour is still a full match, eight
+  tenths off is nothing. The strict distance of section 9 gave 63% to a
+  mould that looked done.
 - **Plain colour**: the look shader is the sim's colour maths and
   nothing else. Lighting the dye from its slope (tried) made every fold a
   crease of foil.
