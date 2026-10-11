@@ -368,7 +368,8 @@ func _chop(p: Vector2i, near: Vector2i, auto: bool) -> bool:
 ## Every tick: a forest with a level makes its own logs, and what a forest
 ## holds leaves by its gates, one a gate a tick, the side after the last
 ## first, into whatever takes it there. Where nothing takes any, one lies on
-## bare ground past a gate, so a new land's first taps are seen to give.
+## bare ground past a gate, so a new land's first taps are seen to give; once
+## a belt, the market or a machine stands past any gate, nothing lies.
 func _run_forests() -> void:
 	for p: Vector2i in forests:
 		var f: Dictionary = forests[p]
@@ -403,6 +404,13 @@ func _run_forests() -> void:
 			events.append({"type": "log", "tile": g + DIRS[d], "from": g, "kind": "log"})
 			it = {}
 		if gave or int(f.stock) <= 0:
+			continue
+		# a gate that leads somewhere is only busy: nothing is spilt past another
+		var led := false
+		for d in 4:
+			var to := gate(p, d) + DIRS[d]
+			led = led or belts.has(to) or is_market(to) or _mod_at.has(to)
+		if led:
 			continue
 		for q in 4:
 			var d := (first + q) % 4

@@ -246,7 +246,8 @@ not a count). Every rate is the ledger's section 12.
   gate into what takes it beyond (`_enter`: a belt, the market, a hopper,
   a retort's back), the side after the last first; when nothing takes any,
   one lies on bare ground past a gate, so a new land's first taps are seen
-  to give. A log out is the event `log`; one in is `chop {tile, id, plate,
+  to give (never once a belt, the market or a machine stands past any
+  gate: a busy belt is waited for). A log out is the event `log`; one in is `chop {tile, id, plate,
   auto}`.
 - **Levels** (`FOREST_RATE`, `FOREST_PRICE`): 1, 2, 3, 4 logs a second by
   itself for 60, 180, 540, 1,620. `sim.upgrade(any tile of it)`.
@@ -267,12 +268,18 @@ not a count). Every rate is the ledger's section 12.
   bought); texts in en, pt and es changed with them.
 - **A land kept before this is not read** (`VERSION` 2): its forest had
   belts and machines in it. A tester's phone starts a new land.
-- **Measured** (810x1440, default driver and `opengl3_angle` alike,
-  2026-10-11, a throwaway run): 92 draw calls on a new land (62 before:
-  fourteen trees and their shadows where there were six), 97 to 104 while
-  tapping, 98 with nine belts running, 123 with the forest's card open,
-  196 on a land of five plates (three forests) at each of the four turns,
-  235 with the drawer open on it.
+- **Measured** (810x1440, 2026-10-11, default driver, `opengl3_angle` and
+  reduce motion within a few of each other): 92 draw calls on a new land
+  (62 before: fourteen trees and their shadows where there were six), 109
+  with nine belts running, 120 to 123 with the forest's card open, 210 to
+  217 on six plates (three forests) at the four turns, 255 with the drawer
+  open on it, 274 under the tutorial, the tab 145 alone on seven plates and
+  131 in the menu. `tests/_probe_factory.gd` 177/0, `_shot_factory.gd`
+  136/0 on each of the three, `_shot_factory_menu.gd` 11/0, suite
+  249800/0. **These replace every count and draw-call figure quoted
+  earlier in this file.** The pace bot (a tap a second, market never
+  raised): the forest's first level at play-minute 3.5, the first plate
+  bought at 6.8, the same on every seed (18 before).
 - **Decided for the user and not judged by them**: the stock of 12 and the
   refusal when full; logs lying past a gate when no belt takes them;
   levels 2 to 4 and every price; the hedge, the chutes and the badge; two
