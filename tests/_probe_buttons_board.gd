@@ -39,7 +39,7 @@ func _process(_delta: float) -> bool:
 	var runs := 0
 	for band in 4:
 		var worst := 0
-		for day in (_days if band < 2 else 1):
+		for day in (_days if band < 3 else 1):
 			for how in 2:
 				var board: Control = Board.new()
 				board.size = Vector2(1080, 1920)
@@ -157,10 +157,10 @@ func _zoom() -> void:
 		board.max_moves = 0
 		var z = board.zoom
 		var st = board.state
-		if band < 2:
-			_check(not z.enabled, "Medium has a zoom")
+		if band < 3:
+			_check(not z.enabled, "band %d has a zoom" % band)
 			board.zoom_button()
-			_check(is_equal_approx(z.k, 1.0), "Medium zoomed")
+			_check(is_equal_approx(z.k, 1.0), "band %d zoomed" % band)
 			board.free()
 			continue
 		_check(z.enabled and z.k_near > 1.2 and z.k_max >= z.k_near, "band %d: no zoom (near %.2f, most %.2f)" % [band, z.k_near, z.k_max])

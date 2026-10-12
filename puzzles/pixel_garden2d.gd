@@ -524,12 +524,12 @@ func tutorial_pages() -> Array:
 		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
-## Easy, Medium and Hard keep Undo, Check and their hints. Insane counts
-## moves: no Undo (lifting a bead is the take-back, and it costs one), no
-## hint and no Check, which would each say what is wrong.
+## Easy, Medium and Hard keep Undo, Check and their hints. Insane has Undo
+## alone: no hint and no Check, which would each say what is wrong (it had
+## no Undo either while it counted its moves, until 2026-10-12).
 func capabilities() -> Array[String]:
 	match _state.band:
-		3: return []
+		3: return ["undo"]
 	return ["undo", "hint", "check"]
 
 ## Hard and Insane: a board too big to play whole, so it zooms.

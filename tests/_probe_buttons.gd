@@ -26,7 +26,9 @@ func _initialize() -> void:
 		var pars: Array = []
 		var sizes: Array = []
 		var t0 := Time.get_ticks_msec()
-		for pic: Dictionary in doc.bands[band]:
+		# Hard plays its own pictures (content/buttons_hard.json)
+		var pics: Array = State.hard_pictures() if band == State.HARD else doc.bands[band]
+		for pic: Dictionary in pics:
 			# a big picture is a hundred times the moves: one seed of it
 			for s in (seeds if band < State.BIG_FROM else 1):
 				for how in 3:

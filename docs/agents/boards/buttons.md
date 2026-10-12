@@ -507,3 +507,45 @@ bit smaller so user can see better the color below it".
   **on Insane a slip of two taps is a counted move with no Undo**; the
   two reach numbers; that the aim never helps a pick, only a place; two
   thirds as "a bit smaller"; the tin's buttons left as they were.
+
+## Hard is 16 square, and Insane counts nothing (2026-10-12)
+
+The user: "the hard mode on button box is way too hard based on the
+progress on easy and medium, also let's remove the limited moves on insane
+for drawing games like button box". Asked which way, they chose 16-square
+pictures for Hard and both picture boards (this one and Pixel Garden) for
+the count.
+
+- **Hard plays its own thirty pictures, 16 squares a side**
+  (`content/buttons_hard.json`, `State.hard_pictures()`, `HARD` 2): the
+  hand-drawn band that was the shared bank's Insane until the big pictures
+  (git 19c96f98^), 87 to 168 buttons in 6 or 7 colours. It takes back
+  "Hard is 24 square" for this board only: **Pixel Garden's Hard is still
+  the shared bank's 24**. `BIG_FROM` is 3, so Hard has the old scramble
+  (`CHUNK` 3-7), no zoom, no ZOOM page and no `BB_RULES_BIG`; it keeps what
+  the user gave Hard before: no rings, two hints, Undo. Its buttons are the
+  whole ones whatever the square (`lite` asks `_big()` too: 16 squares are
+  44 px at 810 wide, on the edge of `Art.SMALL`). 25 `PG_PIC_*` names the
+  big pictures had dropped are back in `locale/boards.csv`. A harness's
+  `PG_BANK` is still played band for band.
+- **`par` medians 17 / 31 / 72 / 370** (Hard 42-125; it was 241). Insane is
+  still five times Hard: the user's choice of the four offered (the others:
+  24 made kinder, cut-outs only, every band a step down).
+- **No band counts its moves**: `State.moves_budget()` is 0, so Insane has
+  Undo again (`capabilities` `["undo"]`), no bulb (`HINTS_BY` 0), no moves
+  page, and its pill reads sewn of all (so "on Insane a slip of two taps
+  is a counted move with no Undo", the section above, is no longer so). `COUNTED_FROM` is `INSANE`: the
+  band of the seal for any day sewn. The board's counter, the out-of-moves
+  card and `MOVES_BONUS` are still in the script for a budget over 0, and
+  unreached. `BB_LVL_2` and `BB_LVL_3` reworded in en, pt and es.
+  `tests/_shot_buttons.gd`'s `out` mode has nothing to show now, and `big`
+  is Insane's alone.
+- **Checked**: rules probe 864 runs (Hard's thirty, three seeds), board
+  probe 38 days (six on Hard), the zoom (none on Hard) and the aim, 0
+  failures; the suite 249,804. One window (`-- d=2 play`, `opengl3_angle`):
+  a 16-square whale of 145, Undo and the bulb in the bar, no rings, 102
+  draw calls at the peak.
+- **Not seen or owed**: Insane with its Undo on a screen; the reworded
+  level lines; the win harness and the perf probe, not rerun; a phone.
+- **Mine, not the user's**: Insane keeping the seal for any day and no
+  bulb; the dead counter left in the script; Hard keeping "no rings".

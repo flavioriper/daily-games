@@ -22,6 +22,8 @@ extends RefCounted
 ## as many as the picture puts there -- is ironed at once: right, and it is
 ## fused for good; wrong, and the beads astray hop back into the box.
 ##
+## **Insane stopped counting moves on 2026-10-12** (`moves_budget` is 0 on
+## every band); what follows is how it was.
 ## **No band has hearts since 2026-10-04**, and Insane counts moves instead
 ## (`moves_budget`, `move_cost`): there the board never calls the iron on a
 ## plate, so nothing says which bead is astray and nothing is taken off for
@@ -44,14 +46,7 @@ const HINTS := 3
 ## neither hints nor Check -- only the iron judges.
 const HINTS_BY := [3, 3, 2, 0]
 const HEARTS_BY := [0, 0, 0, 0]
-## Insane's spare moves over the picture's own beads (`moves_budget`): a
-## bead seated or lifted costs one. A twentieth of the picture and never
-## under three (one slip mended, off and on, with one to spare): with no
-## Check a bead astray shows late and costs two, and a picture of a thousand
-## beads has room for many.
-const MOVES_SLACK := 3
-const MOVES_SLACK_PART := 20
-## The band that counts moves.
+## The band with no hints and no Check (it counted moves until 2026-10-12).
 const INSANE := 3
 ## share_glyphs draws no more squares a side than this: a bigger picture is
 ## shared a block of pegs a square.
@@ -329,12 +324,14 @@ func wrong() -> PackedInt32Array:
 func can_undo() -> bool:
 	return not history.is_empty()
 
-## The moves a band hands out: the picture's beads and its slack, or 0 on a
-## band that does not count them.
+## No band counts its moves (the user, 2026-10-12: "let's remove the
+## limited moves on insane for drawing games like button box"; Insane had
+## the picture's beads and a twentieth more). With no count Insane is the
+## biggest picture with no hints and no Check: its plates are ironed as
+## any band's are, and Undo is back. The board's counter is still there for
+## a budget over 0, and unreached.
 func moves_budget() -> int:
-	if band != INSANE:
-		return 0
-	return target + maxi(MOVES_SLACK, target / MOVES_SLACK_PART)
+	return 0
 
 ## What `put(c, to)` would cost: one for a bead it would seat or lift,
 ## nothing for a put it would refuse (the same bead, a fixed peg, a peg

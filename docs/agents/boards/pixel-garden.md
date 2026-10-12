@@ -247,3 +247,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   pictures each, 12 scenes and 6 subjects on a bare board (asked of Button
   Box; `docs/agents/boards/buttons.md`, "Cut-outs among the big pictures").
   This board got them by sharing the bank, not by the user's word.
+
+## Insane counts no moves (2026-10-12)
+
+- The user: "let's remove the limited moves on insane for drawing games
+  like button box" (and, asked, both this board and Button Box).
+  `State.moves_budget()` is 0 on every band, so on Insane `max_moves` is 0:
+  **its plates are ironed as any band's are** (the iron was withheld only
+  because a verdict would have been moves made for the player), Undo is
+  back (`capabilities` `["undo"]`), and it still has no hint and no Check.
+  The rules sheet and the tutorial follow `max_moves` and so show the
+  plates and no moves page. `PG_LVL_3` reworded in en, pt and es. The
+  counter, `move_cost`, the out-of-moves card and its video are still in
+  the scripts for a budget over 0, and unreached; `tests/_probe_pixel_garden.gd`
+  hands its second-finger section a budget so that path stays checked
+  (PASS, 0 failed).
+- Hard here is still 24 square: Button Box alone went to 16
+  (`docs/agents/boards/buttons.md`).
+- **Not seen on a screen.** Mine: the iron back on Insane's plates, and
+  Undo back; the user asked only for the limit to go.

@@ -142,10 +142,11 @@ func _band_checks() -> void:
 	_ok(st.names.size() <= 12, "band %d has %d colours" % [_band, st.names.size()])
 	_ok(not ("perm" in st) and not ("turn" in st) and not st.has_method("windblown") and not st.has_method("card_peg"),
 		"band %d: no Windblown in the state" % _band)
-	var budget: int = st.target + maxi(3, st.target / 20) if _band == 3 else 0
+	# no band counts its moves (2026-10-12)
+	var budget := 0
 	_ok(st.moves_budget() == budget and _b.max_moves == budget and _b.max_hearts == 0,
 		"band %d: %d beads, budget %d, no hearts" % [_band, st.target, _b.max_moves])
-	var caps: Array[String] = []
+	var caps: Array[String] = ["undo"]
 	if _band < 3:
 		caps = ["undo", "hint", "check"]
 	_ok(_b.capabilities() == caps, "band %d capabilities %s" % [_band, _b.capabilities()])
@@ -164,7 +165,7 @@ func _band_checks() -> void:
 	_ok(st.ironed == PackedByteArray([1, 1, 1, 1]), "band %d every plate ironed" % _band)
 	_ok(_b.zoom.k == 1.0, "band %d: the win leaves the board whole" % _band, true)
 	if _band == 3:
-		_ok(_b.moves_left == budget - st.target, "Insane: a clean solve leaves the slack (%d)" % _b.moves_left)
+		_ok(_b.max_moves == 0 and not _b.out_of_hearts, "Insane: no moves counted, and no end but the picture")
 		_ok(_b.share_glyphs().contains(_b.tr("BN_INSANE_SEAL")) and not _b.share_glyphs().contains("🌬"),
 			"Insane's share line")
 
@@ -174,7 +175,7 @@ func _restore_old() -> void:
 	_deal(3)
 	_b.completed_record = {"hearts": 2, "flawless": true, "moves": 2, "perm": [3, 2, 1, 0], "turn": [1, 2, 3, 1]}
 	_b.restore_completed()
-	_ok(_b.is_done() and _b._state.is_solved() and _b._flawless and _b.moves_left == 2,
+	_ok(_b.is_done() and _b._state.is_solved() and _b._flawless,
 		"a day kept under the old rules reopens solved")
 	_b._prepare(_b._now())
 	_ok(_b._bands.size() == 8 or _b._state.n != 32, "its beads are in %d bands" % _b._bands.size())
@@ -205,6 +206,11 @@ func _cancel_checks() -> void:
 	Motion.reduce = false
 	_deal(3)
 	var st = _b._state
+	# No band counts its moves since 2026-10-12. The board's counter is still
+	# there for a budget over 0, and a second finger must still give back
+	# what a stroke spent: it is handed a budget here.
+	_b.max_moves = st.target + 3
+	_b.moves_left = _b.max_moves
 	var n: int = st.n
 	var k: int = _b.brush
 	# A row of bare pegs for a run of four.

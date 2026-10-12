@@ -332,11 +332,12 @@ func tutorial_pages() -> Array:
 		pages.append(MovesDiagram.page(self, max_moves, true))
 	return pages
 
-## Undo and the bulb up to Hard. Insane counts its taps, so neither. There
-## is no Check on any band: a button sewn on says so itself.
+## Undo on every band and the bulb up to Hard (Insane has no hints; it had
+## no Undo either while it counted its moves, until 2026-10-12). There is
+## no Check on any band: a button sewn on says so itself.
 func capabilities() -> Array[String]:
-	if state.band >= State.COUNTED_FROM:
-		return []
+	if state.band >= State.INSANE:
+		return ["undo"]
 	return ["undo", "hint"]
 
 func _ready() -> void:
@@ -484,7 +485,9 @@ func _layout() -> void:
 		named.append(c)
 	# a big picture's buttons are the light ones: plain seen whole, with
 	# their holes seen close
-	var lite := _cell < Art.SMALL
+	# (only a big one: Hard's 16 squares are 44 px on a narrow screen, and
+	# with no zoom its buttons keep their holes)
+	var lite := _cell < Art.SMALL and _big()
 	_units = Art.units(_cell, named, Art.CLOSE if lite else Art.FULL)
 	_units_far = Art.units(_cell, named, Art.PLAIN) if lite else {}
 	_near_look = _units_far.is_empty() or _cell * zoom.k >= LOD_IN
@@ -1595,7 +1598,7 @@ func share_glyphs() -> String:
 ## Whether the day earned the seal: any Insane cloth, or one sewn in no more
 ## taps than the state's own hand takes.
 func _stamped() -> bool:
-	return state.band >= State.COUNTED_FROM or _final_taps <= state.par
+	return state.band >= State.INSANE or _final_taps <= state.par
 
 func flat_win() -> Dictionary:
 	var what := tr(state.name_key) if state.name_key != "" else title()
@@ -1661,7 +1664,7 @@ func _party(lag: float) -> void:
 func _draw_stamp(now: float, shown: Array, slide: Transform2D) -> void:
 	var field := _field_px()
 	var rad := maxf(field.size.x, 420.0) * STAMP_R
-	var insane: bool = state.band >= State.COUNTED_FROM
+	var insane: bool = state.band >= State.INSANE
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
 	shown.append(_seal_mesh)

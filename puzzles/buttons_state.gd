@@ -19,10 +19,16 @@ extends RefCounted
 ## as the buttons in the tin, so while the tin holds anything some colour
 ## has a bare patch and a button off it, on the cloth or in the tin, and
 ## that button can be sewn (`tests/_probe_buttons.gd` plays that out).
-## Insane counts its moves: the moves this file's own hand takes (`par`)
-## and a few more.
+## Insane counted its moves until 2026-10-12; no band does now.
 
 const BANK := "res://content/pixel_garden.json"
+## Hard's own pictures, 16 squares a side (the user, 2026-10-12: "the hard
+## mode on button box is way too hard based on the progress on easy and
+## medium"; Hard was the shared bank's 24-square band, 267 to 576 buttons
+## after Medium's 50 to 100). Pixel Garden's Insane band as it was before
+## the big pictures; the shared bank's palette names their letters.
+const HARD_BANK := "res://content/buttons_hard.json"
+const HARD := 2
 ## The places in the tin a band starts with, and the most it ever has.
 ## Ten places open of twenty, CASE_STEP more a colour whole (the user,
 ## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
@@ -32,18 +38,19 @@ const CASE_BASE := [10, 10, 10, 10]
 const CASE_MAX := 20
 const CASE_STEP := 2
 const HINTS_BY := [3, 3, 2, 0]
-## Insane's spare taps over the par: a quarter of it, and never under this.
-const SLACK_MIN := 3
-const COUNTED_FROM := 3
+## Insane: no bulb, and the seal for any day sewn. It counted its moves
+## until 2026-10-12 (`moves_budget`).
+const INSANE := 3
 ## The lengths the scramble cuts the colours into, a band: the big pictures
 ## of Hard and Insane (24 and 32 square, the user, 2026-10-11) are cut
 ## longer, so a day there is long and not endless.
-const CHUNK := [Vector2i(3, 7), Vector2i(3, 7), Vector2i(5, 7), Vector2i(6, 6)]
+const CHUNK := [Vector2i(3, 7), Vector2i(3, 7), Vector2i(3, 7), Vector2i(6, 6)]
 ## A shared picture is at most this many marks across.
 const SHARE_MAX := 16
 ## The bands of the big pictures, which are scrambled a strip at a time
-## (`_scramble_strips`).
-const BIG_FROM := 2
+## (`_scramble_strips`) and zoom: Insane alone since 2026-10-12, Hard too
+## for a day before it.
+const BIG_FROM := 3
 ## The pictures a day may draw before it keeps the one it has.
 const DRAWS := 12
 const NEAR := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -66,6 +73,7 @@ enum { TO_PATCH, TO_TIN, FROM_TIN }
 
 static var _bank: Dictionary = {}
 static var _bank_read := false
+static var _hard: Array = []
 
 var band := 0
 ## A cloth with a tin of its own (the tutorial's); -1 is the band's.
@@ -110,6 +118,15 @@ static func bank() -> Dictionary:
 				_bank = doc
 	return _bank
 
+static func hard_pictures() -> Array:
+	if _hard.is_empty():
+		var f := FileAccess.open(HARD_BANK, FileAccess.READ)
+		if f != null:
+			var doc = JSON.parse_string(f.get_as_text())
+			if doc is Dictionary and doc.get("pictures") is Array:
+				_hard = doc.pictures
+	return _hard
+
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
@@ -120,6 +137,9 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var pics: Array = []
 	if doc.get("bands") is Array and band < (doc.bands as Array).size():
 		pics = doc.bands[band]
+	# (a harness's PG_BANK is played band for band, as it is given)
+	if band == HARD and not (OS.is_debug_build() and OS.has_environment("PG_BANK")):
+		pics = hard_pictures()
 	var pic := {"name": "", "rows": ["rrgg", "rrgg", "bbyy", "bbyy"]}
 	var legend := {"r": "red", "g": "green", "b": "blue", "y": "yellow"}
 	if pics.is_empty():
@@ -365,11 +385,12 @@ func in_tin() -> int:
 func is_solved() -> bool:
 	return cur == slot
 
-## Insane's taps: the par and its slack. 0 on a band that does not count.
+## No band counts its moves (the user, 2026-10-12: "let's remove the
+## limited moves on insane for drawing games like button box"; Insane had
+## the par and a quarter more). The board's counter is still there for a
+## budget over 0, and unreached.
 func moves_budget() -> int:
-	if band < COUNTED_FROM:
-		return 0
-	return par + maxi(SLACK_MIN, par / 4)
+	return 0
 
 ## What touches what on this band: the four sides and, up to CORNERS_TO
 ## (every band now), the corners.

@@ -1341,7 +1341,7 @@ PG_MOTTO,Bead by bead,Conta por conta,Cuenta a cuenta
 PG_LVL_0,"10 × 10, 3–4 colours","10 × 10, 3–4 cores","10 × 10, 3–4 colores"
 PG_LVL_1,"12 × 12, 4–5 colours","12 × 12, 4–5 cores","12 × 12, 4–5 colores"
 PG_LVL_2,"24 × 24, a big picture, 7–10 colours","24 × 24, uma figura grande, 7–10 cores","24 × 24, un dibujo grande, 7–10 colores"
-PG_LVL_3,"32 × 32, the biggest picture, counted moves","32 × 32, a maior figura, jogadas contadas","32 × 32, el dibujo más grande, jugadas contadas"
+PG_LVL_3,"32 × 32, the biggest picture, no hints","32 × 32, a maior figura, sem dicas","32 × 32, el dibujo más grande, sin pistas"
 PG_FUSED,That peg is fixed for good.,Esse pino está fixo de vez.,Esa clavija está fija para siempre.
 PG_TAKEN,That peg already has a bead. Pick its colour and tap it to lift it first.,Esse pino já tem uma conta. Escolha a cor dela e toque para tirá-la antes.,Esa clavija ya tiene una cuenta. Elige su color y tócala para quitarla primero.
 PG_NONE_LEFT,That colour is used up. One of its beads is in the wrong place.,Essa cor acabou. Uma das contas dela está no lugar errado.,Ese color se acabó. Una de sus cuentas está en el lugar equivocado.
@@ -3147,8 +3147,8 @@ BB_SHORT,"Sort the buttons,\nsew the picture.","Separe os botões,\ncosture o de
 BB_MOTTO,A place for every button,Um lugar para cada botão,Un sitio para cada botón
 BB_LVL_0,"10 × 10, diagonals link too","10 × 10, diagonais também ligam","10 × 10, las diagonales también unen"
 BB_LVL_1,"12 × 12, up to five colours","12 × 12, até cinco cores","12 × 12, hasta cinco colores"
-BB_LVL_2,"A big picture, 24 × 24: zoom in","Um desenho grande, 24 × 24: dê zoom","Un dibujo grande, 24 × 24: haz zoom"
-BB_LVL_3,"A huge picture, 32 × 32, counted moves","Um desenho enorme, 32 × 32, jogadas contadas","Un dibujo enorme, 32 × 32, jugadas contadas"
+BB_LVL_2,"16 × 16, up to seven colours, no rings","16 × 16, até sete cores, sem anéis","16 × 16, hasta siete colores, sin anillos"
+BB_LVL_3,"A huge picture, 32 × 32: zoom in","Um desenho enorme, 32 × 32: dê zoom","Un dibujo enorme, 32 × 32: haz zoom"
 BB_PILL,%d of %d sewn,%d de %d costurados,%d de %d cosidos
 BB_REFUSE_HOME,That one is sewn on. It stays.,Esse já está costurado. Ele fica.,Ese ya está cosido. Se queda.
 BB_REFUSE_FULL,The tin is full. Sew some buttons on first.,A lata está cheia. Costure alguns botões antes.,La lata está llena. Cose algunos botones antes.
@@ -3191,3 +3191,28 @@ HTP_BB_ZOOM_BODY,"This picture is too big to sew from afar. Spread two fingers t
 HTP_BB_ZOOM_PINCH_CAP,Two fingers apart: closer,Dois dedos se afastando: mais perto,Dos dedos separándose: más cerca
 HTP_BB_ZOOM_PAN_CAP,Drag one finger to look around,Arraste um dedo para olhar em volta,Arrastra un dedo para mirar alrededor
 HTP_BB_ZOOM_BTN_CAP,The button: the whole picture again,O botão: o desenho inteiro de novo,El botón: el dibujo entero otra vez
+PG_PIC_FOX,Fox,Raposa,Zorro
+PG_PIC_SHEEP,Sheep,Ovelha,Oveja
+PG_PIC_CAT,Cat,Gato,Gato
+PG_PIC_CATERPILLAR,Caterpillar,Lagarta,Oruga
+PG_PIC_BEEHIVE,Beehive,Colmeia,Colmena
+PG_PIC_DRAGONFLY,Dragonfly,Libélula,Libélula
+PG_PIC_FRUIT_BASKET,Fruit Basket,Cesta de Frutas,Cesta de Frutas
+PG_PIC_BADGER,Badger,Texugo,Tejón
+PG_PIC_STAG,Stag,Cervo,Ciervo
+PG_PIC_HERON,Heron,Garça,Garza
+PG_PIC_PEACOCK,Peacock,Pavão,Pavo Real
+PG_PIC_ROOSTER,Rooster,Galo,Gallo
+PG_PIC_BARN,Barn,Celeiro,Granero
+PG_PIC_LEAF,Leaf,Folha,Hoja
+PG_PIC_BOUQUET,Bouquet,Buquê,Ramo
+PG_PIC_WREATH,Wreath,Guirlanda,Corona
+PG_PIC_HUMMINGBIRD,Hummingbird,Beija-flor,Colibrí
+PG_PIC_CHAMELEON,Chameleon,Camaleão,Camaleón
+PG_PIC_HARE,Hare,Lebre,Liebre
+PG_PIC_SAILBOAT,Sailboat,Veleiro,Velero
+PG_PIC_SUNSET,Sunset,Pôr do Sol,Atardecer
+PG_PIC_SNOWMAN,Snowman,Boneco de Neve,Muñeco de Nieve
+PG_PIC_NEST,Nest,Ninho,Nido
+PG_PIC_BLUEBIRD,Bluebird,Azulão,Azulejo
+PG_PIC_MALLARD,Mallard,Pato-real,Ánade Real
