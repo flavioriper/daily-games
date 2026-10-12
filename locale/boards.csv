@@ -3100,7 +3100,7 @@ LA_OUT_BODY,"The swaps ran out with tiles still out of place. Start it again, or
 LA_OUT_REST,The swaps ran out with tiles still out of place. Start it again whenever you like.,As trocas acabaram com peças ainda fora do lugar. Recomece quando quiser.,Los cambios se acabaron con fichas aún fuera de su sitio. Empieza de nuevo cuando quieras.
 LA_OUT_MORE,%d more swaps,Mais %d trocas,%d cambios más
 LA_SEAL_BEST,Fewest swaps,Mínimo de trocas,Mínimo de cambios
-LA_SEAL_INSANE,Twenty,Vinte,Veinte
+LA_SEAL_INSANE,Six knots,Seis nós,Seis nudos
 HTP_LA_SWAP,Swap two tiles,Troque duas peças,Cambia dos fichas
 HTP_LA_SWAP_BODY,"Every tile is already on the lattice, in the wrong place. Drag one onto another to swap them, or tap one and then the other. A tile that lands in its own place turns green and stays.","Todas as peças já estão na treliça, no lugar errado. Arraste uma sobre outra para trocá-las, ou toque em uma e depois na outra. A peça que cai no lugar certo fica verde e não sai mais.","Todas las fichas ya están en la celosía, en el sitio equivocado. Arrastra una sobre otra para cambiarlas, o toca una y luego la otra. La ficha que cae en su sitio se pone verde y se queda."
 HTP_LA_LINES,Each number once a line,Cada número uma vez por linha,Cada número una vez por línea

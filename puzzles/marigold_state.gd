@@ -75,7 +75,7 @@ const BANDS := [
 	{"pegs": 54, "orange": 12, "seeds": 10, "pot": 17.0, "green": 2},
 	{"pegs": 72, "orange": 18, "seeds": 10, "pot": 15.0, "green": 2},
 	{"pegs": 90, "orange": 25, "seeds": 10, "pot": 13.0, "green": 2},
-	{"pegs": 100, "orange": 25, "seeds": 8, "pot": 11.0, "green": 1},
+	{"pegs": 100, "orange": 25, "seeds": 10, "pot": 11.0, "green": 1},
 ]
 
 var band := 0

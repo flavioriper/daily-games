@@ -271,4 +271,5 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   opengl3_angle: stuck after 11 greedy launches, the free tip, 74 draw
   calls. Mine, the user's to call: 12 clouds, and that a gust is free.
   Not played through by hand, no phone; the tutorial's WIND page unseen on
-  the new size.
+  the new size. `tests/_shot_planes.gd`'s `solve` and `cloud` modes were
+  written for the small banked sky and are unrun on the maze.

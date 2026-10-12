@@ -130,6 +130,8 @@ var clouds: Array[Vector2i] = []
 var gusts := 0
 ## Whether this Insane sky came off the bank rather than the live fallback.
 var banked := false
+## Whether the sky is a maze with the clouds stood over it (`_stand_clouds`).
+var mazed := false
 var _occupant: Dictionary = {}   # Vector2i -> plane index, planes still on the board
 var _history: Array[int] = []
 ## The carve's book: cell -> the planes already placed whose lane crosses it.
@@ -334,7 +336,7 @@ func solved() -> bool:
 ## only empties cells). On a Windy Day sky it is the exact search, taking no
 ## gusts; from the deal it is the stored `order`, which is known to replay.
 func solve_order() -> Array[int]:
-	if windy() and planes.size() > MAX_WINDY_PLANES:
+	if windy() and mazed:
 		# A windy maze: the carve's order, which the planes allow and the
 		# clouds may hold up for a tick or a gust.
 		var rest: Array[int] = []
@@ -470,7 +472,8 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 	else:
 		for i in range(planes.size() - 1, -1, -1):
 			order.append(i)
-	if maze and n_clouds > 0:
+	mazed = maze and n_clouds > 0
+	if mazed:
 		_stand_clouds(rng, n_clouds)
 		return
 	# Called inside the assert itself so a release export strips the work.
@@ -924,6 +927,7 @@ func to_bank() -> Dictionary:
 ## east or west, and the stored order replaying to an empty sky -- and trusts
 ## the miner for the rest (the gate is not re-run on the phone).
 func from_bank(entry: Dictionary) -> bool:
+	mazed = false
 	planes = []
 	order = []
 	clouds = []

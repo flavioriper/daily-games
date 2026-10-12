@@ -571,8 +571,11 @@ morning).
 - **Paper Planes**: a gust on a closed-in Windy Day was paid with a move;
   with no counter and no hearts it is free (`_gust_left`,
   `PP_TIP_STUCK_FREE`), or the first closed sky would end the day.
-- **Marigold**'s Insane is back on the band's own seeds (8) and the all-band
-  rule that a garden out of seeds grows back for another try.
+- **Marigold**'s Insane is back on the band's own seeds, raised from 8 to
+  Hard's 10 (fewer shots a try was a limit of the same kind), and on the
+  all-band rule that a garden out of seeds grows back for another try.
+- **Lattice**'s Insane seal read "Twenty" for the swaps it counted; it
+  reads "Six knots" (`LA_SEAL_INSANE`).
 - The `*_LVL_3` labels that read "counted moves" (strokes, serves, 20 swaps)
   name the band's rule or "no hints" instead, in en, pt and es.
 - `tests/_probe_moves.gd` is stale: there is no budget for it to spend.
