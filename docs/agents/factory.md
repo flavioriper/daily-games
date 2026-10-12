@@ -502,6 +502,55 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   the smelter, nails and the table; a bridge's deck has no slats that run
   and no arrow, so which way a thing crossed is only seen by watching.
 
+**More than one market (2026-10-12)**, the user: "when I select the
+market, I should be able to create another one, now when I click it, the
+market is upgraded instead. I can have multiple markets, and they should
+have it own lvl and state". Until then the sim had one market (a table of
+its own on `MARKET_AT`, one level) and the drawer's Market tile was wired
+to `upgrade("market")`.
+
+- **A market is a module now** (`Sim.SINGLE`, `BUILD`, kind `"market"`,
+  its row from `_market_row`: the module keys and `wait`, `t`). A new land
+  is given one on `MARKET_AT`, built, `paid` 0; more are picked in the
+  drawer and put down by a finger like any machine. Each has its own
+  level, hatch and clock: `_sell` runs every built market, `_enter` fills
+  the one a thing reaches, `upgrade(tile)` raises that one, and
+  `market_interval(m)` / `market_progress(m)` take the module.
+  `sim.market` is the first one standing (the lowest id), kept for the
+  tutorial, the probe and the harnesses; `upgrade("market")` is its.
+- **Events carry which**: `brought` and `sale` have `tile` and `id`, and a
+  market's `level` event has its id as `target` like a fire box's.
+  `life.gd` keeps `_lying` by market id and each of `_drops` has its `id`
+  and `tile` (`_hatch(id)`, `_lying_off(id)`; DROPS is a market's own),
+  `coined(amount, tile)` says where the "+N" goes. `_add_market(list, m)`
+  is called by `_add_module`; while one is built it is `Art.market_shut()`
+  under the frame, which is also the ghost and the drawer's picture.
+- **The screen**: the Market tile picks, with the price of the next one
+  and no level badge; a market's card is `open_module`'s (the rate, its
+  level, Level N for, Sell for), `_card_for` still `"market"`.
+  `open_market` is gone, and `hit` answers `"module"` for a market.
+- **The save is version 4** and a version 3 land is read: `_lift` makes
+  its one market the module on (6, 6) at its level, hatch and clock.
+- **Decided for the user, theirs to change**: the second market is 100
+  coins, the third 300, then three times the last (`MARKET_NEW`,
+  `MARKET_NEW_STEP`), by how many stand, as a plate's price is; it is
+  built over 20 s like a fire box and takes nothing until then; it is in
+  the drawer from the start; any market is sold back for all paid on it
+  (the given one for nothing) but the last one standing, by its card or a
+  held finger. **What it does to the pace is not measured**: the ledger's
+  "the market's level is the brake" no longer holds alone, since a second
+  market at level 4 is 410 coins where the first's fifth level is 500, and
+  the pace bot (`-- goals`) buys no second market.
+- **Checked**: `tests/_probe_factory.gd` 241/0 (`_check_markets`: placed,
+  refused while built, own levels and clocks, sold back, the last one
+  kept, a version 3 land read); suite 249797/0; `tests/_shot_factory.gd`
+  on `opengl3_angle` at 810x1440, one run: the drawer's tile picks and
+  buys nothing, a finger puts one down for 100, its card is its own, 219
+  to 256 draw calls round the two markets. That run failed one check, the
+  kept file's version written as 3 in the harness; it reads `Sim.VERSION`
+  now and was not run again. **Not seen**: a phone; two markets selling at
+  once, moving; the tutorial says nothing of a second market.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

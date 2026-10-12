@@ -618,12 +618,12 @@ func _play_events() -> void:
 ## way"), never two inside
 ## COIN_GAP at a market that sells many a second, and the count is on its
 ## way up beside it.
-func _on_coin(amount: int) -> void:
+func _on_coin(amount: int, tile: Vector2i) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:
 		_coin_at = now
 		_coin_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
-	var hatch: Vector2 = life.seen(Vector2(Sim.MARKET_AT) + Life.MID) + Art.MARKET_TOP
+	var hatch: Vector2 = life.seen(Vector2(tile) + Life.MID) + Art.MARKET_TOP
 	_nums.append({"at": hatch + Vector2(_rng.randf_range(40.0, 52.0), -30.0), "text": "+" + Art.short(amount), "t": 0.0})
 	_kick()
 
@@ -660,7 +660,7 @@ func _refresh_hud(delta: float) -> void:
 	_coins_l.add_theme_color_override("font_color", Pal.BAD if _warn > 0.0 else Pal.TEXT)
 	if _card_coins != null and is_instance_valid(_card_coins):
 		_card_coins.text = text
-	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), int(sim.market.level), sim.picked, sim.earned]
+	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), sim.price("market"), sim.picked, sim.earned]
 	if key != _hud_key:
 		_hud_key = key
 		_refresh_drawer()
@@ -676,7 +676,7 @@ func _refresh_hud(delta: float) -> void:
 func _refresh_drawer() -> void:
 	var shown := 0
 	for kind: String in DRAWER_TILES:
-		if kind == "market" or sim.unlocked(kind):
+		if sim.unlocked(kind):
 			shown += 1
 	# a column of five, then another beside it
 	var columns := maxi(1, ceili(shown / float(DRAWER_ROWS)))
@@ -686,14 +686,9 @@ func _refresh_drawer() -> void:
 		_drawer.offset_right = _drawer.offset_left
 	for kind: String in DRAWER_TILES:
 		var t: Dictionary = _tiles[kind]
-		if kind == "market":
-			var cost: int = sim.upgrade_price("market")
-			Tile.price(t, Art.short(cost), sim.coins >= cost)
-			Tile.level(t, int(sim.market.level))
-		else:
-			(t.button as Control).visible = sim.unlocked(kind)
-			Tile.price(t, Art.short(sim.price(kind)), sim.coins >= sim.price(kind))
-			Tile.mark(t, sim.picked == kind)
+		(t.button as Control).visible = sim.unlocked(kind)
+		Tile.price(t, Art.short(sim.price(kind)), sim.coins >= sim.price(kind))
+		Tile.mark(t, sim.picked == kind)
 	_drawer_b.queue_redraw()
 
 func drawer_open() -> bool:
@@ -723,12 +718,6 @@ func _on_drawer_button() -> void:
 		open_drawer()
 
 func _on_drawer_tile(kind: String) -> void:
-	if kind == "market":
-		if not sim.upgrade("market"):
-			Motion.shiver(_tiles[kind].button, 6.0)
-		else:
-			Motion.bump(_tiles[kind].button, 0.05, 0.2)
-		return
 	pick(kind)
 	close_drawer()
 
@@ -923,12 +912,9 @@ func hit(pos: Vector2) -> Dictionary:
 	for lift: float in [84.0, 56.0, 28.0, 0.0]:
 		var t := Vector2i((life.tile_at(v + Vector2(0.0, lift)) as Vector2).floor())
 		var found := {}
-		if sim.is_market(t):
-			found = {"what": "market", "tile": t}
-		elif lift <= 56.0:
-			var m: Dictionary = sim.module_at(t)
-			if not m.is_empty():
-				found = {"what": "module", "tile": m.root, "id": int(m.id)}
+		var m: Dictionary = sim.module_at(t)
+		if not m.is_empty() and (lift <= 56.0 or m.kind == "market"):
+			found = {"what": "module", "tile": m.root, "id": int(m.id)}
 		var td: float = life.depth(Vector2(t) + Vector2(0.5, 0.5))
 		if not found.is_empty() and td > best_d:
 			best_d = td
@@ -970,9 +956,6 @@ func _tap(pos: Vector2) -> void:
 			else:
 				open_module(int(h.id))
 				_fx.touch()
-		"market":
-			open_market()
-			_fx.touch()
 		"plus":
 			open_plate(h.plate)
 			_fx.touch()
@@ -1033,10 +1016,8 @@ static func _feeds(land: RefCounted, tile: Vector2i) -> bool:
 ## Whether `tile` is somewhere a belt may deliver into: the market, a fire
 ## box, the way in of a kiln or a retort.
 static func _takes_in(land: RefCounted, tile: Vector2i) -> bool:
-	if land.is_market(tile):
-		return true
 	var m: Dictionary = land.module_at(tile)
-	return not m.is_empty() and (m.kind == "firebox" or (Sim.RECIPE.has(m.kind) and m.root == tile))
+	return not m.is_empty() and (m.kind == "firebox" or m.kind == "market" or (Sim.RECIPE.has(m.kind) and m.root == tile))
 
 static func _takes(land: RefCounted, tile: Vector2i) -> bool:
 	return land.belts.has(tile) or _takes_in(land, tile)
@@ -1255,12 +1236,14 @@ func open_plate(p: Vector2i) -> void:
 
 ## A machine's card: its picture, what it makes from what, its cycle at the
 ## heat it has now, its level and the next one's price where it has levels,
-## Turn for a machine of two tiles, and Sell for all that was paid.
+## Turn for a machine of two tiles, and Sell for all that was paid. A
+## market's is one of them: the seconds a sale, its own level, and Sell
+## unless it is the last one standing.
 func open_module(id: int) -> void:
 	if not sim.modules.has(id):
 		return
 	var kind: String = sim.modules[id].kind
-	_open_card(tr(NAMES[kind]), "module", func(col: VBoxContainer) -> void:
+	_open_card(tr(NAMES[kind]), "market" if kind == "market" else "module", func(col: VBoxContainer) -> void:
 		var lines := _card_body(col, kind, [tr(NAMES[kind] + "_MAKES"), "", tr("FACTORY_RETORT_NOTE") if kind == "retort" else ""])
 		var row := HBoxContainer.new()
 		row.name = "Buttons"
@@ -1269,7 +1252,7 @@ func open_module(id: int) -> void:
 		col.add_child(row)
 		var up: Button = null
 		var stoke: Button = null
-		if kind == "firebox":
+		if kind == "firebox" or kind == "market":
 			up = _card_button(row, "trend", "", "PrimaryButton")
 			up.pressed.connect(func() -> void:
 				if not sim.upgrade(sim.modules[id].root):
@@ -1299,12 +1282,18 @@ func open_module(id: int) -> void:
 			var m: Dictionary = sim.modules[id]
 			(lines[1] as Label).text = _state_line(m)
 			_say(sell, tr("FACTORY_SELL_FOR") % Art.short(sim.sell_price(m.root)))
+			if kind == "market":
+				# the last market standing is not sold: nothing would sell
+				var more := false
+				for other: int in sim.modules:
+					more = more or (other != id and sim.modules[other].kind == "market")
+				sell.visible = more
 			if up != null:
 				var cost: int = sim.upgrade_price(m.root)
 				up.visible = cost >= 0
 				if cost >= 0:
 					_say(up, tr("FACTORY_LEVEL_FOR") % [int(m.level) + 1, Art.short(cost)])
-				(lines[2] as Label).text = tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)] + ("  " + tr("FACTORY_STOKER_ON") if m.get("stoker", false) else "")
+				(lines[2] as Label).text = tr("FACTORY_LEVEL") % int(m.level) if kind == "market" else tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)] + ("  " + tr("FACTORY_STOKER_ON") if m.get("stoker", false) else "")
 			if stoke != null:
 				(stoke.get_parent() as Control).visible = sim.unlocked("stoker") and not m.get("stoker", false)
 				_say(stoke, tr("FACTORY_STOKER_FOR") % Art.short(sim.price("stoker")))
@@ -1428,24 +1417,6 @@ func _draw_goal_row(pic: Control, g: Dictionary) -> void:
 	var mid := (x + right) * 0.5
 	pic.draw_polyline(PackedVector2Array([Vector2(mid - 6.0, h * 0.5 - 12.0), Vector2(mid + 6.0, h * 0.5), Vector2(mid - 6.0, h * 0.5 + 12.0)]), ink, 5.0, true)
 
-## The market's card: its level, the seconds a sale, the next level's price.
-func open_market() -> void:
-	_open_card(tr("FACTORY_MARKET"), "market", func(col: VBoxContainer) -> void:
-		var lines := _card_body(col, "market", [tr("FACTORY_MARKET_MAKES"), "", ""])
-		var row := HBoxContainer.new()
-		row.name = "Buttons"
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		col.add_child(row)
-		var up := _card_button(row, "trend", "", "PrimaryButton")
-		up.pressed.connect(func() -> void:
-			if not sim.upgrade("market"):
-				Motion.shiver(up, 6.0))
-		_card_tick = func() -> void:
-			(lines[1] as Label).text = tr("FACTORY_MARKET_RATE") % _seconds(sim.market_interval())
-			(lines[2] as Label).text = tr("FACTORY_LEVEL") % int(sim.market.level)
-			_say(up, tr("FACTORY_LEVEL_FOR") % [int(sim.market.level) + 1, Art.short(sim.upgrade_price("market"))])
-		_card_tick.call())
-
 ## A card's body: the picture on a disc at the left and three lines beside
 ## it (an empty one is hidden until it is written). Returns the lines.
 func _card_body(col: VBoxContainer, kind: String, texts: Array) -> Array:
@@ -1489,6 +1460,8 @@ static func _say(b: Button, text: String) -> void:
 func _state_line(m: Dictionary) -> String:
 	if not m.built:
 		return tr("FACTORY_BUILDING") % int(float(m.build) * 100.0)
+	if m.kind == "market":
+		return tr("FACTORY_MARKET_RATE") % _seconds(sim.market_interval(m))
 	if m.kind == "firebox":
 		var held: int = (m.hopper as Array).size()
 		if m.lit:

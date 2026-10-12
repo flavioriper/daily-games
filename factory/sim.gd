@@ -16,8 +16,8 @@ extends RefCounted
 ##
 ## Geometry. A tile is one global Vector2i. Plate P (a Vector2i on the plate
 ## lattice, the first is (0,0)) owns tiles P*8 .. P*8+7 on both axes; the
-## lattice goes negative, so use `plate_of(tile)`. The market is the one
-## tile (6, 6) of the first plate, which is neutral ground; a new land
+## lattice goes negative, so use `plate_of(tile)`. A new land's market is on
+## the tile (6, 6) of the first plate, which is neutral ground, and it
 ## has a forest behind it, at `FOREST_AT`. A facing is an int 0..3 = +x, +y, -x, -y (`DIRS`); a
 ## quarter clockwise is (f + 1) % 4. Positions handed out as Vector2 are in
 ## tile units, a tile's middle at tile + (0.5, 0.5).
@@ -40,10 +40,10 @@ extends RefCounted
 ##   free_edges() -> Array    lattice coords a plate may be bought on
 ##   plate_price() -> int     50, 150, then x3
 ##   buy_plate(P, kind) -> bool
-##   unlocked(kind) -> bool   belt always; firebox and retort from the first
-##                            plate bought; the kiln with a mine; the rest by
-##                            a goal (GOALS)
-##   price(kind) -> int       PRICE
+##   unlocked(kind) -> bool   belt and market always; firebox and retort from
+##                            the first plate bought; the kiln with a mine;
+##                            the rest by a goal (GOALS)
+##   price(kind) -> int       PRICE; a market's is by how many stand (MARKET_NEW)
 ##
 ## A forest is closed (the user, 2026-10-11: "the forest must be a closed grid
 ## that only output the material, user should not be able to build inside of
@@ -87,8 +87,10 @@ extends RefCounted
 ##                            firebox: lit, fuel and fuel_max (kJ), fuel_kind,
 ##                            hopper (item kinds, the next to light first),
 ##                            draw and cap (kW), stoker; for an engine: share
-##                            (of the heat it asks) and draw (kW of shaft)}
-##   SINGLE                   the kinds of one tile: firebox, engine
+##                            (of the heat it asks) and draw (kW of shaft);
+##                            for a market: wait (item kinds: the one on its
+##                            hatch) and t (seconds toward its next sale)}
+##   SINGLE                   the kinds of one tile: firebox, engine, market
 ##   gives_power(kind), wants_power(kind)   "heat", "shaft" or ""
 ##   module_at(tile) -> Dictionary      {} if none
 ##   front_of(module) -> Vector2i       a 1x2's front (output) tile
@@ -97,9 +99,14 @@ extends RefCounted
 ##   working(module) -> bool            holds an input and has room to finish
 ##   cycle_seconds(module) -> float     real seconds a cycle at the heat it
 ##                            would have working now; -1.0 with no fire lit
-##   market: Dictionary       {level, wait (item kinds: the one on the hatch), t}
-##   market_interval() -> float         seconds a sale: 4, 3, 2, 1, then halved
-##   market_progress() -> float         0..1 toward the next sale
+## A market is a module (the user, 2026-10-12: "I can have multiple markets,
+## and they should have it own lvl and state"): one is given, built, and more
+## are placed from the drawer. Each has its own level, hatch and clock.
+##   market: Dictionary       the first market standing (the lowest id), for
+##                            a holder that wants one: {} when none
+##   market_interval(m) -> float        seconds a sale: 4, 3, 2, 1, then halved
+##   market_progress(m) -> float        0..1 toward the next sale
+##                            (both of `market` when no module is given)
 ##   is_market(tile), on_land(tile), plate_of(tile), tile_free(tile)
 ##
 ## Acting. Each returns whether it did anything; when it did not it pushes
@@ -114,9 +121,11 @@ extends RefCounted
 ##   can_place(kind, tile, facing)      unlocked and fits (coins not looked at)
 ##   place(kind, tile, facing)          tile is the root: a 1x2's back (input)
 ##   sell(tile)               a belt or a module back for all that was paid
+##                            (refused "market" for the last market standing)
 ##   sell_price(tile) -> int
 ##   fit_stoker(tile)         a fire box lights its own fuel from then on
-##   upgrade(target)          "market", a module's tile, or a forest's tile
+##   upgrade(target)          a fire box's or a market's tile, a forest's
+##                            tile, or "market" for the first market's
 ##   upgrade_price(target) -> int       -1: nothing to buy there
 ##   put(tile, kind) -> bool  drops an item, for harnesses
 ##
@@ -131,11 +140,10 @@ extends RefCounted
 ##   lit {tile, id, kind}  dim {tile, id}
 ##   made {tile, id, kind}            a kiln or a retort done with one
 ##   out {tile, id, kind}             its output left into `tile`
-##   brought {kind, from}             onto the market's hatch, travelling `from`
-##   sale {kind, amount, coins}
+##   brought {tile, id, kind, from}   onto a market's hatch, travelling `from`
+##   sale {tile, id, kind, amount, coins}
 ##   goal {id, gives}                 a goal reached: what it opens
-##   level {target, level}            "market", "source" (with `plate`) or a
-##                                    module's id
+##   level {target, level}            "source" (with `plate`) or a module's id
 ##   plate {plate, kind}
 ##   refused {why, tile}
 ## ---------------------------------------------------------------------------
@@ -146,7 +154,7 @@ const GAME_S := 0.4
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 3
+const VERSION := 4
 
 const PLATE := 8
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
@@ -155,7 +163,8 @@ const KINDS := ["forest", "mine", "neutral"]
 const GIVES := {"forest": "log", "mine": "stone"}
 ## The forest a new land has, behind the market's plate.
 const FOREST_AT := Vector2i(0, -1)
-## The market's tile: one square, a hatch (2x2 until 2026-10-11).
+## Where a new land's market stands: one square, a hatch (2x2 until
+## 2026-10-11). A module since 2026-10-12, one of as many as are bought.
 const MARKET_AT := Vector2i(6, 6)
 const NONE := Vector2i(-99999, -99999)
 
@@ -221,6 +230,10 @@ const MARKET_PRICE := [30, 80, 200]
 const MARKET_STEP := 2.5
 ## What the hatch holds: the one thing lying on it. The next waits on its belt.
 const MARKET_ROOM := 1
+## The price of the second market, the third, then each MARKET_NEW_STEP
+## times the last: what is paid is by how many stand, as a plate's is.
+const MARKET_NEW := [100, 300]
+const MARKET_NEW_STEP := 3
 
 ## Fuel, MJ an item (the ledger, section 3).
 const FUEL := {"log": 320.0, "charcoal": 150.0, "plank": 64.0}
@@ -248,8 +261,8 @@ const ENGINE_HEAT := 94.0
 const ENGINE_BANKED := 20.0
 const ENGINE_SHAFT := 7.5
 ## The modules of one tile, which have no facing.
-const SINGLE := ["firebox", "engine"]
-const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0, "engine": 60.0, "saw": 40.0, "joiner": 40.0}
+const SINGLE := ["firebox", "engine", "market"]
+const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0, "engine": 60.0, "saw": 40.0, "joiner": 40.0, "market": 20.0}
 
 ## A harness points this elsewhere before it makes a sim.
 static var path := "user://factory.cfg"
@@ -270,7 +283,14 @@ var over := {}
 var sold := {}
 var items := {}
 var modules := {}
-var market := {}
+## The first market standing: the given one until it is sold.
+var market: Dictionary:
+	get:
+		var best := {}
+		for id: int in modules:
+			if modules[id].kind == "market" and (best.is_empty() or id < int(best.id)):
+				best = modules[id]
+		return best
 var events: Array = []
 var dirty := false
 var alpha := 0.0
@@ -305,7 +325,6 @@ func new_land(with_seed: int) -> void:
 	_split = {}
 	items = {}
 	modules = {}
-	market = {"level": 1, "wait": [], "t": 0.0}
 	events = []
 	picked = ""
 	alpha = 0.0
@@ -315,6 +334,10 @@ func new_land(with_seed: int) -> void:
 	_turn = {}
 	_order_stale = true
 	_add_plate(Vector2i.ZERO, "neutral")
+	# the market a land is given stands built, and nothing was paid for it
+	modules[_next_id] = _market_row(_next_id, MARKET_AT, true, 0)
+	_mod_at[MARKET_AT] = _next_id
+	_next_id += 1
 	_add_plate(FOREST_AT, "forest")
 	dirty = true
 
@@ -327,7 +350,18 @@ func on_land(tile: Vector2i) -> bool:
 	return plates.has(plate_of(tile))
 
 func is_market(tile: Vector2i) -> bool:
-	return tile == MARKET_AT
+	return _mod_at.has(tile) and modules[_mod_at[tile]].kind == "market"
+
+static func _market_row(id: int, tile: Vector2i, built: bool, paid: int) -> Dictionary:
+	return {"id": id, "kind": "market", "root": tile, "facing": 0, "level": 1, "tiles": [tile],
+		"built": built, "build": 1.0 if built else 0.0, "paid": paid, "wait": [], "t": 0.0}
+
+func _markets() -> int:
+	var n := 0
+	for id: int in modules:
+		if modules[id].kind == "market":
+			n += 1
+	return n
 
 func is_forest(tile: Vector2i) -> bool:
 	return plates.get(plate_of(tile), "") == "forest"
@@ -343,11 +377,10 @@ func is_source(tile: Vector2i) -> bool:
 func gives(p: Vector2i) -> String:
 	return String(GIVES.get(plates.get(p, ""), ""))
 
-## Bare ground: open land with no market, module or belt on it. No tile of
-## a forest is.
+## Bare ground: open land with no module or belt on it. No tile of a forest
+## is.
 func tile_free(tile: Vector2i) -> bool:
-	return plates.get(plate_of(tile), "") == "neutral" and not is_market(tile) and not _mod_at.has(tile) \
-		and not belts.has(tile)
+	return plates.get(plate_of(tile), "") == "neutral" and not _mod_at.has(tile) and not belts.has(tile)
 
 func module_at(tile: Vector2i) -> Dictionary:
 	return modules[_mod_at[tile]] if _mod_at.has(tile) else {}
@@ -389,7 +422,7 @@ func buy_plate(p: Vector2i, kind: String) -> bool:
 ## Era 2 opens with the first plate bought: the plate is the key. The kiln
 ## waits for a mine, since nothing else gives it stone.
 func unlocked(kind: String) -> bool:
-	if kind == "belt":
+	if kind == "belt" or kind == "market":
 		return true
 	for g: Dictionary in GOALS:
 		if (g.gives as Array).has(kind):
@@ -419,6 +452,15 @@ func next_goal() -> Dictionary:
 	return {}
 
 func price(kind: String) -> int:
+	if kind == "market":
+		# the first is given, so the count bought is one under the count held
+		var n := maxi(_markets() - 1, 0)
+		if n < MARKET_NEW.size():
+			return MARKET_NEW[n]
+		var p := float(MARKET_NEW[MARKET_NEW.size() - 1])
+		for i in n + 1 - MARKET_NEW.size():
+			p *= MARKET_NEW_STEP
+		return int(minf(p, 9.0e18))
 	return int(PRICE.get(kind, 0))
 
 func _add_plate(p: Vector2i, kind: String) -> void:
@@ -515,8 +557,8 @@ func _run_sources() -> void:
 		for d in 4:
 			var to := gate(p, d) + DIRS[d]
 			var m := module_at(to)
-			# a hopper, or a machine's back: its front takes nothing
-			led = led or belts.has(to) or is_market(to) or (not m.is_empty() and (m.kind == "firebox" or to == m.root))
+			# a hopper, a hatch, or a machine's back: its front takes nothing
+			led = led or belts.has(to) or (not m.is_empty() and (m.kind == "firebox" or to == m.root))
 		if led:
 			continue
 		for q in 4:
@@ -875,17 +917,17 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float, ask := false) 
 			lane.dir = f
 			over[tile] = lane
 		return true
-	if is_market(tile):
-		if (market.wait as Array).size() >= MARKET_ROOM:
-			return false
-		if ask:
-			return true
-		(market.wait as Array).append(it.kind)
-		events.append({"type": "brought", "kind": it.kind, "from": f})
-		return true
 	var m := module_at(tile)
 	if m.is_empty() or not m.built:
 		return false
+	if m.kind == "market":
+		if (m.wait as Array).size() >= MARKET_ROOM:
+			return false
+		if ask:
+			return true
+		(m.wait as Array).append(it.kind)
+		events.append({"type": "brought", "tile": m.root, "id": m.id, "kind": it.kind, "from": f})
+		return true
 	if m.kind == "firebox":
 		if not FUEL.has(it.kind) or (m.hopper as Array).size() >= HOPPER:
 			return false
@@ -1042,7 +1084,9 @@ func place(kind: String, tile: Vector2i, facing: int) -> bool:
 		"tiles": [tile] if SINGLE.has(kind) else [tile, tile + DIRS[facing]],
 		"built": false, "build": 0.0, "paid": price(kind)}
 	_next_id += 1
-	if kind == "firebox":
+	if kind == "market":
+		m = _market_row(int(m.id), tile, false, int(m.paid))
+	elif kind == "firebox":
 		m.merge({"lit": false, "fuel": 0.0, "fuel_max": 0.0, "fuel_kind": "", "hopper": [],
 			"draw": 0.0, "cap": FIRE_KW[0], "stoker": false})
 	elif kind == "engine":
@@ -1077,7 +1121,8 @@ func sell_price(tile: Vector2i) -> int:
 ## held lies on its tiles, two a tile, the rest on the nearest bare ground.
 ## The one thing gone is the fuel already burning: a fire is not an item.
 func sell(tile: Vector2i) -> bool:
-	if is_market(tile):
+	if is_market(tile) and _markets() <= 1:
+		# a land with no market sells nothing: the last one stays
 		return _no("market", tile)
 	if belts.has(tile):
 		var kind := belt_kind(tile)
@@ -1096,6 +1141,8 @@ func sell(tile: Vector2i) -> bool:
 	var held: Array = []
 	if m.kind == "firebox":
 		held = (m.hopper as Array).duplicate()
+	elif m.kind == "market":
+		held = (m.wait as Array).duplicate()
 	elif RECIPE.has(m.kind):
 		var r: Dictionary = RECIPE[m.kind]
 		for i in int(m.got) + (int(r.need) if m.inp != "" else 0):
@@ -1113,32 +1160,40 @@ func sell(tile: Vector2i) -> bool:
 	dirty = true
 	return true
 
-## The price of the next level of `target` ("market", a module's tile, or
-## any tile of a forest); -1 where there is none to buy.
+## The price of the next level of `target` (a fire box's or a market's
+## tile, any tile of a forest, or "market" for the first market's); -1 where
+## there is none to buy.
 func upgrade_price(target: Variant) -> int:
-	if target is Vector2i and is_source(target):
+	if target is String:
+		if target != "market" or market.is_empty():
+			return -1
+		target = market.root
+	if not (target is Vector2i):
+		return -1
+	if is_source(target):
 		var lv: int = sources[plate_of(target)].level
 		return SOURCE_PRICE[lv] if lv < SOURCE_PRICE.size() else -1
-	if target is Vector2i and is_market(target):
-		target = "market"
-	if target is String:
-		if target != "market":
-			return -1
-		var lv: int = market.level
+	var m := module_at(target)
+	if m.is_empty():
+		return -1
+	if m.kind == "market":
+		var lv: int = m.level
 		if lv - 1 < MARKET_PRICE.size():
 			return MARKET_PRICE[lv - 1]
 		var p := float(MARKET_PRICE[MARKET_PRICE.size() - 1])
 		for i in lv - MARKET_PRICE.size():
 			p *= MARKET_STEP
 		return int(minf(roundf(p), 9.0e18))
-	if target is Vector2i:
-		var m := module_at(target)
-		if not m.is_empty() and m.kind == "firebox" and int(m.level) < FIRE_KW.size():
-			return FIRE_PRICE[int(m.level) - 1]
+	if m.kind == "firebox" and int(m.level) < FIRE_KW.size():
+		return FIRE_PRICE[int(m.level) - 1]
 	return -1
 
 func upgrade(target: Variant) -> bool:
-	var at: Vector2i = target if target is Vector2i else MARKET_AT
+	var at := NONE
+	if target is Vector2i:
+		at = target
+	elif not market.is_empty():
+		at = market.root
 	var cost := upgrade_price(target)
 	if cost < 0:
 		return _no("top", at)
@@ -1150,27 +1205,28 @@ func upgrade(target: Variant) -> bool:
 		f.level = int(f.level) + 1
 		f.paid = int(f.paid) + cost
 		events.append({"type": "level", "target": "source", "level": f.level, "plate": plate_of(at), "tile": at})
-	elif target is String or is_market(at):
-		market.level = int(market.level) + 1
-		market.t = minf(market.t, market_interval())
-		events.append({"type": "level", "target": "market", "level": market.level})
 	else:
 		var m := module_at(at)
 		m.level = int(m.level) + 1
 		m.paid = int(m.paid) + cost
-		m.cap = FIRE_KW[int(m.level) - 1]
+		if m.kind == "market":
+			m.t = minf(float(m.t), market_interval(m))
+		else:
+			m.cap = FIRE_KW[int(m.level) - 1]
 		events.append({"type": "level", "target": m.id, "level": m.level, "tile": m.root})
 	dirty = true
 	return true
 
-func market_interval() -> float:
-	var lv: int = market.level
+## Seconds a sale at market `m`: the first market's when none is given.
+func market_interval(m := {}) -> float:
+	var lv: int = (market if m.is_empty() else m).level
 	if lv - 1 < MARKET_EVERY.size():
 		return MARKET_EVERY[lv - 1]
 	return float(MARKET_EVERY[MARKET_EVERY.size() - 1]) / pow(2.0, lv - MARKET_EVERY.size())
 
-func market_progress() -> float:
-	return clampf(float(market.t) / market_interval(), 0.0, 1.0)
+func market_progress(m := {}) -> float:
+	var of: Dictionary = market if m.is_empty() else m
+	return clampf(float(of.t) / market_interval(of), 0.0, 1.0)
 
 # --- heat and shaft ---
 
@@ -1404,27 +1460,31 @@ func _tick() -> void:
 	_sell()
 	dirty = true
 
-## One sale an interval and no faster. The hatch's clock stands at nothing
-## while nothing lies on it, so whatever comes lies there its whole interval
-## before the hatch opens under it (until 2026-10-11 the first to reach an
-## idle market was sold as it landed).
+## One sale an interval and no faster, each market by its own clock. A
+## hatch's clock stands at nothing while nothing lies on it, so whatever
+## comes lies there its whole interval before the hatch opens under it
+## (until 2026-10-11 the first to reach an idle market was sold as it landed).
 func _sell() -> void:
-	var every := market_interval()
-	var wait: Array = market.wait
-	market.t = float(market.t) + TICK
-	while not wait.is_empty() and float(market.t) >= every - EPS:
-		market.t = maxf(float(market.t) - every, 0.0)
-		var kind: String = wait.pop_front()
-		var amount: int = SELLS[kind]
-		coins += amount
-		earned += amount
-		sold[kind] = int(sold.get(kind, 0)) + 1
-		events.append({"type": "sale", "kind": kind, "amount": amount, "coins": coins})
-		for g: Dictionary in GOALS:
-			if (g.need as Dictionary).has(kind) and int(sold[kind]) == int(g.need[kind]) and goal_done(g):
-				events.append({"type": "goal", "id": g.id, "gives": g.gives})
-	if wait.is_empty():
-		market.t = 0.0
+	for id: int in modules:
+		var m: Dictionary = modules[id]
+		if m.kind != "market" or not m.built:
+			continue
+		var every := market_interval(m)
+		var wait: Array = m.wait
+		m.t = float(m.t) + TICK
+		while not wait.is_empty() and float(m.t) >= every - EPS:
+			m.t = maxf(float(m.t) - every, 0.0)
+			var kind: String = wait.pop_front()
+			var amount: int = SELLS[kind]
+			coins += amount
+			earned += amount
+			sold[kind] = int(sold.get(kind, 0)) + 1
+			events.append({"type": "sale", "tile": m.root, "id": id, "kind": kind, "amount": amount, "coins": coins})
+			for g: Dictionary in GOALS:
+				if (g.need as Dictionary).has(kind) and int(sold[kind]) == int(g.need[kind]) and goal_done(g):
+					events.append({"type": "goal", "id": g.id, "gives": g.gives})
+		if wait.is_empty():
+			m.t = 0.0
 
 func _no(why: String, tile: Vector2i) -> bool:
 	events.append({"type": "refused", "why": why, "tile": tile})
@@ -1440,7 +1500,7 @@ func pack() -> Dictionary:
 		"acc": _acc, "next_id": _next_id, "picked": picked,
 		"plates": plates.duplicate(true), "sources": sources.duplicate(true), "trees": trees.duplicate(true),
 		"belts": belts.duplicate(true), "kinds": kinds.duplicate(true), "over": over.duplicate(true), "split": _split.duplicate(true), "sold": sold.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
-		"market": market.duplicate(true), "turn": _turn.duplicate(true),
+		"turn": _turn.duplicate(true),
 	}
 
 ## The land goes into the file as bytes (base64), not as text: a float
@@ -1470,7 +1530,10 @@ func load_saved() -> bool:
 	if bytes.size() < 4 or (bytes.decode_u32(0) & 0xFF) != TYPE_DICTIONARY:
 		return false
 	var d: Variant = bytes_to_var(bytes)
-	if not (d is Dictionary) or not _sound(d):
+	if not (d is Dictionary):
+		return false
+	_lift(d)
+	if not _sound(d):
 		return false
 	_unpack(d)
 	return true
@@ -1482,7 +1545,7 @@ const _SHAPES := {
 	"version": TYPE_INT, "seed": TYPE_INT, "rng": TYPE_INT, "coins": TYPE_INT, "earned": TYPE_INT,
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING,
 	"plates": TYPE_DICTIONARY, "sources": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
-	"kinds": TYPE_DICTIONARY, "over": TYPE_DICTIONARY, "split": TYPE_DICTIONARY, "sold": TYPE_DICTIONARY, "items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
+	"kinds": TYPE_DICTIONARY, "over": TYPE_DICTIONARY, "split": TYPE_DICTIONARY, "sold": TYPE_DICTIONARY, "items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
 }
 const _TREE_KEYS := ["id", "tile", "look"]
 const _SOURCE_KEYS := ["level", "stock", "t", "next", "paid"]
@@ -1490,6 +1553,25 @@ const _MODULE_KEYS := ["id", "kind", "root", "facing", "level", "tiles", "built"
 const _FIRE_KEYS := ["lit", "fuel", "fuel_max", "fuel_kind", "hopper", "draw", "cap", "stoker"]
 const _SINK_KEYS := ["inp", "got", "out", "left", "work", "share"]
 const _ENGINE_KEYS := ["share", "draw"]
+const _MARKET_KEYS := ["wait", "t"]
+
+## A land of version 3 had one market, a table of its own on (6, 6): it is
+## made the module it would be now, so a kept land is read and plays on.
+static func _lift(d: Dictionary) -> void:
+	if d.get("version") != 3 or not (d.get("market") is Dictionary) or not (d.get("modules") is Dictionary) \
+			or not (d.get("next_id") is int):
+		return
+	var mk: Dictionary = d.market
+	if not mk.has_all(["level", "wait", "t"]) or not (mk.level is int) or not (mk.wait is Array):
+		return
+	var m := _market_row(d.next_id, MARKET_AT, true, 0)
+	m.level = mk.level
+	m.wait = (mk.wait as Array).duplicate()
+	m.t = float(mk.t)
+	d.modules[d.next_id] = m
+	d.next_id += 1
+	d.erase("market")
+	d.version = VERSION
 
 static func _sound(d: Dictionary) -> bool:
 	for key: String in _SHAPES:
@@ -1550,17 +1632,17 @@ static func _sound(d: Dictionary) -> bool:
 		elif m.kind == "engine":
 			if not m.has_all(_ENGINE_KEYS):
 				return false
+		elif m.kind == "market":
+			if not m.has_all(_MARKET_KEYS) or not (m.wait is Array) or not (m.t is float):
+				return false
+			for kind: Variant in m.wait:
+				if not SELLS.has(kind):
+					return false
 		elif not m.has_all(_SINK_KEYS) or not (m.got is int) or not (m.left is int):
 			return false
 		for t: Variant in m.tiles:
 			if not (t is Vector2i):
 				return false
-	var mk: Dictionary = d.market
-	if not mk.has_all(["level", "wait", "t"]) or not (mk.level is int) or mk.level < 1 or not (mk.wait is Array):
-		return false
-	for kind: Variant in mk.wait:
-		if not SELLS.has(kind):
-			return false
 	return true
 
 func _unpack(d: Dictionary) -> void:
@@ -1583,7 +1665,6 @@ func _unpack(d: Dictionary) -> void:
 	sold = (d.sold as Dictionary).duplicate(true)
 	items = (d.items as Dictionary).duplicate(true)
 	modules = (d.modules as Dictionary).duplicate(true)
-	market = (d.market as Dictionary).duplicate(true)
 	_turn = (d.turn as Dictionary).duplicate(true)
 	_mod_at = {}
 	for id: int in modules:

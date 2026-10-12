@@ -103,18 +103,19 @@ func _until(test: Callable, most: float) -> bool:
 ## motion nothing swings, so only the one lying and the "+1" are shot.
 func _hatch() -> void:
 	var life: RefCounted = _screen.life
+	var id := int(_sim.market.id)
 	await _look(Vector2(6.0, 6.0))
 	var lies: bool = await _until(func() -> bool: return _sim.market.wait.size() == 1 and float(_sim.market.t) > 1.5 and float(_sim.market.t) < 3.5, 12.0)
-	_check("a log lies on the market's hatch, in its middle, the leaves shut", lies and life._hatch() == 0.0 and life._lying_off().length() < 0.01,
-		"%s %.2f" % [_sim.market.wait, life._lying_off().length()])
+	_check("a log lies on the market's hatch, in its middle, the leaves shut", lies and life._hatch(id) == 0.0 and life._lying_off(id).length() < 0.01,
+		"%s %.2f" % [_sim.market.wait, life._lying_off(id).length()])
 	await _shot("hatch_lying")
 	var was: int = _sim.earned
 	var coins := [0]
-	var count := func(n: int) -> void: coins[0] += n
+	var count := func(n: int, _tile: Vector2i) -> void: coins[0] += n
 	life.coined.connect(count)
 	var sold: bool = await _until(func() -> bool: return _sim.earned > was, 6.0)
 	if Motion.reduce:
-		_check("under reduce motion a sale is its coin at once, nothing swinging", sold and coins[0] == 1 and life._drops.is_empty() and life._hatch() == 0.0)
+		_check("under reduce motion a sale is its coin at once, nothing swinging", sold and coins[0] == 1 and life._drops.is_empty() and life._hatch(id) == 0.0)
 		await _shot("hatch_sold_reduce")
 	else:
 		_check("a sale opens the hatch under it", sold and life._drops.size() == 1 and coins[0] == 0)
@@ -127,7 +128,7 @@ func _hatch() -> void:
 		_check("its coin comes up as the thing is gone", paid and life._drops.size() == 1)
 		await _shot("hatch_coin")
 		var shut: bool = await _until(func() -> bool: return life._drops.is_empty(), 3.0)
-		_check("and the leaves are shut again", shut and life._hatch() == 0.0)
+		_check("and the leaves are shut again", shut and life._hatch(id) == 0.0)
 		await _shot("hatch_shut")
 	life.coined.disconnect(count)
 
@@ -660,6 +661,60 @@ func _hands() -> void:
 	_check("the zoom button does the same", _screen._far)
 	await _press_button(_screen._zoom_b)
 
+## A second market, picked from the drawer and put down by a finger (the
+## user, 2026-10-12: "when I select the market, I should be able to create
+## another one ... they should have it own lvl and state").
+func _second_market() -> void:
+	var first: Dictionary = _sim.market
+	var spot: Vector2i = Sim.NONE
+	for t: Vector2i in [Vector2i(5, 4), Vector2i(4, 4), Vector2i(5, 3), Vector2i(4, 3), Vector2i(6, 4), Vector2i(2, 2)]:
+		if spot == Sim.NONE and _sim.tile_free(t) and not _sim.items.has(t):
+			spot = t
+	_sim.coins = maxi(_sim.coins, 2000)
+	var level := int(first.level)
+	var coins: int = _sim.coins
+	await _press_button(_screen._drawer_b)
+	var tile: Dictionary = _screen._tiles.market
+	_check("the drawer's market tile says what another costs, and wears no level", (tile.cost as Label).text == "100" and not (tile.badge as Control).visible, (tile.cost as Label).text)
+	await _press_button(tile.button)
+	_check("pressing it picks a market to put down: nothing is bought, no level", _sim.picked == "market" and not _screen.drawer_open()
+		and int(first.level) == level and _sim.coins == coins)
+	await _look(Vector2(spot) + Vector2(0.5, 1.5))
+	await _hold([_at(Vector2(spot) + Vector2(0.5, 0.5))], 4)
+	await _shot("market_ghost")
+	_touch(_at(Vector2(spot) + Vector2(0.5, 0.5)), false)
+	await _frames(3)
+	_check("a finger puts a second market down for 100", _sim.is_market(spot) and _sim.coins == coins - 100 and _sim.picked == "", "%s %d" % [spot, _sim.coins])
+	await _wait(0.5)
+	await _shot("market_building")
+	_sim.module_at(spot).build = 0.99
+	await _wait(0.4)
+	_sim.module_at(spot).wait.append("stone")
+	await _wait(0.2)
+	await _shot("market_second")
+	await _tap(_at(Vector2(spot) + Vector2(0.5, 0.5)) + Vector2(0.0, -12.0))
+	var up: Button = _card_button() if _screen.card_open() else null
+	_check("a tap on it opens its own card, at level 1", _screen._card_for == "market" and up != null
+		and up.label_text == TranslationServer.translate("FACTORY_LEVEL_FOR") % [2, "30"], "" if up == null else up.label_text)
+	if up != null:
+		await _press_button(up)
+		await _wait(0.3)
+		_check("its level is bought from its card and is its own", int(_sim.module_at(spot).level) == 2 and int(first.level) == level)
+		await _shot("market_second_card")
+		var row: Node = up.get_parent()
+		var sell: Button = row.get_child(row.get_child_count() - 1)
+		_check("it can be sold, for the 130 paid on it", sell.visible and sell.label_text == TranslationServer.translate("FACTORY_SELL_FOR") % "130", sell.label_text)
+		await _press_button(sell)
+		await _frames(3)
+		_check("sold, it is gone and its stone lies where it stood", not _sim.is_market(spot) and not _screen.card_open() and _sim.items.has(spot))
+		_sim.items.erase(spot)
+	await _tap(_at(Vector2(first.root) + Vector2(0.5, 0.5)) + Vector2(0.0, -12.0))
+	up = _card_button() if _screen.card_open() else null
+	if up != null:
+		var row: Node = up.get_parent()
+		_check("the one market left offers no Sell", not (row.get_child(row.get_child_count() - 1) as Button).visible)
+	_screen.close_card()
+
 func _cards() -> void:
 	await _look(Vector2(3.5, 11.5))
 	await _tap(_at(Vector2(2.5, 10.5)) + Vector2(0.0, -24.0))
@@ -679,6 +734,7 @@ func _cards() -> void:
 	await _shot("market_card")
 	_screen.go_back()
 	_check("back closes the card first", not _screen.card_open())
+	await _second_market()
 	# a forest two levels up, by its badge; then at its last level
 	await _look(Vector2(-4.0, 1.0))
 	await _tap(_badge(WEST))
@@ -1038,7 +1094,7 @@ func _tab() -> void:
 	_screen.queue_free()
 	await _frames(3)
 	var read: RefCounted = Sim.new(1)
-	_check("the file the screen kept reads back as the very land it left", read.load_saved() and var_to_str(read.pack()) == var_to_str(kept) and int(kept.version) == 3)
+	_check("the file the screen kept reads back as the very land it left", read.load_saved() and var_to_str(read.pack()) == var_to_str(kept) and int(kept.version) == Sim.VERSION)
 	var page := ColorRect.new()
 	page.color = load("res://core/palette.gd").PAPER
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

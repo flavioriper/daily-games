@@ -62,6 +62,7 @@ func _process(_delta: float) -> bool:
 		_check_forest()
 		_check_gates()
 		_check_levels()
+		_check_markets()
 		_check_belts()
 		_check_feeders()
 		_check_plates()
@@ -84,6 +85,75 @@ func _ok(what: String, yes: bool, more := "") -> void:
 	if not yes:
 		_fails += 1
 		print("FAIL ", what, "" if more == "" else "  (" + more + ")")
+
+## More markets than the one given (the user, 2026-10-12: "I can have
+## multiple markets, and they should have it own lvl and state").
+func _check_markets() -> void:
+	var sim: RefCounted = Sim.new(7)
+	var first: Dictionary = sim.market
+	var at := Vector2i(2, 5)
+	_ok("a new land's market is a module on (6, 6), built, nothing paid", first.kind == "market" and first.root == Sim.MARKET_AT and first.built
+		and int(first.paid) == 0 and sim.is_market(Sim.MARKET_AT) and sim.module_at(Sim.MARKET_AT) == first)
+	_ok("the market is in the drawer from the start, the second for 100", sim.unlocked("market") and sim.price("market") == 100)
+	_ok("which twenty coins do not reach", not sim.place("market", at, 0) and sim.events.back().why == "coins" and not sim.is_market(at))
+	_ok("and the only market is not sold", not sim.sell(Sim.MARKET_AT) and sim.events.back().why == "market" and sim.is_market(Sim.MARKET_AT))
+	sim.coins = 1000
+	_ok("a second market stands where it is put, for 100", sim.place("market", at, 0) and sim.coins == 900 and sim.is_market(at)
+		and sim.events.back().type == "placed" and sim.events.back().kind == "market")
+	var second: Dictionary = sim.module_at(at)
+	_ok("it is its own: level 1, an empty hatch, and the third costs 300", second.id != first.id and int(second.level) == 1 and second.wait == [] and sim.price("market") == 300)
+	_ok("no belt and no machine goes on it", not sim.can_lay(at) and not sim.can_place("market", at, 0) and not sim.tile_free(at))
+	sim.lay_belt(Vector2i(1, 5), 0)
+	sim.put(Vector2i(1, 5), "log")
+	_run(sim, 30)
+	_ok("while it is built it takes nothing", not second.built and second.wait == [] and _lying(sim, Vector2i(1, 5)) == 1)
+	_run(sim, 200)
+	_ok("built, it takes what the belt brings", second.built and second.wait == ["log"] and _lying(sim, Vector2i(1, 5)) == 0)
+	_ok("the first's level is the first's alone", sim.upgrade(Sim.MARKET_AT) and sim.upgrade("market") and int(first.level) == 3 and int(second.level) == 1
+		and sim.upgrade_price(Sim.MARKET_AT) == 200 and sim.upgrade_price(at) == 30 and is_equal_approx(sim.market_interval(first), 2.0) and is_equal_approx(sim.market_interval(second), 4.0))
+	_ok("and the second's the second's", sim.upgrade(at) and int(second.level) == 2 and int(first.level) == 3 and int(second.paid) == 130 and sim.sell_price(at) == 130)
+	# a log on each hatch at once: each is sold by its own clock
+	var land: RefCounted = Sim.new(7)
+	land.coins = 1000
+	land.place("market", at, 0)
+	_run(land, 210)
+	land.upgrade(Sim.MARKET_AT)
+	land.upgrade(Sim.MARKET_AT)
+	land.market.wait.append("log")
+	land.module_at(at).wait.append("stone")
+	var sales: Array = []
+	for i in 45:
+		for e: Dictionary in _tick(land):
+			if e.type == "sale":
+				sales.append([i + 1, e.tile, e.kind, e.id])
+	_ok("the level 3 one sells its log at two seconds, the level 1 one its stone at four", sales.size() == 2
+		and sales[0] == [20, Sim.MARKET_AT, "log", int(land.market.id)] and sales[1] == [40, at, "stone", int(land.module_at(at).id)]
+		and land.sold == {"log": 1, "stone": 1}, str(sales))
+	# sold back: what was paid, and what lay on it
+	second.wait = ["log"]
+	var coins: int = sim.coins
+	var held := _all(sim)
+	_ok("a second market is sold for all paid on it and its log lies", sim.sell(at) and sim.coins == coins + 130 and not sim.is_market(at) and _all(sim) == held
+		and _lying(sim, at) == 1 and sim.price("market") == 100)
+	_ok("the given one too, once another stands", sim.place("market", at, 0) and sim.sell(Sim.MARKET_AT) and not sim.is_market(Sim.MARKET_AT)
+		and sim.market.root == at and not sim.sell(at))
+	# a land kept before markets were modules is read as it was
+	var old: RefCounted = Sim.new(7)
+	old.coins = 100
+	_way(old)
+	old.upgrade("market")
+	old.market.wait.append("log")
+	old.market.t = 1.5
+	var d: Dictionary = old.pack()
+	var mk: Dictionary = d.modules[int(old.market.id)]
+	d.modules.erase(int(old.market.id))
+	d.market = {"level": int(mk.level), "wait": mk.wait, "t": mk.t}
+	d.version = 3
+	_write(d, 3)
+	var back: RefCounted = Sim.new(3)
+	_ok("a land of version 3 is read, its one market the module on (6, 6) at its level, hatch and clock", back.load_saved() and back.is_market(Sim.MARKET_AT)
+		and int(back.market.level) == 2 and back.market.wait == ["log"] and is_equal_approx(float(back.market.t), 1.5) and back.market.built
+		and back.belts.size() == old.belts.size() and back.coins == old.coins and back.pack().version == 4)
 
 ## One tick, and what it said.
 func _tick(sim: RefCounted) -> Array:
@@ -108,13 +178,15 @@ func _until(sim: RefCounted, type: String, most: int, found: Array = []) -> int:
 ## Every item the land holds: lying, riding, lying on the hatch, in a
 ## machine or in a hopper.
 func _all(sim: RefCounted) -> int:
-	var n: int = sim.market.wait.size()
+	var n := 0
 	for t: Vector2i in sim.items:
 		n += sim.items[t].size()
 	for id: int in sim.modules:
 		var m: Dictionary = sim.modules[id]
 		if m.kind == "firebox":
 			n += m.hopper.size()
+		elif m.kind == "market":
+			n += m.wait.size()
 		else:
 			n += (1 if m.inp != "" else 0) + (1 if m.out != "" else 0)
 	return n
@@ -224,7 +296,7 @@ func _check_forest() -> void:
 	var built: RefCounted = _open()
 	_ok("so is a machine, and one whose front would stand in it", not built.can_place("firebox", IN, 0) and not built.place("firebox", IN, 0) and _refused(built, "forest")
 		and not built.can_place("retort", PAST, 3) and not built.place("retort", PAST, 3) and _refused(built, "forest")
-		and built.can_place("retort", PAST, 1) and built.modules.is_empty() and built.coins == 100000 - 50)
+		and built.can_place("retort", PAST, 1) and built.modules.size() == 1 and built.coins == 100000 - 50)
 	_ok("the gates are a tile in each side", Sim.gate(F, 0) == Vector2i(7, -4) and Sim.gate(F, 1) == Vector2i(3, -1)
 		and Sim.gate(F, 2) == Vector2i(0, -5) and Sim.gate(F, 3) == Vector2i(4, -8))
 	# a tap is a log
@@ -836,7 +908,7 @@ func _check_plates() -> void:
 	_ok("all sixty-four tiles of it are bare, and nothing stands on it", _bare(sim, Vector2i(1, 0)) == 64 and sim.trees.size() == Sim.TREES and sim.sources.size() == 1)
 	_ok("the fire and the retort are in the drawer from the first plate bought", sim.unlocked("firebox") and sim.unlocked("retort"))
 	_ok("the kiln is not, and is not placed: no mine gives stone yet", not sim.unlocked("kiln") and not sim.can_place("kiln", Vector2i(9, 4), 0)
-		and not sim.place("kiln", Vector2i(9, 4), 0) and _refused(sim, "locked") and sim.modules.is_empty() and sim.coins == 100000 - 50)
+		and not sim.place("kiln", Vector2i(9, 4), 0) and _refused(sim, "locked") and sim.modules.size() == 1 and sim.coins == 100000 - 50)
 	_ok("the second is 150", sim.plate_price() == 150 and sim.buy_plate(Vector2i(-1, 0), "forest") and sim.coins == 100000 - 200)
 	_ok("the third 450, the fourth 1350", sim.plate_price() == 450 and sim.buy_plate(Vector2i(0, 1), "neutral") and sim.plate_price() == 1350)
 	var on := {}
@@ -1074,10 +1146,10 @@ func _check_sell() -> void:
 	_ok("a hopper of five, a retort with a log", fire.hopper.size() == 5 and retort.inp == "log" and _all(sim) == 8)
 	var coins: int = sim.coins
 	sim.events.clear()
-	_ok("a retort sold returns its 40", sim.sell(Vector2i(10, 4)) and sim.coins == coins + 40 and sim.modules.size() == 1)
+	_ok("a retort sold returns its 40", sim.sell(Vector2i(10, 4)) and sim.coins == coins + 40 and sim.modules.size() == 2)
 	_ok("and says so", sim.events[0].type == "sold_back" and sim.events[0].amount == 40 and sim.events[0].items == 1)
 	_ok("its log lies on its tile", _lying(sim, Vector2i(9, 4)) == 1 and sim.items[Vector2i(9, 4)][0].kind == "log" and _all(sim) == 8)
-	_ok("a firebox sold returns its 20", sim.sell(fire_at) and sim.coins == coins + 60 and sim.modules.is_empty())
+	_ok("a firebox sold returns its 20", sim.sell(fire_at) and sim.coins == coins + 60 and sim.modules.size() == 1)
 	_ok("two of its five logs lie on its tile and the rest on the nearest bare ground", _lying(sim, fire_at) == 2 and _all(sim) == 8)
 	var near := true
 	var loose := 0
@@ -1159,7 +1231,7 @@ func _check_kept() -> void:
 				print(i, " A ", x[i], "\n  B ", y[i])
 	_ok("into the same land", var_to_str(back.pack()) == var_to_str(sim.pack()) and back.coins == sim.coins and back.picked == "belt")
 	var kept: Dictionary = back.pack()
-	_ok("the save is version 3 and holds the sources, and nothing of the land that was", kept.version == 3 and Sim.VERSION == 3 and kept.has("sources") and kept.sources.size() == 2
+	_ok("the save is version 4 and holds the sources, and nothing of the land that was", kept.version == 4 and Sim.VERSION == 4 and not kept.has("market") and kept.has("sources") and kept.sources.size() == 2
 		and not kept.has("rocks") and not kept.has("queue") and not kept.has("sprout") and not kept.has("falls"))
 	back.save()
 	var b := FileAccess.get_file_as_string(Sim.path)

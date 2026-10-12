@@ -82,7 +82,8 @@ const RISE_BARE := 0.7
 ## the dark), the coin comes up at COIN_AT and the leaves are shut again
 ## from SHUT_FROM to SHUT_TO. What comes next rides in from the belt's edge
 ## over SLIDE of the interval, once the leaves are shut. A coin hops
-## COIN_UP and is gone in COIN seconds; DROPS sales are played at once.
+## COIN_UP and is gone in COIN seconds; DROPS sales of one market are played
+## at once.
 const SALE := 0.7
 const SALE_MOST := 0.62
 const OPEN := 0.3
@@ -157,13 +158,13 @@ var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, 
 var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
 var _bit_mm: MultiMesh
 var _spun := {}       # module id -> how far its wheel or blade has turned (radians)
-var _lying := {}      # what lies on the hatch: {from (the way it came), t}
-var _drops: Array = []    # sales being played: {kind, amount, t, len, off (tiles from the middle), paid}
+var _lying := {}      # market id -> what lies on its hatch: {from (the way it came), t}
+var _drops: Array = []    # sales being played: {id (the market's), tile, kind, amount, t, len, off (tiles from the middle), paid}
 var _rng := RandomNumberGenerator.new()
 
 ## A sale's coin is up: when the holder counts it, says "+N" and is heard.
 ## At once under reduce motion.
-signal coined(amount: int)
+signal coined(amount: int, tile: Vector2i)
 
 func _init() -> void:
 	_rng.seed = 20261010
@@ -323,7 +324,7 @@ func event(e: Dictionary) -> void:
 		"laid", "turned", "sold_back", "placed", "built":
 			_belts_stale = true
 		"brought":
-			_lying = {"from": int(e.from), "t": 0.0}
+			_lying[int(e.id)] = {"from": int(e.from), "t": 0.0}
 		"sale":
 			_on_sale(e)
 		"plate":
@@ -335,30 +336,38 @@ func event(e: Dictionary) -> void:
 					if Sim.plate_of(sim.trees[id].tile) == p:
 						_born[id] = -RISE * RISE_BARE
 
-## The hatch opens under what was lying on it. Past DROPS at once, and
-## under reduce motion, only the coin is told.
+## The hatch opens under what was lying on it. Past DROPS at once at one
+## market, and under reduce motion, only the coin is told.
 func _on_sale(e: Dictionary) -> void:
-	var off := _lying_off()
-	_lying.clear()
-	if Motion.reduce or _drops.size() >= DROPS:
-		coined.emit(int(e.amount))
+	var id := int(e.id)
+	var off := _lying_off(id)
+	_lying.erase(id)
+	var playing := 0
+	for d: Dictionary in _drops:
+		if int(d.id) == id:
+			playing += 1
+	if Motion.reduce or playing >= DROPS or not sim.modules.has(id):
+		coined.emit(int(e.amount), e.tile)
 		return
-	_drops.append({"kind": String(e.kind), "amount": int(e.amount), "t": 0.0, "off": off, "paid": false,
-		"len": clampf(float(sim.market_interval()) * SALE, 0.1, SALE_MOST)})
+	_drops.append({"id": id, "tile": e.tile, "kind": String(e.kind), "amount": int(e.amount), "t": 0.0, "off": off, "paid": false,
+		"len": clampf(float(sim.market_interval(sim.modules[id])) * SALE, 0.1, SALE_MOST)})
 
-## How far from the hatch's middle the thing lying on it still is, in sim
-## tiles: it rides in from the edge it came over.
-func _lying_off() -> Vector2:
-	if _lying.is_empty() or Motion.reduce:
+## How far from the middle of market `id`'s hatch the thing lying on it
+## still is, in sim tiles: it rides in from the edge it came over.
+func _lying_off(id: int) -> Vector2:
+	if not _lying.has(id) or Motion.reduce or not sim.modules.has(id):
 		return Vector2.ZERO
-	var time := clampf(float(sim.market_interval()) * SLIDE, 0.05, SLIDE_MOST)
-	var k := clampf(float(_lying.t) / time, 0.0, 1.0)
-	return -Vector2(Art.DIRS[int(_lying.from)]) * 0.5 * (1.0 - k) * (1.0 - k)
+	var time := clampf(float(sim.market_interval(sim.modules[id])) * SLIDE, 0.05, SLIDE_MOST)
+	var k := clampf(float(_lying[id].t) / time, 0.0, 1.0)
+	return -Vector2(Art.DIRS[int(_lying[id].from)]) * 0.5 * (1.0 - k) * (1.0 - k)
 
-## How far the hatch's leaves hang, 0 to 1: the most any sale wants.
-func _hatch() -> float:
+## How far the leaves of market `id`'s hatch hang, 0 to 1: the most any sale
+## of its own wants.
+func _hatch(id: int) -> float:
 	var open := 0.0
 	for d: Dictionary in _drops:
+		if int(d.id) != id:
+			continue
 		var k := float(d.t) / float(d.len)
 		open = maxf(open, smoothstep(0.0, OPEN, k) * (1.0 - smoothstep(SHUT_FROM, SHUT_TO, k)))
 	return open
@@ -472,11 +481,14 @@ func step(delta: float) -> void:
 		d.t += delta
 		if not d.paid and float(d.t) >= float(d.len) * COIN_AT:
 			d.paid = true
-			coined.emit(int(d.amount))
+			coined.emit(int(d.amount), d.tile)
 	_drops = _drops.filter(func(d: Dictionary) -> bool: return d.t < maxf(float(d.len) * SHUT_TO, float(d.len) * COIN_AT + COIN))
 	# what comes next waits at the edge until the leaves are shut
-	if not _lying.is_empty() and _hatch() <= 0.02:
-		_lying.t += delta
+	for id: int in _lying.keys():
+		if not sim.modules.has(id):
+			_lying.erase(id)
+		elif _hatch(id) <= 0.02:
+			_lying[id].t += delta
 	if _plates_n != sim.plates.size():
 		_lay_plates()
 		rising = true
@@ -685,7 +697,6 @@ func _fill_stand() -> void:
 			if sim.plates.has(p + Art.DIRS[side]):
 				var g: Vector2i = Sim.gate(p, side)
 				list.append([depth(Vector2(g) + MID), 0, Art.rubble(held) if sim.is_mine(g) else Art.pile(held), Transform2D(0.0, mid(g)), white])
-	_add_market(list)
 	for tile: Vector2i in sim.kinds:
 		if not _up(tile):
 			continue
@@ -726,22 +737,26 @@ func _fill_stand() -> void:
 	for c in _pool:
 		c.queue_redraw()
 
-## The market: its box, the two leaves of its hatch, what lies on it, what
-## is falling through it behind the box's near side, and the coins. The box
-## has one face and keeps it toward the eye at every turn; what lies on it
-## rides in from the side it came by as the view has it.
-func _add_market(list: Array) -> void:
-	var tile := Vector2(Sim.MARKET_AT) + MID
+## A market that stands built: its box, the two leaves of its hatch, what
+## lies on it, what is falling through it behind the box's near side, and
+## the coins. The box has one face and keeps it toward the eye at every
+## turn; what lies on it rides in from the side it came by as the view has it.
+func _add_market(list: Array, m: Dictionary) -> void:
+	var id: int = m.id
+	var root: Vector2i = m.root
+	var tile := Vector2(root) + MID
 	var d := depth(tile)
-	var box := Transform2D(_turned(Sim.MARKET_AT), seen(tile))
+	var box := Transform2D(_turned(root), seen(tile))
 	var white := Color.WHITE
 	list.append([d, 0, Art.market(), box, white])
-	var open := _hatch()
+	var open := _hatch(id)
 	var shade := 1.0 - 0.34 * open
 	for side in 2:
 		list.append([d + 0.001 * (side + 1), 0, Art.market_door(), box * Art.market_leaf(side, open), Color(shade, shade, shade)])
 	var falling := false
 	for drop: Dictionary in _drops:
+		if int(drop.id) != id:
+			continue
 		var k := float(drop.t) / float(drop.len)
 		if k < FALL_TO:
 			# to the middle as the leaves give, then down into the dark
@@ -756,10 +771,12 @@ func _add_market(list: Array) -> void:
 			falling = true
 	if falling:
 		list.append([d + 0.004, 0, Art.market_front(), box, white])
-	var wait: Array = sim.market.wait
+	var wait: Array = m.wait
 	if not wait.is_empty():
-		list.append([d + 0.005, 0, Art.item(wait[0]), Transform2D(0.0, seen(tile + _lying_off()) + Art.MARKET_TOP), white])
+		list.append([d + 0.005, 0, Art.item(wait[0]), Transform2D(0.0, seen(tile + _lying_off(id)) + Art.MARKET_TOP), white])
 	for drop: Dictionary in _drops:
+		if int(drop.id) != id:
+			continue
 		var t := float(drop.t) - float(drop.len) * COIN_AT
 		if t < 0.0 or t >= COIN:
 			continue
@@ -805,6 +822,9 @@ func _add_module(list: Array, m: Dictionary) -> void:
 	if not _up(root):
 		return
 	var kind: String = m.kind
+	if kind == "market" and m.built:
+		_add_market(list, m)
+		return
 	# the facing it is drawn at: its ways in and out turn with the view
 	var f: int = seen_facing(m.facing)
 	var at := mid(root)

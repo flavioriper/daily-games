@@ -2049,6 +2049,8 @@ static func module(kind: String, facing := 0) -> ArrayMesh:
 			return saw(facing)
 		"joiner":
 			return joiner(facing)
+		"market":
+			return market_shut()
 	return retort(facing)
 
 ## The engine, 1 by 1, the origin the middle of its tile on the ground: a
@@ -2416,6 +2418,17 @@ static func market() -> ArrayMesh:
 		_one["market"] = b.mesh()
 	return _one["market"]
 
+## A market with its hatch shut, as one mesh: what is seen of one while it
+## is built, and under the finger that places it.
+static func market_shut() -> ArrayMesh:
+	if not _one.has("market_shut"):
+		var b := Face.Builder.new()
+		b.append(market(), Transform2D.IDENTITY)
+		for side in 2:
+			b.append(market_door(), market_leaf(side, 0.0))
+		_one["market_shut"] = b.mesh()
+	return _one["market_shut"]
+
 ## The market's near side by itself: its two seen walls and the top's two
 ## near planks. Drawn over a thing falling through the hatch, which is then
 ## behind them as it should be.
@@ -2628,11 +2641,7 @@ static func icon(kind: String) -> ArrayMesh:
 			whole.append(stoker(), Transform2D.IDENTITY)
 			_fit_into(b, whole.mesh(), 90.0)
 		"market":
-			var whole := Face.Builder.new()
-			whole.append(market(), Transform2D.IDENTITY)
-			for side in 2:
-				whole.append(market_door(), market_leaf(side, 0.0))
-			_fit_into(b, whole.mesh(), 96.0)
+			_fit_into(b, market_shut(), 96.0)
 		"forest":
 			_plot_into(b, "forest")
 			b.append(tree(3), Transform2D(0.0, Vector2(0.36, 0.36), 0.0, Vector2(-17.0, 8.0)))
