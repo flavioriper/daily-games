@@ -549,3 +549,55 @@ the count.
   level lines; the win harness and the perf probe, not rerun; a phone.
 - **Mine, not the user's**: Insane keeping the seal for any day and no
   bulb; the dead counter left in the script; Hard keeping "no rings".
+
+## Whole colours trade places (2026-10-12)
+
+The user: "we must find a way to make the pieces for satisfacting, right
+now everything is too sparse and spreaded, making the player to select one
+by one, and all the satisfactory about the game is to see the pieces
+reacting in chain", and then, asked what the order was: "what if we change
+the shuffle logic, so we can pick for example all blues, and swap with red,
+if still blue we pick the next color, and do it to the end", over a
+screenshot of the game this board follows ("see how the game follow a
+pattern? this way, player can relax because things usually chain
+together"). "build it".
+
+- **One scramble on every band** (`State._scramble`): the patches are read
+  colour by colour -- the biggest colour first, the others in the day's own
+  shuffled order, each colour a region at a time (`near()`) -- and the
+  buttons are that same line moved along by the biggest colour's count. A
+  colour's patches lie under the next colour's buttons, and where those run
+  out the one after carries on. Nothing opens sewn unless one colour is
+  more than half the cloth (then as few as can be: the redraw in `setup`
+  stands). The lengths of 3 to 7 (`CHUNK`), Insane's strips
+  (`_scramble_strips`) and `_trade_home` are gone; `BIG_FROM` now only
+  means "zooms".
+- **Measured before it was built**, the state's own hand over the whole
+  bank, one seed a picture (a proxy for a player, and a greedy one: it
+  keeps sewing singles while it can). Old to new, Easy / Medium / Hard /
+  Insane: buttons opening alone 10 / 11 / 17 / 8 % to 5 / 2 / 4 / 1 %; the
+  mean run at the opening 5.0 / 4.3 / 3.4 / 4.8 to 7.5 / 8.3 / 7.8 / 20.8;
+  moves of one button 58 / 54 / 64 / 45 % to 42 / 34 / 45 / 35 %; buttons a
+  move 2.3 / 2.5 / 2.1 / 2.9 to 3.3 / 3.6 / 3.3 / 4.8.
+- **The day is about a third shorter**: par medians 12 / 22 / 42 / 223
+  (were 17 / 31 / 72 / 370).
+- **What was tried and is not the lever**: the picture cut into blobs of
+  one patch colour, 4 to 7 buttons, blobs of one size trading round a ring
+  (Insane's strips in two dimensions) left the moves of one at 57 / 52 /
+  58 / 37 %. Sizes that must match leave remainders; whole colours never
+  mismatch, since the run is nearly always longer than the stretch.
+- **What is left is the tail**: a picture's small marks (an eye, an
+  outline) are single patches whatever the scramble. Two rule changes were
+  measured and **not built, the user's to call**: the tin emptying itself
+  when a patch of its colour opens (with the swap: moves of one 12 / 12 /
+  32 / 28 %; it takes back "nothing lands by itself", the user's own of
+  2026-10-11) and a sew filling its colour's bare patches anywhere, not
+  only those joined to the tapped one (a few points; that rule was my
+  reading). All three, with a hand that stows again when sews fall under
+  four: 6 / 6 / 11 / 10 %, about six buttons a move.
+- **Checked**: `tests/_probe_buttons.gd` 864 runs, 0 failures;
+  `tests/_probe_buttons_board.gd` 38 days, 0; the suite 249,804. Four
+  windows, `rest` on each band on `opengl3_angle`: 84 / 84 / 84 / 91 draw
+  calls. Seen in four stills of the opening; not played by anyone, no
+  phone. A day in progress is not kept, so nothing saved is broken; today's
+  deal changes for everyone.

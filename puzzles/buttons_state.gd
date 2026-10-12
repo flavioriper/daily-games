@@ -41,15 +41,10 @@ const HINTS_BY := [3, 3, 2, 0]
 ## Insane: no bulb, and the seal for any day sewn. It counted its moves
 ## until 2026-10-12 (`moves_budget`).
 const INSANE := 3
-## The lengths the scramble cuts the colours into, a band: the big pictures
-## of Hard and Insane (24 and 32 square, the user, 2026-10-11) are cut
-## longer, so a day there is long and not endless.
-const CHUNK := [Vector2i(3, 7), Vector2i(3, 7), Vector2i(3, 7), Vector2i(6, 6)]
 ## A shared picture is at most this many marks across.
 const SHARE_MAX := 16
-## The bands of the big pictures, which are scrambled a strip at a time
-## (`_scramble_strips`) and zoom: Insane alone since 2026-10-12, Hard too
-## for a day before it.
+## The bands of the big pictures, which zoom: Insane alone since
+## 2026-10-12, Hard too for a day before it.
 const BIG_FROM := 3
 ## The pictures a day may draw before it keeps the one it has.
 const DRAWS := 12
@@ -198,131 +193,65 @@ func adopt_laid(rows: Array, opening: Array, legend: Dictionary) -> void:
 	reset()
 	par = _solve_taps()
 
-## The buttons as the day opens: the picture's own colours read down its
-## columns, cut into short lengths, the lengths shuffled and laid along the
-## rows -- so the colours come in runs of a few and nearly every button is
-## off its patch; the few that are not trade places with one that can.
-## That is Easy and Medium; a big picture is cut another way
-## (`_scramble_strips`).
+## The buttons as the day opens: whole colours trade places (the user,
+## 2026-10-12, of a day that opened "too sparse and spreaded, making the
+## player to select one by one": "pick for example all blues, and swap with
+## red, if still blue we pick the next color, and do it to the end"). The
+## patches are read colour by colour -- the biggest colour first, the others
+## in the day's own order, each a region at a time -- and the buttons are
+## that same line moved along by the biggest colour's count. So a stretch of
+## the picture lies under one colour of button, a run lifted bares one
+## stretch, and nothing opens sewn unless one colour is more than half the
+## cloth. Until then Easy to Hard were cut into lengths of 3 to 7 read down
+## the columns and laid along the rows, and Insane into strips trading round
+## a ring; both are in history.
 func _scramble(rng: RandomNumberGenerator) -> PackedInt32Array:
-	if band >= BIG_FROM:
-		return _trade_home(_scramble_strips(rng), rng)
-	var by_row := PackedInt32Array()
-	var by_col := PackedInt32Array()
-	for y in h:
-		for i in w:
-			var x := i if y % 2 == 0 else w - 1 - i
-			if slot[y * w + x] >= 0:
-				by_row.append(y * w + x)
-	for x in w:
-		for i in h:
-			var y := i if x % 2 == 0 else h - 1 - i
-			if slot[y * w + x] >= 0:
-				by_col.append(y * w + x)
-	var n := by_row.size()
-	var chunk: Vector2i = CHUNK[clampi(band, 0, CHUNK.size() - 1)]
-	var lengths: Array = []
-	var at := 0
-	while at < n:
-		var cut := mini(n - at, rng.randi_range(chunk.x, chunk.y))
-		lengths.append([at, cut])
-		at += cut
-	for k in range(lengths.size() - 1, 0, -1):
+	var by_colour: Array = []
+	for c in colours.size():
+		by_colour.append(PackedInt32Array())
+	var seen := PackedByteArray()
+	seen.resize(w * h)
+	for from in w * h:
+		if slot[from] < 0 or seen[from] == 1:
+			continue
+		var region := PackedInt32Array([from])
+		seen[from] = 1
+		var head := 0
+		while head < region.size():
+			var p := xy(region[head])
+			head += 1
+			for d: Vector2i in near():
+				var j := at_xy(p + d)
+				if j >= 0 and seen[j] == 0 and slot[j] == slot[from]:
+					seen[j] = 1
+					region.append(j)
+		var line: PackedInt32Array = by_colour[slot[from]]
+		line.append_array(region)
+		by_colour[slot[from]] = line
+	var order: Array = range(colours.size())
+	for k in range(order.size() - 1, 0, -1):
 		var j := rng.randi_range(0, k)
-		var t = lengths[k]
-		lengths[k] = lengths[j]
-		lengths[j] = t
-	var best := PackedInt32Array()
-	best.resize(w * h)
-	best.fill(-1)
-	var put := 0
-	for piece: Array in lengths:
-		for k in int(piece[1]):
-			best[by_row[put]] = slot[by_col[int(piece[0]) + k]]
-			put += 1
-	return _trade_home(best, rng)
-
-## A big picture's buttons as the day opens. Cut the small way, a 32-square
-## cloth opens with a hundred buttons each alone among strangers and the
-## hand's game is 600 moves, most of them one button (measured, 2026-10-11):
-## what a move can sew is what the tin can hold, so a long day wants every
-## move to sew a tinful. So the picture is cut along its rows into strips of
-## one colour, CHUNK long at the most, and the strips of one length trade
-## their buttons round in a ring, no strip with one of its own colour: a
-## strip lifted bares a strip's worth of one colour, which another strip
-## fills whole.
-func _scramble_strips(rng: RandomNumberGenerator) -> PackedInt32Array:
-	var chunk: Vector2i = CHUNK[clampi(band, 0, CHUNK.size() - 1)]
-	var by_len := {}
-	for y in h:
-		var x := 0
-		while x < w:
-			var c := slot[y * w + x]
-			if c < 0:
-				x += 1
-				continue
-			var want := rng.randi_range(chunk.x, chunk.y)
-			var strip := PackedInt32Array()
-			while x < w and slot[y * w + x] == c and strip.size() < want:
-				strip.append(y * w + x)
-				x += 1
-			if not by_len.has(strip.size()):
-				by_len[strip.size()] = []
-			(by_len[strip.size()] as Array).append(strip)
+		var t = order[k]
+		order[k] = order[j]
+		order[j] = t
+	var big := 0
+	for k in order.size():
+		if (by_colour[order[k]] as PackedInt32Array).size() > (by_colour[order[big]] as PackedInt32Array).size():
+			big = k
+	var first: int = order[big]
+	order.remove_at(big)
+	order.push_front(first)
+	var cells := PackedInt32Array()
+	for c: int in order:
+		cells.append_array(by_colour[c])
+	var n := cells.size()
+	var shift: int = (by_colour[first] as PackedInt32Array).size()
 	var out := PackedInt32Array()
 	out.resize(w * h)
 	out.fill(-1)
-	var lens := by_len.keys()
-	lens.sort()
-	for len_: int in lens:
-		var ring: Array = by_len[len_]
-		var n := ring.size()
-		for k in range(n - 1, 0, -1):
-			var j := rng.randi_range(0, k)
-			var t = ring[k]
-			ring[k] = ring[j]
-			ring[j] = t
-		# two of one colour side by side in the ring: one of them trades
-		# places with a strip that neither place minds
-		for i in n:
-			var a := (i + 1) % n
-			if slot[ring[i][0]] != slot[ring[a][0]]:
-				continue
-			var from := rng.randi_range(0, n - 1)
-			for k in n:
-				var j := (from + k) % n
-				var cj := slot[ring[j][0]]
-				var ca := slot[ring[a][0]]
-				if j == i or j == a or cj == ca:
-					continue
-				if cj == slot[ring[(a + 1) % n][0]] or ca == slot[ring[(j + n - 1) % n][0]] \
-						or ca == slot[ring[(j + 1) % n][0]]:
-					continue
-				var t = ring[a]
-				ring[a] = ring[j]
-				ring[j] = t
-				break
-		for i in n:
-			var c := slot[ring[(i + 1) % n][0]]
-			for g: int in ring[i]:
-				out[g] = c
+	for i in n:
+		out[cells[i]] = slot[cells[(i + shift) % n]]
 	return out
-
-## A button that opens on its own patch trades places with one that can.
-func _trade_home(best: PackedInt32Array, rng: RandomNumberGenerator) -> PackedInt32Array:
-	for i in best.size():
-		if slot[i] < 0 or best[i] != slot[i]:
-			continue
-		var from := rng.randi_range(0, best.size() - 1)
-		for k in best.size():
-			var j := (from + k) % best.size()
-			if slot[j] < 0 or best[j] == slot[j] or best[j] == slot[i] or best[i] == slot[j]:
-				continue
-			var t := best[i]
-			best[i] = best[j]
-			best[j] = t
-			break
-	return best
 
 func count() -> int:
 	return _count
