@@ -748,6 +748,17 @@ func _hint(text: String, sub: String) -> void:
 	_banner_tw = create_tween()
 	_banner_tw.tween_property(box, "modulate:a", 1.0, 0.2)
 
+## A plate's number pops from its own size, whatever the last pop was doing:
+## `Motion.bump` comes home to the scale it found, and a sweep scores again
+## before the last pop is home, so each began bigger than the one before (the
+## user, 2026-10-12, of a 74 three plates tall: "number is huge").
+static func pop(l: Label, amount: float, time: float) -> void:
+	if l.has_meta("pop"):
+		Motion.stop(l.get_meta("pop"))
+	l.scale = Vector2.ONE
+	l.pivot_offset = l.size * 0.5
+	l.set_meta("pop", Motion.bump(l, amount, time))
+
 ## The bank as the plate letters it: with the run's score while it is being
 ## made, and alone once the run has been banked.
 func _bank_text() -> String:
@@ -758,15 +769,13 @@ func _refresh_hud() -> void:
 		return
 	if sim.level != _shown_level:
 		if _shown_level >= 0 and sim.level > _shown_level:
-			_level_l.pivot_offset = _level_l.size * 0.5
-			Motion.bump(_level_l, 0.3, 0.4)
+			pop(_level_l, 0.3, 0.4)
 		_shown_level = sim.level
 		_level_l.text = "%d/%d" % [sim.level, Sim.LEVELS]
 	if sim.score == _shown_score:
 		return
 	if sim.score > _shown_score and _shown_score >= 0:
-		_score_l.pivot_offset = _score_l.size * 0.5
-		Motion.bump(_score_l, 0.14, 0.26)
+		pop(_score_l, 0.14, 0.26)
 	_shown_score = sim.score
 	_score_l.text = Record.grouped(sim.score)
 	_bank_l.text = _bank_text()

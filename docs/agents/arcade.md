@@ -3209,6 +3209,20 @@ biggest whirlpool.
     - Mine and unseen: no price for hurry at all, `SPEED_UP` 2 and the
       price, the name Speed, `GROW_CURVE` (the levels come slower than they
       did above level 4), the page's film and words, pt and es.
+  - **Two bugs off the phone, 2026-10-12** (the user: "number is huge and
+    time ended while i still had energy"). **The score's plate grew with
+    every pop**: `Motion.bump` comes home to the scale it finds, and since
+    the fourth pass a sweep scores again before the last pop is home, so
+    each began bigger (forty pops three frames apart left the label at
+    6.4). The plates' numbers go through `pop()`, which stops the last pop
+    and starts from one; **any label bumped faster than its bump lasts
+    needs the same**. **A level made in the drain gave 4 s back**: a thing
+    caught before the spin ran out goes down as the whirlpool unwinds, made
+    its level, and the bar stood part full under "Time's up!". It still
+    scores and still makes the level; the spin is given back only in
+    `PLAY`. Mine, the user's to call: that such a level does not save the
+    run. A throwaway headless probe of both, FAIL before and PASS after;
+    `_probe_eddy.gd -- 6` 0 failed. No windowed run, no phone.
   - Mine and unseen by the user: the spec's ten calls. Owed: a phone, the
     sounds, pt and es, a person's climb timed.
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed

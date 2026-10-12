@@ -446,8 +446,11 @@ func _swallow(th: Dictionary) -> void:
 	while level < LEVELS and grown >= need():
 		grown -= need()
 		level += 1
-		spin = minf(spin_full, spin + SPIN_BACK)
-		_low_said = spin <= spin_full * LOW
+		# a thing still going down as the whirlpool unwinds makes its level,
+		# but gives no spin back: the run is over and the bar stays empty
+		if phase == Phase.PLAY:
+			spin = minf(spin_full, spin + SPIN_BACK)
+			_low_said = spin <= spin_full * LOW
 		events.append({"type": "level", "n": level, "opens": _opened(level)})
 	if level >= LEVELS:
 		grown = 0
