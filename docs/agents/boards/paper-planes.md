@@ -250,3 +250,25 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `PP_TIP_STUCK_MOVES`. Kept: the refusal's lane flash, the dotted rings
   where the clouds go next and the stuck line, all read off the sky. Not
   updated: `PP_LVL_3` still says "two hearts".
+
+- **Insane is Hard's maze with the wind over it (2026-10-12).** The user:
+  "the insane is not carrying the same board like of hard"; asked, they
+  chose Hard's maze plus wind over a bigger maze with none. `BANDS[3]` is
+  Hard's row and `"clouds": 12`; the carve is the maze's, and
+  `_stand_clouds` then picks the wind and the clouds (never more than two a
+  row) until `has_moments()`: every plane's lane clear of them on some tick
+  of their 21-tick round, one cloud fewer after `CLOUD_DRAWS` failed draws.
+  The maze's order never depended on the clouds, and a gust is free since
+  the counter went the same day (`_gust_left`, `PP_TIP_STUCK_FREE`), so no
+  sky dead-ends: `tests/test_planes.gd` plays five of them with any free
+  plane and a gust when none can fly. The bank (`content/insane/
+  planes.json`) is no longer dealt; `from_bank`, the exact search and the
+  miner stay, on `WINDY_SMALL` (the old 10 x 14 row). `solve_order()` on a
+  windy maze is the carve's order (past the search's 62 planes), and
+  `restore_completed_board` sweeps what a cloud held back. Six seeds:
+  68-78 planes, 12 clouds, 35-52 ms to carve, 11-18 planes cloud-held at
+  the deal, 7-17 gusts in a random play. One window, `d=3 stuck` on
+  opengl3_angle: stuck after 11 greedy launches, the free tip, 74 draw
+  calls. Mine, the user's to call: 12 clouds, and that a gust is free.
+  Not played through by hand, no phone; the tutorial's WIND page unseen on
+  the new size.

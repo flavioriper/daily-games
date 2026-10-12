@@ -31,7 +31,7 @@ const GATE_P := 0.05
 
 static func candidate(rng: RandomNumberGenerator) -> Dictionary:
 	var st := State.new()
-	st.carve(rng, 3)
+	st.carve(rng, 3, State.WINDY_SMALL)
 	return st.to_bank()
 
 static func grade(board: Dictionary) -> Dictionary:

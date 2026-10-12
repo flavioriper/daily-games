@@ -230,7 +230,24 @@ static func _test_windy_deal(t) -> void:
 	t.check(not bad.from_bank({"cols": 10, "rows": 14, "wind": 1, "clouds": [0], "planes": [[0, 1]], "order": []}),
 		"an order that does not replay is refused")
 	var dealt := _built(5, 3)
-	t.check(dealt.windy() and dealt.banked, "Insane deals a banked Windy Day sky")
+	t.check(dealt.windy() and not dealt.banked, "Insane deals a live Windy Day sky")
+	t.eq(Vector2i(dealt.cols, dealt.rows), Vector2i(_built(5, 2).cols, _built(5, 2).rows), "on a sky the size of Hard's")
+	for s in range(1, 6):
+		var maze := _built(s, 3)
+		t.check(maze.clouds.size() > 0 and maze.clouds.size() <= int(State.band(3)["clouds"]) and maze.has_moments(),
+			"windy maze %d: clouds, and a moment for every plane" % s)
+		# Played badly on purpose: any free plane, a gust when none can fly.
+		var pick := RandomNumberGenerator.new()
+		pick.seed = s
+		var guard: int = maze.planes.size() * (maze.cols + 1)
+		while not maze.solved() and guard > 0:
+			guard -= 1
+			var free := maze.free_planes()
+			if free.is_empty():
+				maze.gust()
+			else:
+				maze.launch(free[pick.randi_range(0, free.size() - 1)])
+		t.check(maze.solved(), "windy maze %d: clears in any order, gusts and all" % s)
 	t.check(not dealt.judged and not dealt.undo_allowed, "nothing judged, and no undo")
 	t.eq(State.hearts_for(3), 0, "no hearts on Insane: it counts moves")
 	t.eq(State.hints_for(3), 0, "no hints on Insane")
@@ -240,7 +257,7 @@ static func _test_windy_deal(t) -> void:
 		var st := State.new()
 		var rng := RandomNumberGenerator.new()
 		rng.seed = s
-		st.carve(rng, 3)
-		t.check(st.windy() and st.clouds.size() == int(State.band(3)["clouds"]),
+		st.carve(rng, 3, State.WINDY_SMALL)
+		t.check(st.windy() and st.clouds.size() == int(State.WINDY_SMALL["clouds"]),
 			"live Windy Day %d: wind and clouds" % s)
 		t.check(st.replays(st.order), "live Windy Day %d: the stored order replays" % s)

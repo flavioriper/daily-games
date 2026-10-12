@@ -186,7 +186,7 @@ func title() -> String: return "Pearl Dive"
 
 func rules() -> String:
 	var out := ""
-	if state.band >= 3:
+	if state.tank():
 		out = tr("PD_RULES_BREATH") % [State.ASKS[3], int(State.AIR)]
 	else:
 		out = tr("PD_RULES") % [State.ASKS[state.band], int(State.SECONDS[state.band])]
@@ -209,7 +209,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.TYPE, "HTP_PD_TYPE", tr("HTP_PD_TYPE_BODY")],
 		[Diagram.Lesson.RARE, "HTP_PD_RARE", tr("HTP_PD_RARE_BODY")],
 		[Diagram.Lesson.MISS, "HTP_PD_MISS", tr("HTP_PD_MISS_BODY") % int(State.MISS_COST)]]
-	if state.band >= 3:
+	if state.tank():
 		steps.append([Diagram.Lesson.BREATH, "HTP_PD_BREATH", tr("HTP_PD_BREATH_BODY") % int(State.AIR)])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_PD_HINT",
@@ -448,7 +448,7 @@ func _result() -> Dictionary:
 
 ## The share of the clock that is left.
 func _clock_share() -> float:
-	var full: float = State.AIR if state.band >= 3 else float(State.SECONDS[state.band])
+	var full: float = State.AIR if state.tank() else float(State.SECONDS[state.band])
 	return clampf(state.time_left / maxf(1.0, full), 0.0, 1.0)
 
 func _clock_colour() -> Color:
@@ -636,7 +636,7 @@ func _draw_paper(now: float, alpha: float) -> void:
 	if a <= 0.0:
 		return
 	if _phase == Phase.READY:
-		var lead := tr("PD_READY_BREATH") % [state.count(), int(State.AIR)] if state.band >= 3 \
+		var lead := tr("PD_READY_BREATH") % [state.count(), int(State.AIR)] if state.tank() \
 			else tr("PD_READY") % [state.count(), int(State.SECONDS[state.band])]
 		_write(display, lead, ask_box, _fit(display, lead, ask_box.size, ASK_FONTS), Color(Pal.TEXT, a))
 		_write(display, tr("PD_READY_FIELD"), Rect2(_field.position, _field.size), TYPE_FONTS[3], Color(Pal.TEXT_DIM, a))
@@ -1037,8 +1037,10 @@ func _draw_stamp(now: float, shown: Array) -> void:
 	_hud_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
 	_hud_layer.draw_set_transform_matrix(xf * Transform2D(0.0, -Vector2(rad, rad)))
 	var lines: Array
-	if insane:
+	if insane and state.tank():
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02], [tr("PD_SEAL_BREATH"), 0.17, 0.36]]
+	elif insane:
+		lines = [[tr("BN_INSANE_SEAL"), 0.24, 0.12]]
 	else:
 		lines = [[tr("PD_SEAL_DEEP"), 0.24, 0.12]]
 	Seal.text(_hud_layer, rad, lines)

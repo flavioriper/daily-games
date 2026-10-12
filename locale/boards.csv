@@ -810,7 +810,7 @@ PP_MOTTO,A clear lane and away,"Caminho livre, e lá vai","Camino libre, y a vol
 PP_LVL_0,12 × 17 maze,Labirinto 12 × 17,Laberinto de 12 × 17
 PP_LVL_1,16 × 23 maze,Labirinto 16 × 23,Laberinto de 16 × 23
 PP_LVL_2,"21 × 30 maze","Labirinto 21 × 30","Laberinto de 21 × 30"
-PP_LVL_3,"Windy Day: no hints, no undo","Dia de Vento: sem dicas, sem desfazer","Día de Viento: sin pistas, sin deshacer"
+PP_LVL_3,"Windy Day: 21 × 30 maze, drifting clouds","Dia de Vento: labirinto 21 × 30, nuvens à deriva","Día de Viento: laberinto de 21 × 30, nubes a la deriva"
 PW_BLURB,Turn each pinned piece until the frame is full.,Gire cada peça presa até o quadro ficar cheio.,Gira cada pieza fija hasta llenar el marco.
 PW_SHORT,Turn each piece\ntill the frame fills.,Gire as peças até\npreencher o quadro.,Gira las piezas\ny llena el marco.
 PW_MOTTO,Turn it till it fits,Gire até encaixar,Gira hasta que encaje
@@ -3002,7 +3002,7 @@ PD_MOTTO,"The rarer, the deeper.","Quanto mais rara, mais fundo.","Cuanto más r
 PD_LVL_0,"5 everyday prompts, 30 s each","5 temas do dia a dia, 30 s cada","5 temas cotidianos, 30 s cada uno"
 PD_LVL_1,"6 school-day prompts, 25 s each","6 temas de escola, 25 s cada","6 temas de escuela, 25 s cada uno"
 PD_LVL_2,"7 narrow prompts, 20 s each","7 temas fechados, 20 s cada","7 temas cerrados, 20 s cada uno"
-PD_LVL_3,"One Breath: 8 prompts, one tank","Um Fôlego: 8 temas, um tanque","Un Respiro: 8 temas, un tanque"
+PD_LVL_3,"8 mixed prompts, 20 s each, no bulb","8 temas variados, 20 s cada, sem lâmpada","8 temas variados, 20 s cada uno, sin bombilla"
 PD_ROUND,%d / %d,%d / %d,%d / %d
 PD_METRES,%d m,%d m,%d m
 PD_GAIN,+%d m,+%d m,+%d m

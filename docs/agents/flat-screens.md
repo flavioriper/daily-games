@@ -578,8 +578,8 @@ morning).
 - `tests/_probe_moves.gd` is stale: there is no budget for it to spend.
 
 Not touched, because they are the game on every band or a count of
-mistakes, not of moves: Pearl Dive's clock (asked of the user), Word Trail's
-five wishes, the rows of Hidden Word and Code Break, Drumbeat's misses, and
+mistakes, not of moves: Pearl Dive's per-prompt clock (Insane's single tank
+did go: `docs/agents/boards/pearl-dive.md`), Word Trail's five wishes, the rows of Hidden Word and Code Break, Drumbeat's misses, and
 the two hearts of Trestle, How Big? and Golden Acorn.
 
 The suite 249,784, 0 failed; all 37 boards opened headless on Insane with

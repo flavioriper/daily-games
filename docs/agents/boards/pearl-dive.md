@@ -173,3 +173,14 @@
   dealing a new dive; the Pearl and two deep answers named after every
   prompt; no score sent to the crowd; rarity authored by the model and its
   reviewer rather than counted.
+
+- **Insane has Hard's clock (2026-10-12).** The user: "remove any move limit
+  or time limit from insane"; asked about the one tank, they chose Hard's
+  clock. `SECONDS[3]` is 20 and `tank()` is false on every band
+  (`TANK_FROM` 4), so Insane is 8 prompts at 20 s each with no bulb, a dry
+  prompt is a dry prompt and nothing ends the dive early. One Breath's
+  code (the tank, `AIR_BACK`, the out card and its video, `PD_*_BREATH`) is
+  left in place behind `tank()`, unreached; the seal reads Insane alone.
+  Insane's prompts are still the mix the server writes (three easy, three
+  medium, two hard): making them harder than Hard's is a change to the
+  functions and a deploy, not done. Not seen on a screen.

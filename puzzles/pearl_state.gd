@@ -31,8 +31,12 @@ const LANGS := ["en", "pt", "es"]
 
 ## Prompts a band asks: Easy, Medium, Hard, and One Breath.
 const ASKS := [5, 6, 7, 8]
-## Seconds a prompt is given; One Breath has its tank instead.
-const SECONDS := [30.0, 25.0, 20.0, 0.0]
+## Seconds a prompt is given. Insane has Hard's (the user, 2026-10-12: no
+## time limit shaped for Insane; asked, they chose Hard's clock): the one
+## tank of One Breath is left below, on no band (`tank()`).
+const SECONDS := [30.0, 25.0, 20.0, 20.0]
+## The first band on the single tank: none.
+const TANK_FROM := 4
 ## How many of each level the bank's One Breath takes, easy to hard.
 const BREATH := [3, 3, 2]
 const HINTS_BY := [2, 1, 1, 0]
@@ -268,7 +272,7 @@ func restart() -> void:
 	_own = []
 	_other = []
 	_lang = ""
-	time_left = AIR if band >= 3 else float(SECONDS[band])
+	time_left = AIR if tank() else float(SECONDS[band])
 
 ## A second try at One Breath is a new dive: the first one's answers have all
 ## been shown. From the bank, keyed off this deal and the try.
@@ -427,8 +431,12 @@ func tick(delta: float) -> bool:
 	_run_dry()
 	return true
 
+## Whether the day is one tank of air for every prompt (One Breath).
+func tank() -> bool:
+	return band >= TANK_FROM
+
 func _run_dry() -> void:
-	if band >= 3:
+	if tank():
 		out = true
 	else:
 		results.append({"a": -1, "t": -1, "m": 0})
@@ -452,7 +460,7 @@ func guess(text: String) -> Dictionary:
 		return {"hit": false, "short": false, "ran": ran}
 	var t := int(prompts[index].answers[a].t)
 	var air := 0.0
-	if band >= 3:
+	if tank():
 		air = float(AIR_BACK[t])
 		time_left += air
 	var res := {"a": a, "t": t, "m": int(METRES[t])}
@@ -465,7 +473,7 @@ func advance() -> bool:
 		return false
 	index += 1
 	misses = 0
-	if band < 3:
+	if not tank():
 		time_left = float(SECONDS[band])
 	return true
 

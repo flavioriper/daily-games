@@ -2695,6 +2695,8 @@ func restore_completed_board() -> void:
 	_close_card()
 	for i in _state.solve_order():
 		_state.launch(i)
+	# A windy maze's order can meet a cloud: whatever is left goes too.
+	_state.sweep()
 	# Clears the launch history (every cell is already empty), so nothing is
 	# left for an undo to call back.
 	_state.clear_occupancy()

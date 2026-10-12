@@ -64,11 +64,14 @@ const CLOUD := -2
 ## lift so the skies do not all come out the same. Easy draws fewest and
 ## shakes most -- it is where the rule is learnt.
 ##
-## Insane is Windy Day: a small sky with `clouds` clouds, planes of three
-## cells or more (a two-cell hop leaves the clouds nothing to time), and
-## `wind_w` weighting a placement by how often the clouds cross its lane.
-## This row is the live fallback's and the miner's (tools/insane/
-## planes_ladder.gd); the phone deals Insane from content/insane/planes.json.
+## Insane is Windy Day on Hard's own maze (the user, 2026-10-12: "the insane
+## is not carrying the same board like of hard"; asked, they chose Hard's
+## maze with the wind over it): the same carve, then `clouds` clouds stood
+## over it (`_stand_clouds`) so that every plane's lane is clear of them on
+## some tick of their round. A gust costs nothing (the board), so a sky
+## carved this way always clears. `WINDY_SMALL` is the small sky Insane
+## dealt until then, kept for the miner (tools/insane/planes_ladder.gd) and
+## the bank's own tests; the phone no longer deals from the bank.
 const BANDS: Array[Dictionary] = [
 	{"cols": 12, "rows": 17, "min_len": 2, "max_len": 15, "maze": true, "skew": 1.3, "straight": 0.6,
 		"floor": 0.93, "picks": 3, "noise": 1.5, "tries": 120},
@@ -76,9 +79,14 @@ const BANDS: Array[Dictionary] = [
 		"floor": 0.93, "picks": 6, "noise": 1.0, "tries": 120},
 	{"cols": 21, "rows": 30, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
 		"floor": 0.93, "picks": 10, "noise": 0.6, "tries": 120},
-	{"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
-		"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0},
+	{"cols": 21, "rows": 30, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
+		"floor": 0.93, "picks": 10, "noise": 0.6, "tries": 120, "clouds": 12},
 ]
+const WINDY_SMALL := {"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
+	"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0, "maze": false}
+## How many draws of the clouds a count of them gets before one fewer is
+## tried (`_stand_clouds`).
+const CLOUD_DRAWS := 30
 ## How many boards to make before keeping the fullest, and how many failed
 ## placements in a row end a board.
 const CANDIDATES := 6
@@ -326,6 +334,14 @@ func solved() -> bool:
 ## only empties cells). On a Windy Day sky it is the exact search, taking no
 ## gusts; from the deal it is the stored `order`, which is known to replay.
 func solve_order() -> Array[int]:
+	if windy() and planes.size() > MAX_WINDY_PLANES:
+		# A windy maze: the carve's order, which the planes allow and the
+		# clouds may hold up for a tick or a gust.
+		var rest: Array[int] = []
+		for i in order:
+			if not planes[i]["gone"]:
+				rest.append(i)
+		return rest
 	if windy():
 		if _history.is_empty() and gusts == 0 and order.size() == planes.size():
 			return order.duplicate()
@@ -369,20 +385,12 @@ func hint_plane() -> int:
 	return -1 if free.is_empty() else free[0]
 
 ## Deals the sky for `difficulty`. Easy, Medium and Hard are carved live;
-## Insane is a Windy Day sky off the bank (`bank_step` is PuzzleBase's, how
-## many times New has been pressed since the board opened), or, when the bank
-## is empty or its entry does not hold together, a live Windy Day sky built
-## with its clock and replayed.
-func build(rng: RandomNumberGenerator, p_difficulty: int, bank_step := 0) -> void:
+## Insane is Hard's maze with the wind over it, carved live like the rest
+## (`_bank_step` is PuzzleBase's and unread since the bank was retired).
+func build(rng: RandomNumberGenerator, p_difficulty: int, _bank_step := 0) -> void:
 	difficulty = clampi(p_difficulty, 0, BANDS.size() - 1)
 	banked = false
-	if difficulty == 3:
-		if from_bank(InsaneBank.pick("planes", bank_step)):
-			banked = true
-		elif InsaneBank.size("planes") > 0:
-			push_warning("Paper Planes: a banked Windy Day sky did not hold together; building a live one")
-	if not banked:
-		carve(rng, difficulty)
+	carve(rng, difficulty)
 	judged = hearts_for(difficulty) > 0
 	undo_allowed = difficulty < 3
 
@@ -417,15 +425,16 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 	var best_end: Array[Vector2i] = []
 	var best_keys: Array = []
 	var n_clouds := int(b.get("clouds", 0))
+	var maze := bool(b.get("maze", false))
 	for attempt in CANDIDATES:
 		planes = []
 		clear_occupancy()
 		_cloud_end = []
 		wind = Vector2i.ZERO
-		if n_clouds > 0:
+		if n_clouds > 0 and not maze:
 			wind = Vector2i(1, 0) if rng.randi_range(0, 1) == 0 else Vector2i(-1, 0)
 			_cloud_end = _pick_clouds(rng, n_clouds)
-		if bool(b.get("maze", false)):
+		if maze:
 			_carve_maze(rng, b)
 		else:
 			_carve(rng, b)
@@ -461,6 +470,9 @@ func carve(rng: RandomNumberGenerator, p_difficulty: int, knobs := {}) -> void:
 	else:
 		for i in range(planes.size() - 1, -1, -1):
 			order.append(i)
+	if maze and n_clouds > 0:
+		_stand_clouds(rng, n_clouds)
+		return
 	# Called inside the assert itself so a release export strips the work.
 	assert(replays(order), "PlanesState.carve: the generated sky must replay to empty")
 
@@ -478,6 +490,58 @@ func replays(seq: Array) -> bool:
 	ok = ok and solved()
 	reset()
 	return ok
+
+## Stands the wind and up to `n` clouds over a maze already carved. The
+## maze's order holds whatever the clouds do (a launch only empties cells),
+## so all the clouds have to leave is a moment for every plane: fewer are
+## stood when `n` cannot.
+func _stand_clouds(rng: RandomNumberGenerator, n: int) -> void:
+	wind = Vector2i(1, 0) if rng.randi_range(0, 1) == 0 else Vector2i(-1, 0)
+	var want := n
+	while want > 0:
+		for attempt in CLOUD_DRAWS:
+			clouds = _pick_clouds(rng, want)
+			if has_moments():
+				return
+		want -= 1
+	clouds = []
+	wind = Vector2i.ZERO
+
+## Whether every plane's lane is clear of the clouds on some tick of their
+## round. With that, and a gust to be had whenever nothing can fly, no sky
+## dead-ends: the planes no plane stands before each get their tick.
+func has_moments() -> bool:
+	if clouds.is_empty():
+		return true
+	var sets: Array[Dictionary] = []
+	for k in cols:
+		sets.append(_cloud_set(k))
+	for i in planes.size():
+		var cells := lane(i)
+		var found := false
+		for k in cols:
+			var here: Dictionary = sets[k]
+			var crossed := false
+			for c in cells:
+				if here.has(c):
+					crossed = true
+					break
+			if not crossed:
+				found = true
+				break
+		if not found:
+			return false
+	return true
+
+## Every plane left gone at once, in index order: a finished day as it
+## stands, whatever the clouds would have said of that order.
+func sweep() -> void:
+	for i in planes.size():
+		if not planes[i]["gone"]:
+			planes[i]["gone"] = true
+			for c in planes[i]["cells"]:
+				_occupant.erase(c)
+			_history.append(i)
 
 ## `n` distinct cloud cells, never more than two in a row of the sky so the
 ## clouds spread over it.
