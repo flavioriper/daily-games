@@ -917,8 +917,8 @@ func _check_plates() -> void:
 	_ok("the fire and the retort are in the drawer from the first plate bought", sim.unlocked("firebox") and sim.unlocked("retort"))
 	_ok("the kiln is not, and is not placed: no mine gives stone yet", not sim.unlocked("kiln") and not sim.can_place("kiln", Vector2i(9, 4), 0)
 		and not sim.place("kiln", Vector2i(9, 4), 0) and _refused(sim, "locked") and sim.modules.size() == 1 and sim.coins == 100000 - 50)
-	_ok("the second is 150", sim.plate_price() == 150 and sim.buy_plate(Vector2i(-1, 0), "forest") and sim.coins == 100000 - 200)
-	_ok("the third 450, the fourth 1350", sim.plate_price() == 450 and sim.buy_plate(Vector2i(0, 1), "neutral") and sim.plate_price() == 1350)
+	_ok("the second is 50 too", sim.plate_price() == 50 and sim.buy_plate(Vector2i(-1, 0), "forest") and sim.coins == 100000 - 100)
+	_ok("and the third, and the fourth", sim.plate_price() == 50 and sim.buy_plate(Vector2i(0, 1), "neutral") and sim.plate_price() == 50)
 	var on := {}
 	var own := {}
 	for id: int in sim.trees:

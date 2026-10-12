@@ -132,6 +132,9 @@ var _item_l: Node2D
 var _stand: Node2D
 var _air_l: Node2D
 var _pool: Array[Node2D] = []
+## What a run of the standing list is drawn under, by its `wear`.
+enum { PLAIN, WINDY, BED, BED_FAST }
+var _wears: Array = []
 var _runs: Array = []
 var _order: Array = []      # [plate as seen, kind, sides as seen, variant, plate], back to front
 var _edges: Array = []
@@ -145,6 +148,9 @@ var _fast_mms: Array[MultiMesh] = []
 var _under_mms := {}
 var _shapes := {}
 var _belts_stale := true
+## The belts on the tile right in front of a building, as `_lay_belts` found
+## them: [tile, bed mesh, fast, bed transform, under mesh, under transform].
+var _fronts: Array = []
 var _belt_n := -1
 var _item_mm := {}          # kind -> MultiMesh
 var _item_n := {}           # kind -> how many are seen
@@ -181,6 +187,7 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_under_l = layer(_draw_under)
 	_belt_l = layer(_draw_belts, Art.belt_material())
 	_fast_l = layer(_draw_fast, Art.belt_material(true))
+	_wears = [null, Art.wind(), _belt_l.material, _fast_l.material]
 	_flat_l = layer(_draw_flat)
 	_shade_l = layer(_draw_shade, _shade_mat)
 	_item_l = layer(_draw_items)
@@ -594,6 +601,15 @@ func _lay_belts() -> void:
 	var fast := [[], [], []]
 	var unders := {}
 	_shapes.clear()
+	_fronts.clear()
+	# the tiles a building stands on, as seen
+	var stood := {}
+	for id: int in sim.modules:
+		var m: Dictionary = sim.modules[id]
+		var foot := footprint(m.kind, seen_tile(m.root), seen_facing(m.facing))
+		for x in (foot[1] as Vector2i).x:
+			for y in (foot[1] as Vector2i).y:
+				stood[(foot[0] as Vector2i) + Vector2i(x, y)] = true
 	for tile: Vector2i in tiles:
 		var bend := shape(tile)
 		var vf := seen_facing(int(sim.belts[tile]))
@@ -601,10 +617,15 @@ func _lay_belts() -> void:
 		if bend != 0:
 			_shapes[tile] = bend
 			key = Art.DIRS[vf] + Art.DIRS[(vf + (1 if bend == 1 else 3)) % 4]
-		((fast if sim.kinds.get(tile, "") == "fast" else beds)[bend] as Array).append(lift * Art.flat(Vector2(seen_tile(tile)), vf))
+		var quick: bool = sim.kinds.get(tile, "") == "fast"
+		var bed := lift * Art.flat(Vector2(seen_tile(tile)), vf)
+		((fast if quick else beds)[bend] as Array).append(bed)
 		if not unders.has(key):
 			unders[key] = []
 		(unders[key] as Array).append(Transform2D(0.0, mid(tile)))
+		var st := seen_tile(tile)
+		if stood.has(st + Vector2i(-1, 0)) or stood.has(st + Vector2i(0, -1)) or stood.has(st + Vector2i(-1, -1)):
+			_fronts.append([tile, _bed_mms[bend].mesh, quick, bed, Art.belt_under() if key is String else Art.belt_under_bend(key), Transform2D(0.0, mid(tile))])
 	for i in 3:
 		_fill(_bed_mms[i], beds[i])
 		_fill(_fast_mms[i], fast[i])
@@ -672,8 +693,16 @@ func _size(id: int) -> Vector2:
 func _turned(tile: Vector2i) -> float:
 	return Motion.wobble_angle(float(_wob[tile])) if _wob.has(tile) else 0.0
 
-## Everything that stands, [depth, windy, mesh, transform, tint] each, sorted
-## from the back and cut into runs for the layers.
+## Everything that stands, [depth, wear, mesh, transform, tint] each, sorted
+## from the back and cut into runs for the layers. `wear` is the material a
+## run is drawn under: PLAIN, WINDY (a tree), BED and BED_FAST (a belt's bed).
+##
+## A belt on the tile right in front of a building is in the list too, over
+## the flat one: the flat layers lie under everything that stands, and a
+## market behind a belt drew its wall over the bed and what rode it (the
+## user, 2026-10-12: "the market showed above convey even tho it was after
+## it"). Its legs, its bed and its riders, a hair behind its tile's own depth
+## so a splitter or a bridge on it is still over them.
 func _fill_stand() -> void:
 	var list: Array = []
 	var white := Color.WHITE
@@ -717,22 +746,40 @@ func _fill_stand() -> void:
 					list.append([d + 0.01 + 0.001 * i, 0, Art.item(it.kind), Transform2D(0.0, seen(pos) + Vector2(0.0, -Art.bridge_lift(along))), white])
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
+	# a rider is its tile's from the tick it sets out for it, so the ones on
+	# the belts either side are drawn again too, each once
+	var again := {}
+	for fr: Array in _fronts:
+		var tile: Vector2i = fr[0]
+		if not _up(tile):
+			continue
+		var d := depth(Vector2(tile) + MID)
+		list.append([d - 0.004, PLAIN, fr[4], fr[5], white])
+		list.append([d - 0.003, BED_FAST if fr[2] else BED, fr[1], fr[3], white])
+		for near: Vector2i in [tile, tile + Art.DIRS[0], tile + Art.DIRS[1], tile + Art.DIRS[2], tile + Art.DIRS[3]]:
+			if again.has(near) or not sim.items.has(near) or not sim.belts.has(near):
+				continue
+			again[near] = true
+			for it: Dictionary in sim.items[near]:
+				if ITEMS.has(it.kind):
+					var up := lerpf(_lifted((it.was as Vector2).lerp(Vector2(near) + MID, 0.02)), Art.BELT_UP, float(sim.alpha))
+					var at := seen(item_at(near, it))
+					list.append([d - 0.002 + 0.000001 * at.y, PLAIN, Art.item(it.kind), Transform2D(0.0, at + Vector2(0.0, -up)), white])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	var used := 0
 	var run := -1
+	var wear := -1
 	for e: Array in list:
-		var windy: int = e[1]
-		if run < 0 or run % 2 != windy:
-			run = run + 1 if (run + 1) % 2 == windy else run + 2
-			while _pool.size() <= run:
-				var i := _pool.size()
+		if int(e[1]) != wear:
+			wear = e[1]
+			run += 1
+			if _pool.size() <= run:
 				_runs.append([])
-				_pool.append(layer(_draw_run.bind(i), Art.wind() if i % 2 == 1 else null, _stand))
-			for i in range(used, run + 1):
-				(_runs[i] as Array).clear()
-			used = run + 1
+				_pool.append(layer(_draw_run.bind(run), null, _stand))
+			(_runs[run] as Array).clear()
+			if _pool[run].material != _wears[wear]:
+				_pool[run].material = _wears[wear]
 		(_runs[run] as Array).append(e)
-	for i in range(used, _pool.size()):
+	for i in range(run + 1, _pool.size()):
 		(_runs[i] as Array).clear()
 	for c in _pool:
 		c.queue_redraw()

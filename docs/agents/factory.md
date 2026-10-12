@@ -535,7 +535,7 @@ to `upgrade("market")`.
   that asked 100, 300, then three times the last: "it should not increase
   price of markets, neither other buildings, they stay flat"): every
   market is `PRICE.market`, 100, as every machine is its own figure. Only
-  land (`plate_price`) and levels grow.
+  levels grow (land did until later the same day, below).
 - **Decided for the user, theirs to change**: the 100; it is
   built over 20 s like a fire box and takes nothing until then; it is in
   the drawer from the start; any market is sold back for all paid on it
@@ -585,6 +585,35 @@ change as it lvl up, becoming more better looking".
 - **Checked**: every look on one sheet on `opengl3_angle`, looked at;
   probe 241/0; `tests/_shot_factory.gd` 149 pass, 0 failed, 101 to 293
   draw calls. Not seen: a phone, a land with markets at several levels.
+
+**Land is flat too, and a belt in front of a building is over it
+(2026-10-12)**, the user, off the phone: "i placed a market after a convey,
+and the market showed above convey even tho it was after it. Also, i tried
+to buy the second floor and it costed 150, but i remember it was 50, prices
+are flat not stacked on each buy for the same item".
+- **A plate is `PLATE_PRICE`, 50, every one** (it was 50, 150, then three
+  times the last; `PLATE_STEP` is gone). **Levels still grow** (a forest's,
+  a market's, a fire box's): a level is not the same thing bought again.
+  Mine, the user's to call. The pace was measured on dear land (the bot's
+  89 minutes) and is not measured again.
+- **The belt on the tile right in front of a building is drawn twice**: flat
+  with the rest, and again in the standing list a hair behind its own
+  tile's depth (legs, bed, riders), so it is over the building behind it
+  and under whatever stands nearer. What was "left" on 2026-10-10 (a
+  building's foot over the bed's back edge) was a market's whole near wall,
+  because a market is exactly `BELT_UP` tall. `_lay_belts` finds them
+  (`_fronts`: a belt whose seen tile has a module's footprint at -x, -y or
+  both), `_fill_stand` adds them, with the riders of the belts either side
+  (a rider is its tile's from the tick it sets out, and would be under the
+  second bed for a tick). **A run of the standing list has a `wear`**
+  (PLAIN, WINDY, BED, BED_FAST) and its layer is given that material; runs
+  no longer go plain and windy by turns. A belt in front costs three draw
+  calls and a rider one. Trees are not counted as standing behind a belt.
+- Probe 244/0. One windowed run of a throwaway harness on `opengl3_angle`
+  at 810x1440 (a market at the end of a belt coming toward the eye): the
+  bed and its logs over the market's wall, 124 to 127 draw calls. Not
+  seen: a fast belt in front of a building (not open on a new land), a
+  turned view, a 2 by 2 machine, a phone.
 
 **A debug button makes what is built free (2026-10-12)**, the user: "I
 need a button to make buildings price 0, so I can debug on phone when I

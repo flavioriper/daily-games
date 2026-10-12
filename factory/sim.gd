@@ -38,7 +38,7 @@ extends RefCounted
 ##   coins, earned: int
 ##   plates: Dictionary       Vector2i -> "forest" | "mine" | "neutral"
 ##   free_edges() -> Array    lattice coords a plate may be bought on
-##   plate_price() -> int     50, 150, then x3
+##   plate_price() -> int     PLATE_PRICE: flat, however many are held
 ##   buy_plate(P, kind) -> bool
 ##   unlocked(kind) -> bool   belt and market always; firebox and retort from
 ##                            the first plate bought; the kiln with a mine;
@@ -199,9 +199,10 @@ const GOALS := [
 	{"id": "steam", "need": {"charcoal": 25}, "gives": ["engine", "saw", "stoker"]},
 	{"id": "joiner", "need": {"plank": 100}, "gives": ["joiner"]},
 ]
-## The first plate bought, the second, then each PLATE_STEP times the last.
-const PLATE_PRICE := [50, 150]
-const PLATE_STEP := 3
+## What a plate costs, the first bought and every one after (the user,
+## 2026-10-12, of a second plate at 150: "prices are flat not stacked on each
+## buy for the same item").
+const PLATE_PRICE := 50
 
 ## A forest: the trees it is seen by, the logs it holds before its gates
 ## take them, the logs a second it makes by itself at each level (the user,
@@ -402,14 +403,7 @@ func free_edges() -> Array:
 	return out
 
 func plate_price() -> int:
-	# a new land has two, so the count bought is two under the count held
-	var n := maxi(plates.size() - 2, 0)
-	if n < PLATE_PRICE.size():
-		return PLATE_PRICE[n]
-	var p: int = PLATE_PRICE[PLATE_PRICE.size() - 1]
-	for i in n + 1 - PLATE_PRICE.size():
-		p *= PLATE_STEP
-	return p
+	return PLATE_PRICE
 
 func buy_plate(p: Vector2i, kind: String) -> bool:
 	if not KINDS.has(kind):
