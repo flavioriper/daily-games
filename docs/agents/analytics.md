@@ -112,3 +112,13 @@ pick. Since 2026-10-12: `furrow_buy` (tile: coop, hen, rooster, fence,
 pasture or cow; seeds paid), `furrow_mile` (tile: egg or milk; n; seeds),
 `furrow_fox` (took 0 or 1, hens left); `furrow_upgrade`'s tile is also
 mulch, feed, nest, care or pail. No event an egg or a bottle. `rules_opened` carries `puzzle_id` furrow.
+
+**Griddle (2026-10-12)** is kept too, so no `arcade_start` or `arcade_end`:
+`griddle_enter` (served, stars, coins, away in seconds), `griddle_leave`
+(seconds, served, stars, coins), `griddle_buy` (tile: lot, cow, stall,
+grill or till; coins paid), `griddle_upgrade` (tile, level, coins paid),
+`griddle_rush` (n, coins: a rush of five or more, as it ends),
+`griddle_clean` (n, coins), `griddle_star` (n), `griddle_boil` (mood:
+garden, vet, crew or town; coins billed), `griddle_favour` (mood, coins
+paid). No event a sale, a cut or a cow milked. `rules_opened` carries
+`puzzle_id` griddle.

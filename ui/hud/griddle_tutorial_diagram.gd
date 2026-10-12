@@ -24,7 +24,12 @@ const Place = preload("res://arcade/griddle_place.gd")
 
 enum Lesson { SERVE, RUSH, FIELDS, YARD, OFFICE, ROUND }
 
+## The place is laid out as on a phone, this wide and this tall, and the
+## page shows a window of it this tall, from `TOP` of the place down.
 const WIDE := 1080.0
+const TALL := 1250.0
+const SEEN := 880.0
+const TOP := {"counter": 300.0, "fields": 0.0, "yard": 0.0, "office": 0.0}
 const PLACE_OF := {Lesson.SERVE: "counter", Lesson.RUSH: "counter", Lesson.FIELDS: "fields", Lesson.YARD: "yard", Lesson.OFFICE: "office", Lesson.ROUND: "counter"}
 ## Each lesson's script: [second, target, down from here on], and its length.
 const SCRIPTS := {
@@ -78,12 +83,12 @@ func _enter_tree() -> void:
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	var k := size.x / WIDE
+	var k := size.y / SEEN
 	_world.position = Vector2.ZERO
 	_world.scale = Vector2(k, k)
 	_world.size = size / k
-	_world.area = Rect2(30.0, 16.0, WIDE - 60.0, size.y / k - 32.0)
-	_world.fly_to = Vector2(WIDE * 0.5, 30.0)
+	_world.area = Rect2((size.x / k - WIDE) * 0.5 + 30.0, 16.0 - float(TOP[PLACE_OF[lesson]]), WIDE - 60.0, TALL)
+	_world.fly_to = Vector2(size.x / k * 0.5, 30.0)
 	_over_l.size = size
 	if not _begun:
 		_reset()
@@ -165,7 +170,7 @@ func _target(id: String) -> Vector2:
 		return _world.notch_at(int(id.substr(5)))
 	if id.begins_with("fav"):
 		return _world.favour_rect(int(id.substr(3))).get_center()
-	return Vector2(_world.area.end.x - 90.0, _world.area.end.y - 70.0)
+	return Vector2(_world.area.end.x - 90.0, SEEN - 90.0)
 
 func _process(delta: float) -> void:
 	if _sim == null or not is_visible_in_tree():

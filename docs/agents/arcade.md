@@ -3299,7 +3299,8 @@ across a ripe field the thing to come back for.
   screen no longer saves on `NOTIFICATION_EXIT_TREE`, `Sim.save` does
   nothing with `Sim.path` empty, `tests/_shot_furrow.gd` empties it as it
   ends and `tests/_shot_howto_screen.gd` before it builds the screen.
-- **The tab has eleven cards**: five rows of two and Furrow alone on a
+- **The tab had eleven cards** (twelve since Griddle, 2026-10-12: six
+  rows of two): five rows of two and Furrow alone on a
   sixth, the pictures cut to `ART_H_STRIP`. Its banner sizes its plants by
   the strip's height so they still read.
 - **No mascot**, no start-over, no helper that picks: the spec's section 8.
@@ -3407,3 +3408,81 @@ tray's Sowing line) are history. The spec's section 9 has the numbers.
   shot; the welcome's "withered" and "a fox took" lines seen; a Furrow
   bot in `tests/_probe_arcade_buzz.gd`; a concept tab (the rule is a tab
   first for new rules: the user was away and said "do everything").
+
+
+**Griddle is the twelfth** (2026-10-12, spec
+`docs/superpowers/specs/2026-10-12-arcade-griddle-design.md`), built
+unattended from a screenshot of a 2006 browser game and "create it ... on
+arcade tab, check any reference you need on web, wire everything even
+sound, do autonomous, no questions. Cozy animations, good animations on
+key events, satisfactory sounds on combos". The spec names the reference
+once to forbid it; **it is called Griddle and nothing else**. A toastie
+stand of four places that run at once: the fields (wheat for loaves,
+clover for feed), the yard (cows, a cheese each time one fills), the
+counter (a loaf and a cheese grilled and sold to the queue) and the
+office (the signboard, the town's four moods, the ledger).
+
+- **Nothing of the reference is here.** It is CC BY-NC-SA and this game
+  carries ads: no art, sound, text, code or number of it. Its shape is
+  kept (four places at once, a shortcut in each, meters that push back)
+  and its satire is not: no bribes, no slaughter, no brand. The published
+  file was read once to understand the rules; nothing read is in the repo.
+- **A kept game, like Furrow**: `user://griddle.cfg` (`ver` 1), no run, no
+  end card, no gold, no loss; `ui/menu.gd` leaves it without an
+  interstitial and the tab's card reads `Sim.kept()` (toasties sold,
+  stars). Away, the fields and the yard go on into the larder for 15
+  minutes at most; nothing is sold, no mood moves, no cow sickens.
+- **The game is pure data** (`arcade/griddle_sim.gd`): `step(dt)` takes
+  any `dt` in quarter seconds, events for the screen. Every place works by
+  itself, slowly (a cart, a pail, a cook, a till), and a hand does the
+  same at once. `tests/_probe_griddle.gd` must print 0 failed; with `pace`
+  two bots: looking on takes 1,776 coins in an hour and loses 113
+  customers, going round takes 2,729 and loses 5; stars at 3, 12, 34, 82,
+  191 and 387 minutes.
+- **The rush is the combo**: a toastie sold by hand within 3 s of the last
+  is a link, 8% more each to fifteen; the 5th, 10th and 15th are named; a
+  queue emptied by a rush of five is a clean counter. **Only a hand's sale
+  is a link**, and the tills (9 s) are slower than the grills (6 s) on
+  purpose, so the pass fills and the queue grows for the hand that comes
+  back. `serve`'s tick climbs a semitone a link to five and holds.
+- **Each shortcut has somebody who minds**: tonic on a lot (the
+  gardeners), scraps and a crowded barn (the vet), the hurry board (the
+  crew), a loud signboard (the neighbours). A mood warns at 60 and at 100
+  costs 15% of the coins or a minute or two of something, then settles at
+  35. A favour in the office calms one by 50. `ban`, `walk` and `hush` are
+  saved, so a penalty is not dodged by leaving.
+- **One Control draws whichever place is shown** (`arcade/griddle_place.gd`,
+  shared with the tutorial's pages): a place's ground is one cached mesh
+  keyed by its whole layout (the area moves when a banner comes), things
+  are cached meshes under a transform, bars and bubbles a few live meshes a
+  frame (`_lives` holds them until the next `_draw`). The tray's four
+  buttons slide the land sideways and carry a dot from `sim.alarm(place)`:
+  amber for something waiting, red for something going wrong.
+- **A mesh a size a frame empties the art's cache under meshes already
+  drawn.** The first windowed run flew each loaf at a size of its own
+  (`"%.1f"` keys), filled `Art._cache` past its 260, cleared it, and
+  everything drawn once (a card's picture) went blank with "mesh is null".
+  What flies is one mesh a kind scaled by its transform, and the lot's
+  card holds its picture's meshes. Furrow's cache has the same clear.
+- **The cows are Furrow's** (`arcade/furrow_animals.gd`), as are the soft
+  blobs (`furrow_art.gd`'s `soft` and `quad`). The stand's people are
+  scenery in `arcade/griddle_art.gd`: a round head on a coat, no face
+  animated, no mascot.
+- **Sounds**: nineteen cues from the three kept takes, 0 flagged, unheard.
+  The cook's and the till's own ticks play only on the counter, 3 dB down,
+  never over a rush nor two within 0.35 s; the cart and the pail are
+  silent.
+- **How to see it**: `tests/_shot_griddle.gd -- <outdir> [reduce]
+  [en|pt|es]` (windowed, through the real menu, real touches on the queue,
+  the tray, a lot, a cow, a notch and a favour; 83 to 212 draw calls on
+  `opengl3_angle` at 810x1440; with no display it shoots nothing and still
+  drives every beat), `tests/_shot_howto_screen.gd -- griddle <outdir>`.
+- **Mine, the user's to call** (the spec's section 6): the name and that
+  it is toasties; cozy trade-offs in place of the satire; no loss; four
+  moods; favours bought, not paid monthly; only a hand's sale a link; the
+  stars; away filling the larder only; soil that tires and is rested by
+  hand; every number; no mascot, no voices.
+- **Not done**: a phone; the sounds heard; pt and es read (pt seen in the
+  tutorial's shots only); `reduce` shot; en and es tutorial pages shot; a
+  Griddle bot in `tests/_probe_arcade_buzz.gd`; a concept tab (waived by
+  the user).

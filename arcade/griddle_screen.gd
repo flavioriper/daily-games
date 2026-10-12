@@ -516,14 +516,14 @@ func _on_star(n: int) -> void:
 func _on_warn(m: String) -> void:
 	_fx.cue("warn")
 	_feel(Haptics.WARN)
-	_rw.sticker(tr("GR_WARN_" + m.to_upper()), _top() + Vector2(0, -60.0), 42, 3.0, false, Color("ffe1d6"), false, "warn")
+	_rw.sticker(tr("GR_WARN_" + m.to_upper()), _in_rw(Vector2(size.x * 0.5, world.area.end.y - 50.0)), 40, 3.0, false, Color("ffe1d6"), false, "warn")
 	_chip_at[4] = _clock
 
 func _on_boil(m: String, bill: int) -> void:
 	_fx.cue("boil")
 	_feel(Haptics.BAD)
 	var at := _top()
-	_rw.sticker(tr("GR_BOIL_" + m.to_upper()), at, 48, 3.6, false, Color("ffe1d6"), true, "boil", 0.0, true)
+	_rw.sticker(tr("GR_BOIL_" + m.to_upper()), at, 44, 3.6, false, Color("ffe1d6"), false, "boil", 0.0, true)
 	if bill > 0:
 		_rw.sticker("−" + Locale.number(bill), at + Vector2(0, 80.0), 52, 3.0, false, Color("ffd0c2"), false, "bill", 0.0, true)
 	Analytics.track("griddle_boil", {"mood": m, "coins": bill})
@@ -657,6 +657,9 @@ func _on_tray_input(event: InputEvent) -> void:
 
 ## A press on the tray's slot: 0 the shop, then the four places.
 func press_slot(slot: int) -> void:
+	# the place already shown is no press: no bump, no sound
+	if slot > 0 and (Sim.PLACES[slot - 1] == world.place or _sliding):
+		return
 	_chip_at[slot] = _clock
 	if slot == 0:
 		_open_shop()

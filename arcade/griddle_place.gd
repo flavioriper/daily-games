@@ -157,7 +157,7 @@ func pass_y() -> float:
 	return area.position.y + area.size.y * 0.36
 
 func front_y() -> float:
-	return area.position.y + area.size.y * 0.6
+	return area.position.y + area.size.y * 0.66
 
 func lane_x(k: int) -> float:
 	return area.position.x + area.size.x * (0.2 + 0.3 * k)
@@ -169,10 +169,10 @@ func till_at(t: int) -> Vector2:
 	return Vector2(lane_x(t) + 76.0, front_y() - 62.0)
 
 func kettle_at() -> Vector2:
-	return Vector2(area.position.x + 84.0, (pass_y() + front_y()) * 0.5 - 10.0)
+	return Vector2(area.position.x + 84.0, pass_y() + 104.0)
 
 func bell_at() -> Vector2:
-	return Vector2(area.end.x - 84.0, (pass_y() + front_y()) * 0.5 - 10.0)
+	return Vector2(area.end.x - 84.0, pass_y() + 104.0)
 
 func pass_at(n: int) -> Vector2:
 	var room: int = sim.pass_room()
@@ -182,14 +182,17 @@ func pass_at(n: int) -> Vector2:
 ## Where the `k`th of the queue stands: in the till's lane, row by row.
 func queue_at(k: int) -> Vector2:
 	var lanes: int = sim.tills
-	return Vector2(lane_x(k % lanes) - 30.0, front_y() + 150.0 + 118.0 * (k / lanes))
+	var first := front_y() + 136.0
+	# five rows deep at the most: they close up when the square is short
+	var gap := minf(100.0, (area.end.y - 16.0 - first) / (Sim.QUEUE - 1))
+	return Vector2(lane_x(k % lanes) - 30.0, first + gap * (k / lanes))
 
 func floor_y() -> float:
 	return area.position.y + area.size.y * 0.9
 
 func sheet_rect(n: int) -> Rect2:
-	var tops := [0.03, 0.26, 0.66]
-	var talls := [0.21, 0.38, 0.22]
+	var tops := [0.02, 0.235, 0.685]
+	var talls := [0.2, 0.435, 0.2]
 	return Rect2(_p(0.03, tops[n]), Vector2(area.size.x * 0.94, area.size.y * talls[n]))
 
 func notch_at(v: int) -> Vector2:
@@ -201,10 +204,10 @@ func notch_size() -> float:
 
 func jar_at(k: int) -> Vector2:
 	var r := sheet_rect(1)
-	return Vector2(r.position.x + r.size.x * (k + 0.5) / Sim.MOODS.size(), r.position.y + r.size.y * 0.44)
+	return Vector2(r.position.x + r.size.x * (k + 0.5) / Sim.MOODS.size(), r.position.y + r.size.y * 0.4)
 
 func jar_size() -> float:
-	return minf(sheet_rect(1).size.x / Sim.MOODS.size() - 70.0, sheet_rect(1).size.y * 0.34)
+	return minf(sheet_rect(1).size.x / Sim.MOODS.size() - 70.0, sheet_rect(1).size.y * 0.3)
 
 func favour_rect(k: int) -> Rect2:
 	var r := sheet_rect(1)
@@ -562,7 +565,10 @@ func _draw_bits() -> void:
 		var from: Vector2 = bit.from
 		var to: Vector2 = bit.to
 		var at := from.lerp(to, e) + Vector2(0, -sin(u * PI) * 90.0)
-		var s := float(bit.s) * (1.0 + 0.2 * sin(u * PI))
+		# one mesh a kind, grown by the transform: a size a frame would fill
+		# the cache and empty it under meshes this frame has drawn
+		var s := float(bit.s)
+		var k := 1.0 + 0.2 * sin(u * PI)
 		var mesh: ArrayMesh
 		match String(bit.kind):
 			"loaf":
@@ -575,7 +581,7 @@ func _draw_bits() -> void:
 				mesh = Art.toastie(s)
 			_:
 				mesh = Art.coin(s)
-		draw_mesh(mesh, null, Transform2D(0.0, at), Color(1, 1, 1, 1.0 if u < 0.85 else (1.0 - u) / 0.15))
+		draw_mesh(mesh, null, Transform2D(0.0, Vector2(k, k), 0.0, at), Color(1, 1, 1, 1.0 if u < 0.85 else (1.0 - u) / 0.15))
 	if finger != Vector2.INF:
 		var r := 30.0 if finger_down else 38.0
 		draw_circle(finger + Vector2(0, 4.0), r, Color(Art.INK, 0.18), true, -1.0, true)
@@ -713,7 +719,8 @@ func _draw_yard(live: Face.Builder) -> void:
 
 func _draw_counter(live: Face.Builder) -> void:
 	var o := area.position
-	draw_rect(Rect2(0, 0, size.x, o.y + 4.0), Art.TEAL_DEEP)
+	if o.y > 0.0:
+		draw_rect(Rect2(0, 0, size.x, o.y + 4.0), Art.SKY)
 	draw_mesh(Art.counter_ground(Vector2(size.x, size.y - o.y), back_y() - o.y + 70.0, pass_y() - o.y, front_y() - o.y), null, Transform2D(0.0, Vector2(0, o.y)))
 	var away: bool = sim.walk > 0.0
 	var at_tea: bool = sim.tea > 0.0
@@ -748,10 +755,10 @@ func _draw_counter(live: Face.Builder) -> void:
 		draw_mesh(Art.toastie(64.0), null, Transform2D(0.0, Vector2(sc, sc), 0.0, p))
 	_left("%d/%d" % [sim.ready, sim.pass_room()], Vector2(area.end.x - 150.0, pass_y() + 44.0), 22, Color(Art.INK, 0.7))
 	# what the larder still holds for the grills
-	draw_mesh(Art.loaf(44.0), null, Transform2D(0.0, Vector2(o.x + 60.0, pass_y() + 46.0)))
-	_left(str(sim.loaves), Vector2(o.x + 88.0, pass_y() + 44.0), 24, Art.RED if sim.loaves <= 0 else Art.INK)
-	draw_mesh(Art.cheese(40.0), null, Transform2D(0.0, Vector2(o.x + 170.0, pass_y() + 44.0)))
-	_left(str(sim.cheese), Vector2(o.x + 196.0, pass_y() + 44.0), 24, Art.RED if sim.cheese <= 0 else Art.INK)
+	draw_mesh(Art.loaf(44.0), null, Transform2D(0.0, Vector2(o.x + 190.0, pass_y() + 46.0)))
+	_left(str(sim.loaves), Vector2(o.x + 218.0, pass_y() + 44.0), 24, Art.RED if sim.loaves <= 0 else Art.INK)
+	draw_mesh(Art.cheese(40.0), null, Transform2D(0.0, Vector2(o.x + 300.0, pass_y() + 44.0)))
+	_left(str(sim.cheese), Vector2(o.x + 326.0, pass_y() + 44.0), 24, Art.RED if sim.cheese <= 0 else Art.INK)
 	# the kettle and the bell
 	var ksc := _bump("kettle", 0.14)
 	_flush(live)
@@ -789,8 +796,9 @@ func _draw_counter(live: Face.Builder) -> void:
 			_bar(live, till_at(t) + Vector2(0, 16.0), 84.0, float(sim.serving[t]), Art.TEAL_HI, 10.0)
 	_flush(live)
 	live = Face.Builder.new()
-	# the queue, the back rows first
-	for k in range(mini(_looks.size(), sim.queue.size()) - 1, -1, -1):
+	# the queue, those nearest the counter first: the ones behind stand
+	# lower on the square and over them
+	for k in mini(_looks.size(), sim.queue.size()):
 		var look: Dictionary = _looks[k]
 		var waited: float = sim.queue[k]
 		var cross := waited > Sim.PATIENCE * 0.65
@@ -800,14 +808,14 @@ func _draw_counter(live: Face.Builder) -> void:
 			if age < 0.5:
 				at.y += (1.0 - age / 0.5) * 260.0
 			at.y += -absf(sin(clock * (5.0 if cross else 2.2) + k * 1.7)) * (5.0 if cross else 3.0)
-		draw_mesh(Art.folk(136.0, look.coat, look.skin, cross), null, Transform2D(0.0, at))
+		draw_mesh(Art.folk(124.0, look.coat, look.skin, cross), null, Transform2D(0.0, at))
 		if cross:
 			_bar(live, at + Vector2(0, 14.0), 80.0, 1.0 - (waited - Sim.PATIENCE * 0.65) / (Sim.PATIENCE * 0.35), Art.RED, 10.0)
 	for g: Dictionary in _gone:
 		var u := clampf(float(g.t) / 1.2, 0.0, 1.0)
 		var from: Vector2 = g.from
 		var at := from + Vector2((size.x * 0.6) * u * u + 40.0 * u, 60.0 * u + (0.0 if Motion.reduce else -absf(sin(u * 16.0)) * 14.0 * (1.0 - u)))
-		draw_mesh(Art.folk(136.0, g.coat, g.skin, g.cross), null, Transform2D(0.0, at), Color(1, 1, 1, 1.0 - u * u))
+		draw_mesh(Art.folk(124.0, g.coat, g.skin, g.cross), null, Transform2D(0.0, at), Color(1, 1, 1, 1.0 - u * u))
 	if sim.queue.is_empty() and not away:
 		_text(tr("GR_NO_QUEUE"), Vector2(area.get_center().x, front_y() + 200.0), 26, Color(Art.INK, 0.5), 700.0)
 	if sim.hush > 0.0:
@@ -884,7 +892,7 @@ func _draw_office(live: Face.Builder) -> void:
 		var waits: float = sim.favour_t[m]
 		var p: int = sim.favour_price(m)
 		var can: bool = sim.coins >= p and waits <= 0.0 and float(sim.mood[m]) >= 1.0
-		_text(tr("GR_FAVOUR_" + m.to_upper()), Vector2(fr.get_center().x, fr.position.y - 22.0), 20, Color(Art.INK, 0.7), fr.size.x + 20.0)
+		_text(tr("GR_FAVOUR_" + m.to_upper()), Vector2(fr.get_center().x, fr.position.y - 20.0), 20, Color(Art.INK, 0.7), fr.size.x + 20.0)
 		if waits > 0.0:
 			_text("%d s" % int(ceil(waits)), fr.get_center(), 26, Color(Art.INK, 0.6), fr.size.x)
 		elif float(sim.mood[m]) < 1.0:

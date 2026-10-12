@@ -5,7 +5,7 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_howto_screen.gd -- <game> <outdir> [lang=pt] [level=2] [secs=6] [every=1.5] [reduce]
 ##
 ## <game> is snooker, chess, checkers, hockey, boats, penny, dominoes, reversi, firefly, molehill, stackwood, thirteen,
-## posy, peapod, beeline, deckchair, eddy or furrow. The screen is built by hand, the card opened as the ? opens
+## posy, peapod, beeline, deckchair, eddy, furrow or griddle. The screen is built by hand, the card opened as the ? opens
 ## it (`tutor.show()`), and each page is shot every `every` seconds for `secs`
 ## before Next is pressed: <outdir>/ht_<game>_p<page>_<n>.png. Prints each
 ## page's title, how long its body runs against the room it has, and the draw

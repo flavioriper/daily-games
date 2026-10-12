@@ -21,6 +21,9 @@ const PICTURE := 210.0
 
 var sim: RefCounted
 var lot := 0
+## The picture's meshes, held: it is drawn once, and the art's cache may be
+## emptied under it.
+var _keep: Array = []
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -47,9 +50,11 @@ func _ready() -> void:
 		pic.draw_circle(mid, PICTURE * 0.5, Pal.SURFACE, true, -1.0, true)
 		pic.draw_circle(mid, PICTURE * 0.5 - 10.0, Color("e9dcc0"), true, -1.0, true)
 		var box := Vector2(150, 120)
-		pic.draw_mesh(Art.lot(box, 1 if crop == Sim.FALLOW else 0), null, Transform2D(0.0, mid))
+		_keep = [Art.lot(box, 1 if crop == Sim.FALLOW else 0)]
+		pic.draw_mesh(_keep[0], null, Transform2D(0.0, mid))
 		if crop != Sim.FALLOW:
-			pic.draw_mesh(Art.crop(crop, 3, box), null, Transform2D(0.0, mid)))
+			_keep.append(Art.crop(crop, 3, box))
+			pic.draw_mesh(_keep[1], null, Transform2D(0.0, mid)))
 	col.add_child(pic)
 	var name_l := Label.new()
 	name_l.name = "Title"

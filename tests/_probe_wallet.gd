@@ -35,7 +35,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
 			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
-			"res://arcade/eddy_screen.gd", "res://arcade/furrow_screen.gd", "res://puzzles/gumdrop2d.gd"]:
+			"res://arcade/eddy_screen.gd", "res://arcade/furrow_screen.gd", "res://arcade/griddle_screen.gd", "res://puzzles/gumdrop2d.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 

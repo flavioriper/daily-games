@@ -36,6 +36,7 @@ const CLOVER_BLOOM := Color("e58fb0")
 const TEAL := Color("5fb3a8")
 const TEAL_DEEP := Color("3f8f85")
 const TEAL_HI := Color("8fd0c6")
+const SKY := Color("d7ecee")
 const WALL := Color("f6ead2")
 const WALL_SHADE := Color("e4d4b4")
 const FLOOR := Color("e9d7b4")
@@ -316,7 +317,7 @@ static func cart(s: float) -> ArrayMesh:
 ## top to bottom, soft patches, daisies, and the barn `barn_h` tall with
 ## its roof's top at `y0`.
 static func fields_ground(size: Vector2, y0: float, barn_h: float) -> ArrayMesh:
-	return _made("fground%.0f/%.0f/%.0f" % [size.x, size.y, y0], func(b: Face.Builder) -> void:
+	return _made("fground%.0f/%.0f/%.0f/%.0f" % [size.x, size.y, y0, barn_h], func(b: Face.Builder) -> void:
 		Soft.quad(b, [Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)], [GRASS_HI, GRASS, GRASS_DEEP, GRASS_DEEP])
 		for k in 26:
 			var p := Vector2(fmod(k * 397.0, size.x), fmod(k * 613.0 + 80.0, size.y))
@@ -343,7 +344,7 @@ static func fields_ground(size: Vector2, y0: float, barn_h: float) -> ArrayMesh:
 ## The yard, `size` pixels from the origin: the barn's wall and roof at the
 ## top to `wall_h`, straw underfoot.
 static func yard_ground(size: Vector2, wall_h: float) -> ArrayMesh:
-	return _made("yground%.0f/%.0f" % [size.x, size.y], func(b: Face.Builder) -> void:
+	return _made("yground%.0f/%.0f/%.0f" % [size.x, size.y, wall_h], func(b: Face.Builder) -> void:
 		Soft.quad(b, [Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)], [STRAW, STRAW, STRAW_DEEP, STRAW_DEEP])
 		for k in 60:
 			var p := Vector2(fmod(k * 397.0, size.x), wall_h + fmod(k * 613.0, size.y - wall_h))
@@ -397,7 +398,7 @@ static func blanket(s: float) -> ArrayMesh:
 ## to `back`, the awning's teal and cream stripes over it, the pass at
 ## `pass_y`, the counter's front at `front`, and the square before it.
 static func counter_ground(size: Vector2, back: float, pass_y: float, front: float) -> ArrayMesh:
-	return _made("cground%.0f/%.0f" % [size.x, size.y], func(b: Face.Builder) -> void:
+	return _made("cground%.0f/%.0f/%.0f/%.0f/%.0f" % [size.x, size.y, back, pass_y, front], func(b: Face.Builder) -> void:
 		# the square
 		Soft.quad(b, [Vector2(0, front), Vector2(size.x, front), size, Vector2(0, size.y)], [FLOOR, FLOOR, FLOOR_DEEP, FLOOR_DEEP])
 		var rows := int((size.y - front) / 90.0) + 1
@@ -464,7 +465,7 @@ static func till(w: float, lit: bool) -> ArrayMesh:
 ## The office, `size` pixels from the origin: papered wall to `floor_y`, a
 ## skirting, boards underfoot.
 static func office_ground(size: Vector2, floor_y: float) -> ArrayMesh:
-	return _made("oground%.0f/%.0f" % [size.x, size.y], func(b: Face.Builder) -> void:
+	return _made("oground%.0f/%.0f/%.0f" % [size.x, size.y, floor_y], func(b: Face.Builder) -> void:
 		Soft.quad(b, [Vector2.ZERO, Vector2(size.x, 0), Vector2(size.x, floor_y), Vector2(0, floor_y)], [Color("efe3cf"), Color("efe3cf"), Color("f7efdf"), Color("f7efdf")])
 		var n := int(size.x / 120.0) + 1
 		for k in n:
