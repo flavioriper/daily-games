@@ -66,6 +66,7 @@ const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const PearlArt = preload("res://ui/faces/pearl_art.gd")
 const LatticeArt = preload("res://ui/faces/lattice_art.gd")
 const ButtonArt = preload("res://ui/faces/button_art.gd")
+const TrainArt = preload("res://ui/faces/train_art.gd")
 const GumArt = preload("res://puzzles/gumdrop_art.gd")
 const GumMould = preload("res://puzzles/gumdrop_mould.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
@@ -240,6 +241,9 @@ var _pearl_u := -1.0
 ## Lattice's corner of slats and tiles, built once a size.
 var _lattice_mesh: ArrayMesh
 var _lattice_u := -1.0
+## Toy Train's blocks, track and engine, built once a size.
+var _train_mesh: ArrayMesh
+var _train_u := -1.0
 ## Button Box's swatch of patches and buttons, built once a size.
 var _buttons_mesh: ArrayMesh
 var _buttons_u := -1.0
@@ -441,6 +445,7 @@ func _draw() -> void:
 		"pearl": _draw_pearl()
 		"lattice": _draw_lattice()
 		"buttons": _draw_buttons()
+		"train": _draw_train()
 		"gumdrop": _draw_gumdrop()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
@@ -1809,6 +1814,36 @@ func _draw_lattice() -> void:
 				k += 1
 			else:
 				_text(str(absi(v)), at_x, at_y + 5.6, 19.0, Pal.SURFACE if v > 0 else Pal.TEXT)
+
+## Toy Train's card: an engine on a length of the board's own track
+## (`ui/faces/train_art.gd`) with its number, rolling up to two rows of its
+## blocks. One mesh, rebuilt only when the card changes size. The strip is
+## about 92 units tall: three rows of blocks and an engine under them ran
+## out of it.
+const TT_CELL := 36.0
+const TT_ROWS := ["kyyk", "yrry"]
+const TT_NAMES := {"k": "sky", "y": "yellow", "r": "red"}
+const TT_ENGINE := Vector2(-78.0, 4.0)
+
+func _draw_train() -> void:
+	var s := TT_CELL * _u
+	if _train_mesh == null or not is_equal_approx(_train_u, _u):
+		var b := Face.Builder.new()
+		var rail := PackedVector2Array()
+		for k in 11:
+			rail.append(Vector2(-150.0 + k * 15.0, TT_ENGINE.y) * _u)
+		TrainArt.track(b, rail, 24.0 * _u, false)
+		for y in TT_ROWS.size():
+			for x in 4:
+				TrainArt.block(b, Vector2(40.0 * _u + x * s, (y - 0.5) * s), s, TrainArt.colour(TT_NAMES[TT_ROWS[y][x]]))
+		var e := Face.Builder.new()
+		TrainArt.engine(e, 82.0 * _u, TrainArt.colour("red"))
+		TrainArt.plate(e, 82.0 * _u)
+		b.append(e.mesh(), Transform2D(PI * 0.5, TT_ENGINE * _u))
+		_train_mesh = b.mesh()
+		_train_u = _u
+	draw_mesh(_train_mesh, null, Transform2D(0.0, _c))
+	_text("5", TT_ENGINE.x, TT_ENGINE.y + 7.0, 20.0, Pal.TEXT)
 
 ## Button Box's card: a swatch of the board's own patches and buttons
 ## (`ui/faces/button_art.gd`), five across and two down: six buttons home

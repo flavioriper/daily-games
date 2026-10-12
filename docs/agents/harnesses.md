@@ -298,6 +298,20 @@ harness's own walk with `_waiting` meanwhile; seven rungs want `to=20`.
 
 ## Button Box's harness (2026-10-11)
 
+`tests/_shot_train.gd` plays Toy Train through its real input path (a touch
+pressed and let go on an engine), through the menu and the host:
+
+    godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_train.gd -- d=0..3 <mode> [rm]
+
+Modes: `rest`, `play` (the state's own hand, seven frames 0.9 s apart),
+`refuse`, `hint`, `solve` (to the win, the picture put back and the seal),
+`jam` (Insane: the shed emptied carelessly until the siding is full, the
+card, Try again), `reset`, `restore`, `howto`. Its hands play every frame
+(`_drive`), which is most of its frame time: read the draw calls, not the
+ms. `tests/_probe_train.gd` (headless, `seeds=3`) deals every picture of
+every band and plays each four ways; `tests/_win.gd -- train` and
+`tests/_probe_perf.gd -- train` (`x=buzz`) are the shared ones.
+
 `tests/_shot_buttons.gd` plays the board through its real input path (a
 touch pressed and let go on a button) and shoots numbered frames
 (`out=<dir>`, which must exist):

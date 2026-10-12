@@ -179,6 +179,10 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"gumdrop": return "band %d, %d moulds at %d%%, served at %s in %d serves, board fit=%s, hud=%s" % [
 			_puzzle.band, _puzzle.sim.moulds.size(), _puzzle.sim.mark(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
+		"train": return "band %d, %d blocks on %d by %d (%s), %d engines, %d sent (par %d), %d in the siding, jammed=%s, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
+			_puzzle.state.colour.size(), _puzzle.state.taps, _puzzle.state.par, _puzzle.state.parked(),
+			str(_puzzle.state.jammed), _puzzle.hints_used, _fit_ok, _hud_ok]
 		"buttons": return "band %d, %d buttons on %d by %d (%s), %d taps (par %d), tin %d of %d, %d left of %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
 			_puzzle.state.taps, _puzzle.state.par, _puzzle.state.in_tin(), _puzzle.state.capacity(),
@@ -232,6 +236,7 @@ func _solve(id: String) -> void:
 		"pearl": _solve_pearl()
 		"lattice": _solve_lattice()
 		"buttons": _solve_buttons()
+		"train": _solve_train()
 		"gumdrop": _solve_gumdrop()
 
 ## Gumdrop's syrup is a fluid on the GPU, so nothing here can pour it in a
@@ -627,6 +632,58 @@ func _solve_lattice() -> void:
 		_hud_ok = _hud_ok and st.swaps == before + 1
 		await create_timer(0.4).timeout
 	_hud_ok = _hud_ok and st.is_solved() and (_puzzle.max_moves == 0 or _puzzle.moves_left == _puzzle.max_moves - st.swaps)
+	var wait := 0
+	while not _puzzle.is_done() and wait < 600:
+		wait += 1
+		await process_frame
+	_waiting = false
+
+## Toy Train: a buried engine tapped (refused), the bulb once where there is
+## one, then the deal's own line, an engine at a time through the board's
+## input, each sent when the loop is empty (the way the line was proved).
+## The loop runs on its clock, so this one awaits, and holds the walk
+## (`_waiting`) to the win.
+func _solve_train() -> void:
+	_waiting = true
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = slot.encloses(_puzzle._rug) and slot.encloses(_puzzle._siding_rect) and slot.encloses(_puzzle._shed_rect)
+	await create_timer(0.8).timeout
+	_hud_ok = true
+	for column: PackedInt32Array in st.sheds:
+		if column.size() > 1:
+			_tap_local(_puzzle.engine_screen(column[1]))
+			_hud_ok = st.taps == 0
+			break
+	var sent := {}
+	if _puzzle.capabilities().has("hint"):
+		var pick: int = st.hint()
+		_press(_host.top_bar.hint_button)
+		await create_timer(1.0).timeout
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.taps == 1
+		sent[pick] = true
+	# the line's order, but for the engine the bulb already sent: the state's
+	# own hand finishes what the line cannot
+	var guard := 0
+	var i := 0
+	while not st.is_solved() and not st.jammed and guard < 4000:
+		guard += 1
+		if not st.idle():
+			await create_timer(0.1).timeout
+			continue
+		var e := -1
+		if sent.is_empty() and i < st.line.size():
+			e = st.line[i]
+			i += 1
+		else:
+			e = st.hint()
+		if e < 0:
+			break
+		var before: int = st.taps
+		_tap_local(_puzzle.engine_screen(e))
+		_hud_ok = _hud_ok and st.taps == before + 1
+		await create_timer(0.1).timeout
+	_hud_ok = _hud_ok and st.is_solved() and st.parked() == 0
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:
 		wait += 1

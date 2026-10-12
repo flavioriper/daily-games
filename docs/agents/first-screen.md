@@ -374,6 +374,12 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   down, six sewn with their cross of thread and four loose on the wrong
   patch (three by three at 38 was tried first and ran over the strip), one mesh kept in
   `_buttons_mesh`. Its vista is the meadow at `(0.58, 0.34)`.
+- **Toy Train is the thirty-eighth card (2026-10-12).** Its picture is
+  `_draw_train()` in `ui/menu/card_art.gd`: a red engine with a 5 on its
+  plate on a length of `ui/faces/train_art.gd`'s track, rolling up to two
+  rows of four blocks, one mesh kept in `_train_mesh` (three rows of blocks
+  with the engine under them were tried first and ran out of the strip).
+  Its vista is the meadow at `(0.50, 0.36)`.
 - **Gumdrop is the thirty-sixth card (2026-10-11)**, come over from the
   Arcade tab. Its picture is `_draw_gumdrop()` in `ui/menu/card_art.gd`: the
   tray with the flower mould on it, every cell its flavour --

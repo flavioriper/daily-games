@@ -402,6 +402,11 @@ linen edge to edge, the picture and its tin on it, the win's picture slid
 to the middle of the span under one transform. It has Undo and the bulb in
 the top bar, which a bleed board had not had; they work as on any board.
 
+**Toy Train is the third** (2026-10-12, `docs/agents/boards/train.md`): the
+playroom floor edge to edge, the rug and its loop, the siding and the shed
+on it. It is the first flat board whose state moves on a clock (the loop's
+ticks), so it has no Undo; the bulb and Reset ride in the top bar.
+
 Everything else is the host's as for any board: the bar, the day card, the
 tutorial, `_on_solved`, the win stack, Redo, the next level. A bleed board
 with a tray or an actions row was not tried.

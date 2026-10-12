@@ -4926,6 +4926,50 @@ func _buzz_buttons() -> void:
 		_buzzed("reset")
 	_moves = _moves_buttons()
 
+## Toy Train's are a tap an engine: the state's own pick, sent when the loop
+## has room for it. The loop runs on its clock, so a tap it had no room for
+## goes back on the list, and the list is long enough to see the win.
+func _moves_train() -> Array:
+	var out := []
+	for k in _puzzle.state.par * 3 + 30:
+		var m := {}
+		m["do"] = func() -> void:
+			var st = _puzzle.state
+			if st.is_solved() or _puzzle.is_done():
+				return
+			var e: int = st.hint()
+			if e >= 0 and st.judge(e) == 0 and st.loop.size() + st.gate.size() < 3:
+				_click(_puzzle.engine_screen(e))
+		out.append(m)
+	return out
+
+## Toy Train's buzzes: a buried engine tapped, the front one sent and its
+## lap (the blocks it takes, and home full or into the siding), the bulb,
+## Reset. The plain run then plays the state's own hand to the win.
+func _buzz_train() -> void:
+	var st = _puzzle.state
+	_buzz_more = 30.0
+	var pause := func() -> void: await create_timer(0.9).timeout
+	for column: PackedInt32Array in st.sheds:
+		if column.size() > 1:
+			_click(_puzzle.engine_screen(column[1]))
+			await pause.call()
+			_buzzed("a buried engine tapped")
+			break
+	_click(_puzzle.engine_screen(st.hint()))
+	await pause.call()
+	_buzzed("an engine sent, its first blocks")
+	await create_timer(4.5).timeout
+	_buzzed("the rest of its lap")
+	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
+		_host._on_hint()
+		await create_timer(5.0).timeout
+		_buzzed("hint, and its lap")
+	_host._on_reset()
+	await create_timer(1.4).timeout
+	_buzzed("reset")
+	_moves = _moves_train()
+
 ## Golden Acorn's are a tap and two presses of the row's button a question:
 ## the right plate picked and locked, then Next (after the last, Finish). The
 ## deal follows the open by a frame, a lock's answer is held for a breath and

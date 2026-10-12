@@ -324,6 +324,14 @@ a prompt and is two dull knocks on a plank, no note either. The keyboard's
 keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
 cue a letter. Details: `docs/art/sound-direction.md`, its last section.
 
+**Toy Train has a set since 2026-10-12** (`SETS["train"]`, seventeen cues,
+no new take: the same three of Lattice's and Hedgehogs' breath, copied
+into `build/sfx_raw/train/`). `pick` sounds once a block, so it is a tick
+with no note, five steps under its take and climbed a major scale a block
+along a run, an octave at the most; the notes are a long run (`run`),
+engines home full in a row (`combo`, pitched up to seven steps), `whole`,
+`hint` and the day's end. 0 of 17 flagged; unheard by the user.
+
 **Button Box has a set since 2026-10-11** (`SETS["buttons"]`, seventeen
 cues, no new take: Lattice's `pick`, `drop` and kalimba note and Hedgehogs'
 breath, copied into `build/sfx_raw/buttons/`). `lift` sounds on every tap
