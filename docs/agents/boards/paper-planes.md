@@ -273,3 +273,48 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   Not played through by hand, no phone; the tutorial's WIND page unseen on
   the new size. `tests/_shot_planes.gd`'s `solve` and `cloud` modes were
   written for the small banked sky and are unrun on the maze.
+
+- **The forgiving finger, and three motions (2026-10-12).** The user: "add
+  some better animations to the paper plane game, and a helper to user click
+  to avoid needing a exactly touch". **The finger.** The press took the plane
+  whose cell it landed in, and a drag or a release that named another cell's
+  plane dropped the launch without a word: on a 40 px Hard cell a thumb
+  rolling a few pixels did that, and a tap on a dart's tip (half a cell into
+  the next cell, most often another plane's body) took the wrong plane. Now
+  `_target_at` takes the nearest plane within `TOUCH_REACH` (0.8 cell) of the
+  finger, measured to its body's line and its dart out to the tip
+  (`_reach_to`), a plane that can go counting `TOUCH_FREE` (0.3 cell) nearer
+  than it is; under half a cell on purpose, so the middle of a cell is always
+  that cell's plane (`tests/_win.gd` and the perf probe tap there). A held
+  finger is its press until it is past `TOUCH_SLOP` (0.45 cell, never under
+  22 px) of where it went down *and* names something else (`_strayed`). No
+  band judges a tap, so the worst a generous finger does is show a lane.
+  **The press** was a sink to 0.94 about the body's middle (two pixels, under
+  the finger): the dart now lifts (`PRESS_LIFT`, its shadow falling away),
+  the trail keeps its shade, and **the way it would take is laid down its
+  lane** in `SUN` at 0.35 (`_way_ahead`: to the edge of the first cell
+  something stands in, or the grid's edge), which is the mock's held-finger
+  lane, struck in Task 6 when the board acted on press-down. Under reduce
+  motion the lane and the shade are simply there while the finger is. **A
+  refusal** leaned the plane three pixels: it now runs up its lane until its
+  nose meets what is in the way and springs home (`_bump`, a fifth book;
+  `_bump_s`; 0.07-0.26 s out, 0.3 home), the nose folding as it meets it, the
+  band and the blocker's shiver (a cloud's swell) timed to the meeting. It
+  holds nothing, and a plane freed in the middle of it launches from where
+  it is. The crash (dormant since Insane counts moves) is untouched. **In
+  flight** the dart stretches with its speed (`STRETCH`), read off the
+  flight's own curve, so no flight is longer and `WIN_WAIT` stands. No new
+  draw call: the lane is in the live field mesh. A throwaway headless probe
+  (deleted): every occupied cell's centre names its own plane on three bands,
+  a free plane's tip a tenth into the next cell is its own, a 15 px drift
+  still launches, a slide three cells off launches nothing, the run goes out
+  and home and is retired; suite 249797/0; `tests/_win.gd -- planes` PASS;
+  `tests/_shot_planes.gd` on opengl3_angle at 810x1440: `d=1 refuse` (its
+  mode shoots the run now) and `d=2 press` twice, 84 draw calls peak both.
+  Mine, the user's to call: the reach, the pull toward a free plane, the
+  slop, the lane showing where a blocked plane stops before the finger
+  lifts, the run in place of the lean, the stretch. No phone; the tutorial's
+  pages unseen (REFUSE now shows the run, every press its lane); no new sound
+  (the refusal's cue plays at the tap, not at the meeting). `_nudge` is gone
+  (the run was its only reader's writer); 84 is a reading, not a comparison
+  with the commit before.

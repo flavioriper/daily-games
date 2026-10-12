@@ -10,7 +10,8 @@ extends SceneTree
 ## then let go: the dip and the launch; on d=3 the clouds glide), `crash`
 ## (Hard or Insane: a plane blocked by a plane tapped -- the rush, the bonk,
 ## the heart splitting, the flutter home), `cloud` (Insane: a plane blocked
-## by a cloud tapped), `refuse` (Easy or Medium: the free refusal), `out`
+## by a cloud tapped), `refuse` (any band: the free refusal, the run up the
+## lane and home), `out`
 ## (crashes until the hearts run out: the droop, the dusk, the card, then Try
 ## again), `stuck` (Insane: greedy launches until the clouds close in -- the
 ## tip, the pill breathing), `gust` (stuck, then a cloud tapped: the heart,
@@ -242,7 +243,9 @@ func _script() -> void:
 		"refuse":
 			var i := _blocked(false)
 			_at(1.5, _tap.bind(i))
-			_at(1.6, _shot.bind("_band"))
+			# The run up the lane, the nose meeting what is in the way, home.
+			for dt in [0.05, 0.1, 0.16, 0.24, 0.34, 0.5]:
+				_at(1.5 + dt, _shot.bind("_%03d" % int(dt * 100)))
 			_at(2.2, _shot)
 			_end = 2.4
 		"out":

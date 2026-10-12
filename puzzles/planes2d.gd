@@ -27,9 +27,11 @@ extends "res://core/puzzle_base.gd"
 ## launch or gust; a dotted ghost shows where each will be next and a wind
 ## sock on the panel's rim points the way. When the clouds close in
 ## (`State.stuck()`), a tap on a cloud spends a heart to blow the wind on.
-## A **press dip** sinks and shades a plane under one finger, and the plane
-## goes only when that finger lifts from it (a stray tap now costs a heart);
-## an **idle flutter** lifts one resting plane's wing tip now and then.
+## A **press** lifts the dart off the paper and shades its trail under one
+## finger, and lays the way it would take down its lane (`_way_ahead`); the
+## plane goes only when that finger lifts, and the finger need not be exact
+## (`_target_at`, `_strayed`). An **idle flutter** lifts one resting plane's
+## wing tip now and then.
 ##
 ## How it is drawn. Two meshes and no Controls, because nothing here has a face
 ## on it and a Control per plane would be fifty-two nodes on the hard band. The
@@ -49,7 +51,7 @@ extends "res://core/puzzle_base.gd"
 ## is no node to tween: every moment is a **book of moments** -- a plane index
 ## against the second something began -- read off the clock in `_draw` through
 ## `core/motion.gd`'s curve readers, which is docs/art/flat-motion.md's rule 8.
-## There are four books (`_fly`, `_beat`, `_shiver`, `_nudge`) and one record
+## There are four books (`_fly`, `_beat`, `_shiver`, `_bump`) and one record
 ## (`_refuse`), and `_animating()` asks about **every one of them**: One Line
 ## shipped two lines frozen at four fifths of a fade because a second wave was
 ## left out of that function, and this board has six waves able to overlap.
@@ -111,18 +113,12 @@ const SPRIG_R := 0.4
 ## disagreement that was never there.
 ## A refusal's own band is `BAD_TILE` at the flash's level and needs no alpha
 ## of its own, so this is the only lane width on the board. **The mock's
-## second lane -- `SUN` at 0.35 under a held finger, previewing a lane that
-## *is* clear -- was struck rather than built** (Task 6). Two reasons, and
-## the first is the binding one: **this board acts on press-down**, so there
-## is no held-finger state to preview with. A preview would have to wait for
-## a press that has already launched the plane, which means either a gate on
-## the press (the one thing `_tap` is written not to have) or a second,
-## slower input path -- and either would change what a single press does,
-## which is what `tests/_win.gd`'s `_tap_local` drives and what the whole
-## one-frame solve depends on. The second is that it would be saying a thing
-## already said better: **the flight is the preview**. Tap a plane with a
-## clear lane and it flies down that exact band, so the lane is shown by the
-## plane taking it rather than by a stripe promising it could.
+## second lane -- `SUN` at 0.35 under a held finger, the way a plane would
+## take -- was struck at first** (Task 6), because the board then acted on
+## press-down and had no held finger to preview under. Since fde0e7a a plane
+## goes on release, so there is one, and the lane is drawn (2026-10-12,
+## `_way_ahead`): from the dart as far as the first thing in its way, or to
+## the edge.
 const LANE_W := 0.34
 ## The wash that stays under a hinted plane until it goes, and the ring that
 ## lands on its head: the only glow on this board. **This one is wider than
@@ -150,7 +146,10 @@ const RING_R := 0.5
 const ENTER_CAP := 0.5
 
 # --- this board's own motion, and no more of it (spec section 10) ---
-## **Three constants, and nothing added to `core/motion.gd`.** Everything
+## **Three constants at first (`LAUNCH_SPEED`, `WAKE_STEP`, `BLOCK_FLASH`), and
+## nothing added to `core/motion.gd`.** The polish of 2026-09-26 and
+## 2026-09-30 added its own further down, and 2026-10-12 the stretch, the
+## finger's help and the refusal's run under them. Everything
 ## else below is a recipe from the vocabulary read as a curve, or a number
 ## handed to a recipe through its own parameter (rule 6).
 ##
@@ -176,6 +175,42 @@ const BLOCK_FLASH := 0.35
 const CONTRAIL := 0.55
 ## How long a dart takes to rise off the paper as it launches.
 const LIFT_TIME := 0.14
+## How far a dart stretches along its heading, and narrows across it, at the
+## top speed of a flight.
+const STRETCH := 0.16
+
+# --- the finger's help (the user, 2026-10-12: "a helper to user click to
+# avoid needing a exactly touch"), in cells ---
+## A finger takes the nearest plane within this of it, measured to the
+## plane's body and its dart's tip, not the plane whose cell it landed in: a
+## dart pokes half a cell into the next cell, and a Hard cell is 40 px.
+const TOUCH_REACH := 0.8
+## A plane that can go counts as this much nearer than it is. **Under half a
+## cell**, which is as near as another plane's dart or body comes to a cell's
+## centre: a finger on the middle of a cell always takes that cell's plane
+## (what `tests/_win.gd` and the perf probe tap).
+const TOUCH_FREE := 0.3
+## How far a held finger may drift and still be the press it was: this much
+## of a cell and never under TOUCH_SLOP_PX. Past it, it has slid off only if
+## it now names something else.
+const TOUCH_SLOP := 0.45
+const TOUCH_SLOP_PX := 22.0
+## How far a held dart rises (of `PaperPlane.dart`'s lift), and the alpha of
+## the lane laid ahead of it (the mock's).
+const PRESS_LIFT := 0.8
+const WAY_ALPHA := 0.35
+
+# --- a refused plane's run at what is in its way ---
+## Cells a second out, the run's shortest and longest time, the time home,
+## the least it moves (a blocker in the very next cell), how far it lifts and
+## how long the nose stays folded.
+const BUMP_SPEED := 26.0
+const BUMP_OUT_MIN := 0.07
+const BUMP_OUT_MAX := 0.26
+const BUMP_HOME := 0.3
+const BUMP_MIN := 0.16
+const BUMP_LIFT := 0.5
+const BUMP_FOLD := 0.14
 
 ## How long the win screen waits behind the board, and **it is arithmetic
 ## rather than taste** -- the two things that still have to happen when the
@@ -471,7 +506,7 @@ var _still_laid := false
 var _ground: ArrayMesh
 var _ground_key := ""
 var _ground_shown: ArrayMesh
-## The trails of the planes that only beat, shiver, nudge or flutter: their
+## The trails of the planes that only beat, shiver or flutter: their
 ## looks at rest under a slide, made with the field (`_build_field`), and the
 ## one last shown.
 var _trails: ArrayMesh
@@ -503,10 +538,11 @@ var _fly: Dictionary = {}
 ## off a diff of `free_planes()` across the tap and never read for anything
 ## but the beat, so an undo has nothing to undo here.
 var _beat: Dictionary = {}
-## The refusal's two movers: the blocking plane's shiver and the tapped
-## plane's nudge, each plane index -> the second it began.
+## The shiver of a plane a refused one runs into: plane index -> the second
+## it begins.
 var _shiver: Dictionary = {}
-var _nudge: Dictionary = {}
+## A refused plane's run up its lane and back: i -> {"at", "adv", "out"}.
+var _bump: Dictionary = {}
 ## The refused lane itself: {"cells": Array[Vector2i], "at": float}, or empty.
 var _refuse: Dictionary = {}
 ## Sparkles waiting for the plane they belong to to reach the edge of the
@@ -569,6 +605,8 @@ var _press_target := NO_TARGET
 var _press_down := AGO
 var _press_up := -1.0
 var _press_finger := -1
+## Where that finger went down, for `_strayed`.
+var _press_pos := Vector2.ZERO
 
 ## The idle flutter: the plane lifting a wing tip and when, and when the next
 ## one is due.
@@ -989,7 +1027,7 @@ func _process(delta: float) -> void:
 
 ## Whether anything on this card is still moving, and **every wave is in
 ## here** -- the entrance, the hint's ring (through `_anim_until`), the
-## flights, the wake's beats, the refusal's band, its shiver and its nudge.
+## flights, the wake's beats, the refusal's band, its shiver and its run.
 ## One Line shipped two lines frozen at four fifths of a fade because one
 ## wave was left out of its own version of this, and it showed in a rendered
 ## frame and in no test. The books are asked directly as well as through
@@ -1000,7 +1038,9 @@ func _animating(t: float) -> bool:
 		return true
 	if not _fly.is_empty() or not _beat.is_empty():
 		return true
-	if not _shiver.is_empty() or not _nudge.is_empty() or not _refuse.is_empty():
+	if not _shiver.is_empty() or not _refuse.is_empty():
+		return true
+	if not _bump.is_empty():
 		return true
 	# The crash, the press (down, or springing back) and the idle flutter.
 	if not _crash.is_empty() or _press_target >= 0 or _idle_plane >= 0 or not _ringed.is_empty():
@@ -1036,9 +1076,9 @@ func _retire(t: float) -> bool:
 		if t >= float(_shiver[i]) + Motion.SHIVER_TIME:
 			_shiver.erase(i)
 			dirty = true
-	for i in _nudge.keys():
-		if t >= float(_nudge[i]) + Motion.NUDGE_LAG + Motion.NUDGE_TIME:
-			_nudge.erase(i)
+	for i in _bump.keys():
+		if t >= float(_bump[i]["at"]) + float(_bump[i]["out"]) + BUMP_HOME:
+			_bump.erase(i)
 			dirty = true
 	if not _refuse.is_empty() and t >= float(_refuse["at"]) + BLOCK_FLASH:
 		_refuse = {}
@@ -1082,7 +1122,7 @@ func _forget() -> void:
 	_fly = {}
 	_beat = {}
 	_shiver = {}
-	_nudge = {}
+	_bump = {}
 	_refuse = {}
 	_puffs = []
 	_crash = {}
@@ -1169,11 +1209,11 @@ func _draw() -> void:
 	_shown = _field
 
 ## Every plane that has to be drawn frame by frame right now: in the air (or
-## still trailing its contrail), beating, shivering, nudging, or not yet done
+## still trailing its contrail), beating, shivering, on a refused run, or not yet done
 ## popping in.
 func _moving(t: float) -> Dictionary:
 	var out: Dictionary = {}
-	for book in [_fly, _beat, _shiver, _nudge]:
+	for book in [_fly, _beat, _shiver, _bump]:
 		for i in book:
 			out[i] = true
 	if not _crash.is_empty():
@@ -1348,6 +1388,11 @@ func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 		if lv > 0.0:
 			PaperPlane.band(b, _cell_pts(_refuse["cells"]), _cell, LANE_W * _cell,
 				Color(Pal.BAD_TILE.lerp(Pal.BAD, 0.25), lv))
+	if _press_target >= 0:
+		var held := _press_level(t)
+		if held > 0.0:
+			PaperPlane.band(b, _way_ahead(_press_target), _cell, LANE_W * _cell,
+				Color(Pal.SUN, WAY_ALPHA * held))
 	if not _ringed.is_empty():
 		b.stroke(Face.Builder.arc_points(_centre(_ringed["cell"]), _cell * 0.46, 0.0, TAU),
 			maxf(3.0, _cell * 0.07), Color(Pal.BAD, 0.85), true)
@@ -1613,14 +1658,14 @@ func _contrail(b, i: int, t: float) -> void:
 ## One plane: its groove and its dart, wearing every moment it is in at once
 ## -- the entrance's pop about its **head** (that is where the eye is; a body
 ## scaling about its tail swings), the wake's beat across its wings, the lift
-## off the paper as it launches, and the refusal's shiver or nudge under the
+## off the paper as it launches, and the refusal's shiver under the
 ## whole of it. While it is in the air the body is the slice of its track
 ## between the tail and the head, so the tail follows the head through every
 ## bend the plane ever made, and the stitch travels with it.
 ##
 ## The polish adds four more: the crash (a slice of the same track, out to
-## the bonk and home again, crumpled and rocking), the press dip (the whole
-## plane sinks about its middle and shades), the idle flutter (one wing tip
+## the bonk and home again, crumpled and rocking), the press (the dart lifts
+## and the paper shades), a refusal's run (`_bump`), the idle flutter (one wing tip
 ## lifts) and the droop (the planes left sink and dim as the hearts run out).
 ##
 ## `rest` draws the plane as it lies at rest whatever its books say: the
@@ -1633,12 +1678,15 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 	var dir := Vector2(_state.planes[i]["dir"])
 	var crashing := not rest and not _crash.is_empty() and int(_crash["i"]) == i
 	var aloft := not rest and _fly.has(i)
-	var flying := aloft or crashing
+	var bumping := not rest and not aloft and not crashing and _bump.has(i)
+	var flying := aloft or crashing or bumping
 	var s := 0.0
 	if aloft:
 		s = _flown(i, t)
 	elif crashing:
 		s = _crash_s(t)
+	elif bumping:
+		s = _bump_s(i, t)
 	var head: Vector2 = _track(i, s + float(n - 1)) if flying else _centre(cells[n - 1])
 	var since := t - _opened - Motion.ENTER_DELAY \
 		- Motion.stagger(_king(cells[n - 1], Vector2i.ZERO),
@@ -1647,9 +1695,7 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 	var seen := Motion.appear_level(since)
 	if grow.x <= 0.0 or seen <= 0.0:
 		return
-	# The refusal's two movers, both read as curves: the blocker shivers
-	# across the board and the tapped plane leans the way it wanted to go.
-	# Both take the vocabulary's own pixels, so neither costs a constant.
+	# A plane a refused one has run into shivers across the board.
 	var off := _rest_offset(i, t)
 	var angle := dir.angle()
 	var wings := Vector2.ONE
@@ -1668,6 +1714,21 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 			var span := maxf(1.2, float(_state.lane(i).size()) + 0.5)
 			var turn := cos(clampf(s / span, 0.0, 1.0) * TAU * ROLLS)
 			wings.y *= signf(turn) * maxf(absf(turn), 0.08) if turn != 0.0 else 0.08
+		# Speed pulls the dart long and narrow, and it fills out again as it
+		# slows (a flight home lands at its own shape).
+		var pace := clampf(absf(s - _flown(i, t - 0.016)) / (0.016 * LAUNCH_SPEED * PI * 0.5),
+			0.0, 1.0)
+		wings *= Vector2(1.0 + STRETCH * pace, 1.0 - STRETCH * 0.7 * pace)
+	if bumping:
+		# The nose folds as it meets what is in the way, and the dart is off
+		# the paper for the run.
+		var m: Dictionary = _bump[i]
+		var e := t - float(m["at"])
+		var out := float(m["out"])
+		var fold := clampf(1.0 - (e - out) / BUMP_FOLD, 0.0, 1.0) if e >= out else 0.0
+		wings = Vector2(1.0 - 0.16 * fold, 1.0 + 0.08 * fold)
+		lift = BUMP_LIFT * Motion.back_out(clampf(minf(e, out + BUMP_HOME - e) / LIFT_TIME,
+			0.0, 1.0))
 	if crashing:
 		# Home is a flutter: the plane rocks its wings and drifts across
 		# its own line, both dying out as it lands.
@@ -1678,13 +1739,15 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 		wings = Vector2(1.0 - CRUMPLE * c, 1.0 + 0.1 * c)
 		angle += 0.14 * c
 		lift = _crash_lift(t)
-	# The press dip: the plane sinks about the middle of its body under the
-	# finger and shades -- a sink of 0.94 alone is invisible on a 58 px
-	# cell, so the paper darkens with it.
-	var press := 1.0
+	# The press: the dart comes up off the paper under the finger (its shadow
+	# falls away) and the paper shades. It was a sink of 0.94, which is two
+	# pixels on a 40 px cell and under the finger besides; a launch takes the
+	# lift from where the press had it.
 	if i == _press_target and not rest:
-		press = Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0)
-		dim = maxf(dim, (1.0 - press) / (1.0 - Motion.PRESS_SCALE) * 0.55)
+		var held := _press_level(t)
+		dim = maxf(dim, held * 0.55)
+		if not Motion.reduce:
+			lift = maxf(lift, held * PRESS_LIFT)
 	# The idle flutter: one wing tip lifts a hair and settles.
 	if i == _idle_plane and not rest:
 		var u := clampf((t - _idle_at) / IDLE_TIME, 0.0, 1.0)
@@ -1696,10 +1759,8 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 		dim = maxf(dim, droop * 0.5)
 		wings *= Vector2(1.0 - 0.06 * droop, 1.0 - 0.16 * droop)
 		off += Vector2(0.0, 0.05 * _cell * droop)
-	var sc := grow * press
-	var mid: Vector2 = _centre(cells[(n - 1) / 2]) if not flying else head
-	var pivot := mid if press < 1.0 else head
-	var xf := Transform2D(0.0, sc, 0.0, pivot - pivot * sc + off)
+	var sc := grow
+	var xf := Transform2D(0.0, sc, 0.0, head - head * sc + off)
 	var pts: PackedVector2Array = xf * (_body(i, s) if flying else _cell_pts(cells))
 	if part & 1:
 		PaperPlane.trail(b, pts, _cell * sc.x, i, seen, s * _cell, dim)
@@ -1709,16 +1770,15 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 	PaperPlane.dart(b, xf * head, angle, _cell * sc.x, i, seen,
 		Vector2(1.0 + (beat - 1.0) * 0.3, beat) * wings, lift, dim)
 
-## The refusal's two movers, both read as curves: the blocker shivers
-## across the board and the tapped plane leans the way it wanted to go.
-## Both take the vocabulary's own pixels, so neither costs a constant.
+## A plane met by a refused one shivers across the board, the vocabulary's
+## own curve and pixels. (The refused plane's own answer is its run, `_bump`;
+## it leaned here until 2026-10-12.)
 func _rest_offset(i: int, t: float) -> Vector2:
-	return Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0) \
-		+ Vector2(_state.planes[i]["dir"]) * Motion.nudge_offset(t - float(_nudge.get(i, -1e9)))
+	return Vector2(Motion.shiver_offset(t - float(_shiver.get(i, -1e9))), 0.0)
 
 ## Whether moving plane `i`'s trail is its look at rest, only slid: it is not
 ## flying, crashing, pressed, drooping or popping in -- a wing-beat, a
-## shiver, a nudge or the idle flutter. Its trail is then the still mesh's
+## shiver or the idle flutter. Its trail is then the still mesh's
 ## shape under a translation and only its dart is drawn live (a long maze
 ## plane's trail is most of a millisecond to draw).
 ##
@@ -1726,15 +1786,15 @@ func _rest_offset(i: int, t: float) -> Vector2:
 ## nothing else (`_pop_xf`): the whole field pops in at once, and drawing
 ## every maze plane live for that second was 30 ms a frame on Hard.
 func _steady(i: int, t: float, droop: float) -> bool:
-	if _fly.has(i) or i == _press_target or droop > 0.0:
+	if _fly.has(i) or _bump.has(i) or i == _press_target or droop > 0.0:
 		return false
 	if not _crash.is_empty() and int(_crash["i"]) == i:
 		return false
 	return true
 
-## Whether plane `i` is beating, shivering, nudging or fluttering.
+## Whether plane `i` is beating, shivering or fluttering.
 func _stirred(i: int) -> bool:
-	return _beat.has(i) or _shiver.has(i) or _nudge.has(i) or i == _idle_plane
+	return _beat.has(i) or _shiver.has(i) or i == _idle_plane
 
 ## The entrance's pop on plane `i` as a transform about its head, the
 ## identity once it has landed. Its fade in (`appear_level`, a tenth of a
@@ -1964,6 +2024,20 @@ static func _flash_now(elapsed: float) -> float:
 	return Motion.flash_level(elapsed, BLOCK_FLASH * Motion.FLASH_IN / span,
 		BLOCK_FLASH * Motion.FLASH_OUT / span)
 
+## Where a refused plane has got to on its run, in cells along its track:
+## out to what is in its way quickening all the way, and home quick at first
+## and settling.
+func _bump_s(i: int, t: float) -> float:
+	var m: Dictionary = _bump[i]
+	var e := t - float(m["at"])
+	var out := float(m["out"])
+	if e <= 0.0:
+		return 0.0
+	if e < out:
+		return float(m["adv"]) * (e / out) * (e / out)
+	var u := clampf((e - out) / BUMP_HOME, 0.0, 1.0)
+	return float(m["adv"]) * (1.0 - u) * (1.0 - u)
+
 # --- the crash's curves, all read off `_crash` ---
 
 ## Where the crashing plane has got to along its own track, in cells: out to
@@ -2043,27 +2117,29 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var finger: int = event.index if (event is InputEventScreenTouch or event is InputEventScreenDrag) else -1
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
-		if _held() and finger == _press_finger and _target_at(event.position) != _press_target:
+		if _held() and finger == _press_finger and _strayed(event.position):
 			_release_press()
 		return
 	if not (event is InputEventScreenTouch or event is InputEventMouseButton):
 		return
-	var target := _target_at(event.position)
 	if event.pressed:
 		if _held() and finger != _press_finger:
 			accept_event()
 			return
+		var target := _target_at(event.position)
 		if target != NO_TARGET and not busy():
 			accept_event()
 			_press_finger = finger
+			_press_pos = event.position
 			_press(target)
 		return
 	if not _held() or finger != _press_finger:
 		return
 	var pressed_on := _press_target
+	var off := _strayed(event.position)
 	_release_press()
 	accept_event()
-	if event.is_canceled() or target != pressed_on or busy():
+	if event.is_canceled() or off or busy():
 		return
 	if pressed_on == GUST_TARGET:
 		_gust()
@@ -2075,14 +2151,93 @@ func _gui_input(event: InputEvent) -> void:
 ## under it. Otherwise a cloud is weather and the tap goes to the plane under
 ## it -- a cloud may sit on part of a plane's body, and a plane that cannot
 ## be tapped through its cloud would be a plane that cannot be tapped.
+##
+## **The finger need not be exact** (2026-10-12). It takes the nearest plane
+## within TOUCH_REACH, measured to the plane's body and its dart, so a tap on
+## a dart's tip (which lies in the next cell, most often on another plane's
+## body) or a hair over a cell's edge finds the plane it was meant for, and a
+## plane that can go reaches TOUCH_FREE further than one that cannot. A
+## refusal costs nothing on any band, so the worst a generous finger does is
+## show a lane.
 func _target_at(local: Vector2) -> int:
-	var cell := _cell_at(local)
-	if cell.x < 0:
+	if _cell <= 0.0:
 		return NO_TARGET
-	if _state.windy() and _state.stuck() and _state.cloud_at(cell) and _gust_left():
+	var cell := _cell_at(local)
+	if cell.x >= 0 and _state.windy() and _state.stuck() and _state.cloud_at(cell) and _gust_left():
 		return GUST_TARGET
-	var i := _state.plane_at(cell)
-	return i if i >= 0 else NO_TARGET
+	var p := (local - _origin) / _cell
+	var at := Vector2i(int(floorf(p.x)), int(floorf(p.y)))
+	var best := NO_TARGET
+	var best_score := INF
+	var seen: Dictionary = {}
+	# A body within reach has a cell beside the finger's, and so has a dart
+	# whose tip is: nine cells name every plane there is to weigh.
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var i := _state.plane_at(at + Vector2i(dx, dy))
+			if i < 0 or seen.has(i):
+				continue
+			seen[i] = true
+			var d := _reach_to(i, p)
+			if d > TOUCH_REACH:
+				continue
+			var score := d - (TOUCH_FREE if _state.is_free(i) else 0.0)
+			if score < best_score:
+				best_score = score
+				best = i
+	return best
+
+## How far `p` (in cells, off the grid's corner) is from plane `i`: from its
+## body's line, or from its dart out to the tip.
+func _reach_to(i: int, p: Vector2) -> float:
+	var cells: Array = _state.planes[i]["cells"]
+	var n := cells.size()
+	var half := Vector2.ONE * 0.5
+	var head := Vector2(cells[n - 1]) + half
+	var tip := head + Vector2(_state.planes[i]["dir"]) * PaperPlane.TIP
+	var best := Geometry2D.get_closest_point_to_segment(p, head, tip).distance_squared_to(p)
+	for j in n - 1:
+		best = minf(best, Geometry2D.get_closest_point_to_segment(p,
+			Vector2(cells[j]) + half, Vector2(cells[j + 1]) + half).distance_squared_to(p))
+	return sqrt(best)
+
+## Whether the held finger, now at `local`, has left what it pressed: past
+## the slop round where it went down, and naming something else there. A
+## thumb rolls a few pixels between landing and lifting, and on a 40 px cell
+## that crossed a cell's edge and dropped the launch without a word.
+func _strayed(local: Vector2) -> bool:
+	if local.distance_to(_press_pos) <= maxf(TOUCH_SLOP * _cell, TOUCH_SLOP_PX):
+		return false
+	return _target_at(local) != _press_target
+
+## How far down the press is, 0 to 1, off the family's press curve (which
+## overshoots home on the way back, cut off here). Under reduce motion it is
+## simply whether the finger is down.
+func _press_level(t: float) -> float:
+	if _press_target == NO_TARGET:
+		return 0.0
+	if Motion.reduce:
+		return 1.0 if _press_up < 0.0 else 0.0
+	var sc := Motion.press_scale(t - _press_down, (t - _press_up) if _press_up >= 0.0 else -1.0)
+	return clampf((1.0 - sc) / (1.0 - Motion.PRESS_SCALE), 0.0, 1.0)
+
+## The way plane `i` would take, for the lane under a held finger: from its
+## dart to the edge of the first cell something stands in, or to the grid's
+## edge. A plane already gone (launched off this very press) had the whole of
+## it.
+func _way_ahead(i: int) -> PackedVector2Array:
+	var cells: Array = _state.planes[i]["cells"]
+	var stop := Vector2i(-1, -1)
+	if not _state.planes[i]["gone"]:
+		stop = _state.blocker_cell(i)
+	var clear := 0
+	for c in _state.lane(i):
+		if c == stop:
+			break
+		clear += 1
+	var head := _centre(cells[cells.size() - 1])
+	return PackedVector2Array([head,
+		head + Vector2(_state.planes[i]["dir"]) * (float(clear) + 0.5) * _cell])
 
 ## Whether a finger is down on something now.
 func _held() -> bool:
@@ -2113,6 +2268,7 @@ func _clear_press() -> void:
 	_press_down = AGO
 	_press_up = -1.0
 	_press_finger = -1
+	_press_pos = Vector2.ZERO
 
 ## Whether a crash is still playing out: input, Undo, Hint and Reset wait,
 ## and the host holds its hint video.
@@ -2424,6 +2580,10 @@ func _fly_out(i: int, t: float, gag := Gag.NONE) -> void:
 		var old: Dictionary = _fly[i]
 		f = old.duplicate()
 		at = t - _tau_at(f, _flown(i, t))
+	elif _bump.has(i):
+		# Freed in the middle of a refused run: it goes on from where it is.
+		at = t - _tau_at(f, _bump_s(i, t))
+	_bump.erase(i)
 	f["at"] = at
 	f["back"] = false
 	_fly[i] = f
@@ -2496,9 +2656,11 @@ func _wake(before: Dictionary, from: Vector2i, t: float) -> void:
 		_busy_for(at - t + Motion.BUMP_TIME)
 
 ## A refused tap, and **nothing is lost by it**: the lane flashes in
-## `BAD_TILE` from the dart as far as the plane that is in the way, that
-## plane shivers, the tapped one leans the way it wanted to go and settles,
-## and the tip card says why. No toast (the flash already is the sentence, and
+## `BAD_TILE` from the dart as far as the plane that is in the way, the
+## tapped one **runs up its lane until its nose meets it and springs home**
+## (`_bump`; it leaned three pixels before 2026-10-12, which nobody saw), the
+## one in the way shivers as it is met (a cloud swells), and the tip card
+## says why. The run holds nothing: the next tap is taken at once. No toast (the flash already is the sentence, and
 ## a refusal here is frequent by design), no counter, no analytics event, no
 ## move counted, and no mark left on the board once the band has gone.
 func _refuse_tap(i: int, blocked: int, t: float) -> void:
@@ -2512,11 +2674,22 @@ func _refuse_tap(i: int, blocked: int, t: float) -> void:
 		cells.append(c)
 		if c == stop:
 			break
-	_refuse = {"cells": cells, "at": t}
+	if _bump.has(i) or _fly.has(i):
+		# Still on its last run, or flying home: the band alone.
+		_refuse = {"cells": cells, "at": t}
+		_busy_for(BLOCK_FLASH)
+		return
+	var adv := maxf(BUMP_MIN, float(cells.size()) - CRASH_INTO)
+	var out := clampf(adv / BUMP_SPEED, BUMP_OUT_MIN, BUMP_OUT_MAX)
+	_bump[i] = {"at": t, "adv": adv, "out": out}
+	_refuse = {"cells": cells, "at": t + out - 0.04}
 	if blocked >= 0:
-		_shiver[blocked] = t
-	_nudge[i] = t
-	_busy_for(maxf(BLOCK_FLASH, Motion.NUDGE_LAG + Motion.NUDGE_TIME))
+		_shiver[blocked] = t + out
+	elif blocked == State.CLOUD:
+		var k := _cloud_index(stop)
+		if k >= 0:
+			_cloud_poke[k] = t + out
+	_busy_for(out + maxf(BUMP_HOME, BLOCK_FLASH))
 
 # --- the sprout's line ---
 
