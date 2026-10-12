@@ -555,6 +555,37 @@ to `upgrade("market")`.
   now and was not run again. **Not seen**: a phone; two markets selling at
   once, moving; the tutorial says nothing of a second market.
 
+**A thing looks its level (2026-10-12)**, the user: "every building must
+change as it lvl up, becoming more better looking".
+
+- **What has levels has looks** (`Art.LOOKS_OF`, `Art.look(kind, level)`):
+  the market five, the fire box three, and every level past the last look
+  wears it. `Art.market(level)`, `market_front`, `market_door`,
+  `market_shut`, `firebox(level)` and `module(kind, facing, level)` take
+  the level and cache a mesh a look, so a land of any levels costs the
+  draw calls it did. `Art.icon("market@3")` is the picture at a look
+  (`icon_name`); a card's picture (`Picture`, its `kind` a meta) changes
+  as the level is bought.
+- **The market**: bare planks; its top's four corners capped in iron;
+  walls of laid stone under the plank top; the caps, the rim, the near
+  corner and the hatch's straps in brass; a line of brass let into the
+  top and round the foot and the coin on a brass plate. **Nothing is added
+  over or beside the box**: a belt comes in by any side and the sale's
+  coin hops over its middle. Its walls are only a belt's bed high: a strap
+  round them at the second look hid the planks, and a brass band at the
+  fourth made the whole wall gold (both tried and dropped the same hour).
+- **The fire box**: as it was; the mouth arched in brick and a taller
+  flue with a brass ring; the strap and the lid's edges in brass, a
+  taller flue still with two rings and a cap. `FIREBOX_MOUTH` and the
+  stoker do not move.
+- **Not done, the user's to say**: the kiln, the retort, the engine, the
+  saw and the joiner have no levels, so nothing to look; a forest and a
+  mine have levels and look the same at each (their badge is all that
+  says it); the moment of a level bought is the `buy` cue and no motion.
+- **Checked**: every look on one sheet on `opengl3_angle`, looked at;
+  probe 241/0; `tests/_shot_factory.gd` 149 pass, 0 failed, 101 to 293
+  draw calls. Not seen: a phone, a land with markets at several levels.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

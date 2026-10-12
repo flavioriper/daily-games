@@ -1280,6 +1280,11 @@ func open_module(id: int) -> void:
 				close_card()
 				return
 			var m: Dictionary = sim.modules[id]
+			var pic: Control = col.find_child("Picture", true, false)
+			var shown := Art.icon_name(kind, int(m.level))
+			if pic != null and String(pic.get_meta("kind")) != shown:
+				pic.set_meta("kind", shown)
+				pic.queue_redraw()
 			(lines[1] as Label).text = _state_line(m)
 			_say(sell, tr("FACTORY_SELL_FOR") % Art.short(sim.sell_price(m.root)))
 			if kind == "market":
@@ -1424,9 +1429,12 @@ func _card_body(col: VBoxContainer, kind: String, texts: Array) -> Array:
 	row.add_theme_constant_override("separation", 28)
 	col.add_child(row)
 	var pic := Control.new()
+	pic.name = "Picture"
 	pic.custom_minimum_size = Vector2(220, 220)
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pic.draw.connect(func() -> void: Tile.picture(pic, kind, 104.0))
+	# what it shows may change while the card is up: a thing looks its level
+	pic.set_meta("kind", kind)
+	pic.draw.connect(func() -> void: Tile.picture(pic, String(pic.get_meta("kind")), 104.0))
 	row.add_child(pic)
 	var words := VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL

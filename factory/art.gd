@@ -2037,10 +2037,10 @@ static func _barrel(b: Face.Builder, a0: Vector2, a1: Vector2, d: Vector2) -> vo
 
 ## Any module's mesh by its kind, at the facing it is seen at (a module of
 ## one tile has no facing).
-static func module(kind: String, facing := 0) -> ArrayMesh:
+static func module(kind: String, facing := 0, level := 1) -> ArrayMesh:
 	match kind:
 		"firebox":
-			return firebox()
+			return firebox(level)
 		"engine":
 			return engine()
 		"kiln":
@@ -2050,7 +2050,7 @@ static func module(kind: String, facing := 0) -> ArrayMesh:
 		"joiner":
 			return joiner(facing)
 		"market":
-			return market_shut()
+			return market_shut(level)
 	return retort(facing)
 
 ## The engine, 1 by 1, the origin the middle of its tile on the ground: a
@@ -2325,28 +2325,66 @@ static func _chair(b: Face.Builder, c: Vector2) -> void:
 	b.polygon(PackedVector2Array([L + Vector2(0.0, -seat), F + Vector2(0.0, -seat), F + Vector2(0.0, -seat + 3.4), L + Vector2(0.0, -seat + 3.4)]), tone)
 	b.polygon(PackedVector2Array([F + Vector2(0.0, -seat), R + Vector2(0.0, -seat), R + Vector2(0.0, -seat + 3.4), F + Vector2(0.0, -seat + 3.4)]), dark)
 
+## How many looks a thing that has levels has, and the look of a level: a
+## thing looks better at every level it is raised to (the user, 2026-10-12:
+## "every building must change as it lvl up, becoming more better
+## looking"), up to its last look, which every level past it wears.
+const LOOKS_OF := {"market": 5, "firebox": 3}
+
+static func look(kind: String, level: int) -> int:
+	return clampi(level, 1, int(LOOKS_OF.get(kind, 1)))
+
+## The name `icon` knows a thing at a level by: "market", "market@3".
+static func icon_name(kind: String, level: int) -> String:
+	var tier := look(kind, level)
+	return kind if tier <= 1 else "%s@%d" % [kind, tier]
+
 ## The fire box, 1 by 1, the origin the middle of its tile on the ground: a
 ## block of pale stone strapped with iron under an iron lid with a short
 ## flue, its open mouth in the side that looks down and left
-## (FIREBOX_MOUTH is the mouth's middle: draw `fire()` there).
-static func firebox() -> ArrayMesh:
-	if not _one.has("firebox"):
+## (FIREBOX_MOUTH is the mouth's middle: draw `fire()` there). At its second
+## level the mouth is arched in brick and the flue is tall, ringed in
+## brass; at its third the strap is brass too, the lid is bright steel and
+## the flue is taller still under a cap.
+static func firebox(level := 1) -> ArrayMesh:
+	var tier := look("firebox", level)
+	var key := "firebox%d" % tier
+	if not _one.has(key):
 		var b := Face.Builder.new()
 		var h := FIREBOX_HALF
-		_ground_shade(b, [[Vector2.ZERO, Vector2(h, h), 46.0]])
+		var flue: float = [62.0, 76.0, 88.0][tier - 1]
+		var brass := [GOLD_HI, GOLD, GOLD_DEEP]
+		_ground_shade(b, [[Vector2.ZERO, Vector2(h, h), flue - 16.0]])
 		_wall(b, Vector2.ZERO, Vector2(h, h), 0.0, 38.0, [STONE.lightened(0.1), STONE.lightened(0.04), STONE_SHADE], 3, Color(0.36, 0.26, 0.2, 0.34), 22.0)
 		var a0 := Vector2(-h, h)
 		var a1 := Vector2(h, h)
-		b.stroke(PackedVector2Array([_p(a0, 31.0), _p(a1, 31.0), _p(Vector2(h, -h), 31.0)]), 4.0, IRON, false, false)
+		b.stroke(PackedVector2Array([_p(a0, 31.0), _p(a1, 31.0), _p(Vector2(h, -h), 31.0)]), 4.0, GOLD_DEEP if tier >= 3 else IRON, false, false)
+		if tier >= 3:
+			b.stroke(PackedVector2Array([_p(a0, 32.2), _p(a1, 32.2)]), 1.2, GOLD_HI, false, false)
+		if tier >= 2:
+			b.polygon(_arch(a0, a1, 0.13, 0.87, 0.0, 16.0, 32.0), BRICK)
+			b.stroke(_arch(a0, a1, 0.13, 0.87, 0.0, 16.0, 32.0), 1.4, BRICK_SHADE, false, false)
 		b.polygon(_arch(a0, a1, 0.2, 0.8, 0.0, 15.0, 28.0), IRON_SHADE)
 		b.polygon(_arch(a0, a1, 0.27, 0.73, 0.0, 14.0, 24.0), HOLLOW)
 		for u: float in [0.36, 0.5, 0.64]:
 			b.stroke(PackedVector2Array([_p(a0.lerp(a1, u), 1.0), _p(a0.lerp(a1, u), 7.0)]), 2.0, IRON_SHADE, false, false)
 		b.ellipse(_p(a0.lerp(a1, 0.5), 4.0) + Vector2(1.0, 0.0), 9.0, 3.0, Color(Pal.KNOT_DEEP, 0.7))
 		_block(b, Vector2.ZERO, Vector2(h + 0.03, h + 0.03), 38.0, 44.0, [IRON_LIT, IRON, IRON_SHADE])
-		_drum(b, Vector2(-0.12, -0.12), 0.09, 44.0, 62.0, [HOLLOW, IRON_LIT, IRON, IRON_SHADE])
-		_one["firebox"] = b.mesh()
-	return _one["firebox"]
+		if tier >= 3:
+			# the lid's two seen edges trimmed in brass
+			var e := h + 0.03
+			b.stroke(PackedVector2Array([_p(Vector2(-e, e), 44.0), _p(Vector2(e, e), 44.0), _p(Vector2(e, -e), 44.0)]), 2.2, brass[1], false, false)
+		var stack := Vector2(-0.12, -0.12)
+		_drum(b, stack, 0.09, 44.0, flue, [HOLLOW, IRON_LIT, IRON, IRON_SHADE])
+		if tier >= 2:
+			# a ring of brass round the flue: the half of it the eye sees
+			for z: float in ([56.0] if tier == 2 else [54.0, 72.0]):
+				b.stroke(_round(stack, 0.092, z, 0.0, PI, 12), 3.4, brass[2], false, false)
+				b.stroke(_round(stack, 0.092, z + 1.0, PI * 0.5, PI, 6), 1.4, brass[0], false, false)
+		if tier >= 3:
+			_drum(b, stack, 0.12, flue, flue + 3.5, [IRON, IRON_LIT, IRON, IRON_SHADE])
+		_one[key] = b.mesh()
+	return _one[key]
 
 ## A patch of round light about `c`, `r` across its half: bright in its
 ## middle and gone at its edge, with no shape to it.
@@ -2396,10 +2434,17 @@ static func smoke() -> ArrayMesh:
 ## stood behind it for an hour: the sale's coin hopped up right over it).
 ## The hole's two leaves are not in it (`market_door`, `market_leaf`): they
 ## swing.
-static func market() -> ArrayMesh:
-	if not _one.has("market"):
+## It has five looks by its level, each the last and something more: bare
+## planks; its top's corners capped in iron; walls of laid stone under the
+## plank top; the caps, the rim and the hatch's straps in brass; a line of
+## brass let into the top and round the foot, and the coin on a brass plate. Nothing ever stands on it or beside it: a belt comes in by any
+## side and the sale's coin hops over its middle.
+static func market(level := 1) -> ArrayMesh:
+	var tier := look("market", level)
+	var key := "market%d" % tier
+	if not _one.has(key):
 		var b := Face.Builder.new()
-		var wood := _market_wood()
+		var wood := _market_wood(tier)
 		var big := Vector2(MARKET_HALF, MARKET_HALF)
 		_ground_shade(b, [[Vector2.ZERO, big, MARKET_TALL]])
 		_block(b, Vector2.ZERO, big, 0.0, MARKET_TALL, wood)
@@ -2414,63 +2459,108 @@ static func market() -> ArrayMesh:
 			var face := PackedVector2Array([_p(from, MARKET_TALL), _p(to, MARKET_TALL), _p(to, MARKET_TALL - HATCH_DEEP), _p(from, MARKET_TALL - HATCH_DEEP)])
 			for part: PackedVector2Array in Geometry2D.intersect_polygons(face, hole):
 				b.polygon(part, wall[2])
-		_market_near(b)
-		_one["market"] = b.mesh()
-	return _one["market"]
+		_market_near(b, tier)
+		_one[key] = b.mesh()
+	return _one[key]
 
 ## A market with its hatch shut, as one mesh: what is seen of one while it
 ## is built, and under the finger that places it.
-static func market_shut() -> ArrayMesh:
-	if not _one.has("market_shut"):
+static func market_shut(level := 1) -> ArrayMesh:
+	var tier := look("market", level)
+	var key := "market_shut%d" % tier
+	if not _one.has(key):
 		var b := Face.Builder.new()
-		b.append(market(), Transform2D.IDENTITY)
+		b.append(market(tier), Transform2D.IDENTITY)
 		for side in 2:
-			b.append(market_door(), market_leaf(side, 0.0))
-		_one["market_shut"] = b.mesh()
-	return _one["market_shut"]
+			b.append(market_door(tier), market_leaf(side, 0.0))
+		_one[key] = b.mesh()
+	return _one[key]
 
 ## The market's near side by itself: its two seen walls and the top's two
 ## near planks. Drawn over a thing falling through the hatch, which is then
 ## behind them as it should be.
-static func market_front() -> ArrayMesh:
-	if not _one.has("market_front"):
+static func market_front(level := 1) -> ArrayMesh:
+	var tier := look("market", level)
+	var key := "market_front%d" % tier
+	if not _one.has(key):
 		var b := Face.Builder.new()
 		var big := Vector2(MARKET_HALF, MARKET_HALF)
-		var wood := _market_wood()
+		var wood := _market_wood(tier)
 		# `_block` with no top: the hole would be covered
 		b.polygon(PackedVector2Array([_p(Vector2(-big.x, big.y)), _p(big), _p(big, MARKET_TALL), _p(Vector2(-big.x, big.y), MARKET_TALL)]), wood[1])
 		b.polygon(PackedVector2Array([_p(big), _p(Vector2(big.x, -big.y)), _p(Vector2(big.x, -big.y), MARKET_TALL), _p(big, MARKET_TALL)]), wood[2])
-		_market_near(b)
-		_one["market_front"] = b.mesh()
-	return _one["market_front"]
+		_market_near(b, tier)
+		_one[key] = b.mesh()
+	return _one[key]
 
-static func _market_wood() -> Array:
+## Its top, its sunny wall and its shaded one: planks, and from the third
+## look walls of stone under the plank top.
+static func _market_wood(tier := 1) -> Array:
+	if tier >= 3:
+		return [PLANK.lightened(0.22), STONE.lightened(0.06), STONE_SHADE]
 	return [PLANK.lightened(0.22), PLANK.lightened(0.06), PLANK_DEEP]
 
 ## What both of the market's meshes end with: the top's two near planks,
-## the joints of the two walls, the coin painted on the sunny one and the
-## pale line round the hole and the rim.
-static func _market_near(b: Face.Builder) -> void:
+## the joints of the two walls, what its look binds or trims them with, the
+## coin on the sunny one and the line round the hole and the rim.
+static func _market_near(b: Face.Builder, tier := 1) -> void:
 	var o := MARKET_HALF
 	var i := HATCH_HALF
-	var top: Color = _market_wood()[0]
+	var top: Color = _market_wood(tier)[0]
+	var left := Vector2(-o, o)
+	var near := Vector2(o, o)
+	var right := Vector2(o, -o)
 	b.polygon(PackedVector2Array([_p(Vector2(o, -o), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(i, -i), MARKET_TALL)]), top)
 	b.polygon(PackedVector2Array([_p(Vector2(-o, o), MARKET_TALL), _p(Vector2(-i, i), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL)]), top)
-	for f: float in [0.25, 0.5, 0.75]:
-		var u := lerpf(-o, o, f)
-		b.stroke(PackedVector2Array([_p(Vector2(u, o), 2.0), _p(Vector2(u, o), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP, 0.6), false, false)
-		b.stroke(PackedVector2Array([_p(Vector2(o, u), 2.0), _p(Vector2(o, u), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP.darkened(0.2), 0.6), false, false)
-	# the coin on the wall in the sun, lying in the wall's own plane
+	if tier >= 3:
+		var joint := Color(0.36, 0.26, 0.2, 0.34)
+		_courses(b, left, near, 0.0, MARKET_TALL, 2, joint, 20.0)
+		_courses(b, near, right, 0.0, MARKET_TALL, 2, Color(joint, joint.a * 1.3), 20.0)
+	else:
+		for f: float in [0.25, 0.5, 0.75]:
+			var u := lerpf(-o, o, f)
+			b.stroke(PackedVector2Array([_p(Vector2(u, o), 2.0), _p(Vector2(u, o), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP, 0.6), false, false)
+			b.stroke(PackedVector2Array([_p(Vector2(o, u), 2.0), _p(Vector2(o, u), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP.darkened(0.2), 0.6), false, false)
+	# the coin on the wall in the sun, lying in the wall's own plane; at the
+	# last look on a plate of brass
 	var along := at(Vector2(1.0, 0.0)).normalized()
-	b.append(icon("coin"), Transform2D(along * 0.17, Vector2(0.0, 0.17), _p(Vector2(0.0, o), MARKET_TALL * 0.5)))
-	b.stroke(PackedVector2Array([_p(Vector2(-o, o), MARKET_TALL), _p(Vector2(o, o), MARKET_TALL), _p(Vector2(o, -o), MARKET_TALL)]), 2.4, PLANK.lightened(0.34), false, false)
-	b.stroke(PackedVector2Array([_p(Vector2(-i, i), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(i, -i), MARKET_TALL)]), 1.8, PLANK_DEEP.darkened(0.25), false, false)
+	var mid := _p(Vector2(0.0, o), MARKET_TALL * 0.5)
+	if tier >= 5:
+		var plate := PackedVector2Array()
+		for k in 20:
+			var a := TAU * k / 20.0
+			plate.append(mid + along * cos(a) * 11.0 + Vector2(0.0, sin(a) * 11.0))
+		b.polygon(plate, GOLD_DEEP)
+	b.append(icon("coin"), Transform2D(along * 0.17, Vector2(0.0, 0.17), mid))
+	b.stroke(PackedVector2Array([_p(left, MARKET_TALL), _p(near, MARKET_TALL), _p(right, MARKET_TALL)]), 2.4, GOLD_HI if tier >= 4 else PLANK.lightened(0.34), false, false)
+	if tier >= 2:
+		# its top's four corners capped: iron, and brass from the fourth look
+		var cap: Color = GOLD if tier >= 4 else IRON
+		var lit: Color = GOLD_HI if tier >= 4 else IRON_LIT
+		for c: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+			var corner := c * o
+			var tri := PackedVector2Array([_p(corner, MARKET_TALL), _p(corner - Vector2(c.x * 0.17, 0.0), MARKET_TALL), _p(corner - Vector2(0.0, c.y * 0.17), MARKET_TALL)])
+			b.polygon(tri, cap)
+			b.disc(_p(corner - c * 0.05, MARKET_TALL), 1.5, lit)
+	if tier >= 4:
+		# brass down the corner the eye sees, and a line of it let into the top
+		b.stroke(PackedVector2Array([_p(near, 1.0), _p(near, MARKET_TALL)]), 3.0, GOLD, false, false)
+	if tier >= 5:
+		var inlay := PackedVector2Array()
+		for c: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+			inlay.append(_p(c * (i + o) * 0.5, MARKET_TALL))
+		b.stroke(inlay, 1.6, GOLD, true)
+		b.stroke(PackedVector2Array([_p(left, 2.0), _p(near, 2.0), _p(right, 2.0)]), 2.4, GOLD_DEEP, false, false)
+	b.stroke(PackedVector2Array([_p(Vector2(-i, i), MARKET_TALL), _p(Vector2(i, i), MARKET_TALL), _p(Vector2(i, -i), MARKET_TALL)]), 1.8, GOLD_DEEP if tier >= 4 else PLANK_DEEP.darkened(0.25), false, false)
 
 ## One leaf of the market's hatch, in a space of its own at FINE units a
 ## tile: x from its hinge (0) to its free edge, y along the hinge about its
-## middle. `market_leaf` lays it; nothing is rebuilt as it swings.
-static func market_door() -> ArrayMesh:
-	if not _one.has("market_door"):
+## middle. `market_leaf` lays it; nothing is rebuilt as it swings. Its
+## straps are iron, and brass from the market's fourth look.
+static func market_door(level := 1) -> ArrayMesh:
+	var tier := look("market", level)
+	var key := "market_door%d" % (4 if tier >= 4 else 1)
+	if not _one.has(key):
 		var b := Face.Builder.new()
 		var w := HATCH_HALF * FINE
 		b.polygon(PackedVector2Array([Vector2(0.0, -w), Vector2(w, -w), Vector2(w, w), Vector2(0.0, w)]), PLANK.lightened(0.1))
@@ -2478,11 +2568,11 @@ static func market_door() -> ArrayMesh:
 			var y := lerpf(-w, w, (k + 0.5) / 3.0)
 			b.polygon(PackedVector2Array([Vector2(1.0, y - w / 3.0 + 1.2), Vector2(w - 1.0, y - w / 3.0 + 1.2), Vector2(w - 1.0, y + w / 3.0 - 1.2), Vector2(1.0, y + w / 3.0 - 1.2)]),
 				PLANK.lightened(0.16) if k % 2 == 0 else PLANK.lightened(0.04))
-		# its two iron straps from the hinge
+		# its two straps from the hinge
 		for y: float in [-w * 0.55, w * 0.55]:
-			b.stroke(PackedVector2Array([Vector2(1.5, y), Vector2(w * 0.7, y)]), 3.2, IRON, false, true)
-		_one["market_door"] = b.mesh()
-	return _one["market_door"]
+			b.stroke(PackedVector2Array([Vector2(1.5, y), Vector2(w * 0.7, y)]), 3.2, GOLD if tier >= 4 else IRON, false, true)
+		_one[key] = b.mesh()
+	return _one[key]
 
 ## Where leaf `side` (0 hinged on the hole's -x edge, 1 on its +x) lies
 ## when the hatch is `open` (0 shut, 1 hanging down), about the market's
@@ -2567,9 +2657,12 @@ static func ghost(w: int, h: int, ok: bool) -> ArrayMesh:
 ## (`forest`, `neutral`), what is carried (`log`, `stone`, `lime`,
 ## `charcoal`) and `coin` (the gold pill's coin, ui/menu/gold_pill.gd, as a
 ## mesh). The modules and the carried are their own meshes, fitted.
-static func icon(kind: String) -> ArrayMesh:
-	if _icons.has(kind):
-		return _icons[kind]
+static func icon(named: String) -> ArrayMesh:
+	if _icons.has(named):
+		return _icons[named]
+	# "market@3": the market at its third look (`icon_name`)
+	var kind := named.get_slice("@", 0)
+	var tier := maxi(1, int(named.get_slice("@", 1))) if named.contains("@") else 1
 	var b := Face.Builder.new()
 	match kind:
 		"belt":
@@ -2616,8 +2709,8 @@ static func icon(kind: String) -> ArrayMesh:
 			whole.append(bridge(0), Transform2D.IDENTITY)
 			_fit_into(b, whole.mesh(), 92.0)
 		"firebox":
-			_fit_into(b, firebox(), 90.0)
-			b.append(fire(), Transform2D(0.0, Vector2(0.5, 0.5), 0.0, _fitted(firebox(), 90.0) * FIREBOX_MOUTH))
+			_fit_into(b, firebox(tier), 90.0)
+			b.append(fire(), Transform2D(0.0, Vector2(0.5, 0.5), 0.0, _fitted(firebox(tier), 90.0) * FIREBOX_MOUTH))
 		"kiln":
 			_fit_into(b, kiln(0), 94.0)
 			b.append(glow(), Transform2D(0.0, Vector2(0.3, 0.3), 0.0, _fitted(kiln(0), 94.0) * KILN_GLOW[0]))
@@ -2641,7 +2734,7 @@ static func icon(kind: String) -> ArrayMesh:
 			whole.append(stoker(), Transform2D.IDENTITY)
 			_fit_into(b, whole.mesh(), 90.0)
 		"market":
-			_fit_into(b, market_shut(), 96.0)
+			_fit_into(b, market_shut(tier), 96.0)
 		"forest":
 			_plot_into(b, "forest")
 			b.append(tree(3), Transform2D(0.0, Vector2(0.36, 0.36), 0.0, Vector2(-17.0, 8.0)))
@@ -2661,8 +2754,8 @@ static func icon(kind: String) -> ArrayMesh:
 			b.stroke(Face.Builder.arc_points(Vector2.ZERO, r * 0.86, PI * 1.1, PI * 1.45), r * 0.12, GOLD_HI)
 		_:
 			_fit_into(b, item(kind), 84.0)
-	_icons[kind] = b.mesh()
-	return _icons[kind]
+	_icons[named] = b.mesh()
+	return _icons[named]
 
 ## The transform that fits a mesh's own box into a square of `side` about
 ## (0, 0).

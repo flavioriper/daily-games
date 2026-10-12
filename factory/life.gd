@@ -748,11 +748,12 @@ func _add_market(list: Array, m: Dictionary) -> void:
 	var d := depth(tile)
 	var box := Transform2D(_turned(root), seen(tile))
 	var white := Color.WHITE
-	list.append([d, 0, Art.market(), box, white])
+	var level: int = m.level
+	list.append([d, 0, Art.market(level), box, white])
 	var open := _hatch(id)
 	var shade := 1.0 - 0.34 * open
 	for side in 2:
-		list.append([d + 0.001 * (side + 1), 0, Art.market_door(), box * Art.market_leaf(side, open), Color(shade, shade, shade)])
+		list.append([d + 0.001 * (side + 1), 0, Art.market_door(level), box * Art.market_leaf(side, open), Color(shade, shade, shade)])
 	var falling := false
 	for drop: Dictionary in _drops:
 		if int(drop.id) != id:
@@ -770,7 +771,7 @@ func _add_market(list: Array, m: Dictionary) -> void:
 				Color(dark, dark, dark, 1.0 - smoothstep(0.6, 1.0, fall))])
 			falling = true
 	if falling:
-		list.append([d + 0.004, 0, Art.market_front(), box, white])
+		list.append([d + 0.004, 0, Art.market_front(level), box, white])
 	var wait: Array = m.wait
 	if not wait.is_empty():
 		list.append([d + 0.005, 0, Art.item(wait[0]), Transform2D(0.0, seen(tile + _lying_off(id)) + Art.MARKET_TOP), white])
@@ -831,7 +832,7 @@ func _add_module(list: Array, m: Dictionary) -> void:
 	var d := depth(Vector2(root) + MID)
 	if not Sim.SINGLE.has(kind):
 		d += 0.5 * maxf(0.0, Art.depth(Vector2(Art.DIRS[f])))
-	var mesh: ArrayMesh = Art.module(kind, f)
+	var mesh: ArrayMesh = Art.module(kind, f, int(m.level))
 	var xf := Transform2D(_turned(root), at)
 	if not m.built:
 		var k := clampf(float(m.build), 0.0, 1.0)
