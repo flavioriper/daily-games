@@ -1112,14 +1112,14 @@ func _drop() -> void:
 const TIN_HIT := -3
 ## The aim (the user, 2026-10-12: "add some helper to place the piece even
 ## if user don't hit exactly above the cell"). With a pick in hand, a tap
-## that lands on nothing it could use -- linen, a sewn button, a patch of
-## another colour, the border -- goes to the nearest bare patch of the
-## pick's colour within AIM_REACH of a square, and never under AIM_FINGER
-## px of the screen (a square of a big picture seen whole is 30). A tap on
-## a button that could be picked is still a pick, but for the AIM_EDGE of a
-## square nearest the patch: its edge is the patch's, its middle its own.
+## that lands on nothing at all -- linen, the border, a sewn button -- goes
+## to the nearest bare patch of the pick's colour within AIM_REACH squares
+## of the finger. A tap that means something keeps its meaning but for the
+## AIM_EDGE of a square nearest the patch: a button that could be picked is
+## still a pick, and a bare patch of another colour still says so (two
+## browns side by side are the puzzle on a big picture; the aim does not
+## choose between them). Its edge is the patch's, its middle its own.
 const AIM_REACH := 1.5
-const AIM_FINGER := 44.0
 const AIM_EDGE := 0.7
 ## Two taps on one run within this are the shortcut to the tin (the user,
 ## 2026-10-12: "add some shortcut to send the piece to the case").
@@ -1172,11 +1172,11 @@ func aim(at: Vector2) -> int:
 		return over
 	if zoom.zoomed() and not _view.has_point(at):
 		return over
-	var reach := maxf(AIM_REACH * _cell, AIM_FINGER / zoom.k)
+	var reach := AIM_REACH * _cell
 	if over >= 0:
-		if state.slot[over] == _held_c and state.cur[over] < 0:
+		if state.cur[over] < 0 and state.slot[over] == _held_c:
 			return over
-		if state.judge(over) == State.OK:
+		if state.cur[over] < 0 or state.judge(over) == State.OK:
 			reach = AIM_EDGE * _cell
 	var lp := zoom.to_layout(at)
 	var p := ((lp - _grid) / _cell).floor()

@@ -337,11 +337,12 @@ func _aim() -> void:
 			var near: Vector2 = at + dir * cell
 			var under: int = board._cell_under(near)
 			var got: int = board.aim(near)
-			var pickable: bool = under >= 0 and st.judge(under) == st.OK
+			# a button to pick, or a bare patch of another colour: its own
+			var pickable: bool = under >= 0 and (st.judge(under) == st.OK or (st.cur[under] < 0 and st.slot[under] != c))
 			if under == b:
 				continue
 			if pickable and dir.length() * cell > board.AIM_EDGE * cell:
-				_aimed(got == under, "band %d: the aim took a button's own tap (%s)" % [band, dir])
+				_aimed(got == under or (got >= 0 and got != b and st.slot[got] == c and st.cur[got] < 0), "band %d: the aim took a square's own tap (%s)" % [band, dir])
 			elif not (under >= 0 and st.slot[under] == c and st.cur[under] < 0):
 				_aimed(got >= 0 and st.slot[got] == c and st.cur[got] < 0, "band %d: a touch beside the patch aimed at %d (%s)" % [band, got, dir])
 		# a button's edge by the patch is the patch's, its middle its own

@@ -458,15 +458,17 @@ bit smaller so user can see better the color below it".
 
 - **The aim** (`aim(at)`, which `_gui_input` asks in place of
   `_cell_under`; press and release must aim at one square). Only with a
-  pick in hand, and only for placing: a touch that lands on nothing the
-  pick could use -- linen, the border, a sewn button, a bare patch of
-  another colour -- goes to the nearest bare patch of the pick's colour
-  within `AIM_REACH` 1.5 squares of the finger, and never under
-  `AIM_FINGER` 44 px of the screen (46 px on Insane whole, where a square
-  is 30). **A button that can be picked keeps its tap** but for the edge by
-  the patch: a touch on it sews only within `AIM_EDGE` 0.7 of a square of
-  the patch's middle (a fifth of the way in), so its middle is still a pick,
-  or the pick put down. Nothing in reach is what it was: the pick goes
+  pick in hand, and only for placing: a touch that lands on nothing at
+  all -- linen, the border, a sewn button -- goes to the nearest bare patch
+  of the pick's colour within `AIM_REACH` 1.5 squares of the finger (46 px
+  on Insane whole, where a square is 30). **A square whose tap means
+  something keeps it** but for the edge by the patch: on a button that can
+  be picked, or a bare patch of another colour, a touch sews only within
+  `AIM_EDGE` 0.7 of a square of the right patch's middle (a fifth of the
+  way in), so a button's middle is still a pick, or the pick put down, and
+  "That patch is another colour" is still said (the first cut gave a wrong
+  patch the whole reach and so chose between two browns for the player:
+  taken back the same day). Nothing in reach is what it was: the pick goes
   down. The tin, and what a zoom hides, are never aimed past. `tap(i)`
   itself is not changed: harnesses, probes and the tutorial tap squares.
   On Hard and Insane it can sew a patch the finger only neared; the patch
@@ -476,7 +478,8 @@ bit smaller so user can see better the color below it".
   on any button of that run goes through `tap_tin()`, so the count, Undo,
   the flights, the sounds and the haptics are the tin's own, and a full tin
   refuses and leaves the run picked. A slow second tap still puts the pick
-  down. The timer is cleared by any other tap, a drop or the tin. The
+  down. A pick put down by a tap and tapped again at once goes in too (any
+  two quick taps on one run). The timer is cleared by any other tap, a drop or the tin. The
   board's own timing, not the engine's `double_tap` flag: `_gui_input`
   takes touches and mouse alike. `BB_RULES_TIN` and `HTP_BB_TIN_BODY` say
   so in en, pt and es; the tutorial does not play it.
@@ -493,12 +496,14 @@ bit smaller so user can see better the color below it".
   failures. Rules probe 648 runs, 0; the suite 249,804. One window
   (`tests/_shot_buttons.gd -- d=3 big`, `opengl3_angle`, 810x1440): the
   monkey on Insane whole and close, buttons read as buttons at 30 px with
-  the patch round each; 77 to 107 draw calls.
+  the patch round each; 77 to 107 draw calls. `tests/_shot_buttons.gd --
+  refuse` taps the first bare patch of another colour through the input
+  path: at its middle, so it is still refused.
 - **Not seen or owed**: a finger on a phone (the reach, the edge and the
   0.35 s are numbers off a desk); Easy and Medium on a screen at the new
   size; the menu card; the new lines read in pt and es.
 - **Mine, not the user's**: two taps as the shortcut (not a long press or
   a flick, which a zoomed picture's one-finger pan would fight), and that
   **on Insane a slip of two taps is a counted move with no Undo**; the
-  three reach numbers; that the aim never helps a pick, only a place; two
+  two reach numbers; that the aim never helps a pick, only a place; two
   thirds as "a bit smaller"; the tin's buttons left as they were.
