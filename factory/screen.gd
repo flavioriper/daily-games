@@ -524,7 +524,8 @@ func tutorial_pages() -> Array:
 	for step: Array in [
 			[Diagram.Lesson.TREE, "TUT_FACTORY_TREE", "TUT_FACTORY_TREE_BODY"],
 			[Diagram.Lesson.BELT, "TUT_FACTORY_BELT", "TUT_FACTORY_BELT_BODY"],
-			[Diagram.Lesson.PLATE, "TUT_FACTORY_PLATE", "TUT_FACTORY_PLATE_BODY"]]:
+			[Diagram.Lesson.PLATE, "TUT_FACTORY_PLATE", "TUT_FACTORY_PLATE_BODY"],
+			[Diagram.Lesson.GOAL, "TUT_FACTORY_GOAL", "TUT_FACTORY_GOAL_BODY"]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": tr(step[2])})

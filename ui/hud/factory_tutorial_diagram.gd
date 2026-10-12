@@ -11,6 +11,10 @@ extends Control
 ##   and a second from its corner to the market; each is laid as the finger
 ##   lifts, and the logs ride and are sold.
 ## - PLATE: from further off, a tap on a plus and a plate comes up.
+## - GOAL: a forest that works by itself sells its logs; the goal chip
+##   (drawn here as the screen draws it) counts them to thirty, the splitter
+##   is opened, and a finger makes a belt of the line one and lays a second
+##   way to the market from its side.
 ##
 ## A page starts over every LENGTH seconds on a land of the same seed, so it
 ## is the same little film each time. Under reduce motion it stands still at
@@ -22,15 +26,15 @@ const Life = preload("res://factory/life.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { TREE, BELT, PLATE }
+enum Lesson { TREE, BELT, PLATE, GOAL }
 
 const SEED := 7
-const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 28.0, Lesson.PLATE: 7.0}
-const STILL := {Lesson.TREE: 2.4, Lesson.BELT: 6.0, Lesson.PLATE: 5.5}
+const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 28.0, Lesson.PLATE: 7.0, Lesson.GOAL: 20.0}
+const STILL := {Lesson.TREE: 2.4, Lesson.BELT: 6.0, Lesson.PLATE: 5.5, Lesson.GOAL: 14.0}
 ## What each page looks at, in tile space, and how many view units it shows
 ## across.
-const LOOK := {Lesson.TREE: Vector2(3.5, -2.2), Lesson.BELT: Vector2(4.0, 3.0), Lesson.PLATE: Vector2(6.5, 1.5)}
-const ACROSS := {Lesson.TREE: 1000.0, Lesson.BELT: 1250.0, Lesson.PLATE: 2900.0}
+const LOOK := {Lesson.TREE: Vector2(3.5, -2.2), Lesson.BELT: Vector2(4.0, 3.0), Lesson.PLATE: Vector2(6.5, 1.5), Lesson.GOAL: Vector2(4.6, 2.4)}
+const ACROSS := {Lesson.TREE: 1000.0, Lesson.BELT: 1250.0, Lesson.PLATE: 2900.0, Lesson.GOAL: 1300.0}
 ## Where the pages tap the forest (the new land's, behind the market's
 ## plate), and the belt's way from its gate to the market: [tile, facing]
 ## each, the corner at CORNER.
@@ -43,6 +47,11 @@ const DRAG_FROM := 1.2
 const DRAG_TIME := 1.8
 const DRAG_REST := 0.6
 const NEW_PLATE := Vector2i(1, 0)
+## The goal's page: how many logs are sold as it opens, the belt of the way
+## that is made a splitter, and the second way from its side to the market.
+const GOAL_SOLD := 22
+const SPLIT := Vector2i(3, 3)
+const SIDE := [[Vector2i(4, 3), 0], [Vector2i(5, 3), 0], [Vector2i(6, 3), 1], [Vector2i(6, 4), 1], [Vector2i(6, 5), 1]]
 
 var lesson: int = Lesson.TREE
 
@@ -57,6 +66,8 @@ var _finger := Vector2.ZERO
 var _pressed := 10.0
 var _shows := false
 var _finger_l: Node2D
+var _chip: Control
+var _reached := -1.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -69,6 +80,12 @@ func _ready() -> void:
 	_start()
 	_world = _life.mount(self, _sim)
 	_finger_l = _life.layer(_draw_finger)
+	if lesson == Lesson.GOAL:
+		_chip = Control.new()
+		_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_chip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_chip.draw.connect(_draw_chip)
+		add_child(_chip)
 	resized.connect(_layout)
 	_layout()
 	if Motion.reduce:
@@ -98,6 +115,18 @@ func _start() -> void:
 			_sim.step(Sim.TICK)
 	elif lesson == Lesson.PLATE:
 		_sim.coins = _sim.plate_price()
+	elif lesson == Lesson.GOAL:
+		# the way laid, the forest at work, a market that sells a log a second
+		_reached = -1.0
+		_sim.coins = 2000
+		for step: Array in WAY:
+			_sim.lay_belt(step[0], step[1])
+		_sim.upgrade(TREE)
+		for i in 3:
+			_sim.upgrade("market")
+		for i in 200:
+			_sim.step(Sim.TICK)
+		_sim.sold["log"] = GOAL_SOLD
 	_sim.events.clear()
 	if _world != null:
 		_life.hold(_sim)
@@ -122,6 +151,8 @@ func _advance(delta: float) -> void:
 		_life.step(dt)
 	if _finger_l != null:
 		_finger_l.queue_redraw()
+	if _chip != null:
+		_chip.queue_redraw()
 
 ## What the finger does at this moment of the page.
 func _act() -> void:
@@ -165,6 +196,25 @@ func _act() -> void:
 					_done = 2
 					for i in range(CORNER, WAY.size()):
 						_sim.lay_belt(WAY[i][0], 0)
+		Lesson.GOAL:
+			if _reached < 0.0:
+				_shows = false
+				if _sim.unlocked("splitter"):
+					_reached = _t
+				return
+			# the goal reached: a tap makes the belt a splitter, a second lays its side way
+			var since := _t - _reached
+			_finger = Vector2(SPLIT) + Vector2(0.5, 0.5) if since < 2.4 else Vector2(SIDE[SIDE.size() - 1][0]) + Vector2(0.5, 0.5)
+			_shows = since > 0.6 and since < 4.6
+			if _done == 0 and since >= 1.4:
+				_done = 1
+				_pressed = 0.0
+				_sim.lay_belt(SPLIT, 1, "splitter")
+			if _done == 1 and since >= 3.4:
+				_done = 2
+				_pressed = 0.0
+				for step: Array in SIDE:
+					_sim.lay_belt(step[0], step[1])
 		Lesson.PLATE:
 			_finger = Vector2(NEW_PLATE * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5
 			_shows = _t > 0.6 and _t < 2.6
@@ -185,3 +235,36 @@ func _draw_finger(ci: CanvasItem) -> void:
 	ci.draw_circle(at, r, Color(1.0, 1.0, 1.0, 0.35 + 0.3 * down), true, -1.0, true)
 	ci.draw_arc(at, r, 0.0, TAU, 40, Color(0.23, 0.19, 0.16, 0.7), 4.0 * s, true)
 	ci.draw_circle(at, 8.0 * s, Pal.ACCENT, true, -1.0, true)
+
+## The goal chip as the screen draws it (factory/screen.gd's `_draw_goal`),
+## at the page's top: the log, how many of thirty are sold, and the
+## splitter it opens; the sun's own once it is reached.
+func _draw_chip() -> void:
+	var font := get_theme_font("font", "SheetTitle")
+	var need: int = Sim.GOALS[0].need.log
+	var have := mini(int(_sim.sold.get("log", 0)), need)
+	var text := "%d/%d" % [have, need]
+	var w := 20.0 + 58.0 + font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0 + 28.0 + 58.0 + 12.0
+	var h := 78.0
+	var grow := 1.0
+	if _reached >= 0.0 and not Motion.reduce:
+		grow += 0.12 * maxf(0.0, 1.0 - (_t - _reached) / 0.4)
+	var box := Rect2(Vector2((size.x - w) * 0.5, 22.0), Vector2(w, h))
+	_chip.draw_set_transform(box.get_center(), 0.0, Vector2(grow, grow))
+	var local := Rect2(-box.size * 0.5, box.size)
+	var face := StyleBoxFlat.new()
+	face.bg_color = Pal.SUN if have >= need else Pal.SURFACE
+	face.set_corner_radius_all(int(h * 0.5))
+	face.shadow_color = Color(0.23, 0.19, 0.16, 0.18)
+	face.shadow_size = 6
+	face.shadow_offset = Vector2(0.0, 3.0)
+	_chip.draw_style_box(face, local)
+	var x := local.position.x + 20.0
+	_chip.draw_mesh(Art.icon("log"), null, Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(x + 26.0, 0.0)))
+	x += 58.0
+	_chip.draw_string(font, Vector2(x, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Pal.TEXT)
+	x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0
+	_chip.draw_polyline(PackedVector2Array([Vector2(x, -11.0), Vector2(x + 11.0, 0.0), Vector2(x, 11.0)]), Color(Pal.TEXT, 0.55), 5.0, true)
+	x += 28.0
+	_chip.draw_mesh(Art.icon("splitter"), null, Transform2D(0.0, Vector2(0.52, 0.52), 0.0, Vector2(x + 26.0, 0.0)))
+	_chip.draw_set_transform(Vector2.ZERO)

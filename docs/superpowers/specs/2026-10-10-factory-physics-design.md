@@ -364,3 +364,33 @@ Prices and goals, the game's and an agent's:
 a sale is a sale whatever is sold, so a land's income is its market's rate
 times the price of what reaches it, and the chair is the first thing worth
 twelve logs a sale.
+
+## 16. The pace through the goals, played (2026-10-12)
+
+`godot --headless --path . --script tests/_probe_factory.gd -- goals 1 10`:
+one land, seed 1, by a player who does one thing a second, lights every
+fire the moment it is out, and builds **one line of each thing** (one
+retort, one kiln, one engine with one saw) in the order the goals allow,
+raising the market between builds. A seed changes nothing here.
+
+| Play-minute | What |
+|---|---|
+| 2.3 | 30 logs sold: the splitter (by hand, before the forest works by itself) |
+| 3.6 | the forest's first level |
+| 6.9 | the first plate |
+| 16.9 | a retort and its fire, past a splitter |
+| 35.1 | a mine at its first level, a kiln and its fire |
+| 40.3 | 10 charcoal sold: the fast belt |
+| 73.9 | 25 charcoal sold: the engine, the saw, the stoker; built the same second |
+| 74.2 | 5 lime sold: the bridge |
+| 89.4 | 100 planks sold: the joiner |
+
+It had earned 2,864 coins by then, 2,480 of them from logs, and the market
+stood at its fifth level. So **everything built on 2026-10-12 is reached in
+an hour and a half of play** by a player who never stops and builds no
+second retort; the roadmap's table gave the fire era an hour and steam
+three. Whether that is too quick for "really slow" is the user's to say:
+each goal is one figure in `Sim.GOALS`, and a goal three times as large is
+three times as long for this player. The splitter's thirty logs come
+before the forest's first level, which was not meant: sixty would put it
+after.

@@ -999,12 +999,15 @@ func _tutorial() -> void:
 	card._turn(1)
 	await _wait(4.4)
 	await _shot("tutorial_plate")
+	card._turn(1)
+	await _wait(11.0)
+	await _shot("tutorial_goal")
 	_screen.go_back()
 	await _frames(3)
 	_check("back closes the tutorial", not _screen.tutor.is_open())
 	# what each page's film does, on the game's own sim
 	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
-	_check("the tutorial has three pages", _screen.tutorial_pages().size() == 3)
+	_check("the tutorial has four pages", _screen.tutorial_pages().size() == 4)
 	var land: RefCounted = await _page(Diagram.Lesson.TREE, 3.2)
 	_check("the first page taps the forest three times: three logs, two past the gate", int(land.sources[F].stock) + (land.items.get(PAST, []) as Array).size() == 3
 		and (land.items.get(PAST, []) as Array).size() == 2 and land.belts.is_empty(), "%s %s" % [land.sources[F], land.items.keys()])
@@ -1016,6 +1019,10 @@ func _tutorial() -> void:
 		"%d belts, %d sold" % [land.belts.size(), land.earned])
 	land = await _page(Diagram.Lesson.PLATE, 5.5)
 	_check("the third buys neutral ground beside the market's plate", land.plates.size() == 3 and land.plates.get(Vector2i(1, 0), "") == "neutral" and land.coins == 0, str(land.plates))
+	land = await _page(Diagram.Lesson.GOAL, 17.0)
+	_check("the fourth sells its thirtieth log, makes a belt of the way a splitter and lays its side way", int(land.sold.get("log", 0)) >= 30 and land.belt_kind(Vector2i(3, 3)) == "splitter"
+		and land.belts.size() == WANT_BELTS.size() + 5 and (land.items.has(Vector2i(6, 4)) or land.items.has(Vector2i(6, 3)) or land.items.has(Vector2i(5, 3))),
+		"%s sold, %d belts, %s" % [land.sold, land.belts.size(), land.belt_kind(Vector2i(3, 3))])
 
 ## The tab alone, at the column's size. The screen leaves first and keeps
 ## the land; the tab reads that file, so its card is the late land.

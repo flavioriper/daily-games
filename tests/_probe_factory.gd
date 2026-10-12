@@ -33,6 +33,10 @@ extends SceneTree
 ## over the lands. The lands agree to the tick: a seed only stands the trees
 ## and says which of them a log comes off, and nothing of the pace reads
 ## that. Everything runs on a throwaway file.
+##
+## `goals [seed] [hours]` plays one land on through every goal with a
+## player who does one thing a second and builds one line of each thing
+## (`_goals`), and prints the play-minute of each goal and each build.
 
 const Sim = preload("res://factory/sim.gd")
 
@@ -49,7 +53,9 @@ func _process(_delta: float) -> bool:
 	Sim.path = OS.get_user_data_dir() + "/_probe_factory.cfg"
 	DirAccess.remove_absolute(Sim.path)
 	var args := OS.get_cmdline_user_args()
-	if args.has("pace"):
+	if args.has("goals"):
+		_goals(int(args[1]) if args.size() > 1 else 1, float(args[2]) if args.size() > 2 else 8.0)
+	elif args.has("pace"):
 		_pace(int(args[1]) if args.size() > 1 else 1, int(args[2]) if args.size() > 2 else 10)
 	else:
 		_check_land()
@@ -677,6 +683,26 @@ func _check_bridge() -> void:
 					wrong += 0 if kind == "stone" else 1
 	_ok("thirty logs go under and thirty stones over, none mixed, none held up", logs == 30 and stones == 30 and wrong == 0 and sim.items.is_empty()
 		and sim.over[Vector2i(10, 4)].items.is_empty(), "%d logs %d stones %d wrong" % [logs, stones, wrong])
+	# both lanes full for a minute: neither waits on the other
+	logs = 0
+	stones = 0
+	for i in 600:
+		sim.put(Vector2i(8, 4), "log")
+		sim.put(Vector2i(10, 2), "stone")
+		sim.step(Sim.TICK)
+		for end: Vector2i in [Vector2i(12, 4), Vector2i(10, 6)]:
+			if sim.items.has(end) and float(sim.items[end][0].at) >= 1.0 - 0.001:
+				sim.items[end].remove_at(0)
+				if sim.items[end].is_empty():
+					sim.items.erase(end)
+				if end == Vector2i(12, 4):
+					logs += 1
+				else:
+					stones += 1
+	_ok("with both lanes full each carries its one a second", logs >= 50 and stones >= 50, "%d logs %d stones in a minute" % [logs, stones])
+	for t: Vector2i in sim.items.keys():
+		sim.items.erase(t)
+	sim.over[Vector2i(10, 4)].items.clear()
 	_ok("the bridge hands on ahead and the way its last thing crossed", sim.outs(Vector2i(10, 4)) == [Vector2i(11, 4), Vector2i(10, 5)] and sim.feeds(Vector2i(10, 4), Vector2i(10, 5)))
 	# nothing comes in against its facing; something crossing blocks the other way over
 	sim.lay_belt(Vector2i(11, 4), 2)
@@ -1263,3 +1289,110 @@ func _mean(of: Array[float]) -> float:
 	for v: float in of:
 		sum += v
 	return sum / of.size()
+
+# --- the goals bot ---
+
+## One land played through the goals by a player who does one thing a
+## second: taps the forest until it works by itself, lights any fire that
+## is out with fuel waiting, and buys in this order as the coins reach and
+## the goals allow: the nine belts, the forest's first level, the first
+## plate, a retort on its own fire fed past a splitter, a mine with a kiln
+## on its own fire, then an engine, a saw and a stoker. Between builds it
+## raises the market (to its seventh level at most), then the forest and
+## the mine. It builds one of each and no more, so a goal counted in
+## charcoal or lime is as slow as one retort or one kiln makes it; a player
+## who builds three is three times as quick. `hours` is where it stops.
+func _goals(land_seed: int, hours: float) -> void:
+	var sim: RefCounted = Sim.new(land_seed)
+	var stage := 0
+	var said := {}
+	var clock := [0]
+	var mine := Vector2i(1, -1)
+	var note := func(what: String) -> void:
+		print("goals: play-minute %6.1f  %s  (%d coins, market %d, %s sold)" % [int(clock[0]) / 600.0, what, sim.coins, int(sim.market.level), sim.sold])
+	while int(clock[0]) < int(hours * 36000.0):
+		sim.step(Sim.TICK)
+		clock[0] = int(clock[0]) + 1
+		var ticks: int = clock[0]
+		for e: Dictionary in sim.events:
+			if e.type == "goal":
+				note.call("GOAL %s reached: opens %s" % [e.id, e.gives])
+		sim.events.clear()
+		if int(sim.sold.get("plank", 0)) >= 100 and not said.has("done"):
+			said["done"] = true
+			break
+		if ticks % 10 != 0:
+			continue
+		if sim.source_rate(F) == 0.0:
+			sim.tap(IN)
+		if sim.sources.has(mine) and sim.source_rate(mine) == 0.0:
+			sim.tap(mine * Sim.PLATE + Vector2i(4, 4))
+		for id: int in sim.modules:
+			var m: Dictionary = sim.modules[id]
+			if m.kind == "firebox" and m.built and not m.lit and not m.hopper.is_empty():
+				sim.tap(m.root)
+		var built := true
+		match stage:
+			0:
+				built = sim.coins >= 9
+				if built:
+					_way(sim)
+					note.call("the nine belts")
+			1:
+				built = sim.upgrade(IN)
+				if built:
+					note.call("the forest works by itself")
+			2:
+				built = sim.buy_plate(Vector2i(1, 0), "neutral")
+				if built:
+					note.call("the first plate: neutral ground")
+			3:
+				# a splitter on the way, a row east to a second splitter, a retort ahead of it and its fire fed by the splitter's side
+				built = sim.unlocked("splitter") and sim.coins >= 140
+				if built:
+					sim.lay_belt(Vector2i(3, 3), 1, "splitter")
+					_belt_row(sim, Vector2i(4, 3), 5, 0)
+					sim.lay_belt(Vector2i(9, 3), 0, "splitter")
+					sim.place("retort", Vector2i(10, 3), 0)
+					sim.place("firebox", Vector2i(10, 4), 0)
+					sim.lay_belt(Vector2i(9, 4), 0)
+					_belt_row(sim, Vector2i(12, 3), 3, 1)
+					_belt_row(sim, Vector2i(12, 6), 6, 2)
+					note.call("a retort, its fire and their belts")
+			4:
+				built = sim.coins >= 150 + 60 + 40 + 20 + 20
+				if built:
+					sim.buy_plate(mine, "mine")
+					sim.upgrade(mine * Sim.PLATE)
+					sim.lay_belt(Vector2i(11, 0), 1)
+					sim.place("kiln", Vector2i(11, 1), 0)
+					sim.place("firebox", Vector2i(11, 2), 0)
+					_belt_row(sim, Vector2i(9, 2), 2, 0)
+					_belt_row(sim, Vector2i(13, 1), 5, 1)
+					sim.lay_belt(Vector2i(13, 6), 2)
+					note.call("a mine at its first level, a kiln, its fire and their belts")
+			5:
+				built = sim.unlocked("engine") and sim.coins >= 150 + 80 + 20 + 15 + 100 + 10
+				if built:
+					sim.lay_belt(Vector2i(2, 3), 2)
+					sim.lay_belt(Vector2i(1, 3), 2, "splitter")
+					sim.place("firebox", Vector2i(0, 3), 0)
+					sim.place("engine", Vector2i(0, 4), 0)
+					sim.place("saw", Vector2i(1, 4), 1)
+					_belt_row(sim, Vector2i(1, 6), 2, 0)
+					sim.fit_stoker(Vector2i(0, 3))
+					note.call("an engine on a fire with a stoker, a saw and their belts")
+			_:
+				built = false
+		if built:
+			stage += 1
+			continue
+		# between builds: the market, then the forest, then the mine
+		if int(sim.market.level) < 7 and sim.coins >= sim.upgrade_price("market") + 60:
+			if sim.upgrade("market"):
+				note.call("the market's level %d" % int(sim.market.level))
+		elif stage > 3 and sim.upgrade_price(IN) > 0 and sim.coins >= sim.upgrade_price(IN) * 2:
+			if sim.upgrade(IN):
+				note.call("the forest's level %d" % int(sim.sources[F].level))
+	note.call("a hundred planks sold" if said.has("done") else "stopped at %.0f hours" % hours)
+	print("goals: stage %d of 6, %d modules, %d belts, earned %d" % [stage, sim.modules.size(), sim.belts.size(), sim.earned])

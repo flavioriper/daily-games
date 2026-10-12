@@ -381,8 +381,8 @@ counter of six, a keeper or "sold as it lands".
 the land to be built on unattended: "be autonomous, i need you to keep
 building the factory. We need to create new things to create with wood,
 the mine, add more convey options", with the two games the roadmap names
-as "reference on web on features to add to make the game progress". Five
-commits on `feat/factory-mine` and `feat/factory-bridge`, each playable by itself. **The user has
+as "reference on web on features to add to make the game progress". Six
+commits on `feat/factory-mine`, `feat/factory-bridge` and `feat/factory-pace`, each playable by itself. **The user has
 seen none of it.** The ledger's sections 13, 14 and 15 are the figures;
 this overrides every line above that says two kinds of plate, a kiln that
 cannot be bought, a drawer of five tiles in one column, `sim.forests`,
@@ -466,9 +466,24 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   in its three columns (the bridge's run, the last of the day: 125 to 241).
   `tests/_probe_factory.gd` 225/0 (sixty logs through a splitter leave
   twenty a way; a log is four planks in 34 s on a first fire with an idle
-  joiner on the engine). Suite 249797/0. **The pace bot was not run past
-  the first plate**: how long the goals take a person is worked out in the
-  ledger, not played.
+  joiner on the engine). Suite 249797/0. **The pace through the goals was played by a bot**
+  (`-- goals [seed] [hours]`, the ledger's section 16): one line of each
+  thing, one act a second, and every goal is reached by play-minute 89
+  (the splitter at 2.3, before the forest works by itself; the fast belt
+  at 40; steam and the bridge at 74; the joiner at 89). **That is quick
+  beside the roadmap's hours, and the user has not said.**
+- **The tutorial has a fourth page** (`Lesson.GOAL`,
+  `TUT_FACTORY_GOAL`): a forest at work sells to thirty, the chip (drawn
+  on the page by `_draw_chip`, a copy of the screen's `_draw_goal`: **a
+  change to one is a change to both**) turns the sun's colour, a tap makes
+  a belt of the way a splitter and a second lays its side way to the
+  market. 302 draw calls under it on the late land.
+- **Runs of the last hour** (`opengl3_angle`, 810x1440): `_shot_factory.gd`
+  0 failed, 101 to 302; `_shot_factory_menu.gd` 0 failed. One run of the
+  first between them drew nothing after its fifth shot (every later shot
+  the same picture and the same 129): its checks passed but its figures
+  are not these. Somebody was at the trackpad; the window was likely
+  covered.
 - **Decided for the user and not judged by them**: that the mine is a
   clicker like the forest; the kiln's key; goals as things sold, and all
   four of them; every price (fast 4, splitter 15, engine 150, saw 80,
@@ -482,7 +497,7 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   a thing turning inside a splitter) or heard: **the saw, the engine and
   a goal reached have no sound of their own** (a goal is the `buy` cue a
   little higher), which the no-ghost-touch rule does not cover but the
-  cozy pass will want; the tutorial says nothing of goals, mines or steam;
+  cozy pass will want; the tutorial says nothing of mines or steam;
   the joiner's roof hides the bench behind it at two turns; coal, iron,
   the smelter, nails and the table; a bridge's deck has no slats that run
   and no arrow, so which way a thing crossed is only seen by watching.
