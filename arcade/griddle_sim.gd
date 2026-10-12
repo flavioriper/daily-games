@@ -214,6 +214,8 @@ var yesterday := 0
 ## Nothing sold and no mood moved: the time away.
 var shut := false
 var away_secs := 0.0
+## What came into the larder in the time away, for the screen's welcome.
+var away_came := 0
 var stamp := 0.0
 
 func _init(rng_seed := 0) -> void:
@@ -883,8 +885,12 @@ func away(seconds: float) -> int:
 		_step_fields(d)
 		_step_yard(d)
 	shut = false
+	# a herd found with an empty trough is hungry from now, not poorly at once
+	for c: Dictionary in cows:
+		c.hungry = 0.0
 	stamp = Time.get_unix_time_from_system()
-	return loaves + feed + cheese - before
+	away_came = loaves + feed + cheese - before
+	return away_came
 
 # --- kept ---
 
@@ -910,6 +916,10 @@ func save() -> void:
 	cfg.set_value("stand", "stamp", Time.get_unix_time_from_system())
 	cfg.set_value("fields", "lots", rows)
 	cfg.set_value("fields", "larder", [loaves, feed, cheese])
+	cfg.set_value("fields", "ban", ban)
+	cfg.set_value("counter", "walk", walk)
+	cfg.set_value("office", "hush", hush)
+	cfg.set_value("office", "day", [day_t, today, yesterday])
 	cfg.set_value("yard", "cows", herd)
 	cfg.set_value("yard", "stalls", stalls)
 	cfg.set_value("yard", "scraps", scraps)
@@ -964,6 +974,13 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	s.pep = clampf(float(cfg.get_value("counter", "pep", PEP_MAX)), 0.0, PEP_MAX)
 	s.bell = bool(cfg.get_value("counter", "bell", false))
 	s.volume = clampi(int(cfg.get_value("office", "volume", 0)), 0, VOLUMES - 1)
+	s.ban = maxf(0.0, float(cfg.get_value("fields", "ban", 0.0)))
+	s.walk = maxf(0.0, float(cfg.get_value("counter", "walk", 0.0)))
+	s.hush = maxf(0.0, float(cfg.get_value("office", "hush", 0.0)))
+	var day: Array = cfg.get_value("office", "day", [0.0, 0, 0])
+	s.day_t = float(day[0])
+	s.today = int(day[1])
+	s.yesterday = int(day[2])
 	var moods: Dictionary = cfg.get_value("office", "mood", {})
 	var done: Dictionary = cfg.get_value("office", "favours", {})
 	for m: String in MOODS:

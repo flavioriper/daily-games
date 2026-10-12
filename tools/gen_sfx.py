@@ -3589,6 +3589,59 @@ SETS = {
         # An animal's milestone: four up.
         "mile":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,5,7,9", "cut:1.0"),
     },
+    # Griddle (arcade/griddle_screen.gd, 2026-10-12): a toastie stand of four
+    # places that run at once. Made against the cozy rules from the start
+    # (docs/agents/sound.md). One cue repeats under a hand: `serve`, a
+    # toastie sold, as fast as a finger taps; the screen plays it a semitone
+    # higher a link of the rush, to five and no further. Two repeat by
+    # themselves, `cook` and `till` (the crew's own work), and are the
+    # quietest of the set: the screen plays them only on the counter, never
+    # over a rush and never two within a third of a second. No new take is
+    # kept: the set is the three measured takes Beeline, Eddy, Gumdrop and
+    # Furrow are made of (the light button on felt, the hollow block, one
+    # muffled kalimba note), copied into build/sfx_raw/griddle/. The tray
+    # and the jars' calm touch are the button's own click (fx2d's touch).
+    "griddle": {
+        # A toastie sold by hand: the rush's tick, the cue of the game.
+        "serve":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A till's own sale: the button a fourth down, quieter.
+        "till":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:-5"),
+        # A toastie onto the pass: one low knock of the block, quieter still.
+        "cook":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-7"),
+        # A lot cut by hand: the block, three steps down.
+        "cut":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        # A cow's milk taken: the block twice, quick, the second lower.
+        "milk":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,-4"),
+        # A lot's crop set: the block, lower.
+        "plant":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        # Tonic, scraps, the hurry board, a notch of the signboard: the button twice.
+        "switch":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.16", "body:320", "tight", "notes:0.07:0,3"),
+        # Not enough coins, a full larder, the signboard down: two low notches alike.
+        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        # A rush of three or more over: two knocks, the second a third up.
+        "tally":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.09:0,4"),
+        # A lot, a cow, a stall, a grill, a till: three notches up.
+        "buy":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.42", "body:320", "tight", "notes:0.1:-2,1,5"),
+        # The 5th, 10th and 15th link: two notes up a third, played a step
+        # or two higher each (0, 2, 4 semitones).
+        "rush":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.09:2,5", "cut:0.55"),
+        # A queue emptied by a rush: five up a step at a time, the longest rise.
+        "clean":     ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,4,6,7,9", "cut:1.2"),
+        # A level of an upgrade: two notes up a fourth.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # A star: four up.
+        "star":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,5,7,9", "cut:1.0"),
+        # The kettle on: two slow notes, level.
+        "tea":       ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:5,5", "cut:0.8"),
+        # A mood at sixty, a cow poorly: two slow notes down, the one warning.
+        "warn":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.24:7,2", "cut:0.9"),
+        # A mood at the top: three slow notes down.
+        "boil":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.26:7,4,0", "cut:1.2"),
+        # A favour done: three notes, up and settling.
+        "favour":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:2,7,5", "cut:0.9"),
+        # The stand opened: two notes up, quieter than anything it leads to.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+    },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
     # start (docs/agents/sound.md). One cue never stops: `pour`, the

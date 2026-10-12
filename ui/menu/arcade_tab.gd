@@ -47,6 +47,8 @@ const EddyArt = preload("res://arcade/eddy_art.gd")
 const EddySim = preload("res://arcade/eddy_sim.gd")
 const FurrowArt = preload("res://arcade/furrow_art.gd")
 const FurrowSim = preload("res://arcade/furrow_sim.gd")
+const GriddleArt = preload("res://arcade/griddle_art.gd")
+const GriddleSim = preload("res://arcade/griddle_sim.gd")
 const DeckArt = preload("res://arcade/deckchair_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -61,13 +63,13 @@ const ART_H_TINY := 104.0
 ## a strip, so the sixth row was on the page. Kept for the next eleventh.
 const ART_H_STRIP := 62.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB", "griddle": "ARC_GRIDDLE_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP, "griddle": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -157,7 +159,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner, "griddle": GriddleBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -233,6 +235,14 @@ func refresh() -> void:
 			var open := int(land.plots)
 			(_best[game] as Label).text = tr("FW_CARD_NEW") if open == 0 else tr("FW_CARD_SEEDS") % Record.grouped(int(land.seeds))
 			(_stage[game] as Label).text = "" if open == 0 else "· " + tr("FW_CARD_PLOTS") % open
+			continue
+		# and Griddle: its line is the stand as it stands
+		if game == "griddle":
+			var stand: Dictionary = GriddleSim.kept()
+			var sold := int(stand.served)
+			(_best[game] as Label).text = tr("GR_CARD_NEW") if sold == 0 else tr("GR_CARD_SOLD") % Record.grouped(sold)
+			var stars := int(stand.stars)
+			(_stage[game] as Label).text = "" if stars == 0 else "· " + (tr("GR_CARD_STAR_ONE") if stars == 1 else tr("GR_CARD_STAR_N") % stars)
 			continue
 		var best := Record.best(game)
 		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
@@ -709,6 +719,27 @@ class FurrowBanner extends Control:
 			var i := _keep.size() - 1
 			draw_mesh(FurrowArt.plant(row[0], row[1], w * 0.4), null, Transform2D(0.0, Vector2(from + w * (i + 0.5), size.y * 0.8)))
 			_keep.append(null)
+
+## Griddle's banner: a loaf, a cheese, a toastie pale and one done, and a
+## coin, in a row on the grass. Drawn once.
+class GriddleBanner extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		var n := 5
+		var w := minf(size.x * 0.9 / n, maxf(80.0 * size.y / 110.0, size.y * 0.95))
+		var from := size.x * 0.5 - w * n * 0.5
+		var s := w * 0.74
+		var y := size.y * 0.56
+		draw_mesh(GriddleArt.loaf(s), null, Transform2D(0.0, Vector2(from + w * 0.5, y)))
+		draw_mesh(GriddleArt.cheese(s * 0.9), null, Transform2D(0.0, Vector2(from + w * 1.5, y)))
+		draw_mesh(GriddleArt.toastie(s, 0.0), null, Transform2D(-0.08, Vector2(from + w * 2.5, y)))
+		draw_mesh(GriddleArt.toastie(s, 1.0), null, Transform2D(0.08, Vector2(from + w * 3.5, y)))
+		draw_mesh(GriddleArt.coin(s * 0.8), null, Transform2D(0.0, Vector2(from + w * 4.5, y)))
 
 ## Eddy's banner: a round of the pond lying in the meadow, the whirlpool
 ## turning in its middle, a duck and a boat on their way round it and

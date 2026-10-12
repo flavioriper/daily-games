@@ -1579,3 +1579,153 @@ FW_MILE_NEXT,next at %s: +%s seeds,próximo em %s: +%s sementes,siguiente en %s:
 FW_MILE_DONE,every milestone reached,todos os marcos alcançados,todos los hitos alcanzados
 TUT_FURROW_PENS,Hens and cows,Galinhas e vacas,Gallinas y vacas
 TUT_FURROW_PENS_BODY,Hens leave up to %d eggs each on the ground: stroke them. Touch a cow that shows a bottle. With the fence down a fox comes for a hen: touch it.,Cada galinha deixa até %d ovos no chão: passe o dedo. Toque na vaca que mostra uma garrafa. Com a cerca caída vem uma raposa: toque nela.,Cada gallina deja hasta %d huevos en el suelo: pasa el dedo. Toca la vaca que muestra una botella. Con la valla caída viene un zorro: tócalo.
+ARC_GRIDDLE_BLURB,"A toastie stand of four places that all run at once. Sell a queue by hand for a rush, and mind who your shortcuts annoy.",Uma barraca de tostas com quatro lugares que funcionam ao mesmo tempo. Venda a fila à mão para uma correria e cuide de quem seus atalhos incomodam.,Un puesto de tostadas con cuatro lugares que funcionan a la vez. Vende la cola a mano para una racha y cuida a quién molestan tus atajos.
+GR_MOTTO,"Grow, grill, serve","Plante, toste, sirva","Cultiva, tuesta, sirve"
+GR_CARD_NEW,A new stand,Uma barraca nova,Un puesto nuevo
+GR_CARD_SOLD,%s sold,%s vendidas,%s vendidas
+GR_CARD_STAR_ONE,1 star,1 estrela,1 estrella
+GR_CARD_STAR_N,%d stars,%d estrelas,%d estrellas
+GR_COINS,Coins,Moedas,Monedas
+GR_RUSH,Rush,Correria,Racha
+GR_STAR,Next star,Próxima estrela,Próxima estrella
+GR_RUSH_BEST,best ×%d,melhor ×%d,mejor ×%d
+GR_RUSH_0,Rush!,Correria!,¡Racha!
+GR_RUSH_1,Lunch rush!,Hora do almoço!,¡Hora punta!
+GR_RUSH_2,Full house!,Casa cheia!,¡Lleno total!
+GR_CLEAN,Clean counter!,Balcão limpo!,¡Mostrador limpio!
+GR_BACK,The larder filled while you were away,A despensa encheu enquanto você estava fora,La despensa se llenó mientras no estabas
+GR_NO_PASS,Nothing ready yet,Nada pronto ainda,Nada listo todavía
+GR_NO_QUEUE,Nobody is waiting,Ninguém na fila,Nadie espera
+GR_TIRED,A lot is tired: let it rest,Um canteiro cansou: deixe descansar,Una parcela está cansada: déjala descansar
+GR_POORLY,Poorly: tuck her up,Adoentada: agasalhe,Malita: arrópala
+GR_WELL,All better,Já melhorou,Ya está bien
+GR_TEA,Tea break,Pausa para o chá,Pausa para el té
+GR_BACK_TO_WORK,Back to work,De volta ao trabalho,De vuelta al trabajo
+GR_CREW_BACK,The crew are back,A equipe voltou,El equipo ha vuelto
+GR_LEFT,Tired of waiting,Cansou de esperar,Se cansó de esperar
+GR_DAY,The day's takings: %s,Caixa do dia: %s,Caja del día: %s
+GR_STAR_ONE,The first star!,A primeira estrela!,¡La primera estrella!
+GR_STAR_N,Star %d!,Estrela %d!,¡Estrella %d!
+GR_STAR_LINE,"%d%% on the price, %d%% more customers","%d%% no preço, %d%% mais clientes","%d%% en el precio, %d%% más clientes"
+GR_WARN_GARDEN,The gardeners are grumbling,Os jardineiros estão resmungando,Los jardineros refunfuñan
+GR_WARN_VET,The vet is frowning,A veterinária está de cara fechada,La veterinaria frunce el ceño
+GR_WARN_CREW,The crew are fed up,A equipe está farta,El equipo está harto
+GR_WARN_TOWN,The neighbours are grumbling,Os vizinhos estão resmungando,Los vecinos refunfuñan
+GR_BOIL_GARDEN,The gardeners complained: no tonic for a while,Os jardineiros reclamaram: sem tônico por um tempo,Los jardineros se quejaron: sin tónico por un rato
+GR_BOIL_VET,The vet came: the herd is resting,A veterinária veio: o rebanho está de repouso,Vino la veterinaria: el rebaño descansa
+GR_BOIL_CREW,The crew have gone for a walk,A equipe saiu para dar uma volta,El equipo se fue a dar una vuelta
+GR_BOIL_TOWN,The neighbours had the signboard taken down,Os vizinhos mandaram tirar a placa,Los vecinos hicieron quitar el cartel
+GR_FAVOUR_DONE,That went down well,Isso caiu bem,Eso sentó bien
+GR_NEW_LOT,A new lot,Um canteiro novo,Una parcela nueva
+GR_NEW_COW,A new cow,Uma vaca nova,Una vaca nueva
+GR_NEW_STALL,A new stall,Uma baia nova,Un establo nuevo
+GR_NEW_GRILL,A new grill!,Uma chapa nova!,¡Una plancha nueva!
+GR_NEW_TILL,A new till!,Um caixa novo!,¡Una caja nueva!
+GR_SHORT,%s more,faltam %s,faltan %s
+GR_FULL,The larder is full,A despensa está cheia,La despensa está llena
+GR_HUSHED,The signboard is down · %d s,A placa está fora · %d s,El cartel está quitado · %d s
+GR_SHOP,The shop,A loja,La tienda
+GR_SHOP_SHORT,Shop,Loja,Tienda
+GR_DONE,Done,Pronto,Listo
+GR_HAS,%d of %d,%d de %d,%d de %d
+GR_LEVEL,Level %d,Nível %d,Nivel %d
+GR_PLACE_FIELDS,Fields,Campos,Campos
+GR_PLACE_YARD,Yard,Curral,Corral
+GR_PLACE_COUNTER,Counter,Balcão,Mostrador
+GR_PLACE_OFFICE,Office,Escritório,Oficina
+GR_BUY_LOT,Lot,Canteiro,Parcela
+GR_BUY_COW,Cow,Vaca,Vaca
+GR_BUY_STALL,Stall,Baia,Establo
+GR_BUY_GRILL,Grill,Chapa,Plancha
+GR_BUY_TILL,Till,Caixa,Caja
+GR_RESTING,Resting,Descansando,Descansando
+GR_BAN,No tonic for %d s,Sem tônico por %d s,Sin tónico por %d s
+GR_SCRAPS_ON,Scraps: on,Sobras: sim,Sobras: sí
+GR_SCRAPS_OFF,Scraps: off,Sobras: não,Sobras: no
+GR_STALLS,Cows %d · Stalls %d,Vacas %d · Baias %d,Vacas %d · Establos %d
+GR_PEP,The crew's pep,Ânimo da equipe,Ánimo del equipo
+GR_WALK,Gone for a walk · %d s,Saíram para uma volta · %d s,Se fueron de paseo · %d s
+GR_AT_TEA,At tea · %d s,No chá · %d s,En el té · %d s
+GR_WORN,Worn out: put the kettle on,Exaustos: ponha a chaleira,Agotados: pon la tetera
+GR_HURRY,Hurrying,Com pressa,Con prisa
+GR_SIGN_TITLE,The signboard,A placa,El cartel
+GR_NOTCH_0,Plain: the town's own pace,Simples: o ritmo da cidade,Sencillo: el ritmo del pueblo
+GR_NOTCH_1,"Friendly: more customers, nobody minds","Simpática: mais clientes, ninguém liga","Simpático: más clientes, a nadie le molesta"
+GR_NOTCH_2,"Loud: more still, the neighbours mind","Chamativa: mais ainda, os vizinhos ligam","Llamativo: más aún, a los vecinos les molesta"
+GR_NOTCH_3,"Very loud: the most, they mind a lot","Berrante: o máximo, eles ligam muito","Chillón: lo máximo, les molesta mucho"
+GR_MOODS_TITLE,Who minds,Quem se incomoda,A quién le molesta
+GR_MOOD_GARDEN,Gardeners,Jardineiros,Jardineros
+GR_MOOD_VET,The vet,Veterinária,Veterinaria
+GR_MOOD_CREW,The crew,Equipe,Equipo
+GR_MOOD_TOWN,Neighbours,Vizinhos,Vecinos
+GR_FAVOUR_GARDEN,Plant a hedge,Plantar uma sebe,Plantar un seto
+GR_FAVOUR_VET,A check-up,Um check-up,Una revisión
+GR_FAVOUR_CREW,A picnic,Um piquenique,Un pícnic
+GR_FAVOUR_TOWN,Bake for the fête,Bolo para a festa,Bizcocho para la fiesta
+GR_CALM,All calm,Tudo calmo,Todo en calma
+GR_LEDGER_TITLE,The ledger,O livro-caixa,El libro de cuentas
+GR_TODAY,Today,Hoje,Hoy
+GR_YESTERDAY,Yesterday,Ontem,Ayer
+GR_SOLD,Toasties sold,Tostas vendidas,Tostadas vendidas
+GR_BEST_RUSH,Best rush,Melhor correria,Mejor racha
+GR_CLEANS,Clean counters,Balcões limpos,Mostradores limpios
+GR_WALKED,Walked off,Foram embora,Se marcharon
+GR_LOT_REST,A resting lot,Um canteiro em descanso,Una parcela en descanso
+GR_LOT_WHEAT,A lot of wheat,Um canteiro de trigo,Una parcela de trigo
+GR_LOT_CLOVER,A lot of clover,Um canteiro de trevo,Una parcela de trébol
+GR_LOT_GIVES,A cut gives,Um corte dá,Un corte da
+GR_GIVES_LOAF_ONE,1 loaf,1 pão,1 pan
+GR_GIVES_LOAF_N,%d loaves,%d pães,%d panes
+GR_GIVES_FEED,%d of feed,%d de ração,%d de pienso
+GR_LOT_EVERY,Ripe in,Pronto em,Listo en
+GR_LOT_SOIL,Soil,Solo,Suelo
+GR_LOT_TIRED,This soil is tired and gives little. Let it rest a while.,Este solo está cansado e rende pouco. Deixe descansar um pouco.,Este suelo está cansado y da poco. Déjalo descansar un rato.
+GR_LOT_NOTE,Every cut wears the soil a little. A resting lot gets it back.,Cada corte gasta um pouco o solo. Um canteiro em descanso o recupera.,Cada corte gasta un poco el suelo. Una parcela en descanso lo recupera.
+GR_SET_WHEAT,Wheat,Trigo,Trigo
+GR_SET_CLOVER,Clover,Trevo,Trébol
+GR_SET_REST,Rest,Descanso,Descanso
+GR_TONIC_ON,"Tonic: half as much again, wears the soil fast","Tônico: rende 50% mais, gasta o solo depressa","Tónico: rinde un 50% más, gasta el suelo deprisa"
+GR_TONIC_OFF,Stop the tonic,Parar o tônico,Dejar el tónico
+GR_TONIC_BAN,No tonic for now,Sem tônico por enquanto,Sin tónico por ahora
+GR_UP_LOT,A lot,Um canteiro,Una parcela
+GR_UP_LOT_LINE,"One more lot to sow, opened resting.","Mais um canteiro para plantar, aberto em descanso.","Una parcela más para sembrar, abierta en descanso."
+GR_UP_COW,A cow,Uma vaca,Una vaca
+GR_UP_COW_LINE,"Eats feed, fills with milk: a cheese each time.","Come ração, enche de leite: um queijo por vez.","Come pienso, se llena de leche: un queso cada vez."
+GR_UP_STALL,A stall,Uma baia,Un establo
+GR_UP_STALL_LINE,Room for a cow. A cow without one crowds the barn.,Lugar para uma vaca. Vaca sem baia aperta o celeiro.,Sitio para una vaca. Una vaca sin él abarrota el granero.
+GR_UP_GRILL,A grill,Uma chapa,Una plancha
+GR_UP_GRILL_LINE,One more cook and one more toastie at a time.,Mais um cozinheiro e mais uma tosta por vez.,Un cocinero más y una tostada más a la vez.
+GR_UP_TILL,A till,Um caixa,Una caja
+GR_UP_TILL_LINE,One more queue and somebody to sell to it.,Mais uma fila e alguém para vender a ela.,Una cola más y alguien que le venda.
+GR_UP_SEED,Better seed,Semente melhor,Mejor semilla
+GR_UP_SEED_LINE,Every cut gives 20% more.,Cada corte rende 20% mais.,Cada corte da un 20% más.
+GR_UP_CART,A quicker cart,Carroça mais ligeira,Carro más rápido
+GR_UP_CART_LINE,The cart comes round 10% sooner.,A carroça passa 10% mais cedo.,El carro pasa un 10% antes.
+GR_UP_LARDER,A bigger larder,Despensa maior,Despensa más grande
+GR_UP_LARDER_LINE,"Room for 8 more loaves, feed and cheese.","Lugar para mais 8 pães, ração e queijos.","Sitio para 8 panes, pienso y quesos más."
+GR_UP_CHURN,A better churn,Batedeira melhor,Mejor mantequera
+GR_UP_CHURN_LINE,A cow's milk is a cheese 10% sooner.,O leite vira queijo 10% mais cedo.,La leche es queso un 10% antes.
+GR_UP_PAIL,A quicker pail,Balde mais ligeiro,Cubo más rápido
+GR_UP_PAIL_LINE,The pail comes round 10% sooner.,O balde passa 10% mais cedo.,El cubo pasa un 10% antes.
+GR_UP_HEAT,A hotter griddle,Chapa mais quente,Plancha más caliente
+GR_UP_HEAT_LINE,A toastie is done 10% sooner.,A tosta fica pronta 10% mais cedo.,La tostada está lista un 10% antes.
+GR_UP_TILLS,Nimbler tills,Caixas mais ágeis,Cajas más ágiles
+GR_UP_TILLS_LINE,The crew sell 10% quicker.,A equipe vende 10% mais rápido.,El equipo vende un 10% más rápido.
+GR_UP_SHELF,A longer pass,Passa-pratos maior,Pase más largo
+GR_UP_SHELF_LINE,Room for 2 more toasties waiting.,Lugar para mais 2 tostas à espera.,Sitio para 2 tostadas más en espera.
+GR_UP_RECIPE,A better recipe,Receita melhor,Mejor receta
+GR_UP_RECIPE_LINE,A toastie sells for 10% more.,A tosta é vendida por 10% a mais.,La tostada se vende un 10% más cara.
+GR_UP_SIGN,Fresh paint,Pintura nova,Pintura nueva
+GR_UP_SIGN_LINE,"12% more customers, and nobody minds paint.","12% mais clientes, e ninguém liga para pintura.","12% más clientes, y a nadie le molesta la pintura."
+TUT_GRIDDLE_SERVE,Sell a toastie,Venda uma tosta,Vende una tostada
+TUT_GRIDDLE_SERVE_BODY,The cook grills a loaf and a cheese into a toastie and sets it on the pass. Touch the queue to sell the front toastie to the front customer at once.,O cozinheiro tosta um pão e um queijo e põe a tosta no passa-pratos. Toque na fila para vender na hora a tosta da frente ao cliente da frente.,El cocinero tuesta un pan y un queso y deja la tostada en el pase. Toca la cola para vender al instante la tostada de delante al cliente de delante.
+TUT_GRIDDLE_RUSH,A rush pays more,Uma correria paga mais,Una racha paga más
+TUT_GRIDDLE_RUSH_BODY,Each toastie sold by hand soon after the last pays %d%% more than the one before. Empty the queue in a rush of %d or more for a clean counter. The till's own sales are no part of it.,Cada tosta vendida à mão logo depois da anterior paga %d%% a mais que a última. Esvazie a fila numa correria de %d ou mais para um balcão limpo. As vendas do caixa não contam.,Cada tostada vendida a mano poco después de la anterior paga un %d%% más que la última. Vacía la cola en una racha de %d o más para un mostrador limpio. Las ventas de la caja no cuentan.
+TUT_GRIDDLE_FIELDS,The fields,Os campos,Los campos
+TUT_GRIDDLE_FIELDS_BODY,"Wheat is loaves and clover is feed for the cows. A cart cuts what is ripe, slowly; your touch cuts it at once. Touch a lot that is not ripe to choose what it grows, or to let tired soil rest.","Trigo vira pão e trevo vira ração para as vacas. Uma carroça corta o que está maduro, devagar; seu toque corta na hora. Toque num canteiro que não está maduro para escolher o que ele dá, ou para deixar o solo cansado descansar.","El trigo es pan y el trébol es pienso para las vacas. Un carro corta lo maduro, despacio; tu toque lo corta al instante. Toca una parcela que no esté madura para elegir qué da, o para dejar descansar el suelo cansado."
+TUT_GRIDDLE_YARD,The yard,O curral,El corral
+TUT_GRIDDLE_YARD_BODY,"A fed cow fills with milk, and her milk is a cheese. A pail takes it, slowly; your touch takes it at once. A cow under a blanket is poorly: touch her to tuck her up.","Vaca alimentada enche de leite, e o leite vira um queijo. Um balde recolhe, devagar; seu toque recolhe na hora. Vaca de cobertor está adoentada: toque para agasalhar.","Una vaca alimentada se llena de leche, y su leche es un queso. Un cubo la recoge, despacio; tu toque la recoge al instante. Una vaca con manta está malita: tócala para arroparla."
+TUT_GRIDDLE_OFFICE,The office,O escritório,La oficina
+TUT_GRIDDLE_OFFICE_BODY,"Every shortcut annoys somebody: tonic the gardeners, scraps and a crowded barn the vet, the hurry bell the crew, a loud signboard the neighbours. A jar that fills to the top costs you something. A favour calms it.","Todo atalho incomoda alguém: o tônico, os jardineiros; sobras e celeiro lotado, a veterinária; a pressa, a equipe; placa berrante, os vizinhos. Um pote que enche até o topo custa algo. Um agrado acalma.","Todo atajo molesta a alguien: el tónico a los jardineros, las sobras y un granero abarrotado a la veterinaria, las prisas al equipo, un cartel chillón a los vecinos. Un tarro que se llena hasta arriba te cuesta algo. Un detalle lo calma."
+TUT_GRIDDLE_ROUND,It all runs at once,Tudo funciona junto,Todo funciona a la vez
+TUT_GRIDDLE_ROUND_BODY,"The four places go on whichever you are looking at. A dot on a place's button means it wants you: amber for something waiting, red for something going wrong. Coins buy more of everything in the shop.","Os quatro lugares seguem funcionando, seja qual for o que você olha. Um ponto no botão de um lugar quer dizer que ele precisa de você: âmbar para algo esperando, vermelho para algo dando errado. Moedas compram mais de tudo na loja.","Los cuatro lugares siguen en marcha mires el que mires. Un punto en el botón de un lugar significa que te necesita: ámbar si algo espera, rojo si algo va mal. Las monedas compran más de todo en la tienda."

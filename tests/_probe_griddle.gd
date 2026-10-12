@@ -293,13 +293,17 @@ func _kept() -> void:
 	s.best_rush = 9
 	for k in 30:
 		s.step(1.0)
+	s.ban = 50.0
+	s.walk = 20.0
+	s.hush = 70.0
+	s.yesterday = 123
 	s.save()
 	var kept: Dictionary = Sim.kept()
 	_check("the tab's card reads the stand kept", int(kept.served) == s.served and int(kept.stars) == 2)
 	var b = Sim.load_saved(11)
 	_check("a stand saved comes back as it was", b.coins == s.coins and b.opened() == 4 and int(b.lots[3].crop) == Sim.WHEAT and b.lots[3].tonic
 		and b.cows.size() == 2 and b.stalls == 3 and b.grills == 2 and b.tills == 2 and int(b.lv.recipe) == 1 and int(b.lv.larder) == 1
-		and b.volume == 2 and b.scraps and b.stars == 2 and b.best_rush == 9 and absf(float(b.mood.vet) - float(s.mood.vet)) < 0.01)
+		and b.volume == 2 and b.scraps and b.stars == 2 and b.best_rush == 9 and b.ban > 40.0 and b.walk > 10.0 and b.hush > 60.0 and b.yesterday == 123 and absf(float(b.mood.vet) - float(s.mood.vet)) < 0.01)
 	# away
 	var a = Sim.new(13)
 	a.coins = 50
@@ -314,7 +318,8 @@ func _kept() -> void:
 	for l: Dictionary in a.lots:
 		l.open = false
 	a.away(100000.0)
-	_check("a herd left with an empty trough is not found poorly", a.poorly_count() == 0)
+	a.step(0.25)
+	_check("a herd left with an empty trough is not found poorly, nor poorly at once", a.poorly_count() == 0 and _has(a, "poorly") == 0)
 
 # --- the bots ---
 

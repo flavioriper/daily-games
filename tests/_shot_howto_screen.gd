@@ -32,6 +32,7 @@ const SCREENS := {
 	"deckchair": "res://arcade/deckchair_screen.gd",
 	"eddy": "res://arcade/eddy_screen.gd",
 	"furrow": "res://arcade/furrow_screen.gd",
+	"griddle": "res://arcade/griddle_screen.gd",
 }
 const SAVES := ["user://versus.cfg", "user://arcade.cfg"]
 
@@ -84,6 +85,7 @@ func _initialize() -> void:
 	wallet.reload()
 	# Furrow keeps its field in a file of its own: a new field here, never saved.
 	load("res://arcade/furrow_sim.gd").path = ""
+	load("res://arcade/griddle_sim.gd").path = ""
 	# load(), not preload: the screens name the Ads autoload.
 	var script: GDScript = load(SCREENS[_game])
 	_s = script.new(_level) if _game in ["snooker", "chess", "checkers", "hockey", "boats", "penny", "dominoes", "reversi"] else script.new()
