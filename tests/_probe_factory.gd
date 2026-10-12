@@ -61,6 +61,7 @@ func _process(_delta: float) -> bool:
 		_check_plates()
 		_check_mine()
 		_check_belt_kinds()
+		_check_steam()
 		_check_fire()
 		_check_retort()
 		_check_shared()
@@ -639,6 +640,101 @@ func _check_belt_kinds() -> void:
 	var back: RefCounted = Sim.new(1)
 	_ok("a land with a splitter and what it has sold is kept and read back the same", back.load_saved() and var_to_str(back.pack()) == before and back.sold.log == 30
 		and back.belt_kind(Vector2i(10, 4)) == "splitter")
+
+## The engine on a fire, the saw and the joiner on the engine, the stoker.
+func _check_steam() -> void:
+	var sim := _open()
+	_ok("the engine, the saw and the stoker wait for twenty-five charcoal sold, the joiner for a hundred planks", not sim.unlocked("engine") and not sim.unlocked("saw")
+		and not sim.unlocked("stoker") and not sim.unlocked("joiner") and not sim.place("engine", Vector2i(10, 1), 0) and _refused(sim, "locked"))
+	sim.sold["charcoal"] = 25
+	_ok("then they are in the drawer", sim.unlocked("engine") and sim.unlocked("saw") and sim.unlocked("stoker") and not sim.unlocked("joiner"))
+	sim.sold["plank"] = 100
+	var c: int = sim.coins
+	_ok("a fire box, an engine beside it, a saw and a joiner on the engine", sim.place("firebox", Vector2i(9, 1), 0) and sim.place("engine", Vector2i(10, 1), 2)
+		and sim.place("saw", Vector2i(10, 2), 1) and sim.place("joiner", Vector2i(11, 1), 0) and sim.coins == c - 20 - 150 - 80 - 120)
+	var fire: Dictionary = sim.module_at(Vector2i(9, 1))
+	var engine: Dictionary = sim.module_at(Vector2i(10, 1))
+	var saw: Dictionary = sim.module_at(Vector2i(10, 2))
+	var joiner: Dictionary = sim.module_at(Vector2i(11, 1))
+	_ok("an engine is one tile and does not turn", engine.tiles == [Vector2i(10, 1)] and int(engine.facing) == 0 and not sim.turn(Vector2i(10, 1)) and _refused(sim, "round")
+		and saw.tiles == [Vector2i(10, 2), Vector2i(10, 3)] and sim.out_tile(saw) == Vector2i(10, 4))
+	_run(sim, 610)
+	_ok("all four are built in a minute", fire.built and engine.built and saw.built and joiner.built)
+	_ok("with no fire the saw has no cycle", sim.cycle_seconds(saw) == -1.0)
+	fire.hopper.append("log")
+	sim.tap(fire.root)
+	_run(sim, 2)
+	_ok("a fire with only an idle engine on it is banked for it: twenty kilowatts", is_equal_approx(float(fire.draw), 20.0) and is_equal_approx(float(engine.share), 1.0), "%s %s" % [fire.draw, engine.share])
+	# sixty of the ninety-four the engine asks, and the idle joiner takes its
+	# little of the shaft: 4.79 kW of the 8.1 asked
+	_ok("the saw's card says thirty-four seconds a log on a first fire", absf(sim.cycle_seconds(saw) - 0.6 * 1000.0 / (7.5 * (7.5 * 60.0 / 94.0 / 8.1) * 0.4) * 0.1) < 0.01 and absf(sim.cycle_seconds(saw) - 33.8) < 0.1,
+		str(sim.cycle_seconds(saw)))
+	_ok("and asking leaves the fire as it was", is_equal_approx(float(fire.draw), 20.0) and is_equal_approx(float(engine.share), 1.0) and float(saw.share) > 0.0)
+	_belt_row(sim, Vector2i(9, 2), 1, 0)
+	_belt_row(sim, Vector2i(10, 4), 4, 1)
+	sim.put(Vector2i(9, 2), "log")
+	var found: Array = []
+	var took := _until(sim, "made", 600, found)
+	_ok("a log in at its back is four planks in thirty-four seconds", took > 335 and took < 360 and found[0].kind == "plank" and int(saw.left) >= 3 and is_equal_approx(float(fire.draw), 60.0)
+		and absf(float(engine.share) - 60.0 / 94.0) < 0.001 and absf(float(engine.draw) - 7.5 * 60.0 / 94.0) < 0.001, "%d ticks, %s left" % [took, saw.get("left")])
+	_run(sim, 60)
+	var planks := 0
+	for t: Vector2i in sim.items:
+		for it: Dictionary in sim.items[t]:
+			planks += 1 if it.kind == "plank" else 0
+	_ok("which leave one after another down its belt", planks == 4 and saw.out == "" and int(saw.left) == 0 and saw.inp == "", "%d planks" % planks)
+	# the joiner wants three
+	_belt_row(sim, Vector2i(11, 0), 1, 1)
+	sim.put(Vector2i(11, 0), "plank")
+	_run(sim, 30)
+	sim.put(Vector2i(11, 0), "plank")
+	_run(sim, 30)
+	_ok("two planks are not a chair yet", int(joiner.got) == 2 and joiner.inp == "" and not sim.working(joiner))
+	sim.put(Vector2i(11, 0), "plank")
+	_run(sim, 12)
+	_ok("the third is its work", int(joiner.got) == 0 and joiner.inp == "plank" and sim.working(joiner))
+	found = []
+	took = _until(sim, "made", 900, found)
+	# alone on the engine: 0.3 MJ at 4 kW of the 4.79 there are
+	_ok("a chair in nineteen seconds, the joiner alone on the engine", took > 180 and took < 200 and found[0].kind == "chair" and Sim.SELLS.chair == 12 and Sim.SELLS.plank == 2, "%d ticks" % took)
+	_run(sim, 3)
+	_ok("which lies past its front", _lying(sim, Vector2i(13, 1)) == 1 and sim.items[Vector2i(13, 1)][0].kind == "chair")
+	# both at work share the engine: 4.79 kW of the 11.5 asked
+	sim.put(Vector2i(9, 2), "log")
+	for i in 3:
+		sim.put(Vector2i(11, 0), "plank")
+		_run(sim, 25)
+	_ok("a saw and a joiner at work share the engine's shaft", sim.working(saw) and sim.working(joiner) and absf(float(saw.share) - 7.5 * (60.0 / 94.0) / 11.5) < 0.001
+		and is_equal_approx(float(saw.share), float(joiner.share)), "%s %s" % [saw.share, joiner.share])
+	# sold with planks in it, they lie
+	sim.put(Vector2i(11, 0), "plank")
+	_run(sim, 700)
+	var before := _all_of(sim, "plank")
+	_ok("a joiner sold with a plank gathered gives it back with its price", int(joiner.got) == 1 and sim.sell(Vector2i(11, 1)) and _all_of(sim, "plank") == before + 1,
+		"got %s inp %s out %s, %d then %d" % [joiner.got, joiner.inp, joiner.out, before, _all_of(sim, "plank")])
+	# the stoker
+	c = sim.coins
+	_ok("a stoker is fitted to a fire box once, for a hundred", sim.fit_stoker(fire.root) and sim.coins == c - 100 and fire.stoker and not sim.fit_stoker(fire.root) and _refused(sim, "top")
+		and sim.sell_price(fire.root) == 120 and not sim.fit_stoker(engine.root))
+	fire.hopper.append("charcoal")
+	fire.fuel = 1.0
+	sim.events.clear()
+	sim.step(Sim.TICK)
+	var types: Array = []
+	for e: Dictionary in sim.events:
+		types.append(e.type)
+	_ok("with it a fire that burns out lights the next fuel by itself", types.has("dim") and types.has("lit") and fire.lit and fire.fuel_kind == "charcoal" and fire.hopper.is_empty(), str(types))
+	var kept := var_to_str(sim.pack())
+	sim.save()
+	var back: RefCounted = Sim.new(1)
+	_ok("a land with an engine, a saw at work and a stoker is kept and read back the same", back.load_saved() and var_to_str(back.pack()) == kept)
+
+func _all_of(sim: RefCounted, kind: String) -> int:
+	var n := 0
+	for t: Vector2i in sim.items:
+		for it: Dictionary in sim.items[t]:
+			n += 1 if it.kind == kind else 0
+	return n
 
 func _check_plates() -> void:
 	var sim: RefCounted = Sim.new(7)

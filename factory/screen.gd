@@ -60,13 +60,14 @@ const DRAWER_B := 128.0
 const DRAWER_UP := 250.0
 const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
-const DRAWER_TILES := ["belt", "fast", "splitter", "firebox", "kiln", "retort", "market"]
+const DRAWER_TILES := ["belt", "fast", "splitter", "firebox", "kiln", "retort", "engine", "saw", "joiner", "market"]
 ## The drawer stands this many tiles tall before it takes another column.
 const DRAWER_ROWS := 5
 ## The goal chip under the view's buttons: the next thing to sell for.
 const GOAL_W := 330.0
 const GOAL_H := 78.0
-const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
+const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "engine": "FACTORY_ENGINE", "saw": "FACTORY_SAW", "joiner": "FACTORY_JOINER",
+	"stoker": "FACTORY_STOKER", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
 	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "mine": "FACTORY_MINE", "neutral": "FACTORY_NEUTRAL"}
 ## A forest's badge, the way to its card (a tap on the forest itself is a
 ## log): how far over the plate's middle it floats and how big it is, in
@@ -1034,7 +1035,7 @@ static func _takes_in(land: RefCounted, tile: Vector2i) -> bool:
 	if land.is_market(tile):
 		return true
 	var m: Dictionary = land.module_at(tile)
-	return not m.is_empty() and (m.kind == "firebox" or m.root == tile)
+	return not m.is_empty() and (m.kind == "firebox" or (Sim.RECIPE.has(m.kind) and m.root == tile))
 
 static func _takes(land: RefCounted, tile: Vector2i) -> bool:
 	return land.belts.has(tile) or _takes_in(land, tile)
@@ -1068,7 +1069,7 @@ static func run_facing(land: RefCounted, tiles: Array, swipe: int) -> int:
 		if land.belts.has(beyond):
 			return away if int(land.belts[beyond]) == (out + 2) % 4 else out
 		var m: Dictionary = land.module_at(beyond)
-		if not m.is_empty() and m.kind != "firebox" and land.out_tile(m) == e:
+		if not m.is_empty() and Sim.RECIPE.has(m.kind) and land.out_tile(m) == e:
 			return away
 		if _takes_in(land, beyond):
 			return out
@@ -1266,13 +1267,25 @@ func open_module(id: int) -> void:
 		row.add_theme_constant_override("separation", 16)
 		col.add_child(row)
 		var up: Button = null
+		var stoke: Button = null
 		if kind == "firebox":
 			up = _card_button(row, "trend", "", "PrimaryButton")
 			up.pressed.connect(func() -> void:
 				if not sim.upgrade(sim.modules[id].root):
 					Motion.shiver(up, 6.0))
-		else:
+		elif not Sim.SINGLE.has(kind):
 			_card_button(row, "turn", tr("FACTORY_TURN"), "IconButton").pressed.connect(func() -> void: sim.turn(sim.modules[id].root))
+		if kind == "firebox":
+			# the stoker, on a row of its own once its goal is reached
+			var second := HBoxContainer.new()
+			second.name = "Stoker"
+			second.alignment = BoxContainer.ALIGNMENT_CENTER
+			col.add_child(second)
+			stoke = _card_button(second, "trend", "", "PrimaryButton")
+			stoke.custom_minimum_size.x = 600
+			stoke.pressed.connect(func() -> void:
+				if not sim.fit_stoker(sim.modules[id].root):
+					Motion.shiver(stoke, 6.0))
 		var sell := _card_button(row, "coin", "", "IconButton")
 		sell.pressed.connect(func() -> void:
 			var root: Vector2i = sim.modules[id].root
@@ -1290,7 +1303,10 @@ func open_module(id: int) -> void:
 				up.visible = cost >= 0
 				if cost >= 0:
 					_say(up, tr("FACTORY_LEVEL_FOR") % [int(m.level) + 1, Art.short(cost)])
-				(lines[2] as Label).text = tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)]
+				(lines[2] as Label).text = tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)] + ("  " + tr("FACTORY_STOKER_ON") if m.get("stoker", false) else "")
+			if stoke != null:
+				(stoke.get_parent() as Control).visible = sim.unlocked("stoker") and not m.get("stoker", false)
+				_say(stoke, tr("FACTORY_STOKER_FOR") % Art.short(sim.price("stoker")))
 		_card_tick.call())
 
 ## A forest's card: what a tap gives, what it makes by itself, what it holds
@@ -1477,9 +1493,13 @@ func _state_line(m: Dictionary) -> String:
 		if m.lit:
 			return tr("FACTORY_FIRE_LIT") % [int(round(float(m.draw))), int(m.cap), held]
 		return tr("FACTORY_FIRE_TAP") if held > 0 else tr("FACTORY_FIRE_EMPTY")
+	if m.kind == "engine":
+		if float(m.share) <= 0.0:
+			return tr("FACTORY_NEEDS_FIRE")
+		return tr("FACTORY_ENGINE_TURNS") % int(round(float(m.share) * 100.0))
 	var secs: float = sim.cycle_seconds(m)
 	if secs < 0.0:
-		return tr("FACTORY_NEEDS_FIRE")
+		return tr("FACTORY_NEEDS_ENGINE") if Sim.wants_power(m.kind) == "shaft" else tr("FACTORY_NEEDS_FIRE")
 	return tr("FACTORY_CYCLE") % _seconds(secs)
 
 ## Seconds as the card writes them: "4 s", "2.5 s", "3 min 50 s".
@@ -1500,7 +1520,7 @@ func _draw_over(ci: CanvasItem) -> void:
 		var tile := Vector2i(tile_under(_at).floor())
 		var f := _fit(kind, tile)
 		var vf: int = life.seen_facing(f)
-		var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(vf) if kind == "kiln" else Art.retort(vf))
+		var mesh: ArrayMesh = Art.module(kind, vf)
 		ci.draw_mesh(mesh, null, Transform2D(0.0, life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
 	if _mode == "belt" and not _run.is_empty():
 		_draw_flow(ci)

@@ -977,6 +977,17 @@ FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The la
 FACTORY_BELT,Belt,Esteira,Cinta
 FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
 FACTORY_SPLITTER,Splitter,Divisor,Divisor
+FACTORY_ENGINE,Engine,Motor a vapor,Motor de vapor
+FACTORY_SAW,Saw,Serra,Sierra
+FACTORY_JOINER,Joiner,Marcenaria,Carpintería
+FACTORY_STOKER,Stoker,Alimentador,Alimentador
+FACTORY_ENGINE_MAKES,"Takes heat from a lit fire box that touches it, and turns the saw or joiner that touches it.","Recebe calor da fornalha acesa encostada nele e gira a serra ou a marcenaria encostada nele.","Toma calor del fogón encendido que lo toca y mueve la sierra o la carpintería que lo toca."
+FACTORY_SAW_MAKES,"A log in at the back, four planks out at the front. An engine must touch it.","Entra uma tora por trás, saem quatro tábuas pela frente. Um motor precisa encostar nela.","Entra un tronco por detrás, salen cuatro tablas por delante. Un motor debe tocarla."
+FACTORY_JOINER_MAKES,"Three planks in at the back, a chair out at the front. An engine must touch it.","Entram três tábuas por trás, sai uma cadeira pela frente. Um motor precisa encostar nela.","Entran tres tablas por detrás, sale una silla por delante. Un motor debe tocarla."
+FACTORY_NEEDS_ENGINE,"Needs an engine beside it, on a lit fire box.","Precisa de um motor ao lado, com a fornalha acesa.","Necesita un motor al lado, con el fogón encendido."
+FACTORY_ENGINE_TURNS,Turning at %d of 100 of its power.,Girando a %d de 100 da sua força.,Girando al %d de 100 de su fuerza.
+FACTORY_STOKER_FOR,A stoker for %s: it lights itself,Alimentador por %s: acende sozinha,Alimentador por %s: se enciende solo
+FACTORY_STOKER_ON,It lights the next fuel by itself.,Acende o próximo combustível sozinha.,Enciende el siguiente combustible solo.
 FACTORY_GOALS,Goals,Metas,Metas
 FACTORY_GOALS_LINE,"Sell these at the market. Each goal opens something new in the drawer, for good.","Venda estas coisas no mercado. Cada meta abre algo novo na gaveta, para sempre.","Vende estas cosas en el mercado. Cada meta abre algo nuevo en el cajón, para siempre."
 FACTORY_FIREBOX,Fire box,Fornalha,Fogón

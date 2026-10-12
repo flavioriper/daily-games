@@ -41,9 +41,9 @@ extends RefCounted
 ##   plate_price() -> int     50, 150, then x3
 ##   buy_plate(P, kind) -> bool
 ##   unlocked(kind) -> bool   belt always; firebox and retort from the first
-##                            plate bought; the kiln never, while nothing
-##                            gives stone
-##   price(kind) -> int       belt 1, firebox 20, kiln 40, retort 40
+##                            plate bought; the kiln with a mine; the rest by
+##                            a goal (GOALS)
+##   price(kind) -> int       PRICE
 ##
 ## A forest is closed (the user, 2026-10-11: "the forest must be a closed grid
 ## that only output the material, user should not be able to build inside of
@@ -77,11 +77,18 @@ extends RefCounted
 ##                            drawn round the corner. On bare ground it lies.
 ##   item_pos(tile, item) -> Vector2    where to draw it now (uses `alpha`)
 ##   modules: Dictionary      id -> {id, kind, root, facing, level, tiles,
-##                            built, build 0..1, paid, and for a kiln or a
-##                            retort: inp, out ("" or an item kind), work 0..1,
-##                            share 0..1; for a firebox: lit, fuel and fuel_max
-##                            (kJ), fuel_kind, hopper (item kinds, the next to
-##                            light first), draw and cap (kW)}
+##                            built, build 0..1, paid, and for a machine that
+##                            makes (RECIPE: kiln, retort, saw, joiner): inp
+##                            ("" or the kind it is working), got (how many it
+##                            has gathered toward one that takes several), out
+##                            ("" or the kind it is handing on) and left (how
+##                            many of it), work 0..1, share 0..1; for a
+##                            firebox: lit, fuel and fuel_max (kJ), fuel_kind,
+##                            hopper (item kinds, the next to light first),
+##                            draw and cap (kW), stoker; for an engine: share
+##                            (of the heat it asks) and draw (kW of shaft)}
+##   SINGLE                   the kinds of one tile: firebox, engine
+##   gives_power(kind), wants_power(kind)   "heat", "shaft" or ""
 ##   module_at(tile) -> Dictionary      {} if none
 ##   front_of(module) -> Vector2i       a 1x2's front (output) tile
 ##   out_tile(module) -> Vector2i       the tile its output leaves into
@@ -107,6 +114,7 @@ extends RefCounted
 ##   place(kind, tile, facing)          tile is the root: a 1x2's back (input)
 ##   sell(tile)               a belt or a module back for all that was paid
 ##   sell_price(tile) -> int
+##   fit_stoker(tile)         a fire box lights its own fuel from then on
 ##   upgrade(target)          "market", a module's tile, or a forest's tile
 ##   upgrade_price(target) -> int       -1: nothing to buy there
 ##   put(tile, kind) -> bool  drops an item, for harnesses
@@ -153,8 +161,9 @@ const NONE := Vector2i(-99999, -99999)
 ## A belt is a coin a tile and nothing sells without one, and a belt sold
 ## returns its coin, so twenty cannot be stranded.
 const START_COINS := 20
-const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4}
-const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "firebox": 20, "kiln": 40, "retort": 40}
+const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4, "plank": 2, "chair": 12}
+const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "firebox": 20, "kiln": 40, "retort": 40,
+	"engine": 150, "saw": 80, "joiner": 120, "stoker": 100}
 ## What is laid like a belt and carries like one: the plain belt, the fast
 ## one (twice the speed, the same spacing: the ledger, section 8) and the
 ## splitter, a belt tile that sends what crosses it out ahead and by both
@@ -166,6 +175,8 @@ const BELTS := ["belt", "fast", "splitter"]
 const GOALS := [
 	{"id": "splitter", "need": {"log": 30}, "gives": ["splitter"]},
 	{"id": "fast", "need": {"charcoal": 10}, "gives": ["fast"]},
+	{"id": "steam", "need": {"charcoal": 25}, "gives": ["engine", "saw", "stoker"]},
+	{"id": "joiner", "need": {"plank": 100}, "gives": ["joiner"]},
 ]
 ## The first plate bought, the second, then each PLATE_STEP times the last.
 const PLATE_PRICE := [50, 150]
@@ -205,21 +216,33 @@ const MARKET_STEP := 2.5
 const MARKET_ROOM := 1
 
 ## Fuel, MJ an item (the ledger, section 3).
-const FUEL := {"log": 320.0, "charcoal": 150.0}
+const FUEL := {"log": 320.0, "charcoal": 150.0, "plank": 64.0}
 ## A firebox's cap by level, kW, and what the next level costs. The spec lists
 ## three caps and three prices; the third price has no level to buy yet.
 const FIRE_KW := [60.0, 90.0, 120.0]
 const FIRE_PRICE := [60, 180, 540]
 const FIRE_FLOOR := 12.0
 const HOPPER := 5
-## Kiln and retort: 60 kW working, a fifth of it idle (the ledger, section 6).
-const RATED := 60.0
-const IDLE := 0.2
+## The machines that make (the ledger, sections 6 and 15): what one takes
+## and how many of it a cycle, what it gives and how many, the energy a
+## cycle is, its rated power, the part of that it draws idle, and the kind
+## of power it wants: "heat" from a fire box that touches it, "shaft" from
+## an engine that does.
 const RECIPE := {
-	"kiln": {"takes": "stone", "gives": "lime", "mj": 55.0},
-	"retort": {"takes": "log", "gives": "charcoal", "mj": 32.0},
+	"kiln": {"takes": "stone", "need": 1, "gives": "lime", "n": 1, "mj": 55.0, "kw": 60.0, "idle": 0.2, "wants": "heat"},
+	"retort": {"takes": "log", "need": 1, "gives": "charcoal", "n": 1, "mj": 32.0, "kw": 60.0, "idle": 0.2, "wants": "heat"},
+	"saw": {"takes": "log", "need": 1, "gives": "plank", "n": 4, "mj": 0.6, "kw": 7.5, "idle": 0.15, "wants": "shaft"},
+	"joiner": {"takes": "plank", "need": 3, "gives": "chair", "n": 1, "mj": 0.3, "kw": 4.0, "idle": 0.15, "wants": "shaft"},
 }
-const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0}
+## The engine (a boiler and a single cylinder on one tile): the heat it asks
+## of the fire that touches it when something it turns is working and when
+## nothing is, and the shaft it gives at full heat. 8% of its heat.
+const ENGINE_HEAT := 94.0
+const ENGINE_BANKED := 20.0
+const ENGINE_SHAFT := 7.5
+## The modules of one tile, which have no facing.
+const SINGLE := ["firebox", "engine"]
+const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0, "engine": 60.0, "saw": 40.0, "joiner": 40.0}
 
 ## A harness points this elsewhere before it makes a sim.
 static var path := "user://factory.cfg"
@@ -362,7 +385,7 @@ func unlocked(kind: String) -> bool:
 			return goal_done(g)
 	if kind == "kiln" and not plates.values().has("mine"):
 		return false
-	return BUILD.has(kind) and plates.size() >= 3
+	return (BUILD.has(kind) or kind == "stoker") and plates.size() >= 3
 
 ## How far a goal is, 0 to 1: the least of its needs, each sold over wanted.
 func goal_progress(g: Dictionary) -> float:
@@ -642,7 +665,7 @@ func turn(tile: Vector2i) -> bool:
 	var m := module_at(tile)
 	if m.is_empty():
 		return _no("nothing", tile)
-	if m.kind == "firebox":
+	if SINGLE.has(m.kind):
 		return _no("round", tile)
 	# the next quarter its front tile fits, so one in a tight place still turns
 	for q in range(1, 4):
@@ -673,7 +696,7 @@ func feeds(from: Vector2i, to: Vector2i) -> bool:
 	if belts.has(from):
 		return outs(from).has(to)
 	var m := module_at(from)
-	return not m.is_empty() and m.kind != "firebox" and out_tile(m) == to
+	return not m.is_empty() and RECIPE.has(m.kind) and out_tile(m) == to
 
 ## The belts, front of each chain first: a belt comes after every belt it
 ## feeds, so one pass moves a chain as one and no item moves twice. A ring of
@@ -820,9 +843,13 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float, ask := false) 
 		(m.hopper as Array).append(it.kind)
 		events.append({"type": "fed", "tile": m.root, "id": m.id, "kind": it.kind})
 		return true
-	if tile == m.root and m.inp == "" and RECIPE[m.kind].takes == it.kind:
+	if RECIPE.has(m.kind) and tile == m.root and m.inp == "" and RECIPE[m.kind].takes == it.kind:
 		if not ask:
-			m.inp = it.kind
+			# a machine that takes several gathers them, then has its work
+			m.got = int(m.got) + 1
+			if int(m.got) >= int(RECIPE[m.kind].need):
+				m.got = 0
+				m.inp = it.kind
 		return true
 	return false
 
@@ -924,7 +951,7 @@ func put(tile: Vector2i, kind: String) -> bool:
 # --- modules ---
 
 func front_of(m: Dictionary) -> Vector2i:
-	return (m.root as Vector2i) + (DIRS[m.facing] if m.kind != "firebox" else Vector2i.ZERO)
+	return (m.root as Vector2i) + (DIRS[m.facing] if not SINGLE.has(m.kind) else Vector2i.ZERO)
 
 func out_tile(m: Dictionary) -> Vector2i:
 	return (m.root as Vector2i) + DIRS[m.facing] * 2
@@ -937,7 +964,7 @@ func _place_why(kind: String, tile: Vector2i, facing: int, but: int) -> String:
 		return "kind"
 	if not unlocked(kind):
 		return "locked"
-	var on: Array = [tile] if kind == "firebox" else [tile, tile + DIRS[facing]]
+	var on: Array = [tile] if SINGLE.has(kind) else [tile, tile + DIRS[facing]]
 	for t: Vector2i in on:
 		if _mod_at.has(t) and _mod_at[t] == but:
 			continue
@@ -950,7 +977,7 @@ func _place_why(kind: String, tile: Vector2i, facing: int, but: int) -> String:
 
 ## Stands a module with its root (a 1x2's back, input, tile) on `tile`.
 func place(kind: String, tile: Vector2i, facing: int) -> bool:
-	if kind == "firebox":
+	if SINGLE.has(kind):
 		facing = 0
 	var why := _place_why(kind, tile, facing, -1)
 	if why != "":
@@ -959,14 +986,16 @@ func place(kind: String, tile: Vector2i, facing: int) -> bool:
 		return _no("coins", tile)
 	coins -= price(kind)
 	var m := {"id": _next_id, "kind": kind, "root": tile, "facing": facing, "level": 1,
-		"tiles": [tile] if kind == "firebox" else [tile, tile + DIRS[facing]],
+		"tiles": [tile] if SINGLE.has(kind) else [tile, tile + DIRS[facing]],
 		"built": false, "build": 0.0, "paid": price(kind)}
 	_next_id += 1
 	if kind == "firebox":
 		m.merge({"lit": false, "fuel": 0.0, "fuel_max": 0.0, "fuel_kind": "", "hopper": [],
-			"draw": 0.0, "cap": FIRE_KW[0]})
+			"draw": 0.0, "cap": FIRE_KW[0], "stoker": false})
+	elif kind == "engine":
+		m.merge({"share": 0.0, "draw": 0.0})
 	else:
-		m.merge({"inp": "", "out": "", "work": 0.0, "share": 0.0})
+		m.merge({"inp": "", "got": 0, "out": "", "left": 0, "work": 0.0, "share": 0.0})
 	modules[m.id] = m
 	_stand_module(m)
 	events.append({"type": "placed", "tile": tile, "id": m.id, "kind": kind})
@@ -1014,10 +1043,11 @@ func sell(tile: Vector2i) -> bool:
 	var held: Array = []
 	if m.kind == "firebox":
 		held = (m.hopper as Array).duplicate()
-	else:
-		if m.inp != "":
-			held.append(m.inp)
-		if m.out != "":
+	elif RECIPE.has(m.kind):
+		var r: Dictionary = RECIPE[m.kind]
+		for i in int(m.got) + (int(r.need) if m.inp != "" else 0):
+			held.append(r.takes)
+		for i in int(m.left):
 			held.append(m.out)
 	for t: Vector2i in m.tiles:
 		_mod_at.erase(t)
@@ -1089,7 +1119,7 @@ func market_interval() -> float:
 func market_progress() -> float:
 	return clampf(float(market.t) / market_interval(), 0.0, 1.0)
 
-# --- heat ---
+# --- heat and shaft ---
 
 func working(m: Dictionary) -> bool:
 	return m.built and RECIPE.has(m.kind) and m.inp != "" and m.out == ""
@@ -1099,41 +1129,67 @@ func fuel_left(m: Dictionary) -> float:
 		return 0.0
 	return clampf(float(m.fuel) / float(m.fuel_max), 0.0, 1.0)
 
-## The built kilns and retorts touching a firebox. Heat reaches only a
-## touching tile (either tile of a 1x2) and does not cross to another plate.
-func _sinks_of(fire: Dictionary) -> Array:
+## What a module gives to what touches it: "heat" (a fire box), "shaft" (an
+## engine), "" for the rest.
+static func gives_power(kind: String) -> String:
+	return "heat" if kind == "firebox" else ("shaft" if kind == "engine" else "")
+
+## What a module wants of what touches it: an engine heat, a machine what
+## its recipe says.
+static func wants_power(kind: String) -> String:
+	return "heat" if kind == "engine" else String(RECIPE.get(kind, {}).get("wants", ""))
+
+## The built modules touching a source (a fire box, an engine) that want
+## what it gives. Power reaches only a touching tile (either tile of a 1x2)
+## and does not cross to another plate.
+func _sinks_of(src: Dictionary) -> Array:
 	var out: Array = []
-	var root: Vector2i = fire.root
+	var root: Vector2i = src.root
 	var p := plate_of(root)
+	var power := gives_power(src.kind)
 	for d: Vector2i in DIRS:
 		var t := root + d
 		if not _mod_at.has(t) or plate_of(t) != p:
 			continue
 		var s: Dictionary = modules[_mod_at[t]]
-		if RECIPE.has(s.kind) and s.built and not out.has(s):
+		if s.built and wants_power(s.kind) == power and not out.has(s):
 			out.append(s)
 	return out
 
-## What a firebox's sinks ask of it, kW: rated working, a fifth idle. `as_if`
-## is counted as working whatever it is doing, for its card.
+## Whether a sink is asking its rated power: a machine at work, an engine
+## with a machine at work on it. `as_if` is counted as working whatever it
+## is doing, for its card.
+func _busy(s: Dictionary, as_if: int) -> bool:
+	if s.kind == "engine":
+		for t: Dictionary in _sinks_of(s):
+			if working(t) or t.id == as_if:
+				return true
+		return false
+	return working(s) or s.id == as_if
+
+## What a source's sinks ask of it, kW: rated working, a part of it idle.
 func _demand(sinks: Array, as_if: int) -> float:
 	var kw := 0.0
 	for s: Dictionary in sinks:
-		kw += RATED if (working(s) or s.id == as_if) else RATED * IDLE
+		if s.kind == "engine":
+			kw += ENGINE_HEAT if _busy(s, as_if) else ENGINE_BANKED
+		else:
+			var r: Dictionary = RECIPE[s.kind]
+			kw += float(r.kw) if _busy(s, as_if) else float(r.kw) * float(r.idle)
 	return kw
 
-## Before the machines, every tick: each lit firebox draws what touches it
+## Before the machines, every tick. Each lit fire box draws what touches it
 ## asks, never under the floor nor over its cap, and over the cap every sink
-## on it gets cap over demand (the ledger, section 4: supply over demand. The
-## spec's "60 over 100" for a kiln and a retort on one fire is loose: they
-## ask 120 and each runs at a half). A sink touching two lit fires is given
-## the sum of the two shares, held to one, while each fire still burns as if
-## it alone fed it: simple, and a little dear on fuel for the player who
-## doubles up.
-func _heat() -> void:
+## on it gets cap over demand (the ledger, section 4: supply over demand). A
+## sink touching two sources is given the sum of the two shares, held to
+## one, while each source still gives as if it alone fed it: simple, and a
+## little dear for the player who doubles up. Then each engine turns the
+## heat it got into shaft, 7.5 kW at full heat, and shares that among the
+## machines touching it the same way.
+func _heat(as_if := -1) -> void:
 	for id: int in modules:
 		var m: Dictionary = modules[id]
-		if RECIPE.has(m.kind):
+		if m.has("share"):
 			m.share = 0.0
 	for id: int in modules:
 		var m: Dictionary = modules[id]
@@ -1143,36 +1199,49 @@ func _heat() -> void:
 		if not m.built or not m.lit:
 			continue
 		var sinks := _sinks_of(m)
-		var ask := _demand(sinks, -1)
+		var ask := _demand(sinks, as_if)
 		var cap: float = m.cap
 		m.draw = minf(maxf(ask, FIRE_FLOOR), cap)
 		var share := 1.0 if ask <= cap else cap / ask
 		for s: Dictionary in sinks:
 			s.share = minf(1.0, float(s.share) + share)
+	for id: int in modules:
+		var m: Dictionary = modules[id]
+		if m.kind != "engine":
+			continue
+		m.draw = 0.0
+		if not m.built or float(m.share) <= 0.0:
+			continue
+		var sinks := _sinks_of(m)
+		var ask := _demand(sinks, as_if)
+		var supply := ENGINE_SHAFT * float(m.share)
+		m.draw = minf(ask, supply)
+		var share := 0.0 if ask <= 0.0 else minf(1.0, supply / ask)
+		for s: Dictionary in sinks:
+			s.share = minf(1.0, float(s.share) + share)
 
-## Real seconds a kiln or a retort takes a cycle at the heat it would have
-## if it were working now; -1.0 when no lit fire touches it.
+## Real seconds a machine takes a cycle at the power it would have if it
+## were working now; -1.0 when no lit fire reaches it. The shares are worked
+## out as if it worked and then put back as they were.
 func cycle_seconds(m: Dictionary) -> float:
 	if not RECIPE.has(m.kind) or not m.built:
 		return -1.0
-	var share := 0.0
-	var seen := {}
-	for t: Vector2i in m.tiles:
-		for d: Vector2i in DIRS:
-			var n := t + d
-			if not _mod_at.has(n) or seen.has(_mod_at[n]):
-				continue
-			var fire: Dictionary = modules[_mod_at[n]]
-			seen[fire.id] = true
-			# the fire reaches the tile of this machine that touches it, on its own plate
-			if fire.kind != "firebox" or not fire.built or not fire.lit or plate_of(t) != plate_of(fire.root):
-				continue
-			var ask := _demand(_sinks_of(fire), m.id)
-			share += 1.0 if ask <= float(fire.cap) else float(fire.cap) / ask
+	var kept := {}
+	for id: int in modules:
+		var o: Dictionary = modules[id]
+		kept[id] = [o.get("share", 0.0), o.get("draw", 0.0)]
+	_heat(m.id)
+	var share: float = m.share
+	for id: int in modules:
+		var o: Dictionary = modules[id]
+		if o.has("share"):
+			o.share = kept[id][0]
+		if o.has("draw"):
+			o.draw = kept[id][1]
 	if share <= 0.0:
 		return -1.0
-	share = minf(share, 1.0)
-	return float(RECIPE[m.kind].mj) * 1000.0 / (RATED * share * GAME_S) * TICK
+	var r: Dictionary = RECIPE[m.kind]
+	return float(r.mj) * 1000.0 / (float(r.kw) * share * GAME_S) * TICK
 
 func _run_modules() -> void:
 	for id: int in modules:
@@ -1184,22 +1253,24 @@ func _run_modules() -> void:
 				m.built = true
 				events.append({"type": "built", "tile": m.root, "id": m.id, "kind": m.kind})
 			continue
-		if m.kind == "firebox":
+		if not RECIPE.has(m.kind):
 			continue
 		if working(m) and float(m.share) > 0.0:
 			# the ledger, section 2: kilojoules over kilojoules
-			m.work = float(m.work) + RATED * float(m.share) * GAME_S / (float(RECIPE[m.kind].mj) * 1000.0)
+			var r: Dictionary = RECIPE[m.kind]
+			m.work = float(m.work) + float(r.kw) * float(m.share) * GAME_S / (float(r.mj) * 1000.0)
 			if float(m.work) >= 1.0 - EPS:
 				m.work = 0.0
 				m.inp = ""
-				m.out = RECIPE[m.kind].gives
+				m.out = r.gives
+				m.left = int(r.n)
 				events.append({"type": "made", "tile": m.root, "id": m.id, "kind": m.out})
 		if m.out != "":
 			_emit(m)
 
-## A machine's output leaves into the tile past its front: a belt, the
-## market, another machine's back, a hopper, or bare ground with room. Else
-## it is held and the machine waits.
+## A machine's output leaves into the tile past its front, one thing a tick:
+## a belt, the market, another machine's back, a hopper, or bare ground with
+## room. Else it is held and the machine waits.
 func _emit(m: Dictionary) -> void:
 	var to := out_tile(m)
 	var it := _item(m.out, _mid(front_of(m)))
@@ -1210,20 +1281,48 @@ func _emit(m: Dictionary) -> void:
 		arr.append(it)
 		items[to] = arr
 	events.append({"type": "out", "tile": to, "id": m.id, "kind": m.out})
-	m.out = ""
+	m.left = int(m.left) - 1
+	if int(m.left) <= 0:
+		m.left = 0
+		m.out = ""
 
+## A fuel burns down at its fire's draw. Spent, the fire dims to embers and
+## waits for a tap; a fire with a stoker lights the next fuel in its hopper
+## by itself, and one that is out with fuel waiting too.
 func _burn() -> void:
 	for id: int in modules:
 		var m: Dictionary = modules[id]
-		if m.kind != "firebox" or not m.lit:
+		if m.kind != "firebox":
 			continue
-		m.fuel = float(m.fuel) - float(m.draw) * GAME_S
-		if float(m.fuel) <= EPS:
-			m.fuel = 0.0
-			m.lit = false
-			m.draw = 0.0
-			# embers: it waits for the next tap, and what it fed only pauses
-			events.append({"type": "dim", "tile": m.root, "id": m.id})
+		if m.lit:
+			m.fuel = float(m.fuel) - float(m.draw) * GAME_S
+			if float(m.fuel) <= EPS:
+				m.fuel = 0.0
+				m.lit = false
+				m.draw = 0.0
+				# embers: it waits for the next tap, and what it fed only pauses
+				events.append({"type": "dim", "tile": m.root, "id": m.id})
+		if not m.lit and m.built and m.get("stoker", false) and not (m.hopper as Array).is_empty():
+			_light(m)
+
+## A stoker on the fire box at `tile`: bought once, it lights the next fuel
+## by itself for good.
+func fit_stoker(tile: Vector2i) -> bool:
+	var m := module_at(tile)
+	if m.is_empty() or m.kind != "firebox":
+		return _no("nothing", tile)
+	if not unlocked("stoker"):
+		return _no("locked", tile)
+	if m.get("stoker", false):
+		return _no("top", tile)
+	if coins < price("stoker"):
+		return _no("coins", tile)
+	coins -= price("stoker")
+	m.stoker = true
+	m.paid = int(m.paid) + price("stoker")
+	events.append({"type": "level", "target": m.id, "level": m.level, "tile": m.root, "stoker": true})
+	dirty = true
+	return true
 
 # --- the tick ---
 
@@ -1332,8 +1431,9 @@ const _SHAPES := {
 const _TREE_KEYS := ["id", "tile", "look"]
 const _SOURCE_KEYS := ["level", "stock", "t", "next", "paid"]
 const _MODULE_KEYS := ["id", "kind", "root", "facing", "level", "tiles", "built", "build", "paid"]
-const _FIRE_KEYS := ["lit", "fuel", "fuel_max", "fuel_kind", "hopper", "draw", "cap"]
-const _SINK_KEYS := ["inp", "out", "work", "share"]
+const _FIRE_KEYS := ["lit", "fuel", "fuel_max", "fuel_kind", "hopper", "draw", "cap", "stoker"]
+const _SINK_KEYS := ["inp", "got", "out", "left", "work", "share"]
+const _ENGINE_KEYS := ["share", "draw"]
 
 static func _sound(d: Dictionary) -> bool:
 	for key: String in _SHAPES:
@@ -1383,7 +1483,10 @@ static func _sound(d: Dictionary) -> bool:
 		if m.kind == "firebox":
 			if not m.has_all(_FIRE_KEYS) or not (m.hopper is Array) or m.level > FIRE_KW.size():
 				return false
-		elif not m.has_all(_SINK_KEYS):
+		elif m.kind == "engine":
+			if not m.has_all(_ENGINE_KEYS):
+				return false
+		elif not m.has_all(_SINK_KEYS) or not (m.got is int) or not (m.left is int):
 			return false
 		for t: Variant in m.tiles:
 			if not (t is Vector2i):

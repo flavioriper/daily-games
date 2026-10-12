@@ -113,6 +113,7 @@ func _run() -> void:
 	await _wait(0.6)
 	await _mine()
 	await _belts()
+	await _steam()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -198,7 +199,7 @@ func _belts() -> void:
 	_sim.sold["log"] = 30
 	_sim.sold["charcoal"] = 10
 	await _frames(3)
-	_check("both goals reached, the chip is gone", not _screen._goal_b.visible and _sim.unlocked("fast") and _sim.unlocked("splitter"))
+	_check("two goals reached, the chip shows the third", _screen._goal_b.visible and _sim.next_goal().id == "steam" and _sim.unlocked("fast") and _sim.unlocked("splitter"))
 	_screen.open_drawer()
 	await _wait(0.4)
 	_check("the drawer has taken a second column", _screen._drawer.columns == 2 and _screen._tiles["fast"].button.visible and _screen._tiles["splitter"].button.visible,
@@ -263,3 +264,78 @@ func _belts() -> void:
 	_screen.turn_view()
 	_screen.turn_view()
 	await _wait(0.4)
+
+## Steam: a fire box with a stoker, an engine on it, a saw and a joiner on
+## the engine, logs in from the splitter's side and chairs out to the market.
+func _steam() -> void:
+	_sim.coins = 9000
+	_sim.buy_plate(Vector2i(0, 1), "neutral")
+	_sim.sold["charcoal"] = 25
+	_sim.sold["plank"] = 100
+	_run_on(4.0)
+	await _look(Vector2(3.0, 11.0))
+	_screen.open_drawer()
+	await _wait(0.4)
+	_check("the engine, the saw and the joiner are in the drawer", _screen._tiles["engine"].button.visible and _screen._tiles["saw"].button.visible and _screen._tiles["joiner"].button.visible
+		and _screen._drawer.columns == 2)
+	await _shot("drawer_steam")
+	# the engine by the hand, the rest by the sim
+	(_screen._tiles["engine"].button as Button).pressed.emit()
+	await _frames(3)
+	await _tap(_at(Vector2(2.5, 10.5)))
+	var engine: Dictionary = _sim.module_at(Vector2i(2, 10))
+	_check("a tap with Engine in hand stands one, one tile", not engine.is_empty() and engine.kind == "engine" and engine.tiles.size() == 1 and _sim.picked == "")
+	_check("a saw, a joiner and a fire box stand round it", _sim.place("saw", Vector2i(1, 10), 1) and _sim.place("joiner", Vector2i(2, 11), 0) and _sim.place("firebox", Vector2i(2, 9), 0))
+	_sim.lay_belt(Vector2i(1, 7), 1)
+	_lay(Vector2i(1, 8), 2, 1)
+	_sim.lay_belt(Vector2i(1, 12), 0)
+	_sim.lay_belt(Vector2i(2, 12), 3)
+	_lay(Vector2i(4, 11), 2, 0)
+	_lay(Vector2i(6, 11), 4, 3)
+	await _wait(0.3)
+	await _shot("steam_building")
+	_run_on(62.0)
+	var fire: Dictionary = _sim.module_at(Vector2i(2, 9))
+	fire.hopper.append("log")
+	fire.hopper.append("log")
+	_sim.tap(fire.root)
+	await _frames(2)
+	await _tap(_at(Vector2(2.5, 9.5)) - Vector2(0.0, 20.0 * _screen._zoom))
+	await _wait(0.5)
+	_check("the fire box's card offers a stoker", _screen.card_open() and _screen._card.find_child("Stoker", true, false) != null and _screen._card.find_child("Stoker", true, false).visible)
+	await _shot("firebox_card_stoker")
+	var stoke: Button = _screen._card.find_child("Stoker", true, false).get_child(0)
+	stoke.pressed.emit()
+	await _frames(3)
+	_check("which is fitted from it", fire.stoker and not _screen._card.find_child("Stoker", true, false).visible)
+	_screen.close_card()
+	await _wait(0.3)
+	_run_on(150.0)
+	await _wait(0.6)
+	var saw: Dictionary = _sim.module_at(Vector2i(1, 10))
+	var joiner: Dictionary = _sim.module_at(Vector2i(2, 11))
+	_check("the engine turns on the fire's heat and the saw has sawn", float(engine.share) > 0.0 and float(saw.share) > 0.0 and (int(_sim.sold.get("chair", 0)) > 0 or int(joiner.got) > 0 or joiner.inp != "" or joiner.out != ""),
+		"engine %.2f saw %.2f joiner got %d" % [float(engine.share), float(saw.share), int(joiner.got)])
+	await _shot("steam_working")
+	await _tap(_at(Vector2(1.5, 10.5)) - Vector2(0.0, 10.0 * _screen._zoom))
+	await _wait(0.5)
+	_check("a machine's card says its cycle", _screen.card_open() and _screen._card_for == "module")
+	await _shot("machine_card")
+	_screen.close_card()
+	_run_on(240.0)
+	await _wait(0.5)
+	_check("chairs have been sold", int(_sim.sold.get("chair", 0)) > 0, str(_sim.sold))
+	await _shot("steam_chairs")
+	_screen._zoom = _screen._near * 2.2
+	_screen._cam = _screen.life.seen(Vector2(2.5, 11.0))
+	await _frames(3)
+	await _shot("steam_close")
+	for q in 3:
+		_screen.turn_view()
+		await _wait(0.4)
+		await _look(Vector2(3.0, 11.0))
+		await _shot("steam_turn_%d" % (q + 1))
+	_screen.turn_view()
+	await _wait(0.4)
+	await _look(Vector2(4.0, 8.0), true)
+	await _shot("steam_far")

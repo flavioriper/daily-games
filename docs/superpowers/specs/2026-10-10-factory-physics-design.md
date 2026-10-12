@@ -317,3 +317,40 @@ first; nothing is paid for one and nothing is given but the module.
 
 The fire box and the retort are still opened by the first plate bought and
 the kiln by a mine (section 13): a plate is a goal of its own kind.
+
+## 15. Steam, and what wood becomes (2026-10-12)
+
+The user, 2026-10-12: "we need to create new things to create with wood".
+Era 3's wood side, built on the closed forest: the engine, the saw, the
+joiner and the stoker. Their rows in sections 5, 6 and 7 stand, with what
+is changed here.
+
+| Thing | As built | Honest basis, and what moved |
+|---|---|---|
+| **Engine** | **one tile**, no facing; asks 94 kW of the fire box that touches it while a machine on it works and 20 kW banked; gives 7.5 kW of shaft at full heat, and its share of that at less | section 5's "boiler and engine", 8% overall. Section 9 gave it 2 by 2: it is 1 by 1, a vertical boiler with one cylinder on its side (a donkey engine of ten horsepower stands on a two-metre square) |
+| **Shaft** | reaches the machines **touching** the engine, on its own plate, shared supply over demand like heat | section 4. **No shaft tile is built**: section 8's line shaft waits |
+| **Saw** | 1 by 2; 1 log in, **4 planks** out one after another; 0.6 MJ at 7.5 kW, 15% idle | section 6's row: 20 s a log at full shaft. On a first fire box (60 kW of the 94 asked) it is 31 s, and 34 with an idle joiner on the same engine |
+| **Joiner** | 1 by 2; **3 planks** in (gathered one at a time), 1 chair out; 0.3 MJ at 4 kW, 15% idle | section 6's row: 19 s a chair at full shaft. The table waits for nails |
+| **Stoker** | fitted to a fire box once; the fire lights the next fuel in its hopper by itself, and one that is out with fuel waiting | section 5's row; a fire with one never needs a tap |
+| **Plank** | burns in a fire box, 64 MJ | section 3 |
+
+A saw and a joiner on one engine ask 11.5 kW of its 7.5 and both run
+slower; a fire box at its third level (120 kW) gives the engine all it
+asks. One log is four planks (8 coins at the market where the log was 1)
+or a chair and a plank (14).
+
+Prices and goals, the game's and an agent's:
+
+| | Price | Opened by |
+|---|---|---|
+| Engine | 150 | 25 charcoal sold |
+| Saw | 80 | 25 charcoal sold |
+| Stoker | 100, once a fire box | 25 charcoal sold |
+| Joiner | 120 | 100 planks sold |
+| Plank sells for | 2 | |
+| Chair sells for | 12 | |
+
+**What it does to the pace.** The market is still the brake (section 12):
+a sale is a sale whatever is sold, so a land's income is its market's rate
+times the price of what reaches it, and the chair is the first thing worth
+twelve logs a sale.

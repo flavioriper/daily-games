@@ -101,7 +101,11 @@ const DROPS := 4
 ## round it. The engine culls a layer by this and not by what it draws.
 const BOX := Rect2(-40000.0, -40000.0, 80000.0, 80000.0)
 const MID := Vector2(0.5, 0.5)
-const ITEMS := ["log", "stone", "lime", "charcoal"]
+const ITEMS := ["log", "stone", "lime", "charcoal", "plank", "chair"]
+## Turns a second: an engine's flywheel at full shaft, and a saw's blade at
+## full share.
+const WHEEL_TURNS := 0.5
+const BLADE_TURNS := 1.6
 
 ## The land, in view units: the holder's to place and scale.
 var world: Node2D
@@ -152,6 +156,7 @@ var _rise := {}       # plate -> seconds since it was bought
 var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, age, size}
 var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
 var _bit_mm: MultiMesh
+var _spun := {}       # module id -> how far its wheel or blade has turned (radians)
 var _lying := {}      # what lies on the hatch: {from (the way it came), t}
 var _drops: Array = []    # sales being played: {kind, amount, t, len, off (tiles from the middle), paid}
 var _rng := RandomNumberGenerator.new()
@@ -304,7 +309,7 @@ func plus_at(p: Vector2i) -> Vector2:
 ## whatever grid `root` and `facing` are given in: the sim's, or the art's
 ## (`seen_tile`, `seen_facing`) for a thing drawn.
 static func footprint(kind: String, root: Vector2i, facing: int) -> Array:
-	if kind == "firebox":
+	if Sim.SINGLE.has(kind):
 		return [root, Vector2i.ONE]
 	var front := root + Art.DIRS[facing]
 	return [Vector2i(mini(root.x, front.x), mini(root.y, front.y)), Vector2i.ONE + (front - root).abs()]
@@ -432,6 +437,14 @@ func step(delta: float) -> void:
 	for tile: Vector2i in _wob.keys():
 		if _wob[tile] > Motion.WOBBLE_TIME:
 			_wob.erase(tile)
+	# wheels and blades turn as fast as they are driven
+	if not Motion.reduce:
+		for id: int in sim.modules:
+			var m: Dictionary = sim.modules[id]
+			if m.kind == "engine" and m.built and float(m.share) > 0.0:
+				_spun[id] = fposmod(float(_spun.get(id, 0.0)) + delta * TAU * WHEEL_TURNS * (0.12 + float(m.draw) / Sim.ENGINE_SHAFT), TAU)
+			elif m.kind == "saw" and sim.working(m) and float(m.share) > 0.0:
+				_spun[id] = fposmod(float(_spun.get(id, 0.0)) + delta * TAU * BLADE_TURNS * (0.3 + float(m.share)), TAU)
 	var rising := not _rise.is_empty()
 	for p: Vector2i in _rise.keys():
 		if _rise[p] > RISE:
@@ -781,9 +794,9 @@ func _add_module(list: Array, m: Dictionary) -> void:
 	var f: int = seen_facing(m.facing)
 	var at := mid(root)
 	var d := depth(Vector2(root) + MID)
-	if kind != "firebox":
+	if not Sim.SINGLE.has(kind):
 		d += 0.5 * maxf(0.0, Art.depth(Vector2(Art.DIRS[f])))
-	var mesh: ArrayMesh = Art.firebox() if kind == "firebox" else (Art.kiln(f) if kind == "kiln" else Art.retort(f))
+	var mesh: ArrayMesh = Art.module(kind, f)
 	var xf := Transform2D(_turned(root), at)
 	if not m.built:
 		var k := clampf(float(m.build), 0.0, 1.0)
@@ -802,7 +815,30 @@ func _add_module(list: Array, m: Dictionary) -> void:
 	list.append([d, 0, mesh, xf, Color.WHITE])
 	var still := Motion.reduce
 	match kind:
+		"engine":
+			list.append([d + 0.005, 0, Art.wheel(), Art.on_wall(at + Art._p(Art.ENGINE_WHEEL, Art.ENGINE_WHEEL_UP), Art.ENGINE_WHEEL_R, float(_spun.get(m.id, 0.4)), 0), Color.WHITE])
+			if float(m.share) > 0.0:
+				# steam off the stack, more the harder it works
+				var hard := clampf(float(m.draw) / Sim.ENGINE_SHAFT, 0.0, 1.0)
+				for i in 2:
+					var k := 0.25 + 0.5 * i if still else fposmod(_t * 0.4 + 0.5 * i + root.y * 0.31, 1.0)
+					var s := 0.5 + 0.7 * k
+					list.append([d + 0.006 + 0.001 * i, 0, Art.smoke(),
+						Transform2D(0.0, Vector2(s, s), 0.0, at + Art._p(Vector2(-0.1, -0.1), 100.0) + Vector2(4.0 + 10.0 * k, -6.0 - 40.0 * k)),
+						Color(1.0, 1.0, 1.0, (0.25 + 0.55 * hard) * sin(k * PI))])
+		"saw":
+			list.append([d + 0.005, 0, Art.wheel(true), Art.on_wall(at + Art.saw_hub(f), Art.SAW_R, float(_spun.get(m.id, 0.0)), f), Color.WHITE])
+		"joiner":
+			if sim.working(m) and float(m.share) > 0.0:
+				for i in 2:
+					var k := 0.3 + 0.4 * i if still else fposmod(_t * 0.9 + 0.5 * i + root.x * 0.37, 1.0)
+					var s := 0.22 + 0.3 * k
+					list.append([d + 0.005 + 0.001 * i, 0, Art.smoke(),
+						Transform2D(0.0, Vector2(s, s), 0.0, at + Art.joiner_dust(f) + Vector2((6.0 if i == 0 else -8.0) * k, -18.0 * k)),
+						Color(0.96, 0.87, 0.68, 0.7 * sin(k * PI))])
 		"firebox":
+			if m.get("stoker", false):
+				list.append([d + 0.004, 0, Art.stoker(), xf, Color.WHITE])
 			var mouth := at + Art.FIREBOX_MOUTH
 			if m.lit:
 				var roar := clampf(float(m.draw) / maxf(1.0, float(m.cap)), 0.0, 1.0)

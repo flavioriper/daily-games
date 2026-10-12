@@ -92,8 +92,8 @@ extends RefCounted
 ##
 ## THINGS, in view units, origin where they rest on the ground, a soft
 ## shadow in each.
-##   item(kind)          log, stone, lime, charcoal: about 42 across, two to
-##                       a tile.
+##   item(kind)          log, stone, lime, charcoal, plank, chair: about 42
+##                       across, two to a tile.
 ##   market()            the 1 by 1 hatch, origin its tile's centre: a low
 ##                       box with a hole in its top, a coin on its wall.
 ##                       MARKET_TOP is where a thing lies on it.
@@ -107,6 +107,14 @@ extends RefCounted
 ##                       tile (the way in), the front tile toward
 ##                       DIRS[facing] (the way out). A hopper is always the
 ##                       way in, a low tray the way out.
+##   module(kind, facing)  any module's mesh by its kind.
+##   engine()            1 by 1: a boiler on a brick foot; its flywheel is
+##                       wheel() under on_wall(hub, r, angle, axis) at
+##                       ENGINE_WHEEL, ENGINE_WHEEL_UP up.
+##   saw(facing), joiner(facing)  1 by 2 like the kiln; the saw's blade is
+##                       wheel(true) at saw_hub(facing); joiner_dust(facing)
+##                       is where its sawdust rises.
+##   stoker()            what a fire box with a stoker wears.
 ##   KILN_GLOW, RETORT_SMOKE  by facing: where glow() and smoke() go.
 ##   glow(), smoke()     soft round puffs, pale, for the caller to tint
 ##                       and scale.
@@ -1638,6 +1646,12 @@ static func item(kind: String) -> ArrayMesh:
 			"charcoal":
 				b.ellipse(Vector2(4.0, 2.0), 21.0, 6.5, CAST)
 				_basket(b, Vector2.ZERO, 1.0)
+			"plank":
+				b.ellipse(Vector2(3.0, 1.0), 22.0, 6.5, CAST)
+				_planks(b, Vector2.ZERO)
+			"chair":
+				b.ellipse(Vector2(4.0, 1.0), 20.0, 7.0, CAST)
+				_chair(b, Vector2.ZERO)
 			_:
 				var back := LOG_BACK * LOG_LONG
 				var c := Vector2(-back.x * 0.5, -LOG_R)
@@ -1952,6 +1966,296 @@ static func _barrel(b: Face.Builder, a0: Vector2, a1: Vector2, d: Vector2) -> vo
 	b.stroke(cap.call(front, 0.6), 1.8, IRON_SHADE.darkened(0.16), true)
 	b.disc(_p(front, zc) + side * 0.26, 3.0, PLANK.lightened(0.1))
 
+# --- the steam things (2026-10-12) ---
+
+## Any module's mesh by its kind, at the facing it is seen at (a module of
+## one tile has no facing).
+static func module(kind: String, facing := 0) -> ArrayMesh:
+	match kind:
+		"firebox":
+			return firebox()
+		"engine":
+			return engine()
+		"kiln":
+			return kiln(facing)
+		"saw":
+			return saw(facing)
+		"joiner":
+			return joiner(facing)
+	return retort(facing)
+
+## The engine, 1 by 1, the origin the middle of its tile on the ground: a
+## vertical boiler of riveted iron on a brick foot, a short stack on it, and
+## on the side that looks down and left the bearing its flywheel turns on
+## (ENGINE_WHEEL is the hub: draw `wheel()` there under `on_wall`). It has
+## no facing: it takes heat from a fire box on any side and turns whatever
+## touches it.
+static func engine() -> ArrayMesh:
+	if not _one.has("engine"):
+		var b := Face.Builder.new()
+		var h := 0.36
+		_ground_shade(b, [[Vector2.ZERO, Vector2(h, h), 78.0]])
+		_wall(b, Vector2.ZERO, Vector2(h, h), 0.0, 14.0, [BRICK_LIT.lightened(0.08), BRICK_LIT, BRICK_SHADE], 2, MORTAR)
+		var iron := [IRON_LIT.lightened(0.06), IRON_LIT, IRON, IRON_SHADE]
+		_drum(b, Vector2(-0.05, -0.05), 0.25, 14.0, 72.0, iron)
+		# two brass bands and a row of rivets round the boiler
+		for z: float in [26.0, 58.0]:
+			b.stroke(_round(Vector2(-0.05, -0.05), 0.252, z, 0.06, PI - 0.06, 14), 3.4, GOLD_DEEP, false, false)
+			b.stroke(_round(Vector2(-0.05, -0.05), 0.252, z + 1.2, PI * 0.6, PI - 0.1, 6), 1.4, GOLD_HI, false, false)
+		for i in 7:
+			var a := 0.25 + (PI - 0.5) * i / 6.0
+			var p := _round(Vector2(-0.05, -0.05), 0.252, 42.0, a, a, 1)[0]
+			b.disc(p, 1.7, IRON_SHADE.darkened(0.1))
+		# the dome and the stack
+		var lid := _round(Vector2(-0.05, -0.05), 0.25, 72.0)
+		lid.remove_at(lid.size() - 1)
+		b.fan(lid, IRON_LIT)
+		b.ellipse(_p(Vector2(-0.05, -0.05), 76.0), 0.2 * K * sqrt(2.0), 0.2 * K * sqrt(2.0) * DEEP * 0.9, IRON_LIT.lightened(0.1))
+		_drum(b, Vector2(-0.1, -0.1), 0.07, 74.0, 100.0, [HOLLOW, IRON_LIT, IRON, IRON_SHADE])
+		b.stroke(_round(Vector2(-0.1, -0.1), 0.09, 97.0, 0.0, PI, 10), 3.0, IRON_SHADE, false, false)
+		# a gauge on its lit side
+		var g := _round(Vector2(-0.05, -0.05), 0.252, 46.0, PI * 0.78, PI * 0.78, 1)[0]
+		b.disc(g, 6.0, GOLD_DEEP)
+		b.disc(g, 4.4, Color("f6f0df"))
+		b.stroke(PackedVector2Array([g, g + Vector2(2.4, -2.6)]), 1.2, Color("7a2f22"))
+		# the cylinder along the lit wall, and the bearing the wheel hangs on
+		_block(b, Vector2(-0.12, h - 0.02), Vector2(0.16, 0.06), 20.0, 32.0, [IRON_LIT, IRON, IRON_SHADE])
+		b.stroke(PackedVector2Array([_p(Vector2(0.02, h + 0.04), 26.0), _p(Vector2(0.16, h + 0.04), 26.0)]), 3.0, STEEL_LIT)
+		_block(b, Vector2(0.18, h + 0.02), Vector2(0.05, 0.04), 0.0, 30.0, [IRON_LIT, IRON, IRON_SHADE])
+		_one["engine"] = b.mesh()
+	return _one["engine"]
+
+## Where the engine's flywheel turns, from its origin, and its size in tiles.
+const ENGINE_WHEEL := Vector2(0.18, 0.44)
+const ENGINE_WHEEL_UP := 30.0
+const ENGINE_WHEEL_R := 0.3
+
+## A wheel of radius WHEEL about (0, 0): a rim, four spokes, a hub. Drawn
+## under `on_wall`, which stands it on a wall of the land and turns it.
+## `toothed` is the saw's blade: a steel disc with teeth and no spokes.
+## (Built large and drawn small: a mesh's soft edge is a unit wide.)
+const WHEEL := 100.0
+static func wheel(toothed := false) -> ArrayMesh:
+	var key := "blade" if toothed else "wheel"
+	if _one.has(key):
+		return _one[key]
+	var b := Face.Builder.new()
+	var r := WHEEL
+	if toothed:
+		var rim := PackedVector2Array()
+		for i in 32:
+			var a := TAU * i / 32.0
+			rim.append(Vector2(cos(a), sin(a)) * r * (1.0 if i % 2 == 0 else 0.84))
+		b.polygon(rim, STEEL)
+		b.disc(Vector2.ZERO, r * 0.78, STEEL_LIT)
+		b.disc(Vector2.ZERO, r * 0.6, STEEL)
+		# marks that show it turning
+		for i in 3:
+			var a := TAU * i / 3.0
+			b.stroke(PackedVector2Array([Vector2(cos(a), sin(a)) * r * 0.28, Vector2(cos(a + 0.5), sin(a + 0.5)) * r * 0.66]), r * 0.07, STEEL_DEEP)
+		b.disc(Vector2.ZERO, r * 0.2, IRON_SHADE)
+		b.disc(Vector2.ZERO, r * 0.09, STEEL_LIT)
+	else:
+		b.stroke(Face.Builder.ring(Vector2.ZERO, r * 0.9, r * 0.9), r * 0.2, IRON_SHADE, true)
+		b.stroke(Face.Builder.ring(Vector2.ZERO, r * 0.95, r * 0.95), r * 0.06, IRON_LIT, true)
+		for i in 4:
+			var a := TAU * i / 4.0
+			b.stroke(PackedVector2Array([Vector2.ZERO, Vector2(cos(a), sin(a)) * r * 0.84]), r * 0.13, IRON)
+		b.disc(Vector2.ZERO, r * 0.24, IRON_SHADE)
+		b.disc(Vector2.ZERO, r * 0.12, GOLD)
+	_one[key] = b.mesh()
+	return _one[key]
+
+## The transform that stands `wheel()` on the land: its hub at `hub` (view
+## units), `r` tiles across its half, turned by `angle`, in the upright plane
+## that runs along the tile axis `axis` (0: +x, down the screen and right;
+## 1: +y, down and left).
+static func on_wall(hub: Vector2, r: float, angle: float, axis: int) -> Transform2D:
+	var along := Vector2(K, K * DEEP) if axis % 2 == 0 else Vector2(-K, K * DEEP)
+	return Transform2D(along * r / WHEEL, Vector2(0.0, -RISE * r / WHEEL), hub) * Transform2D(angle, Vector2.ZERO)
+
+## The saw, 1 by 2 tiles, placed as the kiln is: the origin the middle of
+## its back tile, where the logs go in, its front tile toward DIRS[facing],
+## where the planks come out. A long bench of timber with a log on its
+## carriage, a hopper at its back and a tray at its front, and over the
+## middle of it an iron arm that carries the blade (SAW_UP over the bench at
+## `saw_hub(facing)`: draw `wheel(true)` there under `on_wall`, in the plane
+## that runs along the bench).
+static func saw(facing: int) -> ArrayMesh:
+	facing = posmod(facing, 4)
+	var key := "saw%d" % facing
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var d := Vector2(DIRS[facing])
+		var near := d.x + d.y
+		var across := Vector2(absf(d.y), absf(d.x))
+		var wood := [PLANK.lightened(0.14), PLANK.lightened(0.04), PLANK_DEEP]
+		_ground_shade(b, [[d * 0.5, _half(d, 0.72, 0.3), 40.0], [d * -0.37, Vector2(0.12, 0.12), 30.0]])
+		_back_to_front([
+			[-near * 0.4, func() -> void: _hopper(b, d * -0.37, 40.0)],
+			[-0.05, func() -> void:
+				# the arm the blade hangs from stands behind the bench's middle
+				var foot := d * 0.5 - across * 0.24
+				_block(b, foot, Vector2(0.05, 0.05), 0.0, 58.0, [IRON_LIT, IRON, IRON_SHADE])],
+			[0.0, func() -> void:
+				# four stout legs, the bed on them, a rail along each side
+				for o: Vector2 in [Vector2(-0.12, -0.2), Vector2(1.08, -0.2), Vector2(-0.12, 0.2), Vector2(1.08, 0.2)]:
+					_block(b, d * o.x + across * o.y, Vector2(0.05, 0.05), 0.0, 14.0, [PLANK_DEEP, PLANK_DEEP.lightened(0.06), PLANK_DEEP.darkened(0.2)])
+				_block(b, d * 0.48, _half(d, 0.68, 0.27), 12.0, 20.0, wood)
+				for k in range(1, 6):
+					var u := -0.2 + 1.36 * k / 6.0
+					b.stroke(PackedVector2Array([_p(d * u - across * 0.25, 20.0), _p(d * u + across * 0.25, 20.0)]), 1.5, Color(PLANK_DEEP, 0.55), false, false)
+				# a log on the carriage, waiting for the blade
+				var c := _p(d * 0.14, 20.0)
+				var back := (at(d) / K).normalized() * 30.0
+				if near > 0.0:
+					c += back
+					back = -back
+				b.stroke(PackedVector2Array([c, c + back]), 15.0, BARK)
+				b.stroke(PackedVector2Array([c + Vector2(-1.0, -3.0), c + back + Vector2(-1.0, -3.0)]), 5.0, BARK.lightened(0.16))
+				b.ellipse(c + Vector2(0.0, -0.5), 6.4, 7.6, PITH)
+				b.stroke(Face.Builder.ring(c + Vector2(0.0, -0.5), 3.4, 4.2), 1.2, Color(BARK, 0.6), true)],
+			[0.06, func() -> void:
+				# the arm reaches over the bench to the blade's hub
+				var foot := d * 0.5 - across * 0.24
+				b.stroke(PackedVector2Array([_p(foot, 56.0), _p(d * 0.5, SAW_UP + 20.0)]), 5.0, IRON)
+				b.stroke(PackedVector2Array([_p(foot, 57.0), _p(d * 0.5, SAW_UP + 21.0)]), 1.6, IRON_LIT)],
+			[near * 1.36, func() -> void: _tray(b, d * 1.36, d)],
+		])
+		_one[key] = b.mesh()
+	return _one[key]
+
+## How high over the ground the saw's blade turns, its size in tiles, and
+## where its hub is from the saw's origin at a facing.
+const SAW_UP := 20.0
+const SAW_R := 0.26
+static func saw_hub(facing: int) -> Vector2:
+	return _p(Vector2(DIRS[posmod(facing, 4)]) * 0.5, SAW_UP + 20.0)
+
+## The joiner, 1 by 2 tiles, placed as the kiln is: planks in at its back,
+## a chair out at its front. A workbench of pale timber under a small
+## shingled roof on four posts, a vice on its corner, a board of tools at
+## its back and a chair half made on it. JOINER_DUST[facing] is over the
+## bench: sawdust is drawn there while it works.
+static func joiner(facing: int) -> ArrayMesh:
+	facing = posmod(facing, 4)
+	var key := "joiner%d" % facing
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var d := Vector2(DIRS[facing])
+		var near := d.x + d.y
+		var across := Vector2(absf(d.y), absf(d.x))
+		var wood := [PITH, PLANK.lightened(0.16), PLANK]
+		var posts := [PLANK_DEEP.lightened(0.1), PLANK_DEEP.lightened(0.08), PLANK_DEEP.darkened(0.18)]
+		_ground_shade(b, [[d * 0.5, _half(d, 0.74, 0.34), 66.0], [d * -0.37, Vector2(0.12, 0.12), 30.0]])
+		var corners: Array[Vector2] = [Vector2(-0.14, -0.3), Vector2(1.1, -0.3), Vector2(-0.14, 0.3), Vector2(1.1, 0.3)]
+		_back_to_front([
+			[-near * 0.4, func() -> void: _hopper(b, d * -0.37, 40.0)],
+			[-0.3, func() -> void:
+				# the two posts behind, and the board of tools between them
+				for o: Vector2 in corners:
+					var c := d * o.x + across * o.y
+					if c.x + c.y < (d * 0.48).x + (d * 0.48).y:
+						_block(b, c, Vector2(0.04, 0.04), 0.0, 62.0, posts)],
+			[0.0, func() -> void:
+				for o: Vector2 in [Vector2(0.0, -0.18), Vector2(0.96, -0.18), Vector2(0.0, 0.18), Vector2(0.96, 0.18)]:
+					_block(b, d * o.x + across * o.y, Vector2(0.045, 0.045), 0.0, 18.0, posts)
+				_block(b, d * 0.48, _half(d, 0.58, 0.24), 16.0, 24.0, wood)
+				# a vice on the near corner
+				_block(b, d * (0.9 if near > 0.0 else 0.06) + across * 0.2, Vector2(0.07, 0.05), 24.0, 31.0, [STEEL_LIT, STEEL, STEEL_DEEP])
+				# a chair half made: its seat and two legs up
+				var s := _p(d * 0.42, 24.0)
+				b.polygon(PackedVector2Array([s + Vector2(-13.0, -9.0), s + Vector2(0.0, -15.0), s + Vector2(13.0, -9.0), s + Vector2(0.0, -3.0)]), PLANK.lightened(0.1))
+				for x: float in [-11.0, 11.0]:
+					b.stroke(PackedVector2Array([s + Vector2(x, -9.0), s + Vector2(x, 0.0)]), 3.0, PLANK_DEEP, false, false)
+				b.stroke(PackedVector2Array([s + Vector2(0.0, -4.0), s + Vector2(0.0, 5.0)]), 3.0, PLANK_DEEP.darkened(0.1), false, false)
+				b.stroke(PackedVector2Array([s + Vector2(-11.0, -10.0), s + Vector2(-11.0, -30.0), s + Vector2(0.0, -36.0), s + Vector2(0.0, -16.0)]), 3.0, PLANK_DEEP, false, false)
+				# a mallet lying on the bench
+				var mlt := _p(d * 0.84, 25.0)
+				b.stroke(PackedVector2Array([mlt + Vector2(-9.0, 2.0), mlt + Vector2(7.0, -5.0)]), 2.6, PLANK_DEEP)
+				b.stroke(PackedVector2Array([mlt + Vector2(5.0, -9.0), mlt + Vector2(10.0, -1.0)]), 7.0, BARK)],
+			[0.3, func() -> void:
+				for o: Vector2 in corners:
+					var c := d * o.x + across * o.y
+					if c.x + c.y >= (d * 0.48).x + (d * 0.48).y:
+						_block(b, c, Vector2(0.04, 0.04), 0.0, 62.0, posts)
+				# the roof: one slope of shingles, lit, and its dark edge
+				var r0 := d * -0.22
+				var r1 := d * 1.18
+				var hi := 84.0
+				var lo := 60.0
+				var top := PackedVector2Array([_p(r0 - across * 0.38, hi), _p(r1 - across * 0.38, hi), _p(r1 + across * 0.38, lo), _p(r0 + across * 0.38, lo)])
+				b.polygon(top, BRICK_LIT.lerp(PLANK, 0.35))
+				for k in range(1, 4):
+					var t := k / 4.0
+					b.stroke(PackedVector2Array([_p(r0 + across * lerpf(-0.38, 0.38, t), lerpf(hi, lo, t)), _p(r1 + across * lerpf(-0.38, 0.38, t), lerpf(hi, lo, t))]),
+						1.8, Color(BRICK_SHADE, 0.7), false, false)
+				b.stroke(PackedVector2Array([top[3], top[2]]), 3.4, BRICK_SHADE, false, false)
+				b.stroke(PackedVector2Array([top[0], top[1]]), 2.6, BRICK_LIT.lightened(0.2), false, false)],
+			[near * 1.36, func() -> void: _tray(b, d * 1.36, d)],
+		])
+		_one[key] = b.mesh()
+	return _one[key]
+
+## Where the joiner's sawdust rises, from its origin, by facing.
+static func joiner_dust(facing: int) -> Vector2:
+	return _p(Vector2(DIRS[posmod(facing, 4)]) * 0.48, 34.0)
+
+## A stoker fitted to a fire box, about the fire box's origin: a small iron
+## chute with a brass wheel on the side that looks down and right.
+static func stoker() -> ArrayMesh:
+	if not _one.has("stoker"):
+		var b := Face.Builder.new()
+		var h := FIREBOX_HALF
+		_block(b, Vector2(h + 0.06, 0.02), Vector2(0.07, 0.14), 6.0, 34.0, [IRON_LIT, IRON, IRON_SHADE])
+		_block(b, Vector2(h + 0.07, 0.02), Vector2(0.1, 0.18), 34.0, 40.0, [HOLLOW, IRON_LIT, IRON_SHADE])
+		var hub := _p(Vector2(h + 0.14, 0.02), 20.0)
+		b.disc(hub, 7.0, GOLD_DEEP)
+		b.disc(hub, 4.6, GOLD)
+		b.disc(hub, 1.8, GOLD_DEEP)
+		_one["stoker"] = b.mesh()
+	return _one["stoker"]
+
+## A bundle of sawn planks resting on `c`: three boards tied with a cord,
+## their sawn ends to the eye, running back to the upper left as a log does.
+static func _planks(b: Face.Builder, c: Vector2) -> void:
+	var back := LOG_BACK * 30.0
+	var top := Color("e9c58f")
+	var end := Color("f6dfb4")
+	var side := Color("b98a55")
+	var w := 12.0
+	var thick := 4.4
+	for i in 3:
+		var o := c + Vector2(-back.x * 0.5 + (2.0 if i == 1 else 0.0), -1.0 - i * thick)
+		b.polygon(PackedVector2Array([o + Vector2(w, -thick), o + Vector2(w, 0.0), o + Vector2(w, 0.0) + back, o + Vector2(w, -thick) + back]), side)
+		b.polygon(PackedVector2Array([o + Vector2(-w, -thick), o + Vector2(w, -thick), o + Vector2(w, -thick) + back, o + Vector2(-w, -thick) + back]), top if i == 2 else top.darkened(0.08))
+		b.polygon(PackedVector2Array([o + Vector2(-w, -thick), o + Vector2(w, -thick), o + Vector2(w, 0.0), o + Vector2(-w, 0.0)]), end)
+		b.stroke(PackedVector2Array([o + Vector2(-w, 0.0), o + Vector2(w, 0.0)]), 1.3, Color(side.darkened(0.2), 0.9), false, false)
+	# the cord round the bundle, over its top and down its end
+	var o2 := c + Vector2(-back.x * 0.5, -1.0 - 3.0 * thick)
+	var m := back * 0.45
+	b.stroke(PackedVector2Array([o2 + Vector2(-w, 0.0) + m, o2 + Vector2(w, 0.0) + m, o2 + Vector2(w, 3.0 * thick) + m]), 2.2, Color("7a5836"), false, false)
+
+## A small wooden chair standing on `c`, seen corner on.
+static func _chair(b: Face.Builder, c: Vector2) -> void:
+	var seat := 17.0
+	var tone := PLANK.lightened(0.08)
+	var dark := PLANK_DEEP
+	var L := c + Vector2(-13.0, -2.0)
+	var F := c + Vector2(0.0, 4.0)
+	var R := c + Vector2(13.0, -2.0)
+	var B := c + Vector2(0.0, -8.0)
+	# the back legs run up into the back of the chair
+	b.stroke(PackedVector2Array([B, B + Vector2(0.0, -seat - 24.0)]), 3.4, dark, false, false)
+	b.stroke(PackedVector2Array([R, R + Vector2(0.0, -seat - 24.0)]), 3.4, dark, false, false)
+	for y: float in [-seat - 21.0, -seat - 12.0]:
+		b.stroke(PackedVector2Array([B + Vector2(0.0, y), R + Vector2(0.0, y)]), 4.2, tone, false, false)
+	b.stroke(PackedVector2Array([L, L + Vector2(0.0, -seat)]), 3.4, tone, false, false)
+	b.stroke(PackedVector2Array([F, F + Vector2(0.0, -seat)]), 3.6, tone, false, false)
+	b.polygon(PackedVector2Array([L + Vector2(0.0, -seat), F + Vector2(0.0, -seat), R + Vector2(0.0, -seat), B + Vector2(0.0, -seat)]), PITH)
+	b.polygon(PackedVector2Array([L + Vector2(0.0, -seat), F + Vector2(0.0, -seat), F + Vector2(0.0, -seat + 3.4), L + Vector2(0.0, -seat + 3.4)]), tone)
+	b.polygon(PackedVector2Array([F + Vector2(0.0, -seat), R + Vector2(0.0, -seat), R + Vector2(0.0, -seat + 3.4), F + Vector2(0.0, -seat + 3.4)]), dark)
+
 ## The fire box, 1 by 1, the origin the middle of its tile on the ground: a
 ## block of pale stone strapped with iron under an iron lid with a short
 ## flue, its open mouth in the side that looks down and left
@@ -2234,6 +2538,23 @@ static func icon(kind: String) -> ArrayMesh:
 			b.append(glow(), Transform2D(0.0, Vector2(0.3, 0.3), 0.0, _fitted(kiln(0), 94.0) * KILN_GLOW[0]))
 		"retort":
 			_fit_into(b, retort(0), 94.0)
+		"engine":
+			var whole := Face.Builder.new()
+			whole.append(engine(), Transform2D.IDENTITY)
+			whole.append(wheel(), on_wall(_p(ENGINE_WHEEL, ENGINE_WHEEL_UP), ENGINE_WHEEL_R, 0.4, 0))
+			_fit_into(b, whole.mesh(), 94.0)
+		"saw":
+			var whole := Face.Builder.new()
+			whole.append(saw(0), Transform2D.IDENTITY)
+			whole.append(wheel(true), on_wall(saw_hub(0), SAW_R, 0.0, 0))
+			_fit_into(b, whole.mesh(), 94.0)
+		"joiner":
+			_fit_into(b, joiner(0), 94.0)
+		"stoker":
+			var whole := Face.Builder.new()
+			whole.append(firebox(), Transform2D.IDENTITY)
+			whole.append(stoker(), Transform2D.IDENTITY)
+			_fit_into(b, whole.mesh(), 90.0)
 		"market":
 			var whole := Face.Builder.new()
 			whole.append(market(), Transform2D.IDENTITY)

@@ -422,7 +422,8 @@ func _first_plate() -> void:
 	_check("a tap on a plus opens the plate card", _screen.card_open() and _screen._card_for == "plate")
 	var kinds: Node = _screen._card_slot.find_child("Kinds", true, false)
 	var neutral: Button = kinds.get_node_or_null("Neutral") if kinds != null else null
-	_check("it offers the two kinds of land: a forest and neutral ground", kinds != null and kinds.get_child_count() == 2 and kinds.get_node_or_null("Forest") != null and neutral != null)
+	_check("it offers the three kinds of land: a forest, a mine and neutral ground", kinds != null and kinds.get_child_count() == 3 and kinds.get_node_or_null("Forest") != null
+		and kinds.get_node_or_null("Mine") != null and neutral != null)
 	await _wait(0.4)
 	await _shot("plate_card")
 	_sim.coins = 30
@@ -1030,7 +1031,7 @@ func _tab() -> void:
 	_screen.queue_free()
 	await _frames(3)
 	var read: RefCounted = Sim.new(1)
-	_check("the file the screen kept reads back as the very land it left", read.load_saved() and var_to_str(read.pack()) == var_to_str(kept) and int(kept.version) == 2)
+	_check("the file the screen kept reads back as the very land it left", read.load_saved() and var_to_str(read.pack()) == var_to_str(kept) and int(kept.version) == 3)
 	var page := ColorRect.new()
 	page.color = load("res://core/palette.gd").PAPER
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
