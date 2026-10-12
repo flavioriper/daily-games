@@ -302,8 +302,17 @@ opened by what has been delivered rather than by what has been bought.
 | **Merging** | two belts into one tile take turns, as they always did | no tile of its own: section 8's merger is a belt run into another's side |
 
 A plain belt becomes a fast one, or a splitter, for the difference in
-price, and is sold back for what it is. **The bridge is not built**: it is
-era 5's, and belts still cannot cross.
+price, and is sold back for what it is.
+
+**The bridge** (the same day, brought forward from era 5: with machines
+taking from their sides, lines cross from the first engine on). One tile,
+laid like a belt, 25 coins. What comes along its facing rides **under**,
+as on a belt; what comes in by either side rides **over**, across, and
+leaves by the other side at the belt's speed, two things on the span at
+most. Nothing comes in against its facing, and while something crosses
+one way nothing crosses the other. Section 8's "one item in flight a
+side" was a guess before there was a belt; a span that carries what a belt
+tile carries is the honest one.
 
 **Goals.** The market counts what it sells by kind from a land's first
 sale (`sold`). A goal is so many of a thing sold, and reaching it opens a
@@ -314,6 +323,7 @@ first; nothing is paid for one and nothing is given but the module.
 |---|---|---|
 | 30 logs sold | the splitter | half an hour of a new market by hand, a few minutes of a forest at its first level: the first belt is long laid by then |
 | 10 charcoal sold | the fast belt | ten cycles of a retort, 2 min 15 s each: a player who has kept one fire going |
+| 5 lime sold | the bridge | five stones through a kiln, 3 min 50 s each: the first thing a mine is for |
 
 The fire box and the retort are still opened by the first plate bought and
 the kiln by a mine (section 13): a plate is a goal of its own kind.

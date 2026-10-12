@@ -67,6 +67,7 @@ extends RefCounted
 ##   belts: Dictionary        tile -> facing
 ##   kinds: Dictionary        tile -> "fast" | "splitter", for a belt that is
 ##                            not the plain one; belt_kind(tile) says any
+##   over: Dictionary         tile -> {dir, items}: what rides over a bridge
 ##   outs(tile), feeds(from, to)        where a belt hands on to
 ##   sold: Dictionary         kind -> how many the market has sold
 ##   GOALS, goal_progress(g), goal_done(g), next_goal()
@@ -162,19 +163,25 @@ const NONE := Vector2i(-99999, -99999)
 ## returns its coin, so twenty cannot be stranded.
 const START_COINS := 20
 const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4, "plank": 2, "chair": 12}
-const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "firebox": 20, "kiln": 40, "retort": 40,
+const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "bridge": 25, "firebox": 20, "kiln": 40, "retort": 40,
 	"engine": 150, "saw": 80, "joiner": 120, "stoker": 100}
 ## What is laid like a belt and carries like one: the plain belt, the fast
 ## one (twice the speed, the same spacing: the ledger, section 8) and the
 ## splitter, a belt tile that sends what crosses it out ahead and by both
 ## sides in turn.
-const BELTS := ["belt", "fast", "splitter"]
+## And the bridge: a belt tile with a second belt over it, across it, so
+## two lines cross. What comes along its facing goes under; what comes in by
+## a side goes over and leaves by the other side.
+const BELTS := ["belt", "fast", "splitter", "bridge"]
+## A belt kind laid one tile at a time, where the finger is.
+const ONE_TILE := ["splitter", "bridge"]
 ## The goals (the ledger, section 14): things sold at the market, counted
 ## from the land's first sale, each opening what it `gives` for good. They
 ## are all open at once and none is lost by doing another first.
 const GOALS := [
 	{"id": "splitter", "need": {"log": 30}, "gives": ["splitter"]},
 	{"id": "fast", "need": {"charcoal": 10}, "gives": ["fast"]},
+	{"id": "bridge", "need": {"lime": 5}, "gives": ["bridge"]},
 	{"id": "steam", "need": {"charcoal": 25}, "gives": ["engine", "saw", "stoker"]},
 	{"id": "joiner", "need": {"plank": 100}, "gives": ["joiner"]},
 ]
@@ -256,6 +263,9 @@ var trees := {}
 var belts := {}
 ## A belt tile that is not a plain belt: tile -> "fast" | "splitter".
 var kinds := {}
+## What rides over a bridge: tile -> {dir (the facing it travels), items
+## (as a belt's, the front one first)}.
+var over := {}
 ## What the market has sold, by kind, since the land began.
 var sold := {}
 var items := {}
@@ -290,6 +300,7 @@ func new_land(with_seed: int) -> void:
 	trees = {}
 	belts = {}
 	kinds = {}
+	over = {}
 	sold = {}
 	_split = {}
 	items = {}
@@ -627,12 +638,25 @@ func lay_belt(tile: Vector2i, facing: int, kind := "belt") -> bool:
 
 func _set_kind(tile: Vector2i, kind: String) -> void:
 	_split.erase(tile)
+	if kind != "bridge":
+		_drop_over(tile)
 	if kind == "belt":
 		kinds.erase(tile)
 	else:
 		kinds[tile] = kind
 
+## What rode over a bridge that is one no more, or was turned: it lies on
+## the nearest bare ground.
+func _drop_over(tile: Vector2i) -> void:
+	if not over.has(tile):
+		return
+	var lane: Dictionary = over[tile]
+	over.erase(tile)
+	for it: Dictionary in lane.items:
+		_spill([tile], it.kind)
+
 func _face_belt(tile: Vector2i, facing: int) -> void:
+	_drop_over(tile)
 	belts[tile] = facing
 	_order_stale = true
 	for it: Dictionary in items.get(tile, []):
@@ -686,9 +710,14 @@ func turn(tile: Vector2i) -> bool:
 ## at its sides too, ahead first.
 func outs(tile: Vector2i) -> Array[Vector2i]:
 	var f: int = belts[tile]
-	if kinds.get(tile, "") != "splitter":
-		return [tile + DIRS[f]]
-	return [tile + DIRS[f], tile + DIRS[(f + 1) % 4], tile + DIRS[(f + 3) % 4]]
+	match String(kinds.get(tile, "")):
+		"splitter":
+			return [tile + DIRS[f], tile + DIRS[(f + 1) % 4], tile + DIRS[(f + 3) % 4]]
+		"bridge":
+			# under it ahead, and over it the way its last thing went
+			if over.has(tile):
+				return [tile + DIRS[f], tile + DIRS[int(over[tile].dir)]]
+	return [tile + DIRS[f]]
 
 ## Whether what is on `from` goes into `to` next: a belt pointing at it, a
 ## splitter beside it (not one it lies behind), a machine whose way out it is.
@@ -734,38 +763,42 @@ func _belt_order() -> Array:
 
 func _move_belts() -> void:
 	for b: Vector2i in _belt_order():
-		if not items.has(b):
-			continue
-		var arr: Array = items[b]
-		var f: int = belts[b]
-		var v := TICK / belt_seconds(b)
-		var splits: bool = kinds.get(b, "") == "splitter"
-		var ahead := INF
-		var i := 0
-		while i < arr.size():
-			var it: Dictionary = arr[i]
-			var nat: float = it.at + v
-			if i == 0 and splits and not it.has("to") and nat >= 0.5 - EPS:
-				# at its middle a thing is given its way out, or waits for one
-				var way := _split_way(b, it)
-				if way < 0:
-					nat = 0.5
-				else:
-					it.to = way
-			if i == 0 and nat >= 1.0 - EPS:
-				var out: int = it.get("to", f)
-				var front := b + DIRS[out]
-				if not _yields(b, front) and _enter(front, it, out, maxf(nat - 1.0, 0.0)):
-					arr.remove_at(0)
-					_turn[front] = b
-					continue
-				# nothing ahead takes it: it waits at the belt's end
-				nat = 1.0
-			it.at = maxf(it.at, minf(nat, ahead - GAP))
-			ahead = it.at
-			i += 1
-		if arr.is_empty():
-			items.erase(b)
+		if items.has(b):
+			var arr: Array = items[b]
+			_run_lane(b, arr, belts[b], kinds.get(b, "") == "splitter")
+			if arr.is_empty():
+				items.erase(b)
+		if over.has(b):
+			_run_lane(b, over[b].items, int(over[b].dir), false)
+
+## One lane of the belt on `b` goes on a tick: `arr` its things, the front
+## one first, travelling `f`.
+func _run_lane(b: Vector2i, arr: Array, f: int, splits: bool) -> void:
+	var v := TICK / belt_seconds(b)
+	var ahead := INF
+	var i := 0
+	while i < arr.size():
+		var it: Dictionary = arr[i]
+		var nat: float = it.at + v
+		if i == 0 and splits and not it.has("to") and nat >= 0.5 - EPS:
+			# at its middle a thing is given its way out, or waits for one
+			var way := _split_way(b, it)
+			if way < 0:
+				nat = 0.5
+			else:
+				it.to = way
+		if i == 0 and nat >= 1.0 - EPS:
+			var out: int = it.get("to", f)
+			var front := b + DIRS[out]
+			if not _yields(b, front) and _enter(front, it, out, maxf(nat - 1.0, 0.0)):
+				arr.remove_at(0)
+				_turn[front] = b
+				continue
+			# nothing ahead takes it: it waits at the belt's end
+			nat = 1.0
+		it.at = maxf(it.at, minf(nat, ahead - GAP))
+		ahead = it.at
+		i += 1
 
 ## The way out a splitter gives the thing at its middle: ahead and its two
 ## sides by turns, the first of them that would take the thing now. A side
@@ -808,6 +841,16 @@ func _yields(b: Vector2i, fed: Vector2i) -> bool:
 func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float, ask := false) -> bool:
 	if belts.has(tile):
 		var arr: Array = items.get(tile, [])
+		var lane := {}
+		if kinds.get(tile, "") == "bridge" and f != int(belts[tile]):
+			# by a side: over it, the way it came, unless something is
+			# crossing the other way; against its facing, nothing
+			if f == (int(belts[tile]) + 2) % 4:
+				return false
+			lane = over.get(tile, {"dir": f, "items": []})
+			arr = lane.items
+			if not arr.is_empty() and int(lane.dir) != f:
+				return false
 		if arr.size() >= ROOM:
 			return false
 		var at := carry
@@ -822,7 +865,15 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float, ask := false) 
 		it.from = f
 		it.erase("to")
 		arr.append(it)
-		items[tile] = arr
+		if lane.is_empty():
+			it.erase("over")
+			items[tile] = arr
+		else:
+			it.over = true
+			if int(lane.dir) != f or not over.has(tile):
+				_order_stale = true
+			lane.dir = f
+			over[tile] = lane
 		return true
 	if is_market(tile):
 		if (market.wait as Array).size() >= MARKET_ROOM:
@@ -872,6 +923,8 @@ func _pos(tile: Vector2i, it: Dictionary) -> Vector2:
 	var f: int = belts[tile]
 	var at: float = it.at
 	var from: int = it.from
+	if it.get("over", false) and over.has(tile):
+		return c + Vector2(DIRS[int(over[tile].dir)]) * (at - 0.5)
 	if at < 0.5 and from >= 0 and from != f:
 		return c - Vector2(DIRS[from]) * (0.5 - at)
 	# past a splitter's middle a thing goes the way it was given
@@ -1340,6 +1393,9 @@ func _tick() -> void:
 	for tile: Vector2i in items:
 		for it: Dictionary in items[tile]:
 			it.was = _pos(tile, it)
+	for tile: Vector2i in over:
+		for it: Dictionary in over[tile].items:
+			it.was = _pos(tile, it)
 	_run_sources()
 	_move_belts()
 	_heat()
@@ -1383,7 +1439,7 @@ func pack() -> Dictionary:
 		"version": VERSION, "seed": land_seed, "rng": _rng.state, "coins": coins, "earned": earned,
 		"acc": _acc, "next_id": _next_id, "picked": picked,
 		"plates": plates.duplicate(true), "sources": sources.duplicate(true), "trees": trees.duplicate(true),
-		"belts": belts.duplicate(true), "kinds": kinds.duplicate(true), "split": _split.duplicate(true), "sold": sold.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
+		"belts": belts.duplicate(true), "kinds": kinds.duplicate(true), "over": over.duplicate(true), "split": _split.duplicate(true), "sold": sold.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
 		"market": market.duplicate(true), "turn": _turn.duplicate(true),
 	}
 
@@ -1426,7 +1482,7 @@ const _SHAPES := {
 	"version": TYPE_INT, "seed": TYPE_INT, "rng": TYPE_INT, "coins": TYPE_INT, "earned": TYPE_INT,
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING,
 	"plates": TYPE_DICTIONARY, "sources": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
-	"kinds": TYPE_DICTIONARY, "split": TYPE_DICTIONARY, "sold": TYPE_DICTIONARY, "items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
+	"kinds": TYPE_DICTIONARY, "over": TYPE_DICTIONARY, "split": TYPE_DICTIONARY, "sold": TYPE_DICTIONARY, "items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
 }
 const _TREE_KEYS := ["id", "tile", "look"]
 const _SOURCE_KEYS := ["level", "stock", "t", "next", "paid"]
@@ -1461,6 +1517,14 @@ static func _sound(d: Dictionary) -> bool:
 	for t: Variant in d.kinds:
 		if not (t is Vector2i) or not d.belts.has(t) or not BELTS.has(d.kinds[t]):
 			return false
+	for t: Variant in d.over:
+		var lane: Variant = d.over[t]
+		if not (t is Vector2i) or d.kinds.get(t, "") != "bridge" or not (lane is Dictionary) or not lane.has_all(["dir", "items"]) \
+				or not (lane.dir is int) or lane.dir < 0 or lane.dir > 3 or not (lane.items is Array):
+			return false
+		for it: Variant in lane.items:
+			if not (it is Dictionary) or not it.has_all(["id", "kind", "at", "from", "was"]) or not SELLS.has(it.kind) or not (it.was is Vector2):
+				return false
 	for t: Variant in d.split:
 		if not (t is Vector2i) or not (d.split[t] is int):
 			return false
@@ -1514,6 +1578,7 @@ func _unpack(d: Dictionary) -> void:
 	trees = (d.trees as Dictionary).duplicate(true)
 	belts = (d.belts as Dictionary).duplicate(true)
 	kinds = (d.kinds as Dictionary).duplicate(true)
+	over = (d.over as Dictionary).duplicate(true)
 	_split = (d.split as Dictionary).duplicate(true)
 	sold = (d.sold as Dictionary).duplicate(true)
 	items = (d.items as Dictionary).duplicate(true)

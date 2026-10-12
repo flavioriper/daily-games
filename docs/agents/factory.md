@@ -381,8 +381,8 @@ counter of six, a keeper or "sold as it lands".
 the land to be built on unattended: "be autonomous, i need you to keep
 building the factory. We need to create new things to create with wood,
 the mine, add more convey options", with the two games the roadmap names
-as "reference on web on features to add to make the game progress". Four
-commits on `feat/factory-mine`, each playable by itself. **The user has
+as "reference on web on features to add to make the game progress". Five
+commits on `feat/factory-mine` and `feat/factory-bridge`, each playable by itself. **The user has
 seen none of it.** The ledger's sections 13, 14 and 15 are the figures;
 this overrides every line above that says two kinds of plate, a kiln that
 cannot be bought, a drawer of five tiles in one column, `sim.forests`,
@@ -418,6 +418,18 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   `sim.feeds(from, to)` are where a belt hands on to: `life.shape` and
   `_belt_order` (now a walk down every way out) use them. With Splitter in
   hand a run is one tile, where the finger is.
+- **The bridge** (`bridge` in `Sim.BELTS`; `Sim.ONE_TILE` are the kinds
+  laid one tile at a time, where the finger is). The tile's own lane
+  (`sim.items[tile]`, along its facing) is what rides under. What comes in
+  by a side rides over: `sim.over[tile] = {dir, items}`, each item marked
+  `over`, moved by the same `_run_lane` a belt's lane is, and
+  `outs(tile)` is ahead plus the way its last thing crossed. **What rides
+  over is not in `sim.items`**: anything that counts or draws every item
+  must read `sim.over` too (`life` draws the deck, `Art.bridge(facing)`,
+  among what stands, and each rider after it at `Art.bridge_lift(along)`:
+  a draw a rider, two a bridge at most). Turned, sold or made another
+  kind, what rode over lies on the nearest bare ground. Opened by 5 lime
+  sold, 25 coins.
 - **Goals** (`Sim.GOALS`, `sim.sold`, `goal_done`, `goal_progress`,
   `next_goal`, the event `goal`): so many of a thing sold opens modules
   for good; all are open at once. `sim.unlocked(kind)` asks the goals
@@ -425,8 +437,9 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   shows the next one in pictures and figures and sizes itself to what it
   says; its card (`open_goals`) lists them all, drawn, a tick on the ones
   reached. **No sentence counts anything**, so no `_ONE`/`_N` pair was
-  needed. 30 logs: the splitter. 10 charcoal: the fast belt. 25 charcoal:
-  the engine, the saw, the stoker. 100 planks: the joiner.
+  needed. 30 logs: the splitter. 10 charcoal: the fast belt. 5 lime: the
+  bridge. 25 charcoal: the engine, the saw, the stoker. 100 planks: the
+  joiner.
 - **The drawer is a `GridContainer`** that takes another column past
   `DRAWER_ROWS` 5 tiles shown; it has ten tiles now.
 - **Machines** are rows of `Sim.RECIPE` (takes, need, gives, n, mj, kw,
@@ -449,8 +462,9 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   `tests/_shot_factory_works.gd` (new: the mine, the belts, the goals,
   steam, through real touches where a hand matters) 0 failed, 125 on a new
   mine, 151 to 167 with a splitter, fast belts, an engine, a saw and a
-  joiner at work at the four turns, 234 with the ten-tile drawer open.
-  `tests/_probe_factory.gd` 218/0 (sixty logs through a splitter leave
+  joiner at work at the four turns, 241 with the eleven-tile drawer open
+  in its three columns (the bridge's run, the last of the day: 125 to 241).
+  `tests/_probe_factory.gd` 225/0 (sixty logs through a splitter leave
   twenty a way; a log is four planks in 34 s on a first fire with an idle
   joiner on the engine). Suite 249797/0. **The pace bot was not run past
   the first plate**: how long the goals take a person is worked out in the
@@ -460,7 +474,8 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   four of them; every price (fast 4, splitter 15, engine 150, saw 80,
   joiner 120, stoker 100, plank 2, chair 12); the engine on one tile where
   the ledger said 2 by 2; shaft by touch with no shaft tile; a stoker that
-  also lights a cold fire; no bridge; the look of every new thing; pt and
+  also lights a cold fire; the bridge brought forward, its one tile, its
+  price and its goal; the look of every new thing; pt and
   es. **No concept tab** (the user was away and said to be autonomous; the
   standing rule was waived by me, not by them).
 - **Not done**: a phone; anything watched moving (the blade, the wheel,
@@ -469,7 +484,8 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   little higher), which the no-ghost-touch rule does not cover but the
   cozy pass will want; the tutorial says nothing of goals, mines or steam;
   the joiner's roof hides the bench behind it at two turns; coal, iron,
-  the smelter, nails, the table and the bridge.
+  the smelter, nails and the table; a bridge's deck has no slats that run
+  and no arrow, so which way a thing crossed is only seen by watching.
 
 ## The Valley and the Grove (dropped 2026-10-10)
 

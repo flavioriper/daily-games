@@ -61,6 +61,7 @@ func _process(_delta: float) -> bool:
 		_check_plates()
 		_check_mine()
 		_check_belt_kinds()
+		_check_bridge()
 		_check_steam()
 		_check_fire()
 		_check_retort()
@@ -640,6 +641,64 @@ func _check_belt_kinds() -> void:
 	var back: RefCounted = Sim.new(1)
 	_ok("a land with a splitter and what it has sold is kept and read back the same", back.load_saved() and var_to_str(back.pack()) == before and back.sold.log == 30
 		and back.belt_kind(Vector2i(10, 4)) == "splitter")
+
+## The bridge: two lines of belt cross on one tile and do not mix.
+func _check_bridge() -> void:
+	var sim := _open()
+	_ok("the bridge waits for five lime sold", not sim.unlocked("bridge") and not sim.lay_belt(Vector2i(10, 4), 0, "bridge") and _refused(sim, "locked"))
+	sim.sold["lime"] = 5
+	_belt_row(sim, Vector2i(8, 4), 5, 0)
+	_belt_row(sim, Vector2i(10, 2), 2, 1)
+	_belt_row(sim, Vector2i(10, 5), 2, 1)
+	var c: int = sim.coins
+	_ok("a belt is made a bridge for the difference, facing as it lay", sim.lay_belt(Vector2i(10, 4), 0, "bridge") and sim.coins == c - 24 and sim.belt_kind(Vector2i(10, 4)) == "bridge"
+		and int(sim.belts[Vector2i(10, 4)]) == 0 and Sim.PRICE.bridge == 25 and sim.outs(Vector2i(10, 4)) == [Vector2i(11, 4)])
+	var logs := 0
+	var stones := 0
+	var wrong := 0
+	var fed := 0
+	for i in 900:
+		if i % 10 == 0 and fed < 30:
+			sim.put(Vector2i(8, 4), "log")
+			sim.put(Vector2i(10, 2), "stone")
+			fed += 1
+		sim.step(Sim.TICK)
+		for end: Vector2i in [Vector2i(12, 4), Vector2i(10, 6)]:
+			if sim.items.has(end) and float(sim.items[end][0].at) >= 1.0 - 0.001:
+				var kind: String = sim.items[end][0].kind
+				sim.items[end].remove_at(0)
+				if sim.items[end].is_empty():
+					sim.items.erase(end)
+				if end == Vector2i(12, 4):
+					logs += 1 if kind == "log" else 0
+					wrong += 0 if kind == "log" else 1
+				else:
+					stones += 1 if kind == "stone" else 0
+					wrong += 0 if kind == "stone" else 1
+	_ok("thirty logs go under and thirty stones over, none mixed, none held up", logs == 30 and stones == 30 and wrong == 0 and sim.items.is_empty()
+		and sim.over[Vector2i(10, 4)].items.is_empty(), "%d logs %d stones %d wrong" % [logs, stones, wrong])
+	_ok("the bridge hands on ahead and the way its last thing crossed", sim.outs(Vector2i(10, 4)) == [Vector2i(11, 4), Vector2i(10, 5)] and sim.feeds(Vector2i(10, 4), Vector2i(10, 5)))
+	# nothing comes in against its facing; something crossing blocks the other way over
+	sim.lay_belt(Vector2i(11, 4), 2)
+	sim.put(Vector2i(11, 4), "log")
+	_run(sim, 40)
+	_ok("a thing coming against a bridge's facing waits at it", _lying(sim, Vector2i(11, 4)) == 1 and not sim.items.has(Vector2i(10, 4)))
+	sim.sell(Vector2i(11, 4))
+	sim.sell(Vector2i(11, 4))
+	sim.items.erase(Vector2i(11, 4))
+	sim.put(Vector2i(10, 3), "stone")
+	_run(sim, 12)
+	var riding: int = sim.over[Vector2i(10, 4)].items.size()
+	var before := _all_of(sim, "stone")
+	_ok("a bridge sold with a thing riding over it lays it down", riding == 1 and sim.sell_price(Vector2i(10, 4)) == 25 and sim.sell(Vector2i(10, 4)) and not sim.over.has(Vector2i(10, 4))
+		and _all_of(sim, "stone") == before + 1 and sim.events.back().items == 1, "%d riding" % riding)
+	sim.lay_belt(Vector2i(10, 4), 0, "bridge")
+	sim.put(Vector2i(10, 3), "stone")
+	_run(sim, 12)
+	var kept := var_to_str(sim.pack())
+	sim.save()
+	var back: RefCounted = Sim.new(1)
+	_ok("a land with a thing over a bridge is kept and read back the same", sim.over[Vector2i(10, 4)].items.size() == 1 and back.load_saved() and var_to_str(back.pack()) == kept)
 
 ## The engine on a fire, the saw and the joiner on the engine, the stoker.
 func _check_steam() -> void:

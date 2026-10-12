@@ -687,8 +687,23 @@ func _fill_stand() -> void:
 				list.append([depth(Vector2(g) + MID), 0, Art.rubble(held) if sim.is_mine(g) else Art.pile(held), Transform2D(0.0, mid(g)), white])
 	_add_market(list)
 	for tile: Vector2i in sim.kinds:
-		if sim.kinds[tile] == "splitter" and _up(tile):
+		if not _up(tile):
+			continue
+		if sim.kinds[tile] == "splitter":
 			list.append([depth(Vector2(tile) + MID), 0, Art.splitter(seen_facing(int(sim.belts[tile]))), Transform2D(_turned(tile), mid(tile)), white])
+		elif sim.kinds[tile] == "bridge":
+			# its deck over what rides under it, and on the deck what crosses
+			var d := depth(Vector2(tile) + MID)
+			list.append([d, 0, Art.bridge(seen_facing(int(sim.belts[tile]))), Transform2D(_turned(tile), mid(tile)), white])
+			if sim.over.has(tile):
+				var lane: Dictionary = sim.over[tile]
+				var riders: Array = (lane.items as Array).duplicate()
+				riders.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return depth(sim.item_pos(tile, x)) < depth(sim.item_pos(tile, y)))
+				for i in riders.size():
+					var it: Dictionary = riders[i]
+					var pos: Vector2 = sim.item_pos(tile, it)
+					var along := 0.5 + (pos - (Vector2(tile) + MID)).dot(Vector2(Art.DIRS[int(lane.dir)]))
+					list.append([d + 0.01 + 0.001 * i, 0, Art.item(it.kind), Transform2D(0.0, seen(pos) + Vector2(0.0, -Art.bridge_lift(along))), white])
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])

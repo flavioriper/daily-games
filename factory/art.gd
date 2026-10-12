@@ -87,6 +87,8 @@ extends RefCounted
 ##                       twice as fast, two warm chevrons.
 ##   splitter(facing)    a splitter's housing over its bed, drawn among
 ##                       what stands.
+##   bridge(facing), bridge_lift(along)  a bridge's deck across its bed,
+##                       and how high what crosses it rides.
 ##   belt_run(t)         sets `time` from seconds, wrapped; holds the slats
 ##                       still under reduce motion.
 ##
@@ -1578,6 +1580,71 @@ static func belt_run(t: float) -> void:
 	belt_material().set_shader_parameter("time", time)
 	belt_material(true).set_shader_parameter("time", time)
 
+## How high over a belt's bed a bridge carries what crosses it, and how far
+## from the tile's middle (tiles) its deck is level before it slopes down
+## to the beds at its two ends.
+const BRIDGE_UP := 36.0
+const BRIDGE_FLAT := 0.2
+
+## How high over the ground a thing crossing a bridge rides, `along` 0 to 1
+## from the side it came by to the side it leaves by.
+static func bridge_lift(along: float) -> float:
+	var off := absf(along - 0.5)
+	return BELT_UP + BRIDGE_UP * (1.0 - smoothstep(BRIDGE_FLAT, 0.5, off))
+
+## A bridge's deck, in view units about the middle of its tile: a short
+## span of planks across the belt that lies along `facing` as seen, up from
+## the bed at one side, level over the middle and down to the bed at the
+## other, on four posts that stand clear of the belt under it. Drawn among
+## what stands, over what rides under it; what rides over it is drawn after
+## it at `bridge_lift`. The same for a facing and the one opposite.
+static func bridge(facing: int) -> ArrayMesh:
+	var key := "bridge%d" % posmod(facing, 2)
+	if _one.has(key):
+		return _one[key]
+	var b := Face.Builder.new()
+	var a := Vector2(DIRS[posmod(facing, 2)])          # the belt under it
+	var s := Vector2(DIRS[posmod(facing, 2) + 1])      # the way across
+	var w := 0.3
+	var top := BELT_UP + BRIDGE_UP
+	var wood := [PLANK.lightened(0.1), PLANK, PLANK_DEEP]
+	# the posts first: the further pair, then the deck, then the nearer pair
+	var posts: Array[Vector2] = []
+	for i: float in [-1.0, 1.0]:
+		for j: float in [-1.0, 1.0]:
+			posts.append(s * 0.2 * i + a * 0.44 * j)
+	posts.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x + p.y < q.x + q.y)
+	for p: Vector2 in posts.slice(0, 2):
+		_block(b, p, Vector2(0.045, 0.045), 0.0, top - 4.0, wood)
+	# the deck in five stretches, each a quad, lit where it is level
+	var stops := [-0.5, -0.36, -BRIDGE_FLAT, BRIDGE_FLAT, 0.36, 0.5]
+	for k in 5:
+		var t0: float = stops[k]
+		var t1: float = stops[k + 1]
+		var h0 := bridge_lift(t0 + 0.5)
+		var h1 := bridge_lift(t1 + 0.5)
+		var tone := Color("f3deb4") if k == 2 else (Color("d9bb86") if (s.x + s.y) * (k - 2) < 0 else Color("e8cf9e"))
+		b.polygon(PackedVector2Array([_p(s * t0 - a * w, h0), _p(s * t1 - a * w, h1), _p(s * t1 + a * w, h1), _p(s * t0 + a * w, h0)]), tone)
+		# its edge toward the eye, a board thick
+		var e := a * w * (1.0 if a.x + a.y > 0.0 else -1.0)
+		b.polygon(PackedVector2Array([_p(s * t0 + e, h0), _p(s * t1 + e, h1), _p(s * t1 + e, h1 - 9.0), _p(s * t0 + e, h0 - 9.0)]), PLANK_DEEP.darkened(0.08))
+	for k in 9:
+		var t := -0.44 + 0.11 * k
+		var h := bridge_lift(t + 0.5)
+		b.stroke(PackedVector2Array([_p(s * t - a * w, h), _p(s * t + a * w, h)]), 1.8, Color(PLANK_DEEP, 0.6), false, false)
+	# a rail along each edge
+	for j: float in [-1.0, 1.0]:
+		var rail := PackedVector2Array()
+		for k in 11:
+			var t := -0.5 + 0.1 * k
+			rail.append(_p(s * t + a * w * j, bridge_lift(t + 0.5) + 3.0))
+		b.stroke(rail, 5.0, Color("8a5f38"), false, false)
+		b.stroke(rail, 1.4, PLANK.lightened(0.2), false, false)
+	for p: Vector2 in posts.slice(2):
+		_block(b, p, Vector2(0.045, 0.045), 0.0, top - 4.0, wood)
+	_one[key] = b.mesh()
+	return _one[key]
+
 ## A splitter's housing, in view units about the middle of its tile, facing
 ## `facing` as seen: a low wooden box standing over the belt's bed, open to
 ## the eye by nothing (what crosses it is hidden inside), a brass plate on
@@ -2529,6 +2596,11 @@ static func icon(kind: String) -> ArrayMesh:
 			var whole := Face.Builder.new()
 			whole.append(belt_under(), Transform2D.IDENTITY)
 			whole.append(splitter(0), Transform2D.IDENTITY)
+			_fit_into(b, whole.mesh(), 92.0)
+		"bridge":
+			var whole := Face.Builder.new()
+			whole.append(belt_under(), Transform2D.IDENTITY)
+			whole.append(bridge(0), Transform2D.IDENTITY)
 			_fit_into(b, whole.mesh(), 92.0)
 		"firebox":
 			_fit_into(b, firebox(), 90.0)

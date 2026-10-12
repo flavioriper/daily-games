@@ -60,13 +60,13 @@ const DRAWER_B := 128.0
 const DRAWER_UP := 250.0
 const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
-const DRAWER_TILES := ["belt", "fast", "splitter", "firebox", "kiln", "retort", "engine", "saw", "joiner", "market"]
+const DRAWER_TILES := ["belt", "fast", "splitter", "bridge", "firebox", "kiln", "retort", "engine", "saw", "joiner", "market"]
 ## The drawer stands this many tiles tall before it takes another column.
 const DRAWER_ROWS := 5
 ## The goal chip under the view's buttons: the next thing to sell for.
 const GOAL_W := 330.0
 const GOAL_H := 78.0
-const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "engine": "FACTORY_ENGINE", "saw": "FACTORY_SAW", "joiner": "FACTORY_JOINER",
+const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "bridge": "FACTORY_BRIDGE", "engine": "FACTORY_ENGINE", "saw": "FACTORY_SAW", "joiner": "FACTORY_JOINER",
 	"stoker": "FACTORY_STOKER", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
 	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "mine": "FACTORY_MINE", "neutral": "FACTORY_NEUTRAL"}
 ## A forest's badge, the way to its card (a tap on the forest itself is a
@@ -996,7 +996,7 @@ func _tap(pos: Vector2) -> void:
 ## multiples (only straight line)".
 func _run_to(to: Vector2) -> Dictionary:
 	var kind: String = sim.picked if Sim.BELTS.has(sim.picked) else "belt"
-	if kind == "splitter":
+	if Sim.ONE_TILE.has(kind):
 		# one at a time, where the finger is
 		_belt_tile = Vector2i(to.floor())
 	var from := _belt_tile
@@ -1015,7 +1015,7 @@ func _run_to(to: Vector2) -> Dictionary:
 		tiles.append(tile)
 		if not sim.belts.has(tile):
 			coins -= sim.price(kind)
-		elif sim.belt_kind(tile) != kind and kind != "splitter":
+		elif sim.belt_kind(tile) != kind and not Sim.ONE_TILE.has(kind):
 			coins -= sim.price(kind) - sim.price(sim.belt_kind(tile))
 		if coins >= 0:
 			lay = tiles.size()
@@ -1101,7 +1101,7 @@ func _lay_run(run: Dictionary) -> void:
 			sim.lay_belt(tile, f, kind)
 		elif int(sim.belts[tile]) != f and (tiles.size() == 1 or (tile == source and not _feeds(sim, tile))):
 			sim.lay_belt(tile, f, kind)
-		elif sim.belt_kind(tile) != kind and (kind != "splitter" or tiles.size() == 1):
+		elif sim.belt_kind(tile) != kind and (not Sim.ONE_TILE.has(kind) or tiles.size() == 1):
 			# a run of another kind over belts that lie there: they become it, facing as they did
 			sim.lay_belt(tile, int(sim.belts[tile]), kind)
 	if int(run.lay) < tiles.size() and (not sim.belts.has(tiles[int(run.lay)]) or sim.belt_kind(tiles[int(run.lay)]) != kind):
@@ -1151,7 +1151,7 @@ func _run_ghosts() -> Array:
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	for i in tiles.size():
 		var tile: Vector2i = tiles[i]
-		if sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or sim.picked == "splitter"):
+		if sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
 			continue
 		var short: bool = i >= int(_run.lay)
 		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.facing))),

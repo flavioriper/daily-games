@@ -977,6 +977,7 @@ FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The la
 FACTORY_BELT,Belt,Esteira,Cinta
 FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
 FACTORY_SPLITTER,Splitter,Divisor,Divisor
+FACTORY_BRIDGE,Bridge,Ponte,Puente
 FACTORY_ENGINE,Engine,Motor a vapor,Motor de vapor
 FACTORY_SAW,Saw,Serra,Sierra
 FACTORY_JOINER,Joiner,Marcenaria,Carpintería

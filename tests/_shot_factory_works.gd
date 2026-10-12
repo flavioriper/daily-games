@@ -114,6 +114,7 @@ func _run() -> void:
 	await _mine()
 	await _belts()
 	await _steam()
+	await _bridge()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -199,7 +200,7 @@ func _belts() -> void:
 	_sim.sold["log"] = 30
 	_sim.sold["charcoal"] = 10
 	await _frames(3)
-	_check("two goals reached, the chip shows the third", _screen._goal_b.visible and _sim.next_goal().id == "steam" and _sim.unlocked("fast") and _sim.unlocked("splitter"))
+	_check("two goals reached, the chip shows the third", _screen._goal_b.visible and _sim.next_goal().id == "bridge" and _sim.unlocked("fast") and _sim.unlocked("splitter"))
 	_screen.open_drawer()
 	await _wait(0.4)
 	_check("the drawer has taken a second column", _screen._drawer.columns == 2 and _screen._tiles["fast"].button.visible and _screen._tiles["splitter"].button.visible,
@@ -339,3 +340,48 @@ func _steam() -> void:
 	await _wait(0.4)
 	await _look(Vector2(4.0, 8.0), true)
 	await _shot("steam_far")
+
+## The bridge: the row of belts to the market's side crossed by a column,
+## logs under and stones over.
+func _bridge() -> void:
+	_sim.coins = 5000
+	_sim.sold["lime"] = 5
+	_screen.set_far(false)
+	await _look(Vector2(4.5, 4.5))
+	# a column down x = 4 from y = 3 to y = 5, across the splitter's two branches' gap
+	_lay(Vector2i(4, 3), 3, 1)
+	_sim.lay_belt(Vector2i(4, 2), 0)
+	_screen.pick("bridge")
+	await _frames(2)
+	await _tap(_at(Vector2(4.5, 2.5)) + Art.BELT_LIFT * _screen._zoom)
+	_check("a tap on a belt with Bridge in hand makes it a bridge, facing as it lay", _sim.belt_kind(Vector2i(4, 2)) == "bridge" and int(_sim.belts[Vector2i(4, 2)]) == 0)
+	_screen.pick("")
+	_lay(Vector2i(4, 0), 2, 1)
+	for i in 14:
+		_sim.put(Vector2i(4, 0), "stone")
+		_run_on(1.0)
+	await _wait(0.4)
+	var over: int = _sim.over.get(Vector2i(4, 2), {"items": []}).items.size()
+	var stones := 0
+	for t: Vector2i in [Vector2i(4, 3), Vector2i(4, 4), Vector2i(4, 5)]:
+		for it: Dictionary in _sim.items.get(t, []):
+			stones += 1 if it.kind == "stone" else 0
+	_check("stones cross over the logs' belt and go on down the column", stones > 0 and _sim.over.has(Vector2i(4, 2)), "%d past it, %d on it" % [stones, over])
+	await _wait(0.6)
+	print("     the bridge is at ", _at(Vector2(4.5, 2.5)) * 0.75)
+	await _shot("bridge")
+	_screen.turn_view()
+	await _wait(0.8)
+	await _look(Vector2(4.5, 3.0))
+	await _wait(0.4)
+	print("     the bridge is at ", _at(Vector2(4.5, 2.5)) * 0.75)
+	await _shot("bridge_turned")
+	_screen.turn_view()
+	_screen.turn_view()
+	_screen.turn_view()
+	await _wait(0.3)
+	_screen.open_drawer()
+	await _wait(0.4)
+	_check("the drawer holds eleven tiles in three columns", _screen._drawer.columns == 3, "columns %d" % _screen._drawer.columns)
+	await _shot("drawer_all")
+	_screen.close_drawer()
