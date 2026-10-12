@@ -372,18 +372,35 @@ func _on_chop(id: int) -> void:
 	if Motion.reduce:
 		return
 	var side: float = b.side
-	var at := mid(tr.tile) + Vector2(side * Art.girth(tr.look), -22.0 * float(b.size))
+	var at := mid(tr.tile) + Vector2(side * girth(tr), -22.0 * float(b.size))
+	var rock := is_rock(tr)
 	for i in 2:
+		var tone: Color = (Art.ROCK_LIT if i == 0 else Art.ROCK_SHADE) if rock else (Art.PITH if i == 0 else Art.BARK.lightened(0.25))
 		_bit(at, Vector2(side * _rng.randf_range(40.0, 150.0), -_rng.randf_range(120.0, 260.0)), 0.42,
-			Art.PITH if i == 0 else Art.BARK.lightened(0.25), _rng.randf_range(0.5, 0.8), 1.0)
+			tone, _rng.randf_range(0.5, 0.8), 1.3 if rock else 1.0)
 
 func _beaver(tr: Dictionary) -> Dictionary:
 	var id: int = tr.id
 	if not _beavers.has(id):
 		_beavers[id] = {"tile": tr.tile, "look": int(tr.look), "side": -1.0 if id % 2 == 0 else 1.0, "show": 0.0,
-			"rising": true, "seen": 0.0, "bite": 10.0, "age": 0.0,
-			"size": 0.7 + 0.004 * float(Art.RADIUS[int(tr.look)])}
+			"rising": true, "seen": 0.0, "bite": 10.0, "age": 0.0, "girth": girth(tr),
+			"size": 0.82 if is_rock(tr) else 0.7 + 0.004 * float(Art.RADIUS[int(tr.look)])}
 	return _beavers[id]
+
+## Whether a row of the sim's `trees` is a mine's rock: the plate says.
+func is_rock(tr: Dictionary) -> bool:
+	return sim.is_mine(tr.tile)
+
+## Half the width of a tree's trunk or a rock's body, where a beaver's teeth go.
+func girth(tr: Dictionary) -> float:
+	return float(Art.ROCK_R[int(tr.look) % Art.ROCK_R.size()]) * 0.8 if is_rock(tr) else Art.girth(tr.look)
+
+## How tall a tree or a rock stands and how far it reaches, for a tap on it.
+func tall(tr: Dictionary) -> float:
+	return float(Art.ROCK_TALL[int(tr.look) % Art.ROCK_TALL.size()]) if is_rock(tr) else Art.height(tr.look)
+
+func reach(tr: Dictionary) -> float:
+	return float(Art.ROCK_R[int(tr.look) % Art.ROCK_R.size()]) if is_rock(tr) else float(Art.RADIUS[int(tr.look)]) * Art.TREE_SCALE
 
 func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, weight: float) -> void:
 	if _bits.size() >= BITS:
@@ -638,18 +655,19 @@ func _fill_stand() -> void:
 			continue
 		var size := _size(id)
 		if size.x > 0.0:
-			list.append([depth(Vector2(tile) + MID), 1, Art.tree(tr.look), Transform2D(_turned(tile), size, 0.0, mid(tile)), white])
+			var rock := is_rock(tr)
+			list.append([depth(Vector2(tile) + MID), 0 if rock else 1, Art.rock(tr.look) if rock else Art.tree(tr.look), Transform2D(_turned(tile), size, 0.0, mid(tile)), white])
 	for id: int in _beavers:
 		_add_beaver(list, _beavers[id])
-	for p: Vector2i in sim.forests:
-		var held: int = sim.forests[p].stock
+	for p: Vector2i in sim.sources:
+		var held: int = sim.sources[p].stock
 		if held <= 0 or not _up(p * Art.PLATE):
 			continue
 		# what it holds, lying by every gate that leads on to land
 		for side in 4:
 			if sim.plates.has(p + Art.DIRS[side]):
 				var g: Vector2i = Sim.gate(p, side)
-				list.append([depth(Vector2(g) + MID), 0, Art.pile(held), Transform2D(0.0, mid(g)), white])
+				list.append([depth(Vector2(g) + MID), 0, Art.rubble(held) if sim.is_mine(g) else Art.pile(held), Transform2D(0.0, mid(g)), white])
 	_add_market(list)
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
@@ -732,7 +750,7 @@ func _add_beaver(list: Array, b: Dictionary) -> void:
 	if not Motion.reduce:
 		grow = Motion.back_out(show) if b.rising else show
 		snap = pow(1.0 - clampf(float(b.bite) / BITE, 0.0, 1.0), 2.0)
-	var reach: float = Art.girth(b.look) + (Beaver.NECK.x + Beaver.TEETH.x - 2.0) * s
+	var reach: float = float(b.girth) + (Beaver.NECK.x + Beaver.TEETH.x - 2.0) * s
 	var at := mid(tile) + Vector2(side * (reach - 3.0 * snap * s), 3.0)
 	# it looks at the trunk: right when it sits on the left
 	var xf := Transform2D(0.0, Vector2(-side * s * grow * (1.0 + 0.06 * snap), s * grow * (1.0 - 0.06 * snap)), 0.0, at)
@@ -841,7 +859,7 @@ func _draw_flat(ci: CanvasItem) -> void:
 func _draw_shade(ci: CanvasItem) -> void:
 	for id: int in sim.trees:
 		var tr: Dictionary = sim.trees[id]
-		if not _up(tr.tile):
+		if not _up(tr.tile) or is_rock(tr):
 			continue
 		var size := _size(id)
 		if size.x > 0.0:

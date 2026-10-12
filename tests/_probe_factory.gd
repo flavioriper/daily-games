@@ -59,6 +59,7 @@ func _process(_delta: float) -> bool:
 		_check_belts()
 		_check_feeders()
 		_check_plates()
+		_check_mine()
 		_check_fire()
 		_check_retort()
 		_check_shared()
@@ -129,7 +130,7 @@ const IN := Vector2i(4, -4)
 const PAST := Vector2i(3, 0)
 
 func _stock(sim: RefCounted, p: Vector2i = F) -> int:
-	return int(sim.forests[p].stock)
+	return int(sim.sources[p].stock)
 
 ## The nine belts from the gate to the market: down the column past the gate
 ## and along to the market.
@@ -239,7 +240,7 @@ func _check_forest() -> void:
 	var took := 0
 	for i in 20:
 		took += 1 if sim.tap(IN) else 0
-	_ok("it holds twelve", took == 11 and _stock(sim) == Sim.FOREST_ROOM and Sim.FOREST_ROOM == 12)
+	_ok("it holds twelve", took == 11 and _stock(sim) == Sim.SOURCE_ROOM and Sim.SOURCE_ROOM == 12)
 	sim.events.clear()
 	_ok("a tap on a full forest is refused as full, at a tree of it", not sim.tap(IN) and _refused(sim, "full") and _stock(sim) == 12
 		and sim.is_forest(sim.events[0].tile) and sim.events.size() == 1)
@@ -330,29 +331,29 @@ func _check_gates() -> void:
 	sim.coins = 100000
 	sim.buy_plate(Vector2i(1, -1), "neutral")
 	_way(sim)
-	sim.forests[F].next = 0
+	sim.sources[F].next = 0
 	sim.tap(IN)
 	_tick(sim)
 	_ok("a belt at one gate takes the log before bare ground at another does, whichever side's turn it is", _lying(sim, east) == 0 and _lying(sim, PAST) == 1 and _stock(sim) == 0)
 
 func _check_levels() -> void:
 	var sim: RefCounted = Sim.new(7)
-	_ok("a forest by hand makes nothing by itself, and its first level is 60", sim.forest_rate(F) == 0.0 and sim.upgrade_price(IN) == 60 and sim.upgrade_price(Vector2i(0, -8)) == 60
-		and Sim.FOREST_PRICE == [60, 180, 540, 1620] and Sim.FOREST_RATE == [0.0, 1.0, 2.0, 3.0, 4.0])
-	_ok("twenty coins do not reach it", not sim.upgrade(IN) and _refused(sim, "coins") and sim.coins == 20 and int(sim.forests[F].level) == 0)
+	_ok("a forest by hand makes nothing by itself, and its first level is 60", sim.source_rate(F) == 0.0 and sim.upgrade_price(IN) == 60 and sim.upgrade_price(Vector2i(0, -8)) == 60
+		and Sim.SOURCE_PRICE == [60, 180, 540, 1620] and Sim.SOURCE_RATE == [0.0, 1.0, 2.0, 3.0, 4.0])
+	_ok("twenty coins do not reach it", not sim.upgrade(IN) and _refused(sim, "coins") and sim.coins == 20 and int(sim.sources[F].level) == 0)
 	_ok("bare ground has no level to buy", sim.upgrade_price(PAST) == -1 and not sim.upgrade(PAST) and _refused(sim, "top"))
 	sim.coins = 100000
 	var spent := 0
 	var right := true
 	for lv in 4:
-		var cost: int = Sim.FOREST_PRICE[lv]
+		var cost: int = Sim.SOURCE_PRICE[lv]
 		sim.events.clear()
 		right = right and sim.upgrade_price(IN) == cost and sim.upgrade(Vector2i(lv, -1 - lv))
 		spent += cost
 		var e: Dictionary = sim.events.back()
-		right = right and e.type == "level" and e.target == "forest" and e.level == lv + 1 and e.plate == F and e.tile == Vector2i(lv, -1 - lv)
-		right = right and int(sim.forests[F].level) == lv + 1 and is_equal_approx(sim.forest_rate(F), lv + 1.0) and sim.coins == 100000 - spent
-	_ok("its levels are 60, 180, 540 and 1620, bought from any tile of it, a log a second more each", right and spent == 2400 and int(sim.forests[F].paid) == 2400)
+		right = right and e.type == "level" and e.target == "source" and e.level == lv + 1 and e.plate == F and e.tile == Vector2i(lv, -1 - lv)
+		right = right and int(sim.sources[F].level) == lv + 1 and is_equal_approx(sim.source_rate(F), lv + 1.0) and sim.coins == 100000 - spent
+	_ok("its levels are 60, 180, 540 and 1620, bought from any tile of it, a log a second more each", right and spent == 2400 and int(sim.sources[F].paid) == 2400)
 	_ok("and there is no fifth", sim.upgrade_price(IN) == -1 and not sim.upgrade(IN) and _refused(sim, "top") and sim.coins == 100000 - 2400)
 	# the logs a second of each level, counted
 	for lv in range(0, 5):
@@ -376,7 +377,7 @@ func _check_levels() -> void:
 	sim.events.clear()
 	_run(sim, 600)
 	_ok("a forest with no belt fills, two past the gate and twelve held, and stops there", _stock(sim) == 12 and _lying(sim, PAST) == 2 and _all(sim) == 2
-		and is_equal_approx(float(sim.forests[F].t), 1.0))
+		and is_equal_approx(float(sim.sources[F].t), 1.0))
 	var said := _tick(sim)
 	_ok("and says nothing more", said.is_empty())
 	sim.put(PAST, "log")
@@ -517,6 +518,39 @@ func _check_feeders() -> void:
 	_ok("and all eight are on the line, none lost", not lost and _all(sim) == 8 and _lying(sim, Vector2i(15, 3)) == 2 and _lying(sim, Vector2i(12, 3)) == 2)
 	_ok("the feeders are empty", _lying(sim, Vector2i(9, 3)) == 0 and _lying(sim, Vector2i(10, 2)) == 0)
 
+## A mine is a forest's twin that gives stone, and it opens the kiln.
+func _check_mine() -> void:
+	var sim := _open()
+	var m := Vector2i(1, -1)
+	_ok("a mine is bought like any plate", sim.buy_plate(m, "mine") and sim.plates[m] == "mine" and sim.sources.has(m) and sim.gives(m) == "stone" and sim.gives(F) == "log")
+	var rocks := 0
+	for id: int in sim.trees:
+		if Sim.plate_of(sim.trees[id].tile) == m:
+			rocks += 1
+	_ok("it is seen by nine rocks", rocks == Sim.ROCKS and Sim.ROCKS == 9)
+	var inside := m * Sim.PLATE + Vector2i(4, 4)
+	_ok("it is closed: no belt and no machine", sim.is_mine(inside) and sim.is_source(inside) and not sim.is_forest(inside) and not sim.tile_free(inside)
+		and not sim.lay_belt(inside, 0) and _refused(sim, "mine") and not sim.place("firebox", inside, 0) and _refused(sim, "mine"))
+	_ok("it opens the kiln", sim.unlocked("kiln") and sim.can_place("kiln", Vector2i(12, 4), 0))
+	sim.events.clear()
+	_ok("a tap is a stone into its stock", sim.tap(inside) and int(sim.sources[m].stock) == 1 and sim.events.back().type == "chop" and sim.events.back().plate == m)
+	# its +y gate (3, 7) of the plate leads on to the plate bought first
+	var out := Sim.gate(m, 1) + Sim.DIRS[1]
+	var said := _tick(sim)
+	_ok("which leaves by the gate as a stone", said.size() == 1 and said[0].type == "log" and said[0].kind == "stone" and said[0].tile == out
+		and _lying(sim, out) == 1 and sim.items[out][0].kind == "stone")
+	_ok("its levels are the forest's", sim.upgrade_price(inside) == 60 and sim.upgrade(inside) and sim.source_rate(m) == 1.0
+		and sim.events.back().target == "source" and sim.events.back().plate == m)
+	# a belt from the gate into a kiln's back, a fire beside it fed by hand
+	sim.sell(out)
+	_belt_row(sim, out, 2, 1)
+	sim.place("kiln", out + Vector2i(0, 2), 1)
+	for i in 600:
+		sim.step(Sim.TICK)
+	var kiln: Dictionary = sim.module_at(out + Vector2i(0, 2))
+	_ok("a kiln past a belt from its gate takes a stone", kiln.built and kiln.inp == "stone")
+	_ok("stone sells for 2 and lime for 10", Sim.SELLS.stone == 2 and Sim.SELLS.lime == 10)
+
 func _check_plates() -> void:
 	var sim: RefCounted = Sim.new(7)
 	_ok("the first plate bought is 50 and twenty coins do not reach", sim.plate_price() == 50 and not sim.buy_plate(Vector2i(1, 0), "neutral") and _refused(sim, "coins"))
@@ -526,12 +560,12 @@ func _check_plates() -> void:
 	var none := true
 	for kind: String in ["quarry", "meadow", "swamp", ""]:
 		none = none and not sim.buy_plate(Vector2i(1, 0), kind) and _refused(sim, "kind")
-	_ok("there are two kinds of land and no other is sold", none and Sim.KINDS == ["forest", "neutral"] and sim.plates.size() == 2 and sim.coins == 100000)
+	_ok("there are three kinds of land and no other is sold", none and Sim.KINDS == ["forest", "mine", "neutral"] and sim.plates.size() == 2 and sim.coins == 100000)
 	_ok("neutral ground is bought for 50", sim.buy_plate(Vector2i(1, 0), "neutral") and sim.coins == 100000 - 50 and sim.plates[Vector2i(1, 0)] == "neutral"
 		and sim.events.back().type == "plate" and sim.events.back().plate == Vector2i(1, 0) and sim.events.back().kind == "neutral")
-	_ok("all sixty-four tiles of it are bare, and nothing stands on it", _bare(sim, Vector2i(1, 0)) == 64 and sim.trees.size() == Sim.TREES and sim.forests.size() == 1)
+	_ok("all sixty-four tiles of it are bare, and nothing stands on it", _bare(sim, Vector2i(1, 0)) == 64 and sim.trees.size() == Sim.TREES and sim.sources.size() == 1)
 	_ok("the fire and the retort are in the drawer from the first plate bought", sim.unlocked("firebox") and sim.unlocked("retort"))
-	_ok("the kiln is not, and is not placed: nothing gives stone", not sim.unlocked("kiln") and Sim.LOCKED == ["kiln"] and not sim.can_place("kiln", Vector2i(9, 4), 0)
+	_ok("the kiln is not, and is not placed: no mine gives stone yet", not sim.unlocked("kiln") and not sim.can_place("kiln", Vector2i(9, 4), 0)
 		and not sim.place("kiln", Vector2i(9, 4), 0) and _refused(sim, "locked") and sim.modules.is_empty() and sim.coins == 100000 - 50)
 	_ok("the second is 150", sim.plate_price() == 150 and sim.buy_plate(Vector2i(-1, 0), "forest") and sim.coins == 100000 - 200)
 	_ok("the third 450, the fourth 1350", sim.plate_price() == 450 and sim.buy_plate(Vector2i(0, 1), "neutral") and sim.plate_price() == 1350)
@@ -543,13 +577,13 @@ func _check_plates() -> void:
 		own[sim.trees[id].tile] = true
 	_ok("a forest bought has fourteen trees of its own", on.get(Vector2i(-1, 0), 0) == 14 and on.get(F, 0) == 14 and on.size() == 2 and own.size() == 28)
 	var west := Vector2i(-1, 0)
-	_ok("and is a forest like the first: closed, by hand, its own stock", sim.forests.size() == 2 and _bare(sim, west) == 0 and sim.forest_rate(west) == 0.0
+	_ok("and is a forest like the first: closed, by hand, its own stock", sim.sources.size() == 2 and _bare(sim, west) == 0 and sim.source_rate(west) == 0.0
 		and sim.upgrade_price(Vector2i(-4, 4)) == 60 and sim.tap(Vector2i(-4, 4)) and _stock(sim, west) == 1 and _stock(sim) == 0)
 	# its +x gate leads on to the market's plate
 	var said := _tick(sim)
 	_ok("its log leaves by the gate toward the market's plate", said.size() == 1 and said[0].type == "log" and said[0].from == Sim.gate(west, 0) and said[0].from == Vector2i(-1, 4)
 		and said[0].tile == Vector2i(0, 4) and _lying(sim, Vector2i(0, 4)) == 1 and _stock(sim, west) == 0)
-	_ok("a level bought on one forest is that forest's", sim.upgrade(Vector2i(-4, 4)) and sim.forest_rate(west) == 1.0 and sim.forest_rate(F) == 0.0 and sim.upgrade_price(IN) == 60)
+	_ok("a level bought on one forest is that forest's", sim.upgrade(Vector2i(-4, 4)) and sim.source_rate(west) == 1.0 and sim.source_rate(F) == 0.0 and sim.upgrade_price(IN) == 60)
 
 func _check_fire() -> void:
 	var sim := _open()
@@ -842,7 +876,7 @@ func _check_kept() -> void:
 	sim.step(0.04)
 	sim.save()
 	_ok("a save clears dirty", not sim.dirty)
-	_ok("the land saved has a forest at work, one by hand, logs lying and riding, a fire lit", int(sim.forests[F].level) == 1 and _stock(sim) > 0 and int(sim.forests[west].level) == 0
+	_ok("the land saved has a forest at work, one by hand, logs lying and riding, a fire lit", int(sim.sources[F].level) == 1 and _stock(sim) > 0 and int(sim.sources[west].level) == 0
 		and _lying(sim, Vector2i(0, 4)) == 2 and _lying(sim, PAST) > 0 and sim.module_at(Vector2i(10, 3)).lit and sim.earned > 0)
 	var a := FileAccess.get_file_as_string(Sim.path)
 	var back: RefCounted = Sim.new(999)
@@ -855,7 +889,7 @@ func _check_kept() -> void:
 				print(i, " A ", x[i], "\n  B ", y[i])
 	_ok("into the same land", var_to_str(back.pack()) == var_to_str(sim.pack()) and back.coins == sim.coins and back.picked == "belt")
 	var kept: Dictionary = back.pack()
-	_ok("the save is version 2 and holds the forests, and nothing of the land that was", kept.version == 2 and Sim.VERSION == 2 and kept.has("forests") and kept.forests.size() == 2
+	_ok("the save is version 3 and holds the sources, and nothing of the land that was", kept.version == 3 and Sim.VERSION == 3 and kept.has("sources") and kept.sources.size() == 2
 		and not kept.has("rocks") and not kept.has("queue") and not kept.has("sprout") and not kept.has("falls"))
 	back.save()
 	var b := FileAccess.get_file_as_string(Sim.path)
@@ -899,7 +933,7 @@ func _check_kept() -> void:
 	_write(shaped, Sim.VERSION)
 	_ok("so is one with a kind of land there is none of", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
 	shaped = sim.pack()
-	shaped.forests.erase(west)
+	shaped.sources.erase(west)
 	_write(shaped, Sim.VERSION)
 	_ok("and one with a forest that keeps no stock", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
 	# no file, and a file that is not a land

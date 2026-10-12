@@ -260,3 +260,29 @@ market's level is the brake on income now, not the trees**. A log is still
 keep their rows above but nothing gives stone: the quarry is removed and
 the kiln cannot be bought until a plate gives stone again. The meadow is
 renamed neutral: white ground, the only kind that is built on.
+
+## 13. The mine (2026-10-12)
+
+The user, 2026-10-12, leaving the land to be built on unattended: "we need
+to create new things to create with wood, the mine, add more convey
+options". The mine comes back as **the forest's twin**, by the pattern they
+chose on 2026-10-11, and not as the quarry of section 6 (rocks chipped
+every three minutes, a drill on an engine): a closed plate, tapped, a gate
+in each side, the same stock and the same levels. Like the forest it is a
+wonder and says so: nine rocks do not give a stone a second.
+
+| What | Figure | Whose |
+|---|---|---|
+| A tap on a mine | 1 stone into its stock, at once | the forest's rule, taken for it by an agent |
+| A mine holds | 12 stones (`SOURCE_ROOM`) | an agent's |
+| It gives by | a gate in each side, as a forest does | the forest's |
+| Levels 1 to 4 | 1, 2, 3, 4 stones a second for 60, 180, 540, 1,620 coins | the forest's figures, an agent's |
+| The kiln | in the drawer once a mine is owned (and a plate bought, as before) | an agent's |
+
+Stone is still 20 kg and 2 coins, lime 10 coins, and the kiln's row in
+section 6 stands: 55 MJ at 60 kW, 3 min 50 s a stone. So one kiln on one
+fire turns a stone a second into a lime every four minutes: **the mine
+outruns its kiln two hundred times over**, and what a mine is for, until
+the stonecutter, is a belt of stone to the market at twice a log's price
+and as many kilns as the player cares to light. The Drill's row and the
+Lodge's in section 6 no longer describe anything that will be built.

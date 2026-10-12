@@ -62,7 +62,7 @@ const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
 const DRAWER_TILES := ["belt", "firebox", "kiln", "retort", "market"]
 const NAMES := {"belt": "FACTORY_BELT", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
-	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "neutral": "FACTORY_NEUTRAL"}
+	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "mine": "FACTORY_MINE", "neutral": "FACTORY_NEUTRAL"}
 ## A forest's badge, the way to its card (a tap on the forest itself is a
 ## log): how far over the plate's middle it floats and how big it is, in
 ## view units.
@@ -861,20 +861,20 @@ func hit(pos: Vector2) -> Dictionary:
 	var v: Vector2 = (pos - world.position) / _zoom
 	var best := {}
 	var best_d := -INF
-	for p: Vector2i in sim.forests:
+	for p: Vector2i in sim.sources:
 		if (v - badge_at(p)).length() <= BADGE_R + 10.0:
 			return {"what": "badge", "tile": p * Art.PLATE, "plate": p}
 	for id: int in sim.trees:
 		var tr: Dictionary = sim.trees[id]
-		var tall: float = Art.height(tr.look)
-		var wide: float = float(Art.RADIUS[int(tr.look)]) * Art.TREE_SCALE + 12.0
+		var tall: float = life.tall(tr)
+		var wide: float = life.reach(tr) + 12.0
 		var rel: Vector2 = v - (life.mid(tr.tile) - Vector2(0.0, tall * 0.5))
 		if pow(rel.x / wide, 2.0) + pow(rel.y / (tall * 0.5 + 12.0), 2.0) > 1.0:
 			continue
 		var d: float = life.depth(Vector2(tr.tile) + Vector2(0.5, 0.5))
 		if d > best_d:
 			best_d = d
-			best = {"what": "forest", "tile": tr.tile}
+			best = {"what": "source", "tile": tr.tile}
 	# a building's body covers the ground behind it: the tiles a little
 	# further down the screen are asked whose body this point is on
 	for lift: float in [84.0, 56.0, 28.0, 0.0]:
@@ -903,8 +903,8 @@ func hit(pos: Vector2) -> Dictionary:
 		var rel: Vector2 = v - life.plus_at(p)
 		if pow(rel.x / 104.0, 2.0) + pow(rel.y / (104.0 * Art.DEEP), 2.0) <= 1.0:
 			return {"what": "plus", "tile": p * Art.PLATE, "plate": p}
-	if sim.is_forest(tile):
-		return {"what": "forest", "tile": tile}
+	if sim.is_source(tile):
+		return {"what": "source", "tile": tile}
 	return {"what": "ground", "tile": tile}
 
 ## Where forest `p`'s badge floats, in view units: over the middle of it.
@@ -915,7 +915,7 @@ func _tap(pos: Vector2) -> void:
 	var h := hit(pos)
 	var tile: Vector2i = h.tile
 	match String(h.what):
-		"forest":
+		"source":
 			sim.tap(tile)
 		"badge":
 			open_forest(h.plate)
@@ -1242,10 +1242,13 @@ func open_module(id: int) -> void:
 ## of what it can, and the next level's price. Nothing else is done to a
 ## forest: it is not built in, turned or sold.
 func open_forest(p: Vector2i) -> void:
-	if not sim.forests.has(p):
+	if not sim.sources.has(p):
 		return
-	_open_card(tr("FACTORY_FOREST"), "forest", func(col: VBoxContainer) -> void:
-		var lines := _card_body(col, "forest", [tr("FACTORY_FOREST_MAKES"), "", ""])
+	# a mine's words are the forest's keys with MINE in them
+	var kind := String(sim.plates[p])
+	var key := "FACTORY_" + kind.to_upper()
+	_open_card(tr(key), kind, func(col: VBoxContainer) -> void:
+		var lines := _card_body(col, kind, [tr(key + "_MAKES"), "", ""])
 		var row := HBoxContainer.new()
 		row.name = "Buttons"
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1255,15 +1258,15 @@ func open_forest(p: Vector2i) -> void:
 			if not sim.upgrade(p * Art.PLATE):
 				Motion.shiver(up, 6.0))
 		_card_tick = func() -> void:
-			var f: Dictionary = sim.forests[p]
-			var rate := int(sim.forest_rate(p))
-			(lines[1] as Label).text = tr("FACTORY_FOREST_HAND") if rate == 0 else (tr("FACTORY_FOREST_RATE_ONE") if rate == 1 else tr("FACTORY_FOREST_RATE_N") % rate)
-			(lines[2] as Label).text = tr("FACTORY_FOREST_HOLDS") % [int(f.stock), Sim.FOREST_ROOM]
+			var f: Dictionary = sim.sources[p]
+			var rate := int(sim.source_rate(p))
+			(lines[1] as Label).text = tr(key + "_HAND") if rate == 0 else (tr(key + "_RATE_ONE") if rate == 1 else tr(key + "_RATE_N") % rate)
+			(lines[2] as Label).text = tr(key + "_HOLDS") % [int(f.stock), Sim.SOURCE_ROOM]
 			var cost: int = sim.upgrade_price(p * Art.PLATE)
 			up.visible = cost >= 0
 			if cost >= 0:
 				if int(f.level) == 0:
-					_say(up, tr("FACTORY_FOREST_AUTO_FOR") % Art.short(cost))
+					_say(up, tr(key + "_AUTO_FOR") % Art.short(cost))
 				else:
 					_say(up, tr("FACTORY_LEVEL_FOR") % [int(f.level) + 1, Art.short(cost)])
 		_card_tick.call())
@@ -1368,7 +1371,7 @@ func _draw_over(ci: CanvasItem) -> void:
 		ci.draw_arc(Vector2.ZERO, 74.0, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
 		ci.draw_set_transform(Vector2.ZERO)
 	var font := get_theme_font("font", "SheetTitle")
-	for p: Vector2i in sim.forests:
+	for p: Vector2i in sim.sources:
 		_draw_badge(ci, font, p)
 	for n: Dictionary in _nums:
 		var k: float = float(n.t) / NUM
@@ -1391,7 +1394,7 @@ func _draw_badge(ci: CanvasItem, font: Font, p: Vector2i) -> void:
 	ci.draw_circle(at, BADGE_R, Pal.SUN if can else Art.PRICE_OFF)
 	ci.draw_arc(at, BADGE_R, 0.0, TAU, 40, Color(ink, 0.5), 3.0, true)
 	if cost < 0:
-		var top := str(int(sim.forests[p].level))
+		var top := str(int(sim.sources[p].level))
 		ci.draw_string(font, at + Vector2(-font.get_string_size(top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x * 0.5, 16.0), top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, ink)
 		return
 	var arrow := Color(ink, 0.9 if can else 0.5)

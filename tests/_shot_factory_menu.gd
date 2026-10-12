@@ -90,7 +90,7 @@ func _process(delta: float) -> bool:
 				_s = _menu.get_node_or_null("Factory")
 				_check(_s != null, "Play mounts the screen")
 				_check(_s != null and _s.sim == _menu.factory_tab.sim, "the screen holds the tab's own sim")
-				_check(_s != null and _s.sim.plates.size() == 2 and _s.sim.forests.size() == 1 and _s.sim.items.is_empty(),
+				_check(_s != null and _s.sim.plates.size() == 2 and _s.sim.sources.size() == 1 and _s.sim.items.is_empty(),
 					"which is a new land: the market's plate, a forest behind it, nothing lying")
 				_check(not _menu.factory_tab.is_processing(), "the tab stops stepping while lent")
 			"tap":
@@ -112,7 +112,7 @@ func _process(delta: float) -> bool:
 				for tile in _s.sim.items:
 					logs += (_s.sim.items[tile] as Array).size()
 				var gate: Vector2i = _s.sim.gate(Vector2i(0, -1), 1) + Vector2i(0, 1)
-				_check(logs == 1 and _s.sim.items.has(gate) and int(_s.sim.forests[Vector2i(0, -1)].stock) == 0,
+				_check(logs == 1 and _s.sim.items.has(gate) and int(_s.sim.sources[Vector2i(0, -1)].stock) == 0,
 					"a finger's tap on the forest gave one log and it lies past the gate (%d)" % logs)
 			"badge":
 				var world: Node2D = _s.world
@@ -123,7 +123,7 @@ func _process(delta: float) -> bool:
 				for tile in _s.sim.items:
 					logs += (_s.sim.items[tile] as Array).size()
 				_check(_s.card_open() and _s._card_for == "forest", "a finger's tap on the forest's badge opens its card")
-				_check(logs == 1 and int(_s.sim.forests[Vector2i(0, -1)].stock) == 0, "and takes no log")
+				_check(logs == 1 and int(_s.sim.sources[Vector2i(0, -1)].stock) == 0, "and takes no log")
 			"leave":
 				_s.go_back()
 				_check(not _s.card_open(), "back closes the card and stays on the screen")

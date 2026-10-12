@@ -66,8 +66,13 @@ extends RefCounted
 ##   keep_to(m, centre, half, u), keep_off(m)  fades a shadow material at
 ##                       the edge of one diamond of land. Off unless called:
 ##                       a board of many plates leaves it off.
+##   rock(look)          0 to 3, a mine's rock standing on (0, 0), its
+##                       shade in it; ROCK_R and ROCK_TALL are its reach
+##                       and height. No wind.
 ##   leaf(), tuft(), flower()  the small meshes, pale, for an instance's
 ##                       colour; LEAF is a loose leaf's colour by look.
+##   rubble(n)           a mine's stock lying by a gate, as pile() is a
+##                       forest's.
 ##   pile(n, lucky), heap_of(n), heap_tall(n)  cut logs lying where a tree
 ##                       fell, foot on (0, 0), shadow in it.
 ##
@@ -208,6 +213,9 @@ const GOLD_HI := Color("ffe39a")
 ## washes toward and away from the sun, and the turf hanging over its edge.
 const GROUND := {
 	"forest": {"grass": GRASS, "lit": GRASS_LIT, "deep": GRASS_DEEP, "warm": WASH_WARM, "cool": WASH_COOL, "lip": LIP, "lip_lit": LIP_LIT},
+	# a mine's worked ground: warm grit, paler where the sun lies on it
+	"mine": {"grass": Color("cdbf9f"), "lit": Color("e6dcc0"), "deep": Color("a3957c"), "warm": Color("efe3c4"), "cool": Color("9c9a8c"),
+		"lip": Color("9a8c74"), "lip_lit": Color("bdb096")},
 	# white ground that is no kind of land (the user, 2026-10-11: "a white
 	# ground with neutral texture"): chalk, a warm and a cool white over it
 	"neutral": {"grass": Color("f1eee7"), "lit": Color("ffffff"), "deep": Color("cfcac0"), "warm": Color("fffaf0"), "cool": Color("dde0e2"),
@@ -218,11 +226,24 @@ const HEDGE := Color("3f8a52")
 const HEDGE_LIT := Color("63ab5c")
 const HEDGE_DEEP := Color("2f6f49")
 const FLOOR := Color(0.16, 0.42, 0.3, 0.3)
+## A mine's wall of piled stones, which closes it, its dug floor, and the
+## rocks it is seen by: body, lit face, shaded face, crack.
+const WALL := Color("a59c8d")
+const WALL_LIT := Color("cfc7b6")
+const WALL_DEEP := Color("7b7468")
+const PIT_FLOOR := Color(0.33, 0.27, 0.2, 0.26)
+const ROCK := Color("b3aa9a")
+const ROCK_LIT := Color("ddd5c3")
+const ROCK_SHADE := Color("857d71")
+const ROCK_CRACK := Color(0.3, 0.27, 0.24, 0.55)
+## How far a rock of each look reaches from its middle, and how tall it is.
+const ROCK_R := [34.0, 40.0, 30.0, 44.0]
+const ROCK_TALL := [52.0, 66.0, 44.0, 58.0]
 ## The tile of a forest a log leaves by, toward each of DIRS: the sim's
 ## GATES. The same place at every quarter turn, so the mesh need not turn.
 const GATES: Array[Vector2i] = [Vector2i(7, 4), Vector2i(3, 7), Vector2i(0, 3), Vector2i(4, 0)]
 ## How many tufts and how many drifts of flowers a plate of a kind grows.
-const GROWS := {"forest": [44, 5], "neutral": [0, 0]}
+const GROWS := {"forest": [44, 5], "mine": [0, 0], "neutral": [0, 0]}
 
 ## How the land is seen (the contract the sim shares): half a tile's width
 ## in view units, how deep the ground is seen for its width, and the tiles
@@ -989,10 +1010,10 @@ static func _plate_into(b: Face.Builder, kind: String, sides: int, variant: int)
 			_glow(b, _on_plate(rng, r + 20.0), r, r * DEEP, warm.lerp(lit, rng.randf()), 0.42)
 		for k in 6:
 			_pebble(b, _on_plate(rng, 40.0), 1.0)
-	if kind == "forest":
-		_forest_into(b)
+	if kind == "forest" or kind == "mine":
+		_forest_into(b, kind == "mine")
 	# the tiles' corners, where no shore is
-	var tick := Color(deep.darkened(0.12), 0.34 if kind != "forest" else 0.0)
+	var tick := Color(deep.darkened(0.12), 0.34 if kind == "neutral" else 0.0)
 	for tx in PLATE + 1:
 		for ty in PLATE + 1:
 			if (tx == PLATE and (sides & 1) == 0) or (ty == PLATE and (sides & 2) == 0) or (tx == 0 and (sides & 4) == 0) or (ty == 0 and (sides & 8) == 0):
@@ -1098,6 +1119,70 @@ static func _seam_into(b: Face.Builder, side: int, tone: Dictionary, rng: Random
 		if k % 2 == 0:
 			b.ellipse(c + Vector2(-1.6, -1.6), r * 0.55, r * 0.24, Color(lip_lit.lightened(0.16), 0.6))
 
+## A rock of a mine, standing on (0, 0), its shade under it: `look` 0 to 3,
+## a boulder of two or three faces with a smaller one against it. A mine is
+## seen by these as a forest by its trees; they are never used up.
+static func rock(look: int) -> ArrayMesh:
+	look = posmod(look, ROCK_R.size())
+	var key := "rock%d" % look
+	if _one.has(key):
+		return _one[key]
+	var b := Face.Builder.new()
+	var r: float = ROCK_R[look]
+	var tall: float = ROCK_TALL[look]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4100 + look
+	b.ellipse(Vector2(r * 0.22, 4.0), r * 1.18, r * 0.42, SHADE)
+	# the small one behind and to the right, then the big one
+	for part: Array in [[Vector2(r * 0.56, -2.0), 0.52], [Vector2(-r * 0.12, 0.0), 1.0]]:
+		var c: Vector2 = part[0]
+		var k: float = part[1]
+		var w := r * k * 0.86
+		var h := tall * k
+		var lean := rng.randf_range(-0.12, 0.12) * w
+		var body := PackedVector2Array([c + Vector2(-w, 0.0), c + Vector2(-w * 0.92, -h * 0.5), c + Vector2(-w * 0.5 + lean, -h * 0.9),
+			c + Vector2(w * 0.1 + lean, -h), c + Vector2(w * 0.7 + lean, -h * 0.78), c + Vector2(w, -h * 0.3), c + Vector2(w * 0.86, 4.0), c + Vector2(-w * 0.6, 6.0)])
+		b.polygon(body, ROCK)
+		# the face away from the sun
+		b.polygon(PackedVector2Array([c + Vector2(w * 0.1 + lean, -h), c + Vector2(w * 0.7 + lean, -h * 0.78), c + Vector2(w, -h * 0.3), c + Vector2(w * 0.86, 4.0),
+			c + Vector2(w * 0.3, 5.0), c + Vector2(w * 0.22, -h * 0.5)]), ROCK_SHADE)
+		# the top, where the light lies
+		b.polygon(PackedVector2Array([c + Vector2(-w * 0.92, -h * 0.5), c + Vector2(-w * 0.5 + lean, -h * 0.9), c + Vector2(w * 0.1 + lean, -h),
+			c + Vector2(w * 0.22, -h * 0.5), c + Vector2(-w * 0.34, -h * 0.4)]), ROCK_LIT)
+		b.stroke(PackedVector2Array([c + Vector2(-w * 0.34, -h * 0.4), c + Vector2(-w * 0.2, -h * 0.14), c + Vector2(-w * 0.4, 3.0)]), 1.8 * k, ROCK_CRACK)
+		if look % 2 == 0:
+			b.stroke(PackedVector2Array([c + Vector2(w * 0.22, -h * 0.5), c + Vector2(w * 0.5, -h * 0.3)]), 1.6 * k, ROCK_CRACK)
+	# what has been knocked off it
+	for i in 3:
+		var p := Vector2(rng.randf_range(-r, r * 0.9), rng.randf_range(5.0, 11.0))
+		b.ellipse(p, 5.0, 3.2, ROCK_SHADE)
+		b.ellipse(p + Vector2(-1.0, -1.0), 3.4, 2.0, ROCK_LIT)
+	_one[key] = b.mesh()
+	return _one[key]
+
+## What a mine holds, lying by its gate with the middle of its foot on
+## (0, 0): one chunk, two, three, a low heap, a big one, by `heap_of(n)`.
+static func rubble(n: int) -> ArrayMesh:
+	var step := heap_of(n)
+	var key := "rubble%d" % step
+	if _one.has(key):
+		return _one[key]
+	var b := Face.Builder.new()
+	var at_: Array = [[Vector2.ZERO], [Vector2(-13.0, 0.0), Vector2(13.0, 2.0)], [Vector2(-14.0, 0.0), Vector2(14.0, 2.0), Vector2(0.0, -15.0)],
+		[Vector2(-26.0, -2.0), Vector2(0.0, 0.0), Vector2(26.0, 2.0), Vector2(-13.0, -17.0), Vector2(13.0, -15.0)],
+		[Vector2(-28.0, -3.0), Vector2(-2.0, -1.0), Vector2(26.0, 2.0), Vector2(-15.0, -18.0), Vector2(12.0, -16.0), Vector2(-2.0, -33.0), Vector2(0.0, 6.0)]][step]
+	var wide := 24.0 if step < 3 else 46.0
+	b.ellipse(Vector2(5.0, 2.0), wide + 6.0, 9.0 if step < 3 else 13.0, CAST)
+	var order := at_.duplicate()
+	order.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y if absf(p.y - q.y) > 8.0 else p.x < q.x)
+	# the foot row last so a chunk in front lies over the one behind it
+	for c: Vector2 in at_.slice(0, 3):
+		_chunk(b, c, 0.72)
+	for c: Vector2 in at_.slice(3):
+		_chunk(b, c, 0.72)
+	_one[key] = b.mesh()
+	return _one[key]
+
 ## A pebble on the grass, its shade under it.
 static func _pebble(b: Face.Builder, c: Vector2, s: float) -> void:
 	b.ellipse(c + Vector2(2.0, 3.0) * s, 9.0 * s, 4.6 * s, SHADE)
@@ -1126,11 +1211,20 @@ static func _neutral_into(b: Face.Builder, rng: RandomNumberGenerator) -> void:
 ## side a gate, the hedge open on a plank chute between two posts that runs
 ## out to the edge. The hedge is in the ground's mesh, half a tile in from
 ## the edge, so the seam of the plate in front does not lie over it.
-static func _forest_into(b: Face.Builder) -> void:
+## A mine (`stony`) is closed the same way by a wall of piled stones over a
+## dug floor with rubble on it.
+static func _forest_into(b: Face.Builder, stony := false) -> void:
 	var inner := PackedVector2Array([at(Vector2(0.9, 0.9)), at(Vector2(PLATE - 0.9, 0.9)), at(Vector2(PLATE - 0.9, PLATE - 0.9)), at(Vector2(0.9, PLATE - 0.9))])
-	b.polygon(inner, FLOOR)
+	b.polygon(inner, PIT_FLOOR if stony else FLOOR)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261011
+	if stony:
+		for k in 46:
+			var t := Vector2(rng.randf_range(1.1, PLATE - 1.1), rng.randf_range(1.1, PLATE - 1.1))
+			var r := rng.randf_range(3.0, 7.5)
+			b.ellipse(at(t) + Vector2(1.5, 2.0), r * 1.1, r * 0.62, SHADE)
+			b.ellipse(at(t), r, r * 0.66, WALL if k % 3 else WALL_DEEP)
+			b.ellipse(at(t) + Vector2(-r * 0.25, -r * 0.2), r * 0.45, r * 0.28, WALL_LIT)
 	for side: int in [3, 2, 0, 1]:
 		var out := Vector2(DIRS[side])
 		var along := Vector2(-out.y, out.x).abs()
@@ -1156,6 +1250,14 @@ static func _forest_into(b: Face.Builder) -> void:
 			b.ellipse(p + Vector2(7.0, 5.0), 21.0, 9.0, SHADE)
 		for p: Vector2 in bushes:
 			var r := rng.randf_range(15.0, 19.0)
+			if stony:
+				# a stone of the wall: squat, a lit top and a dark foot
+				var w := r * rng.randf_range(0.95, 1.2)
+				var h := r * rng.randf_range(0.62, 0.84)
+				b.ellipse(p + Vector2(0.0, -h * 0.55), w, h, WALL_DEEP)
+				b.ellipse(p + Vector2(-1.5, -h * 0.72), w * 0.9, h * 0.8, WALL)
+				b.ellipse(p + Vector2(-w * 0.26, -h * 1.02), w * 0.5, h * 0.36, WALL_LIT)
+				continue
 			b.disc(p + Vector2(0.0, -r * 0.55), r, HEDGE_DEEP)
 			b.disc(p + Vector2(-1.5, -r * 0.7), r * 0.86, HEDGE)
 			b.disc(p + Vector2(-r * 0.3, -r * 0.95), r * 0.46, HEDGE_LIT)
@@ -2052,6 +2154,10 @@ static func icon(kind: String) -> ArrayMesh:
 			_plot_into(b, "forest")
 			b.append(tree(3), Transform2D(0.0, Vector2(0.36, 0.36), 0.0, Vector2(-17.0, 8.0)))
 			b.append(tree(2), Transform2D(0.0, Vector2(0.4, 0.4), 0.0, Vector2(12.0, 16.0)))
+		"mine":
+			_plot_into(b, "mine")
+			b.append(rock(1), Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(-14.0, 14.0)))
+			b.append(rock(2), Transform2D(0.0, Vector2(0.44, 0.44), 0.0, Vector2(16.0, 22.0)))
 		"neutral":
 			_plot_into(b, "neutral")
 		"coin":

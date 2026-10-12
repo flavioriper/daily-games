@@ -215,7 +215,7 @@ func _badge(p: Vector2i) -> Vector2:
 	return _screen.world.position + _screen.badge_at(p) * _screen._zoom
 
 func _stock(p: Vector2i = F) -> int:
-	return int(_sim.forests[p].stock)
+	return int(_sim.sources[p].stock)
 
 func _lying(tile: Vector2i) -> int:
 	return (_sim.items.get(tile, []) as Array).size()
@@ -289,9 +289,9 @@ func _first_taps() -> void:
 	var front := _front_tree()
 	var floor_at := Vector2(1.5, -0.5)
 	var h: Dictionary = _screen.hit(_crown(front))
-	_check("a crown reads as the forest, at its tree", h.what == "forest" and h.tile == front.tile, str(h))
+	_check("a crown reads as the forest, at its tree", h.what == "source" and h.tile == front.tile, str(h))
 	h = _screen.hit(_at(floor_at))
-	_check("so does the forest's floor where no tree stands", h.what == "forest" and h.tile == Vector2i(1, -1), str(h))
+	_check("so does the forest's floor where no tree stands", h.what == "source" and h.tile == Vector2i(1, -1), str(h))
 	h = _screen.hit(_badge(F))
 	_check("its badge reads as the badge of its plate", h.what == "badge" and h.get("plate", null) == F, str(h))
 	h = _screen.hit(_at(Vector2(1.5, 2.5)))
@@ -310,7 +310,7 @@ func _first_taps() -> void:
 	await _shot("logs_past_gate")
 	for i in 14:
 		await _tap(_crown(front))
-	_check("the forest fills to twelve and a tap more gives nothing", _stock() == Sim.FOREST_ROOM and Sim.FOREST_ROOM == 12 and _lying(PAST) == 2 and _sim.coins == Sim.START_COINS,
+	_check("the forest fills to twelve and a tap more gives nothing", _stock() == Sim.SOURCE_ROOM and Sim.SOURCE_ROOM == 12 and _lying(PAST) == 2 and _sim.coins == Sim.START_COINS,
 		"%d held" % _stock())
 	await _wait(0.3)
 	await _shot("forest_full")
@@ -399,12 +399,12 @@ func _first_level() -> void:
 	_sim.coins = 40
 	await _frames(2)
 	await _press_button(up)
-	_check("a level the coins do not reach is refused", int(_sim.forests[F].level) == 0 and _sim.coins >= 40 and _screen.card_open())
+	_check("a level the coins do not reach is refused", int(_sim.sources[F].level) == 0 and _sim.coins >= 40 and _screen.card_open())
 	_sim.coins = 60
 	await _frames(2)
 	_check("its one button names the first level's price", up.label_text == TranslationServer.translate("FACTORY_FOREST_AUTO_FOR") % "60", up.label_text)
 	await _press_button(up)
-	_check("the forest's first level is bought for 60: a log a second by itself", _sim.forest_rate(F) == 1.0 and int(_sim.forests[F].level) == 1 and _sim.coins < 10, "coins %d" % _sim.coins)
+	_check("the forest's first level is bought for 60: a log a second by itself", _sim.source_rate(F) == 1.0 and int(_sim.sources[F].level) == 1 and _sim.coins < 10, "coins %d" % _sim.coins)
 	await _wait(0.3)
 	_check("and the button offers the second for 180", _screen.card_open() and up.label_text == TranslationServer.translate("FACTORY_LEVEL_FOR") % [2, "180"], up.label_text)
 	await _shot("forest_card_level_1")
@@ -454,8 +454,8 @@ func _lay(tile: Vector2i, facing: int) -> void:
 ## holding its one: built through the sim's own actions and stepped, not waited for.
 func _late_land() -> void:
 	_sim.coins = 100000
-	_check("a second neutral plate and two more forests are bought", _sim.buy_plate(Vector2i(0, 1), "neutral") and _sim.buy_plate(EAST, "forest") and _sim.buy_plate(WEST, "forest")
-		and _sim.plates.size() == 6 and _sim.forests.size() == 3 and _sim.trees.size() == 3 * Sim.TREES)
+	_check("a second neutral plate and two more sources are bought", _sim.buy_plate(Vector2i(0, 1), "neutral") and _sim.buy_plate(EAST, "forest") and _sim.buy_plate(WEST, "forest")
+		and _sim.plates.size() == 6 and _sim.sources.size() == 3 and _sim.trees.size() == 3 * Sim.TREES)
 	# the neutral plate in front: two retorts, a fire each, a belt in and a belt out
 	var built := true
 	built = _sim.place("retort", Vector2i(2, 10), 0) and built
@@ -490,7 +490,7 @@ func _late_land() -> void:
 	_sim.upgrade(EAST * Sim.PLATE)
 	_sim.upgrade(WEST * Sim.PLATE)
 	_sim.upgrade(WEST * Sim.PLATE)
-	_check("their levels are their own", int(_sim.forest_rate(F)) == 1 and int(_sim.forest_rate(EAST)) == 1 and int(_sim.forest_rate(WEST)) == 2)
+	_check("their levels are their own", int(_sim.source_rate(F)) == 1 and int(_sim.source_rate(EAST)) == 1 and int(_sim.source_rate(WEST)) == 2)
 	_sim.upgrade("market")
 	await _frames(2)
 	_run_on(4.0)
@@ -533,7 +533,7 @@ func _late_land() -> void:
 	var rides := true
 	for tile: Vector2i in [Vector2i(11, 3), Vector2i(1, 4), Vector2i(3, 2)]:
 		rides = rides and _lying(tile) > 0
-	_check("logs of all three forests ride the belts past their gates", rides, "%d %d %d" % [_lying(Vector2i(11, 3)), _lying(Vector2i(1, 4)), _lying(Vector2i(3, 2))])
+	_check("logs of all three sources ride the belts past their gates", rides, "%d %d %d" % [_lying(Vector2i(11, 3)), _lying(Vector2i(1, 4)), _lying(Vector2i(3, 2))])
 	var shut := true
 	for tile: Vector2i in _sim.belts:
 		shut = shut and not _sim.is_forest(tile)
@@ -620,7 +620,7 @@ func _hands() -> void:
 	var ring: bool = _screen._long.is_empty()
 	_touch(_at(Vector2(4.5, -3.5)), false)
 	await _frames(2)
-	_check("a finger held on a forest sells nothing of it", ring and _sim.trees.size() == trees and _sim.forests.has(F) and _sim.plates.get(F, "") == "forest")
+	_check("a finger held on a forest sells nothing of it", ring and _sim.trees.size() == trees and _sim.sources.has(F) and _sim.plates.get(F, "") == "forest")
 	await _look(Vector2(4.0, 12.0))
 	# a drag on open ground pans, and the view comes to rest
 	var cam: Vector2 = _screen._cam
@@ -690,8 +690,8 @@ func _cards() -> void:
 		await _press_button(up)
 		await _press_button(up)
 		await _wait(0.3)
-		_check("its last level bought from the card, the card offers no more", int(_sim.forests[WEST].level) == 4 and _sim.forest_rate(WEST) == 4.0 and not up.visible
-			and _sim.upgrade_price(WEST * Sim.PLATE) == -1 and int(_sim.forests[F].level) == 1)
+		_check("its last level bought from the card, the card offers no more", int(_sim.sources[WEST].level) == 4 and _sim.source_rate(WEST) == 4.0 and not up.visible
+			and _sim.upgrade_price(WEST * Sim.PLATE) == -1 and int(_sim.sources[F].level) == 1)
 		await _shot("forest_card_top")
 	_screen.go_back()
 	await _press_button(_screen._drawer_b)
@@ -761,7 +761,7 @@ func _turns() -> void:
 			"%d laid" % (_sim.belts.size() - had))
 		# every forest's badge, where it is drawn
 		var badges := true
-		for p: Vector2i in _sim.forests:
+		for p: Vector2i in _sim.sources:
 			var h: Dictionary = _screen.hit(_badge(p))
 			badges = badges and h.what == "badge" and h.get("plate", null) == p
 		_check("turn %d: every forest's badge is hit where it is drawn" % turn, badges)
@@ -781,9 +781,9 @@ func _turns() -> void:
 		var now := _stock(p)
 		await _frames(2)
 		var took: bool = said.get("type", "") == "chop" and int(said.id) == int(front.id) and not said.auto and now == held + 1
-		var full: bool = said.get("type", "") == "refused" and said.why == "full" and said.tile == front.tile and held == Sim.FOREST_ROOM and now == held
+		var full: bool = said.get("type", "") == "refused" and said.why == "full" and said.tile == front.tile and held == Sim.SOURCE_ROOM and now == held
 		_check("turn %d: a tap where a tree's crown is drawn reaches that tree, a log of its forest or its no when full" % turn,
-			hit.what == "forest" and hit.tile == front.tile and (took or full), "%s of %s: %d to %d, %s" % [front.tile, p, held, now, said.get("type", "nothing")])
+			hit.what == "source" and hit.tile == front.tile and (took or full), "%s of %s: %d to %d, %s" % [front.tile, p, held, now, said.get("type", "nothing")])
 	_check("four turns come back to the first view", _screen.life.turn == 0 and (_screen.life.seen(Vector2(3.5, 2.5)) as Vector2).is_equal_approx(home))
 	await _look(Vector2(6.0, 2.0), true)
 	await _wait(0.3)
@@ -1005,8 +1005,8 @@ func _tutorial() -> void:
 	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
 	_check("the tutorial has three pages", _screen.tutorial_pages().size() == 3)
 	var land: RefCounted = await _page(Diagram.Lesson.TREE, 3.2)
-	_check("the first page taps the forest three times: three logs, two past the gate", int(land.forests[F].stock) + (land.items.get(PAST, []) as Array).size() == 3
-		and (land.items.get(PAST, []) as Array).size() == 2 and land.belts.is_empty(), "%s %s" % [land.forests[F], land.items.keys()])
+	_check("the first page taps the forest three times: three logs, two past the gate", int(land.sources[F].stock) + (land.items.get(PAST, []) as Array).size() == 3
+		and (land.items.get(PAST, []) as Array).size() == 2 and land.belts.is_empty(), "%s %s" % [land.sources[F], land.items.keys()])
 	land = await _page(Diagram.Lesson.BELT, 27.0)
 	var way: bool = land.belts.size() == WANT_BELTS.size()
 	for tile: Vector2i in WANT_BELTS:
@@ -1043,10 +1043,10 @@ func _tab() -> void:
 	page.add_child(tab)
 	await _frames(4)
 	tab.refresh()
-	var levels: bool = tab.sim.forests.size() == 3
-	for p: Vector2i in _sim.forests:
-		levels = levels and tab.sim.forests.has(p) and int(tab.sim.forests[p].level) == int(_sim.forests[p].level)
-	_check("the tab reads the land the screen kept, its forests at their levels", tab.sim.plates.size() == _sim.plates.size() and tab.sim.plates.size() == 7 and levels
+	var levels: bool = tab.sim.sources.size() == 3
+	for p: Vector2i in _sim.sources:
+		levels = levels and tab.sim.sources.has(p) and int(tab.sim.sources[p].level) == int(_sim.sources[p].level)
+	_check("the tab reads the land the screen kept, its sources at their levels", tab.sim.plates.size() == _sim.plates.size() and tab.sim.plates.size() == 7 and levels
 		and tab.sim.belts.size() == _sim.belts.size(), "plates %d" % tab.sim.plates.size())
 	var earned: int = tab.sim.earned
 	await _wait(1.5)

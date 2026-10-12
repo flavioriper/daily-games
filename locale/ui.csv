@@ -989,6 +989,14 @@ FACTORY_FOREST_RATE_ONE,Makes a log a second by itself.,Faz uma tora por segundo
 FACTORY_FOREST_RATE_N,Makes %d logs a second by itself.,Faz %d toras por segundo sozinha.,Hace %d troncos por segundo solo.
 FACTORY_FOREST_HOLDS,Holds %d of %d logs.,Guarda %d de %d toras.,Guarda %d de %d troncos.
 FACTORY_FOREST_AUTO_FOR,A log a second for %s,Uma tora por segundo por %s,Un tronco por segundo por %s
+FACTORY_MINE,Mine,Mina,Mina
+FACTORY_MINE_LINE,"Gives stone at a gate on every side","Dá pedra por um portão em cada lado","Da piedra por un portón en cada lado"
+FACTORY_MINE_MAKES,"Tap it for a stone. Stones leave by the gate on each side; nothing is built inside. A kiln burns stone into lime.","Toque nela para ter uma pedra. As pedras saem pelo portão de cada lado; nada se constrói dentro. Um forno queima a pedra em cal.","Tócala para sacar una piedra. Las piedras salen por el portón de cada lado; dentro no se construye nada. Un horno quema la piedra en cal."
+FACTORY_MINE_HAND,It makes none by itself yet.,Sozinha ainda não faz nenhuma.,Sola todavía no hace ninguna.
+FACTORY_MINE_RATE_ONE,Makes a stone a second by itself.,Faz uma pedra por segundo sozinha.,Hace una piedra por segundo sola.
+FACTORY_MINE_RATE_N,Makes %d stones a second by itself.,Faz %d pedras por segundo sozinha.,Hace %d piedras por segundo sola.
+FACTORY_MINE_HOLDS,Holds %d of %d stones.,Guarda %d de %d pedras.,Guarda %d de %d piedras.
+FACTORY_MINE_AUTO_FOR,A stone a second for %s,Uma pedra por segundo por %s,Una piedra por segundo por %s
 FACTORY_PLATE_TITLE,New land,Terra nova,Tierra nueva
 FACTORY_FIREBOX_MAKES,"Burns a log or charcoal a belt brings, and heats the kiln or retort that touches it.","Queima a tora ou o carvão que a esteira traz e aquece o forno ou a retorta ao lado.","Quema el tronco o el carbón que trae la cinta y calienta el horno o la retorta de al lado."
 FACTORY_KILN_MAKES,"Stone in at the back, lime out at the front.","Entra pedra por trás, sai cal pela frente.","Entra piedra por detrás, sale cal por delante."
@@ -1014,7 +1022,7 @@ TUT_FACTORY_TREE_BODY,"Every tap is a log. It comes out of the gate in the fores
 TUT_FACTORY_BELT,Swipe a belt to the market,Deslize uma esteira até o mercado,Desliza una cinta hasta el mercado
 TUT_FACTORY_BELT_BODY,"Open the drawer on the left and pick Belt. Hold and swipe in a straight line, then lift: an arrow shows which way things will ride. Each belt costs a coin, and the market pays for what arrives.","Abra a gaveta à esquerda e escolha Esteira. Segure e deslize em linha reta, depois solte: uma seta mostra para onde as coisas vão. Cada esteira custa uma moeda, e o mercado paga pelo que chega.","Abre el cajón de la izquierda y elige Cinta. Mantén y desliza en línea recta, luego suelta: una flecha muestra hacia dónde irán las cosas. Cada cinta cuesta una moneda, y el mercado paga lo que llega."
 TUT_FACTORY_PLATE,Buy more land,Compre mais terra,Compra más tierra
-TUT_FACTORY_PLATE_BODY,"Tap a plus on the pond and choose a forest or neutral ground. The first piece of land you buy brings fire and a retort.","Toque em um mais no lago e escolha uma floresta ou chão neutro. O primeiro pedaço de terra que você compra traz o fogo e a retorta.","Toca un más en el estanque y elige un bosque o suelo neutro. El primer trozo de tierra que compras trae el fuego y la retorta."
+TUT_FACTORY_PLATE_BODY,"Tap a plus on the pond and choose a forest, a mine or neutral ground. The first piece of land you buy brings fire and a retort; a mine brings the kiln.","Toque em um mais no lago e escolha uma floresta, uma mina ou chão neutro. O primeiro pedaço de terra que você compra traz o fogo e a retorta; uma mina traz o forno.","Toca un más en el estanque y elige un bosque, una mina o suelo neutro. El primer trozo de tierra que compras trae el fuego y la retorta; una mina trae el horno."
 ARC_NIGHTLIGHT_BLURB,"Feed a star with gas and watch worlds form round it. It burns its way up to iron, goes supernova, and starts again in a richer sky.","Alimente uma estrela com gás e veja mundos se formarem ao redor. Ela queima até o ferro, vira supernova e recomeça num céu mais rico.","Alimenta una estrella con gas y mira cómo se forman mundos a su alrededor. Quema hasta el hierro, se vuelve supernova y vuelve a empezar en un cielo más rico."
 NL_CARD_MASS,%s× the Sun,%s× o Sol,%s× el Sol
 NL_CARD_NEW,A new star,Uma estrela nova,Una estrella nueva

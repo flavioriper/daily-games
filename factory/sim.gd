@@ -36,7 +36,7 @@ extends RefCounted
 ##
 ## Money and land.
 ##   coins, earned: int
-##   plates: Dictionary       Vector2i -> "forest" | "neutral"
+##   plates: Dictionary       Vector2i -> "forest" | "mine" | "neutral"
 ##   free_edges() -> Array    lattice coords a plate may be bought on
 ##   plate_price() -> int     50, 150, then x3
 ##   buy_plate(P, kind) -> bool
@@ -51,12 +51,15 @@ extends RefCounted
 ## tap anywhere on it is one log into its stock, and the stock leaves by the
 ## gate in each side into whatever takes it beyond (a belt, the market, a
 ## hopper, a retort's back), the sides by turns.
-##   forests: Dictionary      plate -> {level (0: the hand alone), stock,
+## A mine (2026-10-12) is a forest's twin that gives stone: closed, tapped,
+## the same gates, stock and levels. Both are rows of `sources`.
+##   sources: Dictionary      plate -> {level (0: the hand alone), stock,
 ##                            t (0..1 toward the next log of its own), next
 ##                            (the side the next log tries first), paid}
-##   is_forest(tile) -> bool
+##   is_forest(tile), is_mine(tile), is_source(tile) -> bool
+##   gives(P) -> String                 "log", "stone", "" for open ground
 ##   gate(P, side) -> Vector2i          the forest tile a log leaves by
-##   forest_rate(P) -> float            logs a second it makes by itself
+##   source_rate(P) -> float            things a second it makes by itself
 ##
 ## Reading, all cheap (these are the sim's own tables: read, never write).
 ##   trees: Dictionary        id -> {id, tile, look 0..3}: what a forest
@@ -115,7 +118,7 @@ extends RefCounted
 ##   out {tile, id, kind}             its output left into `tile`
 ##   brought {kind, from}             onto the market's hatch, travelling `from`
 ##   sale {kind, amount, coins}
-##   level {target, level}            "market", "forest" (with `plate`) or a
+##   level {target, level}            "market", "source" (with `plate`) or a
 ##                                    module's id
 ##   plate {plate, kind}
 ##   refused {why, tile}
@@ -127,11 +130,13 @@ const GAME_S := 0.4
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 2
+const VERSION := 3
 
 const PLATE := 8
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
-const KINDS := ["forest", "neutral"]
+const KINDS := ["forest", "mine", "neutral"]
+## The closed kinds and what each gives (the ledger, sections 12 and 13).
+const GIVES := {"forest": "log", "mine": "stone"}
 ## The forest a new land has, behind the market's plate.
 const FOREST_AT := Vector2i(0, -1)
 ## The market's tile: one square, a hatch (2x2 until 2026-10-11).
@@ -154,9 +159,11 @@ const PLATE_STEP := 3
 ## what each level costs.
 const TREES := 14
 const LOOKS := 4
-const FOREST_ROOM := 12
-const FOREST_RATE := [0.0, 1.0, 2.0, 3.0, 4.0]
-const FOREST_PRICE := [60, 180, 540, 1620]
+## A mine is seen by its rocks, as a forest by its trees: fewer and squat.
+const ROCKS := 9
+const SOURCE_ROOM := 12
+const SOURCE_RATE := [0.0, 1.0, 2.0, 3.0, 4.0]
+const SOURCE_PRICE := [60, 180, 540, 1620]
 ## The tile of a forest plate a log leaves by, toward each of DIRS: a little
 ## off the middle of the side, and the same place at every quarter turn.
 const GATES: Array[Vector2i] = [Vector2i(7, 4), Vector2i(3, 7), Vector2i(0, 3), Vector2i(4, 0)]
@@ -193,10 +200,6 @@ const RECIPE := {
 	"retort": {"takes": "log", "gives": "charcoal", "mj": 32.0},
 }
 const BUILD := {"firebox": 20.0, "kiln": 40.0, "retort": 40.0}
-## Built and kept, and not to be had: the quarry is gone and nothing gives
-## the kiln its stone (the user, 2026-10-11: "remove mine keep only forest
-## for now").
-const LOCKED := ["kiln"]
 
 ## A harness points this elsewhere before it makes a sim.
 static var path := "user://factory.cfg"
@@ -205,7 +208,7 @@ var land_seed := 0
 var coins := 0
 var earned := 0
 var plates := {}
-var forests := {}
+var sources := {}
 var trees := {}
 var belts := {}
 var items := {}
@@ -235,7 +238,7 @@ func new_land(with_seed: int) -> void:
 	coins = START_COINS
 	earned = 0
 	plates = {}
-	forests = {}
+	sources = {}
 	trees = {}
 	belts = {}
 	items = {}
@@ -266,6 +269,17 @@ func is_market(tile: Vector2i) -> bool:
 
 func is_forest(tile: Vector2i) -> bool:
 	return plates.get(plate_of(tile), "") == "forest"
+
+func is_mine(tile: Vector2i) -> bool:
+	return plates.get(plate_of(tile), "") == "mine"
+
+## A closed plate, forest or mine: tapped, never built on.
+func is_source(tile: Vector2i) -> bool:
+	return GIVES.has(plates.get(plate_of(tile), ""))
+
+## What the closed plate `p` gives: "log", "stone", or "" for open ground.
+func gives(p: Vector2i) -> String:
+	return String(GIVES.get(plates.get(p, ""), ""))
 
 ## Bare ground: open land with no market, module or belt on it. No tile of
 ## a forest is.
@@ -310,28 +324,31 @@ func buy_plate(p: Vector2i, kind: String) -> bool:
 	dirty = true
 	return true
 
-## Era 2 opens with the first plate bought: the plate is the key.
+## Era 2 opens with the first plate bought: the plate is the key. The kiln
+## waits for a mine, since nothing else gives it stone.
 func unlocked(kind: String) -> bool:
 	if kind == "belt":
 		return true
-	return BUILD.has(kind) and not LOCKED.has(kind) and plates.size() >= 3
+	if kind == "kiln" and not plates.values().has("mine"):
+		return false
+	return BUILD.has(kind) and plates.size() >= 3
 
 func price(kind: String) -> int:
 	return int(PRICE.get(kind, 0))
 
 func _add_plate(p: Vector2i, kind: String) -> void:
 	plates[p] = kind
-	if kind != "forest":
+	if not GIVES.has(kind):
 		return
-	forests[p] = {"level": 0, "stock": 0, "t": 0.0, "next": 0, "paid": 0}
-	# its trees stand inside its rim, where no gate is, on every other tile
-	# so that they fill it and none hides the one behind
+	sources[p] = {"level": 0, "stock": 0, "t": 0.0, "next": 0, "paid": 0}
+	# its trees (a mine's rocks) stand inside its rim, where no gate is, on
+	# every other tile so that they fill it and none hides the one behind
 	var can: Array[Vector2i] = []
 	for y in range(1, PLATE - 1):
 		for x in range(1, PLATE - 1):
 			if (x + y) % 2 == 0:
 				can.append(p * PLATE + Vector2i(x, y))
-	for i in TREES:
+	for i in (TREES if kind == "forest" else ROCKS):
 		var at: Vector2i = can.pop_at(_rng.randi_range(0, can.size() - 1))
 		trees[_next_id] = {"id": _next_id, "tile": at, "look": _rng.randi_range(0, LOOKS - 1)}
 		_next_id += 1
@@ -339,8 +356,8 @@ func _add_plate(p: Vector2i, kind: String) -> void:
 static func gate(p: Vector2i, side: int) -> Vector2i:
 	return p * PLATE + GATES[side]
 
-func forest_rate(p: Vector2i) -> float:
-	return float(FOREST_RATE[int(forests[p].level)]) if forests.has(p) else 0.0
+func source_rate(p: Vector2i) -> float:
+	return float(SOURCE_RATE[int(sources[p].level)]) if sources.has(p) else 0.0
 
 ## The tree of forest `p` nearest `near`, the lower id of two as near.
 func _tree_by(p: Vector2i, near: Vector2i) -> Dictionary:
@@ -359,8 +376,8 @@ func _tree_by(p: Vector2i, near: Vector2i) -> Dictionary:
 ## One log into forest `p`'s stock, off the tree nearest `near`. False when
 ## the stock is full.
 func _chop(p: Vector2i, near: Vector2i, auto: bool) -> bool:
-	var f: Dictionary = forests[p]
-	if int(f.stock) >= FOREST_ROOM:
+	var f: Dictionary = sources[p]
+	if int(f.stock) >= SOURCE_ROOM:
 		return false
 	f.stock = int(f.stock) + 1
 	var tr := _tree_by(p, near)
@@ -372,10 +389,11 @@ func _chop(p: Vector2i, near: Vector2i, auto: bool) -> bool:
 ## first, into whatever takes it there. Where nothing takes any, one lies on
 ## bare ground past a gate, so a new land's first taps are seen to give; once
 ## a belt, the market or a machine stands past any gate, nothing lies.
-func _run_forests() -> void:
-	for p: Vector2i in forests:
-		var f: Dictionary = forests[p]
-		var rate := forest_rate(p)
+func _run_sources() -> void:
+	for p: Vector2i in sources:
+		var f: Dictionary = sources[p]
+		var kind := gives(p)
+		var rate := source_rate(p)
 		if rate > 0.0:
 			f.t = float(f.t) + TICK * rate
 			while float(f.t) >= 1.0 - EPS:
@@ -396,14 +414,14 @@ func _run_forests() -> void:
 			var d := (first + q) % 4
 			var g := gate(p, d)
 			if it.is_empty():
-				it = _item("log", _mid(g))
+				it = _item(kind, _mid(g))
 			it.was = _mid(g)
 			if not _enter(g + DIRS[d], it, d, 0.0):
 				continue
 			f.stock = int(f.stock) - 1
 			f.next = (d + 1) % 4
 			gave = true
-			events.append({"type": "log", "tile": g + DIRS[d], "from": g, "kind": "log"})
+			events.append({"type": "log", "tile": g + DIRS[d], "from": g, "kind": kind})
 			it = {}
 		if gave or int(f.stock) <= 0:
 			continue
@@ -423,20 +441,20 @@ func _run_forests() -> void:
 			if not tile_free(to) or _count(to) >= ROOM:
 				continue
 			if it.is_empty():
-				it = _item("log", _mid(g))
+				it = _item(kind, _mid(g))
 			it.was = _mid(g)
 			var arr: Array = items.get(to, [])
 			arr.append(it)
 			items[to] = arr
 			f.stock = int(f.stock) - 1
 			f.next = (d + 1) % 4
-			events.append({"type": "log", "tile": to, "from": g, "kind": "log"})
+			events.append({"type": "log", "tile": to, "from": g, "kind": kind})
 			break
 
 # --- the hand ---
 
 func tap(tile: Vector2i) -> bool:
-	if is_forest(tile):
+	if is_source(tile):
 		if not _chop(plate_of(tile), tile, false):
 			# the tree that would have given it shakes its head
 			return _no("full", _tree_by(plate_of(tile), tile).get("tile", tile))
@@ -471,8 +489,8 @@ func can_lay(tile: Vector2i) -> bool:
 func _lay_why(tile: Vector2i) -> String:
 	if not on_land(tile):
 		return "pond"
-	if is_forest(tile):
-		return "forest"
+	if is_source(tile):
+		return String(plates[plate_of(tile)])
 	if is_market(tile):
 		return "market"
 	if _mod_at.has(tile):
@@ -855,9 +873,9 @@ func sell(tile: Vector2i) -> bool:
 ## The price of the next level of `target` ("market", a module's tile, or
 ## any tile of a forest); -1 where there is none to buy.
 func upgrade_price(target: Variant) -> int:
-	if target is Vector2i and is_forest(target):
-		var lv: int = forests[plate_of(target)].level
-		return FOREST_PRICE[lv] if lv < FOREST_PRICE.size() else -1
+	if target is Vector2i and is_source(target):
+		var lv: int = sources[plate_of(target)].level
+		return SOURCE_PRICE[lv] if lv < SOURCE_PRICE.size() else -1
 	if target is Vector2i and is_market(target):
 		target = "market"
 	if target is String:
@@ -884,11 +902,11 @@ func upgrade(target: Variant) -> bool:
 	if coins < cost:
 		return _no("coins", at)
 	coins -= cost
-	if is_forest(at):
-		var f: Dictionary = forests[plate_of(at)]
+	if is_source(at):
+		var f: Dictionary = sources[plate_of(at)]
 		f.level = int(f.level) + 1
 		f.paid = int(f.paid) + cost
-		events.append({"type": "level", "target": "forest", "level": f.level, "plate": plate_of(at), "tile": at})
+		events.append({"type": "level", "target": "source", "level": f.level, "plate": plate_of(at), "tile": at})
 	elif target is String or is_market(at):
 		market.level = int(market.level) + 1
 		market.t = minf(market.t, market_interval())
@@ -1063,7 +1081,7 @@ func _tick() -> void:
 	for tile: Vector2i in items:
 		for it: Dictionary in items[tile]:
 			it.was = _pos(tile, it)
-	_run_forests()
+	_run_sources()
 	_move_belts()
 	_heat()
 	_run_modules()
@@ -1101,7 +1119,7 @@ func pack() -> Dictionary:
 	return {
 		"version": VERSION, "seed": land_seed, "rng": _rng.state, "coins": coins, "earned": earned,
 		"acc": _acc, "next_id": _next_id, "picked": picked,
-		"plates": plates.duplicate(true), "forests": forests.duplicate(true), "trees": trees.duplicate(true),
+		"plates": plates.duplicate(true), "sources": sources.duplicate(true), "trees": trees.duplicate(true),
 		"belts": belts.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
 		"market": market.duplicate(true), "turn": _turn.duplicate(true),
 	}
@@ -1144,11 +1162,11 @@ func load_saved() -> bool:
 const _SHAPES := {
 	"version": TYPE_INT, "seed": TYPE_INT, "rng": TYPE_INT, "coins": TYPE_INT, "earned": TYPE_INT,
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING,
-	"plates": TYPE_DICTIONARY, "forests": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
+	"plates": TYPE_DICTIONARY, "sources": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
 	"items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
 }
 const _TREE_KEYS := ["id", "tile", "look"]
-const _FOREST_KEYS := ["level", "stock", "t", "next", "paid"]
+const _SOURCE_KEYS := ["level", "stock", "t", "next", "paid"]
 const _MODULE_KEYS := ["id", "kind", "root", "facing", "level", "tiles", "built", "build", "paid"]
 const _FIRE_KEYS := ["lit", "fuel", "fuel_max", "fuel_kind", "hopper", "draw", "cap"]
 const _SINK_KEYS := ["inp", "out", "work", "share"]
@@ -1164,10 +1182,10 @@ static func _sound(d: Dictionary) -> bool:
 	for p: Variant in d.plates:
 		if not (p is Vector2i) or not KINDS.has(d.plates[p]):
 			return false
-		if d.plates[p] == "forest":
-			var f: Variant = d.forests.get(p)
-			if not (f is Dictionary) or not f.has_all(_FOREST_KEYS) or not (f.level is int) or f.level < 0 \
-					or f.level > FOREST_PRICE.size() or not (f.stock is int) or not (f.next is int) or f.next < 0 or f.next > 3:
+		if GIVES.has(d.plates[p]):
+			var f: Variant = d.sources.get(p)
+			if not (f is Dictionary) or not f.has_all(_SOURCE_KEYS) or not (f.level is int) or f.level < 0 \
+					or f.level > SOURCE_PRICE.size() or not (f.stock is int) or not (f.next is int) or f.next < 0 or f.next > 3:
 				return false
 	for id: Variant in d.trees:
 		var tr: Variant = d.trees[id]
@@ -1216,7 +1234,7 @@ func _unpack(d: Dictionary) -> void:
 	_next_id = d.next_id
 	picked = d.picked
 	plates = (d.plates as Dictionary).duplicate(true)
-	forests = (d.forests as Dictionary).duplicate(true)
+	sources = (d.sources as Dictionary).duplicate(true)
 	trees = (d.trees as Dictionary).duplicate(true)
 	belts = (d.belts as Dictionary).duplicate(true)
 	items = (d.items as Dictionary).duplicate(true)
