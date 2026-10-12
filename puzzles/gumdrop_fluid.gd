@@ -21,9 +21,12 @@ extends Node
 ## more squeezed in), copy (the dye's keep), judge (each texel's nearness
 ## to the card, read back at serve). The mask is the jelly's chunks drawn
 ## once a deal, the chunk's number plus one in red, the tray black: the
-## tray is a solid for the velocity, and a chunk's number is the dye's
-## fence (since 2026-10-11 the chunks touch, with no wall between: the
-## flow may cross a seam, the dye never does).
+## tray is a solid for the velocity, and a chunk's number is a fence for
+## the dye and, since 2026-10-12, for the flow as well (`shut_at` in the
+## include): the chunks touch with no wall between, and each is a tank of
+## its own. While the flow crossed a seam the dye it carried there was
+## lost and what came back in was clear, so a pour stopped short of the
+## far end of its chunk until the button was let go.
 ##
 ## The render targets are eight bits a channel (no HDR 2D on
 ## gl_compatibility), so signed values are packed across two bytes; see

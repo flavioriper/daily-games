@@ -27,6 +27,7 @@ var _out := "/tmp"
 var _band := 0
 var _lose := false
 var _tutor := false
+var _pour := false
 var _page := 0
 var _turns := 0
 var _gold := 0
@@ -46,6 +47,8 @@ func _initialize() -> void:
 			_lose = true
 		elif a == "tutor":
 			_tutor = true
+		elif a == "pour":
+			_pour = true
 		elif a in ["0", "1", "2", "3"]:
 			_band = int(a)
 		elif a in ["en", "pt", "es"]:
@@ -141,6 +144,35 @@ func _bot() -> void:
 		print("bot serves at %.1f: fill %s near %s all %.2f" % [_t, str(m.fill), str(m.near), m.all])
 		sim.serve()
 
+const POUR_HELD := [0.5, 1.5, 2.5, 4.0]
+const POUR_FREE := [0.1, 0.5, 2.0]
+var _marks := 0
+
+## The chunk under the tip, read off the dye: what share of it holds any
+## tint, and its mean and deepest amount (over the texture's top).
+func _spread(name: String) -> void:
+	_shot("pour_" + name)
+	var fluid: Node = _t_._fluid
+	var ids: PackedByteArray = fluid._mask_bytes()
+	var dye: PackedByteArray = fluid.texture().get_image().get_data()
+	var side: int = fluid.DYE
+	var step: int = dye.size() / (side * side)
+	var cell: int = _t_.sim.tip_cell()
+	var all := 0
+	var wet := 0
+	var sum := 0.0
+	var top := 0.0
+	for i in side * side:
+		if ids[i * 4] - 1 != cell:
+			continue
+		var c: float = (dye[i * step] + dye[i * step + 1] + dye[i * step + 2]) / 255.0
+		all += 1
+		sum += c
+		top = maxf(top, c)
+		if c > 0.03:
+			wet += 1
+	print("pour %s: cell %d of %d texels, tinted %.2f, mean %.3f, top %.3f" % [name, cell, all, wet / maxf(1.0, all), sum / maxf(1.0, all), top])
+
 ## A point of the field as the window has it.
 func _win(p: Vector2) -> Vector2:
 	return root.get_final_transform() * (_t_.field.get_global_transform_with_canvas() * p)
@@ -193,7 +225,7 @@ func _process(delta: float) -> bool:
 				# the squeeze button held
 				_touch(true, _t_._squeeze_at)
 				_at = _t
-				_step = 3
+				_step = 40 if _pour else 3
 		3:
 			if _t > _at + 1.6:
 				print("touch squeezes: ", _t_.sim.squeezing, " phase play: ", _t_.sim.phase == Sim.Phase.PLAY)
@@ -291,6 +323,24 @@ func _process(delta: float) -> bool:
 				var wet: bool = _t_.sim.wet()
 				_host._on_reset()
 				print("reset: was wet %s, now wet %s" % [str(wet), str(_t_.sim.wet())])
+				return true
+		40:
+			# `pour`: the button held four seconds and let go, the tip's chunk
+			# read at each still, so a pour that only spreads at the release
+			# shows as a jump between `held_4.0` and `free_0.5`
+			if _marks < POUR_HELD.size() and _t > _at + POUR_HELD[_marks]:
+				_spread("held_%.1f" % POUR_HELD[_marks])
+				_marks += 1
+			elif _marks == POUR_HELD.size():
+				_touch(false, _t_._squeeze_at)
+				_at = _t
+				_marks = 0
+				_step = 41
+		41:
+			if _marks < POUR_FREE.size() and _t > _at + POUR_FREE[_marks]:
+				_spread("free_%.1f" % POUR_FREE[_marks])
+				_marks += 1
+			elif _marks == POUR_FREE.size():
 				return true
 		30:
 			# the ? card, a shot of every page a while into its lesson

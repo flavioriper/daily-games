@@ -235,6 +235,32 @@
   mix poured onto a full cell climbs to `POUR_TOP` before it displaces, so
   it runs deeper than the card; and how wide of the share the judge
   forgives.
+- **Each chunk is a tank of its own** (the user, 2026-10-12: "when player
+  is pooring the tint, it keep doing the right waveling movement, but it's
+  limited instead of filling all space, it only happen when user release,
+  when doing it, it auto fill everything, it's not natural"). Since the
+  chunks touched with no wall the flow ran across the seams and the dye
+  did not: what the jet carried to a seam was lost there, and the flow
+  coming back in on the other side kept that end clear for good. The far
+  settle, off under a held tip, then levelled the chunk at the release:
+  that was the flood. `shut_at` (`fluid.gdshaderinc`) makes another chunk
+  a wall to divergence, pressure and gradient, as the tray is; advect,
+  curl and vorticity are as they were, and so is the dye and its far
+  settle. Read off the dye by `tests/_shot_gumdrop.gd -- <out> 1 pour`
+  (the button held 4 s on Medium's first mould, then let go;
+  `opengl3_angle`), share of the chunk tinted and its mean amount:
+  before, 0.71 at 0.5 s and 0.72 at 4 s, then 1.00 half a second after
+  the release with the mean fallen from 0.40 to 0.20 in two; after, 0.77
+  at 0.5 s, 0.98 at 1.5 s, 1.00 by 2.5 s, and the mean 0.748 held and
+  0.752 two seconds let go. Tried first and dropped: the far settle on in
+  every chunk always (no flood, but the chunk one flat shade in half a
+  second, no swirl), and the same at `FAR` 0.1 (the dye still left by the
+  seam: 0.45 to 0.07 in two seconds). Hard by the bot: 96, 89, 74, 96 in
+  5 serves (88, 74, 98, 74 in 8 before), 103 to 112 draw calls. **The
+  user's to call**: the pour is now stronger, since nothing leaks (this
+  chunk passes the card's shade, 0.5, inside a second, and a 4 s hold
+  that left 0.20 leaves 0.75); `RATE` is the knob. Not played by hand, no
+  phone.
 - Owed: a phone (the fluid's 22 small passes a frame are untimed there,
   and the judge's readback at serve), the user's verdict on the pour, the
   sounds heard, pt and es read (neither was shot), the win and the play

@@ -34,12 +34,30 @@ float up(vec2 t, float m) {
 }
 
 // Whether a texel of the sim grid is a wall or off the grid: the mask is
-// the cell's number plus one in red, zero over a wall or the tray.
+// the cell's number plus one in red, zero over a wall or the tray. The
+// passes that keep the flow in (divergence, pressure, gradient) ask
+// `shut_at` instead, which stops it at a seam too.
 bool wall_at(sampler2D mask, ivec2 p, ivec2 n) {
 	if (p.x < 0 || p.y < 0 || p.x >= n.x || p.y >= n.y) {
 		return true;
 	}
 	return texture(mask, (vec2(p) + 0.5) / vec2(n)).r < 0.001;
+}
+
+// The chunk a texel of the sim grid lies in, -1 a wall or off the grid.
+int cell_id(sampler2D mask, ivec2 p, ivec2 n) {
+	if (p.x < 0 || p.y < 0 || p.x >= n.x || p.y >= n.y) {
+		return -1;
+	}
+	return int(round(texture(mask, (vec2(p) + 0.5) / vec2(n)).r * 255.0)) - 1;
+}
+
+// Whether a texel is shut to the flow of chunk `cell`: a wall, or another
+// chunk. Each chunk is a tank of its own: a flow let across a seam left
+// its dye behind at the seam and came back in clear on the other side, so
+// a pour never reached the far end of its chunk (2026-10-12).
+bool shut_at(sampler2D mask, ivec2 p, ivec2 n, int cell) {
+	return cell_id(mask, p, n) != cell;
 }
 
 int cell_of(sampler2D mask, vec2 uv) {
