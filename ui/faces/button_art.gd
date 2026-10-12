@@ -27,11 +27,15 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 ## Sizes as a share of the cell.
 const PATCH := 0.94
 const PATCH_RADIUS := 0.14
-const RIM := 0.4
-const FACE_R := 0.36
-const DISH := 0.24
-const HOLE := 0.045
-const HOLE_AT := 0.085
+## The button is two thirds of its square across (0.8 until 2026-10-12; the
+## user: "the buttons are too big, let's make it bit smaller so user can see
+## better the color below it"). RIM stays over `_seat`'s 0.3: the ring is
+## what says bare, and a button must hide it.
+const RIM := 0.335
+const FACE_R := 0.3
+const DISH := 0.2
+const HOLE := 0.038
+const HOLE_AT := 0.071
 const RISE := 0.03
 const LINEN := Color("e9dcc3")
 const LINEN_WARP := Color("dfd0b3")
@@ -191,9 +195,9 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 	var out := {"loose": [], "sewn": []}
 	var b := Face.Builder.new()
 	if look != FULL:
-		_raw(b, _gon(Vector2(0.0, cell * 0.13), cell * 0.43, 12), Color(Pal.TEXT, 0.2))
+		_raw(b, _gon(Vector2(0.0, cell * 0.11), cell * 0.36, 12), Color(Pal.TEXT, 0.2))
 	else:
-		Scenery.soft_disc(b, Vector2(0.0, cell * 0.12), cell * 0.44, cell * 0.14, Color(Pal.TEXT, 0.22))
+		Scenery.soft_disc(b, Vector2(0.0, cell * 0.1), cell * 0.37, cell * 0.12, Color(Pal.TEXT, 0.22))
 	out.shade = b.mesh()
 	b = Face.Builder.new()
 	b.disc(Vector2.ZERO, cell * 0.5, Pal.SUN)

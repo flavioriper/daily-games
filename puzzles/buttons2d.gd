@@ -55,6 +55,11 @@ const TIN_ROW := 10
 const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
+## A button in the tin, as a share of a place: the size it had there before
+## the cloth's buttons were made smaller (0.86 of the old 0.8 across).
+const TIN_FIT := 1.0
+## The tin's ring, which is cut with the tin's buttons, kept at its own size.
+const TIN_RING := 0.69
 ## The zoom button's close: a square about this big on the screen (and
 ## CELL_MAX at the closest a pinch goes).
 const NEAR_PX := 60.0
@@ -490,7 +495,7 @@ func _layout() -> void:
 	_blocks.resize(_bw * _bh)
 	_block_hop = _filled(_bw * _bh, -INF)
 	_stale_all()
-	_tin_units = Art.units(_tin_step * 0.86, named)
+	_tin_units = Art.units(_tin_step * TIN_FIT, named)
 	var b := Face.Builder.new()
 	Art.linen(b, size)
 	_bg = b.mesh()
@@ -848,7 +853,7 @@ func _draw_over() -> void:
 			for p in _tin_places:
 				if free > 0 and p < state.capacity() and state.tin[p] < 0:
 					free -= 1
-					top.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * 0.8, 0.0, tin_centre(p)))
+					top.append(_tin_units.ring, Transform2D(0.0, Vector2(pulse, pulse) * TIN_RING, 0.0, tin_centre(p)))
 		if not _held_places.is_empty():
 			busy = true
 			for p in _held_places:
@@ -858,7 +863,7 @@ func _draw_over() -> void:
 		busy = true
 		var k := Motion.bump_scale(now - _open_at, 0.3, Motion.BUMP_TIME * 2.0)
 		for p in _open_places:
-			top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * 0.8, 0.0, tin_centre(p)))
+			top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * TIN_RING, 0.0, tin_centre(p)))
 	var pic := _pic_xf(now)
 	var zk := pic.get_scale().x
 	var keep: Array = []
@@ -1098,12 +1103,29 @@ func _drop() -> void:
 	if not holding():
 		return
 	_unhold()
+	_tap_at = -INF
 	fx.cue("lift", 0.84 * randf_range(TICK_VARY.x, TICK_VARY.y))
 	_request()
 
 # --- input ---
 
 const TIN_HIT := -3
+## The aim (the user, 2026-10-12: "add some helper to place the piece even
+## if user don't hit exactly above the cell"). With a pick in hand, a tap
+## that lands on nothing it could use -- linen, a sewn button, a patch of
+## another colour, the border -- goes to the nearest bare patch of the
+## pick's colour within AIM_REACH of a square, and never under AIM_FINGER
+## px of the screen (a square of a big picture seen whole is 30). A tap on
+## a button that could be picked is still a pick, but for the AIM_EDGE of a
+## square nearest the patch: its edge is the patch's, its middle its own.
+const AIM_REACH := 1.5
+const AIM_FINGER := 44.0
+const AIM_EDGE := 0.7
+## Two taps on one run within this are the shortcut to the tin (the user,
+## 2026-10-12: "add some shortcut to send the piece to the case").
+const TWICE := 0.35
+var _tap_at := -INF
+var _tap_run := PackedInt32Array()
 
 ## Touch and mouse, as every flat board takes them (touch is not mouse here:
 ## emulate_mouse_from_touch is off). A tap is a press and a release on one
@@ -1126,20 +1148,51 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
-		var over := _cell_under(event.position)
+		var over := aim(event.position)
 		var over_tin := _tin_at(event.position)
 		if event.pressed:
 			_pressed = over
 			_pressed_tin = over_tin
 		else:
 			if over >= 0 and over == _pressed:
-				tap(over)
+				tap(over, _now() - _tap_at <= TWICE and _tap_run.has(over))
 			elif over < 0 and over_tin != -2 and _pressed_tin != -2:
 				tap_tin(over_tin)
 			elif over < 0 and _pressed < 0 and holding():
 				_drop()
 			_pressed = -1
 			_pressed_tin = -2
+
+## The square a finger at `at` means: the one under it, or with a pick in
+## hand the bare patch of its colour the finger all but hit (AIM_REACH). -1
+## for none. The tin and what a zoom hides are never aimed past.
+func aim(at: Vector2) -> int:
+	var over := _cell_under(at)
+	if not holding() or _cell <= 0.0 or _tin_at(at) != -2:
+		return over
+	if zoom.zoomed() and not _view.has_point(at):
+		return over
+	var reach := maxf(AIM_REACH * _cell, AIM_FINGER / zoom.k)
+	if over >= 0:
+		if state.slot[over] == _held_c and state.cur[over] < 0:
+			return over
+		if state.judge(over) == State.OK:
+			reach = AIM_EDGE * _cell
+	var lp := zoom.to_layout(at)
+	var p := ((lp - _grid) / _cell).floor()
+	var span := ceili(reach / _cell)
+	var best := -1
+	var best_d := reach
+	for dy in range(-span, span + 1):
+		for dx in range(-span, span + 1):
+			var j: int = state.at_xy(Vector2i(int(p.x) + dx, int(p.y) + dy))
+			if j < 0 or state.slot[j] != _held_c or state.cur[j] >= 0:
+				continue
+			var d := cell_centre(j).distance_to(lp)
+			if d <= best_d:
+				best_d = d
+				best = j
+	return best if best >= 0 else over
 
 ## A pan or a pinch has no button's click under it, so it ticks as it
 ## begins (the tutorial's page is silent).
@@ -1162,10 +1215,12 @@ func _can_play() -> bool:
 
 ## A tap on square `i`: picks the run of the button there, puts a pick back
 ## down, or -- on a bare patch -- sews the pick onto it. The harnesses and
-## the tutorial call this too.
-func tap(i: int) -> void:
+## the tutorial call this too. `twice` is the second of two quick taps on
+## one run: the run goes to the tin, as a tap on the tin would send it.
+func tap(i: int, twice := false) -> void:
 	if not _can_play() or i < 0 or _now() < _arrive[i]:
 		return
+	_tap_at = -INF
 	if state.cur[i] < 0:
 		if not holding():
 			_refuse(i, "BB_REFUSE_PICK")
@@ -1199,10 +1254,21 @@ func tap(i: int) -> void:
 		State.REFUSED_HOME:
 			_refuse(i, "BB_REFUSE_HOME")
 		State.OK:
-			if _held_cells.has(i):
+			if twice:
+				# the first tap picked the run, or put it down: either way the
+				# second sends it, by the tin's own path (a full tin refuses
+				# and the run stays picked)
+				if not _held_cells.has(i):
+					_pick(state.run_of(i), PackedInt32Array(), state.cur[i], cell_centre(i))
+				tap_tin()
+			elif _held_cells.has(i):
+				_tap_run = _held_cells
 				_drop()
+				_tap_at = _now()
 			else:
 				_pick(state.run_of(i), PackedInt32Array(), state.cur[i], cell_centre(i))
+				_tap_run = _held_cells
+				_tap_at = _now()
 
 ## A tap on the tin (`place` -1: its wood): a run picked off the cloth goes
 ## in; with nothing picked, a button there picks every one of its colour in
@@ -1210,6 +1276,7 @@ func tap(i: int) -> void:
 func tap_tin(place := -1) -> void:
 	if not _can_play():
 		return
+	_tap_at = -INF
 	# A tap on a button in the tin is always a pick, whatever is held: the
 	# tin's own are the way on when it is full, and a run still picked off
 	# the cloth once kept them out of reach ("something is causing the game
@@ -1260,7 +1327,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var order := 0
 	var sewn := 0
 	var last := now
-	var tin_k := _tin_step * 0.86 / _cell
+	var tin_k := _tin_step * TIN_FIT / _cell
 	for m: Array in moves_:
 		var kind := int(m[0])
 		var at := now + (0.0 if Motion.reduce else order * step)

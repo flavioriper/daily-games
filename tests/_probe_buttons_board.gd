@@ -60,6 +60,7 @@ func _process(_delta: float) -> bool:
 				board.free()
 		print("band %d: the longest day took %d taps" % [band, worst])
 	_zoom()
+	_aim()
 	Motion.reduce = false
 	print("probe_buttons_board: %d days, %d failures" % [runs, _bad])
 	quit(1 if _bad > 0 else 0)
@@ -265,3 +266,110 @@ func _zoom() -> void:
 		_check(is_equal_approx(z.k, 1.0), "Reset left the picture close")
 		board.free()
 	print("probe_buttons_board: the zoom, %d failures" % (_bad - was))
+
+func _press(board: Control, at: Vector2) -> void:
+	_touch(board, 0, at, true)
+	_touch(board, 0, at, false)
+
+var _aim_checks := 0
+
+func _aimed(ok: bool, what: String) -> void:
+	_aim_checks += 1
+	if not ok:
+		_bad += 1
+		print("FAIL aim: ", what)
+
+## The aim and the shortcut (2026-10-12), through `_gui_input` on a Medium
+## day and an Insane one seen whole: with a pick in hand a touch beside a
+## bare patch of its colour sews there, a touch far from any puts the pick
+## down as before, a button's middle is still a pick, and two quick touches
+## on a button send its run to the tin.
+func _aim() -> void:
+	var was := _bad
+	for band in [1, 3]:
+		var board: Control = Board.new()
+		board.size = Vector2(1080, 1920)
+		root.add_child(board)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash([band, 5, 7])
+		board.start(rng, band)
+		board.max_moves = 0
+		var st = board.state
+		var cell: float = board._cell
+		# two quick touches: the run is in the tin
+		var i := _loose_in_sight(board)
+		var c: int = st.cur[i]
+		var n: int = st.run_of(i).size()
+		_press(board, board.cell_screen(i))
+		_aimed(board.holding() and st.in_tin() == 0, "band %d: the first touch did more than pick" % band)
+		_press(board, board.cell_screen(i))
+		_aimed(st.in_tin() == mini(n, st.capacity()), "band %d: two touches put %d of %d in the tin" % [band, st.in_tin(), n])
+		if board.holding():
+			board._drop()
+		board._tap_at = -INF
+		# a slow second touch puts the pick down, as it did
+		var k := _loose_in_sight(board)
+		_press(board, board.cell_screen(k))
+		board._tap_at -= 1.0
+		_press(board, board.cell_screen(k))
+		_aimed(not board.holding() and st.in_tin() == mini(n, st.capacity()), "band %d: a slow second touch did not put the pick down" % band)
+		# a patch the stow left bare, and a button of its colour picked off
+		# the cloth (there always is one): a touch beside the patch sews
+		var b := -1
+		for q in st.slot.size():
+			if st.slot[q] >= 0 and st.cur[q] < 0:
+				b = q
+				break
+		_aimed(b >= 0, "band %d: nothing bare after a stow" % band)
+		c = st.slot[b]
+		var at: Vector2 = board.cell_screen(b)
+		var src := -1
+		for q in st.slot.size():
+			if st.cur[q] == c and st.slot[q] != c:
+				src = q
+				break
+		_press(board, board.cell_screen(src))
+		_aimed(board.holding() and board._held_c == c, "band %d: the patch's colour was not picked" % band)
+		# every way off the patch: a touch 0.8 of a square from its middle is
+		# on a neighbour (a button, a sewn one, linen or the border)
+		var homes: int = st.homes()
+		for dir in [Vector2(0.8, 0.0), Vector2(-0.8, 0.0), Vector2(0.0, 0.8), Vector2(0.0, -0.8), Vector2(0.75, 0.75)]:
+			var near: Vector2 = at + dir * cell
+			var under: int = board._cell_under(near)
+			var got: int = board.aim(near)
+			var pickable: bool = under >= 0 and st.judge(under) == st.OK
+			if under == b:
+				continue
+			if pickable and dir.length() * cell > board.AIM_EDGE * cell:
+				_aimed(got == under, "band %d: the aim took a button's own tap (%s)" % [band, dir])
+			elif not (under >= 0 and st.slot[under] == c and st.cur[under] < 0):
+				_aimed(got >= 0 and st.slot[got] == c and st.cur[got] < 0, "band %d: a touch beside the patch aimed at %d (%s)" % [band, got, dir])
+		# a button's edge by the patch is the patch's, its middle its own
+		for d: Vector2i in st.NEAR:
+			var j: int = st.at_xy(st.xy(b) + d)
+			if j >= 0 and st.judge(j) == st.OK:
+				_aimed(board.aim(at + Vector2(d) * cell * 0.62) == b, "band %d: a button's edge by the patch is not the patch's" % band)
+				_aimed(board.aim(board.cell_screen(j)) == j, "band %d: a button's middle is not its own" % band)
+				break
+		# and the touch itself sews: beside the patch, never on it
+		var side := Vector2(0.62, 0.0) if st.at_xy(st.xy(b) + Vector2i(1, 0)) != b else Vector2(-0.62, 0.0)
+		if board.aim(at + side * cell) >= 0 and st.slot[board.aim(at + side * cell)] == c and st.cur[board.aim(at + side * cell)] < 0:
+			_press(board, at + side * cell)
+			_aimed(st.homes() > homes, "band %d: a touch beside the patch sewed nothing" % band)
+		else:
+			_aimed(false, "band %d: the touch beside the patch was never made" % band)
+		# far from every bare patch of the colour: the pick goes down
+		if not board.holding():
+			_press(board, board.cell_screen(_loose_in_sight(board)))
+		if board.holding():
+			var far := Vector2(board.size.x * 0.5, board._view.position.y + 4.0)
+			if board.aim(far) < 0:
+				_press(board, far)
+				_aimed(not board.holding(), "band %d: a touch on bare linen far off kept the pick" % band)
+		# nothing in hand: a touch aims at nothing but what is under it
+		if board.holding():
+			board._drop()
+		_aimed(board.aim(at + Vector2(0.8, 0.0) * cell) == board._cell_under(at + Vector2(0.8, 0.0) * cell), "band %d: an empty hand aimed" % band)
+		board.free()
+	print("probe_buttons_board: the aim, %d checks, %d failures" % [_aim_checks, _bad - was])
+

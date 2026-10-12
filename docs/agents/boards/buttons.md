@@ -448,3 +448,57 @@ move together but each one in it own sequence, not all at once".
 - **Mine, not the user's**: a third and not half or all; the twelve
   subjects; Pixel Garden getting them too; the square dashed frame round
   the room still drawn on a cut-out.
+
+## The aim, the shortcut and smaller buttons (2026-10-12)
+
+The user: "improve and polish the jogability, add some helper to place the
+piece even if user don't hit exactly above the cell, and add some shortcut
+to send the piece to the case. Also, the buttons are too big, let's make it
+bit smaller so user can see better the color below it".
+
+- **The aim** (`aim(at)`, which `_gui_input` asks in place of
+  `_cell_under`; press and release must aim at one square). Only with a
+  pick in hand, and only for placing: a touch that lands on nothing the
+  pick could use -- linen, the border, a sewn button, a bare patch of
+  another colour -- goes to the nearest bare patch of the pick's colour
+  within `AIM_REACH` 1.5 squares of the finger, and never under
+  `AIM_FINGER` 44 px of the screen (46 px on Insane whole, where a square
+  is 30). **A button that can be picked keeps its tap** but for the edge by
+  the patch: a touch on it sews only within `AIM_EDGE` 0.7 of a square of
+  the patch's middle (a fifth of the way in), so its middle is still a pick,
+  or the pick put down. Nothing in reach is what it was: the pick goes
+  down. The tin, and what a zoom hides, are never aimed past. `tap(i)`
+  itself is not changed: harnesses, probes and the tutorial tap squares.
+  On Hard and Insane it can sew a patch the finger only neared; the patch
+  is on the screen in its colour, so nothing is told that was hidden.
+- **Two quick taps on a button send its run to the tin** (`TWICE` 0.35 s,
+  `tap(i, true)`): the first picks it, or puts it down, as ever; the second
+  on any button of that run goes through `tap_tin()`, so the count, Undo,
+  the flights, the sounds and the haptics are the tin's own, and a full tin
+  refuses and leaves the run picked. A slow second tap still puts the pick
+  down. The timer is cleared by any other tap, a drop or the tin. The
+  board's own timing, not the engine's `double_tap` flag: `_gui_input`
+  takes touches and mouse alike. `BB_RULES_TIN` and `HTP_BB_TIN_BODY` say
+  so in en, pt and es; the tutorial does not play it.
+- **A button is two thirds of its square across** (`Art.RIM` 0.335, was
+  0.4; the face, dish, holes and shadow with it), so the patch shows all
+  round it. `RIM` stays over the seat ring's 0.3: the ring says bare and a
+  button must hide it. The tin's buttons keep their size (`TIN_FIT` 1.0 of
+  a place, `TIN_RING`). The menu card and the tutorial draw the same piece.
+- **Checked**: `tests/_probe_buttons_board.gd` has an aim section through
+  `_gui_input` (Medium and Insane: two touches stow, a slow second drops, a
+  touch beside a bare patch from every side aims at it and sews, a
+  button's middle is its own and its edge the patch's, a far touch drops,
+  an empty hand aims at nothing): 29 checks, the zoom and 28 days, 0
+  failures. Rules probe 648 runs, 0; the suite 249,804. One window
+  (`tests/_shot_buttons.gd -- d=3 big`, `opengl3_angle`, 810x1440): the
+  monkey on Insane whole and close, buttons read as buttons at 30 px with
+  the patch round each; 77 to 107 draw calls.
+- **Not seen or owed**: a finger on a phone (the reach, the edge and the
+  0.35 s are numbers off a desk); Easy and Medium on a screen at the new
+  size; the menu card; the new lines read in pt and es.
+- **Mine, not the user's**: two taps as the shortcut (not a long press or
+  a flick, which a zoomed picture's one-finger pan would fight), and that
+  **on Insane a slip of two taps is a counted move with no Undo**; the
+  three reach numbers; that the aim never helps a pick, only a place; two
+  thirds as "a bit smaller"; the tin's buttons left as they were.
