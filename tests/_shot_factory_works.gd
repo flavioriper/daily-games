@@ -112,6 +112,7 @@ func _run() -> void:
 	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	await _wait(0.6)
 	await _mine()
+	await _belts()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -181,3 +182,84 @@ func _mine() -> void:
 	await _shot("mine_kiln_lime")
 	await _look(Vector2(10.0, 0.0), true)
 	await _shot("mine_far")
+
+## The goal chip and its card, the drawer in two columns, a splitter with
+## three ways out and fast belts on one of them, laid by the hand.
+func _belts() -> void:
+	_sim.coins = 5000
+	await _look(Vector2(4.0, 2.0))
+	_check("the goal chip shows the first goal", _screen._goal_b.visible and _sim.next_goal().id == "splitter")
+	await _shot("goal_chip")
+	_screen._goal_b.pressed.emit()
+	await _wait(0.5)
+	_check("and opens the goals' card", _screen.card_open() and _screen._card_for == "goals")
+	await _shot("goals_card")
+	_screen.close_card()
+	_sim.sold["log"] = 30
+	_sim.sold["charcoal"] = 10
+	await _frames(3)
+	_check("both goals reached, the chip is gone", not _screen._goal_b.visible and _sim.unlocked("fast") and _sim.unlocked("splitter"))
+	_screen.open_drawer()
+	await _wait(0.4)
+	_check("the drawer has taken a second column", _screen._drawer.columns == 2 and _screen._tiles["fast"].button.visible and _screen._tiles["splitter"].button.visible,
+		"columns %d" % _screen._drawer.columns)
+	await _shot("drawer_two_columns")
+	# the belts by the sim, the splitter and one fast belt by the hand
+	_lay(Vector2i(3, 0), 6, 1)
+	_lay(Vector2i(3, 6), 3, 0)
+	(_screen._tiles["splitter"].button as Button).pressed.emit()
+	await _frames(3)
+	_check("Splitter is picked and the drawer shut", _sim.picked == "splitter" and not _screen.drawer_open())
+	await _tap(_at(Vector2(3.5, 2.5)) + Art.BELT_LIFT * _screen._zoom)
+	_check("a tap on a belt with Splitter in hand makes it one, facing as it lay", _sim.belt_kind(Vector2i(3, 2)) == "splitter" and int(_sim.belts[Vector2i(3, 2)]) == 1,
+		_sim.belt_kind(Vector2i(3, 2)))
+	_screen.pick("")
+	_sim.lay_belt(Vector2i(4, 2), 0)
+	_sim.lay_belt(Vector2i(5, 2), 0)
+	_lay(Vector2i(6, 2), 4, 1)
+	_sim.lay_belt(Vector2i(2, 2), 2)
+	_lay(Vector2i(1, 2), 5, 1)
+	_lay(Vector2i(1, 7), 5, 0)
+	_sim.lay_belt(Vector2i(6, 7), 3)
+	_screen.pick("fast")
+	await _frames(2)
+	# a swipe of Fast over the belts that lie there
+	_touch(_at(Vector2(6.5, 2.5)) + Art.BELT_LIFT * _screen._zoom, true)
+	await _frames(2)
+	for k in range(1, 9):
+		var e := InputEventScreenDrag.new()
+		e.index = 0
+		e.position = (_at(Vector2(6.5, 2.5)) + Art.BELT_LIFT * _screen._zoom).lerp(_at(Vector2(6.5, 5.5)) + Art.BELT_LIFT * _screen._zoom, k / 8.0)
+		_screen._on_field_input(e)
+		await process_frame
+	await _frames(2)
+	_touch(_at(Vector2(6.5, 5.5)) + Art.BELT_LIFT * _screen._zoom, false)
+	await _frames(3)
+	var fast := true
+	for y in range(2, 6):
+		fast = fast and _sim.belt_kind(Vector2i(6, y)) == "fast" and int(_sim.belts[Vector2i(6, y)]) == 1
+	_check("a swipe of Fast over four plain belts makes them fast, facing as they lay", fast, str(_sim.kinds))
+	_screen.pick("")
+	for i in 3:
+		_sim.upgrade(F * Sim.PLATE)
+	for i in 3:
+		_sim.upgrade("market")
+	var before: int = _sim.earned
+	_run_on(60.0)
+	await _wait(0.5)
+	var ways := 0
+	for way: Array in [[Vector2i(3, 3), Vector2i(3, 4), Vector2i(3, 5)], [Vector2i(6, 2), Vector2i(6, 3), Vector2i(6, 4), Vector2i(6, 5)], [Vector2i(1, 3), Vector2i(1, 4), Vector2i(1, 5)]]:
+		for t: Vector2i in way:
+			if _sim.items.has(t):
+				ways += 1
+				break
+	_check("logs leave the splitter by all three ways and are sold", ways == 3 and _sim.earned > before + 20, "%d ways, %d sold" % [ways, _sim.earned - before])
+	await _shot("splitter_three_ways")
+	_screen.turn_view()
+	await _wait(0.5)
+	await _look(Vector2(4.0, 3.0))
+	await _shot("splitter_turned")
+	_screen.turn_view()
+	_screen.turn_view()
+	_screen.turn_view()
+	await _wait(0.4)

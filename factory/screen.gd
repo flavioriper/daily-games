@@ -60,8 +60,13 @@ const DRAWER_B := 128.0
 const DRAWER_UP := 250.0
 const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
-const DRAWER_TILES := ["belt", "firebox", "kiln", "retort", "market"]
-const NAMES := {"belt": "FACTORY_BELT", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
+const DRAWER_TILES := ["belt", "fast", "splitter", "firebox", "kiln", "retort", "market"]
+## The drawer stands this many tiles tall before it takes another column.
+const DRAWER_ROWS := 5
+## The goal chip under the view's buttons: the next thing to sell for.
+const GOAL_W := 330.0
+const GOAL_H := 78.0
+const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
 	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "mine": "FACTORY_MINE", "neutral": "FACTORY_NEUTRAL"}
 ## A forest's badge, the way to its card (a tap on the forest itself is a
 ## log): how far over the plate's middle it floats and how big it is, in
@@ -127,7 +132,9 @@ var _coins_l: Label
 var _zoom_b: Button
 var _turn_b: Button
 var _drawer_b: Button
-var _drawer: VBoxContainer
+var _drawer: GridContainer
+var _goal_b: Button
+var _goal_key := ""
 var _drawer_catch: Control
 var _tiles := {}        # drawer tile -> Tile
 var _hud_key := ""
@@ -296,6 +303,18 @@ func _build() -> void:
 		_round(b, int(ZOOM_B * 0.5))
 		view_row.add_child(b)
 
+	# the next goal, under them: what to sell and what it opens
+	_goal_b = Button.new()
+	_goal_b.name = "Goal"
+	_goal_b.focus_mode = Control.FOCUS_NONE
+	_goal_b.custom_minimum_size = Vector2(GOAL_W, GOAL_H)
+	_goal_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_round(_goal_b, int(GOAL_H * 0.5))
+	_goal_b.resized.connect(func() -> void: _goal_b.pivot_offset = _goal_b.size * 0.5)
+	_goal_b.draw.connect(_draw_goal)
+	_goal_b.pressed.connect(open_goals)
+	col.add_child(_goal_b)
+
 	_drawer_catch = Control.new()
 	_drawer_catch.name = "DrawerCatch"
 	_drawer_catch.visible = false
@@ -305,10 +324,11 @@ func _build() -> void:
 			close_drawer()
 			_fx.touch(0.84))
 	add_child(_drawer_catch)
-	_drawer = VBoxContainer.new()
+	_drawer = GridContainer.new()
 	_drawer.name = "Drawer"
 	_drawer.visible = false
-	_drawer.add_theme_constant_override("separation", 10)
+	_drawer.add_theme_constant_override("h_separation", 10)
+	_drawer.add_theme_constant_override("v_separation", 10)
 	_drawer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_drawer.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(_drawer)
@@ -572,6 +592,11 @@ func _play_events() -> void:
 				_fx.cue("chop", 0.7, -2.0)
 			"placed", "level":
 				_fx.cue("buy")
+			"goal":
+				# a goal reached: what it opens is in the drawer now
+				_fx.cue("buy", 1.12)
+				_hud_key = ""
+				Motion.bump(_drawer_b, 0.12, 0.3)
 			"built":
 				_quiet.cue("buy", 1.0, -8.0)
 			"sold_back":
@@ -633,14 +658,30 @@ func _refresh_hud(delta: float) -> void:
 	_coins_l.add_theme_color_override("font_color", Pal.BAD if _warn > 0.0 else Pal.TEXT)
 	if _card_coins != null and is_instance_valid(_card_coins):
 		_card_coins.text = text
-	var key := "%d|%d|%d|%s" % [sim.coins, sim.plates.size(), int(sim.market.level), sim.picked]
+	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), int(sim.market.level), sim.picked, sim.earned]
 	if key != _hud_key:
 		_hud_key = key
 		_refresh_drawer()
+	var goal: Dictionary = sim.next_goal()
+	var goal_key := "" if goal.is_empty() else "%s|%s" % [goal.id, sim.sold]
+	if goal_key != _goal_key:
+		_goal_key = goal_key
+		_goal_b.visible = not goal.is_empty()
+		_goal_b.queue_redraw()
 
 # --- the drawer ---
 
 func _refresh_drawer() -> void:
+	var shown := 0
+	for kind: String in DRAWER_TILES:
+		if kind == "market" or sim.unlocked(kind):
+			shown += 1
+	# a column of five, then another beside it
+	var columns := maxi(1, ceili(shown / float(DRAWER_ROWS)))
+	if _drawer.columns != columns:
+		_drawer.columns = columns
+		_drawer.offset_top = _drawer.offset_bottom
+		_drawer.offset_right = _drawer.offset_left
 	for kind: String in DRAWER_TILES:
 		var t: Dictionary = _tiles[kind]
 		if kind == "market":
@@ -762,7 +803,7 @@ func _press(finger: int, pos: Vector2) -> void:
 	_cam_raw = _cam
 	_cam_to = _cam
 	var picked: String = sim.picked
-	if picked == "belt":
+	if Sim.BELTS.has(picked):
 		_mode = "belt"
 		_belt_tile = Vector2i(tile_under(pos).floor())
 	elif picked != "":
@@ -934,9 +975,13 @@ func _tap(pos: Vector2) -> void:
 			open_plate(h.plate)
 			_fx.touch()
 		"belt":
-			sim.turn(tile)
+			# a belt of another kind than the one in hand becomes it, as it lies
+			if Sim.BELTS.has(sim.picked) and sim.belt_kind(tile) != sim.picked:
+				sim.lay_belt(tile, int(sim.belts[tile]), sim.picked)
+			else:
+				sim.turn(tile)
 		"ground":
-			if sim.picked == "belt" and sim.can_lay(tile):
+			if Sim.BELTS.has(sim.picked) and sim.can_lay(tile):
 				# a run of one: it flows as what it meets says, else as the last did
 				_belt_tile = tile
 				_lay_run(_run_to(Vector2(tile) + Vector2(0.5, 0.5)))
@@ -949,6 +994,10 @@ func _tap(pos: Vector2) -> void:
 ## reach. The user, 2026-10-10: "user should be able to hold and swip to add
 ## multiples (only straight line)".
 func _run_to(to: Vector2) -> Dictionary:
+	var kind: String = sim.picked if Sim.BELTS.has(sim.picked) else "belt"
+	if kind == "splitter":
+		# one at a time, where the finger is
+		_belt_tile = Vector2i(to.floor())
 	var from := _belt_tile
 	var d := to - (Vector2(from) + Vector2(0.5, 0.5))
 	var along_x := absf(d.x) >= absf(d.y)
@@ -964,7 +1013,9 @@ func _run_to(to: Vector2) -> Dictionary:
 			break
 		tiles.append(tile)
 		if not sim.belts.has(tile):
-			coins -= sim.price("belt")
+			coins -= sim.price(kind)
+		elif sim.belt_kind(tile) != kind and kind != "splitter":
+			coins -= sim.price(kind) - sim.price(sim.belt_kind(tile))
 		if coins >= 0:
 			lay = tiles.size()
 	if tiles.is_empty():
@@ -1042,15 +1093,19 @@ func _lay_run(run: Dictionary) -> void:
 	var source: Vector2i = tiles[0]
 	if tiles.size() > 1 and Art.DIRS[f] != (tiles[1] as Vector2i) - (tiles[0] as Vector2i):
 		source = tiles[tiles.size() - 1]
+	var kind: String = sim.picked if Sim.BELTS.has(sim.picked) else "belt"
 	for i in int(run.lay):
 		var tile: Vector2i = tiles[i]
 		if not sim.belts.has(tile):
-			sim.lay_belt(tile, f)
+			sim.lay_belt(tile, f, kind)
 		elif int(sim.belts[tile]) != f and (tiles.size() == 1 or (tile == source and not _feeds(sim, tile))):
-			sim.lay_belt(tile, f)
-	if int(run.lay) < tiles.size() and not sim.belts.has(tiles[int(run.lay)]):
+			sim.lay_belt(tile, f, kind)
+		elif sim.belt_kind(tile) != kind and (kind != "splitter" or tiles.size() == 1):
+			# a run of another kind over belts that lie there: they become it, facing as they did
+			sim.lay_belt(tile, int(sim.belts[tile]), kind)
+	if int(run.lay) < tiles.size() and (not sim.belts.has(tiles[int(run.lay)]) or sim.belt_kind(tiles[int(run.lay)]) != kind):
 		# the coins ran out along the way: the sim refuses the next and the pill says so
-		sim.lay_belt(tiles[int(run.lay)], f)
+		sim.lay_belt(tiles[int(run.lay)], f, kind)
 	_facing = f
 
 ## The facing a machine picked would stand at on `tile`: the last belt's,
@@ -1095,7 +1150,7 @@ func _run_ghosts() -> Array:
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	for i in tiles.size():
 		var tile: Vector2i = tiles[i]
-		if sim.belts.has(tile):
+		if sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or sim.picked == "splitter"):
 			continue
 		var short: bool = i >= int(_run.lay)
 		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.facing))),
@@ -1270,6 +1325,91 @@ func open_forest(p: Vector2i) -> void:
 				else:
 					_say(up, tr("FACTORY_LEVEL_FOR") % [int(f.level) + 1, Art.short(cost)])
 		_card_tick.call())
+
+## The next goal on its chip: what to sell, how many of how many, and what
+## that opens. Pictures and figures only, so no language has to count.
+func _draw_goal() -> void:
+	var g: Dictionary = sim.next_goal()
+	if g.is_empty():
+		return
+	var font := get_theme_font("font", "SheetTitle")
+	var h := _goal_b.size.y
+	var x := 20.0
+	for kind: String in g.need:
+		_goal_b.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(x + 26.0, h * 0.5)))
+		x += 58.0
+		var text := "%d/%d" % [mini(int(sim.sold.get(kind, 0)), int(g.need[kind])), int(g.need[kind])]
+		_goal_b.draw_string(font, Vector2(x, h * 0.5 + 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Pal.TEXT)
+		x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0
+	var ink := Color(Pal.TEXT, 0.55)
+	_goal_b.draw_polyline(PackedVector2Array([Vector2(x, h * 0.5 - 11.0), Vector2(x + 11.0, h * 0.5), Vector2(x, h * 0.5 + 11.0)]), ink, 5.0, true)
+	x += 28.0
+	for kind: String in g.gives:
+		_goal_b.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.52, 0.52), 0.0, Vector2(x + 26.0, h * 0.5)))
+		x += 58.0
+	# the chip is as wide as what it says
+	if absf(_goal_b.custom_minimum_size.x - (x + 12.0)) > 1.0:
+		_goal_b.custom_minimum_size.x = x + 12.0
+
+## The goals' card: each a row, what to sell and how far it is, and what it
+## opens; the ones reached wear a tick.
+func open_goals() -> void:
+	_fx.touch()
+	_open_card(tr("FACTORY_GOALS"), "goals", func(col: VBoxContainer) -> void:
+		var say := Label.new()
+		say.theme_type_variation = "SheetBody"
+		say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		say.text = tr("FACTORY_GOALS_LINE")
+		col.add_child(say)
+		var rows: Array = []
+		for g: Dictionary in Sim.GOALS:
+			var row := PanelContainer.new()
+			row.name = "Goal_" + String(g.id)
+			row.custom_minimum_size.y = 108.0
+			row.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 12))
+			var pic := Control.new()
+			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(pic)
+			pic.draw.connect(_draw_goal_row.bind(pic, g))
+			col.add_child(row)
+			rows.append(pic)
+		var seen := [""]
+		_card_tick = func() -> void:
+			var now := str(sim.sold)
+			if now != seen[0]:
+				seen[0] = now
+				for pic: Control in rows:
+					pic.queue_redraw()
+		_card_tick.call())
+
+func _draw_goal_row(pic: Control, g: Dictionary) -> void:
+	var font := get_theme_font("font", "SheetTitle")
+	var body := get_theme_font("font", "SheetBody")
+	var h := pic.size.y
+	var done: bool = sim.goal_done(g)
+	var x := 12.0
+	for kind: String in g.need:
+		pic.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.62, 0.62), 0.0, Vector2(x + 34.0, h * 0.5)))
+		x += 76.0
+		var text := "%d/%d" % [mini(int(sim.sold.get(kind, 0)), int(g.need[kind])), int(g.need[kind])]
+		pic.draw_string(font, Vector2(x, h * 0.5 + 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Pal.TEXT if not done else Color(Pal.TEXT, 0.5))
+		x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x + 18.0
+	# what it opens, from the right: the names, then the pictures before them
+	var right := pic.size.x - 12.0
+	if done:
+		Icons.paint(pic, "check", Rect2(Vector2(right - 44.0, h * 0.5 - 22.0), Vector2(44.0, 44.0)), Pal.ACCENT)
+		right -= 58.0
+	var gives: Array = g.gives
+	for i in range(gives.size() - 1, -1, -1):
+		var name := tr(NAMES.get(gives[i], ""))
+		var w := body.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
+		pic.draw_string(body, Vector2(right - w, h * 0.5 + 11.0), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Pal.TEXT)
+		right -= w + 10.0
+		pic.draw_mesh(Art.icon(gives[i]), null, Transform2D(0.0, Vector2(0.6, 0.6), 0.0, Vector2(right - 32.0, h * 0.5)))
+		right -= 74.0
+	var ink := Color(Pal.TEXT, 0.45)
+	var mid := (x + right) * 0.5
+	pic.draw_polyline(PackedVector2Array([Vector2(mid - 6.0, h * 0.5 - 12.0), Vector2(mid + 6.0, h * 0.5), Vector2(mid - 6.0, h * 0.5 + 12.0)]), ink, 5.0, true)
 
 ## The market's card: its level, the seconds a sale, the next level's price.
 func open_market() -> void:

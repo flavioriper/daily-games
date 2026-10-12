@@ -286,3 +286,34 @@ outruns its kiln two hundred times over**, and what a mine is for, until
 the stonecutter, is a belt of stone to the market at twice a log's price
 and as many kilns as the player cares to light. The Drill's row and the
 Lodge's in section 6 no longer describe anything that will be built.
+
+## 14. More belts, and goals (2026-10-12)
+
+The user, 2026-10-12: "add more convey options", and of the two reference
+games the roadmap names, "use [them] as reference on web on features to add
+to make the game progress". What was taken from them, and nothing else: a
+belt that is faster, a tile that shares one belt among three, and things
+opened by what has been delivered rather than by what has been bought.
+
+| Thing | Figure | Honest basis, or whose |
+|---|---|---|
+| **Fast belt** | 0.5 m/s, a tile in a real second, the same two items a tile: two items a second | section 8's row, a rubber belt; 4 coins a tile (an agent's) |
+| **Splitter** | a belt tile at the belt's speed; what crosses it leaves ahead and by each side in turn, one way after another; a way that takes nothing now (no belt, a belt pointing in, a full belt) is passed over, never waited on | section 8's row, brought forward from era 3; 15 coins (an agent's) |
+| **Merging** | two belts into one tile take turns, as they always did | no tile of its own: section 8's merger is a belt run into another's side |
+
+A plain belt becomes a fast one, or a splitter, for the difference in
+price, and is sold back for what it is. **The bridge is not built**: it is
+era 5's, and belts still cannot cross.
+
+**Goals.** The market counts what it sells by kind from a land's first
+sale (`sold`). A goal is so many of a thing sold, and reaching it opens a
+module for good. All goals are open at once; none is lost by doing another
+first; nothing is paid for one and nothing is given but the module.
+
+| Goal | Opens | Why that many |
+|---|---|---|
+| 30 logs sold | the splitter | half an hour of a new market by hand, a few minutes of a forest at its first level: the first belt is long laid by then |
+| 10 charcoal sold | the fast belt | ten cycles of a retort, 2 min 15 s each: a player who has kept one fire going |
+
+The fire box and the retort are still opened by the first plate bought and
+the kiln by a mine (section 13): a plate is a goal of its own kind.

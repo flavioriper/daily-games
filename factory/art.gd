@@ -83,6 +83,10 @@ extends RefCounted
 ##                       across the belt a point is.
 ##   belt_material()     the material that draws the slats and the chevron
 ##                       and runs them BELT_SPEED tiles a second by `time`.
+##   belt_material(true) the fast belt's: the same shader, a dark bed
+##                       twice as fast, two warm chevrons.
+##   splitter(facing)    a splitter's housing over its bed, drawn among
+##                       what stands.
 ##   belt_run(t)         sets `time` from seconds, wrapped; holds the slats
 ##                       still under reduce motion.
 ##
@@ -355,6 +359,7 @@ static var _belt: ArrayMesh
 static var _bends := {}
 static var _under_bends := {}
 static var _belt_mat: ShaderMaterial
+static var _fast_mat: ShaderMaterial
 static var _winds := {}
 
 # --- how the land is seen ---
@@ -1538,7 +1543,18 @@ static func belt_under_bend(corner: Vector2i) -> ArrayMesh:
 ## The belts' one material (shaders/belt_2d.gdshader). Its `time`, in
 ## seconds, runs the slats BELT_SPEED tiles a second toward each belt's own
 ## +x; `belt_run` sets it.
-static func belt_material() -> ShaderMaterial:
+static func belt_material(fast := false) -> ShaderMaterial:
+	if fast:
+		# the fast belt: a dark rubber bed running twice as fast, two warm
+		# chevrons a tile (the ledger, section 8: "a rubber belt")
+		if _fast_mat == null:
+			_fast_mat = ShaderMaterial.new()
+			_fast_mat.shader = BELT
+			_fast_mat.set_shader_parameter("speed", BELT_SPEED * 2.0)
+			_fast_mat.set_shader_parameter("bed", Vector3(0.46, 0.5, 0.56))
+			_fast_mat.set_shader_parameter("mark_tone", Vector3(1.0, 0.82, 0.36))
+			_fast_mat.set_shader_parameter("marks", 2.0)
+		return _fast_mat
 	if _belt_mat == null:
 		_belt_mat = ShaderMaterial.new()
 		_belt_mat.shader = BELT
@@ -1550,7 +1566,57 @@ static func belt_material() -> ShaderMaterial:
 ## never takes the fraction of a large number. Under reduce motion the slats
 ## lie still (the items on them still travel: that is the sim's).
 static func belt_run(t: float) -> void:
-	belt_material().set_shader_parameter("time", 0.0 if Motion.reduce else fposmod(t, 1.0 / BELT_SPEED))
+	var time := 0.0 if Motion.reduce else fposmod(t, 1.0 / BELT_SPEED)
+	belt_material().set_shader_parameter("time", time)
+	belt_material(true).set_shader_parameter("time", time)
+
+## A splitter's housing, in view units about the middle of its tile, facing
+## `facing` as seen: a low wooden box standing over the belt's bed, open to
+## the eye by nothing (what crosses it is hidden inside), a brass plate on
+## its top with an arrow to each of its three ways out. Drawn among what
+## stands, so it lies over the things riding into it.
+static func splitter(facing: int) -> ArrayMesh:
+	var key := "splitter%d" % posmod(facing, 4)
+	if _one.has(key):
+		return _one[key]
+	var b := Face.Builder.new()
+	var z0 := BELT_UP - 2.0
+	var z1 := BELT_UP + 24.0
+	var half := Vector2(0.4, 0.4)
+	_block(b, Vector2.ZERO, half, z0, z1, [PLANK.lightened(0.12), PLANK, PLANK_DEEP])
+	# planks on the two walls the eye sees
+	for k in range(1, 4):
+		var u := -half.x + half.x * 2.0 * k / 4.0
+		b.stroke(PackedVector2Array([_p(Vector2(u, half.y), z0 + 1.0), _p(Vector2(u, half.y), z1 - 1.0)]), 1.6, Color(PLANK_DEEP, 0.7), false, false)
+		b.stroke(PackedVector2Array([_p(Vector2(half.x, -u), z0 + 1.0), _p(Vector2(half.x, -u), z1 - 1.0)]), 1.6, Color(PLANK_DEEP.darkened(0.25), 0.7), false, false)
+	# the dark mouths where the bed goes in and out, on the walls that are seen
+	var f := posmod(facing, 4)
+	for d in 4:
+		if d == (f + 2) % 4 and d != 1 and d != 0:
+			continue
+		var out := Vector2(DIRS[d])
+		if d == 1:
+			b.polygon(PackedVector2Array([_p(Vector2(-0.2, half.y), z0), _p(Vector2(0.2, half.y), z0), _p(Vector2(0.2, half.y), z0 + 15.0), _p(Vector2(-0.2, half.y), z0 + 15.0)]), HOLLOW)
+		elif d == 0:
+			b.polygon(PackedVector2Array([_p(Vector2(half.x, 0.2), z0), _p(Vector2(half.x, -0.2), z0), _p(Vector2(half.x, -0.2), z0 + 15.0), _p(Vector2(half.x, 0.2), z0 + 15.0)]), HOLLOW.darkened(0.2))
+	# the brass plate and its arrows: ahead and to both sides
+	var plate := PackedVector2Array()
+	for o: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		plate.append(_p(o * 0.3, z1))
+	b.polygon(plate, GOLD_DEEP)
+	var inner := PackedVector2Array()
+	for o: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		inner.append(_p(o * 0.26, z1))
+	b.polygon(inner, GOLD)
+	var ink := Color(0.32, 0.2, 0.08, 0.9)
+	for q: int in [0, 1, 3]:
+		var d := Vector2(DIRS[(f + q) % 4])
+		var side := Vector2(-d.y, d.x)
+		var tip := d * 0.22
+		b.stroke(PackedVector2Array([_p(Vector2.ZERO, z1), _p(tip, z1)]), 3.0, ink)
+		b.stroke(PackedVector2Array([_p(tip - d * 0.09 + side * 0.08, z1), _p(tip, z1), _p(tip - d * 0.09 - side * 0.08, z1)]), 3.0, ink)
+	_one[key] = b.mesh()
+	return _one[key]
 
 # --- what is carried ---
 
@@ -2136,6 +2202,30 @@ static func icon(kind: String) -> ArrayMesh:
 			mid /= b.verts.size()
 			for i in b.verts.size():
 				b.verts[i] -= mid
+		"fast":
+			# a belt's picture with the fast one's dark bed and two warm chevrons
+			var s := 0.56 / FINE
+			var xf := Transform2D(ISO.x * s, ISO.y * s, BELT_LIFT * 0.56)
+			for i in 2:
+				b.append(belt_under(), Transform2D(0.0, Vector2(0.56, 0.56), 0.0, at(Vector2(i - 0.5, 0.0)) * 0.56))
+			for i in 2:
+				var t := xf * Transform2D(0.0, Vector2(FINE * (i - 1.0), -FINE * 0.5))
+				_belt_into(b, t, false)
+				b.polygon(t * PackedVector2Array([Vector2(0.0, 16.0), Vector2(FINE, 16.0), Vector2(FINE, 84.0), Vector2(0.0, 84.0)]), Color("6b7078"))
+				for x: float in [20.0, 52.0]:
+					for side: float in [-1.0, 1.0]:
+						b.stroke(t * PackedVector2Array([Vector2(x, 50.0 + side * 22.0), Vector2(x + 18.0, 50.0)]), 3.4, Color(1.0, 0.82, 0.36, 0.9))
+			var mid := Vector2.ZERO
+			for v in b.verts:
+				mid += v
+			mid /= b.verts.size()
+			for i in b.verts.size():
+				b.verts[i] -= mid
+		"splitter":
+			var whole := Face.Builder.new()
+			whole.append(belt_under(), Transform2D.IDENTITY)
+			whole.append(splitter(0), Transform2D.IDENTITY)
+			_fit_into(b, whole.mesh(), 92.0)
 		"firebox":
 			_fit_into(b, firebox(), 90.0)
 			b.append(fire(), Transform2D(0.0, Vector2(0.5, 0.5), 0.0, _fitted(firebox(), 90.0) * FIREBOX_MOUTH))

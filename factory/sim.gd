@@ -65,6 +65,11 @@ extends RefCounted
 ##   trees: Dictionary        id -> {id, tile, look 0..3}: what a forest
 ##                            is seen by, never counted and never felled
 ##   belts: Dictionary        tile -> facing
+##   kinds: Dictionary        tile -> "fast" | "splitter", for a belt that is
+##                            not the plain one; belt_kind(tile) says any
+##   outs(tile), feeds(from, to)        where a belt hands on to
+##   sold: Dictionary         kind -> how many the market has sold
+##   GOALS, goal_progress(g), goal_done(g), next_goal()
 ##   items: Dictionary        tile -> Array of {id, kind, at 0..1, from, was};
 ##                            index 0 is the front one. On a belt `at` runs
 ##                            along the tile and `from` is the facing it came
@@ -95,7 +100,8 @@ extends RefCounted
 ##                            when it holds FOREST_ROOM); a firebox: lights
 ##                            the next fuel if the fire is out
 ##   can_lay(tile)            fits a belt (coins not looked at)
-##   lay_belt(tile, facing)   1 coin; on a belt already there it only re-faces
+##   lay_belt(tile, facing, kind)       "belt" 1 coin, "fast", "splitter"; on
+##                            a belt of that kind already there it only re-faces
 ##   turn(tile)               a belt or a 1x2 module a quarter clockwise
 ##   can_place(kind, tile, facing)      unlocked and fits (coins not looked at)
 ##   place(kind, tile, facing)          tile is the root: a 1x2's back (input)
@@ -118,6 +124,7 @@ extends RefCounted
 ##   out {tile, id, kind}             its output left into `tile`
 ##   brought {kind, from}             onto the market's hatch, travelling `from`
 ##   sale {kind, amount, coins}
+##   goal {id, gives}                 a goal reached: what it opens
 ##   level {target, level}            "market", "source" (with `plate`) or a
 ##                                    module's id
 ##   plate {plate, kind}
@@ -147,7 +154,19 @@ const NONE := Vector2i(-99999, -99999)
 ## returns its coin, so twenty cannot be stranded.
 const START_COINS := 20
 const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4}
-const PRICE := {"belt": 1, "firebox": 20, "kiln": 40, "retort": 40}
+const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "firebox": 20, "kiln": 40, "retort": 40}
+## What is laid like a belt and carries like one: the plain belt, the fast
+## one (twice the speed, the same spacing: the ledger, section 8) and the
+## splitter, a belt tile that sends what crosses it out ahead and by both
+## sides in turn.
+const BELTS := ["belt", "fast", "splitter"]
+## The goals (the ledger, section 14): things sold at the market, counted
+## from the land's first sale, each opening what it `gives` for good. They
+## are all open at once and none is lost by doing another first.
+const GOALS := [
+	{"id": "splitter", "need": {"log": 30}, "gives": ["splitter"]},
+	{"id": "fast", "need": {"charcoal": 10}, "gives": ["fast"]},
+]
 ## The first plate bought, the second, then each PLATE_STEP times the last.
 const PLATE_PRICE := [50, 150]
 const PLATE_STEP := 3
@@ -171,6 +190,7 @@ const GATES: Array[Vector2i] = [Vector2i(7, 4), Vector2i(3, 7), Vector2i(0, 3), 
 ## A belt: a tile in two real seconds (0.25 m/s), two items a tile, never
 ## nearer than half a tile (the ledger, section 8).
 const BELT_SECONDS := 2.0
+const FAST_SECONDS := 1.0
 const GAP := 0.5
 const ROOM := 2
 ## Where the two items of a bare tile lie, off its middle.
@@ -211,6 +231,10 @@ var plates := {}
 var sources := {}
 var trees := {}
 var belts := {}
+## A belt tile that is not a plain belt: tile -> "fast" | "splitter".
+var kinds := {}
+## What the market has sold, by kind, since the land began.
+var sold := {}
 var items := {}
 var modules := {}
 var market := {}
@@ -224,6 +248,7 @@ var _acc := 0.0
 var _next_id := 1
 var _mod_at := {}        # tile -> module id
 var _turn := {}          # fed tile -> the belt tile that fed it last
+var _split := {}         # splitter tile -> the way out it tries first next (0 ahead, 1 and 2 its sides)
 var _order: Array = []
 var _order_stale := true
 
@@ -241,6 +266,9 @@ func new_land(with_seed: int) -> void:
 	sources = {}
 	trees = {}
 	belts = {}
+	kinds = {}
+	sold = {}
+	_split = {}
 	items = {}
 	modules = {}
 	market = {"level": 1, "wait": [], "t": 0.0}
@@ -329,9 +357,32 @@ func buy_plate(p: Vector2i, kind: String) -> bool:
 func unlocked(kind: String) -> bool:
 	if kind == "belt":
 		return true
+	for g: Dictionary in GOALS:
+		if (g.gives as Array).has(kind):
+			return goal_done(g)
 	if kind == "kiln" and not plates.values().has("mine"):
 		return false
 	return BUILD.has(kind) and plates.size() >= 3
+
+## How far a goal is, 0 to 1: the least of its needs, each sold over wanted.
+func goal_progress(g: Dictionary) -> float:
+	var k := 1.0
+	for kind: String in g.need:
+		k = minf(k, float(sold.get(kind, 0)) / float(g.need[kind]))
+	return clampf(k, 0.0, 1.0)
+
+func goal_done(g: Dictionary) -> bool:
+	for kind: String in g.need:
+		if int(sold.get(kind, 0)) < int(g.need[kind]):
+			return false
+	return true
+
+## The first goal not reached yet, {} when all are.
+func next_goal() -> Dictionary:
+	for g: Dictionary in GOALS:
+		if not goal_done(g):
+			return g
+	return {}
 
 func price(kind: String) -> int:
 	return int(PRICE.get(kind, 0))
@@ -497,12 +548,42 @@ func _lay_why(tile: Vector2i) -> String:
 		return "taken"
 	return ""
 
-## A belt on `tile` facing `facing`. On a belt already there it re-faces it
-## for nothing, which is what a finger dragged across laid belts means.
-func lay_belt(tile: Vector2i, facing: int) -> bool:
+## The kind of the belt on `tile`: "belt", "fast", "splitter"; "" for none.
+func belt_kind(tile: Vector2i) -> String:
+	return String(kinds.get(tile, "belt")) if belts.has(tile) else ""
+
+## Real seconds the belt on `tile` takes to carry a thing across it.
+func belt_seconds(tile: Vector2i) -> float:
+	return FAST_SECONDS if kinds.get(tile, "") == "fast" else BELT_SECONDS
+
+## A belt of `kind` on `tile` facing `facing`. On a belt of that kind already
+## there it re-faces it for nothing, which is what a finger dragged across
+## laid belts means; on one of another kind it becomes this kind for the
+## difference in price (given back when it is the cheaper), faced as told.
+func lay_belt(tile: Vector2i, facing: int, kind := "belt") -> bool:
 	if facing < 0 or facing > 3:
 		return _no("facing", tile)
+	if not BELTS.has(kind):
+		return _no("kind", tile)
+	if not unlocked(kind):
+		return _no("locked", tile)
 	if belts.has(tile):
+		var was := belt_kind(tile)
+		if was != kind:
+			var more := price(kind) - price(was)
+			if coins < more:
+				return _no("coins", tile)
+			coins -= more
+			_set_kind(tile, kind)
+			belts[tile] = facing
+			_order_stale = true
+			for it: Dictionary in items.get(tile, []):
+				it.from = -1
+				it.erase("to")
+				it.was = _pos(tile, it)
+			events.append({"type": "laid", "tile": tile, "facing": facing, "kind": kind})
+			dirty = true
+			return true
 		if belts[tile] == facing:
 			return _no("same", tile)
 		_face_belt(tile, facing)
@@ -510,21 +591,30 @@ func lay_belt(tile: Vector2i, facing: int) -> bool:
 	var why := _lay_why(tile)
 	if why != "":
 		return _no(why, tile)
-	if coins < price("belt"):
+	if coins < price(kind):
 		return _no("coins", tile)
-	coins -= price("belt")
+	coins -= price(kind)
 	belts[tile] = facing
+	_set_kind(tile, kind)
 	_order_stale = true
 	_settle(tile)
-	events.append({"type": "laid", "tile": tile, "facing": facing})
+	events.append({"type": "laid", "tile": tile, "facing": facing, "kind": kind})
 	dirty = true
 	return true
+
+func _set_kind(tile: Vector2i, kind: String) -> void:
+	_split.erase(tile)
+	if kind == "belt":
+		kinds.erase(tile)
+	else:
+		kinds[tile] = kind
 
 func _face_belt(tile: Vector2i, facing: int) -> void:
 	belts[tile] = facing
 	_order_stale = true
 	for it: Dictionary in items.get(tile, []):
 		it.from = -1
+		it.erase("to")
 		it.was = _pos(tile, it)
 	events.append({"type": "turned", "tile": tile, "facing": facing})
 	dirty = true
@@ -542,6 +632,7 @@ func _settle(tile: Vector2i) -> void:
 		var it: Dictionary = arr[i]
 		it.at = 0.5 - GAP * i
 		it.from = -1
+		it.erase("to")
 		it.was = _pos(tile, it)
 
 func turn(tile: Vector2i) -> bool:
@@ -568,9 +659,25 @@ func turn(tile: Vector2i) -> bool:
 		return true
 	return _no("room", tile)
 
-## The belts, front of each chain first: a belt comes after the one it feeds,
-## so one pass moves a chain as one and no item moves twice. A ring of belts
-## has no front and is cut where the walk meets itself.
+## The tiles a belt hands on to: the one ahead, and for a splitter the ones
+## at its sides too, ahead first.
+func outs(tile: Vector2i) -> Array[Vector2i]:
+	var f: int = belts[tile]
+	if kinds.get(tile, "") != "splitter":
+		return [tile + DIRS[f]]
+	return [tile + DIRS[f], tile + DIRS[(f + 1) % 4], tile + DIRS[(f + 3) % 4]]
+
+## Whether what is on `from` goes into `to` next: a belt pointing at it, a
+## splitter beside it (not one it lies behind), a machine whose way out it is.
+func feeds(from: Vector2i, to: Vector2i) -> bool:
+	if belts.has(from):
+		return outs(from).has(to)
+	var m := module_at(from)
+	return not m.is_empty() and m.kind != "firebox" and out_tile(m) == to
+
+## The belts, front of each chain first: a belt comes after every belt it
+## feeds, so one pass moves a chain as one and no item moves twice. A ring of
+## belts has no front and is cut where the walk meets itself.
 func _belt_order() -> Array:
 	if not _order_stale:
 		return _order
@@ -579,33 +686,53 @@ func _belt_order() -> Array:
 	var keys := belts.keys()
 	keys.sort()
 	for k: Vector2i in keys:
-		var chain: Array[Vector2i] = []
-		var cur := k
-		while belts.has(cur) and not done.has(cur):
-			done[cur] = true
-			chain.append(cur)
-			cur += DIRS[belts[cur]]
-		chain.reverse()
-		# what the walk ran into was ordered before, so this chain goes after it
-		_order.append_array(chain)
+		if done.has(k):
+			continue
+		# a walk down every way out, a belt written once all it feeds are
+		var stack: Array = [[k, 0]]
+		done[k] = true
+		while not stack.is_empty():
+			var top: Array = stack.back()
+			var ways := outs(top[0])
+			var went := false
+			while int(top[1]) < ways.size():
+				var n: Vector2i = ways[int(top[1])]
+				top[1] = int(top[1]) + 1
+				if belts.has(n) and not done.has(n):
+					done[n] = true
+					stack.append([n, 0])
+					went = true
+					break
+			if not went:
+				_order.append(top[0])
+				stack.pop_back()
 	_order_stale = false
 	return _order
 
 func _move_belts() -> void:
-	var v := TICK / BELT_SECONDS
 	for b: Vector2i in _belt_order():
 		if not items.has(b):
 			continue
 		var arr: Array = items[b]
 		var f: int = belts[b]
-		var front := b + DIRS[f]
+		var v := TICK / belt_seconds(b)
+		var splits: bool = kinds.get(b, "") == "splitter"
 		var ahead := INF
 		var i := 0
 		while i < arr.size():
 			var it: Dictionary = arr[i]
 			var nat: float = it.at + v
+			if i == 0 and splits and not it.has("to") and nat >= 0.5 - EPS:
+				# at its middle a thing is given its way out, or waits for one
+				var way := _split_way(b, it)
+				if way < 0:
+					nat = 0.5
+				else:
+					it.to = way
 			if i == 0 and nat >= 1.0 - EPS:
-				if not _yields(b, front, v) and _enter(front, it, f, maxf(nat - 1.0, 0.0)):
+				var out: int = it.get("to", f)
+				var front := b + DIRS[out]
+				if not _yields(b, front) and _enter(front, it, out, maxf(nat - 1.0, 0.0)):
 					arr.remove_at(0)
 					_turn[front] = b
 					continue
@@ -617,23 +744,45 @@ func _move_belts() -> void:
 		if arr.is_empty():
 			items.erase(b)
 
+## The way out a splitter gives the thing at its middle: ahead and its two
+## sides by turns, the first of them that would take the thing now. A side
+## that takes nothing (bare ground, a belt pointing in, a full belt) is
+## passed over, not waited on. -1 when none takes it.
+func _split_way(b: Vector2i, it: Dictionary) -> int:
+	var f: int = belts[b]
+	var first: int = _split.get(b, 0)
+	for q in 3:
+		var k := (first + q) % 3
+		var d: int = (f + [0, 1, 3][k]) % 4
+		var to := b + DIRS[d]
+		if belts.has(to) and outs(to).has(b):
+			continue
+		if _enter(to, it, d, 0.0, true):
+			_split[b] = (k + 1) % 3
+			return d
+	return -1
+
 ## Two belts feeding one tile take turns when both have an item at the end:
 ## the one that fed it last lets the other go.
-func _yields(b: Vector2i, fed: Vector2i, v: float) -> bool:
+func _yields(b: Vector2i, fed: Vector2i) -> bool:
 	if _turn.get(fed, NONE) != b:
 		return false
 	for d in 4:
 		var other := fed - DIRS[d]
-		if other == b or not belts.has(other) or belts[other] != d or not items.has(other):
+		if other == b or not belts.has(other) or not items.has(other):
 			continue
-		if float((items[other] as Array)[0].at) + v >= 1.0 - EPS:
+		var first: Dictionary = (items[other] as Array)[0]
+		if int(first.get("to", belts[other])) != d:
+			continue
+		if float(first.at) + TICK / belt_seconds(other) >= 1.0 - EPS:
 			return true
 	return false
 
 ## An item going into `tile` by facing `f`: a belt whose back half is clear,
 ## the market with nothing on its hatch, a kiln's or a retort's back tile if
 ## it holds nothing and the item is its kind, a firebox's hopper if it burns.
-func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float) -> bool:
+## `ask` only asks: nothing is moved.
+func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float, ask := false) -> bool:
 	if belts.has(tile):
 		var arr: Array = items.get(tile, [])
 		if arr.size() >= ROOM:
@@ -644,14 +793,19 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float) -> bool:
 			if rear < GAP - EPS:
 				return false
 			at = minf(carry, rear - GAP)
+		if ask:
+			return true
 		it.at = maxf(at, 0.0)
 		it.from = f
+		it.erase("to")
 		arr.append(it)
 		items[tile] = arr
 		return true
 	if is_market(tile):
 		if (market.wait as Array).size() >= MARKET_ROOM:
 			return false
+		if ask:
+			return true
 		(market.wait as Array).append(it.kind)
 		events.append({"type": "brought", "kind": it.kind, "from": f})
 		return true
@@ -661,11 +815,14 @@ func _enter(tile: Vector2i, it: Dictionary, f: int, carry: float) -> bool:
 	if m.kind == "firebox":
 		if not FUEL.has(it.kind) or (m.hopper as Array).size() >= HOPPER:
 			return false
+		if ask:
+			return true
 		(m.hopper as Array).append(it.kind)
 		events.append({"type": "fed", "tile": m.root, "id": m.id, "kind": it.kind})
 		return true
 	if tile == m.root and m.inp == "" and RECIPE[m.kind].takes == it.kind:
-		m.inp = it.kind
+		if not ask:
+			m.inp = it.kind
 		return true
 	return false
 
@@ -690,7 +847,8 @@ func _pos(tile: Vector2i, it: Dictionary) -> Vector2:
 	var from: int = it.from
 	if at < 0.5 and from >= 0 and from != f:
 		return c - Vector2(DIRS[from]) * (0.5 - at)
-	return c + Vector2(DIRS[f]) * (at - 0.5)
+	# past a splitter's middle a thing goes the way it was given
+	return c + Vector2(DIRS[int(it.get("to", f))]) * (at - 0.5)
 
 ## Where to draw an item now: between where the last tick left it and where
 ## this one did, by `alpha`.
@@ -829,7 +987,7 @@ func _stand_module(m: Dictionary) -> void:
 
 func sell_price(tile: Vector2i) -> int:
 	if belts.has(tile):
-		return price("belt")
+		return price(belt_kind(tile))
 	var m := module_at(tile)
 	return 0 if m.is_empty() else int(m.paid)
 
@@ -840,12 +998,14 @@ func sell(tile: Vector2i) -> bool:
 	if is_market(tile):
 		return _no("market", tile)
 	if belts.has(tile):
+		var kind := belt_kind(tile)
 		belts.erase(tile)
+		_set_kind(tile, "belt")
 		_order_stale = true
 		_turn.erase(tile)
-		coins += price("belt")
+		coins += price(kind)
 		_settle(tile)
-		events.append({"type": "sold_back", "tile": tile, "kind": "belt", "amount": price("belt"), "items": _count(tile)})
+		events.append({"type": "sold_back", "tile": tile, "kind": kind, "amount": price(kind), "items": _count(tile)})
 		dirty = true
 		return true
 	var m := module_at(tile)
@@ -1103,7 +1263,11 @@ func _sell() -> void:
 		var amount: int = SELLS[kind]
 		coins += amount
 		earned += amount
+		sold[kind] = int(sold.get(kind, 0)) + 1
 		events.append({"type": "sale", "kind": kind, "amount": amount, "coins": coins})
+		for g: Dictionary in GOALS:
+			if (g.need as Dictionary).has(kind) and int(sold[kind]) == int(g.need[kind]) and goal_done(g):
+				events.append({"type": "goal", "id": g.id, "gives": g.gives})
 	if wait.is_empty():
 		market.t = 0.0
 
@@ -1120,7 +1284,7 @@ func pack() -> Dictionary:
 		"version": VERSION, "seed": land_seed, "rng": _rng.state, "coins": coins, "earned": earned,
 		"acc": _acc, "next_id": _next_id, "picked": picked,
 		"plates": plates.duplicate(true), "sources": sources.duplicate(true), "trees": trees.duplicate(true),
-		"belts": belts.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
+		"belts": belts.duplicate(true), "kinds": kinds.duplicate(true), "split": _split.duplicate(true), "sold": sold.duplicate(true), "items": items.duplicate(true), "modules": modules.duplicate(true),
 		"market": market.duplicate(true), "turn": _turn.duplicate(true),
 	}
 
@@ -1163,7 +1327,7 @@ const _SHAPES := {
 	"version": TYPE_INT, "seed": TYPE_INT, "rng": TYPE_INT, "coins": TYPE_INT, "earned": TYPE_INT,
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING,
 	"plates": TYPE_DICTIONARY, "sources": TYPE_DICTIONARY, "trees": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY,
-	"items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
+	"kinds": TYPE_DICTIONARY, "split": TYPE_DICTIONARY, "sold": TYPE_DICTIONARY, "items": TYPE_DICTIONARY, "modules": TYPE_DICTIONARY, "market": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
 }
 const _TREE_KEYS := ["id", "tile", "look"]
 const _SOURCE_KEYS := ["level", "stock", "t", "next", "paid"]
@@ -1193,6 +1357,15 @@ static func _sound(d: Dictionary) -> bool:
 			return false
 	for t: Variant in d.belts:
 		if not (t is Vector2i) or not (d.belts[t] is int) or d.belts[t] < 0 or d.belts[t] > 3:
+			return false
+	for t: Variant in d.kinds:
+		if not (t is Vector2i) or not d.belts.has(t) or not BELTS.has(d.kinds[t]):
+			return false
+	for t: Variant in d.split:
+		if not (t is Vector2i) or not (d.split[t] is int):
+			return false
+	for kind: Variant in d.sold:
+		if not SELLS.has(kind) or not (d.sold[kind] is int):
 			return false
 	for t: Variant in d.items:
 		if not (t is Vector2i) or not (d.items[t] is Array):
@@ -1237,6 +1410,9 @@ func _unpack(d: Dictionary) -> void:
 	sources = (d.sources as Dictionary).duplicate(true)
 	trees = (d.trees as Dictionary).duplicate(true)
 	belts = (d.belts as Dictionary).duplicate(true)
+	kinds = (d.kinds as Dictionary).duplicate(true)
+	_split = (d.split as Dictionary).duplicate(true)
+	sold = (d.sold as Dictionary).duplicate(true)
 	items = (d.items as Dictionary).duplicate(true)
 	modules = (d.modules as Dictionary).duplicate(true)
 	market = (d.market as Dictionary).duplicate(true)

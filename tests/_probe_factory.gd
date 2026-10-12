@@ -60,6 +60,7 @@ func _process(_delta: float) -> bool:
 		_check_feeders()
 		_check_plates()
 		_check_mine()
+		_check_belt_kinds()
 		_check_fire()
 		_check_retort()
 		_check_shared()
@@ -70,11 +71,11 @@ func _process(_delta: float) -> bool:
 	quit(1 if _fails > 0 else 0)
 	return true
 
-func _ok(what: String, yes: bool) -> void:
+func _ok(what: String, yes: bool, more := "") -> void:
 	_checks += 1
 	if not yes:
 		_fails += 1
-		print("FAIL ", what)
+		print("FAIL ", what, "" if more == "" else "  (" + more + ")")
 
 ## One tick, and what it said.
 func _tick(sim: RefCounted) -> Array:
@@ -550,6 +551,94 @@ func _check_mine() -> void:
 	var kiln: Dictionary = sim.module_at(out + Vector2i(0, 2))
 	_ok("a kiln past a belt from its gate takes a stone", kiln.built and kiln.inp == "stone")
 	_ok("stone sells for 2 and lime for 10", Sim.SELLS.stone == 2 and Sim.SELLS.lime == 10)
+
+## The fast belt, the splitter and the goals that open them.
+func _check_belt_kinds() -> void:
+	var sim := _open()
+	_ok("neither is to be had on a new land", not sim.unlocked("fast") and not sim.unlocked("splitter") and not sim.lay_belt(Vector2i(9, 1), 0, "fast") and _refused(sim, "locked")
+		and sim.belts.is_empty() and Sim.GOALS[0].id == "splitter" and sim.next_goal().id == "splitter")
+	sim.sold["log"] = 29
+	sim.market.wait.append("log")
+	sim.market.t = 99.0
+	var said := _tick(sim)
+	_ok("the thirtieth log sold opens the splitter", sim.unlocked("splitter") and said.size() == 2 and said[1].type == "goal" and said[1].id == "splitter"
+		and sim.goal_done(Sim.GOALS[0]) and sim.next_goal().id == "fast" and is_equal_approx(sim.goal_progress(Sim.GOALS[1]), 0.0))
+	sim.sold["charcoal"] = 10
+	_ok("ten charcoal the fast belt", sim.unlocked("fast") and sim.next_goal().is_empty() == (Sim.GOALS.size() == 2) and Sim.PRICE.fast == 4 and Sim.PRICE.splitter == 15)
+	# a fast belt carries a thing across a tile in a second, a plain one in two
+	var c: int = sim.coins
+	_belt_row(sim, Vector2i(8, 1), 4, 0)
+	for i in 4:
+		sim.lay_belt(Vector2i(8 + i, 3), 0, "fast")
+	_ok("a fast belt is four coins and is told from a plain one", sim.coins == c - 4 - 16 and sim.belt_kind(Vector2i(8, 3)) == "fast" and sim.belt_kind(Vector2i(8, 1)) == "belt"
+		and sim.belt_kind(Vector2i(8, 2)) == "" and sim.belt_seconds(Vector2i(8, 3)) == 1.0 and sim.belt_seconds(Vector2i(8, 1)) == 2.0)
+	sim.put(Vector2i(8, 1), "log")
+	sim.put(Vector2i(8, 3), "log")
+	for i in 20:
+		sim.step(Sim.TICK)
+	_ok("and carries twice as far in two seconds", sim.items.has(Vector2i(9, 1)) and sim.items.has(Vector2i(10, 3)),
+		str(sim.items.keys()))
+	_ok("a plain belt is made fast for the difference, and back", sim.lay_belt(Vector2i(8, 1), 0, "fast") and sim.coins == c - 20 - 3 and sim.belt_kind(Vector2i(8, 1)) == "fast"
+		and sim.lay_belt(Vector2i(8, 1), 0, "belt") and sim.coins == c - 20 and sim.belt_kind(Vector2i(8, 1)) == "belt" and sim.kinds.size() == 4)
+	_ok("sold, a fast belt gives its four back", sim.sell_price(Vector2i(11, 3)) == 4 and sim.sell(Vector2i(11, 3)) and sim.coins == c - 16 and not sim.kinds.has(Vector2i(11, 3))
+		and sim.events.back().kind == "fast")
+	# a splitter with a belt ahead and a belt at each side
+	sim = _open()
+	sim.sold["log"] = 30
+	_belt_row(sim, Vector2i(8, 4), 2, 0)
+	_ok("a splitter is laid like a belt for fifteen", sim.lay_belt(Vector2i(10, 4), 0, "splitter") and sim.coins == 100000 - 50 - 2 - 15 and sim.belt_kind(Vector2i(10, 4)) == "splitter"
+		and sim.outs(Vector2i(10, 4)) == [Vector2i(11, 4), Vector2i(10, 5), Vector2i(10, 3)] and sim.feeds(Vector2i(10, 4), Vector2i(10, 3)) and not sim.feeds(Vector2i(10, 4), Vector2i(9, 4)))
+	_belt_row(sim, Vector2i(11, 4), 3, 0)
+	_belt_row(sim, Vector2i(10, 5), 2, 1)
+	_belt_row(sim, Vector2i(10, 3), 3, 3)
+	var went := {Vector2i(13, 4): 0, Vector2i(10, 6): 0, Vector2i(10, 1): 0}
+	var fed := 0
+	for i in 2400:
+		if i % 10 == 0 and fed < 60 and sim.put(Vector2i(8, 4), "log"):
+			fed += 1
+		sim.step(Sim.TICK)
+		# what reaches the end of each way out is counted and taken off
+		for end: Vector2i in went:
+			if sim.items.has(end) and float(sim.items[end][0].at) >= 1.0 - 0.001:
+				sim.items[end].remove_at(0)
+				went[end] += 1
+				if sim.items[end].is_empty():
+					sim.items.erase(end)
+	_ok("sixty logs through it leave by three ways, twenty each", fed == 60 and went.values() == [20, 20, 20], "%d fed, %s" % [fed, went.values()])
+	# one way blocked: the other two share
+	sim.sell(Vector2i(10, 5))
+	sim.sell(Vector2i(10, 6))
+	went = {Vector2i(13, 4): 0, Vector2i(10, 1): 0}
+	fed = 0
+	for i in 2000:
+		if i % 10 == 0 and fed < 40 and sim.put(Vector2i(8, 4), "log"):
+			fed += 1
+		sim.step(Sim.TICK)
+		for end: Vector2i in went:
+			if sim.items.has(end) and float(sim.items[end][0].at) >= 1.0 - 0.001:
+				sim.items[end].remove_at(0)
+				went[end] += 1
+				if sim.items[end].is_empty():
+					sim.items.erase(end)
+	_ok("with one way gone the other two take twenty each, none lying where it was", fed == 40 and went.values() == [20, 20] and not sim.items.has(Vector2i(10, 5)), "%d fed, %s" % [fed, went.values()])
+	# a way that is full is passed over
+	sim.sell(Vector2i(13, 4))
+	fed = 0
+	for i in 1200:
+		if i % 10 == 0 and fed < 30 and sim.put(Vector2i(8, 4), "log"):
+			fed += 1
+		sim.step(Sim.TICK)
+		if sim.items.has(Vector2i(10, 1)) and float(sim.items[Vector2i(10, 1)][0].at) >= 1.0 - 0.001:
+			sim.items[Vector2i(10, 1)].remove_at(0)
+			if sim.items[Vector2i(10, 1)].is_empty():
+				sim.items.erase(Vector2i(10, 1))
+	_ok("a way that has filled is passed over: the rest go by the open one", fed == 30 and _lying(sim, Vector2i(11, 4)) == 2 and _lying(sim, Vector2i(12, 4)) == 2
+		and _lying(sim, Vector2i(10, 4)) == 0 and _lying(sim, Vector2i(8, 4)) == 0, "%d fed, %s" % [fed, sim.items.keys()])
+	var before := var_to_str(sim.pack())
+	sim.save()
+	var back: RefCounted = Sim.new(1)
+	_ok("a land with a splitter and what it has sold is kept and read back the same", back.load_saved() and var_to_str(back.pack()) == before and back.sold.log == 30
+		and back.belt_kind(Vector2i(10, 4)) == "splitter")
 
 func _check_plates() -> void:
 	var sim: RefCounted = Sim.new(7)

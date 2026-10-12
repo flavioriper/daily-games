@@ -120,6 +120,7 @@ var _ground_l: Node2D
 var _grass_l: Node2D
 var _under_l: Node2D
 var _belt_l: Node2D
+var _fast_l: Node2D
 var _flat_l: Node2D
 var _shade_l: Node2D
 var _item_l: Node2D
@@ -135,6 +136,7 @@ var _plates_n := -1
 ## shape as drawn ("s", or a bend's corner), a MultiMesh each; a belt's
 ## shape, by tile, read off its feeders whenever belts change.
 var _bed_mms: Array[MultiMesh] = []
+var _fast_mms: Array[MultiMesh] = []
 var _under_mms := {}
 var _shapes := {}
 var _belts_stale := true
@@ -172,6 +174,7 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_grass_l = layer(_draw_grass, Art.wind(true))
 	_under_l = layer(_draw_under)
 	_belt_l = layer(_draw_belts, Art.belt_material())
+	_fast_l = layer(_draw_fast, Art.belt_material(true))
 	_flat_l = layer(_draw_flat)
 	_shade_l = layer(_draw_shade, _shade_mat)
 	_item_l = layer(_draw_items)
@@ -181,6 +184,7 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_air_l = layer(_draw_air)
 	for mesh: ArrayMesh in [Art.belt(), Art.belt_bend(false), Art.belt_bend(true)]:
 		_bed_mms.append(_many(mesh))
+		_fast_mms.append(_many(mesh))
 	for kind: String in ITEMS:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_2D
@@ -463,7 +467,7 @@ func step(delta: float) -> void:
 	if _plates_n != sim.plates.size():
 		_lay_plates()
 		rising = true
-	if _belts_stale or _belt_n != sim.belts.size():
+	if _belts_stale or _belt_n != sim.belts.size() + sim.kinds.size() * 1000:
 		_lay_belts()
 	_fill_items()
 	_fill_stand()
@@ -525,14 +529,11 @@ func shape(tile: Vector2i) -> int:
 		return 0
 	var f: int = sim.belts[tile]
 	var fed := [false, false, false, false]   # by the quarter the feeder lies to, from the facing
+	if sim.kinds.get(tile, "") == "splitter":
+		return 0
 	for q in range(1, 4):
 		var d := (f + q) % 4
-		var n: Vector2i = tile + Art.DIRS[d]
-		if sim.belts.has(n):
-			fed[q] = int(sim.belts[n]) == (d + 2) % 4
-		else:
-			var m: Dictionary = sim.module_at(n)
-			fed[q] = not m.is_empty() and m.kind != "firebox" and sim.out_tile(m) == tile
+		fed[q] = sim.feeds(tile + Art.DIRS[d], tile)
 	if fed[2] or fed[1] == fed[3]:
 		return 0
 	return 1 if fed[1] else 2
@@ -559,12 +560,13 @@ func item_at(tile: Vector2i, it: Dictionary) -> Vector2:
 
 func _lay_belts() -> void:
 	_belts_stale = false
-	_belt_n = sim.belts.size()
+	_belt_n = sim.belts.size() + sim.kinds.size() * 1000
 	# the back first: a nearer belt's legs and edge are over a further one's
 	var tiles: Array = sim.belts.keys()
 	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return depth(Vector2(a)) < depth(Vector2(b)))
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	var beds := [[], [], []]
+	var fast := [[], [], []]
 	var unders := {}
 	_shapes.clear()
 	for tile: Vector2i in tiles:
@@ -574,12 +576,14 @@ func _lay_belts() -> void:
 		if bend != 0:
 			_shapes[tile] = bend
 			key = Art.DIRS[vf] + Art.DIRS[(vf + (1 if bend == 1 else 3)) % 4]
-		(beds[bend] as Array).append(lift * Art.flat(Vector2(seen_tile(tile)), vf))
+		((fast if sim.kinds.get(tile, "") == "fast" else beds)[bend] as Array).append(lift * Art.flat(Vector2(seen_tile(tile)), vf))
 		if not unders.has(key):
 			unders[key] = []
 		(unders[key] as Array).append(Transform2D(0.0, mid(tile)))
 	for i in 3:
 		_fill(_bed_mms[i], beds[i])
+		_fill(_fast_mms[i], fast[i])
+	_fast_l.queue_redraw()
 	for key: Variant in unders:
 		if not _under_mms.has(key):
 			_under_mms[key] = _many(Art.belt_under() if key is String else Art.belt_under_bend(key))
@@ -669,6 +673,9 @@ func _fill_stand() -> void:
 				var g: Vector2i = Sim.gate(p, side)
 				list.append([depth(Vector2(g) + MID), 0, Art.rubble(held) if sim.is_mine(g) else Art.pile(held), Transform2D(0.0, mid(g)), white])
 	_add_market(list)
+	for tile: Vector2i in sim.kinds:
+		if sim.kinds[tile] == "splitter" and _up(tile):
+			list.append([depth(Vector2(tile) + MID), 0, Art.splitter(seen_facing(int(sim.belts[tile]))), Transform2D(_turned(tile), mid(tile)), white])
 	for id: int in sim.modules:
 		_add_module(list, sim.modules[id])
 	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
@@ -845,6 +852,11 @@ func _draw_under(ci: CanvasItem) -> void:
 
 func _draw_belts(ci: CanvasItem) -> void:
 	for mm in _bed_mms:
+		if mm.visible_instance_count > 0:
+			ci.draw_multimesh(mm, null)
+
+func _draw_fast(ci: CanvasItem) -> void:
+	for mm in _fast_mms:
 		if mm.visible_instance_count > 0:
 			ci.draw_multimesh(mm, null)
 

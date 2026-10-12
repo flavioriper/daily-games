@@ -975,6 +975,10 @@ BAR_FACTORY,Factory,Fábrica,Fábrica
 FACTORY_MOTTO,Nothing here is in a hurry,Aqui nada tem pressa,Aquí nada tiene prisa
 FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The land only runs while you watch it.","Toque na floresta para ter toras, monte esteiras e venda no mercado. A terra só anda enquanto você olha.","Toca el bosque para sacar troncos, tiende cintas y vende en el mercado. La tierra solo anda mientras la miras."
 FACTORY_BELT,Belt,Esteira,Cinta
+FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
+FACTORY_SPLITTER,Splitter,Divisor,Divisor
+FACTORY_GOALS,Goals,Metas,Metas
+FACTORY_GOALS_LINE,"Sell these at the market. Each goal opens something new in the drawer, for good.","Venda estas coisas no mercado. Cada meta abre algo novo na gaveta, para sempre.","Vende estas cosas en el mercado. Cada meta abre algo nuevo en el cajón, para siempre."
 FACTORY_FIREBOX,Fire box,Fornalha,Fogón
 FACTORY_KILN,Kiln,Forno,Horno
 FACTORY_RETORT,Retort,Retorta,Retorta

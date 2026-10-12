@@ -18,6 +18,12 @@ shader_type canvas_item;
 
 uniform float time = 0.0;
 uniform float speed = 0.5;
+// The fast belt's material is this one again with its own figures: a
+// darker bed (`bed` multiplies the wood), a second chevron and a warmer
+// mark. Uniforms of the material, never of an instance.
+uniform vec3 bed = vec3(1.0);
+uniform vec3 mark_tone = vec3(1.0, 0.96, 0.84);
+uniform float marks = 1.0;
 
 const float SLATS = 4.0;
 
@@ -31,7 +37,10 @@ void fragment() {
 		float u = fract(run);
 		float v = abs(UV.y - 0.5);
 		float d = abs(u - (0.64 - v * 0.85));
+		// the second chevron, a third of a tile behind the first
+		float d2 = abs(fract(u + 0.3) - (0.64 - v * 0.85));
+		d = min(d, mix(1.0, d2, step(1.5, marks)));
 		float mark = (1.0 - smoothstep(0.035, 0.06, d)) * (1.0 - smoothstep(0.2, 0.235, v));
-		COLOR.rgb = mix(c, vec3(1.0, 0.96, 0.84), mark * 0.7);
+		COLOR.rgb = mix(c * bed, mark_tone, mark * 0.7);
 	}
 }
