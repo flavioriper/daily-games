@@ -1451,7 +1451,7 @@ TUT_GUMDROP_HUD_BODY,"Syrup squeezed in cannot be taken out, so there is no Undo
 TUT_GUMDROP_HUD_RESET,"The mould on the tray, clear again","A forma na bandeja, limpa de novo","El molde de la bandeja, limpio otra vez"
 TUT_GUMDROP_HUD_GEAR,Settings,Configurações,Ajustes
 TUT_GUMDROP_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
-ARC_FURROW_BLURB,"A small field that grows while you are away. Pick it all in one stroke for a longer chain, and spend the seeds on plots, crops and the shed.","Uma pequena roça que cresce enquanto você está fora. Colha tudo num só gesto para uma corrente maior e gaste as sementes em canteiros, cultivos e no galpão.","Un pequeño huerto que crece mientras no estás. Recógelo todo de un solo gesto para una cadena más larga y gasta las semillas en bancales, cultivos y el cobertizo."
+ARC_FURROW_BLURB,"A small farm that grows while you are away. Pick, sow again by hand, gather eggs and milk, and come back before the crops wither.","Uma pequena fazenda que cresce enquanto você está fora. Colha, replante com a mão, junte ovos e leite, e volte antes que a plantação murche.","Una pequeña granja que crece mientras no estás. Recoge, vuelve a sembrar a mano, junta huevos y leche, y vuelve antes de que se marchite el cultivo."
 FW_MOTTO,"Sow, wait, sweep","Plante, espere, colha","Siembra, espera, recoge"
 FW_SEEDS,SEEDS,SEMENTES,SEMILLAS
 FW_CHAIN,CHAIN,CORRENTE,CADENA
@@ -1466,9 +1466,8 @@ FW_BUNCH_2,Barrowful!,Carrinho cheio!,¡Carretilla llena!
 FW_BUNCH_3,Cartload!,Carroça cheia!,¡Carro lleno!
 FW_SWEEP,Clean sweep!,Colheita completa!,¡Cosecha completa!
 FW_NEW_PLOT,New plot!,Canteiro novo!,¡Bancal nuevo!
-FW_NEW_CROP,New crop: tap a bed to sow it,Cultivo novo: toque num canteiro para plantar,Cultivo nuevo: toca un bancal para sembrarlo
+FW_NEW_CROP,New crop: touch bare soil to sow it,Cultivo novo: toque na terra vazia para plantar,Cultivo nuevo: toca la tierra vacía para sembrarlo
 FW_SHORT,%s more,faltam %s,faltan %s
-FW_SOWING,Sowing: %s. Tap the packet again to pick.,Plantando: %s. Toque no pacote de novo para colher.,Sembrando: %s. Toca el sobre otra vez para recoger.
 FW_SHOP,The shed,O galpão,El cobertizo
 FW_SHOP_SHORT,Shed,Galpão,Cobertizo
 FW_SHOP_LINE,Seeds buy these for good. None has a top: each level only costs more than the last.,As sementes compram isto para sempre. Nenhum tem limite: cada nível só custa mais que o anterior.,Las semillas compran esto para siempre. Ninguno tiene tope: cada nivel solo cuesta más que el anterior.
@@ -1492,17 +1491,91 @@ FW_CARD_NEW,A bare field,Uma roça vazia,Un huerto vacío
 FW_CARD_SEEDS,%s seeds,%s sementes,%s semillas
 FW_CARD_PLOTS,%d plots,%d canteiros,%d bancales
 TUT_FURROW_PICK,Pick what is ripe,Colha o que está maduro,Recoge lo maduro
-TUT_FURROW_PICK_BODY,"A ripe crop bobs and glints. Touch it and it is picked for seeds, and the bed grows the same crop again. A plant still growing only tells you how long it needs.","Um cultivo maduro balança e brilha. Toque e ele é colhido por sementes, e o canteiro planta o mesmo de novo. Uma planta ainda crescendo só diz quanto tempo falta.","Un cultivo maduro se mece y brilla. Tócalo y se recoge por semillas, y el bancal vuelve a sembrar lo mismo. Una planta que aún crece solo te dice cuánto le falta."
+TUT_FURROW_PICK_BODY,Touch a ripe crop to pick it for seeds: its bed is left bare. The first touch on a crop shows its card. Hold a finger on it to see the card again.,Toque num cultivo maduro para colher: o canteiro fica vazio. O primeiro toque mostra o cartão do cultivo. Segure o dedo nele para ver de novo.,Toca un cultivo maduro para recogerlo: el bancal queda vacío. El primer toque muestra la tarjeta del cultivo. Mantén el dedo para verla otra vez.
 TUT_FURROW_CHAIN,"One stroke, one chain","Um gesto, uma corrente","Un gesto, una cadena"
 TUT_FURROW_CHAIN_BODY,"Draw your finger across the beds. Each crop picked soon after the last is a link, and a link pays %d%% more than the one before. A whole field of %d plots or more in one chain is a clean sweep.","Passe o dedo pelos canteiros. Cada cultivo colhido logo após o anterior é um elo, e um elo rende %d%% a mais que o anterior. A roça inteira, com %d canteiros ou mais, numa só corrente é uma colheita completa.","Pasa el dedo por los bancales. Cada cultivo recogido tras el anterior es un eslabón, y un eslabón da un %d%% más que el anterior. El huerto entero, con %d bancales o más, en una sola cadena es una cosecha completa."
 TUT_FURROW_AWAY,It grows while you are away,Cresce enquanto você está fora,Crece mientras no estás
-TUT_FURROW_AWAY_BODY,"The field keeps growing with the game shut. What ripens waits for you and never spoils, so sow slow crops before you leave and come back to one long chain.",A roça continua crescendo com o jogo fechado. O que amadurece espera por você e nunca estraga: plante cultivos lentos antes de sair e volte para uma corrente longa.,El huerto sigue creciendo con el juego cerrado. Lo que madura te espera y nunca se estropea: siembra cultivos lentos antes de irte y vuelve a una cadena larga.
-TUT_FURROW_SOW,Sow another crop,Plante outro cultivo,Siembra otro cultivo
-TUT_FURROW_SOW_BODY,"Tap a packet to take it in hand, then touch or stroke the beds to sow it. Slow crops pay more seeds. Tap the packet again to put it back and pick.",Toque num pacote para pegá-lo e depois toque ou passe o dedo nos canteiros para plantar. Cultivos lentos rendem mais sementes. Toque no pacote de novo para guardá-lo e colher.,Toca un sobre para cogerlo y luego toca o recorre los bancales para sembrarlo. Los cultivos lentos dan más semillas. Toca el sobre otra vez para guardarlo y recoger.
+TUT_FURROW_AWAY_BODY,"The field keeps growing with the game shut. A ripe crop keeps three times as long as it took to grow and then withers, so sow slow crops before you leave and come back in time for one long chain.",A roça continua crescendo com o jogo fechado. Um cultivo maduro dura três vezes o tempo que levou para crescer e depois murcha: plante os lentos antes de sair e volte a tempo de uma corrente longa.,El huerto sigue creciendo con el juego cerrado. Un cultivo maduro aguanta tres veces lo que tardó en crecer y luego se marchita: siembra los lentos antes de irte y vuelve a tiempo para una cadena larga.
+TUT_FURROW_SOW,Sow the bare soil,Plante na terra vazia,Siembra la tierra vacía
+TUT_FURROW_SOW_BODY,"Nothing grows by itself. Tap a packet to take it in hand, then touch or stroke the bare beds to sow it. Slow crops pay more seeds.",Nada cresce sozinho. Toque num pacote para pegá-lo e passe o dedo nos canteiros vazios para plantar. Cultivos lentos rendem mais.,Nada crece solo. Toca un sobre para cogerlo y pasa el dedo por los bancales vacíos para sembrar. Los cultivos lentos dan más.
 TUT_FURROW_BUY,"More plots, more crops","Mais canteiros, mais cultivos","Más bancales, más cultivos"
 TUT_FURROW_BUY_BODY,Seeds open the next plot: tap its signboard. They also buy the next packet on the tray. A bigger field makes a longer chain.,As sementes abrem o próximo canteiro: toque na placa. Elas também compram o próximo pacote da bandeja. Uma roça maior dá uma corrente mais longa.,Las semillas abren el siguiente bancal: toca su cartel. También compran el siguiente sobre de la bandeja. Un huerto mayor da una cadena más larga.
 TUT_FURROW_HUD,The buttons,Os botões,Los botones
-TUT_FURROW_HUD_BODY,"What is picked stays picked, so there is no Undo. Nothing is lost by leaving: the field is kept and goes on growing.","O que foi colhido fica colhido, por isso não há Desfazer. Nada se perde ao sair: a roça fica guardada e continua crescendo.","Lo recogido se queda recogido, por eso no hay Deshacer. Nada se pierde al salir: el huerto se guarda y sigue creciendo."
-TUT_FURROW_HUD_SHED,"The shed: Compost grows faster, a Basket pays more, the Knack makes chains richer","O galpão: Adubo cresce mais rápido, Cesta rende mais, Jeito enriquece as correntes","El cobertizo: Abono crece más rápido, Cesta da más, Maña enriquece las cadenas"
+TUT_FURROW_HUD_BODY,"What is picked stays picked, so there is no Undo. The farm is kept and goes on growing while you are away: come back before the crops wither.","O que foi colhido fica colhido, por isso não há Desfazer. A fazenda fica guardada e continua crescendo enquanto você está fora: volte antes que a plantação murche.","Lo recogido queda recogido, por eso no hay Deshacer. La granja se guarda y sigue creciendo mientras no estás: vuelve antes de que se marchite el cultivo."
+TUT_FURROW_HUD_SHED,"The shed: upgrades for the field, the coop and the pasture","O galpão: melhorias para a roça, o galinheiro e o pasto","El cobertizo: mejoras para el huerto, el gallinero y el prado"
 TUT_FURROW_HUD_GEAR,Settings,Configurações,Ajustes
 TUT_FURROW_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
+FW_PICK_PACKET,"Choose a packet, then touch the soil",Escolha um pacote e toque na terra,Elige un sobre y toca la tierra
+FW_WILTED,Withered,Murchou,Marchito
+FW_TURNING,Pick soon: it is turning!,Colha logo: está passando!,¡Recoge pronto: se pasa!
+FW_BACK_DEAD_ONE,1 crop withered,1 cultivo murchou,1 cultivo se marchitó
+FW_BACK_DEAD_N,%d crops withered,%d cultivos murcharam,%d cultivos se marchitaron
+FW_BACK_FOX_ONE,A fox took 1 hen,Uma raposa levou 1 galinha,Un zorro se llevó 1 gallina
+FW_BACK_FOX_N,A fox took %d hens,Uma raposa levou %d galinhas,Un zorro se llevó %d gallinas
+FW_CHICK,A chick!,Um pintinho!,¡Un pollito!
+FW_GROWN,A new hen!,Uma galinha nova!,¡Una gallina nueva!
+FW_FOX,A fox! Touch it!,Uma raposa! Toque nela!,¡Un zorro! ¡Tócalo!
+FW_SHOO,Off it goes!,Lá vai ela!,¡Allá va!
+FW_TOOK,The fox took a hen,A raposa levou uma galinha,El zorro se llevó una gallina
+FW_FENCE_FELL,The fence came down,A cerca caiu,La valla se cayó
+FW_MILE_EGG_HIT,%s eggs!,%s ovos!,¡%s huevos!
+FW_MILE_MILK_HIT,%s bottles!,%s garrafas!,¡%s botellas!
+FW_MILE_MORE,+%d%% for good,+%d%% para sempre,+%d%% para siempre
+FW_BUILT_COOP,The coop!,O galinheiro!,¡El gallinero!
+FW_BUILT_PASTURE,The pasture!,O pasto!,¡El prado!
+FW_MENDED,Fence mended,Cerca consertada,Valla arreglada
+FW_HEN,Hen,Galinha,Gallina
+FW_COW,Cow,Vaca,Vaca
+FW_ABOUT_SELLS,Sells for,Vende por,Se vende por
+FW_ABOUT_READY,Ready in,Pronto em,Listo en
+FW_ABOUT_KEEPS,Keeps for,Dura,Aguanta
+FW_ABOUT_CROP_NOTE,Pick it before it withers. Hold a finger on a plant or a packet to see this again.,Colha antes que murche. Segure o dedo numa planta ou num pacote para ver isto de novo.,Recógelo antes de que se marchite. Mantén el dedo en una planta o un sobre para ver esto otra vez.
+FW_ABOUT_DIG,Dig it up,Arrancar,Arrancar
+FW_ABOUT_DONE,Got it,Entendi,Entendido
+FW_ABOUT_LAYS,Lays an egg every,Bota um ovo a cada,Pone un huevo cada
+FW_ABOUT_EGG,An egg sells for,Um ovo vende por,Un huevo se vende por
+FW_ABOUT_GROUND,Eggs she leaves on the ground,Ovos que ela deixa no chão,Huevos que deja en el suelo
+FW_ABOUT_HEN_NOTE,"Eggs lie on the ground: touch them to gather. Keep the fence mended, or a fox will take a hen. Hold a finger on a hen to see this again.","Os ovos ficam no chão: toque para juntar. Mantenha a cerca consertada, ou uma raposa leva uma galinha. Segure o dedo numa galinha para ver isto de novo.","Los huevos quedan en el suelo: tócalos para juntarlos. Mantén la valla arreglada, o un zorro se llevará una gallina. Mantén el dedo en una gallina para ver esto otra vez."
+FW_ABOUT_FILLS,Gives milk every,Dá leite a cada,Da leche cada
+FW_ABOUT_MILK,A bottle sells for,Uma garrafa vende por,Una botella se vende por
+FW_ABOUT_COW_NOTE,Touch her when she shows a bottle: she never gives it by herself. Hold a finger on a cow to see this again.,Toque nela quando mostrar uma garrafa: ela nunca dá sozinha. Segure o dedo numa vaca para ver isto de novo.,Tócala cuando muestre una botella: nunca la da sola. Mantén el dedo en una vaca para ver esto otra vez.
+FW_TAB_FIELD,Field,Roça,Huerto
+FW_TAB_COOP,Coop,Galinheiro,Gallinero
+FW_TAB_COW,Pasture,Pasto,Prado
+FW_COOP_LINE,Hens lay eggs on the ground. Every milestone of eggs pays seeds and makes an egg worth more.,As galinhas botam ovos no chão. Cada marco de ovos rende sementes e faz o ovo valer mais.,Las gallinas ponen huevos en el suelo. Cada hito de huevos da semillas y hace que el huevo valga más.
+FW_COW_LINE,A cow fills with milk and waits for your touch. Every milestone of bottles pays seeds and makes milk worth more.,A vaca enche de leite e espera o seu toque. Cada marco de garrafas rende sementes e faz o leite valer mais.,La vaca se llena de leche y espera tu toque. Cada hito de botellas da semillas y hace que la leche valga más.
+FW_UP_MULCH,Mulch,Palha,Mantillo
+FW_UP_MULCH_LINE,Ripe crops keep longer,O que está maduro dura mais,Lo maduro aguanta más
+FW_UP_COOP,Build the coop,Construir o galinheiro,Construir el gallinero
+FW_UP_COOP_LINE,Hens that lay eggs on the ground,Galinhas que botam ovos no chão,Gallinas que ponen huevos en el suelo
+FW_UP_HEN,A hen,Uma galinha,Una gallina
+FW_UP_HEN_LINE,One more to lay eggs,Mais uma para botar ovos,Una más para poner huevos
+FW_UP_FEED,Feed,Ração,Pienso
+FW_UP_FEED_LINE,Hens lay faster,As galinhas botam mais depressa,Las gallinas ponen más deprisa
+FW_UP_NEST,Nest box,Ninho,Nidal
+FW_UP_NEST_LINE,Every egg pays more seeds,Cada ovo rende mais sementes,Cada huevo da más semillas
+FW_UP_ROOSTER,Rooster,Galo,Gallo
+FW_UP_ROOSTER_LINE,Some eggs hatch into chicks that grow into hens,Alguns ovos viram pintinhos que crescem e viram galinhas,Algunos huevos dan pollitos que crecen y son gallinas
+FW_UP_FENCE,Mend the fence,Consertar a cerca,Arreglar la valla
+FW_UP_FENCE_LINE,Keeps the fox out for a day,Segura a raposa por um dia,Frena al zorro durante un día
+FW_UP_PASTURE,Fence the pasture,Cercar o pasto,Cercar el prado
+FW_UP_PASTURE_LINE,Cows that give milk at a touch,Vacas que dão leite com um toque,Vacas que dan leche con un toque
+FW_UP_COW,A cow,Uma vaca,Una vaca
+FW_UP_COW_LINE,One more to milk,Mais uma para ordenhar,Una más para ordeñar
+FW_UP_CARE,Care,Cuidado,Cuidado
+FW_UP_CARE_LINE,Cows fill with milk faster,As vacas enchem de leite mais depressa,Las vacas se llenan de leche más deprisa
+FW_UP_PAIL,Pail,Balde,Cubo
+FW_UP_PAIL_LINE,Every bottle pays more seeds,Cada garrafa rende mais sementes,Cada botella da más semillas
+FW_ROOM,%d of %d,%d de %d,%d de %d
+FW_ROOSTER_HAS,Crowing,Cantando,Cantando
+FW_ROOSTER_NONE,%d%% of eggs hatch,%d%% dos ovos chocam,%d%% de los huevos eclosionan
+FW_FENCE_DOWN,Down: a fox can get in,Caída: a raposa pode entrar,Caída: el zorro puede entrar
+FW_FENCE_HOLDS,Holds %s more,Aguenta mais %s,Aguanta %s más
+FW_COOP_COMES,Comes with %d hens,Vem com %d galinhas,Viene con %d gallinas
+FW_PASTURE_COMES,Comes with a cow,Vem com uma vaca,Viene con una vaca
+FW_MILE_EGGS,%s eggs · milestone %d,%s ovos · marco %d,%s huevos · hito %d
+FW_MILE_MILK,%s bottles · milestone %d,%s garrafas · marco %d,%s botellas · hito %d
+FW_MILE_NEXT,next at %s: +%s seeds,próximo em %s: +%s sementes,siguiente en %s: +%s semillas
+FW_MILE_DONE,every milestone reached,todos os marcos alcançados,todos los hitos alcanzados
+TUT_FURROW_PENS,Hens and cows,Galinhas e vacas,Gallinas y vacas
+TUT_FURROW_PENS_BODY,Hens leave up to %d eggs each on the ground: stroke them. Touch a cow that shows a bottle. With the fence down a fox comes for a hen: touch it.,Cada galinha deixa até %d ovos no chão: passe o dedo. Toque na vaca que mostra uma garrafa. Com a cerca caída vem uma raposa: toque nela.,Cada gallina deja hasta %d huevos en el suelo: pasa el dedo. Toca la vaca que muestra una botella. Con la valla caída viene un zorro: tócalo.

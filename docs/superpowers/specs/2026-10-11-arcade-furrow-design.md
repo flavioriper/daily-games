@@ -188,3 +188,53 @@ No event a pick.
 A phone. The sounds heard. Portuguese and Spanish read by a speaker. A
 person's climb timed. A Furrow bot in `tests/_probe_arcade_buzz.gd`. The
 still (`reduce`) shots.
+
+## 10. The farm (2026-10-12)
+
+The user, the day after: "when user click on the plant for the first time
+it should display a dialog about how much it cost to sell and takes to be
+ready, if user want to see again, must hold touch on it for a while. Also,
+user must select and click to plant on soil after harvest, no auto for
+now. We need cows for milk (user can upgrade to care cows), and chickens
+for eggs (same, should upgrade). Cows and chickens must have it own
+milestones, for example chicken generate eggs on ground, cow must be
+clicked to give milk, user can buy upgrade to increase egg time, buy
+rooster to get newborn from egg chance, fix the fence (case not, animals
+can eat chickens). Plants can die if not harvest within time. Do
+everything, and also do a polish on the design to make it more polished
+and cozier, not so canvas looking". Built unattended, with no concept tab
+and no questions; this section changes sections 2 to 8 where it differs
+(what is ripe no longer waits for ever, a picked plot does not grow
+again, call 13's animals are built).
+
+**The rules as built** (`arcade/furrow_sim.gd`):
+
+| | |
+|---|---|
+| A picked plot | bare until sown by hand; a new plot opens bare; a new field's four are sown with radish |
+| Sowing | only a bare plot; a growing crop is dug up from its card |
+| Keeping | ripe keeps 3 times its growing, 90 s at least; Mulch +10% a level; then dead: no seeds, cleared by a touch, no link |
+| A thing's card | the first touch on a crop, a hen or a cow shows it and does nothing else; a finger held 0.5 s shows it again (a packet too) |
+| The coop | 300; 2 hens, room for 8; a hen 150, each 1.5 times dearer; an egg a hen each 40 s, 3 a hen on the ground; an egg 5 seeds |
+| Coop upgrades | Feed (+5% laying a level, from 150), Nest box (+10% an egg, from 200), each level 1.45 times the last |
+| The rooster | 2,500, once; 8% of eggs are a chick, a hen in 5 minutes, to the coop's room |
+| The fence | down when the coop is built; mended for 60 + 40 a hen, it holds 24 h |
+| The fox | with the fence down, every 15 min (0.7 to 1.3 of it); 6 s on its way; a touch sends it off; else a hen, never the last; 2 at most while shut |
+| The pasture | 4,000; 1 cow, room for 5; a cow 2,500, each 1.7 times dearer; full in 150 s, then she waits for a touch; a bottle 60 seeds |
+| Pasture upgrades | Care (+5% filling a level, from 900), Pail (+10% a bottle, from 1,200) |
+| Milestones | eggs 10, 50, 200, 1,000, 5,000, 20,000 pay 60, 400, 2,000, 12,000, 70,000, 300,000; bottles 5, 25, 100, 500, 2,500, 10,000 pay 300, 2,000, 10,000, 60,000, 350,000, 1,500,000; each reached is +10% on that animal's pay, for good |
+| The chain | eggs and bottles are links; the clean sweep is every open plot picked in one chain, whatever else is in it |
+
+The pace with all of it, by the probe's two bots: 97.9 hours staying,
+16.5 days looking in.
+
+**Calls that are mine, the user's to confirm**: every number in the
+table; that the first touch shows the card and does not also pick; Dig it
+up; that the packet stays in hand; Mulch; hens and cows capped by their
+pens' room (Peapod's "no caps" was Peapod's); eggs and milk as links;
+that the fence comes down again; that the fox can be shooed and how much
+it takes away; no animal voices; the pens round, in the yard; the shed's
+three pages; the field standing still while the guide is read.
+
+**Not done**: a phone; the sounds heard; pt and es read; the `reduce`
+shots; a concept tab.

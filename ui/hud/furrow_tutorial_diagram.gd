@@ -7,14 +7,17 @@ extends Control
 ## would: what it touches is picked, sown or bought by the same calls the
 ## screen makes. `lesson` picks the page (set before it enters the tree):
 ##
-## - PICK: three ripe radishes picked one by one, and a touch on one still
-##   growing, which only nods.
+## - PICK: three ripe radishes picked one by one, each lot left bare, and a
+##   touch on one still growing, which only nods.
 ## - CHAIN: the whole field ripe and picked in one stroke, the sum lettered
 ##   as it grows.
 ## - AWAY: slow crops growing while the clock runs on, ripe and waiting,
 ##   then one stroke.
-## - SOW: a packet taken in hand, a row sown with it, the packet put back.
+## - SOW: a packet taken in hand, a row of bare lots sown with it, the
+##   packet put back.
 ## - BUY: the next plot's signboard pressed twice, the seeds paid.
+## - PENS: the two pens alone: a finger drawn through the coop gathers the
+##   eggs, and a touch on the cow that shows her bottle milks her.
 ## - HUD: the shed, the gear and the ?, drawn as they are.
 
 const Pal = preload("res://core/palette.gd")
@@ -28,13 +31,17 @@ const Field = preload("res://arcade/furrow_field.gd")
 const Shop = preload("res://arcade/furrow_shop.gd")
 const Screen = preload("res://arcade/furrow_screen.gd")
 
-enum Lesson { PICK, CHAIN, AWAY, SOW, BUY, HUD }
+enum Lesson { PICK, CHAIN, AWAY, SOW, BUY, HUD, PENS }
 
 ## A finger's target that is not a plot: off the field, the next plot's
 ## sign, and PACKET + k the tray's packet k.
 const REST := -1
 const SIGN := 200
 const PACKET := 100
+## The coop's near side from its left to its right, and the first cow.
+const COOP_A := 300
+const COOP_B := 301
+const COW := 310
 const STRIP := 96.0
 ## Each lesson's script: [second, target, down from here on], and its length.
 ## A plot is named by its place as the land is read (the field's `place`):
@@ -49,8 +56,10 @@ const SCRIPTS := {
 	Lesson.SOW: [[0.0, REST, false], [0.8, PACKET + 1, false], [1.0, PACKET + 1, true], [1.2, PACKET + 1, false], [2.0, 0, false], [2.2, 0, true], [3.2, 2, true],
 		[3.4, 2, false], [4.2, PACKET + 1, false], [4.4, PACKET + 1, true], [4.6, PACKET + 1, false], [5.4, REST, false]],
 	Lesson.BUY: [[0.0, REST, false], [1.0, SIGN, false], [1.2, SIGN, true], [1.4, SIGN, false], [2.6, SIGN, false], [2.8, SIGN, true], [3.0, SIGN, false], [4.0, REST, false]],
+	Lesson.PENS: [[0.0, REST, false], [0.8, COOP_A, false], [1.0, COOP_A, true], [2.4, COOP_B, true], [2.6, COOP_B, false], [3.5, COW, false], [3.7, COW, true], [3.9, COW, false],
+		[5.0, REST, false]],
 }
-const LENGTHS := {Lesson.PICK: 7.4, Lesson.CHAIN: 6.6, Lesson.AWAY: 10.0, Lesson.SOW: 7.0, Lesson.BUY: 5.6}
+const LENGTHS := {Lesson.PICK: 7.4, Lesson.CHAIN: 6.6, Lesson.AWAY: 10.0, Lesson.SOW: 7.0, Lesson.BUY: 5.6, Lesson.PENS: 6.6}
 
 var lesson: int = Lesson.PICK
 
@@ -78,7 +87,8 @@ func _ready() -> void:
 	if _played():
 		_field = Field.new()
 		_field.playable = false
-		_field.asked_plot.connect(func() -> void: _sim.buy_plot(0))
+		_field.only_pens = lesson == Lesson.PENS
+		_field.asked_plot.connect(func() -> void: _sim.buy_plot())
 		add_child(_field)
 		_over_l = Control.new()
 		_over_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -145,19 +155,33 @@ func _reset() -> void:
 				p.t = 0.0
 				_speed = _sim.grow_time(2) / 3.6
 			Lesson.SOW:
+				# the far row is bare, for the packet
+				if i < 3:
+					p.crop = Sim.BARE
 				p.t = _sim.grow_time(0) * 0.6
 			Lesson.BUY:
 				p.t = _sim.grow_time(0) * (0.25 + 0.1 * i)
 	if lesson == Lesson.BUY:
 		_sim.seeds = 120
+	if lesson == Lesson.PENS:
+		_sim.coop = true
+		_sim.hens = 3
+		_sim.eggs = 4
+		_sim.fence_t = Sim.FENCE_HOLDS
+		_sim.pasture = true
+		_sim.cows = [_sim.milk_time(), _sim.milk_time() * 0.3]
 	_field.armed = -1
 	_field.finger = Vector2(-1, -1)
 	_field.lay(_sim)
 	if Motion.reduce:
 		# a still page: the field as the lesson leaves it
 		if lesson == Lesson.AWAY:
-			_sim.away(100000.0)
+			_sim.away(_sim.grow_time(2) + 1.0)
 		_field.lay(_sim)
+	if lesson == Lesson.PENS:
+		# the eggs along the finger's way, the cows side by side
+		_field.set_eggs([Vector2(-0.42, 0.36), Vector2(-0.14, 0.42), Vector2(0.16, 0.38), Vector2(0.44, 0.34)])
+		_field.set_cows([Vector2(-0.3, 0.2), Vector2(0.32, 0.5)])
 
 func _where(target: int) -> Vector2:
 	if target == REST:
@@ -165,6 +189,10 @@ func _where(target: int) -> Vector2:
 	if target == SIGN:
 		var i: int = _sim.next_plot()
 		return _field.bed_at(i) - Vector2(0, 30.0) if i >= 0 else _where(REST)
+	if target == COOP_A or target == COOP_B:
+		return _field.pen_point("coop", Vector2(-0.7 if target == COOP_A else 0.7, 0.36))
+	if target == COW:
+		return _field.cow_at(0)
 	if target >= PACKET:
 		return _packet_at(target - PACKET)
 	return _field.plant_at(_field.place(target))
@@ -186,7 +214,7 @@ func _process(delta: float) -> void:
 	for ev: Dictionary in _sim.events:
 		_field.play(ev)
 		match String(ev.type):
-			"pick":
+			"pick", "gather", "milk":
 				_links = int(ev.n)
 				_sum = _sim.chain_sum
 				_sum_at = _t
@@ -221,6 +249,9 @@ func _move_finger() -> void:
 	if not down:
 		_last = -1
 		return
+	if lesson == Lesson.PENS:
+		_field.press(at, first)
+		return
 	if first and int(a[1]) >= PACKET and int(a[1]) < SIGN:
 		var crop := int(a[1]) - PACKET
 		_field.armed = -1 if _field.armed == crop else crop
@@ -239,7 +270,7 @@ func _draw_over() -> void:
 		return
 	var c := _over_l
 	match lesson:
-		Lesson.PICK, Lesson.CHAIN, Lesson.AWAY:
+		Lesson.PICK, Lesson.CHAIN, Lesson.AWAY, Lesson.PENS:
 			if _links > 0 and _t - _sum_at < 2.4:
 				var pop := 1.0 + 0.3 * maxf(0.0, 1.0 - (_t - _sum_at) / 0.2)
 				var fs := int(40.0 * pop)
@@ -271,7 +302,7 @@ func _lettered(c: Control, text: String, mid: Vector2, fs: int, col: Color) -> v
 	c.draw_string_outline(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 10, Art.INK)
 	c.draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
-## The chip page: the shed with what its three upgrades do, and the top
+## The chip page: the shed with what it sells, and the top
 ## bar's gear and ? drawn as they are on the screen.
 func _draw() -> void:
 	if _played() or size.x <= 0.0:

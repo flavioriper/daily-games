@@ -3306,5 +3306,104 @@ across a ripe field the thing to come back for.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Furrow bot.
 - **How to see it**: `tests/_shot_furrow.gd -- <outdir> [reduce]
   [en|pt|es]` (windowed, through the real menu, a real touch and a real
-  drag; 66 to 164 draw calls on `opengl3_angle`),
+  drag; 74 to 188 draw calls on `opengl3_angle` since 2026-10-12),
   `tests/_shot_howto_screen.gd -- furrow <outdir>`.
+
+**Furrow became a small farm on 2026-10-12** (`feat/furrow-animals`,
+built unattended; the user: "when user click on the plant for the first
+time it should display a dialog about how much it cost to sell and takes
+to be ready, if user want to see again, must hold touch on it for a
+while. Also, user must select and click to plant on soil after harvest,
+no auto for now. We need cows for milk (user can upgrade to care cows),
+and chickens for eggs ... chicken generate eggs on ground, cow must be
+clicked to give milk, user can buy upgrade to increase egg time, buy
+rooster to get newborn from egg chance, fix the fence (case not, animals
+can eat chickens). Plants can die if not harvest within time. Do
+everything, and also do a polish on the design to make it more polished
+and cozier, not so canvas looking"). The notes above that it contradicts
+(ripe waits and never rots, a picked lot grows again, three upgrades, the
+tray's Sowing line) are history. The spec's section 9 has the numbers.
+
+- **A picked lot is bare** (`crop == Sim.BARE`) and nothing grows on it
+  until a packet is sown there by hand. The packet stays in hand: the
+  same finger picks what is ripe, clears what is dead and sows what is
+  bare, so a stroke out and a stroke back is pick and sow. `sow` takes
+  only a bare lot; a crop sown by mistake is dug up from its card. A new
+  plot opens bare. Bare earth touched with no packet says "Choose a
+  packet" and the packets hop.
+- **Ripe keeps, then withers**: `keep_time` is three times the crop's own
+  growing (never under 90 s), a level of Mulch 10% more. A ripe lot shows
+  a bar of what it still keeps from 60% down, amber and then red, and the
+  screen says "Pick soon" once under a quarter. Dead is a shape of its
+  own (`Art._dead`, dry stalks, no crop's colour), pays nothing, is
+  cleared by a touch and is no link. `away()` kills what was ripe too
+  long and the welcome says how many. **A field kept by the build before
+  this loses nothing to its first return** (`ver` 2 in `furrow.cfg`; an
+  older file's ripe crops come back with their keeping whole).
+- **A thing's card** (`arcade/furrow_card.gd`): the first touch of a real
+  finger on a crop, a hen or a cow only shows its card (sells for, ready
+  in, keeps for) and marks it seen (`sim.seen`, kept); a finger resting
+  `Field.HOLD` (0.5 s) on a growing lot, a hen, a cow or a packet shows it
+  again, a ring closing round the finger as it waits. A ripe lot is
+  picked by the press itself, so its card is its packet's. The tutorial's
+  script and the harness press through `poke`, which never asks. **The
+  tray presses a slot on the finger's release now**, so a hold is not a
+  press.
+- **The coop and the pasture** are two round pens in the yard, before the
+  house, the mill and the barn, each bought at its signboard (300 and
+  4,000 seeds). Hens (2 to 8) lay an egg each 40 s onto the ground, 3 a
+  hen at most, and a finger gathers the eggs it comes within `REACH` of,
+  so a stroke through the pen takes them all. A cow (1 to 5) fills in
+  150 s, shows a bottle in a bubble and is milked by a touch, never by
+  herself. **Eggs and milk are links of the chain**; the clean sweep
+  counts the plots picked (`_chain_plots`), not the links. Upgrades with
+  no top: Feed and Nest box, Care and Pail. Each animal has its own
+  milestones (`EGG_MILES`, `MILK_MILES`): seeds at once and 10% on what it
+  pays, for good; the shed's page shows the bar.
+- **The rooster** (2,500) makes 8% of eggs a chick, a hen in five
+  minutes, to the coop's room. **The fence** is down when the coop is
+  built and 24 hours after each mending (60 + 40 a hen); down, a fox
+  comes every 15 minutes or so, is six seconds on its way to the gap and
+  takes a hen unless it is touched (`shoo`), never the last, and two at
+  most while the game is shut. A fox waits behind a card, the shed or the
+  settings, and the whole field waits while the guide is read.
+- **The shed has three pages** (`furrow_shop.gd`: Field, Coop, Pasture).
+  It opens on a pen's page from that pen's hutch or trough; bare ground
+  in a pen opens nothing, so a stroke for the eggs can begin anywhere
+  (the first build opened the shed there and ate the stroke).
+- **The look** ("not so canvas looking"): nothing on the ground has a
+  hard edge that is not a thing's own. `Art.soft` (a blob clear at its
+  rim) is every shadow, every patch of other grass and the wash of light
+  from the far left; the ground is shaded top to bottom and darker at its
+  corners (`Art.quad`); the stripes of mown grass, the lattice of road
+  under closed lots and their dashed outlines are gone. A lot that is
+  open has road round it and the rest is meadow, so `Art.land` is rebuilt
+  when a lot opens (`_ground_for`). Lots have rounded corners, a lit
+  half, grass over their near edges; the buildings have footings, eaves'
+  shade, tiles, a chimney that smokes, a box of flowers; clouds' shade
+  drifts over, three butterflies keep to their corners. All of the air is
+  in the one live mesh; none of it moves with `Motion.reduce`.
+- **The yard takes the room the lots leave** (`YARD` 440 at most): the
+  lots are bound by the screen's width, so the height spare goes to the
+  pens and the buildings. The tray's Sowing line went, and its 76 px.
+- **The animals are code** (`arcade/furrow_animals.gd`: hen, rooster,
+  chick, egg, cow, bottle, fox, the pens), not in `ui/faces/`: they are
+  scenery-sized and have no face to animate. A pen is two meshes (ground
+  and far fence, then the near fence over the animals), an animal a
+  cached mesh under a transform.
+- **Sounds**: seven more cues from the same three takes (`egg`, `chick`
+  the button; `milk`, `clear`, `shoo` the block; `fox`, `mile` the
+  kalimba), 18 files, 0 flagged, unheard. No animal has a voice.
+- **The pace** by `tests/_probe_furrow.gd -- pace`: 97.9 hours staying
+  (it was 146), 16.5 days looking in (17.6), the bot that looks in losing
+  487 crops and 26 hens on the way.
+- **Mine, the user's to call**: the keeping (3 times, 90 s floor) and
+  Mulch; the first touch not picking; the card's Dig it up; the caps of 8
+  hens and 5 cows; every price; eggs and milk as links; the fence coming
+  down again after a day; the fox's numbers and that it can be shooed;
+  the milestones' counts and prizes; no animal voices; the pens round and
+  in the yard; the three-page shed.
+- **Not done**: a phone; the sounds heard; pt and es read; `reduce`
+  shot; the welcome's "withered" and "a fox took" lines seen; a Furrow
+  bot in `tests/_probe_arcade_buzz.gd`; a concept tab (the rule is a tab
+  first for new rules: the user was away and said "do everything").

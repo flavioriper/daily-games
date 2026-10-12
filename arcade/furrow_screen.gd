@@ -14,15 +14,22 @@ extends Control
 ## (arcade/furrow_sim.gd) is loaded when the screen opens, grown by the
 ## time away, and saved on every purchase, every twenty seconds, when the
 ## app loses focus and when the screen is left. Crops ripen on the wall
-## clock and wait for the finger; nothing is picked while away.
+## clock, keep for a while and then wither; nothing is picked while away.
 ##
 ## Play: a finger drawn over ripe plants picks them (arcade/furrow_field.gd
 ## takes the touch), each within the chain's window of the last a link that
-## pays more. A packet tapped is taken in hand and the same finger sows it;
-## tapped again it is put back. The next plot's signboard and the next
-## packet are bought where they stand. Every touch that changes anything is
-## heard and felt; a touch on a plant still growing letters its time left
-## and is silent.
+## pays more, and a picked lot is bare. A packet tapped is taken in hand
+## and stays there: the same finger picks what is ripe and sows what is
+## bare; tapped again it is put back. The next plot's signboard, the next
+## packet and the two pens are bought where they stand. In the coop the
+## finger gathers the eggs off the ground, in the pasture it milks a cow
+## that shows her bottle, and a fox at the fence is sent off by a touch.
+## Every touch that changes anything is heard and felt; a touch on a plant
+## still growing letters its time left and is silent.
+##
+## **A thing's card** (arcade/furrow_card.gd): the first touch on a crop, a
+## hen or a cow shows what it sells for and how long it takes, and a finger
+## held on it, or on a packet, shows it again.
 ##
 ## The moments (arcade/rewards.gd over everything): a pick's tick climbs a
 ## semitone a link to five and holds; the chain's sum is lettered as it
@@ -36,6 +43,8 @@ const Sim = preload("res://arcade/furrow_sim.gd")
 const Art = preload("res://arcade/furrow_art.gd")
 const Field = preload("res://arcade/furrow_field.gd")
 const Shop = preload("res://arcade/furrow_shop.gd")
+const Card = preload("res://arcade/furrow_card.gd")
+const Animals = preload("res://arcade/furrow_animals.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
@@ -82,8 +91,13 @@ var _margins: MarginContainer
 var _seeds_l: Label
 var _chain_l: Label
 var _ripe_l: Label
-var _mode: PanelContainer
-var _mode_l: Label
+## The tray's slot under a finger and when it went down, for a press (the
+## slot on its release) and a hold (the packet's card); -1 with none.
+var _slot_down := -1
+var _slot_at := 0.0
+var _slot_touch := -2
+## Whether a ripe lot's last quarter has been said, until none is in it.
+var _turn_said := false
 var _font: Font
 var _clock := 0.0
 var _knock := -1
@@ -121,6 +135,7 @@ func _ready() -> void:
 	_opened_at = Time.get_ticks_msec()
 	_fx.cue("start")
 	_welcome.call_deferred(sim.away_ripe, sim.away_secs)
+	_hint_bare.call_deferred()
 	Analytics.track("furrow_enter", {"plots": sim.opened(), "crops": sim.crops, "seeds": sim.seeds, "away": int(sim.away_secs), "ripe": sim.ripe_count()})
 
 func _notification(what: int) -> void:
@@ -134,12 +149,28 @@ func _notification(what: int) -> void:
 		if gap > 5.0:
 			_welcome(sim.away(gap), gap)
 
-## What the time away did, said once over the field.
+## What the time away did, said once over the field: what is ripe, and
+## under it what was lost.
 func _welcome(ripened: int, secs: float) -> void:
-	if ripened <= 0 or secs < 60.0 or _rw == null:
+	if secs < 60.0 or _rw == null:
 		return
-	var text := tr("FW_BACK_ONE") if ripened == 1 else tr("FW_BACK_N") % ripened
-	_rw.sticker(text, _rw.at(self, size * Vector2(0.5, 0.36)), 56, 2.6, false, Color("fff4c2"), true, "back")
+	var at := _rw.at(self, size * Vector2(0.5, 0.4))
+	if ripened > 0:
+		var text := tr("FW_BACK_ONE") if ripened == 1 else tr("FW_BACK_N") % ripened
+		_rw.sticker(text, at, 56, 2.8, false, Color("fff4c2"), true, "back")
+	var lost: Array = []
+	if sim.away_dead > 0:
+		lost.append(tr("FW_BACK_DEAD_ONE") if sim.away_dead == 1 else tr("FW_BACK_DEAD_N") % sim.away_dead)
+	if sim.away_lost > 0:
+		lost.append(tr("FW_BACK_FOX_ONE") if sim.away_lost == 1 else tr("FW_BACK_FOX_N") % sim.away_lost)
+	for k in lost.size():
+		_rw.sticker(lost[k], at + Vector2(0, 76.0 + 56.0 * k), 40, 3.4, false, Color("fffaf0"), false, "back_lost%d" % k, 0.0, true)
+
+## A field with bare earth and no packet in hand says what to do, once as
+## the screen opens.
+func _hint_bare() -> void:
+	if _rw != null and sim.bare_count() > 0 and field.armed < 0 and sim.ripe_count() == 0:
+		_rw.sticker(tr("FW_PICK_PACKET"), _rw.at(tray, Vector2(tray.size.x * 0.5, -60.0)), 42, 3.0, false, Color("fffaf0"), false, "packet")
 
 # --- building ---
 
@@ -150,6 +181,12 @@ func _build() -> void:
 	field.asked_plot.connect(_buy_plot)
 	field.waited.connect(_on_waited)
 	field.landed.connect(_on_landed)
+	field.bare.connect(_on_bare)
+	field.asked_pen.connect(_buy_pen)
+	field.opened_pen.connect(func(kind: String) -> void: _open_shop("coop" if kind == "coop" else "cow"))
+	field.petted.connect(_on_petted)
+	field.cow_waited.connect(_on_cow_waited)
+	field.about.connect(_about)
 	add_child(field)
 	field.lay(sim)
 	_fx = Fx2D.new()
@@ -175,18 +212,6 @@ func _build() -> void:
 	open.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	open.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(open)
-
-	# what the hand holds, said over the tray while it holds a packet
-	_mode = PanelContainer.new()
-	_mode.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_mode.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mode.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 8))
-	_mode_l = Label.new()
-	_mode_l.theme_type_variation = "SheetBody"
-	_mode_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_mode.add_child(_mode_l)
-	_mode.visible = false
-	col.add_child(_mode)
 
 	tray = Control.new()
 	tray.name = "Tray"
@@ -254,7 +279,7 @@ func _lay_field() -> void:
 		return
 	var insets := SafeArea.insets(self)
 	var top := MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP + FENCE
-	var foot := MARGIN + insets.y + TRAY_H + GAP + 76.0
+	var foot := MARGIN + insets.y + TRAY_H + GAP
 	field.area = Rect2(30.0, top, size.x - 60.0, maxf(60.0, size.y - top - foot))
 	field.layout()
 
@@ -268,6 +293,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.AWAY, "TUT_FURROW_AWAY", tr("TUT_FURROW_AWAY_BODY")],
 		[Diagram.Lesson.SOW, "TUT_FURROW_SOW", tr("TUT_FURROW_SOW_BODY")],
 		[Diagram.Lesson.BUY, "TUT_FURROW_BUY", tr("TUT_FURROW_BUY_BODY")],
+		[Diagram.Lesson.PENS, "TUT_FURROW_PENS", tr("TUT_FURROW_PENS_BODY") % Sim.NEST],
 		[Diagram.Lesson.HUD, "TUT_FURROW_HUD", tr("TUT_FURROW_HUD_BODY")],
 	]
 	var pages := []
@@ -300,11 +326,26 @@ func _process(delta: float) -> void:
 	if field.area.size.x != size.x - 60.0:
 		_lay_field()
 	_clock += delta
-	# a stall is still time gone by: the field grows by all of it
-	sim.step(delta)
+	if tutor.is_open():
+		# the guide is being read: the field waits, so a first field is not
+		# found withered under it
+		sim.stamp = Time.get_unix_time_from_system()
+	else:
+		# a fox does not reach the hens behind a card or the shed
+		if sim.fox > 0.0 and (get_node_or_null("Card") != null or get_node_or_null("Shop") != null or settings_sheet.is_open()):
+			sim.fox += delta
+		# a stall is still time gone by: the field grows by all of it
+		sim.step(delta)
 	_play_events()
 	field.fly_to = field.get_global_transform().affine_inverse() * (_seeds_l.get_global_transform() * (_seeds_l.size * 0.5))
 	field.tick(delta)
+	# a finger resting on a packet asks for its card
+	if _slot_down > 0 and _clock - _slot_at >= Field.HOLD:
+		var held := _slot_down - 1
+		_slot_down = -1
+		_slot_touch = -2
+		if held < sim.crops:
+			_show_crop(held, -1)
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
 	_refresh_hud()
@@ -341,6 +382,7 @@ func _refresh_hud() -> void:
 ## The whole field ripe and no hand on it: said once, for the stroke that
 ## pays most.
 func _all_ripe() -> void:
+	_turning()
 	var all: bool = sim.opened() >= Sim.MIN_SWEEP and sim.ripe_count() == sim.opened()
 	if not all:
 		_all_said = false
@@ -350,6 +392,19 @@ func _all_ripe() -> void:
 	_all_said = true
 	_all_at = _clock
 	_rw.sticker(tr("FW_ALL_RIPE"), _tally_at() + Vector2(0, 70.0), 46, 2.2, false, Color("fffaf0"), false, "ready")
+
+## A ripe lot down to its last quarter, with nobody picking: said once
+## until none is, so a crop is not lost unseen.
+func _turning() -> void:
+	var low := false
+	for i in sim.plots.size():
+		if sim.plots[i].open and sim.plots[i].ripe and not sim.plots[i].dead and sim.fresh(i) < 0.25:
+			low = true
+	if not low:
+		_turn_said = false
+	elif not _turn_said and sim.chain == 0:
+		_turn_said = true
+		_rw.sticker(tr("FW_TURNING"), _tally_at() + Vector2(0, 70.0), 42, 2.4, false, Color("ffe1d6"), false, "turning")
 
 # --- the sim's events ---
 
@@ -376,6 +431,46 @@ func _play_events() -> void:
 			"sow":
 				_fx.cue("sow", randf_range(0.96, 1.04))
 				_feel(Haptics.TICK)
+			"clear", "dig":
+				_fx.cue("clear", randf_range(0.96, 1.04))
+				_feel(Haptics.TICK)
+			"dead":
+				_rw.sticker(tr("FW_WILTED"), _in_rw(field.over(int(ev.i))), 36, 1.6, false, Color("e8dcc0"), false, "dead%d" % int(ev.i), 20.0)
+			"gather":
+				_on_gather(ev)
+			"milk":
+				_on_milk(ev)
+			"chick":
+				_fx.cue("chick")
+				_feel(Haptics.GOOD)
+				_rw.sticker(tr("FW_CHICK"), _in_rw(field.pen_over("coop")), 46, 1.8, false, Color("fff4c2"), true, "chick")
+			"grown":
+				_fx.cue("chick", 0.84)
+				_rw.sticker(tr("FW_GROWN"), _in_rw(field.pen_over("coop")), 42, 1.6, false, Color("fffaf0"), false, "grown")
+			"fox":
+				_fx.cue("fox")
+				_feel(Haptics.WARN)
+				_rw.sticker(tr("FW_FOX"), _in_rw(field.pen_over("coop")), 54, Sim.FOX_TIME, false, Color("ffe1d6"), true, "fox", 0.0, true)
+			"shoo":
+				_fx.cue("shoo")
+				_feel(Haptics.GOOD)
+				_drop_sticker("fox")
+				_rw.sticker(tr("FW_SHOO"), _in_rw(field.pen_over("coop")), 48, 1.4, false, Color("fff4c2"), false, "shoo")
+				Analytics.track("furrow_fox", {"took": 0, "hens": sim.hens})
+			"took":
+				_fx.cue("nope", 0.9)
+				_feel(Haptics.WARN)
+				_drop_sticker("fox")
+				_rw.sticker(tr("FW_TOOK"), _in_rw(field.pen_over("coop")), 46, 2.4, false, Color("ffe1d6"), false, "took")
+				Analytics.track("furrow_fox", {"took": 1, "hens": sim.hens})
+				_save()
+			"fence_down":
+				_fx.cue("nope", 0.8, -4.0)
+				_rw.sticker(tr("FW_FENCE_FELL"), _in_rw(field.pen_over("coop")), 44, 2.6, false, Color("ffe1d6"), false, "fence")
+			"mile":
+				_on_mile(ev)
+			"bought":
+				_on_bought(ev)
 			"plot":
 				_on_plot(ev)
 			"crop":
@@ -385,6 +480,72 @@ func _play_events() -> void:
 				_feel(Haptics.GOOD)
 				Analytics.track("furrow_upgrade", {"tile": ev.id, "level": int(ev.level), "seeds": int(ev.paid)})
 				_save()
+
+func _drop_sticker(id: String) -> void:
+	_rw.stickers = _rw.stickers.filter(func(st: Dictionary) -> bool: return String(st.id) != id)
+
+## A link of the chain's tick: a semitone higher a link, to five and no
+## further.
+func _tick_pitch(n: int) -> float:
+	return pow(2.0, mini(n - 1, CLIMB) / 12.0) * randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY)
+
+## The chain's sum lettered over the field as it grows, or one link's pay
+## where it was picked.
+func _tally(n: int, pay: int, at: Vector2) -> void:
+	if n >= 2:
+		_rw.sticker("+" + Locale.number(sim.chain_sum), _tally_at(), mini(50 + n * 2, 84), Sim.WINDOW + 0.5, false, Color("fff4c2"), false, "tally", 0.0, true)
+	else:
+		_rw.sticker("+" + Locale.number(pay), at, 40, 0.8, false, Color("fffaf0"), false, "one", 40.0)
+
+## An egg off the ground: the chain's tick on its own cue.
+func _on_gather(ev: Dictionary) -> void:
+	_fx.cue("egg", _tick_pitch(int(ev.n)))
+	_feel(Haptics.TICK)
+	_tally(int(ev.n), int(ev.pay), _in_rw(field.pen_over("coop")))
+
+func _on_milk(ev: Dictionary) -> void:
+	_fx.cue("milk", _tick_pitch(int(ev.n)))
+	_feel(Haptics.BUMP)
+	_tally(int(ev.n), int(ev.pay), _in_rw(field.cow_at(int(ev.k)) - Vector2(0, 70.0)))
+
+## An animal's milestone: named with rays, its seeds to the plate.
+func _on_mile(ev: Dictionary) -> void:
+	var egg: bool = ev.kind == "egg"
+	_fx.cue("mile")
+	_feel(Haptics.WIN)
+	var at := _rw.at(self, size * Vector2(0.5, 0.4))
+	_rw.sticker((tr("FW_MILE_EGG_HIT") if egg else tr("FW_MILE_MILK_HIT")) % Locale.number(int(ev.count)), at, 62, 2.2, true, Color.WHITE, true, "mile")
+	_rw.sticker("+" + Locale.number(int(ev.prize)) + "  ·  " + tr("FW_MILE_MORE") % int(round(Sim.MILE_UP * 100.0)), at + Vector2(0, 86.0), 42, 2.2, false, Color("fff4c2"), false, "mile_line", 0.0, true)
+	_rw.spray(at, Pal.SUN, 14, 640.0, "star", 1.0, 0.1, _plate_at(_seeds_l))
+	_rw.rain(1.2, ["confetti", "star"], Rewards.CONFETTI)
+	Analytics.track("furrow_mile", {"tile": ev.kind, "n": int(ev.n), "seeds": int(ev.prize)})
+	_save()
+
+## A pen built, an animal bought, the fence mended.
+func _on_bought(ev: Dictionary) -> void:
+	var what := String(ev.what)
+	var pen := "cow" if what in ["pasture", "cow"] else "coop"
+	var at := _in_rw(field.pen_at(pen)) if field.has_pens() else _rw.at(self, size * 0.5)
+	match what:
+		"coop", "pasture":
+			_fx.cue("crop")
+			_feel(Haptics.WIN)
+			_rw.sticker(tr("FW_BUILT_COOP" if what == "coop" else "FW_BUILT_PASTURE"), at - Vector2(0, 110.0), 56, 2.0, true, Color.WHITE, true, "built")
+			_rw.spray(at, Pal.SUN, 12, 520.0, "star", 1.0)
+			_rw.spray(at, Art.CREAM, 12, 460.0, "confetti", 1.0)
+			_rw.ring(at, 200.0, Color(Art.CREAM, 0.9))
+		"fence":
+			_fx.cue("plot", 0.9)
+			_feel(Haptics.GOOD)
+			_rw.sticker(tr("FW_MENDED"), at - Vector2(0, 90.0), 46, 1.6, false, Color("fffaf0"), true, "mended")
+			_rw.ring(at, 170.0, Color(Art.WOOD_HI, 0.9))
+		_:
+			_fx.cue("level", 1.0 if what != "rooster" else 1.12)
+			_feel(Haptics.GOOD)
+			_rw.spray(at, Pal.SUN, 8, 420.0, "star", 0.9)
+			_rw.ring(at, 150.0, Color(Art.CREAM, 0.9))
+	Analytics.track("furrow_buy", {"tile": what, "seeds": int(ev.paid)})
+	_save()
 
 func _in_rw(p: Vector2) -> Vector2:
 	return _rw.at(field, p)
@@ -400,8 +561,7 @@ func _tally_at() -> Vector2:
 ## and the chain's sum lettered over the field as it grows.
 func _on_pick(ev: Dictionary) -> void:
 	var n := int(ev.n)
-	var pitch := pow(2.0, mini(n - 1, CLIMB) / 12.0) * randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY)
-	_fx.cue("pick", pitch)
+	_fx.cue("pick", _tick_pitch(n))
 	_feel(Haptics.TICK)
 	var at := _in_rw(field.over(int(ev.i)))
 	if bool(ev.gold):
@@ -410,10 +570,8 @@ func _on_pick(ev: Dictionary) -> void:
 		_rw.sticker("+" + Locale.number(int(ev.pay)), at, 54, 1.1, false, Art.GOLD, true, "", 50.0)
 		_rw.spray(at, Art.GOLD, 10, 480.0, "star", 1.0)
 		_rw.ring(at, 120.0, Color(Art.GOLD, 0.9))
-	if n >= 2:
-		_rw.sticker("+" + Locale.number(sim.chain_sum), _tally_at(), mini(50 + n * 2, 84), Sim.WINDOW + 0.5, false, Color("fff4c2"), false, "tally", 0.0, true)
-	elif not bool(ev.gold):
-		_rw.sticker("+" + Locale.number(int(ev.pay)), at, 40, 0.8, false, Color("fffaf0"), false, "one", 40.0)
+	if n >= 2 or not bool(ev.gold):
+		_tally(n, int(ev.pay), at)
 
 func _on_bunch(n: int, tier: int) -> void:
 	_fx.cue("bunch", BUNCH_PITCH[tier])
@@ -487,6 +645,72 @@ func _bump_seeds(amount: float) -> void:
 func _on_waited(i: int) -> void:
 	_rw.sticker(span(sim.left(i)), _in_rw(field.over(i)), 40, 1.0, false, Color("fffaf0"), false, "wait", 20.0)
 
+## Bare earth touched with no packet in hand: said, and the packets hop.
+func _on_bare(i: int) -> void:
+	field.nod(i)
+	_rw.sticker(tr("FW_PICK_PACKET"), _in_rw(field.over(i)), 40, 1.6, false, Color("fffaf0"), false, "packet", 20.0)
+	for crop in sim.crops:
+		_chip_at[crop + 1] = _clock + 0.05 * crop
+
+## A hen touched with no egg by her: a hop and the button's click.
+func _on_petted(at: Vector2) -> void:
+	_fx.touch(1.18)
+	_feel(Haptics.TAP)
+	_rw.spray(_in_rw(at), Color("f28aa4"), 1, 120.0, "heart", 0.8)
+
+## A cow touched before she is full: her time left, and no sound.
+func _on_cow_waited(k: int) -> void:
+	_rw.sticker(span(sim.cow_left(k)), _in_rw(field.cow_at(k) - Vector2(0, 70.0)), 40, 1.0, false, Color("fffaf0"), false, "wait", 20.0)
+
+# --- a thing's card ---
+
+func _about(kind: String, i: int) -> void:
+	match kind:
+		"crop":
+			_show_crop(int(sim.plots[i].crop), i)
+		"hen":
+			_show_card(tr("FW_HEN"), Color("fbe9c8"), func(c: Control, mid: Vector2) -> void: c.draw_mesh(Animals.hen(150.0), null, Transform2D(0.0, mid + Vector2(-14, 74))),
+				[[tr("FW_ABOUT_LAYS"), span(sim.lay_time()), false], [tr("FW_ABOUT_EGG"), Locale.number(sim.egg_worth()), true], [tr("FW_ABOUT_GROUND"), str(Sim.NEST), false]],
+				tr("FW_ABOUT_HEN_NOTE"))
+		"cow":
+			_show_card(tr("FW_COW"), Color("d9e8f4"), func(c: Control, mid: Vector2) -> void: c.draw_mesh(Animals.cow(180.0), null, Transform2D(0.0, mid + Vector2(-8, 66))),
+				[[tr("FW_ABOUT_FILLS"), span(sim.milk_time()), false], [tr("FW_ABOUT_MILK"), Locale.number(sim.milk_worth()), true]],
+				tr("FW_ABOUT_COW_NOTE"))
+
+## Crop `crop`'s card; `plot` is the lot it was asked on, growing still
+## (-1: a packet's), which the card can dig up.
+func _show_crop(crop: int, plot: int) -> void:
+	if crop < 0:
+		return
+	sim.see(String(Sim.CROPS[crop].id))
+	var can_dig: bool = plot >= 0 and not sim.plots[plot].ripe and not sim.plots[plot].dead
+	var card := _show_card(tr("FW_CROP_" + String(Sim.CROPS[crop].id).to_upper()), Art.TONE_HI[crop].lerp(Art.CREAM, 0.55),
+		func(c: Control, mid: Vector2) -> void: c.draw_mesh(Art.produce(crop, 78.0), null, Transform2D(0.0, mid + Vector2(0, 4))),
+		[[tr("FW_ABOUT_SELLS"), Locale.number(sim.worth(crop)), true], [tr("FW_ABOUT_READY"), span(sim.grow_time(crop)), false], [tr("FW_ABOUT_KEEPS"), span(sim.keep_time(crop)), false]],
+		tr("FW_ABOUT_CROP_NOTE"), tr("FW_ABOUT_DIG") if can_dig else "")
+	if card != null and can_dig:
+		card.dug.connect(func() -> void: sim.dig(plot))
+
+func _show_card(title: String, tint: Color, picture: Callable, facts: Array, note: String, dig := "") -> Control:
+	if get_node_or_null("Card") != null or get_node_or_null("Shop") != null:
+		return null
+	_fx.touch()
+	_feel(Haptics.TAP)
+	var card := Card.new()
+	card.name = "Card"
+	card.title = title
+	card.tint = tint
+	card.picture = picture
+	card.facts = facts
+	card.note = note
+	card.dig = dig
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+	return card
+
 ## Seconds as a few characters: 8.5 s, 45 s, 12 min, 2.5 h.
 static func span(secs: float) -> String:
 	if secs < 9.95:
@@ -504,10 +728,17 @@ func _buy_plot() -> void:
 	var i: int = sim.next_plot()
 	if i < 0:
 		return
-	if sim.buy_plot(maxi(field.armed, 0)) < 0:
+	if sim.buy_plot() < 0:
 		_refuse()
 		field.nod(i)
 		_rw.sticker(tr("FW_SHORT") % Locale.number(sim.plot_price() - sim.seeds), _in_rw(field.over(i)), 40, 1.2, false, Color("fffaf0"), false, "short", 20.0)
+
+## A pen's signboard pressed: built for its price, or said short.
+func _buy_pen(kind: String) -> void:
+	var what := "coop" if kind == "coop" else "pasture"
+	if not sim.buy(what):
+		_refuse()
+		_rw.sticker(tr("FW_SHORT") % Locale.number(sim.price(what) - sim.seeds), _in_rw(field.pen_over(kind)), 40, 1.2, false, Color("fffaf0"), false, "short", 20.0)
 
 func _refuse() -> void:
 	_fx.cue("nope")
@@ -521,15 +752,33 @@ func _slots() -> int:
 func _slot_mid(slot: int) -> Vector2:
 	return Vector2(tray.size.x * (slot + 0.5) / _slots(), 78.0)
 
+## The tray under a finger: a slot is pressed as the finger leaves it, and
+## a packet a finger rests on shows its card (`_process`).
 func _on_tray_input(event: InputEvent) -> void:
 	var at := Vector2(-1, -1)
-	if event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+	var down := false
+	var id := -2
+	if event is InputEventScreenTouch:
 		at = (event as InputEventScreenTouch).position
-	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		down = (event as InputEventScreenTouch).pressed
+		id = (event as InputEventScreenTouch).index
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		at = (event as InputEventMouseButton).position
-	if at.x < 0.0:
+		down = (event as InputEventMouseButton).pressed
+		id = -1
+	else:
 		return
-	press_slot(clampi(int(at.x / (tray.size.x / _slots())), 0, _slots() - 1))
+	var slot := clampi(int(at.x / (tray.size.x / _slots())), 0, _slots() - 1)
+	if down:
+		if _slot_down < 0:
+			_slot_down = slot
+			_slot_at = _clock
+			_slot_touch = id
+	elif id == _slot_touch and _slot_down >= 0:
+		var was := _slot_down
+		_slot_down = -1
+		if was == slot:
+			press_slot(slot)
 
 ## A press on the tray's slot: 0 the shed, then the crops in order.
 func press_slot(slot: int) -> void:
@@ -555,9 +804,6 @@ func press_slot(slot: int) -> void:
 ## Takes a packet in hand (-1: puts it back, and the hand picks again).
 func _arm(crop: int) -> void:
 	field.armed = crop
-	_mode.visible = crop >= 0
-	if crop >= 0:
-		_mode_l.text = tr("FW_SOWING") % tr("FW_CROP_" + String(Sim.CROPS[crop].id).to_upper())
 
 func _draw_tray() -> void:
 	if tray.size.x <= 0.0:
@@ -572,9 +818,12 @@ func _draw_tray() -> void:
 	b.disc(mid + Vector2(0, 5.0), 42.0 * press, Color(Pal.TEXT, 0.16))
 	b.disc(mid, 42.0 * press, TINT)
 	var can_up := false
-	for id: String in Sim.UPS:
+	for id: String in Sim.UPS + (Sim.COOP_UPS if sim.coop else []) + (Sim.COW_UPS if sim.pasture else []):
 		if sim.seeds >= sim.up_price(id):
 			can_up = true
+	# the fence down is the shed's business too
+	if sim.price("fence") >= 0 and sim.seeds >= sim.price("fence"):
+		can_up = true
 	if can_up:
 		b.disc(mid + Vector2(32, -32), 13.0, Color("fffaf0"))
 		b.disc(mid + Vector2(32, -32), 9.0 + (0.0 if still else 1.5 * sin(_clock * 4.0)), Pal.SUN)
@@ -629,14 +878,15 @@ static func short(n: int) -> String:
 
 # --- the shed ---
 
-func _open_shop() -> void:
-	if get_node_or_null("Shop") != null:
+func _open_shop(page := "field") -> void:
+	if get_node_or_null("Shop") != null or get_node_or_null("Card") != null:
 		return
 	_fx.touch()
 	_feel(Haptics.TAP)
 	var shop := Shop.new()
 	shop.name = "Shop"
 	shop.sim = sim
+	shop.page = page
 	shop.closed.connect(func() -> void:
 		_fx.touch(0.94)
 		_fx.buzz(Haptics.TAP))
@@ -661,6 +911,11 @@ func go_back() -> void:
 	if shop != null and not shop.is_queued_for_deletion():
 		shop.closed.emit()
 		shop.queue_free()
+		return
+	var card := get_node_or_null("Card")
+	if card != null and not card.is_queued_for_deletion():
+		card.closed.emit()
+		card.queue_free()
 		return
 	if field.armed >= 0:
 		_fx.touch(0.94)

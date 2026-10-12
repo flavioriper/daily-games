@@ -3568,6 +3568,26 @@ SETS = {
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
         # A golden crop, ripening and picked: one note alone.
         "gold":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:9", "cut:0.5"),
+        # The animals and the withering (2026-10-12), from the same three
+        # takes: build/sfx_raw/furrow/{egg,chick}.mp3 are the button's,
+        # {milk,clear,shoo}.mp3 the block's, {mile,fox}.mp3 the kalimba's.
+        # No animal has a voice: a cluck or a moo would be a new take, and
+        # none has been heard by the user.
+        # An egg off the ground: a link of the chain, the button a fourth up
+        # from `pick`, climbing with it.
+        "egg":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:5"),
+        # A cow milked: the block twice, quick, the second lower: into the pail.
+        "milk":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,-4"),
+        # A dead crop cleared, a growing one dug up: one low knock.
+        "clear":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7"),
+        # A chick out of its egg, and grown: the button twice, up.
+        "chick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.08:5,9"),
+        # The fox sent off: three quick notches up.
+        "shoo":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.32", "body:320", "tight", "notes:0.07:0,3,7"),
+        # A fox at the fence: two slow notes down, the one warning.
+        "fox":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.24:7,2", "cut:0.9"),
+        # An animal's milestone: four up.
+        "mile":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,5,7,9", "cut:1.0"),
     },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the

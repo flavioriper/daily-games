@@ -108,4 +108,7 @@ see "Ads and the purchase" below.
 `furrow_leave` (seconds, seeds, picked, sweeps), `furrow_plot` (n, seeds
 paid), `furrow_crop` (crop, seeds paid), `furrow_upgrade` (tile, level,
 seeds paid), `furrow_sweep` (n, seeds: a clean sweep only). No event a
-pick. `rules_opened` carries `puzzle_id` furrow.
+pick. Since 2026-10-12: `furrow_buy` (tile: coop, hen, rooster, fence,
+pasture or cow; seeds paid), `furrow_mile` (tile: egg or milk; n; seeds),
+`furrow_fox` (took 0 or 1, hens left); `furrow_upgrade`'s tile is also
+mulch, feed, nest, care or pail. No event an egg or a bottle. `rules_opened` carries `puzzle_id` furrow.
