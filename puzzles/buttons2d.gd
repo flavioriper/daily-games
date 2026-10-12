@@ -1293,7 +1293,6 @@ func tap_tin(place := -1) -> void:
 			starts[g] = _held_pos(g, false, now)
 		var res: Dictionary = state.stow(_held_cells)
 		if int(res.why) != State.OK:
-			_tell(tr("BB_REFUSE_FULL"))
 			fx.cue("locked")
 			return
 		# what the tin had no room for stays picked
@@ -1303,8 +1302,6 @@ func tap_tin(place := -1) -> void:
 		else:
 			_held_cells = kept
 		_play(res, -1, starts)
-		if kept.size() > 0:
-			_tell(tr("BB_KEPT_ONE") if kept.size() == 1 else tr("BB_KEPT_N") % kept.size())
 		return
 	var c: int = state.tin[place] if place >= 0 else -1
 	if c < 0 or (holding() and _held_cells.is_empty() and _held_c == c):
@@ -1460,8 +1457,11 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 		_tell(tr("BB_WHOLE"), from)
 	_request()
 
-func _refuse(i: int, why: String) -> void:
-	_tell(tr(why), i)
+## A tap that does nothing says so with the sound and the shiver alone: the
+## toast is for a key event (the user, 2026-10-12: "remove the annoying
+## message that keep showing after sending pieces around, no message needed
+## at all if not a key event"). `why` names the refusal for a reader.
+func _refuse(i: int, _why: String) -> void:
 	fx.cue("locked")
 	if not Motion.reduce and state.cur[i] >= 0:
 		_shiver_at[i] = _now()

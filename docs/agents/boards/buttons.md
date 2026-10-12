@@ -601,3 +601,22 @@ together"). "build it".
   calls. Seen in four stills of the opening; not played by anyone, no
   phone. A day in progress is not kept, so nothing saved is broken; today's
   deal changes for everyone.
+
+## The toast is for a key event (2026-10-12)
+
+The user, the same morning as the swap: "remove the annoying message that
+keep showing after sending pieces around, no message needed at all if not a
+key event". With whole colours trading, nearly every run is longer than the
+tin, so "The tin was full: N stayed behind" came up on most moves.
+
+- **Gone from the toast**: `BB_KEPT_ONE` / `BB_KEPT_N` (the rest of the run
+  simply stays picked), and every refusal -- `BB_REFUSE_FULL`,
+  `BB_REFUSE_PICK`, `BB_REFUSE_WRONG`, `BB_REFUSE_HOME`. A refused tap is
+  the `locked` cue and the shiver, as before. The keys are left in the
+  locale, unread.
+- **Kept**: a colour whole (`BB_WHOLE`, `BB_WHOLE_OPEN`), and the lines
+  that answer a button of the bar (`BB_HINTED`, `BB_RESET`). Mine: that
+  those two count, and that a full tin needs no words.
+- The aim's section of `tests/_probe_buttons_board.gd` counts 25 checks
+  since the swap (29 before): the deals changed, not the aim.
+- Board probe 38 days, 0 failures; the suite 249,804. Not seen on a screen.
