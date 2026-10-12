@@ -1,9 +1,9 @@
 extends RefCounted
 
-## Eddy's bank and its four upgrades (spec
+## Eddy's bank and its five upgrades (spec
 ## docs/superpowers/specs/2026-10-11-eddy-incremental-design.md): what a run
 ## scores is banked as drops, kept on the device beside the Arcade's scores
-## (user://arcade.cfg, section eddy), and drops buy levels of the four
+## (user://arcade.cfg, section eddy), and drops buy levels of the five
 ## upgrades in the shop (arcade/eddy_shop.gd). A fresh run is handed the
 ## levels (`fit`). Drops are Eddy's own: gold buys none of this.
 ##
@@ -14,11 +14,11 @@ const Record = preload("res://arcade/arcade_record.gd")
 const Sim = preload("res://arcade/eddy_sim.gd")
 
 const GAME := "eddy"
-const IDS := ["spin", "pull", "mouth", "reach"]
+const IDS := ["spin", "pull", "mouth", "reach", "speed"]
 ## Each upgrade's first price in drops, and how much dearer every level is.
-const FIRST := {"spin": 40, "pull": 50, "mouth": 60, "reach": 50}
+const FIRST := {"spin": 40, "pull": 50, "mouth": 60, "reach": 50, "speed": 50}
 const GROWTH := 1.36
-const ICON := {"spin": "clock", "pull": "trend", "mouth": "plus", "reach": "sparkle"}
+const ICON := {"spin": "clock", "pull": "trend", "mouth": "plus", "reach": "sparkle", "speed": "run"}
 ## The two gold boosters Eddy had before the shop, and what one cost: held
 ## ones are given back in gold when the screen opens (core/wallet.gd).
 const OLD := ["ed_long", "ed_head"]
@@ -79,5 +79,7 @@ static func worth(id: String, lv: int) -> String:
 			return "%d%%" % int(round((Sim.INFLOW + Sim.PULL_UP * lv) / Sim.INFLOW * 100.0))
 		"mouth":
 			return "%d%%" % int(round((Sim.CORE + Sim.MOUTH_UP * lv) / Sim.CORE * 100.0))
-		_:
+		"reach":
 			return "%d%%" % int(round((Sim.REACH + Sim.REACH_UP * lv) / Sim.REACH * 100.0))
+		_:
+			return "%d%%" % int(round((Sim.SPEED + Sim.SPEED_UP * lv) / Sim.SPEED * 100.0))

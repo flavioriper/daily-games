@@ -168,7 +168,6 @@ var _held := -1
 ## The whirlpool as drawn: its core eased to the sim's, and how far its
 ## mouth and its streaks have turned.
 var _core := Sim.CORE
-var _calm := 1.0
 var _turn := 0.0
 var _turn_far := 0.0
 ## Rings on the water, in pond units: {pos, t, life, r, col}.
@@ -485,7 +484,7 @@ func _new_game() -> void:
 	_fx.cue("start")
 	_hint(tr("ED_READY"), tr("ED_READY_LINE"))
 	var ups := Upgrades.levels()
-	Analytics.track("arcade_start", {"game": GAME, "spin": ups.spin, "pull": ups.pull, "mouth": ups.mouth, "reach": ups.reach})
+	Analytics.track("arcade_start", {"game": GAME, "spin": ups.spin, "pull": ups.pull, "mouth": ups.mouth, "reach": ups.reach, "speed": ups.speed})
 
 ## The tutorial card's pages (ui/hud/screen_tutor.gd), each a small pond
 ## played by this screen and the sim (ui/hud/eddy_tutorial_diagram.gd).
@@ -494,7 +493,7 @@ func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/eddy_tutorial_diagram.gd")
 	var steps := [
 		[Diagram.Lesson.STEER, "TUT_EDDY_STEER", tr("TUT_EDDY_STEER_BODY")],
-		[Diagram.Lesson.SLOW, "TUT_EDDY_SLOW", tr("TUT_EDDY_SLOW_BODY")],
+		[Diagram.Lesson.SWEEP, "TUT_EDDY_SWEEP", tr("TUT_EDDY_SWEEP_BODY")],
 		[Diagram.Lesson.GROW, "TUT_EDDY_GROW", tr("TUT_EDDY_GROW_BODY") % [Sim.LEVELS, Sim.level_for(Sim.Kind.DUCK)]],
 		[Diagram.Lesson.SPIN, "TUT_EDDY_SPIN", tr("TUT_EDDY_SPIN_BODY") % [int(Sim.SPIN), int(Sim.SPIN_BACK)]],
 		[Diagram.Lesson.SHOP, "TUT_EDDY_SHOP", tr("TUT_EDDY_SHOP_BODY")],
@@ -558,10 +557,9 @@ func _animate(delta: float) -> void:
 		bit.t += delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
 	_core = lerpf(_core, sim.core(), minf(1.0, delta * 5.0))
-	_calm = lerpf(_calm, sim.calm(), minf(1.0, delta * 6.0))
 	# the mouth turns as the core's water does, the streaks as the water two
 	# cores out: a quarter as fast
-	var w: float = Sim.turn_of(sim.level) / sim.core() * sim.strength() * (0.4 + 0.6 * _calm)
+	var w: float = Sim.turn_of(sim.level) / sim.core() * sim.strength()
 	if Motion.reduce:
 		w *= 0.35
 	_turn += w * delta
@@ -800,8 +798,7 @@ func _draw_field() -> void:
 		if not Motion.reduce and _clock - _level_at < 0.5:
 			swell += 0.16 * sin((_clock - _level_at) / 0.5 * PI)
 		var sc := _core * _u / CORE_PX * swell * (0.5 + 0.5 * live)
-		# hurried, it has lost its pull: the streaks round it thin away
-		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live * _calm))
+		field.draw_mesh(Art.streaks(CORE_PX), null, Transform2D(_turn_far, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
 		field.draw_mesh(Art.funnel(CORE_PX), null, Transform2D(_turn, Vector2(sc, sc), 0.0, at), Color(1, 1, 1, live))
 	# what floats, the small things under the toys, and over them what is
 	# going down

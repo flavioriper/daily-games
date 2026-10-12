@@ -11,19 +11,20 @@ extends RefCounted
 ## distance, so a thing drawn in goes round faster and faster the nearer it
 ## gets. Everything afloat is carried by drag alone -- it takes up the
 ## water's speed over its own `tau`, a leaf in a third of a second, a ball in
-## two -- and nothing is ever moved by rule. So a whirlpool hurried past a
-## leaf has not the time to take it (the leaf is tugged and left turning),
-## a small one cannot grip a thing wider than itself (`grip`), and a thing
-## goes down only once it is in the core, moving with the water, and no
-## wider than the mouth.
+## two -- and nothing is ever moved by rule. So a small whirlpool cannot
+## grip a thing wider than itself (`grip`), and a thing goes down only once
+## it is in the core, going round with the water, and no wider than the
+## mouth. The core's water travels with the whirlpool, so a thing the mouth
+## comes over is taken as it goes; one it passes a little wide of is tugged
+## and left turning.
 ##
 ## A run is one of many (the user, 2026-10-11: "a slow incremental where user
 ## buy upgrades to go further and further, not a one take game", spec
 ## docs/superpowers/specs/2026-10-11-eddy-incremental-design.md). What it
 ## scores is banked, the bank buys four upgrades that are kept
 ## (arcade/eddy_upgrades.gd), and `fit()` hands a fresh run their levels: a
-## longer spin, more of the turning run inward, a wider mouth from the first
-## and a longer reach. The sim knows nothing of the bank.
+## longer spin, more of the turning run inward, a wider mouth from the first,
+## a longer reach and a faster travel. The sim knows nothing of the bank.
 ##
 ## The pond is `w` wide and `h` tall, y down. Lengths are pond units, speeds
 ## units a second. The game's pond is WIDE by TALL whatever the phone, far
@@ -51,12 +52,13 @@ const ROOM := 300.0 * 320.0
 ## water out of sight.
 const VIEW := 150.0
 const VIEW_POW := 0.5
-## The whirlpool's fastest travel and how quickly it answers the pad. It
-## is slow on purpose (the user, 2026-10-10: "speed is too fast, it should
-## be way slower to move", of 150, and 2026-10-11, of 60: "movement is too
-## fast yet, it should be way slower"): six seconds across what is looked
-## at, seventeen across the pond. SLIP, RUSH and HASTE are measured against
-## it and came down with it.
+## The whirlpool's fastest travel with nothing bought and how quickly it
+## answers the pad. It is slow on purpose (the user, 2026-10-10: "speed is
+## too fast, it should be way slower to move", of 150, and 2026-10-11, of
+## 60: "movement is too fast yet, it should be way slower"): six seconds
+## across what is looked at, seventeen across the pond. Faster is bought
+## (`speed`, SPEED_UP; the user, 2026-10-12: "we need a upgrade to increase
+## speed of movement").
 const SPEED := 24.0
 const ANSWER := 0.3
 ## It grows through these levels.
@@ -75,26 +77,32 @@ const REACH := 4.5
 ## radius; under that the grip falls off as the cube.
 const GRIP := 1.4
 ## A thing goes down once it is this far into the core (a part of its
-## radius), goes round with the water there to within SLIP, and crosses the
-## whirlpool no faster than RUSH.
+## radius) and goes round with the water there to within SLIP, at level 1;
+## the leeway grows as the turning does (`turn_of`). Its going round is
+## taken in the whirlpool's own frame, so the whirlpool's travel is no part
+## of it: what the mouth comes over on the move goes down as what it waits
+## beside does.
 const MOUTH := 0.95
 const SLIP := 10.0
-const RUSH := 5.6
-## The part of its pull a whirlpool keeps travelling flat out.
-const HASTE := 0.08
-## What is swallowed to leave level 1, and how much more each level asks.
+## What is swallowed to leave level 1, how much more each level asks, and
+## how much more again by the square of the levels made (none until
+## 2026-10-12: once a whirlpool took what it went over, the big things went
+## down as fast as they were crossed and a rowing boat was four runs off,
+## not fifty; at 3 a level asks about eight of the newest kind it takes).
 const GROW := 6
 const GROW_STEP := 6
+const GROW_CURVE := 3.0
 ## The spin: seconds of turning in a run with nothing bought, and what a
 ## level gives back.
 const SPIN := 30.0
 const SPIN_BACK := 4.0
 ## What a level of each of the shop's upgrades is worth: seconds of spin,
-## inflow, units of core at level 1, cores of reach.
+## inflow, units of core at level 1, cores of reach, units a second of travel.
 const SPIN_UP := 2.0
 const PULL_UP := 0.05
 const MOUTH_UP := 0.6
 const REACH_UP := 0.2
+const SPEED_UP := 2.0
 ## Under this part of the spin the run says so, once.
 const LOW := 0.25
 ## The whirlpool unwinding at the end.
@@ -155,10 +163,12 @@ var score := 0
 var taken := [0, 0, 0, 0, 0]
 var biggest := -1
 ## The shop's upgrades as this run has them (`fit`): the core at level 1,
-## the part of the turning that runs inward, and the cores it is felt out to.
+## the part of the turning that runs inward, the cores it is felt out to and
+## its fastest travel.
 var core0 := CORE
 var inflow := INFLOW
 var far := REACH
+var speed := SPEED
 var events: Array = []
 ## What floats: {id, kind, look, pos, vel, ang, turn, drift, fresh, age,
 ## sink (seconds of going down, -1 afloat), rad, a, from}.
@@ -185,13 +195,14 @@ func is_over() -> bool:
 	return phase == Phase.OVER
 
 ## A fresh run's upgrades, each a level of 0 and up: {spin, pull, mouth,
-## reach}.
+## reach, speed}.
 func fit(ups: Dictionary) -> void:
 	spin_full = SPIN + SPIN_UP * int(ups.get("spin", 0))
 	spin = spin_full
 	inflow = INFLOW + PULL_UP * int(ups.get("pull", 0))
 	core0 = CORE + MOUTH_UP * int(ups.get("mouth", 0))
 	far = REACH + REACH_UP * int(ups.get("reach", 0))
+	speed = SPEED + SPEED_UP * int(ups.get("speed", 0))
 
 ## The core at level `lv` of a whirlpool whose first is `base`.
 static func core_of(lv: int, base := CORE) -> float:
@@ -207,7 +218,7 @@ static func turn_of(lv: int) -> float:
 
 ## What a whirlpool of level `lv` must swallow to grow.
 static func need_of(lv: int) -> int:
-	return GROW + GROW_STEP * (lv - 1)
+	return GROW + GROW_STEP * (lv - 1) + int(GROW_CURVE * (lv - 1) * (lv - 1))
 
 ## The first level whose mouth takes `kind`.
 static func level_for(kind: int, base := CORE) -> int:
@@ -245,13 +256,6 @@ func strength() -> float:
 		return clampf(1.0 - phase_t / DRAIN_T, 0.0, 1.0)
 	return 0.0 if phase == Phase.OVER else 1.0
 
-## How much of its pull the whirlpool keeps at the speed it travels: all
-## of it up to a third of its fastest, HASTE of it flat out. A whirlpool in
-## a hurry has not the strength to draw things in, nor takes the water of
-## its core along with it.
-func calm() -> float:
-	return lerpf(1.0, HASTE, smoothstep(0.33, 0.85, vel.length() / SPEED))
-
 ## The pad's lean. The first one of a run sets the spin running.
 func steer(dir: Vector2) -> void:
 	lean = dir.limit_length(1.0)
@@ -268,16 +272,19 @@ func swirl(p: Vector2) -> Vector2:
 	if r >= out or r < 0.001:
 		return Vector2.ZERO
 	var rc := core()
-	var vt := turn_of(level) * (r / rc if r < rc else rc / r) * strength() * calm()
+	var vt := turn_of(level) * (r / rc if r < rc else rc / r) * strength()
 	var n := d / r
 	var fade := 1.0 - smoothstep(out * 0.55, out, r)
 	return (Vector2(-n.y, n.x) * vt - n * vt * inflow) * fade
 
 ## How much of the whirlpool's travel the water at `r` from its middle
-## shares: all of it in the core, none two cores out.
+## shares: all of it in the core, none two cores out. It does at any speed
+## (the user, 2026-10-12: "it should absorv items while move not only when
+## it's stopped"): until then a whirlpool in a hurry left its core's water
+## behind and kept a twelfth of its pull, so it took nothing it crossed.
 func carry(r: float) -> float:
 	var rc := core()
-	return (1.0 - smoothstep(rc, rc * 2.0, r)) * (1.0 - smoothstep(0.33, 0.85, vel.length() / SPEED))
+	return 1.0 - smoothstep(rc, rc * 2.0, r)
 
 func step() -> void:
 	phase_t += DT
@@ -311,7 +318,7 @@ func step() -> void:
 			_float_all()
 
 func _move() -> void:
-	vel = vel.lerp(lean * SPEED, 1.0 - exp(-DT / ANSWER))
+	vel = vel.lerp(lean * speed, 1.0 - exp(-DT / ANSWER))
 	pos += vel * DT
 	var lo := Vector2(BANK, BANK)
 	var hi := Vector2(w - BANK, h - BANK)
@@ -352,17 +359,21 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 	if live and r < rc * far:
 		g = grip(th.kind)
 		var round := swirl(p)
-		water += (round + vel * carry(r)) * g
+		var along := vel * carry(r)
+		water += (round + along) * g
 		# What goes round is pressed toward the middle, as the turning water
 		# itself is, or drag alone would fling it out like a stone on a
 		# string. The water presses on a thing only as hard as its own going
 		# round asks, and no harder than the water there goes round itself:
-		# so a leaf lying still as a whirlpool hurries past is pressed by
-		# nothing.
+		# so a leaf lying still as a whirlpool goes by out of reach is pressed
+		# by nothing. Its going round is counted on the water it sits in, which
+		# near the middle travels with the whirlpool: counted on the pond, a
+		# whirlpool on the move pressed a leaf on one side of it too little
+		# and flung it out ahead.
 		if r > 0.001:
 			var n := (p - pos) / r
 			var side := Vector2(-n.y, n.x)
-			var going := clampf(v.dot(side), 0.0, round.dot(side))
+			var going := clampf((v - along).dot(side), 0.0, round.dot(side))
 			v -= n * (going * going / maxf(r, rc * 0.25)) * DT
 	v += (water - v) * (1.0 - exp(-DT / float(kind.tau)))
 	p += v * DT
@@ -394,11 +405,11 @@ func _drift(th: Dictionary, rc: float, live: bool) -> void:
 		return
 	if phase != Phase.PLAY:
 		return
-	# down it goes, once it goes round with the water and is not being run over
+	# down it goes, once it goes round with the water
 	var n := (p - pos) / maxf(r, 0.001)
 	var side := Vector2(-n.y, n.x)
 	var rel := v - vel
-	if absf(rel.dot(side) - swirl(p).dot(side)) <= SLIP and absf(rel.dot(n)) <= RUSH:
+	if absf(rel.dot(side) - swirl(p).dot(side)) <= SLIP * turn_of(level) / TURN:
 		th.sink = 0.0
 		th.rad = r
 		th.a = (p - pos).angle()

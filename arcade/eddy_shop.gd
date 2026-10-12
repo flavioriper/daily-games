@@ -1,6 +1,6 @@
 extends Control
 
-## Eddy's shop: the bank of drops and the four upgrades it buys
+## Eddy's shop: the bank of drops and the five upgrades it buys
 ## (arcade/eddy_upgrades.gd), a card laid over the pond by the screen before
 ## a run or from the end card. A row is one upgrade: what it does, its
 ## level, what the level is worth now and what the next one would be, and

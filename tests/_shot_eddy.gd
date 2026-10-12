@@ -210,7 +210,7 @@ func _process(delta: float) -> bool:
 				_shot("8_shop")
 				print("bank before buying: ", load("res://arcade/eddy_upgrades.gd").drops())
 				var shop: Node = _s.get_node("Shop")
-				for id: String in ["spin", "pull", "mouth", "reach"]:
+				for id: String in ["spin", "pull", "mouth", "reach", "speed"]:
 					shop._buy(id)
 				_at = _t
 				_step = 12

@@ -1406,6 +1406,8 @@ ED_UP_MOUTH,Mouth,Boca,Boca
 ED_UP_MOUTH_LINE,It starts wider and takes bigger things earlier,Começa mais largo e leva coisas maiores mais cedo,Empieza más ancho y se lleva cosas mayores antes
 ED_UP_REACH,Reach,Alcance,Alcance
 ED_UP_REACH_LINE,The water is felt further out,A água é sentida mais longe,El agua se siente más lejos
+ED_UP_SPEED,Speed,Velocidade,Velocidad
+ED_UP_SPEED_LINE,The whirlpool travels faster,O redemoinho anda mais rápido,El remolino viaja más rápido
 ED_UP_STATUS,Level %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
 ED_REFUND,Your Eddy boosters came back as %d gold,Seus reforços do Eddy voltaram como %d de ouro,Tus refuerzos de Eddy volvieron como %d de oro
 ED_OPEN_BUCKET,Buckets go down now,Agora os baldes descem,Ahora bajan los cubos
@@ -1421,12 +1423,13 @@ TUT_EDDY_UP_SPIN,Spin: the whirlpool turns longer,Giro: o redemoinho gira por ma
 TUT_EDDY_UP_PULL,Pull: things are drawn in sooner,Puxão: as coisas são puxadas mais depressa,Tirón: las cosas llegan antes
 TUT_EDDY_UP_MOUTH,Mouth: it starts wider,Boca: ele começa mais largo,Boca: empieza más ancho
 TUT_EDDY_UP_REACH,Reach: the water is felt further out,Alcance: a água é sentida mais longe,Alcance: el agua se siente más lejos
+TUT_EDDY_UP_SPEED,Speed: the whirlpool travels faster,Velocidade: o redemoinho anda mais rápido,Velocidad: el remolino viaja más rápido
 TUT_EDDY_HUD_BODY,"What has gone down stays down, so there is no Undo. The run waits while the settings or this guide are open: touch the pad to go on.","O que desceu não volta, por isso não há Desfazer. A partida espera enquanto as configurações ou este guia estão abertos: toque no controle para continuar.","Lo que bajó no vuelve, así que no hay Deshacer. La partida espera mientras los ajustes o esta guía están abiertos: toca el mando para seguir."
 ARC_BEST_LEVEL,Biggest whirlpool: level %d,Maior redemoinho: nível %d,Mayor remolino: nivel %d
 ED_MOTTO,Round and round and down,"Girando, girando, até o fundo","Girando, girando, hasta el fondo"
 ED_LEVEL,WHIRLPOOL,REDEMOINHO,REMOLINO
 ED_READY,Lean the pad,Incline o controle,Inclina el mando
-ED_READY_LINE,Go slowly beside what floats and the water takes it,Vá devagar perto do que flutua e a água leva,Ve despacio junto a lo que flota y el agua se lo lleva
+ED_READY_LINE,Steer over what floats and the water takes it,Passe por cima do que flutua e a água leva,Pasa por encima de lo que flota y el agua se lo lleva
 ED_RESUME,Touch the pad to go on,Toque no controle para continuar,Toca el mando para seguir
 ED_TOO_BIG,Too big until level %d,Grande demais até o nível %d,Demasiado grande hasta el nivel %d
 ED_LOW,Winding down!,Perdendo força!,¡Pierde fuerza!
@@ -1443,8 +1446,8 @@ ED_STAT_LEVEL,whirlpool,redemoinho,remolino
 ED_STAT_TIME,turning,girando,girando
 TUT_EDDY_STEER,Lean the pad,Incline o controle,Inclina el mando
 TUT_EDDY_STEER_BODY,"The round pad at the foot of the pond steers the whirlpool. Lean its knob a little to drift, all the way to hurry. Let go and the whirlpool stops.","O controle redondo ao pé do lago guia o redemoinho. Incline o botão um pouco para ir devagar, até o fim para correr. Solte e o redemoinho para.","El mando redondo al pie del estanque guía el remolino. Inclina su botón un poco para ir despacio, hasta el final para correr. Suéltalo y el remolino se detiene."
-TUT_EDDY_SLOW,Slowly does it,Devagar se vai longe,Despacio se llega lejos
-TUT_EDDY_SLOW_BODY,"The water needs time to take hold. Hurry past a leaf and it is only tugged and left behind. Wait beside it and it goes round, faster and faster, and down.","A água precisa de tempo para agarrar. Passe correndo por uma folha e ela só balança e fica para trás. Espere ao lado e ela gira, cada vez mais rápido, e desce.","El agua necesita tiempo para agarrar. Pasa corriendo junto a una hoja y solo se mece y se queda atrás. Espera a su lado y gira, cada vez más rápido, y baja."
+TUT_EDDY_SWEEP,Sweep them up,Passe por cima,Pasa por encima
+TUT_EDDY_SWEEP_BODY,"The whirlpool takes what its mouth comes over, moving or still: steer across a leaf and it goes round and down. One a little wide of the way is only tugged. Wait beside that one and the water draws it in.","O redemoinho leva o que passa pela sua boca, andando ou parado: passe por cima de uma folha e ela gira e desce. Uma folha um pouco ao lado só balança. Espere perto dela e a água a puxa.","El remolino se lleva lo que pasa por su boca, en marcha o quieto: pasa por encima de una hoja y gira y baja. Una hoja un poco al lado solo se mueve. Espera junto a ella y el agua la atrae."
 TUT_EDDY_GROW,It grows,Ele cresce,Crece
 TUT_EDDY_SPIN,The spin runs out,O giro acaba,El giro se acaba
 TUT_EDDY_HUD,The buttons,Os botões,Los botones

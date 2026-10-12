@@ -6,19 +6,21 @@ extends Control
 ## the framed pond and the pad beside it -- running a `Round`, the game's
 ## own sim with a hand added: it leans the pad toward one place after
 ## another, and the pad's knob is drawn where that hand holds it. So the
-## whirlpool goes where the knob leans, a leaf waited beside goes round and
-## down, one hurried past is left turning, and a duck sits where it is until
-## the whirlpool has grown, exactly as in the pond. `lesson` picks the page
+## whirlpool goes where the knob leans, a leaf its mouth comes over goes
+## round and down as it goes, one a little wide of it is left turning until
+## it is waited beside, and a duck sits where it is until the whirlpool has
+## grown, exactly as in the pond. `lesson` picks the page
 ## (set before it enters the tree):
 ##
 ## - STEER: the whirlpool taken round a square, at a drift and then flat out.
-## - SLOW: flat out across three leaves, which stay; then back at a walk,
-##   and they go down.
+## - SWEEP: flat out across three leaves, which go down as it goes; a
+##   fourth lies wide of the way and is only tugged, until the whirlpool
+##   comes back and waits beside it.
 ## - GROW: beside a duck too big for it; two leaves make the level, and the
 ##   duck goes down.
 ## - SPIN: the bar nearly empty; a leaf makes a level and gives some back,
 ##   then it runs out and the whirlpool unwinds.
-## - SHOP: the four upgrades the bank of drops buys, drawn as chips.
+## - SHOP: the five upgrades the bank of drops buys, drawn as chips.
 ## - HUD: the top bar's Reset, gear and ?, drawn as they are (nothing is
 ##   ever taken back, so no Undo).
 
@@ -31,7 +33,7 @@ const Sim = preload("res://arcade/eddy_sim.gd")
 const Upgrades = preload("res://arcade/eddy_upgrades.gd")
 const Shop = preload("res://arcade/eddy_shop.gd")
 
-enum Lesson { STEER, SLOW, GROW, SPIN, SHOP, HUD }
+enum Lesson { STEER, SWEEP, GROW, SPIN, SHOP, HUD }
 
 var lesson: int = Lesson.STEER
 
@@ -273,15 +275,17 @@ func _reset() -> void:
 				[10.2, null, 0.0], [11.8, Vector2(-20, -12), 1.0], [13.8, Vector2(18, -12), 1.0], [15.0, Vector2(0, 0), 1.0], [16.0, null, 0.0]]
 			_length = 16.2
 			_still_at = 4.0
-		Lesson.SLOW:
-			# flat out across three leaves, then back for each at a walk
+		Lesson.SWEEP:
+			# flat out across three leaves, then back to wait beside the one
+			# that lay wide of the way
 			for k in 3:
-				game.lay(Sim.Kind.LEAF, Vector2(-20.0 + 20.0 * k, 4.0 if k % 2 == 0 else -5.0), k)
-			game.pos = game.mid() + Vector2(-46, 0)
-			var one: int = game.things[0].id
-			game.plan = [[0.7, null, 0.0], [4.8, Vector2(50, 0), 1.0], [5.6, null, 0.0], [11.5, one + 2, 0.3], [17.5, one + 1, 0.3], [23.5, one, 0.3]]
-			_length = 23.5
-			_still_at = 8.0
+				game.lay(Sim.Kind.LEAF, Vector2(-16.0 + 20.0 * k, -7.0 if k % 2 == 0 else -13.0), k)
+			game.lay(Sim.Kind.LEAF, Vector2(4.0, 13.0), 1)
+			game.pos = game.mid() + Vector2(-46, -10)
+			var wide: int = game.things[3].id
+			game.plan = [[0.7, null, 0.0], [5.4, Vector2(56, -10), 1.0], [6.4, null, 0.0], [16.0, wide, 0.3]]
+			_length = 16.0
+			_still_at = 2.6
 		Lesson.GROW:
 			# beside a duck too big for it, then two leaves for the level, then
 			# the duck again (the things are numbered as they are laid)

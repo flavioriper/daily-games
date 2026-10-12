@@ -3151,6 +3151,64 @@ biggest whirlpool.
     - Mine and unseen: 150 and 24 themselves, the smaller pond, the card's
       words, the run's number, dropping the Second chance, the film's new
       timing (not watched moving, no still taken of the tutorial).
+  - **Fourth pass, 2026-10-12: it takes what it goes over, and speed is
+    sold** (the user: "we need a upgrade to increase speed of movement, it
+    should absorv items while move not only when it's stopped"). What the
+    bullets above and below say of a hurry costing its pull (`calm()`,
+    `HASTE`, `RUSH`), of "Travel is not sold", of four upgrades, of the
+    hasty bot and of the SLOW page is history.
+    - **A whirlpool on the move takes what its mouth comes over.** Three
+      things stopped it, and all three went: `calm()` (a twelfth of the pull
+      flat out) and the speed term in `carry()` (the core's water left
+      behind), both put there on purpose in the first build; `RUSH` (a thing
+      crossing the whirlpool is not taken), whose only job was the same; and
+      a frame error nobody had seen, because nothing was ever caught on the
+      move: **the press toward the middle counted a thing's going round on
+      the pond, not on the water it sits in**, so on one side of a travelling
+      whirlpool it pressed too little and the leaf was flung out ahead (with
+      the first three gone and this left, a leaf dead on the line was still
+      not taken). It is counted on `v - vel * carry(r)` now. `SLIP` is 10 at
+      level 1 and grows as `turn_of`: at level 20 the water goes round at
+      200 and a leaf sat in the core for five seconds before it was within
+      10 of it.
+    - Measured (`_probe_eddy.gd`): flat out over a thing 0.3 cores off the
+      line, every kind is taken at the first level whose mouth takes it, and
+      a leaf at levels 1, 5, 10 and 20 and with twelve of every upgrade;
+      one past where the water is felt does not move. About 0.9 cores either
+      side of the line is taken at level 1, two cores and more grown. The
+      probe's second bot no longer runs lanes: it goes flat out at its
+      target and on over it, and must score two thirds of the patient one's
+      (it scores the same).
+    - **Speed is the fifth upgrade** (`speed` in `Upgrades.IDS`, the `run`
+      icon, first price 50): `Sim.SPEED_UP` 2 units a second a level on the
+      24 nothing-bought, which stays 24 (the user's two "way slower"). The
+      sim's `speed` is the run's, `SPEED` the unbought one. The shop's card
+      holds five rows at 810x1440 with `ROW_H` as it was; the tutorial's
+      chip page five.
+    - **A level asks more by the square** (`GROW_CURVE` 3): with the big
+      things going down as fast as they were crossed, each a level and four
+      seconds back, the patient ladder was **4 runs** on the old needs. At
+      1, 2 and 3 (and 3 s back, and a speed level of 1) it was 10 to 51;
+      3 with nothing else touched gives **51 runs and 74 minutes** (51 and
+      61 before the pass), ducks first on run 5, buckets 15, rafts 33. A
+      run with nothing bought is level 4 and about 75 drops in 42 s, for
+      the patient bot and the sweeping one alike. Level 20 now asks 1,086
+      and a bot's rowing boat goes down at level 15 with Mouth 17.
+    - The tutorial's second page is `Lesson.SWEEP` ("Sweep them up"): flat
+      out across three leaves, which go down as it goes, a fourth a little
+      wide of the way tugged and left, then waited beside. Played headless
+      (catches at 2.5, 2.7 and 3.8 s, the fourth at 13.7) and shot in pt.
+      `ED_READY_LINE` says "Steer over what floats".
+    - `locale/ui.csv` changed: **`godot --headless --path . --import`
+      before a windowed run**, or the new keys are lettered raw.
+    - `_shot_eddy.gd` on `opengl3_angle`, one reading (the user at the Mac):
+      101 to 253 draw calls in play, 220 with the end card, 340 with the
+      shop. A level-20 whirlpool sweeping emptied the pond from 322 things
+      to 118 in fifteen seconds: `LET_IN` 2.5 a second does not keep up
+      with it. No bot gets there; not touched.
+    - Mine and unseen: no price for hurry at all, `SPEED_UP` 2 and the
+      price, the name Speed, `GROW_CURVE` (the levels come slower than they
+      did above level 4), the page's film and words, pt and es.
   - Mine and unseen by the user: the spec's ten calls. Owed: a phone, the
     sounds, pt and es, a person's climb timed.
 - **The game is pure data** (`arcade/eddy_sim.gd`, pond units, fixed
