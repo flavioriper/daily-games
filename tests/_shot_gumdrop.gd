@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [lose] [reduce] [en|pt|es]
+##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [lose] [reduce] [en|pt|es] [tutor] [pour]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
 ## button held, a drag over the tray, and that first mould served nearly
@@ -11,6 +11,9 @@ extends SceneTree
 ## serves each with a real touch; the win is shot, the board left and
 ## opened again as a finished day. With `lose` on band 3 the bot is kept
 ## off: two moulds are served nearly clear and the out-of-moves card shot.
+## With `tutor` the ? card's pages are shot instead; with `pour` the
+## squeeze button is held four seconds and let go, the tip's chunk read
+## off the dye at each still, and the run ends there.
 ## Each shot prints the frame's draw calls. The save is a harness file and
 ## the wallet a throwaway, so nothing of this Mac's is touched.
 

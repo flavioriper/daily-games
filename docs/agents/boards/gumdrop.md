@@ -255,8 +255,9 @@
   0.752 two seconds let go. Tried first and dropped: the far settle on in
   every chunk always (no flood, but the chunk one flat shade in half a
   second, no swirl), and the same at `FAR` 0.1 (the dye still left by the
-  seam: 0.45 to 0.07 in two seconds). Hard by the bot: 96, 89, 74, 96 in
-  5 serves (88, 74, 98, 74 in 8 before), 103 to 112 draw calls. **The
+  seam: 0.45 to 0.07 in two seconds). The bot still solves Hard: 96, 89, 74, 96
+  in 5 serves on this day's moulds (another day's than the 88, 74, 98, 74
+  above, so no before and after), 103 to 112 draw calls. **The
   user's to call**: the pour is now stronger, since nothing leaks (this
   chunk passes the card's shade, 0.5, inside a second, and a 4 s hold
   that left 0.20 leaves 0.75); `RATE` is the knob. Not played by hand, no
