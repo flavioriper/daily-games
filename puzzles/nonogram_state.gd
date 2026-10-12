@@ -36,7 +36,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the picture's own tiles (`moves_budget`): a
 ## tile laid or rubbed out costs one, a cross costs nothing. Three is one
 ## slip mended (off and on) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## The square each band falls back to when its drawn shape (Gen.SHAPES)
 ## will not line-solve. Insane is read from the bank
 ## (content/insane/nonogram.json, tools/insane/nonogram_ladder.gd); 10 is its

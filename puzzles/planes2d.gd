@@ -727,9 +727,9 @@ func tutorial_pages() -> Array:
 ## can ever be sitting on the board: a launch only empties cells, so the
 ## registry drops the actions row and Reset rides up into the top bar.
 ##
-## Insane counts moves: no Undo and no hint, a launch spent is spent.
+## Insane has no Undo and no hint (and, since 2026-10-12, no move counter).
 func capabilities() -> Array[String]:
-	if max_moves > 0:
+	if _state != null and _state.difficulty >= 3:
 		return []
 	return ["undo", "hint"]
 
@@ -2305,7 +2305,7 @@ func _gust() -> void:
 	if not _state.gust():
 		return
 	var t := _now()
-	if max_moves <= 0:
+	if max_moves <= 0 and max_hearts > 0:
 		hearts -= 1
 		_split_index = hearts
 		_split_at = t
@@ -2326,9 +2326,12 @@ func _gust() -> void:
 	_after(0.0 if Motion.reduce else GLIDE, _check_stuck)
 
 ## Whether there is something left to pay for a gust with: a move on a sky
-## that counts them, a heart otherwise.
+## that counts them, a heart on one that has hearts. A sky with neither
+## (every band since 2026-10-12) blows for nothing.
 func _gust_left() -> bool:
-	return moves_left > 0 if max_moves > 0 else hearts > 0
+	if max_moves > 0:
+		return moves_left > 0
+	return hearts > 0 or max_hearts <= 0
 
 ## `cost` moves go off Insane's counter. The last one gone with planes still
 ## on the field ends the sky once the move has landed (`land`).
@@ -2369,7 +2372,7 @@ func _check_stuck() -> void:
 		moved.emit()
 		_after(0.35, _run_out)
 		return
-	_say(tr("PP_TIP_STUCK_MOVES" if max_moves > 0 else "PP_TIP_STUCK"), Face.Expr.PUZZLED)
+	_say(tr("PP_TIP_STUCK_MOVES" if max_moves > 0 else ("PP_TIP_STUCK" if max_hearts > 0 else "PP_TIP_STUCK_FREE")), Face.Expr.PUZZLED)
 	if not known:
 		fx.buzz(Haptics.WARN)
 	_heart_layer.queue_redraw()
@@ -2377,7 +2380,7 @@ func _check_stuck() -> void:
 ## Whether the pill is breathing: the clouds have closed in and a heart can
 ## blow them on.
 func _pill_breathing() -> bool:
-	return _state.windy() and hearts > 0 and not out_of_hearts and not is_done() \
+	return _state.windy() and max_hearts > 0 and hearts > 0 and not out_of_hearts and not is_done() \
 		and _state.stuck()
 
 ## Every plane that can go right now, as a set to diff against.

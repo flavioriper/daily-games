@@ -27,7 +27,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the walk's own steps (`moves_budget`): a square
 ## crawled onto costs one and a square backed off costs one. The spare is a
 ## quarter of the walk, and never less than this.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## How far a hint grows the answer past the last square that agrees with it:
 ## to the next leaf, and never more than this many squares.

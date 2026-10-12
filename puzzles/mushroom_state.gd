@@ -34,7 +34,7 @@ const HINTS_BY_BAND := [3, 3, 1, 0]
 ## Insane's spare moves over the answer's own mushrooms (`moves_budget`): a
 ## mushroom planted or pulled up costs one, a pebble costs nothing. Three is
 ## one slip mended (up and down again) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## What the player has said about a covered cell.
 const BLANK := 0

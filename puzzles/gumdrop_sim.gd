@@ -120,7 +120,7 @@ func set_day(list: Array, mark_at: int, counted: bool) -> void:
 ## A band's day off the day's seed.
 func deal_day(band: int, from: RandomNumberGenerator) -> void:
 	var spec: Dictionary = Mould.BANDS[clampi(band, 0, Mould.BANDS.size() - 1)]
-	set_day(Mould.day(band, from), int(spec.mark), band >= 3)
+	set_day(Mould.day(band, from), int(spec.mark), false)
 
 ## The day from its first mould, every serve back.
 func restart() -> void:

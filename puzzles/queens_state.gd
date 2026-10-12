@@ -46,7 +46,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the court's own queens (`moves_budget`): a queen
 ## seated or lifted costs one, a cross costs nothing. Three is one slip
 ## mended (lifted, seated again) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## The ladder: easy, medium, hard, insane. The menu opens medium. Hard and
 ## Insane are read from banks mined on the Mac (content/insane/queens_hard.json
 ## and queens.json); these sizes are what an empty bank falls back to.

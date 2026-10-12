@@ -56,7 +56,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare taps over the fewest that solve the frame (`moves_budget`):
 ## a quarter of them, and never fewer than this. 0 on a band that does not
 ## count.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 const MOVES_SHARE := 0.25
 ## Every cycle a piece can have (one to four ways to lie) divides this, so
 ## a count of quarter turns is only ever needed modulo it.

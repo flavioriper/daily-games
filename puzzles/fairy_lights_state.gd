@@ -51,7 +51,7 @@ const HEARTS := [0, 0, 0, 0]
 ## (`moves_budget`): a quarter of that again, and never fewer than this.
 ## Every turn costs one; a tap the rules refuse on every band (a cross, a
 ## pinned piece) costs nothing.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## What a turn did, or why it was turned down.
 const OK := 0

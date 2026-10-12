@@ -35,7 +35,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the meadow's own tents (`moves_budget`): a tent
 ## pitched or struck costs one, a cairn costs nothing. Three is one slip
 ## mended (struck and pitched again) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## Width, height and tents per difficulty: the island's ladder exactly.
 ## Insane reads the Old Oaks bank (content/insane/tents.json); this band is
 ## only its fallback when the bank is empty.

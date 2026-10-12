@@ -104,7 +104,7 @@ static func run(t) -> void:
 						if other != idle:
 							t.eq(Gen.count(out.tw, Gen.pair_index(idle, other, out.ropes)), 0, name + " a rope not dealt crosses nothing")
 			if band >= 3:
-				t.check(out.budget >= out.par, name + " the thread covers the answer")
+				t.eq(out.budget, 0, name + " no thread to run out of")
 
 	# The state: a move raises its rope, undo restores, reset keeps the thread spent.
 	var rng2 := RandomNumberGenerator.new()

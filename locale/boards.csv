@@ -162,7 +162,7 @@ UT_SHORT,Move the pegs\nuntil no rope crosses.,Mude os pinos\naté nada cruzar.,
 UT_MOTTO,Every knot comes undone,Todo nó se desfaz,Todo nudo se deshace
 UT_LVL_0,4 ropes · over and under,4 cordas · por cima e por baixo,4 cuerdas · por encima y por debajo
 UT_LVL_1,6 ropes · twisted pairs,6 cordas · pares torcidos,6 cuerdas · pares torcidos
-UT_LVL_2,8 ropes · runs out of thread,8 cordas · a linha acaba,8 cuerdas · el hilo se acaba
+UT_LVL_2,8 ropes,8 cordas,8 cuerdas
 UT_LVL_3,9 ropes · a kitten pounces,9 cordas · uma gatinha ataca,9 cuerdas · una gatita ataca
 UT_RULES,"Lift a peg out of its hole and drop it in an empty one; it is carried over the top, and its rope comes with it. Where two ropes cross, one lies on top. Lift the rope on top and it slides off; move the one underneath and it wraps round the other once more. A rope that crosses nothing is reeled in and leaves the ring, and its holes are free; clear every rope. A short rope only reaches so far.\n\nOn Hard and Insane every move uses a stitch of thread, and when the thread runs out the day is lost. On Insane a kitten bats the marked peg every third move.","Tire um pino do buraco e solte num vazio; ele passa por cima de tudo, e a corda vai junto. Onde duas cordas se cruzam, uma fica por cima. Levante a de cima e ela se solta; mexa na de baixo e ela dá mais uma volta na outra. Uma corda que não cruza nenhuma outra é recolhida e sai do anel, e os buracos dela ficam livres; tire todas as cordas. Uma corda curta só alcança até certo ponto.\n\nNo Difícil e no Insano cada movimento gasta um ponto de linha, e quando a linha acaba o dia está perdido. No Insano uma gatinha bate no pino marcado a cada três movimentos.","Saca una clavija de su hueco y suéltala en uno vacío; pasa por encima de todo, y su cuerda va con ella. Donde dos cuerdas se cruzan, una queda encima. Levanta la de encima y se suelta; mueve la de abajo y da otra vuelta a la otra. Una cuerda que no cruza ninguna otra se recoge y sale del aro, y sus huecos quedan libres; quita todas las cuerdas. Una cuerda corta solo llega hasta cierto punto.\n\nEn Difícil e Insano cada movimiento gasta una puntada de hilo, y cuando se acaba el hilo el día está perdido. En Insano una gatita golpea la clavija marcada cada tres movimientos."
 UT_TIP_DRAG,Lift a peg into an empty hole. A rope that crosses nothing leaves the ring.,Levante um pino para um buraco vazio. Corda que não cruza nenhuma outra sai do anel.,Lleva una clavija a un hueco vacío. Una cuerda que no cruza ninguna otra sale del aro.
@@ -640,7 +640,7 @@ BAL_SHORT,"Weigh the fruit,\nlevel the seesaw","Pese as frutas,\nnivele a gangor
 BAL_MOTTO,"Weigh it, then level it",Pese e depois nivele,Pésalo y luego nivélalo
 BAL_LVL_0,"6 fruit, 3 kinds","6 frutas, 3 tipos","6 frutas, 3 tipos"
 BAL_LVL_1,"8 fruit, 4 kinds","8 frutas, 4 tipos","8 frutas, 4 tipos"
-BAL_LVL_2,"8 fruit, 5 kinds, before sunset","8 frutas, 5 tipos, antes do pôr do sol","8 frutas, 5 tipos, antes del atardecer"
+BAL_LVL_2,"8 fruit, 5 kinds","8 frutas, 5 tipos","8 frutas, 5 tipos"
 BAL_LVL_3,"Weights to 12, springy bales","Pesos até 12, fardos de mola","Pesos hasta 12, pacas saltarinas"
 SK_BLURB,Cut the field into numbered plots.,Divida o campo em canteiros numerados.,Divide el campo en parcelas numeradas.
 SK_SHORT,Cut the field into\nnumbered plots.,Divida o campo em\ncanteiros numerados.,Divide el campo en\nparcelas numeradas.
@@ -713,18 +713,18 @@ MP_MOTTO,Every patch has its count,"Cada canteiro, sua conta","Cada parcela, su 
 MP_LVL_0,"6 mushrooms, 6 × 6","6 cogumelos, 6 × 6","6 hongos, 6 × 6"
 MP_LVL_1,"9 mushrooms, 7 × 7","9 cogumelos, 7 × 7","9 hongos, 7 × 7"
 MP_LVL_2,"12 mushrooms, 8 × 8","12 cogumelos, 8 × 8","12 hongos, 8 × 8"
-MP_LVL_3,"Fairy Rings: 9 × 9, counted moves","Anéis de Fada: 9 × 9, jogadas contadas","Anillos de Hadas: 9 × 9, jugadas contadas"
+MP_LVL_3,"Fairy Rings: 9 × 9, no hints","Anéis de Fada: 9 × 9, sem dicas","Anillos de Hadas: 9 × 9, sin pistas"
 SD_BLURB,"Every number once in every row, column and region.","Cada número uma vez em cada linha, coluna e região.","Cada número una vez en cada fila, columna y región."
 SD_SHORT,"Every number once,\nevery way you look.","Um de cada número,\nem todo sentido.","Un número de cada,\nen todo sentido."
 SD_MOTTO,Every number has its place,Cada número em seu lugar,Cada número en su lugar
-SD_LVL_3,"Hilltops: 9 × 9, counted moves","Colinas: 9 × 9, jogadas contadas","Colinas: 9 × 9, jugadas contadas"
+SD_LVL_3,"Hilltops: 9 × 9, no hints","Colinas: 9 × 9, sem dicas","Colinas: 9 × 9, sin pistas"
 BR_BLURB,"Plank every islet to its number, and join them all.",Dê a cada ilhota suas pontes e ligue todas.,Dale a cada islote sus puentes y únelos todos.
 BR_SHORT,Plank every islet\nto its number.,Cada ilhota com\nas pontes certas.,Cada islote con\nsus puentes justos.
 BR_MOTTO,Join every islet,Una todas as ilhotas,Une todos los islotes
 BR_LVL_0,"11 islets, 7 × 7","11 ilhotas, 7 × 7","11 islotes, 7 × 7"
 BR_LVL_1,"16 islets, 9 × 9","16 ilhotas, 9 × 9","16 islotes, 9 × 9"
 BR_LVL_2,"24 islets","24 ilhotas","24 islotes"
-BR_LVL_3,"Lantern Night: 30 islets, counted moves","Noite das Lanternas: 30 ilhotas, jogadas contadas","Noche de Faroles: 30 islotes, jugadas contadas"
+BR_LVL_3,"Lantern Night: 30 islets, no hints","Noite das Lanternas: 30 ilhotas, sem dicas","Noche de Faroles: 30 islotes, sin pistas"
 BR_RULES_LANTERNS,"Lantern Night: a lantern counts friends, not planks. Its number is how many islets it is joined to, by one plank or two each.","Noite das Lanternas: uma lanterna conta amigas, não tábuas. O número dela é quantas ilhotas estão ligadas a ela, com uma ou duas tábuas cada.","Noche de Faroles: un farol cuenta amigos, no tablas. Su número es a cuántos islotes está unido, con una o dos tablas cada uno."
 BR_RULES_HEARTS,"You have %d hearts. Every plank is judged as it lands: a wrong one costs a heart, cracks and sinks, and leaves a buoy on that lane for good. A right plank stays.","Você tem %d corações. Cada tábua é julgada ao pousar: uma errada custa um coração, racha e afunda, e deixa uma boia naquele caminho de vez. Uma tábua certa fica.","Tienes %d corazones. Cada tabla se juzga al posarse: una equivocada cuesta un corazón, se parte y se hunde, y deja una boya en ese camino para siempre. Una tabla correcta se queda."
 BR_RULES_SAFE,Nothing here can be lost: a wrong plank just waits for you to lift it. Tap a bridge to add a plank or take it away.,Nada aqui se perde: uma tábua errada só espera você tirá-la. Toque numa ponte para pôr ou tirar uma tábua.,Aquí nada se pierde: una tabla equivocada solo espera a que la quites. Toca un puente para añadir o quitar una tabla.
@@ -803,28 +803,28 @@ FL_MOTTO,Wake every lantern,Acenda cada lanterna,Enciende cada farol
 FL_LVL_0,5 × 5 garden,Jardim 5 × 5,Jardín de 5 × 5
 FL_LVL_1,6 × 6 garden,Jardim 6 × 6,Jardín de 6 × 6
 FL_LVL_2,"7 × 7 garden","Jardim 7 × 7","Jardín de 7 × 7"
-FL_LVL_3,"Wish Tags: 8 × 8, counted moves","Etiquetas de Desejo: 8 × 8, jogadas contadas","Etiquetas de Deseo: 8 × 8, jugadas contadas"
+FL_LVL_3,"Wish Tags: 8 × 8, no hints","Etiquetas de Desejo: 8 × 8, sem dicas","Etiquetas de Deseo: 8 × 8, sin pistas"
 PP_BLURB,"Tap a plane whose lane to the edge is clear, and off it goes.","Toque num avião com o caminho livre até a borda, e lá vai ele.","Toca un avión con el camino libre hasta el borde, y allá va."
 PP_SHORT,Send every plane\noff a clear lane.,Solte cada avião\npelo caminho livre.,Lanza cada avión\npor camino libre.
 PP_MOTTO,A clear lane and away,"Caminho livre, e lá vai","Camino libre, y a volar"
 PP_LVL_0,12 × 17 maze,Labirinto 12 × 17,Laberinto de 12 × 17
 PP_LVL_1,16 × 23 maze,Labirinto 16 × 23,Laberinto de 16 × 23
 PP_LVL_2,"21 × 30 maze","Labirinto 21 × 30","Laberinto de 21 × 30"
-PP_LVL_3,Windy Day: counted moves,Dia de Vento: jogadas contadas,Día de Viento: jugadas contadas
+PP_LVL_3,"Windy Day: no hints, no undo","Dia de Vento: sem dicas, sem desfazer","Día de Viento: sin pistas, sin deshacer"
 PW_BLURB,Turn each pinned piece until the frame is full.,Gire cada peça presa até o quadro ficar cheio.,Gira cada pieza fija hasta llenar el marco.
 PW_SHORT,Turn each piece\ntill the frame fills.,Gire as peças até\npreencher o quadro.,Gira las piezas\ny llena el marco.
 PW_MOTTO,Turn it till it fits,Gire até encaixar,Gira hasta que encaje
 PW_LVL_0,"9 pieces, 5 × 5","9 peças, 5 × 5","9 piezas, 5 × 5"
 PW_LVL_1,"11 pieces, 5 × 7","11 peças, 5 × 7","11 piezas, 5 × 7"
 PW_LVL_2,"13 pieces, 6 × 8","13 peças, 6 × 8","13 piezas, 6 × 8"
-PW_LVL_3,"Ribbons: 16 pieces, counted moves","Fitas: 16 peças, jogadas contadas","Cintas: 16 piezas, jugadas contadas"
+PW_LVL_3,"Ribbons: 16 pieces, no hints","Fitas: 16 peças, sem dicas","Cintas: 16 piezas, sin pistas"
 RG_BLURB,Gather every colour onto a peg of its own.,Junte cada cor num pino só dela.,Reúne cada color en un poste propio.
 RG_SHORT,"Sort the rings,\na colour a peg.","Separe os anéis,\numa cor por pino.","Ordena los aros,\nun color por poste."
 RG_MOTTO,Every ring finds its peg,Cada anel acha seu pino,Cada aro halla su poste
 RG_LVL_0,"4 colours, 6 pegs","4 cores, 6 pinos","4 colores, 6 postes"
 RG_LVL_1,"5 colours, 7 pegs","5 cores, 7 pinos","5 colores, 7 postes"
 RG_LVL_2,"6 colours, 7 pegs","6 cores, 7 pinos","6 colores, 7 postes"
-RG_LVL_3,"Tumble: two-tone rings, counted moves","Cambalhota: anéis de duas cores, jogadas contadas","Voltereta: aros de dos colores, jugadas contadas"
+RG_LVL_3,"Tumble: two-tone rings, no undo","Cambalhota: anéis de duas cores, sem desfazer","Voltereta: aros de dos colores, sin deshacer"
 RG_TIP_LIFT,Tap a peg to lift its top ring.,Toque num pino para erguer o anel de cima.,Toca un poste para levantar el aro de arriba.
 RG_TIP_LANDS,"A ring lands on its own colour, or on an empty peg.",Um anel só pousa na própria cor ou num pino vazio.,Un aro solo cae sobre su color o en un poste vacío.
 RG_TIP_LOCKS,"Four of a colour fills a peg, and it locks.","Quatro da mesma cor enchem um pino, e ele trava.","Cuatro del mismo color llenan un poste, y se bloquea."
@@ -2604,6 +2604,7 @@ QN_RULES_MOVES,"You have %d moves. Seating a queen costs one, and so does liftin
 PG_RULES_CHECK,Check rings every bead that is out of place.,Conferir circula toda conta fora do lugar.,Comprobar rodea cada cuenta fuera de lugar.
 HTP_QL_OFF_BODY_MOVES,"Drag a sewn patch off the quilt and let go anywhere clear of it, and it goes home to the rack. On Scrap Basket that costs a move, like sewing one on.","Arraste um retalho costurado para fora da colcha e solte longe dela: ele volta para a prateleira. No Cesto de Retalhos isso custa uma jogada, como costurar um.","Arrastra un retazo cosido fuera de la colcha y suéltalo lejos de ella: vuelve al estante. En el Cesto de Retazos eso cuesta una jugada, igual que coser uno."
 PP_RULES_WIND_MOVES,"Windy Day: little clouds hang in the sky, and a plane can't fly through one. Every time a plane takes off, the wind blows every cloud one step along -- off one side and back in at the other -- and the dotted rings show where they'll be next. So the order matters: send the plane that keeps the next lane clear. A tap on a blocked plane costs nothing, and there's no Undo. If the clouds close in and nothing can fly, tap a cloud to blow the wind on: that costs a move, as a launch does.","Dia de Vento: nuvenzinhas ficam no céu, e avião não passa por nuvem. Cada vez que um avião decola, o vento empurra todas as nuvens um passo -- saem por um lado e voltam pelo outro -- e os círculos pontilhados mostram onde elas vão estar em seguida. Então a ordem importa: mande o avião que deixa o próximo caminho livre. Tocar num avião bloqueado não custa nada, e não há Desfazer. Se as nuvens fecharem tudo e nada puder voar, toque numa nuvem para soprar o vento: isso custa uma jogada, como uma decolagem.","Día de Viento: hay nubecitas en el cielo, y un avión no puede atravesar una. Cada vez que un avión despega, el viento empuja todas las nubes un paso -- salen por un lado y vuelven por el otro -- y los círculos punteados muestran dónde estarán después. Así que el orden importa: manda el avión que deja libre el siguiente camino. Tocar un avión bloqueado no cuesta nada, y no hay Deshacer. Si las nubes lo cierran todo y nada puede volar, toca una nube para soplar el viento: eso cuesta una jugada, como un despegue."
+PP_TIP_STUCK_FREE,The clouds closed in -- tap a cloud to blow the wind on.,As nuvens fecharam tudo -- toque numa nuvem para soprar o vento.,Las nubes lo cerraron todo -- toca una nube para soplar el viento.
 PP_TIP_STUCK_MOVES,The clouds closed in -- tap a cloud to spend a move and blow the wind on.,As nuvens fecharam tudo -- toque numa nuvem para gastar uma jogada e soprar o vento.,Las nubes lo cerraron todo -- toca una nube para gastar una jugada y soplar el viento.
 RG_RULES_TUMBLE_MOVES,"Tumble: some rings are two-tone, one colour on top and another underneath. Lifting a ring turns it over, so it lands showing its lower colour -- read the bottom half of a band to know what a ring will become. A peg is home when four rings show the same colour on top. Nothing warns you of a dead end, and there are no hints. Putting a ring back on its own peg is not a move.","Cambalhota: alguns anéis têm duas cores, uma em cima e outra embaixo. Erguer um anel o vira de cabeça para baixo, então ele pousa mostrando a cor de baixo -- leia a metade de baixo da faixa para saber no que o anel vai virar. Um pino fica completo quando quatro anéis mostram a mesma cor em cima. Nada avisa de um beco sem saída, e não há dicas. Devolver um anel ao próprio pino não conta como jogada.","Voltereta: algunos aros son de dos colores, uno arriba y otro debajo. Levantar un aro le da la vuelta, así que cae mostrando su color de abajo -- mira la mitad inferior de la banda para saber en qué se convertirá. Un poste está completo cuando cuatro aros muestran el mismo color arriba. Nada te avisa de un callejón sin salida, y no hay pistas. Devolver un aro a su propio poste no cuenta como jugada."
 HTP_RG_RESET_BODY_MOVES,There is no Undo on Tumble. Reset puts every ring back where it was dealt and hands every move back.,Não há Desfazer na Cambalhota. Recomeçar devolve cada anel para onde veio e devolve todas as jogadas.,No hay Deshacer en Voltereta. Reiniciar devuelve cada aro a donde estaba y te devuelve todas las jugadas.
@@ -2638,7 +2639,7 @@ GF_MOTTO,Fewest strokes wins,"Menos tacadas, melhor","Menos golpes, mejor"
 GF_LVL_0,3 holes · kerbs and blocks,3 buracos · bordas e blocos,3 hoyos · bordes y bloques
 GF_LVL_1,4 holes · sand and bumpers,4 buracos · areia e pinos,4 hoyos · arena y postes
 GF_LVL_2,5 holes · ponds and slopes,5 buracos · lagos e rampas,5 hoyos · estanques y pendientes
-GF_LVL_3,"Swing Gates: 5 holes, counted strokes","Portões: 5 buracos, tacadas contadas","Cancelas: 5 hoyos, golpes contados"
+GF_LVL_3,"Swing Gates: 5 holes, no hints","Portões: 5 buracos, sem dicas","Cancelas: 5 hoyos, sin pistas"
 GF_RULES,"Drag back anywhere on the card and let go to putt: the ball rolls the other way, harder the further you pull. The dots show where it will go first. Bank it off the kerbs to get round a corner.\n\nSink the ball in every hole of the day's course. Each putt is a stroke on your card, and par is the score a steady hand makes: finish at par or under for a clean card. Reset plays the course again from the first tee.","Arraste para trás em qualquer lugar do cartão e solte para dar a tacada: a bola rola para o outro lado, mais forte quanto mais você puxa. Os pontinhos mostram por onde ela vai primeiro. Rebata nas bordas para dobrar uma esquina.\n\nAcerte a bola em todos os buracos do campo do dia. Cada tacada vai para o seu cartão, e o par é o que uma mão firme faz: termine no par ou abaixo para um cartão limpo. Recomeçar joga o campo de novo desde a primeira saída.","Arrastra hacia atrás en cualquier parte de la tarjeta y suelta para golpear: la bola rueda hacia el otro lado, más fuerte cuanto más tiras. Los puntitos muestran por dónde irá primero. Rebótala en los bordes para doblar una esquina.\n\nEmboca la bola en todos los hoyos del campo del día. Cada golpe va a tu tarjeta, y el par es lo que hace una mano firme: termina en el par o por debajo para una tarjeta limpia. Reiniciar juega el campo otra vez desde la primera salida."
 GF_RULES_SAND,Sand drags the ball almost to a stop. A bumper post kicks it away.,A areia freia a bola quase até parar. Um pino a rebate para longe.,La arena frena la bola casi hasta pararla. Un poste la rebota lejos.
 GF_RULES_WATER,"A ball in a pond is fished out and put back where you struck it; the stroke still counts. A square with arrows is a slope: it pushes the ball the way they point, and the ball never rests on one.","Uma bola no lago é pescada e volta para onde você bateu; a tacada continua valendo. Um quadrado com setas é uma rampa: empurra a bola para onde elas apontam, e a bola nunca para em cima dela.","Una bola en el estanque se pesca y vuelve a donde la golpeaste; el golpe sigue contando. Un cuadro con flechas es una pendiente: empuja la bola hacia donde apuntan, y la bola nunca se queda quieta en ella."
@@ -2720,7 +2721,7 @@ HP_MOTTO,Pen the wandering horse,Cerque o cavalo andarilho,Encierra al caballo a
 HP_LVL_0,"7 × 8 meadow, 7 bales","Campo 7 × 8, 7 fardos","Prado 7 × 8, 7 fardos"
 HP_LVL_1,"8 × 10, 8 bales, apples","8 × 10, 8 fardos, maçãs","8 × 10, 8 fardos, manzanas"
 HP_LVL_2,"9 × 11, golden apple and bees","9 × 11, maçã dourada e abelhas","9 × 11, manzana dorada y abejas"
-HP_LVL_3,"Tunnels: 10 × 12, counted moves","Túneis: 10 × 12, jogadas contadas","Túneles: 10 × 12, jugadas contadas"
+HP_LVL_3,"Tunnels: 10 × 12, no hints","Túneis: 10 × 12, sem dicas","Túneles: 10 × 12, sin pistas"
 HP_SUBMIT,Submit,Entregar,Entregar
 HP_PILL_OPEN,Open · %d,Aberto · %d,Abierto · %d
 HP_TIP_BALE,Tap grass to drop a hay bale. Tap a bale to lift it.,Toque na grama para soltar um fardo. Toque num fardo para tirá-lo.,Toca la hierba para soltar un fardo. Toca un fardo para quitarlo.
@@ -3072,7 +3073,7 @@ LA_MOTTO,Every tile has a home,Cada peça tem seu lugar,Cada ficha tiene su siti
 LA_LVL_0,"5 × 5, numbers 1 to 5","5 × 5, números de 1 a 5","5 × 5, números del 1 al 5"
 LA_LVL_1,"7 × 7, a gentle scramble","7 × 7, pouco embaralhada","7 × 7, poco revuelta"
 LA_LVL_2,"7 × 7, well scrambled","7 × 7, bem embaralhada","7 × 7, bien revuelta"
-LA_LVL_3,"Twenty: six knots, 20 swaps","Vinte: seis nós, 20 trocas","Veinte: seis nudos, 20 cambios"
+LA_LVL_3,"Six knots, no hints","Seis nós, sem dicas","Seis nudos, sin pistas"
 LA_PILL_ONE,1 swap · best %d,1 troca · mínimo %d,1 cambio · mínimo %d
 LA_PILL_N,%d swaps · best %d,%d trocas · mínimo %d,%d cambios · mínimo %d
 LA_LEFT_ONE,1 swap left,1 troca restante,1 cambio restante
@@ -3131,7 +3132,7 @@ GD_SHORT,"Colour the jelly,\nmatch the card.","Pinte a gelatina,\niguale o cart�
 GD_LVL_0,"2 moulds, two flavours","2 formas, dois sabores","2 moldes, dos sabores"
 GD_LVL_1,"3 moulds, three flavours","3 formas, três sabores","3 moldes, tres sabores"
 GD_LVL_2,"4 moulds, one flavour to mix","4 formas, um sabor para misturar","4 moldes, un sabor que mezclar"
-GD_LVL_3,"Three Pots: 5 moulds, counted serves","Três Potes: 5 formas, serviços contados","Tres Tarros: 5 moldes, servicios contados"
+GD_LVL_3,"Three Pots: 5 moulds, mix the rest","Três Potes: 5 formas, misture o resto","Tres Tarros: 5 moldes, mezcla el resto"
 GD_WIN_SUB,Served at %s,Servidas com %s,Servidos con %s
 GD_SERVES_ONE,1 serve left,1 serviço restante,1 servicio restante
 GD_SERVES_N,%d serves left,%d serviços restantes,%d servicios restantes

@@ -745,9 +745,9 @@ func tutorial_pages() -> Array:
 ## registry drops the actions row and Reset rides up into the top bar --
 ## Untangle's and Word Trail's shape, reached by a third route.
 ##
-## Insane counts moves: no Undo and no hint, a turn spent is spent.
+## Insane has no Undo and no hint (and, since 2026-10-12, no move counter).
 func capabilities() -> Array[String]:
-	if max_moves > 0:
+	if state != null and state.band >= 3:
 		return []
 	return ["undo", "hint"]
 

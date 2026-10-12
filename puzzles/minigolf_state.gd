@@ -18,7 +18,7 @@ const Gen = preload("res://puzzles/minigolf_gen.gd")
 ## (docs/agents/flat-screens.md, "Insane counts moves").
 const HINTS_BY := [3, 3, 2, 0]
 const HEARTS_BY := [0, 0, 0, 0]
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## How much of a putt's way the dotted aim shows, in field units.
 const GUIDE_BY := [64.0, 52.0, 42.0, 30.0]
 

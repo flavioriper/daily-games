@@ -33,7 +33,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the figure's own lines (`moves_budget`): a line
 ## walked costs one and a line stepped back over costs one. The spare is a
 ## quarter of the figure, and never less than this.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## The lattice and its fill per difficulty: the island's own ladder
 ## (puzzles/oneline3d.gd). Measured over 200 generated boards a step: easy is
 ## about 11.5 lines over 8.4 posts, 4.8 of them diagonal; medium 15.4 over

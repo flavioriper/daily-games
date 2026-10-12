@@ -547,3 +547,42 @@ were, because their limit was never a judgement: Balance's sunset, Untangle's
 thread, Word Trail's wishes, the rows of Hidden Word and Code Break, and
 Drumbeat's misses. `tests/_probe_moves.gd -- id=<board>` opens any board on
 Insane, shoots the pill, spends the budget and shoots the card.
+
+### Insane counts nothing (2026-10-12)
+
+The user, 2026-10-12: "remove any move limit or time limit from insane, all
+insane games must be insane for difficulty not because it limit player
+movements". Everything above about the counter is history: no board counts
+moves on Insane now (Button Box and Pixel Garden lost theirs the same
+morning).
+
+- Every `MOVES_SLACK` reads `[0, 0, 0, 0]`, so `moves_budget()` is 0 and
+  `max_moves` is 0 on every band. The counter code (`_spend`, the pill, the
+  out-of-moves card, `MovesDiagram`, the `RULES_MOVES*` / `MOVES_LEFT_*` /
+  `OUT_MOVES_*` keys) is left in place and unreached, as the hearts are.
+- Limits that were Insane's alone went with it: **Gumdrop**'s counted serves
+  (`set_day(..., false)` on every band), **Untangle**'s thread (`slack` 0;
+  the kitten stays) and **Balance**'s sunset (`sun` off Insane's band; the
+  springy bales stay). Hard had neither thread nor sunset already; its
+  labels (`UT_LVL_2`, `BAL_LVL_2`) said so wrongly and are fixed.
+- **Insane keeps its own rule and its seal**: no Undo, Hint or Check, as
+  before. Fairy Lights and Paper Planes hung that on `max_moves` and now
+  read the band. Button Box and Pixel Garden keep the Undo they were given.
+- **Paper Planes**: a gust on a closed-in Windy Day was paid with a move;
+  with no counter and no hearts it is free (`_gust_left`,
+  `PP_TIP_STUCK_FREE`), or the first closed sky would end the day.
+- **Marigold**'s Insane is back on the band's own seeds (8) and the all-band
+  rule that a garden out of seeds grows back for another try.
+- The `*_LVL_3` labels that read "counted moves" (strokes, serves, 20 swaps)
+  name the band's rule or "no hints" instead, in en, pt and es.
+- `tests/_probe_moves.gd` is stale: there is no budget for it to spend.
+
+Not touched, because they are the game on every band or a count of
+mistakes, not of moves: Pearl Dive's clock (asked of the user), Word Trail's
+five wishes, the rows of Hidden Word and Code Break, Drumbeat's misses, and
+the two hearts of Trestle, How Big? and Golden Acorn.
+
+The suite 249,784, 0 failed; all 37 boards opened headless on Insane with
+`max_moves` 0. Nothing seen on a screen and no Insane day played through:
+boards that can dead-end with no Undo (Rings, Hedgehogs, Paper Planes) end
+in Start over, as they did under the counter.

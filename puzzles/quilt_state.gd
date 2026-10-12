@@ -59,7 +59,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the quilt's own patches (`moves_budget`): a
 ## patch sewn on, taken off or slid along costs one. Three is one slip
 ## mended (off and on) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## Why a drop or a lift was turned down.
 const OK := 0
 ## A cell of the patch falls off the quilt.

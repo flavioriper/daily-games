@@ -42,7 +42,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the sky's own planes (`moves_budget`): three
 ## gusts. A launch costs one and so does a gust; a tap the lane refuses
 ## costs nothing.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## What `blocker()` returns when the first thing in a lane is a cloud (a
 ## plane is its index, a clear lane -1).

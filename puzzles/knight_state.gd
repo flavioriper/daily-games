@@ -23,7 +23,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the board's shortest line (`moves_budget`):
 ## every hop costs one, a caught one too. The spare is a quarter of the
 ## line, and never less than this.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## `lost()`'s search budget: a position whose proof needs more than this is
 ## taken to be alive (measured: a live Hard position proves in a few hundred).
 const LOST_NODES := 6000

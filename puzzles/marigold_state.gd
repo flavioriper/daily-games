@@ -69,7 +69,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## Insane counts moves (docs/agents/flat-screens.md): the seeds are the
 ## counter, one garden and no second try. The handful is the proof's shots
 ## and this much over, or a quarter of them if that is more.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 const BANDS := [
 	{"pegs": 54, "orange": 12, "seeds": 10, "pot": 17.0, "green": 2},

@@ -44,7 +44,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the answer's own lamps (`moves_budget`): a lamp
 ## set down or taken up costs one, a chip costs nothing. Three is one slip
 ## mended (up and down again) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## The four ways out of a cell, and the ladder: width, height and how much of
 ## the court is sown with blocks. The island's own numbers.
 const DIRS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]

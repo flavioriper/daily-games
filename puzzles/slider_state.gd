@@ -33,7 +33,7 @@ const HINTS_BY := [3, 3, 2, 0]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the shortest way home (`moves_budget`): a
 ## quarter of it, and never fewer than this. 0 on a band that does not count.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 const MOVES_SHARE := 0.25
 
 var difficulty := 0

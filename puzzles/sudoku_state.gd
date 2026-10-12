@@ -35,7 +35,7 @@ const HEARTS := [0, 0, 0, 0]
 ## number written or taken out costs one, a pencil mark costs nothing. Three
 ## is one slip mended with two to spare (a number written over a wrong one
 ## is one move).
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## Why a tap was turned down.
 const OK := 0

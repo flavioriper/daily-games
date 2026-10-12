@@ -36,7 +36,7 @@ const HINTS := [3, 3, 1, 0]
 ## step of a lane's cycle costs one, the step that lifts the run too, so a
 ## plank laid by mistake is three moves to mend (it only comes off by going
 ## round). Four is one slip mended with one to spare.
-const MOVES_SLACK := [0, 0, 0, 4]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## What a judged plank came to (`add`).
 enum Judged { BLOCKED, RIGHT, WRONG, FULL, RULED }
 ## Neither end of a lane, for a walk that met the edge instead of an islet.

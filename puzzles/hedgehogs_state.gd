@@ -59,7 +59,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## pile cleared costs one -- raked by hand, blown off by a nought or raked
 ## round a number -- and so does a pile with a hedgehog under it, which
 ## clears nothing. Flags are free. Three is three wakes and no more.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## The bare piles still covered at the opening: what a clean solve clears,
 ## whatever its order and wherever the sleepwalkers go (a walk is between
 ## covered piles, so it never changes the count). 0 on a hand-made lawn.

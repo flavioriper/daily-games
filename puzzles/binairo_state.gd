@@ -19,7 +19,7 @@ const Gen = preload("res://puzzles/binairo_gen.gd")
 ## two to spare. Since 2026-10-04 no band has hearts: nothing is judged
 ## against the solution as it lands (docs/agents/flat-screens.md, "Insane
 ## counts moves").
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 var n: int = 0
 ## The difficulty (0 Easy to 3 Insane), set by the board before setup(): only

@@ -33,7 +33,7 @@ const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the answer's own beds (`moves_budget`): a bed
 ## fenced or cleared costs one, so a bed redrawn costs two. Three is one
 ## slip mended (a redraw) with one to spare.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 ## Width, height and the generator's area cap, per difficulty.
 # Insane's provisional band: Hard's own 7x9 frame with MAX_AREA_INSANE's
 # bigger plots -- 8x10 (either area cap) missed the 194 ms gate (worst

@@ -20,7 +20,7 @@ const Gen = preload("res://puzzles/lattice_gen.gd")
 const BANK := "res://content/lattice.json"
 const HINTS_BY := [3, 3, 2, 0]
 ## Insane's spare swaps over the deal's par.
-const MOVES_SLACK := [0, 0, 0, 5]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## What a swap came to.
 enum { OK, REFUSED_HOME, REFUSED_SAME, REFUSED_SELF }

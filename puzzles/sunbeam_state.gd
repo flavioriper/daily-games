@@ -35,7 +35,7 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## quarter of it again, and never fewer than this. Every piece let go on
 ## another peg costs one, a move the sleepers send back included; a peek
 ## (holding a piece) and a tap the rails refuse cost nothing.
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 var difficulty := 0
 

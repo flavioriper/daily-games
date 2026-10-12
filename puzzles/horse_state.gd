@@ -20,7 +20,7 @@ const Gen = preload("res://puzzles/horse_gen.gd")
 const BANK := "res://content/horse.json"
 const HINTS_BY := [3, 3, 2, 0]
 ## Insane's spare moves over the stock of bales (`moves_budget`).
-const MOVES_SLACK := [0, 0, 0, 3]
+const MOVES_SLACK := [0, 0, 0, 0]
 
 ## What a tap or Submit came to.
 enum { OK, REFUSED_FIXED, REFUSED_STOCK, REFUSED_PINNED, OPEN, SMALL }
