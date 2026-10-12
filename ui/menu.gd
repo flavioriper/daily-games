@@ -64,6 +64,7 @@ const DeckchairScreen = preload("res://arcade/deckchair_screen.gd")
 const EddyScreen = preload("res://arcade/eddy_screen.gd")
 const FurrowScreen = preload("res://arcade/furrow_screen.gd")
 const GriddleScreen = preload("res://arcade/griddle_screen.gd")
+const TrivetScreen = preload("res://arcade/trivet_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
@@ -1365,6 +1366,9 @@ func _open_arcade(game: String) -> void:
 		"griddle":
 			screen = GriddleScreen.new()
 			screen.name = "Griddle"
+		"trivet":
+			screen = TrivetScreen.new()
+			screen.name = "Trivet"
 		_:
 			return
 	# Nightlight, Furrow and Griddle are kept and have no run to finish: like the Factory's land

@@ -3486,3 +3486,86 @@ office (the signboard, the town's four moods, the ledger).
   tutorial's shots only); `reduce` shot; en and es tutorial pages shot; a
   Griddle bot in `tests/_probe_arcade_buzz.gd`; a concept tab (waived by
   the user).
+
+
+**Trivet is the thirteenth** (2026-10-12, spec
+`docs/superpowers/specs/2026-10-12-arcade-trivet-design.md`), built
+unattended from a screenshot of a browser game and "check any reference
+you need on web, wire everything even sound, do autonomous, no questions.
+Cozy animations, good animations on key events, satisfactory sounds on
+combos". The spec names the reference once to forbid it; **it is called
+Trivet and nothing else**. Stacks of felt mats set down on a wooden tray of
+nineteen six-sided places: stacks that touch with one colour on top gather
+into one, ten of a colour are put away, and the tray full with no brush
+left ends the run.
+
+- **The game is pure data** (`arcade/trivet_sim.gd`, no clock): `place`,
+  `sweep`, `redeal`, `revive`, and `events` that tell a move one step after
+  another (`place`, `move`, `clear`, `level`, `deal`, `tight`, `full`,
+  `over`). `tests/_probe_trivet.gd -- [runs] [first seed]` plays it with
+  two bots and checks the tray after every move (mats conserved, no stack
+  left with ten on top, no two touching stacks with the same top, a lid
+  over nothing, over only when full with no brush); run it after touching
+  the sim. 200 runs: at random 94 stacks and level 4 at the median, with
+  care 215 stacks and level 8; 0 failed.
+- **Which stack takes the mats** (`_pick`): the one of the fewest colours,
+  then the most of that colour on top, then the one just touched. So a
+  stack of one colour takes the rest and what is uncovered is in the
+  stacks that had more under them, which is where a chain comes from.
+- **The table runs behind the sim** (`arcade/trivet_board.gd`): a move is
+  settled in the sim at once and its events are played one after another
+  on the table's clock (`_queue`, `_next_at`), a mat at a time. The table
+  says what it has shown with `beat(what, data)` and the screen plays
+  that, so a tick is heard as its mat lands and the plates read
+  `shown_score`, not `sim.score`. **A stack may be set down while the last
+  move is still playing**, on a place empty both in the sim and as shown:
+  it goes on the table at once (`_set_down` marks its `place` event
+  `seen`), and nothing still to be played can touch that place. The brush
+  and the fresh hand wait for `settled()`.
+- **The table is the whole field** and is its own Control, so the
+  tutorial's pages are the table alone with a finger scripted on it
+  (`press`, `drag`, `release`), at half its chrome (`ui`), most on a tray
+  of seven places (`Sim.new(seed, 1)`: the sim's reach is a parameter,
+  and a small tray has no lids).
+- **A stack is one mesh held until its mats change** (`_mesh`, built by
+  `Art.stack` from each colour's one mat at `Art.U` pixels and laid by the
+  transform); a mat in the air is its colour's one mesh; the halos, rings
+  and motes are two live meshes. Nothing is keyed by a size. 62 to 95 draw
+  calls in play, 113 with the Second chance card, 127 to 141 on the end
+  card, 162 to 176 on a tutorial page (`opengl3_angle`, 810x1440).
+- **No state is a shade of a mat**: every colour wears its own mark; the
+  place a carried stack would take is a cream halo, a tight tray's last
+  places ring in amber, an armed brush rings the stacks in cream, and two
+  or more of a colour on top wear a cream button with their count.
+- **No mascot**: the mats are marks.
+- **The tab is paged since this card** (`ui/menu/arcade_tab.gd`:
+  `PER_PAGE` 8, `turn`, `_shown`, the two chevrons and "1/2" in the gold
+  strip). Thirteen cards are seven rows of two, which do not fit 810x1440
+  even with the pictures a strip (`ART_H_STRIP`); the menu's cards are
+  paged, never scrolled. A page's cards are in the tree and the rest hang
+  on nothing (freed in `NOTIFICATION_PREDELETE`); a short last page is
+  padded with blank rows so its cards keep a full page's height. `_need`
+  measures a full page. The cards got their taller pictures back: 295 draw
+  calls on the first page, 198 on the second.
+- **Boosters**: `tv_brush` and `tv_hand` (two more of each tool, 120 gold),
+  in `arcade/boosters.gd`, the shop and `tests/_probe_wallet.gd`; the
+  Second chance takes the four tallest stacks off
+  (`tests/_probe_chance.gd`).
+- **A typed loop over `Array.slice` does not parse** (`for b in
+  _blurbs.slice(...)` then `var font := b.get_theme_font(...)`): the menu
+  failed to compile and a windowed harness sat erroring every frame for
+  three minutes. Run a harness headless once before it gets a window.
+- **How to see it**: `tests/_shot_trivet.gd -- <outdir> [reduce]
+  [en|pt|es]` (windowed, through the real menu, real touches for a carry,
+  the brush and the fresh hand; headless it shoots nothing and still
+  drives every beat, 0 failed), `tests/_shot_howto_screen.gd -- trivet
+  <outdir>` (needs a window).
+- **Mine, the user's to call** (the spec's section 6): the name and the
+  felt mats; one endless run with levels inside it; which stack takes the
+  mats; chains counting double and triple; lids opened by levels; the two
+  tools and a full tray with a brush held not being the end; the marks and
+  the count; tap-then-tap; the two boosters; **the paged tab**; every
+  number; no concept tab.
+- **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot
+  (it was driven headless); pt and es tutorial pages shot; a Trivet bot in
+  `tests/_probe_arcade_buzz.gd`.

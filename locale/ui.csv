@@ -1755,3 +1755,52 @@ TUT_GRIDDLE_OFFICE,The office,O escritório,La oficina
 TUT_GRIDDLE_OFFICE_BODY,"Every shortcut annoys somebody: tonic the gardeners, scraps the vet, hurrying the crew, a loud signboard the neighbours. A jar filled to the top costs you. A favour calms it.","Todo atalho incomoda alguém: tônico, os jardineiros; sobras, a veterinária; pressa, a equipe; placa berrante, os vizinhos. Pote cheio até o topo custa caro. Um agrado acalma.","Todo atajo molesta a alguien: el tónico a los jardineros, las sobras a la veterinaria, las prisas al equipo, un cartel chillón a los vecinos. Un tarro lleno te cuesta. Un detalle lo calma."
 TUT_GRIDDLE_ROUND,It all runs at once,Tudo funciona junto,Todo funciona a la vez
 TUT_GRIDDLE_ROUND_BODY,"The four places go on whichever you look at. A dot on a place's button means it wants you: amber for something waiting, red for something going wrong. Coins buy more in the shop.","Os quatro lugares funcionam o tempo todo. Um ponto no botão de um lugar pede sua atenção: âmbar se algo espera, vermelho se algo vai mal. Moedas compram mais na loja.","Los cuatro lugares funcionan todo el tiempo. Un punto en el botón de un lugar pide tu atención: ámbar si algo espera, rojo si algo va mal. Las monedas compran más en la tienda."
+ARC_TRIVET_BLURB,"Set stacks of felt mats on the tray. Tops that match gather, and ten of a colour are put away.","Ponha pilhas de feltros na bandeja. Os topos iguais se juntam, e dez da mesma cor são guardados.","Pon pilas de fieltros en la bandeja. Las cimas iguales se juntan, y diez del mismo color se guardan."
+ARC_BEST_TRIVET,Furthest: level %d,Mais longe: nível %d,Más lejos: nivel %d
+TV_MOTTO,Ten of a colour,Dez da mesma cor,Diez del mismo color
+TV_LEVEL,LEVEL,NÍVEL,NIVEL
+TV_LEVEL_N,LEVEL %d,NÍVEL %d,NIVEL %d
+TV_READY,Set a stack down,Ponha uma pilha,Pon una pila
+TV_READY_LINE,Tops that match gather. %d of a colour are put away.,Topos iguais se juntam. %d da mesma cor são guardados.,Las cimas iguales se juntan. %d del mismo color se guardan.
+TV_TIGHT,Running out of room,O espaço está acabando,Se acaba el sitio
+TV_FULL,The tray is full,A bandeja está cheia,La bandeja está llena
+TV_FULL_LINE,"Tap the brush, then a stack to take it off",Toque na escova e depois numa pilha para tirá-la,Toca el cepillo y luego una pila para quitarla
+TV_CHAIN_2,Double!,Dobro!,¡Doble!
+TV_CHAIN_3,Triple!,Triplo!,¡Triple!
+TV_CHAIN_N,Chain x%d!,Corrente x%d!,¡Cadena x%d!
+TV_LEVEL_UP,Level %d!,Nível %d!,¡Nivel %d!
+TV_NEW_COLOUR,A new colour,Uma cor nova,Un color nuevo
+TV_NEW_PLACE,A place opens,Um lugar se abre,Se abre un sitio
+TV_NEW_BRUSH,+1 brush,+1 escova,+1 cepillo
+TV_NEW_HAND,+1 fresh hand,+1 mão nova,+1 mano nueva
+TV_END_CARD,The tray is full for now,A bandeja encheu por enquanto,La bandeja se llenó por ahora
+TV_STAT_LEVEL,level,nível,nivel
+TV_STAT_MATS,mats put away,feltros guardados,fieltros guardados
+TV_STAT_CHAIN,best chain,melhor corrente,mejor cadena
+BST_TV_BRUSH,Spare brushes,Escovas extras,Cepillos de más
+BST_TV_BRUSH_LINE,Two more brushes for the run,Mais duas escovas na partida,Dos cepillos más en la partida
+BST_TV_HAND,Fresh hands,Mãos novas,Manos nuevas
+BST_TV_HAND_LINE,Two more fresh hands for the run,Mais duas mãos novas na partida,Dos manos nuevas más en la partida
+BST_CHANCE_TRIVET,"The four tallest stacks are taken off, and the run goes on.","As quatro pilhas mais altas saem, e a partida continua.","Se quitan las cuatro pilas más altas, y la partida sigue."
+TUT_TRIVET_PLACE,Set a stack down,Ponha uma pilha,Pon una pila
+TUT_TRIVET_PLACE_BODY,"Carry one of the %d stacks on the cloth to any empty place, or tap it and then the place. When all are down, the next ones come.","Leve uma das %d pilhas do pano até um lugar vazio, ou toque nela e depois no lugar. Quando todas estiverem na bandeja, vêm as próximas.","Lleva una de las %d pilas del paño a un sitio vacío, o tócala y luego el sitio. Cuando todas estén en la bandeja, llegan las siguientes."
+TUT_TRIVET_GATHER,Tops that match gather,Topos iguais se juntam,Las cimas iguales se juntan
+TUT_TRIVET_GATHER_BODY,Stacks that touch with the same colour on top send those mats to one stack: the one with the fewest colours in it. What was under them shows.,Pilhas vizinhas com a mesma cor no topo mandam esses feltros para uma só: a que tem menos cores. O que estava embaixo aparece.,Las pilas vecinas con el mismo color arriba mandan esos fieltros a una sola: la que tiene menos colores. Lo que había debajo queda a la vista.
+TUT_TRIVET_CLEAR,Ten are put away,Dez são guardados,Diez se guardan
+TUT_TRIVET_CLEAR_BODY,"A stack with %d mats of one colour on top has them put away: a point a mat, and its place is free again. The button on a stack counts its top colour.","Uma pilha com %d feltros da mesma cor no topo tem esses feltros guardados: um ponto por feltro, e o lugar fica livre de novo. O botão da pilha conta a cor do topo.","Una pila con %d fieltros del mismo color arriba los guarda: un punto por fieltro, y el sitio queda libre otra vez. El botón de la pila cuenta el color de arriba."
+TUT_TRIVET_CHAIN,Chains,Correntes,Cadenas
+TUT_TRIVET_CHAIN_BODY,"What a stack uncovers can gather and be put away too. The second stack one move puts away counts double, the third three times.","O que uma pilha revela também pode se juntar e ser guardado. A segunda pilha guardada na mesma jogada vale o dobro, a terceira o triplo.","Lo que una pila deja a la vista también puede juntarse y guardarse. La segunda pila guardada en la misma jugada vale doble, la tercera triple."
+TUT_TRIVET_LEVELS,Levels,Níveis,Niveles
+TUT_TRIVET_LEVELS_BODY,"The score opens levels. A level lifts a lid off a corner or brings a new colour, from %d up to %d, and gives a brush or a fresh hand.","Os pontos abrem níveis. Um nível tira a tampa de um canto ou traz uma cor nova, de %d até %d, e dá uma escova ou uma mão nova.","Los puntos abren niveles. Un nivel quita la tapa de una esquina o trae un color nuevo, de %d hasta %d, y da un cepillo o una mano nueva."
+TUT_TRIVET_TOOLS,The brush and the fresh hand,A escova e a mão nova,El cepillo y la mano nueva
+TUT_TRIVET_TOOLS_BODY,Tap the brush and then a stack to take it off the tray. The other button deals three new stacks. The run ends when the tray is full and no brush is left.,Toque na escova e depois numa pilha para tirá-la da bandeja. O outro botão traz três pilhas novas. A partida acaba quando a bandeja enche e não resta escova.,Toca el cepillo y luego una pila para quitarla de la bandeja. El otro botón trae tres pilas nuevas. La partida termina cuando la bandeja se llena y no queda cepillo.
+TUT_TRIVET_BOOSTS,Boosters,Reforços,Refuerzos
+TUT_TRIVET_BOOSTS_BODY,"Hold a booster, or the gold for one, and a card offers them before the run. The Second chance is offered once, when the tray fills.","Tenha um reforço, ou o ouro para comprar um, e um cartão os oferece antes da partida. A Segunda chance é oferecida uma vez, quando a bandeja enche.","Ten un refuerzo, o el oro para uno, y una tarjeta los ofrece antes de la partida. La Segunda oportunidad se ofrece una vez, cuando la bandeja se llena."
+TUT_TRIVET_BOOST_BRUSH_N,Spare brushes: %d more for the run,Escovas extras: mais %d na partida,Cepillos de más: %d más en la partida
+TUT_TRIVET_BOOST_HAND_N,Fresh hands: %d more for the run,Mãos novas: mais %d na partida,Manos nuevas: %d más en la partida
+TUT_TRIVET_BOOST_CHANCE_N,Second chance: the %d tallest stacks are taken off and the run goes on,Segunda chance: as %d pilhas mais altas saem e a partida continua,Segunda oportunidad: se quitan las %d pilas más altas y la partida sigue
+TUT_TRIVET_HUD,The buttons,Os botões,Los botones
+TUT_TRIVET_HUD_BODY,"A stack set down is never taken back, so there is no Undo. Nothing is timed: the table waits for you.","Uma pilha colocada não volta atrás, por isso não há Desfazer. Nada tem tempo: a mesa espera por você.","Una pila puesta no se deshace, por eso no hay Deshacer. Nada va con tiempo: la mesa te espera."
+TUT_TRIVET_HUD_RESET,A fresh run on an empty tray,Uma partida nova com a bandeja vazia,Una partida nueva con la bandeja vacía
+TUT_TRIVET_HUD_GEAR,"Settings: sound, motion and this guide","Configurações: som, movimento e este guia","Ajustes: sonido, movimiento y esta guía"
+TUT_TRIVET_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"

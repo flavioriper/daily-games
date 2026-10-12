@@ -11,7 +11,8 @@ extends VBoxContainer
 ## (arcade/beeline_screen.gd), a bee flown by taps through the gaps in a
 ## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
 ## seven-column card game for one, and Eddy (arcade/eddy_screen.gd), a
-## whirlpool steered about a pond. (Gumdrop was the eleventh for a day and
+## whirlpool steered about a pond, and Trivet (arcade/trivet_screen.gd),
+## stacks of felt mats sorted on a tray. (Gumdrop was the eleventh for a day and
 ## became a daily board on 2026-10-11, puzzles/gumdrop2d.gd.) Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
@@ -50,6 +51,7 @@ const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const GriddleArt = preload("res://arcade/griddle_art.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
 const DeckArt = preload("res://arcade/deckchair_art.gd")
+const TrivetArt = preload("res://arcade/trivet_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Icons = preload("res://ui/icons.gd")
 
@@ -63,13 +65,13 @@ const ART_H_TINY := 104.0
 ## a strip, so the sixth row was on the page. Kept for the next eleventh.
 const ART_H_STRIP := 62.0
 const CHIP_H := 84
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet"}
 const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB", "griddle": "ARC_GRIDDLE_BLURB"}
+	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB", "griddle": "ARC_GRIDDLE_BLURB", "trivet": "ARC_TRIVET_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP, "griddle": Pal.LEAF_DEEP}
+const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
+const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP, "griddle": Pal.LEAF_DEEP, "trivet": Pal.LEAF_DEEP}
 const FILL := Color("fcf7ef")
 static var PLAIN := CanvasItemMaterial.new()
 
@@ -87,6 +89,15 @@ var gold_pill: Button
 ## Two cards a row: six cards do not fit one above another on a phone even
 ## with the smallest pictures, so a short screen pairs them up.
 var _paired := false
+## The cards stand a page at a time since the thirteenth (2026-10-12): seven
+## rows of two do not fit a phone even with the pictures a strip, and the
+## menu's cards are paged, never scrolled. The strip's two chevrons turn it.
+const PER_PAGE := 8
+var _page := 0
+var _pager: HBoxContainer
+var _page_l: Label
+var _prev_b: Button
+var _next_b: Button
 
 func _init() -> void:
 	add_theme_constant_override("separation", GAP)
@@ -102,6 +113,25 @@ func _init() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_strip.add_child(spacer)
+	_pager = HBoxContainer.new()
+	_pager.name = "Pager"
+	_pager.add_theme_constant_override("separation", 10)
+	_prev_b = IconButton.new("chevron_left", "", "IconButton")
+	_prev_b.name = "Prev"
+	_prev_b.custom_minimum_size = Vector2(GoldPill.H, GoldPill.H)
+	_prev_b.pressed.connect(turn.bind(-1))
+	_pager.add_child(_prev_b)
+	_page_l = Label.new()
+	_page_l.theme_type_variation = "MenuKicker"
+	_page_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_page_l.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_pager.add_child(_page_l)
+	_next_b = IconButton.new("chevron_right", "", "IconButton")
+	_next_b.name = "Next"
+	_next_b.custom_minimum_size = Vector2(GoldPill.H, GoldPill.H)
+	_next_b.pressed.connect(turn.bind(1))
+	_pager.add_child(_next_b)
+	_strip.add_child(_pager)
 	var shop_b := IconButton.new("coin", "SHOP_TITLE", "IconButton")
 	shop_b.name = "Shop"
 	shop_b.custom_minimum_size.y = GoldPill.H
@@ -111,7 +141,26 @@ func _init() -> void:
 		_cards.append(_game_card(game))
 	_rows(false)
 
-## Lays the cards out one a row, or two.
+func pages() -> int:
+	return maxi(1, ceili(_cards.size() / float(PER_PAGE)))
+
+## The cards of the page shown.
+func _shown() -> Array[Control]:
+	var out: Array[Control] = []
+	for i in range(_page * PER_PAGE, mini((_page + 1) * PER_PAGE, _cards.size())):
+		out.append(_cards[i])
+	return out
+
+## The next page of cards, or the one before.
+func turn(by: int) -> void:
+	var to := clampi(_page + by, 0, pages() - 1)
+	if to == _page:
+		return
+	_page = to
+	_rows(_paired)
+	_fit.call_deferred()
+
+## Lays the page's cards out one a row, or two.
 func _rows(paired: bool) -> void:
 	_paired = paired
 	for c in _cards:
@@ -123,19 +172,33 @@ func _rows(paired: bool) -> void:
 		remove_child(r)
 		r.queue_free()
 	add_child(_strip)
+	_pager.visible = pages() > 1
+	_page_l.text = "%d/%d" % [_page + 1, pages()]
+	_prev_b.disabled = _page == 0
+	_next_b.disabled = _page >= pages() - 1
+	var cards := _shown()
 	var per := 2 if paired else 1
 	var i := 0
-	while i < _cards.size():
+	while i < cards.size():
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", GAP)
 		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(row)
 		for k in per:
-			if i < _cards.size():
-				_cards[i].size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				row.add_child(_cards[i])
+			if i < cards.size():
+				cards[i].size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row.add_child(cards[i])
 			i += 1
+	# a short last page keeps its cards the height a full one gives them
+	var full := ceili(PER_PAGE / float(per))
+	var rows := ceili(cards.size() / float(per))
+	if pages() > 1:
+		for k in full - rows:
+			var blank := Control.new()
+			blank.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(blank)
 	# paired, Play loses its word and the furthest line goes, to leave the
 	# name its room
 	for g: Array in _goes:
@@ -159,7 +222,7 @@ func _game_card(game: String) -> Control:
 	art.clip_contents = true
 	col.add_child(art)
 	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner, "griddle": GriddleBanner}[game].new()
+	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner, "griddle": GriddleBanner, "trivet": TrivetBanner}[game].new()
 	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.add_child(swarm)
 
@@ -263,6 +326,11 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree():
 		_fit.call_deferred()
+	elif what == NOTIFICATION_PREDELETE:
+		# the cards of the pages not shown hang on nothing
+		for c in _cards:
+			if is_instance_valid(c) and c.get_parent() == null:
+				c.free()
 
 func _outer() -> Control:
 	var parent := get_parent()
@@ -296,7 +364,7 @@ func _fit() -> void:
 	_compact(1)
 	var bare := _need(false)
 	var lines := 0.0
-	for b in _blurbs:
+	for b: Label in _blurbs.slice(0, PER_PAGE):
 		var holder := b.get_parent() as Control
 		var font := b.get_theme_font("font")
 		var fs := b.get_theme_font_size("font_size")
@@ -328,11 +396,15 @@ func _need(paired: bool) -> float:
 	var total := 0.0
 	var i := 0
 	var rows := 0
-	while i < _cards.size():
+	# a full page's worth, so the last page lays out as the first does
+	var cards: Array[Control] = []
+	for c in mini(PER_PAGE, _cards.size()):
+		cards.append(_cards[c])
+	while i < cards.size():
 		var tall := 0.0
 		for k in per:
-			if i < _cards.size():
-				tall = maxf(tall, _cards[i].get_combined_minimum_size().y)
+			if i < cards.size():
+				tall = maxf(tall, cards[i].get_combined_minimum_size().y)
 			i += 1
 		total += tall
 		rows += 1
@@ -740,6 +812,31 @@ class GriddleBanner extends Control:
 		draw_mesh(GriddleArt.toastie(s, 0.0), null, Transform2D(-0.08, Vector2(from + w * 2.5, y)))
 		draw_mesh(GriddleArt.toastie(s, 1.0), null, Transform2D(0.08, Vector2(from + w * 3.5, y)))
 		draw_mesh(GriddleArt.coin(s * 0.8), null, Transform2D(0.0, Vector2(from + w * 4.5, y)))
+
+## Trivet's banner: five stacks of mats in a row, the middle one the
+## tallest. Drawn once.
+class TrivetBanner extends Control:
+	const PILES := [[2, 2], [0, 0, 1, 1], [3, 3, 3, 0, 0, 0], [1, 1, 4], [5, 5]]
+	var _keep: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if size.x <= 0.0 or size.y <= 0.0:
+			return
+		if _keep.is_empty():
+			for p: Array in PILES:
+				_keep.append(TrivetArt.stack(p))
+		var n := PILES.size()
+		# a mat's half width: the tallest stack and its shadow stand in the strip
+		var r := minf(size.x * 0.94 / n / 2.3, size.y * 0.3)
+		var w := r * 2.3
+		var s := r / TrivetArt.U
+		var from := size.x * 0.5 - w * n * 0.5
+		for k in n:
+			draw_mesh(_keep[k], null, Transform2D(0.0, Vector2(s, s), 0.0, Vector2(from + w * (k + 0.5), size.y - r * 0.95)))
 
 ## Eddy's banner: a round of the pond lying in the meadow, the whirlpool
 ## turning in its middle, a duck and a boat on their way round it and

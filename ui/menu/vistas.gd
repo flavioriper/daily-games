@@ -122,6 +122,8 @@ const CARDS := {
 	"furrow": ["meadow", 1.6, Vector2(0.6, 0.7)],
 	# Griddle's stand is set up on the meadow's grass.
 	"griddle": ["meadow", 1.6, Vector2(0.4, 0.65)],
+	# Trivet's tray stands in the warm light of the sky vista.
+	"trivet": ["sky", 1.5, Vector2(0.6, 0.5)],
 	# Gumdrop's tray is set out on the meadow's grass.
 	"gumdrop": ["meadow", 1.5, Vector2(0.7, 0.55)],
 }

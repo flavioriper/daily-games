@@ -113,6 +113,13 @@ pasture or cow; seeds paid), `furrow_mile` (tile: egg or milk; n; seeds),
 `furrow_fox` (took 0 or 1, hens left); `furrow_upgrade`'s tile is also
 mulch, feed, nest, care or pail. No event an egg or a bottle. `rules_opened` carries `puzzle_id` furrow.
 
+**Trivet (2026-10-12)** is a run and sends the Arcade's three:
+`arcade_start` (game, boosts), `arcade_end` (score, stage as the level
+reached, seconds, placed: stacks set down, chain: the most stacks one move
+put away, best) and `arcade_abandon`; `board_reset` and `rules_opened` with
+`puzzle_id` trivet. A mat's hop, a stack put away, a tool used and a level
+are not tracked.
+
 **Griddle (2026-10-12)** is kept too, so no `arcade_start` or `arcade_end`:
 `griddle_enter` (served, stars, coins, away in seconds), `griddle_leave`
 (seconds, served, stars, coins), `griddle_buy` (tile: lot, cow, stall,

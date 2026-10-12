@@ -16,7 +16,7 @@ extends RefCounted
 ## (puzzles/gumdrop2d.gd).
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "trivet"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -34,11 +34,13 @@ const ITEMS := {
 	"bl_wide": {"game": "beeline", "icon": "plus", "price": 120},
 	"dc_aces": {"game": "deckchair", "icon": "sparkle", "price": 120},
 	"dc_hints": {"game": "deckchair", "icon": "bulb", "price": 120},
+	"tv_brush": {"game": "trivet", "icon": "sparkle", "price": 120},
+	"tv_hand": {"game": "trivet", "icon": "plus", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
 }
 ## Each booster's colour on its disc: the game's, so a chip says whose it is.
 const TINT := {"firefly": Color("5b5fa8"), "molehill": Color("8a6a45"), "stackwood": Color("b0773a"),
-	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "": Color("d49a2a")}
+	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "trivet": Color("b56a4c"), "": Color("d49a2a")}
 
 const FF_SPARE_SHIPS := 1
 const MH_TIME := 10.0
@@ -53,6 +55,8 @@ const PP_RATE := 1
 const BL_DEW := 1
 const BL_WIDE := 10
 const DC_HINTS := 3
+const TV_BRUSHES := 2
+const TV_HANDS := 2
 
 static func of(game: String) -> Array:
 	var out := []
@@ -128,6 +132,10 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 				sim.start_aces()
 			"dc_hints":
 				sim.hints += DC_HINTS
+			"tv_brush":
+				sim.sweeps += TV_BRUSHES
+			"tv_hand":
+				sim.deals += TV_HANDS
 
 ## The Second chance: a run over is taken up again where it ended.
 static func revive(game: String, sim: RefCounted) -> void:

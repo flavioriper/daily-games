@@ -3642,6 +3642,58 @@ SETS = {
         # The stand opened: two notes up, quieter than anything it leads to.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
     },
+    # Trivet (arcade/trivet_screen.gd, 2026-10-12): stacks of felt mats sorted
+    # on a wooden tray. Made against the cozy rules from the start
+    # (docs/agents/sound.md). Two cues repeat by themselves: `hop`, a mat
+    # landing on a stack (a run of two to nine, 0.07 s apart, just over
+    # fx2d's CUE_GAP so each is heard), and `pop`, a mat of a stack
+    # put away. Both are ticks, never notes; the screen climbs each half a
+    # semitone a mat, to five semitones and no further, and varies it. The
+    # notes are the moments: a stack put away (`clear`), the second one
+    # move puts away (`combo`) and the third (`combo_big`), each a longer
+    # rise than the last and no two the same contour. No new take is kept:
+    # the set is the three measured takes Beeline, Eddy, Gumdrop, Furrow and
+    # Griddle are made of (the light button on felt, the hollow block, one
+    # muffled kalimba note), copied into build/sfx_raw/trivet/. Arming the
+    # brush is the button's own click (fx2d's touch).
+    "trivet": {
+        # A stack lifted off the cloth: the button, the quietest touch.
+        "lift":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # A stack let go where it cannot lie, back to the cloth: the block, low.
+        "back":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        # A stack set down on the tray: felt on wood, the block's one knock.
+        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.16", "body:320", "tight"),
+        # A mat landing on a stack: the tick of the game, the button's notch.
+        "hop":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        # A mat of a stack put away: the block, three steps up and shorter.
+        "pop":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:3"),
+        # Three stacks dealt onto the cloth: the button three times, up.
+        "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.07:0,2,4"),
+        # The brush taking a stack off: the block twice, the second lower.
+        "sweep":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.24", "body:320", "tight", "notes:0.08:0,-4"),
+        # No brush left, no fresh hand left: two low notches alike.
+        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        # The tray full and no brush: two slow knocks down, before the card.
+        "over":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.42", "body:320", "tight", "notes:0.18:-3,-7"),
+        # Ten of a colour put away: three notes up.
+        "clear":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,5,9", "cut:0.8"),
+        # The second stack one move puts away: four up, from higher.
+        "combo":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.09:4,7,9,11", "cut:0.95"),
+        # The third and past it: six up a step at a time, the longest rise;
+        # the screen plays it a tone higher for the fourth and a third for the fifth.
+        "combo_big": ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.08:2,4,5,7,9,11", "cut:1.3"),
+        # A level: up a fourth and settling a step under.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,7,5", "cut:0.9"),
+        # Two places left, and the tray full with a brush held: two slow notes down.
+        "warn":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.24:7,2", "cut:0.9"),
+        # A Second chance taken: three up, wide.
+        "revive":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,7,9", "cut:0.9"),
+        # A run begun: two notes up, quieter than anything it leads to.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+        # The end card: three slow notes down, and five up for a best.
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,2", "cut:1.3"),
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+    },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
     # start (docs/agents/sound.md). One cue never stops: `pour`, the

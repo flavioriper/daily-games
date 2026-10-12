@@ -35,7 +35,7 @@ func _process(_d: float) -> bool:
 			"res://arcade/firefly_screen.gd", "res://arcade/molehill_screen.gd", "res://arcade/stackwood_screen.gd",
 			"res://arcade/thirteen_screen.gd", "res://arcade/posy_screen.gd", "res://arcade/peapod_screen.gd",
 			"res://arcade/beeline_screen.gd", "res://arcade/deckchair_screen.gd",
-			"res://arcade/eddy_screen.gd", "res://arcade/furrow_screen.gd", "res://arcade/griddle_screen.gd", "res://puzzles/gumdrop2d.gd"]:
+			"res://arcade/eddy_screen.gd", "res://arcade/furrow_screen.gd", "res://arcade/griddle_screen.gd", "res://arcade/trivet_screen.gd", "res://puzzles/gumdrop2d.gd"]:
 		var s: GDScript = load(p)
 		_check(s != null and s.can_instantiate(), "compiles " + p)
 
@@ -181,6 +181,17 @@ func _process(_d: float) -> bool:
 	_check(dc.is_over(), "deckchair finished by hand")
 	Boosters.revive("deckchair", dc)
 	_check(not dc.is_over() and not dc.find_move().is_empty(), "deckchair revived, with a way on")
+	var tv = load("res://arcade/trivet_sim.gd").new(3)
+	Boosters.apply("trivet", tv, ["tv_brush", "tv_hand"])
+	_check(tv.sweeps == tv.SWEEPS + Boosters.TV_BRUSHES and tv.deals == tv.DEALS + Boosters.TV_HANDS, "trivet: more brushes, more fresh hands")
+	tv.sweeps = 0
+	for i in tv.cells.size():
+		if not tv.closed[i]:
+			tv.stacks[i] = [posmod(tv.cells[i].x - tv.cells[i].y, 3)]
+	tv._check()
+	_check(tv.is_over(), "trivet over, the tray full and no brush")
+	Boosters.revive("trivet", tv)
+	_check(not tv.is_over() and tv.empties() == tv.REVIVE_TAKES, "trivet revived, four places free")
 	var ed = load("res://arcade/eddy_sim.gd").new(3)
 	_check(Boosters.of("eddy").is_empty(), "eddy: no gold boosters, its upgrades are its own")
 	ed.steer(Vector2.RIGHT)
