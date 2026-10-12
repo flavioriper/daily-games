@@ -531,15 +531,19 @@ to `upgrade("market")`.
   `open_market` is gone, and `hit` answers `"module"` for a market.
 - **The save is version 4** and a version 3 land is read: `_lift` makes
   its one market the module on (6, 6) at its level, hatch and clock.
-- **Decided for the user, theirs to change**: the second market is 100
-  coins, the third 300, then three times the last (`MARKET_NEW`,
-  `MARKET_NEW_STEP`), by how many stand, as a plate's price is; it is
+- **A building's price is flat** (the user, 2026-10-12, of a first build
+  that asked 100, 300, then three times the last: "it should not increase
+  price of markets, neither other buildings, they stay flat"): every
+  market is `PRICE.market`, 100, as every machine is its own figure. Only
+  land (`plate_price`) and levels grow.
+- **Decided for the user, theirs to change**: the 100; it is
   built over 20 s like a fire box and takes nothing until then; it is in
   the drawer from the start; any market is sold back for all paid on it
   (the given one for nothing) but the last one standing, by its card or a
   held finger. **What it does to the pace is not measured**: the ledger's
-  "the market's level is the brake" no longer holds alone, since a second
-  market at level 4 is 410 coins where the first's fifth level is 500, and
+  "the market's level is the brake" no longer holds alone, since a
+  market at level 4 is 410 coins, every time, where the first's fifth
+  level is 500, and
   the pace bot (`-- goals`) buys no second market.
 - **Checked**: `tests/_probe_factory.gd` 241/0 (`_check_markets`: placed,
   refused while built, own levels and clocks, sold back, the last one

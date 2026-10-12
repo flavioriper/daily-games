@@ -43,7 +43,7 @@ extends RefCounted
 ##   unlocked(kind) -> bool   belt and market always; firebox and retort from
 ##                            the first plate bought; the kiln with a mine;
 ##                            the rest by a goal (GOALS)
-##   price(kind) -> int       PRICE; a market's is by how many stand (MARKET_NEW)
+##   price(kind) -> int       PRICE: flat, however many of a kind stand
 ##
 ## A forest is closed (the user, 2026-10-11: "the forest must be a closed grid
 ## that only output the material, user should not be able to build inside of
@@ -172,8 +172,11 @@ const NONE := Vector2i(-99999, -99999)
 ## returns its coin, so twenty cannot be stranded.
 const START_COINS := 20
 const SELLS := {"log": 1, "stone": 2, "lime": 10, "charcoal": 4, "plank": 2, "chair": 12}
+## What a thing costs, the first of its kind and every one after (the user,
+## 2026-10-12: "it should not increase price of markets, neither other
+## buildings, they stay flat").
 const PRICE := {"belt": 1, "fast": 4, "splitter": 15, "bridge": 25, "firebox": 20, "kiln": 40, "retort": 40,
-	"engine": 150, "saw": 80, "joiner": 120, "stoker": 100}
+	"engine": 150, "saw": 80, "joiner": 120, "stoker": 100, "market": 100}
 ## What is laid like a belt and carries like one: the plain belt, the fast
 ## one (twice the speed, the same spacing: the ledger, section 8) and the
 ## splitter, a belt tile that sends what crosses it out ahead and by both
@@ -230,10 +233,6 @@ const MARKET_PRICE := [30, 80, 200]
 const MARKET_STEP := 2.5
 ## What the hatch holds: the one thing lying on it. The next waits on its belt.
 const MARKET_ROOM := 1
-## The price of the second market, the third, then each MARKET_NEW_STEP
-## times the last: what is paid is by how many stand, as a plate's is.
-const MARKET_NEW := [100, 300]
-const MARKET_NEW_STEP := 3
 
 ## Fuel, MJ an item (the ledger, section 3).
 const FUEL := {"log": 320.0, "charcoal": 150.0, "plank": 64.0}
@@ -452,15 +451,6 @@ func next_goal() -> Dictionary:
 	return {}
 
 func price(kind: String) -> int:
-	if kind == "market":
-		# the first is given, so the count bought is one under the count held
-		var n := maxi(_markets() - 1, 0)
-		if n < MARKET_NEW.size():
-			return MARKET_NEW[n]
-		var p := float(MARKET_NEW[MARKET_NEW.size() - 1])
-		for i in n + 1 - MARKET_NEW.size():
-			p *= MARKET_NEW_STEP
-		return int(minf(p, 9.0e18))
 	return int(PRICE.get(kind, 0))
 
 func _add_plate(p: Vector2i, kind: String) -> void:

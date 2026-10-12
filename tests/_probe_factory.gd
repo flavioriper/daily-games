@@ -101,7 +101,7 @@ func _check_markets() -> void:
 	_ok("a second market stands where it is put, for 100", sim.place("market", at, 0) and sim.coins == 900 and sim.is_market(at)
 		and sim.events.back().type == "placed" and sim.events.back().kind == "market")
 	var second: Dictionary = sim.module_at(at)
-	_ok("it is its own: level 1, an empty hatch, and the third costs 300", second.id != first.id and int(second.level) == 1 and second.wait == [] and sim.price("market") == 300)
+	_ok("it is its own: level 1, an empty hatch, and the third costs 100 as the second did", second.id != first.id and int(second.level) == 1 and second.wait == [] and sim.price("market") == 100)
 	_ok("no belt and no machine goes on it", not sim.can_lay(at) and not sim.can_place("market", at, 0) and not sim.tile_free(at))
 	sim.lay_belt(Vector2i(1, 5), 0)
 	sim.put(Vector2i(1, 5), "log")

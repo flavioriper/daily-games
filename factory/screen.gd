@@ -660,7 +660,7 @@ func _refresh_hud(delta: float) -> void:
 	_coins_l.add_theme_color_override("font_color", Pal.BAD if _warn > 0.0 else Pal.TEXT)
 	if _card_coins != null and is_instance_valid(_card_coins):
 		_card_coins.text = text
-	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), sim.price("market"), sim.picked, sim.earned]
+	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), sim.modules.size(), sim.picked, sim.earned]
 	if key != _hud_key:
 		_hud_key = key
 		_refresh_drawer()
