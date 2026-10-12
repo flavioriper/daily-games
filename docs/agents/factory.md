@@ -377,6 +377,100 @@ counter of six, a keeper or "sold as it lands".
   stills of one sale at level 1); the sound heard; a fast market (level 4
   and up) watched; a sale under a view turned while it plays.
 
+**The mine, more belts, goals and steam (2026-10-12)**, the user, leaving
+the land to be built on unattended: "be autonomous, i need you to keep
+building the factory. We need to create new things to create with wood,
+the mine, add more convey options", with the two games the roadmap names
+as "reference on web on features to add to make the game progress". Four
+commits on `feat/factory-mine`, each playable by itself. **The user has
+seen none of it.** The ledger's sections 13, 14 and 15 are the figures;
+this overrides every line above that says two kinds of plate, a kiln that
+cannot be bought, a drawer of five tiles in one column, `sim.forests`,
+`VERSION` 2, or machines that are only a kiln and a retort.
+- **`sim.sources`** is what `sim.forests` was: a row a closed plate,
+  forest or mine alike (`Sim.GIVES` says what each gives; `is_source`,
+  `is_mine`, `gives(P)`, `source_rate(P)`, `SOURCE_ROOM`/`RATE`/`PRICE`).
+  The screen's `hit` answers `source` for either. **`VERSION` is 3: a land
+  kept before this is not read** (new tables, and a machine's row has more
+  keys). A tester's phone starts a new land again.
+- **The mine** is the forest's twin, not the quarry the first build had:
+  closed, tapped for a stone, a gate a side, a stock of twelve, the same
+  four levels. `sim.trees` holds its nine rocks as it holds a forest's
+  trees (`life.is_rock(tr)` asks the plate): `Art.rock(look)`, no wind,
+  the shade in the mesh, so `_draw_shade` skips them. A wall of piled
+  stones on dug grit (`Art._forest_into(b, true)`), the stock a heap of
+  chunks at a gate (`Art.rubble`). A beaver still does the work and its
+  chips are stone. The plate card has three tiles. A mine's words are the
+  forest's keys with `MINE` in them (`open_forest` builds the key from the
+  plate's kind). **A mine owned puts the kiln in the drawer.**
+- **Belt kinds** (`Sim.BELTS`, `sim.kinds`: tile to `fast` or `splitter`,
+  absent for a plain belt; `lay_belt(tile, facing, kind)`). A belt of
+  another kind than the one in hand becomes it for the difference in
+  price, by a tap on it or a swipe over it, facing as it lay. **The fast
+  belt** is a second material on the same shader
+  (`Art.belt_material(true)`: `bed`, `mark_tone`, `marks`, twice the
+  speed) and three more MultiMeshes on a layer of its own (`_fast_l`);
+  `belt_run` sets both clocks. **The splitter** is a belt tile: a thing
+  rides to its middle, is given a way out there (`_split_way`: ahead and
+  the two sides by turns, the first that would take it now; `it.to`) and
+  rides out by it. `Art.splitter(facing)` is its housing, drawn among what
+  stands, so it lies over what rides through. `sim.outs(tile)` and
+  `sim.feeds(from, to)` are where a belt hands on to: `life.shape` and
+  `_belt_order` (now a walk down every way out) use them. With Splitter in
+  hand a run is one tile, where the finger is.
+- **Goals** (`Sim.GOALS`, `sim.sold`, `goal_done`, `goal_progress`,
+  `next_goal`, the event `goal`): so many of a thing sold opens modules
+  for good; all are open at once. `sim.unlocked(kind)` asks the goals
+  first. The chip under the zoom and turn buttons (`_goal_b`, `_draw_goal`)
+  shows the next one in pictures and figures and sizes itself to what it
+  says; its card (`open_goals`) lists them all, drawn, a tick on the ones
+  reached. **No sentence counts anything**, so no `_ONE`/`_N` pair was
+  needed. 30 logs: the splitter. 10 charcoal: the fast belt. 25 charcoal:
+  the engine, the saw, the stoker. 100 planks: the joiner.
+- **The drawer is a `GridContainer`** that takes another column past
+  `DRAWER_ROWS` 5 tiles shown; it has ten tiles now.
+- **Machines** are rows of `Sim.RECIPE` (takes, need, gives, n, mj, kw,
+  idle, wants). A machine's row carries `inp` (the kind it is working),
+  `got` (gathered toward a need of several), `out` and `left` (how many of
+  it still to hand on, one a tick). **`Sim.SINGLE`** are the modules of one
+  tile with no facing (fire box, engine): every `kind == "firebox"` that
+  meant "one tile" asks it now; `Art.module(kind, facing)` gives any
+  module's mesh. **Power is two kinds, each by touch**: a fire box's heat
+  to kilns, retorts and engines, an engine's shaft to saws and joiners
+  (`gives_power`, `wants_power`, `_sinks_of`, `_demand`, `_heat`).
+  `cycle_seconds` runs `_heat(as_if)` and puts every share and draw back.
+  The engine's flywheel and the saw's blade are `Art.wheel()` under
+  `Art.on_wall(hub, r, angle, axis)`, turned by `life._spun` as fast as
+  they are driven; **`wheel()` is built at radius 100 and drawn small**: a
+  mesh's soft edge is a unit wide and a wheel of radius 1 was a grey smear.
+  The stoker is bought on the fire box's card (a second row, `Stoker`).
+- **Measured** (810x1440, 2026-10-12, `opengl3_angle`, one run each):
+  `tests/_shot_factory.gd` 0 failed, 101 to 278 draw calls;
+  `tests/_shot_factory_works.gd` (new: the mine, the belts, the goals,
+  steam, through real touches where a hand matters) 0 failed, 125 on a new
+  mine, 151 to 167 with a splitter, fast belts, an engine, a saw and a
+  joiner at work at the four turns, 234 with the ten-tile drawer open.
+  `tests/_probe_factory.gd` 218/0 (sixty logs through a splitter leave
+  twenty a way; a log is four planks in 34 s on a first fire with an idle
+  joiner on the engine). Suite 249797/0. **The pace bot was not run past
+  the first plate**: how long the goals take a person is worked out in the
+  ledger, not played.
+- **Decided for the user and not judged by them**: that the mine is a
+  clicker like the forest; the kiln's key; goals as things sold, and all
+  four of them; every price (fast 4, splitter 15, engine 150, saw 80,
+  joiner 120, stoker 100, plank 2, chair 12); the engine on one tile where
+  the ledger said 2 by 2; shaft by touch with no shaft tile; a stoker that
+  also lights a cold fire; no bridge; the look of every new thing; pt and
+  es. **No concept tab** (the user was away and said to be autonomous; the
+  standing rule was waived by me, not by them).
+- **Not done**: a phone; anything watched moving (the blade, the wheel,
+  a thing turning inside a splitter) or heard: **the saw, the engine and
+  a goal reached have no sound of their own** (a goal is the `buy` cue a
+  little higher), which the no-ghost-touch rule does not cover but the
+  cozy pass will want; the tutorial says nothing of goals, mines or steam;
+  the joiner's roof hides the bench behind it at two turns; coal, iron,
+  the smelter, nails, the table and the bridge.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on
