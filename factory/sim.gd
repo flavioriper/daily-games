@@ -44,6 +44,8 @@ extends RefCounted
 ##                            the first plate bought; the kiln with a mine;
 ##                            the rest by a goal (GOALS)
 ##   price(kind) -> int       PRICE: flat, however many of a kind stand
+##   no_cost: bool             everything `price` knows costs nothing: the
+##                            debug button's, never kept in the save
 ##
 ## A forest is closed (the user, 2026-10-11: "the forest must be a closed grid
 ## that only output the material, user should not be able to build inside of
@@ -294,6 +296,11 @@ var events: Array = []
 var dirty := false
 var alpha := 0.0
 var picked := ""
+## A debug switch (the user, 2026-10-12: "a button to make buildings price
+## 0, so I can debug on phone"): belts, machines, markets and the stoker
+## cost nothing while it is on. Levels and land keep their prices. It is the
+## holder's to set and is not kept: a land read back has it off.
+var no_cost := false
 
 var _rng := RandomNumberGenerator.new()
 var _acc := 0.0
@@ -451,7 +458,7 @@ func next_goal() -> Dictionary:
 	return {}
 
 func price(kind: String) -> int:
-	return int(PRICE.get(kind, 0))
+	return 0 if no_cost else int(PRICE.get(kind, 0))
 
 func _add_plate(p: Vector2i, kind: String) -> void:
 	plates[p] = kind

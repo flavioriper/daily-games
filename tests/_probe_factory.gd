@@ -137,6 +137,14 @@ func _check_markets() -> void:
 		and _lying(sim, at) == 1 and sim.price("market") == 100)
 	_ok("the given one too, once another stands", sim.place("market", at, 0) and sim.sell(Sim.MARKET_AT) and not sim.is_market(Sim.MARKET_AT)
 		and sim.market.root == at and not sim.sell(at))
+	# the debug switch: what is built costs nothing, levels and land still do
+	var gift: RefCounted = Sim.new(7)
+	gift.no_cost = true
+	_ok("with the debug switch on a belt, a market and a machine cost nothing", gift.price("belt") == 0 and gift.price("market") == 0 and gift.price("engine") == 0
+		and gift.lay_belt(Vector2i(1, 1), 0) and gift.place("market", Vector2i(2, 2), 0) and gift.coins == Sim.START_COINS and gift.sell_price(Vector2i(2, 2)) == 0)
+	_ok("a level and a plate keep their prices, and it is not kept in the save", gift.upgrade_price(Sim.MARKET_AT) == 30 and gift.plate_price() == 50 and not gift.pack().has("no_cost"))
+	gift.no_cost = false
+	_ok("off, the prices are back", gift.price("belt") == 1 and gift.price("market") == 100)
 	# a land kept before markets were modules is read as it was
 	var old: RefCounted = Sim.new(7)
 	old.coins = 100

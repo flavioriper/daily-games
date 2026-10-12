@@ -586,6 +586,20 @@ change as it lvl up, becoming more better looking".
   probe 241/0; `tests/_shot_factory.gd` 149 pass, 0 failed, 101 to 293
   draw calls. Not seen: a phone, a land with markets at several levels.
 
+**A debug button makes what is built free (2026-10-12)**, the user: "I
+need a button to make buildings price 0, so I can debug on phone when I
+want to speed things up". `FreeButton`, a small round one beside the
+drawer's (a coin and a nought, ringed while it is on), made only when
+`OS.is_debug_build()`: the phone's builds are `--export-debug`
+(`android.yml`), a release has no such button. It flips `sim.no_cost`
+(not `free`: that is `Object.free`, and a screen that wrote `sim.free`
+did not parse), under which `price()` is 0 for every belt, machine,
+market and the stoker. Levels and land keep their prices (said to the
+user; theirs to widen). It is not in the save: a land read back has it
+off. A thing laid free and sold with the switch off pays its price back,
+which only a debug build can do. Probe 244/0; `tests/_shot_factory.gd`
+152 pass, 0 failed, the drawer shot with every price 0.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

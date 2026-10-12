@@ -754,6 +754,20 @@ func _cards() -> void:
 	await _press_button(_screen._drawer_b)
 	await _wait(0.3)
 	await _shot("drawer_late")
+	# the debug button: what is built costs nothing while it is on
+	var free: Button = _screen._free_b
+	_check("a debug build has the free button", free != null and OS.is_debug_build())
+	if free != null:
+		await _press_button(free)
+		await _wait(0.2)
+		var had: int = _sim.coins
+		_check("on, every tile of the drawer says 0 and a belt is laid for nothing", (_screen._tiles.market.cost as Label).text == "0" and (_screen._tiles.belt.cost as Label).text == "0"
+			and _sim.price("engine") == 0 and _sim.lay_belt(Vector2i(2, 2), 0) and _sim.coins == had and _sim.upgrade_price(Sim.MARKET_AT) > 0)
+		await _shot("drawer_free")
+		_sim.sell(Vector2i(2, 2))
+		await _press_button(free)
+		await _wait(0.2)
+		_check("off, the prices are back", (_screen._tiles.market.cost as Label).text == "100" and _sim.price("belt") == 1 and _sim.coins == had)
 	_screen.go_back()
 	_check("then the drawer", not _screen.drawer_open())
 

@@ -57,6 +57,8 @@ const ZOOM_B := 96.0
 ## The drawer: its round button on the left edge, this far up from the foot
 ## of the screen (the right thumb works the lower right), and its tiles.
 const DRAWER_B := 128.0
+## The debug build's "everything built is free" button, beside the drawer's.
+const FREE_B := 96.0
 const DRAWER_UP := 250.0
 const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
@@ -133,6 +135,7 @@ var _coins_l: Label
 var _zoom_b: Button
 var _turn_b: Button
 var _drawer_b: Button
+var _free_b: Button
 var _drawer: GridContainer
 var _goal_b: Button
 var _goal_key := ""
@@ -348,6 +351,17 @@ func _build() -> void:
 	_drawer_b.draw.connect(_draw_drawer_button)
 	_drawer_b.pressed.connect(_on_drawer_button)
 	add_child(_drawer_b)
+	if OS.is_debug_build():
+		# never in a release: the phone's test builds are debug exports
+		_free_b = Button.new()
+		_free_b.name = "FreeButton"
+		_free_b.focus_mode = Control.FOCUS_NONE
+		_free_b.custom_minimum_size = Vector2(FREE_B, FREE_B)
+		_free_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		CozyTheme.lift_button(_free_b, Tile.FILL, int(FREE_B * 0.5), 0)
+		_free_b.draw.connect(_draw_free_button)
+		_free_b.pressed.connect(_on_free_button)
+		add_child(_free_b)
 
 	_card = Dialog.scrim()
 	_card.name = "CardScrim"
@@ -411,6 +425,11 @@ func _apply_insets() -> void:
 	_drawer_b.offset_right = 28.0 + DRAWER_B
 	_drawer_b.offset_bottom = -foot
 	_drawer_b.offset_top = -foot - DRAWER_B
+	if _free_b != null:
+		_free_b.offset_left = 28.0 + DRAWER_B + 16.0
+		_free_b.offset_right = _free_b.offset_left + FREE_B
+		_free_b.offset_bottom = -foot - (DRAWER_B - FREE_B) * 0.5
+		_free_b.offset_top = _free_b.offset_bottom - FREE_B
 	_drawer.offset_left = 28.0
 	_drawer.offset_right = 28.0 + DRAWER_W
 	_drawer.offset_bottom = -foot - DRAWER_B - 16.0
@@ -716,6 +735,22 @@ func _on_drawer_button() -> void:
 		close_drawer()
 	else:
 		open_drawer()
+
+## The debug button: what is built costs nothing while it is on. Not kept.
+func _on_free_button() -> void:
+	sim.no_cost = not sim.no_cost
+	_fx.touch()
+	_hud_key = ""
+	_free_b.queue_redraw()
+
+## A coin and a nought; ringed in the accent while it is on.
+func _draw_free_button() -> void:
+	var c := _free_b.size * 0.5
+	if sim.no_cost:
+		_free_b.draw_arc(c, FREE_B * 0.5 - 6.0, 0.0, TAU, 40, Pal.ACCENT, 6.0, true)
+	_free_b.draw_mesh(Art.icon("coin"), null, Transform2D(0.0, Vector2(0.42, 0.42), 0.0, c + Vector2(-15.0, 0.0)), Color(1.0, 1.0, 1.0, 1.0 if sim.no_cost else 0.55))
+	var font := get_theme_font("font", "SheetTitle")
+	_free_b.draw_string(font, c + Vector2(8.0, 14.0), "0", HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Pal.TEXT if sim.no_cost else Pal.TEXT_DIM)
 
 func _on_drawer_tile(kind: String) -> void:
 	pick(kind)
