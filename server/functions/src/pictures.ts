@@ -58,9 +58,6 @@ export const DRAFTS = 3;
  *  somewhere to be wrong. */
 const DECOYS = ["umbrella", "bicycle", "guitar", "rocket", "anchor", "teapot", "kite", "snail"];
 
-/** At the most this many decoys share a word with the day's things. */
-const THINGS_AT_MOST = 3;
-
 /** The colours a thing is asked to be drawn in, by the size it is for: the
  *  most its band lets a picture have. */
 const INKS: Record<number, string> = {10: "four", 12: "five", 16: "seven"};
@@ -134,7 +131,8 @@ const SAME_SCHEMA = {
  *  is not the day's. A mug of a hundred squares is named by nobody cold. */
 async function lookThing(day: number, rows: string[], thing: Thing, theme: Theme): Promise<NonNullable<Tried["look"]>> {
   const names = theme.objects.map((o) => o.name.toLowerCase());
-  const decoy = DECOYS.filter((d) => !names.some((n) => n.includes(d)))[fnv1a(`${day}`) % (DECOYS.length - THINGS_AT_MOST)];
+  const free = DECOYS.filter((d) => !names.some((n) => n.includes(d)));
+  const decoy = free.length > 0 ? free[fnv1a(`${day}`) % free.length] : "none of these";
   const choices = [...names, decoy].sort((a, b) => fnv1a(`${day}${rows.length}${a}`) - fnv1a(`${day}${rows.length}${b}`));
   const got = await ask<{pick: string; wrong: string}>({
     system: LOOKER,
