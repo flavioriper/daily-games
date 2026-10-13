@@ -448,6 +448,7 @@ const PUZZLES := [
 		# unlike Balance and Untangle it keeps the actions row. The bottom slot
 		# is 290, which is Shikaku's, Tents' and Light Up's shape, so the flat
 		# host needs nothing new.
+		"card": "res://ui/menu/cards/bridges.gd",
 		"script": "res://puzzles/bridges2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -478,6 +479,7 @@ const PUZZLES := [
 		# sitting on the quilt, because an illegal drop is never taken, so
 		# there is no Check to put in one and Reset rides up into the top bar.
 		# Word Trail's shape exactly: the bottom slot is the tip card alone.
+		"card": "res://ui/menu/cards/quilt.gd",
 		"script": "res://puzzles/quilt2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -505,6 +507,7 @@ const PUZZLES := [
 		# It picks nothing up and there is no Check: a board is unfinished
 		# or it is done. So Reset rides up into the top bar and the bottom
 		# slot is the tip card alone.
+		"card": "res://ui/menu/cards/fairylights.gd",
 		"script": "res://puzzles/fairy_lights2d.gd",
 		"shell": "flat",
 		"tray": "none",

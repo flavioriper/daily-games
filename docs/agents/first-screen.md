@@ -716,6 +716,63 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     rather than a cross, cells cropped by the card's edge left without a
     digit, the sage. **Seen and left**: Hidden Word, Word Trail and
     Mushroom Patch are three warm papers together on page two.
-- **Owed**: the fourteen boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other twenty-four cards;
+- **Bridges, Quilt and Fairy Lights are the fifteenth, sixteenth and
+  seventeenth** (the same day, the same words a fifth time; the same
+  recipe). With the first two every card of page two is its own; Fairy
+  Lights opens page three.
+  - **Bridges** (`ui/menu/cards/bridges.gd`): a deep teal lagoon over the
+    whole paper (`37889b` to `246a86`), four wave marks, cream ink, and four
+    islets anchored right: three along the foot and one up the right side
+    under the seal, pale shallows round each. A double run joins the first
+    two and a single climbs to the upper one; the numbers are counted in
+    code from the runs and the go span (2, 3, 2, 1), the two end islets met
+    and green, the middle two still short. The go button is the span they
+    lack: one wide plank in the card's colour with a chevron, lifted over
+    its shadow. Nothing lives on it; four numeral strings.
+  - **Quilt** (`ui/menu/cards/quilt.gd`): the paper is the backing, a
+    heather linen (`ebe6f2` to `dad2e7`) with a chalk-dashed grid, and the
+    quilt is sewn on from the right, running off the top, bottom and right
+    edges, its left edge the stair the patches' own shapes make: five
+    patches on a 5x6 grid in `patch_cloth.gd`'s silhouettes, prints and
+    quilting stitch (plain butter under the seal, sky gingham, coral sprig,
+    sage pinstripe, teal off the foot). The go button is the three-cell
+    elbow its notch wants, in the card's grey, lifted over a shadow with a
+    pale stitched hem and a chevron. A needle and a curl of thread lie
+    bottom left. Nothing lives on it and it writes no string.
+  - **Fairy Lights** (`ui/menu/cards/fairylights.gd`): a night garden (sky
+    `1c3540` to lawn `2c5854`, two hedge rows along the foot), the wire in
+    from the left edge and hung in swags across the top with a lit
+    `LanternFace` baked under each swag (three at 490 and 620 wide, five at
+    1040), its halo a soft disc and two motes, no rays. The wire drops clear
+    of the seal's corner to the go button low right: a paving stone in the
+    card's colour whose elbow sits a quarter turn off, with the clockwise
+    arrow of the turn the board makes; a cold wire runs from it to one dark
+    lantern. Words in cream under the canopy. Nothing lives on it.
+  - **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440,
+    second of two readings: `-- page2` 175 draw calls with eight faces on
+    the page (both readings 175; 185 before), `-- page3` 205 with one face
+    and seven template cards (both 205; no reading from before). Suite
+    249797/0. The throwaway probe, each card at the four sizes in es: the
+    seal's corner is clear on all three and the words fit. Changed after
+    the first look: Bridges' islets from 25 to 30 (respaced to 156 apart, a
+    row 4 px higher, the go span 25 to 29 thick) and Fairy Lights' lanterns
+    from 16 to 20 (the words 4 px lower), both having read small at 490
+    wide. Fairy Lights' glow stays inside the shell's line at the left edge
+    and its es blurb clears the hedge and the dark lantern. Page two was
+    looked at whole: the lagoon and the heather sit under the warm papers
+    without a clash.
+  - **Mine, the user's to call**: Bridges' four islets in an L rather than a
+    wider zig-zag, the dark sea (a third dark paper after Code Break and
+    Light Up, the first on page two), planks 1.4 times the board's
+    thickness, islets with no flowers or pennants; Quilt's heather ground,
+    the grid in chalk, the five cloths, **a grey go patch on a quilt**
+    (the card's colour; it leans on its lift, hem and chevron to read as
+    the piece to place), the seal sitting on the butter patch rather than
+    on bare paper; Fairy Lights' wire hung in swags where the board lays it
+    on stones, the cold wire paler than the board's, the dark lantern
+    beside the stone rather than on the string, smiling lanterns, no stars,
+    a fourth dark card. **Seen and left**: on a 1040-wide card Bridges and
+    Quilt are bare in the middle, as Tents is.
+- **Owed**: the seventeen boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other twenty-one cards;
   Balance, Untangle and Shikaku in es; a phone.
