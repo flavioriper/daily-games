@@ -1010,6 +1010,52 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     board shows none mid-guess), a chevron pointing up-left, no height
     rule. All three cap their scale by width, so a taller card draws the
     same picture. **Seen and left**: bare in the middle at 1040 wide.
-- **Owed**: the thirty-two boards' cells on Stats and Streak still wear the
-  old banner (`CardArt` + `Vistas.card_plate`); the other six cards;
+- **Golden Acorn, Pearl Dive and Lattice are the thirty-third,
+  thirty-fourth and thirty-fifth** (the same day, the third of the four
+  batches), the first three of page five.
+  - **Golden Acorn** (`ui/menu/cards/acorn.gd`): golden parchment (`fdf5dc`
+    to `f8e6b4`), an oak and a maple leaf bottom left, and the board's four
+    answer plates stacked against the right, lettered A to D on their
+    discs with two blank lines each where the day's words would be. The
+    golden acorn stands left of the stack in a soft glow with three motes,
+    baked: **on this board the acorn is a prize and a mark, not a
+    character**. The go button is plate C in the card's teal, a little
+    larger, lifted and slid left, a chevron at its far end. Four letter
+    strings; nothing lives on it.
+  - **Pearl Dive** (`ui/menu/cards/pearl.gd`): the sea in section, a pale
+    sky strip, the waterline between the name and the blurb, water from
+    `d6eff2` to `9fd0dc` and a sandy bed with one slow dune. A rope hangs
+    from a float on the waterline with two of the board's pips beside it,
+    four bubbles, and the pearl in its shell on the bed low right. The go
+    button is the board's diving bell, redrawn in the card's terracotta,
+    lifted, a chevron pointing down where its window was. No answer is
+    shown. Nothing lives on it.
+  - **Lattice** (`ui/menu/cards/lattice.gd`): slate paper (`eef2f9` to
+    `dde5f1`) and four rows of the 5x5 lattice against the right and foot
+    in `lattice_art.gd`'s slats, sockets and tiles, the top row left off
+    for the seal. **The tiles carry numbers 1 to 5 and the board's home
+    mark is leaf green**, so the go button is not a tile: every tile is
+    home but a 4 over a 3 in column four, sun-rimmed, and the go button is
+    a round token in the card's sage between them with an up and a down
+    arrow. The trade is checked in code to finish both rows
+    (`_swap_finishes`); the three knots' sums are counted. Nineteen
+    numeral strings.
+  - **Measured**, `tests/_shot_menu.gd -- last` on `opengl3_angle` at
+    810x1440, second of two readings: 178 draw calls on page five with
+    three faces and three template cards (179 on the first; no reading
+    from before). Suite 249797/0. The throwaway probe, each card at the
+    four sizes in es, and page five whole in en. Changed after the first
+    look: Pearl Dive's bell from radius 31 to 36 and its pearl from 19 to
+    25, the picture having read small and bare; Lattice's `WORDS_END` from
+    252 to 274, its left column having touched the es blurb.
+  - **Mine, the user's to call**: Golden Acorn's plate C as the chosen one,
+    the go plate covering part of the acorn, no ladder pips; Pearl Dive's
+    waterline crossing between name and blurb, the bell as the go button,
+    a cream and gold float, no depth scale and no answer slip, a card that
+    is mostly water; Lattice's token with two arrows and no chevron (the
+    only go button without one), a sage token on a board of green tiles,
+    the top row dropped. **Seen and left**: bare in the middle at 1040
+    wide; Lattice's top right tile clears the seal by about 4 px at 490.
+- **Owed**: the thirty-five boards' cells on Stats and Streak still wear the
+  old banner (`CardArt` + `Vistas.card_plate`); the other three cards;
   Balance, Untangle and Shikaku in es; a phone.

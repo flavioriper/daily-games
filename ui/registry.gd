@@ -954,6 +954,7 @@ const PUZZLES := [
 		# stand, so no tray. The actions row stays for its third button,
 		# which reads Lock and then Next -- a lock is the one move, and final.
 		"script": "res://puzzles/acorn2d.gd",
+		"card": "res://ui/menu/cards/acorn.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
@@ -979,6 +980,7 @@ const PUZZLES := [
 		# move there is (dive, offer the answer, the next prompt): no actions
 		# row, and no tip card.
 		"script": "res://puzzles/pearl2d.gd",
+		"card": "res://ui/menu/cards/pearl.gd",
 		"shell": "flat",
 		"tray": "keys",
 		"actions": false,
@@ -1006,6 +1008,7 @@ const PUZZLES := [
 		# says for itself whether it is home, so there is no Check: Undo, the
 		# bulb and Reset ride up into the top bar.
 		"script": "res://puzzles/lattice2d.gd",
+		"card": "res://ui/menu/cards/lattice.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
