@@ -667,6 +667,11 @@ ones should be all free after 4 color filled (1/4 each color)".
   quarters (10, 12, 15, 17, 20 where it was 10, 12, 14, 16, 18); a tin of
   22 opening at 11 (the even number is the whole tin's, not the open
   half's); longer rows before more rows.
-- **Not seen**: Hard's tin of three rows, a short last row, the tutorial
-  after the change, the ghost's fix on a screen, a phone. pt and es lines
+- **Seen after the commit**: `_shot_buttons.gd -- d=2 refuse`, the koi pond
+  (168 buttons): 32 places as rows of 11, 11 and 10, the short row in the
+  middle, sixteen open and full, 87 draw calls.
+- The ghost was not Hard's and Insane's alone: with motion reduced every
+  pick stands still, so there it stayed drawn on every band.
+- **Not seen**: the tutorial after the change, the ghost's fix on a
+  screen, a phone. pt and es lines
   reworded by me, unread.
