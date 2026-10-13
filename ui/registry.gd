@@ -1135,7 +1135,8 @@ const ARCADE := [
 		"tray": "none",
 		# It stands on the Arcade tab, and this is its place in that list
 		# (ui/menu/arcade_tab.gd's GAMES): the card's colour comes off it
-		# there, and the board's accent off it here.
+		# there, and the board's accent off it here. The two are kept equal
+		# by hand: moving it in GAMES means changing this.
 		"deck": "arcade",
 		"slot": 14,
 		# Its world is the whole screen (`bleed`, puzzles/marigold_world.gd) and the

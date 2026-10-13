@@ -662,7 +662,7 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 		var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
 		var card: PuzzleCard
 		# A board is the same card on any list (Marigold stands on Arcade).
-		if _deck == "home" or entry.has("script"):
+		if _deck == "home" or not Registry.arcade(String(entry.id)).is_empty():
 			card = PuzzleCard.new(entry, colour,
 				Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
 			card.open.connect(_open.bind(entry))
