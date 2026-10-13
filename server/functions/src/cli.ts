@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
+import {cost} from "./generate";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
+import {makeDay as picturesDay} from "./pictures";
+import {makeTheme, themed} from "./theme";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -17,6 +20,12 @@ import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
  *       bank source (tools/pearl/level<N>.json), after the ones the file
  *       holds, told what all three level files beside it already ask.
  *       tools/build_pearl.py turns the three into content/pearl.json.
+ *   node lib/cli.js themed <yyyymmdd> <days> <outdir>
+ *       the theme and the bead pictures of each of those days, as the
+ *       night would make them, into <outdir>/<day>.json with every drawing
+ *       beside it and what became of each draft: what the dashboard's
+ *       Themed days shows (tools/themed_days.sh). A day already there is
+ *       not made again. Publishes nothing; costs what the models cost.
  *   node lib/cli.js publish
  *       runs publishDays for today and tomorrow against whatever project
  *       the credentials name -- the day a game ships on, which the 03:00
@@ -52,6 +61,36 @@ async function growBank(level: number, count: number, outfile: string): Promise<
   return `${outfile}: ${fresh.length} new, ${all.length} in all`;
 }
 
+/** The days from `first`, each told the themes before it. */
+async function themedDays(first: number, count: number, outdir: string): Promise<string> {
+  fs.mkdirSync(outdir, {recursive: true});
+  const start = Date.UTC(Math.floor(first / 10000), Math.floor(first / 100) % 100 - 1, first % 100);
+  const recent: string[] = [];
+  for (const f of fs.readdirSync(outdir).filter((n) => /^\d{8}\.json$/.test(n)).sort()) {
+    recent.unshift(...themed(JSON.parse(fs.readFileSync(path.join(outdir, f), "utf8")).theme));
+  }
+  let made = 0;
+  for (let i = 0; i < count; i++) {
+    const when = new Date(start + i * 86400000);
+    const day = when.getUTCFullYear() * 10000 + (when.getUTCMonth() + 1) * 100 + when.getUTCDate();
+    const file = path.join(outdir, `${day}.json`);
+    if (fs.existsSync(file)) continue;
+    const before = cost();
+    const t0 = Date.now();
+    const theme = await makeTheme(day, recent.slice(0, 60));
+    const pictures = theme === null ? {doc: null, drafts: []} : await picturesDay(day, theme, (name, d) => {
+      const kept = `${name}.${d.mime === "image/png" ? "png" : "jpg"}`;
+      fs.writeFileSync(path.join(outdir, kept), d.bytes);
+      return kept;
+    });
+    fs.writeFileSync(file, JSON.stringify({day, theme, pictures: pictures.doc, drafts: pictures.drafts,
+      cost: Math.round((cost() - before) * 10000) / 10000, seconds: Math.round((Date.now() - t0) / 1000)}));
+    if (theme !== null) recent.unshift(...themed(theme));
+    made++;
+  }
+  return `${outdir}: ${made} days made, US$${cost().toFixed(2)}`;
+}
+
 async function main(): Promise<void> {
   // What is printed is the day and nothing else: the makers' own lines go
   // to the other stream.
@@ -67,6 +106,8 @@ async function main(): Promise<void> {
     print(JSON.stringify(await DAYS[game](day), null, 1));
   } else if (what === "bank" && args[0] === "pearl" && args.length === 4) {
     print(await growBank(Number(args[1]), Number(args[2]), args[3]));
+  } else if (what === "themed" && args.length === 3) {
+    print(await themedDays(Number(args[0]), Number(args[1]), args[2]));
   } else if (what === "publish") {
     // Loaded here and not at the top: index.ts wakes the admin SDK, which a
     // dry run has no credentials for and no use of.
@@ -74,7 +115,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> | publish");
     process.exitCode = 2;
   }
 }

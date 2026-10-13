@@ -13,6 +13,7 @@
  *                         environment variable anywhere else
  *   DAILY_MODEL           the model that writes
  *   DAILY_REVIEW_MODEL    the model that reviews
+ *   DAILY_IMAGE_MODEL     the model that draws (draw(), for pictures.ts)
  *
  * The two defaults are cheap models of different makers on purpose: a
  * reviewer from the writer's own family shares its mistakes. `off` as
@@ -23,6 +24,7 @@
 
 export const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
 export const DEFAULT_REVIEW_MODEL = "openai/gpt-6-luna";
+export const DEFAULT_IMAGE_MODEL = "google/gemini-3.1-flash-lite-image";
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 /** The most one answer may run to, thinking included where a model thinks.
@@ -45,6 +47,18 @@ export interface Ask {
   schema: Record<string, unknown>;
   /** Which of the two models answers. */
   role?: Role;
+  /** Pictures shown with the request, as data: URLs. */
+  images?: string[];
+}
+
+/** What the requests of this process have cost so far, in US dollars, by
+ *  OpenRouter's own count (`usage.cost`). */
+let spent = 0;
+export function cost(): number {
+  return spent;
+}
+function count(out: {usage?: {cost?: number}}): void {
+  spent += Number(out.usage?.cost) || 0;
 }
 
 function key(): string {
@@ -97,7 +111,13 @@ export async function ask<T>(a: Ask): Promise<T> {
   const base = {
     model,
     max_tokens: MAX_TOKENS,
-    messages: [{role: "system", content: told}, {role: "user", content: a.prompt}],
+    messages: [{role: "system", content: told}, {
+      role: "user",
+      content: a.images === undefined ? a.prompt : [
+        {type: "text", text: a.prompt},
+        ...a.images.map((url) => ({type: "image_url", image_url: {url}})),
+      ],
+    }],
   };
   let res = await post({
     ...base,
@@ -111,10 +131,44 @@ export async function ask<T>(a: Ask): Promise<T> {
   if (!res.ok) {
     throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
   }
-  const out = await res.json() as {choices?: {finish_reason?: string; message?: {content?: string}}[]};
+  const out = await res.json() as {
+    choices?: {finish_reason?: string; message?: {content?: string}}[]; usage?: {cost?: number}};
+  count(out);
   const choice = out.choices?.[0];
   if (choice?.finish_reason !== "stop") {
     throw new Error(`${model} stopped on ${choice?.finish_reason}`);
   }
   return jsonIn(choice.message?.content ?? "") as T;
+}
+
+export function imageModel(): string {
+  return (process.env.DAILY_IMAGE_MODEL ?? "").trim() || DEFAULT_IMAGE_MODEL;
+}
+
+export interface Drawing {
+  /** "image/jpeg" or "image/png". */
+  mime: string;
+  bytes: Buffer;
+}
+
+/**
+ * One request, one picture. An image model is asked for both kinds of
+ * output and answers beside the text, not in it: read off a real answer on
+ * 2026-10-13, the picture is `message.images[0].image_url.url`, a data: URL,
+ * and `content` is null. Throws on anything that is not a picture.
+ */
+export async function draw(prompt: string): Promise<Drawing> {
+  if (!available()) throw new Error("no model");
+  const model = imageModel();
+  const res = await post({model, modalities: ["image", "text"], messages: [{role: "user", content: prompt}]});
+  if (!res.ok) {
+    throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  }
+  const out = await res.json() as {
+    choices?: {message?: {images?: {image_url?: {url?: string}}[]}}[]; usage?: {cost?: number}};
+  count(out);
+  const url = out.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? "";
+  const got = /^data:(image\/[a-z]+);base64,(.+)$/s.exec(url);
+  if (got === null) throw new Error(`${model} drew nothing`);
+  return {mime: got[1], bytes: Buffer.from(got[2], "base64")};
 }

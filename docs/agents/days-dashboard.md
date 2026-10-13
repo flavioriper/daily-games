@@ -108,3 +108,55 @@ converted at 10, 12, 16, 24 and 32; four of them appended to a scratch copy
 of the bank pass `check_pixel_garden.py --bank`, and a fifth fails it for the
 reason the page gave. Not driven: the file chooser, drop, paste and the
 painting (the test fed images to `convLoad` directly).
+
+## The daily theme, stage 1 (2026-10-13)
+
+Spec: `docs/superpowers/specs/2026-10-13-daily-theme-design.md`. Stage 1 is
+the theme, the pictures and their supervisor made on this Mac and shown in
+the dashboard; nothing is published, no game code reads any of it, and
+`publishDay` does not know about it yet (stage 4).
+
+- **`tools/beads.js`** is the converter and the bank's rules, taken out of
+  the page: pure functions on RGBA bytes. `build_dashboard.py` inlines it
+  where `/*BEADS*/` stands; `npm run build` copies it to
+  `server/functions/lib/beads.js`, typed by `src/beads.d.ts`. One file, so
+  the Picture maker tries what the night runs. It shrinks the image itself
+  (a box mean to 240 a side), so the page and the server see the same bytes.
+- **`generate.ts`**: `draw(prompt)` asks an image model (`DAILY_IMAGE_MODEL`,
+  default `google/gemini-3.1-flash-lite-image`) and reads
+  `message.images[0].image_url.url`; `ask()` takes `images`; `cost()` sums
+  OpenRouter's `usage.cost`. `jpeg-js` and `pngjs` are new dependencies.
+- **`theme.ts`**: `makeTheme(day, recent)`; a second model turns down a
+  theme that does not belong in the game and names words to leave out. A
+  wrong word no longer costs the day its theme (it did, the first run).
+- **`pictures.ts`**: `makeDay(day, theme, keep?)`. Three things at 10, 12
+  and 16, the scene at 24 and 32; three drawings of each at the most. A
+  thing is laid with a bare square round it, then edge to edge if the rules
+  want it bigger. The blind look: a thing is picked out of the day's three
+  and a decoy; a scene is described and a second question asks whether that
+  is the scene.
+- **`tools/themed_days.sh [yyyymmdd] [days]`** runs `cli.js themed` into
+  `tools/days/themed/` (git-ignored) and rebuilds the page. A day already
+  made is kept: delete its files to make it again.
+- **The page's Themed days** (`#view=themed`): a day's theme, the five
+  sizes (a dashed one is the bank's), and under a fold every drawing with
+  what the rules and the look said.
+
+**The first four days** (14 to 17 Oct 2026, after three fixes to the
+prompts): 17 of 20 pictures kept; US$0.14 to 0.24 and 70 to 90 seconds a
+day. The drawings are in the style asked for every time. What was seen:
+
+- Things at 10 to 16 mostly read (apple, cupcake, crab, lantern, teapot);
+  some do not (a spiral shell, a loaf, and a mug that is a red box).
+- **The look for a thing is weak**: one of four names is easy, and it kept
+  the red-box mug on its third drawing. It did turn down a starfish three
+  times (seen as a crab), rightly.
+- **Scenes are the soft spot.** At 24 and 32 they keep the rules but are
+  muddy; one of four days lost both (a dusk porch: one colour 60% of it,
+  then seen as a shore). The scene judge was too strict at first (a teapot
+  taken for a duck cost a good picture) and was told so.
+- A theme's things repeated two days apart (a teapot); the writer is now
+  told the recent days' things as well as their names. Not run since.
+
+Not done: stages 2 to 4. Not checked: a run long enough to say how the
+style and the themes hold over weeks; the light theme.

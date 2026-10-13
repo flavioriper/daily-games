@@ -2,7 +2,8 @@
 """Inlines tools/days/*.json into tools/dashboard.src.html as tools/dashboard.html.
 
 A page opened from file:// cannot fetch its neighbours, so the days ride in
-the page. tools/export_days.gd writes the days.
+the page, and so does tools/beads.js, the picture maker's converter.
+tools/export_days.gd writes the days.
 
     python3 tools/build_dashboard.py [--open]
 """
@@ -24,8 +25,13 @@ def main() -> None:
     # "</" would end the script element the data sits in.
     gallery = DAYS / "gallery.json"
     pictures = json.loads(gallery.read_text()) if gallery.exists() else {"beads": {}, "sets": []}
-    data = json.dumps({"index": index, "days": days, "gallery": pictures}, separators=(",", ":")).replace("</", "<\\/")
-    page = (HERE / "dashboard.src.html").read_text().replace("/*DATA*/", data, 1)
+    # The themed days tools/themed_days.sh made; their drawings stay files
+    # beside them, which a page may show from file:// though not read.
+    themed = [json.loads(f.read_text()) for f in sorted((DAYS / "themed").glob("[0-9]*.json"))]
+    data = json.dumps({"index": index, "days": days, "gallery": pictures, "themed": themed},
+                      separators=(",", ":")).replace("</", "<\\/")
+    page = (HERE / "dashboard.src.html").read_text().replace("/*BEADS*/", (HERE / "beads.js").read_text(), 1)
+    page = page.replace("/*DATA*/", data, 1)
     out = HERE / "dashboard.html"
     out.write_text(page)
     count = sum(len(v) for v in days.values())
