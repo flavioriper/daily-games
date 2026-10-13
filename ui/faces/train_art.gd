@@ -125,7 +125,7 @@ static func track(b, points: PackedVector2Array, wide: float, closed: bool) -> v
 
 ## One toy block about `at` on a square of `cell`: a deep edge, the face a
 ## touch up from it, and a soft shine at its top. A small one (the pictures
-## past Easy are a thousand of them) is two plain squares: six triangles.
+## past Easy are a thousand of them) is two plain squares: four triangles.
 static func block(b, at: Vector2, cell: float, col: Color) -> void:
 	var s := cell * BLOCK
 	var r := cell * BLOCK_R

@@ -148,7 +148,8 @@ section wins.**
   difficulty deals from): Easy 10 square as before, **Medium 24 (576
   blocks), Hard and Insane 32 (1,024)**. `content/buttons_hard.json` is no
   longer read here. Those pictures have no bare square, so no mat is laid.
-  At 1080 wide a square is about 35 px on Medium and 24 on Hard.
+  A square is about 26 px on Medium and 18 on Hard in an 810 window
+  (measured off the shots).
 - **Loads** (`LOADS`): 3-9, 10-36, 16-60, 20-80. 25-39 cannons on Medium,
   29-46 on Hard, 21-35 on Insane; the deal's own line is 56-82, 89-173 and
   92-166 laps. The gap between two cannons entering is a band's (`GAPS`, 2,
@@ -178,7 +179,7 @@ section wins.**
   blocks (`RUN_STEP`). The run's bubble is from 5, its two notes from 12,
   confetti at 20, 40 and 60.
 - **The deal** keeps how deep each stop has looked (`_seen_from`): the
-  slowest deal is 63 ms on this Mac (it was 91 before the cache, on the
+  slowest deal is 63 to 69 ms on this Mac (it was 91 before the cache, on the
   same pictures).
 - **`State.hint` minds the tray**: a cannon that would empty first, then
   one out of the tray, and no new one that would come back when four
@@ -194,6 +195,10 @@ section wins.**
   that went through a run of its colour would clear more a lap, and is not
   the original's rule); the old wooden tock for a shot; the share text is
   the whole picture, 32 lines on Hard.
-- **Not seen**: the menu card and the tutorial with the cannon on them, the
+- **The tutorial keeps the old clock** (`LESSON_TICK`, 0.085 s a stop, in
+  `train_tutorial_diagram.gd`): at the day's a rug of twelve stops was gone
+  round before its caption was read. Seen on Insane's four pages
+  (`tests/_shot_train.gd -- d=3 howto`).
+- **Not seen**: the menu card with the cannon on it, the
   win on a 32 picture, Insane's jam, motion reduced, a phone. pt and es are
   unreviewed.

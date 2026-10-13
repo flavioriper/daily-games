@@ -33,6 +33,9 @@ const CAPTION_H := 80.0
 const CHIP_SCALE := 0.8
 const BULB_SIZE := 110.0
 const LEGEND := {"r": "red", "g": "green", "y": "yellow"}
+## Seconds a stop on a lesson's rug (the board's own, as the captions were
+## timed).
+const LESSON_TICK := 0.085
 
 ## Red along the top and green under it: the red engine fills on its way
 ## back along the top, the green one takes the rest. [rows, engines as
@@ -70,6 +73,13 @@ class Small extends "res://puzzles/train2d.gd":
 		_beside = true
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fx.buzzes = false  # (the page's finger is not the player's)
+
+	## The lesson's own clock: the day's is a lap in two seconds of a
+	## picture hundreds of blocks round, and a rug of twelve stops would be
+	## gone round before its caption was read.
+	func _begin() -> void:
+		super()
+		_tick_time = LESSON_TICK
 
 	func _tell(_text: String) -> void:
 		pass

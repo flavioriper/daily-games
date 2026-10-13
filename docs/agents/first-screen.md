@@ -375,7 +375,8 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   patch (three by three at 38 was tried first and ran over the strip), one mesh kept in
   `_buttons_mesh`. Its vista is the meadow at `(0.58, 0.34)`.
 - **Toy Train (Toy Cannons since 2026-10-13: the engine on the card is
-  `train_art.gd`'s cannon now, pointing at the blocks) is the thirty-eighth
+  `train_art.gd`'s cannon now, its muzzle toward the blocks by the same
+  quarter turn; not seen) is the thirty-eighth
   card (2026-10-12).** Its picture is
   `_draw_train()` in `ui/menu/card_art.gd`: a red engine with a 5 on its
   plate on a length of `ui/faces/train_art.gd`'s track, rolling up to two
