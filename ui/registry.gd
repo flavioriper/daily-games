@@ -1072,6 +1072,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/how_big.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/how_big_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band (how_big_state.gd's ROUNDS and SPREAD)
 		# is its own daily with its own done mark.
@@ -1098,6 +1102,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/acorn.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/acorn_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band (acorn_state.gd's ASKS) is its own
 		# daily with its own done mark and its own questions.
@@ -1124,8 +1132,12 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/pearl.gd",
 		"shell": "flat",
 		"tray": "keys",
-		"actions": false,
 		"tip": false,
+		# Its world is the whole screen (`bleed`, puzzles/pearl_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band (pearl_state.gd's ASKS) is its own
 		# daily with its own done mark and its own prompts.
@@ -1152,6 +1164,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/lattice.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/lattice_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band (lattice_gen.gd's BANDS, deals mined

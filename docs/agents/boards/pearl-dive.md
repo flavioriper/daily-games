@@ -190,3 +190,23 @@
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The shallows are the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/pearl_world.gd` is pale cream air, the
+water's surface as a band of shine in the gap of the tools row with the
+dive's coral float on it, the card's pale aqua from there down (it stays
+pale so the keys and the paper read; the deep is the board's own shaft),
+and a sand floor from a line the board names (`set_ground(y)`) to the
+foot, with coral sprigs, weed, the pearl's shell, a coil of spare rope, a
+starfish and pebbles in the band over the keys; six bubbles breathe. The
+cloud card is gone; the paper and the shaft stand on the host's margin.
+
+- Registry: `bleed`, `level_card`, and **the keyboard stays**
+  (`"tray": "keys"`).
+- `opengl3_angle`, 810x1440: 86 draw calls at rest; `tests/_win.gd --
+  pearl` passes (60 m of 60).
+- Decided for the user, unconfirmed: the shaft kept as the board's own
+  dark column; the keys on sand. Owed: a phone, One Breath's out-of-air
+  card over the bled board.

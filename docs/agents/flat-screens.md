@@ -429,7 +429,8 @@ completely customized for every game taking full screen, just making sure
 to keep the same brand UI layout ... Screens should be elegant, cozy, but
 carry the game elements." Binairo is the first and the reference
 (`docs/agents/boards/binairo.md`); the other card boards (Code Break to
-Lattice in the registry) are still to do, in registry order.
+Lattice in the registry) followed the same day, three a batch ("Done
+since", under the checklist).
 
 **The checklist for each board**, every line of it something the user
 said or approved on Binairo that day. Read it before the next one; the
@@ -475,7 +476,7 @@ sections after it say how each part is built.
 
 **Done since** (2026-10-13, unattended, three boards a batch by fork
 workers; each board's own note says what was decided for the user):
-Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider; Marigold, Pixel Garden, Drumbeat; Trestle, Mini Golf, Horse Pen. What the batches taught:
+Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider; Marigold, Pixel Garden, Drumbeat; Trestle, Mini Golf, Horse Pen; How Big?, Golden Acorn, Pearl Dive, Lattice. **Every card board from Code Break to Lattice is done**; with Binairo and the three that were already bleed boards, all thirty-eight. What the batches taught:
 
 - A worker owns two files, `puzzles/<board>_world.gd` and the board; the
   parent sets the registry, shoots (`tests/_shot_anim.gd`, then
@@ -506,6 +507,12 @@ Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Que
   Break's guess, Trestle's Go, Horse Pen's Submit).
 - On a levelled board the actions row's Reset is hidden and the tools
   row's bin always shows.
+
+Still open from the batches, the user's to call: every "decided for the
+user" line in the boards' notes; the quiz boards' tools row (Golden
+Acorn, Pearl Dive, How Big?: Undo and the bin greyed for good); Knight's
+Start over beside the bin; whether a tray or a commit button kept under a
+board should move.
 
 Still open, the user's to call: a real Redo (none exists; "redo" was read
 as the old Reset); whether the bin greys on an untouched board; the

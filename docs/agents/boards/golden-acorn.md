@@ -153,3 +153,26 @@
   fetched, dealt or judged was touched. Still two phrases at once: a heart
   taken back on the last question sounds `heart_back` and `solved` on one
   frame.
+
+### The oak's crown is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/acorn_world.gd` is up in the oak in high
+summer: cream to warm parchment, a twig with four leaves and the golden
+acorn hanging from it in the gap of the tools row, four sprays of oak
+leaves coming in from the sides (whole once the win has shrunk the block),
+leaf shade, and at the foot the oak's bough with the squirrel's hollow and
+its brown acorns at the left and only bark under Lock; glints and motes
+breathe. The tan card is gone: the pills, the question's paper and the
+four plates stand on the air, 1000 wide (they were 940).
+
+- Registry: `bleed`, `level_card`, and **Lock stays** on the actions
+  row (a tap only picks; Lock makes it final).
+- `opengl3_angle`, 810x1440: 92 draw calls at rest; `tests/_win.gd --
+  acorn` passes (7 of 7).
+- **Open, the user's to call**: Undo and the bin mean nothing on a quiz
+  (no `undo`, `can_reset()` always false), so the tools row here is
+  two greyed buttons and the bulb. Pearl Dive and How Big? are the same.
+- Decided for the user, unconfirmed: summer, not the card's autumn; no
+  card under the question. Owed: a phone, a daily that waits on the
+  network (the fetching line stands on bare air).

@@ -19,6 +19,15 @@ extends "res://core/puzzle_base.gd"
 ## a held tile lifts, a refused one shivers, a line hops when it is whole.
 ## This board's own: the two tiles of a swap crossing in a shallow arc, and
 ## the turn to green as a tile lands at home.
+##
+## The garden wall is the whole screen (the registry's `bleed`):
+## puzzles/lattice_world.gd lies edge to edge as the board's first child from
+## the first `set_clear`, and the lattice is laid in the span the host's rows
+## leave, its slats on the host's margin under the pill's strip, with no
+## card behind it. On the win the board slides and shrinks into the win's
+## span under its own one transform, the world held still against it. A
+## board never told a clear (the tutorial's, one in a card) is laid and
+## drawn in its card as before.
 
 const State = preload("res://puzzles/lattice_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -30,6 +39,12 @@ const Art = preload("res://ui/faces/lattice_art.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const World = preload("res://puzzles/lattice_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air kept
+## round the block inside it.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 ## The swaps the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -125,6 +140,24 @@ var _heart_card: Control
 var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
+## The world, once the host has said what its rows cover (set_clear), and
+## what they cover, top and bottom, while playing.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
+var _no_entrance := false
 ## Bumped on every rebuild; a pending callback from the last board checks it.
 var _gen := 0
 
@@ -320,13 +353,35 @@ func _remember() -> void:
 func _layout() -> void:
 	if state.n <= 0:
 		return
-	_cell = _cell_for(size.y)
-	if _cell <= 0.0:
-		return
-	var side: float = _cell * state.n
-	var tall := minf(size.y, side + 2.0 * PAD + HUD_ROW)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - side * 0.5, _card.position.y + HUD_ROW + (tall - HUD_ROW - side) * 0.5)
+	if _bled:
+		_world.size = size
+		_place()
+		# The slats' ends on the host's margin, the pill's strip over them,
+		# at the top of the span; what is left is open garden under it.
+		var span := size.y - _clear.x - _clear.y
+		var wide := size.x - 2.0 * _side()
+		_cell = minf(wide, span - HUD_ROW) / state.n
+		if _cell <= 0.0:
+			return
+		var g: float = _cell * state.n
+		_card = Rect2((size.x - g) * 0.5, _clear.x, g, HUD_ROW + g)
+		_grid = _card.position + Vector2(0.0, HUD_ROW)
+		_world.set_foot(_card.end.y)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+			_place()
+	else:
+		_cell = _cell_for(size.y)
+		if _cell <= 0.0:
+			return
+		var side: float = _cell * state.n
+		var tall := minf(size.y, side + 2.0 * PAD + HUD_ROW)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		_grid = Vector2(size.x * 0.5 - side * 0.5, _card.position.y + HUD_ROW + (tall - HUD_ROW - side) * 0.5)
 	_flat_cache = {}
 	_units = Art.units(_cell)
 	_still = _build_still()
@@ -335,6 +390,92 @@ func _layout() -> void:
 	_live_dirty = true
 	_hud_layer.queue_redraw()
 	queue_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the world. While playing the lattice is laid
+## in what is left; on the win it is not laid out again: the board slides
+## and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		if won:
+			_clear = Vector2(top, bottom)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a lattice to aim.
+	if _cell <= 0.0:
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the block as it is laid (the pill's
+## strip and the lattice) and the win's span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / _card.size.x,
+		(span - 2.0 * WIN_PAD) / _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the lattice keeps although the world does
+## not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the lattice's pop or the tiles' entrance.
+func skip_entrance() -> void:
+	_no_entrance = true
+	_opened = -1.0e9
+	_redraw()
+	_hud_layer.queue_redraw()
+
+## The board's transform at `_slid`, and the world's against it, so the
+## world stays where it is while the lattice and everything on it goes.
+func _place() -> void:
+	if _world == null:
+		return
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 func _cell_for(available: float) -> float:
 	if state.n <= 0:
@@ -376,8 +517,11 @@ func _field_px() -> Rect2:
 ## socket a cell.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.LINE)
-	b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.SURFACE_HI)
+	# The card, where the board stands in one; in a world of its own the
+	# lattice stands straight on the garden wall.
+	if not _bled:
+		b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.LINE)
+		b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.SURFACE_HI)
 	var side: float = _cell * state.n
 	for across in [false, true]:
 		for a in range(0, state.n, 2):
@@ -1122,6 +1266,8 @@ func _close_card() -> void:
 ## The chrome is the host's; here the lattice pops in wide and the tiles pop
 ## onto it along the diagonals.
 func _enter() -> void:
+	if _no_entrance:
+		return
 	_opened = _now()
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP + Motion.POP_IN + Motion.stagger(2 * state.n, Motion.ENTER_STAGGER))
 	fx.cue("enter")

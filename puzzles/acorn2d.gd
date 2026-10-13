@@ -23,6 +23,15 @@ extends "res://core/puzzle_base.gd"
 ## docs/art/flat-motion.md) read as curves: the plates pop in one after
 ## another, the pressed one sinks, the picked one bumps. This board's own: the
 ## held breath between a lock and its answer, and the wrong plate's shiver.
+##
+## The oak is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/acorn_world.gd lies edge to edge as the board's first child from
+## the first `set_clear`, and the pills, the paper and the plates are laid
+## in the span the host's rows leave, on its side margin, with no card of
+## their own under them. Until it is told a clear (the tutorial's Stage, a
+## probe) the board lays itself in its card as before. On the win it slides
+## and shrinks into the win's span under its own one transform, the oak
+## held still against it.
 
 const State = preload("res://puzzles/acorn_state.gd")
 const Art = preload("res://ui/faces/acorn_art.gd")
@@ -34,7 +43,13 @@ const Face = preload("res://ui/faces/face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Backend = preload("res://core/backend.gd")
+const World = preload("res://puzzles/acorn_world.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air kept
+## round the block inside it.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the card ---
 const PAD := 30.0
@@ -122,6 +137,26 @@ var _heart_used := false
 var _heart_card: Control
 var _heart_at := -INF
 var _tries := 0
+
+## The oak, once the host has said what its rows cover (`set_clear`), and
+## what they cover of the rect, top and bottom, while playing and on the win.
+var _world: Control
+var _bled := false
+var _clear_rows := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
+## Asked to arrive whole (skip_entrance) before the deal has begun.
+var _skip_enter := false
 
 var _card := Rect2()
 var _panel := Rect2()
@@ -294,8 +329,14 @@ func _begin() -> void:
 	_layout()
 	_opened = _now()
 	_round_at = _opened + (0.0 if Motion.reduce else Motion.ENTER_DELAY)
-	_busy_for(Motion.ENTER_DELAY + Motion.POP_IN + 4.0 * PLATE_STAGGER + 0.1)
-	fx.cue("enter")
+	if _skip_enter:
+		# Dealt into a screen already standing: whole, with no entrance.
+		_skip_enter = false
+		_opened -= 10.0
+		_round_at = _opened
+	else:
+		_busy_for(Motion.ENTER_DELAY + Motion.POP_IN + 4.0 * PLATE_STAGGER + 0.1)
+		fx.cue("enter")
 	focus_changed.emit()
 	moved.emit()
 
@@ -316,14 +357,29 @@ func _clear() -> void:
 
 # --- layout ---
 
+## In a card: the card is the rect's width, centred. In the oak: the pills,
+## the paper and the plates are as wide as the host's rows (its side margin)
+## at the top of the span the rows leave (`_clear_rows`), with no card and
+## no padding of their own.
 func _layout() -> void:
 	if size.x <= 0.0:
 		return
-	var tall := card_height(size.y)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	var top := _card.position.y + HUD_ROW
-	var inner := _card.end.y - CARD_EDGE - PAD - top
-	_panel = Rect2(_card.position.x + PAD, top, _card.size.x - 2.0 * PAD, inner * PANEL_SHARE)
+	if _world != null:
+		_world.size = size
+	var top: float
+	var inner: float
+	if _bled:
+		var wide := size.x - 2.0 * _side()
+		var span := size.y - _clear_rows.x - _clear_rows.y
+		_card = Rect2(_side(), _clear_rows.x, wide, minf(span, wide * CARD_TALL))
+		top = _card.position.y + HUD_ROW
+		inner = _card.end.y - top
+	else:
+		var tall := card_height(size.y)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		top = _card.position.y + HUD_ROW
+		inner = _card.end.y - CARD_EDGE - PAD - top
+	_panel = Rect2(_card.position.x + _pad(), top, _card.size.x - 2.0 * _pad(), inner * PANEL_SHARE)
 	var plate_h := (inner - _panel.size.y - 4.0 * PLATE_GAP) / 4.0
 	_plates.clear()
 	for i in 4:
@@ -331,8 +387,103 @@ func _layout() -> void:
 			_panel.size.x, plate_h))
 	_still = _build_still()
 	_seal_mesh = null
+	if _won and _bled:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_redraw()
 	_hud_layer.queue_redraw()
+
+## The card's padding, which the oak has none of.
+func _pad() -> float:
+	return 0.0 if _bled else PAD
+
+## The host's side margin, which the block keeps although the oak does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the block is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_won = won
+	if not won:
+		_clear_rows = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a block to aim.
+	if _card.size.x <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the block as it is laid and the win's span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / _card.size.x,
+		(span - 2.0 * WIN_PAD) / _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the oak stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the card's pop or the plates'. The deal comes a frame
+## after this is asked, so it is kept for `_begin`.
+func skip_entrance() -> void:
+	if _dealt:
+		_opened = _now() - 10.0
+		_round_at = _opened
+		_redraw()
+		_hud_layer.queue_redraw()
+	else:
+		_skip_enter = true
+
+## The board's transform at `_slid`, and the oak's against it, so the oak
+## stays where it is while the block and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 func card_height(available: float) -> float:
 	return minf(available, size.x * CARD_TALL)
@@ -349,8 +500,11 @@ func plate_point(i: int) -> Vector2:
 
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.ACORN_DEEP)
-	b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.ACORN_TILE)
+	# The card, where the board stands in one; in the oak the paper and the
+	# plates stand on the world itself.
+	if not _bled:
+		b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.ACORN_DEEP)
+		b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.ACORN_TILE)
 	# The question's paper, with a lip under it.
 	b.fan(Face.Builder.round_rect(_panel.position + Vector2(0.0, PLATE_LIP), _panel.size, PANEL_RADIUS), Color(Pal.LINE, 0.7))
 	b.fan(Face.Builder.round_rect(_panel.position, _panel.size, PANEL_RADIUS), Pal.SURFACE)
@@ -536,8 +690,8 @@ func _draw_pills(now: float, alpha: float, shown: Array) -> void:
 	var pips_w := n * pip + (n - 1) * pip_gap
 	var icon := PILL_H * 0.72
 	var boxes := [Vector2(lw + pips_w + 56.0, PILL_H), Vector2(rw + icon + 46.0, PILL_H)]
-	var centres := [Vector2(_card.position.x + PAD + boxes[0].x * 0.5, y),
-		Vector2(_card.end.x - PAD - boxes[1].x * 0.5, y)]
+	var centres := [Vector2(_card.position.x + _pad() + boxes[0].x * 0.5, y),
+		Vector2(_card.end.x - _pad() - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
 	for k in 2:
 		var s := 1.0 if Motion.reduce else Motion.bump_scale(now - float(_pill_bump[k]), 0.12)

@@ -102,3 +102,22 @@
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The garden wall is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/lattice_world.gd` is the card's slate
+paper as a garden wall on a pale morning, a sprig of the climber, a blank
+tile and a knot bead in the gap of the tools row, and at the foot a low
+diamond trellis of the board's own slats between two capped posts with a
+climber wound across it out of a terracotta pot, the lawn's rise, two
+blank tiles, a bead and dropped blooms; six pollen motes breathe. Nothing
+in it has a number. The board has no rack (every tile is on the lattice),
+so nothing lies under it; the paper card behind the lattice is gone and an
+Easy cell is 200 (it was about 188). `set_foot(y)` sizes the trellis.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 83 draw calls at rest; `tests/_win.gd --
+  lattice` passes in par.
+- Decided for the user, unconfirmed: the slats straight on the wall; the
+  larger Easy cell. Owed: a phone, Insane with its swap pill.

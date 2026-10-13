@@ -152,3 +152,23 @@
   another phrase (`off` 75 ms later; `party` on the same frame). Left as it
   was: one more heart on the last rung sounds `heart_back` and `solved`
   together.
+
+### The measuring meadow is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. The board's own sky and meadow became the world
+(`puzzles/how_big_world.gd`): cream air turning into the pale sky, the
+card's three clouds, two far hills on the ground line, grass to the foot;
+a small cloud and a faint size bracket in the gap of the tools row; and at
+the foot, left of Lock, a folding rule open in a zigzag, a coral tape reel,
+daisies and tufts; four pollen motes breathe. Nothing in it is a
+silhouette. The green card is gone and the block is the card's old size
+to the pixel (1000 x 1220 at 1080). On the win the world rides vertically
+so the grass stays under the things.
+
+- Registry: `bleed`, `level_card`, and **Lock stays** on the actions
+  row (it is the round's commit, then Next).
+- `opengl3_angle`, 810x1440: 87 draw calls at rest; `tests/_win.gd --
+  how_big` passes.
+- Decided for the user, unconfirmed: Lock kept; the two new hills behind
+  the things; a small block on the win (0.71). Owed: a phone.

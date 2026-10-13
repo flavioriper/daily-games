@@ -24,6 +24,13 @@ extends "res://core/puzzle_base.gd"
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
 ## docs/art/flat-motion.md) read as curves. This board's own: the bell
 ## sinking to its new depth, and the clock.
+##
+## The water is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/pearl_world.gd lies edge to edge behind the board from the first
+## `set_clear`, the cloud card goes, and the paper and the shaft are laid in
+## the span the host's rows leave, on its margin, over the keyboard. On the
+## win the board slides and shrinks into the win's span under its own one
+## transform, the water held still against it.
 
 const State = preload("res://puzzles/pearl_state.gd")
 const Art = preload("res://ui/faces/pearl_art.gd")
@@ -36,6 +43,16 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Backend = preload("res://core/backend.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const World = preload("res://puzzles/pearl_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and how far inside
+## the span the board lands.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
+## What the board leaves open over the keyboard for the sea floor, and how
+## far under its own foot the sand's line lies.
+const FLOOR_BAND := 84.0
+const FLOOR_UNDER := 30.0
 
 # --- the card ---
 const PAD := 30.0
@@ -135,6 +152,26 @@ var _out_card: Control
 var _tries := 0
 
 var _card := Rect2()
+## The water behind the board, made on the first `set_clear`; a board in a
+## card (the tutorial, a probe) never has one.
+var _world: Control
+var _bled := false
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear_rows := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The board's own transform on the win: the card's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
+## The host dealt this board into a screen already standing.
+var _no_entrance := false
 var _panel := Rect2()
 var _shaft := Rect2()
 var _clock := Rect2()
@@ -309,6 +346,9 @@ func _begin() -> void:
 	_layout()
 	_opened = _now()
 	_round_at = _opened + (0.0 if Motion.reduce else Motion.ENTER_DELAY)
+	if _no_entrance:
+		_opened -= 10.0
+		_round_at = _now()
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP + 0.2)
 	fx.cue("enter")
 	focus_changed.emit()
@@ -333,21 +373,122 @@ func _clear() -> void:
 func _layout() -> void:
 	if size.x <= 0.0:
 		return
-	var tall := card_height(size.y)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+	# In a card the paper and the shaft stand PAD inside it. In the water the
+	# card is gone: they stand on the host's margin, at the top of the span
+	# the rows leave, with the floor's band open over the keyboard.
+	var pad := PAD
+	var edge := CARD_EDGE
+	if _bled:
+		pad = 0.0
+		edge = 0.0
+		var side := _side()
+		var u := size.x / 1080.0
+		var span := size.y - _clear_rows.x - _clear_rows.y
+		var tall_b := clampf(span - FLOOR_BAND * u, 0.0, (size.x - 2.0 * side) * 1.08)
+		_card = Rect2(side, _clear_rows.x, size.x - 2.0 * side, tall_b)
+		_world.size = size
+		_world.set_ground(_card.end.y + FLOOR_UNDER * u)
+	else:
+		var tall := card_height(size.y)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	var top := _card.position.y + HUD_ROW
-	var inner := _card.end.y - CARD_EDGE - PAD - top
-	var wide := _card.size.x - 2.0 * PAD
+	var inner := _card.end.y - edge - pad - top
+	var wide := _card.size.x - 2.0 * pad
 	var shaft_w := wide * SHAFT_SHARE
-	_shaft = Rect2(_card.end.x - PAD - shaft_w, top, shaft_w, inner)
-	_panel = Rect2(_card.position.x + PAD, top, wide - shaft_w - SHAFT_GAP, inner)
+	_shaft = Rect2(_card.end.x - pad - shaft_w, top, shaft_w, inner)
+	_panel = Rect2(_card.position.x + pad, top, wide - shaft_w - SHAFT_GAP, inner)
 	_clock = Rect2(_panel.position.x + 30.0, _panel.position.y + 30.0, _panel.size.x - 60.0 - CLOCK_ROOM, CLOCK_H)
 	_field = Rect2(_panel.position.x + 26.0, _panel.position.y + _panel.size.y * FIELD_AT - FIELD_H * 0.5,
 		_panel.size.x - 52.0, FIELD_H)
 	_still = _build_still()
 	_seal_mesh = null
+	if _won and _bled:
+		# Laid out under a win (a resize, or a day reopened solved): the slide
+		# is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_redraw()
 	_hud_layer.queue_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the board is laid in what is left. On the win it is
+## not laid out again: it slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		if won:
+			_clear_rows = Vector2(top, bottom)
+	_won = won
+	if not won:
+		_clear_rows = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	if _card.size.y <= 0.0 or _card.position.x <= 0.0:
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the card as it is laid and the win's span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / _card.size.x,
+		(span - 2.0 * WIN_PAD) / _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the board keeps although the water does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the water stays
+## where it is, and the board that is leaving shows none.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the card's pop.
+func skip_entrance() -> void:
+	_no_entrance = true
+	if _dealt:
+		_opened = _now() - 10.0
+		_redraw()
+		_hud_layer.queue_redraw()
+
+## The board's transform at `_slid`, and the water's against it.
+func _place() -> void:
+	if not _bled or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 func card_height(available: float) -> float:
 	return minf(available, size.x * CARD_TALL)
@@ -376,8 +517,11 @@ func _depth_shown(now: float) -> float:
 
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.CLOUD_DEEP)
-	b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.CLOUD_TILE)
+	# The cloud card, in a card only: in the water the paper and the shaft
+	# stand in the world itself.
+	if not _bled:
+		b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.CLOUD_DEEP)
+		b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.CLOUD_TILE)
 	# The paper, with a lip under it.
 	b.fan(Face.Builder.round_rect(_panel.position + Vector2(0.0, PANEL_LIP), _panel.size, PANEL_RADIUS), Color(Pal.LINE, 0.7))
 	b.fan(Face.Builder.round_rect(_panel.position, _panel.size, PANEL_RADIUS), Pal.SURFACE)
@@ -563,7 +707,7 @@ func _draw_hud() -> void:
 ## Left: which prompt, with a pip each in what it came to. Right: the depth.
 func _draw_pills(now: float, alpha: float, shown: Array) -> void:
 	var font: Font = CozyTheme.display(700)
-	var y := _card.position.y + HUD_ROW * 0.5 + 6.0
+	var y := _card.position.y + HUD_ROW * 0.5 + (-4.0 if _bled else 6.0)
 	var n: int = state.count()
 	var left_text := tr("PD_ROUND") % [mini(state.index + 1, n), n]
 	var right_text := tr("PD_METRES") % int(round(_depth_shown(now)))
@@ -574,8 +718,9 @@ func _draw_pills(now: float, alpha: float, shown: Array) -> void:
 	var pips_w := n * pip + (n - 1) * pip_gap
 	var icon := PILL_H * 0.72
 	var boxes := [Vector2(lw + pips_w + 56.0, PILL_H), Vector2(rw + icon + 46.0, PILL_H)]
-	var centres := [Vector2(_card.position.x + PAD + boxes[0].x * 0.5, y),
-		Vector2(_card.end.x - PAD - boxes[1].x * 0.5, y)]
+	var pad := 0.0 if _bled else PAD
+	var centres := [Vector2(_card.position.x + pad + boxes[0].x * 0.5, y),
+		Vector2(_card.end.x - pad - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
 	for k in 2:
 		var s := 1.0 if Motion.reduce else Motion.bump_scale(now - float(_pill_bump[k]), 0.12)

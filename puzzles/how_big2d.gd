@@ -21,6 +21,15 @@ extends "res://core/puzzle_base.gd"
 ## moves and on no other. The pills, the captions, the result card and the
 ## toast are a layer of their own.
 ##
+## The field is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/how_big_world.gd lies edge to edge as the board's first child,
+## made on the first `set_clear`, and the sky, the clouds and the grass are
+## its own from then on; the board is laid in the span the host's rows leave,
+## on the host's margin. On the win it is not laid out again: it slides and
+## shrinks into the win's span under one transform, and the world rides up
+## and down against it so the grass stays under the things. A board never
+## told a clear (the tutorial's page, a card) draws its card as before.
+##
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
 ## docs/art/flat-motion.md) read as curves: the ruler drops in, the answer
 ## pops in a beat later, the grip sinks under the finger. This board's own:
@@ -38,7 +47,13 @@ const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const World = preload("res://puzzles/how_big_world.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## block keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the card ---
 const PAD := 30.0
@@ -145,6 +160,21 @@ var _heart_at := -INF
 var _card := Rect2()
 ## Where things stand: its foot is the ground line.
 var _stage := Rect2()
+## In a world of its own (set_clear): the world, what the host's rows cover
+## while playing and on the win, and the board's one transform on the win
+## and on a change of level.
+var _bled := false
+var _world: Control
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _shift := 0.0
+var _slide_tw: Tween
 ## Bumped on every rebuild; a pending callback from the last board checks it.
 var _gen := 0
 var _phase := Phase.PLAY
@@ -302,10 +332,16 @@ func _deal() -> void:
 func _layout() -> void:
 	if state.rounds.is_empty() or size.x <= 0.0:
 		return
-	var tall := card_height(size.y)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+	if _bled:
+		# The span the rows leave, on the host's margin: the pills at its
+		# top, the stage under them, the captions' grass at its foot.
+		var side := _side()
+		_card = Rect2(side, _clear.x, size.x - 2.0 * side, maxf(size.y - _clear.x - _clear.y, 1.0))
+	else:
+		var tall := card_height(size.y)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
 	var top := _card.position.y + HUD_ROW
-	_stage = Rect2(_card.position.x + PAD, top, _card.size.x - 2.0 * PAD, _card.end.y - CARD_EDGE - GROUND_H - top)
+	_stage = Rect2(_card.position.x + _pad(), top, _card.size.x - 2.0 * _pad(), _card.end.y - CARD_EDGE - GROUND_H - top)
 	# The answer keeps the share of its range it had, whatever the card became.
 	var share := -1.0
 	if not _frame.is_empty() and _px > 0.0:
@@ -315,10 +351,110 @@ func _layout() -> void:
 	if state.locked():
 		_px = _px_of(float(state.results[state.index].guess))
 	_notch = _notch_of(_px)
-	_still = _build_still()
+	_still = null if _bled else _build_still()
 	_seal_mesh = null
+	if _bled:
+		_world.size = size
+		_world.set_ground(_stage.end.y)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+		_place()
 	_redraw()
 	_hud_layer.queue_redraw()
+
+## The card's own inset, which a board on the host's margin does not need.
+func _pad() -> float:
+	return 0.0 if _bled else PAD
+
+## The host's side margin, which the board keeps although the world does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the board is laid in what is left. On the win it is
+## not laid out again: it slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	var fresh := not _bled
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved may be told only its win: it is laid in that span.
+	if _clear == Vector2.ZERO:
+		_clear = _win_clear
+	# Told before it has been laid out: _layout sets the slide when it can.
+	if fresh or _frame.is_empty() or _card.size.x <= 0.0:
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block (pills, stage and grass) in the
+## middle of the win's span, as large as it leaves.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side()) / _card.size.x,
+		(span - 2.0 * WIN_PAD) / _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the pair is
+## there, without the drop and the pop.
+func skip_entrance() -> void:
+	var now := _now()
+	_opened = now - 10.0
+	_round_at = minf(_round_at, now - 10.0)
+	_redraw()
+	_hud_layer.queue_redraw()
+
+## The board's transform at `_slid`, and the world's against it: the world
+## keeps its size and its place across, and rides up or down so its ground
+## line stays under the board's.
+func _place() -> void:
+	if _world == null or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	var ground := _stage.end.y
+	var ride := by.y + _slid_from.y + (ground - _slid_from.y) * k - ground
+	_world.scale = Vector2.ONE / k
+	_world.position = _slid_from + (Vector2(0.0, ride) - by - _slid_from) / k
 
 ## What the stage has for things to stand in.
 func _room() -> Vector2:
@@ -398,7 +534,7 @@ func _build_still() -> ArrayMesh:
 # --- the drawing ---
 
 func _draw() -> void:
-	if _still == null or _frame.is_empty():
+	if _frame.is_empty() or (_still == null and not _bled):
 		return
 	var now := _now()
 	var shown: Array = []
@@ -407,7 +543,7 @@ func _draw() -> void:
 	var grown := 1.0 if Motion.reduce else Motion.wide_pop_scale(since)
 	var centre := _card.get_center()
 	var xf := Transform2D(0.0, Vector2(grown, grown), 0.0, centre) * Transform2D(0.0, -centre)
-	if seen > 0.0:
+	if seen > 0.0 and _still != null:
 		draw_mesh(_still, null, xf, Color(1.0, 1.0, 1.0, seen))
 		shown.append(_still)
 	if _live_dirty or now < _anim_until or _drag:
@@ -569,8 +705,8 @@ func _draw_hud() -> void:
 	var pips_w := n * pip + (n - 1) * 8.0
 	var icon := PILL_H * 0.8
 	var boxes := [Vector2(lw + pips_w + 56.0, PILL_H), Vector2(rw + icon + 44.0, PILL_H)]
-	var centres := [Vector2(_card.position.x + PAD + boxes[0].x * 0.5, y),
-		Vector2(_card.end.x - PAD - boxes[1].x * 0.5, y)]
+	var centres := [Vector2(_card.position.x + _pad() + boxes[0].x * 0.5, y),
+		Vector2(_card.end.x - _pad() - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
 	for k in 2:
 		var s := 1.0 if Motion.reduce else Motion.bump_scale(now - float(_pill_bump[k]), 0.12)
