@@ -794,6 +794,7 @@ const PUZZLES := [
 		# shape: the pieces live in the card), so no tray; the actions row
 		# carries Reset and Check, and Undo and Hint ride in the top bar.
 		"script": "res://puzzles/pixel_garden2d.gd",
+		"card": "res://ui/menu/cards/pixelgarden.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
@@ -819,6 +820,7 @@ const PUZZLES := [
 		# and no actions row, and nothing to take back or check -- the song
 		# judges every note as it passes. Reset rides in the top bar.
 		"script": "res://puzzles/drumbeat2d.gd",
+		"card": "res://ui/menu/cards/drumbeat.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -846,6 +848,7 @@ const PUZZLES := [
 		# button, relabelled: the test is the check), and Undo and Hint ride
 		# in the top bar -- Pixel Garden's shape.
 		"script": "res://puzzles/trestle2d.gd",
+		"card": "res://ui/menu/cards/trestle.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],

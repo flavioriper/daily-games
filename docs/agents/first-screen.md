@@ -928,6 +928,46 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     middle; Marigold's two bounces sit close together at 490 wide. One
     `page4` run printed a JSON parse error from `core/backend.gd`'s
     `_refresh`; the other run and the suite did not.
-- **Owed**: the twenty-six boards' cells on Stats and Streak still wear the
-  old banner (`CardArt` + `Vistas.card_plate`); the other twelve cards;
+- **Pixel Garden, Drumbeat and Trestle are the twenty-seventh,
+  twenty-eighth and twenty-ninth** (the same day, on "do the missing games
+  card renew 3 at time": the last twelve in four batches, the same recipe).
+  - **Pixel Garden** (`ui/menu/cards/pixelgarden.gd`): an aqua craft mat
+    (`e6f5f2` to `cfe9e5`) with a faint cutting grid, and the whole 7x7
+    pegboard straight in its wooden tray low right, a rose tulip half made
+    on it in `bead.gd`'s beads with green leaves, the stem's top peg bare
+    and lit. The go button is the bead that peg wants, in the card's sage,
+    2.5 beads across, lifted left of the tray, a dotted hop to its peg.
+    Three loose beads and the baked iron lie on the mat. Nothing lives on
+    it.
+  - **Drumbeat** (`ui/menu/cards/drumbeat.gd`): a warm apricot evening
+    (`fdf0de` to `f8d9b6`) with two soft glows. The board's road comes in
+    from the right edge and ends round at the ring, three berries on it,
+    the red one in the ring, the others' marks on the strip below; the hand
+    drum and the tongue drum stand along the foot. The go button is the big
+    drum under the ring in the card's lavender, lifted, a chevron on its
+    belly. **The road runs right to left into one ring**, not down toward
+    the viewer as the brief had it. One mesh, nothing live.
+  - **Trestle** (`ui/menu/cards/trestle.gd`): a sandstone morning (`fbf1e2`
+    to `f3e2c9`), two cliffs along the foot and pale water between. The
+    bridge is four lengths of road pin to pin and six wooden members in
+    `trestle_parts.gd`'s own builders, with no top chord, its two upper
+    joints ringed. The cart waits at the left lip with a pear aboard (the
+    one live child). The go button is the missing top chord in the card's
+    rose, thick, lifted and leaning, with a chevron.
+  - **Measured**, `tests/_shot_menu.gd -- page4` on `opengl3_angle` at
+    810x1440, second of two readings: 183 draw calls with five faces and
+    three template cards (both readings 183; 212 before). Suite 249797/0.
+    The throwaway probe, each card at the four sizes in es, and page four
+    whole in en. Changed after the first look: Trestle's lattice step from
+    40 to 48 and its deck 10 px lower, the bridge having read small.
+  - **Mine, the user's to call**: Pixel Garden's tulip, the grid on the
+    mat, the dotted hop, the iron under the blurb; Drumbeat's dark road
+    (lighter than the board's, still the heaviest thing on the card), no
+    critter, side drums smaller than the go drum by a third, a picture that
+    does not grow on a taller card; Trestle's top chord as the missing
+    member, the pear as the rider, a cart that is small beside the bridge.
+    **Seen and left**: on a 1040-wide card all three are bare in the
+    middle.
+- **Owed**: the twenty-nine boards' cells on Stats and Streak still wear the
+  old banner (`CardArt` + `Vistas.card_plate`); the other nine cards;
   Balance, Untangle and Shikaku in es; a phone.
