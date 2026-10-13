@@ -411,3 +411,13 @@ stars, the crescent and the hills are. One cloud is left, in the gap of the
 tools row. The win still shrinks it by `PAD` inside its span. Any earlier
 figure for where the grid stands is history. `opengl3_angle`, 810x1440:
 Easy's `solve` peak 111 draw calls; suite 249797/0.
+
+### A placed tile's own sky, tried and refused (2026-10-13)
+
+Asked for ("when user select sun, make the card background slighthly
+shine and blueishy like a sunny day, moon make it change to a star night
+sky, subtle"), built as two MultiMeshes under the faces (7e89dc05), seen,
+and refused: "undo it, i don't like". Reverted in 0a8fd2ff; a placed tile
+is plain paper again and a clue its sand. Do not offer it again. The whole
+of what the user settled for this screen is the checklist in
+`docs/agents/flat-screens.md`, "Every board gets a world of its own".

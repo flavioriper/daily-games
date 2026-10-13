@@ -427,27 +427,55 @@ tutorial, `_on_solved`, the win stack, Redo, the next level.
 The user, 2026-10-13: "let's start redesign the ingame to something
 completely customized for every game taking full screen, just making sure
 to keep the same brand UI layout ... Screens should be elegant, cozy, but
-carry the game elements." Binairo is the first; the other card boards
-(Code Break to Lattice in the registry) are still to do, one at a time.
-What "the same brand layout" was taken to mean, mine and the user's to
-call: the top bar, the day card with its painted island, the tray, the
-actions row and the win's panels stay where and as they are; what changes
-is everything under them. For each board:
+carry the game elements." Binairo is the first and the reference
+(`docs/agents/boards/binairo.md`); the other card boards (Code Break to
+Lattice in the registry) are still to do, in registry order.
 
-- `"bleed": true` in the registry; the paper page, the painted header and
-  the parchment card go with it.
-- The world is the board's menu card (`ui/menu/cards/<board>.gd`) at the
-  size of the screen, drawn as one cached mesh in a file of its own beside
-  the board (`puzzles/binairo_sky.gd`).
-- **What lies over the world decides its tones.** The wordmark and the
-  motto are ink with no scrim under them now, and the win's "Well done!"
-  is ink in the top 640: the world is light there. The tray's chips and
-  the buttons carry their own paper and stand on anything.
-- Place the decoration where the world shows: beside the tray, between
-  the buttons, in the air the grid leaves above and below it, and across
-  the top on the win. Behind the grid only the gaps show.
-- Shoot rest and `solve` with `tests/_shot_anim.gd`; the draw calls should
-  not rise (the card and the header plate leave as the world arrives).
+**The checklist for each board**, every line of it something the user
+said or approved on Binairo that day. Read it before the next one; the
+sections after it say how each part is built.
+
+1. **The world fills the screen.** `"bleed": true`; the paper page, the
+   painted header and the parchment card go. The world is the board's menu
+   card (`ui/menu/cards/<board>.gd`) at the size of the screen, one cached
+   mesh in a file of its own beside the board (`puzzles/binairo_sky.gd`),
+   the board's first child. Elegant, cozy, made of the game's own things.
+2. **The top bar is back, the title, ? and the gear, and nothing else**
+   ("keep only the config and how to play buttons at the top along with
+   title and back").
+3. **The levels stand where the day card was** (`"level_card": true`; "the
+   day card (useless)"). No day card on the playing screen.
+4. **The board's own buttons are a row under the levels**: Undo and Clear
+   at its start, Hint at its end, any other button of the board after
+   Hint. Undo and Hint never leave the row, they grey ("they never
+   disappear, only disable").
+5. **Undo is the turned-back arrow and Clear the bin, and Clear asks
+   first** ("clear must prompt if user really want to do it"). Never two
+   round arrows side by side: the user could not tell them apart.
+6. **Nothing under the board** ("keep the bottom clear with no button").
+   A row a board does not need goes: Binairo lost its tray (a tap cycles,
+   so no X chip) and its Check ("neither a verify need"). A board that
+   truly needs a tray or a Check is the user's call when its turn comes;
+   ask rather than keep it by habit.
+7. **The board lines up with the rows and sits right under the tools
+   row**: its outer edges on the rows' 40 margin, 20 under the buttons
+   ("they should align with the same edge margins, and the action buttons
+   should be near the board"). What is left over is open world below.
+8. **A change of level slides the board out and the new one in**; the
+   rows and the world stay, and no entrance plays again.
+9. **The piece keeps its own paper.** A placed tile given a sky of its own
+   (sunny blue under a sun, starry indigo under a moon) was built and
+   refused the same day ("undo it, i don't like"); the world belongs under
+   the board, not on the pieces.
+10. Tones and proof: the wordmark, the motto and the win's "Well done!"
+    are ink with no scrim, so the world is light across the top; put the
+    decoration where the world shows (the gap of the tools row, the open
+    foot, the top on the win). Shoot rest, `solve` and a level change on
+    `opengl3_angle` at 810x1440; the draw calls should not rise.
+
+Still open, the user's to call: a real Redo (none exists; "redo" was read
+as the old Reset); whether the bin greys on an untouched board; the
+day's hearts, which are now only on the win's stats card.
 
 ### The level card (2026-10-13)
 
