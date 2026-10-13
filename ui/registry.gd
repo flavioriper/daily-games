@@ -98,6 +98,7 @@ const PUZZLES := [
 		# Its palette is friends, not a brush, so the shell builds the other
 		# tray.
 		"script": "res://puzzles/codebreak2d.gd",
+		"card": "res://ui/menu/cards/codebreak.gd",
 		"shell": "flat",
 		"tray": "friends",
 		"difficulties": [0, 1, 2, 3],

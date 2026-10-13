@@ -539,5 +539,19 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
 - **Mine, the user's to call**: the go button as the missing tile rather
   than the round disc; no white margin round the picture; the faces idling
   (blink, turn, rock) on the menu, which the template's did not.
-- **Owed**: Binairo's cell on Stats and Streak still wears the old banner
-  (`CardArt` + `Vistas.card_plate`); the other thirty-seven cards; a phone.
+- **Code Break is the second** (`ui/menu/cards/codebreak.gd`, the same day,
+  on "do next"): the board's box. A dark shelf across the top holds the code
+  under three of the board's own lids (`codebreak2d.gd`'s `Lid._plank`), one
+  seat open with the cloud looking out of it, and a pouch at the row's end
+  with one filled pip and two rings; the parchment under the shelf's lip has
+  the name, and the go button is a lid in the card's colour with a chevron
+  where the others carry a question mark. The row has its own scale (`_ks`)
+  so a taller card never runs the pouch under the seal. 313 draw calls with
+  both cards on the page (321 with Binairo's alone: this face is one live
+  friend and three labels where the template had three friends and a plate),
+  second of two readings; suite 249797/0. Mine, the user's to call: the dark
+  wood, which is the heaviest thing on the page; the cloud as the friend
+  shown; a score of one and two.
+- **Owed**: the two boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other thirty-six cards; a
+  phone.
