@@ -53,6 +53,12 @@ var hint_button: Button
 var hint_offer := false
 var settings_button: Button
 var help_button: Button
+## Asked for by a host that lays the board's own buttons in a row under
+## the bar (ui/flat/flat_host.gd, a `level_card` board): Undo and Reset at
+## its start, Hint at its end, and the bar keeps back, the title, ? and the
+## gear. Undo and Hint then never leave the row; a board without one shows
+## it greyed.
+var tools: HBoxContainer
 var _title: Label
 var _motto: Label
 var _block: Control
@@ -61,7 +67,14 @@ var _bounce: Tween
 ## the face the theme gave it rather than the one the last fit left.
 var _base_size: Dictionary = {}
 
-func _init(title := "", motto := "", carry_reset := false, branded := false) -> void:
+func _init(title := "", motto := "", carry_reset := false, branded := false, tools_row := false) -> void:
+	if tools_row:
+		tools = HBoxContainer.new()
+		tools.name = "Tools"
+		tools.add_theme_constant_override("separation", 16)
+		tools.custom_minimum_size.y = BUTTON.y
+		tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		carry_reset = true
 	brand_binairo = branded
 	title_text = BRAND_TITLE if brand_binairo else title
 	motto_text = motto if brand_binairo else motto.to_upper()
@@ -105,10 +118,16 @@ func _build() -> void:
 	leaf.draw.connect(_draw_leaf.bind(leaf))
 	_block.add_child(leaf)
 	_title.resized.connect(leaf.queue_redraw)
-	undo_button = _button("undo", undo)
-	reset_button = _button("reset", reset)
+	var row: Container = tools if tools != null else _inner
+	undo_button = _button("undo", undo, row)
+	reset_button = _button("reset", reset, row)
 	reset_button.visible = with_reset
-	hint_button = _button("bulb", hint)
+	if tools != null:
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tools.add_child(spacer)
+	hint_button = _button("bulb", hint, row)
 	help_button = _button("help", help)
 	settings_button = _button("gear", settings)
 	_block.resized.connect(_fit_title)
@@ -172,14 +191,14 @@ func _fit(label: Label, wide: float) -> void:
 
 ## A button keeps its own square and sits centred on the row, as the other
 ## top bar's do, dressed as the first screen's header buttons are.
-func _button(icon: String, sig: Signal) -> Button:
+func _button(icon: String, sig: Signal, row: Container = null) -> Button:
 	var b := IconButton.new(icon)
 	b.custom_minimum_size = BUTTON
 	# The menu header's utility buttons: white paper lifted off the painting.
 	CozyTheme.lift_button(b, Pal.SURFACE, int(BUTTON.x * 0.29))
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(func() -> void: sig.emit())
-	_inner.add_child(b)
+	(row if row != null else _inner).add_child(b)
 	return b
 
 ## A stem rising from the title's top edge with two leaves, over the gap
@@ -215,9 +234,9 @@ func _draw_leaf(ci: Control) -> void:
 func refresh(puzzle) -> void:
 	var caps: Array = puzzle.capabilities() if puzzle != null else []
 	var done: bool = puzzle != null and puzzle.is_done()
-	undo_button.visible = caps.has("undo")
-	hint_button.visible = caps.has("hint")
-	undo_button.set_enabled(puzzle != null and puzzle.can_undo() and not done)
+	undo_button.visible = caps.has("undo") or tools != null
+	hint_button.visible = caps.has("hint") or tools != null
+	undo_button.set_enabled(puzzle != null and caps.has("undo") and puzzle.can_undo() and not done)
 	# A finished board has nothing left to reset -- except the one that can
 	# finish without being solved. Hidden Word's sixth wrong row stops the
 	# clock and greys this bar exactly as a solve does (spec
@@ -228,7 +247,7 @@ func refresh(puzzle) -> void:
 	reset_button.set_enabled((not done or (puzzle != null and not puzzle.is_solved()))
 		and (puzzle == null or not puzzle.has_method("can_reset") or puzzle.can_reset()))
 	var left: int = puzzle.hints_left() if puzzle != null else 0
-	hint_button.set_enabled((left > 0 or hint_offer) and not done)
+	hint_button.set_enabled((left > 0 or hint_offer) and not done and caps.has("hint"))
 	# A screen whose bulb waits its turn (Versus) says what it still holds, so
 	# the count does not blink out while the other side moves.
 	hint_button.badge = puzzle.hints_held() if puzzle != null and puzzle.has_method("hints_held") else left

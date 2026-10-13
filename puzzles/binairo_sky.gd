@@ -36,36 +36,36 @@ const DUSK := Color("f6a58e")
 ## every overlap.
 const CLOUD := Color("fff4de")
 ## The line between the day and the night, as shares of the rect: it leaves
-## the right edge under the day card and reaches the left edge low on the grid.
-const DIVIDE_FROM := Vector2(1.0, 0.262)
-const DIVIDE_C0 := Vector2(0.60, 0.30)
-const DIVIDE_C1 := Vector2(0.42, 0.675)
-const DIVIDE_TO := Vector2(0.0, 0.705)
+## the right edge under the tools row and reaches the left edge low on the grid.
+const DIVIDE_FROM := Vector2(1.0, 0.300)
+const DIVIDE_C0 := Vector2(0.60, 0.34)
+const DIVIDE_C1 := Vector2(0.42, 0.71)
+const DIVIDE_TO := Vector2(0.0, 0.74)
 ## The sun's middle, as shares of the rect, and its glow's rings: [radius at
 ## W, alpha], drawn one over the other.
 const SUN_AT := Vector2(0.07, 0.025)
 const SUN_RINGS := [[700.0, 0.10], [500.0, 0.10], [320.0, 0.16]]
 ## The crescent, in the night under the grid: its middle as shares, its
 ## radius at W.
-const MOON_AT := Vector2(0.850, 0.878)
+const MOON_AT := Vector2(0.850, 0.912)
 const MOON_R := 58.0
-## Two clouds in the air between the level card and the grid: [x, y as
+## Two clouds in the air between the tools row and the grid: [x, y as
 ## shares, radius at W].
-const CLOUDS := [[0.170, 0.262, 46.0], [0.790, 0.246, 34.0]]
+const CLOUDS := [[0.170, 0.322, 46.0], [0.640, 0.298, 34.0]]
 ## The night's stars, as shares of the rect: [x, y, radius at W, alpha].
 ## They stand where the night shows: under the grid, down to the hills, and
 ## up the right margin.
 const STARS := [
-	[0.060, 0.852, 5.0, 0.85], [0.150, 0.890, 3.5, 0.6], [0.300, 0.858, 4.0, 0.7],
-	[0.045, 0.918, 4.5, 0.8], [0.235, 0.925, 3.0, 0.55], [0.395, 0.905, 3.0, 0.55],
-	[0.490, 0.852, 4.5, 0.8], [0.612, 0.888, 3.5, 0.6], [0.700, 0.850, 3.0, 0.5],
-	[0.690, 0.935, 3.0, 0.5], [0.965, 0.850, 3.5, 0.6], [0.440, 0.940, 3.5, 0.6],
-	[0.330, 0.948, 4.0, 0.7], [0.560, 0.925, 3.0, 0.5], [0.960, 0.945, 3.0, 0.5],
-	[0.018, 0.748, 3.0, 0.5], [0.975, 0.560, 3.5, 0.6], [0.972, 0.430, 3.0, 0.5],
+	[0.060, 0.884, 5.0, 0.85], [0.150, 0.915, 3.5, 0.6], [0.300, 0.888, 4.0, 0.7],
+	[0.045, 0.940, 4.5, 0.8], [0.235, 0.945, 3.0, 0.55], [0.395, 0.925, 3.0, 0.55],
+	[0.490, 0.884, 4.5, 0.8], [0.612, 0.915, 3.5, 0.6], [0.700, 0.882, 3.0, 0.5],
+	[0.690, 0.950, 3.0, 0.5], [0.965, 0.880, 3.5, 0.6], [0.440, 0.955, 3.5, 0.6],
+	[0.330, 0.962, 4.0, 0.7], [0.560, 0.945, 3.0, 0.5], [0.960, 0.955, 3.0, 0.5],
+	[0.018, 0.790, 3.0, 0.5], [0.975, 0.560, 3.5, 0.6], [0.972, 0.430, 3.0, 0.5],
 	[0.968, 0.660, 4.0, 0.7], [0.978, 0.770, 3.0, 0.5],
 ]
 ## The sparkles that twinkle: [x, y, radius at W].
-const SPARKS := [[0.205, 0.874, 22.0], [0.740, 0.888, 18.0], [0.520, 0.900, 17.0]]
+const SPARKS := [[0.205, 0.900, 22.0], [0.735, 0.912, 18.0], [0.520, 0.922, 17.0]]
 const TWINKLE := 3.2
 const TWINKLE_LOW := 0.35
 
@@ -131,8 +131,8 @@ func _build() -> void:
 			Face.Builder.ring(moon + Vector2(r * 0.42, -r * 0.20), r * 0.86, r * 0.86)):
 		b.polygon(part, Color(Pal.MOON, 0.92))
 	# Two hills at the foot of the night.
-	b.ellipse(Vector2(size.x * 0.80, size.y + 80.0 * u), size.x * 0.66, 200.0 * u, HILL_FAR)
-	b.ellipse(Vector2(size.x * 0.20, size.y + 100.0 * u), size.x * 0.62, 200.0 * u, HILL_NEAR)
+	b.ellipse(Vector2(size.x * 0.80, size.y + 110.0 * u), size.x * 0.66, 200.0 * u, HILL_FAR)
+	b.ellipse(Vector2(size.x * 0.20, size.y + 130.0 * u), size.x * 0.62, 200.0 * u, HILL_NEAR)
 	_shown = b.mesh()
 	queue_redraw()
 	var sb := Face.Builder.new()

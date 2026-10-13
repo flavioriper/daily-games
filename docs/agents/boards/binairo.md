@@ -384,3 +384,18 @@ the crescent and the hills in the open night under it. `opengl3_angle`,
 249797/0; the throwaway touch on Easy from Medium still left one host at
 difficulty 0. What the section above says of a row under the grid is
 history.
+
+### The tools row and the level slide (2026-10-13)
+
+The user: only back, the title, ? and the gear at the top; Undo and Reset
+at the start of a row under the levels and Hint at its end, never hidden,
+only greyed; and a change of level slides the board out and the new one in
+(`docs/agents/flat-screens.md`, "The level card"). The wordmark has its 84
+back. The board gained `set_shift` (its `_place` transform, the sky held
+still) and `skip_entrance`. The grid stands 723 to 1667 now and the sky's
+line, clouds, stars, crescent and hills were placed for that.
+`opengl3_angle`, 810x1440: Medium's `solve` peak 111 draw calls; suite
+249797/0; a throwaway harness touched Insane from Medium: both boards in
+the frame mid-slide over one still sky, then one board, 10 x 10, at rest,
+Undo greyed on the row. Mine, the user's to call: "redo" read as Reset.
+Owed: a phone.

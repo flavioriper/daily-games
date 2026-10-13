@@ -466,11 +466,35 @@ One paper card, a cell a level in the difficulty sheet's own tints with
 its plaque and name side by side (`DifficultySheet.TINTS`, `LevelPlaque`,
 `LEVEL_KEYS`), the level being played ringed, a level done today checked.
 A tap on another cell is `_on_level`: an unfinished board is logged as an
-abandon, `level_switch` is sent, and `play_level` has the menu free this
-host and mount the card at that level, as the win's invite does. Nothing
-is asked first and the board left is not kept (no board keeps a
-half-played day; Back loses it too). It leaves with the top rows on the
-win. It is independent of `tray` and `actions`, but was only built over
+abandon, `level_switch` is sent, and **the host deals the other level in
+place** (the user, 2026-10-13: "slide the current board out and the new
+board in instead of retriggering all page load animation"). The rows stay;
+`_difficulty`, `_completed_daily` and the card's ring change; `_spawn`
+makes the new board, which is asked to arrive whole (`skip_entrance()`,
+optional); and the two slide a screen's width over `LEVEL_SLIDE` 0.4, to
+the left for a higher level. A bleed board is asked to shift itself
+(`set_shift(x, leaving)`) so its world stays still, and the one leaving
+hides its world and lies over the one arriving; any other board has its
+`position.x` written. A second tap cuts the slide short. A level already
+done today goes straight to its win. Reduce-motion swaps. The win's invite
+still goes through `play_level` and the menu. Nothing is asked first and
+the board left is not kept (no board keeps a half-played day; Back loses
+it too). It leaves with the top rows on the win.
+
+**The board's own buttons are a row under the levels** (the user, the same
+day: "keep only the config and how to play buttons at the top along with
+title and back ... Undo, redo at start (they never disappear, only
+disable), hint at end followed by any other button"). On a `level_card`
+board `FlatTopBar` is built with `tools_row`: the bar keeps back, the
+title, ? and the gear, and Undo, Reset, a spacer and Hint are built into
+`top_bar.tools`, which the host lays third in the top stack. They are the
+bar's own buttons and its own `refresh` (`top_bar.hint_button` and the
+rest are where they were), but Undo and Hint stay on the row greyed when
+the board has no such capability (Insane's Undo). "Redo" was read as
+Reset, the button already there: no board has a redo. The top slot is
+`_top_play` (TOP_PLAY + 20 + 110 here), which replaced the constant in the
+slides and the clear. A board's further buttons go after Hint; none has
+any yet. It is independent of `tray` and `actions`, but was only built over
 Binairo, which has neither: its bottom slot is empty and the board is told
 a clear of the margin alone.
 

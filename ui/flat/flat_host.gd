@@ -77,6 +77,8 @@ signal play_level(difficulty: int)
 ## built, because a screen may have no actions row and a tray of its own
 ## height.
 const TOP_PLAY := 180.0 + 20.0 + 120.0
+## A board's change of level in place: how long the boards slide.
+const LEVEL_SLIDE := 0.4
 const TOP_WIN := WellDone.HEIGHT
 const BOTTOM_WIN := 120.0 + 20.0 + 130.0
 const CAMP_BUTTON := 130.0
@@ -129,6 +131,12 @@ var _camp_chevron: Control
 var _next_level := -1
 ## The bottom slot's playing height, summed from the rows this screen has.
 var _bottom_play := 0.0
+## The top slot's playing height: TOP_PLAY, and the tools row under a level
+## card.
+var _top_play := TOP_PLAY
+## The board sliding out on a change of level, and the slide.
+var _leaving: Control
+var _level_tw: Tween
 ## set_tray is a one-time handoff, not a per-move refresh: _refresh() runs on
 ## every move and every focus change, and re-handing the same tray each time
 ## would be harmless today but is not what "the host hands it over once,
@@ -235,16 +243,18 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# --- the top slot: top bar and day card, and the win art over them ---
 	_top_slot = Control.new()
 	_top_slot.name = "TopSlot"
-	_top_slot.custom_minimum_size.y = TOP_PLAY
+	_top_slot.custom_minimum_size.y = _top_play
 	_top_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_top_slot)
 	_top_stack = _stack(_top_slot)
 	var with_actions: bool = bool(_entry.get("actions", true))
+	var levelled := bool(_entry.get("level_card", false))
 	top_bar = FlatTopBar.new(
 		_entry.get("title", ""),
 		tr(String(_entry.get("motto", ""))),
 		not with_actions,
-		str(_entry.get("id", "")) == "binairo"
+		str(_entry.get("id", "")) == "binairo",
+		levelled
 	)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
@@ -268,6 +278,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 		level_card.name = "LevelCard"
 		level_card.pick.connect(_on_level)
 		_top_stack.add_child(level_card)
+		# The board's own buttons in a row under the levels (the user,
+		# 2026-10-13: "keep only the config and how to play buttons at the
+		# top along with title and back"): Undo and Reset at its start, Hint
+		# at its end. They are the bar's own buttons (top_bar.tools).
+		_top_stack.add_child(top_bar.tools)
+		_top_play = TOP_PLAY + GAP + FlatTopBar.BUTTON.y
+		_top_slot.custom_minimum_size.y = _top_play
 	well_done = WellDone.new()
 	well_done.name = "WellDone"
 	well_done.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -528,18 +545,75 @@ func _dress_win_buttons() -> void:
 		Color(Pal.MOON, 0.72) if night else Color(Pal.SURFACE, 0.85))
 
 ## The level card asked for another level: this board is left as Back would
-## leave it (an unfinished one is an abandon) and the menu mounts the other.
+## leave it (an unfinished one is an abandon) and the other is dealt in its
+## place, the one sliding out as the other slides in. The rows stay where
+## they are; nothing of the screen's entrance plays again (the user,
+## 2026-10-13). A board that fills the screen is asked to shift itself
+## (`set_shift`), so its world stays still.
 func _on_level(difficulty: int) -> void:
-	if difficulty == _difficulty:
+	if difficulty == _difficulty or _won or not is_instance_valid(_puzzle):
 		return
-	if is_instance_valid(_puzzle) and not _puzzle.is_done():
+	if not _puzzle.is_done():
 		Analytics.track("puzzle_abandon", _stats())
 	Analytics.track("level_switch", {
 		"puzzle_id": _entry.get("id", ""),
 		"difficulty": _difficulty,
 		"to": difficulty,
 	})
-	play_level.emit(difficulty)
+	_end_level_slide()
+	var side := 1.0 if difficulty > _difficulty else -1.0
+	var old := _puzzle
+	for pair in [[old.solved, _on_solved], [old.ended, _on_ended], [old.moved, _refresh], [old.focus_changed, _refresh]]:
+		if (pair[0] as Signal).is_connected(pair[1]):
+			(pair[0] as Signal).disconnect(pair[1])
+	old.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_puzzle = null
+	_difficulty = difficulty
+	_completed_daily = Progress.completed(_progress_id())
+	_hearts_line = ""
+	_bank_step = 0
+	_day_key = DailySeed.date_key()
+	level_card.set_current(difficulty)
+	_spawn(DailySeed.seed_for(String(_entry.get("seed_as", _entry.id)), _difficulty))
+	if _completed_daily:
+		old.queue_free()
+		_restore_completed_daily()
+		return
+	if _puzzle.has_method("skip_entrance"):
+		_puzzle.skip_entrance()
+	if Motion.reduce:
+		old.queue_free()
+		return
+	# The one leaving over the one arriving, so it is not under its world.
+	_board_holder.move_child(old, -1)
+	_leaving = old
+	var wide := size.x
+	var fresh := _puzzle
+	var step := func(t: float) -> void:
+		_shift_board(old, -side * wide * t, true)
+		_shift_board(fresh, side * wide * (1.0 - t), false)
+	step.call(0.0)
+	_level_tw = create_tween()
+	_level_tw.tween_method(step, 0.0, 1.0, LEVEL_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_level_tw.tween_callback(_end_level_slide)
+
+func _shift_board(board: Control, x: float, leaving: bool) -> void:
+	if not is_instance_valid(board):
+		return
+	if board.has_method("set_shift"):
+		board.set_shift(x, leaving)
+	else:
+		board.position.x = x
+
+## The slide over, or cut short by the next tap: the one leaving is freed and
+## the one arriving stands in its place.
+func _end_level_slide() -> void:
+	Motion.stop(_level_tw)
+	_level_tw = null
+	if is_instance_valid(_leaving):
+		_leaving.queue_free()
+	_leaving = null
+	_shift_board(_puzzle, 0.0, false)
 
 func _on_next() -> void:
 	if _next_level < 0:
@@ -558,7 +632,7 @@ func _place_backdrop() -> void:
 	if _backdrop == null:
 		return
 	var insets := SafeArea.insets(self)
-	_backdrop.offset_bottom = MARGIN + insets.x + TOP_PLAY + BACKDROP_BLEED
+	_backdrop.offset_bottom = MARGIN + insets.x + _top_play + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
 func _apply_insets() -> void:
@@ -574,7 +648,7 @@ func _tell_clear() -> void:
 		return
 	var insets := SafeArea.insets(self)
 	var rows := _bottom_win if _won else _bottom_play
-	_puzzle.set_clear(MARGIN + insets.x + (TOP_WIN if _won else TOP_PLAY) + GAP,
+	_puzzle.set_clear(MARGIN + insets.x + (TOP_WIN if _won else _top_play) + GAP,
 		MARGIN + insets.y + (rows + GAP if rows > 0.0 else 0.0), _won)
 
 ## A column of rows across the top of `slot`, sized to its own content, so a
@@ -603,6 +677,7 @@ func _enter() -> void:
 		action_bar.enter(ENTER_ACTIONS)
 	if level_card != null:
 		level_card.enter(ENTER_CARDS)
+		Motion.appear(top_bar.tools, 0.0, 1.0, 0.25, ENTER_TRAY)
 
 func _refresh() -> void:
 	# The one board that talks back to its tray: Hidden Word paints the keys
@@ -706,7 +781,7 @@ func _spawn(the_seed: int) -> void:
 	if _won:
 		_won = false
 		_thaw_board()
-		_top_slot.custom_minimum_size.y = TOP_PLAY
+		_top_slot.custom_minimum_size.y = _top_play
 		_bottom_slot.custom_minimum_size.y = _bottom_play
 		well_done.visible = false
 		_win_stack.visible = false
@@ -822,7 +897,7 @@ func _show_win(hold := 0.0) -> void:
 		_bottom_stack.visible = false)
 	# The slots make room; the VBox slides the board card down between them.
 	_freeze_board()
-	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", TOP_PLAY, TOP_WIN, SLOT_TIME, 0.0, false)
+	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", _top_play, TOP_WIN, SLOT_TIME, 0.0, false)
 	if slots == null:
 		_thaw_board()
 	else:

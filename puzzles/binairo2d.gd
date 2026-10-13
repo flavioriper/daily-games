@@ -317,6 +317,8 @@ var _slid := 0.0
 var _won := false
 var _win_clear := Vector2.ZERO
 var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
 var _slide_tw: Tween
 var _mm_edge: MultiMesh
 var _mm_face: MultiMesh
@@ -753,14 +755,27 @@ func _slide(t: float) -> void:
 	_slid = t
 	_place()
 
+## The host slides the board `x` aside on a change of level; the sky stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_sky.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the tiles' entrance.
+func skip_entrance() -> void:
+	_stop_entrance()
+
 ## The board's transform at `_slid`, and the sky's against it, so the sky
 ## stays where it is while the grid and everything on it goes.
 func _place() -> void:
-	if _slid <= 0.0 and not _placed:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
 		return
-	_placed = _slid > 0.0
+	_placed = _slid > 0.0 or _shift != 0.0
 	var k := lerpf(1.0, _slid_scale, _slid)
-	var by := _slid_by * _slid
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
 	pivot_offset = _slid_from
 	scale = Vector2(k, k)
 	position = by

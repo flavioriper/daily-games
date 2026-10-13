@@ -31,6 +31,7 @@ const NAME_SIZE := 28
 
 var _entry: Dictionary = {}
 var _current := 0
+var _cells: Dictionary = {}
 
 func _init(entry: Dictionary = {}, current := 0) -> void:
 	_entry = entry
@@ -48,23 +49,37 @@ func _build() -> void:
 	for i in levels.size():
 		var level: Dictionary = levels[i]
 		var d := int(level.get("difficulty", i))
-		row.add_child(_cell(level, d))
+		var cell := _cell(level, d)
+		_cells[d] = cell
+		row.add_child(cell)
+	_ring()
+
+## Another level is the one played now (the host changed boards in place).
+func set_current(d: int) -> void:
+	_current = d
+	_ring()
+
+func _ring() -> void:
+	for d: int in _cells:
+		var t := clampi(d, 0, 3)
+		var tint: Array = Sheet.TINTS[t]
+		var here := d == _current
+		var ring: Color = (Sheet.NIGHT_RIM if t == 3 else tint[2]) if here else Color.TRANSPARENT
+		var cell: Button = _cells[d]
+		var up := CozyTheme.chip(tint[0], CELL_RADIUS, ring, RING if here else 0)
+		for st in ["normal", "hover", "focus", "disabled"]:
+			cell.add_theme_stylebox_override(st, up)
+		cell.add_theme_stylebox_override("pressed", CozyTheme.chip(tint[0], CELL_RADIUS, ring, RING if here else 0, true))
 
 func _cell(level: Dictionary, d: int) -> Button:
 	var t := clampi(d, 0, 3)
 	var tint: Array = Sheet.TINTS[t]
 	var night := t == 3
-	var here := d == _current
 	var cell := Button.new()
 	cell.name = "Level%d" % d
 	cell.focus_mode = Control.FOCUS_NONE
 	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cell.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var ring: Color = (Sheet.NIGHT_RIM if night else tint[2]) if here else Color.TRANSPARENT
-	var up := CozyTheme.chip(tint[0], CELL_RADIUS, ring, RING if here else 0)
-	for s in ["normal", "hover", "focus", "disabled"]:
-		cell.add_theme_stylebox_override(s, up)
-	cell.add_theme_stylebox_override("pressed", CozyTheme.chip(tint[0], CELL_RADIUS, ring, RING if here else 0, true))
 	cell.pivot_offset = Vector2(0.0, 0.0)
 	cell.resized.connect(func() -> void: cell.pivot_offset = cell.size * 0.5)
 	cell.pressed.connect(func() -> void:
