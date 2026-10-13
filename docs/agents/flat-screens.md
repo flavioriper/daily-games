@@ -476,7 +476,7 @@ sections after it say how each part is built.
 
 **Done since** (2026-10-13, unattended, three boards a batch by fork
 workers; each board's own note says what was decided for the user):
-Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider; Marigold, Pixel Garden, Drumbeat; Trestle, Mini Golf, Horse Pen; How Big?, Golden Acorn, Pearl Dive, Lattice. **Every card board from Code Break to Lattice is done**; with Binairo and the three that were already bleed boards, all thirty-eight. What the batches taught:
+Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider; Marigold, Pixel Garden, Drumbeat; Trestle, Mini Golf, Horse Pen; How Big?, Golden Acorn, Pearl Dive, Lattice. **Every card board from Code Break to Lattice is done**; with Binairo and the three that were already bleed boards (Gumdrop, Button Box, Toy Cannons: given the level card and the tools row the same day, their grounds not redrawn), all thirty-eight. What the batches taught:
 
 - A worker owns two files, `puzzles/<board>_world.gd` and the board; the
   parent sets the registry, shoots (`tests/_shot_anim.gd`, then

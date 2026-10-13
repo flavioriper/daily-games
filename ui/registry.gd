@@ -1196,6 +1196,9 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/gumdrop.gd",
 		"shell": "flat",
 		"bleed": true,
+		# The levels stand where the day card was, with the tools row under
+		# them (docs/agents/flat-screens.md, "Every board gets a world").
+		"level_card": true,
 		"tray": "none",
 		"actions": false,
 		"tip": false,
@@ -1226,6 +1229,9 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/buttons.gd",
 		"shell": "flat",
 		"bleed": true,
+		# The levels stand where the day card was, with the tools row under
+		# them (docs/agents/flat-screens.md, "Every board gets a world").
+		"level_card": true,
 		"tray": "none",
 		"actions": false,
 		"tip": false,
@@ -1257,6 +1263,9 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/train.gd",
 		"shell": "flat",
 		"bleed": true,
+		# The levels stand where the day card was, with the tools row under
+		# them (docs/agents/flat-screens.md, "Every board gets a world").
+		"level_card": true,
 		"tray": "none",
 		"actions": false,
 		"tip": false,

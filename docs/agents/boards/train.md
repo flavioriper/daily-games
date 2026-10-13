@@ -230,3 +230,17 @@ doing just one run". **This section wins over the two above.**
   the motto is "Round and round, pop".
 - **Not seen**: a cannon coming round the gate's bend into a second lap, the
   tutorial after the change, a phone.
+
+### The level card and the tools row (2026-10-13)
+
+The last of the redesign's rows (`docs/agents/flat-screens.md`, "Every
+board gets a world of its own"): this board was already a bleed board, so
+it only gained `"level_card": true`. The top bar is back, the title, ? and
+the gear; the levels stand where the day card was; Undo, the bin (it asks
+first) and Hint are a row under them, greyed where the board has no such
+capability. The board is told a span 130 shorter and lays itself in it as
+before; its world was not redrawn. `opengl3_angle`, 810x1440: rest,
+`tests/_win.gd` and `tests/_probe_level_slide.gd` all pass (the slide
+writes the board's `position.x`: it has no `set_shift`, so its world
+slides with it). Owed: a phone; whether its ground wants the richer foot
+the later boards have.
