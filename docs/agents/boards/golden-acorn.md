@@ -65,8 +65,9 @@
      document that does not validate, a board dealt from New, a second try
      at the Climb -- is the **bank**: `content/acorn.json`, by
      `State.bank_band(key, band)`.
-  **`build()` deals nothing.** The host sets `daily_key` only after
-  `start()` returns, so `build()` clears the card and defers `_deal` by a
+  **`build()` deals nothing.** The host set `daily_key` only after
+  `start()` returned when this was written (it sets it before as well since
+  2026-10-13, for the themed bead pictures), so `build()` clears the card and defers `_deal` by a
   frame; `capabilities()`, `rules()`, `check_label()` and the rest answer
   from the band alone until then. A harness that asks the state for its
   count on the frame it opens the board reads zero.
