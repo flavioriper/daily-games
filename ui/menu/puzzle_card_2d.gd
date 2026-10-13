@@ -12,6 +12,14 @@ extends "res://ui/hud/panel.gd"
 ## SOON_INK, and emits `blocked` rather than `open`. It is deliberately quiet
 ## rather than disabled-looking: the row is a roadmap, not a fault.
 ## Spec: docs/superpowers/specs/2026-09-18-flat-menu-design.md, section 3.
+##
+## That is the template, and a board may leave it (2026-10-13, the user: "redesign
+## the game cards to something completely customized for every card game, not
+## something default"): a registry entry that names a script under `card`
+## (ui/menu/cards/<id>.gd, a card_face.gd) hands that script the whole paper --
+## ground, picture, name, blurb and go button are its own -- and this card
+## keeps only what every card does: the tap, the squash, the seal, the SOON
+## pill and the row's height. Binairo was the first.
 
 signal open
 signal blocked
@@ -78,6 +86,8 @@ var completed := false
 var levels: Array = []
 var _tap: Button
 var _art_plate: PanelContainer
+## The board's own face, when its registry entry names one (`card`).
+var _face: Control
 var _seal: Control
 var _seal_mesh: ArrayMesh
 ## This card's row height: CARD_H on a 1080x1920 screen, more on a taller
@@ -99,7 +109,8 @@ func _init(the_entry: Dictionary, the_colour: Color, is_completed := false, the_
 
 func _make_inner() -> Container:
 	var box := PanelContainer.new()
-	var paper := CozyTheme.lifted(Pal.SURFACE, 36, INSET)
+	# A face of its own is laid to the paper's edge and keeps its own margins.
+	var paper := CozyTheme.lifted(Pal.SURFACE, 36, 0 if entry.has("card") else INSET)
 	paper.set_border_width_all(2)
 	paper.border_color = Color(Pal.LINE, 0.35)
 	box.add_theme_stylebox_override("panel", paper)
@@ -108,6 +119,25 @@ func _make_inner() -> Container:
 
 func _build() -> void:
 	_inner.resized.connect(func() -> void: _inner.pivot_offset = _inner.size * 0.5)
+	if entry.has("card"):
+		_build_face()
+	else:
+		_build_template()
+	_build_tap()
+	if completed:
+		_build_done_badge()
+
+## The board's own face over the whole paper (ui/menu/cards/card_face.gd).
+func _build_face() -> void:
+	_face = load(String(entry["card"])).new(entry, colour)
+	_face.modulate.a = SOON_INK if soon else 1.0
+	_inner.add_child(_face)
+	if soon:
+		_build_pill()
+
+## The shared face: a painted banner under the board's cast, the name and
+## blurb beside a round go button.
+func _build_template() -> void:
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_theme_constant_override("separation", 4)
@@ -187,8 +217,9 @@ func _build() -> void:
 	else:
 		_build_pill()
 
-	# The tap surface lies over the card, drawn by nothing: the card itself
-	# answers the press.
+## The tap surface lies over the card, drawn by nothing: the card itself
+## answers the press.
+func _build_tap() -> void:
 	_tap = Button.new()
 	_tap.flat = true
 	_tap.focus_mode = Control.FOCUS_NONE
@@ -203,8 +234,6 @@ func _build() -> void:
 		else:
 			open.emit())
 	add_child(_tap)
-	if completed:
-		_build_done_badge()
 
 ## The completion marker: a seal pinned over the picture's corner like a
 ## sticker, with no word on it, that fills as the day's levels are solved --
@@ -218,16 +247,23 @@ func _build() -> void:
 ## in. A board solved only off New is completed with no level logged, and
 ## wears the disc in an unlit ring.
 func _build_done_badge() -> void:
-	if _seal != null or _art_plate == null:
+	# A face of its own says where its seal goes; it is not a container, so
+	# the seal is laid over it by hand.
+	var host: Control = _face if _face != null else _art_plate
+	if _seal != null or host == null:
 		return
 	_seal = Control.new()
 	_seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_seal.draw.connect(func() -> void:
 		if _seal_mesh == null:
 			_seal_mesh = _seal_build()
-		_seal.draw_mesh(_seal_mesh, null,
-			Transform2D(0.0, Vector2(_seal.size.x - SEAL_R + SEAL_HANG, SEAL_R - SEAL_HANG))))
-	_art_plate.add_child(_seal)
+		var at := Vector2(_seal.size.x - SEAL_R + SEAL_HANG, SEAL_R - SEAL_HANG)
+		if _face != null:
+			at = _face.seal_centre()
+		_seal.draw_mesh(_seal_mesh, null, Transform2D(0.0, at)))
+	host.add_child(_seal)
+	if _face != null:
+		_seal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 ## The whole seal about its own centre, as one mesh: antialiased arcs cost
 ## gl_compatibility several commands apiece, and seven seals drawn that way

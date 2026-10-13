@@ -73,6 +73,8 @@ const PUZZLES := [
 		"motto": "BN_MOTTO",
 		"footer": "Think · Balance · Complete",
 		"script": "res://puzzles/binairo2d.gd",
+		# Its card on the first screen is its own (ui/menu/cards/card_face.gd).
+		"card": "res://ui/menu/cards/binairo.gd",
 		"shell": "flat",
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,

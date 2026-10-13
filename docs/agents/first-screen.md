@@ -504,3 +504,40 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   sun-and-moon box (x497-773, y105-284) -- the sun-dot's glint, on its own
   clock, differing between two runs of the same build, the way this file
   has recorded for every other board's ANGLE check.
+
+### A card of its own (2026-10-13)
+
+The user, 2026-10-13: "let's start redesign the game cards to something
+completely customized for every card game, not something default. Start with
+the first one ... Card should be elegant, cozy, but carry the game elements".
+
+- **The seam.** A registry entry that names a script under `card` hands it
+  the whole paper. `ui/menu/puzzle_card_2d.gd` is the shell and keeps what
+  every card does (tap, squash, done seal, SOON pill, `CARD_H`, `fit_height`);
+  `ui/menu/cards/card_face.gd` is the base of a face: `_paint(b)` for
+  everything still, as one mesh built at the card's size and kept until the
+  next resize, `_lay()` for what lives (children through `_keep`, so a resize
+  takes them and leaves the shell's seal), `seal_centre()` for where the seal
+  is pinned (top right, 38 in), `ground()` for the paper inside the shell's
+  line, `shade()` for a top-to-bottom gradient over vertices already taken,
+  `_words()` for the sun-dotted name over the blurb. An entry without the key
+  wears the template, untouched: the Versus tab's cards and the other
+  thirty-seven. **A custom card costs one file under `ui/menu/cards/` and one
+  registry key**; the grid's budget (490 by 246) is not the face's to move.
+- **Binairo is the first** (`ui/menu/cards/binairo.gd`): a day and a night on
+  one paper, a three-by-three corner of the board across the line between
+  them in the board's own tiles and faces, an = between the two suns, the top
+  right place left to the night sky (stars; the seal goes there) and the last
+  tile the go button in the card's colour. Two moons stand beside it, so the
+  tile it wants is a sun. No vista under it.
+- **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440, second
+  of two readings: 321 draw calls (316 before: seven idling faces where the
+  template had two still ones and a plate). Suite 249797/0. A throwaway
+  windowed probe laid the card at 490x246, 490x272, 620x300 and 1040x246, in
+  pt, with two, four and the Insane level done: the seal sits in the sky's
+  corner and the words clear the line.
+- **Mine, the user's to call**: the go button as the missing tile rather
+  than the round disc; no white margin round the picture; the faces idling
+  (blink, turn, rock) on the menu, which the template's did not.
+- **Owed**: Binairo's cell on Stats and Streak still wears the old banner
+  (`CardArt` + `Vistas.card_plate`); the other thirty-seven cards; a phone.
